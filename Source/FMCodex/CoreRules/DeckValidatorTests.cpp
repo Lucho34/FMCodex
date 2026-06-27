@@ -2,7 +2,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "MatchStateTypes.h"
 #include "Misc/AutomationTest.h"
 
 namespace DeckValidatorTests
@@ -134,6 +133,18 @@ bool FDeckValidatorGoalkeeperCountTest::RunTest(const FString& Parameters)
 		TEXT("Multiple goalkeeper error is reported"),
 		DeckValidatorTests::HasError(MultipleResult, EDeckValidationErrorCode::MultipleGoalkeepers));
 	TestTrue(TEXT("Ambiguous goalkeeper deck has no goalkeeper ID"), MultipleResult.GoalkeeperCardId.IsEmpty());
+
+	TArray<FPlayerCardData> ThreeGoalkeepers = DeckValidatorTests::MakeValidCommonDeck();
+	ThreeGoalkeepers[0] = DeckValidatorTests::MakeGoalkeeperCard(TEXT("GK_02"));
+	ThreeGoalkeepers[1] = DeckValidatorTests::MakeGoalkeeperCard(TEXT("GK_03"));
+	const FDeckValidationResult ThreeGoalkeepersResult =
+		FDeckValidator::ValidateDeck(ThreeGoalkeepers);
+	TestFalse(TEXT("Deck with three goalkeepers is illegal"), ThreeGoalkeepersResult.bIsValid);
+	TestTrue(
+		TEXT("Three goalkeepers reports multiple goalkeeper error"),
+		DeckValidatorTests::HasError(
+			ThreeGoalkeepersResult,
+			EDeckValidationErrorCode::MultipleGoalkeepers));
 	return true;
 }
 
@@ -144,23 +155,35 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FDeckValidatorGoalkeeperPositionsTest::RunTest(const FString& Parameters)
 {
-	const TArray<EPlayerPositionType> MixedPositions = {
-		EPlayerPositionType::Attack,
-		EPlayerPositionType::Midfield,
-		EPlayerPositionType::Defense
+	struct FMixedGoalkeeperPositionCase
+	{
+		EPlayerPositionType SecondaryPosition;
+		const TCHAR* Label;
 	};
 
-	for (const EPlayerPositionType SecondaryPosition : MixedPositions)
+	const TArray<FMixedGoalkeeperPositionCase> MixedPositionCases = {
+		{ EPlayerPositionType::Attack, TEXT("GK/A") },
+		{ EPlayerPositionType::Midfield, TEXT("GK/M") },
+		{ EPlayerPositionType::Defense, TEXT("GK/D") }
+	};
+
+	for (const FMixedGoalkeeperPositionCase& TestCase : MixedPositionCases)
 	{
 		TArray<FPlayerCardData> Deck = DeckValidatorTests::MakeValidCommonDeck();
 		Deck.Last().PositionTypes = {
 			EPlayerPositionType::Goalkeeper,
-			SecondaryPosition
+			TestCase.SecondaryPosition
 		};
 		const FDeckValidationResult Result = FDeckValidator::ValidateDeck(Deck);
-		TestFalse(TEXT("Goalkeeper mixed with an outfield position is illegal"), Result.bIsValid);
+		const FString InvalidMessage = FString::Printf(
+			TEXT("%s goalkeeper position is illegal"),
+			TestCase.Label);
+		const FString ErrorMessage = FString::Printf(
+			TEXT("%s reports mixed goalkeeper position error"),
+			TestCase.Label);
+		TestFalse(InvalidMessage, Result.bIsValid);
 		TestTrue(
-			TEXT("Mixed goalkeeper position error is reported"),
+			ErrorMessage,
 			DeckValidatorTests::HasError(
 				Result,
 				EDeckValidationErrorCode::GoalkeeperHasMixedPositionTypes));
@@ -188,6 +211,19 @@ bool FDeckValidatorGoalkeeperPositionsTest::RunTest(const FString& Parameters)
 		TEXT("Non-goalkeeper GK position error is reported"),
 		DeckValidatorTests::HasError(
 			OutfieldWithGkResult,
+			EDeckValidationErrorCode::NonGoalkeeperContainsGoalkeeperPosition));
+
+	TArray<FPlayerCardData> OnlyGkOnNonGoalkeeper = DeckValidatorTests::MakeValidCommonDeck();
+	OnlyGkOnNonGoalkeeper[0].PositionTypes = { EPlayerPositionType::Goalkeeper };
+	const FDeckValidationResult OnlyGkOnNonGoalkeeperResult =
+		FDeckValidator::ValidateDeck(OnlyGkOnNonGoalkeeper);
+	TestFalse(
+		TEXT("Non-goalkeeper with only GK position is illegal"),
+		OnlyGkOnNonGoalkeeperResult.bIsValid);
+	TestTrue(
+		TEXT("Only GK on non-goalkeeper reports non-goalkeeper GK error"),
+		DeckValidatorTests::HasError(
+			OnlyGkOnNonGoalkeeperResult,
 			EDeckValidationErrorCode::NonGoalkeeperContainsGoalkeeperPosition));
 	return true;
 }
@@ -226,16 +262,8 @@ bool FDeckValidatorRarityScoreTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Four of each rarity score seventy-two"), InitialResult.InitialDeckRarityScore, 72);
 	TestEqual(TEXT("Rarity deck returns goalkeeper ID"), InitialResult.GoalkeeperCardId, FString(TEXT("GK_SCORE")));
 
-	FPlayerMatchState UnrelatedMatchState;
-	UnrelatedMatchState.HandCardIds = { TEXT("OTHER_HAND_CARD") };
-	UnrelatedMatchState.ConsumedZoneCardIds = { TEXT("OTHER_CONSUMED_CARD") };
-	UnrelatedMatchState.DiscardPileCardIds = { TEXT("OTHER_DISCARDED_CARD") };
-
-	const FDeckValidationResult AfterZoneChanges = FDeckValidator::ValidateDeck(Deck);
-	TestEqual(
-		TEXT("Dynamic hand and zone state does not change initial deck score"),
-		AfterZoneChanges.InitialDeckRarityScore,
-		InitialResult.InitialDeckRarityScore);
+	// DeckValidator only calculates the supplied initial deck. Persistence across
+	// match-state zone changes belongs to the future match setup layer.
 	return true;
 }
 
