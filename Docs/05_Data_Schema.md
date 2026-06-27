@@ -1,98 +1,223 @@
 ﻿# 05 Data Schema
 
-本文档记录数据结构草案。当前不创建数据资产、不创建蓝图、不写玩法代码。
+本文档只保留数据结构说明。未解决规则问题统一记录在 `Docs/08_Decision_Log.md`。当前不创建数据资产、不创建蓝图、不写 C++。
 
 ## 设计目标
 
-卡牌和规则数据应该清晰、可扩展、可测试。未来新增卡牌时，应尽量通过数据配置，而不是为每张牌写一段特殊代码。
+- 数据结构应能对应 `Docs/01_Rules_Canonical.md`。
+- 区分卡牌展示字段和规则计算字段。
+- 只描述字段和关系，不规定具体 C++ 实现。
 
-## CardDefinition 草案
+## PlayerCard
 
-一张卡牌的静态定义可能包含：
+表示一张球员卡的静态数据。
 
-- CardId：唯一标识。
-- DisplayName：显示名称。
-- CardType：卡牌类型，例如球员、战术、事件。
-- Cost：使用费用或资源消耗。
-- Tags：规则标签，例如进攻、防守、射门、控球。
-- Timing：可使用时机。
-- TargetRule：目标选择规则。
-- EffectId：效果类型或效果脚本标识。
-- Description：玩家可读描述。
+### 展示字段
 
-## PlayerState 草案
+- `CardId`：唯一标识，同一玩家 20 张球员卡内不可重复。
+- `DisplayName`：球员显示名称。
+- 技能显示信息：通过 `AttackSkills` 引用对应的 `SkillDefinition`，球员卡正面只读取 `SkillDisplayName` 和 `TriggerActionPointRange`。
+- `HeightCm`：身高，单位厘米，建议类型 `int32`。MVP 阶段只用于展示，不参与公式。
+- `WeightKg`：体重，单位千克，建议类型 `int32`。MVP 阶段只用于展示，不参与公式。
+- `BirthDate`：出生日期，建议格式 `YYYY-MM-DD`。MVP 阶段只用于展示，不参与公式。
+- `Notes`：策划备注，不参与规则结算。
 
-一名玩家在对局中的状态可能包含：
+### 规则字段
 
-- PlayerId
-- Score
-- Deck
-- Hand
-- DiscardPile
-- FieldState
-- AvailableResources
-- HasPriority
+- `Rarity`：卡牌稀有度，见 `CardRarity`。
+- `PositionTypes`：位置类型列表，可包含 `A`、`M`、`D`、`GK`。
+- `Attributes`：通用球员属性，见 `PlayerAttributes`。
+- `GoalkeeperAttributes`：门将属性。
+- `AttackSkills`：该球员可使用的进攻技能引用，最多 3 个。
+- `IsGoalkeeper`：是否门将。每副牌必须且只能有 1 名门将。
 
-## MatchState 草案
+校验要求：
 
-一局比赛的状态可能包含：
+- 属性数值区间为 1-6。
+- 非门将球员的 `PositionTypes` 至少有一个合法值。
+- 门将只能是 `GK` 类型，不允许 `GK/A`、`GK/M`、`GK/D`。
+- `AttackSkills` 数量不能超过 3。
 
-- MatchId
-- Phase
-- TurnNumber
-- ActivePlayerId
-- PossessionPlayerId
-- HomePlayerState
-- AwayPlayerState
-- PublicEventLog
-- RandomSeedState
+## CardRarity
 
-## CardInstance 草案
+卡牌稀有度枚举。用于计算初始牌组稀有度积分。
 
-卡牌实例和卡牌定义不同。定义是静态模板，实例是某一局里的一张具体牌。
+| 枚举名 | 中文显示 | 积分 |
+| --- | --- | ---: |
+| `WorldClass` | 世界级 | 7 |
+| `Continental` | 洲际级 | 5 |
+| `National` | 国家级 | 3 |
+| `Regional` | 地区级 | 2 |
+| `Common` | 普通级 | 1 |
 
-可能字段：
+## InitialDeckRarityScore
 
-- InstanceId
-- CardId
-- OwnerPlayerId
-- CurrentZone
-- TemporaryModifiers
-- RevealedToPlayers
+初始牌组稀有度积分。
 
-## Zone 草案
+建议字段：
 
-卡牌区域可能包括：
+- `PlayerId`：玩家标识。
+- `CardIds`：比赛开始时 20 张球员卡。
+- `Score`：20 张球员卡稀有度积分总和。
+- `CalculatedAt`：计算时机，固定为比赛开始。
 
-- Deck
-- Hand
-- Field
-- DiscardPile
-- Removed
+规则说明：
 
-## Event Log 草案
+- 只在比赛开始时计算。
+- 比赛过程中手牌、已消耗区、弃牌区变化，不重新计算。
+- 用于进攻次数加成和初始先后手判定。
 
-联网和回放都需要清晰的事件记录。事件可能包含：
+## PlayerAttributes
 
-- EventId
-- EventType
-- SourcePlayerId
-- SourceCardInstanceId
-- TargetIds
-- BeforeStateSummary
-- AfterStateSummary
-- RandomResult
+表示球员属性集合。
 
-## 命名原则
+通用属性：
 
-- ID 使用稳定英文名称。
-- 面向玩家的显示文本可以本地化。
-- 规则字段不要混用中文、英文和缩写。
-- 同一个概念只能有一个主要名称。
+- `Shooting`：射门。
+- `Dribbling`：盘带。
+- `Passing`：传球。
+- `OffBall`：跑位。
+- `Marking`：盯人。
+- `Tackling`：抢断。
+- `Speed`：速度。
+- `Strength`：强壮。
+- `Stamina`：体力。
+- `LongShot`：远射。
 
-## 待定问题
+门将属性：
 
-- 卡牌数据未来使用 DataTable 还是 DataAsset？
-- 效果系统使用枚举、标签、组件还是脚本化结构？
-- 是否支持多语言？
-- 是否需要回放文件？
+- `Handling`：手控球。
+- `Positioning`：站位。
+- `Reflex`：反应。
+- `Aerial`：高空球。
+- `Anticipation`：预判。
+- `OneOnOne`：一对一。
+
+数值规则：
+
+- 规则文本中原先出现的“身体”统一命名为“强壮”。
+- 涉及平均值或一半属性的公式，结果保留 1 位小数。
+
+## SkillDefinition
+
+表示一个可被行动点触发的通用技能或结算入口，是完整技能配置数据源。
+
+建议字段：
+
+- `SkillId`：唯一标识，例如 `LongShot`、`CutInsideShot`、`Cross`、`ThroughBall`、`PossessionPlay`。
+- `SkillDisplayName`：技能显示名称，例如远射、传中、直塞、传控。显示在球员卡正面。
+- `TriggerActionPointRange`：技能可触发行动点范围，例如 `3-5`，表示行动点为 3、4、5 时可触发。技能是否可用由该字段决定，并显示在球员卡正面。
+- `RequiredRoles`：该技能需要哪些攻防球员，例如持球、盯人、跑位、协防。
+- `RequiredRunnerZone`：跑位球员需要所在区域，例如前场、中场。
+- `ResolutionSteps`：结算步骤列表，描述技能的结算顺序。
+- `ScorerRole`：进球归属角色，例如持球球员、跑位球员、系统进球。
+- `ConsumedPlayersRule`：球员耗费规则，用于定义结算后哪些球员进入已消耗区、弃牌区或保持不变。
+- `FormulaReferences`：结算步骤使用的公式引用。完整结算公式由引用指向的规则定义提供。
+
+规则说明：
+
+- 球员卡正面只显示技能名称 `SkillDisplayName` 和可触发行动点范围 `TriggerActionPointRange`；`SkillDefinition` 中的其他字段用于规则计算，不显示在卡牌正面。
+- `RequiredRoles`、`RequiredRunnerZone`、`ResolutionSteps`、`ScorerRole`、`ConsumedPlayersRule`、`FormulaReferences` 和完整结算公式不显示在球员卡正面。
+- 不在球员卡正面显示的配置可用于规则计算、技能详情页、tooltip、战斗日志或调试信息。
+- 技能配置表中可以存在多个同名技能。
+- 同名技能可以拥有不同触发行动点范围。
+- 进攻方只能选择当前行动点匹配的球员卡及其技能。
+
+## MatchState
+
+表示一整场比赛的公开和服务器权威状态。
+
+建议字段：
+
+- `MatchId`：对局标识。
+- `CurrentPhase`：当前阶段，例如进攻次数计算、行动点判定、部署、结算、比赛结束。
+- `CurrentActionPoint`：当前进攻回合的行动点，范围 1-12。
+- `CurrentAttackingPlayerId`：当前进攻方。
+- `CurrentDefendingPlayerId`：当前防守方。
+- `RemainingAttackCounts`：双方剩余进攻次数。
+- `AttackOrderQueue`：比赛开始时生成的进攻顺序队列。
+- `InitialDeckRarityScores`：双方初始牌组稀有度积分。
+- `Score`：双方比分。
+- `BoardState`：当前攻防区状态。
+- `PlayerStates`：双方玩家比赛状态，见 `PlayerMatchState`。
+- `RandomState`：随机状态或随机种子记录。
+- `MatchLog`：比赛日志列表。
+
+## PlayerMatchState
+
+表示单名玩家在比赛中的动态状态。
+
+建议字段：
+
+- `PlayerId`：玩家标识。
+- `TeamSide`：主场或客场。
+- `HandCards`：手牌中的球员卡实例。整副牌组就等于手牌，没有牌库、抽卡、洗牌概念。
+- `ConsumedZoneCards`：已消耗区中的球员卡实例。
+- `DiscardPileCards`：弃牌区中的球员卡实例。
+- `UsedGoalkeeperActivation`：是否已经发动过门将。
+- `RemainingAttackCount`：剩余进攻次数。
+- `HasFinishedDeployment`：本回合是否部署完毕。
+- `SelectedBallCarrier`：当前持球球员。
+- `SelectedMarker`：当前盯人球员。
+- `SelectedRunner`：当前跑位球员。
+- `SelectedSupportDefender`：当前协防球员。
+
+规则说明：
+
+- 不需要单独的 `Deck`、`DrawPile` 或 `StartingHand` 字段。
+- 定位球战术中被耗费的球员进入已消耗区。
+- 门将发动后只记录已使用状态。
+
+## BoardState
+
+表示当前回合攻防区和场上槽位。
+
+建议字段：
+
+- `SharedSlots`：双方共用槽位集合。
+- `ZoneType`：槽位所属逻辑区域，例如中场、前场、后场。
+- `SlotOccupant`：槽位中的球员卡实例。
+- `SlotOwnerPlayerId`：槽位中卡牌所属玩家。
+- `ViewMapping`：UI 视角映射，用于表现中线左右，不参与底层规则判定。
+
+规则约束：
+
+- 场地槽位双方共用。
+- 每个卡槽只能放 1 张卡。
+- 底层逻辑不使用屏幕左边或右边作为规则条件。
+- 进攻方 `D` 类型不可放前场；防守方 `A` 类型不可放后场。
+- 多类型球员的放置限制按规则允许例外。
+
+## ConsumedReturnRule
+
+表示已消耗区球员回手牌的基础规则。
+
+建议字段：
+
+- `SourceZone`：已消耗区。
+- `TargetZone`：手牌。
+- `ReturnCount`：每回合返回数量。
+- `FormulaId`：回收公式标识，用于引用已确认的已消耗区回收规则。
+- `RelevantAttribute`：体力。
+- `IfNotEnoughCards`：已消耗区不足返回数量时的处理方式。
+
+## MatchLogEntry
+
+表示一条可回放、可测试、可同步的比赛事件。
+
+建议字段：
+
+- `LogId`：日志标识。
+- `TurnIndex`：进攻回合序号。
+- `EventType`：事件类型，例如 `ActionPointRolled`、`CardPlayed`、`FormulaResolved`、`GoalScored`、`SystemGoal`、`CardMoved`。
+- `ActingPlayerId`：触发事件的玩家。
+- `InvolvedCardIds`：涉及的卡牌实例。
+- `DiceResults`：本事件使用的掷点结果。
+- `DiceOrder`：双方比较点数获取顺序。
+- `FormulaType`：过渡公式、判定公式或终结公式。
+- `FormulaInputs`：公式输入摘要。
+- `FormulaResult`：公式结果摘要。
+- `ScoreAfterEvent`：事件后的比分。
+- `ZonesAfterEvent`：必要的区域变化摘要。
+
+
