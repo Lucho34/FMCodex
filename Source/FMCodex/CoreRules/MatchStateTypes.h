@@ -144,6 +144,9 @@ struct FMCODEX_API FMatchState
 	TMap<FName, int32> InitialDeckRarityScores;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Match State")
+	TMap<FName, FName> InitialGoalkeeperCardIds;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Match State")
 	TMap<FName, int32> Score;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Match State")
