@@ -43,6 +43,63 @@ namespace PlayCardResolver
 	}
 }
 
+FPlayCardValidationResult FPlayCardResolver::ValidateCanPlayCard(
+	const FMatchCardUsageState& MatchCardUsageState,
+	const EInitialTurnOrderPlayer PlayerSide,
+	const FName CardId)
+{
+	FPlayCardValidationResult Result;
+	Result.PlayerSide = PlayerSide;
+	Result.CardId = CardId;
+
+	if (PlayerSide != EInitialTurnOrderPlayer::PlayerA
+		&& PlayerSide != EInitialTurnOrderPlayer::PlayerB)
+	{
+		Result.ErrorCode =
+			EPlayCardResolveErrorCode::InvalidPlayerSide;
+		Result.ErrorMessage =
+			TEXT("PlayerSide must be PlayerA or PlayerB.");
+		return Result;
+	}
+
+	if (CardId.IsNone())
+	{
+		Result.ErrorCode =
+			EPlayCardResolveErrorCode::InvalidCardId;
+		Result.ErrorMessage = TEXT("CardId cannot be None.");
+		return Result;
+	}
+
+	const FCardUsageState& SelectedCardUsageState =
+		PlayerSide == EInitialTurnOrderPlayer::PlayerA
+			? MatchCardUsageState.PlayerACardUsageState
+			: MatchCardUsageState.PlayerBCardUsageState;
+	const FCardUsageResolveResult CardUsageResult =
+		FCardUsageResolver::UseCard(
+			SelectedCardUsageState,
+			CardId);
+	if (!CardUsageResult.bSuccess)
+	{
+		Result.ErrorCode =
+			PlayCardResolver::MapCardUsageError(
+				CardUsageResult.ErrorCode);
+		Result.CardUsageErrorCode =
+			CardUsageResult.ErrorCode;
+		Result.CardUsageErrorMessage =
+			CardUsageResult.ErrorMessage;
+		Result.ErrorMessage = FString::Printf(
+			TEXT("Card usage validation failed for %s: %s"),
+			PlayerSide == EInitialTurnOrderPlayer::PlayerA
+				? TEXT("PlayerA")
+				: TEXT("PlayerB"),
+			*CardUsageResult.ErrorMessage);
+		return Result;
+	}
+
+	Result.bSuccess = true;
+	return Result;
+}
+
 FPlayCardResolveResult FPlayCardResolver::PlayCard(
 	const FMatchCardUsageState& MatchCardUsageState,
 	const EInitialTurnOrderPlayer PlayerSide,
@@ -53,22 +110,33 @@ FPlayCardResolveResult FPlayCardResolver::PlayCard(
 	Result.PlayerSide = PlayerSide;
 	Result.CardId = CardId;
 
-	if (PlayerSide != EInitialTurnOrderPlayer::PlayerA
-		&& PlayerSide != EInitialTurnOrderPlayer::PlayerB)
+	const FPlayCardValidationResult ValidationResult =
+		ValidateCanPlayCard(
+			MatchCardUsageState,
+			PlayerSide,
+			CardId);
+	if (!ValidationResult.bSuccess)
 	{
 		PlayCardResolver::SetError(
 			Result,
-			EPlayCardResolveErrorCode::InvalidPlayerSide,
-			TEXT("PlayerSide must be PlayerA or PlayerB."));
-		return Result;
-	}
+			ValidationResult.ErrorCode,
+			ValidationResult.ErrorMessage);
 
-	if (CardId.IsNone())
-	{
-		PlayCardResolver::SetError(
-			Result,
-			EPlayCardResolveErrorCode::InvalidCardId,
-			TEXT("CardId cannot be None."));
+		if (ValidationResult.CardUsageErrorCode
+			!= ECardUsageResolveErrorCode::None)
+		{
+			const FCardUsageState& SelectedCardUsageState =
+				PlayerSide == EInitialTurnOrderPlayer::PlayerA
+					? MatchCardUsageState.PlayerACardUsageState
+					: MatchCardUsageState.PlayerBCardUsageState;
+			Result.CardUsageResult.UpdatedCardUsageState =
+				SelectedCardUsageState;
+			Result.CardUsageResult.CardId = CardId;
+			Result.CardUsageResult.ErrorCode =
+				ValidationResult.CardUsageErrorCode;
+			Result.CardUsageResult.ErrorMessage =
+				ValidationResult.CardUsageErrorMessage;
+		}
 		return Result;
 	}
 

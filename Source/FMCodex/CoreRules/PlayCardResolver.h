@@ -32,6 +32,35 @@ enum class EPlayCardResolveErrorCode : uint8
 };
 
 USTRUCT(BlueprintType)
+struct FMCODEX_API FPlayCardValidationResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Play Card")
+	bool bSuccess = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Play Card")
+	EInitialTurnOrderPlayer PlayerSide = EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Play Card")
+	FName CardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Play Card")
+	EPlayCardResolveErrorCode ErrorCode =
+		EPlayCardResolveErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Play Card")
+	ECardUsageResolveErrorCode CardUsageErrorCode =
+		ECardUsageResolveErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Play Card")
+	FString ErrorMessage;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Play Card")
+	FString CardUsageErrorMessage;
+};
+
+USTRUCT(BlueprintType)
 struct FMCODEX_API FPlayCardResolveResult
 {
 	GENERATED_BODY()
@@ -62,6 +91,11 @@ struct FMCODEX_API FPlayCardResolveResult
 class FMCODEX_API FPlayCardResolver final
 {
 public:
+	static FPlayCardValidationResult ValidateCanPlayCard(
+		const FMatchCardUsageState& MatchCardUsageState,
+		EInitialTurnOrderPlayer PlayerSide,
+		FName CardId);
+
 	static FPlayCardResolveResult PlayCard(
 		const FMatchCardUsageState& MatchCardUsageState,
 		EInitialTurnOrderPlayer PlayerSide,

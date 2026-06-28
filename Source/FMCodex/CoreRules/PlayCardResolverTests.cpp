@@ -25,6 +25,175 @@ namespace PlayCardResolverTests
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPlayCardValidationSuccessTest,
+	"FMCodex.CoreRules.PlayCardResolver.ValidationSuccess",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPlayCardValidationSuccessTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchCardUsageState State =
+		PlayCardResolverTests::MakeState();
+	const FPlayCardValidationResult Result =
+		FPlayCardResolver::ValidateCanPlayCard(
+			State,
+			EInitialTurnOrderPlayer::PlayerA,
+			PlayCardResolverTests::CardA1);
+
+	TestTrue(TEXT("Available card passes validation"), Result.bSuccess);
+	TestEqual(
+		TEXT("Validation reports PlayerA"),
+		Result.PlayerSide,
+		EInitialTurnOrderPlayer::PlayerA);
+	TestEqual(
+		TEXT("Validation reports the card"),
+		Result.CardId,
+		PlayCardResolverTests::CardA1);
+	TestTrue(
+		TEXT("Validation does not remove the available card"),
+		State.PlayerACardUsageState.AvailableCardIds.Contains(
+			PlayCardResolverTests::CardA1));
+	TestTrue(
+		TEXT("Validation does not add a used card"),
+		State.PlayerACardUsageState.UsedCardIds.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPlayCardValidationInvalidPlayerTest,
+	"FMCodex.CoreRules.PlayCardResolver.ValidationInvalidPlayer",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPlayCardValidationInvalidPlayerTest::RunTest(
+	const FString& Parameters)
+{
+	const FPlayCardValidationResult Result =
+		FPlayCardResolver::ValidateCanPlayCard(
+			PlayCardResolverTests::MakeState(),
+			EInitialTurnOrderPlayer::None,
+			PlayCardResolverTests::CardA1);
+
+	TestFalse(TEXT("Invalid player fails validation"), Result.bSuccess);
+	TestEqual(
+		TEXT("Invalid player error is structured"),
+		Result.ErrorCode,
+		EPlayCardResolveErrorCode::InvalidPlayerSide);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPlayCardValidationInvalidCardTest,
+	"FMCodex.CoreRules.PlayCardResolver.ValidationInvalidCard",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPlayCardValidationInvalidCardTest::RunTest(
+	const FString& Parameters)
+{
+	const FPlayCardValidationResult Result =
+		FPlayCardResolver::ValidateCanPlayCard(
+			PlayCardResolverTests::MakeState(),
+			EInitialTurnOrderPlayer::PlayerA,
+			NAME_None);
+
+	TestFalse(TEXT("Invalid CardId fails validation"), Result.bSuccess);
+	TestEqual(
+		TEXT("Invalid CardId error is structured"),
+		Result.ErrorCode,
+		EPlayCardResolveErrorCode::InvalidCardId);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPlayCardValidationUnavailableTest,
+	"FMCodex.CoreRules.PlayCardResolver.ValidationUnavailable",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPlayCardValidationUnavailableTest::RunTest(
+	const FString& Parameters)
+{
+	const FPlayCardValidationResult Result =
+		FPlayCardResolver::ValidateCanPlayCard(
+			PlayCardResolverTests::MakeState(),
+			EInitialTurnOrderPlayer::PlayerA,
+			PlayCardResolverTests::CardB1);
+
+	TestFalse(TEXT("Unavailable card fails validation"), Result.bSuccess);
+	TestEqual(
+		TEXT("Unavailable card error is structured"),
+		Result.ErrorCode,
+		EPlayCardResolveErrorCode::CardNotAvailable);
+	TestEqual(
+		TEXT("Underlying unavailable error is retained"),
+		Result.CardUsageErrorCode,
+		ECardUsageResolveErrorCode::CardNotAvailable);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPlayCardValidationAlreadyUsedTest,
+	"FMCodex.CoreRules.PlayCardResolver.ValidationAlreadyUsed",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPlayCardValidationAlreadyUsedTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchCardUsageState State =
+		PlayCardResolverTests::MakeState();
+	State.PlayerACardUsageState.AvailableCardIds.Remove(
+		PlayCardResolverTests::CardA1);
+	State.PlayerACardUsageState.UsedCardIds.Add(
+		PlayCardResolverTests::CardA1);
+
+	const FPlayCardValidationResult Result =
+		FPlayCardResolver::ValidateCanPlayCard(
+			State,
+			EInitialTurnOrderPlayer::PlayerA,
+			PlayCardResolverTests::CardA1);
+
+	TestFalse(TEXT("Used card fails validation"), Result.bSuccess);
+	TestEqual(
+		TEXT("Used card error is structured"),
+		Result.ErrorCode,
+		EPlayCardResolveErrorCode::CardAlreadyUsed);
+	TestEqual(
+		TEXT("Underlying used-card error is retained"),
+		Result.CardUsageErrorCode,
+		ECardUsageResolveErrorCode::CardAlreadyUsed);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPlayCardValidationInvalidStateTest,
+	"FMCodex.CoreRules.PlayCardResolver.ValidationInvalidState",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPlayCardValidationInvalidStateTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchCardUsageState State =
+		PlayCardResolverTests::MakeState();
+	State.PlayerACardUsageState.AvailableCardIds.Add(
+		PlayCardResolverTests::CardA1);
+
+	const FPlayCardValidationResult Result =
+		FPlayCardResolver::ValidateCanPlayCard(
+			State,
+			EInitialTurnOrderPlayer::PlayerA,
+			PlayCardResolverTests::CardA2);
+
+	TestFalse(TEXT("Invalid usage state fails validation"), Result.bSuccess);
+	TestEqual(
+		TEXT("Invalid usage state error is structured"),
+		Result.ErrorCode,
+		EPlayCardResolveErrorCode::InvalidMatchCardUsageState);
+	TestEqual(
+		TEXT("Underlying duplicate error is retained"),
+		Result.CardUsageErrorCode,
+		ECardUsageResolveErrorCode::DuplicateCardInAvailable);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPlayCardPlayerASuccessTest,
 	"FMCodex.CoreRules.PlayCardResolver.PlayerASuccess",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
