@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.30 `MatchPlayRequestValidationReport` 已完成并已 commit。
-- CoreRules 当前为 359/359 通过。
+- 阶段 4.31 `MatchPlaySubmissionGate` 已完成并已 commit。
+- CoreRules 当前为 375/375 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -31,6 +31,9 @@
   - 只读评估比赛循环是否可以接收外部攻击请求，明确不进入自动循环。
 - 4.30 `MatchPlayRequestValidationReport`
   - 只读诊断 `MatchPlayState + MatchPlayAttackRequest` 是否可提交给外部驱动的攻击执行流程，聚合已有 Readiness / Guard / Query / Request 验证结果。
+- 4.31 `MatchPlaySubmissionGate`
+  - 只读提交门面，仅聚合 `MatchPlayLoopReadiness` 和 `MatchPlayRequestValidationReport`，判断外部是否可以提交一次攻击请求。
+  - 不执行攻击、不自动循环、不自动选牌、不做 AI，不消费卡牌或进攻机会，不改比分。
 
 ## 建议后续阶段
 

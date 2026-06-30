@@ -36,3 +36,4 @@
 | `MatchPlayTurnGuard` | 只读回合守卫。 | 判断当前 `FMatchPlayState` 是否可以等待外部攻击请求，检查当前进攻方、剩余机会和可用卡数量。 | 不执行攻击，不消费卡牌或机会，不自动选牌，不做 AI，不接 UI / 蓝图 / 技能 / 卡牌数据库。 | 否 | `MatchPlayStatusQuery` |
 | `MatchPlayLoopReadiness` | 只读外部驱动循环就绪查询。 | 聚合 `MatchPlayTurnGuard`，说明是否可以接收外部攻击请求，并保持自动循环标记为 false。 | 不进入完整比赛循环，不自动提交请求，不自动选牌，不做 AI，不接 UI / 蓝图 / 技能 / 卡牌数据库。 | 否 | `MatchPlayTurnGuard` |
 | `MatchPlayRequestValidationReport` | 只读攻击请求验证报告。 | 诊断 `MatchPlayState + MatchPlayAttackRequest` 是否可提交给外部驱动攻击流程，聚合 Readiness / Guard / Query / Request 验证结果。 | 不调用执行型攻击 Flow / Step / Executor，不消费卡牌或机会，不改比分，不自动选牌，不做 AI，不接 UI / 蓝图 / 技能 / 卡牌数据库。 | 否 | `MatchPlayLoopReadiness`、`MatchPlayAttackRequestValidator` |
+| `MatchPlaySubmissionGate` | 只读攻击请求提交门面。 | 仅聚合 `MatchPlayLoopReadiness` 和 `MatchPlayRequestValidationReport`，判断外部是否可以提交一次攻击请求，并保留下层诊断结果。 | 不执行攻击，不做完整比赛循环，不自动选牌，不做 AI，不消费卡牌或进攻机会，不改比分，不接 UI / 蓝图 / 技能 / 卡牌数据库。 | 否 | `MatchPlayLoopReadiness`、`MatchPlayRequestValidationReport` |
