@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.27 `MatchPlayExecutionSummary` 已完成并已 commit。
-- CoreRules 当前为 304/304 通过。
+- 阶段 4.30 `MatchPlayRequestValidationReport` 已完成并已 commit。
+- CoreRules 当前为 359/359 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -24,12 +24,16 @@
 - 4.26 `MatchPlayAttackExecutor`
 - 4.27 `MatchPlayExecutionSummary`
 - 4.27.5 CoreRules 上下文文档化
+- 4.28 `MatchPlayAttackStep` + `MatchPlayTurnGuard`
+  - `MatchPlayAttackStep`：组合一次攻击执行结果和执行摘要，仍然只是单步，不做完整比赛循环。
+  - `MatchPlayTurnGuard`：只读判断当前状态是否可以等待外部攻击请求，不自动选牌、不做 AI。
+- 4.29 `MatchPlayLoopReadiness`
+  - 只读评估比赛循环是否可以接收外部攻击请求，明确不进入自动循环。
+- 4.30 `MatchPlayRequestValidationReport`
+  - 只读诊断 `MatchPlayState + MatchPlayAttackRequest` 是否可提交给外部驱动的攻击执行流程，聚合已有 Readiness / Guard / Query / Request 验证结果。
 
 ## 建议后续阶段
 
-- 4.28 `MatchPlayAttackStep` + `MatchPlayTurnGuard`
-  - 可考虑合并为一个中风险阶段。
-  - 目标应保持为“单步流程边界和回合守卫”，不要扩展成完整比赛循环。
 - 后续完整比赛循环必须单独拆阶段。
 - 技能系统必须单独拆阶段。
 - 卡牌数据库 / 球员属性读取必须单独拆阶段。
@@ -55,4 +59,4 @@
 - 不自动 commit。
 - 高风险阶段完成后做独立验收。
 - 任意会影响比赛流程、状态原子性、随机数边界、卡牌状态模型的变更，都应有专项测试。
-
+- 当前 CoreRules 仍不自动循环、不自动选牌、不做 AI，不接 UI / 蓝图 / 技能 / 卡牌数据库。
