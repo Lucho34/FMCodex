@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.31 `MatchPlaySubmissionGate` 已完成并已 commit。
-- CoreRules 当前为 375/375 通过。
+- 阶段 4.32 `MatchPlaySubmitAttackFacade` 已完成、独立验收通过并已 commit。
+- CoreRules 当前为 391/391 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -34,6 +34,9 @@
 - 4.31 `MatchPlaySubmissionGate`
   - 只读提交门面，仅聚合 `MatchPlayLoopReadiness` 和 `MatchPlayRequestValidationReport`，判断外部是否可以提交一次攻击请求。
   - 不执行攻击、不自动循环、不自动选牌、不做 AI，不消费卡牌或进攻机会，不改比分。
+- 4.32 `MatchPlaySubmitAttackFacade`
+  - 处理一次外部 `MatchPlayAttackRequest`：先调用 `MatchPlaySubmissionGate`，通过后仅调用一次 `MatchPlayAttackStep`。
+  - 不做完整比赛循环、不自动选牌、不做 AI，不直接调用 `FormulaResolver`。
 
 ## 建议后续阶段
 
