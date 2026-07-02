@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.36 `MatchPlayExternalStateView` 已完成并已 commit。
-- CoreRules 当前为 421/421 通过。
+- 阶段 4.37 External API Integration Scenario Tests 已完成并已 commit。
+- CoreRules 当前为 428/428 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -48,6 +48,9 @@
 - 4.36 `MatchPlayExternalStateView`
   - 外部只读状态视图，汇总比分、当前进攻方、比赛结束与请求等待状态、卡牌使用摘要和剩余进攻机会。
   - 不推进比赛、不提交请求、不执行攻击、不自动选牌、不做 AI。
+- 4.37 External API Integration Scenario Tests
+  - 覆盖 `MatchPlayExternalStateView -> MatchPlayExternalTurnController -> 提交结果 -> MatchPlayExternalStateView` 推荐外部调用路径。
+  - 验证初始 View、合法提交、提交后状态与回合变化、比赛结束、非法请求原子性，以及状态级就绪不等于具体请求合法。
 
 ## 建议后续阶段
 

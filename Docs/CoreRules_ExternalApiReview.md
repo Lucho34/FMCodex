@@ -25,6 +25,14 @@
 - Gate 通过时最多执行一次 AttackStep；之后 ResultQuery 从 Facade 结果生成只读摘要。
 - 外部系统读取 ControllerResult，并自行决定是否保存 After 状态以及何时提交下一次请求。
 
+## 集成场景覆盖
+
+阶段 4.37 已通过自动化测试覆盖推荐外部组合路径：
+
+`MatchPlayExternalStateView -> MatchPlayExternalTurnController -> 提交结果 -> MatchPlayExternalStateView`
+
+覆盖范围包括初始 View、合法提交、提交后的比分与卡牌摘要变化、剩余机会与当前进攻方变化、比赛结束状态、非法请求原子性。测试也确认 `bCanSubmitAttackRequest` 只表示状态级就绪，不保证任意具体 `AttackRequest` 合法；具体请求仍必须经过 `MatchPlayExternalTurnController` / `MatchPlaySubmitAttackFacade` / `MatchPlaySubmissionGate`。
+
 ## 不推荐直接调用
 
 | 内部模块 | 不推荐外部直调的原因 |
@@ -55,6 +63,7 @@
 
 - 完整比赛循环
 - 自动选牌
+- 自动出牌
 - AI
 - UI / 蓝图
 - 技能

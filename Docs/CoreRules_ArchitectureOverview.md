@@ -12,7 +12,7 @@
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
 | 外部 Controller 层 | 作为 Facade 上层入口，包装一次外部请求的提交结果和 Result View。 | `MatchPlayExternalTurnController` |
-| Tests | 覆盖成功、失败、原子性、输入不变和依赖边界。 | `*Tests.cpp` |
+| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界和推荐外部 API 集成场景。 | `*Tests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp` |
 
 ## 单次攻击请求路径
 
@@ -30,6 +30,8 @@
 `MatchPlayExternalTurnController` 属于外部驱动的 Controller / Facade 上层入口：它只处理一次外部 `AttackRequest`，且只组合 `MatchPlaySubmitAttackFacade` 和 `MatchPlaySubmitAttackResultQuery`。它不直接调用 Gate / Step / Flow / Resolver / Executor，不做完整比赛循环、不自动执行第二次攻击、不自动选牌、不做 AI，也不生成随机数。
 
 `MatchPlayExternalStateView` 是外部读取当前比赛状态的推荐入口。它只读汇总比分、当前进攻方、比赛结束与请求等待状态、卡牌使用摘要和剩余进攻机会，不推进比赛、不提交请求或执行攻击。其 `bCanSubmitAttackRequest` 仅表示当前状态可接收请求；具体请求仍需通过 `MatchPlayExternalTurnController` / `MatchPlaySubmitAttackFacade` / `MatchPlaySubmissionGate`。
+
+阶段 4.37 已用集成场景覆盖 `MatchPlayExternalStateView -> MatchPlayExternalTurnController -> 提交结果 -> MatchPlayExternalStateView`，包括成功后的比分、回合、机会和卡牌摘要变化，以及结束状态和非法请求的原子失败路径。
 
 外部入口选择、推荐调用路径和不建议直调的内部模块见 `CoreRules_ExternalApiReview.md`。
 
