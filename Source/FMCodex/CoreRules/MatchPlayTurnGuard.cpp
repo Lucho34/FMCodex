@@ -41,8 +41,7 @@ FMatchPlayTurnGuard::QueryCanSubmitAttackRequest(
 			Status.PlayerBAvailableCardCount;
 	}
 
-	if (!Status.bIsRuntimeInitialized
-		|| Result.CurrentAttacker == EInitialTurnOrderPlayer::None)
+	if (!Status.bIsRuntimeInitialized)
 	{
 		SetGuardFailure(
 			Result,
@@ -60,6 +59,15 @@ FMatchPlayTurnGuard::QueryCanSubmitAttackRequest(
 			EMatchPlayTurnGuardErrorCode
 				::NoRemainingAttackOpportunities,
 			TEXT("No remaining attack opportunities."));
+		return Result;
+	}
+
+	if (Result.CurrentAttacker == EInitialTurnOrderPlayer::None)
+	{
+		SetGuardFailure(
+			Result,
+			EMatchPlayTurnGuardErrorCode::MatchStateNotInitialized,
+			TEXT("Match play state is not initialized."));
 		return Result;
 	}
 
@@ -87,4 +95,3 @@ FMatchPlayTurnGuard::QueryCanSubmitAttackRequest(
 	Result.bShouldWaitForExternalAttackRequest = true;
 	return Result;
 }
-

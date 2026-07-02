@@ -101,6 +101,66 @@ bool FMatchPlayTurnGuardNoRemainingTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayTurnGuardFinishedNoneAttackerTest,
+	"FMCodex.CoreRules.MatchPlayTurnGuard.NoneAttackerWithNoRemainingOpportunitiesIsFinished",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayTurnGuardFinishedNoneAttackerTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayTurnGuardResult Result =
+		FMatchPlayTurnGuard::QueryCanSubmitAttackRequest(
+			MatchPlayTurnGuardTests::MakeState(
+				EInitialTurnOrderPlayer::None,
+				0,
+				0,
+				1,
+				1,
+				1,
+				1));
+
+	TestFalse(TEXT("Finished state cannot submit"), Result.bCanSubmitAttackRequest);
+	TestTrue(
+		TEXT("No remaining flag is set"),
+		Result.bNoRemainingAttackOpportunities);
+	TestEqual(
+		TEXT("Finished state reports no remaining opportunities"),
+		Result.ErrorCode,
+		EMatchPlayTurnGuardErrorCode::NoRemainingAttackOpportunities);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayTurnGuardInvalidNoneAttackerTest,
+	"FMCodex.CoreRules.MatchPlayTurnGuard.NoneAttackerWithRemainingOpportunitiesIsNotReady",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayTurnGuardInvalidNoneAttackerTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayTurnGuardResult Result =
+		FMatchPlayTurnGuard::QueryCanSubmitAttackRequest(
+			MatchPlayTurnGuardTests::MakeState(
+				EInitialTurnOrderPlayer::None,
+				0,
+				0,
+				1,
+				0,
+				1,
+				0));
+
+	TestFalse(TEXT("Invalid state cannot submit"), Result.bCanSubmitAttackRequest);
+	TestFalse(
+		TEXT("Remaining opportunities do not imply finished"),
+		Result.bNoRemainingAttackOpportunities);
+	TestEqual(
+		TEXT("None attacker remains an invalid non-terminal state"),
+		Result.ErrorCode,
+		EMatchPlayTurnGuardErrorCode::MatchStateNotInitialized);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMatchPlayTurnGuardCurrentNoRemainingTest,
 	"FMCodex.CoreRules.MatchPlayTurnGuard.CannotSubmitWhenCurrentAttackerHasNoRemainingOpportunity",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
