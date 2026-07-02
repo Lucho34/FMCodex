@@ -7,7 +7,7 @@
 | State 层 | 保存比赛运行态和双方卡牌使用状态，不主动执行业务逻辑。 | `MatchRuntimeState`、`CardUsageState`、`MatchPlayState` |
 | Resolver 层 | 完成单一规则计算或原子状态转换；随机数和公式输入由外部传入。 | `FormulaResolver`、`GoalResolver`、`AttackOpportunityResolver`、`CardUsageResolver` |
 | Flow 层 | 按固定顺序组合多个 Resolver，返回 Updated 状态。 | `AttackResolutionFlow`、`FormulaAttackFlow`、`MatchPlayAttackFlow` |
-| Query / Result View 层 | 只读提取状态、可用性、预览、诊断和执行结果摘要。 | `MatchPlayStatusQuery`、`MatchPlayAvailabilityQuery`、`MatchPlayActionPreview`、`MatchPlayRequestValidationReport`、`MatchPlaySubmitAttackResultQuery` |
+| Query / Result View 层 | 只读提取状态、可用性、预览、诊断和执行结果摘要。 | `MatchPlayStatusQuery`、`MatchPlayAvailabilityQuery`、`MatchPlayActionPreview`、`MatchPlayRequestValidationReport`、`MatchPlaySubmitAttackResultQuery`、`MatchPlayExternalStateView` |
 | Guard / Gate 层 | 只读判断当前状态和请求能否进入执行路径。 | `MatchPlayTurnGuard`、`MatchPlayLoopReadiness`、`MatchPlaySubmissionGate` |
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
@@ -28,6 +28,8 @@
 `MatchPlaySubmitAttackResultQuery` 属于 Query / Result View 层：它只读取 `FMatchPlaySubmitAttackFacadeResult` 并生成摘要 View，不调用 Submit / Gate / Step / Flow / Resolver / Executor，不修改状态、不消费卡牌或进攻机会，也不改比分。
 
 `MatchPlayExternalTurnController` 属于外部驱动的 Controller / Facade 上层入口：它只处理一次外部 `AttackRequest`，且只组合 `MatchPlaySubmitAttackFacade` 和 `MatchPlaySubmitAttackResultQuery`。它不直接调用 Gate / Step / Flow / Resolver / Executor，不做完整比赛循环、不自动执行第二次攻击、不自动选牌、不做 AI，也不生成随机数。
+
+`MatchPlayExternalStateView` 是外部读取当前比赛状态的推荐入口。它只读汇总比分、当前进攻方、比赛结束与请求等待状态、卡牌使用摘要和剩余进攻机会，不推进比赛、不提交请求或执行攻击。其 `bCanSubmitAttackRequest` 仅表示当前状态可接收请求；具体请求仍需通过 `MatchPlayExternalTurnController` / `MatchPlaySubmitAttackFacade` / `MatchPlaySubmissionGate`。
 
 外部入口选择、推荐调用路径和不建议直调的内部模块见 `CoreRules_ExternalApiReview.md`。
 

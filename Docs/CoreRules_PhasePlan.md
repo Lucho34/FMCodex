@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.34 `MatchPlayExternalTurnController` 已完成并已 commit。
-- CoreRules 当前为 411/411 通过。
+- 阶段 4.36 `MatchPlayExternalStateView` 已完成并已 commit。
+- CoreRules 当前为 421/421 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -43,6 +43,11 @@
 - 4.34 `MatchPlayExternalTurnController`
   - 处理一次外部 `AttackRequest`，仅组合 `MatchPlaySubmitAttackFacade` 和 `MatchPlaySubmitAttackResultQuery` 返回外部可读结果。
   - 不直接调用 Gate / Step / Flow / Resolver / Executor，不做完整比赛循环、自动下一次攻击、自动选牌、AI 或随机数生成。
+- 4.35 CoreRules External API Review
+  - 明确外部推荐入口、单次请求调用路径和不建议直接调用的内部模块。
+- 4.36 `MatchPlayExternalStateView`
+  - 外部只读状态视图，汇总比分、当前进攻方、比赛结束与请求等待状态、卡牌使用摘要和剩余进攻机会。
+  - 不推进比赛、不提交请求、不执行攻击、不自动选牌、不做 AI。
 
 ## 建议后续阶段
 

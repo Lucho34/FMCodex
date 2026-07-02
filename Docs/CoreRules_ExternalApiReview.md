@@ -6,12 +6,15 @@
 
 | 模块 | 推荐用途 | 注意事项 |
 | --- | --- | --- |
+| `MatchPlayExternalStateView` | 推荐的外部状态读取入口。只读获取比分、当前进攻方、结束与等待状态、卡牌使用摘要和剩余进攻机会。 | 不提交请求；`bCanSubmitAttackRequest` 只表示当前状态可接收请求。 |
 | `MatchPlayExternalTurnController` | 首选入口。处理一次外部 `AttackRequest`，返回提交结果、Result View 和 Before / After 状态。 | 不负责循环、选牌或生成外部公式输入。 |
 | `MatchPlaySubmitAttackFacade` | 调用方需要原始提交结果时使用。完成 Gate 检查并最多执行一次 AttackStep。 | 调用方需要自行构建 Result View。 |
 | `MatchPlaySubmitAttackResultQuery` | 已有 `FMatchPlaySubmitAttackFacadeResult` 时，只读生成外部摘要 View。 | 不提交请求，也不修改状态。 |
 | `MatchPlaySubmissionGate` | 提交前需要只读预检和结构化拒绝原因时使用。 | 只判断能否提交，不执行攻击。 |
 
-通常应优先调用 `MatchPlayExternalTurnController`，而不是由外部系统自行拼装底层执行链。
+读取当前状态时应优先使用 `MatchPlayExternalStateView`。提交一次具体请求时应优先调用 `MatchPlayExternalTurnController`，而不是由外部系统自行拼装底层执行链。
+
+`MatchPlayExternalStateView.bCanSubmitAttackRequest` 只表示当前比赛状态可以接收外部请求，不代表任意具体 `AttackRequest` 一定合法。具体请求仍必须经过 `MatchPlayExternalTurnController` / `MatchPlaySubmitAttackFacade` / `MatchPlaySubmissionGate`。
 
 ## 单次请求路径
 
@@ -46,7 +49,7 @@
 - 可获得 Before / After 状态和外部摘要 View。
 - 失败路径保持卡牌、进攻机会和比分的原子性。
 
-调用方仍负责保存当前状态、提供 Formula 输入、选择玩家和 CardId，并决定是否以及何时发起下一次请求。
+调用方仍负责保存当前状态、提供 Formula 输入、选择玩家和 CardId，并决定是否以及何时发起下一次请求。`MatchPlayExternalStateView` 只负责读取当前状态，不承担这些职责。
 
 ## 当前不包含
 
