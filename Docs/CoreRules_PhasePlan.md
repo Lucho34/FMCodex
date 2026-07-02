@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.38 `MatchPlayExternalMatchSetupView` 已完成并已 commit。
-- CoreRules 当前为 437/437 通过。
+- 阶段 4.39 `MatchPlayExternalAttackRequestPreflight` 已完成并已 commit。
+- CoreRules 当前为 447/447 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -54,6 +54,9 @@
 - 4.38 `MatchPlayExternalMatchSetupView`
   - 外部只读开局 / 初始化后状态视图，应在 `MatchPlayOpeningInitializer` / Runtime 初始化链完成并产生 `FMatchPlayState` 后读取。
   - 只基于传入状态生成快照，不执行初始化、推进比赛或提交请求，也不重建历史开局数据或额外验证初始化来源。
+- 4.39 `MatchPlayExternalAttackRequestPreflight`
+  - 外部具体 `AttackRequest` 提交前只读预检，聚合 `MatchPlayExternalStateView` 和只读 `MatchPlaySubmissionGate`。
+  - 不推进比赛、不消费卡牌、不提交请求或修改输入；Preflight 通过后真正提交仍须重新经过 Controller / Facade / Gate。
 
 ## 建议后续阶段
 

@@ -7,7 +7,7 @@
 | State 层 | 保存比赛运行态和双方卡牌使用状态，不主动执行业务逻辑。 | `MatchRuntimeState`、`CardUsageState`、`MatchPlayState` |
 | Resolver 层 | 完成单一规则计算或原子状态转换；随机数和公式输入由外部传入。 | `FormulaResolver`、`GoalResolver`、`AttackOpportunityResolver`、`CardUsageResolver` |
 | Flow 层 | 按固定顺序组合多个 Resolver，返回 Updated 状态。 | `AttackResolutionFlow`、`FormulaAttackFlow`、`MatchPlayAttackFlow` |
-| Query / Result View 层 | 只读提取状态、可用性、预览、初始化快照、诊断和执行结果摘要。 | `MatchPlayStatusQuery`、`MatchPlayAvailabilityQuery`、`MatchPlayActionPreview`、`MatchPlayRequestValidationReport`、`MatchPlaySubmitAttackResultQuery`、`MatchPlayExternalStateView`、`MatchPlayExternalMatchSetupView` |
+| Query / Result View 层 | 只读提取状态、可用性、预览、初始化快照、具体请求预检、诊断和执行结果摘要。 | `MatchPlayStatusQuery`、`MatchPlayAvailabilityQuery`、`MatchPlayActionPreview`、`MatchPlayRequestValidationReport`、`MatchPlaySubmitAttackResultQuery`、`MatchPlayExternalStateView`、`MatchPlayExternalMatchSetupView`、`MatchPlayExternalAttackRequestPreflight` |
 | Guard / Gate 层 | 只读判断当前状态和请求能否进入执行路径。 | `MatchPlayTurnGuard`、`MatchPlayLoopReadiness`、`MatchPlaySubmissionGate` |
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
@@ -32,6 +32,8 @@
 `MatchPlayExternalStateView` 是外部读取当前比赛状态的推荐入口。它只读汇总比分、当前进攻方、比赛结束与请求等待状态、卡牌使用摘要和剩余进攻机会，不推进比赛、不提交请求或执行攻击。其 `bCanSubmitAttackRequest` 仅表示当前状态可接收请求；具体请求仍需通过 `MatchPlayExternalTurnController` / `MatchPlaySubmitAttackFacade` / `MatchPlaySubmissionGate`。
 
 `MatchPlayExternalMatchSetupView` 是开局 / 初始化完成后的专用只读快照。它应在 `MatchPlayOpeningInitializer` / Runtime 初始化链产生 `FMatchPlayState` 后读取，仅基于传入状态生成摘要；不执行初始化、推进比赛或提交请求，不调用 Controller / Facade / Step / Flow / Executor，也不重建历史开局数据或额外验证初始化来源。
+
+`MatchPlayExternalAttackRequestPreflight` 是具体请求提交前的只读预检入口，只聚合 `MatchPlayExternalStateView` 与只读 `MatchPlaySubmissionGate`。StateView 的 `bCanSubmitAttackRequest` 表示状态级就绪；Preflight 的 `bCanSubmit` 表示该具体请求在当前状态下通过 Gate，两者不可互换。Preflight 是时点判断，真正提交仍须经过 `MatchPlayExternalTurnController` / `MatchPlaySubmitAttackFacade` / `MatchPlaySubmissionGate` 再次验证。
 
 阶段 4.37 已用集成场景覆盖 `MatchPlayExternalStateView -> MatchPlayExternalTurnController -> 提交结果 -> MatchPlayExternalStateView`，包括成功后的比分、回合、机会和卡牌摘要变化，以及结束状态和非法请求的原子失败路径。
 
