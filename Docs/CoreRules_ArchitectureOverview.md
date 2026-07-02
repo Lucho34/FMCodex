@@ -41,4 +41,6 @@
 
 阶段 4.40 建议将当前 External API 逻辑职责暂定为 v1，并暂停新增外部包装层；完整冻结审查见 `CoreRules_ExternalApiSurfaceFreezeReview.md`。
 
+比赛完成读取分为两个时点：最后一次提交后，通过 `MatchPlayExternalTurnControllerResult.ResultView.ExecutionSummary` 读取 `bMatchEnded`、`MatchResultType` 和提交前后比分；仅保留当前 `FMatchPlayState` 时，通过 `MatchPlayExternalStateView` 读取结束状态和最终比分。后者不提供权威结果枚举，当前也不新增 CompletionView。职责边界和未来触发条件见 `CoreRules_MatchCompletionReadModelReview.md`。
+
 完整比赛循环、技能、卡牌数据库、UI / 蓝图和联网仍不属于当前 CoreRules 范围。

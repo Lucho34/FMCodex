@@ -4,7 +4,7 @@
 
 ## 当前节点
 
-- 阶段 4.40 CoreRules External API Surface Freeze Review 已完成。
+- 阶段 4.41 MatchPlay Completion Read Model Review 已完成。
 - CoreRules 当前为 447/447 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
@@ -60,6 +60,9 @@
 - 4.40 CoreRules External API Surface Freeze Review
   - 审查外部读取、预检、提交和结果入口的职责、命名与调用生命周期，未发现阻断 v1 的冲突。
   - 建议将当前逻辑接口暂定为 External API v1，并暂停新增 ExternalXXXView、Controller 和 Facade 包装层。
+- 4.41 MatchPlay Completion Read Model Review
+  - 审查比赛结束、最终比分和胜者 / 平局结果在 Resolver、StatusQuery、StateView、提交 ResultView 与 ControllerResult 之间的读取边界。
+  - 最后一次提交结果可以读取权威结果枚举；仅凭 `FMatchPlayState` 时，当前 v1 外部读取入口只提供结束状态和最终比分，不直接提供权威结果枚举。当前继续冻结 v1，不新增 CompletionView。
 
 ## 建议后续阶段
 
