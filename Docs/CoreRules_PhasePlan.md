@@ -4,7 +4,7 @@
 
 ## 当前节点
 
-- 阶段 4.42 External API v1 Lifecycle Regression Tests 与 4.42.1 Fix finished-state guard consistency 已完成。
+- 阶段 4.43 CoreRules Rule Consistency Audit 已完成。
 - CoreRules 当前为 453/453 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
@@ -69,6 +69,9 @@
 - 4.42.1 Fix finished-state guard consistency
   - 调整 `MatchPlayTurnGuard` 的终局判断顺序：`CurrentAttacker=None` 且双方机会耗尽是合法终局；仍有机会时继续保持未初始化 / 非就绪 / 不可提交。
   - 最终提交的 `ResultView.bMatchEnded` 与同一 AfterState 的 `ExternalStateView.bIsMatchFinished` 已保持一致。
+- 4.43 CoreRules Rule Consistency Audit
+  - 审查 PlayerA / Home 映射、失败原子性、终局 Guard、外部随机输入、卡牌使用模型、自动行为边界和 External API v1 冻结状态。
+  - 现行 MatchPlay 链未发现阻断性冲突；记录早期 `FMatchState` 历史字段、过期 Home / Away 注释和 Guard 错误码复用风险，建议后续独立审查。
 
 ## 建议后续阶段
 
