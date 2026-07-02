@@ -1,6 +1,6 @@
 # CoreRules Rule Consistency Audit
 
-本文记录阶段 4.43 对当前 CoreRules 规则、文档和活跃 MatchPlay 调用链的一致性审查。审查基线为 453/453 测试通过；本阶段不修改代码、测试或行为。
+本文记录阶段 4.43 对当前 CoreRules 规则、文档和活跃 MatchPlay 调用链的一致性审查。阶段 4.44.1 完成后，当前基线为 456/456 测试通过。
 
 ## Audit 结论
 
@@ -37,9 +37,9 @@
 
 ### 历史 MatchState 数据模型
 
-早期 `FMatchState` / `FPlayerMatchState` 仍包含 `HandCardIds`、`DiscardPileCardIds`、`RandomSeed`、部署与棋盘字段，并保留“Home / Away 规则尚未确认”的旧注释。当前 `MatchInitializer` 只创建基础 PlayerA / PlayerB 初始化数据，这些字段没有进入 `FMatchPlayState`、External API v1 或当前卡牌使用流程。
+早期 `FMatchState` / `FPlayerMatchState` 仍包含 `HandCardIds`、`DiscardPileCardIds`、`RandomSeed`、部署与棋盘字段。阶段 4.44.1 已增加 Legacy / historical opening snapshot 注释并修正 Home / Away 注释，但这些字段仍没有进入 `FMatchPlayState`、External API v1 或当前卡牌使用流程。
 
-因此，“当前没有抽牌、洗牌、牌库顶、初始发牌”和“CoreRules 不生成随机数”仍然成立；但旧字段会让新开发者误以为手牌、弃牌堆、随机种子和未确认阵营映射仍是现行 MatchPlay 模型。
+因此，“当前没有抽牌、洗牌、牌库顶、初始发牌”和“CoreRules 不生成随机数”仍然成立；但旧字段仍可能让新开发者误以为手牌、弃牌堆、随机种子和多套阵营标识是现行 MatchPlay 模型。
 
 ### Guard 错误码语义复用
 
@@ -53,7 +53,7 @@ Runtime 已初始化、`CurrentAttacker=None` 且仍有进攻机会时，当前 
 
 建议按独立阶段处理，而不是在普通功能阶段顺手修改：
 
-1. 对早期 `FMatchState` / `FPlayerMatchState` 做 Legacy State Boundary Review，确认保留、隔离、弃用或迁移策略，并修正过期注释。
+1. 4.44 / 4.44.1 已完成 Legacy State Boundary Review、非破坏性注释和边界测试；后续继续禁止把旧状态当作 MatchPlay 当前状态。
 2. 只有出现外部调用方确实需要区分“Runtime 未初始化”和“攻击方缺失”时，再评审 Guard 错误码兼容方案。
 3. 任何结束规则调整都必须继续运行 External API v1 生命周期回归测试。
 

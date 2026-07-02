@@ -12,7 +12,7 @@
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
 | 外部 Controller 层 | 作为 Facade 上层入口，包装一次外部请求的提交结果和 Result View。 | `MatchPlayExternalTurnController` |
-| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界和推荐外部 API 集成场景。 | `*Tests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp` |
+| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界和推荐外部 API 集成场景。 | `*Tests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
 
 ## 单次攻击请求路径
 
@@ -38,6 +38,8 @@
 阶段 4.37 已用集成场景覆盖 `MatchPlayExternalStateView -> MatchPlayExternalTurnController -> 提交结果 -> MatchPlayExternalStateView`，包括成功后的比分、回合、机会和卡牌摘要变化，以及结束状态和非法请求的原子失败路径。
 
 阶段 4.42 进一步锁定完整 v1 生命周期：`MatchPlayExternalMatchSetupView -> MatchPlayExternalStateView -> MatchPlayExternalAttackRequestPreflight -> MatchPlayExternalTurnController -> ResultView -> MatchPlayExternalStateView`。阶段 4.42.1 同步明确终局 Guard 语义：`CurrentAttacker=None` 且双方机会耗尽是合法终局；仍有机会时是未初始化 / 非就绪 / 不可提交状态。最终提交的 `ResultView.bMatchEnded` 与同一 AfterState 的 `ExternalStateView.bIsMatchFinished` 保持一致。
+
+旧 `FMatchState` 仅作为 Legacy / historical opening snapshot 相关结构被嵌套携带，不是当前 MatchPlay runtime state。当前运行状态使用 `FMatchPlayState`，外部生命周期使用 External API v1。阶段 4.44.1 仅增加非破坏性注释和边界测试，未改变行为、反射或布局；`FMatchLogEntry` 仍被 FormulaResolver 使用，因此不能整体弃用 `MatchStateTypes.h`。
 
 外部入口选择、推荐调用路径和不建议直调的内部模块见 `CoreRules_ExternalApiReview.md`。
 

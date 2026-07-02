@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- | --- |
 | `FormulaResolver` | 根据外部传入公式输入计算一次公式结果。 | 纯公式计算，输出是否进球等公式结果。 | 不生成随机数，不读取卡牌数据库，不处理技能，不移动卡牌，不消费进攻机会。 | 否 | 公式输入结构 |
 | `DeckValidator` | 校验初始牌组构成。 | 检查牌组规则、稀有度积分等牌组合法性。 | 不初始化比赛运行态，不执行出牌，不做比赛流程。 | 否 | 球员卡 / 牌组类型 |
-| `MatchInitializer` | 创建基础比赛初始化结果。 | 组织最早期比赛初始化数据。 | 不做运行时进攻流程，不做出牌、技能、进球。 | 否 / 返回结果 | DeckValidator 等早期初始化模块 |
+| `MatchInitializer` | 创建基础比赛初始化结果。 | 组织最早期比赛初始化数据，并保留 Legacy `FMatchState` 开局快照。 | 不把旧 `FMatchState` 当作当前 MatchPlay runtime state；不做运行时进攻流程、出牌、技能或进球。 | 否 / 返回结果 | DeckValidator 等早期初始化模块 |
 | `AttackCountResolver` | 计算双方总进攻次数。 | 复用基础次数、稀有度加成和外部 D6 输入。 | 不生成 D6，不判断先攻，不消费机会。 | 否 | 外部 D6、稀有度积分 |
 | `InitialTurnOrderResolver` | 判断初始先攻方。 | 根据总进攻次数、稀有度积分和外部 TieBreaker 点数决定先攻。 | 不生成 TieBreaker，不自动重掷，不初始化运行态。 | 否 | 外部 TieBreaker、进攻次数结果 |
 | `MatchOpeningResolver` | 结算完整开局规则。 | 组合进攻次数和初始先攻判断。 | 不创建卡牌使用状态，不执行进攻，不出牌。 | 否 | `AttackCountResolver`、`InitialTurnOrderResolver` |
@@ -22,7 +22,7 @@
 | `AttackCardPlayFlow` | 当前进攻方打出一张卡并按外部进球结果结算一次进攻。 | 调 `PlayCardResolver` 后调 `AttackResolutionFlow`。 | 不调用 FormulaResolver，不计算进球，不做技能。 | 是，返回 Updated RuntimeState 和 CardUsageState | `PlayCardResolver`、`AttackResolutionFlow` |
 | `FormulaAttackFlow` | 公式进攻结算流程。 | 先验证可出牌，再用 `FormulaResolver` 得到 `bGoalScored`，再调 `AttackCardPlayFlow`。 | 不从 CardId 推导属性，不读数据库，不生成随机数，不做技能。 | 是，返回 Updated RuntimeState 和 CardUsageState | `PlayCardResolver::ValidateCanPlayCard`、`FormulaResolver`、`AttackCardPlayFlow` |
 | `MatchCardUsageInitializer` | 初始化双方卡牌使用状态。 | 将双方输入 CardId 放入 Available，Used 为空；做最低限度 CardId / 重复校验。 | 不接 RuntimeState，不抽牌、不洗牌、不发手牌。 | 否 / 返回 `FMatchCardUsageState` | `FMatchCardUsageState` |
-| `MatchPlayState` | 轻量比赛核心组合状态。 | 组合 `FMatchRuntimeState` 和 `FMatchCardUsageState`。 | 不做业务校验，不调用任何 Resolver。 | 数据结构 | `FMatchRuntimeState`、`FMatchCardUsageState` |
+| `MatchPlayState` | 当前 MatchPlay 推荐运行状态。 | 组合 `FMatchRuntimeState` 和 `FMatchCardUsageState`，作为 External API v1 生命周期的状态基础。 | 不把 OpeningResultSnapshot 中的旧 `FMatchState` 当作第二套当前状态；不做业务校验，不调用 Resolver。 | 数据结构 | `FMatchRuntimeState`、`FMatchCardUsageState` |
 | `MatchPlayStateInitializer` | 从已初始化 RuntimeState 和双方 CardId 创建 MatchPlayState。 | 调 `MatchCardUsageInitializer`，组合成 `FMatchPlayState`。 | 不开局，不算先攻，不进攻。 | 否 / 返回 `FMatchPlayState` | `MatchCardUsageInitializer`、`MatchPlayState` |
 | `MatchPlayOpeningInitializer` | 从完整外部开局输入创建 `FMatchPlayState`。 | 调 Opening、Runtime、PlayState 初始化链路。 | 不执行出牌、公式、进球、结束或胜负判断。 | 否 / 返回 `FMatchPlayState` | `MatchOpeningResolver`、`MatchRuntimeInitializer`、`MatchPlayStateInitializer` |
 | `MatchPlayAttackFlow` | 基于 `FMatchPlayState` 执行一次公式攻击。 | 调 `FormulaAttackFlow`，把底层更新结果组合回 Updated MatchPlayState。 | 不重复实现公式、出牌、机会、进球、结束、胜负逻辑。 | 是，返回 Updated MatchPlayState | `FormulaAttackFlow` |

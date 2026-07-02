@@ -1,6 +1,6 @@
 # CoreRules Legacy State Boundary Review
 
-本文记录阶段 4.44 对旧 `FMatchState` 与当前 `FMatchPlayState` / MatchPlay 规则链边界的审查。审查基线为 453/453 测试通过；本阶段不修改代码、测试或行为。
+本文记录阶段 4.44 对旧 `FMatchState` 与当前 `FMatchPlayState` / MatchPlay 规则链边界的审查，以及阶段 4.44.1 的非破坏性注释与边界测试结果。当前基线为 456/456 测试通过。
 
 ## Review 结论
 
@@ -8,7 +8,7 @@
 - 它不是当前 MatchPlay 推荐运行状态，也不是 External API v1 的请求、状态读取或提交状态类型。
 - 当前运行时唯一推荐状态是 `FMatchPlayState`，由 `FMatchRuntimeState + FMatchCardUsageState` 组成。
 - 旧状态中的手牌、弃牌、棋盘、随机种子等字段目前不参与 MatchPlay 规则，但命名和可见性容易造成误用。
-- 建议后续将 `FMatchState` / `FPlayerMatchState` 及 `FMatchInitializationResult::InitialMatchState` 明确标记为 Legacy / Not for MatchPlay；本阶段不实施。
+- `MatchStateTypes.h` 已用注释明确 `FMatchState` / `FPlayerMatchState` 属于 Legacy / historical opening snapshot 边界，不是当前 MatchPlay runtime state；没有使用破坏性的弃用标记。
 
 ## 当前引用链
 
@@ -71,14 +71,14 @@
 
 ## 过期与误导性描述
 
-`FPlayerMatchState::TeamSide` 旁仍保留“Home / Away 规则尚未确认”的注释，而 Project Contract 已明确：
+阶段 4.44.1 已修正 `FPlayerMatchState::TeamSide` 旁的过期注释，使其与 Project Contract 一致：
 
 - `PlayerA = Home`
 - `PlayerB = Away`
 
-该注释已经过期。旧类型同时使用 PlayerId / TeamSide / Map 键，而当前 MatchPlay 使用 `EInitialTurnOrderPlayer` 和固定 PlayerA / PlayerB 字段，也可能让调用方误以为两套标识可以互换。
+旧类型仍同时使用 PlayerId / TeamSide / Map 键，而当前 MatchPlay 使用 `EInitialTurnOrderPlayer` 和固定 PlayerA / PlayerB 字段，因此两套标识仍不可混作当前状态来源。
 
-此外，旧类型使用 `BlueprintType`、`EditAnywhere` / `BlueprintReadOnly`，会增加其看起来像推荐公共状态的可能性；这不改变当前“不接 UI / 蓝图”的范围，但属于后续边界标记时需要考虑的兼容风险。
+此外，旧类型使用 `BlueprintType`、`EditAnywhere` / `BlueprintReadOnly`，仍会增加其看起来像推荐公共状态的可能性。阶段 4.44.1 为避免反射和布局风险，没有改变这些元数据；这也不改变当前“不接 UI / 蓝图”的范围。
 
 ## 推荐外部边界
 
@@ -98,17 +98,15 @@
 - 用旧 Score / RemainingAttackCounts / CurrentAttackingPlayerId 驱动 MatchPlay。
 - 根据 Hand / Discard / RandomSeed 字段推断尚未实现的玩法。
 
-## 后续建议
+## 4.44.1 Annotation 结果
 
-建议单独拆分一个低风险 Legacy State Annotation 阶段：
+- `MatchStateTypes.h` 仅增加注释，没有删除、重命名或弃用 `FMatchState`，也没有改变 USTRUCT、UPROPERTY、反射或布局。
+- 注释明确当前 MatchPlay runtime state 应使用 `FMatchPlayState`，外部生命周期应使用 External API v1。
+- `FMatchLogEntry` 被明确标记为仍在使用的共享 Formula 结果类型，`MatchStateTypes.h` 不能整体弃用。
+- 新增 `MatchPlayLegacyStateBoundaryTests.cpp`，验证 External API v1 头文件和生命周期回归测试使用 `FMatchPlayState`，并保护 FormulaResolver 对 `FMatchLogEntry` 的现有依赖。
+- CoreRules 全量测试为 456/456，Development Editor 与 UHT WarningsAsErrors 通过。
 
-1. 仅为 `FMatchState`、`FPlayerMatchState` 和 `InitialMatchState` 增加清晰的 Legacy / Not for MatchPlay 注释或非破坏性元数据。
-2. 修正过期的 Home / Away 注释。
-3. 增加边界测试，确认 External API v1 头文件只接受 / 返回 `FMatchPlayState`，并确认 MatchPlay 运行模块不读取旧手牌、弃牌、随机种子或旧比分字段。
-4. 在决定删除、重命名、改变 USTRUCT / UPROPERTY 或序列化布局前，单独评估 C++、反射、资产和存档兼容风险。
-5. 不要把仍被 `FormulaResolver` 使用的 `FMatchLogEntry` 一并标记为 Legacy。
-
-当前不建议删除旧类型，也不建议迁移 MatchPlay 行为或解除 External API v1 冻结。
+若未来决定删除、重命名、改变 USTRUCT / UPROPERTY 或序列化布局，仍必须单独评估 C++、反射、资产和存档兼容风险。当前不建议删除旧类型、迁移 MatchPlay 行为或解除 External API v1 冻结。
 
 ## 持续边界
 
