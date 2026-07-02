@@ -56,6 +56,8 @@
 
 当前规则下这些路径均以无剩余进攻机会为基础，未发现行为冲突。风险在于未来结束规则变化时多处表达可能漂移，因此修改结束规则时必须同步检查 Resolver、Readiness / Guard、ExecutionSummary、StateView 及其测试。
 
+阶段 4.42 生命周期回归测试曾发现最终提交后 `ResultView.bMatchEnded=true`、但同一 AfterState 的 `ExternalStateView.bIsMatchFinished=false`。阶段 4.42.1 已修正 `MatchPlayTurnGuard` 判断顺序：Runtime 已初始化、`CurrentAttacker=None` 且双方机会耗尽时优先识别为合法终局；若仍有机会，则继续视为未初始化 / 非就绪 / 不可提交。修复后两条结束读取路径保持一致，CoreRules 为 453/453 测试通过。
+
 ## CompletionView 决策
 
 当前不建议新增 `MatchPlayExternalCompletionView`：

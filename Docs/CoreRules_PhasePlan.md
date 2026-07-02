@@ -4,10 +4,10 @@
 
 ## 当前节点
 
-- 阶段 4.41 MatchPlay Completion Read Model Review 已完成。
-- CoreRules 当前为 447/447 通过。
+- 阶段 4.42 External API v1 Lifecycle Regression Tests 与 4.42.1 Fix finished-state guard consistency 已完成。
+- CoreRules 当前为 453/453 通过。
 - UE5 Development Editor 编译通过。
-- UnrealHeaderTool 通过。
+- UnrealHeaderTool 强制复验通过，WarningsAsErrors。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
 
 ## 已完成阶段
@@ -63,6 +63,12 @@
 - 4.41 MatchPlay Completion Read Model Review
   - 审查比赛结束、最终比分和胜者 / 平局结果在 Resolver、StatusQuery、StateView、提交 ResultView 与 ControllerResult 之间的读取边界。
   - 最后一次提交结果可以读取权威结果枚举；仅凭 `FMatchPlayState` 时，当前 v1 外部读取入口只提供结束状态和最终比分，不直接提供权威结果枚举。当前继续冻结 v1，不新增 CompletionView。
+- 4.42 External API v1 Lifecycle Regression Tests
+  - 新增 `MatchPlayExternalApiV1LifecycleTests`，覆盖 SetupView、StateView、Preflight、ExternalTurnController、提交结果与再次 StateView 的推荐生命周期。
+  - 覆盖合法提交后的比分、回合、卡牌与机会变化，以及非法请求原子性和 Preflight 不替代最终提交重验。
+- 4.42.1 Fix finished-state guard consistency
+  - 调整 `MatchPlayTurnGuard` 的终局判断顺序：`CurrentAttacker=None` 且双方机会耗尽是合法终局；仍有机会时继续保持未初始化 / 非就绪 / 不可提交。
+  - 最终提交的 `ResultView.bMatchEnded` 与同一 AfterState 的 `ExternalStateView.bIsMatchFinished` 已保持一致。
 
 ## 建议后续阶段
 
