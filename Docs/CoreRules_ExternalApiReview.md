@@ -6,15 +6,18 @@
 
 | 模块 | 推荐用途 | 注意事项 |
 | --- | --- | --- |
+| `MatchPlayExternalMatchSetupView` | 开局 / 初始化完成后的只读快照入口。读取初始比分、进攻方、卡牌数量、剩余机会和等待状态。 | 应在初始化链产生 `FMatchPlayState` 后读取；不执行初始化，也不重建历史开局数据。 |
 | `MatchPlayExternalStateView` | 推荐的外部状态读取入口。只读获取比分、当前进攻方、结束与等待状态、卡牌使用摘要和剩余进攻机会。 | 不提交请求；`bCanSubmitAttackRequest` 只表示当前状态可接收请求。 |
 | `MatchPlayExternalTurnController` | 首选入口。处理一次外部 `AttackRequest`，返回提交结果、Result View 和 Before / After 状态。 | 不负责循环、选牌或生成外部公式输入。 |
 | `MatchPlaySubmitAttackFacade` | 调用方需要原始提交结果时使用。完成 Gate 检查并最多执行一次 AttackStep。 | 调用方需要自行构建 Result View。 |
 | `MatchPlaySubmitAttackResultQuery` | 已有 `FMatchPlaySubmitAttackFacadeResult` 时，只读生成外部摘要 View。 | 不提交请求，也不修改状态。 |
 | `MatchPlaySubmissionGate` | 提交前需要只读预检和结构化拒绝原因时使用。 | 只判断能否提交，不执行攻击。 |
 
-读取当前状态时应优先使用 `MatchPlayExternalStateView`。提交一次具体请求时应优先调用 `MatchPlayExternalTurnController`，而不是由外部系统自行拼装底层执行链。
+开局 / 初始化链完成后，可使用 `MatchPlayExternalMatchSetupView` 读取一次设置快照；后续读取当前状态时仍应优先使用 `MatchPlayExternalStateView`。提交一次具体请求时应优先调用 `MatchPlayExternalTurnController`，而不是由外部系统自行拼装底层执行链。
 
 `MatchPlayExternalStateView.bCanSubmitAttackRequest` 只表示当前比赛状态可以接收外部请求，不代表任意具体 `AttackRequest` 一定合法。具体请求仍必须经过 `MatchPlayExternalTurnController` / `MatchPlaySubmitAttackFacade` / `MatchPlaySubmissionGate`。
+
+`MatchPlayExternalMatchSetupView` 只基于传入的 `FMatchPlayState` 生成快照摘要。它不执行初始化、不推进比赛、不提交请求，不调用 Controller / Facade / Step / Flow / Executor，也不额外验证初始化来源；如果在比赛推进后调用，它不会重建历史开局数据。
 
 ## 单次请求路径
 

@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.37 External API Integration Scenario Tests 已完成并已 commit。
-- CoreRules 当前为 428/428 通过。
+- 阶段 4.38 `MatchPlayExternalMatchSetupView` 已完成并已 commit。
+- CoreRules 当前为 437/437 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -51,6 +51,9 @@
 - 4.37 External API Integration Scenario Tests
   - 覆盖 `MatchPlayExternalStateView -> MatchPlayExternalTurnController -> 提交结果 -> MatchPlayExternalStateView` 推荐外部调用路径。
   - 验证初始 View、合法提交、提交后状态与回合变化、比赛结束、非法请求原子性，以及状态级就绪不等于具体请求合法。
+- 4.38 `MatchPlayExternalMatchSetupView`
+  - 外部只读开局 / 初始化后状态视图，应在 `MatchPlayOpeningInitializer` / Runtime 初始化链完成并产生 `FMatchPlayState` 后读取。
+  - 只基于传入状态生成快照，不执行初始化、推进比赛或提交请求，也不重建历史开局数据或额外验证初始化来源。
 
 ## 建议后续阶段
 
