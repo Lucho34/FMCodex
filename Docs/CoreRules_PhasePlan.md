@@ -4,7 +4,7 @@
 
 ## 当前节点
 
-- 阶段 4.43 CoreRules Rule Consistency Audit 已完成。
+- 阶段 4.44 Legacy State Boundary Review 已完成。
 - CoreRules 当前为 453/453 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
@@ -72,6 +72,9 @@
 - 4.43 CoreRules Rule Consistency Audit
   - 审查 PlayerA / Home 映射、失败原子性、终局 Guard、外部随机输入、卡牌使用模型、自动行为边界和 External API v1 冻结状态。
   - 现行 MatchPlay 链未发现阻断性冲突；记录早期 `FMatchState` 历史字段、过期 Home / Away 注释和 Guard 错误码复用风险，建议后续独立审查。
+- 4.44 Legacy State Boundary Review
+  - 明确旧 `FMatchState` 仍作为开局初始化结果和 OpeningResultSnapshot 的嵌套历史数据被携带，但不是当前 MatchPlay 推荐运行状态。
+  - 推荐外部生命周期只使用 `FMatchPlayState` 和 External API v1；建议后续独立增加 Legacy / Not for MatchPlay 标记、修正过期注释并补充边界测试。
 
 ## 建议后续阶段
 
