@@ -4,7 +4,7 @@
 
 ## 当前节点
 
-- 阶段 4.39 `MatchPlayExternalAttackRequestPreflight` 已完成并已 commit。
+- 阶段 4.40 CoreRules External API Surface Freeze Review 已完成。
 - CoreRules 当前为 447/447 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 通过。
@@ -57,6 +57,9 @@
 - 4.39 `MatchPlayExternalAttackRequestPreflight`
   - 外部具体 `AttackRequest` 提交前只读预检，聚合 `MatchPlayExternalStateView` 和只读 `MatchPlaySubmissionGate`。
   - 不推进比赛、不消费卡牌、不提交请求或修改输入；Preflight 通过后真正提交仍须重新经过 Controller / Facade / Gate。
+- 4.40 CoreRules External API Surface Freeze Review
+  - 审查外部读取、预检、提交和结果入口的职责、命名与调用生命周期，未发现阻断 v1 的冲突。
+  - 建议将当前逻辑接口暂定为 External API v1，并暂停新增 ExternalXXXView、Controller 和 Facade 包装层。
 
 ## 建议后续阶段
 

@@ -39,4 +39,6 @@
 
 外部入口选择、推荐调用路径和不建议直调的内部模块见 `CoreRules_ExternalApiReview.md`。
 
+阶段 4.40 建议将当前 External API 逻辑职责暂定为 v1，并暂停新增外部包装层；完整冻结审查见 `CoreRules_ExternalApiSurfaceFreezeReview.md`。
+
 完整比赛循环、技能、卡牌数据库、UI / 蓝图和联网仍不属于当前 CoreRules 范围。
