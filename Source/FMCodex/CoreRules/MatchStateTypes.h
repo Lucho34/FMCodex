@@ -5,6 +5,8 @@
 
 #include "MatchStateTypes.generated.h"
 
+// Legacy opening-snapshot support type. This is not the current MatchPlay
+// runtime state. Use FMatchPlayState and External API v1 for MatchPlay.
 USTRUCT(BlueprintType)
 struct FMCODEX_API FPlayerMatchState
 {
@@ -13,10 +15,11 @@ struct FMCODEX_API FPlayerMatchState
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Player Match State")
 	FName PlayerId = NAME_None;
 
-	// Display-only until the home/away rule is confirmed.
+	// Legacy display-only field. PlayerA = Home and PlayerB = Away.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Player Match State")
 	FName TeamSide = NAME_None;
 
+	// Legacy zone fields. Current MatchPlay has no hand, draw, or discard flow.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Player Match State")
 	TArray<FName> HandCardIds;
 
@@ -48,6 +51,7 @@ struct FMCODEX_API FPlayerMatchState
 	FName SelectedSupportDefenderCardId = NAME_None;
 };
 
+// Legacy board data carried only by the historical FMatchState structure.
 USTRUCT(BlueprintType)
 struct FMCODEX_API FBoardState
 {
@@ -71,6 +75,7 @@ struct FMCODEX_API FBoardState
 	FName ViewMappingId = NAME_None;
 };
 
+// Active shared formula-result log type. Do not deprecate it with FMatchState.
 USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchLogEntry
 {
@@ -114,6 +119,11 @@ struct FMCODEX_API FMatchLogEntry
 	TMap<FName, FName> ZonesAfterEvent;
 };
 
+// Legacy historical opening-snapshot structure. It remains nested in
+// FMatchInitializationResult and FMatchRuntimeState::OpeningResultSnapshot,
+// but it is not the current MatchPlay runtime state or a source of truth for
+// MatchPlay scores, turns, attack opportunities, or card usage.
+// Use FMatchPlayState and External API v1 for the current external lifecycle.
 USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchState
 {
@@ -155,6 +165,7 @@ struct FMCODEX_API FMatchState
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Match State")
 	TArray<FPlayerMatchState> PlayerStates;
 
+	// Legacy field only. Current CoreRules receives random inputs externally.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Match State")
 	int32 RandomSeed = 0;
 
