@@ -19,6 +19,7 @@
 | `CardUsageState` | 单玩家卡牌使用状态。 | 保存 `AvailableCardIds` 和 `UsedCardIds`。 | 不表达牌库、手牌、弃牌、洗牌、抽牌。 | 数据结构 | `FName` CardId |
 | `PlayerCardRuleSnapshot` | provider-neutral 的球员卡规则快照值结构。 | 以 `FName` CardId 保存位置、基础属性、GK 属性边界、稀有度和最多三个不透明 SkillId；集合类型为 `FPlayerCardRuleSnapshotSet`。 | 不保存玩家 / 卡组归属或 Available / Used 状态，不包含 DataTable、UObject、Blueprint、UI 或技能效果。 | 数据结构 | `PlayerCardTypes`、`CoreRuleEnums` |
 | `PlayerCardRuleSnapshotValidator` | 只读验证外部传入的球员卡规则快照集合。 | 结构化验证 CardId、重复定义、位置、GK 边界、稀有度、1-6 属性范围和 SkillId 列表结构。 | 不实现 Provider / Query，不执行技能，不接入 MatchPlay / External API v1，不修改输入。 | 否 | `PlayerCardRuleSnapshot` |
+| `PlayerCardRuleSnapshotQuery` | 按 CardId 只读查询 provider-neutral 球员卡规则快照。 | `FindByCardId` 先复用 Validator，再从 `FPlayerCardRuleSnapshotSet` 返回 Snapshot 值拷贝并保留验证结果；非法或重复集合统一返回 `InvalidSnapshotSet`。 | 不修改输入，不判断玩家归属或 Available / Used，不实现 Provider、DataTable、技能效果或 MatchPlay 集成。 | 否 | `PlayerCardRuleSnapshotValidator`、`PlayerCardRuleSnapshot` |
 | `CardUsageResolver` | 单玩家使用一张卡。 | 从 Available 移到 Used，检查重复、不可用、已使用。 | 不判断轮到谁，不判断公式、位置、技能。 | 是，返回 Updated CardUsageState | `FCardUsageState` |
 | `PlayCardResolver` | 指定玩家打出指定卡牌。 | 基于 `FMatchCardUsageState` 只更新出牌玩家；提供 `ValidateCanPlayCard` 只读验证。 | 不判断当前进攻方，不消费机会，不改比分，不接公式。 | 是，返回 Updated MatchCardUsageState；验证入口只读 | `CardUsageResolver` |
 | `AttackCardPlayFlow` | 当前进攻方打出一张卡并按外部进球结果结算一次进攻。 | 调 `PlayCardResolver` 后调 `AttackResolutionFlow`。 | 不调用 FormulaResolver，不计算进球，不做技能。 | 是，返回 Updated RuntimeState 和 CardUsageState | `PlayCardResolver`、`AttackResolutionFlow` |

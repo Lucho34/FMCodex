@@ -1,6 +1,6 @@
 # CoreRules Card Data Boundary Contract Review
 
-本文记录阶段 4.46 对未来卡牌规则数据边界的审查，并同步阶段 4.47 的最小落地结果。当前基线为 468/468 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.46 对未来卡牌规则数据边界的审查，并同步阶段 4.47 与 4.48 的最小落地结果。当前基线为 476/476 测试通过，External API v1 暂定冻结。
 
 ## Review 结论
 
@@ -178,7 +178,21 @@ CoreRules 负责：
 6. 未引入抽牌、洗牌、手牌、牌库顶或初始发牌语义。
 7. 新增 12 个自动化测试，CoreRules 当前为 468/468 通过。
 
-4.48 可基于“已经验证成功”的集合单独实现只读属性 Query。卡牌规则快照、玩家 / 卡组归属和 `AvailableCardIds / UsedCardIds` 状态继续严格分离。阶段 4.47 仍属于第 4 部分 CoreRules 数据边界落地，不是第 5 阶段技能系统正式实现。
+## 4.48 落地结果
+
+阶段 4.48 **Player Card Rule Snapshot Query** 已完成：
+
+1. 新增 `FPlayerCardRuleSnapshotQuery::FindByCardId`。
+2. Query 只从 `FPlayerCardRuleSnapshotSet` 中按 `FName` CardId 查询 provider-neutral Snapshot。
+3. 成功时返回 Snapshot 值拷贝，不修改输入集合。
+4. Query 保留 `FPlayerCardRuleSnapshotValidationResult`；重复 CardId 或其他非法集合统一返回 `InvalidSnapshotSet`。
+5. 当前实现先验证整个集合，再线性查找，复杂度为 O(n)；当前规模和只读边界下可接受，暂不引入索引或缓存。
+6. 未实现 Provider、DataTable、UObject、Blueprint API、Formula 组装或技能效果。
+7. 未接入 MatchPlay 或 External API v1，未读取玩家归属或 `AvailableCardIds / UsedCardIds`。
+8. 未引入抽牌、洗牌、手牌、牌库顶或初始发牌语义。
+9. 新增 8 个自动化测试，CoreRules 当前为 476/476 通过。
+
+卡牌规则快照、玩家 / 卡组归属和 `AvailableCardIds / UsedCardIds` 状态继续严格分离。阶段 4.47 与 4.48 均属于第 4 部分 CoreRules 数据边界落地，不是第 5 阶段技能系统正式实现。
 
 ## 风险
 

@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.47 Player Card Rule Snapshot Types + Validator 已完成。
-- CoreRules 当前为 468/468 通过。
+- 阶段 4.48 Player Card Rule Snapshot Query 已完成。
+- CoreRules 当前为 476/476 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -88,10 +88,14 @@
   - 新增 provider-neutral 的 `FPlayerCardRuleSnapshot`、`FPlayerCardRuleSnapshotSet` 和只读 `FPlayerCardRuleSnapshotValidator::Validate`。
   - Validator 结构化验证 `FName` CardId、位置、GK 边界、稀有度、1-6 属性范围和最多三个不透明 SkillId；不执行技能效果。
   - 未实现 Provider、Query、DataTable、UObject 或 Blueprint API，未接入 MatchPlay / External API v1，也未引入抽牌、洗牌、手牌或牌库状态。
+- 4.48 Player Card Rule Snapshot Query
+  - 新增 `FPlayerCardRuleSnapshotQuery::FindByCardId`，只读地从 `FPlayerCardRuleSnapshotSet` 按 `FName` CardId 查询 provider-neutral Snapshot 值拷贝。
+  - Query 保留下层 Validator 结果；重复 CardId 或其他非法集合统一返回 `InvalidSnapshotSet`，且不修改输入集合。
+  - 当前查询会先验证整个集合再线性查找，复杂度为 O(n)，在当前规模和只读边界下可接受。
+  - 未实现 Provider、DataTable、UObject、Blueprint API 或技能效果，未接入 MatchPlay / External API v1，也未引入抽牌、洗牌、手牌或牌库状态。
 
 ## 建议后续阶段
 
-- 4.48 再实现已验证快照上的球员卡属性只读 Query。
 - 4.49 评审属性到 Formula 输入的确定性组装边界。
 - 4.50 评审最小技能触发与效果契约；技能实现继续后移。
 - 后续完整比赛循环必须单独拆阶段。

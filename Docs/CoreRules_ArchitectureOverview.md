@@ -5,7 +5,7 @@
 | 分层 | 当前职责 | 代表模块 |
 | --- | --- | --- |
 | State 层 | 保存比赛运行态和双方卡牌使用状态，不主动执行业务逻辑。 | `MatchRuntimeState`、`CardUsageState`、`MatchPlayState` |
-| Rule Data Snapshot / Validation 层 | 接收 provider-neutral 的只读卡牌规则值快照并做结构化验证；与玩家归属和卡牌使用状态分离。 | `PlayerCardRuleSnapshot`、`PlayerCardRuleSnapshotValidator` |
+| Rule Data Snapshot / Validation / Query 层 | 接收 provider-neutral 的只读卡牌规则值快照，做结构化验证并按 CardId 返回值拷贝；与玩家归属和卡牌使用状态分离。 | `PlayerCardRuleSnapshot`、`PlayerCardRuleSnapshotValidator`、`PlayerCardRuleSnapshotQuery` |
 | Resolver 层 | 完成单一规则计算或原子状态转换；随机数和公式输入由外部传入。 | `FormulaResolver`、`GoalResolver`、`AttackOpportunityResolver`、`CardUsageResolver` |
 | Flow 层 | 按固定顺序组合多个 Resolver，返回 Updated 状态。 | `AttackResolutionFlow`、`FormulaAttackFlow`、`MatchPlayAttackFlow` |
 | Query / Result View 层 | 只读提取状态、可用性、预览、初始化快照、具体请求预检、诊断和执行结果摘要。 | `MatchPlayStatusQuery`、`MatchPlayAvailabilityQuery`、`MatchPlayActionPreview`、`MatchPlayRequestValidationReport`、`MatchPlaySubmitAttackResultQuery`、`MatchPlayExternalStateView`、`MatchPlayExternalMatchSetupView`、`MatchPlayExternalAttackRequestPreflight` |
@@ -13,9 +13,11 @@
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
 | 外部 Controller 层 | 作为 Facade 上层入口，包装一次外部请求的提交结果和 Result View。 | `MatchPlayExternalTurnController` |
-| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
+| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
 
 阶段 4.47 已落地 `FPlayerCardRuleSnapshot`、`FPlayerCardRuleSnapshotSet` 与 `FPlayerCardRuleSnapshotValidator::Validate`。它们只表达和验证卡牌规则定义，不表达玩家归属或 `AvailableCardIds / UsedCardIds` 使用状态；当前也不接入 MatchPlay 或 External API v1。SkillId 仅为结构化不透明字段，不执行技能效果，因此本阶段仍属于第 4 部分 CoreRules 数据边界落地，不是第 5 阶段技能系统实现。
+
+阶段 4.48 已落地 `FPlayerCardRuleSnapshotQuery::FindByCardId`。它先保留 Validator 结果，再按 CardId 返回 Snapshot 值拷贝；非法或重复集合统一返回 `InvalidSnapshotSet`，输入集合保持不变。当前实现为验证加线性查找，复杂度 O(n)，在当前规模和只读边界下可接受。该 Query 不实现 Provider、DataTable、UObject、Blueprint API 或技能效果，不接入 MatchPlay / External API v1，也不引入抽牌、洗牌、手牌或牌库状态；它仍属于第 4 部分 CoreRules 数据边界落地。
 
 ## 单次攻击请求路径
 
