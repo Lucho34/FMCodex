@@ -4,7 +4,7 @@
 
 ## 当前节点
 
-- 阶段 4.45 CoreRules Next Capability Decision Review 已完成。
+- 阶段 4.46 Card Data Boundary Contract Review 已完成。
 - CoreRules 当前为 456/456 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
@@ -81,14 +81,16 @@
 - 4.45 CoreRules Next Capability Decision Review
   - 评估 MatchPlay 收束、技能、球员属性、数据源边界、完整循环和 UI / 蓝图六条路线。
   - 推荐 4.46 先做 provider-neutral 的 Card Data Boundary Contract Review；不新增外部包装层，不直接实现 DataTable、技能、循环或 UI。
+- 4.46 Card Data Boundary Contract Review
+  - 明确 CoreRules 不直接读取 DataTable / Content / UObject；外部 Provider 只向 CoreRules 传入只读、值类型、provider-neutral 的卡牌规则快照。
+  - 分离卡牌规则定义、玩家 / 卡组归属和 `AvailableCardIds / UsedCardIds` 使用状态，并推荐 4.47 先实现 Snapshot Types + Validator。
 
 ## 建议后续阶段
 
-- 4.46 优先审查卡牌规则数据快照与 DataTable 外置边界。
-- 4.47 再实现调用方提供快照上的球员卡属性只读查询与验证。
-- 4.48 评审属性到 Formula 输入的确定性组装边界。
-- 4.49 评审最小技能触发与效果契约。
-- 4.50 仅在前置契约冻结后实现最小确定性技能 Resolver。
+- 4.47 先实现 Player Card Rule Snapshot 值结构与只读 Validator。
+- 4.48 再实现已验证快照上的球员卡属性只读 Query。
+- 4.49 评审属性到 Formula 输入的确定性组装边界。
+- 4.50 评审最小技能触发与效果契约；技能实现继续后移。
 - 后续完整比赛循环必须单独拆阶段。
 - 技能系统必须单独拆阶段。
 - 卡牌数据库 / 球员属性读取必须单独拆阶段。
