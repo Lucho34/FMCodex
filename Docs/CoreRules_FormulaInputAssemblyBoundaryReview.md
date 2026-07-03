@@ -1,15 +1,40 @@
 # CoreRules Formula Input Assembly Boundary Review
 
-本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查。当前基线为 476/476 测试通过，External API v1 暂定冻结；本阶段不修改代码、测试或 CoreRules 行为。
+本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步阶段 4.50 Single-Card Formula Input Assembly Contract Types + Validator 的落地结果。当前基线为 489/489 测试通过，External API v1 暂定冻结。
 
 ## Review 结论
 
-- 未来需要一个只读、确定性的 Formula Input Assembly 边界，但不应在字段契约冻结前直接实现完整 `FormulaInputAssemblyQuery`。
+- 4.49 确认未来需要一个只读、确定性的 Formula Input Assembly 边界；4.50 已先冻结并验证单卡字段契约，当前仍未实现完整 `FormulaInputAssemblyQuery`。
 - Snapshot 只提供 CardId 对应的规则属性，不负责选择 CardId、公式、参与角色或随机点数。
 - Formula 组装只应把“外部已选择的单张进攻卡 + 单张防守卡 + 明确字段选择 + 外部上下文”映射为 `FFormulaResolverInput`。
 - 组装模块不得调用 `FormulaResolver`，不得推进 MatchPlay，不得检查或修改 `AvailableCardIds / UsedCardIds`。
 - 当前继续排除技能修正、多卡组合公式、自动选牌、AI、Provider、DataTable、UI / 蓝图和 External API v1 接入。
 - CoreRules 继续禁止内部生成随机数。D6、D12、开局 TieBreaker 和其他随机结果均由外部提供。
+
+## 4.50 落地结果
+
+阶段 4.50 新增：
+
+- `SingleCardFormulaInputContract.h`
+- `SingleCardFormulaInputContractValidator.h`
+- `SingleCardFormulaInputContractValidator.cpp`
+- `SingleCardFormulaInputContractValidatorTests.cpp`
+
+其中：
+
+- `FSingleCardFormulaInputContract` 是单张参与卡的公式输入契约，显式携带 CardId、FormulaType、参与角色、所选属性、外部 D6 比较点数、外部 Modifier 和日志上下文。
+- `ESingleCardFormulaParticipantRole` 当前提供 `Attacker`、`Defender`、`Goalkeeper` 三种有效参与角色；`None` 不是有效契约值。
+- `ESingleCardFormulaAttribute` 当前显式列出 10 项通用球员属性和 6 项门将属性；`None` 不是有效契约值。
+- `FSingleCardFormulaInputContractValidator::Validate` 只读验证单卡公式输入契约，返回结构化成功状态、错误码、错误信息、无效 CardId 和无效字段；它不修改输入。
+- 当前只接受 `EFormulaType::Transition` 和 `EFormulaType::Finishing`，明确拒绝 `EFormulaType::Determination`、`None` 和未知值。
+- `Goalkeeper` 角色必须选择门将属性；非门将角色不能选择门将属性。这只验证契约内部的角色 / 属性组合，不证明对应 `FPlayerCardRuleSnapshot` 实际是一张 GK 卡。
+- D6 比较点数必须由外部显式提供，且值为 1-6；Validator 不掷骰。
+- Modifier 必须由外部显式提供，且必须是有限浮点值。当前只验证有限性，不发明最小值、最大值或其他数值范围。
+- `TurnIndex` 不得为负数；当前不要求 `LogId` 或 `ContextTag` 非空。
+
+Validator 不调用 `FormulaResolver`，不生成 `FFormulaResolverInput`，也不产生公式或比赛结果。开局 `TieBreaker` 不属于 Formula 输入，契约中没有 TieBreaker 字段或语义。
+
+阶段 4.50 新增 13 个自动化测试，覆盖有效普通 / 门将契约、无效 CardId、FormulaType、角色、属性、角色与属性一致性、外部 D6 缺失与范围、Modifier 显式性与有限性、日志回合索引、输入不变和禁止依赖。CoreRules 全量测试为 489/489 通过。
 
 ## 当前 FormulaResolver 输入
 
@@ -85,9 +110,9 @@ Snapshot 不能自行决定：
 
 Formula Input Assembly 只消费第一类和第三类输入，不读取第二类状态。卡牌是否当前可用仍由现有 MatchPlay / CardUsage 验证链负责；属性查询成功不代表卡牌可出，卡牌可出也不替代规则快照验证。
 
-## 是否实现 FormulaInputAssemblyQuery
+## FormulaInputAssemblyQuery 状态
 
-建议后续实现，但不建议直接把完整公式表、技能或多卡角色系统塞入第一版 Query。
+阶段 4.50 未实现 `FormulaInputAssemblyQuery`。建议后续基于已验证契约实现，但不应把完整公式表、技能或多卡角色系统塞入第一版 Query。
 
 推荐先定义最小单卡契约：
 
@@ -100,9 +125,10 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 
 推荐阶段顺序：
 
-1. 4.50：Single-Card Formula Input Assembly Contract Types + Validator。
-2. 4.51：基于已验证契约实现只读 `FormulaInputAssemblyQuery`。
-3. 后续再评审技能契约；多卡组合公式单独立项。
+1. 4.50：Single-Card Formula Input Assembly Contract Types + Validator（已完成）。
+2. 4.50.5：CoreRules Docs Sync（当前文档同步）。
+3. 4.51：基于已验证契约实现只读 `FormulaInputAssemblyQuery`。
+4. 后续再评审技能契约；多卡组合公式单独立项。
 
 ## 如何避免职责漂移
 
@@ -122,6 +148,7 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 - **不受支持的 FormulaType**：`Determination` 枚举存在但 Resolver 尚不结算，组装成功可能制造假支持。
 - **Modifier 来源混淆**：固定规则常数、技能修正和外部临时修正若共用无来源字段，会降低可解释性。
 - **门将语义误推断**：扫描集合发现 GK 不等于该 GK 参与本次公式。
+- **角色与实际卡牌身份未交叉验证**：4.50 Validator 只检查角色与属性是否匹配；后续 Query 必须把 `ParticipantRole` 与所选 `FPlayerCardRuleSnapshot` 的实际 GK 身份交叉验证，不能仅凭契约中的角色声明。
 - **卡牌可用性污染**：在组装 Query 中读取 Available / Used 会把规则数据与 MatchPlay 状态重新耦合。
 - **多卡范围膨胀**：当前 `ParticipatingStamina` 是数组，不代表本阶段应实现多卡组合。
 - **随机数回流**：为填 ComparePoint 在组装层掷骰，会破坏外部随机输入边界。
@@ -129,4 +156,4 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 
 ## 持续边界
 
-当前仍不包含技能效果、卡牌数据库 / DataTable、Provider、Content、UObject、UI / 蓝图、MatchPlay / External API v1 接入、完整比赛循环、自动出牌、自动选牌、AI、多卡组合公式、联网、Steam 或 EOS，也不包含抽牌、洗牌、手牌、牌库顶或初始发牌。
+当前仍不包含 `FormulaInputAssemblyQuery`、技能效果、多卡组合公式、随机数生成、卡牌数据库 / DataTable、Provider、Content、UObject、UI / 蓝图、MatchPlay / External API v1 接入、完整比赛循环、自动出牌、自动选牌、AI、联网、Steam 或 EOS，也不引入抽牌、洗牌、手牌、牌库或初始发牌语义。

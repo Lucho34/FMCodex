@@ -1,6 +1,6 @@
 # CoreRules Next Capability Decision Review
 
-本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步 4.46 边界 Review、4.47 Snapshot Types + Validator 与 4.48 Snapshot Query 的落地结果。当前基线为 476/476 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步 4.46 至 4.50 的数据边界、Snapshot 与单卡公式输入契约落地结果。当前基线为 489/489 测试通过，External API v1 暂定冻结。
 
 ## 决策结论
 
@@ -133,8 +133,9 @@ UI / 蓝图应在真实交互需求和数据适配层确定后单独立项，不
 | 4.46 | **CoreRules Card Data Boundary Contract Review（已完成）**：定义规则快照、数据所有权、CardId / SkillId、错误语义和 DataTable 外置原则。 | 低 |
 | 4.47 | **Player Card Rule Snapshot Types + Validator（已完成）**：落地 provider-neutral 值结构与结构化 Validator，不接 Provider、Query、MatchPlay 或技能执行。 | 低到中 |
 | 4.48 | **Player Card Rule Snapshot Query（已完成）**：只读验证并按 CardId 查询快照值拷贝，不接 DataTable、Content、MatchPlay 或技能执行。 | 中 |
-| 4.49 | **Formula Input Assembly Boundary Review**：定义属性与外部掷骰如何确定性组装现有 Formula 输入，不执行技能。 | 中 |
-| 4.50 | **Minimal Skill Contract Review**：限定单一技能效果、触发时点、顺序、错误与原子性；先文档后实现，Resolver 继续后移。 | 中 |
+| 4.49 | **Formula Input Assembly Boundary Review（已完成）**：定义属性与外部掷骰如何确定性组装现有 Formula 输入，不执行技能。 | 中 |
+| 4.50 | **Single-Card Formula Input Assembly Contract Types + Validator（已完成）**：冻结并验证单卡角色、属性、外部 D6、外部 Modifier 与日志上下文；不调用 FormulaResolver。 | 中 |
+| 4.51 | **FormulaInputAssemblyQuery**：基于已验证契约与 PlayerCardRuleSnapshot 只读组装 Formula 输入，并交叉验证角色与实际 GK 身份。 | 中 |
 
 每个实现阶段都应先验证是否能保持 External API v1 不变；如必须改变，应停止并单独做兼容性 Review。
 
