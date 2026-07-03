@@ -4,7 +4,7 @@
 
 ## 当前节点
 
-- 阶段 4.48 Player Card Rule Snapshot Query 已完成。
+- 阶段 4.49 Formula Input Assembly Boundary Review 已完成。
 - CoreRules 当前为 476/476 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
@@ -93,11 +93,16 @@
   - Query 保留下层 Validator 结果；重复 CardId 或其他非法集合统一返回 `InvalidSnapshotSet`，且不修改输入集合。
   - 当前查询会先验证整个集合再线性查找，复杂度为 O(n)，在当前规模和只读边界下可接受。
   - 未实现 Provider、DataTable、UObject、Blueprint API 或技能效果，未接入 MatchPlay / External API v1，也未引入抽牌、洗牌、手牌或牌库状态。
+- 4.49 Formula Input Assembly Boundary Review
+  - 审查 `FPlayerCardRuleSnapshot` 到 `FFormulaResolverInput` 的确定性映射边界，明确 Snapshot 可提供属性、单卡体力和 GK 定义验证。
+  - FormulaType、参与 CardId / 角色、Modifier、D6 比较点数及来源标记、门将参与声明和日志上下文继续由外部显式提供；开局 TieBreaker 不进入 Formula 输入。
+  - 建议先冻结单卡组装契约，再实现只读 Query；继续排除随机数生成、自动选牌、技能修正、多卡组合、MatchPlay / External API v1 和数据源依赖。
 
 ## 建议后续阶段
 
-- 4.49 评审属性到 Formula 输入的确定性组装边界。
-- 4.50 评审最小技能触发与效果契约；技能实现继续后移。
+- 4.50 定义 Single-Card Formula Input Assembly Contract Types + Validator。
+- 4.51 基于已验证契约实现只读 `FormulaInputAssemblyQuery`。
+- 后续再评审最小技能触发与效果契约；技能实现继续后移。
 - 后续完整比赛循环必须单独拆阶段。
 - 技能系统必须单独拆阶段。
 - 卡牌数据库 / 球员属性读取必须单独拆阶段。
