@@ -1,6 +1,6 @@
 # CoreRules Card Data Boundary Contract Review
 
-本文记录阶段 4.46 对未来卡牌规则数据边界的审查。当前基线为 456/456 测试通过，External API v1 暂定冻结；本阶段不修改代码、测试或行为。
+本文记录阶段 4.46 对未来卡牌规则数据边界的审查，并同步阶段 4.47 的最小落地结果。当前基线为 468/468 测试通过，External API v1 暂定冻结。
 
 ## Review 结论
 
@@ -8,7 +8,7 @@
 - 外部 Provider 负责加载和转换数据；CoreRules 只接收只读、值类型、provider-neutral 的规则快照并执行结构化验证。
 - 当前 `FMatchPlayState` 继续只保存 RuntimeState 与 CardUsageState，不嵌入数据库、Provider 或可变卡牌定义。
 - 卡牌定义、玩家 / 卡组归属和卡牌使用状态必须分离，避免形成多套状态真值。
-- 推荐 4.47 先实现最小快照结构与 Validator，不同时实现 Query、DataTable Adapter、技能或 Formula 组装。
+- 阶段 4.47 已实现最小快照结构与 Validator，未同时实现 Query、DataTable Adapter、技能或 Formula 组装。
 
 ## 依赖方向
 
@@ -25,11 +25,11 @@ CoreRules 不反向依赖 Provider，也不持有 Provider 接口。Provider 的
 
 ## 推荐快照形式
 
-建议未来分为两个 provider-neutral 值结构：
+阶段 4.47 已实现两个 provider-neutral 值结构：
 
 ### 单卡规则快照
 
-候选名称：`FPlayerCardRuleSnapshot`
+实际名称：`FPlayerCardRuleSnapshot`
 
 | 字段 | 建议 | 原因 |
 | --- | --- | --- |
@@ -40,17 +40,17 @@ CoreRules 不反向依赖 Provider，也不持有 Provider 接口。Provider 的
 | `GoalkeeperAttributes` | GK 条件必需 | GK 必须具备有效 GK 属性；非 GK 不得因该字段获得规则效果。 |
 | `bHasGoalkeeperAttributes` | 建议显式提供 | 避免仅靠默认数值猜测 GK 属性是否由 Provider 配置。 |
 | `Rarity` | 必须 | 当前 DeckValidator 和初始进攻次数规则已使用 `ECardRarity`。 |
-| `SkillIds` | 暂只允许作为可空的不透明 ID 列表 | 不解析技能、不表达槽位、不执行效果；可在技能契约冻结后启用验证。 |
+| `SkillIds` | 最多三个不透明 `FName` ID | 只验证非 None、唯一性和数量，不解析技能、不加载定义、不执行效果。 |
 
 ### 卡牌规则集合快照
 
-候选名称：`FCardRuleSnapshotSet`
+实际名称：`FPlayerCardRuleSnapshotSet`
 
 - 使用值数组保存单卡快照，便于 Validator 在建立索引前发现重复 CardId。
 - Validator 成功后，Query 可以建立只读查找视图或按 CardId 查询。
 - 同一个 CardId 在 PlayerA / PlayerB 牌组中出现时，应解析为同一份规则定义；当前允许双方拥有相同 CardId。
 - 如果未来需要区分实体卡副本，应新增独立 InstanceId，而不是改变 CardId 的定义。
-- 可选的规则数据版本或 SnapshotId 应等到存档、联网或热更新需求明确后再设计，4.47 不预先加入。
+- 可选的规则数据版本或 SnapshotId 应等到存档、联网或热更新需求明确后再设计；4.47 未加入。
 
 ## 所属玩家与卡组归属
 
@@ -69,10 +69,10 @@ GK 规则必须结构化表达，不能由 DisplayName、标签或 DataTable Row
 
 - `bIsGoalkeeper=true` 时，PositionTypes 必须仅包含 GK，并要求 `bHasGoalkeeperAttributes=true`。
 - `bIsGoalkeeper=false` 时，PositionTypes 不得包含 GK。
-- 非 GK 的 GoalkeeperAttributes 不参与规则计算；4.47 应决定是要求未配置，还是只明确忽略。
-- 属性数值范围必须来自明确规则决定。4.47 不应凭实现者直觉发明上下限。
+- 非 GK 携带 `bHasGoalkeeperAttributes=true` 时验证失败，GK 则必须显式具备 GK 属性。
+- 基础属性与 GK 专属属性的合法范围均为 1-6，越界时返回结构化错误。
 
-这与当前 DeckValidator 的 GK 位置约束一致，但未来 Snapshot Validator 应返回自己的结构化错误，不依赖 DataTable 行验证。
+这与当前 DeckValidator 的 GK 位置约束一致；Snapshot Validator 返回自己的结构化错误，不依赖 DataTable 行验证。
 
 ## 稀有度、Cost 与标签
 
@@ -93,12 +93,12 @@ GK 规则必须结构化表达，不能由 DisplayName、标签或 DataTable Row
 
 当前已有 `AttackSkillIds` / `FSkillDefinition` 草案，但技能尚未实现。
 
-- 快照可以预留可空的 SkillId 列表作为不透明引用。
-- 4.47 不解析 SkillId，不加载 SkillDefinition，不执行技能。
-- 当前不定义技能槽位、装备顺序、触发优先级或叠加规则。
+- 快照包含最多三个 SkillId 的不透明列表。
+- Validator 只验证 SkillId 非 None、唯一性和数量，不加载 SkillDefinition，不执行技能。
+- 这三个条目只是结构字段上限，不定义装备顺序、触发优先级或叠加规则。
 - SkillDefinition 应在未来使用独立的 provider-neutral 快照集合，不能把 DataTable 行或 UObject 指针嵌入卡牌快照。
 
-如果预留字段会迫使 4.47 提前冻结未决语义，可以先从最小结构中省略，待 Minimal Skill Contract Review 后再兼容扩展。
+技能效果、触发时机和叠加语义仍等待后续 Minimal Skill Contract Review，不由 4.47 冻结。
 
 ## 暂不进入 CoreRules 的字段
 
@@ -166,17 +166,19 @@ CoreRules 负责：
 - 在验证成功后提供只读属性查询。
 - 不关心 Provider 类型、RowName、资产路径或加载方式。
 
-## 推荐 4.47
+## 4.47 落地结果
 
-推荐 4.47 调整为 **Player Card Rule Snapshot Types + Validator**，范围小于完整 AttributeSnapshotQuery：
+阶段 4.47 **Player Card Rule Snapshot Types + Validator** 已完成：
 
-1. 新增单卡规则快照与集合快照值结构。
-2. 复用现有属性、GK 属性、位置和稀有度枚举。
-3. 新增只读 Validator，覆盖 CardId、集合重复、位置重复、GK 一致性和结构完整性。
-4. 不实现 DataTable Adapter、Provider、Query、Formula 组装或技能。
-5. 不修改 `FMatchPlayState` 或 External API v1。
+1. 新增 `FPlayerCardRuleSnapshot` 与 `FPlayerCardRuleSnapshotSet` 值结构。
+2. 新增只读 `FPlayerCardRuleSnapshotValidator::Validate`，覆盖 CardId、重复定义、位置、GK 边界、稀有度、1-6 属性范围和最多三个 SkillId。
+3. SkillId 只做结构验证，不执行技能效果。
+4. 未实现 DataTable Adapter、Provider、Query、Formula 组装、UObject 或 Blueprint API。
+5. 未修改或接入 `FMatchPlayState`、MatchPlay 流程或 External API v1。
+6. 未引入抽牌、洗牌、手牌、牌库顶或初始发牌语义。
+7. 新增 12 个自动化测试，CoreRules 当前为 468/468 通过。
 
-属性 Query 可在 4.48 基于“已经验证成功”的集合单独实现。这样结构、验证、索引和规则组装不会在同一阶段混合。
+4.48 可基于“已经验证成功”的集合单独实现只读属性 Query。卡牌规则快照、玩家 / 卡组归属和 `AvailableCardIds / UsedCardIds` 状态继续严格分离。阶段 4.47 仍属于第 4 部分 CoreRules 数据边界落地，不是第 5 阶段技能系统正式实现。
 
 ## 风险
 

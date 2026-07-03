@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.46 Card Data Boundary Contract Review 已完成。
-- CoreRules 当前为 456/456 通过。
+- 阶段 4.47 Player Card Rule Snapshot Types + Validator 已完成。
+- CoreRules 当前为 468/468 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -83,11 +83,14 @@
   - 推荐 4.46 先做 provider-neutral 的 Card Data Boundary Contract Review；不新增外部包装层，不直接实现 DataTable、技能、循环或 UI。
 - 4.46 Card Data Boundary Contract Review
   - 明确 CoreRules 不直接读取 DataTable / Content / UObject；外部 Provider 只向 CoreRules 传入只读、值类型、provider-neutral 的卡牌规则快照。
-  - 分离卡牌规则定义、玩家 / 卡组归属和 `AvailableCardIds / UsedCardIds` 使用状态，并推荐 4.47 先实现 Snapshot Types + Validator。
+  - 分离卡牌规则定义、玩家 / 卡组归属和 `AvailableCardIds / UsedCardIds` 使用状态，为 4.47 Snapshot Types + Validator 提供契约。
+- 4.47 Player Card Rule Snapshot Types + Validator
+  - 新增 provider-neutral 的 `FPlayerCardRuleSnapshot`、`FPlayerCardRuleSnapshotSet` 和只读 `FPlayerCardRuleSnapshotValidator::Validate`。
+  - Validator 结构化验证 `FName` CardId、位置、GK 边界、稀有度、1-6 属性范围和最多三个不透明 SkillId；不执行技能效果。
+  - 未实现 Provider、Query、DataTable、UObject 或 Blueprint API，未接入 MatchPlay / External API v1，也未引入抽牌、洗牌、手牌或牌库状态。
 
 ## 建议后续阶段
 
-- 4.47 先实现 Player Card Rule Snapshot 值结构与只读 Validator。
 - 4.48 再实现已验证快照上的球员卡属性只读 Query。
 - 4.49 评审属性到 Formula 输入的确定性组装边界。
 - 4.50 评审最小技能触发与效果契约；技能实现继续后移。

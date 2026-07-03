@@ -1,6 +1,6 @@
 # CoreRules Next Capability Decision Review
 
-本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查。当前基线为 456/456 测试通过，External API v1 暂定冻结；本阶段不修改代码、测试或行为。
+本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步 4.46 边界 Review 与 4.47 Snapshot Types + Validator 的落地结果。当前基线为 468/468 测试通过，External API v1 暂定冻结。
 
 ## 决策结论
 
@@ -130,11 +130,11 @@ UI / 蓝图应在真实交互需求和数据适配层确定后单独立项，不
 
 | 阶段 | 建议目标 | 风险 |
 | --- | --- | --- |
-| 4.46 | **CoreRules Card Data Boundary Contract Review**：定义规则快照、数据所有权、CardId / SkillId、错误语义和 DataTable 外置原则；只修改 Docs。 | 低 |
-| 4.47 | **Player Card Attribute Snapshot Query / Validation**：基于调用方传入的只读快照查询属性，不接 DataTable、Content 或技能执行。 | 中 |
-| 4.48 | **Formula Input Assembly Boundary Review**：定义属性与外部掷骰如何确定性组装现有 Formula 输入，不执行技能。 | 中 |
-| 4.49 | **Minimal Skill Contract Review**：限定单一技能效果、触发时点、顺序、错误与原子性；先文档后实现。 | 中 |
-| 4.50 | **Minimal Deterministic Skill Resolver**：只实现已冻结的最小效果，不直接接 MatchPlay 循环、UI 或数据库。 | 高 |
+| 4.46 | **CoreRules Card Data Boundary Contract Review（已完成）**：定义规则快照、数据所有权、CardId / SkillId、错误语义和 DataTable 外置原则。 | 低 |
+| 4.47 | **Player Card Rule Snapshot Types + Validator（已完成）**：落地 provider-neutral 值结构与结构化 Validator，不接 Provider、Query、MatchPlay 或技能执行。 | 低到中 |
+| 4.48 | **Player Card Rule Snapshot Query**：只读查询已经验证成功的快照集合，不接 DataTable、Content、MatchPlay 或技能执行。 | 中 |
+| 4.49 | **Formula Input Assembly Boundary Review**：定义属性与外部掷骰如何确定性组装现有 Formula 输入，不执行技能。 | 中 |
+| 4.50 | **Minimal Skill Contract Review**：限定单一技能效果、触发时点、顺序、错误与原子性；先文档后实现，Resolver 继续后移。 | 中 |
 
 每个实现阶段都应先验证是否能保持 External API v1 不变；如必须改变，应停止并单独做兼容性 Review。
 
