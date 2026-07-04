@@ -44,7 +44,9 @@ Test
 
 测试不直接调用 Snapshot Query 或 FormulaResolver，不绕过 Executor，也不增加 Pipeline。覆盖 Transition、Finishing、Query / Assembler 失败短路、分层诊断保留、外部 D6 / Modifier 传递和字段级输入不变性。阶段 5.3 独立审查与回归通过，当前 CoreRules 为 528/528，Development Editor 与 UHT `-WarningsAsErrors` 通过。完整记录见 `CoreRules_Part5CompositionVerification.md`。
 
-Part 5 当前不是技能实现阶段，也没有接入 MatchPlay、解冻 External API v1 或修改 FormulaAttackFlow。远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收等能力继续留给后续独立 Part。
+阶段 5.4 收口决策确认 Part 5 目标已完成，不需要 5.5 Final Regression；5.4.5 Final Closure Docs Sync 提交后，第 5 部分正式完成。Part 5 没有修改生产行为，没有接入 MatchPlay、解冻 External API v1、修改 FormulaAttackFlow 或新增 Pipeline。
+
+下一阶段为 6.0 Skill Entry Decision Review。不得直接实现远射或一次性实现全部技能；远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收等能力应在 Part 6 中逐项小步审查和实现。
 
 ## 单次攻击请求路径
 

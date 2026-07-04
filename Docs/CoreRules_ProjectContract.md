@@ -67,13 +67,15 @@
 - 第 5 阶段不得默认进入 UI、蓝图、Content、Config、联网或 Steam；必须由后续阶段明确批准。
 - `FSingleCardFormulaResolutionPipeline` 仍只是未来条件性 Internal CoreRules 选项，不是第 5 阶段默认前置模块。
 
-## 第 5 部分组合验证状态
+## 第 5 部分最终状态
 
-- Part 5 当前方向为 CoreRules-only Single-Card Formula Composition Verification。
-- 阶段 5.0 至 5.3 已完成方向决策、测试契约、端到端组合测试和独立回归。
+- Part 5 的 CoreRules-only Single-Card Formula Composition Verification 已完成。
+- 阶段 5.0 至 5.4 已完成方向决策、测试契约、端到端组合测试、独立回归和收口决策。
 - 当前测试链只组合 `SingleCardFormulaInputAssemblyQuery -> SingleCardFormulaResolverInputAssembler -> SingleCardFormulaResolutionExecutor`；Snapshot Query 与 FormulaResolver 分别只由既有上层内部调用。
 - 5.2 只新增 `SingleCardFormulaEndToEndCompositionTests.cpp`，没有修改生产代码、既有测试、Build.cs、Docs、Content 或 Config。
 - 当前回归基线为 CoreRules 528/528、Development Editor 通过、UHT `-WarningsAsErrors` 通过。
 - Part 5 没有新增 Pipeline，没有接 MatchPlay，没有解冻 External API v1，也没有修改 FormulaAttackFlow。
-- Part 5 不是技能实现阶段。远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收等能力必须在后续独立 Part 中逐项审查。
+- Part 5 不需要 5.5 Final Regression 或 5.5.5 Final Docs Sync。
+- 下一阶段为 6.0 Skill Entry Decision Review，不得直接实现远射或一次性实现全部技能。
+- 远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收等能力必须在 Part 6 中逐项小步审查和实现。
 - 第 5 部分完整记录见 `Docs/CoreRules_Part5CompositionVerification.md`。

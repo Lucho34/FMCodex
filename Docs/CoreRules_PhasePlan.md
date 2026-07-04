@@ -7,8 +7,10 @@
 - 阶段 4.61 Capability Closure Review、4.62 Final Boundary Audit 和 4.63 Final Regression 已通过。
 - 4.63.5 Part 4 Final Docs Sync 已提交，第 4 部分已完成。
 - 阶段 5.0 Entry Decision Review、5.1 Test Contract Review、5.2 End-to-End Composition Tests 和 5.3 Independent Review + Regression 已通过。
-- 当前进行阶段 5.3.5 Part 5 Composition Verification Docs Sync；本阶段只修改文档。
-- Part 5 当前方向为 CoreRules-only Single-Card Formula Composition Verification，不是技能实现阶段。
+- 5.3.5 Part 5 Composition Verification Docs Sync 已提交。
+- 5.4 Part 5 Closure Decision Review 已通过；Part 5 目标已完成，不需要 5.5 Final Regression。
+- 5.4.5 Part 5 Final Closure Docs Sync 提交后，第 5 部分正式完成。
+- 下一阶段为 6.0 Skill Entry Decision Review；不得直接实现远射或一次性实现全部技能。
 - CoreRules 当前为 528/528 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
@@ -180,12 +182,19 @@
 - 5.3.5 Part 5 Composition Verification Docs Sync
   - 同步阶段 5.0 至 5.3 的方向、测试、独立审查、回归基线和持续边界。
   - 本阶段提交后，Part 5 当前组合验证工作视为完成。
+- 5.4 Part 5 Closure Decision Review
+  - 收口决策通过；CoreRules-only Single-Card Formula Composition Verification 目标已完成，没有必须留在 Part 5 内的代码、测试或规则能力缺口。
+  - 5.3 已完成最终回归强度的验证，5.3.5 之后只有 Docs 变更，因此不需要 5.5 Final Regression。
+- 5.4.5 Part 5 Final Closure Docs Sync
+  - 记录 5.4 收口决策、最终基线和下一阶段入口。
+  - 本阶段提交后，第 5 部分正式完成；不需要 5.5.5 Final Docs Sync。
 
 ## 建议后续阶段
 
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。
 - 后续 Part 必须另行规划，不从 Part 5 组合验证自动延伸玩法实现。
-- Part 5 不是技能实现阶段；远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收应在后续独立 Part 中逐项审查。
+- 下一阶段为 6.0 Skill Entry Decision Review；不得从远射实现直接开始，也不得一次性实现全部技能。
+- 远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收应在 Part 6 中逐项小步审查和实现。
 - 后续阶段不得默认进入 UI、蓝图、Content、Config、联网或 Steam；任何扩展必须明确批准。
 - 第 4 部分最终收口记录见 `CoreRules_Part4FinalClosure.md`。
 - 第 5 部分组合验证记录见 `CoreRules_Part5CompositionVerification.md`。

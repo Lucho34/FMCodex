@@ -1,6 +1,6 @@
 # CoreRules Part 5 Composition Verification
 
-本文档集中记录阶段 5.0 至 5.3.5 对单卡公式链端到端组合能力的规划、测试、独立审查和回归结果。Part 5 当前方向是 **CoreRules-only Single-Card Formula Composition Verification**，不是技能实现阶段。
+本文档集中记录阶段 5.0 至 5.4.5 对单卡公式链端到端组合能力的规划、测试、独立审查、回归和最终收口结果。Part 5 的方向是 **CoreRules-only Single-Card Formula Composition Verification**，不是技能实现阶段。
 
 ## 阶段结论
 
@@ -8,7 +8,9 @@
 - 5.1 Single-Card E2E Composition Test Contract Review：通过。冻结测试范围、调用顺序、失败短路、分层诊断、外部输入传递和输入不变性契约。
 - 5.2 Single-Card End-to-End Composition Tests：通过并已提交。只新增 `Source/FMCodex/CoreRules/SingleCardFormulaEndToEndCompositionTests.cpp`，没有修改生产代码或既有测试。
 - 5.3 Independent Composition Boundary Review + Regression：通过。未发现调用绕过、重复调用、生产职责变化或禁止项回流，不需要修正或补测阶段。
-- 5.3.5 Part 5 Composition Verification Docs Sync：只同步文档；本阶段提交后，Part 5 当前组合验证工作视为完成。
+- 5.3.5 Part 5 Composition Verification Docs Sync：完成并已提交。同步 Part 5 方向、测试覆盖、独立审查、回归基线和持续边界。
+- 5.4 Part 5 Closure Decision Review：通过。Part 5 目标已完成，可以收口；5.3 已具备最终回归强度，不需要 5.5 Final Regression。
+- 5.4.5 Part 5 Final Closure Docs Sync：只同步最终状态；本阶段提交后，第 5 部分正式完成，不需要 5.5.5 Final Docs Sync。
 
 ## 已验证的组合链
 
@@ -80,6 +82,15 @@ Test
 - `git diff --check`：通过。
 - 回归完成后 `git status --short`：空。
 
+## 最终状态
+
+- CoreRules-only Single-Card Formula Composition Verification 已完成。
+- 最终代码与测试基线为 CoreRules 528/528，Composition 7/7。
+- Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 基线通过。
+- Part 5 没有修改既有生产行为；唯一源码目录变更是新增端到端自动化测试文件。
+- External API v1 保持冻结，MatchPlay 与 FormulaAttackFlow 保持不变，Pipeline 仍未新增。
+- 阶段 5.4 已确认没有必须留在 Part 5 内的补测、生产代码或规则能力缺口。
+
 ## 持续边界
 
 Part 5 没有改变以下边界：
@@ -97,8 +108,8 @@ Part 5 没有改变以下边界：
 - 未处理开局 TieBreaker。
 - 未进入 UI、蓝图、Content、Config、联网或 Steam。
 
-## 后续技能阶段
+## Part 6 入口
 
-Part 5 当前不是技能实现阶段。远射、内切射门、传中、直塞、传控、定位球、门将发动、待定区回收等能力不得从当前组合验证测试自然延伸实现。
+Part 5 不是技能实现阶段。下一阶段应为 **6.0 Skill Entry Decision Review**，不得直接实现远射，也不得一次性实现全部技能。
 
-这些技能和区域行为应在后续独立 Part 中逐个完成规则审查、数据契约、确定性顺序、失败原子性和测试设计，再决定是否实现。后续 Part 不得默认解冻 MatchPlay、External API v1、FormulaAttackFlow 或条件性 Pipeline。
+远射、内切射门、传中、直塞、传控、定位球、门将发动、待定区回收等技能和区域行为应在 Part 6 中逐项小步完成规则审查、数据契约、确定性顺序、失败原子性和测试设计，再决定是否实现。Part 6 不得默认解冻 MatchPlay、External API v1、FormulaAttackFlow 或条件性 Pipeline。
