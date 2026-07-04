@@ -265,3 +265,5 @@ GK 身份交叉验证规则为：
 ## 持续边界
 
 当前仍不包含 `FFormulaResolverInput` 生成、FormulaResolver 调用、技能效果、多卡组合、随机数生成、TieBreaker、卡牌数据库、Provider、DataTable、Content、MatchPlay / External API v1、UI、蓝图、联网、Steam、完整比赛循环，也不引入抽牌、洗牌、手牌或牌库语义。
+
+阶段 4.54 已单独评审从成功 Single-Card Query 结果到 `FFormulaResolverInput` 的后续边界。评审结论、字段映射、现有 Resolver 测试审查和 4.55 最小范围见 `CoreRules_FormulaResolverInputBoundaryReview.md`。

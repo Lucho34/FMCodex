@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.51 Formula Input Assembly Query Contract Review、4.52 Query、4.53 独立验收和 4.53.1 Boundary Fix 已完成。
-- 当前进行阶段 4.53.5 CoreRules Docs Sync；本阶段只修改文档。
+- 阶段 4.51 至 4.53.5 的 Single-Card Formula Input Assembly Query 评审、实现、验收、修正和文档同步已完成。
+- 当前进行阶段 4.54 Formula Resolver Input Boundary Review；本阶段只修改文档。
 - CoreRules 当前为 502/502 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
@@ -120,10 +120,14 @@
 - 4.53.1 Single-Card Formula Input Assembly Query Boundary Fix
   - `InvalidCardId / CardNotFound` 的 `InvalidField` 为 `CardId`；`InvalidSnapshotSet` 等集合级错误保留 `NAME_None`。
   - 补充 Transition 成功和 Defender + 非 GK Snapshot 成功测试；CoreRules 为 502/502 通过。
+- 4.53.5 CoreRules Docs Sync
+  - 合并同步 4.52 Query、4.53 独立验收与 4.53.1 诊断修正结果。
 
 ## 建议后续阶段
 
-- 从 Contract / Snapshot 数值生成 `FFormulaResolverInput` 必须后续单独 Review，不并入 4.52。
+- 4.54 Formula Resolver Input Boundary Review：评审 Contract / Snapshot 到 `FFormulaResolverInput` 的独立纯转换边界，不写功能代码。
+- 4.55 建议实现 `FSingleCardFormulaResolverInputAssembler`：每侧一张已验证卡，只做直接属性、外部 D6 / Modifier、单卡 Stamina、GK 标记、PlayerId 和日志字段映射。
+- 4.55 不调用 FormulaResolver，不做属性平均 / 取半、技能、多卡、Determination、随机数、MatchPlay 或 External API v1。
 - 后续再评审最小技能触发与效果契约；技能实现继续后移。
 - 后续完整比赛循环必须单独拆阶段。
 - 技能系统必须单独拆阶段。

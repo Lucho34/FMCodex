@@ -131,10 +131,14 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 4. 4.52：在 4.51 Review 边界内实现只读 Single-Card Formula Input Assembly Query（已完成）。
 5. 4.53：独立验收 Query 边界（核心边界通过，未发现越界调用）。
 6. 4.53.1：修正 `InvalidField` P3 诊断并补充 Transition / Defender 成功测试（已完成）。
-7. 4.53.5：CoreRules Docs Sync（当前文档同步）。
-8. 后续单独评审从已验证 Contract / Snapshot 到 `FFormulaResolverInput` 的数值映射；技能契约和多卡组合继续后移。
+7. 4.53.5：CoreRules Docs Sync（已完成）。
+8. 4.54：Formula Resolver Input Boundary Review（只做文档评审）。
+9. 4.55：建议在 4.54 边界内实现纯函数式 `FSingleCardFormulaResolverInputAssembler`。
+10. 技能契约、多卡组合和非直接属性运算继续后移。
 
 4.51 的详细输入、输出、依赖、GK 交叉验证、错误码和 4.52 最小范围见 `CoreRules_FormulaInputAssemblyQueryContractReview.md`。
+
+4.54 对 Contract / Snapshot 到 `FFormulaResolverInput` 的独立转换边界见 `CoreRules_FormulaResolverInputBoundaryReview.md`。
 
 ## 如何避免职责漂移
 

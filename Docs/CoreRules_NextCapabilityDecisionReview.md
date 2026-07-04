@@ -139,6 +139,8 @@ UI / 蓝图应在真实交互需求和数据适配层确定后单独立项，不
 | 4.52 | **Single-Card Formula Input Assembly Query（已完成）**：复用 Snapshot Query 与 Contract Validator，返回经过 GK 身份交叉验证的单卡 Contract；不生成 `FFormulaResolverInput`。 | 中 |
 | 4.53 | **Independent Review（已完成）**：核心边界通过，未发现越界调用；记录一个 P3 诊断问题和两个成功测试补充点。 | 低 |
 | 4.53.1 | **Query Boundary Fix（已完成）**：修正 Snapshot 集合级失败的 `InvalidField`，补充 Transition / Defender 成功测试。 | 低 |
+| 4.54 | **Formula Resolver Input Boundary Review**：评审成功 Query 结果到 `FFormulaResolverInput` 的纯转换边界、字段映射和测试要求；只写文档。 | 中 |
+| 4.55 | **Single-Card Formula Resolver Input Assembler**：每侧一张已验证卡，组装完整 Resolver Input，但不调用 FormulaResolver。 | 中 |
 
 每个实现阶段都应先验证是否能保持 External API v1 不变；如必须改变，应停止并单独做兼容性 Review。
 
