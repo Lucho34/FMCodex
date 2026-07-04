@@ -1,6 +1,6 @@
 # CoreRules Next Capability Decision Review
 
-本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步至 4.60 Single-Card Formula Resolution Chain Completion Review。当前基线为 521/521 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步至 4.63 Part 4 Final Regression。当前基线为 521/521 测试通过，External API v1 暂定冻结；4.63.5 Final Docs Sync 提交后，第 4 部分视为完成。
 
 ## 决策结论
 
@@ -146,6 +146,10 @@ UI / 蓝图应在真实交互需求和数据适配层确定后单独立项，不
 | 4.58 | **Single-Card Formula Resolution Executor（已完成）**：新增结构化执行 Result / 错误码和 7 项独立测试，不接入 MatchPlay、External API v1 或既有 Flow。 | 中 |
 | 4.59 | **Lightweight Boundary Review（已完成）**：验收通过，未发现越界或职责偷渡，不需要 4.59.1。 | 低 |
 | 4.60 | **Chain Completion Review（已完成）**：当前内部链路能力完整；缺少统一入口但不是规则缺口，暂不新增 Pipeline。 | 低 |
+| 4.61 | **Part 4 Capability Closure Review（已完成）**：第 4 部分具备能力收口条件，无必须新增模块。 | 低 |
+| 4.62 | **Part 4 Final Boundary Audit（已完成）**：未发现 External API、Legacy、数据边界、依赖方向或禁止项回流问题。 | 低 |
+| 4.63 | **Part 4 Final Regression（已完成）**：CoreRules 521/521，Development Editor 与 UHT `-WarningsAsErrors` 通过，工作区干净。 | 低 |
+| 4.63.5 | **Part 4 Final Docs Sync（当前）**：提交后第 4 部分视为完成；第 5 阶段随后另行规划。 | 低 |
 | 未来条件项 | **`FSingleCardFormulaResolutionPipeline`**：仅在真实内部调用方出现时评审；必须保留下层诊断，不直接调用 Snapshot Query 或 FormulaResolver。 | 中 |
 
 每个实现阶段都应先验证是否能保持 External API v1 不变；如必须改变，应停止并单独做兼容性 Review。

@@ -4,12 +4,12 @@
 
 ## 当前节点
 
-- 阶段 4.57 Review、4.58 Executor、4.59 轻量验收和 4.60 链路完成度 Review 已完成。
-- 当前进行阶段 4.60.5 CoreRules Docs Sync；本阶段只修改文档。
+- 阶段 4.61 Capability Closure Review、4.62 Final Boundary Audit 和 4.63 Final Regression 已通过。
+- 当前进行阶段 4.63.5 Part 4 Final Docs Sync；本阶段只修改文档。
 - CoreRules 当前为 521/521 通过。
-- UE5 Development Editor 编译通过。
-- UnrealHeaderTool 强制复验通过，WarningsAsErrors。
-- 当前重点仍是稳定、可解释、可测试的 CoreRules。
+- UE5 Development Editor 验证通过，target up to date。
+- UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
+- 第 4 部分在 4.63.5 Final Docs Sync 提交后视为完成。
 
 ## 已完成阶段
 
@@ -147,17 +147,28 @@
 - 4.60 Report-only Single-Card Formula Resolution Chain Completion Review
   - 当前链路能力完整，覆盖 Snapshot Query、Input Assembly Query、Resolver Input Assembler、Executor 和 FormulaResolver。
   - 缺少统一调用入口，但不是规则能力缺口；当前没有真实调用方证明需要新包装层，暂不建议立即新增 Pipeline。
+- 4.60.5 CoreRules Docs Sync
+  - 同步 4.58 Executor、4.59 验收与 4.60 链路完成度结论。
+- 4.61 Part 4 Capability Closure Review
+  - 第 4 部分具备能力收口条件；八项目标能力均已覆盖，无必须新增模块。
+  - 建议通过最终边界审查、最终回归和 Final Docs Sync 完成程序性封板。
+- 4.62 Part 4 Final Boundary Audit
+  - 审查通过；未发现 External API、Legacy State、Card Data Boundary、依赖方向、FormulaAttackFlow 混接或禁止项回流。
+  - 不需要修正阶段，可以进入最终回归。
+- 4.63 Part 4 Final Regression
+  - CoreRules 521/521 成功，0 失败。
+  - Development Editor 通过，target up to date；UHT 强制 `-WarningsAsErrors` 通过，0 个文件需重写。
+  - `git diff --check` 通过，`git status --short` 为空；回归基线 HEAD 为 `33e9fc4`。
+- 4.63.5 Part 4 Final Docs Sync
+  - 记录第 4 部分最终收口状态、边界审查和最终回归结果。
+  - 本阶段提交后，第 4 部分视为完成。
 
 ## 建议后续阶段
 
-- 先完成 4.60.5 Docs Sync 收口。
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。
-- 后续再评审最小技能触发与效果契约；技能实现继续后移。
-- 后续完整比赛循环必须单独拆阶段。
-- 技能系统必须单独拆阶段。
-- 卡牌数据库 / 球员属性读取必须单独拆阶段。
-- UI / 蓝图接入必须单独拆阶段。
-- 联网 / Steam / EOS 必须单独拆阶段。
+- 第 5 阶段只能在 4.63.5 Final Docs Sync 提交后另行规划。
+- 第 5 阶段不得默认进入 UI、蓝图、Content、Config、联网或 Steam；任何扩展必须由后续阶段明确批准。
+- 第 4 部分最终收口记录见 `CoreRules_Part4FinalClosure.md`。
 
 ## 后续阶段提示词建议
 

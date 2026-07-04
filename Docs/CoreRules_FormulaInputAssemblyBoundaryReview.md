@@ -140,14 +140,20 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 13. 4.58：最小 `FSingleCardFormulaResolutionExecutor`（已完成；只接收 Resolver Input，不做调用链集成）。
 14. 4.59：Executor Lightweight Boundary Review（已通过，不需要 4.59.1）。
 15. 4.60：Single-Card Formula Resolution Chain Completion Review（已完成；链路能力完整，暂不新增 Pipeline）。
-16. 4.60.5：CoreRules Docs Sync（当前文档同步）。
-17. 技能契约、多卡组合和非直接属性运算继续后移。
+16. 4.60.5：CoreRules Docs Sync（已完成）。
+17. 4.61：Part 4 Capability Closure Review（已通过）。
+18. 4.62：Part 4 Final Boundary Audit（已通过，不需要修正阶段）。
+19. 4.63：Part 4 Final Regression（521/521，编译与 UHT 通过）。
+20. 4.63.5：Part 4 Final Docs Sync（当前文档同步；提交后第 4 部分完成）。
+21. 技能契约、多卡组合和非直接属性运算继续后移。
 
 4.51 的详细输入、输出、依赖、GK 交叉验证、错误码和 4.52 最小范围见 `CoreRules_FormulaInputAssemblyQueryContractReview.md`。
 
 4.54 对 Contract / Snapshot 到 `FFormulaResolverInput` 的独立转换边界见 `CoreRules_FormulaResolverInputBoundaryReview.md`。
 
 4.57 对 `FFormulaResolverInput` 到 FormulaResolver 的独立执行边界见 `CoreRules_FormulaResolutionExecutionBoundaryReview.md`。
+
+第 4 部分最终能力收口、边界审查和回归结果见 `CoreRules_Part4FinalClosure.md`。
 
 ## 如何避免职责漂移
 

@@ -29,6 +29,8 @@
 
 阶段 4.60 确认内部链路能力已覆盖 `SnapshotQuery -> InputAssemblyQuery -> ResolverInputAssembler -> Executor -> FormulaResolver`。当前没有统一调用入口和端到端组合测试，但不构成规则能力缺口。`FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；没有真实调用方前不新增包装层。
 
+阶段 4.61 至 4.63 已完成第 4 部分能力收口 Review、最终边界审查和最终回归。八项目标能力均已覆盖；未发现 External API、Legacy State、Card Data Boundary、依赖方向、FormulaAttackFlow 混接或禁止项回流。最终回归为 CoreRules 521/521、Development Editor 通过、UHT `-WarningsAsErrors` 通过。4.63.5 Final Docs Sync 提交后，第 4 部分视为完成；完整记录见 `CoreRules_Part4FinalClosure.md`。
+
 ## 单次攻击请求路径
 
 `External Driver -> MatchPlayExternalTurnController -> MatchPlaySubmitAttackFacade -> MatchPlaySubmissionGate -> MatchPlayAttackStep`

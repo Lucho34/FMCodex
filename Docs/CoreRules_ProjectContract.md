@@ -54,5 +54,14 @@
   - `Docs/CoreRules_ModuleMap.md`
   - `Docs/CoreRules_PhaseReportTemplate.md`
   - `Docs/CoreRules_PhasePlan.md`
+  - `Docs/CoreRules_Part4FinalClosure.md`
 - 新阶段只需要描述本阶段目标、允许修改范围和新增差异，不必重复完整项目背景。
 
+## 第 4 部分收口与第 5 阶段前置条件
+
+- 第 4 部分已通过 Capability Closure Review、Final Boundary Audit 和 Final Regression。
+- 4.63 最终回归基线为 CoreRules 521/521、Development Editor 通过、UHT `-WarningsAsErrors` 通过。
+- 4.63.5 Final Docs Sync 提交后，第 4 部分视为完成。
+- 第 5 阶段只能在该 Docs commit 后另行规划，不从第 4 部分自动延伸功能。
+- 第 5 阶段不得默认进入 UI、蓝图、Content、Config、联网或 Steam；必须由后续阶段明确批准。
+- `FSingleCardFormulaResolutionPipeline` 仍只是未来条件性 Internal CoreRules 选项，不是第 5 阶段默认前置模块。
