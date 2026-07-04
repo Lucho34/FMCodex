@@ -4,8 +4,8 @@
 
 ## 当前节点
 
-- 阶段 4.54 Formula Resolver Input Boundary Review、4.55 Assembler 和 4.56 独立验收已完成。
-- 当前进行阶段 4.56.5 CoreRules Docs Sync；本阶段只修改文档。
+- 阶段 4.54 Formula Resolver Input Boundary Review、4.55 Assembler、4.56 独立验收和 4.56.5 Docs Sync 已完成。
+- 当前进行阶段 4.57 Formula Resolution Execution Boundary Review；本阶段只修改文档。
 - CoreRules 当前为 514/514 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
@@ -132,9 +132,16 @@
 - 4.56 Single-Card Formula Resolver Input Assembler Independent Review
   - 独立验收通过，未发现越界调用、字段映射错误或验收级测试缺口；不需要 4.56.1。
   - 表驱动覆盖全部 16 项 Attribute、失败路径统一断言默认 ResolverInput 仅作为非阻塞可选增强。
+- 4.56.5 CoreRules Docs Sync
+  - 合并同步 4.55 Assembler 实现结果、持续边界和 4.56 独立验收结论。
+- 4.57 Formula Resolution Execution Boundary Review
+  - 建议新增 `FSingleCardFormulaResolutionExecutor`，只接收完整 `FFormulaResolverInput`，做最小单卡防御校验后调用一次 FormulaResolver。
+  - Executor 不读取 Query Result、Snapshot Query，不调用 Assembler，不接入 MatchPlay / External API v1。
+  - 建议使用独立结构化 Result，保留输入副本和 Resolver 原始结果；本阶段只产出文档。
 
 ## 建议后续阶段
 
+- 4.58 可实现最小 `FSingleCardFormulaResolutionExecutor`、结构化 Result / 错误码和独立测试；不做调用链集成，不修改 FormulaResolver 或既有 Flow。
 - 后续再评审最小技能触发与效果契约；技能实现继续后移。
 - 后续完整比赛循环必须单独拆阶段。
 - 技能系统必须单独拆阶段。

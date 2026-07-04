@@ -1,6 +1,6 @@
 # CoreRules Formula Input Assembly Boundary Review
 
-本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步至阶段 4.55 Assembler 与 4.56 独立验收。当前基线为 514/514 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步至阶段 4.57 Formula Resolution Execution Boundary Review。当前基线为 514/514 测试通过，External API v1 暂定冻结。
 
 ## Review 结论
 
@@ -135,12 +135,16 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 8. 4.54：Formula Resolver Input Boundary Review（已完成）。
 9. 4.55：纯函数式 `FSingleCardFormulaResolverInputAssembler`（已完成）。
 10. 4.56：Assembler Independent Review（已通过，不需要 4.56.1）。
-11. 4.56.5：CoreRules Docs Sync（当前文档同步）。
-12. 技能契约、多卡组合和非直接属性运算继续后移。
+11. 4.56.5：CoreRules Docs Sync（已完成）。
+12. 4.57：Formula Resolution Execution Boundary Review（已完成，只写文档）。
+13. 4.58：最小 `FSingleCardFormulaResolutionExecutor`（建议；只接收 Resolver Input，不做调用链集成）。
+14. 技能契约、多卡组合和非直接属性运算继续后移。
 
 4.51 的详细输入、输出、依赖、GK 交叉验证、错误码和 4.52 最小范围见 `CoreRules_FormulaInputAssemblyQueryContractReview.md`。
 
 4.54 对 Contract / Snapshot 到 `FFormulaResolverInput` 的独立转换边界见 `CoreRules_FormulaResolverInputBoundaryReview.md`。
+
+4.57 对 `FFormulaResolverInput` 到 FormulaResolver 的独立执行边界见 `CoreRules_FormulaResolutionExecutionBoundaryReview.md`。
 
 ## 如何避免职责漂移
 

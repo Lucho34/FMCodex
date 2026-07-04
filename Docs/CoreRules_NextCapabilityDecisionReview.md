@@ -1,6 +1,6 @@
 # CoreRules Next Capability Decision Review
 
-本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步至 4.55 Resolver Input Assembler 与 4.56 独立验收。当前基线为 514/514 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步至 4.57 Formula Resolution Execution Boundary Review。当前基线为 514/514 测试通过，External API v1 暂定冻结。
 
 ## 决策结论
 
@@ -142,6 +142,8 @@ UI / 蓝图应在真实交互需求和数据适配层确定后单独立项，不
 | 4.54 | **Formula Resolver Input Boundary Review（已完成）**：评审成功 Query 结果到 `FFormulaResolverInput` 的纯转换边界、字段映射和测试要求；只写文档。 | 中 |
 | 4.55 | **Single-Card Formula Resolver Input Assembler（已完成）**：每侧一张已验证卡，组装完整 Resolver Input，但不调用 FormulaResolver。 | 中 |
 | 4.56 | **Assembler Independent Review（已完成）**：验收通过，未发现越界调用、字段映射错误或验收级测试缺口；不需要修正阶段。 | 低 |
+| 4.57 | **Formula Resolution Execution Boundary Review（已完成）**：评审只接收 Resolver Input、做最小防御校验并调用一次 Resolver 的中性执行边界；只写文档。 | 低到中 |
+| 4.58 | **Single-Card Formula Resolution Executor（建议）**：新增结构化执行 Result / 错误码和独立测试，不接入 MatchPlay、External API v1 或既有 Flow。 | 中 |
 
 每个实现阶段都应先验证是否能保持 External API v1 不变；如必须改变，应停止并单独做兼容性 Review。
 
