@@ -64,12 +64,17 @@ FSingleCardFormulaInputAssemblyQuery::Assemble(
 			Input.CardId);
 	if (!Result.SnapshotQueryResult.bSuccess)
 	{
+		const bool bCardIdFailure =
+			Result.SnapshotQueryResult.ErrorCode
+				== EPlayerCardRuleSnapshotQueryErrorCode::InvalidCardId
+			|| Result.SnapshotQueryResult.ErrorCode
+				== EPlayerCardRuleSnapshotQueryErrorCode::CardNotFound;
 		SingleCardFormulaInputAssemblyQuery::SetFailure(
 			Result,
 			ESingleCardFormulaInputAssemblyQueryErrorCode
 				::SnapshotQueryFailed,
 			Result.SnapshotQueryResult.ErrorMessage,
-			TEXT("CardId"));
+			bCardIdFailure ? FName(TEXT("CardId")) : NAME_None);
 		return Result;
 	}
 

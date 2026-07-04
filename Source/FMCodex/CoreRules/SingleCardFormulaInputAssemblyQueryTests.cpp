@@ -214,6 +214,65 @@ bool FSingleCardFormulaInputAssemblyQuerySuccessTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSingleCardFormulaInputAssemblyQueryTransitionSuccessTest,
+	"FMCodex.CoreRules.SingleCardFormulaInputAssemblyQuery.AssemblesTransitionContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSingleCardFormulaInputAssemblyQueryTransitionSuccessTest::RunTest(
+	const FString& Parameters)
+{
+	FSingleCardFormulaInputAssemblyQueryInput Input =
+		SingleCardFormulaInputAssemblyQueryTests::MakeValidInput();
+	Input.FormulaType = EFormulaType::Transition;
+
+	const FSingleCardFormulaInputAssemblyQueryResult Result =
+		FSingleCardFormulaInputAssemblyQuery::Assemble(
+			SingleCardFormulaInputAssemblyQueryTests
+				::MakeValidSnapshotSet(),
+			Input);
+
+	TestTrue(TEXT("Transition query succeeds"), Result.bSuccess);
+	TestEqual(
+		TEXT("Transition formula type is copied"),
+		Result.Contract.FormulaType,
+		EFormulaType::Transition);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSingleCardFormulaInputAssemblyQueryDefenderSuccessTest,
+	"FMCodex.CoreRules.SingleCardFormulaInputAssemblyQuery.AssemblesDefenderContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSingleCardFormulaInputAssemblyQueryDefenderSuccessTest::RunTest(
+	const FString& Parameters)
+{
+	FSingleCardFormulaInputAssemblyQueryInput Input =
+		SingleCardFormulaInputAssemblyQueryTests::MakeValidInput();
+	Input.ParticipantRole =
+		ESingleCardFormulaParticipantRole::Defender;
+	Input.Attribute =
+		ESingleCardFormulaAttribute::Tackling;
+
+	const FSingleCardFormulaInputAssemblyQueryResult Result =
+		FSingleCardFormulaInputAssemblyQuery::Assemble(
+			SingleCardFormulaInputAssemblyQueryTests
+				::MakeValidSnapshotSet(),
+			Input);
+
+	TestTrue(TEXT("Defender query succeeds"), Result.bSuccess);
+	TestEqual(
+		TEXT("Defender role is copied"),
+		Result.Contract.ParticipantRole,
+		ESingleCardFormulaParticipantRole::Defender);
+	TestEqual(
+		TEXT("Defender attribute is copied"),
+		Result.Contract.Attribute,
+		ESingleCardFormulaAttribute::Tackling);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSingleCardFormulaInputAssemblyQueryGoalkeeperSuccessTest,
 	"FMCodex.CoreRules.SingleCardFormulaInputAssemblyQuery.AssemblesValidGoalkeeperContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -275,6 +334,10 @@ bool FSingleCardFormulaInputAssemblyQueryMissingSnapshotTest::RunTest(
 		TEXT("Missing snapshot reason is retained"),
 		Result.SnapshotQueryResult.ErrorCode,
 		EPlayerCardRuleSnapshotQueryErrorCode::CardNotFound);
+	TestEqual(
+		TEXT("Missing CardId identifies the CardId field"),
+		Result.InvalidField,
+		FName(TEXT("CardId")));
 	TestTrue(
 		TEXT("Candidate contract is not exposed as successful output"),
 		Result.Contract.CardId.IsNone());
@@ -503,6 +566,9 @@ bool FSingleCardFormulaInputAssemblyQueryInvalidSnapshotSetTest::RunTest(
 		TEXT("Snapshot validation detail is retained"),
 		Result.SnapshotQueryResult.ValidationResult.ErrorCode,
 		EPlayerCardRuleSnapshotValidationErrorCode::AttributeOutOfRange);
+	TestTrue(
+		TEXT("Snapshot set failure does not blame CardId"),
+		Result.InvalidField.IsNone());
 	return true;
 }
 
