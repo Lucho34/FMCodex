@@ -13,7 +13,7 @@
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
 | 外部 Controller 层 | 作为 Facade 上层入口，包装一次外部请求的提交结果和 Result View。 | `MatchPlayExternalTurnController` |
-| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询、单卡公式输入契约验证 / 组装、Resolver Input 转换、薄执行边界和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`SingleCardFormulaInputContractValidatorTests.cpp`、`SingleCardFormulaInputAssemblyQueryTests.cpp`、`SingleCardFormulaResolverInputAssemblerTests.cpp`、`SingleCardFormulaResolutionExecutorTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
+| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询、单卡公式输入契约验证 / 组装、Resolver Input 转换、薄执行边界、单卡公式链端到端组合和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`SingleCardFormulaInputContractValidatorTests.cpp`、`SingleCardFormulaInputAssemblyQueryTests.cpp`、`SingleCardFormulaResolverInputAssemblerTests.cpp`、`SingleCardFormulaResolutionExecutorTests.cpp`、`SingleCardFormulaEndToEndCompositionTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
 
 阶段 4.47 已落地 `FPlayerCardRuleSnapshot`、`FPlayerCardRuleSnapshotSet` 与 `FPlayerCardRuleSnapshotValidator::Validate`。它们只表达和验证卡牌规则定义，不表达玩家归属或 `AvailableCardIds / UsedCardIds` 使用状态；当前也不接入 MatchPlay 或 External API v1。SkillId 仅为结构化不透明字段，不执行技能效果，因此本阶段仍属于第 4 部分 CoreRules 数据边界落地，不是第 5 阶段技能系统实现。
 
@@ -30,6 +30,21 @@
 阶段 4.60 确认内部链路能力已覆盖 `SnapshotQuery -> InputAssemblyQuery -> ResolverInputAssembler -> Executor -> FormulaResolver`。当前没有统一调用入口和端到端组合测试，但不构成规则能力缺口。`FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；没有真实调用方前不新增包装层。
 
 阶段 4.61 至 4.63 已完成第 4 部分能力收口 Review、最终边界审查和最终回归。八项目标能力均已覆盖；未发现 External API、Legacy State、Card Data Boundary、依赖方向、FormulaAttackFlow 混接或禁止项回流。最终回归为 CoreRules 521/521、Development Editor 通过、UHT `-WarningsAsErrors` 通过。4.63.5 Final Docs Sync 提交后，第 4 部分视为完成；完整记录见 `CoreRules_Part4FinalClosure.md`。
+
+阶段 5.0 至 5.3 将第 5 部分限定为 CoreRules-only Single-Card Formula Composition Verification。5.2 只新增 `SingleCardFormulaEndToEndCompositionTests.cpp`，实际验证路径为：
+
+```text
+Test
+  -> FSingleCardFormulaInputAssemblyQuery::Assemble
+       -> FPlayerCardRuleSnapshotQuery::FindByCardId
+  -> FSingleCardFormulaResolverInputAssembler::Assemble
+  -> FSingleCardFormulaResolutionExecutor::Execute
+       -> UFormulaResolver::ResolveFormula
+```
+
+测试不直接调用 Snapshot Query 或 FormulaResolver，不绕过 Executor，也不增加 Pipeline。覆盖 Transition、Finishing、Query / Assembler 失败短路、分层诊断保留、外部 D6 / Modifier 传递和字段级输入不变性。阶段 5.3 独立审查与回归通过，当前 CoreRules 为 528/528，Development Editor 与 UHT `-WarningsAsErrors` 通过。完整记录见 `CoreRules_Part5CompositionVerification.md`。
+
+Part 5 当前不是技能实现阶段，也没有接入 MatchPlay、解冻 External API v1 或修改 FormulaAttackFlow。远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收等能力继续留给后续独立 Part。
 
 ## 单次攻击请求路径
 

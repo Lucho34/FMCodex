@@ -5,11 +5,14 @@
 ## 当前节点
 
 - 阶段 4.61 Capability Closure Review、4.62 Final Boundary Audit 和 4.63 Final Regression 已通过。
-- 当前进行阶段 4.63.5 Part 4 Final Docs Sync；本阶段只修改文档。
-- CoreRules 当前为 521/521 通过。
-- UE5 Development Editor 验证通过，target up to date。
+- 4.63.5 Part 4 Final Docs Sync 已提交，第 4 部分已完成。
+- 阶段 5.0 Entry Decision Review、5.1 Test Contract Review、5.2 End-to-End Composition Tests 和 5.3 Independent Review + Regression 已通过。
+- 当前进行阶段 5.3.5 Part 5 Composition Verification Docs Sync；本阶段只修改文档。
+- Part 5 当前方向为 CoreRules-only Single-Card Formula Composition Verification，不是技能实现阶段。
+- CoreRules 当前为 528/528 通过。
+- UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
-- 第 4 部分在 4.63.5 Final Docs Sync 提交后视为完成。
+- `git diff --check` 通过；5.3 回归完成后工作区干净。
 
 ## 已完成阶段
 
@@ -162,13 +165,30 @@
 - 4.63.5 Part 4 Final Docs Sync
   - 记录第 4 部分最终收口状态、边界审查和最终回归结果。
   - 本阶段提交后，第 4 部分视为完成。
+- 5.0 Part 5 Entry Decision Review
+  - 决定第 5 部分继续 CoreRules only，优先验证既有单卡公式链的端到端组合能力。
+  - 不新增 Pipeline，不接 MatchPlay，不解冻 External API v1，不修改 FormulaAttackFlow。
+- 5.1 Single-Card E2E Composition Test Contract Review
+  - 冻结 5.2 的调用链、成功路径、失败短路、分层诊断、外部 D6 / Modifier 传递和输入不变性断言。
+  - 确认可以只新增测试，不修改生产代码。
+- 5.2 Single-Card End-to-End Composition Tests
+  - 只新增 `SingleCardFormulaEndToEndCompositionTests.cpp`，覆盖 Transition、Finishing、Query / Assembler 失败短路、诊断保留、外部输入传递和输入不变性。
+  - 测试只调用 Input Assembly Query、Resolver Input Assembler 和 Executor；Snapshot Query 与 FormulaResolver 分别只由其既有上层内部调用。
+- 5.3 Independent Composition Boundary Review + Regression
+  - 独立审查通过；未发现直接调用 FormulaResolver、重复 Snapshot Query、绕过 Executor、生产职责变化或禁止项回流。
+  - Single-Card Composition 7/7、CoreRules 528/528、Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 均通过。
+- 5.3.5 Part 5 Composition Verification Docs Sync
+  - 同步阶段 5.0 至 5.3 的方向、测试、独立审查、回归基线和持续边界。
+  - 本阶段提交后，Part 5 当前组合验证工作视为完成。
 
 ## 建议后续阶段
 
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。
-- 第 5 阶段只能在 4.63.5 Final Docs Sync 提交后另行规划。
-- 第 5 阶段不得默认进入 UI、蓝图、Content、Config、联网或 Steam；任何扩展必须由后续阶段明确批准。
+- 后续 Part 必须另行规划，不从 Part 5 组合验证自动延伸玩法实现。
+- Part 5 不是技能实现阶段；远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收应在后续独立 Part 中逐项审查。
+- 后续阶段不得默认进入 UI、蓝图、Content、Config、联网或 Steam；任何扩展必须明确批准。
 - 第 4 部分最终收口记录见 `CoreRules_Part4FinalClosure.md`。
+- 第 5 部分组合验证记录见 `CoreRules_Part5CompositionVerification.md`。
 
 ## 后续阶段提示词建议
 
