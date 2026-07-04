@@ -1,6 +1,6 @@
 # CoreRules Formula Input Assembly Query Contract Review
 
-本文记录阶段 4.51 对 Formula Input Assembly Query 的契约评审，并合并同步阶段 4.52 Query 实现、4.53 独立验收和 4.53.1 Query Boundary Fix 的结果。当前 CoreRules 为 502/502 测试通过；这些阶段仍属于第 4 部分，不进入第 5 阶段技能系统。
+本文记录阶段 4.51 对 Formula Input Assembly Query 的契约评审，并合并同步阶段 4.52 Query 实现、4.53 独立验收和 4.53.1 Query Boundary Fix 的结果。当前 CoreRules 为 514/514 测试通过；这些阶段仍属于第 4 部分，不进入第 5 阶段技能系统。
 
 ## Review 结论
 
@@ -249,7 +249,7 @@ GK 身份交叉验证规则为：
 - 补充 Query 层 `Transition` 成功测试。
 - 补充 `Defender + 非 GK Snapshot` 成功测试。
 
-当前测试覆盖 `Transition` 成功、`Finishing` 成功、Defender + 非 GK Snapshot 成功、有效 GK、GK 伪声明双向失败、Snapshot 缺失、InvalidSnapshotSet 诊断字段、Modifier 缺失 / 非有限值、非法 `Determination`、Validator 失败保留、输入不变和禁止依赖。CoreRules 全量测试为 502/502 通过，UE5 Development Editor 编译与 UnrealHeaderTool WarningsAsErrors 复验通过。
+当前 Query 测试覆盖 `Transition` 成功、`Finishing` 成功、Defender + 非 GK Snapshot 成功、有效 GK、GK 伪声明双向失败、Snapshot 缺失、InvalidSnapshotSet 诊断字段、Modifier 缺失 / 非有限值、非法 `Determination`、Validator 失败保留、输入不变和禁止依赖。阶段 4.53.1 时 CoreRules 为 502/502 通过；加入 4.55 Assembler 测试后当前为 514/514 通过。
 
 ## 当前风险
 
@@ -264,6 +264,6 @@ GK 身份交叉验证规则为：
 
 ## 持续边界
 
-当前仍不包含 `FFormulaResolverInput` 生成、FormulaResolver 调用、技能效果、多卡组合、随机数生成、TieBreaker、卡牌数据库、Provider、DataTable、Content、MatchPlay / External API v1、UI、蓝图、联网、Steam、完整比赛循环，也不引入抽牌、洗牌、手牌或牌库语义。
+Single-Card Query 本身仍不生成 `FFormulaResolverInput`。阶段 4.55 已由独立 `FSingleCardFormulaResolverInputAssembler` 消费双方成功 Query Result 并完成 Resolver Input 转换；职责没有回流到 Query。Query 与 Assembler 都不调用 FormulaResolver，也不接入 MatchPlay / External API v1。
 
-阶段 4.54 已单独评审从成功 Single-Card Query 结果到 `FFormulaResolverInput` 的后续边界。评审结论、字段映射、现有 Resolver 测试审查和 4.55 最小范围见 `CoreRules_FormulaResolverInputBoundaryReview.md`。
+阶段 4.54 边界、4.55 实现和 4.56 独立验收结论见 `CoreRules_FormulaResolverInputBoundaryReview.md`。

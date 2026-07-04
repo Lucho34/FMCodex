@@ -1,6 +1,6 @@
 # CoreRules Formula Input Assembly Boundary Review
 
-本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步阶段 4.50 Contract、4.52 Query、4.53 独立验收与 4.53.1 Boundary Fix 的结果。当前基线为 502/502 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步至阶段 4.55 Assembler 与 4.56 独立验收。当前基线为 514/514 测试通过，External API v1 暂定冻结。
 
 ## Review 结论
 
@@ -132,9 +132,11 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 5. 4.53：独立验收 Query 边界（核心边界通过，未发现越界调用）。
 6. 4.53.1：修正 `InvalidField` P3 诊断并补充 Transition / Defender 成功测试（已完成）。
 7. 4.53.5：CoreRules Docs Sync（已完成）。
-8. 4.54：Formula Resolver Input Boundary Review（只做文档评审）。
-9. 4.55：建议在 4.54 边界内实现纯函数式 `FSingleCardFormulaResolverInputAssembler`。
-10. 技能契约、多卡组合和非直接属性运算继续后移。
+8. 4.54：Formula Resolver Input Boundary Review（已完成）。
+9. 4.55：纯函数式 `FSingleCardFormulaResolverInputAssembler`（已完成）。
+10. 4.56：Assembler Independent Review（已通过，不需要 4.56.1）。
+11. 4.56.5：CoreRules Docs Sync（当前文档同步）。
+12. 技能契约、多卡组合和非直接属性运算继续后移。
 
 4.51 的详细输入、输出、依赖、GK 交叉验证、错误码和 4.52 最小范围见 `CoreRules_FormulaInputAssemblyQueryContractReview.md`。
 
@@ -166,4 +168,4 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 
 ## 持续边界
 
-当前仍不包含 `FFormulaResolverInput` 数值组装、技能效果、多卡组合公式、随机数生成、TieBreaker 处理、卡牌数据库 / DataTable、Provider、Content、UObject、UI / 蓝图、MatchPlay / External API v1 接入、完整比赛循环、自动出牌、自动选牌、AI、联网、Steam 或 EOS，也不引入抽牌、洗牌、手牌、牌库或初始发牌语义。
+阶段 4.55 已包含“每侧单一属性直接取值”的 `FFormulaResolverInput` 组装，但仍不包含属性平均 / 取半 / 求和、技能效果、多卡组合公式、随机数生成、TieBreaker 处理、卡牌数据库 / DataTable、Provider、Content、UObject、UI / 蓝图、MatchPlay / External API v1 接入、完整比赛循环、自动出牌、自动选牌、AI、联网、Steam 或 EOS，也不引入抽牌、洗牌、手牌、牌库或初始发牌语义。

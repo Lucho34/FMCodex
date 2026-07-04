@@ -4,9 +4,9 @@
 
 ## 当前节点
 
-- 阶段 4.51 至 4.53.5 的 Single-Card Formula Input Assembly Query 评审、实现、验收、修正和文档同步已完成。
-- 当前进行阶段 4.54 Formula Resolver Input Boundary Review；本阶段只修改文档。
-- CoreRules 当前为 502/502 通过。
+- 阶段 4.54 Formula Resolver Input Boundary Review、4.55 Assembler 和 4.56 独立验收已完成。
+- 当前进行阶段 4.56.5 CoreRules Docs Sync；本阶段只修改文档。
+- CoreRules 当前为 514/514 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -122,12 +122,19 @@
   - 补充 Transition 成功和 Defender + 非 GK Snapshot 成功测试；CoreRules 为 502/502 通过。
 - 4.53.5 CoreRules Docs Sync
   - 合并同步 4.52 Query、4.53 独立验收与 4.53.1 诊断修正结果。
+- 4.54 Formula Resolver Input Boundary Review
+  - 评审成功 Query 结果到 `FFormulaResolverInput` 的独立纯转换边界、字段映射和测试要求；本阶段只产出文档。
+- 4.55 Single-Card Formula Resolver Input Assembler
+  - 新增 `SingleCardFormulaResolverInputAssembler.h/.cpp` 和 `SingleCardFormulaResolverInputAssemblerTests.cpp`。
+  - 每侧一张成功 Query Result，直接映射 Attribute、D6、Modifier、Stamina、GK 标记、PlayerId 和统一日志字段。
+  - 不调用或修改 FormulaResolver，不读取 Snapshot Query，不接入 MatchPlay / External API v1。
+  - 新增 12 个测试，CoreRules 为 514/514 通过。
+- 4.56 Single-Card Formula Resolver Input Assembler Independent Review
+  - 独立验收通过，未发现越界调用、字段映射错误或验收级测试缺口；不需要 4.56.1。
+  - 表驱动覆盖全部 16 项 Attribute、失败路径统一断言默认 ResolverInput 仅作为非阻塞可选增强。
 
 ## 建议后续阶段
 
-- 4.54 Formula Resolver Input Boundary Review：评审 Contract / Snapshot 到 `FFormulaResolverInput` 的独立纯转换边界，不写功能代码。
-- 4.55 建议实现 `FSingleCardFormulaResolverInputAssembler`：每侧一张已验证卡，只做直接属性、外部 D6 / Modifier、单卡 Stamina、GK 标记、PlayerId 和日志字段映射。
-- 4.55 不调用 FormulaResolver，不做属性平均 / 取半、技能、多卡、Determination、随机数、MatchPlay 或 External API v1。
 - 后续再评审最小技能触发与效果契约；技能实现继续后移。
 - 后续完整比赛循环必须单独拆阶段。
 - 技能系统必须单独拆阶段。
