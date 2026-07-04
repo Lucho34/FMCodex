@@ -6,7 +6,7 @@
 
 - 4.49 确认未来需要一个只读、确定性的 Formula Input Assembly 边界；4.50 已先冻结并验证单卡字段契约，当前仍未实现完整 `FormulaInputAssemblyQuery`。
 - Snapshot 只提供 CardId 对应的规则属性，不负责选择 CardId、公式、参与角色或随机点数。
-- Formula 组装只应把“外部已选择的单张进攻卡 + 单张防守卡 + 明确字段选择 + 外部上下文”映射为 `FFormulaResolverInput`。
+- 完整 Formula Input Assembly 最终需要把“外部已选择的参与卡 + 明确字段选择 + 外部上下文”映射为 `FFormulaResolverInput`；但 4.51 Review 已将第一步收窄为单张卡的 Snapshot / 外部上下文到 `FSingleCardFormulaInputContract`，Resolver Input 数值映射不进入 4.52。
 - 组装模块不得调用 `FormulaResolver`，不得推进 MatchPlay，不得检查或修改 `AvailableCardIds / UsedCardIds`。
 - 当前继续排除技能修正、多卡组合公式、自动选牌、AI、Provider、DataTable、UI / 蓝图和 External API v1 接入。
 - CoreRules 继续禁止内部生成随机数。D6、D12、开局 TieBreaker 和其他随机结果均由外部提供。
@@ -87,9 +87,9 @@ Snapshot 不能自行决定：
 
 开局 TieBreaker 只属于初始先攻判断，不是 `FFormulaResolverInput` 字段。它继续由外部传入 `InitialTurnOrderResolver` 链路，未来 Formula 组装不得吸收、生成或复用 TieBreaker。
 
-## 确定性组装原则
+## 后续 Resolver Input 数值组装原则
 
-未来组装逻辑应：
+在 Single-Card Query 之后，若未来单独评审并实现从已验证 Contract / Snapshot 到 `FFormulaResolverInput` 的数值映射，该后续逻辑应：
 
 1. 接收 `const FPlayerCardRuleSnapshotSet&` 和外部已明确的单卡组装请求。
 2. 复用 `FPlayerCardRuleSnapshotQuery::FindByCardId` 查询每方一张 Snapshot。
@@ -112,23 +112,26 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 
 ## FormulaInputAssemblyQuery 状态
 
-阶段 4.50 未实现 `FormulaInputAssemblyQuery`。建议后续基于已验证契约实现，但不应把完整公式表、技能或多卡角色系统塞入第一版 Query。
+阶段 4.50 未实现 `FormulaInputAssemblyQuery`。阶段 4.51 Review 建议 4.52 新增只读的 Single-Card Formula Input Assembly Query，但将职责收窄为：
 
-推荐先定义最小单卡契约：
+- 接收 SnapshotSet 和一张外部已选择 CardId 的显式公式上下文。
+- 复用 Snapshot Query 和 Contract Validator。
+- 验证 `ParticipantRole` 与所选 Snapshot 的实际 GK 身份。
+- 成功时返回经过完整验证的 `FSingleCardFormulaInputContract`。
+- 失败时返回结构化错误和下层诊断，不返回可用的半组装 Contract。
+- 不读取属性数值，不生成 `FFormulaResolverInput`，不调用 Resolver。
 
-- 每方恰好一个外部选择的 CardId。
-- 每方一个显式属性来源描述。
-- 第一版只支持已明确列出的确定性属性运算；未支持运算结构化失败，不做默认推断。
-- FormulaType、双方 Modifier、ComparePoint、D6 来源标记、门将参与声明和日志上下文均显式输入。
-- 输出包含 `bSuccess`、结构化 ErrorCode / ErrorMessage、双方 Snapshot Query 结果和组装后的 `FFormulaResolverInput`。
-- 失败时不返回半组装成功输入，不调用 Resolver。
+完整评审见 `CoreRules_FormulaInputAssemblyQueryContractReview.md`。
 
 推荐阶段顺序：
 
 1. 4.50：Single-Card Formula Input Assembly Contract Types + Validator（已完成）。
-2. 4.50.5：CoreRules Docs Sync（当前文档同步）。
-3. 4.51：基于已验证契约实现只读 `FormulaInputAssemblyQuery`。
-4. 后续再评审技能契约；多卡组合公式单独立项。
+2. 4.50.5：CoreRules Docs Sync（已完成）。
+3. 4.51：Formula Input Assembly Query Contract Review（已完成 Review，不写功能代码）。
+4. 4.52：在 4.51 Review 边界内实现只读 Single-Card Formula Input Assembly Query。
+5. 后续单独评审从已验证 Contract / Snapshot 到 `FFormulaResolverInput` 的数值映射；技能契约和多卡组合继续后移。
+
+4.51 的详细输入、输出、依赖、GK 交叉验证、错误码和 4.52 最小范围见 `CoreRules_FormulaInputAssemblyQueryContractReview.md`。
 
 ## 如何避免职责漂移
 

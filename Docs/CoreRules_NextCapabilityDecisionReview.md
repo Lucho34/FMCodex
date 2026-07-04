@@ -135,7 +135,8 @@ UI / 蓝图应在真实交互需求和数据适配层确定后单独立项，不
 | 4.48 | **Player Card Rule Snapshot Query（已完成）**：只读验证并按 CardId 查询快照值拷贝，不接 DataTable、Content、MatchPlay 或技能执行。 | 中 |
 | 4.49 | **Formula Input Assembly Boundary Review（已完成）**：定义属性与外部掷骰如何确定性组装现有 Formula 输入，不执行技能。 | 中 |
 | 4.50 | **Single-Card Formula Input Assembly Contract Types + Validator（已完成）**：冻结并验证单卡角色、属性、外部 D6、外部 Modifier 与日志上下文；不调用 FormulaResolver。 | 中 |
-| 4.51 | **FormulaInputAssemblyQuery**：基于已验证契约与 PlayerCardRuleSnapshot 只读组装 Formula 输入，并交叉验证角色与实际 GK 身份。 | 中 |
+| 4.51 | **Formula Input Assembly Query Contract Review**：评审只读 Query 的输入、输出、依赖、错误码和角色 / GK 身份交叉验证；只写文档。 | 低 |
+| 4.52 | **Single-Card Formula Input Assembly Query**：复用 Snapshot Query 与 Contract Validator，返回经过 GK 身份交叉验证的单卡 Contract；不生成 `FFormulaResolverInput`。 | 中 |
 
 每个实现阶段都应先验证是否能保持 External API v1 不变；如必须改变，应停止并单独做兼容性 Review。
 
