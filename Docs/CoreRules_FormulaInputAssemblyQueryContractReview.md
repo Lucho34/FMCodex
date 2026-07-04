@@ -1,6 +1,6 @@
 # CoreRules Formula Input Assembly Query Contract Review
 
-本文记录阶段 4.51 对 Formula Input Assembly Query 的契约评审，并合并同步阶段 4.52 Query 实现、4.53 独立验收和 4.53.1 Query Boundary Fix 的结果。当前 CoreRules 为 514/514 测试通过；这些阶段仍属于第 4 部分，不进入第 5 阶段技能系统。
+本文记录阶段 4.51 对 Formula Input Assembly Query 的契约评审，并合并同步阶段 4.52 Query 实现、4.53 独立验收和 4.53.1 Query Boundary Fix 的结果。加入后续 Assembler 与 Executor 测试后，当前 CoreRules 为 521/521 测试通过；这些阶段仍属于第 4 部分，不进入第 5 阶段技能系统。
 
 ## Review 结论
 
@@ -249,7 +249,7 @@ GK 身份交叉验证规则为：
 - 补充 Query 层 `Transition` 成功测试。
 - 补充 `Defender + 非 GK Snapshot` 成功测试。
 
-当前 Query 测试覆盖 `Transition` 成功、`Finishing` 成功、Defender + 非 GK Snapshot 成功、有效 GK、GK 伪声明双向失败、Snapshot 缺失、InvalidSnapshotSet 诊断字段、Modifier 缺失 / 非有限值、非法 `Determination`、Validator 失败保留、输入不变和禁止依赖。阶段 4.53.1 时 CoreRules 为 502/502 通过；加入 4.55 Assembler 测试后当前为 514/514 通过。
+当前 Query 测试覆盖 `Transition` 成功、`Finishing` 成功、Defender + 非 GK Snapshot 成功、有效 GK、GK 伪声明双向失败、Snapshot 缺失、InvalidSnapshotSet 诊断字段、Modifier 缺失 / 非有限值、非法 `Determination`、Validator 失败保留、输入不变和禁止依赖。阶段 4.53.1 时 CoreRules 为 502/502 通过；加入 4.55 Assembler 测试后为 514/514，通过 4.58 Executor 测试后当前为 521/521。
 
 ## 当前风险
 

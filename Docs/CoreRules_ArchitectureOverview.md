@@ -5,7 +5,7 @@
 | 分层 | 当前职责 | 代表模块 |
 | --- | --- | --- |
 | State 层 | 保存比赛运行态和双方卡牌使用状态，不主动执行业务逻辑。 | `MatchRuntimeState`、`CardUsageState`、`MatchPlayState` |
-| Rule Data Snapshot / Contract / Validation / Query / Assembly 层 | 接收 provider-neutral 的只读卡牌规则值快照，定义、组装并验证显式单卡公式输入契约，再将双边成功 Query Result 转换为 Resolver Input；与玩家归属和卡牌使用状态分离。 | `PlayerCardRuleSnapshot`、`PlayerCardRuleSnapshotValidator`、`PlayerCardRuleSnapshotQuery`、`SingleCardFormulaInputContract`、`SingleCardFormulaInputContractValidator`、`SingleCardFormulaInputAssemblyQuery`、`SingleCardFormulaResolverInputAssembler` |
+| Rule Data Snapshot / Contract / Validation / Query / Assembly / Execution 层 | 接收 provider-neutral 的只读卡牌规则值快照，定义、组装并验证显式单卡公式输入契约，将双边成功 Query Result 转换为 Resolver Input，再通过薄执行边界调用一次 Resolver；与玩家归属和卡牌使用状态分离。 | `PlayerCardRuleSnapshot`、`PlayerCardRuleSnapshotValidator`、`PlayerCardRuleSnapshotQuery`、`SingleCardFormulaInputContract`、`SingleCardFormulaInputContractValidator`、`SingleCardFormulaInputAssemblyQuery`、`SingleCardFormulaResolverInputAssembler`、`SingleCardFormulaResolutionExecutor` |
 | Resolver 层 | 完成单一规则计算或原子状态转换；随机数和公式输入由外部传入。 | `FormulaResolver`、`GoalResolver`、`AttackOpportunityResolver`、`CardUsageResolver` |
 | Flow 层 | 按固定顺序组合多个 Resolver，返回 Updated 状态。 | `AttackResolutionFlow`、`FormulaAttackFlow`、`MatchPlayAttackFlow` |
 | Query / Result View 层 | 只读提取状态、可用性、预览、初始化快照、具体请求预检、诊断和执行结果摘要。 | `MatchPlayStatusQuery`、`MatchPlayAvailabilityQuery`、`MatchPlayActionPreview`、`MatchPlayRequestValidationReport`、`MatchPlaySubmitAttackResultQuery`、`MatchPlayExternalStateView`、`MatchPlayExternalMatchSetupView`、`MatchPlayExternalAttackRequestPreflight` |
@@ -13,7 +13,7 @@
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
 | 外部 Controller 层 | 作为 Facade 上层入口，包装一次外部请求的提交结果和 Result View。 | `MatchPlayExternalTurnController` |
-| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询、单卡公式输入契约验证 / 组装、Resolver Input 转换和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`SingleCardFormulaInputContractValidatorTests.cpp`、`SingleCardFormulaInputAssemblyQueryTests.cpp`、`SingleCardFormulaResolverInputAssemblerTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
+| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询、单卡公式输入契约验证 / 组装、Resolver Input 转换、薄执行边界和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`SingleCardFormulaInputContractValidatorTests.cpp`、`SingleCardFormulaInputAssemblyQueryTests.cpp`、`SingleCardFormulaResolverInputAssemblerTests.cpp`、`SingleCardFormulaResolutionExecutorTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
 
 阶段 4.47 已落地 `FPlayerCardRuleSnapshot`、`FPlayerCardRuleSnapshotSet` 与 `FPlayerCardRuleSnapshotValidator::Validate`。它们只表达和验证卡牌规则定义，不表达玩家归属或 `AvailableCardIds / UsedCardIds` 使用状态；当前也不接入 MatchPlay 或 External API v1。SkillId 仅为结构化不透明字段，不执行技能效果，因此本阶段仍属于第 4 部分 CoreRules 数据边界落地，不是第 5 阶段技能系统实现。
 
@@ -23,7 +23,11 @@
 
 阶段 4.52 已落地只读 `FSingleCardFormulaInputAssemblyQuery::Assemble`。它复用 `FPlayerCardRuleSnapshotQuery::FindByCardId` 和 `FSingleCardFormulaInputContractValidator::Validate`，把单张 Snapshot 与外部公式上下文组装并验证为 `FSingleCardFormulaInputContract`，同时交叉验证角色与实际 GK 身份。阶段 4.53 独立验收未发现越界调用；4.53.1 修正 Snapshot 集合级失败的 `InvalidField` 诊断并补充 Transition / Defender 成功测试。该阶段基线为 502/502 测试通过。Query 不调用 FormulaResolver、不生成 `FFormulaResolverInput`，也不接入 MatchPlay / External API v1。
 
-阶段 4.55 已落地只读、纯函数式 `FSingleCardFormulaResolverInputAssembler::Assemble`。它消费双方成功 Query Result 和外部 PlayerId，将一致 FormulaType、直接属性值、外部 D6 / Modifier、单卡 Stamina、GK 标记、统一 LogId / TurnIndex 和攻前守后的 CardId 转换为 `FFormulaResolverInput`。阶段 4.56 独立验收通过，未发现越界调用、字段映射错误或验收级测试缺口；当前为 514/514 测试通过。Assembler 不调用或修改 FormulaResolver，不重新查询 Snapshot，也不接入 MatchPlay / External API v1。
+阶段 4.55 已落地只读、纯函数式 `FSingleCardFormulaResolverInputAssembler::Assemble`。它消费双方成功 Query Result 和外部 PlayerId，将一致 FormulaType、直接属性值、外部 D6 / Modifier、单卡 Stamina、GK 标记、统一 LogId / TurnIndex 和攻前守后的 CardId 转换为 `FFormulaResolverInput`。阶段 4.56 独立验收通过，未发现越界调用、字段映射错误或验收级测试缺口；当时为 514/514 测试通过。Assembler 不调用或修改 FormulaResolver，不重新查询 Snapshot，也不接入 MatchPlay / External API v1。
+
+阶段 4.58 已落地 `FSingleCardFormulaResolutionExecutor::Execute`。它只接收 `const FFormulaResolverInput&`，最小校验 FormulaType、有限值、外部 D6、单卡体力、TurnIndex 和有序 CardId，随后只调用一次 FormulaResolver。结构化 Result 保留执行状态、错误诊断、原始输入副本和原始 Resolver Result。阶段 4.59 轻量验收通过，无需修正；当前 CoreRules 为 521/521 通过。Executor 不调用 Query、Snapshot Query 或 Assembler，不修改 FormulaResolver / FormulaAttackFlow，也不接入 Flow、MatchPlay 或 External API v1。
+
+阶段 4.60 确认内部链路能力已覆盖 `SnapshotQuery -> InputAssemblyQuery -> ResolverInputAssembler -> Executor -> FormulaResolver`。当前没有统一调用入口和端到端组合测试，但不构成规则能力缺口。`FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；没有真实调用方前不新增包装层。
 
 ## 单次攻击请求路径
 

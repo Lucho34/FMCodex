@@ -1,6 +1,6 @@
 # CoreRules Next Capability Decision Review
 
-本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步至 4.57 Formula Resolution Execution Boundary Review。当前基线为 514/514 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步至 4.60 Single-Card Formula Resolution Chain Completion Review。当前基线为 521/521 测试通过，External API v1 暂定冻结。
 
 ## 决策结论
 
@@ -143,7 +143,10 @@ UI / 蓝图应在真实交互需求和数据适配层确定后单独立项，不
 | 4.55 | **Single-Card Formula Resolver Input Assembler（已完成）**：每侧一张已验证卡，组装完整 Resolver Input，但不调用 FormulaResolver。 | 中 |
 | 4.56 | **Assembler Independent Review（已完成）**：验收通过，未发现越界调用、字段映射错误或验收级测试缺口；不需要修正阶段。 | 低 |
 | 4.57 | **Formula Resolution Execution Boundary Review（已完成）**：评审只接收 Resolver Input、做最小防御校验并调用一次 Resolver 的中性执行边界；只写文档。 | 低到中 |
-| 4.58 | **Single-Card Formula Resolution Executor（建议）**：新增结构化执行 Result / 错误码和独立测试，不接入 MatchPlay、External API v1 或既有 Flow。 | 中 |
+| 4.58 | **Single-Card Formula Resolution Executor（已完成）**：新增结构化执行 Result / 错误码和 7 项独立测试，不接入 MatchPlay、External API v1 或既有 Flow。 | 中 |
+| 4.59 | **Lightweight Boundary Review（已完成）**：验收通过，未发现越界或职责偷渡，不需要 4.59.1。 | 低 |
+| 4.60 | **Chain Completion Review（已完成）**：当前内部链路能力完整；缺少统一入口但不是规则缺口，暂不新增 Pipeline。 | 低 |
+| 未来条件项 | **`FSingleCardFormulaResolutionPipeline`**：仅在真实内部调用方出现时评审；必须保留下层诊断，不直接调用 Snapshot Query 或 FormulaResolver。 | 中 |
 
 每个实现阶段都应先验证是否能保持 External API v1 不变；如必须改变，应停止并单独做兼容性 Review。
 

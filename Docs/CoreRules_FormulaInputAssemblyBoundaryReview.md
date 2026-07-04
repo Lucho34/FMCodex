@@ -1,6 +1,6 @@
 # CoreRules Formula Input Assembly Boundary Review
 
-本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步至阶段 4.57 Formula Resolution Execution Boundary Review。当前基线为 514/514 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步至阶段 4.60 Single-Card Formula Resolution Chain Completion Review。当前基线为 521/521 测试通过，External API v1 暂定冻结。
 
 ## Review 结论
 
@@ -137,8 +137,11 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 10. 4.56：Assembler Independent Review（已通过，不需要 4.56.1）。
 11. 4.56.5：CoreRules Docs Sync（已完成）。
 12. 4.57：Formula Resolution Execution Boundary Review（已完成，只写文档）。
-13. 4.58：最小 `FSingleCardFormulaResolutionExecutor`（建议；只接收 Resolver Input，不做调用链集成）。
-14. 技能契约、多卡组合和非直接属性运算继续后移。
+13. 4.58：最小 `FSingleCardFormulaResolutionExecutor`（已完成；只接收 Resolver Input，不做调用链集成）。
+14. 4.59：Executor Lightweight Boundary Review（已通过，不需要 4.59.1）。
+15. 4.60：Single-Card Formula Resolution Chain Completion Review（已完成；链路能力完整，暂不新增 Pipeline）。
+16. 4.60.5：CoreRules Docs Sync（当前文档同步）。
+17. 技能契约、多卡组合和非直接属性运算继续后移。
 
 4.51 的详细输入、输出、依赖、GK 交叉验证、错误码和 4.52 最小范围见 `CoreRules_FormulaInputAssemblyQueryContractReview.md`。
 

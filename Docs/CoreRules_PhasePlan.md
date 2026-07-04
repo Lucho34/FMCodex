@@ -4,9 +4,9 @@
 
 ## 当前节点
 
-- 阶段 4.54 Formula Resolver Input Boundary Review、4.55 Assembler、4.56 独立验收和 4.56.5 Docs Sync 已完成。
-- 当前进行阶段 4.57 Formula Resolution Execution Boundary Review；本阶段只修改文档。
-- CoreRules 当前为 514/514 通过。
+- 阶段 4.57 Review、4.58 Executor、4.59 轻量验收和 4.60 链路完成度 Review 已完成。
+- 当前进行阶段 4.60.5 CoreRules Docs Sync；本阶段只修改文档。
+- CoreRules 当前为 521/521 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -138,10 +138,20 @@
   - 建议新增 `FSingleCardFormulaResolutionExecutor`，只接收完整 `FFormulaResolverInput`，做最小单卡防御校验后调用一次 FormulaResolver。
   - Executor 不读取 Query Result、Snapshot Query，不调用 Assembler，不接入 MatchPlay / External API v1。
   - 建议使用独立结构化 Result，保留输入副本和 Resolver 原始结果；本阶段只产出文档。
+- 4.58 Single-Card Formula Resolution Executor
+  - 新增 `SingleCardFormulaResolutionExecutor.h/.cpp` 和 `SingleCardFormulaResolutionExecutorTests.cpp`。
+  - Executor 只接收 `const FFormulaResolverInput&`，做最小单卡校验后只调用一次 FormulaResolver，并保留原始输入和原始 Resolver Result。
+  - 新增 7 项测试；CoreRules 为 521/521 通过。
+- 4.59 Lightweight Boundary Review
+  - 轻量验收通过，未发现越界；最小校验未偷渡 Query、Assembler、GK 身份或 Snapshot 职责，不需要 4.59.1。
+- 4.60 Report-only Single-Card Formula Resolution Chain Completion Review
+  - 当前链路能力完整，覆盖 Snapshot Query、Input Assembly Query、Resolver Input Assembler、Executor 和 FormulaResolver。
+  - 缺少统一调用入口，但不是规则能力缺口；当前没有真实调用方证明需要新包装层，暂不建议立即新增 Pipeline。
 
 ## 建议后续阶段
 
-- 4.58 可实现最小 `FSingleCardFormulaResolutionExecutor`、结构化 Result / 错误码和独立测试；不做调用链集成，不修改 FormulaResolver 或既有 Flow。
+- 先完成 4.60.5 Docs Sync 收口。
+- `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。
 - 后续再评审最小技能触发与效果契约；技能实现继续后移。
 - 后续完整比赛循环必须单独拆阶段。
 - 技能系统必须单独拆阶段。
