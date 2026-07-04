@@ -1,6 +1,6 @@
 # CoreRules Formula Input Assembly Query Contract Review
 
-本文记录阶段 4.51 对后续 Formula Input Assembly Query 的契约评审。当前代码基线为阶段 4.50 Single-Card Formula Input Assembly Contract Types + Validator，文档基线为阶段 4.50.5 CoreRules Docs Sync。阶段 4.51 只产出 Review，不新增或修改 Source 文件；CoreRules 仍处于第 4 部分，不进入第 5 阶段技能系统。
+本文记录阶段 4.51 对 Formula Input Assembly Query 的契约评审，并合并同步阶段 4.52 Query 实现、4.53 独立验收和 4.53.1 Query Boundary Fix 的结果。当前 CoreRules 为 502/502 测试通过；这些阶段仍属于第 4 部分，不进入第 5 阶段技能系统。
 
 ## Review 结论
 
@@ -12,7 +12,7 @@
 - Query 必须保持只读、确定性和输入不变；失败时不得返回可被误认为有效的半组装 Contract。
 - 当前名称应显式保留 `SingleCard` 范围，避免让调用方误以为它支持多卡公式。
 
-阶段 4.51 不实现 Query。建议阶段 4.52 在本 Review 边界内实现，例如使用 `FSingleCardFormulaInputAssemblyQuery` 一类能明确表达单卡范围的名称。
+阶段 4.52 已按本 Review 边界落地 `FSingleCardFormulaInputAssemblyQuery`。阶段 4.53 未发现越界调用，命名风险较低；阶段 4.53.1 已修复 P3 诊断字段问题并补充成功测试。
 
 ## 职责边界
 
@@ -39,19 +39,19 @@ Query 不负责：
 - 引入抽牌、洗牌、手牌、牌库、牌库顶或初始发牌语义。
 - 推进完整比赛循环。
 
-因此，阶段 4.52 即使实现 Query，也仍是第 4 部分的只读数据 / 契约边界，不是第 5 阶段技能实现。
+因此，阶段 4.52 Query 仍是第 4 部分的只读数据 / 契约边界，不是第 5 阶段技能实现。
 
 ## 与 FFormulaResolverInput 的边界
 
 `FSingleCardFormulaInputContract` 当前保存“选择了哪个 CardId、角色、属性和外部上下文”，但不保存所选 Snapshot 属性的数值，也不表达属性求和、平均、取半或多卡组合规则。
 
-因此阶段 4.52 Query 不应直接生成 `FFormulaResolverInput`。从已验证 Contract 和 Snapshot 数值继续映射到 `BaseValue`、`ParticipatingStamina`、`bGoalkeeperParticipated` 等 Resolver 字段，仍需要后续独立 Review；不能借 Query 名称把这一步暗中实现。
+阶段 4.52 Query 不生成 `FFormulaResolverInput`。从已验证 Contract 和 Snapshot 数值继续映射到 `BaseValue`、`ParticipatingStamina`、`bGoalkeeperParticipated` 等 Resolver 字段，仍需要后续独立 Review；不能借 Query 名称把这一步暗中实现。
 
-## 建议输入结构
+## 已落地输入结构
 
-建议阶段 4.52 单独定义外部上下文输入结构，而不是把一个预先构造好的 `FSingleCardFormulaInputContract` 作为唯一输入。否则 Query 只剩“再次验证 Contract”，无法清楚表达“外部未验证请求”到“已验证 Contract”的信任边界。
+阶段 4.52 新增 `FSingleCardFormulaInputAssemblyQueryInput`，单独表达外部上下文输入，而不是把预先构造好的 `FSingleCardFormulaInputContract` 作为唯一输入。这样保留了“外部未验证请求”到“已验证 Contract”的信任边界。
 
-建议概念字段与 4.50 Contract 一一对应：
+输入字段与 4.50 Contract 一一对应：
 
 | 输入字段 | 来源与边界 |
 | --- | --- |
@@ -71,9 +71,9 @@ Query 不负责：
 
 第三类状态不属于 Query 输入。
 
-## 建议输出结构
+## 已落地输出结构
 
-建议结果至少包含：
+`FSingleCardFormulaInputAssemblyQueryResult` 包含：
 
 - `bSuccess`。
 - Query 顶层结构化 ErrorCode / ErrorMessage。
@@ -84,9 +84,9 @@ Query 不负责：
 
 失败时 Contract 字段即使已被临时复制，也不得通过 `bSuccess`、`bIsValid` 或其他标记伪装为可用输出。Query 不修改 SnapshotSet、外部上下文或任何比赛状态。
 
-## 建议验证顺序
+## 已落地验证顺序
 
-为保证失败优先级稳定，建议阶段 4.52 固定以下顺序：
+为保证失败优先级稳定，阶段 4.52 按以下顺序实现：
 
 1. 按外部上下文构造候选 Contract。
 2. 调用 `FSingleCardFormulaInputContractValidator::Validate`。
@@ -156,11 +156,11 @@ Query 不负责：
 
 `EFormulaType::Determination` 继续明确拒绝。Query 不得绕过 Contract Validator，也不得因为 Snapshot 和属性有效就接受 Determination。
 
-## 建议结构化错误码
+## 已落地结构化错误码
 
-建议 Query 顶层错误码保持最小，不复制两个下层模块已有的全部错误码：
+Query 顶层错误码保持最小，不复制两个下层模块已有的全部错误码：
 
-| 建议错误码 | 含义 |
+| 错误码 | 含义 |
 | --- | --- |
 | `None` | 无错误。 |
 | `ContractValidationFailed` | 4.50 Contract Validator 失败；具体原因保留在 ContractValidationResult。 |
@@ -168,9 +168,9 @@ Query 不负责：
 | `GoalkeeperRoleRequiresGoalkeeperSnapshot` | 契约声明 `Goalkeeper`，但指定 CardId 对应的 Snapshot 不是 GK。 |
 | `NonGoalkeeperRoleCannotUseGoalkeeperSnapshot` | 契约声明 `Attacker / Defender`，但指定 CardId 对应的 Snapshot 是 GK。 |
 
-当前不建议新增 `AttributeNotFound`：所有通用属性都是 `FPlayerAttributes` 的固定字段；有效 GK Snapshot 的六项 GK 属性由 Snapshot Validator 保证存在且合法。
+当前未新增 `AttributeNotFound`：所有通用属性都是 `FPlayerAttributes` 的固定字段；有效 GK Snapshot 的六项 GK 属性由 Snapshot Validator 保证存在且合法。
 
-当前也不建议把 Determination、D6、Modifier、角色 / 属性类别等错误复制为 Query 顶层枚举，它们应继续由 `FSingleCardFormulaInputContractValidationResult` 精确表达。
+当前也未把 Determination、D6、Modifier、角色 / 属性类别等错误复制为 Query 顶层枚举，它们继续由 `FSingleCardFormulaInputContractValidationResult` 精确表达。
 
 ## 依赖方向
 
@@ -192,33 +192,64 @@ Query 不负责：
 - `-> Random`
 - `-> InitialTurnOrderResolver / TieBreaker`
 
-## 阶段 4.52 建议
+## 4.52 落地结果
 
-建议 4.52 实现 Query，但只做一个边界清晰的实现阶段，不再拆成多个独立功能阶段。原因是输入 / 结果类型、只读 Query、GK 交叉验证和自动化测试共同构成一个不可分割的最小能力，拆开会产生暂时不可验证或不可使用的半成品。
+阶段 4.52 新增：
 
-阶段内部可按三个检查点执行：
+- `SingleCardFormulaInputAssemblyQuery.h`
+- `SingleCardFormulaInputAssemblyQuery.cpp`
+- `SingleCardFormulaInputAssemblyQueryTests.cpp`
 
-1. 定义外部上下文输入、结果和顶层错误码。
-2. 实现只读 Query，严格复用两个现有下层模块。
-3. 增加成功、下层失败、GK 交叉验证、输入不变和禁止依赖测试。
+`FSingleCardFormulaInputAssemblyQuery::Assemble` 是只读 Single-Card Formula Input Assembly Query。它只负责把 `FPlayerCardRuleSnapshotSet` 中指定 CardId 的 `FPlayerCardRuleSnapshot` 与外部公式上下文组装并验证为 `FSingleCardFormulaInputContract`。
 
-如沿用当前文档节奏，可在实现完成后单独安排 4.52.5 Docs Sync；这不代表把 Query 功能拆成多个实现阶段。
+输入包含：
 
-### 4.52 最小实现范围
+- `CardId`
+- `FormulaType`
+- `ParticipantRole`
+- `Attribute`
+- `bHasExternalD6ComparePoint` / `ExternalD6ComparePoint`
+- `bHasExternalModifier` / `ExternalModifier`
+- `LogId`
+- `TurnIndex`
+- `ContextTag`
 
-- 单张 CardId。
-- 单一 `Transition / Finishing` FormulaType。
-- 单一 `Attacker / Defender / Goalkeeper` 角色。
-- 单一显式属性选择。
-- 外部显式 D6。
-- 外部显式且有限的 Modifier，不增加数值范围。
-- 外部日志上下文。
-- 复用 Snapshot Query。
-- 复用 Contract Validator。
-- 验证角色与所选 Snapshot 的实际 GK 身份。
-- 返回结构化结果和已验证 Contract。
+输出包含：
 
-不生成 `FFormulaResolverInput`，不读取属性数值，不支持属性运算、技能、多卡、随机数、TieBreaker、MatchPlay 或 External API v1。
+- 成功状态 `bSuccess`
+- 结构化 ErrorCode / ErrorMessage
+- `InvalidField`
+- `FPlayerCardRuleSnapshotQueryResult`
+- `FSingleCardFormulaInputContractValidationResult`
+- 成功组装的 `FSingleCardFormulaInputContract`
+
+Query 调用 `FSingleCardFormulaInputContractValidator::Validate` 做最终契约校验，并调用 `FPlayerCardRuleSnapshotQuery::FindByCardId` 取得只读 Snapshot 值拷贝。它不调用 `FormulaResolver`，不生成 `FFormulaResolverInput`，不接入 MatchPlay 或 External API v1。
+
+GK 身份交叉验证规则为：
+
+- `ParticipantRole == Goalkeeper` 时，所选 Snapshot 必须是 GK。
+- `ParticipantRole == Attacker / Defender` 时，所选 Snapshot 不能是 GK。
+
+`EFormulaType` 继续作为 Query 输入中的 FormulaType。它不引入新的 Match Phase 语义；`Determination` 虽存在于枚举中，仍由 Contract Validator 明确拒绝，当前只支持 `Transition / Finishing`。
+
+## 4.53 独立验收与 4.53.1 修正
+
+阶段 4.53 独立验收确认：
+
+- Query 保持只读且只返回 `FSingleCardFormulaInputContract`。
+- 规定的 Snapshot Query 与 Contract Validator 调用存在。
+- 未发现 FormulaResolver、`FFormulaResolverInput`、MatchPlay、External API v1、随机数、TieBreaker、技能、多卡、Provider、DataTable 或牌库语义等越界调用。
+- `EFormulaType` 作为 FormulaType 的命名风险较低；继续依靠 Validator 拒绝 `Determination`。
+- 发现一个 P3 诊断问题：所有 `SnapshotQueryFailed` 曾统一把顶层 `InvalidField` 标记为 `CardId`。
+
+阶段 4.53.1 已修复该问题：
+
+- 下层原因是 `InvalidCardId` 或 `CardNotFound` 时，顶层 `InvalidField` 标记为 `CardId`。
+- 下层原因是 `InvalidSnapshotSet` 等集合级 / 非单字段错误时，顶层 `InvalidField` 保留 `NAME_None`。
+- 补充 Query 层 `Transition` 成功测试。
+- 补充 `Defender + 非 GK Snapshot` 成功测试。
+
+当前测试覆盖 `Transition` 成功、`Finishing` 成功、Defender + 非 GK Snapshot 成功、有效 GK、GK 伪声明双向失败、Snapshot 缺失、InvalidSnapshotSet 诊断字段、Modifier 缺失 / 非有限值、非法 `Determination`、Validator 失败保留、输入不变和禁止依赖。CoreRules 全量测试为 502/502 通过，UE5 Development Editor 编译与 UnrealHeaderTool WarningsAsErrors 复验通过。
 
 ## 当前风险
 
@@ -229,8 +260,8 @@ Query 不负责：
 - **重复底层校验**：在 Query 中重写 Snapshot 或 Contract Validator 逻辑会产生错误码和规则漂移。
 - **错误信息扁平化**：只返回一个字符串会丢失 SnapshotQueryResult 与 ContractValidationResult 的诊断价值。
 - **公式语义过度承诺**：当前允许矩阵是结构允许关系，不代表所有 Transition / Finishing 技能都可使用任意属性。
-- **范围回流**：技能、多卡、属性运算、随机数或 MatchPlay 任一项进入 4.52，都会突破本 Review 的最小边界。
+- **范围回流**：技能、多卡、属性运算、随机数或 MatchPlay 任一项进入当前 Query，都会突破本 Review 的最小边界。
 
 ## 持续边界
 
-阶段 4.51 仅产出本文档 Review，不新增 Source 文件。当前仍不包含 Formula Input Assembly Query 实现、`FFormulaResolverInput` 生成、FormulaResolver 调用、技能效果、多卡组合、随机数生成、TieBreaker、卡牌数据库、Provider、DataTable、Content、MatchPlay / External API v1、UI、蓝图、联网、Steam、完整比赛循环，也不引入抽牌、洗牌、手牌或牌库语义。
+当前仍不包含 `FFormulaResolverInput` 生成、FormulaResolver 调用、技能效果、多卡组合、随机数生成、TieBreaker、卡牌数据库、Provider、DataTable、Content、MatchPlay / External API v1、UI、蓝图、联网、Steam、完整比赛循环，也不引入抽牌、洗牌、手牌或牌库语义。

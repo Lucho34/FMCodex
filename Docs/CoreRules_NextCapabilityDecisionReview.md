@@ -1,6 +1,6 @@
 # CoreRules Next Capability Decision Review
 
-本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步 4.46 至 4.50 的数据边界、Snapshot 与单卡公式输入契约落地结果。当前基线为 489/489 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.45 对 CoreRules 下一能力方向的决策审查，并同步 4.46 至 4.53.1 的数据边界、Snapshot、单卡公式输入契约与 Query 落地结果。当前基线为 502/502 测试通过，External API v1 暂定冻结。
 
 ## 决策结论
 
@@ -135,8 +135,10 @@ UI / 蓝图应在真实交互需求和数据适配层确定后单独立项，不
 | 4.48 | **Player Card Rule Snapshot Query（已完成）**：只读验证并按 CardId 查询快照值拷贝，不接 DataTable、Content、MatchPlay 或技能执行。 | 中 |
 | 4.49 | **Formula Input Assembly Boundary Review（已完成）**：定义属性与外部掷骰如何确定性组装现有 Formula 输入，不执行技能。 | 中 |
 | 4.50 | **Single-Card Formula Input Assembly Contract Types + Validator（已完成）**：冻结并验证单卡角色、属性、外部 D6、外部 Modifier 与日志上下文；不调用 FormulaResolver。 | 中 |
-| 4.51 | **Formula Input Assembly Query Contract Review**：评审只读 Query 的输入、输出、依赖、错误码和角色 / GK 身份交叉验证；只写文档。 | 低 |
-| 4.52 | **Single-Card Formula Input Assembly Query**：复用 Snapshot Query 与 Contract Validator，返回经过 GK 身份交叉验证的单卡 Contract；不生成 `FFormulaResolverInput`。 | 中 |
+| 4.51 | **Formula Input Assembly Query Contract Review（已完成）**：评审只读 Query 的输入、输出、依赖、错误码和角色 / GK 身份交叉验证；只写文档。 | 低 |
+| 4.52 | **Single-Card Formula Input Assembly Query（已完成）**：复用 Snapshot Query 与 Contract Validator，返回经过 GK 身份交叉验证的单卡 Contract；不生成 `FFormulaResolverInput`。 | 中 |
+| 4.53 | **Independent Review（已完成）**：核心边界通过，未发现越界调用；记录一个 P3 诊断问题和两个成功测试补充点。 | 低 |
+| 4.53.1 | **Query Boundary Fix（已完成）**：修正 Snapshot 集合级失败的 `InvalidField`，补充 Transition / Defender 成功测试。 | 低 |
 
 每个实现阶段都应先验证是否能保持 External API v1 不变；如必须改变，应停止并单独做兼容性 Review。
 

@@ -4,9 +4,9 @@
 
 ## 当前节点
 
-- 阶段 4.50 Single-Card Formula Input Assembly Contract Types + Validator 与 4.50.5 CoreRules Docs Sync 已完成。
-- 当前进行阶段 4.51 Formula Input Assembly Query Contract Review；本阶段只修改文档。
-- CoreRules 当前为 489/489 通过。
+- 阶段 4.51 Formula Input Assembly Query Contract Review、4.52 Query、4.53 独立验收和 4.53.1 Boundary Fix 已完成。
+- 当前进行阶段 4.53.5 CoreRules Docs Sync；本阶段只修改文档。
+- CoreRules 当前为 502/502 通过。
 - UE5 Development Editor 编译通过。
 - UnrealHeaderTool 强制复验通过，WarningsAsErrors。
 - 当前重点仍是稳定、可解释、可测试的 CoreRules。
@@ -108,12 +108,21 @@
   - 后续 Query 必须把契约角色与所选 `FPlayerCardRuleSnapshot` 的实际 GK 身份交叉验证。
 - 4.50.5 CoreRules Docs Sync
   - 将 4.50 的类型、Validator、测试结果、持续边界和后续 GK 身份风险同步到现有 CoreRules 文档。
+- 4.51 Formula Input Assembly Query Contract Review
+  - 评审只读 Query 的输入、输出、依赖、错误码和 GK 身份交叉验证；本阶段只产出文档。
+- 4.52 Single-Card Formula Input Assembly Query
+  - 新增 `SingleCardFormulaInputAssemblyQuery.h/.cpp` 和 `SingleCardFormulaInputAssemblyQueryTests.cpp`。
+  - Query 只读地把 Snapshot 与外部上下文组装并验证为 `FSingleCardFormulaInputContract`，复用 Snapshot Query 与 Contract Validator。
+  - 不调用 FormulaResolver，不生成 `FFormulaResolverInput`，不接入 MatchPlay / External API v1。
+- 4.53 Single-Card Formula Input Assembly Query Independent Review
+  - 核心边界通过，未发现越界调用；`EFormulaType` 命名风险较低。
+  - 发现一个 P3 诊断字段问题和 Transition / Defender 成功测试补充点。
+- 4.53.1 Single-Card Formula Input Assembly Query Boundary Fix
+  - `InvalidCardId / CardNotFound` 的 `InvalidField` 为 `CardId`；`InvalidSnapshotSet` 等集合级错误保留 `NAME_None`。
+  - 补充 Transition 成功和 Defender + 非 GK Snapshot 成功测试；CoreRules 为 502/502 通过。
 
 ## 建议后续阶段
 
-- 4.51 Formula Input Assembly Query Contract Review：只评审 Query 的输入、输出、依赖、错误码和 GK 交叉验证，不新增 Source 文件。
-- 4.52 在 4.51 Review 边界内实现只读 Single-Card Formula Input Assembly Query；只返回经过 Snapshot 交叉验证的 `FSingleCardFormulaInputContract`，不生成 `FFormulaResolverInput`。
-- 4.52 建议作为一个最小实现阶段，内部按输入 / 结果类型、Query、测试三个检查点执行；实现后可另做 4.52.5 Docs Sync。
 - 从 Contract / Snapshot 数值生成 `FFormulaResolverInput` 必须后续单独 Review，不并入 4.52。
 - 后续再评审最小技能触发与效果契约；技能实现继续后移。
 - 后续完整比赛循环必须单独拆阶段。

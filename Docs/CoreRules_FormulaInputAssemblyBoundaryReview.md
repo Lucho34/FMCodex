@@ -1,10 +1,10 @@
 # CoreRules Formula Input Assembly Boundary Review
 
-本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步阶段 4.50 Single-Card Formula Input Assembly Contract Types + Validator 的落地结果。当前基线为 489/489 测试通过，External API v1 暂定冻结。
+本文记录阶段 4.49 对 Player Card Rule Snapshot 与 `FormulaResolver` 输入之间边界的审查，并同步阶段 4.50 Contract、4.52 Query、4.53 独立验收与 4.53.1 Boundary Fix 的结果。当前基线为 502/502 测试通过，External API v1 暂定冻结。
 
 ## Review 结论
 
-- 4.49 确认未来需要一个只读、确定性的 Formula Input Assembly 边界；4.50 已先冻结并验证单卡字段契约，当前仍未实现完整 `FormulaInputAssemblyQuery`。
+- 4.49 确认需要一个只读、确定性的 Formula Input Assembly 边界；4.50 已冻结单卡字段契约，4.52 已实现只读 Single-Card Query。
 - Snapshot 只提供 CardId 对应的规则属性，不负责选择 CardId、公式、参与角色或随机点数。
 - 完整 Formula Input Assembly 最终需要把“外部已选择的参与卡 + 明确字段选择 + 外部上下文”映射为 `FFormulaResolverInput`；但 4.51 Review 已将第一步收窄为单张卡的 Snapshot / 外部上下文到 `FSingleCardFormulaInputContract`，Resolver Input 数值映射不进入 4.52。
 - 组装模块不得调用 `FormulaResolver`，不得推进 MatchPlay，不得检查或修改 `AvailableCardIds / UsedCardIds`。
@@ -112,7 +112,7 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 
 ## FormulaInputAssemblyQuery 状态
 
-阶段 4.50 未实现 `FormulaInputAssemblyQuery`。阶段 4.51 Review 建议 4.52 新增只读的 Single-Card Formula Input Assembly Query，但将职责收窄为：
+阶段 4.52 已按 4.51 Review 新增只读的 Single-Card Formula Input Assembly Query，并将职责收窄为：
 
 - 接收 SnapshotSet 和一张外部已选择 CardId 的显式公式上下文。
 - 复用 Snapshot Query 和 Contract Validator。
@@ -128,8 +128,11 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 1. 4.50：Single-Card Formula Input Assembly Contract Types + Validator（已完成）。
 2. 4.50.5：CoreRules Docs Sync（已完成）。
 3. 4.51：Formula Input Assembly Query Contract Review（已完成 Review，不写功能代码）。
-4. 4.52：在 4.51 Review 边界内实现只读 Single-Card Formula Input Assembly Query。
-5. 后续单独评审从已验证 Contract / Snapshot 到 `FFormulaResolverInput` 的数值映射；技能契约和多卡组合继续后移。
+4. 4.52：在 4.51 Review 边界内实现只读 Single-Card Formula Input Assembly Query（已完成）。
+5. 4.53：独立验收 Query 边界（核心边界通过，未发现越界调用）。
+6. 4.53.1：修正 `InvalidField` P3 诊断并补充 Transition / Defender 成功测试（已完成）。
+7. 4.53.5：CoreRules Docs Sync（当前文档同步）。
+8. 后续单独评审从已验证 Contract / Snapshot 到 `FFormulaResolverInput` 的数值映射；技能契约和多卡组合继续后移。
 
 4.51 的详细输入、输出、依赖、GK 交叉验证、错误码和 4.52 最小范围见 `CoreRules_FormulaInputAssemblyQueryContractReview.md`。
 
@@ -151,7 +154,7 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 - **不受支持的 FormulaType**：`Determination` 枚举存在但 Resolver 尚不结算，组装成功可能制造假支持。
 - **Modifier 来源混淆**：固定规则常数、技能修正和外部临时修正若共用无来源字段，会降低可解释性。
 - **门将语义误推断**：扫描集合发现 GK 不等于该 GK 参与本次公式。
-- **角色与实际卡牌身份未交叉验证**：4.50 Validator 只检查角色与属性是否匹配；后续 Query 必须把 `ParticipantRole` 与所选 `FPlayerCardRuleSnapshot` 的实际 GK 身份交叉验证，不能仅凭契约中的角色声明。
+- **角色与实际卡牌身份误用**：4.52 Query 已交叉验证 `ParticipantRole` 与所选 Snapshot 的实际 GK 身份；后续调用方仍不得绕过 Query，仅凭契约中的角色声明推断实际 GK 身份。
 - **卡牌可用性污染**：在组装 Query 中读取 Available / Used 会把规则数据与 MatchPlay 状态重新耦合。
 - **多卡范围膨胀**：当前 `ParticipatingStamina` 是数组，不代表本阶段应实现多卡组合。
 - **随机数回流**：为填 ComparePoint 在组装层掷骰，会破坏外部随机输入边界。
@@ -159,4 +162,4 @@ Formula Input Assembly 只消费第一类和第三类输入，不读取第二类
 
 ## 持续边界
 
-当前仍不包含 `FormulaInputAssemblyQuery`、技能效果、多卡组合公式、随机数生成、卡牌数据库 / DataTable、Provider、Content、UObject、UI / 蓝图、MatchPlay / External API v1 接入、完整比赛循环、自动出牌、自动选牌、AI、联网、Steam 或 EOS，也不引入抽牌、洗牌、手牌、牌库或初始发牌语义。
+当前仍不包含 `FFormulaResolverInput` 数值组装、技能效果、多卡组合公式、随机数生成、TieBreaker 处理、卡牌数据库 / DataTable、Provider、Content、UObject、UI / 蓝图、MatchPlay / External API v1 接入、完整比赛循环、自动出牌、自动选牌、AI、联网、Steam 或 EOS，也不引入抽牌、洗牌、手牌、牌库或初始发牌语义。
