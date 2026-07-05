@@ -5,7 +5,8 @@
 enum class ESkillRuleType : uint8
 {
 	None,
-	LongShot
+	LongShot,
+	CutInsideShot
 };
 
 struct FMCODEX_API FSkillRuleSnapshot
