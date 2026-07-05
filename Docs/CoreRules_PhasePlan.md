@@ -10,11 +10,25 @@
 - 5.3.5 Part 5 Composition Verification Docs Sync 已提交。
 - 5.4 Part 5 Closure Decision Review 已通过；Part 5 目标已完成，不需要 5.5 Final Regression。
 - 5.4.5 Part 5 Final Closure Docs Sync 提交后，第 5 部分正式完成。
-- 下一阶段为 6.0 Skill Entry Decision Review；不得直接实现远射或一次性实现全部技能。
-- CoreRules 当前为 528/528 通过。
+- 6.0 Skill Entry Decision Review 与 6.1 Long Shot Direct Shot Minimal Rule Contract Review 已通过。
+- 6.2 Minimal Skill Rule Snapshot Types + Validator、6.3 Skill Rule Snapshot Query、6.4 Long Shot Direct Shot Formula Plan Query 和 6.6 Long Shot Direct Shot Composition Tests 已完成并提交。
+- 6.5 Independent Boundary Review 与 6.7 Boundary Review + Regression 已通过。
+- 当前阶段为 6.7.5 Long Shot Direct Shot Docs Sync；当前只完成 CoreRules-only Long Shot / Direct Shot 最小技能切片，不是完整远射。
+- CoreRules 当前为 579/579 通过；Validator 11/11、Skill Rule Query 8/8、Plan Query 27/27、Composition 5/5 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
-- `git diff --check` 通过；5.3 回归完成后工作区干净。
+- `git diff --check` 通过；6.7 回归完成后工作区干净。
+
+## Part 6 第一技能切片
+
+- 当前架构链为 `SkillRuleSnapshot + Validator -> SkillRuleSnapshotQuery -> LongShotDirectShotPlanQuery -> LongShotDirectShotCompositionTests -> Existing Formula Chain`。
+- `LongShotDirectShotPlanQuery` 只查询 Player Card / Skill Rule Snapshot、校验资格并返回 ImmediateMiss 或 Formula Plan；它不执行公式链。
+- Attack D6 1–2 返回 ImmediateMiss，结束攻击、不进球、不要求 Defense D6、不生成 Formula Plan，也不进入公式链。
+- Attack D6 3–6 生成 `Finishing` Formula Plan：攻方使用 `LongShot + 0.0`，守方使用 `Tackling + 2.0`，并保留外部 D6、来源标记及日志上下文。
+- Composition Tests 消费 Plan，经 `InputAssemblyQuery -> ResolverInputAssembler -> ResolutionExecutor -> FormulaResolver` 验证兼容性；FormulaResolver 只由 Executor 内部调用。
+- 当前未实现完整远射、直射死角、Determination、门将发动、多卡组合、随机数生成或新的 TieBreaker 规则。
+- 当前未接入 MatchPlay、External API v1、FormulaAttackFlow、DataTable、Provider、卡牌数据库、UI、蓝图、Content、Config、联网或 Steam。
+- 阶段集中记录见 `Docs/CoreRules_Part6LongShotDirectShot.md`。
 
 ## 已完成阶段
 

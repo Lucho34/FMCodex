@@ -56,6 +56,7 @@
   - `Docs/CoreRules_PhasePlan.md`
   - `Docs/CoreRules_Part4FinalClosure.md`
   - `Docs/CoreRules_Part5CompositionVerification.md`
+  - `Docs/CoreRules_Part6LongShotDirectShot.md`
 - 新阶段只需要描述本阶段目标、允许修改范围和新增差异，不必重复完整项目背景。
 
 ## 第 4 部分收口与第 5 阶段前置条件
@@ -79,3 +80,15 @@
 - 下一阶段为 6.0 Skill Entry Decision Review，不得直接实现远射或一次性实现全部技能。
 - 远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收等能力必须在 Part 6 中逐项小步审查和实现。
 - 第 5 部分完整记录见 `Docs/CoreRules_Part5CompositionVerification.md`。
+
+## Part 6 第一技能切片当前状态
+
+- 阶段 6.2 至 6.7 已共同建立并验证 CoreRules-only Long Shot / Direct Shot 最小技能切片；当前基线为 CoreRules 579/579。
+- 当前链路为 `SkillRuleSnapshot + Validator -> SkillRuleSnapshotQuery -> LongShotDirectShotPlanQuery -> LongShotDirectShotCompositionTests -> Existing Formula Chain`。
+- `LongShotDirectShotPlanQuery` 只查询规则快照、校验资格并返回 ImmediateMiss 或 Formula Plan，不执行公式链，也不调用 Input Assembly Query、Assembler、Executor 或 FormulaResolver。
+- Attack D6 1–2 结束攻击且不进球，不要求 Defense D6、不生成 Plan、不进入公式链。
+- Attack D6 3–6 生成 `Finishing` Plan：攻方 `LongShot + 0.0`，守方 `Tackling + 2.0`，保留外部 D6、来源标记、LogId、TurnIndex、PlayerId 和 CardId。
+- Composition Tests 只通过现有 Input Assembly Query、Resolver Input Assembler 和 Executor 消费 Plan；FormulaResolver 只由 Executor 内部调用。
+- 当前不是完整远射；直射死角、Determination、门将发动、多卡组合、随机数生成和新的 TieBreaker 规则仍未实现。
+- MatchPlay、External API v1、FormulaAttackFlow、DataTable、Provider、卡牌数据库、UI、蓝图、Content、Config、联网和 Steam 仍未接入本切片。
+- 完整阶段事实和回归基线见 `Docs/CoreRules_Part6LongShotDirectShot.md`。
