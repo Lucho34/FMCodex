@@ -1,14 +1,14 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的 Long Shot 最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 记录 Long Shot / Dead Corner 专用 Decision Query 的策略、契约、实现、独立回归与文档同步。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的 Long Shot 最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection 的契约、实现、独立回归与文档同步。文档同步不改变任何生产行为。
 
 ## 当前定位
 
 - Part 6 当前继续保持 CoreRules only。
 - Long Shot / Direct Shot 是 Part 6 第一个已完成并正式收口的最小技能切片。
-- Long Shot / Dead Corner 专用 Decision Query 已完成并通过独立边界审查，但 Direct Shot / Dead Corner 分支选择尚未实现。
+- Long Shot / Dead Corner 专用 Decision Query 与 LongShot 专用 Branch Selection Query 均已完成并通过独立边界审查。
 - 当前能力不是完整远射。
-- Dead Corner Query 不是通用 Determination 框架；当前没有建立通用 SkillEffect、SkillPipeline 或技能叠加系统。
+- Branch 由调用方显式选择；当前没有建立通用 Branch Selection、SkillEffect、SkillPipeline 或技能叠加系统。
 
 ## 阶段记录
 
@@ -28,6 +28,10 @@
 - 6.11 Long Shot Dead Corner Decision Query + Tests：只新增专用 Query 的头文件、实现和测试。
 - 6.12 Independent Boundary Review + Regression：确认 Query 符合契约且未修改既有模块；专项 27/27、CoreRules 606/606 通过。
 - 6.12.5 Long Shot Dead Corner Docs Sync：同步 6.10–6.12 阶段事实、规则语义、边界和下一阶段入口。
+- 6.13 Long Shot Branch Selection Contract Review：冻结显式 Branch、单分支委派、统一 Outcome 和持续禁止项。
+- 6.14 Long Shot Branch Selection Query + Tests：只新增专用 Branch Selection Query 的头文件、实现和 18 项测试。
+- 6.15 Independent Boundary Review + Regression：确认实现只调用选中分支、不复制规则、不执行公式链；专项 18/18、CoreRules 624/624 通过。
+- 6.15.5 Long Shot Branch Selection Docs Sync：同步 6.13–6.15 阶段事实、职责、回归基线和下一阶段入口。
 
 ## 最终收口结论
 
@@ -75,6 +79,23 @@
 - 不要求门将参与。
 - 不生成 Formula Plan。
 - 不进入 `InputAssemblyQuery -> ResolverInputAssembler -> ResolutionExecutor -> FormulaResolver`。
+
+## Long Shot Branch Selection Query
+
+`FLongShotBranchSelectionQuery`：
+
+- 只服务 LongShot，不是通用 Branch Selection 框架。
+- Branch 由调用方显式提供，不自动选择。
+- `DirectShot` 只委派 `FLongShotDirectShotPlanQuery::BuildPlan`。
+- `DeadCorner` 只委派 `FLongShotDeadCornerDecisionQuery::Evaluate`。
+- 未选中分支完全忽略，即使其 Input 非法也不影响选中分支。
+- 下层完整 Result、错误信息和无效字段诊断均被保留。
+- `DirectShotImmediateMiss` 保持独立成功 Outcome。
+- `DirectShotFormulaPlanRequired` 只引用 `DirectShotResult` 中的 Formula Plan，不在顶层复制。
+- Dead Corner Goal / Miss 分别映射为 `DeadCornerGoal / DeadCornerMiss`。
+- 保持 Input、Player Card Snapshot Set 和 Skill Rule Snapshot Set 不变。
+
+Branch Selection 不复制下层资格、行动点、D6、Goal / Miss 或 Formula Plan 规则；不调用 Input Assembly Query、Assembler、Executor 或 FormulaResolver，不执行公式链、不生成随机数，也不修改比分、MatchPlay、卡牌状态或外部状态。它不是 SkillPipeline、SkillEffect 或完整远射外部入口。
 
 ## 架构链路
 
@@ -183,12 +204,26 @@ Dead Corner 专用 Decision Query 当前基线：
 - `git diff --check`：通过。
 - 6.12 回归完成后工作区干净。
 
+Long Shot Branch Selection 当前基线：
+
+- LongShotBranchSelectionQuery：18/18 通过。
+- LongShotDeadCornerDecisionQuery：27/27 通过。
+- LongShotDirectShotPlanQuery：27/27 通过。
+- LongShotDirectShotComposition：5/5 通过。
+- SkillRuleSnapshotValidator：11/11 通过。
+- SkillRuleSnapshotQuery：8/8 通过。
+- CoreRules：624/624 通过。
+- UE5 Development Editor：通过。
+- UHT `-WarningsAsErrors`：通过，0 个文件需重写。
+- `git diff --check`：通过。
+- 6.15 回归完成后工作区干净。
+
 ## 持续边界
 
 当前仍未实现：
 
 - 完整远射
-- Direct Shot / Dead Corner 分支选择
+- 完整远射外部入口
 - 通用 Determination
 - 门将发动
 - 多卡组合
@@ -214,11 +249,11 @@ Dead Corner 专用 Decision Query 当前基线：
 
 ## 下一阶段
 
-下一阶段为 **Long Shot Branch Selection Contract Review**。
+下一阶段为 **6.16 Long Shot Minimal Slices Closure Review**。
 
-- 不直接实现 Branch Selection。
-- 不直接实现完整远射。
+- 不直接进入完整远射外部入口。
 - 不接 MatchPlay。
 - 不解冻 External API v1。
 - 不修改 FormulaAttackFlow。
 - 不建立通用 SkillPipeline。
+- 不建立通用 SkillEffect。

@@ -18,12 +18,15 @@
 - 6.8.5 First Skill Slice Final Closure Docs Sync 已提交；Long Shot / Direct Shot 作为 Part 6 第一个最小技能切片正式完成。
 - 6.9 Skill Slice Strategy Review 与 6.10 Long Shot Dead Corner Determination Contract Review 已通过。
 - 6.11 Long Shot Dead Corner Decision Query + Tests 已完成并提交；6.12 Independent Boundary Review + Regression 已通过。
-- 当前阶段为 6.12.5 Long Shot Dead Corner Docs Sync。
-- 下一阶段为 Long Shot Branch Selection Contract Review；不得直接实现 Branch Selection 或完整远射。
-- CoreRules 当前为 606/606 通过；LongShotDeadCornerDecisionQuery 27/27 通过。
+- 6.12.5 Long Shot Dead Corner Docs Sync 已完成并提交。
+- 6.13 Long Shot Branch Selection Contract Review 已通过；6.14 Long Shot Branch Selection Query + Tests 已完成并提交。
+- 6.15 Long Shot Branch Selection Independent Boundary Review + Regression 已通过。
+- 当前阶段为 6.15.5 Long Shot Branch Selection Docs Sync。
+- 下一阶段为 6.16 Long Shot Minimal Slices Closure Review。
+- CoreRules 当前为 624/624 通过；LongShotBranchSelectionQuery 18/18、LongShotDeadCornerDecisionQuery 27/27、LongShotDirectShotPlanQuery 27/27、LongShotDirectShotComposition 5/5、SkillRuleSnapshotValidator 11/11、SkillRuleSnapshotQuery 8/8 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
-- `git diff --check` 通过；6.12 回归完成后工作区干净。
+- `git diff --check` 通过；6.15 回归完成后工作区干净。
 
 ## Part 6 第一技能切片
 
@@ -47,9 +50,21 @@
 - Query 只查询攻击方 Player Card Snapshot 和 Skill Rule Snapshot、验证 LongShot 资格及输入，并保留分层诊断；不修改比分、卡牌状态、MatchPlay 或任何外部状态。
 - 6.11 只新增 Decision Query 的 `.h`、`.cpp` 和测试文件；没有修改 Direct Shot、Skill Rule、Player Card Snapshot 或现有公式链模块。
 - 6.12 独立审查确认 6.11 符合 6.10 契约；专项测试 27/27、CoreRules 606/606、Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 均通过。
-- 当前仍未实现完整远射、Direct Shot / Dead Corner 分支选择、通用 Determination、门将发动、多卡组合、随机数生成或新的 TieBreaker 规则。
+- 截至 6.12 仍未实现完整远射、Direct Shot / Dead Corner 分支选择、通用 Determination、门将发动、多卡组合、随机数生成或新的 TieBreaker 规则。
 - 当前仍未接入 MatchPlay、External API v1、FormulaAttackFlow、DataTable、Provider、卡牌数据库、SkillEffect、SkillPipeline、UI、蓝图、Content、Config、联网或 Steam。
-- 下一阶段必须先做 Long Shot Branch Selection Contract Review；不得直接实现 Branch Selection、完整远射或通用 SkillPipeline。
+- 6.12.5 之后必须先做 Long Shot Branch Selection Contract Review；不得从 Dead Corner Query 直接实现完整远射或通用 SkillPipeline。
+
+## Part 6 Long Shot Branch Selection
+
+- `FLongShotBranchSelectionQuery` 已完成；它只服务 LongShot，并由调用方通过 `DirectShot / DeadCorner` Branch 显式选择分支。
+- DirectShot 分支只委派一次 `FLongShotDirectShotPlanQuery::BuildPlan`；DeadCorner 分支只委派一次 `FLongShotDeadCornerDecisionQuery::Evaluate`，未选中分支完全忽略。
+- Query 不复制下层资格、行动点、D6、Goal / Miss 或 Formula Plan 规则；下层完整 Result 与诊断被保留。
+- `DirectShotImmediateMiss` 保持独立成功 Outcome；Direct Shot Formula Plan 只保留在 `DirectShotResult`；Dead Corner Goal / Miss 分别映射为 `DeadCornerGoal / DeadCornerMiss`。
+- Query 不执行公式链，不调用 Input Assembly Query、Assembler、Executor 或 FormulaResolver，不生成随机数，也不修改比分、MatchPlay、卡牌状态或外部状态。
+- 它不是通用 Branch Selection 框架、SkillPipeline 或 SkillEffect，也不是完整远射外部入口。
+- 6.14 只新增 Branch Selection Query 的 `.h`、`.cpp` 和测试文件；6.15 独立审查确认边界符合 6.13 契约，无需修正或补测。
+- 6.15 回归为 Branch Selection 18/18、CoreRules 624/624、Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 全部通过。
+- 下一阶段为 6.16 Long Shot Minimal Slices Closure Review；不得直接接 MatchPlay、解冻 External API v1、修改 FormulaAttackFlow、进入完整远射外部入口或建立通用 SkillPipeline / SkillEffect。
 
 ## 已完成阶段
 

@@ -5,7 +5,7 @@
 | 分层 | 当前职责 | 代表模块 |
 | --- | --- | --- |
 | State 层 | 保存比赛运行态和双方卡牌使用状态，不主动执行业务逻辑。 | `MatchRuntimeState`、`CardUsageState`、`MatchPlayState` |
-| Rule Data Snapshot / Contract / Validation / Query / Assembly / Execution 层 | 接收 provider-neutral 的只读卡牌和技能规则值快照，定义、组装并验证显式单卡公式输入契约，将双边成功 Query Result 转换为 Resolver Input，再通过薄执行边界调用一次 Resolver；专用技能 Query 可以只返回无状态决策且不进入公式链；与玩家归属和卡牌使用状态分离。 | `PlayerCardRuleSnapshot`、`PlayerCardRuleSnapshotValidator`、`PlayerCardRuleSnapshotQuery`、`SkillRuleSnapshot`、`SkillRuleSnapshotValidator`、`SkillRuleSnapshotQuery`、`LongShotDirectShotPlanQuery`、`LongShotDeadCornerDecisionQuery`、`SingleCardFormulaInputContract`、`SingleCardFormulaInputContractValidator`、`SingleCardFormulaInputAssemblyQuery`、`SingleCardFormulaResolverInputAssembler`、`SingleCardFormulaResolutionExecutor` |
+| Rule Data Snapshot / Contract / Validation / Query / Assembly / Execution 层 | 接收 provider-neutral 的只读卡牌和技能规则值快照，定义、组装并验证显式单卡公式输入契约，将双边成功 Query Result 转换为 Resolver Input，再通过薄执行边界调用一次 Resolver；专用技能 Query 可以只返回无状态决策或委派到调用方显式选择的专用分支，且不进入公式链；与玩家归属和卡牌使用状态分离。 | `PlayerCardRuleSnapshot`、`PlayerCardRuleSnapshotValidator`、`PlayerCardRuleSnapshotQuery`、`SkillRuleSnapshot`、`SkillRuleSnapshotValidator`、`SkillRuleSnapshotQuery`、`LongShotDirectShotPlanQuery`、`LongShotDeadCornerDecisionQuery`、`LongShotBranchSelectionQuery`、`SingleCardFormulaInputContract`、`SingleCardFormulaInputContractValidator`、`SingleCardFormulaInputAssemblyQuery`、`SingleCardFormulaResolverInputAssembler`、`SingleCardFormulaResolutionExecutor` |
 | Resolver 层 | 完成单一规则计算或原子状态转换；随机数和公式输入由外部传入。 | `FormulaResolver`、`GoalResolver`、`AttackOpportunityResolver`、`CardUsageResolver` |
 | Flow 层 | 按固定顺序组合多个 Resolver，返回 Updated 状态。 | `AttackResolutionFlow`、`FormulaAttackFlow`、`MatchPlayAttackFlow` |
 | Query / Result View 层 | 只读提取状态、可用性、预览、初始化快照、具体请求预检、诊断和执行结果摘要。 | `MatchPlayStatusQuery`、`MatchPlayAvailabilityQuery`、`MatchPlayActionPreview`、`MatchPlayRequestValidationReport`、`MatchPlaySubmitAttackResultQuery`、`MatchPlayExternalStateView`、`MatchPlayExternalMatchSetupView`、`MatchPlayExternalAttackRequestPreflight` |
@@ -13,7 +13,7 @@
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
 | 外部 Controller 层 | 作为 Facade 上层入口，包装一次外部请求的提交结果和 Result View。 | `MatchPlayExternalTurnController` |
-| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询、单卡公式输入契约验证 / 组装、Resolver Input 转换、薄执行边界、单卡公式链端到端组合、Long Shot / Direct Shot Plan 组合、Long Shot / Dead Corner 专用决策和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`SkillRuleSnapshotValidatorTests.cpp`、`SkillRuleSnapshotQueryTests.cpp`、`LongShotDirectShotPlanQueryTests.cpp`、`LongShotDirectShotCompositionTests.cpp`、`LongShotDeadCornerDecisionQueryTests.cpp`、`SingleCardFormulaInputContractValidatorTests.cpp`、`SingleCardFormulaInputAssemblyQueryTests.cpp`、`SingleCardFormulaResolverInputAssemblerTests.cpp`、`SingleCardFormulaResolutionExecutorTests.cpp`、`SingleCardFormulaEndToEndCompositionTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
+| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询、单卡公式输入契约验证 / 组装、Resolver Input 转换、薄执行边界、单卡公式链端到端组合、Long Shot / Direct Shot Plan 组合、Long Shot / Dead Corner 专用决策、Long Shot Branch Selection 委派和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`SkillRuleSnapshotValidatorTests.cpp`、`SkillRuleSnapshotQueryTests.cpp`、`LongShotDirectShotPlanQueryTests.cpp`、`LongShotDirectShotCompositionTests.cpp`、`LongShotDeadCornerDecisionQueryTests.cpp`、`LongShotBranchSelectionQueryTests.cpp`、`SingleCardFormulaInputContractValidatorTests.cpp`、`SingleCardFormulaInputAssemblyQueryTests.cpp`、`SingleCardFormulaResolverInputAssemblerTests.cpp`、`SingleCardFormulaResolutionExecutorTests.cpp`、`SingleCardFormulaEndToEndCompositionTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
 
 阶段 4.47 已落地 `FPlayerCardRuleSnapshot`、`FPlayerCardRuleSnapshotSet` 与 `FPlayerCardRuleSnapshotValidator::Validate`。它们只表达和验证卡牌规则定义，不表达玩家归属或 `AvailableCardIds / UsedCardIds` 使用状态；当前也不接入 MatchPlay 或 External API v1。SkillId 仅为结构化不透明字段，不执行技能效果，因此本阶段仍属于第 4 部分 CoreRules 数据边界落地，不是第 5 阶段技能系统实现。
 
@@ -54,7 +54,11 @@ Test
 
 阶段 6.9 至 6.12 已完成 Long Shot / Dead Corner 专用决策的策略审查、最小契约、实现、测试和独立回归。`FLongShotDeadCornerDecisionQuery` 只查询攻击方 Player Card Snapshot 与 Skill Rule Snapshot，验证 LongShot 资格、行动点、两个外部 D6 和日志上下文，然后返回 Goal 或 Miss；不生成 Formula Plan、不进入现有公式链，也不修改比分、卡牌状态或外部状态。
 
-Dead Corner 的两个 D6 均须由外部显式提供且位于 1–6；总和 11 或 12 为 Goal，其他合法总和为 Miss，两种结果都结束当前攻击。该 Query 不要求防守方、Defense D6 或门将参与。当前基线为 LongShotDeadCornerDecisionQuery 27/27、CoreRules 606/606，Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。它不是完整远射、不包含 Direct Shot / Dead Corner 分支选择，也不是通用 Determination；下一阶段必须先做 Long Shot Branch Selection Contract Review。
+Dead Corner 的两个 D6 均须由外部显式提供且位于 1–6；总和 11 或 12 为 Goal，其他合法总和为 Miss，两种结果都结束当前攻击。该 Query 不要求防守方、Defense D6 或门将参与。6.12 回归基线为 LongShotDeadCornerDecisionQuery 27/27、CoreRules 606/606，Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。它不是完整远射，也不是通用 Determination；6.12.5 之后先进入 Long Shot Branch Selection Contract Review。
+
+阶段 6.13 至 6.15 已完成 Long Shot Branch Selection 的契约、实现、测试和独立回归。`FLongShotBranchSelectionQuery` 只根据调用方显式提供的 Branch，在互斥分支中分别委派 `FLongShotDirectShotPlanQuery::BuildPlan` 或 `FLongShotDeadCornerDecisionQuery::Evaluate`；未选中分支完全忽略。它不复制下层规则、不自动选分支、不执行公式链，也不修改任何状态。
+
+Branch Selection 完整保留下层 Result 和诊断；`DirectShotImmediateMiss`、`DirectShotFormulaPlanRequired`、`DeadCornerGoal` 与 `DeadCornerMiss` 分别映射为顶层 Outcome，Formula Plan 只存在于 `DirectShotResult`。当前基线为 Branch Selection 18/18、Dead Corner 27/27、Direct Shot Plan 27/27、Direct Shot Composition 5/5、Skill Rule Validator 11/11、Skill Rule Query 8/8、CoreRules 624/624，Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。该 Query 不是通用 Branch Selection、SkillPipeline、SkillEffect 或完整远射外部入口；下一阶段为 6.16 Long Shot Minimal Slices Closure Review。
 
 ## 单次攻击请求路径
 
