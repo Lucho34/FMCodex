@@ -13,7 +13,10 @@
 - 6.0 Skill Entry Decision Review 与 6.1 Long Shot Direct Shot Minimal Rule Contract Review 已通过。
 - 6.2 Minimal Skill Rule Snapshot Types + Validator、6.3 Skill Rule Snapshot Query、6.4 Long Shot Direct Shot Formula Plan Query 和 6.6 Long Shot Direct Shot Composition Tests 已完成并提交。
 - 6.5 Independent Boundary Review 与 6.7 Boundary Review + Regression 已通过。
-- 当前阶段为 6.7.5 Long Shot Direct Shot Docs Sync；当前只完成 CoreRules-only Long Shot / Direct Shot 最小技能切片，不是完整远射。
+- 6.7.5 Long Shot Direct Shot Docs Sync 已完成并提交。
+- 6.8 First Skill Slice Closure Decision Review 已通过；Long Shot / Direct Shot 可以正式收口，不需要补生产代码、补测试或 Final Regression。
+- 当前阶段为 6.8.5 First Skill Slice Final Closure Docs Sync；提交后 Long Shot / Direct Shot 作为 Part 6 第一个最小技能切片正式完成。
+- 下一功能决策阶段为 Part 6 Skill Slice Strategy Review；不得直接实现直射死角、完整远射或其他技能。
 - CoreRules 当前为 579/579 通过；Validator 11/11、Skill Rule Query 8/8、Plan Query 27/27、Composition 5/5 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
@@ -21,6 +24,7 @@
 
 ## Part 6 第一技能切片
 
+- Long Shot / Direct Shot 是 Part 6 第一个已完成的 CoreRules-only 最小技能切片。
 - 当前架构链为 `SkillRuleSnapshot + Validator -> SkillRuleSnapshotQuery -> LongShotDirectShotPlanQuery -> LongShotDirectShotCompositionTests -> Existing Formula Chain`。
 - `LongShotDirectShotPlanQuery` 只查询 Player Card / Skill Rule Snapshot、校验资格并返回 ImmediateMiss 或 Formula Plan；它不执行公式链。
 - Attack D6 1–2 返回 ImmediateMiss，结束攻击、不进球、不要求 Defense D6、不生成 Formula Plan，也不进入公式链。
@@ -28,6 +32,8 @@
 - Composition Tests 消费 Plan，经 `InputAssemblyQuery -> ResolverInputAssembler -> ResolutionExecutor -> FormulaResolver` 验证兼容性；FormulaResolver 只由 Executor 内部调用。
 - 当前未实现完整远射、直射死角、Determination、门将发动、多卡组合、随机数生成或新的 TieBreaker 规则。
 - 当前未接入 MatchPlay、External API v1、FormulaAttackFlow、DataTable、Provider、卡牌数据库、UI、蓝图、Content、Config、联网或 Steam。
+- 6.8 收口决策确认不需要额外生产代码、测试、Final Regression 或功能性 Docs 补充；6.8.5 只记录正式完成状态和下一入口。
+- 下一阶段先做 Part 6 Skill Slice Strategy Review；Strategy Review 后可优先评估远射直射死角，但不得从本切片直接进入实现。
 - 阶段集中记录见 `Docs/CoreRules_Part6LongShotDirectShot.md`。
 
 ## 已完成阶段

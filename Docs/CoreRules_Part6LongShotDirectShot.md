@@ -1,11 +1,11 @@
 # CoreRules Part 6 Long Shot / Direct Shot
 
-本文档集中记录阶段 6.0 至 6.7 对 Part 6 第一技能切片 Long Shot / Direct Shot 的入口决策、最小规则数据、查询、Formula Plan、独立审查、组合测试和回归事实。阶段 6.7.5 只同步文档，不改变任何生产行为。
+本文档集中记录阶段 6.0 至 6.8.5 对 Part 6 第一技能切片 Long Shot / Direct Shot 的入口决策、最小规则数据、查询、Formula Plan、独立审查、组合测试、回归和最终收口事实。阶段 6.8.5 只同步文档，不改变任何生产行为。
 
 ## 当前定位
 
 - Part 6 当前继续保持 CoreRules only。
-- 当前只完成 Long Shot / Direct Shot 最小技能切片。
+- Long Shot / Direct Shot 是 Part 6 第一个已完成并正式收口的最小技能切片。
 - 当前能力不是完整远射。
 - 当前没有建立通用 SkillEffect、SkillPipeline 或技能叠加系统。
 
@@ -19,6 +19,21 @@
 - 6.5 Independent Boundary Review：确认 Plan Query 只生成 Plan，不执行公式链。
 - 6.6 Long Shot Direct Shot Composition Tests：只新增组合测试，验证 Plan 可进入现有单卡公式链。
 - 6.7 Boundary Review + Regression：确认 6.2–6.6 共同构成干净的第一技能切片，不需要修正或补测。
+- 6.7.5 Long Shot Direct Shot Docs Sync：同步模块职责、架构链、规则语义、回归基线和持续边界。
+- 6.8 First Skill Slice Closure Decision Review：确认切片可以正式收口，不需要补生产代码、补测试或 Final Regression。
+- 6.8.5 First Skill Slice Final Closure Docs Sync：记录正式完成状态和下一阶段入口。
+
+## 最终收口结论
+
+- SkillRuleSnapshot + Validator 已完成。
+- SkillRuleSnapshotQuery 已完成。
+- LongShotDirectShotPlanQuery 已完成。
+- ImmediateMiss 已完成。
+- FormulaResolutionRequired Plan 已完成。
+- LongShotDirectShotCompositionTests 已完成。
+- CoreRules 579/579 及四组专项基线稳定。
+- Long Shot / Direct Shot 可以作为 Part 6 第一技能切片基线正式收口。
+- 当前不是完整远射，持续边界没有因收口而解冻。
 
 ## 架构链路
 
@@ -146,3 +161,13 @@ FormulaResolver 只由 Executor 内部调用。Composition Tests 不直接调用
 - Steam
 
 这些能力不能从第一技能切片自动推导为已获批准；后续仍须逐项独立 Review、测试和实现。
+
+## 下一阶段
+
+下一功能决策阶段为 **Part 6 Skill Slice Strategy Review**。
+
+- 不直接实现直射死角。
+- 不直接实现完整远射。
+- 不直接实现其他技能。
+- Strategy Review 应先比较 Determination、双 D6、门将状态、多卡公式和 MatchPlay 边界，再选择下一个最小切片。
+- Strategy Review 后可以优先评估远射的直射死角分支，但评估不等于批准实现。

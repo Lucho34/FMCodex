@@ -81,9 +81,9 @@
 - 远射、内切射门、传中、直塞、传控、定位球、门将发动和待定区回收等能力必须在 Part 6 中逐项小步审查和实现。
 - 第 5 部分完整记录见 `Docs/CoreRules_Part5CompositionVerification.md`。
 
-## Part 6 第一技能切片当前状态
+## Part 6 第一技能切片最终状态
 
-- 阶段 6.2 至 6.7 已共同建立并验证 CoreRules-only Long Shot / Direct Shot 最小技能切片；当前基线为 CoreRules 579/579。
+- 阶段 6.2 至 6.8 已共同建立、验证并正式收口 CoreRules-only Long Shot / Direct Shot；它是 Part 6 第一个已完成的最小技能切片，当前基线为 CoreRules 579/579。
 - 当前链路为 `SkillRuleSnapshot + Validator -> SkillRuleSnapshotQuery -> LongShotDirectShotPlanQuery -> LongShotDirectShotCompositionTests -> Existing Formula Chain`。
 - `LongShotDirectShotPlanQuery` 只查询规则快照、校验资格并返回 ImmediateMiss 或 Formula Plan，不执行公式链，也不调用 Input Assembly Query、Assembler、Executor 或 FormulaResolver。
 - Attack D6 1–2 结束攻击且不进球，不要求 Defense D6、不生成 Plan、不进入公式链。
@@ -91,4 +91,6 @@
 - Composition Tests 只通过现有 Input Assembly Query、Resolver Input Assembler 和 Executor 消费 Plan；FormulaResolver 只由 Executor 内部调用。
 - 当前不是完整远射；直射死角、Determination、门将发动、多卡组合、随机数生成和新的 TieBreaker 规则仍未实现。
 - MatchPlay、External API v1、FormulaAttackFlow、DataTable、Provider、卡牌数据库、UI、蓝图、Content、Config、联网和 Steam 仍未接入本切片。
+- 6.8 收口决策确认不需要补生产代码、补测试或 Final Regression；6.8.5 只同步最终完成状态。
+- 下一功能决策阶段必须先做 Part 6 Skill Slice Strategy Review；不得直接实现直射死角、完整远射或下一个技能。
 - 完整阶段事实和回归基线见 `Docs/CoreRules_Part6LongShotDirectShot.md`。

@@ -50,6 +50,8 @@ Test
 
 `LongShotDirectShotCompositionTests` 消费 Formula Plan，并经现有 `InputAssemblyQuery -> ResolverInputAssembler -> ResolutionExecutor -> FormulaResolver` 链完成组合验证；FormulaResolver 只由 Executor 内部调用。当前基线为 CoreRules 579/579、Skill Rule Validator 11/11、Skill Rule Query 8/8、Plan Query 27/27、Composition 5/5，Development Editor 与 UHT `-WarningsAsErrors` 通过。当前能力不是完整远射，也未实现直射死角、Determination、门将发动、多卡组合、随机数或新的 TieBreaker 规则；MatchPlay、External API v1、FormulaAttackFlow 和数据源边界均保持未接入。完整记录见 `CoreRules_Part6LongShotDirectShot.md`。
 
+阶段 6.8 收口决策确认 Long Shot / Direct Shot 已达到第一技能切片目标，不需要补生产代码、补测试或再次 Final Regression。6.8.5 Final Closure Docs Sync 提交后，该切片正式完成；它仍不是完整远射。下一功能决策阶段为 Part 6 Skill Slice Strategy Review，在该 Review 前不得直接实现直射死角、完整远射或其他技能。
+
 ## 单次攻击请求路径
 
 `External Driver -> MatchPlayExternalTurnController -> MatchPlaySubmitAttackFacade -> MatchPlaySubmissionGate -> MatchPlayAttackStep`
