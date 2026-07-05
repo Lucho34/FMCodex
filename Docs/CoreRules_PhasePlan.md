@@ -21,8 +21,10 @@
 - 6.12.5 Long Shot Dead Corner Docs Sync 已完成并提交。
 - 6.13 Long Shot Branch Selection Contract Review 已通过；6.14 Long Shot Branch Selection Query + Tests 已完成并提交。
 - 6.15 Long Shot Branch Selection Independent Boundary Review + Regression 已通过。
-- 当前阶段为 6.15.5 Long Shot Branch Selection Docs Sync。
-- 下一阶段为 6.16 Long Shot Minimal Slices Closure Review。
+- 6.15.5 Long Shot Branch Selection Docs Sync 已完成并提交。
+- 6.16 Long Shot Minimal Slices Closure Review 已通过；该阶段为 report-only，没有文件修改。
+- 当前阶段为 6.16.5 Long Shot Minimal Slices Final Closure Docs Sync；提交后 Long Shot Minimal Slices 作为 Part 6 第一段内部 CoreRules 最小切片正式关闭。
+- 下一阶段先做 Part 6 Next Skill Slice Entry / Strategy Review，不直接进入功能实现或外部接入。
 - CoreRules 当前为 624/624 通过；LongShotBranchSelectionQuery 18/18、LongShotDeadCornerDecisionQuery 27/27、LongShotDirectShotPlanQuery 27/27、LongShotDirectShotComposition 5/5、SkillRuleSnapshotValidator 11/11、SkillRuleSnapshotQuery 8/8 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
@@ -64,7 +66,8 @@
 - 它不是通用 Branch Selection 框架、SkillPipeline 或 SkillEffect，也不是完整远射外部入口。
 - 6.14 只新增 Branch Selection Query 的 `.h`、`.cpp` 和测试文件；6.15 独立审查确认边界符合 6.13 契约，无需修正或补测。
 - 6.15 回归为 Branch Selection 18/18、CoreRules 624/624、Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 全部通过。
-- 下一阶段为 6.16 Long Shot Minimal Slices Closure Review；不得直接接 MatchPlay、解冻 External API v1、修改 FormulaAttackFlow、进入完整远射外部入口或建立通用 SkillPipeline / SkillEffect。
+- 6.16 收口审查确认当前六项能力足以作为 Part 6 第一段内部 CoreRules 最小切片关闭，不需要补生产代码、测试或再次回归。
+- 下一阶段为 Part 6 Next Skill Slice Entry / Strategy Review；不得直接接 MatchPlay、解冻 External API v1、修改 FormulaAttackFlow、进入完整远射外部入口或建立通用 SkillPipeline / SkillEffect。
 
 ## 已完成阶段
 

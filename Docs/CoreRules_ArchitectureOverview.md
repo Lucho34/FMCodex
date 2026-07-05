@@ -58,7 +58,9 @@ Dead Corner 的两个 D6 均须由外部显式提供且位于 1–6；总和 11 
 
 阶段 6.13 至 6.15 已完成 Long Shot Branch Selection 的契约、实现、测试和独立回归。`FLongShotBranchSelectionQuery` 只根据调用方显式提供的 Branch，在互斥分支中分别委派 `FLongShotDirectShotPlanQuery::BuildPlan` 或 `FLongShotDeadCornerDecisionQuery::Evaluate`；未选中分支完全忽略。它不复制下层规则、不自动选分支、不执行公式链，也不修改任何状态。
 
-Branch Selection 完整保留下层 Result 和诊断；`DirectShotImmediateMiss`、`DirectShotFormulaPlanRequired`、`DeadCornerGoal` 与 `DeadCornerMiss` 分别映射为顶层 Outcome，Formula Plan 只存在于 `DirectShotResult`。当前基线为 Branch Selection 18/18、Dead Corner 27/27、Direct Shot Plan 27/27、Direct Shot Composition 5/5、Skill Rule Validator 11/11、Skill Rule Query 8/8、CoreRules 624/624，Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。该 Query 不是通用 Branch Selection、SkillPipeline、SkillEffect 或完整远射外部入口；下一阶段为 6.16 Long Shot Minimal Slices Closure Review。
+Branch Selection 完整保留下层 Result 和诊断；`DirectShotImmediateMiss`、`DirectShotFormulaPlanRequired`、`DeadCornerGoal` 与 `DeadCornerMiss` 分别映射为顶层 Outcome，Formula Plan 只存在于 `DirectShotResult`。当前基线为 Branch Selection 18/18、Dead Corner 27/27、Direct Shot Plan 27/27、Direct Shot Composition 5/5、Skill Rule Validator 11/11、Skill Rule Query 8/8、CoreRules 624/624，Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。该 Query 不是通用 Branch Selection、SkillPipeline、SkillEffect 或完整远射外部入口。
+
+阶段 6.16 收口审查确认 Skill Rule Snapshot / Validator / Query、Direct Shot Plan / Composition、Dead Corner Decision 和 Branch Selection 六项能力已经构成可独立关闭的 Part 6 第一段 CoreRules-only 内部最小切片。6.16.5 Final Closure Docs Sync 提交后，该段正式关闭；这不是完整远射外部入口，也不代表 Part 6 全部技能工作完成。下一步必须先做 Part 6 Next Skill Slice Entry / Strategy Review，不能从收口直接接 MatchPlay、External API v1、FormulaAttackFlow 或建立通用技能流水线。
 
 ## 单次攻击请求路径
 

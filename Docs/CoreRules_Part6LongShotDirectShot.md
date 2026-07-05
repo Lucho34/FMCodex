@@ -1,13 +1,15 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的 Long Shot 最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection 的契约、实现、独立回归与文档同步。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的 Long Shot 最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成整体收口审查与最终文档同步。文档同步不改变任何生产行为。
 
 ## 当前定位
 
 - Part 6 当前继续保持 CoreRules only。
 - Long Shot / Direct Shot 是 Part 6 第一个已完成并正式收口的最小技能切片。
 - Long Shot / Dead Corner 专用 Decision Query 与 LongShot 专用 Branch Selection Query 均已完成并通过独立边界审查。
+- 六项 Long Shot Minimal Slices 能力共同构成 Part 6 第一段已完成的 CoreRules-only 内部最小切片。
 - 当前能力不是完整远射。
+- 当前收口不代表 Part 6 全部技能工作结束。
 - Branch 由调用方显式选择；当前没有建立通用 Branch Selection、SkillEffect、SkillPipeline 或技能叠加系统。
 
 ## 阶段记录
@@ -32,6 +34,8 @@
 - 6.14 Long Shot Branch Selection Query + Tests：只新增专用 Branch Selection Query 的头文件、实现和 18 项测试。
 - 6.15 Independent Boundary Review + Regression：确认实现只调用选中分支、不复制规则、不执行公式链；专项 18/18、CoreRules 624/624 通过。
 - 6.15.5 Long Shot Branch Selection Docs Sync：同步 6.13–6.15 阶段事实、职责、回归基线和下一阶段入口。
+- 6.16 Long Shot Minimal Slices Closure Review：确认六项能力达到 Part 6 第一段内部最小切片收口条件，不需要补代码、补测试或再次回归。
+- 6.16.5 Long Shot Minimal Slices Final Closure Docs Sync：记录正式关闭状态、最终基线和下一阶段决策入口。
 
 ## 最终收口结论
 
@@ -96,6 +100,21 @@
 - 保持 Input、Player Card Snapshot Set 和 Skill Rule Snapshot Set 不变。
 
 Branch Selection 不复制下层资格、行动点、D6、Goal / Miss 或 Formula Plan 规则；不调用 Input Assembly Query、Assembler、Executor 或 FormulaResolver，不执行公式链、不生成随机数，也不修改比分、MatchPlay、卡牌状态或外部状态。它不是 SkillPipeline、SkillEffect 或完整远射外部入口。
+
+## Long Shot Minimal Slices 最终收口
+
+正式收口范围：
+
+1. SkillRuleSnapshot + Validator
+2. SkillRuleSnapshotQuery
+3. LongShotDirectShotPlanQuery
+4. LongShotDirectShotCompositionTests
+5. LongShotDeadCornerDecisionQuery
+6. LongShotBranchSelectionQuery
+
+这六项能力只提供 provider-neutral 规则数据、只读查询、专用决策、Direct Shot Formula Plan、测试侧组合验证和调用方显式分支委派。6.16 审查未发现必须留在当前切片内补充的代码、测试或边界修正，因此 6.16.5 提交后可正式关闭 Long Shot Minimal Slices。
+
+该关闭是 Part 6 第一段内部 CoreRules 最小切片收口，不是完整远射外部入口，也不是 Part 6 全部技能工作的结束。它没有授权 MatchPlay、External API v1、FormulaAttackFlow、通用 SkillPipeline / SkillEffect、数据源、随机数、牌库语义、UI 或联网接入。
 
 ## 架构链路
 
@@ -249,8 +268,9 @@ Long Shot Branch Selection 当前基线：
 
 ## 下一阶段
 
-下一阶段为 **6.16 Long Shot Minimal Slices Closure Review**。
+下一阶段为 **Part 6 Next Skill Slice Entry / Strategy Review**。
 
+- 不直接开始下一技能实现。
 - 不直接进入完整远射外部入口。
 - 不接 MatchPlay。
 - 不解冻 External API v1。
