@@ -15,12 +15,15 @@
 - 6.5 Independent Boundary Review 与 6.7 Boundary Review + Regression 已通过。
 - 6.7.5 Long Shot Direct Shot Docs Sync 已完成并提交。
 - 6.8 First Skill Slice Closure Decision Review 已通过；Long Shot / Direct Shot 可以正式收口，不需要补生产代码、补测试或 Final Regression。
-- 当前阶段为 6.8.5 First Skill Slice Final Closure Docs Sync；提交后 Long Shot / Direct Shot 作为 Part 6 第一个最小技能切片正式完成。
-- 下一功能决策阶段为 Part 6 Skill Slice Strategy Review；不得直接实现直射死角、完整远射或其他技能。
-- CoreRules 当前为 579/579 通过；Validator 11/11、Skill Rule Query 8/8、Plan Query 27/27、Composition 5/5 通过。
+- 6.8.5 First Skill Slice Final Closure Docs Sync 已提交；Long Shot / Direct Shot 作为 Part 6 第一个最小技能切片正式完成。
+- 6.9 Skill Slice Strategy Review 与 6.10 Long Shot Dead Corner Determination Contract Review 已通过。
+- 6.11 Long Shot Dead Corner Decision Query + Tests 已完成并提交；6.12 Independent Boundary Review + Regression 已通过。
+- 当前阶段为 6.12.5 Long Shot Dead Corner Docs Sync。
+- 下一阶段为 Long Shot Branch Selection Contract Review；不得直接实现 Branch Selection 或完整远射。
+- CoreRules 当前为 606/606 通过；LongShotDeadCornerDecisionQuery 27/27 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
-- `git diff --check` 通过；6.7 回归完成后工作区干净。
+- `git diff --check` 通过；6.12 回归完成后工作区干净。
 
 ## Part 6 第一技能切片
 
@@ -30,11 +33,23 @@
 - Attack D6 1–2 返回 ImmediateMiss，结束攻击、不进球、不要求 Defense D6、不生成 Formula Plan，也不进入公式链。
 - Attack D6 3–6 生成 `Finishing` Formula Plan：攻方使用 `LongShot + 0.0`，守方使用 `Tackling + 2.0`，并保留外部 D6、来源标记及日志上下文。
 - Composition Tests 消费 Plan，经 `InputAssemblyQuery -> ResolverInputAssembler -> ResolutionExecutor -> FormulaResolver` 验证兼容性；FormulaResolver 只由 Executor 内部调用。
-- 当前未实现完整远射、直射死角、Determination、门将发动、多卡组合、随机数生成或新的 TieBreaker 规则。
+- 该切片收口时未实现完整远射、直射死角、Determination、门将发动、多卡组合、随机数生成或新的 TieBreaker 规则。
 - 当前未接入 MatchPlay、External API v1、FormulaAttackFlow、DataTable、Provider、卡牌数据库、UI、蓝图、Content、Config、联网或 Steam。
 - 6.8 收口决策确认不需要额外生产代码、测试、Final Regression 或功能性 Docs 补充；6.8.5 只记录正式完成状态和下一入口。
-- 下一阶段先做 Part 6 Skill Slice Strategy Review；Strategy Review 后可优先评估远射直射死角，但不得从本切片直接进入实现。
+- 该切片收口后的下一阶段为 Part 6 Skill Slice Strategy Review；Strategy Review 后可优先评估远射直射死角，但不得从该切片直接进入实现。
 - 阶段集中记录见 `Docs/CoreRules_Part6LongShotDirectShot.md`。
+
+## Part 6 Long Shot / Dead Corner 专用决策
+
+- `FLongShotDeadCornerDecisionQuery` 是 LongShot 专用、只读、无状态的 Goal / Miss Decision Query，不是通用 Determination 框架。
+- Query 使用外部显式提供的 D6A 和 D6B；两者都必须在 1–6。总和为 11 或 12 时返回 Goal，其他合法总和返回 Miss；两种结果都结束当前攻击。
+- Query 不要求 DefenderCardId、DefenderPlayerId、DefenseD6 或门将参与，不生成 Formula Plan，也不进入 Input Assembly Query、Assembler、Executor 或 FormulaResolver。
+- Query 只查询攻击方 Player Card Snapshot 和 Skill Rule Snapshot、验证 LongShot 资格及输入，并保留分层诊断；不修改比分、卡牌状态、MatchPlay 或任何外部状态。
+- 6.11 只新增 Decision Query 的 `.h`、`.cpp` 和测试文件；没有修改 Direct Shot、Skill Rule、Player Card Snapshot 或现有公式链模块。
+- 6.12 独立审查确认 6.11 符合 6.10 契约；专项测试 27/27、CoreRules 606/606、Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 均通过。
+- 当前仍未实现完整远射、Direct Shot / Dead Corner 分支选择、通用 Determination、门将发动、多卡组合、随机数生成或新的 TieBreaker 规则。
+- 当前仍未接入 MatchPlay、External API v1、FormulaAttackFlow、DataTable、Provider、卡牌数据库、SkillEffect、SkillPipeline、UI、蓝图、Content、Config、联网或 Steam。
+- 下一阶段必须先做 Long Shot Branch Selection Contract Review；不得直接实现 Branch Selection、完整远射或通用 SkillPipeline。
 
 ## 已完成阶段
 

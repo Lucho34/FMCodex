@@ -5,7 +5,7 @@
 | 分层 | 当前职责 | 代表模块 |
 | --- | --- | --- |
 | State 层 | 保存比赛运行态和双方卡牌使用状态，不主动执行业务逻辑。 | `MatchRuntimeState`、`CardUsageState`、`MatchPlayState` |
-| Rule Data Snapshot / Contract / Validation / Query / Assembly / Execution 层 | 接收 provider-neutral 的只读卡牌和技能规则值快照，定义、组装并验证显式单卡公式输入契约，将双边成功 Query Result 转换为 Resolver Input，再通过薄执行边界调用一次 Resolver；与玩家归属和卡牌使用状态分离。 | `PlayerCardRuleSnapshot`、`PlayerCardRuleSnapshotValidator`、`PlayerCardRuleSnapshotQuery`、`SkillRuleSnapshot`、`SkillRuleSnapshotValidator`、`SkillRuleSnapshotQuery`、`LongShotDirectShotPlanQuery`、`SingleCardFormulaInputContract`、`SingleCardFormulaInputContractValidator`、`SingleCardFormulaInputAssemblyQuery`、`SingleCardFormulaResolverInputAssembler`、`SingleCardFormulaResolutionExecutor` |
+| Rule Data Snapshot / Contract / Validation / Query / Assembly / Execution 层 | 接收 provider-neutral 的只读卡牌和技能规则值快照，定义、组装并验证显式单卡公式输入契约，将双边成功 Query Result 转换为 Resolver Input，再通过薄执行边界调用一次 Resolver；专用技能 Query 可以只返回无状态决策且不进入公式链；与玩家归属和卡牌使用状态分离。 | `PlayerCardRuleSnapshot`、`PlayerCardRuleSnapshotValidator`、`PlayerCardRuleSnapshotQuery`、`SkillRuleSnapshot`、`SkillRuleSnapshotValidator`、`SkillRuleSnapshotQuery`、`LongShotDirectShotPlanQuery`、`LongShotDeadCornerDecisionQuery`、`SingleCardFormulaInputContract`、`SingleCardFormulaInputContractValidator`、`SingleCardFormulaInputAssemblyQuery`、`SingleCardFormulaResolverInputAssembler`、`SingleCardFormulaResolutionExecutor` |
 | Resolver 层 | 完成单一规则计算或原子状态转换；随机数和公式输入由外部传入。 | `FormulaResolver`、`GoalResolver`、`AttackOpportunityResolver`、`CardUsageResolver` |
 | Flow 层 | 按固定顺序组合多个 Resolver，返回 Updated 状态。 | `AttackResolutionFlow`、`FormulaAttackFlow`、`MatchPlayAttackFlow` |
 | Query / Result View 层 | 只读提取状态、可用性、预览、初始化快照、具体请求预检、诊断和执行结果摘要。 | `MatchPlayStatusQuery`、`MatchPlayAvailabilityQuery`、`MatchPlayActionPreview`、`MatchPlayRequestValidationReport`、`MatchPlaySubmitAttackResultQuery`、`MatchPlayExternalStateView`、`MatchPlayExternalMatchSetupView`、`MatchPlayExternalAttackRequestPreflight` |
@@ -13,7 +13,7 @@
 | Step 层 | 执行一次明确的攻击步骤并构建执行摘要。 | `MatchPlayAttackStep` |
 | Facade 层 | 接收一次外部请求，编排提交检查和单步执行。 | `MatchPlaySubmitAttackFacade` |
 | 外部 Controller 层 | 作为 Facade 上层入口，包装一次外部请求的提交结果和 Result View。 | `MatchPlayExternalTurnController` |
-| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询、单卡公式输入契约验证 / 组装、Resolver Input 转换、薄执行边界、单卡公式链端到端组合、Long Shot / Direct Shot Plan 组合和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`SkillRuleSnapshotValidatorTests.cpp`、`SkillRuleSnapshotQueryTests.cpp`、`LongShotDirectShotPlanQueryTests.cpp`、`LongShotDirectShotCompositionTests.cpp`、`SingleCardFormulaInputContractValidatorTests.cpp`、`SingleCardFormulaInputAssemblyQueryTests.cpp`、`SingleCardFormulaResolverInputAssemblerTests.cpp`、`SingleCardFormulaResolutionExecutorTests.cpp`、`SingleCardFormulaEndToEndCompositionTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
+| Tests | 覆盖成功、失败、原子性、输入不变、依赖边界、规则快照验证 / 查询、单卡公式输入契约验证 / 组装、Resolver Input 转换、薄执行边界、单卡公式链端到端组合、Long Shot / Direct Shot Plan 组合、Long Shot / Dead Corner 专用决策和推荐外部 API 集成场景。 | `*Tests.cpp`、`PlayerCardRuleSnapshotValidatorTests.cpp`、`PlayerCardRuleSnapshotQueryTests.cpp`、`SkillRuleSnapshotValidatorTests.cpp`、`SkillRuleSnapshotQueryTests.cpp`、`LongShotDirectShotPlanQueryTests.cpp`、`LongShotDirectShotCompositionTests.cpp`、`LongShotDeadCornerDecisionQueryTests.cpp`、`SingleCardFormulaInputContractValidatorTests.cpp`、`SingleCardFormulaInputAssemblyQueryTests.cpp`、`SingleCardFormulaResolverInputAssemblerTests.cpp`、`SingleCardFormulaResolutionExecutorTests.cpp`、`SingleCardFormulaEndToEndCompositionTests.cpp`、`MatchPlayExternalApiIntegrationTests.cpp`、`MatchPlayExternalApiV1LifecycleTests.cpp`、`MatchPlayLegacyStateBoundaryTests.cpp` |
 
 阶段 4.47 已落地 `FPlayerCardRuleSnapshot`、`FPlayerCardRuleSnapshotSet` 与 `FPlayerCardRuleSnapshotValidator::Validate`。它们只表达和验证卡牌规则定义，不表达玩家归属或 `AvailableCardIds / UsedCardIds` 使用状态；当前也不接入 MatchPlay 或 External API v1。SkillId 仅为结构化不透明字段，不执行技能效果，因此本阶段仍属于第 4 部分 CoreRules 数据边界落地，不是第 5 阶段技能系统实现。
 
@@ -48,9 +48,13 @@ Test
 
 阶段 6.0 至 6.7 已完成 Part 6 第一技能切片：CoreRules-only Long Shot / Direct Shot。`FSkillRuleSnapshot` 只表达 SkillId、LongShot 类型和行动点范围；Validator 与 Query 分别只做结构验证和按 SkillId 查询。`FLongShotDirectShotPlanQuery` 查询攻守双方 Player Card Snapshot 和 Skill Rule Snapshot，校验技能持有、类型、行动点、GK、外部 D6 和日志上下文。Attack D6 1–2 返回 ImmediateMiss；Attack D6 3–6 只生成 `Finishing` Formula Plan，不执行公式链。
 
-`LongShotDirectShotCompositionTests` 消费 Formula Plan，并经现有 `InputAssemblyQuery -> ResolverInputAssembler -> ResolutionExecutor -> FormulaResolver` 链完成组合验证；FormulaResolver 只由 Executor 内部调用。当前基线为 CoreRules 579/579、Skill Rule Validator 11/11、Skill Rule Query 8/8、Plan Query 27/27、Composition 5/5，Development Editor 与 UHT `-WarningsAsErrors` 通过。当前能力不是完整远射，也未实现直射死角、Determination、门将发动、多卡组合、随机数或新的 TieBreaker 规则；MatchPlay、External API v1、FormulaAttackFlow 和数据源边界均保持未接入。完整记录见 `CoreRules_Part6LongShotDirectShot.md`。
+`LongShotDirectShotCompositionTests` 消费 Formula Plan，并经现有 `InputAssemblyQuery -> ResolverInputAssembler -> ResolutionExecutor -> FormulaResolver` 链完成组合验证；FormulaResolver 只由 Executor 内部调用。该切片收口基线为 CoreRules 579/579、Skill Rule Validator 11/11、Skill Rule Query 8/8、Plan Query 27/27、Composition 5/5，Development Editor 与 UHT `-WarningsAsErrors` 通过。该切片不是完整远射，收口时也未实现直射死角、Determination、门将发动、多卡组合、随机数或新的 TieBreaker 规则；MatchPlay、External API v1、FormulaAttackFlow 和数据源边界均保持未接入。完整记录见 `CoreRules_Part6LongShotDirectShot.md`。
 
 阶段 6.8 收口决策确认 Long Shot / Direct Shot 已达到第一技能切片目标，不需要补生产代码、补测试或再次 Final Regression。6.8.5 Final Closure Docs Sync 提交后，该切片正式完成；它仍不是完整远射。下一功能决策阶段为 Part 6 Skill Slice Strategy Review，在该 Review 前不得直接实现直射死角、完整远射或其他技能。
+
+阶段 6.9 至 6.12 已完成 Long Shot / Dead Corner 专用决策的策略审查、最小契约、实现、测试和独立回归。`FLongShotDeadCornerDecisionQuery` 只查询攻击方 Player Card Snapshot 与 Skill Rule Snapshot，验证 LongShot 资格、行动点、两个外部 D6 和日志上下文，然后返回 Goal 或 Miss；不生成 Formula Plan、不进入现有公式链，也不修改比分、卡牌状态或外部状态。
+
+Dead Corner 的两个 D6 均须由外部显式提供且位于 1–6；总和 11 或 12 为 Goal，其他合法总和为 Miss，两种结果都结束当前攻击。该 Query 不要求防守方、Defense D6 或门将参与。当前基线为 LongShotDeadCornerDecisionQuery 27/27、CoreRules 606/606，Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。它不是完整远射、不包含 Direct Shot / Dead Corner 分支选择，也不是通用 Determination；下一阶段必须先做 Long Shot Branch Selection Contract Review。
 
 ## 单次攻击请求路径
 

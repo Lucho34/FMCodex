@@ -1,13 +1,14 @@
-# CoreRules Part 6 Long Shot / Direct Shot
+# CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录阶段 6.0 至 6.8.5 对 Part 6 第一技能切片 Long Shot / Direct Shot 的入口决策、最小规则数据、查询、Formula Plan、独立审查、组合测试、回归和最终收口事实。阶段 6.8.5 只同步文档，不改变任何生产行为。
+本文档集中记录 Part 6 的 Long Shot 最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 记录 Long Shot / Dead Corner 专用 Decision Query 的策略、契约、实现、独立回归与文档同步。文档同步不改变任何生产行为。
 
 ## 当前定位
 
 - Part 6 当前继续保持 CoreRules only。
 - Long Shot / Direct Shot 是 Part 6 第一个已完成并正式收口的最小技能切片。
+- Long Shot / Dead Corner 专用 Decision Query 已完成并通过独立边界审查，但 Direct Shot / Dead Corner 分支选择尚未实现。
 - 当前能力不是完整远射。
-- 当前没有建立通用 SkillEffect、SkillPipeline 或技能叠加系统。
+- Dead Corner Query 不是通用 Determination 框架；当前没有建立通用 SkillEffect、SkillPipeline 或技能叠加系统。
 
 ## 阶段记录
 
@@ -22,6 +23,11 @@
 - 6.7.5 Long Shot Direct Shot Docs Sync：同步模块职责、架构链、规则语义、回归基线和持续边界。
 - 6.8 First Skill Slice Closure Decision Review：确认切片可以正式收口，不需要补生产代码、补测试或 Final Regression。
 - 6.8.5 First Skill Slice Final Closure Docs Sync：记录正式完成状态和下一阶段入口。
+- 6.9 Part 6 Skill Slice Strategy Review：确认下一步先审查 Dead Corner 最小 Determination 契约，不直接实现完整远射。
+- 6.10 Long Shot Dead Corner Determination Contract Review：冻结 LongShot 专用双 D6 Goal / Miss 决策边界，不建立通用 Determination。
+- 6.11 Long Shot Dead Corner Decision Query + Tests：只新增专用 Query 的头文件、实现和测试。
+- 6.12 Independent Boundary Review + Regression：确认 Query 符合契约且未修改既有模块；专项 27/27、CoreRules 606/606 通过。
+- 6.12.5 Long Shot Dead Corner Docs Sync：同步 6.10–6.12 阶段事实、规则语义、边界和下一阶段入口。
 
 ## 最终收口结论
 
@@ -34,6 +40,41 @@
 - CoreRules 579/579 及四组专项基线稳定。
 - Long Shot / Direct Shot 可以作为 Part 6 第一技能切片基线正式收口。
 - 当前不是完整远射，持续边界没有因收口而解冻。
+
+## Dead Corner 专用 Decision Query
+
+`FLongShotDeadCornerDecisionQuery`：
+
+- 只服务 LongShot / Dead Corner。
+- 查询攻击方 `FPlayerCardRuleSnapshot` 和 `FSkillRuleSnapshot`。
+- 校验攻击方持有目标 LongShot 技能、行动点位于规则范围、参与者不是 GK、两个外部 D6 和日志上下文有效。
+- 保留 Player Card Snapshot Query 与 Skill Rule Snapshot Query 的分层诊断。
+- 成功时只返回 Goal 或 Miss 决策及 `bAttackEnded / bIsGoal`。
+- 保持输入、Snapshot 集合、比分、卡牌状态、MatchPlay 和其他外部状态不变。
+
+它不负责：
+
+- Direct Shot / Dead Corner 分支选择
+- 通用 Determination
+- Formula Plan 生成
+- Input Assembly Query、Assembler、Executor 或 FormulaResolver 调用
+- 比分或比赛状态更新
+- 门将、防守方或 Defense D6
+
+因此它是独立、只读、无状态的专用 Decision Query，不是完整远射流程。
+
+## Dead Corner 规则语义
+
+- D6A 和 D6B 都由外部显式提供。
+- 两个 D6 都必须位于 1–6。
+- `D6A + D6B` 为 11 或 12：`Decision = Goal`、`bAttackEnded = true`、`bIsGoal = true`。
+- 其他合法总和：`Decision = Miss`、`bAttackEnded = true`、`bIsGoal = false`。
+- 不要求 DefenderCardId。
+- 不要求 DefenderPlayerId。
+- 不要求 DefenseD6。
+- 不要求门将参与。
+- 不生成 Formula Plan。
+- 不进入 `InputAssemblyQuery -> ResolverInputAssembler -> ResolutionExecutor -> FormulaResolver`。
 
 ## 架构链路
 
@@ -133,13 +174,22 @@ FormulaResolver 只由 Executor 内部调用。Composition Tests 不直接调用
 - `git diff --check`：通过。
 - 6.7 回归完成后工作区干净。
 
+Dead Corner 专用 Decision Query 当前基线：
+
+- LongShotDeadCornerDecisionQuery：27/27 通过。
+- CoreRules：606/606 通过。
+- UE5 Development Editor：通过。
+- UHT `-WarningsAsErrors`：通过，0 个文件需重写。
+- `git diff --check`：通过。
+- 6.12 回归完成后工作区干净。
+
 ## 持续边界
 
 当前仍未实现：
 
 - 完整远射
-- 直射死角
-- Determination
+- Direct Shot / Dead Corner 分支选择
+- 通用 Determination
 - 门将发动
 - 多卡组合
 - 随机数生成
@@ -164,10 +214,11 @@ FormulaResolver 只由 Executor 内部调用。Composition Tests 不直接调用
 
 ## 下一阶段
 
-下一功能决策阶段为 **Part 6 Skill Slice Strategy Review**。
+下一阶段为 **Long Shot Branch Selection Contract Review**。
 
-- 不直接实现直射死角。
+- 不直接实现 Branch Selection。
 - 不直接实现完整远射。
-- 不直接实现其他技能。
-- Strategy Review 应先比较 Determination、双 D6、门将状态、多卡公式和 MatchPlay 边界，再选择下一个最小切片。
-- Strategy Review 后可以优先评估远射的直射死角分支，但评估不等于批准实现。
+- 不接 MatchPlay。
+- 不解冻 External API v1。
+- 不修改 FormulaAttackFlow。
+- 不建立通用 SkillPipeline。
