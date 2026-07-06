@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的 Long Shot 最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成整体收口审查与最终文档同步。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -11,6 +11,8 @@
 - 当前能力不是完整远射。
 - 当前收口不代表 Part 6 全部技能工作结束。
 - Branch 由调用方显式选择；当前没有建立通用 Branch Selection、SkillEffect、SkillPipeline 或技能叠加系统。
+- Cut Inside Shot 当前只完成 Direct Shot 最小切片。
+- Cut Inside Shot 当前未实现 Dead Corner、Branch Selection 或完整内切射门。
 
 ## 阶段记录
 
@@ -36,6 +38,11 @@
 - 6.15.5 Long Shot Branch Selection Docs Sync：同步 6.13–6.15 阶段事实、职责、回归基线和下一阶段入口。
 - 6.16 Long Shot Minimal Slices Closure Review：确认六项能力达到 Part 6 第一段内部最小切片收口条件，不需要补代码、补测试或再次回归。
 - 6.16.5 Long Shot Minimal Slices Final Closure Docs Sync：记录正式关闭状态、最终基线和下一阶段决策入口。
+- 6.19 Cut Inside Shot SkillType + Validator Extension：新增 `CutInsideShot` SkillType 支持，并保持 Validator 只做结构验证。
+- 6.20 Cut Inside Shot Direct Shot Plan Query + Tests：新增 `FCutInsideShotDirectShotPlanQuery` 与 21 项 Query 测试。
+- 6.21 Cut Inside Shot Direct Shot Composition Tests：只新增 6 项组合测试，在测试侧消费 Formula Plan。
+- 6.22 Cut Inside Shot Direct Shot Independent Boundary Review + Regression：确认 6.19 至 6.21 边界符合契约，CoreRules 653/653 通过。
+- 6.22.5 Cut Inside Shot Direct Shot Docs Sync：同步实现、测试、边界审查和回归基线；本阶段只修改 Docs。
 
 ## 最终收口结论
 
@@ -115,6 +122,79 @@ Branch Selection 不复制下层资格、行动点、D6、Goal / Miss 或 Formul
 这六项能力只提供 provider-neutral 规则数据、只读查询、专用决策、Direct Shot Formula Plan、测试侧组合验证和调用方显式分支委派。6.16 审查未发现必须留在当前切片内补充的代码、测试或边界修正，因此 6.16.5 提交后可正式关闭 Long Shot Minimal Slices。
 
 该关闭是 Part 6 第一段内部 CoreRules 最小切片收口，不是完整远射外部入口，也不是 Part 6 全部技能工作的结束。它没有授权 MatchPlay、External API v1、FormulaAttackFlow、通用 SkillPipeline / SkillEffect、数据源、随机数、牌库语义、UI 或联网接入。
+
+## Cut Inside Shot Direct Shot 最小切片
+
+`FCutInsideShotDirectShotPlanQuery`：
+
+- 只服务 Cut Inside Shot / Direct Shot。
+- 查询攻击方和防守方 `FPlayerCardRuleSnapshot`。
+- 查询 `FSkillRuleSnapshot`，并要求 SkillType 为 `CutInsideShot`。
+- 校验攻击方持有目标技能、行动点位于规则范围、参与者不是 GK、外部 D6 和日志上下文有效。
+- Attack D6 1–2 返回 ImmediateMiss。
+- Attack D6 3–6 生成 Formula Plan。
+- 保留 Player Card Snapshot Query 与 Skill Rule Snapshot Query 的分层诊断。
+- 保持输入、Snapshot 集合、比分、卡牌状态、MatchPlay 和其他外部状态不变。
+
+它不负责：
+
+- Dead Corner
+- Branch Selection
+- 完整内切射门
+- Formula 链执行
+- Input Assembly Query、Resolver Input Assembler、Resolution Executor 或 FormulaResolver 调用
+- 比分或比赛状态更新
+- MatchPlay、External API v1 或 FormulaAttackFlow 接入
+
+因此它是独立、只读、无状态的 Direct Shot Formula Plan Query，不是完整内切射门流程。
+
+## Cut Inside Shot Direct Shot 规则语义
+
+### Attack D6 1–2
+
+- `Decision = ImmediateMiss`
+- `bAttackEnded = true`
+- `bIsGoal = false`
+- 不要求 Defense D6
+- 不生成 Formula Plan
+- 不进入公式链
+
+### Attack D6 3–6
+
+- `Decision = FormulaResolutionRequired`
+- `FormulaType = Finishing`
+- Attacker Role = `Attacker`
+- Defender Role = `Defender`
+- Attacker Attribute = `Shooting`
+- Attacker Modifier = `(Dribbling - Shooting) / 2`
+- Attacker 最终基础代数等价于 `(Shooting + Dribbling) / 2`
+- Defender Attribute = `Tackling`
+- Defender Modifier = `+2`
+- Attack D6 和 Defense D6 必须由外部显式提供
+- 双方外部 D6 和来源标记保持不变
+- LogId、TurnIndex、PlayerId 和 CardId 保持不变
+- Plan 阶段不提前判断最终胜者或是否进球
+
+## Cut Inside Shot Direct Shot Composition Tests 职责
+
+`CutInsideShotDirectShotCompositionTests.cpp` 消费成功生成的 Formula Plan，并只按现有职责链调用：
+
+```text
+FSingleCardFormulaInputAssemblyQuery::Assemble
+  -> FSingleCardFormulaResolverInputAssembler::Assemble
+  -> FSingleCardFormulaResolutionExecutor::Execute
+       -> UFormulaResolver::ResolveFormula
+```
+
+Composition Tests 不直接调用 FormulaResolver，也不新增生产 Pipeline。测试覆盖：
+
+- Shooting 与 Dribbling 相等时的组合。
+- `(Dribbling - Shooting) / 2` 为正、为负和出现半点平均值时的组合。
+- `Finishing`、`Shooting / Tackling` 和派生 Modifier 固定映射。
+- 外部 D6、来源标记和日志字段传递。
+- ImmediateMiss 不进入公式链。
+- Plan Input、Player Card Snapshot Set、Skill Rule Snapshot Set 和 Formula Plan 的字段级输入不变性。
+- 禁止依赖边界。
 
 ## 架构链路
 
@@ -237,6 +317,22 @@ Long Shot Branch Selection 当前基线：
 - `git diff --check`：通过。
 - 6.15 回归完成后工作区干净。
 
+Cut Inside Shot Direct Shot 当前基线：
+
+- CutInsideShotDirectShotPlanQuery：21/21 通过。
+- CutInsideShotDirectShotComposition：6/6 通过。
+- SkillRuleSnapshotValidator：13/13 通过。
+- SkillRuleSnapshotQuery：8/8 通过。
+- LongShotDirectShotPlanQuery：27/27 通过。
+- LongShotDirectShotComposition：5/5 通过。
+- LongShotBranchSelectionQuery：18/18 通过。
+- LongShotDeadCornerDecisionQuery：27/27 通过。
+- CoreRules：653/653 通过。
+- UE5 Development Editor：通过。
+- UHT `-WarningsAsErrors`：通过，0 个文件需重写。
+- `git diff --check`：通过。
+- 6.22 回归完成后工作区干净。
+
 ## 持续边界
 
 当前仍未实现：
@@ -244,6 +340,9 @@ Long Shot Branch Selection 当前基线：
 - 完整远射
 - 完整远射外部入口
 - 通用 Determination
+- Cut Inside Shot / Dead Corner
+- Cut Inside Shot / Branch Selection
+- 完整内切射门
 - 门将发动
 - 多卡组合
 - 随机数生成
@@ -268,10 +367,13 @@ Long Shot Branch Selection 当前基线：
 
 ## 下一阶段
 
-下一阶段为 **Part 6 Next Skill Slice Entry / Strategy Review**。
+下一阶段必须由后续提示词明确，不从 6.22.5 Docs Sync 自动扩大范围。
 
 - 不直接开始下一技能实现。
 - 不直接进入完整远射外部入口。
+- 不直接进入完整内切射门。
+- 不实现 Cut Inside Shot / Dead Corner。
+- 不实现 Cut Inside Shot / Branch Selection。
 - 不接 MatchPlay。
 - 不解冻 External API v1。
 - 不修改 FormulaAttackFlow。

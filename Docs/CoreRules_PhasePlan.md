@@ -23,12 +23,15 @@
 - 6.15 Long Shot Branch Selection Independent Boundary Review + Regression 已通过。
 - 6.15.5 Long Shot Branch Selection Docs Sync 已完成并提交。
 - 6.16 Long Shot Minimal Slices Closure Review 已通过；该阶段为 report-only，没有文件修改。
-- 当前阶段为 6.16.5 Long Shot Minimal Slices Final Closure Docs Sync；提交后 Long Shot Minimal Slices 作为 Part 6 第一段内部 CoreRules 最小切片正式关闭。
-- 下一阶段先做 Part 6 Next Skill Slice Entry / Strategy Review，不直接进入功能实现或外部接入。
-- CoreRules 当前为 624/624 通过；LongShotBranchSelectionQuery 18/18、LongShotDeadCornerDecisionQuery 27/27、LongShotDirectShotPlanQuery 27/27、LongShotDirectShotComposition 5/5、SkillRuleSnapshotValidator 11/11、SkillRuleSnapshotQuery 8/8 通过。
+- 6.16.5 Long Shot Minimal Slices Final Closure Docs Sync 已完成并提交；Long Shot Minimal Slices 作为 Part 6 第一段内部 CoreRules 最小切片正式关闭。
+- Long Shot Minimal Slices 已正式关闭；后续不得从该收口直接接 MatchPlay、External API v1、FormulaAttackFlow 或通用 SkillPipeline / SkillEffect。
+- 6.19 至 6.21 已完成 Cut Inside Shot Direct Shot 最小切片提交链：`f52a33c`、`2d7fa3a`、`c1c8851`。
+- 6.22 Cut Inside Shot Direct Shot Independent Boundary Review + Regression 已通过；该阶段为 report-only，没有文件修改。
+- 当前阶段为 6.22.5 Cut Inside Shot Direct Shot Docs Sync；阶段类型为 Docs-only，只同步 6.19 至 6.22 文档事实。
+- CoreRules 当前为 653/653 通过；CutInsideShotDirectShotPlanQuery 21/21、CutInsideShotDirectShotComposition 6/6、SkillRuleSnapshotValidator 13/13、SkillRuleSnapshotQuery 8/8、LongShotDirectShotPlanQuery 27/27、LongShotDirectShotComposition 5/5、LongShotBranchSelectionQuery 18/18、LongShotDeadCornerDecisionQuery 27/27 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
-- `git diff --check` 通过；6.15 回归完成后工作区干净。
+- `git diff --check` 通过；6.22 回归完成后工作区干净。
 
 ## Part 6 第一技能切片
 
@@ -68,6 +71,19 @@
 - 6.15 回归为 Branch Selection 18/18、CoreRules 624/624、Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 全部通过。
 - 6.16 收口审查确认当前六项能力足以作为 Part 6 第一段内部 CoreRules 最小切片关闭，不需要补生产代码、测试或再次回归。
 - 下一阶段为 Part 6 Next Skill Slice Entry / Strategy Review；不得直接接 MatchPlay、解冻 External API v1、修改 FormulaAttackFlow、进入完整远射外部入口或建立通用 SkillPipeline / SkillEffect。
+
+## Part 6 Cut Inside Shot Direct Shot
+
+- Cut Inside Shot 当前只完成 Direct Shot 最小切片；未实现 Dead Corner、Branch Selection 或完整内切射门。
+- 6.19 扩展 `FSkillRuleSnapshot` / `FSkillRuleSnapshotValidator`，允许 `ESkillRuleType::CutInsideShot` 与既有 LongShot 规则共存；Validator 仍只做结构验证，不解释技能效果。
+- `FCutInsideShotDirectShotPlanQuery` 只查询攻守 Player Card Snapshot 与 Skill Rule Snapshot、校验技能持有、SkillType、行动点、GK、外部 D6 和日志上下文。
+- Attack D6 1–2 返回 `ImmediateMiss`，结束攻击、不进球、不要求 Defense D6、不生成 Formula Plan，也不进入公式链。
+- Attack D6 3–6 生成 `Finishing` Formula Plan；Defense D6 必须由外部显式提供。
+- 攻方 Plan 使用 `Attacker Attribute = Shooting`，`Attacker Modifier = (Dribbling - Shooting) / 2`，公式输入等价于 `(Shooting + Dribbling) / 2`。
+- 守方 Plan 使用 `Defender Attribute = Tackling`，`Defender Modifier = +2`。
+- Query 不执行公式链，不调用 Input Assembly Query、Resolver Input Assembler、Resolution Executor 或 FormulaResolver。
+- `CutInsideShotDirectShotCompositionTests` 只在测试侧消费 Formula Plan，经现有单卡公式链验证组合兼容性；不新增生产 Pipeline。
+- 6.22 独立 Boundary Review + Regression 已确认未接 MatchPlay、未解冻 External API v1、未修改 FormulaAttackFlow / FormulaResolver / InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor，未引入 SkillPipeline / SkillEffect、通用属性表达式引擎、DataTable / Provider / 卡牌数据库、随机数、抽牌 / 洗牌 / 手牌 / 牌库逻辑、UI、蓝图、Content、Config、联网或 Steam。
 
 ## 已完成阶段
 
