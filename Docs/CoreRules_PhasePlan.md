@@ -35,11 +35,13 @@
 - 6.26 Cut Inside Shot Branch Selection Minimal Rule Contract Review 已通过；该阶段为 report-only，没有文件修改。
 - 6.27 Cut Inside Shot Branch Selection Query + Tests 已完成并提交。
 - 6.28 Cut Inside Shot Branch Selection Independent Boundary Review + Regression 已通过；该阶段为 report-only，没有文件修改。
-- 当前阶段为 6.28.5 Cut Inside Shot Branch Selection Docs Sync；阶段类型为 Docs-only，只同步 6.26 至 6.28 文档事实。
+- 6.28.5 Cut Inside Shot Branch Selection Docs Sync 已完成并提交。
+- 6.29 Cut Inside Shot Minimal Slices Closure Review 已通过；该阶段为 report-only，没有文件修改。
+- 当前阶段为 6.29.5 Cut Inside Shot Minimal Slices Final Closure Docs Sync；阶段类型为 Docs-only，只同步 6.29 收口结论。
 - CoreRules 当前为 702/702 通过；CutInsideShotBranchSelectionQuery 21/21、CutInsideShotDeadCornerDecisionQuery 28/28、CutInsideShotDirectShotPlanQuery 21/21、CutInsideShotDirectShotComposition 6/6、LongShotBranchSelectionQuery 18/18、LongShotDeadCornerDecisionQuery 27/27、LongShotDirectShotPlanQuery 27/27、LongShotDirectShotComposition 5/5、SkillRuleSnapshotValidator 13/13、SkillRuleSnapshotQuery 8/8 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
-- `git diff --check` 通过；6.28 回归完成后工作区干净。
+- `git diff --check` 通过；6.29 收口审查完成后工作区干净。
 
 ## Part 6 第一技能切片
 
@@ -120,6 +122,19 @@
 - Query 不更新比分、MatchPlay、卡牌状态或外部状态，不生成随机数。
 - 6.28 独立 Boundary Review + Regression 已确认未接 MatchPlay、未解冻 External API v1、未引入 SkillPipeline / SkillEffect、通用 BranchSelectionQuery、通用属性表达式引擎、DataTable / Provider / 卡牌数据库、随机数、抽牌 / 洗牌 / 手牌 / 牌库逻辑、UI、蓝图、Content、Config、联网或 Steam。
 - Cut Inside Shot 当前已具备 Direct Shot、Dead Corner、Branch Selection 三个 CoreRules-only 最小能力；仍不是完整内切射门外部入口。
+
+## Part 6 Cut Inside Shot Minimal Slices 最终收口
+
+- 6.29 Cut Inside Shot Minimal Slices Closure Review 已通过；6.29.5 Final Closure Docs Sync 提交后，Cut Inside Shot Minimal Slices 正式关闭。
+- 该收口是 Part 6 的 CoreRules-only 内部最小切片收口，不是完整内切射门外部入口，也不代表 Part 6 全部完成。
+- 当前收口能力包括：`ESkillRuleType::CutInsideShot`、SkillRuleSnapshotValidator 支持 CutInsideShot、`FCutInsideShotDirectShotPlanQuery`、`CutInsideShotDirectShotCompositionTests`、`FCutInsideShotDeadCornerDecisionQuery`、`FCutInsideShotBranchSelectionQuery`。
+- Cut Inside Shot 当前具备三个 CoreRules-only 最小能力：Direct Shot、Dead Corner、Branch Selection。
+- Direct Shot 边界保持为：Attack D6 1-2 ImmediateMiss；Attack D6 3-6 生成 Finishing Formula Plan；攻方映射为 `Shooting + ((Dribbling - Shooting) / 2)`，等价于 `(Shooting + Dribbling) / 2`；守方为 `Tackling + 2`；Query 不执行公式链。
+- Dead Corner 边界保持为：两个外部 D6，范围 1-6；总和 11/12 为 Goal，其他合法总和为 Miss；Goal / Miss 均结束攻击；不生成 Formula Plan；不读取 Shooting / Dribbling / Tackling。
+- Branch Selection 边界保持为：Branch 由调用方显式提供；只委派选中分支；未选中分支完全忽略；不自动选择 Branch；不复制 Direct Shot / Dead Corner 内部规则。
+- 所有 D6 均由外部显式提供；当前没有随机数生成。
+- 当前未接 MatchPlay / External API v1 / FormulaAttackFlow，未引入 SkillPipeline / SkillEffect / 通用 BranchSelectionQuery / 通用 DeadCornerDecisionQuery / 通用属性表达式引擎，也未引入 DataTable / Provider / 卡牌数据库。
+- 下一阶段应先做 Part 6 Next Skill Slice / Strategy Review 或其他独立 Contract Review；不得从该收口直接进入外部集成。
 
 ## 已完成阶段
 

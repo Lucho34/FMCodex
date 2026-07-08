@@ -2,6 +2,8 @@
 
 本文档是当前 CoreRules 模块职责速查表，目标是帮助后续 Codex 快速建立上下文。每个模块只记录边界，不替代源码和测试。
 
+截至 6.29.5，Cut Inside Shot Minimal Slices 已作为 Part 6 的 CoreRules-only 内部最小切片正式收口。该收口只覆盖 Direct Shot、Dead Corner 与 Branch Selection 三个专用最小能力，不是完整内切射门外部入口，也不授权 MatchPlay、External API v1、FormulaAttackFlow、通用 SkillPipeline / SkillEffect、通用 BranchSelectionQuery、通用 DeadCornerDecisionQuery 或数据源接入。
+
 | 模块 | 职责 | 允许做什么 | 不允许做什么 | 是否修改状态 | 主要依赖 |
 | --- | --- | --- | --- | --- | --- |
 | `FormulaResolver` | 根据外部传入公式输入计算一次公式结果。 | 纯公式计算，输出是否进球等公式结果。 | 不生成随机数，不读取卡牌数据库，不处理技能，不移动卡牌，不消费进攻机会。 | 否 | 公式输入结构 |
