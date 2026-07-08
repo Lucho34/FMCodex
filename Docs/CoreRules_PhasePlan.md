@@ -31,11 +31,15 @@
 - 6.23 Cut Inside Shot Dead Corner Minimal Rule Contract Review 已通过；该阶段为 report-only，没有文件修改。
 - 6.24 Cut Inside Shot Dead Corner Decision Query + Tests 已完成并提交。
 - 6.25 Cut Inside Shot Dead Corner Independent Boundary Review + Regression 已通过；该阶段为 report-only，没有文件修改。
-- 当前阶段为 6.25.5 Cut Inside Shot Dead Corner Docs Sync；阶段类型为 Docs-only，只同步 6.23 至 6.25 文档事实。
-- CoreRules 当前为 681/681 通过；CutInsideShotDeadCornerDecisionQuery 28/28、CutInsideShotDirectShotPlanQuery 21/21、CutInsideShotDirectShotComposition 6/6、LongShotDeadCornerDecisionQuery 27/27、LongShotBranchSelectionQuery 18/18、SkillRuleSnapshotValidator 13/13、SkillRuleSnapshotQuery 8/8 通过。
+- 6.25.5 Cut Inside Shot Dead Corner Docs Sync 已完成并提交。
+- 6.26 Cut Inside Shot Branch Selection Minimal Rule Contract Review 已通过；该阶段为 report-only，没有文件修改。
+- 6.27 Cut Inside Shot Branch Selection Query + Tests 已完成并提交。
+- 6.28 Cut Inside Shot Branch Selection Independent Boundary Review + Regression 已通过；该阶段为 report-only，没有文件修改。
+- 当前阶段为 6.28.5 Cut Inside Shot Branch Selection Docs Sync；阶段类型为 Docs-only，只同步 6.26 至 6.28 文档事实。
+- CoreRules 当前为 702/702 通过；CutInsideShotBranchSelectionQuery 21/21、CutInsideShotDeadCornerDecisionQuery 28/28、CutInsideShotDirectShotPlanQuery 21/21、CutInsideShotDirectShotComposition 6/6、LongShotBranchSelectionQuery 18/18、LongShotDeadCornerDecisionQuery 27/27、LongShotDirectShotPlanQuery 27/27、LongShotDirectShotComposition 5/5、SkillRuleSnapshotValidator 13/13、SkillRuleSnapshotQuery 8/8 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
-- `git diff --check` 通过；6.25 回归完成后工作区干净。
+- `git diff --check` 通过；6.28 回归完成后工作区干净。
 
 ## Part 6 第一技能切片
 
@@ -100,7 +104,22 @@
 - Query 不读取 `Shooting` / `Dribbling` / `Tackling`；只做技能资格、行动点、D6、日志上下文和 Snapshot 边界验证。
 - 6.24 只新增 `CutInsideShotDeadCornerDecisionQuery.h/.cpp` 与 `CutInsideShotDeadCornerDecisionQueryTests.cpp`；未修改 LongShotDeadCornerDecisionQuery、CutInsideShotDirectShotPlanQuery、FormulaResolver、FormulaAttackFlow 或现有公式链模块。
 - 6.25 独立 Boundary Review + Regression 已确认未接 MatchPlay、未解冻 External API v1、未引入 SkillPipeline / SkillEffect、通用 DeadCornerDecisionQuery、通用属性表达式引擎、DataTable / Provider / 卡牌数据库、随机数、抽牌 / 洗牌 / 手牌 / 牌库逻辑、UI、蓝图、Content、Config、联网或 Steam。
-- Cut Inside Shot 当前已具备 Direct Shot 与 Dead Corner 两个独立最小分支能力；仍未实现 Branch Selection 或完整内切射门。
+- Cut Inside Shot 当前已具备 Direct Shot 与 Dead Corner 两个独立最小分支能力；截至 6.25.5 仍未实现 Branch Selection 或完整内切射门。
+
+## Part 6 Cut Inside Shot Branch Selection
+
+- Cut Inside Shot / Branch Selection 当前只是显式委派最小切片；它不是完整内切射门外部入口。
+- 6.26 契约审查确认：必须新增 CutInsideShot 专用 Branch Selection Query，不复用 LongShotBranchSelectionQuery 名义，也不抽象通用 BranchSelectionQuery。
+- `ECutInsideShotBranch` 取值为 `None / DirectShot / DeadCorner`；Branch 必须由调用方显式提供，None 或未知 Branch 结构化拒绝。
+- DirectShot 分支只委派 `FCutInsideShotDirectShotPlanQuery::BuildPlan`；DeadCorner 分支只委派 `FCutInsideShotDeadCornerDecisionQuery::Evaluate`。
+- Query 只调用选中分支；未选中分支完全忽略，非法 SkillId / D6 / DefenderCardId / 日志上下文不影响选中分支。
+- Query 不自动选择 Branch，不根据 D6、行动点、技能或上下文推断 Branch。
+- Query 不复制 Direct Shot 的 Attack D6 ImmediateMiss、Formula Plan、Shooting / Dribbling 平均值或 Defender Tackling +2 规则，也不复制 Dead Corner 的双 D6 11/12 Goal 或 Goal / Miss 判定。
+- Query 不执行公式链，不调用 InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor / FormulaResolver。
+- Direct Shot Formula Plan 只保留在 DirectShotResult 中，顶层不复制、展开或执行。
+- Query 不更新比分、MatchPlay、卡牌状态或外部状态，不生成随机数。
+- 6.28 独立 Boundary Review + Regression 已确认未接 MatchPlay、未解冻 External API v1、未引入 SkillPipeline / SkillEffect、通用 BranchSelectionQuery、通用属性表达式引擎、DataTable / Provider / 卡牌数据库、随机数、抽牌 / 洗牌 / 手牌 / 牌库逻辑、UI、蓝图、Content、Config、联网或 Steam。
+- Cut Inside Shot 当前已具备 Direct Shot、Dead Corner、Branch Selection 三个 CoreRules-only 最小能力；仍不是完整内切射门外部入口。
 
 ## 已完成阶段
 
