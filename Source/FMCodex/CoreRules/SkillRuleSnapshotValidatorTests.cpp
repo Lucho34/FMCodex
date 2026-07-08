@@ -11,6 +11,8 @@ namespace SkillRuleSnapshotValidatorTests
 	const FName LongShotSkillId(TEXT("Skill.LongShot.Primary"));
 	const FName CutInsideShotSkillId(
 		TEXT("Skill.CutInsideShot.Primary"));
+	const FName PassControlSkillId(
+		TEXT("Skill.PassControl.Primary"));
 
 	FSkillRuleSnapshot MakeValidLongShotRule(
 		const FName SkillId = LongShotSkillId,
@@ -33,6 +35,19 @@ namespace SkillRuleSnapshotValidatorTests
 		FSkillRuleSnapshot SkillRule;
 		SkillRule.SkillId = SkillId;
 		SkillRule.SkillType = ESkillRuleType::CutInsideShot;
+		SkillRule.MinTriggerActionPoint = MinActionPoint;
+		SkillRule.MaxTriggerActionPoint = MaxActionPoint;
+		return SkillRule;
+	}
+
+	FSkillRuleSnapshot MakeValidPassControlRule(
+		const FName SkillId = PassControlSkillId,
+		const int32 MinActionPoint = 3,
+		const int32 MaxActionPoint = 6)
+	{
+		FSkillRuleSnapshot SkillRule;
+		SkillRule.SkillId = SkillId;
+		SkillRule.SkillType = ESkillRuleType::PassControl;
 		SkillRule.MinTriggerActionPoint = MinActionPoint;
 		SkillRule.MaxTriggerActionPoint = MaxActionPoint;
 		return SkillRule;
@@ -125,6 +140,41 @@ bool FSkillRuleSnapshotValidatorValidCutInsideShotTest::RunTest(
 
 	TestTrue(TEXT("Valid CutInsideShot snapshot succeeds"), Result.bSuccess);
 	TestTrue(TEXT("Valid CutInsideShot snapshot is valid"), Result.bIsValid);
+	TestEqual(
+		TEXT("Valid snapshot has no error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode::None);
+	TestTrue(
+		TEXT("Valid snapshot has no error message"),
+		Result.ErrorMessage.IsEmpty());
+	TestTrue(
+		TEXT("Valid snapshot has no invalid SkillId"),
+		Result.InvalidSkillId.IsNone());
+	TestTrue(
+		TEXT("Valid snapshot has no invalid field"),
+		Result.InvalidField.IsNone());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorValidPassControlTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.ValidPassControlSkillRuleSnapshotPasses",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorValidPassControlTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet;
+	SnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidPassControlRule()
+	};
+
+	const FSkillRuleSnapshotValidationResult Result =
+		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+
+	TestTrue(TEXT("Valid PassControl snapshot succeeds"), Result.bSuccess);
+	TestTrue(TEXT("Valid PassControl snapshot is valid"), Result.bIsValid);
 	TestEqual(
 		TEXT("Valid snapshot has no error"),
 		Result.ErrorCode,
@@ -381,7 +431,7 @@ bool FSkillRuleSnapshotValidatorMultipleLongShotRulesTest::RunTest(
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSkillRuleSnapshotValidatorMixedSupportedRulesTest,
-	"FMCodex.CoreRules.SkillRuleSnapshotValidator.AllowsLongShotAndCutInsideShotRulesTogether",
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.AllowsLongShotCutInsideShotAndPassControlRulesTogether",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSkillRuleSnapshotValidatorMixedSupportedRulesTest::RunTest(
@@ -394,12 +444,21 @@ bool FSkillRuleSnapshotValidatorMixedSupportedRulesTest::RunTest(
 			SkillRuleSnapshotValidatorTests::CutInsideShotSkillId,
 			2,
 			5));
+	SnapshotSet.SkillRules.Add(
+		SkillRuleSnapshotValidatorTests::MakeValidPassControlRule(
+			SkillRuleSnapshotValidatorTests::PassControlSkillId,
+			6,
+			8));
 
 	const FSkillRuleSnapshotValidationResult Result =
 		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
 
-	TestTrue(TEXT("Mixed supported rules succeed"), Result.bSuccess);
-	TestTrue(TEXT("Mixed supported rules are valid"), Result.bIsValid);
+	TestTrue(
+		TEXT("Mixed supported rules succeed"),
+		Result.bSuccess);
+	TestTrue(
+		TEXT("Mixed supported rules are valid"),
+		Result.bIsValid);
 	TestEqual(
 		TEXT("Mixed supported rules have no error"),
 		Result.ErrorCode,
@@ -423,6 +482,9 @@ bool FSkillRuleSnapshotValidatorInputUnchangedTest::RunTest(
 			MixedSnapshotSet.SkillRules.Add(
 				SkillRuleSnapshotValidatorTests
 					::MakeValidCutInsideShotRule());
+			MixedSnapshotSet.SkillRules.Add(
+				SkillRuleSnapshotValidatorTests
+					::MakeValidPassControlRule());
 			return MixedSnapshotSet;
 		}();
 	const FSkillRuleSnapshotSet SnapshotSetBefore = SnapshotSet;
