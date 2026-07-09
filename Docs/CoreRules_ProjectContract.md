@@ -180,3 +180,17 @@
 - 最终基线为 CutInsideShotBranchSelectionQuery 21/21、CutInsideShotDeadCornerDecisionQuery 28/28、CutInsideShotDirectShotPlanQuery 21/21、CutInsideShotDirectShotComposition 6/6、LongShotBranchSelectionQuery 18/18、LongShotDeadCornerDecisionQuery 27/27、LongShotDirectShotPlanQuery 27/27、LongShotDirectShotComposition 5/5、SkillRuleSnapshotValidator 13/13、SkillRuleSnapshotQuery 8/8、CoreRules 702/702；Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。
 - 该收口没有授权 MatchPlay / External API v1 / FormulaAttackFlow，没有引入 SkillPipeline / SkillEffect / 通用 BranchSelectionQuery / 通用 DeadCornerDecisionQuery / 通用属性表达式引擎，也没有引入 DataTable / Provider / 卡牌数据库。
 - 下一阶段应先做 Part 6 Next Skill Slice / Strategy Review 或其他独立 Contract Review，不得从当前收口直接进入外部集成。
+
+## Part 6 Pass Control Advance Selection 当前状态
+
+- 6.32 已新增 `ESkillRuleType::PassControl`，并让 SkillRuleSnapshotValidator 支持 PassControl；`SkillRuleSnapshot` 未新增任何传球、盘带、跑位、抢断、盯人等球员属性字段。
+- 6.33 Pass Control First Minimal Query Contract Review 结论是先实现 Advance Selection，而不是直接做 PassControl Plan Query 或单一推进分支 Plan Query；第一段不冻结 FormulaType。
+- 6.34 已新增 `FPassControlAdvanceSelectionQuery` 与 30 项专项测试；6.35 Independent Boundary Review + Regression 已通过。
+- `EPassControlAdvanceType` 只包含 `None / PassAdvance / DribbleAdvance / RunAdvance`。
+- Advance D6 必须由外部显式提供，范围严格为 1-6；1-2 映射 PassAdvance，3-4 映射 DribbleAdvance，5-6 映射 RunAdvance。
+- Query 只验证最小上下文：PassControl SkillRule、持球球员 Snapshot、持球球员持有 SkillId、持球球员非 GK、行动点范围，以及 LogId / TurnIndex / AttackerPlayerId 等日志上下文。
+- 当前不需要跑位球员、盯人球员、协防球员输入；不读取传球 / 盘带 / 跑位 / 抢断 / 盯人属性。
+- 当前不生成 Formula Plan，未冻结 FormulaType，未写成 Finishing / Transition，也不执行公式链。
+- 当前未实现 PassControl Plan Query，也未实现完整传控技能。
+- 当前基线为 PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 733/733；Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。
+- 本切片没有授权 MatchPlay / External API v1 / FormulaAttackFlow，没有修改 FormulaResolver / InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor，没有引入 SkillPipeline / SkillEffect / 通用技能框架 / 通用属性表达式引擎，也没有引入 DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。

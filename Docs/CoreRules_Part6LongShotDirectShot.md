@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection 契约、实现、测试、独立边界审查、回归和文档同步。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -14,6 +14,8 @@
 - Cut Inside Shot 当前已具备 Direct Shot、Dead Corner、Branch Selection 三个 CoreRules-only 最小能力。
 - Cut Inside Shot 当前仍不是完整内切射门外部入口。
 - Cut Inside Shot Minimal Slices 经 6.29 审查后可以正式关闭；该关闭不代表 Part 6 全部完成。
+- Pass Control 当前只完成 Advance Selection 最小切片。
+- Pass Control 当前未实现 Plan Query，未实现完整传控，未生成 Formula Plan，也未冻结 FormulaType。
 
 ## 阶段记录
 
@@ -54,6 +56,13 @@
 - 6.28.5 Cut Inside Shot Branch Selection Docs Sync：同步契约、实现、测试、边界审查和回归基线；本阶段只修改 Docs。
 - 6.29 Cut Inside Shot Minimal Slices Closure Review：确认 Direct Shot、Dead Corner、Branch Selection 三个 CoreRules-only 最小能力达到阶段性收口条件，不需要补生产代码、补测试或再次回归。
 - 6.29.5 Cut Inside Shot Minimal Slices Final Closure Docs Sync：记录正式关闭状态、最终基线和下一阶段入口；本阶段只修改 Docs。
+- 6.30 Part 6 Next Skill Slice / Strategy Review：确认 Long Shot 与 Cut Inside Shot Minimal Slices 均已关闭，Part 6 尚未全部完成，下一段仍应保持 CoreRules-only、小步、单一切片。
+- 6.31 Pass Control Minimal Rule Contract Review：确认传控应拆成多个小阶段，先做 SkillType / Validator 扩展，再审查第一段最小 Query；不得直接冻结 FormulaType 或实现完整传控。
+- 6.32 Pass Control SkillType Minimal Extension + Validator Tests：新增 `ESkillRuleType::PassControl` 并扩展 SkillRuleSnapshotValidator，未新增球员属性字段，CoreRules 703/703 通过。
+- 6.33 Pass Control First Minimal Query Contract Review：确认第一段采用 Advance Selection Query，只根据外部 D6 选择推进方式，不生成 Formula Plan，不冻结 FormulaType。
+- 6.34 Pass Control Advance Selection Query + Tests：新增 `FPassControlAdvanceSelectionQuery` 与 30 项专项测试。
+- 6.35 Pass Control Advance Selection Independent Boundary Review + Regression：确认 6.34 边界符合契约，CoreRules 733/733 通过。
+- 6.35.5 Pass Control Advance Selection Docs Sync：同步 6.33–6.35 契约、实现、测试、边界审查和回归基线；本阶段只修改 Docs。
 
 ## 最终收口结论
 
@@ -338,6 +347,73 @@ Branch Selection 边界：
 所有 D6 均由外部显式提供，当前没有随机数生成。该收口没有接入 MatchPlay / External API v1 / FormulaAttackFlow，没有修改 FormulaResolver / InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor，没有引入 SkillPipeline / SkillEffect / 通用 BranchSelectionQuery / 通用 DeadCornerDecisionQuery / 通用属性表达式引擎，也没有引入 DataTable / Provider / 卡牌数据库、抽牌 / 洗牌 / 手牌 / 牌库逻辑、UI、蓝图、Content、Config、联网或 Steam。
 
 下一阶段应先做 Part 6 Next Skill Slice / Strategy Review 或其他独立 Contract Review，不得从 Cut Inside Shot Minimal Slices 收口直接进入外部集成。
+
+## Pass Control Advance Selection 最小切片
+
+6.33 Pass Control First Minimal Query Contract Review 已通过；结论是第一段实现应先做 Advance Selection，而不是直接做 PassControl Plan Query、单一推进分支 Plan Query 或完整传控。6.34 新增 `FPassControlAdvanceSelectionQuery` 与专项测试；6.35 Independent Boundary Review + Regression 已通过；6.35.5 仅同步文档，不改变生产行为。
+
+`EPassControlAdvanceType`：
+
+- `None`
+- `PassAdvance`
+- `DribbleAdvance`
+- `RunAdvance`
+
+`FPassControlAdvanceSelectionQuery`：
+
+- 只服务 Pass Control / Advance Selection。
+- 要求 SkillRule 类型为 `ESkillRuleType::PassControl`。
+- 查询持球球员 `FPlayerCardRuleSnapshot`。
+- 查询 `FSkillRuleSnapshot`，并要求 SkillType 为 `PassControl`。
+- 校验持球球员持有目标 SkillId。
+- 校验持球球员不是 GK。
+- 校验当前行动点位于 SkillRule 允许范围。
+- 校验 Advance D6 由外部显式提供。
+- 校验 LogId / TurnIndex / AttackerPlayerId 等日志上下文。
+- 保留 Player Card Snapshot Query 与 Skill Rule Snapshot Query 的分层诊断。
+- 保持输入、Player Card Snapshot Set、Skill Rule Snapshot Set、比分、卡牌状态、MatchPlay 和其他外部状态不变。
+
+Advance D6 规则：
+
+- Advance D6 必须由外部显式提供。
+- Advance D6 范围严格为 1-6。
+- D6 1-2：`PassAdvance`。
+- D6 3-4：`DribbleAdvance`。
+- D6 5-6：`RunAdvance`。
+- Query 不根据属性、上下文或状态推断推进类型。
+- Query 不生成随机数。
+
+它不负责：
+
+- PassControl Plan Query。
+- 完整传控技能。
+- Formula Plan 生成。
+- FormulaType 冻结。
+- 写入 `Finishing` / `Transition` 具体公式语义。
+- Formula 链执行。
+- Input Assembly Query、Resolver Input Assembler、Resolution Executor 或 FormulaResolver 调用。
+- 跑位球员、盯人球员或协防球员输入。
+- 传球 / 盘带 / 跑位 / 抢断 / 盯人属性读取。
+- MatchPlay、External API v1 或 FormulaAttackFlow 接入。
+- SkillPipeline / SkillEffect / 通用技能框架。
+- 通用属性表达式引擎。
+- DataTable / Provider / 卡牌数据库。
+- 抽牌 / 洗牌 / 手牌 / 牌库逻辑。
+
+因此它是独立、只读、无状态的 PassControl 专用推进方式选择 Query，不是完整传控流程。
+
+Pass Control Advance Selection 当前基线：
+
+- PassControlAdvanceSelectionQuery：30/30 通过。
+- SkillRuleSnapshotValidator：14/14 通过。
+- SkillRuleSnapshotQuery：8/8 通过。
+- LongShot 相关回归：77/77 通过。
+- CutInsideShot 相关回归：76/76 通过。
+- CoreRules：733/733 通过。
+- UE5 Development Editor：通过。
+- UHT `-WarningsAsErrors`：通过，0 个文件需重写。
+- `git diff --check`：通过。
+- 6.35 边界审查完成后工作区干净。
 
 ## 架构链路
 
