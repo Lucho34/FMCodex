@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection 契约、实现、测试、独立边界审查、回归和文档同步。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.43 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、独立审查和文档同步。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -14,8 +14,8 @@
 - Cut Inside Shot 当前已具备 Direct Shot、Dead Corner、Branch Selection 三个 CoreRules-only 最小能力。
 - Cut Inside Shot 当前仍不是完整内切射门外部入口。
 - Cut Inside Shot Minimal Slices 经 6.29 审查后可以正式关闭；该关闭不代表 Part 6 全部完成。
-- Pass Control 当前只完成 Advance Selection 最小切片。
-- Pass Control 当前未实现 Plan Query，未实现完整传控，未生成 Formula Plan，也未冻结 FormulaType。
+- Pass Control 当前已完成 Advance Selection 与 PassAdvance 单分支 Plan Query 两个最小能力。
+- Pass Control 当前只完成 PassAdvance 单分支最小切片；未实现 PassControlPlanQuery、DribbleAdvance、RunAdvance 或完整传控。
 
 ## 阶段记录
 
@@ -63,6 +63,14 @@
 - 6.34 Pass Control Advance Selection Query + Tests：新增 `FPassControlAdvanceSelectionQuery` 与 30 项专项测试。
 - 6.35 Pass Control Advance Selection Independent Boundary Review + Regression：确认 6.34 边界符合契约，CoreRules 733/733 通过。
 - 6.35.5 Pass Control Advance Selection Docs Sync：同步 6.33–6.35 契约、实现、测试、边界审查和回归基线；本阶段只修改 Docs。
+- 6.36 Pass Control Plan Query Minimal Rule Contract Review：确认不直接实现覆盖三种推进类型的 Plan Query，应继续审查单分支。
+- 6.37 Pass Control PassAdvance Plan Query Contract Review：冻结 PassAdvance 的四参与者、外部比较 D6、属性映射和仅生成 Plan 的边界；`Transition` 只限该分支。
+- 6.38 Pass Control PassAdvance Plan Query + Tests：新增 `FPassControlPassAdvancePlanQuery` 与 48 项专项测试。
+- 6.39 Pass Control PassAdvance Independent Boundary Review + Regression：确认实现只处理 PassAdvance，不执行公式链，CoreRules 781/781 通过。
+- 6.40 Pass Control PassAdvance Composition Contract Review：确认 Composition 只应在测试侧安全消费 Plan，不能接入公式链。
+- 6.41 Pass Control PassAdvance Composition Tests：新增 11 项只读测试侧 Plan 消费测试。
+- 6.42 Pass Control PassAdvance Composition Boundary Review + Regression：确认 Composition 不调用 InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor / FormulaResolver，CoreRules 792/792 通过。
+- 6.43 Pass Control Minimal Slices Docs Sync：同步当前 Advance Selection 与 PassAdvance 单分支最小切片；本阶段只修改 Docs。
 
 ## 最终收口结论
 
@@ -414,6 +422,40 @@ Pass Control Advance Selection 当前基线：
 - UHT `-WarningsAsErrors`：通过，0 个文件需重写。
 - `git diff --check`：通过。
 - 6.35 边界审查完成后工作区干净。
+
+## Pass Control PassAdvance 单分支 Plan Query
+
+6.36 和 6.37 的 Contract Review 确认，当前不实现覆盖 `PassAdvance / DribbleAdvance / RunAdvance` 的 `PassControlPlanQuery`；先只实现 PassAdvance 单分支。6.38 新增 `FPassControlPassAdvancePlanQuery` 与 48 项专项测试；6.39 Independent Boundary Review + Regression 已通过。6.40 限定 Composition 边界，6.41 新增 11 项 Composition Tests，6.42 Independent Boundary Review + Regression 已通过。
+
+`FPassControlPassAdvancePlanQuery`：
+
+- 只服务 `ESkillRuleType::PassControl` 的显式 `PassAdvance`。
+- `None / DribbleAdvance / RunAdvance` 及未知 AdvanceType 结构化拒绝；不重新处理 Advance Selection D6，也不根据属性、上下文或状态推断推进类型。
+- 查询并保留 Carrier / Runner / Marker / Helper 四参与者 Snapshot 与 SkillRule 的诊断。
+- Carrier 必须持有 SkillId 且不是 GK；Runner 必须包含 Midfield。
+- AttackD6 与 DefenseD6 均由外部显式提供，且严格位于 1-6；不生成随机数。
+- 只生成限于 PassAdvance 的 `Transition` Formula Plan，不执行公式链。
+- 攻方映射为 `Carrier Passing + (Runner Passing - Carrier Passing) / 2`。
+- 守方映射为 `Marker Tackling + (Helper Marking - Marker Tackling) / 2 + 2`。
+- 当前专用映射保留 .0 / .5 平均值语义，不引入通用舍入系统或通用属性表达式引擎。
+
+`PassControlPassAdvanceCompositionTests` 只在测试侧读取 Query Result 和 Formula Plan，验证四参与者追踪、外部 D6、属性映射与失败结果不可消费；不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor 或 FormulaResolver，不执行完整公式链。
+
+当前未实现 PassControlPlanQuery、DribbleAdvance、RunAdvance 或完整传控，也未接 MatchPlay、External API v1 或 FormulaAttackFlow；未引入 SkillPipeline / SkillEffect、通用技能框架、DataTable / Provider / 卡牌数据库或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
+
+Pass Control 当前基线：
+
+- PassControlPassAdvanceComposition：11/11 通过。
+- PassControlPassAdvancePlanQuery：48/48 通过。
+- PassControlAdvanceSelectionQuery：30/30 通过。
+- SkillRuleSnapshotValidator：14/14 通过。
+- SkillRuleSnapshotQuery：8/8 通过。
+- LongShot 相关回归：77/77 通过。
+- CutInsideShot 相关回归：76/76 通过。
+- CoreRules：792/792 通过。
+- UE5 Development Editor：通过。
+- UHT `-WarningsAsErrors`：通过，0 个文件需重写。
+- `git diff --check`：通过。
 
 ## 架构链路
 

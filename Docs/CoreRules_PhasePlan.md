@@ -44,8 +44,12 @@
 - 6.33 Pass Control First Minimal Query Contract Review 已通过；该阶段为 report-only，没有文件修改。
 - 6.34 Pass Control Advance Selection Query + Tests 已完成并提交。
 - 6.35 Pass Control Advance Selection Independent Boundary Review + Regression 已通过；该阶段为 report-only，没有文件修改。
-- 当前阶段为 6.35.5 Pass Control Advance Selection Docs Sync；阶段类型为 Docs-only，只同步 6.33–6.35 契约、实现、测试、边界审查和回归基线。
-- CoreRules 当前为 733/733 通过；PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76 通过。
+- 6.35.5 Pass Control Advance Selection Docs Sync 已完成。
+- 6.36 至 6.37 的 Plan Query / PassAdvance Contract Review 已通过；决定只实现 PassAdvance 单分支 Plan Query，`FormulaType::Transition` 只限该分支。
+- 6.38 新增 `FPassControlPassAdvancePlanQuery` 与 48 项专项测试；6.39 独立 Boundary Review + Regression 已通过。
+- 6.40 Composition Contract Review 已通过；6.41 只新增 11 项 `PassControlPassAdvanceCompositionTests`，仅在测试侧消费 Formula Plan；6.42 独立 Composition Boundary Review + Regression 已通过。
+- 当前阶段为 6.43 Pass Control Minimal Slices Docs Sync；阶段类型为 Docs-only，只同步当前已完成的 Advance Selection 与 PassAdvance 最小切片，不代表完整传控完成。
+- CoreRules 当前为 792/792 通过；PassControlPassAdvanceComposition 11/11、PassControlPassAdvancePlanQuery 48/48、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
 - `git diff --check` 通过；6.35 边界审查与回归完成后工作区干净。
@@ -143,7 +147,7 @@
 - 当前未接 MatchPlay / External API v1 / FormulaAttackFlow，未引入 SkillPipeline / SkillEffect / 通用 BranchSelectionQuery / 通用 DeadCornerDecisionQuery / 通用属性表达式引擎，也未引入 DataTable / Provider / 卡牌数据库。
 - 下一阶段应先做 Part 6 Next Skill Slice / Strategy Review 或其他独立 Contract Review；不得从该收口直接进入外部集成。
 
-## Part 6 Pass Control Advance Selection
+## Part 6 Pass Control Minimal Slices
 
 - 6.33 Pass Control First Minimal Query Contract Review 确认第一段实现应先做 `PassControlAdvanceSelectionQuery`，只根据外部 Advance D6 选择推进方式，不直接生成 Formula Plan，也不冻结 Pass Control FormulaType。
 - 6.34 新增 `FPassControlAdvanceSelectionQuery` 与 30 项专项测试；当前只完成 Pass Control Advance Selection 最小切片，不是 PassControl Plan Query，也不是完整传控技能。
@@ -153,7 +157,12 @@
 - 当前不要求跑位球员、盯人球员或协防球员输入；不读取传球 / 盘带 / 跑位 / 抢断 / 盯人等属性。
 - 当前不生成 Formula Plan，未冻结 FormulaType，未写成 Finishing / Transition，也不执行公式链。
 - 6.35 Boundary Review + Regression 已通过；回归基线为 PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 733/733；Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。
-- 本切片未授权 MatchPlay / External API v1 / FormulaAttackFlow，未引入 SkillPipeline / SkillEffect / 通用技能框架，未引入通用属性表达式引擎、DataTable / Provider / 卡牌数据库、随机数或牌库语义。
+- `FPassControlPassAdvancePlanQuery` 只处理调用方显式提供的 `PassAdvance`；`None / DribbleAdvance / RunAdvance` 及未知值均结构化拒绝，不重新处理 Advance Selection D6。
+- PassAdvance 读取 Carrier / Runner / Marker / Helper 四参与者 Snapshot 并保留诊断；Carrier 必须持有 SkillId 且非 GK，Runner 必须包含 Midfield；AttackD6 / DefenseD6 均由外部显式提供且范围为 1-6。
+- PassAdvance 只生成 `Transition` Formula Plan，不执行公式链。攻方映射为 `Carrier Passing + (Runner Passing - Carrier Passing) / 2`；守方映射为 `Marker Tackling + (Helper Marking - Marker Tackling) / 2 + 2`。当前专用映射保留 .0 / .5 平均值语义，不引入通用舍入系统或通用属性表达式引擎。
+- `PassControlPassAdvanceCompositionTests` 只在测试侧消费 Query 产出的 Formula Plan；不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor 或 FormulaResolver，不执行完整公式链。
+- 当前未实现 PassControlPlanQuery、DribbleAdvance、RunAdvance 或完整传控；未接 MatchPlay / External API v1 / FormulaAttackFlow，未引入 SkillPipeline / SkillEffect / 通用技能框架、DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
+- 6.42 后当前回归基线为 PassControlPassAdvanceComposition 11/11、PassControlPassAdvancePlanQuery 48/48、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 792/792；Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。
 
 ## 已完成阶段
 
