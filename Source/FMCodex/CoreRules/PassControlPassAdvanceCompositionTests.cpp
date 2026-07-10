@@ -213,10 +213,10 @@ bool FPassControlPassAdvanceCompositionConsumesPlanTest::RunTest(
 }
 
 PASS_CONTROL_PASS_ADVANCE_COMPOSITION_TEST(
-	FPassControlPassAdvanceCompositionTransitionFieldsTest,
-	"PlanUsesTransitionCarrierPassingMarkerTacklingAndExternalD6")
+	FPassControlPassAdvanceCompositionFinishingFieldsTest,
+	"PlanUsesFinishingCarrierPassingMarkerTacklingAndExternalD6")
 
-bool FPassControlPassAdvanceCompositionTransitionFieldsTest::RunTest(
+bool FPassControlPassAdvanceCompositionFinishingFieldsTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace PassControlPassAdvanceCompositionTests;
@@ -228,10 +228,10 @@ bool FPassControlPassAdvanceCompositionTransitionFieldsTest::RunTest(
 	FTestSidePassAdvancePlanView View;
 	TestTrue(TEXT("Plan is consumable"), TryConsumeFormulaPlan(Result, View));
 
-	TestEqual(TEXT("Attacker FormulaType is Transition"),
-		View.AttackerFormulaType, EFormulaType::Transition);
-	TestEqual(TEXT("Defender FormulaType is Transition"),
-		View.DefenderFormulaType, EFormulaType::Transition);
+	TestEqual(TEXT("Attacker FormulaType is Finishing"),
+		View.AttackerFormulaType, EFormulaType::Finishing);
+	TestEqual(TEXT("Defender FormulaType is Finishing"),
+		View.DefenderFormulaType, EFormulaType::Finishing);
 	TestEqual(TEXT("Attacker uses Carrier card"), View.AttackerCardId, CarrierCardId);
 	TestEqual(TEXT("Defender uses Marker card"), View.DefenderCardId, MarkerCardId);
 	TestEqual(TEXT("Attacker uses Passing"),

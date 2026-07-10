@@ -49,7 +49,7 @@ namespace PassControlPassAdvancePlanQuery
 	{
 		FSingleCardFormulaInputAssemblyQueryInput QueryInput;
 		QueryInput.CardId = CardId;
-		QueryInput.FormulaType = EFormulaType::Transition;
+		QueryInput.FormulaType = EFormulaType::Finishing;
 		QueryInput.ParticipantRole = ParticipantRole;
 		QueryInput.Attribute = Attribute;
 		QueryInput.bHasExternalD6ComparePoint = true;

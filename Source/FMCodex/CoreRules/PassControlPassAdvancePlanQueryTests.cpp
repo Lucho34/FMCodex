@@ -280,10 +280,10 @@ namespace PassControlPassAdvancePlanQueryTests
 			| EAutomationTestFlags::EngineFilter)
 
 PASS_CONTROL_PASS_ADVANCE_PLAN_TEST(
-	FPassControlPassAdvancePlanGeneratesTransitionTest,
-	"GeneratesTransitionFormulaPlan")
+	FPassControlPassAdvancePlanGeneratesFinishingTest,
+	"GeneratesFinishingFormulaPlan")
 
-bool FPassControlPassAdvancePlanGeneratesTransitionTest::RunTest(
+bool FPassControlPassAdvancePlanGeneratesFinishingTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace PassControlPassAdvancePlanQueryTests;
@@ -299,13 +299,13 @@ bool FPassControlPassAdvancePlanGeneratesTransitionTest::RunTest(
 		EPassControlPassAdvancePlanDecision::FormulaResolutionRequired);
 	TestTrue(TEXT("Formula plan exists"), Result.bHasFormulaPlan);
 	TestEqual(
-		TEXT("Attacker FormulaType is Transition"),
+		TEXT("Attacker FormulaType is Finishing"),
 		Result.FormulaPlan.AttackerQueryInput.FormulaType,
-		EFormulaType::Transition);
+		EFormulaType::Finishing);
 	TestEqual(
-		TEXT("Defender FormulaType is Transition"),
+		TEXT("Defender FormulaType is Finishing"),
 		Result.FormulaPlan.DefenderQueryInput.FormulaType,
-		EFormulaType::Transition);
+		EFormulaType::Finishing);
 	return true;
 }
 
