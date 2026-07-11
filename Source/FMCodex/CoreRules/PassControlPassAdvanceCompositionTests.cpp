@@ -98,6 +98,7 @@ namespace PassControlPassAdvanceCompositionTests
 		Input.CarrierCardId = CarrierCardId;
 		Input.RunnerCardId = RunnerCardId;
 		Input.MarkerCardId = MarkerCardId;
+		Input.bHasHelper = true;
 		Input.HelperCardId = HelperCardId;
 		Input.CurrentActionPoint = 4;
 		Input.bHasExternalAttackD6 = true;
@@ -209,6 +210,43 @@ bool FPassControlPassAdvanceCompositionConsumesPlanTest::RunTest(
 	TestTrue(
 		TEXT("Formula Plan is consumed by the test-side view"),
 		TryConsumeFormulaPlan(Result, View));
+	return true;
+}
+
+PASS_CONTROL_PASS_ADVANCE_COMPOSITION_TEST(
+	FPassControlPassAdvanceCompositionConsumesPlanWithoutHelperTest,
+	"BuildPlanWithoutHelperProducesTestSideConsumablePlan")
+
+bool FPassControlPassAdvanceCompositionConsumesPlanWithoutHelperTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace PassControlPassAdvanceCompositionTests;
+
+	FPassControlPassAdvancePlanQueryInput Input = MakeValidInput();
+	Input.bHasHelper = false;
+	Input.HelperCardId = NAME_None;
+	Input.HelperPlayerId = NAME_None;
+	FPlayerCardRuleSnapshotSet PlayerCardSnapshots = MakePlayerCardSnapshots();
+	PlayerCardSnapshots.Cards.RemoveAll([](const FPlayerCardRuleSnapshot& Card)
+	{
+		return Card.CardId == HelperCardId;
+	});
+	const FPassControlPassAdvancePlanQueryResult Result = BuildValidPlan(
+		PlayerCardSnapshots,
+		MakeSkillRules(),
+		Input);
+	FTestSidePassAdvancePlanView View;
+
+	TestTrue(TEXT("No Helper Plan Query succeeds"), Result.bSuccess);
+	TestFalse(TEXT("No Helper is recorded as unselected"), Result.bHasHelper);
+	TestTrue(TEXT("No Helper Formula Plan is generated"), Result.bHasFormulaPlan);
+	TestFalse(TEXT("No Helper snapshot query is performed"),
+		Result.HelperSnapshotQueryResult.bSuccess);
+	TestTrue(TEXT("No Helper Formula Plan is consumable"),
+		TryConsumeFormulaPlan(Result, View));
+	TestEqual(TEXT("No Helper defender modifier uses zero Marking"),
+		Result.FormulaPlan.DefenderQueryInput.ExternalModifier,
+		0.0f);
 	return true;
 }
 

@@ -70,6 +70,7 @@ FPassControlPassAdvancePlanQuery::BuildPlan(
 {
 	FPassControlPassAdvancePlanQueryResult Result;
 	Result.Input = Input;
+	Result.bHasHelper = Input.bHasHelper;
 
 	if (Input.SkillId.IsNone())
 	{
@@ -89,6 +90,34 @@ FPassControlPassAdvancePlanQuery::BuildPlan(
 				::InvalidAdvanceType,
 			TEXT("Pass Control PassAdvance requires explicit PassAdvance AdvanceType."),
 			TEXT("AdvanceType"));
+		return Result;
+	}
+
+	if (Input.bHasHelper)
+	{
+		if (Input.HelperCardId.IsNone() || Input.HelperPlayerId.IsNone())
+		{
+			PassControlPassAdvancePlanQuery::SetFailure(
+				Result,
+				EPassControlPassAdvancePlanQueryErrorCode
+					::MissingHelperIdentity,
+				TEXT("A selected Helper requires both HelperCardId and HelperPlayerId."),
+				Input.HelperCardId.IsNone()
+					? FName(TEXT("HelperCardId"))
+					: FName(TEXT("HelperPlayerId")));
+			return Result;
+		}
+	}
+	else if (!Input.HelperCardId.IsNone() || !Input.HelperPlayerId.IsNone())
+	{
+		PassControlPassAdvancePlanQuery::SetFailure(
+			Result,
+			EPassControlPassAdvancePlanQueryErrorCode
+				::UnexpectedHelperIdentity,
+			TEXT("An unselected Helper must not provide HelperCardId or HelperPlayerId."),
+			!Input.HelperCardId.IsNone()
+				? FName(TEXT("HelperCardId"))
+				: FName(TEXT("HelperPlayerId")));
 		return Result;
 	}
 
@@ -137,19 +166,22 @@ FPassControlPassAdvancePlanQuery::BuildPlan(
 		return Result;
 	}
 
-	Result.HelperSnapshotQueryResult =
-		FPlayerCardRuleSnapshotQuery::FindByCardId(
-			PlayerCardSnapshots,
-			Input.HelperCardId);
-	if (!Result.HelperSnapshotQueryResult.bSuccess)
+	if (Input.bHasHelper)
 	{
-		PassControlPassAdvancePlanQuery::SetFailure(
-			Result,
-			EPassControlPassAdvancePlanQueryErrorCode
-				::HelperSnapshotQueryFailed,
-			Result.HelperSnapshotQueryResult.ErrorMessage,
-			TEXT("HelperCardId"));
-		return Result;
+		Result.HelperSnapshotQueryResult =
+			FPlayerCardRuleSnapshotQuery::FindByCardId(
+				PlayerCardSnapshots,
+				Input.HelperCardId);
+		if (!Result.HelperSnapshotQueryResult.bSuccess)
+		{
+			PassControlPassAdvancePlanQuery::SetFailure(
+				Result,
+				EPassControlPassAdvancePlanQueryErrorCode
+					::HelperSnapshotQueryFailed,
+				Result.HelperSnapshotQueryResult.ErrorMessage,
+				TEXT("HelperCardId"));
+			return Result;
+		}
 	}
 
 	const FSkillRuleSnapshotQueryInput SkillQueryInput = {
@@ -192,8 +224,6 @@ FPassControlPassAdvancePlanQuery::BuildPlan(
 		Result.RunnerSnapshotQueryResult.Snapshot;
 	const FPlayerCardRuleSnapshot& MarkerSnapshot =
 		Result.MarkerSnapshotQueryResult.Snapshot;
-	const FPlayerCardRuleSnapshot& HelperSnapshot =
-		Result.HelperSnapshotQueryResult.Snapshot;
 
 	if (!CarrierSnapshot.SkillIds.Contains(Input.SkillId))
 	{
@@ -318,7 +348,7 @@ FPassControlPassAdvancePlanQuery::BuildPlan(
 		|| Input.CarrierPlayerId.IsNone()
 		|| Input.RunnerPlayerId.IsNone()
 		|| Input.MarkerPlayerId.IsNone()
-		|| Input.HelperPlayerId.IsNone())
+		|| (Input.bHasHelper && Input.HelperPlayerId.IsNone()))
 	{
 		FName InvalidField(TEXT("LogId"));
 		if (Input.LogId.IsValid() && Input.TurnIndex < 0)
@@ -346,7 +376,8 @@ FPassControlPassAdvancePlanQuery::BuildPlan(
 		{
 			InvalidField = TEXT("MarkerPlayerId");
 		}
-		else if (Input.LogId.IsValid()
+		else if (Input.bHasHelper
+			&& Input.LogId.IsValid()
 			&& Input.TurnIndex >= 0
 			&& !Input.CarrierPlayerId.IsNone()
 			&& !Input.RunnerPlayerId.IsNone()
@@ -369,10 +400,13 @@ FPassControlPassAdvancePlanQuery::BuildPlan(
 		PassControlPassAdvancePlanQuery::MakeAverageModifier(
 			CarrierSnapshot.Attributes.Passing,
 			RunnerSnapshot.Attributes.Passing);
+	const int32 HelperMarking = Input.bHasHelper
+		? Result.HelperSnapshotQueryResult.Snapshot.Attributes.Marking
+		: 0;
 	const float DefenderModifier =
 		PassControlPassAdvancePlanQuery::MakeDefenderModifier(
 			MarkerSnapshot.Attributes.Tackling,
-			HelperSnapshot.Attributes.Marking);
+			HelperMarking);
 
 	Result.FormulaPlan.AttackerQueryInput =
 		PassControlPassAdvancePlanQuery::MakeFormulaQueryInput(

@@ -21,6 +21,8 @@ enum class EPassControlPassAdvancePlanQueryErrorCode : uint8
 	CarrierSnapshotQueryFailed,
 	RunnerSnapshotQueryFailed,
 	MarkerSnapshotQueryFailed,
+	MissingHelperIdentity,
+	UnexpectedHelperIdentity,
 	HelperSnapshotQueryFailed,
 	SkillRuleQueryFailed,
 	SkillNotOwnedByCarrier,
@@ -44,6 +46,7 @@ struct FMCODEX_API FPassControlPassAdvancePlanQueryInput
 	FName CarrierCardId = NAME_None;
 	FName RunnerCardId = NAME_None;
 	FName MarkerCardId = NAME_None;
+	bool bHasHelper = false;
 	FName HelperCardId = NAME_None;
 	int32 CurrentActionPoint = 0;
 	bool bHasExternalAttackD6 = false;
@@ -80,6 +83,7 @@ struct FMCODEX_API FPassControlPassAdvancePlanQueryResult
 	FString ErrorMessage;
 	FName InvalidField = NAME_None;
 	FPassControlPassAdvancePlanQueryInput Input;
+	bool bHasHelper = false;
 	FPlayerCardRuleSnapshotQueryResult CarrierSnapshotQueryResult;
 	FPlayerCardRuleSnapshotQueryResult RunnerSnapshotQueryResult;
 	FPlayerCardRuleSnapshotQueryResult MarkerSnapshotQueryResult;

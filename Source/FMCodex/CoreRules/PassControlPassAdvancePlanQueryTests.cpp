@@ -97,6 +97,7 @@ namespace PassControlPassAdvancePlanQueryTests
 		Input.CarrierCardId = CarrierCardId;
 		Input.RunnerCardId = RunnerCardId;
 		Input.MarkerCardId = MarkerCardId;
+		Input.bHasHelper = true;
 		Input.HelperCardId = HelperCardId;
 		Input.CurrentActionPoint = 4;
 		Input.bHasExternalAttackD6 = true;
@@ -109,6 +110,15 @@ namespace PassControlPassAdvancePlanQueryTests
 		Input.RunnerPlayerId = RunnerPlayerId;
 		Input.MarkerPlayerId = MarkerPlayerId;
 		Input.HelperPlayerId = HelperPlayerId;
+		return Input;
+	}
+
+	FPassControlPassAdvancePlanQueryInput MakeInputWithoutHelper()
+	{
+		FPassControlPassAdvancePlanQueryInput Input = MakeValidInput();
+		Input.bHasHelper = false;
+		Input.HelperCardId = NAME_None;
+		Input.HelperPlayerId = NAME_None;
 		return Input;
 	}
 
@@ -150,6 +160,7 @@ namespace PassControlPassAdvancePlanQueryTests
 			&& Left.CarrierCardId == Right.CarrierCardId
 			&& Left.RunnerCardId == Right.RunnerCardId
 			&& Left.MarkerCardId == Right.MarkerCardId
+			&& Left.bHasHelper == Right.bHasHelper
 			&& Left.HelperCardId == Right.HelperCardId
 			&& Left.CurrentActionPoint == Right.CurrentActionPoint
 			&& Left.bHasExternalAttackD6 == Right.bHasExternalAttackD6
@@ -306,6 +317,51 @@ bool FPassControlPassAdvancePlanGeneratesFinishingTest::RunTest(
 		TEXT("Defender FormulaType is Finishing"),
 		Result.FormulaPlan.DefenderQueryInput.FormulaType,
 		EFormulaType::Finishing);
+	return true;
+}
+
+PASS_CONTROL_PASS_ADVANCE_PLAN_TEST(
+	FPassControlPassAdvancePlanGeneratesFinishingPlanWithoutHelperTest,
+	"GeneratesFinishingFormulaPlanWithoutHelper")
+
+bool FPassControlPassAdvancePlanGeneratesFinishingPlanWithoutHelperTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace PassControlPassAdvancePlanQueryTests;
+	const FPassControlPassAdvancePlanQueryInput Input = MakeInputWithoutHelper();
+	const FPassControlPassAdvancePlanQueryInput Before = Input;
+	FPlayerCardRuleSnapshotSet PlayerCardSnapshots = MakePlayerCardSnapshots();
+	PlayerCardSnapshots.Cards.RemoveAll([](const FPlayerCardRuleSnapshot& Card)
+	{
+		return Card.CardId == HelperCardId;
+	});
+	const FPassControlPassAdvancePlanQueryResult Result =
+		FPassControlPassAdvancePlanQuery::BuildPlan(
+			PlayerCardSnapshots,
+			MakeSkillRules(),
+			Input);
+
+	TestTrue(TEXT("Query succeeds without a Helper"), Result.bSuccess);
+	TestFalse(TEXT("Result records no selected Helper"), Result.bHasHelper);
+	TestTrue(TEXT("Formula plan exists without a Helper"), Result.bHasFormulaPlan);
+	TestFalse(TEXT("No Helper snapshot query is performed"),
+		Result.HelperSnapshotQueryResult.bSuccess);
+	TestTrue(TEXT("No Helper snapshot result remains empty"),
+		Result.HelperSnapshotQueryResult.CardId.IsNone());
+	TestEqual(TEXT("No Helper card is retained"),
+		Result.FormulaPlan.HelperCardId, FName());
+	TestEqual(TEXT("No Helper player is retained"),
+		Result.FormulaPlan.HelperPlayerId, FName());
+	TestEqual(TEXT("Defender FormulaType remains Finishing"),
+		Result.FormulaPlan.DefenderQueryInput.FormulaType,
+		EFormulaType::Finishing);
+	TestEqual(TEXT("No Helper uses zero Marking in defender modifier"),
+		Result.FormulaPlan.DefenderQueryInput.ExternalModifier,
+		-0.5f);
+	TestTrue(TEXT("No Helper input remains unchanged"),
+		AreInputsEqual(Input, Before));
+	TestTrue(TEXT("Result preserves no Helper input"),
+		AreInputsEqual(Result.Input, Before));
 	return true;
 }
 
@@ -470,13 +526,146 @@ bool FPassControlPassAdvanceRejectsMissingHelperTest::RunTest(
 	using namespace PassControlPassAdvancePlanQueryTests;
 	FPassControlPassAdvancePlanQueryInput Input = MakeValidInput();
 	Input.HelperCardId = TEXT("PassAdvance.MissingHelper");
+	const FPassControlPassAdvancePlanQueryResult Result =
+		FPassControlPassAdvancePlanQuery::BuildPlan(
+			MakePlayerCardSnapshots(),
+			MakeSkillRules(),
+			Input);
+	TestTrue(TEXT("Result retains selected Helper state"), Result.bHasHelper);
+	TestFalse(TEXT("Missing Helper snapshot query fails"),
+		Result.HelperSnapshotQueryResult.bSuccess);
+	TestEqual(TEXT("Missing Helper snapshot query retains CardId"),
+		Result.HelperSnapshotQueryResult.CardId, Input.HelperCardId);
+	TestFalse(TEXT("Query fails"), Result.bSuccess);
+	TestEqual(TEXT("Helper snapshot error is retained"), Result.ErrorCode,
+		EPassControlPassAdvancePlanQueryErrorCode
+			::HelperSnapshotQueryFailed);
+	TestEqual(TEXT("Helper snapshot error field is retained"),
+		Result.InvalidField, FName(TEXT("HelperCardId")));
+	TestFalse(TEXT("Helper snapshot failure has no formula plan"),
+		Result.bHasFormulaPlan);
+	return true;
+}
+
+PASS_CONTROL_PASS_ADVANCE_PLAN_TEST(
+	FPassControlPassAdvanceRejectsUnexpectedHelperCardIdTest,
+	"RejectsUnexpectedHelperCardId")
+
+bool FPassControlPassAdvanceRejectsUnexpectedHelperCardIdTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace PassControlPassAdvancePlanQueryTests;
+	FPassControlPassAdvancePlanQueryInput Input = MakeInputWithoutHelper();
+	Input.HelperCardId = HelperCardId;
 	return ExpectError(
 		*this,
 		Input,
 		MakePlayerCardSnapshots(),
 		MakeSkillRules(),
 		EPassControlPassAdvancePlanQueryErrorCode
-			::HelperSnapshotQueryFailed,
+			::UnexpectedHelperIdentity,
+		TEXT("HelperCardId"));
+}
+
+PASS_CONTROL_PASS_ADVANCE_PLAN_TEST(
+	FPassControlPassAdvanceRejectsUnexpectedHelperPlayerIdTest,
+	"RejectsUnexpectedHelperPlayerId")
+
+bool FPassControlPassAdvanceRejectsUnexpectedHelperPlayerIdTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace PassControlPassAdvancePlanQueryTests;
+	FPassControlPassAdvancePlanQueryInput Input = MakeInputWithoutHelper();
+	Input.HelperPlayerId = HelperPlayerId;
+	return ExpectError(
+		*this,
+		Input,
+		MakePlayerCardSnapshots(),
+		MakeSkillRules(),
+		EPassControlPassAdvancePlanQueryErrorCode
+			::UnexpectedHelperIdentity,
+		TEXT("HelperPlayerId"));
+}
+
+PASS_CONTROL_PASS_ADVANCE_PLAN_TEST(
+	FPassControlPassAdvanceRejectsUnexpectedHelperIdentitiesTest,
+	"RejectsUnexpectedHelperCardAndPlayerIds")
+
+bool FPassControlPassAdvanceRejectsUnexpectedHelperIdentitiesTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace PassControlPassAdvancePlanQueryTests;
+	FPassControlPassAdvancePlanQueryInput Input = MakeInputWithoutHelper();
+	Input.HelperCardId = HelperCardId;
+	Input.HelperPlayerId = HelperPlayerId;
+	return ExpectError(
+		*this,
+		Input,
+		MakePlayerCardSnapshots(),
+		MakeSkillRules(),
+		EPassControlPassAdvancePlanQueryErrorCode
+			::UnexpectedHelperIdentity,
+		TEXT("HelperCardId"));
+}
+
+PASS_CONTROL_PASS_ADVANCE_PLAN_TEST(
+	FPassControlPassAdvanceRejectsMissingHelperIdentitiesTest,
+	"RejectsMissingHelperCardAndPlayerIds")
+
+bool FPassControlPassAdvanceRejectsMissingHelperIdentitiesTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace PassControlPassAdvancePlanQueryTests;
+	FPassControlPassAdvancePlanQueryInput Input = MakeValidInput();
+	Input.HelperCardId = NAME_None;
+	Input.HelperPlayerId = NAME_None;
+	return ExpectError(
+		*this,
+		Input,
+		MakePlayerCardSnapshots(),
+		MakeSkillRules(),
+		EPassControlPassAdvancePlanQueryErrorCode
+			::MissingHelperIdentity,
+		TEXT("HelperCardId"));
+}
+
+PASS_CONTROL_PASS_ADVANCE_PLAN_TEST(
+	FPassControlPassAdvanceRejectsMissingHelperPlayerIdTest,
+	"RejectsMissingHelperPlayerId")
+
+bool FPassControlPassAdvanceRejectsMissingHelperPlayerIdTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace PassControlPassAdvancePlanQueryTests;
+	FPassControlPassAdvancePlanQueryInput Input = MakeValidInput();
+	Input.HelperPlayerId = NAME_None;
+	return ExpectError(
+		*this,
+		Input,
+		MakePlayerCardSnapshots(),
+		MakeSkillRules(),
+		EPassControlPassAdvancePlanQueryErrorCode
+			::MissingHelperIdentity,
+		TEXT("HelperPlayerId"));
+}
+
+PASS_CONTROL_PASS_ADVANCE_PLAN_TEST(
+	FPassControlPassAdvanceRejectsMissingHelperCardIdTest,
+	"RejectsMissingHelperCardId")
+
+bool FPassControlPassAdvanceRejectsMissingHelperCardIdTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace PassControlPassAdvancePlanQueryTests;
+	FPassControlPassAdvancePlanQueryInput Input = MakeValidInput();
+	Input.HelperCardId = NAME_None;
+	return ExpectError(
+		*this,
+		Input,
+		MakePlayerCardSnapshots(),
+		MakeSkillRules(),
+		EPassControlPassAdvancePlanQueryErrorCode
+			::MissingHelperIdentity,
 		TEXT("HelperCardId"));
 }
 
