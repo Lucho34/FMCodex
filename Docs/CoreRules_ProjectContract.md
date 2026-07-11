@@ -191,10 +191,10 @@
 - Query 只验证最小上下文：PassControl SkillRule、持球球员 Snapshot、持球球员持有 SkillId、持球球员非 GK、行动点范围，以及 LogId / TurnIndex / AttackerPlayerId 等日志上下文。
 - 当前不需要跑位球员、盯人球员、协防球员输入；不读取传球 / 盘带 / 跑位 / 抢断 / 盯人属性。
 - 当前不生成 Formula Plan，未冻结 FormulaType，未写成 Finishing / Transition，也不执行公式链。
-- 6.36 至 6.42 已完成 PassAdvance 单分支 Plan Query、48 项专项测试、11 项测试侧 Composition Tests 及两次独立 Boundary Review + Regression。该能力只接受显式 `PassAdvance`，结构化拒绝 `None / DribbleAdvance / RunAdvance` 和未知值，不重新处理 Advance Selection D6。
-- PassAdvance 验证 Carrier / Runner / Marker / Helper 四参与者 Snapshot 并保留诊断；Carrier 必须持有 SkillId 且非 GK，Runner 必须包含 Midfield；AttackD6 / DefenseD6 均由外部显式提供且范围为 1-6。
-- `FormulaType::Transition` 只限当前 PassAdvance Plan。Query 只生成 Formula Plan，不执行公式链；攻方映射为 `Carrier Passing + (Runner Passing - Carrier Passing) / 2`，守方映射为 `Marker Tackling + (Helper Marking - Marker Tackling) / 2 + 2`。专用映射保留 .0 / .5 平均值语义，未引入通用舍入系统或通用属性表达式引擎。
+- 6.36 至 6.52 已完成 PassAdvance 单分支 Plan Query、55 项专项测试、12 项测试侧 Composition Tests，以及 FormulaType 与 Optional Helper 两次独立 Boundary Review + Regression。该能力只接受显式 `PassAdvance`，结构化拒绝 `None / DribbleAdvance / RunAdvance` 和未知值，不重新处理 Advance Selection D6。
+- PassAdvance 验证 Carrier / Runner / Marker Snapshot 并保留诊断；Helper 由显式 `bHasHelper` 表达：`true` 时 Helper CardId / PlayerId 必填并查询真实 Snapshot，`false` 时身份为空且完全跳过查询。Carrier 必须持有 SkillId 且非 GK，Runner 必须包含 Midfield；AttackD6 / DefenseD6 均由外部显式提供且范围为 1-6。
+- 成功 PassAdvance Plan 使用 `FormulaType::Finishing`。Query 只生成 Formula Plan，不判定 Goal、不结束攻击也不执行公式链；攻方映射为 `Carrier Passing + (Runner Passing - Carrier Passing) / 2`，守方映射为 `Marker Tackling + (Helper Marking - Marker Tackling) / 2 + 2`。合法无 Helper 时 Helper Marking 与体力语义为 0，仍可生成 Plan；Result 保留 `bHasHelper`，默认空 Snapshot 与 `HelperSnapshotQueryFailed` 可区分，且不伪造身份或 Snapshot。专用映射保留 .0 / .5 平均值语义，未引入通用舍入系统、通用属性表达式、HelperStatus 或 Optional Participant 框架。
 - Composition Tests 只在测试侧消费 Query Result 与 Formula Plan，不调用 InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor / FormulaResolver，也不执行完整公式链。
 - 当前未实现 PassControlPlanQuery、DribbleAdvance、RunAdvance 或完整传控技能。
-- 当前基线为 PassControlPassAdvanceComposition 11/11、PassControlPassAdvancePlanQuery 48/48、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 792/792；Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。
+- 当前基线为 PassControlPassAdvanceComposition 12/12、PassControlPassAdvancePlanQuery 55/55、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 800/800；Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 通过。
 - 本切片没有授权 MatchPlay / External API v1 / FormulaAttackFlow，没有修改 FormulaResolver / InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor，没有引入 SkillPipeline / SkillEffect / 通用技能框架 / 通用属性表达式引擎，也没有引入 DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
