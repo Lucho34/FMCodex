@@ -39,7 +39,9 @@ namespace PassControlDribbleAdvancePlanQueryTests
 		const int32 HelperMarking = 3,
 		const bool bCarrierOwnsSkill = true,
 		const bool bCarrierGoalkeeper = false,
-		const bool bRunnerMidfield = true)
+		const bool bRunnerMidfield = true,
+		const bool bMarkerGoalkeeper = false,
+		const bool bHelperGoalkeeper = false)
 	{
 		FPlayerCardRuleSnapshot Carrier = MakeCard(
 			CarrierCardId,
@@ -57,12 +59,22 @@ namespace PassControlDribbleAdvancePlanQueryTests
 		Runner.Attributes.Passing = RunnerPassing;
 
 		FPlayerCardRuleSnapshot Marker = MakeCard(
-			MarkerCardId, EPlayerPositionType::Defense);
+			MarkerCardId,
+			bMarkerGoalkeeper
+				? EPlayerPositionType::Goalkeeper
+				: EPlayerPositionType::Defense);
 		Marker.Attributes.Tackling = MarkerTackling;
+		Marker.bIsGoalkeeper = bMarkerGoalkeeper;
+		Marker.bHasGoalkeeperAttributes = bMarkerGoalkeeper;
 
 		FPlayerCardRuleSnapshot Helper = MakeCard(
-			HelperCardId, EPlayerPositionType::Defense);
+			HelperCardId,
+			bHelperGoalkeeper
+				? EPlayerPositionType::Goalkeeper
+				: EPlayerPositionType::Defense);
 		Helper.Attributes.Marking = HelperMarking;
+		Helper.bIsGoalkeeper = bHelperGoalkeeper;
+		Helper.bHasGoalkeeperAttributes = bHelperGoalkeeper;
 
 		FPlayerCardRuleSnapshotSet Set;
 		Set.Cards = { Carrier, Runner, Marker, Helper };
@@ -262,7 +274,22 @@ namespace PassControlDribbleAdvancePlanQueryTests
 			return true;
 		}
 		case ECase::GoalkeeperCarrier:
-			Test.TestTrue(TEXT("Goalkeeper carrier is not rejected by identity"), Build(MakeValidInput(), MakeSnapshots(4, 6, 5, 3, true, true)).bSuccess); return true;
+		{
+			const auto CarrierGoalkeeper = Build(
+				MakeValidInput(), MakeSnapshots(4, 6, 5, 3, true, true));
+			ExpectFailure(
+				Test,
+				CarrierGoalkeeper,
+				EPassControlDribbleAdvancePlanQueryErrorCode::UnsupportedGoalkeeperParticipant,
+				TEXT("CarrierCardId"));
+
+			const auto LegalMarkerAndHelperGoalkeepers = Build(
+				MakeValidInput(), MakeSnapshots(4, 6, 5, 3, true, false, true, true, true));
+			Test.TestTrue(
+				TEXT("Marker and Helper GK flags do not cause a dedicated rejection"),
+				LegalMarkerAndHelperGoalkeepers.bSuccess);
+			return true;
+		}
 		case ECase::RejectsNone: return ExpectAdvanceTypeFailure(EPassControlAdvanceType::None);
 		case ECase::RejectsPass: return ExpectAdvanceTypeFailure(EPassControlAdvanceType::PassAdvance);
 		case ECase::RejectsRun: return ExpectAdvanceTypeFailure(EPassControlAdvanceType::RunAdvance);

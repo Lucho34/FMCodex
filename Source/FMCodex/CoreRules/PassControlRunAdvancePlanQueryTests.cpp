@@ -291,12 +291,27 @@ namespace PassControlRunAdvancePlanQueryTests
 		}
 		case ECase::GoalkeeperParticipants:
 		{
-			const auto LegalGoalkeepers = Build(
-				MakeValidInput(), MakeSnapshots(4, 6, 5, 3, true, true, true, false, true, true));
-			Test.TestTrue(TEXT("Carrier, Marker, and Helper GK flags do not cause a dedicated rejection"), LegalGoalkeepers.bSuccess);
+			const auto CarrierGoalkeeper = Build(
+				MakeValidInput(), MakeSnapshots(4, 6, 5, 3, true, true, true));
+			ExpectFailure(
+				Test,
+				CarrierGoalkeeper,
+				EPassControlRunAdvancePlanQueryErrorCode::UnsupportedGoalkeeperParticipant,
+				TEXT("CarrierCardId"));
+
+			const auto LegalMarkerAndHelperGoalkeepers = Build(
+				MakeValidInput(), MakeSnapshots(4, 6, 5, 3, true, true, false, false, true, true));
+			Test.TestTrue(
+				TEXT("Marker and Helper GK flags do not cause a dedicated rejection"),
+				LegalMarkerAndHelperGoalkeepers.bSuccess);
+
 			const auto RunnerGoalkeeper = Build(
 				MakeValidInput(), MakeSnapshots(4, 6, 5, 3, true, true, false, true));
-			Test.TestEqual(TEXT("GK Runner fails only the Midfield eligibility rule"), RunnerGoalkeeper.ErrorCode, EPassControlRunAdvancePlanQueryErrorCode::RunnerNotMidfield);
+			ExpectFailure(
+				Test,
+				RunnerGoalkeeper,
+				EPassControlRunAdvancePlanQueryErrorCode::RunnerNotMidfield,
+				TEXT("RunnerCardId"));
 			return true;
 		}
 		case ECase::SelectedHelperQueriesSnapshot:

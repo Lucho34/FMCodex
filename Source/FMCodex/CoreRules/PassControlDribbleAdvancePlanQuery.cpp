@@ -259,6 +259,16 @@ FPassControlDribbleAdvancePlanQuery::BuildPlan(
 		return Result;
 	}
 
+	if (CarrierSnapshot.bIsGoalkeeper)
+	{
+		PassControlDribbleAdvancePlanQuery::SetFailure(
+			Result,
+			EPassControlDribbleAdvancePlanQueryErrorCode::UnsupportedGoalkeeperParticipant,
+			TEXT("Pass Control DribbleAdvance does not support a goalkeeper carrier."),
+			TEXT("CarrierCardId"));
+		return Result;
+	}
+
 	if (!RunnerSnapshot.PositionTypes.Contains(EPlayerPositionType::Midfield))
 	{
 		PassControlDribbleAdvancePlanQuery::SetFailure(

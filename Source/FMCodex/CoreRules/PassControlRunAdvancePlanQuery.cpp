@@ -260,6 +260,16 @@ FPassControlRunAdvancePlanQuery::BuildPlan(
 		return Result;
 	}
 
+	if (CarrierSnapshot.bIsGoalkeeper)
+	{
+		PassControlRunAdvancePlanQuery::SetFailure(
+			Result,
+			EPassControlRunAdvancePlanQueryErrorCode::UnsupportedGoalkeeperParticipant,
+			TEXT("Pass Control RunAdvance does not support a goalkeeper carrier."),
+			TEXT("CarrierCardId"));
+		return Result;
+	}
+
 	if (!RunnerSnapshot.PositionTypes.Contains(EPlayerPositionType::Midfield))
 	{
 		PassControlRunAdvancePlanQuery::SetFailure(
