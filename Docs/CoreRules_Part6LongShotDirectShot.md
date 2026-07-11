@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -14,8 +14,8 @@
 - Cut Inside Shot 当前已具备 Direct Shot、Dead Corner、Branch Selection 三个 CoreRules-only 最小能力。
 - Cut Inside Shot 当前仍不是完整内切射门外部入口。
 - Cut Inside Shot Minimal Slices 经 6.29 审查后可以正式关闭；该关闭不代表 Part 6 全部完成。
-- Pass Control 当前已完成 Advance Selection、PassAdvance 单分支 Plan Query 与 DribbleAdvance 单分支 Plan Query 三个最小能力。
-- Pass Control 当前仍未实现 PassControlPlanQuery、RunAdvance 或完整传控。
+- Pass Control 当前已完成 Advance Selection，以及 PassAdvance、DribbleAdvance、RunAdvance 三个单分支 Plan Query 与测试侧 Composition 最小能力。
+- Pass Control 当前仍未实现 PassControlPlanQuery 或完整传控，也未建立统一分支路由或总入口。
 
 ## 阶段记录
 
@@ -452,7 +452,7 @@ Pass Control Advance Selection 当前基线：
 
 `PassControlPassAdvanceCompositionTests` 只在测试侧读取 Query Result 和 Formula Plan，验证有 / 无 Helper、外部 D6、属性映射与失败结果不可消费；不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor 或 FormulaResolver，不执行完整公式链。
 
-当前未实现 PassControlPlanQuery、RunAdvance 或完整传控，也未接 MatchPlay、External API v1 或 FormulaAttackFlow；未引入 SkillPipeline / SkillEffect、通用技能框架、DataTable / Provider / 卡牌数据库或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
+当前未实现 PassControlPlanQuery 或完整传控，也未建立统一分支路由或总入口；未接 MatchPlay、External API v1 或 FormulaAttackFlow；未引入 SkillPipeline / SkillEffect、通用技能框架、DataTable / Provider / 卡牌数据库或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
 
 Pass Control 当前基线：
 
@@ -492,10 +492,32 @@ Pass Control 当前基线：
 
 `PassControlDribbleAdvanceCompositionTests` 只在测试侧读取 DribbleAdvance 专用 Query Result 和 Formula Plan。测试侧消费门槛为 `bSuccess && bHasFormulaPlan`；局部投影只存在于测试文件内，仅读取专用 Result / FormulaPlan。Composition 覆盖有 Helper、合法无 Helper、`Finishing`、外部 D6、Dribbling / Passing 与 Tackling / Marking / +2 属性映射、.5 语义、Runner 追踪、Helper Snapshot 默认空状态和代表性失败结果不可消费；不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor、FormulaResolver 或 FormulaAttackFlow，不执行公式胜负比较，不判定 Goal、结束攻击、更新比分或提交 MatchPlay，也不建立通用 Consumer 或 PassControl 公共 Composition 层。
 
-当前未实现 PassControlPlanQuery、RunAdvance 或完整传控，也未接 MatchPlay、External API v1 或 FormulaAttackFlow；未调用公式组装或执行链；未引入 SkillPipeline / SkillEffect、通用技能、属性、Advance Query、Optional Participant 或 Composition 框架；未引入 DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
+## Pass Control RunAdvance 单分支 Plan Query
+
+6.60 Contract Review 冻结 RunAdvance 单分支契约；6.61 新增 `FPassControlRunAdvancePlanQuery` 与 53 项专项测试，6.62 Independent Boundary Review + Regression 已通过。6.63 限定 Composition 边界，6.64 只新增 `PassControlRunAdvanceCompositionTests.cpp` 与 10 项 Composition Tests，6.65 Independent Boundary Review + Regression 已通过。
+
+`FPassControlRunAdvancePlanQuery`：
+
+- 使用 RunAdvance 专用 Input / Result / FormulaPlan / Decision / ErrorCode；只服务 `ESkillRuleType::PassControl` 的显式 `RunAdvance`，未新增 RunAdvance SkillRuleType。
+- `None / PassAdvance / DribbleAdvance` 及未知 AdvanceType 结构化拒绝；不重新处理 Advance Selection D6，也不根据属性、上下文或状态推断推进类型。
+- Carrier / Runner / Marker 身份和 Snapshot 必填；Carrier 必须持有 SkillId，CurrentActionPoint 同时满足全局和 SkillRule 触发范围，Runner 必须包含 Midfield。
+- 未新增 Carrier / Runner / Marker / Helper 的 GK 专属拒绝，Marker / Helper 未新增位置限制；Runner 为 GK 但不包含 Midfield 时仅以 `RunnerNotMidfield` 失败。Runner CardId / PlayerId 仅用于未来结果归属追踪，当前不新增 OutcomeOwner。
+- Helper 使用显式 `bHasHelper`：`true` 时 CardId / PlayerId 必填并查询真实 Snapshot；`false` 时两个身份为空、完全跳过查询，Helper Marking / 体力语义按 0。合法无 Helper、身份错误和 `HelperSnapshotQueryFailed` 可区分，不使用虚构身份或 Snapshot。
+- 成功 Plan 使用 `EFormulaType::Finishing`，只生成 Formula Plan，不执行公式链、不判定 Goal、也不结束攻击。
+- 攻方映射为 `Carrier OffBall + (Runner Dribbling - Carrier OffBall) / 2`；攻方主属性为 OffBall，Runner 贡献 Dribbling。
+- 守方有 Helper 为 `Marker Marking + (Helper Marking - Marker Marking) / 2 + 2`，无 Helper 为 `Marker Marking + (0 - Marker Marking) / 2 + 2`；Marker 与 Helper 均使用 Marking，不使用 Passing、Tackling、Carrier Dribbling 或 Runner Passing。
+- AttackD6 / DefenseD6 均由调用方显式提供、范围为 1-6，并原样保留到 Formula Plan；不生成随机数。专用映射保留 .0 / .5 和固定防守 +2，不引入通用舍入、属性表达式或参与者聚合框架。
+
+`PassControlRunAdvanceCompositionTests` 只在测试侧消费 RunAdvance 专用 Query Result 和 Formula Plan，消费门槛为 `bSuccess && bHasFormulaPlan`。局部投影只读取已组装的专用 Result / FormulaPlan 与 Snapshot 字段；不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor、FormulaResolver 或 FormulaAttackFlow，不执行攻防胜负比较，不判定 Goal、结束攻击、更新比分或提交 MatchPlay，也不建立通用 Consumer、PassControl 公共 Composition 层或分支路由。
+
+PassAdvance、DribbleAdvance、RunAdvance 三个专用 Query 与 Composition 均已完成。
+
+当前未实现 PassControlPlanQuery 或完整传控，也未建立统一分支路由或总入口；仍未接 MatchPlay、External API v1 或 FormulaAttackFlow，未调用公式组装或执行链，未引入 SkillPipeline / SkillEffect、通用技能、属性、Advance Query、Optional Participant 或 Composition 框架、DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
 
 Pass Control 当前基线：
 
+- PassControlRunAdvancePlanQuery：53/53 通过。
+- PassControlRunAdvanceComposition：10/10 通过。
 - PassControlDribbleAdvancePlanQuery：50/50 通过。
 - PassControlDribbleAdvanceComposition：10/10 通过。
 - PassControlPassAdvancePlanQuery：55/55 通过。
@@ -505,7 +527,9 @@ Pass Control 当前基线：
 - SkillRuleSnapshotQuery：8/8 通过。
 - LongShot 相关回归：77/77 通过。
 - CutInsideShot 相关回归：76/76 通过。
-- CoreRules：860/860 通过。
+- CoreRules：923/923 通过。
+- 6.62 RunAdvance Query Independent Boundary Review + Regression 已通过。
+- 6.65 RunAdvance Composition Independent Boundary Review + Regression 已通过。
 - 6.55 DribbleAdvance Query Independent Boundary Review + Regression 已通过。
 - 6.58 DribbleAdvance Composition Independent Boundary Review + Regression 已通过。
 - UE5 Development Editor：通过。

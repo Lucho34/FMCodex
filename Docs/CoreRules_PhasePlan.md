@@ -54,8 +54,10 @@
 - 6.53 DribbleAdvance Contract Finalization Review 已通过；确认下一步只实现 DribbleAdvance 单分支 Plan Query，不进入 RunAdvance、PassControlPlanQuery 或完整传控。
 - 6.54 新增 `FPassControlDribbleAdvancePlanQuery` 与 DribbleAdvance 专用 Input / Result / FormulaPlan / Decision / ErrorCode；6.55 Independent Boundary Review + Regression 已通过，DribbleAdvance Query 50/50。
 - 6.56 DribbleAdvance Composition Contract Review 已通过；6.57 只新增 `PassControlDribbleAdvanceCompositionTests.cpp`，6.58 Independent Boundary Review + Regression 已通过，DribbleAdvance Composition 10/10。
-- 当前阶段为 6.59 Pass Control DribbleAdvance Docs Sync；阶段类型为 Docs-only，只同步已审查 DribbleAdvance 单分支能力，不代表完整传控完成。
-- CoreRules 当前为 860/860 通过；DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76 通过。
+- 6.60 RunAdvance Contract Review 已冻结 RunAdvance 单分支契约；6.61 新增 `FPassControlRunAdvancePlanQuery` 与 53 项专项测试，6.62 Independent Boundary Review + Regression 已通过。
+- 6.63 RunAdvance Composition Contract Review 已通过；6.64 只新增 10 项 `PassControlRunAdvanceCompositionTests`，6.65 Independent Boundary Review + Regression 已通过。
+- 当前阶段为 6.66 Pass Control RunAdvance Docs Sync；阶段类型为 Docs-only，只同步已审查 RunAdvance 单分支能力。三个 Advance 专用分支均已完成，但不代表 `PassControlPlanQuery` 或完整传控完成。
+- CoreRules 当前为 923/923 通过；RunAdvance Query 53/53、RunAdvance Composition 10/10、DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76 通过。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
 - `git diff --check` 通过；6.35 边界审查与回归完成后工作区干净。
@@ -172,8 +174,12 @@
 - DribbleAdvance 只生成 `Finishing` Formula Plan，不判定 Goal、不结束攻击也不执行公式链。攻方映射为 `Carrier Dribbling + (Runner Passing - Carrier Dribbling) / 2`；守方有 Helper 为 `Marker Tackling + (Helper Marking - Marker Tackling) / 2 + 2`；守方无 Helper 为 `Marker Tackling + (0 - Marker Tackling) / 2 + 2`。合法无 Helper 与 `HelperSnapshotQueryFailed` 可区分，不伪造身份或 Snapshot；当前专用映射保留 .0 / .5 平均值语义和固定防守方 +2，不引入通用舍入系统、通用属性表达式或 Optional Participant 框架。
 - DribbleAdvance 的 AttackD6 / DefenseD6 均由调用方显式提供、范围为 1-6，并原样保留到 Formula Plan；不生成随机数。Runner CardId / PlayerId 仅用于后续结果归属追踪，当前不新增 OutcomeOwner、不执行进球或比分更新。
 - `PassControlDribbleAdvanceCompositionTests` 只在测试侧消费专用 Query Result 与 Formula Plan，消费门槛为 `bSuccess && bHasFormulaPlan`；局部投影只读取专用 Result / FormulaPlan，不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor、FormulaResolver 或 FormulaAttackFlow，不执行公式胜负比较，不提交 MatchPlay，也不建立通用 Consumer 或 PassControl 公共 Composition 层。
-- 当前未实现 PassControlPlanQuery、RunAdvance 或完整传控；未接 MatchPlay / External API v1 / FormulaAttackFlow，未引入 SkillPipeline / SkillEffect / 通用技能 / 属性 / Advance Query / Optional Participant / Composition 框架、DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
-- 6.59 后当前回归基线为 DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 860/860；DribbleAdvance Query 与 Composition 两次独立 Boundary Review + Regression 已通过。
+- `FPassControlRunAdvancePlanQuery` 使用 RunAdvance 专用 Input / Result / FormulaPlan / Decision / ErrorCode，只处理显式 `RunAdvance`；`None / PassAdvance / DribbleAdvance` 及未知值结构化拒绝，SkillRuleType 仍为 `ESkillRuleType::PassControl`，未新增 RunAdvance SkillRuleType，也不重新处理 Advance Selection D6。
+- RunAdvance 要求 Carrier / Runner / Marker 身份和 Snapshot、Carrier 持有 SkillId、全局及 SkillRule 行动点范围、Runner 包含 Midfield；未新增参与者的 GK 专属拒绝或 Marker / Helper 位置限制。Runner 为 GK 但不满足 Midfield 时只返回 `RunnerNotMidfield`。Helper 继续使用显式 `bHasHelper`：未选择时身份为空、跳过查询，Helper Marking / 体力语义为 0；合法无 Helper、身份错误和 `HelperSnapshotQueryFailed` 可区分。
+- RunAdvance 成功 Plan 为 `Finishing`，攻方映射为 `Carrier OffBall + (Runner Dribbling - Carrier OffBall) / 2`，守方有 Helper 为 `Marker Marking + (Helper Marking - Marker Marking) / 2 + 2`，无 Helper 为 `Marker Marking + (0 - Marker Marking) / 2 + 2`。保留 .0 / .5 与固定防守 +2，不使用 Passing、Tackling、Carrier Dribbling 或 Runner Passing，不引入通用舍入、属性表达式或参与者聚合框架。AttackD6 / DefenseD6 由调用方显式提供、范围 1-6 并原样保留到 Plan；Runner CardId / PlayerId 仅用于后续结果归属追踪，当前不新增 OutcomeOwner。
+- `PassControlRunAdvanceCompositionTests` 只在测试侧以 `bSuccess && bHasFormulaPlan` 消费 RunAdvance 专用 Result / FormulaPlan；局部投影不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor、FormulaResolver 或 FormulaAttackFlow，不执行攻防比较，不判定 Goal、不结束攻击、不更新比分或提交 MatchPlay，也不建立通用 Consumer、Composition 或分支路由。
+- 当前未实现 PassControlPlanQuery 或完整传控；未接 MatchPlay / External API v1 / FormulaAttackFlow，未引入 SkillPipeline / SkillEffect / 通用技能 / 属性 / Advance Query / Optional Participant / Composition 框架、DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
+- 6.66 后当前回归基线为 RunAdvance Query 53/53、RunAdvance Composition 10/10、DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 923/923；RunAdvance Query 与 Composition 两次独立 Boundary Review + Regression 已通过。
 
 ## 已完成阶段
 
