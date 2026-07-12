@@ -57,8 +57,11 @@
 - 6.60 RunAdvance Contract Review 已冻结 RunAdvance 单分支契约；6.61 新增 `FPassControlRunAdvancePlanQuery` 与 53 项专项测试，6.62 Independent Boundary Review + Regression 已通过。
 - 6.63 RunAdvance Composition Contract Review 已通过；6.64 只新增 10 项 `PassControlRunAdvanceCompositionTests`，6.65 Independent Boundary Review + Regression 已通过。
 - 6.70 Carrier GK Eligibility Correction 已完成并提交：DribbleAdvance 与 RunAdvance 现与 Advance Selection、PassAdvance 一致地拒绝 GK Carrier；6.71 Independent Boundary Review + Regression 已通过且未修改文件。
-- 当前阶段为 6.72 Canonical + PassControl Carrier GK Eligibility Docs Sync；阶段类型为 Docs-only。三个 Advance 专用分支均已完成，但不代表 `PassControlPlanQuery`、PassControl Closure Review 或完整传控完成。
-- CoreRules 当前为 923/923 通过；RunAdvance Query 53/53、RunAdvance Composition 10/10、DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76 通过。
+- 6.72 Canonical + PassControl Carrier GK Eligibility Docs Sync 已完成并提交（`bfac3e6`）；Canonical 已明确 GK 不得作为持球球员或跑位球员。
+- 6.73 PassControl Closure Readiness Review 已通过：结论为 `Ready with Documentation-Only Follow-up`，没有代码、测试或架构阻断项；唯一跟进项为同步最终 Closure 状态文档。
+- 6.74 PassControl Final Closure Docs Sync 已完成（本次 Docs-only 变更待用户提交）：PassControl CoreRules-only 三分支最小切片在本次同步中正式关闭。当前三个专用 Query 是该切片的最终边界；`PassControlPlanQuery` 继续暂不实现，既不是本次 Closure 的必需项，也不代表完整传控完成。
+- 6.73 已验证的回归基线为 CoreRules 923/923：RunAdvance Query 53/53、RunAdvance Composition 10/10、DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76 通过。
+- 后续不将 PassControl 新实现列为当前任务；如需继续 Part 6，应先进行其他能力的独立决策。只有出现明确生产调用方需求时，才重新审查 `PassControlPlanQuery`。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
 - `git diff --check` 通过；6.35 边界审查与回归完成后工作区干净。
@@ -181,6 +184,7 @@
 - `PassControlRunAdvanceCompositionTests` 只在测试侧以 `bSuccess && bHasFormulaPlan` 消费 RunAdvance 专用 Result / FormulaPlan；局部投影不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor、FormulaResolver 或 FormulaAttackFlow，不执行攻防比较，不判定 Goal、不结束攻击、不更新比分或提交 MatchPlay，也不建立通用 Consumer、Composition 或分支路由。
 - 当前未实现 PassControlPlanQuery 或完整传控；未接 MatchPlay / External API v1 / FormulaAttackFlow，未引入 SkillPipeline / SkillEffect / 通用技能 / 属性 / Advance Query / Optional Participant / Composition 框架、DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
 - 6.71 后当前回归基线为 RunAdvance Query 53/53、RunAdvance Composition 10/10、DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 923/923；6.70 Carrier GK Eligibility Correction 已提交，6.71 Independent Boundary Review + Regression 已通过。
+- 6.72 已完成并提交 Canonical 与状态文档同步；6.73 Closure Readiness Review 已通过，确认无代码、测试或架构阻断项。6.74 Final Closure Docs Sync 将 PassControl CoreRules-only 三分支最小切片正式关闭：已关闭的是 Advance Selection 与三个专用 Plan Query / 测试侧 Composition 边界，不包括公式执行、生产调用编排、MatchPlay 或完整传控。`PassControlPlanQuery` 继续作为未来出现明确生产调用方需求时才重新评估的延后决策，而非 Closure 缺口。
 
 ## 已完成阶段
 

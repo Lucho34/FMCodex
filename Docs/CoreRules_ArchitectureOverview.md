@@ -89,7 +89,9 @@ RunAdvance Helper 继续使用显式 `bHasHelper`：`true` 时 Helper CardId / P
 
 PassAdvance、DribbleAdvance、RunAdvance 三个专用 Query 与 Composition 均已完成。
 
-当前仍未实现 PassControlPlanQuery 或完整传控，也未建立统一分支路由或总入口；仍未接 MatchPlay、External API v1、FormulaAttackFlow、SkillPipeline / SkillEffect、通用技能 / 属性 / Advance Query / Optional Participant / Composition 框架、数据源、随机数或牌库语义。
+6.72 Canonical + PassControl Carrier GK Eligibility Docs Sync 已完成并提交；6.73 Closure Readiness Review 已通过，确认不存在代码、测试或架构阻断项。6.74 Final Closure Docs Sync 正式关闭 PassControl 的 CoreRules-only 三分支最小切片：当前闭合边界是 Advance Selection、三个专用 Plan Query 及其测试侧 Composition，不包含公式执行、生产调用编排或比赛流程。
+
+当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这不是本次 Closure 阻断项。当前维持三个专用 Query，由未来明确生产调用方需求再评估统一入口；仍未接 MatchPlay、External API v1、FormulaAttackFlow、FormulaResolver 执行、SkillPipeline / SkillEffect、通用技能 / 属性 / Advance Query / Optional Participant / Composition 框架、数据源、随机数或牌库语义。
 
 ## 单次攻击请求路径
 

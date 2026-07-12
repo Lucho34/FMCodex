@@ -2,9 +2,9 @@
 
 本文档是当前 CoreRules 模块职责速查表，目标是帮助后续 Codex 快速建立上下文。每个模块只记录边界，不替代源码和测试。
 
-截至 6.71，Pass Control 已完成 Advance Selection，以及 PassAdvance、DribbleAdvance、RunAdvance 三个独立 CoreRules-only Plan Query 与测试侧 Composition 最小能力；Cut Inside Shot Minimal Slices 已作为 Part 6 的 CoreRules-only 内部最小切片正式收口。Advance Selection 和三个推进分支均拒绝 GK Carrier；Runner 继续通过 Midfield 资格表达，Marker / Helper 未新增 GK 或位置限制。三个推进分支均只生成各自的 `Finishing` Formula Plan，不执行公式链，并使用显式 `bHasHelper` 表达 Optional Helper：未选择时两个 Helper 身份为空、不查询 Helper Snapshot，并以 Marking / 体力语义 0 生成合法 Plan。当前 CoreRules 基线为 923/923。
+截至 6.74，Pass Control 的 CoreRules-only 三分支最小切片已正式关闭：已完成 Advance Selection，以及 PassAdvance、DribbleAdvance、RunAdvance 三个独立专用 Plan Query 与测试侧 Composition。Advance Selection 和三个推进分支均拒绝 GK Carrier；Runner 继续通过 Midfield 资格表达（PassAdvance 保留 `RunnerPositionMismatch`，DribbleAdvance / RunAdvance 保留 `RunnerNotMidfield`），Marker / Helper 未新增 GK 或位置限制。三个推进分支均只生成各自的 `Finishing` Formula Plan，不执行公式链，并使用显式 `bHasHelper` 表达 Optional Helper：未选择时两个 Helper 身份为空、不查询 Helper Snapshot，并以 Marking / 体力语义 0 生成合法 Plan。6.73 已验证的 CoreRules 回归基线为 923/923。
 
-当前未实现 PassControlPlanQuery 或完整传控，也未建立统一分支路由或总入口。该状态不授权 MatchPlay、External API v1、FormulaAttackFlow、通用 SkillPipeline / SkillEffect、通用技能框架、通用属性表达式引擎、通用 Optional Participant、通用 Composition 或数据源接入。
+当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这不是本次 Closure 阻断项。三个专用 Query 是当前切片的最终边界，只有未来出现明确生产调用方需求时才重新评估统一入口。该状态不授权 MatchPlay、External API v1、FormulaAttackFlow、公式执行、通用 SkillPipeline / SkillEffect、通用技能框架、通用属性表达式引擎、通用 Optional Participant、通用 Composition 或数据源接入。
 
 | 模块 | 职责 | 允许做什么 | 不允许做什么 | 是否修改状态 | 主要依赖 |
 | --- | --- | --- | --- | --- | --- |

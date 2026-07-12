@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -14,8 +14,9 @@
 - Cut Inside Shot 当前已具备 Direct Shot、Dead Corner、Branch Selection 三个 CoreRules-only 最小能力。
 - Cut Inside Shot 当前仍不是完整内切射门外部入口。
 - Cut Inside Shot Minimal Slices 经 6.29 审查后可以正式关闭；该关闭不代表 Part 6 全部完成。
-- Pass Control 当前已完成 Advance Selection，以及 PassAdvance、DribbleAdvance、RunAdvance 三个单分支 Plan Query 与测试侧 Composition 最小能力。
-- Pass Control 当前仍未实现 PassControlPlanQuery 或完整传控，也未建立统一分支路由或总入口。
+- Pass Control 的 CoreRules-only 三分支最小切片已在 6.74 Final Closure Docs Sync 正式关闭：Advance Selection，以及 PassAdvance、DribbleAdvance、RunAdvance 三个专用 Plan Query 与测试侧 Composition 均已完成。
+- 6.72 Canonical + Carrier GK Eligibility Docs Sync 已完成并提交；6.73 Closure Readiness Review 已通过，确认不存在代码、测试或架构阻断项；其验证基线为 CoreRules 923/923。
+- Pass Control 当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这是明确的延后决策，不是本次 Closure 缺口。未来仅在出现明确生产调用方需求时重新评估统一入口。
 
 ## 阶段记录
 
@@ -84,6 +85,9 @@
 - 6.59 Pass Control DribbleAdvance Docs Sync：同步 DribbleAdvance 单分支能力、测试、边界审查和回归事实；本阶段只修改 Docs。
 - 6.70 PassControl Carrier GK Eligibility Correction：DribbleAdvance 与 RunAdvance 的 Carrier GK 资格与 Advance Selection、PassAdvance 对齐；各自专用错误枚举末尾新增 `UnsupportedGoalkeeperParticipant`。
 - 6.71 PassControl Carrier GK Eligibility Independent Boundary Review + Regression：确认 Carrier GK 修正、Runner Midfield 语义、Marker / Helper 边界与回归通过；本阶段未修改文件。
+- 6.72 Canonical + PassControl Carrier GK Eligibility Docs Sync：将 GK 不得作为 Carrier 或 Runner 的业务规则及三个分支的资格边界同步到 Canonical 和状态文档；已完成并提交。
+- 6.73 PassControl Closure Readiness Review：独立确认三分支最小切片不存在代码、测试或架构阻断项，结论为 `Ready with Documentation-Only Follow-up`。
+- 6.74 PassControl Final Closure Docs Sync：记录 6.72 已完成、6.73 已通过，并正式关闭 PassControl CoreRules-only 三分支最小切片；本阶段只修改 Docs。
 
 ## 最终收口结论
 
@@ -512,9 +516,9 @@ Pass Control 当前基线：
 
 `PassControlRunAdvanceCompositionTests` 只在测试侧消费 RunAdvance 专用 Query Result 和 Formula Plan，消费门槛为 `bSuccess && bHasFormulaPlan`。局部投影只读取已组装的专用 Result / FormulaPlan 与 Snapshot 字段；不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor、FormulaResolver 或 FormulaAttackFlow，不执行攻防胜负比较，不判定 Goal、结束攻击、更新比分或提交 MatchPlay，也不建立通用 Consumer、PassControl 公共 Composition 层或分支路由。
 
-PassAdvance、DribbleAdvance、RunAdvance 三个专用 Query 与 Composition 均已完成。6.70 Carrier GK Eligibility Correction 已完成并提交，6.71 Independent Boundary Review + Regression 已通过；当前基线为 CoreRules 923/923。
+PassAdvance、DribbleAdvance、RunAdvance 三个专用 Query 与 Composition 均已完成。6.70 Carrier GK Eligibility Correction、6.71 Independent Boundary Review、6.72 Canonical Docs Sync、6.73 Closure Readiness Review 与 6.74 Final Closure Docs Sync 共同形成 PassControl CoreRules-only 三分支最小切片的正式关闭记录；6.73 已验证的基线为 CoreRules 923/923。
 
-当前未实现 PassControlPlanQuery 或完整传控，也未建立统一分支路由或总入口；仍未接 MatchPlay、External API v1 或 FormulaAttackFlow，未调用公式组装或执行链，未引入 SkillPipeline / SkillEffect、通用技能、属性、Advance Query、Optional Participant 或 Composition 框架、DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
+当前未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这是明确的延后决策，不是 Closure 阻断项。仍未接 MatchPlay、External API v1 或 FormulaAttackFlow，未调用公式组装或执行链，未引入 SkillPipeline / SkillEffect、通用技能、属性、Advance Query、Optional Participant 或 Composition 框架、DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
 
 Pass Control 当前基线：
 
