@@ -13,6 +13,7 @@ namespace SkillRuleSnapshotValidatorTests
 		TEXT("Skill.CutInsideShot.Primary"));
 	const FName PassControlSkillId(
 		TEXT("Skill.PassControl.Primary"));
+	const FName CrossSkillId(TEXT("Skill.Cross.Primary"));
 
 	FSkillRuleSnapshot MakeValidLongShotRule(
 		const FName SkillId = LongShotSkillId,
@@ -48,6 +49,19 @@ namespace SkillRuleSnapshotValidatorTests
 		FSkillRuleSnapshot SkillRule;
 		SkillRule.SkillId = SkillId;
 		SkillRule.SkillType = ESkillRuleType::PassControl;
+		SkillRule.MinTriggerActionPoint = MinActionPoint;
+		SkillRule.MaxTriggerActionPoint = MaxActionPoint;
+		return SkillRule;
+	}
+
+	FSkillRuleSnapshot MakeValidCrossRule(
+		const FName SkillId = CrossSkillId,
+		const int32 MinActionPoint = 3,
+		const int32 MaxActionPoint = 6)
+	{
+		FSkillRuleSnapshot SkillRule;
+		SkillRule.SkillId = SkillId;
+		SkillRule.SkillType = ESkillRuleType::Cross;
 		SkillRule.MinTriggerActionPoint = MinActionPoint;
 		SkillRule.MaxTriggerActionPoint = MaxActionPoint;
 		return SkillRule;
@@ -188,6 +202,157 @@ bool FSkillRuleSnapshotValidatorValidPassControlTest::RunTest(
 	TestTrue(
 		TEXT("Valid snapshot has no invalid field"),
 		Result.InvalidField.IsNone());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorValidCrossTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.ValidCrossSkillRuleSnapshotPasses",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorValidCrossTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet;
+	SnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule()
+	};
+
+	const FSkillRuleSnapshotValidationResult Result =
+		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+
+	TestTrue(TEXT("Valid Cross snapshot succeeds"), Result.bSuccess);
+	TestTrue(TEXT("Valid Cross snapshot is valid"), Result.bIsValid);
+	TestEqual(
+		TEXT("Valid Cross snapshot has no error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorCrossActionPointBoundariesTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.ValidatesCrossActionPointBoundaries",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorCrossActionPointBoundariesTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet MinimumSnapshotSet;
+	MinimumSnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule(
+			SkillRuleSnapshotValidatorTests::CrossSkillId,
+			2,
+			2)
+	};
+	TestTrue(
+		TEXT("Cross accepts the existing minimum action point"),
+		FSkillRuleSnapshotValidator::Validate(MinimumSnapshotSet).bSuccess);
+
+	FSkillRuleSnapshotSet MaximumSnapshotSet;
+	MaximumSnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule(
+			SkillRuleSnapshotValidatorTests::CrossSkillId,
+			8,
+			8)
+	};
+	TestTrue(
+		TEXT("Cross accepts the existing maximum action point"),
+		FSkillRuleSnapshotValidator::Validate(MaximumSnapshotSet).bSuccess);
+
+	FSkillRuleSnapshotSet BelowMinimumSnapshotSet;
+	BelowMinimumSnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule(
+			SkillRuleSnapshotValidatorTests::CrossSkillId,
+			1,
+			6)
+	};
+	const FSkillRuleSnapshotValidationResult BelowMinimumResult =
+		FSkillRuleSnapshotValidator::Validate(BelowMinimumSnapshotSet);
+	TestEqual(
+		TEXT("Cross rejects action points below the existing minimum"),
+		BelowMinimumResult.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode
+			::TriggerActionPointBelowMinimum);
+
+	FSkillRuleSnapshotSet AboveMaximumSnapshotSet;
+	AboveMaximumSnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule(
+			SkillRuleSnapshotValidatorTests::CrossSkillId,
+			3,
+			9)
+	};
+	const FSkillRuleSnapshotValidationResult AboveMaximumResult =
+		FSkillRuleSnapshotValidator::Validate(AboveMaximumSnapshotSet);
+	TestEqual(
+		TEXT("Cross rejects action points above the existing maximum"),
+		AboveMaximumResult.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode
+			::TriggerActionPointAboveMaximum);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorCrossEmptySkillIdTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.RejectsEmptyCrossSkillId",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorCrossEmptySkillIdTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet;
+	SnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule(NAME_None)
+	};
+
+	const FSkillRuleSnapshotValidationResult Result =
+		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+
+	TestFalse(TEXT("Empty Cross SkillId fails"), Result.bSuccess);
+	TestEqual(
+		TEXT("Empty Cross SkillId uses the existing structured error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode::InvalidSkillId);
+	TestEqual(
+		TEXT("SkillId field is reported"),
+		Result.InvalidField,
+		FName(TEXT("SkillId")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorDuplicateCrossSkillIdTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.RejectsDuplicateCrossSkillId",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorDuplicateCrossSkillIdTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet =
+		SkillRuleSnapshotValidatorTests::MakeValidSnapshotSet();
+	SnapshotSet.SkillRules.Add(
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule());
+	SnapshotSet.SkillRules.Add(
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule());
+
+	const FSkillRuleSnapshotValidationResult Result =
+		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+
+	TestFalse(TEXT("Duplicate Cross SkillId fails"), Result.bSuccess);
+	TestEqual(
+		TEXT("Duplicate Cross SkillId uses the existing structured error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode::DuplicateSkillId);
+	TestEqual(
+		TEXT("Duplicate Cross SkillId is retained"),
+		Result.InvalidSkillId,
+		SkillRuleSnapshotValidatorTests::CrossSkillId);
 	return true;
 }
 
@@ -431,7 +596,7 @@ bool FSkillRuleSnapshotValidatorMultipleLongShotRulesTest::RunTest(
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSkillRuleSnapshotValidatorMixedSupportedRulesTest,
-	"FMCodex.CoreRules.SkillRuleSnapshotValidator.AllowsLongShotCutInsideShotAndPassControlRulesTogether",
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.AllowsLongShotCutInsideShotPassControlAndCrossRulesTogether",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSkillRuleSnapshotValidatorMixedSupportedRulesTest::RunTest(
@@ -449,6 +614,11 @@ bool FSkillRuleSnapshotValidatorMixedSupportedRulesTest::RunTest(
 			SkillRuleSnapshotValidatorTests::PassControlSkillId,
 			6,
 			8));
+	SnapshotSet.SkillRules.Add(
+		SkillRuleSnapshotValidatorTests::MakeValidCrossRule(
+			SkillRuleSnapshotValidatorTests::CrossSkillId,
+			3,
+			6));
 
 	const FSkillRuleSnapshotValidationResult Result =
 		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
@@ -485,6 +655,8 @@ bool FSkillRuleSnapshotValidatorInputUnchangedTest::RunTest(
 			MixedSnapshotSet.SkillRules.Add(
 				SkillRuleSnapshotValidatorTests
 					::MakeValidPassControlRule());
+			MixedSnapshotSet.SkillRules.Add(
+				SkillRuleSnapshotValidatorTests::MakeValidCrossRule());
 			return MixedSnapshotSet;
 		}();
 	const FSkillRuleSnapshotSet SnapshotSetBefore = SnapshotSet;

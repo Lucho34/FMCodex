@@ -11,6 +11,8 @@ namespace SkillRuleSnapshotQueryTests
 	const FName PrimarySkillId(TEXT("Skill.LongShot.Primary"));
 	const FName SecondarySkillId(TEXT("Skill.LongShot.Secondary"));
 	const FName MissingSkillId(TEXT("Skill.LongShot.Missing"));
+	const FName CrossSkillId(TEXT("Skill.Cross.Primary"));
+	const FName MissingCrossSkillId(TEXT("Skill.Cross.Missing"));
 
 	FSkillRuleSnapshot MakeLongShotRule(
 		const FName SkillId,
@@ -25,13 +27,27 @@ namespace SkillRuleSnapshotQueryTests
 		return SkillRule;
 	}
 
+	FSkillRuleSnapshot MakeCrossRule(
+		const FName SkillId,
+		const int32 MinActionPoint,
+		const int32 MaxActionPoint)
+	{
+		FSkillRuleSnapshot SkillRule;
+		SkillRule.SkillId = SkillId;
+		SkillRule.SkillType = ESkillRuleType::Cross;
+		SkillRule.MinTriggerActionPoint = MinActionPoint;
+		SkillRule.MaxTriggerActionPoint = MaxActionPoint;
+		return SkillRule;
+	}
+
 	FSkillRuleSnapshotSet MakeValidSnapshotSet()
 	{
 		FSkillRuleSnapshotSet SnapshotSet;
 		SnapshotSet.SkillRules =
 		{
 			MakeLongShotRule(PrimarySkillId, 2, 5),
-			MakeLongShotRule(SecondarySkillId, 6, 8)
+			MakeLongShotRule(SecondarySkillId, 6, 8),
+			MakeCrossRule(CrossSkillId, 3, 6)
 		};
 		return SnapshotSet;
 	}
@@ -108,6 +124,47 @@ bool FSkillRuleSnapshotQueryFindsExistingTest::RunTest(
 		TEXT("Maximum action point is copied"),
 		Result.Snapshot.MaxTriggerActionPoint,
 		8);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotQueryFindsCrossTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotQuery.FindsCrossSkillRuleBySkillId",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotQueryFindsCrossTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotQueryInput Input;
+	Input.SkillId = SkillRuleSnapshotQueryTests::CrossSkillId;
+
+	const FSkillRuleSnapshotQueryResult Result =
+		FSkillRuleSnapshotQuery::FindBySkillId(
+			SkillRuleSnapshotQueryTests::MakeValidSnapshotSet(),
+			Input);
+
+	TestTrue(TEXT("Cross query succeeds"), Result.bSuccess);
+	TestTrue(TEXT("Cross Skill Rule is found"), Result.bFound);
+	TestEqual(
+		TEXT("Cross query has no error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotQueryErrorCode::None);
+	TestEqual(
+		TEXT("Cross SkillId is returned"),
+		Result.Snapshot.SkillId,
+		SkillRuleSnapshotQueryTests::CrossSkillId);
+	TestEqual(
+		TEXT("Cross SkillType is returned"),
+		Result.Snapshot.SkillType,
+		ESkillRuleType::Cross);
+	TestEqual(
+		TEXT("Cross minimum action point is preserved"),
+		Result.Snapshot.MinTriggerActionPoint,
+		3);
+	TestEqual(
+		TEXT("Cross maximum action point is preserved"),
+		Result.Snapshot.MaxTriggerActionPoint,
+		6);
 	return true;
 }
 
@@ -192,6 +249,38 @@ bool FSkillRuleSnapshotQueryValidationFailureTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotQueryCrossValidationFailureTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotQuery.PropagatesValidationFailureWhenQueryingCross",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotQueryCrossValidationFailureTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet =
+		SkillRuleSnapshotQueryTests::MakeValidSnapshotSet();
+	SnapshotSet.SkillRules[1].SkillId =
+		SkillRuleSnapshotQueryTests::PrimarySkillId;
+	FSkillRuleSnapshotQueryInput Input;
+	Input.SkillId = SkillRuleSnapshotQueryTests::CrossSkillId;
+
+	const FSkillRuleSnapshotQueryResult Result =
+		FSkillRuleSnapshotQuery::FindBySkillId(SnapshotSet, Input);
+
+	TestFalse(TEXT("Invalid Cross Snapshot Set query fails"), Result.bSuccess);
+	TestFalse(TEXT("Cross is not found when set validation fails"), Result.bFound);
+	TestEqual(
+		TEXT("Snapshot Set failure is structured for Cross"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotQueryErrorCode
+			::SnapshotSetValidationFailed);
+	TestEqual(
+		TEXT("Cross query retains the validator error"),
+		Result.ValidationResult.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode::DuplicateSkillId);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSkillRuleSnapshotQueryMissingSkillTest,
 	"FMCodex.CoreRules.SkillRuleSnapshotQuery.ReturnsNotFoundForMissingSkillId",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -229,6 +318,68 @@ bool FSkillRuleSnapshotQueryMissingSkillTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotQueryMissingCrossSkillTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotQuery.ReturnsNotFoundForMissingCrossSkillId",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotQueryMissingCrossSkillTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotQueryInput Input;
+	Input.SkillId = SkillRuleSnapshotQueryTests::MissingCrossSkillId;
+
+	const FSkillRuleSnapshotQueryResult Result =
+		FSkillRuleSnapshotQuery::FindBySkillId(
+			SkillRuleSnapshotQueryTests::MakeValidSnapshotSet(),
+			Input);
+
+	TestFalse(TEXT("Missing Cross Skill Rule query fails"), Result.bSuccess);
+	TestFalse(TEXT("Missing Cross Skill Rule is not found"), Result.bFound);
+	TestEqual(
+		TEXT("Missing Cross uses the existing not-found error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotQueryErrorCode::SkillRuleNotFound);
+	TestEqual(
+		TEXT("Missing Cross SkillId is retained"),
+		Result.InvalidSkillId,
+		Input.SkillId);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotQueryCrossCoexistsWithLongShotTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotQuery.CrossAndLongShotSnapshotsCoexist",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotQueryCrossCoexistsWithLongShotTest::RunTest(
+	const FString& Parameters)
+{
+	const FSkillRuleSnapshotSet SnapshotSet =
+		SkillRuleSnapshotQueryTests::MakeValidSnapshotSet();
+	const FSkillRuleSnapshotQueryInput CrossInput =
+		{ SkillRuleSnapshotQueryTests::CrossSkillId };
+	const FSkillRuleSnapshotQueryInput LongShotInput =
+		{ SkillRuleSnapshotQueryTests::PrimarySkillId };
+
+	const FSkillRuleSnapshotQueryResult CrossResult =
+		FSkillRuleSnapshotQuery::FindBySkillId(SnapshotSet, CrossInput);
+	const FSkillRuleSnapshotQueryResult LongShotResult =
+		FSkillRuleSnapshotQuery::FindBySkillId(SnapshotSet, LongShotInput);
+
+	TestTrue(TEXT("Cross succeeds beside LongShot"), CrossResult.bSuccess);
+	TestEqual(
+		TEXT("Cross retains its type beside LongShot"),
+		CrossResult.Snapshot.SkillType,
+		ESkillRuleType::Cross);
+	TestTrue(TEXT("LongShot succeeds beside Cross"), LongShotResult.bSuccess);
+	TestEqual(
+		TEXT("LongShot retains its type beside Cross"),
+		LongShotResult.Snapshot.SkillType,
+		ESkillRuleType::LongShot);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSkillRuleSnapshotQueryPreservesValidationTest,
 	"FMCodex.CoreRules.SkillRuleSnapshotQuery.PreservesValidationResultOnSuccess",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -237,7 +388,7 @@ bool FSkillRuleSnapshotQueryPreservesValidationTest::RunTest(
 	const FString& Parameters)
 {
 	FSkillRuleSnapshotQueryInput Input;
-	Input.SkillId = SkillRuleSnapshotQueryTests::PrimarySkillId;
+	Input.SkillId = SkillRuleSnapshotQueryTests::CrossSkillId;
 
 	const FSkillRuleSnapshotQueryResult Result =
 		FSkillRuleSnapshotQuery::FindBySkillId(
@@ -298,7 +449,7 @@ bool FSkillRuleSnapshotQueryQueryInputUnchangedTest::RunTest(
 	const FString& Parameters)
 {
 	const FSkillRuleSnapshotQueryInput Input =
-		{ SkillRuleSnapshotQueryTests::PrimarySkillId };
+		{ SkillRuleSnapshotQueryTests::CrossSkillId };
 	const FSkillRuleSnapshotQueryInput InputBefore = Input;
 
 	const FSkillRuleSnapshotQueryResult Result =

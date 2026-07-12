@@ -69,14 +69,15 @@ FSkillRuleSnapshotValidator::Validate(
 			&& SkillRule.SkillType
 				!= ESkillRuleType::CutInsideShot
 			&& SkillRule.SkillType
-				!= ESkillRuleType::PassControl)
+				!= ESkillRuleType::PassControl
+			&& SkillRule.SkillType != ESkillRuleType::Cross)
 		{
 			SkillRuleSnapshotValidator::SetFailure(
 				Result,
 				ESkillRuleSnapshotValidationErrorCode
 					::UnsupportedSkillType,
 				FString::Printf(
-					TEXT("SkillId '%s' must use a supported LongShot, CutInsideShot, or PassControl SkillType."),
+					TEXT("SkillId '%s' must use a supported LongShot, CutInsideShot, PassControl, or Cross SkillType."),
 					*SkillRule.SkillId.ToString()),
 				SkillRule.SkillId,
 				TEXT("SkillType"));
