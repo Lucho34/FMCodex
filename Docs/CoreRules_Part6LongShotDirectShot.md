@@ -82,6 +82,8 @@
 - 6.57 Pass Control DribbleAdvance Composition Tests：只新增 `PassControlDribbleAdvanceCompositionTests.cpp`，新增 10 项测试侧 Plan 消费测试。
 - 6.58 Pass Control DribbleAdvance Composition Independent Boundary Review + Regression：确认 Composition 不调用 InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor / FormulaResolver / FormulaAttackFlow，CoreRules 860/860 通过。
 - 6.59 Pass Control DribbleAdvance Docs Sync：同步 DribbleAdvance 单分支能力、测试、边界审查和回归事实；本阶段只修改 Docs。
+- 6.70 PassControl Carrier GK Eligibility Correction：DribbleAdvance 与 RunAdvance 的 Carrier GK 资格与 Advance Selection、PassAdvance 对齐；各自专用错误枚举末尾新增 `UnsupportedGoalkeeperParticipant`。
+- 6.71 PassControl Carrier GK Eligibility Independent Boundary Review + Regression：确认 Carrier GK 修正、Runner Midfield 语义、Marker / Helper 边界与回归通过；本阶段未修改文件。
 
 ## 最终收口结论
 
@@ -480,8 +482,8 @@ Pass Control 当前基线：
 - Carrier / Runner / Marker 身份和 Snapshot 必填；Helper 由显式 `bHasHelper` 控制。
 - `bHasHelper=true` 时 Helper CardId / PlayerId 必填并查询真实 Snapshot；`bHasHelper=false` 时两个 Helper 身份均为空且完全跳过 Helper Snapshot Query。
 - 合法无 Helper 时 Helper Marking 与体力语义按 0；合法无 Helper 与 `HelperSnapshotQueryFailed` 可区分，不使用虚构身份或虚构 Snapshot。
-- Carrier 必须持有 SkillId；CurrentActionPoint 必须满足既有 PassControl 技能边界；Runner 必须包含 Midfield。
-- Carrier 为 GK 不会仅因 GK 身份失败；Marker / Helper 未新增位置或 GK 限制。
+- Carrier 必须持有 SkillId 且非 GK；CurrentActionPoint 必须满足既有 PassControl 技能边界；Runner 必须包含 Midfield。
+- 6.70 在 DribbleAdvance 专用错误枚举末尾新增 `UnsupportedGoalkeeperParticipant`；GK Carrier 结构化失败且无 Formula Plan。Marker / Helper 未新增位置或 GK 限制；Runner GK 继续通过 Midfield 资格被拒绝。
 - Runner CardId / PlayerId 仅用于后续结果归属追踪；当前不新增 OutcomeOwner，不执行进球、比分更新或 MatchPlay 提交。
 - AttackD6 / DefenseD6 均由调用方显式提供，范围为 1-6，并原样保留到 Formula Plan；不生成随机数。
 - 成功 Plan 使用 `EFormulaType::Finishing`，只生成 Formula Plan，不执行公式链、不判定 Goal、也不结束攻击。
@@ -500,8 +502,8 @@ Pass Control 当前基线：
 
 - 使用 RunAdvance 专用 Input / Result / FormulaPlan / Decision / ErrorCode；只服务 `ESkillRuleType::PassControl` 的显式 `RunAdvance`，未新增 RunAdvance SkillRuleType。
 - `None / PassAdvance / DribbleAdvance` 及未知 AdvanceType 结构化拒绝；不重新处理 Advance Selection D6，也不根据属性、上下文或状态推断推进类型。
-- Carrier / Runner / Marker 身份和 Snapshot 必填；Carrier 必须持有 SkillId，CurrentActionPoint 同时满足全局和 SkillRule 触发范围，Runner 必须包含 Midfield。
-- 未新增 Carrier / Runner / Marker / Helper 的 GK 专属拒绝，Marker / Helper 未新增位置限制；Runner 为 GK 但不包含 Midfield 时仅以 `RunnerNotMidfield` 失败。Runner CardId / PlayerId 仅用于未来结果归属追踪，当前不新增 OutcomeOwner。
+- Carrier / Runner / Marker 身份和 Snapshot 必填；Carrier 必须持有 SkillId 且非 GK，CurrentActionPoint 同时满足全局和 SkillRule 触发范围，Runner 必须包含 Midfield。
+- 6.70 在 RunAdvance 专用错误枚举末尾新增 `UnsupportedGoalkeeperParticipant`；GK Carrier 结构化失败且无 Formula Plan。Marker / Helper 未新增 GK 或位置限制；Runner 为 GK 但不包含 Midfield 时仍仅以 `RunnerNotMidfield` 失败。Runner CardId / PlayerId 仅用于未来结果归属追踪，当前不新增 OutcomeOwner。
 - Helper 使用显式 `bHasHelper`：`true` 时 CardId / PlayerId 必填并查询真实 Snapshot；`false` 时两个身份为空、完全跳过查询，Helper Marking / 体力语义按 0。合法无 Helper、身份错误和 `HelperSnapshotQueryFailed` 可区分，不使用虚构身份或 Snapshot。
 - 成功 Plan 使用 `EFormulaType::Finishing`，只生成 Formula Plan，不执行公式链、不判定 Goal、也不结束攻击。
 - 攻方映射为 `Carrier OffBall + (Runner Dribbling - Carrier OffBall) / 2`；攻方主属性为 OffBall，Runner 贡献 Dribbling。
@@ -510,7 +512,7 @@ Pass Control 当前基线：
 
 `PassControlRunAdvanceCompositionTests` 只在测试侧消费 RunAdvance 专用 Query Result 和 Formula Plan，消费门槛为 `bSuccess && bHasFormulaPlan`。局部投影只读取已组装的专用 Result / FormulaPlan 与 Snapshot 字段；不调用 InputAssemblyQuery、ResolverInputAssembler、ResolutionExecutor、FormulaResolver 或 FormulaAttackFlow，不执行攻防胜负比较，不判定 Goal、结束攻击、更新比分或提交 MatchPlay，也不建立通用 Consumer、PassControl 公共 Composition 层或分支路由。
 
-PassAdvance、DribbleAdvance、RunAdvance 三个专用 Query 与 Composition 均已完成。
+PassAdvance、DribbleAdvance、RunAdvance 三个专用 Query 与 Composition 均已完成。6.70 Carrier GK Eligibility Correction 已完成并提交，6.71 Independent Boundary Review + Regression 已通过；当前基线为 CoreRules 923/923。
 
 当前未实现 PassControlPlanQuery 或完整传控，也未建立统一分支路由或总入口；仍未接 MatchPlay、External API v1 或 FormulaAttackFlow，未调用公式组装或执行链，未引入 SkillPipeline / SkillEffect、通用技能、属性、Advance Query、Optional Participant 或 Composition 框架、DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
 
