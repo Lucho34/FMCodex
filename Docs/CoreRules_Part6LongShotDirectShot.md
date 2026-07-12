@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync；阶段 6.75 至 6.77 记录 Cross 后续能力决策、门将公式澄清与 Canonical 规则冻结。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -17,6 +17,7 @@
 - Pass Control 的 CoreRules-only 三分支最小切片已在 6.74 Final Closure Docs Sync 正式关闭：Advance Selection，以及 PassAdvance、DribbleAdvance、RunAdvance 三个专用 Plan Query 与测试侧 Composition 均已完成。
 - 6.72 Canonical + Carrier GK Eligibility Docs Sync 已完成并提交；6.73 Closure Readiness Review 已通过，确认不存在代码、测试或架构阻断项；其验证基线为 CoreRules 923/923。
 - Pass Control 当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这是明确的延后决策，不是本次 Closure 缺口。未来仅在出现明确生产调用方需求时重新评估统一入口。
+- Cross 当前仅完成 Canonical 规则冻结，尚未实现 SkillRule、Validator、Selection Query、Plan Query 或测试。Carrier / Runner 非 GK；Runner 必须包含 `Attack`。Marker 必填且非 GK，Helper 可选且存在时非 GK。可选 Goalkeeper 为独立额外防守角色，不替换或加入 Marker / Helper 平均；高球独立加 Aerial 半值，低球独立加 Reflex 半值。GK 单场一次由未来外部状态层确认、记录和消耗。下一阶段为 Cross Minimum Contract Review，不得直接实现。
 
 ## 阶段记录
 
@@ -88,6 +89,9 @@
 - 6.72 Canonical + PassControl Carrier GK Eligibility Docs Sync：将 GK 不得作为 Carrier 或 Runner 的业务规则及三个分支的资格边界同步到 Canonical 和状态文档；已完成并提交。
 - 6.73 PassControl Closure Readiness Review：独立确认三分支最小切片不存在代码、测试或架构阻断项，结论为 `Ready with Documentation-Only Follow-up`。
 - 6.74 PassControl Final Closure Docs Sync：记录 6.72 已完成、6.73 已通过，并正式关闭 PassControl CoreRules-only 三分支最小切片；本阶段只修改 Docs。
+- 6.75 Part 6 Next Capability Decision Review：确认没有可直接实现的候选；Cross 因门将防守公式关系不明确而先进入规则澄清。
+- 6.76 Cross Canonical Rule Clarification Review：确认 GK 与 Marker / Helper 的公式关系为阻断项，要求先更新 Canonical。
+- 6.77 Cross Goalkeeper Formula + Defensive Participant Eligibility Canonical Docs Update：冻结 Cross 的非 GK Carrier / Runner / Marker / Helper、独立额外 Goalkeeper、半值修正位置、无 Helper 语义、参与者身份互异和无状态 GK 使用责任；Cross 仍未实现，下一阶段为 Cross Minimum Contract Review。
 
 ## 最终收口结论
 

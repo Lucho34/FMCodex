@@ -93,6 +93,8 @@ PassAdvance、DribbleAdvance、RunAdvance 三个专用 Query 与 Composition 均
 
 当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这不是本次 Closure 阻断项。当前维持三个专用 Query，由未来明确生产调用方需求再评估统一入口；仍未接 MatchPlay、External API v1、FormulaAttackFlow、FormulaResolver 执行、SkillPipeline / SkillEffect、通用技能 / 属性 / Advance Query / Optional Participant / Composition 框架、数据源、随机数或牌库语义。
 
+6.75 Next Capability Decision Review 与 6.76 Cross Canonical Rule Clarification Review 已完成；6.77 已将 Cross 的门将公式和防守参与者资格写入 Canonical。Cross 仍未有任何生产实现。未来 Cross CoreRules Plan Query 必须保持无状态：调用方或未来外部状态层负责确认、记录和消耗 GK 单场一次的发动资格；Query 只接收最终已批准的门将参与决定及其 Snapshot，不读取或修改比赛历史。业务上，GK 是独立额外防守角色，不替换 Marker / Helper；其半值修正在 Marker / Helper 平均后独立加入。下一阶段只审查 Cross Minimum Contract，不冻结 Query 数量、C++ 类型、错误枚举或实现。
+
 ## 单次攻击请求路径
 
 `External Driver -> MatchPlayExternalTurnController -> MatchPlaySubmitAttackFacade -> MatchPlaySubmissionGate -> MatchPlayAttackStep`

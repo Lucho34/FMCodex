@@ -6,6 +6,8 @@
 
 当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这不是本次 Closure 阻断项。三个专用 Query 是当前切片的最终边界，只有未来出现明确生产调用方需求时才重新评估统一入口。该状态不授权 MatchPlay、External API v1、FormulaAttackFlow、公式执行、通用 SkillPipeline / SkillEffect、通用技能框架、通用属性表达式引擎、通用 Optional Participant、通用 Composition 或数据源接入。
 
+6.75 至 6.77 已确定下一候选为 Cross，但当前只完成 Canonical 规则冻结，尚未实现 Cross SkillRule、Validator、Selection Query、Plan Query 或测试。Cross 的 Carrier / Runner 均非 GK，Runner 必须包含 `Attack`；Marker 必填且非 GK，Helper 可选且存在时非 GK，二者不新增其他位置限制。可选 Goalkeeper 是独立额外防守角色，必须为 GK，不替换或混入 Marker / Helper 平均；高球独立加 `Goalkeeper Aerial × 0.5`，低球独立加 `Goalkeeper Reflex × 0.5`，未发动时修正为 0。GK 单场一次的批准、记录与消耗仍由未来外部状态层负责。下一阶段仅为 Cross Minimum Contract Review，不授权实现或接入 MatchPlay。
+
 | 模块 | 职责 | 允许做什么 | 不允许做什么 | 是否修改状态 | 主要依赖 |
 | --- | --- | --- | --- | --- | --- |
 | `FormulaResolver` | 根据外部传入公式输入计算一次公式结果。 | 纯公式计算，输出是否进球等公式结果。 | 不生成随机数，不读取卡牌数据库，不处理技能，不移动卡牌，不消费进攻机会。 | 否 | 公式输入结构 |

@@ -62,6 +62,9 @@
 - 6.74 PassControl Final Closure Docs Sync 已完成（本次 Docs-only 变更待用户提交）：PassControl CoreRules-only 三分支最小切片在本次同步中正式关闭。当前三个专用 Query 是该切片的最终边界；`PassControlPlanQuery` 继续暂不实现，既不是本次 Closure 的必需项，也不代表完整传控完成。
 - 6.73 已验证的回归基线为 CoreRules 923/923：RunAdvance Query 53/53、RunAdvance Composition 10/10、DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76 通过。
 - 后续不将 PassControl 新实现列为当前任务；如需继续 Part 6，应先进行其他能力的独立决策。只有出现明确生产调用方需求时，才重新审查 `PassControlPlanQuery`。
+- 6.75 Part 6 Next Capability Decision Review 已完成：没有可直接实现的候选；传中因门将防守公式关系未定义而先进入规则澄清。
+- 6.76 Cross Canonical Rule Clarification Review 已完成：识别门将与 Marker / Helper 的公式关系为阻断项。
+- 6.77 Cross Goalkeeper Formula + Defensive Participant Eligibility Canonical Docs Update 已完成（本次 Docs-only 变更待用户提交）：Carrier / Runner、Marker / Helper 与额外 Goalkeeper 的资格、身份互异、门将独立半值修正和无 Helper 语义均已冻结。Cross 仍未实现；下一阶段为 6.78 Cross Minimum Contract Review，不得跳过 Contract Review 直接实现。
 - UE5 Development Editor 验证通过。
 - UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
 - `git diff --check` 通过；6.35 边界审查与回归完成后工作区干净。

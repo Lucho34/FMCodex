@@ -210,3 +210,10 @@
 - 6.74 Final Closure Docs Sync 正式关闭 PassControl 的 CoreRules-only 三分支最小切片：Advance Selection、PassAdvance / DribbleAdvance / RunAdvance 专用 Query、各自测试侧 Composition、独立 Boundary Review 与 Regression、GK Eligibility Correction 及对应 Docs Sync 均属于已关闭范围。当前基线为 RunAdvance Query 53/53、RunAdvance Composition 10/10、DribbleAdvance Query 50/50、DribbleAdvance Composition 10/10、PassControlPassAdvancePlanQuery 55/55、PassControlPassAdvanceComposition 12/12、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 14/14、SkillRuleSnapshotQuery 8/8、LongShot 相关回归 77/77、CutInsideShot 相关回归 76/76、CoreRules 923/923；该基线由 6.73 审查验证。
 - 当前未实现 `PassControlPlanQuery` 或完整传控技能，也未建立统一分支路由或总入口；其并非本次 Closure 阻断项。当前继续保留三个专用 Query，只有未来出现明确生产调用方需求时才重新评估统一入口。
 - 本切片没有授权 MatchPlay / External API v1 / FormulaAttackFlow，没有修改 FormulaResolver / InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor，没有引入 SkillPipeline / SkillEffect / 通用技能框架 / 通用属性表达式引擎，也没有引入 DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
+
+## Part 6 Cross Canonical 当前状态
+
+- 6.75 Part 6 Next Capability Decision Review 已确认 Cross 是最接近的后续候选，但不能直接实现；6.76 识别出门将防守公式关系为 Canonical 阻断项。
+- 6.77 已冻结 Cross 业务规则：Carrier / Runner 均非 GK，Runner 必须包含 `Attack` 且与 Carrier 不同；Marker 必填且非 GK，Helper 可选且存在时非 GK，Marker / Helper 不新增其他位置限制且身份不同。
+- 可选 Goalkeeper 为独立额外防守角色，必须为 GK，且与 Marker / Helper 身份不同；不替换二者、不进入二者平均。高球防守在 `Average(Marker Tackling, Helper Strength)` 后独立加 `Goalkeeper Aerial × 0.5`；低球防守在 `Average(Marker Tackling, Helper Marking)` 后独立加 `Goalkeeper Reflex × 0.5`；无 Helper 仍以 0 参与平均，未发动 Goalkeeper 时修正为 0。
+- GK 单场一次的批准、记录和消耗属于未来外部状态层；未来 Cross CoreRules Query 不读取或修改该状态，只接收已批准的最终参与决定。Cross 仍未实现；下一阶段为 Cross Minimum Contract Review，不授权 Selection / Plan Query、测试、FormulaResolver 执行、Goal / Miss、MatchPlay 或通用框架。
