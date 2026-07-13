@@ -14,6 +14,7 @@ namespace SkillRuleSnapshotValidatorTests
 	const FName PassControlSkillId(
 		TEXT("Skill.PassControl.Primary"));
 	const FName CrossSkillId(TEXT("Skill.Cross.Primary"));
+	const FName ThroughBallSkillId(TEXT("Skill.ThroughBall.Primary"));
 
 	FSkillRuleSnapshot MakeValidLongShotRule(
 		const FName SkillId = LongShotSkillId,
@@ -62,6 +63,19 @@ namespace SkillRuleSnapshotValidatorTests
 		FSkillRuleSnapshot SkillRule;
 		SkillRule.SkillId = SkillId;
 		SkillRule.SkillType = ESkillRuleType::Cross;
+		SkillRule.MinTriggerActionPoint = MinActionPoint;
+		SkillRule.MaxTriggerActionPoint = MaxActionPoint;
+		return SkillRule;
+	}
+
+	FSkillRuleSnapshot MakeValidThroughBallRule(
+		const FName SkillId = ThroughBallSkillId,
+		const int32 MinActionPoint = 3,
+		const int32 MaxActionPoint = 6)
+	{
+		FSkillRuleSnapshot SkillRule;
+		SkillRule.SkillId = SkillId;
+		SkillRule.SkillType = ESkillRuleType::ThroughBall;
 		SkillRule.MinTriggerActionPoint = MinActionPoint;
 		SkillRule.MaxTriggerActionPoint = MaxActionPoint;
 		return SkillRule;
@@ -228,6 +242,179 @@ bool FSkillRuleSnapshotValidatorValidCrossTest::RunTest(
 		TEXT("Valid Cross snapshot has no error"),
 		Result.ErrorCode,
 		ESkillRuleSnapshotValidationErrorCode::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorValidThroughBallTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.ValidThroughBallSkillRuleSnapshotPasses",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorValidThroughBallTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet;
+	SnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidThroughBallRule()
+	};
+
+	const FSkillRuleSnapshotValidationResult Result =
+		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+
+	TestTrue(TEXT("Valid ThroughBall snapshot succeeds"), Result.bSuccess);
+	TestTrue(TEXT("Valid ThroughBall snapshot is valid"), Result.bIsValid);
+	TestEqual(
+		TEXT("Valid ThroughBall snapshot has no error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode::None);
+	TestTrue(
+		TEXT("Valid ThroughBall snapshot has no error message"),
+		Result.ErrorMessage.IsEmpty());
+	TestTrue(
+		TEXT("Valid ThroughBall snapshot has no invalid SkillId"),
+		Result.InvalidSkillId.IsNone());
+	TestTrue(
+		TEXT("Valid ThroughBall snapshot has no invalid field"),
+		Result.InvalidField.IsNone());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorThroughBallActionPointBoundariesTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.ValidatesThroughBallActionPointBoundaries",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorThroughBallActionPointBoundariesTest::RunTest(
+	const FString& Parameters)
+{
+	const TArray<TPair<int32, int32>> ValidRanges =
+	{
+		{ 2, 8 },
+		{ 2, 2 },
+		{ 8, 8 }
+	};
+
+	for (const TPair<int32, int32>& ValidRange : ValidRanges)
+	{
+		FSkillRuleSnapshotSet SnapshotSet;
+		SnapshotSet.SkillRules =
+		{
+			SkillRuleSnapshotValidatorTests::MakeValidThroughBallRule(
+				SkillRuleSnapshotValidatorTests::ThroughBallSkillId,
+				ValidRange.Key,
+				ValidRange.Value)
+		};
+		const FSkillRuleSnapshotValidationResult Result =
+			FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+		TestTrue(
+			*FString::Printf(
+				TEXT("ThroughBall accepts action-point range [%d,%d]"),
+				ValidRange.Key,
+				ValidRange.Value),
+			Result.bSuccess);
+		TestEqual(
+			TEXT("Valid ThroughBall boundary has no error"),
+			Result.ErrorCode,
+			ESkillRuleSnapshotValidationErrorCode::None);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorEmptyThroughBallSkillIdTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.RejectsEmptyThroughBallSkillId",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorEmptyThroughBallSkillIdTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet;
+	SnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidThroughBallRule(NAME_None)
+	};
+
+	const FSkillRuleSnapshotValidationResult Result =
+		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+
+	TestFalse(TEXT("Empty ThroughBall SkillId fails"), Result.bSuccess);
+	TestEqual(
+		TEXT("Empty ThroughBall SkillId uses the existing error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode::InvalidSkillId);
+	TestEqual(
+		TEXT("Empty ThroughBall SkillId reports the SkillId field"),
+		Result.InvalidField,
+		FName(TEXT("SkillId")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorInvalidThroughBallRangeTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.RejectsInvalidThroughBallActionPointRange",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorInvalidThroughBallRangeTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet;
+	SnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidThroughBallRule(
+			SkillRuleSnapshotValidatorTests::ThroughBallSkillId,
+			7,
+			3)
+	};
+
+	const FSkillRuleSnapshotValidationResult Result =
+		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+
+	TestFalse(TEXT("Invalid ThroughBall range fails"), Result.bSuccess);
+	TestEqual(
+		TEXT("Invalid ThroughBall range uses the existing error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode
+			::InvalidTriggerActionPointRange);
+	TestEqual(
+		TEXT("Invalid ThroughBall range reports the minimum field"),
+		Result.InvalidField,
+		FName(TEXT("MinTriggerActionPoint")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSkillRuleSnapshotValidatorDuplicateThroughBallSkillIdTest,
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.RejectsDuplicateThroughBallSkillId",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSkillRuleSnapshotValidatorDuplicateThroughBallSkillIdTest::RunTest(
+	const FString& Parameters)
+{
+	FSkillRuleSnapshotSet SnapshotSet;
+	SnapshotSet.SkillRules =
+	{
+		SkillRuleSnapshotValidatorTests::MakeValidLongShotRule(
+			SkillRuleSnapshotValidatorTests::ThroughBallSkillId),
+		SkillRuleSnapshotValidatorTests::MakeValidThroughBallRule()
+	};
+
+	const FSkillRuleSnapshotValidationResult Result =
+		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
+
+	TestFalse(TEXT("Duplicate ThroughBall SkillId fails"), Result.bSuccess);
+	TestEqual(
+		TEXT("Duplicate ThroughBall SkillId uses the existing error"),
+		Result.ErrorCode,
+		ESkillRuleSnapshotValidationErrorCode::DuplicateSkillId);
+	TestEqual(
+		TEXT("Duplicate ThroughBall SkillId is retained"),
+		Result.InvalidSkillId,
+		SkillRuleSnapshotValidatorTests::ThroughBallSkillId);
+	TestEqual(
+		TEXT("Duplicate ThroughBall SkillId reports the SkillId field"),
+		Result.InvalidField,
+		FName(TEXT("SkillId")));
 	return true;
 }
 
@@ -596,7 +783,7 @@ bool FSkillRuleSnapshotValidatorMultipleLongShotRulesTest::RunTest(
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSkillRuleSnapshotValidatorMixedSupportedRulesTest,
-	"FMCodex.CoreRules.SkillRuleSnapshotValidator.AllowsLongShotCutInsideShotPassControlAndCrossRulesTogether",
+	"FMCodex.CoreRules.SkillRuleSnapshotValidator.AllowsAllSupportedRulesTogether",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSkillRuleSnapshotValidatorMixedSupportedRulesTest::RunTest(
@@ -619,6 +806,11 @@ bool FSkillRuleSnapshotValidatorMixedSupportedRulesTest::RunTest(
 			SkillRuleSnapshotValidatorTests::CrossSkillId,
 			3,
 			6));
+	SnapshotSet.SkillRules.Add(
+		SkillRuleSnapshotValidatorTests::MakeValidThroughBallRule(
+			SkillRuleSnapshotValidatorTests::ThroughBallSkillId,
+			2,
+			8));
 
 	const FSkillRuleSnapshotValidationResult Result =
 		FSkillRuleSnapshotValidator::Validate(SnapshotSet);
@@ -657,6 +849,9 @@ bool FSkillRuleSnapshotValidatorInputUnchangedTest::RunTest(
 					::MakeValidPassControlRule());
 			MixedSnapshotSet.SkillRules.Add(
 				SkillRuleSnapshotValidatorTests::MakeValidCrossRule());
+			MixedSnapshotSet.SkillRules.Add(
+				SkillRuleSnapshotValidatorTests
+					::MakeValidThroughBallRule());
 			return MixedSnapshotSet;
 		}();
 	const FSkillRuleSnapshotSet SnapshotSetBefore = SnapshotSet;
