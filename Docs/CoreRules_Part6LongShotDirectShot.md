@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync；阶段 6.75 至 6.87 记录 Cross 能力决策、Canonical 冻结、Skill Rule 支持、Selection、Plan、测试侧 Composition、两次独立审查、Closure Readiness 与 Final Closure Docs Sync。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync；阶段 6.75 至 6.87 记录 Cross 能力决策、Canonical 冻结、Skill Rule 支持、Selection、Plan、测试侧 Composition、两次独立审查、Closure Readiness 与 Final Closure Docs Sync；阶段 6.88 至 6.93 记录 Set Piece Type Selection 能力决策、Contract、Query + Tests、独立审查、Closure Readiness 与 Final Closure Docs Sync。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -18,6 +18,7 @@
 - 6.72 Canonical + Carrier GK Eligibility Docs Sync 已完成并提交；6.73 Closure Readiness Review 已通过，确认不存在代码、测试或架构阻断项；其验证基线为 CoreRules 923/923。
 - Pass Control 当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这是明确的延后决策，不是本次 Closure 缺口。未来仅在出现明确生产调用方需求时重新评估统一入口。
 - Cross CoreRules-only Selection + Plan 最小切片已在 6.87 Final Closure Docs Sync 正式关闭：Canonical、Cross Skill Rule Snapshot 支持、Selection Query、Plan Query、测试侧 Composition、两次独立 Boundary Review + Regression 与 Closure Readiness Review 均已完成。该关闭不包含生产 Composition / Consumer、统一 Cross Query、公式执行、比赛结算或 GK 单场状态。
+- Set Piece Type Selection CoreRules-only 最小切片已在 6.93 Final Closure Docs Sync 正式关闭：AP 9–12 资格、显式外部 SelectionD6、确定性类型映射、专用 Contract、28 项专项测试、6.91 Independent Boundary Review + Regression 与 6.92 Closure Readiness Review 均已完成。该关闭不包含任何具体定位球玩法或生产 Consumer。
 
 ## 阶段记录
 
@@ -103,6 +104,12 @@
 - 6.85 Cross Composition Independent Boundary Review + Regression：确认无生产 Consumer、公共转换层、公式执行或比赛状态越界。
 - 6.86 Cross Closure Readiness Review：结论为 `Ready with Documentation-Only Follow-up`；Blocking / Major / Minor 均为 None，CoreRules 991/991 等历史基线通过。
 - 6.87 Cross Final Closure Docs Sync：同步最终状态并正式关闭 Cross CoreRules-only Selection + Plan 最小切片；本阶段只修改 Docs，待用户提交。
+- 6.88 Part 6 Post-Cross Next Capability Decision Review：决定下一最小能力为 Set Piece Type Selection，先做专用 Contract，不直接进入具体定位球玩法。
+- 6.89 Set Piece Type Selection Contract Review：冻结 AP 9–12、显式 SelectionD6、专用 Type / Input / Result / Error、校验顺序、失败安全与持续排除项。
+- 6.90 Set Piece Type Selection Query + Tests：新增 `FSetPieceTypeSelectionQuery` 与 28 项专项测试，覆盖全部 24 个合法 AP / D6 组合。
+- 6.91 Set Piece Type Selection Independent Boundary Review + Regression：确认提交范围、Canonical 映射、错误优先级、失败安全、确定性与禁止依赖均符合 Contract；全部回归通过。
+- 6.92 Set Piece Type Selection Closure Readiness Review：结论为 `Ready with Documentation-Only Follow-up`；无 Blocking / Major，只剩 Final Closure Docs Sync。
+- 6.93 Set Piece Type Selection Final Closure Docs Sync：同步最终状态并正式关闭 Set Piece Type Selection CoreRules-only 最小切片；本阶段只修改 Docs，待用户提交。
 
 ## 最终收口结论
 
@@ -823,6 +830,35 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - UHT `-WarningsAsErrors`：通过，0 个文件需重写。
 - `git diff --check`：通过。
 - 6.29 收口审查完成后工作区干净。
+
+## Set Piece Type Selection CoreRules-only 最小切片
+
+阶段 6.88 至 6.93 已完成 Set Piece Type Selection 的候选决策、Contract Review、Query + Tests、Independent Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync。本次正式关闭的对象只负责“选择定位球类型”，不是完整定位球流程。
+
+### Canonical 映射与 Query Contract
+
+- 只有 AP 9、10、11、12 具备本 Query 资格，四个 AP 使用相同映射且不改变最终类型；AP 8、13 与其他区间外值不符合资格。Query 不生成或重掷 Action D12。
+- SelectionD6 必须由调用方通过显式 presence 提供；D6 1–2 → `Corner`、3–4 → `LongFreeKick`、5 → `ShortFreeKick`、6 → `Penalty`。Query 不生成随机数、不读取 AttackD6 / DefenseD6，非法值不回退到任何合法类型。
+- 专用 `ESetPieceSelectedType` 成员为 `None / Corner / LongFreeKick / ShortFreeKick / Penalty`；定义在 Query 头文件，未修改 `CoreRuleEnums.h`，`None` 为不可消费默认状态。
+- Input 仅含 `CurrentActionPoint / bHasExternalSelectionD6 / ExternalSelectionD6`。Result 含 `bSuccess / bHasSelectedSetPieceType / SelectedSetPieceType / ErrorCode / ErrorMessage / InvalidField / Input` 副本；消费门槛为 `bSuccess && bHasSelectedSetPieceType`。
+- ErrorCode 为 `None / ActionPointNotEligibleForSetPiece / MissingSelectionD6 / InvalidSelectionD6`。校验顺序为 AP `[9,12]` → D6 presence → D6 `[1,6]` → 显式映射，AP 错误优先于 D6 错误。
+- 失败保持 `bSuccess=false`、`bHasSelectedSetPieceType=false`、`SelectedSetPieceType=None`，并保留正确 ErrorCode、InvalidField、非空 ErrorMessage 与 Input 副本；不存在部分成功、可消费失败结果或默认 Corner fallback。
+
+### Tests、回归与关闭结论
+
+- 28 项专项测试覆盖 D6 1–6、AP 9–12 的全部 24 个合法组合、AP / D6 非法值、presence、错误优先级、失败安全、确定性、输入不变性与禁止依赖。
+- 6.91 Independent Boundary Review + Regression 通过；6.92 Closure Readiness 结论为 `Ready with Documentation-Only Follow-up`。
+- 6.92 实际重新验证的历史结果为 SetPieceTypeSelectionQuery 28/28、CrossSelectionQuery 23/23、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 18/18、SkillRuleSnapshotQuery 12/12、LongShot 77/77、CutInsideShot 76/76、PassControl 220/220、Cross 60/60、CoreRules 1019/1019；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。
+- 6.93 Final Closure Docs Sync 完成后，Set Piece Type Selection CoreRules-only 最小切片正式关闭。
+
+### 明确排除范围
+
+- Corner 的候选卡、三抽一、手牌、参与者、Cross、Formula Plan 与结算均延后。
+- Long Free Kick 的执行球员、属性读取、公式、Formula Plan 与结算均延后。
+- Short Free Kick 的执行球员、传球或射门分支、状态流转与结算均延后。
+- Penalty 的主罚球员、Goalkeeper、射门分支、Goal / Miss、比分与结算均延后。
+- Query 不读取 SkillRule、Player Snapshot、CardId、PlayerId、手牌、牌库或 Match State，不负责球员消耗、后续流程路由，也未接入 FormulaResolver、FormulaAttackFlow、MatchPlay 或 External API。
+- 当前没有生产 Consumer；以上未来能力是明确排除范围，不是 Closure 缺口。6.93 后必须先进行新的 Part 6 能力决策，不得自动进入具体定位球实现。
 
 ## 持续边界
 

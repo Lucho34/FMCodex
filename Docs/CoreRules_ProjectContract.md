@@ -221,3 +221,15 @@
 - Selection 与 Plan 使用各自专用类型；`CrossSelectionAndPlanCompositionTests` 仅通过 test-local 显式映射验证二者契约桥接，不创建公共转换层、统一 Cross Query、生产 Consumer、生产 Composition 或通用框架。Query 不执行 Formula Input Assembly / FormulaResolver / FormulaAttackFlow，不判定 Goal / Miss、不更新比分或 Match 状态。
 - GK 单场一次使用资格的批准、记录和消耗属于未来外部状态层；Cross CoreRules Query 只接收最终参与决定，不读取或修改该状态。MatchPlay、External API v1、UI / 蓝图 / Content / Config / 联网 / Steam、DataTable / Provider / 卡牌数据库、随机数和牌库逻辑均不属于本次关闭范围，也不是 Closure 缺口。
 - 6.86 实际验证的历史基线为 SkillRuleSnapshotValidator 18/18、SkillRuleSnapshotQuery 12/12、CrossSelectionQuery 23/23、CrossPlanQuery 27/27、Cross Selection and Plan Composition 10/10、LongShot 77/77、CutInsideShot 76/76、PassControl 220/220、CoreRules 991/991；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。
+
+## Part 6 Set Piece Type Selection CoreRules-only 最小切片关闭状态
+
+- 6.88 至 6.93 已依次完成下一能力决策、专用 Contract Review、Query + Tests、Independent Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync。6.92 结论为 `Ready with Documentation-Only Follow-up`；6.93 完成本节同步后，该最小切片正式关闭。
+- 只有 AP 9、10、11、12 具备本 Query 资格，且四个 AP 使用相同映射、不会改变最终类型；AP 8、13 及其他区间外值返回 `ActionPointNotEligibleForSetPiece`。ActionPoint 校验优先于 D6 presence 与范围错误，Query 不重新生成或重掷 Action D12。
+- 调用方必须通过 `bHasExternalSelectionD6` 显式提供 `ExternalSelectionD6`。D6 1–2 → `Corner`，3–4 → `LongFreeKick`，5 → `ShortFreeKick`，6 → `Penalty`；Query 不生成随机数，不读取 AttackD6 / DefenseD6，非法 D6 不回退到合法类型。
+- `ESetPieceSelectedType`、Input、Result 和 ErrorCode 均定义在专用 Query 头文件，未修改共享 `CoreRuleEnums.h` 或建立通用 Selection / Eligibility / Set Piece Framework。Selected Type 成员为 `None / Corner / LongFreeKick / ShortFreeKick / Penalty`，其中 `None` 是不可消费默认状态。
+- Input 仅含 `CurrentActionPoint / bHasExternalSelectionD6 / ExternalSelectionD6`。Result 包含 `bSuccess / bHasSelectedSetPieceType / SelectedSetPieceType / ErrorCode / ErrorMessage / InvalidField / Input` 副本；消费门槛固定为 `Result.bSuccess && Result.bHasSelectedSetPieceType`。
+- ErrorCode 固定为 `None / ActionPointNotEligibleForSetPiece / MissingSelectionD6 / InvalidSelectionD6`；校验顺序固定为 AP `[9,12]` → D6 presence → D6 `[1,6]` → 显式映射。失败必须保持 `bSuccess=false`、`bHasSelectedSetPieceType=false`、`SelectedSetPieceType=None`，同时保留正确诊断与 Input 副本，不得出现部分成功或默认 Corner fallback。
+- 28 项专项测试覆盖六值映射、AP 9–12 的全部 24 个合法组合、区间边界、presence、错误优先级、失败安全、确定性、输入不变性与禁止依赖。6.92 实际重新验证的历史基线为 SetPieceTypeSelectionQuery 28/28、CrossSelectionQuery 23/23、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 18/18、SkillRuleSnapshotQuery 12/12、LongShot 77/77、CutInsideShot 76/76、PassControl 220/220、Cross 60/60、CoreRules 1019/1019；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。
+- 当前关闭不包括 Corner 候选卡 / 三抽一 / 手牌 / 参与者 / Cross / Formula Plan / 结算，不包括 Long Free Kick 执行球员 / 属性 / 公式，不包括 Short Free Kick 执行球员 / 传球或射门分支 / 状态流转，也不包括 Penalty 主罚球员 / Goalkeeper / 射门分支 / Goal / Miss / 比分。球员消耗、后续流程路由、MatchPlay、External API、UI / 蓝图 / Content / Config 同样未获授权；这些明确排除项不是 Closure 缺口。
+- 6.93 后续必须先进行新的 Part 6 能力决策，不得从本次关闭自动进入任何完整定位球实现。

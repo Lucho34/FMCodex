@@ -80,6 +80,22 @@
 - 6.86 UE5 Development Editor 验证通过。
 - 6.86 UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
 - 6.86 `git diff --check` 通过，回归完成后工作区干净；本次 6.87 仅同步 Docs。
+- 6.88 Part 6 Post-Cross Next Capability Decision Review 已完成：下一最小能力选择为 Set Piece Type Selection，先审查专用 Contract，不直接实现 Corner、Free Kick 或 Penalty。
+- 6.89 Set Piece Type Selection Contract Review 已完成：冻结 AP 9–12 资格、显式外部 SelectionD6、专用 Type / Input / Result / Error、校验顺序和失败安全边界。
+- 6.90 Set Piece Type Selection Query + Tests 已完成并提交：新增 `FSetPieceTypeSelectionQuery` 与 28 项专项测试，覆盖全部 24 个合法 AP / D6 组合。
+- 6.91 Set Piece Type Selection Independent Boundary Review + Regression 已通过；代码、测试、提交范围和禁止依赖均符合 Contract。
+- 6.92 Set Piece Type Selection Closure Readiness Review 已通过，结论为 `Ready with Documentation-Only Follow-up`；无 Blocking / Major，当前只剩最终状态文档同步。
+- 6.93 Set Piece Type Selection Final Closure Docs Sync 已完成，待用户提交；Set Piece Type Selection CoreRules-only 最小切片在本次同步中正式关闭。
+- 6.92 实际重新验证的历史基线为 SetPieceTypeSelectionQuery 28/28、CrossSelectionQuery 23/23、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 18/18、SkillRuleSnapshotQuery 12/12、LongShot 77/77、CutInsideShot 76/76、PassControl 220/220、Cross 60/60、CoreRules 1019/1019；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。
+
+## Part 6 Set Piece Type Selection CoreRules-only 最小切片关闭状态
+
+- 关闭范围仅包括 AP 9–12 资格、外部 SelectionD6 presence / 1–6 范围、确定性类型映射、专用类型与 Input / Result / Error Contract、28 项专项测试、6.91 独立审查、6.92 Closure Readiness 和 6.93 Final Closure Docs Sync。
+- AP 9、10、11、12 使用相同映射且不改变最终类型；AP 8 与 AP 13 不符合本 Query 资格。调用方显式提供 SelectionD6，Query 不重新生成 Action D12，不生成随机数，也不读取 AttackD6 / DefenseD6。
+- 映射固定为 D6 1–2 → `Corner`、3–4 → `LongFreeKick`、5 → `ShortFreeKick`、6 → `Penalty`；非法 D6 不回退到任何合法类型。
+- 校验顺序为 AP `[9,12]` → D6 presence → D6 `[1,6]` → 显式映射。失败结果保持 `bSuccess=false`、`bHasSelectedSetPieceType=false`、`SelectedSetPieceType=None`，并保留诊断与 Input 副本。
+- 当前关闭不包含 Corner、Long Free Kick、Short Free Kick 或 Penalty 的参与者、手牌、三抽一、属性、Formula Plan、结算、Goal / Miss、比分、球员消耗或后续流程路由，也未接入 MatchPlay / External API。以上均是明确排除范围，不是 Closure 缺口。
+- 6.93 完成后必须重新进行 Part 6 能力决策；不得从本次 Closure 自动进入任何完整定位球实现。
 
 ## Part 6 第一技能切片
 
@@ -376,6 +392,7 @@
 
 ## 建议后续阶段
 
+- 6.93 后续阶段必须先进行新的 Part 6 能力决策 Review，不直接进入 Corner、Long Free Kick、Short Free Kick 或 Penalty 实现。
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。
 - 后续 Part 必须另行规划，不从 Part 5 组合验证自动延伸玩法实现。
 - 下一阶段为 6.0 Skill Entry Decision Review；不得从远射实现直接开始，也不得一次性实现全部技能。
