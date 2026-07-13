@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync；阶段 6.75 至 6.77 记录 Cross 后续能力决策、门将公式澄清与 Canonical 规则冻结。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync；阶段 6.75 至 6.87 记录 Cross 能力决策、Canonical 冻结、Skill Rule 支持、Selection、Plan、测试侧 Composition、两次独立审查、Closure Readiness 与 Final Closure Docs Sync。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -17,7 +17,7 @@
 - Pass Control 的 CoreRules-only 三分支最小切片已在 6.74 Final Closure Docs Sync 正式关闭：Advance Selection，以及 PassAdvance、DribbleAdvance、RunAdvance 三个专用 Plan Query 与测试侧 Composition 均已完成。
 - 6.72 Canonical + Carrier GK Eligibility Docs Sync 已完成并提交；6.73 Closure Readiness Review 已通过，确认不存在代码、测试或架构阻断项；其验证基线为 CoreRules 923/923。
 - Pass Control 当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这是明确的延后决策，不是本次 Closure 缺口。未来仅在出现明确生产调用方需求时重新评估统一入口。
-- Cross 当前仅完成 Canonical 规则冻结，尚未实现 SkillRule、Validator、Selection Query、Plan Query 或测试。Carrier / Runner 非 GK；Runner 必须包含 `Attack`。Marker 必填且非 GK，Helper 可选且存在时非 GK。可选 Goalkeeper 为独立额外防守角色，不替换或加入 Marker / Helper 平均；高球独立加 Aerial 半值，低球独立加 Reflex 半值。GK 单场一次由未来外部状态层确认、记录和消耗。下一阶段为 Cross Minimum Contract Review，不得直接实现。
+- Cross CoreRules-only Selection + Plan 最小切片已在 6.87 Final Closure Docs Sync 正式关闭：Canonical、Cross Skill Rule Snapshot 支持、Selection Query、Plan Query、测试侧 Composition、两次独立 Boundary Review + Regression 与 Closure Readiness Review 均已完成。该关闭不包含生产 Composition / Consumer、统一 Cross Query、公式执行、比赛结算或 GK 单场状态。
 
 ## 阶段记录
 
@@ -91,7 +91,18 @@
 - 6.74 PassControl Final Closure Docs Sync：记录 6.72 已完成、6.73 已通过，并正式关闭 PassControl CoreRules-only 三分支最小切片；本阶段只修改 Docs。
 - 6.75 Part 6 Next Capability Decision Review：确认没有可直接实现的候选；Cross 因门将防守公式关系不明确而先进入规则澄清。
 - 6.76 Cross Canonical Rule Clarification Review：确认 GK 与 Marker / Helper 的公式关系为阻断项，要求先更新 Canonical。
-- 6.77 Cross Goalkeeper Formula + Defensive Participant Eligibility Canonical Docs Update：冻结 Cross 的非 GK Carrier / Runner / Marker / Helper、独立额外 Goalkeeper、半值修正位置、无 Helper 语义、参与者身份互异和无状态 GK 使用责任；Cross 仍未实现，下一阶段为 Cross Minimum Contract Review。
+- 6.77 Cross Goalkeeper Formula + Defensive Participant Eligibility Canonical Docs Update：冻结 Cross 的非 GK Carrier / Runner / Marker / Helper、独立额外 Goalkeeper、半值修正位置、无 Helper 语义、参与者身份互异和无状态 GK 使用责任；该阶段是实现前的 Canonical 冻结。
+- 6.77.1 Cross Fixed Defense Modifier Source Verification：确认高球与低球防守固定 `+2` 均为 6.77 前已存在的 Canonical 规则，6.77 未新增或改变其值与位置。
+- 6.78 Cross Minimum Contract Review：冻结 Selection / Plan 职责分离、专用类型、参与者、外部 D6、错误诊断与禁止依赖边界。
+- 6.79 Cross Skill Rule Snapshot Support：追加 `ESkillRuleType::Cross` 并扩展 Validator；通用 Skill Rule Snapshot Query 原样支持，不新增 Cross 专属 Snapshot 字段。Validator 18/18、Query 12/12。
+- 6.80 Cross Selection Query + Tests：新增 `FCrossSelectionQuery` 与 23 项测试；外部 SelectionD6 1–4 保持 Intended CrossType，5–6 反转，不生成随机数。
+- 6.81 Cross Plan Query + Tests：新增 `FCrossPlanQuery` 与 27 项测试；接收已确定的 Plan ActualCrossType，验证 Skill Rule、参与者、Optional Helper / Goalkeeper、身份与 D6，只生成 Cross 专用 `Finishing` Formula Plan。
+- 6.82 Cross Plan Independent Boundary Review + Regression：确认 Plan Query 不重新处理 Selection、不执行公式或比赛结算，专项与 CoreRules 回归通过。
+- 6.83 Cross Composition Contract Review：确认 Composition 具有 Selection 输出与 Plan 输入桥接价值，但必须仅存在于测试侧。
+- 6.84 Cross Selection and Plan Composition Tests：只新增 `CrossSelectionAndPlanCompositionTests.cpp` 与 10 项测试，使用 test-local 显式类型映射覆盖四条高低球正常 / 反转路径和失败短路。
+- 6.85 Cross Composition Independent Boundary Review + Regression：确认无生产 Consumer、公共转换层、公式执行或比赛状态越界。
+- 6.86 Cross Closure Readiness Review：结论为 `Ready with Documentation-Only Follow-up`；Blocking / Major / Minor 均为 None，CoreRules 991/991 等历史基线通过。
+- 6.87 Cross Final Closure Docs Sync：同步最终状态并正式关闭 Cross CoreRules-only Selection + Plan 最小切片；本阶段只修改 Docs，待用户提交。
 
 ## 最终收口结论
 
@@ -546,6 +557,85 @@ Pass Control 当前基线：
 - UHT `-WarningsAsErrors`：通过，0 个文件需重写。
 - `git diff --check`：通过。
 
+## Cross CoreRules-only Selection + Plan 最小切片
+
+阶段 6.75 至 6.87 已完成 Cross 的规则决策、Canonical 冻结、最小 Contract、Skill Rule Snapshot 支持、Selection Query、Plan Query、测试侧 Composition、两次独立 Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync。6.86 结论为 `Ready with Documentation-Only Follow-up`；6.87 完成本节状态同步后，该最小切片正式关闭。
+
+Cross 参与者最终契约：
+
+| Role | Required | Position Rule | GK Rule | Identity Rule |
+| --- | ---: | --- | --- | --- |
+| Carrier | 是 | 无新增 Cross 位置限制 | 禁止 GK | 不同于 Runner |
+| Runner | 是 | 必须包含 `Attack` | 禁止 GK | 不同于 Carrier |
+| Marker | 是 | 无新增位置限制 | 禁止 GK | 不同于 Helper、Goalkeeper |
+| Helper | 否 | 无新增位置限制 | 存在时禁止 GK | 不同于 Marker、Goalkeeper |
+| Goalkeeper | 否 | 必须为实际 GK | 必须 GK | 不同于 Marker、Helper |
+
+Marker / Helper 均不能通过 GK 身份参与；Goalkeeper 不能替换 Marker 或 Helper，也不进入二者平均。除了表中明确列出的 Carrier / Runner 与 Marker / Helper / Goalkeeper 互异关系，当前没有新增 Carrier / Marker、Runner / Marker 等跨攻防身份限制；跨阵营合法性仍由未来上层部署或调用方负责。
+
+Optional Helper 与 Optional Goalkeeper 分别使用显式 `bHasHelper` / `bUseGoalkeeper`。存在时对应 CardId / PlayerId 必填并查询真实 Snapshot；不存在时两个身份均为空并完全跳过对应 Snapshot Query。无 Helper 时 Helper 属性和体力语义为 0；无 Goalkeeper 时 GK 修正为 0。合法未选择、身份缺失 / 意外身份和 Snapshot 查询失败均保持结构化可区分，不使用虚构身份或 Snapshot。GK 单场一次使用资格的批准、记录和消耗由未来外部状态层负责，Cross Query 不读取或修改该状态。
+
+`FCrossSelectionQuery` 只负责：
+
+- 接收显式 Intended CrossType 与外部 SelectionD6。
+- 校验 CrossType、D6 presence 和 1–6 范围。
+- D6 1–4 保持意图，D6 5–6 反转 High / Low。
+- 成功时返回 ActualCrossType；失败时不提供可消费 ActualCrossType。
+
+Selection Query 不查询 Skill Rule 或参与者，不读取 AttackD6 / DefenseD6，不生成 Formula Plan、不生成随机数，也不执行公式。
+
+`FCrossPlanQuery` 只负责：
+
+- 接收已确定的 Plan ActualCrossType，不重新解释 IntendedCrossType 或 SelectionD6。
+- 查询 `ESkillRuleType::Cross` Skill Rule 与 Carrier / Runner / Marker，以及显式选择的 Helper / Goalkeeper Snapshot。
+- 验证技能持有、行动点、参与者资格、身份互异、外部 AttackD6 / DefenseD6 和日志上下文。
+- 成功时组装 Cross 专用 `EFormulaType::Finishing` Formula Plan，并保留 GoalScorer Runner CardId / PlayerId；失败时无可消费 Plan。
+
+Cross 最终公式：
+
+```text
+High Attack
+= Average(Carrier Passing, Runner Strength)
++ AttackD6
+
+High Defense
+= Average(Marker Tackling, Helper Strength Or Zero)
++ Goalkeeper Aerial × 0.5 Or Zero
++ DefenseD6
++ 2
+
+Low Attack
+= Average(Carrier Passing, Runner Shooting)
++ AttackD6
+
+Low Defense
+= Average(Marker Tackling, Helper Marking Or Zero)
++ Goalkeeper Reflex × 0.5 Or Zero
++ DefenseD6
++ 2
+```
+
+GK 半值在 Marker / Helper 平均完成后独立相加，不进入平均分母；固定 `+2` 与 GK 是否发动无关并始终独立存在。专用 Plan 保留浮点 `.0 / .5` 语义，AttackD6 / DefenseD6 均由调用方显式提供且范围为 1–6。Plan Query 不执行公式、不比较攻防结果、不判定 Goal / Miss、不结束攻击或更新比分。
+
+`CrossSelectionAndPlanCompositionTests` 只在测试文件内部用显式 High / Low 映射桥接 Selection ActualCrossType 与 Plan ActualCrossType。消费门槛要求 Selection 成功、Plan 成功且 Plan 存在 Formula Plan；覆盖四条 High / Low 正常与反转路径、Selection 失败短路、Plan 失败不可消费、代表性 High / Low Helper + GK 追踪和输入不变性。该文件不是生产 Consumer、公共转换层、统一 Cross Query 或通用 Composition 框架。
+
+Cross 关闭历史基线（由 6.86 实际验证，本次 Docs-only 阶段未重新运行）：
+
+- SkillRuleSnapshotValidator：18/18 通过。
+- SkillRuleSnapshotQuery：12/12 通过。
+- CrossSelectionQuery：23/23 通过。
+- CrossPlanQuery：27/27 通过。
+- CrossSelectionAndPlanComposition：10/10 通过。
+- LongShot 相关回归：77/77 通过。
+- CutInsideShot 相关回归：76/76 通过。
+- PassControl 相关回归：220/220 通过。
+- CoreRules：991/991 通过。
+- UE5 Development Editor：通过。
+- UHT `-WarningsAsErrors`：通过，0 个文件需重写。
+- `git diff --check`：通过。
+
+Cross 当前关闭范围不包含生产 Composition / Consumer、统一 Cross Query、Formula Input Assembly 执行、FormulaResolver、FormulaAttackFlow、Goal / Miss、比分更新、攻击结束、MatchPlay、External API v1 或 GK 单场一次使用状态存储 / 消耗。也未引入 SkillPipeline / SkillEffect、通用 Participant / Optional Participant / Eligibility / Composition / Selection / Modifier / 属性表达式框架、DataTable / Provider / 卡牌数据库、随机数或牌库逻辑。这些是明确延后的上层能力或固定禁止范围，不是 Closure 缺陷。
+
 ## 架构链路
 
 ```text
@@ -743,7 +833,7 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 通用 Determination
 - 完整内切射门
 - 完整内切射门外部入口
-- 门将发动
+- 门将单场一次使用状态与生产发动流程
 - 多卡组合
 - 随机数生成
 - 新的 TieBreaker 规则
@@ -765,9 +855,9 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 
 这些能力不能从已关闭的最小切片自动推导为已获批准；后续仍须逐项独立 Review、测试和实现。
 
-## 下一阶段
+## 历史后续阶段边界
 
-下一阶段必须由后续提示词明确，不从 6.29.5 Final Closure Docs Sync 自动扩大范围。
+以下内容记录 6.29.5 后确立并持续有效的范围边界；Cross 已在 6.87 关闭，后续能力仍必须由新阶段明确，不从任何 Closure Docs Sync 自动扩大范围。
 
 - 不直接开始下一技能实现。
 - 不直接进入完整远射外部入口。

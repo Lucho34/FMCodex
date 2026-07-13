@@ -211,9 +211,13 @@
 - 当前未实现 `PassControlPlanQuery` 或完整传控技能，也未建立统一分支路由或总入口；其并非本次 Closure 阻断项。当前继续保留三个专用 Query，只有未来出现明确生产调用方需求时才重新评估统一入口。
 - 本切片没有授权 MatchPlay / External API v1 / FormulaAttackFlow，没有修改 FormulaResolver / InputAssemblyQuery / ResolverInputAssembler / ResolutionExecutor，没有引入 SkillPipeline / SkillEffect / 通用技能框架 / 通用属性表达式引擎，也没有引入 DataTable / Provider / 卡牌数据库、随机数或抽牌 / 洗牌 / 手牌 / 牌库逻辑。
 
-## Part 6 Cross Canonical 当前状态
+## Part 6 Cross CoreRules-only Selection + Plan 关闭状态
 
-- 6.75 Part 6 Next Capability Decision Review 已确认 Cross 是最接近的后续候选，但不能直接实现；6.76 识别出门将防守公式关系为 Canonical 阻断项。
-- 6.77 已冻结 Cross 业务规则：Carrier / Runner 均非 GK，Runner 必须包含 `Attack` 且与 Carrier 不同；Marker 必填且非 GK，Helper 可选且存在时非 GK，Marker / Helper 不新增其他位置限制且身份不同。
-- 可选 Goalkeeper 为独立额外防守角色，必须为 GK，且与 Marker / Helper 身份不同；不替换二者、不进入二者平均。高球防守在 `Average(Marker Tackling, Helper Strength)` 后独立加 `Goalkeeper Aerial × 0.5`；低球防守在 `Average(Marker Tackling, Helper Marking)` 后独立加 `Goalkeeper Reflex × 0.5`；无 Helper 仍以 0 参与平均，未发动 Goalkeeper 时修正为 0。
-- GK 单场一次的批准、记录和消耗属于未来外部状态层；未来 Cross CoreRules Query 不读取或修改该状态，只接收已批准的最终参与决定。Cross 仍未实现；下一阶段为 Cross Minimum Contract Review，不授权 Selection / Plan Query、测试、FormulaResolver 执行、Goal / Miss、MatchPlay 或通用框架。
+- 6.75 至 6.77 保留为规则决策历史：6.76 识别 Canonical 阻断项，6.77 冻结 Cross 业务规则。6.78 至 6.86 已依次完成最小 Contract Review、Skill Rule Snapshot 支持、Selection Query、Plan Query、两次独立 Boundary Review + Regression、测试侧 Composition 和 Closure Readiness Review。6.87 Final Closure Docs Sync 完成后，Cross CoreRules-only Selection + Plan 最小切片正式关闭。
+- Carrier / Runner / Marker 身份和 Snapshot 必填且均不得为 GK；Runner 必须包含 `Attack` 且与 Carrier 不同。Marker 不新增其他位置限制。Helper 可选，存在时不得为 GK、与 Marker 不同且不新增其他位置限制。Goalkeeper 可选，存在时必须为实际 GK，且与 Marker / Helper 不同；当前没有新增其他跨攻防身份限制。
+- Optional Helper 与 Optional Goalkeeper 分别使用显式 `bHasHelper` / `bUseGoalkeeper`。存在时对应 CardId / PlayerId 必填并查询真实 Snapshot；不存在时两个身份均须为空、完全跳过对应 Snapshot Query，并分别使用 Helper 属性 0 或 GK 修正 0。合法未选择、身份不一致和 Snapshot 查询失败必须保持可区分；禁止虚构身份或 Snapshot，失败时无可消费 Formula Plan。
+- Goalkeeper 是独立额外防守角色，不替换 Marker / Helper、不进入二者平均。高球防守在 `Average(Marker Tackling, Helper Strength Or Zero)` 后独立加 `Goalkeeper Aerial × 0.5 Or Zero`；低球防守在 `Average(Marker Tackling, Helper Marking Or Zero)` 后独立加 `Goalkeeper Reflex × 0.5 Or Zero`；两条防守公式最后均独立加入 DefenseD6 与固定 `+2`。高球进攻使用 Carrier Passing / Runner Strength，低球进攻使用 Carrier Passing / Runner Shooting；AttackD6 / DefenseD6 均由调用方显式提供，Plan 使用 `FormulaType::Finishing` 并追踪 GoalScorer Runner。
+- `FCrossSelectionQuery` 只负责 IntendedCrossType、SelectionD6 presence / 1–6 范围与 ActualCrossType 映射：1–4 保持意图，5–6 反转。`FCrossPlanQuery` 只接收已确定的 Plan ActualCrossType，负责 Skill Rule / Participant Snapshot 查询、资格与身份验证和专用 Formula Plan 组装；它不得重新处理 IntendedCrossType 或 SelectionD6。Selection 失败不提供可消费 ActualCrossType，Plan 失败不提供可消费 Formula Plan。
+- Selection 与 Plan 使用各自专用类型；`CrossSelectionAndPlanCompositionTests` 仅通过 test-local 显式映射验证二者契约桥接，不创建公共转换层、统一 Cross Query、生产 Consumer、生产 Composition 或通用框架。Query 不执行 Formula Input Assembly / FormulaResolver / FormulaAttackFlow，不判定 Goal / Miss、不更新比分或 Match 状态。
+- GK 单场一次使用资格的批准、记录和消耗属于未来外部状态层；Cross CoreRules Query 只接收最终参与决定，不读取或修改该状态。MatchPlay、External API v1、UI / 蓝图 / Content / Config / 联网 / Steam、DataTable / Provider / 卡牌数据库、随机数和牌库逻辑均不属于本次关闭范围，也不是 Closure 缺口。
+- 6.86 实际验证的历史基线为 SkillRuleSnapshotValidator 18/18、SkillRuleSnapshotQuery 12/12、CrossSelectionQuery 23/23、CrossPlanQuery 27/27、Cross Selection and Plan Composition 10/10、LongShot 77/77、CutInsideShot 76/76、PassControl 220/220、CoreRules 991/991；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。

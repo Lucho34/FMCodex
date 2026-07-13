@@ -64,10 +64,22 @@
 - 后续不将 PassControl 新实现列为当前任务；如需继续 Part 6，应先进行其他能力的独立决策。只有出现明确生产调用方需求时，才重新审查 `PassControlPlanQuery`。
 - 6.75 Part 6 Next Capability Decision Review 已完成：没有可直接实现的候选；传中因门将防守公式关系未定义而先进入规则澄清。
 - 6.76 Cross Canonical Rule Clarification Review 已完成：识别门将与 Marker / Helper 的公式关系为阻断项。
-- 6.77 Cross Goalkeeper Formula + Defensive Participant Eligibility Canonical Docs Update 已完成（本次 Docs-only 变更待用户提交）：Carrier / Runner、Marker / Helper 与额外 Goalkeeper 的资格、身份互异、门将独立半值修正和无 Helper 语义均已冻结。Cross 仍未实现；下一阶段为 6.78 Cross Minimum Contract Review，不得跳过 Contract Review 直接实现。
-- UE5 Development Editor 验证通过。
-- UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
-- `git diff --check` 通过；6.35 边界审查与回归完成后工作区干净。
+- 6.77 Cross Goalkeeper Formula + Defensive Participant Eligibility Canonical Docs Update 已完成并提交：Carrier / Runner、Marker / Helper 与额外 Goalkeeper 的资格、身份互异、门将独立半值修正、固定防守 `+2` 和无 Helper 语义均已冻结。
+- 6.78 Cross Minimum Contract Review 已完成；冻结 Selection 与 Plan 分离、专用类型、无状态查询及持续禁止边界。
+- 6.79 Cross Skill Rule Snapshot Support 已完成并提交：追加 `ESkillRuleType::Cross`，Validator 与通用 Skill Rule Snapshot Query 支持 Cross；未新增 Cross 专属 Snapshot 字段。
+- 6.80 Cross Selection Query + Tests 已完成并提交：`FCrossSelectionQuery` 只使用 Intended CrossType 与外部 SelectionD6；D6 1–4 保持意图，5–6 反转，高低球映射与失败无可消费 ActualCrossType 均已覆盖。
+- 6.81 Cross Plan Query + Tests 已完成并提交：`FCrossPlanQuery` 接收已确定的 Plan ActualCrossType，验证 Skill Rule、参与者 Snapshot、资格和身份，生成 Cross 专用 `Finishing` Formula Plan；不重新处理 IntendedCrossType 或 SelectionD6，也不执行公式链。
+- 6.82 Cross Plan Independent Boundary Review + Regression 已通过；未发现必须修正或补测项。
+- 6.83 Cross Composition Contract Review 已完成；确认只需要测试侧 Selection → Plan 契约桥接，不建立生产 Composition 或完整 E2E 公式执行。
+- 6.84 Cross Selection and Plan Composition Tests 已完成并提交：只新增 `CrossSelectionAndPlanCompositionTests.cpp`，使用 test-local 显式类型映射覆盖四条正常 / 反转路径、失败短路、代表性 High / Low Helper + GK 路径和输入不变性。
+- 6.85 Cross Composition Independent Boundary Review + Regression 已通过；未发现必须修正或补测项。
+- 6.86 Cross Closure Readiness Review 已通过，结论为 `Ready with Documentation-Only Follow-up`；Blocking / Major / Minor 均为 None。
+- 6.87 Cross Final Closure Docs Sync 已完成，待用户提交；Cross CoreRules-only Selection + Plan 最小切片在本次同步中正式关闭。
+- 6.86 实际验证的历史基线为 SkillRuleSnapshotValidator 18/18、SkillRuleSnapshotQuery 12/12、CrossSelectionQuery 23/23、CrossPlanQuery 27/27、Cross Selection and Plan Composition 10/10、LongShot 77/77、CutInsideShot 76/76、PassControl 220/220、CoreRules 991/991；Development Editor、UHT `-WarningsAsErrors` 和 `git diff --check` 均通过。
+- Cross 当前关闭范围不包含统一 Cross Query、生产 Composition / Consumer、FormulaResolver / FormulaAttackFlow 执行、Goal / Miss、MatchPlay、External API v1 或 GK 单场一次使用状态。后续能力必须另行决策，不从 6.87 自动展开。
+- 6.86 UE5 Development Editor 验证通过。
+- 6.86 UnrealHeaderTool 强制复验通过，`-WarningsAsErrors`，0 个文件需重写。
+- 6.86 `git diff --check` 通过，回归完成后工作区干净；本次 6.87 仅同步 Docs。
 
 ## Part 6 第一技能切片
 
