@@ -1,6 +1,6 @@
 # CoreRules Part 6 Long Shot Minimal Slices
 
-本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync；阶段 6.75 至 6.87 记录 Cross 能力决策、Canonical 冻结、Skill Rule 支持、Selection、Plan、测试侧 Composition、两次独立审查、Closure Readiness 与 Final Closure Docs Sync；阶段 6.88 至 6.93 记录 Set Piece Type Selection 能力决策、Contract、Query + Tests、独立审查、Closure Readiness 与 Final Closure Docs Sync。文档同步不改变任何生产行为。
+本文档集中记录 Part 6 的技能最小切片事实：阶段 6.0 至 6.8.5 完成并收口 Long Shot / Direct Shot；阶段 6.9 至 6.12.5 完成 Long Shot / Dead Corner 专用 Decision Query；阶段 6.13 至 6.15.5 完成 Long Shot 专用 Branch Selection；阶段 6.16 至 6.16.5 完成 Long Shot Minimal Slices 整体收口审查与最终文档同步；阶段 6.19 至 6.22.5 记录 Cut Inside Shot / Direct Shot 最小切片、独立边界审查、回归和文档同步；阶段 6.23 至 6.25.5 记录 Cut Inside Shot / Dead Corner 最小切片契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.26 至 6.28.5 记录 Cut Inside Shot Branch Selection 契约、实现、测试、独立边界审查、回归和文档同步；阶段 6.29 至 6.29.5 记录 Cut Inside Shot Minimal Slices 收口审查与最终文档同步；阶段 6.33 至 6.35.5 记录 Pass Control Advance Selection；阶段 6.36 至 6.52 记录 PassControl / PassAdvance 单分支 Plan Query、测试侧 Composition、两项纠正、独立审查和文档同步；阶段 6.53 至 6.59 记录 PassControl / DribbleAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.60 至 6.66 记录 PassControl / RunAdvance 单分支 Plan Query、测试侧 Composition、两次独立审查、回归和文档同步；阶段 6.70 至 6.74 记录 Carrier GK Eligibility Correction、Canonical 同步、Closure Readiness Review 与 Final Closure Docs Sync；阶段 6.75 至 6.87 记录 Cross 能力决策、Canonical 冻结、Skill Rule 支持、Selection、Plan、测试侧 Composition、两次独立审查、Closure Readiness 与 Final Closure Docs Sync；阶段 6.88 至 6.93 记录 Set Piece Type Selection 能力决策、Contract、Query + Tests、独立审查、Closure Readiness 与 Final Closure Docs Sync；阶段 6.95 至 6.99 记录 Through Ball Branch Selection 的 Contract、Query + Tests、独立审查、Closure Readiness 与 Final Closure Docs Sync。文档同步不改变任何生产行为。
 
 ## 当前定位
 
@@ -19,6 +19,7 @@
 - Pass Control 当前仍未实现 `PassControlPlanQuery` 或完整传控，也未建立统一分支路由或总入口；这是明确的延后决策，不是本次 Closure 缺口。未来仅在出现明确生产调用方需求时重新评估统一入口。
 - Cross CoreRules-only Selection + Plan 最小切片已在 6.87 Final Closure Docs Sync 正式关闭：Canonical、Cross Skill Rule Snapshot 支持、Selection Query、Plan Query、测试侧 Composition、两次独立 Boundary Review + Regression 与 Closure Readiness Review 均已完成。该关闭不包含生产 Composition / Consumer、统一 Cross Query、公式执行、比赛结算或 GK 单场状态。
 - Set Piece Type Selection CoreRules-only 最小切片已在 6.93 Final Closure Docs Sync 正式关闭：AP 9–12 资格、显式外部 SelectionD6、确定性类型映射、专用 Contract、28 项专项测试、6.91 Independent Boundary Review + Regression 与 6.92 Closure Readiness Review 均已完成。该关闭不包含任何具体定位球玩法或生产 Consumer。
+- Through Ball Branch Selection CoreRules-only minimum slice 已在 6.99 Final Closure Docs Sync 正式关闭：外部 SelectionD6 presence / `[1,6]` 范围、三分支确定性映射、专用 Contract、18 项专项测试、6.97 Independent Boundary Review + Regression 与 6.98 Closure Readiness Review 均已完成。该关闭不包含 SkillRule 支持、任何具体分支、One-on-One 或完整 Through Ball。
 
 ## 阶段记录
 
@@ -110,6 +111,11 @@
 - 6.91 Set Piece Type Selection Independent Boundary Review + Regression：确认提交范围、Canonical 映射、错误优先级、失败安全、确定性与禁止依赖均符合 Contract；全部回归通过。
 - 6.92 Set Piece Type Selection Closure Readiness Review：结论为 `Ready with Documentation-Only Follow-up`；无 Blocking / Major，只剩 Final Closure Docs Sync。
 - 6.93 Set Piece Type Selection Final Closure Docs Sync：同步最终状态并正式关闭 Set Piece Type Selection CoreRules-only 最小切片；本阶段只修改 Docs，待用户提交。
+- 6.95 Through Ball Branch Selection Minimum Contract Review：冻结专用 Branch / Input / Result / Error、外部 D6、校验顺序、失败安全、Input 保存、分支隔离和纯选择职责。
+- 6.96 Through Ball Branch Selection Query Implementation：提交 `a4b5c4d`，只新增 Query 头文件、实现和 18 项专项测试。
+- 6.97 Through Ball Branch Selection Independent Boundary Review + Regression：确认 Implementation Correct、Boundary Safe、Regression Clean、Ready To Close Slice 均为 Yes；专项与 CoreRules 回归通过。
+- 6.98 Through Ball Branch Selection Closure Readiness Review：所有 Gate 均为 Yes，确认完整 Through Ball 未实现不阻塞该子切片关闭。
+- 6.99 Through Ball Branch Selection Final Closure Docs Sync：同步最终状态并正式关闭 Through Ball Branch Selection CoreRules-only minimum slice；本阶段只修改 Docs，待用户提交。
 
 ## 最终收口结论
 
@@ -859,6 +865,17 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - Penalty 的主罚球员、Goalkeeper、射门分支、Goal / Miss、比分与结算均延后。
 - Query 不读取 SkillRule、Player Snapshot、CardId、PlayerId、手牌、牌库或 Match State，不负责球员消耗、后续流程路由，也未接入 FormulaResolver、FormulaAttackFlow、MatchPlay 或 External API。
 - 当前没有生产 Consumer；以上未来能力是明确排除范围，不是 Closure 缺口。6.93 后必须先进行新的 Part 6 能力决策，不得自动进入具体定位球实现。
+
+## Through Ball Branch Selection CoreRules-only 最小切片
+
+- 6.95 至 6.99 已完成 Minimum Contract Review、Query Implementation、Independent Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync。本次正式关闭对象只负责 Through Ball 分支选择，不是完整 Through Ball。
+- `EThroughBallSelectedBranch` 固定为 `None / Feet / BehindDefense / AntiOffside`；`EThroughBallBranchSelectionQueryErrorCode` 固定为 `None / MissingSelectionD6 / InvalidSelectionD6`。Input 仅含 `bHasExternalSelectionD6 / ExternalSelectionD6`；Result 含成功、选中分支 presence、分支、错误、消息、InvalidField 与原始 Input 副本。
+- 校验顺序固定为外部 SelectionD6 presence → `[1,6]` → 显式映射；映射固定为 1–2 → `Feet`（脚下球）、3–4 → `BehindDefense`（身后球）、5–6 → `AntiOffside`（反越位）。Query 不生成、重掷或反转 D6，也不使用第二颗 D6。
+- 成功消费门槛为 `bSuccess && bHasSelectedThroughBallBranch && SelectedThroughBallBranch != None && ErrorCode == None`。失败无可消费分支、保持 `None`、非空诊断、`InvalidField=ExternalSelectionD6` 与原始 Input；不 clamp 或标准化非法值。
+- Query 无状态，只选择分支而不执行分支；不依赖 SkillRule / SkillId、Player Snapshot、Carrier / Runner / Marker / Helper / Goalkeeper、ActionPoint、AttackD6 / DefenseD6、Formula Plan、FormulaResolver / FormulaAttackFlow、One-on-One 或 Match State，不生成 RNG，也不建立生产 Consumer / Composition 或通用 Branch / Selection Framework。
+- 18 项专项测试覆盖 Presence 3、Range 6、Mapping 6、Determinism 1、Input immutability 1 与 Boundary isolation 1。阶段 6.97 最近一次独立实际复验为 ThroughBallBranchSelectionQuery 18/18、CoreRules 1037/1037，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1037 = 6.92 历史 1019 + 本切片新增 18。6.99 为 Docs-only，未重新运行编译或测试。
+- 当前未实现 `ESkillRuleType::ThroughBall`、Through Ball Skill Rule Snapshot、参与者资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One Entry / Branch Selection / Direct Shot / Chip Shot、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 或完整 Through Ball。以上为当前子切片责任排除，不是未来永久禁止。
+- 6.99 后下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only），重新比较剩余 Part 6 候选；不得从本次关闭直接预选具体 Implementation。
 
 ## 持续边界
 

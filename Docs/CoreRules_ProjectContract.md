@@ -233,3 +233,16 @@
 - 28 项专项测试覆盖六值映射、AP 9–12 的全部 24 个合法组合、区间边界、presence、错误优先级、失败安全、确定性、输入不变性与禁止依赖。6.92 实际重新验证的历史基线为 SetPieceTypeSelectionQuery 28/28、CrossSelectionQuery 23/23、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 18/18、SkillRuleSnapshotQuery 12/12、LongShot 77/77、CutInsideShot 76/76、PassControl 220/220、Cross 60/60、CoreRules 1019/1019；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。
 - 当前关闭不包括 Corner 候选卡 / 三抽一 / 手牌 / 参与者 / Cross / Formula Plan / 结算，不包括 Long Free Kick 执行球员 / 属性 / 公式，不包括 Short Free Kick 执行球员 / 传球或射门分支 / 状态流转，也不包括 Penalty 主罚球员 / Goalkeeper / 射门分支 / Goal / Miss / 比分。球员消耗、后续流程路由、MatchPlay、External API、UI / 蓝图 / Content / Config 同样未获授权；这些明确排除项不是 Closure 缺口。
 - 6.93 后续必须先进行新的 Part 6 能力决策，不得从本次关闭自动进入任何完整定位球实现。
+
+## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
+
+- 6.95 至 6.99 已依次完成 Minimum Contract Review、Query Implementation、Independent Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync。`a4b5c4d` 只新增 Through Ball Branch Selection 专用头文件、实现和测试；本次 6.99 完成本节同步后，该子切片正式关闭，但完整 Through Ball 仍未实现。
+- 专用 Branch 固定为 `EThroughBallSelectedBranch { None, Feet, BehindDefense, AntiOffside }`；`None` 只用于默认和失败状态，成功不得返回 `None`。专用 Error 固定为 `EThroughBallBranchSelectionQueryErrorCode { None, MissingSelectionD6, InvalidSelectionD6 }`。
+- Input 仅含 `bHasExternalSelectionD6 / ExternalSelectionD6`。Result 固定含 `bSuccess / bHasSelectedThroughBallBranch / SelectedThroughBallBranch / ErrorCode / ErrorMessage / InvalidField / Input`。Query 入口为 `Select(const FThroughBallBranchSelectionQueryInput&)`，无实例状态或外部全局状态。
+- 校验顺序固定为 External SelectionD6 presence → D6 `[1,6]` → 显式映射。映射固定为 1–2 → `Feet`、3–4 → `BehindDefense`、5–6 → `AntiOffside`；禁止随机、重掷、反转、第二颗 D6 或依赖具体分支实现。
+- 成功必须满足 `bSuccess=true`、`bHasSelectedThroughBallBranch=true`、Branch 非 `None`、ErrorCode 为 `None`、ErrorMessage 为空、InvalidField 为 `NAME_None` 且 Input 原样保留。失败必须保持 `bSuccess=false`、无可消费 Branch、Branch 为 `None`、非 None ErrorCode、非空 ErrorMessage、InvalidField 为 `ExternalSelectionD6` 且 Input 原样保留。
+- 调用方只能在 `bSuccess && bHasSelectedThroughBallBranch && SelectedThroughBallBranch != None && ErrorCode == None` 时消费分支。本 Contract 不定义生产 Consumer 类型。
+- Query 不验证 SkillRule / SkillId、参与者、GK / 前场资格、ActionPoint、AttackD6 / DefenseD6，不生成 Formula Plan，不执行任何分支、FormulaResolver、FormulaAttackFlow 或 One-on-One，不处理攻击 / Match State，不生成 RNG，也不建立通用 Branch / Selection / Participant / Eligibility / Continuation、Consumer 或 Composition 框架。任何扩展必须由新的 Canonical、Contract 和 Boundary Review 明确批准。
+- 阶段 6.97 最近一次独立实际复验为 ThroughBallBranchSelectionQuery 18/18、CoreRules 1037/1037，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1037 = 6.92 历史 1019 + 本切片新增 18。6.99 为 Docs-only，未重新运行编译或测试。
+- 当前未实现 `ESkillRuleType::ThroughBall`、Through Ball Skill Rule Snapshot 支持、参与者资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 或完整 Through Ball。这些排除项不阻塞 Branch Selection 子切片关闭，也不构成未来永久禁止。
+- 关闭后的下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only）；不得从 Closure 直接进入任何具体 Implementation。

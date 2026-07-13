@@ -87,6 +87,20 @@
 - 6.92 Set Piece Type Selection Closure Readiness Review 已通过，结论为 `Ready with Documentation-Only Follow-up`；无 Blocking / Major，当前只剩最终状态文档同步。
 - 6.93 Set Piece Type Selection Final Closure Docs Sync 已完成，待用户提交；Set Piece Type Selection CoreRules-only 最小切片在本次同步中正式关闭。
 - 6.92 实际重新验证的历史基线为 SetPieceTypeSelectionQuery 28/28、CrossSelectionQuery 23/23、PassControlAdvanceSelectionQuery 30/30、SkillRuleSnapshotValidator 18/18、SkillRuleSnapshotQuery 12/12、LongShot 77/77、CutInsideShot 76/76、PassControl 220/220、Cross 60/60、CoreRules 1019/1019；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。
+- 6.95 Through Ball Branch Selection Minimum Contract Review 已完成：冻结能力专用 Branch / Input / Result / Error、外部 SelectionD6 presence、`[1,6]` 范围、校验顺序、失败安全、Input 保存、分支隔离与最小消费门槛。
+- 6.96 Through Ball Branch Selection Query Implementation 已完成并提交（`a4b5c4d`）：只新增 `ThroughBallBranchSelectionQuery.h/.cpp` 与 `ThroughBallBranchSelectionQueryTests.cpp`。
+- 6.97 Through Ball Branch Selection Independent Boundary Review + Regression 已通过：`Implementation Correct / Boundary Safe / Regression Clean / Ready To Close Slice` 均为 Yes。
+- 6.98 Through Ball Branch Selection Closure Readiness Review 已通过：所有 Gate 均为 Yes，完整 Through Ball 尚未实现不阻塞该独立子切片关闭。
+- 6.99 Through Ball Branch Selection Final Closure Docs Sync 已完成，待用户提交；Through Ball Branch Selection CoreRules-only minimum slice 在本次同步中正式关闭。
+- 6.97 最近一次独立实际复验为 ThroughBallBranchSelectionQuery 18/18、CoreRules 1037/1037；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。1037 = 6.92 历史 CoreRules 1019 + 本切片新增 18 项测试。6.99 为 Docs-only，未重新运行编译或测试。
+
+## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
+
+- 关闭范围仅包括显式外部 SelectionD6 presence / `[1,6]` 范围、确定性三分支映射、专用 Branch / Input / Result / Error Contract、成功与失败不变量、Input 保存与不变性、无状态和无 RNG 边界、18 项专项测试、6.97 独立审查、6.98 Closure Readiness 与 6.99 Final Closure Docs Sync。
+- 映射固定为 D6 1–2 → `Feet`（脚下球）、3–4 → `BehindDefense`（身后球）、5–6 → `AntiOffside`（反越位）。校验顺序固定为 D6 presence → D6 `[1,6]` → 显式映射；Query 不生成、重掷或反转 D6。
+- 成功消费门槛固定为 `bSuccess && bHasSelectedThroughBallBranch && SelectedThroughBallBranch != None && ErrorCode == None`。失败保持无可消费分支、`SelectedThroughBallBranch=None`、非空诊断与原始 Input 副本。
+- 当前关闭不包括 `ESkillRuleType::ThroughBall`、Skill Rule Snapshot 支持、参与者资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 或完整 Through Ball；这些是当前子切片责任排除，不是永久禁止项。
+- 6.99 完成后下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only）；不得从本次 Closure 直接预选 SkillRule、具体分支、Continuation 或 One-on-One Implementation。
 
 ## Part 6 Set Piece Type Selection CoreRules-only 最小切片关闭状态
 
