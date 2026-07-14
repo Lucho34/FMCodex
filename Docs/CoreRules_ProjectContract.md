@@ -244,7 +244,7 @@
 - 调用方只能在 `bSuccess && bHasSelectedThroughBallBranch && SelectedThroughBallBranch != None && ErrorCode == None` 时消费分支。本 Contract 不定义生产 Consumer 类型。
 - Query 不验证 SkillRule / SkillId、参与者、GK / 前场资格、ActionPoint、AttackD6 / DefenseD6，不生成 Formula Plan，不执行任何分支、FormulaResolver、FormulaAttackFlow 或 One-on-One，不处理攻击 / Match State，不生成 RNG，也不建立通用 Branch / Selection / Participant / Eligibility / Continuation、Consumer 或 Composition 框架。任何扩展必须由新的 Canonical、Contract 和 Boundary Review 明确批准。
 - 阶段 6.97 最近一次独立实际复验为 ThroughBallBranchSelectionQuery 18/18、CoreRules 1037/1037，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1037 = 6.92 历史 1019 + 本切片新增 18。6.99 为 Docs-only，未重新运行编译或测试。
-- 6.99 的 Branch Selection 子切片关闭时尚未包含 `ESkillRuleType::ThroughBall` 或 Through Ball Skill Rule Snapshot 支持；该历史范围不变。后续 7.02 已独立实现 SkillRule Support，但参与者资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 与完整 Through Ball 仍未实现。
+- 6.99 的 Branch Selection 子切片关闭时尚未包含 `ESkillRuleType::ThroughBall`、Through Ball Skill Rule Snapshot 支持或参与者资格；该历史范围不变。后续 7.02 已独立实现 SkillRule Support，7.10 已独立实现 Participant Eligibility；Feet Plan、Active GK Context、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 与完整 Through Ball 仍未实现。
 - 关闭后的下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only）；不得从 Closure 直接进入任何具体 Implementation。
 
 ## Part 6 Through Ball SkillRule Support CoreRules-only 最小切片关闭状态
@@ -259,3 +259,70 @@
 - 当前子切片不负责 Carrier SkillId runtime eligibility、Runner 技能或前场资格、Carrier / Runner 身份互异、Marker / Helper / Goalkeeper 资格、Branch Selection 执行、Feet、Behind Defense P1 / P2、Anti-Offside、Formula Plan / FormulaResolver / FormulaAttackFlow、Through Ball → One-on-One、One-on-One、Match State、RNG、Consumer / Composition、Provider / DataTable、MatchPlay 或通用 Skill / Participant / Eligibility Framework。这些是当前责任排除，不是永久禁止；未来扩展必须经过新的 Canonical、Contract 和 Boundary Review。
 - 阶段 7.03 最近一次独立实际复验结果为 SkillRuleSnapshotValidator 23/23、SkillRuleSnapshotQuery 17/17、ThroughBallBranchSelectionQuery 18/18、CoreRules 1047/1047，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1047 = 阶段 6.97 的 1037 + Validator 新增 5 + Query 新增 5。7.04 为 report-only，7.05 为 Docs-only，均未重新运行编译或测试；1047/1047 不代表完整 Through Ball 已完成。
 - 关闭后的唯一入口为 `7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review`（Report-only）；不得从 Final Closure 直接进入任何具体 Implementation。
+
+## Part 6 Through Ball Runtime Participant Eligibility CoreRules-only 最小切片关闭状态
+
+- 当前仍处于总体阶段 4：纯规则内核；7.13 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。
+- 7.08 至 7.13 已依次完成 Canonical Docs Sync、Minimum Contract Review、Implementation、Independent Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync。提交 `4322cff feat: add through ball participant eligibility` 只新增 `ThroughBallParticipantEligibilityQuery.h/.cpp` 与 `ThroughBallParticipantEligibilityQueryTests.cpp`；Through Ball Runtime Participant Eligibility 最小 CoreRules 子切片已正式关闭。
+- Query 调用形式固定为 `FThroughBallParticipantEligibilityQuery::Evaluate(const FSkillRuleSnapshotSet& SkillRules, const FThroughBallParticipantEligibilityQueryInput& Input)`。Query 是只读、确定、无实例状态的能力专用入口。
+
+### Error Contract
+
+`EThroughBallParticipantEligibilityQueryErrorCode` 的精确顺序固定为：
+
+```text
+None
+InvalidSelectedSkillId
+SkillRuleLookupFailed
+UnsupportedSkillRuleType
+ActionPointBelowMinimum
+ActionPointAboveMaximum
+InvalidAttackingOwnerIdentity
+InvalidDefendingOwnerIdentity
+DuplicateOwnerIdentity
+InvalidCarrierIdentity
+InvalidCarrierSnapshot
+UnsupportedCarrierGoalkeeper
+CarrierDoesNotOwnSelectedSkill
+InvalidRunnerIdentity
+InvalidRunnerSnapshot
+UnsupportedRunnerGoalkeeper
+RunnerNotInAttackingForwardArea
+DuplicateAttackingParticipant
+InvalidMarkerIdentity
+InvalidMarkerSnapshot
+UnsupportedMarkerGoalkeeper
+InvalidHelperIdentity
+InvalidHelperSnapshot
+UnsupportedHelperGoalkeeper
+DuplicateDefendingParticipant
+```
+
+`None` 必须为首项；不增加 `MAX`、Active GK 错误或共享 Eligibility Error。枚举顺序属于本能力专用 Contract。
+
+### Input 与 Result Contract
+
+- Input 精确包含十个字段：`SelectedSkillId / CurrentActionPoint / AttackingOwnerId / DefendingOwnerId / CarrierSnapshot / RunnerSnapshot / MarkerSnapshot / bHasHelper / HelperSnapshot / bIsRunnerInAttackingForwardArea`。
+- SelectedSkillId 是调用方明确选择的 SkillId；CurrentActionPoint 是外部只读输入；两个 OwnerId 定义攻防身份空间；Carrier、Runner、Marker 必填；Helper presence 只由 `bHasHelper` 控制；Runner 当前前场部署证明由外部布尔值提供。
+- Input 不包含 Active GK、Branch、D6、Formula、Match State、Slot 或 Zone。
+- Result 精确包含 `bSuccess / ErrorCode / ErrorMessage / InvalidField / Input / bHasHelper / SkillRuleQueryResult / CarrierSnapshotValidationResult / RunnerSnapshotValidationResult / MarkerSnapshotValidationResult / HelperSnapshotValidationResult`。
+- Result.Input 是值拷贝；未执行的嵌套结果保持默认。Helper 缺席时 HelperSnapshotValidationResult 保持默认。Result 不返回 Formula Plan、Branch、GK contribution、Handoff 或状态变更。
+
+### Validation、Identity 与 Snapshot Contract
+
+- 完整验证顺序固定为：SelectedSkillId → SkillRule lookup → SkillRuleType → AP below minimum → AP above maximum → AttackingOwnerId → DefendingOwnerId → Owner identity conflict → Carrier identity → Carrier Snapshot → Carrier GK → Carrier selected-skill ownership → Runner identity → Runner Snapshot → Runner GK → Runner forward-area proof → Carrier / Runner identity conflict → Marker identity → Marker Snapshot → Marker GK → Helper presence → 存在时 Helper identity → Helper Snapshot → Helper GK → Marker / Helper identity conflict → Success。
+- SkillRule 错误优先于参与者错误；Carrier 错误优先于 Runner；Runner 自身错误优先于 DuplicateAttackingParticipant；Marker 错误优先于 Helper；Helper 自身错误优先于 DuplicateDefendingParticipant；Helper 缺席数据不参与错误优先级。
+- InvalidField 指向当前首个失败的能力字段；失败保持 `bSuccess=false`、非 None ErrorCode、非空 ErrorMessage，并保留 Input 值拷贝。尚未执行的下层 Query / Validation Result 保持默认；成功保持 ErrorCode 为 None、ErrorMessage 为空、InvalidField 为 `NAME_None`。
+- 使用 `FSkillRuleSnapshotQuery::FindBySkillId` 精确查找 SelectedSkillId；SkillType 必须为 ThroughBall；CurrentActionPoint 必须位于 SkillRule 的闭区间；Query 不扣除 AP。Carrier 必须精确持有 SelectedSkillId。
+- Carrier、Runner、Marker 分别使用单卡 SnapshotSet 调用 `FPlayerCardRuleSnapshotValidator`；Helper 只在存在时验证。不得把攻防角色放入同一个 SnapshotSet，因此跨阵营相同 CardId 合法。
+- AttackingOwnerId 与 DefendingOwnerId 必须非空且不同。Owner + CardId 构成能力内的身份空间：同一攻击空间 Carrier != Runner，同一防守空间 Marker != Helper（仅 Helper 存在时）；跨阵营相同 CardId 不构成冲突。
+- Runner 不要求持有 ThroughBall SkillId，也不得用 `PositionTypes.Contains(Attack)` 推断当前部署；`bIsRunnerInAttackingForwardArea` 是唯一当前前场部署资格来源。
+- Helper 缺席时不得读取 CardId、运行 Validator、检查 GK 或比较 Marker / Helper；任意 Helper 垃圾数据不影响结果。
+- Evaluate 不修改 Input 或 SkillRuleSet；相同 SkillRules 与 Input 必须产生相同 Result。
+
+### Responsibility Boundary
+
+- Query 不负责 Active GK Context / Snapshot / OneOnOne contribution、Finishing / Transition 判断、Branch Selection、Feet、Behind Defense、Anti-Offside、One-on-One、Formula Plan、FormulaResolver、FormulaAttackFlow、Handoff、Consumer、Composition、Match State、MatchPlay、AP 或体力修改、RNG、Provider、DataTable 或通用 Participant / Eligibility / Identity Framework。
+- Active GK 必须由未来独立 Contract 处理。Participant Eligibility 最小切片已关闭；Active GK、具体分支、Formula、One-on-One 与完整 Through Ball 仍未完成。
+- 阶段 7.11 最近一次独立实际验证结果为 ThroughBallParticipantEligibilityQuery 52/52、CoreRules 1099/1099，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1099 = 阶段 7.03 的 1047 + Participant Eligibility 新增 52。7.12 为 Report-only，7.13 为 Docs-only，均未重新运行编译、UHT 或测试。
+- 关闭后的唯一入口为 `7.14 Part 6 Post-Through-Ball-Participant-Eligibility Next Capability Decision Review`（Report-only）；不得从 Final Closure 直接进入任何具体 Implementation。
