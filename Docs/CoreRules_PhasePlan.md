@@ -100,6 +100,11 @@
 - 7.04 Through Ball SkillRule Support Closure Readiness Review 已通过：所有 Gate 均为 Yes，完整 Through Ball 未完成不阻塞 metadata 子切片独立关闭。
 - 7.05 Through Ball SkillRule Support Final Closure Docs Sync 已完成；本次只同步五份授权 CoreRules 文档，并正式关闭 Through Ball SkillRule Support CoreRules-only minimum slice。
 - 阶段 7.03 最近一次独立实际复验结果为 SkillRuleSnapshotValidator 23/23、SkillRuleSnapshotQuery 17/17、ThroughBallBranchSelectionQuery 18/18、CoreRules 1047/1047；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。1047 = 阶段 6.97 的 1037 + Validator 新增 5 + Query 新增 5。7.04 为 report-only，7.05 为 Docs-only，均未重新运行编译或测试。
+- 7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review 已完成：排除已关闭能力后，确认 runtime participant eligibility 是 Through Ball 剩余能力的最上游业务阻断；总体阶段 5 尚未 Ready。
+- 7.07 Through Ball Runtime Participant Eligibility Canonical Clarification Review 已完成：识别 Runner 前场表达、同侧角色互异、防守回合 GK Context 与跨阵营 CardId 身份空间四项用户裁决；该 Report-only 阶段结束时 Docs Sync Gate 尚未通过。
+- 用户已完成四项裁决：Runner 按当前实际前场部署判断；同一球员实例不得兼任两个角色；防守回合打出 GK 后该实际 GK 自动成为本回合终结公式上下文且不参与 Transition；不同 Owner / Side 的相同 CardId 不视为同一球员实例。
+- 7.08 Through Ball Runtime Participant Eligibility Canonical Docs Sync 已完成：只同步 `01_Rules_Canonical.md`、`07_Test_Cases.md`、`08_Decision_Log.md` 与两份授权 CoreRules 阶段文档；未修改 Source、测试源码或 Build.cs。Participant Eligibility 尚未实现。
+- 7.08 为 Docs-only，本阶段未重新运行编译、UHT 或测试；阶段 7.03 的 CoreRules 1047/1047 仍是最近一次独立实际回归结果。
 
 ## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
 
@@ -119,6 +124,16 @@
 - Error Contract 未扩展：None、未知类型、空 SkillId、Duplicate 与 AP 继续使用既有错误；只在 Unsupported 诊断支持列表中追加 ThroughBall。`FSkillRuleSnapshotQuery::FindBySkillId` 生产代码未修改，仍先验证查询 ID、调用 Validator 验证完整集合、按 SkillId 线性查找并返回值拷贝，保持既有 ValidationFailed 与 NotFound 语义。
 - 该关闭不包括 Carrier / Runner runtime eligibility、身份互异、Marker / Helper / Goalkeeper 资格、Branch 执行、Feet、Behind Defense、Anti-Offside、Formula Plan / Resolver、Through Ball → One-on-One、One-on-One、Match State、RNG、Consumer / Composition、Provider / DataTable、MatchPlay 或通用 Skill / Participant / Eligibility Framework；这些是当前子切片责任排除，不是永久禁止。
 - 关闭后的唯一入口为 `7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review`（Report-only），重新比较剩余候选，不在本次 Docs Sync 中预选具体 Implementation。
+
+## Part 6 Through Ball Runtime Participant Eligibility Canonical 状态
+
+- 当前仍处于总体阶段 4：纯规则内核；7.08 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。
+- 7.06 至 7.08 已完成 Next Capability Decision、Canonical Clarification 与 Canonical Docs Sync。当前冻结的是 Through Ball 运行时参与者业务规则，不是生产 Input / Result / Error / Query Contract，也不是 Participant Eligibility 实现。
+- 共享普通参与者为必填 Carrier、Runner、Marker 与 Optional Helper。Carrier 必须持有选中的 ThroughBall SkillId、当前 AP 匹配 SkillRule、非 GK 且与 Runner 不同；Runner 不需要持有该 SkillId、非 GK，并必须当前实际部署在进攻方前场，不能只凭静态 `PositionTypes.Contains(Attack)` 判断。Marker 必填且非 GK；Helper 未选择时不查询、属性与体力按 0，选择时非 GK 且与 Marker 不同。
+- 身份按稳定场上球员实例判断；同侧角色不能由同一实例兼任，不同 Owner / Side 的相同 CardId 不构成冲突。后续 Contract 不得仅用跨阵营原始 CardId 相等判定同一身份。
+- GK 不是共享普通参与者中的第五个角色，而是由防守方在当前防守回合打出并放置实际 GK 后形成的回合上下文。该 GK 自动参与本回合适用的 Finishing，不在公式阶段再次选择；未上场时不查询且贡献为 0。Behind Defense P1 为 Transition，不计 GK；P2 与 Anti-Offside 的纯 D6 判断也不直接加入 GK 属性；后续进入 One-on-One 时沿用本回合实际 GK。
+- 当前没有实现 Participant Eligibility Query，也未冻结完整 Input / Result / Error、错误顺序、失败默认值、Formula Plan、P1 / P2、Anti-Offside、Handoff、One-on-One、Consumer 或 Match State mutation。
+- 唯一下一入口为 `7.09 Through Ball Runtime Participant Eligibility Minimum Contract Review`（Report-only）；不得直接进入 Implementation，也不得预选生产文件或类型。
 
 ## Part 6 Set Piece Type Selection CoreRules-only 最小切片关闭状态
 
@@ -424,7 +439,7 @@
 
 ## 建议后续阶段
 
-- 当前唯一下一入口为 7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review；该阶段为 report-only，不预选实现能力。
+- 当前唯一下一入口为 7.09 Through Ball Runtime Participant Eligibility Minimum Contract Review；该阶段为 report-only，不预选实现文件或类型。
 - 以下较早阶段入口仅保留为历史规划记录，不代表当前下一阶段。
 - 6.93 后续阶段必须先进行新的 Part 6 能力决策 Review，不直接进入 Corner、Long Free Kick、Short Free Kick 或 Penalty 实现。
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。

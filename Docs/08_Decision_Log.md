@@ -140,6 +140,18 @@
 - 影响：行动点状态机、弃牌区、测试用例。
 - Resolved UQ：UQ-004。
 
+### CD-018 - Through Ball Runtime Participant Eligibility and Defensive-Round Goalkeeper Semantics
+
+- 日期：2026-07-14
+- 决策：直塞跑位球员必须当前实际部署在进攻方前场区域；静态 `PositionTypes` 包含 `Attack` 不能单独替代当前部署区域判断。
+- 决策：同一场上球员实例不能在同一次直塞结算中兼任两个角色。持球球员与跑位球员必须不同；实际选择协防球员时，盯人球员与协防球员必须不同。
+- 决策：身份按 Owner / Side + CardId 或等价稳定场上球员实例判断。不同 Owner / Side 的相同 CardId 不视为同一球员，不新增仅基于原始 CardId 的跨阵营身份冲突。
+- 决策：防守方在当前防守回合打出并使 GK 进入场上后，该实际 GK 自动成为本回合的门将上下文，不在公式阶段再次选择或发动。当前回合没有上场 GK 时，不读取或验证 GK Snapshot，GK 属性贡献为 0。
+- 决策：GK 只参与终结公式。身后球 P1 为过渡公式，不计 GK；P2 与反越位的纯 D6 越位 / 单刀判断也不直接加入 GK 属性。若后续进入单刀，则沿用当前防守回合已经上场的实际 GK。
+- 理由：静态位置类型不等于当前部署区域；同一球员不得重复贡献两个角色；跨阵营共享卡牌定义不代表同一场上实例；打出 GK 已经完成本回合门将参与选择；过渡公式不使用终结门将属性。
+- 范围：仅冻结直塞运行时参与者资格、身份和防守回合 GK 参与语义；不冻结 Query Input / Result / Error、Formula Plan、Handoff、Consumer、Match State 或完整单刀 Contract。
+- 影响：Canonical 直塞规则、后续 Contract Review、测试场景。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
