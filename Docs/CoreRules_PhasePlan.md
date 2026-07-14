@@ -93,14 +93,32 @@
 - 6.98 Through Ball Branch Selection Closure Readiness Review 已通过：所有 Gate 均为 Yes，完整 Through Ball 尚未实现不阻塞该独立子切片关闭。
 - 6.99 Through Ball Branch Selection Final Closure Docs Sync 已完成，待用户提交；Through Ball Branch Selection CoreRules-only minimum slice 在本次同步中正式关闭。
 - 6.97 最近一次独立实际复验为 ThroughBallBranchSelectionQuery 18/18、CoreRules 1037/1037；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。1037 = 6.92 历史 CoreRules 1019 + 本切片新增 18 项测试。6.99 为 Docs-only，未重新运行编译或测试。
+- 7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review 已完成；下一独立候选为 Through Ball SkillRule Support，先冻结 metadata Contract，不直接进入参与者、具体分支或 One-on-One。
+- 7.01 Through Ball SkillRule Support Minimum Contract Review 已完成：冻结 `ESkillRuleType::ThroughBall` 末尾追加、四字段 Snapshot、Validator 显式白名单、通用 AP `2–8`、既有校验顺序与错误语义、通用 Query 生产代码不变以及持续排除边界。
+- 7.02 Through Ball SkillRule Support Implementation 已完成并提交（`00268d6 feat: add through ball skill rule support`）：只修改 `SkillRuleSnapshot.h`、`SkillRuleSnapshotValidator.cpp`、`SkillRuleSnapshotValidatorTests.cpp` 与 `SkillRuleSnapshotQueryTests.cpp`。
+- 7.03 Through Ball SkillRule Support Independent Boundary Review + Regression 已通过：`Implementation Correct / Boundary Safe / Regression Clean / Ready To Close Slice` 均为 Yes。
+- 7.04 Through Ball SkillRule Support Closure Readiness Review 已通过：所有 Gate 均为 Yes，完整 Through Ball 未完成不阻塞 metadata 子切片独立关闭。
+- 7.05 Through Ball SkillRule Support Final Closure Docs Sync 已完成；本次只同步五份授权 CoreRules 文档，并正式关闭 Through Ball SkillRule Support CoreRules-only minimum slice。
+- 阶段 7.03 最近一次独立实际复验结果为 SkillRuleSnapshotValidator 23/23、SkillRuleSnapshotQuery 17/17、ThroughBallBranchSelectionQuery 18/18、CoreRules 1047/1047；Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。1047 = 阶段 6.97 的 1037 + Validator 新增 5 + Query 新增 5。7.04 为 report-only，7.05 为 Docs-only，均未重新运行编译或测试。
 
 ## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
 
 - 关闭范围仅包括显式外部 SelectionD6 presence / `[1,6]` 范围、确定性三分支映射、专用 Branch / Input / Result / Error Contract、成功与失败不变量、Input 保存与不变性、无状态和无 RNG 边界、18 项专项测试、6.97 独立审查、6.98 Closure Readiness 与 6.99 Final Closure Docs Sync。
 - 映射固定为 D6 1–2 → `Feet`（脚下球）、3–4 → `BehindDefense`（身后球）、5–6 → `AntiOffside`（反越位）。校验顺序固定为 D6 presence → D6 `[1,6]` → 显式映射；Query 不生成、重掷或反转 D6。
 - 成功消费门槛固定为 `bSuccess && bHasSelectedThroughBallBranch && SelectedThroughBallBranch != None && ErrorCode == None`。失败保持无可消费分支、`SelectedThroughBallBranch=None`、非空诊断与原始 Input 副本。
-- 当前关闭不包括 `ESkillRuleType::ThroughBall`、Skill Rule Snapshot 支持、参与者资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 或完整 Through Ball；这些是当前子切片责任排除，不是永久禁止项。
+- 6.99 的 Branch Selection 关闭范围当时不包括 `ESkillRuleType::ThroughBall` 或 Skill Rule Snapshot 支持；该历史边界保持不变。后续 7.02 已独立实现 SkillRule Support，但参与者资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 与完整 Through Ball 仍未实现。
 - 6.99 完成后下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only）；不得从本次 Closure 直接预选 SkillRule、具体分支、Continuation 或 One-on-One Implementation。
+
+## Part 6 Through Ball SkillRule Support CoreRules-only 最小切片关闭状态
+
+- 当前仍处于总体阶段 4：纯规则内核；7.05 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。
+- 7.01 至 7.05 已依次完成 Minimum Contract Review、Implementation、Independent Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync；Through Ball SkillRule Support 最小 CoreRules 子切片现已正式关闭，但完整 Through Ball 仍未实现。
+- `ESkillRuleType` 当前顺序为 `None / LongShot / CutInsideShot / PassControl / Cross / ThroughBall`，对应当前隐式值 0–5；ThroughBall 只追加在 Cross 后，既有顺序未变化，未增加 `MAX`，也未修改 `CoreRuleEnums.h` 或旧 `ESkillType::ThroughBall`。这些当前隐式值不在本次关闭中升级为永久序列化协议。
+- `FSkillRuleSnapshot` 仍只含 `SkillId / SkillType / MinTriggerActionPoint / MaxTriggerActionPoint`，不重复表达 Through Ball 的双人、参与者、Branch、Formula 或状态语义。
+- Validator 显式白名单为 `LongShot / CutInsideShot / PassControl / Cross / ThroughBall`，校验顺序保持 SkillId 非空 → SkillId 不重复 → SkillType 非 None → 显式白名单 → Min AP >= 2 → Max AP >= 2 → Min AP <= 8 → Max AP <= 8 → Min AP <= Max AP。ThroughBall 使用通用 `2 <= Min <= Max <= 8`，未知未来枚举不会自动获支持。
+- Error Contract 未扩展：None、未知类型、空 SkillId、Duplicate 与 AP 继续使用既有错误；只在 Unsupported 诊断支持列表中追加 ThroughBall。`FSkillRuleSnapshotQuery::FindBySkillId` 生产代码未修改，仍先验证查询 ID、调用 Validator 验证完整集合、按 SkillId 线性查找并返回值拷贝，保持既有 ValidationFailed 与 NotFound 语义。
+- 该关闭不包括 Carrier / Runner runtime eligibility、身份互异、Marker / Helper / Goalkeeper 资格、Branch 执行、Feet、Behind Defense、Anti-Offside、Formula Plan / Resolver、Through Ball → One-on-One、One-on-One、Match State、RNG、Consumer / Composition、Provider / DataTable、MatchPlay 或通用 Skill / Participant / Eligibility Framework；这些是当前子切片责任排除，不是永久禁止。
+- 关闭后的唯一入口为 `7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review`（Report-only），重新比较剩余候选，不在本次 Docs Sync 中预选具体 Implementation。
 
 ## Part 6 Set Piece Type Selection CoreRules-only 最小切片关闭状态
 
@@ -406,6 +424,8 @@
 
 ## 建议后续阶段
 
+- 当前唯一下一入口为 7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review；该阶段为 report-only，不预选实现能力。
+- 以下较早阶段入口仅保留为历史规划记录，不代表当前下一阶段。
 - 6.93 后续阶段必须先进行新的 Part 6 能力决策 Review，不直接进入 Corner、Long Free Kick、Short Free Kick 或 Penalty 实现。
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。
 - 后续 Part 必须另行规划，不从 Part 5 组合验证自动延伸玩法实现。

@@ -119,6 +119,20 @@ Query 不生成或重掷 Action D12，不生成随机数，不读取 AttackD6 / 
 
 18 项专项测试覆盖 presence 3、range 6、mapping 6、determinism 1、input immutability 1 与 boundary isolation 1。阶段 6.97 最近一次独立实际复验为 ThroughBallBranchSelectionQuery 18/18、CoreRules 1037/1037，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1037 = 6.92 历史 1019 + 本切片新增 18。阶段 6.99 为 Docs-only，未重新运行编译或测试。该关闭不是完整 Through Ball 完成；下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only）。
 
+## Through Ball SkillRule Support 边界
+
+当前仍处于总体阶段 4：纯规则内核；7.05 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。
+
+阶段 7.01 至 7.05 已完成并正式关闭 Through Ball SkillRule Support CoreRules-only minimum slice。`ESkillRuleType::ThroughBall` 只追加在 `Cross` 后，既有枚举顺序保持稳定；`FSkillRuleSnapshot` 仍只含 `SkillId / SkillType / MinTriggerActionPoint / MaxTriggerActionPoint` 四个字段，没有增加参与者、双人技能、Branch、Formula 或状态字段。
+
+`FSkillRuleSnapshotValidator` 继续使用显式白名单，当前正式支持 `LongShot / CutInsideShot / PassControl / Cross / ThroughBall`；ThroughBall 复用通用 AP Contract `2 <= MinTriggerActionPoint <= MaxTriggerActionPoint <= 8`。Validator 的 SkillId、重复、None、白名单和 AP 校验顺序及既有错误枚举均未改变，未知未来枚举不会因非 None 或数值范围而自动获支持。Unsupported 诊断文本只是在既有支持列表末尾加入 ThroughBall。
+
+`FSkillRuleSnapshotQuery::FindBySkillId` 的生产头文件和实现均未修改。Query 仍验证查询 SkillId、调用 Validator 验证完整 SnapshotSet、按 SkillId 线性查找并返回 Snapshot 值拷贝；ThroughBall 支持来自枚举追加、Validator 白名单和 Query 测试覆盖，而不是新的 ThroughBall 专用生产分支、Provider、DataTable 或 Query Framework。
+
+该 metadata 子切片不验证 Carrier 是否持有 SkillId、Runner 前场资格、Carrier / Runner 身份互异或 Marker / Helper / Goalkeeper 资格，也不执行既有 Branch Selection、Feet、Behind Defense、Anti-Offside、Formula Plan / FormulaResolver、Through Ball → One-on-One、One-on-One、Consumer / Composition、Match State 或 RNG。以上是当前子切片责任排除；未来扩展必须经过新的 Canonical、Contract 和 Boundary Review。
+
+阶段 7.03 最近一次独立实际复验结果为 SkillRuleSnapshotValidator 23/23、SkillRuleSnapshotQuery 17/17、ThroughBallBranchSelectionQuery 18/18、CoreRules 1047/1047，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1047 = 阶段 6.97 的 1037 + Validator 新增 5 + Query 新增 5。7.04 为 report-only，7.05 为 Docs-only，均未重新运行编译或测试。完整 Through Ball 仍未实现；下一入口为 `7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review`（Report-only）。
+
 ## 单次攻击请求路径
 
 `External Driver -> MatchPlayExternalTurnController -> MatchPlaySubmitAttackFacade -> MatchPlaySubmissionGate -> MatchPlayAttackStep`

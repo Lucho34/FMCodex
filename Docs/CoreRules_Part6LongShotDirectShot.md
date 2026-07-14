@@ -20,6 +20,7 @@
 - Cross CoreRules-only Selection + Plan 最小切片已在 6.87 Final Closure Docs Sync 正式关闭：Canonical、Cross Skill Rule Snapshot 支持、Selection Query、Plan Query、测试侧 Composition、两次独立 Boundary Review + Regression 与 Closure Readiness Review 均已完成。该关闭不包含生产 Composition / Consumer、统一 Cross Query、公式执行、比赛结算或 GK 单场状态。
 - Set Piece Type Selection CoreRules-only 最小切片已在 6.93 Final Closure Docs Sync 正式关闭：AP 9–12 资格、显式外部 SelectionD6、确定性类型映射、专用 Contract、28 项专项测试、6.91 Independent Boundary Review + Regression 与 6.92 Closure Readiness Review 均已完成。该关闭不包含任何具体定位球玩法或生产 Consumer。
 - Through Ball Branch Selection CoreRules-only minimum slice 已在 6.99 Final Closure Docs Sync 正式关闭：外部 SelectionD6 presence / `[1,6]` 范围、三分支确定性映射、专用 Contract、18 项专项测试、6.97 Independent Boundary Review + Regression 与 6.98 Closure Readiness Review 均已完成。该关闭不包含 SkillRule 支持、任何具体分支、One-on-One 或完整 Through Ball。
+- Through Ball SkillRule Support CoreRules-only minimum slice 已在 7.05 Final Closure Docs Sync 正式关闭：`ESkillRuleType::ThroughBall`、四字段 Snapshot、Validator 显式白名单、通用 Query 自然支持、Validator 23 项与 Query 17 项测试、7.03 Independent Boundary Review + Regression 及 7.04 Closure Readiness Review 均已完成。该关闭不包含参与者资格、具体分支执行、Formula、One-on-One 或完整 Through Ball。
 
 ## 阶段记录
 
@@ -116,6 +117,11 @@
 - 6.97 Through Ball Branch Selection Independent Boundary Review + Regression：确认 Implementation Correct、Boundary Safe、Regression Clean、Ready To Close Slice 均为 Yes；专项与 CoreRules 回归通过。
 - 6.98 Through Ball Branch Selection Closure Readiness Review：所有 Gate 均为 Yes，确认完整 Through Ball 未实现不阻塞该子切片关闭。
 - 6.99 Through Ball Branch Selection Final Closure Docs Sync：同步最终状态并正式关闭 Through Ball Branch Selection CoreRules-only minimum slice；本阶段只修改 Docs，待用户提交。
+- 7.01 Through Ball SkillRule Support Minimum Contract Review：冻结枚举末尾追加、四字段 Snapshot、Validator 五类显式白名单、通用 AP `2–8`、既有校验 / Error / Query 边界和持续排除项。
+- 7.02 Through Ball SkillRule Support Implementation：提交 `00268d6 feat: add through ball skill rule support`，只修改 SkillRule Snapshot 枚举、Validator 生产实现及 Validator / Query 测试。
+- 7.03 Through Ball SkillRule Support Independent Boundary Review + Regression：确认 Implementation Correct、Boundary Safe、Regression Clean、Ready To Close Slice 均为 Yes；专项与 CoreRules 回归通过。
+- 7.04 Through Ball SkillRule Support Closure Readiness Review：所有 Gate 均为 Yes，确认完整 Through Ball 未实现不阻塞 SkillRule Support 子切片独立关闭。
+- 7.05 Through Ball SkillRule Support Final Closure Docs Sync：只同步五份授权 CoreRules 文档并正式关闭 Through Ball SkillRule Support CoreRules-only minimum slice；不修改 Source、Tests、Canonical 或 Build.cs。
 
 ## 最终收口结论
 
@@ -874,8 +880,20 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 成功消费门槛为 `bSuccess && bHasSelectedThroughBallBranch && SelectedThroughBallBranch != None && ErrorCode == None`。失败无可消费分支、保持 `None`、非空诊断、`InvalidField=ExternalSelectionD6` 与原始 Input；不 clamp 或标准化非法值。
 - Query 无状态，只选择分支而不执行分支；不依赖 SkillRule / SkillId、Player Snapshot、Carrier / Runner / Marker / Helper / Goalkeeper、ActionPoint、AttackD6 / DefenseD6、Formula Plan、FormulaResolver / FormulaAttackFlow、One-on-One 或 Match State，不生成 RNG，也不建立生产 Consumer / Composition 或通用 Branch / Selection Framework。
 - 18 项专项测试覆盖 Presence 3、Range 6、Mapping 6、Determinism 1、Input immutability 1 与 Boundary isolation 1。阶段 6.97 最近一次独立实际复验为 ThroughBallBranchSelectionQuery 18/18、CoreRules 1037/1037，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1037 = 6.92 历史 1019 + 本切片新增 18。6.99 为 Docs-only，未重新运行编译或测试。
-- 当前未实现 `ESkillRuleType::ThroughBall`、Through Ball Skill Rule Snapshot、参与者资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One Entry / Branch Selection / Direct Shot / Chip Shot、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 或完整 Through Ball。以上为当前子切片责任排除，不是未来永久禁止。
+- 6.99 关闭 Branch Selection 时尚未包含 `ESkillRuleType::ThroughBall` 或 Through Ball Skill Rule Snapshot；该历史范围保持不变。后续 7.02 已独立实现 SkillRule Support，但参与者资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One Entry / Branch Selection / Direct Shot / Chip Shot、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 与完整 Through Ball 仍未实现。
 - 6.99 后下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only），重新比较剩余 Part 6 候选；不得从本次关闭直接预选具体 Implementation。
+
+## Through Ball SkillRule Support CoreRules-only 最小切片
+
+- 当前仍处于总体阶段 4：纯规则内核；7.05 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。
+- 7.01 至 7.05 已完成 Minimum Contract Review、Implementation、Independent Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync。正式关闭对象只限 Through Ball SkillRule Support metadata，不是完整 Through Ball。
+- `ESkillRuleType` 当前顺序为 `None / LongShot / CutInsideShot / PassControl / Cross / ThroughBall`；ThroughBall 只追加在末尾，既有顺序未改变，未新增 `MAX`，未修改旧 `ESkillType::ThroughBall` 或 `CoreRuleEnums.h`。当前隐式值 0–5 只用于说明兼容追加结果，不定义永久序列化协议。
+- `FSkillRuleSnapshot` 仍只有 `SkillId / SkillType / MinTriggerActionPoint / MaxTriggerActionPoint` 四字段。Validator 只显式支持 `LongShot / CutInsideShot / PassControl / Cross / ThroughBall`，ThroughBall 使用通用 `2 <= MinTriggerActionPoint <= MaxTriggerActionPoint <= 8`，不定义固定 AP，也不自动支持未知未来枚举。
+- Validator 校验顺序保持 SkillId 非空 → SkillId 不重复 → SkillType 非 None → 显式白名单 → Min AP >= 2 → Max AP >= 2 → Min AP <= 8 → Max AP <= 8 → Min AP <= Max AP。Error Contract 未扩展；Unsupported 诊断仅在既有支持列表末尾加入 ThroughBall。
+- `FSkillRuleSnapshotQuery::FindBySkillId` 生产头文件和实现未修改，仍先校验查询 ID、调用 Validator 验证完整集合、按 SkillId 线性查找并返回值拷贝，保持既有 ValidationFailed 与 NotFound 语义。不存在 ThroughBall 专用生产 Query、分支、Provider、DataTable 或通用框架。
+- 阶段 7.03 最近一次独立实际复验结果为 SkillRuleSnapshotValidator 23/23、SkillRuleSnapshotQuery 17/17、ThroughBallBranchSelectionQuery 18/18、CoreRules 1047/1047，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1047 = 阶段 6.97 的 1037 + Validator 新增 5 + Query 新增 5。7.04 为 report-only，7.05 为 Docs-only，均未重新运行编译或测试。
+- 当前仍未实现 Carrier / Runner runtime eligibility 与身份规则、Marker / Helper / Goalkeeper 资格、Feet Plan、Behind Defense P1 / P2、Anti-Offside、Through Ball → One-on-One Handoff、One-on-One Entry / Branch Selection / Direct Shot / Chip Shot、Formula Plan / FormulaResolver、Consumer / Composition、MatchPlay 或完整 Through Ball。该 metadata 切片也不执行既有 Branch Selection，不读取或修改 Match State，不生成 RNG；这些排除项不是永久禁止，未来必须重新经过 Canonical、Contract 和 Boundary Review。
+- 关闭后的唯一入口为 `7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review`（Report-only），重新比较 Carrier / Runner Eligibility、Feet Canonical Clarification、Behind Defense、Anti-Offside、One-on-One Handoff / Entry 与明确延后；本阶段不预选 Implementation。
 
 ## 持续边界
 
