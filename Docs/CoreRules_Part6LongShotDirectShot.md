@@ -938,7 +938,7 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 7.18 最近一次独立实际验证为 Feet Plan 66/66、Participant Eligibility 52/52、Player Snapshot Validator 12/12、Player Snapshot Query 8/8、SkillRule Validator 23/23、SkillRule Query 17/17、Branch Selection 18/18、CoreRules 1165/1165；Build、UHT `-WarningsAsErrors` 和 `git diff --check` 均通过。1165 = 1099 + 66。7.19 为 Report-only，7.20 为 Docs-only，均未重新运行这些验证。
 - M-001 为非阻塞测试债务：`AreEligibilityResultsEqual` 没有逐字段比较全部嵌套 SkillRule Query / Snapshot Validation Result 诊断。现有测试已覆盖顶层、Snapshot 与关键成功状态；生产使用 const 输入且无 mutation 路径，当前行为未发现错误。它只影响未来测试检出完整度，可维护性补强，不改变生产 Contract，也不阻塞关闭。
 - Feet Resolver Input Assembler 已由 7.22 独立实现并在 7.23 决定可关闭；它只将专用 Plan 结构验证并无损映射到 `FFormulaResolverInput`，包括双方 Base / Modifier / D6、多人 stamina、GK participation、日志、Owner 和 InvolvedCardIds，不重读 Snapshot、不重跑 Eligibility、不调用 Resolver、不修改 Plan，也不通过 SingleCard Assembler 有损降级。
-- Feet Plan 与 Feet Resolver Input Assembler 均已关闭；FormulaResolver execution、实际 Goal / Miss、attack-end mutation、Consumer / Composition / MatchPlay、Behind Defense、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 均未完成。唯一下一入口为 `7.25 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review），不预选具体 Implementation。
+- Feet Plan 与 Feet Resolver Input Assembler 均已关闭；在 7.24 关闭时，FormulaResolver execution、实际 Goal / Miss、attack-end mutation、Consumer / Composition / MatchPlay、Behind Defense、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 尚未完成，当时唯一下一入口为 `7.25 Part 6 Next Capability Selection + Minimum Contract Review`。后续 7.26 已实现能力专用 Formula Resolution Executor，其余范围仍延后。
 
 ## Through Ball Feet FormulaResolver Input Assembler CoreRules-only 最小切片关闭状态
 
@@ -951,7 +951,7 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 成功无损映射 FormulaType、双方 Base / Modifier / ComparePoint / D6 rolled flag / stamina、GK participation、Log / Turn、Owner 和 InvolvedCardIds；不产生 GoalScorer、Goal / Miss、Winner、FormulaResolution、attack-end mutation 或 Handoff。未调用 FormulaResolver / FormulaAttackFlow，未接 Consumer、Composition、MatchPlay、Match State、RNG 或通用 Formula Assembly Framework。
 - 7.23 是最近一次独立实际验证来源：Assembler 41/41、Feet Plan 66/66、Participant Eligibility 52/52、FormulaResolver 5/5、SingleCardFormulaInputAssemblyQuery 13/13、CoreRules 1206/1206，Build、UHT `-WarningsAsErrors` 和 `git diff --check` 均通过；`1206 = 1165 + 41`。7.24 未重新运行编译、UHT 或测试。
 - 两项非阻塞债务保持独立：Feet Plan `M-001` 是 Eligibility equality helper 未比较全部嵌套诊断；Assembler `7.23-M-001` 是 dependency-boundary tests 使用精确源码字符串断言。当前生产无禁止依赖，include / call 审查、编译、链接与回归均通过；后者只影响未来检出强度，可维护性补强，不修改生产 Contract，也不阻塞关闭。
-- Feet Resolver Input Assembler 最小 CoreRules 子切片已关闭；Formula execution、实际比赛结算、Consumer、Composition、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 仍未完成。下一入口为 `7.25 Part 6 Next Capability Selection + Minimum Contract Review`，不得直接进入具体 Implementation。
+- Feet Resolver Input Assembler 最小 CoreRules 子切片已关闭；在 7.24 关闭时，Formula execution、实际比赛结算、Consumer、Composition、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 尚未完成，当时下一入口为 `7.25 Part 6 Next Capability Selection + Minimum Contract Review`。后续 7.26 已实现能力专用 Formula Resolution Executor，其余范围仍延后。
 
 ## 持续边界
 
@@ -997,3 +997,16 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 不修改 FormulaAttackFlow。
 - 不建立通用 SkillPipeline。
 - 不建立通用 SkillEffect。
+
+## 7.25–7.28 Through Ball Feet Formula Resolution Executor 最终关闭
+
+- 当前仍处于总体阶段 4：纯规则内核。7.28 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。
+- 7.25 Part 6 Next Capability Selection + Minimum Contract Review 选择 `FThroughBallFeetFormulaResolutionExecutor`，以完整 Assembler Result 为唯一输入，并在同一 Report-only 阶段冻结 Minimum Contract；不另增单独的 Contract / Boundary Review 阶段，7.27 仍负责实现后的 Independent Review + Closure Decision。
+- 7.26 Implementation 提交为 `693e4d9 feat: add through ball feet formula resolution executor`，只新增 Executor 头文件、实现文件与 30 项专项测试文件。
+- 7.27 Independent Review + Closure Decision 为 `Can Close` / `PASS`，没有新增 Finding。独立实际验证为 Executor 30/30、Assembler 41/41、Feet Plan 66/66、FormulaResolver 5/5、SingleCardFormulaResolutionExecutor 7/7、CoreRules 1236/1236，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；`1236 = 1206 + 30`。
+- Executor 消费完整 Assembly Result，检查上游成功状态、Plan / Resolver Input 来源一致性和 Resolver context；不重算 Feet 公式或参与者资格。全部验证通过后，对原始 Resolver Input 只调用一次 FormulaResolver 并完整保存 Resolution。
+- `Executor bSuccess` 与 Formula Winner 分离：Attacker 或 Defender 获胜都可构成成功执行；GK tie、stamina tie、最终等 stamina Defender 获胜与双向 fast suppression 均沿用 FormulaResolver，不在 Executor 重复实现。
+- Through Ball Feet Formula Resolution Executor 最小 CoreRules 子切片已正式关闭。规则层 Formula Resolution 已存在，但 Feet Consumer、Composition、Match State mutation、score / card / attack-end mutation、FormulaAttackFlow、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 仍未完成。
+- Feet Plan `M-001` 与 Assembler `7.23-M-001` 继续作为历史非阻塞测试债务；7.27 没有发现新的 Executor 测试债务。
+- 7.28 为 Docs-only，未重新运行编译、UHT 或测试；7.27 是最近一次独立实际验证来源。
+- 下一唯一入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review），7.28 不预选具体 Implementation。

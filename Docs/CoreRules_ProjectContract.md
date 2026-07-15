@@ -377,4 +377,103 @@ DuplicateDefendingParticipant
 - 阶段 7.23 最近一次独立实际验证为 ThroughBallFeetFormulaResolverInputAssembler 41/41、ThroughBallFeetPlanQuery 66/66、ThroughBallParticipantEligibilityQuery 52/52、FormulaResolver 5/5、SingleCardFormulaInputAssemblyQuery 13/13、CoreRules 1206/1206，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；`1206 = 1165 + 41`。7.24 为 Docs-only，未重新运行编译、UHT 或测试。
 - Feet Plan `M-001` 是 `ThroughBallFeetPlanQueryTests::AreEligibilityResultsEqual` 未逐字段比较全部嵌套 SkillRule Query / Snapshot Validation Result 诊断；现有生产 Contract 与 Plan 行为未发现错误。
 - Assembler `7.23-M-001` 是 dependency-boundary tests 使用精确源码字符串断言。当前生产实现无禁止依赖，include / call 审查、编译、链接和回归均通过；字符串断言未来可能被别名、间接调用或文本变化绕过，仅影响未来检出强度，可在维护阶段用编译期依赖边界或可观测调用边界补强。两个债务互相独立，均不修改生产 Contract，也不阻塞相应切片关闭。
-- Feet Plan 与 Feet Resolver Input Assembler 最小 CoreRules 子切片均已关闭；FormulaResolver execution、实际 Goal / Miss resolution、attack-end mutation、Consumer、Composition、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 仍未完成。下一唯一入口为 `7.25 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review），不得预选具体 Implementation。
+- Feet Plan 与 Feet Resolver Input Assembler 最小 CoreRules 子切片均已关闭；在 7.24 关闭时，FormulaResolver execution、实际 Goal / Miss resolution、attack-end mutation、Consumer、Composition、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 尚未完成，当时下一唯一入口为 `7.25 Part 6 Next Capability Selection + Minimum Contract Review`。后续 7.26 已实现能力专用 Formula Resolution Executor，其余延后范围不变。
+
+## Through Ball Feet Formula Resolution Executor Contract（7.28）
+
+当前仍处于总体阶段 4：纯规则内核。7.28 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。阶段 7.26 提交 `693e4d9 feat: add through ball feet formula resolution executor`；7.27 Independent Review + Closure Decision 为 `Can Close` / `PASS`，没有新增 Finding。
+
+### Execution Input
+
+```cpp
+struct FThroughBallFeetFormulaResolutionExecutionInput
+{
+    FThroughBallFeetFormulaResolverInputAssemblyResult
+        ResolverInputAssemblyResult;
+};
+```
+
+- Input 只消费完整 Assembler Result，不直接接收裸 Resolver Input，不重新接收 Formula Plan，也不重新调用 Assembler。
+- Executor 不读取 Snapshot、Eligibility 或 Match State；完整 Input 以值拷贝保存在 Result 中。
+
+### Error Contract
+
+```cpp
+enum class EThroughBallFeetFormulaResolutionExecutionErrorCode : uint8
+{
+    None,
+    ResolverInputAssemblyFailed,
+    InvalidResolverInputAssemblyResult
+};
+```
+
+- 顺序固定；无 `MAX`、无 `FormulaResolutionFailed`，不复制 Assembler 的 13 项错误，也不创建通用 Formula Executor Error。
+- Assembly 正式失败映射为 `ResolverInputAssemblyFailed`；声称成功但状态、映射或 context 不一致时使用 `InvalidResolverInputAssemblyResult`。上游完整诊断通过 Input 副本保留。
+
+### Result Contract
+
+Result 固定包含 `bSuccess / ErrorCode / ErrorMessage / InvalidField / Input / bHasFormulaResolution / FormulaResolutionResult`。失败保持 `bSuccess=false`、`bHasFormulaResolution=false` 和完整默认 `FFormulaResolutionResult`；成功保持 `bSuccess=true`、`ErrorCode=None`、`bHasFormulaResolution=true` 并完整保存 FormulaResolver 返回值。
+
+`Executor bSuccess != Formula Winner`：Attacker 胜与 Defender 胜都属于 Executor 成功。不得为此新增 `bIsMiss`、Consumer Result、Handoff、score update 或 Match State mutation。
+
+### Assembly Result Consumption 与 Mapping Consistency
+
+前五项首错优先检查为 `AssemblyResult.bSuccess → ErrorCode → ErrorMessage → InvalidField → bHasResolverInput`。Assembly 失败或成功状态不一致都在 Resolver 调用前返回，不重新调用 Assembler，也不复制其 Error enum。
+
+成功状态继续逐字段检查 Plan 与 Resolver Input 的 FormulaType，以及双方 BaseValue、Modifier、ComparePoint、D6 rolled flag、ParticipatingStamina、GK participation、LogId、TurnIndex、AttackerPlayerId、DefenderPlayerId 和 InvolvedCardIds。该检查只验证来源一致性：不重算 Attack / Defense average、GK half 或固定 `+2`，不重建 stamina / InvolvedCardIds，不重新验证 Helper / GK 业务规则。
+
+映射一致后，Resolver Input 必须满足 `LogId valid`、`TurnIndex >= 0`、Attacker / Defender PlayerId 有效且互异；失败统一为 `InvalidResolverInputAssemblyResult` 并指向具体 InvalidField。
+
+### 33 步首错优先顺序
+
+1. `AssemblyResult.bSuccess`
+2. `AssemblyResult.ErrorCode`
+3. `AssemblyResult.ErrorMessage`
+4. `AssemblyResult.InvalidField`
+5. `AssemblyResult.bHasResolverInput`
+6. Plan FormulaType
+7. ResolverInput FormulaType
+8. FormulaType mapping
+9. Attacker BaseValue mapping
+10. Attacker Modifier mapping
+11. Attacker ComparePoint mapping
+12. Attacker rolled flag
+13. Attacker stamina mapping
+14. Defender BaseValue mapping
+15. Defender Modifier mapping
+16. Defender ComparePoint mapping
+17. Defender rolled flag
+18. Defender stamina mapping
+19. GK participation mapping
+20. LogId mapping
+21. TurnIndex mapping
+22. Attacker owner mapping
+23. Defender owner mapping
+24. InvolvedCardIds mapping
+25. Resolver LogId valid
+26. Resolver TurnIndex valid
+27. Attacker owner valid
+28. Defender owner valid
+29. Owner conflict
+30. FormulaResolver call
+31. Save FormulaResolution
+32. `bHasFormulaResolution=true`
+33. `bSuccess=true`
+
+### FormulaResolver Call 与 Resolution Semantics
+
+全部验证完成后，只对 Assembly Result 中未修改的 Resolver Input 调用一次 `UFormulaResolver::ResolveFormula(ResolverInput)`，并完整保存返回值。Executor 不调用 Feet Assembler、SingleCard Assembler / Executor、FormulaAttackFlow 或 MatchPlay，也不访问 Match State。
+
+完整 Resolution 保留 FormulaType、AttackerFinalValue、DefenderFinalValue、Winner、WinReason、`bIsGoal`、`bAttackEnded`、`bContinueResolution`、`bFastSuppressionTriggered` 与 MatchLogEntry。Attacker victory 为 Goal、攻击结束且不继续 Resolution；Defender victory 为非 Goal、攻击结束且不继续 Resolution，但 Executor 仍成功。当前无独立 `bIsMiss`；Miss 由 Defender 胜、非 Goal、攻击结束和 Formula Plan 中的 `bDefenderVictoryIsMiss=true` 共同表达。
+
+数值平局且 GK participation 为 true 时 Defender 胜；无 GK 时比较双方 stamina 总和，stamina 总和仍相同时 Defender 胜。Fast suppression 只由 FormulaResolver 产生，Executor 不重复实现。
+
+### Defaults、Immutability、Determinism 与关闭状态
+
+- 失败 Resolution 完整默认；Result 保存完整 Input 副本。
+- Assembly Result、Formula Plan、Resolver Input、stamina arrays 与 InvolvedCardIds 均不变。
+- 相同 Input 产生相同 Result；无 RNG、时间读取、Provider、DataTable、database 或共享状态 mutation。
+- 7.27 是最近一次独立实际验证来源：Executor 30/30、Assembler 41/41、Feet Plan 66/66、FormulaResolver 5/5、SingleCardFormulaResolutionExecutor 7/7、CoreRules 1236/1236，Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；`1236 = 1206 + 30`。7.28 为 Docs-only，未重新运行编译、UHT 或测试。
+- Feet Plan `M-001` 与 Assembler `7.23-M-001` 保持为历史非阻塞测试债务；两者不影响当前生产 Contract，也不阻塞已关闭切片。7.27 没有发现新的 Executor 测试债务。
+- Through Ball Feet Formula Resolution Executor 最小 CoreRules 子切片已正式关闭。Consumer、Composition、Match State mutation、FormulaAttackFlow、MatchPlay、Behind Defense、Anti-Offside、One-on-One 和完整 Through Ball 仍未完成。
+- 下一唯一入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review），不得预选具体 Implementation。
