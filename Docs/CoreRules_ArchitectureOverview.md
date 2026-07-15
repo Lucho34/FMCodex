@@ -228,4 +228,33 @@ Executor 先消费 Assembly failure 和 success-state consistency，再检查 Pl
 
 7.27 是最近一次独立实际验证来源：Executor 30/30、Assembler 41/41、Feet Plan 66/66、FormulaResolver 5/5、SingleCardFormulaResolutionExecutor 7/7、CoreRules 1236/1236，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；`1236 = 1206 + 30`。7.28 为 Docs-only，未重新运行编译、UHT 或测试。
 
-Through Ball Feet Formula Resolution Executor 最小 CoreRules 子切片已正式关闭。规则层 Formula Resolution 已存在，但 Consumer、Composition、Match State mutation、MatchPlay、其他 Through Ball 分支和完整 Through Ball 仍未完成；下一入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`。
+Through Ball Feet Formula Resolution Executor 最小 CoreRules 子切片已正式关闭。规则层 Formula Resolution 已存在；在 7.28 关闭时 Consumer、Composition、Match State mutation、MatchPlay、其他 Through Ball 分支和完整 Through Ball 仍未完成，当时的下一入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`。当前状态见后续 7.32 章节。
+
+## Through Ball Feet Formula Resolution 测试侧 Composition 边界（7.32）
+
+当前 Through Ball Feet 纯规则生产链为：
+
+```text
+Branch Selection
+→ Participant Eligibility
+→ Feet Plan
+→ Resolver Input Assembler
+→ Formula Resolution Executor
+```
+
+7.30 提交 `113488d` 新增的 `ThroughBallFeetFormulaResolutionCompositionTests.cpp` 只在自动化测试侧串联其中后三个节点：
+
+```text
+FThroughBallFeetPlanQuery::Evaluate
+→ FThroughBallFeetFormulaResolverInputAssembler::Assemble
+→ FThroughBallFeetFormulaResolutionExecutor::Execute
+→ FFormulaResolutionResult 只读投影
+```
+
+该 Composition 使用真实生产 Input / Result 类型验证完整桥接，但不属于生产模块，不提供生产调用 API，不形成生产 Pipeline，也不创建 Consumer。它不重跑 Eligibility、不重算 Feet 公式、不直接调用 FormulaResolver、不连接 FormulaAttackFlow 或 MatchPlay，不读取或修改 Match State，也不执行 score、card 或 attack-end mutation；`AttackEnded` 仅作为正式 Resolution metadata 被读取。
+
+测试侧 Composition Input / Result / ErrorCode、Goal / Miss Outcome View 与 `PlannedGoalScorerCardId` 全部为测试文件局部类型，不进入生产架构接口表。`PlannedGoalScorerCardId` 表示 Plan 中冻结的 Runner / Shooter metadata；实际 Outcome 由测试侧 Goal / Miss 投影区分。
+
+7.31 最近一次独立实际验证为 Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。7.32 为 Docs-only，没有重新运行 Build、UHT 或测试。
+
+测试侧 Composition Tests 已关闭，但生产 Feet Consumer / Composition、Match State 执行、FormulaAttackFlow、MatchPlay、其他 Through Ball 分支和完整 Through Ball 仍未实现。下一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`。

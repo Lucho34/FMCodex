@@ -476,4 +476,20 @@ Result 固定包含 `bSuccess / ErrorCode / ErrorMessage / InvalidField / Input 
 - 7.27 是最近一次独立实际验证来源：Executor 30/30、Assembler 41/41、Feet Plan 66/66、FormulaResolver 5/5、SingleCardFormulaResolutionExecutor 7/7、CoreRules 1236/1236，Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；`1236 = 1206 + 30`。7.28 为 Docs-only，未重新运行编译、UHT 或测试。
 - Feet Plan `M-001` 与 Assembler `7.23-M-001` 保持为历史非阻塞测试债务；两者不影响当前生产 Contract，也不阻塞已关闭切片。7.27 没有发现新的 Executor 测试债务。
 - Through Ball Feet Formula Resolution Executor 最小 CoreRules 子切片已正式关闭。Consumer、Composition、Match State mutation、FormulaAttackFlow、MatchPlay、Behind Defense、Anti-Offside、One-on-One 和完整 Through Ball 仍未完成。
-- 下一唯一入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review），不得预选具体 Implementation。
+- 7.28 关闭后的历史入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review）；该入口已完成，当前入口见后续 7.32 Contract。
+
+## Through Ball Feet Formula Resolution Composition Tests Contract（7.32）
+
+阶段 7.30 提交 `113488d test: add through ball feet formula resolution composition coverage`，只新增测试文件 `Source/FMCodex/CoreRules/ThroughBallFeetFormulaResolutionCompositionTests.cpp`。该文件以测试局部类型串联真实 `Feet Plan Query → Resolver Input Assembler → Formula Resolution Executor`，证明真实 Input / Result 类型可以形成只读测试链；它不是生产 Consumer、生产 Composition、公共 Composition Framework 或生产 Pipeline。
+
+Composition helper 从 `FThroughBallFeetPlanQueryInput` 开始，按顺序最多调用一个 Plan Query、一个 Assembler 和一个 Executor。Assembler Input 只来自正式 Plan Result，Executor Input 保存完整正式 Assembly Result；helper 不重跑 Eligibility、不重查 Snapshot、不重算 Attack / Defense average、GK half、固定 `+2`、stamina 或 InvolvedCardIds，也不直接调用 FormulaResolver。
+
+Attacker Winner 投影为 Goal，Defender Winner 投影为 Miss；两者都是 Composition 成功，并保持 `AttackEnded=true / ContinueResolution=false`。测试侧 `PlannedGoalScorerCardId` 只表示 Plan 中 Runner / Shooter metadata，Goal 和 Miss 共用同一无条件投影；它和测试侧 Outcome / Error 类型都不是新增生产 Contract。
+
+Composition 验证关键输入和嵌套结果在链中的保留，并通过 const 输入、值复制和控制流审查确认未发现修改路径；不得把它描述为逐字段比较了所有嵌套 Input / Result。完整 `FFormulaResolutionResult` 由值复制保留，测试只对核心 Resolution 字段和关键 metadata 做比较。部分 test-local consistency guards 无法通过当前真实公开入口安全构造，已接受为非阻断 defensive guards，不属于生产架构债务。
+
+7.31 Independent Review + Closure Decision 为 `PASS WITH NON-BLOCKING FINDINGS`，无 Blocking / Major。三个 Minor 只涉及跨阵营同 CardId 测试的 Eligibility 证据范围、不变性逐字段比较精度和 Goal planned scorer 直接 assertion 精度，不改变生产 Contract，也不阻塞关闭。Feet Plan `M-001` 与 Assembler `7.23-M-001` 继续保留为既有非阻塞测试债务。
+
+7.31 是最近一次独立实际验证来源：Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257，Development Editor Build、UHT `-ForceHeaderGeneration -WarningsAsErrors` 与 `git diff --check` 均通过；`1257 = 1236 + 21`。7.32 为 Docs-only，没有重新运行 Build、UHT 或自动化测试。
+
+当前仍无生产 Feet Consumer / Composition、Match State mutation、score update、card movement / consumption、attack-end mutation、FormulaAttackFlow 或 MatchPlay。下一唯一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）。

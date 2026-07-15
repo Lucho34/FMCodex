@@ -1009,4 +1009,16 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - Through Ball Feet Formula Resolution Executor 最小 CoreRules 子切片已正式关闭。规则层 Formula Resolution 已存在，但 Feet Consumer、Composition、Match State mutation、score / card / attack-end mutation、FormulaAttackFlow、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 仍未完成。
 - Feet Plan `M-001` 与 Assembler `7.23-M-001` 继续作为历史非阻塞测试债务；7.27 没有发现新的 Executor 测试债务。
 - 7.28 为 Docs-only，未重新运行编译、UHT 或测试；7.27 是最近一次独立实际验证来源。
-- 下一唯一入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review），7.28 不预选具体 Implementation。
+- 7.28 关闭后的历史入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review）；该入口已完成，当前入口见后续 7.32 关闭记录。
+
+## 7.29–7.32 Through Ball Feet Formula Resolution Composition Tests 最终关闭
+
+- 7.29 选择 test-only Feet Formula Resolution Composition 并冻结单文件最小契约；7.30 提交 `113488d` 只新增 `ThroughBallFeetFormulaResolutionCompositionTests.cpp` 和 21 项测试，没有修改生产代码、现有测试、Docs 或 Build.cs。
+- 测试侧 Composition 严格串联真实 `Feet Plan Query → Feet Resolver Input Assembler → Feet Formula Resolution Executor → Formula Resolution Result`，验证能力专用生产类型可无损桥接、阶段失败可短路、Goal / Miss terminal outcome 可读取且关键 metadata 保留。它不重跑 Eligibility、不重算公式、不直接调用 FormulaResolver，也不修改 Match State。
+- Attacker Winner 与 Defender Winner 均为合法 Composition 成功；后者投影为 Miss。测试侧 `PlannedGoalScorerCardId` 始终表示 Plan 中 Runner / Shooter metadata，不表示该球员已经进球，也不是生产字段。
+- 7.31 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS` / `SAFE TO COMMIT`，无 Blocking / Major。三个 Minor 是：同 CardId 用例只证明下游链保留该 identity、未在该用例内重新证明 Eligibility acceptance；不变性逐字段比较少于名称暗示范围；Goal 路径未单独直接断言 planned scorer。三者均不影响生产 Contract 或关闭结论。
+- test-local consistency guards 已判定为 `ACCEPTABLE DEFENSIVE GUARDS`，不登记为生产债务。Feet Plan `M-001` 与 Assembler `7.23-M-001` 保持为既有非阻塞测试债务，不在 7.32 修复或重新编号。
+- 7.31 最近一次独立实际验证为 Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257；Development Editor Build、UHT `-ForceHeaderGeneration -WarningsAsErrors` 与 `git diff --check` 均通过，`1257 = 1236 + 21`。7.32 为 Docs-only，未重新运行 Build、UHT 或测试。
+- 当前已关闭 Feet Branch Selection、Participant Eligibility、Feet Formula Plan、Feet Resolver Input Assembler、Feet Formula Resolution Executor 和 Feet Formula Resolution Composition Tests。准确边界是 Feet 纯规则 Formula Resolution 节点及其测试侧整链 Composition 已关闭，不代表完整 Through Ball 生产链完成。
+- 仍未完成 Feet production Consumer / Composition、Match State mutation、score update、card movement / consumption、attack-end mutation、FormulaAttackFlow、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball。
+- 下一唯一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；该阶段重新比较剩余能力，7.32 不直接选择下一实现项。

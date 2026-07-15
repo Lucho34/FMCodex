@@ -123,6 +123,11 @@
 - 7.22 Through Ball Feet FormulaResolver Input Assembler Implementation 已提交（`f320e4a feat: add through ball feet resolver input assembler`），只新增 `ThroughBallFeetFormulaResolverInputAssembler.h/.cpp` 与 `ThroughBallFeetFormulaResolverInputAssemblerTests.cpp`。
 - 7.23 Through Ball Feet Resolver Input Assembler Independent Review + Closure Decision 结论为 `Can Close` / `PASS WITH FINDINGS`：Assembler 41/41、Feet Plan 66/66、Participant Eligibility 52/52、FormulaResolver 5/5、SingleCardFormulaInputAssemblyQuery 13/13、CoreRules 1206/1206、Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均独立通过；唯一新 Finding `7.23-M-001` 是 dependency-boundary tests 使用脆弱的精确源码字符串断言，不影响生产 Contract 或当前行为。
 - 7.24 Through Ball Feet FormulaResolver Input Assembler Final Closure Docs Sync 只同步五份授权 CoreRules 文档，并正式关闭该 Assembler 的 CoreRules-only minimum slice；7.24 为 Docs-only，不重新运行编译、UHT 或测试，7.23 是最近一次独立实际验证来源。
+- 7.25 至 7.28 已完成 Feet Formula Resolution Executor 的选择、实现、独立审查与最终 Docs Sync；该 Executor 最小切片已关闭。
+- 7.29 Part 6 Next Capability Selection + Minimum Contract Review 选择 test-only Feet Formula Resolution Composition，并冻结只串联真实 Plan Query、Resolver Input Assembler 与 Formula Resolution Executor 的单文件测试边界。
+- 7.30 Through Ball Feet Formula Resolution Composition Tests 已由用户提交（`113488d test: add through ball feet formula resolution composition coverage`），只新增 `ThroughBallFeetFormulaResolutionCompositionTests.cpp` 和 21 项自动化测试。
+- 7.31 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS` / `SAFE TO COMMIT`：Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均独立通过；`1257 = 1236 + 21`。
+- 7.32 Through Ball Feet Formula Resolution Composition Tests Final Closure Docs Sync 为当前 Docs-only 阶段；本阶段只同步五份授权文档，不重新运行 Build、UHT 或自动化测试。Composition Tests 在本次同步中正式关闭，下一唯一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）。
 
 ## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
 
@@ -531,4 +536,15 @@
 - Through Ball Feet Formula Resolution Executor 最小 CoreRules 子切片已正式关闭。规则层 Formula Resolution 已存在，但 Through Ball Feet Consumer、Composition、Match State mutation、score update、card movement / consumption、attack-end mutation、FormulaAttackFlow、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 仍未完成。
 - Feet Plan `M-001` 与 Assembler `7.23-M-001` 继续作为历史非阻塞测试债务保留；7.27 没有发现新的 Executor 测试债务。
 - 7.28 为 Docs-only，未重新运行编译、UHT 或测试；7.27 是最近一次独立实际验证来源。
-- 下一唯一入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review），不得在 7.28 预选具体 Implementation。
+- 7.28 关闭后的历史入口为 `7.29 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review）；该入口已完成，当前入口见后续 7.32 关闭记录。
+
+## 7.29–7.32 Through Ball Feet Formula Resolution Composition Tests 最终关闭
+
+- 7.29 冻结 test-only Composition 最小契约；7.30 提交 `113488d` 只新增 `Source/FMCodex/CoreRules/ThroughBallFeetFormulaResolutionCompositionTests.cpp`，没有生产 Consumer、生产 Composition、公共测试框架或生产 API。
+- 测试侧链固定为 `FThroughBallFeetPlanQuery::Evaluate → FThroughBallFeetFormulaResolverInputAssembler::Assemble → FThroughBallFeetFormulaResolutionExecutor::Execute → FFormulaResolutionResult` 只读投影。Composition helper 不重跑 Eligibility、不重算 Feet 公式、不直接调用 FormulaResolver，也不访问或修改 Match State。
+- 21 项测试验证真实生产 Result 类型桥接、Goal / Miss terminal 读取、Helper / Active GK 组合、关键 metadata 保留、上游失败短路与禁止依赖。Attacker Winner 与 Defender Winner 都是合法 Composition 成功；测试侧 `PlannedGoalScorerCardId` 只是 Plan 中 Runner / Shooter metadata，不是新增生产字段或实际进球声明。
+- 7.31 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS`，无 Blocking / Major。三项 Minor 分别是跨阵营相同 CardId 用例未在该用例内重新证明 Eligibility acceptance、完整不变性措辞强于实际逐字段比较范围、Goal 路径未单独直接断言 planned scorer；它们只限制测试证据精度，不构成生产缺陷或关闭阻断。
+- test-local consistency guards 当前无法通过真实公开端到端输入安全触达，7.31 判定为 `ACCEPTABLE DEFENSIVE GUARDS`，不登记为生产架构债务。Feet Plan `M-001` 与 Assembler `7.23-M-001` 继续作为既有非阻塞测试债务。
+- 7.31 是最近一次独立实际验证来源：Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257，Build、UHT `-ForceHeaderGeneration -WarningsAsErrors` 与 `git diff --check` 均通过；`1257 = 1236 + 21`。7.32 为 Docs-only，未重新运行 Build、UHT 或测试。
+- Through Ball Feet 的纯规则 Formula Resolution 节点及其测试侧整链 Composition Tests 已关闭；生产 Feet Consumer / Composition、Match State mutation、score update、card movement / consumption、attack-end mutation、FormulaAttackFlow、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 仍未实现。
+- 下一唯一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review）；7.32 不预选下一实现能力。
