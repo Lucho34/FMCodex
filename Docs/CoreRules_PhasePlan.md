@@ -112,13 +112,20 @@
 - 7.13 Through Ball Runtime Participant Eligibility Final Closure Docs Sync 已完成，待用户提交：只同步五份授权 CoreRules 文档，Through Ball Runtime Participant Eligibility 最小 CoreRules 子切片在本次同步中正式关闭。
 - 阶段 7.11 最近一次独立实际验证结果为 ThroughBallParticipantEligibilityQuery 52/52、SkillRuleSnapshotValidator 23/23、SkillRuleSnapshotQuery 17/17、PlayerCardRuleSnapshotValidator 12/12、PlayerCardRuleSnapshotQuery 8/8、ThroughBallBranchSelectionQuery 18/18、CoreRules 1099/1099；Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。1099 = 阶段 7.03 的 1047 + Participant Eligibility 新增 52。7.12 为 Report-only，7.13 为 Docs-only，均未重新运行编译、UHT 或测试。
 - 7.13 关闭后唯一入口为 `7.14 Part 6 Post-Through-Ball-Participant-Eligibility Next Capability Decision Review`（Report-only）；该阶段重新比较剩余能力，不在 7.13 预选 Active GK、Feet、Behind Defense 或其他 Implementation。
+- 7.14 Part 6 Post-Through-Ball-Participant-Eligibility Next Capability Decision Review 已完成：选择 Feet Plan 作为下一最小能力，因为 Feet Canonical 已完整、它是 Active GK 的第一个真实 Consumer；独立 GK Context 会形成无 Consumer 能力，而 Behind Defense P1 仍有短路顺序歧义。
+- 7.15 Through Ball Feet Minimum Contract Review 已冻结 Eligibility Result consumption、外部 AttackD6 / DefenseD6、LogId / TurnIndex、Optional Active GK、能力专用 Error / Decision / Input / Result、固定验证顺序与 66 项测试语义；同时确认现有 SingleCard 路径无法完整表达多人 stamina 与 GK participation。
+- 7.16 Through Ball Feet Formula Plan Boundary Review 已以 PASS 冻结能力专用 `FThroughBallFeetFormulaPlan`、双方多人 stamina 数组、Active GK 单一事实来源、数值精度、Goal / Miss terminal metadata、未来 Resolver Input Assembler 边界和三个实现文件。
+- 7.17 Through Ball Feet Plan Implementation 已提交（`e517bb4 feat: add through ball feet plan`），只新增 `ThroughBallFeetPlanQuery.h`、`ThroughBallFeetPlanQuery.cpp` 与 `ThroughBallFeetPlanQueryTests.cpp`。
+- 7.18 Through Ball Feet Plan Independent Boundary Review + Regression 结论为 PASS WITH FINDINGS：ThroughBallFeetPlanQuery 66/66、CoreRules 1165/1165、Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；唯一 Finding M-001 是测试 helper 未逐字段比较全部嵌套 Eligibility 诊断，不影响当前生产 Contract 或 Plan 行为。
+- 7.19 Through Ball Feet Plan Closure Readiness Review 确认该最小切片可以关闭；M-001 作为非阻塞测试债务登记，不插入 Test-only 修正阶段。7.19 为 Report-only，没有修改文件。
+- 7.20 Through Ball Feet Plan Final Closure Docs Sync 只同步五份授权 CoreRules 文档，并正式关闭 Through Ball Feet Plan CoreRules-only minimum slice；本阶段不修改代码、测试或 Canonical，也不重新运行编译、UHT 或测试。
 
 ## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
 
 - 关闭范围仅包括显式外部 SelectionD6 presence / `[1,6]` 范围、确定性三分支映射、专用 Branch / Input / Result / Error Contract、成功与失败不变量、Input 保存与不变性、无状态和无 RNG 边界、18 项专项测试、6.97 独立审查、6.98 Closure Readiness 与 6.99 Final Closure Docs Sync。
 - 映射固定为 D6 1–2 → `Feet`（脚下球）、3–4 → `BehindDefense`（身后球）、5–6 → `AntiOffside`（反越位）。校验顺序固定为 D6 presence → D6 `[1,6]` → 显式映射；Query 不生成、重掷或反转 D6。
 - 成功消费门槛固定为 `bSuccess && bHasSelectedThroughBallBranch && SelectedThroughBallBranch != None && ErrorCode == None`。失败保持无可消费分支、`SelectedThroughBallBranch=None`、非空诊断与原始 Input 副本。
-- 6.99 的 Branch Selection 关闭范围当时不包括 `ESkillRuleType::ThroughBall`、Skill Rule Snapshot 支持或参与者资格；该历史边界保持不变。后续 7.02 已独立实现 SkillRule Support，7.10 又独立实现 Participant Eligibility，但 Feet Plan、Active GK Context、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 与完整 Through Ball 仍未实现。
+- 6.99 的 Branch Selection 关闭范围当时不包括 `ESkillRuleType::ThroughBall`、Skill Rule Snapshot 支持或参与者资格；该历史边界保持不变。后续 7.02 已独立实现 SkillRule Support，7.10 独立实现 Participant Eligibility，7.17 又独立实现 Feet Plan；Feet Resolver Input Assembly / Formula execution、Behind Defense P1 / P2、Anti-Offside、Through Ball → One-on-One Handoff、One-on-One、生产 Consumer / Composition、MatchPlay 与完整 Through Ball 仍未实现。
 - 6.99 完成后下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only）；不得从本次 Closure 直接预选 SkillRule、具体分支、Continuation 或 One-on-One Implementation。
 
 ## Part 6 Through Ball SkillRule Support CoreRules-only 最小切片关闭状态
@@ -140,8 +147,24 @@
 - `FThroughBallParticipantEligibilityQuery` 复用 `FSkillRuleSnapshotQuery::FindBySkillId` 和 `FPlayerCardRuleSnapshotValidator`，按角色独立验证 Snapshot；Input、SkillRuleSet 与结果计算保持只读和确定性。身份空间由 AttackingOwnerId / DefendingOwnerId 区分，跨阵营相同 CardId 合法；同侧只比较 Carrier / Runner 与 Marker / Helper。
 - Error、十字段 Input、Result、InvalidField、嵌套验证结果、失败默认值和固定验证顺序均已冻结并由 52 项专项测试覆盖。Helper 缺席时完全跳过其 CardId、Snapshot、GK 和身份冲突检查，未执行的 Helper Validation Result 保持默认。
 - 阶段 7.11 最近一次独立实际验证为 ThroughBallParticipantEligibilityQuery 52/52、CoreRules 1099/1099，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；7.12 和 7.13 未重新运行编译、UHT 或测试。
-- Participant Eligibility 最小切片已关闭；Through Ball Active GK Context、Feet Formula / Plan、Behind Defense P1 / P2、Anti-Offside、Through Ball → One-on-One Handoff、One-on-One、Formula execution、Consumer、Composition、MatchPlay 与完整 Through Ball 仍未完成。
+- Participant Eligibility 最小切片已关闭；后续 7.17 已实现把 Optional Active GK 作为 Feet Plan 输入的首个真实 Consumer。Feet Resolver Input Assembly / Formula execution、Behind Defense P1 / P2、Anti-Offside、Through Ball → One-on-One Handoff、One-on-One、Consumer、Composition、MatchPlay 与完整 Through Ball 仍未完成。
 - 唯一下一入口为 `7.14 Part 6 Post-Through-Ball-Participant-Eligibility Next Capability Decision Review`（Report-only）；不得从 Final Closure 直接进入任何具体 Implementation。
+
+## Part 6 Through Ball Feet Plan CoreRules-only 最小切片关闭状态
+
+- 当前仍处于总体阶段 4：纯规则内核；7.20 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。7.14 至 7.20 已完成 Next Capability Decision、Minimum Contract Review、Formula Plan Boundary Review、Implementation、Independent Boundary Review + Regression、Closure Readiness Review 与 Final Closure Docs Sync。Through Ball Feet Plan 最小 CoreRules 子切片已正式关闭。
+- `FThroughBallFeetPlanQuery` 消费完整 `FThroughBallParticipantEligibilityQueryResult`：Eligibility 失败返回 `ParticipantEligibilityFailed`；成功状态内部不一致返回 `InvalidParticipantEligibilityResult`。它检查顶层诊断、Helper mirror、SkillRule Query 与必需角色 Validation Result，但不重跑 SkillRule、AP、Snapshot、身份、Runner 部署或 Eligibility 业务规则。
+- 能力专用 Error 顺序固定为 `None / ParticipantEligibilityFailed / InvalidParticipantEligibilityResult / InvalidAttackD6 / InvalidDefenseD6 / InvalidLogContext / InvalidActiveGoalkeeperIdentity / InvalidActiveGoalkeeperSnapshot / ActiveGoalkeeperMustBeGoalkeeper / DuplicateDefendingGoalkeeperParticipant`，无 `MAX`，不复制 Participant Eligibility 的专用错误集合。Decision 只有 `None / FormulaResolutionRequired`；成功只表示 Plan 已生成、等待未来执行层解析。
+- Input 七字段为 `ParticipantEligibilityResult / AttackD6 / DefenseD6 / bHasActiveGoalkeeper / ActiveGoalkeeperSnapshot / LogId / TurnIndex`；两个比较 D6 均由外部显式提供且不复用 Branch Selection D6，LogId 必须有效、TurnIndex 必须非负。Result 保留 `bSuccess / Decision / ErrorCode / ErrorMessage / InvalidField / Input / ActiveGoalkeeperValidationResult / bHasFormulaPlan / FormulaPlan`；失败 Plan 保持完整默认，缺席 GK 的 Validation Result 保持默认。
+- `FThroughBallFeetFormulaPlan` 使用 `Finishing`。攻方为一位小数 `Average(Carrier Passing, Runner OffBall)`、Modifier 0、stamina 顺序 `[Carrier, Runner]`；防方为一位小数 `Average(Marker Tackling, Helper Marking or 0)`，Modifier 为一位小数 `ActiveGoalkeeper OneOnOne × 0.5`（缺席为 0）再独立 `+2`，stamina 顺序为 `[Marker] + [Helper?] + [Active GK?]`。`RoundOneDecimal(Value) = RoundToFloat(Value × 10) / 10`，不使用整数除法，也不执行最终比较。
+- `bHasActiveGoalkeeper` 是 GK participation 唯一事实来源。false 时完全忽略 GK Snapshot、身份、类型、属性、体力与重复检查；true 时按 CardId → Snapshot Validator → GK type → Marker duplicate → Helper duplicate（如存在）验证。GK 与 Carrier / Runner 同 CardId 因身份空间不同可合法；Plan 不另存第二个 participation 标志。
+- `InvolvedCardIds` 固定为 Carrier、Runner、Marker、存在的 Helper、存在的 Active GK，不排序或去重，跨阵营相同 CardId 可重复。`GoalScorerCardId=RunnerId`，并保存 `bAttackVictoryIsGoal=true / bDefenderVictoryIsMiss=true / bAttackEndsAfterResolution=true / bContinueResolution=false`；这些只是未来执行策略，不是实际 Goal / Miss、比分或 Match State mutation。
+- 固定验证顺序为 Eligibility failure → Eligibility success-state consistency → AttackD6 → DefenseD6 → LogId → TurnIndex → GK presence → 存在时 GK CardId / Snapshot / type / Marker duplicate / Helper duplicate → Plan assembly → Success。Input 以 const 方式消费并在 Result 中保存完整值拷贝，Query 保持确定性。
+- 阶段 7.18 最近一次独立实际验证结果为 ThroughBallFeetPlanQuery 66/66、ThroughBallParticipantEligibilityQuery 52/52、PlayerCardRuleSnapshotValidator 12/12、PlayerCardRuleSnapshotQuery 8/8、SkillRuleSnapshotValidator 23/23、SkillRuleSnapshotQuery 17/17、ThroughBallBranchSelectionQuery 18/18、CoreRules 1165/1165；Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。1165 = Participant Eligibility 关闭后的 1099 + Feet Plan 新增 66。7.19 为 Report-only，7.20 为 Docs-only，均未重新运行编译、UHT 或测试。
+- M-001 为非阻塞测试债务：`ThroughBallFeetPlanQueryTests::AreEligibilityResultsEqual` 尚未逐字段比较全部嵌套 SkillRule Query / Snapshot Validation Result 诊断字段。现有测试已覆盖顶层、Snapshot 与关键成功状态，生产代码使用 const 输入且没有 mutation 路径，当前 Contract 与 Plan 行为未发现错误；该项只影响未来测试检出完整度，可在维护阶段补强测试 helper，不修改生产 Contract，也不阻塞本切片关闭。
+- Feet FormulaResolver Input Assembler 仍未实现。未来独立能力只能把 `FThroughBallFeetFormulaPlan` 映射为 `FFormulaResolverInput`（包括 Formula、双方 Base / Modifier / D6、多参与者 stamina、GK participation、日志、Owner 与 InvolvedCardIds）；不得重读 Snapshot、重跑 Eligibility、重算业务资格、调用 FormulaResolver、修改 Plan 或通过 SingleCard Assembler 有损降级。7.20 不实现或预授权该能力。
+- Feet Plan 最小 CoreRules 子切片已关闭；Resolver Input Assembly、FormulaResolver execution、实际 Goal / Miss resolution、attack-end state mutation、Consumer、Composition、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 与完整 Through Ball 仍未完成。
+- 下一唯一入口为 `7.21 Part 6 Post-Through-Ball-Feet-Plan Next Capability Decision Review`（Report-only），重新比较剩余能力，不预选 Resolver Input Assembler、Behind Defense 或其他具体 Implementation。
 
 ## Part 6 Set Piece Type Selection CoreRules-only 最小切片关闭状态
 
@@ -447,7 +470,7 @@
 
 ## 建议后续阶段
 
-- 当前唯一下一入口为 `7.14 Part 6 Post-Through-Ball-Participant-Eligibility Next Capability Decision Review`；该阶段为 Report-only，重新比较剩余能力，不预选 Active GK、Feet、Behind Defense 或其他具体 Implementation。
+- 当前唯一下一入口为 `7.21 Part 6 Post-Through-Ball-Feet-Plan Next Capability Decision Review`；该阶段为 Report-only，重新比较 Feet Resolver Input Assembler、Behind Defense、Anti-Offside、One-on-One Handoff、显式延后、Part 6 Closure 与总体阶段 5 前置条件，不预选具体 Implementation。
 - 以下较早阶段入口仅保留为历史规划记录，不代表当前下一阶段。
 - 6.93 后续阶段必须先进行新的 Part 6 能力决策 Review，不直接进入 Corner、Long Free Kick、Short Free Kick 或 Penalty 实现。
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。

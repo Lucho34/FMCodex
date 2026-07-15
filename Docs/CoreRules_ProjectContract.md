@@ -244,7 +244,7 @@
 - 调用方只能在 `bSuccess && bHasSelectedThroughBallBranch && SelectedThroughBallBranch != None && ErrorCode == None` 时消费分支。本 Contract 不定义生产 Consumer 类型。
 - Query 不验证 SkillRule / SkillId、参与者、GK / 前场资格、ActionPoint、AttackD6 / DefenseD6，不生成 Formula Plan，不执行任何分支、FormulaResolver、FormulaAttackFlow 或 One-on-One，不处理攻击 / Match State，不生成 RNG，也不建立通用 Branch / Selection / Participant / Eligibility / Continuation、Consumer 或 Composition 框架。任何扩展必须由新的 Canonical、Contract 和 Boundary Review 明确批准。
 - 阶段 6.97 最近一次独立实际复验为 ThroughBallBranchSelectionQuery 18/18、CoreRules 1037/1037，Development Editor、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1037 = 6.92 历史 1019 + 本切片新增 18。6.99 为 Docs-only，未重新运行编译或测试。
-- 6.99 的 Branch Selection 子切片关闭时尚未包含 `ESkillRuleType::ThroughBall`、Through Ball Skill Rule Snapshot 支持或参与者资格；该历史范围不变。后续 7.02 已独立实现 SkillRule Support，7.10 已独立实现 Participant Eligibility；Feet Plan、Active GK Context、Behind Defense P1 / P2、Anti-Offside 执行、Through Ball → One-on-One Handoff、One-on-One、Formula Plan / FormulaResolver、生产 Consumer / Composition、MatchPlay 与完整 Through Ball 仍未实现。
+- 6.99 的 Branch Selection 子切片关闭时尚未包含 `ESkillRuleType::ThroughBall`、Through Ball Skill Rule Snapshot 支持或参与者资格；该历史范围不变。后续 7.02 已独立实现 SkillRule Support，7.10 已独立实现 Participant Eligibility，7.17 又独立实现 Feet Plan；Feet Resolver Input Assembly / Formula execution、Active GK 的其他分支消费、Behind Defense P1 / P2、Anti-Offside、Through Ball → One-on-One Handoff、One-on-One、生产 Consumer / Composition、MatchPlay 与完整 Through Ball 仍未实现。
 - 关闭后的下一入口为 `7.00 Part 6 Post-Through-Ball-Branch-Selection Next Capability Decision Review`（Report-only）；不得从 Closure 直接进入任何具体 Implementation。
 
 ## Part 6 Through Ball SkillRule Support CoreRules-only 最小切片关闭状态
@@ -325,4 +325,45 @@ DuplicateDefendingParticipant
 - Query 不负责 Active GK Context / Snapshot / OneOnOne contribution、Finishing / Transition 判断、Branch Selection、Feet、Behind Defense、Anti-Offside、One-on-One、Formula Plan、FormulaResolver、FormulaAttackFlow、Handoff、Consumer、Composition、Match State、MatchPlay、AP 或体力修改、RNG、Provider、DataTable 或通用 Participant / Eligibility / Identity Framework。
 - Active GK 必须由未来独立 Contract 处理。Participant Eligibility 最小切片已关闭；Active GK、具体分支、Formula、One-on-One 与完整 Through Ball 仍未完成。
 - 阶段 7.11 最近一次独立实际验证结果为 ThroughBallParticipantEligibilityQuery 52/52、CoreRules 1099/1099，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1099 = 阶段 7.03 的 1047 + Participant Eligibility 新增 52。7.12 为 Report-only，7.13 为 Docs-only，均未重新运行编译、UHT 或测试。
-- 关闭后的唯一入口为 `7.14 Part 6 Post-Through-Ball-Participant-Eligibility Next Capability Decision Review`（Report-only）；不得从 Final Closure 直接进入任何具体 Implementation。
+- 该 Participant Eligibility 子切片关闭后的历史入口为 `7.14 Part 6 Post-Through-Ball-Participant-Eligibility Next Capability Decision Review`（Report-only）；7.14 后已选择并于 7.17 实现 Feet Plan。
+
+## Part 6 Through Ball Feet Plan CoreRules-only 最小切片关闭状态
+
+- 当前仍处于总体阶段 4：纯规则内核；7.20 是 CoreRules 内部阶段编号，不是总体阶段 7 双人联网。7.14–7.20 已完成 Decision Review、Minimum Contract Review、Formula Plan Boundary Review、三文件 Implementation、Independent Boundary Review + Regression、Closure Readiness 与 Final Docs Sync。实现提交为 `e517bb4 feat: add through ball feet plan`；Through Ball Feet Plan 最小 CoreRules 子切片已正式关闭。
+
+### Error 与 Decision Contract
+
+- `EThroughBallFeetPlanQueryErrorCode` 顺序固定为：`None`、`ParticipantEligibilityFailed`、`InvalidParticipantEligibilityResult`、`InvalidAttackD6`、`InvalidDefenseD6`、`InvalidLogContext`、`InvalidActiveGoalkeeperIdentity`、`InvalidActiveGoalkeeperSnapshot`、`ActiveGoalkeeperMustBeGoalkeeper`、`DuplicateDefendingGoalkeeperParticipant`。`None` 必须为首项，无 `MAX`；这是 Feet 能力专用顺序，不建立通用 GK / Formula Error，也不复制 Participant Eligibility 的 25 项错误。
+- `EThroughBallFeetPlanQueryDecision` 仅为 `None / FormulaResolutionRequired`。成功表示 Formula Plan 已生成、需要未来执行层解析，不表示已经 Goal、Miss、结束攻击状态或修改比赛。
+
+### Input、Result 与失败默认值
+
+- `FThroughBallFeetPlanQueryInput` 精确包含七个字段：`ParticipantEligibilityResult / AttackD6 / DefenseD6 / bHasActiveGoalkeeper / ActiveGoalkeeperSnapshot / LogId / TurnIndex`。Eligibility Result 必须成功且内部一致；两个 D6 是调用方显式提供的独立比较 D6，不复用 Branch Selection D6；LogId 必须有效，TurnIndex 必须非负。Input 不包含 Match State、Resolver Result、Consumer 或 Handoff。
+- `FThroughBallFeetPlanQueryResult` 精确包含 `bSuccess / Decision / ErrorCode / ErrorMessage / InvalidField / Input / ActiveGoalkeeperValidationResult / bHasFormulaPlan / FormulaPlan`。Input 是完整值拷贝；未执行的 GK Validation Result 保持默认；任何失败均 `bSuccess=false`、`bHasFormulaPlan=false` 且 FormulaPlan 保持完整默认。成功时 `Decision=FormulaResolutionRequired`，Result 不返回实际分数、Goal / Miss、Winner、Resolver Result 或 Match State mutation。
+
+### Formula Plan Contract
+
+- `FThroughBallFeetFormulaPlan` 的 Formula metadata 为 `FormulaType=Finishing`。
+- Attack 字段为 `CarrierId / CarrierPassing / CarrierStamina / RunnerId / RunnerOffBall / RunnerStamina / AttackD6 / AttackBaseValue / AttackExternalModifier / AttackParticipatingStamina`。`AttackBaseValue=RoundOneDecimal((Carrier.Passing + Runner.OffBall) / 2)`，`AttackExternalModifier=0`，stamina 顺序固定为 `[CarrierStamina, RunnerStamina]`。
+- Defense 字段为 `MarkerId / MarkerTackling / MarkerStamina / bHasHelper / HelperId / HelperMarking / HelperStamina / bHasActiveGoalkeeper / ActiveGoalkeeperId / GoalkeeperOneOnOne / GoalkeeperStamina / DefenseD6 / DefenseBaseValue / DefenseExternalModifier / DefenseParticipatingStamina`。`DefenseBaseValue=RoundOneDecimal((Marker.Tackling + Helper.MarkingOrZero) / 2)`；`GoalkeeperContribution` 在 GK 存在时为 `RoundOneDecimal(Goalkeeper.OneOnOne / 2)`，否则为 0；`DefenseExternalModifier=GoalkeeperContribution + 2`。stamina 顺序固定为 `[MarkerStamina] + [HelperStamina if present] + [GoalkeeperStamina if present]`。
+- 缺席 Helper / GK 的 identity 为 `NAME_None`、数值为 0，不进入 stamina array 或 InvolvedCardIds。`RoundOneDecimal(Value)=RoundToFloat(Value × 10) / 10`；Average 与 GK half 保留一位小数，常见为 `.0 / .5`，不使用整数除法、不用“主属性 + 差值 modifier”间接表达，Query 不执行最终比较。
+- Context 字段为 `LogId / TurnIndex / AttackingOwnerId / DefendingOwnerId / InvolvedCardIds`。InvolvedCardIds 固定顺序为 Carrier、Runner、Marker、存在的 Helper、存在的 Active GK；不得排序或去重，跨阵营相同 CardId 可以重复。
+- Outcome metadata 固定为 `GoalScorerCardId=RunnerId / bAttackVictoryIsGoal=true / bDefenderVictoryIsMiss=true / bAttackEndsAfterResolution=true / bContinueResolution=false`。这些字段是未来解析策略，不是实际 Resolution、比分或状态更新。
+
+### Eligibility consumption、Active GK 与验证顺序
+
+- Query 接收完整 `FThroughBallParticipantEligibilityQueryResult`。Eligibility 失败返回 `ParticipantEligibilityFailed`；声称成功但 ErrorCode、ErrorMessage、InvalidField、Helper mirror、SkillRule Query、Carrier / Runner / Marker Validation 或存在的 Helper Validation 不一致时返回 `InvalidParticipantEligibilityResult`。Helper 缺席时不要求其 Validation 成功。Query 不重跑 Eligibility，也不重新验证 SkillRule、AP、角色 Snapshot、身份或 Runner 部署。
+- `bHasActiveGoalkeeper` 是 GK presence / participation 唯一事实来源。false 时不读取 CardId、Snapshot、GK type、OneOnOne 或 stamina，不比较 Marker / Helper，不进入 stamina 或 InvolvedCardIds，Validation Result 保持默认且 contribution 为 0。true 时固定按 CardId → Snapshot Validator → `bIsGoalkeeper` → Marker duplicate → Helper duplicate（Helper 存在时）验证；GK 不得与 Marker / Helper 相同，与 Carrier / Runner 相同 CardId 因不同身份空间而合法。Query 不读取 Match State 的 GK 上场历史，Plan 不另存第二个 participation 标志。
+- 完整验证顺序固定为：Eligibility failure → Eligibility success-state consistency → AttackD6 → DefenseD6 → LogId → TurnIndex → Active GK presence branch → 存在时 GK CardId → GK Snapshot → GK type → GK / Marker conflict → GK / Helper conflict → Formula Plan assembly → Success。错误优先级与此顺序一致；GK 缺席时垃圾 Snapshot 不参与错误选择。
+- 生产入口以 const 方式消费 Eligibility Result 与 Snapshot，Result 保存 Input 值拷贝，行为确定且不修改输入。
+
+### Future Resolver Input Assembler 与禁止职责
+
+- Feet Resolver Input Assembler 尚未实现。未来独立能力只能执行 `FThroughBallFeetFormulaPlan → FFormulaResolverInput`，直接映射 FormulaType、双方 BaseValue / Modifier / D6、双方 ParticipatingStamina、`ResolverInput.bGoalkeeperParticipated=Plan.bHasActiveGoalkeeper`、LogId、TurnIndex、AttackerPlayerId、DefenderPlayerId 与 InvolvedCardIds。
+- 未来 Assembler 不得重读 Snapshot、重跑 Eligibility、重算业务资格、调用 FormulaResolver、修改 Plan 或使用 SingleCard Assembler 有损降级。Feet Query 当前不调用 FormulaResolver、FormulaAttackFlow、Consumer、Composition 或 MatchPlay，不修改 Match State，也不建立通用 Skill / Participant / Eligibility / Formula Plan 框架。
+
+### 验证与非阻塞测试债务
+
+- 阶段 7.18 最近一次独立实际验证为 ThroughBallFeetPlanQuery 66/66、ThroughBallParticipantEligibilityQuery 52/52、PlayerCardRuleSnapshotValidator 12/12、PlayerCardRuleSnapshotQuery 8/8、SkillRuleSnapshotValidator 23/23、SkillRuleSnapshotQuery 17/17、ThroughBallBranchSelectionQuery 18/18、CoreRules 1165/1165，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；1165 = 1099 + 66。7.19 为 Report-only，7.20 为 Docs-only，均未重新运行编译、UHT 或测试。
+- M-001 是非阻塞测试债务：`ThroughBallFeetPlanQueryTests::AreEligibilityResultsEqual` 未逐字段比较全部嵌套 SkillRule Query / Snapshot Validation Result 诊断字段。现有测试已覆盖顶层、Snapshot 与关键成功状态；生产代码使用 const 输入且没有 mutation 路径，当前 Contract 和 Plan 行为未发现错误。该项仅影响未来测试检出完整度，可在维护阶段补强测试 helper，不改变生产 Contract，也不阻塞本切片关闭。
+- Feet Plan 最小 CoreRules 子切片已关闭；Resolver Input Assembly、FormulaResolver execution、实际 Goal / Miss resolution、attack-end mutation、Consumer、Composition、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 仍未完成。下一唯一入口为 `7.21 Part 6 Post-Through-Ball-Feet-Plan Next Capability Decision Review`（Report-only），不得预选具体 Implementation。
