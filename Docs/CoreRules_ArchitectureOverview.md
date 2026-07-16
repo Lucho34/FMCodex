@@ -258,3 +258,20 @@ FThroughBallFeetPlanQuery::Evaluate
 7.31 最近一次独立实际验证为 Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过。7.32 为 Docs-only，没有重新运行 Build、UHT 或测试。
 
 测试侧 Composition Tests 已关闭，但生产 Feet Consumer / Composition、Match State 执行、FormulaAttackFlow、MatchPlay、其他 Through Ball 分支和完整 Through Ball 仍未实现。下一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Behind Defense P1 Plan Query 架构边界（7.37）
+
+当前新增的无状态生产链边界为：
+
+```text
+Participant Eligibility Result
+→ Behind Defense P1 Plan Query
+  ├─ AttackD6 1–2 → OutOfPlay（终止，不生成 Formula Plan）
+  └─ AttackD6 3–6 + DefenseD6 → FormulaResolutionRequired + P1 Transition Plan
+```
+
+`FThroughBallBehindDefenseP1PlanQuery` 只消费上游 Eligibility Result，不重跑 Eligibility 或查询 Snapshot。它先验证 Eligibility、BehindDefense 分支、AttackD6 和日志上下文；OutOfPlay 判断发生在 DefenseD6 presence / range 校验之前，因此 1-2 路径不会消费 DefenseD6。3-6 路径生成的 Plan 保存参与者属性、体力、双方外部 D6、固定防守 `+1`、日志、Owner、有序 CardId 以及“进攻胜进入 P2 / 防守胜结束进攻”的 policy metadata。
+
+该 Query 不调用 FormulaResolver、不执行 P1 胜负、不产生 P2 结果、不读取 Active GK、不访问或修改 Match State，也不生成 RNG。P1 Resolver Input Assembler 与 Executor 尚未实现。Feet Formula Resolution Composition Tests 仅是 Feet 的 test-only 证据，不是 P1 的生产依赖或消费链。
+
+7.35 完整验证为 P1 55/55、FormulaResolver 5/5、CoreRules 1312/1312，Build 与 UHT 均通过；7.36 独立定向复验为 P1 55/55、Eligibility 52/52、Branch 18/18。7.37 只同步文档。下一入口为 `7.38 Part 6 Next Capability Selection + Minimum Contract Review`，本阶段不预选候选。

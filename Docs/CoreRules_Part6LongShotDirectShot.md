@@ -1022,3 +1022,12 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 当前已关闭 Feet Branch Selection、Participant Eligibility、Feet Formula Plan、Feet Resolver Input Assembler、Feet Formula Resolution Executor 和 Feet Formula Resolution Composition Tests。准确边界是 Feet 纯规则 Formula Resolution 节点及其测试侧整链 Composition 已关闭，不代表完整 Through Ball 生产链完成。
 - 仍未完成 Feet production Consumer / Composition、Match State mutation、score update、card movement / consumption、attack-end mutation、FormulaAttackFlow、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball。
 - 下一唯一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；该阶段重新比较剩余能力，7.32 不直接选择下一实现项。
+
+## 7.33–7.37 Through Ball Behind Defense P1 Plan Query 最终关闭
+
+- 7.33 选择 Behind Defense P1 Plan Query；7.34 冻结短路优先、条件性 DefenseD6、Transition Plan 与 55 项测试契约；7.35 提交 `798bed8` 只新增三个能力专用文件。
+- AttackD6 1-2 成功返回 OutOfPlay 并立即结束进攻，不要求或验证 DefenseD6，不生成 Plan、不调用 Resolver。AttackD6 3-6 才要求 DefenseD6 并生成 P1 Transition Plan；Plan 不含 Active GK，只保存进攻胜需 P2、防守胜结束进攻的 policy。
+- 7.35 完整验证为 P1 55/55、Eligibility 52/52、Branch 18/18、FormulaResolver 5/5、CoreRules 1312/1312，Build、UHT 与静态检查通过。7.36 独立定向复验 P1 55/55、Eligibility 52/52、Branch 18/18，结论为 `PASS WITH NON-BLOCKING FINDINGS`。
+- 本次关闭只完成 P1 前置决策与 Formula Plan 生成，不是完整 P1 resolution。尚未完成 P1 Resolver Input Assembler / Executor、P2、Anti-Offside、One-on-One Handoff / Entry、完整 Through Ball、Feet production Consumer / Composition、状态修改、FormulaAttackFlow 或 MatchPlay。
+- 既有 Feet Plan `M-001`、Assembler `7.23-M-001` 和 7.31 三项 Minor 持续保留；信息性 AssetRegistry 警告不构成阻断。7.37 不新增代码、不重跑验证。
+- 下一唯一入口为 `7.38 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；本阶段不选择下一能力。

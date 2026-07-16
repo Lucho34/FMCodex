@@ -548,3 +548,13 @@
 - 7.31 是最近一次独立实际验证来源：Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257，Build、UHT `-ForceHeaderGeneration -WarningsAsErrors` 与 `git diff --check` 均通过；`1257 = 1236 + 21`。7.32 为 Docs-only，未重新运行 Build、UHT 或测试。
 - Through Ball Feet 的纯规则 Formula Resolution 节点及其测试侧整链 Composition Tests 已关闭；生产 Feet Consumer / Composition、Match State mutation、score update、card movement / consumption、attack-end mutation、FormulaAttackFlow、MatchPlay、Behind Defense P1 / P2、Anti-Offside、One-on-One Handoff / Entry 和完整 Through Ball 仍未实现。
 - 下一唯一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review）；7.32 不预选下一实现能力。
+
+## 7.33–7.37 Through Ball Behind Defense P1 Plan Query 最终关闭
+
+- 7.33 选择 `FThroughBallBehindDefenseP1PlanQuery`，7.34 冻结最小 Contract；7.35 实现提交 `798bed8 feat: add through ball behind defense p1 plan query` 只新增专用头文件、实现文件和测试文件。
+- Query 消费已成功的 Participant Eligibility Result、BehindDefense 分支、独立外部 AttackD6 与日志上下文。AttackD6 1-2 在 DefenseD6 校验前成功短路为 OutOfPlay；AttackD6 3-6 才要求 DefenseD6 并生成 Transition Formula Plan。
+- 7.35 完整实际验证通过：P1 55/55、Participant Eligibility 52/52、Branch Selection 18/18、FormulaResolver 5/5、CoreRules 1312/1312，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过；`1312 = 1257 + 55`。
+- 7.36 独立定向复验通过：P1 55/55、Participant Eligibility 52/52、Branch Selection 18/18，结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`。两次测试启动各出现 2 条 `/Temp/__ExternalActors__/Untitled_1` AssetRegistry 信息性警告，不影响结果。
+- 既有 Feet Plan `M-001`、Assembler `7.23-M-001` 与 7.31 三项 Minor 继续保留；7.36 未发现新的生产缺陷或阻塞债务。
+- P1 Plan Query 最小 CoreRules 子切片在 7.37 正式关闭，但 P1 Assembler / Executor、P2、Anti-Offside、One-on-One Handoff / Entry、Feet production Consumer / Composition、状态修改、FormulaAttackFlow、MatchPlay 和完整 Through Ball 仍未完成。
+- 7.37 为 Docs-only，不重新运行 Build、UHT 或自动化测试。下一唯一入口为 `7.38 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；7.37 不预选下一能力。

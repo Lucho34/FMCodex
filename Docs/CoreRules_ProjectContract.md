@@ -493,3 +493,16 @@ Composition 验证关键输入和嵌套结果在链中的保留，并通过 cons
 7.31 是最近一次独立实际验证来源：Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257，Development Editor Build、UHT `-ForceHeaderGeneration -WarningsAsErrors` 与 `git diff --check` 均通过；`1257 = 1236 + 21`。7.32 为 Docs-only，没有重新运行 Build、UHT 或自动化测试。
 
 当前仍无生产 Feet Consumer / Composition、Match State mutation、score update、card movement / consumption、attack-end mutation、FormulaAttackFlow 或 MatchPlay。下一唯一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）。
+
+## Through Ball Behind Defense P1 Plan Query Contract（7.37）
+
+`FThroughBallBehindDefenseP1PlanQueryInput` 只包含 Participant Eligibility Result、SelectedBranch、AttackD6 presence / value、DefenseD6 presence / value、LogId 与 TurnIndex。双方 D6 都是外部输入；Query 不生成随机数。Result 总是保存完整 Input 副本，并以专用 Decision、Error、Formula Plan presence 与 terminal flags 表达结果。
+
+首错顺序固定为：Participant Eligibility failure → Eligibility success-state consistency → BehindDefense branch → AttackD6 presence → AttackD6 `[1,6]` → LogId → TurnIndex → AttackD6 1-2 OutOfPlay short circuit → DefenseD6 presence → DefenseD6 `[1,6]` → Formula Plan。DefenseD6 只在 AttackD6 3-6 路径存在和校验；1-2 路径忽略其 presence 与 value。
+
+- OutOfPlay 是成功结果：`Decision=OutOfPlay`、无 Formula Plan、`bAttackEnded=true`、不继续 Resolution、无 Winner，也不调用 Resolver 或修改状态。
+- Formula 路径返回 `Decision=FormulaResolutionRequired` 和 Transition Plan；Attack 使用 Carrier Passing 与 Runner Speed 平均值、AttackD6、零外部修正及进攻参与者体力，Defense 使用 Marker Marking 与可选 Helper Speed（缺席为 0）平均值、DefenseD6、固定 `+1` 及防守参与者体力。
+- Plan 不含 Active GK。它只用 metadata 声明 attacker victory requires P2、defender victory ends attack；Query 不执行公式、不产生 Winner 或 P2 Result。
+- 失败保持 Decision=None、无 Plan、全部 terminal flags 为 false；输入只读、结果确定且不访问 Match State。
+
+7.35 的完整验证为 P1 55/55、FormulaResolver 5/5、CoreRules 1312/1312，并通过 Build / UHT；7.36 的独立定向复验为 P1 55/55、Eligibility 52/52、Branch 18/18。7.37 为 Docs-only。P1 Assembler / Executor 与 P2 仍需独立 Contract。

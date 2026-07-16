@@ -152,6 +152,16 @@
 - 范围：仅冻结直塞运行时参与者资格、身份和防守回合 GK 参与语义；不冻结 Query Input / Result / Error、Formula Plan、Handoff、Consumer、Match State 或完整单刀 Contract。
 - 影响：Canonical 直塞规则、后续 Contract Review、测试场景。
 
+### CD-019 - Through Ball Behind Defense P1 Pre-Formula Short Circuit
+
+- 日期：2026-07-16
+- 决策：身后球 P1 先消费独立的外部进攻方 D6。结果为 1-2 时直接判定传出底线并结束当前进攻回合；防守方不提供 P1 防守方 D6，不生成 Formula Plan，也不进入 FormulaResolver。
+- 决策：只有 P1 进攻方 D6 为 3-6 时，才要求外部提供合法的 P1 防守方 D6，并执行 P1 过渡公式。公式中防守方胜利结束进攻，进攻方胜利进入 P2。
+- 理由：传球已经出界时，防守方无需再掷点或参与一项不会生效的公式。流程更短是该规则顺序的结果，不是以性能理由覆盖玩法规则。
+- 拒绝方案：先执行 P1 过渡公式，再根据进攻方 D6 1-2 改判传出底线。
+- 范围：冻结身后球 P1 的短路顺序与条件性 DefenseD6；不冻结 P1 Assembler / Executor、P2、反越位、单刀衔接、状态修改或完整直塞生产流程。
+- 影响：Canonical 身后球规则、P1 Plan Query Contract、自动化测试与后续 P1 消费链。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
