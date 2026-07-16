@@ -1052,3 +1052,26 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 7.40 Minor A/B 分别是完整 Input preservation 与完整 Assembly Result determinism 的测试断言范围偏窄；生产代码先保存完整 Input，且为纯校验和值复制，所以均不阻塞关闭。既有 Feet Plan `M-001`、Assembler `7.23-M-001`、7.31 Minor A/B/C 与这两项 P1 Assembler Minor 持续保留，不在本阶段修复。
 - 已修复的 `std::numeric_limits` 测试 API 问题、cross-side duplicate CardId 的证据边界和 `/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning 均为 Informational，不是生产缺陷。
 - 下一唯一入口为 `7.42 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；该阶段必须重新比较候选，7.41 不直接选择下一能力。
+
+## 7.42–7.45 Through Ball Behind Defense P1 Formula Resolution Executor 最终关闭
+
+- 7.42 选择并冻结能力专用 `FThroughBallBehindDefenseP1FormulaResolutionExecutor` 最小 Contract；7.43 用户提交 `ab0fab9`，只新增 Executor Header、CPP 与 43 项自动化测试文件；7.44 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；7.45 只同步授权文档并关闭该最小切片。
+- P1 OutOfPlay 已完成：AttackD6 1-2 终止并绕过 Assembler / Executor。P1 Plan 已完成：AttackD6 3-6 生成 Transition Plan。P1 Assembly 已完成：完整 Plan Query Result 无损映射为 Resolver Input。P1 Execution / Winner projection 已完成：Executor 做调用前一致性校验、调用 FormulaResolver 一次、验证实际结果，并把 Defender / Attacker Winner 分别投影为 `DefenderStoppedAttack` / `P2Required + RunnerId`。
+- 生产 Formula 节点现已完整覆盖 P1 的 `Plan → Assembly → Formula Resolution → Winner projection`，但这不等于完整 P1 流程：P1 test-only Composition 尚未完成，Behind Defense P2 也尚未实现。
+
+| Behind Defense P1 链节点 | 7.45 状态 |
+| --- | --- |
+| OutOfPlay terminal path | 已关闭 |
+| P1 Formula Plan Query | 已关闭 |
+| P1 Resolver Input Assembler | 已关闭 |
+| P1 Formula Resolution Executor / Winner projection | 7.45 关闭 |
+| P1 test-only Composition | 未完成 |
+| Behind Defense P2 | 未完成 |
+| One-on-One Handoff / Entry | 未完成 |
+
+- Executor 消费完整 Assembly Result，只在全部调用前校验通过后调用一次 FormulaResolver；不重算 Base，不读取 Active GK，不执行 P2，不创建 continuation struct，不访问或修改 Match State，也不连接 FormulaAttackFlow / MatchPlay。
+- 7.43 是最近完整验证来源：Executor 43/43、P1 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Executor 30/30、CoreRules 1401/1401，Build、UHT 与静态检查通过；`1401 = 1358 + 43`。7.44 是最近独立定向复验来源：五组分别为 43/43、46/46、55/55、5/5、30/30，没有重跑 Build、UHT 或 CoreRules 全量。
+- 7.44 Minor A/B 均源自测试 helper 未逐字段比较嵌套 `ParticipantEligibilityResult`，分别限制 Input preservation 与 determinism 的“完整”证据措辞；它们不影响生产 Contract 或关闭。Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B 与这两项 P1 Executor Minor 均继续作为非阻塞债务保留。
+- Resolver 调用后的不可达防御失败分支没有 mock test，以及 `/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning，均为 Informational。
+- 剩余范围为 P1 test-only Composition、Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 和完整 Through Ball。
+- 7.45 为 Docs-only，未运行 Build、UHT 或自动化测试。下一唯一入口为 `7.46 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；本阶段不预选下一实现能力。

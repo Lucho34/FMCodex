@@ -534,3 +534,22 @@ Assembler 不重算 Attack / Defense Base；Carrier Passing、Runner Speed、Mar
 生产边界为纯 CoreRules、能力专用、无状态：不调用 Plan Query、Eligibility、Snapshot / SkillRule、Feet / SingleCard 链、FormulaResolver、FormulaAttackFlow、MatchPlay 或 RNG；不读写 Match State，不更新比分，不移动或消耗卡牌，不结束状态中的进攻，不写外部日志。
 
 7.39 最近完整验证为 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Assembler 41/41、CoreRules 1358/1358，并通过 Build / UHT；`1358 = 1312 + 46`。7.40 最近独立定向复验同四组分别为 46/46、55/55、5/5、41/41，没有重跑 CoreRules 全量。7.40 Minor A/B 仅涉及完整 Input preservation 和完整 Assembly Result determinism 的测试断言范围，不改变上述生产 Contract，也不阻塞 7.41 关闭。7.41 为 Docs-only，未重新运行 Build、UHT 或自动化测试；下一入口为 `7.42 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Behind Defense P1 Formula Resolution Executor Contract（7.45）
+
+`FThroughBallBehindDefenseP1FormulaResolutionExecutor` 的唯一输入是完整 `FThroughBallBehindDefenseP1FormulaResolverInputAssemblyResult` envelope，Result 总是先保存 Execution Input。固定验证链为：Assembly failure → Assembly success diagnostics → Resolver Input presence → 嵌套 Plan Query success diagnostics → `FormulaResolutionRequired` 与 Formula Plan presence → 执行前 metadata 必须全部为 false → `Transition`、有效 `RunnerId` 与双方 Winner policy → Plan / Resolver Input 全字段来源一致性 → 单次 Resolver 调用 → Resolver Result 合法性 → Winner 映射。
+
+调用前失败统一保持 `bHasFormulaResolution=false`，因此 FormulaResolver 调用次数为零。Assembly 上游失败返回 `ResolverInputAssemblyFailed`；成功 envelope 内部不一致返回 `InvalidResolverInputAssemblyResult`。只有调用前校验全部通过时才调用一次 `UFormulaResolver::ResolveFormula`，随后立即设置 `bHasFormulaResolution=true` 并保存实际 `FFormulaResolutionResult`。所以 Formula Resolution presence 与 Executor success 是不同事实：若调用后的结果校验失败，`bSuccess=false / ErrorCode=InvalidFormulaResolutionResult`，但实际 Resolver Result 仍被保留，不伪装为“未调用”。
+
+执行后要求 `FormulaType=Transition`、双方 final value finite、Winner 为 Attacker 或 Defender、WinReason 非 None、`bIsGoal=false`，并要求 Resolver 的 `bAttackEnded / bContinueResolution` 与 Winner 一致。MatchLog 必须保留 LogId、TurnIndex、FormulaType、InvolvedCardIds，且 `ActingPlayerId = ResolverInput.AttackerPlayerId`。Transition P1 不是 Goal 判定，也不更新比分。
+
+Winner 投影固定为：
+
+| Formula Winner | Executor Decision | `bAttackEnded` | `bContinueResolution` | `bRequiresP2` | `RunnerId` |
+| --- | --- | --- | --- | --- | --- |
+| Defender | `DefenderStoppedAttack` | true | false | false | None |
+| Attacker | `P2Required` | false | true | true | Plan 中的 RunnerId |
+
+Executor 不创建 continuation struct；`P2Required + RunnerId` 只是下一阶段所需的最小只读投影。它不重算 Plan Base、不重跑 Eligibility / Plan Query / Assembler，不处理 Active GK，不执行 Behind Defense P2，不读写 Match State，不更新比分、卡牌或进攻资源，不调用 FormulaAttackFlow / MatchPlay。
+
+7.43 最近完整验证为 Executor 43/43、P1 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Executor 30/30、CoreRules 1401/1401，并通过 Build / UHT；`1401 = 1358 + 43`。7.44 最近独立定向复验同五组分别为 43/43、46/46、55/55、5/5、30/30，没有重跑 CoreRules 全量。7.44 Minor A/B 是 Input preservation 与 determinism helper 都遗漏嵌套 `ParticipantEligibilityResult` 的逐字段比较，属于测试证据措辞过强，不改变生产 Contract。7.45 为 Docs-only，未重新运行 Build、UHT 或自动化测试；下一入口仅为 `7.46 Part 6 Next Capability Selection + Minimum Contract Review`。

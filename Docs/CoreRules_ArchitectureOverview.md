@@ -295,3 +295,27 @@ Participant Eligibility Result
 Assembler 不重跑 P1 Plan Query 或 Participant Eligibility，不查询 Snapshot / SkillRule，不读取 Active GK，不调用 FormulaResolver / FormulaAttackFlow / MatchPlay，不使用 RNG，也不读取或修改 Match State。`LogId` 只是复制到 Resolver Input，不表示外部日志写入。P1 Formula Resolution Executor 尚未实现；未来 Executor 才允许调用 FormulaResolver 恰好一次，并将 Defender Winner 映射为 `DefenderStoppedAttack`、Attacker Winner 映射为 `P2Required`。
 
 7.39 是最近完整验证来源：Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Assembler 41/41、CoreRules 1358/1358，Build 与 UHT 通过。7.40 是最近独立定向复验来源：上述四组分别为 46/46、55/55、5/5、41/41；没有重跑 Build、UHT 或 CoreRules 全量回归。该 Assembler 在 7.41 关闭，下一入口为 `7.42 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Behind Defense P1 Formula Resolution Execution 架构边界（7.45）
+
+当前能力专用、无状态的生产链为：
+
+```text
+Participant Eligibility Result
+→ Behind Defense P1 Plan Query
+  ├─ AttackD6 1–2 → OutOfPlay terminal
+  │                  （绕过 P1 Assembler 与 P1 Executor）
+  └─ AttackD6 3–6 → FormulaResolutionRequired + P1 Transition Plan
+     → P1 Resolver Input Assembler
+     → P1 Formula Resolution Executor
+        ├─ Defender Winner → DefenderStoppedAttack（终止进攻）
+        └─ Attacker Winner → P2Required + RunnerId（继续 P2）
+```
+
+`FThroughBallBehindDefenseP1FormulaResolutionExecutor` 接收完整 `FThroughBallBehindDefenseP1FormulaResolverInputAssemblyResult`，而不是裸 `FFormulaResolverInput`。它先检查 Assembly envelope、Resolver Input presence、嵌套 Plan Query、执行前 flags 与 Winner policy，再逐字段确认 Resolver Input 仍与权威 Plan 一致。只有全部调用前校验通过，才把 Assembly 中未修改的 Resolver Input 交给 `UFormulaResolver::ResolveFormula` 恰好一次；Executor 不重新计算 Base / Modifier / stamina / CardIds，也不重新组装输入。
+
+Resolver 返回后，Executor 验证 Transition 类型、finite final values、Winner / WinReason、非 Goal、attack-end / continue metadata 与 MatchLog context。Defender Winner 成为终态 `DefenderStoppedAttack`；Attacker Winner 成为 continuation decision `P2Required` 并携带冻结的 `RunnerId`。这里的 continuation 只是字段投影，不是 P2 数据结构或 P2 执行。
+
+该 Executor 不读取 Active GK，不访问或修改 Match State，不更新比分或卡牌，不执行 P2，不连接 FormulaAttackFlow / MatchPlay，也不构成完整 Through Ball 生产 Consumer / Composition。P1 test-only Composition 仍未实现；现有测试文件只验证 Executor，不是生产依赖。
+
+7.43 是最近完整验证来源：Executor 43/43、P1 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Executor 30/30、CoreRules 1401/1401，Build 与 UHT 通过。7.44 是最近独立定向复验来源：五组分别为 43/43、46/46、55/55、5/5、30/30，没有重跑 Build、UHT 或 CoreRules 全量。该 Executor 在 7.45 正式关闭；下一入口仅为 `7.46 Part 6 Next Capability Selection + Minimum Contract Review`。
