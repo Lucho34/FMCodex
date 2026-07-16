@@ -506,3 +506,31 @@ Composition 验证关键输入和嵌套结果在链中的保留，并通过 cons
 - 失败保持 Decision=None、无 Plan、全部 terminal flags 为 false；输入只读、结果确定且不访问 Match State。
 
 7.35 的完整验证为 P1 55/55、FormulaResolver 5/5、CoreRules 1312/1312，并通过 Build / UHT；7.36 的独立定向复验为 P1 55/55、Eligibility 52/52、Branch 18/18。7.37 为 Docs-only。P1 Assembler / Executor 与 P2 仍需独立 Contract。
+
+## Through Ball Behind Defense P1 FormulaResolver Input Assembler Contract（7.41）
+
+`FThroughBallBehindDefenseP1FormulaResolverInputAssembler` 消费完整 `FThroughBallBehindDefenseP1PlanQueryResult` 并总是保存完整 Input 副本。固定首错边界为：上游 `bSuccess=false` → 成功 Result 残留 ErrorCode / ErrorMessage / InvalidField → Decision → Formula Plan presence → `bAttackEnded / bContinueResolution / bRequiresP2` 执行前 metadata → Formula 结构。上游失败统一返回 `PlanQueryFailed`；成功 diagnostics 不一致返回 `InvalidPlanQueryResult`。
+
+合法 OutOfPlay 为 `bSuccess=true / Decision=OutOfPlay / bHasFormulaPlan=false`，它是已结束的成功玩法路径，不是缺少 Plan。Assembler 必须在 Plan presence 之前以 `UnsupportedPlanQueryDecision` 拒绝它，不生成 Resolver Input、不调用 FormulaResolver、不进入 P1 Executor 或 P2。只有 `bSuccess=true / Decision=FormulaResolutionRequired / ErrorCode=None / bHasFormulaPlan=true` 且三个执行前 flags 均为 false 的路径可继续组装。
+
+Formula 结构要求：`FormulaType=Transition`；Carrier / Runner / Marker 有效；Helper presence 与 identity / 零默认字段一致；Attack / Defense Base 与 Modifier 均 finite；Attack Modifier 为 0、Defense Modifier 为 1；AttackD6 为 `[3,6]`、DefenseD6 为 `[1,6]`；Attack stamina 精确为 `[Carrier, Runner]`，Defense stamina 精确为 `[Marker] + [Helper?]`；LogId 有效、TurnIndex 非负；双方 Owner 有效且不同；InvolvedCardIds 数量、顺序和值精确匹配；`bAttackerVictoryRequiresP2` 与 `bDefenderVictoryEndsAttack` 均为 true。
+
+映射固定为：
+
+| Resolver 字段 | P1 Formula Plan 来源 / 固定值 |
+| --- | --- |
+| FormulaType | FormulaType |
+| Attacker Base / Modifier / ComparePoint | AttackBaseValue / AttackExternalModifier / AttackD6 |
+| Attacker rolled / stamina | `true` / AttackParticipatingStamina |
+| Defender Base / Modifier / ComparePoint | DefenseBaseValue / DefenseExternalModifier / DefenseD6 |
+| Defender rolled / stamina | `true` / DefenseParticipatingStamina |
+| GK participated | `false` |
+| LogId / TurnIndex | LogId / TurnIndex |
+| AttackerPlayerId / DefenderPlayerId | AttackingOwnerId / DefendingOwnerId |
+| InvolvedCardIds | 原数组，不排序、不去重 |
+
+Assembler 不重算 Attack / Defense Base；Carrier Passing、Runner Speed、Marker Marking 与 Helper Speed 只属于上游 Plan 计算。两个 Winner policy 字段不进入共享 `FFormulaResolverInput`，只通过 Assembly Result 保存的完整 Plan Query Result 留给未来 P1 Executor；当前阶段尚未产生实际 Winner。
+
+生产边界为纯 CoreRules、能力专用、无状态：不调用 Plan Query、Eligibility、Snapshot / SkillRule、Feet / SingleCard 链、FormulaResolver、FormulaAttackFlow、MatchPlay 或 RNG；不读写 Match State，不更新比分，不移动或消耗卡牌，不结束状态中的进攻，不写外部日志。
+
+7.39 最近完整验证为 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Assembler 41/41、CoreRules 1358/1358，并通过 Build / UHT；`1358 = 1312 + 46`。7.40 最近独立定向复验同四组分别为 46/46、55/55、5/5、41/41，没有重跑 CoreRules 全量。7.40 Minor A/B 仅涉及完整 Input preservation 和完整 Assembly Result determinism 的测试断言范围，不改变上述生产 Contract，也不阻塞 7.41 关闭。7.41 为 Docs-only，未重新运行 Build、UHT 或自动化测试；下一入口为 `7.42 Part 6 Next Capability Selection + Minimum Contract Review`。

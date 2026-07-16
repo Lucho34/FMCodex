@@ -275,3 +275,23 @@ Participant Eligibility Result
 该 Query 不调用 FormulaResolver、不执行 P1 胜负、不产生 P2 结果、不读取 Active GK、不访问或修改 Match State，也不生成 RNG。P1 Resolver Input Assembler 与 Executor 尚未实现。Feet Formula Resolution Composition Tests 仅是 Feet 的 test-only 证据，不是 P1 的生产依赖或消费链。
 
 7.35 完整验证为 P1 55/55、FormulaResolver 5/5、CoreRules 1312/1312，Build 与 UHT 均通过；7.36 独立定向复验为 P1 55/55、Eligibility 52/52、Branch 18/18。7.37 只同步文档。下一入口为 `7.38 Part 6 Next Capability Selection + Minimum Contract Review`，本阶段不预选候选。
+
+## Through Ball Behind Defense P1 Resolver Input Assembly 架构边界（7.41）
+
+当前无状态生产链扩展为：
+
+```text
+Participant Eligibility Result
+→ P1 Plan Query
+  ├─ AttackD6 1–2 → OutOfPlay terminal → 不进入 Assembler
+  └─ AttackD6 3–6 → FormulaResolutionRequired + P1 Transition Plan
+     → P1 Resolver Input Assembler
+     → FFormulaResolverInput
+     → future P1 Formula Resolution Executor
+```
+
+`FThroughBallBehindDefenseP1FormulaResolverInputAssembler` 接收完整 Plan Query Result，而不是裸 Formula Plan。它显式拒绝 OutOfPlay，要求成功 diagnostics 一致、Formula decision、Plan presence 与执行前 metadata 合法，然后验证并复制 Formula 结构。它不重新计算 Attack / Defense Base，不重新使用 Carrier Passing、Runner Speed、Marker Marking 或 Helper Speed；Plan 是计算结果的权威来源。
+
+Assembler 不重跑 P1 Plan Query 或 Participant Eligibility，不查询 Snapshot / SkillRule，不读取 Active GK，不调用 FormulaResolver / FormulaAttackFlow / MatchPlay，不使用 RNG，也不读取或修改 Match State。`LogId` 只是复制到 Resolver Input，不表示外部日志写入。P1 Formula Resolution Executor 尚未实现；未来 Executor 才允许调用 FormulaResolver 恰好一次，并将 Defender Winner 映射为 `DefenderStoppedAttack`、Attacker Winner 映射为 `P2Required`。
+
+7.39 是最近完整验证来源：Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Assembler 41/41、CoreRules 1358/1358，Build 与 UHT 通过。7.40 是最近独立定向复验来源：上述四组分别为 46/46、55/55、5/5、41/41；没有重跑 Build、UHT 或 CoreRules 全量回归。该 Assembler 在 7.41 关闭，下一入口为 `7.42 Part 6 Next Capability Selection + Minimum Contract Review`。

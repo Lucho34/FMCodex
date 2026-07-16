@@ -128,6 +128,10 @@
 - 7.30 Through Ball Feet Formula Resolution Composition Tests 已由用户提交（`113488d test: add through ball feet formula resolution composition coverage`），只新增 `ThroughBallFeetFormulaResolutionCompositionTests.cpp` 和 21 项自动化测试。
 - 7.31 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS` / `SAFE TO COMMIT`：Composition 21/21、Feet Plan 66/66、Assembler 41/41、Executor 30/30、FormulaResolver 5/5、CoreRules 1257/1257，Development Editor Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均独立通过；`1257 = 1236 + 21`。
 - 7.32 Through Ball Feet Formula Resolution Composition Tests Final Closure Docs Sync 为当前 Docs-only 阶段；本阶段只同步五份授权文档，不重新运行 Build、UHT 或自动化测试。Composition Tests 在本次同步中正式关闭，下一唯一入口为 `7.33 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）。
+- 7.38 Part 6 Next Capability Selection + Minimum Contract Review 选择 `FThroughBallBehindDefenseP1FormulaResolverInputAssembler`，冻结完整 P1 Plan Query Result consumption、OutOfPlay 拒绝优先级、Formula 结构验证、无损 Resolver Input 映射、禁止依赖和 46 项测试矩阵。
+- 7.39 P1 FormulaResolver Input Assembler Implementation 已由用户提交（`0646b0d feat: add through ball behind defense p1 resolver input assembler`），只新增能力专用 Header、CPP 与 Tests 三个文件；该阶段是最近完整验证来源：Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Assembler 41/41、CoreRules 1358/1358，Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过，`1358 = 1312 + 46`。
+- 7.40 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；风险分级独立定向复验通过 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5 与 Feet Assembler 41/41，没有重跑 Build、UHT 或 CoreRules 全量回归。
+- 7.41 Final Closure Docs Sync 只同步五份授权 CoreRules 文档，并正式关闭 P1 Resolver Input Assembler 最小切片；下一唯一入口为 `7.42 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）。
 
 ## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
 
@@ -558,3 +562,15 @@
 - 既有 Feet Plan `M-001`、Assembler `7.23-M-001` 与 7.31 三项 Minor 继续保留；7.36 未发现新的生产缺陷或阻塞债务。
 - P1 Plan Query 最小 CoreRules 子切片在 7.37 正式关闭，但 P1 Assembler / Executor、P2、Anti-Offside、One-on-One Handoff / Entry、Feet production Consumer / Composition、状态修改、FormulaAttackFlow、MatchPlay 和完整 Through Ball 仍未完成。
 - 7.37 为 Docs-only，不重新运行 Build、UHT 或自动化测试。下一唯一入口为 `7.38 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；7.37 不预选下一能力。
+
+## 7.38–7.41 Through Ball Behind Defense P1 FormulaResolver Input Assembler 最终关闭
+
+- 7.38 选择能力专用、无状态的 `FThroughBallBehindDefenseP1FormulaResolverInputAssembler` 并冻结最小 Contract；7.39 提交 `0646b0d` 只新增 Header、CPP 与 46 项自动化测试文件，没有修改共享生产代码、现有测试、Docs 或 Build.cs。
+- Assembler 消费完整 P1 Plan Query Result。AttackD6 1-2 的 OutOfPlay 是已经终止的成功路径，不进入 Assembler；若传入则优先返回 `UnsupportedPlanQueryDecision`，不会误报 `MissingFormulaPlan`。只有 AttackD6 3-6 的 `FormulaResolutionRequired + Formula Plan` 路径可映射为 `FFormulaResolverInput`。
+- Formula Plan 是 Base、Modifier、D6、stamina、Owner、Log 与有序 CardIds 的权威来源；Assembler 只验证结构和无损映射，不重算 Base、不重跑 Plan Query / Eligibility、不调用 FormulaResolver、不读取 Active GK 或 Match State，也不产生 Winner、P2 Result 或状态修改。
+- 7.39 是最近完整验证来源：Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Assembler 41/41、CoreRules 1358/1358，Development Editor Build、UHT `-ForceHeaderGeneration -WarningsAsErrors` 与 `git diff --check` 通过；`1358 = 1312 + 46`。首次 Build 的测试侧 numeric-limits API 问题已改为 `std::numeric_limits` 并在最终验证中通过，只保留为信息记录。
+- 7.40 是最近独立定向复验来源：Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Assembler 41/41。风险未升级，因此没有重跑 Build、UHT 或 CoreRules 1358 项全量回归。
+- 7.40 无 Blocking / Major；Minor A 是完整 Input preservation 测试只抽查成功路径两个嵌套字段且失败路径未逐字段断言，Minor B 是 determinism helper 只比较完整 Resolver Input 而非完整 Assembly Result。生产代码在所有提前返回前保存完整 Input，且逻辑为纯校验和值复制，两项均为非阻塞测试证据债务，不插入 Correction。
+- Feet Plan `M-001`、Assembler `7.23-M-001`、7.31 Minor A/B/C 与 P1 Assembler 7.40 Minor A/B 继续保留为非阻塞债务；cross-side duplicate CardId 证据边界、已修复 numeric-limits 问题和 `/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning 仅为 Informational。
+- P1 前置 OutOfPlay Decision、P1 Transition Formula Plan 和 P1 FormulaResolver Input Assembly 已关闭；P1 Formula Resolution Executor、P1 test-only Composition、Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 与完整 Through Ball 仍未完成。
+- 7.41 为 Docs-only，未重新运行 Build、UHT 或自动化测试。下一唯一入口为 `7.42 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection + Minimum Contract Review，GPT-5.6 Sol High）；7.41 不直接选择下一能力。

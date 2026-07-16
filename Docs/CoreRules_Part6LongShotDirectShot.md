@@ -1031,3 +1031,24 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 本次关闭只完成 P1 前置决策与 Formula Plan 生成，不是完整 P1 resolution。尚未完成 P1 Resolver Input Assembler / Executor、P2、Anti-Offside、One-on-One Handoff / Entry、完整 Through Ball、Feet production Consumer / Composition、状态修改、FormulaAttackFlow 或 MatchPlay。
 - 既有 Feet Plan `M-001`、Assembler `7.23-M-001` 和 7.31 三项 Minor 持续保留；信息性 AssetRegistry 警告不构成阻断。7.37 不新增代码、不重跑验证。
 - 下一唯一入口为 `7.38 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；本阶段不选择下一能力。
+
+## 7.38–7.41 Through Ball Behind Defense P1 FormulaResolver Input Assembler 最终关闭
+
+- 7.38 选择并冻结 P1 Resolver Input Assembler 最小 Contract；7.39 用户提交 `0646b0d` 只新增能力专用 Header、CPP 与 46 项测试；7.40 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；7.41 只同步授权文档并关闭该最小切片。
+- P1 前置 OutOfPlay Decision 已完成：AttackD6 1-2 终止且不进入 Assembler。P1 Transition Formula Plan 已完成：AttackD6 3-6 才进入 Formula 路径。P1 FormulaResolver Input Assembly 已完成：Assembler 验证完整 Plan Query Result 和 Formula 结构，无损映射 `FFormulaResolverInput`，不重算 Base、不调用 FormulaResolver、不读取 Active GK 或 Match State。
+- P1 Formula Resolution Executor 与 P1 test-only Composition 仍未完成，因此不得描述为完整 P1 Resolution；Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 和完整 Through Ball 也仍未完成。
+
+| P1 链节点 | 状态 |
+| --- | --- |
+| OutOfPlay terminal path | 已关闭 |
+| P1 Formula Plan Query | 已关闭 |
+| P1 Resolver Input Assembler | 7.41 关闭 |
+| P1 Formula Resolution Executor | 未完成 |
+| P1 test-only Composition | 未完成 |
+| Behind Defense P2 | 未完成 |
+| One-on-One Entry | 未完成 |
+
+- 7.39 是最近完整验证来源：Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Assembler 41/41、CoreRules 1358/1358，Build、UHT 与静态检查通过；`1358 = 1312 + 46`。7.40 是最近独立定向复验来源：四组分别为 46/46、55/55、5/5、41/41，没有重跑 Build、UHT 或 CoreRules 全量。
+- 7.40 Minor A/B 分别是完整 Input preservation 与完整 Assembly Result determinism 的测试断言范围偏窄；生产代码先保存完整 Input，且为纯校验和值复制，所以均不阻塞关闭。既有 Feet Plan `M-001`、Assembler `7.23-M-001`、7.31 Minor A/B/C 与这两项 P1 Assembler Minor 持续保留，不在本阶段修复。
+- 已修复的 `std::numeric_limits` 测试 API 问题、cross-side duplicate CardId 的证据边界和 `/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning 均为 Informational，不是生产缺陷。
+- 下一唯一入口为 `7.42 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；该阶段必须重新比较候选，7.41 不直接选择下一能力。
