@@ -140,6 +140,10 @@
 - 7.47 Implementation 已由用户提交（`947542f test: add through ball behind defense p1 formula resolution composition`），只新增指定的 Composition Tests 文件；完整验证为 Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、P1 Executor 43/43、FormulaResolver 5/5、CoreRules 1419/1419，Development Editor Build 与静态检查通过，`1419 = 1401 + 18`。
 - 7.48 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；定向复验同五组分别为 18/18、55/55、46/46、43/43、5/5，未重跑 Build、UHT 或 CoreRules 全量。
 - 7.49 Final Closure Docs Sync 只同步五份授权 CoreRules 文档，正式关闭 P1 Formula Resolution test-only Composition；本阶段不运行 Build、UHT 或自动化测试。下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）。
+- 7.50 Part 6 Next Capability Selection + Minimum Contract Review 选择能力专用、无状态的 `FThroughBallBehindDefenseP2OutcomeQuery`，冻结完整 P1 Executor Result consumption、success-envelope / nested provenance 防伪、独立 P2 DefenseD6、Offside / OneOnOneRequired 映射与 34 项测试。
+- 7.51 Implementation 已由用户提交（`0fa9bb1 feat: add through ball behind defense p2 outcome query`），仅新增 P2 Outcome Query Header、CPP 与 Tests 三个文件；该阶段是最近完整验证来源：P2 34/34、P1 Executor 43/43、P1 Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、FormulaResolver 5/5、CoreRules 1453/1453，Build、UHT `-WarningsAsErrors` 与静态检查通过，`1453 = 1419 + 34`。
+- 7.52 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；风险分级定向复验为 34/34、43/43、18/18、55/55、46/46、5/5，未重跑 Build、UHT 或 CoreRules 全量。FormulaResolver 首次短过滤词过匹配 105 项，后使用完整路径精确复验为 5/5，这是过滤器精度问题，不是测试失败。
+- 7.53 Final Closure Docs Sync 只同步五份授权 CoreRules 文档并正式关闭 `FThroughBallBehindDefenseP2OutcomeQuery`；本阶段不重跑 Build、UHT 或自动化测试。下一唯一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）。
 
 ## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
 
@@ -504,7 +508,7 @@
 
 ## 建议后续阶段
 
-- 7.24 关闭后的下一入口当时为 `7.25 Part 6 Next Capability Selection + Minimum Contract Review`；该阶段已选择 Feet Formula Resolution Executor，后续 7.26–7.28 已完成实现、独立关闭决策与最终 Docs Sync。当前下一入口以本文件末尾的 7.28 关闭状态为准。
+- 当前下一唯一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；其他早期入口只保留为历史记录。
 - 以下较早阶段入口仅保留为历史规划记录，不代表当前下一阶段。
 - 6.93 后续阶段必须先进行新的 Part 6 能力决策 Review，不直接进入 Corner、Long Free Kick、Short Free Kick 或 Penalty 实现。
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。
@@ -606,3 +610,25 @@
 - Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B 与 P1 Composition 7.48-M-001/M-002 持续保留。`/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning、辅助 source string scan 以及当前无生产调用者均为 Informational。
 - P1 纯 CoreRules 的 `Plan → Assembly → Formula Resolution → Winner projection` 生产节点及其 test-only Composition 证据现已关闭。Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet / P1 production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 与完整 Through Ball 仍未完成。
 - 7.49 为 Docs-only，未重新运行 Build、UHT 或自动化测试。下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；7.49 不预选下一实现能力。
+
+## 7.50–7.53 Through Ball Behind Defense P2 Outcome Query 最终关闭
+
+- P2 只消费完整 P1 Executor Result：正式 P1 failure 映射为 `P1ExecutionFailed`；声称成功但 diagnostics、continuation、Formula、nested Assembly / Plan 或 Runner provenance 不一致时映射为 `InvalidP1ExecutionResult`。
+- P2 使用新的外部 `P2DefenseD6`，它与 P1 Formula DefenseD6 不同，且是 outcome 的唯一分类输入：1–3 返回 `OneOnOneRequired + RunnerId` 并继续，4–6 返回合法成功的 `Offside` 终态且 `RunnerId=None`。
+- 当前 Behind Defense 纯 CoreRules 输出为 `DefenderStoppedAttack / Offside / OneOnOneRequired + RunnerId`。P2 不调用 P1 节点或 FormulaResolver，不读取 Active GK，不创建 Handoff，不读写 Match State；返回 flags 只是值 metadata。
+- 7.52-M-001 限定 Case 7 的 selected Input preservation 未显式比较 P1 `bSuccess`、顶层 continuation metadata 与嵌套 Plan RunnerId；7.52-M-002 限定 Case 34 的 selected determinism 未比较 P2 D6 presence 与选定 P1 provenance。生产代码完整执行 `Result.Input = Input`，其他 provenance 测试已覆盖约束，两项均为非阻断测试证据债务。
+
+| Behind Defense 链节点 | 7.53 状态 |
+| --- | --- |
+| OutOfPlay terminal | 已关闭 |
+| P1 Plan Query / Assembler / Executor | 已关闭 |
+| P1 test-only Composition | 已关闭 |
+| Behind Defense P2 Outcome Query | 7.53 关闭 |
+| Anti-Offside Outcome | 未完成 |
+| One-on-One Handoff / Entry | 未完成 |
+| Production Consumer / Match State mutation | 未完成 |
+
+- 最近完整验证来源是 7.51；最近独立定向复验来源是 7.52。7.53 未运行 Build、UHT 或自动化测试。
+- Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002 与 P2 7.52-M-001/M-002 继续作为非阻断债务保留，本阶段不修复。
+- 7.52 Informational 为生产源码字符串扫描只是辅助检查、`/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning、One-on-One Handoff 尚未实现与当前无生产 Consumer；均不阻断关闭。
+- 下一唯一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；7.53 不预选下一能力。

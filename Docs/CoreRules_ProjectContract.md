@@ -573,3 +573,42 @@ Executor 不创建 continuation struct；`P2Required + RunnerId` 只是下一阶
 7.48 将前两项登记为非阻塞 `7.48-M-001` 与 `7.48-M-002`。既有 Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B 和 P1 Executor 7.44 Minor A/B 继续保留；这些均限制测试证据措辞，不修改生产 Contract。`/Temp/__ExternalActors__/Untitled_1` warning 与 source string scan 只属 Informational。
 
 7.47 是完整验证基线：Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、P1 Executor 43/43、FormulaResolver 5/5、CoreRules 1419/1419，Development Editor Build 与 `git diff --check` 通过；`1419 = 1401 + 18`。普通 Tests.cpp 未新增 UHT header、反射类型或 Build.cs 依赖。7.48 只做定向复验，五组分别为 18/18、55/55、46/46、43/43、5/5，未重跑 Build、UHT 或 CoreRules 全量。7.49 为 Docs-only，下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Behind Defense P2 Outcome Query Contract（7.53）
+
+`FThroughBallBehindDefenseP2OutcomeQueryInput` 必须包含完整 `FThroughBallBehindDefenseP1FormulaResolutionExecutionResult P1ExecutionResult`、`bHasP2DefenseD6` 和 `P2DefenseD6`；不接收裸 RunnerId、裸 Formula Result、GK、Handoff 或 Match State。Result 区分 query success / diagnostics、完整 Input、gameplay Decision、terminal / continuation metadata 与条件性 RunnerId。
+
+固定验证链为：
+
+```text
+完整 P1 Executor Result
+→ formal failure / forged-success differentiation
+→ top-level continuation validation
+→ Formula Result consistency
+→ nested Assembly envelope
+→ nested Plan envelope
+→ Runner provenance / equality
+→ P2 D6 presence / range
+→ gameplay mapping
+```
+
+- 正式 `P1ExecutionResult.bSuccess=false` 返回 `P1ExecutionFailed`，不复制上游细分错误。
+- 声称成功的 P1 Result 必须保持 ErrorCode None、ErrorMessage 空、InvalidField None、`P2Required`、未结束、继续且要求 P2；否则返回 `InvalidP1ExecutionResult`。
+- Formula 必须存在，为 Transition、Attacker Winner、WinReason 非 None、非 Goal、未结束且继续。P2 不重验 Base、Modifier、stamina、rolled flags、MatchLog 或完整 Resolver mapping；这些属于已关闭的 P1 Executor Contract。
+- nested Assembly 必须为干净成功 envelope 并存在 Resolver Input；nested Plan 必须为干净成功 envelope、`FormulaResolutionRequired` 且存在 Formula Plan。
+- P1 顶层 RunnerId 与 nested Formula Plan RunnerId 都必须非 None 且完全相等。Runner 不得从 CarrierId、AttackingOwnerId、InvolvedCardIds 或 MatchLog 推导。
+
+`P2DefenseD6` 是新的外部防守方 D6，与 P1 Formula DefenseD6 不同；P2 outcome 只由 `Input.P2DefenseD6` 决定，嵌套 P1 D6 仅作为历史 Input 保存。
+
+| P2 D6 | Decision | `bAttackEnded` | `bContinueResolution` | `bRequiresOneOnOne` | RunnerId |
+| --- | --- | --- | --- | --- | --- |
+| 1–3 | `OneOnOneRequired` | false | true | true | P1 RunnerId |
+| 4–6 | `Offside` | true | false | false | None |
+
+Offside 是合法的成功 Result，不是 Error。`OneOnOneRequired + RunnerId` 只声明需要后续单刀，P2 本身不执行单刀、不读取或验证 Active GK、不携带 GoalkeeperId，也不创建 Handoff / Entry Input。其生产调用点中 P1 节点、FormulaResolver、FormulaAttackFlow、MatchPlay、RNG、Active GK 和 Match State 均为 0；不更新比分、移动或消耗卡牌、实际结束进攻或写外部日志。Result flags 是纯值 metadata。
+
+7.51 最近完整验证为 P2 34/34、P1 Executor 43/43、P1 Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、FormulaResolver 5/5、CoreRules 1453/1453，Build、UHT `-WarningsAsErrors` 与静态检查通过；`1453 = 1419 + 34`。7.52 最近独立定向复验为上述六组 34/34、43/43、18/18、55/55、46/46、5/5；FormulaResolver 短过滤词首次过匹配 105 项，随后以完整路径精确通过 5/5。7.52 未重跑 Build、UHT 或 CoreRules 全量；7.53 仅做 Docs Sync，也未重跑验证。
+
+7.52-M-001 限定 Case 7 只比较 P1 Decision、顶层 RunnerId、nested P1 DefenseD6 和 P2 D6 presence / value，没有显式比较 P1 `bSuccess`、顶层 continuation metadata 或 nested Plan RunnerId。7.52-M-002 限定 Case 34 的 selected determinism 未比较 P2 D6 presence 和选定 P1 provenance。两者只限制测试证据深度；不得将 selected-field 测试描述为完整嵌套 Result 逐字段比较。生产实现使用 `Result.Input = Input`，其他 provenance 测试覆盖相关约束，因此两项均不阻断关闭。
+
+OutOfPlay terminal、P1 Plan / Assembler / Executor、P1 test-only Composition 和 Behind Defense P2 Outcome Query 已关闭；Anti-Offside Outcome、One-on-One Handoff / Entry、Production Consumer 与 Match State mutation 未完成。Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002 与 P2 7.52-M-001/M-002 继续保留。7.52 Informational 包括辅助 source string scan、AssetRegistry warning、Handoff 未实现和当前无生产 Consumer。下一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`。

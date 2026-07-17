@@ -1097,3 +1097,28 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 7.48-M-001 限定 Branch 常量用例的证据只到真实 P1 D6 bridge / fixture boundary；7.48-M-002 限定人工失败 Eligibility envelope 用例不等同于自然失败 diagnostics 传播。两项为非阻塞测试债务。Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B 与 P1 Executor 7.44 Minor A/B 也继续保留。
 - 仍未完成 Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet / P1 production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 和完整 Through Ball。P2 只是后续候选，不由 7.49 自动选定。
 - 7.49 为 Docs-only，未运行 Build、UHT 或自动化测试。下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；该阶段重新比较剩余能力。
+
+## 7.50–7.53 Through Ball Behind Defense P2 Outcome Query 最终关闭
+
+- 7.50 选择并冻结 `FThroughBallBehindDefenseP2OutcomeQuery`；7.51 用户提交 `0fa9bb1`，仅新增能力专用 Header、CPP 和 34 项 Tests；7.52 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；7.53 只同步授权文档并关闭该纯 CoreRules 节点。
+- P2 仅允许从合法 `P2Required + RunnerId` 进入，消费完整 P1 Executor Result，校验顶层 success / continuation、Transition Attacker Result、nested Assembly / Plan 与 Runner equality。它使用新的外部 P2 DefenseD6，不复用 P1 Formula DefenseD6。
+- P2 D6 1–3 返回 `OneOnOneRequired + RunnerId`；4–6 返回合法的 `Offside` 终态且 RunnerId=None。P2 不执行单刀，不读取 Active GK，不创建 Handoff，不调用 FormulaResolver，不修改 Match State。
+
+| Through Ball 当前链节点 | 7.53 状态 |
+| --- | --- |
+| OutOfPlay terminal | 已关闭 |
+| P1 Transition Plan | 已关闭 |
+| P1 Resolver Input Assembler | 已关闭 |
+| P1 Formula Resolution Executor | 已关闭 |
+| P1 test-only Composition | 已关闭 |
+| Behind Defense P2 Outcome Query | 7.53 关闭 |
+| Anti-Offside Outcome | 未完成 |
+| One-on-One Handoff / Entry | 未完成 |
+| Production Consumer | 未完成 |
+| Match State mutation | 未完成 |
+
+- Behind Defense 纯 CoreRules 链现可达 `DefenderStoppedAttack`、`Offside` 或 `OneOnOneRequired + RunnerId`，但这些 outcome 尚未被生产 Consumer 提交到比赛状态。仍未完成 Anti-Offside Outcome、One-on-One Handoff / Entry、Feet / P1 / P2 production Consumer / Composition、Match State consumer、FormulaAttackFlow、MatchPlay 与完整 Through Ball。
+- 7.51 最近完整验证为 P2 34/34、CoreRules 1453/1453、Build / UHT 通过；7.52 最近独立定向复验为 P2 34/34 与五组关键回归全部通过。7.53 未运行 Build、UHT 或自动化测试。
+- 7.52-M-001/M-002 分别限定 selected Input preservation 与 selected determinism 的逐字段证据范围，不是生产缺陷。Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002 均继续保留，不在本阶段修复。
+- 7.52 的辅助 source string scan、`/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning、Handoff 尚未实现与当前无生产 Consumer 均为 Informational。
+- 下一唯一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；该阶段必须重新读取仓库证据再选择能力。

@@ -344,3 +344,28 @@ Resolver 返回后，Executor 验证 Transition 类型、finite final values、W
 证据边界保持精确：一个 Branch D6 用例使用 test-local 常量，不是从真实 Branch Selection Result 开始；一个 Eligibility failure 用例从真实成功结果人工翻转 `bSuccess=false`，不证明自然失败 diagnostics 的传播；其余字段按选定的关键 Contract 字段观察，不声称逐字段证明所有嵌套对象。两项均不改变生产架构。
 
 7.47 完整验证为 Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、P1 Executor 43/43、FormulaResolver 5/5、CoreRules 1419/1419，并通过 Development Editor Build 与静态检查。7.48 独立定向复验为五组 18/18、55/55、46/46、43/43、5/5，未重跑 Build、UHT 或 CoreRules 全量。7.49 为 Docs-only。P1 test-only Composition 在本阶段关闭；P2 仍只是后续候选，下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Behind Defense P2 Outcome Query 架构边界（7.53）
+
+当前 Behind Defense 能力专用生产路径为：
+
+```text
+P1 Plan Query
+→ P1 Resolver Input Assembler
+→ P1 Formula Resolution Executor
+  ├─ Defender Winner → DefenderStoppedAttack
+  └─ Attacker Winner → P2Required + RunnerId
+     → P2 Outcome Query + 独立 P2DefenseD6
+        ├─ 4–6 → Offside terminal
+        └─ 1–3 → OneOnOneRequired + RunnerId
+```
+
+`FThroughBallBehindDefenseP2OutcomeQuery` 消费完整 P1 Executor Result，而不是裸 RunnerId。它防伪 P1 success envelope、Transition Attacker Result、nested Assembly / Plan envelope，并要求顶层 RunnerId 非空、嵌套 Formula Plan RunnerId 非空且两者相等。P2 不从 CarrierId、Owner、CardIds 或 MatchLog 推导 Runner。
+
+P2 只使用新的外部 `Input.P2DefenseD6` 分类 outcome；嵌套 P1 Formula DefenseD6 只是保存的历史输入。Offside 是成功 Result，但终止并不返回 RunnerId；OneOnOneRequired 继续并返回经验证的 RunnerId，但不执行单刀。
+
+P2 生产调用点中 P1 Plan / Assembler / Executor、FormulaResolver、FormulaAttackFlow、MatchPlay、RNG、Active GK 和 Match State 均为 0。它不创建 One-on-One Handoff / Entry，不更新比分、卡牌或进攻状态；`bAttackEnded` 等字段是纯值 metadata。当前 P2 尚无生产 Consumer，Anti-Offside、统一 One-on-One Entry 与 Match State consumer 仍未完成。
+
+链状态保持明确：OutOfPlay terminal、P1 Plan / Assembler / Executor、P1 test-only Composition 和 Behind Defense P2 Outcome Query 已关闭；Anti-Offside Outcome、One-on-One Handoff / Entry、Production Consumer 与 Match State mutation 未完成。
+
+7.51 是最近完整验证来源：P2 34/34、CoreRules 1453/1453、Build / UHT 通过。7.52 是最近独立定向复验来源：P2 34/34 及五组关键回归全部通过；7.53 仅做 Docs Sync，未重跑 Build、UHT 或测试。下一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`。
