@@ -369,3 +369,24 @@ P2 生产调用点中 P1 Plan / Assembler / Executor、FormulaResolver、Formula
 链状态保持明确：OutOfPlay terminal、P1 Plan / Assembler / Executor、P1 test-only Composition 和 Behind Defense P2 Outcome Query 已关闭；Anti-Offside Outcome、One-on-One Handoff / Entry、Production Consumer 与 Match State mutation 未完成。
 
 7.51 是最近完整验证来源：P2 34/34、CoreRules 1453/1453、Build / UHT 通过。7.52 是最近独立定向复验来源：P2 34/34 及五组关键回归全部通过；7.53 仅做 Docs Sync，未重跑 Build、UHT 或测试。下一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Anti-Offside Outcome Query 架构边界（7.57）
+
+当前 Anti-Offside 能力专用生产路径为：
+
+```text
+Branch Selection Result ──证明 AntiOffside 分支──┐
+                                                  ├─→ Anti-Offside Outcome Query + 独立 AntiOffsideAttackD6
+Participant Eligibility Result ──参与者合法、      │     ├─ 1–5 → Offside terminal
+Owner / Runner provenance─────────────────────────┘     └─ 6 → OneOnOneRequired + RunnerId
+```
+
+`FThroughBallAntiOffsideOutcomeQuery` 消费两个完整 Result，而不是裸 Branch 或 RunnerId。Branch envelope 区分 formal failure、forged success 与合法但不支持的 Feet / BehindDefense；Eligibility envelope 区分 formal failure 与 forged success，并检查 nested success envelopes、Owner、Runner 非 GK / 当前前场证明以及同侧 Carrier / Runner 身份唯一性。跨攻防阵营相同裸 CardId 不会被全局拒绝。
+
+两个上游 Result 分别提供证据，但当前仓库没有 ActionId、correlation token 或统一 production action envelope；Query 不能独立证明二者来自同一次生产操作。测试 fixture 在同一场景生成二者不改变该生产边界；未来 production Consumer / Composition 必须从同一操作上下文提供二者。
+
+Branch Selection D6 只验证 Branch Result 自身映射一致性，不参与玩法结果。新的外部 `Input.AntiOffsideAttackD6` 是唯一 outcome 输入，并与 Branch Selection D6、P1 AttackD6、P1 DefenseD6、P2DefenseD6 相互独立。1–5 返回成功的 Offside 终态且 RunnerId=None；6 返回 `OneOnOneRequired + RunnerId` continuation，RunnerId 只来自 Eligibility Runner provenance。
+
+该 Query 的 Branch / Eligibility / SkillRule Query、Snapshot Validator、P1/P2、FormulaResolver、FormulaAttackFlow、MatchPlay、RNG、Active GK、Match State 与 Handoff creation 调用 / 访问数均为 0。它不执行单刀，不更新比分、卡牌或状态；`bAttackEnded` 只是纯值 metadata。Behind Defense P2 与 Anti-Offside 现均可产生 `OneOnOneRequired + RunnerId`，但统一 Handoff / Entry、Active defensive-round GK Context、Production Consumer 和 Match State mutation 尚未完成。
+
+7.55 是最近完整验证来源：Anti-Offside 38/38、CoreRules 1491/1491、Build / UHT 通过；`1491 = 1453 + 38`。7.56 是最近独立定向复验来源：Anti-Offside 38/38、Branch 18/18、Eligibility 52/52，未重跑 P2、Build、UHT 或 CoreRules 全量。Case 38 的源码字符串扫描只是辅助证据；7.57 为 Docs-only，未重跑验证。下一入口为 `7.58 Part 6 Next Capability Selection + Minimum Contract Review`。

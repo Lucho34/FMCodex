@@ -144,6 +144,10 @@
 - 7.51 Implementation 已由用户提交（`0fa9bb1 feat: add through ball behind defense p2 outcome query`），仅新增 P2 Outcome Query Header、CPP 与 Tests 三个文件；该阶段是最近完整验证来源：P2 34/34、P1 Executor 43/43、P1 Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、FormulaResolver 5/5、CoreRules 1453/1453，Build、UHT `-WarningsAsErrors` 与静态检查通过，`1453 = 1419 + 34`。
 - 7.52 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；风险分级定向复验为 34/34、43/43、18/18、55/55、46/46、5/5，未重跑 Build、UHT 或 CoreRules 全量。FormulaResolver 首次短过滤词过匹配 105 项，后使用完整路径精确复验为 5/5，这是过滤器精度问题，不是测试失败。
 - 7.53 Final Closure Docs Sync 只同步五份授权 CoreRules 文档并正式关闭 `FThroughBallBehindDefenseP2OutcomeQuery`；本阶段不重跑 Build、UHT 或自动化测试。下一唯一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）。
+- 7.54 Part 6 Next Capability Selection + Minimum Contract Review 选择能力专用、无状态的 `FThroughBallAntiOffsideOutcomeQuery`，冻结完整 Branch Selection Result + 完整 Participant Eligibility Result 双上游证据、独立 `AntiOffsideAttackD6`、Offside / OneOnOneRequired 映射与 38 项测试。
+- 7.55 Implementation 已由用户提交（`d6956e1 feat: add through ball anti-offside outcome query`），仅新增 Anti-Offside Outcome Query Header、CPP 与 Tests 三个文件；该阶段是最近完整验证来源：Anti-Offside 38/38、Branch 18/18、Eligibility 52/52、P2 34/34、CoreRules 1491/1491，Development Editor Build、UHT `-ForceHeaderGeneration -WarningsAsErrors` 与静态检查通过，`1491 = 1453 + 38`。
+- 7.56 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；风险分级独立定向复验为 Anti-Offside 38/38、Branch 18/18、Eligibility 52/52。三文件哈希与 7.55 一致且 DLL 更新，因此未重跑 P2、Build、UHT 或 CoreRules 全量。
+- 7.57 Final Closure Docs Sync 只同步五份授权 CoreRules 文档并正式关闭 `FThroughBallAntiOffsideOutcomeQuery`；本阶段不重跑 Build、UHT 或自动化测试。下一唯一入口为 `7.58 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）。
 
 ## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
 
@@ -508,7 +512,7 @@
 
 ## 建议后续阶段
 
-- 当前下一唯一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；其他早期入口只保留为历史记录。
+- 当前下一唯一入口为 `7.58 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；其他早期入口只保留为历史记录。
 - 以下较早阶段入口仅保留为历史规划记录，不代表当前下一阶段。
 - 6.93 后续阶段必须先进行新的 Part 6 能力决策 Review，不直接进入 Corner、Long Free Kick、Short Free Kick 或 Penalty 实现。
 - `FSingleCardFormulaResolutionPipeline` 仅保留为条件性未来模块；只有出现明确内部调用需求时再单独评审和实现。
@@ -632,3 +636,28 @@
 - Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002 与 P2 7.52-M-001/M-002 继续作为非阻断债务保留，本阶段不修复。
 - 7.52 Informational 为生产源码字符串扫描只是辅助检查、`/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning、One-on-One Handoff 尚未实现与当前无生产 Consumer；均不阻断关闭。
 - 下一唯一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；7.53 不预选下一能力。
+
+## 7.54–7.57 Through Ball Anti-Offside Outcome Query 最终关闭
+
+- `FThroughBallAntiOffsideOutcomeQuery` 是 production、capability-specific、无状态的纯 CoreRules Query。它分别验证完整 Branch Selection Result 与完整 Participant Eligibility Result，再读取一颗新的外部 `AntiOffsideAttackD6`；不重新执行任一上游、不重算资格、不生成随机数。
+- Branch Result 证明正式选择了 Anti-Offside；Eligibility Result 证明参与者合法并提供 Owner / Runner provenance。当前没有 ActionId、correlation token 或统一 production action envelope，因此 Query 不能独立证明二者来自同一次生产操作；未来 Consumer / Composition 必须从同一操作上下文提供二者。
+- Branch Selection D6 仅用于验证分支 presence、`[1,6]` 范围与 `1–2 Feet / 3–4 BehindDefense / 5–6 AntiOffside` 映射一致性；玩法 outcome 只由独立 `AntiOffsideAttackD6` 决定。它也不同于 Behind Defense P1 AttackD6、P1 DefenseD6 和 P2DefenseD6。
+- `AntiOffsideAttackD6` 1–5 返回合法成功的 `Offside / bAttackEnded=true / RunnerId=None`；6 返回 `OneOnOneRequired / bContinueResolution=true / bRequiresOneOnOne=true / RunnerId=Eligibility Runner CardId`。这些 flags 只是纯规则 metadata，不执行单刀或状态修改。
+- Query 不调用 Branch / Eligibility / SkillRule Query、Snapshot Validator、P1/P2、FormulaResolver、FormulaAttackFlow 或 MatchPlay；不读取 Active defensive-round GK，不创建 Handoff，不读写 Match State，也不更新比分、移动或消耗卡牌。当前没有生产 Consumer。
+
+| Through Ball 当前链节点 | 7.57 状态 |
+| --- | --- |
+| Branch Selection | 已关闭 |
+| Participant Eligibility | 已关闭 |
+| Feet formula chain | 已关闭 |
+| Behind Defense P1 | 已关闭 |
+| Behind Defense P2 Outcome | 已关闭 |
+| Anti-Offside Outcome | 7.57 关闭 |
+| One-on-One Handoff / Entry | 未完成 |
+| Active defensive-round GK Context | 未完成 |
+| Production Consumer / Match State mutation | 未完成 |
+
+- 7.55 是最近完整验证来源：Anti-Offside 38/38、Branch 18/18、Eligibility 52/52、P2 34/34、CoreRules 1491/1491、Build / UHT PASS。7.56 是最近独立定向复验来源：Anti-Offside 38/38、Branch 18/18、Eligibility 52/52；未重跑 P2、Build、UHT 或 CoreRules 全量。7.57 为 Docs-only，未运行 Build、UHT 或自动化测试。
+- 7.56 的唯一新 Minor 是 Case 38 以生产源码字符串扫描作为辅助 dependency/state 证据；该扫描不承担主要正确性证明，直接逐行审查与三组精确测试均通过。7.55 曾因 PowerShell 引号问题短暂启动大范围测试，该运行已终止且未作为证据；7.56 使用完整精确过滤器。AssetRegistry warning、当前无 Consumer / correlation token / Handoff / Active GK Context 均为 Informational。
+- Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002、P2 7.52-M-001/M-002 与 Anti-Offside 7.56 auxiliary source-scan Minor 均继续作为非阻断债务保留，本阶段不修复。
+- 当前纯规则输出包括 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + RunnerId`，但尚未被生产 Consumer 提交到比赛状态。下一唯一入口为 `7.58 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；7.57 不直接选择下一能力。

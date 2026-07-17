@@ -612,3 +612,29 @@ Offside 是合法的成功 Result，不是 Error。`OneOnOneRequired + RunnerId`
 7.52-M-001 限定 Case 7 只比较 P1 Decision、顶层 RunnerId、nested P1 DefenseD6 和 P2 D6 presence / value，没有显式比较 P1 `bSuccess`、顶层 continuation metadata 或 nested Plan RunnerId。7.52-M-002 限定 Case 34 的 selected determinism 未比较 P2 D6 presence 和选定 P1 provenance。两者只限制测试证据深度；不得将 selected-field 测试描述为完整嵌套 Result 逐字段比较。生产实现使用 `Result.Input = Input`，其他 provenance 测试覆盖相关约束，因此两项均不阻断关闭。
 
 OutOfPlay terminal、P1 Plan / Assembler / Executor、P1 test-only Composition 和 Behind Defense P2 Outcome Query 已关闭；Anti-Offside Outcome、One-on-One Handoff / Entry、Production Consumer 与 Match State mutation 未完成。Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002 与 P2 7.52-M-001/M-002 继续保留。7.52 Informational 包括辅助 source string scan、AssetRegistry warning、Handoff 未实现和当前无生产 Consumer。下一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Anti-Offside Outcome Query Contract（7.57）
+
+`FThroughBallAntiOffsideOutcomeQueryInput` 必须包含完整 `FThroughBallBranchSelectionQueryResult`、完整 `FThroughBallParticipantEligibilityQueryResult`、`bHasAntiOffsideAttackD6` 和 `AntiOffsideAttackD6`；不接收裸 Branch、裸 RunnerId、GK、Formula、Handoff、Match State 或 correlation ID。Result 保存完整 Input，并区分 query success / diagnostics、gameplay Decision、terminal / continuation metadata 与条件性 RunnerId。
+
+固定验证链为：Branch formal failure → Branch success diagnostics / selected presence / D6 presence-range-mapping consistency → UnsupportedBranch → Eligibility formal failure → Eligibility success diagnostics / Helper mirror / nested success envelopes → Owner provenance → Runner provenance → Carrier / Runner 同侧身份唯一性 → Anti-Offside D6 presence / range → gameplay mapping。
+
+- `BranchSelectionResult.bSuccess=false` 返回 `BranchSelectionFailed`，不复制上游细分错误。声称成功但 ErrorCode、ErrorMessage、InvalidField、selected presence、Branch D6 presence / `[1,6]` 或 `1–2 Feet / 3–4 BehindDefense / 5–6 AntiOffside` 映射不一致时返回 `InvalidBranchSelectionResult`。正式 Feet / BehindDefense Result 是合法但不支持的分支，返回 `UnsupportedBranch`，不是损坏 Result。
+- `ParticipantEligibilityResult.bSuccess=false` 返回 `ParticipantEligibilityFailed`。声称成功时必须保持顶层 diagnostics 干净、Helper mirror 一致，以及 SkillRule Query、Carrier / Runner / Marker 和条件性 Helper Validation 的成功、有效、干净 envelopes；否则返回 `InvalidParticipantEligibilityResult`。
+- Owner provenance 要求 AttackingOwnerId、DefendingOwnerId 非空且不同。Runner provenance 要求 CardId 非空、Validation 成功有效且 diagnostics 干净、非 GK，并保留“当前位于进攻方前场”的上游证明。Carrier CardId 必须非空，且同一攻击方 Carrier / Runner 不得为同一身份；跨攻防阵营相同裸 CardId 不会被全局拒绝。
+- Query 只读取 Eligibility 保存的证明，不重新计算属性、不解析 PositionTag、不查询部署区域，也不执行 Snapshot Validator、SkillRule Query 或 Participant Eligibility Query。
+
+Branch Selection D6 只证明 Anti-Offside 分支并验证 Branch Result 自身一致性。玩法 outcome 只读取新的外部 `Input.AntiOffsideAttackD6`；该 D6 与 Branch Selection D6、Behind Defense P1 AttackD6 / DefenseD6 及 P2DefenseD6 均不同。
+
+| Anti-Offside Attack D6 | Decision | `bAttackEnded` | `bContinueResolution` | `bRequiresOneOnOne` | RunnerId |
+| --- | --- | --- | --- | --- | --- |
+| 1–5 | `Offside` | true | false | false | None |
+| 6 | `OneOnOneRequired` | false | true | true | Eligibility Runner CardId |
+
+Offside 是合法成功 Result，不是 Error。`OneOnOneRequired + RunnerId` 只提供未来单刀 Shooter 来源；Query 不执行射门或进球判定，不读取 Active defensive-round GK，不创建 Handoff / Entry，不调用 FormulaResolver，不访问或修改 Match State。它也不更新比分、移动或消耗卡牌、在状态中结束进攻、写外部日志或使用 RNG；Result metadata 不是状态修改。
+
+两个完整上游 Result 的职责彼此独立：Branch Result 证明分支，Eligibility Result 证明参与者及 Owner / Runner provenance。当前没有统一 action correlation，因此 Query 不能证明二者来自同一次生产操作；未来 Consumer / Composition 负责从同一操作上下文提供二者。
+
+7.55 最近完整验证为 Anti-Offside 38/38、Branch 18/18、Eligibility 52/52、P2 34/34、CoreRules 1491/1491，Build / UHT 与静态检查通过；`1491 = 1453 + 38`。7.56 最近独立定向复验为 Anti-Offside 38/38、Branch 18/18、Eligibility 52/52；哈希和 DLL 风险门禁通过，因此未重跑 P2、Build、UHT 或 CoreRules 全量。测试证据仅声明 selected high-value input fields、selected owner / side provenance 与 selected observed determinism，不声称完整嵌套逐字段证明。
+
+7.56 唯一 Minor 是 Case 38 使用生产源码字符串扫描作为辅助边界证据；主要证据来自生产代码逐行审查与三组精确测试。既有 Feet / P1 / P2 Minor 全部继续保留；7.55 引号误启动但已终止的测试、AssetRegistry warning、当前无 Consumer / action correlation / Handoff / Active GK Context 仅为 Informational。Anti-Offside Outcome 在 7.57 关闭；下一唯一入口为 `7.58 Part 6 Next Capability Selection + Minimum Contract Review`。

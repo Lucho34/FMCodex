@@ -1122,3 +1122,23 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 7.52-M-001/M-002 分别限定 selected Input preservation 与 selected determinism 的逐字段证据范围，不是生产缺陷。Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002 均继续保留，不在本阶段修复。
 - 7.52 的辅助 source string scan、`/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning、Handoff 尚未实现与当前无生产 Consumer 均为 Informational。
 - 下一唯一入口为 `7.54 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）；该阶段必须重新读取仓库证据再选择能力。
+
+## 7.54–7.57 Through Ball Anti-Offside Outcome Query 最终关闭
+
+- 7.54 选择并冻结 `FThroughBallAntiOffsideOutcomeQuery`；7.55 用户提交 `d6956e1`，只新增 Header、CPP 与 38 项 Tests；7.56 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；7.57 只同步五份授权文档并关闭该纯 CoreRules 节点。
+- Query 分别消费完整 Branch Selection Result 与完整 Participant Eligibility Result：前者证明正式选择 Anti-Offside，后者证明参与者合法并提供 Owner / Runner provenance。当前没有统一 action correlation，不能证明二者来自同一次生产操作。
+- Branch Selection D6 只验证 Branch Result 自身映射；独立外部 `AntiOffsideAttackD6` 才决定 outcome：1–5 为 `Offside` terminal 且 RunnerId=None，6 为 `OneOnOneRequired + RunnerId` continuation。RunnerId 来自 Eligibility Runner，Query 不执行单刀。
+
+| Through Ball 纯 CoreRules 路径 | 当前输出 / 状态 |
+| --- | --- |
+| Feet | `Goal / Miss`，纯规则链已关闭 |
+| Behind Defense | `OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + RunnerId`，P1/P2 已关闭 |
+| Anti-Offside | `Offside / OneOnOneRequired + RunnerId`，7.57 关闭 |
+| One-on-One Handoff / Entry | 未完成 |
+| Active defensive-round GK Context | 未完成 |
+| Production Consumer / Match State mutation | 未完成 |
+
+- Behind Defense P2 与 Anti-Offside 现在是两个 `OneOnOneRequired + RunnerId` 来源；统一 One-on-One Handoff / Entry 尚未冻结或实现，Active defensive-round GK Context 尚未完成。Query 不调用 FormulaResolver，不读取 Active GK，不创建 Handoff，不读写 Match State；当前没有生产 Consumer，所有纯规则输出仍未提交到比赛状态。
+- 7.55 最近完整验证为 Anti-Offside 38/38、Branch 18/18、Eligibility 52/52、P2 34/34、CoreRules 1491/1491，Build / UHT PASS；`1491 = 1453 + 38`。7.56 最近独立定向复验为 38/38、18/18、52/52，未重跑 P2、Build、UHT 或 CoreRules 全量。7.57 为 Docs-only，未运行 Build、UHT 或自动化测试。
+- 7.56 auxiliary source-scan Minor 与全部既有 Feet / P1 / P2 测试证据债务继续保留；AssetRegistry warning、7.55 已终止且未采用的错误过滤器运行、当前无 Consumer / correlation / Handoff / Active GK Context 仅为 Informational，没有新增生产 Finding。
+- 下一唯一入口为 `7.58 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）。该阶段至少比较统一 Handoff creation、Entry validation、Active GK Context、Shooter/GK Finishing input、各分支 production Consumer / Composition、Match State consumer、Explicit Deferral 与 Part 6 Closure；7.57 不直接选择下一能力。
