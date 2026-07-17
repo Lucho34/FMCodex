@@ -1075,3 +1075,25 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - Resolver 调用后的不可达防御失败分支没有 mock test，以及 `/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning，均为 Informational。
 - 剩余范围为 P1 test-only Composition、Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 和完整 Through Ball。
 - 7.45 为 Docs-only，未运行 Build、UHT 或自动化测试。下一唯一入口为 `7.46 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；本阶段不预选下一实现能力。
+
+## 7.46–7.49 Through Ball Behind Defense P1 Formula Resolution Composition Tests 最终关闭
+
+- 7.46 选择并冻结 test-only P1 Formula Resolution Composition 最小 Contract；7.47 用户提交 `947542f`，只新增一个 Composition Tests.cpp 与 18 项测试；7.48 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；7.49 只同步五份授权文档并关闭该测试切片。
+- P1 纯 CoreRules 生产链 `Plan → Assembler → Executor → Winner projection` 已在此前阶段完成；本阶段通过测试局部 Compose 证明真实类型可组合。OutOfPlay 在 Plan 后终止并保持 Assembler / Executor 零调用；Formula 路径把完整正式 Result 逐段交给下游，并读取真实 Executor 的 `DefenderStoppedAttack` 或 `P2Required + RunnerId`。
+- Composition 不直接调用 FormulaResolver，不修改 Match State，不执行 P2，不新增生产 API、生产 Consumer / Composition、公共测试框架或生产调用者。因此“P1 Formula Resolution Composition 已关闭”只指 test-only 组合证据关闭，不表示完整 P1 或完整 Through Ball 已完成。
+
+| Behind Defense P1 链节点 | 7.49 状态 |
+| --- | --- |
+| OutOfPlay terminal path | 已关闭 |
+| P1 Formula Plan Query | 已关闭 |
+| P1 Resolver Input Assembler | 已关闭 |
+| P1 Formula Resolution Executor / Winner projection | 已关闭 |
+| P1 test-only Composition | 7.49 关闭 |
+| Behind Defense P2 | 未完成 |
+| Anti-Offside | 未完成 |
+| One-on-One Handoff / Entry | 未完成 |
+
+- 7.47 最近完整验证为 Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、P1 Executor 43/43、FormulaResolver 5/5、CoreRules 1419/1419，Development Editor Build 与静态检查通过；`1419 = 1401 + 18`。7.48 最近独立定向复验为五组 18/18、55/55、46/46、43/43、5/5，没有重跑 Build、UHT 或 CoreRules 全量。
+- 7.48-M-001 限定 Branch 常量用例的证据只到真实 P1 D6 bridge / fixture boundary；7.48-M-002 限定人工失败 Eligibility envelope 用例不等同于自然失败 diagnostics 传播。两项为非阻塞测试债务。Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B 与 P1 Executor 7.44 Minor A/B 也继续保留。
+- 仍未完成 Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet / P1 production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 和完整 Through Ball。P2 只是后续候选，不由 7.49 自动选定。
+- 7.49 为 Docs-only，未运行 Build、UHT 或自动化测试。下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；该阶段重新比较剩余能力。

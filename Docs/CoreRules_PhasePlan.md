@@ -136,6 +136,10 @@
 - 7.43 P1 Formula Resolution Executor Implementation 已由用户提交（`ab0fab9 feat: add through ball behind defense p1 formula resolution executor`），只新增能力专用 Header、CPP 与 Tests 三个文件；该阶段是最近完整验证来源：Executor 43/43、P1 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Executor 30/30、CoreRules 1401/1401，Build、UHT `-WarningsAsErrors` 与 `git diff --check` 均通过，`1401 = 1358 + 43`。
 - 7.44 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；独立定向复验通过 Executor 43/43、P1 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5 与 Feet Executor 30/30，没有重跑 Build、UHT 或 CoreRules 全量回归。
 - 7.45 Final Closure Docs Sync 只同步五份授权 CoreRules 文档，并正式关闭 P1 Formula Resolution Executor 最小切片；本阶段不运行 Build、UHT 或自动化测试。下一唯一入口为 `7.46 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）。
+- 7.46 Part 6 Next Capability Selection + Minimum Contract Review 选择 test-only `ThroughBallBehindDefenseP1FormulaResolutionCompositionTests`，冻结单文件、真实生产类型桥接、OutOfPlay 短路与 Formula 路径整链验证边界。
+- 7.47 Implementation 已由用户提交（`947542f test: add through ball behind defense p1 formula resolution composition`），只新增指定的 Composition Tests 文件；完整验证为 Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、P1 Executor 43/43、FormulaResolver 5/5、CoreRules 1419/1419，Development Editor Build 与静态检查通过，`1419 = 1401 + 18`。
+- 7.48 Independent Review + Closure Decision 结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`；定向复验同五组分别为 18/18、55/55、46/46、43/43、5/5，未重跑 Build、UHT 或 CoreRules 全量。
+- 7.49 Final Closure Docs Sync 只同步五份授权 CoreRules 文档，正式关闭 P1 Formula Resolution test-only Composition；本阶段不运行 Build、UHT 或自动化测试。下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）。
 
 ## Part 6 Through Ball Branch Selection CoreRules-only 最小切片关闭状态
 
@@ -590,3 +594,15 @@
 - Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B 与 P1 Executor 7.44 Minor A/B 持续保留。Resolver 调用后的不可达防御失败分支没有 mock 测试，以及 `/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning，只作为 Informational。
 - P1 OutOfPlay、Transition Formula Plan、Resolver Input Assembly 与 Formula Execution / Winner projection 现均已关闭。P1 test-only Composition、Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 与完整 Through Ball 仍未完成。
 - 7.45 为 Docs-only，未重新运行 Build、UHT 或自动化测试。下一唯一入口为 `7.46 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；7.45 不直接选择下一能力。
+
+## 7.46–7.49 Through Ball Behind Defense P1 Formula Resolution Composition Tests 最终关闭
+
+- 7.46 选择 test-only P1 Formula Resolution Composition 并冻结最小 Contract；7.47 用户提交 `947542f test: add through ball behind defense p1 formula resolution composition`，只新增 `Source/FMCodex/CoreRules/ThroughBallBehindDefenseP1FormulaResolutionCompositionTests.cpp`，没有生产 Consumer、生产 Composition、公共测试框架、生产 API 或 Build.cs 变更。
+- 测试侧从真实 `FThroughBallBehindDefenseP1PlanQueryInput` 开始。每次 Compose 最多依次调用一个真实 Plan Query、一个 Assembler 和一个 Executor；AttackD6 1-2 的 OutOfPlay 成功路径在 Plan 后终止，Assembler / Executor 调用数均为零；AttackD6 3-6 的 Formula 路径把完整正式 Plan Result 交给 Assembler、完整正式 Assembly Result 交给 Executor。
+- Composition 不直接调用 FormulaResolver，不访问或修改 Match State，不执行 P2，也不提供生产调用者。Defender Winner 的最终观察为 `DefenderStoppedAttack`；Attacker Winner 的最终观察为 `P2Required + RunnerId`。文件局部 Observation / Error / Result 只属于测试证据，不进入生产 Contract。
+- 7.47 是最近完整验证来源：Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、P1 Executor 43/43、FormulaResolver 5/5、CoreRules 1419/1419，Development Editor Build 与 `git diff --check` 均通过；`1419 = 1401 + 18`。该普通 Tests.cpp 未新增 UHT header、反射类型或 Build.cs 依赖，因此 7.47 未单独运行 UHT。
+- 7.48 是最近独立定向复验来源：上述五组分别为 18/18、55/55、46/46、43/43、5/5；风险未升级，因此未重跑 Build、UHT 或 CoreRules 1419 项全量回归。结论为 `PASS WITH NON-BLOCKING FINDINGS / SAFE TO COMMIT`，无 Blocking / Major。
+- 7.48-M-001：一个用例以 test-local 常量表示 Branch D6，因此它证明真实 P1 Attack / Defense D6 桥接和 fixture / type 边界，但不是从真实 Branch Selection Result 开始的端到端证据。7.48-M-002：一个用例从真实成功 Eligibility Result 出发后人工翻转 `bSuccess=false`，因此证明 Plan 对失败 envelope 的短路，但不证明自然失败 Eligibility Result 的 diagnostics 传播。两项均为非阻塞测试证据债务，不改变生产 Contract。
+- Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B 与 P1 Composition 7.48-M-001/M-002 持续保留。`/Temp/__ExternalActors__/Untitled_1` AssetRegistry warning、辅助 source string scan 以及当前无生产调用者均为 Informational。
+- P1 纯 CoreRules 的 `Plan → Assembly → Formula Resolution → Winner projection` 生产节点及其 test-only Composition 证据现已关闭。Behind Defense P2、Anti-Offside、One-on-One Handoff / Entry、Feet / P1 production Consumer / Composition、Match State mutation、FormulaAttackFlow、MatchPlay 与完整 Through Ball 仍未完成。
+- 7.49 为 Docs-only，未重新运行 Build、UHT 或自动化测试。下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only）；7.49 不预选下一实现能力。

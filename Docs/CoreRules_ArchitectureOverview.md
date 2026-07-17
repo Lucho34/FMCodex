@@ -319,3 +319,28 @@ Resolver 返回后，Executor 验证 Transition 类型、finite final values、W
 该 Executor 不读取 Active GK，不访问或修改 Match State，不更新比分或卡牌，不执行 P2，不连接 FormulaAttackFlow / MatchPlay，也不构成完整 Through Ball 生产 Consumer / Composition。P1 test-only Composition 仍未实现；现有测试文件只验证 Executor，不是生产依赖。
 
 7.43 是最近完整验证来源：Executor 43/43、P1 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Executor 30/30、CoreRules 1401/1401，Build 与 UHT 通过。7.44 是最近独立定向复验来源：五组分别为 43/43、46/46、55/55、5/5、30/30，没有重跑 Build、UHT 或 CoreRules 全量。该 Executor 在 7.45 正式关闭；下一入口仅为 `7.46 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Behind Defense P1 Formula Resolution Composition 架构边界（7.49）
+
+生产链保持为能力专用、无状态的三个节点；7.47 只在单个 Tests.cpp 中增加测试侧组合证据：
+
+```text
+真实 P1 Plan Query Input
+→ P1 Plan Query
+  ├─ AttackD6 1–2 → OutOfPlay terminal
+  │                  → 测试观察（Assembler 0 次、Executor 0 次）
+  └─ AttackD6 3–6 → FormulaResolutionRequired + P1 Transition Plan
+     → P1 Resolver Input Assembler
+     → P1 Formula Resolution Executor
+        ├─ Defender Winner → DefenderStoppedAttack
+        └─ Attacker Winner → P2Required + RunnerId
+     → 测试观察
+```
+
+测试侧 Compose 每个节点最多调用一次，并把完整正式 Plan Result 传给 Assembler、完整正式 Assembly Result 传给 Executor。OutOfPlay 路径显式绕过两个下游节点；Formula 路径的最终 Decision 来自真实 Executor，而非测试 helper 重算或伪造。Composition 对 FormulaResolver 的直接调用次数为零；Resolver 只可能由真实 Executor 在其既有 Contract 内调用。
+
+`ThroughBallBehindDefenseP1FormulaResolutionCompositionTests.cpp` 不声明生产 symbol 或公共 API，不创建生产 Composition / Consumer / Pipeline，不连接 FormulaAttackFlow / MatchPlay，不读写 Match State，也不执行 P2。Observation、调用计数与测试错误类型均为 anonymous namespace 内的 test-local 类型，不形成生产依赖。当前没有生产调用者；这只说明生产节点之间已由自动化测试证明可组合。
+
+证据边界保持精确：一个 Branch D6 用例使用 test-local 常量，不是从真实 Branch Selection Result 开始；一个 Eligibility failure 用例从真实成功结果人工翻转 `bSuccess=false`，不证明自然失败 diagnostics 的传播；其余字段按选定的关键 Contract 字段观察，不声称逐字段证明所有嵌套对象。两项均不改变生产架构。
+
+7.47 完整验证为 Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、P1 Executor 43/43、FormulaResolver 5/5、CoreRules 1419/1419，并通过 Development Editor Build 与静态检查。7.48 独立定向复验为五组 18/18、55/55、46/46、43/43、5/5，未重跑 Build、UHT 或 CoreRules 全量。7.49 为 Docs-only。P1 test-only Composition 在本阶段关闭；P2 仍只是后续候选，下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`。

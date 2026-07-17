@@ -553,3 +553,23 @@ Winner 投影固定为：
 Executor 不创建 continuation struct；`P2Required + RunnerId` 只是下一阶段所需的最小只读投影。它不重算 Plan Base、不重跑 Eligibility / Plan Query / Assembler，不处理 Active GK，不执行 Behind Defense P2，不读写 Match State，不更新比分、卡牌或进攻资源，不调用 FormulaAttackFlow / MatchPlay。
 
 7.43 最近完整验证为 Executor 43/43、P1 Assembler 46/46、P1 Plan Query 55/55、FormulaResolver 5/5、Feet Executor 30/30、CoreRules 1401/1401，并通过 Build / UHT；`1401 = 1358 + 43`。7.44 最近独立定向复验同五组分别为 43/43、46/46、55/55、5/5、30/30，没有重跑 CoreRules 全量。7.44 Minor A/B 是 Input preservation 与 determinism helper 都遗漏嵌套 `ParticipantEligibilityResult` 的逐字段比较，属于测试证据措辞过强，不改变生产 Contract。7.45 为 Docs-only，未重新运行 Build、UHT 或自动化测试；下一入口仅为 `7.46 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball Behind Defense P1 Formula Resolution Composition Tests Contract（7.49）
+
+阶段 7.47 提交 `947542f test: add through ball behind defense p1 formula resolution composition`，只新增 `Source/FMCodex/CoreRules/ThroughBallBehindDefenseP1FormulaResolutionCompositionTests.cpp`。该测试文件的起点是真实 `FThroughBallBehindDefenseP1PlanQueryInput`；每次 Compose 最多调用一个真实 `FThroughBallBehindDefenseP1PlanQuery::Evaluate`，Plan 成功且要求 Formula 时最多再调用一个真实 Assembler 和一个真实 Executor。
+
+- OutOfPlay：AttackD6 1-2 的正式 Plan Result 成功终止，Assembler 与 Executor 调用次数均为零。
+- Formula：完整正式 Plan Result 原样进入 Assembler，完整正式 Assembly Result 原样进入 Executor；最终 `DefenderStoppedAttack` 或 `P2Required + RunnerId` Decision 取自真实 Executor。
+- FormulaResolver：Composition 直接调用次数固定为零；测试 helper 不绕过 Executor 直接求解。
+- State / P2：不访问或修改 Match State，不更新比分、卡牌或进攻资源，不执行 P2，不创建 continuation struct。
+- Production surface：Composition Input / Result / Error、Observation 和调用计数均为文件局部测试类型，不新增生产 API、生产 symbol、Consumer、Pipeline 或生产调用者。
+
+真实 bridge 的观察范围包括 Attack / Defense Base 与 Modifier、P1 AttackD6 / DefenseD6、Helper absent / present 时的 stamina 顺序、InvolvedCardIds 顺序、Plan Result → Assembly Result、Assembly Result → Execution Result、FormulaType、Winner 与 MatchLog 的 LogId / TurnIndex / ActingPlayerId / InvolvedCardIds；其中 ActingPlayerId 来自 AttackingOwnerId，不表示 Winner 或 Runner identity。跨阵营重复 CardId 用例实际先调用真实 Participant Eligibility Query 并成功，再通过 P1 三节点生产链，证明双方 Owner 不同但相同 CardId 可在 Plan、Resolver Input 和 Formula Resolution MatchLog 中保留。
+
+不变性证据仅覆盖测试名所述 Selected Input Fields：Plan Query Input 顶层 branch、D6 presence / value、LogId / TurnIndex，以及 Eligibility envelope、Helper presence、SkillId、ActionPoint、Owners、Runner deployment 和四类参与者的选定 identity / attribute / stamina 字段。确定性证据仅覆盖 Selected Observed Fields：Plan / Assembly / Execution 成功与 presence、节点 called flags、Winner、final values、Outcome、terminal / continuation flags、RunnerId 和 MatchLog key fields；不声称完整嵌套 Input、Assembly Result 或 Contract 逐字段相等。
+
+证据范围不能扩大解释：Branch 相关用例中的 D6 由 test-local 常量代表，因此只证明真实 P1 Attack / Defense D6 bridge 与 fixture / type boundary，不证明真实 Branch Selection Result 到 P1 的端到端传播；Eligibility failure 用例从真实成功 Result 人工设置 `bSuccess=false`，只证明 Plan 对失败 envelope 的短路，不证明自然失败 Result 的 diagnostics 传播；Observation 比较的是选定的关键字段，不是所有嵌套对象的逐字段等价证明。
+
+7.48 将前两项登记为非阻塞 `7.48-M-001` 与 `7.48-M-002`。既有 Feet Plan `M-001`、Feet Assembler `7.23-M-001`、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B 和 P1 Executor 7.44 Minor A/B 继续保留；这些均限制测试证据措辞，不修改生产 Contract。`/Temp/__ExternalActors__/Untitled_1` warning 与 source string scan 只属 Informational。
+
+7.47 是完整验证基线：Composition 18/18、P1 Plan 55/55、P1 Assembler 46/46、P1 Executor 43/43、FormulaResolver 5/5、CoreRules 1419/1419，Development Editor Build 与 `git diff --check` 通过；`1419 = 1401 + 18`。普通 Tests.cpp 未新增 UHT header、反射类型或 Build.cs 依赖。7.48 只做定向复验，五组分别为 18/18、55/55、46/46、43/43、5/5，未重跑 Build、UHT 或 CoreRules 全量。7.49 为 Docs-only，下一唯一入口为 `7.50 Part 6 Next Capability Selection + Minimum Contract Review`。
