@@ -248,3 +248,26 @@ P2 Owner 来自 P1 Formula Plan，Shooter 链为 P2 顶层 RunnerId = P1 Executi
 当前已关闭：Through Ball SkillRule Snapshot / Validator、Branch Selection、Participant Eligibility、Feet Plan / Assembler / Executor / test-only Composition、Behind Defense P1 Plan / Assembler / Executor / test-only Composition / P2 Outcome、Anti-Offside Outcome 与 One-on-One Handoff Creator。当前纯规则边界可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter identity Handoff`。
 
 One-on-One Entry、Active defensive-round GK Context、Shooter / GK Finishing input、One-on-One Plan / Assembler / Execution / Outcome、Feet / Behind Defense / Anti-Offside production Consumer、Production Through Ball Composition、Match State consumer / mutation、FormulaAttackFlow、MatchPlay 与完整生产编排仍未完成。Creator 不解决 ActionId / CorrelationId 或统一 action envelope；Production Composition 或调用方继续负责同一操作上下文。Active defensive-round GK Context 仍被状态表达阻断，不能用初始 / 阵容 GK 或全局已使用卡牌替代。下一唯一入口为 `7.62 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）。
+
+## Through Ball One-on-One Chip Shot Outcome Query（7.65）
+
+实现提交 `1d69ab3cea09895eefee985180cd4a20850c8b15 feat: add through ball one-on-one chip shot outcome query` 只新增：
+
+- `Source/FMCodex/CoreRules/ThroughBallOneOnOneChipShotOutcomeQuery.h`
+- `Source/FMCodex/CoreRules/ThroughBallOneOnOneChipShotOutcomeQuery.cpp`
+- `Source/FMCodex/CoreRules/ThroughBallOneOnOneChipShotOutcomeQueryTests.cpp`
+
+| 模块 | 职责 | 允许做什么 | 不允许做什么 | 是否修改状态 | 主要依赖 |
+| --- | --- | --- | --- | --- | --- |
+| `ThroughBallOneOnOneChipShotOutcomeQuery` | Production capability-specific stateless pure CoreRules query；调用即表示 Chip Shot 已由调用方选择。 | 消费完整成功 Handoff Creation Result、显式外部 Chip Shot Attack D6 与 LogId / TurnIndex；验证正式 Handoff envelope、Owner / Shooter identity、D6 presence / range 和日志上下文；1–3 返回 terminal Miss，4–6 返回 terminal Goal；成功和失败均保存完整 Input。 | 不选择 Direct Shot / Chip Shot，不重跑 Handoff Creator 或来源 Query，不读取 Shooter Snapshot / GK / Match State，不生成 Formula Plan，不调用 FormulaResolver，不掷骰，不充当 Consumer / Composition / 通用框架。 | 否 | `CoreMinimal.h`、`ThroughBallOneOnOneHandoffCreator.h` |
+| `ThroughBallOneOnOneChipShotOutcomeQueryTests` | 验证默认失败安全、正式 Handoff 防伪、D6 映射、错误优先级、完整 Input 保存、确定性与公共签名。 | 18 项测试覆盖 D6 1–6、3/4 边界、Handoff diagnostics / presence / identity、D6 presence / range、LogId / TurnIndex、首错和依赖边界。 | 不证明生产 action correlation、当前 Match State、active GK 或完整 One-on-One，不测试生产 Consumer，不新增共享测试框架。 | 否 | `ThroughBallOneOnOneChipShotOutcomeQuery`；测试 fixture 依赖不是生产依赖 |
+
+Input 字段顺序固定为 `HandoffCreationResult / bHasChipShotAttackD6 / ChipShotAttackD6 / LogId / TurnIndex`；Result 固定为 diagnostics、完整 Input、`None / Goal / Miss` Decision 和三个 outcome flags。Error enum 固定为 `None / HandoffCreationFailed / InvalidHandoffCreationResult / MissingChipShotAttackD6 / InvalidChipShotAttackD6 / InvalidLogContext`。验证首错短路且成功原子化；失败不产生部分 Outcome。
+
+Chip Shot Query 不含 Shooter Snapshot、GK、Match State、SourceBranch、ActionId、CorrelationId 或 Formula Plan。它只能验证单个 Handoff envelope 与调用方提供的 D6 / 日志字段，不能证明它们来自同一真实 action；Production Composition / caller 继续负责 correlation。
+
+7.63 证据为 Chip Shot 18/18、Handoff 22/22、CoreRules 1531/1531。7.64 Contract / behavior 审查通过，但无抑制标准 adaptive-Unity Build 因 Feet Composition 测试私有 Owner 常量与 Handoff Creator 同名参数 / 局部变量发生 C4459，Capability Closure 当时被拒绝；这不是 Chip Shot 业务失败。
+
+修正提交 `b9d94566b4f52dda11f5bd0d8fbb6389e2fb764b` 只修改 `ThroughBallFeetFormulaResolutionCompositionTests.cpp`：重命名两个测试私有 identifier 及四处引用，FName 值和 21 项测试行为均不变，无 warning suppression、Build.cs 或 Unity 设置变化。7.64.1 标准 Build 与 21/22/18 通过；7.64.2 独立确认同一 Unity translation unit 编译、DLL 链接和 61 项测试通过，Correction / Capability Closure 均 `APPROVED`。
+
+`7.63-M-001 / 7.64-B-001` 已由 7.64.1 解决并由 7.64.2 独立确认。当前模块正式关闭，但 One-on-One Direct Shot、Shooter Context、Active defensive-round GK State / Context、Finishing input、production Consumers / Composition、Match State mutation 与完整 One-on-One 仍未完成。下一唯一入口为 `7.66 Part 6 Next Capability Selection + Minimum Contract Review`。

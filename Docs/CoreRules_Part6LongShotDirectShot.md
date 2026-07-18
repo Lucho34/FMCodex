@@ -1169,3 +1169,47 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 当前纯规则输出与 continuation 可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter identity Handoff`；来源 Query 的 RunnerId 仍是来源字段，但正式 Handoff 已提升为 Owner + Shooter 三字段契约。
 - 历史非阻塞债务继续保留且本阶段不修复：Feet Plan M-001、Feet Assembler 7.23-M-001、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002、P2 7.52-M-001/M-002、Anti-Offside 7.56 auxiliary source-scan Minor、7.58-M-001 omitted final Next Stage section。AssetRegistry `/Temp/__ExternalActors__/Untitled_1` warning、无完整 Through Ball production consumer、无 action correlation token、Active GK 状态阻断和无 One-on-One Entry validation 继续作为 Informational。
 - 下一唯一入口为 `7.62 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection / Minimum Contract Review，GPT-5.6 Sol High）。7.62 必须重新比较 Entry validation、Active GK Context Query、Shooter / GK Finishing input、Feet / Behind Defense / Anti-Offside Consumers、Production Composition、Match State mutation、Explicit Deferral 与 Part 6 Closure；7.61 不预选候选。
+
+## 7.62–7.65 Through Ball One-on-One Chip Shot Outcome Query 最终关闭
+
+| 内部阶段 | 状态 | 结论 |
+| --- | --- | --- |
+| 7.62 Capability Selection + Minimum Contract Review | CLOSED | 选择能力专用 Chip Shot Outcome Query，冻结完整 Handoff Result、外部 D6、日志上下文与 terminal Goal / Miss 最小契约。 |
+| 7.63 Chip Shot Outcome Query Implementation | CLOSED | 提交 `1d69ab3cea09895eefee985180cd4a20850c8b15`，只新增 Header、CPP、Tests 三文件。 |
+| 7.64 Initial Independent Review | CLOSED AS BLOCKED REVIEW | Public Contract、行为、Chip Shot 18/18 与 Handoff 22/22 通过；无抑制标准 Build 复现 adaptive-Unity C4459，因此当时拒绝 Capability Closure。 |
+| 7.64.1 Adaptive-Unity C4459 Correction | CLOSED | 单文件测试私有 identifier 重命名恢复无抑制标准 Build；Feet 21、Handoff 22、Chip Shot 18 通过。 |
+| 7.64.2 Correction Independent Review + Closure Revalidation | CLOSED | 独立确认修正范围、标准 Build 与 61 项直接测试；Correction Closure 和 Chip Shot Capability Closure 均 `APPROVED`。 |
+| 7.65 Final Closure Docs Sync | CLOSED ON COMPLETION | 只同步五份授权文档，不修改或重新验证源码。 |
+
+以上均属于总体阶段 4：纯 CoreRules。7.64 的 `BLOCKED` 不代表 Chip Shot Contract 或行为失败；唯一 blocker 是 adaptive-Unity translation unit 中 Feet Composition 测试匿名命名空间常量与 Handoff Creator 参数 / 局部变量的 C4459。
+
+实现提交只新增 `ThroughBallOneOnOneChipShotOutcomeQuery.h/.cpp/Tests.cpp`，没有修改已有文件、Build.cs、Match State、反射类型、FormulaResolver、FormulaAttackFlow 或 MatchPlay。Query 属于 Pure CoreRules / Stateless Query / Capability-specific determination；调用即表示调用方已经选择 Chip Shot。
+
+正式 Input 为完整 `FThroughBallOneOnOneHandoffCreationResult`、显式 `bHasChipShotAttackD6 + ChipShotAttackD6`、`LogId` 和 `TurnIndex`。D6 由调用方提供，本 Query 不掷骰，也不复用 Branch Selection D6、Anti-Offside AttackD6、P1 / P2 D6。Result 在所有路径保存完整 Input；失败为 `Decision=None` 且 outcome flags 全 false，成功原子返回：
+
+| ChipShotAttackD6 | Decision | bAttackEnded | bContinueResolution | bIsGoal |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | Miss | true | false | false |
+| 2 | Miss | true | false | false |
+| 3 | Miss | true | false | false |
+| 4 | Goal | true | false | true |
+| 5 | Goal | true | false | true |
+| 6 | Goal | true | false | true |
+
+Error 固定为 `None / HandoffCreationFailed / InvalidHandoffCreationResult / MissingChipShotAttackD6 / InvalidChipShotAttackD6 / InvalidLogContext`。Validation 顺序为 Handoff success、干净 diagnostics、presence、Owner / Shooter identity、D6 presence / range、LogId、TurnIndex、原子成功；首错短路，不重跑 Handoff Creator 或 P2 / Anti-Offside provenance。
+
+正式 Handoff 的 `AttackingOwnerId + ShooterCardId` 继续构成复合身份，CardId 不跨 Side 全局唯一。Query 不读取 Shooter Snapshot、GK、Match State、current round / action，不查询卡牌数据库，不处理 stamina，不生成 Formula Plan，不调用 FormulaResolver，不写 InvolvedCardIds，不解决 ActionId / CorrelationId 或生产 action envelope。
+
+7.63 的实际证据为 Chip Shot 18/18、Handoff 22/22、CoreRules 1531/1531，`1531 = 1513 + 18`；辅助 `/wd4459` Build 通过但不作为最终 gate。7.64 无 `/wd4459` 标准 Build FAIL，因此当时 Capability Closure `REJECTED`。
+
+7.64.1 修正提交 `b9d94566b4f52dda11f5bd0d8fbb6389e2fb764b` 只在 Feet Composition Tests 将 `AttackingOwnerId / DefendingOwnerId` 重命名为 `FeetCompositionTestAttackingOwnerId / FeetCompositionTestDefendingOwnerId` 并更新四处直接引用；FName 值、fixture、输入、断言、顺序、名称和 21 项注册不变，无生产 Contract、warning suppression、Build.cs 或 Unity 设置变化。它不是 Chip Shot 业务代码修复。
+
+7.64.1 标准 Build 无 `/wd4459`、无 `-DisableUnity` 通过，Feet / Handoff / Chip Shot 为 21/21、22/22、18/18。7.64.2 独立重新编译 `Module.FMCodex.8.cpp`、链接 `UnrealEditor-FMCodex.dll`，目标及新增 C4459 均不存在，三组仍为 21/21、22/22、18/18。生产代码和共享 Contract 未变化，因此 7.64.1 / 7.64.2 风险分级跳过 CoreRules full regression并继续依赖 7.63 的 1531/1531；UHT 因无 Header / reflection / generated-header / Build.cs 变化跳过。
+
+当前已关闭能力：Through Ball SkillRule Snapshot / Validator、Branch Selection、Participant Eligibility；Feet Plan / Assembler / Executor / test-only Composition；Behind Defense P1 Plan / Assembler / Executor / test-only Composition / P2 Outcome；Anti-Offside Outcome；One-on-One Handoff Creator；One-on-One Chip Shot Outcome Query。纯规则层现可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter Handoff / Chip Shot terminal Goal-or-Miss`，但完整 One-on-One 尚未完成。
+
+仍未完成：One-on-One Direct Shot branch / choice boundary、Shooter Snapshot / Context、Active defensive-round GK State Representation / Context Query、Shooter / GK Finishing input、Direct Shot Formula Plan / Resolver Input / Resolution / Outcome、Feet / Behind Defense / Anti-Offside / Chip Shot production Consumer、Production Through Ball Composition、Match State result consumer / mutation、FormulaAttackFlow、MatchPlay 与完整生产编排。Active defensive-round GK Context remains blocked by state representation；不得使用初始 / 任意阵容 GK、UsedCardIds 或 legacy `bUsedGoalkeeperActivation` 替代。Direct Shot GK modifier precedence remains unresolved：后续 Direct Shot Contract 必须精确裁决一般运动战 GK `×0.5` 与单刀显式 GK OneOnOne 公式的优先关系；该问题不影响 Chip Shot 关闭，也不在 7.65 裁决。
+
+历史债务继续保留：Feet Plan M-001；Feet Assembler 7.23-M-001；7.31 Minor A/B/C；P1 Assembler 7.40 Minor A/B；P1 Executor 7.44 Minor A/B；P1 Composition 7.48-M-001/M-002；P2 7.52-M-001/M-002；Anti-Offside 7.56 auxiliary source-scan Minor；7.58-M-001；7.61-M-001；7.62-M-001；7.62-M-002 Direct Shot GK modifier precedence；7.64.2-M-001 omitted final Next Stage Recommendation section。`7.63-M-001 / 7.64-B-001` 不再开放：Resolved by 7.64.1，Independently confirmed by 7.64.2。
+
+Informational 继续包括 AssetRegistry `/Temp/__ExternalActors__/Untitled_1` warning、当前无完整 Through Ball production consumer、无 action correlation token、Active GK 状态阻断和无 One-on-One Direct Shot Contract。7.65 为 Docs-only，不运行 Build、UHT、自动化测试或 CoreRules full regression。下一唯一入口为 `7.66 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection / Minimum Contract Review，GPT-5.6 Sol High）；该阶段重新比较候选，7.65 不预选。

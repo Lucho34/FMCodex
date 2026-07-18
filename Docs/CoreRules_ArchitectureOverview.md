@@ -418,3 +418,34 @@ Creator 只能证明传入的单个正式 Outcome envelope 内冻结的 continua
 7.59 实际证据为 Development Editor Build PASS、Creator 22/22、P2 34/34、Anti-Offside 38/38、CoreRules 1513/1513、`git diff --check` PASS，且 `1513 = 1491 + 22`；UHT 因无反射或 generated-header 变化而跳过。7.60 独立复验 Creator 22/22、P2 34/34、Anti-Offside 38/38，结论为 Capability Closure `APPROVED`、Correction required `NO`。因 7.59 已完成 Build 与全量回归、实现后源码和哈希未变化且无共享 Contract / 反射 / API 风险，7.60 风险分级跳过 Build、UHT、CoreRules 全量、Feet、P1 Formula、Branch Selection 全矩阵和 Participant Eligibility 全矩阵；7.61 也不重跑验证。
 
 当前纯规则输出与 continuation 边界可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter identity Handoff`；来源 Query 仍可输出 RunnerId，但正式 Handoff 已提升为三字段复合身份。One-on-One Entry、Active defensive-round GK Context、Shooter / GK Finishing input、One-on-One Plan / Resolver Input / Formula Resolution / Outcome、各分支生产 Consumer、Production Through Ball Composition、Match State consumer / mutation、FormulaAttackFlow、MatchPlay 与完整生产编排仍未完成。下一唯一入口为 `7.62 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection / Minimum Contract Review，GPT-5.6 Sol High）；7.61 不预选候选。
+
+## Through Ball One-on-One Chip Shot Outcome Query 架构边界（7.65）
+
+项目仍处于总体阶段 4：纯 CoreRules；7.62–7.65 是内部阶段编号，不是总体阶段 7。7.62 冻结最小 Contract，7.63 通过提交 `1d69ab3cea09895eefee985180cd4a20850c8b15 feat: add through ball one-on-one chip shot outcome query` 只新增 Chip Shot Header、CPP 与 18 项 Tests，7.64 的 Contract / 行为审查通过但标准 adaptive-Unity Build 因 C4459 阻断关闭，7.64.1 修正该构建碰撞，7.64.2 独立确认修正并批准 Correction Closure 与 Capability Closure；7.65 只同步文档并在完成时关闭。
+
+当前新增的能力专用无状态边界为：
+
+```text
+Successful One-on-One Handoff Creation Result
++ caller-supplied Chip Shot Attack D6
++ LogId / TurnIndex
+→ FThroughBallOneOnOneChipShotOutcomeQuery
+  ├─ D6 1–3 → Miss terminal
+  └─ D6 4–6 → Goal terminal
+```
+
+调用该专用 Query 本身表示调用方已选择 Chip Shot；它不在 Direct Shot 与 Chip Shot 之间选择。Input 必须持有完整正式 `FThroughBallOneOnOneHandoffCreationResult`、显式 D6 presence / `[1,6]` 值以及有效日志上下文，不能降级为裸 Handoff、ShooterCardId、OwnerIds、P2 Result 或 Anti-Offside Result。Result 在成功和失败时都保存完整 Input；失败保持 `Decision=None` 且三个 outcome flags 为 false，成功只在全部验证后原子设置 terminal Goal / Miss。
+
+架构级首错顺序固定为 Handoff `bSuccess` → ErrorCode → ErrorMessage → InvalidField → presence → AttackingOwnerId → DefendingOwnerId → Owner distinctness → ShooterCardId → D6 presence → D6 range → LogId → TurnIndex → 原子成功。Query 不重新执行 Handoff Creator，不重新验证 P2 / Anti-Offside provenance，也不信任失败或伪造成功 Result 的残留 payload。
+
+正式 Handoff 继续保存 `AttackingOwnerId / DefendingOwnerId / ShooterCardId`；`AttackingOwnerId + ShooterCardId` 是 Shooter 复合身份，CardId 不跨 Side 全局唯一。Chip Shot Query 只能证明输入是结构一致的成功 Handoff、身份字段合法、外部 D6 合法以及 Result 保存完整 Input；不能证明 Handoff 来自哪一次来源操作、Handoff / D6 / LogId 属于同一真实网络 action、当前 Match State、防守回合或 active goalkeeper。ActionId、CorrelationId 与统一 production action envelope 仍不存在。
+
+该 Query 不读取或修改 Match State、当前 round / action、Active GK，不解析 Shooter Snapshot，不查询卡牌数据库，不验证或消耗 stamina，不写 InvolvedCardIds，不生成 Formula Plan，不调用 FormulaResolver，不掷骰。其直接生产依赖只有 `CoreMinimal.h` 与 `ThroughBallOneOnOneHandoffCreator.h`；它不是 One-on-One Framework、通用 D6 Outcome Framework、Formula execution、Match State consumer、Production Composition 或完整 One-on-One。
+
+7.63 的 18/18 Chip Shot、22/22 Handoff 与 CoreRules 1531/1531 均通过；当时 `/wd4459` 辅助 Build 通过，但不是最终 closure gate。7.64 无抑制标准 Build 复现 C4459，阻断原因是 Feet Composition 测试匿名命名空间常量与 Handoff Creator 同名参数 / 局部变量进入 adaptive-Unity translation unit，不是 Chip Shot Contract 或行为失败。
+
+修正提交 `b9d94566b4f52dda11f5bd0d8fbb6389e2fb764b test: avoid adaptive unity owner identifier collision` 只在 `ThroughBallFeetFormulaResolutionCompositionTests.cpp` 将两个测试私有 identifier 重命名为 `FeetCompositionTestAttackingOwnerId` 与 `FeetCompositionTestDefendingOwnerId` 并更新四处引用；`Player.Attacking / Player.Defending`、fixture、输入、断言、顺序、名称和 21 项注册均不变，无生产 Contract、warning suppression、Build.cs 或 Unity 设置变化。
+
+7.64.1 标准 Build 及 Feet 21、Handoff 22、Chip Shot 18 通过。7.64.2 无 `/wd4459`、无 `-DisableUnity` 重新编译 `Module.FMCodex.8.cpp` 并链接 `UnrealEditor-FMCodex.dll`，61 项直接测试全部通过，目标及新增 C4459 均不存在；因此 `7.63-M-001 / 7.64-B-001` 已由 7.64.1 解决并由 7.64.2 独立确认。
+
+当前纯规则层可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter Handoff / Chip Shot Goal-or-Miss terminal Outcome`，但这不表示完整 One-on-One 已完成。Direct Shot 分支 / 调用边界、Shooter Snapshot / Context、Active defensive-round GK State Representation / Context Query、Shooter / GK Finishing input、Direct Shot Plan / Assembly / Resolution / Outcome、各生产 Consumer、Production Through Ball Composition、Match State mutation、FormulaAttackFlow、MatchPlay 与完整编排仍未完成。Active defensive-round GK Context remains blocked by state representation；Direct Shot GK modifier precedence remains unresolved。下一唯一入口为 `7.66 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection / Minimum Contract Review，GPT-5.6 Sol High），7.65 不预选下一能力。
