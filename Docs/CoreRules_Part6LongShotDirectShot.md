@@ -124,7 +124,7 @@
 - 7.05 Through Ball SkillRule Support Final Closure Docs Sync：只同步五份授权 CoreRules 文档并正式关闭 Through Ball SkillRule Support CoreRules-only minimum slice；不修改 Source、Tests、Canonical 或 Build.cs。
 - 7.06 Part 6 Post-Through-Ball-SkillRule-Support Next Capability Decision Review：确认 runtime participant eligibility 是剩余 Through Ball 能力的最上游业务阻断；Stage 5 尚未 Ready，本阶段未修改文件。
 - 7.07 Through Ball Runtime Participant Eligibility Canonical Clarification Review：识别 Runner 前场表达、同侧角色互异、防守回合 GK Context 与跨阵营 CardId 身份空间四项用户裁决；当时 Canonical Docs Sync Gate 尚未通过。
-- 用户最终裁决：Runner 按当前实际前场部署判断；同一球员实例不得兼任两个角色；当前防守回合打出并上场的实际 GK 自动成为该回合的终结公式上下文且不参与 Transition；不同 Owner / Side 的相同 CardId 不视为同一场上实例。Behind Defense P1 是 Transition，不计 GK。
+- 7.08 当时的裁决：Runner 按当前实际前场部署判断；同一球员实例不得兼任两个角色；当时把当前防守回合打出并上场的实际 GK 视为终结公式上下文且不参与 Transition；不同 Owner / Side 的相同 CardId 不视为同一场上实例。Behind Defense P1 是 Transition，不计 GK。其“打出 / 上场决定门将参与”和卡牌移动推断已由 CD-020 / 7.67.1 修订；普通参与者身份与 P1 不含 GK 的决定仍有效。
 - 7.08 Through Ball Runtime Participant Eligibility Canonical Docs Sync：只修改五份授权文档，将裁决同步到 Canonical、Decision Log、Test Cases 与阶段记录；未修改 Source、测试源码或 Build.cs，未运行编译、UHT 或测试。Participant Eligibility 尚未实现；下一阶段为 7.09 Minimum Contract Review。
 - 7.09 Through Ball Runtime Participant Eligibility Minimum Contract Review：冻结专用 Query 最小职责、能力专用 Error / Input / Result、完整验证顺序、Runner 外部前场证明、Owner + CardId 身份空间、Optional Helper 隔离、Active GK 排除、52 项测试矩阵和三个实现文件。
 - 7.10 Through Ball Runtime Participant Eligibility Implementation：提交 `4322cff feat: add through ball participant eligibility`，只新增 `ThroughBallParticipantEligibilityQuery.h/.cpp` 与 `ThroughBallParticipantEligibilityQueryTests.cpp`。
@@ -1208,8 +1208,34 @@ Error 固定为 `None / HandoffCreationFailed / InvalidHandoffCreationResult / M
 
 当前已关闭能力：Through Ball SkillRule Snapshot / Validator、Branch Selection、Participant Eligibility；Feet Plan / Assembler / Executor / test-only Composition；Behind Defense P1 Plan / Assembler / Executor / test-only Composition / P2 Outcome；Anti-Offside Outcome；One-on-One Handoff Creator；One-on-One Chip Shot Outcome Query。纯规则层现可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter Handoff / Chip Shot terminal Goal-or-Miss`，但完整 One-on-One 尚未完成。
 
-仍未完成：One-on-One Direct Shot branch / choice boundary、Shooter Snapshot / Context、Active defensive-round GK State Representation / Context Query、Shooter / GK Finishing input、Direct Shot Formula Plan / Resolver Input / Resolution / Outcome、Feet / Behind Defense / Anti-Offside / Chip Shot production Consumer、Production Through Ball Composition、Match State result consumer / mutation、FormulaAttackFlow、MatchPlay 与完整生产编排。Active defensive-round GK Context remains blocked by state representation；不得使用初始 / 任意阵容 GK、UsedCardIds 或 legacy `bUsedGoalkeeperActivation` 替代。Direct Shot GK modifier precedence remains unresolved：后续 Direct Shot Contract 必须精确裁决一般运动战 GK `×0.5` 与单刀显式 GK OneOnOne 公式的优先关系；该问题不影响 Chip Shot 关闭，也不在 7.65 裁决。
+在 7.65 收口快照中仍未完成：One-on-One Direct Shot branch / choice boundary、Shooter Snapshot / Context、Active defensive-round GK State Representation / Context Query、Shooter / GK Finishing input、Direct Shot Formula Plan / Resolver Input / Resolution / Outcome、Feet / Behind Defense / Anti-Offside / Chip Shot production Consumer、Production Through Ball Composition、Match State result consumer / mutation、FormulaAttackFlow、MatchPlay 与完整生产编排。当时 Active defensive-round GK Context 被状态表达阻断，且不得使用初始 / 任意阵容 GK、UsedCardIds 或 legacy `bUsedGoalkeeperActivation` 替代；当时 Direct Shot GK modifier precedence 也尚未解决。该历史问题不影响 Chip Shot 关闭。
 
-历史债务继续保留：Feet Plan M-001；Feet Assembler 7.23-M-001；7.31 Minor A/B/C；P1 Assembler 7.40 Minor A/B；P1 Executor 7.44 Minor A/B；P1 Composition 7.48-M-001/M-002；P2 7.52-M-001/M-002；Anti-Offside 7.56 auxiliary source-scan Minor；7.58-M-001；7.61-M-001；7.62-M-001；7.62-M-002 Direct Shot GK modifier precedence；7.64.2-M-001 omitted final Next Stage Recommendation section。`7.63-M-001 / 7.64-B-001` 不再开放：Resolved by 7.64.1，Independently confirmed by 7.64.2。
+7.65 时的历史债务列表为：Feet Plan M-001；Feet Assembler 7.23-M-001；7.31 Minor A/B/C；P1 Assembler 7.40 Minor A/B；P1 Executor 7.44 Minor A/B；P1 Composition 7.48-M-001/M-002；P2 7.52-M-001/M-002；Anti-Offside 7.56 auxiliary source-scan Minor；7.58-M-001；7.61-M-001；7.62-M-001；7.62-M-002 Direct Shot GK modifier precedence；7.64.2-M-001 omitted final Next Stage Recommendation section。`7.63-M-001 / 7.64-B-001` 不再开放：Resolved by 7.64.1，Independently confirmed by 7.64.2。
 
 Informational 继续包括 AssetRegistry `/Temp/__ExternalActors__/Untitled_1` warning、当前无完整 Through Ball production consumer、无 action correlation token、Active GK 状态阻断和无 One-on-One Direct Shot Contract。7.65 为 Docs-only，不运行 Build、UHT、自动化测试或 CoreRules full regression。下一唯一入口为 `7.66 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection / Minimum Contract Review，GPT-5.6 Sol High）；该阶段重新比较候选，7.65 不预选。
+
+## 7.66–7.67.1 Through Ball One-on-One Direct Shot 规则澄清
+
+| 内部阶段 | 状态 | 结论 |
+| --- | --- | --- |
+| 7.66 Capability Selection + Minimum Contract Review | CLOSED AS EXPLICIT DEFERRAL | Direct Shot 公式、门将牌状态生命周期与 Shooter Snapshot 权威来源均未冻结，不选择 Implementation。 |
+| 7.67 Canonical Formula Clarification Review | CLOSED AS BLOCKED REVIEW | 现有 Canonical 无法唯一裁决 multiplier 等产品规则；`BLOCKED` 是业务决定缺失，不是代码失败。 |
+| 7.67.1 Product Rule Canonical Docs Sync | CLOSED ON COMPLETION | 用户产品决定正式同步到 Canonical、Decision Log 与四份 CoreRules 文档；不改源码。 |
+
+用户产品决定关闭以下公式问题：
+
+- DS-F01：基础 GK OneOnOne 为 `×1.0`；当前相关防守流程主动使用同一张唯一门将牌时，额外 `×0.5`。
+- DS-F02：未主动使用为 `Goalkeeper.OneOnOne + DefenseCompareD6`；主动使用为 `Goalkeeper.OneOnOne ×1.5 + DefenseCompareD6`。
+- DS-F03：此前所谓“GK-absent formula”标记为 `NOT APPLICABLE`；每方始终只有一名 GK，Direct Shot 天然包含其 OneOnOne。
+- DS-F04 / DS-F05：`AttackCompareD6` 与 `DefenseCompareD6` 始终显式存在、外部提供、相互独立且位于 `[1,6]`，不得复用已有 D6；双方比较 D6 继续触发现有 Fast Suppression 资格。
+- DS-F08 / DS-F09：Direct Shot 始终 `bGoalkeeperParticipated=true`；公式总值平局防守方直接获胜，不进入 stamina。
+- DS-F10：Attacker Winner 为 terminal Goal，Defender Winner 为 terminal Miss；两者均结束进攻且不继续，没有第三种成功 Outcome。
+- DS-F12：`InvolvedCardIds=[ShooterCardId, GoalkeeperCardId]`，attacker-first；主动使用门将牌不重复同一 GK CardId。
+
+攻击方公式固定为 `Shooter.Shooting + AttackCompareD6 + 1`。门将牌主动使用后仍留在手牌，不部署、不移动、不替换基础门将、不创建第二名门将；played-state 只控制额外 `OneOnOne ×0.5`，不控制 Direct Shot 门将参与。
+
+通用 Finishing 语义同步为：最终公式包含 GK 属性则 `bGoalkeeperParticipated=true`；原本不含 GK 属性但主动使用门将牌加入 GK 属性后也为 `true`；最终公式完全无 GK 属性才为 `false`。这不表示所有 Finishing 天然包含 GK。既有 Feet Plan 仍按其已实现的可选 GK 半值公式记录，不声称源码已经应用新的 Direct Shot Contract。
+
+7.62-M-002、7.66-B-001、7.67-B-001、7.67-B-002 与 7.67-B-003 的公式 blockers 已由用户产品决定解决并由 7.67.1 正式化。继续开放：7.66-B-002（played-state Owner / writer / round scope / repeat / cleanup / stale，且只控制额外 `×0.5`）、7.66-B-003（Shooter action-time Snapshot 权威路径），以及 production caller / ActionId / CorrelationId / action envelope。Stamina 本阶段只冻结“Direct Shot 平局不进入 stamina”，不冻结数组或日志字段。
+
+本阶段不定义 Direct Shot C++ Input / Result / Error / validation order，不修改 Handoff 或 Chip Shot，不运行 Build、UHT、自动化测试或 CoreRules full regression。下一唯一入口为 `7.68 Part 6 Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；7.68 必须重新比较 played-GK 状态表达与 writer/lifecycle、Shooter Snapshot 权威绑定、Direct Shot pure-value Plan 可行性、caller provenance、Explicit Deferral 与 Part 6 Closure，不得再比较“无门将 Direct Shot 公式”。

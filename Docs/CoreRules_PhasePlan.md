@@ -706,8 +706,19 @@
 - 7.64 blocker 是 Feet 测试匿名命名空间 Owner 常量与 Handoff Creator 参数 / 局部变量在 adaptive-Unity translation unit 中产生 C4459，不是 Chip Shot Contract 或行为失败。
 - Correction 只重命名测试私有 identifier 和四处直接引用，FName 值与 21 项 Feet 测试不变，无 warning suppression、Build.cs 或 Unity 设置变化。`7.63-M-001 / 7.64-B-001` 已由 7.64.1 解决并由 7.64.2 独立确认。
 - 当前已关闭列表追加 One-on-One Chip Shot Outcome Query；完整 One-on-One 未关闭。未完成 Direct Shot choice / capability、Shooter Snapshot / Context、Active GK State / Context、Finishing input、Direct Shot Plan / Assembly / Resolution / Outcome、各生产 Consumer、Production Composition、Match State mutation、FormulaAttackFlow 与 MatchPlay。
-- Active defensive-round GK Context remains blocked by state representation.
-- Direct Shot GK modifier precedence remains unresolved.
-- 历史债务继续保留：Feet Plan M-001；Feet Assembler 7.23-M-001；7.31 Minor A/B/C；P1 Assembler 7.40 Minor A/B；P1 Executor 7.44 Minor A/B；P1 Composition 7.48-M-001/M-002；P2 7.52-M-001/M-002；Anti-Offside 7.56 auxiliary source-scan Minor；7.58-M-001；7.61-M-001；7.62-M-001；7.62-M-002；7.64.2-M-001。Informational 列表继续保留 AssetRegistry warning、无完整 Consumer、无 correlation token、Active GK 状态阻断和无 Direct Shot Contract。
+- 在 7.65 快照中，Active defensive-round GK Context 仍被状态表达阻断。
+- 在 7.65 快照中，Direct Shot GK modifier precedence 仍未解决；该公式歧义随后由用户产品决定解决并在 7.67.1 正式化。
+- 7.65 时的历史债务列表为：Feet Plan M-001；Feet Assembler 7.23-M-001；7.31 Minor A/B/C；P1 Assembler 7.40 Minor A/B；P1 Executor 7.44 Minor A/B；P1 Composition 7.48-M-001/M-002；P2 7.52-M-001/M-002；Anti-Offside 7.56 auxiliary source-scan Minor；7.58-M-001；7.61-M-001；7.62-M-001；7.62-M-002；7.64.2-M-001。其当前状态见下方 7.67.1 更新。Informational 列表继续保留 AssetRegistry warning、无完整 Consumer、无 correlation token、Active GK 状态阻断和无 Direct Shot Contract。
 - 7.65 不运行 Build、UHT、自动化测试或 CoreRules full regression；继续依赖 7.63 的 1531/1531 与 7.64.2 的无抑制标准 Build、21/22/18 独立证据。
 - 下一唯一入口为 `7.66 Part 6 Next Capability Selection + Minimum Contract Review`。7.66 至少重新比较 One-on-One Direct Shot capability slice、Direct Shot branch / choice boundary、Shooter Context / Snapshot Resolution、Active Defensive-Round GK State Representation、Active Defensive-Round GK Context Query、Shooter / GK Finishing Input、Direct Shot Formula Plan、Direct Shot Resolver Input、Direct Shot Formula Resolution、Chip Shot / Feet / Behind Defense / Anti-Offside Production Consumer、Production Through Ball Composition、Match State Result Consumer / Mutation、Explicit Deferral 与 Part 6 Closure；不得在 7.65 预先裁决。
+
+## 7.66–7.67.1 One-on-One Direct Shot 决策与 Canonical 同步
+
+- 7.66 选择 `Explicit Deferral`：Direct Shot 公式、门将牌 played-state writer / lifecycle 与 Shooter Snapshot 权威绑定都不足以冻结可实施 Contract。
+- 7.67 Canonical Formula Clarification Review 以 `BLOCKED` 关闭，因为现有规则无法唯一裁决 GK multiplier、所谓 GK-absent formula、D6、参与、平局和 InvolvedCardIds。这是业务规则缺口，不是实现、Build 或测试失败。
+- 用户随后明确：每方唯一 GK；Direct Shot 攻方为 `Shooter.Shooting + AttackCompareD6 + 1`；守方未主动使用门将牌时为 `Goalkeeper.OneOnOne ×1.0 + DefenseCompareD6`，主动使用时为同一 GK `×1.5 + DefenseCompareD6`。
+- 两颗 D6 始终显式存在、外部提供、相互独立且位于 `[1,6]`；Direct Shot 始终 `bGoalkeeperParticipated=true`，平局防守方胜且不进入 stamina；Attacker Winner 为 terminal Goal，Defender Winner 为 terminal Miss；`InvolvedCardIds=[ShooterCardId, GoalkeeperCardId]` 且 GK 不重复。
+- 7.67.1 为 Docs-only Canonical Sync：门将牌主动使用后仍留在手牌；played-state 只控制额外 `OneOnOne ×0.5`，不控制门将是否参与。通用 Finishing 按最终公式是否包含 GK 属性确定 `bGoalkeeperParticipated`，但并非所有 Finishing 都天然包含 GK。
+- 7.62-M-002、7.66-B-001、7.67-B-001、7.67-B-002 与 7.67-B-003 的公式 blockers 状态为 `Resolved by user product decision / Formalized by 7.67.1`。7.66-B-002 仍开放，但修正为 played-state Owner / writer / round scope / repeat / cleanup / stale contract；7.66-B-003 Shooter action-time Snapshot authority 仍开放。Production caller、ActionId / CorrelationId 与统一 action envelope 仍不存在。
+- 7.67.1 不冻结 Direct Shot C++ API、stamina 数组 / 日志字段或 validation order，不修改 Source / Tests，也不运行 Build、UHT、自动化测试或 CoreRules full regression。
+- 下一唯一入口为 `7.68 Part 6 Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）。7.68 必须重新比较 played-GK state representation、writer / lifecycle、Shooter Snapshot authoritative binding、Direct Shot pure-value Plan feasibility、caller provenance、Explicit Deferral 与 Part 6 Closure；不得预选能力，也不得重新提出“无门将 Direct Shot 公式”。

@@ -66,7 +66,7 @@
 
 - 日期：2026-06-26
 - 决策：每名玩家 20 张球员卡中必须且只能有 1 名门将。门将只能是 `GK` 类型，不允许 `GK/A`、`GK/M`、`GK/D`。
-- 决策：每名玩家单场比赛只能发动门将一次；发动后记录为已使用状态；不存在“横置”概念。
+- 历史决策：曾记录“每名玩家单场比赛只能发动门将一次；发动后记录为已使用状态；不存在横置概念”。其中“横置”仍不采用；门将牌使用后的手牌位置、参与语义和记录范围由 CD-020 修订，重复使用与生命周期不再由本条推断。
 - 决策：定位球不使用“发动门将”概念，按定位球表直接引用门将属性。
 - 影响：牌组校验、门将状态、定位球、测试用例。
 - Resolved UQ：UQ-009、UQ-010、UQ-011。
@@ -146,10 +146,10 @@
 - 决策：直塞跑位球员必须当前实际部署在进攻方前场区域；静态 `PositionTypes` 包含 `Attack` 不能单独替代当前部署区域判断。
 - 决策：同一场上球员实例不能在同一次直塞结算中兼任两个角色。持球球员与跑位球员必须不同；实际选择协防球员时，盯人球员与协防球员必须不同。
 - 决策：身份按 Owner / Side + CardId 或等价稳定场上球员实例判断。不同 Owner / Side 的相同 CardId 不视为同一球员，不新增仅基于原始 CardId 的跨阵营身份冲突。
-- 决策：防守方在当前防守回合打出并使 GK 进入场上后，该实际 GK 自动成为本回合的门将上下文，不在公式阶段再次选择或发动。当前回合没有上场 GK 时，不读取或验证 GK Snapshot，GK 属性贡献为 0。
-- 决策：GK 只参与终结公式。身后球 P1 为过渡公式，不计 GK；P2 与反越位的纯 D6 越位 / 单刀判断也不直接加入 GK 属性。若后续进入单刀，则沿用当前防守回合已经上场的实际 GK。
-- 理由：静态位置类型不等于当前部署区域；同一球员不得重复贡献两个角色；跨阵营共享卡牌定义不代表同一场上实例；打出 GK 已经完成本回合门将参与选择；过渡公式不使用终结门将属性。
-- 范围：仅冻结直塞运行时参与者资格、身份和防守回合 GK 参与语义；不冻结 Query Input / Result / Error、Formula Plan、Handoff、Consumer、Match State 或完整单刀 Contract。
+- 修订说明：本条原先把“当前防守回合打出并使 GK 进入场上”作为门将参与的唯一来源，并把未打出时的 GK 贡献一律视为 0；该门将参与与卡牌移动推断已由 CD-020 取代。门将牌保持在手牌中，`bGoalkeeperParticipated` 改由最终公式是否含 GK 属性决定。
+- 决策：身后球 P1 为过渡公式，不计 GK；P2 与反越位的纯 D6 越位 / 单刀判断本身也不直接加入 GK 属性。后续具体终结公式是否包含 GK，按该公式和 CD-020 判断。
+- 理由：静态位置类型不等于当前部署区域；同一球员不得重复贡献两个角色；跨阵营共享卡牌定义不代表同一场上实例；过渡或纯 D6 判定本身不使用终结门将属性。
+- 范围：本条继续冻结直塞运行时普通参与者资格、身份以及 P1 / P2 / 反越位节点不含 GK 属性的边界；终结公式门将参与、门将牌手牌状态与单刀 Direct Shot 由 CD-020 管理。仍不冻结 Query Input / Result / Error、Formula Plan、Handoff、Consumer 或 Match State。
 - 影响：Canonical 直塞规则、后续 Contract Review、测试场景。
 
 ### CD-019 - Through Ball Behind Defense P1 Pre-Formula Short Circuit
@@ -161,6 +161,22 @@
 - 拒绝方案：先执行 P1 过渡公式，再根据进攻方 D6 1-2 改判传出底线。
 - 范围：冻结身后球 P1 的短路顺序与条件性 DefenseD6；不冻结 P1 Assembler / Executor、P2、反越位、单刀衔接、状态修改或完整直塞生产流程。
 - 影响：Canonical 身后球规则、P1 Plan Query Contract、自动化测试与后续 P1 消费链。
+
+### CD-020 - Finishing Goalkeeper Participation and Through Ball One-on-One Direct Shot
+
+- 日期：2026-07-18
+- 用户产品决定：每方始终只有一名门将；主动打出的门将牌就是同一张唯一门将牌，不存在默认、额外或第二名门将之间的身份差异。
+- 通用决定：`bGoalkeeperParticipated` 表示最终公式中是否存在至少一个 GK 属性贡献，不表示门将牌是否已打出。公式天然包含 GK 属性时，即使未打出门将牌也为 `true`；原本不含 GK 属性的公式因主动使用门将牌而加入 GK 属性后为 `true`；最终公式完全没有 GK 属性时才为 `false`。任何 `bGoalkeeperParticipated=true` 的公式总值平局都由防守方获胜，不进入体力比较。
+- Direct Shot 攻方公式：`Shooter.Shooting + AttackCompareD6 + 1`。
+- Direct Shot 守方公式：未主动使用门将牌时为 `Goalkeeper.OneOnOne × 1.0 + DefenseCompareD6`；已在当前相关防守流程主动使用同一张唯一门将牌时，保留基础 `×1.0` 并额外加入 `×0.5`，等价为 `Goalkeeper.OneOnOne × 1.5 + DefenseCompareD6`。
+- D6 决定：两颗比较 D6 始终显式存在、由调用方外部提供、彼此独立且位于 `[1,6]`；不得复用 Branch Selection、Behind Defense P1 / P2、Anti-Offside、Chip Shot 或其他公式 D6。双方都有比较 D6，因此沿用既有点数快速压制规则，不新增专用 modifier。
+- 参与与结果：Direct Shot 天然包含 GK OneOnOne，所以始终 `bGoalkeeperParticipated=true`；平局防守方胜且不比较 stamina。Attacker Winner 为 terminal Goal，Defender Winner 为 terminal Miss，均 `bAttackEnded=true / bContinueResolution=false`，不存在第三种成功 Outcome。
+- 卡牌与日志顺序：主动使用门将牌后，该牌仍留在手牌中，不进入场上、攻防区、放置区或已消耗区，不替换基础门将，也不创建第二名门将。Direct Shot `InvolvedCardIds` 固定为 attacker-first `[ShooterCardId, GoalkeeperCardId]`，同一 GK 不重复记录。
+- 被替代的歧义：7.62-M-002、7.66-B-001、7.67-B-001、7.67-B-002 与 7.67-B-003 中有关 GK multiplier、所谓 GK-absent formula、DefenseD6、门将参与、平局、Goal / Miss 和 InvolvedCardIds 的公式阻断，均由用户产品决定解决并由 7.67.1 正式化。所谓“无 GK Direct Shot 公式”不适用，因为 Direct Shot 始终含唯一 GK 的 OneOnOne。
+- 适用范围：通用门将参与定义适用于所有 Finishing 公式；这不表示所有 Finishing 都天然包含 GK。Direct Shot 的 `1.0 / 1.5`、双 D6、平局、Outcome 与 CardId 顺序只适用于 Through Ball One-on-One Direct Shot。
+- 非目标：不冻结 Direct Shot C++ Input / Result / Error、validation order、stamina 数组或日志字段，不修改 Handoff / Chip Shot，也不授权实现或状态修改。
+- 仍开放：门将牌 played-state 的 Owner、writer、当前防守回合范围、重复使用、清理和 stale 防护（7.66-B-002）；Shooter action-time Snapshot 权威绑定（7.66-B-003）；正式 production caller、ActionId / CorrelationId 与统一 action envelope。played-state 只控制额外 `OneOnOne ×0.5`，不控制 Direct Shot 是否有门将参与。
+- 影响：Rules Canonical、后续 Direct Shot 最小 Contract、Formula Plan / Resolver Input 设计、状态 Contract 与测试用例。
 
 ## Resolved UQ Summary
 

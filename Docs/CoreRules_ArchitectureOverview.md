@@ -448,4 +448,29 @@ Successful One-on-One Handoff Creation Result
 
 7.64.1 标准 Build 及 Feet 21、Handoff 22、Chip Shot 18 通过。7.64.2 无 `/wd4459`、无 `-DisableUnity` 重新编译 `Module.FMCodex.8.cpp` 并链接 `UnrealEditor-FMCodex.dll`，61 项直接测试全部通过，目标及新增 C4459 均不存在；因此 `7.63-M-001 / 7.64-B-001` 已由 7.64.1 解决并由 7.64.2 独立确认。
 
-当前纯规则层可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter Handoff / Chip Shot Goal-or-Miss terminal Outcome`，但这不表示完整 One-on-One 已完成。Direct Shot 分支 / 调用边界、Shooter Snapshot / Context、Active defensive-round GK State Representation / Context Query、Shooter / GK Finishing input、Direct Shot Plan / Assembly / Resolution / Outcome、各生产 Consumer、Production Through Ball Composition、Match State mutation、FormulaAttackFlow、MatchPlay 与完整编排仍未完成。Active defensive-round GK Context remains blocked by state representation；Direct Shot GK modifier precedence remains unresolved。下一唯一入口为 `7.66 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection / Minimum Contract Review，GPT-5.6 Sol High），7.65 不预选下一能力。
+截至 7.65，纯规则层可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter Handoff / Chip Shot Goal-or-Miss terminal Outcome`，但这不表示完整 One-on-One 已完成。当时 Direct Shot 分支 / 调用边界、Shooter Snapshot / Context、Active defensive-round GK State Representation / Context Query、Shooter / GK Finishing input、Direct Shot Plan / Assembly / Resolution / Outcome、各生产 Consumer、Production Through Ball Composition、Match State mutation、FormulaAttackFlow、MatchPlay 与完整编排均未完成；当时 Active defensive-round GK Context 被状态表达阻断，Direct Shot GK modifier precedence 也尚未解决。其历史下一入口为 `7.66 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## Through Ball One-on-One Direct Shot 产品规则边界（7.67.1）
+
+7.66 因 Direct Shot 公式、门将牌状态和 Shooter Snapshot 权威来源均未满足实现前置而选择 `Explicit Deferral`。7.67 的 Canonical Clarification 因现有文本无法唯一裁决门将 multiplier 等产品问题而以 `BLOCKED` 结束；这是业务规则缺口，不是代码、Build 或测试失败。用户随后作出产品决定，7.67.1 只把决定同步到文档。
+
+`bGoalkeeperParticipated` 现在明确为公式语义：最终公式中只要存在至少一个 GK 属性贡献即为 `true`，与“门将牌是否已打出”不是同一状态。FormulaResolver 的既有行为保持不变：该标志为 `true` 且公式总值平局时，防守方在 stamina 比较前直接获胜。历史 Feet Plan 的 `bGoalkeeperParticipated=Plan.bHasActiveGoalkeeper` 仍是该既有切片的实现事实，因为该 Plan 只有 `bHasActiveGoalkeeper=true` 时才把 GK OneOnOne 半值加入最终公式；它不得被提升为所有 Finishing 或 Direct Shot 的通用参与定义。
+
+Direct Shot 的规则数据流冻结为：
+
+```text
+Formal One-on-One Handoff
++ authoritative action-time Shooter Snapshot
++ defending side's unique Goalkeeper Snapshot
++ played-state evidence for the current relevant defensive flow
++ new external AttackCompareD6 / DefenseCompareD6
+→ AttackerTotal = Shooter.Shooting + AttackCompareD6 + 1
+→ DefenderTotal = Goalkeeper.OneOnOne × (played ? 1.5 : 1.0) + DefenseCompareD6
+→ bGoalkeeperParticipated = true
+→ Attacker Winner = terminal Goal
+→ Defender Winner or formula tie = terminal Miss
+```
+
+两颗 D6 始终要求显式 presence、`[1,6]`、外部提供且相互独立；双方比较点都来自 D6，因此继续适用既有 Fast Suppression。`InvolvedCardIds` 固定为 `[ShooterCardId, GoalkeeperCardId]`，主动使用同一张唯一门将牌不会产生第二个 GK 身份或重复 CardId。
+
+played-state 仅决定额外 `Goalkeeper.OneOnOne ×0.5`，不决定 Direct Shot 是否有门将参与。主动使用后门将牌仍在手牌中，不部署、不移动、不替换，也不创建第二名门将。该状态的 Owner、writer、round scope、repeat、cleanup 与 stale protection 仍未冻结；Shooter action-time Snapshot 权威绑定及 production caller / correlation 也仍缺失。因此 7.67.1 关闭公式歧义，但不创建 C++ Contract、不授权 Direct Shot 实现，也不关闭完整 One-on-One。下一唯一入口为 `7.68 Part 6 Next Capability Selection + Minimum Contract Review`。
