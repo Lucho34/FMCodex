@@ -1142,3 +1142,30 @@ Cut Inside Shot Minimal Slices 最终收口基线：
 - 7.55 最近完整验证为 Anti-Offside 38/38、Branch 18/18、Eligibility 52/52、P2 34/34、CoreRules 1491/1491，Build / UHT PASS；`1491 = 1453 + 38`。7.56 最近独立定向复验为 38/38、18/18、52/52，未重跑 P2、Build、UHT 或 CoreRules 全量。7.57 为 Docs-only，未运行 Build、UHT 或自动化测试。
 - 7.56 auxiliary source-scan Minor 与全部既有 Feet / P1 / P2 测试证据债务继续保留；AssetRegistry warning、7.55 已终止且未采用的错误过滤器运行、当前无 Consumer / correlation / Handoff / Active GK Context 仅为 Informational，没有新增生产 Finding。
 - 下一唯一入口为 `7.58 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only，GPT-5.6 Sol High）。该阶段至少比较统一 Handoff creation、Entry validation、Active GK Context、Shooter/GK Finishing input、各分支 production Consumer / Composition、Match State consumer、Explicit Deferral 与 Part 6 Closure；7.57 不直接选择下一能力。
+
+## 7.58–7.61 Through Ball One-on-One Handoff Creator 最终关闭
+
+- 7.58 Capability Selection + Minimum Contract Review 已关闭；7.59 Implementation 已关闭；7.60 Independent Review + Closure Decision 已关闭；7.61 Final Closure Docs Sync 在本次同步完成后关闭。以上均为总体阶段 4 纯 CoreRules 的内部阶段编号。
+- 7.59 实现提交为 `ee940b915f438668565b86c3bcff6441a3f08561 feat: add through ball one-on-one handoff creator`，只新增 `ThroughBallOneOnOneHandoffCreator.h`、`ThroughBallOneOnOneHandoffCreator.cpp`、`ThroughBallOneOnOneHandoffCreatorTests.cpp`；无既有文件、Build.cs、反射、Match State、FormulaResolver、FormulaAttackFlow 或 MatchPlay 变化。
+- `FThroughBallOneOnOneHandoffCreator` 是 production、capability-specific、stateless pure CoreRules value creator。它仅通过 `CreateFromBehindDefenseP2` 与 `CreateFromAntiOffside` 消费完整正式 Outcome Result，验证 `OneOnOneRequired` continuation 与来源 provenance，再原子创建 `AttackingOwnerId / DefendingOwnerId / ShooterCardId` Handoff；不执行单刀、GK 查询、Formula、RNG、状态修改、Consumer、Entry 或 Composition。
+- `AttackingOwnerId + ShooterCardId` 共同构成 Shooter 复合身份；ShooterCardId 不是跨 Side 全局唯一。P2 Owner 来自 P1 Formula Plan，Shooter 为 P2 Runner = P1 Execution Runner = P1 Formula Plan Runner；Anti-Offside Owner 来自 Participant Eligibility Input，Shooter 为 Anti-Offside Runner = Eligibility RunnerSnapshot.CardId。Handoff 不保存 SourceBranch、Snapshot、Goalkeeper、Match State、D6、Formula、Decision、ActionId、CorrelationId 或 InvolvedCardIds。
+- Creator 没有新 gameplay Decision；其 Error 为 `None / SourceOutcomeFailed / InvalidSourceOutcomeResult / UnsupportedSourceOutcomeDecision / InvalidAttackingOwnerIdentity / InvalidDefendingOwnerIdentity / DuplicateOwnerIdentity / InvalidShooterIdentity / InconsistentShooterIdentity`。合法 Offside 被结构化拒绝；失败来源即使残留 RunnerId 也不能生成 Handoff。验证首错短路，失败不生成部分 Handoff，成功只在全部检查完成后设置。
+- Creator 只能证明单个正式 Outcome envelope 内的 continuation、Owner、Runner 一致性，不证明 Anti-Offside 两个上游同源、Outcome 与 Match State 同 action、当前 defensive round 或 active GK。当前无 ActionId / CorrelationId / 统一 production action envelope；未来 Composition 或调用方承担 correlation。
+- One-on-One Handoff Creation 先于 Active defensive-round GK Context。后者仍 `BLOCKED BY STATE REPRESENTATION`：当前状态不能表达当前防守回合、本回合实际打出的 GK、其 Owner / Side / Snapshot、未打出 GK、失效或不适用，且不得以初始 GK、阵容 GK 或全局已使用卡牌替代。
+- 7.59 实际验证为 Development Editor Build PASS、Creator 22/22、P2 34/34、Anti-Offside 38/38、CoreRules 1513/1513、`git diff --check` PASS，`1513 = 1491 + 22`；UHT 因无反射 / generated-header 变化跳过。7.60 独立复验三组为 22/22、34/34、38/38，Capability Closure `APPROVED`、Correction required `NO`；基于 7.59 全量证据、实现后源码 / hash 稳定以及无共享 Contract / 反射 / API 风险，跳过 Build、UHT、CoreRules 全量、Feet、P1 Formula、Branch 全矩阵与 Eligibility 全矩阵。7.61 不重跑验证。
+
+| Through Ball 纯 CoreRules 能力 | 7.61 状态 |
+| --- | --- |
+| SkillRule Snapshot / Validator、Branch Selection、Participant Eligibility | 已关闭 |
+| Feet Plan / Assembler / Executor / test-only Composition | 已关闭 |
+| Behind Defense P1 Plan / Assembler / Executor / test-only Composition、P2 Outcome | 已关闭 |
+| Anti-Offside Outcome | 已关闭 |
+| One-on-One Handoff Creator | 7.61 关闭 |
+| One-on-One Entry / Active defensive-round GK Context | 未完成 |
+| Shooter / GK Finishing input、One-on-One Plan / Assembler / Execution / Outcome | 未完成 |
+| 各分支 Production Consumer、Production Through Ball Composition | 未完成 |
+| Match State consumer / mutation、FormulaAttackFlow、MatchPlay、完整生产编排 | 未完成 |
+
+- 当前纯规则输出与 continuation 可表达 `Goal / Miss / OutOfPlay / DefenderStoppedAttack / Offside / OneOnOneRequired + compound Shooter identity Handoff`；来源 Query 的 RunnerId 仍是来源字段，但正式 Handoff 已提升为 Owner + Shooter 三字段契约。
+- 历史非阻塞债务继续保留且本阶段不修复：Feet Plan M-001、Feet Assembler 7.23-M-001、7.31 Minor A/B/C、P1 Assembler 7.40 Minor A/B、P1 Executor 7.44 Minor A/B、P1 Composition 7.48-M-001/M-002、P2 7.52-M-001/M-002、Anti-Offside 7.56 auxiliary source-scan Minor、7.58-M-001 omitted final Next Stage section。AssetRegistry `/Temp/__ExternalActors__/Untitled_1` warning、无完整 Through Ball production consumer、无 action correlation token、Active GK 状态阻断和无 One-on-One Entry validation 继续作为 Informational。
+- 下一唯一入口为 `7.62 Part 6 Next Capability Selection + Minimum Contract Review`（Report-only / Capability Selection / Minimum Contract Review，GPT-5.6 Sol High）。7.62 必须重新比较 Entry validation、Active GK Context Query、Shooter / GK Finishing input、Feet / Behind Defense / Anti-Offside Consumers、Production Composition、Match State mutation、Explicit Deferral 与 Part 6 Closure；7.61 不预选候选。
