@@ -10,8 +10,8 @@
 namespace
 {
 	const FName SelectedSkillId(TEXT("Skill.ThroughBall.Composition"));
-	const FName AttackingOwnerId(TEXT("Player.Attacking"));
-	const FName DefendingOwnerId(TEXT("Player.Defending"));
+	const FName FeetCompositionTestAttackingOwnerId(TEXT("Player.Attacking"));
+	const FName FeetCompositionTestDefendingOwnerId(TEXT("Player.Defending"));
 	const FName CarrierId(TEXT("ThroughBall.Carrier"));
 	const FName RunnerId(TEXT("ThroughBall.Runner"));
 	const FName MarkerId(TEXT("ThroughBall.Marker"));
@@ -116,8 +116,8 @@ namespace
 		FThroughBallParticipantEligibilityQueryInput Input;
 		Input.SelectedSkillId = SelectedSkillId;
 		Input.CurrentActionPoint = 4;
-		Input.AttackingOwnerId = AttackingOwnerId;
-		Input.DefendingOwnerId = DefendingOwnerId;
+		Input.AttackingOwnerId = FeetCompositionTestAttackingOwnerId;
+		Input.DefendingOwnerId = FeetCompositionTestDefendingOwnerId;
 		Input.CarrierSnapshot = MakeOutfield(
 			CarrierId, EPlayerPositionType::Midfield, 4, 2, 1, 1, 5);
 		Input.CarrierSnapshot.SkillIds = {SelectedSkillId};
@@ -536,10 +536,10 @@ namespace
 				27);
 			Test.TestEqual(TEXT("Attacking owner retained"),
 				Result.AssemblyResult.ResolverInput.AttackerPlayerId,
-				AttackingOwnerId);
+				FeetCompositionTestAttackingOwnerId);
 			Test.TestEqual(TEXT("Defending owner retained"),
 				Result.AssemblyResult.ResolverInput.DefenderPlayerId,
-				DefendingOwnerId);
+				FeetCompositionTestDefendingOwnerId);
 			Test.TestTrue(TEXT("Complete resolution retained"),
 				AreFormulaResultsEqual(Result.ResolvedView.FormulaResolutionResult,
 					Result.ExecutionResult.FormulaResolutionResult));
