@@ -1239,3 +1239,21 @@ Informational 继续包括 AssetRegistry `/Temp/__ExternalActors__/Untitled_1` w
 7.62-M-002、7.66-B-001、7.67-B-001、7.67-B-002 与 7.67-B-003 的公式 blockers 已由用户产品决定解决并由 7.67.1 正式化。继续开放：7.66-B-002（played-state Owner / writer / round scope / repeat / cleanup / stale，且只控制额外 `×0.5`）、7.66-B-003（Shooter action-time Snapshot 权威路径），以及 production caller / ActionId / CorrelationId / action envelope。Stamina 本阶段只冻结“Direct Shot 平局不进入 stamina”，不冻结数组或日志字段。
 
 本阶段不定义 Direct Shot C++ Input / Result / Error / validation order，不修改 Handoff 或 Chip Shot，不运行 Build、UHT、自动化测试或 CoreRules full regression。下一唯一入口为 `7.68 Part 6 Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；7.68 必须重新比较 played-GK 状态表达与 writer/lifecycle、Shooter Snapshot 权威绑定、Direct Shot pure-value Plan 可行性、caller provenance、Explicit Deferral 与 Part 6 Closure，不得再比较“无门将 Direct Shot 公式”。
+
+## 7.68–7.69.1 门将牌使用生命周期决策与产品规则同步
+
+| 阶段 | 结论 | 边界 |
+|---|---|---|
+| 7.68 Capability Selection + Minimum Contract Review | CLOSED AS STATE CONTRACT SELECTION | 选择 Played Goalkeeper Card State Contract Review；未选择实现。 |
+| 7.69 Played Goalkeeper Card State Contract Review | BLOCKED ON TEMPORARY LIFECYCLE ARCHITECTURE | 永久事实的产品职责可确定，但临时事实缺少权威 CurrentAttack owner、统一 completion / abort 和合法防守方 Deployment writer。 |
+| 7.69.1 Product Rule Docs Sync | CLOSED ON COMPLETION | 正式冻结使用时机、整场次数、手牌区域、成功 / 失败语义及双生命周期事实；不改源码。 |
+
+产品规则现正式确定：每方唯一门将牌整场最多主动使用一次；只能在既有 `EMatchPhase::Deployment` 部署 / 出牌阶段，由当前防守方在双方依次出牌时轮到本方的合法机会使用。成功提交立即消耗整场机会并同时写成“整场永久使用事实”和“当前防守激活事实”；非法或失败尝试不消耗、不改变事实，也不改变任何卡牌区域。门将牌成功使用后仍留在 `Available` / 手牌，不进入 `UsedCardIds` 或任何弃牌、放置、部署区域。
+
+两个事实必须分离。永久事实从首次成功使用保持到本场结束，只阻止再次使用；当前防守激活事实只贯穿本次防守 / 当前攻击，并在官方 completion 或 abort 时失效。先前攻击已使用而当前攻击未激活时，永久为 `true`、当前为 `false`，Direct Shot 仍用 `OneOnOne ×1.0`。只有当前事实为 `true` 才用 `×1.5`。CD-020 的 D6、平局、Outcome、CardId 与 `bGoalkeeperParticipated` 语义全部不变。
+
+当前 MatchPlay 尚无完整 Deployment phase / step、合法防守方部署 writer、current-attack action scope 或覆盖所有 terminal / abort 路径的统一 completion owner。通用 CardUsage 会把卡从 Available 移到 Used，legacy `bUsedGoalkeeperActivation` 又无当前权威 writer / reader / scope / cleanup；两者均被排除为现成答案。7.69.1 不冻结具体 C++ 字段、结构、writer、错误、清理、重试、网络或存档设计。
+
+债务更新：7.68-B-001 为 `Resolved at product-rule level by user decision / Formalized by 7.69.1`，7.69-B-005 为 `Resolved by 7.69.1 Docs Sync`。7.66-B-002、7.68-B-002、7.69-B-001、7.69-B-002、7.69-B-003、7.69-B-004 继续开放为 MatchPlay Deployment、CurrentAttack owner、writer、completion / abort Contract 缺口；7.66-B-003 Shooter Snapshot authority 继续开放。既有 Feet / P1 / P2 / Anti-Offside 与 7.58、7.61、7.62、7.64.2 债务保持不变。
+
+7.69.1 为 Docs-only，不运行 Build、UHT、自动化测试或 CoreRules full regression。下一唯一入口为 `7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`（GPT-5.6 Sol High）；不得直接开始 played-GK state、deployment writer 或 Direct Shot 实现。

@@ -175,8 +175,24 @@
 - 被替代的歧义：7.62-M-002、7.66-B-001、7.67-B-001、7.67-B-002 与 7.67-B-003 中有关 GK multiplier、所谓 GK-absent formula、DefenseD6、门将参与、平局、Goal / Miss 和 InvolvedCardIds 的公式阻断，均由用户产品决定解决并由 7.67.1 正式化。所谓“无 GK Direct Shot 公式”不适用，因为 Direct Shot 始终含唯一 GK 的 OneOnOne。
 - 适用范围：通用门将参与定义适用于所有 Finishing 公式；这不表示所有 Finishing 都天然包含 GK。Direct Shot 的 `1.0 / 1.5`、双 D6、平局、Outcome 与 CardId 顺序只适用于 Through Ball One-on-One Direct Shot。
 - 非目标：不冻结 Direct Shot C++ Input / Result / Error、validation order、stamina 数组或日志字段，不修改 Handoff / Chip Shot，也不授权实现或状态修改。
-- 仍开放：门将牌 played-state 的 Owner、writer、当前防守回合范围、重复使用、清理和 stale 防护（7.66-B-002）；Shooter action-time Snapshot 权威绑定（7.66-B-003）；正式 production caller、ActionId / CorrelationId 与统一 action envelope。played-state 只控制额外 `OneOnOne ×0.5`，不控制 Direct Shot 是否有门将参与。
+- 后续状态：门将牌的产品使用次数、合法使用阶段、成功 / 失败语义与两个状态事实的生命周期已由 CD-021 补充并扩展；具体 C++ Owner、writer、当前攻击 Context、completion / abort、stale 防护与生产调用边界仍开放。Shooter action-time Snapshot 权威绑定（7.66-B-003）、正式 production caller、ActionId / CorrelationId 与统一 action envelope 也仍开放。当前防守激活事实只控制额外 `OneOnOne ×0.5`，不控制 Direct Shot 是否有门将参与。
 - 影响：Rules Canonical、后续 Direct Shot 最小 Contract、Formula Plan / Resolver Input 设计、状态 Contract 与测试用例。
+
+### CD-021 - Goalkeeper Card Match-Use and Current-Defense Activation Lifecycle
+
+- 日期：2026-07-18
+- 用户产品决定：每方只有一张对应本方唯一门将的门将牌；每方在整场比赛中最多主动使用该牌一次。这是玩家自行选择时机的一次性战术机会，不是每次攻击、每回合、每次防守或每次 Finishing 各一次。
+- 合法时机：门将牌只能由当前防守方在既有 `EMatchPhase::Deployment` 部署 / 出牌阶段、轮到本方合法出牌时主动使用；双方继续按既有部署规则依次出牌。不得等到 Feet、Direct Shot、其他 Finishing、比较 D6 已提供或公式结算已经开始后再使用。
+- 提交语义：只有全部验证成功并正式提交才立即消耗整场唯一机会。非法、重复或提交失败的尝试不消耗机会，不改变任何门将状态事实，也不改变门将牌或其他卡牌的区域状态。
+- 两个事实：成功提交同时建立独立的“整场永久使用事实”和“当前防守激活事实”。永久事实新比赛时为 `false`，成功后为 `true` 并保持到本场结束，只在新比赛重置；当前防守激活事实只对本次防守 / 当前攻击为 `true`，贯穿后续规则链，并在本次攻防正式完成或正式中断时失效，绝不跨入下一次攻击。
+- 分离要求：两个事实不得由一个生命周期含糊的 bool 表示。永久事实只阻止再次主动使用，不能被读取为当前仍有额外属性贡献；因此先前攻击已使用、当前攻击未激活时，永久事实为 `true`、当前防守激活事实为 `false`，Direct Shot 仍使用 `Goalkeeper.OneOnOne ×1.0` 而不是 `×1.5`。
+- 卡牌区域：成功主动使用后，门将牌仍留在 `Available` / 手牌中，不进入 `UsedCardIds`、弃牌区、放置区或场上部署区。之后不能再次主动使用来自永久使用事实，而不是通用卡牌消耗或区域移动。
+- 与 CD-020 的关系：本决定补充并扩展 CD-020 中未冻结的 played-GK lifecycle，不覆盖其公式、D6、Outcome、平局、`InvolvedCardIds` 或 `bGoalkeeperParticipated` 语义。`bGoalkeeperParticipated` 继续只表示最终公式是否包含至少一个 GK 属性贡献；它不等于永久使用事实，也不等于当前防守激活事实。
+- 当前实现缺口：当前权威 `FMatchPlayState` 尚无完整 Deployment 阶段状态、合法防守方部署 writer、当前攻击 action scope，以及覆盖所有 terminal outcome 和正式 abort 的统一 completion 边界。通用 `UsedCardIds` 会移动卡牌，legacy `bUsedGoalkeeperActivation` 也没有当前权威 writer / reader / scope / cleanup，二者均不能被当作现成实现。
+- 非目标：不冻结具体 C++ 字段名、State struct、Deployment Flow / writer API、Error / Validation 类型或顺序、cleanup / abort / retry API、网络复制、存档或 Direct Shot Implementation。
+- 债务：7.68-B-001 与 7.69-B-005 的产品规则部分由本决定解决并在 7.69.1 正式化；7.66-B-002、7.68-B-002、7.69-B-001、7.69-B-002、7.69-B-003、7.69-B-004 继续作为 MatchPlay Deployment、CurrentAttack owner、writer、completion 与 abort 的架构 / Contract 缺口开放。7.66-B-003 Shooter Snapshot authority 继续开放。
+- 下一入口：`7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`；不得由本决定直接进入 played-GK state、deployment writer 或 Direct Shot 实现。
+- 影响：Rules Canonical、MatchPlay 生命周期 Contract、未来状态与网络设计、Finishing reader 责任和测试用例。
 
 ## Resolved UQ Summary
 

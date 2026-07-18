@@ -474,3 +474,20 @@ Formal One-on-One Handoff
 两颗 D6 始终要求显式 presence、`[1,6]`、外部提供且相互独立；双方比较点都来自 D6，因此继续适用既有 Fast Suppression。`InvolvedCardIds` 固定为 `[ShooterCardId, GoalkeeperCardId]`，主动使用同一张唯一门将牌不会产生第二个 GK 身份或重复 CardId。
 
 played-state 仅决定额外 `Goalkeeper.OneOnOne ×0.5`，不决定 Direct Shot 是否有门将参与。主动使用后门将牌仍在手牌中，不部署、不移动、不替换，也不创建第二名门将。该状态的 Owner、writer、round scope、repeat、cleanup 与 stale protection 仍未冻结；Shooter action-time Snapshot 权威绑定及 production caller / correlation 也仍缺失。因此 7.67.1 关闭公式歧义，但不创建 C++ Contract、不授权 Direct Shot 实现，也不关闭完整 One-on-One。下一唯一入口为 `7.68 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## 门将牌整场使用与当前防守激活产品生命周期边界（7.69.1）
+
+7.68 的能力选择审查把 played-GK 状态表达列为下一项只读 Contract 候选；7.69 随后确认，永久使用事实可以在产品层定义，但 action-scoped 临时事实的权威 Owner、写入与统一清理仍被当前 MatchPlay 架构缺口阻断。7.69.1 只同步用户已确认的产品规则，不设计 C++。
+
+权威产品模型必须包含两个独立事实：
+
+- **整场永久使用事实**：每方独立；新比赛为 `false`，首次合法成功提交门将牌后为 `true`，本场不再清除，只在新比赛重置。它负责实现“每方整场最多主动使用一次”。
+- **当前防守激活事实**：成功提交后只在本次防守 / 当前攻击中为 `true`，贯穿后续规则链，并在官方 completion 或 abort 时失效，绝不跨到下一次攻击。它只负责当前 Finishing 的额外 GK 属性贡献。
+
+门将牌只能在 `EMatchPhase::Deployment` 中，由当前防守方在双方依次部署时轮到本方的合法机会提交；合法成功提交立即建立两个事实并消耗整场机会，失败或非法尝试不改变事实或卡牌区域。门将牌始终留在 `Available` / 手牌，不进入 `UsedCardIds`、弃牌、放置或场上区域。因此通用 CardUsage consumption 与 legacy `FPlayerMatchState::bUsedGoalkeeperActivation` 都不是可复用的权威表示。
+
+CD-020 的公式边界不变：Direct Shot 当前防守激活时为 `OneOnOne ×1.5`，否则为 `×1.0`；永久使用事实为 `true` 本身不能触发 `×1.5`。`bGoalkeeperParticipated` 继续表示最终公式是否包含 GK 属性，不代表任一使用事实。
+
+当前 `FMatchPlayState` 只有现有 Runtime / CardUsage 权威状态，尚未表达完整 Deployment phase / step、合法防守方 deployment writer、current-attack action scope 或覆盖 P1、P2、Anti-Offside、Chip Shot、Direct Shot 等 terminal outcome 与正式 abort 的统一 completion 边界。现有通用攻击 CardPlay 又只允许 `RuntimeState.CurrentAttackingPlayer`，不能声称防守方已经有合法门将部署入口。
+
+7.69.1 不冻结字段名、State / Context 类型、writer、Error、cleanup、abort、retry、复制或存档 API。7.68-B-001 与 7.69-B-005 的产品规则部分已解决；7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 继续作为 Deployment / CurrentAttack 架构 Contract 缺口开放，7.66-B-003 Shooter Snapshot authority 也继续开放。下一唯一入口为 `7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`（GPT-5.6 Sol High），不预选实现。

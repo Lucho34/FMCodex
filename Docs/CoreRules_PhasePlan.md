@@ -722,3 +722,15 @@
 - 7.62-M-002、7.66-B-001、7.67-B-001、7.67-B-002 与 7.67-B-003 的公式 blockers 状态为 `Resolved by user product decision / Formalized by 7.67.1`。7.66-B-002 仍开放，但修正为 played-state Owner / writer / round scope / repeat / cleanup / stale contract；7.66-B-003 Shooter action-time Snapshot authority 仍开放。Production caller、ActionId / CorrelationId 与统一 action envelope 仍不存在。
 - 7.67.1 不冻结 Direct Shot C++ API、stamina 数组 / 日志字段或 validation order，不修改 Source / Tests，也不运行 Build、UHT、自动化测试或 CoreRules full regression。
 - 下一唯一入口为 `7.68 Part 6 Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）。7.68 必须重新比较 played-GK state representation、writer / lifecycle、Shooter Snapshot authoritative binding、Direct Shot pure-value Plan feasibility、caller provenance、Explicit Deferral 与 Part 6 Closure；不得预选能力，也不得重新提出“无门将 Direct Shot 公式”。
+
+## 7.68–7.69.1 Played Goalkeeper Card Usage Lifecycle 决策与 Docs Sync
+
+- 7.68 选择 `Played Goalkeeper Card State Contract Review` 作为下一只读能力审查，不预选实现。
+- 7.69 确认每方永久使用事实可作为合理的 player-runtime responsibility 候选，但由于当前 MatchPlay 缺少 Deployment phase / step、合法防守方 writer、current-attack action scope 以及统一 completion / abort，该阶段以临时生命周期 Contract 被阻断的结论关闭。
+- 7.69.1 当前节点为 Docs-only Product Rule Sync。正式冻结：每方唯一门将牌整场最多主动使用一次；只能由当前防守方在 `EMatchPhase::Deployment` 中双方依次出牌、轮到本方的合法机会使用；成功提交立即消耗，失败不消耗；卡牌仍留在 `Available` / 手牌。
+- 成功提交同时建立两个不可合并的事实：整场永久使用事实持续到本场结束，只在新比赛重置；当前防守激活事实只持续本次防守 / 当前攻击，在正式 completion 或 abort 时失效。永久 `true` 不等于当前仍有 `×1.5`，也不等于 `bGoalkeeperParticipated`。
+- CD-020 的 Direct Shot `×1.0 / ×1.5`、双 D6、平局、Outcome、CardId 顺序及通用 `bGoalkeeperParticipated` 语义不变。只有当前防守激活事实控制额外 `×0.5`。
+- `UsedCardIds` 会错误移动门将牌，legacy `bUsedGoalkeeperActivation` 没有权威生命周期；两者均不作为现成状态 Contract。7.69.1 不冻结任何 C++ 字段、类型、writer、Error、cleanup / abort / retry、复制或存档设计。
+- 债务状态：7.68-B-001 在产品规则层由用户决定解决并由 7.69.1 正式化；7.69-B-005 由 7.69.1 Docs Sync 解决。7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 继续作为 MatchPlay Deployment / CurrentAttack 架构 Contract 缺口开放；7.66-B-003 Shooter Snapshot authority 继续开放。既有历史债务保持不变。
+- 7.69.1 不修改 Source / Tests，不运行 Build、UHT、自动化测试或 CoreRules full regression。
+- 下一唯一入口为 `7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`（GPT-5.6 Sol High）。7.70 必须冻结权威 phase / step owner、Deployment start / end、双方依次部署顺序、当前合法部署方、attacking / defending side、current-attack context owner、deployment commit、retryable invalid request、formal abort、terminal completion，以及 side switch 与临时状态 cleanup 的原子顺序；不得预选实现。

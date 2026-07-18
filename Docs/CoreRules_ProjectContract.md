@@ -865,3 +865,29 @@ DefenderTotal, same unique goalkeeper card played in current relevant defensive 
 7.66 因上述公式、state 与 Snapshot 前置选择 Explicit Deferral；7.67 因产品规则无法从旧文档唯一推导而以 Canonical Clarification `BLOCKED` 关闭，不是代码失败。用户产品决定现已关闭 7.62-M-002、7.66-B-001、7.67-B-001、7.67-B-002 与 7.67-B-003 的公式 blockers，并由 7.67.1 正式化。7.66-B-002 仍作为 played-state writer / lifecycle / round-scope blocker 开放，且只关系额外 `×0.5`；7.66-B-003 Shooter Snapshot authority 仍开放。
 
 本节只冻结 Direct Shot 平局不进入 stamina，不冻结 Resolver Input 中 stamina 数组是否为空、是否保留 Shooter / GK stamina 或日志内容。不修改 FormulaResolver、Handoff、Chip Shot、Feet 历史实现或任何状态；不授权 Direct Shot Implementation。下一唯一入口为 `7.68 Part 6 Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High），且不得再把“无 GK Direct Shot 公式”列为候选。
+
+## Played Goalkeeper Card Usage Lifecycle Product Rule Contract（7.69.1）
+
+### 产品职责
+
+- 每方唯一门将牌在整场比赛中最多主动使用一次。
+- 该牌只能由当前防守方在既有 `EMatchPhase::Deployment` 部署 / 出牌阶段、双方依次出牌且轮到本方的合法机会提交；不得延迟到 Feet、Direct Shot、其他 Finishing、D6 已知或公式结算时。
+- 只有合法成功并正式提交才立即消耗整场机会；非法、重复或提交失败不消耗，不改变状态事实或任何卡牌区域。
+- 成功使用后门将牌仍留在 `Available` / 手牌，不进入 `UsedCardIds`、弃牌、放置或场上区域。重用被禁止来自永久事实，而不是卡牌消耗。
+
+### 状态职责边界
+
+产品模型必须有两个独立事实，不能以单个含糊 bool 合并：
+
+1. 整场永久使用事实：每方独立，新比赛为 `false`，成功后为 `true` 并保持整场，只在新比赛重置；reader 责任是拒绝后续再次主动使用。
+2. 当前防守激活事实：成功后只在本次防守 / 当前攻击为 `true`，贯穿后续规则链，并在正式 completion 或 abort 时失效；reader 责任是决定当前 Finishing 的额外 GK 属性贡献。
+
+永久事实为 `true` 不能证明当前事实也为 `true`。若门将牌在较早一次攻击中已经使用，当前后续攻击应为永久 `true`、当前 `false`；Direct Shot 使用 `OneOnOne ×1.0`。只有当前事实为 `true` 才使用 `×1.5`。CD-020 的公式、D6、Outcome、平局、`InvolvedCardIds` 与 `bGoalkeeperParticipated` 语义均保持不变；后者仍只回答最终公式是否含 GK 属性。
+
+### 当前实现事实与非目标
+
+当前 `FMatchPlayState` 尚未表达完整 Deployment phase / step、合法防守方 deployment writer、current-attack action scope 或覆盖全部 Through Ball terminal outcome 与正式 abort 的统一 completion 边界。现有攻击 CardPlay 主要以 `RuntimeState.CurrentAttackingPlayer` 为合法方，不能承担防守门将部署；通用 CardUsage 会从 Available 移除并加入 Used；legacy `FPlayerMatchState::bUsedGoalkeeperActivation` 没有当前权威 writer、reader、scope 或 cleanup。因此不得声称已有可复用实现。
+
+本 Contract 只冻结产品规则和状态职责，不冻结具体 C++ 字段名、State / Context 类型、Deployment Flow、writer、Error / Validation、cleanup、abort、retry、network replication 或 save API，也不授权 played-GK state、deployment writer 或 Direct Shot Implementation。
+
+7.68-B-001 与 7.69-B-005 的产品规则阻断由 7.69.1 解决；7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 继续作为 MatchPlay Deployment、CurrentAttack owner、writer、completion 与 abort 的架构 / Contract 缺口开放，7.66-B-003 Shooter action-time Snapshot authority 继续开放。下一唯一入口为 `7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`（GPT-5.6 Sol High），不预选任何实现。
