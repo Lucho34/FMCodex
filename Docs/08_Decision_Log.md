@@ -194,6 +194,27 @@
 - 下一入口：`7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`；不得由本决定直接进入 played-GK state、deployment writer 或 Direct Shot 实现。
 - 影响：Rules Canonical、MatchPlay 生命周期 Contract、未来状态与网络设计、Finishing reader 责任和测试用例。
 
+### CD-022 - MatchPlay Deployment and Current Attack Lifecycle Authority
+
+- 日期：2026-07-18
+- 权威决定：`FMatchPlayState` 继续作为唯一当前 MatchPlay 权威顶层，统一持有现有 `FMatchRuntimeState`、`FMatchCardUsageState` 和未来持久化、action-scoped 的 CurrentAttack。完整攻击跨越双方多次 Deployment 操作、多个玩家请求、后续规则 Query 和外部 D6 输入，因此不得以纯 request-local orchestration 代替 CurrentAttack。
+- legacy 边界：`FMatchState::CurrentPhase`、`FMatchState::CurrentDefendingPlayerId`、`FPlayerMatchState::bHasFinishedDeployment` 和 `FPlayerMatchState::bUsedGoalkeeperActivation` 只属于 historical opening snapshot，不是当前生产 authority；不得复活 legacy `FMatchState` 或建立第二个顶层 CurrentAttack owner。
+- 状态模型：没有 CurrentAttack 表示 `NoActiveAttack`；存在时持久阶段只需要 `Deployment` 或 `Resolution`。Attack Created 与 Completed 是原子转换事件而非持久阶段；Match-level phase、CurrentAttack phase 和 Deployment legal actor 必须分离，不能由单一 enum 混合表达。Formal attack abort 当前不是 gameplay capability，持久 Aborted 阶段不需要并保持 Deferred。
+- CurrentAttack 最小事实：presence、phase、`AttackSequence`、本次外部 D12 `ActionPoint`、`CurrentLegalDeploymentSide`、双方 Deployment finished 事实、本次 action-scoped placements 和 `CurrentDefenseGoalkeeperActivated` 均为 Required。攻击方由 `RuntimeState.CurrentAttackingPlayer` 推导，防守方在两方游戏中由 `OtherSide(CurrentAttackingPlayer)` 推导，不冗余保存；比分与攻击计数继续由 Runtime authority 持有。Shooter Snapshot / Handoff 与 ActionId / CorrelationId 保持 Deferred。
+- AttackSequence：在当前没有正式 abort 的路径中，成功 Begin Attack 时冻结为 `PlayerA.UsedAttackCount + PlayerB.UsedAttackCount + 1`，只用于限定当前攻击、拒绝 stale 请求和防止重复 completion；它不是 UUID、网络安全 token 或通用 correlation。若未来增加不消费机会的正式 abort，必须另审独立 epoch 或等价方案。
+- Attack Start：普通运动战开始要求 MatchPlay 已初始化、无 CurrentAttack、比赛未结束、当前攻击方合法且有剩余机会、外部行动点有效且位于 2–8。成功后进入 Deployment，当前合法部署方为攻击方，双方 finished 与当前门将激活为 `false`，placements 为空；开始时只逻辑占用机会，不增加 `UsedAttackCount`。失败保持完整 BeforeState。
+- Deployment：进攻方先，之后双方交替；一次合法操作只能部署一张普通牌、防守方合法激活唯一门将牌，或选择 Finish。成功普通部署记录 action-scoped placement 并切换到另一未完成方；成功门将激活同时写入 per-side 永久事实与 CurrentAttack 临时事实，门将牌区域不变，并消耗本次 Deployment 操作。失败不轮转且可重试。Finish 在本次攻击不可撤销，之后跳过该方；无合法牌等价 Finish；双方 Finish 后进入 Resolution，不消费攻击机会、不切换攻击方、不清除 CurrentAttack。
+- played-GK owner：整场永久使用事实属于对应一方的 `FPlayerRuntimeState` responsibility；当前防守激活事实唯一属于 CurrentAttack，贯穿当前 Resolution，并在成功 completion 清除 CurrentAttack 时自然失效。不得以顶层无 scope bool、player-runtime 临时 bool、Deployment-only Result 或永久事实直接控制当前 `×1.5`。
+- Retry：错误阶段、错误 actor、非法 CardId / Slot、已 Finish 后继续部署、不合法或重复门将使用、无效 D6 / 日志上下文、stale AttackSequence 均是 retryable failure；请求失败时 CurrentAttack、当前合法方、门将临时事实、卡牌、攻击机会和攻防方全部不变。
+- Terminal projection：未来统一 completion 只消费由具体分支正式 Result 转换而来的小型专用 projection，至少表达 AttackSequence、正式 terminal 成功证明、`bIsGoal` 和 terminal reason / source provenance。不得接收任意裸 bool、重新执行分支、只凭 `bAttackEnded` 猜测 Goal / Miss，或借此建设宽泛 Outcome Framework。
+- Completion：唯一逻辑职责 `CompleteCurrentAttack` 必须先验证 CurrentAttack / Resolution / terminal success / AttackSequence，再在 WorkingState 中依次处理 Goal 加分、普通部署牌提交到 Used（门将不移动）、清除全部 action-scoped 状态、增加当前攻击方 `UsedAttackCount`、按消费后次数和比分判断 Match End；终局时 `CurrentAttackingPlayer=None` 且不再切换，非终局才选择下一攻击方。全部成功后一次提交，任一失败返回完整 BeforeState。
+- 防重与终局：completion 以 CurrentAttack presence、Resolution phase 和 matching AttackSequence 为最小门禁；成功后清除 CurrentAttack，因此重复提交不得重复加分、移动卡牌、消费机会或切换。Match End / Winner 继续由 Runtime attack counts 与 Score 推导，不新增可能漂移的第二套持久终局事实。
+- pure Result 边界：Through Ball Feet Goal / Miss、P1 OutOfPlay / DefenderStoppedAttack、P2 Offside、Anti-Offside Offside、Chip Shot Goal / Miss 及未来 Direct Shot Goal / Miss 的 pure terminal flag 都不等于 MatchPlay mutation；当前仍无覆盖这些结果的 production completion consumer。
+- 范围与非目标：这是架构 Contract，不是 C++ Implementation，不冻结具体 struct / field / Error enum / API / 网络 / 存档，不实现 Deployment、played-GK writer、Completion、Formal Abort、Direct Shot 或通用 Outcome Framework。7.66-B-003 Shooter Snapshot authority 保持 OPEN；UQ-041 行动点 1 是否消费机会保持 OPEN。
+- 债务：7.66-B-002、7.68-B-002 与 7.69-B-001 至 7.69-B-004 在 7.70.1 后标记为 `Contract-level resolved / Implementation pending`；7.68-B-001 与 7.69-B-005 保持已解决。新增 7.70-M-001：UQ-041 仍开放；7.70-M-002：Match End / Winner 保持推导事实，未来状态工作不得引入重复持久 authority。
+- 下一入口：`7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`；必须只选择一个最小实现切片，不得一次实现整个 MatchPlay 生命周期。
+- 影响：MatchPlay 状态 owner、初始化、Deployment、played-GK writer、terminal adapter / completion、Guard / Availability、状态复制与后续专项测试设计。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

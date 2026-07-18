@@ -734,3 +734,16 @@
 - 债务状态：7.68-B-001 在产品规则层由用户决定解决并由 7.69.1 正式化；7.69-B-005 由 7.69.1 Docs Sync 解决。7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 继续作为 MatchPlay Deployment / CurrentAttack 架构 Contract 缺口开放；7.66-B-003 Shooter Snapshot authority 继续开放。既有历史债务保持不变。
 - 7.69.1 不修改 Source / Tests，不运行 Build、UHT、自动化测试或 CoreRules full regression。
 - 下一唯一入口为 `7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`（GPT-5.6 Sol High）。7.70 必须冻结权威 phase / step owner、Deployment start / end、双方依次部署顺序、当前合法部署方、attacking / defending side、current-attack context owner、deployment commit、retryable invalid request、formal abort、terminal completion，以及 side switch 与临时状态 cleanup 的原子顺序；不得预选实现。
+
+## 7.70–7.70.1 MatchPlay Lifecycle Contract Review 与 Docs Sync
+
+- 7.70 以 `PASS WITH NON-BLOCKING FINDINGS` 完成 Report-only 审查：`FMatchPlayState` 保持唯一当前 authority；完整攻击必须使用其下持久、action-scoped 的 CurrentAttack；legacy `FMatchState` 不复活为第二 authority。
+- CurrentAttack presence 表示活动攻击；持久逻辑阶段只冻结 Deployment / Resolution。Attack Created 与 Completed 是事件；Formal Abort 当前不是 gameplay capability，并保持 Deferred。Match-level phase、CurrentAttack phase 与 Deployment legal actor 不得混为一个 enum。
+- Required facts 为 phase、AttackSequence、ActionPoint、当前合法部署方、双方 finished、action-scoped placements 和当前防守门将激活。Attacking side 从 Runtime 读取，Defending side 在两方模型中推导；per-side 永久门将事实属于 Runtime responsibility，当前激活属于 CurrentAttack。Shooter Snapshot / Handoff 与 ActionId / CorrelationId 继续 Deferred。
+- 普通运动战 Begin 要求初始化、无 CurrentAttack、比赛未结束、合法攻击方仍有机会且 ActionPoint 为 2–8；成功进入 Deployment，但不增加 UsedAttackCount，失败保持 BeforeState。序号固定为双方 UsedAttackCount 之和加一，只作为当前无 abort 路径的 stale / duplicate 门禁。
+- Deployment 继续按 Canonical：攻击方先，双方交替，每次普通牌、合法门将激活或 Finish；失败不轮转，Finish 不可撤销，已完成方被跳过，无合法牌等价 Finish，双方 Finish 后进入 Resolution，但不消费机会或切换攻击方。
+- Completion 只消费 capability adapter 生成的小型正式 terminal projection。原子 WorkingState 顺序为验证 → Goal 加分 → 普通部署牌提交 Used / 门将不移动 → 清除 CurrentAttack → 消费机会 → Match End → 仅非终局选择下一攻击方 → 一次提交。presence + Resolution + AttackSequence 提供最小防重；任何失败返回 BeforeState。
+- Pure Through Ball terminal flag 仍不等于生产 completion。Feet、P1、P2 Offside、Anti-Offside、Chip Shot 与未来 Direct Shot 均未接入统一 MatchPlay consumer。
+- 7.70.1 为当前 Docs-only 节点，只正式化上述 Contract，不修改 Canonical、Source、Tests 或 Build，不运行 Build、UHT、自动化测试或 CoreRules full regression。
+- 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 状态更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 保持 OPEN。新增 7.70-M-001（UQ-041）和 7.70-M-002（Match End / Winner derived authority）。
+- 下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High）。7.71 必须比较 CurrentAttack state representation、初始化变更、Begin Attack、Deployment turn-state、Deployment Finish、played-GK 永久状态、played-GK writer、terminal projection、CompleteCurrentAttack、further review 与 Explicit Deferral，并只选择一个最小切片；7.70.1 不预选实现。

@@ -891,3 +891,78 @@ DefenderTotal, same unique goalkeeper card played in current relevant defensive 
 本 Contract 只冻结产品规则和状态职责，不冻结具体 C++ 字段名、State / Context 类型、Deployment Flow、writer、Error / Validation、cleanup、abort、retry、network replication 或 save API，也不授权 played-GK state、deployment writer 或 Direct Shot Implementation。
 
 7.68-B-001 与 7.69-B-005 的产品规则阻断由 7.69.1 解决；7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 继续作为 MatchPlay Deployment、CurrentAttack owner、writer、completion 与 abort 的架构 / Contract 缺口开放，7.66-B-003 Shooter action-time Snapshot authority 继续开放。下一唯一入口为 `7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`（GPT-5.6 Sol High），不预选任何实现。
+
+## MatchPlay Deployment and Current Attack Lifecycle Architecture Contract（7.70.1）
+
+### Authority 与持久状态
+
+`FMatchPlayState` 是唯一当前 MatchPlay authority，负责统一持有现有 Runtime、CardUsage 及未来 action-scoped CurrentAttack。`FMatchState::CurrentPhase`、`CurrentDefendingPlayerId`、legacy player deployment / goalkeeper bool 均不是生产 authority；不得复活旧状态、同时写入两套 phase，或由两个顶层分别持有当前攻击身份。
+
+完整攻击跨越双方多次 Deployment 操作、多个请求、规则 Query 与外部随机输入，因此 CurrentAttack 必须在请求之间持久存在。没有 CurrentAttack 表示 `NoActiveAttack`；存在表示当前有一场尚未完成的攻击。持久逻辑阶段只需要 Deployment / Resolution；Attack Created 与 Completed 是原子事件，Aborted 当前不作为持久阶段。Match-level phase、CurrentAttack phase 与 Deployment legal actor 是独立职责。
+
+| 事实 | 状态 | 职责 |
+|---|---|---|
+| CurrentAttack presence | Required | 活动攻击的唯一 scope |
+| CurrentAttack phase | Required | Deployment / Resolution |
+| AttackSequence | Required | 当前攻击 stale / duplicate 门禁；不是 UUID |
+| ActionPoint | Required | 本次攻击外部 D12 快照 |
+| CurrentLegalDeploymentSide | Required | 仅 Deployment 有效 |
+| AttackerDeploymentFinished | Required | Finish 后本次攻击不可恢复部署 |
+| DefenderDeploymentFinished | Required | Finish 后本次攻击不可恢复部署 |
+| Deployment placements | Required | action-scoped 普通部署身份与位置事实 |
+| CurrentDefenseGoalkeeperActivated | Required | 默认 false，只对当前攻击有效 |
+| Attacking player | Derivable | `RuntimeState.CurrentAttackingPlayer` |
+| Defending player | Derivable | 当前两方模型中的 `OtherSide(CurrentAttackingPlayer)` |
+| Permanent goalkeeper-use fact | Required elsewhere | 对应一方的 `FPlayerRuntimeState` responsibility |
+| Match-level phase | Derivable | 初始化、CurrentAttack presence 和剩余机会 |
+| Score / attack counters | Existing authority | `FMatchRuntimeState` |
+| Shooter Snapshot / Handoff | Deferred | 7.66-B-003 继续 OPEN |
+| ActionId / CorrelationId | Deferred | 不创建 UUID 或虚构 correlation |
+
+普通、没有正式 abort 的路径中，Begin Attack 把 `PlayerA.UsedAttackCount + PlayerB.UsedAttackCount + 1` 冻结为本次 AttackSequence。若未来允许不消费攻击机会的 abort，该值可能重复，必须另审独立 epoch；当前不提前扩展。
+
+### Attack Start 与 Deployment
+
+普通运动战 Begin 的前置为：MatchPlay 已初始化、没有 CurrentAttack、比赛未结束、当前攻击方合法且仍有攻击机会、外部 ActionPoint 有效且位于 2–8。成功默认进入 Deployment，合法方为攻击方，双方 finished 与当前门将激活为 false，placements 为空。开始只由 CurrentAttack presence 逻辑占用机会，不增加 UsedAttackCount；任何失败返回完整 BeforeState。
+
+一次合法 Deployment 操作只能是普通球员部署、防守方合法门将激活或 Finish。普通部署成功记录 action-scoped placement、禁止本次攻击重复部署同一卡并切换到另一未完成方。门将激活成功同时把对应 per-side 永久事实和 CurrentAttack 临时事实设为 true，门将牌区域保持 Available，并消耗防守方本次操作。失败不改变 CurrentAttack 或合法方，可由同一方重试。
+
+Finish 在本次攻击不可撤销；无合法牌可自动 Finish；轮转跳过已完成方，使另一方继续操作。双方均 Finish 后只执行 Deployment → Resolution，不消费机会、不切换攻击方、不清除 CurrentAttack。
+
+### Retry 与 Formal Abort
+
+错误阶段、错误 actor、非法 CardId / Slot、已 Finish 后继续、门将不合法或已经整场使用、无效 D6 / 日志上下文和 stale AttackSequence 都是 retryable failure。失败必须保留 BeforeState、CurrentAttack、当前合法 actor、门将临时事实、卡牌、攻击机会和攻防方；不得清理或轮转。
+
+Formal attack abort 为 `Deferred / not currently a gameplay capability`。当前没有玩家取消、超时、断线、服务器强制终止、机会消费或切换规则，因此不得为了工程清理新增 Abort API。未来若增加，必须另行冻结机会、切换、永久门将事实和 sequence / epoch 语义。
+
+### Terminal projection 与 Completion
+
+具体能力的正式 Result 必须由 capability-specific adapter 转换成小型 terminal projection，至少表达 AttackSequence、正式 terminal 成功证明、`bIsGoal` 和 terminal reason / source provenance。Completion 不接受任意裸 bool、不重新执行分支、不从 `bAttackEnded` 猜测 Goal / Miss，也不建设宽泛 Outcome Framework；具体 C++ 类型名、enum 和 API 留给实现 Contract。
+
+未来唯一逻辑职责 `CompleteCurrentAttack` 必须按以下 WorkingState 顺序原子处理：
+
+1. 验证 CurrentAttack 存在且处于 Resolution。
+2. 验证 terminal projection 正式成功且 AttackSequence 匹配。
+3. 创建 WorkingState，尚不提交 authority。
+4. Goal 时为当前攻击方加分。
+5. 将本次普通部署牌提交到正式 Used 状态；门将牌保持 Available。
+6. 清除全部 action-scoped 状态，包括当前防守门将激活。
+7. 增加当前攻击方 UsedAttackCount，正式消费机会。
+8. 使用消费后的次数和比分判断 Match End。
+9. 终局保持无 CurrentAttack、设置 `CurrentAttackingPlayer=None`、解析胜负或平局且不再切换。
+10. 非终局按既有顺序选择下一攻击方，并保持无 CurrentAttack。
+11. 全部成功后一次提交 WorkingState。
+
+任何中间失败返回完整 BeforeState，不得部分加分、移动牌、清理、消费或切换。CurrentAttack presence、Resolution phase 和 matching AttackSequence 是最小防重门禁；首次成功后 CurrentAttack 被清除，重复 projection 必须失败。Match End / Winner 继续由 Runtime counts 与 Score 推导，未来不得无独立 Contract 再保存一套可能漂移的终局 authority。
+
+### Pure Result 与实现诚实性
+
+Pure Query 的 `bAttackEnded=true` 只证明规则决定为 terminal，不证明 MatchPlay 已加分、提交普通部署牌、消费机会、清理当前门将、切换攻防或判断终局。Through Ball Feet Goal / Miss、P1 OutOfPlay / DefenderStoppedAttack、P2 Offside、Anti-Offside Offside、Chip Shot Goal / Miss 和未来 Direct Shot 仍没有 production completion consumer。
+
+### Forbidden behavior、debt 与下一入口
+
+禁止移动门将牌或用 UsedCardIds 表示门将使用；禁止 legacy 双 authority、顶层无 scope 临时 bool、从永久事实推断当前 `×1.5`、invalid request 后清理、攻击开始即增加 UsedAttackCount、重复 completion、终局后切换、虚构 ActionId / CorrelationId、从裸 CardId 重查 Shooter Snapshot，以及把本 Contract 描述成已实现。
+
+7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 保持 OPEN。7.70-M-001 记录 UQ-041 行动点 1 消耗问题；7.70-M-002 记录 Match End / Winner 继续为 derived facts。本文不冻结具体 C++ 类型、字段名、Error、API、network / save，不授权 Deployment、played-GK writer、Completion、Abort、Direct Shot 或 Outcome Framework 实现。
+
+下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High）。7.71 必须比较并只选择一个最小实现切片；不得一次实现整个 MatchPlay 生命周期。

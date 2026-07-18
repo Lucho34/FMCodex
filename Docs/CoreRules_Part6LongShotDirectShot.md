@@ -1257,3 +1257,25 @@ Informational 继续包括 AssetRegistry `/Temp/__ExternalActors__/Untitled_1` w
 债务更新：7.68-B-001 为 `Resolved at product-rule level by user decision / Formalized by 7.69.1`，7.69-B-005 为 `Resolved by 7.69.1 Docs Sync`。7.66-B-002、7.68-B-002、7.69-B-001、7.69-B-002、7.69-B-003、7.69-B-004 继续开放为 MatchPlay Deployment、CurrentAttack owner、writer、completion / abort Contract 缺口；7.66-B-003 Shooter Snapshot authority 继续开放。既有 Feet / P1 / P2 / Anti-Offside 与 7.58、7.61、7.62、7.64.2 债务保持不变。
 
 7.69.1 为 Docs-only，不运行 Build、UHT、自动化测试或 CoreRules full regression。下一唯一入口为 `7.70 MatchPlay Deployment and Current Attack Lifecycle Contract Review`（GPT-5.6 Sol High）；不得直接开始 played-GK state、deployment writer 或 Direct Shot 实现。
+
+## 7.70–7.70.1 MatchPlay Deployment / CurrentAttack 生命周期 Contract
+
+| 阶段 | 结果 | 结论 |
+|---|---|---|
+| 7.68 Capability Review | BLOCKED | played-GK 临时状态缺少 action scope 与统一 cleanup。 |
+| 7.69 State Contract Review | BLOCKED | 永久产品事实可确定，但 Deployment writer、CurrentAttack owner 与 completion / abort 缺失。 |
+| 7.69.1 Product Lifecycle Docs Sync | PASS | 冻结整场一次、Deployment 使用、卡牌留手和双事实生命周期。 |
+| 7.70 Lifecycle Contract Review | PASS WITH NON-BLOCKING FINDINGS | 冻结 `FMatchPlayState` authority、CurrentAttack、Deployment 轮转、retry、completion 与防重；UQ-041、derived Match End、Shooter Snapshot 和 Formal Abort 保持非阻断开放。 |
+| 7.70.1 Contract Docs Sync | CLOSED ON COMPLETION | 只同步架构 Contract；没有源码、测试或生产行为变化。 |
+
+当前唯一 MatchPlay authority 继续是 `FMatchPlayState`。未来持久 CurrentAttack 必须嵌套在该 authority 下，不能复活 legacy `FMatchState` 或让两个顶层分别持有攻击身份。CurrentAttack presence 表示一场未完成攻击；持久阶段只需要 Deployment / Resolution，Attack Created 与 Completed 是原子事件，Formal Abort 当前 Deferred。
+
+CurrentAttack 最小职责包括 AttackSequence、ActionPoint、当前合法部署方、双方 finished、action-scoped placements 和当前防守门将激活。攻击方从 Runtime `CurrentAttackingPlayer` 读取，防守方在两方游戏中推导，不冗余保存；永久门将使用事实属于对应 per-side Runtime responsibility，临时事实属于 CurrentAttack。普通无 abort 路径的 AttackSequence 在 Begin 时固定为双方 UsedAttackCount 之和加一，只用于 stale / duplicate 门禁，不是 UUID 或网络 token。
+
+普通运动战 Begin 只逻辑占用机会，不增加 UsedAttackCount。Deployment 进攻方先、双方交替，一次操作为普通牌、合法门将激活或 Finish；失败不轮转，Finish 不可撤销，已完成方被跳过，无合法牌等价 Finish，双方 Finish 后只进入 Resolution。门将激活成功写入永久与临时事实，但门将牌不离开 Available。
+
+未来统一 completion 必须由分支 adapter 提供小型正式 terminal projection，并在 WorkingState 中依次完成：验证当前攻击与 sequence；Goal 加分；普通部署牌提交 Used、门将不移动；清除 CurrentAttack；消费机会；判断 Match End；终局设当前攻击方 None，非终局才选择下一攻击方；最后一次提交。Pure `bAttackEnded` 不等于这些 MatchPlay mutation，现有 Through Ball terminal 仍无 production consumer。
+
+7.66-B-002、7.68-B-002 与 7.69-B-001 至 B-004 更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 Shooter Snapshot authority 继续 OPEN。新增 7.70-M-001（UQ-041 行动点 1 消耗问题仍开放）和 7.70-M-002（Match End / Winner 保持 derived，未来不得新增漂移 authority）。本阶段不冻结具体 C++ 类型、字段名、Error / API、network / save，不实现 Deployment、Completion、Formal Abort、Direct Shot 或 Outcome Framework。
+
+7.70.1 为 Docs-only，不运行 Build、UHT、自动化测试或 CoreRules full regression。下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High）；该阶段必须在状态表示、初始化、Begin Attack、Deployment turn / Finish、played-GK 状态 / writer、terminal projection、CompleteCurrentAttack、进一步 Review 与 Explicit Deferral 中只选择一个最小切片。
