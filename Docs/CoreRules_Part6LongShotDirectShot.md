@@ -1319,3 +1319,23 @@ Turn Guard 新增 `CurrentAttackInProgress` 并在初始化检查之后、旧 re
 `7.77-M-001` 是三组 mixed-invalid validation-priority 直接组合测试证据缺口，生产源码顺序已独立确认正确，不是行为缺陷且不阻断关闭。普通牌 Deployment writer、Slot / Zone / Occupancy authority、Deployment Availability、Automatic Finish、永久门将事实与 GK writer、Resolution consumer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot、Shooter Snapshot 与旧 lower-level flow 迁移仍未实现。
 
 7.78 为 Docs-only，跳过 Build、UHT、自动化测试和 CoreRules full regression。下一唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High），并且只能选择一个新的最小切片。
+
+## 7.79–7.81 Neutral Physical Slot + Relative Tactical Zone Contract
+
+| 阶段 | 结果 | 结论 |
+|---|---|---|
+| 7.79 Next Capability Selection | PASS | 选择 `Ordinary Deployment Placement + Slot Authority Contract Review`；未选择 writer、GK 或 Resolution 实现。 |
+| 7.80 Contract Review | PASS | 用户确认初始化布局方案，并纠正固定 Slot→Zone 模型；冻结中立物理 Slot、相对 Zone、全局 occupancy 与 writer 边界。 |
+| 7.81 Canonical Docs Sync | CLOSED ON COMPLETION | 只同步八份权威文档；不修改源码、测试或生产行为。 |
+
+`SlotId` 是全场共享且全局唯一的物理槽位身份，不以 PlayerSide 形成身份。比赛初始化时建立 `SlotId + NearPlayerA / NearPlayerB` 中立物理布局，整场不可变；多个 SlotId 可属于同一中立侧，不要求固定数量或对称数量。Forward、Midfield、Backfield 不是 SlotId 的固定属性。
+
+相对区域由中立物理位置、`RuntimeState.CurrentAttackingPlayer` 和 EvaluatedPlayerSide 共同推导：PlayerA 进攻时 NearPlayerA 对双方为 Midfield，NearPlayerB 对 A 为 Forward、对 B 为 Backfield；PlayerB 进攻时完全镜像。UI ViewMapping、屏幕左右与摄像机方向不是规则输入。静态 PositionTypes 不能替代当前相对部署区域；这使未来 Through Ball Runner 等 participant eligibility 能从权威 placement 重建当前区域证明，而不是继续依赖来源不明的布尔值。
+
+Catalog 最终由 `FMatchPlayState` 在 opening initialization 时按值持有，整场只读，但该字段和初始化链尚未实现。当前攻击的占用唯一从 `DeploymentPlacements` 按全局 SlotId 推导；PlayerA / PlayerB 不得占用同一槽位，不新增持久 occupancy map。现有 placement 继续只保存 PlayerSide、CardId、SlotId，不持久化 NeutralSide 或 RelativeZone。
+
+普通 writer 最终不得接收 RelativeZone、NeutralSide、request-local Catalog / mapping、occupancy bool、PositionTypes 或任意 SnapshotSet。Slot Contract 已关闭，但 MatchPlay Catalog binding 与 per-side card Snapshot binding 仍未实现，因此 ordinary writer、availability 和 Automatic Finish 继续阻断。legacy `FBoardState` 的固定 SlotZoneTypes / occupancy 不得复活。
+
+7.82 只实现 planned Slot Catalog 值类型、validation/query 与纯 Relative Zone Resolver，不接入 `FMatchPlayState`。建议新增 `MatchPlayDeploymentSlotCatalog.h/.cpp` 和 `MatchPlayDeploymentSlotCatalogTests.cpp`，Exactly 28 registered tests；后续再依次实施 Catalog MatchPlay binding、per-side Snapshot binding、ordinary writer、availability 与 Automatic Finish。
+
+7.81 为 Docs-only，Build、UHT、自动化测试和 CoreRules full regression 均跳过。下一唯一入口为 `7.82 MatchPlay Neutral Slot Catalog Value/Query + Relative Zone Resolver Implementation`（GPT-5.6 Sol High）。

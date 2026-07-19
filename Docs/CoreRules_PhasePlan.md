@@ -4,11 +4,11 @@
 
 ## 当前节点
 
-- 7.75 MatchPlay Lifecycle Next Capability Selection 已关闭；只选择 `Deployment Finish` 最小切片。
-- 7.76 Implementation 已提交 `d3e84067a50305d1f050d0284364dd18d79cf85a`：新增手动 Finish、finished flag writer、合法方轮转、双方 Finish 后进入 Resolution，以及 21 项专项测试。
-- 7.77 Independent Review 以 `PASS WITH NON-BLOCKING FINDINGS` 关闭：Deployment Finish 21/21、全部指定直接回归通过、标准 Build / UHT 通过、CoreRules 1573/1573；记录 `7.77-M-001` 非阻断测试证据债务。
-- 7.78 Final Closure Docs Sync 为当前 Docs-only 阶段；只同步已实现边界、验证证据、债务与下一入口，不运行 Build、UHT 或测试。项目仍处于总体阶段 4。
-- 7.78 后唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；必须重新比较候选并只选择一个最小切片，不得预选。
+- 7.75–7.78 Deployment Finish 最小切片已关闭：实现提交为 `d3e84067a50305d1f050d0284364dd18d79cf85a`，独立验证为 Finish 21/21、CoreRules 1573/1573、标准 Build / UHT PASS；`7.77-M-001` 保持非阻断证据债务。
+- 7.79 Next Capability Selection 选择 `Ordinary Deployment Placement + Slot Authority Contract Review`，没有授权实现 ordinary writer、GK、Resolution 或 Completion。
+- 7.80 Contract Review 以 `PASS` 关闭：用户选择 match-opening immutable layout，并纠正固定 Slot→Zone 模型；冻结全局 SlotId、中立物理位置、八种相对 Zone 映射、placements occupancy、Snapshot 边界与 staged implementation。
+- 7.81 Neutral Physical Slot + Relative Tactical Zone Canonical Docs Sync 为当前 Docs-only 阶段；只修改八份授权文档，不运行 Build、UHT 或测试。项目仍处于总体阶段 4。
+- 7.81 后唯一入口为 `7.82 MatchPlay Neutral Slot Catalog Value/Query + Relative Zone Resolver Implementation`（GPT-5.6 Sol High）；该切片不接入 FMatchPlayState、opening initializer、Snapshot authority 或 ordinary writer。
 
 - 阶段 4.61 Capability Closure Review、4.62 Final Boundary Audit 和 4.63 Final Regression 已通过。
 - 4.63.5 Part 4 Final Docs Sync 已提交，第 4 部分已完成。

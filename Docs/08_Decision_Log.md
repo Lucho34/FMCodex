@@ -220,6 +220,24 @@
 - 下一入口：`7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；必须重新比较剩余候选并只选择一个最小切片，不得一次实现普通部署、门将 Deployment、Resolution、Completion 或 Direct Shot。
 - 影响：MatchPlay 状态 owner、初始化、Deployment、played-GK writer、terminal adapter / completion、Guard / Availability、状态复制与后续专项测试设计。
 
+### CD-023 - Neutral Physical Deployment Slots and Relative Tactical Zones
+
+- 日期：2026-07-19
+- 产品决定：比赛初始化时建立一份中立物理 Slot Catalog，整场比赛保持不变。`SlotId` 是全场共享且全局唯一的物理槽位身份，不属于 PlayerA 或 PlayerB 私有；不得使用 `PlayerSide + SlotId` 表达槽位身份。`PlayerSide + CardId` 继续只表达卡牌实例身份。
+- 中立位置：每个槽位只保存非空 `SlotId` 和 `NearPlayerA / NearPlayerB` 中立物理位置。多个 SlotId 可以拥有相同中立位置；不要求固定槽位数量、两侧数量相等、特定字符串命名、Center、坐标、行列、UI 左右或绝对前后表示。
+- 相对区域：Forward、Midfield、Backfield 不是 SlotId 的固定绝对属性。相对区域必须由 SlotId 对应的中立位置、`RuntimeState.CurrentAttackingPlayer` 和 `EvaluatedPlayerSide` 共同推导；静态 `EPlayerPositionType` 与相对部署区域是不同概念，不得复用同一个 enum 表达。
+- 完整映射：PlayerA 进攻时，NearPlayerA 对 A/B 都是 Midfield，NearPlayerB 对 A 是 Forward、对 B 是 Backfield；PlayerB 进攻时镜像，NearPlayerB 对 B/A 都是 Midfield，NearPlayerA 对 B 是 Forward、对 A 是 Backfield。UI ViewMapping、屏幕左右和摄像机方向不参与规则解析。
+- Catalog authority：最终 owner 为 `FMatchPlayState`。未来 opening initialization 接收、验证并值拷贝 Catalog；初始化完成后 Begin、普通部署、GK writer、Finish、Resolution consumer 与 `CompleteCurrentAttack` 均不得修改。UE USTRUCT 不自动提供语言级 immutable，未来 mutation tests 必须证明 Catalog 不变。
+- Occupancy：当前攻击的唯一占用 authority 为 `FMatchPlayCurrentAttackState::DeploymentPlacements`。任何 placement 使用某个全局 SlotId 后，该物理槽位即被占用，不区分 PlayerSide。不得新增持久 SlotOccupants map；未来缓存只能是可重建派生数据。
+- Placement：`FMatchPlayDeploymentPlacement` 继续只保存 `PlayerSide + CardId + SlotId`，不保存 RelativeZone、NeutralSide、PositionTypes、GK 类型、Snapshot 或 attacker / defender role。后续 reader 按 Catalog、当前攻击方和 placement.PlayerSide 重新推导区域。
+- 请求边界：普通部署请求不得自行提供 RelativeZone、NeutralSide、Slot Catalog、Slot→Zone mapping、occupancy bool、PositionTypes 或任意外部 SnapshotSet。任意非空但不在本场 Catalog 中的 SlotId 必须拒绝；不得把 request-local mapping 当作 authority。
+- Snapshot 边界：现有 `FPlayerCardRuleSnapshot / Set` 没有 PlayerSide owner，也不是当前 `FMatchPlayState` 的 reflected authority。最终 per-side Snapshot 必须在比赛初始化时从实际双方牌组建立、与相应 CardUsage CardId 集合一致并整场不可变；其反射 / 持久化适配是独立高风险切片，不得塞入 Slot Resolver 实现。
+- legacy 边界：`FBoardState::SharedSlotIds / SlotZoneTypes / SlotOccupantCardIds / SlotOwnerPlayerIds` 只属于 historical opening snapshot。尤其不得复活其固定 Slot→Zone 或 occupancy 表达作为当前 MatchPlay authority。
+- 实现诚实性：7.80 只关闭 Contract，7.81 只同步文档；`EMatchPlayNeutralSlotSide`、`EMatchPlayRelativeDeploymentZone`、SlotDefinition、SlotCatalog、Catalog validation/query、Relative Zone Resolver、FMatchPlayState Catalog 字段及 opening binding 均尚未实现。
+- 实施顺序：7.82 只实现 Slot Catalog 值类型、validation/query 与纯 Relative Zone Resolver，不接入 `FMatchPlayState`；之后依次评审 / 实现 Catalog MatchPlay initialization binding、per-side card Snapshot MatchPlay binding、ordinary deployment writer、ordinary availability 和 Automatic Finish。
+- 下一入口：`7.82 MatchPlay Neutral Slot Catalog Value/Query + Relative Zone Resolver Implementation`（GPT-5.6 Sol High）。建议仅新增 `MatchPlayDeploymentSlotCatalog.h/.cpp` 与 `MatchPlayDeploymentSlotCatalogTests.cpp`，建议 Exactly 28 registered tests；不得在该切片修改 MatchPlayState、opening initializer、Snapshot authority 或 writer。
+- 影响：Rules Canonical、Data Schema、MatchPlay authority、Deployment placement / occupancy、后续参与者区域资格与 implementation staging。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

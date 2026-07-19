@@ -588,3 +588,42 @@ finished flags 是 attacker / defender 角色事实，角色由 `RuntimeState.Cu
 7.77 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS`。Deployment Finish 21/21，直接回归全部通过，Build / UHT PASS，CoreRules 1573/1573。`7.77-M-001` 记录三组 mixed-invalid 首错优先级直接组合测试证据缺口；生产源码顺序正确，因此不阻断本切片关闭。
 
 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 继续为 `Infrastructure partially implemented / Further implementation pending`。下一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`，只允许选择一个新的最小切片。
+
+## 中立物理 Slot 与相对战术区域架构（7.79–7.81）
+
+7.79 选择 `Ordinary Deployment Placement + Slot Authority Contract Review`，7.80 根据用户确认关闭 Slot Contract，7.81 只把该 Contract 同步到权威文档。以下类型和能力均为 planned / not yet implemented，不得描述为当前 public surface。
+
+未来 authority 链固定为：
+
+```text
+MatchPlay opening configuration
+  → validate match-long neutral physical Slot Catalog
+  → value-copy Catalog into FMatchPlayState
+  → pure Relative Deployment Zone Resolver
+  → CurrentAttack DeploymentPlacements provide global occupancy
+```
+
+`SlotId` 是非空 `FName` 概念、全场共享且 Catalog 内全局唯一。槽位身份不是 `PlayerSide + SlotId`；双方引用相同 SlotId 时引用同一物理空间。Catalog 的最小 planned entry 为 `SlotId + NeutralSide`，其中 NeutralSide 只表达 `NearPlayerA / NearPlayerB`，不表达 Forward、Midfield、Backfield、occupant、owner、current attacker、legal actor 或 UI screen side。
+
+相对战术区域是派生值。planned resolver 输入为 Catalog、SlotId、`RuntimeState.CurrentAttackingPlayer` 和 `EvaluatedPlayerSide`；完整映射为：
+
+| Current attacker | Neutral side | Evaluated side | Relative zone |
+|---|---|---|---|
+| PlayerA | NearPlayerA | PlayerA | Midfield |
+| PlayerA | NearPlayerA | PlayerB | Midfield |
+| PlayerA | NearPlayerB | PlayerA | Forward |
+| PlayerA | NearPlayerB | PlayerB | Backfield |
+| PlayerB | NearPlayerB | PlayerB | Midfield |
+| PlayerB | NearPlayerB | PlayerA | Midfield |
+| PlayerB | NearPlayerA | PlayerB | Forward |
+| PlayerB | NearPlayerA | PlayerA | Backfield |
+
+Resolver 不读取或修改 CurrentAttack、CardUsage、PositionTypes、GK、occupancy 或 UI ViewMapping，也不接受调用方提供的 RelativeZone。`EPlayerPositionType` 是静态卡牌位置，planned relative-zone enum 是当前攻击上下文中的战术区域，两者不得混用。
+
+Catalog 最终由 `FMatchPlayState` 按值持有并随比赛生命周期存在，只有 opening initialization 可以建立。Catalog 初始化必须拒绝空集合、空 / 重复 SlotId、None 或未知 NeutralSide；不要求固定数量、两侧数量相等或特定命名。Begin、ordinary/GK writer、Finish、Resolution 与 Completion 均不得修改 Catalog。
+
+CurrentAttack 内的 occupancy 唯一从 `DeploymentPlacements` 推导。任何 side 的 placement 已使用某个 SlotId，即阻止双方再次使用该全局物理槽位；不新增持久 occupant map。placement 保持 `PlayerSide + CardId + SlotId` 三字段，不保存 NeutralSide 或 RelativeZone。
+
+普通 writer 的最终请求方向只包含 BeforeState、AttackSequence、RequestingSide、CardId 和 SlotId；禁止 request-local Catalog、Slot→Zone、SnapshotSet、PositionTypes、occupancy bool 或 next actor。writer 仍被 MatchPlay Catalog binding 和 per-side card Snapshot binding 阻断；现有 Snapshot 类型的 reflected authority 适配必须独立实施。
+
+实施顺序固定为 7.81 Docs Sync → 7.82 pure Catalog value / validation / query + Relative Zone Resolver → Catalog MatchPlay initialization binding → per-side Snapshot binding → ordinary writer → ordinary availability → Automatic Finish。7.82 不修改 `FMatchPlayState`、opening input 或 initializer chain。

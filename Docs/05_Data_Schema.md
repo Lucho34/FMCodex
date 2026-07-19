@@ -168,25 +168,48 @@
 - 定位球战术中被耗费的球员进入已消耗区。
 - 门将发动后只记录已使用状态。
 
-## BoardState
+## MatchPlay Deployment Slot Schema（Planned / Not Yet Implemented）
 
-表示当前回合攻防区和场上槽位。
+当前生产 `FMatchPlayState` 尚未持有槽位目录。以下结构是已冻结但尚未实现的 MatchPlay 数据 Contract，不是现有 public surface，也不得通过复活 legacy `FBoardState` 实现。
 
-建议字段：
+### SlotDefinition
 
-- `SharedSlots`：双方共用槽位集合。
-- `ZoneType`：槽位所属逻辑区域，例如中场、前场、后场。
-- `SlotOccupant`：槽位中的球员卡实例。
-- `SlotOwnerPlayerId`：槽位中卡牌所属玩家。
-- `ViewMapping`：UI 视角映射，用于表现中线左右，不参与底层规则判定。
+表示一个全场共享的中立物理槽位：
 
-规则约束：
+- `SlotId`：`FName` 概念；全场唯一且非空，不包含玩家方、固定区域或 UI 左右含义。
+- `NeutralSide`：中立物理位置，只允许 `NearPlayerA` 或 `NearPlayerB`。
 
-- 场地槽位双方共用。
-- 每个卡槽只能放 1 张卡。
-- 底层逻辑不使用屏幕左边或右边作为规则条件。
-- 进攻方 `D` 类型不可放前场；防守方 `A` 类型不可放后场。
-- 多类型球员的放置限制按规则允许例外。
+`NeutralSide` 不等于固定 `ZoneType`。旧的“每个槽位保存一个永久 Forward / Midfield / Backfield”模型已经废止。
+
+### SlotCatalog
+
+表示比赛初始化时建立的中立物理布局：
+
+- `Slots`：`SlotDefinition` 列表；数量不固定，两侧数量不要求相等。
+
+Catalog 由未来 `FMatchPlayState` 按值持有，初始化后整场只读。Catalog 不包含固定相对区域、occupant、卡牌 owner、当前攻击方、当前合法部署方、UI screen side 或 CurrentAttack placements。
+
+### RelativeZone
+
+相对战术区域只包含 `Forward / Midfield / Backfield`，与卡牌静态 `Attack / Midfield / Defense / Goalkeeper` 位置类型是不同概念。相对区域通过以下输入即时推导：
+
+```text
+SlotId 对应的 NeutralSide
++ RuntimeState.CurrentAttackingPlayer
++ EvaluatedPlayerSide
+```
+
+它不持久化到 SlotDefinition 或 placement。UI 镜像、屏幕左右和摄像机方向不参与推导。
+
+### Placement and Occupancy
+
+现有 `FMatchPlayDeploymentPlacement` 继续只表达 `PlayerSide + CardId + SlotId`。同一次 CurrentAttack 中的 occupancy 唯一由 `DeploymentPlacements` 推导：任何 placement 已使用某个全局 `SlotId`，该物理槽位即被占用，不区分 placement.PlayerSide。
+
+不新增持久 `SlotOccupants` map。未来若有缓存，它只能是可从 placements 重建的派生数据，不能成为第二 authority。
+
+### Legacy Boundary
+
+历史 `FBoardState` 的 `SharedSlotIds / SlotZoneTypes / SlotOccupantCardIds / SlotOwnerPlayerIds / ViewMappingId` 只属于 historical opening snapshot。尤其是 `SlotZoneTypes` 的固定绝对区域模型不适用于当前 MatchPlay，不得作为 Catalog、相对区域或 occupancy authority。
 
 ## ConsumedReturnRule
 
@@ -219,5 +242,4 @@
 - `FormulaResult`：公式结果摘要。
 - `ScoreAfterEvent`：事件后的比分。
 - `ZonesAfterEvent`：必要的区域变化摘要。
-
 

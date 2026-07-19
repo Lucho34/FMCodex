@@ -301,3 +301,19 @@ Chip Shot Query 不含 Shooter Snapshot、GK、Match State、SourceBranch、Acti
 专项基线为 21/21；Build / UHT PASS；CoreRules 1573/1573。7.77 独立结论为 `PASS WITH NON-BLOCKING FINDINGS`。不存在 `Deployment Action Framework`、Automatic Finish、Resolution consumer 或 `CompleteCurrentAttack` 模块注册。
 
 下一唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`。
+
+## Neutral Physical Slot + Relative Tactical Zone（7.79–7.81）
+
+7.79 选择普通 placement / Slot authority Review，7.80 关闭 Contract，7.81 为 Docs-only 正式同步。下表全部是 planned module，不是现有生产注册：
+
+| Planned 模块 | 职责 | 直接上游 | 直接下游 | 当前状态 | 禁止边界 |
+| --- | --- | --- | --- | --- | --- |
+| `MatchPlayDeploymentSlotCatalog` value types | 表达全局 SlotId 与 `NearPlayerA / NearPlayerB` 中立物理位置。 | 未来 opening configuration。 | Catalog validation/query、Relative Zone Resolver。 | Not yet implemented；7.82 建议新增。 | 不保存固定 Zone、occupant、owner、current attacker、placements 或 UI side。 |
+| Catalog validation/query | 验证非空 Catalog、非空 / 唯一 SlotId、受支持 NeutralSide，并按 SlotId 查找。 | Slot Catalog value。 | Resolver；未来 MatchPlay initialization binding。 | Not yet implemented；7.82 建议新增。 | 不绑定 MatchPlay、不修改 Catalog、不判断卡牌或 occupancy。 |
+| `MatchPlayRelativeDeploymentZoneResolver` | 使用 Catalog、SlotId、current attacker 与 evaluated side 纯推导 Forward / Midfield / Backfield。 | Valid Catalog；`EInitialTurnOrderPlayer`。 | 未来 ordinary writer 与 participant eligibility reader。 | Not yet implemented；7.82 建议新增。 | 不读取 CurrentAttack、CardUsage、PositionTypes、GK、occupancy 或 ViewMapping；不接受 caller-supplied Zone。 |
+| Catalog MatchPlay initialization binding | opening 时验证并把 Catalog 值拷贝进 `FMatchPlayState`，整场只读。 | 未来 7.82 Catalog query。 | ordinary writer、availability。 | Contract frozen / not implemented；7.82 明确排除。 | 不使用 request-local mapping，不复活 legacy FBoardState。 |
+| Per-side card Snapshot MatchPlay binding | 从实际双方牌组建立按方、整场不可变的 card rule authority。 | Opening decks、CardUsage IDs。 | ordinary writer、Resolution participant readers。 | Separate high-risk slice / not implemented。 | 不接受任意外部 SnapshotSet；不塞入 7.82。 |
+
+CurrentAttack occupancy 不注册独立持久模块：`DeploymentPlacements` 是唯一 authority，按全局 SlotId 扫描即可。`FMatchPlayDeploymentPlacement` 已实现的三字段值表示保持不变；Catalog owner、Resolver、Snapshot binding 和 ordinary writer 均不得误记为已实现。
+
+下一唯一入口为 `7.82 MatchPlay Neutral Slot Catalog Value/Query + Relative Zone Resolver Implementation`（GPT-5.6 Sol High）。建议只新增 `MatchPlayDeploymentSlotCatalog.h/.cpp` 和 `MatchPlayDeploymentSlotCatalogTests.cpp`，Exactly 28 registered tests；不修改现有生产或测试文件。
