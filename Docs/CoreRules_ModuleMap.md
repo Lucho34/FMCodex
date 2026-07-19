@@ -288,3 +288,16 @@ Chip Shot Query 不含 Shooter Snapshot、GK、Match State、SourceBranch、Acti
 7.73 证据为 Begin 16/16、新增 21/21，State 5/5、Initializer 12/12、Opening 17/17、Turn Guard 17/17、Submission Gate 17/17、Availability 16/16、Attack Flow 17/17，Build / UHT PASS，CoreRules 1552/1552。7.74 为 docs-only，不重跑验证。
 
 普通部署牌 writer / 轮转 / Finish / Resolution 转换、永久门将使用状态与 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 和 Shooter Snapshot 均未注册为已实现模块。下一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`。
+
+## MatchPlay Deployment Finish（7.78）
+
+实现提交：`d3e84067a50305d1f050d0284364dd18d79cf85a`。
+
+| 模块 | 职责 | 直接上游 | 直接下游 | 已实现边界 | 未实现边界 |
+| --- | --- | --- | --- | --- | --- |
+| `MatchPlayFinishDeployment` | 当前合法部署方不可撤销地完成本次 Deployment，并原子轮转或进入 Resolution。 | `MatchPlayState` CurrentAttack authority；`MatchPlayBeginOrdinaryAttack` 建立的 canonical Deployment 状态。 | 未来普通 Deployment writer；未来 Resolution consumer。 | 精确 API / Result / 12 项 Error；AttackSequence stale 防护；动态 attacker / defender role mapping；第一方 Finish 轮转；第二方 Finish 进入 Resolution 且 legal side 清为 None；失败完整原子性。 | 不部署普通牌、不使用门将、不自动 Finish、不执行 Resolution / Formula / Completion，不消费机会或清除 CurrentAttack。 |
+| `MatchPlayFinishDeploymentTests` | 验证 Deployment Finish public contract、状态转换和边界。 | `MatchPlayFinishDeployment`。 | 自动化回归证据。 | 21 项注册测试覆盖四种 role mapping、first / second Finish、首错顺序、already-finished / invalid finished state、失败全状态原子性、成功修改边界、determinism 与 defaults。 | `7.77-M-001` 保留三组 mixed-invalid 优先级直接组合证据增强。 |
+
+专项基线为 21/21；Build / UHT PASS；CoreRules 1573/1573。7.77 独立结论为 `PASS WITH NON-BLOCKING FINDINGS`。不存在 `Deployment Action Framework`、Automatic Finish、Resolution consumer 或 `CompleteCurrentAttack` 模块注册。
+
+下一唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`。

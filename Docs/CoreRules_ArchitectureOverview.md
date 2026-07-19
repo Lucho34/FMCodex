@@ -565,3 +565,26 @@ Begin(BeforeState, ActionPoint)
 7.73 独立复验确认 Begin 16/16、本切片新增 21/21，相关直接回归全部通过，标准 Build / UHT 通过且 CoreRules 1552/1552。非阻断债务为 `7.73-M-001` 与 `7.73-M-002`，只要求增强 payload 与组合优先级测试证据。
 
 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 现为 `Infrastructure partially implemented / Further implementation pending`：CurrentAttack owner 与 Begin writer 已存在，但 Deployment、门将状态 writer、Resolution 转换、completion / cleanup 仍待实现。Shooter Snapshot、UQ-041 与 derived Match End 债务继续开放。下一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`，不得从本切片推断下一个实现选择。
+
+## Deployment Finish Capability 实现闭环（7.75–7.78）
+
+提交 `d3e84067a50305d1f050d0284364dd18d79cf85a` 新增纯状态转换能力 `FMatchPlayFinishDeployment`。当前生命周期的实际生产链边界为：
+
+```text
+FMatchPlayState CurrentAttack authority
+  → FMatchPlayBeginOrdinaryAttack（已实现）
+  → repeated ordinary/GK Deployment actions（未实现）
+  → FMatchPlayFinishDeployment（手动 Finish 已实现）
+  → CurrentAttack Phase = Resolution（状态转换已实现）
+  → Resolution consumer / terminal projection / completion（未实现）
+```
+
+公开入口为 `Finish(const FMatchPlayState& BeforeState, int64 AttackSequence, EInitialTurnOrderPlayer RequestingSide)`。Result 保存完整 Before / After、输入 sequence / requester 和能力专用 diagnostics。失败按首错短路且 `AfterState` 完整等于输入；只有所有验证通过后才创建并提交 WorkingState。
+
+finished flags 是 attacker / defender 角色事实，角色由 `RuntimeState.CurrentAttackingPlayer` 动态推导，不固定绑定 PlayerA / PlayerB。第一方 Finish 只设置其角色 flag、保持 Deployment 并把合法方轮转到另一方；另一角色已经 Finish 时，第二方 Finish 将双方 flag 设为 true、把 phase 切换为 Resolution，并清除 Deployment legal actor 为 `None`。CurrentAttack presence、sequence、ActionPoint、placements、当前防守门将激活、Runtime 和 CardUsage 均保持不变。
+
+本能力不部署普通牌、不使用门将牌、不自动 Finish、不查询 Deployment availability、不执行 Resolution / Formula、不创建 terminal projection、不清除 CurrentAttack、不消费攻击机会，也不调用 `CompleteCurrentAttack`。旧 lower-level flow 直接调用缺口继续存在。
+
+7.77 独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS`。Deployment Finish 21/21，直接回归全部通过，Build / UHT PASS，CoreRules 1573/1573。`7.77-M-001` 记录三组 mixed-invalid 首错优先级直接组合测试证据缺口；生产源码顺序正确，因此不阻断本切片关闭。
+
+7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 继续为 `Infrastructure partially implemented / Further implementation pending`。下一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`，只允许选择一个新的最小切片。

@@ -4,11 +4,11 @@
 
 ## 当前节点
 
-- 7.71 MatchPlay Lifecycle Implementation Slice Selection 已关闭；只选择 `CurrentAttack Representation + Begin Ordinary Attack` 最小切片，并包含旧 formal submission 的 active-attack Guard。
-- 7.72 Implementation 已提交 `cf99f0255274aeb4dbad2243caa05aed2c835b69`：新增 CurrentAttack 表示、inactive 初始化链、普通攻击 Begin capability、Turn Guard 集成和 21 项测试。
-- 7.73 Independent Review 以 `PASS WITH NON-BLOCKING FINDINGS` 关闭：Begin 16/16、本切片新增 21/21，直接相关回归全部通过，标准 Build / UHT 通过，CoreRules 1552/1552。
-- 7.74 Final Closure Docs Sync 为当前 Docs-only 阶段；只同步已实现边界、验证证据和未完成职责，不运行 Build、UHT 或测试。项目仍处于总体阶段 4。
-- 7.74 后唯一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；必须重新比较候选并只选择一个最小切片，不得预选。
+- 7.75 MatchPlay Lifecycle Next Capability Selection 已关闭；只选择 `Deployment Finish` 最小切片。
+- 7.76 Implementation 已提交 `d3e84067a50305d1f050d0284364dd18d79cf85a`：新增手动 Finish、finished flag writer、合法方轮转、双方 Finish 后进入 Resolution，以及 21 项专项测试。
+- 7.77 Independent Review 以 `PASS WITH NON-BLOCKING FINDINGS` 关闭：Deployment Finish 21/21、全部指定直接回归通过、标准 Build / UHT 通过、CoreRules 1573/1573；记录 `7.77-M-001` 非阻断测试证据债务。
+- 7.78 Final Closure Docs Sync 为当前 Docs-only 阶段；只同步已实现边界、验证证据、债务与下一入口，不运行 Build、UHT 或测试。项目仍处于总体阶段 4。
+- 7.78 后唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；必须重新比较候选并只选择一个最小切片，不得预选。
 
 - 阶段 4.61 Capability Closure Review、4.62 Final Boundary Audit 和 4.63 Final Regression 已通过。
 - 4.63.5 Part 4 Final Docs Sync 已提交，第 4 部分已完成。
@@ -756,3 +756,13 @@
 - `7.73-M-001` 记录 AlreadyActive 测试对 finished / 当前门将激活非默认 payload 的证据增强；`7.73-M-002` 记录两组组合错误优先级直接测试缺口。两项均不改变已确认的生产行为或 closure。
 - 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 状态为 `Infrastructure partially implemented / Further implementation pending`。普通部署 writer / 轮转 / Finish / Resolution 转换、永久门将事实与 writer、terminal projection、completion consumer、Formal Abort、Direct Shot 和 Shooter Snapshot 仍未实现。
 - 7.74 仅做最终文档同步，Build、UHT、自动化测试和 CoreRules full regression 因 docs-only 跳过。下一唯一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High），必须重新比较候选并只选择一个最小切片。
+
+## 7.75–7.78 Deployment Finish Capability Closure
+
+- 7.75 只选择当前合法部署方的手动 Finish，不选择普通牌 writer、GK writer、Resolution consumer 或 Completion。
+- 7.76 提交 `d3e84067a50305d1f050d0284364dd18d79cf85a`，新增 `MatchPlayFinishDeployment.h/.cpp` 与 21 项测试。公开能力按 AttackSequence 和 legal side 门禁当前攻击，finished flag 按 runtime attacker 动态映射角色。
+- 第一方 Finish 后保持 Deployment 并轮转到另一方；第二方 Finish 后双方 finished、进入 Resolution、legal side 清为 None。CurrentAttack 保留，不消费机会，不切换 runtime attacker。
+- 失败为完整 copy-on-success 原子性；成功不修改 Runtime、CardUsage、ActionPoint、AttackSequence、placements 或当前防守门将激活。
+- 7.77 独立复验为 `PASS WITH NON-BLOCKING FINDINGS`：Finish 21/21，指定直接回归全部通过，Build / UHT PASS，CoreRules 1573/1573。`7.77-M-001` 只记录三组 mixed-invalid 首错直接组合测试证据增强。
+- 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 继续为 `Infrastructure partially implemented / Further implementation pending`。普通部署、Slot / Zone / Occupancy、Availability、Automatic Finish、永久 GK 状态及 writer、Resolution consumer、terminal projection、Completion、Formal Abort、Direct Shot、Shooter Snapshot 与 lower-level flow 迁移仍开放。
+- 7.78 仅同步文档，Build、UHT、自动化测试和 CoreRules full regression 因 docs-only 跳过。下一唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）。

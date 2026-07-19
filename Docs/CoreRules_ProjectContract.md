@@ -999,3 +999,67 @@ Turn Guard 追加 `CurrentAttackInProgress`，在 runtime 初始化之后、旧 
 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 状态为 `Infrastructure partially implemented / Further implementation pending`。7.66-B-003 Shooter Snapshot、7.70-M-001 / UQ-041 与 7.70-M-002 derived Match End 继续开放。
 
 7.74 为 docs-only closure，跳过 Build、UHT、自动化测试与 CoreRules full regression。下一唯一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；该阶段必须重新比较候选并只选择一个最小切片。
+
+## MatchPlay Deployment Finish Capability Contract（7.78）
+
+### Public surface
+
+实现提交为 `d3e84067a50305d1f050d0284364dd18d79cf85a`。公开 API 精确为：
+
+```cpp
+static FMatchPlayFinishDeploymentResult Finish(
+    const FMatchPlayState& BeforeState,
+    int64 AttackSequence,
+    EInitialTurnOrderPlayer RequestingSide);
+```
+
+`FMatchPlayFinishDeploymentResult` 精确包含 `bSuccess`、`BeforeState`、`AfterState`、`AttackSequence`、`RequestingSide`、`ErrorCode` 与 `ErrorMessage`；默认分别为失败、sequence 0、requester None 和 Error None。不存在 `bEnteredResolution`、`bRotated`、`NextLegalSide` 或 `FinishedRole` 字段。
+
+能力专用 Error enum 顺序固定为：
+
+```text
+None
+MatchPlayStateNotInitialized
+NoCurrentAttack
+InvalidCurrentAttackSequence
+AttackSequenceMismatch
+CurrentAttackNotInDeployment
+InvalidCurrentAttackingPlayer
+InvalidRequestingSide
+InvalidCurrentLegalDeploymentSide
+RequestingSideNotCurrentLegalDeploymentSide
+InvalidDeploymentFinishedState
+RequestingSideAlreadyFinished
+```
+
+失败返回首个错误及非空 ErrorMessage；成功为 Error None 且 ErrorMessage 为空。
+
+### Validation 与角色映射
+
+固定验证顺序为：保存并回显输入 → runtime initialized → CurrentAttack present → authoritative sequence positive → input sequence match → Deployment phase → runtime attacker valid → requester valid → legal side valid → requester is legal side → both-finished Deployment consistency → 按 runtime attacker 映射 requester role → requester role not already finished → WorkingState → 设置角色 flag → 轮转或进入 Resolution → 一次提交成功。
+
+finished flags 是 attacker / defender 角色字段。映射为：PlayerA attacker + PlayerA requester、PlayerB attacker + PlayerB requester 写 attacker flag；PlayerA attacker + PlayerB requester、PlayerB attacker + PlayerA requester 写 defender flag。PlayerA / PlayerB 不固定等于 attacker / defender。
+
+### State transition
+
+第一方 Finish 后，请求角色 flag 为 true，另一角色仍为 false，phase 保持 Deployment，`CurrentLegalDeploymentSide=OtherSide(RequestingSide)`。Finish 不要求此前已有 placement，空 Deployment 是合法路径。
+
+第二方 Finish 后，双方角色 flag 均为 true，phase 变为 Resolution，`CurrentLegalDeploymentSide=None`。CurrentAttack 和 `bHasCurrentAttack=true` 保留；sequence、ActionPoint、placements、temporary GK activation、runtime attacker 与 UsedAttackCount 均不变。
+
+Deployment phase 中双方 finished flags 已同时为 true 是不一致状态，必须返回 `InvalidDeploymentFinishedState`，不得自动修复成 Resolution。
+
+### Atomicity 与禁止行为
+
+实现采用 copy-on-success。任何失败都保持 Result Before / After 完整等于输入，原输入不变，并回显 AttackSequence 与 RequestingSide；测试通过 `FMatchPlayState::StaticStruct()->CompareScriptStruct` 比较完整反射状态。
+
+成功只允许修改请求角色 finished flag、第二方 Finish 时的 phase，以及 legal side。不得移动普通牌或门将牌、修改 CardUsage / Runtime / score / attack counts、增删 placements、修改 temporary 或永久 GK 状态、清除 CurrentAttack、调用 Formula / old flow、创建 terminal projection、执行 Resolution、Completion 或 Formal Abort。
+
+### Verification、closure 与 remaining boundary
+
+7.77 独立审查为 `PASS WITH NON-BLOCKING FINDINGS`，确认 Deployment Finish、Resolution transition 和提交安全性。专项测试 21/21；指定直接回归全部通过；Build / UHT PASS；CoreRules Found 1573、Passed 1573、Failed 0、NotRun 0。
+
+`7.77-M-001` 记录 invalid authoritative + mismatching input sequence、invalid requester + invalid legal side、wrong requester + both flags true 三组 mixed-invalid 首错优先级缺少直接组合测试。生产顺序已独立确认正确，现有测试覆盖单项错误和其他组合；这是非阻断证据增强，不是生产缺陷。
+
+普通 Deployment placement、Slot / Zone / Occupancy authority、Deployment Availability、Automatic Finish、永久 GK 使用事实、GK Deployment writer、temporary GK writer、Resolution consumer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot、Shooter Snapshot 和旧 lower-level flow 迁移仍未实现。7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 保持 `Infrastructure partially implemented / Further implementation pending`。
+
+7.78 为 Docs-only，跳过 Build、UHT、自动化测试和 CoreRules full regression。下一唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High），且只允许选择一个最小切片。

@@ -1300,3 +1300,22 @@ Turn Guard 新增 `CurrentAttackInProgress` 并在初始化检查之后、旧 re
 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 更新为 `Infrastructure partially implemented / Further implementation pending`。仍未实现普通部署 writer / 轮转 / Finish / 双方完成转 Resolution、永久门将事实与门将激活 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 与 Shooter Snapshot。7.70-M-001 / UQ-041 和 7.70-M-002 继续开放。
 
 7.74 因 docs-only 跳过 Build、UHT、自动化测试和 CoreRules full regression。下一唯一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；必须重新比较候选并只选择一个最小切片。
+
+## 7.75–7.78 Deployment Finish Capability 最终关闭
+
+| 阶段 | 结果 | 结论 |
+|---|---|---|
+| 7.75 Next Capability Selection | PASS | 只选择手动 Deployment Finish、finished flag writer、合法方轮转和双方 Finish 后进入 Resolution。 |
+| 7.76 Implementation | PASS | 提交 `d3e84067a50305d1f050d0284364dd18d79cf85a`，只新增两个生产文件和一个测试文件，共 935 行插入。 |
+| 7.77 Independent Review | PASS WITH NON-BLOCKING FINDINGS | Contract、角色映射、转换、原子性、范围与回归通过；记录 `7.77-M-001`。 |
+| 7.78 Final Closure Docs Sync | CLOSED ON COMPLETION | 只同步实际实现、验证基线、债务和下一入口；不改变产品规则或生产行为。 |
+
+`FMatchPlayFinishDeployment::Finish` 接收完整 `FMatchPlayState`、`int64 AttackSequence` 和 `RequestingSide`。它按固定首错顺序验证 runtime、CurrentAttack、authoritative / input sequence、Deployment phase、runtime attacker、requester、legal side、finished-state consistency 和 requester role finished 状态。失败返回完整 BeforeState；成功只提交 WorkingState。
+
+角色映射基于 `RuntimeState.CurrentAttackingPlayer`。第一方 Finish 后保持 Deployment 并轮转 legal side；第二方 Finish 后双方角色 flag 为 true，进入 Resolution，`CurrentLegalDeploymentSide=None`，但 CurrentAttack 仍存在且不消费机会。Runtime、CardUsage、ActionPoint、sequence、placements 与 temporary GK activation 均不变。
+
+7.77 独立验证为 Deployment Finish 21/21；Begin 16/16、State 5/5、Initializer 12/12、Turn Guard 17/17、Submission Gate 17/17、Availability 16/16、Attack Flow 17/17、CardUsageResolver 11/11、PlayCardResolver 19/19；Development Editor Build 与 UHT PASS；CoreRules Found 1573、Passed 1573、Failed 0、NotRun 0。
+
+`7.77-M-001` 是三组 mixed-invalid validation-priority 直接组合测试证据缺口，生产源码顺序已独立确认正确，不是行为缺陷且不阻断关闭。普通牌 Deployment writer、Slot / Zone / Occupancy authority、Deployment Availability、Automatic Finish、永久门将事实与 GK writer、Resolution consumer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot、Shooter Snapshot 与旧 lower-level flow 迁移仍未实现。
+
+7.78 为 Docs-only，跳过 Build、UHT、自动化测试和 CoreRules full regression。下一唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High），并且只能选择一个新的最小切片。
