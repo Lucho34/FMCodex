@@ -1,6 +1,6 @@
 ﻿# 05 Data Schema
 
-本文档只保留数据结构说明。未解决规则问题统一记录在 `Docs/08_Decision_Log.md`。当前不创建数据资产、不创建蓝图、不写 C++。
+本文档只保留数据结构说明。未解决规则问题统一记录在 `Docs/08_Decision_Log.md`。本文档不创建数据资产或蓝图；已实现 C++ public surface 与仍处于 planned 状态的 MatchPlay binding 会明确区分。
 
 ## 设计目标
 
@@ -168,30 +168,42 @@
 - 定位球战术中被耗费的球员进入已消耗区。
 - 门将发动后只记录已使用状态。
 
-## MatchPlay Deployment Slot Schema（Planned / Not Yet Implemented）
+## MatchPlay Deployment Slot Schema（Implemented in 7.82；State Binding Pending）
 
-当前生产 `FMatchPlayState` 尚未持有槽位目录。以下结构是已冻结但尚未实现的 MatchPlay 数据 Contract，不是现有 public surface，也不得通过复活 legacy `FBoardState` 实现。
+提交 `8a32cf3c59592898ff1e147ebd14b8f9b046bc9e` 已实现纯值、验证、查询和相对区域解析 public surface。当前生产 `FMatchPlayState` 仍未持有槽位目录，opening ownership / binding 尚未实现，也不得通过复活 legacy `FBoardState` 实现。
 
 ### SlotDefinition
 
-表示一个全场共享的中立物理槽位：
+`FMatchPlayDeploymentSlotDefinition` 表示一个全场共享的中立物理槽位：
 
-- `SlotId`：`FName` 概念；全场唯一且非空，不包含玩家方、固定区域或 UI 左右含义。
-- `NeutralSide`：中立物理位置，只允许 `NearPlayerA` 或 `NearPlayerB`。
+- `SlotId`：`FName`；默认 `NAME_None`，有效 Catalog 中全场唯一且非空，不包含玩家方、固定区域或 UI 左右含义。
+- `NeutralSide`：`EMatchPlayNeutralSlotSide`；默认 `None`，有效值只允许 `NearPlayerA` 或 `NearPlayerB`。
+
+`EMatchPlayNeutralSlotSide` 的精确顺序为 `None / NearPlayerA / NearPlayerB`。它不表达当前攻击方、Forward / Midfield / Backfield 或 UI 左右方向。
 
 `NeutralSide` 不等于固定 `ZoneType`。旧的“每个槽位保存一个永久 Forward / Midfield / Backfield”模型已经废止。
 
 ### SlotCatalog
 
-表示比赛初始化时建立的中立物理布局：
+`FMatchPlayDeploymentSlotCatalog` 表示比赛初始化时使用的中立物理布局：
 
-- `Slots`：`SlotDefinition` 列表；数量不固定，两侧数量不要求相等。
+- `Slots`：`TArray<FMatchPlayDeploymentSlotDefinition>`；默认 empty，数量不固定，两侧数量不要求相等。
 
-Catalog 由未来 `FMatchPlayState` 按值持有，初始化后整场只读。Catalog 不包含固定相对区域、occupant、卡牌 owner、当前攻击方、当前合法部署方、UI screen side 或 CurrentAttack placements。
+Catalog 计划由未来 `FMatchPlayState` 按值持有，初始化后整场只读；该 owner / binding 尚未实现。Catalog 不包含固定相对区域、occupant、卡牌 owner、当前攻击方、当前合法部署方、坐标、UI screen side 或 CurrentAttack placements。
+
+### Catalog Validator and FindSlot Query
+
+`static FMatchPlayDeploymentSlotCatalogValidationResult FMatchPlayDeploymentSlotCatalogValidator::Validate(const FMatchPlayDeploymentSlotCatalog&)` 已实现。Result 包含 `bSuccess / ErrorCode / ErrorMessage`；错误顺序为 `None / EmptyCatalog / EmptySlotId / DuplicateSlotId / InvalidNeutralSide`，验证顺序固定为 Catalog 非空 → 所有 SlotId 非空 → SlotId 全局唯一 → 所有 NeutralSide 合法 → success。Validator 不排序、去重、规范化、自动修复或修改输入 Catalog。
+
+`static FMatchPlayDeploymentSlotCatalogQueryResult FMatchPlayDeploymentSlotCatalogQuery::FindSlot(const FMatchPlayDeploymentSlotCatalog&, FName SlotId)` 已实现。Result 包含 `bSuccess / SlotId / SlotDefinition / ErrorCode / ErrorMessage`；错误顺序为 `None / InvalidSlotId / InvalidCatalog / SlotNotFound`。Query 先拒绝空请求 SlotId，再完整验证 Catalog，最后查找并返回 Definition 值拷贝；非法 Catalog 即使含目标 Slot 也拒绝，不暴露内部可修改指针或引用。
 
 ### RelativeZone
 
-相对战术区域只包含 `Forward / Midfield / Backfield`，与卡牌静态 `Attack / Midfield / Defense / Goalkeeper` 位置类型是不同概念。相对区域通过以下输入即时推导：
+`EMatchPlayRelativeDeploymentZone` 的精确顺序为 `None / Forward / Midfield / Backfield`。它与卡牌静态 `EPlayerPositionType` 的 `Attack / Midfield / Defense / Goalkeeper` 是不同概念。
+
+`static FMatchPlayRelativeDeploymentZoneResolveResult FMatchPlayRelativeDeploymentZoneResolver::Resolve(const FMatchPlayDeploymentSlotCatalog&, FName, EInitialTurnOrderPlayer, EInitialTurnOrderPlayer)` 已实现。Result 包含 `bSuccess / SlotId / CurrentAttackingPlayer / EvaluatedPlayerSide / NeutralSide / RelativeZone / ErrorCode / ErrorMessage`；错误顺序为 `None / InvalidSlotId / InvalidCurrentAttackingPlayer / InvalidEvaluatedPlayerSide / InvalidCatalog / SlotNotFound`。验证顺序为 SlotId → current attacker → evaluated side → Catalog validation → lookup → mapping → success，未知玩家枚举必须拒绝。
+
+相对区域通过以下输入即时推导：
 
 ```text
 SlotId 对应的 NeutralSide
@@ -200,6 +212,19 @@ SlotId 对应的 NeutralSide
 ```
 
 它不持久化到 SlotDefinition 或 placement。UI 镜像、屏幕左右和摄像机方向不参与推导。
+
+| Current attacker | NeutralSide | EvaluatedSide | RelativeZone |
+| --- | --- | --- | --- |
+| PlayerA | NearPlayerA | PlayerA | Midfield |
+| PlayerA | NearPlayerA | PlayerB | Midfield |
+| PlayerA | NearPlayerB | PlayerA | Forward |
+| PlayerA | NearPlayerB | PlayerB | Backfield |
+| PlayerB | NearPlayerB | PlayerB | Midfield |
+| PlayerB | NearPlayerB | PlayerA | Midfield |
+| PlayerB | NearPlayerA | PlayerB | Forward |
+| PlayerB | NearPlayerA | PlayerA | Backfield |
+
+`Validate`、`FindSlot` 与 `Resolve` 都接收 `const FMatchPlayDeploymentSlotCatalog&`，成功和失败均保持 Slots 数量、顺序、每个 SlotId 与 NeutralSide 不变。Zone 只产生于 Resolver Result，不持久化到 Catalog。
 
 ### Placement and Occupancy
 
@@ -210,6 +235,8 @@ SlotId 对应的 NeutralSide
 ### Legacy Boundary
 
 历史 `FBoardState` 的 `SharedSlotIds / SlotZoneTypes / SlotOccupantCardIds / SlotOwnerPlayerIds / ViewMappingId` 只属于 historical opening snapshot。尤其是 `SlotZoneTypes` 的固定绝对区域模型不适用于当前 MatchPlay，不得作为 Catalog、相对区域或 occupancy authority。
+
+7.82 专项测试为 28/28（8 value/validation、5 query、8 mapping、5 resolver failure-order、2 determinism/immutability）。7.83.2 独立确认默认 UE Unity Build、same-TU collision proof、Feet Composition 21/21、Behind Defense P1 Composition 18/18 和 CoreRules 1601/1601。下一唯一入口为 `7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`；在此之前不得实现接收 request-local Catalog 的 ordinary writer。
 
 ## ConsumedReturnRule
 
@@ -242,4 +269,3 @@ SlotId 对应的 NeutralSide
 - `FormulaResult`：公式结果摘要。
 - `ScoreAfterEvent`：事件后的比分。
 - `ZonesAfterEvent`：必要的区域变化摘要。
-

@@ -233,9 +233,10 @@
 - 请求边界：普通部署请求不得自行提供 RelativeZone、NeutralSide、Slot Catalog、Slot→Zone mapping、occupancy bool、PositionTypes 或任意外部 SnapshotSet。任意非空但不在本场 Catalog 中的 SlotId 必须拒绝；不得把 request-local mapping 当作 authority。
 - Snapshot 边界：现有 `FPlayerCardRuleSnapshot / Set` 没有 PlayerSide owner，也不是当前 `FMatchPlayState` 的 reflected authority。最终 per-side Snapshot 必须在比赛初始化时从实际双方牌组建立、与相应 CardUsage CardId 集合一致并整场不可变；其反射 / 持久化适配是独立高风险切片，不得塞入 Slot Resolver 实现。
 - legacy 边界：`FBoardState::SharedSlotIds / SlotZoneTypes / SlotOccupantCardIds / SlotOwnerPlayerIds` 只属于 historical opening snapshot。尤其不得复活其固定 Slot→Zone 或 occupancy 表达作为当前 MatchPlay authority。
-- 实现诚实性：7.80 只关闭 Contract，7.81 只同步文档；`EMatchPlayNeutralSlotSide`、`EMatchPlayRelativeDeploymentZone`、SlotDefinition、SlotCatalog、Catalog validation/query、Relative Zone Resolver、FMatchPlayState Catalog 字段及 opening binding 均尚未实现。
-- 实施顺序：7.82 只实现 Slot Catalog 值类型、validation/query 与纯 Relative Zone Resolver，不接入 `FMatchPlayState`；之后依次评审 / 实现 Catalog MatchPlay initialization binding、per-side card Snapshot MatchPlay binding、ordinary deployment writer、ordinary availability 和 Automatic Finish。
-- 下一入口：`7.82 MatchPlay Neutral Slot Catalog Value/Query + Relative Zone Resolver Implementation`（GPT-5.6 Sol High）。建议仅新增 `MatchPlayDeploymentSlotCatalog.h/.cpp` 与 `MatchPlayDeploymentSlotCatalogTests.cpp`，建议 Exactly 28 registered tests；不得在该切片修改 MatchPlayState、opening initializer、Snapshot authority 或 writer。
+- 实现记录：7.82 提交 `8a32cf3c59592898ff1e147ebd14b8f9b046bc9e` 已实现 `EMatchPlayNeutralSlotSide`、`EMatchPlayRelativeDeploymentZone`、SlotDefinition、SlotCatalog、Catalog Validator、`FindSlot` Query 与纯 Relative Zone Resolver，并新增 28 项专项测试；未接入 `FMatchPlayState`、opening initializer、Snapshot authority 或 writer。
+- 审查与修正记录：7.83 首次独立审查因默认 Unreal Build Tool Unity Build 暴露两个既有 Composition 测试文件的 translation-unit 同名符号冲突而 `BLOCKED`，Slot/Resolver Contract 与行为本身已通过。7.83.1 以两个 file-unique named namespace 完成 namespace-only 修正，保持注册字符串、数量与测试行为不变；7.83.2 独立确认默认 Build、same-TU proof、28/28、21/21、18/18 与 CoreRules 1601/1601，结论 `PASS` 且 Safe to Commit。
+- 实现诚实性：纯 Catalog/Resolver 层现已实现并关闭；`FMatchPlayState` Catalog ownership、opening input / initializer value-copy、match-long mutation protection、per-side Snapshot authority、ordinary writer、availability 与 Automatic Finish 仍未实现。CD-023 的产品语义不变。
+- 下一入口：`7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）。不得直接跳到 ordinary deployment writer，也不得让请求自行提供 Catalog 或 Slot→Zone mapping。
 - 影响：Rules Canonical、Data Schema、MatchPlay authority、Deployment placement / occupancy、后续参与者区域资格与 implementation staging。
 
 ## Resolved UQ Summary

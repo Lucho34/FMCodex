@@ -591,7 +591,7 @@ finished flags 是 attacker / defender 角色事实，角色由 `RuntimeState.Cu
 
 ## 中立物理 Slot 与相对战术区域架构（7.79–7.81）
 
-7.79 选择 `Ordinary Deployment Placement + Slot Authority Contract Review`，7.80 根据用户确认关闭 Slot Contract，7.81 只把该 Contract 同步到权威文档。以下类型和能力均为 planned / not yet implemented，不得描述为当前 public surface。
+7.79 选择 `Ordinary Deployment Placement + Slot Authority Contract Review`，7.80 根据用户确认关闭 Slot Contract，7.81 只把该 Contract 同步到权威文档。在 7.81 快照中，以下类型和能力均为 planned / not yet implemented；其后续实际状态见本节后的 7.82–7.84 实现闭环。
 
 未来 authority 链固定为：
 
@@ -626,4 +626,16 @@ CurrentAttack 内的 occupancy 唯一从 `DeploymentPlacements` 推导。任何 
 
 普通 writer 的最终请求方向只包含 BeforeState、AttackSequence、RequestingSide、CardId 和 SlotId；禁止 request-local Catalog、Slot→Zone、SnapshotSet、PositionTypes、occupancy bool 或 next actor。writer 仍被 MatchPlay Catalog binding 和 per-side card Snapshot binding 阻断；现有 Snapshot 类型的 reflected authority 适配必须独立实施。
 
-实施顺序固定为 7.81 Docs Sync → 7.82 pure Catalog value / validation / query + Relative Zone Resolver → Catalog MatchPlay initialization binding → per-side Snapshot binding → ordinary writer → ordinary availability → Automatic Finish。7.82 不修改 `FMatchPlayState`、opening input 或 initializer chain。
+7.81 冻结的实施顺序为 7.81 Docs Sync → 7.82 pure Catalog value / validation / query + Relative Zone Resolver → Catalog MatchPlay initialization binding → per-side Snapshot binding → ordinary writer → ordinary availability → Automatic Finish。7.82 不修改 `FMatchPlayState`、opening input 或 initializer chain。
+
+## 中立物理 Slot Catalog / Relative Zone Resolver 实现闭环（7.82–7.84）
+
+实现提交 `8a32cf3c59592898ff1e147ebd14b8f9b046bc9e` 建立了独立纯值 / Query 层：`EMatchPlayNeutralSlotSide`、`EMatchPlayRelativeDeploymentZone`、`FMatchPlayDeploymentSlotDefinition`、`FMatchPlayDeploymentSlotCatalog`、Catalog Validator、`FindSlot` Query 与 Relative Zone Resolver。所有入口接收 `const FMatchPlayDeploymentSlotCatalog&`，不修改输入；Query 返回 SlotDefinition 值拷贝，Zone 只存在于 Resolver Result。
+
+Validator 的首错顺序为 Catalog 非空 → 所有 SlotId 非空 → 全局唯一 → NeutralSide 合法。FindSlot 的顺序为请求 SlotId → 完整 Catalog validation → lookup。Resolver 的顺序为 SlotId → current attacker → evaluated side → Catalog validation → lookup → 八种相对映射；未知 NeutralSide 和未知玩家枚举均拒绝。生产模块只依赖 Catalog、SlotId 与 `EInitialTurnOrderPlayer`，不读取 MatchPlayState、CurrentAttack、placements、CardUsage、Snapshot、Formula、UI ViewMapping、legacy Board 或 RNG。
+
+增加 7.82 文件后，默认 UBT Unity packing 把两个既有 Through Ball Composition 测试 `.cpp` 放入同一 translation unit，暴露 anonymous-namespace 同名符号冲突。7.83.1 分别增加 `FMCodex::Tests::ThroughBallFeetFormulaResolutionComposition` 与 `FMCodex::Tests::ThroughBallBehindDefenseP1FormulaResolutionComposition`，完整包裹 constants、helpers、fixtures、automation classes、registrations 和 RunTest definitions；修正 diff 为 2 files / 8 insertions / 0 deletions，注册字符串、21 / 18 数量与行为不变。这是 Unreal Build Tool Unity translation-unit collision 修正，不是游戏引擎玩法问题。
+
+7.83.2 独立验证默认 UE Unity `-Rebuild`、UHT `-WarningsAsErrors`、`Module.FMCodex.8.cpp`、LIB、DLL 与 target metadata 全部通过；额外 same-TU proof 同时包含两份目标 `.cpp` 并编译通过，排除 Adaptive Unity 拆出 dirty working-set 文件形成的验证盲点。测试基线为 Catalog 28/28、Feet Composition 21/21、Behind Defense P1 Composition 18/18、CoreRules 1601/1601。
+
+当前 architecture 仍分成两层：纯 Catalog/Resolver 已实现；MatchPlay ownership 层仍 planned。`FMatchPlayState` 没有 `DeploymentSlotCatalog` 字段，opening input / initializer 尚未接收或值拷贝 Catalog，也没有 match-long mutation protection tests。下一唯一入口为 `7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`；ordinary writer 仍被该 binding 与 per-side Snapshot authority 阻断。

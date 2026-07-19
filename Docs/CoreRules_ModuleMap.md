@@ -302,18 +302,22 @@ Chip Shot Query 不含 Shooter Snapshot、GK、Match State、SourceBranch、Acti
 
 下一唯一入口为 `7.79 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`。
 
-## Neutral Physical Slot + Relative Tactical Zone（7.79–7.81）
+## Neutral Physical Slot + Relative Tactical Zone（7.79–7.84）
 
-7.79 选择普通 placement / Slot authority Review，7.80 关闭 Contract，7.81 为 Docs-only 正式同步。下表全部是 planned module，不是现有生产注册：
+7.79 选择普通 placement / Slot authority Review，7.80 关闭 Contract，7.81 完成 Contract Docs Sync；7.82 实现纯 Catalog/Resolver，7.83–7.83.2 完成审查、Unity 修正与独立关闭，7.84 同步最终模块状态。
 
-| Planned 模块 | 职责 | 直接上游 | 直接下游 | 当前状态 | 禁止边界 |
+| 模块 | 职责 | 直接上游 | 直接下游 | 当前状态 | 禁止边界 |
 | --- | --- | --- | --- | --- | --- |
-| `MatchPlayDeploymentSlotCatalog` value types | 表达全局 SlotId 与 `NearPlayerA / NearPlayerB` 中立物理位置。 | 未来 opening configuration。 | Catalog validation/query、Relative Zone Resolver。 | Not yet implemented；7.82 建议新增。 | 不保存固定 Zone、occupant、owner、current attacker、placements 或 UI side。 |
-| Catalog validation/query | 验证非空 Catalog、非空 / 唯一 SlotId、受支持 NeutralSide，并按 SlotId 查找。 | Slot Catalog value。 | Resolver；未来 MatchPlay initialization binding。 | Not yet implemented；7.82 建议新增。 | 不绑定 MatchPlay、不修改 Catalog、不判断卡牌或 occupancy。 |
-| `MatchPlayRelativeDeploymentZoneResolver` | 使用 Catalog、SlotId、current attacker 与 evaluated side 纯推导 Forward / Midfield / Backfield。 | Valid Catalog；`EInitialTurnOrderPlayer`。 | 未来 ordinary writer 与 participant eligibility reader。 | Not yet implemented；7.82 建议新增。 | 不读取 CurrentAttack、CardUsage、PositionTypes、GK、occupancy 或 ViewMapping；不接受 caller-supplied Zone。 |
-| Catalog MatchPlay initialization binding | opening 时验证并把 Catalog 值拷贝进 `FMatchPlayState`，整场只读。 | 未来 7.82 Catalog query。 | ordinary writer、availability。 | Contract frozen / not implemented；7.82 明确排除。 | 不使用 request-local mapping，不复活 legacy FBoardState。 |
+| `MatchPlayDeploymentSlotCatalog` value types | 表达全局 SlotId 与 `NearPlayerA / NearPlayerB` 中立物理位置。 | 未来 opening configuration。 | Catalog Validator / Query、Relative Zone Resolver。 | Implemented；`8a32cf3`。 | 不保存固定 Zone、occupant、owner、current attacker、placements 或 UI side。 |
+| `MatchPlayDeploymentSlotCatalogValidator` | 按固定首错顺序验证 Catalog 非空、SlotId 非空 / 全局唯一、NeutralSide 合法。 | Slot Catalog value。 | FindSlot、Resolver；未来 opening binding。 | Implemented；纯验证且不修改 Catalog。 | 不排序、去重、规范化、自动修复或绑定 MatchPlay。 |
+| `MatchPlayDeploymentSlotCatalogQuery` | 完整验证 Catalog 后按全局 SlotId 查找并返回 Definition 值拷贝。 | Slot Catalog、Validator。 | Resolver；未来 MatchPlay initialization binding。 | Implemented；`InvalidSlotId / InvalidCatalog / SlotNotFound`。 | 不返回可修改引用 / 指针，不判断卡牌或 occupancy。 |
+| `MatchPlayRelativeDeploymentZoneResolver` | 使用 Catalog、SlotId、current attacker 与 evaluated side 纯推导 Forward / Midfield / Backfield。 | Valid Catalog；`EInitialTurnOrderPlayer`。 | 未来 ordinary writer 与 participant eligibility reader。 | Implemented；八种映射与失败顺序已验证。 | 不读取 CurrentAttack、CardUsage、PositionTypes、GK、occupancy 或 ViewMapping；不接受 caller-supplied Zone。 |
+| `MatchPlayDeploymentSlotCatalogTests` | 验证 public defaults/API、Validator、Query、八映射、失败顺序、确定性与不可变性。 | Catalog/Validator/Query/Resolver。 | 自动化回归证据。 | Implemented；28/28。 | 不证明尚未实现的 MatchPlay ownership、opening binding 或 writer。 |
+| Catalog MatchPlay initialization binding | opening 时验证并把 Catalog 值拷贝进 `FMatchPlayState`，整场只读。 | 已实现 Catalog Validator / Query。 | ordinary writer、availability。 | Contract frozen / not implemented；下一阶段 7.85。 | 不使用 request-local mapping，不复活 legacy FBoardState。 |
 | Per-side card Snapshot MatchPlay binding | 从实际双方牌组建立按方、整场不可变的 card rule authority。 | Opening decks、CardUsage IDs。 | ordinary writer、Resolution participant readers。 | Separate high-risk slice / not implemented。 | 不接受任意外部 SnapshotSet；不塞入 7.82。 |
 
-CurrentAttack occupancy 不注册独立持久模块：`DeploymentPlacements` 是唯一 authority，按全局 SlotId 扫描即可。`FMatchPlayDeploymentPlacement` 已实现的三字段值表示保持不变；Catalog owner、Resolver、Snapshot binding 和 ordinary writer 均不得误记为已实现。
+CurrentAttack occupancy 不注册独立持久模块：`DeploymentPlacements` 是唯一 authority，按全局 SlotId 扫描即可。`FMatchPlayDeploymentPlacement` 已实现的三字段值表示保持不变；Catalog owner、Snapshot binding 和 ordinary writer 均不得误记为已实现。
 
-下一唯一入口为 `7.82 MatchPlay Neutral Slot Catalog Value/Query + Relative Zone Resolver Implementation`（GPT-5.6 Sol High）。建议只新增 `MatchPlayDeploymentSlotCatalog.h/.cpp` 和 `MatchPlayDeploymentSlotCatalogTests.cpp`，Exactly 28 registered tests；不修改现有生产或测试文件。
+两个既有 Composition 测试文件另登记 Unity-safe file-unique namespace isolation；这只修复 UBT Unity translation-unit 符号冲突，不新增业务能力。Feet / P1 注册保持 21 / 18，same-TU proof、默认 Build / UHT 与 CoreRules 1601/1601 均通过。
+
+下一唯一入口为 `7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；不得直接进入 ordinary deployment writer。
