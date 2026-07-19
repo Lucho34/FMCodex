@@ -6,6 +6,8 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
+namespace FMCodex::Tests::ThroughBallBehindDefenseP1FormulaResolutionComposition
+{
 namespace
 {
 	const FName SkillId(TEXT("Skill.ThroughBall.BehindDefenseP1.Composition"));
@@ -650,5 +652,7 @@ THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Compo
 THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition18, "18DependencyAndStateBoundary", 18)
 
 #undef THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST
+
+}
 
 #endif

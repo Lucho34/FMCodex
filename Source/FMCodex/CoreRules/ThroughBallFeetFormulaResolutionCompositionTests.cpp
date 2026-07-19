@@ -7,6 +7,8 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
+namespace FMCodex::Tests::ThroughBallFeetFormulaResolutionComposition
+{
 namespace
 {
 	const FName SelectedSkillId(TEXT("Skill.ThroughBall.Composition"));
@@ -724,5 +726,7 @@ THROUGH_BALL_FEET_COMPOSITION_TEST(FThroughBallFeetComposition20, "20Determinism
 THROUGH_BALL_FEET_COMPOSITION_TEST(FThroughBallFeetComposition21, "21DependencyBoundary", 21)
 
 #undef THROUGH_BALL_FEET_COMPOSITION_TEST
+
+}
 
 #endif
