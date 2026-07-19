@@ -50,6 +50,15 @@ FMatchPlayTurnGuard::QueryCanSubmitAttackRequest(
 		return Result;
 	}
 
+	if (MatchPlayState.bHasCurrentAttack)
+	{
+		SetGuardFailure(
+			Result,
+			EMatchPlayTurnGuardErrorCode::CurrentAttackInProgress,
+			TEXT("A current attack is already in progress."));
+		return Result;
+	}
+
 	if (Result.PlayerARemainingAttackCount <= 0
 		&& Result.PlayerBRemainingAttackCount <= 0)
 	{

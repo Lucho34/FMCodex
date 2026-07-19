@@ -211,4 +211,46 @@ bool FMatchPlayStateCardUsageInputTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateDefaultCurrentAttackTest,
+	"FMCodex.CoreRules.MatchPlayState.DefaultHasCanonicalInactiveCurrentAttack",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateDefaultCurrentAttackTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState State;
+	const FMatchPlayCurrentAttackState DefaultPayload;
+
+	TestFalse(TEXT("Default state has no current attack"), State.bHasCurrentAttack);
+	TestTrue(TEXT("Default inactive payload is canonical"),
+		FMatchPlayCurrentAttackState::StaticStruct()->CompareScriptStruct(
+			&State.CurrentAttack,
+			&DefaultPayload,
+			0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateCreateCurrentAttackTest,
+	"FMCodex.CoreRules.MatchPlayState.CreateHasCanonicalInactiveCurrentAttack",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateCreateCurrentAttackTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState State = FMatchPlayState::Create(
+		MatchPlayStateTests::MakeRuntimeState(),
+		MatchPlayStateTests::MakeCardUsageState());
+	const FMatchPlayCurrentAttackState DefaultPayload;
+
+	TestFalse(TEXT("Created state has no current attack"), State.bHasCurrentAttack);
+	TestTrue(TEXT("Created inactive payload is canonical"),
+		FMatchPlayCurrentAttackState::StaticStruct()->CompareScriptStruct(
+			&State.CurrentAttack,
+			&DefaultPayload,
+			0));
+	return true;
+}
+
 #endif

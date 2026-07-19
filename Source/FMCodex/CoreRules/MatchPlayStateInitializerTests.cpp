@@ -234,6 +234,32 @@ bool FMatchPlayStateInitializerCardInputsTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerCurrentAttackTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.SuccessHasCanonicalInactiveCurrentAttack",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerCurrentAttackTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			MatchPlayStateInitializerTests::MakePlayerACards(),
+			MatchPlayStateInitializerTests::MakePlayerBCards());
+	const FMatchPlayCurrentAttackState DefaultPayload;
+
+	TestTrue(TEXT("Initialization succeeds"), Result.bSuccess);
+	TestFalse(TEXT("Initialized state has no current attack"),
+		Result.MatchPlayState.bHasCurrentAttack);
+	TestTrue(TEXT("Initialized inactive payload is canonical"),
+		FMatchPlayCurrentAttackState::StaticStruct()->CompareScriptStruct(
+			&Result.MatchPlayState.CurrentAttack,
+			&DefaultPayload,
+			0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMatchPlayStateInitializerPlayerAInvalidTest,
 	"FMCodex.CoreRules.MatchPlayStateInitializer.PlayerAInvalidCardFails",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

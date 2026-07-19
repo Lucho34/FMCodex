@@ -523,4 +523,42 @@ bool FMatchPlaySubmissionGateNoExternalSystemsTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlaySubmissionGateCurrentAttackTest,
+	"FMCodex.CoreRules.MatchPlaySubmissionGate.ActiveCurrentAttackRejectionPropagatesAtomically",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlaySubmissionGateCurrentAttackTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState State = MatchPlaySubmissionGateTests::MakeState();
+	State.bHasCurrentAttack = true;
+	State.CurrentAttack.AttackSequence = 1;
+	State.CurrentAttack.ActionPoint = 5;
+	State.CurrentAttack.CurrentLegalDeploymentSide =
+		State.RuntimeState.CurrentAttackingPlayer;
+	const FMatchPlayState BeforeState = State;
+
+	const FMatchPlaySubmissionGateResult Result =
+		FMatchPlaySubmissionGate::CanSubmit(
+			State,
+			MatchPlaySubmissionGateTests::MakeRequest());
+
+	TestFalse(TEXT("Gate rejects the legacy submission"), Result.bCanSubmit);
+	TestEqual(TEXT("Gate uses its existing readiness rejection code"),
+		Result.Code,
+		EMatchPlaySubmissionGateCode::CannotAcceptAttackRequestNow);
+	TestEqual(TEXT("Nested guard reason is preserved"),
+		Result.LoopReadinessResult.TurnGuardResult.ErrorCode,
+		EMatchPlayTurnGuardErrorCode::CurrentAttackInProgress);
+	TestFalse(TEXT("Request validation is not reached"),
+		Result.RequestValidationReport.bCanSubmitAttackRequest);
+	TestTrue(TEXT("State remains field-for-field unchanged"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&State,
+			&BeforeState,
+			0));
+	return true;
+}
+
 #endif

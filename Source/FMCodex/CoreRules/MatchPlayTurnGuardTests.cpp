@@ -430,4 +430,32 @@ bool FMatchPlayTurnGuardRepeatedTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayTurnGuardCurrentAttackTest,
+	"FMCodex.CoreRules.MatchPlayTurnGuard.ActiveCurrentAttackBlocksLegacySubmission",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayTurnGuardCurrentAttackTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState State = MatchPlayTurnGuardTests::MakeState();
+	State.bHasCurrentAttack = true;
+	State.CurrentAttack.AttackSequence = 1;
+	State.CurrentAttack.ActionPoint = 5;
+	State.CurrentAttack.CurrentLegalDeploymentSide =
+		State.RuntimeState.CurrentAttackingPlayer;
+
+	const FMatchPlayTurnGuardResult Result =
+		FMatchPlayTurnGuard::QueryCanSubmitAttackRequest(State);
+
+	TestFalse(TEXT("Legacy attack request is blocked"),
+		Result.bCanSubmitAttackRequest);
+	TestFalse(TEXT("Guard does not wait for a legacy request"),
+		Result.bShouldWaitForExternalAttackRequest);
+	TestEqual(TEXT("Active-attack error is exact"),
+		Result.ErrorCode,
+		EMatchPlayTurnGuardErrorCode::CurrentAttackInProgress);
+	return true;
+}
+
 #endif

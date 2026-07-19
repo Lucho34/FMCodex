@@ -7,6 +7,60 @@
 
 #include "MatchPlayState.generated.h"
 
+UENUM(BlueprintType)
+enum class EMatchPlayCurrentAttackPhase : uint8
+{
+	Deployment UMETA(DisplayName = "Deployment"),
+	Resolution UMETA(DisplayName = "Resolution")
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayDeploymentPlacement
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	EInitialTurnOrderPlayer PlayerSide = EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName CardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName SlotId = NAME_None;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	EMatchPlayCurrentAttackPhase Phase =
+		EMatchPlayCurrentAttackPhase::Deployment;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	int64 AttackSequence = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	int32 ActionPoint = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	EInitialTurnOrderPlayer CurrentLegalDeploymentSide =
+		EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	bool bAttackerDeploymentFinished = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	bool bDefenderDeploymentFinished = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	TArray<FMatchPlayDeploymentPlacement> DeploymentPlacements;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	bool bCurrentDefenseGoalkeeperActivated = false;
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchPlayState
 {
@@ -17,6 +71,12 @@ struct FMCODEX_API FMatchPlayState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	FMatchCardUsageState CardUsageState;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	bool bHasCurrentAttack = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	FMatchPlayCurrentAttackState CurrentAttack;
 
 	static FMatchPlayState Create(
 		const FMatchRuntimeState& InRuntimeState,

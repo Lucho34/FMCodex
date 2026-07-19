@@ -16,7 +16,8 @@ enum class EMatchPlayTurnGuardErrorCode : uint8
 	CurrentAttackerHasNoRemainingAttackOpportunity
 		UMETA(DisplayName = "Current Attacker Has No Remaining Attack Opportunity"),
 	CurrentAttackerHasNoAvailableCards
-		UMETA(DisplayName = "Current Attacker Has No Available Cards")
+		UMETA(DisplayName = "Current Attacker Has No Available Cards"),
+	CurrentAttackInProgress UMETA(DisplayName = "Current Attack In Progress")
 };
 
 USTRUCT(BlueprintType)
@@ -63,4 +64,3 @@ public:
 	static FMatchPlayTurnGuardResult QueryCanSubmitAttackRequest(
 		const FMatchPlayState& MatchPlayState);
 };
-
