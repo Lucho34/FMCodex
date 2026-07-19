@@ -271,3 +271,20 @@ Chip Shot Query 不含 Shooter Snapshot、GK、Match State、SourceBranch、Acti
 修正提交 `b9d94566b4f52dda11f5bd0d8fbb6389e2fb764b` 只修改 `ThroughBallFeetFormulaResolutionCompositionTests.cpp`：重命名两个测试私有 identifier 及四处引用，FName 值和 21 项测试行为均不变，无 warning suppression、Build.cs 或 Unity 设置变化。7.64.1 标准 Build 与 21/22/18 通过；7.64.2 独立确认同一 Unity translation unit 编译、DLL 链接和 61 项测试通过，Correction / Capability Closure 均 `APPROVED`。
 
 `7.63-M-001 / 7.64-B-001` 已由 7.64.1 解决并由 7.64.2 独立确认。当前模块正式关闭，但 One-on-One Direct Shot、Shooter Context、Active defensive-round GK State / Context、Finishing input、production Consumers / Composition、Match State mutation 与完整 One-on-One 仍未完成。下一唯一入口为 `7.66 Part 6 Next Capability Selection + Minimum Contract Review`。
+
+## MatchPlay CurrentAttack Representation + Begin Ordinary Attack（7.74）
+
+实现提交 `cf99f0255274aeb4dbad2243caa05aed2c835b69` 修改 10 个授权实现 / 测试文件，建立 CurrentAttack 的第一段生产基础设施。
+
+| 模块 | 职责 | 已实现边界 | 未实现边界 |
+| --- | --- | --- | --- |
+| `MatchPlayState` | 在唯一 MatchPlay authority 内表示 CurrentAttack presence 与 payload。 | `bHasCurrentAttack` 是唯一 inactive authority；payload 表达 phase、sequence、ActionPoint、legal side、finished、placements 与当前防守门将激活；默认和初始化链为 inactive。 | 不提供 Deployment、GK、Resolution 或 cleanup writer；inactive payload 不具权威语义。 |
+| `MatchPlayBeginOrdinaryAttack` | 原子验证并开始 ActionPoint 2–8 的普通运动战。 | 保存 Before / After、ActionPoint 与精确 diagnostics；按固定首错顺序验证；成功创建空 Deployment CurrentAttack，序号使用双方已用次数之和加一。 | 不消费机会、部署卡牌、加分、调用公式、切换攻击方或完成攻击。 |
+| `MatchPlayTurnGuard` | 阻止旧 formal submission 绕过 active CurrentAttack。 | 追加 `CurrentAttackInProgress`，优先于旧 readiness；Submission Gate 保留嵌套精确原因。 | Availability 不变；不封锁更低层 flow 的直接调用，不是 production lifecycle consumer。 |
+| 新增与扩展测试 | 覆盖 representation、initializer、Begin、Guard 与 Gate。 | Begin 16 项；本切片共新增 21 项。7.73 直接复验全部通过。 | `7.73-M-001` 与 `7.73-M-002` 记录非阻断证据增强。 |
+
+生产文件范围为新增 `MatchPlayBeginOrdinaryAttack.h/.cpp`，以及修改 `MatchPlayState.h`、`MatchPlayTurnGuard.h/.cpp`。对应测试为新增 `MatchPlayBeginOrdinaryAttackTests.cpp`，以及修改 State、Initializer、Turn Guard、Submission Gate 测试。Submission Gate 与 Availability 生产代码未修改。
+
+7.73 证据为 Begin 16/16、新增 21/21，State 5/5、Initializer 12/12、Opening 17/17、Turn Guard 17/17、Submission Gate 17/17、Availability 16/16、Attack Flow 17/17，Build / UHT PASS，CoreRules 1552/1552。7.74 为 docs-only，不重跑验证。
+
+普通部署牌 writer / 轮转 / Finish / Resolution 转换、永久门将使用状态与 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 和 Shooter Snapshot 均未注册为已实现模块。下一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`。

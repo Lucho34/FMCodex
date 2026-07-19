@@ -966,3 +966,36 @@ Pure Query 的 `bAttackEnded=true` 只证明规则决定为 terminal，不证明
 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 保持 OPEN。7.70-M-001 记录 UQ-041 行动点 1 消耗问题；7.70-M-002 记录 Match End / Winner 继续为 derived facts。本文不冻结具体 C++ 类型、字段名、Error、API、network / save，不授权 Deployment、played-GK writer、Completion、Abort、Direct Shot 或 Outcome Framework 实现。
 
 下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High）。7.71 必须比较并只选择一个最小实现切片；不得一次实现整个 MatchPlay 生命周期。
+
+## MatchPlay CurrentAttack Representation + Begin Ordinary Attack Implementation Contract（7.74）
+
+### 已实现 authority 与默认状态
+
+提交 `cf99f0255274aeb4dbad2243caa05aed2c835b69` 在 `FMatchPlayState` 内实现 `bHasCurrentAttack + CurrentAttack`。presence bool 是唯一 active authority；当其为 false 时，reader 必须忽略残留 payload，而不是从 phase、sequence 或其他字段猜测 active。默认构造、`CreateDefaultState` 和 initializer 链均产生 canonical inactive 状态。
+
+`FMatchPlayCurrentAttackState` 当前表达：Deployment / Resolution phase、`int64 AttackSequence`、ActionPoint、当前合法部署方、双方 finished、`FMatchPlayDeploymentPlacement` 列表与当前防守门将激活。placement 只包含 PlayerSide、CardId 与 SlotId；它目前只有值表示，尚无生产 writer。
+
+### 已实现 Begin capability
+
+`FMatchPlayBeginOrdinaryAttack::Begin(const FMatchPlayState& BeforeState, int32 ActionPoint)` 以固定顺序验证：runtime 已初始化、无 active CurrentAttack、A / B 攻击计数各自有效、比赛尚未因双方机会耗尽结束、当前攻击方有效、当前方仍有机会、ActionPoint 位于 2–8。错误 diagnostics 依次对应 `MatchPlayStateNotInitialized / CurrentAttackAlreadyActive / InvalidPlayerAAttackCountState / InvalidPlayerBAttackCountState / MatchAlreadyEnded / InvalidCurrentAttackingPlayer / CurrentAttackerHasNoRemainingAttackOpportunity / InvalidActionPoint`。
+
+成功时只提交一个新的 Deployment CurrentAttack：sequence 为双方已用攻击次数的 `int64` 和加一，ActionPoint 保存输入，合法部署方为当前攻击方，双方 finished 与当前防守门将激活为 false，placements 为空。Result 保存 BeforeState、AfterState、ActionPoint 和 diagnostics。Begin 不增加 UsedAttackCount，不移动卡牌，不改变比分、当前攻击方或任何公式事实；失败返回未改变的 BeforeState。
+
+### 已实现旧入口 Guard
+
+Turn Guard 追加 `CurrentAttackInProgress`，在 runtime 初始化之后、旧 readiness 检查之前拒绝 active attack。formal Submission Gate 继续使用既有顶层通用拒绝语义，同时在嵌套 TurnGuardResult 中保留精确原因。Availability 生产行为没有变化。更低层 Attack Flow 仍可直接调用，因此该 Guard 只关闭旧 formal submission 绕过，不建立统一 CurrentAttack consumer。
+
+### 验证证据与非阻断债务
+
+7.73 独立复验结论为 `PASS WITH NON-BLOCKING FINDINGS`。Begin 专项 16/16、本切片新增 21/21；State 5/5、State Initializer 12/12、Opening 17/17、Turn Guard 17/17、Submission Gate 17/17、Availability 16/16、Attack Flow 17/17；标准 Build / UHT 通过，CoreRules 1552/1552。
+
+- `7.73-M-001`：AlreadyActive 测试已使用非默认 phase / sequence / ActionPoint / legal side / placement，但双方 finished 和当前防守门将激活仍为默认；生产 copy / no-mutation 行为正确，后续可加强证据。
+- `7.73-M-002`：缺少 active + invalid count 应先报 AlreadyActive，以及 no opportunity + invalid ActionPoint 应先报 NoRemaining 的直接组合测试；源码顺序已确认，属于证据增强。
+
+### 仍未实现与下一入口
+
+7.70.1 的完整生命周期 Contract 不因本切片缩减。普通部署牌 writer / 轮转 / Finish / 双方 finished 后进入 Resolution、整场永久门将使用事实、门将激活 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 和 Shooter Snapshot 仍未实现。CurrentAttack placements 为空不代表部署已完成；pure terminal Result 仍不等于 MatchPlay mutation。
+
+7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 状态为 `Infrastructure partially implemented / Further implementation pending`。7.66-B-003 Shooter Snapshot、7.70-M-001 / UQ-041 与 7.70-M-002 derived Match End 继续开放。
+
+7.74 为 docs-only closure，跳过 Build、UHT、自动化测试与 CoreRules full regression。下一唯一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；该阶段必须重新比较候选并只选择一个最小切片。

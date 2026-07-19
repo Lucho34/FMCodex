@@ -210,9 +210,12 @@
 - Completion：唯一逻辑职责 `CompleteCurrentAttack` 必须先验证 CurrentAttack / Resolution / terminal success / AttackSequence，再在 WorkingState 中依次处理 Goal 加分、普通部署牌提交到 Used（门将不移动）、清除全部 action-scoped 状态、增加当前攻击方 `UsedAttackCount`、按消费后次数和比分判断 Match End；终局时 `CurrentAttackingPlayer=None` 且不再切换，非终局才选择下一攻击方。全部成功后一次提交，任一失败返回完整 BeforeState。
 - 防重与终局：completion 以 CurrentAttack presence、Resolution phase 和 matching AttackSequence 为最小门禁；成功后清除 CurrentAttack，因此重复提交不得重复加分、移动卡牌、消费机会或切换。Match End / Winner 继续由 Runtime attack counts 与 Score 推导，不新增可能漂移的第二套持久终局事实。
 - pure Result 边界：Through Ball Feet Goal / Miss、P1 OutOfPlay / DefenderStoppedAttack、P2 Offside、Anti-Offside Offside、Chip Shot Goal / Miss 及未来 Direct Shot Goal / Miss 的 pure terminal flag 都不等于 MatchPlay mutation；当前仍无覆盖这些结果的 production completion consumer。
-- 范围与非目标：这是架构 Contract，不是 C++ Implementation，不冻结具体 struct / field / Error enum / API / 网络 / 存档，不实现 Deployment、played-GK writer、Completion、Formal Abort、Direct Shot 或通用 Outcome Framework。7.66-B-003 Shooter Snapshot authority 保持 OPEN；UQ-041 行动点 1 是否消费机会保持 OPEN。
-- 债务：7.66-B-002、7.68-B-002 与 7.69-B-001 至 7.69-B-004 在 7.70.1 后标记为 `Contract-level resolved / Implementation pending`；7.68-B-001 与 7.69-B-005 保持已解决。新增 7.70-M-001：UQ-041 仍开放；7.70-M-002：Match End / Winner 保持推导事实，未来状态工作不得引入重复持久 authority。
-- 下一入口：`7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`；必须只选择一个最小实现切片，不得一次实现整个 MatchPlay 生命周期。
+- 实现状态（7.71–7.74）：提交 `cf99f0255274aeb4dbad2243caa05aed2c835b69` 已实现 CurrentAttack 最小表示、默认 / initializer inactive 链、普通运动战 `Begin` 和旧 formal `SubmitAttack` 的 active-attack Guard。`bHasCurrentAttack=false` 是唯一 inactive authority；inactive reader 必须忽略 `CurrentAttack` payload。`Begin` 只接受 ActionPoint 2–8，成功原子建立 Deployment 状态，不消费机会、不移动卡牌、不加分、不切换攻击方。
+- 验证与关闭（7.72–7.74）：实现审查与独立复验结论为 `PASS WITH NON-BLOCKING FINDINGS`；16 项 Begin 专项和本切片共 21 项新增测试全部通过。直接回归为 State 5/5、State Initializer 12/12、Opening 17/17、Turn Guard 17/17、Submission Gate 17/17、Availability 16/16、Attack Flow 17/17；标准 Build / UHT 通过，CoreRules 1552/1552。7.74 只同步最终 closure 文档，不改变生产行为。
+- 实现边界：目前 placements 只是值表示，Begin 总是创建空列表；尚未实现普通部署牌 writer / 轮转 / Finish / 双方完成转 Resolution、整场永久门将事实与门将 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 或 Shooter Snapshot。旧 formal `SubmitAttack` 已拒绝 active CurrentAttack，但更低层 flow 仍可直接调用，尚未迁移为 CurrentAttack consumer。
+- 范围与非目标：7.70.1 的完整生命周期 Contract 仍有效；7.74 只确认第一最小实现切片，不把未实现职责描述为已完成。7.66-B-003 Shooter Snapshot authority、7.70-M-001 / UQ-041 与 7.70-M-002 derived Match End 继续开放。
+- 债务：7.66-B-002、7.68-B-002 与 7.69-B-001 至 7.69-B-004 更新为 `Infrastructure partially implemented / Further implementation pending`；7.68-B-001 与 7.69-B-005 保持已解决。新增 `7.73-M-001`：AlreadyActive 测试未把双方 finished 与当前防守门将激活也设为非默认值，属于测试证据增强；新增 `7.73-M-002`：缺少 active + invalid count 和 no opportunity + invalid ActionPoint 两组直接组合优先级测试，生产验证顺序已由源码确认。
+- 下一入口：`7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；必须重新比较剩余候选并只选择一个最小切片，不得在 7.74 预选。
 - 影响：MatchPlay 状态 owner、初始化、Deployment、played-GK writer、terminal adapter / completion、Guard / Availability、状态复制与后续专项测试设计。
 
 ## Resolved UQ Summary
