@@ -12,7 +12,9 @@ enum class EMatchPlayStateInitializeErrorCode : uint8
 {
 	None UMETA(DisplayName = "None"),
 	CardUsageInitializationFailed
-		UMETA(DisplayName = "Card Usage Initialization Failed")
+		UMETA(DisplayName = "Card Usage Initialization Failed"),
+	DeploymentSlotCatalogValidationFailed
+		UMETA(DisplayName = "Deployment Slot Catalog Validation Failed")
 };
 
 USTRUCT(BlueprintType)
@@ -35,6 +37,11 @@ struct FMCODEX_API FMatchPlayStateInitializeResult
 		EMatchCardUsageInitializeErrorCode::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	EMatchPlayDeploymentSlotCatalogValidationErrorCode
+		UnderlyingDeploymentSlotCatalogValidationErrorCode =
+			EMatchPlayDeploymentSlotCatalogValidationErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	FString ErrorMessage;
 };
 
@@ -44,5 +51,6 @@ public:
 	static FMatchPlayStateInitializeResult InitializeMatchPlayState(
 		const FMatchRuntimeState& RuntimeState,
 		const TArray<FName>& PlayerACardIds,
-		const TArray<FName>& PlayerBCardIds);
+		const TArray<FName>& PlayerBCardIds,
+		const FMatchPlayDeploymentSlotCatalog& DeploymentSlotCatalog);
 };

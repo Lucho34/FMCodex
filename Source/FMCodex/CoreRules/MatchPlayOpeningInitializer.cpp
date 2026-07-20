@@ -51,7 +51,8 @@ FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			RuntimeResult.RuntimeState,
 			Input.PlayerACardIds,
-			Input.PlayerBCardIds);
+			Input.PlayerBCardIds,
+			Input.DeploymentSlotCatalog);
 	if (!PlayStateResult.bSuccess)
 	{
 		Result.ErrorCode =
@@ -60,6 +61,9 @@ FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(
 			PlayStateResult.ErrorCode;
 		Result.UnderlyingCardUsageErrorCode =
 			PlayStateResult.UnderlyingCardUsageErrorCode;
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode =
+			PlayStateResult
+				.UnderlyingDeploymentSlotCatalogValidationErrorCode;
 		Result.ErrorMessage = PlayStateResult.ErrorMessage;
 		return Result;
 	}

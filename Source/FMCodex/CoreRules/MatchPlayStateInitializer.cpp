@@ -4,9 +4,25 @@ FMatchPlayStateInitializeResult
 FMatchPlayStateInitializer::InitializeMatchPlayState(
 	const FMatchRuntimeState& RuntimeState,
 	const TArray<FName>& PlayerACardIds,
-	const TArray<FName>& PlayerBCardIds)
+	const TArray<FName>& PlayerBCardIds,
+	const FMatchPlayDeploymentSlotCatalog& DeploymentSlotCatalog)
 {
 	FMatchPlayStateInitializeResult Result;
+
+	const FMatchPlayDeploymentSlotCatalogValidationResult
+		DeploymentSlotCatalogValidationResult =
+			FMatchPlayDeploymentSlotCatalogValidator::Validate(
+				DeploymentSlotCatalog);
+	if (!DeploymentSlotCatalogValidationResult.bSuccess)
+	{
+		Result.ErrorCode = EMatchPlayStateInitializeErrorCode
+			::DeploymentSlotCatalogValidationFailed;
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode =
+			DeploymentSlotCatalogValidationResult.ErrorCode;
+		Result.ErrorMessage =
+			DeploymentSlotCatalogValidationResult.ErrorMessage;
+		return Result;
+	}
 
 	const FMatchCardUsageInitializeResult CardUsageResult =
 		FMatchCardUsageInitializer::InitializeMatchCardUsageState(
@@ -23,7 +39,8 @@ FMatchPlayStateInitializer::InitializeMatchPlayState(
 
 	Result.MatchPlayState = FMatchPlayState::Create(
 		RuntimeState,
-		CardUsageResult.InitializedCardUsageState);
+		CardUsageResult.InitializedCardUsageState,
+		DeploymentSlotCatalog);
 	Result.bSuccess = true;
 	return Result;
 }

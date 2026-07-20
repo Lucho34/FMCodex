@@ -47,6 +47,10 @@ namespace MatchPlayBeginOrdinaryAttackTests
 			{ PlayerBCard };
 		State.CardUsageState.PlayerBCardUsageState.UsedCardIds =
 			{ PlayerBUsedCard };
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("SharedBeginSlot");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+		State.DeploymentSlotCatalog.Slots.Add(Slot);
 		return State;
 	}
 
@@ -459,6 +463,30 @@ bool FMatchPlayBeginOrdinaryAttackDeterministicTest::RunTest(
 	TestTrue(TEXT("Repeated Result is field-for-field identical"),
 		FMatchPlayBeginOrdinaryAttackResult::StaticStruct()
 			->CompareScriptStruct(&First, &Second, 0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayBeginOrdinaryAttackPreservesCatalogTest,
+	"FMCodex.CoreRules.MatchPlayBeginOrdinaryAttack.SuccessPreservesDeploymentSlotCatalog",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayBeginOrdinaryAttackPreservesCatalogTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState BeforeState =
+		MatchPlayBeginOrdinaryAttackTests::MakeState();
+	const FMatchPlayBeginOrdinaryAttackResult Result =
+		FMatchPlayBeginOrdinaryAttack::Begin(BeforeState, 5);
+
+	TestTrue(TEXT("Begin succeeds"), Result.bSuccess);
+	TestTrue(
+		TEXT("Begin preserves the deployment slot catalog"),
+		FMatchPlayDeploymentSlotCatalog::StaticStruct()
+			->CompareScriptStruct(
+				&Result.AfterState.DeploymentSlotCatalog,
+				&BeforeState.DeploymentSlotCatalog,
+				0));
 	return true;
 }
 

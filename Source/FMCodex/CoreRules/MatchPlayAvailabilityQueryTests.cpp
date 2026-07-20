@@ -42,7 +42,14 @@ namespace MatchPlayAvailabilityQueryTests
 			{ CardA1, CardA2 };
 		CardUsageState.PlayerBCardUsageState.AvailableCardIds =
 			{ CardB1 };
-		return FMatchPlayState::Create(RuntimeState, CardUsageState);
+		FMatchPlayState State;
+		State.RuntimeState = RuntimeState;
+		State.CardUsageState = CardUsageState;
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("TestDeploymentSlot");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+		State.DeploymentSlotCatalog.Slots.Add(Slot);
+		return State;
 	}
 }
 

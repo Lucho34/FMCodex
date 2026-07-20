@@ -44,7 +44,14 @@ namespace MatchPlayActionPreviewTests
 			{ CardB1 };
 		CardUsageState.PlayerBCardUsageState.UsedCardIds =
 			{ CardBUsed };
-		return FMatchPlayState::Create(RuntimeState, CardUsageState);
+		FMatchPlayState State;
+		State.RuntimeState = RuntimeState;
+		State.CardUsageState = CardUsageState;
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("TestDeploymentSlot");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+		State.DeploymentSlotCatalog.Slots.Add(Slot);
+		return State;
 	}
 }
 

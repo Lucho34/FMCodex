@@ -24,9 +24,12 @@ FMatchPlayAttackFlowResult FMatchPlayAttackFlow::ResolveMatchPlayAttack(
 		return Result;
 	}
 
-	Result.UpdatedMatchPlayState = FMatchPlayState::Create(
-		FormulaAttackResult.UpdatedRuntimeState,
-		FormulaAttackResult.UpdatedMatchCardUsageState);
+	Result.UpdatedMatchPlayState.RuntimeState =
+		FormulaAttackResult.UpdatedRuntimeState;
+	Result.UpdatedMatchPlayState.CardUsageState =
+		FormulaAttackResult.UpdatedMatchCardUsageState;
+	Result.UpdatedMatchPlayState.DeploymentSlotCatalog =
+		CurrentMatchPlayState.DeploymentSlotCatalog;
 	Result.ActingPlayer = FormulaAttackResult.ActingPlayer;
 	Result.bAttackResolved = true;
 	Result.bGoalScored = FormulaAttackResult.bGoalScored;

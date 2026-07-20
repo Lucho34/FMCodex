@@ -51,6 +51,17 @@ namespace MatchPlayAttackFlowTests
 		return State;
 	}
 
+	FMatchPlayDeploymentSlotCatalog MakeDeploymentSlotCatalog()
+	{
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("SharedAttackFlowSlot");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+
+		FMatchPlayDeploymentSlotCatalog Catalog;
+		Catalog.Slots.Add(Slot);
+		return Catalog;
+	}
+
 	FMatchPlayState MakeMatchPlayState(
 		const EInitialTurnOrderPlayer CurrentPlayer =
 			EInitialTurnOrderPlayer::PlayerA,
@@ -61,16 +72,18 @@ namespace MatchPlayAttackFlowTests
 		const int32 PlayerBTotal = 3,
 		const int32 PlayerBUsed = 0)
 	{
-		return FMatchPlayState::Create(
-			MakeRuntimeState(
+		FMatchPlayState State;
+		State.RuntimeState = MakeRuntimeState(
 				CurrentPlayer,
 				PlayerAScore,
 				PlayerBScore,
 				PlayerATotal,
 				PlayerAUsed,
 				PlayerBTotal,
-				PlayerBUsed),
-			MakeCardUsageState());
+				PlayerBUsed);
+		State.CardUsageState = MakeCardUsageState();
+		State.DeploymentSlotCatalog = MakeDeploymentSlotCatalog();
+		return State;
 	}
 
 	FFormulaResolverInput MakeFinishingInput(const bool bAttackerWins)
@@ -92,7 +105,8 @@ namespace MatchPlayAttackFlowTests
 			&& State.CardUsageState.PlayerACardUsageState.UsedCardIds.IsEmpty()
 			&& State.CardUsageState.PlayerBCardUsageState
 				.AvailableCardIds.IsEmpty()
-			&& State.CardUsageState.PlayerBCardUsageState.UsedCardIds.IsEmpty();
+			&& State.CardUsageState.PlayerBCardUsageState.UsedCardIds.IsEmpty()
+			&& State.DeploymentSlotCatalog.Slots.IsEmpty();
 	}
 }
 
@@ -678,6 +692,36 @@ bool FMatchPlayAttackDeterministicTest::RunTest(const FString& Parameters)
 			.UsedCardIds
 			== Second.UpdatedMatchPlayState.CardUsageState.PlayerACardUsageState
 				.UsedCardIds);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayAttackPreservesDeploymentSlotCatalogTest,
+	"FMCodex.CoreRules.MatchPlayAttackFlow.SuccessPreservesDeploymentSlotCatalog",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayAttackPreservesDeploymentSlotCatalogTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState State =
+		MatchPlayAttackFlowTests::MakeMatchPlayState();
+	const FMatchPlayAttackFlowResult Result =
+		FMatchPlayAttackFlow::ResolveMatchPlayAttack(
+			State,
+			MatchPlayAttackFlowTests::CardA1,
+			MatchPlayAttackFlowTests::MakeFinishingInput(false));
+
+	TestTrue(TEXT("Attack flow succeeds"), Result.bSuccess);
+	TestTrue(
+		TEXT("Successful attack flow preserves the deployment slot catalog"),
+		FMatchPlayDeploymentSlotCatalog::StaticStruct()
+			->CompareScriptStruct(
+				&Result.UpdatedMatchPlayState.DeploymentSlotCatalog,
+				&State.DeploymentSlotCatalog,
+				0));
+	TestFalse(
+		TEXT("Existing attack flow still returns no current attack"),
+		Result.UpdatedMatchPlayState.bHasCurrentAttack);
 	return true;
 }
 

@@ -32,6 +32,9 @@ struct FMCODEX_API FMatchPlayOpeningInitializeInput
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Play Opening")
 	TArray<FName> PlayerBCardIds;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Play Opening")
+	FMatchPlayDeploymentSlotCatalog DeploymentSlotCatalog;
 };
 
 USTRUCT(BlueprintType)
@@ -63,6 +66,11 @@ struct FMCODEX_API FMatchPlayOpeningInitializeResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play Opening")
 	EMatchCardUsageInitializeErrorCode UnderlyingCardUsageErrorCode =
 		EMatchCardUsageInitializeErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play Opening")
+	EMatchPlayDeploymentSlotCatalogValidationErrorCode
+		UnderlyingDeploymentSlotCatalogValidationErrorCode =
+			EMatchPlayDeploymentSlotCatalogValidationErrorCode::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play Opening")
 	bool bRequiresTieBreakerReroll = false;

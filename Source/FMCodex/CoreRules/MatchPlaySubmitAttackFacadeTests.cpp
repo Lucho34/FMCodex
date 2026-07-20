@@ -43,7 +43,14 @@ namespace MatchPlaySubmitAttackFacadeTests
 			{ CardA1, CardA2 };
 		CardUsageState.PlayerBCardUsageState.AvailableCardIds =
 			{ CardB1 };
-		return FMatchPlayState::Create(RuntimeState, CardUsageState);
+		FMatchPlayState State;
+		State.RuntimeState = RuntimeState;
+		State.CardUsageState = CardUsageState;
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("TestDeploymentSlot");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+		State.DeploymentSlotCatalog.Slots.Add(Slot);
+		return State;
 	}
 
 	FMatchPlayAttackRequest MakeRequest(
@@ -95,7 +102,12 @@ namespace MatchPlaySubmitAttackFacadeTests
 			&& Left.CardUsageState.PlayerBCardUsageState.AvailableCardIds
 				== Right.CardUsageState.PlayerBCardUsageState.AvailableCardIds
 			&& Left.CardUsageState.PlayerBCardUsageState.UsedCardIds
-				== Right.CardUsageState.PlayerBCardUsageState.UsedCardIds;
+				== Right.CardUsageState.PlayerBCardUsageState.UsedCardIds
+			&& FMatchPlayDeploymentSlotCatalog::StaticStruct()
+				->CompareScriptStruct(
+					&Left.DeploymentSlotCatalog,
+					&Right.DeploymentSlotCatalog,
+					0);
 	}
 
 	FString LoadProductionSource()

@@ -48,6 +48,28 @@ namespace MatchPlayStateTests
 			{ PlayerBUsedCard };
 		return State;
 	}
+
+	FMatchPlayDeploymentSlotCatalog MakeDeploymentSlotCatalog()
+	{
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("SharedSlotA");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+
+		FMatchPlayDeploymentSlotCatalog Catalog;
+		Catalog.Slots.Add(Slot);
+		return Catalog;
+	}
+
+	FMatchPlayState MakeState(
+		const FMatchRuntimeState& RuntimeState,
+		const FMatchCardUsageState& CardUsageState)
+	{
+		FMatchPlayState State;
+		State.RuntimeState = RuntimeState;
+		State.CardUsageState = CardUsageState;
+		State.DeploymentSlotCatalog = MakeDeploymentSlotCatalog();
+		return State;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -63,7 +85,7 @@ bool FMatchPlayStateCompositionTest::RunTest(const FString& Parameters)
 		MatchPlayStateTests::MakeCardUsageState();
 
 	const FMatchPlayState MatchPlayState =
-		FMatchPlayState::Create(RuntimeState, CardUsageState);
+		MatchPlayStateTests::MakeState(RuntimeState, CardUsageState);
 
 	TestTrue(
 		TEXT("Runtime initialization flag is preserved"),
@@ -140,6 +162,10 @@ bool FMatchPlayStateCompositionTest::RunTest(const FString& Parameters)
 		TEXT("PlayerB used cards are preserved"),
 		MatchPlayState.CardUsageState.PlayerBCardUsageState.UsedCardIds
 			== CardUsageState.PlayerBCardUsageState.UsedCardIds);
+	TestEqual(
+		TEXT("Deployment slot catalog is present"),
+		MatchPlayState.DeploymentSlotCatalog.Slots.Num(),
+		1);
 	return true;
 }
 
@@ -155,7 +181,7 @@ bool FMatchPlayStateRuntimeInputTest::RunTest(const FString& Parameters)
 	const FMatchCardUsageState CardUsageState =
 		MatchPlayStateTests::MakeCardUsageState();
 	FMatchPlayState MatchPlayState =
-		FMatchPlayState::Create(RuntimeState, CardUsageState);
+		MatchPlayStateTests::MakeState(RuntimeState, CardUsageState);
 
 	MatchPlayState.RuntimeState.PlayerAState.Score = 99;
 	MatchPlayState.RuntimeState.CurrentAttackingPlayer =
@@ -193,7 +219,7 @@ bool FMatchPlayStateCardUsageInputTest::RunTest(
 	const TArray<FName> PlayerBUsedSnapshot =
 		CardUsageState.PlayerBCardUsageState.UsedCardIds;
 	FMatchPlayState MatchPlayState =
-		FMatchPlayState::Create(RuntimeState, CardUsageState);
+		MatchPlayStateTests::MakeState(RuntimeState, CardUsageState);
 
 	MatchPlayState.CardUsageState.PlayerACardUsageState
 		.AvailableCardIds.Reset();
@@ -239,7 +265,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateCreateCurrentAttackTest::RunTest(
 	const FString& Parameters)
 {
-	const FMatchPlayState State = FMatchPlayState::Create(
+	const FMatchPlayState State = MatchPlayStateTests::MakeState(
 		MatchPlayStateTests::MakeRuntimeState(),
 		MatchPlayStateTests::MakeCardUsageState());
 	const FMatchPlayCurrentAttackState DefaultPayload;
@@ -249,6 +275,50 @@ bool FMatchPlayStateCreateCurrentAttackTest::RunTest(
 		FMatchPlayCurrentAttackState::StaticStruct()->CompareScriptStruct(
 			&State.CurrentAttack,
 			&DefaultPayload,
+			0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateDefaultCatalogTest,
+	"FMCodex.CoreRules.MatchPlayState.DefaultCatalogIsEmpty",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateDefaultCatalogTest::RunTest(const FString& Parameters)
+{
+	const FMatchPlayState State;
+	TestTrue(
+		TEXT("Default match play state has an empty deployment slot catalog"),
+		State.DeploymentSlotCatalog.Slots.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateReflectedCatalogComparisonTest,
+	"FMCodex.CoreRules.MatchPlayState.ReflectedComparisonIncludesCatalog",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateReflectedCatalogComparisonTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState First = MatchPlayStateTests::MakeState(
+		MatchPlayStateTests::MakeRuntimeState(),
+		MatchPlayStateTests::MakeCardUsageState());
+	FMatchPlayState Copy = First;
+
+	TestTrue(
+		TEXT("Default state copy includes the deployment slot catalog"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&First,
+			&Copy,
+			0));
+
+	Copy.DeploymentSlotCatalog.Slots[0].SlotId = TEXT("DifferentSlot");
+	TestFalse(
+		TEXT("Reflected whole-state comparison detects a different catalog"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&First,
+			&Copy,
 			0));
 	return true;
 }

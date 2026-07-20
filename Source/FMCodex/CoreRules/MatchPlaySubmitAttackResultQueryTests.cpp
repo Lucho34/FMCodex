@@ -28,7 +28,14 @@ namespace MatchPlaySubmitAttackResultQueryTests
 			{ FName(TEXT("CardA1")) };
 		CardUsageState.PlayerBCardUsageState.AvailableCardIds =
 			{ FName(TEXT("CardB1")) };
-		return FMatchPlayState::Create(RuntimeState, CardUsageState);
+		FMatchPlayState State;
+		State.RuntimeState = RuntimeState;
+		State.CardUsageState = CardUsageState;
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("TestDeploymentSlot");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+		State.DeploymentSlotCatalog.Slots.Add(Slot);
+		return State;
 	}
 
 	FMatchPlaySubmitAttackFacadeResult MakeResult(

@@ -48,6 +48,24 @@ namespace MatchPlayOpeningInitializerTests
 		return Deck;
 	}
 
+	FMatchPlayDeploymentSlotCatalog MakeDeploymentSlotCatalog(
+		const TCHAR* FirstSlotId = TEXT("SharedSlotA"))
+	{
+		FMatchPlayDeploymentSlotDefinition NearPlayerASlot;
+		NearPlayerASlot.SlotId = FName(FirstSlotId);
+		NearPlayerASlot.NeutralSide =
+			EMatchPlayNeutralSlotSide::NearPlayerA;
+
+		FMatchPlayDeploymentSlotDefinition NearPlayerBSlot;
+		NearPlayerBSlot.SlotId = TEXT("SharedSlotB");
+		NearPlayerBSlot.NeutralSide =
+			EMatchPlayNeutralSlotSide::NearPlayerB;
+
+		FMatchPlayDeploymentSlotCatalog Catalog;
+		Catalog.Slots = { NearPlayerASlot, NearPlayerBSlot };
+		return Catalog;
+	}
+
 	FMatchPlayOpeningInitializeInput MakeInput(
 		const ECardRarity PlayerARarity = ECardRarity::Common,
 		const ECardRarity PlayerBRarity = ECardRarity::Common)
@@ -63,6 +81,7 @@ namespace MatchPlayOpeningInitializerTests
 		Input.OpeningInput.PlayerBTieBreakerRoll = 6;
 		Input.PlayerACardIds = { PlayerACard1, PlayerACard2 };
 		Input.PlayerBCardIds = { PlayerBCard1, PlayerBCard2 };
+		Input.DeploymentSlotCatalog = MakeDeploymentSlotCatalog();
 		return Input;
 	}
 
@@ -76,7 +95,8 @@ namespace MatchPlayOpeningInitializerTests
 			&& MatchPlayState.CardUsageState.PlayerBCardUsageState
 				.AvailableCardIds.IsEmpty()
 			&& MatchPlayState.CardUsageState.PlayerBCardUsageState
-				.UsedCardIds.IsEmpty();
+				.UsedCardIds.IsEmpty()
+			&& MatchPlayState.DeploymentSlotCatalog.Slots.IsEmpty();
 	}
 }
 
@@ -100,6 +120,10 @@ bool FMatchPlayOpeningInitializerSuccessTest::RunTest(
 	TestTrue(
 		TEXT("Successful result contains initialized runtime state"),
 		Result.MatchPlayState.RuntimeState.bIsInitialized);
+	TestEqual(
+		TEXT("Successful result has no catalog error"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::None);
 	return true;
 }
 
@@ -562,6 +586,234 @@ bool FMatchPlayOpeningInitializerDeterministicTest::RunTest(
 			.AvailableCardIds
 			== Second.MatchPlayState.CardUsageState.PlayerACardUsageState
 				.AvailableCardIds);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerCatalogPropagationTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.SuccessCopiesDeploymentSlotCatalog",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerCatalogPropagationTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+
+	TestTrue(TEXT("Opening succeeds"), Result.bSuccess);
+	TestTrue(
+		TEXT("Opening propagates the catalog into match play state"),
+		FMatchPlayDeploymentSlotCatalog::StaticStruct()
+			->CompareScriptStruct(
+				&Result.MatchPlayState.DeploymentSlotCatalog,
+				&Input.DeploymentSlotCatalog,
+				0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerCatalogValueCopyTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.InputCatalogMutationDoesNotChangeState",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerCatalogValueCopyTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+	const FName StateFirstSlotId =
+		Result.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId;
+
+	Input.DeploymentSlotCatalog.Slots[0].SlotId = TEXT("CallerMutation");
+	Input.DeploymentSlotCatalog.Slots.Reset();
+
+	TestTrue(TEXT("Opening succeeds"), Result.bSuccess);
+	TestEqual(
+		TEXT("State catalog is independent from the opening input"),
+		Result.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId,
+		StateFirstSlotId);
+	TestEqual(
+		TEXT("State retains all copied slots"),
+		Result.MatchPlayState.DeploymentSlotCatalog.Slots.Num(),
+		2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerEmptyCatalogTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.EmptyCatalogFailsWithNestedErrors",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerEmptyCatalogTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	Input.DeploymentSlotCatalog = FMatchPlayDeploymentSlotCatalog();
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+
+	TestFalse(TEXT("Empty catalog fails opening"), Result.bSuccess);
+	TestEqual(
+		TEXT("Opening maps the state initialization failure"),
+		Result.ErrorCode,
+		EMatchPlayOpeningInitializeErrorCode::PlayStateInitializationFailed);
+	TestEqual(
+		TEXT("State layer preserves catalog validation failure"),
+		Result.UnderlyingPlayStateInitializeErrorCode,
+		EMatchPlayStateInitializeErrorCode
+			::DeploymentSlotCatalogValidationFailed);
+	TestEqual(
+		TEXT("Catalog layer preserves EmptyCatalog"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::EmptyCatalog);
+	TestTrue(
+		TEXT("Catalog failure is atomic"),
+		MatchPlayOpeningInitializerTests::IsMatchPlayStateEmpty(
+			Result.MatchPlayState));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerDuplicateSlotTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.DuplicateSlotIdFailsWithNestedErrors",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerDuplicateSlotTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	Input.DeploymentSlotCatalog.Slots[1].SlotId =
+		Input.DeploymentSlotCatalog.Slots[0].SlotId;
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+
+	TestFalse(TEXT("Duplicate SlotId fails opening"), Result.bSuccess);
+	TestEqual(
+		TEXT("Catalog layer preserves DuplicateSlotId"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::DuplicateSlotId);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerOpeningPriorityTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.OpeningFailurePrecedesCatalogFailure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerOpeningPriorityTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	Input.OpeningInput.PlayerAAttackCountD6Roll = 7;
+	Input.DeploymentSlotCatalog = FMatchPlayDeploymentSlotCatalog();
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+
+	TestEqual(
+		TEXT("Opening resolve failure wins"),
+		Result.ErrorCode,
+		EMatchPlayOpeningInitializeErrorCode::OpeningResolveFailed);
+	TestEqual(
+		TEXT("Catalog validation was not reached"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerCatalogPriorityTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.CatalogFailurePrecedesCardUsageFailure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerCatalogPriorityTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	Input.PlayerACardIds = { NAME_None };
+	Input.DeploymentSlotCatalog = FMatchPlayDeploymentSlotCatalog();
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+
+	TestEqual(
+		TEXT("Catalog failure maps through the state layer"),
+		Result.UnderlyingPlayStateInitializeErrorCode,
+		EMatchPlayStateInitializeErrorCode
+			::DeploymentSlotCatalogValidationFailed);
+	TestEqual(
+		TEXT("Card usage validation was not reached"),
+		Result.UnderlyingCardUsageErrorCode,
+		EMatchCardUsageInitializeErrorCode::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerNonCatalogDefaultsTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.NonCatalogFailureLeavesCatalogErrorNone",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerNonCatalogDefaultsTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	Input.PlayerBCardIds = { NAME_None };
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+
+	TestEqual(
+		TEXT("Card failure reaches state initialization"),
+		Result.UnderlyingPlayStateInitializeErrorCode,
+		EMatchPlayStateInitializeErrorCode::CardUsageInitializationFailed);
+	TestEqual(
+		TEXT("Non-catalog failure leaves catalog error None"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerIndependentOpeningsTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.RepeatedOpeningsReturnIndependentStates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerIndependentOpeningsTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayOpeningInitializeInput FirstInput =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	FMatchPlayOpeningInitializeInput SecondInput =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	SecondInput.DeploymentSlotCatalog =
+		MatchPlayOpeningInitializerTests::MakeDeploymentSlotCatalog(
+			TEXT("SecondMatchSlot"));
+
+	const FMatchPlayOpeningInitializeResult First =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(FirstInput);
+	FMatchPlayOpeningInitializeResult Second =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(SecondInput);
+	const FName FirstSlotId =
+		First.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId;
+	Second.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId =
+		TEXT("SecondResultMutation");
+
+	TestTrue(TEXT("First opening succeeds"), First.bSuccess);
+	TestTrue(TEXT("Second opening succeeds"), Second.bSuccess);
+	TestEqual(
+		TEXT("Second opening does not modify the first state"),
+		First.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId,
+		FirstSlotId);
+	TestNotEqual(
+		TEXT("Two match states own independent catalog values"),
+		First.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId,
+		Second.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId);
 	return true;
 }
 

@@ -47,7 +47,14 @@ namespace MatchPlayAttackStepTests
 			{ CardA1, CardA2, SharedCard };
 		CardUsageState.PlayerBCardUsageState.AvailableCardIds =
 			{ CardB1, CardB2, SharedCard };
-		return FMatchPlayState::Create(RuntimeState, CardUsageState);
+		FMatchPlayState State;
+		State.RuntimeState = RuntimeState;
+		State.CardUsageState = CardUsageState;
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("TestDeploymentSlot");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+		State.DeploymentSlotCatalog.Slots.Add(Slot);
+		return State;
 	}
 
 	FMatchPlayAttackRequest MakeRequest(
@@ -77,7 +84,8 @@ namespace MatchPlayAttackStepTests
 			&& State.CardUsageState.PlayerACardUsageState.UsedCardIds.IsEmpty()
 			&& State.CardUsageState.PlayerBCardUsageState
 				.AvailableCardIds.IsEmpty()
-			&& State.CardUsageState.PlayerBCardUsageState.UsedCardIds.IsEmpty();
+			&& State.CardUsageState.PlayerBCardUsageState.UsedCardIds.IsEmpty()
+			&& State.DeploymentSlotCatalog.Slots.IsEmpty();
 	}
 }
 

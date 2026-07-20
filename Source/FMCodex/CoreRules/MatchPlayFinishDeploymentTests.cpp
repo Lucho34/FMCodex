@@ -55,6 +55,10 @@ namespace MatchPlayFinishDeploymentTests
 			{ PlayerBAvailableCard };
 		State.CardUsageState.PlayerBCardUsageState.UsedCardIds =
 			{ PlayerBUsedCard };
+		FMatchPlayDeploymentSlotDefinition Slot;
+		Slot.SlotId = TEXT("SharedFinishSlot");
+		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerB;
+		State.DeploymentSlotCatalog.Slots.Add(Slot);
 		State.bHasCurrentAttack = true;
 		State.CurrentAttack.Phase = Phase;
 		State.CurrentAttack.AttackSequence = AttackSequence;
@@ -664,6 +668,70 @@ bool FMatchPlayFinishDeploymentPublicContractTest::RunTest(
 		EMatchPlayFinishDeploymentErrorCode::None);
 	TestTrue(TEXT("Successful error message is empty"),
 		Success.ErrorMessage.IsEmpty());
+	return true;
+}
+
+MATCH_PLAY_FINISH_DEPLOYMENT_TEST(
+	FMatchPlayFinishDeploymentFirstFinishPreservesCatalogTest,
+	"FirstFinishPreservesDeploymentSlotCatalog")
+
+bool FMatchPlayFinishDeploymentFirstFinishPreservesCatalogTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState BeforeState =
+		MatchPlayFinishDeploymentTests::MakeState();
+	const FMatchPlayFinishDeploymentResult Result =
+		FMatchPlayFinishDeployment::Finish(
+			BeforeState,
+			MatchPlayFinishDeploymentTests::ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA);
+
+	TestTrue(TEXT("First finish succeeds"), Result.bSuccess);
+	TestEqual(
+		TEXT("First finish remains in Deployment"),
+		Result.AfterState.CurrentAttack.Phase,
+		EMatchPlayCurrentAttackPhase::Deployment);
+	TestTrue(
+		TEXT("First finish preserves the deployment slot catalog"),
+		FMatchPlayDeploymentSlotCatalog::StaticStruct()
+			->CompareScriptStruct(
+				&Result.AfterState.DeploymentSlotCatalog,
+				&BeforeState.DeploymentSlotCatalog,
+				0));
+	return true;
+}
+
+MATCH_PLAY_FINISH_DEPLOYMENT_TEST(
+	FMatchPlayFinishDeploymentResolutionPreservesCatalogTest,
+	"ResolutionTransitionPreservesDeploymentSlotCatalog")
+
+bool FMatchPlayFinishDeploymentResolutionPreservesCatalogTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState BeforeState =
+		MatchPlayFinishDeploymentTests::MakeState(
+			EInitialTurnOrderPlayer::PlayerA,
+			EInitialTurnOrderPlayer::PlayerB,
+			true,
+			false);
+	const FMatchPlayFinishDeploymentResult Result =
+		FMatchPlayFinishDeployment::Finish(
+			BeforeState,
+			MatchPlayFinishDeploymentTests::ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerB);
+
+	TestTrue(TEXT("Second finish succeeds"), Result.bSuccess);
+	TestEqual(
+		TEXT("Second finish enters Resolution"),
+		Result.AfterState.CurrentAttack.Phase,
+		EMatchPlayCurrentAttackPhase::Resolution);
+	TestTrue(
+		TEXT("Resolution transition preserves the deployment slot catalog"),
+		FMatchPlayDeploymentSlotCatalog::StaticStruct()
+			->CompareScriptStruct(
+				&Result.AfterState.DeploymentSlotCatalog,
+				&BeforeState.DeploymentSlotCatalog,
+				0));
 	return true;
 }
 

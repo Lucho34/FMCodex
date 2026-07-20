@@ -4,6 +4,8 @@
 
 #include "Misc/AutomationTest.h"
 
+#include <type_traits>
+
 namespace MatchPlayStateInitializerTests
 {
 	const FName PlayerACard1(TEXT("PlayerACard1"));
@@ -43,6 +45,23 @@ namespace MatchPlayStateInitializerTests
 	{
 		return { PlayerBCard1, PlayerBCard2 };
 	}
+
+	FMatchPlayDeploymentSlotCatalog MakeDeploymentSlotCatalog()
+	{
+		FMatchPlayDeploymentSlotDefinition NearPlayerASlot;
+		NearPlayerASlot.SlotId = TEXT("SharedSlotA");
+		NearPlayerASlot.NeutralSide =
+			EMatchPlayNeutralSlotSide::NearPlayerA;
+
+		FMatchPlayDeploymentSlotDefinition NearPlayerBSlot;
+		NearPlayerBSlot.SlotId = TEXT("SharedSlotB");
+		NearPlayerBSlot.NeutralSide =
+			EMatchPlayNeutralSlotSide::NearPlayerB;
+
+		FMatchPlayDeploymentSlotCatalog Catalog;
+		Catalog.Slots = { NearPlayerASlot, NearPlayerBSlot };
+		return Catalog;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -63,7 +82,8 @@ bool FMatchPlayStateInitializerSuccessTest::RunTest(const FString& Parameters)
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			RuntimeState,
 			PlayerACardIds,
-			PlayerBCardIds);
+			PlayerBCardIds,
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestTrue(TEXT("Match play state initialization succeeds"), Result.bSuccess);
 	TestEqual(
@@ -74,6 +94,10 @@ bool FMatchPlayStateInitializerSuccessTest::RunTest(const FString& Parameters)
 		TEXT("Underlying error code is None"),
 		Result.UnderlyingCardUsageErrorCode,
 		EMatchCardUsageInitializeErrorCode::None);
+	TestEqual(
+		TEXT("Underlying catalog error code is None"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::None);
 	return true;
 }
 
@@ -91,7 +115,8 @@ bool FMatchPlayStateInitializerKeepsRuntimeTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			RuntimeState,
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			MatchPlayStateInitializerTests::MakePlayerBCards());
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestTrue(TEXT("Initialization succeeds"), Result.bSuccess);
 	TestEqual(
@@ -128,7 +153,8 @@ bool FMatchPlayStateInitializerPlayerACardsTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			PlayerACardIds,
-			MatchPlayStateInitializerTests::MakePlayerBCards());
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestTrue(
 		TEXT("PlayerA available cards preserve input"),
@@ -155,7 +181,8 @@ bool FMatchPlayStateInitializerPlayerBCardsTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			PlayerBCardIds);
+			PlayerBCardIds,
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestTrue(
 		TEXT("PlayerB available cards preserve input"),
@@ -182,7 +209,8 @@ bool FMatchPlayStateInitializerRuntimeInputTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			RuntimeState,
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			MatchPlayStateInitializerTests::MakePlayerBCards());
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	Result.MatchPlayState.RuntimeState.PlayerAState.Score = 99;
 	Result.MatchPlayState.RuntimeState.CurrentAttackingPlayer =
@@ -218,7 +246,8 @@ bool FMatchPlayStateInitializerCardInputsTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			PlayerACardIds,
-			PlayerBCardIds);
+			PlayerBCardIds,
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 	Result.MatchPlayState.CardUsageState.PlayerACardUsageState
 		.AvailableCardIds.Reset();
 	Result.MatchPlayState.CardUsageState.PlayerBCardUsageState
@@ -245,7 +274,8 @@ bool FMatchPlayStateInitializerCurrentAttackTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			MatchPlayStateInitializerTests::MakePlayerBCards());
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 	const FMatchPlayCurrentAttackState DefaultPayload;
 
 	TestTrue(TEXT("Initialization succeeds"), Result.bSuccess);
@@ -271,7 +301,8 @@ bool FMatchPlayStateInitializerPlayerAInvalidTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			{ MatchPlayStateInitializerTests::PlayerACard1, NAME_None },
-			MatchPlayStateInitializerTests::MakePlayerBCards());
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Invalid PlayerA card fails"), Result.bSuccess);
 	TestEqual(
@@ -297,7 +328,8 @@ bool FMatchPlayStateInitializerPlayerBInvalidTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			{ NAME_None });
+			{ NAME_None },
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Invalid PlayerB card fails"), Result.bSuccess);
 	TestEqual(
@@ -322,7 +354,8 @@ bool FMatchPlayStateInitializerPlayerADuplicateTest::RunTest(
 				MatchPlayStateInitializerTests::PlayerACard1,
 				MatchPlayStateInitializerTests::PlayerACard1
 			},
-			MatchPlayStateInitializerTests::MakePlayerBCards());
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Duplicate PlayerA card fails"), Result.bSuccess);
 	TestEqual(
@@ -347,7 +380,8 @@ bool FMatchPlayStateInitializerPlayerBDuplicateTest::RunTest(
 			{
 				MatchPlayStateInitializerTests::PlayerBCard1,
 				MatchPlayStateInitializerTests::PlayerBCard1
-			});
+			},
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Duplicate PlayerB card fails"), Result.bSuccess);
 	TestEqual(
@@ -369,7 +403,8 @@ bool FMatchPlayStateInitializerFailureAtomicTest::RunTest(
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			{ MatchPlayStateInitializerTests::PlayerBCard1, NAME_None });
+			{ MatchPlayStateInitializerTests::PlayerBCard1, NAME_None },
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Failed initialization is not successful"), Result.bSuccess);
 	TestFalse(
@@ -384,8 +419,245 @@ bool FMatchPlayStateInitializerFailureAtomicTest::RunTest(
 		Result.MatchPlayState.CardUsageState.PlayerBCardUsageState
 			.AvailableCardIds.IsEmpty());
 	TestTrue(
+		TEXT("Failed result has no deployment slot catalog"),
+		Result.MatchPlayState.DeploymentSlotCatalog.Slots.IsEmpty());
+	TestTrue(
 		TEXT("Failed result has a diagnostic message"),
 		!Result.ErrorMessage.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerCatalogCopyTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.SuccessCopiesDeploymentSlotCatalog",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerCatalogCopyTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayDeploymentSlotCatalog Catalog =
+		MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog();
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			MatchPlayStateInitializerTests::MakePlayerACards(),
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			Catalog);
+
+	TestTrue(TEXT("Initialization succeeds"), Result.bSuccess);
+	TestTrue(
+		TEXT("State catalog matches the initialization input"),
+		FMatchPlayDeploymentSlotCatalog::StaticStruct()
+			->CompareScriptStruct(
+				&Result.MatchPlayState.DeploymentSlotCatalog,
+				&Catalog,
+				0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerCatalogValueCopyTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.DeploymentSlotCatalogInputUnchanged",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerCatalogValueCopyTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayDeploymentSlotCatalog Catalog =
+		MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog();
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			MatchPlayStateInitializerTests::MakePlayerACards(),
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			Catalog);
+	const FName StateFirstSlotId =
+		Result.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId;
+
+	Catalog.Slots[0].SlotId = TEXT("CallerMutatedSlot");
+	Catalog.Slots.Reset();
+
+	TestTrue(TEXT("Initialization succeeds"), Result.bSuccess);
+	TestEqual(
+		TEXT("Caller mutation does not change the state catalog"),
+		Result.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId,
+		StateFirstSlotId);
+	TestEqual(
+		TEXT("State retains both copied slots"),
+		Result.MatchPlayState.DeploymentSlotCatalog.Slots.Num(),
+		2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerEmptyCatalogTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.EmptyCatalogFails",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerEmptyCatalogTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			MatchPlayStateInitializerTests::MakePlayerACards(),
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			FMatchPlayDeploymentSlotCatalog());
+	const FMatchPlayState DefaultState;
+
+	TestFalse(TEXT("Empty catalog fails"), Result.bSuccess);
+	TestEqual(
+		TEXT("Failure is mapped to catalog validation"),
+		Result.ErrorCode,
+		EMatchPlayStateInitializeErrorCode
+			::DeploymentSlotCatalogValidationFailed);
+	TestEqual(
+		TEXT("EmptyCatalog detail is preserved"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::EmptyCatalog);
+	TestTrue(
+		TEXT("Failure returns a default state"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&Result.MatchPlayState,
+			&DefaultState,
+			0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerDuplicateSlotTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.DuplicateSlotIdFails",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerDuplicateSlotTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayDeploymentSlotCatalog Catalog =
+		MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog();
+	Catalog.Slots[1].SlotId = Catalog.Slots[0].SlotId;
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			MatchPlayStateInitializerTests::MakePlayerACards(),
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			Catalog);
+
+	TestFalse(TEXT("Duplicate SlotId fails"), Result.bSuccess);
+	TestEqual(
+		TEXT("DuplicateSlotId detail is preserved"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::DuplicateSlotId);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerCatalogPriorityTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.CatalogFailurePrecedesPlayerACardFailure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerCatalogPriorityTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			{ NAME_None },
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			FMatchPlayDeploymentSlotCatalog());
+
+	TestFalse(TEXT("Mixed-invalid input fails"), Result.bSuccess);
+	TestEqual(
+		TEXT("Catalog validation fails first"),
+		Result.ErrorCode,
+		EMatchPlayStateInitializeErrorCode
+			::DeploymentSlotCatalogValidationFailed);
+	TestEqual(
+		TEXT("Card usage error remains None"),
+		Result.UnderlyingCardUsageErrorCode,
+		EMatchCardUsageInitializeErrorCode::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerPostCatalogAtomicTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.CardFailureAfterValidCatalogIsAtomic",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerPostCatalogAtomicTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			MatchPlayStateInitializerTests::MakePlayerACards(),
+			{ NAME_None },
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
+
+	const FMatchPlayState DefaultState;
+	TestFalse(TEXT("Card failure is not successful"), Result.bSuccess);
+	TestTrue(
+		TEXT("Failure after catalog validation returns a default state"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&Result.MatchPlayState,
+			&DefaultState,
+			0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerNonCatalogErrorDefaultsTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.NonCatalogFailureLeavesCatalogErrorNone",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerNonCatalogErrorDefaultsTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			{ NAME_None },
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
+
+	TestEqual(
+		TEXT("Card failure remains a card usage failure"),
+		Result.ErrorCode,
+		EMatchPlayStateInitializeErrorCode::CardUsageInitializationFailed);
+	TestEqual(
+		TEXT("Catalog error remains None"),
+		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerPublicContractTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.PublicContractDefaultsAndSignature",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerPublicContractTest::RunTest(
+	const FString& Parameters)
+{
+	using FExpectedInitializeFunction = FMatchPlayStateInitializeResult (*)(
+		const FMatchRuntimeState&,
+		const TArray<FName>&,
+		const TArray<FName>&,
+		const FMatchPlayDeploymentSlotCatalog&);
+	static_assert(
+		std::is_same_v<
+			decltype(&FMatchPlayStateInitializer::InitializeMatchPlayState),
+			FExpectedInitializeFunction>,
+		"State initializer must return a new result and accept no target state.");
+
+	const FMatchPlayStateInitializeResult DefaultResult;
+	TestFalse(TEXT("Default result is not successful"), DefaultResult.bSuccess);
+	TestEqual(
+		TEXT("Default catalog error is None"),
+		DefaultResult.UnderlyingDeploymentSlotCatalogValidationErrorCode,
+		EMatchPlayDeploymentSlotCatalogValidationErrorCode::None);
+	TestTrue(
+		TEXT("Default result state has an empty catalog"),
+		DefaultResult.MatchPlayState.DeploymentSlotCatalog.Slots.IsEmpty());
 	return true;
 }
 

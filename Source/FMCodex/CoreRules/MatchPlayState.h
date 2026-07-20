@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 
+#include "MatchPlayDeploymentSlotCatalog.h"
 #include "MatchRuntimeStateTypes.h"
 #include "PlayCardResolver.h"
 
@@ -73,18 +74,26 @@ struct FMCODEX_API FMatchPlayState
 	FMatchCardUsageState CardUsageState;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	FMatchPlayDeploymentSlotCatalog DeploymentSlotCatalog;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	bool bHasCurrentAttack = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	FMatchPlayCurrentAttackState CurrentAttack;
 
+private:
+	friend class FMatchPlayStateInitializer;
+
 	static FMatchPlayState Create(
 		const FMatchRuntimeState& InRuntimeState,
-		const FMatchCardUsageState& InCardUsageState)
+		const FMatchCardUsageState& InCardUsageState,
+		const FMatchPlayDeploymentSlotCatalog& InDeploymentSlotCatalog)
 	{
 		FMatchPlayState Result;
 		Result.RuntimeState = InRuntimeState;
 		Result.CardUsageState = InCardUsageState;
+		Result.DeploymentSlotCatalog = InDeploymentSlotCatalog;
 		return Result;
 	}
 };
