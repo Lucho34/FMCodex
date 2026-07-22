@@ -1199,4 +1199,53 @@ Exactly 28 registered tests
 
 所有 Catalog API 都接收 `const FMatchPlayDeploymentSlotCatalog&`，成功和失败路径均保持 Slots 数量、顺序、SlotId 与 NeutralSide 不变。生产模块不依赖 `FMatchPlayState`、CurrentAttack、DeploymentPlacements、CardUsage、PlayerCard Snapshot、Formula、Through Ball、Direct Shot、UI ViewMapping、legacy `FBoardState` 或 RNG；RelativeZone 只产生于 Resolver Result，不持久化到 Catalog。
 
-实现边界必须保持诚实：`FMatchPlayState::DeploymentSlotCatalog` ownership、opening input Catalog binding、initializer value-copy 和 match-long Catalog mutation protection tests 仍未实现；per-side Snapshot authority、ordinary writer、availability、Automatic Finish、GK writer、Resolution consumer、terminal projection 与 `CompleteCurrentAttack` 同样未实现。下一唯一入口为 `7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High），不得直接跳到 ordinary writer。
+在 7.84 关闭快照中，`FMatchPlayState::DeploymentSlotCatalog` ownership、opening input binding、initializer value-copy 和 match-long preservation tests 仍未实现；这些缺口已由后续 7.85–7.88 闭环关闭。per-side Snapshot authority、ordinary writer、availability、Automatic Finish、GK writer、Resolution consumer、terminal projection 与 `CompleteCurrentAttack` 仍未实现。
+
+## MatchPlay Slot Catalog Ownership + Opening Binding Contract（7.85–7.88）
+
+### Opening contract
+
+每次正式 MatchPlay Opening 必须由 `FMatchPlayOpeningInitializeInput::DeploymentSlotCatalog` 显式提供物理槽位布局。没有隐藏默认 Catalog、UI / screen / camera 派生或 Catalog Manager / Repository / Subsystem。默认 empty Catalog 会在 State initialization 阶段失败，不能形成合法已初始化比赛。
+
+正式链路为 Opening Resolve → Runtime Initialize → State Initialize。State Initializer 内部先调用一次现有 `FMatchPlayDeploymentSlotCatalogValidator::Validate`，再初始化 PlayerA / PlayerB CardUsage，最后组装 State。Opening 不重复验证 Catalog。
+
+### State and lifetime contract
+
+成功建立的 `FMatchPlayState` 必须以 `FMatchPlayDeploymentSlotCatalog DeploymentSlotCatalog` 按值拥有自己的 validated Catalog。该字段是 reflected、`VisibleAnywhere`、`BlueprintReadOnly` 的 match-long 数据；不属于 CurrentAttack 或任一玩家私有状态，不使用外部引用，也不提供正式 replacement writer。
+
+Catalog 从成功 Opening 起持续到该 MatchPlay State 生命周期结束。Begin、AttackFlow、Finish、Deployment → Resolution 和未来 CurrentAttack cleanup 均不得替换或清除它。比赛初始化 authority 仍为 `RuntimeState.bIsInitialized`，不增加第二个初始化 bool。
+
+### Value copy and atomicity contract
+
+Catalog 使用 USTRUCT / TArray 值复制；成功 State 不保留 Opening Input 或调用方 Catalog 的可变别名，两次 Opening 返回的 State 相互独立。所有 Catalog / CardUsage 检查都必须在最终 State assembly 前完成；失败 Result 保持默认 RuntimeState、CardUsageState、empty Catalog、inactive presence 与默认 CurrentAttack payload。
+
+### Error contract
+
+完整首错顺序固定为：
+
+```text
+Opening Resolve
+→ Runtime Initialize
+→ Catalog Validate
+→ PlayerA CardUsage
+→ PlayerB CardUsage
+→ final State Create
+```
+
+State error enum 在末尾追加 `DeploymentSlotCatalogValidationFailed`。State 和 Opening Result 均包含默认 `None` 的 `UnderlyingDeploymentSlotCatalogValidationErrorCode`。Catalog failure 使用 Opening `PlayStateInitializationFailed` → State `DeploymentSlotCatalogValidationFailed` → concrete Catalog validation error；成功与非 Catalog failure 必须保持 Catalog underlying error 为 `None`。
+
+### API contract
+
+`FMatchPlayState::Create` 是 private initializer-only assembly helper，唯一正式生产 caller 为 `FMatchPlayStateInitializer`。正常生产代码必须通过 Opening / State Initializer 建立有效 State。private helper 只收窄受支持的生产 API；测试和其他低层 C++ 代码仍可显式组装公开字段式 USTRUCT，但这种技术能力不证明该状态来自合法 Opening。
+
+### AttackFlow and preservation contract
+
+`MatchPlayAttackFlow` 成功时继续从 Formula Result 取得 RuntimeState / CardUsageState，继续让 `bHasCurrentAttack=false` 与 CurrentAttack 保持旧默认输出，只额外从输入 State 按值保留 DeploymentSlotCatalog。不得改成整份复制输入 State 后意外保留旧 CurrentAttack，也不得把 Catalog 下传到不需要它的 Formula / Resolver 层。
+
+Begin 与 Finish 通过 whole-State copy 保留 Catalog。首次 Finish、第二次 Finish 和进入 Resolution 都不得修改 Catalog。Relative Zone reader 从 State-owned Catalog 查 NeutralSide，并结合 current attacker 与 evaluated side 动态解析；Zone 与 occupancy 不写入 Catalog。
+
+### Verification and future dependency
+
+实现提交为 `17a9602b85bbfa542f18b20e3c42900931986c33 feat: bind matchplay slot catalog during opening`。7.87 独立验证为 Catalog 28/28、State 7/7、State Initializer 20/20、Opening 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401、CoreRules 1623/1623；clean-tree UE Unity Build 与 UHT PASS，28 个变更 `.cpp` 全部进入真实 Unity translation unit，collision None。
+
+ordinary deployment writer 必须读取 State-owned Catalog，并依赖后续 per-side Card Snapshot authority。该 Snapshot authority 尚未存在：当前 SnapshotSet 没有 PlayerSide owner，也未绑定为 reflected MatchPlay State 数据。下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；不得提前声明 Snapshot binding、ordinary writer、GK writer、Resolution consumer 或 Completion 已实现。

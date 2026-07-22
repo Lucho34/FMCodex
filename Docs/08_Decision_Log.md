@@ -235,9 +235,24 @@
 - legacy 边界：`FBoardState::SharedSlotIds / SlotZoneTypes / SlotOccupantCardIds / SlotOwnerPlayerIds` 只属于 historical opening snapshot。尤其不得复活其固定 Slot→Zone 或 occupancy 表达作为当前 MatchPlay authority。
 - 实现记录：7.82 提交 `8a32cf3c59592898ff1e147ebd14b8f9b046bc9e` 已实现 `EMatchPlayNeutralSlotSide`、`EMatchPlayRelativeDeploymentZone`、SlotDefinition、SlotCatalog、Catalog Validator、`FindSlot` Query 与纯 Relative Zone Resolver，并新增 28 项专项测试；未接入 `FMatchPlayState`、opening initializer、Snapshot authority 或 writer。
 - 审查与修正记录：7.83 首次独立审查因默认 Unreal Build Tool Unity Build 暴露两个既有 Composition 测试文件的 translation-unit 同名符号冲突而 `BLOCKED`，Slot/Resolver Contract 与行为本身已通过。7.83.1 以两个 file-unique named namespace 完成 namespace-only 修正，保持注册字符串、数量与测试行为不变；7.83.2 独立确认默认 Build、same-TU proof、28/28、21/21、18/18 与 CoreRules 1601/1601，结论 `PASS` 且 Safe to Commit。
-- 实现诚实性：纯 Catalog/Resolver 层现已实现并关闭；`FMatchPlayState` Catalog ownership、opening input / initializer value-copy、match-long mutation protection、per-side Snapshot authority、ordinary writer、availability 与 Automatic Finish 仍未实现。CD-023 的产品语义不变。
-- 下一入口：`7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）。不得直接跳到 ordinary deployment writer，也不得让请求自行提供 Catalog 或 Slot→Zone mapping。
+- 实现诚实性：7.84 关闭时仅 pure Catalog/Resolver 层已实现；后续 7.85–7.88 已完成 `FMatchPlayState` Catalog ownership、opening input / initializer value-copy 与 match-long preservation tests。per-side Snapshot authority、ordinary writer、availability 与 Automatic Finish 仍未实现。CD-023 的产品语义不变。
+- 后续入口：Catalog binding 关闭后，下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`。不得直接跳到 ordinary deployment writer，也不得让请求自行提供 Catalog、Slot→Zone mapping 或 SnapshotSet。
 - 影响：Rules Canonical、Data Schema、MatchPlay authority、Deployment placement / occupancy、后续参与者区域资格与 implementation staging。
+
+### CD-024 - MatchPlay Slot Catalog Ownership and Opening Initialization Binding
+
+- 日期：2026-07-22
+- 阶段关闭：7.85 Contract Review、7.86 Implementation、7.87 Independent Review 与 7.88 Final Closure Docs Sync 关闭 `MatchPlay Slot Catalog Ownership + Opening Initialization Binding`。实现提交为 `17a9602b85bbfa542f18b20e3c42900931986c33 feat: bind matchplay slot catalog during opening`。
+- Match-long ownership：一场比赛只有一份 validated `FMatchPlayDeploymentSlotCatalog`，由 `FMatchPlayState::DeploymentSlotCatalog` 直接按值持有。它不属于 CurrentAttack 或任一玩家私有状态；默认 empty 只表示尚未成功建立比赛，初始化 authority 继续是 `RuntimeState.bIsInitialized`。
+- Explicit Opening binding：`FMatchPlayOpeningInitializeInput` 必须显式提供 Catalog；不存在隐藏默认 provider、UI / 摄像机派生或 Catalog Manager / Repository / Subsystem。
+- Validation authority：`FMatchPlayStateInitializer` 是正式初始化链中的 Catalog validation boundary，每次正常初始化只复用一次既有 `FMatchPlayDeploymentSlotCatalogValidator`。Opening 不重复验证。
+- Value copy：成功 Opening 把 Catalog 按值复制进 State，不保留 Input 或外部 Catalog 的可变别名；两次 Opening 返回相互独立的 State。
+- Atomicity 与首错：控制流固定为 Opening Resolve → Runtime Initialize → Catalog Validate → PlayerA CardUsage → PlayerB CardUsage → final State Create。Catalog 和 CardUsage 检查全部成功前不写入 Result State，失败返回默认 State。
+- Error contract：State 追加 `DeploymentSlotCatalogValidationFailed`；State / Opening Result 追加 `UnderlyingDeploymentSlotCatalogValidationErrorCode`。Catalog 失败按 Opening `PlayStateInitializationFailed` → State `DeploymentSlotCatalogValidationFailed` → concrete Catalog error 映射；成功和非 Catalog 失败保持底层 Catalog error 为 `None`。
+- API boundary：`FMatchPlayState::Create` 为 private initializer-only assembly helper。该边界收窄正式生产初始化 API，但公开字段式 USTRUCT 仍可被测试或其他代码显式组装，不能据此宣称所有非法 State 都无法构造。
+- AttackFlow：`MatchPlayAttackFlow` 不再调用 `Create`；成功路径继续从 Formula Result 取得 RuntimeState / CardUsageState，继续让 `bHasCurrentAttack=false` 和 CurrentAttack payload 保持旧默认语义，只额外按值保留输入 Catalog。Begin 和 Finish 通过既有 State copy 语义保留 Catalog。
+- 独立证据：Catalog 28/28、State 7/7、State Initializer 20/20、Opening Initializer 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401、CoreRules 1623/1623；clean-tree UE Unity Build 与 UHT `-WarningsAsErrors` PASS，28 个变更 `.cpp` 全部进入真实 Unity translation unit，collision 为 None。
+- 未实现边界：per-side Card Snapshot authority / Opening binding、ordinary deployment writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、terminal projection、`CompleteCurrentAttack`、Formal Abort、Direct Shot、Shooter Snapshot authority 与旧 lower-level flow migration 均未因本决定实现。
 
 ## Resolved UQ Summary
 

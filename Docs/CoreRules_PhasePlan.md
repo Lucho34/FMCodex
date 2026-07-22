@@ -7,10 +7,12 @@
 - 7.75–7.78 Deployment Finish 最小切片已关闭：实现提交为 `d3e84067a50305d1f050d0284364dd18d79cf85a`，独立验证为 Finish 21/21、CoreRules 1573/1573、标准 Build / UHT PASS；`7.77-M-001` 保持非阻断证据债务。
 - 7.79 Next Capability Selection 选择 `Ordinary Deployment Placement + Slot Authority Contract Review`，没有授权实现 ordinary writer、GK、Resolution 或 Completion。
 - 7.80 Contract Review 以 `PASS` 关闭：用户选择 match-opening immutable layout，并纠正固定 Slot→Zone 模型；冻结全局 SlotId、中立物理位置、八种相对 Zone 映射、placements occupancy、Snapshot 边界与 staged implementation。
-- 7.82 已由提交 `8a32cf3c59592898ff1e147ebd14b8f9b046bc9e` 实现 Neutral Slot Catalog value、Validator、FindSlot、Relative Zone Resolver 与 28 项测试；未接入 FMatchPlayState 或 opening initializer。
+- 7.82 已由提交 `8a32cf3c59592898ff1e147ebd14b8f9b046bc9e` 实现 Neutral Slot Catalog value、Validator、FindSlot、Relative Zone Resolver 与 28 项测试；该阶段尚未接入 FMatchPlayState 或 opening initializer，后续接入状态见 7.85–7.88。
 - 7.83 初次审查因默认 UBT Unity translation-unit collision 阻断；7.83.1 以两个 file-unique named namespace 完成 namespace-only 修正；7.83.2 独立验证默认 Build、same-TU proof、28/28、21/21、18/18 与 CoreRules 1601/1601，结论 PASS。
-- 7.84 MatchPlay Neutral Slot Catalog + Relative Zone Resolver Final Closure Docs Sync 为当前 Docs-only 阶段；只修改七份授权文档，不运行 Build、UHT 或测试。项目仍处于总体阶段 4。
-- 7.84 后唯一入口为 `7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；不得直接跳到 ordinary deployment writer。
+- 7.84 MatchPlay Neutral Slot Catalog + Relative Zone Resolver Final Closure Docs Sync 已关闭；只修改七份授权文档，未运行 Build、UHT 或测试。
+- 7.85 Contract Review、7.86 Implementation 与 7.87 Independent Review 已关闭 MatchPlay Slot Catalog Ownership + Opening Initialization Binding；实现提交为 `17a9602b85bbfa542f18b20e3c42900931986c33`，独立验证为 MatchPlay 401/401、CoreRules 1623/1623、clean-tree Unity / UHT PASS。
+- 7.88 Final Closure Docs Sync 为当前 closing docs-only 节点；只同步七份授权文档，不重跑 Build、UHT 或测试。项目仍处于总体阶段 4。
+- 7.88 关闭后的下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；不得直接跳到 ordinary deployment writer。
 
 - 阶段 4.61 Capability Closure Review、4.62 Final Boundary Audit 和 4.63 Final Regression 已通过。
 - 4.63.5 Part 4 Final Docs Sync 已提交，第 4 部分已完成。
@@ -776,5 +778,16 @@
 - 7.83 初次独立审查为 `BLOCKED`：Slot/Resolver 本身通过，但默认 UE Unity Build 失败。7.83.1 修正为 `PASS`；7.83.2 最终独立审查为 `PASS`、Safe to Commit。
 - 正式验证基线为 Catalog 28/28（8 value/validation、5 query、8 mapping、5 resolver failure-order、2 determinism/immutability），Feet Composition 21/21，Behind Defense P1 Composition 18/18，CoreRules 1601/1601；默认 UE Unity Build、UHT 与 same-TU proof 均 PASS。
 - 7.84 只同步文档，不修改 Canonical、Source、Tests 或 Build，不重跑 Build / UHT / tests。
-- 已关闭 pure Catalog/Resolver 与 Unity collision；仍未实现 `FMatchPlayState::DeploymentSlotCatalog` ownership、opening binding / value-copy、match-long mutation tests、per-side Snapshot authority、ordinary writer / availability / Automatic Finish、GK writer、Resolution consumer、terminal projection 或 Completion。
-- 下一唯一入口为 `7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）。
+- 已关闭 pure Catalog/Resolver 与 Unity collision；在 7.84 时仍未实现的 `FMatchPlayState::DeploymentSlotCatalog` ownership、opening binding / value-copy 和 match-long preservation tests，已由后续 7.85–7.88 完成。
+- per-side Snapshot authority、ordinary writer / availability / Automatic Finish、GK writer、Resolution consumer、terminal projection 与 Completion 继续未实现。
+
+## 7.85–7.88 MatchPlay Slot Catalog Ownership + Opening Binding Closure
+
+- 7.85 Contract Review：`PASS WITH NON-BLOCKING FINDINGS`，冻结 State ownership、Opening binding、Validator boundary、值复制、错误与首错、失败原子性、private Create 和 AttackFlow preservation。
+- 7.86 Implementation：提交 `17a9602b85bbfa542f18b20e3c42900931986c33 feat: bind matchplay slot catalog during opening`，修改 31 个 CoreRules 生产 / 测试文件，新增 22 项测试。
+- 7.87 Independent Review：`PASS WITH NON-BLOCKING FINDINGS`，Implementation Accepted、Ready for Final Closure Docs Sync。clean-tree Unity Build 与 UHT PASS；28 个变更 `.cpp` 全部进入 `Module.FMCodex.5.cpp` / `.6.cpp`，collision None。
+- 独立验证：Catalog 28/28、State 7/7、State Initializer 20/20、Opening Initializer 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401、CoreRules 1623/1623。
+- 7.88 Final Closure Docs Sync：当前 / closing；只同步七份授权文档，不运行 Build、UHT、测试或 same-TU proof。
+- 能力关闭：`FMatchPlayState` 已按值持有 validated Catalog；Opening 显式接收并传播；State Initializer 单次复用 Validator 并原子组装；private Create 仅供 initializer；AttackFlow、Begin 和 Finish 保留 Catalog。
+- 未实现边界：per-side Card Snapshot authority / Opening binding、ordinary writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、terminal projection、Completion、Formal Abort、Direct Shot、Shooter Snapshot authority 与 lower-level flow migration。
+- 下一入口：`7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`。原因是 ordinary writer 需要按 PlayerSide 绑定且不可由请求注入的规则 Snapshot；现有 SnapshotSet 尚无 owner side，也尚未成为 reflected MatchPlay authority。7.89 只做 capability selection / contract review，不直接实现 ordinary writer。

@@ -168,9 +168,9 @@
 - 定位球战术中被耗费的球员进入已消耗区。
 - 门将发动后只记录已使用状态。
 
-## MatchPlay Deployment Slot Schema（Implemented in 7.82；State Binding Pending）
+## MatchPlay Deployment Slot Schema（Implemented in 7.82；State Binding Closed in 7.85–7.88）
 
-提交 `8a32cf3c59592898ff1e147ebd14b8f9b046bc9e` 已实现纯值、验证、查询和相对区域解析 public surface。当前生产 `FMatchPlayState` 仍未持有槽位目录，opening ownership / binding 尚未实现，也不得通过复活 legacy `FBoardState` 实现。
+提交 `8a32cf3c59592898ff1e147ebd14b8f9b046bc9e` 已实现纯值、验证、查询和相对区域解析 public surface。提交 `17a9602b85bbfa542f18b20e3c42900931986c33` 进一步把 Catalog 显式绑定到 MatchPlay Opening，并由 `FMatchPlayState` 按值持有；该链路不复活 legacy `FBoardState`。
 
 ### SlotDefinition
 
@@ -189,7 +189,36 @@
 
 - `Slots`：`TArray<FMatchPlayDeploymentSlotDefinition>`；默认 empty，数量不固定，两侧数量不要求相等。
 
-Catalog 计划由未来 `FMatchPlayState` 按值持有，初始化后整场只读；该 owner / binding 尚未实现。Catalog 不包含固定相对区域、occupant、卡牌 owner、当前攻击方、当前合法部署方、坐标、UI screen side 或 CurrentAttack placements。
+Catalog 由 `FMatchPlayState::DeploymentSlotCatalog` 按值持有，字段是 reflected、`VisibleAnywhere`、`BlueprintReadOnly` 的 match-long State 数据。默认 Catalog 为空，表示尚未成功建立比赛；成功 Opening 后保存经过现有 Validator 验证的独立值。Catalog 不属于 CurrentAttack 或任一玩家私有状态，不使用外部引用，也没有正式规则 replacement writer。Catalog 不包含固定相对区域、occupant、卡牌 owner、当前攻击方、当前合法部署方、坐标、UI screen side 或 CurrentAttack placements。
+
+### MatchPlay State and Opening Binding
+
+`FMatchPlayOpeningInitializeInput` 显式包含 `FMatchPlayDeploymentSlotCatalog DeploymentSlotCatalog`。调用方必须提供比赛布局；没有隐藏默认 provider，默认 empty Catalog 会在 State initialization 阶段以 `EmptyCatalog` 失败。正式传播链为：
+
+```text
+FMatchPlayOpeningInitializeInput
+→ FMatchPlayOpeningInitializer
+→ FMatchPlayStateInitializer
+→ FMatchPlayDeploymentSlotCatalogValidator::Validate
+→ private FMatchPlayState::Create
+→ FMatchPlayState::DeploymentSlotCatalog
+```
+
+`FMatchPlayStateInitializer` 是正式初始化链中唯一 Catalog validation boundary；Opening Initializer 不重复验证。所有 Catalog 和 CardUsage 检查完成后才执行最终 State assembly，因此失败 Result 保持默认 Runtime、CardUsage、Catalog 和 CurrentAttack。成功时 Catalog 使用 USTRUCT / TArray 值复制；调用方之后修改 Input 或原 Catalog 不影响已返回 State，两次 Opening 返回的 State 也不共享可变存储。
+
+`FMatchPlayState::Create` 是 private initializer-only assembly helper，不再是公共初始化 API。公开字段式 USTRUCT 仍可被测试或其他 C++ 代码显式组装；这种技术能力不代表该状态由正式 Opening 合法产生。
+
+### Initialization Error Fields
+
+`EMatchPlayStateInitializeErrorCode` 在末尾追加 `DeploymentSlotCatalogValidationFailed`。State Result 与 Opening Result 均包含 `UnderlyingDeploymentSlotCatalogValidationErrorCode`，默认值为 `None`。Catalog 失败的三层映射为：
+
+```text
+Opening: PlayStateInitializationFailed
+→ State: DeploymentSlotCatalogValidationFailed
+→ Catalog: concrete validation error
+```
+
+首错顺序为 Opening Resolve → Runtime Initialize → Catalog Validate → PlayerA CardUsage → PlayerB CardUsage → final State Create。成功及非 Catalog 失败时，Catalog underlying error 保持 `None`。
 
 ### Catalog Validator and FindSlot Query
 
@@ -236,7 +265,7 @@ SlotId 对应的 NeutralSide
 
 历史 `FBoardState` 的 `SharedSlotIds / SlotZoneTypes / SlotOccupantCardIds / SlotOwnerPlayerIds / ViewMappingId` 只属于 historical opening snapshot。尤其是 `SlotZoneTypes` 的固定绝对区域模型不适用于当前 MatchPlay，不得作为 Catalog、相对区域或 occupancy authority。
 
-7.82 专项测试为 28/28（8 value/validation、5 query、8 mapping、5 resolver failure-order、2 determinism/immutability）。7.83.2 独立确认默认 UE Unity Build、same-TU collision proof、Feet Composition 21/21、Behind Defense P1 Composition 18/18 和 CoreRules 1601/1601。下一唯一入口为 `7.85 MatchPlay Slot Catalog Ownership + Opening Initialization Binding Capability Selection + Minimum Contract Review`；在此之前不得实现接收 request-local Catalog 的 ordinary writer。
+Catalog 纯模块专项仍为 28/28（8 value/validation、5 query、8 mapping、5 resolver failure-order、2 determinism/immutability）。Ownership / Opening binding 另新增 22 项测试；7.87 独立确认 State 7/7、State Initializer 20/20、Opening Initializer 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401 和 CoreRules 1623/1623。clean-tree UE Unity Build 与 UHT `-WarningsAsErrors` 通过，28 个本切片变更 `.cpp` 全部进入真实 Unity translation unit且无 collision。下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；ordinary writer 仍不得接收 request-local Catalog，也不能在 Snapshot authority 建立前实施。
 
 ## ConsumedReturnRule
 
