@@ -267,6 +267,83 @@ SlotId 对应的 NeutralSide
 
 Catalog 纯模块专项仍为 28/28（8 value/validation、5 query、8 mapping、5 resolver failure-order、2 determinism/immutability）。Ownership / Opening binding 另新增 22 项测试；7.87 独立确认 State 7/7、State Initializer 20/20、Opening Initializer 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401 和 CoreRules 1623/1623。clean-tree UE Unity Build 与 UHT `-WarningsAsErrors` 通过，28 个本切片变更 `.cpp` 全部进入真实 Unity translation unit且无 collision。下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；ordinary writer 仍不得接收 request-local Catalog，也不能在 Snapshot authority 建立前实施。
 
+## MatchPlay Per-Side Card Snapshot Authority（Closed in 7.89–7.92）
+
+实现提交 `3ddf3de33f8902b7e77eb0d95ee33dde6a6c4916 feat: bind per-side card snapshots during opening` 已把双方实际 Deck 投影为 match-long、按方隔离的规则快照 authority，并接入 Opening / State 初始化链。
+
+### FPlayerCardRuleSnapshot
+
+`FPlayerCardRuleSnapshot` 现在是 reflected `USTRUCT(BlueprintType)` value struct；全部规则字段均为 reflected、Blueprint read-only property：
+
+| Snapshot field | Type | `FPlayerCardData` source / rule |
+| --- | --- | --- |
+| `CardId` | `FName` | `CardData.CardId` |
+| `PositionTypes` | `TArray<EPlayerPositionType>` | `CardData.PositionTypes` |
+| `Attributes` | `FPlayerAttributes` | `CardData.Attributes` |
+| `bIsGoalkeeper` | `bool` | `CardData.bIsGoalkeeper` |
+| `bHasGoalkeeperAttributes` | `bool` | `CardData.bIsGoalkeeper` |
+| `GoalkeeperAttributes` | `FGoalkeeperAttributes` | `CardData.GoalkeeperAttributes` |
+| `Rarity` | `ECardRarity` | `CardData.Rarity` |
+| `SkillIds` | `TArray<FName>` | `CardData.AttackSkillIds` |
+
+每张 Deck card 按原 Deck 顺序生成且只生成一个 Snapshot。`bHasGoalkeeperAttributes = bIsGoalkeeper` 与当前 CardData 没有独立 presence 字段、DeckValidator 和 Snapshot Validator 的契约一致。Snapshot 不保留输入 Deck 的引用或指针。
+
+单个 Snapshot 不包含 owner `PlayerSide`；也不包含 `DisplayName / Height / Weight / BirthDate / Notes`、UI 资源、UObject / DataTable pointer、CardUsage、placement、CurrentAttack role 或 GK activation 等展示或运行时数据。
+
+### FPlayerCardRuleSnapshotSet
+
+`FPlayerCardRuleSnapshotSet` 现在也是 reflected `USTRUCT(BlueprintType)`；其 `TArray<FPlayerCardRuleSnapshot> Cards` 为 reflected property。单个 Set 不携带 owner side，也不是全局集合、mutable cache 或 pointer authority。
+
+`EPlayerCardRuleSnapshotValidationErrorCode` 只因 State / Opening 的精确错误传播需要而成为 reflected enum，既有枚举顺序与语义不变。只用于 Query 的 `EMatchPlayCardSnapshotAuthorityQueryErrorCode` 保持普通 C++ enum。
+
+### FMatchPlayPerSideCardSnapshotAuthority
+
+```text
+FMatchPlayPerSideCardSnapshotAuthority
+├─ FPlayerCardRuleSnapshotSet PlayerACardSnapshots
+└─ FPlayerCardRuleSnapshotSet PlayerBCardSnapshots
+```
+
+该 reflected value struct 使用两个命名字段表达 owner containment，不使用 `TMap<PlayerSide, ...>`，也不在单个 Snapshot 中重复 PlayerSide。默认双方 Set 均为空。它不提供 mutable getter、replacement writer、pointer / shared pointer、Manager、Repository、Subsystem 或 global registry。
+
+稳定卡牌身份是 `PlayerSide + CardId`：同一方内部重复 CardId 非法；PlayerA 与 PlayerB 使用相同 CardId 合法，并可拥有不同规则属性。
+
+### MatchPlay State and Opening Binding
+
+`FMatchPlayState` 新增 reflected、`VisibleAnywhere`、`BlueprintReadOnly` 的 `CardSnapshotAuthority`，并按值持有整场 authority。它与 RuntimeState、CardUsageState、DeploymentSlotCatalog 同属 match-long State，不属于 `bHasCurrentAttack / CurrentAttack` transient payload。默认 State 中双方 Set 为空；成功 Opening 后双方完整。
+
+`FMatchPlayOpeningInitializeInput` 当前只包含：
+
+```text
+FMatchOpeningResolveInput OpeningInput
+FMatchPlayDeploymentSlotCatalog DeploymentSlotCatalog
+```
+
+完整 Deck 只来自 `OpeningInput.PlayerADeck / PlayerBDeck`。旧的独立 `PlayerACardIds / PlayerBCardIds` 已移除；Opening 不接收 SnapshotSet、预建 per-side authority 或独立 CardUsage IDs。
+
+正式数据链为：
+
+```text
+PlayerADeck → PlayerACardSnapshots → DerivedPlayerACardIds → PlayerA CardUsage
+PlayerBDeck → PlayerBCardSnapshots → DerivedPlayerBCardIds → PlayerB CardUsage
+```
+
+派生过程保持顺序，不排序、不合并双方、不跨边去重，也不从另一份输入再次派生 CardIds。因此 Snapshot / CardUsage missing-extra mismatch 在正式 API 中不可表达。
+
+### Builder, Query and Initialization Errors
+
+`FMatchPlayCardSnapshotAuthorityBuilder` 的成功顺序固定为 PlayerA Deck validation → PlayerA projection / Snapshot validation → PlayerB Deck validation → PlayerB projection / Snapshot validation。它复用现有 DeckValidator 与 Snapshot Validator；任何阶段失败立即短路。有效正式 Opening 中，每方 DeckValidator 会在 Opening boundary 和 Builder defensive boundary 各执行一次。
+
+Builder Result 保留 `DeckValidationFailed / SnapshotValidationFailed`、failing side、具体 Deck error 和具体 Snapshot validation error。State error 为追加在既有枚举末尾的 `CardSnapshotAuthorityInitializationFailed`；Opening 顶层继续映射为 `PlayStateInitializationFailed`。成功和非 authority 失败时新增 underlying 字段均为 `None`。
+
+`FMatchPlayCardSnapshotAuthorityQuery` 接收 authority、PlayerSide 和 CardId，只选择对应一侧并委托现有 Snapshot Query；`None` side、空 CardId、invalid selected set 和 not found 均可区分。它不跨边 fallback，不同时搜索双方，返回 Snapshot 值拷贝且不依赖整个 MatchPlay State。
+
+Catalog、authority 和 CardUsage 的所有可失败操作都在 private `FMatchPlayState::Create` 前完成。失败 State 保持默认 Runtime、CardUsage、empty Catalog、双方 empty authority 和 inactive CurrentAttack；成功 State 不与输入 Deck 或另一次 Opening 共享可变存储。
+
+7.91 独立基线为 Snapshot Validator 12/12、Snapshot Query 8/8、Authority 18/18、State 9/9、State Initializer 21/21、Opening 27/27、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 424/424、CoreRules 1646/1646。相对 7.88 的 CoreRules 1623，净新增 23 项注册：Authority +18、State +2、State Initializer +1、Opening +2；旧测试删除或重命名为 0。clean-tree Unity Build 与 UHT `-WarningsAsErrors` PASS，Adaptive exclusions 为 0，12 个变更 `.cpp` 均进入真实 Unity translation unit且 collision 为 None。
+
+ordinary deployment writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、Completion、Direct Shot、Shooter Snapshot authority migration 和 lower-level flow migration 仍未实现。
+
 ## ConsumedReturnRule
 
 表示已消耗区球员回手牌的基础规则。

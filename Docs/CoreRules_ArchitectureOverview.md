@@ -681,3 +681,45 @@ Catalog 是 reflected、Blueprint read-only 的 State 值，不属于 CurrentAtt
 7.87 独立验证为 State 7/7、State Initializer 20/20、Opening Initializer 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、Catalog 28/28、MatchPlay 401/401、CoreRules 1623/1623。clean-tree UE Unity Build 与 UHT `-WarningsAsErrors` PASS；28 个变更 `.cpp` 全部进入 `Module.FMCodex.5.cpp` 或 `.6.cpp`，无 Adaptive Unity 排除和 collision。
 
 本闭环没有实现 ordinary deployment writer、per-side Snapshot authority、GK writer、Resolution consumer 或 Completion。下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；ordinary writer 继续等待该 authority。
+
+## MatchPlay Per-Side Card Snapshot Authority + Opening Binding 闭环（7.89–7.92）
+
+实现提交 `3ddf3de33f8902b7e77eb0d95ee33dde6a6c4916` 把双方真实 Deck 绑定为 State-owned per-side Snapshot authority。正式 Opening 架构链为：
+
+```text
+OpeningInput.PlayerADeck / PlayerBDeck
+→ MatchOpeningResolver / MatchInitializer / existing DeckValidator
+→ MatchRuntimeInitializer
+→ MatchPlayStateInitializer
+   ├─ validate DeploymentSlotCatalog
+   ├─ MatchPlayCardSnapshotAuthorityBuilder
+   │  ├─ defensive PlayerA Deck validation
+   │  ├─ PlayerA projection + Snapshot validation
+   │  ├─ defensive PlayerB Deck validation
+   │  └─ PlayerB projection + Snapshot validation
+   ├─ derive PlayerA / PlayerB CardUsage IDs from Snapshot order
+   ├─ MatchCardUsageInitializer
+   └─ private atomic FMatchPlayState::Create
+      ↓ value ownership
+FMatchPlayState
+├─ RuntimeState
+├─ CardUsageState
+├─ DeploymentSlotCatalog
+└─ CardSnapshotAuthority
+   ├─ PlayerACardSnapshots
+   └─ PlayerBCardSnapshots
+```
+
+`bHasCurrentAttack / CurrentAttack` 继续是 current-attack transient 层；Catalog 与 CardSnapshotAuthority 都是 match-long 层。单个 Snapshot 不包含 owner side，稳定身份由外层 containment 形成 `PlayerSide + CardId`。同侧重复非法，双方同名合法。
+
+Opening Input 不再接受独立 `PlayerACardIds / PlayerBCardIds`，也不接受 SnapshotSet 或预建 authority。CardUsage IDs 只从 Builder 返回的 Snapshot 数组按顺序派生，所以 Deck、Snapshot 与 CardUsage 的成员和顺序只有一个正式来源。
+
+Builder 在成功路径按 PlayerA Deck → PlayerA Snapshot → PlayerB Deck → PlayerB Snapshot 顺序复用既有 Validator。Opening boundary 与 Builder defensive boundary 职责不同；有效 Opening 中每方 DeckValidator 各调用两次。Query 只按目标 side 查询、无跨边 fallback并返回值拷贝。
+
+完整首错顺序为 Opening Resolve → Runtime Initialize → Catalog Validate → PlayerA authority → PlayerB authority → PlayerA CardUsage → PlayerB CardUsage → State Create。所有失败都发生在 private Create 前；Builder 也只在双方成功后把局部 Set 写入成功 Result，因此失败 State 完整默认。
+
+AttackFlow 显式从输入 State 复制 Catalog 与 CardSnapshotAuthority，Runtime / CardUsage 继续来自 Formula Result，CurrentAttack 输出仍保持旧默认语义。Begin 与 Finish 使用 whole-State copy，首次 / 第二次 Finish、Resolution transition 和失败 writer 均保留 authority。
+
+7.91 独立验证为 Snapshot Validator 12/12、Snapshot Query 8/8、Authority 18/18、State 9/9、State Initializer 21/21、Opening 27/27、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 424/424、CoreRules 1646/1646。clean-tree Unity Build 与 UHT PASS，12 个变更 `.cpp` 分别进入 `Module.FMCodex.5.cpp / .6.cpp / .7.cpp`，Adaptive exclusions 0，collision None。
+
+该闭环只建立 future writer 所需的可靠读取基础。ordinary deployment writer / availability、Automatic Finish、GK writer、Resolution consumer、Completion、Direct Shot、Shooter Snapshot migration 和 lower-level flow migration 仍未实现。下一入口登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。

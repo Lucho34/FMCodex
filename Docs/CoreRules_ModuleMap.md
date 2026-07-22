@@ -333,3 +333,22 @@ CurrentAttack occupancy 不注册独立持久模块：`DeploymentPlacements` 是
 验证基线为 Catalog 28/28、State 7/7、State Initializer 20/20、Opening Initializer 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401 和 CoreRules 1623/1623。clean-tree Unity Build 与 UHT PASS，28 个变更 `.cpp` 全部被真实 Unity packing 覆盖，collision 为 None。
 
 下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；不得直接进入 ordinary deployment writer。
+
+## MatchPlay Per-Side Card Snapshot Authority + Opening Binding（7.89–7.92）
+
+| 模块 | 职责 | 直接上游 | 直接下游 | 当前状态 | 禁止边界 |
+| --- | --- | --- | --- | --- | --- |
+| `FPlayerCardRuleSnapshot` / `FPlayerCardRuleSnapshotSet` | 以 reflected value struct 表达纯规则字段和有序集合。 | `FPlayerCardData` projection。 | Snapshot Validator / Query；per-side authority。 | Implemented；全部规则字段 reflected。 | 单个 Snapshot 不保存 PlayerSide、展示字段、UI / UObject pointer 或运行时状态。 |
+| `FPlayerCardRuleSnapshotValidator` | 验证 CardId、同 Set duplicate、PositionTypes、GK consistency、属性、Rarity 与 SkillIds。 | SnapshotSet。 | Authority Builder；既有低层纯规则消费者。 | Existing implementation reused；error enum reflected for propagation。 | 不依赖 MatchPlay State、provider、repository、UI 或 network object。 |
+| `FPlayerCardRuleSnapshotQuery` | 验证单个 Set 并按 CardId 返回 Snapshot 值。 | SnapshotSet、Validator。 | Side-aware authority Query；既有 formula / plan readers。 | Existing implementation unchanged。 | 不理解 PlayerSide，不跨集合搜索，不接收 MatchPlay State。 |
+| `FMatchPlayPerSideCardSnapshotAuthority` | 用两个命名 Set 表达 PlayerA / PlayerB match-long owner containment。 | Authority Builder。 | State、side-aware Query、future writer。 | Implemented；reflected value、默认双方 empty。 | 不使用 TMap、pointer、Manager / Repository / Subsystem；不属于 CurrentAttack。 |
+| `FMatchPlayCardSnapshotAuthorityBuilder` | 从双方真实 Deck 防御验证、逐字段投影并验证完整 per-side authority。 | State Initializer；DeckValidator；Snapshot Validator。 | CardUsage ID derivation；State final assembly。 | Implemented；PlayerA-first、失败短路。 | 不复制 Deck / Snapshot validator 规则，不返回可写入失败 State 的部分 authority。 |
+| `FMatchPlayCardSnapshotAuthorityQuery` | 按 `PlayerSide + CardId` 只查询目标 Set 并返回值拷贝。 | Per-side authority；existing Snapshot Query。 | future ordinary writer / high-level readers。 | Implemented；invalid side / ID / set / not found 可区分。 | 不跨边 fallback，不全局裸 CardId 查询，不返回 mutable pointer/reference。 |
+| `FMatchPlayState::CardSnapshotAuthority` | 按值持有整场 per-side Snapshot authority。 | State Initializer final Create。 | Match-long lifecycle；future state readers。 | Implemented；reflected、Blueprint read-only。 | 不属于 CurrentAttack，不提供 replacement writer。 |
+| `FMatchPlayStateInitializer` authority boundary | Catalog 验证后构建 authority，从 Snapshot 顺序派生 CardUsage IDs，再原子 Create。 | Runtime State、双方 Deck、Catalog。 | 完整 MatchPlay State。 | Implemented；唯一正式 Create caller。 | 不接受独立 CardIds、SnapshotSet 或 caller-built authority。 |
+| `FMatchPlayOpeningInitializer` Deck binding | 只把 OpeningInput 中双方真实 Deck 与 Catalog 传入正式初始化链。 | Match Opening Input。 | Runtime / State Initializer。 | Implemented；旧 CardId arrays removed。 | 不接收第二份 CardUsage IDs 或 Snapshot authority。 |
+| `MatchPlayAttackFlow` authority preservation | 在旧 Runtime / CardUsage / CurrentAttack 输出语义不变时保留 match-long authority。 | Input MatchPlayState、Formula Result。 | Updated MatchPlayState。 | Implemented。 | 不整份复制旧 State，不把 authority 下传到低层 formula。 |
+
+7.91 精确专项为 Validator 12、Snapshot Query 8、Authority 18、State 9、State Initializer 21、Opening 27、AttackFlow 18、Begin 17、Finish 23，全部通过；MatchPlay 424/424、CoreRules 1646/1646。旧的无尾点过滤器聚合数字 30/30 同时匹配 State 与 StateInitializer，不是 State 单组注册数。
+
+ordinary deployment writer / availability 尚未注册为生产模块。下一阶段仅登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。

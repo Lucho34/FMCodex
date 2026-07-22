@@ -11,8 +11,11 @@
 - 7.83 初次审查因默认 UBT Unity translation-unit collision 阻断；7.83.1 以两个 file-unique named namespace 完成 namespace-only 修正；7.83.2 独立验证默认 Build、same-TU proof、28/28、21/21、18/18 与 CoreRules 1601/1601，结论 PASS。
 - 7.84 MatchPlay Neutral Slot Catalog + Relative Zone Resolver Final Closure Docs Sync 已关闭；只修改七份授权文档，未运行 Build、UHT 或测试。
 - 7.85 Contract Review、7.86 Implementation 与 7.87 Independent Review 已关闭 MatchPlay Slot Catalog Ownership + Opening Initialization Binding；实现提交为 `17a9602b85bbfa542f18b20e3c42900931986c33`，独立验证为 MatchPlay 401/401、CoreRules 1623/1623、clean-tree Unity / UHT PASS。
-- 7.88 Final Closure Docs Sync 为当前 closing docs-only 节点；只同步七份授权文档，不重跑 Build、UHT 或测试。项目仍处于总体阶段 4。
-- 7.88 关闭后的下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；不得直接跳到 ordinary deployment writer。
+- 7.88 Final Closure Docs Sync 已关闭 MatchPlay Slot Catalog Ownership + Opening Binding；该 docs-only 阶段没有重跑 Build、UHT 或测试。项目仍处于总体阶段 4。
+- 7.89 Contract Review 以 `PASS WITH NON-BLOCKING FINDINGS` 冻结 per-side Snapshot authority、Opening 单一来源、Snapshot/CardUsage 单源顺序一致性、值复制、查询与错误 Contract；未授权 ordinary deployment writer。
+- 7.90 Implementation 由提交 `3ddf3de33f8902b7e77eb0d95ee33dde6a6c4916` 完成；7.91 Independent Review 以 `PASS WITH NON-BLOCKING FINDINGS` 接受实现，验证 MatchPlay 424/424、CoreRules 1646/1646、clean-tree Unity / UHT PASS、Adaptive exclusions 0、collision None。
+- 7.92 Final Closure Docs Sync 为当前 closing docs-only 节点；只同步七份授权文档，不重跑 Build、UHT 或测试。
+- 7.92 关闭后的下一入口仅登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`；7.92 不实现或预先冻结该 writer 的具体技术设计。
 
 - 阶段 4.61 Capability Closure Review、4.62 Final Boundary Audit 和 4.63 Final Regression 已通过。
 - 4.63.5 Part 4 Final Docs Sync 已提交，第 4 部分已完成。
@@ -791,3 +794,15 @@
 - 能力关闭：`FMatchPlayState` 已按值持有 validated Catalog；Opening 显式接收并传播；State Initializer 单次复用 Validator 并原子组装；private Create 仅供 initializer；AttackFlow、Begin 和 Finish 保留 Catalog。
 - 未实现边界：per-side Card Snapshot authority / Opening binding、ordinary writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、terminal projection、Completion、Formal Abort、Direct Shot、Shooter Snapshot authority 与 lower-level flow migration。
 - 下一入口：`7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`。原因是 ordinary writer 需要按 PlayerSide 绑定且不可由请求注入的规则 Snapshot；现有 SnapshotSet 尚无 owner side，也尚未成为 reflected MatchPlay authority。7.89 只做 capability selection / contract review，不直接实现 ordinary writer。
+
+## 7.89–7.92 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Closure
+
+- 7.89 Contract Review：`PASS WITH NON-BLOCKING FINDINGS`。冻结 reflected per-side Snapshot authority、Opening 单一来源、双方 Snapshot/CardUsage 按构造保持单源顺序一致、值复制、query、错误传播、失败原子性与生命周期保留边界。
+- 7.90 Implementation：提交 `3ddf3de33f8902b7e77eb0d95ee33dde6a6c4916 feat: bind per-side card snapshots during opening`；新增/修改 authority、builder/query、State、State Initializer、Opening 与 preservation 测试，没有实现 ordinary deployment writer。
+- 7.91 Independent Review：`PASS WITH NON-BLOCKING FINDINGS`，Implementation Accepted，Ready for Final Closure Docs Sync。精确验证为 Snapshot Validator 12/12、Snapshot Query 8/8、Authority 18/18、State 9/9、State Initializer 21/21、Opening 27/27、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 424/424、CoreRules 1646/1646；clean-tree Unity Build 与 UHT PASS，12 个变更 `.cpp` 全部进入真实 Unity translation units，collision None。
+- 7.92 Final Closure Docs Sync：当前 / closing；只同步七份授权文档，不运行 Build、UHT 或测试。该阶段完成后，per-side Card Snapshot authority 与 Opening binding 能力正式关闭。
+- 7.91 的两项非阻断记录只是审查证据说明：无尾点测试过滤器曾聚合 State 与 StateInitializer；两个历史 Opening 测试注册名仍提及 CardUsage、测试体实际覆盖 Snapshot authority failure。两者都不改变产品行为，不在 7.92 重命名测试，也不登记为正式债务。
+
+下一入口登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。7.93 至少审查：availability、请求验证、side-aware Snapshot lookup、State-owned Slot Catalog lookup、relative Zone、`PositionTypes` 合法性、全局 Slot occupancy、同侧 CardId 重复部署防止、placement append、成功后合法方轮转、失败原子性、与手动 Finish 的交互，以及 Automatic Finish 是否应纳入同一 milestone。7.92 只登记审查范围，不预选 API、错误枚举、验证顺序、文件布局、实现切片数量或 Automatic Finish 结论。
+
+后续交付按风险分层：涉及共享 `FMatchPlayState`、Opening、reflection 或跨生命周期 authority 的高风险能力继续使用 Contract Review → Implementation → Independent Review → Final Closure Docs Sync 四阶段；涉及 writer 与状态转换的中风险 milestone 使用 milestone contract → 1～2 个受控 implementation slices → independent review → unified docs closure；低风险 helper、query 或机械传播可并入所属 implementation slice，但必须由该 slice 的测试和独立审查覆盖。独立审查、风险分级测试与人工 commit 均继续保留。

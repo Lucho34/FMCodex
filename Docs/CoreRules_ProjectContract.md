@@ -1249,3 +1249,39 @@ Begin 与 Finish 通过 whole-State copy 保留 Catalog。首次 Finish、第二
 实现提交为 `17a9602b85bbfa542f18b20e3c42900931986c33 feat: bind matchplay slot catalog during opening`。7.87 独立验证为 Catalog 28/28、State 7/7、State Initializer 20/20、Opening 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401、CoreRules 1623/1623；clean-tree UE Unity Build 与 UHT PASS，28 个变更 `.cpp` 全部进入真实 Unity translation unit，collision None。
 
 ordinary deployment writer 必须读取 State-owned Catalog，并依赖后续 per-side Card Snapshot authority。该 Snapshot authority 尚未存在：当前 SnapshotSet 没有 PlayerSide owner，也未绑定为 reflected MatchPlay State 数据。下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；不得提前声明 Snapshot binding、ordinary writer、GK writer、Resolution consumer 或 Completion 已实现。
+
+## MatchPlay Per-Side Card Snapshot Authority + Opening Binding Contract（7.89–7.92）
+
+### Reflected schema and projection
+
+`FPlayerCardRuleSnapshot` 与 `FPlayerCardRuleSnapshotSet` 是 reflected value schema；Snapshot 保存 `CardId`、球员 `PositionTypes` 与当前规则所需的静态卡牌字段，Set 保存按输入顺序排列的 Snapshots。投影只从 SnapshotSet 提取 CardId，不维护调用方提供的第二套 CardId 列表；投影不得排序、去重、修复或改变 Snapshot。
+
+`FMatchPlayPerSideCardSnapshotAuthority` 以 `PlayerACardSnapshots` 与 `PlayerBCardSnapshots` 按方保存整场规则快照。身份键是 `PlayerSide + CardId`：同一方 CardId 必须唯一，但双方允许使用相同 CardId。authority 不存放当前攻击角色、Slot、Zone、occupancy、CardUsage 可用/已用状态或 CurrentAttack placement。
+
+### Opening single source and dual validation
+
+正式 Opening 必须通过 `OpeningInput.PlayerADeck / PlayerBDeck` 接收双方真实 Deck；两份 Deck 同时是 Snapshot authority 与对应 CardUsage 身份集合的单一来源。Opening 不接收 SnapshotSet、预建 authority 或可独立变化的 `PlayerACardIds` / `PlayerBCardIds`。初始化链固定为 Opening Resolve → Runtime Initialize → State Initialize → Snapshot authority build/validate → CardId projection → CardUsage initialize → final State assembly。
+
+双重验证边界有意保留：Opening Resolver 继续经既有链验证双方 Deck，Authority Builder 又为直接 State Initializer caller 按 PlayerA-first 顺序防御验证 Deck，并验证由 Deck 投影出的每一侧 SnapshotSet。CardUsage 的 CardId 直接从成功 authority 按顺序派生，因此双方集合按构造一致。双方相同 CardId 互不冲突；任一方内部空 CardId、重复 CardId 或非法 Snapshot 都拒绝建立 State。失败保持默认 Runtime、默认 CardUsage、空 Slot Catalog、空 Snapshot authority、inactive CurrentAttack 与默认 payload，不提交部分结果。
+
+### Builder, query, errors and ownership
+
+`FMatchPlayCardSnapshotAuthorityBuilder` 是 per-side authority 的唯一正式 builder；它验证两侧并按值组装 authority。`FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId` 是 side-aware 读取入口，显式验证 PlayerSide 与 CardId，区分 invalid side、invalid CardId、invalid authority 与 not found，并返回 Snapshot 值复制，不暴露可修改引用或指针。
+
+`FMatchPlayState` 按值持有 reflected、`VisibleAnywhere`、`BlueprintReadOnly` 的 `FMatchPlayPerSideCardSnapshotAuthority CardSnapshotAuthority`。State initializer 的 Snapshot authority failure 使用 `CardSnapshotAuthorityInitializationFailed` 并传播具体 underlying builder/validator error；Opening 将其包装为 `PlayStateInitializationFailed`。非 Snapshot failure 与 success 路径的 underlying Snapshot error 必须保持 `None`。
+
+`FMatchPlayState::Create` 继续是 initializer-only 的 private assembly helper。USTRUCT 公开字段允许测试或低层 C++ 技术性组装，但不构成合法 Opening provenance，也不得演变为第二个 production builder。authority 的值复制意味着调用方在 Opening 成功后修改原输入不会改变 State；不同 Opening 结果互不别名。
+
+### Match-long preservation and future consumers
+
+成功 Opening 后，CardSnapshotAuthority 与 DeploymentSlotCatalog 都属于 match-long `FMatchPlayState`。MatchPlayAttackFlow、Begin Ordinary Attack、Finish Deployment、Deployment → Resolution 及未来 CurrentAttack cleanup 必须逐字段保持 authority；任何 writer 都不得替换、清空或按请求注入 SnapshotSet。Snapshot 仍是静态规则事实，CardUsage 仍是动态卡牌区域/使用状态，二者不得合并为同一 authority。
+
+Snapshot Validator / Query 以及 Cross、Long Shot、Cut Inside、Pass Control、Single Card Formula 和 Through Ball 的 eligibility / plan / assembler / executor 保持低层纯规则边界：继续接收明确 Snapshot 或 SnapshotSet 值，不改为接收整个 `FMatchPlayState`。
+
+未来 ordinary deployment writer 必须以 `RequestingSide + CardId` 查询 State-owned authority，并结合 State-owned Slot Catalog、relative Zone、`PositionTypes`、全局 Slot occupancy 与同侧重复部署约束。Placement 仍只保存 `PlayerSide + CardId + SlotId`；Snapshot、Zone 与 PositionTypes 不持久化到 placement。7.89–7.92 不实现 ordinary writer / availability、Automatic Finish、永久 GK writer、Resolution consumer、terminal projection、Completion、Direct Shot、Shooter action-time Snapshot authority 或 lower-level flow migration。
+
+### Closure verification
+
+实现提交为 `3ddf3de33f8902b7e77eb0d95ee33dde6a6c4916 feat: bind per-side card snapshots during opening`。7.91 独立验证：PlayerCardRuleSnapshotValidator 12/12、PlayerCardRuleSnapshotQuery 8/8、MatchPlayCardSnapshotAuthority 18/18、MatchPlayState 9/9、MatchPlayStateInitializer 21/21、MatchPlayOpeningInitializer 27/27、MatchPlayAttackFlow 18/18、MatchPlayBeginOrdinaryAttack 17/17、MatchPlayFinishDeployment 23/23；MatchPlay 424/424、CoreRules 1646/1646；clean-tree 默认 UE Unity Build、UHT warnings-as-errors 与真实 Unity packing 均 PASS，warnings 0、adaptive exclusions 0、collision None。
+
+7.92 为 docs-only，不运行 Build、UHT 或测试。下一入口仅登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`，必须先完成 milestone Contract 审查，不能从本关闭条款推断 writer 已实现或其具体技术设计已冻结。

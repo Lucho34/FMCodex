@@ -1374,3 +1374,22 @@ AttackFlow 继续从 Formula Result 取得 Runtime / CardUsage，并保持原有
 7.87 独立基线为 Catalog 28/28、State 7/7、State Initializer 20/20、Opening 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401、CoreRules 1623/1623；clean-tree Unity Build 与 UHT PASS，collision None。
 
 本闭环不代表普通部署已经可执行。per-side Card Snapshot authority / Opening binding 仍不存在，ordinary writer 不得接受任意 SnapshotSet 或 request-local Catalog。GK writer、Resolution consumer、Completion、Direct Shot、Shooter Snapshot authority 与 lower-level flow migration 也仍未实现。下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`。
+
+## 7.89–7.92 MatchPlay Per-Side Card Snapshot Authority + Opening Binding 最终关闭
+
+| 阶段 | 结果 | 关闭事实 |
+|---|---|---|
+| 7.89 Capability Selection + Minimum Contract Review | PASS WITH NON-BLOCKING FINDINGS | 冻结按方 Snapshot authority、Opening 单一来源、双重验证边界、值复制、查询、错误传播与失败原子性；未授权 ordinary writer。 |
+| 7.90 Implementation | PASS WITH NON-BLOCKING FINDINGS | 提交 `3ddf3de33f8902b7e77eb0d95ee33dde6a6c4916 feat: bind per-side card snapshots during opening` 建立 reflected authority、builder/query、State ownership 与 Opening binding。 |
+| 7.91 Independent Review | PASS WITH NON-BLOCKING FINDINGS | Implementation Accepted；Ready for Final Closure Docs Sync；行为、范围、回归、Unity packing 与 UHT 均通过。 |
+| 7.92 Final Closure Docs Sync | CLOSED ON COMPLETION | 仅同步七份授权文档，不修改 Source、Tests、Canonical 或生产行为。 |
+
+当前 `FMatchPlayState` 按值持有 `FMatchPlayPerSideCardSnapshotAuthority CardSnapshotAuthority`。每方身份由 `PlayerSide + CardId` 共同确定，PlayerA 与 PlayerB 可以拥有相同 CardId；每方内部 CardId 必须唯一。Opening 的 `PlayerADeck / PlayerBDeck` 是 Snapshot authority 与 CardUsage 身份的共同单一来源：builder 从两份真实 Deck 生成并验证两侧 SnapshotSet，再由其 CardId 顺序投影初始化两侧 CardUsage。调用方不能再以独立 `PlayerACardIds` / `PlayerBCardIds`、SnapshotSet 或预建 authority 注入另一套身份真相。
+
+未来 ordinary deployment writer 必须按 `RequestingSide + CardId` 使用 `FMatchPlayCardSnapshotAuthorityQuery` 读取同一 State-owned Snapshot authority，并结合 State-owned Slot Catalog、相对 Zone Resolver、`PositionTypes`、全局 Slot occupancy 与同侧重复部署规则判断合法性。此次关闭只建立这些前置能力：ordinary deployment writer / availability、Automatic Finish、永久 GK writer、Resolution consumer、terminal projection、Completion、Direct Shot、Shooter action-time Snapshot authority 与旧 lower-level flow 迁移仍未实现。
+
+既有 Cross、Long Shot、Cut Inside、Pass Control、Single Card Formula 与 Through Ball 的 eligibility / plan / assembler / executor 仍接收明确 Snapshot 或 SnapshotSet 值，没有迁移为接收整个 `FMatchPlayState`。
+
+7.91 的精确回归为：PlayerCardRuleSnapshotValidator 12/12、PlayerCardRuleSnapshotQuery 8/8、MatchPlayCardSnapshotAuthority 18/18、MatchPlayState 9/9、MatchPlayStateInitializer 21/21、MatchPlayOpeningInitializer 27/27、MatchPlayAttackFlow 18/18、MatchPlayBeginOrdinaryAttack 17/17、MatchPlayFinishDeployment 23/23；MatchPlay 424/424，CoreRules 1646/1646，失败与 NotRun 均为 0。clean-tree 默认 UE Unity Build 与 UHT warnings-as-errors PASS，12 个变更 `.cpp` 全部进入 `Module.FMCodex.5.cpp` / `.6.cpp` / `.7.cpp`，adaptive exclusions 0、collision None。7.92 因 docs-only 不重新运行 Build、UHT 或测试。
+
+下一入口仅登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。该阶段必须先审查完整 milestone Contract，不得把 7.92 误写成 ordinary writer 已实现，也不得由本关闭文档预先冻结 7.93 的具体 C++ API 或拆片数量。

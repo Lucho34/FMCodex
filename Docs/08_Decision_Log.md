@@ -254,6 +254,24 @@
 - 独立证据：Catalog 28/28、State 7/7、State Initializer 20/20、Opening Initializer 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401、CoreRules 1623/1623；clean-tree UE Unity Build 与 UHT `-WarningsAsErrors` PASS，28 个变更 `.cpp` 全部进入真实 Unity translation unit，collision 为 None。
 - 未实现边界：per-side Card Snapshot authority / Opening binding、ordinary deployment writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、terminal projection、`CompleteCurrentAttack`、Formal Abort、Direct Shot、Shooter Snapshot authority 与旧 lower-level flow migration 均未因本决定实现。
 
+### CD-025 - MatchPlay Per-Side Card Snapshot Authority and Opening Binding
+
+- 日期：2026-07-22
+- 阶段关闭：7.89 Contract Review、7.90 Implementation、7.91 Independent Review 与 7.92 Final Closure Docs Sync 关闭 `MatchPlay Per-Side Card Snapshot Authority + Opening Binding`。实现提交为 `3ddf3de33f8902b7e77eb0d95ee33dde6a6c4916 feat: bind per-side card snapshots during opening`。
+- Per-side containment：`FMatchPlayPerSideCardSnapshotAuthority` 使用 `PlayerACardSnapshots / PlayerBCardSnapshots` 两个命名字段；单个 Snapshot 不保存 PlayerSide，不使用全局 CardId map、TMap owner、指针或共享可变 authority。
+- Stable identity：卡牌规则身份为 `PlayerSide + CardId`。同侧重复 CardId 非法；双方同名 CardId 合法，Query 必须返回目标 side 的属性。
+- Reflected schema：`FPlayerCardRuleSnapshot` 与 Set 是 reflected value structs，全部规则字段为 reflected property；不加入展示数据、UI / UObject pointer、CardUsage、placement 或 CurrentAttack role。
+- Projection：Deck card 按原顺序逐字段投影到 Snapshot；`SkillIds` 来自 `AttackSkillIds`，`bHasGoalkeeperAttributes = bIsGoalkeeper`。每张 Deck card 只生成一个值快照，不保留输入别名。
+- Opening single source：Opening 只从 `OpeningInput.PlayerADeck / PlayerBDeck` 建立双方 Snapshot；旧 `PlayerACardIds / PlayerBCardIds` 输入被移除。CardUsage IDs 只从已经验证的 per-side Snapshot 数组按顺序派生，不接受第二数据源。
+- Dual validation boundary：Opening Resolver 继续通过 MatchInitializer / DeckValidator 验证双方 Deck 并保留既有聚合诊断；Authority Builder 为直接 State Initializer caller 再做 PlayerA-first 防御验证，并复用 Snapshot Validator。有效 Opening 中每方 DeckValidator 有意执行两次，不增加“已验证”状态标记。
+- Side-aware Query：Query 必须接收 PlayerSide + CardId，只查询目标一侧，委托现有 Snapshot Query，不跨边 fallback，返回 Snapshot 值拷贝，并区分 invalid side、invalid CardId、invalid selected set 与 not found。
+- Atomic State assembly：`FMatchPlayState` 按值持有 reflected、Blueprint read-only、match-long `CardSnapshotAuthority`；private Create 只在 Catalog、authority 和 CardUsage 全部成功后调用。失败 State 不包含部分 PlayerA authority。
+- Error contract：State 追加 `CardSnapshotAuthorityInitializationFailed`；Builder 区分 `DeckValidationFailed / SnapshotValidationFailed`，并传播 failing side 与具体底层错误。成功及非 authority 失败的新增 underlying 字段保持 `None`。
+- Lifecycle preservation：AttackFlow 显式从输入 State 保留 authority，并继续维持旧 CurrentAttack 默认输出；Begin / Finish 的 whole-State copy 保留 authority。authority 不属于 CurrentAttack，也不因 Deployment → Resolution 转换丢失。
+- Pure lower boundary：既有 Snapshot Validator / Query 以及 Cross、Long Shot、Cut Inside、Pass Control、Single Card Formula 和 Through Ball Formula / Plan 模块继续只接收明确 Snapshot / SnapshotSet 值，不迁移为接收整个 MatchPlay State。
+- 独立证据：Authority 18/18、State 9/9、State Initializer 21/21、Opening 27/27、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 424/424、CoreRules 1646/1646；clean-tree Unity Build 与 UHT PASS，Adaptive exclusions 0，collision None。
+- 未实现边界：ordinary deployment writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、Completion、Formal Abort、Direct Shot、Shooter Snapshot authority migration、lower-level flow migration 与 UE5 gameplay smoke test 均未因本决定实现。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
