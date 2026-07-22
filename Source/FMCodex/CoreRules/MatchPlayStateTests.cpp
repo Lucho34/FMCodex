@@ -60,6 +60,22 @@ namespace MatchPlayStateTests
 		return Catalog;
 	}
 
+	FMatchPlayPerSideCardSnapshotAuthority MakeCardSnapshotAuthority()
+	{
+		FPlayerCardRuleSnapshot PlayerACard;
+		PlayerACard.CardId = PlayerACard1;
+		PlayerACard.PositionTypes = { EPlayerPositionType::Attack };
+
+		FPlayerCardRuleSnapshot PlayerBCard;
+		PlayerBCard.CardId = PlayerBCard1;
+		PlayerBCard.PositionTypes = { EPlayerPositionType::Defense };
+
+		FMatchPlayPerSideCardSnapshotAuthority Authority;
+		Authority.PlayerACardSnapshots.Cards.Add(PlayerACard);
+		Authority.PlayerBCardSnapshots.Cards.Add(PlayerBCard);
+		return Authority;
+	}
+
 	FMatchPlayState MakeState(
 		const FMatchRuntimeState& RuntimeState,
 		const FMatchCardUsageState& CardUsageState)
@@ -68,6 +84,7 @@ namespace MatchPlayStateTests
 		State.RuntimeState = RuntimeState;
 		State.CardUsageState = CardUsageState;
 		State.DeploymentSlotCatalog = MakeDeploymentSlotCatalog();
+		State.CardSnapshotAuthority = MakeCardSnapshotAuthority();
 		return State;
 	}
 }
@@ -316,6 +333,54 @@ bool FMatchPlayStateReflectedCatalogComparisonTest::RunTest(
 	Copy.DeploymentSlotCatalog.Slots[0].SlotId = TEXT("DifferentSlot");
 	TestFalse(
 		TEXT("Reflected whole-state comparison detects a different catalog"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&First,
+			&Copy,
+			0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateDefaultSnapshotAuthorityTest,
+	"FMCodex.CoreRules.MatchPlayState.DefaultSnapshotAuthorityIsEmpty",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateDefaultSnapshotAuthorityTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState State;
+	TestTrue(
+		TEXT("Default PlayerA snapshot authority is empty"),
+		State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.IsEmpty());
+	TestTrue(
+		TEXT("Default PlayerB snapshot authority is empty"),
+		State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateReflectedSnapshotAuthorityComparisonTest,
+	"FMCodex.CoreRules.MatchPlayState.ReflectedComparisonIncludesSnapshotAuthority",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateReflectedSnapshotAuthorityComparisonTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState First = MatchPlayStateTests::MakeState(
+		MatchPlayStateTests::MakeRuntimeState(),
+		MatchPlayStateTests::MakeCardUsageState());
+	FMatchPlayState Copy = First;
+
+	TestTrue(
+		TEXT("Reflected copy initially matches"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&First,
+			&Copy,
+			0));
+	Copy.CardSnapshotAuthority.PlayerACardSnapshots.Cards[0]
+		.Attributes.Shooting = 6;
+	TestFalse(
+		TEXT("Reflected comparison detects snapshot authority change"),
 		FMatchPlayState::StaticStruct()->CompareScriptStruct(
 			&First,
 			&Copy,

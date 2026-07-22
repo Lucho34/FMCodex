@@ -14,7 +14,9 @@ enum class EMatchPlayStateInitializeErrorCode : uint8
 	CardUsageInitializationFailed
 		UMETA(DisplayName = "Card Usage Initialization Failed"),
 	DeploymentSlotCatalogValidationFailed
-		UMETA(DisplayName = "Deployment Slot Catalog Validation Failed")
+		UMETA(DisplayName = "Deployment Slot Catalog Validation Failed"),
+	CardSnapshotAuthorityInitializationFailed
+		UMETA(DisplayName = "Card Snapshot Authority Initialization Failed")
 };
 
 USTRUCT(BlueprintType)
@@ -42,6 +44,24 @@ struct FMCODEX_API FMatchPlayStateInitializeResult
 			EMatchPlayDeploymentSlotCatalogValidationErrorCode::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	EMatchPlayCardSnapshotAuthorityBuildErrorCode
+		UnderlyingCardSnapshotAuthorityBuildErrorCode =
+			EMatchPlayCardSnapshotAuthorityBuildErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	EInitialTurnOrderPlayer UnderlyingCardSnapshotAuthorityFailingPlayerSide =
+		EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	EDeckValidationErrorCode UnderlyingDeckValidationErrorCode =
+		EDeckValidationErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	EPlayerCardRuleSnapshotValidationErrorCode
+		UnderlyingPlayerCardRuleSnapshotValidationErrorCode =
+			EPlayerCardRuleSnapshotValidationErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	FString ErrorMessage;
 };
 
@@ -50,7 +70,7 @@ class FMCODEX_API FMatchPlayStateInitializer final
 public:
 	static FMatchPlayStateInitializeResult InitializeMatchPlayState(
 		const FMatchRuntimeState& RuntimeState,
-		const TArray<FName>& PlayerACardIds,
-		const TArray<FName>& PlayerBCardIds,
+		const TArray<FPlayerCardData>& PlayerADeck,
+		const TArray<FPlayerCardData>& PlayerBDeck,
 		const FMatchPlayDeploymentSlotCatalog& DeploymentSlotCatalog);
 };

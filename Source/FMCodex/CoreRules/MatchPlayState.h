@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 
+#include "MatchPlayCardSnapshotAuthority.h"
 #include "MatchPlayDeploymentSlotCatalog.h"
 #include "MatchRuntimeStateTypes.h"
 #include "PlayCardResolver.h"
@@ -77,6 +78,9 @@ struct FMCODEX_API FMatchPlayState
 	FMatchPlayDeploymentSlotCatalog DeploymentSlotCatalog;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	FMatchPlayPerSideCardSnapshotAuthority CardSnapshotAuthority;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	bool bHasCurrentAttack = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
@@ -88,12 +92,15 @@ private:
 	static FMatchPlayState Create(
 		const FMatchRuntimeState& InRuntimeState,
 		const FMatchCardUsageState& InCardUsageState,
-		const FMatchPlayDeploymentSlotCatalog& InDeploymentSlotCatalog)
+		const FMatchPlayDeploymentSlotCatalog& InDeploymentSlotCatalog,
+		const FMatchPlayPerSideCardSnapshotAuthority&
+			InCardSnapshotAuthority)
 	{
 		FMatchPlayState Result;
 		Result.RuntimeState = InRuntimeState;
 		Result.CardUsageState = InCardUsageState;
 		Result.DeploymentSlotCatalog = InDeploymentSlotCatalog;
+		Result.CardSnapshotAuthority = InCardSnapshotAuthority;
 		return Result;
 	}
 };

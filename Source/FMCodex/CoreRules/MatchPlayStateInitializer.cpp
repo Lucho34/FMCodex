@@ -3,8 +3,8 @@
 FMatchPlayStateInitializeResult
 FMatchPlayStateInitializer::InitializeMatchPlayState(
 	const FMatchRuntimeState& RuntimeState,
-	const TArray<FName>& PlayerACardIds,
-	const TArray<FName>& PlayerBCardIds,
+	const TArray<FPlayerCardData>& PlayerADeck,
+	const TArray<FPlayerCardData>& PlayerBDeck,
 	const FMatchPlayDeploymentSlotCatalog& DeploymentSlotCatalog)
 {
 	FMatchPlayStateInitializeResult Result;
@@ -24,10 +24,51 @@ FMatchPlayStateInitializer::InitializeMatchPlayState(
 		return Result;
 	}
 
+	const FMatchPlayCardSnapshotAuthorityBuildResult AuthorityBuildResult =
+		FMatchPlayCardSnapshotAuthorityBuilder::Build(
+			PlayerADeck,
+			PlayerBDeck);
+	if (!AuthorityBuildResult.bSuccess)
+	{
+		Result.ErrorCode = EMatchPlayStateInitializeErrorCode
+			::CardSnapshotAuthorityInitializationFailed;
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode =
+			AuthorityBuildResult.ErrorCode;
+		Result.UnderlyingCardSnapshotAuthorityFailingPlayerSide =
+			AuthorityBuildResult.FailingPlayerSide;
+		Result.UnderlyingDeckValidationErrorCode =
+			AuthorityBuildResult.UnderlyingDeckValidationErrorCode;
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode =
+			AuthorityBuildResult
+				.UnderlyingPlayerCardRuleSnapshotValidationErrorCode;
+		Result.ErrorMessage = AuthorityBuildResult.ErrorMessage;
+		return Result;
+	}
+
+	TArray<FName> DerivedPlayerACardIds;
+	DerivedPlayerACardIds.Reserve(AuthorityBuildResult.CardSnapshotAuthority
+		.PlayerACardSnapshots.Cards.Num());
+	for (const FPlayerCardRuleSnapshot& Snapshot :
+		AuthorityBuildResult.CardSnapshotAuthority
+			.PlayerACardSnapshots.Cards)
+	{
+		DerivedPlayerACardIds.Add(Snapshot.CardId);
+	}
+
+	TArray<FName> DerivedPlayerBCardIds;
+	DerivedPlayerBCardIds.Reserve(AuthorityBuildResult.CardSnapshotAuthority
+		.PlayerBCardSnapshots.Cards.Num());
+	for (const FPlayerCardRuleSnapshot& Snapshot :
+		AuthorityBuildResult.CardSnapshotAuthority
+			.PlayerBCardSnapshots.Cards)
+	{
+		DerivedPlayerBCardIds.Add(Snapshot.CardId);
+	}
+
 	const FMatchCardUsageInitializeResult CardUsageResult =
 		FMatchCardUsageInitializer::InitializeMatchCardUsageState(
-			PlayerACardIds,
-			PlayerBCardIds);
+			DerivedPlayerACardIds,
+			DerivedPlayerBCardIds);
 	if (!CardUsageResult.bSuccess)
 	{
 		Result.ErrorCode =
@@ -40,7 +81,8 @@ FMatchPlayStateInitializer::InitializeMatchPlayState(
 	Result.MatchPlayState = FMatchPlayState::Create(
 		RuntimeState,
 		CardUsageResult.InitializedCardUsageState,
-		DeploymentSlotCatalog);
+		DeploymentSlotCatalog,
+		AuthorityBuildResult.CardSnapshotAuthority);
 	Result.bSuccess = true;
 	return Result;
 }

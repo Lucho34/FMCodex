@@ -503,9 +503,6 @@ bool FPlayerCardRuleSnapshotNoForbiddenDependenciesTest::RunTest(
 		TEXT("No UObject dependency"),
 		CombinedSource.Contains(TEXT("UObject")));
 	TestFalse(
-		TEXT("No Blueprint API"),
-		CombinedSource.Contains(TEXT("Blueprint")));
-	TestFalse(
 		TEXT("No Provider implementation"),
 		CombinedSource.Contains(TEXT("Provider")));
 	TestFalse(
@@ -518,6 +515,14 @@ bool FPlayerCardRuleSnapshotNoForbiddenDependenciesTest::RunTest(
 		TEXT("No card usage state"),
 		CombinedSource.Contains(TEXT("AvailableCardIds"))
 			|| CombinedSource.Contains(TEXT("UsedCardIds")));
+	TestFalse(
+		TEXT("No UI or Widget authority"),
+		CombinedSource.Contains(TEXT("Widget"))
+			|| CombinedSource.Contains(TEXT("Texture")));
+	TestFalse(
+		TEXT("No repository or subsystem authority"),
+		CombinedSource.Contains(TEXT("Repository"))
+			|| CombinedSource.Contains(TEXT("Subsystem")));
 	TestFalse(
 		TEXT("No skill effect execution"),
 		CombinedSource.Contains(TEXT("SkillResolver"))

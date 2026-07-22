@@ -62,6 +62,20 @@ namespace MatchPlayAttackFlowTests
 		return Catalog;
 	}
 
+	FMatchPlayPerSideCardSnapshotAuthority MakeCardSnapshotAuthority()
+	{
+		FPlayerCardRuleSnapshot PlayerACard;
+		PlayerACard.CardId = CardA1;
+		PlayerACard.PositionTypes = { EPlayerPositionType::Attack };
+		FPlayerCardRuleSnapshot PlayerBCard;
+		PlayerBCard.CardId = CardB1;
+		PlayerBCard.PositionTypes = { EPlayerPositionType::Defense };
+		FMatchPlayPerSideCardSnapshotAuthority Authority;
+		Authority.PlayerACardSnapshots.Cards.Add(PlayerACard);
+		Authority.PlayerBCardSnapshots.Cards.Add(PlayerBCard);
+		return Authority;
+	}
+
 	FMatchPlayState MakeMatchPlayState(
 		const EInitialTurnOrderPlayer CurrentPlayer =
 			EInitialTurnOrderPlayer::PlayerA,
@@ -83,6 +97,7 @@ namespace MatchPlayAttackFlowTests
 				PlayerBUsed);
 		State.CardUsageState = MakeCardUsageState();
 		State.DeploymentSlotCatalog = MakeDeploymentSlotCatalog();
+		State.CardSnapshotAuthority = MakeCardSnapshotAuthority();
 		return State;
 	}
 
@@ -718,6 +733,13 @@ bool FMatchPlayAttackPreservesDeploymentSlotCatalogTest::RunTest(
 			->CompareScriptStruct(
 				&Result.UpdatedMatchPlayState.DeploymentSlotCatalog,
 				&State.DeploymentSlotCatalog,
+				0));
+	TestTrue(
+		TEXT("Successful attack flow preserves card snapshot authority"),
+		FMatchPlayPerSideCardSnapshotAuthority::StaticStruct()
+			->CompareScriptStruct(
+				&Result.UpdatedMatchPlayState.CardSnapshotAuthority,
+				&State.CardSnapshotAuthority,
 				0));
 	TestFalse(
 		TEXT("Existing attack flow still returns no current attack"),

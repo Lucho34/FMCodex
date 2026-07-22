@@ -28,12 +28,6 @@ struct FMCODEX_API FMatchPlayOpeningInitializeInput
 	FMatchOpeningResolveInput OpeningInput;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Play Opening")
-	TArray<FName> PlayerACardIds;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Play Opening")
-	TArray<FName> PlayerBCardIds;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Play Opening")
 	FMatchPlayDeploymentSlotCatalog DeploymentSlotCatalog;
 };
 
@@ -71,6 +65,24 @@ struct FMCODEX_API FMatchPlayOpeningInitializeResult
 	EMatchPlayDeploymentSlotCatalogValidationErrorCode
 		UnderlyingDeploymentSlotCatalogValidationErrorCode =
 			EMatchPlayDeploymentSlotCatalogValidationErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play Opening")
+	EMatchPlayCardSnapshotAuthorityBuildErrorCode
+		UnderlyingCardSnapshotAuthorityBuildErrorCode =
+			EMatchPlayCardSnapshotAuthorityBuildErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play Opening")
+	EInitialTurnOrderPlayer UnderlyingCardSnapshotAuthorityFailingPlayerSide =
+		EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play Opening")
+	EDeckValidationErrorCode UnderlyingDeckValidationErrorCode =
+		EDeckValidationErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play Opening")
+	EPlayerCardRuleSnapshotValidationErrorCode
+		UnderlyingPlayerCardRuleSnapshotValidationErrorCode =
+			EPlayerCardRuleSnapshotValidationErrorCode::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play Opening")
 	bool bRequiresTieBreakerReroll = false;

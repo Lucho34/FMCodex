@@ -51,6 +51,16 @@ namespace MatchPlayBeginOrdinaryAttackTests
 		Slot.SlotId = TEXT("SharedBeginSlot");
 		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
 		State.DeploymentSlotCatalog.Slots.Add(Slot);
+		FPlayerCardRuleSnapshot PlayerASnapshot;
+		PlayerASnapshot.CardId = PlayerACard;
+		PlayerASnapshot.PositionTypes = { EPlayerPositionType::Attack };
+		FPlayerCardRuleSnapshot PlayerBSnapshot;
+		PlayerBSnapshot.CardId = PlayerBCard;
+		PlayerBSnapshot.PositionTypes = { EPlayerPositionType::Defense };
+		State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.Add(
+			PlayerASnapshot);
+		State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.Add(
+			PlayerBSnapshot);
 		return State;
 	}
 
@@ -486,6 +496,13 @@ bool FMatchPlayBeginOrdinaryAttackPreservesCatalogTest::RunTest(
 			->CompareScriptStruct(
 				&Result.AfterState.DeploymentSlotCatalog,
 				&BeforeState.DeploymentSlotCatalog,
+				0));
+	TestTrue(
+		TEXT("Begin preserves card snapshot authority"),
+		FMatchPlayPerSideCardSnapshotAuthority::StaticStruct()
+			->CompareScriptStruct(
+				&Result.AfterState.CardSnapshotAuthority,
+				&BeforeState.CardSnapshotAuthority,
 				0));
 	return true;
 }

@@ -50,8 +50,8 @@ FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(
 	const FMatchPlayStateInitializeResult PlayStateResult =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			RuntimeResult.RuntimeState,
-			Input.PlayerACardIds,
-			Input.PlayerBCardIds,
+			Input.OpeningInput.PlayerADeck,
+			Input.OpeningInput.PlayerBDeck,
 			Input.DeploymentSlotCatalog);
 	if (!PlayStateResult.bSuccess)
 	{
@@ -64,6 +64,17 @@ FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(
 		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode =
 			PlayStateResult
 				.UnderlyingDeploymentSlotCatalogValidationErrorCode;
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode =
+			PlayStateResult
+				.UnderlyingCardSnapshotAuthorityBuildErrorCode;
+		Result.UnderlyingCardSnapshotAuthorityFailingPlayerSide =
+			PlayStateResult
+				.UnderlyingCardSnapshotAuthorityFailingPlayerSide;
+		Result.UnderlyingDeckValidationErrorCode =
+			PlayStateResult.UnderlyingDeckValidationErrorCode;
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode =
+			PlayStateResult
+				.UnderlyingPlayerCardRuleSnapshotValidationErrorCode;
 		Result.ErrorMessage = PlayStateResult.ErrorMessage;
 		return Result;
 	}

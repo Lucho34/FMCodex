@@ -59,6 +59,16 @@ namespace MatchPlayFinishDeploymentTests
 		Slot.SlotId = TEXT("SharedFinishSlot");
 		Slot.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerB;
 		State.DeploymentSlotCatalog.Slots.Add(Slot);
+		FPlayerCardRuleSnapshot PlayerASnapshot;
+		PlayerASnapshot.CardId = PlayerAAvailableCard;
+		PlayerASnapshot.PositionTypes = { EPlayerPositionType::Attack };
+		FPlayerCardRuleSnapshot PlayerBSnapshot;
+		PlayerBSnapshot.CardId = PlayerBAvailableCard;
+		PlayerBSnapshot.PositionTypes = { EPlayerPositionType::Defense };
+		State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.Add(
+			PlayerASnapshot);
+		State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.Add(
+			PlayerBSnapshot);
 		State.bHasCurrentAttack = true;
 		State.CurrentAttack.Phase = Phase;
 		State.CurrentAttack.AttackSequence = AttackSequence;
@@ -145,9 +155,11 @@ MATCH_PLAY_FINISH_DEPLOYMENT_TEST(
 bool FMatchPlayFinishDeploymentPlayerAAttackerFirstTest::RunTest(
 	const FString& Parameters)
 {
+	const FMatchPlayState BeforeState =
+		MatchPlayFinishDeploymentTests::MakeState();
 	const FMatchPlayFinishDeploymentResult Result =
 		FMatchPlayFinishDeployment::Finish(
-			MatchPlayFinishDeploymentTests::MakeState(),
+			BeforeState,
 			MatchPlayFinishDeploymentTests::ValidAttackSequence,
 			EInitialTurnOrderPlayer::PlayerA);
 	TestTrue(TEXT("Finish succeeds"), Result.bSuccess);
@@ -161,6 +173,13 @@ bool FMatchPlayFinishDeploymentPlayerAAttackerFirstTest::RunTest(
 	TestEqual(TEXT("Legal side rotates to PlayerB"),
 		Result.AfterState.CurrentAttack.CurrentLegalDeploymentSide,
 		EInitialTurnOrderPlayer::PlayerB);
+	TestTrue(
+		TEXT("First Finish preserves card snapshot authority"),
+		FMatchPlayPerSideCardSnapshotAuthority::StaticStruct()
+			->CompareScriptStruct(
+				&Result.AfterState.CardSnapshotAuthority,
+				&BeforeState.CardSnapshotAuthority,
+				0));
 	return true;
 }
 
@@ -246,13 +265,15 @@ MATCH_PLAY_FINISH_DEPLOYMENT_TEST(
 bool FMatchPlayFinishDeploymentPlayerASecondTest::RunTest(
 	const FString& Parameters)
 {
+	const FMatchPlayState BeforeState =
+		MatchPlayFinishDeploymentTests::MakeState(
+			EInitialTurnOrderPlayer::PlayerB,
+			EInitialTurnOrderPlayer::PlayerA,
+			true,
+			false);
 	const FMatchPlayFinishDeploymentResult Result =
 		FMatchPlayFinishDeployment::Finish(
-			MatchPlayFinishDeploymentTests::MakeState(
-				EInitialTurnOrderPlayer::PlayerB,
-				EInitialTurnOrderPlayer::PlayerA,
-				true,
-				false),
+			BeforeState,
 			MatchPlayFinishDeploymentTests::ValidAttackSequence,
 			EInitialTurnOrderPlayer::PlayerA);
 	TestTrue(TEXT("Second Finish succeeds"), Result.bSuccess);
@@ -266,6 +287,13 @@ bool FMatchPlayFinishDeploymentPlayerASecondTest::RunTest(
 	TestEqual(TEXT("Legal side is cleared"),
 		Result.AfterState.CurrentAttack.CurrentLegalDeploymentSide,
 		EInitialTurnOrderPlayer::None);
+	TestTrue(
+		TEXT("Resolution transition preserves card snapshot authority"),
+		FMatchPlayPerSideCardSnapshotAuthority::StaticStruct()
+			->CompareScriptStruct(
+				&Result.AfterState.CardSnapshotAuthority,
+				&BeforeState.CardSnapshotAuthority,
+				0));
 	return true;
 }
 

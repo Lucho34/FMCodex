@@ -36,14 +36,64 @@ namespace MatchPlayStateInitializerTests
 		return State;
 	}
 
-	TArray<FName> MakePlayerACards()
+	FPlayerCardData MakeCard(
+		const FName CardId,
+		const bool bIsGoalkeeper)
 	{
-		return { PlayerACard1, PlayerACard2 };
+		FPlayerCardData Card;
+		Card.CardId = CardId;
+		Card.PositionTypes = {
+			bIsGoalkeeper
+				? EPlayerPositionType::Goalkeeper
+				: EPlayerPositionType::Attack
+		};
+		Card.bIsGoalkeeper = bIsGoalkeeper;
+		return Card;
 	}
 
-	TArray<FName> MakePlayerBCards()
+	TArray<FPlayerCardData> MakeDeck(
+		const TCHAR* Prefix,
+		const FName FirstCardId,
+		const FName SecondCardId)
 	{
-		return { PlayerBCard1, PlayerBCard2 };
+		TArray<FPlayerCardData> Deck;
+		Deck.Reserve(20);
+		Deck.Add(MakeCard(FirstCardId, false));
+		Deck.Add(MakeCard(SecondCardId, false));
+		for (int32 Index = 2; Index < 19; ++Index)
+		{
+			Deck.Add(MakeCard(
+				FName(*FString::Printf(
+					TEXT("%s_%02d"),
+					Prefix,
+					Index)),
+				false));
+		}
+		Deck.Add(MakeCard(
+			FName(*FString::Printf(TEXT("%s_GK"), Prefix)),
+			true));
+		return Deck;
+	}
+
+	TArray<FPlayerCardData> MakePlayerACards()
+	{
+		return MakeDeck(TEXT("PlayerA"), PlayerACard1, PlayerACard2);
+	}
+
+	TArray<FPlayerCardData> MakePlayerBCards()
+	{
+		return MakeDeck(TEXT("PlayerB"), PlayerBCard1, TEXT("PlayerBCard2"));
+	}
+
+	TArray<FName> GetCardIds(const TArray<FPlayerCardData>& Deck)
+	{
+		TArray<FName> CardIds;
+		CardIds.Reserve(Deck.Num());
+		for (const FPlayerCardData& Card : Deck)
+		{
+			CardIds.Add(Card.CardId);
+		}
+		return CardIds;
 	}
 
 	FMatchPlayDeploymentSlotCatalog MakeDeploymentSlotCatalog()
@@ -73,16 +123,16 @@ bool FMatchPlayStateInitializerSuccessTest::RunTest(const FString& Parameters)
 {
 	const FMatchRuntimeState RuntimeState =
 		MatchPlayStateInitializerTests::MakeRuntimeState();
-	const TArray<FName> PlayerACardIds =
+	const TArray<FPlayerCardData> PlayerADeck =
 		MatchPlayStateInitializerTests::MakePlayerACards();
-	const TArray<FName> PlayerBCardIds =
+	const TArray<FPlayerCardData> PlayerBDeck =
 		MatchPlayStateInitializerTests::MakePlayerBCards();
 
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			RuntimeState,
-			PlayerACardIds,
-			PlayerBCardIds,
+			PlayerADeck,
+			PlayerBDeck,
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestTrue(TEXT("Match play state initialization succeeds"), Result.bSuccess);
@@ -98,6 +148,20 @@ bool FMatchPlayStateInitializerSuccessTest::RunTest(const FString& Parameters)
 		TEXT("Underlying catalog error code is None"),
 		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
 		EMatchPlayDeploymentSlotCatalogValidationErrorCode::None);
+	TestEqual(
+		TEXT("PlayerA snapshot authority comes from the deck"),
+		Result.MatchPlayState.CardSnapshotAuthority
+			.PlayerACardSnapshots.Cards.Num(),
+		20);
+	TestEqual(
+		TEXT("PlayerB snapshot authority comes from the deck"),
+		Result.MatchPlayState.CardSnapshotAuthority
+			.PlayerBCardSnapshots.Cards.Num(),
+		20);
+	TestEqual(
+		TEXT("Successful snapshot build error is None"),
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode,
+		EMatchPlayCardSnapshotAuthorityBuildErrorCode::None);
 	return true;
 }
 
@@ -147,19 +211,20 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerPlayerACardsTest::RunTest(
 	const FString& Parameters)
 {
-	const TArray<FName> PlayerACardIds =
+	const TArray<FPlayerCardData> PlayerADeck =
 		MatchPlayStateInitializerTests::MakePlayerACards();
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
-			PlayerACardIds,
+			PlayerADeck,
 			MatchPlayStateInitializerTests::MakePlayerBCards(),
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestTrue(
 		TEXT("PlayerA available cards preserve input"),
 		Result.MatchPlayState.CardUsageState.PlayerACardUsageState
-			.AvailableCardIds == PlayerACardIds);
+			.AvailableCardIds
+			== MatchPlayStateInitializerTests::GetCardIds(PlayerADeck));
 	TestTrue(
 		TEXT("PlayerA used cards start empty"),
 		Result.MatchPlayState.CardUsageState.PlayerACardUsageState
@@ -175,19 +240,20 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerPlayerBCardsTest::RunTest(
 	const FString& Parameters)
 {
-	const TArray<FName> PlayerBCardIds =
+	const TArray<FPlayerCardData> PlayerBDeck =
 		MatchPlayStateInitializerTests::MakePlayerBCards();
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			PlayerBCardIds,
+			PlayerBDeck,
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestTrue(
 		TEXT("PlayerB available cards preserve input"),
 		Result.MatchPlayState.CardUsageState.PlayerBCardUsageState
-			.AvailableCardIds == PlayerBCardIds);
+			.AvailableCardIds
+			== MatchPlayStateInitializerTests::GetCardIds(PlayerBDeck));
 	TestTrue(
 		TEXT("PlayerB used cards start empty"),
 		Result.MatchPlayState.CardUsageState.PlayerBCardUsageState
@@ -235,18 +301,20 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerCardInputsTest::RunTest(
 	const FString& Parameters)
 {
-	const TArray<FName> PlayerACardIds =
+	const TArray<FPlayerCardData> PlayerADeck =
 		MatchPlayStateInitializerTests::MakePlayerACards();
-	const TArray<FName> PlayerBCardIds =
+	const TArray<FPlayerCardData> PlayerBDeck =
 		MatchPlayStateInitializerTests::MakePlayerBCards();
-	const TArray<FName> PlayerASnapshot = PlayerACardIds;
-	const TArray<FName> PlayerBSnapshot = PlayerBCardIds;
+	const int32 PlayerACardCount = PlayerADeck.Num();
+	const int32 PlayerBCardCount = PlayerBDeck.Num();
+	const FName PlayerAFirstCardId = PlayerADeck[0].CardId;
+	const FName PlayerBFirstCardId = PlayerBDeck[0].CardId;
 
 	FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
-			PlayerACardIds,
-			PlayerBCardIds,
+			PlayerADeck,
+			PlayerBDeck,
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 	Result.MatchPlayState.CardUsageState.PlayerACardUsageState
 		.AvailableCardIds.Reset();
@@ -255,10 +323,12 @@ bool FMatchPlayStateInitializerCardInputsTest::RunTest(
 
 	TestTrue(
 		TEXT("PlayerA card input is unchanged"),
-		PlayerACardIds == PlayerASnapshot);
+		PlayerADeck.Num() == PlayerACardCount
+			&& PlayerADeck[0].CardId == PlayerAFirstCardId);
 	TestTrue(
 		TEXT("PlayerB card input is unchanged"),
-		PlayerBCardIds == PlayerBSnapshot);
+		PlayerBDeck.Num() == PlayerBCardCount
+			&& PlayerBDeck[0].CardId == PlayerBFirstCardId);
 	return true;
 }
 
@@ -297,22 +367,30 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerPlayerAInvalidTest::RunTest(
 	const FString& Parameters)
 {
+	TArray<FPlayerCardData> PlayerADeck =
+		MatchPlayStateInitializerTests::MakePlayerACards();
+	PlayerADeck[1].CardId = NAME_None;
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
-			{ MatchPlayStateInitializerTests::PlayerACard1, NAME_None },
+			PlayerADeck,
 			MatchPlayStateInitializerTests::MakePlayerBCards(),
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Invalid PlayerA card fails"), Result.bSuccess);
 	TestEqual(
-		TEXT("Failure is mapped to card usage initialization"),
+		TEXT("Failure is mapped to snapshot authority initialization"),
 		Result.ErrorCode,
-		EMatchPlayStateInitializeErrorCode::CardUsageInitializationFailed);
+		EMatchPlayStateInitializeErrorCode
+			::CardSnapshotAuthorityInitializationFailed);
 	TestEqual(
-		TEXT("PlayerA invalid error is preserved"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::InvalidPlayerACardId);
+		TEXT("PlayerA failure side is preserved"),
+		Result.UnderlyingCardSnapshotAuthorityFailingPlayerSide,
+		EInitialTurnOrderPlayer::PlayerA);
+	TestEqual(
+		TEXT("PlayerA snapshot error is preserved"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::InvalidCardId);
 	return true;
 }
 
@@ -324,18 +402,25 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerPlayerBInvalidTest::RunTest(
 	const FString& Parameters)
 {
+	TArray<FPlayerCardData> PlayerBDeck =
+		MatchPlayStateInitializerTests::MakePlayerBCards();
+	PlayerBDeck[1].CardId = NAME_None;
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			{ NAME_None },
+			PlayerBDeck,
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Invalid PlayerB card fails"), Result.bSuccess);
 	TestEqual(
-		TEXT("PlayerB invalid error is preserved"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::InvalidPlayerBCardId);
+		TEXT("PlayerB failure side is preserved"),
+		Result.UnderlyingCardSnapshotAuthorityFailingPlayerSide,
+		EInitialTurnOrderPlayer::PlayerB);
+	TestEqual(
+		TEXT("PlayerB snapshot error is preserved"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::InvalidCardId);
 	return true;
 }
 
@@ -347,21 +432,21 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerPlayerADuplicateTest::RunTest(
 	const FString& Parameters)
 {
+	TArray<FPlayerCardData> PlayerADeck =
+		MatchPlayStateInitializerTests::MakePlayerACards();
+	PlayerADeck[1].CardId = PlayerADeck[0].CardId;
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
-			{
-				MatchPlayStateInitializerTests::PlayerACard1,
-				MatchPlayStateInitializerTests::PlayerACard1
-			},
+			PlayerADeck,
 			MatchPlayStateInitializerTests::MakePlayerBCards(),
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Duplicate PlayerA card fails"), Result.bSuccess);
 	TestEqual(
-		TEXT("PlayerA duplicate error is preserved"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::DuplicatePlayerACardId);
+		TEXT("PlayerA duplicate snapshot error is preserved"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::DuplicateCardId);
 	return true;
 }
 
@@ -373,21 +458,21 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerPlayerBDuplicateTest::RunTest(
 	const FString& Parameters)
 {
+	TArray<FPlayerCardData> PlayerBDeck =
+		MatchPlayStateInitializerTests::MakePlayerBCards();
+	PlayerBDeck[1].CardId = PlayerBDeck[0].CardId;
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			{
-				MatchPlayStateInitializerTests::PlayerBCard1,
-				MatchPlayStateInitializerTests::PlayerBCard1
-			},
+			PlayerBDeck,
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Duplicate PlayerB card fails"), Result.bSuccess);
 	TestEqual(
-		TEXT("PlayerB duplicate error is preserved"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::DuplicatePlayerBCardId);
+		TEXT("PlayerB duplicate snapshot error is preserved"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::DuplicateCardId);
 	return true;
 }
 
@@ -399,11 +484,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerFailureAtomicTest::RunTest(
 	const FString& Parameters)
 {
+	TArray<FPlayerCardData> PlayerBDeck =
+		MatchPlayStateInitializerTests::MakePlayerBCards();
+	PlayerBDeck[1].CardId = NAME_None;
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			{ MatchPlayStateInitializerTests::PlayerBCard1, NAME_None },
+			PlayerBDeck,
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestFalse(TEXT("Failed initialization is not successful"), Result.bSuccess);
@@ -421,6 +509,14 @@ bool FMatchPlayStateInitializerFailureAtomicTest::RunTest(
 	TestTrue(
 		TEXT("Failed result has no deployment slot catalog"),
 		Result.MatchPlayState.DeploymentSlotCatalog.Slots.IsEmpty());
+	TestTrue(
+		TEXT("Failed result has no PlayerA snapshot authority"),
+		Result.MatchPlayState.CardSnapshotAuthority
+			.PlayerACardSnapshots.Cards.IsEmpty());
+	TestTrue(
+		TEXT("Failed result has no PlayerB snapshot authority"),
+		Result.MatchPlayState.CardSnapshotAuthority
+			.PlayerBCardSnapshots.Cards.IsEmpty());
 	TestTrue(
 		TEXT("Failed result has a diagnostic message"),
 		!Result.ErrorMessage.IsEmpty());
@@ -558,10 +654,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerCatalogPriorityTest::RunTest(
 	const FString& Parameters)
 {
+	TArray<FPlayerCardData> PlayerADeck =
+		MatchPlayStateInitializerTests::MakePlayerACards();
+	PlayerADeck[0].CardId = NAME_None;
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
-			{ NAME_None },
+			PlayerADeck,
 			MatchPlayStateInitializerTests::MakePlayerBCards(),
 			FMatchPlayDeploymentSlotCatalog());
 
@@ -572,9 +671,9 @@ bool FMatchPlayStateInitializerCatalogPriorityTest::RunTest(
 		EMatchPlayStateInitializeErrorCode
 			::DeploymentSlotCatalogValidationFailed);
 	TestEqual(
-		TEXT("Card usage error remains None"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::None);
+		TEXT("Snapshot build error remains None"),
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode,
+		EMatchPlayCardSnapshotAuthorityBuildErrorCode::None);
 	return true;
 }
 
@@ -586,11 +685,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerPostCatalogAtomicTest::RunTest(
 	const FString& Parameters)
 {
+	TArray<FPlayerCardData> PlayerBDeck =
+		MatchPlayStateInitializerTests::MakePlayerBCards();
+	PlayerBDeck[0].CardId = NAME_None;
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
 			MatchPlayStateInitializerTests::MakePlayerACards(),
-			{ NAME_None },
+			PlayerBDeck,
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	const FMatchPlayState DefaultState;
@@ -612,17 +714,21 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayStateInitializerNonCatalogErrorDefaultsTest::RunTest(
 	const FString& Parameters)
 {
+	TArray<FPlayerCardData> PlayerADeck =
+		MatchPlayStateInitializerTests::MakePlayerACards();
+	PlayerADeck[0].CardId = NAME_None;
 	const FMatchPlayStateInitializeResult Result =
 		FMatchPlayStateInitializer::InitializeMatchPlayState(
 			MatchPlayStateInitializerTests::MakeRuntimeState(),
-			{ NAME_None },
+			PlayerADeck,
 			MatchPlayStateInitializerTests::MakePlayerBCards(),
 			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
 
 	TestEqual(
-		TEXT("Card failure remains a card usage failure"),
+		TEXT("Card failure is a snapshot authority failure"),
 		Result.ErrorCode,
-		EMatchPlayStateInitializeErrorCode::CardUsageInitializationFailed);
+		EMatchPlayStateInitializeErrorCode
+			::CardSnapshotAuthorityInitializationFailed);
 	TestEqual(
 		TEXT("Catalog error remains None"),
 		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
@@ -640,8 +746,8 @@ bool FMatchPlayStateInitializerPublicContractTest::RunTest(
 {
 	using FExpectedInitializeFunction = FMatchPlayStateInitializeResult (*)(
 		const FMatchRuntimeState&,
-		const TArray<FName>&,
-		const TArray<FName>&,
+		const TArray<FPlayerCardData>&,
+		const TArray<FPlayerCardData>&,
 		const FMatchPlayDeploymentSlotCatalog&);
 	static_assert(
 		std::is_same_v<
@@ -658,6 +764,55 @@ bool FMatchPlayStateInitializerPublicContractTest::RunTest(
 	TestTrue(
 		TEXT("Default result state has an empty catalog"),
 		DefaultResult.MatchPlayState.DeploymentSlotCatalog.Slots.IsEmpty());
+	TestEqual(
+		TEXT("Default snapshot build error is None"),
+		DefaultResult.UnderlyingCardSnapshotAuthorityBuildErrorCode,
+		EMatchPlayCardSnapshotAuthorityBuildErrorCode::None);
+	TestEqual(
+		TEXT("Default snapshot failing side is None"),
+		DefaultResult.UnderlyingCardSnapshotAuthorityFailingPlayerSide,
+		EInitialTurnOrderPlayer::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerDirectInvalidDeckTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.DirectCallCannotBypassDeckValidation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerDirectInvalidDeckTest::RunTest(
+	const FString& Parameters)
+{
+	TArray<FPlayerCardData> PlayerADeck =
+		MatchPlayStateInitializerTests::MakePlayerACards();
+	PlayerADeck.RemoveAt(0);
+	const FMatchPlayStateInitializeResult Result =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			PlayerADeck,
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
+
+	TestFalse(TEXT("Direct invalid deck call fails"), Result.bSuccess);
+	TestEqual(TEXT("State error identifies snapshot authority"),
+		Result.ErrorCode,
+		EMatchPlayStateInitializeErrorCode
+			::CardSnapshotAuthorityInitializationFailed);
+	TestEqual(TEXT("Builder identifies deck validation"),
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode,
+		EMatchPlayCardSnapshotAuthorityBuildErrorCode::DeckValidationFailed);
+	TestEqual(TEXT("Failing side is PlayerA"),
+		Result.UnderlyingCardSnapshotAuthorityFailingPlayerSide,
+		EInitialTurnOrderPlayer::PlayerA);
+	TestEqual(TEXT("Concrete deck error is propagated"),
+		Result.UnderlyingDeckValidationErrorCode,
+		EDeckValidationErrorCode::InvalidCardCount);
+	const FMatchPlayState DefaultState;
+	TestTrue(TEXT("Failure state remains default"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&Result.MatchPlayState,
+			&DefaultState,
+			0));
 	return true;
 }
 

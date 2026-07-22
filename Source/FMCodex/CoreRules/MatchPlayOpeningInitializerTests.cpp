@@ -79,10 +79,19 @@ namespace MatchPlayOpeningInitializerTests
 		Input.OpeningInput.PlayerBAttackCountD6Roll = 1;
 		Input.OpeningInput.PlayerATieBreakerRoll = 2;
 		Input.OpeningInput.PlayerBTieBreakerRoll = 6;
-		Input.PlayerACardIds = { PlayerACard1, PlayerACard2 };
-		Input.PlayerBCardIds = { PlayerBCard1, PlayerBCard2 };
 		Input.DeploymentSlotCatalog = MakeDeploymentSlotCatalog();
 		return Input;
+	}
+
+	TArray<FName> GetCardIds(const TArray<FPlayerCardData>& Deck)
+	{
+		TArray<FName> CardIds;
+		CardIds.Reserve(Deck.Num());
+		for (const FPlayerCardData& Card : Deck)
+		{
+			CardIds.Add(Card.CardId);
+		}
+		return CardIds;
 	}
 
 	bool IsMatchPlayStateEmpty(const FMatchPlayState& MatchPlayState)
@@ -96,7 +105,11 @@ namespace MatchPlayOpeningInitializerTests
 				.AvailableCardIds.IsEmpty()
 			&& MatchPlayState.CardUsageState.PlayerBCardUsageState
 				.UsedCardIds.IsEmpty()
-			&& MatchPlayState.DeploymentSlotCatalog.Slots.IsEmpty();
+			&& MatchPlayState.DeploymentSlotCatalog.Slots.IsEmpty()
+			&& MatchPlayState.CardSnapshotAuthority
+				.PlayerACardSnapshots.Cards.IsEmpty()
+			&& MatchPlayState.CardSnapshotAuthority
+				.PlayerBCardSnapshots.Cards.IsEmpty();
 	}
 }
 
@@ -124,6 +137,22 @@ bool FMatchPlayOpeningInitializerSuccessTest::RunTest(
 		TEXT("Successful result has no catalog error"),
 		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
 		EMatchPlayDeploymentSlotCatalogValidationErrorCode::None);
+	TestEqual(
+		TEXT("Successful result has no snapshot authority build error"),
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode,
+		EMatchPlayCardSnapshotAuthorityBuildErrorCode::None);
+	TestEqual(
+		TEXT("Successful result has no snapshot authority failing side"),
+		Result.UnderlyingCardSnapshotAuthorityFailingPlayerSide,
+		EInitialTurnOrderPlayer::None);
+	TestEqual(
+		TEXT("Successful result has no deck validation error"),
+		Result.UnderlyingDeckValidationErrorCode,
+		EDeckValidationErrorCode::None);
+	TestEqual(
+		TEXT("Successful result has no snapshot validation error"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::None);
 	return true;
 }
 
@@ -184,7 +213,9 @@ bool FMatchPlayOpeningInitializerPlayerACardsTest::RunTest(
 	TestTrue(
 		TEXT("PlayerA available cards preserve input"),
 		Result.MatchPlayState.CardUsageState.PlayerACardUsageState
-			.AvailableCardIds == Input.PlayerACardIds);
+			.AvailableCardIds
+			== MatchPlayOpeningInitializerTests::GetCardIds(
+				Input.OpeningInput.PlayerADeck));
 	TestTrue(
 		TEXT("PlayerA used cards start empty"),
 		Result.MatchPlayState.CardUsageState.PlayerACardUsageState
@@ -208,7 +239,9 @@ bool FMatchPlayOpeningInitializerPlayerBCardsTest::RunTest(
 	TestTrue(
 		TEXT("PlayerB available cards preserve input"),
 		Result.MatchPlayState.CardUsageState.PlayerBCardUsageState
-			.AvailableCardIds == Input.PlayerBCardIds);
+			.AvailableCardIds
+			== MatchPlayOpeningInitializerTests::GetCardIds(
+				Input.OpeningInput.PlayerBDeck));
 	TestTrue(
 		TEXT("PlayerB used cards start empty"),
 		Result.MatchPlayState.CardUsageState.PlayerBCardUsageState
@@ -366,7 +399,7 @@ bool FMatchPlayOpeningInitializerPlayerAInvalidCardTest::RunTest(
 {
 	FMatchPlayOpeningInitializeInput Input =
 		MatchPlayOpeningInitializerTests::MakeInput();
-	Input.PlayerACardIds.Add(NAME_None);
+	Input.OpeningInput.PlayerADeck[0].CardId = NAME_None;
 
 	const FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
@@ -377,9 +410,18 @@ bool FMatchPlayOpeningInitializerPlayerAInvalidCardTest::RunTest(
 		Result.ErrorCode,
 		EMatchPlayOpeningInitializeErrorCode::PlayStateInitializationFailed);
 	TestEqual(
-		TEXT("PlayerA CardId error is preserved"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::InvalidPlayerACardId);
+		TEXT("PlayerA snapshot error is preserved"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::InvalidCardId);
+	TestEqual(
+		TEXT("PlayerA failure is classified as snapshot validation"),
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode,
+		EMatchPlayCardSnapshotAuthorityBuildErrorCode
+			::SnapshotValidationFailed);
+	TestEqual(
+		TEXT("PlayerA failing side is preserved"),
+		Result.UnderlyingCardSnapshotAuthorityFailingPlayerSide,
+		EInitialTurnOrderPlayer::PlayerA);
 	return true;
 }
 
@@ -393,16 +435,21 @@ bool FMatchPlayOpeningInitializerPlayerBInvalidCardTest::RunTest(
 {
 	FMatchPlayOpeningInitializeInput Input =
 		MatchPlayOpeningInitializerTests::MakeInput();
-	Input.PlayerBCardIds.Add(NAME_None);
+	Input.OpeningInput.PlayerBDeck[0].CardId = NAME_None;
 
 	const FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
 
 	TestFalse(TEXT("Invalid PlayerB CardId fails"), Result.bSuccess);
 	TestEqual(
-		TEXT("PlayerB CardId error is preserved"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::InvalidPlayerBCardId);
+		TEXT("PlayerB snapshot error is preserved"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::InvalidCardId);
+	TestEqual(
+		TEXT("PlayerB failure is classified as snapshot validation"),
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode,
+		EMatchPlayCardSnapshotAuthorityBuildErrorCode
+			::SnapshotValidationFailed);
 	return true;
 }
 
@@ -416,16 +463,17 @@ bool FMatchPlayOpeningInitializerPlayerADuplicateTest::RunTest(
 {
 	FMatchPlayOpeningInitializeInput Input =
 		MatchPlayOpeningInitializerTests::MakeInput();
-	Input.PlayerACardIds.Add(MatchPlayOpeningInitializerTests::PlayerACard1);
+	Input.OpeningInput.PlayerADeck[1].CardId =
+		Input.OpeningInput.PlayerADeck[0].CardId;
 
 	const FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
 
 	TestFalse(TEXT("Duplicate PlayerA CardId fails"), Result.bSuccess);
 	TestEqual(
-		TEXT("PlayerA duplicate error is preserved"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::DuplicatePlayerACardId);
+		TEXT("PlayerA duplicate snapshot error is preserved"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::DuplicateCardId);
 	return true;
 }
 
@@ -439,16 +487,17 @@ bool FMatchPlayOpeningInitializerPlayerBDuplicateTest::RunTest(
 {
 	FMatchPlayOpeningInitializeInput Input =
 		MatchPlayOpeningInitializerTests::MakeInput();
-	Input.PlayerBCardIds.Add(MatchPlayOpeningInitializerTests::PlayerBCard1);
+	Input.OpeningInput.PlayerBDeck[1].CardId =
+		Input.OpeningInput.PlayerBDeck[0].CardId;
 
 	const FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
 
 	TestFalse(TEXT("Duplicate PlayerB CardId fails"), Result.bSuccess);
 	TestEqual(
-		TEXT("PlayerB duplicate error is preserved"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::DuplicatePlayerBCardId);
+		TEXT("PlayerB duplicate snapshot error is preserved"),
+		Result.UnderlyingPlayerCardRuleSnapshotValidationErrorCode,
+		EPlayerCardRuleSnapshotValidationErrorCode::DuplicateCardId);
 	return true;
 }
 
@@ -488,7 +537,7 @@ bool FMatchPlayOpeningInitializerCardAtomicTest::RunTest(
 {
 	FMatchPlayOpeningInitializeInput Input =
 		MatchPlayOpeningInitializerTests::MakeInput();
-	Input.PlayerBCardIds.Add(NAME_None);
+	Input.OpeningInput.PlayerBDeck[0].CardId = NAME_None;
 
 	const FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
@@ -499,9 +548,10 @@ bool FMatchPlayOpeningInitializerCardAtomicTest::RunTest(
 		MatchPlayOpeningInitializerTests::IsMatchPlayStateEmpty(
 			Result.MatchPlayState));
 	TestEqual(
-		TEXT("Card usage failure retains play state layer error"),
+		TEXT("Snapshot failure retains play state layer error"),
 		Result.UnderlyingPlayStateInitializeErrorCode,
-		EMatchPlayStateInitializeErrorCode::CardUsageInitializationFailed);
+		EMatchPlayStateInitializeErrorCode
+			::CardSnapshotAuthorityInitializationFailed);
 	return true;
 }
 
@@ -521,8 +571,6 @@ bool FMatchPlayOpeningInitializerInputsTest::RunTest(
 	const int32 PlayerAD6 = Input.OpeningInput.PlayerAAttackCountD6Roll;
 	const int32 PlayerATieBreaker =
 		Input.OpeningInput.PlayerATieBreakerRoll;
-	const TArray<FName> PlayerACards = Input.PlayerACardIds;
-	const TArray<FName> PlayerBCards = Input.PlayerBCardIds;
 
 	FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
@@ -546,12 +594,6 @@ bool FMatchPlayOpeningInitializerInputsTest::RunTest(
 		TEXT("PlayerA external tie breaker input is unchanged"),
 		Input.OpeningInput.PlayerATieBreakerRoll,
 		PlayerATieBreaker);
-	TestTrue(
-		TEXT("PlayerA card IDs are unchanged"),
-		Input.PlayerACardIds == PlayerACards);
-	TestTrue(
-		TEXT("PlayerB card IDs are unchanged"),
-		Input.PlayerBCardIds == PlayerBCards);
 	return true;
 }
 
@@ -737,7 +779,7 @@ bool FMatchPlayOpeningInitializerCatalogPriorityTest::RunTest(
 {
 	FMatchPlayOpeningInitializeInput Input =
 		MatchPlayOpeningInitializerTests::MakeInput();
-	Input.PlayerACardIds = { NAME_None };
+	Input.OpeningInput.PlayerADeck[0].CardId = NAME_None;
 	Input.DeploymentSlotCatalog = FMatchPlayDeploymentSlotCatalog();
 	const FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
@@ -748,9 +790,9 @@ bool FMatchPlayOpeningInitializerCatalogPriorityTest::RunTest(
 		EMatchPlayStateInitializeErrorCode
 			::DeploymentSlotCatalogValidationFailed);
 	TestEqual(
-		TEXT("Card usage validation was not reached"),
-		Result.UnderlyingCardUsageErrorCode,
-		EMatchCardUsageInitializeErrorCode::None);
+		TEXT("Snapshot authority validation was not reached"),
+		Result.UnderlyingCardSnapshotAuthorityBuildErrorCode,
+		EMatchPlayCardSnapshotAuthorityBuildErrorCode::None);
 	return true;
 }
 
@@ -764,14 +806,15 @@ bool FMatchPlayOpeningInitializerNonCatalogDefaultsTest::RunTest(
 {
 	FMatchPlayOpeningInitializeInput Input =
 		MatchPlayOpeningInitializerTests::MakeInput();
-	Input.PlayerBCardIds = { NAME_None };
+	Input.OpeningInput.PlayerBDeck[0].CardId = NAME_None;
 	const FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
 
 	TestEqual(
-		TEXT("Card failure reaches state initialization"),
+		TEXT("Snapshot failure reaches state initialization"),
 		Result.UnderlyingPlayStateInitializeErrorCode,
-		EMatchPlayStateInitializeErrorCode::CardUsageInitializationFailed);
+		EMatchPlayStateInitializeErrorCode
+			::CardSnapshotAuthorityInitializationFailed);
 	TestEqual(
 		TEXT("Non-catalog failure leaves catalog error None"),
 		Result.UnderlyingDeploymentSlotCatalogValidationErrorCode,
@@ -801,8 +844,13 @@ bool FMatchPlayOpeningInitializerIndependentOpeningsTest::RunTest(
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(SecondInput);
 	const FName FirstSlotId =
 		First.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId;
+	const FName FirstSnapshotCardId = First.MatchPlayState
+		.CardSnapshotAuthority.PlayerACardSnapshots.Cards[0].CardId;
 	Second.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId =
 		TEXT("SecondResultMutation");
+	Second.MatchPlayState.CardSnapshotAuthority
+		.PlayerACardSnapshots.Cards[0].CardId =
+			TEXT("SecondSnapshotMutation");
 
 	TestTrue(TEXT("First opening succeeds"), First.bSuccess);
 	TestTrue(TEXT("Second opening succeeds"), Second.bSuccess);
@@ -814,6 +862,85 @@ bool FMatchPlayOpeningInitializerIndependentOpeningsTest::RunTest(
 		TEXT("Two match states own independent catalog values"),
 		First.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId,
 		Second.MatchPlayState.DeploymentSlotCatalog.Slots[0].SlotId);
+	TestEqual(
+		TEXT("Second snapshot mutation does not modify first state"),
+		First.MatchPlayState.CardSnapshotAuthority
+			.PlayerACardSnapshots.Cards[0].CardId,
+		FirstSnapshotCardId);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerDeckMutationIsolationTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.DeckMutationDoesNotChangeSnapshotAuthority",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerDeckMutationIsolationTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+	const FName StateCardId = Result.MatchPlayState.CardSnapshotAuthority
+		.PlayerACardSnapshots.Cards[0].CardId;
+	Input.OpeningInput.PlayerADeck[0].CardId = TEXT("CallerMutation");
+	Input.OpeningInput.PlayerADeck.Reset();
+
+	TestTrue(TEXT("Opening succeeds"), Result.bSuccess);
+	TestEqual(
+		TEXT("State snapshot authority owns a value copy"),
+		Result.MatchPlayState.CardSnapshotAuthority
+			.PlayerACardSnapshots.Cards[0].CardId,
+		StateCardId);
+	TestEqual(
+		TEXT("State snapshot count remains complete"),
+		Result.MatchPlayState.CardSnapshotAuthority
+			.PlayerACardSnapshots.Cards.Num(),
+		20);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerSameCardIdAcrossSidesTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.SameCardIdAcrossSidesIsIsolated",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerSameCardIdAcrossSidesTest::RunTest(
+	const FString& Parameters)
+{
+	const FName SharedCardId(TEXT("Shared01"));
+	FMatchPlayOpeningInitializeInput Input =
+		MatchPlayOpeningInitializerTests::MakeInput();
+	Input.OpeningInput.PlayerADeck[0].CardId = SharedCardId;
+	Input.OpeningInput.PlayerADeck[0].Attributes.LongShot = 6;
+	Input.OpeningInput.PlayerBDeck[0].CardId = SharedCardId;
+	Input.OpeningInput.PlayerBDeck[0].Attributes.LongShot = 3;
+
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
+	const FMatchPlayCardSnapshotAuthorityQueryResult PlayerAQuery =
+		FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+			Result.MatchPlayState.CardSnapshotAuthority,
+			EInitialTurnOrderPlayer::PlayerA,
+			SharedCardId);
+	const FMatchPlayCardSnapshotAuthorityQueryResult PlayerBQuery =
+		FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+			Result.MatchPlayState.CardSnapshotAuthority,
+			EInitialTurnOrderPlayer::PlayerB,
+			SharedCardId);
+
+	TestTrue(TEXT("Cross-side same CardId opening succeeds"), Result.bSuccess);
+	TestEqual(TEXT("PlayerA query returns PlayerA rules"),
+		PlayerAQuery.Snapshot.Attributes.LongShot, 6);
+	TestEqual(TEXT("PlayerB query returns PlayerB rules"),
+		PlayerBQuery.Snapshot.Attributes.LongShot, 3);
+	TestTrue(TEXT("PlayerA CardUsage includes shared CardId"),
+		Result.MatchPlayState.CardUsageState.PlayerACardUsageState
+			.AvailableCardIds.Contains(SharedCardId));
+	TestTrue(TEXT("PlayerB CardUsage includes shared CardId"),
+		Result.MatchPlayState.CardUsageState.PlayerBCardUsageState
+			.AvailableCardIds.Contains(SharedCardId));
 	return true;
 }
 
