@@ -24,10 +24,9 @@ FMatchPlayDeploymentTurnRotation::Resolve(
 	const bool bAttackerDeploymentFinished,
 	const bool bDefenderDeploymentFinished)
 {
-	using namespace MatchPlayDeploymentTurnRotationImplementation;
-
 	FMatchPlayDeploymentTurnRotationResult Result;
-	if (!IsPlayer(CurrentAttackingPlayer))
+	if (!MatchPlayDeploymentTurnRotationImplementation::IsPlayer(
+			CurrentAttackingPlayer))
 	{
 		Result.ErrorCode =
 			EMatchPlayDeploymentTurnRotationErrorCode
@@ -37,7 +36,8 @@ FMatchPlayDeploymentTurnRotation::Resolve(
 		return Result;
 	}
 
-	if (!IsPlayer(ActingSide))
+	if (!MatchPlayDeploymentTurnRotationImplementation::IsPlayer(
+			ActingSide))
 	{
 		Result.ErrorCode =
 			EMatchPlayDeploymentTurnRotationErrorCode::InvalidActingSide;
@@ -64,6 +64,7 @@ FMatchPlayDeploymentTurnRotation::Resolve(
 	Result.NextPhase = EMatchPlayCurrentAttackPhase::Deployment;
 	Result.NextLegalDeploymentSide = bOpponentAlreadyFinished
 		? ActingSide
-		: OtherSide(ActingSide);
+		: MatchPlayDeploymentTurnRotationImplementation::OtherSide(
+			ActingSide);
 	return Result;
 }
