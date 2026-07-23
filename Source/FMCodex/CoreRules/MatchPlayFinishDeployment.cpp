@@ -1,5 +1,7 @@
 #include "MatchPlayFinishDeployment.h"
 
+#include "MatchPlayDeploymentTurnRotation.h"
+
 namespace MatchPlayFinishDeployment
 {
 	void SetError(
@@ -15,14 +17,6 @@ namespace MatchPlayFinishDeployment
 	{
 		return Player == EInitialTurnOrderPlayer::PlayerA
 			|| Player == EInitialTurnOrderPlayer::PlayerB;
-	}
-
-	EInitialTurnOrderPlayer OtherSide(
-		const EInitialTurnOrderPlayer Player)
-	{
-		return Player == EInitialTurnOrderPlayer::PlayerA
-			? EInitialTurnOrderPlayer::PlayerB
-			: EInitialTurnOrderPlayer::PlayerA;
 	}
 }
 
@@ -169,21 +163,32 @@ FMatchPlayFinishDeploymentResult FMatchPlayFinishDeployment::Finish(
 		WorkingAttack.bDefenderDeploymentFinished = true;
 	}
 
-	const bool bOtherSideAlreadyFinished =
-		bRequestingSideIsAttacker
-			? WorkingAttack.bDefenderDeploymentFinished
-			: WorkingAttack.bAttackerDeploymentFinished;
-	if (bOtherSideAlreadyFinished)
+	const FMatchPlayDeploymentTurnRotationResult RotationResult =
+		FMatchPlayDeploymentTurnRotation::Resolve(
+			CurrentAttackingPlayer,
+			RequestingSide,
+			WorkingAttack.bAttackerDeploymentFinished,
+			WorkingAttack.bDefenderDeploymentFinished);
+	if (!RotationResult.bSuccess)
 	{
-		WorkingAttack.Phase = EMatchPlayCurrentAttackPhase::Resolution;
-		WorkingAttack.CurrentLegalDeploymentSide =
-			EInitialTurnOrderPlayer::None;
+		const EMatchPlayFinishDeploymentErrorCode ErrorCode =
+			RotationResult.ErrorCode
+				== EMatchPlayDeploymentTurnRotationErrorCode
+					::InvalidCurrentAttackingPlayer
+					? EMatchPlayFinishDeploymentErrorCode
+						::InvalidCurrentAttackingPlayer
+					: EMatchPlayFinishDeploymentErrorCode
+						::InvalidRequestingSide;
+		MatchPlayFinishDeployment::SetError(
+			Result,
+			ErrorCode,
+			*RotationResult.ErrorMessage);
+		return Result;
 	}
-	else
-	{
-		WorkingAttack.CurrentLegalDeploymentSide =
-			MatchPlayFinishDeployment::OtherSide(RequestingSide);
-	}
+
+	WorkingAttack.Phase = RotationResult.NextPhase;
+	WorkingAttack.CurrentLegalDeploymentSide =
+		RotationResult.NextLegalDeploymentSide;
 
 	Result.AfterState = MoveTemp(WorkingState);
 	Result.bSuccess = true;
