@@ -351,4 +351,34 @@ CurrentAttack occupancy 不注册独立持久模块：`DeploymentPlacements` 是
 
 7.91 精确专项为 Validator 12、Snapshot Query 8、Authority 18、State 9、State Initializer 21、Opening 27、AttackFlow 18、Begin 17、Finish 23，全部通过；MatchPlay 424/424、CoreRules 1646/1646。旧的无尾点过滤器聚合数字 30/30 同时匹配 State 与 StateInitializer，不是 State 单组注册数。
 
-ordinary deployment writer / availability 尚未注册为生产模块。下一阶段仅登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。
+在 7.92 历史关闭快照中，ordinary deployment writer / availability 尚未注册为生产模块；当时的下一阶段仅登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。
+
+## MatchPlay Ordinary Player Deployment（7.93–7.97）
+
+上一行是 7.92 历史状态；当前模块登记如下：
+
+| 模块 | 职责 | 直接上游 | 直接下游 | 当前状态 | 禁止边界 |
+| --- | --- | --- | --- | --- | --- |
+| `MatchPlayOrdinaryDeploymentLegality` | 以唯一 `Evaluate` 按 22 步首错顺序检查 State、sequence、side、Snapshot、CardUsage、duplicate、GK、Catalog、occupancy、Zone 与 Position。 | `FMatchPlayState`、ordinary request。 | Availability、Writer。 | Implemented；30 tests。 | 只读；不接受 caller Snapshot/Catalog/Zone；不修改 State。 |
+| `MatchPlayOrdinaryDeploymentAvailability` | 按 Catalog 原顺序对 Slot 复用 Legality，返回 LegalSlotIds、逐 Slot 结果和首个全局 blocker。 | Legality、State-owned Catalog。 | UI/API 的未来 query consumer。 | Implemented；10 tests。 | `bQuerySucceeded` 不等于存在合法 Slot；不排序、不写 State、不 Automatic Finish。 |
+| `MatchPlayDeploymentTurnRotation` | 根据 current attacker、acting side 和 attacker/defender finished flags 计算 NextPhase/NextLegalSide。 | Writer、Finish。 | 原子状态提交。 | Implemented；8 tests；Unity-qualified helper。 | 不接收整个 State，不判断 ordinary/GK legality，不消费 CardUsage，不执行 Resolution。 |
+| `MatchPlayOrdinaryDeploymentWriter` | 唯一公开 `Deploy`；每请求调用一次 Legality，计算 Rotation，复制 State 并 append placement。 | Request、Legality、Rotation。 | Updated MatchPlay State。 | Implemented；18 tests。 | 无第二 public writer；失败不提交局部状态；不消费 CardUsage、不 Automatic Finish。 |
+| `MatchPlayFinishDeployment` rotation integration | 完成原有 Finish checks/flag 后复用共享 Rotation。 | Finish request、CurrentAttack。 | Deployment continuation 或 Resolution phase。 | Implemented integration；23 tests preserved。 | 不完成 CurrentAttack，不运行 Resolution consumer/Completion。 |
+
+普通请求字段为 `AttackSequence + RequestingSide + CardId + SlotId`。placement 保持 `PlayerSide + CardId + SlotId`；Snapshot、Zone、PositionTypes 与角色不持久化。Slot occupancy 按全局 SlotId 扫描 `DeploymentPlacements`，同一物理 Slot 不按玩家分区。Position 多值使用 OR；GK 返回 `GoalkeeperNotAllowed`。
+
+专项注册与最终回归：
+
+```text
+Legality 30
+Availability 10
+TurnRotation 8
+Writer 18
+Ordinary aggregate 66
+MatchPlay 490/490
+CoreRules 1712/1712
+```
+
+7.96 的 clean-tree Unity C2668 由 `0317a67` 完整限定 Rotation helper 修复；7.96.2 确认 Begin + Rotation + RotationTests 真实共同进入 `Module.FMCodex.6.cpp`，adaptive exclusions 0、compile/link PASS。
+
+GK Deployment、per-side permanent GK-used、GK activation writer、Automatic Finish、Resolution consumer、Completion 与 Direct Shot 仍未实现。下一入口仅登记为 `7.98 MatchPlay Goalkeeper Deployment Milestone Capability Selection + Minimum Contract Review`；GK 必须使用当前防守方、共享空 Slot 与 Defender Backfield resolver，绕过普通 Position 矩阵，具体 placement/occupancy 存储形态待审查。

@@ -1393,3 +1393,15 @@ AttackFlow 继续从 Formula Result 取得 Runtime / CardUsage，并保持原有
 7.91 的精确回归为：PlayerCardRuleSnapshotValidator 12/12、PlayerCardRuleSnapshotQuery 8/8、MatchPlayCardSnapshotAuthority 18/18、MatchPlayState 9/9、MatchPlayStateInitializer 21/21、MatchPlayOpeningInitializer 27/27、MatchPlayAttackFlow 18/18、MatchPlayBeginOrdinaryAttack 17/17、MatchPlayFinishDeployment 23/23；MatchPlay 424/424，CoreRules 1646/1646，失败与 NotRun 均为 0。clean-tree 默认 UE Unity Build 与 UHT warnings-as-errors PASS，12 个变更 `.cpp` 全部进入 `Module.FMCodex.5.cpp` / `.6.cpp` / `.7.cpp`，adaptive exclusions 0、collision None。7.92 因 docs-only 不重新运行 Build、UHT 或测试。
 
 下一入口仅登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。该阶段必须先审查完整 milestone Contract，不得把 7.92 误写成 ordinary writer 已实现，也不得由本关闭文档预先冻结 7.93 的具体 C++ API 或拆片数量。
+
+## 7.93–7.97 MatchPlay Ordinary Player Deployment 最终关闭
+
+上一段是 7.92 历史入口。当前 MatchPlay foundation 已实现 ordinary player deployment：唯一 Legality Evaluator、Catalog-order Availability、atomic Writer、共享 Turn Rotation 与 Finish integration 均已关闭。请求只包含 `AttackSequence + RequestingSide + CardId + SlotId`；成功 placement 只保存 `PlayerSide + CardId + SlotId`。
+
+ordinary placement 现在可以被未来 Resolution consumer 读取，但本阶段没有实现该 consumer。部署成功不把卡牌移入 Used：`CardUsageState` 保持 Available，当前攻击中的重复部署与共享物理 Slot 占用由 `DeploymentPlacements` 表达。Relative Zone 从 State-owned Catalog、SlotId、CurrentAttackingPlayer 与 evaluated side 动态解析，多位置采用 OR。
+
+`FMatchPlayFinishDeployment` 已复用 action-independent Turn Rotation：第一方 Finish 保持 Deployment，第二方 Finish 进入 Resolution；这仍不等于完成 CurrentAttack。Automatic Finish、Resolution consumer、terminal projection、Completion、Direct Shot、Shooter Snapshot migration 与 lower-level flow migration均未实现。
+
+GK Deployment 当前未实现，不得把普通 GK rejection 或共享 Rotation 的未来可复用性描述成 GK 已可部署。未来只允许当前防守方主动使用真实 GK，目标必须是共享空 Slot 且解析为 Defender Backfield；GK 不使用普通 PositionTypes 矩阵，卡牌仍保持 Available。共享 occupancy 记录不等于卡牌进入普通 Used 或其他 CardUsage 牌区。match-long used、current-attack activation 与 occupancy storage shape 留给 7.98，其中 storage 可以复用普通 placement 或采用专用字段加统一 occupancy query，尚未冻结。
+
+实现历史为 `36f0c67` Legality/Availability、`a6884c3` Writer/Rotation、`0317a67` Unity name-qualification correction。7.96 的 C2668 只是 clean-tree Unity 名称查找问题；7.96.2 由真实 `Module.FMCodex.6.cpp` 同置原三文件验证关闭。最终基线：Ordinary 66/66、Begin 17/17、Finish 23/23、MatchPlay 490/490、CoreRules 1712/1712；clean-tree Unity Rebuild/UHT/compile/link PASS，adaptive exclusions 0、collision None。

@@ -806,3 +806,57 @@
 下一入口登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。7.93 至少审查：availability、请求验证、side-aware Snapshot lookup、State-owned Slot Catalog lookup、relative Zone、`PositionTypes` 合法性、全局 Slot occupancy、同侧 CardId 重复部署防止、placement append、成功后合法方轮转、失败原子性、与手动 Finish 的交互，以及 Automatic Finish 是否应纳入同一 milestone。7.92 只登记审查范围，不预选 API、错误枚举、验证顺序、文件布局、实现切片数量或 Automatic Finish 结论。
 
 后续交付按风险分层：涉及共享 `FMatchPlayState`、Opening、reflection 或跨生命周期 authority 的高风险能力继续使用 Contract Review → Implementation → Independent Review → Final Closure Docs Sync 四阶段；涉及 writer 与状态转换的中风险 milestone 使用 milestone contract → 1～2 个受控 implementation slices → independent review → unified docs closure；低风险 helper、query 或机械传播可并入所属 implementation slice，但必须由该 slice 的测试和独立审查覆盖。独立审查、风险分级测试与人工 commit 均继续保留。
+
+## 7.93–7.97 MatchPlay Ordinary Player Deployment Milestone Closure
+
+- 7.93 Capability Selection + Minimum Contract Review：`PASS WITH NON-BLOCKING FINDINGS`。冻结 request、唯一 legality authority、22 步首错顺序、availability、global occupancy、dynamic Zone、Position OR 矩阵、ordinary GK rejection、atomic writer、shared rotation、Finish interaction，并排除 Automatic Finish。
+- 7.94 Legality + Availability Implementation：`PASS WITH NON-BLOCKING FINDINGS`。提交 `36f0c67ad4f4ece6e843e379db48864d079d57bb feat: add ordinary deployment legality and availability`。
+- 7.95 Writer + Turn Rotation Implementation：`PASS WITH NON-BLOCKING FINDINGS`。提交 `a6884c316fd488c307f063e94d173d0a5d9fa761 feat: add ordinary deployment writer and rotation`。
+- 7.96 Independent Review：`FAIL – IMPLEMENTATION REQUIRES CORRECTION`。唯一失败原因为 clean-tree Unity `C2668 IsPlayer` name lookup ambiguity；Contract、运行时专项与产品规则没有失败。
+- 7.96.1 Unity Collision Corrective Implementation：`PASS`。提交 `0317a67fee7e85cfc7f1e6d62c1e5e83c6621def fix: qualify deployment rotation helper for unity build`，删除 namespace-wide using 并完整限定 Rotation helper。
+- 7.96.2 Independent Corrective Review + Closure Decision：`PASS`。原三文件真实共同进入 `Module.FMCodex.6.cpp`；clean-tree 默认 Unity Rebuild、UHT、compile、link PASS，generated files 0、adaptive exclusions 0、collision None。
+- 7.97 Final Closure Docs Sync：docs-only；同步七份授权文档，不运行 Build、UHT 或测试，本节完成即关闭该阶段与整个 Ordinary Player Deployment Milestone。
+
+最终独立基线：
+
+```text
+Legality 30/30
+Availability 10/10
+TurnRotation 8/8
+Writer 18/18
+Ordinary aggregate 66/66
+Begin 17/17
+Finish 23/23
+Slot Catalog 28/28
+Snapshot Authority 18/18
+State 9/9
+MatchPlay 490/490
+CoreRules 1712/1712
+```
+
+能力关闭：`MatchPlay Ordinary Player Deployment Milestone`。当前已实现普通部署验证、可用性查询、原子 writer、共享轮转和 Finish integration；CardUsage 保持 Available，global Slot occupancy 来自 placements，Automatic Finish 与 GK Deployment 未实现。
+
+### Next milestone: 7.98 MatchPlay Goalkeeper Deployment
+
+下一阶段登记为：
+
+```text
+7.98 MatchPlay Goalkeeper Deployment Milestone
+Capability Selection + Minimum Contract Review
+```
+
+7.98 至少审查：
+
+- only current defender may act，以及 current legal deployment turn；
+- side-aware real GK identity lookup；
+- once-per-match persistent per-side used state；
+- current-attack transient GK activation；
+- non-empty、Catalog-valid shared SlotId 与 global occupancy；
+- Defender Backfield Relative Zone requirement；
+- bypass ordinary PositionTypes matrix；
+- placement/occupancy storage shape 与单一 occupancy authority；
+- shared turn rotation；
+- failure atomicity；
+- Finish 和 Automatic Finish interaction。
+
+这里只登记 Contract Review 范围，不实施 GK request、legality、writer、状态、storage 或测试。

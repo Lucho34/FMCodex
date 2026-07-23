@@ -342,7 +342,71 @@ Catalog、authority 和 CardUsage 的所有可失败操作都在 private `FMatch
 
 7.91 独立基线为 Snapshot Validator 12/12、Snapshot Query 8/8、Authority 18/18、State 9/9、State Initializer 21/21、Opening 27/27、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 424/424、CoreRules 1646/1646。相对 7.88 的 CoreRules 1623，净新增 23 项注册：Authority +18、State +2、State Initializer +1、Opening +2；旧测试删除或重命名为 0。clean-tree Unity Build 与 UHT `-WarningsAsErrors` PASS，Adaptive exclusions 为 0，12 个变更 `.cpp` 均进入真实 Unity translation unit且 collision 为 None。
 
-ordinary deployment writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、Completion、Direct Shot、Shooter Snapshot authority migration 和 lower-level flow migration 仍未实现。
+在 7.92 历史关闭快照中，ordinary deployment writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、Completion、Direct Shot、Shooter Snapshot authority migration 和 lower-level flow migration 仍未实现。
+
+## MatchPlay Ordinary Player Deployment（Closed in 7.93–7.97）
+
+本节是 7.97 完成后的当前权威数据状态；上一节末尾的“尚未实现”只描述 7.92 历史快照。实现提交为：
+
+- `36f0c67ad4f4ece6e843e379db48864d079d57bb feat: add ordinary deployment legality and availability`
+- `a6884c316fd488c307f063e94d173d0a5d9fa761 feat: add ordinary deployment writer and rotation`
+- `0317a67fee7e85cfc7f1e6d62c1e5e83c6621def fix: qualify deployment rotation helper for unity build`
+
+### Request
+
+`FMatchPlayOrdinaryDeploymentRequest` 精确保存 `AttackSequence`、`RequestingSide`、`CardId` 和 `SlotId`。它不保存 Snapshot、RelativeZone、NeutralSide、PositionTypes、CardUsage、CurrentAttackingPlayer、finished flags 或 NextLegalSide；这些事实全部从 `BeforeState` 读取或推导。
+
+### Legality result and errors
+
+唯一合法性入口是 `FMatchPlayOrdinaryDeploymentLegalityEvaluator::Evaluate`。`FMatchPlayOrdinaryDeploymentLegalityResult` 保存：
+
+- `bIsLegal`、原始 `Request`、顶层 `ErrorCode` 和 `ErrorMessage`；
+- `UnderlyingSnapshotAuthorityQueryErrorCode`；
+- `UnderlyingPlayCardErrorCode` 与 `UnderlyingCardUsageErrorCode`；
+- `UnderlyingSlotCatalogQueryErrorCode`；
+- `UnderlyingRelativeZoneResolutionErrorCode`；
+- 成功时的 `ResolvedRelativeZone`。
+
+首错顺序固定为 State initialized → CurrentAttack → authoritative/request AttackSequence → Deployment Phase → current attacker/requesting/legal side → finished state → CardId/SlotId → side-aware Snapshot → CardUsage → same-side CardId duplicate → `GoalkeeperNotAllowed` → Catalog → global Slot occupancy → Relative Zone → Position eligibility → success。Evaluator 为只读逻辑，不修改 State。
+
+### Availability result
+
+`FMatchPlayOrdinaryDeploymentAvailability::Query` 返回 `FMatchPlayOrdinaryDeploymentAvailabilityResult`：`bQuerySucceeded`、`bCanDeployToAnySlot`、请求 identity、按 Catalog 原顺序排列的 `LegalSlotIds`、逐 Slot 的 `SlotResults`、可选 `FirstBlockingLegalityResult`、底层 Catalog validation error、顶层 error 和 message。
+
+`bQuerySucceeded=true` 只表示机制成功执行；wrong legal side、finished side、stale sequence、GK、不可用卡、全部 occupied 或全部位置不合法，都可以成功查询但得到零合法 Slot。只有 Catalog 无法安全枚举时才是 `CatalogEnumerationFailed`。Availability 复用同一 Evaluator，不接收 caller-supplied Snapshot、Catalog 或 Zone，不修改 State，也不触发 Automatic Finish。
+
+### Writer and rotation results
+
+`FMatchPlayOrdinaryDeploymentWriterResult` 保存 `bSuccess`、Request、完整 BeforeState/AfterState、`None / LegalityFailed / TurnRotationFailed`、完整 LegalityResult、底层 Rotation error 和 message。唯一公开 writer 入口是 `Deploy`；每个请求恰好调用一次 Evaluator。失败时 AfterState 等于 BeforeState；成功的实际状态变化仅为 append placement 和更新 `CurrentLegalDeploymentSide`，Phase 仍为 Deployment。
+
+`FMatchPlayDeploymentTurnRotationResult` 保存 `bSuccess`、`None / InvalidCurrentAttackingPlayer / InvalidActingSide`、`NextPhase`、`NextLegalDeploymentSide` 和 message。Rotation 只接收 current attacker、acting side 与 attacker/defender finished flags，不接收或修改整个 State。
+
+### Placement, identity and occupancy
+
+`FMatchPlayDeploymentPlacement` 仍只有 `PlayerSide + CardId + SlotId`；本 Milestone 没有新增 State schema 字段。稳定卡牌身份为 `PlayerSide + CardId`，双方同名 CardId 合法，同一方同 CardId 在单个 CurrentAttack 内不得重复部署。
+
+`DeploymentPlacements` 继续是共享物理 Slot occupancy authority：任一 placement 使用某个全局 SlotId 后，双方都不能再占用该 Slot。Relative Zone 由 State-owned Catalog、SlotId、CurrentAttackingPlayer 和 evaluated RequestingSide 动态解析，不持久化到 placement。
+
+普通部署成功不修改 `CardUsageState`；卡牌继续保持 Available，不进入 Used。未来 `CompleteCurrentAttack` 才负责真正的卡牌消费。
+
+### Position eligibility
+
+普通位置矩阵为：
+
+| Position Type | Midfield | Attacker Forward | Defender Backfield |
+| --- | ---: | ---: | ---: |
+| Attack | YES | YES | NO |
+| Midfield | YES | YES | YES |
+| Defense | YES | NO | YES |
+| Goalkeeper | NO | NO | NO |
+
+多位置卡采用 OR 语义：至少一个 PositionType 合法即可。Goalkeeper 在进入普通矩阵前由 `GoalkeeperNotAllowed` 明确拒绝。
+
+### Current absence and verification
+
+当前没有 GK request、GK writer、per-side permanent GK-used state 或已冻结的 GK placement storage。未来 GK 必须由当前防守方主动使用、指定共享空 Slot、解析为防守方 Backfield，并绕过普通 PositionTypes 矩阵；具体 occupancy 存储形态留给 7.98。共享 Slot occupancy 是规则记录，不表示 GK 卡离开 Available 或发生普通 CardUsage 牌区迁移。
+
+7.96.2 独立基线：Legality 30/30、Availability 10/10、TurnRotation 8/8、Writer 18/18、Ordinary aggregate 66/66、Begin 17/17、Finish 23/23、Catalog 28/28、Snapshot Authority 18/18、State 9/9、MatchPlay 490/490、CoreRules 1712/1712。clean-tree 默认 Unity Rebuild、UHT warnings-as-errors、compile 与 link 均 PASS，generated files 0、adaptive exclusions 0、collision None。
 
 ## ConsumedReturnRule
 

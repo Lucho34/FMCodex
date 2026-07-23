@@ -723,3 +723,45 @@ AttackFlow 显式从输入 State 复制 Catalog 与 CardSnapshotAuthority，Runt
 7.91 独立验证为 Snapshot Validator 12/12、Snapshot Query 8/8、Authority 18/18、State 9/9、State Initializer 21/21、Opening 27/27、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 424/424、CoreRules 1646/1646。clean-tree Unity Build 与 UHT PASS，12 个变更 `.cpp` 分别进入 `Module.FMCodex.5.cpp / .6.cpp / .7.cpp`，Adaptive exclusions 0，collision None。
 
 该闭环只建立 future writer 所需的可靠读取基础。ordinary deployment writer / availability、Automatic Finish、GK writer、Resolution consumer、Completion、Direct Shot、Shooter Snapshot migration 和 lower-level flow migration 仍未实现。下一入口登记为 `7.93 MatchPlay Ordinary Player Deployment Milestone Capability Selection + Minimum Contract Review`。
+
+## MatchPlay Ordinary Player Deployment 实现闭环（7.93–7.97）
+
+上一节末尾描述的是 7.92 历史边界。当前 ordinary deployment 架构已经由 7.94 / 7.95 实现、7.96.1 修正，并由 7.96.2 独立接受：
+
+```text
+FMatchPlayOrdinaryDeploymentRequest
+  AttackSequence + RequestingSide + CardId + SlotId
+→ FMatchPlayOrdinaryDeploymentLegalityEvaluator::Evaluate
+   ├─ MatchPlay State / CurrentAttack / Phase / stale sequence
+   ├─ current attacker / legal side / finished flags
+   ├─ side-aware CardSnapshotAuthority query
+   ├─ CardUsage read-only availability
+   ├─ same-side CardId placement duplicate
+   ├─ ordinary GoalkeeperNotAllowed
+   ├─ State-owned DeploymentSlotCatalog lookup
+   ├─ global SlotId occupancy from DeploymentPlacements
+   ├─ Relative Zone Resolver
+   └─ PositionTypes OR eligibility
+→ FMatchPlayOrdinaryDeploymentAvailability::Query
+   或 FMatchPlayOrdinaryDeploymentWriter::Deploy
+→ FMatchPlayDeploymentTurnRotation::Resolve
+→ atomic FMatchPlayState result
+```
+
+Request 不携带 Snapshot、Catalog、Zone、PositionTypes、current attacker 或 finished facts。Evaluator 是唯一 ordinary legality authority 且只读；Availability 与 Writer 不复制规则。Availability 按 Catalog 原顺序枚举，`bQuerySucceeded` 只表示机制执行成功，不保证存在合法 Slot，也不触发 Automatic Finish。
+
+Writer 只有公开 `Deploy`，每请求调用 Evaluator 一次。成功先计算 Rotation，再复制 State、追加 `PlayerSide + CardId + SlotId` placement 并应用 next legal side；Phase 仍为 Deployment。失败完整返回原 State。CardUsage 继续保持 Available，Snapshot authority、Catalog、finished flags、GK activation、比分与攻击机会均不变。
+
+`DeploymentPlacements` 同时承担同侧 CardId 防重事实和共享物理 Slot occupancy authority。occupancy 只比较全局 SlotId，不按 PlayerSide 分区，也没有 `SlotOccupants` cache。Zone 根据 Catalog + SlotId + CurrentAttackingPlayer + evaluated RequestingSide 动态推导，不持久化到 placement。Attack/Midfield/Defense 按显式矩阵判定，多位置采用 OR；GK 在矩阵前被 ordinary legality 拒绝。
+
+共享 Rotation 是 action-independent pure helper，只接收 current attacker、acting side 和 attacker/defender finished flags。对方未完成时切给对方，对方已完成时保持 acting side，双方完成时输出 Resolution/None。`FMatchPlayFinishDeployment` 已改为复用该 helper，因此第一方 Finish 后仍在 Deployment、第二方 Finish 后进入 Resolution；Finish 不完成 CurrentAttack，也不调用 Resolution consumer。
+
+### Unity correction and verification
+
+7.96 的唯一 Blocking 是 clean-tree Unity 把 Begin、Rotation 与 RotationTests 同置 `Module.FMCodex.6.cpp` 后，namespace-wide using 令两个 `IsPlayer` 候选发生 C2668；它不是产品规则或运行时行为失败。7.96.1 提交 `0317a67` 删除 using 并完整限定 `MatchPlayDeploymentTurnRotationImplementation::IsPlayer / OtherSide`。7.96.2 clean-tree 默认 Unity Rebuild 重新把原三文件同置并编译通过，adaptive exclusions 0、UHT generated files 0、collision None。
+
+最终测试基线为 Legality 30、Availability 10、TurnRotation 8、Writer 18、Ordinary aggregate 66、Begin 17、Finish 23、Catalog 28、Snapshot Authority 18、State 9、MatchPlay 490/490、CoreRules 1712/1712。
+
+### Future GK boundary
+
+GK Deployment 当前未实现。7.98 必须从 CurrentAttackingPlayer 动态推导当前防守方，只允许防守方在合法部署轮次主动使用真实 GK；目标必须是 State-owned Catalog 中共享且未占用的 Slot，并解析为防守方 Backfield。GK 不进入普通 PositionTypes 矩阵；成功需要 match-long once-per-side used fact、current-attack transient activation、共享 rotation 与失败原子性，同时 GK 卡仍保持 Available。共享 Slot occupancy 记录不等于普通 CardUsage 牌区迁移。GK occupancy 的具体存储形态尚未冻结，但必须汇入同一全局 occupancy authority。

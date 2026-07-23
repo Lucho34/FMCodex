@@ -272,6 +272,26 @@
 - 独立证据：Authority 18/18、State 9/9、State Initializer 21/21、Opening 27/27、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 424/424、CoreRules 1646/1646；clean-tree Unity Build 与 UHT PASS，Adaptive exclusions 0，collision None。
 - 未实现边界：ordinary deployment writer / availability、Automatic Finish、永久 GK 状态与 writer、Resolution consumer、Completion、Formal Abort、Direct Shot、Shooter Snapshot authority migration、lower-level flow migration 与 UE5 gameplay smoke test 均未因本决定实现。
 
+### CD-026 - MatchPlay Ordinary Player Deployment
+
+- 日期：2026-07-23
+- 阶段关闭：7.93 Capability Selection + Minimum Contract Review、7.94 Legality + Availability Implementation、7.95 Writer + Turn Rotation Implementation、7.96 Independent Review、7.96.1 Unity Collision Corrective Implementation、7.96.2 Independent Corrective Review 与 7.97 Final Closure Docs Sync 关闭 `MatchPlay Ordinary Player Deployment Milestone`。
+- 实现提交：`36f0c67ad4f4ece6e843e379db48864d079d57bb feat: add ordinary deployment legality and availability`、`a6884c316fd488c307f063e94d173d0a5d9fa761 feat: add ordinary deployment writer and rotation`；Unity 修正提交为 `0317a67fee7e85cfc7f1e6d62c1e5e83c6621def fix: qualify deployment rotation helper for unity build`。
+- Request 与 stale guard：`FMatchPlayOrdinaryDeploymentRequest` 只包含 `AttackSequence + RequestingSide + CardId + SlotId`。AttackSequence 是显式 stale-request guard；Snapshot、Catalog、Zone、PositionTypes、attacker 与 finished facts 均来自 BeforeState。
+- Single legality authority：唯一合法性入口为 `FMatchPlayOrdinaryDeploymentLegalityEvaluator::Evaluate`。Availability 与 Writer 必须复用它，不得建立第二套 ordinary legality。
+- Identity 与 Snapshot：稳定身份为 `PlayerSide + CardId`；同侧当前攻击重复部署被拒绝，双方相同 CardId 合法。Snapshot 严格按 RequestingSide 查询，不跨边 fallback。
+- CardUsage：普通部署成功不消费卡牌，CardUsage 保持 Available；当前攻击防重由 placements 负责，真正消费留给未来 `CompleteCurrentAttack`。
+- Slot 与 Zone：`DeploymentPlacements` 按全局 SlotId 构成唯一 occupancy authority，不使用 per-side occupancy 或 `SlotOccupants` map。Relative Zone 由 State-owned Catalog、SlotId、CurrentAttackingPlayer 与 evaluated RequestingSide 动态解析。
+- Position：Attack/Midfield/Defense 使用显式矩阵，多位置采用 OR；Goalkeeper 不进入普通矩阵，ordinary request 返回 `GoalkeeperNotAllowed`。
+- Availability：按 Catalog 原顺序枚举并保留 LegalSlotIds 顺序；`bQuerySucceeded` 不等于存在合法 Slot。Availability 只读且不触发 Automatic Finish。
+- Atomic Writer：唯一公开入口 `Deploy` 每请求调用 Evaluator 一次；成功只 append `PlayerSide + CardId + SlotId` placement 并应用共享 Rotation 的 next legal side，Phase 保持 Deployment；失败完整返回原 State。
+- Shared rotation：`FMatchPlayDeploymentTurnRotation` 是 action-independent pure helper。对方未 Finish 时轮到对方，对方已 Finish 时保持 acting side，双方 Finish 时进入 Resolution/None。Finish Deployment 复用同一 helper。
+- Automatic Finish：明确排除于本 Milestone；availability 为零、单次部署成功或任一其他普通 writer 路径都不会自动 Finish。
+- Unity correction history：7.96 只因 clean-tree Unity `C2668 IsPlayer` 未限定名称查找二义性而失败，不是产品规则或运行时行为失败。7.96.1 删除 Rotation implementation 的 namespace-wide using，并完整限定 `IsPlayer` / `OtherSide`；7.96.2 由真实 `Module.FMCodex.6.cpp` 同置原三文件验证关闭。
+- 独立证据：Legality 30/30、Availability 10/10、TurnRotation 8/8、Writer 18/18、Ordinary 66/66、Begin 17/17、Finish 23/23、Catalog 28/28、Snapshot Authority 18/18、State 9/9、MatchPlay 490/490、CoreRules 1712/1712；clean-tree 默认 Unity Rebuild、UHT、compile、link PASS，warnings 0、generated files 0、adaptive exclusions 0、collision None。
+- Frozen Future Contract — Not Implemented：未来只有当前防守方可主动使用真实 GK；必须指定 State-owned Catalog 中的共享空 Slot，解析为防守方 Backfield，并绕过普通 PositionTypes 矩阵；成功还需要 match-long once-per-side used fact、current-attack transient activation、共享轮转与失败原子性。GK 卡仍保持 Available，共享 occupancy 记录不构成普通 CardUsage 牌区迁移。GK occupancy 的具体存储形态尚未冻结，可复用现有 placement 或使用专用字段加统一 occupancy query，但不得产生两套不一致 authority。
+- 当前未实现：GK request/writer/storage、permanent GK-used、GK activation writer、Automatic Finish、Resolution consumer、terminal projection、Completion、Direct Shot、Shooter Snapshot migration、lower-level flow migration 与 External gameplay API。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
