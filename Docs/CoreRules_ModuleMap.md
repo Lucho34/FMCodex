@@ -381,4 +381,29 @@ CoreRules 1712/1712
 
 7.96 的 clean-tree Unity C2668 由 `0317a67` 完整限定 Rotation helper 修复；7.96.2 确认 Begin + Rotation + RotationTests 真实共同进入 `Module.FMCodex.6.cpp`，adaptive exclusions 0、compile/link PASS。
 
-GK Deployment、per-side permanent GK-used、GK activation writer、Automatic Finish、Resolution consumer、Completion 与 Direct Shot 仍未实现。下一入口仅登记为 `7.98 MatchPlay Goalkeeper Deployment Milestone Capability Selection + Minimum Contract Review`；GK 必须使用当前防守方、共享空 Slot 与 Defender Backfield resolver，绕过普通 Position 矩阵，具体 placement/occupancy 存储形态待审查。
+以上“GK Deployment 尚未实现”是 7.97 历史入口。GK Deployment 已由 7.98–7.103 关闭；Automatic Finish、Resolution consumer、Completion 与 Direct Shot 继续未实现。
+
+## MatchPlay Goalkeeper Deployment（7.98–7.103）
+
+| Module | Responsibility | Inputs | Output / mutation | Current status |
+| --- | --- | --- | --- | --- |
+| `MatchPlayGoalkeeperUsageState` | match-long、per-side GK usage authority；side-aware `Query` 与纯值 `MarkUsed`。 | usage value、PlayerSide。 | Query/Update Result；不读取 CurrentAttack 或 CardUsage。 | Implemented；13 tests。 |
+| `MatchPlayGoalkeeperDeploymentLegality` | 唯一只读 GK legality authority；严格 26 级首错。 | `FMatchPlayState`、四字段 GK Request。 | 完整 Legality Result；不修改 State。 | Implemented；37 tests。 |
+| `MatchPlayGoalkeeperDeploymentAvailability` | 按 State-owned Catalog 顺序枚举，逐 Slot 复用 GK evaluator。 | State、AttackSequence、RequestingSide、CardId。 | LegalSlotIds、SlotResults、first blocker；只读。 | Implemented；16 tests。 |
+| `MatchPlayGoalkeeperDeploymentWriter` | Evaluate once、shared rotation、MarkUsed、atomic commit。 | State、GK Request。 | placement、请求方 usage、activation、legal side；失败返回 BeforeState。 | Implemented；18 tests。 |
+
+GK Request 为 `AttackSequence + RequestingSide + CardId + SlotId`。仅当前防守方在 legal turn 可使用本方真实 GK；CardUsage 必须 Available 且成功后仍保持 Available。GK 与 ordinary 共享 `DeploymentSlotCatalog`、`DeploymentPlacements`、global Slot occupancy、Turn Rotation、Snapshot authority 与 CardUsage validation；GK 要求 defender Backfield，并绕过 ordinary PositionTypes 矩阵。
+
+当前测试基线：
+
+```text
+Goalkeeper Usage State 13/13
+GK Legality 37/37
+GK Availability 16/16
+GK Writer 18/18
+GK Deployment aggregate 71/71
+MatchPlay 585/585
+CoreRules 1807/1807
+```
+
+实现提交为 `dcdaf32` usage authority、`c291308` legality/availability、`3dde50d` writer。7.102 clean-tree default Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB/DLL link 均 PASS；16 个 milestone `.cpp` 进入实际 Unity TU，generated files 0、adaptive exclusions 0、collision None。

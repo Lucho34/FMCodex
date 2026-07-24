@@ -402,11 +402,39 @@ Catalog、authority 和 CardUsage 的所有可失败操作都在 private `FMatch
 
 多位置卡采用 OR 语义：至少一个 PositionType 合法即可。Goalkeeper 在进入普通矩阵前由 `GoalkeeperNotAllowed` 明确拒绝。
 
-### Current absence and verification
+### 7.97 historical boundary
 
-当前没有 GK request、GK writer、per-side permanent GK-used state 或已冻结的 GK placement storage。未来 GK 必须由当前防守方主动使用、指定共享空 Slot、解析为防守方 Backfield，并绕过普通 PositionTypes 矩阵；具体 occupancy 存储形态留给 7.98。共享 Slot occupancy 是规则记录，不表示 GK 卡离开 Available 或发生普通 CardUsage 牌区迁移。
+以下结论只属于 7.97 历史快照：当时尚无 GK request、GK writer、per-side permanent GK-used state，placement storage shape 留给 7.98 审查。该缺口已由 7.99–7.103 关闭；共享 Slot occupancy 始终只是规则记录，不表示 GK 卡离开 Available 或发生普通 CardUsage 牌区迁移。
 
 7.96.2 独立基线：Legality 30/30、Availability 10/10、TurnRotation 8/8、Writer 18/18、Ordinary aggregate 66/66、Begin 17/17、Finish 23/23、Catalog 28/28、Snapshot Authority 18/18、State 9/9、MatchPlay 490/490、CoreRules 1712/1712。clean-tree 默认 Unity Rebuild、UHT warnings-as-errors、compile 与 link 均 PASS，generated files 0、adaptive exclusions 0、collision None。
+
+## MatchPlay Goalkeeper Deployment（Closed in 7.98–7.103）
+
+### Persistent usage and transient activation
+
+`FMatchPlayGoalkeeperUsageState` 是 `FMatchPlayState::GoalkeeperUsageState` 中的 reflected、match-long、per-side authority，字段为 `bPlayerAGoalkeeperCardUsed` 与 `bPlayerBGoalkeeperCardUsed`。`FMatchPlayGoalkeeperUsageStateResolver::Query` 返回 `FMatchPlayGoalkeeperUsageQueryResult` 并读取指定玩家侧；`MarkUsed` 返回 `FMatchPlayGoalkeeperUsageUpdateResult`，是纯值转换，失败不修改输入。
+
+新比赛双方 usage 均为 `false`。Begin、Finish 和 AttackFlow 保留该状态，攻守互换不交换字段；只有创建新 MatchPlay State 才重置。`FMatchPlayCurrentAttackState::bCurrentDefenseGoalkeeperActivated` 只属于当前攻击：Begin 新攻击时为 `false`，GK writer 成功时为 `true`，不替代 match-long usage，也不等于公式已读取 GK 加成。legacy `FPlayerMatchState::bUsedGoalkeeperActivation` 为 non-authoritative。
+
+### Request, legality and result schema
+
+`FMatchPlayGoalkeeperDeploymentRequest` 严格保存 `AttackSequence + RequestingSide + CardId + SlotId`。防守方、当前攻击方、Snapshot、Zone、PositionTypes、usage、activation、Catalog、occupancy 和 next legal side 全部从 `BeforeState` 推导。
+
+唯一合法性入口为 `FMatchPlayGoalkeeperDeploymentLegalityEvaluator::Evaluate`。`FMatchPlayGoalkeeperDeploymentLegalityResult` 保存原请求、`bIsLegal`、顶层 error/message、Snapshot/CardUsage/GK usage/Catalog/Relative Zone underlying errors、成功解析的 Relative Zone，以及当前侧同 CardId 的匹配 GK placement 数。错误枚举覆盖初始化、CurrentAttack/sequence/phase、actor/turn/finished、only-defender、CardId/SlotId、side-aware Snapshot、真实 GK、CardUsage、usage consistency/already activated/already used、Catalog/Slot、global occupancy、Relative Zone 和 defender Backfield。
+
+### Availability and writer schema
+
+`FMatchPlayGoalkeeperDeploymentAvailability::Query` 返回 `FMatchPlayGoalkeeperDeploymentAvailabilityResult`：请求 identity、`bQuerySucceeded`、`bCanDeployToAnySlot`、按 Catalog 原顺序排列的 `LegalSlotIds`、逐 Slot 完整 legality 的 `SlotResults`、可选 first blocker、Catalog validation error 与顶层 error/message。合法 Catalog 但零合法 Slot 是成功查询；Catalog 无法安全枚举才失败。
+
+`FMatchPlayGoalkeeperDeploymentWriterResult` 保存 `bSucceeded`、Request、完整 BeforeState/AfterState、完整 LegalityResult、`None / LegalityFailed / TurnRotationFailed / GoalkeeperUsageUpdateFailed`、底层 rotation/GK usage error 与 message。唯一 public writer 为 `Deploy`；失败返回完整 BeforeState。
+
+### Placement, CardUsage and omitted schemas
+
+GK 继续复用 `FMatchPlayDeploymentPlacement` 的 `PlayerSide + CardId + SlotId`，并与 ordinary placement 共享 `CurrentAttack.DeploymentPlacements` 全局 occupancy authority。成功不会从 `CardUsageState.AvailableCardIds` 移除 GK，也不会加入 `UsedCardIds` 或 discard；整场重复使用由 `GoalkeeperUsageState` 阻止。
+
+本 Milestone 没有新增 GK-specific placement schema、per-side Slot map、GK CardUsage Used state、持久 Relative Zone 或 formula participation state。GK 目标必须是 State-owned Catalog 中的共享空 Slot，并由 Catalog、SlotId、CurrentAttackingPlayer、RequestingSide 解析为 defender `Backfield`；不使用 ordinary PositionTypes 矩阵。
+
+7.102 最终独立基线：Goalkeeper Usage State 13/13、GK Legality 37/37、GK Availability 16/16、GK Writer 18/18、GK Deployment 71/71、MatchPlay 585/585、CoreRules 1807/1807。clean-tree 默认 Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB 与 DLL link 均 PASS；UHT warnings 0、generated files written 0、adaptive exclusions 0、Unity collision None。
 
 ## ConsumedReturnRule
 

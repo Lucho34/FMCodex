@@ -860,3 +860,48 @@ Capability Selection + Minimum Contract Review
 - Finish 和 Automatic Finish interaction。
 
 这里只登记 Contract Review 范围，不实施 GK request、legality、writer、状态、storage 或测试。
+
+## 7.98–7.103 MatchPlay Goalkeeper Deployment Milestone Closure
+
+- 7.98 Capability Selection + Minimum Contract Review：`PASS WITH NON-BLOCKING FINDINGS`。冻结 persistent per-side usage、四字段 Request、only-defender/legal-turn、shared Slot、Defender Backfield、ordinary Position bypass、single evaluator、Availability、atomic Writer、shared rotation 与实现切片。
+- 7.99 Match-Long Usage State + Opening/State Foundation：`PASS WITH NON-BLOCKING FINDINGS`。提交 `dcdaf32df789eb8854c05bdd2f4531fbb2b55286 feat: add match-long goalkeeper usage state`。
+- 7.100 Legality + Availability Implementation：`PASS`。提交 `c291308b67ac382de1dd74f3d8e2a7016fb18147 feat: add goalkeeper deployment legality and availability`。
+- 7.101 Writer + Rotation Integration Implementation：`PASS`。提交 `3dde50da2e684de60409f93bbc2fe9a2cb3b4dc5 feat: add goalkeeper deployment writer`。
+- 7.102 Independent Review + Closure Decision：`PASS`。clean-tree default Unity Rebuild、UHT、compile、LIB/DLL link 与全部运行时回归通过。
+- 7.103 Final Closure Docs Sync：docs-only；同步七份授权文档，不运行 Build、UHT 或测试。本节完成即关闭整个 Goalkeeper Deployment Milestone。
+
+最终独立基线：
+
+```text
+Goalkeeper Usage State 13/13
+GK Legality 37/37
+GK Availability 16/16
+GK Writer 18/18
+GK Deployment aggregate 71/71
+MatchPlay State 10/10
+State Initializer 22/22
+Opening Initializer 28/28
+AttackFlow 21/21
+Begin Ordinary Attack 19/19
+Finish Deployment 26/26
+Slot Catalog 28/28
+Snapshot Authority 18/18
+Ordinary Deployment 66/66
+MatchPlay 585/585
+CoreRules 1807/1807
+```
+
+关闭证据：16 个 milestone `.cpp` 全部进入实际 Unity TU；clean-tree Unity Rebuild PASS；UHT `-WarningsAsErrors`、warnings 0、written 0；adaptive exclusions 0；compile/link PASS；Unity collision None。
+
+能力关闭：`MatchPlay Goalkeeper Deployment Milestone`。仍 Deferred：Automatic Finish、Resolution consumer、terminal projection、CompleteCurrentAttack、Formal Abort、Direct Shot、Shooter Snapshot migration、lower-level flow migration、External gameplay API、UI/Blueprint 与 Networking。
+
+### Next milestone: 7.104 MatchPlay Next Capability Selection
+
+下一阶段仅登记为：
+
+```text
+7.104 MatchPlay Next Capability Selection
++ Minimum Contract Review
+```
+
+7.104 应重新评估 Automatic Finish、Resolution consumer、CompleteCurrentAttack、Direct Shot 与 Shooter Snapshot migration，不在 7.103 预选能力或实施方案。

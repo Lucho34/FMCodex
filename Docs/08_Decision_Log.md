@@ -204,7 +204,7 @@
 - AttackSequence：在当前没有正式 abort 的路径中，成功 Begin Attack 时冻结为 `PlayerA.UsedAttackCount + PlayerB.UsedAttackCount + 1`，只用于限定当前攻击、拒绝 stale 请求和防止重复 completion；它不是 UUID、网络安全 token 或通用 correlation。若未来增加不消费机会的正式 abort，必须另审独立 epoch 或等价方案。
 - Attack Start：普通运动战开始要求 MatchPlay 已初始化、无 CurrentAttack、比赛未结束、当前攻击方合法且有剩余机会、外部行动点有效且位于 2–8。成功后进入 Deployment，当前合法部署方为攻击方，双方 finished 与当前门将激活为 `false`，placements 为空；开始时只逻辑占用机会，不增加 `UsedAttackCount`。失败保持完整 BeforeState。
 - Deployment：进攻方先，之后双方交替；一次合法操作只能部署一张普通牌、防守方合法激活唯一门将牌，或选择 Finish。成功普通部署记录 action-scoped placement 并切换到另一未完成方；成功门将激活同时写入 per-side 永久事实与 CurrentAttack 临时事实，门将牌区域不变，并消耗本次 Deployment 操作。失败不轮转且可重试。Finish 在本次攻击不可撤销，之后跳过该方；无合法牌等价 Finish；双方 Finish 后进入 Resolution，不消费攻击机会、不切换攻击方、不清除 CurrentAttack。
-- played-GK owner：整场永久使用事实属于对应一方的 `FPlayerRuntimeState` responsibility；当前防守激活事实唯一属于 CurrentAttack，贯穿当前 Resolution，并在成功 completion 清除 CurrentAttack 时自然失效。不得以顶层无 scope bool、player-runtime 临时 bool、Deployment-only Result 或永久事实直接控制当前 `×1.5`。
+- played-GK owner（历史条款，已由 CD-027 的实际 MatchPlay authority 替代）：CD-022 曾把整场永久事实分配给对应一方的 `FPlayerRuntimeState` responsibility。7.99 的最终实现改由 `FMatchPlayState::GoalkeeperUsageState` 按玩家侧持有；CurrentAttack 仍只持有 transient activation。不得再把 `FPlayerRuntimeState` 或 legacy `bUsedGoalkeeperActivation` 写成当前 authority，也不得以永久事实直接控制当前 `×1.5`。
 - Retry：错误阶段、错误 actor、非法 CardId / Slot、已 Finish 后继续部署、不合法或重复门将使用、无效 D6 / 日志上下文、stale AttackSequence 均是 retryable failure；请求失败时 CurrentAttack、当前合法方、门将临时事实、卡牌、攻击机会和攻防方全部不变。
 - Terminal projection：未来统一 completion 只消费由具体分支正式 Result 转换而来的小型专用 projection，至少表达 AttackSequence、正式 terminal 成功证明、`bIsGoal` 和 terminal reason / source provenance。不得接收任意裸 bool、重新执行分支、只凭 `bAttackEnded` 猜测 Goal / Miss，或借此建设宽泛 Outcome Framework。
 - Completion：唯一逻辑职责 `CompleteCurrentAttack` 必须先验证 CurrentAttack / Resolution / terminal success / AttackSequence，再在 WorkingState 中依次处理 Goal 加分、普通部署牌提交到 Used（门将不移动）、清除全部 action-scoped 状态、增加当前攻击方 `UsedAttackCount`、按消费后次数和比分判断 Match End；终局时 `CurrentAttackingPlayer=None` 且不再切换，非终局才选择下一攻击方。全部成功后一次提交，任一失败返回完整 BeforeState。
@@ -289,8 +289,25 @@
 - Automatic Finish：明确排除于本 Milestone；availability 为零、单次部署成功或任一其他普通 writer 路径都不会自动 Finish。
 - Unity correction history：7.96 只因 clean-tree Unity `C2668 IsPlayer` 未限定名称查找二义性而失败，不是产品规则或运行时行为失败。7.96.1 删除 Rotation implementation 的 namespace-wide using，并完整限定 `IsPlayer` / `OtherSide`；7.96.2 由真实 `Module.FMCodex.6.cpp` 同置原三文件验证关闭。
 - 独立证据：Legality 30/30、Availability 10/10、TurnRotation 8/8、Writer 18/18、Ordinary 66/66、Begin 17/17、Finish 23/23、Catalog 28/28、Snapshot Authority 18/18、State 9/9、MatchPlay 490/490、CoreRules 1712/1712；clean-tree 默认 Unity Rebuild、UHT、compile、link PASS，warnings 0、generated files 0、adaptive exclusions 0、collision None。
-- Frozen Future Contract — Not Implemented：未来只有当前防守方可主动使用真实 GK；必须指定 State-owned Catalog 中的共享空 Slot，解析为防守方 Backfield，并绕过普通 PositionTypes 矩阵；成功还需要 match-long once-per-side used fact、current-attack transient activation、共享轮转与失败原子性。GK 卡仍保持 Available，共享 occupancy 记录不构成普通 CardUsage 牌区迁移。GK occupancy 的具体存储形态尚未冻结，可复用现有 placement 或使用专用字段加统一 occupancy query，但不得产生两套不一致 authority。
-- 当前未实现：GK request/writer/storage、permanent GK-used、GK activation writer、Automatic Finish、Resolution consumer、terminal projection、Completion、Direct Shot、Shooter Snapshot migration、lower-level flow migration 与 External gameplay API。
+- 7.97 historical future contract：当时 GK Deployment 尚未实现，only-defender、shared Slot、Backfield、ordinary Position bypass、match-long usage、transient activation、rotation 与 atomicity 留给 7.98–7.103。其 storage 选择现已由 CD-027 关闭为复用 `DeploymentPlacements`；Automatic Finish、Resolution consumer、terminal projection、Completion、Direct Shot、Shooter Snapshot migration、lower-level flow migration 与 External gameplay API 继续 Deferred。
+
+### CD-027 - MatchPlay Goalkeeper Deployment
+
+- 日期：2026-07-24
+- 阶段关闭：7.98 Capability Selection + Minimum Contract Review 为 `PASS WITH NON-BLOCKING FINDINGS`；7.99 Match-Long Usage State + Opening/State Foundation 为 `PASS WITH NON-BLOCKING FINDINGS`；7.100 Legality + Availability 为 `PASS`；7.101 Writer + Rotation Integration 为 `PASS`；7.102 Independent Review + Closure Decision 为 `PASS`；7.103 Final Closure Docs Sync 关闭整个 Goalkeeper Deployment Milestone。
+- 实现提交：`dcdaf32df789eb8854c05bdd2f4531fbb2b55286 feat: add match-long goalkeeper usage state`、`c291308b67ac382de1dd74f3d8e2a7016fb18147 feat: add goalkeeper deployment legality and availability`、`3dde50da2e684de60409f93bbc2fe9a2cb3b4dc5 feat: add goalkeeper deployment writer`。
+- Persistent authority：整场、按玩家侧的唯一权威为 `FMatchPlayState::GoalkeeperUsageState`，类型为 `FMatchPlayGoalkeeperUsageState`；新比赛重置，Begin、Finish、AttackFlow 与攻守互换均保留。`FPlayerMatchState::bUsedGoalkeeperActivation` 是 legacy / non-authoritative，CD-022 的 `FPlayerRuntimeState responsibility` 已被当前 MatchPlay authority 替代。
+- Transient activation：`FMatchPlayCurrentAttackState::bCurrentDefenseGoalkeeperActivated` 只属于当前攻击。它与整场 usage、最终公式 participation 是三个独立语义；active play 不等于公式已经接入 GK 属性。
+- Request 与 actor：`FMatchPlayGoalkeeperDeploymentRequest` 只含 `AttackSequence + RequestingSide + CardId + SlotId`。仅由 `CurrentAttackingPlayer` 动态推导出的当前防守方，且轮到该方合法部署时可以提交。
+- Identity 与 CardUsage：Snapshot 严格按 `RequestingSide + CardId` 查询，必须是真实 GK，不跨侧 fallback。成功后 GK 仍在 Available，不进入 Used 或 discard；once-per-match 由 dedicated usage authority 阻止。
+- Single legality authority：唯一入口为 `FMatchPlayGoalkeeperDeploymentLegalityEvaluator::Evaluate`，保持只读；Availability 复用它，Writer 每请求恰好调用一次。ordinary evaluator 继续返回 `GoalkeeperNotAllowed`，GK 绕过 ordinary PositionTypes 矩阵。
+- Usage consistency：persistent、current activation 与同侧同 CardId placement count 必须一致；consistent current activation 优先返回 `GoalkeeperAlreadyActivatedThisAttack`，跨攻击的 `persistent=true / activation=false / count=0` 返回 `GoalkeeperAlreadyUsedThisMatch`，不是腐坏状态。
+- Slot、Zone 与 placement：GK 复用 `FMatchPlayDeploymentPlacement(PlayerSide + CardId + SlotId)` 和 `CurrentAttack.DeploymentPlacements`。occupancy 按全局 SlotId，ordinary 与 GK 双向阻塞；不建立 per-side/GK-only map。目标必须位于 State-owned Catalog，且通过 Catalog + SlotId + CurrentAttackingPlayer + RequestingSide 解析为 defender Backfield；Zone 不持久化。
+- Availability：只按 Catalog 原顺序枚举，每个候选复用同一 evaluator，保留完整 per-slot result；合法 Catalog + 零合法 Slot 是成功查询。它不修改 State、MarkUsed、activation、placement、rotation 或 Automatic Finish。
+- Atomic writer：唯一 public `Deploy` 按 Evaluate once → shared Turn Rotation → `MarkUsed` → copy State → append placement → apply usage → activation=true → apply next legal side → atomic return。成功只改变 placement、请求方 usage bool、activation、legal side；CardUsage 与 Phase 保持不变。所有失败返回完整 BeforeState。
+- Formula boundary：本 Milestone 没有修改 Formula、Finishing、Resolution 或 Direct Shot。未来公式只能读取清晰分离的 current activation；是否产生 GK 属性贡献及 `bGoalkeeperParticipated` 仍由具体最终公式决定。
+- Independent closure evidence：Usage 13/13、Legality 37/37、Availability 16/16、Writer 18/18、GK aggregate 71/71、MatchPlay 585/585、CoreRules 1807/1807；clean-tree default Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB、DLL link PASS，warnings 0、generated files 0、adaptive exclusions 0、collision None。16 个 milestone `.cpp` 均进入实际 Unity TU。
+- Deferred：Automatic Finish、Resolution consumer、terminal projection、CompleteCurrentAttack、Formal Abort、Direct Shot、Shooter Snapshot migration、lower-level flow migration、External gameplay API、UI/Blueprint、Networking。
 
 ## Resolved UQ Summary
 
