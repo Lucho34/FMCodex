@@ -78,11 +78,13 @@ FMatchPlayStateInitializer::InitializeMatchPlayState(
 		return Result;
 	}
 
+	const FMatchPlayGoalkeeperUsageState GoalkeeperUsageState;
 	Result.MatchPlayState = FMatchPlayState::Create(
 		RuntimeState,
 		CardUsageResult.InitializedCardUsageState,
 		DeploymentSlotCatalog,
-		AuthorityBuildResult.CardSnapshotAuthority);
+		AuthorityBuildResult.CardSnapshotAuthority,
+		GoalkeeperUsageState);
 	Result.bSuccess = true;
 	return Result;
 }

@@ -109,7 +109,11 @@ namespace MatchPlayOpeningInitializerTests
 			&& MatchPlayState.CardSnapshotAuthority
 				.PlayerACardSnapshots.Cards.IsEmpty()
 			&& MatchPlayState.CardSnapshotAuthority
-				.PlayerBCardSnapshots.Cards.IsEmpty();
+				.PlayerBCardSnapshots.Cards.IsEmpty()
+			&& !MatchPlayState.GoalkeeperUsageState
+				.bPlayerAGoalkeeperCardUsed
+			&& !MatchPlayState.GoalkeeperUsageState
+				.bPlayerBGoalkeeperCardUsed;
 	}
 }
 
@@ -941,6 +945,30 @@ bool FMatchPlayOpeningInitializerSameCardIdAcrossSidesTest::RunTest(
 	TestTrue(TEXT("PlayerB CardUsage includes shared CardId"),
 		Result.MatchPlayState.CardUsageState.PlayerBCardUsageState
 			.AvailableCardIds.Contains(SharedCardId));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayOpeningInitializerGoalkeeperUsageDefaultsTest,
+	"FMCodex.CoreRules.MatchPlayOpeningInitializer.NewOpeningStartsGoalkeeperUsageUnused",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayOpeningInitializerGoalkeeperUsageDefaultsTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayOpeningInitializeResult Result =
+		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(
+			MatchPlayOpeningInitializerTests::MakeInput());
+
+	TestTrue(TEXT("Opening succeeds"), Result.bSuccess);
+	TestFalse(
+		TEXT("Opening PlayerA starts unused"),
+		Result.MatchPlayState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("Opening PlayerB starts unused"),
+		Result.MatchPlayState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
 	return true;
 }
 

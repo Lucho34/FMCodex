@@ -121,7 +121,9 @@ namespace MatchPlayAttackFlowTests
 			&& State.CardUsageState.PlayerBCardUsageState
 				.AvailableCardIds.IsEmpty()
 			&& State.CardUsageState.PlayerBCardUsageState.UsedCardIds.IsEmpty()
-			&& State.DeploymentSlotCatalog.Slots.IsEmpty();
+			&& State.DeploymentSlotCatalog.Slots.IsEmpty()
+			&& !State.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed
+			&& !State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed;
 	}
 }
 
@@ -744,6 +746,99 @@ bool FMatchPlayAttackPreservesDeploymentSlotCatalogTest::RunTest(
 	TestFalse(
 		TEXT("Existing attack flow still returns no current attack"),
 		Result.UpdatedMatchPlayState.bHasCurrentAttack);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayAttackPreservesPlayerAGoalkeeperUsageTest,
+	"FMCodex.CoreRules.MatchPlayAttackFlow.SuccessPreservesPlayerAGoalkeeperUsage",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayAttackPreservesPlayerAGoalkeeperUsageTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState State =
+		MatchPlayAttackFlowTests::MakeMatchPlayState(
+			EInitialTurnOrderPlayer::PlayerA);
+	State.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed = true;
+	const FMatchPlayAttackFlowResult Result =
+		FMatchPlayAttackFlow::ResolveMatchPlayAttack(
+			State,
+			MatchPlayAttackFlowTests::CardA1,
+			MatchPlayAttackFlowTests::MakeFinishingInput(false));
+
+	TestTrue(TEXT("Attack flow succeeds"), Result.bSuccess);
+	TestTrue(
+		TEXT("PlayerA usage is preserved"),
+		Result.UpdatedMatchPlayState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("PlayerB usage remains false"),
+		Result.UpdatedMatchPlayState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayAttackPreservesPlayerBGoalkeeperUsageTest,
+	"FMCodex.CoreRules.MatchPlayAttackFlow.SuccessPreservesPlayerBGoalkeeperUsage",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayAttackPreservesPlayerBGoalkeeperUsageTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState State =
+		MatchPlayAttackFlowTests::MakeMatchPlayState(
+			EInitialTurnOrderPlayer::PlayerB);
+	State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = true;
+	const FMatchPlayAttackFlowResult Result =
+		FMatchPlayAttackFlow::ResolveMatchPlayAttack(
+			State,
+			MatchPlayAttackFlowTests::CardB1,
+			MatchPlayAttackFlowTests::MakeFinishingInput(false));
+
+	TestTrue(TEXT("Attack flow succeeds"), Result.bSuccess);
+	TestFalse(
+		TEXT("PlayerA usage remains false"),
+		Result.UpdatedMatchPlayState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestTrue(
+		TEXT("PlayerB usage is preserved without side swapping"),
+		Result.UpdatedMatchPlayState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayAttackFailurePreservesGoalkeeperUsageInputTest,
+	"FMCodex.CoreRules.MatchPlayAttackFlow.FailurePreservesGoalkeeperUsageInput",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayAttackFailurePreservesGoalkeeperUsageInputTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState State =
+		MatchPlayAttackFlowTests::MakeMatchPlayState();
+	State.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed = true;
+	State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = true;
+	const FMatchPlayState OriginalInput = State;
+	const FMatchPlayAttackFlowResult Result =
+		FMatchPlayAttackFlow::ResolveMatchPlayAttack(
+			State,
+			MatchPlayAttackFlowTests::MissingCard,
+			MatchPlayAttackFlowTests::MakeFinishingInput(false));
+
+	TestFalse(TEXT("Attack flow fails"), Result.bSuccess);
+	TestTrue(
+		TEXT("Failure does not mutate goalkeeper usage input"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&State,
+			&OriginalInput,
+			0));
+	TestTrue(
+		TEXT("Existing failure result keeps its canonical empty state payload"),
+		MatchPlayAttackFlowTests::IsUpdatedStateEmpty(
+			Result.UpdatedMatchPlayState));
 	return true;
 }
 

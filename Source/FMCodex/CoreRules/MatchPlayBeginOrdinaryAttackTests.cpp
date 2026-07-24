@@ -507,4 +507,66 @@ bool FMatchPlayBeginOrdinaryAttackPreservesCatalogTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayBeginOrdinaryAttackPreservesPlayerAUsageTest,
+	"FMCodex.CoreRules.MatchPlayBeginOrdinaryAttack.SuccessPreservesPlayerAGoalkeeperUsage",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayBeginOrdinaryAttackPreservesPlayerAUsageTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState BeforeState =
+		MatchPlayBeginOrdinaryAttackTests::MakeState(
+			EInitialTurnOrderPlayer::PlayerA);
+	BeforeState.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed = true;
+	const FMatchPlayBeginOrdinaryAttackResult Result =
+		FMatchPlayBeginOrdinaryAttack::Begin(BeforeState, 5);
+
+	TestTrue(TEXT("Begin succeeds"), Result.bSuccess);
+	TestTrue(
+		TEXT("PlayerA match-long usage is preserved"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("PlayerB match-long usage remains false"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("New current attack activation remains false"),
+		Result.AfterState.CurrentAttack
+			.bCurrentDefenseGoalkeeperActivated);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayBeginOrdinaryAttackPreservesPlayerBUsageTest,
+	"FMCodex.CoreRules.MatchPlayBeginOrdinaryAttack.SuccessPreservesPlayerBGoalkeeperUsage",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayBeginOrdinaryAttackPreservesPlayerBUsageTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState BeforeState =
+		MatchPlayBeginOrdinaryAttackTests::MakeState(
+			EInitialTurnOrderPlayer::PlayerB);
+	BeforeState.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = true;
+	const FMatchPlayBeginOrdinaryAttackResult Result =
+		FMatchPlayBeginOrdinaryAttack::Begin(BeforeState, 5);
+
+	TestTrue(TEXT("Begin succeeds"), Result.bSuccess);
+	TestFalse(
+		TEXT("PlayerA match-long usage remains false"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestTrue(
+		TEXT("PlayerB match-long usage is preserved"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("New current attack activation remains false"),
+		Result.AfterState.CurrentAttack
+			.bCurrentDefenseGoalkeeperActivated);
+	return true;
+}
+
 #endif

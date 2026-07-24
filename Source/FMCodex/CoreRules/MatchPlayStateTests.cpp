@@ -388,4 +388,31 @@ bool FMatchPlayStateReflectedSnapshotAuthorityComparisonTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateGoalkeeperUsageAuthorityTest,
+	"FMCodex.CoreRules.MatchPlayState.ReflectedComparisonIncludesGoalkeeperUsageState",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateGoalkeeperUsageAuthorityTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayState DefaultState;
+	TestFalse(
+		TEXT("Default PlayerA goalkeeper usage is false"),
+		DefaultState.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("Default PlayerB goalkeeper usage is false"),
+		DefaultState.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed);
+
+	FMatchPlayState Copy = DefaultState;
+	Copy.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed = true;
+	TestFalse(
+		TEXT("Whole-state reflected comparison detects goalkeeper usage"),
+		FMatchPlayState::StaticStruct()->CompareScriptStruct(
+			&DefaultState,
+			&Copy,
+			0));
+	return true;
+}
+
 #endif

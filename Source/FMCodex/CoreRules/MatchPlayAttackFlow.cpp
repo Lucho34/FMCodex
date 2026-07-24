@@ -32,6 +32,8 @@ FMatchPlayAttackFlowResult FMatchPlayAttackFlow::ResolveMatchPlayAttack(
 		CurrentMatchPlayState.DeploymentSlotCatalog;
 	Result.UpdatedMatchPlayState.CardSnapshotAuthority =
 		CurrentMatchPlayState.CardSnapshotAuthority;
+	Result.UpdatedMatchPlayState.GoalkeeperUsageState =
+		CurrentMatchPlayState.GoalkeeperUsageState;
 	Result.ActingPlayer = FormulaAttackResult.ActingPlayer;
 	Result.bAttackResolved = true;
 	Result.bGoalScored = FormulaAttackResult.bGoalScored;

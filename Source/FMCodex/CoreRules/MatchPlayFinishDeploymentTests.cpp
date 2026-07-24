@@ -763,6 +763,86 @@ bool FMatchPlayFinishDeploymentResolutionPreservesCatalogTest::RunTest(
 	return true;
 }
 
+MATCH_PLAY_FINISH_DEPLOYMENT_TEST(
+	FMatchPlayFinishDeploymentFirstPreservesGoalkeeperUsageTest,
+	"FirstFinishPreservesGoalkeeperUsageState")
+
+bool FMatchPlayFinishDeploymentFirstPreservesGoalkeeperUsageTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState BeforeState =
+		MatchPlayFinishDeploymentTests::MakeState();
+	BeforeState.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed = true;
+	const FMatchPlayFinishDeploymentResult Result =
+		FMatchPlayFinishDeployment::Finish(
+			BeforeState,
+			MatchPlayFinishDeploymentTests::ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA);
+
+	TestTrue(TEXT("First finish succeeds"), Result.bSuccess);
+	TestTrue(
+		TEXT("PlayerA usage is preserved"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("PlayerB usage remains false"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	return true;
+}
+
+MATCH_PLAY_FINISH_DEPLOYMENT_TEST(
+	FMatchPlayFinishDeploymentSecondPreservesGoalkeeperUsageTest,
+	"SecondFinishPreservesGoalkeeperUsageState")
+
+bool FMatchPlayFinishDeploymentSecondPreservesGoalkeeperUsageTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState BeforeState =
+		MatchPlayFinishDeploymentTests::MakeState(
+			EInitialTurnOrderPlayer::PlayerA,
+			EInitialTurnOrderPlayer::PlayerB,
+			true,
+			false);
+	BeforeState.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = true;
+	const FMatchPlayFinishDeploymentResult Result =
+		FMatchPlayFinishDeployment::Finish(
+			BeforeState,
+			MatchPlayFinishDeploymentTests::ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerB);
+
+	TestTrue(TEXT("Second finish succeeds"), Result.bSuccess);
+	TestFalse(
+		TEXT("PlayerA usage remains false"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestTrue(
+		TEXT("PlayerB usage is preserved"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	return true;
+}
+
+MATCH_PLAY_FINISH_DEPLOYMENT_TEST(
+	FMatchPlayFinishDeploymentFailurePreservesGoalkeeperUsageTest,
+	"FailurePreservesGoalkeeperUsageState")
+
+bool FMatchPlayFinishDeploymentFailurePreservesGoalkeeperUsageTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState BeforeState =
+		MatchPlayFinishDeploymentTests::MakeState();
+	BeforeState.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed = true;
+	BeforeState.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = true;
+	return MatchPlayFinishDeploymentTests::TestAtomicFailure(
+		*this,
+		TEXT("Stale sequence with goalkeeper usage"),
+		BeforeState,
+		MatchPlayFinishDeploymentTests::ValidAttackSequence + 1,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayFinishDeploymentErrorCode::AttackSequenceMismatch);
+}
+
 #undef MATCH_PLAY_FINISH_DEPLOYMENT_TEST
 
 #endif

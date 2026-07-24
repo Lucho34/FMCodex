@@ -4,6 +4,7 @@
 
 #include "MatchPlayCardSnapshotAuthority.h"
 #include "MatchPlayDeploymentSlotCatalog.h"
+#include "MatchPlayGoalkeeperUsageState.h"
 #include "MatchRuntimeStateTypes.h"
 #include "PlayCardResolver.h"
 
@@ -81,6 +82,9 @@ struct FMCODEX_API FMatchPlayState
 	FMatchPlayPerSideCardSnapshotAuthority CardSnapshotAuthority;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	FMatchPlayGoalkeeperUsageState GoalkeeperUsageState;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	bool bHasCurrentAttack = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
@@ -94,13 +98,15 @@ private:
 		const FMatchCardUsageState& InCardUsageState,
 		const FMatchPlayDeploymentSlotCatalog& InDeploymentSlotCatalog,
 		const FMatchPlayPerSideCardSnapshotAuthority&
-			InCardSnapshotAuthority)
+			InCardSnapshotAuthority,
+		const FMatchPlayGoalkeeperUsageState& InGoalkeeperUsageState)
 	{
 		FMatchPlayState Result;
 		Result.RuntimeState = InRuntimeState;
 		Result.CardUsageState = InCardUsageState;
 		Result.DeploymentSlotCatalog = InDeploymentSlotCatalog;
 		Result.CardSnapshotAuthority = InCardSnapshotAuthority;
+		Result.GoalkeeperUsageState = InGoalkeeperUsageState;
 		return Result;
 	}
 };

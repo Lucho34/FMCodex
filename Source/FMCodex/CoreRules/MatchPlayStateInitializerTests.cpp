@@ -816,4 +816,46 @@ bool FMatchPlayStateInitializerDirectInvalidDeckTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateInitializerGoalkeeperUsageDefaultsTest,
+	"FMCodex.CoreRules.MatchPlayStateInitializer.NewMatchResetsGoalkeeperUsageForBothSides",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateInitializerGoalkeeperUsageDefaultsTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayStateInitializeResult First =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			MatchPlayStateInitializerTests::MakePlayerACards(),
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
+	const FMatchPlayStateInitializeResult Second =
+		FMatchPlayStateInitializer::InitializeMatchPlayState(
+			MatchPlayStateInitializerTests::MakeRuntimeState(),
+			MatchPlayStateInitializerTests::MakePlayerACards(),
+			MatchPlayStateInitializerTests::MakePlayerBCards(),
+			MatchPlayStateInitializerTests::MakeDeploymentSlotCatalog());
+
+	TestTrue(TEXT("First initialization succeeds"), First.bSuccess);
+	TestTrue(TEXT("Second initialization succeeds"), Second.bSuccess);
+	TestFalse(
+		TEXT("First match PlayerA starts unused"),
+		First.MatchPlayState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("First match PlayerB starts unused"),
+		First.MatchPlayState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("Repeated new match PlayerA starts unused"),
+		Second.MatchPlayState.GoalkeeperUsageState
+			.bPlayerAGoalkeeperCardUsed);
+	TestFalse(
+		TEXT("Repeated new match PlayerB starts unused"),
+		Second.MatchPlayState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	return true;
+}
+
 #endif
