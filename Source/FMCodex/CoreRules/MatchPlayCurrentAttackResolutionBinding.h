@@ -1,0 +1,73 @@
+#pragma once
+
+#include "CoreMinimal.h"
+
+#include "MatchPlayState.h"
+
+#include "MatchPlayCurrentAttackResolutionBinding.generated.h"
+
+UENUM(BlueprintType)
+enum class EMatchPlayCurrentAttackResolutionBindingErrorCode : uint8
+{
+	None UMETA(DisplayName = "None"),
+	MatchPlayStateNotInitialized
+		UMETA(DisplayName = "Match Play State Not Initialized"),
+	NoCurrentAttack UMETA(DisplayName = "No Current Attack"),
+	InvalidCurrentAttackSequence
+		UMETA(DisplayName = "Invalid Current Attack Sequence"),
+	AttackSequenceMismatch UMETA(DisplayName = "Attack Sequence Mismatch"),
+	CurrentAttackNotInResolution
+		UMETA(DisplayName = "Current Attack Not In Resolution"),
+	ActionNotSelected UMETA(DisplayName = "Action Not Selected"),
+	InvalidSelectedActionState
+		UMETA(DisplayName = "Invalid Selected Action State"),
+	UnsupportedActionType UMETA(DisplayName = "Unsupported Action Type")
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackResolutionBindingValue
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	int64 AttackSequence = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName CarrierCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName SkillId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	ESkillRuleType ActionType = ESkillRuleType::None;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackResolutionBindingResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	bool bSuccess = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	int64 RequestedAttackSequence = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	EMatchPlayCurrentAttackResolutionBindingErrorCode ErrorCode =
+		EMatchPlayCurrentAttackResolutionBindingErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FMatchPlayCurrentAttackResolutionBindingValue Binding;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FString ErrorMessage;
+};
+
+class FMCODEX_API FMatchPlayCurrentAttackResolutionBinding final
+{
+public:
+	static FMatchPlayCurrentAttackResolutionBindingResult Query(
+		const FMatchPlayState& MatchPlayState,
+		int64 AttackSequence);
+};
