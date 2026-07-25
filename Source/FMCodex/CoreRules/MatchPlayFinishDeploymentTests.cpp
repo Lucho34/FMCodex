@@ -84,6 +84,9 @@ namespace MatchPlayFinishDeploymentTests
 		Placement.SlotId = TEXT("Existing.Slot");
 		State.CurrentAttack.DeploymentPlacements.Add(Placement);
 		State.CurrentAttack.bCurrentDefenseGoalkeeperActivated = true;
+		State.CurrentAttack.bHasSelectedAction = false;
+		State.CurrentAttack.SelectedAction =
+			FMatchPlayCurrentAttackSelectedAction{};
 		return State;
 	}
 
@@ -287,6 +290,14 @@ bool FMatchPlayFinishDeploymentPlayerASecondTest::RunTest(
 	TestEqual(TEXT("Legal side is cleared"),
 		Result.AfterState.CurrentAttack.CurrentLegalDeploymentSide,
 		EInitialTurnOrderPlayer::None);
+	TestFalse(TEXT("Second Finish does not select an action"),
+		Result.AfterState.CurrentAttack.bHasSelectedAction);
+	TestTrue(TEXT("Selected-action payload remains canonical empty"),
+		FMatchPlayCurrentAttackSelectedAction::StaticStruct()
+			->CompareScriptStruct(
+				&Result.AfterState.CurrentAttack.SelectedAction,
+				&BeforeState.CurrentAttack.SelectedAction,
+				0));
 	TestTrue(
 		TEXT("Resolution transition preserves card snapshot authority"),
 		FMatchPlayPerSideCardSnapshotAuthority::StaticStruct()
@@ -612,6 +623,15 @@ bool FMatchPlayFinishDeploymentPreservesAuthoritiesTest::RunTest(
 	TestEqual(TEXT("Temporary GK activation is preserved"),
 		Result.AfterState.CurrentAttack.bCurrentDefenseGoalkeeperActivated,
 		BeforeState.CurrentAttack.bCurrentDefenseGoalkeeperActivated);
+	TestEqual(TEXT("Selected-action presence is preserved"),
+		Result.AfterState.CurrentAttack.bHasSelectedAction,
+		BeforeState.CurrentAttack.bHasSelectedAction);
+	TestTrue(TEXT("Selected-action payload is preserved"),
+		FMatchPlayCurrentAttackSelectedAction::StaticStruct()
+			->CompareScriptStruct(
+				&Result.AfterState.CurrentAttack.SelectedAction,
+				&BeforeState.CurrentAttack.SelectedAction,
+				0));
 	return true;
 }
 

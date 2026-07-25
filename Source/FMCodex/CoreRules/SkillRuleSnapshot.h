@@ -2,14 +2,17 @@
 
 #include "CoreMinimal.h"
 
+#include "SkillRuleSnapshot.generated.h"
+
+UENUM(BlueprintType)
 enum class ESkillRuleType : uint8
 {
-	None,
-	LongShot,
-	CutInsideShot,
-	PassControl,
-	Cross,
-	ThroughBall
+	None UMETA(DisplayName = "None"),
+	LongShot UMETA(DisplayName = "Long Shot"),
+	CutInsideShot UMETA(DisplayName = "Cut Inside Shot"),
+	PassControl UMETA(DisplayName = "Pass Control"),
+	Cross UMETA(DisplayName = "Cross"),
+	ThroughBall UMETA(DisplayName = "Through Ball")
 };
 
 struct FMCODEX_API FSkillRuleSnapshot

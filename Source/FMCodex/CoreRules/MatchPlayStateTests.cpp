@@ -415,4 +415,41 @@ bool FMatchPlayStateGoalkeeperUsageAuthorityTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayStateSelectedActionAuthorityTest,
+	"FMCodex.CoreRules.MatchPlayState.SelectedActionCanonicalStateAndReflection",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayStateSelectedActionAuthorityTest::RunTest(
+	const FString& Parameters)
+{
+	const FMatchPlayCurrentAttackState EmptyState;
+	TestFalse(TEXT("Default has no selected action"),
+		EmptyState.bHasSelectedAction);
+	TestTrue(TEXT("Default carrier is empty"),
+		EmptyState.SelectedAction.CarrierCardId.IsNone());
+	TestTrue(TEXT("Default skill is empty"),
+		EmptyState.SelectedAction.SkillId.IsNone());
+	TestEqual(TEXT("Default action type is None"),
+		EmptyState.SelectedAction.ActionType,
+		ESkillRuleType::None);
+
+	FMatchPlayCurrentAttackState SelectedState = EmptyState;
+	SelectedState.bHasSelectedAction = true;
+	SelectedState.SelectedAction.CarrierCardId =
+		TEXT("PlayerA.Carrier");
+	SelectedState.SelectedAction.SkillId = TEXT("Skill.LongShot");
+	SelectedState.SelectedAction.ActionType =
+		ESkillRuleType::LongShot;
+	FMatchPlayCurrentAttackState Copy = SelectedState;
+	TestTrue(TEXT("Reflected selected action copies field-for-field"),
+		FMatchPlayCurrentAttackState::StaticStruct()
+			->CompareScriptStruct(&SelectedState, &Copy, 0));
+	Copy.SelectedAction.SkillId = TEXT("Skill.Cross");
+	TestFalse(TEXT("Reflected comparison observes selected payload"),
+		FMatchPlayCurrentAttackState::StaticStruct()
+			->CompareScriptStruct(&SelectedState, &Copy, 0));
+	return true;
+}
+
 #endif

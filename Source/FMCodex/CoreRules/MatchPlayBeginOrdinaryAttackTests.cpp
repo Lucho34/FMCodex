@@ -123,6 +123,12 @@ bool FMatchPlayBeginOrdinaryAttackPlayerASuccessTest::RunTest(
 	BeforeState.CurrentAttack.bAttackerDeploymentFinished = true;
 	BeforeState.CurrentAttack.bDefenderDeploymentFinished = true;
 	BeforeState.CurrentAttack.bCurrentDefenseGoalkeeperActivated = true;
+	BeforeState.CurrentAttack.bHasSelectedAction = true;
+	BeforeState.CurrentAttack.SelectedAction.CarrierCardId =
+		TEXT("StaleCarrier");
+	BeforeState.CurrentAttack.SelectedAction.SkillId = TEXT("StaleSkill");
+	BeforeState.CurrentAttack.SelectedAction.ActionType =
+		ESkillRuleType::ThroughBall;
 	FMatchPlayDeploymentPlacement StalePlacement;
 	StalePlacement.PlayerSide = EInitialTurnOrderPlayer::PlayerB;
 	StalePlacement.CardId = TEXT("StaleCard");
@@ -151,6 +157,15 @@ bool FMatchPlayBeginOrdinaryAttackPlayerASuccessTest::RunTest(
 		Result.AfterState.CurrentAttack.DeploymentPlacements.IsEmpty());
 	TestFalse(TEXT("Current-defense goalkeeper starts inactive"),
 		Result.AfterState.CurrentAttack.bCurrentDefenseGoalkeeperActivated);
+	TestFalse(TEXT("Selected action starts absent"),
+		Result.AfterState.CurrentAttack.bHasSelectedAction);
+	TestTrue(TEXT("Selected carrier starts empty"),
+		Result.AfterState.CurrentAttack.SelectedAction.CarrierCardId.IsNone());
+	TestTrue(TEXT("Selected skill starts empty"),
+		Result.AfterState.CurrentAttack.SelectedAction.SkillId.IsNone());
+	TestEqual(TEXT("Selected action type starts empty"),
+		Result.AfterState.CurrentAttack.SelectedAction.ActionType,
+		ESkillRuleType::None);
 	TestTrue(TEXT("BeforeState is retained"),
 		MatchPlayBeginOrdinaryAttackTests::AreStatesEqual(Result.BeforeState, BeforeState));
 	return true;

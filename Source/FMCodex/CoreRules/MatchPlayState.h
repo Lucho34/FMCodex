@@ -7,6 +7,7 @@
 #include "MatchPlayGoalkeeperUsageState.h"
 #include "MatchRuntimeStateTypes.h"
 #include "PlayCardResolver.h"
+#include "SkillRuleSnapshot.h"
 
 #include "MatchPlayState.generated.h"
 
@@ -30,6 +31,21 @@ struct FMCODEX_API FMatchPlayDeploymentPlacement
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName SlotId = NAME_None;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackSelectedAction
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName CarrierCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName SkillId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	ESkillRuleType ActionType = ESkillRuleType::None;
 };
 
 USTRUCT(BlueprintType)
@@ -62,6 +78,12 @@ struct FMCODEX_API FMatchPlayCurrentAttackState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	bool bCurrentDefenseGoalkeeperActivated = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	bool bHasSelectedAction = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FMatchPlayCurrentAttackSelectedAction SelectedAction;
 };
 
 USTRUCT(BlueprintType)
