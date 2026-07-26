@@ -137,12 +137,19 @@ FMatchPlayBeginOrdinaryAttack::Begin(
 	CurrentAttack.Phase = EMatchPlayCurrentAttackPhase::Deployment;
 	CurrentAttack.AttackSequence = AttackSequence;
 	CurrentAttack.ActionPoint = ActionPoint;
+	CurrentAttack.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::None;
+	CurrentAttack.ActionPreparation =
+		FMatchPlayCurrentAttackActionPreparationState();
 	CurrentAttack.CurrentLegalDeploymentSide =
 		RuntimeState.CurrentAttackingPlayer;
 	CurrentAttack.bAttackerDeploymentFinished = false;
 	CurrentAttack.bDefenderDeploymentFinished = false;
 	CurrentAttack.DeploymentPlacements.Reset();
 	CurrentAttack.bCurrentDefenseGoalkeeperActivated = false;
+	CurrentAttack.bHasSelectedAction = false;
+	CurrentAttack.SelectedAction =
+		FMatchPlayCurrentAttackSelectedAction();
 
 	Result.AfterState.CurrentAttack = MoveTemp(CurrentAttack);
 	Result.AfterState.bHasCurrentAttack = true;

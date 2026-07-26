@@ -114,6 +114,18 @@ FMatchPlayFinishDeploymentResult FMatchPlayFinishDeployment::Finish(
 		return Result;
 	}
 
+	Result.SelectionStateValidationResult =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			CurrentAttack);
+	if (!Result.SelectionStateValidationResult.bIsCanonical)
+	{
+		MatchPlayFinishDeployment::SetError(
+			Result,
+			EMatchPlayFinishDeploymentErrorCode::InvalidSelectionState,
+			*Result.SelectionStateValidationResult.ErrorMessage);
+		return Result;
+	}
+
 	if (RequestingSide != CurrentAttack.CurrentLegalDeploymentSide)
 	{
 		MatchPlayFinishDeployment::SetError(
@@ -189,6 +201,17 @@ FMatchPlayFinishDeploymentResult FMatchPlayFinishDeployment::Finish(
 	WorkingAttack.Phase = RotationResult.NextPhase;
 	WorkingAttack.CurrentLegalDeploymentSide =
 		RotationResult.NextLegalDeploymentSide;
+	if (WorkingAttack.Phase
+		== EMatchPlayCurrentAttackPhase::Resolution)
+	{
+		WorkingAttack.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier;
+		WorkingAttack.ActionPreparation =
+			FMatchPlayCurrentAttackActionPreparationState();
+		WorkingAttack.bHasSelectedAction = false;
+		WorkingAttack.SelectedAction =
+			FMatchPlayCurrentAttackSelectedAction();
+	}
 
 	Result.AfterState = MoveTemp(WorkingState);
 	Result.bSuccess = true;

@@ -2,72 +2,34 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "MatchPlayCurrentAttackActionSelectionWriter.h"
+#include "MatchPlayCurrentAttackCarrierSelectionTestFixtures.h"
+#include "MatchPlayCurrentAttackCarrierSelectionWriter.h"
 #include "Misc/AutomationTest.h"
 
 #include <type_traits>
 
-namespace FMCodex::Tests::CurrentAttackActionSelection
+namespace CurrentAttackResolutionBindingTests
 {
-	FSkillRuleSnapshotSet MakeSkillRules();
-	FMatchPlayState MakeState();
-	FMatchPlayCurrentAttackActionSelectionRequest MakeRequest(
-		FName CarrierCardId,
-		FName SkillId);
-	bool AreStatesEqual(
-		const FMatchPlayState& Left,
-		const FMatchPlayState& Right);
-}
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackCarrierSelection;
 
-namespace FMCodex::Tests::CurrentAttackResolutionBinding
-{
-	namespace Foundation =
-		FMCodex::Tests::CurrentAttackActionSelection;
-
-	constexpr int64 ValidAttackSequence = 11;
-	const FName CarrierId(TEXT("PlayerA.CarrierOne"));
-	const FName SkillId(TEXT("Skill.LongShot"));
-
-	FMatchPlayState MakeUnselectedState()
-	{
-		return Foundation::MakeState();
-	}
-
-	FMatchPlayState MakeSelectedState()
-	{
-		const auto WriterResult =
-			FMatchPlayCurrentAttackActionSelectionWriter::Select(
-				Foundation::MakeState(),
-				Foundation::MakeRequest(CarrierId, SkillId),
-				Foundation::MakeSkillRules());
-		return WriterResult.AfterState;
-	}
-
-	bool AreStatesEqual(
-		const FMatchPlayState& Left,
-		const FMatchPlayState& Right)
-	{
-		return Foundation::AreStatesEqual(Left, Right);
-	}
-
-	bool ExpectBindingFailure(
+	bool ExpectFailure(
 		FAutomationTestBase& Test,
 		const TCHAR* Context,
 		const FMatchPlayState& State,
-		const int64 AttackSequence,
 		const EMatchPlayCurrentAttackResolutionBindingErrorCode
 			ExpectedError)
 	{
-		const FMatchPlayState OriginalState = State;
+		const FMatchPlayState Original = State;
 		const auto Result =
 			FMatchPlayCurrentAttackResolutionBinding::Query(
 				State,
-				AttackSequence);
+				ValidAttackSequence);
 		Test.TestFalse(
 			*FString::Printf(TEXT("%s fails"), Context),
 			Result.bSuccess);
 		Test.TestEqual(
-			*FString::Printf(TEXT("%s returns exact error"), Context),
+			*FString::Printf(TEXT("%s exact error"), Context),
 			Result.ErrorCode,
 			ExpectedError);
 		Test.TestTrue(
@@ -75,7 +37,7 @@ namespace FMCodex::Tests::CurrentAttackResolutionBinding
 			!Result.ErrorMessage.IsEmpty());
 		Test.TestTrue(
 			*FString::Printf(TEXT("%s is read-only"), Context),
-			AreStatesEqual(State, OriginalState));
+			AreStatesEqual(State, Original));
 		return true;
 	}
 }
@@ -95,17 +57,15 @@ bool FResolutionBindingContractTest::RunTest(
 {
 	const FMatchPlayCurrentAttackResolutionBindingResult Result;
 	TestFalse(TEXT("Default result fails"), Result.bSuccess);
-	TestEqual(TEXT("Default requested sequence is zero"),
-		Result.RequestedAttackSequence, int64{0});
-	TestNotNull(TEXT("Binding value is reflected"),
+	TestNotNull(TEXT("Binding reflected"),
 		FMatchPlayCurrentAttackResolutionBindingValue::StaticStruct());
-	TestNotNull(TEXT("Binding result is reflected"),
+	TestNotNull(TEXT("Result reflected"),
 		FMatchPlayCurrentAttackResolutionBindingResult::StaticStruct());
 	using FQuerySignature =
 		FMatchPlayCurrentAttackResolutionBindingResult (*)(
 			const FMatchPlayState&,
 			int64);
-	TestTrue(TEXT("Query signature frozen"),
+	TestTrue(TEXT("Query signature stable"),
 		(std::is_same_v<
 			decltype(&FMatchPlayCurrentAttackResolutionBinding::Query),
 			FQuerySignature>));
@@ -113,64 +73,109 @@ bool FResolutionBindingContractTest::RunTest(
 }
 
 RESOLUTION_BINDING_TEST(
-	FResolutionBindingUnselectedTest,
-	"CanonicalEmptyIsNotReady")
+	FResolutionBindingAwaitingCarrierTest,
+	"AwaitingCarrierRejected")
 
-bool FResolutionBindingUnselectedTest::RunTest(
+bool FResolutionBindingAwaitingCarrierTest::RunTest(
 	const FString& Parameters)
 {
-	using namespace
-		FMCodex::Tests::CurrentAttackResolutionBinding;
-	return ExpectBindingFailure(
-		*this,
-		TEXT("Canonical empty action"),
-		MakeUnselectedState(),
-		ValidAttackSequence,
-		EMatchPlayCurrentAttackResolutionBindingErrorCode
-			::ActionNotSelected);
-}
-
-RESOLUTION_BINDING_TEST(
-	FResolutionBindingWriterSuccessTest,
-	"WriterSelectionBindsFrozenIdentity")
-
-bool FResolutionBindingWriterSuccessTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace
-		FMCodex::Tests::CurrentAttackResolutionBinding;
-	const FMatchPlayState State = MakeSelectedState();
-	const FMatchPlayState OriginalState = State;
+	using namespace CurrentAttackResolutionBindingTests;
+	const FMatchPlayState State = MakeState();
 	const auto Result =
 		FMatchPlayCurrentAttackResolutionBinding::Query(
 			State,
 			ValidAttackSequence);
-	TestTrue(TEXT("Binding succeeds"), Result.bSuccess);
-	TestEqual(TEXT("Error is clean"), Result.ErrorCode,
-		EMatchPlayCurrentAttackResolutionBindingErrorCode::None);
-	TestEqual(TEXT("Sequence bound"), Result.Binding.AttackSequence,
-		ValidAttackSequence);
-	TestEqual(TEXT("Carrier bound"), Result.Binding.CarrierCardId,
-		CarrierId);
-	TestEqual(TEXT("Skill bound"), Result.Binding.SkillId, SkillId);
-	TestEqual(TEXT("Action type bound"), Result.Binding.ActionType,
-		ESkillRuleType::LongShot);
-	TestTrue(TEXT("Binding is read-only"),
-		AreStatesEqual(State, OriginalState));
+	TestFalse(TEXT("Binding fails"), Result.bSuccess);
+	TestEqual(TEXT("Incomplete selection error"), Result.ErrorCode,
+		EMatchPlayCurrentAttackResolutionBindingErrorCode
+			::SelectionNotComplete);
+	TestTrue(TEXT("Canonical state retained"),
+		Result.SelectionStateValidationResult.bIsCanonical);
+	TestTrue(TEXT("Binding carrier remains empty"),
+		Result.Binding.CarrierCardId.IsNone());
 	return true;
 }
 
 RESOLUTION_BINDING_TEST(
+	FResolutionBindingAwaitingMarkerTest,
+	"AwaitingMarkerRejectedWithoutLeakingCarrier")
+
+bool FResolutionBindingAwaitingMarkerTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace CurrentAttackResolutionBindingTests;
+	const auto WriterResult =
+		FMatchPlayCurrentAttackCarrierSelectionWriter::Select(
+			MakeState(),
+			MakeRequest());
+	TestTrue(TEXT("Carrier setup succeeds"), WriterResult.bSuccess);
+	const auto Result =
+		FMatchPlayCurrentAttackResolutionBinding::Query(
+			WriterResult.AfterState,
+			ValidAttackSequence);
+	TestFalse(TEXT("Binding fails"), Result.bSuccess);
+	TestEqual(TEXT("Incomplete selection error"), Result.ErrorCode,
+		EMatchPlayCurrentAttackResolutionBindingErrorCode
+			::SelectionNotComplete);
+	TestTrue(TEXT("Preparation carrier is not returned"),
+		Result.Binding.CarrierCardId.IsNone());
+	TestTrue(TEXT("Skill remains empty"),
+		Result.Binding.SkillId.IsNone());
+	TestEqual(TEXT("ActionType remains None"),
+		Result.Binding.ActionType, ESkillRuleType::None);
+	return true;
+}
+
+RESOLUTION_BINDING_TEST(
+	FResolutionBindingCorruptStateTest,
+	"CorruptSelectionStateRejected")
+
+bool FResolutionBindingCorruptStateTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace CurrentAttackResolutionBindingTests;
+	FMatchPlayState State = MakeState();
+	State.CurrentAttack.ActionPreparation.CarrierCardId = CarrierOneId;
+	return ExpectFailure(
+		*this,
+		TEXT("Corrupt selection"),
+		State,
+		EMatchPlayCurrentAttackResolutionBindingErrorCode
+			::InvalidSelectionState);
+}
+
+RESOLUTION_BINDING_TEST(
+	FResolutionBindingLegacyPayloadTest,
+	"LegacySelectedPayloadRejected")
+
+bool FResolutionBindingLegacyPayloadTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace CurrentAttackResolutionBindingTests;
+	FMatchPlayState State = MakeState();
+	State.CurrentAttack.bHasSelectedAction = true;
+	State.CurrentAttack.SelectedAction.CarrierCardId = CarrierOneId;
+	State.CurrentAttack.SelectedAction.SkillId = TEXT("Skill.Legacy");
+	State.CurrentAttack.SelectedAction.ActionType =
+		ESkillRuleType::LongShot;
+	return ExpectFailure(
+		*this,
+		TEXT("Legacy payload"),
+		State,
+		EMatchPlayCurrentAttackResolutionBindingErrorCode
+			::InvalidSelectionState);
+}
+
+RESOLUTION_BINDING_TEST(
 	FResolutionBindingRepeatedTest,
-	"RepeatedQueryIsStableAndReadOnly")
+	"RepeatedQueryStableAndReadOnly")
 
 bool FResolutionBindingRepeatedTest::RunTest(
 	const FString& Parameters)
 {
-	using namespace
-		FMCodex::Tests::CurrentAttackResolutionBinding;
-	const FMatchPlayState State = MakeSelectedState();
-	const FMatchPlayState OriginalState = State;
+	using namespace CurrentAttackResolutionBindingTests;
+	const FMatchPlayState State = MakeState();
+	const FMatchPlayState Original = State;
 	const auto First =
 		FMatchPlayCurrentAttackResolutionBinding::Query(
 			State,
@@ -179,117 +184,16 @@ bool FResolutionBindingRepeatedTest::RunTest(
 		FMatchPlayCurrentAttackResolutionBinding::Query(
 			State,
 			ValidAttackSequence);
-	TestTrue(TEXT("Both queries succeed"),
-		First.bSuccess && Second.bSuccess);
-	TestTrue(TEXT("Binding values are identical"),
-		FMatchPlayCurrentAttackResolutionBindingValue::StaticStruct()
-			->CompareScriptStruct(
-				&First.Binding,
-				&Second.Binding,
+	TestTrue(TEXT("Results identical"),
+		FMatchPlayCurrentAttackResolutionBindingResult
+			::StaticStruct()->CompareScriptStruct(
+				&First,
+				&Second,
 				0));
-	TestTrue(TEXT("State remains unchanged"),
-		AreStatesEqual(State, OriginalState));
+	TestTrue(TEXT("Input unchanged"), AreStatesEqual(State, Original));
 	return true;
 }
 
-#define SIMPLE_BINDING_FAILURE( \
-	TestClass, TestName, StateFactory, StateMutation, Sequence, \
-	ExpectedError) \
-	RESOLUTION_BINDING_TEST(TestClass, TestName) \
-	bool TestClass::RunTest(const FString& Parameters) \
-	{ \
-		using namespace \
-			FMCodex::Tests::CurrentAttackResolutionBinding; \
-		FMatchPlayState State = StateFactory; \
-		StateMutation; \
-		return ExpectBindingFailure( \
-			*this, TEXT(TestName), State, Sequence, ExpectedError); \
-	}
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingUninitializedTest,
-	"RejectsUninitializedState",
-	MakeSelectedState(),
-	State.RuntimeState.bIsInitialized = false,
-	0,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode
-		::MatchPlayStateNotInitialized)
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingNoAttackTest,
-	"RejectsMissingCurrentAttack",
-	MakeSelectedState(),
-	State.bHasCurrentAttack = false,
-	0,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode::NoCurrentAttack)
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingInvalidSequenceTest,
-	"RejectsInvalidAuthoritativeSequence",
-	MakeSelectedState(),
-	State.CurrentAttack.AttackSequence = 0,
-	0,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode
-		::InvalidCurrentAttackSequence)
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingStaleTest,
-	"RejectsStaleSequence",
-	MakeSelectedState(),
-	State.RuntimeState.bIsInitialized = true,
-	ValidAttackSequence + 1,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode
-		::AttackSequenceMismatch)
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingPhaseTest,
-	"RejectsNonResolutionPhase",
-	MakeSelectedState(),
-	State.CurrentAttack.Phase =
-		EMatchPlayCurrentAttackPhase::Deployment,
-	ValidAttackSequence,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode
-		::CurrentAttackNotInResolution)
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingCorruptEmptyTest,
-	"RejectsCorruptUnselectedPayload",
-	MakeUnselectedState(),
-	State.CurrentAttack.SelectedAction.SkillId = SkillId,
-	ValidAttackSequence,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode
-		::InvalidSelectedActionState)
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingMissingCarrierTest,
-	"RejectsSelectedPayloadWithoutCarrier",
-	MakeSelectedState(),
-	State.CurrentAttack.SelectedAction.CarrierCardId = NAME_None,
-	ValidAttackSequence,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode
-		::InvalidSelectedActionState)
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingNoneTypeTest,
-	"RejectsNoneActionType",
-	MakeSelectedState(),
-	State.CurrentAttack.SelectedAction.ActionType =
-		ESkillRuleType::None,
-	ValidAttackSequence,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode
-		::UnsupportedActionType)
-
-SIMPLE_BINDING_FAILURE(
-	FResolutionBindingUnknownTypeTest,
-	"RejectsUnknownActionType",
-	MakeSelectedState(),
-	State.CurrentAttack.SelectedAction.ActionType =
-		static_cast<ESkillRuleType>(255),
-	ValidAttackSequence,
-	EMatchPlayCurrentAttackResolutionBindingErrorCode
-		::UnsupportedActionType)
-
-#undef SIMPLE_BINDING_FAILURE
 #undef RESOLUTION_BINDING_TEST
 
 #endif

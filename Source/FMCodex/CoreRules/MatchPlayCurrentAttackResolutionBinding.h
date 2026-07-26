@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "MatchPlayState.h"
+#include "MatchPlayCurrentAttackSelectionStateValidator.h"
 
 #include "MatchPlayCurrentAttackResolutionBinding.generated.h"
 
@@ -18,10 +18,8 @@ enum class EMatchPlayCurrentAttackResolutionBindingErrorCode : uint8
 	AttackSequenceMismatch UMETA(DisplayName = "Attack Sequence Mismatch"),
 	CurrentAttackNotInResolution
 		UMETA(DisplayName = "Current Attack Not In Resolution"),
-	ActionNotSelected UMETA(DisplayName = "Action Not Selected"),
-	InvalidSelectedActionState
-		UMETA(DisplayName = "Invalid Selected Action State"),
-	UnsupportedActionType UMETA(DisplayName = "Unsupported Action Type")
+	InvalidSelectionState UMETA(DisplayName = "Invalid Selection State"),
+	SelectionNotComplete UMETA(DisplayName = "Selection Not Complete")
 };
 
 USTRUCT(BlueprintType)
@@ -56,6 +54,10 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionBindingResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
 	EMatchPlayCurrentAttackResolutionBindingErrorCode ErrorCode =
 		EMatchPlayCurrentAttackResolutionBindingErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FMatchPlayCurrentAttackSelectionStateValidationResult
+		SelectionStateValidationResult;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
 	FMatchPlayCurrentAttackResolutionBindingValue Binding;

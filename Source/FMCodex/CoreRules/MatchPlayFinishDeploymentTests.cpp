@@ -73,6 +73,13 @@ namespace MatchPlayFinishDeploymentTests
 		State.CurrentAttack.Phase = Phase;
 		State.CurrentAttack.AttackSequence = AttackSequence;
 		State.CurrentAttack.ActionPoint = 6;
+		State.CurrentAttack.SelectionStage =
+			Phase == EMatchPlayCurrentAttackPhase::Deployment
+				? EMatchPlayCurrentAttackSelectionStage::None
+				: EMatchPlayCurrentAttackSelectionStage
+					::AwaitingCarrier;
+		State.CurrentAttack.ActionPreparation =
+			FMatchPlayCurrentAttackActionPreparationState();
 		State.CurrentAttack.CurrentLegalDeploymentSide = CurrentLegalSide;
 		State.CurrentAttack.bAttackerDeploymentFinished =
 			bAttackerFinished;
@@ -176,6 +183,12 @@ bool FMatchPlayFinishDeploymentPlayerAAttackerFirstTest::RunTest(
 	TestEqual(TEXT("Legal side rotates to PlayerB"),
 		Result.AfterState.CurrentAttack.CurrentLegalDeploymentSide,
 		EInitialTurnOrderPlayer::PlayerB);
+	TestEqual(TEXT("First Finish keeps selection stage None"),
+		Result.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::None);
+	TestTrue(TEXT("First Finish keeps preparation empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.CarrierCardId.IsNone());
 	TestTrue(
 		TEXT("First Finish preserves card snapshot authority"),
 		FMatchPlayPerSideCardSnapshotAuthority::StaticStruct()
@@ -290,6 +303,12 @@ bool FMatchPlayFinishDeploymentPlayerASecondTest::RunTest(
 	TestEqual(TEXT("Legal side is cleared"),
 		Result.AfterState.CurrentAttack.CurrentLegalDeploymentSide,
 		EInitialTurnOrderPlayer::None);
+	TestEqual(TEXT("Selection awaits Carrier"),
+		Result.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier);
+	TestTrue(TEXT("Preparation remains empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.CarrierCardId.IsNone());
 	TestFalse(TEXT("Second Finish does not select an action"),
 		Result.AfterState.CurrentAttack.bHasSelectedAction);
 	TestTrue(TEXT("Selected-action payload remains canonical empty"),
@@ -334,7 +353,33 @@ bool FMatchPlayFinishDeploymentPlayerBSecondTest::RunTest(
 	TestEqual(TEXT("Legal side is None"),
 		Result.AfterState.CurrentAttack.CurrentLegalDeploymentSide,
 		EInitialTurnOrderPlayer::None);
+	TestEqual(TEXT("Selection awaits Carrier"),
+		Result.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier);
+	TestTrue(TEXT("Preparation remains empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.CarrierCardId.IsNone());
 	return true;
+}
+
+MATCH_PLAY_FINISH_DEPLOYMENT_TEST(
+	FMatchPlayFinishDeploymentCorruptSelectionStateTest,
+	"CorruptSelectionStateRejectedAtomically")
+
+bool FMatchPlayFinishDeploymentCorruptSelectionStateTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState State =
+		MatchPlayFinishDeploymentTests::MakeState();
+	State.CurrentAttack.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier;
+	return MatchPlayFinishDeploymentTests::TestAtomicFailure(
+		*this,
+		TEXT("Corrupt Deployment selection state"),
+		State,
+		MatchPlayFinishDeploymentTests::ValidAttackSequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayFinishDeploymentErrorCode::InvalidSelectionState);
 }
 
 MATCH_PLAY_FINISH_DEPLOYMENT_TEST(

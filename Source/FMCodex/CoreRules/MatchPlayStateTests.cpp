@@ -424,6 +424,11 @@ bool FMatchPlayStateSelectedActionAuthorityTest::RunTest(
 	const FString& Parameters)
 {
 	const FMatchPlayCurrentAttackState EmptyState;
+	TestEqual(TEXT("Default selection stage is None"),
+		EmptyState.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::None);
+	TestTrue(TEXT("Default preparation carrier is empty"),
+		EmptyState.ActionPreparation.CarrierCardId.IsNone());
 	TestFalse(TEXT("Default has no selected action"),
 		EmptyState.bHasSelectedAction);
 	TestTrue(TEXT("Default carrier is empty"),
@@ -435,6 +440,11 @@ bool FMatchPlayStateSelectedActionAuthorityTest::RunTest(
 		ESkillRuleType::None);
 
 	FMatchPlayCurrentAttackState SelectedState = EmptyState;
+	SelectedState.Phase = EMatchPlayCurrentAttackPhase::Resolution;
+	SelectedState.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingMarker;
+	SelectedState.ActionPreparation.CarrierCardId =
+		TEXT("PlayerA.PreparationCarrier");
 	SelectedState.bHasSelectedAction = true;
 	SelectedState.SelectedAction.CarrierCardId =
 		TEXT("PlayerA.Carrier");
@@ -447,6 +457,12 @@ bool FMatchPlayStateSelectedActionAuthorityTest::RunTest(
 			->CompareScriptStruct(&SelectedState, &Copy, 0));
 	Copy.SelectedAction.SkillId = TEXT("Skill.Cross");
 	TestFalse(TEXT("Reflected comparison observes selected payload"),
+		FMatchPlayCurrentAttackState::StaticStruct()
+			->CompareScriptStruct(&SelectedState, &Copy, 0));
+	Copy = SelectedState;
+	Copy.ActionPreparation.CarrierCardId =
+		TEXT("PlayerA.OtherPreparationCarrier");
+	TestFalse(TEXT("Reflected comparison observes preparation payload"),
 		FMatchPlayCurrentAttackState::StaticStruct()
 			->CompareScriptStruct(&SelectedState, &Copy, 0));
 	return true;

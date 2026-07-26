@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "MatchPlayState.h"
+#include "MatchPlayCurrentAttackSelectionStateValidator.h"
 
 #include "MatchPlayFinishDeployment.generated.h"
 
@@ -23,6 +23,7 @@ enum class EMatchPlayFinishDeploymentErrorCode : uint8
 	InvalidRequestingSide UMETA(DisplayName = "Invalid Requesting Side"),
 	InvalidCurrentLegalDeploymentSide
 		UMETA(DisplayName = "Invalid Current Legal Deployment Side"),
+	InvalidSelectionState UMETA(DisplayName = "Invalid Selection State"),
 	RequestingSideNotCurrentLegalDeploymentSide
 		UMETA(DisplayName = "Requesting Side Not Current Legal Deployment Side"),
 	InvalidDeploymentFinishedState
@@ -55,6 +56,10 @@ struct FMCODEX_API FMatchPlayFinishDeploymentResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Finish Deployment")
 	EMatchPlayFinishDeploymentErrorCode ErrorCode =
 		EMatchPlayFinishDeploymentErrorCode::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Finish Deployment")
+	FMatchPlayCurrentAttackSelectionStateValidationResult
+		SelectionStateValidationResult;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Finish Deployment")
 	FString ErrorMessage;

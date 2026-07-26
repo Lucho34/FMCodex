@@ -18,6 +18,14 @@ enum class EMatchPlayCurrentAttackPhase : uint8
 	Resolution UMETA(DisplayName = "Resolution")
 };
 
+UENUM(BlueprintType)
+enum class EMatchPlayCurrentAttackSelectionStage : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	AwaitingCarrier = 1 UMETA(DisplayName = "Awaiting Carrier"),
+	AwaitingMarker = 2 UMETA(DisplayName = "Awaiting Marker")
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchPlayDeploymentPlacement
 {
@@ -31,6 +39,15 @@ struct FMCODEX_API FMatchPlayDeploymentPlacement
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName SlotId = NAME_None;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackActionPreparationState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName CarrierCardId = NAME_None;
 };
 
 USTRUCT(BlueprintType)
@@ -62,6 +79,13 @@ struct FMCODEX_API FMatchPlayCurrentAttackState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	int32 ActionPoint = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	EMatchPlayCurrentAttackSelectionStage SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FMatchPlayCurrentAttackActionPreparationState ActionPreparation;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	EInitialTurnOrderPlayer CurrentLegalDeploymentSide =

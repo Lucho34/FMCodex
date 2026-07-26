@@ -118,6 +118,10 @@ bool FMatchPlayBeginOrdinaryAttackPlayerASuccessTest::RunTest(
 		EMatchPlayCurrentAttackPhase::Resolution;
 	BeforeState.CurrentAttack.AttackSequence = 99;
 	BeforeState.CurrentAttack.ActionPoint = 8;
+	BeforeState.CurrentAttack.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingMarker;
+	BeforeState.CurrentAttack.ActionPreparation.CarrierCardId =
+		TEXT("StalePreparationCarrier");
 	BeforeState.CurrentAttack.CurrentLegalDeploymentSide =
 		EInitialTurnOrderPlayer::PlayerB;
 	BeforeState.CurrentAttack.bAttackerDeploymentFinished = true;
@@ -146,6 +150,12 @@ bool FMatchPlayBeginOrdinaryAttackPlayerASuccessTest::RunTest(
 	TestEqual(TEXT("Sequence starts at one"), Result.AfterState.CurrentAttack.AttackSequence,
 		int64{ 1 });
 	TestEqual(TEXT("Action point is retained"), Result.AfterState.CurrentAttack.ActionPoint, 5);
+	TestEqual(TEXT("Selection stage starts at None"),
+		Result.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::None);
+	TestTrue(TEXT("Preparation carrier starts empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.CarrierCardId.IsNone());
 	TestEqual(TEXT("Attacker deploys first"),
 		Result.AfterState.CurrentAttack.CurrentLegalDeploymentSide,
 		EInitialTurnOrderPlayer::PlayerA);

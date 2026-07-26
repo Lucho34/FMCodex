@@ -11,11 +11,6 @@ namespace MatchPlayCurrentAttackResolutionBindingImplementation
 		Result.ErrorMessage = ErrorMessage;
 	}
 
-	bool IsSupportedFrozenActionType(const ESkillRuleType ActionType)
-	{
-		return ActionType >= ESkillRuleType::LongShot
-			&& ActionType <= ESkillRuleType::ThroughBall;
-	}
 }
 
 FMatchPlayCurrentAttackResolutionBindingResult
@@ -81,55 +76,36 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 		return Result;
 	}
 
-	const FMatchPlayCurrentAttackSelectedAction& SelectedAction =
-		CurrentAttack.SelectedAction;
-	if (!CurrentAttack.bHasSelectedAction)
-	{
-		const bool bCanonicalEmpty =
-			SelectedAction.CarrierCardId.IsNone()
-			&& SelectedAction.SkillId.IsNone()
-			&& SelectedAction.ActionType == ESkillRuleType::None;
-		SetError(
-			Result,
-			bCanonicalEmpty
-				? EMatchPlayCurrentAttackResolutionBindingErrorCode
-					::ActionNotSelected
-				: EMatchPlayCurrentAttackResolutionBindingErrorCode
-					::InvalidSelectedActionState,
-			bCanonicalEmpty
-				? TEXT("Current attack does not yet have a selected action.")
-				: TEXT("Unselected current attack contains a non-empty selected-action payload."));
-		return Result;
-	}
-
-	if (SelectedAction.CarrierCardId.IsNone()
-		|| SelectedAction.SkillId.IsNone())
+	Result.SelectionStateValidationResult =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			CurrentAttack);
+	if (!Result.SelectionStateValidationResult.bIsCanonical)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackResolutionBindingErrorCode
-				::InvalidSelectedActionState,
-			TEXT("Selected action must contain non-empty carrier and skill identities."));
+				::InvalidSelectionState,
+			Result.SelectionStateValidationResult.ErrorMessage);
 		return Result;
 	}
 
-	if (!IsSupportedFrozenActionType(SelectedAction.ActionType))
+	if (CurrentAttack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier
+		|| CurrentAttack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingMarker)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackResolutionBindingErrorCode
-				::UnsupportedActionType,
-			TEXT("Selected action contains a None, unknown, or unsupported action type."));
+				::SelectionNotComplete,
+			TEXT("Current attack participant and action selection is not complete."));
 		return Result;
 	}
 
-	Result.Binding.AttackSequence = CurrentAttack.AttackSequence;
-	Result.Binding.CarrierCardId = SelectedAction.CarrierCardId;
-	Result.Binding.SkillId = SelectedAction.SkillId;
-	Result.Binding.ActionType = SelectedAction.ActionType;
-	Result.bSuccess = true;
-	Result.ErrorCode =
-		EMatchPlayCurrentAttackResolutionBindingErrorCode::None;
-	Result.ErrorMessage.Empty();
+	SetError(
+		Result,
+		EMatchPlayCurrentAttackResolutionBindingErrorCode
+			::InvalidSelectionState,
+		TEXT("Current attack has no implemented complete selection stage."));
 	return Result;
 }
