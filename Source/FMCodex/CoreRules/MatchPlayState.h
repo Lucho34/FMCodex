@@ -24,7 +24,9 @@ enum class EMatchPlayCurrentAttackSelectionStage : uint8
 	None = 0 UMETA(DisplayName = "None"),
 	AwaitingCarrier = 1 UMETA(DisplayName = "Awaiting Carrier"),
 	AwaitingMarker = 2 UMETA(DisplayName = "Awaiting Marker"),
-	AwaitingSkill = 3 UMETA(DisplayName = "Awaiting Skill")
+	AwaitingSkill = 3 UMETA(DisplayName = "Awaiting Skill"),
+	AwaitingRunner = 4 UMETA(DisplayName = "Awaiting Runner"),
+	ReadyForResolution = 5 UMETA(DisplayName = "Ready For Resolution")
 };
 
 USTRUCT(BlueprintType)
@@ -52,6 +54,12 @@ struct FMCODEX_API FMatchPlayCurrentAttackActionPreparationState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName MarkerCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName SkillId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	ESkillRuleType ActionType = ESkillRuleType::None;
 };
 
 USTRUCT(BlueprintType)
@@ -61,6 +69,9 @@ struct FMCODEX_API FMatchPlayCurrentAttackSelectedAction
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName CarrierCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName MarkerCardId = NAME_None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName SkillId = NAME_None;

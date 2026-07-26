@@ -1,0 +1,305 @@
+#include "MatchPlayCurrentAttackSkillSelectionWriter.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+#include "MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
+#include "Misc/AutomationTest.h"
+
+#define SKILL_WRITER_TEST(TestClass, TestName) \
+	IMPLEMENT_SIMPLE_AUTOMATION_TEST( \
+		TestClass, \
+		"FMCodex.CoreRules.MatchPlayCurrentAttackSkillSelectionWriter." TestName, \
+		EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+SKILL_WRITER_TEST(
+	FSkillWriterNoRunnerFinalizationTest,
+	"LongShotAndCutInsideFinalizeReady")
+
+bool FSkillWriterNoRunnerFinalizationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	struct FCase
+	{
+		FName SkillId;
+		ESkillRuleType Type;
+	};
+	const FCase Cases[] = {
+		{LongShotSkillId, ESkillRuleType::LongShot},
+		{CutInsideSkillId, ESkillRuleType::CutInsideShot}
+	};
+	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
+	for (const FCase& Case : Cases)
+	{
+		const FMatchPlayState Before = MakeState({Case.SkillId});
+		const auto Result =
+			FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+				Before,
+				Rules,
+				MakeRequest(Case.SkillId));
+		const auto& Attack = Result.AfterState.CurrentAttack;
+		TestTrue(TEXT("Writer succeeds"), Result.bSuccess);
+		TestTrue(
+			TEXT("Input unchanged"),
+			AreStatesEqual(Before, Result.BeforeState));
+		TestEqual(
+			TEXT("Ready stage"),
+			Attack.SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage
+				::ReadyForResolution);
+		TestTrue(
+			TEXT("Has selected action"),
+			Attack.bHasSelectedAction);
+		TestEqual(
+			TEXT("Final carrier"),
+			Attack.SelectedAction.CarrierCardId,
+			CarrierId);
+		TestEqual(
+			TEXT("Final marker"),
+			Attack.SelectedAction.MarkerCardId,
+			MarkerId);
+		TestEqual(
+			TEXT("Final skill"),
+			Attack.SelectedAction.SkillId,
+			Case.SkillId);
+		TestEqual(
+			TEXT("Final type"),
+			Attack.SelectedAction.ActionType,
+			Case.Type);
+		TestTrue(
+			TEXT("Preparation carrier cleared"),
+			Attack.ActionPreparation.CarrierCardId.IsNone());
+		TestTrue(
+			TEXT("Preparation marker cleared"),
+			Attack.ActionPreparation.MarkerCardId.IsNone());
+		TestTrue(
+			TEXT("Preparation skill cleared"),
+			Attack.ActionPreparation.SkillId.IsNone());
+		TestEqual(
+			TEXT("Preparation action type cleared"),
+			Attack.ActionPreparation.ActionType,
+			ESkillRuleType::None);
+		TestEqual(
+			TEXT("ActionPoint unchanged"),
+			Attack.ActionPoint,
+			Before.CurrentAttack.ActionPoint);
+		TestTrue(
+			TEXT("Final state canonical"),
+			FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+				Attack)
+				.bIsCanonical);
+	}
+	return true;
+}
+
+SKILL_WRITER_TEST(
+	FSkillWriterRunnerTransitionTest,
+	"RunnerSkillsEnterAwaitingRunner")
+
+bool FSkillWriterRunnerTransitionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	struct FCase
+	{
+		FName SkillId;
+		ESkillRuleType Type;
+	};
+	const FCase Cases[] = {
+		{PassControlSkillId, ESkillRuleType::PassControl},
+		{CrossSkillId, ESkillRuleType::Cross},
+		{ThroughBallSkillId, ESkillRuleType::ThroughBall}
+	};
+	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
+	for (const FCase& Case : Cases)
+	{
+		const FMatchPlayState Before = MakeState({Case.SkillId});
+		const auto Result =
+			FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+				Before,
+				Rules,
+				MakeRequest(Case.SkillId));
+		const auto& Attack = Result.AfterState.CurrentAttack;
+		TestTrue(TEXT("Writer succeeds"), Result.bSuccess);
+		TestEqual(
+			TEXT("AwaitingRunner stage"),
+			Attack.SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage
+				::AwaitingRunner);
+		TestEqual(
+			TEXT("Carrier preserved"),
+			Attack.ActionPreparation.CarrierCardId,
+			CarrierId);
+		TestEqual(
+			TEXT("Marker preserved"),
+			Attack.ActionPreparation.MarkerCardId,
+			MarkerId);
+		TestEqual(
+			TEXT("Skill frozen"),
+			Attack.ActionPreparation.SkillId,
+			Case.SkillId);
+		TestEqual(
+			TEXT("Action type frozen"),
+			Attack.ActionPreparation.ActionType,
+			Case.Type);
+		TestFalse(
+			TEXT("No selected action"),
+			Attack.bHasSelectedAction);
+		TestTrue(
+			TEXT("Selected carrier empty"),
+			Attack.SelectedAction.CarrierCardId.IsNone());
+		TestEqual(
+			TEXT("ActionPoint unchanged"),
+			Attack.ActionPoint,
+			Before.CurrentAttack.ActionPoint);
+		TestTrue(
+			TEXT("AwaitingRunner canonical"),
+			FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+				Attack)
+				.bIsCanonical);
+	}
+	return true;
+}
+
+SKILL_WRITER_TEST(
+	FSkillWriterFailureAndRepeatAtomicityTest,
+	"FailuresAndRepeatedSelectionsAreAtomic")
+
+bool FSkillWriterFailureAndRepeatAtomicityTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
+	const FMatchPlayState Initial =
+		MakeState({LongShotSkillId, CrossSkillId});
+
+	auto StaleRequest = MakeRequest();
+	StaleRequest.AttackSequence = ValidAttackSequence + 1;
+	const auto Stale =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			Initial,
+			Rules,
+			StaleRequest);
+	TestFalse(TEXT("Stale fails"), Stale.bSuccess);
+	TestTrue(
+		TEXT("Stale atomic"),
+		AreStatesEqual(Stale.BeforeState, Stale.AfterState));
+
+	auto WrongSideRequest = MakeRequest();
+	WrongSideRequest.RequestingSide =
+		EInitialTurnOrderPlayer::PlayerB;
+	const auto WrongSide =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			Initial,
+			Rules,
+			WrongSideRequest);
+	TestFalse(TEXT("Wrong side fails"), WrongSide.bSuccess);
+	TestTrue(
+		TEXT("Wrong side atomic"),
+		AreStatesEqual(
+			WrongSide.BeforeState,
+			WrongSide.AfterState));
+
+	FMatchPlayState OwnershipState = MakeState({CrossSkillId});
+	const auto Ownership =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			OwnershipState,
+			Rules,
+			MakeRequest(LongShotSkillId));
+	TestFalse(TEXT("Ownership fails"), Ownership.bSuccess);
+	TestTrue(
+		TEXT("Ownership atomic"),
+		AreStatesEqual(
+			Ownership.BeforeState,
+			Ownership.AfterState));
+
+	FSkillRuleSnapshotSet InvalidRules = MakeRuleSet();
+	InvalidRules.SkillRules[0].SkillId = NAME_None;
+	const auto RuleFailure =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			Initial,
+			InvalidRules,
+			MakeRequest(LongShotSkillId));
+	TestFalse(TEXT("Rule failure fails"), RuleFailure.bSuccess);
+	TestTrue(
+		TEXT("Rule failure atomic"),
+		AreStatesEqual(
+			RuleFailure.BeforeState,
+			RuleFailure.AfterState));
+
+	FMatchPlayState ApState = MakeState({LongShotSkillId});
+	ApState.CurrentAttack.ActionPoint = 1;
+	const auto ApFailure =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			ApState,
+			Rules,
+			MakeRequest());
+	TestFalse(TEXT("AP fails"), ApFailure.bSuccess);
+	TestTrue(
+		TEXT("AP atomic"),
+		AreStatesEqual(
+			ApFailure.BeforeState,
+			ApFailure.AfterState));
+
+	const auto First =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			Initial,
+			Rules,
+			MakeRequest(LongShotSkillId));
+	TestTrue(TEXT("First succeeds"), First.bSuccess);
+	const auto RepeatSame =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			First.AfterState,
+			Rules,
+			MakeRequest(LongShotSkillId));
+	TestFalse(TEXT("Repeat same fails"), RepeatSame.bSuccess);
+	TestEqual(
+		TEXT("Repeat same wrong stage"),
+		RepeatSame.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackSkillSelectionErrorCode
+			::WrongSelectionStage);
+	TestTrue(
+		TEXT("Repeat same atomic"),
+		AreStatesEqual(
+			RepeatSame.BeforeState,
+			RepeatSame.AfterState));
+
+	const auto RepeatDifferent =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			First.AfterState,
+			Rules,
+			MakeRequest(CrossSkillId));
+	TestFalse(
+		TEXT("Repeat different fails"),
+		RepeatDifferent.bSuccess);
+	TestTrue(
+		TEXT("Repeat different atomic"),
+		AreStatesEqual(
+			RepeatDifferent.BeforeState,
+			RepeatDifferent.AfterState));
+	TestTrue(
+		TEXT("Score preserved"),
+		Initial.RuntimeState.PlayerAState.Score
+			== First.AfterState.RuntimeState.PlayerAState.Score);
+	TestTrue(
+		TEXT("Card usage preserved"),
+		FMatchCardUsageState::StaticStruct()->CompareScriptStruct(
+			&Initial.CardUsageState,
+			&First.AfterState.CardUsageState,
+			0));
+	TestTrue(
+		TEXT("GK usage preserved"),
+		FMatchPlayGoalkeeperUsageState::StaticStruct()
+			->CompareScriptStruct(
+				&Initial.GoalkeeperUsageState,
+				&First.AfterState.GoalkeeperUsageState,
+				0));
+	return true;
+}
+
+#undef SKILL_WRITER_TEST
+
+#endif

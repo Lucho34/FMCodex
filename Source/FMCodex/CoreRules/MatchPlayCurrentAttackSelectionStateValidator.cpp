@@ -1,12 +1,14 @@
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 
+#include "MatchPlaySkillParticipantRequirementQuery.h"
+
 namespace MatchPlayCurrentAttackSelectionStateValidatorImplementation
 {
 	void SetError(
 		FMatchPlayCurrentAttackSelectionStateValidationResult& Result,
 		const EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 			ErrorCode,
-		const TCHAR* ErrorMessage)
+		const FString& ErrorMessage)
 	{
 		Result.ErrorCode = ErrorCode;
 		Result.ErrorMessage = ErrorMessage;
@@ -16,8 +18,18 @@ namespace MatchPlayCurrentAttackSelectionStateValidatorImplementation
 		const FMatchPlayCurrentAttackSelectedAction& SelectedAction)
 	{
 		return SelectedAction.CarrierCardId.IsNone()
+			&& SelectedAction.MarkerCardId.IsNone()
 			&& SelectedAction.SkillId.IsNone()
 			&& SelectedAction.ActionType == ESkillRuleType::None;
+	}
+
+	bool IsPreparationEmpty(
+		const FMatchPlayCurrentAttackActionPreparationState& Preparation)
+	{
+		return Preparation.CarrierCardId.IsNone()
+			&& Preparation.MarkerCardId.IsNone()
+			&& Preparation.SkillId.IsNone()
+			&& Preparation.ActionType == ESkillRuleType::None;
 	}
 }
 
@@ -33,8 +45,14 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 		!CurrentAttack.ActionPreparation.CarrierCardId.IsNone();
 	const bool bPreparationHasMarker =
 		!CurrentAttack.ActionPreparation.MarkerCardId.IsNone();
+	const bool bPreparationHasSkill =
+		!CurrentAttack.ActionPreparation.SkillId.IsNone();
+	const bool bPreparationHasActionType =
+		CurrentAttack.ActionPreparation.ActionType != ESkillRuleType::None;
 	const bool bSelectedActionHasCarrier =
 		!CurrentAttack.SelectedAction.CarrierCardId.IsNone();
+	const bool bSelectedActionPayloadEmpty =
+		IsSelectedActionPayloadEmpty(CurrentAttack.SelectedAction);
 
 	if (bPreparationHasCarrier && bSelectedActionHasCarrier)
 	{
@@ -46,23 +64,27 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 		return Result;
 	}
 
-	if (CurrentAttack.bHasSelectedAction)
+	if (CurrentAttack.SelectionStage
+			!= EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+		&& CurrentAttack.bHasSelectedAction)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 				::SelectedActionUnexpectedlyPresent,
-			TEXT("Carrier selection foundation does not support a final selected action."));
+			TEXT("An incomplete selection stage cannot contain a final selected action."));
 		return Result;
 	}
 
-	if (!IsSelectedActionPayloadEmpty(CurrentAttack.SelectedAction))
+	if (CurrentAttack.SelectionStage
+			!= EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+		&& !bSelectedActionPayloadEmpty)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 				::SelectedActionPayloadNotEmpty,
-			TEXT("SelectedAction must remain empty during carrier selection."));
+			TEXT("SelectedAction must remain empty until selection is ready for resolution."));
 		return Result;
 	}
 
@@ -98,6 +120,24 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 				TEXT("Deployment cannot contain a preparation marker."));
 			return Result;
 		}
+		if (bPreparationHasSkill)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+					::UnexpectedPreparationSkill,
+				TEXT("Deployment cannot contain a preparation skill."));
+			return Result;
+		}
+		if (bPreparationHasActionType)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+					::UnexpectedPreparationActionType,
+				TEXT("Deployment cannot contain a preparation action type."));
+			return Result;
+		}
 		break;
 
 	case EMatchPlayCurrentAttackPhase::Resolution:
@@ -122,6 +162,24 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingCarrier requires an empty preparation marker."));
 				return Result;
 			}
+			if (bPreparationHasSkill)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationSkill,
+					TEXT("AwaitingCarrier requires an empty preparation skill."));
+				return Result;
+			}
+			if (bPreparationHasActionType)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationActionType,
+					TEXT("AwaitingCarrier requires an empty preparation action type."));
+				return Result;
+			}
 			break;
 
 		case EMatchPlayCurrentAttackSelectionStage::AwaitingMarker:
@@ -141,6 +199,24 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::UnexpectedPreparationMarker,
 					TEXT("AwaitingMarker requires an empty preparation marker."));
+				return Result;
+			}
+			if (bPreparationHasSkill)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationSkill,
+					TEXT("AwaitingMarker requires an empty preparation skill."));
+				return Result;
+			}
+			if (bPreparationHasActionType)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationActionType,
+					TEXT("AwaitingMarker requires an empty preparation action type."));
 				return Result;
 			}
 			break;
@@ -163,6 +239,173 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 						::MissingPreparationMarker,
 					TEXT("AwaitingSkill requires a frozen preparation marker."));
 				return Result;
+			}
+			if (bPreparationHasSkill)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationSkill,
+					TEXT("AwaitingSkill requires an empty preparation skill."));
+				return Result;
+			}
+			if (bPreparationHasActionType)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationActionType,
+					TEXT("AwaitingSkill requires an empty preparation action type."));
+				return Result;
+			}
+			break;
+
+		case EMatchPlayCurrentAttackSelectionStage::AwaitingRunner:
+			if (!bPreparationHasCarrier)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationCarrier,
+					TEXT("AwaitingRunner requires a frozen preparation carrier."));
+				return Result;
+			}
+			if (!bPreparationHasMarker)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationMarker,
+					TEXT("AwaitingRunner requires a frozen preparation marker."));
+				return Result;
+			}
+			if (!bPreparationHasSkill)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationSkill,
+					TEXT("AwaitingRunner requires a frozen preparation skill."));
+				return Result;
+			}
+			if (!bPreparationHasActionType)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationActionType,
+					TEXT("AwaitingRunner requires a frozen preparation action type."));
+				return Result;
+			}
+			{
+				const FMatchPlaySkillParticipantRequirementResult
+					Requirement =
+						FMatchPlaySkillParticipantRequirementQuery::Query(
+							CurrentAttack.ActionPreparation.ActionType);
+				if (!Requirement.bSuccess)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::ParticipantRequirementResolutionFailed,
+						Requirement.ErrorMessage);
+					return Result;
+				}
+				if (!Requirement.bRequiresRunner
+					|| !Requirement.bRequiresHelperStage
+					|| Requirement.bCanBecomeReadyImmediately)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::ActionTypeDoesNotMatchSelectionStage,
+						TEXT("AwaitingRunner requires a runner-and-helper skill action type."));
+					return Result;
+				}
+			}
+			break;
+
+		case EMatchPlayCurrentAttackSelectionStage::ReadyForResolution:
+			if (!IsPreparationEmpty(CurrentAttack.ActionPreparation))
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::PreparationAndSelectedActionCoexist,
+					TEXT("ReadyForResolution requires empty preparation authority."));
+				return Result;
+			}
+			if (!CurrentAttack.bHasSelectedAction)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingSelectedAction,
+					TEXT("ReadyForResolution requires a final selected action."));
+				return Result;
+			}
+			if (CurrentAttack.SelectedAction.CarrierCardId.IsNone())
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingSelectedActionCarrier,
+					TEXT("ReadyForResolution requires a selected action carrier."));
+				return Result;
+			}
+			if (CurrentAttack.SelectedAction.MarkerCardId.IsNone())
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingSelectedActionMarker,
+					TEXT("ReadyForResolution requires a selected action marker."));
+				return Result;
+			}
+			if (CurrentAttack.SelectedAction.SkillId.IsNone())
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingSelectedActionSkill,
+					TEXT("ReadyForResolution requires a selected action skill."));
+				return Result;
+			}
+			if (CurrentAttack.SelectedAction.ActionType
+				== ESkillRuleType::None)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingSelectedActionActionType,
+					TEXT("ReadyForResolution requires a selected action type."));
+				return Result;
+			}
+			{
+				const FMatchPlaySkillParticipantRequirementResult
+					Requirement =
+						FMatchPlaySkillParticipantRequirementQuery::Query(
+							CurrentAttack.SelectedAction.ActionType);
+				if (!Requirement.bSuccess)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::ParticipantRequirementResolutionFailed,
+						Requirement.ErrorMessage);
+					return Result;
+				}
+				if (Requirement.bRequiresRunner
+					|| Requirement.bRequiresHelperStage
+					|| !Requirement.bCanBecomeReadyImmediately)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::ActionTypeDoesNotMatchSelectionStage,
+						TEXT("ReadyForResolution currently supports only no-runner skill action types."));
+					return Result;
+				}
 			}
 			break;
 

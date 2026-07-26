@@ -94,13 +94,34 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 		|| CurrentAttack.SelectionStage
 			== EMatchPlayCurrentAttackSelectionStage::AwaitingMarker
 		|| CurrentAttack.SelectionStage
-			== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill)
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill
+		|| CurrentAttack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingRunner)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackResolutionBindingErrorCode
 				::SelectionNotComplete,
 			TEXT("Current attack participant and action selection is not complete."));
+		return Result;
+	}
+
+	if (CurrentAttack.SelectionStage
+		== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution)
+	{
+		Result.Binding.AttackSequence = CurrentAttack.AttackSequence;
+		Result.Binding.CarrierCardId =
+			CurrentAttack.SelectedAction.CarrierCardId;
+		Result.Binding.MarkerCardId =
+			CurrentAttack.SelectedAction.MarkerCardId;
+		Result.Binding.SkillId =
+			CurrentAttack.SelectedAction.SkillId;
+		Result.Binding.ActionType =
+			CurrentAttack.SelectedAction.ActionType;
+		Result.bSuccess = true;
+		Result.ErrorCode =
+			EMatchPlayCurrentAttackResolutionBindingErrorCode::None;
+		Result.ErrorMessage.Empty();
 		return Result;
 	}
 

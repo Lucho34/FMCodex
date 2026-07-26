@@ -10,6 +10,7 @@ namespace SelectionStateValidatorTests
 {
 	const FName CarrierId(TEXT("PlayerA.Carrier"));
 	const FName MarkerId(TEXT("PlayerB.Marker"));
+	const FName SkillId(TEXT("Skill.Selection"));
 
 	FMatchPlayCurrentAttackState MakeAwaitingCarrier()
 	{
@@ -35,6 +36,35 @@ namespace SelectionStateValidatorTests
 		State.SelectionStage =
 			EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
 		State.ActionPreparation.MarkerCardId = MarkerId;
+		return State;
+	}
+
+	FMatchPlayCurrentAttackState MakeAwaitingRunner(
+		const ESkillRuleType ActionType =
+			ESkillRuleType::Cross)
+	{
+		FMatchPlayCurrentAttackState State = MakeAwaitingSkill();
+		State.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage::AwaitingRunner;
+		State.ActionPreparation.SkillId = SkillId;
+		State.ActionPreparation.ActionType = ActionType;
+		return State;
+	}
+
+	FMatchPlayCurrentAttackState MakeReady(
+		const ESkillRuleType ActionType =
+			ESkillRuleType::LongShot)
+	{
+		FMatchPlayCurrentAttackState State;
+		State.Phase = EMatchPlayCurrentAttackPhase::Resolution;
+		State.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage
+				::ReadyForResolution;
+		State.bHasSelectedAction = true;
+		State.SelectedAction.CarrierCardId = CarrierId;
+		State.SelectedAction.MarkerCardId = MarkerId;
+		State.SelectedAction.SkillId = SkillId;
+		State.SelectedAction.ActionType = ActionType;
 		return State;
 	}
 
@@ -90,6 +120,13 @@ bool FSelectionStateContractTest::RunTest(const FString& Parameters)
 		State.ActionPreparation.CarrierCardId.IsNone());
 	TestTrue(TEXT("Default preparation marker empty"),
 		State.ActionPreparation.MarkerCardId.IsNone());
+	TestTrue(TEXT("Default preparation skill empty"),
+		State.ActionPreparation.SkillId.IsNone());
+	TestEqual(TEXT("Default preparation action type empty"),
+		State.ActionPreparation.ActionType,
+		ESkillRuleType::None);
+	TestTrue(TEXT("Default selected marker empty"),
+		State.SelectedAction.MarkerCardId.IsNone());
 	TestNotNull(TEXT("Stage reflected"),
 		StaticEnum<EMatchPlayCurrentAttackSelectionStage>());
 	TestNotNull(TEXT("Preparation reflected"),
@@ -125,6 +162,16 @@ bool FSelectionStateContractTest::RunTest(const FString& Parameters)
 			EMatchPlayCurrentAttackSelectionStage
 				::AwaitingSkill),
 		uint8{3});
+	TestEqual(TEXT("AwaitingRunner value appended"),
+		static_cast<uint8>(
+			EMatchPlayCurrentAttackSelectionStage
+				::AwaitingRunner),
+		uint8{4});
+	TestEqual(TEXT("ReadyForResolution value appended"),
+		static_cast<uint8>(
+			EMatchPlayCurrentAttackSelectionStage
+				::ReadyForResolution),
+		uint8{5});
 	return true;
 }
 
@@ -406,6 +453,177 @@ bool FSelectionStateUnknownStageTest::RunTest(
 		State,
 		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 			::UnsupportedSelectionStage);
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateExtendedCanonicalTest,
+	"AwaitingRunnerAndReadyCanonical")
+
+bool FSelectionStateExtendedCanonicalTest::RunTest(
+	const FString& Parameters)
+{
+	const auto Runner =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			SelectionStateValidatorTests::MakeAwaitingRunner());
+	TestTrue(TEXT("AwaitingRunner canonical"), Runner.bIsCanonical);
+	const auto LongShot =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			SelectionStateValidatorTests::MakeReady());
+	TestTrue(TEXT("Ready LongShot canonical"), LongShot.bIsCanonical);
+	const auto CutInside =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			SelectionStateValidatorTests::MakeReady(
+				ESkillRuleType::CutInsideShot));
+	TestTrue(
+		TEXT("Ready CutInside canonical"),
+		CutInside.bIsCanonical);
+	return true;
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateAwaitingSkillExtendedPayloadTest,
+	"AwaitingSkillRejectsSkillAndActionType")
+
+bool FSelectionStateAwaitingSkillExtendedPayloadTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState SkillState =
+		SelectionStateValidatorTests::MakeAwaitingSkill();
+	SkillState.ActionPreparation.SkillId =
+		SelectionStateValidatorTests::SkillId;
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingSkill with skill"),
+		SkillState,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::UnexpectedPreparationSkill);
+
+	FMatchPlayCurrentAttackState ActionState =
+		SelectionStateValidatorTests::MakeAwaitingSkill();
+	ActionState.ActionPreparation.ActionType =
+		ESkillRuleType::Cross;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingSkill with action type"),
+		ActionState,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::UnexpectedPreparationActionType);
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateAwaitingRunnerCorruptionTest,
+	"AwaitingRunnerRejectsMissingAndNoRunnerTypes")
+
+bool FSelectionStateAwaitingRunnerCorruptionTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState MissingSkill =
+		SelectionStateValidatorTests::MakeAwaitingRunner();
+	MissingSkill.ActionPreparation.SkillId = NAME_None;
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingRunner missing skill"),
+		MissingSkill,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::MissingPreparationSkill);
+
+	FMatchPlayCurrentAttackState MissingType =
+		SelectionStateValidatorTests::MakeAwaitingRunner();
+	MissingType.ActionPreparation.ActionType =
+		ESkillRuleType::None;
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingRunner missing type"),
+		MissingType,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::MissingPreparationActionType);
+
+	FMatchPlayCurrentAttackState LongShot =
+		SelectionStateValidatorTests::MakeAwaitingRunner(
+			ESkillRuleType::LongShot);
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingRunner LongShot"),
+		LongShot,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::ActionTypeDoesNotMatchSelectionStage);
+
+	FMatchPlayCurrentAttackState CutInside =
+		SelectionStateValidatorTests::MakeAwaitingRunner(
+			ESkillRuleType::CutInsideShot);
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingRunner CutInside"),
+		CutInside,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::ActionTypeDoesNotMatchSelectionStage);
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateReadyCorruptionTest,
+	"ReadyRejectsRunnerPreparationAndMissingMarker")
+
+bool FSelectionStateReadyCorruptionTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState Runner =
+		SelectionStateValidatorTests::MakeReady(
+			ESkillRuleType::Cross);
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Ready runner skill"),
+		Runner,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::ActionTypeDoesNotMatchSelectionStage);
+
+	FMatchPlayCurrentAttackState Preparation =
+		SelectionStateValidatorTests::MakeReady();
+	Preparation.ActionPreparation.SkillId =
+		SelectionStateValidatorTests::SkillId;
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Ready preparation coexist"),
+		Preparation,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::PreparationAndSelectedActionCoexist);
+
+	FMatchPlayCurrentAttackState MissingMarker =
+		SelectionStateValidatorTests::MakeReady();
+	MissingMarker.SelectedAction.MarkerCardId = NAME_None;
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Ready missing marker"),
+		MissingMarker,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::MissingSelectedActionMarker);
+
+	FMatchPlayCurrentAttackState MissingPresence =
+		SelectionStateValidatorTests::MakeReady();
+	MissingPresence.bHasSelectedAction = false;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Ready missing selected presence"),
+		MissingPresence,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::MissingSelectedAction);
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateReadyPhaseMismatchTest,
+	"ReadyRejectsDeploymentPhase")
+
+bool FSelectionStateReadyPhaseMismatchTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState State =
+		SelectionStateValidatorTests::MakeReady();
+	State.Phase = EMatchPlayCurrentAttackPhase::Deployment;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Ready deployment phase"),
+		State,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::SelectionStageDoesNotMatchPhase);
 }
 
 #undef SELECTION_STATE_TEST
