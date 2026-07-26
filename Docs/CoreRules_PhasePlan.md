@@ -905,3 +905,47 @@ CoreRules 1807/1807
 ```
 
 7.104 应重新评估 Automatic Finish、Resolution consumer、CompleteCurrentAttack、Direct Shot 与 Shooter Snapshot migration，不在 7.103 预选能力或实施方案。
+
+## 7.104–7.108 MatchPlay Current Attack Action Selection Milestone Closure
+
+- 7.104 Next Capability Selection + Minimum Contract Review：选择 Current Attack Action Selection，冻结 SelectedAction、四字段 Request、唯一 Legality Authority、Availability、Writer、Resolution Binding、生命周期和 GK 交叉边界。
+- 7.105 Action Selection State + Legality + Availability：提交 `bbe86bb0faa003dad74176cfb6dfcc5e62035562 feat: add current attack action selection foundation`。
+- 7.106 Writer + Resolution Binding：提交 `2645dcf4a6be44a498c231f5bd2a3b405afdecca feat: add action selection writer and resolution binding`。
+- 7.107 Independent Review：`PASS`；Blocking/Major/Minor/Informational 均为 0，clean-tree Unity、UHT、compile/link 与全部运行时回归通过。
+- 7.108 Docs Sync：docs-only；同步七份既有文档，不运行 Build、UHT 或测试。本节完成即关闭整个 Current Attack Action Selection Milestone。
+
+最终独立基线：
+
+```text
+Action Selection Legality 31/31
+Action Selection Availability 12/12
+Action Selection Writer 15/15
+Current Attack Resolution Binding 13/13
+Action Selection aggregate 71/71
+MatchPlay State 11/11
+Begin Ordinary Attack 19/19
+Finish Deployment 26/26
+Ordinary Deployment 66/66
+Goalkeeper Deployment 71/71
+SkillRuleSnapshotQuery 17/17
+SkillRuleSnapshotValidator 23/23
+MatchPlay 657/657
+CoreRules 1879/1879
+```
+
+关闭证据：clean-tree Unity Rebuild PASS；UHT `-WarningsAsErrors`、warnings 0、written 0；adaptive exclusions 0；compile、LIB/DLL link PASS；Unity collision None。
+
+能力关闭：当前攻击方可以在双方 Finish 后选择已部署的非 GK Carrier 及其合法 Skill；权威 State 冻结 CarrierCardId、SkillId、ActionType，Resolution Binding 可以只读取得该动作。仍未实现 Resolution Consumer、Participant Selection、具体 Skill 执行、Formula、D6、Outcome、Score/Opportunity/CardUsage 消费、Completion 与下一次 Attack。
+
+既有债务 `7.66-B-003`、`7.70-M-001 / UQ-041`、`7.70-M-002`、`7.73-M-001`、`7.73-M-002`、`7.77-M-001`、Feet、P1、P2、Anti-Offside 与 AP1 歧义全部 unchanged。
+
+### Current playable flow breakpoint
+
+当前已经知道 AttackSequence、Carrier、Skill 和 ActionType。第一个未实现断点仅登记为：
+
+```text
+Frozen SelectedAction
+→ Resolution Consumer routes by ActionType（未实现）
+```
+
+其后仍需要参与者选择、动作特定合法性/输入、Formula 输入装配、D6、Resolution Outcome 与 Completion。下一阶段只能从该能力断点开始新的选择和最小合同审查；7.108 不决定具体技能或参与者系统。

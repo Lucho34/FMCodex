@@ -1,4 +1,4 @@
-﻿# 05 Data Schema
+# 05 Data Schema
 
 本文档只保留数据结构说明。未解决规则问题统一记录在 `Docs/08_Decision_Log.md`。本文档不创建数据资产或蓝图；已实现 C++ public surface 与仍处于 planned 状态的 MatchPlay binding 会明确区分。
 
@@ -435,6 +435,49 @@ GK 继续复用 `FMatchPlayDeploymentPlacement` 的 `PlayerSide + CardId + SlotI
 本 Milestone 没有新增 GK-specific placement schema、per-side Slot map、GK CardUsage Used state、持久 Relative Zone 或 formula participation state。GK 目标必须是 State-owned Catalog 中的共享空 Slot，并由 Catalog、SlotId、CurrentAttackingPlayer、RequestingSide 解析为 defender `Backfield`；不使用 ordinary PositionTypes 矩阵。
 
 7.102 最终独立基线：Goalkeeper Usage State 13/13、GK Legality 37/37、GK Availability 16/16、GK Writer 18/18、GK Deployment 71/71、MatchPlay 585/585、CoreRules 1807/1807。clean-tree 默认 Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB 与 DLL link 均 PASS；UHT warnings 0、generated files written 0、adaptive exclusions 0、Unity collision None。
+
+## MatchPlay Current Attack Action Selection（Closed in 7.104–7.108）
+
+本节记录当前权威数据合同。Action Selection 已完成选择与冻结，不代表 Resolution Consumer、参与者选择、技能执行、公式、D6、Outcome 或 Completion 已实现。
+
+### Selected Action State
+
+`FMatchPlayCurrentAttackSelectedAction` 是 reflected value struct，只包含：
+
+- `FName CarrierCardId`
+- `FName SkillId`
+- `ESkillRuleType ActionType`
+
+`FMatchPlayCurrentAttackState` 以 `bool bHasSelectedAction` 和 `SelectedAction` 持有本次攻击的冻结动作。canonical empty 为 `false + None + None + ESkillRuleType::None`；canonical selected 为 `true + 非空 CarrierCardId + 非空 SkillId + 当前支持的非 None ActionType`。其他组合均为无效或损坏状态。
+
+Begin Ordinary Attack 创建新的 canonical empty，不继承上一攻击载荷。Ordinary Deployment、Goalkeeper Deployment、First Finish 和 Second Finish 都不写 SelectedAction；Second Finish 进入 Resolution 后仍为空。只有 Action Selection Writer 成功后才切换为 canonical selected。重复选择返回 `ActionAlreadySelected`，不提供取消、替换或重选 schema。
+
+### Request and ActionType
+
+`FMatchPlayCurrentAttackActionSelectionRequest` 精确只有：
+
+```text
+AttackSequence
+RequestingSide
+CarrierCardId
+SkillId
+```
+
+Request 不包含 ActionPoint、ActionType、Placement、Snapshot、Skill Rule、Participant、D6、Formula Input、Outcome、Completion 或 CardUsage。`FSkillRuleSnapshotSet` 是服务端只读可信依赖，不属于玩家 Request；ActionType 只从服务端权威 Skill Rule 解析。
+
+ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份和值保持 `None=0`、`LongShot=1`、`CutInsideShot=2`、`PassControl=3`、`Cross=4`、`ThroughBall=5`。最小 UHT 反射兼容只增加 `UENUM(BlueprintType)`、generated header 与显示元数据，不改变序列化身份或规则语义。
+
+### Legality, Availability, Writer and Binding Results
+
+唯一合法性入口是 `FMatchPlayCurrentAttackActionSelectionLegalityEvaluator::Evaluate`。其 Result 保存原始四字段 Request、顶层 legality/error、Snapshot/Skill Rule validation/query diagnostics、权威 `ResolvedActionType`、触发 AP 范围与匹配 Carrier placement 数。Availability 与 Writer 复用该 Result，不建立第二份选择合法性。
+
+`FMatchPlayCurrentAttackActionSelectionAvailabilityResult` 保存查询状态、是否存在合法动作、请求 sequence/side、按攻击方 placement 与 Snapshot SkillIds 原顺序产生的 Candidates，以及 first blocker 和枚举失败诊断。每个 Candidate 保存 CarrierCardId、SkillId 和完整 Legality Result；不排序、不猜最佳技能、不静默去重。
+
+`FMatchPlayCurrentAttackActionSelectionWriterResult` 保存 Request、完整 BeforeState/AfterState、完整 Legality Result、成功冻结动作与 diagnostics。失败时 AfterState 等于 BeforeState；成功只写 `bHasSelectedAction`、CarrierCardId、SkillId 和来自 `ResolvedActionType` 的 ActionType。
+
+`FMatchPlayCurrentAttackResolutionBindingResult` 是只读投影。成功 Binding 只包含 AttackSequence、CarrierCardId、SkillId、ActionType；Query 不接收 Skill Rule Set，也不保存 Placement、Snapshot、Rule、AP、Participant、D6、Formula、Outcome 或 Completion 数据。
+
+7.107 独立基线：Legality 31/31、Availability 12/12、Writer 15/15、Resolution Binding 13/13，合计 71/71；MatchPlay 657/657、CoreRules 1879/1879。clean-tree 默认 Unity Rebuild PASS，UHT warnings 0、generated files written 0、adaptive exclusions 0、Unity collision None、compile/LIB/DLL link PASS。
 
 ## ConsumedReturnRule
 

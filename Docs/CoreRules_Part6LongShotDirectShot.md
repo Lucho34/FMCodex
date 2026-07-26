@@ -1415,3 +1415,13 @@ GK deployment foundation 已完成：dedicated match-long per-side usage、curre
 尚未实现的消费端保持明确：Automatic Finish、Resolution consumer、terminal projection、`CompleteCurrentAttack`、Formal Abort、Direct Shot、Shooter Snapshot migration 与 lower-level flow migration。未来 Completion 必须识别 GK placement，处理 ordinary placement 的 CardUsage 消费时跳过 GK，不能因物理 placement 把 GK 移出 Available。
 
 实现提交为 `dcdaf32`、`c291308`、`3dde50d`。7.102 独立基线为 GK Usage 13/13、Legality 37/37、Availability 16/16、Writer 18/18、GK aggregate 71/71、MatchPlay 585/585、CoreRules 1807/1807；clean-tree Unity/UHT/compile/link PASS，generated files 0、adaptive exclusions 0、collision None。
+
+## 7.104–7.108 MatchPlay Current Attack Action Selection 最终关闭
+
+Action Selection foundation 与 writer/binding 已完成。`FMatchPlayCurrentAttackState` 现在保存 canonical `bHasSelectedAction + SelectedAction(CarrierCardId, SkillId, ActionType)`；玩家 Request 只携带 AttackSequence、RequestingSide、CarrierCardId、SkillId，ActionType 由服务端权威 Skill Rule 解析为既有 `ESkillRuleType`。
+
+唯一 Legality Evaluator 验证 Resolution、当前攻击方唯一 placement、side-aware Snapshot、非 GK、Skill ownership、Rule 与 AP。Availability 保持 placement/skill 原顺序并复用 Evaluator；Writer 成功后原子冻结动作，失败或重复选择不会覆盖。Resolution Binding 只读返回冻结身份，不重新执行选择合法性或任何 Resolution 行为。
+
+实现提交为 `bbe86bb feat: add current attack action selection foundation` 与 `2645dcf feat: add action selection writer and resolution binding`。7.107 独立基线为 Legality 31/31、Availability 12/12、Writer 15/15、Binding 13/13、合计 71/71、MatchPlay 657/657、CoreRules 1879/1879；clean-tree Unity/UHT/compile/link PASS，generated files 0、adaptive exclusions 0、collision None。
+
+这不表示 Part 6 的具体技能执行已经接入 MatchPlay。当前首个未实现断点是 Resolution Consumer 尚未按冻结 ActionType 路由；Participant Selection、动作特定输入、Formula 装配、D6、Outcome、Completion、Score/Opportunity/CardUsage 消费及下一次 Attack 均未实现。本关闭不预选下一个具体技能。

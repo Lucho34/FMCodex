@@ -793,3 +793,34 @@ ordinary 与 GK 共享 Slot Catalog、`DeploymentPlacements`、Turn Rotation、s
 Persistent Used、Current Attack Activation、Formula Participation 必须分离。本 Milestone 只建立前两类状态及可供未来公式读取的输入，没有修改任何 Formula、Finishing、Resolution、Completion 或 Direct Shot。
 
 7.102 独立关闭证据：Usage 13/13、Legality 37/37、Availability 16/16、Writer 18/18、GK aggregate 71/71、MatchPlay 585/585、CoreRules 1807/1807；16 个 milestone `.cpp` 进入真实 Unity TU，clean-tree Unity Rebuild、UHT warnings-as-errors、compile/link PASS，generated files 0、adaptive exclusions 0、collision None。
+
+## MatchPlay Current Attack Action Selection 实现闭环（7.104–7.108）
+
+此前以 Resolution consumer 作为 Deployment 后第一断点的说明是历史边界。当前生产链已经推进到冻结动作的只读 Resolution Binding：
+
+```text
+MatchPlay initialization
+→ Opening
+→ Begin Ordinary Attack
+→ Ordinary / Goalkeeper Deployment
+→ both sides explicit Finish
+→ CurrentAttack Phase = Resolution
+→ four-field Action Selection Request
+→ FMatchPlayCurrentAttackActionSelectionLegalityEvaluator::Evaluate
+→ Availability query or atomic Writer
+→ CurrentAttack.SelectedAction freezes Carrier + Skill + ActionType
+→ FMatchPlayCurrentAttackResolutionBinding::Query
+→ Resolution Consumer（未实现）
+```
+
+State 以 `bHasSelectedAction + FMatchPlayCurrentAttackSelectedAction` 持有 canonical empty/selected。Request 只包含 AttackSequence、RequestingSide、CarrierCardId、SkillId；ActionType 不来自客户端，而由服务端 `FSkillRuleSnapshotSet` 解析为既有 `ESkillRuleType`。
+
+Legality Evaluator 是唯一选择 authority。它依次验证 Runtime/CurrentAttack/sequence/Resolution/攻击方/Finish 状态、canonical empty、攻击方唯一 placement、side-aware Snapshot、非 GK、Skill ownership、Rule Set/Rule、支持类型和 AP 2–8/技能范围。Availability 按攻击方 placements 与 Snapshot SkillIds 原顺序枚举并复用 Evaluator；Writer 只调用 Evaluator，不重复 Rule Query，并在完整成功后原子写四个 SelectedAction 字段。
+
+Resolution Binding 只检查冻结载荷自身及 sequence/phase，不重新检查 Placement、Snapshot、GK、Skill ownership、Rule 或 AP，也不接收 Skill Rule Set。它不选择参与者、不执行技能、不掷 D6、不调用 Formula/Outcome/Completion。
+
+Action Selection 不改变 GK persistent usage、current-attack activation、CardUsage、Score 或 Opportunity。GK placement 不产生 Carrier 候选。Begin 创建新的 canonical empty；Deployment 和双方 Finish 不写 SelectedAction；只有 Writer 成功后成为 selected。
+
+7.107 独立验证为 Action Selection 71/71、MatchPlay 657/657、CoreRules 1879/1879；clean-tree Unity Rebuild/UHT/compile/link PASS，warnings 0、generated files 0、adaptive exclusions 0、collision None。
+
+当前第一个未实现流程断点是：已冻结 SelectedAction，但尚无 Resolution Consumer 按 ActionType 路由后续流程。其后仍缺参与者选择、动作特定输入合同、Formula 输入装配、D6、Outcome 与 Completion；7.108 不预选具体技能或参与者系统。

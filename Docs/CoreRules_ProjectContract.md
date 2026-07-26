@@ -1453,3 +1453,106 @@ Legality、rotation、MarkUsed 或任何请求失败均返回完整 BeforeState�
 实现提交为 `dcdaf32` usage、`c291308` legality/availability、`3dde50d` writer。7.102 独立验证为 Usage 13/13、Legality 37/37、Availability 16/16、Writer 18/18、GK aggregate 71/71、MatchPlay 585/585、CoreRules 1807/1807。16 个 milestone `.cpp` 进入真实 Unity TU；clean-tree Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB/DLL link PASS，warnings 0、written 0、adaptive exclusions 0、collision None。
 
 Automatic Finish、Resolution consumer、terminal projection、CompleteCurrentAttack、Formal Abort、Direct Shot、Shooter Snapshot migration、lower-level flow migration、External gameplay API、UI/Blueprint integration 与 Networking 仍未实现。
+
+## MatchPlay Current Attack Action Selection Contract（7.104–7.108）
+
+本节是 Action Selection 的当前 canonical Contract。MatchPlay 已能从双方完成 Deployment 进入 Resolution，选择并冻结动作，再通过只读 Binding 取得该动作；尚未进入任何技能执行或 Resolution 消费。
+
+### Selected Action State and ActionType identity
+
+`FMatchPlayCurrentAttackSelectedAction` 精确包含 `CarrierCardId + SkillId + ActionType`。`FMatchPlayCurrentAttackState` 通过 `bHasSelectedAction + SelectedAction` 保存状态：
+
+- canonical empty：`bHasSelectedAction=false`、CarrierCardId/SkillId 均为 None、ActionType 为 `ESkillRuleType::None`；
+- canonical selected：`bHasSelectedAction=true`、两个 identity 非空、ActionType 为当前支持的非 None 类型；
+- 其他组合：无效或损坏状态。
+
+ActionType 直接复用 `ESkillRuleType`，禁止平行动作枚举。身份和值固定为 `None=0`、`LongShot=1`、`CutInsideShot=2`、`PassControl=3`、`Cross=4`、`ThroughBall=5`。当前五个非 None 类型均允许选择；None、未知值或无生产选择 Contract 的类型不允许。为 State 反射增加的 `UENUM(BlueprintType)`、generated header 和显示元数据不改变数值、序列化身份或规则语义。
+
+### Four-field Request and server authority
+
+`FMatchPlayCurrentAttackActionSelectionRequest` 只包含：
+
+```text
+AttackSequence
+RequestingSide
+CarrierCardId
+SkillId
+```
+
+Request 不得包含或间接携带 ActionPoint、ActionType、Placement、Snapshot、Skill Rule、Participant roles、D6、Formula Input、Outcome、Completion 或 CardUsage。`FSkillRuleSnapshotSet` 是服务端只读可信依赖，不属于玩家 Request。ActionType 必须来自权威 Skill Rule 查询结果。
+
+### Single legality authority and first-error order
+
+唯一合法性入口是 `FMatchPlayCurrentAttackActionSelectionLegalityEvaluator::Evaluate`。Availability 与 Writer 必须复用它；Writer 不重复 Carrier、Snapshot、GK、Skill ownership、Rule 或 AP 判断，也不重新执行 Skill Rule Query。Binding 不调用该 Evaluator。
+
+首错顺序固定为：
+
+1. MatchPlay Runtime initialized；
+2. CurrentAttack exists；
+3. authoritative AttackSequence valid；
+4. Request AttackSequence matches；
+5. Phase is Resolution；
+6. CurrentAttackingPlayer valid；
+7. RequestingSide valid；
+8. RequestingSide is current attacker；
+9. both Deployment finished；
+10. CurrentLegalDeploymentSide is None；
+11. SelectedAction canonical consistency；
+12. action not already selected；
+13. CarrierCardId valid；
+14. SkillId valid；
+15. exactly one current-attacker placement；
+16. current-attacker side-aware Snapshot；
+17. Carrier is not goalkeeper；
+18. SkillId belongs to Carrier Snapshot；
+19. Skill Rule Set valid；
+20. unique Skill Rule query；
+21. resolved ActionType supported；
+22. CurrentAttack ActionPoint valid；
+23. ActionPoint inside Skill trigger range；
+24. success。
+
+当前有效 CurrentAttack AP 为 2–8，包含边界。AP1 歧义保持既有债务状态。
+
+### Availability
+
+`FMatchPlayCurrentAttackActionSelectionAvailability::Query` 完全只读。它按当前攻击方 `DeploymentPlacements` 原顺序，再按每个 Carrier Snapshot 的 `SkillIds` 原顺序产生候选；不排序、不猜最佳 Skill、不静默去重。防守方和 GK placement 不产生候选。
+
+每个真实候选保留完整 Legality Result。合法全局 State 但零合法组合时，查询成功且 `bCanSelectAnyAction=false`；stale sequence、错误 Phase、已选择等成为 global blocker。Rule Set 或 Snapshot authority 无法安全枚举时查询失败。Availability 的枚举防护不构成第二套候选合法性。
+
+### Atomic Writer
+
+唯一 Writer 为 `FMatchPlayCurrentAttackActionSelectionWriter::Select`。输入为 BeforeState、四字段 Request 与只读 Skill Rule Set。Writer 先调用唯一 Evaluator；只有完整成功后才复制 State 并写：
+
+```text
+bHasSelectedAction = true
+SelectedAction.CarrierCardId = Request.CarrierCardId
+SelectedAction.SkillId = Request.SkillId
+SelectedAction.ActionType = LegalityResult.ResolvedActionType
+```
+
+所有失败保持输入 State 不变且 `AfterState == BeforeState`，不产生部分 SelectedAction。canonical selected 再次请求返回 `ActionAlreadySelected`，不得覆盖第一次动作；当前没有取消、替换或重新选择。
+
+成功后 Phase 仍为 Resolution、CurrentLegalDeploymentSide 仍为 None。AttackSequence、CurrentAttackingPlayer、ActionPoint、双方 finished flags、DeploymentPlacements、Card Snapshot authority、CardUsage、GK persistent usage、current-attack GK activation、Score 与 Opportunity 全部保持不变。
+
+### Read-only Resolution Binding
+
+`FMatchPlayCurrentAttackResolutionBinding::Query(const FMatchPlayState&, int64 AttackSequence)` 成功只返回 AttackSequence、CarrierCardId、SkillId、ActionType。
+
+Binding 检查 Runtime、CurrentAttack、authoritative/stale sequence、Resolution phase、SelectedAction presence/canonical structure 和支持的 ActionType。它不接收 Skill Rule Set，也不重新检查 Carrier placement、Snapshot、GK、Skill ownership、Skill Rule 或 AP；这些选择事实已经由 Writer 成功前的 Legality 冻结确认。
+
+Binding 不修改 State，不选择参与者，不产生 D6，不调用 Formula/Outcome/Completion，也不启动 Resolution Consumer。其唯一职责是读取 Writer 已冻结的权威动作。
+
+### Lifecycle and Goalkeeper boundary
+
+Begin Ordinary Attack 创建新的 canonical empty，不继承上一攻击 payload。Ordinary Deployment、Goalkeeper Deployment、First Finish 与 Second Finish 都不写 SelectedAction；Second Finish 切换到 Resolution 后仍为空。只有 Writer 成功后才成为 canonical selected。当前没有 Complete 或 Abort；未来整体清除 CurrentAttack 时不需要为 SelectedAction 建立平行生命周期。
+
+既有 GK 合同全部保持：only current defender/legal turn、once-per-match persistent usage、shared valid empty Slot、defender Backfield、ordinary PositionTypes bypass、CardUsage remains Available、persistent usage/current activation 分离、复用 DeploymentPlacements、ordinary/GK global occupancy、active play/formula participation 分离。Action Selection 额外拒绝 GK Carrier，且不修改 persistent usage 或 current activation。
+
+### Verification, closure and current breakpoint
+
+实现提交为 `bbe86bb0faa003dad74176cfb6dfcc5e62035562 feat: add current attack action selection foundation` 与 `2645dcf4a6be44a498c231f5bd2a3b405afdecca feat: add action selection writer and resolution binding`。
+
+7.107 独立验证：Legality 31/31、Availability 12/12、Writer 15/15、Resolution Binding 13/13，合计 71/71；MatchPlayState 11/11、Begin 19/19、Finish 26/26、Ordinary 66/66、GK 71/71、Skill Rule Query 17/17、Validator 23/23；MatchPlay 657/657、CoreRules 1879/1879。clean-tree Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB/DLL link PASS，warnings 0、written 0、adaptive exclusions 0、collision None；Findings 为 0/0/0/0。
+
+当前已经知道 AttackSequence、Carrier、Skill 与 ActionType。第一个未实现流程断点是：冻结 SelectedAction 之后，尚无 Resolution Consumer 按 ActionType 路由。Participant Selection、动作特定合法性/输入、具体 Skill 执行、Formula 输入装配、D6、Outcome、Score/Opportunity/CardUsage 消费、Completion 与下一次 Attack 均未完成。本 Contract 不预选下一项具体技能或参与者系统。

@@ -1,4 +1,4 @@
-﻿# 08 Decision Log
+# 08 Decision Log
 
 本文档集中记录已确认规则决策和仍未解决的问题。其他 Docs 文档不保留 `Unresolved Questions`。
 
@@ -308,6 +308,22 @@
 - Formula boundary：本 Milestone 没有修改 Formula、Finishing、Resolution 或 Direct Shot。未来公式只能读取清晰分离的 current activation；是否产生 GK 属性贡献及 `bGoalkeeperParticipated` 仍由具体最终公式决定。
 - Independent closure evidence：Usage 13/13、Legality 37/37、Availability 16/16、Writer 18/18、GK aggregate 71/71、MatchPlay 585/585、CoreRules 1807/1807；clean-tree default Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB、DLL link PASS，warnings 0、generated files 0、adaptive exclusions 0、collision None。16 个 milestone `.cpp` 均进入实际 Unity TU。
 - Deferred：Automatic Finish、Resolution consumer、terminal projection、CompleteCurrentAttack、Formal Abort、Direct Shot、Shooter Snapshot migration、lower-level flow migration、External gameplay API、UI/Blueprint、Networking。
+
+### CD-028 - MatchPlay Current Attack Action Selection
+
+- 日期：2026-07-26
+- 阶段关闭：7.104 Next Capability Selection + Minimum Contract Review、7.105 State/Legality/Availability、7.106 Writer/Resolution Binding、7.107 Independent Review 与 7.108 Docs Sync 关闭 `MatchPlay Current Attack Action Selection Milestone`。
+- 实现提交：`bbe86bb0faa003dad74176cfb6dfcc5e62035562 feat: add current attack action selection foundation`、`2645dcf4a6be44a498c231f5bd2a3b405afdecca feat: add action selection writer and resolution binding`。
+- State：`FMatchPlayCurrentAttackState` 以 `bHasSelectedAction + SelectedAction(CarrierCardId, SkillId, ActionType)` 保存 canonical empty/selected；其他组合为损坏状态。重复选择返回 `ActionAlreadySelected`，不允许覆盖、取消或重选。
+- Request 与 ActionType：玩家 Request 仅为 `AttackSequence + RequestingSide + CarrierCardId + SkillId`。ActionType 不来自客户端，只从服务端只读 Skill Rule Set 解析；直接复用数值和语义未变化的 `ESkillRuleType(None=0, LongShot=1, CutInsideShot=2, PassControl=3, Cross=4, ThroughBall=5)`。
+- Single legality authority：唯一入口为 `FMatchPlayCurrentAttackActionSelectionLegalityEvaluator::Evaluate`。Availability 与 Writer 复用；Writer 不重复 Rule Query。Carrier 必须唯一部署于当前攻击方、按方查询 Snapshot、非 GK、拥有 Skill，Rule/ActionType/AP 必须有效。
+- Availability：只读保持攻击方 placement 与 Snapshot SkillIds 原顺序；不排序、猜最佳技能或静默去重。防守方/GK 不产生候选；零合法组合可为成功查询，global blocker 和不可安全枚举分别暴露。
+- Atomic Writer：成功只写 selected flag、Carrier、Skill、来自 Legality Result 的 ActionType；失败完整保持 BeforeState。CardUsage、GK usage/activation、Score、Opportunity 及其他 CurrentAttack 事实不变。
+- Resolution Binding：只读返回 AttackSequence、Carrier、Skill、ActionType；只验证冻结载荷结构，不重跑 Placement/Snapshot/GK/Skill/Rule/AP 合法性，不接收 Skill Rule Set，也不执行 Resolution。
+- Lifecycle：Begin 创建 canonical empty；ordinary/GK deployment 和双方 Finish 不写 SelectedAction；Second Finish 进入 Resolution 后仍为空；只有 Writer 成功后成为 selected。Complete/Abort 仍未实现。
+- Independent closure evidence：Legality 31/31、Availability 12/12、Writer 15/15、Binding 13/13、Action Selection 71/71、MatchPlay 657/657、CoreRules 1879/1879；clean-tree Unity Rebuild、UHT、compile、LIB/DLL link PASS，warnings 0、generated files 0、adaptive exclusions 0、collision None；Findings 0/0/0/0。
+- Current breakpoint：当前已经冻结 AttackSequence/Carrier/Skill/ActionType；首个未实现断点是 Resolution Consumer 尚未按 ActionType 路由。Participant Selection、具体 Skill 执行、Formula/D6/Outcome、Score/Opportunity/CardUsage 消费、Completion 与下一次 Attack 继续 Deferred，本决定不预选其中任何实现。
+- Existing debt：`7.66-B-003`、`7.70-M-001 / UQ-041`、`7.70-M-002`、`7.73-M-001`、`7.73-M-002`、`7.77-M-001`、Feet、P1、P2、Anti-Offside 与 AP1 歧义全部 unchanged。
 
 ## Resolved UQ Summary
 

@@ -407,3 +407,30 @@ CoreRules 1807/1807
 ```
 
 实现提交为 `dcdaf32` usage authority、`c291308` legality/availability、`3dde50d` writer。7.102 clean-tree default Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB/DLL link 均 PASS；16 个 milestone `.cpp` 进入实际 Unity TU，generated files 0、adaptive exclusions 0、collision None。
+
+## MatchPlay Current Attack Action Selection（7.104–7.108）
+
+| Module | Responsibility | Inputs | Output / mutation | Current status |
+| --- | --- | --- | --- | --- |
+| `MatchPlayCurrentAttackActionSelectionLegality` | 唯一 Action Selection 合法性 authority；验证状态、攻击方 Carrier、side-aware Snapshot、非 GK、Skill Rule 与 AP。 | `FMatchPlayState`、四字段 Request、只读 Skill Rule Set。 | 完整 Legality Result；不修改 State。 | Implemented；31 tests。 |
+| `MatchPlayCurrentAttackActionSelectionAvailability` | 按攻击方 placement 与 Snapshot SkillIds 原顺序枚举，逐候选复用唯一 Evaluator。 | State、AttackSequence、RequestingSide、只读 Skill Rule Set。 | Candidates、first blocker、query diagnostics；只读。 | Implemented；12 tests。 |
+| `MatchPlayCurrentAttackActionSelectionWriter` | 调用唯一 Evaluator，并在完整成功后冻结 Carrier、Skill、ActionType。 | BeforeState、四字段 Request、只读 Skill Rule Set。 | 原子 Before/After State；失败不写，重复选择不覆盖。 | Implemented；15 tests。 |
+| `MatchPlayCurrentAttackResolutionBinding` | 只读取得 Writer 已冻结的动作身份。 | const MatchPlay State、AttackSequence。 | AttackSequence、CarrierCardId、SkillId、ActionType。 | Implemented；13 tests。 |
+
+SelectedAction 数据为 `bHasSelectedAction + CarrierCardId + SkillId + ESkillRuleType ActionType`。Request 不携带 ActionType 或 ActionPoint；Writer 的 ActionType 只来自 Legality Result。Availability 不排序、猜最佳技能或静默去重；Binding 不重新执行 Carrier/Skill/Rule/AP 合法性，也不接收 Skill Rule Set。
+
+生命周期为 Begin canonical empty → Deployment/First Finish/Second Finish 保持 empty → Writer success canonical selected。GK 不能作为 Carrier；Action Selection 不修改 GK usage/activation、CardUsage、Score 或 Opportunity。
+
+当前测试基线：
+
+```text
+Legality 31/31
+Availability 12/12
+Writer 15/15
+Resolution Binding 13/13
+Action Selection aggregate 71/71
+MatchPlay 657/657
+CoreRules 1879/1879
+```
+
+7.107 clean-tree default Unity Rebuild、UHT `-WarningsAsErrors`、compile、LIB/DLL link 均 PASS；generated files 0、adaptive exclusions 0、collision None。当前首个未实现 consumer 是按冻结 ActionType 路由的 Resolution Consumer；Participant Selection、具体 Skill 执行、Formula/D6/Outcome/Completion 继续 Deferred。
