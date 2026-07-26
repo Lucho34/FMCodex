@@ -311,28 +311,6 @@ namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal
 		return Request;
 	}
 
-	inline FMatchPlayMarkerNoSelectionGoalProjection MakeProjection(
-		const FMatchPlayState& State,
-		const EMatchPlayMarkerNoSelectionGoalSource Source,
-		const EMatchPlayMarkerNoSelectionGoalReason Reason)
-	{
-		const EInitialTurnOrderPlayer Defender =
-			GetDefender(State.RuntimeState.CurrentAttackingPlayer);
-		FMatchPlayMarkerNoSelectionGoalProjection Projection;
-		Projection.AttackSequence =
-			State.CurrentAttack.AttackSequence;
-		Projection.bFormalSuccess = true;
-		Projection.bIsGoal = true;
-		Projection.Source = Source;
-		Projection.Reason = Reason;
-		Projection.MarkerAvailabilityResult =
-			FMatchPlayCurrentAttackMarkerSelectionAvailability::Query(
-				State,
-				State.CurrentAttack.AttackSequence,
-				Defender);
-		return Projection;
-	}
-
 	inline bool AreStatesEqual(
 		const FMatchPlayState& Left,
 		const FMatchPlayState& Right)

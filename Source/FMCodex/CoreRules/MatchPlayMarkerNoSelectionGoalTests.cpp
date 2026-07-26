@@ -117,11 +117,11 @@ bool FResolveNoLegalMarkerZeroDefenderTest::RunTest(
 
 	TestTrue(TEXT("Resolve succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Reason distinguishes zero placements"),
-		Result.GoalProjection.Reason,
+		Result.Reason,
 		EMatchPlayMarkerNoSelectionGoalReason
 			::DefenderHasNoDeployedPlayers);
 	TestEqual(TEXT("Source is system authority"),
-		Result.GoalProjection.Source,
+		Result.Source,
 		EMatchPlayMarkerNoSelectionGoalSource
 			::ResolveNoLegalMarker);
 	TestEqual(TEXT("Attacker score increments exactly once"),
@@ -165,7 +165,7 @@ bool FResolveNoLegalMarkerOnlyGoalkeeperTest::RunTest(
 
 	TestTrue(TEXT("Resolve succeeds"), Result.bSuccess);
 	TestEqual(TEXT("GK-only reason is NoLegalMarker"),
-		Result.GoalProjection.Reason,
+		Result.Reason,
 		EMatchPlayMarkerNoSelectionGoalReason::NoLegalMarker);
 	TestTrue(TEXT("GK remains available"),
 		Result.AfterState.CardUsageState.PlayerBCardUsageState
@@ -201,7 +201,7 @@ bool FResolveNoLegalMarkerOtherAreaTest::RunTest(
 
 	TestTrue(TEXT("Resolve succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Reason is NoLegalMarker"),
-		Result.GoalProjection.Reason,
+		Result.Reason,
 		EMatchPlayMarkerNoSelectionGoalReason::NoLegalMarker);
 	TestTrue(TEXT("Illegal defender deployment still consumed"),
 		Result.AfterState.CardUsageState.PlayerBCardUsageState
@@ -400,10 +400,10 @@ bool FMarkerDeclineSuccessTest::RunTest(const FString& Parameters)
 			MakeDeclineRequest());
 	TestTrue(TEXT("Decline succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Reason is MarkerDeclined"),
-		Result.GoalProjection.Reason,
+		Result.Reason,
 		EMatchPlayMarkerNoSelectionGoalReason::MarkerDeclined);
 	TestEqual(TEXT("Source is DeclineMarker"),
-		Result.GoalProjection.Source,
+		Result.Source,
 		EMatchPlayMarkerNoSelectionGoalSource::DeclineMarker);
 	TestTrue(TEXT("Availability proves a legal marker"),
 		Result.MarkerAvailabilityResult.bCanSelectAnyMarker);

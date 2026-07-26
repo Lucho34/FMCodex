@@ -13,13 +13,13 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 		Result.ErrorMessage = ErrorMessage;
 	}
 
-	bool IsPlayer(const EInitialTurnOrderPlayer Player)
+	bool IsCompletionPlayer(const EInitialTurnOrderPlayer Player)
 	{
 		return Player == EInitialTurnOrderPlayer::PlayerA
 			|| Player == EInitialTurnOrderPlayer::PlayerB;
 	}
 
-	EInitialTurnOrderPlayer GetDefender(
+	EInitialTurnOrderPlayer GetCompletionDefender(
 		const EInitialTurnOrderPlayer Attacker)
 	{
 		if (Attacker == EInitialTurnOrderPlayer::PlayerA)
@@ -54,34 +54,34 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 
 	bool ValidateAvailabilityProvenance(
 		const FMatchPlayState& BeforeState,
-		const FMatchPlayMarkerNoSelectionGoalProjection& Projection,
+		const FMatchPlayMarkerNoSelectionGoalCapability& Capability,
 		const EInitialTurnOrderPlayer Defender,
 		FString& OutErrorMessage)
 	{
 		const FMatchPlayCurrentAttackMarkerSelectionAvailabilityResult&
-			Availability = Projection.MarkerAvailabilityResult;
+			Availability = Capability.GetAuthorityResult();
 		if (!Availability.bQuerySucceeded)
 		{
 			OutErrorMessage =
-				TEXT("Projection availability query did not succeed.");
+				TEXT("Capability availability query did not succeed.");
 			return false;
 		}
 		if (Availability.bHasGlobalBlockingLegalityResult)
 		{
 			OutErrorMessage =
-				TEXT("Projection availability contains a global blocker.");
+				TEXT("Capability availability contains a global blocker.");
 			return false;
 		}
-		if (Availability.AttackSequence != Projection.AttackSequence)
+		if (Availability.AttackSequence != Capability.GetAttackSequence())
 		{
 			OutErrorMessage =
-				TEXT("Projection and availability sequences do not match.");
+				TEXT("Capability and availability sequences do not match.");
 			return false;
 		}
 		if (Availability.RequestingSide != Defender)
 		{
 			OutErrorMessage =
-				TEXT("Projection availability was not queried for the current defender.");
+				TEXT("Capability availability was not queried for the current defender.");
 			return false;
 		}
 
@@ -97,7 +97,7 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 		if (Availability.Candidates.Num() != DefenderPlacements.Num())
 		{
 			OutErrorMessage =
-				TEXT("Projection availability candidates do not match defender placements.");
+				TEXT("Capability availability candidates do not match defender placements.");
 			return false;
 		}
 
@@ -111,19 +111,19 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			if (Candidate.MarkerCardId != Placement.CardId)
 			{
 				OutErrorMessage =
-					TEXT("Projection availability candidate order or identity is invalid.");
+					TEXT("Capability availability candidate order or identity is invalid.");
 				return false;
 			}
 			const FMatchPlayCurrentAttackMarkerSelectionRequest&
 				CandidateRequest = Candidate.LegalityResult.Request;
 			if (CandidateRequest.AttackSequence
-					!= Projection.AttackSequence
+					!= Capability.GetAttackSequence()
 				|| CandidateRequest.RequestingSide != Defender
 				|| CandidateRequest.MarkerCardId
 					!= Candidate.MarkerCardId)
 			{
 				OutErrorMessage =
-					TEXT("Projection candidate legality request provenance is invalid.");
+					TEXT("Capability candidate legality request provenance is invalid.");
 				return false;
 			}
 			if (Candidate.LegalityResult.bIsLegal
@@ -132,7 +132,7 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 						::None))
 			{
 				OutErrorMessage =
-					TEXT("Projection candidate legality result is internally inconsistent.");
+					TEXT("Capability candidate legality result is internally inconsistent.");
 				return false;
 			}
 			bAnyLegalCandidate =
@@ -141,11 +141,11 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 		if (Availability.bCanSelectAnyMarker != bAnyLegalCandidate)
 		{
 			OutErrorMessage =
-				TEXT("Projection availability summary is internally inconsistent.");
+				TEXT("Capability availability summary is internally inconsistent.");
 			return false;
 		}
 
-		switch (Projection.Source)
+		switch (Capability.GetSource())
 		{
 		case EMatchPlayMarkerNoSelectionGoalSource::ResolveNoLegalMarker:
 			if (Availability.bCanSelectAnyMarker)
@@ -156,7 +156,7 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			}
 			if (DefenderPlacements.IsEmpty())
 			{
-				if (Projection.Reason
+				if (Capability.GetReason()
 					!= EMatchPlayMarkerNoSelectionGoalReason
 						::DefenderHasNoDeployedPlayers)
 				{
@@ -165,7 +165,7 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 					return false;
 				}
 			}
-			else if (Projection.Reason
+			else if (Capability.GetReason()
 				!= EMatchPlayMarkerNoSelectionGoalReason
 					::NoLegalMarker)
 			{
@@ -176,7 +176,7 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			return true;
 
 		case EMatchPlayMarkerNoSelectionGoalSource::DeclineMarker:
-			if (Projection.Reason
+			if (Capability.GetReason()
 					!= EMatchPlayMarkerNoSelectionGoalReason
 						::MarkerDeclined
 				|| !Availability.bCanSelectAnyMarker)
@@ -190,7 +190,7 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 		case EMatchPlayMarkerNoSelectionGoalSource::None:
 		default:
 			OutErrorMessage =
-				TEXT("Projection source is not supported.");
+				TEXT("Capability source is not supported.");
 			return false;
 		}
 	}
@@ -199,14 +199,15 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion::Complete(
 	const FMatchPlayState& BeforeState,
-	const FMatchPlayMarkerNoSelectionGoalProjection& Projection)
+	const FMatchPlayMarkerNoSelectionGoalCapability& Capability)
 {
 	using namespace MatchPlayCurrentAttackCompletionImplementation;
 
 	FMatchPlayCurrentAttackCompletionResult Result;
 	Result.BeforeState = BeforeState;
 	Result.AfterState = BeforeState;
-	Result.Projection = Projection;
+	Result.Reason = Capability.GetReason();
+	Result.Source = Capability.GetSource();
 
 	if (!BeforeState.RuntimeState.bIsInitialized)
 	{
@@ -237,49 +238,41 @@ FMatchPlayCurrentAttackCompletion::Complete(
 			TEXT("Current attack sequence must be greater than zero."));
 		return Result;
 	}
-	if (!Projection.bFormalSuccess || !Projection.bIsGoal)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode::InvalidProjection,
-			TEXT("Completion requires a formally successful goal projection."));
-		return Result;
-	}
-	if (Projection.Source
+	if (Capability.GetSource()
 			!= EMatchPlayMarkerNoSelectionGoalSource
 				::ResolveNoLegalMarker
-		&& Projection.Source
+		&& Capability.GetSource()
 			!= EMatchPlayMarkerNoSelectionGoalSource::DeclineMarker)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
-				::UnsupportedProjectionSource,
-			TEXT("Projection source is not supported by current attack completion."));
+				::UnsupportedCapabilitySource,
+			TEXT("Capability source is not supported by current attack completion."));
 		return Result;
 	}
-	if (Projection.Reason
+	if (Capability.GetReason()
 			!= EMatchPlayMarkerNoSelectionGoalReason
 				::DefenderHasNoDeployedPlayers
-		&& Projection.Reason
+		&& Capability.GetReason()
 			!= EMatchPlayMarkerNoSelectionGoalReason::NoLegalMarker
-		&& Projection.Reason
+		&& Capability.GetReason()
 			!= EMatchPlayMarkerNoSelectionGoalReason::MarkerDeclined)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidProjectionReason,
-			TEXT("Projection reason is not supported by current attack completion."));
+				::InvalidCapabilityReason,
+			TEXT("Capability reason is not supported by current attack completion."));
 		return Result;
 	}
-	if (Projection.AttackSequence != CurrentAttack.AttackSequence)
+	if (Capability.GetAttackSequence() != CurrentAttack.AttackSequence)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
-				::ProjectionSequenceMismatch,
-			TEXT("Projection sequence does not match the current attack."));
+				::CapabilitySequenceMismatch,
+			TEXT("Capability sequence does not match the current attack."));
 		return Result;
 	}
 	if (CurrentAttack.Phase
@@ -324,7 +317,7 @@ FMatchPlayCurrentAttackCompletion::Complete(
 
 	const EInitialTurnOrderPlayer Attacker =
 		BeforeState.RuntimeState.CurrentAttackingPlayer;
-	if (!IsPlayer(Attacker))
+	if (!IsCompletionPlayer(Attacker))
 	{
 		SetError(
 			Result,
@@ -333,8 +326,9 @@ FMatchPlayCurrentAttackCompletion::Complete(
 			TEXT("CurrentAttackingPlayer must be PlayerA or PlayerB."));
 		return Result;
 	}
-	const EInitialTurnOrderPlayer Defender = GetDefender(Attacker);
-	if (!IsPlayer(Defender))
+	const EInitialTurnOrderPlayer Defender =
+		GetCompletionDefender(Attacker);
+	if (!IsCompletionPlayer(Defender))
 	{
 		SetError(
 			Result,
@@ -344,18 +338,18 @@ FMatchPlayCurrentAttackCompletion::Complete(
 		return Result;
 	}
 
-	FString ProjectionProvenanceError;
+	FString CapabilityProvenanceError;
 	if (!ValidateAvailabilityProvenance(
 		BeforeState,
-		Projection,
+		Capability,
 		Defender,
-		ProjectionProvenanceError))
+		CapabilityProvenanceError))
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidProjectionProvenance,
-			ProjectionProvenanceError);
+				::InvalidCapabilityProvenance,
+			CapabilityProvenanceError);
 		return Result;
 	}
 
@@ -405,7 +399,7 @@ FMatchPlayCurrentAttackCompletion::Complete(
 	for (const FMatchPlayDeploymentPlacement& Placement :
 		CurrentAttack.DeploymentPlacements)
 	{
-		if (!IsPlayer(Placement.PlayerSide)
+		if (!IsCompletionPlayer(Placement.PlayerSide)
 			|| Placement.CardId.IsNone()
 			|| Placement.SlotId.IsNone())
 		{
@@ -589,7 +583,7 @@ FMatchPlayCurrentAttackCompletion::Complete(
 	const bool bHasRemainingAttack =
 		Result.OpportunityResolveResult.bMatchHasRemainingAttack;
 	if ((bHasRemainingAttack
-			&& !IsPlayer(Result.NextAttackingPlayer))
+			&& !IsCompletionPlayer(Result.NextAttackingPlayer))
 		|| (!bHasRemainingAttack
 			&& Result.NextAttackingPlayer
 				!= EInitialTurnOrderPlayer::None))

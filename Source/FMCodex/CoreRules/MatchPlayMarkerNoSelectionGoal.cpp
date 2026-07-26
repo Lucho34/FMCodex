@@ -30,13 +30,13 @@ namespace MatchPlayMarkerNoSelectionGoalImplementation
 		FString ErrorMessage;
 	};
 
-	bool IsPlayer(const EInitialTurnOrderPlayer Player)
+	bool IsMarkerGoalPlayer(const EInitialTurnOrderPlayer Player)
 	{
 		return Player == EInitialTurnOrderPlayer::PlayerA
 			|| Player == EInitialTurnOrderPlayer::PlayerB;
 	}
 
-	EInitialTurnOrderPlayer GetDefender(
+	EInitialTurnOrderPlayer GetMarkerGoalDefender(
 		const EInitialTurnOrderPlayer Attacker)
 	{
 		if (Attacker == EInitialTurnOrderPlayer::PlayerA)
@@ -101,7 +101,7 @@ namespace MatchPlayMarkerNoSelectionGoalImplementation
 
 		const EInitialTurnOrderPlayer Attacker =
 			BeforeState.RuntimeState.CurrentAttackingPlayer;
-		if (!IsPlayer(Attacker))
+		if (!IsMarkerGoalPlayer(Attacker))
 		{
 			Result.Error =
 				ECommonValidationError::InvalidCurrentAttackingPlayer;
@@ -109,8 +109,8 @@ namespace MatchPlayMarkerNoSelectionGoalImplementation
 				TEXT("CurrentAttackingPlayer must be PlayerA or PlayerB.");
 			return Result;
 		}
-		Result.Defender = GetDefender(Attacker);
-		if (!IsPlayer(Result.Defender))
+		Result.Defender = GetMarkerGoalDefender(Attacker);
+		if (!IsMarkerGoalPlayer(Result.Defender))
 		{
 			Result.Error =
 				ECommonValidationError::InvalidCurrentDefendingPlayer;
@@ -219,23 +219,6 @@ namespace MatchPlayMarkerNoSelectionGoalImplementation
 		}
 	}
 
-	FMatchPlayMarkerNoSelectionGoalProjection MakeProjection(
-		const int64 AttackSequence,
-		const EMatchPlayMarkerNoSelectionGoalReason Reason,
-		const EMatchPlayMarkerNoSelectionGoalSource Source,
-		const FMatchPlayCurrentAttackMarkerSelectionAvailabilityResult&
-			AvailabilityResult)
-	{
-		FMatchPlayMarkerNoSelectionGoalProjection Projection;
-		Projection.AttackSequence = AttackSequence;
-		Projection.bFormalSuccess = true;
-		Projection.bIsGoal = true;
-		Projection.Reason = Reason;
-		Projection.Source = Source;
-		Projection.MarkerAvailabilityResult = AvailabilityResult;
-		return Projection;
-	}
-
 	int32 CountDefenderPlacements(
 		const FMatchPlayState& State,
 		const EInitialTurnOrderPlayer Defender)
@@ -312,26 +295,20 @@ FMatchPlayResolveNoLegalMarker::Resolve(
 				::DefenderHasNoDeployedPlayers
 			: EMatchPlayMarkerNoSelectionGoalReason
 				::NoLegalMarker;
-	Result.GoalProjection = MakeProjection(
+	const EMatchPlayMarkerNoSelectionGoalSource Source =
+		EMatchPlayMarkerNoSelectionGoalSource::ResolveNoLegalMarker;
+	Result.Reason = Reason;
+	Result.Source = Source;
+	const FMatchPlayMarkerNoSelectionGoalCapability Capability(
 		Request.AttackSequence,
 		Reason,
-		EMatchPlayMarkerNoSelectionGoalSource::ResolveNoLegalMarker,
+		Source,
 		Result.MarkerAvailabilityResult);
-	if (!Result.GoalProjection.bFormalSuccess
-		|| !Result.GoalProjection.bIsGoal)
-	{
-		Result.ErrorCode =
-			EMatchPlayResolveNoLegalMarkerErrorCode
-				::GoalProjectionCreationFailed;
-		Result.ErrorMessage =
-			TEXT("Failed to create marker no-selection goal projection.");
-		return Result;
-	}
 
 	Result.CompletionResult =
 		FMatchPlayCurrentAttackCompletion::Complete(
 			BeforeState,
-			Result.GoalProjection);
+			Capability);
 	if (!Result.CompletionResult.bSuccess)
 	{
 		Result.ErrorCode =
@@ -371,7 +348,7 @@ FMatchPlayMarkerDeclineResult FMatchPlayMarkerDecline::Decline(
 		Result.ErrorMessage = Validation.ErrorMessage;
 		return Result;
 	}
-	if (!IsPlayer(Request.RequestingSide))
+	if (!IsMarkerGoalPlayer(Request.RequestingSide))
 	{
 		Result.ErrorCode =
 			EMatchPlayMarkerDeclineErrorCode::InvalidRequestingSide;
@@ -419,26 +396,20 @@ FMatchPlayMarkerDeclineResult FMatchPlayMarkerDecline::Decline(
 		return Result;
 	}
 
-	Result.GoalProjection = MakeProjection(
+	Result.Reason =
+		EMatchPlayMarkerNoSelectionGoalReason::MarkerDeclined;
+	Result.Source =
+		EMatchPlayMarkerNoSelectionGoalSource::DeclineMarker;
+	const FMatchPlayMarkerNoSelectionGoalCapability Capability(
 		Request.AttackSequence,
-		EMatchPlayMarkerNoSelectionGoalReason::MarkerDeclined,
-		EMatchPlayMarkerNoSelectionGoalSource::DeclineMarker,
+		Result.Reason,
+		Result.Source,
 		Result.MarkerAvailabilityResult);
-	if (!Result.GoalProjection.bFormalSuccess
-		|| !Result.GoalProjection.bIsGoal)
-	{
-		Result.ErrorCode =
-			EMatchPlayMarkerDeclineErrorCode
-				::GoalProjectionCreationFailed;
-		Result.ErrorMessage =
-			TEXT("Failed to create marker decline goal projection.");
-		return Result;
-	}
 
 	Result.CompletionResult =
 		FMatchPlayCurrentAttackCompletion::Complete(
 			BeforeState,
-			Result.GoalProjection);
+			Capability);
 	if (!Result.CompletionResult.bSuccess)
 	{
 		Result.ErrorCode =

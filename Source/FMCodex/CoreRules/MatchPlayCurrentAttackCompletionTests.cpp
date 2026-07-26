@@ -1,4 +1,4 @@
-#include "MatchPlayCurrentAttackCompletion.h"
+#include "MatchPlayMarkerNoSelectionGoal.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -6,72 +6,44 @@
 #include "MatchPlayMarkerNoSelectionGoalTestFixtures.h"
 #include "Misc/AutomationTest.h"
 
-#include <type_traits>
-
 namespace CurrentAttackCompletionTests
 {
 	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
 
-	bool ExpectFailure(
+	bool ExpectDeclineCompletionFailure(
 		FAutomationTestBase& Test,
 		const TCHAR* Context,
 		const FMatchPlayState& State,
-		const FMatchPlayMarkerNoSelectionGoalProjection& Projection,
 		const EMatchPlayCurrentAttackCompletionErrorCode ErrorCode)
 	{
 		const FMatchPlayState Original = State;
-		const FMatchPlayCurrentAttackCompletionResult Result =
-			FMatchPlayCurrentAttackCompletion::Complete(
+		const EInitialTurnOrderPlayer Defender =
+			GetDefender(State.RuntimeState.CurrentAttackingPlayer);
+		const FMatchPlayMarkerDeclineResult Result =
+			FMatchPlayMarkerDecline::Decline(
 				State,
-				Projection);
+				MakeDeclineRequest(Defender));
 		Test.TestFalse(
 			*FString::Printf(TEXT("%s fails"), Context),
 			Result.bSuccess);
 		Test.TestEqual(
-			*FString::Printf(TEXT("%s exact error"), Context),
+			*FString::Printf(TEXT("%s maps to CompletionFailed"), Context),
 			Result.ErrorCode,
+			EMatchPlayMarkerDeclineErrorCode::CompletionFailed);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s exact completion error"), Context),
+			Result.CompletionResult.ErrorCode,
 			ErrorCode);
 		Test.TestTrue(
 			*FString::Printf(TEXT("%s AfterState atomic"), Context),
 			AreStatesEqual(Result.AfterState, State));
 		Test.TestTrue(
+			*FString::Printf(TEXT("%s completion state atomic"), Context),
+			AreStatesEqual(Result.CompletionResult.AfterState, State));
+		Test.TestTrue(
 			*FString::Printf(TEXT("%s input unchanged"), Context),
 			AreStatesEqual(State, Original));
 		return true;
-	}
-
-	FMatchPlayMarkerNoSelectionGoalProjection MakeDeclineProjection(
-		const FMatchPlayState& State)
-	{
-		return MakeProjection(
-			State,
-			EMatchPlayMarkerNoSelectionGoalSource::DeclineMarker,
-			EMatchPlayMarkerNoSelectionGoalReason::MarkerDeclined);
-	}
-
-	FMatchPlayMarkerNoSelectionGoalProjection MakeNoLegalProjection(
-		const FMatchPlayState& State)
-	{
-		const EInitialTurnOrderPlayer Defender =
-			GetDefender(State.RuntimeState.CurrentAttackingPlayer);
-		int32 DefenderPlacementCount = 0;
-		for (const FMatchPlayDeploymentPlacement& Placement :
-			State.CurrentAttack.DeploymentPlacements)
-		{
-			if (Placement.PlayerSide == Defender)
-			{
-				++DefenderPlacementCount;
-			}
-		}
-		return MakeProjection(
-			State,
-			EMatchPlayMarkerNoSelectionGoalSource
-				::ResolveNoLegalMarker,
-			DefenderPlacementCount == 0
-				? EMatchPlayMarkerNoSelectionGoalReason
-					::DefenderHasNoDeployedPlayers
-				: EMatchPlayMarkerNoSelectionGoalReason
-					::NoLegalMarker);
 	}
 }
 
@@ -81,40 +53,35 @@ namespace CurrentAttackCompletionTests
 		"FMCodex.CoreRules.MatchPlayMarkerNoSelectionGoal.Completion." TestName, \
 		EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-#define MARKER_GOAL_PROJECTION_TEST(TestClass, TestName) \
-	IMPLEMENT_SIMPLE_AUTOMATION_TEST( \
-		TestClass, \
-		"FMCodex.CoreRules.MatchPlayMarkerNoSelectionGoal.Projection." TestName, \
-		EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
 CURRENT_ATTACK_COMPLETION_TEST(
-	FCurrentAttackCompletionContractTest,
-	"SinglePublicSignatureAndDefaults")
+	FCurrentAttackCompletionDiagnosticContractTest,
+	"PublicResultIsDiagnosticOnly")
 
-bool FCurrentAttackCompletionContractTest::RunTest(
+bool FCurrentAttackCompletionDiagnosticContractTest::RunTest(
 	const FString& Parameters)
 {
 	const FMatchPlayCurrentAttackCompletionResult Result;
 	TestFalse(TEXT("Default result fails"), Result.bSuccess);
-	TestEqual(TEXT("Default error None"), Result.ErrorCode,
+	TestEqual(TEXT("Default error is None"), Result.ErrorCode,
 		EMatchPlayCurrentAttackCompletionErrorCode::None);
-	TestNotNull(TEXT("Projection reflected"),
-		FMatchPlayMarkerNoSelectionGoalProjection::StaticStruct());
-	TestNotNull(TEXT("Completion result reflected"),
+	TestEqual(TEXT("Default reason is None"), Result.Reason,
+		EMatchPlayMarkerNoSelectionGoalReason::None);
+	TestEqual(TEXT("Default source is None"), Result.Source,
+		EMatchPlayMarkerNoSelectionGoalSource::None);
+	TestNotNull(TEXT("Completion diagnostic result remains reflected"),
 		FMatchPlayCurrentAttackCompletionResult::StaticStruct());
-	using FSignature = FMatchPlayCurrentAttackCompletionResult (*)(
-		const FMatchPlayState&,
-		const FMatchPlayMarkerNoSelectionGoalProjection&);
-	TestTrue(TEXT("Exactly one Complete signature"),
-		(std::is_same_v<
-			decltype(&FMatchPlayCurrentAttackCompletion::Complete),
-			FSignature>));
+	TestNull(TEXT("Completion result exposes no capability"),
+		FMatchPlayCurrentAttackCompletionResult::StaticStruct()
+			->FindPropertyByName(TEXT("Capability")));
+	TestNull(TEXT("Completion result exposes no projection"),
+		FMatchPlayCurrentAttackCompletionResult::StaticStruct()
+			->FindPropertyByName(TEXT("Projection")));
 	return true;
 }
 
 CURRENT_ATTACK_COMPLETION_TEST(
 	FCurrentAttackCompletionPlayerBScoreTest,
-	"PlayerBScoresExactlyOne")
+	"PlayerBScoresExactlyOneThroughPublicEntry")
 
 bool FCurrentAttackCompletionPlayerBScoreTest::RunTest(
 	const FString& Parameters)
@@ -122,17 +89,19 @@ bool FCurrentAttackCompletionPlayerBScoreTest::RunTest(
 	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
 	const FMatchPlayState State =
 		MakeState(EInitialTurnOrderPlayer::PlayerB);
-	const FMatchPlayCurrentAttackCompletionResult Result =
-		FMatchPlayCurrentAttackCompletion::Complete(
+	const FMatchPlayMarkerDeclineResult Result =
+		FMatchPlayMarkerDecline::Decline(
 			State,
-			CurrentAttackCompletionTests::MakeDeclineProjection(State));
-	TestTrue(TEXT("Completion succeeds"), Result.bSuccess);
+			MakeDeclineRequest(EInitialTurnOrderPlayer::PlayerA));
+	TestTrue(TEXT("Decline succeeds"), Result.bSuccess);
+	TestTrue(TEXT("Completion succeeds"),
+		Result.CompletionResult.bSuccess);
 	TestEqual(TEXT("PlayerA unchanged"),
 		Result.AfterState.RuntimeState.PlayerAState.Score, 2);
 	TestEqual(TEXT("PlayerB +1"),
 		Result.AfterState.RuntimeState.PlayerBState.Score, 2);
 	TestEqual(TEXT("Scoring side derived from runtime"),
-		Result.ScoringSide,
+		Result.CompletionResult.ScoringSide,
 		EInitialTurnOrderPlayer::PlayerB);
 	return true;
 }
@@ -146,21 +115,23 @@ bool FCurrentAttackCompletionDeploymentOrderTest::RunTest(
 {
 	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
 	const FMatchPlayState State = MakeState();
-	const FMatchPlayCurrentAttackCompletionResult Result =
-		FMatchPlayCurrentAttackCompletion::Complete(
+	const FMatchPlayMarkerDeclineResult Result =
+		FMatchPlayMarkerDecline::Decline(
 			State,
-			CurrentAttackCompletionTests::MakeDeclineProjection(State));
-	TestTrue(TEXT("Completion succeeds"), Result.bSuccess);
+			MakeDeclineRequest());
+	TestTrue(TEXT("Decline succeeds"), Result.bSuccess);
+	const TArray<FPlayCardResolveResult>& UsageResults =
+		Result.CompletionResult.OrdinaryCardUsageResults;
 	TestEqual(TEXT("Three ordinary cards consumed"),
-		Result.OrdinaryCardUsageResults.Num(), 3);
-	if (Result.OrdinaryCardUsageResults.Num() == 3)
+		UsageResults.Num(), 3);
+	if (UsageResults.Num() == 3)
 	{
-		TestEqual(TEXT("Carrier first"),
-			Result.OrdinaryCardUsageResults[0].CardId, PlayerAOne);
+		TestEqual(TEXT("Carrier first"), UsageResults[0].CardId,
+			PlayerAOne);
 		TestEqual(TEXT("Unselected attacker second"),
-			Result.OrdinaryCardUsageResults[1].CardId, PlayerATwo);
-		TestEqual(TEXT("Defender third"),
-			Result.OrdinaryCardUsageResults[2].CardId, PlayerBOne);
+			UsageResults[1].CardId, PlayerATwo);
+		TestEqual(TEXT("Defender third"), UsageResults[2].CardId,
+			PlayerBOne);
 	}
 	TestTrue(TEXT("PlayerA carrier Used"),
 		Result.AfterState.CardUsageState.PlayerACardUsageState
@@ -176,7 +147,7 @@ bool FCurrentAttackCompletionDeploymentOrderTest::RunTest(
 
 CURRENT_ATTACK_COMPLETION_TEST(
 	FCurrentAttackCompletionCardUsageAtomicTest,
-	"MidLoopCardFailureDoesNotCommitGoalOrPriorCard")
+	"MidLoopCardFailureDoesNotCommit")
 
 bool FCurrentAttackCompletionCardUsageAtomicTest::RunTest(
 	const FString& Parameters)
@@ -185,111 +156,37 @@ bool FCurrentAttackCompletionCardUsageAtomicTest::RunTest(
 	FMatchPlayState State = MakeState();
 	State.CardUsageState.PlayerACardUsageState.AvailableCardIds
 		.Remove(PlayerATwo);
-	const FMatchPlayMarkerNoSelectionGoalProjection Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	const FMatchPlayCurrentAttackCompletionResult Result =
-		FMatchPlayCurrentAttackCompletion::Complete(State, Projection);
-	TestFalse(TEXT("Completion fails"), Result.bSuccess);
-	TestEqual(TEXT("Exact CardUsage error"), Result.ErrorCode,
+	return CurrentAttackCompletionTests::ExpectDeclineCompletionFailure(
+		*this,
+		TEXT("Mid-loop CardUsage failure"),
+		State,
 		EMatchPlayCurrentAttackCompletionErrorCode
 			::OrdinaryCardUsageConsumptionFailed);
-	TestEqual(TEXT("First working result was produced"),
-		Result.OrdinaryCardUsageResults.Num(), 2);
-	TestTrue(TEXT("AfterState is original"),
-		AreStatesEqual(Result.AfterState, State));
-	TestEqual(TEXT("Score not committed"),
-		Result.AfterState.RuntimeState.PlayerAState.Score, 2);
-	TestFalse(TEXT("First card not committed"),
-		Result.AfterState.CardUsageState.PlayerACardUsageState
-			.UsedCardIds.Contains(PlayerAOne));
-	TestTrue(TEXT("CurrentAttack not cleared"),
-		Result.AfterState.bHasCurrentAttack);
-	return true;
 }
 
 CURRENT_ATTACK_COMPLETION_TEST(
-	FCurrentAttackCompletionDeploymentValidationTest,
-	"InvalidDuplicateAndMissingSnapshotRejectBeforeMutation")
-
-bool FCurrentAttackCompletionDeploymentValidationTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
-	FMatchPlayState State = MakeState();
-	FMatchPlayMarkerNoSelectionGoalProjection Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	State.CurrentAttack.DeploymentPlacements[1].CardId = NAME_None;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Empty placement CardId"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidDeploymentPlacement);
-
-	State = MakeState();
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	const FMatchPlayDeploymentPlacement DuplicatePlacement =
-		State.CurrentAttack.DeploymentPlacements[0];
-	State.CurrentAttack.DeploymentPlacements.Add(DuplicatePlacement);
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Duplicate card"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::DuplicateDeploymentCard);
-
-	State = MakeState();
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.RemoveAll(
-		[](const FPlayerCardRuleSnapshot& Snapshot)
-		{
-			return Snapshot.CardId == PlayerATwo;
-		});
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Missing snapshot"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::DeploymentSnapshotQueryFailed);
-	return true;
-}
-
-CURRENT_ATTACK_COMPLETION_TEST(
-	FCurrentAttackCompletionGoalFailureTest,
+	FCurrentAttackCompletionScoreFailuresTest,
 	"OverflowAndNegativeScoresRejectAtomically")
 
-bool FCurrentAttackCompletionGoalFailureTest::RunTest(
+bool FCurrentAttackCompletionScoreFailuresTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
 	FMatchPlayState State = MakeState();
 	State.RuntimeState.PlayerAState.Score = MAX_int32;
-	FMatchPlayMarkerNoSelectionGoalProjection Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	CurrentAttackCompletionTests::ExpectFailure(
+	CurrentAttackCompletionTests::ExpectDeclineCompletionFailure(
 		*this,
 		TEXT("Score overflow"),
 		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::GoalResolutionFailed);
+		EMatchPlayCurrentAttackCompletionErrorCode::GoalResolutionFailed);
 
 	State = MakeState();
 	State.RuntimeState.PlayerBState.Score = -1;
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	CurrentAttackCompletionTests::ExpectFailure(
+	CurrentAttackCompletionTests::ExpectDeclineCompletionFailure(
 		*this,
 		TEXT("Negative score"),
 		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidScoreState);
+		EMatchPlayCurrentAttackCompletionErrorCode::InvalidScoreState);
 	return true;
 }
 
@@ -303,92 +200,26 @@ bool FCurrentAttackCompletionGoalkeeperValidationTest::RunTest(
 	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
 	FMatchPlayState State = MakeState();
 	MakeOnlyGoalkeeperDefender(State);
-	FMatchPlayMarkerNoSelectionGoalProjection Projection =
-		CurrentAttackCompletionTests::MakeNoLegalProjection(State);
 	State.CurrentAttack.bCurrentDefenseGoalkeeperActivated = false;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Activation mismatch"),
-		State,
-		Projection,
+	const FMatchPlayResolveNoLegalMarkerResult Result =
+		FMatchPlayResolveNoLegalMarker::Resolve(
+			State,
+			MakeNoLegalRequest());
+	TestFalse(TEXT("Corrupt GK state rejects"), Result.bSuccess);
+	TestEqual(TEXT("Mapped to CompletionFailed"), Result.ErrorCode,
+		EMatchPlayResolveNoLegalMarkerErrorCode::CompletionFailed);
+	TestEqual(TEXT("Exact GK completion error"),
+		Result.CompletionResult.ErrorCode,
 		EMatchPlayCurrentAttackCompletionErrorCode
 			::InvalidGoalkeeperCompletionState);
-
-	State = MakeState();
-	MakeOnlyGoalkeeperDefender(State);
-	Projection =
-		CurrentAttackCompletionTests::MakeNoLegalProjection(State);
-	State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = false;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Persistent usage mismatch"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidGoalkeeperCompletionState);
-
-	State = MakeState();
-	MakeOnlyGoalkeeperDefender(State);
-	for (FPlayerCardRuleSnapshot& Snapshot :
-		State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards)
-	{
-		if (Snapshot.CardId == PlayerBTwo)
-		{
-			Snapshot.PositionTypes = {
-				EPlayerPositionType::Goalkeeper
-			};
-			Snapshot.bIsGoalkeeper = true;
-			Snapshot.bHasGoalkeeperAttributes = true;
-			SetGoalkeeperAttributes(
-				Snapshot.GoalkeeperAttributes);
-		}
-	}
-	State.CurrentAttack.DeploymentPlacements.Add(
-		MakePlacement(
-			EInitialTurnOrderPlayer::PlayerB,
-			PlayerBTwo,
-			NearPlayerBSlotTwo));
-	Projection =
-		CurrentAttackCompletionTests::MakeNoLegalProjection(State);
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Multiple goalkeeper placements"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidGoalkeeperCompletionState);
+	TestTrue(TEXT("GK rejection is atomic"),
+		AreStatesEqual(Result.AfterState, State));
 	return true;
 }
 
 CURRENT_ATTACK_COMPLETION_TEST(
-	FCurrentAttackCompletionGoalkeeperSideTest,
-	"AttackerGoalkeeperPlacementRejected")
-
-bool FCurrentAttackCompletionGoalkeeperSideTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
-	FMatchPlayState State = MakeState();
-	RemoveDefenderPlacements(State);
-	State.CurrentAttack.DeploymentPlacements.Add(
-		MakePlacement(
-			EInitialTurnOrderPlayer::PlayerA,
-			PlayerAGoalkeeper,
-			NearPlayerBSlotGoalkeeper));
-	const FMatchPlayMarkerNoSelectionGoalProjection Projection =
-		CurrentAttackCompletionTests::MakeNoLegalProjection(State);
-	return CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Attacker GK"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidGoalkeeperCompletionState);
-}
-
-CURRENT_ATTACK_COMPLETION_TEST(
 	FCurrentAttackCompletionCurrentAttackClearTest,
-	"ClearsWholePayloadAndPreservesPersistentAuthorities")
+	"ClearsPayloadAndPreservesPersistentAuthorities")
 
 bool FCurrentAttackCompletionCurrentAttackClearTest::RunTest(
 	const FString& Parameters)
@@ -402,12 +233,12 @@ bool FCurrentAttackCompletionCurrentAttackClearTest::RunTest(
 		State.CardSnapshotAuthority;
 	const FMatchPlayGoalkeeperUsageState GoalkeeperUsageBefore =
 		State.GoalkeeperUsageState;
-	const FMatchPlayCurrentAttackCompletionResult Result =
-		FMatchPlayCurrentAttackCompletion::Complete(
+	const FMatchPlayResolveNoLegalMarkerResult Result =
+		FMatchPlayResolveNoLegalMarker::Resolve(
 			State,
-			CurrentAttackCompletionTests::MakeNoLegalProjection(State));
+			MakeNoLegalRequest());
 	const FMatchPlayCurrentAttackState EmptyAttack;
-	TestTrue(TEXT("Completion succeeds"), Result.bSuccess);
+	TestTrue(TEXT("Resolve succeeds"), Result.bSuccess);
 	TestFalse(TEXT("CurrentAttack flag cleared"),
 		Result.AfterState.bHasCurrentAttack);
 	TestTrue(TEXT("Whole payload is canonical default"),
@@ -439,20 +270,20 @@ bool FCurrentAttackCompletionCurrentAttackClearTest::RunTest(
 
 CURRENT_ATTACK_COMPLETION_TEST(
 	FCurrentAttackCompletionNextAttackerTest,
-	"OpponentOrSameAttackerDerivedWithoutAutoBegin")
+	"OpportunityOutcomesWithoutAutoBegin")
 
 bool FCurrentAttackCompletionNextAttackerTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
 	FMatchPlayState State = MakeState();
-	FMatchPlayCurrentAttackCompletionResult Result =
-		FMatchPlayCurrentAttackCompletion::Complete(
+	FMatchPlayMarkerDeclineResult Result =
+		FMatchPlayMarkerDecline::Decline(
 			State,
-			CurrentAttackCompletionTests::MakeDeclineProjection(State));
+			MakeDeclineRequest());
 	TestTrue(TEXT("Opponent case succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Opponent attacks next"),
-		Result.NextAttackingPlayer,
+		Result.CompletionResult.NextAttackingPlayer,
 		EInitialTurnOrderPlayer::PlayerB);
 	TestFalse(TEXT("No attack automatically begun"),
 		Result.AfterState.bHasCurrentAttack);
@@ -460,12 +291,12 @@ bool FCurrentAttackCompletionNextAttackerTest::RunTest(
 	State = MakeState();
 	State.RuntimeState.PlayerBState.UsedAttackCount =
 		State.RuntimeState.PlayerBState.TotalAttackCount;
-	Result = FMatchPlayCurrentAttackCompletion::Complete(
+	Result = FMatchPlayMarkerDecline::Decline(
 		State,
-		CurrentAttackCompletionTests::MakeDeclineProjection(State));
+		MakeDeclineRequest());
 	TestTrue(TEXT("Same-side case succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Current attacker continues"),
-		Result.NextAttackingPlayer,
+		Result.CompletionResult.NextAttackingPlayer,
 		EInitialTurnOrderPlayer::PlayerA);
 	TestFalse(TEXT("Still no auto Begin"),
 		Result.AfterState.bHasCurrentAttack);
@@ -487,18 +318,16 @@ bool FCurrentAttackCompletionMatchResultsTest::RunTest(
 	State.RuntimeState.PlayerBState.UsedAttackCount = 1;
 	State.RuntimeState.PlayerAState.Score = 1;
 	State.RuntimeState.PlayerBState.Score = 1;
-	FMatchPlayCurrentAttackCompletionResult Result =
-		FMatchPlayCurrentAttackCompletion::Complete(
+	FMatchPlayMarkerDeclineResult Result =
+		FMatchPlayMarkerDecline::Decline(
 			State,
-			CurrentAttackCompletionTests::MakeDeclineProjection(State));
+			MakeDeclineRequest());
 	TestTrue(TEXT("Home-win completion succeeds"), Result.bSuccess);
-	TestTrue(TEXT("Match ended"), Result.bMatchEnded);
+	TestTrue(TEXT("Match ended"),
+		Result.CompletionResult.bMatchEnded);
 	TestEqual(TEXT("Home win derived"),
-		Result.MatchResultResolveResult.ResultType,
+		Result.CompletionResult.MatchResultResolveResult.ResultType,
 		EMatchResultType::HomeWin);
-	TestEqual(TEXT("Final attacker None"),
-		Result.AfterState.RuntimeState.CurrentAttackingPlayer,
-		EInitialTurnOrderPlayer::None);
 
 	State = MakeState(EInitialTurnOrderPlayer::PlayerB);
 	State.RuntimeState.PlayerAState.TotalAttackCount = 1;
@@ -507,12 +336,12 @@ bool FCurrentAttackCompletionMatchResultsTest::RunTest(
 	State.RuntimeState.PlayerBState.UsedAttackCount = 1;
 	State.RuntimeState.PlayerAState.Score = 1;
 	State.RuntimeState.PlayerBState.Score = 1;
-	Result = FMatchPlayCurrentAttackCompletion::Complete(
+	Result = FMatchPlayMarkerDecline::Decline(
 		State,
-		CurrentAttackCompletionTests::MakeDeclineProjection(State));
+		MakeDeclineRequest(EInitialTurnOrderPlayer::PlayerA));
 	TestTrue(TEXT("Away-win completion succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Away win derived"),
-		Result.MatchResultResolveResult.ResultType,
+		Result.CompletionResult.MatchResultResolveResult.ResultType,
 		EMatchResultType::AwayWin);
 
 	State = MakeState();
@@ -522,13 +351,97 @@ bool FCurrentAttackCompletionMatchResultsTest::RunTest(
 	State.RuntimeState.PlayerBState.UsedAttackCount = 1;
 	State.RuntimeState.PlayerAState.Score = 0;
 	State.RuntimeState.PlayerBState.Score = 1;
-	Result = FMatchPlayCurrentAttackCompletion::Complete(
+	Result = FMatchPlayMarkerDecline::Decline(
 		State,
-		CurrentAttackCompletionTests::MakeDeclineProjection(State));
+		MakeDeclineRequest());
 	TestTrue(TEXT("Draw completion succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Draw derived"),
-		Result.MatchResultResolveResult.ResultType,
+		Result.CompletionResult.MatchResultResolveResult.ResultType,
 		EMatchResultType::Draw);
+	return true;
+}
+
+CURRENT_ATTACK_COMPLETION_TEST(
+	FCurrentAttackCompletionOpportunityFailureTest,
+	"ExhaustedAndCorruptOpportunityRejectAtomically")
+
+bool FCurrentAttackCompletionOpportunityFailureTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
+	FMatchPlayState State = MakeState();
+	State.RuntimeState.PlayerAState.UsedAttackCount =
+		State.RuntimeState.PlayerAState.TotalAttackCount;
+	CurrentAttackCompletionTests::ExpectDeclineCompletionFailure(
+		*this,
+		TEXT("Exhausted attacker opportunity"),
+		State,
+		EMatchPlayCurrentAttackCompletionErrorCode
+			::InvalidOpportunityState);
+
+	State = MakeState();
+	State.RuntimeState.PlayerBState.TotalAttackCount = -1;
+	CurrentAttackCompletionTests::ExpectDeclineCompletionFailure(
+		*this,
+		TEXT("Corrupt opponent opportunity"),
+		State,
+		EMatchPlayCurrentAttackCompletionErrorCode
+			::InvalidOpportunityState);
+	return true;
+}
+
+CURRENT_ATTACK_COMPLETION_TEST(
+	FCurrentAttackCompletionOrdinaryPlusGoalkeeperTest,
+	"OrdinaryDeploymentsConsumedAndGoalkeeperPreserved")
+
+bool FCurrentAttackCompletionOrdinaryPlusGoalkeeperTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
+	FMatchPlayState State = MakeState();
+	State.CurrentAttack.DeploymentPlacements.Add(
+		MakePlacement(
+			EInitialTurnOrderPlayer::PlayerB,
+			PlayerBGoalkeeper,
+			GetGoalkeeperSlot(EInitialTurnOrderPlayer::PlayerA)));
+	State.CurrentAttack.bCurrentDefenseGoalkeeperActivated = true;
+	State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = true;
+
+	const FMatchPlayMarkerDeclineResult Result =
+		FMatchPlayMarkerDecline::Decline(
+			State,
+			MakeDeclineRequest());
+	TestTrue(TEXT("Ordinary plus GK completion succeeds"),
+		Result.bSuccess);
+	TestEqual(TEXT("Only three ordinary cards consumed"),
+		Result.CompletionResult.OrdinaryCardUsageResults.Num(), 3);
+	TestTrue(TEXT("All attacker ordinary cards Used"),
+		Result.AfterState.CardUsageState.PlayerACardUsageState
+			.UsedCardIds.Contains(PlayerAOne)
+		&& Result.AfterState.CardUsageState.PlayerACardUsageState
+			.UsedCardIds.Contains(PlayerATwo));
+	TestTrue(TEXT("Defender ordinary card Used"),
+		Result.AfterState.CardUsageState.PlayerBCardUsageState
+			.UsedCardIds.Contains(PlayerBOne));
+	TestTrue(TEXT("GK remains Available"),
+		Result.AfterState.CardUsageState.PlayerBCardUsageState
+			.AvailableCardIds.Contains(PlayerBGoalkeeper));
+	TestFalse(TEXT("GK is not Used"),
+		Result.AfterState.CardUsageState.PlayerBCardUsageState
+			.UsedCardIds.Contains(PlayerBGoalkeeper));
+	TestTrue(TEXT("Persistent GK usage remains"),
+		Result.AfterState.GoalkeeperUsageState
+			.bPlayerBGoalkeeperCardUsed);
+	TestFalse(TEXT("CurrentAttack and activation are cleared"),
+		Result.AfterState.bHasCurrentAttack);
+	TestEqual(TEXT("Score increments once"),
+		Result.AfterState.RuntimeState.PlayerAState.Score, 3);
+	TestEqual(TEXT("Opportunity consumed once"),
+		Result.AfterState.RuntimeState.PlayerAState.UsedAttackCount,
+		State.RuntimeState.PlayerAState.UsedAttackCount + 1);
+	TestEqual(TEXT("Next attacker is opponent"),
+		Result.CompletionResult.NextAttackingPlayer,
+		EInitialTurnOrderPlayer::PlayerB);
 	return true;
 }
 
@@ -541,19 +454,19 @@ bool FCurrentAttackCompletionSequenceAndRepeatTest::RunTest(
 {
 	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
 	const FMatchPlayState State = MakeState();
-	const FMatchPlayMarkerNoSelectionGoalProjection Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	const FMatchPlayCurrentAttackCompletionResult Completed =
-		FMatchPlayCurrentAttackCompletion::Complete(State, Projection);
+	const FMatchPlayMarkerDeclineResult Completed =
+		FMatchPlayMarkerDecline::Decline(
+			State,
+			MakeDeclineRequest());
 	TestTrue(TEXT("Completion succeeds"), Completed.bSuccess);
-	const FMatchPlayCurrentAttackCompletionResult Repeated =
-		FMatchPlayCurrentAttackCompletion::Complete(
+	const FMatchPlayMarkerDeclineResult Repeated =
+		FMatchPlayMarkerDecline::Decline(
 			Completed.AfterState,
-			Projection);
-	TestFalse(TEXT("Repeated completion fails"), Repeated.bSuccess);
+			MakeDeclineRequest());
+	TestFalse(TEXT("Repeated entry fails"), Repeated.bSuccess);
 	TestEqual(TEXT("NoCurrentAttack is repeat guard"),
 		Repeated.ErrorCode,
-		EMatchPlayCurrentAttackCompletionErrorCode::NoCurrentAttack);
+		EMatchPlayMarkerDeclineErrorCode::NoCurrentAttack);
 	TestTrue(TEXT("Repeated state unchanged"),
 		AreStatesEqual(Repeated.AfterState, Completed.AfterState));
 
@@ -567,139 +480,6 @@ bool FCurrentAttackCompletionSequenceAndRepeatTest::RunTest(
 		ValidAttackSequence + 1);
 	TestEqual(TEXT("External ActionPoint retained"),
 		NextBegin.AfterState.CurrentAttack.ActionPoint, 6);
-	return true;
-}
-
-MARKER_GOAL_PROJECTION_TEST(
-	FMarkerGoalProjectionBasicForgeryTest,
-	"FormalGoalSourceReasonAndSequenceValidated")
-
-bool FMarkerGoalProjectionBasicForgeryTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
-	const FMatchPlayState State = MakeState();
-	FMatchPlayMarkerNoSelectionGoalProjection Projection;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Default projection"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidProjection);
-
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.bFormalSuccess = false;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Formal failure"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidProjection);
-
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.bIsGoal = false;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Not a goal"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidProjection);
-
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.Source =
-		EMatchPlayMarkerNoSelectionGoalSource::None;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Unknown source"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::UnsupportedProjectionSource);
-
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.Reason =
-		EMatchPlayMarkerNoSelectionGoalReason::None;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Unknown reason"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidProjectionReason);
-
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.AttackSequence++;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Sequence mismatch"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::ProjectionSequenceMismatch);
-	return true;
-}
-
-MARKER_GOAL_PROJECTION_TEST(
-	FMarkerGoalProjectionProvenanceForgeryTest,
-	"AvailabilityAndReasonSourceConsistencyValidated")
-
-bool FMarkerGoalProjectionProvenanceForgeryTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
-	const FMatchPlayState State = MakeState();
-	FMatchPlayMarkerNoSelectionGoalProjection Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.Reason =
-		EMatchPlayMarkerNoSelectionGoalReason::NoLegalMarker;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Reason source mismatch"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidProjectionProvenance);
-
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.MarkerAvailabilityResult.bQuerySucceeded = false;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Failed underlying authority"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidProjectionProvenance);
-
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.MarkerAvailabilityResult.Candidates.Reset();
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Forged candidate evidence"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidProjectionProvenance);
-
-	Projection =
-		CurrentAttackCompletionTests::MakeDeclineProjection(State);
-	Projection.MarkerAvailabilityResult.bCanSelectAnyMarker = false;
-	CurrentAttackCompletionTests::ExpectFailure(
-		*this,
-		TEXT("Forged availability summary"),
-		State,
-		Projection,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidProjectionProvenance);
 	return true;
 }
 

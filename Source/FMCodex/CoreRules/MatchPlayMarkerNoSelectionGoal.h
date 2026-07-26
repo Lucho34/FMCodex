@@ -49,8 +49,6 @@ enum class EMatchPlayResolveNoLegalMarkerErrorCode : uint8
 	MarkerAvailabilityFailed
 		UMETA(DisplayName = "Marker Availability Failed"),
 	LegalMarkerExists UMETA(DisplayName = "Legal Marker Exists"),
-	GoalProjectionCreationFailed
-		UMETA(DisplayName = "Goal Projection Creation Failed"),
 	CompletionFailed UMETA(DisplayName = "Completion Failed")
 };
 
@@ -79,8 +77,6 @@ enum class EMatchPlayMarkerDeclineErrorCode : uint8
 		UMETA(DisplayName = "Marker Availability Failed"),
 	NoLegalMarkerToDecline
 		UMETA(DisplayName = "No Legal Marker To Decline"),
-	GoalProjectionCreationFailed
-		UMETA(DisplayName = "Goal Projection Creation Failed"),
 	CompletionFailed UMETA(DisplayName = "Completion Failed")
 };
 
@@ -110,7 +106,12 @@ struct FMCODEX_API FMatchPlayResolveNoLegalMarkerResult
 		MarkerAvailabilityResult;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Marker No-selection Goal")
-	FMatchPlayMarkerNoSelectionGoalProjection GoalProjection;
+	EMatchPlayMarkerNoSelectionGoalReason Reason =
+		EMatchPlayMarkerNoSelectionGoalReason::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Marker No-selection Goal")
+	EMatchPlayMarkerNoSelectionGoalSource Source =
+		EMatchPlayMarkerNoSelectionGoalSource::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Marker No-selection Goal")
 	FMatchPlayCurrentAttackCompletionResult CompletionResult;
@@ -149,7 +150,12 @@ struct FMCODEX_API FMatchPlayMarkerDeclineResult
 		MarkerAvailabilityResult;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Marker No-selection Goal")
-	FMatchPlayMarkerNoSelectionGoalProjection GoalProjection;
+	EMatchPlayMarkerNoSelectionGoalReason Reason =
+		EMatchPlayMarkerNoSelectionGoalReason::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Marker No-selection Goal")
+	EMatchPlayMarkerNoSelectionGoalSource Source =
+		EMatchPlayMarkerNoSelectionGoalSource::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Marker No-selection Goal")
 	FMatchPlayCurrentAttackCompletionResult CompletionResult;

@@ -5,7 +5,7 @@
 #include "AttackOpportunityResolver.h"
 #include "GoalResolver.h"
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
-#include "MatchPlayMarkerNoSelectionGoalProjection.h"
+#include "MatchPlayMarkerNoSelectionGoalCapability.h"
 #include "MatchResultResolver.h"
 #include "PlayCardResolver.h"
 
@@ -20,13 +20,12 @@ enum class EMatchPlayCurrentAttackCompletionErrorCode : uint8
 	NoCurrentAttack UMETA(DisplayName = "No Current Attack"),
 	InvalidCurrentAttackSequence
 		UMETA(DisplayName = "Invalid Current Attack Sequence"),
-	InvalidProjection UMETA(DisplayName = "Invalid Projection"),
-	UnsupportedProjectionSource
-		UMETA(DisplayName = "Unsupported Projection Source"),
-	InvalidProjectionReason
-		UMETA(DisplayName = "Invalid Projection Reason"),
-	ProjectionSequenceMismatch
-		UMETA(DisplayName = "Projection Sequence Mismatch"),
+	UnsupportedCapabilitySource
+		UMETA(DisplayName = "Unsupported Capability Source"),
+	InvalidCapabilityReason
+		UMETA(DisplayName = "Invalid Capability Reason"),
+	CapabilitySequenceMismatch
+		UMETA(DisplayName = "Capability Sequence Mismatch"),
 	CurrentAttackNotInResolution
 		UMETA(DisplayName = "Current Attack Not In Resolution"),
 	InvalidSelectionState UMETA(DisplayName = "Invalid Selection State"),
@@ -35,8 +34,8 @@ enum class EMatchPlayCurrentAttackCompletionErrorCode : uint8
 		UMETA(DisplayName = "Invalid Current Attacking Player"),
 	InvalidCurrentDefendingPlayer
 		UMETA(DisplayName = "Invalid Current Defending Player"),
-	InvalidProjectionProvenance
-		UMETA(DisplayName = "Invalid Projection Provenance"),
+	InvalidCapabilityProvenance
+		UMETA(DisplayName = "Invalid Capability Provenance"),
 	InvalidScoreState UMETA(DisplayName = "Invalid Score State"),
 	InvalidOpportunityState
 		UMETA(DisplayName = "Invalid Opportunity State"),
@@ -76,7 +75,12 @@ struct FMCODEX_API FMatchPlayCurrentAttackCompletionResult
 	FMatchPlayState AfterState;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Completion")
-	FMatchPlayMarkerNoSelectionGoalProjection Projection;
+	EMatchPlayMarkerNoSelectionGoalReason Reason =
+		EMatchPlayMarkerNoSelectionGoalReason::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Completion")
+	EMatchPlayMarkerNoSelectionGoalSource Source =
+		EMatchPlayMarkerNoSelectionGoalSource::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Completion")
 	EMatchPlayCurrentAttackCompletionErrorCode ErrorCode =
@@ -121,8 +125,13 @@ struct FMCODEX_API FMatchPlayCurrentAttackCompletionResult
 
 class FMCODEX_API FMatchPlayCurrentAttackCompletion final
 {
-public:
+private:
+	friend class FMatchPlayMarkerDecline;
+	friend class FMatchPlayResolveNoLegalMarker;
+
+	FMatchPlayCurrentAttackCompletion() = delete;
+
 	static FMatchPlayCurrentAttackCompletionResult Complete(
 		const FMatchPlayState& BeforeState,
-		const FMatchPlayMarkerNoSelectionGoalProjection& Projection);
+		const FMatchPlayMarkerNoSelectionGoalCapability& Capability);
 };
