@@ -25,7 +25,11 @@ enum class EMatchPlayCurrentAttackSelectionStateValidationErrorCode : uint8
 	SelectedActionPayloadNotEmpty
 		UMETA(DisplayName = "Selected Action Payload Not Empty"),
 	DuplicateCarrierAuthority
-		UMETA(DisplayName = "Duplicate Carrier Authority")
+		UMETA(DisplayName = "Duplicate Carrier Authority"),
+	UnexpectedPreparationMarker
+		UMETA(DisplayName = "Unexpected Preparation Marker"),
+	MissingPreparationMarker
+		UMETA(DisplayName = "Missing Preparation Marker")
 };
 
 USTRUCT(BlueprintType)

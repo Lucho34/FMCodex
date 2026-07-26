@@ -122,6 +122,8 @@ bool FMatchPlayBeginOrdinaryAttackPlayerASuccessTest::RunTest(
 		EMatchPlayCurrentAttackSelectionStage::AwaitingMarker;
 	BeforeState.CurrentAttack.ActionPreparation.CarrierCardId =
 		TEXT("StalePreparationCarrier");
+	BeforeState.CurrentAttack.ActionPreparation.MarkerCardId =
+		TEXT("StalePreparationMarker");
 	BeforeState.CurrentAttack.CurrentLegalDeploymentSide =
 		EInitialTurnOrderPlayer::PlayerB;
 	BeforeState.CurrentAttack.bAttackerDeploymentFinished = true;
@@ -156,6 +158,9 @@ bool FMatchPlayBeginOrdinaryAttackPlayerASuccessTest::RunTest(
 	TestTrue(TEXT("Preparation carrier starts empty"),
 		Result.AfterState.CurrentAttack.ActionPreparation
 			.CarrierCardId.IsNone());
+	TestTrue(TEXT("Preparation marker starts empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.MarkerCardId.IsNone());
 	TestEqual(TEXT("Attacker deploys first"),
 		Result.AfterState.CurrentAttack.CurrentLegalDeploymentSide,
 		EInitialTurnOrderPlayer::PlayerA);

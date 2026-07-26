@@ -9,6 +9,7 @@
 namespace SelectionStateValidatorTests
 {
 	const FName CarrierId(TEXT("PlayerA.Carrier"));
+	const FName MarkerId(TEXT("PlayerB.Marker"));
 
 	FMatchPlayCurrentAttackState MakeAwaitingCarrier()
 	{
@@ -25,6 +26,15 @@ namespace SelectionStateValidatorTests
 		State.SelectionStage =
 			EMatchPlayCurrentAttackSelectionStage::AwaitingMarker;
 		State.ActionPreparation.CarrierCardId = CarrierId;
+		return State;
+	}
+
+	FMatchPlayCurrentAttackState MakeAwaitingSkill()
+	{
+		FMatchPlayCurrentAttackState State = MakeAwaitingMarker();
+		State.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+		State.ActionPreparation.MarkerCardId = MarkerId;
 		return State;
 	}
 
@@ -78,6 +88,8 @@ bool FSelectionStateContractTest::RunTest(const FString& Parameters)
 		EMatchPlayCurrentAttackSelectionStage::None);
 	TestTrue(TEXT("Default preparation empty"),
 		State.ActionPreparation.CarrierCardId.IsNone());
+	TestTrue(TEXT("Default preparation marker empty"),
+		State.ActionPreparation.MarkerCardId.IsNone());
 	TestNotNull(TEXT("Stage reflected"),
 		StaticEnum<EMatchPlayCurrentAttackSelectionStage>());
 	TestNotNull(TEXT("Preparation reflected"),
@@ -108,6 +120,25 @@ bool FSelectionStateContractTest::RunTest(const FString& Parameters)
 			EMatchPlayCurrentAttackSelectionStage
 				::AwaitingMarker),
 		uint8{2});
+	TestEqual(TEXT("AwaitingSkill value appended"),
+		static_cast<uint8>(
+			EMatchPlayCurrentAttackSelectionStage
+				::AwaitingSkill),
+		uint8{3});
+	return true;
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateAwaitingSkillTest,
+	"AwaitingSkillCanonical")
+
+bool FSelectionStateAwaitingSkillTest::RunTest(
+	const FString& Parameters)
+{
+	const auto Result =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			SelectionStateValidatorTests::MakeAwaitingSkill());
+	TestTrue(TEXT("AwaitingSkill canonical"), Result.bIsCanonical);
 	return true;
 }
 
@@ -194,6 +225,25 @@ bool FSelectionStateAwaitingCarrierPayloadTest::RunTest(
 }
 
 SELECTION_STATE_TEST(
+	FSelectionStateAwaitingCarrierMarkerTest,
+	"AwaitingCarrierRejectsPreparationMarker")
+
+bool FSelectionStateAwaitingCarrierMarkerTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState State =
+		SelectionStateValidatorTests::MakeAwaitingCarrier();
+	State.ActionPreparation.MarkerCardId =
+		SelectionStateValidatorTests::MarkerId;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingCarrier marker"),
+		State,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::UnexpectedPreparationMarker);
+}
+
+SELECTION_STATE_TEST(
 	FSelectionStateAwaitingMarkerPayloadTest,
 	"AwaitingMarkerRequiresPreparationCarrier")
 
@@ -209,6 +259,79 @@ bool FSelectionStateAwaitingMarkerPayloadTest::RunTest(
 		State,
 		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 			::MissingPreparationCarrier);
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateAwaitingMarkerMarkerTest,
+	"AwaitingMarkerRejectsPreparationMarker")
+
+bool FSelectionStateAwaitingMarkerMarkerTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState State =
+		SelectionStateValidatorTests::MakeAwaitingMarker();
+	State.ActionPreparation.MarkerCardId =
+		SelectionStateValidatorTests::MarkerId;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingMarker marker"),
+		State,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::UnexpectedPreparationMarker);
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateAwaitingSkillCarrierTest,
+	"AwaitingSkillRequiresPreparationCarrier")
+
+bool FSelectionStateAwaitingSkillCarrierTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState State =
+		SelectionStateValidatorTests::MakeAwaitingSkill();
+	State.ActionPreparation.CarrierCardId = NAME_None;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingSkill missing carrier"),
+		State,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::MissingPreparationCarrier);
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateAwaitingSkillMarkerTest,
+	"AwaitingSkillRequiresPreparationMarker")
+
+bool FSelectionStateAwaitingSkillMarkerTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState State =
+		SelectionStateValidatorTests::MakeAwaitingSkill();
+	State.ActionPreparation.MarkerCardId = NAME_None;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("AwaitingSkill missing marker"),
+		State,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::MissingPreparationMarker);
+}
+
+SELECTION_STATE_TEST(
+	FSelectionStateDeploymentMarkerTest,
+	"DeploymentRejectsPreparationMarker")
+
+bool FSelectionStateDeploymentMarkerTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState State;
+	State.ActionPreparation.MarkerCardId =
+		SelectionStateValidatorTests::MarkerId;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Deployment marker"),
+		State,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::UnexpectedPreparationMarker);
 }
 
 SELECTION_STATE_TEST(

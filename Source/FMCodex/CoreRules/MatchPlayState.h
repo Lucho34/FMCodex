@@ -23,7 +23,8 @@ enum class EMatchPlayCurrentAttackSelectionStage : uint8
 {
 	None = 0 UMETA(DisplayName = "None"),
 	AwaitingCarrier = 1 UMETA(DisplayName = "Awaiting Carrier"),
-	AwaitingMarker = 2 UMETA(DisplayName = "Awaiting Marker")
+	AwaitingMarker = 2 UMETA(DisplayName = "Awaiting Marker"),
+	AwaitingSkill = 3 UMETA(DisplayName = "Awaiting Skill")
 };
 
 USTRUCT(BlueprintType)
@@ -48,6 +49,9 @@ struct FMCODEX_API FMatchPlayCurrentAttackActionPreparationState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName CarrierCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName MarkerCardId = NAME_None;
 };
 
 USTRUCT(BlueprintType)

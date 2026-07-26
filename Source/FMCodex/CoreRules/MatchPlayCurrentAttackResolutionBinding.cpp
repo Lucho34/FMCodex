@@ -92,7 +92,9 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 	if (CurrentAttack.SelectionStage
 			== EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier
 		|| CurrentAttack.SelectionStage
-			== EMatchPlayCurrentAttackSelectionStage::AwaitingMarker)
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingMarker
+		|| CurrentAttack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill)
 	{
 		SetError(
 			Result,

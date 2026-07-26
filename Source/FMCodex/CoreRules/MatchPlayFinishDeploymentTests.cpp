@@ -189,6 +189,9 @@ bool FMatchPlayFinishDeploymentPlayerAAttackerFirstTest::RunTest(
 	TestTrue(TEXT("First Finish keeps preparation empty"),
 		Result.AfterState.CurrentAttack.ActionPreparation
 			.CarrierCardId.IsNone());
+	TestTrue(TEXT("First Finish keeps marker preparation empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.MarkerCardId.IsNone());
 	TestTrue(
 		TEXT("First Finish preserves card snapshot authority"),
 		FMatchPlayPerSideCardSnapshotAuthority::StaticStruct()
@@ -309,6 +312,9 @@ bool FMatchPlayFinishDeploymentPlayerASecondTest::RunTest(
 	TestTrue(TEXT("Preparation remains empty"),
 		Result.AfterState.CurrentAttack.ActionPreparation
 			.CarrierCardId.IsNone());
+	TestTrue(TEXT("Marker preparation remains empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.MarkerCardId.IsNone());
 	TestFalse(TEXT("Second Finish does not select an action"),
 		Result.AfterState.CurrentAttack.bHasSelectedAction);
 	TestTrue(TEXT("Selected-action payload remains canonical empty"),
@@ -359,6 +365,9 @@ bool FMatchPlayFinishDeploymentPlayerBSecondTest::RunTest(
 	TestTrue(TEXT("Preparation remains empty"),
 		Result.AfterState.CurrentAttack.ActionPreparation
 			.CarrierCardId.IsNone());
+	TestTrue(TEXT("Marker preparation remains empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.MarkerCardId.IsNone());
 	return true;
 }
 

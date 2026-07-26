@@ -429,6 +429,8 @@ bool FMatchPlayStateSelectedActionAuthorityTest::RunTest(
 		EMatchPlayCurrentAttackSelectionStage::None);
 	TestTrue(TEXT("Default preparation carrier is empty"),
 		EmptyState.ActionPreparation.CarrierCardId.IsNone());
+	TestTrue(TEXT("Default preparation marker is empty"),
+		EmptyState.ActionPreparation.MarkerCardId.IsNone());
 	TestFalse(TEXT("Default has no selected action"),
 		EmptyState.bHasSelectedAction);
 	TestTrue(TEXT("Default carrier is empty"),
@@ -445,6 +447,8 @@ bool FMatchPlayStateSelectedActionAuthorityTest::RunTest(
 		EMatchPlayCurrentAttackSelectionStage::AwaitingMarker;
 	SelectedState.ActionPreparation.CarrierCardId =
 		TEXT("PlayerA.PreparationCarrier");
+	SelectedState.ActionPreparation.MarkerCardId =
+		TEXT("PlayerB.PreparationMarker");
 	SelectedState.bHasSelectedAction = true;
 	SelectedState.SelectedAction.CarrierCardId =
 		TEXT("PlayerA.Carrier");
@@ -463,6 +467,12 @@ bool FMatchPlayStateSelectedActionAuthorityTest::RunTest(
 	Copy.ActionPreparation.CarrierCardId =
 		TEXT("PlayerA.OtherPreparationCarrier");
 	TestFalse(TEXT("Reflected comparison observes preparation payload"),
+		FMatchPlayCurrentAttackState::StaticStruct()
+			->CompareScriptStruct(&SelectedState, &Copy, 0));
+	Copy = SelectedState;
+	Copy.ActionPreparation.MarkerCardId =
+		TEXT("PlayerB.OtherPreparationMarker");
+	TestFalse(TEXT("Reflected comparison observes preparation marker"),
 		FMatchPlayCurrentAttackState::StaticStruct()
 			->CompareScriptStruct(&SelectedState, &Copy, 0));
 	return true;

@@ -31,6 +31,8 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 	FMatchPlayCurrentAttackSelectionStateValidationResult Result;
 	const bool bPreparationHasCarrier =
 		!CurrentAttack.ActionPreparation.CarrierCardId.IsNone();
+	const bool bPreparationHasMarker =
+		!CurrentAttack.ActionPreparation.MarkerCardId.IsNone();
 	const bool bSelectedActionHasCarrier =
 		!CurrentAttack.SelectedAction.CarrierCardId.IsNone();
 
@@ -87,6 +89,15 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 				TEXT("Deployment cannot contain a preparation carrier."));
 			return Result;
 		}
+		if (bPreparationHasMarker)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+					::UnexpectedPreparationMarker,
+				TEXT("Deployment cannot contain a preparation marker."));
+			return Result;
+		}
 		break;
 
 	case EMatchPlayCurrentAttackPhase::Resolution:
@@ -102,6 +113,15 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingCarrier requires an empty preparation carrier."));
 				return Result;
 			}
+			if (bPreparationHasMarker)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationMarker,
+					TEXT("AwaitingCarrier requires an empty preparation marker."));
+				return Result;
+			}
 			break;
 
 		case EMatchPlayCurrentAttackSelectionStage::AwaitingMarker:
@@ -112,6 +132,36 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::MissingPreparationCarrier,
 					TEXT("AwaitingMarker requires a frozen preparation carrier."));
+				return Result;
+			}
+			if (bPreparationHasMarker)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationMarker,
+					TEXT("AwaitingMarker requires an empty preparation marker."));
+				return Result;
+			}
+			break;
+
+		case EMatchPlayCurrentAttackSelectionStage::AwaitingSkill:
+			if (!bPreparationHasCarrier)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationCarrier,
+					TEXT("AwaitingSkill requires a frozen preparation carrier."));
+				return Result;
+			}
+			if (!bPreparationHasMarker)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationMarker,
+					TEXT("AwaitingSkill requires a frozen preparation marker."));
 				return Result;
 			}
 			break;

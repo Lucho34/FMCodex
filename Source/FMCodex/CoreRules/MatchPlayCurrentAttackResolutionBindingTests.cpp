@@ -59,6 +59,9 @@ bool FResolutionBindingContractTest::RunTest(
 	TestFalse(TEXT("Default result fails"), Result.bSuccess);
 	TestNotNull(TEXT("Binding reflected"),
 		FMatchPlayCurrentAttackResolutionBindingValue::StaticStruct());
+	TestNull(TEXT("Binding does not expose preparation marker"),
+		FMatchPlayCurrentAttackResolutionBindingValue::StaticStruct()
+			->FindPropertyByName(TEXT("MarkerCardId")));
 	TestNotNull(TEXT("Result reflected"),
 		FMatchPlayCurrentAttackResolutionBindingResult::StaticStruct());
 	using FQuerySignature =
@@ -70,6 +73,61 @@ bool FResolutionBindingContractTest::RunTest(
 			decltype(&FMatchPlayCurrentAttackResolutionBinding::Query),
 			FQuerySignature>));
 	return true;
+}
+
+RESOLUTION_BINDING_TEST(
+	FResolutionBindingAwaitingSkillTest,
+	"AwaitingSkillRejectedWithoutLeakingPreparation")
+
+bool FResolutionBindingAwaitingSkillTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace CurrentAttackResolutionBindingTests;
+	FMatchPlayState State = MakeState();
+	State.CurrentAttack.ActionPreparation.CarrierCardId =
+		CarrierOneId;
+	State.CurrentAttack.ActionPreparation.MarkerCardId =
+		TEXT("PlayerB.Marker");
+	State.CurrentAttack.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+	const FMatchPlayState Original = State;
+	const auto Result =
+		FMatchPlayCurrentAttackResolutionBinding::Query(
+			State,
+			ValidAttackSequence);
+	TestFalse(TEXT("Binding fails"), Result.bSuccess);
+	TestEqual(TEXT("Incomplete selection error"), Result.ErrorCode,
+		EMatchPlayCurrentAttackResolutionBindingErrorCode
+			::SelectionNotComplete);
+	TestTrue(TEXT("Preparation carrier is not returned"),
+		Result.Binding.CarrierCardId.IsNone());
+	TestTrue(TEXT("Skill remains empty"),
+		Result.Binding.SkillId.IsNone());
+	TestEqual(TEXT("ActionType remains None"),
+		Result.Binding.ActionType, ESkillRuleType::None);
+	TestTrue(TEXT("State unchanged"), AreStatesEqual(State, Original));
+	return true;
+}
+
+RESOLUTION_BINDING_TEST(
+	FResolutionBindingCorruptMarkerTest,
+	"CorruptAwaitingSkillMarkerRejected")
+
+bool FResolutionBindingCorruptMarkerTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace CurrentAttackResolutionBindingTests;
+	FMatchPlayState State = MakeState();
+	State.CurrentAttack.ActionPreparation.CarrierCardId =
+		CarrierOneId;
+	State.CurrentAttack.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+	return ExpectFailure(
+		*this,
+		TEXT("Corrupt AwaitingSkill marker"),
+		State,
+		EMatchPlayCurrentAttackResolutionBindingErrorCode
+			::InvalidSelectionState);
 }
 
 RESOLUTION_BINDING_TEST(

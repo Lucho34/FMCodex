@@ -108,6 +108,9 @@ bool FCarrierWriterSuccessTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Phase remains Resolution"),
 		Result.AfterState.CurrentAttack.Phase,
 		EMatchPlayCurrentAttackPhase::Resolution);
+	TestTrue(TEXT("Marker preparation remains empty"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.MarkerCardId.IsNone());
 	TestFalse(TEXT("Final action remains absent"),
 		Result.AfterState.CurrentAttack.bHasSelectedAction);
 	const FMatchPlayCurrentAttackSelectedAction EmptySelectedAction;
