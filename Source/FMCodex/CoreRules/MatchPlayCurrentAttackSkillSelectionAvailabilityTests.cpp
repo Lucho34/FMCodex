@@ -5,6 +5,277 @@
 #include "MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
 #include "Misc/AutomationTest.h"
 
+namespace SkillSelectionAvailabilityTests
+{
+	bool ArePlacementsEqual(
+		const FMatchPlayDeploymentPlacement& Left,
+		const FMatchPlayDeploymentPlacement& Right)
+	{
+		return FMatchPlayDeploymentPlacement::StaticStruct()
+			->CompareScriptStruct(&Left, &Right, 0);
+	}
+
+	bool AreSnapshotsEqual(
+		const FPlayerCardRuleSnapshot& Left,
+		const FPlayerCardRuleSnapshot& Right)
+	{
+		return FPlayerCardRuleSnapshot::StaticStruct()
+			->CompareScriptStruct(&Left, &Right, 0);
+	}
+
+	bool ArePlayerSnapshotValidationResultsEqual(
+		const FPlayerCardRuleSnapshotValidationResult& Left,
+		const FPlayerCardRuleSnapshotValidationResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.bIsValid == Right.bIsValid
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage
+			&& Left.InvalidCardId == Right.InvalidCardId
+			&& Left.DuplicateCardIds == Right.DuplicateCardIds;
+	}
+
+	bool ArePlayerSnapshotQueryResultsEqual(
+		const FPlayerCardRuleSnapshotQueryResult& Left,
+		const FPlayerCardRuleSnapshotQueryResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.bFound == Right.bFound
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage
+			&& Left.CardId == Right.CardId
+			&& AreSnapshotsEqual(Left.Snapshot, Right.Snapshot)
+			&& ArePlayerSnapshotValidationResultsEqual(
+				Left.ValidationResult,
+				Right.ValidationResult);
+	}
+
+	bool AreCarrierSnapshotQueryResultsEqual(
+		const FMatchPlayCardSnapshotAuthorityQueryResult& Left,
+		const FMatchPlayCardSnapshotAuthorityQueryResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.PlayerSide == Right.PlayerSide
+			&& Left.CardId == Right.CardId
+			&& AreSnapshotsEqual(Left.Snapshot, Right.Snapshot)
+			&& ArePlayerSnapshotQueryResultsEqual(
+				Left.UnderlyingQueryResult,
+				Right.UnderlyingQueryResult)
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreSkillValidationResultsEqual(
+		const FSkillRuleSnapshotValidationResult& Left,
+		const FSkillRuleSnapshotValidationResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.bIsValid == Right.bIsValid
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage
+			&& Left.InvalidSkillId == Right.InvalidSkillId
+			&& Left.InvalidField == Right.InvalidField;
+	}
+
+	bool AreGlobalContextsEqual(
+		const FMatchPlayCurrentAttackSkillSelectionGlobalContextResult&
+			Left,
+		const FMatchPlayCurrentAttackSkillSelectionGlobalContextResult&
+			Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.RequestedAttackSequence
+				== Right.RequestedAttackSequence
+			&& Left.RequestingSide == Right.RequestingSide
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.AuthoritativeAttackSequence
+				== Right.AuthoritativeAttackSequence
+			&& Left.CurrentAttackingPlayer
+				== Right.CurrentAttackingPlayer
+			&& Left.CurrentDefendingPlayer
+				== Right.CurrentDefendingPlayer
+			&& Left.SelectionStateValidationResult.bIsCanonical
+				== Right.SelectionStateValidationResult.bIsCanonical
+			&& Left.SelectionStateValidationResult.ErrorCode
+				== Right.SelectionStateValidationResult.ErrorCode
+			&& Left.SelectionStateValidationResult.ErrorMessage
+				== Right.SelectionStateValidationResult.ErrorMessage
+			&& Left.FrozenCarrierCardId
+				== Right.FrozenCarrierCardId
+			&& Left.FrozenMarkerCardId
+				== Right.FrozenMarkerCardId
+			&& Left.MatchingFrozenCarrierPlacementCount
+				== Right.MatchingFrozenCarrierPlacementCount
+			&& Left.MatchingFrozenMarkerPlacementCount
+				== Right.MatchingFrozenMarkerPlacementCount
+			&& ArePlacementsEqual(
+				Left.FrozenCarrierPlacement,
+				Right.FrozenCarrierPlacement)
+			&& ArePlacementsEqual(
+				Left.FrozenMarkerPlacement,
+				Right.FrozenMarkerPlacement)
+			&& AreCarrierSnapshotQueryResultsEqual(
+				Left.CarrierSnapshotQueryResult,
+				Right.CarrierSnapshotQueryResult)
+			&& AreSnapshotsEqual(
+				Left.ResolvedCarrierSnapshot,
+				Right.ResolvedCarrierSnapshot)
+			&& AreSkillValidationResultsEqual(
+				Left.SkillRuleSetValidationResult,
+				Right.SkillRuleSetValidationResult)
+			&& Left.ValidatedActionPoint
+				== Right.ValidatedActionPoint
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreRulesEqual(
+		const FSkillRuleSnapshot& Left,
+		const FSkillRuleSnapshot& Right)
+	{
+		return Left.SkillId == Right.SkillId
+			&& Left.SkillType == Right.SkillType
+			&& Left.MinTriggerActionPoint
+				== Right.MinTriggerActionPoint
+			&& Left.MaxTriggerActionPoint
+				== Right.MaxTriggerActionPoint;
+	}
+
+	bool AreSkillQueryResultsEqual(
+		const FSkillRuleSnapshotQueryResult& Left,
+		const FSkillRuleSnapshotQueryResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.bFound == Right.bFound
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage
+			&& Left.InvalidSkillId == Right.InvalidSkillId
+			&& Left.InvalidField == Right.InvalidField
+			&& AreRulesEqual(Left.Snapshot, Right.Snapshot)
+			&& AreSkillValidationResultsEqual(
+				Left.ValidationResult,
+				Right.ValidationResult);
+	}
+
+	bool AreLegalityResultsEqual(
+		const FMatchPlayCurrentAttackSkillSelectionLegalityResult& Left,
+		const FMatchPlayCurrentAttackSkillSelectionLegalityResult& Right)
+	{
+		return Left.bIsLegal == Right.bIsLegal
+			&& Left.Request.AttackSequence
+				== Right.Request.AttackSequence
+			&& Left.Request.RequestingSide
+				== Right.Request.RequestingSide
+			&& Left.Request.SkillId == Right.Request.SkillId
+			&& Left.ErrorCode == Right.ErrorCode
+			&& AreGlobalContextsEqual(
+				Left.GlobalContextResult,
+				Right.GlobalContextResult)
+			&& Left.FrozenCarrierCardId
+				== Right.FrozenCarrierCardId
+			&& Left.FrozenMarkerCardId
+				== Right.FrozenMarkerCardId
+			&& Left.MatchingFrozenCarrierPlacementCount
+				== Right.MatchingFrozenCarrierPlacementCount
+			&& Left.MatchingFrozenMarkerPlacementCount
+				== Right.MatchingFrozenMarkerPlacementCount
+			&& ArePlacementsEqual(
+				Left.FrozenCarrierPlacement,
+				Right.FrozenCarrierPlacement)
+			&& ArePlacementsEqual(
+				Left.FrozenMarkerPlacement,
+				Right.FrozenMarkerPlacement)
+			&& AreCarrierSnapshotQueryResultsEqual(
+				Left.CarrierSnapshotQueryResult,
+				Right.CarrierSnapshotQueryResult)
+			&& AreSkillQueryResultsEqual(
+				Left.SkillRuleQueryResult,
+				Right.SkillRuleQueryResult)
+			&& AreRulesEqual(
+				Left.ResolvedSkillRule,
+				Right.ResolvedSkillRule)
+			&& Left.ResolvedActionType
+				== Right.ResolvedActionType
+			&& Left.ParticipantRequirementResult.bSuccess
+				== Right.ParticipantRequirementResult.bSuccess
+			&& Left.ParticipantRequirementResult.bRequiresRunner
+				== Right.ParticipantRequirementResult.bRequiresRunner
+			&& Left.ParticipantRequirementResult.bRequiresHelperStage
+				== Right.ParticipantRequirementResult
+					.bRequiresHelperStage
+			&& Left.ParticipantRequirementResult
+					.bCanBecomeReadyImmediately
+				== Right.ParticipantRequirementResult
+					.bCanBecomeReadyImmediately
+			&& Left.ParticipantRequirementResult.ErrorCode
+				== Right.ParticipantRequirementResult.ErrorCode
+			&& Left.ParticipantRequirementResult.ErrorMessage
+				== Right.ParticipantRequirementResult.ErrorMessage
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreAvailabilityResultsEqual(
+		const FMatchPlayCurrentAttackSkillSelectionAvailabilityResult&
+			Left,
+		const FMatchPlayCurrentAttackSkillSelectionAvailabilityResult&
+			Right)
+	{
+		if (Left.bQuerySucceeded != Right.bQuerySucceeded
+			|| Left.bCanSelectAnySkill != Right.bCanSelectAnySkill
+			|| Left.AttackSequence != Right.AttackSequence
+			|| Left.RequestingSide != Right.RequestingSide
+			|| Left.bHasGlobalBlockingLegalityResult
+				!= Right.bHasGlobalBlockingLegalityResult
+			|| !AreGlobalContextsEqual(
+				Left.GlobalContextResult,
+				Right.GlobalContextResult)
+			|| !AreLegalityResultsEqual(
+				Left.GlobalBlockingLegalityResult,
+				Right.GlobalBlockingLegalityResult)
+			|| !AreCarrierSnapshotQueryResultsEqual(
+				Left.CarrierSnapshotQueryResult,
+				Right.CarrierSnapshotQueryResult)
+			|| !AreSkillValidationResultsEqual(
+				Left.SkillRuleSetValidationResult,
+				Right.SkillRuleSetValidationResult)
+			|| Left.Candidates.Num() != Right.Candidates.Num())
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < Left.Candidates.Num(); ++Index)
+		{
+			if (Left.Candidates[Index].SkillId
+					!= Right.Candidates[Index].SkillId
+				|| !AreLegalityResultsEqual(
+					Left.Candidates[Index].LegalityResult,
+					Right.Candidates[Index].LegalityResult))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool AreRuleSetsEqual(
+		const FSkillRuleSnapshotSet& Left,
+		const FSkillRuleSnapshotSet& Right)
+	{
+		if (Left.SkillRules.Num() != Right.SkillRules.Num())
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < Left.SkillRules.Num(); ++Index)
+		{
+			if (!AreRulesEqual(
+				Left.SkillRules[Index],
+				Right.SkillRules[Index]))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
 #define SKILL_AVAILABILITY_TEST(TestClass, TestName) \
 	IMPLEMENT_SIMPLE_AUTOMATION_TEST( \
 		TestClass, \
@@ -119,6 +390,189 @@ bool FSkillAvailabilityZeroLegalTest::RunTest(
 		RangeResult.Candidates[0].LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackSkillSelectionErrorCode
 			::ActionPointOutsideSkillRange);
+	return true;
+}
+
+SKILL_AVAILABILITY_TEST(
+	FSkillAvailabilityGlobalActionPointTest,
+	"GlobalActionPointPrecedesEmptyAndEarlyCandidateFailures")
+
+bool FSkillAvailabilityGlobalActionPointTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
+
+	for (const int32 ActionPoint : {1, 9})
+	{
+		FMatchPlayState EmptyState = MakeState({});
+		EmptyState.CurrentAttack.ActionPoint = ActionPoint;
+		const auto EmptyResult =
+			FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+				EmptyState,
+				ValidAttackSequence,
+				EInitialTurnOrderPlayer::PlayerA,
+				Rules);
+		TestFalse(
+			TEXT("Empty invalid AP fails globally"),
+			EmptyResult.bQuerySucceeded);
+		TestTrue(
+			TEXT("Empty invalid AP has global blocker"),
+			EmptyResult.bHasGlobalBlockingLegalityResult);
+		TestEqual(
+			TEXT("Empty invalid AP exact error"),
+			EmptyResult.GlobalContextResult.ErrorCode,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::InvalidCurrentAttackActionPoint);
+		TestEqual(
+			TEXT("Empty invalid AP has no candidates"),
+			EmptyResult.Candidates.Num(),
+			0);
+		TestFalse(
+			TEXT("Empty invalid AP has no legal candidate"),
+			EmptyResult.bCanSelectAnySkill);
+
+		FMatchPlayState MissingRuleState =
+			MakeState({MissingSkillId});
+		MissingRuleState.CurrentAttack.ActionPoint = ActionPoint;
+		const auto MissingRuleResult =
+			FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+				MissingRuleState,
+				ValidAttackSequence,
+				EInitialTurnOrderPlayer::PlayerA,
+				Rules);
+		TestFalse(
+			TEXT("Missing rule cannot hide invalid AP"),
+			MissingRuleResult.bQuerySucceeded);
+		TestEqual(
+			TEXT("Global AP precedes missing candidate rule"),
+			MissingRuleResult.GlobalContextResult.ErrorCode,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::InvalidCurrentAttackActionPoint);
+		TestEqual(
+			TEXT("Missing rule invalid AP enumerates nothing"),
+			MissingRuleResult.Candidates.Num(),
+			0);
+
+		FMatchPlayState AllEarlyFailuresState =
+			MakeState({MissingSkillId, FName(TEXT("Skill.MissingTwo"))});
+		AllEarlyFailuresState.CurrentAttack.ActionPoint =
+			ActionPoint;
+		const auto AllEarlyFailuresResult =
+			FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+				AllEarlyFailuresState,
+				ValidAttackSequence,
+				EInitialTurnOrderPlayer::PlayerA,
+				Rules);
+		TestFalse(
+			TEXT("All early failures cannot hide invalid AP"),
+			AllEarlyFailuresResult.bQuerySucceeded);
+		TestEqual(
+			TEXT("All early failures exact global AP error"),
+			AllEarlyFailuresResult.GlobalContextResult.ErrorCode,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::InvalidCurrentAttackActionPoint);
+		TestEqual(
+			TEXT("All early failures enumerate nothing"),
+			AllEarlyFailuresResult.Candidates.Num(),
+			0);
+	}
+	return true;
+}
+
+SKILL_AVAILABILITY_TEST(
+	FSkillAvailabilityBoundaryAndDeterminismTest,
+	"EmptyBoundariesAndFullResultDeterminism")
+
+bool FSkillAvailabilityBoundaryAndDeterminismTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	using namespace SkillSelectionAvailabilityTests;
+	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
+
+	for (const int32 ActionPoint : {2, 8})
+	{
+		FMatchPlayState State = MakeState({});
+		State.CurrentAttack.ActionPoint = ActionPoint;
+		const auto Result =
+			FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+				State,
+				ValidAttackSequence,
+				EInitialTurnOrderPlayer::PlayerA,
+				Rules);
+		TestTrue(
+			TEXT("Empty boundary query succeeds"),
+			Result.bQuerySucceeded);
+		TestFalse(
+			TEXT("Empty boundary has no legal candidate"),
+			Result.bCanSelectAnySkill);
+		TestEqual(
+			TEXT("Empty boundary candidates empty"),
+			Result.Candidates.Num(),
+			0);
+	}
+
+	FSkillRuleSnapshotSet CorruptRules = MakeRuleSet();
+	CorruptRules.SkillRules[0].SkillId = NAME_None;
+	const auto EmptyCorruptRules =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			MakeState({}),
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			CorruptRules);
+	TestFalse(
+		TEXT("Empty skills do not hide corrupt RuleSet"),
+		EmptyCorruptRules.bQuerySucceeded);
+	TestEqual(
+		TEXT("Empty corrupt RuleSet exact global error"),
+		EmptyCorruptRules.GlobalContextResult.ErrorCode,
+		EMatchPlayCurrentAttackSkillSelectionErrorCode
+			::InvalidSkillRuleSet);
+
+	const FMatchPlayState EmptyState = MakeState({});
+	const auto EmptyFirst =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			EmptyState,
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	const auto EmptySecond =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			EmptyState,
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	TestTrue(
+		TEXT("Empty result fully deterministic"),
+		AreAvailabilityResultsEqual(EmptyFirst, EmptySecond));
+
+	const FMatchPlayState AllInvalidState =
+		MakeState({MissingSkillId, FName(TEXT("Skill.MissingTwo"))});
+	const auto InvalidFirst =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			AllInvalidState,
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	const auto InvalidSecond =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			AllInvalidState,
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	TestTrue(
+		TEXT("All-invalid result fully deterministic"),
+		AreAvailabilityResultsEqual(InvalidFirst, InvalidSecond));
+	TestTrue(
+		TEXT("All-invalid query itself succeeds"),
+		InvalidFirst.bQuerySucceeded);
+	TestEqual(
+		TEXT("All-invalid candidates retained"),
+		InvalidFirst.Candidates.Num(),
+		2);
 	return true;
 }
 
@@ -291,10 +745,11 @@ bool FSkillAvailabilityReadOnlyDeterminismTest::RunTest(
 {
 	using namespace
 		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	using namespace SkillSelectionAvailabilityTests;
 	const FMatchPlayState State = MakeState();
 	const FMatchPlayState OriginalState = State;
 	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
-	const int32 OriginalRuleCount = Rules.SkillRules.Num();
+	const FSkillRuleSnapshotSet OriginalRules = Rules;
 	const auto First =
 		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
 			State,
@@ -316,12 +771,14 @@ bool FSkillAvailabilityReadOnlyDeterminismTest::RunTest(
 		First.bCanSelectAnySkill,
 		Second.bCanSelectAnySkill);
 	TestTrue(
+		TEXT("Repeated full result"),
+		AreAvailabilityResultsEqual(First, Second));
+	TestTrue(
 		TEXT("State unchanged"),
 		AreStatesEqual(State, OriginalState));
-	TestEqual(
+	TestTrue(
 		TEXT("Rule set unchanged"),
-		Rules.SkillRules.Num(),
-		OriginalRuleCount);
+		AreRuleSetsEqual(Rules, OriginalRules));
 	return true;
 }
 

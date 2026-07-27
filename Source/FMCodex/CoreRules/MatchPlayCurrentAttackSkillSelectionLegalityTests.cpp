@@ -9,6 +9,33 @@ namespace SkillSelectionLegalityTests
 	using namespace
 		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
 
+	bool AreRuleSetsEqual(
+		const FSkillRuleSnapshotSet& Left,
+		const FSkillRuleSnapshotSet& Right)
+	{
+		if (Left.SkillRules.Num() != Right.SkillRules.Num())
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < Left.SkillRules.Num(); ++Index)
+		{
+			const FSkillRuleSnapshot& LeftRule =
+				Left.SkillRules[Index];
+			const FSkillRuleSnapshot& RightRule =
+				Right.SkillRules[Index];
+			if (LeftRule.SkillId != RightRule.SkillId
+				|| LeftRule.SkillType != RightRule.SkillType
+				|| LeftRule.MinTriggerActionPoint
+					!= RightRule.MinTriggerActionPoint
+				|| LeftRule.MaxTriggerActionPoint
+					!= RightRule.MaxTriggerActionPoint)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool ExpectError(
 		FAutomationTestBase& Test,
 		const TCHAR* Context,
@@ -30,10 +57,9 @@ namespace SkillSelectionLegalityTests
 		Test.TestTrue(
 			*FString::Printf(TEXT("%s state unchanged"), Context),
 			AreStatesEqual(State, OriginalState));
-		Test.TestEqual(
+		Test.TestTrue(
 			*FString::Printf(TEXT("%s rules unchanged"), Context),
-			Rules.SkillRules.Num(),
-			OriginalRules.SkillRules.Num());
+			AreRuleSetsEqual(Rules, OriginalRules));
 		return true;
 	}
 }
@@ -415,7 +441,7 @@ bool FSkillSelectionRuleAndActionPointTest::RunTest(
 			Rules,
 			MakeRequest(),
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
-				::UnsupportedSkillRuleType);
+				::InvalidSkillRuleSet);
 	}
 	{
 		FMatchPlayState State = MakeState();
@@ -435,6 +461,32 @@ bool FSkillSelectionRuleAndActionPointTest::RunTest(
 			State,
 			MakeRuleSet(),
 			MakeRequest(),
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::InvalidCurrentAttackActionPoint);
+	}
+	{
+		FMatchPlayState EmptySkillState = MakeState({});
+		EmptySkillState.CurrentAttack.ActionPoint = 1;
+		auto EmptyRequest = MakeRequest();
+		EmptyRequest.SkillId = NAME_None;
+		ExpectError(
+			*this,
+			TEXT("Global AP precedes empty SkillId"),
+			EmptySkillState,
+			MakeRuleSet(),
+			EmptyRequest,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::InvalidCurrentAttackActionPoint);
+
+		FMatchPlayState MissingRuleState =
+			MakeState({MissingSkillId});
+		MissingRuleState.CurrentAttack.ActionPoint = 9;
+		ExpectError(
+			*this,
+			TEXT("Global AP precedes missing Rule"),
+			MissingRuleState,
+			MakeRuleSet(),
+			MakeRequest(MissingSkillId),
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
 				::InvalidCurrentAttackActionPoint);
 	}

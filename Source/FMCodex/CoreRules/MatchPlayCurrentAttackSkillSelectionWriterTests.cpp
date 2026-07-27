@@ -244,6 +244,35 @@ bool FSkillWriterFailureAndRepeatAtomicityTest::RunTest(
 			ApFailure.BeforeState,
 			ApFailure.AfterState));
 
+	FSkillRuleSnapshotSet RangeRules;
+	RangeRules.SkillRules = {
+		MakeRule(
+			LongShotSkillId,
+			ESkillRuleType::LongShot,
+			6,
+			8)
+	};
+	const FMatchPlayState RangeState =
+		MakeState({LongShotSkillId});
+	const auto RangeFailure =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			RangeState,
+			RangeRules,
+			MakeRequest());
+	TestFalse(
+		TEXT("Candidate AP range mismatch fails"),
+		RangeFailure.bSuccess);
+	TestEqual(
+		TEXT("Candidate AP range exact error"),
+		RangeFailure.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackSkillSelectionErrorCode
+			::ActionPointOutsideSkillRange);
+	TestTrue(
+		TEXT("Candidate AP range failure atomic"),
+		AreStatesEqual(
+			RangeFailure.BeforeState,
+			RangeFailure.AfterState));
+
 	const auto First =
 		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
 			Initial,

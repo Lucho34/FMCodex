@@ -49,6 +49,8 @@ struct FMCODEX_API
 	FMatchPlayCurrentAttackSkillSelectionLegalityResult
 		GlobalBlockingLegalityResult;
 
+	FMatchPlayCurrentAttackSkillSelectionGlobalContextResult
+		GlobalContextResult;
 	FMatchPlayCardSnapshotAuthorityQueryResult
 		CarrierSnapshotQueryResult;
 	FSkillRuleSnapshotValidationResult

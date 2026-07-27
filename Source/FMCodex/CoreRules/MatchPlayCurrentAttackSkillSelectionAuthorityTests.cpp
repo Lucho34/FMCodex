@@ -59,6 +59,12 @@ bool FSkillSelectionAuthorityTest::RunTest(
 		Load(TEXT("MatchPlaySkillParticipantRequirementQuery.h"));
 	const FString RequirementSource =
 		Load(TEXT("MatchPlaySkillParticipantRequirementQuery.cpp"));
+	const FString GlobalContextHeader =
+		Load(TEXT("MatchPlayCurrentAttackSkillSelectionGlobalContextQuery.h"));
+	const FString GlobalContextSource =
+		Load(TEXT("MatchPlayCurrentAttackSkillSelectionGlobalContextQuery.cpp"));
+	const FString SelectionTypesHeader =
+		Load(TEXT("MatchPlayCurrentAttackSkillSelectionTypes.h"));
 	const FString LegalityHeader =
 		Load(TEXT("MatchPlayCurrentAttackSkillSelectionLegality.h"));
 	const FString LegalitySource =
@@ -71,17 +77,31 @@ bool FSkillSelectionAuthorityTest::RunTest(
 		Load(TEXT("MatchPlayCurrentAttackSkillSelectionWriter.h"));
 	const FString WriterSource =
 		Load(TEXT("MatchPlayCurrentAttackSkillSelectionWriter.cpp"));
+	const FString ValidatorSource =
+		Load(TEXT("MatchPlayCurrentAttackSelectionStateValidator.cpp"));
 	const FString BindingSource =
 		Load(TEXT("MatchPlayCurrentAttackResolutionBinding.cpp"));
 	const FString SkillProductionSources =
-		RequirementSource + LegalitySource + AvailabilitySource
-		+ WriterSource;
+		RequirementSource + GlobalContextSource + LegalitySource
+		+ AvailabilitySource + WriterSource + ValidatorSource;
 
 	TestEqual(
 		TEXT("One participant requirement authority"),
 		CountOccurrences(
 			RequirementHeader,
 			TEXT("FMatchPlaySkillParticipantRequirementQuery final")),
+		1);
+	TestEqual(
+		TEXT("One public global context authority"),
+		CountOccurrences(
+			GlobalContextHeader,
+			TEXT("FMatchPlayCurrentAttackSkillSelectionGlobalContextQuery final")),
+		1);
+	TestEqual(
+		TEXT("One global context implementation"),
+		CountOccurrences(
+			GlobalContextSource,
+			TEXT("FMatchPlayCurrentAttackSkillSelectionGlobalContextQuery::Query")),
 		1);
 	TestEqual(
 		TEXT("One public legality authority"),
@@ -102,11 +122,49 @@ bool FSkillSelectionAuthorityTest::RunTest(
 			TEXT("FMatchPlayCurrentAttackSkillSelectionWriter final")),
 		1);
 	TestEqual(
-		TEXT("Availability calls legality at probe and candidate sites"),
+		TEXT("Availability calls candidate legality at one loop site"),
 		CountOccurrences(
 			AvailabilitySource,
 			TEXT("FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator")),
-		2);
+		1);
+	TestEqual(
+		TEXT("Availability calls global context exactly once"),
+		CountOccurrences(
+			AvailabilitySource,
+			TEXT("FMatchPlayCurrentAttackSkillSelectionGlobalContextQuery")),
+		1);
+	TestEqual(
+		TEXT("Legality calls global context exactly once"),
+		CountOccurrences(
+			LegalitySource,
+			TEXT("FMatchPlayCurrentAttackSkillSelectionGlobalContextQuery")),
+		1);
+	TestEqual(
+		TEXT("Global AP validation has one implementation site"),
+		CountOccurrences(
+			GlobalContextSource,
+			TEXT("::InvalidCurrentAttackActionPoint")),
+		1);
+	TestEqual(
+		TEXT("Legality has no duplicate global AP validation"),
+		CountOccurrences(
+			LegalitySource,
+			TEXT("::InvalidCurrentAttackActionPoint")),
+		0);
+	TestEqual(
+		TEXT("Availability has no duplicate global AP validation"),
+		CountOccurrences(
+			AvailabilitySource,
+			TEXT("::InvalidCurrentAttackActionPoint")),
+		0);
+	TestFalse(
+		TEXT("Availability has no fake or probe SkillId"),
+		AvailabilitySource.Contains(TEXT("ProbeSkillId"))
+			|| AvailabilitySource.Contains(TEXT("AvailabilityProbe")));
+	TestFalse(
+		TEXT("Availability has no global error classification"),
+		AvailabilitySource.Contains(TEXT("IsGlobalBlocker"))
+			|| AvailabilitySource.Contains(TEXT("switch (")));
 	TestEqual(
 		TEXT("Writer calls legality exactly once"),
 		CountOccurrences(
@@ -140,6 +198,10 @@ bool FSkillSelectionAuthorityTest::RunTest(
 		++RequestFieldCount;
 	}
 	TestEqual(TEXT("Request exactly three fields"), RequestFieldCount, 3);
+	TestTrue(
+		TEXT("Request contract moved intact to shared types"),
+		SelectionTypesHeader.Contains(
+			TEXT("FMatchPlayCurrentAttackSkillSelectionRequest")));
 	TestNotNull(
 		TEXT("Request AttackSequence"),
 		RequestStruct->FindPropertyByName(TEXT("AttackSequence")));

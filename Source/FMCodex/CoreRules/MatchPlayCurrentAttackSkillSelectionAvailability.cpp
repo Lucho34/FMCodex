@@ -2,9 +2,6 @@
 
 namespace MatchPlayCurrentAttackSkillSelectionAvailabilityImplementation
 {
-	const FName ProbeSkillId(
-		TEXT("FMCodex.Internal.SkillAvailabilityProbe"));
-
 	FMatchPlayCurrentAttackSkillSelectionRequest MakeRequest(
 		const int64 AttackSequence,
 		const EInitialTurnOrderPlayer RequestingSide,
@@ -17,85 +14,45 @@ namespace MatchPlayCurrentAttackSkillSelectionAvailabilityImplementation
 		return Request;
 	}
 
-	bool IsGlobalBlocker(
-		const FMatchPlayCurrentAttackSkillSelectionLegalityResult& Result)
-	{
-		switch (Result.ErrorCode)
-		{
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::MatchPlayStateNotInitialized:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::NoCurrentAttack:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidCurrentAttackSequence:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::AttackSequenceMismatch:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::CurrentAttackNotInResolution:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidCurrentAttackingPlayer:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidCurrentDefendingPlayer:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidSelectionState:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::WrongSelectionStage:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidRequestingSide:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::RequestingSideIsNotCurrentAttacker:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidFrozenCarrierCardId:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidFrozenMarkerCardId:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::FrozenCarrierNotDeployed:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::FrozenCarrierDeploymentAmbiguous:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::FrozenMarkerNotDeployed:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::FrozenMarkerDeploymentAmbiguous:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::CarrierSnapshotQueryFailed:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::DuplicateCarrierSkillId:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidSkillRuleSet:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::SkillRuleAmbiguous:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::ParticipantRequirementResolutionFailed:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidCurrentAttackActionPoint:
-			return true;
-
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode::None:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::InvalidSkillId:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::CarrierDoesNotOwnSkill:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::SkillRuleNotFound:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::UnsupportedSkillRuleType:
-		case EMatchPlayCurrentAttackSkillSelectionErrorCode
-			::ActionPointOutsideSkillRange:
-		default:
-			return false;
-		}
-	}
-
 	void SetGlobalBlocker(
-		FMatchPlayCurrentAttackSkillSelectionAvailabilityResult& Result,
-		const FMatchPlayCurrentAttackSkillSelectionLegalityResult&
-			LegalityResult)
+		FMatchPlayCurrentAttackSkillSelectionAvailabilityResult& Result)
 	{
 		Result.Candidates.Reset();
 		Result.bCanSelectAnySkill = false;
 		Result.bQuerySucceeded = false;
 		Result.bHasGlobalBlockingLegalityResult = true;
-		Result.GlobalBlockingLegalityResult = LegalityResult;
+
+		FMatchPlayCurrentAttackSkillSelectionLegalityResult&
+			LegacyProjection =
+				Result.GlobalBlockingLegalityResult;
+		LegacyProjection.Request.AttackSequence =
+			Result.AttackSequence;
+		LegacyProjection.Request.RequestingSide =
+			Result.RequestingSide;
+		LegacyProjection.GlobalContextResult =
+			Result.GlobalContextResult;
+		LegacyProjection.ErrorCode =
+			Result.GlobalContextResult.ErrorCode;
+		LegacyProjection.ErrorMessage =
+			Result.GlobalContextResult.ErrorMessage;
+		LegacyProjection.SelectionStateValidationResult =
+			Result.GlobalContextResult.SelectionStateValidationResult;
+		LegacyProjection.FrozenCarrierCardId =
+			Result.GlobalContextResult.FrozenCarrierCardId;
+		LegacyProjection.FrozenMarkerCardId =
+			Result.GlobalContextResult.FrozenMarkerCardId;
+		LegacyProjection.MatchingFrozenCarrierPlacementCount =
+			Result.GlobalContextResult
+				.MatchingFrozenCarrierPlacementCount;
+		LegacyProjection.MatchingFrozenMarkerPlacementCount =
+			Result.GlobalContextResult
+				.MatchingFrozenMarkerPlacementCount;
+		LegacyProjection.FrozenCarrierPlacement =
+			Result.GlobalContextResult.FrozenCarrierPlacement;
+		LegacyProjection.FrozenMarkerPlacement =
+			Result.GlobalContextResult.FrozenMarkerPlacement;
+		LegacyProjection.CarrierSnapshotQueryResult =
+			Result.GlobalContextResult.CarrierSnapshotQueryResult;
 	}
 }
 
@@ -112,58 +69,24 @@ FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
 	FMatchPlayCurrentAttackSkillSelectionAvailabilityResult Result;
 	Result.AttackSequence = AttackSequence;
 	Result.RequestingSide = RequestingSide;
-
-	const FMatchPlayCurrentAttackSkillSelectionLegalityResult
-		ProbeResult =
-			FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator
-				::Evaluate(
-					BeforeState,
-					SkillRuleSet,
-					MakeRequest(
-						AttackSequence,
-						RequestingSide,
-						ProbeSkillId));
-	if (!ProbeResult.bIsLegal && IsGlobalBlocker(ProbeResult))
-	{
-		SetGlobalBlocker(Result, ProbeResult);
-		return Result;
-	}
-
-	const EInitialTurnOrderPlayer CurrentAttackingPlayer =
-		BeforeState.RuntimeState.CurrentAttackingPlayer;
+	Result.GlobalContextResult =
+		FMatchPlayCurrentAttackSkillSelectionGlobalContextQuery::Query(
+			BeforeState,
+			AttackSequence,
+			RequestingSide,
+			SkillRuleSet);
 	Result.CarrierSnapshotQueryResult =
-		FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
-			BeforeState.CardSnapshotAuthority,
-			CurrentAttackingPlayer,
-			BeforeState.CurrentAttack.ActionPreparation.CarrierCardId);
-	if (!Result.CarrierSnapshotQueryResult.bSuccess)
-	{
-		SetGlobalBlocker(Result, ProbeResult);
-		return Result;
-	}
-
+		Result.GlobalContextResult.CarrierSnapshotQueryResult;
 	Result.SkillRuleSetValidationResult =
-		FSkillRuleSnapshotValidator::Validate(SkillRuleSet);
-	if (!Result.SkillRuleSetValidationResult.bSuccess)
+		Result.GlobalContextResult.SkillRuleSetValidationResult;
+	if (!Result.GlobalContextResult.bSuccess)
 	{
-		FMatchPlayCurrentAttackSkillSelectionLegalityResult
-			RuleSetBlocker = ProbeResult;
-		RuleSetBlocker.ErrorCode =
-			Result.SkillRuleSetValidationResult.ErrorCode
-					== ESkillRuleSnapshotValidationErrorCode
-						::DuplicateSkillId
-				? EMatchPlayCurrentAttackSkillSelectionErrorCode
-					::SkillRuleAmbiguous
-				: EMatchPlayCurrentAttackSkillSelectionErrorCode
-					::InvalidSkillRuleSet;
-		RuleSetBlocker.ErrorMessage =
-			Result.SkillRuleSetValidationResult.ErrorMessage;
-		SetGlobalBlocker(Result, RuleSetBlocker);
+		SetGlobalBlocker(Result);
 		return Result;
 	}
 
 	for (const FName SkillId :
-		Result.CarrierSnapshotQueryResult.Snapshot.SkillIds)
+		Result.GlobalContextResult.ResolvedCarrierSnapshot.SkillIds)
 	{
 		FMatchPlayCurrentAttackSkillSelectionCandidateAvailability
 			Candidate;
@@ -177,11 +100,6 @@ FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
 						AttackSequence,
 						RequestingSide,
 						SkillId));
-		if (IsGlobalBlocker(Candidate.LegalityResult))
-		{
-			SetGlobalBlocker(Result, Candidate.LegalityResult);
-			return Result;
-		}
 		if (Candidate.LegalityResult.bIsLegal)
 		{
 			Result.bCanSelectAnySkill = true;
