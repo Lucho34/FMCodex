@@ -52,7 +52,168 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			*CardId.ToString());
 	}
 
-	bool ValidateAvailabilityProvenance(
+	bool ValidateCommonOuter(
+		const FMatchPlayState& BeforeState,
+		const int64 CapabilityAttackSequence,
+		const EMatchPlayCurrentAttackSelectionStage RequiredStage,
+		FMatchPlayCurrentAttackCompletionResult& Result,
+		EInitialTurnOrderPlayer& OutAttacker,
+		EInitialTurnOrderPlayer& OutDefender)
+	{
+		if (!BeforeState.RuntimeState.bIsInitialized)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::MatchPlayStateNotInitialized,
+				TEXT("Match play state must be initialized before completing an attack."));
+			return false;
+		}
+		if (!BeforeState.bHasCurrentAttack)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::NoCurrentAttack,
+				TEXT("Current attack completion requires an active current attack."));
+			return false;
+		}
+
+		const FMatchPlayCurrentAttackState& CurrentAttack =
+			BeforeState.CurrentAttack;
+		if (CurrentAttack.AttackSequence <= 0)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidCurrentAttackSequence,
+				TEXT("Current attack sequence must be greater than zero."));
+			return false;
+		}
+		if (CapabilityAttackSequence != CurrentAttack.AttackSequence)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::CapabilitySequenceMismatch,
+				TEXT("Capability sequence does not match the current attack."));
+			return false;
+		}
+		if (CurrentAttack.Phase
+			!= EMatchPlayCurrentAttackPhase::Resolution)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::CurrentAttackNotInResolution,
+				TEXT("Current attack must be in Resolution phase for completion."));
+			return false;
+		}
+
+		Result.SelectionStateValidationResult =
+			FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+				CurrentAttack);
+		if (!Result.SelectionStateValidationResult.bIsCanonical
+			|| !CurrentAttack.bAttackerDeploymentFinished
+			|| !CurrentAttack.bDefenderDeploymentFinished
+			|| CurrentAttack.CurrentLegalDeploymentSide
+				!= EInitialTurnOrderPlayer::None)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidSelectionState,
+				Result.SelectionStateValidationResult.bIsCanonical
+					? TEXT("Resolution requires both deployment-finished flags and no legal deployment side.")
+					: Result.SelectionStateValidationResult.ErrorMessage);
+			return false;
+		}
+		if (CurrentAttack.SelectionStage != RequiredStage)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::WrongSelectionStage,
+				RequiredStage
+						== EMatchPlayCurrentAttackSelectionStage
+							::AwaitingMarker
+					? TEXT("Marker no-selection completion requires AwaitingMarker stage.")
+					: TEXT("Skill no-selection completion requires AwaitingSkill stage."));
+			return false;
+		}
+
+		OutAttacker =
+			BeforeState.RuntimeState.CurrentAttackingPlayer;
+		if (!IsCompletionPlayer(OutAttacker))
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidCurrentAttackingPlayer,
+				TEXT("CurrentAttackingPlayer must be PlayerA or PlayerB."));
+			return false;
+		}
+		OutDefender = GetCompletionDefender(OutAttacker);
+		if (!IsCompletionPlayer(OutDefender))
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidCurrentDefendingPlayer,
+				TEXT("Current defending player could not be derived."));
+			return false;
+		}
+
+		const FMatchEndResolveResult PreCompletionMatchEndResult =
+			FMatchEndResolver::ResolveMatchEnd(
+				BeforeState.RuntimeState);
+		if (!PreCompletionMatchEndResult.bSuccess
+			|| PreCompletionMatchEndResult.bIsMatchEnded)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidOpportunityState,
+				PreCompletionMatchEndResult.bSuccess
+					? TEXT("An active current attack cannot be completed after the match has ended.")
+					: PreCompletionMatchEndResult.ErrorMessage);
+			return false;
+		}
+		const FPlayerRuntimeState& AttackerRuntimeState =
+			OutAttacker == EInitialTurnOrderPlayer::PlayerA
+				? BeforeState.RuntimeState.PlayerAState
+				: BeforeState.RuntimeState.PlayerBState;
+		if (AttackerRuntimeState.UsedAttackCount
+			>= AttackerRuntimeState.TotalAttackCount)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidOpportunityState,
+				TEXT("Current attacker must have a remaining attack opportunity."));
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidateScoreState(
+		const FMatchPlayState& BeforeState,
+		FMatchPlayCurrentAttackCompletionResult& Result)
+	{
+		if (BeforeState.RuntimeState.PlayerAState.Score < 0
+			|| BeforeState.RuntimeState.PlayerBState.Score < 0)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidScoreState,
+				TEXT("Match scores cannot be negative."));
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidateMarkerAvailabilityProvenance(
 		const FMatchPlayState& BeforeState,
 		const FMatchPlayMarkerNoSelectionGoalCapability& Capability,
 		const EInitialTurnOrderPlayer Defender,
@@ -194,10 +355,96 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			return false;
 		}
 	}
+
+	bool ValidateSkillAvailabilityProvenance(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlaySkillNoSelectionNoGoalCapability& Capability,
+		const EInitialTurnOrderPlayer Attacker,
+		const EInitialTurnOrderPlayer Defender,
+		FString& OutErrorMessage)
+	{
+		const FMatchPlayCurrentAttackSkillSelectionAvailabilityResult&
+			Availability = Capability.GetAuthorityResult();
+		if (!Availability.bQuerySucceeded
+			|| !Availability.GlobalContextResult.bSuccess)
+		{
+			OutErrorMessage =
+				TEXT("Skill capability availability did not formally succeed.");
+			return false;
+		}
+		if (Availability.AttackSequence != Capability.GetAttackSequence()
+			|| Availability.GlobalContextResult.RequestedAttackSequence
+				!= Capability.GetAttackSequence()
+			|| Availability.GlobalContextResult
+					.AuthoritativeAttackSequence
+				!= Capability.GetAttackSequence())
+		{
+			OutErrorMessage =
+				TEXT("Skill capability sequence provenance is invalid.");
+			return false;
+		}
+		if (Availability.RequestingSide != Attacker
+			|| Availability.GlobalContextResult.RequestingSide
+				!= Attacker
+			|| Availability.GlobalContextResult.CurrentAttackingPlayer
+				!= Attacker
+			|| Availability.GlobalContextResult.CurrentDefendingPlayer
+				!= Defender)
+		{
+			OutErrorMessage =
+				TEXT("Skill capability actor provenance is invalid.");
+			return false;
+		}
+		if (Availability.GlobalContextResult.FrozenCarrierCardId
+				!= BeforeState.CurrentAttack.ActionPreparation
+					.CarrierCardId
+			|| Availability.GlobalContextResult.FrozenMarkerCardId
+				!= BeforeState.CurrentAttack.ActionPreparation
+					.MarkerCardId)
+		{
+			OutErrorMessage =
+				TEXT("Skill capability frozen participant provenance is invalid.");
+			return false;
+		}
+
+		switch (Capability.GetSource())
+		{
+		case EMatchPlaySkillNoSelectionNoGoalSource
+			::ResolveNoLegalSkill:
+			if (Capability.GetReason()
+					!= EMatchPlaySkillNoSelectionNoGoalReason
+						::NoLegalSkill
+				|| Availability.bCanSelectAnySkill)
+			{
+				OutErrorMessage =
+					TEXT("ResolveNoLegalSkill capability requires NoLegalSkill and zero legal skills.");
+				return false;
+			}
+			return true;
+
+		case EMatchPlaySkillNoSelectionNoGoalSource::DeclineSkill:
+			if (Capability.GetReason()
+					!= EMatchPlaySkillNoSelectionNoGoalReason
+						::SkillDeclined
+				|| !Availability.bCanSelectAnySkill)
+			{
+				OutErrorMessage =
+					TEXT("DeclineSkill capability requires SkillDeclined and at least one legal skill.");
+				return false;
+			}
+			return true;
+
+		case EMatchPlaySkillNoSelectionNoGoalSource::None:
+		default:
+			OutErrorMessage =
+				TEXT("Skill capability source is not supported.");
+			return false;
+		}
+	}
 }
 
 FMatchPlayCurrentAttackCompletionResult
-FMatchPlayCurrentAttackCompletion::Complete(
+FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 	const FMatchPlayState& BeforeState,
 	const FMatchPlayMarkerNoSelectionGoalCapability& Capability)
 {
@@ -209,35 +456,6 @@ FMatchPlayCurrentAttackCompletion::Complete(
 	Result.Reason = Capability.GetReason();
 	Result.Source = Capability.GetSource();
 
-	if (!BeforeState.RuntimeState.bIsInitialized)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::MatchPlayStateNotInitialized,
-			TEXT("Match play state must be initialized before completing an attack."));
-		return Result;
-	}
-	if (!BeforeState.bHasCurrentAttack)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode::NoCurrentAttack,
-			TEXT("Current attack completion requires an active current attack."));
-		return Result;
-	}
-
-	const FMatchPlayCurrentAttackState& CurrentAttack =
-		BeforeState.CurrentAttack;
-	if (CurrentAttack.AttackSequence <= 0)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidCurrentAttackSequence,
-			TEXT("Current attack sequence must be greater than zero."));
-		return Result;
-	}
 	if (Capability.GetSource()
 			!= EMatchPlayMarkerNoSelectionGoalSource
 				::ResolveNoLegalMarker
@@ -248,7 +466,7 @@ FMatchPlayCurrentAttackCompletion::Complete(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
 				::UnsupportedCapabilitySource,
-			TEXT("Capability source is not supported by current attack completion."));
+			TEXT("Capability source is not supported by marker completion."));
 		return Result;
 	}
 	if (Capability.GetReason()
@@ -263,83 +481,27 @@ FMatchPlayCurrentAttackCompletion::Complete(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
 				::InvalidCapabilityReason,
-			TEXT("Capability reason is not supported by current attack completion."));
-		return Result;
-	}
-	if (Capability.GetAttackSequence() != CurrentAttack.AttackSequence)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::CapabilitySequenceMismatch,
-			TEXT("Capability sequence does not match the current attack."));
-		return Result;
-	}
-	if (CurrentAttack.Phase
-		!= EMatchPlayCurrentAttackPhase::Resolution)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::CurrentAttackNotInResolution,
-			TEXT("Current attack must be in Resolution phase for completion."));
+			TEXT("Capability reason is not supported by marker completion."));
 		return Result;
 	}
 
-	Result.SelectionStateValidationResult =
-		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
-			CurrentAttack);
-	if (!Result.SelectionStateValidationResult.bIsCanonical
-		|| !CurrentAttack.bAttackerDeploymentFinished
-		|| !CurrentAttack.bDefenderDeploymentFinished
-		|| CurrentAttack.CurrentLegalDeploymentSide
-			!= EInitialTurnOrderPlayer::None)
+	EInitialTurnOrderPlayer Attacker =
+		EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer Defender =
+		EInitialTurnOrderPlayer::None;
+	if (!ValidateCommonOuter(
+		BeforeState,
+		Capability.GetAttackSequence(),
+		EMatchPlayCurrentAttackSelectionStage::AwaitingMarker,
+		Result,
+		Attacker,
+		Defender))
 	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidSelectionState,
-			Result.SelectionStateValidationResult.bIsCanonical
-				? TEXT("Resolution requires both deployment-finished flags and no legal deployment side.")
-				: Result.SelectionStateValidationResult.ErrorMessage);
-		return Result;
-	}
-	if (CurrentAttack.SelectionStage
-		!= EMatchPlayCurrentAttackSelectionStage::AwaitingMarker)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::WrongSelectionStage,
-			TEXT("Marker no-selection completion requires AwaitingMarker stage."));
-		return Result;
-	}
-
-	const EInitialTurnOrderPlayer Attacker =
-		BeforeState.RuntimeState.CurrentAttackingPlayer;
-	if (!IsCompletionPlayer(Attacker))
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidCurrentAttackingPlayer,
-			TEXT("CurrentAttackingPlayer must be PlayerA or PlayerB."));
-		return Result;
-	}
-	const EInitialTurnOrderPlayer Defender =
-		GetCompletionDefender(Attacker);
-	if (!IsCompletionPlayer(Defender))
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidCurrentDefendingPlayer,
-			TEXT("Current defending player could not be derived."));
 		return Result;
 	}
 
 	FString CapabilityProvenanceError;
-	if (!ValidateAvailabilityProvenance(
+	if (!ValidateMarkerAvailabilityProvenance(
 		BeforeState,
 		Capability,
 		Defender,
@@ -352,48 +514,139 @@ FMatchPlayCurrentAttackCompletion::Complete(
 			CapabilityProvenanceError);
 		return Result;
 	}
+	if (!ValidateScoreState(BeforeState, Result))
+	{
+		return Result;
+	}
 
-	if (BeforeState.RuntimeState.PlayerAState.Score < 0
-		|| BeforeState.RuntimeState.PlayerBState.Score < 0)
+	FMatchPlayState WorkingState = BeforeState;
+	Result.GoalResolveResult = FGoalResolver::RecordGoal(
+		WorkingState.RuntimeState,
+		Attacker);
+	if (!Result.GoalResolveResult.bSuccess)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidScoreState,
-			TEXT("Match scores cannot be negative."));
+				::GoalResolutionFailed,
+			Result.GoalResolveResult.ErrorMessage);
 		return Result;
 	}
+	WorkingState.RuntimeState =
+		Result.GoalResolveResult.UpdatedRuntimeState;
+	Result.ScoringSide = Attacker;
 
-	const FMatchEndResolveResult PreCompletionMatchEndResult =
-		FMatchEndResolver::ResolveMatchEnd(BeforeState.RuntimeState);
-	if (!PreCompletionMatchEndResult.bSuccess
-		|| PreCompletionMatchEndResult.bIsMatchEnded)
+	return ApplyCurrentAttackTerminalMutation(
+		BeforeState,
+		MoveTemp(WorkingState),
+		Attacker,
+		Defender,
+		MoveTemp(Result));
+}
+
+FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(
+	const FMatchPlayState& BeforeState,
+	const FMatchPlaySkillNoSelectionNoGoalCapability& Capability)
+{
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+
+	FMatchPlayCurrentAttackCompletionResult Result;
+	Result.BeforeState = BeforeState;
+	Result.AfterState = BeforeState;
+
+	if (Capability.GetSource()
+			!= EMatchPlaySkillNoSelectionNoGoalSource
+				::ResolveNoLegalSkill
+		&& Capability.GetSource()
+			!= EMatchPlaySkillNoSelectionNoGoalSource::DeclineSkill)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidOpportunityState,
-			PreCompletionMatchEndResult.bSuccess
-				? TEXT("An active current attack cannot be completed after the match has ended.")
-				: PreCompletionMatchEndResult.ErrorMessage);
+				::UnsupportedCapabilitySource,
+			TEXT("Capability source is not supported by skill no-goal completion."));
 		return Result;
 	}
-	const FPlayerRuntimeState& AttackerRuntimeState =
-		Attacker == EInitialTurnOrderPlayer::PlayerA
-			? BeforeState.RuntimeState.PlayerAState
-			: BeforeState.RuntimeState.PlayerBState;
-	if (AttackerRuntimeState.UsedAttackCount
-		>= AttackerRuntimeState.TotalAttackCount)
+	if ((Capability.GetSource()
+				== EMatchPlaySkillNoSelectionNoGoalSource
+					::ResolveNoLegalSkill
+			&& Capability.GetReason()
+				!= EMatchPlaySkillNoSelectionNoGoalReason
+					::NoLegalSkill)
+		|| (Capability.GetSource()
+				== EMatchPlaySkillNoSelectionNoGoalSource
+					::DeclineSkill
+			&& Capability.GetReason()
+				!= EMatchPlaySkillNoSelectionNoGoalReason
+					::SkillDeclined))
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackCompletionErrorCode
-				::InvalidOpportunityState,
-			TEXT("Current attacker must have a remaining attack opportunity."));
+				::InvalidCapabilityReason,
+			TEXT("Skill capability Source and Reason are not a supported pair."));
 		return Result;
 	}
 
+	EInitialTurnOrderPlayer Attacker =
+		EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer Defender =
+		EInitialTurnOrderPlayer::None;
+	if (!ValidateCommonOuter(
+		BeforeState,
+		Capability.GetAttackSequence(),
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill,
+		Result,
+		Attacker,
+		Defender))
+	{
+		return Result;
+	}
+
+	FString CapabilityProvenanceError;
+	if (!ValidateSkillAvailabilityProvenance(
+		BeforeState,
+		Capability,
+		Attacker,
+		Defender,
+		CapabilityProvenanceError))
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::InvalidCapabilityProvenance,
+			CapabilityProvenanceError);
+		return Result;
+	}
+	if (!ValidateScoreState(BeforeState, Result))
+	{
+		return Result;
+	}
+
+	return ApplyCurrentAttackTerminalMutation(
+		BeforeState,
+		BeforeState,
+		Attacker,
+		Defender,
+		MoveTemp(Result));
+}
+
+FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion
+	::ApplyCurrentAttackTerminalMutation(
+		const FMatchPlayState& BeforeState,
+		FMatchPlayState WorkingState,
+		const EInitialTurnOrderPlayer Attacker,
+		const EInitialTurnOrderPlayer Defender,
+		FMatchPlayCurrentAttackCompletionResult Result)
+{
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+
+	const FMatchPlayCurrentAttackState& CurrentAttack =
+		BeforeState.CurrentAttack;
 	TSet<FString> SeenDeploymentCards;
+	TSet<FName> SeenDeploymentSlots;
 	int32 GoalkeeperPlacementCount = 0;
 	FName GoalkeeperCardId = NAME_None;
 	for (const FMatchPlayDeploymentPlacement& Placement :
@@ -425,6 +678,19 @@ FMatchPlayCurrentAttackCompletion::Complete(
 			return Result;
 		}
 		SeenDeploymentCards.Add(CardKey);
+
+		if (SeenDeploymentSlots.Contains(Placement.SlotId))
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::DuplicateDeploymentSlot,
+				FString::Printf(
+					TEXT("Deployment slot '%s' is occupied more than once."),
+					*Placement.SlotId.ToString()));
+			return Result;
+		}
+		SeenDeploymentSlots.Add(Placement.SlotId);
 
 		const FMatchPlayCardSnapshotAuthorityQueryResult SnapshotResult =
 			FMatchPlayCardSnapshotAuthorityQuery
@@ -508,22 +774,6 @@ FMatchPlayCurrentAttackCompletion::Complete(
 			return Result;
 		}
 	}
-
-	FMatchPlayState WorkingState = BeforeState;
-	Result.GoalResolveResult = FGoalResolver::RecordGoal(
-		WorkingState.RuntimeState,
-		Attacker);
-	if (!Result.GoalResolveResult.bSuccess)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackCompletionErrorCode
-				::GoalResolutionFailed,
-			Result.GoalResolveResult.ErrorMessage);
-		return Result;
-	}
-	WorkingState.RuntimeState =
-		Result.GoalResolveResult.UpdatedRuntimeState;
 
 	for (int32 Index = 0;
 		Index < CurrentAttack.DeploymentPlacements.Num();
@@ -626,7 +876,6 @@ FMatchPlayCurrentAttackCompletion::Complete(
 		}
 	}
 
-	Result.ScoringSide = Attacker;
 	Result.AfterState = MoveTemp(WorkingState);
 	Result.bSuccess = true;
 	Result.ErrorCode =

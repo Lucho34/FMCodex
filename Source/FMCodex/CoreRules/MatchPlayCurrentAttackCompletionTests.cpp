@@ -165,6 +165,52 @@ bool FCurrentAttackCompletionCardUsageAtomicTest::RunTest(
 }
 
 CURRENT_ATTACK_COMPLETION_TEST(
+	FCurrentAttackCompletionDuplicateSlotTest,
+	"DuplicateSlotRejectedGloballyBeforeMutation")
+
+bool FCurrentAttackCompletionDuplicateSlotTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
+
+	FMatchPlayState State = MakeState();
+	State.CurrentAttack.DeploymentPlacements[1].SlotId =
+		State.CurrentAttack.DeploymentPlacements[0].SlotId;
+	CurrentAttackCompletionTests::ExpectDeclineCompletionFailure(
+		*this,
+		TEXT("Same-side duplicate SlotId"),
+		State,
+		EMatchPlayCurrentAttackCompletionErrorCode
+			::DuplicateDeploymentSlot);
+
+	State = MakeState();
+	State.CurrentAttack.DeploymentPlacements[2].SlotId =
+		State.CurrentAttack.DeploymentPlacements[0].SlotId;
+	CurrentAttackCompletionTests::ExpectDeclineCompletionFailure(
+		*this,
+		TEXT("Cross-side duplicate SlotId"),
+		State,
+		EMatchPlayCurrentAttackCompletionErrorCode
+			::DuplicateDeploymentSlot);
+
+	State = MakeState();
+	State.CurrentAttack.DeploymentPlacements.Add(
+		MakePlacement(
+			EInitialTurnOrderPlayer::PlayerB,
+			PlayerBGoalkeeper,
+			State.CurrentAttack.DeploymentPlacements[1].SlotId));
+	State.CurrentAttack.bCurrentDefenseGoalkeeperActivated = true;
+	State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = true;
+	CurrentAttackCompletionTests::ExpectDeclineCompletionFailure(
+		*this,
+		TEXT("Ordinary and goalkeeper duplicate SlotId"),
+		State,
+		EMatchPlayCurrentAttackCompletionErrorCode
+			::DuplicateDeploymentSlot);
+	return true;
+}
+
+CURRENT_ATTACK_COMPLETION_TEST(
 	FCurrentAttackCompletionScoreFailuresTest,
 	"OverflowAndNegativeScoresRejectAtomically")
 

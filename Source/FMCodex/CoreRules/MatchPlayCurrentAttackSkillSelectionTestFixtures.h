@@ -97,8 +97,24 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackSkillSelection
 	{
 		FMatchPlayState State;
 		State.RuntimeState.bIsInitialized = true;
+		State.RuntimeState.FirstPlayer =
+			EInitialTurnOrderPlayer::PlayerA;
+		State.RuntimeState.SecondPlayer =
+			EInitialTurnOrderPlayer::PlayerB;
 		State.RuntimeState.CurrentAttackingPlayer =
 			EInitialTurnOrderPlayer::PlayerA;
+		State.RuntimeState.PlayerAState.TotalAttackCount = 3;
+		State.RuntimeState.PlayerAState.UsedAttackCount = 1;
+		State.RuntimeState.PlayerAState.Score = 2;
+		State.RuntimeState.PlayerBState.TotalAttackCount = 3;
+		State.RuntimeState.PlayerBState.UsedAttackCount = 1;
+		State.RuntimeState.PlayerBState.Score = 1;
+		State.CardUsageState.PlayerACardUsageState.AvailableCardIds = {
+			CarrierId
+		};
+		State.CardUsageState.PlayerBCardUsageState.AvailableCardIds = {
+			MarkerId
+		};
 		State.CardSnapshotAuthority.PlayerACardSnapshots.Cards = {
 			MakeCard(CarrierId, CarrierSkillIds)
 		};

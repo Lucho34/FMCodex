@@ -189,6 +189,38 @@ bool FSkillSelectionAuthorityTest::RunTest(
 			SkillProductionSources,
 			TEXT("switch (SkillRuleType)")),
 		1);
+	TestEqual(
+		TEXT("Validator calls participant requirement authority at both canonical resolved-action boundaries"),
+		CountOccurrences(
+			ValidatorSource,
+			TEXT("FMatchPlaySkillParticipantRequirementQuery::Query")),
+		2);
+	TestTrue(
+		TEXT("Validator source is included in the authority source collection"),
+		SkillProductionSources.Contains(
+			TEXT("FMatchPlayCurrentAttackSelectionStateValidator::Validate")));
+	TestEqual(
+		TEXT("Validator has no direct RuleType requirement mapping"),
+		CountOccurrences(
+			ValidatorSource,
+			TEXT("switch (SkillRuleType)")),
+		0);
+	TestTrue(
+		TEXT("Validator keeps AwaitingRunner canonical boundary"),
+		ValidatorSource.Contains(
+			TEXT("case EMatchPlayCurrentAttackSelectionStage::AwaitingRunner:")));
+	TestTrue(
+		TEXT("Validator keeps ReadyForResolution canonical boundary"),
+		ValidatorSource.Contains(
+			TEXT("case EMatchPlayCurrentAttackSelectionStage::ReadyForResolution:")));
+	TestFalse(
+		TEXT("Skill availability exposes no legacy global legality projection"),
+		AvailabilityHeader.Contains(
+			TEXT("bHasGlobalBlockingLegalityResult"))
+			|| AvailabilityHeader.Contains(
+				TEXT("GlobalBlockingLegalityResult"))
+			|| AvailabilitySource.Contains(
+				TEXT("GlobalBlockingLegalityResult")));
 
 	const UScriptStruct* RequestStruct =
 		FMatchPlayCurrentAttackSkillSelectionRequest::StaticStruct();

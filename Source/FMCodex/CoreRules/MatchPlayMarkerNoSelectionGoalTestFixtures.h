@@ -15,9 +15,11 @@ namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal
 	inline const FName PlayerBGoalkeeper(TEXT("PlayerB.Goalkeeper"));
 	inline const FName NearPlayerASlotOne(TEXT("NearA.One"));
 	inline const FName NearPlayerASlotTwo(TEXT("NearA.Two"));
+	inline const FName NearPlayerASlotThree(TEXT("NearA.Three"));
 	inline const FName NearPlayerASlotGoalkeeper(TEXT("NearA.Goalkeeper"));
 	inline const FName NearPlayerBSlotOne(TEXT("NearB.One"));
 	inline const FName NearPlayerBSlotTwo(TEXT("NearB.Two"));
+	inline const FName NearPlayerBSlotThree(TEXT("NearB.Three"));
 	inline const FName NearPlayerBSlotGoalkeeper(TEXT("NearB.Goalkeeper"));
 
 	inline bool IsPlayer(const EInitialTurnOrderPlayer Player)
@@ -142,6 +144,14 @@ namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal
 			: NearPlayerASlotTwo;
 	}
 
+	inline FName GetMatchingSlotThree(
+		const EInitialTurnOrderPlayer Attacker)
+	{
+		return Attacker == EInitialTurnOrderPlayer::PlayerA
+			? NearPlayerBSlotThree
+			: NearPlayerASlotThree;
+	}
+
 	inline FName GetOtherAreaSlot(
 		const EInitialTurnOrderPlayer Attacker)
 	{
@@ -204,6 +214,9 @@ namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal
 				NearPlayerASlotTwo,
 				EMatchPlayNeutralSlotSide::NearPlayerA),
 			MakeSlot(
+				NearPlayerASlotThree,
+				EMatchPlayNeutralSlotSide::NearPlayerA),
+			MakeSlot(
 				NearPlayerASlotGoalkeeper,
 				EMatchPlayNeutralSlotSide::NearPlayerA),
 			MakeSlot(
@@ -211,6 +224,9 @@ namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal
 				EMatchPlayNeutralSlotSide::NearPlayerB),
 			MakeSlot(
 				NearPlayerBSlotTwo,
+				EMatchPlayNeutralSlotSide::NearPlayerB),
+			MakeSlot(
+				NearPlayerBSlotThree,
 				EMatchPlayNeutralSlotSide::NearPlayerB),
 			MakeSlot(
 				NearPlayerBSlotGoalkeeper,
@@ -241,7 +257,7 @@ namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal
 			MakePlacement(
 				Defender,
 				GetOneCard(Defender),
-				GetMatchingSlotTwo(Attacker))
+				GetMatchingSlotThree(Attacker))
 		};
 		return State;
 	}

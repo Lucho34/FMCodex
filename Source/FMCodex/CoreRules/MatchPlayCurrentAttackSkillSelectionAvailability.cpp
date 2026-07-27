@@ -14,45 +14,12 @@ namespace MatchPlayCurrentAttackSkillSelectionAvailabilityImplementation
 		return Request;
 	}
 
-	void SetGlobalBlocker(
+	void SetGlobalFailure(
 		FMatchPlayCurrentAttackSkillSelectionAvailabilityResult& Result)
 	{
 		Result.Candidates.Reset();
 		Result.bCanSelectAnySkill = false;
 		Result.bQuerySucceeded = false;
-		Result.bHasGlobalBlockingLegalityResult = true;
-
-		FMatchPlayCurrentAttackSkillSelectionLegalityResult&
-			LegacyProjection =
-				Result.GlobalBlockingLegalityResult;
-		LegacyProjection.Request.AttackSequence =
-			Result.AttackSequence;
-		LegacyProjection.Request.RequestingSide =
-			Result.RequestingSide;
-		LegacyProjection.GlobalContextResult =
-			Result.GlobalContextResult;
-		LegacyProjection.ErrorCode =
-			Result.GlobalContextResult.ErrorCode;
-		LegacyProjection.ErrorMessage =
-			Result.GlobalContextResult.ErrorMessage;
-		LegacyProjection.SelectionStateValidationResult =
-			Result.GlobalContextResult.SelectionStateValidationResult;
-		LegacyProjection.FrozenCarrierCardId =
-			Result.GlobalContextResult.FrozenCarrierCardId;
-		LegacyProjection.FrozenMarkerCardId =
-			Result.GlobalContextResult.FrozenMarkerCardId;
-		LegacyProjection.MatchingFrozenCarrierPlacementCount =
-			Result.GlobalContextResult
-				.MatchingFrozenCarrierPlacementCount;
-		LegacyProjection.MatchingFrozenMarkerPlacementCount =
-			Result.GlobalContextResult
-				.MatchingFrozenMarkerPlacementCount;
-		LegacyProjection.FrozenCarrierPlacement =
-			Result.GlobalContextResult.FrozenCarrierPlacement;
-		LegacyProjection.FrozenMarkerPlacement =
-			Result.GlobalContextResult.FrozenMarkerPlacement;
-		LegacyProjection.CarrierSnapshotQueryResult =
-			Result.GlobalContextResult.CarrierSnapshotQueryResult;
 	}
 }
 
@@ -81,7 +48,7 @@ FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
 		Result.GlobalContextResult.SkillRuleSetValidationResult;
 	if (!Result.GlobalContextResult.bSuccess)
 	{
-		SetGlobalBlocker(Result);
+		SetGlobalFailure(Result);
 		return Result;
 	}
 

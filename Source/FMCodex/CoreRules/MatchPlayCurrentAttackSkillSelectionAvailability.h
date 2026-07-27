@@ -42,13 +42,6 @@ struct FMCODEX_API
 	TArray<FMatchPlayCurrentAttackSkillSelectionCandidateAvailability>
 		Candidates;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Skill Selection Availability")
-	bool bHasGlobalBlockingLegalityResult = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Skill Selection Availability")
-	FMatchPlayCurrentAttackSkillSelectionLegalityResult
-		GlobalBlockingLegalityResult;
-
 	FMatchPlayCurrentAttackSkillSelectionGlobalContextResult
 		GlobalContextResult;
 	FMatchPlayCardSnapshotAuthorityQueryResult

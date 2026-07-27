@@ -306,7 +306,7 @@ FMatchPlayResolveNoLegalMarker::Resolve(
 		Result.MarkerAvailabilityResult);
 
 	Result.CompletionResult =
-		FMatchPlayCurrentAttackCompletion::Complete(
+		FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 			BeforeState,
 			Capability);
 	if (!Result.CompletionResult.bSuccess)
@@ -407,7 +407,7 @@ FMatchPlayMarkerDeclineResult FMatchPlayMarkerDecline::Decline(
 		Result.MarkerAvailabilityResult);
 
 	Result.CompletionResult =
-		FMatchPlayCurrentAttackCompletion::Complete(
+		FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 			BeforeState,
 			Capability);
 	if (!Result.CompletionResult.bSuccess)

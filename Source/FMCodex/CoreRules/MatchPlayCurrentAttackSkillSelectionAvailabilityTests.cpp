@@ -23,6 +23,15 @@ namespace SkillSelectionAvailabilityTests
 			->CompareScriptStruct(&Left, &Right, 0);
 	}
 
+	bool AreSelectionStateValidationResultsEqual(
+		const FMatchPlayCurrentAttackSelectionStateValidationResult& Left,
+		const FMatchPlayCurrentAttackSelectionStateValidationResult& Right)
+	{
+		return Left.bIsCanonical == Right.bIsCanonical
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
 	bool ArePlayerSnapshotValidationResultsEqual(
 		const FPlayerCardRuleSnapshotValidationResult& Left,
 		const FPlayerCardRuleSnapshotValidationResult& Right)
@@ -94,12 +103,9 @@ namespace SkillSelectionAvailabilityTests
 				== Right.CurrentAttackingPlayer
 			&& Left.CurrentDefendingPlayer
 				== Right.CurrentDefendingPlayer
-			&& Left.SelectionStateValidationResult.bIsCanonical
-				== Right.SelectionStateValidationResult.bIsCanonical
-			&& Left.SelectionStateValidationResult.ErrorCode
-				== Right.SelectionStateValidationResult.ErrorCode
-			&& Left.SelectionStateValidationResult.ErrorMessage
-				== Right.SelectionStateValidationResult.ErrorMessage
+			&& AreSelectionStateValidationResultsEqual(
+				Left.SelectionStateValidationResult,
+				Right.SelectionStateValidationResult)
 			&& Left.FrozenCarrierCardId
 				== Right.FrozenCarrierCardId
 			&& Left.FrozenMarkerCardId
@@ -167,6 +173,9 @@ namespace SkillSelectionAvailabilityTests
 				== Right.Request.RequestingSide
 			&& Left.Request.SkillId == Right.Request.SkillId
 			&& Left.ErrorCode == Right.ErrorCode
+			&& AreSelectionStateValidationResultsEqual(
+				Left.SelectionStateValidationResult,
+				Right.SelectionStateValidationResult)
 			&& AreGlobalContextsEqual(
 				Left.GlobalContextResult,
 				Right.GlobalContextResult)
@@ -223,14 +232,9 @@ namespace SkillSelectionAvailabilityTests
 			|| Left.bCanSelectAnySkill != Right.bCanSelectAnySkill
 			|| Left.AttackSequence != Right.AttackSequence
 			|| Left.RequestingSide != Right.RequestingSide
-			|| Left.bHasGlobalBlockingLegalityResult
-				!= Right.bHasGlobalBlockingLegalityResult
 			|| !AreGlobalContextsEqual(
 				Left.GlobalContextResult,
 				Right.GlobalContextResult)
-			|| !AreLegalityResultsEqual(
-				Left.GlobalBlockingLegalityResult,
-				Right.GlobalBlockingLegalityResult)
 			|| !AreCarrierSnapshotQueryResultsEqual(
 				Left.CarrierSnapshotQueryResult,
 				Right.CarrierSnapshotQueryResult)
@@ -304,9 +308,9 @@ bool FSkillAvailabilityOrderAndCandidateResultsTest::RunTest(
 
 	TestTrue(TEXT("Query succeeds"), Result.bQuerySucceeded);
 	TestTrue(TEXT("Any legal"), Result.bCanSelectAnySkill);
-	TestFalse(
-		TEXT("No global blocker"),
-		Result.bHasGlobalBlockingLegalityResult);
+	TestTrue(
+		TEXT("Global context succeeded"),
+		Result.GlobalContextResult.bSuccess);
 	TestEqual(TEXT("Three candidates"), Result.Candidates.Num(), 3);
 	TestEqual(
 		TEXT("Original first"),
@@ -417,9 +421,9 @@ bool FSkillAvailabilityGlobalActionPointTest::RunTest(
 		TestFalse(
 			TEXT("Empty invalid AP fails globally"),
 			EmptyResult.bQuerySucceeded);
-		TestTrue(
-			TEXT("Empty invalid AP has global blocker"),
-			EmptyResult.bHasGlobalBlockingLegalityResult);
+		TestFalse(
+			TEXT("Empty invalid AP global context fails"),
+			EmptyResult.GlobalContextResult.bSuccess);
 		TestEqual(
 			TEXT("Empty invalid AP exact error"),
 			EmptyResult.GlobalContextResult.ErrorCode,
@@ -573,6 +577,44 @@ bool FSkillAvailabilityBoundaryAndDeterminismTest::RunTest(
 		TEXT("All-invalid candidates retained"),
 		InvalidFirst.Candidates.Num(),
 		2);
+
+	const FMatchPlayState MixedState =
+		MakeState({CrossSkillId, MissingSkillId, LongShotSkillId});
+	const auto MixedFirst =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			MixedState,
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	const auto MixedSecond =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			MixedState,
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	TestTrue(
+		TEXT("Mixed result fully deterministic"),
+		AreAvailabilityResultsEqual(MixedFirst, MixedSecond));
+
+	FMatchPlayState GlobalFailureState = MakeState();
+	GlobalFailureState.CurrentAttack.ActionPoint = 1;
+	const auto GlobalFailureFirst =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			GlobalFailureState,
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	const auto GlobalFailureSecond =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			GlobalFailureState,
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	TestTrue(
+		TEXT("Global-failure result fully deterministic"),
+		AreAvailabilityResultsEqual(
+			GlobalFailureFirst,
+			GlobalFailureSecond));
 	return true;
 }
 
@@ -644,12 +686,12 @@ bool FSkillAvailabilityGlobalBlockersTest::RunTest(
 					EInitialTurnOrderPlayer::PlayerA,
 					MakeRuleSet());
 		TestFalse(TEXT("Duplicate query fails"), Result.bQuerySucceeded);
-		TestTrue(
-			TEXT("Duplicate global blocker"),
-			Result.bHasGlobalBlockingLegalityResult);
+		TestFalse(
+			TEXT("Duplicate global context fails"),
+			Result.GlobalContextResult.bSuccess);
 		TestEqual(
 			TEXT("Duplicate exact error"),
-			Result.GlobalBlockingLegalityResult.ErrorCode,
+			Result.GlobalContextResult.ErrorCode,
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
 				::DuplicateCarrierSkillId);
 	}
@@ -670,7 +712,7 @@ bool FSkillAvailabilityGlobalBlockersTest::RunTest(
 			Result.bQuerySucceeded);
 		TestEqual(
 			TEXT("Duplicate rule global error"),
-			Result.GlobalBlockingLegalityResult.ErrorCode,
+			Result.GlobalContextResult.ErrorCode,
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
 				::SkillRuleAmbiguous);
 	}
@@ -688,12 +730,12 @@ bool FSkillAvailabilityGlobalBlockersTest::RunTest(
 		TestFalse(
 			TEXT("Unsupported rule set query fails"),
 			Result.bQuerySucceeded);
-		TestTrue(
-			TEXT("Unsupported rule is a global rule-set blocker"),
-			Result.bHasGlobalBlockingLegalityResult);
+		TestFalse(
+			TEXT("Unsupported rule fails global context"),
+			Result.GlobalContextResult.bSuccess);
 		TestEqual(
 			TEXT("Unsupported rule exact global error"),
-			Result.GlobalBlockingLegalityResult.ErrorCode,
+			Result.GlobalContextResult.ErrorCode,
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
 				::InvalidSkillRuleSet);
 	}
@@ -714,7 +756,7 @@ bool FSkillAvailabilityGlobalBlockersTest::RunTest(
 		TestFalse(TEXT("Wrong stage fails"), Result.bQuerySucceeded);
 		TestEqual(
 			TEXT("Wrong stage global"),
-			Result.GlobalBlockingLegalityResult.ErrorCode,
+			Result.GlobalContextResult.ErrorCode,
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
 				::WrongSelectionStage);
 	}
@@ -729,7 +771,7 @@ bool FSkillAvailabilityGlobalBlockersTest::RunTest(
 		TestFalse(TEXT("Stale sequence fails"), Result.bQuerySucceeded);
 		TestEqual(
 			TEXT("Stale sequence global"),
-			Result.GlobalBlockingLegalityResult.ErrorCode,
+			Result.GlobalContextResult.ErrorCode,
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
 				::AttackSequenceMismatch);
 	}

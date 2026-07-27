@@ -6,6 +6,7 @@
 #include "GoalResolver.h"
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 #include "MatchPlayMarkerNoSelectionGoalCapability.h"
+#include "MatchPlaySkillNoSelectionNoGoalCapability.h"
 #include "MatchResultResolver.h"
 #include "PlayCardResolver.h"
 
@@ -45,6 +46,8 @@ enum class EMatchPlayCurrentAttackCompletionErrorCode : uint8
 		UMETA(DisplayName = "Deployment Snapshot Query Failed"),
 	DuplicateDeploymentCard
 		UMETA(DisplayName = "Duplicate Deployment Card"),
+	DuplicateDeploymentSlot
+		UMETA(DisplayName = "Duplicate Deployment Slot"),
 	InvalidGoalkeeperCompletionState
 		UMETA(DisplayName = "Invalid Goalkeeper Completion State"),
 	GoalResolutionFailed UMETA(DisplayName = "Goal Resolution Failed"),
@@ -128,10 +131,24 @@ class FMCODEX_API FMatchPlayCurrentAttackCompletion final
 private:
 	friend class FMatchPlayMarkerDecline;
 	friend class FMatchPlayResolveNoLegalMarker;
+	friend class FMatchPlayResolveNoLegalSkill;
+	friend class FMatchPlaySkillDecline;
 
 	FMatchPlayCurrentAttackCompletion() = delete;
 
-	static FMatchPlayCurrentAttackCompletionResult Complete(
+	static FMatchPlayCurrentAttackCompletionResult CompleteMarkerGoal(
 		const FMatchPlayState& BeforeState,
 		const FMatchPlayMarkerNoSelectionGoalCapability& Capability);
+
+	static FMatchPlayCurrentAttackCompletionResult CompleteSkillNoGoal(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlaySkillNoSelectionNoGoalCapability& Capability);
+
+	static FMatchPlayCurrentAttackCompletionResult
+	ApplyCurrentAttackTerminalMutation(
+		const FMatchPlayState& BeforeState,
+		FMatchPlayState WorkingState,
+		EInitialTurnOrderPlayer Attacker,
+		EInitialTurnOrderPlayer Defender,
+		FMatchPlayCurrentAttackCompletionResult Result);
 };
