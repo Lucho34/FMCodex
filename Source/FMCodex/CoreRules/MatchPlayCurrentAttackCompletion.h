@@ -6,6 +6,7 @@
 #include "GoalResolver.h"
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 #include "MatchPlayMarkerNoSelectionGoalCapability.h"
+#include "MatchPlayRunnerNoSelectionNoGoalCapability.h"
 #include "MatchPlaySkillNoSelectionNoGoalCapability.h"
 #include "MatchResultResolver.h"
 #include "PlayCardResolver.h"
@@ -132,6 +133,8 @@ private:
 	friend class FMatchPlayMarkerDecline;
 	friend class FMatchPlayResolveNoLegalMarker;
 	friend class FMatchPlayResolveNoLegalSkill;
+	friend class FMatchPlayResolveNoLegalRunner;
+	friend class FMatchPlayRunnerDecline;
 	friend class FMatchPlaySkillDecline;
 
 	FMatchPlayCurrentAttackCompletion() = delete;
@@ -143,6 +146,10 @@ private:
 	static FMatchPlayCurrentAttackCompletionResult CompleteSkillNoGoal(
 		const FMatchPlayState& BeforeState,
 		const FMatchPlaySkillNoSelectionNoGoalCapability& Capability);
+
+	static FMatchPlayCurrentAttackCompletionResult CompleteRunnerNoGoal(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayRunnerNoSelectionNoGoalCapability& Capability);
 
 	static FMatchPlayCurrentAttackCompletionResult
 	ApplyCurrentAttackTerminalMutation(

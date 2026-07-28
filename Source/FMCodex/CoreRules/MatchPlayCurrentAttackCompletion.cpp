@@ -130,15 +130,31 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 		}
 		if (CurrentAttack.SelectionStage != RequiredStage)
 		{
+			FString StageErrorMessage;
+			switch (RequiredStage)
+			{
+			case EMatchPlayCurrentAttackSelectionStage::AwaitingMarker:
+				StageErrorMessage =
+					TEXT("Marker no-selection completion requires AwaitingMarker stage.");
+				break;
+			case EMatchPlayCurrentAttackSelectionStage::AwaitingSkill:
+				StageErrorMessage =
+					TEXT("Skill no-selection completion requires AwaitingSkill stage.");
+				break;
+			case EMatchPlayCurrentAttackSelectionStage::AwaitingRunner:
+				StageErrorMessage =
+					TEXT("Runner no-selection completion requires AwaitingRunner stage.");
+				break;
+			default:
+				StageErrorMessage =
+					TEXT("Current attack is not in the required completion selection stage.");
+				break;
+			}
 			SetError(
 				Result,
 				EMatchPlayCurrentAttackCompletionErrorCode
 					::WrongSelectionStage,
-				RequiredStage
-						== EMatchPlayCurrentAttackSelectionStage
-							::AwaitingMarker
-					? TEXT("Marker no-selection completion requires AwaitingMarker stage.")
-					: TEXT("Skill no-selection completion requires AwaitingSkill stage."));
+				StageErrorMessage);
 			return false;
 		}
 
@@ -441,6 +457,97 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			return false;
 		}
 	}
+
+	bool ValidateRunnerAvailabilityProvenance(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayRunnerNoSelectionNoGoalCapability& Capability,
+		const EInitialTurnOrderPlayer Attacker,
+		const EInitialTurnOrderPlayer Defender,
+		FString& OutErrorMessage)
+	{
+		const FMatchPlayCurrentAttackRunnerSelectionAvailabilityResult&
+			Availability = Capability.GetAuthorityResult();
+		if (!Availability.bQuerySucceeded
+			|| !Availability.GlobalContextResult.bSuccess)
+		{
+			OutErrorMessage =
+				TEXT("Runner capability availability did not formally succeed.");
+			return false;
+		}
+		if (Availability.AttackSequence != Capability.GetAttackSequence()
+			|| Availability.GlobalContextResult.RequestedAttackSequence
+				!= Capability.GetAttackSequence()
+			|| Availability.GlobalContextResult
+					.AuthoritativeAttackSequence
+				!= Capability.GetAttackSequence())
+		{
+			OutErrorMessage =
+				TEXT("Runner capability sequence provenance is invalid.");
+			return false;
+		}
+		if (Availability.RequestingSide != Attacker
+			|| Availability.GlobalContextResult.RequestingSide
+				!= Attacker
+			|| Availability.GlobalContextResult.CurrentAttackingPlayer
+				!= Attacker
+			|| Availability.GlobalContextResult.CurrentDefendingPlayer
+				!= Defender)
+		{
+			OutErrorMessage =
+				TEXT("Runner capability actor provenance is invalid.");
+			return false;
+		}
+
+		const FMatchPlayCurrentAttackActionPreparationState& Preparation =
+			BeforeState.CurrentAttack.ActionPreparation;
+		if (Availability.GlobalContextResult.FrozenCarrierCardId
+				!= Preparation.CarrierCardId
+			|| Availability.GlobalContextResult.FrozenMarkerCardId
+				!= Preparation.MarkerCardId
+			|| Availability.GlobalContextResult.FrozenSkillId
+				!= Preparation.SkillId
+			|| Availability.GlobalContextResult.FrozenActionType
+				!= Preparation.ActionType)
+		{
+			OutErrorMessage =
+				TEXT("Runner capability frozen preparation provenance is invalid.");
+			return false;
+		}
+
+		switch (Capability.GetSource())
+		{
+		case EMatchPlayRunnerNoSelectionNoGoalSource
+			::ResolveNoLegalRunner:
+			if (Capability.GetReason()
+					!= EMatchPlayRunnerNoSelectionNoGoalReason
+						::NoLegalRunner
+				|| Availability.bCanSelectAnyRunner)
+			{
+				OutErrorMessage =
+					TEXT("ResolveNoLegalRunner capability requires NoLegalRunner and zero legal runners.");
+				return false;
+			}
+			return true;
+
+		case EMatchPlayRunnerNoSelectionNoGoalSource::RunnerDecline:
+			if (Capability.GetReason()
+					!= EMatchPlayRunnerNoSelectionNoGoalReason
+						::RunnerDeclined
+				|| !Availability.bCanSelectAnyRunner)
+			{
+				OutErrorMessage =
+					TEXT("RunnerDecline capability requires RunnerDeclined and at least one legal runner.");
+				return false;
+			}
+			return true;
+
+		case EMatchPlayRunnerNoSelectionNoGoalSource::None:
+		default:
+			OutErrorMessage =
+				TEXT("Runner capability source is not supported.");
+			return false;
+		}
+	}
 }
 
 FMatchPlayCurrentAttackCompletionResult
@@ -606,6 +713,94 @@ FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(
 
 	FString CapabilityProvenanceError;
 	if (!ValidateSkillAvailabilityProvenance(
+		BeforeState,
+		Capability,
+		Attacker,
+		Defender,
+		CapabilityProvenanceError))
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::InvalidCapabilityProvenance,
+			CapabilityProvenanceError);
+		return Result;
+	}
+	if (!ValidateScoreState(BeforeState, Result))
+	{
+		return Result;
+	}
+
+	return ApplyCurrentAttackTerminalMutation(
+		BeforeState,
+		BeforeState,
+		Attacker,
+		Defender,
+		MoveTemp(Result));
+}
+
+FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion::CompleteRunnerNoGoal(
+	const FMatchPlayState& BeforeState,
+	const FMatchPlayRunnerNoSelectionNoGoalCapability& Capability)
+{
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+
+	FMatchPlayCurrentAttackCompletionResult Result;
+	Result.BeforeState = BeforeState;
+	Result.AfterState = BeforeState;
+
+	if (Capability.GetSource()
+			!= EMatchPlayRunnerNoSelectionNoGoalSource
+				::ResolveNoLegalRunner
+		&& Capability.GetSource()
+			!= EMatchPlayRunnerNoSelectionNoGoalSource::RunnerDecline)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::UnsupportedCapabilitySource,
+			TEXT("Capability source is not supported by runner no-goal completion."));
+		return Result;
+	}
+	if ((Capability.GetSource()
+				== EMatchPlayRunnerNoSelectionNoGoalSource
+					::ResolveNoLegalRunner
+			&& Capability.GetReason()
+				!= EMatchPlayRunnerNoSelectionNoGoalReason
+					::NoLegalRunner)
+		|| (Capability.GetSource()
+				== EMatchPlayRunnerNoSelectionNoGoalSource
+					::RunnerDecline
+			&& Capability.GetReason()
+				!= EMatchPlayRunnerNoSelectionNoGoalReason
+					::RunnerDeclined))
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::InvalidCapabilityReason,
+			TEXT("Runner capability Source and Reason are not a supported pair."));
+		return Result;
+	}
+
+	EInitialTurnOrderPlayer Attacker =
+		EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer Defender =
+		EInitialTurnOrderPlayer::None;
+	if (!ValidateCommonOuter(
+		BeforeState,
+		Capability.GetAttackSequence(),
+		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner,
+		Result,
+		Attacker,
+		Defender))
+	{
+		return Result;
+	}
+
+	FString CapabilityProvenanceError;
+	if (!ValidateRunnerAvailabilityProvenance(
 		BeforeState,
 		Capability,
 		Attacker,
