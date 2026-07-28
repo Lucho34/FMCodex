@@ -190,11 +190,11 @@ bool FSkillSelectionAuthorityTest::RunTest(
 			TEXT("switch (SkillRuleType)")),
 		1);
 	TestEqual(
-		TEXT("Validator calls participant requirement authority at both canonical resolved-action boundaries"),
+		TEXT("Validator calls participant requirement authority at Runner, Helper, and Ready boundaries"),
 		CountOccurrences(
 			ValidatorSource,
 			TEXT("FMatchPlaySkillParticipantRequirementQuery::Query")),
-		2);
+		3);
 	TestTrue(
 		TEXT("Validator source is included in the authority source collection"),
 		SkillProductionSources.Contains(
@@ -209,6 +209,10 @@ bool FSkillSelectionAuthorityTest::RunTest(
 		TEXT("Validator keeps AwaitingRunner canonical boundary"),
 		ValidatorSource.Contains(
 			TEXT("case EMatchPlayCurrentAttackSelectionStage::AwaitingRunner:")));
+	TestTrue(
+		TEXT("Validator keeps AwaitingHelper canonical boundary"),
+		ValidatorSource.Contains(
+			TEXT("case EMatchPlayCurrentAttackSelectionStage::AwaitingHelper:")));
 	TestTrue(
 		TEXT("Validator keeps ReadyForResolution canonical boundary"),
 		ValidatorSource.Contains(

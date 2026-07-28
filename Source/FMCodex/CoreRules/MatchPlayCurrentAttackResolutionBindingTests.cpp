@@ -6,12 +6,16 @@
 #include "MatchPlayCurrentAttackCarrierSelectionWriter.h"
 #include "MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
 #include "MatchPlayCurrentAttackSkillSelectionWriter.h"
+#include "MatchPlayCurrentAttackRunnerSelectionTestFixtures.h"
+#include "MatchPlayCurrentAttackRunnerSelectionWriter.h"
 #include "Misc/AutomationTest.h"
 
 #include <type_traits>
 
 namespace SkillFixtures =
 	FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+namespace RunnerFixtures =
+	FMCodex::Tests::MatchPlayCurrentAttackRunnerSelection;
 
 namespace CurrentAttackResolutionBindingTests
 {
@@ -111,6 +115,39 @@ bool FResolutionBindingAwaitingSkillTest::RunTest(
 	TestEqual(TEXT("ActionType remains None"),
 		Result.Binding.ActionType, ESkillRuleType::None);
 	TestTrue(TEXT("State unchanged"), AreStatesEqual(State, Original));
+	return true;
+}
+
+RESOLUTION_BINDING_TEST(
+	FResolutionBindingAwaitingHelperTest,
+	"AwaitingHelperRejectedWithoutLeakingPreparation")
+
+bool FResolutionBindingAwaitingHelperTest::RunTest(
+	const FString& Parameters)
+{
+	const auto WriterResult =
+		FMatchPlayCurrentAttackRunnerSelectionWriter::Select(
+			RunnerFixtures::MakeState(),
+			RunnerFixtures::MakeRequest(
+				RunnerFixtures::MidfieldRunnerId));
+	TestTrue(TEXT("Runner setup succeeds"), WriterResult.bSuccess);
+	const FMatchPlayState Original = WriterResult.AfterState;
+	const auto Result =
+		FMatchPlayCurrentAttackResolutionBinding::Query(
+			WriterResult.AfterState,
+			RunnerFixtures::ValidAttackSequence);
+	TestFalse(TEXT("AwaitingHelper binding fails"), Result.bSuccess);
+	TestEqual(TEXT("AwaitingHelper is incomplete"),
+		Result.ErrorCode,
+		EMatchPlayCurrentAttackResolutionBindingErrorCode
+			::SelectionNotComplete);
+	TestTrue(TEXT("Binding remains empty"),
+		Result.Binding.CarrierCardId.IsNone()
+			&& Result.Binding.MarkerCardId.IsNone()
+			&& Result.Binding.SkillId.IsNone());
+	TestTrue(TEXT("Binding is read-only"),
+		RunnerFixtures::AreStatesEqual(
+			WriterResult.AfterState, Original));
 	return true;
 }
 

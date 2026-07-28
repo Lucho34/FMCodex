@@ -1,6 +1,7 @@
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 
 #include "MatchPlaySkillParticipantRequirementQuery.h"
+#include "SkillRuleSnapshotValidator.h"
 
 namespace MatchPlayCurrentAttackSelectionStateValidatorImplementation
 {
@@ -29,7 +30,8 @@ namespace MatchPlayCurrentAttackSelectionStateValidatorImplementation
 		return Preparation.CarrierCardId.IsNone()
 			&& Preparation.MarkerCardId.IsNone()
 			&& Preparation.SkillId.IsNone()
-			&& Preparation.ActionType == ESkillRuleType::None;
+			&& Preparation.ActionType == ESkillRuleType::None
+			&& Preparation.RunnerCardId.IsNone();
 	}
 }
 
@@ -49,6 +51,8 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 		!CurrentAttack.ActionPreparation.SkillId.IsNone();
 	const bool bPreparationHasActionType =
 		CurrentAttack.ActionPreparation.ActionType != ESkillRuleType::None;
+	const bool bPreparationHasRunner =
+		!CurrentAttack.ActionPreparation.RunnerCardId.IsNone();
 	const bool bSelectedActionHasCarrier =
 		!CurrentAttack.SelectedAction.CarrierCardId.IsNone();
 	const bool bSelectedActionPayloadEmpty =
@@ -138,6 +142,15 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 				TEXT("Deployment cannot contain a preparation action type."));
 			return Result;
 		}
+		if (bPreparationHasRunner)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+					::UnexpectedPreparationRunner,
+				TEXT("Deployment cannot contain a preparation runner."));
+			return Result;
+		}
 		break;
 
 	case EMatchPlayCurrentAttackPhase::Resolution:
@@ -180,6 +193,15 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingCarrier requires an empty preparation action type."));
 				return Result;
 			}
+			if (bPreparationHasRunner)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationRunner,
+					TEXT("AwaitingCarrier requires an empty preparation runner."));
+				return Result;
+			}
 			break;
 
 		case EMatchPlayCurrentAttackSelectionStage::AwaitingMarker:
@@ -217,6 +239,15 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::UnexpectedPreparationActionType,
 					TEXT("AwaitingMarker requires an empty preparation action type."));
+				return Result;
+			}
+			if (bPreparationHasRunner)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationRunner,
+					TEXT("AwaitingMarker requires an empty preparation runner."));
 				return Result;
 			}
 			break;
@@ -258,6 +289,15 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingSkill requires an empty preparation action type."));
 				return Result;
 			}
+			if (bPreparationHasRunner)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationRunner,
+					TEXT("AwaitingSkill requires an empty preparation runner."));
+				return Result;
+			}
 			break;
 
 		case EMatchPlayCurrentAttackSelectionStage::AwaitingRunner:
@@ -297,6 +337,47 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingRunner requires a frozen preparation action type."));
 				return Result;
 			}
+			if (bPreparationHasRunner)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::UnexpectedPreparationRunner,
+					TEXT("AwaitingRunner requires an empty preparation runner."));
+				return Result;
+			}
+			if (!CurrentAttack.bAttackerDeploymentFinished
+				|| !CurrentAttack.bDefenderDeploymentFinished)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::ResolutionDeploymentNotComplete,
+					TEXT("AwaitingRunner requires both deployment sides to be finished."));
+				return Result;
+			}
+			if (CurrentAttack.CurrentLegalDeploymentSide
+				!= EInitialTurnOrderPlayer::None)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::ResolutionLegalDeploymentSideNotCleared,
+					TEXT("AwaitingRunner requires no legal deployment side."));
+				return Result;
+			}
+			if (CurrentAttack.ActionPoint
+					< FSkillRuleSnapshotValidator::MinTriggerActionPoint
+				|| CurrentAttack.ActionPoint
+					> FSkillRuleSnapshotValidator::MaxTriggerActionPoint)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::InvalidResolutionActionPoint,
+					TEXT("AwaitingRunner requires ActionPoint within 2 through 8."));
+				return Result;
+			}
 			{
 				const FMatchPlaySkillParticipantRequirementResult
 					Requirement =
@@ -320,6 +401,112 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 							::ActionTypeDoesNotMatchSelectionStage,
 						TEXT("AwaitingRunner requires a runner-and-helper skill action type."));
+					return Result;
+				}
+			}
+			break;
+
+		case EMatchPlayCurrentAttackSelectionStage::AwaitingHelper:
+			if (!bPreparationHasCarrier)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationCarrier,
+					TEXT("AwaitingHelper requires a frozen preparation carrier."));
+				return Result;
+			}
+			if (!bPreparationHasMarker)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationMarker,
+					TEXT("AwaitingHelper requires a frozen preparation marker."));
+				return Result;
+			}
+			if (!bPreparationHasSkill)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationSkill,
+					TEXT("AwaitingHelper requires a frozen preparation skill."));
+				return Result;
+			}
+			if (!bPreparationHasActionType)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationActionType,
+					TEXT("AwaitingHelper requires a frozen preparation action type."));
+				return Result;
+			}
+			if (!bPreparationHasRunner)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationRunner,
+					TEXT("AwaitingHelper requires a frozen preparation runner."));
+				return Result;
+			}
+			if (!CurrentAttack.bAttackerDeploymentFinished
+				|| !CurrentAttack.bDefenderDeploymentFinished)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::ResolutionDeploymentNotComplete,
+					TEXT("AwaitingHelper requires both deployment sides to be finished."));
+				return Result;
+			}
+			if (CurrentAttack.CurrentLegalDeploymentSide
+				!= EInitialTurnOrderPlayer::None)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::ResolutionLegalDeploymentSideNotCleared,
+					TEXT("AwaitingHelper requires no legal deployment side."));
+				return Result;
+			}
+			if (CurrentAttack.ActionPoint
+					< FSkillRuleSnapshotValidator::MinTriggerActionPoint
+				|| CurrentAttack.ActionPoint
+					> FSkillRuleSnapshotValidator::MaxTriggerActionPoint)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::InvalidResolutionActionPoint,
+					TEXT("AwaitingHelper requires ActionPoint within 2 through 8."));
+				return Result;
+			}
+			{
+				const FMatchPlaySkillParticipantRequirementResult
+					Requirement =
+						FMatchPlaySkillParticipantRequirementQuery::Query(
+							CurrentAttack.ActionPreparation.ActionType);
+				if (!Requirement.bSuccess)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::ParticipantRequirementResolutionFailed,
+						Requirement.ErrorMessage);
+					return Result;
+				}
+				if (!Requirement.bRequiresRunner
+					|| !Requirement.bRequiresHelperStage
+					|| Requirement.bCanBecomeReadyImmediately)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::ActionTypeDoesNotMatchSelectionStage,
+						TEXT("AwaitingHelper requires a runner-and-helper skill action type."));
 					return Result;
 				}
 			}

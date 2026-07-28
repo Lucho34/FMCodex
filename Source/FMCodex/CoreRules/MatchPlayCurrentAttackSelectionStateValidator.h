@@ -38,6 +38,16 @@ enum class EMatchPlayCurrentAttackSelectionStateValidationErrorCode : uint8
 		UMETA(DisplayName = "Unexpected Preparation Action Type"),
 	MissingPreparationActionType
 		UMETA(DisplayName = "Missing Preparation Action Type"),
+	UnexpectedPreparationRunner
+		UMETA(DisplayName = "Unexpected Preparation Runner"),
+	MissingPreparationRunner
+		UMETA(DisplayName = "Missing Preparation Runner"),
+	ResolutionDeploymentNotComplete
+		UMETA(DisplayName = "Resolution Deployment Not Complete"),
+	ResolutionLegalDeploymentSideNotCleared
+		UMETA(DisplayName = "Resolution Legal Deployment Side Not Cleared"),
+	InvalidResolutionActionPoint
+		UMETA(DisplayName = "Invalid Resolution Action Point"),
 	PreparationAndSelectedActionCoexist
 		UMETA(DisplayName = "Preparation And Selected Action Coexist"),
 	MissingSelectedAction
