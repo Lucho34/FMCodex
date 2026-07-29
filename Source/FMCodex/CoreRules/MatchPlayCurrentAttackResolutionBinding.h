@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include "MatchPlayCurrentAttackSelectionStateValidator.h"
+#include "MatchPlayCurrentAttackReadyForResolutionValidator.h"
 
 #include "MatchPlayCurrentAttackResolutionBinding.generated.h"
 
@@ -41,6 +41,15 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionBindingValue
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
 	ESkillRuleType ActionType = ESkillRuleType::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName RunnerCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	bool bHasHelper = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName HelperCardId = NAME_None;
 };
 
 USTRUCT(BlueprintType)
@@ -61,6 +70,10 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionBindingResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
 	FMatchPlayCurrentAttackSelectionStateValidationResult
 		SelectionStateValidationResult;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FMatchPlayCurrentAttackReadyValidationResult
+		ReadyValidationResult;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
 	FMatchPlayCurrentAttackResolutionBindingValue Binding;

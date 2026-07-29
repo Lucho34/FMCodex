@@ -111,6 +111,18 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 	if (CurrentAttack.SelectionStage
 		== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution)
 	{
+		Result.ReadyValidationResult =
+			FMatchPlayCurrentAttackReadyForResolutionValidator::Validate(
+				MatchPlayState);
+		if (!Result.ReadyValidationResult.bSuccess)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackResolutionBindingErrorCode
+					::InvalidSelectionState,
+				Result.ReadyValidationResult.ErrorMessage);
+			return Result;
+		}
 		Result.Binding.AttackSequence = CurrentAttack.AttackSequence;
 		Result.Binding.CarrierCardId =
 			CurrentAttack.SelectedAction.CarrierCardId;
@@ -120,6 +132,12 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 			CurrentAttack.SelectedAction.SkillId;
 		Result.Binding.ActionType =
 			CurrentAttack.SelectedAction.ActionType;
+		Result.Binding.RunnerCardId =
+			CurrentAttack.SelectedAction.RunnerCardId;
+		Result.Binding.bHasHelper =
+			CurrentAttack.SelectedAction.bHasHelper;
+		Result.Binding.HelperCardId =
+			CurrentAttack.SelectedAction.HelperCardId;
 		Result.bSuccess = true;
 		Result.ErrorCode =
 			EMatchPlayCurrentAttackResolutionBindingErrorCode::None;

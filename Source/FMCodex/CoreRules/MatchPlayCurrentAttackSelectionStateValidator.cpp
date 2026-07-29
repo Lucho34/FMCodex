@@ -21,7 +21,10 @@ namespace MatchPlayCurrentAttackSelectionStateValidatorImplementation
 		return SelectedAction.CarrierCardId.IsNone()
 			&& SelectedAction.MarkerCardId.IsNone()
 			&& SelectedAction.SkillId.IsNone()
-			&& SelectedAction.ActionType == ESkillRuleType::None;
+			&& SelectedAction.ActionType == ESkillRuleType::None
+			&& SelectedAction.RunnerCardId.IsNone()
+			&& !SelectedAction.bHasHelper
+			&& SelectedAction.HelperCardId.IsNone();
 	}
 
 	bool IsPreparationEmpty(
@@ -582,16 +585,79 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 						Requirement.ErrorMessage);
 					return Result;
 				}
-				if (Requirement.bRequiresRunner
-					|| Requirement.bRequiresHelperStage
-					|| !Requirement.bCanBecomeReadyImmediately)
+				if (Requirement.bRequiresRunner)
 				{
-					SetError(
-						Result,
-						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
-							::ActionTypeDoesNotMatchSelectionStage,
-						TEXT("ReadyForResolution currently supports only no-runner skill action types."));
-					return Result;
+					if (!Requirement.bRequiresHelperStage
+						|| Requirement.bCanBecomeReadyImmediately)
+					{
+						SetError(
+							Result,
+							EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+								::ActionTypeDoesNotMatchSelectionStage,
+							TEXT("ReadyForResolution runner skills require the helper selection stage."));
+						return Result;
+					}
+					if (CurrentAttack.SelectedAction.RunnerCardId.IsNone())
+					{
+						SetError(
+							Result,
+							EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+								::MissingSelectedActionRunner,
+							TEXT("ReadyForResolution runner skills require a selected runner."));
+						return Result;
+					}
+					if (CurrentAttack.SelectedAction.bHasHelper
+						&& CurrentAttack.SelectedAction.HelperCardId.IsNone())
+					{
+						SetError(
+							Result,
+							EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+								::MissingSelectedActionHelper,
+							TEXT("A present Helper requires a non-empty HelperCardId."));
+						return Result;
+					}
+					if (!CurrentAttack.SelectedAction.bHasHelper
+						&& !CurrentAttack.SelectedAction.HelperCardId.IsNone())
+					{
+						SetError(
+							Result,
+							EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+								::UnexpectedSelectedActionHelper,
+							TEXT("An absent Helper requires an empty HelperCardId."));
+						return Result;
+					}
+				}
+				else
+				{
+					if (Requirement.bRequiresHelperStage
+						|| !Requirement.bCanBecomeReadyImmediately)
+					{
+						SetError(
+							Result,
+							EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+								::ActionTypeDoesNotMatchSelectionStage,
+							TEXT("ReadyForResolution participant requirements are inconsistent."));
+						return Result;
+					}
+					if (!CurrentAttack.SelectedAction.RunnerCardId.IsNone())
+					{
+						SetError(
+							Result,
+							EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+								::UnexpectedSelectedActionRunner,
+							TEXT("No-runner skills require an empty RunnerCardId."));
+						return Result;
+					}
+					if (CurrentAttack.SelectedAction.bHasHelper
+						|| !CurrentAttack.SelectedAction.HelperCardId.IsNone())
+					{
+						SetError(
+							Result,
+							EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+								::UnexpectedSelectedActionHelper,
+							TEXT("No-runner skills cannot contain a Helper."));
+						return Result;
+					}
 				}
 			}
 			break;

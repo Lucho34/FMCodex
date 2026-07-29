@@ -60,6 +60,14 @@ enum class EMatchPlayCurrentAttackSelectionStateValidationErrorCode : uint8
 		UMETA(DisplayName = "Missing Selected Action Skill"),
 	MissingSelectedActionActionType
 		UMETA(DisplayName = "Missing Selected Action Action Type"),
+	MissingSelectedActionRunner
+		UMETA(DisplayName = "Missing Selected Action Runner"),
+	UnexpectedSelectedActionRunner
+		UMETA(DisplayName = "Unexpected Selected Action Runner"),
+	MissingSelectedActionHelper
+		UMETA(DisplayName = "Missing Selected Action Helper"),
+	UnexpectedSelectedActionHelper
+		UMETA(DisplayName = "Unexpected Selected Action Helper"),
 	ParticipantRequirementResolutionFailed
 		UMETA(DisplayName = "Participant Requirement Resolution Failed"),
 	ActionTypeDoesNotMatchSelectionStage

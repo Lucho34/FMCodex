@@ -265,14 +265,23 @@ bool FSkillSelectionAuthorityTest::RunTest(
 
 	const UScriptStruct* SelectedActionStruct =
 		FMatchPlayCurrentAttackSelectedAction::StaticStruct();
-	TestNull(
-		TEXT("No Runner selected action field"),
+	int32 SelectedActionFieldCount = 0;
+	for (TFieldIterator<FProperty> It(SelectedActionStruct); It; ++It)
+	{
+		++SelectedActionFieldCount;
+	}
+	TestEqual(
+		TEXT("SelectedAction has seven reflected fields"),
+		SelectedActionFieldCount,
+		7);
+	TestNotNull(
+		TEXT("Runner selected action field"),
 		SelectedActionStruct->FindPropertyByName(TEXT("RunnerCardId")));
-	TestNull(
-		TEXT("No Helper selected action field"),
+	TestNotNull(
+		TEXT("Helper selected action field"),
 		SelectedActionStruct->FindPropertyByName(TEXT("HelperCardId")));
-	TestNull(
-		TEXT("No Helper presence field"),
+	TestNotNull(
+		TEXT("Helper presence field"),
 		SelectedActionStruct->FindPropertyByName(TEXT("bHasHelper")));
 
 	TestFalse(

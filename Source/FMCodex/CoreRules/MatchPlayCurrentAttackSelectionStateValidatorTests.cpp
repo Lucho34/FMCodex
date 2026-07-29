@@ -703,10 +703,10 @@ bool FSelectionStateReadyCorruptionTest::RunTest(
 			ESkillRuleType::Cross);
 	SelectionStateValidatorTests::ExpectFailure(
 		*this,
-		TEXT("Ready runner skill"),
+		TEXT("Ready runner skill missing runner"),
 		Runner,
 		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
-			::ActionTypeDoesNotMatchSelectionStage);
+			::MissingSelectedActionRunner);
 
 	FMatchPlayCurrentAttackState Preparation =
 		SelectionStateValidatorTests::MakeReady();
