@@ -98,7 +98,9 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 		|| CurrentAttack.SelectionStage
 			== EMatchPlayCurrentAttackSelectionStage::AwaitingRunner
 		|| CurrentAttack.SelectionStage
-			== EMatchPlayCurrentAttackSelectionStage::AwaitingHelper)
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingHelper
+		|| CurrentAttack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent)
 	{
 		SetError(
 			Result,
@@ -138,6 +140,8 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 			CurrentAttack.SelectedAction.bHasHelper;
 		Result.Binding.HelperCardId =
 			CurrentAttack.SelectedAction.HelperCardId;
+		Result.Binding.ElectiveBranchIntent =
+			CurrentAttack.SelectedAction.ElectiveBranchIntent;
 		Result.bSuccess = true;
 		Result.ErrorCode =
 			EMatchPlayCurrentAttackResolutionBindingErrorCode::None;

@@ -50,6 +50,10 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionBindingValue
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
 	FName HelperCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	EMatchPlayElectiveBranchIntent ElectiveBranchIntent =
+		EMatchPlayElectiveBranchIntent::None;
 };
 
 USTRUCT(BlueprintType)

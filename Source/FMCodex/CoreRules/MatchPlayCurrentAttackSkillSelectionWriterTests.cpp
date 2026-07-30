@@ -13,7 +13,7 @@
 
 SKILL_WRITER_TEST(
 	FSkillWriterNoRunnerFinalizationTest,
-	"LongShotAndCutInsideFinalizeReady")
+	"LongShotAndCutInsideAwaitBranchIntent")
 
 bool FSkillWriterNoRunnerFinalizationTest::RunTest(
 	const FString& Parameters)
@@ -44,48 +44,38 @@ bool FSkillWriterNoRunnerFinalizationTest::RunTest(
 			TEXT("Input unchanged"),
 			AreStatesEqual(Before, Result.BeforeState));
 		TestEqual(
-			TEXT("Ready stage"),
+			TEXT("Awaiting branch intent stage"),
 			Attack.SelectionStage,
 			EMatchPlayCurrentAttackSelectionStage
-				::ReadyForResolution);
-		TestTrue(
-			TEXT("Has selected action"),
+				::AwaitingBranchIntent);
+		TestFalse(
+			TEXT("No selected action yet"),
 			Attack.bHasSelectedAction);
 		TestEqual(
-			TEXT("Final carrier"),
-			Attack.SelectedAction.CarrierCardId,
+			TEXT("Frozen carrier"),
+			Attack.ActionPreparation.CarrierCardId,
 			CarrierId);
 		TestEqual(
-			TEXT("Final marker"),
-			Attack.SelectedAction.MarkerCardId,
+			TEXT("Frozen marker"),
+			Attack.ActionPreparation.MarkerCardId,
 			MarkerId);
 		TestEqual(
-			TEXT("Final skill"),
-			Attack.SelectedAction.SkillId,
+			TEXT("Frozen skill"),
+			Attack.ActionPreparation.SkillId,
 			Case.SkillId);
 		TestEqual(
-			TEXT("Final type"),
-			Attack.SelectedAction.ActionType,
+			TEXT("Frozen type"),
+			Attack.ActionPreparation.ActionType,
 			Case.Type);
 		TestTrue(
-			TEXT("Preparation carrier cleared"),
-			Attack.ActionPreparation.CarrierCardId.IsNone());
-		TestTrue(
-			TEXT("Preparation marker cleared"),
-			Attack.ActionPreparation.MarkerCardId.IsNone());
-		TestTrue(
-			TEXT("Preparation skill cleared"),
-			Attack.ActionPreparation.SkillId.IsNone());
-		TestEqual(
-			TEXT("Preparation action type cleared"),
-			Attack.ActionPreparation.ActionType,
-			ESkillRuleType::None);
+			TEXT("Selected action remains empty"),
+			Attack.SelectedAction.CarrierCardId.IsNone());
 		TestEqual(
 			TEXT("ActionPoint unchanged"),
 			Attack.ActionPoint,
 			Before.CurrentAttack.ActionPoint);
 		TestTrue(
-			TEXT("Final state canonical"),
+			TEXT("Awaiting intent state canonical"),
 			FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 				Attack)
 				.bIsCanonical);

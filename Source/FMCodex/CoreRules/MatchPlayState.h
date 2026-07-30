@@ -27,7 +27,19 @@ enum class EMatchPlayCurrentAttackSelectionStage : uint8
 	AwaitingSkill = 3 UMETA(DisplayName = "Awaiting Skill"),
 	AwaitingRunner = 4 UMETA(DisplayName = "Awaiting Runner"),
 	ReadyForResolution = 5 UMETA(DisplayName = "Ready For Resolution"),
-	AwaitingHelper = 6 UMETA(DisplayName = "Awaiting Helper")
+	AwaitingHelper = 6 UMETA(DisplayName = "Awaiting Helper"),
+	AwaitingBranchIntent = 7
+		UMETA(DisplayName = "Awaiting Branch Intent")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayElectiveBranchIntent : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	DirectShot = 1 UMETA(DisplayName = "Direct Shot"),
+	DeadCorner = 2 UMETA(DisplayName = "Dead Corner"),
+	CrossHigh = 3 UMETA(DisplayName = "Cross High"),
+	CrossLow = 4 UMETA(DisplayName = "Cross Low")
 };
 
 USTRUCT(BlueprintType)
@@ -64,6 +76,12 @@ struct FMCODEX_API FMatchPlayCurrentAttackActionPreparationState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName RunnerCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	bool bHasHelper = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FName HelperCardId = NAME_None;
 };
 
 USTRUCT(BlueprintType)
@@ -91,6 +109,10 @@ struct FMCODEX_API FMatchPlayCurrentAttackSelectedAction
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName HelperCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	EMatchPlayElectiveBranchIntent ElectiveBranchIntent =
+		EMatchPlayElectiveBranchIntent::None;
 };
 
 USTRUCT(BlueprintType)

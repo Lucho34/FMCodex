@@ -2,6 +2,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "MatchPlayCurrentAttackBranchIntentSelectionWriter.h"
 #include "MatchPlayCurrentAttackHelperSelectionWriter.h"
 #include "MatchPlayHelperAbsence.h"
 
@@ -208,12 +209,13 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackHelperSelection
 		return Request;
 	}
 
-	inline FMatchPlayState MakeZeroLegalState(
+	inline FMatchPlayState MakeZeroLegalStateForType(
+		const ESkillRuleType Type,
 		const EInitialTurnOrderPlayer Attacker =
 			EInitialTurnOrderPlayer::PlayerA)
 	{
 		FMatchPlayState State = MakeState(
-			ESkillRuleType::PassControl,
+			Type,
 			Attacker);
 		State.CurrentAttack.DeploymentPlacements.RemoveAll(
 			[](const FMatchPlayDeploymentPlacement& Placement)
@@ -239,19 +241,13 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackHelperSelection
 		return State;
 	}
 
-	inline FMatchPlayCurrentAttackSelectedAction MakeSelectedAction(
-		const ESkillRuleType Type,
-		const bool bHasHelper)
+	inline FMatchPlayState MakeZeroLegalState(
+		const EInitialTurnOrderPlayer Attacker =
+			EInitialTurnOrderPlayer::PlayerA)
 	{
-		FMatchPlayCurrentAttackSelectedAction Selected;
-		Selected.CarrierCardId = CarrierId;
-		Selected.MarkerCardId = MarkerId;
-		Selected.SkillId = GetSkillId(Type);
-		Selected.ActionType = Type;
-		Selected.RunnerCardId = RunnerId;
-		Selected.bHasHelper = bHasHelper;
-		Selected.HelperCardId = bHasHelper ? HelperId : NAME_None;
-		return Selected;
+		return MakeZeroLegalStateForType(
+			ESkillRuleType::PassControl,
+			Attacker);
 	}
 
 	inline FMatchPlayState MakeReadyState(
@@ -261,12 +257,35 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackHelperSelection
 			EInitialTurnOrderPlayer::PlayerA)
 	{
 		FMatchPlayState State = MakeState(Type, Attacker);
-		State.CurrentAttack.ActionPreparation = {};
-		State.CurrentAttack.SelectedAction =
-			MakeSelectedAction(Type, bHasHelper);
-		State.CurrentAttack.bHasSelectedAction = true;
-		State.CurrentAttack.SelectionStage =
-			EMatchPlayCurrentAttackSelectionStage::ReadyForResolution;
+		if (bHasHelper)
+		{
+			State =
+				FMatchPlayCurrentAttackHelperSelectionWriter::Select(
+					State,
+					MakeRequest(HelperId, GetDefender(Attacker)))
+					.AfterState;
+		}
+		else
+		{
+			FMatchPlayHelperDeclineRequest Request;
+			Request.AttackSequence = ValidAttackSequence;
+			Request.RequestingSide = GetDefender(Attacker);
+			State =
+				FMatchPlayHelperDecline::Decline(State, Request)
+					.AfterState;
+		}
+		if (Type == ESkillRuleType::Cross)
+		{
+			FMatchPlayCurrentAttackBranchIntentSelectionRequest Request;
+			Request.AttackSequence = ValidAttackSequence;
+			Request.RequestingSide = Attacker;
+			Request.Intent =
+				EMatchPlayElectiveBranchIntent::CrossHigh;
+			State =
+				FMatchPlayCurrentAttackBranchIntentSelectionWriter
+					::Select(State, Request)
+					.AfterState;
+		}
 		return State;
 	}
 

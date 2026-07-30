@@ -5,6 +5,7 @@
 #include "MatchPlayState.h"
 
 class FMatchPlayCurrentAttackHelperSelectionWriter;
+class FMatchPlayCurrentAttackBranchIntentSelectionWriter;
 class FMatchPlayHelperAbsenceFinalizer;
 
 class FMatchPlayValidatedHelperPresence final
@@ -70,9 +71,14 @@ class FMatchPlayCurrentAttackHelperFinalization final
 {
 private:
 	friend class FMatchPlayCurrentAttackHelperSelectionWriter;
+	friend class FMatchPlayCurrentAttackBranchIntentSelectionWriter;
 	friend class FMatchPlayHelperAbsenceFinalizer;
+
+	static void ApplyValidatedHelperCompletion(
+		FMatchPlayState& WorkingState,
+		const FMatchPlayValidatedHelperPresence& Presence);
 
 	static void ApplyFinalSelectedAction(
 		FMatchPlayState& WorkingState,
-		const FMatchPlayValidatedHelperPresence& Presence);
+		EMatchPlayElectiveBranchIntent Intent);
 };

@@ -2,12 +2,16 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "MatchPlayCurrentAttackBranchIntentSelectionTestFixtures.h"
 #include "Misc/AutomationTest.h"
 
 #include <type_traits>
 
 namespace SelectionStateValidatorTests
 {
+	namespace BranchFixtures =
+		FMCodex::Tests::MatchPlayCurrentAttackBranchIntentSelection;
+
 	const FName CarrierId(TEXT("PlayerA.Carrier"));
 	const FName MarkerId(TEXT("PlayerB.Marker"));
 	const FName SkillId(TEXT("Skill.Selection"));
@@ -73,16 +77,34 @@ namespace SelectionStateValidatorTests
 		const ESkillRuleType ActionType =
 			ESkillRuleType::LongShot)
 	{
-		FMatchPlayCurrentAttackState State;
-		State.Phase = EMatchPlayCurrentAttackPhase::Resolution;
+		if (ActionType == ESkillRuleType::PassControl
+			|| ActionType == ESkillRuleType::ThroughBall)
+		{
+			return BranchFixtures::HelperFixtures::MakeReadyState(
+				ActionType)
+				.CurrentAttack;
+		}
+		return BranchFixtures::MakeReadyState(
+			ActionType,
+			ActionType == ESkillRuleType::Cross
+				? EMatchPlayElectiveBranchIntent::CrossHigh
+				: EMatchPlayElectiveBranchIntent::DirectShot)
+			.CurrentAttack;
+	}
+
+	FMatchPlayCurrentAttackState MakeAwaitingBranchIntent(
+		const ESkillRuleType ActionType =
+			ESkillRuleType::LongShot)
+	{
+		FMatchPlayCurrentAttackState State =
+			MakeAwaitingRunner(ActionType);
 		State.SelectionStage =
 			EMatchPlayCurrentAttackSelectionStage
-				::ReadyForResolution;
-		State.bHasSelectedAction = true;
-		State.SelectedAction.CarrierCardId = CarrierId;
-		State.SelectedAction.MarkerCardId = MarkerId;
-		State.SelectedAction.SkillId = SkillId;
-		State.SelectedAction.ActionType = ActionType;
+				::AwaitingBranchIntent;
+		if (ActionType == ESkillRuleType::Cross)
+		{
+			State.ActionPreparation.RunnerCardId = RunnerId;
+		}
 		return State;
 	}
 
@@ -200,6 +222,20 @@ bool FSelectionStateContractTest::RunTest(const FString& Parameters)
 			EMatchPlayCurrentAttackSelectionStage
 				::AwaitingHelper),
 		uint8{6});
+	TestEqual(TEXT("AwaitingBranchIntent value appended"),
+		static_cast<uint8>(
+			EMatchPlayCurrentAttackSelectionStage
+				::AwaitingBranchIntent),
+		uint8{7});
+	TestNotNull(TEXT("Preparation bHasHelper reflected"),
+		FMatchPlayCurrentAttackActionPreparationState::StaticStruct()
+			->FindPropertyByName(TEXT("bHasHelper")));
+	TestNotNull(TEXT("Preparation HelperCardId reflected"),
+		FMatchPlayCurrentAttackActionPreparationState::StaticStruct()
+			->FindPropertyByName(TEXT("HelperCardId")));
+	TestNotNull(TEXT("Selected intent reflected"),
+		FMatchPlayCurrentAttackSelectedAction::StaticStruct()
+			->FindPropertyByName(TEXT("ElectiveBranchIntent")));
 	return true;
 }
 
@@ -701,6 +737,7 @@ bool FSelectionStateReadyCorruptionTest::RunTest(
 	FMatchPlayCurrentAttackState Runner =
 		SelectionStateValidatorTests::MakeReady(
 			ESkillRuleType::Cross);
+	Runner.SelectedAction.RunnerCardId = NAME_None;
 	SelectionStateValidatorTests::ExpectFailure(
 		*this,
 		TEXT("Ready runner skill missing runner"),

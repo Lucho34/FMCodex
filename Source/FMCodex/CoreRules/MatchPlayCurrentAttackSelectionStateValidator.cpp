@@ -1,5 +1,6 @@
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 
+#include "MatchPlayElectiveBranchIntentRules.h"
 #include "MatchPlaySkillParticipantRequirementQuery.h"
 #include "SkillRuleSnapshotValidator.h"
 
@@ -24,7 +25,9 @@ namespace MatchPlayCurrentAttackSelectionStateValidatorImplementation
 			&& SelectedAction.ActionType == ESkillRuleType::None
 			&& SelectedAction.RunnerCardId.IsNone()
 			&& !SelectedAction.bHasHelper
-			&& SelectedAction.HelperCardId.IsNone();
+			&& SelectedAction.HelperCardId.IsNone()
+			&& SelectedAction.ElectiveBranchIntent
+				== EMatchPlayElectiveBranchIntent::None;
 	}
 
 	bool IsPreparationEmpty(
@@ -34,7 +37,9 @@ namespace MatchPlayCurrentAttackSelectionStateValidatorImplementation
 			&& Preparation.MarkerCardId.IsNone()
 			&& Preparation.SkillId.IsNone()
 			&& Preparation.ActionType == ESkillRuleType::None
-			&& Preparation.RunnerCardId.IsNone();
+			&& Preparation.RunnerCardId.IsNone()
+			&& !Preparation.bHasHelper
+			&& Preparation.HelperCardId.IsNone();
 	}
 }
 
@@ -56,6 +61,10 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 		CurrentAttack.ActionPreparation.ActionType != ESkillRuleType::None;
 	const bool bPreparationHasRunner =
 		!CurrentAttack.ActionPreparation.RunnerCardId.IsNone();
+	const bool bPreparationHasHelper =
+		CurrentAttack.ActionPreparation.bHasHelper;
+	const bool bPreparationHasHelperCardId =
+		!CurrentAttack.ActionPreparation.HelperCardId.IsNone();
 	const bool bSelectedActionHasCarrier =
 		!CurrentAttack.SelectedAction.CarrierCardId.IsNone();
 	const bool bSelectedActionPayloadEmpty =
@@ -92,6 +101,20 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 			EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 				::SelectedActionPayloadNotEmpty,
 			TEXT("SelectedAction must remain empty until selection is ready for resolution."));
+		return Result;
+	}
+
+	if (CurrentAttack.SelectionStage
+			!= EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent
+		&& CurrentAttack.SelectionStage
+			!= EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+		&& (bPreparationHasHelper || bPreparationHasHelperCardId))
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+				::UnexpectedPreparationHelper,
+			TEXT("Preparation Helper authority is only valid while awaiting branch intent."));
 		return Result;
 	}
 
@@ -515,6 +538,134 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 			}
 			break;
 
+		case EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent:
+			if (!bPreparationHasCarrier)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationCarrier,
+					TEXT("AwaitingBranchIntent requires a frozen preparation carrier."));
+				return Result;
+			}
+			if (!bPreparationHasMarker)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationMarker,
+					TEXT("AwaitingBranchIntent requires a frozen preparation marker."));
+				return Result;
+			}
+			if (!bPreparationHasSkill)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationSkill,
+					TEXT("AwaitingBranchIntent requires a frozen preparation skill."));
+				return Result;
+			}
+			if (!bPreparationHasActionType)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::MissingPreparationActionType,
+					TEXT("AwaitingBranchIntent requires a frozen preparation action type."));
+				return Result;
+			}
+			if (!CurrentAttack.bAttackerDeploymentFinished
+				|| !CurrentAttack.bDefenderDeploymentFinished)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::ResolutionDeploymentNotComplete,
+					TEXT("AwaitingBranchIntent requires both deployment sides to be finished."));
+				return Result;
+			}
+			if (CurrentAttack.CurrentLegalDeploymentSide
+				!= EInitialTurnOrderPlayer::None)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::ResolutionLegalDeploymentSideNotCleared,
+					TEXT("AwaitingBranchIntent requires no legal deployment side."));
+				return Result;
+			}
+			if (CurrentAttack.ActionPoint
+					< FSkillRuleSnapshotValidator::MinTriggerActionPoint
+				|| CurrentAttack.ActionPoint
+					> FSkillRuleSnapshotValidator::MaxTriggerActionPoint)
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::InvalidResolutionActionPoint,
+					TEXT("AwaitingBranchIntent requires ActionPoint within 2 through 8."));
+				return Result;
+			}
+			if (CurrentAttack.ActionPreparation.ActionType
+					== ESkillRuleType::LongShot
+				|| CurrentAttack.ActionPreparation.ActionType
+					== ESkillRuleType::CutInsideShot)
+			{
+				if (bPreparationHasRunner)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::UnexpectedPreparationRunner,
+						TEXT("Shot branch intent selection cannot contain a Runner."));
+					return Result;
+				}
+				if (bPreparationHasHelper
+					|| bPreparationHasHelperCardId)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::UnexpectedPreparationHelper,
+						TEXT("Shot branch intent selection cannot contain a Helper."));
+					return Result;
+				}
+			}
+			else if (CurrentAttack.ActionPreparation.ActionType
+				== ESkillRuleType::Cross)
+			{
+				if (!bPreparationHasRunner)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::MissingPreparationRunner,
+						TEXT("Cross branch intent selection requires a Runner."));
+					return Result;
+				}
+				if (bPreparationHasHelper
+					!= bPreparationHasHelperCardId)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::InvalidPreparationHelperPresence,
+						TEXT("Cross branch intent Helper presence is inconsistent."));
+					return Result;
+				}
+			}
+			else
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::ActionTypeDoesNotMatchSelectionStage,
+					TEXT("AwaitingBranchIntent requires LongShot, CutInsideShot, or Cross."));
+				return Result;
+			}
+			break;
+
 		case EMatchPlayCurrentAttackSelectionStage::ReadyForResolution:
 			if (!IsPreparationEmpty(CurrentAttack.ActionPreparation))
 			{
@@ -659,6 +810,17 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 						return Result;
 					}
 				}
+			}
+			if (!MatchPlayElectiveBranchIntentRules::IsLegalIntent(
+				CurrentAttack.SelectedAction.ActionType,
+				CurrentAttack.SelectedAction.ElectiveBranchIntent))
+			{
+				SetError(
+					Result,
+					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+						::InvalidSelectedActionBranchIntent,
+					TEXT("Selected action branch intent does not match its action type."));
+				return Result;
 			}
 			break;
 

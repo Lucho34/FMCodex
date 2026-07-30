@@ -97,6 +97,10 @@ struct FMCODEX_API FMatchPlayBoundActionNormalizedParticipantBundle
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
 	FMatchPlayBoundActionNormalizedParticipant Helper;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
+	EMatchPlayElectiveBranchIntent ElectiveBranchIntent =
+		EMatchPlayElectiveBranchIntent::None;
 };
 
 UENUM(BlueprintType)
@@ -157,4 +161,8 @@ struct FMCODEX_API FMatchPlayBoundActionParticipantNormalizationResult
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
 	FMatchPlayBoundActionNormalizedParticipantBundle Bundle;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
+	EMatchPlayElectiveBranchIntent ElectiveBranchIntent =
+		EMatchPlayElectiveBranchIntent::None;
 };

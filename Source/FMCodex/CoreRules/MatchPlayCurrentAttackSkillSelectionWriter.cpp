@@ -33,19 +33,13 @@ FMatchPlayCurrentAttackSkillSelectionWriter::Select(
 
 	if (Requirement.bCanBecomeReadyImmediately)
 	{
-		CurrentAttack.SelectedAction.CarrierCardId =
-			CurrentAttack.ActionPreparation.CarrierCardId;
-		CurrentAttack.SelectedAction.MarkerCardId =
-			CurrentAttack.ActionPreparation.MarkerCardId;
-		CurrentAttack.SelectedAction.SkillId = Request.SkillId;
-		CurrentAttack.SelectedAction.ActionType =
+		CurrentAttack.ActionPreparation.SkillId =
+			Request.SkillId;
+		CurrentAttack.ActionPreparation.ActionType =
 			Result.LegalityResult.ResolvedActionType;
-		CurrentAttack.bHasSelectedAction = true;
-		CurrentAttack.ActionPreparation =
-			FMatchPlayCurrentAttackActionPreparationState();
 		CurrentAttack.SelectionStage =
 			EMatchPlayCurrentAttackSelectionStage
-				::ReadyForResolution;
+				::AwaitingBranchIntent;
 	}
 	else
 	{

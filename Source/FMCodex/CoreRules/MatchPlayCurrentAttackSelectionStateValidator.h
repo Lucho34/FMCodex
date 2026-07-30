@@ -71,7 +71,13 @@ enum class EMatchPlayCurrentAttackSelectionStateValidationErrorCode : uint8
 	ParticipantRequirementResolutionFailed
 		UMETA(DisplayName = "Participant Requirement Resolution Failed"),
 	ActionTypeDoesNotMatchSelectionStage
-		UMETA(DisplayName = "Action Type Does Not Match Selection Stage")
+		UMETA(DisplayName = "Action Type Does Not Match Selection Stage"),
+	UnexpectedPreparationHelper
+		UMETA(DisplayName = "Unexpected Preparation Helper"),
+	InvalidPreparationHelperPresence
+		UMETA(DisplayName = "Invalid Preparation Helper Presence"),
+	InvalidSelectedActionBranchIntent
+		UMETA(DisplayName = "Invalid Selected Action Branch Intent")
 };
 
 USTRUCT(BlueprintType)

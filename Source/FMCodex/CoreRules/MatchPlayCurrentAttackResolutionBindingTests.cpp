@@ -2,6 +2,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "MatchPlayCurrentAttackBranchIntentSelectionTestFixtures.h"
 #include "MatchPlayCurrentAttackCarrierSelectionTestFixtures.h"
 #include "MatchPlayCurrentAttackCarrierSelectionWriter.h"
 #include "MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
@@ -16,6 +17,8 @@ namespace SkillFixtures =
 	FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
 namespace RunnerFixtures =
 	FMCodex::Tests::MatchPlayCurrentAttackRunnerSelection;
+namespace BranchIntentFixtures =
+	FMCodex::Tests::MatchPlayCurrentAttackBranchIntentSelection;
 
 namespace CurrentAttackResolutionBindingTests
 {
@@ -352,16 +355,14 @@ bool FResolutionBindingReadyTest::RunTest(
 	};
 	for (const FCase& Case : Cases)
 	{
-		const auto WriterResult =
-			FMatchPlayCurrentAttackSkillSelectionWriter::Select(
-				SkillFixtures::MakeState({Case.SkillId}),
-				SkillFixtures::MakeRuleSet(),
-				SkillFixtures::MakeRequest(Case.SkillId));
-		TestTrue(TEXT("Ready setup succeeds"), WriterResult.bSuccess);
-		const FMatchPlayState Original = WriterResult.AfterState;
+		const FMatchPlayState Ready =
+			BranchIntentFixtures::MakeReadyState(
+				Case.Type,
+				EMatchPlayElectiveBranchIntent::DirectShot);
+		const FMatchPlayState Original = Ready;
 		const auto Result =
 			FMatchPlayCurrentAttackResolutionBinding::Query(
-				WriterResult.AfterState,
+				Ready,
 				SkillFixtures::ValidAttackSequence);
 		TestTrue(TEXT("Ready binding succeeds"), Result.bSuccess);
 		TestEqual(
@@ -387,7 +388,7 @@ bool FResolutionBindingReadyTest::RunTest(
 		TestTrue(
 			TEXT("Ready state unchanged"),
 			SkillFixtures::AreStatesEqual(
-				WriterResult.AfterState,
+				Ready,
 				Original));
 	}
 	return true;
@@ -400,15 +401,12 @@ RESOLUTION_BINDING_TEST(
 bool FResolutionBindingReadyCorruptionTest::RunTest(
 	const FString& Parameters)
 {
-	const auto WriterResult =
-		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
-			SkillFixtures::MakeState(
-				{SkillFixtures::LongShotSkillId}),
-			SkillFixtures::MakeRuleSet(),
-			SkillFixtures::MakeRequest());
-	TestTrue(TEXT("Ready setup succeeds"), WriterResult.bSuccess);
+	const FMatchPlayState Ready =
+		BranchIntentFixtures::MakeReadyState(
+			ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DirectShot);
 
-	FMatchPlayState Preparation = WriterResult.AfterState;
+	FMatchPlayState Preparation = Ready;
 	Preparation.CurrentAttack.ActionPreparation.SkillId =
 		SkillFixtures::LongShotSkillId;
 	const auto PreparationResult =
@@ -424,7 +422,7 @@ bool FResolutionBindingReadyCorruptionTest::RunTest(
 		EMatchPlayCurrentAttackResolutionBindingErrorCode
 			::InvalidSelectionState);
 
-	FMatchPlayState MissingMarker = WriterResult.AfterState;
+	FMatchPlayState MissingMarker = Ready;
 	MissingMarker.CurrentAttack.SelectedAction.MarkerCardId =
 		NAME_None;
 	const auto MarkerResult =
@@ -433,7 +431,7 @@ bool FResolutionBindingReadyCorruptionTest::RunTest(
 			SkillFixtures::ValidAttackSequence);
 	TestFalse(TEXT("Missing marker rejected"), MarkerResult.bSuccess);
 
-	FMatchPlayState RunnerType = WriterResult.AfterState;
+	FMatchPlayState RunnerType = Ready;
 	RunnerType.CurrentAttack.SelectedAction.ActionType =
 		ESkillRuleType::Cross;
 	const auto RunnerResult =

@@ -54,7 +54,9 @@ enum class EMatchPlayCurrentAttackReadyValidationErrorCode : uint8
 		UMETA(DisplayName = "Runner Physical Area Resolution Failed"),
 	RunnerNotInAttackingForwardArea
 		UMETA(DisplayName = "Runner Not In Attacking Forward Area"),
-	HelperAuthorityFailed UMETA(DisplayName = "Helper Authority Failed")
+	HelperAuthorityFailed UMETA(DisplayName = "Helper Authority Failed"),
+	InvalidElectiveBranchIntent
+		UMETA(DisplayName = "Invalid Elective Branch Intent")
 };
 
 USTRUCT(BlueprintType)

@@ -102,9 +102,10 @@ bool FHelperSelectionAuthorityTest::RunTest(
 		TEXT("ActionType"),
 		TEXT("RunnerCardId"),
 		TEXT("bHasHelper"),
-		TEXT("HelperCardId")
+		TEXT("HelperCardId"),
+		TEXT("ElectiveBranchIntent")
 	};
-	TestEqual(TEXT("SelectedAction exactly 7 fields"),
+	TestEqual(TEXT("SelectedAction exactly 8 fields"),
 		SelectedNames.Num(), ExpectedNames.Num());
 	for (int32 Index = 0;
 		Index < SelectedNames.Num()
@@ -194,7 +195,10 @@ bool FHelperSelectionAuthorityTest::RunTest(
 	TestEqual(TEXT("One private absence finalizer"),
 		Count(AbsenceSource, TEXT("FinalizeWithoutHelper(")), 3);
 	TestEqual(TEXT("One final SelectedAction implementation"),
-		Count(FinalizationSource, TEXT("ApplyFinalSelectedAction(")), 1);
+		Count(
+			FinalizationSource,
+			TEXT("void FMatchPlayCurrentAttackHelperFinalization::ApplyFinalSelectedAction(")),
+		1);
 	TestFalse(TEXT("No fake Helper probe"),
 		Production.Contains(TEXT("ProbeHelperCardId"))
 			|| Production.Contains(TEXT("HelperAvailabilityProbe"))

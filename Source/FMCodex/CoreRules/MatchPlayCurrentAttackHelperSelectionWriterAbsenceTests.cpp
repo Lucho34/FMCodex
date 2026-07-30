@@ -31,40 +31,63 @@ bool FHelperSelectWriterSuccessTest::RunTest(
 				Before,
 				HelperFixtures::MakeRequest());
 		TestTrue(TEXT("Select succeeds"), Result.bSuccess);
-		TestTrue(TEXT("Ready validation succeeds"),
-			Result.ReadyValidationResult.bSuccess);
 		const FMatchPlayCurrentAttackState& Attack =
 			Result.AfterState.CurrentAttack;
-		TestEqual(TEXT("Carrier copied"),
-			Attack.SelectedAction.CarrierCardId,
-			HelperFixtures::CarrierId);
-		TestEqual(TEXT("Marker copied"),
-			Attack.SelectedAction.MarkerCardId,
-			HelperFixtures::MarkerId);
-		TestEqual(TEXT("Skill copied"),
-			Attack.SelectedAction.SkillId,
-			HelperFixtures::GetSkillId(Type));
-		TestEqual(TEXT("Type copied"),
-			Attack.SelectedAction.ActionType, Type);
-		TestEqual(TEXT("Runner copied"),
-			Attack.SelectedAction.RunnerCardId,
-			HelperFixtures::RunnerId);
-		TestTrue(TEXT("Helper present"),
-			Attack.SelectedAction.bHasHelper);
-		TestEqual(TEXT("Helper copied"),
-			Attack.SelectedAction.HelperCardId,
-			HelperFixtures::HelperId);
-		TestTrue(TEXT("Selected action present"),
-			Attack.bHasSelectedAction);
-		TestEqual(TEXT("Ready stage"), Attack.SelectionStage,
-			EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
-		const FMatchPlayCurrentAttackActionPreparationState Empty;
-		TestTrue(TEXT("Preparation cleared"),
-			FMatchPlayCurrentAttackActionPreparationState::StaticStruct()
-				->CompareScriptStruct(
-					&Attack.ActionPreparation,
-					&Empty,
-					0));
+		if (Type == ESkillRuleType::Cross)
+		{
+			TestFalse(TEXT("Cross is not Ready yet"),
+				Result.ReadyValidationResult.bSuccess);
+			TestEqual(TEXT("Cross awaits branch intent"),
+				Attack.SelectionStage,
+				EMatchPlayCurrentAttackSelectionStage
+					::AwaitingBranchIntent);
+			TestFalse(TEXT("Cross selected action absent"),
+				Attack.bHasSelectedAction);
+			TestTrue(TEXT("Cross preparation helper present"),
+				Attack.ActionPreparation.bHasHelper);
+			TestEqual(TEXT("Cross preparation helper copied"),
+				Attack.ActionPreparation.HelperCardId,
+				HelperFixtures::HelperId);
+		}
+		else
+		{
+			TestTrue(TEXT("Ready validation succeeds"),
+				Result.ReadyValidationResult.bSuccess);
+			TestEqual(TEXT("Carrier copied"),
+				Attack.SelectedAction.CarrierCardId,
+				HelperFixtures::CarrierId);
+			TestEqual(TEXT("Marker copied"),
+				Attack.SelectedAction.MarkerCardId,
+				HelperFixtures::MarkerId);
+			TestEqual(TEXT("Skill copied"),
+				Attack.SelectedAction.SkillId,
+				HelperFixtures::GetSkillId(Type));
+			TestEqual(TEXT("Type copied"),
+				Attack.SelectedAction.ActionType, Type);
+			TestEqual(TEXT("Runner copied"),
+				Attack.SelectedAction.RunnerCardId,
+				HelperFixtures::RunnerId);
+			TestTrue(TEXT("Helper present"),
+				Attack.SelectedAction.bHasHelper);
+			TestEqual(TEXT("Helper copied"),
+				Attack.SelectedAction.HelperCardId,
+				HelperFixtures::HelperId);
+			TestTrue(TEXT("Selected action present"),
+				Attack.bHasSelectedAction);
+			TestEqual(TEXT("Ready stage"), Attack.SelectionStage,
+				EMatchPlayCurrentAttackSelectionStage
+					::ReadyForResolution);
+			TestEqual(TEXT("Non-elective intent remains None"),
+				Attack.SelectedAction.ElectiveBranchIntent,
+				EMatchPlayElectiveBranchIntent::None);
+			const FMatchPlayCurrentAttackActionPreparationState Empty;
+			TestTrue(TEXT("Preparation cleared"),
+				FMatchPlayCurrentAttackActionPreparationState::StaticStruct()
+					->CompareScriptStruct(
+						&Attack.ActionPreparation,
+						&Empty,
+						0));
+		}
 
 		FMatchPlayState Normalized = Result.AfterState;
 		Normalized.CurrentAttack.SelectedAction =

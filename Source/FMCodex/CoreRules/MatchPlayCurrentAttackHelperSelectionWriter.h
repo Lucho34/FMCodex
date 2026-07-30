@@ -4,6 +4,7 @@
 
 #include "MatchPlayCurrentAttackHelperSelectionLegality.h"
 #include "MatchPlayCurrentAttackReadyForResolutionValidator.h"
+#include "MatchPlayCurrentAttackSelectionStateValidator.h"
 
 #include "MatchPlayCurrentAttackHelperSelectionWriter.generated.h"
 
@@ -12,6 +13,8 @@ enum class EMatchPlayCurrentAttackHelperSelectionWriterErrorCode : uint8
 {
 	None UMETA(DisplayName = "None"),
 	LegalityFailed UMETA(DisplayName = "Legality Failed"),
+	SelectionStateValidationFailed
+		UMETA(DisplayName = "Selection State Validation Failed"),
 	ReadyValidationFailed UMETA(DisplayName = "Ready Validation Failed")
 };
 
@@ -38,6 +41,10 @@ struct FMCODEX_API
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Helper Selection Writer")
 	FMatchPlayCurrentAttackReadyValidationResult ReadyValidationResult;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Helper Selection Writer")
+	FMatchPlayCurrentAttackSelectionStateValidationResult
+		SelectionStateValidationResult;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Helper Selection Writer")
 	EMatchPlayCurrentAttackHelperSelectionWriterErrorCode ErrorCode =

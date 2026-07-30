@@ -271,9 +271,9 @@ bool FSkillSelectionAuthorityTest::RunTest(
 		++SelectedActionFieldCount;
 	}
 	TestEqual(
-		TEXT("SelectedAction has seven reflected fields"),
+		TEXT("SelectedAction has eight reflected fields"),
 		SelectedActionFieldCount,
-		7);
+		8);
 	TestNotNull(
 		TEXT("Runner selected action field"),
 		SelectedActionStruct->FindPropertyByName(TEXT("RunnerCardId")));
@@ -283,6 +283,10 @@ bool FSkillSelectionAuthorityTest::RunTest(
 	TestNotNull(
 		TEXT("Helper presence field"),
 		SelectedActionStruct->FindPropertyByName(TEXT("bHasHelper")));
+	TestNotNull(
+		TEXT("Elective branch intent field"),
+		SelectedActionStruct->FindPropertyByName(
+			TEXT("ElectiveBranchIntent")));
 
 	TestFalse(
 		TEXT("No old combined action selection"),
@@ -298,8 +302,9 @@ bool FSkillSelectionAuthorityTest::RunTest(
 		TEXT("No D6"),
 		SkillProductionSources.Contains(TEXT("D6")));
 	TestFalse(
-		TEXT("No Branch"),
-		SkillProductionSources.Contains(TEXT("Branch")));
+		TEXT("No actual Branch resolution"),
+		SkillProductionSources.Contains(TEXT("ActualBranch"))
+			|| SkillProductionSources.Contains(TEXT("BranchD6")));
 	TestFalse(
 		TEXT("No CardUsage"),
 		SkillProductionSources.Contains(TEXT("CardUsage")));
@@ -322,8 +327,9 @@ bool FSkillSelectionAuthorityTest::RunTest(
 		TEXT("Binding does not inspect ActionPoint"),
 		BindingSource.Contains(TEXT("ActionPoint")));
 	TestFalse(
-		TEXT("Binding does not select Branch"),
-		BindingSource.Contains(TEXT("Branch")));
+		TEXT("Binding does not select actual Branch"),
+		BindingSource.Contains(TEXT("ActualBranch"))
+			|| BindingSource.Contains(TEXT("BranchD6")));
 	TestFalse(
 		TEXT("Binding does not construct Formula"),
 		BindingSource.Contains(TEXT("Formula")));

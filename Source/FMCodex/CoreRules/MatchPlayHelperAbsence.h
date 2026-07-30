@@ -4,6 +4,7 @@
 
 #include "MatchPlayCurrentAttackHelperSelectionAvailability.h"
 #include "MatchPlayCurrentAttackReadyForResolutionValidator.h"
+#include "MatchPlayCurrentAttackSelectionStateValidator.h"
 
 #include "MatchPlayHelperAbsence.generated.h"
 
@@ -43,6 +44,8 @@ enum class EMatchPlayHelperAbsenceErrorCode : uint8
 	InvalidCapabilitySourceReason
 		UMETA(DisplayName = "Invalid Capability Source Reason"),
 	FinalizationFailed UMETA(DisplayName = "Finalization Failed"),
+	SelectionStateValidationFailed
+		UMETA(DisplayName = "Selection State Validation Failed"),
 	ReadyValidationFailed UMETA(DisplayName = "Ready Validation Failed")
 };
 
@@ -81,6 +84,10 @@ struct FMCODEX_API FMatchPlayHelperAbsenceFinalizationResult
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Helper Absence")
 	FMatchPlayCurrentAttackReadyValidationResult ReadyValidationResult;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Helper Absence")
+	FMatchPlayCurrentAttackSelectionStateValidationResult
+		SelectionStateValidationResult;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Helper Absence")
 	EMatchPlayHelperAbsenceErrorCode ErrorCode =

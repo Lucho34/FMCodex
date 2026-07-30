@@ -128,18 +128,35 @@ public:
 		const FMatchPlayValidatedHelperPresence Presence{
 			FMatchPlayValidatedHelperPresence::FAbsentHelperTag()};
 		FMatchPlayCurrentAttackHelperFinalization
-			::ApplyFinalSelectedAction(WorkingState, Presence);
-		Result.ReadyValidationResult =
-			FMatchPlayCurrentAttackReadyForResolutionValidator::Validate(
-				WorkingState);
-		if (!Result.ReadyValidationResult.bSuccess)
+			::ApplyValidatedHelperCompletion(WorkingState, Presence);
+		Result.SelectionStateValidationResult =
+			FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+				WorkingState.CurrentAttack);
+		if (!Result.SelectionStateValidationResult.bIsCanonical)
 		{
 			Result.ErrorCode =
 				EMatchPlayHelperAbsenceErrorCode
-					::ReadyValidationFailed;
+					::SelectionStateValidationFailed;
 			Result.ErrorMessage =
-				Result.ReadyValidationResult.ErrorMessage;
+				Result.SelectionStateValidationResult.ErrorMessage;
 			return Result;
+		}
+		if (WorkingState.CurrentAttack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage
+				::ReadyForResolution)
+		{
+			Result.ReadyValidationResult =
+				FMatchPlayCurrentAttackReadyForResolutionValidator
+					::Validate(WorkingState);
+			if (!Result.ReadyValidationResult.bSuccess)
+			{
+				Result.ErrorCode =
+					EMatchPlayHelperAbsenceErrorCode
+						::ReadyValidationFailed;
+				Result.ErrorMessage =
+					Result.ReadyValidationResult.ErrorMessage;
+				return Result;
+			}
 		}
 
 		Result.AfterState = MoveTemp(WorkingState);

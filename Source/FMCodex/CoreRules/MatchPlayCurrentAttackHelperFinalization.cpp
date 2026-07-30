@@ -1,10 +1,34 @@
 #include "MatchPlayCurrentAttackHelperFinalization.h"
 
-void FMatchPlayCurrentAttackHelperFinalization::ApplyFinalSelectedAction(
+void FMatchPlayCurrentAttackHelperFinalization
+	::ApplyValidatedHelperCompletion(
 	FMatchPlayState& WorkingState,
 	const FMatchPlayValidatedHelperPresence& Presence)
 {
-	FMatchPlayCurrentAttackState& Attack = WorkingState.CurrentAttack;
+	FMatchPlayCurrentAttackState& Attack =
+		WorkingState.CurrentAttack;
+	Attack.ActionPreparation.bHasHelper = Presence.HasHelper();
+	Attack.ActionPreparation.HelperCardId =
+		Presence.GetHelperCardId();
+	if (Attack.ActionPreparation.ActionType == ESkillRuleType::Cross)
+	{
+		Attack.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage
+				::AwaitingBranchIntent;
+		return;
+	}
+
+	ApplyFinalSelectedAction(
+		WorkingState,
+		EMatchPlayElectiveBranchIntent::None);
+}
+
+void FMatchPlayCurrentAttackHelperFinalization::ApplyFinalSelectedAction(
+	FMatchPlayState& WorkingState,
+	const EMatchPlayElectiveBranchIntent Intent)
+{
+	FMatchPlayCurrentAttackState& Attack =
+		WorkingState.CurrentAttack;
 	const FMatchPlayCurrentAttackActionPreparationState Preparation =
 		Attack.ActionPreparation;
 
@@ -13,8 +37,9 @@ void FMatchPlayCurrentAttackHelperFinalization::ApplyFinalSelectedAction(
 	Attack.SelectedAction.SkillId = Preparation.SkillId;
 	Attack.SelectedAction.ActionType = Preparation.ActionType;
 	Attack.SelectedAction.RunnerCardId = Preparation.RunnerCardId;
-	Attack.SelectedAction.bHasHelper = Presence.HasHelper();
-	Attack.SelectedAction.HelperCardId = Presence.GetHelperCardId();
+	Attack.SelectedAction.bHasHelper = Preparation.bHasHelper;
+	Attack.SelectedAction.HelperCardId = Preparation.HelperCardId;
+	Attack.SelectedAction.ElectiveBranchIntent = Intent;
 	Attack.ActionPreparation =
 		FMatchPlayCurrentAttackActionPreparationState();
 	Attack.bHasSelectedAction = true;

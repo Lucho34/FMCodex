@@ -2,6 +2,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "MatchPlayCurrentAttackBranchIntentSelectionTestFixtures.h"
 #include "MatchPlayCurrentAttackHelperSelectionTestFixtures.h"
 #include "MatchPlayCurrentAttackResolutionBinding.h"
 #include "MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
@@ -10,6 +11,8 @@
 
 namespace HelperFixtures =
 	FMCodex::Tests::MatchPlayCurrentAttackHelperSelection;
+namespace BranchIntentFixtures =
+	FMCodex::Tests::MatchPlayCurrentAttackBranchIntentSelection;
 namespace SkillFixtures =
 	FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
 
@@ -145,17 +148,28 @@ bool FHelperReadyNoRunnerCompatibilityTest::RunTest(
 				SkillFixtures::MakeRuleSet(),
 				SkillFixtures::MakeRequest(Case.SkillId));
 		TestTrue(TEXT("No-runner writer succeeds"), Writer.bSuccess);
+		const auto IntentWriter =
+			FMatchPlayCurrentAttackBranchIntentSelectionWriter
+				::Select(
+					Writer.AfterState,
+					BranchIntentFixtures::MakeRequest(
+						Writer.AfterState,
+						EMatchPlayElectiveBranchIntent
+							::DirectShot));
+		TestTrue(TEXT("Intent writer succeeds"),
+			IntentWriter.bSuccess);
 		TestTrue(TEXT("Runner default empty"),
-			Writer.AfterState.CurrentAttack.SelectedAction
+			IntentWriter.AfterState.CurrentAttack.SelectedAction
 				.RunnerCardId.IsNone());
 		TestFalse(TEXT("Helper presence default false"),
-			Writer.AfterState.CurrentAttack.SelectedAction.bHasHelper);
+			IntentWriter.AfterState.CurrentAttack.SelectedAction
+				.bHasHelper);
 		TestTrue(TEXT("Helper default empty"),
-			Writer.AfterState.CurrentAttack.SelectedAction
+			IntentWriter.AfterState.CurrentAttack.SelectedAction
 				.HelperCardId.IsNone());
 		const auto Ready =
 			FMatchPlayCurrentAttackReadyForResolutionValidator
-				::Validate(Writer.AfterState);
+				::Validate(IntentWriter.AfterState);
 		TestTrue(TEXT("No-runner Ready remains valid"),
 			Ready.bSuccess);
 	}

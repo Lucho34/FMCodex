@@ -137,6 +137,7 @@ FMatchPlayBoundActionParticipantNormalizationQuery::Query(
 	const FMatchPlayCurrentAttackResolutionBindingValue& Binding =
 		Result.BindingResult.Binding;
 	Result.ActionType = Binding.ActionType;
+	Result.ElectiveBranchIntent = Binding.ElectiveBranchIntent;
 	if (!IsSupportedActionType(Result.ActionType))
 	{
 		SetFailure(
@@ -178,6 +179,8 @@ FMatchPlayBoundActionParticipantNormalizationQuery::Query(
 	Result.Bundle.CurrentDefendingPlayer =
 		Result.CurrentDefendingPlayer;
 	Result.Bundle.Binding = Binding;
+	Result.Bundle.ElectiveBranchIntent =
+		Binding.ElectiveBranchIntent;
 
 	const FMatchPlayCardSnapshotAuthorityQueryResult& CarrierQueryResult =
 		Result.BindingResult.ReadyValidationResult

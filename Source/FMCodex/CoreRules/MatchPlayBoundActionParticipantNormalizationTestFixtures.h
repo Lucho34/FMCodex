@@ -3,6 +3,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "MatchPlayBoundActionParticipantNormalizationQuery.h"
+#include "MatchPlayCurrentAttackBranchIntentSelectionWriter.h"
 #include "MatchPlayCurrentAttackHelperSelectionTestFixtures.h"
 #include "MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
 #include "MatchPlayCurrentAttackSkillSelectionWriter.h"
@@ -37,7 +38,20 @@ namespace FMCodex::Tests::MatchPlayBoundActionParticipantNormalization
 					SkillFixtures::MakeState({SkillId}),
 					SkillFixtures::MakeRuleSet(),
 					SkillFixtures::MakeRequest(SkillId));
-			return WriterResult.AfterState;
+			FMatchPlayCurrentAttackBranchIntentSelectionRequest
+				IntentRequest;
+			IntentRequest.AttackSequence =
+				WriterResult.AfterState.CurrentAttack.AttackSequence;
+			IntentRequest.RequestingSide =
+				EInitialTurnOrderPlayer::PlayerA;
+			IntentRequest.Intent =
+				EMatchPlayElectiveBranchIntent::DirectShot;
+			return
+				FMatchPlayCurrentAttackBranchIntentSelectionWriter
+					::Select(
+						WriterResult.AfterState,
+						IntentRequest)
+					.AfterState;
 		}
 		return HelperFixtures::MakeReadyState(
 			ActionType,

@@ -1,5 +1,7 @@
 #include "MatchPlayCurrentAttackReadyForResolutionValidator.h"
 
+#include "MatchPlayElectiveBranchIntentRules.h"
+
 namespace MatchPlayCurrentAttackReadyForResolutionImplementation
 {
 	bool IsPlayerSide(const EInitialTurnOrderPlayer Side)
@@ -81,6 +83,18 @@ FMatchPlayCurrentAttackReadyForResolutionValidator::Validate(
 			EMatchPlayCurrentAttackReadyValidationErrorCode
 				::CurrentAttackNotInResolution,
 			TEXT("Ready validation requires Resolution phase."));
+		return Result;
+	}
+	if (Attack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+		&& !MatchPlayElectiveBranchIntentRules::IsLegalIntent(
+			Attack.SelectedAction.ActionType,
+			Attack.SelectedAction.ElectiveBranchIntent))
+	{
+		Fail(
+			EMatchPlayCurrentAttackReadyValidationErrorCode
+				::InvalidElectiveBranchIntent,
+			TEXT("Ready selected action branch intent does not match its action type."));
 		return Result;
 	}
 
