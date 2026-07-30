@@ -19,6 +19,129 @@ namespace BranchIntentSelectionFailureTests
 		return Fixtures::AreStatesEqual(Left, Right);
 	}
 
+	bool AreSnapshotValidationResultsEqual(
+		const FPlayerCardRuleSnapshotValidationResult& Left,
+		const FPlayerCardRuleSnapshotValidationResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.bIsValid == Right.bIsValid
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreSnapshotQueryResultsEqual(
+		const FPlayerCardRuleSnapshotQueryResult& Left,
+		const FPlayerCardRuleSnapshotQueryResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.bFound == Right.bFound
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage
+			&& Left.CardId == Right.CardId
+			&& FPlayerCardRuleSnapshot::StaticStruct()
+				->CompareScriptStruct(
+					&Left.Snapshot,
+					&Right.Snapshot,
+					0)
+			&& AreSnapshotValidationResultsEqual(
+				Left.ValidationResult,
+				Right.ValidationResult);
+	}
+
+	bool AreAuthorityQueryResultsEqual(
+		const FMatchPlayCardSnapshotAuthorityQueryResult& Left,
+		const FMatchPlayCardSnapshotAuthorityQueryResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.PlayerSide == Right.PlayerSide
+			&& Left.CardId == Right.CardId
+			&& FPlayerCardRuleSnapshot::StaticStruct()
+				->CompareScriptStruct(
+					&Left.Snapshot,
+					&Right.Snapshot,
+					0)
+			&& AreSnapshotQueryResultsEqual(
+				Left.UnderlyingQueryResult,
+				Right.UnderlyingQueryResult)
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreHelperAuthorityResultsEqual(
+		const FMatchPlayCurrentAttackHelperParticipantAuthorityResult& Left,
+		const FMatchPlayCurrentAttackHelperParticipantAuthorityResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.MatchingPlacementCount
+				== Right.MatchingPlacementCount
+			&& FMatchPlayDeploymentPlacement::StaticStruct()
+				->CompareScriptStruct(
+					&Left.Placement,
+					&Right.Placement,
+					0)
+			&& AreAuthorityQueryResultsEqual(
+				Left.SnapshotQueryResult,
+				Right.SnapshotQueryResult)
+			&& FPlayerCardRuleSnapshot::StaticStruct()
+				->CompareScriptStruct(
+					&Left.Snapshot,
+					&Right.Snapshot,
+					0)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreGlobalContextResultsEqual(
+		const FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextResult&
+			Left,
+		const FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextResult&
+			Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.RequestedAttackSequence
+				== Right.RequestedAttackSequence
+			&& Left.AuthoritativeAttackSequence
+				== Right.AuthoritativeAttackSequence
+			&& Left.RequestingSide == Right.RequestingSide
+			&& Left.CurrentAttackingPlayer
+				== Right.CurrentAttackingPlayer
+			&& Left.CurrentDefendingPlayer
+				== Right.CurrentDefendingPlayer
+			&& FMatchPlayCurrentAttackSelectionStateValidationResult
+				::StaticStruct()
+				->CompareScriptStruct(
+					&Left.SelectionStateValidationResult,
+					&Right.SelectionStateValidationResult,
+					0)
+			&& FMatchPlayCurrentAttackActionPreparationState
+				::StaticStruct()
+				->CompareScriptStruct(
+					&Left.Preparation,
+					&Right.Preparation,
+					0)
+			&& Left.FrozenActionType == Right.FrozenActionType
+			&& Left.MatchingCarrierPlacementCount
+				== Right.MatchingCarrierPlacementCount
+			&& Left.MatchingMarkerPlacementCount
+				== Right.MatchingMarkerPlacementCount
+			&& Left.MatchingRunnerPlacementCount
+				== Right.MatchingRunnerPlacementCount
+			&& AreAuthorityQueryResultsEqual(
+				Left.CarrierSnapshotQueryResult,
+				Right.CarrierSnapshotQueryResult)
+			&& AreAuthorityQueryResultsEqual(
+				Left.MarkerSnapshotQueryResult,
+				Right.MarkerSnapshotQueryResult)
+			&& AreAuthorityQueryResultsEqual(
+				Left.RunnerSnapshotQueryResult,
+				Right.RunnerSnapshotQueryResult)
+			&& AreHelperAuthorityResultsEqual(
+				Left.HelperAuthorityResult,
+				Right.HelperAuthorityResult)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
 	bool ExpectGlobalError(
 		FAutomationTestBase& Test,
 		const TCHAR* Label,
@@ -28,19 +151,74 @@ namespace BranchIntentSelectionFailureTests
 		const EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
 			ExpectedError)
 	{
-		const auto Result =
-			FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextQuery
-				::Query(State, AttackSequence, RequestingSide);
-		Test.TestFalse(
-			*FString::Printf(TEXT("%s fails"), Label),
-			Result.bSuccess);
-		Test.TestEqual(
-			*FString::Printf(TEXT("%s exact error"), Label),
-			Result.ErrorCode,
-			ExpectedError);
+		const FMatchPlayState OriginalState = State;
+		FMatchPlayCurrentAttackBranchIntentSelectionRequest Request;
+		Request.AttackSequence = AttackSequence;
+		Request.RequestingSide = RequestingSide;
+		Request.Intent = EMatchPlayElectiveBranchIntent::None;
+		const FMatchPlayCurrentAttackBranchIntentSelectionRequest
+			OriginalRequest = Request;
+
+		TArray<
+			FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextResult>
+			Results;
+		Results.Reserve(3);
+		for (int32 Iteration = 1; Iteration <= 3; ++Iteration)
+		{
+			Results.Add(
+				FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextQuery
+					::Query(
+						State,
+						Request.AttackSequence,
+						Request.RequestingSide));
+			const auto& Result = Results.Last();
+			Test.TestFalse(
+				*FString::Printf(
+					TEXT("%s iteration %d fails"),
+					Label,
+					Iteration),
+				Result.bSuccess);
+			Test.TestEqual(
+				*FString::Printf(
+					TEXT("%s iteration %d exact error"),
+					Label,
+					Iteration),
+				Result.ErrorCode,
+				ExpectedError);
+			Test.TestTrue(
+				*FString::Printf(
+					TEXT("%s iteration %d has diagnostics"),
+					Label,
+					Iteration),
+				!Result.ErrorMessage.IsEmpty());
+			if (Iteration > 1)
+			{
+				Test.TestTrue(
+					*FString::Printf(
+						TEXT("%s iteration %d full Result matches iteration 1"),
+						Label,
+						Iteration),
+					AreGlobalContextResultsEqual(
+						Results[0],
+						Result));
+			}
+		}
+
 		Test.TestTrue(
-			*FString::Printf(TEXT("%s has diagnostics"), Label),
-			!Result.ErrorMessage.IsEmpty());
+			*FString::Printf(
+				TEXT("%s State unchanged after all Query calls"),
+				Label),
+			IsStateEqual(State, OriginalState));
+		Test.TestTrue(
+			*FString::Printf(
+				TEXT("%s Request unchanged after all Query calls"),
+				Label),
+			FMatchPlayCurrentAttackBranchIntentSelectionRequest
+				::StaticStruct()
+				->CompareScriptStruct(
+					&Request,
+					&OriginalRequest,
+					0));
 		return true;
 	}
 
@@ -374,19 +552,32 @@ bool FBranchIntentGlobalContextFirstErrorCombinationTest::RunTest(
 		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
 			::CurrentAttackNotInResolution);
 
-	for (const EMatchPlayCurrentAttackSelectionStage Stage : {
-		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill,
-		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner,
-		EMatchPlayCurrentAttackSelectionStage::AwaitingHelper,
-		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution})
+	struct FStageCombinationCase
+	{
+		EMatchPlayCurrentAttackSelectionStage Stage =
+			EMatchPlayCurrentAttackSelectionStage::None;
+		const TCHAR* CaseLabel = TEXT("");
+	};
+	const FStageCombinationCase StageCases[] = {
+		{EMatchPlayCurrentAttackSelectionStage::AwaitingSkill,
+			TEXT("AwaitingSkill stage outranks preparation damage")},
+		{EMatchPlayCurrentAttackSelectionStage::AwaitingRunner,
+			TEXT("AwaitingRunner stage outranks preparation damage")},
+		{EMatchPlayCurrentAttackSelectionStage::AwaitingHelper,
+			TEXT("AwaitingHelper stage outranks preparation damage")},
+		{EMatchPlayCurrentAttackSelectionStage::ReadyForResolution,
+			TEXT("ReadyForResolution stage outranks preparation damage")}
+	};
+	for (const FStageCombinationCase& StageCase : StageCases)
 	{
 		FMatchPlayState WrongStage = Base;
-		WrongStage.CurrentAttack.SelectionStage = Stage;
+		WrongStage.CurrentAttack.SelectionStage =
+			StageCase.Stage;
 		WrongStage.CurrentAttack.ActionPreparation.CarrierCardId =
 			NAME_None;
 		ExpectGlobalError(
 			*this,
-			TEXT("Exact stage outranks preparation damage"),
+			StageCase.CaseLabel,
 			WrongStage,
 			Sequence,
 			EInitialTurnOrderPlayer::PlayerA,
