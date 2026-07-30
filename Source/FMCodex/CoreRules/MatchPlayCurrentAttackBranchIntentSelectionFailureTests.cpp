@@ -19,127 +19,442 @@ namespace BranchIntentSelectionFailureTests
 		return Fixtures::AreStatesEqual(Left, Right);
 	}
 
-	bool AreSnapshotValidationResultsEqual(
-		const FPlayerCardRuleSnapshotValidationResult& Left,
-		const FPlayerCardRuleSnapshotValidationResult& Right)
+	bool ReportMismatch(
+		FString& OutMismatch,
+		const FString& FieldPath,
+		const FString& ExpectedValue,
+		const FString& ActualValue)
 	{
-		return Left.bSuccess == Right.bSuccess
-			&& Left.bIsValid == Right.bIsValid
-			&& Left.ErrorCode == Right.ErrorCode
-			&& Left.ErrorMessage == Right.ErrorMessage;
+		OutMismatch = FString::Printf(
+			TEXT("%s differs: Expected=%s, Actual=%s"),
+			*FieldPath,
+			*ExpectedValue,
+			*ActualValue);
+		return false;
 	}
 
-	bool AreSnapshotQueryResultsEqual(
-		const FPlayerCardRuleSnapshotQueryResult& Left,
-		const FPlayerCardRuleSnapshotQueryResult& Right)
+	bool CompareBoolValue(
+		const bool bExpected,
+		const bool bActual,
+		const FString& FieldPath,
+		FString& OutMismatch)
 	{
-		return Left.bSuccess == Right.bSuccess
-			&& Left.bFound == Right.bFound
-			&& Left.ErrorCode == Right.ErrorCode
-			&& Left.ErrorMessage == Right.ErrorMessage
-			&& Left.CardId == Right.CardId
-			&& FPlayerCardRuleSnapshot::StaticStruct()
-				->CompareScriptStruct(
-					&Left.Snapshot,
-					&Right.Snapshot,
-					0)
-			&& AreSnapshotValidationResultsEqual(
-				Left.ValidationResult,
-				Right.ValidationResult);
+		if (bExpected == bActual)
+		{
+			return true;
+		}
+		return ReportMismatch(
+			OutMismatch,
+			FieldPath,
+			bExpected ? TEXT("true") : TEXT("false"),
+			bActual ? TEXT("true") : TEXT("false"));
 	}
 
-	bool AreAuthorityQueryResultsEqual(
-		const FMatchPlayCardSnapshotAuthorityQueryResult& Left,
-		const FMatchPlayCardSnapshotAuthorityQueryResult& Right)
+	template <typename TValue>
+	bool CompareScalarValue(
+		const TValue Expected,
+		const TValue Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
 	{
-		return Left.bSuccess == Right.bSuccess
-			&& Left.ErrorCode == Right.ErrorCode
-			&& Left.PlayerSide == Right.PlayerSide
-			&& Left.CardId == Right.CardId
-			&& FPlayerCardRuleSnapshot::StaticStruct()
-				->CompareScriptStruct(
-					&Left.Snapshot,
-					&Right.Snapshot,
-					0)
-			&& AreSnapshotQueryResultsEqual(
-				Left.UnderlyingQueryResult,
-				Right.UnderlyingQueryResult)
-			&& Left.ErrorMessage == Right.ErrorMessage;
+		if (Expected == Actual)
+		{
+			return true;
+		}
+		return ReportMismatch(
+			OutMismatch,
+			FieldPath,
+			FString::Printf(
+				TEXT("%lld"),
+				static_cast<int64>(Expected)),
+			FString::Printf(
+				TEXT("%lld"),
+				static_cast<int64>(Actual)));
 	}
 
-	bool AreHelperAuthorityResultsEqual(
-		const FMatchPlayCurrentAttackHelperParticipantAuthorityResult& Left,
-		const FMatchPlayCurrentAttackHelperParticipantAuthorityResult& Right)
+	bool CompareNameValue(
+		const FName Expected,
+		const FName Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
 	{
-		return Left.bSuccess == Right.bSuccess
-			&& Left.MatchingPlacementCount
-				== Right.MatchingPlacementCount
-			&& FMatchPlayDeploymentPlacement::StaticStruct()
-				->CompareScriptStruct(
-					&Left.Placement,
-					&Right.Placement,
-					0)
-			&& AreAuthorityQueryResultsEqual(
-				Left.SnapshotQueryResult,
-				Right.SnapshotQueryResult)
-			&& FPlayerCardRuleSnapshot::StaticStruct()
-				->CompareScriptStruct(
-					&Left.Snapshot,
-					&Right.Snapshot,
-					0)
-			&& Left.ErrorCode == Right.ErrorCode
-			&& Left.ErrorMessage == Right.ErrorMessage;
+		if (Expected == Actual)
+		{
+			return true;
+		}
+		return ReportMismatch(
+			OutMismatch,
+			FieldPath,
+			Expected.ToString(),
+			Actual.ToString());
 	}
 
-	bool AreGlobalContextResultsEqual(
+	bool CompareStringValue(
+		const FString& Expected,
+		const FString& Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
+	{
+		if (Expected == Actual)
+		{
+			return true;
+		}
+		return ReportMismatch(
+			OutMismatch,
+			FieldPath,
+			FString::Printf(TEXT("\"%s\""), *Expected),
+			FString::Printf(TEXT("\"%s\""), *Actual));
+	}
+
+	FString DescribeNameArray(const TArray<FName>& Values)
+	{
+		TArray<FString> Names;
+		Names.Reserve(Values.Num());
+		for (const FName Value : Values)
+		{
+			Names.Add(Value.ToString());
+		}
+		return FString::Printf(
+			TEXT("[%s]"),
+			*FString::Join(Names, TEXT(", ")));
+	}
+
+	bool CompareNameArrayValue(
+		const TArray<FName>& Expected,
+		const TArray<FName>& Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
+	{
+		if (Expected == Actual)
+		{
+			return true;
+		}
+
+		int32 FirstDifferenceIndex = INDEX_NONE;
+		const int32 SharedCount =
+			FMath::Min(Expected.Num(), Actual.Num());
+		for (int32 Index = 0; Index < SharedCount; ++Index)
+		{
+			if (Expected[Index] != Actual[Index])
+			{
+				FirstDifferenceIndex = Index;
+				break;
+			}
+		}
+		const FString DiagnosticPath =
+			FirstDifferenceIndex == INDEX_NONE
+				? FString::Printf(
+					TEXT("%s (length Expected=%d, Actual=%d)"),
+					*FieldPath,
+					Expected.Num(),
+					Actual.Num())
+				: FString::Printf(
+					TEXT("%s (first differing index %d)"),
+					*FieldPath,
+					FirstDifferenceIndex);
+		return ReportMismatch(
+			OutMismatch,
+			DiagnosticPath,
+			DescribeNameArray(Expected),
+			DescribeNameArray(Actual));
+	}
+
+	bool CompareScriptStructValue(
+		const UScriptStruct* ScriptStruct,
+		const void* Expected,
+		const void* Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
+	{
+		if (ScriptStruct->CompareScriptStruct(
+			Expected,
+			Actual,
+			0))
+		{
+			return true;
+		}
+		return ReportMismatch(
+			OutMismatch,
+			FieldPath,
+			TEXT("<USTRUCT value>"),
+			TEXT("<different USTRUCT value>"));
+	}
+
+	bool CompareSnapshotValidationResults(
+		const FPlayerCardRuleSnapshotValidationResult& Expected,
+		const FPlayerCardRuleSnapshotValidationResult& Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
+	{
+		return CompareBoolValue(
+				Expected.bSuccess,
+				Actual.bSuccess,
+				FieldPath + TEXT(".bSuccess"),
+				OutMismatch)
+			&& CompareBoolValue(
+				Expected.bIsValid,
+				Actual.bIsValid,
+				FieldPath + TEXT(".bIsValid"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.ErrorCode,
+				Actual.ErrorCode,
+				FieldPath + TEXT(".ErrorCode"),
+				OutMismatch)
+			&& CompareStringValue(
+				Expected.ErrorMessage,
+				Actual.ErrorMessage,
+				FieldPath + TEXT(".ErrorMessage"),
+				OutMismatch)
+			&& CompareNameValue(
+				Expected.InvalidCardId,
+				Actual.InvalidCardId,
+				FieldPath + TEXT(".InvalidCardId"),
+				OutMismatch)
+			&& CompareNameArrayValue(
+				Expected.DuplicateCardIds,
+				Actual.DuplicateCardIds,
+				FieldPath + TEXT(".DuplicateCardIds"),
+				OutMismatch);
+	}
+
+	bool CompareSnapshotQueryResults(
+		const FPlayerCardRuleSnapshotQueryResult& Expected,
+		const FPlayerCardRuleSnapshotQueryResult& Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
+	{
+		return CompareBoolValue(
+				Expected.bSuccess,
+				Actual.bSuccess,
+				FieldPath + TEXT(".bSuccess"),
+				OutMismatch)
+			&& CompareBoolValue(
+				Expected.bFound,
+				Actual.bFound,
+				FieldPath + TEXT(".bFound"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.ErrorCode,
+				Actual.ErrorCode,
+				FieldPath + TEXT(".ErrorCode"),
+				OutMismatch)
+			&& CompareStringValue(
+				Expected.ErrorMessage,
+				Actual.ErrorMessage,
+				FieldPath + TEXT(".ErrorMessage"),
+				OutMismatch)
+			&& CompareNameValue(
+				Expected.CardId,
+				Actual.CardId,
+				FieldPath + TEXT(".CardId"),
+				OutMismatch)
+			&& CompareScriptStructValue(
+				FPlayerCardRuleSnapshot::StaticStruct(),
+				&Expected.Snapshot,
+				&Actual.Snapshot,
+				FieldPath + TEXT(".Snapshot"),
+				OutMismatch)
+			&& CompareSnapshotValidationResults(
+				Expected.ValidationResult,
+				Actual.ValidationResult,
+				FieldPath + TEXT(".ValidationResult"),
+				OutMismatch);
+	}
+
+	bool CompareAuthorityQueryResults(
+		const FMatchPlayCardSnapshotAuthorityQueryResult& Expected,
+		const FMatchPlayCardSnapshotAuthorityQueryResult& Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
+	{
+		return CompareBoolValue(
+				Expected.bSuccess,
+				Actual.bSuccess,
+				FieldPath + TEXT(".bSuccess"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.ErrorCode,
+				Actual.ErrorCode,
+				FieldPath + TEXT(".ErrorCode"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.PlayerSide,
+				Actual.PlayerSide,
+				FieldPath + TEXT(".PlayerSide"),
+				OutMismatch)
+			&& CompareNameValue(
+				Expected.CardId,
+				Actual.CardId,
+				FieldPath + TEXT(".CardId"),
+				OutMismatch)
+			&& CompareScriptStructValue(
+				FPlayerCardRuleSnapshot::StaticStruct(),
+				&Expected.Snapshot,
+				&Actual.Snapshot,
+				FieldPath + TEXT(".Snapshot"),
+				OutMismatch)
+			&& CompareSnapshotQueryResults(
+				Expected.UnderlyingQueryResult,
+				Actual.UnderlyingQueryResult,
+				FieldPath + TEXT(".UnderlyingQueryResult"),
+				OutMismatch)
+			&& CompareStringValue(
+				Expected.ErrorMessage,
+				Actual.ErrorMessage,
+				FieldPath + TEXT(".ErrorMessage"),
+				OutMismatch);
+	}
+
+	bool CompareHelperAuthorityResults(
+		const FMatchPlayCurrentAttackHelperParticipantAuthorityResult&
+			Expected,
+		const FMatchPlayCurrentAttackHelperParticipantAuthorityResult&
+			Actual,
+		const FString& FieldPath,
+		FString& OutMismatch)
+	{
+		return CompareBoolValue(
+				Expected.bSuccess,
+				Actual.bSuccess,
+				FieldPath + TEXT(".bSuccess"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.MatchingPlacementCount,
+				Actual.MatchingPlacementCount,
+				FieldPath + TEXT(".MatchingPlacementCount"),
+				OutMismatch)
+			&& CompareScriptStructValue(
+				FMatchPlayDeploymentPlacement::StaticStruct(),
+				&Expected.Placement,
+				&Actual.Placement,
+				FieldPath + TEXT(".Placement"),
+				OutMismatch)
+			&& CompareAuthorityQueryResults(
+				Expected.SnapshotQueryResult,
+				Actual.SnapshotQueryResult,
+				FieldPath + TEXT(".SnapshotQueryResult"),
+				OutMismatch)
+			&& CompareScriptStructValue(
+				FPlayerCardRuleSnapshot::StaticStruct(),
+				&Expected.Snapshot,
+				&Actual.Snapshot,
+				FieldPath + TEXT(".Snapshot"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.ErrorCode,
+				Actual.ErrorCode,
+				FieldPath + TEXT(".ErrorCode"),
+				OutMismatch)
+			&& CompareStringValue(
+				Expected.ErrorMessage,
+				Actual.ErrorMessage,
+				FieldPath + TEXT(".ErrorMessage"),
+				OutMismatch);
+	}
+
+	bool CompareGlobalContextResults(
 		const FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextResult&
-			Left,
+			Expected,
 		const FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextResult&
-			Right)
+			Actual,
+		FString& OutMismatch)
 	{
-		return Left.bSuccess == Right.bSuccess
-			&& Left.RequestedAttackSequence
-				== Right.RequestedAttackSequence
-			&& Left.AuthoritativeAttackSequence
-				== Right.AuthoritativeAttackSequence
-			&& Left.RequestingSide == Right.RequestingSide
-			&& Left.CurrentAttackingPlayer
-				== Right.CurrentAttackingPlayer
-			&& Left.CurrentDefendingPlayer
-				== Right.CurrentDefendingPlayer
-			&& FMatchPlayCurrentAttackSelectionStateValidationResult
-				::StaticStruct()
-				->CompareScriptStruct(
-					&Left.SelectionStateValidationResult,
-					&Right.SelectionStateValidationResult,
-					0)
-			&& FMatchPlayCurrentAttackActionPreparationState
-				::StaticStruct()
-				->CompareScriptStruct(
-					&Left.Preparation,
-					&Right.Preparation,
-					0)
-			&& Left.FrozenActionType == Right.FrozenActionType
-			&& Left.MatchingCarrierPlacementCount
-				== Right.MatchingCarrierPlacementCount
-			&& Left.MatchingMarkerPlacementCount
-				== Right.MatchingMarkerPlacementCount
-			&& Left.MatchingRunnerPlacementCount
-				== Right.MatchingRunnerPlacementCount
-			&& AreAuthorityQueryResultsEqual(
-				Left.CarrierSnapshotQueryResult,
-				Right.CarrierSnapshotQueryResult)
-			&& AreAuthorityQueryResultsEqual(
-				Left.MarkerSnapshotQueryResult,
-				Right.MarkerSnapshotQueryResult)
-			&& AreAuthorityQueryResultsEqual(
-				Left.RunnerSnapshotQueryResult,
-				Right.RunnerSnapshotQueryResult)
-			&& AreHelperAuthorityResultsEqual(
-				Left.HelperAuthorityResult,
-				Right.HelperAuthorityResult)
-			&& Left.ErrorCode == Right.ErrorCode
-			&& Left.ErrorMessage == Right.ErrorMessage;
+		OutMismatch.Reset();
+		return CompareBoolValue(
+				Expected.bSuccess,
+				Actual.bSuccess,
+				TEXT("bSuccess"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.RequestedAttackSequence,
+				Actual.RequestedAttackSequence,
+				TEXT("RequestedAttackSequence"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.AuthoritativeAttackSequence,
+				Actual.AuthoritativeAttackSequence,
+				TEXT("AuthoritativeAttackSequence"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.RequestingSide,
+				Actual.RequestingSide,
+				TEXT("RequestingSide"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.CurrentAttackingPlayer,
+				Actual.CurrentAttackingPlayer,
+				TEXT("CurrentAttackingPlayer"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.CurrentDefendingPlayer,
+				Actual.CurrentDefendingPlayer,
+				TEXT("CurrentDefendingPlayer"),
+				OutMismatch)
+			&& CompareScriptStructValue(
+				FMatchPlayCurrentAttackSelectionStateValidationResult
+					::StaticStruct(),
+				&Expected.SelectionStateValidationResult,
+				&Actual.SelectionStateValidationResult,
+				TEXT("SelectionStateValidationResult"),
+				OutMismatch)
+			&& CompareScriptStructValue(
+				FMatchPlayCurrentAttackActionPreparationState
+					::StaticStruct(),
+				&Expected.Preparation,
+				&Actual.Preparation,
+				TEXT("Preparation"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.FrozenActionType,
+				Actual.FrozenActionType,
+				TEXT("FrozenActionType"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.MatchingCarrierPlacementCount,
+				Actual.MatchingCarrierPlacementCount,
+				TEXT("MatchingCarrierPlacementCount"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.MatchingMarkerPlacementCount,
+				Actual.MatchingMarkerPlacementCount,
+				TEXT("MatchingMarkerPlacementCount"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.MatchingRunnerPlacementCount,
+				Actual.MatchingRunnerPlacementCount,
+				TEXT("MatchingRunnerPlacementCount"),
+				OutMismatch)
+			&& CompareAuthorityQueryResults(
+				Expected.CarrierSnapshotQueryResult,
+				Actual.CarrierSnapshotQueryResult,
+				TEXT("CarrierSnapshotQueryResult"),
+				OutMismatch)
+			&& CompareAuthorityQueryResults(
+				Expected.MarkerSnapshotQueryResult,
+				Actual.MarkerSnapshotQueryResult,
+				TEXT("MarkerSnapshotQueryResult"),
+				OutMismatch)
+			&& CompareAuthorityQueryResults(
+				Expected.RunnerSnapshotQueryResult,
+				Actual.RunnerSnapshotQueryResult,
+				TEXT("RunnerSnapshotQueryResult"),
+				OutMismatch)
+			&& CompareHelperAuthorityResults(
+				Expected.HelperAuthorityResult,
+				Actual.HelperAuthorityResult,
+				TEXT("HelperAuthorityResult"),
+				OutMismatch)
+			&& CompareScalarValue(
+				Expected.ErrorCode,
+				Actual.ErrorCode,
+				TEXT("ErrorCode"),
+				OutMismatch)
+			&& CompareStringValue(
+				Expected.ErrorMessage,
+				Actual.ErrorMessage,
+				TEXT("ErrorMessage"),
+				OutMismatch);
 	}
 
 	bool ExpectGlobalError(
@@ -193,14 +508,26 @@ namespace BranchIntentSelectionFailureTests
 				!Result.ErrorMessage.IsEmpty());
 			if (Iteration > 1)
 			{
-				Test.TestTrue(
-					*FString::Printf(
-						TEXT("%s iteration %d full Result matches iteration 1"),
-						Label,
-						Iteration),
-					AreGlobalContextResultsEqual(
+				FString Mismatch;
+				const bool bResultMatches =
+					CompareGlobalContextResults(
 						Results[0],
-						Result));
+						Result,
+						Mismatch);
+				const FString ComparisonDiagnostic =
+					bResultMatches
+						? FString::Printf(
+							TEXT("%s iteration %d full Result matches iteration 1"),
+							Label,
+							Iteration)
+						: FString::Printf(
+							TEXT("%s iteration %d Result mismatch against iteration 1: %s"),
+							Label,
+							Iteration,
+							*Mismatch);
+				Test.TestTrue(
+					*ComparisonDiagnostic,
+					bResultMatches);
 			}
 		}
 
@@ -277,6 +604,190 @@ namespace BranchIntentSelectionFailureTests
 		TestClass, \
 		"FMCodex.CoreRules.MatchPlayCurrentAttackBranchIntentSelection.Failures." TestName, \
 		EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+BRANCH_INTENT_FAILURE_TEST(
+	FBranchIntentGlobalContextResultComparatorCoverageTest,
+	"GlobalContextResultComparatorCoverage")
+
+bool FBranchIntentGlobalContextResultComparatorCoverageTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace BranchIntentSelectionFailureTests;
+	using FGlobalContextResult =
+		FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextResult;
+
+	auto ExpectMismatch = [this](
+		const TCHAR* CaseLabel,
+		const FGlobalContextResult& Expected,
+		const FGlobalContextResult& Actual,
+		const TCHAR* ExpectedPath,
+		const TCHAR* ExpectedField)
+	{
+		FString Mismatch;
+		const bool bEqual = CompareGlobalContextResults(
+			Expected,
+			Actual,
+			Mismatch);
+		TestFalse(
+			*FString::Printf(
+				TEXT("%s - comparator rejects difference"),
+				CaseLabel),
+			bEqual);
+		TestTrue(
+			*FString::Printf(
+				TEXT("%s - mismatch contains top-level path"),
+				CaseLabel),
+			Mismatch.Contains(ExpectedPath));
+		TestTrue(
+			*FString::Printf(
+				TEXT("%s - mismatch contains field"),
+				CaseLabel),
+			Mismatch.Contains(ExpectedField));
+		TestTrue(
+			*FString::Printf(
+				TEXT("%s - mismatch contains Expected value"),
+				CaseLabel),
+			Mismatch.Contains(TEXT("Expected=")));
+		TestTrue(
+			*FString::Printf(
+				TEXT("%s - mismatch contains Actual value"),
+				CaseLabel),
+			Mismatch.Contains(TEXT("Actual=")));
+	};
+
+	const FName CardA(TEXT("Card.A"));
+	const FName CardB(TEXT("Card.B"));
+	const FName InvalidCard(TEXT("Card.Invalid"));
+	const FGlobalContextResult Baseline;
+	FString EqualMismatch(TEXT("sentinel"));
+	TestTrue(
+		TEXT("ComparatorCoverage.Equal - equal Results compare equal"),
+		CompareGlobalContextResults(
+			Baseline,
+			Baseline,
+			EqualMismatch));
+	TestTrue(
+		TEXT("ComparatorCoverage.Equal - equal mismatch is empty"),
+		EqualMismatch.IsEmpty());
+
+	FGlobalContextResult Actual = Baseline;
+	Actual.CarrierSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.InvalidCardId = InvalidCard;
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.Carrier.InvalidCardId"),
+		Baseline,
+		Actual,
+		TEXT("CarrierSnapshotQueryResult"),
+		TEXT("InvalidCardId"));
+
+	Actual = Baseline;
+	Actual.MarkerSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.InvalidCardId = InvalidCard;
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.Marker.InvalidCardId"),
+		Baseline,
+		Actual,
+		TEXT("MarkerSnapshotQueryResult"),
+		TEXT("InvalidCardId"));
+
+	Actual = Baseline;
+	Actual.RunnerSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.InvalidCardId = InvalidCard;
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.Runner.InvalidCardId"),
+		Baseline,
+		Actual,
+		TEXT("RunnerSnapshotQueryResult"),
+		TEXT("InvalidCardId"));
+
+	Actual = Baseline;
+	Actual.HelperAuthorityResult.SnapshotQueryResult
+		.UnderlyingQueryResult.ValidationResult.InvalidCardId =
+			InvalidCard;
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.Helper.InvalidCardId"),
+		Baseline,
+		Actual,
+		TEXT("HelperAuthorityResult"),
+		TEXT("InvalidCardId"));
+
+	Actual = Baseline;
+	Actual.CarrierSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.DuplicateCardIds.Add(CardA);
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.Carrier.DuplicateCardIds"),
+		Baseline,
+		Actual,
+		TEXT("CarrierSnapshotQueryResult"),
+		TEXT("DuplicateCardIds"));
+
+	Actual = Baseline;
+	Actual.MarkerSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.DuplicateCardIds.Add(CardA);
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.Marker.DuplicateCardIds"),
+		Baseline,
+		Actual,
+		TEXT("MarkerSnapshotQueryResult"),
+		TEXT("DuplicateCardIds"));
+
+	Actual = Baseline;
+	Actual.RunnerSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.DuplicateCardIds.Add(CardA);
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.Runner.DuplicateCardIds"),
+		Baseline,
+		Actual,
+		TEXT("RunnerSnapshotQueryResult"),
+		TEXT("DuplicateCardIds"));
+
+	Actual = Baseline;
+	Actual.HelperAuthorityResult.SnapshotQueryResult
+		.UnderlyingQueryResult.ValidationResult.DuplicateCardIds
+		.Add(CardA);
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.Helper.DuplicateCardIds"),
+		Baseline,
+		Actual,
+		TEXT("HelperAuthorityResult"),
+		TEXT("DuplicateCardIds"));
+
+	FGlobalContextResult ExpectedOrder = Baseline;
+	ExpectedOrder.CarrierSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.DuplicateCardIds.Add(CardA);
+	ExpectedOrder.CarrierSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.DuplicateCardIds.Add(CardB);
+	FGlobalContextResult ActualOrder = Baseline;
+	ActualOrder.CarrierSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.DuplicateCardIds.Add(CardB);
+	ActualOrder.CarrierSnapshotQueryResult.UnderlyingQueryResult
+		.ValidationResult.DuplicateCardIds.Add(CardA);
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.DuplicateCardIds.Order"),
+		ExpectedOrder,
+		ActualOrder,
+		TEXT("CarrierSnapshotQueryResult"),
+		TEXT("DuplicateCardIds"));
+
+	FGlobalContextResult ExpectedDuplicates = Baseline;
+	ExpectedDuplicates.HelperAuthorityResult.SnapshotQueryResult
+		.UnderlyingQueryResult.ValidationResult.DuplicateCardIds
+		.Add(CardA);
+	ExpectedDuplicates.HelperAuthorityResult.SnapshotQueryResult
+		.UnderlyingQueryResult.ValidationResult.DuplicateCardIds
+		.Add(CardA);
+	FGlobalContextResult ActualDuplicates = Baseline;
+	ActualDuplicates.HelperAuthorityResult.SnapshotQueryResult
+		.UnderlyingQueryResult.ValidationResult.DuplicateCardIds
+		.Add(CardA);
+	ExpectMismatch(
+		TEXT("ComparatorCoverage.DuplicateCardIds.DuplicateCount"),
+		ExpectedDuplicates,
+		ActualDuplicates,
+		TEXT("HelperAuthorityResult"),
+		TEXT("DuplicateCardIds"));
+	return true;
+}
 
 BRANCH_INTENT_FAILURE_TEST(
 	FBranchIntentGlobalContextFailureMatrixTest,
