@@ -98,16 +98,6 @@ FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextQuery::Query(
 			TEXT("Branch Intent sequence does not match the current attack."));
 		return Result;
 	}
-	if (Attack.Phase != EMatchPlayCurrentAttackPhase::Resolution)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
-				::CurrentAttackNotInResolution,
-			TEXT("Branch Intent selection requires Resolution phase."));
-		return Result;
-	}
-
 	Result.CurrentAttackingPlayer =
 		State.RuntimeState.CurrentAttackingPlayer;
 	if (!IsPlayerSide(Result.CurrentAttackingPlayer))
@@ -131,27 +121,6 @@ FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextQuery::Query(
 		return Result;
 	}
 
-	Result.SelectionStateValidationResult =
-		FMatchPlayCurrentAttackSelectionStateValidator::Validate(Attack);
-	if (!Result.SelectionStateValidationResult.bIsCanonical)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
-				::InvalidSelectionState,
-			Result.SelectionStateValidationResult.ErrorMessage);
-		return Result;
-	}
-	if (Attack.SelectionStage
-		!= EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
-				::WrongSelectionStage,
-			TEXT("Branch Intent selection requires AwaitingBranchIntent stage."));
-		return Result;
-	}
 	if (!IsPlayerSide(RequestingSide))
 	{
 		SetError(
@@ -168,6 +137,39 @@ FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextQuery::Query(
 			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
 				::RequestingSideIsNotCurrentAttacker,
 			TEXT("Only the current attacker may select Branch Intent."));
+		return Result;
+	}
+
+	if (Attack.Phase != EMatchPlayCurrentAttackPhase::Resolution)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::CurrentAttackNotInResolution,
+			TEXT("Branch Intent selection requires Resolution phase."));
+		return Result;
+	}
+
+	if (Attack.SelectionStage
+		!= EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::WrongSelectionStage,
+			TEXT("Branch Intent selection requires AwaitingBranchIntent stage."));
+		return Result;
+	}
+
+	Result.SelectionStateValidationResult =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(Attack);
+	if (!Result.SelectionStateValidationResult.bIsCanonical)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::InvalidSelectionState,
+			Result.SelectionStateValidationResult.ErrorMessage);
 		return Result;
 	}
 

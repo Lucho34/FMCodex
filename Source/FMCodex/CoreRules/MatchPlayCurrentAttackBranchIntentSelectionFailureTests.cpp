@@ -18,6 +18,80 @@ namespace BranchIntentSelectionFailureTests
 	{
 		return Fixtures::AreStatesEqual(Left, Right);
 	}
+
+	bool ExpectGlobalError(
+		FAutomationTestBase& Test,
+		const TCHAR* Label,
+		const FMatchPlayState& State,
+		const int64 AttackSequence,
+		const EInitialTurnOrderPlayer RequestingSide,
+		const EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			ExpectedError)
+	{
+		const auto Result =
+			FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextQuery
+				::Query(State, AttackSequence, RequestingSide);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s fails"), Label),
+			Result.bSuccess);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s exact error"), Label),
+			Result.ErrorCode,
+			ExpectedError);
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s has diagnostics"), Label),
+			!Result.ErrorMessage.IsEmpty());
+		return true;
+	}
+
+	bool ExpectWriterFailureAtomic(
+		FAutomationTestBase& Test,
+		const TCHAR* Label,
+		const FMatchPlayState& State,
+		const FMatchPlayCurrentAttackBranchIntentSelectionRequest&
+			Request,
+		const EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			ExpectedLegalityError,
+		const EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			ExpectedGlobalError =
+				EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+					::None)
+	{
+		const auto Result =
+			FMatchPlayCurrentAttackBranchIntentSelectionWriter::Select(
+				State,
+				Request);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Writer fails"), Label),
+			Result.bSuccess);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s exact Writer error"), Label),
+			Result.ErrorCode,
+			EMatchPlayCurrentAttackBranchIntentSelectionWriterErrorCode
+				::LegalityFailed);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s exact Legality error"), Label),
+			Result.LegalityResult.ErrorCode,
+			ExpectedLegalityError);
+		if (ExpectedLegalityError
+			== EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::GlobalContextFailed)
+		{
+			Test.TestEqual(
+				*FString::Printf(
+					TEXT("%s exact Global Context error"),
+					Label),
+				Result.LegalityResult.GlobalContextResult.ErrorCode,
+				ExpectedGlobalError);
+		}
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s BeforeState preserved"), Label),
+			IsStateEqual(Result.BeforeState, State));
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s failure is atomic"), Label),
+			IsStateEqual(Result.AfterState, State));
+		return true;
+	}
 }
 
 #define BRANCH_INTENT_FAILURE_TEST(TestClass, TestName) \
@@ -121,13 +195,10 @@ bool FBranchIntentGlobalContextFailureMatrixTest::RunTest(
 			Base.CurrentAttack.AttackSequence,
 			EInitialTurnOrderPlayer::PlayerA);
 		TestFalse(TEXT("Wrong stage fails"), Result.bSuccess);
-		TestTrue(TEXT("Wrong stage has stable error"),
-			Result.ErrorCode
-					== EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
-						::InvalidSelectionState
-				|| Result.ErrorCode
-					== EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
-						::WrongSelectionStage);
+		TestEqual(TEXT("Wrong stage has exact error"),
+			Result.ErrorCode,
+			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::WrongSelectionStage);
 	}
 
 	for (const ESkillRuleType ActionType : {
@@ -226,6 +297,179 @@ bool FBranchIntentGlobalContextFailureMatrixTest::RunTest(
 			Base,
 			Fixtures::MakeAwaitingShotIntent(
 				ESkillRuleType::LongShot)));
+	return true;
+}
+
+BRANCH_INTENT_FAILURE_TEST(
+	FBranchIntentGlobalContextFirstErrorCombinationTest,
+	"GlobalContextFirstErrorCombinations")
+
+bool FBranchIntentGlobalContextFirstErrorCombinationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace BranchIntentSelectionFailureTests;
+	const FMatchPlayState Base =
+		Fixtures::MakeAwaitingShotIntent(
+			ESkillRuleType::LongShot);
+	const int64 Sequence = Base.CurrentAttack.AttackSequence;
+
+	FMatchPlayState DamagedIdentityState = Base;
+	DamagedIdentityState.CurrentAttack.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+	DamagedIdentityState.CurrentAttack.ActionPreparation.CarrierCardId =
+		NAME_None;
+	ExpectGlobalError(
+		*this,
+		TEXT("Stale sequence outranks damaged selection state"),
+		DamagedIdentityState,
+		Sequence - 1,
+		EInitialTurnOrderPlayer::PlayerB,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::AttackSequenceMismatch);
+	ExpectGlobalError(
+		*this,
+		TEXT("Ahead sequence outranks damaged selection state"),
+		DamagedIdentityState,
+		Sequence + 1,
+		EInitialTurnOrderPlayer::PlayerB,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::AttackSequenceMismatch);
+	ExpectGlobalError(
+		*this,
+		TEXT("Wrong side outranks damaged selection state"),
+		DamagedIdentityState,
+		Sequence,
+		EInitialTurnOrderPlayer::PlayerB,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::RequestingSideIsNotCurrentAttacker);
+	ExpectGlobalError(
+		*this,
+		TEXT("Invalid side outranks damaged selection state"),
+		DamagedIdentityState,
+		Sequence,
+		EInitialTurnOrderPlayer::None,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidRequestingSide);
+
+	FMatchPlayState Completed = DamagedIdentityState;
+	Completed.bHasCurrentAttack = false;
+	ExpectGlobalError(
+		*this,
+		TEXT("Completed attack outranks damaged selection state"),
+		Completed,
+		Sequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::NoCurrentAttack);
+
+	FMatchPlayState WrongLifecycle = DamagedIdentityState;
+	WrongLifecycle.CurrentAttack.Phase =
+		EMatchPlayCurrentAttackPhase::Deployment;
+	ExpectGlobalError(
+		*this,
+		TEXT("Lifecycle outranks stage and preparation damage"),
+		WrongLifecycle,
+		Sequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::CurrentAttackNotInResolution);
+
+	for (const EMatchPlayCurrentAttackSelectionStage Stage : {
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingHelper,
+		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution})
+	{
+		FMatchPlayState WrongStage = Base;
+		WrongStage.CurrentAttack.SelectionStage = Stage;
+		WrongStage.CurrentAttack.ActionPreparation.CarrierCardId =
+			NAME_None;
+		ExpectGlobalError(
+			*this,
+			TEXT("Exact stage outranks preparation damage"),
+			WrongStage,
+			Sequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::WrongSelectionStage);
+	}
+
+	FMatchPlayState MissingCarrier = Base;
+	MissingCarrier.CurrentAttack.ActionPreparation.CarrierCardId =
+		NAME_None;
+	ExpectGlobalError(
+		*this,
+		TEXT("Missing Carrier follows identity lifecycle and stage"),
+		MissingCarrier,
+		Sequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState MissingMarker = Base;
+	MissingMarker.CurrentAttack.ActionPreparation.MarkerCardId =
+		NAME_None;
+	ExpectGlobalError(
+		*this,
+		TEXT("Missing Marker follows identity lifecycle and stage"),
+		MissingMarker,
+		Sequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState MissingSkill = Base;
+	MissingSkill.CurrentAttack.ActionPreparation.SkillId =
+		NAME_None;
+	ExpectGlobalError(
+		*this,
+		TEXT("Missing Skill follows identity lifecycle and stage"),
+		MissingSkill,
+		Sequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	const FMatchPlayState Cross =
+		Fixtures::MakeAwaitingCrossIntent(
+			Fixtures::ECrossHelperPath::Selected);
+	FMatchPlayState MissingRunner = Cross;
+	MissingRunner.CurrentAttack.ActionPreparation.RunnerCardId =
+		NAME_None;
+	ExpectGlobalError(
+		*this,
+		TEXT("Missing Cross Runner is a post-stage structure error"),
+		MissingRunner,
+		MissingRunner.CurrentAttack.AttackSequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState PresentWithoutIdentity = Cross;
+	PresentWithoutIdentity.CurrentAttack.ActionPreparation.HelperCardId =
+		NAME_None;
+	ExpectGlobalError(
+		*this,
+		TEXT("Present Helper requires identity"),
+		PresentWithoutIdentity,
+		PresentWithoutIdentity.CurrentAttack.AttackSequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState AbsentWithIdentity =
+		Fixtures::MakeAwaitingCrossIntent(
+			Fixtures::ECrossHelperPath::Declined);
+	AbsentWithIdentity.CurrentAttack.ActionPreparation.HelperCardId =
+		HelperFixtures::HelperId;
+	ExpectGlobalError(
+		*this,
+		TEXT("Absent Helper forbids identity"),
+		AbsentWithIdentity,
+		AbsentWithIdentity.CurrentAttack.AttackSequence,
+		EInitialTurnOrderPlayer::PlayerA,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
 	return true;
 }
 
@@ -372,6 +616,289 @@ bool FBranchIntentWriterAtomicityTest::RunTest(
 		IsStateEqual(
 			DamagedHelperResult.BeforeState,
 			DamagedHelperResult.AfterState));
+	return true;
+}
+
+BRANCH_INTENT_FAILURE_TEST(
+	FBranchIntentWriterAtomicityCompleteMatrixTest,
+	"WriterAtomicityCompleteMatrix")
+
+bool FBranchIntentWriterAtomicityCompleteMatrixTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace BranchIntentSelectionFailureTests;
+	const FMatchPlayState Shot =
+		Fixtures::MakeAwaitingShotIntent(
+			ESkillRuleType::LongShot);
+	const auto DirectShotRequest = Fixtures::MakeRequest(
+		Shot,
+		EMatchPlayElectiveBranchIntent::DirectShot);
+
+	auto Stale = DirectShotRequest;
+	--Stale.AttackSequence;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Stale AttackSequence"),
+		Shot,
+		Stale,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::AttackSequenceMismatch);
+
+	auto Ahead = DirectShotRequest;
+	++Ahead.AttackSequence;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Ahead AttackSequence"),
+		Shot,
+		Ahead,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::AttackSequenceMismatch);
+
+	auto WrongSide = DirectShotRequest;
+	WrongSide.RequestingSide = EInitialTurnOrderPlayer::PlayerB;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Wrong RequestingSide"),
+		Shot,
+		WrongSide,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::RequestingSideIsNotCurrentAttacker);
+
+	auto InvalidSide = DirectShotRequest;
+	InvalidSide.RequestingSide = EInitialTurnOrderPlayer::None;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Invalid RequestingSide"),
+		Shot,
+		InvalidSide,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidRequestingSide);
+
+	FMatchPlayState Completed = Shot;
+	Completed.bHasCurrentAttack = false;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Completed current attack"),
+		Completed,
+		DirectShotRequest,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::NoCurrentAttack);
+
+	FMatchPlayState WrongLifecycle = Shot;
+	WrongLifecycle.CurrentAttack.Phase =
+		EMatchPlayCurrentAttackPhase::Deployment;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Current attack not in selection lifecycle"),
+		WrongLifecycle,
+		DirectShotRequest,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::CurrentAttackNotInResolution);
+
+	FMatchPlayState NotYetAwaiting = Shot;
+	NotYetAwaiting.CurrentAttack.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Selection not yet awaiting Intent"),
+		NotYetAwaiting,
+		DirectShotRequest,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::WrongSelectionStage);
+
+	const FMatchPlayState Ready = Fixtures::MakeReadyState(
+		ESkillRuleType::LongShot,
+		EMatchPlayElectiveBranchIntent::DirectShot);
+	const auto RepeatRequest = Fixtures::MakeRequest(
+		Ready,
+		EMatchPlayElectiveBranchIntent::DirectShot);
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Ready stage rejects Intent"),
+		Ready,
+		RepeatRequest,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::WrongSelectionStage);
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Repeated Intent submission"),
+		Ready,
+		RepeatRequest,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::WrongSelectionStage);
+
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Intent None"),
+		Shot,
+		Fixtures::MakeRequest(
+			Shot,
+			EMatchPlayElectiveBranchIntent::None),
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidIntent);
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Shot rejects Cross family"),
+		Shot,
+		Fixtures::MakeRequest(
+			Shot,
+			EMatchPlayElectiveBranchIntent::CrossHigh),
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::IntentActionTypeMismatch);
+
+	const FMatchPlayState Cross =
+		Fixtures::MakeAwaitingCrossIntent(
+			Fixtures::ECrossHelperPath::Selected);
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Cross rejects Shot family"),
+		Cross,
+		Fixtures::MakeRequest(
+			Cross,
+			EMatchPlayElectiveBranchIntent::DirectShot),
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::IntentActionTypeMismatch);
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Unknown Intent enum"),
+		Shot,
+		Fixtures::MakeRequest(
+			Shot,
+			static_cast<EMatchPlayElectiveBranchIntent>(255)),
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidIntent);
+
+	FMatchPlayState MissingCarrier = Shot;
+	MissingCarrier.CurrentAttack.ActionPreparation.CarrierCardId =
+		NAME_None;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Missing Carrier"),
+		MissingCarrier,
+		DirectShotRequest,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState MissingMarker = Shot;
+	MissingMarker.CurrentAttack.ActionPreparation.MarkerCardId =
+		NAME_None;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Missing Marker"),
+		MissingMarker,
+		DirectShotRequest,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState MissingSkill = Shot;
+	MissingSkill.CurrentAttack.ActionPreparation.SkillId =
+		NAME_None;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Missing Skill"),
+		MissingSkill,
+		DirectShotRequest,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState MissingRunner = Cross;
+	MissingRunner.CurrentAttack.ActionPreparation.RunnerCardId =
+		NAME_None;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Missing Cross Runner"),
+		MissingRunner,
+		Fixtures::MakeRequest(
+			MissingRunner,
+			EMatchPlayElectiveBranchIntent::CrossHigh),
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState PresentWithoutIdentity = Cross;
+	PresentWithoutIdentity.CurrentAttack.ActionPreparation.HelperCardId =
+		NAME_None;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Present Helper without identity"),
+		PresentWithoutIdentity,
+		Fixtures::MakeRequest(
+			PresentWithoutIdentity,
+			EMatchPlayElectiveBranchIntent::CrossHigh),
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	FMatchPlayState AbsentWithIdentity =
+		Fixtures::MakeAwaitingCrossIntent(
+			Fixtures::ECrossHelperPath::Declined);
+	AbsentWithIdentity.CurrentAttack.ActionPreparation.HelperCardId =
+		HelperFixtures::HelperId;
+	ExpectWriterFailureAtomic(
+		*this,
+		TEXT("Absent Helper with identity"),
+		AbsentWithIdentity,
+		Fixtures::MakeRequest(
+			AbsentWithIdentity,
+			EMatchPlayElectiveBranchIntent::CrossLow),
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::InvalidSelectionState);
+
+	for (const ESkillRuleType UnsupportedType : {
+		ESkillRuleType::PassControl,
+		ESkillRuleType::ThroughBall,
+		static_cast<ESkillRuleType>(255)})
+	{
+		FMatchPlayState Unsupported =
+			HelperFixtures::MakeState(
+				UnsupportedType == static_cast<ESkillRuleType>(255)
+					? ESkillRuleType::PassControl
+					: UnsupportedType);
+		Unsupported.CurrentAttack.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage
+				::AwaitingBranchIntent;
+		Unsupported.CurrentAttack.ActionPreparation.ActionType =
+			UnsupportedType;
+		ExpectWriterFailureAtomic(
+			*this,
+			TEXT("Unsupported Skill"),
+			Unsupported,
+			Fixtures::MakeRequest(
+				Unsupported,
+				EMatchPlayElectiveBranchIntent::DirectShot),
+			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::GlobalContextFailed,
+			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::InvalidSelectionState);
+	}
 	return true;
 }
 
