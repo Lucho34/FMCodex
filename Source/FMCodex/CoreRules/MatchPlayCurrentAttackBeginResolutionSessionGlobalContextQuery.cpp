@@ -155,7 +155,7 @@ FMatchPlayCurrentAttackBeginResolutionSessionGlobalContextQuery::Query(
 
 	Result.SessionStateValidationResult =
 		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-			CurrentAttack);
+			State);
 	if (!Result.SessionStateValidationResult.bIsCanonical)
 	{
 		SetFailure(
@@ -232,7 +232,7 @@ FMatchPlayCurrentAttackBeginResolutionSessionGlobalContextQuery::Query(
 	Result.Session = BuildSession(Result.NormalizationResult);
 	Result.SessionStateValidationResult =
 		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-			CurrentAttack,
+			State,
 			&Result.Session);
 	if (!Result.SessionStateValidationResult.bIsCanonical)
 	{

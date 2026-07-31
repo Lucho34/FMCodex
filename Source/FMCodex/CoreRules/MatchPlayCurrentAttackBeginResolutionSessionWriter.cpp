@@ -32,7 +32,7 @@ FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(
 	const FMatchPlayCurrentAttackResolutionSessionStateValidationResult
 		ValidationResult =
 			FMatchPlayCurrentAttackResolutionSessionStateValidator
-				::Validate(WorkingState.CurrentAttack);
+				::Validate(WorkingState);
 	if (!ValidationResult.bIsCanonical)
 	{
 		Result.ErrorCode =

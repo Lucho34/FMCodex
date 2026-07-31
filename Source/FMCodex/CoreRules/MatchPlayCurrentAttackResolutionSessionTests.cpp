@@ -81,6 +81,99 @@ namespace MatchPlayCurrentAttackResolutionSessionTests
 			&& Result.ErrorCode == ExpectedError;
 	}
 
+	bool ExpectMalformedDuplicateFailure(
+		FAutomationTestBase& Test,
+		const TCHAR* Label,
+		const FMatchPlayState& State,
+		const
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				ExpectedValidatorError)
+	{
+		const FMatchPlayState Original = State;
+		const auto Request = SessionFixtures::MakeRequest(State);
+		const auto Global =
+			FMatchPlayCurrentAttackBeginResolutionSessionGlobalContextQuery
+				::Query(State, Request);
+		const auto Legality =
+			FMatchPlayCurrentAttackBeginResolutionSessionLegalityEvaluator
+				::Evaluate(State, Request);
+		const auto Writer =
+			FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(
+				State,
+				Request);
+
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Global fails"), Label),
+			Global.bSuccess);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Global is not duplicate"), Label),
+			Global.bSessionAlreadyExists);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Global exact error"), Label),
+			Global.ErrorCode,
+			EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+				::InvalidExistingSessionState);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Global nested reason"), Label),
+			Global.SessionStateValidationResult.ErrorCode,
+			ExpectedValidatorError);
+
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Legality fails"), Label),
+			Legality.bIsLegal);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Legality is not duplicate"), Label),
+			Legality.bSessionAlreadyExists);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Legality exact error"), Label),
+			Legality.ErrorCode,
+			EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+				::InvalidExistingSessionState);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Legality nested reason"), Label),
+			Legality.GlobalContextResult.SessionStateValidationResult
+				.ErrorCode,
+			ExpectedValidatorError);
+
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Writer fails"), Label),
+			Writer.bSuccess);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Writer creates nothing"), Label),
+			Writer.bCreatedNewSession);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Writer exact error"), Label),
+			Writer.ErrorCode,
+			EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+				::InvalidExistingSessionState);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Writer nested reason"), Label),
+			Writer.LegalityResult.GlobalContextResult
+				.SessionStateValidationResult.ErrorCode,
+			ExpectedValidatorError);
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s input unchanged"), Label),
+			SessionFixtures::AreStatesEqual(State, Original));
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s BeforeState exact"), Label),
+			SessionFixtures::AreStatesEqual(
+				Writer.BeforeState,
+				Original));
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s AfterState exact"), Label),
+			SessionFixtures::AreStatesEqual(
+				Writer.AfterState,
+				Original));
+		return !Global.bSuccess
+			&& !Legality.bIsLegal
+			&& !Writer.bSuccess
+			&& Global.ErrorCode
+				== EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+					::InvalidExistingSessionState
+			&& Global.SessionStateValidationResult.ErrorCode
+				== ExpectedValidatorError;
+	}
+
 	FMatchPlayState MakeBegunState(const ESkillRuleType ActionType)
 	{
 		const FMatchPlayState Ready =
@@ -164,6 +257,17 @@ bool FResolutionSessionFiveActionBeginTest::RunTest(
 			FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(
 				Ready,
 				SessionFixtures::MakeRequest(Ready));
+		const auto SessionValidation =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				Result.AfterState);
+		const EInitialTurnOrderPlayer RuntimeAttacker =
+			Result.AfterState.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer RuntimeDefender =
+			RuntimeAttacker == EInitialTurnOrderPlayer::PlayerA
+				? EInitialTurnOrderPlayer::PlayerB
+				: EInitialTurnOrderPlayer::PlayerA;
+		const FMatchPlayCurrentAttackActionPreparationState
+			DefaultPreparation;
 		TestTrue(TEXT("Formal Ready state normalizes"),
 			Normalization.bSuccess);
 		TestTrue(TEXT("First Begin succeeds"), Result.bSuccess);
@@ -181,6 +285,22 @@ bool FResolutionSessionFiveActionBeginTest::RunTest(
 			SessionFixtures::SessionMatchesNormalization(
 				Result.Session,
 				Normalization));
+		TestTrue(TEXT("Published Session is canonical"),
+			SessionValidation.bIsCanonical);
+		TestEqual(TEXT("Bundle attacker matches runtime authority"),
+			Result.Session.Bundle.CurrentAttackingPlayer,
+			RuntimeAttacker);
+		TestEqual(TEXT("Bundle defender matches runtime authority"),
+			Result.Session.Bundle.CurrentDefendingPlayer,
+			RuntimeDefender);
+		TestTrue(TEXT("SelectedAction presence remains canonical"),
+			Result.AfterState.CurrentAttack.bHasSelectedAction);
+		TestTrue(TEXT("ActionPreparation remains default"),
+			FMatchPlayCurrentAttackActionPreparationState::StaticStruct()
+				->CompareScriptStruct(
+					&Result.AfterState.CurrentAttack.ActionPreparation,
+					&DefaultPreparation,
+					0));
 		TestTrue(TEXT("Only Session authority changed"),
 			SessionFixtures::OnlySessionChanged(
 				Ready,
@@ -227,6 +347,9 @@ bool FResolutionSessionDuplicateBeginTest::RunTest(
 			SessionFixtures::AreSessionsEqual(
 				First.Session,
 				Second.Session));
+		TestTrue(TEXT("Duplicate Session validator succeeds"),
+			Second.LegalityResult.GlobalContextResult
+				.SessionStateValidationResult.bIsCanonical);
 		TestTrue(TEXT("Duplicate Global Context bypasses Ready"),
 			!Second.LegalityResult.GlobalContextResult
 				.ReadyValidationResult.bSuccess);
@@ -417,6 +540,54 @@ bool FResolutionSessionMalformedExistingTest::RunTest(
 			EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
 				::InvalidExistingSessionState);
 	}
+
+	FMatchPlayState MissingSelectedAction = Begun;
+	MissingSelectedAction.CurrentAttack.bHasSelectedAction = false;
+	MatchPlayCurrentAttackResolutionSessionTests
+		::ExpectMalformedDuplicateFailure(
+			*this,
+			TEXT("Missing SelectedAction presence"),
+			MissingSelectedAction,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::MissingSelectedAction);
+
+	FMatchPlayState NonDefaultPreparation = Begun;
+	NonDefaultPreparation.CurrentAttack.ActionPreparation.CarrierCardId =
+		TEXT("Corrupt.Preparation.Carrier");
+	MatchPlayCurrentAttackResolutionSessionTests
+		::ExpectMalformedDuplicateFailure(
+			*this,
+			TEXT("Non-default ActionPreparation"),
+			NonDefaultPreparation,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::NonDefaultActionPreparation);
+
+	FMatchPlayState RuntimeAttackerMismatch = Begun;
+	RuntimeAttackerMismatch.RuntimeState.CurrentAttackingPlayer =
+		RuntimeAttackerMismatch.RuntimeState.CurrentAttackingPlayer
+			== EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA;
+	MatchPlayCurrentAttackResolutionSessionTests
+		::ExpectMalformedDuplicateFailure(
+			*this,
+			TEXT("Runtime attacker mismatch"),
+			RuntimeAttackerMismatch,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::RuntimeAttackerMismatch);
+
+	FMatchPlayState RuntimeDefenderMismatch = Begun;
+	RuntimeDefenderMismatch.CurrentAttack.ResolutionSession.Bundle
+		.CurrentDefendingPlayer =
+			RuntimeDefenderMismatch.CurrentAttack.ResolutionSession.Bundle
+				.CurrentAttackingPlayer;
+	MatchPlayCurrentAttackResolutionSessionTests
+		::ExpectMalformedDuplicateFailure(
+			*this,
+			TEXT("Runtime defender mismatch"),
+			RuntimeDefenderMismatch,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::RuntimeDefenderMismatch);
 	return true;
 }
 
@@ -431,28 +602,32 @@ bool FResolutionSessionFirstErrorTest::RunTest(
 		SessionFixtures::MakeReadyState(ESkillRuleType::LongShot);
 	const auto ValidRequest = SessionFixtures::MakeRequest(Ready);
 
-	FMatchPlayState StaleAndWrongStage = Ready;
-	StaleAndWrongStage.CurrentAttack.SelectionStage =
-		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+	FMatchPlayState StaleAndSelectionCorruption = Ready;
+	StaleAndSelectionCorruption.CurrentAttack.bHasSelectedAction = false;
 	auto StaleRequest = ValidRequest;
 	--StaleRequest.AttackSequence;
 	MatchPlayCurrentAttackResolutionSessionTests::ExpectWriterFailure(
 		*this,
-		TEXT("Stale outranks stage"),
-		StaleAndWrongStage,
+		TEXT("Stale outranks selection authority corruption"),
+		StaleAndSelectionCorruption,
 		StaleRequest,
 		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
 			::AttackSequenceMismatch);
 
-	FMatchPlayState PhaseAndReady = Ready;
-	PhaseAndReady.CurrentAttack.Phase =
+	FMatchPlayState PhaseAndRuntime =
+		MatchPlayCurrentAttackResolutionSessionTests::MakeBegunState(
+			ESkillRuleType::LongShot);
+	PhaseAndRuntime.CurrentAttack.Phase =
 		EMatchPlayCurrentAttackPhase::Deployment;
-	PhaseAndReady.CurrentAttack.SelectedAction.ElectiveBranchIntent =
-		EMatchPlayElectiveBranchIntent::CrossHigh;
+	PhaseAndRuntime.RuntimeState.CurrentAttackingPlayer =
+		PhaseAndRuntime.RuntimeState.CurrentAttackingPlayer
+			== EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA;
 	MatchPlayCurrentAttackResolutionSessionTests::ExpectWriterFailure(
 		*this,
-		TEXT("Phase outranks Ready"),
-		PhaseAndReady,
+		TEXT("Phase outranks runtime authority corruption"),
+		PhaseAndRuntime,
 		ValidRequest,
 		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
 			::CurrentAttackNotInResolution);
@@ -498,7 +673,7 @@ bool FResolutionSessionStateValidatorTest::RunTest(
 		SessionFixtures::MakeReadyState(ESkillRuleType::Cross);
 	auto Validation =
 		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-			Ready.CurrentAttack);
+			Ready);
 	TestTrue(TEXT("Canonical absence accepted"),
 		Validation.bIsCanonical);
 
@@ -507,14 +682,14 @@ bool FResolutionSessionStateValidatorTest::RunTest(
 			ESkillRuleType::Cross);
 	Validation =
 		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-			Begun.CurrentAttack);
+			Begun);
 	TestTrue(TEXT("Canonical presence accepted"),
 		Validation.bIsCanonical);
 
 	Begun.CurrentAttack.ResolutionSession.Bundle.Carrier.Values.Passing = 0;
 	Validation =
 		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-			Begun.CurrentAttack);
+			Begun);
 	TestFalse(TEXT("Invalid normalized value rejected"),
 		Validation.bIsCanonical);
 	TestEqual(TEXT("Exact invalid bundle error"),
@@ -533,38 +708,100 @@ bool FResolutionSessionGlobalContextDeterminismTest::RunTest(
 {
 	TArray<TPair<FMatchPlayState,
 		FMatchPlayCurrentAttackBeginResolutionSessionRequest>> Cases;
+	TArray<EMatchPlayCurrentAttackBeginResolutionSessionErrorCode>
+		ExpectedErrors;
+	auto AddCase = [&Cases, &ExpectedErrors](
+		const FMatchPlayState& State,
+		const FMatchPlayCurrentAttackBeginResolutionSessionRequest& Request,
+		const EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			ExpectedError)
+	{
+		Cases.Emplace(State, Request);
+		ExpectedErrors.Add(ExpectedError);
+	};
 	const FMatchPlayState Ready =
 		SessionFixtures::MakeReadyState(ESkillRuleType::LongShot);
-	Cases.Emplace(Ready, SessionFixtures::MakeRequest(Ready));
+	AddCase(
+		Ready,
+		SessionFixtures::MakeRequest(Ready),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode::None);
 
 	const FMatchPlayState Begun =
 		MatchPlayCurrentAttackResolutionSessionTests::MakeBegunState(
 			ESkillRuleType::LongShot);
-	Cases.Emplace(Begun, SessionFixtures::MakeRequest(Begun));
+	AddCase(
+		Begun,
+		SessionFixtures::MakeRequest(Begun),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode::None);
 
 	auto StaleRequest = SessionFixtures::MakeRequest(Ready);
 	--StaleRequest.AttackSequence;
-	Cases.Emplace(Ready, StaleRequest);
+	AddCase(
+		Ready,
+		StaleRequest,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::AttackSequenceMismatch);
 
 	FMatchPlayState WrongPhase = Ready;
 	WrongPhase.CurrentAttack.Phase =
 		EMatchPlayCurrentAttackPhase::Deployment;
-	Cases.Emplace(WrongPhase, SessionFixtures::MakeRequest(WrongPhase));
+	AddCase(
+		WrongPhase,
+		SessionFixtures::MakeRequest(WrongPhase),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::CurrentAttackNotInResolution);
 
 	FMatchPlayState ReadyFailure = Ready;
 	ReadyFailure.CurrentAttack.SelectedAction.ElectiveBranchIntent =
 		EMatchPlayElectiveBranchIntent::CrossHigh;
-	Cases.Emplace(
+	AddCase(
 		ReadyFailure,
-		SessionFixtures::MakeRequest(ReadyFailure));
+		SessionFixtures::MakeRequest(ReadyFailure),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::ReadyValidationFailed);
 
 	FMatchPlayState Malformed = Begun;
 	Malformed.CurrentAttack.ResolutionSession.AttackSequence = 0;
-	Cases.Emplace(Malformed, SessionFixtures::MakeRequest(Malformed));
+	AddCase(
+		Malformed,
+		SessionFixtures::MakeRequest(Malformed),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
 
-	for (const auto& Case : Cases)
+	FMatchPlayState MissingSelectedAction = Begun;
+	MissingSelectedAction.CurrentAttack.bHasSelectedAction = false;
+	AddCase(
+		MissingSelectedAction,
+		SessionFixtures::MakeRequest(MissingSelectedAction),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
+
+	FMatchPlayState NonDefaultPreparation = Begun;
+	NonDefaultPreparation.CurrentAttack.ActionPreparation.CarrierCardId =
+		TEXT("Corrupt.Preparation.Carrier");
+	AddCase(
+		NonDefaultPreparation,
+		SessionFixtures::MakeRequest(NonDefaultPreparation),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
+
+	FMatchPlayState RuntimeAttackerMismatch = Begun;
+	RuntimeAttackerMismatch.RuntimeState.CurrentAttackingPlayer =
+		RuntimeAttackerMismatch.RuntimeState.CurrentAttackingPlayer
+			== EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA;
+	AddCase(
+		RuntimeAttackerMismatch,
+		SessionFixtures::MakeRequest(RuntimeAttackerMismatch),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
+
+	for (int32 CaseIndex = 0; CaseIndex < Cases.Num(); ++CaseIndex)
 	{
+		const auto& Case = Cases[CaseIndex];
 		const FMatchPlayState Original = Case.Key;
+		const auto OriginalRequest = Case.Value;
 		const auto First =
 			FMatchPlayCurrentAttackBeginResolutionSessionGlobalContextQuery
 				::Query(Case.Key, Case.Value);
@@ -584,6 +821,15 @@ bool FResolutionSessionGlobalContextDeterminismTest::RunTest(
 				Third));
 		TestTrue(TEXT("Global Context is read-only"),
 			SessionFixtures::AreStatesEqual(Case.Key, Original));
+		TestTrue(TEXT("Global Context Request is unchanged"),
+			FMatchPlayCurrentAttackBeginResolutionSessionRequest
+				::StaticStruct()->CompareScriptStruct(
+					&Case.Value,
+					&OriginalRequest,
+					0));
+		TestEqual(TEXT("Global Context exact deterministic error"),
+			First.ErrorCode,
+			ExpectedErrors[CaseIndex]);
 	}
 	return true;
 }
@@ -595,38 +841,129 @@ RESOLUTION_SESSION_TEST(
 bool FResolutionSessionLegalityDeterminismTest::RunTest(
 	const FString& Parameters)
 {
-	TArray<FMatchPlayState> States;
-	States.Add(
-		SessionFixtures::MakeReadyState(
-			ESkillRuleType::ThroughBall));
-	States.Add(
+	TArray<TPair<FMatchPlayState,
+		FMatchPlayCurrentAttackBeginResolutionSessionRequest>> Cases;
+	TArray<EMatchPlayCurrentAttackBeginResolutionSessionErrorCode>
+		ExpectedErrors;
+	auto AddCase = [&Cases, &ExpectedErrors](
+		const FMatchPlayState& State,
+		const FMatchPlayCurrentAttackBeginResolutionSessionRequest& Request,
+		const EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			ExpectedError)
+	{
+		Cases.Emplace(State, Request);
+		ExpectedErrors.Add(ExpectedError);
+	};
+
+	const FMatchPlayState Ready =
+		SessionFixtures::MakeReadyState(ESkillRuleType::ThroughBall);
+	AddCase(
+		Ready,
+		SessionFixtures::MakeRequest(Ready),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode::None);
+	const FMatchPlayState Begun =
 		MatchPlayCurrentAttackResolutionSessionTests::MakeBegunState(
-			ESkillRuleType::ThroughBall));
-	FMatchPlayState WrongPhase = States[0];
+			ESkillRuleType::ThroughBall);
+	AddCase(
+		Begun,
+		SessionFixtures::MakeRequest(Begun),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode::None);
+
+	FMatchPlayState WrongPhase = Ready;
 	WrongPhase.CurrentAttack.Phase =
 		EMatchPlayCurrentAttackPhase::Deployment;
-	States.Add(WrongPhase);
-	FMatchPlayState Malformed = States[1];
+	AddCase(
+		WrongPhase,
+		SessionFixtures::MakeRequest(WrongPhase),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::CurrentAttackNotInResolution);
+
+	FMatchPlayState Malformed = Begun;
 	Malformed.CurrentAttack.ResolutionSession.Stage =
 		EMatchPlayCurrentAttackResolutionStage::None;
-	States.Add(Malformed);
+	AddCase(
+		Malformed,
+		SessionFixtures::MakeRequest(Malformed),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
 
-	for (const FMatchPlayState& State : States)
+	auto StaleRequest = SessionFixtures::MakeRequest(Ready);
+	--StaleRequest.AttackSequence;
+	AddCase(
+		Ready,
+		StaleRequest,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::AttackSequenceMismatch);
+
+	FMatchPlayState ReadyFailure = Ready;
+	ReadyFailure.CurrentAttack.SelectedAction.ElectiveBranchIntent =
+		EMatchPlayElectiveBranchIntent::CrossHigh;
+	AddCase(
+		ReadyFailure,
+		SessionFixtures::MakeRequest(ReadyFailure),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::ReadyValidationFailed);
+
+	FMatchPlayState MissingSelectedAction = Begun;
+	MissingSelectedAction.CurrentAttack.bHasSelectedAction = false;
+	AddCase(
+		MissingSelectedAction,
+		SessionFixtures::MakeRequest(MissingSelectedAction),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
+
+	FMatchPlayState NonDefaultPreparation = Begun;
+	NonDefaultPreparation.CurrentAttack.ActionPreparation.CarrierCardId =
+		TEXT("Corrupt.Preparation.Carrier");
+	AddCase(
+		NonDefaultPreparation,
+		SessionFixtures::MakeRequest(NonDefaultPreparation),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
+
+	FMatchPlayState RuntimeAttackerMismatch = Begun;
+	RuntimeAttackerMismatch.RuntimeState.CurrentAttackingPlayer =
+		RuntimeAttackerMismatch.RuntimeState.CurrentAttackingPlayer
+			== EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA;
+	AddCase(
+		RuntimeAttackerMismatch,
+		SessionFixtures::MakeRequest(RuntimeAttackerMismatch),
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
+
+	for (int32 CaseIndex = 0; CaseIndex < Cases.Num(); ++CaseIndex)
 	{
-		const auto Request = SessionFixtures::MakeRequest(State);
+		const auto& Case = Cases[CaseIndex];
+		const FMatchPlayState OriginalState = Case.Key;
+		const auto OriginalRequest = Case.Value;
 		const auto First =
 			FMatchPlayCurrentAttackBeginResolutionSessionLegalityEvaluator
-				::Evaluate(State, Request);
+				::Evaluate(Case.Key, Case.Value);
 		const auto Second =
 			FMatchPlayCurrentAttackBeginResolutionSessionLegalityEvaluator
-				::Evaluate(State, Request);
+				::Evaluate(Case.Key, Case.Value);
 		const auto Third =
 			FMatchPlayCurrentAttackBeginResolutionSessionLegalityEvaluator
-				::Evaluate(State, Request);
+				::Evaluate(Case.Key, Case.Value);
 		TestTrue(TEXT("Legality first equals second"),
 			SessionFixtures::AreLegalityResultsEqual(First, Second));
 		TestTrue(TEXT("Legality second equals third"),
 			SessionFixtures::AreLegalityResultsEqual(Second, Third));
+		TestTrue(TEXT("Legality State is unchanged"),
+			SessionFixtures::AreStatesEqual(
+				Case.Key,
+				OriginalState));
+		TestTrue(TEXT("Legality Request is unchanged"),
+			FMatchPlayCurrentAttackBeginResolutionSessionRequest
+				::StaticStruct()->CompareScriptStruct(
+					&Case.Value,
+					&OriginalRequest,
+					0));
+		TestEqual(TEXT("Legality exact deterministic error"),
+			First.ErrorCode,
+			ExpectedErrors[CaseIndex]);
 	}
 	return true;
 }

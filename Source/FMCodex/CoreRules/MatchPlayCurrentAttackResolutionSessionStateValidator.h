@@ -13,6 +13,11 @@ enum class EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 	None UMETA(DisplayName = "None"),
 	AbsentSessionHasPayload
 		UMETA(DisplayName = "Absent Session Has Payload"),
+	MatchPlayStateNotInitialized
+		UMETA(DisplayName = "Match Play State Not Initialized"),
+	NoCurrentAttack UMETA(DisplayName = "No Current Attack"),
+	InvalidCurrentAttackSequence
+		UMETA(DisplayName = "Invalid Current Attack Sequence"),
 	InvalidSessionAttackSequence
 		UMETA(DisplayName = "Invalid Session Attack Sequence"),
 	SessionAttackSequenceMismatch
@@ -22,6 +27,16 @@ enum class EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 	CurrentAttackNotInResolution
 		UMETA(DisplayName = "Current Attack Not In Resolution"),
 	WrongSelectionStage UMETA(DisplayName = "Wrong Selection Stage"),
+	MissingSelectedAction UMETA(DisplayName = "Missing Selected Action"),
+	NonDefaultActionPreparation
+		UMETA(DisplayName = "Non-Default Action Preparation"),
+	InvalidSelectionState UMETA(DisplayName = "Invalid Selection State"),
+	InvalidRuntimeAttackingPlayer
+		UMETA(DisplayName = "Invalid Runtime Attacking Player"),
+	RuntimeAttackerMismatch
+		UMETA(DisplayName = "Runtime Attacker Mismatch"),
+	RuntimeDefenderMismatch
+		UMETA(DisplayName = "Runtime Defender Mismatch"),
 	InvalidSessionBundle UMETA(DisplayName = "Invalid Session Bundle")
 };
 
@@ -51,7 +66,7 @@ public:
 	static
 		FMatchPlayCurrentAttackResolutionSessionStateValidationResult
 	Validate(
-		const FMatchPlayCurrentAttackState& CurrentAttack,
+		const FMatchPlayState& State,
 		const FMatchPlayCurrentAttackResolutionSession*
 			ProposedSession = nullptr);
 };

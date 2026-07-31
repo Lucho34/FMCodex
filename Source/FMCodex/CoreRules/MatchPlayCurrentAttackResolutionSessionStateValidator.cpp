@@ -1,5 +1,6 @@
 #include "MatchPlayCurrentAttackResolutionSessionStateValidator.h"
 
+#include "MatchPlayCurrentAttackSelectionStateValidator.h"
 #include "MatchPlayElectiveBranchIntentRules.h"
 #include "PlayerCardRuleSnapshotValidator.h"
 
@@ -18,6 +19,31 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 		return IsPlayerSide(Attacker)
 			&& IsPlayerSide(Defender)
 			&& Attacker != Defender;
+	}
+
+	EInitialTurnOrderPlayer GetDefendingPlayer(
+		const EInitialTurnOrderPlayer Attacker)
+	{
+		if (Attacker == EInitialTurnOrderPlayer::PlayerA)
+		{
+			return EInitialTurnOrderPlayer::PlayerB;
+		}
+		if (Attacker == EInitialTurnOrderPlayer::PlayerB)
+		{
+			return EInitialTurnOrderPlayer::PlayerA;
+		}
+		return EInitialTurnOrderPlayer::None;
+	}
+
+	bool IsActionPreparationDefault(
+		const FMatchPlayCurrentAttackActionPreparationState& Preparation)
+	{
+		const FMatchPlayCurrentAttackActionPreparationState DefaultPreparation;
+		return FMatchPlayCurrentAttackActionPreparationState::StaticStruct()
+			->CompareScriptStruct(
+				&Preparation,
+				&DefaultPreparation,
+				0);
 	}
 
 	bool IsSupportedActionType(const ESkillRuleType ActionType)
@@ -196,13 +222,15 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 
 FMatchPlayCurrentAttackResolutionSessionStateValidationResult
 FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-	const FMatchPlayCurrentAttackState& CurrentAttack,
+	const FMatchPlayState& State,
 	const FMatchPlayCurrentAttackResolutionSession* ProposedSession)
 {
 	using namespace
 		MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation;
 
 	FMatchPlayCurrentAttackResolutionSessionStateValidationResult Result;
+	const FMatchPlayCurrentAttackState& CurrentAttack =
+		State.CurrentAttack;
 	const bool bValidatingProposedSession = ProposedSession != nullptr;
 	if (!CurrentAttack.bHasResolutionSession
 		&& !bValidatingProposedSession)
@@ -243,6 +271,34 @@ FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
 				TEXT("A proposed Session requires canonical absent Session state."));
 			return Result;
 		}
+	}
+
+	if (!State.RuntimeState.bIsInitialized)
+	{
+		SetFailure(
+			Result,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::MatchPlayStateNotInitialized,
+			TEXT("A present or proposed Resolution Session requires initialized match play state."));
+		return Result;
+	}
+	if (!State.bHasCurrentAttack)
+	{
+		SetFailure(
+			Result,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::NoCurrentAttack,
+			TEXT("A present or proposed Resolution Session requires CurrentAttack authority."));
+		return Result;
+	}
+	if (CurrentAttack.AttackSequence <= 0)
+	{
+		SetFailure(
+			Result,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::InvalidCurrentAttackSequence,
+			TEXT("A present or proposed Resolution Session requires a positive CurrentAttack sequence."));
+		return Result;
 	}
 
 	const FMatchPlayCurrentAttackResolutionSession& Session =
@@ -294,6 +350,70 @@ FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
 			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 				::WrongSelectionStage,
 			TEXT("A present Resolution Session requires ReadyForResolution."));
+		return Result;
+	}
+
+	const FMatchPlayCurrentAttackSelectionStateValidationResult
+		SelectionValidation =
+			FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+				CurrentAttack);
+	if (!SelectionValidation.bIsCanonical)
+	{
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			ErrorCode =
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::InvalidSelectionState;
+		if (!CurrentAttack.bHasSelectedAction)
+		{
+			ErrorCode =
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::MissingSelectedAction;
+		}
+		else if (!IsActionPreparationDefault(
+			CurrentAttack.ActionPreparation))
+		{
+			ErrorCode =
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::NonDefaultActionPreparation;
+		}
+		SetFailure(
+			Result,
+			ErrorCode,
+			FString::Printf(
+				TEXT("Resolution Session selection authority is not canonical: %s"),
+				*SelectionValidation.ErrorMessage));
+		return Result;
+	}
+
+	const EInitialTurnOrderPlayer RuntimeAttacker =
+		State.RuntimeState.CurrentAttackingPlayer;
+	if (!IsPlayerSide(RuntimeAttacker))
+	{
+		SetFailure(
+			Result,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::InvalidRuntimeAttackingPlayer,
+			TEXT("Resolution Session requires a valid runtime CurrentAttackingPlayer."));
+		return Result;
+	}
+	if (Session.Bundle.CurrentAttackingPlayer != RuntimeAttacker)
+	{
+		SetFailure(
+			Result,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::RuntimeAttackerMismatch,
+			TEXT("Session Bundle CurrentAttackingPlayer does not match runtime authority."));
+		return Result;
+	}
+	const EInitialTurnOrderPlayer RuntimeDefender =
+		GetDefendingPlayer(RuntimeAttacker);
+	if (Session.Bundle.CurrentDefendingPlayer != RuntimeDefender)
+	{
+		SetFailure(
+			Result,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::RuntimeDefenderMismatch,
+			TEXT("Session Bundle CurrentDefendingPlayer is not the authoritative opposing side."));
 		return Result;
 	}
 	if (!IsBundleCanonical(Session.Bundle, CurrentAttack))
