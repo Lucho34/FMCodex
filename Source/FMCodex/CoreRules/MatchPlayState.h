@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 
+#include "MatchPlayBoundActionNormalizedParticipantValues.h"
 #include "MatchPlayCardSnapshotAuthority.h"
 #include "MatchPlayDeploymentSlotCatalog.h"
 #include "MatchPlayGoalkeeperUsageState.h"
@@ -40,6 +41,13 @@ enum class EMatchPlayElectiveBranchIntent : uint8
 	DeadCorner = 2 UMETA(DisplayName = "Dead Corner"),
 	CrossHigh = 3 UMETA(DisplayName = "Cross High"),
 	CrossLow = 4 UMETA(DisplayName = "Cross Low")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayCurrentAttackResolutionStage : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	AwaitingRoute = 1 UMETA(DisplayName = "Awaiting Route")
 };
 
 USTRUCT(BlueprintType)
@@ -116,6 +124,109 @@ struct FMCODEX_API FMatchPlayCurrentAttackSelectedAction
 };
 
 USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackResolutionBindingValue
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	int64 AttackSequence = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName CarrierCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName MarkerCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName SkillId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	ESkillRuleType ActionType = ESkillRuleType::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName RunnerCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	bool bHasHelper = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	FName HelperCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Resolution Binding")
+	EMatchPlayElectiveBranchIntent ElectiveBranchIntent =
+		EMatchPlayElectiveBranchIntent::None;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackResolutionSessionParticipant
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	bool bIsPresent = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FName CardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayBoundActionNormalizedParticipantValues Values;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackResolutionSessionBundle
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackResolutionBindingValue Binding;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	EInitialTurnOrderPlayer CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	EInitialTurnOrderPlayer CurrentDefendingPlayer =
+		EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackResolutionSessionParticipant Carrier;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackResolutionSessionParticipant Marker;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	bool bHasRunner = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackResolutionSessionParticipant Runner;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	bool bHasHelper = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackResolutionSessionParticipant Helper;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackResolutionSession
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	int64 AttackSequence = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	EMatchPlayCurrentAttackResolutionStage Stage =
+		EMatchPlayCurrentAttackResolutionStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackResolutionSessionBundle Bundle;
+};
+
+USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchPlayCurrentAttackState
 {
 	GENERATED_BODY()
@@ -158,6 +269,12 @@ struct FMCODEX_API FMatchPlayCurrentAttackState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FMatchPlayCurrentAttackSelectedAction SelectedAction;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	bool bHasResolutionSession = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackResolutionSession ResolutionSession;
 };
 
 USTRUCT(BlueprintType)

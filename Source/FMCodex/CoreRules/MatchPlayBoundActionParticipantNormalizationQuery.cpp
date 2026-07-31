@@ -134,6 +134,35 @@ FMatchPlayBoundActionParticipantNormalizationQuery::Query(
 		return Result;
 	}
 
+	return QueryFromSuccessfulBinding(
+		State,
+		Request,
+		Result.BindingResult);
+}
+
+FMatchPlayBoundActionParticipantNormalizationResult
+FMatchPlayBoundActionParticipantNormalizationQuery
+	::QueryFromSuccessfulBinding(
+	const FMatchPlayState& State,
+	const FMatchPlayBoundActionParticipantNormalizationRequest& Request,
+	const FMatchPlayCurrentAttackResolutionBindingResult& BindingResult)
+{
+	using namespace
+		MatchPlayBoundActionParticipantNormalizationImplementation;
+
+	FMatchPlayBoundActionParticipantNormalizationResult Result;
+	Result.Request = Request;
+	Result.BindingResult = BindingResult;
+	if (!BindingResult.bSuccess)
+	{
+		SetFailure(
+			Result,
+			EMatchPlayBoundActionParticipantNormalizationErrorCode
+				::BindingFailed,
+			BindingResult.ErrorMessage);
+		return Result;
+	}
+
 	const FMatchPlayCurrentAttackResolutionBindingValue& Binding =
 		Result.BindingResult.Binding;
 	Result.ActionType = Binding.ActionType;

@@ -125,27 +125,11 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 				Result.ReadyValidationResult.ErrorMessage);
 			return Result;
 		}
-		Result.Binding.AttackSequence = CurrentAttack.AttackSequence;
-		Result.Binding.CarrierCardId =
-			CurrentAttack.SelectedAction.CarrierCardId;
-		Result.Binding.MarkerCardId =
-			CurrentAttack.SelectedAction.MarkerCardId;
-		Result.Binding.SkillId =
-			CurrentAttack.SelectedAction.SkillId;
-		Result.Binding.ActionType =
-			CurrentAttack.SelectedAction.ActionType;
-		Result.Binding.RunnerCardId =
-			CurrentAttack.SelectedAction.RunnerCardId;
-		Result.Binding.bHasHelper =
-			CurrentAttack.SelectedAction.bHasHelper;
-		Result.Binding.HelperCardId =
-			CurrentAttack.SelectedAction.HelperCardId;
-		Result.Binding.ElectiveBranchIntent =
-			CurrentAttack.SelectedAction.ElectiveBranchIntent;
-		Result.bSuccess = true;
-		Result.ErrorCode =
-			EMatchPlayCurrentAttackResolutionBindingErrorCode::None;
-		Result.ErrorMessage.Empty();
+		PopulateFromSuccessfulReadyValidation(
+			MatchPlayState,
+			AttackSequence,
+			Result.ReadyValidationResult,
+			Result);
 		return Result;
 	}
 
@@ -155,4 +139,55 @@ FMatchPlayCurrentAttackResolutionBinding::Query(
 			::InvalidSelectionState,
 		TEXT("Current attack has no implemented complete selection stage."));
 	return Result;
+}
+
+bool FMatchPlayCurrentAttackResolutionBinding
+	::PopulateFromSuccessfulReadyValidation(
+	const FMatchPlayState& MatchPlayState,
+	const int64 AttackSequence,
+	const FMatchPlayCurrentAttackReadyValidationResult&
+		ReadyValidationResult,
+	FMatchPlayCurrentAttackResolutionBindingResult& OutResult)
+{
+	using namespace
+		MatchPlayCurrentAttackResolutionBindingImplementation;
+
+	OutResult.RequestedAttackSequence = AttackSequence;
+	OutResult.ReadyValidationResult = ReadyValidationResult;
+	if (!ReadyValidationResult.bSuccess
+		|| !MatchPlayState.bHasCurrentAttack
+		|| MatchPlayState.CurrentAttack.AttackSequence != AttackSequence)
+	{
+		SetError(
+			OutResult,
+			EMatchPlayCurrentAttackResolutionBindingErrorCode
+				::InvalidSelectionState,
+			TEXT("Resolution Binding requires a successful Ready validation for the current attack."));
+		return false;
+	}
+
+	const FMatchPlayCurrentAttackState& CurrentAttack =
+		MatchPlayState.CurrentAttack;
+	OutResult.Binding.AttackSequence = CurrentAttack.AttackSequence;
+	OutResult.Binding.CarrierCardId =
+		CurrentAttack.SelectedAction.CarrierCardId;
+	OutResult.Binding.MarkerCardId =
+		CurrentAttack.SelectedAction.MarkerCardId;
+	OutResult.Binding.SkillId =
+		CurrentAttack.SelectedAction.SkillId;
+	OutResult.Binding.ActionType =
+		CurrentAttack.SelectedAction.ActionType;
+	OutResult.Binding.RunnerCardId =
+		CurrentAttack.SelectedAction.RunnerCardId;
+	OutResult.Binding.bHasHelper =
+		CurrentAttack.SelectedAction.bHasHelper;
+	OutResult.Binding.HelperCardId =
+		CurrentAttack.SelectedAction.HelperCardId;
+	OutResult.Binding.ElectiveBranchIntent =
+		CurrentAttack.SelectedAction.ElectiveBranchIntent;
+	OutResult.bSuccess = true;
+	OutResult.ErrorCode =
+		EMatchPlayCurrentAttackResolutionBindingErrorCode::None;
+	OutResult.ErrorMessage.Empty();
+	return true;
 }
