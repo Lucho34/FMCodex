@@ -185,6 +185,22 @@ namespace MatchPlayInitialRouteRollProviderTests
 		int32 RemainingResultCount = 0;
 	};
 
+	FFakeRunObservation RunSingleConfiguredResult(
+		const FMatchPlayInitialRouteRollProviderResult& ConfiguredResult)
+	{
+		FDeterministicFakeInitialRouteRollProvider Provider;
+		Provider.Enqueue(ConfiguredResult);
+
+		FFakeRunObservation Observation;
+		Observation.Results.Add(Provider.RollD6(
+			EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute));
+		Observation.CallCount = Provider.GetCallCount();
+		Observation.PurposeHistory = Provider.GetPurposeHistory();
+		Observation.RemainingResultCount =
+			Provider.GetRemainingResultCount();
+		return Observation;
+	}
+
 	FFakeRunObservation RunConfiguredSequence()
 	{
 		FDeterministicFakeInitialRouteRollProvider Provider;
@@ -420,22 +436,66 @@ bool FMatchPlayInitialRouteRollProviderInvalidRawD6Test::RunTest(
 	bool bValid = true;
 	for (const int32 RawD6 : {0, 7})
 	{
-		FDeterministicFakeInitialRouteRollProvider Provider;
-		Provider.Enqueue(MakeSuccess(RawD6));
-		const FMatchPlayInitialRouteRollProviderResult Result =
-			Provider.RollD6(
-				EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute);
-		bValid &= TestTrue(TEXT("Raw fault remains success"), Result.bSuccess);
-		bValid &= TestEqual(TEXT("Raw fault is not clamped"), Result.RawD6, RawD6);
-		bValid &= TestEqual(
-			TEXT("Raw fault ErrorCode remains None"),
-			Result.ErrorCode,
-			EMatchPlayInitialRouteRollProviderErrorCode::None);
-		bValid &= TestEqual(TEXT("Raw fault call count"), Provider.GetCallCount(), 1);
-		bValid &= TestEqual(
-			TEXT("Raw fault queue consumed once"),
-			Provider.GetRemainingResultCount(),
-			0);
+		const FFakeRunObservation First =
+			RunSingleConfiguredResult(MakeSuccess(RawD6));
+		const FFakeRunObservation Second =
+			RunSingleConfiguredResult(MakeSuccess(RawD6));
+		const FFakeRunObservation Third =
+			RunSingleConfiguredResult(MakeSuccess(RawD6));
+		const FString CaseContext = FString::Printf(
+			TEXT("RawD6=%d"),
+			RawD6);
+		const FFakeRunObservation* Runs[] = {&First, &Second, &Third};
+		for (int32 RunIndex = 0; RunIndex < 3; ++RunIndex)
+		{
+			const FFakeRunObservation& Observation = *Runs[RunIndex];
+			const FString RunContext = FString::Printf(
+				TEXT("%s run %d"),
+				*CaseContext,
+				RunIndex + 1);
+			bValid &= TestEqual(
+				*(RunContext + TEXT(" result count")),
+				Observation.Results.Num(),
+				1);
+			if (Observation.Results.Num() == 1)
+			{
+				bValid &= ExpectSuccess(
+					*this,
+					RunContext,
+					Observation.Results[0],
+					RawD6);
+			}
+			bValid &= TestEqual(
+				*(RunContext + TEXT(" call count")),
+				Observation.CallCount,
+				1);
+			bValid &= TestEqual(
+				*(RunContext + TEXT(" Purpose history count")),
+				Observation.PurposeHistory.Num(),
+				1);
+			if (Observation.PurposeHistory.Num() == 1)
+			{
+				bValid &= TestEqual(
+					*(RunContext + TEXT(" Purpose")),
+					Observation.PurposeHistory[0],
+					EMatchPlayCurrentAttackResolutionRollPurpose
+						::InitialRoute);
+			}
+			bValid &= TestEqual(
+				*(RunContext + TEXT(" remaining")),
+				Observation.RemainingResultCount,
+				0);
+		}
+		bValid &= ExpectObservationsEqual(
+			*this,
+			CaseContext + TEXT(" run 1 versus run 2"),
+			First,
+			Second);
+		bValid &= ExpectObservationsEqual(
+			*this,
+			CaseContext + TEXT(" run 1 versus run 3"),
+			First,
+			Third);
 	}
 	return bValid;
 }
@@ -473,6 +533,17 @@ bool FMatchPlayInitialRouteRollProviderFailureTest::RunTest(
 			ConfiguredProvider.GetCallCount(),
 			1);
 		bValid &= TestEqual(
+			*(TEXT("Explicit failure Purpose history count ") + RunContext),
+			ConfiguredProvider.GetPurposeHistory().Num(),
+			1);
+		if (ConfiguredProvider.GetPurposeHistory().Num() == 1)
+		{
+			bValid &= TestEqual(
+				*(TEXT("Explicit failure Purpose ") + RunContext),
+				ConfiguredProvider.GetPurposeHistory()[0],
+				EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute);
+		}
+		bValid &= TestEqual(
 			*(TEXT("Explicit failure consumed queue ") + RunContext),
 			ConfiguredProvider.GetRemainingResultCount(),
 			0);
@@ -491,6 +562,17 @@ bool FMatchPlayInitialRouteRollProviderFailureTest::RunTest(
 			*(TEXT("Empty queue call count ") + RunContext),
 			EmptyProvider.GetCallCount(),
 			1);
+		bValid &= TestEqual(
+			*(TEXT("Empty queue Purpose history count ") + RunContext),
+			EmptyProvider.GetPurposeHistory().Num(),
+			1);
+		if (EmptyProvider.GetPurposeHistory().Num() == 1)
+		{
+			bValid &= TestEqual(
+				*(TEXT("Empty queue Purpose ") + RunContext),
+				EmptyProvider.GetPurposeHistory()[0],
+				EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute);
+		}
 		bValid &= TestEqual(
 			*(TEXT("Empty queue remains empty ") + RunContext),
 			EmptyProvider.GetRemainingResultCount(),
@@ -635,6 +717,30 @@ bool FMatchPlayInitialRouteRollProviderIsolationTest::RunTest(
 	bValid &= ExpectSuccess(*this, TEXT("B2"), ProviderB.RollD6(Purpose), 6);
 	bValid &= TestEqual(TEXT("B final call count"), ProviderB.GetCallCount(), 2);
 	bValid &= TestEqual(TEXT("B final remaining"), ProviderB.GetRemainingResultCount(), 0);
+	bValid &= TestEqual(
+		TEXT("A Purpose history count"),
+		ProviderA.GetPurposeHistory().Num(),
+		2);
+	for (const EMatchPlayCurrentAttackResolutionRollPurpose RecordedPurpose :
+		ProviderA.GetPurposeHistory())
+	{
+		bValid &= TestEqual(
+			TEXT("A Purpose history entry"),
+			RecordedPurpose,
+			EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute);
+	}
+	bValid &= TestEqual(
+		TEXT("B Purpose history count"),
+		ProviderB.GetPurposeHistory().Num(),
+		2);
+	for (const EMatchPlayCurrentAttackResolutionRollPurpose RecordedPurpose :
+		ProviderB.GetPurposeHistory())
+	{
+		bValid &= TestEqual(
+			TEXT("B Purpose history entry"),
+			RecordedPurpose,
+			EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute);
+	}
 	return bValid;
 }
 
