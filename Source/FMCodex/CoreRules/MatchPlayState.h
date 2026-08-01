@@ -4,6 +4,8 @@
 
 #include "MatchPlayBoundActionNormalizedParticipantValues.h"
 #include "MatchPlayCardSnapshotAuthority.h"
+#include "MatchPlayCurrentAttackActualBranchTypes.h"
+#include "MatchPlayCurrentAttackResolutionRollTypes.h"
 #include "MatchPlayDeploymentSlotCatalog.h"
 #include "MatchPlayGoalkeeperUsageState.h"
 #include "MatchRuntimeStateTypes.h"
@@ -47,7 +49,8 @@ UENUM(BlueprintType)
 enum class EMatchPlayCurrentAttackResolutionStage : uint8
 {
 	None = 0 UMETA(DisplayName = "None"),
-	AwaitingRoute = 1 UMETA(DisplayName = "Awaiting Route")
+	AwaitingRoute = 1 UMETA(DisplayName = "Awaiting Route"),
+	RouteResolved = 2 UMETA(DisplayName = "Route Resolved")
 };
 
 USTRUCT(BlueprintType)
@@ -224,6 +227,16 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionSession
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
 	FMatchPlayCurrentAttackResolutionSessionBundle Bundle;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	bool bHasActualBranch = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackActualBranch ActualBranch;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	TArray<FMatchPlayCurrentAttackResolutionRollRecord>
+		InitialRouteRollRecords;
 };
 
 USTRUCT(BlueprintType)

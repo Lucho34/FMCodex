@@ -13,6 +13,20 @@ enum class EPassControlAdvanceType : uint8
 	RunAdvance
 };
 
+struct FMCODEX_API FPassControlAdvanceTypeMappingResult
+{
+	bool bSuccess = false;
+	int32 RawD6 = 0;
+	EPassControlAdvanceType AdvanceType =
+		EPassControlAdvanceType::None;
+};
+
+class FMCODEX_API FPassControlAdvanceTypeMapper final
+{
+public:
+	static FPassControlAdvanceTypeMappingResult Map(const int32 RawD6);
+};
+
 enum class EPassControlAdvanceSelectionQueryErrorCode : uint8
 {
 	None,

@@ -37,7 +37,26 @@ enum class EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 		UMETA(DisplayName = "Runtime Attacker Mismatch"),
 	RuntimeDefenderMismatch
 		UMETA(DisplayName = "Runtime Defender Mismatch"),
-	InvalidSessionBundle UMETA(DisplayName = "Invalid Session Bundle")
+	InvalidSessionBundle UMETA(DisplayName = "Invalid Session Bundle"),
+	UnexpectedActualBranchWhileAwaitingRoute
+		UMETA(DisplayName = "Unexpected Actual Branch While Awaiting Route"),
+	UnexpectedInitialRouteRollWhileAwaitingRoute
+		UMETA(DisplayName = "Unexpected Initial Route Roll While Awaiting Route"),
+	MissingActualBranchForRouteResolved
+		UMETA(DisplayName = "Missing Actual Branch For Route Resolved"),
+	DefaultActualBranchForRouteResolved
+		UMETA(DisplayName = "Default Actual Branch For Route Resolved"),
+	ActualBranchActionMismatch
+		UMETA(DisplayName = "Actual Branch Action Mismatch"),
+	InvalidActiveBranch UMETA(DisplayName = "Invalid Active Branch"),
+	NonDefaultInactiveBranchPayload
+		UMETA(DisplayName = "Non-Default Inactive Branch Payload"),
+	UnexpectedInitialRouteRollCount
+		UMETA(DisplayName = "Unexpected Initial Route Roll Count"),
+	InvalidRollPurpose UMETA(DisplayName = "Invalid Roll Purpose"),
+	InvalidD6 UMETA(DisplayName = "Invalid D6"),
+	InitialRouteMappingMismatch
+		UMETA(DisplayName = "Initial Route Mapping Mismatch")
 };
 
 USTRUCT(BlueprintType)

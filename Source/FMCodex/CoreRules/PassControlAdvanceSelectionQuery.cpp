@@ -16,23 +16,33 @@ namespace PassControlAdvanceSelectionQuery
 		Result.InvalidField = InvalidField;
 	}
 
-	bool IsD6InRange(const int32 D6)
+}
+
+FPassControlAdvanceTypeMappingResult FPassControlAdvanceTypeMapper::Map(
+	const int32 RawD6)
+{
+	FPassControlAdvanceTypeMappingResult Result;
+	Result.RawD6 = RawD6;
+	if (RawD6 < PassControlAdvanceSelectionQuery::MinD6
+		|| RawD6 > PassControlAdvanceSelectionQuery::MaxD6)
 	{
-		return D6 >= MinD6 && D6 <= MaxD6;
+		return Result;
 	}
 
-	EPassControlAdvanceType MapD6ToAdvanceType(const int32 D6)
+	Result.bSuccess = true;
+	if (RawD6 <= 2)
 	{
-		if (D6 <= 2)
-		{
-			return EPassControlAdvanceType::PassAdvance;
-		}
-		if (D6 <= 4)
-		{
-			return EPassControlAdvanceType::DribbleAdvance;
-		}
-		return EPassControlAdvanceType::RunAdvance;
+		Result.AdvanceType = EPassControlAdvanceType::PassAdvance;
 	}
+	else if (RawD6 <= 4)
+	{
+		Result.AdvanceType = EPassControlAdvanceType::DribbleAdvance;
+	}
+	else
+	{
+		Result.AdvanceType = EPassControlAdvanceType::RunAdvance;
+	}
+	return Result;
 }
 
 FPassControlAdvanceSelectionQueryResult
@@ -177,8 +187,9 @@ FPassControlAdvanceSelectionQuery::Select(
 		return Result;
 	}
 
-	if (!PassControlAdvanceSelectionQuery::IsD6InRange(
-			Input.ExternalAdvanceD6))
+	const FPassControlAdvanceTypeMappingResult AdvanceMapping =
+		FPassControlAdvanceTypeMapper::Map(Input.ExternalAdvanceD6);
+	if (!AdvanceMapping.bSuccess)
 	{
 		PassControlAdvanceSelectionQuery::SetFailure(
 			Result,
@@ -215,8 +226,6 @@ FPassControlAdvanceSelectionQuery::Select(
 	}
 
 	Result.bSuccess = true;
-	Result.AdvanceType =
-		PassControlAdvanceSelectionQuery::MapD6ToAdvanceType(
-			Input.ExternalAdvanceD6);
+	Result.AdvanceType = AdvanceMapping.AdvanceType;
 	return Result;
 }

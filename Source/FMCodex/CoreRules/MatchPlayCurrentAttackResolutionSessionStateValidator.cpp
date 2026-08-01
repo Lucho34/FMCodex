@@ -1,5 +1,6 @@
 #include "MatchPlayCurrentAttackResolutionSessionStateValidator.h"
 
+#include "MatchPlayCurrentAttackInitialRouteMappingQuery.h"
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 #include "MatchPlayElectiveBranchIntentRules.h"
 #include "PlayerCardRuleSnapshotValidator.h"
@@ -218,6 +219,269 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 		Result.ErrorCode = ErrorCode;
 		Result.ErrorMessage = ErrorMessage;
 	}
+
+	bool IsActualBranchDefault(
+		const FMatchPlayCurrentAttackActualBranch& ActualBranch)
+	{
+		const FMatchPlayCurrentAttackActualBranch DefaultActualBranch;
+		return FMatchPlayCurrentAttackActualBranch::StaticStruct()
+			->CompareScriptStruct(
+				&ActualBranch,
+				&DefaultActualBranch,
+				0);
+	}
+
+	bool ValidateActualBranchPayload(
+		const FMatchPlayCurrentAttackResolutionSession& Session,
+		FMatchPlayCurrentAttackResolutionSessionStateValidationResult&
+			Result)
+	{
+		const FMatchPlayCurrentAttackActualBranch& ActualBranch =
+			Session.ActualBranch;
+		const ESkillRuleType ActionType =
+			Session.Bundle.Binding.ActionType;
+		if (ActualBranch.ActionType != ActionType)
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::ActualBranchActionMismatch,
+				TEXT("Actual Branch ActionType must match the Session Bundle."));
+			return false;
+		}
+
+		bool bActivePayloadValid = false;
+		bool bInactivePayloadsDefault = false;
+		switch (ActionType)
+		{
+		case ESkillRuleType::LongShot:
+			bActivePayloadValid = ActualBranch.LongShot
+				== EMatchPlayLongShotActualBranch::DirectShot
+				|| ActualBranch.LongShot
+					== EMatchPlayLongShotActualBranch::DeadCorner;
+			bInactivePayloadsDefault = ActualBranch.CutInsideShot
+					== EMatchPlayCutInsideShotActualBranch::None
+				&& ActualBranch.Cross
+					== EMatchPlayCrossActualBranch::None
+				&& ActualBranch.PassControl
+					== EMatchPlayPassControlActualBranch::None
+				&& ActualBranch.ThroughBall
+					== EMatchPlayThroughBallActualBranch::None;
+			break;
+
+		case ESkillRuleType::CutInsideShot:
+			bActivePayloadValid = ActualBranch.CutInsideShot
+				== EMatchPlayCutInsideShotActualBranch::DirectShot
+				|| ActualBranch.CutInsideShot
+					== EMatchPlayCutInsideShotActualBranch::DeadCorner;
+			bInactivePayloadsDefault = ActualBranch.LongShot
+					== EMatchPlayLongShotActualBranch::None
+				&& ActualBranch.Cross
+					== EMatchPlayCrossActualBranch::None
+				&& ActualBranch.PassControl
+					== EMatchPlayPassControlActualBranch::None
+				&& ActualBranch.ThroughBall
+					== EMatchPlayThroughBallActualBranch::None;
+			break;
+
+		case ESkillRuleType::Cross:
+			bActivePayloadValid = ActualBranch.Cross
+				== EMatchPlayCrossActualBranch::High
+				|| ActualBranch.Cross
+					== EMatchPlayCrossActualBranch::Low;
+			bInactivePayloadsDefault = ActualBranch.LongShot
+					== EMatchPlayLongShotActualBranch::None
+				&& ActualBranch.CutInsideShot
+					== EMatchPlayCutInsideShotActualBranch::None
+				&& ActualBranch.PassControl
+					== EMatchPlayPassControlActualBranch::None
+				&& ActualBranch.ThroughBall
+					== EMatchPlayThroughBallActualBranch::None;
+			break;
+
+		case ESkillRuleType::PassControl:
+			bActivePayloadValid = ActualBranch.PassControl
+				== EMatchPlayPassControlActualBranch::PassAdvance
+				|| ActualBranch.PassControl
+					== EMatchPlayPassControlActualBranch::DribbleAdvance
+				|| ActualBranch.PassControl
+					== EMatchPlayPassControlActualBranch::RunAdvance;
+			bInactivePayloadsDefault = ActualBranch.LongShot
+					== EMatchPlayLongShotActualBranch::None
+				&& ActualBranch.CutInsideShot
+					== EMatchPlayCutInsideShotActualBranch::None
+				&& ActualBranch.Cross
+					== EMatchPlayCrossActualBranch::None
+				&& ActualBranch.ThroughBall
+					== EMatchPlayThroughBallActualBranch::None;
+			break;
+
+		case ESkillRuleType::ThroughBall:
+			bActivePayloadValid = ActualBranch.ThroughBall
+				== EMatchPlayThroughBallActualBranch::Feet
+				|| ActualBranch.ThroughBall
+					== EMatchPlayThroughBallActualBranch::BehindDefense
+				|| ActualBranch.ThroughBall
+					== EMatchPlayThroughBallActualBranch::AntiOffside;
+			bInactivePayloadsDefault = ActualBranch.LongShot
+					== EMatchPlayLongShotActualBranch::None
+				&& ActualBranch.CutInsideShot
+					== EMatchPlayCutInsideShotActualBranch::None
+				&& ActualBranch.Cross
+					== EMatchPlayCrossActualBranch::None
+				&& ActualBranch.PassControl
+					== EMatchPlayPassControlActualBranch::None;
+			break;
+
+		case ESkillRuleType::None:
+		default:
+			break;
+		}
+
+		if (!bActivePayloadValid)
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::InvalidActiveBranch,
+				TEXT("The active Actual Branch payload is invalid or None."));
+			return false;
+		}
+		if (!bInactivePayloadsDefault)
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::NonDefaultInactiveBranchPayload,
+				TEXT("All inactive Actual Branch payloads must be default."));
+			return false;
+		}
+
+		return true;
+	}
+
+	bool ValidateRouteState(
+		const FMatchPlayCurrentAttackResolutionSession& Session,
+		FMatchPlayCurrentAttackResolutionSessionStateValidationResult&
+			Result)
+	{
+		if (Session.Stage
+			== EMatchPlayCurrentAttackResolutionStage::AwaitingRoute)
+		{
+			if (Session.bHasActualBranch
+				|| !IsActualBranchDefault(Session.ActualBranch))
+			{
+				SetFailure(
+					Result,
+					EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+						::UnexpectedActualBranchWhileAwaitingRoute,
+					TEXT("AwaitingRoute must not contain an Actual Branch."));
+				return false;
+			}
+			if (!Session.InitialRouteRollRecords.IsEmpty())
+			{
+				SetFailure(
+					Result,
+					EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+						::UnexpectedInitialRouteRollWhileAwaitingRoute,
+					TEXT("AwaitingRoute must not contain Initial Route rolls."));
+				return false;
+			}
+			return true;
+		}
+
+		if (!Session.bHasActualBranch)
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::MissingActualBranchForRouteResolved,
+				TEXT("RouteResolved requires explicit Actual Branch presence."));
+			return false;
+		}
+		if (IsActualBranchDefault(Session.ActualBranch))
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::DefaultActualBranchForRouteResolved,
+				TEXT("RouteResolved requires a non-default Actual Branch."));
+			return false;
+		}
+		if (!ValidateActualBranchPayload(Session, Result))
+		{
+			return false;
+		}
+
+		const ESkillRuleType ActionType =
+			Session.Bundle.Binding.ActionType;
+		const bool bRequiresInitialRouteRoll =
+			ActionType == ESkillRuleType::Cross
+			|| ActionType == ESkillRuleType::PassControl
+			|| ActionType == ESkillRuleType::ThroughBall;
+		const int32 ExpectedRollCount =
+			bRequiresInitialRouteRoll ? 1 : 0;
+		if (Session.InitialRouteRollRecords.Num() != ExpectedRollCount)
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::UnexpectedInitialRouteRollCount,
+				TEXT("Initial Route roll count does not match the ActionType."));
+			return false;
+		}
+
+		FMatchPlayCurrentAttackInitialRouteMappingInput MappingInput;
+		MappingInput.ActionType = ActionType;
+		MappingInput.Intent =
+			Session.Bundle.Binding.ElectiveBranchIntent;
+		if (bRequiresInitialRouteRoll)
+		{
+			const FMatchPlayCurrentAttackResolutionRollRecord& Record =
+				Session.InitialRouteRollRecords[0];
+			if (Record.Purpose
+				!= EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute)
+			{
+				SetFailure(
+					Result,
+					EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+						::InvalidRollPurpose,
+					TEXT("Initial Route roll must use InitialRoute purpose."));
+				return false;
+			}
+			if (Record.RawD6 < 1 || Record.RawD6 > 6)
+			{
+				SetFailure(
+					Result,
+					EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+						::InvalidD6,
+					TEXT("Initial Route RawD6 must be in range [1, 6]."));
+				return false;
+			}
+			MappingInput.bHasInitialRouteD6 = true;
+			MappingInput.InitialRouteD6 = Record.RawD6;
+		}
+
+		const FMatchPlayCurrentAttackInitialRouteMappingResult MappingResult =
+			FMatchPlayCurrentAttackInitialRouteMappingQuery::Map(
+				MappingInput);
+		if (!MappingResult.bSuccess
+			|| !FMatchPlayCurrentAttackActualBranch::StaticStruct()
+				->CompareScriptStruct(
+					&Session.ActualBranch,
+					&MappingResult.ActualBranch,
+					0))
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::InitialRouteMappingMismatch,
+				TEXT("Stored Intent, D6, and Actual Branch do not match."));
+			return false;
+		}
+
+		return true;
+	}
 }
 
 FMatchPlayCurrentAttackResolutionSessionStateValidationResult
@@ -324,13 +588,15 @@ FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
 		return Result;
 	}
 	if (Session.Stage
-		!= EMatchPlayCurrentAttackResolutionStage::AwaitingRoute)
+			!= EMatchPlayCurrentAttackResolutionStage::AwaitingRoute
+		&& Session.Stage
+			!= EMatchPlayCurrentAttackResolutionStage::RouteResolved)
 	{
 		SetFailure(
 			Result,
 			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 				::InvalidResolutionStage,
-			TEXT("A present foundation Session must be AwaitingRoute."));
+			TEXT("A present Session must be AwaitingRoute or RouteResolved."));
 		return Result;
 	}
 	if (CurrentAttack.Phase != EMatchPlayCurrentAttackPhase::Resolution)
@@ -423,6 +689,10 @@ FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
 			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 				::InvalidSessionBundle,
 			TEXT("Resolution Session bundle is not canonical."));
+		return Result;
+	}
+	if (!ValidateRouteState(Session, Result))
+	{
 		return Result;
 	}
 

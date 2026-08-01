@@ -71,10 +71,18 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackResolutionSession
 	{
 		const FMatchPlayBoundActionNormalizedParticipantBundle& Source =
 			Normalization.Bundle;
+		const FMatchPlayCurrentAttackActualBranch DefaultActualBranch;
 		return Session.AttackSequence == Source.AttackSequence
 			&& Session.Stage
 				== EMatchPlayCurrentAttackResolutionStage
 					::AwaitingRoute
+			&& !Session.bHasActualBranch
+			&& FMatchPlayCurrentAttackActualBranch::StaticStruct()
+				->CompareScriptStruct(
+					&Session.ActualBranch,
+					&DefaultActualBranch,
+					0)
+			&& Session.InitialRouteRollRecords.IsEmpty()
 			&& FMatchPlayCurrentAttackResolutionBindingValue
 				::StaticStruct()->CompareScriptStruct(
 					&Session.Bundle.Binding,
