@@ -211,16 +211,109 @@ namespace MatchPlayCurrentAttackInitialRouteStateTests
 			&& AreInputsEqual(Left.Input, Right.Input);
 	}
 
-	void SetIntent(
-		FMatchPlayState& State,
-		const EMatchPlayElectiveBranchIntent Intent)
+	bool ExpectMappingResultsEqual(
+		FAutomationTestBase& Test,
+		const FString& Label,
+		const FMatchPlayCurrentAttackInitialRouteMappingResult& Expected,
+		const FMatchPlayCurrentAttackInitialRouteMappingResult& Actual)
 	{
-		State.CurrentAttack.SelectedAction.ElectiveBranchIntent = Intent;
-		if (State.CurrentAttack.bHasResolutionSession)
-		{
-			State.CurrentAttack.ResolutionSession.Bundle.Binding
-				.ElectiveBranchIntent = Intent;
-		}
+		bool bEqual = true;
+		bEqual &= Test.TestEqual(
+			*(Label + TEXT(" bSuccess")),
+			Actual.bSuccess,
+			Expected.bSuccess);
+		bEqual &= Test.TestTrue(
+			*(Label + TEXT(" ActualBranch")),
+			FMatchPlayCurrentAttackActualBranch::StaticStruct()
+				->CompareScriptStruct(
+					&Actual.ActualBranch,
+					&Expected.ActualBranch,
+					0));
+		bEqual &= Test.TestEqual(
+			*(Label + TEXT(" ErrorCode")),
+			Actual.ErrorCode,
+			Expected.ErrorCode);
+		bEqual &= Test.TestEqual(
+			*(Label + TEXT(" ErrorMessage")),
+			Actual.ErrorMessage,
+			Expected.ErrorMessage);
+		bEqual &= Test.TestEqual(
+			*(Label + TEXT(" InvalidField")),
+			Actual.InvalidField,
+			Expected.InvalidField);
+		bEqual &= Test.TestTrue(
+			*(Label + TEXT(" Input")),
+			AreInputsEqual(Actual.Input, Expected.Input));
+		return bEqual && AreResultsEqual(Expected, Actual);
+	}
+
+	bool ExpectMapperDeterministic(
+		FAutomationTestBase& Test,
+		const TCHAR* Label,
+		const FMatchPlayCurrentAttackInitialRouteMappingInput& Input,
+		const bool bExpectedSuccess,
+		const EMatchPlayCurrentAttackInitialRouteMappingErrorCode
+			ExpectedError)
+	{
+		const FMatchPlayCurrentAttackInitialRouteMappingInput Before = Input;
+		const auto First =
+			FMatchPlayCurrentAttackInitialRouteMappingQuery::Map(Input);
+		const auto Second =
+			FMatchPlayCurrentAttackInitialRouteMappingQuery::Map(Input);
+		const auto Third =
+			FMatchPlayCurrentAttackInitialRouteMappingQuery::Map(Input);
+		bool bValid = true;
+		bValid &= Test.TestEqual(
+			*FString::Printf(TEXT("%s success"), Label),
+			First.bSuccess,
+			bExpectedSuccess);
+		bValid &= Test.TestEqual(
+			*FString::Printf(TEXT("%s exact error"), Label),
+			First.ErrorCode,
+			ExpectedError);
+		bValid &= ExpectMappingResultsEqual(
+			Test,
+			FString::Printf(TEXT("%s second"), Label),
+			First,
+			Second);
+		bValid &= ExpectMappingResultsEqual(
+			Test,
+			FString::Printf(TEXT("%s third"), Label),
+			First,
+			Third);
+		bValid &= Test.TestTrue(
+			*FString::Printf(TEXT("%s input unchanged"), Label),
+			AreInputsEqual(Input, Before));
+		return bValid;
+	}
+
+	bool ExpectValidationResultsEqual(
+		FAutomationTestBase& Test,
+		const FString& Label,
+		const FMatchPlayCurrentAttackResolutionSessionStateValidationResult&
+			Expected,
+		const FMatchPlayCurrentAttackResolutionSessionStateValidationResult&
+			Actual)
+	{
+		bool bEqual = true;
+		bEqual &= Test.TestEqual(
+			*(Label + TEXT(" bIsCanonical")),
+			Actual.bIsCanonical,
+			Expected.bIsCanonical);
+		bEqual &= Test.TestEqual(
+			*(Label + TEXT(" ErrorCode")),
+			Actual.ErrorCode,
+			Expected.ErrorCode);
+		bEqual &= Test.TestEqual(
+			*(Label + TEXT(" ErrorMessage")),
+			Actual.ErrorMessage,
+			Expected.ErrorMessage);
+		return bEqual
+			&& FMatchPlayCurrentAttackResolutionSessionStateValidationResult
+				::StaticStruct()->CompareScriptStruct(
+					&Expected,
+					&Actual,
+					0);
 	}
 
 	FMatchPlayState MakeBegunState(
@@ -258,6 +351,49 @@ namespace MatchPlayCurrentAttackInitialRouteStateTests
 		return State;
 	}
 
+	bool ExpectStoredValidationDeterministic(
+		FAutomationTestBase& Test,
+		const TCHAR* Label,
+		const FMatchPlayState& State,
+		const bool bExpectedCanonical,
+		const EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			ExpectedError)
+	{
+		const FMatchPlayState Before = State;
+		const auto First =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				State);
+		const auto Second =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				State);
+		const auto Third =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				State);
+		bool bValid = true;
+		bValid &= Test.TestEqual(
+			*FString::Printf(TEXT("%s canonical"), Label),
+			First.bIsCanonical,
+			bExpectedCanonical);
+		bValid &= Test.TestEqual(
+			*FString::Printf(TEXT("%s exact error"), Label),
+			First.ErrorCode,
+			ExpectedError);
+		bValid &= ExpectValidationResultsEqual(
+			Test,
+			FString::Printf(TEXT("%s second"), Label),
+			First,
+			Second);
+		bValid &= ExpectValidationResultsEqual(
+			Test,
+			FString::Printf(TEXT("%s third"), Label),
+			First,
+			Third);
+		bValid &= Test.TestTrue(
+			*FString::Printf(TEXT("%s State unchanged"), Label),
+			SessionFixtures::AreStatesEqual(State, Before));
+		return bValid;
+	}
+
 	bool ExpectValidationError(
 		FAutomationTestBase& Test,
 		const TCHAR* Label,
@@ -265,17 +401,70 @@ namespace MatchPlayCurrentAttackInitialRouteStateTests
 		const EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			ExpectedError)
 	{
-		const auto Result =
-			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-				State);
-		Test.TestFalse(
-			*FString::Printf(TEXT("%s is rejected"), Label),
-			Result.bIsCanonical);
-		Test.TestEqual(
-			*FString::Printf(TEXT("%s exact error"), Label),
-			Result.ErrorCode,
+		return ExpectStoredValidationDeterministic(
+			Test,
+			Label,
+			State,
+			false,
 			ExpectedError);
-		return !Result.bIsCanonical && Result.ErrorCode == ExpectedError;
+	}
+
+	bool ExpectProposedValidationDeterministic(
+		FAutomationTestBase& Test,
+		const TCHAR* Label,
+		const FMatchPlayState& Source,
+		const FMatchPlayCurrentAttackResolutionSession& Proposed,
+		const bool bExpectedCanonical,
+		const EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			ExpectedError)
+	{
+		FMatchPlayState State = Source;
+		State.CurrentAttack.bHasResolutionSession = false;
+		State.CurrentAttack.ResolutionSession = {};
+		const FMatchPlayState StateBefore = State;
+		const FMatchPlayCurrentAttackResolutionSession ProposedBefore = Proposed;
+		const auto First =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				State,
+				&Proposed);
+		const auto Second =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				State,
+				&Proposed);
+		const auto Third =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				State,
+				&Proposed);
+		bool bValid = true;
+		bValid &= Test.TestEqual(
+			*FString::Printf(TEXT("%s canonical"), Label),
+			First.bIsCanonical,
+			bExpectedCanonical);
+		bValid &= Test.TestEqual(
+			*FString::Printf(TEXT("%s exact error"), Label),
+			First.ErrorCode,
+			ExpectedError);
+		bValid &= ExpectValidationResultsEqual(
+			Test,
+			FString::Printf(TEXT("%s second"), Label),
+			First,
+			Second);
+		bValid &= ExpectValidationResultsEqual(
+			Test,
+			FString::Printf(TEXT("%s third"), Label),
+			First,
+			Third);
+		bValid &= Test.TestTrue(
+			*FString::Printf(TEXT("%s State unchanged"), Label),
+			SessionFixtures::AreStatesEqual(State, StateBefore));
+		bValid &= Test.TestTrue(
+			*FString::Printf(TEXT("%s ProposedSession unchanged"), Label),
+			FMatchPlayCurrentAttackResolutionSession::StaticStruct()
+				->CompareScriptStruct(
+					&Proposed,
+					&ProposedBefore,
+					0));
+		return bValid;
 	}
 }
 
@@ -348,6 +537,13 @@ bool FInitialRouteDefaultAndBeginRegressionTest::RunTest(
 					0));
 		TestTrue(TEXT("Begin rolls empty"), First.AfterState.CurrentAttack
 			.ResolutionSession.InitialRouteRollRecords.IsEmpty());
+		ExpectStoredValidationDeterministic(
+			*this,
+			TEXT("Begin AwaitingRoute"),
+			First.AfterState,
+			true,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::None);
 		const auto Duplicate =
 			FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(
 				First.AfterState,
@@ -391,10 +587,16 @@ bool FInitialRouteMappingAndDeterminismTest::RunTest(
 					&First.ActualBranch,
 					&Case.Expected,
 					0));
-		TestTrue(*FString::Printf(TEXT("%s deterministic 2"), Case.Label),
-			AreResultsEqual(First, Second));
-		TestTrue(*FString::Printf(TEXT("%s deterministic 3"), Case.Label),
-			AreResultsEqual(First, Third));
+		ExpectMappingResultsEqual(
+			*this,
+			FString::Printf(TEXT("%s second"), Case.Label),
+			First,
+			Second);
+		ExpectMappingResultsEqual(
+			*this,
+			FString::Printf(TEXT("%s third"), Case.Label),
+			First,
+			Third);
 		TestTrue(*FString::Printf(TEXT("%s input unchanged"), Case.Label),
 			AreInputsEqual(Input, Before));
 	}
@@ -413,20 +615,25 @@ bool FInitialRouteMapperFailureTest::RunTest(const FString& Parameters)
 		const FMatchPlayCurrentAttackInitialRouteMappingInput& Input,
 		const EMatchPlayCurrentAttackInitialRouteMappingErrorCode Error)
 	{
-		const auto Result =
-			FMatchPlayCurrentAttackInitialRouteMappingQuery::Map(Input);
-		TestFalse(Label, Result.bSuccess);
-		TestEqual(*FString::Printf(TEXT("%s exact error"), Label),
-			Result.ErrorCode, Error);
+		ExpectMapperDeterministic(
+			*this,
+			Label,
+			Input,
+			false,
+			Error);
 	};
 
 	FMatchPlayCurrentAttackInitialRouteMappingInput Input;
 	ExpectFailure(TEXT("Unsupported Action"), Input,
 		EMatchPlayCurrentAttackInitialRouteMappingErrorCode
 			::UnsupportedActionType);
+	Input = {};
 	Input.ActionType = ESkillRuleType::LongShot;
+	Input.Intent = EMatchPlayElectiveBranchIntent::None;
+	ExpectFailure(TEXT("LongShot None Intent"), Input,
+		EMatchPlayCurrentAttackInitialRouteMappingErrorCode::InvalidIntent);
 	Input.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
-	ExpectFailure(TEXT("LongShot wrong Intent"), Input,
+	ExpectFailure(TEXT("LongShot non-shot Intent"), Input,
 		EMatchPlayCurrentAttackInitialRouteMappingErrorCode::InvalidIntent);
 	Input.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
 	Input.bHasInitialRouteD6 = true;
@@ -434,13 +641,29 @@ bool FInitialRouteMapperFailureTest::RunTest(const FString& Parameters)
 	ExpectFailure(TEXT("LongShot unexpected D6"), Input,
 		EMatchPlayCurrentAttackInitialRouteMappingErrorCode
 			::UnexpectedInitialRouteD6);
-	Input.ActionType = ESkillRuleType::Cross;
+
+	Input = {};
+	Input.ActionType = ESkillRuleType::CutInsideShot;
 	Input.Intent = EMatchPlayElectiveBranchIntent::None;
-	Input.bHasInitialRouteD6 = false;
-	Input.InitialRouteD6 = 0;
-	ExpectFailure(TEXT("Cross wrong Intent"), Input,
+	ExpectFailure(TEXT("CutInsideShot None Intent"), Input,
 		EMatchPlayCurrentAttackInitialRouteMappingErrorCode::InvalidIntent);
 	Input.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
+	ExpectFailure(TEXT("CutInsideShot non-shot Intent"), Input,
+		EMatchPlayCurrentAttackInitialRouteMappingErrorCode::InvalidIntent);
+
+	Input = {};
+	Input.ActionType = ESkillRuleType::Cross;
+	Input.Intent = EMatchPlayElectiveBranchIntent::None;
+	Input.bHasInitialRouteD6 = true;
+	Input.InitialRouteD6 = 1;
+	ExpectFailure(TEXT("Cross None Intent"), Input,
+		EMatchPlayCurrentAttackInitialRouteMappingErrorCode::InvalidIntent);
+	Input.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	ExpectFailure(TEXT("Cross shot Intent"), Input,
+		EMatchPlayCurrentAttackInitialRouteMappingErrorCode::InvalidIntent);
+	Input.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
+	Input.bHasInitialRouteD6 = false;
+	Input.InitialRouteD6 = 0;
 	ExpectFailure(TEXT("Cross missing D6"), Input,
 		EMatchPlayCurrentAttackInitialRouteMappingErrorCode
 			::MissingInitialRouteD6);
@@ -452,14 +675,39 @@ bool FInitialRouteMapperFailureTest::RunTest(const FString& Parameters)
 	ExpectFailure(TEXT("Cross D6 seven"), Input,
 		EMatchPlayCurrentAttackInitialRouteMappingErrorCode
 			::InvalidInitialRouteD6);
+	Input = {};
 	Input.ActionType = ESkillRuleType::PassControl;
 	Input.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	Input.bHasInitialRouteD6 = true;
 	Input.InitialRouteD6 = 1;
 	ExpectFailure(TEXT("PassControl wrong Intent"), Input,
 		EMatchPlayCurrentAttackInitialRouteMappingErrorCode::InvalidIntent);
+	Input.Intent = EMatchPlayElectiveBranchIntent::None;
+	Input.InitialRouteD6 = 0;
+	ExpectFailure(TEXT("PassControl D6 zero"), Input,
+		EMatchPlayCurrentAttackInitialRouteMappingErrorCode
+			::InvalidInitialRouteD6);
+	Input.InitialRouteD6 = 7;
+	ExpectFailure(TEXT("PassControl D6 seven"), Input,
+		EMatchPlayCurrentAttackInitialRouteMappingErrorCode
+			::InvalidInitialRouteD6);
+
+	Input = {};
 	Input.ActionType = ESkillRuleType::ThroughBall;
+	Input.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	Input.bHasInitialRouteD6 = true;
+	Input.InitialRouteD6 = 1;
 	ExpectFailure(TEXT("ThroughBall wrong Intent"), Input,
 		EMatchPlayCurrentAttackInitialRouteMappingErrorCode::InvalidIntent);
+	Input.Intent = EMatchPlayElectiveBranchIntent::None;
+	Input.InitialRouteD6 = 0;
+	ExpectFailure(TEXT("ThroughBall D6 zero"), Input,
+		EMatchPlayCurrentAttackInitialRouteMappingErrorCode
+			::InvalidInitialRouteD6);
+	Input.InitialRouteD6 = 7;
+	ExpectFailure(TEXT("ThroughBall D6 seven"), Input,
+		EMatchPlayCurrentAttackInitialRouteMappingErrorCode
+			::InvalidInitialRouteD6);
 	return true;
 }
 
@@ -473,11 +721,13 @@ bool FInitialRouteCanonicalMatrixTest::RunTest(const FString& Parameters)
 	for (const FMappingCase& Case : MakeMappingCases())
 	{
 		const FMatchPlayState State = MakeRouteResolvedState(Case);
-		const auto Validation =
-			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-				State);
-		TestTrue(*FString::Printf(TEXT("%s canonical"), Case.Label),
-			Validation.bIsCanonical);
+		ExpectStoredValidationDeterministic(
+			*this,
+			Case.Label,
+			State,
+			true,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::None);
 		TestEqual(*FString::Printf(TEXT("%s roll count"), Case.Label),
 			State.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Num(),
 			Case.bHasD6 ? 1 : 0);
@@ -522,6 +772,25 @@ bool FInitialRouteWrapperAndAwaitingCorruptionTest::RunTest(
 	ExpectValidationError(*this, TEXT("Inactive nondefault"), State,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::NonDefaultInactiveBranchPayload);
+	State = MakeRouteResolvedState(LongCase);
+	State.CurrentAttack.ResolutionSession.ActualBranch.Cross =
+		EMatchPlayCrossActualBranch::High;
+	State.CurrentAttack.ResolutionSession.ActualBranch.PassControl =
+		EMatchPlayPassControlActualBranch::PassAdvance;
+	ExpectValidationError(*this, TEXT("Multiple payloads active"), State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::NonDefaultInactiveBranchPayload);
+	State = MakeRouteResolvedState(LongCase);
+	State.CurrentAttack.ResolutionSession.ActualBranch.ActionType =
+		ESkillRuleType::Cross;
+	State.CurrentAttack.ResolutionSession.ActualBranch.Cross =
+		EMatchPlayCrossActualBranch::High;
+	ExpectValidationError(
+		*this,
+		TEXT("Action mismatch precedes inactive payload"),
+		State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::ActualBranchActionMismatch);
 
 	State = MakeBegunState(
 		ESkillRuleType::LongShot,
@@ -597,6 +866,45 @@ bool FInitialRouteRollAndMappingCorruptionTest::RunTest(
 	ExpectValidationError(*this, TEXT("D6 seven"), State,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::InvalidD6);
+	State = MakeRouteResolvedState(Cases[6]);
+	State.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Empty();
+	ExpectValidationError(*this, TEXT("PassControl missing roll"), State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::UnexpectedInitialRouteRollCount);
+	State = MakeRouteResolvedState(Cases[9]);
+	State.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Add(Record);
+	ExpectValidationError(*this, TEXT("ThroughBall two rolls"), State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::UnexpectedInitialRouteRollCount);
+
+	State = MakeRouteResolvedState(Cases[4]);
+	State.CurrentAttack.ResolutionSession.bHasActualBranch = false;
+	State.CurrentAttack.ResolutionSession.InitialRouteRollRecords[0].RawD6 = 0;
+	ExpectValidationError(
+		*this,
+		TEXT("Missing branch precedes invalid D6"),
+		State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::MissingActualBranchForRouteResolved);
+	State = MakeRouteResolvedState(Cases[4]);
+	State.CurrentAttack.ResolutionSession.InitialRouteRollRecords[0].RawD6 = 0;
+	State.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Add(Record);
+	ExpectValidationError(
+		*this,
+		TEXT("Wrong roll count precedes invalid D6"),
+		State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::UnexpectedInitialRouteRollCount);
+	State = MakeRouteResolvedState(Cases[4]);
+	State.CurrentAttack.ResolutionSession.InitialRouteRollRecords[0].Purpose =
+		EMatchPlayCurrentAttackResolutionRollPurpose::None;
+	State.CurrentAttack.ResolutionSession.InitialRouteRollRecords[0].RawD6 = 0;
+	ExpectValidationError(
+		*this,
+		TEXT("Invalid purpose precedes invalid D6"),
+		State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::InvalidRollPurpose);
 
 	State = MakeRouteResolvedState(Cases[0]);
 	State.CurrentAttack.ResolutionSession.ActualBranch.LongShot =
@@ -604,9 +912,9 @@ bool FInitialRouteRollAndMappingCorruptionTest::RunTest(
 	ExpectValidationError(*this, TEXT("LongShot mapping mismatch"), State,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::InitialRouteMappingMismatch);
-	State = MakeRouteResolvedState(Cases[2]);
+	State = MakeRouteResolvedState(Cases[3]);
 	State.CurrentAttack.ResolutionSession.ActualBranch.CutInsideShot =
-		EMatchPlayCutInsideShotActualBranch::DeadCorner;
+		EMatchPlayCutInsideShotActualBranch::DirectShot;
 	ExpectValidationError(*this, TEXT("CIS mapping mismatch"), State,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::InitialRouteMappingMismatch);
@@ -616,21 +924,40 @@ bool FInitialRouteRollAndMappingCorruptionTest::RunTest(
 	ExpectValidationError(*this, TEXT("Cross D6 mismatch"), State,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::InitialRouteMappingMismatch);
-	State = MakeRouteResolvedState(Cases[4]);
-	SetIntent(State, EMatchPlayElectiveBranchIntent::CrossLow);
-	ExpectValidationError(*this, TEXT("Cross Intent mismatch"), State,
+	State = MakeRouteResolvedState(Cases[21]);
+	State.CurrentAttack.ResolutionSession.ActualBranch.Cross =
+		EMatchPlayCrossActualBranch::Low;
+	ExpectValidationError(*this, TEXT("CrossLow D6 six mismatch"), State,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::InitialRouteMappingMismatch);
 	State = MakeRouteResolvedState(Cases[6]);
 	State.CurrentAttack.ResolutionSession.ActualBranch.PassControl =
-		EMatchPlayPassControlActualBranch::RunAdvance;
-	ExpectValidationError(*this, TEXT("Pass mapping mismatch"), State,
+		EMatchPlayPassControlActualBranch::DribbleAdvance;
+	ExpectValidationError(*this, TEXT("Pass D6 one mismatch"), State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::InitialRouteMappingMismatch);
+	State = MakeRouteResolvedState(Cases[8]);
+	State.CurrentAttack.ResolutionSession.ActualBranch.PassControl =
+		EMatchPlayPassControlActualBranch::PassAdvance;
+	ExpectValidationError(*this, TEXT("Pass D6 five mismatch"), State,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::InitialRouteMappingMismatch);
 	State = MakeRouteResolvedState(Cases[9]);
 	State.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall =
+		EMatchPlayThroughBallActualBranch::BehindDefense;
+	ExpectValidationError(*this, TEXT("ThroughBall D6 one mismatch"), State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::InitialRouteMappingMismatch);
+	State = MakeRouteResolvedState(Cases[10]);
+	State.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall =
 		EMatchPlayThroughBallActualBranch::AntiOffside;
-	ExpectValidationError(*this, TEXT("ThroughBall mapping mismatch"), State,
+	ExpectValidationError(*this, TEXT("ThroughBall D6 three mismatch"), State,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::InitialRouteMappingMismatch);
+	State = MakeRouteResolvedState(Cases[11]);
+	State.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall =
+		EMatchPlayThroughBallActualBranch::Feet;
+	ExpectValidationError(*this, TEXT("ThroughBall D6 five mismatch"), State,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::InitialRouteMappingMismatch);
 	return true;
@@ -644,41 +971,20 @@ bool FInitialRouteProposedSessionTest::RunTest(const FString& Parameters)
 {
 	using namespace MatchPlayCurrentAttackInitialRouteStateTests;
 	const TArray<FMappingCase> Cases = MakeMappingCases();
-	auto ValidateProposed = [this](
-		const TCHAR* Label,
-		const FMatchPlayState& Source,
-		FMatchPlayCurrentAttackResolutionSession Proposed,
-		const bool bExpectedCanonical,
-		const EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
-			ExpectedError)
-	{
-		FMatchPlayState State = Source;
-		State.CurrentAttack.bHasResolutionSession = false;
-		State.CurrentAttack.ResolutionSession = {};
-		const FMatchPlayState Before = State;
-		const auto Result =
-			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
-				State,
-				&Proposed);
-		TestEqual(*FString::Printf(TEXT("%s canonical"), Label),
-			Result.bIsCanonical, bExpectedCanonical);
-		TestEqual(*FString::Printf(TEXT("%s exact error"), Label),
-			Result.ErrorCode, ExpectedError);
-		TestTrue(*FString::Printf(TEXT("%s State unchanged"), Label),
-			SessionFixtures::AreStatesEqual(State, Before));
-	};
 
 	FMatchPlayState Awaiting = MakeBegunState(
 		ESkillRuleType::LongShot,
 		EMatchPlayElectiveBranchIntent::DirectShot);
-	ValidateProposed(
+	ExpectProposedValidationDeterministic(
+		*this,
 		TEXT("AwaitingRoute proposed"),
 		Awaiting,
 		Awaiting.CurrentAttack.ResolutionSession,
 		true,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode::None);
 	FMatchPlayState Route = MakeRouteResolvedState(Cases[4]);
-	ValidateProposed(
+	ExpectProposedValidationDeterministic(
+		*this,
 		TEXT("RouteResolved proposed"),
 		Route,
 		Route.CurrentAttack.ResolutionSession,
@@ -687,7 +993,8 @@ bool FInitialRouteProposedSessionTest::RunTest(const FString& Parameters)
 	FMatchPlayCurrentAttackResolutionSession Proposed =
 		Route.CurrentAttack.ResolutionSession;
 	Proposed.bHasActualBranch = false;
-	ValidateProposed(
+	ExpectProposedValidationDeterministic(
+		*this,
 		TEXT("Malformed branch proposed"),
 		Route,
 		Proposed,
@@ -696,7 +1003,8 @@ bool FInitialRouteProposedSessionTest::RunTest(const FString& Parameters)
 			::MissingActualBranchForRouteResolved);
 	Proposed = Route.CurrentAttack.ResolutionSession;
 	Proposed.InitialRouteRollRecords[0].RawD6 = 0;
-	ValidateProposed(
+	ExpectProposedValidationDeterministic(
+		*this,
 		TEXT("Malformed roll proposed"),
 		Route,
 		Proposed,
@@ -705,13 +1013,35 @@ bool FInitialRouteProposedSessionTest::RunTest(const FString& Parameters)
 			::InvalidD6);
 	Proposed = Route.CurrentAttack.ResolutionSession;
 	Proposed.ActualBranch.Cross = EMatchPlayCrossActualBranch::Low;
-	ValidateProposed(
+	ExpectProposedValidationDeterministic(
+		*this,
 		TEXT("Mapping mismatch proposed"),
 		Route,
 		Proposed,
 		false,
 		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 			::InitialRouteMappingMismatch);
+	Proposed = Route.CurrentAttack.ResolutionSession;
+	Proposed.ActualBranch.ActionType = ESkillRuleType::LongShot;
+	ExpectProposedValidationDeterministic(
+		*this,
+		TEXT("Action mismatch proposed"),
+		Route,
+		Proposed,
+		false,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::ActualBranchActionMismatch);
+	Proposed = Route.CurrentAttack.ResolutionSession;
+	Proposed.ActualBranch.LongShot =
+		EMatchPlayLongShotActualBranch::DirectShot;
+	ExpectProposedValidationDeterministic(
+		*this,
+		TEXT("Inactive payload proposed"),
+		Route,
+		Proposed,
+		false,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::NonDefaultInactiveBranchPayload);
 	return true;
 }
 
