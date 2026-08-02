@@ -424,14 +424,25 @@ namespace MatchPlayAuthoritativeSessionTests
 	struct FReachabilityTrace
 	{
 		FMatchPlayAuthoritativeInitializeMatchResult Initialize;
+		FMatchPlayState AfterInitialize;
 		FMatchPlayAuthoritativeBeginOrdinaryAttackResult Begin;
+		FMatchPlayState AfterBegin;
 		FDeploymentChoice FirstChoice;
 		FMatchPlayAuthoritativeDeployOrdinaryResult FirstDeploy;
-		FMatchPlayAuthoritativeFinishDeploymentResult FirstFinish;
+		FMatchPlayState AfterFirstDeploy;
 		FDeploymentChoice SecondChoice;
 		FMatchPlayAuthoritativeDeployOrdinaryResult SecondDeploy;
+		FMatchPlayState AfterSecondDeploy;
+		FMatchPlayAuthoritativeFinishDeploymentResult FirstFinish;
+		FMatchPlayState AfterFirstFinish;
 		FMatchPlayAuthoritativeFinishDeploymentResult SecondFinish;
+		FMatchPlayState AfterSecondFinish;
+		FMatchPlayAuthoritativeSubmitCarrierResult Carrier;
+		FMatchPlayState FinalState;
+		int64 AttackSequence = 0;
 		EInitialTurnOrderPlayer AttackingSide =
+			EInitialTurnOrderPlayer::None;
+		EInitialTurnOrderPlayer DefendingSide =
 			EInitialTurnOrderPlayer::None;
 		FName CarrierCardId = NAME_None;
 	};
@@ -442,15 +453,19 @@ namespace MatchPlayAuthoritativeSessionTests
 		FReachabilityTrace& OutTrace)
 	{
 		OutTrace.Initialize = Session.InitializeMatch(MakeValidInput(Prefix));
+		OutTrace.AfterInitialize = Session.GetStateSnapshot();
 		OutTrace.Begin = Session.BeginOrdinaryAttack(6);
+		OutTrace.AfterBegin = Session.GetStateSnapshot();
 		if (!OutTrace.Initialize.OpeningResult.bSuccess
 			|| !OutTrace.Begin.BeginResult.bSuccess)
 		{
 			return false;
 		}
 
-		FMatchPlayState State = Session.GetStateSnapshot();
+		FMatchPlayState State = OutTrace.AfterBegin;
+		OutTrace.AttackSequence = State.CurrentAttack.AttackSequence;
 		OutTrace.AttackingSide = State.RuntimeState.CurrentAttackingPlayer;
+		OutTrace.DefendingSide = OtherPlayer(OutTrace.AttackingSide);
 		if (!FindLegalDeployment(
 			State,
 			EMatchPlayRelativeDeploymentZone::Forward,
@@ -460,12 +475,13 @@ namespace MatchPlayAuthoritativeSessionTests
 		}
 		OutTrace.FirstDeploy = Session.DeployOrdinary(
 			MakeDeployRequest(OutTrace.FirstChoice));
+		OutTrace.AfterFirstDeploy = Session.GetStateSnapshot();
 		if (!OutTrace.FirstDeploy.DeploymentResult.bSuccess)
 		{
 			return false;
 		}
 
-		State = Session.GetStateSnapshot();
+		State = OutTrace.AfterFirstDeploy;
 		if (!FindLegalDeployment(
 			State,
 			EMatchPlayRelativeDeploymentZone::Midfield,
@@ -475,30 +491,33 @@ namespace MatchPlayAuthoritativeSessionTests
 		}
 		OutTrace.SecondDeploy = Session.DeployOrdinary(
 			MakeDeployRequest(OutTrace.SecondChoice));
+		OutTrace.AfterSecondDeploy = Session.GetStateSnapshot();
 		if (!OutTrace.SecondDeploy.DeploymentResult.bSuccess)
 		{
 			return false;
 		}
 
-		State = Session.GetStateSnapshot();
+		State = OutTrace.AfterSecondDeploy;
 		OutTrace.FirstFinish = Session.FinishDeployment(
 			State.CurrentAttack.AttackSequence,
 			State.CurrentAttack.CurrentLegalDeploymentSide);
+		OutTrace.AfterFirstFinish = Session.GetStateSnapshot();
 		if (!OutTrace.FirstFinish.FinishResult.bSuccess)
 		{
 			return false;
 		}
 
-		State = Session.GetStateSnapshot();
+		State = OutTrace.AfterFirstFinish;
 		OutTrace.SecondFinish = Session.FinishDeployment(
 			State.CurrentAttack.AttackSequence,
 			State.CurrentAttack.CurrentLegalDeploymentSide);
+		OutTrace.AfterSecondFinish = Session.GetStateSnapshot();
 		if (!OutTrace.SecondFinish.FinishResult.bSuccess)
 		{
 			return false;
 		}
 
-		State = Session.GetStateSnapshot();
+		State = OutTrace.AfterSecondFinish;
 		const FMatchPlayCurrentAttackCarrierSelectionAvailabilityResult
 			Availability =
 				FMatchPlayCurrentAttackCarrierSelectionAvailability::Query(
@@ -523,6 +542,83 @@ namespace MatchPlayAuthoritativeSessionTests
 		Request.RequestingSide = Trace.AttackingSide;
 		Request.CarrierCardId = Trace.CarrierCardId;
 		return Request;
+	}
+
+	bool BuildAwaitingMarkerReachabilityTrace(
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		FReachabilityTrace& OutTrace)
+	{
+		if (!BuildToAwaitingCarrier(Session, Prefix, OutTrace))
+		{
+			return false;
+		}
+
+		OutTrace.Carrier = Session.SubmitCarrier(
+			MakeCarrierRequest(OutTrace));
+		OutTrace.FinalState = Session.GetStateSnapshot();
+		return OutTrace.Carrier.CarrierResult.bSuccess
+			&& OutTrace.FinalState.bHasCurrentAttack
+			&& OutTrace.FinalState.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::AwaitingMarker;
+	}
+
+	void TestAwaitingMarkerEndpoint(
+		FAutomationTestBase& Test,
+		const FString& Prefix,
+		const FReachabilityTrace& Trace)
+	{
+		const FMatchPlayState& State = Trace.FinalState;
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s has current attack"), *Prefix),
+			State.bHasCurrentAttack);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s phase is Resolution"), *Prefix),
+			State.CurrentAttack.Phase,
+			EMatchPlayCurrentAttackPhase::Resolution);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s stage is AwaitingMarker"), *Prefix),
+			State.CurrentAttack.SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage::AwaitingMarker);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Carrier is selected"), *Prefix),
+			State.CurrentAttack.ActionPreparation.CarrierCardId,
+			Trace.CarrierCardId);
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s Marker is absent"), *Prefix),
+			State.CurrentAttack.ActionPreparation.MarkerCardId.IsNone());
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s Skill is absent"), *Prefix),
+			State.CurrentAttack.ActionPreparation.SkillId.IsNone());
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Skill type is absent"), *Prefix),
+			State.CurrentAttack.ActionPreparation.ActionType,
+			ESkillRuleType::None);
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s Runner is absent"), *Prefix),
+			State.CurrentAttack.ActionPreparation.RunnerCardId.IsNone());
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Helper is absent"), *Prefix),
+			State.CurrentAttack.ActionPreparation.bHasHelper);
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s Helper identity is absent"), *Prefix),
+			State.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s selected action is absent"), *Prefix),
+			State.CurrentAttack.bHasSelectedAction);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s Branch Intent is absent"), *Prefix),
+			State.CurrentAttack.SelectedAction.ElectiveBranchIntent,
+			EMatchPlayElectiveBranchIntent::None);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Resolution Session is absent"), *Prefix),
+			State.CurrentAttack.bHasResolutionSession);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s Actual Branch is absent"), *Prefix),
+			State.CurrentAttack.ResolutionSession.bHasActualBranch);
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s Initial Route rolls are empty"), *Prefix),
+			State.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
 	}
 
 	int32 CountOccurrences(
@@ -2004,6 +2100,10 @@ bool FMatchPlayAuthoritativeSessionDeployOrdinaryMatrixTest::RunTest(
 		Session.DeployOrdinary(MakeDeployRequest(Choice));
 	TestFalse(TEXT("Same placement replay reaches domain failure"),
 		Replay.DeploymentResult.bSuccess);
+	TestEqual(TEXT("Deploy replay exact first legality error"),
+		Replay.DeploymentResult.LegalityResult.ErrorCode,
+		EMatchPlayOrdinaryDeploymentErrorCode
+			::RequestingSideNotCurrentLegalDeploymentSide);
 	TestNoAdoptDomainFailure(
 		*this, TEXT("Deploy replay"), Replay.RuntimeEnvelope, AfterValid);
 	TestTrue(TEXT("Deploy replay preserves session"),
@@ -2161,12 +2261,13 @@ bool FMatchPlayAuthoritativeSessionEndToEndReachabilityTest::RunTest(
 	using namespace MatchPlayAuthoritativeSessionTests;
 	FMatchPlayAuthoritativeSession Session;
 	FReachabilityTrace Trace;
-	TestTrue(TEXT("Public Session chain reaches AwaitingCarrier"),
-		BuildToAwaitingCarrier(Session, TEXT("EndToEnd"), Trace));
+	TestTrue(TEXT("Public Session chain reaches AwaitingMarker"),
+		BuildAwaitingMarkerReachabilityTrace(
+			Session, TEXT("EndToEnd"), Trace));
 	TestEqual(TEXT("First legal side is current attacker"),
 		Trace.FirstChoice.Side, Trace.AttackingSide);
 	TestEqual(TEXT("Second legal side is defender"),
-		Trace.SecondChoice.Side, OtherPlayer(Trace.AttackingSide));
+		Trace.SecondChoice.Side, Trace.DefendingSide);
 	TestEqual(TEXT("Attacker uses real Forward slot"),
 		Trace.FirstChoice.ResolvedRelativeZone,
 		EMatchPlayRelativeDeploymentZone::Forward);
@@ -2193,43 +2294,26 @@ bool FMatchPlayAuthoritativeSessionEndToEndReachabilityTest::RunTest(
 			Trace.SecondFinish.RuntimeEnvelope.BeforeState,
 			Trace.FirstFinish.RuntimeEnvelope.AfterState));
 
-	const FMatchPlayState BeforeCarrier = Session.GetStateSnapshot();
-	const FMatchPlayAuthoritativeSubmitCarrierResult Carrier =
-		Session.SubmitCarrier(MakeCarrierRequest(Trace));
 	TestTrue(TEXT("Real Carrier writer succeeds"),
-		Carrier.CarrierResult.bSuccess);
+		Trace.Carrier.CarrierResult.bSuccess);
 	TestEqual(TEXT("Carrier command kind"),
-		Carrier.RuntimeEnvelope.CommandKind,
+		Trace.Carrier.RuntimeEnvelope.CommandKind,
 		EMatchPlayAuthoritativeCommandKind::SubmitCarrier);
 	TestAdoptedEnvelope(
 		*this,
 		TEXT("Carrier"),
-		Carrier.RuntimeEnvelope,
-		BeforeCarrier,
-		Carrier.CarrierResult.AfterState);
+		Trace.Carrier.RuntimeEnvelope,
+		Trace.AfterSecondFinish,
+		Trace.Carrier.CarrierResult.AfterState);
 	TestTrue(TEXT("Finish2 to Carrier continuity"),
 		AreStatesEqual(
-			Carrier.RuntimeEnvelope.BeforeState,
+			Trace.Carrier.RuntimeEnvelope.BeforeState,
 			Trace.SecondFinish.RuntimeEnvelope.AfterState));
-
-	const FMatchPlayState Final = Session.GetStateSnapshot();
-	TestEqual(TEXT("Final phase is Resolution"),
-		Final.CurrentAttack.Phase,
-		EMatchPlayCurrentAttackPhase::Resolution);
-	TestEqual(TEXT("Final stage is AwaitingMarker"),
-		Final.CurrentAttack.SelectionStage,
-		EMatchPlayCurrentAttackSelectionStage::AwaitingMarker);
-	TestEqual(TEXT("Carrier is recorded"),
-		Final.CurrentAttack.ActionPreparation.CarrierCardId,
-		Trace.CarrierCardId);
-	TestTrue(TEXT("Marker remains absent"),
-		Final.CurrentAttack.ActionPreparation.MarkerCardId.IsNone());
-	TestFalse(TEXT("Resolution Session remains absent"),
-		Final.CurrentAttack.bHasResolutionSession);
-	TestFalse(TEXT("Actual Branch remains absent"),
-		Final.CurrentAttack.ResolutionSession.bHasActualBranch);
-	TestTrue(TEXT("Initial Route rolls remain empty"),
-		Final.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
+	TestTrue(TEXT("Final snapshot matches Carrier nested AfterState"),
+		AreStatesEqual(
+			Trace.FinalState,
+			Trace.Carrier.CarrierResult.AfterState));
+	TestAwaitingMarkerEndpoint(*this, TEXT("EndToEnd"), Trace);
 	return true;
 }
 
@@ -2241,6 +2325,167 @@ bool FMatchPlayAuthoritativeSessionCarrierDeterminismTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace MatchPlayAuthoritativeSessionTests;
+	FMatchPlayAuthoritativeSession FullChainSessions[3];
+	FReachabilityTrace FullChainTraces[3];
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		const FString Context = FString::Printf(
+			TEXT("FullChainTrace%d"), Index);
+		TestTrue(
+			*FString::Printf(TEXT("%s reaches AwaitingMarker"), *Context),
+			BuildAwaitingMarkerReachabilityTrace(
+				FullChainSessions[Index],
+				TEXT("CarrierFullChain"),
+				FullChainTraces[Index]));
+		const FReachabilityTrace& Trace = FullChainTraces[Index];
+
+		TestTrue(
+			*FString::Printf(TEXT("%s Initialize snapshot is saved"), *Context),
+			AreStatesEqual(
+				Trace.AfterInitialize,
+				Trace.Initialize.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s Begin snapshot is saved"), *Context),
+			AreStatesEqual(
+				Trace.AfterBegin,
+				Trace.Begin.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s attacker Deploy snapshot is saved"), *Context),
+			AreStatesEqual(
+				Trace.AfterFirstDeploy,
+				Trace.FirstDeploy.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s defender Deploy snapshot is saved"), *Context),
+			AreStatesEqual(
+				Trace.AfterSecondDeploy,
+				Trace.SecondDeploy.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s attacker Finish snapshot is saved"), *Context),
+			AreStatesEqual(
+				Trace.AfterFirstFinish,
+				Trace.FirstFinish.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s defender Finish snapshot is saved"), *Context),
+			AreStatesEqual(
+				Trace.AfterSecondFinish,
+				Trace.SecondFinish.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s Carrier snapshot is saved"), *Context),
+			AreStatesEqual(
+				Trace.FinalState,
+				Trace.Carrier.CarrierResult.AfterState));
+
+		TestTrue(
+			*FString::Printf(TEXT("%s Begin to attacker Deploy continuity"), *Context),
+			AreStatesEqual(
+				Trace.FirstDeploy.RuntimeEnvelope.BeforeState,
+				Trace.Begin.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s attacker to defender Deploy continuity"), *Context),
+			AreStatesEqual(
+				Trace.SecondDeploy.RuntimeEnvelope.BeforeState,
+				Trace.FirstDeploy.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s defender Deploy to attacker Finish continuity"), *Context),
+			AreStatesEqual(
+				Trace.FirstFinish.RuntimeEnvelope.BeforeState,
+				Trace.SecondDeploy.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s attacker to defender Finish continuity"), *Context),
+			AreStatesEqual(
+				Trace.SecondFinish.RuntimeEnvelope.BeforeState,
+				Trace.FirstFinish.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s defender Finish to Carrier continuity"), *Context),
+			AreStatesEqual(
+				Trace.Carrier.RuntimeEnvelope.BeforeState,
+				Trace.SecondFinish.RuntimeEnvelope.AfterState));
+		TestTrue(
+			*FString::Printf(TEXT("%s final State matches Carrier nested AfterState"), *Context),
+			AreStatesEqual(
+				Trace.FinalState,
+				Trace.Carrier.CarrierResult.AfterState));
+		TestAwaitingMarkerEndpoint(*this, Context, Trace);
+	}
+
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		const FString Context = FString::Printf(
+			TEXT("Full chain A to %c"), TCHAR('A' + Index));
+		TestTrue(
+			*FString::Printf(TEXT("%s Initialize typed result"), *Context),
+			AreInitializeResultsEqual(
+				FullChainTraces[0].Initialize,
+				FullChainTraces[Index].Initialize));
+		TestTrue(
+			*FString::Printf(TEXT("%s Begin typed result"), *Context),
+			AreAuthoritativeBeginResultsEqual(
+				FullChainTraces[0].Begin,
+				FullChainTraces[Index].Begin));
+		TestTrue(
+			*FString::Printf(TEXT("%s attacker Deploy typed result"), *Context),
+			AreAuthoritativeDeployOrdinaryResultsEqual(
+				FullChainTraces[0].FirstDeploy,
+				FullChainTraces[Index].FirstDeploy));
+		TestTrue(
+			*FString::Printf(TEXT("%s defender Deploy typed result"), *Context),
+			AreAuthoritativeDeployOrdinaryResultsEqual(
+				FullChainTraces[0].SecondDeploy,
+				FullChainTraces[Index].SecondDeploy));
+		TestTrue(
+			*FString::Printf(TEXT("%s attacker Finish typed result"), *Context),
+			AreAuthoritativeFinishResultsEqual(
+				FullChainTraces[0].FirstFinish,
+				FullChainTraces[Index].FirstFinish));
+		TestTrue(
+			*FString::Printf(TEXT("%s defender Finish typed result"), *Context),
+			AreAuthoritativeFinishResultsEqual(
+				FullChainTraces[0].SecondFinish,
+				FullChainTraces[Index].SecondFinish));
+		TestTrue(
+			*FString::Printf(TEXT("%s Carrier typed result"), *Context),
+			AreAuthoritativeSubmitCarrierResultsEqual(
+				FullChainTraces[0].Carrier,
+				FullChainTraces[Index].Carrier));
+		TestTrue(
+			*FString::Printf(TEXT("%s final snapshot"), *Context),
+			AreStatesEqual(
+				FullChainTraces[0].FinalState,
+				FullChainTraces[Index].FinalState));
+		TestEqual(
+			*FString::Printf(TEXT("%s trusted AttackSequence"), *Context),
+			FullChainTraces[0].AttackSequence,
+			FullChainTraces[Index].AttackSequence);
+		TestEqual(
+			*FString::Printf(TEXT("%s trusted attacking side"), *Context),
+			FullChainTraces[0].AttackingSide,
+			FullChainTraces[Index].AttackingSide);
+		TestEqual(
+			*FString::Printf(TEXT("%s trusted defending side"), *Context),
+			FullChainTraces[0].DefendingSide,
+			FullChainTraces[Index].DefendingSide);
+		TestEqual(
+			*FString::Printf(TEXT("%s trusted attacker CardId"), *Context),
+			FullChainTraces[0].FirstChoice.CardId,
+			FullChainTraces[Index].FirstChoice.CardId);
+		TestEqual(
+			*FString::Printf(TEXT("%s trusted attacker SlotId"), *Context),
+			FullChainTraces[0].FirstChoice.SlotId,
+			FullChainTraces[Index].FirstChoice.SlotId);
+		TestEqual(
+			*FString::Printf(TEXT("%s trusted defender CardId"), *Context),
+			FullChainTraces[0].SecondChoice.CardId,
+			FullChainTraces[Index].SecondChoice.CardId);
+		TestEqual(
+			*FString::Printf(TEXT("%s trusted defender SlotId"), *Context),
+			FullChainTraces[0].SecondChoice.SlotId,
+			FullChainTraces[Index].SecondChoice.SlotId);
+		TestEqual(
+			*FString::Printf(TEXT("%s trusted CarrierCardId"), *Context),
+			FullChainTraces[0].CarrierCardId,
+			FullChainTraces[Index].CarrierCardId);
+	}
+
 	FMatchPlayAuthoritativeSession Sessions[3];
 	FMatchPlayAuthoritativeSubmitCarrierResult Wrong[3];
 	FMatchPlayAuthoritativeSubmitCarrierResult Success[3];
