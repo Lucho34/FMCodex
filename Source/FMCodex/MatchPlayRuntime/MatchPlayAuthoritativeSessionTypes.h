@@ -3,8 +3,10 @@
 #include "CoreMinimal.h"
 
 #include "../CoreRules/MatchPlayBeginOrdinaryAttack.h"
+#include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionWriter.h"
 #include "../CoreRules/MatchPlayFinishDeployment.h"
 #include "../CoreRules/MatchPlayOpeningInitializer.h"
+#include "../CoreRules/MatchPlayOrdinaryDeploymentWriter.h"
 
 enum class EMatchPlayAuthoritativeStateDisposition : uint8
 {
@@ -17,7 +19,9 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	None,
 	InitializeMatch,
 	BeginOrdinaryAttack,
-	FinishDeployment
+	FinishDeployment,
+	DeployOrdinary,
+	SubmitCarrier
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -72,6 +76,33 @@ struct FMCODEX_API FMatchPlayAuthoritativeFinishDeploymentResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayFinishDeploymentResult FinishResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+	FName CardId = NAME_None;
+	FName SlotId = NAME_None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+	FName CarrierCardId = NAME_None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayOrdinaryDeploymentWriterResult DeploymentResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackCarrierSelectionWriterResult CarrierResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeStateAdoptionResult

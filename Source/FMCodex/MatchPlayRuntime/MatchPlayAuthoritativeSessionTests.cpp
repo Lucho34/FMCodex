@@ -2,6 +2,9 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionAvailability.h"
+#include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
+
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -230,12 +233,296 @@ namespace MatchPlayAuthoritativeSessionTests
 				Right.FinishResult);
 	}
 
+	bool AreDeploymentRequestsEqual(
+		const FMatchPlayOrdinaryDeploymentRequest& Left,
+		const FMatchPlayOrdinaryDeploymentRequest& Right)
+	{
+		return Left.AttackSequence == Right.AttackSequence
+			&& Left.RequestingSide == Right.RequestingSide
+			&& Left.CardId == Right.CardId
+			&& Left.SlotId == Right.SlotId;
+	}
+
+	bool AreDeploymentLegalityResultsEqual(
+		const FMatchPlayOrdinaryDeploymentLegalityResult& Left,
+		const FMatchPlayOrdinaryDeploymentLegalityResult& Right)
+	{
+		return Left.bIsLegal == Right.bIsLegal
+			&& AreDeploymentRequestsEqual(Left.Request, Right.Request)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.UnderlyingSnapshotAuthorityQueryErrorCode
+				== Right.UnderlyingSnapshotAuthorityQueryErrorCode
+			&& Left.UnderlyingPlayCardErrorCode
+				== Right.UnderlyingPlayCardErrorCode
+			&& Left.UnderlyingCardUsageErrorCode
+				== Right.UnderlyingCardUsageErrorCode
+			&& Left.UnderlyingSlotCatalogQueryErrorCode
+				== Right.UnderlyingSlotCatalogQueryErrorCode
+			&& Left.UnderlyingRelativeZoneResolutionErrorCode
+				== Right.UnderlyingRelativeZoneResolutionErrorCode
+			&& Left.ResolvedRelativeZone == Right.ResolvedRelativeZone
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreDeploymentWriterResultsEqual(
+		const FMatchPlayOrdinaryDeploymentWriterResult& Left,
+		const FMatchPlayOrdinaryDeploymentWriterResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& AreDeploymentRequestsEqual(Left.Request, Right.Request)
+			&& AreStatesEqual(Left.BeforeState, Right.BeforeState)
+			&& AreStatesEqual(Left.AfterState, Right.AfterState)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& AreDeploymentLegalityResultsEqual(
+				Left.LegalityResult,
+				Right.LegalityResult)
+			&& Left.UnderlyingTurnRotationErrorCode
+				== Right.UnderlyingTurnRotationErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreAuthoritativeDeployOrdinaryResultsEqual(
+		const FMatchPlayAuthoritativeDeployOrdinaryResult& Left,
+		const FMatchPlayAuthoritativeDeployOrdinaryResult& Right)
+	{
+		return AreEnvelopesEqual(
+				Left.RuntimeEnvelope,
+				Right.RuntimeEnvelope)
+			&& AreDeploymentWriterResultsEqual(
+				Left.DeploymentResult,
+				Right.DeploymentResult);
+	}
+
+	bool AreCarrierRequestsEqual(
+		const FMatchPlayCurrentAttackCarrierSelectionRequest& Left,
+		const FMatchPlayCurrentAttackCarrierSelectionRequest& Right)
+	{
+		return Left.AttackSequence == Right.AttackSequence
+			&& Left.RequestingSide == Right.RequestingSide
+			&& Left.CarrierCardId == Right.CarrierCardId;
+	}
+
+	bool AreCarrierLegalityResultsEqual(
+		const FMatchPlayCurrentAttackCarrierSelectionLegalityResult& Left,
+		const FMatchPlayCurrentAttackCarrierSelectionLegalityResult& Right)
+	{
+		return Left.bIsLegal == Right.bIsLegal
+			&& AreCarrierRequestsEqual(Left.Request, Right.Request)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& AreSelectionValidationResultsEqual(
+				Left.SelectionStateValidationResult,
+				Right.SelectionStateValidationResult)
+			&& Left.UnderlyingSnapshotAuthorityQueryErrorCode
+				== Right.UnderlyingSnapshotAuthorityQueryErrorCode
+			&& Left.MatchingCarrierPlacementCount
+				== Right.MatchingCarrierPlacementCount
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreCarrierWriterResultsEqual(
+		const FMatchPlayCurrentAttackCarrierSelectionWriterResult& Left,
+		const FMatchPlayCurrentAttackCarrierSelectionWriterResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& AreCarrierRequestsEqual(Left.Request, Right.Request)
+			&& AreStatesEqual(Left.BeforeState, Right.BeforeState)
+			&& AreStatesEqual(Left.AfterState, Right.AfterState)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& AreCarrierLegalityResultsEqual(
+				Left.LegalityResult,
+				Right.LegalityResult)
+			&& Left.SelectedCarrierCardId == Right.SelectedCarrierCardId
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreAuthoritativeSubmitCarrierResultsEqual(
+		const FMatchPlayAuthoritativeSubmitCarrierResult& Left,
+		const FMatchPlayAuthoritativeSubmitCarrierResult& Right)
+	{
+		return AreEnvelopesEqual(
+				Left.RuntimeEnvelope,
+				Right.RuntimeEnvelope)
+			&& AreCarrierWriterResultsEqual(
+				Left.CarrierResult,
+				Right.CarrierResult);
+	}
+
 	EInitialTurnOrderPlayer OtherPlayer(
 		const EInitialTurnOrderPlayer Player)
 	{
 		return Player == EInitialTurnOrderPlayer::PlayerA
 			? EInitialTurnOrderPlayer::PlayerB
 			: EInitialTurnOrderPlayer::PlayerA;
+	}
+
+	const TArray<FName>& AvailableCardIdsForSide(
+		const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.CardUsageState.PlayerACardUsageState.AvailableCardIds
+			: State.CardUsageState.PlayerBCardUsageState.AvailableCardIds;
+	}
+
+	struct FDeploymentChoice
+	{
+		EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
+		FName CardId = NAME_None;
+		FName SlotId = NAME_None;
+		EMatchPlayRelativeDeploymentZone ResolvedRelativeZone =
+			EMatchPlayRelativeDeploymentZone::None;
+	};
+
+	bool FindLegalDeployment(
+		const FMatchPlayState& State,
+		const EMatchPlayRelativeDeploymentZone PreferredZone,
+		FDeploymentChoice& OutChoice)
+	{
+		if (!State.bHasCurrentAttack)
+		{
+			return false;
+		}
+
+		const EInitialTurnOrderPlayer Side =
+			State.CurrentAttack.CurrentLegalDeploymentSide;
+		for (const FName CardId : AvailableCardIdsForSide(State, Side))
+		{
+			const FMatchPlayOrdinaryDeploymentAvailabilityResult Availability =
+				FMatchPlayOrdinaryDeploymentAvailability::Query(
+					State,
+					State.CurrentAttack.AttackSequence,
+					Side,
+					CardId);
+			for (const FMatchPlayOrdinaryDeploymentSlotAvailability& Slot :
+				Availability.SlotResults)
+			{
+				if (Slot.LegalityResult.bIsLegal
+					&& Slot.LegalityResult.ResolvedRelativeZone == PreferredZone)
+				{
+					OutChoice.Side = Side;
+					OutChoice.CardId = CardId;
+					OutChoice.SlotId = Slot.SlotId;
+					OutChoice.ResolvedRelativeZone =
+						Slot.LegalityResult.ResolvedRelativeZone;
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	FMatchPlayAuthoritativeDeployOrdinaryRequest MakeDeployRequest(
+		const FDeploymentChoice& Choice)
+	{
+		FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
+		Request.RequestingSide = Choice.Side;
+		Request.CardId = Choice.CardId;
+		Request.SlotId = Choice.SlotId;
+		return Request;
+	}
+
+	struct FReachabilityTrace
+	{
+		FMatchPlayAuthoritativeInitializeMatchResult Initialize;
+		FMatchPlayAuthoritativeBeginOrdinaryAttackResult Begin;
+		FDeploymentChoice FirstChoice;
+		FMatchPlayAuthoritativeDeployOrdinaryResult FirstDeploy;
+		FMatchPlayAuthoritativeFinishDeploymentResult FirstFinish;
+		FDeploymentChoice SecondChoice;
+		FMatchPlayAuthoritativeDeployOrdinaryResult SecondDeploy;
+		FMatchPlayAuthoritativeFinishDeploymentResult SecondFinish;
+		EInitialTurnOrderPlayer AttackingSide =
+			EInitialTurnOrderPlayer::None;
+		FName CarrierCardId = NAME_None;
+	};
+
+	bool BuildToAwaitingCarrier(
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		FReachabilityTrace& OutTrace)
+	{
+		OutTrace.Initialize = Session.InitializeMatch(MakeValidInput(Prefix));
+		OutTrace.Begin = Session.BeginOrdinaryAttack(6);
+		if (!OutTrace.Initialize.OpeningResult.bSuccess
+			|| !OutTrace.Begin.BeginResult.bSuccess)
+		{
+			return false;
+		}
+
+		FMatchPlayState State = Session.GetStateSnapshot();
+		OutTrace.AttackingSide = State.RuntimeState.CurrentAttackingPlayer;
+		if (!FindLegalDeployment(
+			State,
+			EMatchPlayRelativeDeploymentZone::Forward,
+			OutTrace.FirstChoice))
+		{
+			return false;
+		}
+		OutTrace.FirstDeploy = Session.DeployOrdinary(
+			MakeDeployRequest(OutTrace.FirstChoice));
+		if (!OutTrace.FirstDeploy.DeploymentResult.bSuccess)
+		{
+			return false;
+		}
+
+		State = Session.GetStateSnapshot();
+		if (!FindLegalDeployment(
+			State,
+			EMatchPlayRelativeDeploymentZone::Midfield,
+			OutTrace.SecondChoice))
+		{
+			return false;
+		}
+		OutTrace.SecondDeploy = Session.DeployOrdinary(
+			MakeDeployRequest(OutTrace.SecondChoice));
+		if (!OutTrace.SecondDeploy.DeploymentResult.bSuccess)
+		{
+			return false;
+		}
+
+		State = Session.GetStateSnapshot();
+		OutTrace.FirstFinish = Session.FinishDeployment(
+			State.CurrentAttack.AttackSequence,
+			State.CurrentAttack.CurrentLegalDeploymentSide);
+		if (!OutTrace.FirstFinish.FinishResult.bSuccess)
+		{
+			return false;
+		}
+
+		State = Session.GetStateSnapshot();
+		OutTrace.SecondFinish = Session.FinishDeployment(
+			State.CurrentAttack.AttackSequence,
+			State.CurrentAttack.CurrentLegalDeploymentSide);
+		if (!OutTrace.SecondFinish.FinishResult.bSuccess)
+		{
+			return false;
+		}
+
+		State = Session.GetStateSnapshot();
+		const FMatchPlayCurrentAttackCarrierSelectionAvailabilityResult
+			Availability =
+				FMatchPlayCurrentAttackCarrierSelectionAvailability::Query(
+					State,
+					State.CurrentAttack.AttackSequence,
+					OutTrace.AttackingSide);
+		for (const auto& Candidate : Availability.Candidates)
+		{
+			if (Candidate.LegalityResult.bIsLegal)
+			{
+				OutTrace.CarrierCardId = Candidate.CarrierCardId;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	FMatchPlayAuthoritativeSubmitCarrierRequest MakeCarrierRequest(
+		const FReachabilityTrace& Trace)
+	{
+		FMatchPlayAuthoritativeSubmitCarrierRequest Request;
+		Request.RequestingSide = Trace.AttackingSide;
+		Request.CarrierCardId = Trace.CarrierCardId;
+		return Request;
 	}
 
 	int32 CountOccurrences(
@@ -492,6 +779,203 @@ namespace MatchPlayAuthoritativeSessionTests
 		RejectEqual(TEXT("Finish comparator covers message"), Mutated);
 	}
 
+	void TestDeployMutationCoverage(
+		FAutomationTestBase& Test,
+		const FMatchPlayAuthoritativeDeployOrdinaryResult& Baseline)
+	{
+		auto RejectEqual = [&Test, &Baseline](
+			const TCHAR* Field,
+			const FMatchPlayAuthoritativeDeployOrdinaryResult& Mutated)
+		{
+			Test.TestFalse(
+				Field,
+				AreAuthoritativeDeployOrdinaryResultsEqual(Baseline, Mutated));
+		};
+
+		FMatchPlayAuthoritativeDeployOrdinaryResult Mutated = Baseline;
+		Mutated.RuntimeEnvelope.bRuntimeFault = true;
+		RejectEqual(TEXT("Deploy comparator covers envelope"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.bSuccess = !Mutated.DeploymentResult.bSuccess;
+		RejectEqual(TEXT("Deploy comparator covers bSuccess"), Mutated);
+		Mutated = Baseline;
+		++Mutated.DeploymentResult.Request.AttackSequence;
+		RejectEqual(TEXT("Deploy comparator covers request sequence"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.Request.RequestingSide =
+			OtherPlayer(Mutated.DeploymentResult.Request.RequestingSide);
+		RejectEqual(TEXT("Deploy comparator covers request side"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.Request.CardId = TEXT("Mutated.Card");
+		RejectEqual(TEXT("Deploy comparator covers request CardId"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.Request.SlotId = TEXT("Mutated.Slot");
+		RejectEqual(TEXT("Deploy comparator covers request SlotId"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.BeforeState.bHasCurrentAttack = false;
+		RejectEqual(TEXT("Deploy comparator covers BeforeState"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.AfterState.bHasCurrentAttack = false;
+		RejectEqual(TEXT("Deploy comparator covers AfterState"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.ErrorCode =
+			EMatchPlayOrdinaryDeploymentWriterErrorCode::LegalityFailed;
+		RejectEqual(TEXT("Deploy comparator covers ErrorCode"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.bIsLegal =
+			!Mutated.DeploymentResult.LegalityResult.bIsLegal;
+		RejectEqual(TEXT("Deploy comparator covers legality flag"), Mutated);
+		Mutated = Baseline;
+		++Mutated.DeploymentResult.LegalityResult.Request.AttackSequence;
+		RejectEqual(TEXT("Deploy comparator covers legality request sequence"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.Request.RequestingSide =
+			OtherPlayer(Mutated.DeploymentResult.LegalityResult.Request.RequestingSide);
+		RejectEqual(TEXT("Deploy comparator covers legality request side"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.Request.CardId =
+			TEXT("Mutated.Legality.Card");
+		RejectEqual(TEXT("Deploy comparator covers legality request CardId"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.Request.SlotId =
+			TEXT("Mutated.Legality.Slot");
+		RejectEqual(TEXT("Deploy comparator covers legality request SlotId"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.ErrorCode =
+			EMatchPlayOrdinaryDeploymentErrorCode::InvalidCardId;
+		RejectEqual(TEXT("Deploy comparator covers legality ErrorCode"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult
+			.UnderlyingSnapshotAuthorityQueryErrorCode =
+				static_cast<EMatchPlayCardSnapshotAuthorityQueryErrorCode>(1);
+		RejectEqual(TEXT("Deploy comparator covers authority query error"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.UnderlyingPlayCardErrorCode =
+			static_cast<EPlayCardResolveErrorCode>(1);
+		RejectEqual(TEXT("Deploy comparator covers play-card error"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.UnderlyingCardUsageErrorCode =
+			static_cast<ECardUsageResolveErrorCode>(1);
+		RejectEqual(TEXT("Deploy comparator covers card-usage error"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult
+			.UnderlyingSlotCatalogQueryErrorCode =
+				static_cast<EMatchPlayDeploymentSlotCatalogQueryErrorCode>(1);
+		RejectEqual(TEXT("Deploy comparator covers slot-catalog error"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult
+			.UnderlyingRelativeZoneResolutionErrorCode =
+				static_cast<EMatchPlayRelativeDeploymentZoneResolveErrorCode>(1);
+		RejectEqual(TEXT("Deploy comparator covers relative-zone error"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.ResolvedRelativeZone =
+			EMatchPlayRelativeDeploymentZone::None;
+		RejectEqual(TEXT("Deploy comparator covers resolved zone"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.LegalityResult.ErrorMessage =
+			TEXT("mutated deploy legality message");
+		RejectEqual(TEXT("Deploy comparator covers legality message"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.UnderlyingTurnRotationErrorCode =
+			static_cast<EMatchPlayDeploymentTurnRotationErrorCode>(1);
+		RejectEqual(TEXT("Deploy comparator covers rotation error"), Mutated);
+		Mutated = Baseline;
+		Mutated.DeploymentResult.ErrorMessage = TEXT("mutated deploy message");
+		RejectEqual(TEXT("Deploy comparator covers message"), Mutated);
+	}
+
+	void TestCarrierMutationCoverage(
+		FAutomationTestBase& Test,
+		const FMatchPlayAuthoritativeSubmitCarrierResult& Baseline)
+	{
+		auto RejectEqual = [&Test, &Baseline](
+			const TCHAR* Field,
+			const FMatchPlayAuthoritativeSubmitCarrierResult& Mutated)
+		{
+			Test.TestFalse(
+				Field,
+				AreAuthoritativeSubmitCarrierResultsEqual(Baseline, Mutated));
+		};
+
+		FMatchPlayAuthoritativeSubmitCarrierResult Mutated = Baseline;
+		Mutated.RuntimeEnvelope.bRuntimeFault = true;
+		RejectEqual(TEXT("Carrier comparator covers envelope"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.bSuccess = !Mutated.CarrierResult.bSuccess;
+		RejectEqual(TEXT("Carrier comparator covers bSuccess"), Mutated);
+		Mutated = Baseline;
+		++Mutated.CarrierResult.Request.AttackSequence;
+		RejectEqual(TEXT("Carrier comparator covers request sequence"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.Request.RequestingSide =
+			OtherPlayer(Mutated.CarrierResult.Request.RequestingSide);
+		RejectEqual(TEXT("Carrier comparator covers request side"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.Request.CarrierCardId = TEXT("Mutated.Carrier");
+		RejectEqual(TEXT("Carrier comparator covers request CardId"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.BeforeState.bHasCurrentAttack = false;
+		RejectEqual(TEXT("Carrier comparator covers BeforeState"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.AfterState.bHasCurrentAttack = false;
+		RejectEqual(TEXT("Carrier comparator covers AfterState"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.ErrorCode =
+			EMatchPlayCurrentAttackCarrierSelectionWriterErrorCode::LegalityFailed;
+		RejectEqual(TEXT("Carrier comparator covers ErrorCode"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult.bIsLegal =
+			!Mutated.CarrierResult.LegalityResult.bIsLegal;
+		RejectEqual(TEXT("Carrier comparator covers legality flag"), Mutated);
+		Mutated = Baseline;
+		++Mutated.CarrierResult.LegalityResult.Request.AttackSequence;
+		RejectEqual(TEXT("Carrier comparator covers legality request sequence"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult.Request.RequestingSide =
+			OtherPlayer(Mutated.CarrierResult.LegalityResult.Request.RequestingSide);
+		RejectEqual(TEXT("Carrier comparator covers legality request side"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult.Request.CarrierCardId =
+			TEXT("Mutated.Legality.Carrier");
+		RejectEqual(TEXT("Carrier comparator covers legality request CardId"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult.ErrorCode =
+			EMatchPlayCurrentAttackCarrierSelectionErrorCode::InvalidCarrierCardId;
+		RejectEqual(TEXT("Carrier comparator covers legality ErrorCode"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult.SelectionStateValidationResult
+			.bIsCanonical = !Mutated.CarrierResult.LegalityResult
+				.SelectionStateValidationResult.bIsCanonical;
+		RejectEqual(TEXT("Carrier comparator covers selection canonical flag"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult.SelectionStateValidationResult
+			.ErrorCode = EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+				::UnsupportedCurrentAttackPhase;
+		RejectEqual(TEXT("Carrier comparator covers selection error"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult.SelectionStateValidationResult
+			.ErrorMessage = TEXT("mutated selection validation message");
+		RejectEqual(TEXT("Carrier comparator covers selection message"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult
+			.UnderlyingSnapshotAuthorityQueryErrorCode =
+				static_cast<EMatchPlayCardSnapshotAuthorityQueryErrorCode>(1);
+		RejectEqual(TEXT("Carrier comparator covers authority query error"), Mutated);
+		Mutated = Baseline;
+		++Mutated.CarrierResult.LegalityResult.MatchingCarrierPlacementCount;
+		RejectEqual(TEXT("Carrier comparator covers matching placement count"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.LegalityResult.ErrorMessage =
+			TEXT("mutated carrier legality message");
+		RejectEqual(TEXT("Carrier comparator covers legality message"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.SelectedCarrierCardId = TEXT("Mutated.Selected");
+		RejectEqual(TEXT("Carrier comparator covers selected CardId"), Mutated);
+		Mutated = Baseline;
+		Mutated.CarrierResult.ErrorMessage = TEXT("mutated carrier message");
+		RejectEqual(TEXT("Carrier comparator covers message"), Mutated);
+	}
+
 	bool TestAdoptedEnvelope(
 		FAutomationTestBase& Test,
 		const TCHAR* Context,
@@ -586,6 +1070,10 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 	static_assert(static_cast<uint8>(
 		EMatchPlayAuthoritativeCommandKind::FinishDeployment) == 3);
 	static_assert(static_cast<uint8>(
+		EMatchPlayAuthoritativeCommandKind::DeployOrdinary) == 4);
+	static_assert(static_cast<uint8>(
+		EMatchPlayAuthoritativeCommandKind::SubmitCarrier) == 5);
+	static_assert(static_cast<uint8>(
 		EMatchPlayAuthoritativeRuntimeFailureCode::ReentrantCommand) == 3);
 	static_assert(static_cast<uint8>(
 		EMatchPlayAuthoritativeFailureDisposition
@@ -627,11 +1115,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All three mutations use the gate"),
+	TestEqual(TEXT("All five mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		3);
+		5);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -665,8 +1153,10 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 	TestFalse(TEXT("Provider absent"), Production.Contains(TEXT("Provider")));
 	TestFalse(TEXT("Initial Route Orchestrator absent"),
 		Production.Contains(TEXT("ResolveInitialRouteOrchestrator")));
-	TestFalse(TEXT("Direct CurrentAttack authority write absent"),
-		Implementation.Contains(TEXT("AuthoritativeState.CurrentAttack")));
+	TestFalse(TEXT("Direct CurrentAttack authority replacement absent"),
+		Implementation.Contains(TEXT("AuthoritativeState.CurrentAttack =")));
+	TestFalse(TEXT("Direct Deployment placement authority write absent"),
+		Implementation.Contains(TEXT("AuthoritativeState.CurrentAttack.DeploymentPlacements")));
 	TestFalse(TEXT("Direct Phase authority write absent"),
 		Implementation.Contains(TEXT("AuthoritativeState.Phase")));
 	TestFalse(TEXT("Static mutable State absent"),
@@ -1384,6 +1874,525 @@ bool FMatchPlayAuthoritativeSessionComparatorBoundaryTest::RunTest(
 	MatchPlayAuthoritativeSessionTests::TestFinishMutationCoverage(
 		*this,
 		Finish);
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionDeployOrdinaryTypesTest,
+	"12.DeployOrdinaryTypesAndSurface")
+
+bool FMatchPlayAuthoritativeSessionDeployOrdinaryTypesTest::RunTest(
+	const FString& Parameters)
+{
+	using FDeploySignature = FMatchPlayAuthoritativeDeployOrdinaryResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeDeployOrdinaryRequest&);
+	using FCarrierSignature = FMatchPlayAuthoritativeSubmitCarrierResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeSubmitCarrierRequest&);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::DeployOrdinary),
+		FDeploySignature>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::SubmitCarrier),
+		FCarrierSignature>);
+
+	const FMatchPlayAuthoritativeDeployOrdinaryRequest DeployRequest;
+	TestEqual(TEXT("Deploy request defaults side"),
+		DeployRequest.RequestingSide, EInitialTurnOrderPlayer::None);
+	TestTrue(TEXT("Deploy request defaults CardId"),
+		DeployRequest.CardId.IsNone());
+	TestTrue(TEXT("Deploy request defaults SlotId"),
+		DeployRequest.SlotId.IsNone());
+	const FMatchPlayAuthoritativeSubmitCarrierRequest CarrierRequest;
+	TestEqual(TEXT("Carrier request defaults side"),
+		CarrierRequest.RequestingSide, EInitialTurnOrderPlayer::None);
+	TestTrue(TEXT("Carrier request defaults CardId"),
+		CarrierRequest.CarrierCardId.IsNone());
+	TestNotNull(TEXT("Deploy nested type remains exact reflected writer result"),
+		FMatchPlayOrdinaryDeploymentWriterResult::StaticStruct());
+	TestNotNull(TEXT("Carrier nested type remains exact reflected writer result"),
+		FMatchPlayCurrentAttackCarrierSelectionWriterResult::StaticStruct());
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionDeployOrdinaryMatrixTest,
+	"13.DeployOrdinarySuccessAndFailure")
+
+bool FMatchPlayAuthoritativeSessionDeployOrdinaryMatrixTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	FMatchPlayAuthoritativeSession Uninitialized;
+	const FMatchPlayState DefaultState;
+	const FMatchPlayAuthoritativeDeployOrdinaryResult Gated =
+		Uninitialized.DeployOrdinary({});
+	TestFalse(TEXT("Uninitialized Deploy is rejected"),
+		Gated.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized Deploy exact runtime code"),
+		Gated.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+	TestEqual(TEXT("Uninitialized Deploy trusted sequence is zero"),
+		Gated.RuntimeEnvelope.AttackSequence, int64{ 0 });
+	TestTrue(TEXT("Uninitialized Deploy nested result is default"),
+		AreDeploymentWriterResultsEqual(
+			Gated.DeploymentResult,
+			FMatchPlayOrdinaryDeploymentWriterResult{}));
+	TestTrue(TEXT("Uninitialized Deploy preserves state"),
+		AreStatesEqual(Uninitialized.GetStateSnapshot(), DefaultState));
+
+	FMatchPlayAuthoritativeSession Session;
+	Session.InitializeMatch(MakeValidInput(TEXT("DeployMatrix")));
+	Session.BeginOrdinaryAttack(6);
+	const FMatchPlayState Active = Session.GetStateSnapshot();
+	FDeploymentChoice Choice;
+	TestTrue(TEXT("Availability finds real forward deployment"),
+		FindLegalDeployment(
+			Active,
+			EMatchPlayRelativeDeploymentZone::Forward,
+			Choice));
+
+	FMatchPlayAuthoritativeDeployOrdinaryRequest WrongSide =
+		MakeDeployRequest(Choice);
+	WrongSide.RequestingSide = OtherPlayer(Choice.Side);
+	const FMatchPlayAuthoritativeDeployOrdinaryResult Wrong =
+		Session.DeployOrdinary(WrongSide);
+	TestEqual(TEXT("Wrong-side Deploy exact domain error"),
+		Wrong.DeploymentResult.LegalityResult.ErrorCode,
+		EMatchPlayOrdinaryDeploymentErrorCode
+			::RequestingSideNotCurrentLegalDeploymentSide);
+	TestNoAdoptDomainFailure(
+		*this, TEXT("Wrong-side Deploy"), Wrong.RuntimeEnvelope, Active);
+	TestEqual(TEXT("Wrong-side sequence is state-derived"),
+		Wrong.RuntimeEnvelope.AttackSequence,
+		Active.CurrentAttack.AttackSequence);
+
+	FMatchPlayAuthoritativeDeployOrdinaryRequest InvalidSlot =
+		MakeDeployRequest(Choice);
+	InvalidSlot.SlotId = NAME_None;
+	const FMatchPlayAuthoritativeDeployOrdinaryResult Invalid =
+		Session.DeployOrdinary(InvalidSlot);
+	TestEqual(TEXT("Invalid-slot Deploy exact domain error"),
+		Invalid.DeploymentResult.LegalityResult.ErrorCode,
+		EMatchPlayOrdinaryDeploymentErrorCode::InvalidSlotId);
+	TestNoAdoptDomainFailure(
+		*this, TEXT("Invalid-slot Deploy"), Invalid.RuntimeEnvelope, Active);
+
+	const FMatchPlayAuthoritativeDeployOrdinaryResult Valid =
+		Session.DeployOrdinary(MakeDeployRequest(Choice));
+	TestTrue(TEXT("Valid Deploy reaches writer success"),
+		Valid.DeploymentResult.bSuccess);
+	TestEqual(TEXT("Valid Deploy command kind"),
+		Valid.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::DeployOrdinary);
+	TestAdoptedEnvelope(
+		*this,
+		TEXT("Valid Deploy"),
+		Valid.RuntimeEnvelope,
+		Active,
+		Valid.DeploymentResult.AfterState);
+	TestTrue(TEXT("Valid Deploy request sequence is state-derived"),
+		Valid.DeploymentResult.Request.AttackSequence
+			== Active.CurrentAttack.AttackSequence);
+	TestEqual(TEXT("Real writer records resolved zone"),
+		Valid.DeploymentResult.LegalityResult.ResolvedRelativeZone,
+		Choice.ResolvedRelativeZone);
+
+	const FMatchPlayState AfterValid = Session.GetStateSnapshot();
+	const FMatchPlayAuthoritativeDeployOrdinaryResult Replay =
+		Session.DeployOrdinary(MakeDeployRequest(Choice));
+	TestFalse(TEXT("Same placement replay reaches domain failure"),
+		Replay.DeploymentResult.bSuccess);
+	TestNoAdoptDomainFailure(
+		*this, TEXT("Deploy replay"), Replay.RuntimeEnvelope, AfterValid);
+	TestTrue(TEXT("Deploy replay preserves session"),
+		AreStatesEqual(Session.GetStateSnapshot(), AfterValid));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionDeployDeterminismTest,
+	"14.DeployOrdinaryReplayIsolationAndDeterminism")
+
+bool FMatchPlayAuthoritativeSessionDeployDeterminismTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	FMatchPlayAuthoritativeSession Sessions[3];
+	FMatchPlayAuthoritativeDeployOrdinaryResult Wrong[3];
+	FMatchPlayAuthoritativeDeployOrdinaryResult Valid[3];
+	FMatchPlayAuthoritativeDeployOrdinaryResult Replay[3];
+	FMatchPlayState Final[3];
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		Sessions[Index].InitializeMatch(MakeValidInput(TEXT("DeployDet")));
+		Sessions[Index].BeginOrdinaryAttack(6);
+		FDeploymentChoice Choice;
+		TestTrue(TEXT("Determinism fixture finds legal deployment"),
+			FindLegalDeployment(
+				Sessions[Index].GetStateSnapshot(),
+				EMatchPlayRelativeDeploymentZone::Forward,
+				Choice));
+		FMatchPlayAuthoritativeDeployOrdinaryRequest WrongRequest =
+			MakeDeployRequest(Choice);
+		WrongRequest.RequestingSide = OtherPlayer(Choice.Side);
+		Wrong[Index] = Sessions[Index].DeployOrdinary(WrongRequest);
+		Valid[Index] = Sessions[Index].DeployOrdinary(MakeDeployRequest(Choice));
+		Replay[Index] = Sessions[Index].DeployOrdinary(MakeDeployRequest(Choice));
+		Final[Index] = Sessions[Index].GetStateSnapshot();
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("Wrong-side Deploy typed result deterministic"),
+			AreAuthoritativeDeployOrdinaryResultsEqual(Wrong[0], Wrong[Index]));
+		TestTrue(TEXT("Valid Deploy typed result deterministic"),
+			AreAuthoritativeDeployOrdinaryResultsEqual(Valid[0], Valid[Index]));
+		TestTrue(TEXT("Deploy replay typed result deterministic"),
+			AreAuthoritativeDeployOrdinaryResultsEqual(Replay[0], Replay[Index]));
+		TestTrue(TEXT("Deploy final snapshot deterministic"),
+			AreStatesEqual(Final[0], Final[Index]));
+	}
+
+	FMatchPlayAuthoritativeSession SessionA;
+	FMatchPlayAuthoritativeSession SessionB;
+	SessionA.InitializeMatch(MakeValidInput(TEXT("DeployIsolationA")));
+	SessionB.InitializeMatch(MakeValidInput(TEXT("DeployIsolationB")));
+	SessionA.BeginOrdinaryAttack(6);
+	SessionB.BeginOrdinaryAttack(6);
+	const FMatchPlayState BBeforeA = SessionB.GetStateSnapshot();
+	FDeploymentChoice AChoice;
+	FindLegalDeployment(
+		SessionA.GetStateSnapshot(),
+		EMatchPlayRelativeDeploymentZone::Forward,
+		AChoice);
+	SessionA.DeployOrdinary(MakeDeployRequest(AChoice));
+	TestTrue(TEXT("A Deploy cannot change B"),
+		AreStatesEqual(SessionB.GetStateSnapshot(), BBeforeA));
+	const FMatchPlayState ABeforeB = SessionA.GetStateSnapshot();
+	FDeploymentChoice BChoice;
+	FindLegalDeployment(
+		SessionB.GetStateSnapshot(),
+		EMatchPlayRelativeDeploymentZone::Forward,
+		BChoice);
+	SessionB.DeployOrdinary(MakeDeployRequest(BChoice));
+	TestTrue(TEXT("B Deploy cannot change A"),
+		AreStatesEqual(SessionA.GetStateSnapshot(), ABeforeB));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionCarrierFailureMatrixTest,
+	"15.SubmitCarrierStageAndLegalityFailures")
+
+bool FMatchPlayAuthoritativeSessionCarrierFailureMatrixTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	FMatchPlayAuthoritativeSession Uninitialized;
+	const FMatchPlayAuthoritativeSubmitCarrierResult Gated =
+		Uninitialized.SubmitCarrier({});
+	TestFalse(TEXT("Uninitialized Carrier is rejected"),
+		Gated.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized Carrier exact runtime code"),
+		Gated.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+	TestTrue(TEXT("Uninitialized Carrier nested result is default"),
+		AreCarrierWriterResultsEqual(
+			Gated.CarrierResult,
+			FMatchPlayCurrentAttackCarrierSelectionWriterResult{}));
+
+	FMatchPlayAuthoritativeSession EarlySession;
+	EarlySession.InitializeMatch(MakeValidInput(TEXT("CarrierEarly")));
+	EarlySession.BeginOrdinaryAttack(6);
+	const FMatchPlayState EarlyState = EarlySession.GetStateSnapshot();
+	FMatchPlayAuthoritativeSubmitCarrierRequest EarlyRequest;
+	EarlyRequest.RequestingSide = EarlyState.RuntimeState.CurrentAttackingPlayer;
+	EarlyRequest.CarrierCardId = TEXT("Not.Deployed");
+	const FMatchPlayAuthoritativeSubmitCarrierResult Early =
+		EarlySession.SubmitCarrier(EarlyRequest);
+	TestEqual(TEXT("Carrier before Resolution exact error"),
+		Early.CarrierResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackCarrierSelectionErrorCode
+			::CurrentAttackNotInResolution);
+	TestNoAdoptDomainFailure(
+		*this, TEXT("Early Carrier"), Early.RuntimeEnvelope, EarlyState);
+
+	FMatchPlayAuthoritativeSession Session;
+	FReachabilityTrace Trace;
+	TestTrue(TEXT("Carrier failure fixture reaches AwaitingCarrier"),
+		BuildToAwaitingCarrier(Session, TEXT("CarrierFailures"), Trace));
+	const FMatchPlayState AwaitingCarrier = Session.GetStateSnapshot();
+	FMatchPlayAuthoritativeSubmitCarrierRequest WrongSide =
+		MakeCarrierRequest(Trace);
+	WrongSide.RequestingSide = OtherPlayer(Trace.AttackingSide);
+	const FMatchPlayAuthoritativeSubmitCarrierResult Wrong =
+		Session.SubmitCarrier(WrongSide);
+	TestEqual(TEXT("Wrong-side Carrier exact error"),
+		Wrong.CarrierResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackCarrierSelectionErrorCode
+			::RequestingSideIsNotCurrentAttacker);
+	TestNoAdoptDomainFailure(
+		*this, TEXT("Wrong-side Carrier"), Wrong.RuntimeEnvelope, AwaitingCarrier);
+
+	FMatchPlayAuthoritativeSubmitCarrierRequest Invalid =
+		MakeCarrierRequest(Trace);
+	Invalid.CarrierCardId = TEXT("Not.Deployed.Carrier");
+	const FMatchPlayAuthoritativeSubmitCarrierResult Unavailable =
+		Session.SubmitCarrier(Invalid);
+	TestEqual(TEXT("Unavailable Carrier exact error"),
+		Unavailable.CarrierResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackCarrierSelectionErrorCode::CarrierNotDeployed);
+	TestNoAdoptDomainFailure(
+		*this,
+		TEXT("Unavailable Carrier"),
+		Unavailable.RuntimeEnvelope,
+		AwaitingCarrier);
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionEndToEndReachabilityTest,
+	"16.EndToEndDeploymentToCarrierReachability")
+
+bool FMatchPlayAuthoritativeSessionEndToEndReachabilityTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	FMatchPlayAuthoritativeSession Session;
+	FReachabilityTrace Trace;
+	TestTrue(TEXT("Public Session chain reaches AwaitingCarrier"),
+		BuildToAwaitingCarrier(Session, TEXT("EndToEnd"), Trace));
+	TestEqual(TEXT("First legal side is current attacker"),
+		Trace.FirstChoice.Side, Trace.AttackingSide);
+	TestEqual(TEXT("Second legal side is defender"),
+		Trace.SecondChoice.Side, OtherPlayer(Trace.AttackingSide));
+	TestEqual(TEXT("Attacker uses real Forward slot"),
+		Trace.FirstChoice.ResolvedRelativeZone,
+		EMatchPlayRelativeDeploymentZone::Forward);
+	TestEqual(TEXT("Defender uses real Midfield slot"),
+		Trace.SecondChoice.ResolvedRelativeZone,
+		EMatchPlayRelativeDeploymentZone::Midfield);
+	TestEqual(TEXT("Carrier candidate is attacking deployment"),
+		Trace.CarrierCardId, Trace.FirstChoice.CardId);
+
+	TestTrue(TEXT("Begin to Deploy1 continuity"),
+		AreStatesEqual(
+			Trace.FirstDeploy.RuntimeEnvelope.BeforeState,
+			Trace.Begin.RuntimeEnvelope.AfterState));
+	TestTrue(TEXT("Deploy1 to Deploy2 continuity"),
+		AreStatesEqual(
+			Trace.SecondDeploy.RuntimeEnvelope.BeforeState,
+			Trace.FirstDeploy.RuntimeEnvelope.AfterState));
+	TestTrue(TEXT("Deploy2 to Finish1 continuity"),
+		AreStatesEqual(
+			Trace.FirstFinish.RuntimeEnvelope.BeforeState,
+			Trace.SecondDeploy.RuntimeEnvelope.AfterState));
+	TestTrue(TEXT("Finish1 to Finish2 continuity"),
+		AreStatesEqual(
+			Trace.SecondFinish.RuntimeEnvelope.BeforeState,
+			Trace.FirstFinish.RuntimeEnvelope.AfterState));
+
+	const FMatchPlayState BeforeCarrier = Session.GetStateSnapshot();
+	const FMatchPlayAuthoritativeSubmitCarrierResult Carrier =
+		Session.SubmitCarrier(MakeCarrierRequest(Trace));
+	TestTrue(TEXT("Real Carrier writer succeeds"),
+		Carrier.CarrierResult.bSuccess);
+	TestEqual(TEXT("Carrier command kind"),
+		Carrier.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::SubmitCarrier);
+	TestAdoptedEnvelope(
+		*this,
+		TEXT("Carrier"),
+		Carrier.RuntimeEnvelope,
+		BeforeCarrier,
+		Carrier.CarrierResult.AfterState);
+	TestTrue(TEXT("Finish2 to Carrier continuity"),
+		AreStatesEqual(
+			Carrier.RuntimeEnvelope.BeforeState,
+			Trace.SecondFinish.RuntimeEnvelope.AfterState));
+
+	const FMatchPlayState Final = Session.GetStateSnapshot();
+	TestEqual(TEXT("Final phase is Resolution"),
+		Final.CurrentAttack.Phase,
+		EMatchPlayCurrentAttackPhase::Resolution);
+	TestEqual(TEXT("Final stage is AwaitingMarker"),
+		Final.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingMarker);
+	TestEqual(TEXT("Carrier is recorded"),
+		Final.CurrentAttack.ActionPreparation.CarrierCardId,
+		Trace.CarrierCardId);
+	TestTrue(TEXT("Marker remains absent"),
+		Final.CurrentAttack.ActionPreparation.MarkerCardId.IsNone());
+	TestFalse(TEXT("Resolution Session remains absent"),
+		Final.CurrentAttack.bHasResolutionSession);
+	TestFalse(TEXT("Actual Branch remains absent"),
+		Final.CurrentAttack.ResolutionSession.bHasActualBranch);
+	TestTrue(TEXT("Initial Route rolls remain empty"),
+		Final.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionCarrierDeterminismTest,
+	"17.SubmitCarrierReplayIsolationAndDeterminism")
+
+bool FMatchPlayAuthoritativeSessionCarrierDeterminismTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	FMatchPlayAuthoritativeSession Sessions[3];
+	FMatchPlayAuthoritativeSubmitCarrierResult Wrong[3];
+	FMatchPlayAuthoritativeSubmitCarrierResult Success[3];
+	FMatchPlayAuthoritativeSubmitCarrierResult Replay[3];
+	FMatchPlayState Final[3];
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Carrier determinism fixture succeeds"),
+			BuildToAwaitingCarrier(Sessions[Index], TEXT("CarrierDet"), Trace));
+		FMatchPlayAuthoritativeSubmitCarrierRequest WrongRequest =
+			MakeCarrierRequest(Trace);
+		WrongRequest.RequestingSide = OtherPlayer(Trace.AttackingSide);
+		Wrong[Index] = Sessions[Index].SubmitCarrier(WrongRequest);
+		Success[Index] = Sessions[Index].SubmitCarrier(MakeCarrierRequest(Trace));
+		Replay[Index] = Sessions[Index].SubmitCarrier(MakeCarrierRequest(Trace));
+		Final[Index] = Sessions[Index].GetStateSnapshot();
+		TestEqual(TEXT("Replay fails at actual selection stage"),
+			Replay[Index].CarrierResult.LegalityResult.ErrorCode,
+			EMatchPlayCurrentAttackCarrierSelectionErrorCode::WrongSelectionStage);
+		TestFalse(TEXT("Replay does not adopt"),
+			Replay[Index].RuntimeEnvelope.bStateAdvanced);
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("Wrong-side Carrier deterministic"),
+			AreAuthoritativeSubmitCarrierResultsEqual(Wrong[0], Wrong[Index]));
+		TestTrue(TEXT("Successful Carrier deterministic"),
+			AreAuthoritativeSubmitCarrierResultsEqual(Success[0], Success[Index]));
+		TestTrue(TEXT("Carrier replay deterministic"),
+			AreAuthoritativeSubmitCarrierResultsEqual(Replay[0], Replay[Index]));
+		TestTrue(TEXT("Carrier final snapshot deterministic"),
+			AreStatesEqual(Final[0], Final[Index]));
+	}
+
+	FMatchPlayAuthoritativeSession SessionA;
+	FMatchPlayAuthoritativeSession SessionB;
+	FReachabilityTrace TraceA;
+	FReachabilityTrace TraceB;
+	BuildToAwaitingCarrier(SessionA, TEXT("CarrierIsolationA"), TraceA);
+	BuildToAwaitingCarrier(SessionB, TEXT("CarrierIsolationB"), TraceB);
+	const FMatchPlayState BBeforeA = SessionB.GetStateSnapshot();
+	SessionA.SubmitCarrier(MakeCarrierRequest(TraceA));
+	TestTrue(TEXT("A Carrier cannot change B"),
+		AreStatesEqual(SessionB.GetStateSnapshot(), BBeforeA));
+	const FMatchPlayState ABeforeB = SessionA.GetStateSnapshot();
+	SessionB.SubmitCarrier(MakeCarrierRequest(TraceB));
+	TestTrue(TEXT("B Carrier cannot change A"),
+		AreStatesEqual(SessionA.GetStateSnapshot(), ABeforeB));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionNewComparatorCoverageTest,
+	"18.NewTypedResultComparatorCoverage")
+
+bool FMatchPlayAuthoritativeSessionNewComparatorCoverageTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	FMatchPlayAuthoritativeSession Session;
+	Session.InitializeMatch(MakeValidInput(TEXT("NewComparators")));
+	Session.BeginOrdinaryAttack(6);
+	FDeploymentChoice Choice;
+	TestTrue(TEXT("Comparator fixture finds real deployment"),
+		FindLegalDeployment(
+			Session.GetStateSnapshot(),
+			EMatchPlayRelativeDeploymentZone::Forward,
+			Choice));
+	const FMatchPlayAuthoritativeDeployOrdinaryResult Deploy =
+		Session.DeployOrdinary(MakeDeployRequest(Choice));
+	TestTrue(TEXT("Deploy comparator accepts equal values"),
+		AreAuthoritativeDeployOrdinaryResultsEqual(Deploy, Deploy));
+	TestDeployMutationCoverage(*this, Deploy);
+
+	FMatchPlayAuthoritativeSession CarrierSession;
+	FReachabilityTrace Trace;
+	TestTrue(TEXT("Carrier comparator fixture reaches stage"),
+		BuildToAwaitingCarrier(
+			CarrierSession,
+			TEXT("CarrierComparator"),
+			Trace));
+	const FMatchPlayAuthoritativeSubmitCarrierResult Carrier =
+		CarrierSession.SubmitCarrier(MakeCarrierRequest(Trace));
+	TestTrue(TEXT("Carrier comparator accepts equal values"),
+		AreAuthoritativeSubmitCarrierResultsEqual(Carrier, Carrier));
+	TestCarrierMutationCoverage(*this, Carrier);
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolutionFoundationBoundaryTest,
+	"19.ResolutionFoundationAProductionBoundary")
+
+bool FMatchPlayAuthoritativeSessionResolutionFoundationBoundaryTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	FString Header;
+	FString Implementation;
+	FString Types;
+	TestTrue(TEXT("Boundary header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("Boundary implementation loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		Implementation));
+	TestTrue(TEXT("Boundary types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	const FString Production = Header + Implementation + Types;
+	TestEqual(TEXT("Ordinary Writer has one Session call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayOrdinaryDeploymentWriter::Deploy(")),
+		1);
+	TestEqual(TEXT("Carrier Writer has one Session call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayCurrentAttackCarrierSelectionWriter::Select(")),
+		1);
+	TestEqual(TEXT("Session keeps one State replacement"),
+		CountOccurrences(
+			Implementation,
+			TEXT("AuthoritativeState = Adoption.AdoptedAfterState;")),
+		1);
+	TestFalse(TEXT("SubmitAction remains absent"),
+		Production.Contains(TEXT("SubmitAction")));
+	TestFalse(TEXT("DeployGoalkeeper remains absent"),
+		Production.Contains(TEXT("DeployGoalkeeper")));
+	for (const TCHAR* Forbidden : {
+		TEXT("SubmitMarker"),
+		TEXT("SubmitSkill"),
+		TEXT("SubmitRunner"),
+		TEXT("SubmitHelper"),
+		TEXT("SubmitBranchIntent"),
+		TEXT("ResolveInitialRouteOrchestrator"),
+		TEXT("IMatchPlayInitialRouteRollProvider"),
+		TEXT("RollD6"),
+		TEXT("UObject"),
+		TEXT("RPC"),
+		TEXT("Tick"),
+		TEXT("SetState"),
+		TEXT("RestoreState") })
+	{
+		TestFalse(*FString::Printf(TEXT("Forbidden production surface absent: %s"), Forbidden),
+			Production.Contains(Forbidden));
+	}
+	TestFalse(TEXT("Session never appends Deployment directly"),
+		Implementation.Contains(TEXT("DeploymentPlacements.Add")));
+	TestFalse(TEXT("Session never writes authoritative Carrier directly"),
+		Implementation.Contains(TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.CarrierCardId")));
 	return true;
 }
 

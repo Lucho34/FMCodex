@@ -20,6 +20,12 @@ public:
 		int64 AttackSequence,
 		EInitialTurnOrderPlayer RequestingSide);
 
+	FMatchPlayAuthoritativeDeployOrdinaryResult DeployOrdinary(
+		const FMatchPlayAuthoritativeDeployOrdinaryRequest& Request);
+
+	FMatchPlayAuthoritativeSubmitCarrierResult SubmitCarrier(
+		const FMatchPlayAuthoritativeSubmitCarrierRequest& Request);
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:

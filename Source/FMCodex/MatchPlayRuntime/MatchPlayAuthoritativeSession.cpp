@@ -207,6 +207,81 @@ FMatchPlayAuthoritativeSession::FinishDeployment(
 		});
 }
 
+FMatchPlayAuthoritativeDeployOrdinaryResult
+FMatchPlayAuthoritativeSession::DeployOrdinary(
+	const FMatchPlayAuthoritativeDeployOrdinaryRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeDeployOrdinaryResult>(
+		EMatchPlayAuthoritativeCommandKind::DeployOrdinary,
+		true,
+		AttackSequence,
+		[Request, AttackSequence](
+			FMatchPlayAuthoritativeDeployOrdinaryResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayOrdinaryDeploymentRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			DomainRequest.CardId = Request.CardId;
+			DomainRequest.SlotId = Request.SlotId;
+			Result.DeploymentResult =
+				FMatchPlayOrdinaryDeploymentWriter::Deploy(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.DeploymentResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.DeploymentResult.AfterState;
+			Execution.StateDisposition =
+				Result.DeploymentResult.bSuccess
+					? EMatchPlayAuthoritativeStateDisposition::Adopt
+					: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeSubmitCarrierResult
+FMatchPlayAuthoritativeSession::SubmitCarrier(
+	const FMatchPlayAuthoritativeSubmitCarrierRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitCarrierResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitCarrier,
+		true,
+		AttackSequence,
+		[Request, AttackSequence](
+			FMatchPlayAuthoritativeSubmitCarrierResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackCarrierSelectionRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			DomainRequest.CarrierCardId = Request.CarrierCardId;
+			Result.CarrierResult =
+				FMatchPlayCurrentAttackCarrierSelectionWriter::Select(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.CarrierResult.bSuccess;
+			Execution.CandidateAfterState = Result.CarrierResult.AfterState;
+			Execution.StateDisposition = Result.CarrierResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayState FMatchPlayAuthoritativeSession::GetStateSnapshot() const
 {
 	return AuthoritativeState;
