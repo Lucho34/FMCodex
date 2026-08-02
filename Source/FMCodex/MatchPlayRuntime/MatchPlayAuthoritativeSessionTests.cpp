@@ -1057,13 +1057,64 @@ bool FMatchPlayAuthoritativeSessionIsolationDeterminismTest::RunTest(
 {
 	FMatchPlayAuthoritativeSession SessionA;
 	FMatchPlayAuthoritativeSession SessionB;
-	SessionA.InitializeMatch(
+	const FMatchPlayState DefaultState;
+	const FMatchPlayState InitialASnapshot = SessionA.GetStateSnapshot();
+	const FMatchPlayState InitialBSnapshot = SessionB.GetStateSnapshot();
+	TestTrue(TEXT("SessionA starts with the complete default state"),
+		MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+			InitialASnapshot,
+			DefaultState));
+	TestTrue(TEXT("SessionB starts with the complete default state"),
+		MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+			InitialBSnapshot,
+			DefaultState));
+
+	const FMatchPlayAuthoritativeInitializeMatchResult AInitialize =
+		SessionA.InitializeMatch(
 		MatchPlayAuthoritativeSessionTests::MakeValidInput(
 			TEXT("IsolationA"), ECardRarity::Common, ECardRarity::Regional));
-	SessionB.InitializeMatch(
+	const FMatchPlayState AAfterInitialize = SessionA.GetStateSnapshot();
+	const FMatchPlayState BAfterAInitialize = SessionB.GetStateSnapshot();
+	TestTrue(TEXT("SessionA initialization succeeds"),
+		AInitialize.OpeningResult.bSuccess);
+	TestTrue(TEXT("SessionA adopts its initialization result"),
+		MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+			AAfterInitialize,
+			AInitialize.RuntimeEnvelope.AfterState));
+	TestTrue(TEXT("SessionA is initialized canonically"),
+		AAfterInitialize.RuntimeState.bIsInitialized);
+	TestTrue(TEXT("SessionA initialization leaves SessionB fully default"),
+		MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+			BAfterAInitialize,
+			DefaultState));
+	TestFalse(TEXT("SessionA initialization leaves SessionB uninitialized"),
+		BAfterAInitialize.RuntimeState.bIsInitialized);
+
+	const FMatchPlayState ABeforeBInitialize = SessionA.GetStateSnapshot();
+	const FMatchPlayAuthoritativeInitializeMatchResult BInitialize =
+		SessionB.InitializeMatch(
 		MatchPlayAuthoritativeSessionTests::MakeValidInput(
 			TEXT("IsolationB"), ECardRarity::Regional, ECardRarity::Common));
-	const FMatchPlayState BBeforeAProgress = SessionB.GetStateSnapshot();
+	const FMatchPlayState AAfterBInitialize = SessionA.GetStateSnapshot();
+	const FMatchPlayState BAfterInitialize = SessionB.GetStateSnapshot();
+	TestTrue(TEXT("SessionB initialization succeeds"),
+		BInitialize.OpeningResult.bSuccess);
+	TestTrue(TEXT("SessionB adopts its initialization result"),
+		MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+			BAfterInitialize,
+			BInitialize.RuntimeEnvelope.AfterState));
+	TestTrue(TEXT("SessionB is initialized canonically"),
+		BAfterInitialize.RuntimeState.bIsInitialized);
+	TestTrue(TEXT("SessionB initialization leaves SessionA frozen"),
+		MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+			AAfterBInitialize,
+			ABeforeBInitialize));
+	TestTrue(TEXT("SessionB initialization preserves SessionA result"),
+		MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+			AAfterBInitialize,
+			AAfterInitialize));
+
+	const FMatchPlayState BBeforeAProgress = BAfterInitialize;
 	SessionA.BeginOrdinaryAttack(6);
 	TestTrue(TEXT("A progress cannot change B"),
 		MatchPlayAuthoritativeSessionTests::AreStatesEqual(
@@ -1152,6 +1203,142 @@ bool FMatchPlayAuthoritativeSessionIsolationDeterminismTest::RunTest(
 			MatchPlayAuthoritativeSessionTests
 				::AreAuthoritativeBeginResultsEqual(
 					DomainFailure[0], DomainFailure[Index]));
+	}
+
+	FMatchPlayAuthoritativeSession WrongFinishSessions[3];
+	FMatchPlayAuthoritativeFinishDeploymentResult WrongFinishResults[3];
+	FMatchPlayState WrongFinishBeforeStates[3];
+	FMatchPlayState WrongFinishFinalStates[3];
+	int64 CommonAttackSequence = 0;
+	EInitialTurnOrderPlayer CommonLegalSide =
+		EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer CommonWrongSide =
+		EInitialTurnOrderPlayer::None;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		const FMatchPlayAuthoritativeInitializeMatchResult InitializeResult =
+			WrongFinishSessions[Index].InitializeMatch(Input);
+		const FMatchPlayAuthoritativeBeginOrdinaryAttackResult BeginResult =
+			WrongFinishSessions[Index].BeginOrdinaryAttack(6);
+		TestTrue(TEXT("Wrong-side fixture initialization succeeds"),
+			InitializeResult.OpeningResult.bSuccess);
+		TestTrue(TEXT("Wrong-side fixture Begin succeeds"),
+			BeginResult.BeginResult.bSuccess);
+
+		WrongFinishBeforeStates[Index] =
+			WrongFinishSessions[Index].GetStateSnapshot();
+		const FMatchPlayState& BeforeState =
+			WrongFinishBeforeStates[Index];
+		TestTrue(TEXT("Wrong-side fixture is initialized"),
+			BeforeState.RuntimeState.bIsInitialized);
+		TestTrue(TEXT("Wrong-side fixture has a current attack"),
+			BeforeState.bHasCurrentAttack);
+		const FMatchPlayCurrentAttackSelectionStateValidationResult
+			SelectionValidation =
+				FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+					BeforeState.CurrentAttack);
+		TestTrue(TEXT("Wrong-side fixture current attack is canonical"),
+			SelectionValidation.bIsCanonical);
+
+		if (Index == 0)
+		{
+			CommonAttackSequence =
+				BeforeState.CurrentAttack.AttackSequence;
+			CommonLegalSide =
+				BeforeState.CurrentAttack.CurrentLegalDeploymentSide;
+			CommonWrongSide =
+				MatchPlayAuthoritativeSessionTests::OtherPlayer(
+					CommonLegalSide);
+		}
+		else
+		{
+			TestTrue(TEXT("Wrong-side fixture BeforeStates are identical"),
+				MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+					WrongFinishBeforeStates[0],
+					BeforeState));
+			TestEqual(TEXT("Wrong-side fixture sequences are identical"),
+				BeforeState.CurrentAttack.AttackSequence,
+				CommonAttackSequence);
+			TestEqual(TEXT("Wrong-side fixture legal sides are identical"),
+				BeforeState.CurrentAttack.CurrentLegalDeploymentSide,
+				CommonLegalSide);
+		}
+		TestTrue(TEXT("Computed wrong side is a player"),
+			CommonWrongSide == EInitialTurnOrderPlayer::PlayerA
+				|| CommonWrongSide == EInitialTurnOrderPlayer::PlayerB);
+		TestTrue(TEXT("Computed wrong side is actually illegal"),
+			CommonWrongSide !=
+				BeforeState.CurrentAttack.CurrentLegalDeploymentSide);
+
+		WrongFinishResults[Index] =
+			WrongFinishSessions[Index].FinishDeployment(
+				CommonAttackSequence,
+				CommonWrongSide);
+		const FMatchPlayAuthoritativeRuntimeEnvelope& Envelope =
+			WrongFinishResults[Index].RuntimeEnvelope;
+		TestTrue(TEXT("Wrong-side Finish reaches the domain"),
+			Envelope.bAccepted);
+		TestFalse(TEXT("Wrong-side Finish domain fails"),
+			Envelope.bDomainSuccess);
+		TestEqual(TEXT("Wrong-side Finish does not adopt"),
+			Envelope.StateDisposition,
+			EMatchPlayAuthoritativeStateDisposition::DoNotAdopt);
+		TestFalse(TEXT("Wrong-side Finish does not advance"),
+			Envelope.bStateAdvanced);
+		TestFalse(TEXT("Wrong-side Finish is not a runtime fault"),
+			Envelope.bRuntimeFault);
+		TestEqual(TEXT("Wrong-side Finish has exact command kind"),
+			Envelope.CommandKind,
+			EMatchPlayAuthoritativeCommandKind::FinishDeployment);
+		TestEqual(TEXT("Wrong-side Finish has no failure disposition"),
+			Envelope.FailureDisposition,
+			EMatchPlayAuthoritativeFailureDisposition::None);
+		TestEqual(TEXT("Wrong-side Finish has no runtime failure"),
+			Envelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::None);
+		TestTrue(TEXT("Wrong-side Finish runtime message is empty"),
+			Envelope.ErrorMessage.IsEmpty());
+		TestFalse(TEXT("Wrong-side nested Finish fails"),
+			WrongFinishResults[Index].FinishResult.bSuccess);
+		TestEqual(TEXT("Wrong-side nested Finish has exact error"),
+			WrongFinishResults[Index].FinishResult.ErrorCode,
+			EMatchPlayFinishDeploymentErrorCode
+				::RequestingSideNotCurrentLegalDeploymentSide);
+		TestTrue(TEXT("Wrong-side envelope BeforeState is exact"),
+			MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+				Envelope.BeforeState,
+				BeforeState));
+		TestTrue(TEXT("Wrong-side envelope AfterState is unchanged"),
+			MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+				Envelope.AfterState,
+				BeforeState));
+
+		WrongFinishFinalStates[Index] =
+			WrongFinishSessions[Index].GetStateSnapshot();
+		TestTrue(TEXT("Wrong-side Finish preserves its Session"),
+			MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+				WrongFinishFinalStates[Index],
+				BeforeState));
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("Wrong-side typed Finish result is deterministic"),
+			MatchPlayAuthoritativeSessionTests
+				::AreAuthoritativeFinishResultsEqual(
+					WrongFinishResults[0],
+					WrongFinishResults[Index]));
+		TestTrue(TEXT("Wrong-side runtime envelope is deterministic"),
+			MatchPlayAuthoritativeSessionTests::AreEnvelopesEqual(
+				WrongFinishResults[0].RuntimeEnvelope,
+				WrongFinishResults[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Wrong-side nested Finish result is deterministic"),
+			MatchPlayAuthoritativeSessionTests::AreFinishResultsEqual(
+				WrongFinishResults[0].FinishResult,
+				WrongFinishResults[Index].FinishResult));
+		TestTrue(TEXT("Wrong-side final snapshot is deterministic"),
+			MatchPlayAuthoritativeSessionTests::AreStatesEqual(
+				WrongFinishFinalStates[0],
+				WrongFinishFinalStates[Index]));
 	}
 	return true;
 }
