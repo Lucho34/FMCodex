@@ -167,17 +167,15 @@ namespace MatchPlayCurrentAttackResolveInitialRouteOrchestrationTests
 		return bValid;
 	}
 
-	bool ExpectDuplicate(
+	bool ExpectDuplicateResult(
 		FAutomationTestBase& Test,
 		const FString& Context,
 		const FMatchPlayState& State,
-		RouteFixtures::FQueueRollProvider* Provider)
+		const FMatchPlayCurrentAttackResolveInitialRouteOrchestrationResult&
+			Result,
+		const RouteFixtures::FQueueRollProvider* Provider,
+		const int32 ExpectedRemaining)
 	{
-		const auto Result =
-			FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
-				State,
-				OrchestrationFixtures::MakeRequest(State),
-				Provider);
 		bool bValid = true;
 		bValid &= Test.TestTrue(*(Context + TEXT(" succeeds")), Result.bSuccess);
 		bValid &= Test.TestFalse(
@@ -192,22 +190,74 @@ namespace MatchPlayCurrentAttackResolveInitialRouteOrchestrationTests
 		bValid &= Test.TestTrue(
 			*(Context + TEXT(" State unchanged")),
 			RouteFixtures::AreStatesEqual(Result.AfterState, State));
+		bValid &= Test.TestEqual(
+			*(Context + TEXT(" FailureStage None")),
+			Result.FailureStage,
+			EMatchPlayCurrentAttackInitialRouteOrchestrationFailureStage::None);
+		bValid &= Test.TestEqual(
+			*(Context + TEXT(" disposition None")),
+			Result.FailureDisposition,
+			EMatchPlayCurrentAttackResolveInitialRouteFailureDisposition::None);
+		bValid &= Test.TestEqual(
+			*(Context + TEXT(" ErrorCode None")),
+			Result.ErrorCode,
+			EMatchPlayCurrentAttackInitialRouteOrchestrationErrorCode::None);
 		bValid &= Test.TestTrue(
 			*(Context + TEXT(" Begin duplicate succeeds")),
 			Result.BeginResult.bSuccess
 				&& !Result.BeginResult.bCreatedNewSession);
 		bValid &= Test.TestTrue(
+			*(Context + TEXT(" Begin duplicate State unchanged")),
+			RouteFixtures::AreStatesEqual(
+				Result.BeginResult.AfterState,
+				State));
+		bValid &= Test.TestTrue(
 			*(Context + TEXT(" Route duplicate succeeds")),
 			Result.RouteResult.bSuccess
 				&& !Result.RouteResult.bResolvedNewRoute);
+		bValid &= Test.TestTrue(
+			*(Context + TEXT(" Route consumes Begin AfterState")),
+			RouteFixtures::AreStatesEqual(
+				Result.RouteResult.BeforeState,
+				Result.BeginResult.AfterState));
+		bValid &= Test.TestTrue(
+			*(Context + TEXT(" Route duplicate State unchanged")),
+			RouteFixtures::AreStatesEqual(
+				Result.RouteResult.AfterState,
+				State));
 		if (Provider != nullptr)
 		{
-			bValid &= Test.TestEqual(
-				*(Context + TEXT(" provider calls")),
-				Provider->GetCallCount(),
-				0);
+			bValid &= ExpectProviderObservation(
+				Test,
+				Context,
+				*Provider,
+				0,
+				ExpectedRemaining);
 		}
 		return bValid;
+	}
+
+	bool ExpectDuplicate(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const FMatchPlayState& State,
+		RouteFixtures::FQueueRollProvider* Provider)
+	{
+		const int32 ExpectedRemaining = Provider != nullptr
+			? Provider->GetRemainingCount()
+			: 0;
+		const auto Result =
+			FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+				State,
+				OrchestrationFixtures::MakeRequest(State),
+				Provider);
+		return ExpectDuplicateResult(
+			Test,
+			Context,
+			State,
+			Result,
+			Provider,
+			ExpectedRemaining);
 	}
 
 	bool ExpectBeginFailure(
@@ -216,7 +266,9 @@ namespace MatchPlayCurrentAttackResolveInitialRouteOrchestrationTests
 		const FMatchPlayState& State,
 		const FMatchPlayCurrentAttackResolveInitialRouteOrchestrationRequest&
 			Request,
-		RouteFixtures::FQueueRollProvider* Provider)
+		RouteFixtures::FQueueRollProvider* Provider,
+		const EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			ExpectedBeginError)
 	{
 		const auto Result =
 			FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
@@ -254,13 +306,17 @@ namespace MatchPlayCurrentAttackResolveInitialRouteOrchestrationTests
 		bValid &= Test.TestFalse(
 			*(Context + TEXT(" Begin nested failure")),
 			Result.BeginResult.bSuccess);
-		bValid &= Test.TestFalse(
-			*(Context + TEXT(" Route remains default")),
-			Result.RouteResult.bSuccess);
 		bValid &= Test.TestEqual(
-			*(Context + TEXT(" Route error remains None")),
-			Result.RouteResult.ErrorCode,
-			EMatchPlayCurrentAttackResolveInitialRouteWriterErrorCode::None);
+			*(Context + TEXT(" nested Begin error")),
+			Result.BeginResult.ErrorCode,
+			ExpectedBeginError);
+		const FMatchPlayCurrentAttackResolveInitialRouteWriterResult
+			DefaultRouteResult;
+		bValid &= Test.TestTrue(
+			*(Context + TEXT(" Route Result remains fully default")),
+			RouteFixtures::AreWriterResultsEqual(
+				Result.RouteResult,
+				DefaultRouteResult));
 		if (Provider != nullptr)
 		{
 			bValid &= Test.TestEqual(
@@ -271,22 +327,18 @@ namespace MatchPlayCurrentAttackResolveInitialRouteOrchestrationTests
 		return bValid;
 	}
 
-	bool ExpectRouteFailure(
+	bool ExpectRouteFailureResult(
 		FAutomationTestBase& Test,
 		const FString& Context,
 		const FMatchPlayState& State,
-		IMatchPlayInitialRouteRollProvider* Provider,
+		const FMatchPlayCurrentAttackResolveInitialRouteOrchestrationResult&
+			Result,
 		const EMatchPlayCurrentAttackResolveInitialRouteWriterErrorCode
 			ExpectedError,
 		const EMatchPlayCurrentAttackResolveInitialRouteFailureDisposition
 			ExpectedDisposition,
 		const bool bExpectedProviderCalled)
 	{
-		const auto Result =
-			FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
-				State,
-				OrchestrationFixtures::MakeRequest(State),
-				Provider);
 		bool bValid = true;
 		bValid &= Test.TestFalse(*(Context + TEXT(" fails")), Result.bSuccess);
 		bValid &= Test.TestTrue(
@@ -317,8 +369,16 @@ namespace MatchPlayCurrentAttackResolveInitialRouteOrchestrationTests
 			Result.FailureDisposition,
 			ExpectedDisposition);
 		bValid &= Test.TestEqual(
+			*(Context + TEXT(" nested disposition")),
+			Result.RouteResult.FailureDisposition,
+			ExpectedDisposition);
+		bValid &= Test.TestEqual(
 			*(Context + TEXT(" provider-called mirror")),
 			Result.bProviderCalled,
+			bExpectedProviderCalled);
+		bValid &= Test.TestEqual(
+			*(Context + TEXT(" nested provider-called")),
+			Result.RouteResult.bProviderCalled,
 			bExpectedProviderCalled);
 		bValid &= Test.TestTrue(
 			*(Context + TEXT(" publishes Begin AfterState")),
@@ -342,6 +402,32 @@ namespace MatchPlayCurrentAttackResolveInitialRouteOrchestrationTests
 			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
 				Result.AfterState).bIsCanonical);
 		return bValid;
+	}
+
+	bool ExpectRouteFailure(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const FMatchPlayState& State,
+		IMatchPlayInitialRouteRollProvider* Provider,
+		const EMatchPlayCurrentAttackResolveInitialRouteWriterErrorCode
+			ExpectedError,
+		const EMatchPlayCurrentAttackResolveInitialRouteFailureDisposition
+			ExpectedDisposition,
+		const bool bExpectedProviderCalled)
+	{
+		const auto Result =
+			FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+				State,
+				OrchestrationFixtures::MakeRequest(State),
+				Provider);
+		return ExpectRouteFailureResult(
+			Test,
+			Context,
+			State,
+			Result,
+			ExpectedError,
+			ExpectedDisposition,
+			bExpectedProviderCalled);
 	}
 }
 
@@ -518,23 +604,138 @@ bool FInitialRouteOrchestrationBeginFailureTest::RunTest(
 	const FMatchPlayState Ready = OrchestrationFixtures::MakeReadyState(
 		ESkillRuleType::Cross,
 		EMatchPlayElectiveBranchIntent::CrossHigh);
+	RouteFixtures::FQueueRollProvider Provider;
+	Provider.Enqueue(RouteFixtures::MakeSuccess(4));
+
+	auto InvalidRequest = OrchestrationFixtures::MakeRequest(Ready);
+	InvalidRequest.AttackSequence = 0;
+	bValid &= ExpectBeginFailure(
+		*this, TEXT("Invalid request sequence precedes provider"),
+		Ready, InvalidRequest, &Provider,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidRequestedAttackSequence);
+
 	auto StaleRequest = OrchestrationFixtures::MakeRequest(Ready);
 	--StaleRequest.AttackSequence;
 	bValid &= ExpectBeginFailure(
 		*this, TEXT("Stale precedes missing provider"),
-		Ready, StaleRequest, nullptr);
+		Ready, StaleRequest, &Provider,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::AttackSequenceMismatch);
+
+	auto AheadRequest = OrchestrationFixtures::MakeRequest(Ready);
+	++AheadRequest.AttackSequence;
+	bValid &= ExpectBeginFailure(
+		*this, TEXT("Ahead sequence precedes provider"),
+		Ready, AheadRequest, &Provider,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::AttackSequenceMismatch);
+
+	FMatchPlayState InvalidAuthoritative = Ready;
+	InvalidAuthoritative.CurrentAttack.AttackSequence = 0;
+	bValid &= ExpectBeginFailure(
+		*this, TEXT("Invalid authoritative sequence precedes provider"),
+		InvalidAuthoritative,
+		OrchestrationFixtures::MakeRequest(Ready),
+		&Provider,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidCurrentAttackSequence);
+
+	FMatchPlayState WrongPhase = Ready;
+	WrongPhase.CurrentAttack.Phase =
+		EMatchPlayCurrentAttackPhase::Deployment;
+	bValid &= ExpectBeginFailure(
+		*this, TEXT("Wrong phase precedes provider"),
+		WrongPhase,
+		OrchestrationFixtures::MakeRequest(WrongPhase),
+		&Provider,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::CurrentAttackNotInResolution);
+
+	FMatchPlayState MissingAttack = Ready;
+	MissingAttack.bHasCurrentAttack = false;
+	MissingAttack.CurrentAttack = FMatchPlayCurrentAttackState();
+	const auto MissingAttackRequest =
+		OrchestrationFixtures::MakeRequest(Ready);
+	bValid &= TestTrue(
+		TEXT("Missing CurrentAttack Request sequence is positive"),
+		MissingAttackRequest.AttackSequence > 0);
+	bValid &= ExpectBeginFailure(
+		*this, TEXT("Missing CurrentAttack precedes provider"),
+		MissingAttack,
+		MissingAttackRequest,
+		&Provider,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::NoCurrentAttack);
 
 	FMatchPlayState Malformed = OrchestrationFixtures::MakeAwaitingState(
 		ESkillRuleType::Cross,
 		EMatchPlayElectiveBranchIntent::CrossHigh);
 	Malformed.CurrentAttack.ResolutionSession.bHasActualBranch = true;
-	RouteFixtures::FQueueRollProvider Provider;
-	Provider.Enqueue(RouteFixtures::MakeSuccess(4));
 	bValid &= ExpectBeginFailure(
 		*this, TEXT("Malformed Session precedes provider"),
-		Malformed, OrchestrationFixtures::MakeRequest(Malformed), &Provider);
+		Malformed,
+		OrchestrationFixtures::MakeRequest(Malformed),
+		&Provider,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::InvalidExistingSessionState);
 	bValid &= TestEqual(TEXT("Configured provider queue untouched"),
 		Provider.GetRemainingCount(), 1);
+
+	const FMatchPlayState AwaitingPassControl =
+		OrchestrationFixtures::MakeAwaitingState(
+			ESkillRuleType::PassControl);
+	FMatchPlayInitialRouteRollProviderResult MalformedProviderResult =
+		RouteFixtures::MakeSuccess(4);
+	MalformedProviderResult.ErrorCode =
+		EMatchPlayInitialRouteRollProviderErrorCode::ProviderFailure;
+	MalformedProviderResult.ErrorMessage =
+		TEXT("Malformed success shape must be rejected.");
+	RouteFixtures::FQueueRollProvider MalformedProvider;
+	MalformedProvider.Enqueue(MalformedProviderResult);
+	const auto RouteFailure =
+		FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+			AwaitingPassControl,
+			OrchestrationFixtures::MakeRequest(AwaitingPassControl),
+			&MalformedProvider);
+	bValid &= ExpectRouteFailureResult(
+		*this,
+		TEXT("Duplicate AwaitingRoute plus malformed provider"),
+		AwaitingPassControl,
+		RouteFailure,
+		EMatchPlayCurrentAttackResolveInitialRouteWriterErrorCode
+			::InvalidRngResult,
+		EMatchPlayCurrentAttackResolveInitialRouteFailureDisposition
+			::NonRetryableExecutionFailure,
+		true);
+	bValid &= TestTrue(
+		TEXT("AwaitingRoute Begin is duplicate success"),
+		RouteFailure.BeginResult.bSuccess
+			&& !RouteFailure.BeginResult.bCreatedNewSession);
+	bValid &= TestFalse(
+		TEXT("AwaitingRoute composite did not begin a new Session"),
+		RouteFailure.bBeganNewSession);
+	bValid &= TestTrue(
+		TEXT("AwaitingRoute Begin leaves State unchanged"),
+		RouteFixtures::AreStatesEqual(
+			RouteFailure.BeginResult.AfterState,
+			AwaitingPassControl));
+	bValid &= TestTrue(
+		TEXT("Malformed ProviderResult retained"),
+		RouteFixtures::AreProviderResultsEqual(
+			RouteFailure.RouteResult.ProviderResult,
+			MalformedProviderResult));
+	bValid &= TestTrue(
+		TEXT("Malformed provider composite leaves State unchanged"),
+		RouteFixtures::AreStatesEqual(
+			RouteFailure.AfterState,
+			AwaitingPassControl));
+	bValid &= ExpectProviderObservation(
+		*this,
+		TEXT("Duplicate AwaitingRoute plus malformed provider"),
+		MalformedProvider,
+		1,
+		0);
 	return bValid;
 }
 
@@ -553,8 +754,8 @@ bool FInitialRouteOrchestrationMissingProviderRecoveryTest::RunTest(
 	const auto First =
 		FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
 			Ready, Request, nullptr);
-	bool bValid = ExpectRouteFailure(
-		*this, TEXT("Missing provider first call"), Ready, nullptr,
+	bool bValid = ExpectRouteFailureResult(
+		*this, TEXT("Missing provider first call"), Ready, First,
 		EMatchPlayCurrentAttackResolveInitialRouteWriterErrorCode
 			::RngProviderUnavailable,
 		EMatchPlayCurrentAttackResolveInitialRouteFailureDisposition
@@ -641,6 +842,14 @@ bool FInitialRouteOrchestrationProviderFailureRecoveryTest::RunTest(
 		Recovered.bResolvedNewRoute);
 	bValid &= ExpectProviderObservation(
 		*this, TEXT("Provider recovery"), RecoveryProvider, 1, 0);
+	RouteFixtures::FQueueRollProvider DuplicateProvider;
+	DuplicateProvider.Enqueue(RouteFixtures::MakeFailure(
+		TEXT("Recovered duplicate must not consume provider.")));
+	bValid &= ExpectDuplicate(
+		*this,
+		TEXT("Provider recovery duplicate"),
+		Recovered.AfterState,
+		&DuplicateProvider);
 	return bValid;
 }
 
@@ -751,6 +960,88 @@ bool FInitialRouteOrchestrationDuplicateTest::RunTest(
 	D6DuplicateProvider.Enqueue(RouteFixtures::MakeFailure());
 	bValid &= ExpectDuplicate(*this, TEXT("No Session D6 duplicate"),
 		D6First.AfterState, &D6DuplicateProvider);
+
+	const FMatchPlayState ReadyPassControl =
+		OrchestrationFixtures::MakeReadyState(
+			ESkillRuleType::PassControl);
+	RouteFixtures::FQueueRollProvider PassControlSeedProvider;
+	PassControlSeedProvider.Enqueue(RouteFixtures::MakeSuccess(1));
+	const auto PassControlResolved =
+		FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+			ReadyPassControl,
+			OrchestrationFixtures::MakeRequest(ReadyPassControl),
+			&PassControlSeedProvider);
+	bValid &= TestTrue(
+		TEXT("PassControl seed resolution succeeds"),
+		PassControlResolved.bSuccess
+			&& PassControlResolved.bBeganNewSession
+			&& PassControlResolved.bResolvedNewRoute);
+	bValid &= ExpectProviderObservation(
+		*this,
+		TEXT("PassControl seed resolution"),
+		PassControlSeedProvider,
+		1,
+		0);
+
+	RouteFixtures::FQueueRollProvider PassControlFirstDuplicateProvider;
+	PassControlFirstDuplicateProvider.Enqueue(
+		RouteFixtures::MakeSuccess(6));
+	const auto PassControlFirstDuplicate =
+		FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+			PassControlResolved.AfterState,
+			OrchestrationFixtures::MakeRequest(
+				PassControlResolved.AfterState),
+			&PassControlFirstDuplicateProvider);
+	bValid &= ExpectDuplicateResult(
+		*this,
+		TEXT("PassControl first canonical duplicate"),
+		PassControlResolved.AfterState,
+		PassControlFirstDuplicate,
+		&PassControlFirstDuplicateProvider,
+		1);
+	const FMatchPlayCurrentAttackResolutionSession& PassControlSession =
+		PassControlFirstDuplicate.AfterState.CurrentAttack.ResolutionSession;
+	bValid &= TestEqual(
+		TEXT("PassControl duplicate returns PassAdvance"),
+		PassControlSession.ActualBranch.PassControl,
+		EMatchPlayPassControlActualBranch::PassAdvance);
+	bValid &= TestEqual(
+		TEXT("PassControl duplicate retains one roll"),
+		PassControlSession.InitialRouteRollRecords.Num(),
+		1);
+	if (PassControlSession.InitialRouteRollRecords.Num() == 1)
+	{
+		bValid &= TestEqual(
+			TEXT("PassControl duplicate roll Purpose"),
+			PassControlSession.InitialRouteRollRecords[0].Purpose,
+			EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute);
+		bValid &= TestEqual(
+			TEXT("PassControl duplicate roll RawD6"),
+			PassControlSession.InitialRouteRollRecords[0].RawD6,
+			1);
+	}
+
+	RouteFixtures::FQueueRollProvider PassControlSecondDuplicateProvider;
+	PassControlSecondDuplicateProvider.Enqueue(
+		RouteFixtures::MakeSuccess(3));
+	const auto PassControlSecondDuplicate =
+		FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+			PassControlResolved.AfterState,
+			OrchestrationFixtures::MakeRequest(
+				PassControlResolved.AfterState),
+			&PassControlSecondDuplicateProvider);
+	bValid &= ExpectDuplicateResult(
+		*this,
+		TEXT("PassControl repeated canonical duplicate"),
+		PassControlResolved.AfterState,
+		PassControlSecondDuplicate,
+		&PassControlSecondDuplicateProvider,
+		1);
+	bValid &= TestTrue(
+		TEXT("PassControl duplicate Results are deterministic"),
+		OrchestrationFixtures::AreResultsEqual(
+			PassControlFirstDuplicate,
+			PassControlSecondDuplicate));
 
 	const FMatchPlayState AwaitingShot =
 		OrchestrationFixtures::MakeAwaitingState(
