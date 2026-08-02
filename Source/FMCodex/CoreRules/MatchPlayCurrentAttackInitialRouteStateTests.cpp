@@ -1079,10 +1079,14 @@ bool FInitialRouteProductionBoundaryTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Begin does not publish Actual Branch"),
 		Begin.Contains(TEXT("bHasActualBranch = true"))
 			|| Begin.Contains(TEXT("InitialRouteRollRecords.Add")));
-	TestFalse(TEXT("No Route Writer header"),
+	TestTrue(TEXT("Single internal Route Writer header exists"),
 		FPaths::FileExists(FPaths::Combine(
 			Directory,
 			TEXT("MatchPlayCurrentAttackResolveInitialRouteWriter.h"))));
+	TestFalse(TEXT("No Initial Route Availability Query"),
+		FPaths::FileExists(FPaths::Combine(
+			Directory,
+			TEXT("MatchPlayCurrentAttackResolveInitialRouteAvailability.h"))));
 	return true;
 }
 
