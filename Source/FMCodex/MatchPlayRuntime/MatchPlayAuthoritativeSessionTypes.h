@@ -4,9 +4,13 @@
 
 #include "../CoreRules/MatchPlayBeginOrdinaryAttack.h"
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionWriter.h"
+#include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionWriter.h"
+#include "../CoreRules/MatchPlayCurrentAttackSkillSelectionWriter.h"
 #include "../CoreRules/MatchPlayFinishDeployment.h"
+#include "../CoreRules/MatchPlayMarkerNoSelectionGoal.h"
 #include "../CoreRules/MatchPlayOpeningInitializer.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentWriter.h"
+#include "../CoreRules/MatchPlaySkillNoSelectionNoGoal.h"
 
 enum class EMatchPlayAuthoritativeStateDisposition : uint8
 {
@@ -21,7 +25,13 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	BeginOrdinaryAttack,
 	FinishDeployment,
 	DeployOrdinary,
-	SubmitCarrier
+	SubmitCarrier,
+	SubmitMarker,
+	ResolveNoLegalMarker,
+	DeclineMarker,
+	SubmitSkill,
+	ResolveNoLegalSkill,
+	DeclineSkill
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -93,6 +103,32 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierRequest
 	FName CarrierCardId = NAME_None;
 };
 
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitMarkerRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+	FName MarkerCardId = NAME_None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeclineMarkerRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitSkillRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+	FName SkillId = NAME_None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeclineSkillRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+};
+
 struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
@@ -103,6 +139,42 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackCarrierSelectionWriterResult CarrierResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitMarkerResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackMarkerSelectionWriterResult MarkerResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveNoLegalMarkerResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayResolveNoLegalMarkerResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeclineMarkerResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayMarkerDeclineResult DeclineResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitSkillResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackSkillSelectionWriterResult SkillResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveNoLegalSkillResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayResolveNoLegalSkillResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeclineSkillResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlaySkillDeclineResult DeclineResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeStateAdoptionResult

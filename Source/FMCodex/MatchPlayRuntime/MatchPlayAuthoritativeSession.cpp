@@ -282,6 +282,215 @@ FMatchPlayAuthoritativeSession::SubmitCarrier(
 		});
 }
 
+FMatchPlayAuthoritativeSubmitMarkerResult
+FMatchPlayAuthoritativeSession::SubmitMarker(
+	const FMatchPlayAuthoritativeSubmitMarkerRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<FMatchPlayAuthoritativeSubmitMarkerResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitMarker,
+		true,
+		AttackSequence,
+		[Request, AttackSequence](
+			FMatchPlayAuthoritativeSubmitMarkerResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackMarkerSelectionRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			DomainRequest.MarkerCardId = Request.MarkerCardId;
+			Result.MarkerResult =
+				FMatchPlayCurrentAttackMarkerSelectionWriter::Select(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.MarkerResult.bSuccess;
+			Execution.CandidateAfterState = Result.MarkerResult.AfterState;
+			Execution.StateDisposition = Result.MarkerResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveNoLegalMarkerResult
+FMatchPlayAuthoritativeSession::ResolveNoLegalMarker()
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveNoLegalMarkerResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalMarker,
+		true,
+		AttackSequence,
+		[AttackSequence](
+			FMatchPlayAuthoritativeResolveNoLegalMarkerResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayResolveNoLegalMarkerRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			Result.ResolutionResult =
+				FMatchPlayResolveNoLegalMarker::Resolve(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeDeclineMarkerResult
+FMatchPlayAuthoritativeSession::DeclineMarker(
+	const FMatchPlayAuthoritativeDeclineMarkerRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<FMatchPlayAuthoritativeDeclineMarkerResult>(
+		EMatchPlayAuthoritativeCommandKind::DeclineMarker,
+		true,
+		AttackSequence,
+		[Request, AttackSequence](
+			FMatchPlayAuthoritativeDeclineMarkerResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayMarkerDeclineRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.DeclineResult = FMatchPlayMarkerDecline::Decline(
+				BeforeState,
+				DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.DeclineResult.bSuccess;
+			Execution.CandidateAfterState = Result.DeclineResult.AfterState;
+			Execution.StateDisposition = Result.DeclineResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeSubmitSkillResult
+FMatchPlayAuthoritativeSession::SubmitSkill(
+	const FSkillRuleSnapshotSet& SkillRuleSet,
+	const FMatchPlayAuthoritativeSubmitSkillRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<FMatchPlayAuthoritativeSubmitSkillResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitSkill,
+		true,
+		AttackSequence,
+		[&SkillRuleSet, Request, AttackSequence](
+			FMatchPlayAuthoritativeSubmitSkillResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackSkillSelectionRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			DomainRequest.SkillId = Request.SkillId;
+			Result.SkillResult =
+				FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+					BeforeState,
+					SkillRuleSet,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.SkillResult.bSuccess;
+			Execution.CandidateAfterState = Result.SkillResult.AfterState;
+			Execution.StateDisposition = Result.SkillResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveNoLegalSkillResult
+FMatchPlayAuthoritativeSession::ResolveNoLegalSkill(
+	const FSkillRuleSnapshotSet& SkillRuleSet)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveNoLegalSkillResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalSkill,
+		true,
+		AttackSequence,
+		[&SkillRuleSet, AttackSequence](
+			FMatchPlayAuthoritativeResolveNoLegalSkillResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayResolveNoLegalSkillRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			Result.ResolutionResult = FMatchPlayResolveNoLegalSkill::Resolve(
+				BeforeState,
+				SkillRuleSet,
+				DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeDeclineSkillResult
+FMatchPlayAuthoritativeSession::DeclineSkill(
+	const FSkillRuleSnapshotSet& SkillRuleSet,
+	const FMatchPlayAuthoritativeDeclineSkillRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<FMatchPlayAuthoritativeDeclineSkillResult>(
+		EMatchPlayAuthoritativeCommandKind::DeclineSkill,
+		true,
+		AttackSequence,
+		[&SkillRuleSet, Request, AttackSequence](
+			FMatchPlayAuthoritativeDeclineSkillResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlaySkillDeclineRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.DeclineResult = FMatchPlaySkillDecline::Decline(
+				BeforeState,
+				SkillRuleSet,
+				DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.DeclineResult.bSuccess;
+			Execution.CandidateAfterState = Result.DeclineResult.AfterState;
+			Execution.StateDisposition = Result.DeclineResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayState FMatchPlayAuthoritativeSession::GetStateSnapshot() const
 {
 	return AuthoritativeState;

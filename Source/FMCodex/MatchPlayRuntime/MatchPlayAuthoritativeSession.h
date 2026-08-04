@@ -26,6 +26,26 @@ public:
 	FMatchPlayAuthoritativeSubmitCarrierResult SubmitCarrier(
 		const FMatchPlayAuthoritativeSubmitCarrierRequest& Request);
 
+	FMatchPlayAuthoritativeSubmitMarkerResult SubmitMarker(
+		const FMatchPlayAuthoritativeSubmitMarkerRequest& Request);
+
+	FMatchPlayAuthoritativeResolveNoLegalMarkerResult
+	ResolveNoLegalMarker();
+
+	FMatchPlayAuthoritativeDeclineMarkerResult DeclineMarker(
+		const FMatchPlayAuthoritativeDeclineMarkerRequest& Request);
+
+	FMatchPlayAuthoritativeSubmitSkillResult SubmitSkill(
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		const FMatchPlayAuthoritativeSubmitSkillRequest& Request);
+
+	FMatchPlayAuthoritativeResolveNoLegalSkillResult ResolveNoLegalSkill(
+		const FSkillRuleSnapshotSet& SkillRuleSet);
+
+	FMatchPlayAuthoritativeDeclineSkillResult DeclineSkill(
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		const FMatchPlayAuthoritativeDeclineSkillRequest& Request);
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
