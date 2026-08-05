@@ -223,6 +223,75 @@ namespace MatchPlayAuthoritativeSessionTests
 			&& Left.ErrorMessage == Right.ErrorMessage;
 	}
 
+	void TestAcceptedDomainFailureNoAdopt(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const FMatchPlayAuthoritativeRuntimeEnvelope& Envelope,
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayState& FinalState)
+	{
+		Test.TestTrue(*FString::Printf(TEXT("%s accepted"), *Context),
+			Envelope.bAccepted);
+		Test.TestFalse(*FString::Printf(TEXT("%s domain failure"), *Context),
+			Envelope.bDomainSuccess);
+		Test.TestFalse(*FString::Printf(TEXT("%s did not advance"), *Context),
+			Envelope.bStateAdvanced);
+		Test.TestEqual(*FString::Printf(TEXT("%s does not adopt"), *Context),
+			Envelope.StateDisposition,
+			EMatchPlayAuthoritativeStateDisposition::DoNotAdopt);
+		Test.TestFalse(*FString::Printf(TEXT("%s is not runtime fault"), *Context),
+			Envelope.bRuntimeFault);
+		Test.TestEqual(*FString::Printf(TEXT("%s failure disposition"), *Context),
+			Envelope.FailureDisposition,
+			EMatchPlayAuthoritativeFailureDisposition::None);
+		Test.TestEqual(*FString::Printf(TEXT("%s runtime code"), *Context),
+			Envelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::None);
+		Test.TestTrue(*FString::Printf(TEXT("%s runtime message empty"), *Context),
+			Envelope.ErrorMessage.IsEmpty());
+		Test.TestTrue(*FString::Printf(TEXT("%s BeforeState exact"), *Context),
+			AreStatesEqual(BeforeState, Envelope.BeforeState));
+		Test.TestTrue(*FString::Printf(TEXT("%s AfterState unchanged"), *Context),
+			AreStatesEqual(BeforeState, Envelope.AfterState));
+		Test.TestTrue(*FString::Printf(TEXT("%s Session state unchanged"), *Context),
+			AreStatesEqual(BeforeState, FinalState));
+	}
+
+	void TestAdoptedSuccessEnvelope(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const FMatchPlayAuthoritativeRuntimeEnvelope& Envelope,
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayState& NestedAfterState,
+		const FMatchPlayState& FinalState)
+	{
+		Test.TestTrue(*FString::Printf(TEXT("%s accepted"), *Context),
+			Envelope.bAccepted);
+		Test.TestTrue(*FString::Printf(TEXT("%s domain success"), *Context),
+			Envelope.bDomainSuccess);
+		Test.TestTrue(*FString::Printf(TEXT("%s advanced"), *Context),
+			Envelope.bStateAdvanced);
+		Test.TestEqual(*FString::Printf(TEXT("%s adopts"), *Context),
+			Envelope.StateDisposition,
+			EMatchPlayAuthoritativeStateDisposition::Adopt);
+		Test.TestFalse(*FString::Printf(TEXT("%s is not runtime fault"), *Context),
+			Envelope.bRuntimeFault);
+		Test.TestEqual(*FString::Printf(TEXT("%s failure disposition"), *Context),
+			Envelope.FailureDisposition,
+			EMatchPlayAuthoritativeFailureDisposition::None);
+		Test.TestEqual(*FString::Printf(TEXT("%s runtime code"), *Context),
+			Envelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::None);
+		Test.TestTrue(*FString::Printf(TEXT("%s runtime message empty"), *Context),
+			Envelope.ErrorMessage.IsEmpty());
+		Test.TestTrue(*FString::Printf(TEXT("%s BeforeState exact"), *Context),
+			AreStatesEqual(BeforeState, Envelope.BeforeState));
+		Test.TestTrue(*FString::Printf(TEXT("%s envelope adopts nested AfterState"), *Context),
+			AreStatesEqual(NestedAfterState, Envelope.AfterState));
+		Test.TestTrue(*FString::Printf(TEXT("%s Session adopts nested AfterState"), *Context),
+			AreStatesEqual(NestedAfterState, FinalState));
+	}
+
 	bool AreOpeningResultsEqual(
 		const FMatchPlayOpeningInitializeResult& Left,
 		const FMatchPlayOpeningInitializeResult& Right)
@@ -1198,6 +1267,119 @@ namespace MatchPlayAuthoritativeSessionTests
 			State.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
 	}
 
+	void TestAwaitingSkillEndpoint(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayState& AfterState,
+		const FName MarkerCardId)
+	{
+		Test.TestTrue(*FString::Printf(TEXT("%s has current attack"), *Context),
+			AfterState.bHasCurrentAttack);
+		Test.TestEqual(*FString::Printf(TEXT("%s phase"), *Context),
+			AfterState.CurrentAttack.Phase,
+			EMatchPlayCurrentAttackPhase::Resolution);
+		Test.TestEqual(*FString::Printf(TEXT("%s stage"), *Context),
+			AfterState.CurrentAttack.SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
+		Test.TestEqual(*FString::Printf(TEXT("%s carrier preserved"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.CarrierCardId,
+			BeforeState.CurrentAttack.ActionPreparation.CarrierCardId);
+		Test.TestEqual(*FString::Printf(TEXT("%s marker selected"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.MarkerCardId,
+			MarkerCardId);
+		Test.TestTrue(*FString::Printf(TEXT("%s skill absent"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.SkillId.IsNone());
+		Test.TestEqual(*FString::Printf(TEXT("%s action type absent"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.ActionType,
+			ESkillRuleType::None);
+		Test.TestTrue(*FString::Printf(TEXT("%s runner absent"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.RunnerCardId.IsNone());
+		Test.TestFalse(*FString::Printf(TEXT("%s helper absent"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.bHasHelper);
+		Test.TestTrue(*FString::Printf(TEXT("%s helper identity absent"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
+		Test.TestFalse(*FString::Printf(TEXT("%s selected action absent"), *Context),
+			AfterState.CurrentAttack.bHasSelectedAction);
+		Test.TestEqual(*FString::Printf(TEXT("%s branch intent absent"), *Context),
+			AfterState.CurrentAttack.SelectedAction.ElectiveBranchIntent,
+			EMatchPlayElectiveBranchIntent::None);
+		Test.TestFalse(*FString::Printf(TEXT("%s resolution session absent"), *Context),
+			AfterState.CurrentAttack.bHasResolutionSession);
+		Test.TestFalse(*FString::Printf(TEXT("%s actual branch absent"), *Context),
+			AfterState.CurrentAttack.ResolutionSession.bHasActualBranch);
+		Test.TestTrue(*FString::Printf(TEXT("%s route rolls empty"), *Context),
+			AfterState.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
+	}
+
+	void TestSubmittedSkillEndpoint(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayState& AfterState,
+		const FName SkillId,
+		const ESkillRuleType ActionType,
+		const EMatchPlayCurrentAttackSelectionStage ExpectedStage)
+	{
+		Test.TestTrue(*FString::Printf(TEXT("%s has current attack"), *Context),
+			AfterState.bHasCurrentAttack);
+		Test.TestEqual(*FString::Printf(TEXT("%s stage"), *Context),
+			AfterState.CurrentAttack.SelectionStage,
+			ExpectedStage);
+		Test.TestEqual(*FString::Printf(TEXT("%s carrier preserved"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.CarrierCardId,
+			BeforeState.CurrentAttack.ActionPreparation.CarrierCardId);
+		Test.TestEqual(*FString::Printf(TEXT("%s marker preserved"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.MarkerCardId,
+			BeforeState.CurrentAttack.ActionPreparation.MarkerCardId);
+		Test.TestEqual(*FString::Printf(TEXT("%s skill selected"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.SkillId,
+			SkillId);
+		Test.TestEqual(*FString::Printf(TEXT("%s action type selected"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.ActionType,
+			ActionType);
+		Test.TestTrue(*FString::Printf(TEXT("%s runner absent"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.RunnerCardId.IsNone());
+		Test.TestFalse(*FString::Printf(TEXT("%s helper absent"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.bHasHelper);
+		Test.TestTrue(*FString::Printf(TEXT("%s helper identity absent"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
+		Test.TestFalse(*FString::Printf(TEXT("%s selected action absent"), *Context),
+			AfterState.CurrentAttack.bHasSelectedAction);
+		Test.TestEqual(*FString::Printf(TEXT("%s branch intent absent"), *Context),
+			AfterState.CurrentAttack.SelectedAction.ElectiveBranchIntent,
+			EMatchPlayElectiveBranchIntent::None);
+		Test.TestFalse(*FString::Printf(TEXT("%s resolution session absent"), *Context),
+			AfterState.CurrentAttack.bHasResolutionSession);
+		Test.TestFalse(*FString::Printf(TEXT("%s actual branch absent"), *Context),
+			AfterState.CurrentAttack.ResolutionSession.bHasActualBranch);
+		Test.TestTrue(*FString::Printf(TEXT("%s route rolls empty"), *Context),
+			AfterState.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
+	}
+
+	void TestCompletedAttackEndpoint(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const FMatchPlayCurrentAttackCompletionResult& Completion,
+		const FMatchPlayState& FinalState)
+	{
+		Test.TestTrue(*FString::Printf(TEXT("%s completion success"), *Context),
+			Completion.bSuccess);
+		Test.TestFalse(*FString::Printf(TEXT("%s current attack cleared"), *Context),
+			FinalState.bHasCurrentAttack);
+		Test.TestTrue(*FString::Printf(TEXT("%s nested state clears attack"), *Context),
+			!Completion.AfterState.bHasCurrentAttack);
+		Test.TestFalse(*FString::Printf(TEXT("%s resolution session absent"), *Context),
+			FinalState.CurrentAttack.bHasResolutionSession);
+		Test.TestFalse(*FString::Printf(TEXT("%s actual branch absent"), *Context),
+			FinalState.CurrentAttack.ResolutionSession.bHasActualBranch);
+		Test.TestTrue(*FString::Printf(TEXT("%s route rolls empty"), *Context),
+			FinalState.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
+		Test.TestEqual(*FString::Printf(TEXT("%s next attacker adopted"), *Context),
+			Completion.NextAttackingPlayer,
+			FinalState.RuntimeState.CurrentAttackingPlayer);
+	}
+
 	int32 CountOccurrences(
 		const FString& Source,
 		const FString& Needle)
@@ -1284,18 +1466,29 @@ namespace MatchPlayAuthoritativeSessionTests
 		RejectEqual(TEXT("Envelope comparator covers ErrorMessage"), Mutated);
 	}
 
+	struct FReflectedMutationAudit
+	{
+		int32 LeafMutations = 0;
+		int32 ContainerCases = 0;
+		int32 EmptyContainerElementStructures = 0;
+		int32 SkippedProperties = 0;
+		TArray<FString> SkippedPaths;
+	};
+
 	void VisitReflectedMutationLeaves(
 		UStruct* Struct,
 		void* MutatedContainer,
-		const void* BaselineContainer,
+		void* BaselineContainer,
 		const FString& Prefix,
+		FReflectedMutationAudit& Audit,
 		const TFunctionRef<void(const FString&)>& RejectMutation);
 
 	void VisitReflectedPropertyMutation(
 		FProperty* Property,
 		void* MutatedValue,
-		const void* BaselineValue,
+		void* BaselineValue,
 		const FString& Path,
+		FReflectedMutationAudit& Audit,
 		const TFunctionRef<void(const FString&)>& RejectMutation)
 	{
 		if (FStructProperty* StructProperty =
@@ -1306,7 +1499,90 @@ namespace MatchPlayAuthoritativeSessionTests
 				MutatedValue,
 				BaselineValue,
 				Path,
+				Audit,
 				RejectMutation);
+			return;
+		}
+
+		if (FMapProperty* MapProperty = CastField<FMapProperty>(Property))
+		{
+			FScriptMapHelper MutatedMap(MapProperty, MutatedValue);
+			FScriptMapHelper BaselineMap(MapProperty, BaselineValue);
+			TArray<int32> BaselineIndices;
+			for (int32 Index = 0; Index < BaselineMap.GetMaxIndex(); ++Index)
+			{
+				if (BaselineMap.IsValidIndex(Index))
+				{
+					BaselineIndices.Add(Index);
+				}
+			}
+
+			if (BaselineIndices.Num() > 0)
+			{
+				MutatedMap.RemoveAt(BaselineIndices.Last());
+			}
+			else
+			{
+				MutatedMap.AddDefaultValue_Invalid_NeedsRehash();
+				MutatedMap.Rehash();
+			}
+			RejectMutation(Path + TEXT(".Membership"));
+			++Audit.ContainerCases;
+			MapProperty->CopyCompleteValue(MutatedValue, BaselineValue);
+
+			bool bAddedCanonicalElement = false;
+			if (BaselineIndices.Num() == 0)
+			{
+				const int32 BaselineIndex =
+					BaselineMap.AddDefaultValue_Invalid_NeedsRehash();
+				const int32 MutatedIndex =
+					MutatedMap.AddDefaultValue_Invalid_NeedsRehash();
+				BaselineMap.Rehash();
+				MutatedMap.Rehash();
+				BaselineIndices = {BaselineIndex};
+				check(BaselineIndex == MutatedIndex);
+				bAddedCanonicalElement = true;
+				++Audit.EmptyContainerElementStructures;
+			}
+
+			TArray<int32> Positions = {0};
+			if (BaselineIndices.Num() >= 3)
+			{
+				Positions.Add(BaselineIndices.Num() / 2);
+			}
+			if (BaselineIndices.Num() >= 2)
+			{
+				Positions.Add(BaselineIndices.Num() - 1);
+			}
+			for (const int32 Position : Positions)
+			{
+				const int32 Index = BaselineIndices[Position];
+				VisitReflectedPropertyMutation(
+					MapProperty->KeyProp,
+					MutatedMap.GetKeyPtr(Index),
+					BaselineMap.GetKeyPtr(Index),
+					FString::Printf(TEXT("%s.Key[%d]"), *Path, Position),
+					Audit,
+					[&](const FString& MutationPath)
+					{
+						MutatedMap.Rehash();
+						RejectMutation(MutationPath);
+					});
+				MutatedMap.Rehash();
+				VisitReflectedPropertyMutation(
+					MapProperty->ValueProp,
+					MutatedMap.GetValuePtr(Index),
+					BaselineMap.GetValuePtr(Index),
+					FString::Printf(TEXT("%s.Value[%d]"), *Path, Position),
+					Audit,
+					RejectMutation);
+			}
+
+			if (bAddedCanonicalElement)
+			{
+				MutatedMap.EmptyValues();
+				BaselineMap.EmptyValues();
+			}
 			return;
 		}
 
@@ -1314,9 +1590,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			CastField<FArrayProperty>(Property))
 		{
 			FScriptArrayHelper MutatedArray(ArrayProperty, MutatedValue);
-			FScriptArrayHelper BaselineArray(
-				ArrayProperty,
-				const_cast<void*>(BaselineValue));
+			FScriptArrayHelper BaselineArray(ArrayProperty, BaselineValue);
 			if (MutatedArray.Num() > 0)
 			{
 				MutatedArray.RemoveValues(MutatedArray.Num() - 1, 1);
@@ -1326,16 +1600,53 @@ namespace MatchPlayAuthoritativeSessionTests
 				MutatedArray.AddValue();
 			}
 			RejectMutation(Path + TEXT(".Num"));
+			++Audit.ContainerCases;
 			ArrayProperty->CopyCompleteValue(MutatedValue, BaselineValue);
 
-			if (BaselineArray.Num() > 0)
+			bool bAddedCanonicalElement = false;
+			if (BaselineArray.Num() == 0)
+			{
+				BaselineArray.AddValue();
+				MutatedArray.AddValue();
+				bAddedCanonicalElement = true;
+				++Audit.EmptyContainerElementStructures;
+			}
+
+			TArray<int32> Indices = {0};
+			if (BaselineArray.Num() >= 3)
+			{
+				Indices.Add(BaselineArray.Num() / 2);
+			}
+			if (BaselineArray.Num() >= 2)
+			{
+				Indices.Add(BaselineArray.Num() - 1);
+			}
+			for (const int32 Index : Indices)
 			{
 				VisitReflectedPropertyMutation(
 					ArrayProperty->Inner,
-					MutatedArray.GetRawPtr(0),
-					BaselineArray.GetRawPtr(0),
-					Path + TEXT("[0]"),
+					MutatedArray.GetRawPtr(Index),
+					BaselineArray.GetRawPtr(Index),
+					FString::Printf(TEXT("%s[%d]"), *Path, Index),
+					Audit,
 					RejectMutation);
+			}
+
+			if (BaselineArray.Num() >= 2
+				&& !ArrayProperty->Inner->Identical(
+					BaselineArray.GetRawPtr(0),
+					BaselineArray.GetRawPtr(BaselineArray.Num() - 1)))
+			{
+				MutatedArray.SwapValues(0, BaselineArray.Num() - 1);
+				RejectMutation(Path + TEXT(".Order"));
+				++Audit.ContainerCases;
+				ArrayProperty->CopyCompleteValue(MutatedValue, BaselineValue);
+			}
+
+			if (bAddedCanonicalElement)
+			{
+				MutatedArray.RemoveValues(0, 1);
+				BaselineArray.RemoveValues(0, 1);
 			}
 			return;
 		}
@@ -1397,18 +1708,31 @@ namespace MatchPlayAuthoritativeSessionTests
 		}
 		else
 		{
+			++Audit.SkippedProperties;
+			Audit.SkippedPaths.Add(FString::Printf(
+				TEXT("%s (%s)"),
+				*Path,
+				*Property->GetClass()->GetName()));
 			return;
 		}
 
+		if (Property->Identical(MutatedValue, BaselineValue))
+		{
+			++Audit.SkippedProperties;
+			Audit.SkippedPaths.Add(Path + TEXT(" (mutation unchanged)"));
+			return;
+		}
 		RejectMutation(Path);
+		++Audit.LeafMutations;
 		Property->CopyCompleteValue(MutatedValue, BaselineValue);
 	}
 
 	void VisitReflectedMutationLeaves(
 		UStruct* Struct,
 		void* MutatedContainer,
-		const void* BaselineContainer,
+		void* BaselineContainer,
 		const FString& Prefix,
+		FReflectedMutationAudit& Audit,
 		const TFunctionRef<void(const FString&)>& RejectMutation)
 	{
 		for (TFieldIterator<FProperty> It(Struct); It; ++It)
@@ -1419,36 +1743,484 @@ namespace MatchPlayAuthoritativeSessionTests
 				Property->ContainerPtrToValuePtr<void>(MutatedContainer),
 				Property->ContainerPtrToValuePtr<void>(BaselineContainer),
 				Prefix + TEXT(".") + Property->GetName(),
+				Audit,
 				RejectMutation);
 		}
 	}
 
 	template <typename TWrapper, typename TNested, typename TAccessor,
 		typename TComparator>
-	int32 TestNestedReflectedMutationCoverage(
+	FReflectedMutationAudit TestNestedReflectedMutationCoverage(
 		FAutomationTestBase& Test,
 		const TCHAR* Context,
 		const TWrapper& Baseline,
 		TAccessor&& Accessor,
 		TComparator&& Comparator)
 	{
+		TWrapper ComparatorBaseline = Baseline;
 		TWrapper Mutated = Baseline;
-		int32 MutationCount = 0;
+		FReflectedMutationAudit Audit;
+		TNested& ComparatorBaselineNested = Accessor(ComparatorBaseline);
 		TNested& MutatedNested = Accessor(Mutated);
-		const TNested& BaselineNested = Accessor(Baseline);
 		VisitReflectedMutationLeaves(
 			TNested::StaticStruct(),
 			&MutatedNested,
-			&BaselineNested,
+			&ComparatorBaselineNested,
 			Context,
+			Audit,
 			[&](const FString& Path)
 			{
-				++MutationCount;
 				Test.TestFalse(
 					*FString::Printf(TEXT("Comparator covers %s"), *Path),
+					Comparator(ComparatorBaseline, Mutated));
+			});
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s reflected mutation skipped groups"), Context),
+			Audit.SkippedProperties,
+			0);
+		if (Audit.SkippedPaths.Num() > 0)
+		{
+			Test.AddInfo(FString::Printf(
+				TEXT("%s skipped paths: %s"),
+				Context,
+				*FString::Join(Audit.SkippedPaths, TEXT("; "))));
+		}
+		return Audit;
+	}
+
+	struct FNonReflectedMutationAudit
+	{
+		int32 DeclaredFields = 0;
+		int32 ReflectedNestedLeaves = 0;
+		int32 ContainerCases = 0;
+		int32 EmptyContainerCases = 0;
+		int32 EqualBaselines = 0;
+		int32 SkippedGroups = 0;
+	};
+
+	template <typename T, typename TComparator, typename TMutator>
+	void TestPlainMutation(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const T& Baseline,
+		TComparator&& Comparator,
+		TMutator&& Mutator,
+		FNonReflectedMutationAudit& Audit)
+	{
+		T Mutated = Baseline;
+		Mutator(Mutated);
+		Test.TestFalse(
+			*FString::Printf(TEXT("Non-reflected comparator covers %s"), *Context),
+			Comparator(Baseline, Mutated));
+		++Audit.DeclaredFields;
+	}
+
+	template <typename T, typename TReflected, typename TAccessor,
+		typename TComparator>
+	void TestPlainNestedReflectedMutations(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const T& InputBaseline,
+		TAccessor&& Accessor,
+		TComparator&& Comparator,
+		FNonReflectedMutationAudit& Audit)
+	{
+		T Baseline = InputBaseline;
+		T Mutated = InputBaseline;
+		TReflected& BaselineNested = Accessor(Baseline);
+		TReflected& MutatedNested = Accessor(Mutated);
+		FReflectedMutationAudit ReflectedAudit;
+		VisitReflectedMutationLeaves(
+			TReflected::StaticStruct(),
+			&MutatedNested,
+			&BaselineNested,
+			Context,
+			ReflectedAudit,
+			[&](const FString& Path)
+			{
+				Test.TestFalse(
+					*FString::Printf(TEXT("Nested reflected comparator covers %s"), *Path),
 					Comparator(Baseline, Mutated));
 			});
-		return MutationCount;
+		Audit.ReflectedNestedLeaves += ReflectedAudit.LeafMutations;
+		Audit.ContainerCases += ReflectedAudit.ContainerCases;
+		Audit.EmptyContainerCases +=
+			ReflectedAudit.EmptyContainerElementStructures;
+		Audit.SkippedGroups += ReflectedAudit.SkippedProperties;
+	}
+
+	template <typename TEnum>
+	TEnum OtherEnumValue(const TEnum Value)
+	{
+		return Value == static_cast<TEnum>(0)
+			? static_cast<TEnum>(1)
+			: static_cast<TEnum>(0);
+	}
+
+	FNonReflectedMutationAudit TestNonReflectedInventoryMutations(
+		FAutomationTestBase& Test)
+	{
+		FNonReflectedMutationAudit Audit;
+
+		FPlayerCardRuleSnapshotValidationResult CardValidation;
+		CardValidation.DuplicateCardIds = {
+			TEXT("Duplicate.First"),
+			TEXT("Duplicate.Middle"),
+			TEXT("Duplicate.Last")
+		};
+		Test.TestTrue(TEXT("PlayerCardValidation equal baseline"),
+			ArePlayerCardValidationResultsEqual(CardValidation, CardValidation));
+		++Audit.EqualBaselines;
+		auto CardValidationComparator = [](const auto& Left, const auto& Right)
+		{
+			return ArePlayerCardValidationResultsEqual(Left, Right);
+		};
+		TestPlainMutation(Test, TEXT("PlayerCardValidation.bSuccess"), CardValidation,
+			CardValidationComparator, [](auto& Value){ Value.bSuccess = !Value.bSuccess; }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardValidation.bIsValid"), CardValidation,
+			CardValidationComparator, [](auto& Value){ Value.bIsValid = !Value.bIsValid; }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardValidation.ErrorCode"), CardValidation,
+			CardValidationComparator, [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardValidation.ErrorMessage"), CardValidation,
+			CardValidationComparator, [](auto& Value){ Value.ErrorMessage = TEXT("mutated"); }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardValidation.InvalidCardId"), CardValidation,
+			CardValidationComparator, [](auto& Value){ Value.InvalidCardId = TEXT("Mutated.Card"); }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardValidation.DuplicateCardIds"), CardValidation,
+			CardValidationComparator, [](auto& Value){ Value.DuplicateCardIds.RemoveAt(2); }, Audit);
+		++Audit.ContainerCases;
+		for (const int32 Index : {0, 1, 2})
+		{
+			FPlayerCardRuleSnapshotValidationResult Mutated = CardValidation;
+			Mutated.DuplicateCardIds[Index] = FName(*FString::Printf(
+				TEXT("Mutated.Duplicate.%d"), Index));
+			Test.TestFalse(TEXT("DuplicateCardIds element content covered"),
+				CardValidationComparator(CardValidation, Mutated));
+			++Audit.ContainerCases;
+		}
+		{
+			FPlayerCardRuleSnapshotValidationResult Mutated = CardValidation;
+			Swap(Mutated.DuplicateCardIds[0], Mutated.DuplicateCardIds[2]);
+			Test.TestFalse(TEXT("DuplicateCardIds order covered"),
+				CardValidationComparator(CardValidation, Mutated));
+			++Audit.ContainerCases;
+		}
+		{
+			FPlayerCardRuleSnapshotValidationResult Empty;
+			FPlayerCardRuleSnapshotValidationResult WithCanonical = Empty;
+			WithCanonical.DuplicateCardIds.Add(TEXT("Canonical.Duplicate"));
+			Test.TestFalse(TEXT("DuplicateCardIds empty-to-canonical covered"),
+				CardValidationComparator(Empty, WithCanonical));
+			++Audit.ContainerCases;
+			++Audit.EmptyContainerCases;
+		}
+
+		FPlayerCardRuleSnapshotQueryResult CardQuery;
+		Test.TestTrue(TEXT("PlayerCardQuery equal baseline"),
+			ArePlayerCardQueryResultsEqual(CardQuery, CardQuery));
+		++Audit.EqualBaselines;
+		auto CardQueryComparator = [](const auto& Left, const auto& Right)
+		{
+			return ArePlayerCardQueryResultsEqual(Left, Right);
+		};
+		TestPlainMutation(Test, TEXT("PlayerCardQuery.bSuccess"), CardQuery,
+			CardQueryComparator, [](auto& Value){ Value.bSuccess = !Value.bSuccess; }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardQuery.bFound"), CardQuery,
+			CardQueryComparator, [](auto& Value){ Value.bFound = !Value.bFound; }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardQuery.ErrorCode"), CardQuery,
+			CardQueryComparator, [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardQuery.ErrorMessage"), CardQuery,
+			CardQueryComparator, [](auto& Value){ Value.ErrorMessage = TEXT("mutated"); }, Audit);
+		TestPlainMutation(Test, TEXT("PlayerCardQuery.CardId"), CardQuery,
+			CardQueryComparator, [](auto& Value){ Value.CardId = TEXT("Mutated.Card"); }, Audit);
+		TestPlainNestedReflectedMutations<
+			FPlayerCardRuleSnapshotQueryResult,
+			FPlayerCardRuleSnapshot>(Test, TEXT("PlayerCardQuery.Snapshot"), CardQuery,
+			[](auto& Value) -> decltype(auto){ return (Value.Snapshot); },
+			CardQueryComparator, Audit);
+		++Audit.DeclaredFields;
+		TestPlainMutation(Test, TEXT("PlayerCardQuery.ValidationResult"), CardQuery,
+			CardQueryComparator,
+			[](auto& Value){ Value.ValidationResult.bSuccess = !Value.ValidationResult.bSuccess; }, Audit);
+
+		FMatchPlayCardSnapshotAuthorityQueryResult AuthorityQuery;
+		Test.TestTrue(TEXT("CardSnapshotQuery equal baseline"),
+			AreCardSnapshotQueryResultsEqual(AuthorityQuery, AuthorityQuery));
+		++Audit.EqualBaselines;
+		auto AuthorityComparator = [](const auto& Left, const auto& Right)
+		{
+			return AreCardSnapshotQueryResultsEqual(Left, Right);
+		};
+		TestPlainMutation(Test, TEXT("CardSnapshotQuery.bSuccess"), AuthorityQuery,
+			AuthorityComparator, [](auto& Value){ Value.bSuccess = !Value.bSuccess; }, Audit);
+		TestPlainMutation(Test, TEXT("CardSnapshotQuery.ErrorCode"), AuthorityQuery,
+			AuthorityComparator, [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); }, Audit);
+		TestPlainMutation(Test, TEXT("CardSnapshotQuery.PlayerSide"), AuthorityQuery,
+			AuthorityComparator, [](auto& Value){ Value.PlayerSide = EInitialTurnOrderPlayer::PlayerA; }, Audit);
+		TestPlainMutation(Test, TEXT("CardSnapshotQuery.CardId"), AuthorityQuery,
+			AuthorityComparator, [](auto& Value){ Value.CardId = TEXT("Mutated.Card"); }, Audit);
+		TestPlainNestedReflectedMutations<
+			FMatchPlayCardSnapshotAuthorityQueryResult,
+			FPlayerCardRuleSnapshot>(Test, TEXT("CardSnapshotQuery.Snapshot"), AuthorityQuery,
+			[](auto& Value) -> decltype(auto){ return (Value.Snapshot); },
+			AuthorityComparator, Audit);
+		++Audit.DeclaredFields;
+		TestPlainMutation(Test, TEXT("CardSnapshotQuery.UnderlyingQueryResult"), AuthorityQuery,
+			AuthorityComparator,
+			[](auto& Value){ Value.UnderlyingQueryResult.bSuccess = !Value.UnderlyingQueryResult.bSuccess; }, Audit);
+		TestPlainMutation(Test, TEXT("CardSnapshotQuery.ErrorMessage"), AuthorityQuery,
+			AuthorityComparator, [](auto& Value){ Value.ErrorMessage = TEXT("mutated"); }, Audit);
+
+		FSkillRuleSnapshotValidationResult SkillValidation;
+		Test.TestTrue(TEXT("SkillRuleValidation equal baseline"),
+			AreSkillRuleValidationResultsEqual(SkillValidation, SkillValidation));
+		++Audit.EqualBaselines;
+		auto SkillValidationComparator = [](const auto& Left, const auto& Right)
+		{
+			return AreSkillRuleValidationResultsEqual(Left, Right);
+		};
+		TestPlainMutation(Test, TEXT("SkillRuleValidation.bSuccess"), SkillValidation,
+			SkillValidationComparator, [](auto& Value){ Value.bSuccess = !Value.bSuccess; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleValidation.bIsValid"), SkillValidation,
+			SkillValidationComparator, [](auto& Value){ Value.bIsValid = !Value.bIsValid; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleValidation.ErrorCode"), SkillValidation,
+			SkillValidationComparator, [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleValidation.ErrorMessage"), SkillValidation,
+			SkillValidationComparator, [](auto& Value){ Value.ErrorMessage = TEXT("mutated"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleValidation.InvalidSkillId"), SkillValidation,
+			SkillValidationComparator, [](auto& Value){ Value.InvalidSkillId = TEXT("Mutated.Skill"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleValidation.InvalidField"), SkillValidation,
+			SkillValidationComparator, [](auto& Value){ Value.InvalidField = TEXT("Mutated.Field"); }, Audit);
+
+		FSkillRuleSnapshot SkillRule;
+		Test.TestTrue(TEXT("SkillRule equal baseline"), AreSkillRulesEqual(SkillRule, SkillRule));
+		++Audit.EqualBaselines;
+		auto SkillRuleComparator = [](const auto& Left, const auto& Right)
+		{
+			return AreSkillRulesEqual(Left, Right);
+		};
+		TestPlainMutation(Test, TEXT("SkillRule.SkillId"), SkillRule,
+			SkillRuleComparator, [](auto& Value){ Value.SkillId = TEXT("Mutated.Skill"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRule.SkillType"), SkillRule,
+			SkillRuleComparator, [](auto& Value){ Value.SkillType = ESkillRuleType::LongShot; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRule.MinTriggerActionPoint"), SkillRule,
+			SkillRuleComparator, [](auto& Value){ ++Value.MinTriggerActionPoint; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRule.MaxTriggerActionPoint"), SkillRule,
+			SkillRuleComparator, [](auto& Value){ ++Value.MaxTriggerActionPoint; }, Audit);
+
+		FSkillRuleSnapshotQueryResult SkillQuery;
+		Test.TestTrue(TEXT("SkillRuleQuery equal baseline"),
+			AreSkillRuleQueryResultsEqual(SkillQuery, SkillQuery));
+		++Audit.EqualBaselines;
+		auto SkillQueryComparator = [](const auto& Left, const auto& Right)
+		{
+			return AreSkillRuleQueryResultsEqual(Left, Right);
+		};
+		TestPlainMutation(Test, TEXT("SkillRuleQuery.bSuccess"), SkillQuery,
+			SkillQueryComparator, [](auto& Value){ Value.bSuccess = !Value.bSuccess; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleQuery.bFound"), SkillQuery,
+			SkillQueryComparator, [](auto& Value){ Value.bFound = !Value.bFound; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleQuery.ErrorCode"), SkillQuery,
+			SkillQueryComparator, [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleQuery.ErrorMessage"), SkillQuery,
+			SkillQueryComparator, [](auto& Value){ Value.ErrorMessage = TEXT("mutated"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleQuery.InvalidSkillId"), SkillQuery,
+			SkillQueryComparator, [](auto& Value){ Value.InvalidSkillId = TEXT("Mutated.Skill"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleQuery.InvalidField"), SkillQuery,
+			SkillQueryComparator, [](auto& Value){ Value.InvalidField = TEXT("Mutated.Field"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleQuery.Snapshot"), SkillQuery,
+			SkillQueryComparator, [](auto& Value){ Value.Snapshot.SkillId = TEXT("Mutated.Skill"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillRuleQuery.ValidationResult"), SkillQuery,
+			SkillQueryComparator,
+			[](auto& Value){ Value.ValidationResult.bSuccess = !Value.ValidationResult.bSuccess; }, Audit);
+
+		FMatchPlayCurrentAttackSkillSelectionGlobalContextResult Global;
+		Test.TestTrue(TEXT("SkillGlobalContext equal baseline"),
+			AreSkillGlobalContextResultsEqual(Global, Global));
+		++Audit.EqualBaselines;
+		auto GlobalComparator = [](const auto& Left, const auto& Right)
+		{
+			return AreSkillGlobalContextResultsEqual(Left, Right);
+		};
+		TestPlainMutation(Test, TEXT("SkillGlobal.bSuccess"), Global,
+			GlobalComparator, [](auto& Value){ Value.bSuccess = !Value.bSuccess; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.RequestedAttackSequence"), Global,
+			GlobalComparator, [](auto& Value){ ++Value.RequestedAttackSequence; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.RequestingSide"), Global,
+			GlobalComparator, [](auto& Value){ Value.RequestingSide = EInitialTurnOrderPlayer::PlayerA; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.ErrorCode"), Global,
+			GlobalComparator, [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.AuthoritativeAttackSequence"), Global,
+			GlobalComparator, [](auto& Value){ ++Value.AuthoritativeAttackSequence; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.CurrentAttackingPlayer"), Global,
+			GlobalComparator, [](auto& Value){ Value.CurrentAttackingPlayer = EInitialTurnOrderPlayer::PlayerA; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.CurrentDefendingPlayer"), Global,
+			GlobalComparator, [](auto& Value){ Value.CurrentDefendingPlayer = EInitialTurnOrderPlayer::PlayerB; }, Audit);
+		TestPlainNestedReflectedMutations<
+			FMatchPlayCurrentAttackSkillSelectionGlobalContextResult,
+			FMatchPlayCurrentAttackSelectionStateValidationResult>(
+				Test, TEXT("SkillGlobal.SelectionValidation"), Global,
+				[](auto& Value) -> decltype(auto){ return (Value.SelectionStateValidationResult); },
+				GlobalComparator, Audit);
+		++Audit.DeclaredFields;
+		TestPlainMutation(Test, TEXT("SkillGlobal.FrozenCarrierCardId"), Global,
+			GlobalComparator, [](auto& Value){ Value.FrozenCarrierCardId = TEXT("Mutated.Carrier"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.FrozenMarkerCardId"), Global,
+			GlobalComparator, [](auto& Value){ Value.FrozenMarkerCardId = TEXT("Mutated.Marker"); }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.MatchingFrozenCarrierPlacementCount"), Global,
+			GlobalComparator, [](auto& Value){ ++Value.MatchingFrozenCarrierPlacementCount; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.MatchingFrozenMarkerPlacementCount"), Global,
+			GlobalComparator, [](auto& Value){ ++Value.MatchingFrozenMarkerPlacementCount; }, Audit);
+		TestPlainNestedReflectedMutations<
+			FMatchPlayCurrentAttackSkillSelectionGlobalContextResult,
+			FMatchPlayDeploymentPlacement>(Test, TEXT("SkillGlobal.FrozenCarrierPlacement"), Global,
+			[](auto& Value) -> decltype(auto){ return (Value.FrozenCarrierPlacement); },
+			GlobalComparator, Audit);
+		++Audit.DeclaredFields;
+		TestPlainNestedReflectedMutations<
+			FMatchPlayCurrentAttackSkillSelectionGlobalContextResult,
+			FMatchPlayDeploymentPlacement>(Test, TEXT("SkillGlobal.FrozenMarkerPlacement"), Global,
+			[](auto& Value) -> decltype(auto){ return (Value.FrozenMarkerPlacement); },
+			GlobalComparator, Audit);
+		++Audit.DeclaredFields;
+		TestPlainMutation(Test, TEXT("SkillGlobal.CarrierSnapshotQueryResult"), Global,
+			GlobalComparator,
+			[](auto& Value){ Value.CarrierSnapshotQueryResult.bSuccess = !Value.CarrierSnapshotQueryResult.bSuccess; }, Audit);
+		TestPlainNestedReflectedMutations<
+			FMatchPlayCurrentAttackSkillSelectionGlobalContextResult,
+			FPlayerCardRuleSnapshot>(Test, TEXT("SkillGlobal.ResolvedCarrierSnapshot"), Global,
+			[](auto& Value) -> decltype(auto){ return (Value.ResolvedCarrierSnapshot); },
+			GlobalComparator, Audit);
+		++Audit.DeclaredFields;
+		TestPlainMutation(Test, TEXT("SkillGlobal.SkillRuleSetValidationResult"), Global,
+			GlobalComparator,
+			[](auto& Value){ Value.SkillRuleSetValidationResult.bSuccess = !Value.SkillRuleSetValidationResult.bSuccess; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.ValidatedActionPoint"), Global,
+			GlobalComparator, [](auto& Value){ ++Value.ValidatedActionPoint; }, Audit);
+		TestPlainMutation(Test, TEXT("SkillGlobal.ErrorMessage"), Global,
+			GlobalComparator, [](auto& Value){ Value.ErrorMessage = TEXT("mutated"); }, Audit);
+
+		Test.TestEqual(TEXT("Non-reflected declared field inventory"),
+			Audit.DeclaredFields,
+			57);
+		Test.TestEqual(TEXT("Non-reflected skipped groups"),
+			Audit.SkippedGroups,
+			0);
+		return Audit;
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TComparator>
+	int32 TestCompletionSnapshotContainerMutations(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const TWrapper& InputBaseline,
+		TAccessor&& Accessor,
+		TComparator&& Comparator)
+	{
+		int32 Cases = 0;
+		TWrapper EmptyBaseline = InputBaseline;
+		Accessor(EmptyBaseline).DeploymentSnapshotQueryResults.Empty();
+		TWrapper EmptyCandidate = EmptyBaseline;
+		FMatchPlayCardSnapshotAuthorityQueryResult Canonical;
+		Canonical.CardId = TEXT("Canonical.EmptyContainer.Card");
+		Accessor(EmptyCandidate).DeploymentSnapshotQueryResults.Add(Canonical);
+		Test.TestFalse(*FString::Printf(TEXT("%s empty-to-canonical"), *Context),
+			Comparator(EmptyBaseline, EmptyCandidate));
+		++Cases;
+
+		TWrapper Baseline = InputBaseline;
+		auto& BaselineItems = Accessor(Baseline).DeploymentSnapshotQueryResults;
+		BaselineItems.Empty();
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			FMatchPlayCardSnapshotAuthorityQueryResult Item;
+			Item.CardId = FName(*FString::Printf(TEXT("Canonical.Container.%d"), Index));
+			BaselineItems.Add(Item);
+		}
+		Test.TestTrue(*FString::Printf(TEXT("%s canonical equal baseline"), *Context),
+			Comparator(Baseline, Baseline));
+
+		TWrapper Mutated = Baseline;
+		Accessor(Mutated).DeploymentSnapshotQueryResults.RemoveAt(2);
+		Test.TestFalse(*FString::Printf(TEXT("%s length"), *Context),
+			Comparator(Baseline, Mutated));
+		++Cases;
+		for (const int32 Index : {0, 1, 2})
+		{
+			Mutated = Baseline;
+			Accessor(Mutated).DeploymentSnapshotQueryResults[Index].ErrorMessage =
+				FString::Printf(TEXT("mutated container element %d"), Index);
+			Test.TestFalse(*FString::Printf(TEXT("%s element %d content"), *Context, Index),
+				Comparator(Baseline, Mutated));
+			++Cases;
+			Mutated = Baseline;
+			Accessor(Mutated).DeploymentSnapshotQueryResults[Index]
+				.UnderlyingQueryResult.ValidationResult.InvalidCardId =
+					FName(*FString::Printf(TEXT("Mutated.Hidden.%d"), Index));
+			Test.TestFalse(*FString::Printf(TEXT("%s element %d deep content"), *Context, Index),
+				Comparator(Baseline, Mutated));
+			++Cases;
+		}
+		Mutated = Baseline;
+		Swap(
+			Accessor(Mutated).DeploymentSnapshotQueryResults[0],
+			Accessor(Mutated).DeploymentSnapshotQueryResults[2]);
+		Test.TestFalse(*FString::Printf(TEXT("%s order"), *Context),
+			Comparator(Baseline, Mutated));
+		++Cases;
+		return Cases;
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TCanonicalize,
+		typename TMutateHidden, typename TComparator>
+	int32 TestAvailabilityCandidateContainerMutations(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const TWrapper& InputBaseline,
+		TAccessor&& Accessor,
+		TCanonicalize&& Canonicalize,
+		TMutateHidden&& MutateHidden,
+		TComparator&& Comparator)
+	{
+		int32 Cases = 0;
+		TWrapper EmptyBaseline = InputBaseline;
+		Accessor(EmptyBaseline).Candidates.Empty();
+		TWrapper EmptyCandidate = EmptyBaseline;
+		Accessor(EmptyCandidate).Candidates.AddDefaulted();
+		Canonicalize(Accessor(EmptyCandidate).Candidates[0], 0);
+		Test.TestFalse(*FString::Printf(TEXT("%s empty-to-canonical"), *Context),
+			Comparator(EmptyBaseline, EmptyCandidate));
+		++Cases;
+
+		TWrapper Baseline = InputBaseline;
+		auto& BaselineCandidates = Accessor(Baseline).Candidates;
+		BaselineCandidates.Empty();
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			const int32 Added = BaselineCandidates.AddDefaulted();
+			Canonicalize(BaselineCandidates[Added], Index);
+		}
+		Test.TestTrue(*FString::Printf(TEXT("%s canonical equal baseline"), *Context),
+			Comparator(Baseline, Baseline));
+
+		TWrapper Mutated = Baseline;
+		Accessor(Mutated).Candidates.RemoveAt(2);
+		Test.TestFalse(*FString::Printf(TEXT("%s length"), *Context),
+			Comparator(Baseline, Mutated));
+		++Cases;
+		for (const int32 Index : {0, 1, 2})
+		{
+			Mutated = Baseline;
+			MutateHidden(Accessor(Mutated).Candidates[Index], Index);
+			Test.TestFalse(*FString::Printf(TEXT("%s hidden element %d"), *Context, Index),
+				Comparator(Baseline, Mutated));
+			++Cases;
+		}
+		Mutated = Baseline;
+		Swap(Accessor(Mutated).Candidates[0], Accessor(Mutated).Candidates[2]);
+		Test.TestFalse(*FString::Printf(TEXT("%s order"), *Context),
+			Comparator(Baseline, Mutated));
+		++Cases;
+		return Cases;
 	}
 
 	void TestOpeningMutationCoverage(
@@ -3493,6 +4265,8 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 	TestEqual(TEXT("Uninitialized marker runtime error"),
 		Uninitialized.RuntimeEnvelope.RuntimeFailureCode,
 		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+	TestFalse(TEXT("Uninitialized marker domain not called"),
+		Uninitialized.MarkerResult.bSuccess);
 
 	FMatchPlayAuthoritativeSession EarlySession;
 	EarlySession.InitializeMatch(MakeFoundationBInput(TEXT("MarkerEarly")));
@@ -3503,8 +4277,16 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 	TestTrue(TEXT("Early marker reaches domain"),
 		Early.RuntimeEnvelope.bAccepted);
 	TestFalse(TEXT("Early marker fails domain"), Early.MarkerResult.bSuccess);
-	TestTrue(TEXT("Early marker leaves state unchanged"),
-		AreStatesEqual(EarlyState, EarlySession.GetStateSnapshot()));
+	TestEqual(TEXT("Early marker exact first error"),
+		Early.MarkerResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackMarkerSelectionErrorCode
+			::CurrentAttackNotInResolution);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Early marker"),
+		Early.RuntimeEnvelope,
+		EarlyState,
+		EarlySession.GetStateSnapshot());
 
 	FMatchPlayAuthoritativeSession Session;
 	FReachabilityTrace Trace;
@@ -3531,8 +4313,12 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 		Wrong.MarkerResult.LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackMarkerSelectionErrorCode
 			::RequestingSideIsNotCurrentDefender);
-	TestTrue(TEXT("Wrong-side marker unchanged"),
-		AreStatesEqual(BeforeFailures, Session.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Wrong-side marker"),
+		Wrong.RuntimeEnvelope,
+		BeforeFailures,
+		Session.GetStateSnapshot());
 
 	FMatchPlayAuthoritativeSubmitMarkerRequest Invalid =
 		MakeMarkerRequest(Trace, TEXT("Card.NotDeployed"));
@@ -3540,8 +4326,12 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 	TestEqual(TEXT("Undeployed marker exact error"),
 		InvalidResult.MarkerResult.LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackMarkerSelectionErrorCode::MarkerNotDeployed);
-	TestTrue(TEXT("Undeployed marker unchanged"),
-		AreStatesEqual(BeforeFailures, Session.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Undeployed marker"),
+		InvalidResult.RuntimeEnvelope,
+		BeforeFailures,
+		Session.GetStateSnapshot());
 
 	const FMatchPlayAuthoritativeSubmitMarkerResult Success =
 		Session.SubmitMarker(MakeMarkerRequest(Trace, MarkerCardId));
@@ -3560,6 +4350,12 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 	TestEqual(TEXT("Marker transitions to AwaitingSkill"),
 		Session.GetStateSnapshot().CurrentAttack.SelectionStage,
 		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
+	TestAwaitingSkillEndpoint(
+		*this,
+		TEXT("Valid marker post-state"),
+		BeforeFailures,
+		Session.GetStateSnapshot(),
+		MarkerCardId);
 
 	const FMatchPlayState AfterSuccess = Session.GetStateSnapshot();
 	const auto Replay = Session.SubmitMarker(
@@ -3568,8 +4364,12 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 	TestEqual(TEXT("Marker replay exact stage error"),
 		Replay.MarkerResult.LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackMarkerSelectionErrorCode::WrongSelectionStage);
-	TestTrue(TEXT("Marker replay unchanged"),
-		AreStatesEqual(AfterSuccess, Session.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Marker replay"),
+		Replay.RuntimeEnvelope,
+		AfterSuccess,
+		Session.GetStateSnapshot());
 
 	FMatchPlayAuthoritativeSession MismatchSession;
 	FReachabilityTrace MismatchTrace;
@@ -3586,6 +4386,12 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 		Mismatch.MarkerResult.LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackMarkerSelectionErrorCode
 			::MarkerNotInCarrierPhysicalArea);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Physical mismatch marker"),
+		Mismatch.RuntimeEnvelope,
+		MismatchTrace.FinalState,
+		MismatchSession.GetStateSnapshot());
 	return true;
 }
 
@@ -3598,8 +4404,11 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerDeterminismTest::RunTest(
 {
 	using namespace MatchPlayAuthoritativeSessionTests;
 	TArray<FMatchPlayAuthoritativeSubmitMarkerResult> Successes;
+	TArray<FMatchPlayAuthoritativeSubmitMarkerResult> WrongSides;
 	TArray<FMatchPlayAuthoritativeSubmitMarkerResult> Replays;
-	TArray<FMatchPlayState> Finals;
+	TArray<FMatchPlayState> WrongSideFinals;
+	TArray<FMatchPlayState> SuccessFinals;
+	TArray<FMatchPlayState> ReplayFinals;
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
 		FMatchPlayAuthoritativeSession Session;
@@ -3613,21 +4422,57 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerDeterminismTest::RunTest(
 				Trace));
 		FName MarkerCardId;
 		FindLegalMarker(Session.GetStateSnapshot(), Trace.DefendingSide, MarkerCardId);
-		const auto Request = MakeMarkerRequest(Trace, MarkerCardId);
+		auto Request = MakeMarkerRequest(Trace, MarkerCardId);
+		Request.RequestingSide = Trace.AttackingSide;
+		WrongSides.Add(Session.SubmitMarker(Request));
+		WrongSideFinals.Add(Session.GetStateSnapshot());
+		Request.RequestingSide = Trace.DefendingSide;
 		Successes.Add(Session.SubmitMarker(Request));
+		SuccessFinals.Add(Session.GetStateSnapshot());
 		Replays.Add(Session.SubmitMarker(Request));
-		Finals.Add(Session.GetStateSnapshot());
+		ReplayFinals.Add(Session.GetStateSnapshot());
 	}
 	for (int32 Index = 1; Index < 3; ++Index)
 	{
 		TestTrue(TEXT("Marker success deterministic"),
 			AreAuthoritativeSubmitMarkerResultsEqual(
 				Successes[0], Successes[Index]));
+		TestTrue(TEXT("Marker success envelope deterministic"),
+			AreEnvelopesEqual(
+				Successes[0].RuntimeEnvelope,
+				Successes[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Marker success nested deterministic"),
+			AreMarkerWriterResultsEqual(
+				Successes[0].MarkerResult,
+				Successes[Index].MarkerResult));
+		TestTrue(TEXT("Wrong-side marker deterministic"),
+			AreAuthoritativeSubmitMarkerResultsEqual(
+				WrongSides[0], WrongSides[Index]));
+		TestTrue(TEXT("Wrong-side marker envelope deterministic"),
+			AreEnvelopesEqual(
+				WrongSides[0].RuntimeEnvelope,
+				WrongSides[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Wrong-side marker nested deterministic"),
+			AreMarkerWriterResultsEqual(
+				WrongSides[0].MarkerResult,
+				WrongSides[Index].MarkerResult));
 		TestTrue(TEXT("Marker replay deterministic"),
 			AreAuthoritativeSubmitMarkerResultsEqual(
 				Replays[0], Replays[Index]));
-		TestTrue(TEXT("Marker final state deterministic"),
-			AreStatesEqual(Finals[0], Finals[Index]));
+		TestTrue(TEXT("Marker replay envelope deterministic"),
+			AreEnvelopesEqual(
+				Replays[0].RuntimeEnvelope,
+				Replays[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Marker replay nested deterministic"),
+			AreMarkerWriterResultsEqual(
+				Replays[0].MarkerResult,
+				Replays[Index].MarkerResult));
+		TestTrue(TEXT("Wrong-side marker final state deterministic"),
+			AreStatesEqual(WrongSideFinals[0], WrongSideFinals[Index]));
+		TestTrue(TEXT("Marker success final state deterministic"),
+			AreStatesEqual(SuccessFinals[0], SuccessFinals[Index]));
+		TestTrue(TEXT("Marker replay final state deterministic"),
+			AreStatesEqual(ReplayFinals[0], ReplayFinals[Index]));
 	}
 
 	FMatchPlayAuthoritativeSession SessionA;
@@ -3644,6 +4489,12 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerDeterminismTest::RunTest(
 	SessionA.SubmitMarker(MakeMarkerRequest(TraceA, MarkerA));
 	TestTrue(TEXT("Marker session A cannot mutate session B"),
 		AreStatesEqual(BBefore, SessionB.GetStateSnapshot()));
+	const FMatchPlayState AAfter = SessionA.GetStateSnapshot();
+	FName MarkerB;
+	FindLegalMarker(SessionB.GetStateSnapshot(), TraceB.DefendingSide, MarkerB);
+	SessionB.SubmitMarker(MakeMarkerRequest(TraceB, MarkerB));
+	TestTrue(TEXT("Marker session B cannot mutate session A"),
+		AreStatesEqual(AAfter, SessionA.GetStateSnapshot()));
 	return true;
 }
 
@@ -3692,6 +4543,29 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalMarkerTest::RunTest(
 		NoLegalSession.GetStateSnapshot().bHasCurrentAttack);
 	TestTrue(TEXT("No-legal marker advances from prior state"),
 		!AreStatesEqual(Before, NoLegalSession.GetStateSnapshot()));
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("No-legal marker completion"),
+		Success.RuntimeEnvelope,
+		Before,
+		Success.ResolutionResult.AfterState,
+		NoLegalSession.GetStateSnapshot());
+	TestCompletedAttackEndpoint(
+		*this,
+		TEXT("No-legal marker completion"),
+		Success.ResolutionResult.CompletionResult,
+		NoLegalSession.GetStateSnapshot());
+	const FMatchPlayState CompletedState = NoLegalSession.GetStateSnapshot();
+	const auto Replay = NoLegalSession.ResolveNoLegalMarker();
+	TestEqual(TEXT("No-legal marker replay exact first error"),
+		Replay.ResolutionResult.ErrorCode,
+		EMatchPlayResolveNoLegalMarkerErrorCode::NoCurrentAttack);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No-legal marker replay"),
+		Replay.RuntimeEnvelope,
+		CompletedState,
+		NoLegalSession.GetStateSnapshot());
 
 	FMatchPlayAuthoritativeSession LegalSession;
 	FReachabilityTrace LegalTrace;
@@ -3702,8 +4576,12 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalMarkerTest::RunTest(
 	TestEqual(TEXT("Legal marker blocks system path exactly"),
 		Rejected.ResolutionResult.ErrorCode,
 		EMatchPlayResolveNoLegalMarkerErrorCode::LegalMarkerExists);
-	TestTrue(TEXT("Rejected system marker unchanged"),
-		AreStatesEqual(LegalBefore, LegalSession.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Legal marker blocks no-legal command"),
+		Rejected.RuntimeEnvelope,
+		LegalBefore,
+		LegalSession.GetStateSnapshot());
 	return true;
 }
 
@@ -3728,8 +4606,12 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 		Wrong.DeclineResult.ErrorCode,
 		EMatchPlayMarkerDeclineErrorCode
 			::RequestingSideIsNotCurrentDefender);
-	TestTrue(TEXT("Wrong-side decline marker unchanged"),
-		AreStatesEqual(Before, Session.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Wrong-side decline marker"),
+		Wrong.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
 
 	FMatchPlayAuthoritativeDeclineMarkerRequest Request;
 	Request.RequestingSide = Trace.DefendingSide;
@@ -3747,6 +4629,18 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 	TestTrue(TEXT("Marker decline completes attack"),
 		Success.DeclineResult.CompletionResult.bSuccess
 			&& !Session.GetStateSnapshot().bHasCurrentAttack);
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("Marker decline completion"),
+		Success.RuntimeEnvelope,
+		Before,
+		Success.DeclineResult.AfterState,
+		Session.GetStateSnapshot());
+	TestCompletedAttackEndpoint(
+		*this,
+		TEXT("Marker decline completion"),
+		Success.DeclineResult.CompletionResult,
+		Session.GetStateSnapshot());
 
 	FMatchPlayAuthoritativeSession NoLegalSession;
 	FReachabilityTrace NoLegalTrace;
@@ -3758,6 +4652,36 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 	TestEqual(TEXT("No-legal marker cannot decline exactly"),
 		NoLegal.DeclineResult.ErrorCode,
 		EMatchPlayMarkerDeclineErrorCode::NoLegalMarkerToDecline);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No-legal marker cannot decline"),
+		NoLegal.RuntimeEnvelope,
+		NoLegalTrace.FinalState,
+		NoLegalSession.GetStateSnapshot());
+
+	FMatchPlayAuthoritativeSession WrongStageSession;
+	FReachabilityTrace WrongStageTrace;
+	FMatchPlayAuthoritativeSubmitMarkerResult WrongStageMarker;
+	BuildFoundationBToAwaitingSkill(
+		WrongStageSession,
+		TEXT("MarkerDeclineWrongStage"),
+		{},
+		WrongStageTrace,
+		WrongStageMarker);
+	FMatchPlayAuthoritativeDeclineMarkerRequest WrongStageRequest;
+	WrongStageRequest.RequestingSide = WrongStageTrace.DefendingSide;
+	const FMatchPlayState WrongStageBefore =
+		WrongStageSession.GetStateSnapshot();
+	const auto WrongStage = WrongStageSession.DeclineMarker(WrongStageRequest);
+	TestEqual(TEXT("Marker decline wrong-stage exact error"),
+		WrongStage.DeclineResult.ErrorCode,
+		EMatchPlayMarkerDeclineErrorCode::WrongSelectionStage);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Marker decline wrong-stage"),
+		WrongStage.RuntimeEnvelope,
+		WrongStageBefore,
+		WrongStageSession.GetStateSnapshot());
 	return true;
 }
 
@@ -3771,6 +4695,8 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 	using namespace MatchPlayAuthoritativeSessionTests;
 	TArray<FMatchPlayAuthoritativeResolveNoLegalMarkerResult> Resolves;
 	TArray<FMatchPlayAuthoritativeDeclineMarkerResult> Declines;
+	TArray<FMatchPlayState> ResolveFinals;
+	TArray<FMatchPlayState> DeclineFinals;
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
 		FMatchPlayAuthoritativeSession ResolveSession;
@@ -3778,6 +4704,7 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 		BuildFoundationBToAwaitingMarker(
 			ResolveSession, TEXT("MarkerCompleteResolve"), false, {}, ResolveTrace);
 		Resolves.Add(ResolveSession.ResolveNoLegalMarker());
+		ResolveFinals.Add(ResolveSession.GetStateSnapshot());
 
 		FMatchPlayAuthoritativeSession DeclineSession;
 		FReachabilityTrace DeclineTrace;
@@ -3786,20 +4713,91 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 		FMatchPlayAuthoritativeDeclineMarkerRequest Request;
 		Request.RequestingSide = DeclineTrace.DefendingSide;
 		Declines.Add(DeclineSession.DeclineMarker(Request));
+		DeclineFinals.Add(DeclineSession.GetStateSnapshot());
 	}
 	for (int32 Index = 1; Index < 3; ++Index)
 	{
 		TestTrue(TEXT("No-legal marker completion deterministic"),
 			AreAuthoritativeResolveNoLegalMarkerResultsEqual(
 				Resolves[0], Resolves[Index]));
+		TestTrue(TEXT("No-legal marker envelope deterministic"),
+			AreEnvelopesEqual(
+				Resolves[0].RuntimeEnvelope,
+				Resolves[Index].RuntimeEnvelope));
+		TestTrue(TEXT("No-legal marker nested deterministic"),
+			AreReflectedValuesEqual(
+				Resolves[0].ResolutionResult,
+				Resolves[Index].ResolutionResult)
+			&& AreMarkerAvailabilityResultsEqual(
+				Resolves[0].ResolutionResult.MarkerAvailabilityResult,
+				Resolves[Index].ResolutionResult.MarkerAvailabilityResult)
+			&& AreCompletionResultsEqual(
+				Resolves[0].ResolutionResult.CompletionResult,
+				Resolves[Index].ResolutionResult.CompletionResult));
 		TestTrue(TEXT("Decline marker completion deterministic"),
 			AreAuthoritativeDeclineMarkerResultsEqual(
 				Declines[0], Declines[Index]));
+		TestTrue(TEXT("Decline marker envelope deterministic"),
+			AreEnvelopesEqual(
+				Declines[0].RuntimeEnvelope,
+				Declines[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Decline marker nested deterministic"),
+			AreReflectedValuesEqual(
+				Declines[0].DeclineResult,
+				Declines[Index].DeclineResult)
+			&& AreMarkerAvailabilityResultsEqual(
+				Declines[0].DeclineResult.MarkerAvailabilityResult,
+				Declines[Index].DeclineResult.MarkerAvailabilityResult)
+			&& AreCompletionResultsEqual(
+				Declines[0].DeclineResult.CompletionResult,
+				Declines[Index].DeclineResult.CompletionResult));
+		TestTrue(TEXT("No-legal marker final state deterministic"),
+			AreStatesEqual(ResolveFinals[0], ResolveFinals[Index]));
+		TestTrue(TEXT("Decline marker final state deterministic"),
+			AreStatesEqual(DeclineFinals[0], DeclineFinals[Index]));
 	}
 	TestFalse(TEXT("No-legal and decline provenance stay distinct"),
 		Resolves[0].ResolutionResult.Source
 			== static_cast<EMatchPlayMarkerNoSelectionGoalSource>(
 				Declines[0].DeclineResult.Source));
+
+	FMatchPlayAuthoritativeSession ResolveA;
+	FMatchPlayAuthoritativeSession ResolveB;
+	FReachabilityTrace ResolveTraceA;
+	FReachabilityTrace ResolveTraceB;
+	BuildFoundationBToAwaitingMarker(
+		ResolveA, TEXT("MarkerResolveIsoA"), false, {}, ResolveTraceA);
+	BuildFoundationBToAwaitingMarker(
+		ResolveB, TEXT("MarkerResolveIsoB"), false, {}, ResolveTraceB);
+	const FMatchPlayState ResolveBBefore = ResolveB.GetStateSnapshot();
+	ResolveA.ResolveNoLegalMarker();
+	TestTrue(TEXT("Marker NoLegal A cannot mutate B"),
+		AreStatesEqual(ResolveBBefore, ResolveB.GetStateSnapshot()));
+	const FMatchPlayState ResolveAAfter = ResolveA.GetStateSnapshot();
+	ResolveB.ResolveNoLegalMarker();
+	TestTrue(TEXT("Marker NoLegal B cannot mutate A"),
+		AreStatesEqual(ResolveAAfter, ResolveA.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeSession DeclineA;
+	FMatchPlayAuthoritativeSession DeclineB;
+	FReachabilityTrace DeclineTraceA;
+	FReachabilityTrace DeclineTraceB;
+	BuildFoundationBToAwaitingMarker(
+		DeclineA, TEXT("MarkerDeclineIsoA"), true, {}, DeclineTraceA);
+	BuildFoundationBToAwaitingMarker(
+		DeclineB, TEXT("MarkerDeclineIsoB"), true, {}, DeclineTraceB);
+	FMatchPlayAuthoritativeDeclineMarkerRequest DeclineRequestA;
+	DeclineRequestA.RequestingSide = DeclineTraceA.DefendingSide;
+	FMatchPlayAuthoritativeDeclineMarkerRequest DeclineRequestB;
+	DeclineRequestB.RequestingSide = DeclineTraceB.DefendingSide;
+	const FMatchPlayState DeclineBBefore = DeclineB.GetStateSnapshot();
+	DeclineA.DeclineMarker(DeclineRequestA);
+	TestTrue(TEXT("Marker decline A cannot mutate B"),
+		AreStatesEqual(DeclineBBefore, DeclineB.GetStateSnapshot()));
+	const FMatchPlayState DeclineAAfter = DeclineA.GetStateSnapshot();
+	DeclineB.DeclineMarker(DeclineRequestB);
+	TestTrue(TEXT("Marker decline B cannot mutate A"),
+		AreStatesEqual(DeclineAAfter, DeclineA.GetStateSnapshot()));
 	return true;
 }
 
@@ -3838,22 +4836,31 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFiveActionTest::RunTest(
 
 	for (const FCase& Case : Cases)
 	{
-		FMatchPlayAuthoritativeSession Session;
-		FReachabilityTrace Trace;
-		FMatchPlayAuthoritativeSubmitMarkerResult Marker;
-		TestTrue(*FString::Printf(TEXT("%s reaches AwaitingSkill"), Case.Suffix),
-			BuildFoundationBToAwaitingSkill(
-				Session,
-				FString::Printf(TEXT("SkillMatrix%s"), Case.Suffix),
-				{Case.SkillId},
-				Trace,
-				Marker));
-		FMatchPlayAuthoritativeSubmitSkillRequest Request;
-		Request.RequestingSide = Trace.AttackingSide;
-		Request.SkillId = Case.SkillId;
-		const FSkillRuleSnapshotSet Rules =
-			MakeSkillRuleSet(Case.SkillId, Case.SkillType);
-		const auto Result = Session.SubmitSkill(Rules, Request);
+		TArray<FMatchPlayAuthoritativeSubmitSkillResult> Results;
+		TArray<FMatchPlayState> BeforeStates;
+		TArray<FMatchPlayState> FinalStates;
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			FMatchPlayAuthoritativeSession Session;
+			FReachabilityTrace Trace;
+			FMatchPlayAuthoritativeSubmitMarkerResult Marker;
+			TestTrue(*FString::Printf(TEXT("%s reaches AwaitingSkill"), Case.Suffix),
+				BuildFoundationBToAwaitingSkill(
+					Session,
+					FString::Printf(TEXT("SkillMatrix%s"), Case.Suffix),
+					{Case.SkillId},
+					Trace,
+					Marker));
+			FMatchPlayAuthoritativeSubmitSkillRequest Request;
+			Request.RequestingSide = Trace.AttackingSide;
+			Request.SkillId = Case.SkillId;
+			const FSkillRuleSnapshotSet Rules =
+				MakeSkillRuleSet(Case.SkillId, Case.SkillType);
+			BeforeStates.Add(Session.GetStateSnapshot());
+			Results.Add(Session.SubmitSkill(Rules, Request));
+			FinalStates.Add(Session.GetStateSnapshot());
+		}
+		const auto& Result = Results[0];
 		TestTrue(*FString::Printf(TEXT("%s submit succeeds"), Case.Suffix),
 			Result.SkillResult.bSuccess);
 		TestEqual(*FString::Printf(TEXT("%s exact selected ID"), Case.Suffix),
@@ -3863,13 +4870,67 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFiveActionTest::RunTest(
 			Result.SkillResult.SelectedActionType,
 			Case.SkillType);
 		TestEqual(*FString::Printf(TEXT("%s exact next stage"), Case.Suffix),
-			Session.GetStateSnapshot().CurrentAttack.SelectionStage,
+			FinalStates[0].CurrentAttack.SelectionStage,
 			Case.ExpectedStage);
 		TestTrue(*FString::Printf(TEXT("%s exact AfterState adopted"), Case.Suffix),
 			AreStatesEqual(
 				Result.SkillResult.AfterState,
-				Session.GetStateSnapshot()));
+				FinalStates[0]));
+		TestSubmittedSkillEndpoint(
+			*this,
+			FString::Printf(TEXT("%s full post-state"), Case.Suffix),
+			BeforeStates[0],
+			FinalStates[0],
+			Case.SkillId,
+			Case.SkillType,
+			Case.ExpectedStage);
+		for (int32 Index = 1; Index < 3; ++Index)
+		{
+			TestTrue(*FString::Printf(TEXT("%s full result deterministic"), Case.Suffix),
+				AreAuthoritativeSubmitSkillResultsEqual(Results[0], Results[Index]));
+			TestTrue(*FString::Printf(TEXT("%s envelope deterministic"), Case.Suffix),
+				AreEnvelopesEqual(
+					Results[0].RuntimeEnvelope,
+					Results[Index].RuntimeEnvelope));
+			TestTrue(*FString::Printf(TEXT("%s nested deterministic"), Case.Suffix),
+				AreSkillWriterResultsEqual(
+					Results[0].SkillResult,
+					Results[Index].SkillResult));
+			TestTrue(*FString::Printf(TEXT("%s final state deterministic"), Case.Suffix),
+				AreStatesEqual(FinalStates[0], FinalStates[Index]));
+		}
 	}
+
+	const FName BranchSkillId(TEXT("Skill.FoundationB.Isolation.LongShot"));
+	const FName RunnerSkillId(TEXT("Skill.FoundationB.Isolation.Cross"));
+	FMatchPlayAuthoritativeSession SessionA;
+	FMatchPlayAuthoritativeSession SessionB;
+	FReachabilityTrace TraceA;
+	FReachabilityTrace TraceB;
+	FMatchPlayAuthoritativeSubmitMarkerResult MarkerA;
+	FMatchPlayAuthoritativeSubmitMarkerResult MarkerB;
+	BuildFoundationBToAwaitingSkill(
+		SessionA, TEXT("SkillIsolationA"), {BranchSkillId}, TraceA, MarkerA);
+	BuildFoundationBToAwaitingSkill(
+		SessionB, TEXT("SkillIsolationB"), {RunnerSkillId}, TraceB, MarkerB);
+	FMatchPlayAuthoritativeSubmitSkillRequest RequestA;
+	RequestA.RequestingSide = TraceA.AttackingSide;
+	RequestA.SkillId = BranchSkillId;
+	FMatchPlayAuthoritativeSubmitSkillRequest RequestB;
+	RequestB.RequestingSide = TraceB.AttackingSide;
+	RequestB.SkillId = RunnerSkillId;
+	const FMatchPlayState BBefore = SessionB.GetStateSnapshot();
+	SessionA.SubmitSkill(
+		MakeSkillRuleSet(BranchSkillId, ESkillRuleType::LongShot),
+		RequestA);
+	TestTrue(TEXT("Branch-intent skill A cannot mutate runner skill B"),
+		AreStatesEqual(BBefore, SessionB.GetStateSnapshot()));
+	const FMatchPlayState AAfter = SessionA.GetStateSnapshot();
+	SessionB.SubmitSkill(
+		MakeSkillRuleSet(RunnerSkillId, ESkillRuleType::Cross),
+		RequestB);
+	TestTrue(TEXT("Runner skill B cannot mutate branch-intent skill A"),
+		AreStatesEqual(AAfter, SessionA.GetStateSnapshot()));
 	return true;
 }
 
@@ -3891,6 +4952,8 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFailuresTest::RunTest(
 		FMatchPlayAuthoritativeSession().SubmitSkill(Rules, Request);
 	TestFalse(TEXT("Uninitialized skill rejected by runtime"),
 		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestFalse(TEXT("Uninitialized skill domain not called"),
+		Uninitialized.SkillResult.bSuccess);
 
 	FMatchPlayAuthoritativeSession EarlySession;
 	FReachabilityTrace EarlyTrace;
@@ -3902,8 +4965,12 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFailuresTest::RunTest(
 	TestEqual(TEXT("Pre-AwaitingSkill exact error"),
 		Early.SkillResult.LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackSkillSelectionErrorCode::WrongSelectionStage);
-	TestTrue(TEXT("Pre-AwaitingSkill state unchanged"),
-		AreStatesEqual(EarlyBefore, EarlySession.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Pre-AwaitingSkill"),
+		Early.RuntimeEnvelope,
+		EarlyBefore,
+		EarlySession.GetStateSnapshot());
 
 	FMatchPlayAuthoritativeSession Session;
 	FReachabilityTrace Trace;
@@ -3922,8 +4989,12 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFailuresTest::RunTest(
 		WrongSide.SkillResult.LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackSkillSelectionErrorCode
 			::RequestingSideIsNotCurrentAttacker);
-	TestTrue(TEXT("Wrong-side skill state unchanged"),
-		AreStatesEqual(Before, Session.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Wrong-side skill"),
+		WrongSide.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
 
 	Request.RequestingSide = Trace.AttackingSide;
 	FSkillRuleSnapshotSet EmptyRules;
@@ -3931,8 +5002,74 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFailuresTest::RunTest(
 	TestEqual(TEXT("Unavailable rule exact error"),
 		MissingRule.SkillResult.LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackSkillSelectionErrorCode::SkillRuleNotFound);
-	TestTrue(TEXT("Unavailable rule state unchanged"),
-		AreStatesEqual(Before, Session.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Missing skill rule"),
+		MissingRule.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
+
+	FSkillRuleSnapshotSet InvalidRules = Rules;
+	InvalidRules.SkillRules[0].MinTriggerActionPoint = 8;
+	InvalidRules.SkillRules[0].MaxTriggerActionPoint = 2;
+	const auto InvalidRule = Session.SubmitSkill(InvalidRules, Request);
+	TestEqual(TEXT("Invalid rule set exact error"),
+		InvalidRule.SkillResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackSkillSelectionErrorCode::InvalidSkillRuleSet);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Invalid skill rule set"),
+		InvalidRule.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
+
+	const FName UnownedSkillId(TEXT("Skill.FoundationB.Unowned"));
+	FMatchPlayAuthoritativeSubmitSkillRequest UnownedRequest = Request;
+	UnownedRequest.SkillId = UnownedSkillId;
+	const auto Unowned = Session.SubmitSkill(
+		MakeSkillRuleSet(UnownedSkillId, ESkillRuleType::LongShot),
+		UnownedRequest);
+	TestEqual(TEXT("Unowned skill exact error"),
+		Unowned.SkillResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackSkillSelectionErrorCode::CarrierDoesNotOwnSkill);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Carrier does not own skill"),
+		Unowned.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
+
+	FSkillRuleSnapshotSet OutsideRangeRules = Rules;
+	OutsideRangeRules.SkillRules[0].MinTriggerActionPoint = 7;
+	OutsideRangeRules.SkillRules[0].MaxTriggerActionPoint = 8;
+	const auto OutsideRange = Session.SubmitSkill(OutsideRangeRules, Request);
+	TestEqual(TEXT("Unavailable trigger range exact error"),
+		OutsideRange.SkillResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackSkillSelectionErrorCode::ActionPointOutsideSkillRange);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Unavailable skill trigger range"),
+		OutsideRange.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
+
+	for (const ESkillRuleType SupportedType : {
+		ESkillRuleType::LongShot,
+		ESkillRuleType::CutInsideShot,
+		ESkillRuleType::Cross,
+		ESkillRuleType::PassControl,
+		ESkillRuleType::ThroughBall})
+	{
+		TestTrue(TEXT("Every snapshot-valid skill has participant requirements"),
+			FMatchPlaySkillParticipantRequirementQuery::Query(SupportedType).bSuccess);
+	}
+	const auto UnsupportedParticipant =
+		FMatchPlaySkillParticipantRequirementQuery::Query(ESkillRuleType::None);
+	TestFalse(TEXT("Unsupported participant type is rejected"),
+		UnsupportedParticipant.bSuccess);
+	TestEqual(TEXT("Unsupported participant exact error"),
+		UnsupportedParticipant.ErrorCode,
+		EMatchPlaySkillParticipantRequirementErrorCode::UnsupportedSkillRuleType);
 
 	const auto Success = Session.SubmitSkill(Rules, Request);
 	TestTrue(TEXT("Valid skill succeeds after failures"),
@@ -3942,8 +5079,69 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFailuresTest::RunTest(
 	TestEqual(TEXT("Skill replay exact stage error"),
 		Replay.SkillResult.LegalityResult.ErrorCode,
 		EMatchPlayCurrentAttackSkillSelectionErrorCode::WrongSelectionStage);
-	TestTrue(TEXT("Skill replay unchanged"),
-		AreStatesEqual(After, Session.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Skill replay"),
+		Replay.RuntimeEnvelope,
+		After,
+		Session.GetStateSnapshot());
+
+	TArray<FMatchPlayAuthoritativeSubmitSkillResult> WrongSideResults;
+	TArray<FMatchPlayAuthoritativeSubmitSkillResult> ReplayResults;
+	TArray<FMatchPlayState> WrongSideFinals;
+	TArray<FMatchPlayState> ReplayFinals;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FMatchPlayAuthoritativeSession DeterministicSession;
+		FReachabilityTrace DeterministicTrace;
+		FMatchPlayAuthoritativeSubmitMarkerResult DeterministicMarker;
+		BuildFoundationBToAwaitingSkill(
+			DeterministicSession,
+			TEXT("SkillFailureDeterminism"),
+			{SkillId},
+			DeterministicTrace,
+			DeterministicMarker);
+		FMatchPlayAuthoritativeSubmitSkillRequest DeterministicRequest;
+		DeterministicRequest.RequestingSide = DeterministicTrace.DefendingSide;
+		DeterministicRequest.SkillId = SkillId;
+		WrongSideResults.Add(
+			DeterministicSession.SubmitSkill(Rules, DeterministicRequest));
+		WrongSideFinals.Add(DeterministicSession.GetStateSnapshot());
+		DeterministicRequest.RequestingSide = DeterministicTrace.AttackingSide;
+		DeterministicSession.SubmitSkill(Rules, DeterministicRequest);
+		ReplayResults.Add(
+			DeterministicSession.SubmitSkill(Rules, DeterministicRequest));
+		ReplayFinals.Add(DeterministicSession.GetStateSnapshot());
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("Wrong-side skill full result deterministic"),
+			AreAuthoritativeSubmitSkillResultsEqual(
+				WrongSideResults[0], WrongSideResults[Index]));
+		TestTrue(TEXT("Wrong-side skill envelope deterministic"),
+			AreEnvelopesEqual(
+				WrongSideResults[0].RuntimeEnvelope,
+				WrongSideResults[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Wrong-side skill nested deterministic"),
+			AreSkillWriterResultsEqual(
+				WrongSideResults[0].SkillResult,
+				WrongSideResults[Index].SkillResult));
+		TestTrue(TEXT("Wrong-side skill final state deterministic"),
+			AreStatesEqual(WrongSideFinals[0], WrongSideFinals[Index]));
+		TestTrue(TEXT("Skill replay full result deterministic"),
+			AreAuthoritativeSubmitSkillResultsEqual(
+				ReplayResults[0], ReplayResults[Index]));
+		TestTrue(TEXT("Skill replay envelope deterministic"),
+			AreEnvelopesEqual(
+				ReplayResults[0].RuntimeEnvelope,
+				ReplayResults[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Skill replay nested deterministic"),
+			AreSkillWriterResultsEqual(
+				ReplayResults[0].SkillResult,
+				ReplayResults[Index].SkillResult));
+		TestTrue(TEXT("Skill replay final state deterministic"),
+			AreStatesEqual(ReplayFinals[0], ReplayFinals[Index]));
+	}
 	return true;
 }
 
@@ -3971,6 +5169,7 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalSkillTest::RunTest(
 			{},
 			Trace,
 			Marker));
+	const FMatchPlayState Before = Session.GetStateSnapshot();
 	const auto Success = Session.ResolveNoLegalSkill(EmptyRules);
 	TestTrue(TEXT("No-legal skill resolves"),
 		Success.ResolutionResult.bSuccess);
@@ -3988,6 +5187,29 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalSkillTest::RunTest(
 			Session.GetStateSnapshot()));
 	TestFalse(TEXT("No-legal skill completes current attack"),
 		Session.GetStateSnapshot().bHasCurrentAttack);
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("No-legal skill completion"),
+		Success.RuntimeEnvelope,
+		Before,
+		Success.ResolutionResult.AfterState,
+		Session.GetStateSnapshot());
+	TestCompletedAttackEndpoint(
+		*this,
+		TEXT("No-legal skill completion"),
+		Success.ResolutionResult.CompletionResult,
+		Session.GetStateSnapshot());
+	const FMatchPlayState CompletedState = Session.GetStateSnapshot();
+	const auto Replay = Session.ResolveNoLegalSkill(EmptyRules);
+	TestEqual(TEXT("No-legal skill replay exact first error"),
+		Replay.ResolutionResult.ErrorCode,
+		EMatchPlaySkillNoSelectionNoGoalErrorCode::NoCurrentAttack);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No-legal skill replay"),
+		Replay.RuntimeEnvelope,
+		CompletedState,
+		Session.GetStateSnapshot());
 
 	const FName LegalId(TEXT("Skill.FoundationB.NoLegalGuard"));
 	const auto LegalRules = MakeSkillRuleSet(LegalId, ESkillRuleType::LongShot);
@@ -4005,8 +5227,12 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalSkillTest::RunTest(
 	TestEqual(TEXT("Legal skill blocks system path exactly"),
 		Rejected.ResolutionResult.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode::LegalSkillExists);
-	TestTrue(TEXT("Rejected no-legal skill unchanged"),
-		AreStatesEqual(LegalBefore, LegalSession.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Legal skill blocks no-legal command"),
+		Rejected.RuntimeEnvelope,
+		LegalBefore,
+		LegalSession.GetStateSnapshot());
 	return true;
 }
 
@@ -4034,8 +5260,12 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		Wrong.DeclineResult.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode
 			::RequestingSideIsNotCurrentAttacker);
-	TestTrue(TEXT("Wrong-side skill decline unchanged"),
-		AreStatesEqual(Before, Session.GetStateSnapshot()));
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Wrong-side skill decline"),
+		Wrong.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
 
 	Request.RequestingSide = Trace.AttackingSide;
 	const auto Success = Session.DeclineSkill(Rules, Request);
@@ -4051,6 +5281,18 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		EMatchPlaySkillNoSelectionNoGoalReason::SkillDeclined);
 	TestFalse(TEXT("Skill decline completes current attack"),
 		Session.GetStateSnapshot().bHasCurrentAttack);
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("Skill decline completion"),
+		Success.RuntimeEnvelope,
+		Before,
+		Success.DeclineResult.AfterState,
+		Session.GetStateSnapshot());
+	TestCompletedAttackEndpoint(
+		*this,
+		TEXT("Skill decline completion"),
+		Success.DeclineResult.CompletionResult,
+		Session.GetStateSnapshot());
 
 	FSkillRuleSnapshotSet EmptyRules;
 	FMatchPlayAuthoritativeSession NoLegalSession;
@@ -4064,12 +5306,44 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		NoLegalMarker);
 	FMatchPlayAuthoritativeDeclineSkillRequest NoLegalRequest;
 	NoLegalRequest.RequestingSide = NoLegalTrace.AttackingSide;
+	const FMatchPlayState NoLegalBefore = NoLegalSession.GetStateSnapshot();
 	const auto NoLegal = NoLegalSession.DeclineSkill(
 		EmptyRules,
 		NoLegalRequest);
 	TestEqual(TEXT("No-legal skill cannot decline exactly"),
 		NoLegal.DeclineResult.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode::NoLegalSkillToDecline);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No-legal skill cannot decline"),
+		NoLegal.RuntimeEnvelope,
+		NoLegalBefore,
+		NoLegalSession.GetStateSnapshot());
+
+	FMatchPlayAuthoritativeSession WrongStageSession;
+	FReachabilityTrace WrongStageTrace;
+	BuildFoundationBToAwaitingMarker(
+		WrongStageSession,
+		TEXT("SkillDeclineWrongStage"),
+		true,
+		{SkillId},
+		WrongStageTrace);
+	FMatchPlayAuthoritativeDeclineSkillRequest WrongStageRequest;
+	WrongStageRequest.RequestingSide = WrongStageTrace.AttackingSide;
+	const FMatchPlayState WrongStageBefore =
+		WrongStageSession.GetStateSnapshot();
+	const auto WrongStage = WrongStageSession.DeclineSkill(
+		Rules,
+		WrongStageRequest);
+	TestEqual(TEXT("Skill decline wrong-stage exact error"),
+		WrongStage.DeclineResult.ErrorCode,
+		EMatchPlaySkillNoSelectionNoGoalErrorCode::WrongSelectionStage);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Skill decline wrong-stage"),
+		WrongStage.RuntimeEnvelope,
+		WrongStageBefore,
+		WrongStageSession.GetStateSnapshot());
 	return true;
 }
 
@@ -4086,6 +5360,8 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 	FSkillRuleSnapshotSet EmptyRules;
 	TArray<FMatchPlayAuthoritativeResolveNoLegalSkillResult> Resolves;
 	TArray<FMatchPlayAuthoritativeDeclineSkillResult> Declines;
+	TArray<FMatchPlayState> ResolveFinals;
+	TArray<FMatchPlayState> DeclineFinals;
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
 		FMatchPlayAuthoritativeSession ResolveSession;
@@ -4098,6 +5374,7 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 			ResolveTrace,
 			ResolveMarker);
 		Resolves.Add(ResolveSession.ResolveNoLegalSkill(EmptyRules));
+		ResolveFinals.Add(ResolveSession.GetStateSnapshot());
 
 		FMatchPlayAuthoritativeSession DeclineSession;
 		FReachabilityTrace DeclineTrace;
@@ -4111,15 +5388,48 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 		FMatchPlayAuthoritativeDeclineSkillRequest Request;
 		Request.RequestingSide = DeclineTrace.AttackingSide;
 		Declines.Add(DeclineSession.DeclineSkill(Rules, Request));
+		DeclineFinals.Add(DeclineSession.GetStateSnapshot());
 	}
 	for (int32 Index = 1; Index < 3; ++Index)
 	{
 		TestTrue(TEXT("No-legal skill completion deterministic"),
 			AreAuthoritativeResolveNoLegalSkillResultsEqual(
 				Resolves[0], Resolves[Index]));
+		TestTrue(TEXT("No-legal skill envelope deterministic"),
+			AreEnvelopesEqual(
+				Resolves[0].RuntimeEnvelope,
+				Resolves[Index].RuntimeEnvelope));
+		TestTrue(TEXT("No-legal skill nested deterministic"),
+			AreReflectedValuesEqual(
+				Resolves[0].ResolutionResult,
+				Resolves[Index].ResolutionResult)
+			&& AreSkillAvailabilityResultsEqual(
+				Resolves[0].ResolutionResult.SkillAvailabilityResult,
+				Resolves[Index].ResolutionResult.SkillAvailabilityResult)
+			&& AreCompletionResultsEqual(
+				Resolves[0].ResolutionResult.CompletionResult,
+				Resolves[Index].ResolutionResult.CompletionResult));
 		TestTrue(TEXT("Decline skill completion deterministic"),
 			AreAuthoritativeDeclineSkillResultsEqual(
 				Declines[0], Declines[Index]));
+		TestTrue(TEXT("Decline skill envelope deterministic"),
+			AreEnvelopesEqual(
+				Declines[0].RuntimeEnvelope,
+				Declines[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Decline skill nested deterministic"),
+			AreReflectedValuesEqual(
+				Declines[0].DeclineResult,
+				Declines[Index].DeclineResult)
+			&& AreSkillAvailabilityResultsEqual(
+				Declines[0].DeclineResult.SkillAvailabilityResult,
+				Declines[Index].DeclineResult.SkillAvailabilityResult)
+			&& AreCompletionResultsEqual(
+				Declines[0].DeclineResult.CompletionResult,
+				Declines[Index].DeclineResult.CompletionResult));
+		TestTrue(TEXT("No-legal skill final state deterministic"),
+			AreStatesEqual(ResolveFinals[0], ResolveFinals[Index]));
+		TestTrue(TEXT("Decline skill final state deterministic"),
+			AreStatesEqual(DeclineFinals[0], DeclineFinals[Index]));
 	}
 
 	FMatchPlayAuthoritativeSession SessionA;
@@ -4136,6 +5446,41 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 	SessionA.ResolveNoLegalSkill(EmptyRules);
 	TestTrue(TEXT("Skill completion session isolation"),
 		AreStatesEqual(BBefore, SessionB.GetStateSnapshot()));
+	const FMatchPlayState AAfter = SessionA.GetStateSnapshot();
+	SessionB.ResolveNoLegalSkill(EmptyRules);
+	TestTrue(TEXT("Skill NoLegal B cannot mutate A"),
+		AreStatesEqual(AAfter, SessionA.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeSession DeclineA;
+	FMatchPlayAuthoritativeSession DeclineB;
+	FReachabilityTrace DeclineTraceA;
+	FReachabilityTrace DeclineTraceB;
+	FMatchPlayAuthoritativeSubmitMarkerResult DeclineMarkerA;
+	FMatchPlayAuthoritativeSubmitMarkerResult DeclineMarkerB;
+	BuildFoundationBToAwaitingSkill(
+		DeclineA,
+		TEXT("SkillDeclineIsoA"),
+		{SkillId},
+		DeclineTraceA,
+		DeclineMarkerA);
+	BuildFoundationBToAwaitingSkill(
+		DeclineB,
+		TEXT("SkillDeclineIsoB"),
+		{SkillId},
+		DeclineTraceB,
+		DeclineMarkerB);
+	FMatchPlayAuthoritativeDeclineSkillRequest DeclineRequestA;
+	DeclineRequestA.RequestingSide = DeclineTraceA.AttackingSide;
+	FMatchPlayAuthoritativeDeclineSkillRequest DeclineRequestB;
+	DeclineRequestB.RequestingSide = DeclineTraceB.AttackingSide;
+	const FMatchPlayState DeclineBBefore = DeclineB.GetStateSnapshot();
+	DeclineA.DeclineSkill(Rules, DeclineRequestA);
+	TestTrue(TEXT("Skill decline A cannot mutate B"),
+		AreStatesEqual(DeclineBBefore, DeclineB.GetStateSnapshot()));
+	const FMatchPlayState DeclineAAfter = DeclineA.GetStateSnapshot();
+	DeclineB.DeclineSkill(Rules, DeclineRequestB);
+	TestTrue(TEXT("Skill decline B cannot mutate A"),
+		AreStatesEqual(DeclineAAfter, DeclineA.GetStateSnapshot()));
 	return true;
 }
 
@@ -4162,7 +5507,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 	TestTrue(TEXT("Marker comparator accepts equal baseline"),
 		AreAuthoritativeSubmitMarkerResultsEqual(Marker, Marker));
 	TestEnvelopeMutationCoverage(*this, Marker.RuntimeEnvelope);
-	const int32 MarkerLeafMutations =
+	const FReflectedMutationAudit MarkerMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeSubmitMarkerResult,
 			FMatchPlayCurrentAttackMarkerSelectionWriterResult>(
@@ -4204,7 +5549,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 			MarkerResolve,
 			MarkerResolve));
 	TestEnvelopeMutationCoverage(*this, MarkerResolve.RuntimeEnvelope);
-	const int32 ResolveMarkerLeafMutations =
+	const FReflectedMutationAudit ResolveMarkerMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeResolveNoLegalMarkerResult,
 			FMatchPlayResolveNoLegalMarkerResult>(
@@ -4253,7 +5598,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 			MarkerDecline,
 			MarkerDecline));
 	TestEnvelopeMutationCoverage(*this, MarkerDecline.RuntimeEnvelope);
-	const int32 DeclineMarkerLeafMutations =
+	const FReflectedMutationAudit DeclineMarkerMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeDeclineMarkerResult,
 			FMatchPlayMarkerDeclineResult>(
@@ -4296,7 +5641,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 	TestTrue(TEXT("Skill comparator accepts equal baseline"),
 		AreAuthoritativeSubmitSkillResultsEqual(Skill, Skill));
 	TestEnvelopeMutationCoverage(*this, Skill.RuntimeEnvelope);
-	const int32 SkillLeafMutations =
+	const FReflectedMutationAudit SkillMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeSubmitSkillResult,
 			FMatchPlayCurrentAttackSkillSelectionWriterResult>(
@@ -4340,7 +5685,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 			SkillResolve,
 			SkillResolve));
 	TestEnvelopeMutationCoverage(*this, SkillResolve.RuntimeEnvelope);
-	const int32 ResolveSkillLeafMutations =
+	const FReflectedMutationAudit ResolveSkillMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeResolveNoLegalSkillResult,
 			FMatchPlayResolveNoLegalSkillResult>(
@@ -4383,7 +5728,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 			SkillDecline,
 			SkillDecline));
 	TestEnvelopeMutationCoverage(*this, SkillDecline.RuntimeEnvelope);
-	const int32 DeclineSkillLeafMutations =
+	const FReflectedMutationAudit DeclineSkillMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeDeclineSkillResult,
 			FMatchPlaySkillDeclineResult>(
@@ -4406,14 +5751,187 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		AreAuthoritativeDeclineSkillResultsEqual(
 			SkillDecline,
 			MutatedSkillDecline));
+
+	int32 DeepContainerCases = 0;
+	DeepContainerCases += TestAvailabilityCandidateContainerMutations(
+		*this,
+		TEXT("Resolve marker candidates"),
+		MarkerResolve,
+		[](auto& Value) -> decltype(auto)
+		{
+			return (Value.ResolutionResult.MarkerAvailabilityResult);
+		},
+		[](auto& Candidate, const int32 Index)
+		{
+			Candidate.MarkerCardId = FName(*FString::Printf(
+				TEXT("Canonical.Marker.%d"), Index));
+		},
+		[](auto& Candidate, const int32 Index)
+		{
+			Candidate.LegalityResult.MarkerSnapshotQueryResult.ErrorMessage =
+				FString::Printf(TEXT("mutated marker candidate %d"), Index);
+		},
+		[](const auto& Left, const auto& Right)
+		{
+			return AreAuthoritativeResolveNoLegalMarkerResultsEqual(Left, Right);
+		});
+	DeepContainerCases += TestAvailabilityCandidateContainerMutations(
+		*this,
+		TEXT("Decline marker candidates"),
+		MarkerDecline,
+		[](auto& Value) -> decltype(auto)
+		{
+			return (Value.DeclineResult.MarkerAvailabilityResult);
+		},
+		[](auto& Candidate, const int32 Index)
+		{
+			Candidate.MarkerCardId = FName(*FString::Printf(
+				TEXT("Canonical.DeclineMarker.%d"), Index));
+		},
+		[](auto& Candidate, const int32 Index)
+		{
+			Candidate.LegalityResult.MarkerSnapshotQueryResult.ErrorMessage =
+				FString::Printf(TEXT("mutated decline marker candidate %d"), Index);
+		},
+		[](const auto& Left, const auto& Right)
+		{
+			return AreAuthoritativeDeclineMarkerResultsEqual(Left, Right);
+		});
+	DeepContainerCases += TestAvailabilityCandidateContainerMutations(
+		*this,
+		TEXT("Resolve skill candidates"),
+		SkillResolve,
+		[](auto& Value) -> decltype(auto)
+		{
+			return (Value.ResolutionResult.SkillAvailabilityResult);
+		},
+		[](auto& Candidate, const int32 Index)
+		{
+			Candidate.SkillId = FName(*FString::Printf(
+				TEXT("Canonical.Skill.%d"), Index));
+		},
+		[](auto& Candidate, const int32 Index)
+		{
+			Candidate.LegalityResult.GlobalContextResult.ErrorMessage =
+				FString::Printf(TEXT("mutated skill candidate %d"), Index);
+		},
+		[](const auto& Left, const auto& Right)
+		{
+			return AreAuthoritativeResolveNoLegalSkillResultsEqual(Left, Right);
+		});
+	DeepContainerCases += TestAvailabilityCandidateContainerMutations(
+		*this,
+		TEXT("Decline skill candidates"),
+		SkillDecline,
+		[](auto& Value) -> decltype(auto)
+		{
+			return (Value.DeclineResult.SkillAvailabilityResult);
+		},
+		[](auto& Candidate, const int32 Index)
+		{
+			Candidate.SkillId = FName(*FString::Printf(
+				TEXT("Canonical.DeclineSkill.%d"), Index));
+		},
+		[](auto& Candidate, const int32 Index)
+		{
+			Candidate.LegalityResult.GlobalContextResult.ErrorMessage =
+				FString::Printf(TEXT("mutated decline skill candidate %d"), Index);
+		},
+		[](const auto& Left, const auto& Right)
+		{
+			return AreAuthoritativeDeclineSkillResultsEqual(Left, Right);
+		});
+
+	DeepContainerCases += TestCompletionSnapshotContainerMutations(
+		*this,
+		TEXT("Resolve marker completion snapshots"),
+		MarkerResolve,
+		[](auto& Value) -> decltype(auto)
+		{
+			return (Value.ResolutionResult.CompletionResult);
+		},
+		[](const auto& Left, const auto& Right)
+		{
+			return AreAuthoritativeResolveNoLegalMarkerResultsEqual(Left, Right);
+		});
+	DeepContainerCases += TestCompletionSnapshotContainerMutations(
+		*this,
+		TEXT("Decline marker completion snapshots"),
+		MarkerDecline,
+		[](auto& Value) -> decltype(auto)
+		{
+			return (Value.DeclineResult.CompletionResult);
+		},
+		[](const auto& Left, const auto& Right)
+		{
+			return AreAuthoritativeDeclineMarkerResultsEqual(Left, Right);
+		});
+	DeepContainerCases += TestCompletionSnapshotContainerMutations(
+		*this,
+		TEXT("Resolve skill completion snapshots"),
+		SkillResolve,
+		[](auto& Value) -> decltype(auto)
+		{
+			return (Value.ResolutionResult.CompletionResult);
+		},
+		[](const auto& Left, const auto& Right)
+		{
+			return AreAuthoritativeResolveNoLegalSkillResultsEqual(Left, Right);
+		});
+	DeepContainerCases += TestCompletionSnapshotContainerMutations(
+		*this,
+		TEXT("Decline skill completion snapshots"),
+		SkillDecline,
+		[](auto& Value) -> decltype(auto)
+		{
+			return (Value.DeclineResult.CompletionResult);
+		},
+		[](const auto& Left, const auto& Right)
+		{
+			return AreAuthoritativeDeclineSkillResultsEqual(Left, Right);
+		});
+	const FNonReflectedMutationAudit NonReflectedAudit =
+		TestNonReflectedInventoryMutations(*this);
+	const int32 ReflectedLeaves =
+		MarkerMutationAudit.LeafMutations
+		+ ResolveMarkerMutationAudit.LeafMutations
+		+ DeclineMarkerMutationAudit.LeafMutations
+		+ SkillMutationAudit.LeafMutations
+		+ ResolveSkillMutationAudit.LeafMutations
+		+ DeclineSkillMutationAudit.LeafMutations
+		+ NonReflectedAudit.ReflectedNestedLeaves;
+	const int32 ContainerCases =
+		MarkerMutationAudit.ContainerCases
+		+ ResolveMarkerMutationAudit.ContainerCases
+		+ DeclineMarkerMutationAudit.ContainerCases
+		+ SkillMutationAudit.ContainerCases
+		+ ResolveSkillMutationAudit.ContainerCases
+		+ DeclineSkillMutationAudit.ContainerCases
+		+ NonReflectedAudit.ContainerCases
+		+ DeepContainerCases;
+	const int32 EmptyContainerCases =
+		MarkerMutationAudit.EmptyContainerElementStructures
+		+ ResolveMarkerMutationAudit.EmptyContainerElementStructures
+		+ DeclineMarkerMutationAudit.EmptyContainerElementStructures
+		+ SkillMutationAudit.EmptyContainerElementStructures
+		+ ResolveSkillMutationAudit.EmptyContainerElementStructures
+		+ DeclineSkillMutationAudit.EmptyContainerElementStructures
+		+ NonReflectedAudit.EmptyContainerCases
+		+ 8;
+	const int32 TotalExecuted = ReflectedLeaves
+		+ 72
+		+ NonReflectedAudit.DeclaredFields
+		+ ContainerCases
+		+ 7;
 	AddInfo(FString::Printf(
-		TEXT("Foundation B reflected leaf mutations: marker=%d, resolve-marker=%d, decline-marker=%d, skill=%d, resolve-skill=%d, decline-skill=%d; envelope mutations=72; explicit non-reflected mutations=7."),
-		MarkerLeafMutations,
-		ResolveMarkerLeafMutations,
-		DeclineMarkerLeafMutations,
-		SkillLeafMutations,
-		ResolveSkillLeafMutations,
-		DeclineSkillLeafMutations));
+		TEXT("Foundation B mutation audit: reflected leaves=%d; non-reflected declared fields=%d; container cases=%d; empty-container element structures=%d; equal baselines=%d; envelope mutations=72; duplicate diagnostics=7; total executed=%d; skipped groups=%d."),
+		ReflectedLeaves,
+		NonReflectedAudit.DeclaredFields,
+		ContainerCases,
+		EmptyContainerCases,
+		NonReflectedAudit.EqualBaselines + 6,
+		TotalExecuted,
+		NonReflectedAudit.SkippedGroups));
 	return true;
 }
 
