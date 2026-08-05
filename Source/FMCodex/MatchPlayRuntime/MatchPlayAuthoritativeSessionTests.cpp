@@ -1380,6 +1380,131 @@ namespace MatchPlayAuthoritativeSessionTests
 			FinalState.RuntimeState.CurrentAttackingPlayer);
 	}
 
+	enum class ECompletionScoringExpectation : uint8
+	{
+		Goal,
+		NoGoal
+	};
+
+	bool HasExpectedCompletionScoringSemantics(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayCurrentAttackCompletionResult& Completion,
+		const FMatchPlayState& FinalState,
+		const ECompletionScoringExpectation Expectation,
+		const EInitialTurnOrderPlayer ExpectedScoringSide)
+	{
+		const int32 PlayerABefore = BeforeState.RuntimeState.PlayerAState.Score;
+		const int32 PlayerBBefore = BeforeState.RuntimeState.PlayerBState.Score;
+		const int32 PlayerAIncrement =
+			Expectation == ECompletionScoringExpectation::Goal
+			&& ExpectedScoringSide == EInitialTurnOrderPlayer::PlayerA ? 1 : 0;
+		const int32 PlayerBIncrement =
+			Expectation == ECompletionScoringExpectation::Goal
+			&& ExpectedScoringSide == EInitialTurnOrderPlayer::PlayerB ? 1 : 0;
+		const EInitialTurnOrderPlayer ContractScoringSide =
+			Expectation == ECompletionScoringExpectation::Goal
+				? ExpectedScoringSide
+				: EInitialTurnOrderPlayer::None;
+		const bool bGoal = Expectation == ECompletionScoringExpectation::Goal;
+
+		return Completion.bSuccess
+			&& AreStatesEqual(Completion.BeforeState, BeforeState)
+			&& AreStatesEqual(Completion.AfterState, FinalState)
+			&& Completion.ScoringSide == ContractScoringSide
+			&& Completion.GoalResolveResult.bSuccess == bGoal
+			&& Completion.GoalResolveResult.ScoringSide == ContractScoringSide
+			&& Completion.GoalResolveResult.PlayerAScoreBefore == PlayerABefore
+			&& Completion.GoalResolveResult.PlayerBScoreBefore == PlayerBBefore
+			&& Completion.GoalResolveResult.PlayerAScoreAfter
+				== PlayerABefore + PlayerAIncrement
+			&& Completion.GoalResolveResult.PlayerBScoreAfter
+				== PlayerBBefore + PlayerBIncrement
+			&& FinalState.RuntimeState.PlayerAState.Score
+				== PlayerABefore + PlayerAIncrement
+			&& FinalState.RuntimeState.PlayerBState.Score
+				== PlayerBBefore + PlayerBIncrement
+			&& Completion.GoalResolveResult.UpdatedRuntimeState.PlayerAState.Score
+				== FinalState.RuntimeState.PlayerAState.Score
+			&& Completion.GoalResolveResult.UpdatedRuntimeState.PlayerBState.Score
+				== FinalState.RuntimeState.PlayerBState.Score
+			&& !FinalState.bHasCurrentAttack
+			&& !Completion.AfterState.bHasCurrentAttack
+			&& Completion.NextAttackingPlayer
+				== FinalState.RuntimeState.CurrentAttackingPlayer
+			&& !FinalState.CurrentAttack.bHasResolutionSession
+			&& !FinalState.CurrentAttack.ResolutionSession.bHasActualBranch
+			&& FinalState.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords.IsEmpty();
+	}
+
+	void TestCompletionScoringContract(
+		FAutomationTestBase& Test,
+		const FString& Context,
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayCurrentAttackCompletionResult& Completion,
+		const FMatchPlayState& FinalState,
+		const ECompletionScoringExpectation Expectation,
+		const EInitialTurnOrderPlayer ExpectedScoringSide,
+		const bool bTestNegativeMutations)
+	{
+		const bool bGoal = Expectation == ECompletionScoringExpectation::Goal;
+		const EInitialTurnOrderPlayer ContractScoringSide = bGoal
+			? ExpectedScoringSide : EInitialTurnOrderPlayer::None;
+		const int32 PlayerABefore = BeforeState.RuntimeState.PlayerAState.Score;
+		const int32 PlayerBBefore = BeforeState.RuntimeState.PlayerBState.Score;
+		const int32 PlayerAAfter = PlayerABefore
+			+ (bGoal && ExpectedScoringSide == EInitialTurnOrderPlayer::PlayerA ? 1 : 0);
+		const int32 PlayerBAfter = PlayerBBefore
+			+ (bGoal && ExpectedScoringSide == EInitialTurnOrderPlayer::PlayerB ? 1 : 0);
+		Test.TestEqual(*FString::Printf(TEXT("%s GoalResolve outcome"), *Context),
+			Completion.GoalResolveResult.bSuccess, bGoal);
+		Test.TestEqual(*FString::Printf(TEXT("%s completion scoring side"), *Context),
+			Completion.ScoringSide, ContractScoringSide);
+		Test.TestEqual(*FString::Printf(TEXT("%s GoalResolve scoring side"), *Context),
+			Completion.GoalResolveResult.ScoringSide, ContractScoringSide);
+		Test.TestEqual(*FString::Printf(TEXT("%s PlayerA score before"), *Context),
+			Completion.GoalResolveResult.PlayerAScoreBefore, PlayerABefore);
+		Test.TestEqual(*FString::Printf(TEXT("%s PlayerB score before"), *Context),
+			Completion.GoalResolveResult.PlayerBScoreBefore, PlayerBBefore);
+		Test.TestEqual(*FString::Printf(TEXT("%s PlayerA score after"), *Context),
+			FinalState.RuntimeState.PlayerAState.Score, PlayerAAfter);
+		Test.TestEqual(*FString::Printf(TEXT("%s PlayerB score after"), *Context),
+			FinalState.RuntimeState.PlayerBState.Score, PlayerBAfter);
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s exact scoring semantics"), *Context),
+			HasExpectedCompletionScoringSemantics(
+				BeforeState, Completion, FinalState, Expectation,
+				ExpectedScoringSide));
+		if (!bTestNegativeMutations)
+		{
+			return;
+		}
+
+		FMatchPlayCurrentAttackCompletionResult Mutated = Completion;
+		Mutated.GoalResolveResult.bSuccess =
+			!Mutated.GoalResolveResult.bSuccess;
+		Test.TestFalse(*FString::Printf(TEXT("%s rejects goal flag mutation"), *Context),
+			HasExpectedCompletionScoringSemantics(
+				BeforeState, Mutated, FinalState, Expectation,
+				ExpectedScoringSide));
+
+		Mutated = Completion;
+		Mutated.ScoringSide = Expectation == ECompletionScoringExpectation::Goal
+			? OtherPlayer(ExpectedScoringSide)
+			: ExpectedScoringSide;
+		Test.TestFalse(*FString::Printf(TEXT("%s rejects scorer mutation"), *Context),
+			HasExpectedCompletionScoringSemantics(
+				BeforeState, Mutated, FinalState, Expectation,
+				ExpectedScoringSide));
+
+		Mutated = Completion;
+		++Mutated.GoalResolveResult.PlayerAScoreAfter;
+		Test.TestFalse(*FString::Printf(TEXT("%s rejects score mutation"), *Context),
+			HasExpectedCompletionScoringSemantics(
+				BeforeState, Mutated, FinalState, Expectation,
+				ExpectedScoringSide));
+	}
+
 	int32 CountOccurrences(
 		const FString& Source,
 		const FString& Needle)
@@ -1411,59 +1536,142 @@ namespace MatchPlayAuthoritativeSessionTests
 			*FPaths::Combine(FPaths::ProjectDir(), RelativePath));
 	}
 
+	enum class EMutationCoverageCategory : uint8
+	{
+		ReflectedLeaf,
+		NonReflectedField,
+		ContainerBehavior,
+		Envelope
+	};
+
+	struct FMutationCoverageAudit
+	{
+		int64 ExecutedMutationCases = 0;
+		int64 EqualBaselineCases = 0;
+		TSet<FString> ExpectedLogicalPaths;
+		TSet<FString> CoveredLogicalPaths;
+		TSet<FString> ReflectedLeafPaths;
+		TSet<FString> NonReflectedFieldPaths;
+		TSet<FString> ContainerCasePaths;
+		TSet<FString> EmptyContainerElementFieldPaths;
+		TSet<FString> EnvelopePaths;
+		TSet<FString> SkippedGroupPaths;
+		TSet<FString> ReachableMapPaths;
+		TMap<FString, int32> ExecutionCountByPath;
+
+		void Expect(const FString& Path)
+		{
+			ExpectedLogicalPaths.Add(Path);
+		}
+
+		void Cover(
+			const FString& Path,
+			const EMutationCoverageCategory Category,
+			const bool bEmptyContainerElement = false)
+		{
+			CoveredLogicalPaths.Add(Path);
+			++ExecutedMutationCases;
+			++ExecutionCountByPath.FindOrAdd(Path);
+			switch (Category)
+			{
+			case EMutationCoverageCategory::ReflectedLeaf:
+				ReflectedLeafPaths.Add(Path);
+				break;
+			case EMutationCoverageCategory::NonReflectedField:
+				NonReflectedFieldPaths.Add(Path);
+				break;
+			case EMutationCoverageCategory::ContainerBehavior:
+				ContainerCasePaths.Add(Path);
+				break;
+			case EMutationCoverageCategory::Envelope:
+				EnvelopePaths.Add(Path);
+				break;
+			}
+			if (bEmptyContainerElement)
+			{
+				EmptyContainerElementFieldPaths.Add(Path);
+			}
+		}
+
+		void RecordEqualBaseline()
+		{
+			++EqualBaselineCases;
+		}
+
+		void Skip(const FString& Path)
+		{
+			SkippedGroupPaths.Add(Path);
+		}
+	};
+
 	void TestEnvelopeMutationCoverage(
 		FAutomationTestBase& Test,
-		const FMatchPlayAuthoritativeRuntimeEnvelope& Baseline)
+		const FMatchPlayAuthoritativeRuntimeEnvelope& Baseline,
+		FMutationCoverageAudit* CoverageAudit = nullptr,
+		const FString& Prefix = TEXT("Envelope"))
 	{
-		auto RejectEqual = [&Test, &Baseline](
+		auto RejectEqual = [&Test, &Baseline, CoverageAudit, &Prefix](
 			const TCHAR* Field,
+			const TCHAR* LogicalField,
 			const FMatchPlayAuthoritativeRuntimeEnvelope& Mutated)
 		{
-			Test.TestFalse(Field, AreEnvelopesEqual(Baseline, Mutated));
+			const FString Path = Prefix + TEXT(".") + LogicalField;
+			if (CoverageAudit != nullptr)
+			{
+				CoverageAudit->Expect(Path);
+			}
+			const bool bRejected = !AreEnvelopesEqual(Baseline, Mutated);
+			Test.TestTrue(Field, bRejected);
+			if (bRejected && CoverageAudit != nullptr)
+			{
+				CoverageAudit->Cover(
+					Path,
+					EMutationCoverageCategory::Envelope);
+			}
 		};
 
 		FMatchPlayAuthoritativeRuntimeEnvelope Mutated = Baseline;
 		Mutated.bAccepted = !Mutated.bAccepted;
-		RejectEqual(TEXT("Envelope comparator covers bAccepted"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers bAccepted"), TEXT("bAccepted"), Mutated);
 		Mutated = Baseline;
 		Mutated.bDomainSuccess = !Mutated.bDomainSuccess;
-		RejectEqual(TEXT("Envelope comparator covers bDomainSuccess"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers bDomainSuccess"), TEXT("bDomainSuccess"), Mutated);
 		Mutated = Baseline;
 		Mutated.bStateAdvanced = !Mutated.bStateAdvanced;
-		RejectEqual(TEXT("Envelope comparator covers bStateAdvanced"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers bStateAdvanced"), TEXT("bStateAdvanced"), Mutated);
 		Mutated = Baseline;
 		Mutated.StateDisposition =
 			EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
-		RejectEqual(TEXT("Envelope comparator covers StateDisposition"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers StateDisposition"), TEXT("StateDisposition"), Mutated);
 		Mutated = Baseline;
 		Mutated.bRuntimeFault = !Mutated.bRuntimeFault;
-		RejectEqual(TEXT("Envelope comparator covers bRuntimeFault"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers bRuntimeFault"), TEXT("bRuntimeFault"), Mutated);
 		Mutated = Baseline;
 		Mutated.BeforeState.RuntimeState.bIsInitialized =
 			!Mutated.BeforeState.RuntimeState.bIsInitialized;
-		RejectEqual(TEXT("Envelope comparator covers BeforeState"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers BeforeState"), TEXT("BeforeState"), Mutated);
 		Mutated = Baseline;
 		Mutated.AfterState.bHasCurrentAttack =
 			!Mutated.AfterState.bHasCurrentAttack;
-		RejectEqual(TEXT("Envelope comparator covers AfterState"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers AfterState"), TEXT("AfterState"), Mutated);
 		Mutated = Baseline;
 		Mutated.CommandKind = EMatchPlayAuthoritativeCommandKind::None;
-		RejectEqual(TEXT("Envelope comparator covers CommandKind"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers CommandKind"), TEXT("CommandKind"), Mutated);
 		Mutated = Baseline;
 		++Mutated.AttackSequence;
-		RejectEqual(TEXT("Envelope comparator covers AttackSequence"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers AttackSequence"), TEXT("AttackSequence"), Mutated);
 		Mutated = Baseline;
 		Mutated.FailureDisposition =
 			EMatchPlayAuthoritativeFailureDisposition
 				::RetryableExecutionFailure;
-		RejectEqual(TEXT("Envelope comparator covers FailureDisposition"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers FailureDisposition"), TEXT("FailureDisposition"), Mutated);
 		Mutated = Baseline;
 		Mutated.RuntimeFailureCode =
 			EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized;
-		RejectEqual(TEXT("Envelope comparator covers RuntimeFailureCode"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers RuntimeFailureCode"), TEXT("RuntimeFailureCode"), Mutated);
 		Mutated = Baseline;
 		Mutated.ErrorMessage = TEXT("mutated runtime message");
-		RejectEqual(TEXT("Envelope comparator covers ErrorMessage"), Mutated);
+		RejectEqual(TEXT("Envelope comparator covers ErrorMessage"), TEXT("ErrorMessage"), Mutated);
 	}
 
 	struct FReflectedMutationAudit
@@ -1481,7 +1689,9 @@ namespace MatchPlayAuthoritativeSessionTests
 		void* BaselineContainer,
 		const FString& Prefix,
 		FReflectedMutationAudit& Audit,
-		const TFunctionRef<void(const FString&)>& RejectMutation);
+		const TFunctionRef<bool(const FString&)>& RejectMutation,
+		FMutationCoverageAudit* CoverageAudit = nullptr,
+		bool bEmptyContainerElement = false);
 
 	void VisitReflectedPropertyMutation(
 		FProperty* Property,
@@ -1489,23 +1699,51 @@ namespace MatchPlayAuthoritativeSessionTests
 		void* BaselineValue,
 		const FString& Path,
 		FReflectedMutationAudit& Audit,
-		const TFunctionRef<void(const FString&)>& RejectMutation)
+		const TFunctionRef<bool(const FString&)>& RejectMutation,
+		FMutationCoverageAudit* CoverageAudit,
+		const bool bEmptyContainerElement)
 	{
 		if (FStructProperty* StructProperty =
 			CastField<FStructProperty>(Property))
 		{
+			if (StructProperty->Struct == FMatchState::StaticStruct())
+			{
+				FMatchState* MutatedState = static_cast<FMatchState*>(MutatedValue);
+				++MutatedState->CurrentActionPoint;
+				if (CoverageAudit != nullptr)
+				{
+					CoverageAudit->Expect(Path);
+				}
+				const bool bRejected = RejectMutation(Path);
+				if (bRejected && CoverageAudit != nullptr)
+				{
+					CoverageAudit->Cover(
+						Path,
+						EMutationCoverageCategory::ReflectedLeaf,
+						bEmptyContainerElement);
+				}
+				++Audit.LeafMutations;
+				StructProperty->CopyCompleteValue(MutatedValue, BaselineValue);
+				return;
+			}
 			VisitReflectedMutationLeaves(
 				StructProperty->Struct,
 				MutatedValue,
 				BaselineValue,
 				Path,
 				Audit,
-				RejectMutation);
+				RejectMutation,
+				CoverageAudit,
+				bEmptyContainerElement);
 			return;
 		}
 
 		if (FMapProperty* MapProperty = CastField<FMapProperty>(Property))
 		{
+			if (CoverageAudit != nullptr)
+			{
+				CoverageAudit->ReachableMapPaths.Add(Path);
+			}
 			FScriptMapHelper MutatedMap(MapProperty, MutatedValue);
 			FScriptMapHelper BaselineMap(MapProperty, BaselineValue);
 			TArray<int32> BaselineIndices;
@@ -1526,7 +1764,18 @@ namespace MatchPlayAuthoritativeSessionTests
 				MutatedMap.AddDefaultValue_Invalid_NeedsRehash();
 				MutatedMap.Rehash();
 			}
-			RejectMutation(Path + TEXT(".Membership"));
+			const FString MembershipPath = Path + TEXT(".Membership");
+			if (CoverageAudit != nullptr)
+			{
+				CoverageAudit->Expect(MembershipPath);
+			}
+			const bool bMembershipRejected = RejectMutation(MembershipPath);
+			if (bMembershipRejected && CoverageAudit != nullptr)
+			{
+				CoverageAudit->Cover(
+					MembershipPath,
+					EMutationCoverageCategory::ContainerBehavior);
+			}
 			++Audit.ContainerCases;
 			MapProperty->CopyCompleteValue(MutatedValue, BaselineValue);
 
@@ -1561,21 +1810,29 @@ namespace MatchPlayAuthoritativeSessionTests
 					MapProperty->KeyProp,
 					MutatedMap.GetKeyPtr(Index),
 					BaselineMap.GetKeyPtr(Index),
-					FString::Printf(TEXT("%s.Key[%d]"), *Path, Position),
+					bAddedCanonicalElement
+						? FString::Printf(TEXT("%s.EmptyElement.Key[%d]"), *Path, Position)
+						: FString::Printf(TEXT("%s.Key[%d]"), *Path, Position),
 					Audit,
 					[&](const FString& MutationPath)
 					{
 						MutatedMap.Rehash();
-						RejectMutation(MutationPath);
-					});
+						return RejectMutation(MutationPath);
+					},
+					CoverageAudit,
+					bAddedCanonicalElement || bEmptyContainerElement);
 				MutatedMap.Rehash();
 				VisitReflectedPropertyMutation(
 					MapProperty->ValueProp,
 					MutatedMap.GetValuePtr(Index),
 					BaselineMap.GetValuePtr(Index),
-					FString::Printf(TEXT("%s.Value[%d]"), *Path, Position),
+					bAddedCanonicalElement
+						? FString::Printf(TEXT("%s.EmptyElement.Value[%d]"), *Path, Position)
+						: FString::Printf(TEXT("%s.Value[%d]"), *Path, Position),
 					Audit,
-					RejectMutation);
+					RejectMutation,
+					CoverageAudit,
+					bAddedCanonicalElement || bEmptyContainerElement);
 			}
 
 			if (bAddedCanonicalElement)
@@ -1599,7 +1856,18 @@ namespace MatchPlayAuthoritativeSessionTests
 			{
 				MutatedArray.AddValue();
 			}
-			RejectMutation(Path + TEXT(".Num"));
+			const FString NumPath = Path + TEXT(".Num");
+			if (CoverageAudit != nullptr)
+			{
+				CoverageAudit->Expect(NumPath);
+			}
+			const bool bNumRejected = RejectMutation(NumPath);
+			if (bNumRejected && CoverageAudit != nullptr)
+			{
+				CoverageAudit->Cover(
+					NumPath,
+					EMutationCoverageCategory::ContainerBehavior);
+			}
 			++Audit.ContainerCases;
 			ArrayProperty->CopyCompleteValue(MutatedValue, BaselineValue);
 
@@ -1627,9 +1895,13 @@ namespace MatchPlayAuthoritativeSessionTests
 					ArrayProperty->Inner,
 					MutatedArray.GetRawPtr(Index),
 					BaselineArray.GetRawPtr(Index),
-					FString::Printf(TEXT("%s[%d]"), *Path, Index),
+					bAddedCanonicalElement
+						? FString::Printf(TEXT("%s.EmptyElement[%d]"), *Path, Index)
+						: FString::Printf(TEXT("%s[%d]"), *Path, Index),
 					Audit,
-					RejectMutation);
+					RejectMutation,
+					CoverageAudit,
+					bAddedCanonicalElement || bEmptyContainerElement);
 			}
 
 			if (BaselineArray.Num() >= 2
@@ -1638,7 +1910,18 @@ namespace MatchPlayAuthoritativeSessionTests
 					BaselineArray.GetRawPtr(BaselineArray.Num() - 1)))
 			{
 				MutatedArray.SwapValues(0, BaselineArray.Num() - 1);
-				RejectMutation(Path + TEXT(".Order"));
+				const FString OrderPath = Path + TEXT(".Order");
+				if (CoverageAudit != nullptr)
+				{
+					CoverageAudit->Expect(OrderPath);
+				}
+				const bool bOrderRejected = RejectMutation(OrderPath);
+				if (bOrderRejected && CoverageAudit != nullptr)
+				{
+					CoverageAudit->Cover(
+						OrderPath,
+						EMutationCoverageCategory::ContainerBehavior);
+				}
 				++Audit.ContainerCases;
 				ArrayProperty->CopyCompleteValue(MutatedValue, BaselineValue);
 			}
@@ -1713,6 +1996,11 @@ namespace MatchPlayAuthoritativeSessionTests
 				TEXT("%s (%s)"),
 				*Path,
 				*Property->GetClass()->GetName()));
+			if (CoverageAudit != nullptr)
+			{
+				CoverageAudit->Expect(Path);
+				CoverageAudit->Skip(Path + TEXT(".UnsupportedPropertyType"));
+			}
 			return;
 		}
 
@@ -1720,9 +2008,25 @@ namespace MatchPlayAuthoritativeSessionTests
 		{
 			++Audit.SkippedProperties;
 			Audit.SkippedPaths.Add(Path + TEXT(" (mutation unchanged)"));
+			if (CoverageAudit != nullptr)
+			{
+				CoverageAudit->Expect(Path);
+				CoverageAudit->Skip(Path + TEXT(".MutationUnchanged"));
+			}
 			return;
 		}
-		RejectMutation(Path);
+		if (CoverageAudit != nullptr)
+		{
+			CoverageAudit->Expect(Path);
+		}
+		const bool bRejected = RejectMutation(Path);
+		if (bRejected && CoverageAudit != nullptr)
+		{
+			CoverageAudit->Cover(
+				Path,
+				EMutationCoverageCategory::ReflectedLeaf,
+				bEmptyContainerElement);
+		}
 		++Audit.LeafMutations;
 		Property->CopyCompleteValue(MutatedValue, BaselineValue);
 	}
@@ -1733,7 +2037,9 @@ namespace MatchPlayAuthoritativeSessionTests
 		void* BaselineContainer,
 		const FString& Prefix,
 		FReflectedMutationAudit& Audit,
-		const TFunctionRef<void(const FString&)>& RejectMutation)
+		const TFunctionRef<bool(const FString&)>& RejectMutation,
+		FMutationCoverageAudit* CoverageAudit,
+		const bool bEmptyContainerElement)
 	{
 		for (TFieldIterator<FProperty> It(Struct); It; ++It)
 		{
@@ -1744,7 +2050,9 @@ namespace MatchPlayAuthoritativeSessionTests
 				Property->ContainerPtrToValuePtr<void>(BaselineContainer),
 				Prefix + TEXT(".") + Property->GetName(),
 				Audit,
-				RejectMutation);
+				RejectMutation,
+				CoverageAudit,
+				bEmptyContainerElement);
 		}
 	}
 
@@ -1755,7 +2063,9 @@ namespace MatchPlayAuthoritativeSessionTests
 		const TCHAR* Context,
 		const TWrapper& Baseline,
 		TAccessor&& Accessor,
-		TComparator&& Comparator)
+		TComparator&& Comparator,
+		FMutationCoverageAudit* CoverageAudit = nullptr,
+		const bool bEmptyContainerElement = false)
 	{
 		TWrapper ComparatorBaseline = Baseline;
 		TWrapper Mutated = Baseline;
@@ -1770,10 +2080,14 @@ namespace MatchPlayAuthoritativeSessionTests
 			Audit,
 			[&](const FString& Path)
 			{
-				Test.TestFalse(
+				const bool bRejected = !Comparator(ComparatorBaseline, Mutated);
+				Test.TestTrue(
 					*FString::Printf(TEXT("Comparator covers %s"), *Path),
-					Comparator(ComparatorBaseline, Mutated));
-			});
+					bRejected);
+				return bRejected;
+			},
+			CoverageAudit,
+			bEmptyContainerElement);
 		Test.TestEqual(
 			*FString::Printf(TEXT("%s reflected mutation skipped groups"), Context),
 			Audit.SkippedProperties,
@@ -1796,6 +2110,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		int32 EmptyContainerCases = 0;
 		int32 EqualBaselines = 0;
 		int32 SkippedGroups = 0;
+		FMutationCoverageAudit* CoverageAudit = nullptr;
 	};
 
 	template <typename T, typename TComparator, typename TMutator>
@@ -1809,9 +2124,25 @@ namespace MatchPlayAuthoritativeSessionTests
 	{
 		T Mutated = Baseline;
 		Mutator(Mutated);
-		Test.TestFalse(
+		const bool bRejected = !Comparator(Baseline, Mutated);
+		Test.TestTrue(
 			*FString::Printf(TEXT("Non-reflected comparator covers %s"), *Context),
-			Comparator(Baseline, Mutated));
+			bRejected);
+		if (Audit.CoverageAudit != nullptr)
+		{
+			const FString Path = TEXT("NonReflected.") + Context;
+			Audit.CoverageAudit->Expect(Path);
+			if (bRejected)
+			{
+				Audit.CoverageAudit->Cover(
+					Path,
+					EMutationCoverageCategory::NonReflectedField);
+			}
+			else
+			{
+				Audit.CoverageAudit->Skip(Path + TEXT(".ComparatorAcceptedMutation"));
+			}
+		}
 		++Audit.DeclaredFields;
 	}
 
@@ -1838,15 +2169,31 @@ namespace MatchPlayAuthoritativeSessionTests
 			ReflectedAudit,
 			[&](const FString& Path)
 			{
-				Test.TestFalse(
+				const bool bRejected = !Comparator(Baseline, Mutated);
+				Test.TestTrue(
 					*FString::Printf(TEXT("Nested reflected comparator covers %s"), *Path),
-					Comparator(Baseline, Mutated));
-			});
+					bRejected);
+				return bRejected;
+			},
+			Audit.CoverageAudit,
+			false);
 		Audit.ReflectedNestedLeaves += ReflectedAudit.LeafMutations;
 		Audit.ContainerCases += ReflectedAudit.ContainerCases;
 		Audit.EmptyContainerCases +=
 			ReflectedAudit.EmptyContainerElementStructures;
 		Audit.SkippedGroups += ReflectedAudit.SkippedProperties;
+		if (Audit.CoverageAudit != nullptr)
+		{
+			const FString Path = TEXT("NonReflected.") + Context;
+			Audit.CoverageAudit->Expect(Path);
+			if (ReflectedAudit.LeafMutations > 0
+				&& ReflectedAudit.SkippedProperties == 0)
+			{
+				Audit.CoverageAudit->Cover(
+					Path,
+					EMutationCoverageCategory::NonReflectedField);
+			}
+		}
 	}
 
 	template <typename TEnum>
@@ -1857,10 +2204,321 @@ namespace MatchPlayAuthoritativeSessionTests
 			: static_cast<TEnum>(0);
 	}
 
+	template <typename TWrapper, typename TComparator, typename TMutator>
+	bool ExecuteAuditedMutation(
+		FAutomationTestBase& Test,
+		FMutationCoverageAudit& Audit,
+		const FString& Path,
+		const TWrapper& Baseline,
+		TComparator Comparator,
+		TMutator Mutator,
+		const EMutationCoverageCategory Category,
+		const bool bEmptyContainerElement = false)
+	{
+		Audit.Expect(Path);
+		TWrapper Mutated = Baseline;
+		Mutator(Mutated);
+		const bool bRejected = !Comparator(Baseline, Mutated);
+		Test.TestTrue(
+			*FString::Printf(TEXT("Mutation is covered: %s"), *Path),
+			bRejected);
+		if (bRejected)
+		{
+			Audit.Cover(Path, Category, bEmptyContainerElement);
+		}
+		else
+		{
+			Audit.Skip(Path + TEXT(".MutationUnchangedOrComparatorAccepted"));
+		}
+		return bRejected;
+	}
+
+	template <typename TWrapper, typename TReflected, typename TAccessor,
+		typename TComparator>
+	void TestReflectedSubobjectDeepMutations(
+		FAutomationTestBase& Test,
+		FMutationCoverageAudit& Audit,
+		const FString& Prefix,
+		const TWrapper& Baseline,
+		TAccessor Accessor,
+		TComparator Comparator,
+		const bool bEmptyContainerElement)
+	{
+		TestNestedReflectedMutationCoverage<TWrapper, TReflected>(
+			Test,
+			*Prefix,
+			Baseline,
+			Accessor,
+			Comparator,
+			&Audit,
+			bEmptyContainerElement);
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TComparator>
+	void TestPlayerCardValidationDeepMutations(
+		FAutomationTestBase& Test,
+		FMutationCoverageAudit& Audit,
+		const FString& Prefix,
+		const TWrapper& InputBaseline,
+		TAccessor Accessor,
+		TComparator Comparator,
+		const bool bEmptyContainerElement)
+	{
+		auto Case = [&](const TCHAR* Field, auto Mutator,
+			const EMutationCoverageCategory Category =
+				EMutationCoverageCategory::NonReflectedField)
+		{
+			ExecuteAuditedMutation(
+				Test, Audit, Prefix + TEXT(".") + Field, InputBaseline,
+				Comparator,
+				[&](auto& Value){ Mutator(Accessor(Value)); },
+				Category, bEmptyContainerElement);
+		};
+		Case(TEXT("bSuccess"), [](auto& Value){ Value.bSuccess = !Value.bSuccess; });
+		Case(TEXT("bIsValid"), [](auto& Value){ Value.bIsValid = !Value.bIsValid; });
+		Case(TEXT("ErrorCode"), [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); });
+		Case(TEXT("ErrorMessage"), [](auto& Value){ Value.ErrorMessage += TEXT(".Mutated"); });
+		Case(TEXT("InvalidCardId"), [](auto& Value){ Value.InvalidCardId = TEXT("Mutation.InvalidCard"); });
+		Case(TEXT("DuplicateCardIds.Num"), [](auto& Value)
+		{
+			Value.DuplicateCardIds.Add(TEXT("Mutation.Duplicate"));
+		}, EMutationCoverageCategory::ContainerBehavior);
+
+		TWrapper Singleton = InputBaseline;
+		Accessor(Singleton).DuplicateCardIds = {TEXT("Canonical.Duplicate")};
+		const bool bSingletonEqual = Comparator(Singleton, Singleton);
+		Test.TestTrue(*FString::Printf(TEXT("%s singleton duplicate baseline"), *Prefix),
+			bSingletonEqual);
+		if (bSingletonEqual)
+		{
+			Audit.RecordEqualBaseline();
+		}
+		ExecuteAuditedMutation(
+			Test,
+			Audit,
+			Prefix + TEXT(".DuplicateCardIds.EmptyElement[0]"),
+			Singleton,
+			Comparator,
+			[&](auto& Value)
+			{
+				Accessor(Value).DuplicateCardIds[0] = TEXT("Mutation.Duplicate.Element");
+			},
+			EMutationCoverageCategory::NonReflectedField,
+			bEmptyContainerElement);
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TComparator>
+	void TestSkillValidationDeepMutations(
+		FAutomationTestBase& Test,
+		FMutationCoverageAudit& Audit,
+		const FString& Prefix,
+		const TWrapper& InputBaseline,
+		TAccessor Accessor,
+		TComparator Comparator,
+		const bool bEmptyContainerElement)
+	{
+		auto Case = [&](const TCHAR* Field, auto Mutator)
+		{
+			ExecuteAuditedMutation(
+				Test, Audit, Prefix + TEXT(".") + Field, InputBaseline,
+				Comparator,
+				[&](auto& Value){ Mutator(Accessor(Value)); },
+				EMutationCoverageCategory::NonReflectedField,
+				bEmptyContainerElement);
+		};
+		Case(TEXT("bSuccess"), [](auto& Value){ Value.bSuccess = !Value.bSuccess; });
+		Case(TEXT("bIsValid"), [](auto& Value){ Value.bIsValid = !Value.bIsValid; });
+		Case(TEXT("ErrorCode"), [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); });
+		Case(TEXT("ErrorMessage"), [](auto& Value){ Value.ErrorMessage += TEXT(".Mutated"); });
+		Case(TEXT("InvalidSkillId"), [](auto& Value){ Value.InvalidSkillId = TEXT("Mutation.InvalidSkill"); });
+		Case(TEXT("InvalidField"), [](auto& Value){ Value.InvalidField = TEXT("Mutation.InvalidField"); });
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TComparator>
+	void TestSkillRuleDeepMutations(
+		FAutomationTestBase& Test,
+		FMutationCoverageAudit& Audit,
+		const FString& Prefix,
+		const TWrapper& InputBaseline,
+		TAccessor Accessor,
+		TComparator Comparator,
+		const bool bEmptyContainerElement)
+	{
+		auto Case = [&](const TCHAR* Field, auto Mutator)
+		{
+			ExecuteAuditedMutation(
+				Test, Audit, Prefix + TEXT(".") + Field, InputBaseline,
+				Comparator,
+				[&](auto& Value){ Mutator(Accessor(Value)); },
+				EMutationCoverageCategory::NonReflectedField,
+				bEmptyContainerElement);
+		};
+		Case(TEXT("SkillId"), [](auto& Value){ Value.SkillId = TEXT("Mutation.Skill"); });
+		Case(TEXT("SkillType"), [](auto& Value){ Value.SkillType = OtherEnumValue(Value.SkillType); });
+		Case(TEXT("MinTriggerActionPoint"), [](auto& Value){ ++Value.MinTriggerActionPoint; });
+		Case(TEXT("MaxTriggerActionPoint"), [](auto& Value){ ++Value.MaxTriggerActionPoint; });
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TComparator>
+	void TestPlayerCardQueryDeepMutations(
+		FAutomationTestBase& Test, FMutationCoverageAudit& Audit,
+		const FString& Prefix, const TWrapper& InputBaseline,
+		TAccessor Accessor, TComparator Comparator,
+		const bool bEmptyContainerElement)
+	{
+		auto Case = [&](const TCHAR* Field, auto Mutator)
+		{
+			ExecuteAuditedMutation(Test, Audit, Prefix + TEXT(".") + Field,
+				InputBaseline, Comparator,
+				[&](auto& Value){ Mutator(Accessor(Value)); },
+				EMutationCoverageCategory::NonReflectedField,
+				bEmptyContainerElement);
+		};
+		Case(TEXT("bSuccess"), [](auto& Value){ Value.bSuccess = !Value.bSuccess; });
+		Case(TEXT("bFound"), [](auto& Value){ Value.bFound = !Value.bFound; });
+		Case(TEXT("ErrorCode"), [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); });
+		Case(TEXT("ErrorMessage"), [](auto& Value){ Value.ErrorMessage += TEXT(".Mutated"); });
+		Case(TEXT("CardId"), [](auto& Value){ Value.CardId = TEXT("Mutation.CardQuery"); });
+		TestReflectedSubobjectDeepMutations<TWrapper, FPlayerCardRuleSnapshot>(
+			Test, Audit, Prefix + TEXT(".Snapshot"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).Snapshot); },
+			Comparator, bEmptyContainerElement);
+		TestPlayerCardValidationDeepMutations(
+			Test, Audit, Prefix + TEXT(".ValidationResult"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto)
+			{
+				return (Accessor(Value).ValidationResult);
+			},
+			Comparator, bEmptyContainerElement);
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TComparator>
+	void TestCardSnapshotQueryDeepMutations(
+		FAutomationTestBase& Test, FMutationCoverageAudit& Audit,
+		const FString& Prefix, const TWrapper& InputBaseline,
+		TAccessor Accessor, TComparator Comparator,
+		const bool bEmptyContainerElement)
+	{
+		auto Case = [&](const TCHAR* Field, auto Mutator)
+		{
+			ExecuteAuditedMutation(Test, Audit, Prefix + TEXT(".") + Field,
+				InputBaseline, Comparator,
+				[&](auto& Value){ Mutator(Accessor(Value)); },
+				EMutationCoverageCategory::NonReflectedField,
+				bEmptyContainerElement);
+		};
+		Case(TEXT("bSuccess"), [](auto& Value){ Value.bSuccess = !Value.bSuccess; });
+		Case(TEXT("ErrorCode"), [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); });
+		Case(TEXT("PlayerSide"), [](auto& Value){ Value.PlayerSide = OtherEnumValue(Value.PlayerSide); });
+		Case(TEXT("CardId"), [](auto& Value){ Value.CardId = TEXT("Mutation.AuthorityCard"); });
+		Case(TEXT("ErrorMessage"), [](auto& Value){ Value.ErrorMessage += TEXT(".Mutated"); });
+		TestReflectedSubobjectDeepMutations<TWrapper, FPlayerCardRuleSnapshot>(
+			Test, Audit, Prefix + TEXT(".Snapshot"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).Snapshot); },
+			Comparator, bEmptyContainerElement);
+		TestPlayerCardQueryDeepMutations(
+			Test, Audit, Prefix + TEXT(".UnderlyingQueryResult"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto)
+			{
+				return (Accessor(Value).UnderlyingQueryResult);
+			},
+			Comparator, bEmptyContainerElement);
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TComparator>
+	void TestSkillRuleQueryDeepMutations(
+		FAutomationTestBase& Test, FMutationCoverageAudit& Audit,
+		const FString& Prefix, const TWrapper& InputBaseline,
+		TAccessor Accessor, TComparator Comparator,
+		const bool bEmptyContainerElement)
+	{
+		auto Case = [&](const TCHAR* Field, auto Mutator)
+		{
+			ExecuteAuditedMutation(Test, Audit, Prefix + TEXT(".") + Field,
+				InputBaseline, Comparator,
+				[&](auto& Value){ Mutator(Accessor(Value)); },
+				EMutationCoverageCategory::NonReflectedField,
+				bEmptyContainerElement);
+		};
+		Case(TEXT("bSuccess"), [](auto& Value){ Value.bSuccess = !Value.bSuccess; });
+		Case(TEXT("bFound"), [](auto& Value){ Value.bFound = !Value.bFound; });
+		Case(TEXT("ErrorCode"), [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); });
+		Case(TEXT("ErrorMessage"), [](auto& Value){ Value.ErrorMessage += TEXT(".Mutated"); });
+		Case(TEXT("InvalidSkillId"), [](auto& Value){ Value.InvalidSkillId = TEXT("Mutation.InvalidSkill"); });
+		Case(TEXT("InvalidField"), [](auto& Value){ Value.InvalidField = TEXT("Mutation.InvalidField"); });
+		TestSkillRuleDeepMutations(
+			Test, Audit, Prefix + TEXT(".Snapshot"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).Snapshot); },
+			Comparator, bEmptyContainerElement);
+		TestSkillValidationDeepMutations(
+			Test, Audit, Prefix + TEXT(".ValidationResult"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto)
+			{
+				return (Accessor(Value).ValidationResult);
+			},
+			Comparator, bEmptyContainerElement);
+	}
+
+	template <typename TWrapper, typename TAccessor, typename TComparator>
+	void TestSkillGlobalContextDeepMutations(
+		FAutomationTestBase& Test, FMutationCoverageAudit& Audit,
+		const FString& Prefix, const TWrapper& InputBaseline,
+		TAccessor Accessor, TComparator Comparator,
+		const bool bEmptyContainerElement)
+	{
+		auto Case = [&](const TCHAR* Field, auto Mutator)
+		{
+			ExecuteAuditedMutation(Test, Audit, Prefix + TEXT(".") + Field,
+				InputBaseline, Comparator,
+				[&](auto& Value){ Mutator(Accessor(Value)); },
+				EMutationCoverageCategory::NonReflectedField,
+				bEmptyContainerElement);
+		};
+		Case(TEXT("bSuccess"), [](auto& Value){ Value.bSuccess = !Value.bSuccess; });
+		Case(TEXT("RequestedAttackSequence"), [](auto& Value){ ++Value.RequestedAttackSequence; });
+		Case(TEXT("RequestingSide"), [](auto& Value){ Value.RequestingSide = OtherEnumValue(Value.RequestingSide); });
+		Case(TEXT("ErrorCode"), [](auto& Value){ Value.ErrorCode = OtherEnumValue(Value.ErrorCode); });
+		Case(TEXT("AuthoritativeAttackSequence"), [](auto& Value){ ++Value.AuthoritativeAttackSequence; });
+		Case(TEXT("CurrentAttackingPlayer"), [](auto& Value){ Value.CurrentAttackingPlayer = OtherEnumValue(Value.CurrentAttackingPlayer); });
+		Case(TEXT("CurrentDefendingPlayer"), [](auto& Value){ Value.CurrentDefendingPlayer = OtherEnumValue(Value.CurrentDefendingPlayer); });
+		Case(TEXT("FrozenCarrierCardId"), [](auto& Value){ Value.FrozenCarrierCardId = TEXT("Mutation.Carrier"); });
+		Case(TEXT("FrozenMarkerCardId"), [](auto& Value){ Value.FrozenMarkerCardId = TEXT("Mutation.Marker"); });
+		Case(TEXT("MatchingFrozenCarrierPlacementCount"), [](auto& Value){ ++Value.MatchingFrozenCarrierPlacementCount; });
+		Case(TEXT("MatchingFrozenMarkerPlacementCount"), [](auto& Value){ ++Value.MatchingFrozenMarkerPlacementCount; });
+		Case(TEXT("ValidatedActionPoint"), [](auto& Value){ ++Value.ValidatedActionPoint; });
+		Case(TEXT("ErrorMessage"), [](auto& Value){ Value.ErrorMessage += TEXT(".Mutated"); });
+		TestReflectedSubobjectDeepMutations<TWrapper, FMatchPlayCurrentAttackSelectionStateValidationResult>(
+			Test, Audit, Prefix + TEXT(".SelectionStateValidationResult"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).SelectionStateValidationResult); },
+			Comparator, bEmptyContainerElement);
+		TestReflectedSubobjectDeepMutations<TWrapper, FMatchPlayDeploymentPlacement>(
+			Test, Audit, Prefix + TEXT(".FrozenCarrierPlacement"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).FrozenCarrierPlacement); },
+			Comparator, bEmptyContainerElement);
+		TestReflectedSubobjectDeepMutations<TWrapper, FMatchPlayDeploymentPlacement>(
+			Test, Audit, Prefix + TEXT(".FrozenMarkerPlacement"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).FrozenMarkerPlacement); },
+			Comparator, bEmptyContainerElement);
+		TestCardSnapshotQueryDeepMutations(
+			Test, Audit, Prefix + TEXT(".CarrierSnapshotQueryResult"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).CarrierSnapshotQueryResult); },
+			Comparator, bEmptyContainerElement);
+		TestReflectedSubobjectDeepMutations<TWrapper, FPlayerCardRuleSnapshot>(
+			Test, Audit, Prefix + TEXT(".ResolvedCarrierSnapshot"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).ResolvedCarrierSnapshot); },
+			Comparator, bEmptyContainerElement);
+		TestSkillValidationDeepMutations(
+			Test, Audit, Prefix + TEXT(".SkillRuleSetValidationResult"), InputBaseline,
+			[Accessor](auto& Value) -> decltype(auto){ return (Accessor(Value).SkillRuleSetValidationResult); },
+			Comparator, bEmptyContainerElement);
+	}
+
 	FNonReflectedMutationAudit TestNonReflectedInventoryMutations(
-		FAutomationTestBase& Test)
+		FAutomationTestBase& Test,
+		FMutationCoverageAudit& CoverageAudit)
 	{
 		FNonReflectedMutationAudit Audit;
+		Audit.CoverageAudit = &CoverageAudit;
 
 		FPlayerCardRuleSnapshotValidationResult CardValidation;
 		CardValidation.DuplicateCardIds = {
@@ -1887,32 +2545,63 @@ namespace MatchPlayAuthoritativeSessionTests
 			CardValidationComparator, [](auto& Value){ Value.InvalidCardId = TEXT("Mutated.Card"); }, Audit);
 		TestPlainMutation(Test, TEXT("PlayerCardValidation.DuplicateCardIds"), CardValidation,
 			CardValidationComparator, [](auto& Value){ Value.DuplicateCardIds.RemoveAt(2); }, Audit);
+		const FString DuplicatePrefix = TEXT("Manual.PlayerCardValidation.DuplicateCardIds");
+		FPlayerCardRuleSnapshotValidationResult EmptyDuplicates;
+		Test.TestTrue(TEXT("DuplicateCardIds empty equals empty"),
+			CardValidationComparator(EmptyDuplicates, EmptyDuplicates));
+		CoverageAudit.RecordEqualBaseline();
+		ExecuteAuditedMutation(Test, CoverageAudit,
+			DuplicatePrefix + TEXT(".Empty.Length"), EmptyDuplicates,
+			CardValidationComparator,
+			[](auto& Value){ Value.DuplicateCardIds.Add(TEXT("Canonical.Duplicate")); },
+			EMutationCoverageCategory::ContainerBehavior);
 		++Audit.ContainerCases;
+		FPlayerCardRuleSnapshotValidationResult SingletonDuplicates;
+		SingletonDuplicates.DuplicateCardIds = {TEXT("Canonical.Duplicate")};
+		Test.TestTrue(TEXT("DuplicateCardIds singleton canonical equality"),
+			CardValidationComparator(SingletonDuplicates, SingletonDuplicates));
+		CoverageAudit.RecordEqualBaseline();
+		ExecuteAuditedMutation(Test, CoverageAudit,
+			DuplicatePrefix + TEXT(".EmptyElement[0].FName"), SingletonDuplicates,
+			CardValidationComparator,
+			[](auto& Value){ Value.DuplicateCardIds[0] = TEXT("Mutation.Duplicate"); },
+			EMutationCoverageCategory::NonReflectedField, true);
+		ExecuteAuditedMutation(Test, CoverageAudit,
+			DuplicatePrefix + TEXT(".Singleton.Removal"), SingletonDuplicates,
+			CardValidationComparator,
+			[](auto& Value){ Value.DuplicateCardIds.Empty(); },
+			EMutationCoverageCategory::ContainerBehavior);
+		Audit.ContainerCases += 2;
+		Test.TestTrue(TEXT("DuplicateCardIds three-element canonical equality"),
+			CardValidationComparator(CardValidation, CardValidation));
+		CoverageAudit.RecordEqualBaseline();
+		ExecuteAuditedMutation(Test, CoverageAudit,
+			DuplicatePrefix + TEXT(".Three.Removal"), CardValidation,
+			CardValidationComparator,
+			[](auto& Value){ Value.DuplicateCardIds.RemoveAt(2); },
+			EMutationCoverageCategory::ContainerBehavior);
+		ExecuteAuditedMutation(Test, CoverageAudit,
+			DuplicatePrefix + TEXT(".Three.Addition"), CardValidation,
+			CardValidationComparator,
+			[](auto& Value){ Value.DuplicateCardIds.Add(TEXT("Duplicate.Fourth")); },
+			EMutationCoverageCategory::ContainerBehavior);
 		for (const int32 Index : {0, 1, 2})
 		{
-			FPlayerCardRuleSnapshotValidationResult Mutated = CardValidation;
-			Mutated.DuplicateCardIds[Index] = FName(*FString::Printf(
-				TEXT("Mutated.Duplicate.%d"), Index));
-			Test.TestFalse(TEXT("DuplicateCardIds element content covered"),
-				CardValidationComparator(CardValidation, Mutated));
-			++Audit.ContainerCases;
+			ExecuteAuditedMutation(Test, CoverageAudit,
+				FString::Printf(TEXT("%s.Three[%d].FName"), *DuplicatePrefix, Index),
+				CardValidation, CardValidationComparator,
+				[Index](auto& Value)
+				{
+					Value.DuplicateCardIds[Index] = FName(*FString::Printf(
+						TEXT("Mutation.Duplicate.%d"), Index));
+				}, EMutationCoverageCategory::NonReflectedField);
 		}
-		{
-			FPlayerCardRuleSnapshotValidationResult Mutated = CardValidation;
-			Swap(Mutated.DuplicateCardIds[0], Mutated.DuplicateCardIds[2]);
-			Test.TestFalse(TEXT("DuplicateCardIds order covered"),
-				CardValidationComparator(CardValidation, Mutated));
-			++Audit.ContainerCases;
-		}
-		{
-			FPlayerCardRuleSnapshotValidationResult Empty;
-			FPlayerCardRuleSnapshotValidationResult WithCanonical = Empty;
-			WithCanonical.DuplicateCardIds.Add(TEXT("Canonical.Duplicate"));
-			Test.TestFalse(TEXT("DuplicateCardIds empty-to-canonical covered"),
-				CardValidationComparator(Empty, WithCanonical));
-			++Audit.ContainerCases;
-			++Audit.EmptyContainerCases;
-		}
+		ExecuteAuditedMutation(Test, CoverageAudit,
+			DuplicatePrefix + TEXT(".Three.Order"), CardValidation,
+			CardValidationComparator,
+			[](auto& Value){ Swap(Value.DuplicateCardIds[0], Value.DuplicateCardIds[2]); },
+			EMutationCoverageCategory::ContainerBehavior);
+		Audit.ContainerCases += 6;
 
 		FPlayerCardRuleSnapshotQueryResult CardQuery;
 		Test.TestTrue(TEXT("PlayerCardQuery equal baseline"),
@@ -2105,26 +2794,49 @@ namespace MatchPlayAuthoritativeSessionTests
 		Test.TestEqual(TEXT("Non-reflected skipped groups"),
 			Audit.SkippedGroups,
 			0);
+		CoverageAudit.EqualBaselineCases += Audit.EqualBaselines;
 		return Audit;
 	}
 
-	template <typename TWrapper, typename TAccessor, typename TComparator>
+	template <typename TWrapper, typename TAccessor, typename TCanonicalize,
+		typename TDeepMutations, typename TComparator>
 	int32 TestCompletionSnapshotContainerMutations(
 		FAutomationTestBase& Test,
+		FMutationCoverageAudit& Audit,
 		const FString& Context,
 		const TWrapper& InputBaseline,
-		TAccessor&& Accessor,
-		TComparator&& Comparator)
+		TAccessor Accessor,
+		TCanonicalize Canonicalize,
+		TDeepMutations DeepMutations,
+		TComparator Comparator)
 	{
 		int32 Cases = 0;
 		TWrapper EmptyBaseline = InputBaseline;
 		Accessor(EmptyBaseline).DeploymentSnapshotQueryResults.Empty();
-		TWrapper EmptyCandidate = EmptyBaseline;
-		FMatchPlayCardSnapshotAuthorityQueryResult Canonical;
-		Canonical.CardId = TEXT("Canonical.EmptyContainer.Card");
-		Accessor(EmptyCandidate).DeploymentSnapshotQueryResults.Add(Canonical);
-		Test.TestFalse(*FString::Printf(TEXT("%s empty-to-canonical"), *Context),
-			Comparator(EmptyBaseline, EmptyCandidate));
+		Test.TestTrue(*FString::Printf(TEXT("%s empty baseline equality"), *Context),
+			Comparator(EmptyBaseline, EmptyBaseline));
+		Audit.RecordEqualBaseline();
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Empty.Length"),
+			EmptyBaseline, Comparator,
+			[&](auto& Value)
+			{
+				auto& Items = Accessor(Value).DeploymentSnapshotQueryResults;
+				Items.AddDefaulted();
+				Canonicalize(Items.Last(), 0);
+			}, EMutationCoverageCategory::ContainerBehavior);
+		++Cases;
+
+		TWrapper Singleton = EmptyBaseline;
+		Accessor(Singleton).DeploymentSnapshotQueryResults.AddDefaulted();
+		Canonicalize(Accessor(Singleton).DeploymentSnapshotQueryResults[0], 0);
+		Test.TestTrue(*FString::Printf(TEXT("%s singleton canonical equality"), *Context),
+			Comparator(Singleton, Singleton));
+		Audit.RecordEqualBaseline();
+		DeepMutations(Singleton, Context + TEXT(".EmptyElement[0]"), 0, true);
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Singleton.Removal"),
+			Singleton, Comparator,
+			[&](auto& Value){ Accessor(Value).DeploymentSnapshotQueryResults.Empty(); },
+			EMutationCoverageCategory::ContainerBehavior);
 		++Cases;
 
 		TWrapper Baseline = InputBaseline;
@@ -2132,63 +2844,82 @@ namespace MatchPlayAuthoritativeSessionTests
 		BaselineItems.Empty();
 		for (int32 Index = 0; Index < 3; ++Index)
 		{
-			FMatchPlayCardSnapshotAuthorityQueryResult Item;
-			Item.CardId = FName(*FString::Printf(TEXT("Canonical.Container.%d"), Index));
-			BaselineItems.Add(Item);
+			const int32 Added = BaselineItems.AddDefaulted();
+			Canonicalize(BaselineItems[Added], Index);
 		}
 		Test.TestTrue(*FString::Printf(TEXT("%s canonical equal baseline"), *Context),
 			Comparator(Baseline, Baseline));
-
-		TWrapper Mutated = Baseline;
-		Accessor(Mutated).DeploymentSnapshotQueryResults.RemoveAt(2);
-		Test.TestFalse(*FString::Printf(TEXT("%s length"), *Context),
-			Comparator(Baseline, Mutated));
+		Audit.RecordEqualBaseline();
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Three.Removal"),
+			Baseline, Comparator,
+			[&](auto& Value){ Accessor(Value).DeploymentSnapshotQueryResults.RemoveAt(2); },
+			EMutationCoverageCategory::ContainerBehavior);
+		++Cases;
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Three.Addition"),
+			Baseline, Comparator,
+			[&](auto& Value)
+			{
+				auto& Items = Accessor(Value).DeploymentSnapshotQueryResults;
+				Items.AddDefaulted();
+				Canonicalize(Items.Last(), 3);
+			}, EMutationCoverageCategory::ContainerBehavior);
 		++Cases;
 		for (const int32 Index : {0, 1, 2})
 		{
-			Mutated = Baseline;
-			Accessor(Mutated).DeploymentSnapshotQueryResults[Index].ErrorMessage =
-				FString::Printf(TEXT("mutated container element %d"), Index);
-			Test.TestFalse(*FString::Printf(TEXT("%s element %d content"), *Context, Index),
-				Comparator(Baseline, Mutated));
-			++Cases;
-			Mutated = Baseline;
-			Accessor(Mutated).DeploymentSnapshotQueryResults[Index]
-				.UnderlyingQueryResult.ValidationResult.InvalidCardId =
-					FName(*FString::Printf(TEXT("Mutated.Hidden.%d"), Index));
-			Test.TestFalse(*FString::Printf(TEXT("%s element %d deep content"), *Context, Index),
-				Comparator(Baseline, Mutated));
-			++Cases;
+			DeepMutations(Baseline,
+				FString::Printf(TEXT("%s.Three[%d]"), *Context, Index),
+				Index, false);
 		}
-		Mutated = Baseline;
-		Swap(
-			Accessor(Mutated).DeploymentSnapshotQueryResults[0],
-			Accessor(Mutated).DeploymentSnapshotQueryResults[2]);
-		Test.TestFalse(*FString::Printf(TEXT("%s order"), *Context),
-			Comparator(Baseline, Mutated));
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Three.Order"),
+			Baseline, Comparator,
+			[&](auto& Value)
+			{
+				Swap(Accessor(Value).DeploymentSnapshotQueryResults[0],
+					Accessor(Value).DeploymentSnapshotQueryResults[2]);
+			}, EMutationCoverageCategory::ContainerBehavior);
 		++Cases;
 		return Cases;
 	}
 
 	template <typename TWrapper, typename TAccessor, typename TCanonicalize,
-		typename TMutateHidden, typename TComparator>
+		typename TDeepMutations, typename TComparator>
 	int32 TestAvailabilityCandidateContainerMutations(
 		FAutomationTestBase& Test,
+		FMutationCoverageAudit& Audit,
 		const FString& Context,
 		const TWrapper& InputBaseline,
-		TAccessor&& Accessor,
-		TCanonicalize&& Canonicalize,
-		TMutateHidden&& MutateHidden,
-		TComparator&& Comparator)
+		TAccessor Accessor,
+		TCanonicalize Canonicalize,
+		TDeepMutations DeepMutations,
+		TComparator Comparator)
 	{
 		int32 Cases = 0;
 		TWrapper EmptyBaseline = InputBaseline;
 		Accessor(EmptyBaseline).Candidates.Empty();
-		TWrapper EmptyCandidate = EmptyBaseline;
-		Accessor(EmptyCandidate).Candidates.AddDefaulted();
-		Canonicalize(Accessor(EmptyCandidate).Candidates[0], 0);
-		Test.TestFalse(*FString::Printf(TEXT("%s empty-to-canonical"), *Context),
-			Comparator(EmptyBaseline, EmptyCandidate));
+		Test.TestTrue(*FString::Printf(TEXT("%s empty baseline equality"), *Context),
+			Comparator(EmptyBaseline, EmptyBaseline));
+		Audit.RecordEqualBaseline();
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Empty.Length"),
+			EmptyBaseline, Comparator,
+			[&](auto& Value)
+			{
+				auto& Candidates = Accessor(Value).Candidates;
+				Candidates.AddDefaulted();
+				Canonicalize(Candidates.Last(), 0);
+			}, EMutationCoverageCategory::ContainerBehavior);
+		++Cases;
+
+		TWrapper Singleton = EmptyBaseline;
+		Accessor(Singleton).Candidates.AddDefaulted();
+		Canonicalize(Accessor(Singleton).Candidates[0], 0);
+		Test.TestTrue(*FString::Printf(TEXT("%s singleton canonical equality"), *Context),
+			Comparator(Singleton, Singleton));
+		Audit.RecordEqualBaseline();
+		DeepMutations(Singleton, Context + TEXT(".EmptyElement[0]"), 0, true);
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Singleton.Removal"),
+			Singleton, Comparator,
+			[&](auto& Value){ Accessor(Value).Candidates.Empty(); },
+			EMutationCoverageCategory::ContainerBehavior);
 		++Cases;
 
 		TWrapper Baseline = InputBaseline;
@@ -2201,24 +2932,33 @@ namespace MatchPlayAuthoritativeSessionTests
 		}
 		Test.TestTrue(*FString::Printf(TEXT("%s canonical equal baseline"), *Context),
 			Comparator(Baseline, Baseline));
-
-		TWrapper Mutated = Baseline;
-		Accessor(Mutated).Candidates.RemoveAt(2);
-		Test.TestFalse(*FString::Printf(TEXT("%s length"), *Context),
-			Comparator(Baseline, Mutated));
+		Audit.RecordEqualBaseline();
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Three.Removal"),
+			Baseline, Comparator,
+			[&](auto& Value){ Accessor(Value).Candidates.RemoveAt(2); },
+			EMutationCoverageCategory::ContainerBehavior);
+		++Cases;
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Three.Addition"),
+			Baseline, Comparator,
+			[&](auto& Value)
+			{
+				auto& Candidates = Accessor(Value).Candidates;
+				Candidates.AddDefaulted();
+				Canonicalize(Candidates.Last(), 3);
+			}, EMutationCoverageCategory::ContainerBehavior);
 		++Cases;
 		for (const int32 Index : {0, 1, 2})
 		{
-			Mutated = Baseline;
-			MutateHidden(Accessor(Mutated).Candidates[Index], Index);
-			Test.TestFalse(*FString::Printf(TEXT("%s hidden element %d"), *Context, Index),
-				Comparator(Baseline, Mutated));
-			++Cases;
+			DeepMutations(Baseline,
+				FString::Printf(TEXT("%s.Three[%d]"), *Context, Index),
+				Index, false);
 		}
-		Mutated = Baseline;
-		Swap(Accessor(Mutated).Candidates[0], Accessor(Mutated).Candidates[2]);
-		Test.TestFalse(*FString::Printf(TEXT("%s order"), *Context),
-			Comparator(Baseline, Mutated));
+		ExecuteAuditedMutation(Test, Audit, Context + TEXT(".Three.Order"),
+			Baseline, Comparator,
+			[&](auto& Value)
+			{
+				Swap(Accessor(Value).Candidates[0], Accessor(Value).Candidates[2]);
+			}, EMutationCoverageCategory::ContainerBehavior);
 		++Cases;
 		return Cases;
 	}
@@ -4555,6 +5295,15 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalMarkerTest::RunTest(
 		TEXT("No-legal marker completion"),
 		Success.ResolutionResult.CompletionResult,
 		NoLegalSession.GetStateSnapshot());
+	TestCompletionScoringContract(
+		*this,
+		TEXT("No-legal marker completion"),
+		Before,
+		Success.ResolutionResult.CompletionResult,
+		NoLegalSession.GetStateSnapshot(),
+		ECompletionScoringExpectation::Goal,
+		NoLegalTrace.AttackingSide,
+		true);
 	const FMatchPlayState CompletedState = NoLegalSession.GetStateSnapshot();
 	const auto Replay = NoLegalSession.ResolveNoLegalMarker();
 	TestEqual(TEXT("No-legal marker replay exact first error"),
@@ -4641,6 +5390,15 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 		TEXT("Marker decline completion"),
 		Success.DeclineResult.CompletionResult,
 		Session.GetStateSnapshot());
+	TestCompletionScoringContract(
+		*this,
+		TEXT("Marker decline completion"),
+		Before,
+		Success.DeclineResult.CompletionResult,
+		Session.GetStateSnapshot(),
+		ECompletionScoringExpectation::Goal,
+		Trace.AttackingSide,
+		true);
 
 	FMatchPlayAuthoritativeSession NoLegalSession;
 	FReachabilityTrace NoLegalTrace;
@@ -4703,8 +5461,18 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 		FReachabilityTrace ResolveTrace;
 		BuildFoundationBToAwaitingMarker(
 			ResolveSession, TEXT("MarkerCompleteResolve"), false, {}, ResolveTrace);
+		const FMatchPlayState ResolveBefore = ResolveSession.GetStateSnapshot();
 		Resolves.Add(ResolveSession.ResolveNoLegalMarker());
 		ResolveFinals.Add(ResolveSession.GetStateSnapshot());
+		TestCompletionScoringContract(
+			*this,
+			FString::Printf(TEXT("No-legal marker deterministic run %d"), Index),
+			ResolveBefore,
+			Resolves.Last().ResolutionResult.CompletionResult,
+			ResolveFinals.Last(),
+			ECompletionScoringExpectation::Goal,
+			ResolveTrace.AttackingSide,
+			false);
 
 		FMatchPlayAuthoritativeSession DeclineSession;
 		FReachabilityTrace DeclineTrace;
@@ -4712,8 +5480,18 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 			DeclineSession, TEXT("MarkerCompleteDecline"), true, {}, DeclineTrace);
 		FMatchPlayAuthoritativeDeclineMarkerRequest Request;
 		Request.RequestingSide = DeclineTrace.DefendingSide;
+		const FMatchPlayState DeclineBefore = DeclineSession.GetStateSnapshot();
 		Declines.Add(DeclineSession.DeclineMarker(Request));
 		DeclineFinals.Add(DeclineSession.GetStateSnapshot());
+		TestCompletionScoringContract(
+			*this,
+			FString::Printf(TEXT("Decline marker deterministic run %d"), Index),
+			DeclineBefore,
+			Declines.Last().DeclineResult.CompletionResult,
+			DeclineFinals.Last(),
+			ECompletionScoringExpectation::Goal,
+			DeclineTrace.AttackingSide,
+			false);
 	}
 	for (int32 Index = 1; Index < 3; ++Index)
 	{
@@ -5199,6 +5977,15 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalSkillTest::RunTest(
 		TEXT("No-legal skill completion"),
 		Success.ResolutionResult.CompletionResult,
 		Session.GetStateSnapshot());
+	TestCompletionScoringContract(
+		*this,
+		TEXT("No-legal skill completion"),
+		Before,
+		Success.ResolutionResult.CompletionResult,
+		Session.GetStateSnapshot(),
+		ECompletionScoringExpectation::NoGoal,
+		Trace.AttackingSide,
+		true);
 	const FMatchPlayState CompletedState = Session.GetStateSnapshot();
 	const auto Replay = Session.ResolveNoLegalSkill(EmptyRules);
 	TestEqual(TEXT("No-legal skill replay exact first error"),
@@ -5293,6 +6080,15 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		TEXT("Skill decline completion"),
 		Success.DeclineResult.CompletionResult,
 		Session.GetStateSnapshot());
+	TestCompletionScoringContract(
+		*this,
+		TEXT("Skill decline completion"),
+		Before,
+		Success.DeclineResult.CompletionResult,
+		Session.GetStateSnapshot(),
+		ECompletionScoringExpectation::NoGoal,
+		Trace.AttackingSide,
+		true);
 
 	FSkillRuleSnapshotSet EmptyRules;
 	FMatchPlayAuthoritativeSession NoLegalSession;
@@ -5373,8 +6169,18 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 			{},
 			ResolveTrace,
 			ResolveMarker);
+		const FMatchPlayState ResolveBefore = ResolveSession.GetStateSnapshot();
 		Resolves.Add(ResolveSession.ResolveNoLegalSkill(EmptyRules));
 		ResolveFinals.Add(ResolveSession.GetStateSnapshot());
+		TestCompletionScoringContract(
+			*this,
+			FString::Printf(TEXT("No-legal skill deterministic run %d"), Index),
+			ResolveBefore,
+			Resolves.Last().ResolutionResult.CompletionResult,
+			ResolveFinals.Last(),
+			ECompletionScoringExpectation::NoGoal,
+			ResolveTrace.AttackingSide,
+			false);
 
 		FMatchPlayAuthoritativeSession DeclineSession;
 		FReachabilityTrace DeclineTrace;
@@ -5387,8 +6193,18 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 			DeclineMarkerResult);
 		FMatchPlayAuthoritativeDeclineSkillRequest Request;
 		Request.RequestingSide = DeclineTrace.AttackingSide;
+		const FMatchPlayState DeclineBefore = DeclineSession.GetStateSnapshot();
 		Declines.Add(DeclineSession.DeclineSkill(Rules, Request));
 		DeclineFinals.Add(DeclineSession.GetStateSnapshot());
+		TestCompletionScoringContract(
+			*this,
+			FString::Printf(TEXT("Decline skill deterministic run %d"), Index),
+			DeclineBefore,
+			Declines.Last().DeclineResult.CompletionResult,
+			DeclineFinals.Last(),
+			ECompletionScoringExpectation::NoGoal,
+			DeclineTrace.AttackingSide,
+			false);
 	}
 	for (int32 Index = 1; Index < 3; ++Index)
 	{
@@ -5492,6 +6308,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace MatchPlayAuthoritativeSessionTests;
+	FMutationCoverageAudit CoverageAudit;
 
 	FMatchPlayAuthoritativeSession MarkerSession;
 	FReachabilityTrace MarkerTrace;
@@ -5506,7 +6323,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		MakeMarkerRequest(MarkerTrace, MarkerCardId));
 	TestTrue(TEXT("Marker comparator accepts equal baseline"),
 		AreAuthoritativeSubmitMarkerResultsEqual(Marker, Marker));
-	TestEnvelopeMutationCoverage(*this, Marker.RuntimeEnvelope);
+	CoverageAudit.RecordEqualBaseline();
+	TestEnvelopeMutationCoverage(
+		*this, Marker.RuntimeEnvelope, &CoverageAudit, TEXT("SubmitMarker.Envelope"));
 	const FReflectedMutationAudit MarkerMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeSubmitMarkerResult,
@@ -5522,17 +6341,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 				{
 					return AreAuthoritativeSubmitMarkerResultsEqual(
 						Left, Right);
-				});
-	auto MutatedMarker = Marker;
-	MutatedMarker.MarkerResult.LegalityResult.MarkerSnapshotQueryResult
-		.ErrorMessage = TEXT("mutated hidden marker snapshot");
-	TestFalse(TEXT("Marker comparator covers hidden snapshot result"),
-		AreAuthoritativeSubmitMarkerResultsEqual(Marker, MutatedMarker));
-	MutatedMarker = Marker;
-	MutatedMarker.RuntimeEnvelope.CommandKind =
-		EMatchPlayAuthoritativeCommandKind::DeclineMarker;
-	TestFalse(TEXT("Marker comparator covers runtime envelope"),
-		AreAuthoritativeSubmitMarkerResultsEqual(Marker, MutatedMarker));
+				},
+				&CoverageAudit);
 
 	FMatchPlayAuthoritativeSession MarkerResolveSession;
 	FReachabilityTrace MarkerResolveTrace;
@@ -5548,7 +6358,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		AreAuthoritativeResolveNoLegalMarkerResultsEqual(
 			MarkerResolve,
 			MarkerResolve));
-	TestEnvelopeMutationCoverage(*this, MarkerResolve.RuntimeEnvelope);
+	CoverageAudit.RecordEqualBaseline();
+	TestEnvelopeMutationCoverage(*this, MarkerResolve.RuntimeEnvelope,
+		&CoverageAudit, TEXT("ResolveNoLegalMarker.Envelope"));
 	const FReflectedMutationAudit ResolveMarkerMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeResolveNoLegalMarkerResult,
@@ -5564,22 +6376,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 				{
 					return AreAuthoritativeResolveNoLegalMarkerResultsEqual(
 						Left, Right);
-				});
-	auto MutatedMarkerResolve = MarkerResolve;
-	TestTrue(TEXT("Resolve marker completion has deployment evidence"),
-		MutatedMarkerResolve.ResolutionResult.CompletionResult
-			.DeploymentSnapshotQueryResults.Num() > 0);
-	if (MutatedMarkerResolve.ResolutionResult.CompletionResult
-		.DeploymentSnapshotQueryResults.Num() > 0)
-	{
-		MutatedMarkerResolve.ResolutionResult.CompletionResult
-			.DeploymentSnapshotQueryResults[0].ErrorMessage =
-				TEXT("mutated hidden completion snapshot");
-		TestFalse(TEXT("Resolve marker comparator covers hidden completion"),
-			AreAuthoritativeResolveNoLegalMarkerResultsEqual(
-				MarkerResolve,
-				MutatedMarkerResolve));
-	}
+				},
+				&CoverageAudit);
 
 	FMatchPlayAuthoritativeSession MarkerDeclineSession;
 	FReachabilityTrace MarkerDeclineTrace;
@@ -5597,7 +6395,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		AreAuthoritativeDeclineMarkerResultsEqual(
 			MarkerDecline,
 			MarkerDecline));
-	TestEnvelopeMutationCoverage(*this, MarkerDecline.RuntimeEnvelope);
+	CoverageAudit.RecordEqualBaseline();
+	TestEnvelopeMutationCoverage(*this, MarkerDecline.RuntimeEnvelope,
+		&CoverageAudit, TEXT("DeclineMarker.Envelope"));
 	const FReflectedMutationAudit DeclineMarkerMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeDeclineMarkerResult,
@@ -5613,15 +6413,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 				{
 					return AreAuthoritativeDeclineMarkerResultsEqual(
 						Left, Right);
-				});
-	auto MutatedMarkerDecline = MarkerDecline;
-	MutatedMarkerDecline.DeclineResult.MarkerAvailabilityResult
-		.GlobalBlockingLegalityResult.MarkerSnapshotQueryResult.ErrorMessage =
-			TEXT("mutated hidden marker availability");
-	TestFalse(TEXT("Decline marker comparator covers hidden availability"),
-		AreAuthoritativeDeclineMarkerResultsEqual(
-			MarkerDecline,
-			MutatedMarkerDecline));
+				},
+				&CoverageAudit);
 
 	const FName SkillId(TEXT("Skill.FoundationB.Comparator"));
 	const auto Rules = MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
@@ -5640,7 +6433,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 	const auto Skill = SkillSession.SubmitSkill(Rules, SkillRequest);
 	TestTrue(TEXT("Skill comparator accepts equal baseline"),
 		AreAuthoritativeSubmitSkillResultsEqual(Skill, Skill));
-	TestEnvelopeMutationCoverage(*this, Skill.RuntimeEnvelope);
+	CoverageAudit.RecordEqualBaseline();
+	TestEnvelopeMutationCoverage(
+		*this, Skill.RuntimeEnvelope, &CoverageAudit, TEXT("SubmitSkill.Envelope"));
 	const FReflectedMutationAudit SkillMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeSubmitSkillResult,
@@ -5656,17 +6451,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 				{
 					return AreAuthoritativeSubmitSkillResultsEqual(
 						Left, Right);
-				});
-	auto MutatedSkill = Skill;
-	++MutatedSkill.SkillResult.LegalityResult.GlobalContextResult
-		.ValidatedActionPoint;
-	TestFalse(TEXT("Skill comparator covers hidden global context"),
-		AreAuthoritativeSubmitSkillResultsEqual(Skill, MutatedSkill));
-	MutatedSkill = Skill;
-	MutatedSkill.SkillResult.LegalityResult.ResolvedSkillRule
-		.MaxTriggerActionPoint++;
-	TestFalse(TEXT("Skill comparator covers plain resolved rule"),
-		AreAuthoritativeSubmitSkillResultsEqual(Skill, MutatedSkill));
+				},
+				&CoverageAudit);
 
 	FSkillRuleSnapshotSet EmptyRules;
 	FMatchPlayAuthoritativeSession SkillResolveSession;
@@ -5684,7 +6470,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		AreAuthoritativeResolveNoLegalSkillResultsEqual(
 			SkillResolve,
 			SkillResolve));
-	TestEnvelopeMutationCoverage(*this, SkillResolve.RuntimeEnvelope);
+	CoverageAudit.RecordEqualBaseline();
+	TestEnvelopeMutationCoverage(*this, SkillResolve.RuntimeEnvelope,
+		&CoverageAudit, TEXT("ResolveNoLegalSkill.Envelope"));
 	const FReflectedMutationAudit ResolveSkillMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeResolveNoLegalSkillResult,
@@ -5700,15 +6488,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 				{
 					return AreAuthoritativeResolveNoLegalSkillResultsEqual(
 						Left, Right);
-				});
-	auto MutatedSkillResolve = SkillResolve;
-	MutatedSkillResolve.ResolutionResult.SkillAvailabilityResult
-		.GlobalContextResult.ErrorMessage =
-			TEXT("mutated hidden skill global context");
-	TestFalse(TEXT("Resolve skill comparator covers hidden availability"),
-		AreAuthoritativeResolveNoLegalSkillResultsEqual(
-			SkillResolve,
-			MutatedSkillResolve));
+				},
+				&CoverageAudit);
 
 	FMatchPlayAuthoritativeSession SkillDeclineSession;
 	FReachabilityTrace SkillDeclineTrace;
@@ -5727,7 +6508,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		AreAuthoritativeDeclineSkillResultsEqual(
 			SkillDecline,
 			SkillDecline));
-	TestEnvelopeMutationCoverage(*this, SkillDecline.RuntimeEnvelope);
+	CoverageAudit.RecordEqualBaseline();
+	TestEnvelopeMutationCoverage(*this, SkillDecline.RuntimeEnvelope,
+		&CoverageAudit, TEXT("DeclineSkill.Envelope"));
 	const FReflectedMutationAudit DeclineSkillMutationAudit =
 		TestNestedReflectedMutationCoverage<
 			FMatchPlayAuthoritativeDeclineSkillResult,
@@ -5743,19 +6526,14 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 				{
 					return AreAuthoritativeDeclineSkillResultsEqual(
 						Left, Right);
-				});
-	auto MutatedSkillDecline = SkillDecline;
-	MutatedSkillDecline.DeclineResult.SkillAvailabilityResult
-		.SkillRuleSetValidationResult.InvalidField = TEXT("mutated field");
-	TestFalse(TEXT("Decline skill comparator covers rule validation"),
-		AreAuthoritativeDeclineSkillResultsEqual(
-			SkillDecline,
-			MutatedSkillDecline));
+				},
+				&CoverageAudit);
 
 	int32 DeepContainerCases = 0;
 	DeepContainerCases += TestAvailabilityCandidateContainerMutations(
 		*this,
-		TEXT("Resolve marker candidates"),
+		CoverageAudit,
+		TEXT("ResolveNoLegalMarker.ResolutionResult.MarkerAvailabilityResult.Candidates"),
 		MarkerResolve,
 		[](auto& Value) -> decltype(auto)
 		{
@@ -5766,10 +6544,29 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 			Candidate.MarkerCardId = FName(*FString::Printf(
 				TEXT("Canonical.Marker.%d"), Index));
 		},
-		[](auto& Candidate, const int32 Index)
+		[&](const auto& Baseline, const FString& Prefix,
+			const int32 Index, const bool bEmpty)
 		{
-			Candidate.LegalityResult.MarkerSnapshotQueryResult.ErrorMessage =
-				FString::Printf(TEXT("mutated marker candidate %d"), Index);
+			auto Comparator = [](const auto& Left, const auto& Right)
+			{
+				return AreAuthoritativeResolveNoLegalMarkerResultsEqual(Left, Right);
+			};
+			TestNestedReflectedMutationCoverage<
+				FMatchPlayAuthoritativeResolveNoLegalMarkerResult,
+				FMatchPlayCurrentAttackMarkerSelectionCandidateAvailability>(
+					*this, *Prefix, Baseline,
+					[Index](auto& Value) -> decltype(auto)
+					{
+						return (Value.ResolutionResult.MarkerAvailabilityResult.Candidates[Index]);
+					}, Comparator, &CoverageAudit, bEmpty);
+			TestCardSnapshotQueryDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.MarkerSnapshotQueryResult"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.ResolutionResult.MarkerAvailabilityResult.Candidates[Index]
+						.LegalityResult.MarkerSnapshotQueryResult);
+				}, Comparator, bEmpty);
 		},
 		[](const auto& Left, const auto& Right)
 		{
@@ -5777,7 +6574,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		});
 	DeepContainerCases += TestAvailabilityCandidateContainerMutations(
 		*this,
-		TEXT("Decline marker candidates"),
+		CoverageAudit,
+		TEXT("DeclineMarker.DeclineResult.MarkerAvailabilityResult.Candidates"),
 		MarkerDecline,
 		[](auto& Value) -> decltype(auto)
 		{
@@ -5788,10 +6586,29 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 			Candidate.MarkerCardId = FName(*FString::Printf(
 				TEXT("Canonical.DeclineMarker.%d"), Index));
 		},
-		[](auto& Candidate, const int32 Index)
+		[&](const auto& Baseline, const FString& Prefix,
+			const int32 Index, const bool bEmpty)
 		{
-			Candidate.LegalityResult.MarkerSnapshotQueryResult.ErrorMessage =
-				FString::Printf(TEXT("mutated decline marker candidate %d"), Index);
+			auto Comparator = [](const auto& Left, const auto& Right)
+			{
+				return AreAuthoritativeDeclineMarkerResultsEqual(Left, Right);
+			};
+			TestNestedReflectedMutationCoverage<
+				FMatchPlayAuthoritativeDeclineMarkerResult,
+				FMatchPlayCurrentAttackMarkerSelectionCandidateAvailability>(
+					*this, *Prefix, Baseline,
+					[Index](auto& Value) -> decltype(auto)
+					{
+						return (Value.DeclineResult.MarkerAvailabilityResult.Candidates[Index]);
+					}, Comparator, &CoverageAudit, bEmpty);
+			TestCardSnapshotQueryDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.MarkerSnapshotQueryResult"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.DeclineResult.MarkerAvailabilityResult.Candidates[Index]
+						.LegalityResult.MarkerSnapshotQueryResult);
+				}, Comparator, bEmpty);
 		},
 		[](const auto& Left, const auto& Right)
 		{
@@ -5799,7 +6616,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		});
 	DeepContainerCases += TestAvailabilityCandidateContainerMutations(
 		*this,
-		TEXT("Resolve skill candidates"),
+		CoverageAudit,
+		TEXT("ResolveNoLegalSkill.ResolutionResult.SkillAvailabilityResult.Candidates"),
 		SkillResolve,
 		[](auto& Value) -> decltype(auto)
 		{
@@ -5810,10 +6628,53 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 			Candidate.SkillId = FName(*FString::Printf(
 				TEXT("Canonical.Skill.%d"), Index));
 		},
-		[](auto& Candidate, const int32 Index)
+		[&](const auto& Baseline, const FString& Prefix,
+			const int32 Index, const bool bEmpty)
 		{
-			Candidate.LegalityResult.GlobalContextResult.ErrorMessage =
-				FString::Printf(TEXT("mutated skill candidate %d"), Index);
+			auto Comparator = [](const auto& Left, const auto& Right)
+			{
+				return AreAuthoritativeResolveNoLegalSkillResultsEqual(Left, Right);
+			};
+			TestNestedReflectedMutationCoverage<
+				FMatchPlayAuthoritativeResolveNoLegalSkillResult,
+				FMatchPlayCurrentAttackSkillSelectionCandidateAvailability>(
+					*this, *Prefix, Baseline,
+					[Index](auto& Value) -> decltype(auto)
+					{
+						return (Value.ResolutionResult.SkillAvailabilityResult.Candidates[Index]);
+					}, Comparator, &CoverageAudit, bEmpty);
+			TestSkillGlobalContextDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.GlobalContextResult"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.ResolutionResult.SkillAvailabilityResult.Candidates[Index]
+						.LegalityResult.GlobalContextResult);
+				}, Comparator, bEmpty);
+			TestCardSnapshotQueryDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.CarrierSnapshotQueryResult"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.ResolutionResult.SkillAvailabilityResult.Candidates[Index]
+						.LegalityResult.CarrierSnapshotQueryResult);
+				}, Comparator, bEmpty);
+			TestSkillRuleQueryDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.SkillRuleQueryResult"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.ResolutionResult.SkillAvailabilityResult.Candidates[Index]
+						.LegalityResult.SkillRuleQueryResult);
+				}, Comparator, bEmpty);
+			TestSkillRuleDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.ResolvedSkillRule"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.ResolutionResult.SkillAvailabilityResult.Candidates[Index]
+						.LegalityResult.ResolvedSkillRule);
+				}, Comparator, bEmpty);
 		},
 		[](const auto& Left, const auto& Right)
 		{
@@ -5821,7 +6682,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		});
 	DeepContainerCases += TestAvailabilityCandidateContainerMutations(
 		*this,
-		TEXT("Decline skill candidates"),
+		CoverageAudit,
+		TEXT("DeclineSkill.DeclineResult.SkillAvailabilityResult.Candidates"),
 		SkillDecline,
 		[](auto& Value) -> decltype(auto)
 		{
@@ -5832,10 +6694,53 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 			Candidate.SkillId = FName(*FString::Printf(
 				TEXT("Canonical.DeclineSkill.%d"), Index));
 		},
-		[](auto& Candidate, const int32 Index)
+		[&](const auto& Baseline, const FString& Prefix,
+			const int32 Index, const bool bEmpty)
 		{
-			Candidate.LegalityResult.GlobalContextResult.ErrorMessage =
-				FString::Printf(TEXT("mutated decline skill candidate %d"), Index);
+			auto Comparator = [](const auto& Left, const auto& Right)
+			{
+				return AreAuthoritativeDeclineSkillResultsEqual(Left, Right);
+			};
+			TestNestedReflectedMutationCoverage<
+				FMatchPlayAuthoritativeDeclineSkillResult,
+				FMatchPlayCurrentAttackSkillSelectionCandidateAvailability>(
+					*this, *Prefix, Baseline,
+					[Index](auto& Value) -> decltype(auto)
+					{
+						return (Value.DeclineResult.SkillAvailabilityResult.Candidates[Index]);
+					}, Comparator, &CoverageAudit, bEmpty);
+			TestSkillGlobalContextDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.GlobalContextResult"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.DeclineResult.SkillAvailabilityResult.Candidates[Index]
+						.LegalityResult.GlobalContextResult);
+				}, Comparator, bEmpty);
+			TestCardSnapshotQueryDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.CarrierSnapshotQueryResult"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.DeclineResult.SkillAvailabilityResult.Candidates[Index]
+						.LegalityResult.CarrierSnapshotQueryResult);
+				}, Comparator, bEmpty);
+			TestSkillRuleQueryDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.SkillRuleQueryResult"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.DeclineResult.SkillAvailabilityResult.Candidates[Index]
+						.LegalityResult.SkillRuleQueryResult);
+				}, Comparator, bEmpty);
+			TestSkillRuleDeepMutations(
+				*this, CoverageAudit, Prefix + TEXT(".LegalityResult.ResolvedSkillRule"),
+				Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.DeclineResult.SkillAvailabilityResult.Candidates[Index]
+						.LegalityResult.ResolvedSkillRule);
+				}, Comparator, bEmpty);
 		},
 		[](const auto& Left, const auto& Right)
 		{
@@ -5844,11 +6749,33 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 
 	DeepContainerCases += TestCompletionSnapshotContainerMutations(
 		*this,
-		TEXT("Resolve marker completion snapshots"),
+		CoverageAudit,
+		TEXT("ResolveNoLegalMarker.ResolutionResult.CompletionResult.DeploymentSnapshotQueryResults"),
 		MarkerResolve,
 		[](auto& Value) -> decltype(auto)
 		{
 			return (Value.ResolutionResult.CompletionResult);
+		},
+		[](auto& Item, const int32 Index)
+		{
+			Item.CardId = FName(*FString::Printf(TEXT("Canonical.ResolveMarker.Snapshot.%d"), Index));
+			Item.PlayerSide = Index % 2 == 0
+				? EInitialTurnOrderPlayer::PlayerA : EInitialTurnOrderPlayer::PlayerB;
+		},
+		[&](const auto& Baseline, const FString& Prefix,
+			const int32 Index, const bool bEmpty)
+		{
+			auto Comparator = [](const auto& Left, const auto& Right)
+			{
+				return AreAuthoritativeResolveNoLegalMarkerResultsEqual(Left, Right);
+			};
+			TestCardSnapshotQueryDeepMutations(
+				*this, CoverageAudit, Prefix, Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.ResolutionResult.CompletionResult
+						.DeploymentSnapshotQueryResults[Index]);
+				}, Comparator, bEmpty);
 		},
 		[](const auto& Left, const auto& Right)
 		{
@@ -5856,11 +6783,33 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		});
 	DeepContainerCases += TestCompletionSnapshotContainerMutations(
 		*this,
-		TEXT("Decline marker completion snapshots"),
+		CoverageAudit,
+		TEXT("DeclineMarker.DeclineResult.CompletionResult.DeploymentSnapshotQueryResults"),
 		MarkerDecline,
 		[](auto& Value) -> decltype(auto)
 		{
 			return (Value.DeclineResult.CompletionResult);
+		},
+		[](auto& Item, const int32 Index)
+		{
+			Item.CardId = FName(*FString::Printf(TEXT("Canonical.DeclineMarker.Snapshot.%d"), Index));
+			Item.PlayerSide = Index % 2 == 0
+				? EInitialTurnOrderPlayer::PlayerA : EInitialTurnOrderPlayer::PlayerB;
+		},
+		[&](const auto& Baseline, const FString& Prefix,
+			const int32 Index, const bool bEmpty)
+		{
+			auto Comparator = [](const auto& Left, const auto& Right)
+			{
+				return AreAuthoritativeDeclineMarkerResultsEqual(Left, Right);
+			};
+			TestCardSnapshotQueryDeepMutations(
+				*this, CoverageAudit, Prefix, Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.DeclineResult.CompletionResult
+						.DeploymentSnapshotQueryResults[Index]);
+				}, Comparator, bEmpty);
 		},
 		[](const auto& Left, const auto& Right)
 		{
@@ -5868,11 +6817,33 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		});
 	DeepContainerCases += TestCompletionSnapshotContainerMutations(
 		*this,
-		TEXT("Resolve skill completion snapshots"),
+		CoverageAudit,
+		TEXT("ResolveNoLegalSkill.ResolutionResult.CompletionResult.DeploymentSnapshotQueryResults"),
 		SkillResolve,
 		[](auto& Value) -> decltype(auto)
 		{
 			return (Value.ResolutionResult.CompletionResult);
+		},
+		[](auto& Item, const int32 Index)
+		{
+			Item.CardId = FName(*FString::Printf(TEXT("Canonical.ResolveSkill.Snapshot.%d"), Index));
+			Item.PlayerSide = Index % 2 == 0
+				? EInitialTurnOrderPlayer::PlayerA : EInitialTurnOrderPlayer::PlayerB;
+		},
+		[&](const auto& Baseline, const FString& Prefix,
+			const int32 Index, const bool bEmpty)
+		{
+			auto Comparator = [](const auto& Left, const auto& Right)
+			{
+				return AreAuthoritativeResolveNoLegalSkillResultsEqual(Left, Right);
+			};
+			TestCardSnapshotQueryDeepMutations(
+				*this, CoverageAudit, Prefix, Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.ResolutionResult.CompletionResult
+						.DeploymentSnapshotQueryResults[Index]);
+				}, Comparator, bEmpty);
 		},
 		[](const auto& Left, const auto& Right)
 		{
@@ -5880,58 +6851,120 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		});
 	DeepContainerCases += TestCompletionSnapshotContainerMutations(
 		*this,
-		TEXT("Decline skill completion snapshots"),
+		CoverageAudit,
+		TEXT("DeclineSkill.DeclineResult.CompletionResult.DeploymentSnapshotQueryResults"),
 		SkillDecline,
 		[](auto& Value) -> decltype(auto)
 		{
 			return (Value.DeclineResult.CompletionResult);
+		},
+		[](auto& Item, const int32 Index)
+		{
+			Item.CardId = FName(*FString::Printf(TEXT("Canonical.DeclineSkill.Snapshot.%d"), Index));
+			Item.PlayerSide = Index % 2 == 0
+				? EInitialTurnOrderPlayer::PlayerA : EInitialTurnOrderPlayer::PlayerB;
+		},
+		[&](const auto& Baseline, const FString& Prefix,
+			const int32 Index, const bool bEmpty)
+		{
+			auto Comparator = [](const auto& Left, const auto& Right)
+			{
+				return AreAuthoritativeDeclineSkillResultsEqual(Left, Right);
+			};
+			TestCardSnapshotQueryDeepMutations(
+				*this, CoverageAudit, Prefix, Baseline,
+				[Index](auto& Value) -> decltype(auto)
+				{
+					return (Value.DeclineResult.CompletionResult
+						.DeploymentSnapshotQueryResults[Index]);
+				}, Comparator, bEmpty);
 		},
 		[](const auto& Left, const auto& Right)
 		{
 			return AreAuthoritativeDeclineSkillResultsEqual(Left, Right);
 		});
 	const FNonReflectedMutationAudit NonReflectedAudit =
-		TestNonReflectedInventoryMutations(*this);
-	const int32 ReflectedLeaves =
-		MarkerMutationAudit.LeafMutations
-		+ ResolveMarkerMutationAudit.LeafMutations
-		+ DeclineMarkerMutationAudit.LeafMutations
-		+ SkillMutationAudit.LeafMutations
-		+ ResolveSkillMutationAudit.LeafMutations
-		+ DeclineSkillMutationAudit.LeafMutations
-		+ NonReflectedAudit.ReflectedNestedLeaves;
-	const int32 ContainerCases =
-		MarkerMutationAudit.ContainerCases
-		+ ResolveMarkerMutationAudit.ContainerCases
-		+ DeclineMarkerMutationAudit.ContainerCases
-		+ SkillMutationAudit.ContainerCases
-		+ ResolveSkillMutationAudit.ContainerCases
-		+ DeclineSkillMutationAudit.ContainerCases
-		+ NonReflectedAudit.ContainerCases
-		+ DeepContainerCases;
-	const int32 EmptyContainerCases =
-		MarkerMutationAudit.EmptyContainerElementStructures
-		+ ResolveMarkerMutationAudit.EmptyContainerElementStructures
-		+ DeclineMarkerMutationAudit.EmptyContainerElementStructures
-		+ SkillMutationAudit.EmptyContainerElementStructures
-		+ ResolveSkillMutationAudit.EmptyContainerElementStructures
-		+ DeclineSkillMutationAudit.EmptyContainerElementStructures
-		+ NonReflectedAudit.EmptyContainerCases
-		+ 8;
-	const int32 TotalExecuted = ReflectedLeaves
-		+ 72
-		+ NonReflectedAudit.DeclaredFields
-		+ ContainerCases
-		+ 7;
+		TestNonReflectedInventoryMutations(*this, CoverageAudit);
+	TSet<FString> MissingPaths;
+	for (const FString& Path : CoverageAudit.ExpectedLogicalPaths)
+	{
+		if (!CoverageAudit.CoveredLogicalPaths.Contains(Path))
+		{
+			MissingPaths.Add(Path);
+		}
+	}
+	TSet<FString> UnexpectedPaths;
+	for (const FString& Path : CoverageAudit.CoveredLogicalPaths)
+	{
+		if (!CoverageAudit.ExpectedLogicalPaths.Contains(Path))
+		{
+			UnexpectedPaths.Add(Path);
+		}
+	}
+	int64 DuplicateExecutions = 0;
+	for (const TPair<FString, int32>& Entry : CoverageAudit.ExecutionCountByPath)
+	{
+		DuplicateExecutions += FMath::Max(Entry.Value - 1, 0);
+	}
+	int32 NonReflectedInventoryCovered = 0;
+	for (const FString& Path : CoverageAudit.CoveredLogicalPaths)
+	{
+		if (Path.StartsWith(TEXT("NonReflected.")))
+		{
+			++NonReflectedInventoryCovered;
+		}
+	}
+	auto JoinPaths = [](const TSet<FString>& Paths)
+	{
+		TArray<FString> SortedPaths = Paths.Array();
+		SortedPaths.Sort();
+		return SortedPaths.IsEmpty()
+			? FString(TEXT("<none>"))
+			: FString::Join(SortedPaths, TEXT("; "));
+	};
+	TestEqual(TEXT("Non-reflected inventory runtime coverage"),
+		NonReflectedInventoryCovered, 57);
+	TestEqual(TEXT("Non-reflected declared inventory remains 57"),
+		NonReflectedAudit.DeclaredFields, 57);
+	TestTrue(TEXT("All six reflected comparator graphs executed leaves"),
+		MarkerMutationAudit.LeafMutations > 0
+		&& ResolveMarkerMutationAudit.LeafMutations > 0
+		&& DeclineMarkerMutationAudit.LeafMutations > 0
+		&& SkillMutationAudit.LeafMutations > 0
+		&& ResolveSkillMutationAudit.LeafMutations > 0
+		&& DeclineSkillMutationAudit.LeafMutations > 0);
+	TestEqual(TEXT("Mutation missing paths"), MissingPaths.Num(), 0);
+	TestEqual(TEXT("Mutation unexpected paths"), UnexpectedPaths.Num(), 0);
+	TestEqual(TEXT("Mutation skipped groups"),
+		CoverageAudit.SkippedGroupPaths.Num(), 0);
+	TestEqual(TEXT("Reachable TMap paths in six comparator graphs"),
+		CoverageAudit.ReachableMapPaths.Num(), 0);
+	TestTrue(TEXT("Nine manual container graphs executed"),
+		DeepContainerCases > 0 && CoverageAudit.EmptyContainerElementFieldPaths.Num() > 0);
+	AddInfo(FString::Printf(TEXT("Mutation missing paths (%d): %s"),
+		MissingPaths.Num(), *JoinPaths(MissingPaths)));
+	AddInfo(FString::Printf(TEXT("Mutation unexpected paths (%d): %s"),
+		UnexpectedPaths.Num(), *JoinPaths(UnexpectedPaths)));
+	AddInfo(FString::Printf(TEXT("Mutation skipped groups (%d): %s"),
+		CoverageAudit.SkippedGroupPaths.Num(),
+		*JoinPaths(CoverageAudit.SkippedGroupPaths)));
 	AddInfo(FString::Printf(
-		TEXT("Foundation B mutation audit: reflected leaves=%d; non-reflected declared fields=%d; container cases=%d; empty-container element structures=%d; equal baselines=%d; envelope mutations=72; duplicate diagnostics=7; total executed=%d; skipped groups=%d."),
-		ReflectedLeaves,
-		NonReflectedAudit.DeclaredFields,
-		ContainerCases,
-		EmptyContainerCases,
-		NonReflectedAudit.EqualBaselines + 6,
-		TotalExecuted,
-		NonReflectedAudit.SkippedGroups));
+		TEXT("Foundation B runtime mutation audit: expected=%d; covered=%d; unique=%d; executions=%lld; duplicates=%lld; reflected leaf unique=%d; non-reflected unique=%d; container behavior unique=%d; empty-element field unique=%d; envelope unique=%d; equal baselines=%lld; missing=%d; unexpected=%d; skipped=%d; reachable TMap=%d (NOT APPLICABLE)."),
+		CoverageAudit.ExpectedLogicalPaths.Num(),
+		CoverageAudit.CoveredLogicalPaths.Num(),
+		CoverageAudit.CoveredLogicalPaths.Num(),
+		CoverageAudit.ExecutedMutationCases,
+		DuplicateExecutions,
+		CoverageAudit.ReflectedLeafPaths.Num(),
+		CoverageAudit.NonReflectedFieldPaths.Num(),
+		CoverageAudit.ContainerCasePaths.Num(),
+		CoverageAudit.EmptyContainerElementFieldPaths.Num(),
+		CoverageAudit.EnvelopePaths.Num(),
+		CoverageAudit.EqualBaselineCases,
+		MissingPaths.Num(),
+		UnexpectedPaths.Num(),
+		CoverageAudit.SkippedGroupPaths.Num(),
+		CoverageAudit.ReachableMapPaths.Num()));
 	return true;
 }
 
