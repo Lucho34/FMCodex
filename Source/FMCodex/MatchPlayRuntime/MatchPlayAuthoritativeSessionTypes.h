@@ -4,10 +4,12 @@
 
 #include "../CoreRules/MatchPlayBeginOrdinaryAttack.h"
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionWriter.h"
+#include "../CoreRules/MatchPlayCurrentAttackHelperSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionWriter.h"
 #include "../CoreRules/MatchPlayFinishDeployment.h"
+#include "../CoreRules/MatchPlayHelperAbsence.h"
 #include "../CoreRules/MatchPlayMarkerNoSelectionGoal.h"
 #include "../CoreRules/MatchPlayOpeningInitializer.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentWriter.h"
@@ -36,7 +38,10 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	DeclineSkill,
 	SubmitRunner,
 	ResolveNoLegalRunner,
-	DeclineRunner
+	DeclineRunner,
+	SubmitHelper,
+	ResolveNoLegalHelper,
+	DeclineHelper
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -147,6 +152,19 @@ struct FMCODEX_API FMatchPlayAuthoritativeDeclineRunnerRequest
 		EInitialTurnOrderPlayer::None;
 };
 
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitHelperRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+	FName HelperCardId = NAME_None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeclineHelperRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+};
+
 struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
@@ -211,6 +229,24 @@ struct FMCODEX_API FMatchPlayAuthoritativeDeclineRunnerResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayRunnerDeclineResult DeclineResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitHelperResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackHelperSelectionWriterResult HelperResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveNoLegalHelperResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayResolveNoLegalHelperResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeclineHelperResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayHelperDeclineResult DeclineResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeStateAdoptionResult

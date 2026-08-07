@@ -3,6 +3,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionAvailability.h"
+#include "../CoreRules/MatchPlayCurrentAttackHelperSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
@@ -967,6 +968,186 @@ namespace MatchPlayAuthoritativeSessionTests
 				Right.DeclineResult.CompletionResult);
 	}
 
+	bool AreHelperGlobalContextResultsEqual(
+		const FMatchPlayCurrentAttackHelperSelectionGlobalContextResult& Left,
+		const FMatchPlayCurrentAttackHelperSelectionGlobalContextResult& Right)
+	{
+		if (Left.DefendingPlayerPlacements.Num()
+			!= Right.DefendingPlayerPlacements.Num())
+		{
+			return false;
+		}
+		for (int32 Index = 0;
+			Index < Left.DefendingPlayerPlacements.Num();
+			++Index)
+		{
+			if (!AreReflectedValuesEqual(
+				Left.DefendingPlayerPlacements[Index],
+				Right.DefendingPlayerPlacements[Index]))
+			{
+				return false;
+			}
+		}
+		return Left.bSuccess == Right.bSuccess
+			&& Left.RequestedAttackSequence == Right.RequestedAttackSequence
+			&& Left.AuthoritativeAttackSequence == Right.AuthoritativeAttackSequence
+			&& Left.RequestingSide == Right.RequestingSide
+			&& Left.CurrentAttackingPlayer == Right.CurrentAttackingPlayer
+			&& Left.CurrentDefendingPlayer == Right.CurrentDefendingPlayer
+			&& AreSelectionValidationResultsEqual(
+				Left.SelectionStateValidationResult,
+				Right.SelectionStateValidationResult)
+			&& Left.FrozenCarrierCardId == Right.FrozenCarrierCardId
+			&& Left.FrozenMarkerCardId == Right.FrozenMarkerCardId
+			&& Left.FrozenSkillId == Right.FrozenSkillId
+			&& Left.FrozenActionType == Right.FrozenActionType
+			&& Left.FrozenRunnerCardId == Right.FrozenRunnerCardId
+			&& AreReflectedValuesEqual(
+				Left.ParticipantRequirementResult,
+				Right.ParticipantRequirementResult)
+			&& Left.MatchingFrozenCarrierPlacementCount
+				== Right.MatchingFrozenCarrierPlacementCount
+			&& Left.MatchingFrozenMarkerPlacementCount
+				== Right.MatchingFrozenMarkerPlacementCount
+			&& Left.MatchingFrozenRunnerPlacementCount
+				== Right.MatchingFrozenRunnerPlacementCount
+			&& AreReflectedValuesEqual(
+				Left.FrozenCarrierPlacement,
+				Right.FrozenCarrierPlacement)
+			&& AreReflectedValuesEqual(
+				Left.FrozenMarkerPlacement,
+				Right.FrozenMarkerPlacement)
+			&& AreReflectedValuesEqual(
+				Left.FrozenRunnerPlacement,
+				Right.FrozenRunnerPlacement)
+			&& ArePlayerCardValidationResultsEqual(
+				Left.AttackingSnapshotSetValidationResult,
+				Right.AttackingSnapshotSetValidationResult)
+			&& ArePlayerCardValidationResultsEqual(
+				Left.DefendingSnapshotSetValidationResult,
+				Right.DefendingSnapshotSetValidationResult)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreHelperLegalityResultsEqual(
+		const FMatchPlayCurrentAttackHelperSelectionLegalityResult& Left,
+		const FMatchPlayCurrentAttackHelperSelectionLegalityResult& Right)
+	{
+		return AreReflectedValuesEqual(Left, Right)
+			&& AreHelperGlobalContextResultsEqual(
+				Left.GlobalContextResult,
+				Right.GlobalContextResult)
+			&& AreCardSnapshotQueryResultsEqual(
+				Left.HelperSnapshotQueryResult,
+				Right.HelperSnapshotQueryResult);
+	}
+
+	bool AreHelperAvailabilityResultsEqual(
+		const FMatchPlayCurrentAttackHelperSelectionAvailabilityResult& Left,
+		const FMatchPlayCurrentAttackHelperSelectionAvailabilityResult& Right)
+	{
+		if (!AreReflectedValuesEqual(Left, Right)
+			|| !AreHelperGlobalContextResultsEqual(
+				Left.GlobalContextResult,
+				Right.GlobalContextResult)
+			|| Left.Candidates.Num() != Right.Candidates.Num())
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < Left.Candidates.Num(); ++Index)
+		{
+			if (!AreHelperLegalityResultsEqual(
+				Left.Candidates[Index].LegalityResult,
+				Right.Candidates[Index].LegalityResult))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool AreHelperAuthorityResultsEqual(
+		const FMatchPlayCurrentAttackHelperParticipantAuthorityResult& Left,
+		const FMatchPlayCurrentAttackHelperParticipantAuthorityResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.MatchingPlacementCount == Right.MatchingPlacementCount
+			&& AreReflectedValuesEqual(Left.Placement, Right.Placement)
+			&& AreCardSnapshotQueryResultsEqual(
+				Left.SnapshotQueryResult,
+				Right.SnapshotQueryResult)
+			&& AreReflectedValuesEqual(Left.Snapshot, Right.Snapshot)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreReadyValidationResultsEqual(
+		const FMatchPlayCurrentAttackReadyValidationResult& Left,
+		const FMatchPlayCurrentAttackReadyValidationResult& Right)
+	{
+		return AreReflectedValuesEqual(Left, Right)
+			&& AreCardSnapshotQueryResultsEqual(
+				Left.CarrierSnapshotQueryResult,
+				Right.CarrierSnapshotQueryResult)
+			&& AreCardSnapshotQueryResultsEqual(
+				Left.MarkerSnapshotQueryResult,
+				Right.MarkerSnapshotQueryResult)
+			&& AreCardSnapshotQueryResultsEqual(
+				Left.RunnerSnapshotQueryResult,
+				Right.RunnerSnapshotQueryResult)
+			&& AreHelperAuthorityResultsEqual(
+				Left.HelperAuthorityResult,
+				Right.HelperAuthorityResult)
+			&& AreReflectedValuesEqual(
+				Left.RunnerRelativeZoneResolveResult,
+				Right.RunnerRelativeZoneResolveResult);
+	}
+
+	bool AreAuthoritativeSubmitHelperResultsEqual(
+		const FMatchPlayAuthoritativeSubmitHelperResult& Left,
+		const FMatchPlayAuthoritativeSubmitHelperResult& Right)
+	{
+		return AreEnvelopesEqual(Left.RuntimeEnvelope, Right.RuntimeEnvelope)
+			&& AreReflectedValuesEqual(Left.HelperResult, Right.HelperResult)
+			&& AreHelperLegalityResultsEqual(
+				Left.HelperResult.LegalityResult,
+				Right.HelperResult.LegalityResult)
+			&& AreReadyValidationResultsEqual(
+				Left.HelperResult.ReadyValidationResult,
+				Right.HelperResult.ReadyValidationResult);
+	}
+
+	bool AreAuthoritativeResolveNoLegalHelperResultsEqual(
+		const FMatchPlayAuthoritativeResolveNoLegalHelperResult& Left,
+		const FMatchPlayAuthoritativeResolveNoLegalHelperResult& Right)
+	{
+		return AreEnvelopesEqual(Left.RuntimeEnvelope, Right.RuntimeEnvelope)
+			&& AreReflectedValuesEqual(
+				Left.ResolutionResult,
+				Right.ResolutionResult)
+			&& AreHelperAvailabilityResultsEqual(
+				Left.ResolutionResult.HelperAvailabilityResult,
+				Right.ResolutionResult.HelperAvailabilityResult)
+			&& AreReadyValidationResultsEqual(
+				Left.ResolutionResult.FinalizationResult.ReadyValidationResult,
+				Right.ResolutionResult.FinalizationResult.ReadyValidationResult);
+	}
+
+	bool AreAuthoritativeDeclineHelperResultsEqual(
+		const FMatchPlayAuthoritativeDeclineHelperResult& Left,
+		const FMatchPlayAuthoritativeDeclineHelperResult& Right)
+	{
+		return AreEnvelopesEqual(Left.RuntimeEnvelope, Right.RuntimeEnvelope)
+			&& AreReflectedValuesEqual(Left.DeclineResult, Right.DeclineResult)
+			&& AreHelperAvailabilityResultsEqual(
+				Left.DeclineResult.HelperAvailabilityResult,
+				Right.DeclineResult.HelperAvailabilityResult)
+			&& AreReadyValidationResultsEqual(
+				Left.DeclineResult.FinalizationResult.ReadyValidationResult,
+				Right.DeclineResult.FinalizationResult.ReadyValidationResult);
+	}
+
 	EInitialTurnOrderPlayer OtherPlayer(
 		const EInitialTurnOrderPlayer Player)
 	{
@@ -1349,11 +1530,14 @@ namespace MatchPlayAuthoritativeSessionTests
 		const FString& Prefix,
 		const bool bCreateLegalRunner,
 		FReachabilityTrace& OutTrace,
-		FName& OutRunnerCardId)
+		FName& OutRunnerCardId,
+		const ESkillRuleType SkillType = ESkillRuleType::Cross,
+		const int32 DeploymentCount = 4)
 	{
 		const FName SkillId(*FString::Printf(
-			TEXT("Skill.%s.Cross"),
-			*Prefix));
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(SkillType)));
 		FMatchPlayAuthoritativeSubmitMarkerResult Marker;
 		if (!bCreateLegalRunner)
 		{
@@ -1400,7 +1584,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			OutTrace.AttackingSide =
 				State.RuntimeState.CurrentAttackingPlayer;
 			OutTrace.DefendingSide = OtherPlayer(OutTrace.AttackingSide);
-			for (int32 Index = 0; Index < 4; ++Index)
+			for (int32 Index = 0; Index < DeploymentCount; ++Index)
 			{
 				State = Session.GetStateSnapshot();
 				const bool bAttackerDeploying =
@@ -1475,7 +1659,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		SkillRequest.RequestingSide = OutTrace.AttackingSide;
 		SkillRequest.SkillId = SkillId;
 		const auto SkillResult = Session.SubmitSkill(
-			MakeSkillRuleSet(SkillId, ESkillRuleType::Cross),
+			MakeSkillRuleSet(SkillId, SkillType),
 			SkillRequest);
 		if (!SkillResult.SkillResult.bSuccess
 			|| Session.GetStateSnapshot().CurrentAttack.SelectionStage
@@ -1501,6 +1685,56 @@ namespace MatchPlayAuthoritativeSessionTests
 		return Availability.bQuerySucceeded
 			&& Availability.bCanSelectAnyRunner == bCreateLegalRunner
 			&& (bCreateLegalRunner != OutRunnerCardId.IsNone());
+	}
+
+	bool BuildStage7163ToAwaitingHelper(
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const bool bCreateLegalHelper,
+		FReachabilityTrace& OutTrace,
+		FName& OutHelperCardId)
+	{
+		FName RunnerCardId;
+		if (!BuildStage7162ToAwaitingRunner(
+			Session,
+			Prefix,
+			true,
+			OutTrace,
+			RunnerCardId,
+			ESkillRuleType::PassControl,
+			bCreateLegalHelper ? 4 : 3))
+		{
+			return false;
+		}
+
+		FMatchPlayAuthoritativeSubmitRunnerRequest RunnerRequest;
+		RunnerRequest.RequestingSide = OutTrace.AttackingSide;
+		RunnerRequest.RunnerCardId = RunnerCardId;
+		const auto RunnerResult = Session.SubmitRunner(RunnerRequest);
+		if (!RunnerResult.RunnerResult.bSuccess
+			|| Session.GetStateSnapshot().CurrentAttack.SelectionStage
+				!= EMatchPlayCurrentAttackSelectionStage::AwaitingHelper)
+		{
+			return false;
+		}
+
+		const FMatchPlayState State = Session.GetStateSnapshot();
+		const auto Availability =
+			FMatchPlayCurrentAttackHelperSelectionAvailability::Query(
+				State,
+				State.CurrentAttack.AttackSequence,
+				OutTrace.DefendingSide);
+		for (const auto& Candidate : Availability.Candidates)
+		{
+			if (Candidate.LegalityResult.bSuccess)
+			{
+				OutHelperCardId = Candidate.HelperCardId;
+				break;
+			}
+		}
+		return Availability.bQuerySucceeded
+			&& Availability.bCanSelectAnyHelper == bCreateLegalHelper
+			&& (bCreateLegalHelper != OutHelperCardId.IsNone());
 	}
 
 	void TestAwaitingMarkerEndpoint(
@@ -5325,11 +5559,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All fourteen mutations use the gate"),
+	TestEqual(TEXT("All seventeen mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		14);
+		17);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -6751,7 +6985,6 @@ bool FMatchPlayAuthoritativeSessionResolutionFoundationBoundaryTest::RunTest(
 	TestFalse(TEXT("DeployGoalkeeper remains absent"),
 		Production.Contains(TEXT("DeployGoalkeeper")));
 	for (const TCHAR* Forbidden : {
-		TEXT("SubmitHelper"),
 		TEXT("SubmitBranchIntent"),
 		TEXT("ResolveInitialRouteOrchestrator"),
 		TEXT("IMatchPlayInitialRouteRollProvider"),
@@ -8998,15 +9231,21 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		TPair<const TCHAR*, const TCHAR*>(TEXT("No-legal runner"),
 			TEXT("FMatchPlayResolveNoLegalRunner::Resolve(")),
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Decline runner"),
-			TEXT("FMatchPlayRunnerDecline::Decline(")) })
+			TEXT("FMatchPlayRunnerDecline::Decline(")),
+		TPair<const TCHAR*, const TCHAR*>(TEXT("Helper writer"),
+			TEXT("FMatchPlayCurrentAttackHelperSelectionWriter::Select(")),
+		TPair<const TCHAR*, const TCHAR*>(TEXT("No-legal helper"),
+			TEXT("FMatchPlayResolveNoLegalHelper::Resolve(")),
+		TPair<const TCHAR*, const TCHAR*>(TEXT("Decline helper"),
+			TEXT("FMatchPlayHelperDecline::Decline(")) })
 	{
 		TestEqual(*FString::Printf(TEXT("%s has one production call"), Operation.Key),
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All fourteen mutations share serialized gate"),
+	TestEqual(TEXT("All seventeen mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		14);
+		17);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -9018,12 +9257,16 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		Types.Contains(TEXT("FMatchPlayAuthoritativeResolveNoLegalSkillRequest")));
 	TestFalse(TEXT("No public system runner request type"),
 		Types.Contains(TEXT("FMatchPlayAuthoritativeResolveNoLegalRunnerRequest")));
+	TestFalse(TEXT("No public system helper request type"),
+		Types.Contains(TEXT("FMatchPlayAuthoritativeResolveNoLegalHelperRequest")));
 	TestFalse(TEXT("Skill rules are not stored on Session"),
 		Header.Contains(TEXT("FSkillRuleSnapshotSet SkillRuleSet;")));
 	for (const TCHAR* ForbiddenWrite : {
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.MarkerCardId ="),
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.SkillId ="),
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.RunnerCardId ="),
+		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.HelperCardId ="),
+		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.bHasHelper ="),
 		TEXT("AuthoritativeState.CurrentAttack.SelectionStage ="),
 		TEXT("AuthoritativeState.bHasCurrentAttack ="),
 		TEXT("AuthoritativeState.CurrentAttack.DeploymentPlacements.Add") })
@@ -9033,7 +9276,6 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 	}
 	const FString Production = Header + Implementation + Types;
 	for (const TCHAR* Forbidden : {
-		TEXT("SubmitHelper"),
 		TEXT("SubmitBranchIntent"),
 		TEXT("ResolveInitialRouteOrchestrator"),
 		TEXT("IMatchPlayInitialRouteRollProvider"),
@@ -9454,6 +9696,498 @@ bool FMatchPlayAuthoritativeSessionRunnerDeterminismIsolationTest::RunTest(
 	SessionB.DeclineRunner(RequestB);
 	TestTrue(TEXT("Runner command on B cannot mutate A"),
 		AreStatesEqual(AAfter, SessionA.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionSubmitHelperTest,
+	"36.SubmitHelperSuccessFailuresAndDeterminism")
+
+bool FMatchPlayAuthoritativeSessionSubmitHelperTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::SubmitHelper),
+		FMatchPlayAuthoritativeSubmitHelperResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeSubmitHelperRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolveNoLegalHelper),
+		FMatchPlayAuthoritativeResolveNoLegalHelperResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::DeclineHelper),
+		FMatchPlayAuthoritativeDeclineHelperResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeDeclineHelperRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeSubmitHelperResult::HelperResult),
+		FMatchPlayCurrentAttackHelperSelectionWriterResult>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeResolveNoLegalHelperResult
+			::ResolutionResult),
+		FMatchPlayResolveNoLegalHelperResult>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeDeclineHelperResult::DeclineResult),
+		FMatchPlayHelperDeclineResult>);
+
+	TestEqual(TEXT("SubmitHelper follows DeclineRunner"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::SubmitHelper),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::DeclineRunner) + 1);
+	TestEqual(TEXT("DeclineHelper is final command"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::DeclineHelper),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::SubmitHelper) + 2);
+
+	FString Types;
+	TestTrue(TEXT("Helper types source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	auto RequestContainsAttackSequence = [&Types](const TCHAR* StructName)
+	{
+		const int32 Begin = Types.Find(StructName);
+		const int32 End = Begin == INDEX_NONE
+			? INDEX_NONE
+			: Types.Find(TEXT("};"), ESearchCase::CaseSensitive,
+				ESearchDir::FromStart, Begin);
+		return Begin == INDEX_NONE || End == INDEX_NONE
+			|| Types.Mid(Begin, End - Begin).Contains(TEXT("AttackSequence"));
+	};
+	for (const TCHAR* RequestType : {
+		TEXT("FMatchPlayAuthoritativeSubmitHelperRequest"),
+		TEXT("FMatchPlayAuthoritativeDeclineHelperRequest") })
+	{
+		TestFalse(*FString::Printf(TEXT("%s has no public AttackSequence"), RequestType),
+			RequestContainsAttackSequence(RequestType));
+	}
+
+	FMatchPlayAuthoritativeSubmitHelperRequest EmptyRequest;
+	const auto Uninitialized =
+		FMatchPlayAuthoritativeSession().SubmitHelper(EmptyRequest);
+	TestFalse(TEXT("Uninitialized Helper submit rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized Helper exact runtime code"),
+		Uninitialized.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+
+	FMatchPlayAuthoritativeSession Session;
+	FReachabilityTrace Trace;
+	FName HelperCardId;
+	TestTrue(TEXT("Public commands reach AwaitingHelper with legal Helper"),
+		BuildStage7163ToAwaitingHelper(
+			Session,
+			TEXT("HelperSubmit"),
+			true,
+			Trace,
+			HelperCardId));
+	const FMatchPlayState Before = Session.GetStateSnapshot();
+	TestEqual(TEXT("Reachability exact Helper stage"),
+		Before.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingHelper);
+
+	FMatchPlayAuthoritativeSubmitHelperRequest Request;
+	Request.RequestingSide = Trace.AttackingSide;
+	Request.HelperCardId = HelperCardId;
+	const auto WrongSide = Session.SubmitHelper(Request);
+	TestEqual(TEXT("Wrong-side Helper exact error"),
+		WrongSide.HelperResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackHelperSelectionErrorCode
+			::GlobalContextFailed);
+	TestEqual(TEXT("Wrong-side Helper nested exact error"),
+		WrongSide.HelperResult.LegalityResult.GlobalContextResult.ErrorCode,
+		EMatchPlayCurrentAttackHelperSelectionErrorCode
+			::RequestingSideIsNotCurrentDefender);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Wrong-side Helper"),
+		WrongSide.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
+	TestEqual(TEXT("Wrong-side Helper sequence derived internally"),
+		WrongSide.HelperResult.Request.AttackSequence,
+		Before.CurrentAttack.AttackSequence);
+
+	Request.RequestingSide = Trace.DefendingSide;
+	Request.HelperCardId = TEXT("Helper.Stage7163.Missing");
+	const auto Invalid = Session.SubmitHelper(Request);
+	TestEqual(TEXT("Missing Helper exact error"),
+		Invalid.HelperResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackHelperSelectionErrorCode::HelperNotDeployed);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Missing Helper"),
+		Invalid.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
+
+	Request.HelperCardId = HelperCardId;
+	const auto Success = Session.SubmitHelper(Request);
+	const FMatchPlayState After = Session.GetStateSnapshot();
+	TestTrue(TEXT("Legal Helper succeeds"), Success.HelperResult.bSuccess);
+	TestTrue(TEXT("Helper Writer validates Ready state"),
+		Success.HelperResult.ReadyValidationResult.bSuccess);
+	TestEqual(TEXT("SubmitHelper exact command"),
+		Success.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::SubmitHelper);
+	TestEqual(TEXT("SubmitHelper derives authoritative sequence"),
+		Success.HelperResult.Request.AttackSequence,
+		Before.CurrentAttack.AttackSequence);
+	TestEqual(TEXT("SubmitHelper reaches ReadyForResolution"),
+		After.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
+	TestTrue(TEXT("Selected action is finalized"),
+		After.CurrentAttack.bHasSelectedAction);
+	TestTrue(TEXT("Selected action records Helper presence"),
+		After.CurrentAttack.SelectedAction.bHasHelper);
+	TestEqual(TEXT("Selected action records exact Helper"),
+		After.CurrentAttack.SelectedAction.HelperCardId,
+		HelperCardId);
+	TestFalse(TEXT("Preparation is reset after finalization"),
+		After.CurrentAttack.ActionPreparation.bHasHelper);
+	TestTrue(TEXT("Preparation Helper identity is reset"),
+		After.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
+	TestTrue(TEXT("Helper selection does not complete attack"),
+		After.bHasCurrentAttack);
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("SubmitHelper"),
+		Success.RuntimeEnvelope,
+		Before,
+		Success.HelperResult.AfterState,
+		After);
+
+	const auto Replay = Session.SubmitHelper(Request);
+	TestEqual(TEXT("Helper replay exact stage error"),
+		Replay.HelperResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackHelperSelectionErrorCode::GlobalContextFailed);
+	TestEqual(TEXT("Helper replay nested exact stage error"),
+		Replay.HelperResult.LegalityResult.GlobalContextResult.ErrorCode,
+		EMatchPlayCurrentAttackHelperSelectionErrorCode::WrongSelectionStage);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Helper replay"),
+		Replay.RuntimeEnvelope,
+		After,
+		Session.GetStateSnapshot());
+
+	TArray<FMatchPlayAuthoritativeSubmitHelperResult> Results;
+	TArray<FMatchPlayState> FinalStates;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FMatchPlayAuthoritativeSession DeterministicSession;
+		FReachabilityTrace DeterministicTrace;
+		FName DeterministicHelper;
+		TestTrue(TEXT("Submit Helper determinism fixture reaches stage"),
+			BuildStage7163ToAwaitingHelper(
+				DeterministicSession,
+				TEXT("HelperSubmitDeterminism"),
+				true,
+				DeterministicTrace,
+				DeterministicHelper));
+		FMatchPlayAuthoritativeSubmitHelperRequest DeterministicRequest;
+		DeterministicRequest.RequestingSide =
+			DeterministicTrace.DefendingSide;
+		DeterministicRequest.HelperCardId = DeterministicHelper;
+		Results.Add(DeterministicSession.SubmitHelper(DeterministicRequest));
+		FinalStates.Add(DeterministicSession.GetStateSnapshot());
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("SubmitHelper full result deterministic"),
+			AreAuthoritativeSubmitHelperResultsEqual(Results[0], Results[Index]));
+		TestTrue(TEXT("SubmitHelper final state deterministic"),
+			AreStatesEqual(FinalStates[0], FinalStates[Index]));
+	}
+
+	FMatchPlayAuthoritativeSession SessionA;
+	FMatchPlayAuthoritativeSession SessionB;
+	FReachabilityTrace TraceA;
+	FReachabilityTrace TraceB;
+	FName HelperA;
+	FName HelperB;
+	TestTrue(TEXT("Submit Helper isolation fixture A reaches stage"),
+		BuildStage7163ToAwaitingHelper(
+			SessionA, TEXT("HelperSubmitIsolationA"), true, TraceA, HelperA));
+	TestTrue(TEXT("Submit Helper isolation fixture B reaches stage"),
+		BuildStage7163ToAwaitingHelper(
+			SessionB, TEXT("HelperSubmitIsolationB"), true, TraceB, HelperB));
+	FMatchPlayAuthoritativeSubmitHelperRequest RequestA;
+	RequestA.RequestingSide = TraceA.DefendingSide;
+	RequestA.HelperCardId = HelperA;
+	const FMatchPlayState BBefore = SessionB.GetStateSnapshot();
+	SessionA.SubmitHelper(RequestA);
+	TestTrue(TEXT("SubmitHelper on A cannot mutate B"),
+		AreStatesEqual(BBefore, SessionB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveNoLegalHelperTest,
+	"37.ResolveNoLegalHelperFormalAbsence")
+
+bool FMatchPlayAuthoritativeSessionResolveNoLegalHelperTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	const auto Uninitialized =
+		FMatchPlayAuthoritativeSession().ResolveNoLegalHelper();
+	TestFalse(TEXT("Uninitialized no-legal Helper rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+
+	FMatchPlayAuthoritativeSession Session;
+	FReachabilityTrace Trace;
+	FName NoHelper;
+	TestTrue(TEXT("Public commands reach AwaitingHelper without legal Helper"),
+		BuildStage7163ToAwaitingHelper(
+			Session,
+			TEXT("HelperNoLegal"),
+			false,
+			Trace,
+			NoHelper));
+	const FMatchPlayState Before = Session.GetStateSnapshot();
+	const auto Success = Session.ResolveNoLegalHelper();
+	const FMatchPlayState After = Session.GetStateSnapshot();
+	TestTrue(TEXT("No-legal Helper resolves"),
+		Success.ResolutionResult.bSuccess);
+	TestFalse(TEXT("No Helper was selectable"),
+		Success.ResolutionResult.HelperAvailabilityResult.bCanSelectAnyHelper);
+	TestEqual(TEXT("No-legal Helper exact source"),
+		Success.ResolutionResult.Source,
+		EMatchPlayHelperAbsenceSource::ResolveNoLegalHelper);
+	TestEqual(TEXT("No-legal Helper exact reason"),
+		Success.ResolutionResult.Reason,
+		EMatchPlayHelperAbsenceReason::NoLegalHelper);
+	TestEqual(TEXT("No-legal Helper sequence derived internally"),
+		Success.ResolutionResult.Request.AttackSequence,
+		Before.CurrentAttack.AttackSequence);
+	TestEqual(TEXT("No-legal Helper reaches ReadyForResolution"),
+		After.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
+	TestTrue(TEXT("No-legal Helper finalizes selected action"),
+		After.CurrentAttack.bHasSelectedAction);
+	TestFalse(TEXT("No-legal Helper records formal absence"),
+		After.CurrentAttack.SelectedAction.bHasHelper);
+	TestTrue(TEXT("No-legal Helper identity is empty"),
+		After.CurrentAttack.SelectedAction.HelperCardId.IsNone());
+	TestTrue(TEXT("No-legal Helper does not complete attack"),
+		After.bHasCurrentAttack);
+	TestTrue(TEXT("Formal absence Ready validation succeeds"),
+		Success.ResolutionResult.FinalizationResult
+			.ReadyValidationResult.bSuccess);
+	TestFalse(TEXT("Formal absence performs no Helper authority lookup"),
+		Success.ResolutionResult.FinalizationResult.ReadyValidationResult
+			.HelperAuthorityResult.bSuccess);
+	TestEqual(TEXT("Formal absence has zero Helper placement matches"),
+		Success.ResolutionResult.FinalizationResult.ReadyValidationResult
+			.HelperAuthorityResult.MatchingPlacementCount,
+		0);
+	TestTrue(TEXT("Formal absence has no Helper snapshot CardId"),
+		Success.ResolutionResult.FinalizationResult.ReadyValidationResult
+			.HelperAuthorityResult.SnapshotQueryResult.CardId.IsNone());
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("ResolveNoLegalHelper"),
+		Success.RuntimeEnvelope,
+		Before,
+		Success.ResolutionResult.AfterState,
+		After);
+
+	FMatchPlayAuthoritativeSession LegalSession;
+	FReachabilityTrace LegalTrace;
+	FName LegalHelper;
+	TestTrue(TEXT("No-legal guard fixture reaches legal Helper"),
+		BuildStage7163ToAwaitingHelper(
+			LegalSession,
+			TEXT("HelperNoLegalGuard"),
+			true,
+			LegalTrace,
+			LegalHelper));
+	const FMatchPlayState LegalBefore = LegalSession.GetStateSnapshot();
+	const auto Rejected = LegalSession.ResolveNoLegalHelper();
+	TestEqual(TEXT("Legal Helper blocks NoLegal exactly"),
+		Rejected.ResolutionResult.ErrorCode,
+		EMatchPlayHelperAbsenceErrorCode::LegalHelperExists);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Legal Helper blocks NoLegal"),
+		Rejected.RuntimeEnvelope,
+		LegalBefore,
+		LegalSession.GetStateSnapshot());
+
+	TArray<FMatchPlayAuthoritativeResolveNoLegalHelperResult> Results;
+	TArray<FMatchPlayState> FinalStates;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FMatchPlayAuthoritativeSession DeterministicSession;
+		FReachabilityTrace DeterministicTrace;
+		FName DeterministicHelper;
+		TestTrue(TEXT("NoLegal Helper determinism fixture reaches stage"),
+			BuildStage7163ToAwaitingHelper(
+				DeterministicSession,
+				TEXT("HelperNoLegalDeterminism"),
+				false,
+				DeterministicTrace,
+				DeterministicHelper));
+		Results.Add(DeterministicSession.ResolveNoLegalHelper());
+		FinalStates.Add(DeterministicSession.GetStateSnapshot());
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("ResolveNoLegalHelper full result deterministic"),
+			AreAuthoritativeResolveNoLegalHelperResultsEqual(
+				Results[0], Results[Index]));
+		TestTrue(TEXT("ResolveNoLegalHelper final state deterministic"),
+			AreStatesEqual(FinalStates[0], FinalStates[Index]));
+	}
+
+	FMatchPlayAuthoritativeSession SessionA;
+	FMatchPlayAuthoritativeSession SessionB;
+	FReachabilityTrace TraceA;
+	FReachabilityTrace TraceB;
+	FName HelperA;
+	FName HelperB;
+	TestTrue(TEXT("NoLegal isolation fixture A reaches stage"),
+		BuildStage7163ToAwaitingHelper(
+			SessionA, TEXT("HelperNoLegalIsolationA"), false, TraceA, HelperA));
+	TestTrue(TEXT("NoLegal isolation fixture B reaches stage"),
+		BuildStage7163ToAwaitingHelper(
+			SessionB, TEXT("HelperNoLegalIsolationB"), false, TraceB, HelperB));
+	const FMatchPlayState BBefore = SessionB.GetStateSnapshot();
+	SessionA.ResolveNoLegalHelper();
+	TestTrue(TEXT("ResolveNoLegalHelper on A cannot mutate B"),
+		AreStatesEqual(BBefore, SessionB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionDeclineHelperTest,
+	"38.DeclineHelperFormalAbsence")
+
+bool FMatchPlayAuthoritativeSessionDeclineHelperTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	FMatchPlayAuthoritativeSession NoLegalSession;
+	FReachabilityTrace NoLegalTrace;
+	FName NoLegalHelper;
+	TestTrue(TEXT("Decline no-legal fixture reaches stage"),
+		BuildStage7163ToAwaitingHelper(
+			NoLegalSession,
+			TEXT("HelperDeclineNoLegal"),
+			false,
+			NoLegalTrace,
+			NoLegalHelper));
+	FMatchPlayAuthoritativeDeclineHelperRequest Request;
+	Request.RequestingSide = NoLegalTrace.DefendingSide;
+	const FMatchPlayState NoLegalBefore = NoLegalSession.GetStateSnapshot();
+	const auto NoLegalDecline = NoLegalSession.DeclineHelper(Request);
+	TestEqual(TEXT("No legal Helper cannot be declined"),
+		NoLegalDecline.DeclineResult.ErrorCode,
+		EMatchPlayHelperAbsenceErrorCode::NoLegalHelperToDecline);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No-legal Helper decline"),
+		NoLegalDecline.RuntimeEnvelope,
+		NoLegalBefore,
+		NoLegalSession.GetStateSnapshot());
+
+	const auto NoLegalSuccess = NoLegalSession.ResolveNoLegalHelper();
+	TestTrue(TEXT("Distinct NoLegal path remains callable"),
+		NoLegalSuccess.ResolutionResult.bSuccess);
+
+	FMatchPlayAuthoritativeSession Session;
+	FReachabilityTrace Trace;
+	FName HelperCardId;
+	TestTrue(TEXT("Decline fixture reaches legal Helper"),
+		BuildStage7163ToAwaitingHelper(
+			Session,
+			TEXT("HelperDecline"),
+			true,
+			Trace,
+			HelperCardId));
+	const FMatchPlayState Before = Session.GetStateSnapshot();
+	Request.RequestingSide = Trace.AttackingSide;
+	const auto WrongSide = Session.DeclineHelper(Request);
+	TestEqual(TEXT("Wrong-side decline outer error"),
+		WrongSide.DeclineResult.ErrorCode,
+		EMatchPlayHelperAbsenceErrorCode::AvailabilityQueryFailed);
+	TestEqual(TEXT("Wrong-side decline nested exact error"),
+		WrongSide.DeclineResult.HelperAvailabilityResult.ErrorCode,
+		EMatchPlayCurrentAttackHelperSelectionErrorCode
+			::RequestingSideIsNotCurrentDefender);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Wrong-side Helper decline"),
+		WrongSide.RuntimeEnvelope,
+		Before,
+		Session.GetStateSnapshot());
+
+	Request.RequestingSide = Trace.DefendingSide;
+	const auto Success = Session.DeclineHelper(Request);
+	const FMatchPlayState After = Session.GetStateSnapshot();
+	TestTrue(TEXT("Legal Helper decline succeeds"),
+		Success.DeclineResult.bSuccess);
+	TestTrue(TEXT("Decline observed legal Helper"),
+		Success.DeclineResult.HelperAvailabilityResult.bCanSelectAnyHelper);
+	TestEqual(TEXT("Helper decline exact source"),
+		Success.DeclineResult.Source,
+		EMatchPlayHelperAbsenceSource::HelperDecline);
+	TestEqual(TEXT("Helper decline exact reason"),
+		Success.DeclineResult.Reason,
+		EMatchPlayHelperAbsenceReason::HelperDeclined);
+	TestEqual(TEXT("Helper decline sequence derived internally"),
+		Success.DeclineResult.Request.AttackSequence,
+		Before.CurrentAttack.AttackSequence);
+	TestEqual(TEXT("Helper decline reaches ReadyForResolution"),
+		After.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
+	TestFalse(TEXT("Helper decline records formal absence"),
+		After.CurrentAttack.SelectedAction.bHasHelper);
+	TestTrue(TEXT("Helper decline identity is empty"),
+		After.CurrentAttack.SelectedAction.HelperCardId.IsNone());
+	TestTrue(TEXT("Helper decline does not complete attack"),
+		After.bHasCurrentAttack);
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("DeclineHelper"),
+		Success.RuntimeEnvelope,
+		Before,
+		Success.DeclineResult.AfterState,
+		After);
+	TestFalse(TEXT("NoLegal and Decline Helper sources remain distinct"),
+		NoLegalSuccess.ResolutionResult.Source
+			== Success.DeclineResult.Source);
+	TestFalse(TEXT("NoLegal and Decline Helper reasons remain distinct"),
+		NoLegalSuccess.ResolutionResult.Reason
+			== Success.DeclineResult.Reason);
+
+	TArray<FMatchPlayAuthoritativeDeclineHelperResult> Results;
+	TArray<FMatchPlayState> FinalStates;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FMatchPlayAuthoritativeSession DeterministicSession;
+		FReachabilityTrace DeterministicTrace;
+		FName DeterministicHelper;
+		TestTrue(TEXT("Decline Helper determinism fixture reaches stage"),
+			BuildStage7163ToAwaitingHelper(
+				DeterministicSession,
+				TEXT("HelperDeclineDeterminism"),
+				true,
+				DeterministicTrace,
+				DeterministicHelper));
+		FMatchPlayAuthoritativeDeclineHelperRequest DeterministicRequest;
+		DeterministicRequest.RequestingSide =
+			DeterministicTrace.DefendingSide;
+		Results.Add(DeterministicSession.DeclineHelper(DeterministicRequest));
+		FinalStates.Add(DeterministicSession.GetStateSnapshot());
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("DeclineHelper full result deterministic"),
+			AreAuthoritativeDeclineHelperResultsEqual(Results[0], Results[Index]));
+		TestTrue(TEXT("DeclineHelper final state deterministic"),
+			AreStatesEqual(FinalStates[0], FinalStates[Index]));
+	}
 	return true;
 }
 

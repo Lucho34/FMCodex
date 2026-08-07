@@ -593,6 +593,108 @@ FMatchPlayAuthoritativeSession::DeclineRunner(
 		});
 }
 
+FMatchPlayAuthoritativeSubmitHelperResult
+FMatchPlayAuthoritativeSession::SubmitHelper(
+	const FMatchPlayAuthoritativeSubmitHelperRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<FMatchPlayAuthoritativeSubmitHelperResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitHelper,
+		true,
+		AttackSequence,
+		[Request, AttackSequence](
+			FMatchPlayAuthoritativeSubmitHelperResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackHelperSelectionRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			DomainRequest.HelperCardId = Request.HelperCardId;
+			Result.HelperResult =
+				FMatchPlayCurrentAttackHelperSelectionWriter::Select(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.HelperResult.bSuccess;
+			Execution.CandidateAfterState = Result.HelperResult.AfterState;
+			Execution.StateDisposition = Result.HelperResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveNoLegalHelperResult
+FMatchPlayAuthoritativeSession::ResolveNoLegalHelper()
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveNoLegalHelperResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalHelper,
+		true,
+		AttackSequence,
+		[AttackSequence](
+			FMatchPlayAuthoritativeResolveNoLegalHelperResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayResolveNoLegalHelperRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			Result.ResolutionResult =
+				FMatchPlayResolveNoLegalHelper::Resolve(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeDeclineHelperResult
+FMatchPlayAuthoritativeSession::DeclineHelper(
+	const FMatchPlayAuthoritativeDeclineHelperRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<FMatchPlayAuthoritativeDeclineHelperResult>(
+		EMatchPlayAuthoritativeCommandKind::DeclineHelper,
+		true,
+		AttackSequence,
+		[Request, AttackSequence](
+			FMatchPlayAuthoritativeDeclineHelperResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayHelperDeclineRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.DeclineResult = FMatchPlayHelperDecline::Decline(
+				BeforeState,
+				DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.DeclineResult.bSuccess;
+			Execution.CandidateAfterState = Result.DeclineResult.AfterState;
+			Execution.StateDisposition = Result.DeclineResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayState FMatchPlayAuthoritativeSession::GetStateSnapshot() const
 {
 	return AuthoritativeState;

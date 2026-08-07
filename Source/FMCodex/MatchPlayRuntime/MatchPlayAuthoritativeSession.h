@@ -55,6 +55,15 @@ public:
 	FMatchPlayAuthoritativeDeclineRunnerResult DeclineRunner(
 		const FMatchPlayAuthoritativeDeclineRunnerRequest& Request);
 
+	FMatchPlayAuthoritativeSubmitHelperResult SubmitHelper(
+		const FMatchPlayAuthoritativeSubmitHelperRequest& Request);
+
+	FMatchPlayAuthoritativeResolveNoLegalHelperResult
+	ResolveNoLegalHelper();
+
+	FMatchPlayAuthoritativeDeclineHelperResult DeclineHelper(
+		const FMatchPlayAuthoritativeDeclineHelperRequest& Request);
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
