@@ -46,6 +46,15 @@ public:
 		const FSkillRuleSnapshotSet& SkillRuleSet,
 		const FMatchPlayAuthoritativeDeclineSkillRequest& Request);
 
+	FMatchPlayAuthoritativeSubmitRunnerResult SubmitRunner(
+		const FMatchPlayAuthoritativeSubmitRunnerRequest& Request);
+
+	FMatchPlayAuthoritativeResolveNoLegalRunnerResult
+	ResolveNoLegalRunner();
+
+	FMatchPlayAuthoritativeDeclineRunnerResult DeclineRunner(
+		const FMatchPlayAuthoritativeDeclineRunnerRequest& Request);
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
