@@ -1499,6 +1499,29 @@ namespace MatchPlayAuthoritativeSessionTests
 			Fixture.Completion.GoalResolveResult.UpdatedRuntimeState =
 				Fixture.FinalState.RuntimeState;
 		};
+		auto GetBeforeScoreForSide = [](
+			const FCompletionSemanticFixture& Fixture,
+			const EInitialTurnOrderPlayer Side)
+		{
+			return Side == EInitialTurnOrderPlayer::PlayerA
+				? Fixture.BeforeState.RuntimeState.PlayerAState.Score
+				: Fixture.BeforeState.RuntimeState.PlayerBState.Score;
+		};
+		auto SetSemanticScoresForAttacker = [ExpectedScoringSide](
+			FCompletionSemanticFixture& Fixture,
+			const int32 AttackerAfterScore,
+			const int32 DefenderAfterScore,
+			auto SetScores)
+		{
+			if (ExpectedScoringSide == EInitialTurnOrderPlayer::PlayerA)
+			{
+				SetScores(Fixture, AttackerAfterScore, DefenderAfterScore);
+			}
+			else
+			{
+				SetScores(Fixture, DefenderAfterScore, AttackerAfterScore);
+			}
+		};
 
 		FCompletionSemanticFixture Canonical;
 		Canonical.BeforeState = BeforeState;
@@ -1570,9 +1593,20 @@ namespace MatchPlayAuthoritativeSessionTests
 						2 + (WrongSide == EInitialTurnOrderPlayer::PlayerB ? 1 : 0));
 				});
 			TestSemanticRow(TEXT("Goal score +1 -> 0"),
-				[](auto& Fixture, auto SetScores)
+				[ExpectedScoringSide, GetBeforeScoreForSide,
+					SetSemanticScoresForAttacker](auto& Fixture, auto SetScores)
 				{
-					SetScores(Fixture, 4, 2);
+					const int32 AttackerBeforeScore = GetBeforeScoreForSide(
+						Fixture,
+						ExpectedScoringSide);
+					const int32 DefenderBeforeScore = GetBeforeScoreForSide(
+						Fixture,
+						OtherPlayer(ExpectedScoringSide));
+					SetSemanticScoresForAttacker(
+						Fixture,
+						AttackerBeforeScore,
+						DefenderBeforeScore,
+						SetScores);
 				});
 		}
 		else
@@ -1598,12 +1632,20 @@ namespace MatchPlayAuthoritativeSessionTests
 					SetScores(Fixture, 4, 2);
 				});
 			TestSemanticRow(TEXT("NoGoal score 0 -> +1"),
-				[ExpectedScoringSide](auto& Fixture, auto SetScores)
+				[ExpectedScoringSide, GetBeforeScoreForSide,
+					SetSemanticScoresForAttacker](auto& Fixture, auto SetScores)
 				{
-					SetScores(
+					const int32 AttackerBeforeScore = GetBeforeScoreForSide(
 						Fixture,
-						4 + (ExpectedScoringSide == EInitialTurnOrderPlayer::PlayerA ? 1 : 0),
-						2 + (ExpectedScoringSide == EInitialTurnOrderPlayer::PlayerB ? 1 : 0));
+						ExpectedScoringSide);
+					const int32 DefenderBeforeScore = GetBeforeScoreForSide(
+						Fixture,
+						OtherPlayer(ExpectedScoringSide));
+					SetSemanticScoresForAttacker(
+						Fixture,
+						AttackerBeforeScore + 1,
+						DefenderBeforeScore,
+						SetScores);
 				});
 		}
 	}
