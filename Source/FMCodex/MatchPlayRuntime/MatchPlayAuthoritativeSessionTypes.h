@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "../CoreRules/MatchPlayBeginOrdinaryAttack.h"
+#include "../CoreRules/MatchPlayCurrentAttackBeginResolutionSessionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackHelperSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionWriter.h"
@@ -41,7 +42,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	DeclineRunner,
 	SubmitHelper,
 	ResolveNoLegalHelper,
-	DeclineHelper
+	DeclineHelper,
+	BeginResolutionSession
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -247,6 +249,12 @@ struct FMCODEX_API FMatchPlayAuthoritativeDeclineHelperResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayHelperDeclineResult DeclineResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeBeginResolutionSessionResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackBeginResolutionSessionWriterResult BeginResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeStateAdoptionResult

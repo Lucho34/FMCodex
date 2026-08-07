@@ -695,6 +695,40 @@ FMatchPlayAuthoritativeSession::DeclineHelper(
 		});
 }
 
+FMatchPlayAuthoritativeBeginResolutionSessionResult
+FMatchPlayAuthoritativeSession::BeginResolutionSession()
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeBeginResolutionSessionResult>(
+		EMatchPlayAuthoritativeCommandKind::BeginResolutionSession,
+		true,
+		AttackSequence,
+		[AttackSequence](
+			FMatchPlayAuthoritativeBeginResolutionSessionResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackBeginResolutionSessionRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			Result.BeginResult =
+				FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.BeginResult.bSuccess;
+			Execution.CandidateAfterState = Result.BeginResult.AfterState;
+			Execution.StateDisposition = Result.BeginResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayState FMatchPlayAuthoritativeSession::GetStateSnapshot() const
 {
 	return AuthoritativeState;

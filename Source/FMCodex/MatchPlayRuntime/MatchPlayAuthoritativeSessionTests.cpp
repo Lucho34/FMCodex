@@ -1148,6 +1148,14 @@ namespace MatchPlayAuthoritativeSessionTests
 				Right.DeclineResult.FinalizationResult.ReadyValidationResult);
 	}
 
+	bool AreAuthoritativeBeginResolutionSessionResultsEqual(
+		const FMatchPlayAuthoritativeBeginResolutionSessionResult& Left,
+		const FMatchPlayAuthoritativeBeginResolutionSessionResult& Right)
+	{
+		return AreEnvelopesEqual(Left.RuntimeEnvelope, Right.RuntimeEnvelope)
+			&& AreReflectedValuesEqual(Left.BeginResult, Right.BeginResult);
+	}
+
 	EInitialTurnOrderPlayer OtherPlayer(
 		const EInitialTurnOrderPlayer Player)
 	{
@@ -1735,6 +1743,34 @@ namespace MatchPlayAuthoritativeSessionTests
 		return Availability.bQuerySucceeded
 			&& Availability.bCanSelectAnyHelper == bCreateLegalHelper
 			&& (bCreateLegalHelper != OutHelperCardId.IsNone());
+	}
+
+	bool BuildStage7164ToReadyForResolution(
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		FReachabilityTrace& OutTrace)
+	{
+		FName HelperCardId;
+		if (!BuildStage7163ToAwaitingHelper(
+			Session,
+			Prefix,
+			true,
+			OutTrace,
+			HelperCardId))
+		{
+			return false;
+		}
+
+		FMatchPlayAuthoritativeSubmitHelperRequest Request;
+		Request.RequestingSide = OutTrace.DefendingSide;
+		Request.HelperCardId = HelperCardId;
+		const auto Result = Session.SubmitHelper(Request);
+		const FMatchPlayState State = Session.GetStateSnapshot();
+		return Result.HelperResult.bSuccess
+			&& State.bHasCurrentAttack
+			&& State.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+			&& !State.CurrentAttack.bHasResolutionSession;
 	}
 
 	void TestAwaitingMarkerEndpoint(
@@ -5559,11 +5595,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All seventeen mutations use the gate"),
+	TestEqual(TEXT("All eighteen mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		17);
+		18);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9237,15 +9273,17 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		TPair<const TCHAR*, const TCHAR*>(TEXT("No-legal helper"),
 			TEXT("FMatchPlayResolveNoLegalHelper::Resolve(")),
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Decline helper"),
-			TEXT("FMatchPlayHelperDecline::Decline(")) })
+			TEXT("FMatchPlayHelperDecline::Decline(")),
+		TPair<const TCHAR*, const TCHAR*>(TEXT("Resolution Session begin"),
+			TEXT("FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(")) })
 	{
 		TestEqual(*FString::Printf(TEXT("%s has one production call"), Operation.Key),
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All seventeen mutations share serialized gate"),
+	TestEqual(TEXT("All eighteen mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		17);
+		18);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -9267,6 +9305,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.RunnerCardId ="),
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.HelperCardId ="),
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.bHasHelper ="),
+		TEXT("AuthoritativeState.CurrentAttack.bHasResolutionSession ="),
+		TEXT("AuthoritativeState.CurrentAttack.ResolutionSession ="),
 		TEXT("AuthoritativeState.CurrentAttack.SelectionStage ="),
 		TEXT("AuthoritativeState.bHasCurrentAttack ="),
 		TEXT("AuthoritativeState.CurrentAttack.DeploymentPlacements.Add") })
@@ -9735,9 +9775,10 @@ bool FMatchPlayAuthoritativeSessionSubmitHelperTest::RunTest(
 	TestEqual(TEXT("SubmitHelper follows DeclineRunner"),
 		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::SubmitHelper),
 		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::DeclineRunner) + 1);
-	TestEqual(TEXT("DeclineHelper is final command"),
-		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::DeclineHelper),
-		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::SubmitHelper) + 2);
+	TestEqual(TEXT("BeginResolutionSession follows DeclineHelper"),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::BeginResolutionSession),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::DeclineHelper) + 1);
 
 	FString Types;
 	TestTrue(TEXT("Helper types source loads"), LoadProductionSource(
@@ -10188,6 +10229,231 @@ bool FMatchPlayAuthoritativeSessionDeclineHelperTest::RunTest(
 		TestTrue(TEXT("DeclineHelper final state deterministic"),
 			AreStatesEqual(FinalStates[0], FinalStates[Index]));
 	}
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionBeginResolutionSessionTest,
+	"39.BeginResolutionSessionAuthority")
+
+bool FMatchPlayAuthoritativeSessionBeginResolutionSessionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::BeginResolutionSession),
+		FMatchPlayAuthoritativeBeginResolutionSessionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeBeginResolutionSessionResult
+			::BeginResult),
+		FMatchPlayCurrentAttackBeginResolutionSessionWriterResult>);
+
+	TestEqual(TEXT("BeginResolutionSession is final command"),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::BeginResolutionSession),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::DeclineHelper) + 1);
+
+	FString Types;
+	TestTrue(TEXT("Resolution Session types source loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+			Types));
+	TestFalse(TEXT("No public Resolution Session begin request wrapper"),
+		Types.Contains(
+			TEXT("FMatchPlayAuthoritativeBeginResolutionSessionRequest")));
+
+	const auto Uninitialized =
+		FMatchPlayAuthoritativeSession().BeginResolutionSession();
+	TestFalse(TEXT("Uninitialized Resolution Session begin rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized Resolution Session begin runtime error"),
+		Uninitialized.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+
+	FMatchPlayAuthoritativeSession NoAttackSession;
+	TestTrue(TEXT("No-attack fixture initializes"),
+		NoAttackSession.InitializeMatch(
+			MakeFoundationBInput(TEXT("ResolutionBeginNoAttack")))
+			.OpeningResult.bSuccess);
+	const FMatchPlayState NoAttackBefore =
+		NoAttackSession.GetStateSnapshot();
+	const auto NoAttack = NoAttackSession.BeginResolutionSession();
+	TestEqual(TEXT("No current attack exact error"),
+		NoAttack.BeginResult.ErrorCode,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::NoCurrentAttack);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No current attack Resolution Session begin"),
+		NoAttack.RuntimeEnvelope,
+		NoAttackBefore,
+		NoAttackSession.GetStateSnapshot());
+
+	FMatchPlayAuthoritativeSession WrongStageSession;
+	FReachabilityTrace WrongStageTrace;
+	FName WrongStageHelper;
+	TestTrue(TEXT("Wrong-stage fixture reaches AwaitingHelper"),
+		BuildStage7163ToAwaitingHelper(
+			WrongStageSession,
+			TEXT("ResolutionBeginWrongStage"),
+			true,
+			WrongStageTrace,
+			WrongStageHelper));
+	const FMatchPlayState WrongStageBefore =
+		WrongStageSession.GetStateSnapshot();
+	const auto WrongStage =
+		WrongStageSession.BeginResolutionSession();
+	TestEqual(TEXT("Not-Ready exact error"),
+		WrongStage.BeginResult.ErrorCode,
+		EMatchPlayCurrentAttackBeginResolutionSessionErrorCode
+			::WrongSelectionStage);
+	TestEqual(TEXT("Not-Ready sequence derived internally"),
+		WrongStage.BeginResult.Request.AttackSequence,
+		WrongStageBefore.CurrentAttack.AttackSequence);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Not-Ready Resolution Session begin"),
+		WrongStage.RuntimeEnvelope,
+		WrongStageBefore,
+		WrongStageSession.GetStateSnapshot());
+
+	FMatchPlayAuthoritativeSession Session;
+	FReachabilityTrace Trace;
+	TestTrue(TEXT("Public commands reach ReadyForResolution"),
+		BuildStage7164ToReadyForResolution(
+			Session,
+			TEXT("ResolutionBeginSuccess"),
+			Trace));
+	const FMatchPlayState Before = Session.GetStateSnapshot();
+	const auto Success = Session.BeginResolutionSession();
+	const FMatchPlayState After = Session.GetStateSnapshot();
+	TestTrue(TEXT("Resolution Session begin succeeds"),
+		Success.BeginResult.bSuccess);
+	TestTrue(TEXT("Resolution Session is newly created"),
+		Success.BeginResult.bCreatedNewSession);
+	TestFalse(TEXT("New begin did not find an existing session"),
+		Success.BeginResult.LegalityResult.bSessionAlreadyExists);
+	TestEqual(TEXT("Resolution Session begin exact command"),
+		Success.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::BeginResolutionSession);
+	TestEqual(TEXT("Resolution Session begin derives sequence"),
+		Success.BeginResult.Request.AttackSequence,
+		Before.CurrentAttack.AttackSequence);
+	TestTrue(TEXT("Writer receives exact authoritative BeforeState"),
+		AreStatesEqual(Before, Success.BeginResult.BeforeState));
+	TestTrue(TEXT("Current attack remains active"),
+		After.bHasCurrentAttack);
+	TestEqual(TEXT("Selection stage remains ReadyForResolution"),
+		After.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
+	TestTrue(TEXT("Resolution Session now exists"),
+		After.CurrentAttack.bHasResolutionSession);
+	const FMatchPlayCurrentAttackResolutionSession& ResolutionSession =
+		After.CurrentAttack.ResolutionSession;
+	TestEqual(TEXT("Resolution Session sequence is canonical"),
+		ResolutionSession.AttackSequence,
+		Before.CurrentAttack.AttackSequence);
+	TestEqual(TEXT("Resolution Session awaits route"),
+		ResolutionSession.Stage,
+		EMatchPlayCurrentAttackResolutionStage::AwaitingRoute);
+	TestEqual(TEXT("Bundle binding preserves action type"),
+		ResolutionSession.Bundle.Binding.ActionType,
+		Before.CurrentAttack.SelectedAction.ActionType);
+	TestEqual(TEXT("Bundle binding preserves elective intent"),
+		ResolutionSession.Bundle.Binding.ElectiveBranchIntent,
+		Before.CurrentAttack.SelectedAction.ElectiveBranchIntent);
+	TestEqual(TEXT("Bundle attacker is canonical"),
+		ResolutionSession.Bundle.CurrentAttackingPlayer,
+		Trace.AttackingSide);
+	TestEqual(TEXT("Bundle defender is canonical"),
+		ResolutionSession.Bundle.CurrentDefendingPlayer,
+		Trace.DefendingSide);
+	TestTrue(TEXT("Bundle carrier is present"),
+		ResolutionSession.Bundle.Carrier.bIsPresent);
+	TestTrue(TEXT("Bundle marker is present"),
+		ResolutionSession.Bundle.Marker.bIsPresent);
+	TestTrue(TEXT("Bundle runner is present"),
+		ResolutionSession.Bundle.bHasRunner
+			&& ResolutionSession.Bundle.Runner.bIsPresent);
+	TestTrue(TEXT("Bundle Helper is present"),
+		ResolutionSession.Bundle.bHasHelper
+			&& ResolutionSession.Bundle.Helper.bIsPresent);
+	TestTrue(TEXT("Initial Route is unresolved"),
+		ResolutionSession.InitialRouteRollRecords.IsEmpty());
+	TestFalse(TEXT("Actual Branch is unresolved"),
+		ResolutionSession.bHasActualBranch);
+	const FMatchPlayCurrentAttackActualBranch DefaultActualBranch;
+	TestTrue(TEXT("Actual Branch payload remains default"),
+		AreReflectedValuesEqual(
+			ResolutionSession.ActualBranch,
+			DefaultActualBranch));
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("BeginResolutionSession"),
+		Success.RuntimeEnvelope,
+		Before,
+		Success.BeginResult.AfterState,
+		After);
+
+	const auto Replay = Session.BeginResolutionSession();
+	TestTrue(TEXT("Canonical replay is idempotent success"),
+		Replay.BeginResult.bSuccess);
+	TestTrue(TEXT("Replay detects existing Resolution Session"),
+		Replay.BeginResult.LegalityResult.bSessionAlreadyExists);
+	TestFalse(TEXT("Replay does not create another Resolution Session"),
+		Replay.BeginResult.bCreatedNewSession);
+	TestTrue(TEXT("Replay writer AfterState remains exact"),
+		AreStatesEqual(After, Replay.BeginResult.AfterState));
+	TestAdoptedSuccessEnvelope(
+		*this,
+		TEXT("Idempotent BeginResolutionSession replay"),
+		Replay.RuntimeEnvelope,
+		After,
+		Replay.BeginResult.AfterState,
+		Session.GetStateSnapshot());
+
+	TArray<FMatchPlayAuthoritativeBeginResolutionSessionResult> Results;
+	TArray<FMatchPlayState> FinalStates;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FMatchPlayAuthoritativeSession DeterministicSession;
+		FReachabilityTrace DeterministicTrace;
+		TestTrue(TEXT("Resolution begin determinism fixture reaches Ready"),
+			BuildStage7164ToReadyForResolution(
+				DeterministicSession,
+				TEXT("ResolutionBeginDeterminism"),
+				DeterministicTrace));
+		Results.Add(DeterministicSession.BeginResolutionSession());
+		FinalStates.Add(DeterministicSession.GetStateSnapshot());
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("Resolution Session begin result deterministic"),
+			AreAuthoritativeBeginResolutionSessionResultsEqual(
+				Results[0], Results[Index]));
+		TestTrue(TEXT("Resolution Session final state deterministic"),
+			AreStatesEqual(FinalStates[0], FinalStates[Index]));
+	}
+
+	FMatchPlayAuthoritativeSession SessionA;
+	FMatchPlayAuthoritativeSession SessionB;
+	FReachabilityTrace TraceA;
+	FReachabilityTrace TraceB;
+	TestTrue(TEXT("Resolution begin isolation fixture A reaches Ready"),
+		BuildStage7164ToReadyForResolution(
+			SessionA,
+			TEXT("ResolutionBeginIsolationA"),
+			TraceA));
+	TestTrue(TEXT("Resolution begin isolation fixture B reaches Ready"),
+		BuildStage7164ToReadyForResolution(
+			SessionB,
+			TEXT("ResolutionBeginIsolationB"),
+			TraceB));
+	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
+	SessionA.BeginResolutionSession();
+	TestTrue(TEXT("BeginResolutionSession on A cannot mutate B"),
+		AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
 	return true;
 }
 

@@ -64,6 +64,9 @@ public:
 	FMatchPlayAuthoritativeDeclineHelperResult DeclineHelper(
 		const FMatchPlayAuthoritativeDeclineHelperRequest& Request);
 
+	FMatchPlayAuthoritativeBeginResolutionSessionResult
+	BeginResolutionSession();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
