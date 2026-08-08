@@ -9,6 +9,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
+#include "../CoreRules/PlayCardResolver.h"
 
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
@@ -6021,11 +6022,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All thirty-three mutations use the gate"),
+	TestEqual(TEXT("All thirty-four mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		33);
+		34);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9711,9 +9712,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All thirty-three mutations share serialized gate"),
+	TestEqual(TEXT("All thirty-four mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		33);
+		34);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -17649,6 +17650,588 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		ChipShotsEqual(ResultA.OrchestrationResult.QueryResult,
 			ResultB.OrchestrationResult.QueryResult));
 	TestTrue(TEXT("Independent OneOnOne States deterministic"),
+		AreStatesEqual(SessionA.GetStateSnapshot(), SessionB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest,
+	"55.ApplyThroughBallTerminalResolutionAuthority")
+
+bool
+FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EError =
+		EMatchPlayCurrentAttackApplyThroughBallTerminalResolutionErrorCode;
+	using ESource = EMatchPlayThroughBallTerminalSource;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ApplyThroughBallTerminalResolution),
+		FMatchPlayAuthoritativeApplyThroughBallTerminalResolutionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(!std::is_default_constructible_v<
+		FMatchPlayThroughBallResolutionTerminalCapability>);
+	static_assert(!std::is_copy_constructible_v<
+		FMatchPlayThroughBallResolutionTerminalCapability>);
+	TestEqual(TEXT("ThroughBall terminal command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ApplyThroughBallTerminalResolution),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneChipShotDecision) + 1);
+
+	FString SessionHeader;
+	FString SessionTypes;
+	FString TerminalOrchestrator;
+	FString CapabilityHeader;
+	FString CompletionHeader;
+	FString CompletionImplementation;
+	TestTrue(TEXT("Terminal Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		SessionHeader));
+	TestTrue(TEXT("Terminal Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		SessionTypes));
+	TestTrue(TEXT("Terminal orchestrator loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackApplyThroughBallTerminalResolutionOrchestrator.cpp"),
+		TerminalOrchestrator));
+	TestTrue(TEXT("Terminal capability loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayThroughBallResolutionTerminalCapability.h"),
+		CapabilityHeader));
+	TestTrue(TEXT("Completion header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.h"),
+		CompletionHeader));
+	TestTrue(TEXT("Completion implementation loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
+		CompletionImplementation));
+	TestTrue(TEXT("Terminal command has no gameplay arguments"),
+		SessionHeader.Contains(TEXT("ApplyThroughBallTerminalResolution();")));
+	TestFalse(TEXT("No public terminal request exists"),
+		SessionTypes.Contains(TEXT(
+			"FMatchPlayAuthoritativeApplyThroughBallTerminalResolutionRequest")));
+	TestTrue(TEXT("Capability constructor is private"),
+		CapabilityHeader.Contains(TEXT("private:"))
+			&& CapabilityHeader.Contains(TEXT(
+				"FAuthoritativeTerminalIssuerTag")));
+	TestEqual(TEXT("One common terminal mutation definition"),
+		CountOccurrences(CompletionImplementation,
+			TEXT("::ApplyCurrentAttackTerminalMutation(")),
+		1);
+	TestEqual(TEXT("Existing Marker completion remains one"),
+		CountOccurrences(CompletionImplementation,
+			TEXT("FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(")),
+		1);
+	TestEqual(TEXT("Existing Skill completion remains one"),
+		CountOccurrences(CompletionImplementation,
+			TEXT("FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(")),
+		1);
+	TestEqual(TEXT("Existing Runner completion remains one"),
+		CountOccurrences(CompletionImplementation,
+			TEXT("FMatchPlayCurrentAttackCompletion::CompleteRunnerNoGoal(")),
+		1);
+	TestEqual(TEXT("ThroughBall completion delegates to common mutation once"),
+		CountOccurrences(CompletionImplementation,
+			TEXT("CompleteThroughBallResolution(")),
+		1);
+	TestFalse(TEXT("Terminal orchestrator contains no D6 threshold"),
+		TerminalOrchestrator.Contains(TEXT("D6 <="))
+			|| TerminalOrchestrator.Contains(TEXT("D6 >="))
+			|| TerminalOrchestrator.Contains(TEXT("Winner ==")));
+	TestFalse(TEXT("Terminal orchestrator performs no RNG"),
+		TerminalOrchestrator.Contains(TEXT("RollD6(")));
+	TestFalse(TEXT("No universal Outcome State introduced"),
+		SessionTypes.Contains(TEXT("OutcomeApplied"))
+			|| SessionTypes.Contains(TEXT("CompletionPending"))
+			|| SessionTypes.Contains(TEXT("PendingOutcome"))
+			|| SessionTypes.Contains(TEXT("EMatchPlayOutcome")));
+
+	auto SkillId = [](const FString& Prefix, const ESkillRuleType ActionType)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(ActionType)));
+	};
+	auto ReachRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType ActionType,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session, Prefix, ActionType, Intent, Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+	auto ScoreFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.Score
+			: State.RuntimeState.PlayerBState.Score;
+	};
+	auto UsedAttacksFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.UsedAttackCount
+			: State.RuntimeState.PlayerBState.UsedAttackCount;
+	};
+
+	enum class EScenario : uint8
+	{
+		Feet,
+		AntiOffside,
+		BehindP1,
+		BehindP2,
+		AntiOneOnOne,
+		BehindOneOnOne
+	};
+	struct FTerminalCase
+	{
+		const TCHAR* Label;
+		EScenario Scenario;
+		int32 InitialD6;
+		TArray<int32> PostD6;
+		ESource ExpectedSource;
+		bool bGoal;
+		bool bReplayEvidence;
+	};
+	const FTerminalCase Cases[] = {
+		{ TEXT("TerminalFeetGoal"), EScenario::Feet, 2, { 6, 1 },
+			ESource::FeetFormulaGoal, true, true },
+		{ TEXT("TerminalFeetMiss"), EScenario::Feet, 2, { 1, 6 },
+			ESource::FeetFormulaMiss, false, false },
+		{ TEXT("TerminalAntiOffside"), EScenario::AntiOffside, 5, { 5 },
+			ESource::AntiOffsideOffside, false, false },
+		{ TEXT("TerminalBehindOutOfPlay"), EScenario::BehindP1, 3, { 2 },
+			ESource::BehindDefenseOutOfPlay, false, false },
+		{ TEXT("TerminalBehindDefenderStopped"), EScenario::BehindP1, 3,
+			{ 3, 6 }, ESource::BehindDefenseDefenderStoppedAttack,
+			false, false },
+		{ TEXT("TerminalBehindP2Offside"), EScenario::BehindP2, 3,
+			{ 6, 1, 4 }, ESource::BehindDefenseP2Offside,
+			false, false },
+		{ TEXT("TerminalAntiChipMiss"), EScenario::AntiOneOnOne, 5,
+			{ 6, 2 }, ESource::AntiOffsideOneOnOneMiss,
+			false, true },
+		{ TEXT("TerminalBehindChipGoal"), EScenario::BehindOneOnOne, 3,
+			{ 6, 1, 2, 5 }, ESource::BehindDefenseOneOnOneGoal,
+			true, false }
+	};
+
+	for (const FTerminalCase& Case : Cases)
+	{
+		const FString Prefix(Case.Label);
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(Case.InitialD6));
+		FQueuePostRouteRollProvider Post;
+		for (const int32 D6 : Case.PostD6)
+		{
+			Post.Enqueue(MakePostRouteSuccess(D6));
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Case.Label),
+			ReachRoute(Session, Prefix, ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None));
+
+		switch (Case.Scenario)
+		{
+		case EScenario::Feet:
+			TestTrue(*FString::Printf(TEXT("%s Feet plan"), Case.Label),
+				Session.ResolveThroughBallFeetPostRoutePlan()
+					.OrchestrationResult.bSuccess);
+			TestTrue(*FString::Printf(TEXT("%s Feet Formula"), Case.Label),
+				Session.ResolveThroughBallFeetFormula()
+					.OrchestrationResult.bSuccess);
+			break;
+		case EScenario::AntiOffside:
+			TestTrue(*FString::Printf(TEXT("%s AntiOffside"), Case.Label),
+				Session.ResolveThroughBallAntiOffsideDecision()
+					.OrchestrationResult.bSuccess);
+			break;
+		case EScenario::BehindP1:
+			TestTrue(*FString::Printf(TEXT("%s Behind P1"), Case.Label),
+				Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+					.OrchestrationResult.bSuccess);
+			break;
+		case EScenario::BehindP2:
+			TestTrue(*FString::Printf(TEXT("%s Behind P1"), Case.Label),
+				Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+					.OrchestrationResult.bSuccess);
+			TestTrue(*FString::Printf(TEXT("%s Behind P2"), Case.Label),
+				Session.ResolveThroughBallBehindDefenseP2Decision()
+					.OrchestrationResult.bSuccess);
+			break;
+		case EScenario::AntiOneOnOne:
+			TestTrue(*FString::Printf(TEXT("%s AntiOffside"), Case.Label),
+				Session.ResolveThroughBallAntiOffsideDecision()
+					.OrchestrationResult.bSuccess);
+			TestTrue(*FString::Printf(TEXT("%s OneOnOne"), Case.Label),
+				Session.ResolveThroughBallOneOnOneChipShotDecision()
+					.OrchestrationResult.bSuccess);
+			break;
+		case EScenario::BehindOneOnOne:
+			TestTrue(*FString::Printf(TEXT("%s Behind P1"), Case.Label),
+				Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+					.OrchestrationResult.bSuccess);
+			TestTrue(*FString::Printf(TEXT("%s Behind P2"), Case.Label),
+				Session.ResolveThroughBallBehindDefenseP2Decision()
+					.OrchestrationResult.bSuccess);
+			TestTrue(*FString::Printf(TEXT("%s OneOnOne"), Case.Label),
+				Session.ResolveThroughBallOneOnOneChipShotDecision()
+					.OrchestrationResult.bSuccess);
+			break;
+		}
+
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const EInitialTurnOrderPlayer Attacker =
+			Before.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = Attacker
+			== EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA;
+		const int32 AttackerScoreBefore = ScoreFor(Before, Attacker);
+		const int32 DefenderScoreBefore = ScoreFor(Before, Defender);
+		const int32 AttackerUsedBefore = UsedAttacksFor(Before, Attacker);
+		const int32 DefenderUsedBefore = UsedAttacksFor(Before, Defender);
+		const int32 InitialCallsBefore = Initial.GetCallCount();
+		const int32 PostCallsBefore = Post.GetCallCount();
+		const int32 InitialRecordsBefore = Before.CurrentAttack
+			.ResolutionSession.InitialRouteRollRecords.Num();
+		const int32 PostRecordsBefore = Before.CurrentAttack
+			.ResolutionSession.PostRouteRollProgress.RollRecords.Num();
+		const FMatchCardUsageState CardUsageBefore = Before.CardUsageState;
+		const FMatchPlayGoalkeeperUsageState GoalkeeperUsageBefore =
+			Before.GoalkeeperUsageState;
+
+		const auto Operation = Session.ApplyThroughBallTerminalResolution();
+		const auto& Domain = Operation.OrchestrationResult;
+		const auto& Completion = Domain.CompletionResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s terminal succeeds"), Case.Label),
+			Operation.RuntimeEnvelope.bAccepted
+				&& Operation.RuntimeEnvelope.bDomainSuccess
+				&& Domain.bSuccess && Completion.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s terminal source"), Case.Label),
+			Domain.TerminalSource, Case.ExpectedSource);
+		TestEqual(*FString::Printf(TEXT("%s Goal effect"), Case.Label),
+			Domain.bIsGoal, Case.bGoal);
+		TestEqual(*FString::Printf(TEXT("%s Completion count"), Case.Label),
+			Domain.CompletionExecutionCount, 1);
+		TestEqual(*FString::Printf(TEXT("%s regeneration RNG"), Case.Label),
+			Domain.RegenerationProviderCallCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s initial provider delta"), Case.Label),
+			Initial.GetCallCount() - InitialCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s post provider delta"), Case.Label),
+			Post.GetCallCount() - PostCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s source initial record count"),
+			Case.Label),
+			Domain.BeforeState.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords.Num(),
+			InitialRecordsBefore);
+		TestEqual(*FString::Printf(TEXT("%s source post record count"),
+			Case.Label),
+			Domain.BeforeState.CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Num(),
+			PostRecordsBefore);
+		TestFalse(*FString::Printf(TEXT("%s CurrentAttack cleared"), Case.Label),
+			After.bHasCurrentAttack);
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack reset"), Case.Label),
+			AreReflectedValuesEqual(
+				After.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(*FString::Printf(TEXT("%s attacker score delta"), Case.Label),
+			ScoreFor(After, Attacker) - AttackerScoreBefore,
+			Case.bGoal ? 1 : 0);
+		TestEqual(*FString::Printf(TEXT("%s defender score delta"), Case.Label),
+			ScoreFor(After, Defender) - DefenderScoreBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s attacker opportunity delta"),
+			Case.Label),
+			UsedAttacksFor(After, Attacker) - AttackerUsedBefore, 1);
+		TestEqual(*FString::Printf(TEXT("%s defender opportunity delta"),
+			Case.Label),
+			UsedAttacksFor(After, Defender) - DefenderUsedBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s next attacker"), Case.Label),
+			After.RuntimeState.CurrentAttackingPlayer,
+			Completion.NextAttackingPlayer);
+		TestTrue(*FString::Printf(TEXT("%s Completion State equivalence"),
+			Case.Label),
+			AreStatesEqual(After, Completion.AfterState)
+				&& AreStatesEqual(Before, Completion.BeforeState));
+		TestTrue(*FString::Printf(TEXT("%s ordinary cards consumed"),
+			Case.Label),
+			!Completion.OrdinaryCardUsageResults.IsEmpty());
+		for (const FPlayCardResolveResult& CardResult :
+			Completion.OrdinaryCardUsageResults)
+		{
+			TestTrue(*FString::Printf(TEXT("%s card consumption succeeds"),
+				Case.Label), CardResult.bSuccess);
+		}
+		TestFalse(*FString::Printf(TEXT("%s card usage advances"), Case.Label),
+			AreReflectedValuesEqual(CardUsageBefore, After.CardUsageState));
+		TestTrue(*FString::Printf(TEXT("%s goalkeeper usage preserved"),
+			Case.Label),
+			AreReflectedValuesEqual(
+				GoalkeeperUsageBefore, After.GoalkeeperUsageState));
+		TestEqual(*FString::Printf(TEXT("%s GoalResolver success"), Case.Label),
+			Completion.GoalResolveResult.bSuccess, Case.bGoal);
+		if (Case.bGoal)
+		{
+			TestEqual(*FString::Printf(TEXT("%s scoring side"), Case.Label),
+				Completion.ScoringSide, Attacker);
+			TestEqual(*FString::Printf(TEXT("%s GoalResolver score delta"),
+				Case.Label),
+				(Attacker == EInitialTurnOrderPlayer::PlayerA
+					? Completion.GoalResolveResult.UpdatedRuntimeState.PlayerAState.Score
+					: Completion.GoalResolveResult.UpdatedRuntimeState.PlayerBState.Score)
+					- AttackerScoreBefore,
+				1);
+		}
+		TestEqual(*FString::Printf(TEXT("%s match-end delegation"), Case.Label),
+			Completion.MatchEndResolveResult.bSuccess, true);
+		TestEqual(*FString::Printf(TEXT("%s match-ended flag"), Case.Label),
+			Completion.bMatchEnded,
+			Completion.MatchEndResolveResult.bIsMatchEnded);
+		if (Completion.bMatchEnded)
+		{
+			TestTrue(*FString::Printf(TEXT("%s match-result delegation"),
+				Case.Label), Completion.MatchResultResolveResult.bSuccess);
+		}
+
+		if (Case.bReplayEvidence)
+		{
+			const FMatchPlayState CompletedState = After;
+			const int32 ScoreBeforeReplay = ScoreFor(After, Attacker);
+			const int32 UsedBeforeReplay = UsedAttacksFor(After, Attacker);
+			const auto Replay = Session.ApplyThroughBallTerminalResolution();
+			TestEqual(*FString::Printf(TEXT("%s replay no CurrentAttack"),
+				Case.Label),
+				Replay.OrchestrationResult.ErrorCode, EError::NoCurrentAttack);
+			TestEqual(*FString::Printf(TEXT("%s replay score delta"), Case.Label),
+				ScoreFor(Session.GetStateSnapshot(), Attacker) - ScoreBeforeReplay,
+				0);
+			TestEqual(*FString::Printf(TEXT("%s replay opportunity delta"),
+				Case.Label),
+				UsedAttacksFor(Session.GetStateSnapshot(), Attacker)
+					- UsedBeforeReplay,
+				0);
+			TestTrue(*FString::Printf(TEXT("%s replay State unchanged"),
+				Case.Label),
+				AreStatesEqual(CompletedState, Session.GetStateSnapshot()));
+		}
+	}
+
+	{
+		const FString Prefix(TEXT("TerminalGoalCompletionFailureAtomicity"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(MakePostRouteSuccess(1));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Atomic failure reaches Feet route"), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		TestTrue(TEXT("Atomic failure resolves Feet plan"),
+			Session.ResolveThroughBallFeetPostRoutePlan()
+				.OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Atomic failure resolves Goal Formula"),
+			Session.ResolveThroughBallFeetFormula()
+				.OrchestrationResult.bSuccess);
+
+		const FMatchPlayState AuthoritativeBefore = Session.GetStateSnapshot();
+		FMatchPlayState InvalidCompletionInput = AuthoritativeBefore;
+		const FMatchPlayDeploymentPlacement& OrdinaryPlacement =
+			InvalidCompletionInput.CurrentAttack.DeploymentPlacements[0];
+		const FPlayCardResolveResult PreconsumedCard =
+			FPlayCardResolver::PlayCard(
+				InvalidCompletionInput.CardUsageState,
+				OrdinaryPlacement.PlayerSide,
+				OrdinaryPlacement.CardId);
+		TestTrue(TEXT("Atomic failure preconsumes deployed ordinary card"),
+			PreconsumedCard.bSuccess);
+		InvalidCompletionInput.CardUsageState =
+			PreconsumedCard.UpdatedMatchCardUsageState;
+		const auto Failed =
+			FMatchPlayCurrentAttackApplyThroughBallTerminalResolutionOrchestrator
+				::Resolve(InvalidCompletionInput, &Rules);
+		TestEqual(TEXT("Atomic failure reports Completion failure"),
+			Failed.ErrorCode, EError::CompletionFailed);
+		TestTrue(TEXT("Atomic failure occurs after GoalResolver success"),
+			Failed.CompletionResult.GoalResolveResult.bSuccess);
+		TestFalse(TEXT("Atomic failure Completion rejects card reuse"),
+			Failed.CompletionResult.bSuccess);
+		TestTrue(TEXT("Atomic failure returns unchanged input State"),
+			AreStatesEqual(Failed.AfterState, InvalidCompletionInput));
+		TestTrue(TEXT("Atomic failure cannot mutate authoritative Session State"),
+			AreStatesEqual(
+				Session.GetStateSnapshot(), AuthoritativeBefore));
+	}
+
+	auto TestNonTerminal = [this, &SkillId, &ReachRoute](
+		const TCHAR* Label,
+		const TArray<int32>& PostD6,
+		const int32 ContinuationDepth)
+	{
+		const FString Prefix(Label);
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(
+			ContinuationDepth == 1 ? 5 : 3));
+		FQueuePostRouteRollProvider Post;
+		for (const int32 D6 : PostD6)
+		{
+			Post.Enqueue(MakePostRouteSuccess(D6));
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s route"), Label), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		if (ContinuationDepth == 1)
+		{
+			TestTrue(*FString::Printf(TEXT("%s Anti source"), Label),
+				Session.ResolveThroughBallAntiOffsideDecision()
+					.OrchestrationResult.bSuccess);
+		}
+		else
+		{
+			TestTrue(*FString::Printf(TEXT("%s P1 source"), Label),
+				Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+					.OrchestrationResult.bSuccess);
+			if (ContinuationDepth == 3)
+			{
+				TestTrue(*FString::Printf(TEXT("%s P2 source"), Label),
+					Session.ResolveThroughBallBehindDefenseP2Decision()
+						.OrchestrationResult.bSuccess);
+			}
+		}
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore = Post.GetCallCount();
+		const auto Rejected = Session.ApplyThroughBallTerminalResolution();
+		TestEqual(*FString::Printf(TEXT("%s nonterminal error"), Label),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::SourceSemanticIsNonTerminal);
+		TestEqual(*FString::Printf(TEXT("%s Completion count"), Label),
+			Rejected.OrchestrationResult.CompletionExecutionCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s terminal RNG"), Label),
+			Post.GetCallCount() - CallsBefore, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, Label,
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	};
+	TestNonTerminal(TEXT("TerminalRejectsAntiOneOnOne"), { 6 }, 1);
+	TestNonTerminal(TEXT("TerminalRejectsP2Required"), { 6, 1 }, 2);
+	TestNonTerminal(TEXT("TerminalRejectsBehindOneOnOne"), { 6, 1, 2 }, 3);
+
+	{
+		const FString Prefix(TEXT("TerminalIncompleteFeet"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Incomplete Feet route"), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ApplyThroughBallTerminalResolution();
+		TestFalse(TEXT("Incomplete Feet rejected"),
+			Rejected.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Incomplete Feet Completion count"),
+			Rejected.OrchestrationResult.CompletionExecutionCount, 0);
+		TestEqual(TEXT("Incomplete Feet consumes zero RNG"), Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Incomplete Feet"),
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	struct FWrongActionCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType ActionType;
+		EMatchPlayElectiveBranchIntent Intent;
+	};
+	const FWrongActionCase WrongActionCases[] = {
+		{ TEXT("TerminalRejectsCross"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh },
+		{ TEXT("TerminalRejectsPassControl"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None },
+		{ TEXT("TerminalRejectsLongShot"), ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DirectShot },
+		{ TEXT("TerminalRejectsCutInsideShot"), ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DirectShot }
+	};
+	for (const FWrongActionCase& Case : WrongActionCases)
+	{
+		const FString Prefix(Case.Label);
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, Case.ActionType), Case.ActionType);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s route"), Case.Label), ReachRoute(
+			Session, Prefix, Case.ActionType, Case.Intent));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ApplyThroughBallTerminalResolution();
+		TestEqual(*FString::Printf(TEXT("%s rejected"), Case.Label),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::NotThroughBallResolution);
+		TestEqual(*FString::Printf(TEXT("%s Completion count"), Case.Label),
+			Rejected.OrchestrationResult.CompletionExecutionCount, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, Case.Label,
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	const FString DeterminismPrefix(TEXT("TerminalDeterminism"));
+	const auto DeterminismRules = MakeSkillRuleSet(
+		SkillId(DeterminismPrefix, ESkillRuleType::ThroughBall),
+		ESkillRuleType::ThroughBall);
+	InitialRouteFixtures::FQueueRollProvider InitialA;
+	InitialRouteFixtures::FQueueRollProvider InitialB;
+	InitialA.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	InitialB.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider PostA;
+	FQueuePostRouteRollProvider PostB;
+	PostA.Enqueue(MakePostRouteSuccess(5));
+	PostB.Enqueue(MakePostRouteSuccess(5));
+	FMatchPlayAuthoritativeSession SessionA(InitialA, PostA, DeterminismRules);
+	FMatchPlayAuthoritativeSession SessionB(InitialB, PostB, DeterminismRules);
+	TestTrue(TEXT("Terminal determinism A route"), ReachRoute(
+		SessionA, DeterminismPrefix, ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None));
+	TestTrue(TEXT("Terminal determinism B route"), ReachRoute(
+		SessionB, DeterminismPrefix, ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None));
+	TestTrue(TEXT("Terminal determinism A source"),
+		SessionA.ResolveThroughBallAntiOffsideDecision()
+			.OrchestrationResult.bSuccess);
+	TestTrue(TEXT("Terminal determinism B source"),
+		SessionB.ResolveThroughBallAntiOffsideDecision()
+			.OrchestrationResult.bSuccess);
+	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
+	const int32 SessionBCallsBefore = PostB.GetCallCount();
+	const auto ResultA = SessionA.ApplyThroughBallTerminalResolution();
+	TestTrue(TEXT("Terminal A cannot mutate B"),
+		AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
+	TestEqual(TEXT("Terminal A cannot consume Provider B"),
+		PostB.GetCallCount() - SessionBCallsBefore, 0);
+	const auto ResultB = SessionB.ApplyThroughBallTerminalResolution();
+	TestTrue(TEXT("Terminal results deterministic"),
+		ResultA.OrchestrationResult.bSuccess
+			&& ResultB.OrchestrationResult.bSuccess
+			&& ResultA.OrchestrationResult.TerminalSource
+				== ResultB.OrchestrationResult.TerminalSource
+			&& ResultA.OrchestrationResult.bIsGoal
+				== ResultB.OrchestrationResult.bIsGoal);
+	TestTrue(TEXT("Terminal States deterministic"),
 		AreStatesEqual(SessionA.GetStateSnapshot(), SessionB.GetStateSnapshot()));
 	return true;
 }

@@ -5,6 +5,7 @@
 #include "AttackOpportunityResolver.h"
 #include "GoalResolver.h"
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
+#include "MatchPlayThroughBallResolutionTerminalCapability.h"
 #include "MatchPlayMarkerNoSelectionGoalCapability.h"
 #include "MatchPlayRunnerNoSelectionNoGoalCapability.h"
 #include "MatchPlaySkillNoSelectionNoGoalCapability.h"
@@ -136,6 +137,8 @@ private:
 	friend class FMatchPlayResolveNoLegalRunner;
 	friend class FMatchPlayRunnerDecline;
 	friend class FMatchPlaySkillDecline;
+	friend class
+		FMatchPlayCurrentAttackApplyThroughBallTerminalResolutionOrchestrator;
 
 	FMatchPlayCurrentAttackCompletion() = delete;
 
@@ -158,4 +161,9 @@ private:
 		EInitialTurnOrderPlayer Attacker,
 		EInitialTurnOrderPlayer Defender,
 		FMatchPlayCurrentAttackCompletionResult Result);
+
+	static FMatchPlayCurrentAttackCompletionResult
+	CompleteThroughBallResolution(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayThroughBallResolutionTerminalCapability& Capability);
 };

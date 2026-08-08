@@ -358,11 +358,11 @@ bool FSkillNoSelectionNoGoalStaticAuthorityTest::RunTest(
 			CompletionHeader,
 			TEXT("ApplyCurrentAttackTerminalMutation(")),
 		1);
-	TestEqual(TEXT("GoalResolver has one Marker-only call site"),
+	TestEqual(TEXT("GoalResolver has Marker and ThroughBall Goal call sites"),
 		CountOccurrences(
 			CompletionSource,
 			TEXT("FGoalResolver::RecordGoal")),
-		1);
+		2);
 	TestFalse(TEXT("Skill entry never calls GoalResolver"),
 		EntrySource.Contains(TEXT("GoalResolver")));
 	TestEqual(TEXT("Shared ordinary CardUsage loop has one PlayCard call"),

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "../CoreRules/MatchPlayBeginOrdinaryAttack.h"
+#include "../CoreRules/MatchPlayCurrentAttackApplyThroughBallTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackBeginResolutionSessionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackBranchIntentSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionWriter.h"
@@ -73,7 +74,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveThroughBallFeetFormula,
 	ResolveThroughBallBehindDefenseP1Formula,
 	ResolveThroughBallBehindDefenseP2Decision,
-	ResolveThroughBallOneOnOneChipShotDecision
+	ResolveThroughBallOneOnOneChipShotDecision,
+	ApplyThroughBallTerminalResolution
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -404,6 +406,14 @@ struct FMCODEX_API
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeApplyThroughBallTerminalResolutionResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackApplyThroughBallTerminalResolutionResult
 		OrchestrationResult;
 };
 

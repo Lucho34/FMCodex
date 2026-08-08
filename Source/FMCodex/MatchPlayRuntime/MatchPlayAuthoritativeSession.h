@@ -117,6 +117,9 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
 	ResolveThroughBallOneOnOneChipShotDecision();
 
+	FMatchPlayAuthoritativeApplyThroughBallTerminalResolutionResult
+	ApplyThroughBallTerminalResolution();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
