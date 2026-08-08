@@ -105,6 +105,9 @@ public:
 	FMatchPlayAuthoritativeResolveSingleCardFinishingFormulaResult
 	ResolveSingleCardFinishingFormula();
 
+	FMatchPlayAuthoritativeResolveThroughBallFeetFormulaResult
+	ResolveThroughBallFeetFormula();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
