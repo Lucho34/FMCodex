@@ -6021,11 +6021,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All twenty-three mutations use the gate"),
+	TestEqual(TEXT("All twenty-four mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		23);
+		24);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9711,9 +9711,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All twenty-three mutations share serialized gate"),
+	TestEqual(TEXT("All twenty-four mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		23);
+		24);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -12748,6 +12748,584 @@ FMatchPlayAuthoritativeSessionResolveThroughBallFeetPostRoutePlanTest
 			DeterministicResultA.OrchestrationResult.PlanResult,
 			DeterministicResultB.OrchestrationResult.PlanResult));
 	TestTrue(TEXT("Feet deterministic final States equal"),
+		AreStatesEqual(
+			DeterministicA.GetStateSnapshot(),
+			DeterministicB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolvePassControlPostRoutePlanTest,
+	"45.ResolvePassControlPostRoutePlanAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolvePassControlPostRoutePlanTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using EError =
+		EMatchPlayCurrentAttackResolvePassControlPostRoutePlanErrorCode;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolvePassControlPostRoutePlan),
+		FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	TestEqual(TEXT("PassControl command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolvePassControlPostRoutePlan),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallFeetPostRoutePlan) + 1);
+
+	FString Header;
+	FString Types;
+	FString Implementation;
+	TestTrue(TEXT("PassControl Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("PassControl Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	TestTrue(TEXT("PassControl Session implementation loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+			Implementation));
+	TestFalse(TEXT("No public PassControl gameplay request exists"),
+		Types.Contains(TEXT(
+			"FMatchPlayAuthoritativeResolvePassControlPostRoutePlanRequest")));
+	TestTrue(TEXT("PassControl command has no gameplay arguments"),
+		Header.Contains(TEXT("ResolvePassControlPostRoutePlan();")));
+	TestFalse(TEXT("Session does not call provider directly"),
+		Implementation.Contains(TEXT("RollD6(")));
+	TestEqual(TEXT("One canonical PassControl orchestration call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator")),
+		1);
+
+	auto MakePassControlSkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::PassControl)));
+	};
+	auto ReachResolvedRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				ESkillRuleType::PassControl,
+				EMatchPlayElectiveBranchIntent::None,
+				Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+	auto AreFormulaInputsEqual = [](
+		const FSingleCardFormulaInputAssemblyQueryInput& Left,
+		const FSingleCardFormulaInputAssemblyQueryInput& Right)
+	{
+		return Left.CardId == Right.CardId
+			&& Left.FormulaType == Right.FormulaType
+			&& Left.ParticipantRole == Right.ParticipantRole
+			&& Left.Attribute == Right.Attribute
+			&& Left.bHasExternalD6ComparePoint
+				== Right.bHasExternalD6ComparePoint
+			&& Left.ExternalD6ComparePoint == Right.ExternalD6ComparePoint
+			&& Left.bHasExternalModifier == Right.bHasExternalModifier
+			&& FMath::IsNearlyEqual(
+				Left.ExternalModifier, Right.ExternalModifier)
+			&& Left.LogId == Right.LogId
+			&& Left.TurnIndex == Right.TurnIndex
+			&& Left.ContextTag == Right.ContextTag;
+	};
+	auto ArePassControlInputsEqual = [](
+		const auto& Left,
+		const auto& Right)
+	{
+		return Left.SkillId == Right.SkillId
+			&& Left.AdvanceType == Right.AdvanceType
+			&& Left.CarrierCardId == Right.CarrierCardId
+			&& Left.RunnerCardId == Right.RunnerCardId
+			&& Left.MarkerCardId == Right.MarkerCardId
+			&& Left.bHasHelper == Right.bHasHelper
+			&& Left.HelperCardId == Right.HelperCardId
+			&& Left.CurrentActionPoint == Right.CurrentActionPoint
+			&& Left.bHasExternalAttackD6 == Right.bHasExternalAttackD6
+			&& Left.ExternalAttackD6 == Right.ExternalAttackD6
+			&& Left.bHasExternalDefenseD6 == Right.bHasExternalDefenseD6
+			&& Left.ExternalDefenseD6 == Right.ExternalDefenseD6
+			&& Left.LogId == Right.LogId
+			&& Left.TurnIndex == Right.TurnIndex
+			&& Left.CarrierPlayerId == Right.CarrierPlayerId
+			&& Left.RunnerPlayerId == Right.RunnerPlayerId
+			&& Left.MarkerPlayerId == Right.MarkerPlayerId
+			&& Left.HelperPlayerId == Right.HelperPlayerId;
+	};
+	auto PopulateDirectInput = [](
+		const FMatchPlayState& State,
+		const EPassControlAdvanceType AdvanceType,
+		auto& Input)
+	{
+		const auto& Attack = State.CurrentAttack;
+		const auto& Session = Attack.ResolutionSession;
+		const auto& Bundle = Session.Bundle;
+		const auto& Records = Session.PostRouteRollProgress.RollRecords;
+		auto PlayerId = [](const EInitialTurnOrderPlayer Side)
+		{
+			return Side == EInitialTurnOrderPlayer::PlayerA
+				? FName(TEXT("PlayerA"))
+				: FName(TEXT("PlayerB"));
+		};
+		Input.SkillId = Bundle.Binding.SkillId;
+		Input.AdvanceType = AdvanceType;
+		Input.CarrierCardId = Bundle.Carrier.CardId;
+		Input.RunnerCardId = Bundle.Runner.CardId;
+		Input.MarkerCardId = Bundle.Marker.CardId;
+		Input.bHasHelper = Bundle.bHasHelper;
+		Input.HelperCardId = Bundle.bHasHelper
+			? Bundle.Helper.CardId
+			: NAME_None;
+		Input.CurrentActionPoint = Attack.ActionPoint;
+		Input.bHasExternalAttackD6 = true;
+		Input.ExternalAttackD6 = Records[0].RawD6;
+		Input.bHasExternalDefenseD6 = true;
+		Input.ExternalDefenseD6 = Records[1].RawD6;
+		const uint64 Sequence = static_cast<uint64>(Session.AttackSequence);
+		Input.LogId = FGuid(
+			0x50434C4E,
+			static_cast<uint32>(Sequence >> 32),
+			static_cast<uint32>(Sequence),
+			0x504C414E);
+		Input.TurnIndex = static_cast<int32>(Session.AttackSequence - 1);
+		Input.CarrierPlayerId = PlayerId(Bundle.Carrier.Side);
+		Input.RunnerPlayerId = PlayerId(Bundle.Runner.Side);
+		Input.MarkerPlayerId = PlayerId(Bundle.Marker.Side);
+		Input.HelperPlayerId = Bundle.bHasHelper
+			? PlayerId(Bundle.Helper.Side)
+			: NAME_None;
+	};
+	auto BuildDirectSnapshots = [](const FMatchPlayState& State)
+	{
+		FPlayerCardRuleSnapshotSet Snapshots;
+		const auto& Bundle = State.CurrentAttack.ResolutionSession.Bundle;
+		auto AddParticipant = [&State, &Snapshots](const auto& Participant)
+		{
+			const auto Query =
+				FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+					State.CardSnapshotAuthority,
+					Participant.Side,
+					Participant.CardId);
+			FPlayerCardRuleSnapshot Snapshot = Query.Snapshot;
+			Snapshot.Attributes.Shooting = Participant.Values.Shooting;
+			Snapshot.Attributes.Dribbling = Participant.Values.Dribbling;
+			Snapshot.Attributes.Passing = Participant.Values.Passing;
+			Snapshot.Attributes.OffBall = Participant.Values.OffBall;
+			Snapshot.Attributes.Marking = Participant.Values.Marking;
+			Snapshot.Attributes.Tackling = Participant.Values.Tackling;
+			Snapshot.Attributes.Speed = Participant.Values.Speed;
+			Snapshot.Attributes.Strength = Participant.Values.Strength;
+			Snapshot.Attributes.Stamina = Participant.Values.Stamina;
+			Snapshot.Attributes.LongShot = Participant.Values.LongShot;
+			Snapshots.Cards.Add(MoveTemp(Snapshot));
+		};
+		AddParticipant(Bundle.Carrier);
+		AddParticipant(Bundle.Runner);
+		AddParticipant(Bundle.Marker);
+		if (Bundle.bHasHelper)
+		{
+			AddParticipant(Bundle.Helper);
+		}
+		return Snapshots;
+	};
+
+	InitialRouteFixtures::FQueueRollProvider UninitializedInitial;
+	FQueuePostRouteRollProvider UninitializedPost;
+	const FSkillRuleSnapshotSet UninitializedRules = MakeSkillRuleSet(
+		TEXT("Skill.PassControl.Uninitialized"), ESkillRuleType::PassControl);
+	FMatchPlayAuthoritativeSession UninitializedSession(
+		UninitializedInitial, UninitializedPost, UninitializedRules);
+	const auto Uninitialized =
+		UninitializedSession.ResolvePassControlPostRoutePlan();
+	TestFalse(TEXT("Uninitialized PassControl command rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized PassControl consumes no rolls"),
+		UninitializedPost.GetCallCount(), 0);
+
+	struct FBranchCase
+	{
+		const TCHAR* Label;
+		int32 InitialD6;
+		EMatchPlayPassControlActualBranch Branch;
+	};
+	const FBranchCase BranchCases[] = {
+		{ TEXT("PassAdvance"), 2,
+			EMatchPlayPassControlActualBranch::PassAdvance },
+		{ TEXT("DribbleAdvance"), 4,
+			EMatchPlayPassControlActualBranch::DribbleAdvance },
+		{ TEXT("RunAdvance"), 6,
+			EMatchPlayPassControlActualBranch::RunAdvance }
+	};
+	for (const FBranchCase& Case : BranchCases)
+	{
+		const FString Prefix = FString(TEXT("PassControl")) + Case.Label;
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakePassControlSkillId(Prefix), ESkillRuleType::PassControl);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(Case.InitialD6));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(4));
+		Post.Enqueue(MakePostRouteSuccess(3));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s real public route"), Case.Label),
+			ReachResolvedRoute(Session, Prefix));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 InitialRecordCount = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num();
+		const auto Operation = Session.ResolvePassControlPostRoutePlan();
+		const auto& Orchestration = Operation.OrchestrationResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		const auto& Resolution = After.CurrentAttack.ResolutionSession;
+		const auto& Records =
+			Resolution.PostRouteRollProgress.RollRecords;
+		TestTrue(*FString::Printf(TEXT("%s succeeds"), Case.Label),
+			Orchestration.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s branch"), Case.Label),
+			Orchestration.ActualBranch, Case.Branch);
+		TestEqual(*FString::Printf(TEXT("%s provider calls"), Case.Label),
+			Post.GetCallCount(), 2);
+		TestEqual(*FString::Printf(TEXT("%s purpose count"), Case.Label),
+			Post.GetPurposes().Num(), 2);
+		TestEqual(*FString::Printf(TEXT("%s first purpose"), Case.Label),
+			Post.GetPurposes()[0], EPurpose::PrimaryAttack);
+		TestEqual(*FString::Printf(TEXT("%s second purpose"), Case.Label),
+			Post.GetPurposes()[1], EPurpose::PrimaryDefense);
+		TestEqual(*FString::Printf(TEXT("%s record count"), Case.Label),
+			Records.Num(), 2);
+		TestEqual(*FString::Printf(TEXT("%s attack record purpose"), Case.Label),
+			Records[0].Purpose, EPurpose::PrimaryAttack);
+		TestEqual(*FString::Printf(TEXT("%s attack record value"), Case.Label),
+			Records[0].RawD6, 4);
+		TestEqual(*FString::Printf(TEXT("%s defense record purpose"), Case.Label),
+			Records[1].Purpose, EPurpose::PrimaryDefense);
+		TestEqual(*FString::Printf(TEXT("%s defense record value"), Case.Label),
+			Records[1].RawD6, 3);
+		TestEqual(*FString::Printf(TEXT("%s route records preserved"), Case.Label),
+			Resolution.InitialRouteRollRecords.Num(), InitialRecordCount);
+		TestTrue(*FString::Printf(TEXT("%s adopts exact AfterState"), Case.Label),
+			AreStatesEqual(After, Orchestration.AfterState));
+		const FPlayerCardRuleSnapshotSet DirectSnapshots =
+			BuildDirectSnapshots(After);
+
+		if (Case.Branch == EMatchPlayPassControlActualBranch::PassAdvance)
+		{
+			FPassControlPassAdvancePlanQueryInput DirectInput;
+			PopulateDirectInput(
+				After, EPassControlAdvanceType::PassAdvance, DirectInput);
+			const auto Direct = FPassControlPassAdvancePlanQuery::BuildPlan(
+				DirectSnapshots,
+				Rules,
+				DirectInput);
+			TestTrue(TEXT("PassAdvance canonical Formula plan returned"),
+				Orchestration.PassAdvanceResult.bSuccess
+					&& Orchestration.PassAdvanceResult.bHasFormulaPlan);
+			TestTrue(TEXT("PassAdvance direct query equivalence"),
+				Direct.bSuccess
+					&& ArePassControlInputsEqual(
+						DirectInput, Orchestration.PassAdvanceInput)
+					&& AreFormulaInputsEqual(
+						Direct.FormulaPlan.AttackerQueryInput,
+						Orchestration.PassAdvanceResult.FormulaPlan.AttackerQueryInput)
+					&& AreFormulaInputsEqual(
+						Direct.FormulaPlan.DefenderQueryInput,
+						Orchestration.PassAdvanceResult.FormulaPlan.DefenderQueryInput));
+			const int32 ReplayCallsBefore = Post.GetCallCount();
+			const auto Replay = Session.ResolvePassControlPostRoutePlan();
+			TestTrue(TEXT("PassControl replay idempotent success"),
+				Replay.OrchestrationResult.bSuccess
+					&& Replay.OrchestrationResult.bReplayedCompleteRolls);
+			TestEqual(TEXT("PassControl replay provider delta zero"),
+				Post.GetCallCount() - ReplayCallsBefore, 0);
+			TestEqual(TEXT("PassControl replay record delta zero"),
+				Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+					.PostRouteRollProgress.RollRecords.Num() - Records.Num(),
+				0);
+			TestTrue(TEXT("PassControl replay State unchanged"),
+				AreStatesEqual(After, Session.GetStateSnapshot()));
+		}
+		else if (Case.Branch
+			== EMatchPlayPassControlActualBranch::DribbleAdvance)
+		{
+			FPassControlDribbleAdvancePlanQueryInput DirectInput;
+			PopulateDirectInput(
+				After, EPassControlAdvanceType::DribbleAdvance, DirectInput);
+			const auto Direct = FPassControlDribbleAdvancePlanQuery::BuildPlan(
+				DirectSnapshots,
+				Rules,
+				DirectInput);
+			TestTrue(TEXT("DribbleAdvance canonical Formula plan returned"),
+				Orchestration.DribbleAdvanceResult.bSuccess
+					&& Orchestration.DribbleAdvanceResult.bHasFormulaPlan);
+			TestTrue(TEXT("DribbleAdvance direct query equivalence"),
+				Direct.bSuccess
+					&& ArePassControlInputsEqual(
+						DirectInput, Orchestration.DribbleAdvanceInput)
+					&& AreFormulaInputsEqual(
+						Direct.FormulaPlan.AttackerQueryInput,
+						Orchestration.DribbleAdvanceResult.FormulaPlan.AttackerQueryInput)
+					&& AreFormulaInputsEqual(
+						Direct.FormulaPlan.DefenderQueryInput,
+						Orchestration.DribbleAdvanceResult.FormulaPlan.DefenderQueryInput));
+		}
+		else
+		{
+			FPassControlRunAdvancePlanQueryInput DirectInput;
+			PopulateDirectInput(
+				After, EPassControlAdvanceType::RunAdvance, DirectInput);
+			const auto Direct = FPassControlRunAdvancePlanQuery::BuildPlan(
+				DirectSnapshots,
+				Rules,
+				DirectInput);
+			TestTrue(TEXT("RunAdvance canonical Formula plan returned"),
+				Orchestration.RunAdvanceResult.bSuccess
+					&& Orchestration.RunAdvanceResult.bHasFormulaPlan);
+			TestTrue(TEXT("RunAdvance direct query equivalence"),
+				Direct.bSuccess
+					&& ArePassControlInputsEqual(
+						DirectInput, Orchestration.RunAdvanceInput)
+					&& AreFormulaInputsEqual(
+						Direct.FormulaPlan.AttackerQueryInput,
+						Orchestration.RunAdvanceResult.FormulaPlan.AttackerQueryInput)
+					&& AreFormulaInputsEqual(
+						Direct.FormulaPlan.DefenderQueryInput,
+						Orchestration.RunAdvanceResult.FormulaPlan.DefenderQueryInput));
+		}
+	}
+
+	const FString PartialPrefix(TEXT("PassControlPartial"));
+	const FSkillRuleSnapshotSet PartialRules = MakeSkillRuleSet(
+		MakePassControlSkillId(PartialPrefix), ESkillRuleType::PassControl);
+	InitialRouteFixtures::FQueueRollProvider PartialInitial;
+	PartialInitial.Enqueue(InitialRouteFixtures::MakeSuccess(1));
+	FQueuePostRouteRollProvider UnusedPost;
+	FMatchPlayAuthoritativeSession PartialSession(
+		PartialInitial, UnusedPost, PartialRules);
+	TestTrue(TEXT("Partial-prefix fixture reaches PassAdvance"),
+		ReachResolvedRoute(PartialSession, PartialPrefix));
+	FMatchPlayState PartialBefore = PartialSession.GetStateSnapshot();
+	PartialBefore.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+		EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch;
+	FMatchPlayCurrentAttackPostRouteRollRecord AcceptedAttack;
+	AcceptedAttack.Purpose = EPurpose::PrimaryAttack;
+	AcceptedAttack.RawD6 = 5;
+	PartialBefore.CurrentAttack.ResolutionSession.PostRouteRollProgress
+		.RollRecords.Add(AcceptedAttack);
+	TestTrue(TEXT("PassControl partial prefix canonical"),
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			PartialBefore).bIsCanonical);
+	FQueuePostRouteRollProvider PartialProvider;
+	PartialProvider.Enqueue(MakePostRouteSuccess(2));
+	FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest PartialRequest;
+	PartialRequest.AttackSequence = PartialBefore.CurrentAttack.AttackSequence;
+	const auto Partial =
+		FMatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator
+			::Resolve(
+				PartialBefore, PartialRequest, &PartialRules, &PartialProvider);
+	TestTrue(TEXT("PassControl partial-prefix continuation succeeds"),
+		Partial.bSuccess);
+	TestEqual(TEXT("PassControl partial-prefix requests one roll"),
+		PartialProvider.GetCallCount(), 1);
+	TestEqual(TEXT("PassControl partial-prefix requests Defense"),
+		PartialProvider.GetPurposes()[0], EPurpose::PrimaryDefense);
+	TestEqual(TEXT("PassControl partial-prefix preserves Attack"),
+		Partial.AfterState.CurrentAttack.ResolutionSession.PostRouteRollProgress
+			.RollRecords[0].RawD6,
+		5);
+
+	InitialRouteFixtures::FQueueRollProvider MissingInitial;
+	MissingInitial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FMatchPlayAuthoritativeSession MissingProviderSession(MissingInitial);
+	TestTrue(TEXT("Missing-provider fixture reaches PassControl"),
+		ReachResolvedRoute(
+			MissingProviderSession, TEXT("PassControlMissingProvider")));
+	const FMatchPlayState MissingBefore =
+		MissingProviderSession.GetStateSnapshot();
+	const auto Missing =
+		MissingProviderSession.ResolvePassControlPostRoutePlan();
+	TestEqual(TEXT("PassControl missing provider exact error"),
+		Missing.OrchestrationResult.ErrorCode,
+		EError::PostRouteRollProviderUnavailable);
+	TestEqual(TEXT("PassControl missing provider calls"),
+		Missing.OrchestrationResult.ProviderCallCount, 0);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("PassControl missing provider"),
+		Missing.RuntimeEnvelope,
+		MissingBefore,
+		MissingProviderSession.GetStateSnapshot());
+
+	auto TestProviderFailure =
+		[this, &ReachResolvedRoute, &MakePassControlSkillId](
+			const TCHAR* Label,
+			const TArray<FMatchPlayPostRouteRollProviderResult>& Responses,
+			const int32 ExpectedCalls,
+			const EError ExpectedError)
+	{
+		const FString Prefix(Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakePassControlSkillId(Prefix), ESkillRuleType::PassControl);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+		FQueuePostRouteRollProvider Post;
+		for (const auto& Response : Responses)
+		{
+			Post.Enqueue(Response);
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches PassControl"), Label),
+			ReachResolvedRoute(Session, Prefix));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Failure = Session.ResolvePassControlPostRoutePlan();
+		TestEqual(*FString::Printf(TEXT("%s call delta"), Label),
+			Post.GetCallCount(), ExpectedCalls);
+		TestEqual(*FString::Printf(TEXT("%s exact error"), Label),
+			Failure.OrchestrationResult.ErrorCode, ExpectedError);
+		TestTrue(*FString::Printf(TEXT("%s record delta zero"), Label),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.IsEmpty());
+		TestAcceptedDomainFailureNoAdopt(
+			*this, Label, Failure.RuntimeEnvelope,
+			Before, Session.GetStateSnapshot());
+	};
+	TestProviderFailure(
+		TEXT("PassControl first-roll failure"),
+		{ MakePostRouteFailure() }, 1,
+		EError::PostRouteRollProviderFailed);
+	TestProviderFailure(
+		TEXT("PassControl second-roll failure"),
+		{ MakePostRouteSuccess(6), MakePostRouteFailure() }, 2,
+		EError::PostRouteRollProviderFailed);
+	TestProviderFailure(
+		TEXT("PassControl malformed provider result"),
+		{ MakePostRouteSuccess(0) }, 1,
+		EError::MalformedPostRouteRollProviderResult);
+
+	auto TestNonPassControl = [this](
+		const TCHAR* Label,
+		const ESkillRuleType ActionType,
+		const EMatchPlayElectiveBranchIntent Intent,
+		const int32 InitialRouteD6)
+	{
+		const FString Prefix(Label);
+		const FName SkillId(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(ActionType)));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId, ActionType);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(InitialRouteD6));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(2));
+		Post.Enqueue(MakePostRouteSuccess(4));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label),
+			BuildStage7166ToAwaitingRoute(
+				Session, Prefix, ActionType, Intent, Trace)
+				&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ResolvePassControlPostRoutePlan();
+		TestEqual(*FString::Printf(TEXT("%s exact error"), Label),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::NotPassControlBranch);
+		TestEqual(*FString::Printf(TEXT("%s consumes zero rolls"), Label),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(
+			*this, Label, Rejected.RuntimeEnvelope,
+			Before, Session.GetStateSnapshot());
+	};
+	TestNonPassControl(
+		TEXT("PassControl rejects Cross"),
+		ESkillRuleType::Cross,
+		EMatchPlayElectiveBranchIntent::CrossHigh,
+		4);
+	TestNonPassControl(
+		TEXT("PassControl rejects ThroughBall Feet"),
+		ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None,
+		2);
+
+	const FString IsolationPrefixA(TEXT("PassControlIsolationA"));
+	const FString IsolationPrefixB(TEXT("PassControlIsolationB"));
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialA;
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialB;
+	IsolationInitialA.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+	IsolationInitialB.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+	FQueuePostRouteRollProvider IsolationPostA;
+	FQueuePostRouteRollProvider IsolationPostB;
+	IsolationPostA.Enqueue(MakePostRouteSuccess(1));
+	IsolationPostA.Enqueue(MakePostRouteSuccess(6));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(3));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(4));
+	const FSkillRuleSnapshotSet IsolationRulesA = MakeSkillRuleSet(
+		MakePassControlSkillId(IsolationPrefixA), ESkillRuleType::PassControl);
+	const FSkillRuleSnapshotSet IsolationRulesB = MakeSkillRuleSet(
+		MakePassControlSkillId(IsolationPrefixB), ESkillRuleType::PassControl);
+	FMatchPlayAuthoritativeSession IsolationA(
+		IsolationInitialA, IsolationPostA, IsolationRulesA);
+	FMatchPlayAuthoritativeSession IsolationB(
+		IsolationInitialB, IsolationPostB, IsolationRulesB);
+	TestTrue(TEXT("PassControl isolation A reaches route"),
+		ReachResolvedRoute(IsolationA, IsolationPrefixA));
+	TestTrue(TEXT("PassControl isolation B reaches route"),
+		ReachResolvedRoute(IsolationB, IsolationPrefixB));
+	const FMatchPlayState IsolationBBefore = IsolationB.GetStateSnapshot();
+	IsolationA.ResolvePassControlPostRoutePlan();
+	TestEqual(TEXT("PassControl Session A consumes no Provider B rolls"),
+		IsolationPostB.GetCallCount(), 0);
+	TestTrue(TEXT("PassControl Session A cannot mutate Session B"),
+		AreStatesEqual(IsolationBBefore, IsolationB.GetStateSnapshot()));
+
+	const FString DeterminismPrefix(TEXT("PassControlDeterminism"));
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialA;
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialB;
+	DeterministicInitialA.Enqueue(InitialRouteFixtures::MakeSuccess(6));
+	DeterministicInitialB.Enqueue(InitialRouteFixtures::MakeSuccess(6));
+	FQueuePostRouteRollProvider DeterministicPostA;
+	FQueuePostRouteRollProvider DeterministicPostB;
+	for (FQueuePostRouteRollProvider* Provider :
+		{ &DeterministicPostA, &DeterministicPostB })
+	{
+		Provider->Enqueue(MakePostRouteSuccess(5));
+		Provider->Enqueue(MakePostRouteSuccess(2));
+	}
+	const FSkillRuleSnapshotSet DeterministicRules = MakeSkillRuleSet(
+		MakePassControlSkillId(DeterminismPrefix),
+		ESkillRuleType::PassControl);
+	FMatchPlayAuthoritativeSession DeterministicA(
+		DeterministicInitialA, DeterministicPostA, DeterministicRules);
+	FMatchPlayAuthoritativeSession DeterministicB(
+		DeterministicInitialB, DeterministicPostB, DeterministicRules);
+	TestTrue(TEXT("PassControl deterministic A reaches route"),
+		ReachResolvedRoute(DeterministicA, DeterminismPrefix));
+	TestTrue(TEXT("PassControl deterministic B reaches route"),
+		ReachResolvedRoute(DeterministicB, DeterminismPrefix));
+	const auto DeterministicResultA =
+		DeterministicA.ResolvePassControlPostRoutePlan();
+	const auto DeterministicResultB =
+		DeterministicB.ResolvePassControlPostRoutePlan();
+	TestTrue(TEXT("PassControl deterministic Run plans equal"),
+		AreFormulaInputsEqual(
+			DeterministicResultA.OrchestrationResult.RunAdvanceResult
+				.FormulaPlan.AttackerQueryInput,
+			DeterministicResultB.OrchestrationResult.RunAdvanceResult
+				.FormulaPlan.AttackerQueryInput)
+		&& AreFormulaInputsEqual(
+			DeterministicResultA.OrchestrationResult.RunAdvanceResult
+				.FormulaPlan.DefenderQueryInput,
+			DeterministicResultB.OrchestrationResult.RunAdvanceResult
+				.FormulaPlan.DefenderQueryInput));
+	TestTrue(TEXT("PassControl deterministic final States equal"),
 		AreStatesEqual(
 			DeterministicA.GetStateSnapshot(),
 			DeterministicB.GetStateSnapshot()));

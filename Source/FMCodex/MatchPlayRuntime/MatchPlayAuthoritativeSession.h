@@ -87,6 +87,9 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallFeetPostRoutePlanResult
 	ResolveThroughBallFeetPostRoutePlan();
 
+	FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
+	ResolvePassControlPostRoutePlan();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
