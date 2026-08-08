@@ -552,6 +552,127 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 }
 
 FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion::CompleteCrossResolution(
+	const FMatchPlayState& BeforeState,
+	const FMatchPlayCrossResolutionTerminalCapability& Capability)
+{
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+
+	FMatchPlayCurrentAttackCompletionResult Result;
+	Result.BeforeState = BeforeState;
+	Result.AfterState = BeforeState;
+
+	const EMatchPlayCrossTerminalSource Source = Capability.GetSource();
+	const bool bGoalSource =
+		Source == EMatchPlayCrossTerminalSource::HighFormulaGoal
+		|| Source == EMatchPlayCrossTerminalSource::LowFormulaGoal;
+	if (Source == EMatchPlayCrossTerminalSource::None)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::UnsupportedCapabilitySource,
+			TEXT("Cross completion requires a terminal source."));
+		return Result;
+	}
+	if (Capability.IsGoal() != bGoalSource)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityReason,
+			TEXT("Cross terminal source and Goal effect are inconsistent."));
+		return Result;
+	}
+
+	EInitialTurnOrderPlayer Attacker = EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer Defender = EInitialTurnOrderPlayer::None;
+	if (!ValidateCommonOuter(
+		BeforeState,
+		Capability.GetAttackSequence(),
+		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution,
+		Result,
+		Attacker,
+		Defender))
+	{
+		return Result;
+	}
+	if (!BeforeState.CurrentAttack.bHasResolutionSession)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			TEXT("Cross completion requires a Resolution Session."));
+		return Result;
+	}
+	const auto SessionValidation =
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			BeforeState);
+	if (!SessionValidation.bIsCanonical
+		|| BeforeState.CurrentAttack.ResolutionSession.Stage
+			!= EMatchPlayCurrentAttackResolutionStage::RouteResolved
+		|| !BeforeState.CurrentAttack.ResolutionSession.bHasActualBranch
+		|| BeforeState.CurrentAttack.ResolutionSession.ActualBranch.ActionType
+			!= ESkillRuleType::Cross)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			SessionValidation.bIsCanonical
+				? TEXT("Cross capability requires a resolved Cross branch.")
+				: SessionValidation.ErrorMessage);
+		return Result;
+	}
+	const EMatchPlayCrossActualBranch ActualBranch =
+		BeforeState.CurrentAttack.ResolutionSession.ActualBranch.Cross;
+	const bool bHighSource =
+		Source == EMatchPlayCrossTerminalSource::HighFormulaGoal
+		|| Source == EMatchPlayCrossTerminalSource::HighFormulaMiss;
+	const bool bLowSource =
+		Source == EMatchPlayCrossTerminalSource::LowFormulaGoal
+		|| Source == EMatchPlayCrossTerminalSource::LowFormulaMiss;
+	if ((!bHighSource && !bLowSource)
+		|| (bHighSource && ActualBranch != EMatchPlayCrossActualBranch::High)
+		|| (bLowSource && ActualBranch != EMatchPlayCrossActualBranch::Low))
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			TEXT("Cross terminal source does not match ActualBranch."));
+		return Result;
+	}
+	if (!ValidateScoreState(BeforeState, Result))
+	{
+		return Result;
+	}
+
+	FMatchPlayState WorkingState = BeforeState;
+	if (Capability.IsGoal())
+	{
+		Result.GoalResolveResult = FGoalResolver::RecordGoal(
+			WorkingState.RuntimeState,
+			Attacker);
+		if (!Result.GoalResolveResult.bSuccess)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode::GoalResolutionFailed,
+				Result.GoalResolveResult.ErrorMessage);
+			return Result;
+		}
+		WorkingState.RuntimeState =
+			Result.GoalResolveResult.UpdatedRuntimeState;
+		Result.ScoringSide = Attacker;
+	}
+
+	return ApplyCurrentAttackTerminalMutation(
+		BeforeState,
+		MoveTemp(WorkingState),
+		Attacker,
+		Defender,
+		MoveTemp(Result));
+}
+
+FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion::CompleteThroughBallResolution(
 	const FMatchPlayState& BeforeState,
 	const FMatchPlayThroughBallResolutionTerminalCapability& Capability)

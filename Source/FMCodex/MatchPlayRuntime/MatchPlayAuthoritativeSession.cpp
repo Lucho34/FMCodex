@@ -1358,6 +1358,41 @@ FMatchPlayAuthoritativeSession::ApplyThroughBallTerminalResolution()
 		});
 }
 
+FMatchPlayAuthoritativeApplyCrossTerminalResolutionResult
+FMatchPlayAuthoritativeSession::ApplyCrossTerminalResolution()
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeApplyCrossTerminalResolutionResult>(
+		EMatchPlayAuthoritativeCommandKind::ApplyCrossTerminalResolution,
+		true,
+		AttackSequence,
+		[this, AttackSequence](
+			FMatchPlayAuthoritativeApplyCrossTerminalResolutionResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator
+					::Resolve(
+						BeforeState,
+						bHasSkillRuleSet
+							? &AuthoritativeSkillRuleSet
+							: nullptr);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayState FMatchPlayAuthoritativeSession::GetStateSnapshot() const
 {
 	return AuthoritativeState;

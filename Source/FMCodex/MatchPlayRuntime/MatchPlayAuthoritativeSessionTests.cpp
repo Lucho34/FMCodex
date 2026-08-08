@@ -6022,11 +6022,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All thirty-four mutations use the gate"),
+	TestEqual(TEXT("All thirty-five mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		34);
+		35);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9712,9 +9712,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All thirty-four mutations share serialized gate"),
+	TestEqual(TEXT("All thirty-five mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		34);
+		35);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -18714,8 +18714,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 34 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 34);
+	TestEqual(TEXT("E2E preserves 35 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 35);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -18732,6 +18732,450 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 		CountOccurrences(SessionSource, TEXT(".Score ="))
 			+ CountOccurrences(SessionSource, TEXT(".Score +=")),
 		0);
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest,
+	"57.ApplyCrossTerminalResolutionAuthority")
+
+bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EError =
+		EMatchPlayCurrentAttackApplyCrossTerminalResolutionErrorCode;
+	using ESource = EMatchPlayCrossTerminalSource;
+
+	FString SessionSource;
+	FString SessionHeader;
+	FString SessionTypes;
+	FString OrchestratorSource;
+	FString CapabilityHeader;
+	FString CompletionHeader;
+	FString CompletionSource;
+	TestTrue(TEXT("Cross terminal Session source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		SessionSource));
+	TestTrue(TEXT("Cross terminal Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		SessionHeader));
+	TestTrue(TEXT("Cross terminal Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		SessionTypes));
+	TestTrue(TEXT("Cross terminal orchestrator loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator.cpp"),
+		OrchestratorSource));
+	TestTrue(TEXT("Cross terminal capability loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCrossResolutionTerminalCapability.h"),
+		CapabilityHeader));
+	TestTrue(TEXT("Cross Completion header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.h"),
+		CompletionHeader));
+	TestTrue(TEXT("Cross Completion source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
+		CompletionSource));
+	TestTrue(TEXT("Cross terminal command has no gameplay arguments"),
+		SessionHeader.Contains(TEXT("ApplyCrossTerminalResolution();")));
+	TestFalse(TEXT("No public Cross terminal request exists"),
+		SessionTypes.Contains(TEXT(
+			"FMatchPlayAuthoritativeApplyCrossTerminalResolutionRequest")));
+	TestTrue(TEXT("Cross capability default construction is unavailable"),
+		!std::is_default_constructible_v<
+			FMatchPlayCrossResolutionTerminalCapability>);
+	TestTrue(TEXT("Cross capability copy construction is unavailable"),
+		!std::is_copy_constructible_v<
+			FMatchPlayCrossResolutionTerminalCapability>);
+	TestTrue(TEXT("Cross issuer tag is private"),
+		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
+			&& CapabilityHeader.Contains(TEXT("private:")));
+	TestEqual(TEXT("All thirty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 35);
+	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
+		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
+	TestEqual(TEXT("Common terminal mutation definition remains one"),
+		CountOccurrences(
+			CompletionSource,
+			TEXT("::ApplyCurrentAttackTerminalMutation(")),
+		1);
+	TestEqual(TEXT("GoalResolver has exactly three bounded call sites"),
+		CountOccurrences(CompletionSource, TEXT("FGoalResolver::RecordGoal")), 3);
+	TestEqual(TEXT("Cross terminal regenerates SingleCard Formula once"),
+		CountOccurrences(
+			OrchestratorSource,
+			TEXT("FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator")),
+		1);
+	TestFalse(TEXT("Cross terminal contains no Formula threshold arithmetic"),
+		OrchestratorSource.Contains(TEXT("AttackerFinalValue >"))
+			|| OrchestratorSource.Contains(TEXT("DefenderFinalValue >"))
+			|| OrchestratorSource.Contains(TEXT("AttackD6 >"))
+			|| OrchestratorSource.Contains(TEXT("DefenseD6 >")));
+	TestFalse(TEXT("Cross terminal performs no direct RNG"),
+		OrchestratorSource.Contains(TEXT("RollD6(")));
+	TestFalse(TEXT("Cross adds no universal Outcome State"),
+		SessionTypes.Contains(TEXT("OutcomeApplied"))
+			|| SessionTypes.Contains(TEXT("CompletionPending"))
+			|| SessionTypes.Contains(TEXT("PendingOutcome"))
+			|| SessionTypes.Contains(TEXT("EMatchPlayOutcome")));
+
+	auto SkillId = [](const FString& Prefix, const ESkillRuleType Type)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(Type)));
+	};
+	auto ReachRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType Type,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session, Prefix, Type, Intent, Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+	auto ScoreFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.Score
+			: State.RuntimeState.PlayerBState.Score;
+	};
+	auto UsedFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.UsedAttackCount
+			: State.RuntimeState.PlayerBState.UsedAttackCount;
+	};
+
+	struct FCrossTerminalCase
+	{
+		const TCHAR* Label;
+		EMatchPlayElectiveBranchIntent Intent;
+		int32 InitialD6;
+		int32 AttackD6;
+		int32 DefenseD6;
+		EMatchPlayCrossActualBranch ExpectedBranch;
+		ESource ExpectedSource;
+		bool bGoal;
+	};
+	const FCrossTerminalCase Cases[] = {
+		{ TEXT("CrossTerminalHighGoal"),
+			EMatchPlayElectiveBranchIntent::CrossHigh,
+			4, 6, 1, EMatchPlayCrossActualBranch::High,
+			ESource::HighFormulaGoal, true },
+		{ TEXT("CrossTerminalLowMiss"),
+			EMatchPlayElectiveBranchIntent::CrossHigh,
+			5, 1, 6, EMatchPlayCrossActualBranch::Low,
+			ESource::LowFormulaMiss, false }
+	};
+	for (const FCrossTerminalCase& Case : Cases)
+	{
+		const FString Prefix(Case.Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::Cross), ESkillRuleType::Cross);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(Case.InitialD6));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(Case.AttackD6));
+		Post.Enqueue(MakePostRouteSuccess(Case.DefenseD6));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Case.Label),
+			ReachRoute(Session, Prefix, ESkillRuleType::Cross, Case.Intent));
+		TestTrue(*FString::Printf(TEXT("%s Cross plan succeeds"), Case.Label),
+			Session.ResolveCrossPostRoutePlan().OrchestrationResult.bSuccess);
+		const FMatchPlayState BeforeFormula = Session.GetStateSnapshot();
+		const auto Formula = Session.ResolveSingleCardFinishingFormula();
+		TestTrue(*FString::Printf(TEXT("%s Formula succeeds"), Case.Label),
+			Formula.OrchestrationResult.bSuccess
+				&& Formula.OrchestrationResult.bHasFormulaResolution);
+		TestEqual(*FString::Printf(TEXT("%s Formula family"), Case.Label),
+			Formula.OrchestrationResult.Family,
+			EMatchPlaySingleCardFinishingFormulaFamily::Cross);
+		TestEqual(*FString::Printf(TEXT("%s canonical Goal semantic"), Case.Label),
+			Formula.OrchestrationResult.FormulaResolutionResult.bIsGoal,
+			Case.bGoal);
+		TestTrue(*FString::Printf(TEXT("%s Formula remains State-pure"), Case.Label),
+			AreStatesEqual(BeforeFormula, Session.GetStateSnapshot()));
+		const bool bUsesGoalkeeper = Formula.OrchestrationResult
+			.CrossRegenerationResult.PlanResult.FormulaPlan.bUseGoalkeeper;
+		TestEqual(*FString::Printf(TEXT("%s goalkeeper Formula propagation"),
+			Case.Label),
+			Formula.OrchestrationResult.ResolverInputAssemblyResult.ResolverInput
+				.bGoalkeeperParticipated,
+			bUsesGoalkeeper);
+
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const EInitialTurnOrderPlayer Attacker =
+			Before.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
+		const int32 AttackerScoreBefore = ScoreFor(Before, Attacker);
+		const int32 DefenderScoreBefore = ScoreFor(Before, Defender);
+		const int32 UsedBefore = UsedFor(Before, Attacker);
+		const int32 InitialCallsBefore = Initial.GetCallCount();
+		const int32 PostCallsBefore = Post.GetCallCount();
+		const int32 InitialRecordsBefore = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num();
+		const int32 PostRecordsBefore = Before.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords.Num();
+		const FMatchPlayGoalkeeperUsageState GoalkeeperUsageBefore =
+			Before.GoalkeeperUsageState;
+		TestEqual(*FString::Printf(TEXT("%s authoritative branch"), Case.Label),
+			Before.CurrentAttack.ResolutionSession.ActualBranch.Cross,
+			Case.ExpectedBranch);
+
+		const auto Terminal = Session.ApplyCrossTerminalResolution();
+		const auto& Domain = Terminal.OrchestrationResult;
+		const auto& Completion = Domain.CompletionResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s terminal succeeds"), Case.Label),
+			Terminal.RuntimeEnvelope.bDomainSuccess
+				&& Domain.bSuccess && Completion.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s terminal source"), Case.Label),
+			Domain.TerminalSource, Case.ExpectedSource);
+		TestEqual(*FString::Printf(TEXT("%s terminal Goal"), Case.Label),
+			Domain.bIsGoal, Case.bGoal);
+		TestEqual(*FString::Printf(TEXT("%s Formula regeneration count"),
+			Case.Label), Domain.FormulaRegenerationCount, 1);
+		TestEqual(*FString::Printf(TEXT("%s Completion count"), Case.Label),
+			Domain.CompletionExecutionCount, 1);
+		TestTrue(*FString::Printf(TEXT("%s Formula provenance equivalent"),
+			Case.Label), AreReflectedValuesEqual(
+				Domain.FormulaRegenerationResult.FormulaResolutionResult,
+				Formula.OrchestrationResult.FormulaResolutionResult));
+		TestTrue(*FString::Printf(TEXT("%s Formula regeneration is State-pure"),
+			Case.Label), AreStatesEqual(
+				Domain.FormulaRegenerationResult.AfterState, Before));
+		TestEqual(*FString::Printf(TEXT("%s regeneration RNG"), Case.Label),
+			Domain.RegenerationProviderCallCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s initial provider delta"), Case.Label),
+			Initial.GetCallCount() - InitialCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s post provider delta"), Case.Label),
+			Post.GetCallCount() - PostCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s initial record preservation"),
+			Case.Label), Domain.BeforeState.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords.Num(), InitialRecordsBefore);
+		TestEqual(*FString::Printf(TEXT("%s post record preservation"),
+			Case.Label), Domain.BeforeState.CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Num(), PostRecordsBefore);
+		TestEqual(*FString::Printf(TEXT("%s attacker score delta"), Case.Label),
+			ScoreFor(After, Attacker) - AttackerScoreBefore,
+			Case.bGoal ? 1 : 0);
+		TestEqual(*FString::Printf(TEXT("%s defender score delta"), Case.Label),
+			ScoreFor(After, Defender) - DefenderScoreBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s opportunity delta"), Case.Label),
+			UsedFor(After, Attacker) - UsedBefore, 1);
+		TestFalse(*FString::Printf(TEXT("%s CurrentAttack cleared"), Case.Label),
+			After.bHasCurrentAttack);
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack reset"), Case.Label),
+			AreReflectedValuesEqual(
+				After.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(*FString::Printf(TEXT("%s canonical next attacker"), Case.Label),
+			After.RuntimeState.CurrentAttackingPlayer,
+			Completion.NextAttackingPlayer);
+		TestFalse(*FString::Printf(TEXT("%s no automatic next attack"), Case.Label),
+			After.bHasCurrentAttack);
+		TestTrue(*FString::Printf(TEXT("%s goalkeeper usage preserved"), Case.Label),
+			AreReflectedValuesEqual(
+				GoalkeeperUsageBefore, After.GoalkeeperUsageState));
+		TestTrue(*FString::Printf(TEXT("%s ordinary cards consumed"), Case.Label),
+			!Completion.OrdinaryCardUsageResults.IsEmpty());
+		for (const FPlayCardResolveResult& CardResult :
+			Completion.OrdinaryCardUsageResults)
+		{
+			TestTrue(*FString::Printf(TEXT("%s card consumption succeeds"),
+				Case.Label), CardResult.bSuccess);
+		}
+		TestEqual(*FString::Printf(TEXT("%s GoalResolver success"), Case.Label),
+			Completion.GoalResolveResult.bSuccess, Case.bGoal);
+		TestTrue(*FString::Printf(TEXT("%s shared match-end delegation"), Case.Label),
+			Completion.MatchEndResolveResult.bSuccess);
+
+		const FMatchPlayState Completed = After;
+		const int32 ScoreBeforeReplay = ScoreFor(After, Attacker);
+		const int32 UsedBeforeReplay = UsedFor(After, Attacker);
+		const int32 CallsBeforeReplay =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Replay = Session.ApplyCrossTerminalResolution();
+		TestEqual(*FString::Printf(TEXT("%s replay NoCurrentAttack"), Case.Label),
+			Replay.OrchestrationResult.ErrorCode, EError::NoCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s replay score delta"), Case.Label),
+			ScoreFor(Session.GetStateSnapshot(), Attacker) - ScoreBeforeReplay, 0);
+		TestEqual(*FString::Printf(TEXT("%s replay opportunity delta"), Case.Label),
+			UsedFor(Session.GetStateSnapshot(), Attacker) - UsedBeforeReplay, 0);
+		TestEqual(*FString::Printf(TEXT("%s replay provider delta"), Case.Label),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeReplay, 0);
+		TestTrue(*FString::Printf(TEXT("%s replay State unchanged"), Case.Label),
+			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+	}
+	// Natural GoalResolver-success then Completion-failure candidate proof.
+	{
+		const FString Prefix(TEXT("CrossTerminalAtomicFailure"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::Cross), ESkillRuleType::Cross);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(MakePostRouteSuccess(1));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Cross atomic failure reaches route"), ReachRoute(
+			Session, Prefix, ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh));
+		TestTrue(TEXT("Cross atomic failure resolves plan"),
+			Session.ResolveCrossPostRoutePlan().OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Cross atomic failure resolves Formula"),
+			Session.ResolveSingleCardFinishingFormula()
+				.OrchestrationResult.bSuccess);
+		const FMatchPlayState AuthoritativeBefore = Session.GetStateSnapshot();
+		FMatchPlayState InvalidInput = AuthoritativeBefore;
+		const FMatchPlayDeploymentPlacement& Placement =
+			InvalidInput.CurrentAttack.DeploymentPlacements[0];
+		const FPlayCardResolveResult Preconsumed = FPlayCardResolver::PlayCard(
+			InvalidInput.CardUsageState,
+			Placement.PlayerSide,
+			Placement.CardId);
+		TestTrue(TEXT("Cross atomic failure preconsumes ordinary card"),
+			Preconsumed.bSuccess);
+		InvalidInput.CardUsageState = Preconsumed.UpdatedMatchCardUsageState;
+		const auto Failed =
+			FMatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator
+				::Resolve(InvalidInput, &Rules);
+		TestEqual(TEXT("Cross atomic failure maps Completion"),
+			Failed.ErrorCode, EError::CompletionFailed);
+		TestTrue(TEXT("Cross atomic failure follows GoalResolver success"),
+			Failed.CompletionResult.GoalResolveResult.bSuccess);
+		TestFalse(TEXT("Cross atomic failure rejects Completion"),
+			Failed.CompletionResult.bSuccess);
+		TestTrue(TEXT("Cross atomic failure returns unchanged candidate input"),
+			AreStatesEqual(Failed.AfterState, InvalidInput));
+		TestTrue(TEXT("Cross atomic failure cannot mutate Session"),
+			AreStatesEqual(Session.GetStateSnapshot(), AuthoritativeBefore));
+	}
+
+	// Incomplete Cross cannot acquire missing route or post-route rolls.
+	{
+		const FString Prefix(TEXT("CrossTerminalIncomplete"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::Cross), ESkillRuleType::Cross);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Incomplete Cross reaches AwaitingRoute"),
+			BuildStage7166ToAwaitingRoute(
+				Session, Prefix, ESkillRuleType::Cross,
+				EMatchPlayElectiveBranchIntent::CrossHigh, Trace));
+		const FMatchPlayState Awaiting = Session.GetStateSnapshot();
+		const auto BeforeRoute = Session.ApplyCrossTerminalResolution();
+		TestEqual(TEXT("Cross before route rejects"),
+			BeforeRoute.OrchestrationResult.ErrorCode, EError::RouteNotResolved);
+		TestEqual(TEXT("Cross before route consumes zero initial RNG"),
+			Initial.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Cross before route"),
+			BeforeRoute.RuntimeEnvelope, Awaiting, Session.GetStateSnapshot());
+		TestTrue(TEXT("Incomplete Cross resolves route only"),
+			Session.ResolveInitialRoute().OrchestrationResult.bSuccess);
+		const FMatchPlayState RouteOnly = Session.GetStateSnapshot();
+		const auto MissingRolls = Session.ApplyCrossTerminalResolution();
+		TestEqual(TEXT("Cross missing rolls rejects Formula regeneration"),
+			MissingRolls.OrchestrationResult.ErrorCode,
+			EError::FormulaRegenerationFailed);
+		TestEqual(TEXT("Cross missing rolls invokes no Completion"),
+			MissingRolls.OrchestrationResult.CompletionExecutionCount, 0);
+		TestEqual(TEXT("Cross missing rolls consumes zero post RNG"),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Cross missing rolls"),
+			MissingRolls.RuntimeEnvelope, RouteOnly, Session.GetStateSnapshot());
+	}
+
+	// Cross boundary rejects ThroughBall and another SingleCard family.
+	struct FWrongActionCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType Type;
+		EMatchPlayElectiveBranchIntent Intent;
+		int32 InitialD6;
+	};
+	const FWrongActionCase WrongActions[] = {
+		{ TEXT("CrossRejectsThroughBall"), ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None, 2 },
+		{ TEXT("CrossRejectsPassControl"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None, 1 }
+	};
+	for (const FWrongActionCase& Case : WrongActions)
+	{
+		const FString Prefix(Case.Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, Case.Type), Case.Type);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(Case.InitialD6));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Case.Label),
+			ReachRoute(Session, Prefix, Case.Type, Case.Intent));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Rejected = Session.ApplyCrossTerminalResolution();
+		TestEqual(*FString::Printf(TEXT("%s exact error"), Case.Label),
+			Rejected.OrchestrationResult.ErrorCode, EError::NotCrossResolution);
+		TestEqual(*FString::Printf(TEXT("%s no Completion"), Case.Label),
+			Rejected.OrchestrationResult.CompletionExecutionCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s zero RNG"), Case.Label),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBefore, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, Case.Label,
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	// One narrow independent-session and deterministic-result proof.
+	{
+		const FString Prefix(TEXT("CrossTerminalDeterminism"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::Cross), ESkillRuleType::Cross);
+		InitialRouteFixtures::FQueueRollProvider InitialA;
+		InitialRouteFixtures::FQueueRollProvider InitialB;
+		InitialA.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		InitialB.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider PostA;
+		FQueuePostRouteRollProvider PostB;
+		for (FQueuePostRouteRollProvider* Provider : { &PostA, &PostB })
+		{
+			Provider->Enqueue(MakePostRouteSuccess(1));
+			Provider->Enqueue(MakePostRouteSuccess(6));
+		}
+		FMatchPlayAuthoritativeSession SessionA(InitialA, PostA, Rules);
+		FMatchPlayAuthoritativeSession SessionB(InitialB, PostB, Rules);
+		for (FMatchPlayAuthoritativeSession* Session : { &SessionA, &SessionB })
+		{
+			TestTrue(TEXT("Cross deterministic route"), ReachRoute(
+				*Session, Prefix, ESkillRuleType::Cross,
+				EMatchPlayElectiveBranchIntent::CrossLow));
+			TestTrue(TEXT("Cross deterministic plan"),
+				Session->ResolveCrossPostRoutePlan().OrchestrationResult.bSuccess);
+			TestTrue(TEXT("Cross deterministic Formula"),
+				Session->ResolveSingleCardFinishingFormula()
+					.OrchestrationResult.bSuccess);
+		}
+		const FMatchPlayState BeforeB = SessionB.GetStateSnapshot();
+		const int32 CallsBeforeB = PostB.GetCallCount();
+		const auto ResultA = SessionA.ApplyCrossTerminalResolution();
+		TestTrue(TEXT("Cross Session A cannot mutate B"),
+			AreStatesEqual(BeforeB, SessionB.GetStateSnapshot()));
+		TestEqual(TEXT("Cross Session A cannot consume provider B"),
+			PostB.GetCallCount() - CallsBeforeB, 0);
+		const auto ResultB = SessionB.ApplyCrossTerminalResolution();
+		TestTrue(TEXT("Cross terminal semantics deterministic"),
+			ResultA.OrchestrationResult.bSuccess
+				&& ResultB.OrchestrationResult.bSuccess
+				&& ResultA.OrchestrationResult.TerminalSource
+					== ResultB.OrchestrationResult.TerminalSource
+				&& ResultA.OrchestrationResult.bIsGoal
+					== ResultB.OrchestrationResult.bIsGoal);
+		TestTrue(TEXT("Cross terminal States deterministic"),
+			AreStatesEqual(SessionA.GetStateSnapshot(), SessionB.GetStateSnapshot()));
+	}
 	return true;
 }
 

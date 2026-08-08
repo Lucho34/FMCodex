@@ -379,11 +379,11 @@ bool FRunnerNoSelectionNoGoalStaticAuthorityTest::RunTest(
 	TestTrue(TEXT("Runner-aware stage diagnostic exists"),
 		CompletionSource.Contains(
 			TEXT("Runner no-selection completion requires AwaitingRunner stage.")));
-	TestEqual(TEXT("GoalResolver remains bounded to Marker and ThroughBall Goal"),
+	TestEqual(TEXT("GoalResolver remains bounded to Marker, ThroughBall, and Cross Goal"),
 		CountOccurrences(
 			CompletionSource,
 			TEXT("FGoalResolver::RecordGoal")),
-		2);
+		3);
 	TestFalse(TEXT("Runner entry never calls GoalResolver"),
 		EntrySource.Contains(TEXT("GoalResolver")));
 	TestFalse(TEXT("Runner outer never calls GoalResolver"),

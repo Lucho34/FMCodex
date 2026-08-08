@@ -120,6 +120,9 @@ public:
 	FMatchPlayAuthoritativeApplyThroughBallTerminalResolutionResult
 	ApplyThroughBallTerminalResolution();
 
+	FMatchPlayAuthoritativeApplyCrossTerminalResolutionResult
+	ApplyCrossTerminalResolution();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
