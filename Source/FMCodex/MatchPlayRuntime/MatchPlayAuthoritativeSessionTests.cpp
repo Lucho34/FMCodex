@@ -18236,6 +18236,505 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 	return true;
 }
 
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest,
+	"56.ThroughBallEndToEndPublicFlow")
+
+bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EInitialPurpose = EMatchPlayCurrentAttackResolutionRollPurpose;
+	using EPostPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using ETerminalError =
+		EMatchPlayCurrentAttackApplyThroughBallTerminalResolutionErrorCode;
+	using ETerminalSource = EMatchPlayThroughBallTerminalSource;
+
+	auto SkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::ThroughBall)));
+	};
+	auto ScoreFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.Score
+			: State.RuntimeState.PlayerBState.Score;
+	};
+	auto UsedAttacksFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.UsedAttackCount
+			: State.RuntimeState.PlayerBState.UsedAttackCount;
+	};
+	auto ReachResolvedRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		FReachabilityTrace& Trace)
+	{
+		return BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None,
+				Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+	auto AssertChronology = [this](
+		const TCHAR* Label,
+		const InitialRouteFixtures::FQueueRollProvider& Initial,
+		const FQueuePostRouteRollProvider& Post,
+		const FMatchPlayState& BeforeTerminal,
+		const TArray<EPostPurpose>& ExpectedPostPurposes)
+	{
+		TestEqual(*FString::Printf(TEXT("%s initial provider calls"), Label),
+			Initial.GetCallCount(), 1);
+		TestEqual(*FString::Printf(TEXT("%s initial purpose count"), Label),
+			Initial.GetPurposeHistory().Num(), 1);
+		if (Initial.GetPurposeHistory().Num() == 1)
+		{
+			TestEqual(*FString::Printf(TEXT("%s initial purpose"), Label),
+				Initial.GetPurposeHistory()[0], EInitialPurpose::InitialRoute);
+		}
+		const auto& Resolution =
+			BeforeTerminal.CurrentAttack.ResolutionSession;
+		TestEqual(*FString::Printf(TEXT("%s initial record count"), Label),
+			Resolution.InitialRouteRollRecords.Num(), 1);
+		if (Resolution.InitialRouteRollRecords.Num() == 1)
+		{
+			TestEqual(*FString::Printf(TEXT("%s initial record purpose"), Label),
+				Resolution.InitialRouteRollRecords[0].Purpose,
+				EInitialPurpose::InitialRoute);
+		}
+		TestEqual(*FString::Printf(TEXT("%s post provider calls"), Label),
+			Post.GetCallCount(), ExpectedPostPurposes.Num());
+		TestEqual(*FString::Printf(TEXT("%s post record count"), Label),
+			Resolution.PostRouteRollProgress.RollRecords.Num(),
+			ExpectedPostPurposes.Num());
+		for (int32 Index = 0; Index < ExpectedPostPurposes.Num(); ++Index)
+		{
+			if (Post.GetPurposes().IsValidIndex(Index))
+			{
+				TestEqual(*FString::Printf(
+					TEXT("%s provider purpose %d"), Label, Index),
+					Post.GetPurposes()[Index], ExpectedPostPurposes[Index]);
+			}
+			if (Resolution.PostRouteRollProgress.RollRecords.IsValidIndex(Index))
+			{
+				TestEqual(*FString::Printf(
+					TEXT("%s record purpose %d"), Label, Index),
+					Resolution.PostRouteRollProgress.RollRecords[Index].Purpose,
+					ExpectedPostPurposes[Index]);
+			}
+		}
+	};
+
+	// Flow A: full public selection -> Feet Formula Goal -> Completion.
+	{
+		const FString Prefix(TEXT("E2EFeetGoal"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(MakePostRouteSuccess(1));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Flow A public setup and route succeed"),
+			ReachResolvedRoute(Session, Prefix, Trace));
+		TestTrue(TEXT("Flow A initialization is public and successful"),
+			Trace.Initialize.OpeningResult.bSuccess);
+		TestTrue(TEXT("Flow A attack begin is public and successful"),
+			Trace.Begin.BeginResult.bSuccess);
+		TestTrue(TEXT("Flow A Feet plan succeeds"),
+			Session.ResolveThroughBallFeetPostRoutePlan()
+				.OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Flow A Feet Formula succeeds"),
+			Session.ResolveThroughBallFeetFormula()
+				.OrchestrationResult.bSuccess);
+
+		const FMatchPlayState BeforeTerminal = Session.GetStateSnapshot();
+		const EInitialTurnOrderPlayer Attacker =
+			BeforeTerminal.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
+		const int64 AttackSequence =
+			BeforeTerminal.CurrentAttack.AttackSequence;
+		const int32 AttackerScoreBefore = ScoreFor(BeforeTerminal, Attacker);
+		const int32 DefenderScoreBefore = ScoreFor(BeforeTerminal, Defender);
+		const int32 UsedBefore = UsedAttacksFor(BeforeTerminal, Attacker);
+		TestTrue(TEXT("Flow A terminal boundary has CurrentAttack and Session"),
+			BeforeTerminal.bHasCurrentAttack
+				&& BeforeTerminal.CurrentAttack.bHasResolutionSession);
+		TestEqual(TEXT("Flow A resolved Feet branch"),
+			BeforeTerminal.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
+			EMatchPlayThroughBallActualBranch::Feet);
+		AssertChronology(TEXT("Flow A"), Initial, Post, BeforeTerminal,
+			{ EPostPurpose::PrimaryAttack, EPostPurpose::PrimaryDefense });
+		const int32 InitialCallsBeforeTerminal = Initial.GetCallCount();
+		const int32 PostCallsBeforeTerminal = Post.GetCallCount();
+
+		const auto Terminal = Session.ApplyThroughBallTerminalResolution();
+		const FMatchPlayState Completed = Session.GetStateSnapshot();
+		TestTrue(TEXT("Flow A terminal Completion succeeds"),
+			Terminal.RuntimeEnvelope.bDomainSuccess
+				&& Terminal.OrchestrationResult.bSuccess
+				&& Terminal.OrchestrationResult.CompletionResult.bSuccess);
+		TestEqual(TEXT("Flow A terminal source"),
+			Terminal.OrchestrationResult.TerminalSource,
+			ETerminalSource::FeetFormulaGoal);
+		TestEqual(TEXT("Flow A attacker scores exactly once"),
+			ScoreFor(Completed, Attacker) - AttackerScoreBefore, 1);
+		TestEqual(TEXT("Flow A defender score unchanged"),
+			ScoreFor(Completed, Defender) - DefenderScoreBefore, 0);
+		TestEqual(TEXT("Flow A opportunity consumed once"),
+			UsedAttacksFor(Completed, Attacker) - UsedBefore, 1);
+		TestFalse(TEXT("Flow A CurrentAttack cleared"),
+			Completed.bHasCurrentAttack);
+		TestTrue(TEXT("Flow A CurrentAttack reset"),
+			AreReflectedValuesEqual(
+				Completed.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(TEXT("Flow A canonical next attacker"),
+			Completed.RuntimeState.CurrentAttackingPlayer,
+			Terminal.OrchestrationResult.CompletionResult.NextAttackingPlayer);
+		TestFalse(TEXT("Flow A is a non-final Completion"),
+			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
+		TestEqual(TEXT("Flow A terminal initial RNG delta"),
+			Initial.GetCallCount() - InitialCallsBeforeTerminal, 0);
+		TestEqual(TEXT("Flow A terminal post RNG delta"),
+			Post.GetCallCount() - PostCallsBeforeTerminal, 0);
+
+		const int32 ScoreBeforeReplay = ScoreFor(Completed, Attacker);
+		const int32 UsedBeforeReplay = UsedAttacksFor(Completed, Attacker);
+		const auto Replay = Session.ApplyThroughBallTerminalResolution();
+		TestEqual(TEXT("Flow A Goal replay rejects without CurrentAttack"),
+			Replay.OrchestrationResult.ErrorCode,
+			ETerminalError::NoCurrentAttack);
+		TestTrue(TEXT("Flow A Goal replay leaves State unchanged"),
+			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+		TestEqual(TEXT("Flow A Goal replay score delta"),
+			ScoreFor(Session.GetStateSnapshot(), Attacker) - ScoreBeforeReplay, 0);
+		TestEqual(TEXT("Flow A Goal replay opportunity delta"),
+			UsedAttacksFor(Session.GetStateSnapshot(), Attacker) - UsedBeforeReplay,
+			0);
+		TestEqual(TEXT("Flow A Goal replay provider delta"),
+			Initial.GetCallCount() + Post.GetCallCount()
+				- InitialCallsBeforeTerminal - PostCallsBeforeTerminal,
+			0);
+
+		const EInitialTurnOrderPlayer NextAttacker =
+			Completed.RuntimeState.CurrentAttackingPlayer;
+		const auto NextAttack = Session.BeginOrdinaryAttack(6);
+		const FMatchPlayState AfterNextBegin = Session.GetStateSnapshot();
+		TestTrue(TEXT("Flow A next public attack begins"),
+			NextAttack.BeginResult.bSuccess && AfterNextBegin.bHasCurrentAttack);
+		TestEqual(TEXT("Flow A next attack uses canonical attacker"),
+			AfterNextBegin.RuntimeState.CurrentAttackingPlayer, NextAttacker);
+		TestEqual(TEXT("Flow A next attack sequence advances"),
+			AfterNextBegin.CurrentAttack.AttackSequence, AttackSequence + 1);
+	}
+
+	// Flow B: BehindDefense internal PrimaryAttack 2 -> OutOfPlay NoGoal.
+	{
+		const FString Prefix(TEXT("E2EBehindOutOfPlay"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(2));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Flow B public setup and route succeed"),
+			ReachResolvedRoute(Session, Prefix, Trace));
+		const auto P1 =
+			Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan();
+		TestTrue(TEXT("Flow B P1 succeeds"),
+			P1.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Flow B internal P1 roll means OutOfPlay"),
+			P1.OrchestrationResult.P1PlanResult.Decision,
+			EThroughBallBehindDefenseP1PlanQueryDecision::OutOfPlay);
+
+		const FMatchPlayState BeforeTerminal = Session.GetStateSnapshot();
+		const EInitialTurnOrderPlayer Attacker =
+			BeforeTerminal.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
+		const int32 AttackerScoreBefore = ScoreFor(BeforeTerminal, Attacker);
+		const int32 DefenderScoreBefore = ScoreFor(BeforeTerminal, Defender);
+		const int32 UsedBefore = UsedAttacksFor(BeforeTerminal, Attacker);
+		TestTrue(TEXT("Flow B terminal boundary has CurrentAttack and Session"),
+			BeforeTerminal.bHasCurrentAttack
+				&& BeforeTerminal.CurrentAttack.bHasResolutionSession);
+		TestEqual(TEXT("Flow B initial route is BehindDefense"),
+			BeforeTerminal.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
+			EMatchPlayThroughBallActualBranch::BehindDefense);
+		TestEqual(TEXT("Flow B initial route raw D6 remains 3"),
+			BeforeTerminal.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords[0].RawD6,
+			3);
+		TestEqual(TEXT("Flow B internal P1 raw D6 remains 2"),
+			BeforeTerminal.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords[0].RawD6,
+			2);
+		AssertChronology(TEXT("Flow B"), Initial, Post, BeforeTerminal,
+			{ EPostPurpose::PrimaryAttack });
+		const int32 CallsBeforeTerminal =
+			Initial.GetCallCount() + Post.GetCallCount();
+
+		const auto Terminal = Session.ApplyThroughBallTerminalResolution();
+		const FMatchPlayState Completed = Session.GetStateSnapshot();
+		TestTrue(TEXT("Flow B terminal Completion succeeds"),
+			Terminal.OrchestrationResult.bSuccess
+				&& Terminal.OrchestrationResult.CompletionResult.bSuccess);
+		TestEqual(TEXT("Flow B terminal source"),
+			Terminal.OrchestrationResult.TerminalSource,
+			ETerminalSource::BehindDefenseOutOfPlay);
+		TestEqual(TEXT("Flow B attacker score unchanged"),
+			ScoreFor(Completed, Attacker) - AttackerScoreBefore, 0);
+		TestEqual(TEXT("Flow B defender score unchanged"),
+			ScoreFor(Completed, Defender) - DefenderScoreBefore, 0);
+		TestEqual(TEXT("Flow B opportunity consumed once"),
+			UsedAttacksFor(Completed, Attacker) - UsedBefore, 1);
+		TestFalse(TEXT("Flow B CurrentAttack cleared"),
+			Completed.bHasCurrentAttack);
+		TestTrue(TEXT("Flow B CurrentAttack reset"),
+			AreReflectedValuesEqual(
+				Completed.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(TEXT("Flow B canonical next attacker"),
+			Completed.RuntimeState.CurrentAttackingPlayer,
+			Terminal.OrchestrationResult.CompletionResult.NextAttackingPlayer);
+		TestFalse(TEXT("Flow B is a non-final Completion"),
+			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
+		TestEqual(TEXT("Flow B terminal RNG delta"),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeTerminal, 0);
+
+		const int32 UsedBeforeReplay = UsedAttacksFor(Completed, Attacker);
+		const int32 CallsBeforeReplay =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Replay = Session.ApplyThroughBallTerminalResolution();
+		TestEqual(TEXT("Flow B NoGoal replay rejects without CurrentAttack"),
+			Replay.OrchestrationResult.ErrorCode,
+			ETerminalError::NoCurrentAttack);
+		TestTrue(TEXT("Flow B NoGoal replay leaves State unchanged"),
+			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+		TestEqual(TEXT("Flow B NoGoal replay opportunity delta"),
+			UsedAttacksFor(Session.GetStateSnapshot(), Attacker) - UsedBeforeReplay,
+			0);
+		TestEqual(TEXT("Flow B NoGoal replay provider delta"),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeReplay, 0);
+	}
+
+	// Flow C: deepest BehindDefense continuation, ending in ChipShot Miss.
+	{
+		const FString Prefix(TEXT("E2EBehindDeepMiss"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+		FQueuePostRouteRollProvider Post;
+		for (const int32 D6 : { 6, 1, 2, 2 })
+		{
+			Post.Enqueue(MakePostRouteSuccess(D6));
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Flow C public setup and route succeed"),
+			ReachResolvedRoute(Session, Prefix, Trace));
+		const auto P1Plan =
+			Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan();
+		TestTrue(TEXT("Flow C P1 plan succeeds"),
+			P1Plan.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Flow C P1 requires Formula"),
+			P1Plan.OrchestrationResult.P1PlanResult.Decision,
+			EThroughBallBehindDefenseP1PlanQueryDecision
+				::FormulaResolutionRequired);
+		const auto P1Formula =
+			Session.ResolveThroughBallBehindDefenseP1Formula();
+		TestTrue(TEXT("Flow C P1 Formula succeeds"),
+			P1Formula.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Flow C P1 Formula requires P2"),
+			P1Formula.OrchestrationResult.FormulaExecutionResult.Decision,
+			EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+				::P2Required);
+		const auto P2 = Session.ResolveThroughBallBehindDefenseP2Decision();
+		TestTrue(TEXT("Flow C P2 succeeds"),
+			P2.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Flow C P2 requires OneOnOne"),
+			P2.OrchestrationResult.QueryResult.Decision,
+			EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired);
+		TestEqual(TEXT("Flow C P1 provenance survives P2"),
+			P2.OrchestrationResult.P1FormulaRegenerationResult
+				.FormulaExecutionResult.Decision,
+			P1Formula.OrchestrationResult.FormulaExecutionResult.Decision);
+		const auto Chip =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestTrue(TEXT("Flow C ChipShot succeeds"),
+			Chip.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Flow C OneOnOne source is BehindDefense P2"),
+			Chip.OrchestrationResult.Source,
+			EMatchPlayThroughBallOneOnOneSource::BehindDefenseP2);
+		TestEqual(TEXT("Flow C P2 provenance survives OneOnOne"),
+			Chip.OrchestrationResult.BehindDefenseP2RegenerationResult
+				.QueryResult.Decision,
+			P2.OrchestrationResult.QueryResult.Decision);
+		TestTrue(TEXT("Flow C handoff preserves shooter"),
+			Chip.OrchestrationResult.HandoffCreationResult.bSuccess
+				&& !Chip.OrchestrationResult.HandoffCreationResult
+					.Handoff.ShooterCardId.IsNone()
+				&& Chip.OrchestrationResult.HandoffCreationResult
+					.Handoff.ShooterCardId
+					== P2.OrchestrationResult.QueryResult.RunnerId);
+		TestEqual(TEXT("Flow C ChipShot result is Miss"),
+			Chip.OrchestrationResult.QueryResult.Decision,
+			EThroughBallOneOnOneChipShotOutcomeDecision::Miss);
+
+		const FMatchPlayState BeforeTerminal = Session.GetStateSnapshot();
+		const EInitialTurnOrderPlayer Attacker =
+			BeforeTerminal.RuntimeState.CurrentAttackingPlayer;
+		const int32 ScoreBefore = ScoreFor(BeforeTerminal, Attacker);
+		const int32 UsedBefore = UsedAttacksFor(BeforeTerminal, Attacker);
+		TestTrue(TEXT("Flow C terminal boundary has CurrentAttack and Session"),
+			BeforeTerminal.bHasCurrentAttack
+				&& BeforeTerminal.CurrentAttack.bHasResolutionSession);
+		AssertChronology(TEXT("Flow C"), Initial, Post, BeforeTerminal,
+			{ EPostPurpose::PrimaryAttack,
+				EPostPurpose::PrimaryDefense,
+				EPostPurpose::BehindDefenseP2Defense,
+				EPostPurpose::OneOnOneChipShotAttack });
+		const int32 CallsBeforeTerminal =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Terminal = Session.ApplyThroughBallTerminalResolution();
+		const FMatchPlayState Completed = Session.GetStateSnapshot();
+		TestTrue(TEXT("Flow C terminal Completion succeeds"),
+			Terminal.OrchestrationResult.bSuccess
+				&& Terminal.OrchestrationResult.CompletionResult.bSuccess);
+		TestEqual(TEXT("Flow C terminal source"),
+			Terminal.OrchestrationResult.TerminalSource,
+			ETerminalSource::BehindDefenseOneOnOneMiss);
+		TestEqual(TEXT("Flow C Miss score unchanged"),
+			ScoreFor(Completed, Attacker) - ScoreBefore, 0);
+		TestEqual(TEXT("Flow C opportunity consumed once"),
+			UsedAttacksFor(Completed, Attacker) - UsedBefore, 1);
+		TestFalse(TEXT("Flow C CurrentAttack cleared"),
+			Completed.bHasCurrentAttack);
+		TestTrue(TEXT("Flow C CurrentAttack reset"),
+			AreReflectedValuesEqual(
+				Completed.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(TEXT("Flow C canonical next attacker"),
+			Completed.RuntimeState.CurrentAttackingPlayer,
+			Terminal.OrchestrationResult.CompletionResult.NextAttackingPlayer);
+		TestFalse(TEXT("Flow C is a non-final Completion"),
+			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
+		TestEqual(TEXT("Flow C terminal RNG delta"),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeTerminal, 0);
+	}
+
+	// Flow D: AntiOffside Offside Completion plus narrow Session isolation.
+	{
+		const FString PrefixA(TEXT("E2EAntiOffsideA"));
+		const FString PrefixB(TEXT("E2EAntiOffsideB"));
+		const FSkillRuleSnapshotSet RulesA = MakeSkillRuleSet(
+			SkillId(PrefixA), ESkillRuleType::ThroughBall);
+		const FSkillRuleSnapshotSet RulesB = MakeSkillRuleSet(
+			SkillId(PrefixB), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider InitialA;
+		InitialRouteFixtures::FQueueRollProvider InitialB;
+		InitialA.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		InitialB.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider PostA;
+		FQueuePostRouteRollProvider PostB;
+		PostA.Enqueue(MakePostRouteSuccess(5));
+		PostB.Enqueue(MakePostRouteSuccess(5));
+		FMatchPlayAuthoritativeSession SessionA(InitialA, PostA, RulesA);
+		FMatchPlayAuthoritativeSession SessionB(InitialB, PostB, RulesB);
+		FReachabilityTrace TraceA;
+		FReachabilityTrace TraceB;
+		TestTrue(TEXT("Flow D public setup and route A succeed"),
+			ReachResolvedRoute(SessionA, PrefixA, TraceA));
+		TestTrue(TEXT("Flow D public setup and route B succeed"),
+			ReachResolvedRoute(SessionB, PrefixB, TraceB));
+		TestTrue(TEXT("Flow D AntiOffside A succeeds"),
+			SessionA.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Flow D AntiOffside B succeeds"),
+			SessionB.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.bSuccess);
+
+		const FMatchPlayState BeforeTerminalA = SessionA.GetStateSnapshot();
+		const FMatchPlayState IsolatedBeforeB = SessionB.GetStateSnapshot();
+		const EInitialTurnOrderPlayer Attacker =
+			BeforeTerminalA.RuntimeState.CurrentAttackingPlayer;
+		const int32 ScoreBefore = ScoreFor(BeforeTerminalA, Attacker);
+		const int32 UsedBefore = UsedAttacksFor(BeforeTerminalA, Attacker);
+		TestTrue(TEXT("Flow D terminal boundary has CurrentAttack and Session"),
+			BeforeTerminalA.bHasCurrentAttack
+				&& BeforeTerminalA.CurrentAttack.bHasResolutionSession);
+		const int32 BCallsBefore =
+			InitialB.GetCallCount() + PostB.GetCallCount();
+		AssertChronology(TEXT("Flow D"), InitialA, PostA, BeforeTerminalA,
+			{ EPostPurpose::PrimaryAttack });
+		const int32 ACallsBeforeTerminal =
+			InitialA.GetCallCount() + PostA.GetCallCount();
+		const auto Terminal = SessionA.ApplyThroughBallTerminalResolution();
+		const FMatchPlayState Completed = SessionA.GetStateSnapshot();
+		TestTrue(TEXT("Flow D Offside Completion succeeds"),
+			Terminal.OrchestrationResult.bSuccess
+				&& Terminal.OrchestrationResult.CompletionResult.bSuccess);
+		TestEqual(TEXT("Flow D terminal source"),
+			Terminal.OrchestrationResult.TerminalSource,
+			ETerminalSource::AntiOffsideOffside);
+		TestEqual(TEXT("Flow D score unchanged"),
+			ScoreFor(Completed, Attacker) - ScoreBefore, 0);
+		TestEqual(TEXT("Flow D opportunity consumed once"),
+			UsedAttacksFor(Completed, Attacker) - UsedBefore, 1);
+		TestFalse(TEXT("Flow D CurrentAttack cleared"),
+			Completed.bHasCurrentAttack);
+		TestTrue(TEXT("Flow D CurrentAttack reset"),
+			AreReflectedValuesEqual(
+				Completed.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(TEXT("Flow D canonical next attacker"),
+			Completed.RuntimeState.CurrentAttackingPlayer,
+			Terminal.OrchestrationResult.CompletionResult.NextAttackingPlayer);
+		TestFalse(TEXT("Flow D is a non-final Completion"),
+			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
+		TestEqual(TEXT("Flow D terminal RNG delta"),
+			InitialA.GetCallCount() + PostA.GetCallCount()
+				- ACallsBeforeTerminal,
+			0);
+		TestTrue(TEXT("Flow D Session A cannot mutate Session B"),
+			AreStatesEqual(IsolatedBeforeB, SessionB.GetStateSnapshot()));
+		TestEqual(TEXT("Flow D Session A cannot consume Session B RNG"),
+			InitialB.GetCallCount() + PostB.GetCallCount() - BCallsBefore, 0);
+	}
+
+	FString SessionSource;
+	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		SessionSource));
+	TestEqual(TEXT("E2E preserves 34 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 34);
+	TestEqual(TEXT("E2E preserves one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
+	TestEqual(TEXT("E2E preserves one execution guard"),
+		CountOccurrences(SessionSource, TEXT("FScopedCommandExecution ExecutionGuard")),
+		1);
+	TestEqual(TEXT("E2E preserves one State replacement site"),
+		CountOccurrences(
+			SessionSource,
+			TEXT("AuthoritativeState = Adoption.AdoptedAfterState;")),
+		1);
+	TestEqual(TEXT("E2E Session has no direct RollD6"),
+		CountOccurrences(SessionSource, TEXT("RollD6(")), 0);
+	TestEqual(TEXT("E2E Session has no direct score writes"),
+		CountOccurrences(SessionSource, TEXT(".Score ="))
+			+ CountOccurrences(SessionSource, TEXT(".Score +=")),
+		0);
+	return true;
+}
+
 #undef MATCH_PLAY_AUTHORITATIVE_SESSION_TEST
 
 #endif
