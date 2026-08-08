@@ -1208,6 +1208,43 @@ FMatchPlayAuthoritativeSession::ResolveThroughBallFeetFormula()
 		});
 }
 
+FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1FormulaResult
+FMatchPlayAuthoritativeSession::ResolveThroughBallBehindDefenseP1Formula()
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1FormulaResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallBehindDefenseP1Formula,
+		true,
+		AttackSequence,
+		[this, AttackSequence](
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1FormulaResult&
+				Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator
+					::Resolve(
+						BeforeState,
+						bHasSkillRuleSet
+							? &AuthoritativeSkillRuleSet
+							: nullptr);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayState FMatchPlayAuthoritativeSession::GetStateSnapshot() const
 {
 	return AuthoritativeState;

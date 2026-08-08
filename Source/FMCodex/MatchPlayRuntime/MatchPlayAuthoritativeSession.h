@@ -108,6 +108,9 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallFeetFormulaResult
 	ResolveThroughBallFeetFormula();
 
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1FormulaResult
+	ResolveThroughBallBehindDefenseP1Formula();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
