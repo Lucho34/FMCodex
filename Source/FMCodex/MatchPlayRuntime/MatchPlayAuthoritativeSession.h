@@ -114,6 +114,9 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP2DecisionResult
 	ResolveThroughBallBehindDefenseP2Decision();
 
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
+	ResolveThroughBallOneOnOneChipShotDecision();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:

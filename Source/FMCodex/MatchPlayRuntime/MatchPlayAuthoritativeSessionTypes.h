@@ -20,6 +20,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
+#include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveInitialRouteWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionWriter.h"
@@ -71,7 +72,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveSingleCardFinishingFormula,
 	ResolveThroughBallFeetFormula,
 	ResolveThroughBallBehindDefenseP1Formula,
-	ResolveThroughBallBehindDefenseP2Decision
+	ResolveThroughBallBehindDefenseP2Decision,
+	ResolveThroughBallOneOnOneChipShotDecision
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -394,6 +396,14 @@ struct FMCODEX_API
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
 		OrchestrationResult;
 };
 

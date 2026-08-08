@@ -6021,11 +6021,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All thirty-two mutations use the gate"),
+	TestEqual(TEXT("All thirty-three mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		32);
+		33);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9711,9 +9711,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All thirty-two mutations share serialized gate"),
+	TestEqual(TEXT("All thirty-three mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		32);
+		33);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -17012,6 +17012,643 @@ FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP2DecisionTest
 			&& ResultA.OrchestrationResult.QueryResult.RunnerId
 				== ResultB.OrchestrationResult.QueryResult.RunnerId);
 	TestTrue(TEXT("Independent P2 States deterministic"),
+		AreStatesEqual(SessionA.GetStateSnapshot(), SessionB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest,
+	"54.ResolveThroughBallOneOnOneChipShotDecisionAuthority")
+
+bool
+FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EError =
+		EMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionErrorCode;
+	using EDecision = EThroughBallOneOnOneChipShotOutcomeDecision;
+	using ESource = EMatchPlayThroughBallOneOnOneSource;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveThroughBallOneOnOneChipShotDecision),
+		FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	TestEqual(TEXT("OneOnOne ChipShot command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneChipShotDecision),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallBehindDefenseP2Decision) + 1);
+
+	FString Header;
+	FString Types;
+	FString Orchestrator;
+	TestTrue(TEXT("OneOnOne Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("OneOnOne Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	TestTrue(TEXT("OneOnOne orchestrator loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator.cpp"),
+		Orchestrator));
+	TestTrue(TEXT("OneOnOne command has no gameplay arguments"),
+		Header.Contains(TEXT(
+			"ResolveThroughBallOneOnOneChipShotDecision();")));
+	TestFalse(TEXT("No public OneOnOne request exists"),
+		Types.Contains(TEXT(
+			"FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionRequest")));
+	TestEqual(TEXT("AntiOffside handoff has one call site"),
+		CountOccurrences(Orchestrator,
+			TEXT("FThroughBallOneOnOneHandoffCreator::CreateFromAntiOffside(")),
+		1);
+	TestEqual(TEXT("BehindDefense handoff has one call site"),
+		CountOccurrences(Orchestrator,
+			TEXT("FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP2(")),
+		1);
+	TestEqual(TEXT("ChipShot query has one call site"),
+		CountOccurrences(Orchestrator,
+			TEXT("FThroughBallOneOnOneChipShotOutcomeQuery::Evaluate(")),
+		1);
+	TestEqual(TEXT("ChipShot provider has one call site"),
+		CountOccurrences(Orchestrator, TEXT("RollProvider->RollD6(")), 1);
+	TestFalse(TEXT("ChipShot threshold is not duplicated"),
+		Orchestrator.Contains(TEXT("ChipShotAttackD6 <="))
+			|| Orchestrator.Contains(TEXT("ChipShotAttackD6 >="))
+			|| Orchestrator.Contains(TEXT("ChipShotGoalMinD6")));
+	TestFalse(TEXT("OneOnOne does not access goalkeeper State"),
+		Orchestrator.Contains(TEXT("Goalkeeper")));
+	TestFalse(TEXT("OneOnOne contains no terminal MatchPlay integration"),
+		Orchestrator.Contains(TEXT("FGoalResolver"))
+			|| Orchestrator.Contains(TEXT("FMatchPlayCurrentAttackCompletion"))
+			|| Orchestrator.Contains(TEXT("FAttackOpportunityResolver")));
+
+	auto SkillId = [](const FString& Prefix, const ESkillRuleType ActionType)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(ActionType)));
+	};
+	auto ReachRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType ActionType,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session, Prefix, ActionType, Intent, Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+	auto HandoffsEqual = [](const FThroughBallOneOnOneHandoffCreationResult& Left,
+		const FThroughBallOneOnOneHandoffCreationResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage
+			&& Left.InvalidField == Right.InvalidField
+			&& Left.bHasHandoff == Right.bHasHandoff
+			&& Left.Handoff.AttackingOwnerId
+				== Right.Handoff.AttackingOwnerId
+			&& Left.Handoff.DefendingOwnerId
+				== Right.Handoff.DefendingOwnerId
+			&& Left.Handoff.ShooterCardId == Right.Handoff.ShooterCardId;
+	};
+	auto ChipShotsEqual = [&HandoffsEqual](
+		const FThroughBallOneOnOneChipShotOutcomeQueryResult& Left,
+		const FThroughBallOneOnOneChipShotOutcomeQueryResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.Decision == Right.Decision
+			&& Left.bAttackEnded == Right.bAttackEnded
+			&& Left.bContinueResolution == Right.bContinueResolution
+			&& Left.bIsGoal == Right.bIsGoal
+			&& HandoffsEqual(
+				Left.Input.HandoffCreationResult,
+				Right.Input.HandoffCreationResult)
+			&& Left.Input.bHasChipShotAttackD6
+				== Right.Input.bHasChipShotAttackD6
+			&& Left.Input.ChipShotAttackD6 == Right.Input.ChipShotAttackD6
+			&& Left.Input.LogId == Right.Input.LogId
+			&& Left.Input.TurnIndex == Right.Input.TurnIndex;
+	};
+	auto RecordsPreserved = [](const TArray<FMatchPlayCurrentAttackPostRouteRollRecord>& Before,
+		const TArray<FMatchPlayCurrentAttackPostRouteRollRecord>& After)
+	{
+		if (After.Num() != Before.Num() + 1)
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < Before.Num(); ++Index)
+		{
+			if (Before[Index].Purpose != After[Index].Purpose
+				|| Before[Index].RawD6 != After[Index].RawD6)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+
+	{
+		const FString Prefix(TEXT("OneOnOneAntiMiss"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(MakePostRouteSuccess(2));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("AntiOffside public route"), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		TestEqual(TEXT("AntiOffside source requires OneOnOne"),
+			Session.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.OutcomeResult.Decision,
+			EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired);
+
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto BeforeRecords = Before.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		const auto BeforeInitial = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords;
+		const bool GoalkeeperActivatedBefore =
+			Before.CurrentAttack.bCurrentDefenseGoalkeeperActivated;
+		const auto GoalkeeperUsageBefore = Before.GoalkeeperUsageState;
+		const int32 PlayerAScoreBefore = Before.RuntimeState.PlayerAState.Score;
+		const int32 PlayerBScoreBefore = Before.RuntimeState.PlayerBState.Score;
+		const int32 CallsBefore = Post.GetCallCount();
+		const auto Operation =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		const auto& Domain = Operation.OrchestrationResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		const auto& AfterSession = After.CurrentAttack.ResolutionSession;
+		const auto& AfterRecords = AfterSession.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("AntiOffside Miss succeeds"), Domain.bSuccess
+			&& Domain.Source == ESource::AntiOffside
+			&& Domain.bResolvedNewRoll && Domain.QueryResult.bSuccess);
+		TestEqual(TEXT("AntiOffside fresh provider delta"),
+			Post.GetCallCount() - CallsBefore, 1);
+		TestEqual(TEXT("AntiOffside handoff count"),
+			Domain.HandoffCreationCount, 1);
+		TestEqual(TEXT("AntiOffside source regeneration count"),
+			Domain.SourceDecisionRegenerationCount, 1);
+		TestEqual(TEXT("AntiOffside regeneration RNG"),
+			Domain.AntiOffsideRegenerationResult.ProviderCallCount, 0);
+		TestEqual(TEXT("AntiOffside ChipShot query count"),
+			Domain.ChipShotQueryExecutionCount, 1);
+		TestTrue(TEXT("AntiOffside source record preserved"),
+			RecordsPreserved(BeforeRecords, AfterRecords));
+		TestEqual(TEXT("AntiOffside ChipShot record count"),
+			AfterRecords.Num(), 2);
+		if (AfterRecords.Num() == 2)
+		{
+			TestEqual(TEXT("AntiOffside PrimaryAttack preserved"),
+				AfterRecords[0].Purpose, EPurpose::PrimaryAttack);
+			TestEqual(TEXT("AntiOffside ChipShot purpose"),
+				AfterRecords[1].Purpose, EPurpose::OneOnOneChipShotAttack);
+			TestEqual(TEXT("AntiOffside ChipShot D6"),
+				AfterRecords[1].RawD6, 2);
+		}
+		TestEqual(TEXT("AntiOffside provider purpose"),
+			Post.GetPurposes().Last(), EPurpose::OneOnOneChipShotAttack);
+		TestEqual(TEXT("AntiOffside phase"),
+			AfterSession.PostRouteRollProgress.Phase, EPhase::OneOnOneChipShot);
+		TestEqual(TEXT("AntiOffside stays RouteResolved"), AfterSession.Stage,
+			EMatchPlayCurrentAttackResolutionStage::RouteResolved);
+		TestEqual(TEXT("AntiOffside branch preserved"),
+			AfterSession.ActualBranch.ThroughBall,
+			EMatchPlayThroughBallActualBranch::AntiOffside);
+		TestEqual(TEXT("AntiOffside route records unchanged"),
+			AfterSession.InitialRouteRollRecords.Num(), BeforeInitial.Num());
+		TestTrue(TEXT("AntiOffside CurrentAttack remains active"),
+			After.bHasCurrentAttack);
+		TestEqual(TEXT("AntiOffside Miss decision"), Domain.QueryResult.Decision,
+			EDecision::Miss);
+		TestTrue(TEXT("AntiOffside Miss ends standalone semantic"),
+			Domain.QueryResult.bAttackEnded);
+		TestFalse(TEXT("AntiOffside Miss does not continue"),
+			Domain.QueryResult.bContinueResolution);
+		TestFalse(TEXT("AntiOffside Miss is not Goal"),
+			Domain.QueryResult.bIsGoal);
+		TestEqual(TEXT("AntiOffside score A unchanged"),
+			After.RuntimeState.PlayerAState.Score, PlayerAScoreBefore);
+		TestEqual(TEXT("AntiOffside score B unchanged"),
+			After.RuntimeState.PlayerBState.Score, PlayerBScoreBefore);
+		TestEqual(TEXT("AntiOffside goalkeeper activation unchanged"),
+			After.CurrentAttack.bCurrentDefenseGoalkeeperActivated,
+			GoalkeeperActivatedBefore);
+		TestTrue(TEXT("AntiOffside goalkeeper usage unchanged"),
+			AreReflectedValuesEqual(
+				After.GoalkeeperUsageState, GoalkeeperUsageBefore));
+
+		const auto DirectHandoff =
+			FThroughBallOneOnOneHandoffCreator::CreateFromAntiOffside(
+				Domain.AntiOffsideRegenerationResult.OutcomeResult);
+		TestTrue(TEXT("AntiOffside direct handoff equivalence"),
+			HandoffsEqual(DirectHandoff, Domain.HandoffCreationResult));
+		FThroughBallOneOnOneChipShotOutcomeQueryInput DirectInput =
+			Domain.QueryInput;
+		DirectInput.HandoffCreationResult = DirectHandoff;
+		const auto Direct =
+			FThroughBallOneOnOneChipShotOutcomeQuery::Evaluate(DirectInput);
+		TestTrue(TEXT("AntiOffside direct ChipShot equivalence"),
+			ChipShotsEqual(Direct, Domain.QueryResult));
+
+		const int32 ReplayCalls = Post.GetCallCount();
+		const int32 ReplayRecords = AfterRecords.Num();
+		const auto Replay =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestTrue(TEXT("AntiOffside Miss replay succeeds"),
+			Replay.OrchestrationResult.bSuccess
+				&& Replay.OrchestrationResult.bReplayedAcceptedRoll
+				&& HandoffsEqual(Replay.OrchestrationResult.HandoffCreationResult,
+					Domain.HandoffCreationResult)
+				&& ChipShotsEqual(Replay.OrchestrationResult.QueryResult,
+					Domain.QueryResult));
+		TestEqual(TEXT("AntiOffside replay provider delta"),
+			Post.GetCallCount() - ReplayCalls, 0);
+		TestEqual(TEXT("AntiOffside replay record delta"),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Num() - ReplayRecords,
+			0);
+		TestTrue(TEXT("AntiOffside replay State stable"),
+			AreStatesEqual(After, Session.GetStateSnapshot()));
+	}
+
+	{
+		const FString Prefix(TEXT("OneOnOneBehindGoal"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+		FQueuePostRouteRollProvider Post;
+		for (const int32 D6 : { 6, 1, 2, 5 })
+		{
+			Post.Enqueue(MakePostRouteSuccess(D6));
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("BehindDefense public route"), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		TestTrue(TEXT("BehindDefense P1 ready"),
+			Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+				.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("BehindDefense P2 source requires OneOnOne"),
+			Session.ResolveThroughBallBehindDefenseP2Decision()
+				.OrchestrationResult.QueryResult.Decision,
+			EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired);
+
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto BeforeRecords = Before.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		const int32 CallsBefore = Post.GetCallCount();
+		const int32 PlayerAScoreBefore = Before.RuntimeState.PlayerAState.Score;
+		const int32 PlayerBScoreBefore = Before.RuntimeState.PlayerBState.Score;
+		const auto Operation =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		const auto& Domain = Operation.OrchestrationResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		const auto& Records = After.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("BehindDefense Goal succeeds"), Domain.bSuccess
+			&& Domain.Source == ESource::BehindDefenseP2
+			&& Domain.bResolvedNewRoll && Domain.QueryResult.bSuccess);
+		TestEqual(TEXT("BehindDefense fresh provider delta"),
+			Post.GetCallCount() - CallsBefore, 1);
+		TestEqual(TEXT("BehindDefense regeneration RNG"),
+			Domain.BehindDefenseP2RegenerationResult.ProviderCallCount, 0);
+		TestTrue(TEXT("BehindDefense source records preserved"),
+			RecordsPreserved(BeforeRecords, Records));
+		TestEqual(TEXT("BehindDefense record count"), Records.Num(), 4);
+		if (Records.Num() == 4)
+		{
+			TestEqual(TEXT("BehindDefense P1 Attack purpose"),
+				Records[0].Purpose, EPurpose::PrimaryAttack);
+			TestEqual(TEXT("BehindDefense P1 Defense purpose"),
+				Records[1].Purpose, EPurpose::PrimaryDefense);
+			TestEqual(TEXT("BehindDefense P2 purpose"),
+				Records[2].Purpose, EPurpose::BehindDefenseP2Defense);
+			TestEqual(TEXT("BehindDefense ChipShot purpose"),
+				Records[3].Purpose, EPurpose::OneOnOneChipShotAttack);
+			TestEqual(TEXT("BehindDefense ChipShot D6"), Records[3].RawD6, 5);
+		}
+		TestEqual(TEXT("BehindDefense OneOnOne phase"),
+			After.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase,
+			EPhase::OneOnOneChipShot);
+		TestEqual(TEXT("BehindDefense Goal decision"),
+			Domain.QueryResult.Decision, EDecision::Goal);
+		TestTrue(TEXT("BehindDefense Goal flag"), Domain.QueryResult.bIsGoal);
+		TestTrue(TEXT("BehindDefense Goal ends standalone semantic"),
+			Domain.QueryResult.bAttackEnded);
+		TestFalse(TEXT("BehindDefense Goal does not continue"),
+			Domain.QueryResult.bContinueResolution);
+		TestTrue(TEXT("BehindDefense CurrentAttack remains active"),
+			After.bHasCurrentAttack);
+		TestEqual(TEXT("BehindDefense score A unchanged"),
+			After.RuntimeState.PlayerAState.Score, PlayerAScoreBefore);
+		TestEqual(TEXT("BehindDefense score B unchanged"),
+			After.RuntimeState.PlayerBState.Score, PlayerBScoreBefore);
+
+		const auto DirectHandoff =
+			FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP2(
+				Domain.BehindDefenseP2RegenerationResult.QueryResult);
+		TestTrue(TEXT("BehindDefense direct handoff equivalence"),
+			HandoffsEqual(DirectHandoff, Domain.HandoffCreationResult));
+		FThroughBallOneOnOneChipShotOutcomeQueryInput DirectInput =
+			Domain.QueryInput;
+		DirectInput.HandoffCreationResult = DirectHandoff;
+		const auto Direct =
+			FThroughBallOneOnOneChipShotOutcomeQuery::Evaluate(DirectInput);
+		TestTrue(TEXT("BehindDefense direct ChipShot equivalence"),
+			ChipShotsEqual(Direct, Domain.QueryResult));
+
+		const int32 ReplayCalls = Post.GetCallCount();
+		const int32 ReplayRecords = Records.Num();
+		const auto Replay =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestTrue(TEXT("BehindDefense Goal replay succeeds"),
+			Replay.OrchestrationResult.bSuccess
+				&& Replay.OrchestrationResult.bReplayedAcceptedRoll
+				&& ChipShotsEqual(Replay.OrchestrationResult.QueryResult,
+					Domain.QueryResult));
+		TestEqual(TEXT("BehindDefense replay provider delta"),
+			Post.GetCallCount() - ReplayCalls, 0);
+		TestEqual(TEXT("BehindDefense replay record delta"),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Num() - ReplayRecords,
+			0);
+		TestTrue(TEXT("BehindDefense replay State stable"),
+			AreStatesEqual(After, Session.GetStateSnapshot()));
+	}
+
+	{
+		const FString Prefix(TEXT("OneOnOneMissingProvider"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Missing-provider route ready"), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		TestTrue(TEXT("Missing-provider source ready"),
+			Session.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.bSuccess);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected =
+			FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
+				::Resolve(Before, &Rules, nullptr);
+		TestEqual(TEXT("Missing provider rejected"), Rejected.ErrorCode,
+			EError::PostRouteRollProviderUnavailable);
+		TestEqual(TEXT("Missing provider call count"), Rejected.ProviderCallCount,
+			0);
+		TestEqual(TEXT("Missing provider ChipShot query count"),
+			Rejected.ChipShotQueryExecutionCount, 0);
+		TestTrue(TEXT("Missing provider State unchanged"),
+			AreStatesEqual(Before, Rejected.AfterState));
+	}
+
+	auto TestProviderFailure = [this, &SkillId, &ReachRoute](
+		const TCHAR* Label,
+		const FMatchPlayPostRouteRollProviderResult& ChipShotResult,
+		const EError ExpectedError)
+	{
+		const FString Prefix(Label);
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(ChipShotResult);
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s route ready"), Label), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		TestTrue(*FString::Printf(TEXT("%s source ready"), Label),
+			Session.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.bSuccess);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore = Post.GetCallCount();
+		const auto Rejected =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestEqual(*FString::Printf(TEXT("%s error"), Label),
+			Rejected.OrchestrationResult.ErrorCode, ExpectedError);
+		TestEqual(*FString::Printf(TEXT("%s provider delta"), Label),
+			Post.GetCallCount() - CallsBefore, 1);
+		TestEqual(*FString::Printf(TEXT("%s query count"), Label),
+			Rejected.OrchestrationResult.ChipShotQueryExecutionCount, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, Label,
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	};
+	TestProviderFailure(TEXT("OneOnOneProviderFailure"),
+		MakePostRouteFailure(), EError::PostRouteRollProviderFailed);
+	TestProviderFailure(TEXT("OneOnOneMalformedD6"),
+		MakePostRouteSuccess(7), EError::MalformedPostRouteRollProviderResult);
+
+	auto TestTerminalAnti = [this, &SkillId, &ReachRoute]()
+	{
+		const FString Prefix(TEXT("OneOnOneAntiOffsideReject"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(5));
+		Post.Enqueue(MakePostRouteSuccess(2));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("AntiOffside rejection route"), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		TestEqual(TEXT("AntiOffside rejection source is Offside"),
+			Session.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.OutcomeResult.Decision,
+			EThroughBallAntiOffsideOutcomeDecision::Offside);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore = Post.GetCallCount();
+		const auto Rejected =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestEqual(TEXT("AntiOffside Offside rejects OneOnOne"),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::SourceDecisionDoesNotRequireOneOnOne);
+		TestEqual(TEXT("AntiOffside Offside ChipShot RNG"),
+			Post.GetCallCount() - CallsBefore, 0);
+		TestEqual(TEXT("AntiOffside Offside handoff count"),
+			Rejected.OrchestrationResult.HandoffCreationCount, 0);
+		TestEqual(TEXT("AntiOffside Offside query count"),
+			Rejected.OrchestrationResult.ChipShotQueryExecutionCount, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("AntiOffside Offside"),
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	};
+	TestTerminalAnti();
+
+	auto TestBehindTerminal = [this, &SkillId, &ReachRoute](
+		const TCHAR* Label,
+		const TArray<int32>& SourceD6,
+		const bool bResolveP2)
+	{
+		const FString Prefix(Label);
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+		FQueuePostRouteRollProvider Post;
+		for (const int32 D6 : SourceD6)
+		{
+			Post.Enqueue(MakePostRouteSuccess(D6));
+		}
+		Post.Enqueue(MakePostRouteSuccess(2));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s route ready"), Label), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		TestTrue(*FString::Printf(TEXT("%s P1 consumed"), Label),
+			Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+				.OrchestrationResult.bSuccess);
+		if (bResolveP2)
+		{
+			TestTrue(*FString::Printf(TEXT("%s P2 consumed"), Label),
+				Session.ResolveThroughBallBehindDefenseP2Decision()
+					.OrchestrationResult.bSuccess);
+		}
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore = Post.GetCallCount();
+		const auto Rejected =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestFalse(*FString::Printf(TEXT("%s rejects OneOnOne"), Label),
+			Rejected.OrchestrationResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s ChipShot RNG"), Label),
+			Post.GetCallCount() - CallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s handoff count"), Label),
+			Rejected.OrchestrationResult.HandoffCreationCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s query count"), Label),
+			Rejected.OrchestrationResult.ChipShotQueryExecutionCount, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, Label,
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	};
+	TestBehindTerminal(TEXT("OneOnOneP2Offside"), { 6, 1, 4 }, true);
+	TestBehindTerminal(TEXT("OneOnOneDefenderStopped"), { 3, 6 }, false);
+	TestBehindTerminal(TEXT("OneOnOneOutOfPlay"), { 2 }, false);
+
+	{
+		const FString Prefix(TEXT("OneOnOneIncomplete"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Incomplete source route"), ReachRoute(
+			Session, Prefix, ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestEqual(TEXT("Incomplete source rejected"),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::IncompleteSourceProvenance);
+		TestEqual(TEXT("Incomplete source RNG"), Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Incomplete source"),
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	auto TestWrongBranch = [this, &SkillId, &ReachRoute](
+		const TCHAR* Label,
+		const ESkillRuleType ActionType,
+		const EMatchPlayElectiveBranchIntent Intent,
+		const int32 InitialD6)
+	{
+		const FString Prefix(Label);
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ActionType), ActionType);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(InitialD6));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s route ready"), Label), ReachRoute(
+			Session, Prefix, ActionType, Intent));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestEqual(*FString::Printf(TEXT("%s wrong branch error"), Label),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::UnsupportedThroughBallBranch);
+		TestEqual(*FString::Printf(TEXT("%s consumes zero ChipShot RNG"), Label),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(*this, Label,
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	};
+	TestWrongBranch(TEXT("OneOnOneRejectsFeet"), ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None, 2);
+	TestWrongBranch(TEXT("OneOnOneRejectsCross"), ESkillRuleType::Cross,
+		EMatchPlayElectiveBranchIntent::CrossHigh, 4);
+
+	const FString DeterminismPrefix(TEXT("OneOnOneDeterminism"));
+	const auto DeterminismRules = MakeSkillRuleSet(
+		SkillId(DeterminismPrefix, ESkillRuleType::ThroughBall),
+		ESkillRuleType::ThroughBall);
+	InitialRouteFixtures::FQueueRollProvider InitialA;
+	InitialRouteFixtures::FQueueRollProvider InitialB;
+	InitialA.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	InitialB.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider PostA;
+	FQueuePostRouteRollProvider PostB;
+	for (FQueuePostRouteRollProvider* Provider : { &PostA, &PostB })
+	{
+		Provider->Enqueue(MakePostRouteSuccess(6));
+		Provider->Enqueue(MakePostRouteSuccess(5));
+	}
+	FMatchPlayAuthoritativeSession SessionA(InitialA, PostA, DeterminismRules);
+	FMatchPlayAuthoritativeSession SessionB(InitialB, PostB, DeterminismRules);
+	TestTrue(TEXT("OneOnOne determinism A route"), ReachRoute(
+		SessionA, DeterminismPrefix, ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None));
+	TestTrue(TEXT("OneOnOne determinism B route"), ReachRoute(
+		SessionB, DeterminismPrefix, ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None));
+	TestTrue(TEXT("OneOnOne determinism A source"),
+		SessionA.ResolveThroughBallAntiOffsideDecision()
+			.OrchestrationResult.bSuccess);
+	TestTrue(TEXT("OneOnOne determinism B source"),
+		SessionB.ResolveThroughBallAntiOffsideDecision()
+			.OrchestrationResult.bSuccess);
+	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
+	const int32 SessionBCallsBefore = PostB.GetCallCount();
+	const int32 SessionBRecordsBefore = SessionBBefore.CurrentAttack
+		.ResolutionSession.PostRouteRollProgress.RollRecords.Num();
+	const auto ResultA =
+		SessionA.ResolveThroughBallOneOnOneChipShotDecision();
+	TestTrue(TEXT("OneOnOne Session A cannot mutate Session B"),
+		AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
+	TestEqual(TEXT("OneOnOne Session A cannot consume Provider B"),
+		PostB.GetCallCount() - SessionBCallsBefore, 0);
+	TestEqual(TEXT("OneOnOne Session A cannot append Session B records"),
+		SessionB.GetStateSnapshot().CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords.Num() - SessionBRecordsBefore,
+		0);
+	const auto ResultB =
+		SessionB.ResolveThroughBallOneOnOneChipShotDecision();
+	TestTrue(TEXT("Independent OneOnOne handoffs deterministic"),
+		ResultA.OrchestrationResult.bSuccess
+			&& ResultB.OrchestrationResult.bSuccess
+			&& HandoffsEqual(ResultA.OrchestrationResult.HandoffCreationResult,
+				ResultB.OrchestrationResult.HandoffCreationResult));
+	TestTrue(TEXT("Independent ChipShot results deterministic"),
+		ChipShotsEqual(ResultA.OrchestrationResult.QueryResult,
+			ResultB.OrchestrationResult.QueryResult));
+	TestTrue(TEXT("Independent OneOnOne States deterministic"),
 		AreStatesEqual(SessionA.GetStateSnapshot(), SessionB.GetStateSnapshot()));
 	return true;
 }
