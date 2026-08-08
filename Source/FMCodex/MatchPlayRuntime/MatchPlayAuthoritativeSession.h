@@ -84,6 +84,9 @@ public:
 	FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();
 
+	FMatchPlayAuthoritativeResolveThroughBallFeetPostRoutePlanResult
+	ResolveThroughBallFeetPostRoutePlan();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:

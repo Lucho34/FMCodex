@@ -349,6 +349,87 @@ namespace MatchPlayAuthoritativeSessionTests
 				Right.FormulaPlan);
 	}
 
+	bool AreThroughBallFeetFormulaPlansEqual(
+		const FThroughBallFeetFormulaPlan& Left,
+		const FThroughBallFeetFormulaPlan& Right)
+	{
+		return Left.FormulaType == Right.FormulaType
+			&& Left.CarrierId == Right.CarrierId
+			&& Left.CarrierPassing == Right.CarrierPassing
+			&& Left.CarrierStamina == Right.CarrierStamina
+			&& Left.RunnerId == Right.RunnerId
+			&& Left.RunnerOffBall == Right.RunnerOffBall
+			&& Left.RunnerStamina == Right.RunnerStamina
+			&& Left.AttackD6 == Right.AttackD6
+			&& Left.AttackBaseValue == Right.AttackBaseValue
+			&& Left.AttackExternalModifier == Right.AttackExternalModifier
+			&& Left.AttackParticipatingStamina
+				== Right.AttackParticipatingStamina
+			&& Left.MarkerId == Right.MarkerId
+			&& Left.MarkerTackling == Right.MarkerTackling
+			&& Left.MarkerStamina == Right.MarkerStamina
+			&& Left.bHasHelper == Right.bHasHelper
+			&& Left.HelperId == Right.HelperId
+			&& Left.HelperMarking == Right.HelperMarking
+			&& Left.HelperStamina == Right.HelperStamina
+			&& Left.bHasActiveGoalkeeper
+				== Right.bHasActiveGoalkeeper
+			&& Left.ActiveGoalkeeperId == Right.ActiveGoalkeeperId
+			&& Left.GoalkeeperOneOnOne == Right.GoalkeeperOneOnOne
+			&& Left.GoalkeeperStamina == Right.GoalkeeperStamina
+			&& Left.DefenseD6 == Right.DefenseD6
+			&& Left.DefenseBaseValue == Right.DefenseBaseValue
+			&& Left.DefenseExternalModifier
+				== Right.DefenseExternalModifier
+			&& Left.DefenseParticipatingStamina
+				== Right.DefenseParticipatingStamina
+			&& Left.LogId == Right.LogId
+			&& Left.TurnIndex == Right.TurnIndex
+			&& Left.AttackingOwnerId == Right.AttackingOwnerId
+			&& Left.DefendingOwnerId == Right.DefendingOwnerId
+			&& Left.InvolvedCardIds == Right.InvolvedCardIds
+			&& Left.GoalScorerCardId == Right.GoalScorerCardId
+			&& Left.bAttackVictoryIsGoal == Right.bAttackVictoryIsGoal
+			&& Left.bDefenderVictoryIsMiss
+				== Right.bDefenderVictoryIsMiss
+			&& Left.bAttackEndsAfterResolution
+				== Right.bAttackEndsAfterResolution
+			&& Left.bContinueResolution == Right.bContinueResolution;
+	}
+
+	bool AreThroughBallFeetPlanResultsEquivalent(
+		const FThroughBallFeetPlanQueryResult& Left,
+		const FThroughBallFeetPlanQueryResult& Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.Decision == Right.Decision
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage
+			&& Left.InvalidField == Right.InvalidField
+			&& Left.Input.AttackD6 == Right.Input.AttackD6
+			&& Left.Input.DefenseD6 == Right.Input.DefenseD6
+			&& Left.Input.bHasActiveGoalkeeper
+				== Right.Input.bHasActiveGoalkeeper
+			&& Left.Input.LogId == Right.Input.LogId
+			&& Left.Input.TurnIndex == Right.Input.TurnIndex
+			&& Left.Input.ParticipantEligibilityResult.bSuccess
+				== Right.Input.ParticipantEligibilityResult.bSuccess
+			&& Left.Input.ParticipantEligibilityResult.Input.SelectedSkillId
+				== Right.Input.ParticipantEligibilityResult.Input.SelectedSkillId
+			&& Left.Input.ParticipantEligibilityResult.Input
+				.AttackingOwnerId
+				== Right.Input.ParticipantEligibilityResult.Input
+					.AttackingOwnerId
+			&& Left.Input.ParticipantEligibilityResult.Input
+				.DefendingOwnerId
+				== Right.Input.ParticipantEligibilityResult.Input
+					.DefendingOwnerId
+			&& Left.bHasFormulaPlan == Right.bHasFormulaPlan
+			&& AreThroughBallFeetFormulaPlansEqual(
+				Left.FormulaPlan,
+				Right.FormulaPlan);
+	}
+
 	bool AreSelectionValidationResultsEqual(
 		const FMatchPlayCurrentAttackSelectionStateValidationResult& Left,
 		const FMatchPlayCurrentAttackSelectionStateValidationResult& Right)
@@ -5940,11 +6021,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All twenty-two mutations use the gate"),
+	TestEqual(TEXT("All twenty-three mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		22);
+		23);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9630,9 +9711,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All twenty-two mutations share serialized gate"),
+	TestEqual(TEXT("All twenty-three mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		22);
+		23);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -12225,6 +12306,448 @@ bool FMatchPlayAuthoritativeSessionResolveCrossPostRoutePlanTest::RunTest(
 			DeterministicResultA.OrchestrationResult.PlanResult,
 			DeterministicResultB.OrchestrationResult.PlanResult));
 	TestTrue(TEXT("Deterministic Cross final States equal"),
+		AreStatesEqual(
+			DeterministicA.GetStateSnapshot(),
+			DeterministicB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveThroughBallFeetPostRoutePlanTest,
+	"44.ResolveThroughBallFeetPostRoutePlanAuthority")
+
+bool
+FMatchPlayAuthoritativeSessionResolveThroughBallFeetPostRoutePlanTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using EError =
+		EMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanErrorCode;
+
+	static_assert(std::is_same_v<
+		decltype(
+			&FMatchPlayAuthoritativeSession
+				::ResolveThroughBallFeetPostRoutePlan),
+		FMatchPlayAuthoritativeResolveThroughBallFeetPostRoutePlanResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	TestEqual(TEXT("ThroughBall Feet command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallFeetPostRoutePlan),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveCrossPostRoutePlan) + 1);
+
+	FString Header;
+	FString Types;
+	FString Implementation;
+	TestTrue(TEXT("Feet Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("Feet Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	TestTrue(TEXT("Feet Session implementation loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		Implementation));
+	TestFalse(TEXT("No public Feet gameplay request exists"),
+		Types.Contains(TEXT(
+			"FMatchPlayAuthoritativeResolveThroughBallFeetPostRoutePlanRequest")));
+	TestTrue(TEXT("Feet command has no gameplay arguments"),
+		Header.Contains(TEXT("ResolveThroughBallFeetPostRoutePlan();")));
+	TestFalse(TEXT("Session does not call provider directly"),
+		Implementation.Contains(TEXT("RollD6(")));
+	TestEqual(TEXT("One canonical Feet orchestration call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator")),
+		1);
+
+	auto MakeThroughBallSkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::ThroughBall)));
+	};
+	auto ReachResolvedRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType ActionType,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				ActionType,
+				Intent,
+				Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+
+	InitialRouteFixtures::FQueueRollProvider UninitializedInitial;
+	FQueuePostRouteRollProvider UninitializedPost;
+	const FSkillRuleSnapshotSet UninitializedRules = MakeSkillRuleSet(
+		TEXT("Skill.Feet.Uninitialized"),
+		ESkillRuleType::ThroughBall);
+	FMatchPlayAuthoritativeSession UninitializedSession(
+		UninitializedInitial,
+		UninitializedPost,
+		UninitializedRules);
+	const auto Uninitialized =
+		UninitializedSession.ResolveThroughBallFeetPostRoutePlan();
+	TestFalse(TEXT("Uninitialized Feet command rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized Feet consumes no rolls"),
+		UninitializedPost.GetCallCount(), 0);
+
+	const FString SuccessPrefix(TEXT("ThroughBallFeetSuccess"));
+	const FSkillRuleSnapshotSet SuccessRules = MakeSkillRuleSet(
+		MakeThroughBallSkillId(SuccessPrefix),
+		ESkillRuleType::ThroughBall);
+	InitialRouteFixtures::FQueueRollProvider SuccessInitial;
+	SuccessInitial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FQueuePostRouteRollProvider SuccessPost;
+	SuccessPost.Enqueue(MakePostRouteSuccess(4));
+	SuccessPost.Enqueue(MakePostRouteSuccess(3));
+	FMatchPlayAuthoritativeSession SuccessSession(
+		SuccessInitial,
+		SuccessPost,
+		SuccessRules);
+	TestTrue(TEXT("Public flow reaches ThroughBall Feet RouteResolved"),
+		ReachResolvedRoute(
+			SuccessSession,
+			SuccessPrefix,
+			ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+	const FMatchPlayState SuccessBefore = SuccessSession.GetStateSnapshot();
+	const int32 InitialRecordCount = SuccessBefore.CurrentAttack
+		.ResolutionSession.InitialRouteRollRecords.Num();
+	const int32 CallsBefore = SuccessPost.GetCallCount();
+	const auto Success =
+		SuccessSession.ResolveThroughBallFeetPostRoutePlan();
+	const FMatchPlayState SuccessAfter = SuccessSession.GetStateSnapshot();
+	const auto& SuccessOrchestration = Success.OrchestrationResult;
+	const auto& SuccessResolution =
+		SuccessAfter.CurrentAttack.ResolutionSession;
+	const auto& SuccessRecords =
+		SuccessResolution.PostRouteRollProgress.RollRecords;
+	TestTrue(TEXT("Feet operation succeeds"),
+		SuccessOrchestration.bSuccess);
+	TestEqual(TEXT("Feet command kind"),
+		Success.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallFeetPostRoutePlan);
+	TestEqual(TEXT("Feet provider delta is two"),
+		SuccessPost.GetCallCount() - CallsBefore, 2);
+	TestEqual(TEXT("Feet provider purpose count"),
+		SuccessPost.GetPurposes().Num(), 2);
+	TestEqual(TEXT("Feet first purpose PrimaryAttack"),
+		SuccessPost.GetPurposes()[0], EPurpose::PrimaryAttack);
+	TestEqual(TEXT("Feet second purpose PrimaryDefense"),
+		SuccessPost.GetPurposes()[1], EPurpose::PrimaryDefense);
+	TestEqual(TEXT("Feet record count"), SuccessRecords.Num(), 2);
+	TestEqual(TEXT("Feet attack record purpose"),
+		SuccessRecords[0].Purpose, EPurpose::PrimaryAttack);
+	TestEqual(TEXT("Feet attack record value"),
+		SuccessRecords[0].RawD6, 4);
+	TestEqual(TEXT("Feet defense record purpose"),
+		SuccessRecords[1].Purpose, EPurpose::PrimaryDefense);
+	TestEqual(TEXT("Feet defense record value"),
+		SuccessRecords[1].RawD6, 3);
+	TestEqual(TEXT("Feet Initial Route record preserved"),
+		SuccessResolution.InitialRouteRollRecords.Num(),
+		InitialRecordCount);
+	TestEqual(TEXT("Feet Actual Branch preserved"),
+		SuccessResolution.ActualBranch.ThroughBall,
+		EMatchPlayThroughBallActualBranch::Feet);
+	TestTrue(TEXT("Feet canonical Formula plan returned"),
+		SuccessOrchestration.PlanResult.bHasFormulaPlan
+			&& SuccessOrchestration.PlanResult.Decision
+				== EThroughBallFeetPlanQueryDecision
+					::FormulaResolutionRequired);
+	TestTrue(TEXT("Feet adopts exact orchestrator AfterState"),
+		AreStatesEqual(
+			SuccessAfter,
+			SuccessOrchestration.AfterState));
+	const FThroughBallFeetPlanQueryResult Direct =
+		FThroughBallFeetPlanQuery::Evaluate(
+			SuccessOrchestration.QueryInput);
+	TestTrue(TEXT("Feet adapter equals standalone Evaluate"),
+		AreThroughBallFeetPlanResultsEquivalent(
+			SuccessOrchestration.PlanResult,
+			Direct));
+
+	const int32 ReplayCallsBefore = SuccessPost.GetCallCount();
+	const auto Replay =
+		SuccessSession.ResolveThroughBallFeetPostRoutePlan();
+	const FMatchPlayState ReplayAfter = SuccessSession.GetStateSnapshot();
+	TestTrue(TEXT("Feet replay is idempotent success"),
+		Replay.OrchestrationResult.bSuccess
+			&& Replay.OrchestrationResult.bReplayedCompleteRolls);
+	TestEqual(TEXT("Feet replay provider delta zero"),
+		SuccessPost.GetCallCount() - ReplayCallsBefore, 0);
+	TestEqual(TEXT("Feet replay record delta zero"),
+		ReplayAfter.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords.Num()
+				- SuccessRecords.Num(),
+		0);
+	TestTrue(TEXT("Feet replay State unchanged"),
+		AreStatesEqual(SuccessAfter, ReplayAfter));
+	TestTrue(TEXT("Feet replay plan equivalent"),
+		AreThroughBallFeetPlanResultsEquivalent(
+			SuccessOrchestration.PlanResult,
+			Replay.OrchestrationResult.PlanResult));
+
+	const FString PartialPrefix(TEXT("ThroughBallFeetPartial"));
+	const FSkillRuleSnapshotSet PartialRules = MakeSkillRuleSet(
+		MakeThroughBallSkillId(PartialPrefix),
+		ESkillRuleType::ThroughBall);
+	InitialRouteFixtures::FQueueRollProvider PartialInitial;
+	PartialInitial.Enqueue(InitialRouteFixtures::MakeSuccess(1));
+	FQueuePostRouteRollProvider UnusedSessionPost;
+	FMatchPlayAuthoritativeSession PartialSession(
+		PartialInitial,
+		UnusedSessionPost,
+		PartialRules);
+	TestTrue(TEXT("Partial-prefix fixture reaches Feet route"),
+		ReachResolvedRoute(
+			PartialSession,
+			PartialPrefix,
+			ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+	FMatchPlayState PartialBefore = PartialSession.GetStateSnapshot();
+	PartialBefore.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+		EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch;
+	FMatchPlayCurrentAttackPostRouteRollRecord AcceptedAttack;
+	AcceptedAttack.Purpose = EPurpose::PrimaryAttack;
+	AcceptedAttack.RawD6 = 5;
+	PartialBefore.CurrentAttack.ResolutionSession.PostRouteRollProgress
+		.RollRecords.Add(AcceptedAttack);
+	TestTrue(TEXT("Partial prefix is canonical"),
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			PartialBefore).bIsCanonical);
+	FQueuePostRouteRollProvider PartialProvider;
+	PartialProvider.Enqueue(MakePostRouteSuccess(2));
+	FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
+		PartialRequest;
+	PartialRequest.AttackSequence =
+		PartialBefore.CurrentAttack.AttackSequence;
+	const auto Partial =
+		FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
+			::Resolve(
+				PartialBefore,
+				PartialRequest,
+				&PartialRules,
+				&PartialProvider);
+	TestTrue(TEXT("Partial prefix continuation succeeds"), Partial.bSuccess);
+	TestEqual(TEXT("Partial prefix requests one roll"),
+		PartialProvider.GetCallCount(), 1);
+	TestEqual(TEXT("Partial prefix requests Defense"),
+		PartialProvider.GetPurposes()[0], EPurpose::PrimaryDefense);
+	TestEqual(TEXT("Partial prefix preserves accepted Attack"),
+		Partial.AfterState.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords[0].RawD6,
+		5);
+
+	InitialRouteFixtures::FQueueRollProvider MissingInitial;
+	MissingInitial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FMatchPlayAuthoritativeSession MissingProviderSession(MissingInitial);
+	TestTrue(TEXT("Missing-provider fixture reaches Feet route"),
+		ReachResolvedRoute(
+			MissingProviderSession,
+			TEXT("ThroughBallFeetMissingProvider"),
+			ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None));
+	const FMatchPlayState MissingBefore =
+		MissingProviderSession.GetStateSnapshot();
+	const auto Missing = MissingProviderSession
+		.ResolveThroughBallFeetPostRoutePlan();
+	TestEqual(TEXT("Feet missing provider exact error"),
+		Missing.OrchestrationResult.ErrorCode,
+		EError::PostRouteRollProviderUnavailable);
+	TestEqual(TEXT("Feet missing provider delta zero"),
+		Missing.OrchestrationResult.ProviderCallCount, 0);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Feet missing provider"),
+		Missing.RuntimeEnvelope,
+		MissingBefore,
+		MissingProviderSession.GetStateSnapshot());
+
+	auto TestProviderFailure =
+		[this, &ReachResolvedRoute, &MakeThroughBallSkillId](
+			const TCHAR* Label,
+			const TArray<FMatchPlayPostRouteRollProviderResult>& Responses,
+			const int32 ExpectedCalls,
+			const EError ExpectedError)
+	{
+		const FString Prefix(Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakeThroughBallSkillId(Prefix),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+		FQueuePostRouteRollProvider Post;
+		for (const auto& Response : Responses)
+		{
+			Post.Enqueue(Response);
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches Feet route"), Label),
+			ReachResolvedRoute(
+				Session,
+				Prefix,
+				ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Failure =
+			Session.ResolveThroughBallFeetPostRoutePlan();
+		TestEqual(*FString::Printf(TEXT("%s call delta"), Label),
+			Post.GetCallCount(), ExpectedCalls);
+		TestEqual(*FString::Printf(TEXT("%s exact error"), Label),
+			Failure.OrchestrationResult.ErrorCode, ExpectedError);
+		TestTrue(*FString::Printf(TEXT("%s record delta zero"), Label),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.IsEmpty());
+		TestAcceptedDomainFailureNoAdopt(
+			*this,
+			Label,
+			Failure.RuntimeEnvelope,
+			Before,
+			Session.GetStateSnapshot());
+	};
+	TestProviderFailure(
+		TEXT("Feet first-roll failure"),
+		{ MakePostRouteFailure() },
+		1,
+		EError::PostRouteRollProviderFailed);
+	TestProviderFailure(
+		TEXT("Feet second-roll failure"),
+		{ MakePostRouteSuccess(6), MakePostRouteFailure() },
+		2,
+		EError::PostRouteRollProviderFailed);
+	TestProviderFailure(
+		TEXT("Feet malformed provider result"),
+		{ MakePostRouteSuccess(0) },
+		1,
+		EError::MalformedPostRouteRollProviderResult);
+
+	auto TestNonFeet = [this, &ReachResolvedRoute](
+		const TCHAR* Label,
+		const ESkillRuleType ActionType,
+		const EMatchPlayElectiveBranchIntent Intent,
+		const int32 InitialRouteD6)
+	{
+		const FString Prefix(Label);
+		const FName SkillId(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(ActionType)));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId,
+			ActionType);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(InitialRouteD6));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(2));
+		Post.Enqueue(MakePostRouteSuccess(4));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label),
+			ReachResolvedRoute(Session, Prefix, ActionType, Intent));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected =
+			Session.ResolveThroughBallFeetPostRoutePlan();
+		TestEqual(*FString::Printf(TEXT("%s exact non-Feet error"), Label),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::NotThroughBallFeetBranch);
+		TestEqual(*FString::Printf(TEXT("%s consumes zero post-route rolls"), Label),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(
+			*this,
+			Label,
+			Rejected.RuntimeEnvelope,
+			Before,
+			Session.GetStateSnapshot());
+	};
+	TestNonFeet(
+		TEXT("Feet rejects BehindDefense"),
+		ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None,
+		3);
+	TestNonFeet(
+		TEXT("Feet rejects Cross"),
+		ESkillRuleType::Cross,
+		EMatchPlayElectiveBranchIntent::CrossHigh,
+		4);
+
+	const FString IsolationPrefixA(TEXT("FeetIsolationA"));
+	const FString IsolationPrefixB(TEXT("FeetIsolationB"));
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialA;
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialB;
+	IsolationInitialA.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	IsolationInitialB.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FQueuePostRouteRollProvider IsolationPostA;
+	FQueuePostRouteRollProvider IsolationPostB;
+	IsolationPostA.Enqueue(MakePostRouteSuccess(1));
+	IsolationPostA.Enqueue(MakePostRouteSuccess(6));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(3));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(4));
+	const FSkillRuleSnapshotSet IsolationRulesA = MakeSkillRuleSet(
+		MakeThroughBallSkillId(IsolationPrefixA),
+		ESkillRuleType::ThroughBall);
+	const FSkillRuleSnapshotSet IsolationRulesB = MakeSkillRuleSet(
+		MakeThroughBallSkillId(IsolationPrefixB),
+		ESkillRuleType::ThroughBall);
+	FMatchPlayAuthoritativeSession IsolationA(
+		IsolationInitialA, IsolationPostA, IsolationRulesA);
+	FMatchPlayAuthoritativeSession IsolationB(
+		IsolationInitialB, IsolationPostB, IsolationRulesB);
+	TestTrue(TEXT("Feet isolation A reaches route"), ReachResolvedRoute(
+		IsolationA, IsolationPrefixA, ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None));
+	TestTrue(TEXT("Feet isolation B reaches route"), ReachResolvedRoute(
+		IsolationB, IsolationPrefixB, ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None));
+	const FMatchPlayState IsolationBBefore = IsolationB.GetStateSnapshot();
+	IsolationA.ResolveThroughBallFeetPostRoutePlan();
+	TestEqual(TEXT("Feet Session A consumes no Provider B rolls"),
+		IsolationPostB.GetCallCount(), 0);
+	TestTrue(TEXT("Feet Session A cannot mutate Session B"),
+		AreStatesEqual(IsolationBBefore, IsolationB.GetStateSnapshot()));
+
+	const FString DeterminismPrefix(TEXT("FeetDeterminism"));
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialA;
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialB;
+	DeterministicInitialA.Enqueue(InitialRouteFixtures::MakeSuccess(1));
+	DeterministicInitialB.Enqueue(InitialRouteFixtures::MakeSuccess(1));
+	FQueuePostRouteRollProvider DeterministicPostA;
+	FQueuePostRouteRollProvider DeterministicPostB;
+	for (FQueuePostRouteRollProvider* Provider :
+		{ &DeterministicPostA, &DeterministicPostB })
+	{
+		Provider->Enqueue(MakePostRouteSuccess(5));
+		Provider->Enqueue(MakePostRouteSuccess(2));
+	}
+	const FSkillRuleSnapshotSet DeterministicRules = MakeSkillRuleSet(
+		MakeThroughBallSkillId(DeterminismPrefix),
+		ESkillRuleType::ThroughBall);
+	FMatchPlayAuthoritativeSession DeterministicA(
+		DeterministicInitialA, DeterministicPostA, DeterministicRules);
+	FMatchPlayAuthoritativeSession DeterministicB(
+		DeterministicInitialB, DeterministicPostB, DeterministicRules);
+	TestTrue(TEXT("Feet deterministic A reaches route"), ReachResolvedRoute(
+		DeterministicA, DeterminismPrefix, ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None));
+	TestTrue(TEXT("Feet deterministic B reaches route"), ReachResolvedRoute(
+		DeterministicB, DeterminismPrefix, ESkillRuleType::ThroughBall,
+		EMatchPlayElectiveBranchIntent::None));
+	const auto DeterministicResultA =
+		DeterministicA.ResolveThroughBallFeetPostRoutePlan();
+	const auto DeterministicResultB =
+		DeterministicB.ResolveThroughBallFeetPostRoutePlan();
+	TestTrue(TEXT("Feet deterministic plans equal"),
+		AreThroughBallFeetPlanResultsEquivalent(
+			DeterministicResultA.OrchestrationResult.PlanResult,
+			DeterministicResultB.OrchestrationResult.PlanResult));
+	TestTrue(TEXT("Feet deterministic final States equal"),
 		AreStatesEqual(
 			DeterministicA.GetStateSnapshot(),
 			DeterministicB.GetStateSnapshot()));
