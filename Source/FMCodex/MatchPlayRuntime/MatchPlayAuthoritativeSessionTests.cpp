@@ -5,6 +5,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackHelperSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionAvailability.h"
+#include "../CoreRules/MatchPlayCurrentAttackResolveInitialRouteOrchestrationTestFixtures.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
@@ -18,6 +19,11 @@
 
 namespace MatchPlayAuthoritativeSessionTests
 {
+	namespace InitialRouteFixtures =
+		FMCodex::Tests::MatchPlayCurrentAttackResolveInitialRoute;
+	namespace InitialRouteOrchestrationFixtures =
+		FMCodex::Tests::MatchPlayCurrentAttackResolveInitialRouteOrchestration;
+
 	FPlayerCardData MakeDeckCard(
 		const FString& CardId,
 		const ECardRarity Rarity,
@@ -5789,11 +5795,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All twenty mutations use the gate"),
+	TestEqual(TEXT("All twenty-one mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		20);
+		21);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -5824,9 +5830,10 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 	TestFalse(TEXT("Mutex absent"), Production.Contains(TEXT("Mutex")));
 	TestFalse(TEXT("Async absent"), Production.Contains(TEXT("Async")));
 	TestFalse(TEXT("Future absent"), Production.Contains(TEXT("Future")));
-	TestFalse(TEXT("Provider absent"), Production.Contains(TEXT("Provider")));
-	TestFalse(TEXT("Initial Route Orchestrator absent"),
-		Production.Contains(TEXT("ResolveInitialRouteOrchestrator")));
+	TestFalse(TEXT("Direct random generation absent"),
+		Production.Contains(TEXT("FMath::Rand")));
+	TestFalse(TEXT("Session does not call RollD6 directly"),
+		Production.Contains(TEXT("RollD6(")));
 	TestFalse(TEXT("Direct CurrentAttack authority replacement absent"),
 		Implementation.Contains(TEXT("AuthoritativeState.CurrentAttack =")));
 	TestFalse(TEXT("Direct Deployment placement authority write absent"),
@@ -7215,8 +7222,6 @@ bool FMatchPlayAuthoritativeSessionResolutionFoundationBoundaryTest::RunTest(
 	TestFalse(TEXT("DeployGoalkeeper remains absent"),
 		Production.Contains(TEXT("DeployGoalkeeper")));
 	for (const TCHAR* Forbidden : {
-		TEXT("ResolveInitialRouteOrchestrator"),
-		TEXT("IMatchPlayInitialRouteRollProvider"),
 		TEXT("RollD6"),
 		TEXT("UObject"),
 		TEXT("RPC"),
@@ -9472,15 +9477,17 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Branch Intent writer"),
 			TEXT("FMatchPlayCurrentAttackBranchIntentSelectionWriter::Select(")),
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Intent-determined route writer"),
-			TEXT("FMatchPlayCurrentAttackResolveInitialRouteWriter::Resolve(")) })
+			TEXT("FMatchPlayCurrentAttackResolveInitialRouteWriter::Resolve(")),
+		TPair<const TCHAR*, const TCHAR*>(TEXT("Initial Route orchestrator"),
+			TEXT("FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(")) })
 	{
 		TestEqual(*FString::Printf(TEXT("%s has one production call"), Operation.Key),
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All twenty mutations share serialized gate"),
+	TestEqual(TEXT("All twenty-one mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		20);
+		21);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -9514,8 +9521,6 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 	}
 	const FString Production = Header + Implementation + Types;
 	for (const TCHAR* Forbidden : {
-		TEXT("ResolveInitialRouteOrchestrator"),
-		TEXT("IMatchPlayInitialRouteRollProvider"),
 		TEXT("RollD6"),
 		TEXT("UObject"),
 		TEXT("RPC"),
@@ -11266,6 +11271,385 @@ bool FMatchPlayAuthoritativeSessionResolveIntentDeterminedRouteTest::RunTest(
 	SessionA.ResolveIntentDeterminedRoute();
 	TestTrue(TEXT("Intent route resolution on A cannot mutate B"),
 		AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveInitialRouteTest,
+	"42.ResolveInitialRouteRngAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolveInitialRouteTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	static_assert(std::is_constructible_v<
+		FMatchPlayAuthoritativeSession,
+		IMatchPlayInitialRouteRollProvider&>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolveInitialRoute),
+		FMatchPlayAuthoritativeResolveInitialRouteResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeResolveInitialRouteResult
+			::OrchestrationResult),
+		FMatchPlayCurrentAttackResolveInitialRouteOrchestrationResult>);
+
+	TestEqual(TEXT("RNG Initial Route command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::ResolveInitialRoute),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::ResolveIntentDeterminedRoute) + 1);
+
+	FString Header;
+	FString Types;
+	FString Implementation;
+	TestTrue(TEXT("RNG route Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("RNG route Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	TestTrue(TEXT("RNG route Session implementation loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		Implementation));
+	TestFalse(TEXT("No public RNG route request exists"),
+		Types.Contains(TEXT("FMatchPlayAuthoritativeResolveInitialRouteRequest")));
+	TestFalse(TEXT("No public D6 gameplay input"),
+		Header.Contains(TEXT("ResolveInitialRoute(int32")));
+	TestFalse(TEXT("Session contains no D6 mapping table"),
+		Implementation.Contains(TEXT("InitialRouteD6 <="))
+			|| Implementation.Contains(TEXT("RawD6 <=")));
+	TestFalse(TEXT("Session never calls provider directly"),
+		Implementation.Contains(TEXT("RollD6(")));
+	TestFalse(TEXT("Session contains no direct randomness"),
+		Implementation.Contains(TEXT("FMath::Rand")));
+	TestEqual(TEXT("One canonical Initial Route orchestration call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(")),
+		1);
+
+	InitialRouteFixtures::FQueueRollProvider UninitializedProvider;
+	UninitializedProvider.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+	FMatchPlayAuthoritativeSession UninitializedSession(UninitializedProvider);
+	const auto Uninitialized = UninitializedSession.ResolveInitialRoute();
+	TestFalse(TEXT("Uninitialized RNG route rejected by runtime gate"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized route consumes no provider call"),
+		UninitializedProvider.GetCallCount(),
+		0);
+
+	struct FSuccessCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType ActionType;
+		EMatchPlayElectiveBranchIntent Intent;
+		int32 RawD6;
+	};
+	const FSuccessCase SuccessCases[] = {
+		{ TEXT("CrossSelected"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh, 4 },
+		{ TEXT("CrossOpposite"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh, 5 },
+		{ TEXT("Pass"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None, 2 },
+		{ TEXT("Dribble"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None, 3 },
+		{ TEXT("Run"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None, 5 },
+		{ TEXT("Feet"), ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None, 2 },
+		{ TEXT("BehindDefense"), ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None, 3 },
+		{ TEXT("AntiOffside"), ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None, 5 }
+	};
+	for (const FSuccessCase& Case : SuccessCases)
+	{
+		InitialRouteFixtures::FQueueRollProvider Provider;
+		Provider.Enqueue(InitialRouteFixtures::MakeSuccess(Case.RawD6));
+		FMatchPlayAuthoritativeSession Session(Provider);
+		FReachabilityTrace Trace;
+		TestTrue(*FString::Printf(TEXT("%s public path reaches AwaitingRoute"), Case.Label),
+			BuildStage7166ToAwaitingRoute(
+				Session,
+				FString::Printf(TEXT("RngRoute%s"), Case.Label),
+				Case.ActionType,
+				Case.Intent,
+				Trace));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore = Provider.GetCallCount();
+		const int32 RecordsBefore = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num();
+
+		InitialRouteFixtures::FQueueRollProvider CanonicalProvider;
+		CanonicalProvider.Enqueue(InitialRouteFixtures::MakeSuccess(Case.RawD6));
+		FMatchPlayCurrentAttackResolveInitialRouteOrchestrationRequest
+			CanonicalRequest;
+		CanonicalRequest.AttackSequence = Before.CurrentAttack.AttackSequence;
+		const auto Canonical =
+			FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+				Before,
+				CanonicalRequest,
+				&CanonicalProvider);
+
+		const auto Success = Session.ResolveInitialRoute();
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s canonical orchestration succeeds"), Case.Label),
+			Canonical.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s Session route succeeds"), Case.Label),
+			Success.OrchestrationResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s command kind"), Case.Label),
+			Success.RuntimeEnvelope.CommandKind,
+			EMatchPlayAuthoritativeCommandKind::ResolveInitialRoute);
+		TestEqual(*FString::Printf(TEXT("%s derives AttackSequence"), Case.Label),
+			Success.OrchestrationResult.Request.AttackSequence,
+			Before.CurrentAttack.AttackSequence);
+		TestEqual(*FString::Printf(TEXT("%s consumes exactly one provider call"), Case.Label),
+			Provider.GetCallCount() - CallsBefore,
+			1);
+		TestTrue(*FString::Printf(TEXT("%s provider called by canonical writer"), Case.Label),
+			Success.OrchestrationResult.bProviderCalled
+				&& Success.OrchestrationResult.RouteResult.bProviderCalled);
+		TestTrue(*FString::Printf(TEXT("%s exact orchestration result delegated"), Case.Label),
+			InitialRouteOrchestrationFixtures::AreResultsEqual(
+				Canonical,
+				Success.OrchestrationResult));
+		TestAdoptedSuccessEnvelope(
+			*this,
+			FString::Printf(TEXT("%s exact orchestration adoption"), Case.Label),
+			Success.RuntimeEnvelope,
+			Before,
+			Canonical.AfterState,
+			After);
+
+		const auto& ResolutionSession = After.CurrentAttack.ResolutionSession;
+		TestEqual(*FString::Printf(TEXT("%s adds exactly one roll record"), Case.Label),
+			ResolutionSession.InitialRouteRollRecords.Num() - RecordsBefore,
+			1);
+		TestEqual(*FString::Printf(TEXT("%s records provider D6"), Case.Label),
+			ResolutionSession.InitialRouteRollRecords[0].RawD6,
+			Case.RawD6);
+		TestEqual(*FString::Printf(TEXT("%s records InitialRoute purpose"), Case.Label),
+			ResolutionSession.InitialRouteRollRecords[0].Purpose,
+			EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute);
+		TestEqual(*FString::Printf(TEXT("%s reaches RouteResolved"), Case.Label),
+			ResolutionSession.Stage,
+			EMatchPlayCurrentAttackResolutionStage::RouteResolved);
+		TestTrue(*FString::Printf(TEXT("%s establishes Actual Branch"), Case.Label),
+			ResolutionSession.bHasActualBranch);
+		const FMatchPlayCurrentAttackActualBranch ExpectedBranch =
+			InitialRouteOrchestrationFixtures::MakeExpectedBranch(
+				Case.ActionType,
+				Case.Intent,
+				Case.RawD6);
+		TestTrue(*FString::Printf(TEXT("%s canonical branch mapping preserved"), Case.Label),
+			InitialRouteFixtures::AreBranchesEqual(
+				ResolutionSession.ActualBranch,
+				ExpectedBranch));
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack remains active"), Case.Label),
+			After.bHasCurrentAttack);
+
+		const int32 ReplayCallsBefore = Provider.GetCallCount();
+		const int32 ReplayRecordsBefore = ResolutionSession
+			.InitialRouteRollRecords.Num();
+		const auto Replay = Session.ResolveInitialRoute();
+		const FMatchPlayState ReplayAfter = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s replay is canonical success"), Case.Label),
+			Replay.OrchestrationResult.bSuccess);
+		TestFalse(*FString::Printf(TEXT("%s replay resolves no new route"), Case.Label),
+			Replay.OrchestrationResult.bResolvedNewRoute);
+		TestEqual(*FString::Printf(TEXT("%s replay consumes zero provider calls"), Case.Label),
+			Provider.GetCallCount() - ReplayCallsBefore,
+			0);
+		TestEqual(*FString::Printf(TEXT("%s replay adds zero roll records"), Case.Label),
+			ReplayAfter.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Num()
+				- ReplayRecordsBefore,
+			0);
+		TestAdoptedSuccessEnvelope(
+			*this,
+			FString::Printf(TEXT("%s replay exact adoption"), Case.Label),
+			Replay.RuntimeEnvelope,
+			After,
+			Replay.OrchestrationResult.AfterState,
+			ReplayAfter);
+	}
+
+	InitialRouteFixtures::FQueueRollProvider NoAttackProvider;
+	NoAttackProvider.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+	FMatchPlayAuthoritativeSession NoAttackSession(NoAttackProvider);
+	NoAttackSession.InitializeMatch(MakeValidInput(TEXT("RngRouteNoAttack")));
+	const FMatchPlayState NoAttackBefore = NoAttackSession.GetStateSnapshot();
+	const auto NoAttack = NoAttackSession.ResolveInitialRoute();
+	TestEqual(TEXT("No CurrentAttack consumes zero provider calls"),
+		NoAttackProvider.GetCallCount(),
+		0);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No CurrentAttack RNG route"),
+		NoAttack.RuntimeEnvelope,
+		NoAttackBefore,
+		NoAttackSession.GetStateSnapshot());
+
+	FMatchPlayAuthoritativeSession UnavailableSession;
+	FReachabilityTrace UnavailableTrace;
+	TestTrue(TEXT("Unavailable provider fixture reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			UnavailableSession,
+			TEXT("RngRouteUnavailable"),
+			ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh,
+			UnavailableTrace));
+	const FMatchPlayState UnavailableBefore =
+		UnavailableSession.GetStateSnapshot();
+	const auto Unavailable = UnavailableSession.ResolveInitialRoute();
+	TestEqual(TEXT("Unavailable provider canonical error"),
+		Unavailable.OrchestrationResult.RouteResult.ErrorCode,
+		EMatchPlayCurrentAttackResolveInitialRouteWriterErrorCode
+			::RngProviderUnavailable);
+	TestFalse(TEXT("Unavailable provider was not called"),
+		Unavailable.OrchestrationResult.bProviderCalled);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Unavailable provider RNG route"),
+		Unavailable.RuntimeEnvelope,
+		UnavailableBefore,
+		UnavailableSession.GetStateSnapshot());
+
+	InitialRouteFixtures::FQueueRollProvider FailureProvider;
+	FailureProvider.Enqueue(InitialRouteFixtures::MakeFailure());
+	FMatchPlayAuthoritativeSession FailureSession(FailureProvider);
+	FReachabilityTrace FailureTrace;
+	TestTrue(TEXT("Provider failure fixture reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			FailureSession,
+			TEXT("RngRouteProviderFailure"),
+			ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None,
+			FailureTrace));
+	const FMatchPlayState FailureBefore = FailureSession.GetStateSnapshot();
+	const auto ProviderFailure = FailureSession.ResolveInitialRoute();
+	TestEqual(TEXT("Provider failure consumes exactly one call"),
+		FailureProvider.GetCallCount(),
+		1);
+	TestEqual(TEXT("Provider failure canonical error"),
+		ProviderFailure.OrchestrationResult.RouteResult.ErrorCode,
+		EMatchPlayCurrentAttackResolveInitialRouteWriterErrorCode
+			::RngProviderFailed);
+	TestTrue(TEXT("Provider failure reports provider called"),
+		ProviderFailure.OrchestrationResult.bProviderCalled);
+	TestTrue(TEXT("Provider failure creates no roll record"),
+		ProviderFailure.OrchestrationResult.RouteResult
+			.InitialRouteRollRecords.IsEmpty());
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Provider failure RNG route"),
+		ProviderFailure.RuntimeEnvelope,
+		FailureBefore,
+		FailureSession.GetStateSnapshot());
+
+	InitialRouteFixtures::FQueueRollProvider ShotProvider;
+	ShotProvider.Enqueue(InitialRouteFixtures::MakeSuccess(6));
+	FMatchPlayAuthoritativeSession ShotSession(ShotProvider);
+	FReachabilityTrace ShotTrace;
+	TestTrue(TEXT("LongShot fixture reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			ShotSession,
+			TEXT("RngRouteLongShot"),
+			ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DirectShot,
+			ShotTrace));
+	const auto ShotResult = ShotSession.ResolveInitialRoute();
+	TestTrue(TEXT("LongShot remains canonically resolvable"),
+		ShotResult.OrchestrationResult.bSuccess);
+	TestEqual(TEXT("LongShot consumes zero provider calls"),
+		ShotProvider.GetCallCount(),
+		0);
+	TestTrue(TEXT("LongShot creates no Initial Route roll"),
+		ShotSession.GetStateSnapshot().CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.IsEmpty());
+
+	InitialRouteFixtures::FQueueRollProvider CutInsideProvider;
+	CutInsideProvider.Enqueue(InitialRouteFixtures::MakeSuccess(1));
+	FMatchPlayAuthoritativeSession CutInsideSession(CutInsideProvider);
+	FReachabilityTrace CutInsideTrace;
+	TestTrue(TEXT("CutInsideShot fixture reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			CutInsideSession,
+			TEXT("RngRouteCutInsideShot"),
+			ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DeadCorner,
+			CutInsideTrace));
+	const auto CutInsideResult = CutInsideSession.ResolveInitialRoute();
+	TestTrue(TEXT("CutInsideShot remains canonically resolvable"),
+		CutInsideResult.OrchestrationResult.bSuccess);
+	TestEqual(TEXT("CutInsideShot consumes zero provider calls"),
+		CutInsideProvider.GetCallCount(),
+		0);
+	TestTrue(TEXT("CutInsideShot creates no Initial Route roll"),
+		CutInsideSession.GetStateSnapshot().CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.IsEmpty());
+
+	InitialRouteFixtures::FQueueRollProvider IsolationProviderA;
+	InitialRouteFixtures::FQueueRollProvider IsolationProviderB;
+	IsolationProviderA.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+	IsolationProviderB.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FMatchPlayAuthoritativeSession IsolationA(IsolationProviderA);
+	FMatchPlayAuthoritativeSession IsolationB(IsolationProviderB);
+	FReachabilityTrace IsolationTraceA;
+	FReachabilityTrace IsolationTraceB;
+	TestTrue(TEXT("RNG isolation A reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			IsolationA, TEXT("RngIsolationA"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh, IsolationTraceA));
+	TestTrue(TEXT("RNG isolation B reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			IsolationB, TEXT("RngIsolationB"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh, IsolationTraceB));
+	const FMatchPlayState IsolationBBefore = IsolationB.GetStateSnapshot();
+	IsolationA.ResolveInitialRoute();
+	TestEqual(TEXT("Session A consumes only provider A"),
+		IsolationProviderA.GetCallCount(),
+		1);
+	TestEqual(TEXT("Session A does not consume provider B"),
+		IsolationProviderB.GetCallCount(),
+		0);
+	TestTrue(TEXT("Session A does not mutate Session B"),
+		AreStatesEqual(IsolationBBefore, IsolationB.GetStateSnapshot()));
+
+	InitialRouteFixtures::FQueueRollProvider DeterministicProviderA;
+	InitialRouteFixtures::FQueueRollProvider DeterministicProviderB;
+	DeterministicProviderA.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+	DeterministicProviderB.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+	FMatchPlayAuthoritativeSession DeterministicA(DeterministicProviderA);
+	FMatchPlayAuthoritativeSession DeterministicB(DeterministicProviderB);
+	FReachabilityTrace DeterministicTraceA;
+	FReachabilityTrace DeterministicTraceB;
+	TestTrue(TEXT("RNG determinism A reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			DeterministicA, TEXT("RngDeterminism"),
+			ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None,
+			DeterministicTraceA));
+	TestTrue(TEXT("RNG determinism B reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			DeterministicB, TEXT("RngDeterminism"),
+			ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None,
+			DeterministicTraceB));
+	const auto DeterministicResultA = DeterministicA.ResolveInitialRoute();
+	const auto DeterministicResultB = DeterministicB.ResolveInitialRoute();
+	TestTrue(TEXT("Identical provider rolls produce equal orchestration"),
+		InitialRouteOrchestrationFixtures::AreResultsEqual(
+			DeterministicResultA.OrchestrationResult,
+			DeterministicResultB.OrchestrationResult));
+	TestTrue(TEXT("Identical provider rolls produce equal final State"),
+		AreStatesEqual(
+			DeterministicA.GetStateSnapshot(),
+			DeterministicB.GetStateSnapshot()));
+	TestEqual(TEXT("Deterministic providers each called once"),
+		DeterministicProviderA.GetCallCount()
+			+ DeterministicProviderB.GetCallCount(),
+		2);
 	return true;
 }
 

@@ -8,6 +8,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackHelperSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionWriter.h"
+#include "../CoreRules/MatchPlayCurrentAttackResolveInitialRouteOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveInitialRouteWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionWriter.h"
@@ -47,7 +48,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	DeclineHelper,
 	BeginResolutionSession,
 	SubmitBranchIntent,
-	ResolveIntentDeterminedRoute
+	ResolveIntentDeterminedRoute,
+	ResolveInitialRoute
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -279,6 +281,13 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveInitialRouteWriterResult RouteResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveInitialRouteResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveInitialRouteOrchestrationResult
+		OrchestrationResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeStateAdoptionResult

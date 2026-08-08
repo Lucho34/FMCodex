@@ -8,6 +8,8 @@ class FMCODEX_API FMatchPlayAuthoritativeSession final
 {
 public:
 	FMatchPlayAuthoritativeSession();
+	explicit FMatchPlayAuthoritativeSession(
+		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider);
 	~FMatchPlayAuthoritativeSession();
 
 	FMatchPlayAuthoritativeInitializeMatchResult InitializeMatch(
@@ -73,6 +75,8 @@ public:
 	FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult
 	ResolveIntentDeterminedRoute();
 
+	FMatchPlayAuthoritativeResolveInitialRouteResult ResolveInitialRoute();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
@@ -102,5 +106,6 @@ private:
 		TExecuteDomain&& ExecuteDomain);
 
 	FMatchPlayState AuthoritativeState;
+	IMatchPlayInitialRouteRollProvider* InitialRouteRollProvider = nullptr;
 	bool bExecutingCommand = false;
 };

@@ -45,6 +45,12 @@ FMatchPlayAuthoritativeStateAdoptionPolicy::Apply(
 
 FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession() = default;
 
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider)
+	: InitialRouteRollProvider(&InInitialRouteRollProvider)
+{
+}
+
 FMatchPlayAuthoritativeSession::~FMatchPlayAuthoritativeSession() = default;
 
 template <typename TTypedResult, typename TExecuteDomain>
@@ -793,6 +799,41 @@ FMatchPlayAuthoritativeSession::ResolveIntentDeterminedRoute()
 			Execution.bSuccess = Result.RouteResult.bSuccess;
 			Execution.CandidateAfterState = Result.RouteResult.AfterState;
 			Execution.StateDisposition = Result.RouteResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveInitialRouteResult
+FMatchPlayAuthoritativeSession::ResolveInitialRoute()
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<FMatchPlayAuthoritativeResolveInitialRouteResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveInitialRoute,
+		true,
+		AttackSequence,
+		[this, AttackSequence](
+			FMatchPlayAuthoritativeResolveInitialRouteResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveInitialRouteOrchestrationRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+					BeforeState,
+					DomainRequest,
+					InitialRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
 			Execution.AttackSequence = AttackSequence;
