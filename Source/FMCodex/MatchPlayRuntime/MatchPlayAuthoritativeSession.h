@@ -70,6 +70,9 @@ public:
 	FMatchPlayAuthoritativeSubmitBranchIntentResult SubmitBranchIntent(
 		const FMatchPlayAuthoritativeSubmitBranchIntentRequest& Request);
 
+	FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult
+	ResolveIntentDeterminedRoute();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:

@@ -1814,7 +1814,8 @@ namespace MatchPlayAuthoritativeSessionTests
 	bool BuildStage7164ToReadyForResolution(
 		FMatchPlayAuthoritativeSession& Session,
 		const FString& Prefix,
-		FReachabilityTrace& OutTrace)
+		FReachabilityTrace& OutTrace,
+		const ESkillRuleType SkillType = ESkillRuleType::PassControl)
 	{
 		FName HelperCardId;
 		if (!BuildStage7163ToAwaitingHelper(
@@ -1822,7 +1823,8 @@ namespace MatchPlayAuthoritativeSessionTests
 			Prefix,
 			true,
 			OutTrace,
-			HelperCardId))
+			HelperCardId,
+			SkillType))
 		{
 			return false;
 		}
@@ -1909,6 +1911,60 @@ namespace MatchPlayAuthoritativeSessionTests
 				== SkillType
 			&& !State.CurrentAttack.bHasSelectedAction
 			&& !State.CurrentAttack.bHasResolutionSession;
+	}
+
+	bool BuildStage7166ToAwaitingRoute(
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType SkillType,
+		const EMatchPlayElectiveBranchIntent Intent,
+		FReachabilityTrace& OutTrace)
+	{
+		if (SkillType == ESkillRuleType::LongShot
+			|| SkillType == ESkillRuleType::CutInsideShot
+			|| SkillType == ESkillRuleType::Cross)
+		{
+			if (!BuildStage7165ToAwaitingBranchIntent(
+				Session,
+				Prefix,
+				SkillType,
+				OutTrace))
+			{
+				return false;
+			}
+
+			FMatchPlayAuthoritativeSubmitBranchIntentRequest IntentRequest;
+			IntentRequest.RequestingSide = OutTrace.AttackingSide;
+			IntentRequest.Intent = Intent;
+			if (!Session.SubmitBranchIntent(IntentRequest).IntentResult.bSuccess)
+			{
+				return false;
+			}
+		}
+		else if (SkillType == ESkillRuleType::PassControl
+			|| SkillType == ESkillRuleType::ThroughBall)
+		{
+			if (!BuildStage7164ToReadyForResolution(
+				Session,
+				Prefix,
+				OutTrace,
+				SkillType))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+
+		const auto BeginResult = Session.BeginResolutionSession();
+		const FMatchPlayState State = Session.GetStateSnapshot();
+		return BeginResult.BeginResult.bSuccess
+			&& State.bHasCurrentAttack
+			&& State.CurrentAttack.bHasResolutionSession
+			&& State.CurrentAttack.ResolutionSession.Stage
+				== EMatchPlayCurrentAttackResolutionStage::AwaitingRoute;
 	}
 
 	void TestAwaitingMarkerEndpoint(
@@ -5733,11 +5789,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All nineteen mutations use the gate"),
+	TestEqual(TEXT("All twenty mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		19);
+		20);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9414,15 +9470,17 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Resolution Session begin"),
 			TEXT("FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(")),
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Branch Intent writer"),
-			TEXT("FMatchPlayCurrentAttackBranchIntentSelectionWriter::Select(")) })
+			TEXT("FMatchPlayCurrentAttackBranchIntentSelectionWriter::Select(")),
+		TPair<const TCHAR*, const TCHAR*>(TEXT("Intent-determined route writer"),
+			TEXT("FMatchPlayCurrentAttackResolveInitialRouteWriter::Resolve(")) })
 	{
 		TestEqual(*FString::Printf(TEXT("%s has one production call"), Operation.Key),
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All nineteen mutations share serialized gate"),
+	TestEqual(TEXT("All twenty mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		19);
+		20);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -10899,6 +10957,314 @@ bool FMatchPlayAuthoritativeSessionSubmitBranchIntentTest::RunTest(
 	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
 	SessionA.SubmitBranchIntent(IsolationRequest);
 	TestTrue(TEXT("SubmitBranchIntent on A cannot mutate B"),
+		AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveIntentDeterminedRouteTest,
+	"41.ResolveIntentDeterminedRouteAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolveIntentDeterminedRouteTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolveIntentDeterminedRoute),
+		FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult
+			::RouteResult),
+		FMatchPlayCurrentAttackResolveInitialRouteWriterResult>);
+
+	TestEqual(TEXT("Intent-determined route command appended"),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::ResolveIntentDeterminedRoute),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent) + 1);
+
+	FString Header;
+	FString Types;
+	FString Implementation;
+	TestTrue(TEXT("Intent route Session header loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+			Header));
+	TestTrue(TEXT("Intent route Session types load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+			Types));
+	TestTrue(TEXT("Intent route Session implementation loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+			Implementation));
+	TestTrue(TEXT("No public intent route request is introduced"),
+		!Types.Contains(
+			TEXT("FMatchPlayAuthoritativeResolveIntentDeterminedRouteRequest")));
+	TestFalse(TEXT("No route mapping is duplicated in Session"),
+		Implementation.Contains(TEXT("EMatchPlayLongShotActualBranch"))
+			|| Implementation.Contains(TEXT("EMatchPlayCutInsideShotActualBranch")));
+	TestEqual(TEXT("One canonical no-provider writer call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayCurrentAttackResolveInitialRouteWriter::Resolve(")),
+		1);
+
+	const auto Uninitialized =
+		FMatchPlayAuthoritativeSession().ResolveIntentDeterminedRoute();
+	TestFalse(TEXT("Uninitialized intent route rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized intent route runtime error"),
+		Uninitialized.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+
+	struct FSuccessCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType ActionType;
+		EMatchPlayElectiveBranchIntent Intent;
+	};
+	const FSuccessCase SuccessCases[] = {
+		{ TEXT("LongShotDirect"), ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DirectShot },
+		{ TEXT("LongShotDeadCorner"), ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DeadCorner },
+		{ TEXT("CutInsideDirect"), ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DirectShot },
+		{ TEXT("CutInsideDeadCorner"), ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DeadCorner }
+	};
+	for (const FSuccessCase& Case : SuccessCases)
+	{
+		FMatchPlayAuthoritativeSession Session;
+		FReachabilityTrace Trace;
+		TestTrue(*FString::Printf(TEXT("%s public path reaches AwaitingRoute"), Case.Label),
+			BuildStage7166ToAwaitingRoute(
+				Session,
+				FString::Printf(TEXT("IntentRoute%s"), Case.Label),
+				Case.ActionType,
+				Case.Intent,
+				Trace));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		FMatchPlayCurrentAttackResolveInitialRouteRequest DomainRequest;
+		DomainRequest.AttackSequence = Before.CurrentAttack.AttackSequence;
+		const auto Canonical =
+			FMatchPlayCurrentAttackResolveInitialRouteWriter::Resolve(
+				Before,
+				DomainRequest,
+				nullptr);
+		const auto Success = Session.ResolveIntentDeterminedRoute();
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s canonical writer succeeds without provider"), Case.Label),
+			Canonical.bSuccess);
+		TestFalse(*FString::Printf(TEXT("%s canonical writer does not call provider"), Case.Label),
+			Canonical.bProviderCalled);
+		TestTrue(*FString::Printf(TEXT("%s route command succeeds"), Case.Label),
+			Success.RouteResult.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s resolves a new route"), Case.Label),
+			Success.RouteResult.bResolvedNewRoute);
+		TestEqual(*FString::Printf(TEXT("%s command kind"), Case.Label),
+			Success.RuntimeEnvelope.CommandKind,
+			EMatchPlayAuthoritativeCommandKind::ResolveIntentDeterminedRoute);
+		TestEqual(*FString::Printf(TEXT("%s sequence derived"), Case.Label),
+			Success.RouteResult.Request.AttackSequence,
+			Before.CurrentAttack.AttackSequence);
+		TestFalse(*FString::Printf(TEXT("%s has no provider call"), Case.Label),
+			Success.RouteResult.bProviderCalled);
+		TestFalse(*FString::Printf(TEXT("%s requires no D6"), Case.Label),
+			Success.RouteResult.GlobalContextResult.bRequiresInitialRouteD6);
+		TestTrue(*FString::Printf(TEXT("%s creates no D6 record"), Case.Label),
+			Success.RouteResult.InitialRouteRollRecords.IsEmpty());
+		TestTrue(*FString::Printf(TEXT("%s writer receives exact BeforeState"), Case.Label),
+			AreStatesEqual(Canonical.BeforeState, Success.RouteResult.BeforeState));
+		TestTrue(*FString::Printf(TEXT("%s writer produces exact AfterState"), Case.Label),
+			AreStatesEqual(Canonical.AfterState, Success.RouteResult.AfterState));
+		TestTrue(*FString::Printf(TEXT("%s delegates canonical Actual Branch"), Case.Label),
+			AreReflectedValuesEqual(
+				Canonical.ActualBranch,
+				Success.RouteResult.ActualBranch));
+		TestEqual(*FString::Printf(TEXT("%s delegates canonical mapping action"), Case.Label),
+			Success.RouteResult.MappingResult.ActualBranch.ActionType,
+			Canonical.MappingResult.ActualBranch.ActionType);
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack remains active"), Case.Label),
+			After.bHasCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s selection remains ready"), Case.Label),
+			After.CurrentAttack.SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
+		TestEqual(*FString::Printf(TEXT("%s route stage is canonical"), Case.Label),
+			After.CurrentAttack.ResolutionSession.Stage,
+			EMatchPlayCurrentAttackResolutionStage::RouteResolved);
+		TestTrue(*FString::Printf(TEXT("%s has Actual Branch"), Case.Label),
+			After.CurrentAttack.ResolutionSession.bHasActualBranch);
+		TestTrue(*FString::Printf(TEXT("%s state has no Initial Route D6 record"), Case.Label),
+			After.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
+		TestAdoptedSuccessEnvelope(
+			*this,
+			FString::Printf(TEXT("%s exact route adoption"), Case.Label),
+			Success.RuntimeEnvelope,
+			Before,
+			Canonical.AfterState,
+			After);
+
+		const auto Replay = Session.ResolveIntentDeterminedRoute();
+		TestTrue(*FString::Printf(TEXT("%s replay preserves canonical idempotence"), Case.Label),
+			Replay.RouteResult.bSuccess);
+		TestFalse(*FString::Printf(TEXT("%s replay does not resolve anew"), Case.Label),
+			Replay.RouteResult.bResolvedNewRoute);
+		TestFalse(*FString::Printf(TEXT("%s replay does not call provider"), Case.Label),
+			Replay.RouteResult.bProviderCalled);
+		TestAdoptedSuccessEnvelope(
+			*this,
+			FString::Printf(TEXT("%s replay exact adoption"), Case.Label),
+			Replay.RuntimeEnvelope,
+			After,
+			Replay.RouteResult.AfterState,
+			Session.GetStateSnapshot());
+	}
+
+	FMatchPlayAuthoritativeSession NoCurrentAttackSession;
+	NoCurrentAttackSession.InitializeMatch(MakeValidInput(TEXT("IntentRouteNoAttack")));
+	const FMatchPlayState NoCurrentAttackBefore = NoCurrentAttackSession.GetStateSnapshot();
+	const auto NoCurrentAttack =
+		NoCurrentAttackSession.ResolveIntentDeterminedRoute();
+	TestEqual(TEXT("No CurrentAttack has canonical global error"),
+		NoCurrentAttack.RouteResult.GlobalContextResult.ErrorCode,
+		EMatchPlayCurrentAttackResolveInitialRouteGlobalContextErrorCode
+			::NoCurrentAttack);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No CurrentAttack intent route"),
+		NoCurrentAttack.RuntimeEnvelope,
+		NoCurrentAttackBefore,
+		NoCurrentAttackSession.GetStateSnapshot());
+
+	FMatchPlayAuthoritativeSession NoResolutionSession;
+	FReachabilityTrace NoResolutionTrace;
+	TestTrue(TEXT("No Resolution Session fixture reaches ReadyForResolution"),
+		BuildStage7164ToReadyForResolution(
+			NoResolutionSession,
+			TEXT("IntentRouteNoResolutionSession"),
+			NoResolutionTrace));
+	const FMatchPlayState NoResolutionBefore =
+		NoResolutionSession.GetStateSnapshot();
+	const auto NoResolution =
+		NoResolutionSession.ResolveIntentDeterminedRoute();
+	TestEqual(TEXT("No Resolution Session has canonical global error"),
+		NoResolution.RouteResult.GlobalContextResult.ErrorCode,
+		EMatchPlayCurrentAttackResolveInitialRouteGlobalContextErrorCode
+			::NoResolutionSession);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("No Resolution Session intent route"),
+		NoResolution.RuntimeEnvelope,
+		NoResolutionBefore,
+		NoResolutionSession.GetStateSnapshot());
+
+	struct FRngActionCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType ActionType;
+		EMatchPlayElectiveBranchIntent Intent;
+	};
+	const FRngActionCase RngActionCases[] = {
+		{ TEXT("Cross"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh },
+		{ TEXT("PassControl"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None },
+		{ TEXT("ThroughBall"), ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None }
+	};
+	for (const FRngActionCase& Case : RngActionCases)
+	{
+		FMatchPlayAuthoritativeSession Session;
+		FReachabilityTrace Trace;
+		TestTrue(*FString::Printf(TEXT("%s reaches AwaitingRoute"), Case.Label),
+			BuildStage7166ToAwaitingRoute(
+				Session,
+				FString::Printf(TEXT("IntentRouteReject%s"), Case.Label),
+				Case.ActionType,
+				Case.Intent,
+				Trace));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ResolveIntentDeterminedRoute();
+		TestEqual(*FString::Printf(TEXT("%s requires canonical D6 provider"), Case.Label),
+			Rejected.RouteResult.ErrorCode,
+			EMatchPlayCurrentAttackResolveInitialRouteWriterErrorCode
+				::RngProviderUnavailable);
+		TestEqual(*FString::Printf(TEXT("%s failure is retryable"), Case.Label),
+			Rejected.RouteResult.FailureDisposition,
+			EMatchPlayCurrentAttackResolveInitialRouteFailureDisposition
+				::RetryableExecutionFailure);
+		TestFalse(*FString::Printf(TEXT("%s no provider was called"), Case.Label),
+			Rejected.RouteResult.bProviderCalled);
+		TestAcceptedDomainFailureNoAdopt(
+			*this,
+			FString::Printf(TEXT("%s no-provider route rejection"), Case.Label),
+			Rejected.RuntimeEnvelope,
+			Before,
+			Session.GetStateSnapshot());
+	}
+
+	TArray<FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult> Results;
+	TArray<FMatchPlayState> FinalStates;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FMatchPlayAuthoritativeSession Session;
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Intent route determinism fixture reaches AwaitingRoute"),
+			BuildStage7166ToAwaitingRoute(
+				Session,
+				TEXT("IntentRouteDeterminism"),
+				ESkillRuleType::LongShot,
+				EMatchPlayElectiveBranchIntent::DeadCorner,
+				Trace));
+		Results.Add(Session.ResolveIntentDeterminedRoute());
+		FinalStates.Add(Session.GetStateSnapshot());
+	}
+	for (int32 Index = 1; Index < Results.Num(); ++Index)
+	{
+		TestTrue(TEXT("Intent route envelope deterministic"),
+			AreEnvelopesEqual(
+				Results[0].RuntimeEnvelope,
+				Results[Index].RuntimeEnvelope));
+		TestTrue(TEXT("Intent route writer BeforeState deterministic"),
+			AreStatesEqual(
+				Results[0].RouteResult.BeforeState,
+				Results[Index].RouteResult.BeforeState));
+		TestTrue(TEXT("Intent route writer AfterState deterministic"),
+			AreStatesEqual(
+				Results[0].RouteResult.AfterState,
+				Results[Index].RouteResult.AfterState));
+		TestTrue(TEXT("Intent route Actual Branch deterministic"),
+			AreReflectedValuesEqual(
+				Results[0].RouteResult.ActualBranch,
+				Results[Index].RouteResult.ActualBranch));
+		TestTrue(TEXT("Intent route final state deterministic"),
+			AreStatesEqual(FinalStates[0], FinalStates[Index]));
+	}
+
+	FMatchPlayAuthoritativeSession SessionA;
+	FMatchPlayAuthoritativeSession SessionB;
+	FReachabilityTrace TraceA;
+	FReachabilityTrace TraceB;
+	TestTrue(TEXT("Intent route isolation A reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			SessionA,
+			TEXT("IntentRouteIsolationA"),
+			ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DirectShot,
+			TraceA));
+	TestTrue(TEXT("Intent route isolation B reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			SessionB,
+			TEXT("IntentRouteIsolationB"),
+			ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DirectShot,
+			TraceB));
+	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
+	SessionA.ResolveIntentDeterminedRoute();
+	TestTrue(TEXT("Intent route resolution on A cannot mutate B"),
 		AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
 	return true;
 }

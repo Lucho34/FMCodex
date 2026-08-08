@@ -766,6 +766,40 @@ FMatchPlayAuthoritativeSession::SubmitBranchIntent(
 		});
 }
 
+FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult
+FMatchPlayAuthoritativeSession::ResolveIntentDeterminedRoute()
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveIntentDeterminedRoute,
+		true,
+		AttackSequence,
+		[AttackSequence](
+			FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveInitialRouteRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			Result.RouteResult =
+				FMatchPlayCurrentAttackResolveInitialRouteWriter::Resolve(
+					BeforeState,
+					DomainRequest,
+					nullptr);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.RouteResult.bSuccess;
+			Execution.CandidateAfterState = Result.RouteResult.AfterState;
+			Execution.StateDisposition = Result.RouteResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayState FMatchPlayAuthoritativeSession::GetStateSnapshot() const
 {
 	return AuthoritativeState;
