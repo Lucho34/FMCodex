@@ -90,6 +90,9 @@ public:
 	FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
 	ResolvePassControlPostRoutePlan();
 
+	FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionResult
+	ResolveDeadCornerPostRouteDecision();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:

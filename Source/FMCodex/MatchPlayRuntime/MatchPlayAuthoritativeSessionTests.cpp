@@ -6021,11 +6021,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All twenty-four mutations use the gate"),
+	TestEqual(TEXT("All twenty-five mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		24);
+		25);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9711,9 +9711,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All twenty-four mutations share serialized gate"),
+	TestEqual(TEXT("All twenty-five mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		24);
+		25);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -13326,6 +13326,479 @@ bool FMatchPlayAuthoritativeSessionResolvePassControlPostRoutePlanTest
 			DeterministicResultB.OrchestrationResult.RunAdvanceResult
 				.FormulaPlan.DefenderQueryInput));
 	TestTrue(TEXT("PassControl deterministic final States equal"),
+		AreStatesEqual(
+			DeterministicA.GetStateSnapshot(),
+			DeterministicB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveDeadCornerPostRouteDecisionTest,
+	"46.ResolveDeadCornerPostRouteDecisionAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolveDeadCornerPostRouteDecisionTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using EError =
+		EMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionErrorCode;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveDeadCornerPostRouteDecision),
+		FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	TestEqual(TEXT("DeadCorner command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveDeadCornerPostRouteDecision),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolvePassControlPostRoutePlan) + 1);
+
+	FString Header;
+	FString Types;
+	FString Implementation;
+	TestTrue(TEXT("DeadCorner Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("DeadCorner Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	TestTrue(TEXT("DeadCorner Session implementation loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+			Implementation));
+	TestFalse(TEXT("No public DeadCorner gameplay request exists"),
+		Types.Contains(TEXT(
+			"FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionRequest")));
+	TestTrue(TEXT("DeadCorner command has no gameplay arguments"),
+		Header.Contains(TEXT("ResolveDeadCornerPostRouteDecision();")));
+	TestFalse(TEXT("Session does not call provider directly"),
+		Implementation.Contains(TEXT("RollD6(")));
+	TestEqual(TEXT("One canonical DeadCorner orchestration call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator")),
+		1);
+
+	auto MakeSkillId = [](const FString& Prefix, const ESkillRuleType Action)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(Action)));
+	};
+	auto ReachDeadCorner = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType Action)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				Action,
+				EMatchPlayElectiveBranchIntent::DeadCorner,
+				Trace)
+			&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess;
+	};
+	auto MakeDirectSnapshots = [](const FMatchPlayState& State)
+	{
+		FPlayerCardRuleSnapshotSet Snapshots;
+		const auto& Bundle = State.CurrentAttack.ResolutionSession.Bundle;
+		const auto Query =
+			FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+				State.CardSnapshotAuthority,
+				Bundle.Carrier.Side,
+				Bundle.Carrier.CardId);
+		Snapshots.Cards.Add(Query.Snapshot);
+		return Snapshots;
+	};
+	auto PopulateDirectInput = [](const FMatchPlayState& State, auto& Input)
+	{
+		const auto& Attack = State.CurrentAttack;
+		const auto& Session = Attack.ResolutionSession;
+		const auto& Bundle = Session.Bundle;
+		const auto& Records = Session.PostRouteRollProgress.RollRecords;
+		Input.SkillId = Bundle.Binding.SkillId;
+		Input.AttackerCardId = Bundle.Carrier.CardId;
+		Input.CurrentActionPoint = Attack.ActionPoint;
+		Input.bHasExternalAttackD6A = true;
+		Input.ExternalAttackD6A = Records[0].RawD6;
+		Input.bHasExternalAttackD6B = true;
+		Input.ExternalAttackD6B = Records[1].RawD6;
+		const uint64 Sequence = static_cast<uint64>(Session.AttackSequence);
+		Input.LogId = FGuid(
+			0x44434F52,
+			static_cast<uint32>(Sequence >> 32),
+			static_cast<uint32>(Sequence),
+			0x44454349);
+		Input.TurnIndex = static_cast<int32>(Session.AttackSequence - 1);
+		Input.AttackerPlayerId = Bundle.Carrier.Side
+			== EInitialTurnOrderPlayer::PlayerA
+			? FName(TEXT("PlayerA"))
+			: FName(TEXT("PlayerB"));
+	};
+
+	InitialRouteFixtures::FQueueRollProvider UninitializedInitial;
+	FQueuePostRouteRollProvider UninitializedPost;
+	const FSkillRuleSnapshotSet UninitializedRules = MakeSkillRuleSet(
+		TEXT("Skill.DeadCorner.Uninitialized"), ESkillRuleType::LongShot);
+	FMatchPlayAuthoritativeSession UninitializedSession(
+		UninitializedInitial, UninitializedPost, UninitializedRules);
+	const auto Uninitialized =
+		UninitializedSession.ResolveDeadCornerPostRouteDecision();
+	TestFalse(TEXT("Uninitialized DeadCorner command rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized DeadCorner consumes no rolls"),
+		UninitializedPost.GetCallCount(), 0);
+
+	struct FDecisionCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType Action;
+		int32 RollA;
+		int32 RollB;
+		bool bGoal;
+	};
+	const FDecisionCase Cases[] = {
+		{ TEXT("LongShotGoal"), ESkillRuleType::LongShot, 6, 5, true },
+		{ TEXT("LongShotMiss"), ESkillRuleType::LongShot, 1, 2, false },
+		{ TEXT("CutInsideGoal"), ESkillRuleType::CutInsideShot, 6, 6, true },
+		{ TEXT("CutInsideMiss"), ESkillRuleType::CutInsideShot, 2, 3, false }
+	};
+	for (const FDecisionCase& Case : Cases)
+	{
+		const FString Prefix = FString(TEXT("DeadCorner")) + Case.Label;
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakeSkillId(Prefix, Case.Action), Case.Action);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(Case.RollA));
+		Post.Enqueue(MakePostRouteSuccess(Case.RollB));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches DeadCorner publicly"), Case.Label),
+			ReachDeadCorner(Session, Prefix, Case.Action));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 InitialRecordCount = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num();
+		const auto Operation = Session.ResolveDeadCornerPostRouteDecision();
+		const auto& Orchestration = Operation.OrchestrationResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		const auto& Resolution = After.CurrentAttack.ResolutionSession;
+		const auto& Records = Resolution.PostRouteRollProgress.RollRecords;
+		TestTrue(*FString::Printf(TEXT("%s succeeds"), Case.Label),
+			Orchestration.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s provider calls"), Case.Label),
+			Post.GetCallCount(), 2);
+		TestEqual(*FString::Printf(TEXT("%s purpose A"), Case.Label),
+			Post.GetPurposes()[0], EPurpose::PairedAttackA);
+		TestEqual(*FString::Printf(TEXT("%s purpose B"), Case.Label),
+			Post.GetPurposes()[1], EPurpose::PairedAttackB);
+		TestEqual(*FString::Printf(TEXT("%s record count"), Case.Label),
+			Records.Num(), 2);
+		TestEqual(*FString::Printf(TEXT("%s record A"), Case.Label),
+			Records[0].Purpose, EPurpose::PairedAttackA);
+		TestEqual(*FString::Printf(TEXT("%s record B"), Case.Label),
+			Records[1].Purpose, EPurpose::PairedAttackB);
+		TestEqual(*FString::Printf(TEXT("%s record A value"), Case.Label),
+			Records[0].RawD6, Case.RollA);
+		TestEqual(*FString::Printf(TEXT("%s record B value"), Case.Label),
+			Records[1].RawD6, Case.RollB);
+		TestEqual(*FString::Printf(TEXT("%s preserves initial records"), Case.Label),
+			Resolution.InitialRouteRollRecords.Num(), InitialRecordCount);
+		TestTrue(*FString::Printf(TEXT("%s preserves active attack"), Case.Label),
+			After.bHasCurrentAttack
+				&& Resolution.Stage
+					== EMatchPlayCurrentAttackResolutionStage::RouteResolved);
+		TestTrue(*FString::Printf(TEXT("%s exact AfterState"), Case.Label),
+			AreStatesEqual(After, Orchestration.AfterState));
+		const FPlayerCardRuleSnapshotSet DirectSnapshots =
+			MakeDirectSnapshots(After);
+		if (Case.Action == ESkillRuleType::LongShot)
+		{
+			FLongShotDeadCornerDecisionQueryInput DirectInput;
+			PopulateDirectInput(After, DirectInput);
+			const auto Direct = FLongShotDeadCornerDecisionQuery::Evaluate(
+				DirectSnapshots, Rules, DirectInput);
+			TestTrue(*FString::Printf(TEXT("%s direct equivalence"), Case.Label),
+				Direct.bSuccess
+					&& Direct.Input.SkillId == Orchestration.LongShotInput.SkillId
+					&& Direct.Input.AttackerCardId
+						== Orchestration.LongShotInput.AttackerCardId
+					&& Direct.Input.CurrentActionPoint
+						== Orchestration.LongShotInput.CurrentActionPoint
+					&& Direct.Input.bHasExternalAttackD6A
+						== Orchestration.LongShotInput.bHasExternalAttackD6A
+					&& Direct.Input.ExternalAttackD6A
+						== Orchestration.LongShotInput.ExternalAttackD6A
+					&& Direct.Input.bHasExternalAttackD6B
+						== Orchestration.LongShotInput.bHasExternalAttackD6B
+					&& Direct.Input.ExternalAttackD6B
+						== Orchestration.LongShotInput.ExternalAttackD6B
+					&& Direct.Input.LogId == Orchestration.LongShotInput.LogId
+					&& Direct.Input.TurnIndex
+						== Orchestration.LongShotInput.TurnIndex
+					&& Direct.Input.AttackerPlayerId
+						== Orchestration.LongShotInput.AttackerPlayerId
+					&& Direct.Decision == Orchestration.LongShotResult.Decision
+					&& Direct.bIsGoal == Orchestration.LongShotResult.bIsGoal
+					&& Direct.bAttackEnded == Orchestration.LongShotResult.bAttackEnded);
+			TestEqual(*FString::Printf(TEXT("%s goal decision"), Case.Label),
+				Orchestration.LongShotResult.bIsGoal, Case.bGoal);
+		}
+		else
+		{
+			FCutInsideShotDeadCornerDecisionQueryInput DirectInput;
+			PopulateDirectInput(After, DirectInput);
+			const auto Direct = FCutInsideShotDeadCornerDecisionQuery::Evaluate(
+				DirectSnapshots, Rules, DirectInput);
+			TestTrue(*FString::Printf(TEXT("%s direct equivalence"), Case.Label),
+				Direct.bSuccess
+					&& Direct.Input.SkillId == Orchestration.CutInsideShotInput.SkillId
+					&& Direct.Input.AttackerCardId
+						== Orchestration.CutInsideShotInput.AttackerCardId
+					&& Direct.Input.CurrentActionPoint
+						== Orchestration.CutInsideShotInput.CurrentActionPoint
+					&& Direct.Input.bHasExternalAttackD6A
+						== Orchestration.CutInsideShotInput.bHasExternalAttackD6A
+					&& Direct.Input.ExternalAttackD6A
+						== Orchestration.CutInsideShotInput.ExternalAttackD6A
+					&& Direct.Input.bHasExternalAttackD6B
+						== Orchestration.CutInsideShotInput.bHasExternalAttackD6B
+					&& Direct.Input.ExternalAttackD6B
+						== Orchestration.CutInsideShotInput.ExternalAttackD6B
+					&& Direct.Input.LogId == Orchestration.CutInsideShotInput.LogId
+					&& Direct.Input.TurnIndex
+						== Orchestration.CutInsideShotInput.TurnIndex
+					&& Direct.Input.AttackerPlayerId
+						== Orchestration.CutInsideShotInput.AttackerPlayerId
+					&& Direct.Decision == Orchestration.CutInsideShotResult.Decision
+					&& Direct.bIsGoal == Orchestration.CutInsideShotResult.bIsGoal
+					&& Direct.bAttackEnded == Orchestration.CutInsideShotResult.bAttackEnded);
+			TestEqual(*FString::Printf(TEXT("%s goal decision"), Case.Label),
+				Orchestration.CutInsideShotResult.bIsGoal, Case.bGoal);
+		}
+		if (Case.Action == ESkillRuleType::LongShot && Case.bGoal)
+		{
+			const int32 ReplayCalls = Post.GetCallCount();
+			const auto Replay = Session.ResolveDeadCornerPostRouteDecision();
+			TestTrue(TEXT("DeadCorner replay is idempotent"),
+				Replay.OrchestrationResult.bSuccess
+					&& Replay.OrchestrationResult.bReplayedCompleteRolls);
+			TestEqual(TEXT("DeadCorner replay provider delta zero"),
+				Post.GetCallCount() - ReplayCalls, 0);
+			TestEqual(TEXT("DeadCorner replay record delta zero"),
+				Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+					.PostRouteRollProgress.RollRecords.Num() - Records.Num(), 0);
+			TestTrue(TEXT("DeadCorner replay State unchanged"),
+				AreStatesEqual(After, Session.GetStateSnapshot()));
+		}
+	}
+
+	const FString PartialPrefix(TEXT("DeadCornerPartial"));
+	const FSkillRuleSnapshotSet PartialRules = MakeSkillRuleSet(
+		MakeSkillId(PartialPrefix, ESkillRuleType::LongShot),
+		ESkillRuleType::LongShot);
+	InitialRouteFixtures::FQueueRollProvider PartialInitial;
+	FQueuePostRouteRollProvider UnusedPost;
+	FMatchPlayAuthoritativeSession PartialSession(
+		PartialInitial, UnusedPost, PartialRules);
+	TestTrue(TEXT("DeadCorner partial fixture reaches route"),
+		ReachDeadCorner(PartialSession, PartialPrefix, ESkillRuleType::LongShot));
+	FMatchPlayState PartialBefore = PartialSession.GetStateSnapshot();
+	PartialBefore.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+		EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch;
+	FMatchPlayCurrentAttackPostRouteRollRecord AcceptedA;
+	AcceptedA.Purpose = EPurpose::PairedAttackA;
+	AcceptedA.RawD6 = 5;
+	PartialBefore.CurrentAttack.ResolutionSession.PostRouteRollProgress
+		.RollRecords.Add(AcceptedA);
+	TestTrue(TEXT("DeadCorner partial prefix canonical"),
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			PartialBefore).bIsCanonical);
+	FQueuePostRouteRollProvider PartialProvider;
+	PartialProvider.Enqueue(MakePostRouteSuccess(2));
+	FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionRequest
+		PartialRequest;
+	PartialRequest.AttackSequence = PartialBefore.CurrentAttack.AttackSequence;
+	const auto Partial =
+		FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator
+			::Resolve(
+				PartialBefore, PartialRequest, &PartialRules, &PartialProvider);
+	TestTrue(TEXT("DeadCorner partial continuation succeeds"), Partial.bSuccess);
+	TestEqual(TEXT("DeadCorner partial calls once"),
+		PartialProvider.GetCallCount(), 1);
+	TestEqual(TEXT("DeadCorner partial requests B"),
+		PartialProvider.GetPurposes()[0], EPurpose::PairedAttackB);
+	TestEqual(TEXT("DeadCorner partial preserves A"),
+		Partial.AfterState.CurrentAttack.ResolutionSession.PostRouteRollProgress
+			.RollRecords[0].RawD6, 5);
+
+	InitialRouteFixtures::FQueueRollProvider MissingInitial;
+	FMatchPlayAuthoritativeSession MissingProviderSession(MissingInitial);
+	TestTrue(TEXT("Missing provider fixture reaches DeadCorner"),
+		ReachDeadCorner(
+			MissingProviderSession,
+			TEXT("DeadCornerMissingProvider"),
+			ESkillRuleType::LongShot));
+	const FMatchPlayState MissingBefore = MissingProviderSession.GetStateSnapshot();
+	const auto Missing = MissingProviderSession.ResolveDeadCornerPostRouteDecision();
+	TestEqual(TEXT("DeadCorner missing provider error"),
+		Missing.OrchestrationResult.ErrorCode,
+		EError::PostRouteRollProviderUnavailable);
+	TestEqual(TEXT("DeadCorner missing provider calls"),
+		Missing.OrchestrationResult.ProviderCallCount, 0);
+	TestAcceptedDomainFailureNoAdopt(
+		*this, TEXT("DeadCorner missing provider"), Missing.RuntimeEnvelope,
+		MissingBefore, MissingProviderSession.GetStateSnapshot());
+
+	auto TestProviderFailure =
+		[this, &ReachDeadCorner, &MakeSkillId](
+			const TCHAR* Label,
+			const TArray<FMatchPlayPostRouteRollProviderResult>& Responses,
+			const int32 ExpectedCalls,
+			const EError ExpectedError)
+	{
+		const FString Prefix(Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakeSkillId(Prefix, ESkillRuleType::LongShot),
+			ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		for (const auto& Response : Responses)
+		{
+			Post.Enqueue(Response);
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label),
+			ReachDeadCorner(Session, Prefix, ESkillRuleType::LongShot));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Failure = Session.ResolveDeadCornerPostRouteDecision();
+		TestEqual(*FString::Printf(TEXT("%s calls"), Label),
+			Post.GetCallCount(), ExpectedCalls);
+		TestEqual(*FString::Printf(TEXT("%s error"), Label),
+			Failure.OrchestrationResult.ErrorCode, ExpectedError);
+		TestTrue(*FString::Printf(TEXT("%s no records"), Label),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.IsEmpty());
+		TestAcceptedDomainFailureNoAdopt(
+			*this, Label, Failure.RuntimeEnvelope,
+			Before, Session.GetStateSnapshot());
+	};
+	TestProviderFailure(
+		TEXT("DeadCorner A failure"), { MakePostRouteFailure() }, 1,
+		EError::PostRouteRollProviderFailed);
+	TestProviderFailure(
+		TEXT("DeadCorner B failure"),
+		{ MakePostRouteSuccess(6), MakePostRouteFailure() }, 2,
+		EError::PostRouteRollProviderFailed);
+	TestProviderFailure(
+		TEXT("DeadCorner malformed provider"), { MakePostRouteSuccess(0) }, 1,
+		EError::MalformedPostRouteRollProviderResult);
+
+	auto TestNonDeadCorner = [this](
+		const TCHAR* Label,
+		const ESkillRuleType Action,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		const FString Prefix(Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			FName(*FString::Printf(
+				TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(Action))),
+			Action);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(3));
+		Post.Enqueue(MakePostRouteSuccess(4));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label),
+			BuildStage7166ToAwaitingRoute(Session, Prefix, Action, Intent, Trace)
+				&& (Action == ESkillRuleType::LongShot
+					|| Action == ESkillRuleType::CutInsideShot
+					? Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess
+					: Session.ResolveInitialRoute().OrchestrationResult.bSuccess));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ResolveDeadCornerPostRouteDecision();
+		TestEqual(*FString::Printf(TEXT("%s error"), Label),
+			Rejected.OrchestrationResult.ErrorCode, EError::NotDeadCornerBranch);
+		TestEqual(*FString::Printf(TEXT("%s consumes zero"), Label),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(
+			*this, Label, Rejected.RuntimeEnvelope,
+			Before, Session.GetStateSnapshot());
+	};
+	TestNonDeadCorner(
+		TEXT("DeadCorner rejects DirectShot"),
+		ESkillRuleType::LongShot,
+		EMatchPlayElectiveBranchIntent::DirectShot);
+	TestNonDeadCorner(
+		TEXT("DeadCorner rejects Cross"),
+		ESkillRuleType::Cross,
+		EMatchPlayElectiveBranchIntent::CrossHigh);
+
+	const FString IsolationAName(TEXT("DeadCornerIsolationA"));
+	const FString IsolationBName(TEXT("DeadCornerIsolationB"));
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialA;
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialB;
+	FQueuePostRouteRollProvider IsolationPostA;
+	FQueuePostRouteRollProvider IsolationPostB;
+	IsolationPostA.Enqueue(MakePostRouteSuccess(6));
+	IsolationPostA.Enqueue(MakePostRouteSuccess(5));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(1));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(2));
+	const FSkillRuleSnapshotSet IsolationRulesA = MakeSkillRuleSet(
+		MakeSkillId(IsolationAName, ESkillRuleType::LongShot),
+		ESkillRuleType::LongShot);
+	const FSkillRuleSnapshotSet IsolationRulesB = MakeSkillRuleSet(
+		MakeSkillId(IsolationBName, ESkillRuleType::LongShot),
+		ESkillRuleType::LongShot);
+	FMatchPlayAuthoritativeSession IsolationA(
+		IsolationInitialA, IsolationPostA, IsolationRulesA);
+	FMatchPlayAuthoritativeSession IsolationB(
+		IsolationInitialB, IsolationPostB, IsolationRulesB);
+	TestTrue(TEXT("DeadCorner isolation A reaches route"),
+		ReachDeadCorner(IsolationA, IsolationAName, ESkillRuleType::LongShot));
+	TestTrue(TEXT("DeadCorner isolation B reaches route"),
+		ReachDeadCorner(IsolationB, IsolationBName, ESkillRuleType::LongShot));
+	const FMatchPlayState IsolationBBefore = IsolationB.GetStateSnapshot();
+	IsolationA.ResolveDeadCornerPostRouteDecision();
+	TestEqual(TEXT("DeadCorner A consumes no B rolls"),
+		IsolationPostB.GetCallCount(), 0);
+	TestTrue(TEXT("DeadCorner A cannot mutate B"),
+		AreStatesEqual(IsolationBBefore, IsolationB.GetStateSnapshot()));
+
+	const FString DeterminismName(TEXT("DeadCornerDeterminism"));
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialA;
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialB;
+	FQueuePostRouteRollProvider DeterministicPostA;
+	FQueuePostRouteRollProvider DeterministicPostB;
+	for (FQueuePostRouteRollProvider* Provider :
+		{ &DeterministicPostA, &DeterministicPostB })
+	{
+		Provider->Enqueue(MakePostRouteSuccess(6));
+		Provider->Enqueue(MakePostRouteSuccess(5));
+	}
+	const FSkillRuleSnapshotSet DeterministicRules = MakeSkillRuleSet(
+		MakeSkillId(DeterminismName, ESkillRuleType::CutInsideShot),
+		ESkillRuleType::CutInsideShot);
+	FMatchPlayAuthoritativeSession DeterministicA(
+		DeterministicInitialA, DeterministicPostA, DeterministicRules);
+	FMatchPlayAuthoritativeSession DeterministicB(
+		DeterministicInitialB, DeterministicPostB, DeterministicRules);
+	TestTrue(TEXT("DeadCorner deterministic A reaches route"),
+		ReachDeadCorner(
+			DeterministicA, DeterminismName, ESkillRuleType::CutInsideShot));
+	TestTrue(TEXT("DeadCorner deterministic B reaches route"),
+		ReachDeadCorner(
+			DeterministicB, DeterminismName, ESkillRuleType::CutInsideShot));
+	const auto DeterministicAResult =
+		DeterministicA.ResolveDeadCornerPostRouteDecision();
+	const auto DeterministicBResult =
+		DeterministicB.ResolveDeadCornerPostRouteDecision();
+	TestEqual(TEXT("DeadCorner deterministic decision"),
+		DeterministicAResult.OrchestrationResult.CutInsideShotResult.Decision,
+		DeterministicBResult.OrchestrationResult.CutInsideShotResult.Decision);
+	TestTrue(TEXT("DeadCorner deterministic State"),
 		AreStatesEqual(
 			DeterministicA.GetStateSnapshot(),
 			DeterministicB.GetStateSnapshot()));
