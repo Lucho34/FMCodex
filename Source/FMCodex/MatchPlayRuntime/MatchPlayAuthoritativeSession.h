@@ -96,6 +96,9 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionResult
 	ResolveThroughBallAntiOffsideDecision();
 
+	FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
+	ResolveDirectShotPostRouteDecisionOrPlan();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:

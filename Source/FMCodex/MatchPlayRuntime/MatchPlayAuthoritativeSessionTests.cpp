@@ -6021,11 +6021,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All twenty-six mutations use the gate"),
+	TestEqual(TEXT("All twenty-seven mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		26);
+		27);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9711,9 +9711,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All twenty-six mutations share serialized gate"),
+	TestEqual(TEXT("All twenty-seven mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		26);
+		27);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -14197,6 +14197,606 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallAntiOffsideDecisionTest
 		DeterministicAResult.OrchestrationResult.OutcomeResult.Decision,
 		DeterministicBResult.OrchestrationResult.OutcomeResult.Decision);
 	TestTrue(TEXT("AntiOffside deterministic State"),
+		AreStatesEqual(
+			DeterministicA.GetStateSnapshot(),
+			DeterministicB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveDirectShotPostRouteDecisionOrPlanTest,
+	"48.ResolveDirectShotPostRouteDecisionOrPlanAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolveDirectShotPostRouteDecisionOrPlanTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
+	using EError =
+		EMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanErrorCode;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveDirectShotPostRouteDecisionOrPlan),
+		FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	TestEqual(TEXT("DirectShot command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveDirectShotPostRouteDecisionOrPlan),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallAntiOffsideDecision) + 1);
+
+	FString Header;
+	FString Types;
+	FString Implementation;
+	FString Orchestrator;
+	TestTrue(TEXT("DirectShot Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("DirectShot Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	TestTrue(TEXT("DirectShot Session implementation loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+			Implementation));
+	TestTrue(TEXT("DirectShot orchestrator loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator.cpp"),
+		Orchestrator));
+	TestFalse(TEXT("No public DirectShot gameplay request exists"),
+		Types.Contains(TEXT(
+			"FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanRequest")));
+	TestTrue(TEXT("DirectShot command has no gameplay arguments"),
+		Header.Contains(TEXT("ResolveDirectShotPostRouteDecisionOrPlan();")));
+	TestFalse(TEXT("Session does not call provider directly"),
+		Implementation.Contains(TEXT("RollD6(")));
+	TestEqual(TEXT("One canonical DirectShot orchestration call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator")),
+		1);
+	TestFalse(TEXT("DirectShot integration does not duplicate miss threshold"),
+		Orchestrator.Contains(TEXT("ImmediateMissMaxD6"))
+			|| Orchestrator.Contains(TEXT("ConditionalContinuationMinD6")));
+	TestFalse(TEXT("DirectShot integration does not execute Formula"),
+		Orchestrator.Contains(TEXT("FormulaExecutor")));
+	TestFalse(TEXT("DirectShot integration does not apply Outcome"),
+		Orchestrator.Contains(TEXT("ApplyOutcome")));
+	TestFalse(TEXT("DirectShot integration does not execute Completion"),
+		Orchestrator.Contains(TEXT("Completion")));
+
+	auto MakeDirectSkillId = [](const FString& Prefix,
+		const ESkillRuleType Action)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(Action)));
+	};
+	auto ReachDirectShot = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType Action)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				Action,
+				EMatchPlayElectiveBranchIntent::DirectShot,
+				Trace)
+			&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess;
+	};
+	auto CopyValues = [](const auto& Values)
+	{
+		FPlayerAttributes Attributes;
+		Attributes.Shooting = Values.Shooting;
+		Attributes.Dribbling = Values.Dribbling;
+		Attributes.Passing = Values.Passing;
+		Attributes.OffBall = Values.OffBall;
+		Attributes.Marking = Values.Marking;
+		Attributes.Tackling = Values.Tackling;
+		Attributes.Speed = Values.Speed;
+		Attributes.Strength = Values.Strength;
+		Attributes.Stamina = Values.Stamina;
+		Attributes.LongShot = Values.LongShot;
+		return Attributes;
+	};
+	auto MakeDirectSnapshots = [&CopyValues](const FMatchPlayState& State)
+	{
+		FPlayerCardRuleSnapshotSet Snapshots;
+		const auto& Bundle = State.CurrentAttack.ResolutionSession.Bundle;
+		for (const auto* Participant : { &Bundle.Carrier, &Bundle.Marker })
+		{
+			const auto Query =
+				FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+					State.CardSnapshotAuthority,
+					Participant->Side,
+					Participant->CardId);
+			FPlayerCardRuleSnapshot Snapshot = Query.Snapshot;
+			Snapshot.Attributes = CopyValues(Participant->Values);
+			Snapshots.Cards.Add(Snapshot);
+		}
+		return Snapshots;
+	};
+	auto PopulateDirectInput = [](const FMatchPlayState& State, auto& Input)
+	{
+		const auto& Attack = State.CurrentAttack;
+		const auto& Session = Attack.ResolutionSession;
+		const auto& Bundle = Session.Bundle;
+		const auto& Records = Session.PostRouteRollProgress.RollRecords;
+		Input.SkillId = Bundle.Binding.SkillId;
+		Input.AttackerCardId = Bundle.Carrier.CardId;
+		Input.DefenderCardId = Bundle.Marker.CardId;
+		Input.CurrentActionPoint = Attack.ActionPoint;
+		Input.bHasExternalAttackD6 = true;
+		Input.ExternalAttackD6 = Records[0].RawD6;
+		Input.bHasExternalDefenseD6 = Records.Num() == 2;
+		if (Input.bHasExternalDefenseD6)
+		{
+			Input.ExternalDefenseD6 = Records[1].RawD6;
+		}
+		const uint64 Sequence = static_cast<uint64>(Session.AttackSequence);
+		Input.LogId = FGuid(
+			0x44534854,
+			static_cast<uint32>(Sequence >> 32),
+			static_cast<uint32>(Sequence),
+			0x504C414E);
+		Input.TurnIndex = static_cast<int32>(Session.AttackSequence - 1);
+		Input.AttackerPlayerId = Bundle.Carrier.Side
+			== EInitialTurnOrderPlayer::PlayerA
+			? FName(TEXT("PlayerA")) : FName(TEXT("PlayerB"));
+		Input.DefenderPlayerId = Bundle.Marker.Side
+			== EInitialTurnOrderPlayer::PlayerA
+			? FName(TEXT("PlayerA")) : FName(TEXT("PlayerB"));
+	};
+	auto AreInputsEqual = [](const auto& Left, const auto& Right)
+	{
+		return Left.SkillId == Right.SkillId
+			&& Left.AttackerCardId == Right.AttackerCardId
+			&& Left.DefenderCardId == Right.DefenderCardId
+			&& Left.CurrentActionPoint == Right.CurrentActionPoint
+			&& Left.bHasExternalAttackD6 == Right.bHasExternalAttackD6
+			&& Left.ExternalAttackD6 == Right.ExternalAttackD6
+			&& Left.bHasExternalDefenseD6 == Right.bHasExternalDefenseD6
+			&& Left.ExternalDefenseD6 == Right.ExternalDefenseD6
+			&& Left.LogId == Right.LogId
+			&& Left.TurnIndex == Right.TurnIndex
+			&& Left.AttackerPlayerId == Right.AttackerPlayerId
+			&& Left.DefenderPlayerId == Right.DefenderPlayerId;
+	};
+	auto AreFormulaPlansEqual = [](const auto& Left, const auto& Right)
+	{
+		return AreFormulaQueryInputsEqual(
+				Left.AttackerQueryInput, Right.AttackerQueryInput)
+			&& AreFormulaQueryInputsEqual(
+				Left.DefenderQueryInput, Right.DefenderQueryInput)
+			&& Left.AttackerPlayerId == Right.AttackerPlayerId
+			&& Left.DefenderPlayerId == Right.DefenderPlayerId;
+	};
+
+	InitialRouteFixtures::FQueueRollProvider UninitializedInitial;
+	FQueuePostRouteRollProvider UninitializedPost;
+	const FSkillRuleSnapshotSet UninitializedRules = MakeSkillRuleSet(
+		TEXT("Skill.DirectShot.Uninitialized"), ESkillRuleType::LongShot);
+	FMatchPlayAuthoritativeSession UninitializedSession(
+		UninitializedInitial, UninitializedPost, UninitializedRules);
+	const auto Uninitialized =
+		UninitializedSession.ResolveDirectShotPostRouteDecisionOrPlan();
+	TestFalse(TEXT("Uninitialized DirectShot command rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized DirectShot consumes no rolls"),
+		UninitializedPost.GetCallCount(), 0);
+
+	struct FDirectShotCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType Action;
+		int32 AttackD6;
+		int32 DefenseD6;
+		bool bImmediateMiss;
+	};
+	const FDirectShotCase Cases[] = {
+		{ TEXT("LongShotImmediateMiss"), ESkillRuleType::LongShot, 2, 0, true },
+		{ TEXT("LongShotFormula"), ESkillRuleType::LongShot, 3, 4, false },
+		{ TEXT("CutInsideImmediateMiss"), ESkillRuleType::CutInsideShot, 1, 0, true },
+		{ TEXT("CutInsideFormula"), ESkillRuleType::CutInsideShot, 6, 5, false }
+	};
+	for (const FDirectShotCase& Case : Cases)
+	{
+		const FString Prefix = FString(TEXT("DirectShot")) + Case.Label;
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakeDirectSkillId(Prefix, Case.Action), Case.Action);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(Case.AttackD6));
+		if (!Case.bImmediateMiss)
+		{
+			Post.Enqueue(MakePostRouteSuccess(Case.DefenseD6));
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches DirectShot publicly"), Case.Label),
+			ReachDirectShot(Session, Prefix, Case.Action));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 InitialRecordCount = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num();
+		const auto Operation =
+			Session.ResolveDirectShotPostRouteDecisionOrPlan();
+		const auto& Orchestration = Operation.OrchestrationResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		const auto& Resolution = After.CurrentAttack.ResolutionSession;
+		const auto& Records = Resolution.PostRouteRollProgress.RollRecords;
+		const int32 ExpectedCalls = Case.bImmediateMiss ? 1 : 2;
+		TestTrue(*FString::Printf(TEXT("%s succeeds"), Case.Label),
+			Orchestration.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s provider calls"), Case.Label),
+			Post.GetCallCount(), ExpectedCalls);
+		TestEqual(*FString::Printf(TEXT("%s record count"), Case.Label),
+			Records.Num(), ExpectedCalls);
+		if (Post.GetPurposes().Num() == ExpectedCalls
+			&& Records.Num() == ExpectedCalls)
+		{
+			TestEqual(*FString::Printf(TEXT("%s first purpose"), Case.Label),
+				Post.GetPurposes()[0], EPurpose::PrimaryAttack);
+			TestEqual(*FString::Printf(TEXT("%s first record purpose"), Case.Label),
+				Records[0].Purpose, EPurpose::PrimaryAttack);
+			TestEqual(*FString::Printf(TEXT("%s Attack value"), Case.Label),
+				Records[0].RawD6, Case.AttackD6);
+			if (!Case.bImmediateMiss)
+			{
+				TestEqual(*FString::Printf(TEXT("%s second purpose"), Case.Label),
+					Post.GetPurposes()[1], EPurpose::PrimaryDefense);
+				TestEqual(*FString::Printf(TEXT("%s second record purpose"), Case.Label),
+					Records[1].Purpose, EPurpose::PrimaryDefense);
+				TestEqual(*FString::Printf(TEXT("%s Defense value"), Case.Label),
+					Records[1].RawD6, Case.DefenseD6);
+			}
+		}
+		TestEqual(*FString::Printf(TEXT("%s preserves initial records"), Case.Label),
+			Resolution.InitialRouteRollRecords.Num(), InitialRecordCount);
+		TestTrue(*FString::Printf(TEXT("%s has no initial route roll"), Case.Label),
+			Resolution.InitialRouteRollRecords.IsEmpty());
+		TestTrue(*FString::Printf(TEXT("%s remains RouteResolved and active"), Case.Label),
+			After.bHasCurrentAttack
+				&& Resolution.Stage
+					== EMatchPlayCurrentAttackResolutionStage::RouteResolved);
+		TestTrue(*FString::Printf(TEXT("%s adopts exact AfterState"), Case.Label),
+			AreStatesEqual(After, Orchestration.AfterState));
+
+		const FPlayerCardRuleSnapshotSet DirectSnapshots =
+			MakeDirectSnapshots(After);
+		if (Case.Action == ESkillRuleType::LongShot)
+		{
+			FLongShotDirectShotPlanQueryInput DirectInput;
+			PopulateDirectInput(After, DirectInput);
+			const auto Direct = FLongShotDirectShotPlanQuery::BuildPlan(
+				DirectSnapshots, Rules, DirectInput);
+			TestTrue(*FString::Printf(TEXT("%s standalone input equivalence"), Case.Label),
+				AreInputsEqual(DirectInput, Orchestration.LongShotInput));
+			TestTrue(*FString::Printf(TEXT("%s standalone result equivalence"), Case.Label),
+				Direct.bSuccess == Orchestration.LongShotResult.bSuccess
+					&& Direct.Decision == Orchestration.LongShotResult.Decision
+					&& Direct.bAttackEnded
+						== Orchestration.LongShotResult.bAttackEnded
+					&& Direct.bIsGoal == Orchestration.LongShotResult.bIsGoal
+					&& Direct.bHasFormulaPlan
+						== Orchestration.LongShotResult.bHasFormulaPlan
+					&& AreFormulaPlansEqual(
+						Direct.FormulaPlan,
+						Orchestration.LongShotResult.FormulaPlan));
+			TestEqual(*FString::Printf(TEXT("%s ImmediateMiss class"), Case.Label),
+				Orchestration.LongShotResult.Decision
+					== ELongShotDirectShotDecision::ImmediateMiss,
+				Case.bImmediateMiss);
+			TestEqual(*FString::Printf(TEXT("%s Formula plan class"), Case.Label),
+				Orchestration.LongShotResult.bHasFormulaPlan,
+				!Case.bImmediateMiss);
+		}
+		else
+		{
+			FCutInsideShotDirectShotPlanQueryInput DirectInput;
+			PopulateDirectInput(After, DirectInput);
+			const auto Direct = FCutInsideShotDirectShotPlanQuery::BuildPlan(
+				DirectSnapshots, Rules, DirectInput);
+			TestTrue(*FString::Printf(TEXT("%s standalone input equivalence"), Case.Label),
+				AreInputsEqual(DirectInput, Orchestration.CutInsideShotInput));
+			TestTrue(*FString::Printf(TEXT("%s standalone result equivalence"), Case.Label),
+				Direct.bSuccess == Orchestration.CutInsideShotResult.bSuccess
+					&& Direct.Decision == Orchestration.CutInsideShotResult.Decision
+					&& Direct.bAttackEnded
+						== Orchestration.CutInsideShotResult.bAttackEnded
+					&& Direct.bIsGoal == Orchestration.CutInsideShotResult.bIsGoal
+					&& Direct.bHasFormulaPlan
+						== Orchestration.CutInsideShotResult.bHasFormulaPlan
+					&& AreFormulaPlansEqual(
+						Direct.FormulaPlan,
+						Orchestration.CutInsideShotResult.FormulaPlan));
+			TestEqual(*FString::Printf(TEXT("%s ImmediateMiss class"), Case.Label),
+				Orchestration.CutInsideShotResult.Decision
+					== ECutInsideShotDirectShotDecision::ImmediateMiss,
+				Case.bImmediateMiss);
+			TestEqual(*FString::Printf(TEXT("%s Formula plan class"), Case.Label),
+				Orchestration.CutInsideShotResult.bHasFormulaPlan,
+				!Case.bImmediateMiss);
+		}
+
+		const int32 ReplayCalls = Post.GetCallCount();
+		const int32 ReplayRecords = Records.Num();
+		const auto Replay =
+			Session.ResolveDirectShotPostRouteDecisionOrPlan();
+		TestTrue(*FString::Printf(TEXT("%s replay succeeds"), Case.Label),
+			Replay.OrchestrationResult.bSuccess
+				&& Replay.OrchestrationResult.bReplayedCompleteRolls);
+		TestEqual(*FString::Printf(TEXT("%s replay provider delta zero"), Case.Label),
+			Post.GetCallCount() - ReplayCalls, 0);
+		TestEqual(*FString::Printf(TEXT("%s replay record delta zero"), Case.Label),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Num() - ReplayRecords, 0);
+		TestTrue(*FString::Printf(TEXT("%s replay State unchanged"), Case.Label),
+			AreStatesEqual(After, Session.GetStateSnapshot()));
+	}
+
+	InitialRouteFixtures::FQueueRollProvider MissingInitial;
+	FMatchPlayAuthoritativeSession MissingProviderSession(MissingInitial);
+	TestTrue(TEXT("Missing provider reaches DirectShot"),
+		ReachDirectShot(
+			MissingProviderSession,
+			TEXT("DirectShotMissingProvider"),
+			ESkillRuleType::LongShot));
+	const FMatchPlayState MissingBefore = MissingProviderSession.GetStateSnapshot();
+	const auto Missing =
+		MissingProviderSession.ResolveDirectShotPostRouteDecisionOrPlan();
+	TestEqual(TEXT("DirectShot missing provider error"),
+		Missing.OrchestrationResult.ErrorCode,
+		EError::PostRouteRollProviderUnavailable);
+	TestEqual(TEXT("DirectShot missing provider calls"),
+		Missing.OrchestrationResult.ProviderCallCount, 0);
+	TestAcceptedDomainFailureNoAdopt(
+		*this, TEXT("DirectShot missing provider"), Missing.RuntimeEnvelope,
+		MissingBefore, MissingProviderSession.GetStateSnapshot());
+
+	auto TestProviderFailure =
+		[this, &ReachDirectShot, &MakeDirectSkillId](
+			const TCHAR* Label,
+			const TArray<FMatchPlayPostRouteRollProviderResult>& Responses,
+			const int32 ExpectedCalls,
+			const EError ExpectedError)
+	{
+		const FString Prefix(Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakeDirectSkillId(Prefix, ESkillRuleType::LongShot),
+			ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		for (const auto& Response : Responses)
+		{
+			Post.Enqueue(Response);
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label),
+			ReachDirectShot(Session, Prefix, ESkillRuleType::LongShot));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Failure =
+			Session.ResolveDirectShotPostRouteDecisionOrPlan();
+		TestEqual(*FString::Printf(TEXT("%s calls"), Label),
+			Post.GetCallCount(), ExpectedCalls);
+		TestEqual(*FString::Printf(TEXT("%s error"), Label),
+			Failure.OrchestrationResult.ErrorCode, ExpectedError);
+		TestTrue(*FString::Printf(TEXT("%s no records leaked"), Label),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.IsEmpty());
+		TestAcceptedDomainFailureNoAdopt(
+			*this, Label, Failure.RuntimeEnvelope,
+			Before, Session.GetStateSnapshot());
+	};
+	TestProviderFailure(
+		TEXT("DirectShot Attack provider failure"),
+		{ MakePostRouteFailure() }, 1,
+		EError::PostRouteRollProviderFailed);
+	TestProviderFailure(
+		TEXT("DirectShot malformed Attack"),
+		{ MakePostRouteSuccess(0) }, 1,
+		EError::MalformedPostRouteRollProviderResult);
+	TestProviderFailure(
+		TEXT("DirectShot Defense provider failure"),
+		{ MakePostRouteSuccess(3), MakePostRouteFailure() }, 2,
+		EError::PostRouteRollProviderFailed);
+
+	auto MakePrefixState = [this, &ReachDirectShot, &MakeDirectSkillId](
+		const FString& Prefix,
+		const int32 AttackD6,
+		FSkillRuleSnapshotSet& OutRules)
+	{
+		OutRules = MakeSkillRuleSet(
+			MakeDirectSkillId(Prefix, ESkillRuleType::LongShot),
+			ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider UnusedPost;
+		FMatchPlayAuthoritativeSession Session(Initial, UnusedPost, OutRules);
+		TestTrue(*FString::Printf(TEXT("%s reaches prefix route"), *Prefix),
+			ReachDirectShot(Session, Prefix, ESkillRuleType::LongShot));
+		FMatchPlayState State = Session.GetStateSnapshot();
+		State.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+			EPhase::PrimaryBranch;
+		FMatchPlayCurrentAttackPostRouteRollRecord AttackRecord;
+		AttackRecord.Purpose = EPurpose::PrimaryAttack;
+		AttackRecord.RawD6 = AttackD6;
+		State.CurrentAttack.ResolutionSession.PostRouteRollProgress
+			.RollRecords.Add(AttackRecord);
+		return State;
+	};
+	FSkillRuleSnapshotSet MissPrefixRules;
+	FMatchPlayState MissPrefixState = MakePrefixState(
+		TEXT("DirectShotMissPrefix"), 2, MissPrefixRules);
+	TestTrue(TEXT("Stored Attack 1-2 prefix canonical"),
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			MissPrefixState).bIsCanonical);
+	FQueuePostRouteRollProvider MissPrefixProvider;
+	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+		MissPrefixRequest;
+	MissPrefixRequest.AttackSequence =
+		MissPrefixState.CurrentAttack.AttackSequence;
+	const auto MissPrefix =
+		FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
+			::Resolve(
+				MissPrefixState,
+				MissPrefixRequest,
+				&MissPrefixRules,
+				&MissPrefixProvider);
+	TestTrue(TEXT("Stored Attack 1-2 reconstructs ImmediateMiss"),
+		MissPrefix.bSuccess
+			&& MissPrefix.LongShotResult.Decision
+				== ELongShotDirectShotDecision::ImmediateMiss);
+	TestEqual(TEXT("Stored Attack 1-2 consumes zero provider calls"),
+		MissPrefixProvider.GetCallCount(), 0);
+
+	FSkillRuleSnapshotSet FormulaPrefixRules;
+	FMatchPlayState FormulaPrefixState = MakePrefixState(
+		TEXT("DirectShotFormulaPrefix"), 3, FormulaPrefixRules);
+	TestTrue(TEXT("Stored Attack 3-6 prefix canonical"),
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			FormulaPrefixState).bIsCanonical);
+	FQueuePostRouteRollProvider FormulaPrefixProvider;
+	FormulaPrefixProvider.Enqueue(MakePostRouteSuccess(6));
+	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+		FormulaPrefixRequest;
+	FormulaPrefixRequest.AttackSequence =
+		FormulaPrefixState.CurrentAttack.AttackSequence;
+	const auto FormulaPrefix =
+		FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
+			::Resolve(
+				FormulaPrefixState,
+				FormulaPrefixRequest,
+				&FormulaPrefixRules,
+				&FormulaPrefixProvider);
+	TestTrue(TEXT("Stored Attack 3-6 acquires Defense and returns Formula plan"),
+		FormulaPrefix.bSuccess
+			&& FormulaPrefix.LongShotResult.Decision
+				== ELongShotDirectShotDecision::FormulaResolutionRequired
+			&& FormulaPrefix.LongShotResult.bHasFormulaPlan);
+	TestEqual(TEXT("Stored Attack 3-6 calls provider once"),
+		FormulaPrefixProvider.GetCallCount(), 1);
+	if (FormulaPrefixProvider.GetPurposes().Num() == 1)
+	{
+		TestEqual(TEXT("Stored Attack 3-6 requests only Defense"),
+			FormulaPrefixProvider.GetPurposes()[0], EPurpose::PrimaryDefense);
+	}
+	TestEqual(TEXT("Stored Attack 3-6 preserves Attack record"),
+		FormulaPrefix.AfterState.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords[0].RawD6, 3);
+
+	auto TestNonDirectShot = [this](
+		const TCHAR* Label,
+		const ESkillRuleType Action,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		const FString Prefix(Label);
+		const FName SkillId(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(Action)));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(SkillId, Action);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		if (Action == ESkillRuleType::Cross)
+		{
+			Initial.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+		}
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(3));
+		Post.Enqueue(MakePostRouteSuccess(4));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		const bool bReached = BuildStage7166ToAwaitingRoute(
+			Session, Prefix, Action, Intent, Trace)
+			&& (Action == ESkillRuleType::LongShot
+				? Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess
+				: Session.ResolveInitialRoute().OrchestrationResult.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label), bReached);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected =
+			Session.ResolveDirectShotPostRouteDecisionOrPlan();
+		TestEqual(*FString::Printf(TEXT("%s rejected"), Label),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::NotDirectShotBranch);
+		TestEqual(*FString::Printf(TEXT("%s consumes zero post-route RNG"), Label),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(
+			*this, Label, Rejected.RuntimeEnvelope,
+			Before, Session.GetStateSnapshot());
+	};
+	TestNonDirectShot(
+		TEXT("DirectShot rejects LongShot DeadCorner"),
+		ESkillRuleType::LongShot,
+		EMatchPlayElectiveBranchIntent::DeadCorner);
+	TestNonDirectShot(
+		TEXT("DirectShot rejects Cross"),
+		ESkillRuleType::Cross,
+		EMatchPlayElectiveBranchIntent::CrossHigh);
+
+	const FString IsolationAName(TEXT("DirectShotIsolationA"));
+	const FString IsolationBName(TEXT("DirectShotIsolationB"));
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialA;
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialB;
+	FQueuePostRouteRollProvider IsolationPostA;
+	FQueuePostRouteRollProvider IsolationPostB;
+	IsolationPostA.Enqueue(MakePostRouteSuccess(2));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(3));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(4));
+	const FSkillRuleSnapshotSet IsolationRulesA = MakeSkillRuleSet(
+		MakeDirectSkillId(IsolationAName, ESkillRuleType::LongShot),
+		ESkillRuleType::LongShot);
+	const FSkillRuleSnapshotSet IsolationRulesB = MakeSkillRuleSet(
+		MakeDirectSkillId(IsolationBName, ESkillRuleType::LongShot),
+		ESkillRuleType::LongShot);
+	FMatchPlayAuthoritativeSession IsolationA(
+		IsolationInitialA, IsolationPostA, IsolationRulesA);
+	FMatchPlayAuthoritativeSession IsolationB(
+		IsolationInitialB, IsolationPostB, IsolationRulesB);
+	TestTrue(TEXT("DirectShot isolation A route"),
+		ReachDirectShot(IsolationA, IsolationAName, ESkillRuleType::LongShot));
+	TestTrue(TEXT("DirectShot isolation B route"),
+		ReachDirectShot(IsolationB, IsolationBName, ESkillRuleType::LongShot));
+	const FMatchPlayState IsolationBBefore = IsolationB.GetStateSnapshot();
+	IsolationA.ResolveDirectShotPostRouteDecisionOrPlan();
+	TestEqual(TEXT("DirectShot A consumes no B rolls"),
+		IsolationPostB.GetCallCount(), 0);
+	TestTrue(TEXT("DirectShot A cannot mutate B"),
+		AreStatesEqual(IsolationBBefore, IsolationB.GetStateSnapshot()));
+
+	const FString DeterminismName(TEXT("DirectShotDeterminism"));
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialA;
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialB;
+	FQueuePostRouteRollProvider DeterministicPostA;
+	FQueuePostRouteRollProvider DeterministicPostB;
+	for (FQueuePostRouteRollProvider* Provider :
+		{ &DeterministicPostA, &DeterministicPostB })
+	{
+		Provider->Enqueue(MakePostRouteSuccess(5));
+		Provider->Enqueue(MakePostRouteSuccess(2));
+	}
+	const FSkillRuleSnapshotSet DeterministicRules = MakeSkillRuleSet(
+		MakeDirectSkillId(DeterminismName, ESkillRuleType::CutInsideShot),
+		ESkillRuleType::CutInsideShot);
+	FMatchPlayAuthoritativeSession DeterministicA(
+		DeterministicInitialA, DeterministicPostA, DeterministicRules);
+	FMatchPlayAuthoritativeSession DeterministicB(
+		DeterministicInitialB, DeterministicPostB, DeterministicRules);
+	TestTrue(TEXT("DirectShot deterministic A route"),
+		ReachDirectShot(
+			DeterministicA, DeterminismName, ESkillRuleType::CutInsideShot));
+	TestTrue(TEXT("DirectShot deterministic B route"),
+		ReachDirectShot(
+			DeterministicB, DeterminismName, ESkillRuleType::CutInsideShot));
+	const auto DeterministicAResult =
+		DeterministicA.ResolveDirectShotPostRouteDecisionOrPlan();
+	const auto DeterministicBResult =
+		DeterministicB.ResolveDirectShotPostRouteDecisionOrPlan();
+	TestTrue(TEXT("DirectShot deterministic Formula result"),
+		DeterministicAResult.OrchestrationResult.CutInsideShotResult.bHasFormulaPlan
+			&& DeterministicBResult.OrchestrationResult.CutInsideShotResult
+				.bHasFormulaPlan
+			&& AreFormulaPlansEqual(
+				DeterministicAResult.OrchestrationResult.CutInsideShotResult
+					.FormulaPlan,
+				DeterministicBResult.OrchestrationResult.CutInsideShotResult
+					.FormulaPlan));
+	TestTrue(TEXT("DirectShot deterministic final States equal"),
 		AreStatesEqual(
 			DeterministicA.GetStateSnapshot(),
 			DeterministicB.GetStateSnapshot()));
