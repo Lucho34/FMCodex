@@ -6021,11 +6021,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All twenty-five mutations use the gate"),
+	TestEqual(TEXT("All twenty-six mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		25);
+		26);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9711,9 +9711,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All twenty-five mutations share serialized gate"),
+	TestEqual(TEXT("All twenty-six mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		25);
+		26);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -13799,6 +13799,404 @@ bool FMatchPlayAuthoritativeSessionResolveDeadCornerPostRouteDecisionTest
 		DeterministicAResult.OrchestrationResult.CutInsideShotResult.Decision,
 		DeterministicBResult.OrchestrationResult.CutInsideShotResult.Decision);
 	TestTrue(TEXT("DeadCorner deterministic State"),
+		AreStatesEqual(
+			DeterministicA.GetStateSnapshot(),
+			DeterministicB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveThroughBallAntiOffsideDecisionTest,
+	"47.ResolveThroughBallAntiOffsideDecisionAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolveThroughBallAntiOffsideDecisionTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using EError =
+		EMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionErrorCode;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveThroughBallAntiOffsideDecision),
+		FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	TestEqual(TEXT("AntiOffside command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallAntiOffsideDecision),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveDeadCornerPostRouteDecision) + 1);
+
+	FString Header;
+	FString Types;
+	FString Implementation;
+	TestTrue(TEXT("AntiOffside Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("AntiOffside Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	TestTrue(TEXT("AntiOffside Session implementation loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+			Implementation));
+	TestFalse(TEXT("No public AntiOffside gameplay request exists"),
+		Types.Contains(TEXT(
+			"FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionRequest")));
+	TestTrue(TEXT("AntiOffside command has no gameplay arguments"),
+		Header.Contains(TEXT("ResolveThroughBallAntiOffsideDecision();")));
+	TestFalse(TEXT("Session does not call provider directly"),
+		Implementation.Contains(TEXT("RollD6(")));
+	TestEqual(TEXT("One canonical AntiOffside orchestration call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator")),
+		1);
+
+	auto MakeThroughBallSkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::ThroughBall)));
+	};
+	auto ReachAntiOffside = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None,
+				Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+	auto BuildDirectInput = [](const FMatchPlayState& State,
+		const FSkillRuleSnapshotSet& Rules,
+		FThroughBallAntiOffsideOutcomeQueryInput& OutInput)
+	{
+		const auto& Attack = State.CurrentAttack;
+		const auto& Session = Attack.ResolutionSession;
+		const auto& Bundle = Session.Bundle;
+		auto CopyValues = [](const auto& Values)
+		{
+			FPlayerAttributes Attributes;
+			Attributes.Shooting = Values.Shooting;
+			Attributes.Dribbling = Values.Dribbling;
+			Attributes.Passing = Values.Passing;
+			Attributes.OffBall = Values.OffBall;
+			Attributes.Marking = Values.Marking;
+			Attributes.Tackling = Values.Tackling;
+			Attributes.Speed = Values.Speed;
+			Attributes.Strength = Values.Strength;
+			Attributes.Stamina = Values.Stamina;
+			Attributes.LongShot = Values.LongShot;
+			return Attributes;
+		};
+		auto GetSnapshot = [&State, &CopyValues](const auto& Participant)
+		{
+			const auto Query =
+				FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+					State.CardSnapshotAuthority,
+					Participant.Side,
+					Participant.CardId);
+			FPlayerCardRuleSnapshot Snapshot = Query.Snapshot;
+			Snapshot.Attributes = CopyValues(Participant.Values);
+			return Snapshot;
+		};
+		FThroughBallBranchSelectionQueryInput BranchInput;
+		BranchInput.bHasExternalSelectionD6 = true;
+		BranchInput.ExternalSelectionD6 =
+			Session.InitialRouteRollRecords[0].RawD6;
+		OutInput.BranchSelectionResult =
+			FThroughBallBranchSelectionQuery::Select(BranchInput);
+		FThroughBallParticipantEligibilityQueryInput EligibilityInput;
+		EligibilityInput.SelectedSkillId = Bundle.Binding.SkillId;
+		EligibilityInput.CurrentActionPoint = Attack.ActionPoint;
+		EligibilityInput.AttackingOwnerId =
+			Bundle.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA
+				? FName(TEXT("PlayerA")) : FName(TEXT("PlayerB"));
+		EligibilityInput.DefendingOwnerId =
+			Bundle.CurrentDefendingPlayer == EInitialTurnOrderPlayer::PlayerA
+				? FName(TEXT("PlayerA")) : FName(TEXT("PlayerB"));
+		EligibilityInput.CarrierSnapshot = GetSnapshot(Bundle.Carrier);
+		EligibilityInput.RunnerSnapshot = GetSnapshot(Bundle.Runner);
+		EligibilityInput.MarkerSnapshot = GetSnapshot(Bundle.Marker);
+		EligibilityInput.bHasHelper = Bundle.bHasHelper;
+		if (Bundle.bHasHelper)
+		{
+			EligibilityInput.HelperSnapshot = GetSnapshot(Bundle.Helper);
+		}
+		EligibilityInput.bIsRunnerInAttackingForwardArea = true;
+		OutInput.ParticipantEligibilityResult =
+			FThroughBallParticipantEligibilityQuery::Evaluate(Rules, EligibilityInput);
+		OutInput.bHasAntiOffsideAttackD6 = true;
+		OutInput.AntiOffsideAttackD6 =
+			Session.PostRouteRollProgress.RollRecords[0].RawD6;
+	};
+
+	InitialRouteFixtures::FQueueRollProvider UninitializedInitial;
+	FQueuePostRouteRollProvider UninitializedPost;
+	const FSkillRuleSnapshotSet UninitializedRules = MakeSkillRuleSet(
+		TEXT("Skill.AntiOffside.Uninitialized"), ESkillRuleType::ThroughBall);
+	FMatchPlayAuthoritativeSession UninitializedSession(
+		UninitializedInitial, UninitializedPost, UninitializedRules);
+	const auto Uninitialized =
+		UninitializedSession.ResolveThroughBallAntiOffsideDecision();
+	TestFalse(TEXT("Uninitialized AntiOffside command rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized AntiOffside consumes no rolls"),
+		UninitializedPost.GetCallCount(), 0);
+
+	struct FDecisionCase
+	{
+		const TCHAR* Label;
+		int32 InitialRouteD6;
+		int32 AttackD6;
+		EThroughBallAntiOffsideOutcomeDecision Decision;
+	};
+	const FDecisionCase Cases[] = {
+		{ TEXT("Offside"), 5, 5,
+			EThroughBallAntiOffsideOutcomeDecision::Offside },
+		{ TEXT("OneOnOne"), 6, 6,
+			EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired }
+	};
+	for (const FDecisionCase& Case : Cases)
+	{
+		const FString Prefix = FString(TEXT("AntiOffside")) + Case.Label;
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakeThroughBallSkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(Case.InitialRouteD6));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(Case.AttackD6));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches AntiOffside publicly"), Case.Label),
+			ReachAntiOffside(Session, Prefix));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 InitialRecordCount = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num();
+		const auto Operation = Session.ResolveThroughBallAntiOffsideDecision();
+		const auto& Orchestration = Operation.OrchestrationResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		const auto& Resolution = After.CurrentAttack.ResolutionSession;
+		const auto& Records = Resolution.PostRouteRollProgress.RollRecords;
+		TestTrue(*FString::Printf(TEXT("%s succeeds"), Case.Label),
+			Orchestration.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s provider delta"), Case.Label),
+			Post.GetCallCount(), 1);
+		TestEqual(*FString::Printf(TEXT("%s only PrimaryAttack"), Case.Label),
+			Post.GetPurposes()[0], EPurpose::PrimaryAttack);
+		TestEqual(*FString::Printf(TEXT("%s record count"), Case.Label),
+			Records.Num(), 1);
+		TestEqual(*FString::Printf(TEXT("%s record purpose"), Case.Label),
+			Records[0].Purpose, EPurpose::PrimaryAttack);
+		TestEqual(*FString::Printf(TEXT("%s record value"), Case.Label),
+			Records[0].RawD6, Case.AttackD6);
+		TestEqual(*FString::Printf(TEXT("%s preserves initial records"), Case.Label),
+			Resolution.InitialRouteRollRecords.Num(), InitialRecordCount);
+		TestTrue(*FString::Printf(TEXT("%s stops at RouteResolved"), Case.Label),
+			After.bHasCurrentAttack
+				&& Resolution.Stage
+					== EMatchPlayCurrentAttackResolutionStage::RouteResolved);
+		TestTrue(*FString::Printf(TEXT("%s adopts exact AfterState"), Case.Label),
+			AreStatesEqual(After, Orchestration.AfterState));
+		FThroughBallAntiOffsideOutcomeQueryInput DirectInput;
+		BuildDirectInput(After, Rules, DirectInput);
+		const auto Direct = FThroughBallAntiOffsideOutcomeQuery::Evaluate(
+			DirectInput);
+		TestTrue(*FString::Printf(TEXT("%s direct equivalence"), Case.Label),
+			Direct.bSuccess
+				&& Direct.Input.BranchSelectionResult.Input.ExternalSelectionD6
+					== Orchestration.QueryInput.BranchSelectionResult.Input
+						.ExternalSelectionD6
+				&& Direct.Input.AntiOffsideAttackD6
+					== Orchestration.QueryInput.AntiOffsideAttackD6
+				&& Direct.Decision == Orchestration.OutcomeResult.Decision
+				&& Direct.bAttackEnded == Orchestration.OutcomeResult.bAttackEnded
+				&& Direct.bContinueResolution
+					== Orchestration.OutcomeResult.bContinueResolution
+				&& Direct.bRequiresOneOnOne
+					== Orchestration.OutcomeResult.bRequiresOneOnOne
+				&& Direct.RunnerId == Orchestration.OutcomeResult.RunnerId);
+		TestEqual(*FString::Printf(TEXT("%s expected decision"), Case.Label),
+			Orchestration.OutcomeResult.Decision, Case.Decision);
+		if (Case.Decision
+			== EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired)
+		{
+			TestTrue(TEXT("OneOnOneRequired remains a decision only"),
+				Orchestration.OutcomeResult.bRequiresOneOnOne
+					&& Orchestration.OutcomeResult.bContinueResolution);
+			TestEqual(TEXT("OneOnOneRequired consumes no extra provider roll"),
+				Post.GetCallCount(), 1);
+		}
+		else
+		{
+			const int32 ReplayCalls = Post.GetCallCount();
+			const auto Replay = Session.ResolveThroughBallAntiOffsideDecision();
+			TestTrue(TEXT("AntiOffside replay succeeds"),
+				Replay.OrchestrationResult.bSuccess
+					&& Replay.OrchestrationResult.bReplayedCompleteRolls);
+			TestEqual(TEXT("AntiOffside replay provider delta zero"),
+				Post.GetCallCount() - ReplayCalls, 0);
+			TestEqual(TEXT("AntiOffside replay record delta zero"),
+				Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+					.PostRouteRollProgress.RollRecords.Num() - Records.Num(), 0);
+			TestTrue(TEXT("AntiOffside replay State unchanged"),
+				AreStatesEqual(After, Session.GetStateSnapshot()));
+		}
+	}
+
+	InitialRouteFixtures::FQueueRollProvider MissingInitial;
+	MissingInitial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FMatchPlayAuthoritativeSession MissingProviderSession(MissingInitial);
+	TestTrue(TEXT("Missing provider reaches AntiOffside"),
+		ReachAntiOffside(MissingProviderSession, TEXT("AntiOffsideMissing")));
+	const FMatchPlayState MissingBefore = MissingProviderSession.GetStateSnapshot();
+	const auto Missing =
+		MissingProviderSession.ResolveThroughBallAntiOffsideDecision();
+	TestEqual(TEXT("AntiOffside missing provider error"),
+		Missing.OrchestrationResult.ErrorCode,
+		EError::PostRouteRollProviderUnavailable);
+	TestEqual(TEXT("AntiOffside missing provider delta"),
+		Missing.OrchestrationResult.ProviderCallCount, 0);
+	TestAcceptedDomainFailureNoAdopt(
+		*this, TEXT("AntiOffside missing provider"), Missing.RuntimeEnvelope,
+		MissingBefore, MissingProviderSession.GetStateSnapshot());
+
+	auto TestProviderFailure =
+		[this, &ReachAntiOffside, &MakeThroughBallSkillId](
+			const TCHAR* Label,
+			const FMatchPlayPostRouteRollProviderResult Response,
+			const EError ExpectedError)
+	{
+		const FString Prefix(Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			MakeThroughBallSkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(Response);
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label),
+			ReachAntiOffside(Session, Prefix));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Failure = Session.ResolveThroughBallAntiOffsideDecision();
+		TestEqual(*FString::Printf(TEXT("%s calls"), Label),
+			Post.GetCallCount(), 1);
+		TestEqual(*FString::Printf(TEXT("%s error"), Label),
+			Failure.OrchestrationResult.ErrorCode, ExpectedError);
+		TestTrue(*FString::Printf(TEXT("%s no records"), Label),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.IsEmpty());
+		TestAcceptedDomainFailureNoAdopt(
+			*this, Label, Failure.RuntimeEnvelope,
+			Before, Session.GetStateSnapshot());
+	};
+	TestProviderFailure(
+		TEXT("AntiOffside provider failure"), MakePostRouteFailure(),
+		EError::PostRouteRollProviderFailed);
+	TestProviderFailure(
+		TEXT("AntiOffside malformed provider"), MakePostRouteSuccess(0),
+		EError::MalformedPostRouteRollProviderResult);
+
+	auto TestNonAntiOffside = [this](
+		const TCHAR* Label, const int32 InitialRouteD6,
+		const EMatchPlayThroughBallActualBranch ExpectedBranch)
+	{
+		const FString Prefix(Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			FName(*FString::Printf(TEXT("Skill.%s.%d"), *Prefix,
+				static_cast<int32>(ESkillRuleType::ThroughBall))),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(InitialRouteD6));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(1));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label),
+			BuildStage7166ToAwaitingRoute(
+				Session, Prefix, ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None, Trace)
+				&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		TestEqual(*FString::Printf(TEXT("%s expected branch"), Label),
+			Before.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
+			ExpectedBranch);
+		const auto Rejected = Session.ResolveThroughBallAntiOffsideDecision();
+		TestEqual(*FString::Printf(TEXT("%s error"), Label),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::NotThroughBallAntiOffsideBranch);
+		TestEqual(*FString::Printf(TEXT("%s consumes zero"), Label),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(
+			*this, Label, Rejected.RuntimeEnvelope,
+			Before, Session.GetStateSnapshot());
+	};
+	TestNonAntiOffside(TEXT("AntiOffside rejects Feet"), 2,
+		EMatchPlayThroughBallActualBranch::Feet);
+	TestNonAntiOffside(TEXT("AntiOffside rejects BehindDefense"), 3,
+		EMatchPlayThroughBallActualBranch::BehindDefense);
+
+	const FString IsolationAName(TEXT("AntiOffsideIsolationA"));
+	const FString IsolationBName(TEXT("AntiOffsideIsolationB"));
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialA;
+	InitialRouteFixtures::FQueueRollProvider IsolationInitialB;
+	IsolationInitialA.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	IsolationInitialB.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider IsolationPostA;
+	FQueuePostRouteRollProvider IsolationPostB;
+	IsolationPostA.Enqueue(MakePostRouteSuccess(5));
+	IsolationPostB.Enqueue(MakePostRouteSuccess(6));
+	const FSkillRuleSnapshotSet IsolationRulesA = MakeSkillRuleSet(
+		MakeThroughBallSkillId(IsolationAName), ESkillRuleType::ThroughBall);
+	const FSkillRuleSnapshotSet IsolationRulesB = MakeSkillRuleSet(
+		MakeThroughBallSkillId(IsolationBName), ESkillRuleType::ThroughBall);
+	FMatchPlayAuthoritativeSession IsolationA(
+		IsolationInitialA, IsolationPostA, IsolationRulesA);
+	FMatchPlayAuthoritativeSession IsolationB(
+		IsolationInitialB, IsolationPostB, IsolationRulesB);
+	TestTrue(TEXT("AntiOffside isolation A route"),
+		ReachAntiOffside(IsolationA, IsolationAName));
+	TestTrue(TEXT("AntiOffside isolation B route"),
+		ReachAntiOffside(IsolationB, IsolationBName));
+	const FMatchPlayState IsolationBBefore = IsolationB.GetStateSnapshot();
+	IsolationA.ResolveThroughBallAntiOffsideDecision();
+	TestEqual(TEXT("AntiOffside A consumes no B rolls"),
+		IsolationPostB.GetCallCount(), 0);
+	TestTrue(TEXT("AntiOffside A cannot mutate B"),
+		AreStatesEqual(IsolationBBefore, IsolationB.GetStateSnapshot()));
+
+	const FString DeterminismName(TEXT("AntiOffsideDeterminism"));
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialA;
+	InitialRouteFixtures::FQueueRollProvider DeterministicInitialB;
+	DeterministicInitialA.Enqueue(InitialRouteFixtures::MakeSuccess(6));
+	DeterministicInitialB.Enqueue(InitialRouteFixtures::MakeSuccess(6));
+	FQueuePostRouteRollProvider DeterministicPostA;
+	FQueuePostRouteRollProvider DeterministicPostB;
+	DeterministicPostA.Enqueue(MakePostRouteSuccess(6));
+	DeterministicPostB.Enqueue(MakePostRouteSuccess(6));
+	const FSkillRuleSnapshotSet DeterministicRules = MakeSkillRuleSet(
+		MakeThroughBallSkillId(DeterminismName), ESkillRuleType::ThroughBall);
+	FMatchPlayAuthoritativeSession DeterministicA(
+		DeterministicInitialA, DeterministicPostA, DeterministicRules);
+	FMatchPlayAuthoritativeSession DeterministicB(
+		DeterministicInitialB, DeterministicPostB, DeterministicRules);
+	TestTrue(TEXT("AntiOffside deterministic A route"),
+		ReachAntiOffside(DeterministicA, DeterminismName));
+	TestTrue(TEXT("AntiOffside deterministic B route"),
+		ReachAntiOffside(DeterministicB, DeterminismName));
+	const auto DeterministicAResult =
+		DeterministicA.ResolveThroughBallAntiOffsideDecision();
+	const auto DeterministicBResult =
+		DeterministicB.ResolveThroughBallAntiOffsideDecision();
+	TestEqual(TEXT("AntiOffside deterministic decision"),
+		DeterministicAResult.OrchestrationResult.OutcomeResult.Decision,
+		DeterministicBResult.OrchestrationResult.OutcomeResult.Decision);
+	TestTrue(TEXT("AntiOffside deterministic State"),
 		AreStatesEqual(
 			DeterministicA.GetStateSnapshot(),
 			DeterministicB.GetStateSnapshot()));

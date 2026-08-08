@@ -93,6 +93,9 @@ public:
 	FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionResult
 	ResolveDeadCornerPostRouteDecision();
 
+	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionResult
+	ResolveThroughBallAntiOffsideDecision();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
