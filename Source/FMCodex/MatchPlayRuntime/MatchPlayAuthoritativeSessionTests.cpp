@@ -6021,11 +6021,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All twenty-eight mutations use the gate"),
+	TestEqual(TEXT("All twenty-nine mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		28);
+		29);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9711,9 +9711,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All twenty-eight mutations share serialized gate"),
+	TestEqual(TEXT("All twenty-nine mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		28);
+		29);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -14851,6 +14851,617 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP1DecisionOrPl
 
 	const FString Determinism(TEXT("P1Determinism"));const auto DeterminismRules=MakeSkillRuleSet(SkillId(Determinism),ESkillRuleType::ThroughBall);InitialRouteFixtures::FQueueRollProvider IA,IB;IA.Enqueue(InitialRouteFixtures::MakeSuccess(3));IB.Enqueue(InitialRouteFixtures::MakeSuccess(3));FQueuePostRouteRollProvider PA,PB;PA.Enqueue(MakePostRouteSuccess(4));PA.Enqueue(MakePostRouteSuccess(2));PB.Enqueue(MakePostRouteSuccess(4));PB.Enqueue(MakePostRouteSuccess(2));FMatchPlayAuthoritativeSession SA(IA,PA,DeterminismRules),SB(IB,PB,DeterminismRules);TestTrue(TEXT("P1 deterministic A route"),Reach(SA,Determinism));TestTrue(TEXT("P1 deterministic B route"),Reach(SB,Determinism));const auto DA=SA.ResolveThroughBallBehindDefenseP1DecisionOrPlan();const auto DB=SB.ResolveThroughBallBehindDefenseP1DecisionOrPlan();TestTrue(TEXT("P1 deterministic Formula"),DA.OrchestrationResult.P1PlanResult.bHasFormulaPlan&&DB.OrchestrationResult.P1PlanResult.bHasFormulaPlan&&DA.OrchestrationResult.P1PlanResult.FormulaPlan.InvolvedCardIds==DB.OrchestrationResult.P1PlanResult.FormulaPlan.InvolvedCardIds&&DA.OrchestrationResult.P1PlanResult.FormulaPlan.AttackD6==DB.OrchestrationResult.P1PlanResult.FormulaPlan.AttackD6&&DA.OrchestrationResult.P1PlanResult.FormulaPlan.DefenseD6==DB.OrchestrationResult.P1PlanResult.FormulaPlan.DefenseD6);TestTrue(TEXT("P1 deterministic State"),AreStatesEqual(SA.GetStateSnapshot(),SB.GetStateSnapshot()));
 	const auto IsolateRulesA=MakeSkillRuleSet(SkillId(TEXT("P1IsolationA")),ESkillRuleType::ThroughBall);const auto IsolateRulesB=MakeSkillRuleSet(SkillId(TEXT("P1IsolationB")),ESkillRuleType::ThroughBall);InitialRouteFixtures::FQueueRollProvider IsolateIA,IsolateIB;IsolateIA.Enqueue(InitialRouteFixtures::MakeSuccess(3));IsolateIB.Enqueue(InitialRouteFixtures::MakeSuccess(3));FQueuePostRouteRollProvider IsolatePA,IsolatePB;IsolatePA.Enqueue(MakePostRouteSuccess(3));IsolatePA.Enqueue(MakePostRouteSuccess(4));IsolatePB.Enqueue(MakePostRouteSuccess(2));FMatchPlayAuthoritativeSession IsolateA(IsolateIA,IsolatePA,IsolateRulesA),IsolateB(IsolateIB,IsolatePB,IsolateRulesB);TestTrue(TEXT("P1 isolation A route"),Reach(IsolateA,TEXT("P1IsolationA")));TestTrue(TEXT("P1 isolation B route"),Reach(IsolateB,TEXT("P1IsolationB")));const auto IsolateBefore=IsolateB.GetStateSnapshot();const auto IsolateResult=IsolateA.ResolveThroughBallBehindDefenseP1DecisionOrPlan();TestTrue(TEXT("P1 isolation A succeeds"),IsolateResult.OrchestrationResult.bSuccess);TestEqual(TEXT("P1 isolation B calls zero"),IsolatePB.GetCallCount(),0);TestTrue(TEXT("P1 isolation B unchanged"),AreStatesEqual(IsolateBefore,IsolateB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest,
+	"50.ResolveSingleCardFinishingFormulaAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EError =
+		EMatchPlayCurrentAttackResolveSingleCardFinishingFormulaErrorCode;
+	using EFamily = EMatchPlaySingleCardFinishingFormulaFamily;
+
+	static_assert(std::is_same_v<
+		decltype(
+			&FMatchPlayAuthoritativeSession::ResolveSingleCardFinishingFormula),
+		FMatchPlayAuthoritativeResolveSingleCardFinishingFormulaResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	TestEqual(
+		TEXT("SingleCard Formula command appended"),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind
+				::ResolveSingleCardFinishingFormula),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind
+				::ResolveThroughBallBehindDefenseP1DecisionOrPlan) + 1);
+
+	FString Header;
+	FString Types;
+	FString Implementation;
+	FString Orchestrator;
+	TestTrue(TEXT("Formula Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		Header));
+	TestTrue(TEXT("Formula Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		Types));
+	TestTrue(TEXT("Formula Session implementation loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		Implementation));
+	TestTrue(TEXT("Formula orchestrator loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator.cpp"),
+		Orchestrator));
+	TestTrue(TEXT("Formula command has no gameplay arguments"),
+		Header.Contains(TEXT("ResolveSingleCardFinishingFormula();")));
+	TestFalse(TEXT("No public Formula request exists"),
+		Types.Contains(
+			TEXT("FMatchPlayAuthoritativeResolveSingleCardFinishingFormulaRequest")));
+	for (const TCHAR* ForbiddenInput : {
+		TEXT("FFormulaResolverInput&"),
+		TEXT("FCrossFormulaPlan&"),
+		TEXT("FPassControlPassAdvanceFormulaPlan&"),
+		TEXT("FLongShotDirectShotFormulaPlan&"),
+		TEXT("int32 D6"),
+		TEXT("ActualBranch)") })
+	{
+		TestFalse(
+			*FString::Printf(TEXT("Public Formula input absent: %s"), ForbiddenInput),
+			Header.Contains(ForbiddenInput));
+	}
+	TestFalse(TEXT("Session performs no direct RNG"),
+		Implementation.Contains(TEXT("RollD6(")));
+	TestFalse(TEXT("Formula bridge contains no Outcome/Completion mutation"),
+		Orchestrator.Contains(TEXT("FGoalResolver"))
+			|| Orchestrator.Contains(TEXT("FMatchPlayCurrentAttackCompletion"))
+			|| Orchestrator.Contains(TEXT("FAttackOpportunityResolver")));
+	TestFalse(TEXT("Formula bridge excludes ThroughBall executors"),
+		Orchestrator.Contains(TEXT("FThroughBallFeetFormulaResolutionExecutor"))
+			|| Orchestrator.Contains(
+				TEXT("FThroughBallBehindDefenseP1FormulaResolutionExecutor")));
+
+	const auto Uninitialized =
+		FMatchPlayAuthoritativeSession().ResolveSingleCardFinishingFormula();
+	TestFalse(TEXT("Uninitialized Formula command rejected by runtime"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized Formula execution count"),
+		Uninitialized.OrchestrationResult.FormulaExecutionCount, 0);
+
+	auto SkillId = [](const FString& Prefix, const ESkillRuleType Type)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(Type)));
+	};
+	auto ReachRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType Type,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session, Prefix, Type, Intent, Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+
+	struct FSuccessCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType ActionType;
+		EMatchPlayElectiveBranchIntent Intent;
+		int32 InitialRouteD6;
+		int32 AttackD6;
+		int32 DefenseD6;
+		EFamily ExpectedFamily;
+	};
+	const FSuccessCase Cases[] = {
+		{ TEXT("CrossHigh"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh,
+			4, 6, 1, EFamily::Cross },
+		{ TEXT("CrossLow"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh,
+			5, 4, 2, EFamily::Cross },
+		{ TEXT("PassAdvance"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None,
+			1, 1, 6, EFamily::PassAdvance },
+		{ TEXT("DribbleAdvance"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None,
+			3, 5, 2, EFamily::DribbleAdvance },
+		{ TEXT("RunAdvance"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None,
+			5, 2, 4, EFamily::RunAdvance },
+		{ TEXT("LongShotDirectShot"), ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DirectShot,
+			0, 4, 2, EFamily::LongShotDirectShot },
+		{ TEXT("CutInsideDirectShot"), ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DirectShot,
+			0, 6, 1, EFamily::CutInsideShotDirectShot }
+	};
+
+	FMatchPlayState CrossSemanticState;
+	FSkillRuleSnapshotSet CrossSemanticRules;
+	bool bHasCrossSemanticState = false;
+	for (const FSuccessCase& Case : Cases)
+	{
+		const FString Prefix = FString(TEXT("Formula")) + Case.Label;
+		const FName CurrentSkillId = SkillId(Prefix, Case.ActionType);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(CurrentSkillId, Case.ActionType);
+		InitialRouteFixtures::FQueueRollProvider InitialProvider;
+		if (Case.InitialRouteD6 != 0)
+		{
+			InitialProvider.Enqueue(
+				InitialRouteFixtures::MakeSuccess(Case.InitialRouteD6));
+		}
+		FQueuePostRouteRollProvider PostProvider;
+		PostProvider.Enqueue(MakePostRouteSuccess(Case.AttackD6));
+		PostProvider.Enqueue(MakePostRouteSuccess(Case.DefenseD6));
+		FMatchPlayAuthoritativeSession Session(
+			InitialProvider, PostProvider, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches RouteResolved"), Case.Label),
+			ReachRoute(Session, Prefix, Case.ActionType, Case.Intent));
+
+		bool bPlanReady = false;
+		if (Case.ActionType == ESkillRuleType::Cross)
+		{
+			bPlanReady = Session.ResolveCrossPostRoutePlan()
+				.OrchestrationResult.bSuccess;
+		}
+		else if (Case.ActionType == ESkillRuleType::PassControl)
+		{
+			bPlanReady = Session.ResolvePassControlPostRoutePlan()
+				.OrchestrationResult.bSuccess;
+		}
+		else
+		{
+			bPlanReady = Session.ResolveDirectShotPostRouteDecisionOrPlan()
+				.OrchestrationResult.bSuccess;
+		}
+		TestTrue(*FString::Printf(TEXT("%s canonical plan ready"), Case.Label),
+			bPlanReady);
+
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 InitialCallsBefore = InitialProvider.GetCallCount();
+		const int32 PostCallsBefore = PostProvider.GetCallCount();
+		const int32 InitialRecordsBefore = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num();
+		const int32 PostRecordsBefore = Before.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords.Num();
+		const int32 PlayerAScoreBefore = Before.RuntimeState.PlayerAState.Score;
+		const int32 PlayerBScoreBefore = Before.RuntimeState.PlayerBState.Score;
+
+		const auto Operation = Session.ResolveSingleCardFinishingFormula();
+		const auto& Domain = Operation.OrchestrationResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s Formula succeeds"), Case.Label),
+			Domain.bSuccess && Domain.bHasFormulaResolution);
+		TestEqual(*FString::Printf(TEXT("%s family"), Case.Label),
+			Domain.Family, Case.ExpectedFamily);
+		TestEqual(*FString::Printf(TEXT("%s executes once"), Case.Label),
+			Domain.FormulaExecutionCount, 1);
+		if (Case.ExpectedFamily == EFamily::Cross
+			&& Case.InitialRouteD6 == 4)
+		{
+			TestEqual(TEXT("Cross High represents attacker Formula win"),
+				Domain.FormulaResolutionResult.Winner,
+				EFormulaWinner::Attacker);
+		}
+		if (Case.ExpectedFamily == EFamily::PassAdvance)
+		{
+			TestEqual(TEXT("PassAdvance represents defender Formula win"),
+				Domain.FormulaResolutionResult.Winner,
+				EFormulaWinner::Defender);
+		}
+		TestEqual(*FString::Printf(TEXT("%s plan regeneration RNG"), Case.Label),
+			Domain.PlanRegenerationProviderCallCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s initial provider delta"), Case.Label),
+			InitialProvider.GetCallCount() - InitialCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s post provider delta"), Case.Label),
+			PostProvider.GetCallCount() - PostCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s initial record delta"), Case.Label),
+			After.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Num()
+				- InitialRecordsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s post record delta"), Case.Label),
+			After.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.Num() - PostRecordsBefore, 0);
+		TestTrue(*FString::Printf(TEXT("%s pure Domain state"), Case.Label),
+			AreStatesEqual(Before, Domain.AfterState));
+		TestTrue(*FString::Printf(TEXT("%s pure Session state"), Case.Label),
+			AreStatesEqual(Before, After));
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack active"), Case.Label),
+			After.bHasCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s remains RouteResolved"), Case.Label),
+			After.CurrentAttack.ResolutionSession.Stage,
+			EMatchPlayCurrentAttackResolutionStage::RouteResolved);
+		TestEqual(*FString::Printf(TEXT("%s PlayerA score unchanged"), Case.Label),
+			After.RuntimeState.PlayerAState.Score, PlayerAScoreBefore);
+		TestEqual(*FString::Printf(TEXT("%s PlayerB score unchanged"), Case.Label),
+			After.RuntimeState.PlayerBState.Score, PlayerBScoreBefore);
+		TestTrue(*FString::Printf(TEXT("%s canonical adoption"), Case.Label),
+			Operation.RuntimeEnvelope.bAccepted
+				&& Operation.RuntimeEnvelope.bDomainSuccess
+				&& Operation.RuntimeEnvelope.StateDisposition
+					== EMatchPlayAuthoritativeStateDisposition::Adopt
+				&& AreStatesEqual(Operation.RuntimeEnvelope.BeforeState, Before)
+				&& AreStatesEqual(Operation.RuntimeEnvelope.AfterState, Before));
+
+		FSingleCardFormulaInputAssemblyQueryInput DirectAttackerInput;
+		FSingleCardFormulaInputAssemblyQueryInput DirectDefenderInput;
+		FName DirectAttackerPlayerId = NAME_None;
+		FName DirectDefenderPlayerId = NAME_None;
+		bool bDirectGoalkeeperParticipated = false;
+		if (Case.ExpectedFamily == EFamily::Cross)
+		{
+			const FCrossFormulaPlan& Plan =
+				Domain.CrossRegenerationResult.PlanResult.FormulaPlan;
+			DirectAttackerInput = Plan.AttackerQueryInput;
+			DirectDefenderInput = Plan.DefenderQueryInput;
+			DirectAttackerPlayerId = Plan.CarrierPlayerId;
+			DirectDefenderPlayerId = Plan.MarkerPlayerId;
+			bDirectGoalkeeperParticipated = Plan.bUseGoalkeeper;
+		}
+		else if (Case.ExpectedFamily == EFamily::PassAdvance)
+		{
+			const auto& Plan = Domain.PassControlRegenerationResult
+				.PassAdvanceResult.FormulaPlan;
+			DirectAttackerInput = Plan.AttackerQueryInput;
+			DirectDefenderInput = Plan.DefenderQueryInput;
+			DirectAttackerPlayerId = Plan.CarrierPlayerId;
+			DirectDefenderPlayerId = Plan.MarkerPlayerId;
+		}
+		else if (Case.ExpectedFamily == EFamily::DribbleAdvance)
+		{
+			const auto& Plan = Domain.PassControlRegenerationResult
+				.DribbleAdvanceResult.FormulaPlan;
+			DirectAttackerInput = Plan.AttackerQueryInput;
+			DirectDefenderInput = Plan.DefenderQueryInput;
+			DirectAttackerPlayerId = Plan.CarrierPlayerId;
+			DirectDefenderPlayerId = Plan.MarkerPlayerId;
+		}
+		else if (Case.ExpectedFamily == EFamily::RunAdvance)
+		{
+			const auto& Plan = Domain.PassControlRegenerationResult
+				.RunAdvanceResult.FormulaPlan;
+			DirectAttackerInput = Plan.AttackerQueryInput;
+			DirectDefenderInput = Plan.DefenderQueryInput;
+			DirectAttackerPlayerId = Plan.CarrierPlayerId;
+			DirectDefenderPlayerId = Plan.MarkerPlayerId;
+		}
+		else if (Case.ExpectedFamily == EFamily::LongShotDirectShot)
+		{
+			const auto& Plan = Domain.DirectShotRegenerationResult
+				.LongShotResult.FormulaPlan;
+			DirectAttackerInput = Plan.AttackerQueryInput;
+			DirectDefenderInput = Plan.DefenderQueryInput;
+			DirectAttackerPlayerId = Plan.AttackerPlayerId;
+			DirectDefenderPlayerId = Plan.DefenderPlayerId;
+		}
+		else
+		{
+			const auto& Plan = Domain.DirectShotRegenerationResult
+				.CutInsideShotResult.FormulaPlan;
+			DirectAttackerInput = Plan.AttackerQueryInput;
+			DirectDefenderInput = Plan.DefenderQueryInput;
+			DirectAttackerPlayerId = Plan.AttackerPlayerId;
+			DirectDefenderPlayerId = Plan.DefenderPlayerId;
+		}
+
+		const auto DirectAttacker =
+			FSingleCardFormulaInputAssemblyQuery::Assemble(
+				Domain.PlayerCardSnapshots, DirectAttackerInput);
+		const auto DirectDefender =
+			FSingleCardFormulaInputAssemblyQuery::Assemble(
+				Domain.PlayerCardSnapshots, DirectDefenderInput);
+		FSingleCardFormulaResolverInputAssemblyInput DirectAssemblyInput;
+		DirectAssemblyInput.AttackerQueryResult = DirectAttacker;
+		DirectAssemblyInput.DefenderQueryResult = DirectDefender;
+		DirectAssemblyInput.AttackerPlayerId = DirectAttackerPlayerId;
+		DirectAssemblyInput.DefenderPlayerId = DirectDefenderPlayerId;
+		auto DirectAssembly =
+			FSingleCardFormulaResolverInputAssembler::Assemble(
+				DirectAssemblyInput);
+		DirectAssembly.ResolverInput.bGoalkeeperParticipated =
+			bDirectGoalkeeperParticipated;
+		const auto DirectExecution =
+			FSingleCardFormulaResolutionExecutor::Execute(
+				DirectAssembly.ResolverInput);
+		TestTrue(*FString::Printf(TEXT("%s direct chain succeeds"), Case.Label),
+			DirectAttacker.bSuccess && DirectDefender.bSuccess
+				&& DirectAssembly.bSuccess && DirectExecution.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s direct result equivalent"), Case.Label),
+			AreReflectedValuesEqual(
+				Domain.FormulaResolutionResult,
+				DirectExecution.FormulaResolutionResult));
+
+		const int32 ReplayPostCalls = PostProvider.GetCallCount();
+		const auto Replay = Session.ResolveSingleCardFinishingFormula();
+		TestTrue(*FString::Printf(TEXT("%s replay succeeds"), Case.Label),
+			Replay.OrchestrationResult.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s replay result equivalent"), Case.Label),
+			AreReflectedValuesEqual(
+				Domain.FormulaResolutionResult,
+				Replay.OrchestrationResult.FormulaResolutionResult));
+		TestTrue(*FString::Printf(TEXT("%s replay state unchanged"), Case.Label),
+			AreStatesEqual(Before, Session.GetStateSnapshot()));
+		TestEqual(*FString::Printf(TEXT("%s replay provider delta"), Case.Label),
+			PostProvider.GetCallCount() - ReplayPostCalls, 0);
+
+		if (Case.ExpectedFamily == EFamily::Cross
+			&& !bHasCrossSemanticState)
+		{
+			CrossSemanticState = Before;
+			CrossSemanticRules = Rules;
+			bHasCrossSemanticState = true;
+		}
+	}
+
+	TestTrue(TEXT("Cross semantic fixture captured"), bHasCrossSemanticState);
+	if (bHasCrossSemanticState)
+	{
+		using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+		auto MakeCrossTieState = [&CrossSemanticState]()
+		{
+			FMatchPlayState State = CrossSemanticState;
+			auto& Records = State.CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords;
+			Records[0].Purpose = EPurpose::PrimaryAttack;
+			Records[0].RawD6 = 5;
+			Records[1].Purpose = EPurpose::PrimaryDefense;
+			Records[1].RawD6 = 3;
+			return State;
+		};
+
+		FMatchPlayState GoalkeeperTieState = MakeCrossTieState();
+		GoalkeeperTieState.CurrentAttack
+			.bCurrentDefenseGoalkeeperActivated = true;
+		++GoalkeeperTieState.CurrentAttack.ResolutionSession.Bundle.Runner
+			.Values.Strength;
+		const auto GoalkeeperTie =
+			FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+				::Resolve(GoalkeeperTieState, &CrossSemanticRules);
+		TestTrue(TEXT("Goalkeeper tie bridge succeeds"), GoalkeeperTie.bSuccess);
+		TestTrue(TEXT("Goalkeeper participation preserved"),
+			GoalkeeperTie.ResolverInputAssemblyResult.ResolverInput
+				.bGoalkeeperParticipated);
+		TestEqual(TEXT("Goalkeeper tie final values equal"),
+			GoalkeeperTie.FormulaResolutionResult.AttackerFinalValue,
+			GoalkeeperTie.FormulaResolutionResult.DefenderFinalValue);
+		TestEqual(TEXT("Goalkeeper tie defender wins"),
+			GoalkeeperTie.FormulaResolutionResult.Winner,
+			EFormulaWinner::Defender);
+		TestEqual(TEXT("Goalkeeper tie reason canonical"),
+			GoalkeeperTie.FormulaResolutionResult.WinReason,
+			EFormulaWinReason::DefenderWinsGoalkeeperTie);
+
+		FMatchPlayState StaminaTieState = MakeCrossTieState();
+		StaminaTieState.CurrentAttack.ResolutionSession.Bundle.Carrier
+			.Values.Stamina = 5;
+		StaminaTieState.CurrentAttack.ResolutionSession.Bundle.Marker
+			.Values.Stamina = 1;
+		const auto StaminaTie =
+			FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+				::Resolve(StaminaTieState, &CrossSemanticRules);
+		TestTrue(TEXT("Stamina tie bridge succeeds"), StaminaTie.bSuccess);
+		TestFalse(TEXT("Stamina tie has no goalkeeper"),
+			StaminaTie.ResolverInputAssemblyResult.ResolverInput
+				.bGoalkeeperParticipated);
+		TestEqual(TEXT("Stamina tie final values equal"),
+			StaminaTie.FormulaResolutionResult.AttackerFinalValue,
+			StaminaTie.FormulaResolutionResult.DefenderFinalValue);
+		TestEqual(TEXT("Higher attacking stamina wins"),
+			StaminaTie.FormulaResolutionResult.Winner,
+			EFormulaWinner::Attacker);
+		TestEqual(TEXT("Stamina tie reason canonical"),
+			StaminaTie.FormulaResolutionResult.WinReason,
+			EFormulaWinReason::StaminaTieBreaker);
+	}
+
+	FMatchPlayAuthoritativeSession NoAttackSession;
+	NoAttackSession.InitializeMatch(MakeValidInput(TEXT("FormulaNoAttack")));
+	const FMatchPlayState NoAttackBefore = NoAttackSession.GetStateSnapshot();
+	const auto NoAttack = NoAttackSession.ResolveSingleCardFinishingFormula();
+	TestEqual(TEXT("No CurrentAttack rejected"),
+		NoAttack.OrchestrationResult.ErrorCode, EError::NoCurrentAttack);
+	TestAcceptedDomainFailureNoAdopt(*this, TEXT("Formula no attack"),
+		NoAttack.RuntimeEnvelope, NoAttackBefore,
+		NoAttackSession.GetStateSnapshot());
+
+	FMatchPlayAuthoritativeSession NoResolutionSession;
+	FReachabilityTrace NoResolutionTrace;
+	TestTrue(TEXT("Formula no-session fixture ready"),
+		BuildStage7164ToReadyForResolution(
+			NoResolutionSession, TEXT("FormulaNoSession"), NoResolutionTrace));
+	const FMatchPlayState NoResolutionBefore =
+		NoResolutionSession.GetStateSnapshot();
+	const auto NoResolution =
+		NoResolutionSession.ResolveSingleCardFinishingFormula();
+	TestEqual(TEXT("No Resolution Session rejected"),
+		NoResolution.OrchestrationResult.ErrorCode,
+		EError::MissingResolutionSession);
+	TestAcceptedDomainFailureNoAdopt(*this, TEXT("Formula no session"),
+		NoResolution.RuntimeEnvelope, NoResolutionBefore,
+		NoResolutionSession.GetStateSnapshot());
+
+	{
+		const FString Prefix(TEXT("FormulaWrongStage"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::Cross), ESkillRuleType::Cross);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Wrong-stage fixture reaches AwaitingRoute"),
+			BuildStage7166ToAwaitingRoute(Session, Prefix,
+				ESkillRuleType::Cross,
+				EMatchPlayElectiveBranchIntent::CrossHigh, Trace));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ResolveSingleCardFinishingFormula();
+		TestEqual(TEXT("AwaitingRoute rejected"),
+			Rejected.OrchestrationResult.ErrorCode, EError::RouteNotResolved);
+		TestEqual(TEXT("Wrong stage Formula execution zero"),
+			Rejected.OrchestrationResult.FormulaExecutionCount, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Formula wrong stage"),
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	auto TestUnsupportedThroughBall = [this, &ReachRoute, &SkillId](
+		const TCHAR* Label,
+		const int32 InitialD6)
+	{
+		const FString Prefix(Label);
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::ThroughBall),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(InitialD6));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Label),
+			ReachRoute(Session, Prefix, ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ResolveSingleCardFinishingFormula();
+		TestEqual(*FString::Printf(TEXT("%s unsupported"), Label),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::UnsupportedFormulaFamily);
+		TestEqual(*FString::Printf(TEXT("%s Formula execution zero"), Label),
+			Rejected.OrchestrationResult.FormulaExecutionCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s post RNG zero"), Label),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(*this, Label,
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	};
+	TestUnsupportedThroughBall(TEXT("FormulaRejectFeet"), 2);
+	TestUnsupportedThroughBall(TEXT("FormulaRejectBehindDefenseP1"), 3);
+
+	{
+		const FString Prefix(TEXT("FormulaIncompleteCross"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::Cross), ESkillRuleType::Cross);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(4));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Incomplete fixture reaches route"),
+			ReachRoute(Session, Prefix, ESkillRuleType::Cross,
+				EMatchPlayElectiveBranchIntent::CrossHigh));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ResolveSingleCardFinishingFormula();
+		TestEqual(TEXT("Incomplete post-route progress rejected"),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::IncompletePostRouteRollProgress);
+		TestEqual(TEXT("Incomplete progress consumes zero post RNG"),
+			Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Formula incomplete"),
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	{
+		const FString Prefix(TEXT("FormulaImmediateMiss"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::LongShot), ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(2));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("ImmediateMiss reaches route"),
+			ReachRoute(Session, Prefix, ESkillRuleType::LongShot,
+				EMatchPlayElectiveBranchIntent::DirectShot));
+		TestTrue(TEXT("ImmediateMiss first consumer succeeds"),
+			Session.ResolveDirectShotPostRouteDecisionOrPlan()
+				.OrchestrationResult.bSuccess);
+		const int32 CallsBefore = Post.GetCallCount();
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ResolveSingleCardFinishingFormula();
+		TestEqual(TEXT("ImmediateMiss Formula rejected"),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::FormulaPlanUnavailable);
+		TestEqual(TEXT("ImmediateMiss Formula execution zero"),
+			Rejected.OrchestrationResult.FormulaExecutionCount, 0);
+		TestEqual(TEXT("ImmediateMiss consumes zero additional RNG"),
+			Post.GetCallCount() - CallsBefore, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Formula immediate miss"),
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	{
+		const FString Prefix(TEXT("FormulaDeadCorner"));
+		const auto Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::LongShot), ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("DeadCorner reaches route"),
+			ReachRoute(Session, Prefix, ESkillRuleType::LongShot,
+				EMatchPlayElectiveBranchIntent::DeadCorner));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const auto Rejected = Session.ResolveSingleCardFinishingFormula();
+		TestEqual(TEXT("DeadCorner unsupported"),
+			Rejected.OrchestrationResult.ErrorCode,
+			EError::UnsupportedFormulaFamily);
+		TestEqual(TEXT("DeadCorner Formula execution zero"),
+			Rejected.OrchestrationResult.FormulaExecutionCount, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Formula DeadCorner"),
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	const FString DeterminismPrefix(TEXT("FormulaDeterminism"));
+	const auto DeterminismRules = MakeSkillRuleSet(
+		SkillId(DeterminismPrefix, ESkillRuleType::PassControl),
+		ESkillRuleType::PassControl);
+	InitialRouteFixtures::FQueueRollProvider DeterminismInitialA;
+	InitialRouteFixtures::FQueueRollProvider DeterminismInitialB;
+	DeterminismInitialA.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+	DeterminismInitialB.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+	FQueuePostRouteRollProvider DeterminismPostA;
+	FQueuePostRouteRollProvider DeterminismPostB;
+	for (FQueuePostRouteRollProvider* Provider : {
+		&DeterminismPostA, &DeterminismPostB })
+	{
+		Provider->Enqueue(MakePostRouteSuccess(4));
+		Provider->Enqueue(MakePostRouteSuccess(2));
+	}
+	FMatchPlayAuthoritativeSession DeterminismA(
+		DeterminismInitialA, DeterminismPostA, DeterminismRules);
+	FMatchPlayAuthoritativeSession DeterminismB(
+		DeterminismInitialB, DeterminismPostB, DeterminismRules);
+	TestTrue(TEXT("Determinism A reaches route"),
+		ReachRoute(DeterminismA, DeterminismPrefix,
+			ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None));
+	TestTrue(TEXT("Determinism B reaches route"),
+		ReachRoute(DeterminismB, DeterminismPrefix,
+			ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None));
+	TestTrue(TEXT("Determinism A plan ready"),
+		DeterminismA.ResolvePassControlPostRoutePlan()
+			.OrchestrationResult.bSuccess);
+	TestTrue(TEXT("Determinism B plan ready"),
+		DeterminismB.ResolvePassControlPostRoutePlan()
+			.OrchestrationResult.bSuccess);
+	const FMatchPlayState IsolationBBefore = DeterminismB.GetStateSnapshot();
+	const int32 IsolationBCallsBefore = DeterminismPostB.GetCallCount();
+	const auto DeterministicResultA =
+		DeterminismA.ResolveSingleCardFinishingFormula();
+	TestTrue(TEXT("Session A cannot mutate Session B"),
+		AreStatesEqual(IsolationBBefore, DeterminismB.GetStateSnapshot()));
+	TestEqual(TEXT("Session A cannot consume Session B provider"),
+		DeterminismPostB.GetCallCount() - IsolationBCallsBefore, 0);
+	const auto DeterministicResultB =
+		DeterminismB.ResolveSingleCardFinishingFormula();
+	TestTrue(TEXT("Independent Session Formula results deterministic"),
+		AreReflectedValuesEqual(
+			DeterministicResultA.OrchestrationResult.FormulaResolutionResult,
+			DeterministicResultB.OrchestrationResult.FormulaResolutionResult));
+	TestTrue(TEXT("Independent Session States deterministic"),
+		AreStatesEqual(
+			DeterminismA.GetStateSnapshot(),
+			DeterminismB.GetStateSnapshot()));
 	return true;
 }
 

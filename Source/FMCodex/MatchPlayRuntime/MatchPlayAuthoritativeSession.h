@@ -102,6 +102,9 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DecisionOrPlanResult
 	ResolveThroughBallBehindDefenseP1DecisionOrPlan();
 
+	FMatchPlayAuthoritativeResolveSingleCardFinishingFormulaResult
+	ResolveSingleCardFinishingFormula();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
