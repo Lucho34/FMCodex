@@ -10,6 +10,10 @@ public:
 	FMatchPlayAuthoritativeSession();
 	explicit FMatchPlayAuthoritativeSession(
 		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider);
+	FMatchPlayAuthoritativeSession(
+		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
+		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+		const FSkillRuleSnapshotSet& InSkillRuleSet);
 	~FMatchPlayAuthoritativeSession();
 
 	FMatchPlayAuthoritativeInitializeMatchResult InitializeMatch(
@@ -77,6 +81,9 @@ public:
 
 	FMatchPlayAuthoritativeResolveInitialRouteResult ResolveInitialRoute();
 
+	FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
+	ResolveCrossPostRoutePlan();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
@@ -107,5 +114,8 @@ private:
 
 	FMatchPlayState AuthoritativeState;
 	IMatchPlayInitialRouteRollProvider* InitialRouteRollProvider = nullptr;
+	IMatchPlayPostRouteRollProvider* PostRouteRollProvider = nullptr;
+	FSkillRuleSnapshotSet AuthoritativeSkillRuleSet;
+	bool bHasSkillRuleSet = false;
 	bool bExecutingCommand = false;
 };
