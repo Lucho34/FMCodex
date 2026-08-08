@@ -1,6 +1,7 @@
 #include "MatchPlayCurrentAttackResolutionSessionStateValidator.h"
 
 #include "MatchPlayCurrentAttackInitialRouteMappingQuery.h"
+#include "MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 #include "MatchPlayElectiveBranchIntentRules.h"
 #include "PlayerCardRuleSnapshotValidator.h"
@@ -231,6 +232,17 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 				0);
 	}
 
+	bool IsPostRouteRollProgressDefault(
+		const FMatchPlayCurrentAttackPostRouteRollProgress& Progress)
+	{
+		const FMatchPlayCurrentAttackPostRouteRollProgress DefaultProgress;
+		return FMatchPlayCurrentAttackPostRouteRollProgress::StaticStruct()
+			->CompareScriptStruct(
+				&Progress,
+				&DefaultProgress,
+				0);
+	}
+
 	bool ValidateActualBranchPayload(
 		const FMatchPlayCurrentAttackResolutionSession& Session,
 		FMatchPlayCurrentAttackResolutionSessionStateValidationResult&
@@ -387,6 +399,16 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 					TEXT("AwaitingRoute must not contain Initial Route rolls."));
 				return false;
 			}
+			if (!IsPostRouteRollProgressDefault(
+					Session.PostRouteRollProgress))
+			{
+				SetFailure(
+					Result,
+					EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+						::UnexpectedPostRouteRollProgressWhileAwaitingRoute,
+					TEXT("AwaitingRoute must not contain post-route roll progress."));
+				return false;
+			}
 			return true;
 		}
 
@@ -477,6 +499,22 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 					::InitialRouteMappingMismatch,
 				TEXT("Stored Intent, D6, and Actual Branch do not match."));
+			return false;
+		}
+
+		const FMatchPlayCurrentAttackPostRouteRollProgressResult
+			PostRouteProgressResult =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+					Session);
+		if (!PostRouteProgressResult.bIsCanonical)
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::InvalidPostRouteRollProgress,
+				FString::Printf(
+					TEXT("Post-route roll progress is not canonical: %s"),
+					*PostRouteProgressResult.ErrorMessage));
 			return false;
 		}
 

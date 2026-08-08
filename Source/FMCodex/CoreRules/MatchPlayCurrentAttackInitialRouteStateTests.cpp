@@ -1,4 +1,6 @@
 #include "MatchPlayCurrentAttackInitialRouteMappingQuery.h"
+#include "MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
+#include "MatchPlayPostRouteRollProvider.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -12,6 +14,47 @@ namespace SessionFixtures =
 
 namespace MatchPlayCurrentAttackInitialRouteStateTests
 {
+	using EPostRoutePurpose =
+		EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using EPostRoutePhase = EMatchPlayCurrentAttackPostRouteRollPhase;
+	using EPostRouteError =
+		EMatchPlayCurrentAttackPostRouteRollProgressErrorCode;
+
+	FMatchPlayCurrentAttackPostRouteRollRecord MakePostRouteRecord(
+		const EPostRoutePurpose Purpose,
+		const int32 RawD6)
+	{
+		FMatchPlayCurrentAttackPostRouteRollRecord Record;
+		Record.Purpose = Purpose;
+		Record.RawD6 = RawD6;
+		return Record;
+	}
+
+	class FPostRouteRollProvider final
+		: public IMatchPlayPostRouteRollProvider
+	{
+	public:
+		explicit FPostRouteRollProvider(
+			const FMatchPlayPostRouteRollProviderResult& InResult)
+			: Result(InResult)
+		{
+		}
+
+		virtual FMatchPlayPostRouteRollProviderResult RollD6(
+			const EPostRoutePurpose Purpose) override
+		{
+			++CallCount;
+			LastPurpose = Purpose;
+			return Result;
+		}
+
+		int32 CallCount = 0;
+		EPostRoutePurpose LastPurpose = EPostRoutePurpose::None;
+
+	private:
+		FMatchPlayPostRouteRollProviderResult Result;
+	};
+
 	struct FMappingCase
 	{
 		const TCHAR* Label = TEXT("");
@@ -1087,6 +1130,340 @@ bool FInitialRouteProductionBoundaryTest::RunTest(const FString& Parameters)
 		FPaths::FileExists(FPaths::Combine(
 			Directory,
 			TEXT("MatchPlayCurrentAttackResolveInitialRouteAvailability.h"))));
+	return true;
+}
+
+INITIAL_ROUTE_STATE_TEST(
+	FPostRouteRollContractFoundationTest,
+	"09PostRouteRollContractFoundation")
+
+bool FPostRouteRollContractFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayCurrentAttackInitialRouteStateTests;
+
+	TestEqual(TEXT("Initial Route purpose remains one"),
+		static_cast<uint8>(
+			EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute),
+		static_cast<uint8>(1));
+	TestEqual(TEXT("Post-route purposes begin independently"),
+		static_cast<uint8>(EPostRoutePurpose::PrimaryAttack),
+		static_cast<uint8>(1));
+	TestEqual(TEXT("Six accepted post-route roles"),
+		static_cast<uint8>(EPostRoutePurpose::OneOnOneChipShotAttack),
+		static_cast<uint8>(6));
+
+	FMatchPlayPostRouteRollProviderResult ProviderSuccess;
+	ProviderSuccess.bSuccess = true;
+	ProviderSuccess.RawD6 = 4;
+	FPostRouteRollProvider Provider(ProviderSuccess);
+	const auto Produced = Provider.RollD6(EPostRoutePurpose::PrimaryAttack);
+	TestEqual(TEXT("Test provider called once"), Provider.CallCount, 1);
+	TestEqual(TEXT("Test provider receives semantic purpose"),
+		Provider.LastPurpose, EPostRoutePurpose::PrimaryAttack);
+	TestEqual(TEXT("Test provider returns configured D6"), Produced.RawD6, 4);
+	const auto ValidProviderResult =
+		FMatchPlayPostRouteRollProviderResultValidator::Validate(
+			EPostRoutePurpose::PrimaryAttack,
+			Produced);
+	TestTrue(TEXT("Provider success is canonical"),
+		ValidProviderResult.bIsCanonical);
+
+	FMatchPlayPostRouteRollProviderResult ProviderFailure;
+	ProviderFailure.ErrorCode =
+		EMatchPlayPostRouteRollProviderErrorCode::ProviderFailure;
+	ProviderFailure.ErrorMessage = TEXT("Injected provider failure.");
+	const auto ValidFailure =
+		FMatchPlayPostRouteRollProviderResultValidator::Validate(
+			EPostRoutePurpose::PrimaryDefense,
+			ProviderFailure);
+	TestFalse(TEXT("Provider failure is not success"),
+		ValidFailure.bIsCanonical);
+	TestEqual(TEXT("Provider failure remains distinguishable"),
+		ValidFailure.ErrorCode,
+		EMatchPlayPostRouteRollProviderResultValidationErrorCode
+			::ProviderFailure);
+
+	FMatchPlayPostRouteRollProviderResult Malformed = ProviderSuccess;
+	Malformed.RawD6 = 0;
+	TestEqual(TEXT("Malformed success rejected"),
+		FMatchPlayPostRouteRollProviderResultValidator::Validate(
+			EPostRoutePurpose::PrimaryAttack,
+			Malformed).ErrorCode,
+		EMatchPlayPostRouteRollProviderResultValidationErrorCode
+			::MalformedProviderResult);
+	TestEqual(TEXT("Invalid request purpose rejected"),
+		FMatchPlayPostRouteRollProviderResultValidator::Validate(
+			EPostRoutePurpose::None,
+			ProviderSuccess).ErrorCode,
+		EMatchPlayPostRouteRollProviderResultValidationErrorCode
+			::InvalidPurpose);
+
+	const TArray<FMappingCase> Cases = MakeMappingCases();
+	auto MakeSession = [&Cases](
+		const int32 CaseIndex,
+		const EPostRoutePhase Phase,
+		const TArray<FMatchPlayCurrentAttackPostRouteRollRecord>& Records)
+	{
+		FMatchPlayState State = MakeRouteResolvedState(Cases[CaseIndex]);
+		FMatchPlayCurrentAttackResolutionSession& Session =
+			State.CurrentAttack.ResolutionSession;
+		Session.PostRouteRollProgress.Phase = Phase;
+		Session.PostRouteRollProgress.RollRecords = Records;
+		return Session;
+	};
+	auto ExpectProgress = [this](
+		const TCHAR* Label,
+		const FMatchPlayCurrentAttackResolutionSession& Session,
+		const bool bCanonical,
+		const bool bComplete,
+		const EPostRoutePurpose NextPurpose,
+		const EPostRouteError ErrorCode)
+	{
+		const auto First =
+			FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+				Session);
+		const auto Second =
+			FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+				Session);
+		TestEqual(*FString::Printf(TEXT("%s canonical"), Label),
+			First.bIsCanonical, bCanonical);
+		TestEqual(*FString::Printf(TEXT("%s complete"), Label),
+			First.bContractComplete, bComplete);
+		TestEqual(*FString::Printf(TEXT("%s next purpose"), Label),
+			First.NextPurpose, NextPurpose);
+		TestEqual(*FString::Printf(TEXT("%s error"), Label),
+			First.ErrorCode, ErrorCode);
+		TestEqual(*FString::Printf(TEXT("%s deterministic canonical"), Label),
+			Second.bIsCanonical, First.bIsCanonical);
+		TestEqual(*FString::Printf(TEXT("%s deterministic complete"), Label),
+			Second.bContractComplete, First.bContractComplete);
+		TestEqual(*FString::Printf(TEXT("%s deterministic next"), Label),
+			Second.NextPurpose, First.NextPurpose);
+		TestEqual(*FString::Printf(TEXT("%s deterministic error"), Label),
+			Second.ErrorCode, First.ErrorCode);
+	};
+
+	ExpectProgress(
+		TEXT("Default RouteResolved progress"),
+		MakeSession(4, EPostRoutePhase::None, {}),
+		true, false, EPostRoutePurpose::None, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("Single-roll AntiOffside begins with Attack"),
+		MakeSession(11, EPostRoutePhase::PrimaryBranch, {}),
+		true, false, EPostRoutePurpose::PrimaryAttack, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("Single-roll AntiOffside complete"),
+		MakeSession(11, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 4) }),
+		true, true, EPostRoutePurpose::None, EPostRouteError::None);
+
+	ExpectProgress(
+		TEXT("Fixed Attack Defense begins"),
+		MakeSession(4, EPostRoutePhase::PrimaryBranch, {}),
+		true, false, EPostRoutePurpose::PrimaryAttack, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("Fixed Attack Defense requests Defense"),
+		MakeSession(4, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 4) }),
+		true, false, EPostRoutePurpose::PrimaryDefense, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("Fixed Attack Defense complete"),
+		MakeSession(4, EPostRoutePhase::PrimaryBranch,
+			{
+				MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 4),
+				MakePostRouteRecord(EPostRoutePurpose::PrimaryDefense, 2)
+			}),
+		true, true, EPostRoutePurpose::None, EPostRouteError::None);
+
+	ExpectProgress(
+		TEXT("Paired Attack begins with A"),
+		MakeSession(1, EPostRoutePhase::PrimaryBranch, {}),
+		true, false, EPostRoutePurpose::PairedAttackA, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("Paired Attack requests B"),
+		MakeSession(1, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PairedAttackA, 5) }),
+		true, false, EPostRoutePurpose::PairedAttackB, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("Paired Attack complete"),
+		MakeSession(1, EPostRoutePhase::PrimaryBranch,
+			{
+				MakePostRouteRecord(EPostRoutePurpose::PairedAttackA, 5),
+				MakePostRouteRecord(EPostRoutePurpose::PairedAttackB, 6)
+			}),
+		true, true, EPostRoutePurpose::None, EPostRouteError::None);
+
+	ExpectProgress(
+		TEXT("DirectShot Attack-only completes"),
+		MakeSession(0, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 2) }),
+		true, true, EPostRoutePurpose::None, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("DirectShot continuation requests Defense"),
+		MakeSession(0, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 3) }),
+		true, false, EPostRoutePurpose::PrimaryDefense, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("BehindDefense OutOfPlay Attack-only completes"),
+		MakeSession(10, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 1) }),
+		true, true, EPostRoutePurpose::None, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("BehindDefense continuation requests Defense"),
+		MakeSession(10, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 3) }),
+		true, false, EPostRoutePurpose::PrimaryDefense, EPostRouteError::None);
+
+	const TArray<FMatchPlayCurrentAttackPostRouteRollRecord> BehindP1 = {
+		MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 3),
+		MakePostRouteRecord(EPostRoutePurpose::PrimaryDefense, 4)
+	};
+	ExpectProgress(
+		TEXT("BehindDefense P2 requests later Defense"),
+		MakeSession(10, EPostRoutePhase::BehindDefenseP2, BehindP1),
+		true, false, EPostRoutePurpose::BehindDefenseP2Defense,
+		EPostRouteError::None);
+	TArray<FMatchPlayCurrentAttackPostRouteRollRecord> BehindP2 = BehindP1;
+	BehindP2.Add(MakePostRouteRecord(
+		EPostRoutePurpose::BehindDefenseP2Defense, 2));
+	ExpectProgress(
+		TEXT("BehindDefense P2 complete"),
+		MakeSession(10, EPostRoutePhase::BehindDefenseP2, BehindP2),
+		true, true, EPostRoutePurpose::None, EPostRouteError::None);
+	ExpectProgress(
+		TEXT("BehindDefense OneOnOne requests ChipShot"),
+		MakeSession(10, EPostRoutePhase::OneOnOneChipShot, BehindP2),
+		true, false, EPostRoutePurpose::OneOnOneChipShotAttack,
+		EPostRouteError::None);
+	ExpectProgress(
+		TEXT("AntiOffside OneOnOne requests ChipShot"),
+		MakeSession(11, EPostRoutePhase::OneOnOneChipShot,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 6) }),
+		true, false, EPostRoutePurpose::OneOnOneChipShotAttack,
+		EPostRouteError::None);
+
+	ExpectProgress(
+		TEXT("Invalid order"),
+		MakeSession(4, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryDefense, 3) }),
+		false, false, EPostRoutePurpose::None,
+		EPostRouteError::InvalidRollOrder);
+	ExpectProgress(
+		TEXT("Duplicate semantic purpose"),
+		MakeSession(4, EPostRoutePhase::PrimaryBranch,
+			{
+				MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 3),
+				MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 4)
+			}),
+		false, false, EPostRoutePurpose::None,
+		EPostRouteError::DuplicatePurpose);
+	ExpectProgress(
+		TEXT("Out-of-range D6"),
+		MakeSession(4, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 0) }),
+		false, false, EPostRoutePurpose::None, EPostRouteError::InvalidD6);
+	ExpectProgress(
+		TEXT("None purpose"),
+		MakeSession(4, EPostRoutePhase::PrimaryBranch,
+			{ MakePostRouteRecord(EPostRoutePurpose::None, 3) }),
+		false, false, EPostRoutePurpose::None,
+		EPostRouteError::InvalidPurpose);
+	ExpectProgress(
+		TEXT("Conditional Defense forbidden"),
+		MakeSession(0, EPostRoutePhase::PrimaryBranch,
+			{
+				MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 2),
+				MakePostRouteRecord(EPostRoutePurpose::PrimaryDefense, 4)
+			}),
+		false, false, EPostRoutePurpose::None,
+		EPostRouteError::ConditionalDefenseNotAllowed);
+	ExpectProgress(
+		TEXT("Records without phase"),
+		MakeSession(4, EPostRoutePhase::None,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 3) }),
+		false, false, EPostRoutePurpose::None,
+		EPostRouteError::RecordsWithoutPhase);
+	ExpectProgress(
+		TEXT("Invalid later phase prerequisite"),
+		MakeSession(11, EPostRoutePhase::OneOnOneChipShot,
+			{ MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 5) }),
+		false, false, EPostRoutePurpose::None,
+		EPostRouteError::InvalidLaterPhasePrerequisite);
+	return true;
+}
+
+INITIAL_ROUTE_STATE_TEST(
+	FPostRouteRollResolutionSessionValidationTest,
+	"10PostRouteResolutionSessionValidation")
+
+bool FPostRouteRollResolutionSessionValidationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayCurrentAttackInitialRouteStateTests;
+
+	const TArray<FMappingCase> Cases = MakeMappingCases();
+	FMatchPlayState Awaiting = MakeBegunState(
+		ESkillRuleType::Cross,
+		EMatchPlayElectiveBranchIntent::CrossHigh);
+	ExpectStoredValidationDeterministic(
+		*this,
+		TEXT("AwaitingRoute default post-route progress"),
+		Awaiting,
+		true,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode::None);
+	Awaiting.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+		EPostRoutePhase::PrimaryBranch;
+	ExpectValidationError(
+		*this,
+		TEXT("AwaitingRoute rejects post-route progress"),
+		Awaiting,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::UnexpectedPostRouteRollProgressWhileAwaitingRoute);
+
+	FMatchPlayState Route = MakeRouteResolvedState(Cases[4]);
+	const int32 InitialRouteCount = Route.CurrentAttack.ResolutionSession
+		.InitialRouteRollRecords.Num();
+	ExpectStoredValidationDeterministic(
+		*this,
+		TEXT("RouteResolved default post-route progress"),
+		Route,
+		true,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode::None);
+	Route.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+		EPostRoutePhase::PrimaryBranch;
+	Route.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords = {
+		MakePostRouteRecord(EPostRoutePurpose::PrimaryAttack, 4)
+	};
+	ExpectStoredValidationDeterministic(
+		*this,
+		TEXT("RouteResolved valid partial post-route progress"),
+		Route,
+		true,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode::None);
+	Route.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords.Add(
+		MakePostRouteRecord(EPostRoutePurpose::PrimaryDefense, 2));
+	ExpectStoredValidationDeterministic(
+		*this,
+		TEXT("RouteResolved valid complete post-route progress"),
+		Route,
+		true,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode::None);
+	TestEqual(TEXT("Initial Route record count remains independent"),
+		Route.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Num(),
+		InitialRouteCount);
+	TestEqual(TEXT("Initial Route purpose remains independent"),
+		Route.CurrentAttack.ResolutionSession.InitialRouteRollRecords[0].Purpose,
+		EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute);
+
+	Route.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords[1]
+		.Purpose = EPostRoutePurpose::PrimaryAttack;
+	ExpectValidationError(
+		*this,
+		TEXT("RouteResolved rejects invalid post-route progress"),
+		Route,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::InvalidPostRouteRollProgress);
 	return true;
 }
 

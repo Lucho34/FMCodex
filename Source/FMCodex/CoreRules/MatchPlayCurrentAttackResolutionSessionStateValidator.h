@@ -42,6 +42,8 @@ enum class EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 		UMETA(DisplayName = "Unexpected Actual Branch While Awaiting Route"),
 	UnexpectedInitialRouteRollWhileAwaitingRoute
 		UMETA(DisplayName = "Unexpected Initial Route Roll While Awaiting Route"),
+	UnexpectedPostRouteRollProgressWhileAwaitingRoute
+		UMETA(DisplayName = "Unexpected Post-Route Roll Progress While Awaiting Route"),
 	MissingActualBranchForRouteResolved
 		UMETA(DisplayName = "Missing Actual Branch For Route Resolved"),
 	DefaultActualBranchForRouteResolved
@@ -56,7 +58,9 @@ enum class EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 	InvalidRollPurpose UMETA(DisplayName = "Invalid Roll Purpose"),
 	InvalidD6 UMETA(DisplayName = "Invalid D6"),
 	InitialRouteMappingMismatch
-		UMETA(DisplayName = "Initial Route Mapping Mismatch")
+		UMETA(DisplayName = "Initial Route Mapping Mismatch"),
+	InvalidPostRouteRollProgress
+		UMETA(DisplayName = "Invalid Post-Route Roll Progress")
 };
 
 USTRUCT(BlueprintType)

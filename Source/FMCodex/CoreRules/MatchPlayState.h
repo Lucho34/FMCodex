@@ -5,6 +5,7 @@
 #include "MatchPlayBoundActionNormalizedParticipantValues.h"
 #include "MatchPlayCardSnapshotAuthority.h"
 #include "MatchPlayCurrentAttackActualBranchTypes.h"
+#include "MatchPlayCurrentAttackPostRouteRollTypes.h"
 #include "MatchPlayCurrentAttackResolutionRollTypes.h"
 #include "MatchPlayDeploymentSlotCatalog.h"
 #include "MatchPlayGoalkeeperUsageState.h"
@@ -237,6 +238,9 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionSession
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
 	TArray<FMatchPlayCurrentAttackResolutionRollRecord>
 		InitialRouteRollRecords;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	FMatchPlayCurrentAttackPostRouteRollProgress PostRouteRollProgress;
 };
 
 USTRUCT(BlueprintType)

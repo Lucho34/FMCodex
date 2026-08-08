@@ -1,0 +1,54 @@
+#pragma once
+
+#include "CoreMinimal.h"
+
+#include "MatchPlayCurrentAttackPostRouteRollTypes.generated.h"
+
+UENUM(BlueprintType)
+enum class EMatchPlayCurrentAttackPostRouteRollPurpose : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	PrimaryAttack = 1 UMETA(DisplayName = "Primary Attack"),
+	PrimaryDefense = 2 UMETA(DisplayName = "Primary Defense"),
+	PairedAttackA = 3 UMETA(DisplayName = "Paired Attack A"),
+	PairedAttackB = 4 UMETA(DisplayName = "Paired Attack B"),
+	BehindDefenseP2Defense = 5
+		UMETA(DisplayName = "Behind Defense P2 Defense"),
+	OneOnOneChipShotAttack = 6
+		UMETA(DisplayName = "One-on-One Chip Shot Attack")
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackPostRouteRollRecord
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	EMatchPlayCurrentAttackPostRouteRollPurpose Purpose =
+		EMatchPlayCurrentAttackPostRouteRollPurpose::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	int32 RawD6 = 0;
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayCurrentAttackPostRouteRollPhase : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	PrimaryBranch = 1 UMETA(DisplayName = "Primary Branch"),
+	BehindDefenseP2 = 2 UMETA(DisplayName = "Behind Defense P2"),
+	OneOnOneChipShot = 3 UMETA(DisplayName = "One-on-One Chip Shot")
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCurrentAttackPostRouteRollProgress
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	EMatchPlayCurrentAttackPostRouteRollPhase Phase =
+		EMatchPlayCurrentAttackPostRouteRollPhase::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	TArray<FMatchPlayCurrentAttackPostRouteRollRecord> RollRecords;
+};

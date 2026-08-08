@@ -83,6 +83,9 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackResolutionSession
 					&DefaultActualBranch,
 					0)
 			&& Session.InitialRouteRollRecords.IsEmpty()
+			&& Session.PostRouteRollProgress.Phase
+				== EMatchPlayCurrentAttackPostRouteRollPhase::None
+			&& Session.PostRouteRollProgress.RollRecords.IsEmpty()
 			&& FMatchPlayCurrentAttackResolutionBindingValue
 				::StaticStruct()->CompareScriptStruct(
 					&Session.Bundle.Binding,
