@@ -1156,6 +1156,71 @@ namespace MatchPlayAuthoritativeSessionTests
 			&& AreReflectedValuesEqual(Left.BeginResult, Right.BeginResult);
 	}
 
+	bool AreBranchIntentGlobalContextResultsEqual(
+		const FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextResult&
+			Left,
+		const FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextResult&
+			Right)
+	{
+		return Left.bSuccess == Right.bSuccess
+			&& Left.RequestedAttackSequence
+				== Right.RequestedAttackSequence
+			&& Left.AuthoritativeAttackSequence
+				== Right.AuthoritativeAttackSequence
+			&& Left.RequestingSide == Right.RequestingSide
+			&& Left.CurrentAttackingPlayer == Right.CurrentAttackingPlayer
+			&& Left.CurrentDefendingPlayer == Right.CurrentDefendingPlayer
+			&& AreSelectionValidationResultsEqual(
+				Left.SelectionStateValidationResult,
+				Right.SelectionStateValidationResult)
+			&& AreReflectedValuesEqual(Left.Preparation, Right.Preparation)
+			&& Left.FrozenActionType == Right.FrozenActionType
+			&& Left.MatchingCarrierPlacementCount
+				== Right.MatchingCarrierPlacementCount
+			&& Left.MatchingMarkerPlacementCount
+				== Right.MatchingMarkerPlacementCount
+			&& Left.MatchingRunnerPlacementCount
+				== Right.MatchingRunnerPlacementCount
+			&& AreCardSnapshotQueryResultsEqual(
+				Left.CarrierSnapshotQueryResult,
+				Right.CarrierSnapshotQueryResult)
+			&& AreCardSnapshotQueryResultsEqual(
+				Left.MarkerSnapshotQueryResult,
+				Right.MarkerSnapshotQueryResult)
+			&& AreCardSnapshotQueryResultsEqual(
+				Left.RunnerSnapshotQueryResult,
+				Right.RunnerSnapshotQueryResult)
+			&& AreHelperAuthorityResultsEqual(
+				Left.HelperAuthorityResult,
+				Right.HelperAuthorityResult)
+			&& Left.ErrorCode == Right.ErrorCode
+			&& Left.ErrorMessage == Right.ErrorMessage;
+	}
+
+	bool AreBranchIntentLegalityResultsEqual(
+		const FMatchPlayCurrentAttackBranchIntentSelectionLegalityResult& Left,
+		const FMatchPlayCurrentAttackBranchIntentSelectionLegalityResult& Right)
+	{
+		return AreReflectedValuesEqual(Left, Right)
+			&& AreBranchIntentGlobalContextResultsEqual(
+				Left.GlobalContextResult,
+				Right.GlobalContextResult);
+	}
+
+	bool AreAuthoritativeSubmitBranchIntentResultsEqual(
+		const FMatchPlayAuthoritativeSubmitBranchIntentResult& Left,
+		const FMatchPlayAuthoritativeSubmitBranchIntentResult& Right)
+	{
+		return AreEnvelopesEqual(Left.RuntimeEnvelope, Right.RuntimeEnvelope)
+			&& AreReflectedValuesEqual(Left.IntentResult, Right.IntentResult)
+			&& AreBranchIntentLegalityResultsEqual(
+				Left.IntentResult.LegalityResult,
+				Right.IntentResult.LegalityResult)
+			&& AreReadyValidationResultsEqual(
+				Left.IntentResult.ReadyValidationResult,
+				Right.IntentResult.ReadyValidationResult);
+	}
+
 	EInitialTurnOrderPlayer OtherPlayer(
 		const EInitialTurnOrderPlayer Player)
 	{
@@ -1700,7 +1765,8 @@ namespace MatchPlayAuthoritativeSessionTests
 		const FString& Prefix,
 		const bool bCreateLegalHelper,
 		FReachabilityTrace& OutTrace,
-		FName& OutHelperCardId)
+		FName& OutHelperCardId,
+		const ESkillRuleType SkillType = ESkillRuleType::PassControl)
 	{
 		FName RunnerCardId;
 		if (!BuildStage7162ToAwaitingRunner(
@@ -1709,7 +1775,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			true,
 			OutTrace,
 			RunnerCardId,
-			ESkillRuleType::PassControl,
+			SkillType,
 			bCreateLegalHelper ? 4 : 3))
 		{
 			return false;
@@ -1770,6 +1836,78 @@ namespace MatchPlayAuthoritativeSessionTests
 			&& State.bHasCurrentAttack
 			&& State.CurrentAttack.SelectionStage
 				== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+			&& !State.CurrentAttack.bHasResolutionSession;
+	}
+
+	bool BuildStage7165ToAwaitingBranchIntent(
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType SkillType,
+		FReachabilityTrace& OutTrace)
+	{
+		if (SkillType == ESkillRuleType::Cross)
+		{
+			FName HelperCardId;
+			if (!BuildStage7163ToAwaitingHelper(
+				Session,
+				Prefix,
+				true,
+				OutTrace,
+				HelperCardId,
+				SkillType))
+			{
+				return false;
+			}
+
+			FMatchPlayAuthoritativeSubmitHelperRequest HelperRequest;
+			HelperRequest.RequestingSide = OutTrace.DefendingSide;
+			HelperRequest.HelperCardId = HelperCardId;
+			if (!Session.SubmitHelper(HelperRequest).HelperResult.bSuccess)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			if (SkillType != ESkillRuleType::LongShot
+				&& SkillType != ESkillRuleType::CutInsideShot)
+			{
+				return false;
+			}
+			const FName SkillId(*FString::Printf(
+				TEXT("Skill.%s.%d"),
+				*Prefix,
+				static_cast<int32>(SkillType)));
+			FMatchPlayAuthoritativeSubmitMarkerResult Marker;
+			if (!BuildFoundationBToAwaitingSkill(
+				Session,
+				Prefix,
+				{SkillId},
+				OutTrace,
+				Marker))
+			{
+				return false;
+			}
+
+			FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+			SkillRequest.RequestingSide = OutTrace.AttackingSide;
+			SkillRequest.SkillId = SkillId;
+			if (!Session.SubmitSkill(
+				MakeSkillRuleSet(SkillId, SkillType),
+				SkillRequest).SkillResult.bSuccess)
+			{
+				return false;
+			}
+		}
+
+		const FMatchPlayState State = Session.GetStateSnapshot();
+		return State.bHasCurrentAttack
+			&& State.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage
+					::AwaitingBranchIntent
+			&& State.CurrentAttack.ActionPreparation.ActionType
+				== SkillType
+			&& !State.CurrentAttack.bHasSelectedAction
 			&& !State.CurrentAttack.bHasResolutionSession;
 	}
 
@@ -5595,11 +5733,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All eighteen mutations use the gate"),
+	TestEqual(TEXT("All nineteen mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		18);
+		19);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7021,7 +7159,6 @@ bool FMatchPlayAuthoritativeSessionResolutionFoundationBoundaryTest::RunTest(
 	TestFalse(TEXT("DeployGoalkeeper remains absent"),
 		Production.Contains(TEXT("DeployGoalkeeper")));
 	for (const TCHAR* Forbidden : {
-		TEXT("SubmitBranchIntent"),
 		TEXT("ResolveInitialRouteOrchestrator"),
 		TEXT("IMatchPlayInitialRouteRollProvider"),
 		TEXT("RollD6"),
@@ -9275,15 +9412,17 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Decline helper"),
 			TEXT("FMatchPlayHelperDecline::Decline(")),
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Resolution Session begin"),
-			TEXT("FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(")) })
+			TEXT("FMatchPlayCurrentAttackBeginResolutionSessionWriter::Begin(")),
+		TPair<const TCHAR*, const TCHAR*>(TEXT("Branch Intent writer"),
+			TEXT("FMatchPlayCurrentAttackBranchIntentSelectionWriter::Select(")) })
 	{
 		TestEqual(*FString::Printf(TEXT("%s has one production call"), Operation.Key),
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All eighteen mutations share serialized gate"),
+	TestEqual(TEXT("All nineteen mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		18);
+		19);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -9305,6 +9444,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.RunnerCardId ="),
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.HelperCardId ="),
 		TEXT("AuthoritativeState.CurrentAttack.ActionPreparation.bHasHelper ="),
+		TEXT("AuthoritativeState.CurrentAttack.SelectedAction.ElectiveBranchIntent ="),
 		TEXT("AuthoritativeState.CurrentAttack.bHasResolutionSession ="),
 		TEXT("AuthoritativeState.CurrentAttack.ResolutionSession ="),
 		TEXT("AuthoritativeState.CurrentAttack.SelectionStage ="),
@@ -9316,7 +9456,6 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 	}
 	const FString Production = Header + Implementation + Types;
 	for (const TCHAR* Forbidden : {
-		TEXT("SubmitBranchIntent"),
 		TEXT("ResolveInitialRouteOrchestrator"),
 		TEXT("IMatchPlayInitialRouteRollProvider"),
 		TEXT("RollD6"),
@@ -10249,10 +10388,11 @@ bool FMatchPlayAuthoritativeSessionBeginResolutionSessionTest::RunTest(
 			::BeginResult),
 		FMatchPlayCurrentAttackBeginResolutionSessionWriterResult>);
 
-	TestEqual(TEXT("BeginResolutionSession is final command"),
+	TestEqual(TEXT("SubmitBranchIntent follows BeginResolutionSession"),
 		static_cast<uint8>(
-			EMatchPlayAuthoritativeCommandKind::BeginResolutionSession),
-		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind::DeclineHelper) + 1);
+			EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::BeginResolutionSession) + 1);
 
 	FString Types;
 	TestTrue(TEXT("Resolution Session types source loads"),
@@ -10453,6 +10593,312 @@ bool FMatchPlayAuthoritativeSessionBeginResolutionSessionTest::RunTest(
 	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
 	SessionA.BeginResolutionSession();
 	TestTrue(TEXT("BeginResolutionSession on A cannot mutate B"),
+		AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionSubmitBranchIntentTest,
+	"40.SubmitBranchIntentAuthority")
+
+bool FMatchPlayAuthoritativeSessionSubmitBranchIntentTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::SubmitBranchIntent),
+		FMatchPlayAuthoritativeSubmitBranchIntentResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeSubmitBranchIntentRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeSubmitBranchIntentResult
+			::IntentResult),
+		FMatchPlayCurrentAttackBranchIntentSelectionWriterResult>);
+
+	TestEqual(TEXT("SubmitBranchIntent is final command"),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::BeginResolutionSession) + 1);
+
+	FString Types;
+	TestTrue(TEXT("Branch Intent types source loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+			Types));
+	const FString RequestTypeName =
+		TEXT("struct FMCODEX_API FMatchPlayAuthoritativeSubmitBranchIntentRequest");
+	const int32 RequestBegin = Types.Find(RequestTypeName);
+	const int32 RequestEnd = RequestBegin == INDEX_NONE
+		? INDEX_NONE
+		: Types.Find(
+			TEXT("};"),
+			ESearchCase::CaseSensitive,
+			ESearchDir::FromStart,
+			RequestBegin);
+	const FString RequestSurface = RequestBegin == INDEX_NONE
+		|| RequestEnd == INDEX_NONE
+		? FString()
+		: Types.Mid(RequestBegin, RequestEnd - RequestBegin);
+	TestTrue(TEXT("Public Branch Intent request exists"),
+		RequestBegin != INDEX_NONE && RequestEnd != INDEX_NONE);
+	TestFalse(TEXT("Public Branch Intent request has no State"),
+		RequestSurface.Contains(TEXT("FMatchPlayState")));
+	TestFalse(TEXT("Public Branch Intent request has no AttackSequence"),
+		RequestSurface.Contains(TEXT("AttackSequence")));
+	TestFalse(TEXT("No Branch Intent Availability abstraction added"),
+		Types.Contains(TEXT("BranchIntentAvailability")));
+
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest EmptyRequest;
+	const auto Uninitialized =
+		FMatchPlayAuthoritativeSession().SubmitBranchIntent(EmptyRequest);
+	TestFalse(TEXT("Uninitialized Branch Intent rejected"),
+		Uninitialized.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized Branch Intent runtime error"),
+		Uninitialized.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+
+	struct FSuccessCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType ActionType;
+		EMatchPlayElectiveBranchIntent Intent;
+	};
+	const FSuccessCase SuccessCases[] = {
+		{TEXT("LongShotDirect"), ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DirectShot},
+		{TEXT("LongShotDeadCorner"), ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DeadCorner},
+		{TEXT("CutInsideDirect"), ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DirectShot},
+		{TEXT("CutInsideDeadCorner"), ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DeadCorner},
+		{TEXT("CrossHigh"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh},
+		{TEXT("CrossLow"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossLow}
+	};
+	for (const FSuccessCase& Case : SuccessCases)
+	{
+		FMatchPlayAuthoritativeSession Session;
+		FReachabilityTrace Trace;
+		TestTrue(
+			*FString::Printf(TEXT("%s reaches AwaitingBranchIntent"), Case.Label),
+			BuildStage7165ToAwaitingBranchIntent(
+				Session,
+				FString::Printf(TEXT("BranchIntent%s"), Case.Label),
+				Case.ActionType,
+				Trace));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
+		Request.RequestingSide = Trace.AttackingSide;
+		Request.Intent = Case.Intent;
+		const auto Success = Session.SubmitBranchIntent(Request);
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s intent succeeds"), Case.Label),
+			Success.IntentResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s action delegated"), Case.Label),
+			Success.IntentResult.LegalityResult.ResolvedActionType,
+			Case.ActionType);
+		TestEqual(*FString::Printf(TEXT("%s intent delegated"), Case.Label),
+			Success.IntentResult.LegalityResult.ResolvedIntent,
+			Case.Intent);
+		TestEqual(*FString::Printf(TEXT("%s sequence derived"), Case.Label),
+			Success.IntentResult.Request.AttackSequence,
+			Before.CurrentAttack.AttackSequence);
+		TestEqual(*FString::Printf(TEXT("%s reaches Ready"), Case.Label),
+			After.CurrentAttack.SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
+		TestTrue(*FString::Printf(TEXT("%s attack remains active"), Case.Label),
+			After.bHasCurrentAttack);
+		TestTrue(*FString::Printf(TEXT("%s selected action exists"), Case.Label),
+			After.CurrentAttack.bHasSelectedAction);
+		TestEqual(*FString::Printf(TEXT("%s intent persisted"), Case.Label),
+			After.CurrentAttack.SelectedAction.ElectiveBranchIntent,
+			Case.Intent);
+		TestFalse(*FString::Printf(TEXT("%s session not auto-begun"), Case.Label),
+			After.CurrentAttack.bHasResolutionSession);
+		TestAdoptedSuccessEnvelope(
+			*this,
+			FString::Printf(TEXT("%s SubmitBranchIntent"), Case.Label),
+			Success.RuntimeEnvelope,
+			Before,
+			Success.IntentResult.AfterState,
+			After);
+
+		const auto Begin = Session.BeginResolutionSession();
+		const FMatchPlayState BegunState = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s explicit Begin succeeds"), Case.Label),
+			Begin.BeginResult.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s session exists"), Case.Label),
+			BegunState.CurrentAttack.bHasResolutionSession);
+		TestEqual(*FString::Printf(TEXT("%s session awaits route"), Case.Label),
+			BegunState.CurrentAttack.ResolutionSession.Stage,
+			EMatchPlayCurrentAttackResolutionStage::AwaitingRoute);
+		TestEqual(*FString::Printf(TEXT("%s bundle preserves intent"), Case.Label),
+			BegunState.CurrentAttack.ResolutionSession.Bundle.Binding
+				.ElectiveBranchIntent,
+			Case.Intent);
+		TestTrue(*FString::Printf(TEXT("%s no route roll"), Case.Label),
+			BegunState.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords.IsEmpty());
+		TestFalse(*FString::Printf(TEXT("%s no Actual Branch"), Case.Label),
+			BegunState.CurrentAttack.ResolutionSession.bHasActualBranch);
+	}
+
+	FMatchPlayAuthoritativeSession FailureSession;
+	FReachabilityTrace FailureTrace;
+	TestTrue(TEXT("Failure fixture reaches LongShot Branch Intent"),
+		BuildStage7165ToAwaitingBranchIntent(
+			FailureSession,
+			TEXT("BranchIntentFailures"),
+			ESkillRuleType::LongShot,
+			FailureTrace));
+	const FMatchPlayState FailureBefore = FailureSession.GetStateSnapshot();
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest FailureRequest;
+	FailureRequest.RequestingSide = FailureTrace.DefendingSide;
+	FailureRequest.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	const auto WrongSide = FailureSession.SubmitBranchIntent(FailureRequest);
+	TestEqual(TEXT("Wrong-side outer error"),
+		WrongSide.IntentResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed);
+	TestEqual(TEXT("Wrong-side nested exact error"),
+		WrongSide.IntentResult.LegalityResult.GlobalContextResult.ErrorCode,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::RequestingSideIsNotCurrentAttacker);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Wrong-side Branch Intent"),
+		WrongSide.RuntimeEnvelope,
+		FailureBefore,
+		FailureSession.GetStateSnapshot());
+
+	FailureRequest.RequestingSide = FailureTrace.AttackingSide;
+	FailureRequest.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
+	const auto Mismatch = FailureSession.SubmitBranchIntent(FailureRequest);
+	TestEqual(TEXT("Action/intent mismatch exact error"),
+		Mismatch.IntentResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::IntentActionTypeMismatch);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Mismatched Branch Intent"),
+		Mismatch.RuntimeEnvelope,
+		FailureBefore,
+		FailureSession.GetStateSnapshot());
+
+	FailureRequest.Intent = EMatchPlayElectiveBranchIntent::None;
+	const auto NoneIntent = FailureSession.SubmitBranchIntent(FailureRequest);
+	TestEqual(TEXT("None intent exact error"),
+		NoneIntent.IntentResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode::InvalidIntent);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("None Branch Intent"),
+		NoneIntent.RuntimeEnvelope,
+		FailureBefore,
+		FailureSession.GetStateSnapshot());
+
+	FailureRequest.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	const auto FirstSuccess =
+		FailureSession.SubmitBranchIntent(FailureRequest);
+	TestTrue(TEXT("Failure fixture valid intent succeeds"),
+		FirstSuccess.IntentResult.bSuccess);
+	const FMatchPlayState AfterFirstSuccess =
+		FailureSession.GetStateSnapshot();
+	const auto Replay = FailureSession.SubmitBranchIntent(FailureRequest);
+	TestEqual(TEXT("Replay outer error"),
+		Replay.IntentResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::GlobalContextFailed);
+	TestEqual(TEXT("Replay nested exact stage error"),
+		Replay.IntentResult.LegalityResult.GlobalContextResult.ErrorCode,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::WrongSelectionStage);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("Branch Intent replay"),
+		Replay.RuntimeEnvelope,
+		AfterFirstSuccess,
+		FailureSession.GetStateSnapshot());
+
+	FMatchPlayAuthoritativeSession PassControlSession;
+	FReachabilityTrace PassControlTrace;
+	TestTrue(TEXT("PassControl fixture reaches Ready without intent"),
+		BuildStage7164ToReadyForResolution(
+			PassControlSession,
+			TEXT("BranchIntentPassControl"),
+			PassControlTrace));
+	const FMatchPlayState PassControlBefore =
+		PassControlSession.GetStateSnapshot();
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest PassControlRequest;
+	PassControlRequest.RequestingSide = PassControlTrace.AttackingSide;
+	PassControlRequest.Intent =
+		EMatchPlayElectiveBranchIntent::DirectShot;
+	const auto PassControlRejected =
+		PassControlSession.SubmitBranchIntent(PassControlRequest);
+	TestEqual(TEXT("PassControl intent attempt exact stage error"),
+		PassControlRejected.IntentResult.LegalityResult
+			.GlobalContextResult.ErrorCode,
+		EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+			::WrongSelectionStage);
+	TestAcceptedDomainFailureNoAdopt(
+		*this,
+		TEXT("PassControl Branch Intent attempt"),
+		PassControlRejected.RuntimeEnvelope,
+		PassControlBefore,
+		PassControlSession.GetStateSnapshot());
+
+	TArray<FMatchPlayAuthoritativeSubmitBranchIntentResult> Results;
+	TArray<FMatchPlayState> FinalStates;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FMatchPlayAuthoritativeSession DeterministicSession;
+		FReachabilityTrace DeterministicTrace;
+		TestTrue(TEXT("Branch Intent determinism fixture reaches stage"),
+			BuildStage7165ToAwaitingBranchIntent(
+				DeterministicSession,
+				TEXT("BranchIntentDeterminism"),
+				ESkillRuleType::LongShot,
+				DeterministicTrace));
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
+		Request.RequestingSide = DeterministicTrace.AttackingSide;
+		Request.Intent = EMatchPlayElectiveBranchIntent::DeadCorner;
+		Results.Add(DeterministicSession.SubmitBranchIntent(Request));
+		FinalStates.Add(DeterministicSession.GetStateSnapshot());
+	}
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		TestTrue(TEXT("Branch Intent full result deterministic"),
+			AreAuthoritativeSubmitBranchIntentResultsEqual(
+				Results[0], Results[Index]));
+		TestTrue(TEXT("Branch Intent final state deterministic"),
+			AreStatesEqual(FinalStates[0], FinalStates[Index]));
+	}
+
+	FMatchPlayAuthoritativeSession SessionA;
+	FMatchPlayAuthoritativeSession SessionB;
+	FReachabilityTrace TraceA;
+	FReachabilityTrace TraceB;
+	TestTrue(TEXT("Branch Intent isolation fixture A reaches stage"),
+		BuildStage7165ToAwaitingBranchIntent(
+			SessionA,
+			TEXT("BranchIntentIsolationA"),
+			ESkillRuleType::CutInsideShot,
+			TraceA));
+	TestTrue(TEXT("Branch Intent isolation fixture B reaches stage"),
+		BuildStage7165ToAwaitingBranchIntent(
+			SessionB,
+			TEXT("BranchIntentIsolationB"),
+			ESkillRuleType::CutInsideShot,
+			TraceB));
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest IsolationRequest;
+	IsolationRequest.RequestingSide = TraceA.AttackingSide;
+	IsolationRequest.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
+	SessionA.SubmitBranchIntent(IsolationRequest);
+	TestTrue(TEXT("SubmitBranchIntent on A cannot mutate B"),
 		AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
 	return true;
 }

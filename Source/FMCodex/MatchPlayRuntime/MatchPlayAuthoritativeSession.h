@@ -67,6 +67,9 @@ public:
 	FMatchPlayAuthoritativeBeginResolutionSessionResult
 	BeginResolutionSession();
 
+	FMatchPlayAuthoritativeSubmitBranchIntentResult SubmitBranchIntent(
+		const FMatchPlayAuthoritativeSubmitBranchIntentRequest& Request);
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:

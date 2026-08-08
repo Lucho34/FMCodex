@@ -729,6 +729,43 @@ FMatchPlayAuthoritativeSession::BeginResolutionSession()
 		});
 }
 
+FMatchPlayAuthoritativeSubmitBranchIntentResult
+FMatchPlayAuthoritativeSession::SubmitBranchIntent(
+	const FMatchPlayAuthoritativeSubmitBranchIntentRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitBranchIntentResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent,
+		true,
+		AttackSequence,
+		[Request, AttackSequence](
+			FMatchPlayAuthoritativeSubmitBranchIntentResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackBranchIntentSelectionRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			DomainRequest.Intent = Request.Intent;
+			Result.IntentResult =
+				FMatchPlayCurrentAttackBranchIntentSelectionWriter::Select(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.IntentResult.bSuccess;
+			Execution.CandidateAfterState = Result.IntentResult.AfterState;
+			Execution.StateDisposition = Result.IntentResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayState FMatchPlayAuthoritativeSession::GetStateSnapshot() const
 {
 	return AuthoritativeState;

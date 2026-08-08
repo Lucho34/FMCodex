@@ -4,6 +4,7 @@
 
 #include "../CoreRules/MatchPlayBeginOrdinaryAttack.h"
 #include "../CoreRules/MatchPlayCurrentAttackBeginResolutionSessionWriter.h"
+#include "../CoreRules/MatchPlayCurrentAttackBranchIntentSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackHelperSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionWriter.h"
@@ -43,7 +44,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	SubmitHelper,
 	ResolveNoLegalHelper,
 	DeclineHelper,
-	BeginResolutionSession
+	BeginResolutionSession,
+	SubmitBranchIntent
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -167,6 +169,14 @@ struct FMCODEX_API FMatchPlayAuthoritativeDeclineHelperRequest
 		EInitialTurnOrderPlayer::None;
 };
 
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitBranchIntentRequest
+{
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+	EMatchPlayElectiveBranchIntent Intent =
+		EMatchPlayElectiveBranchIntent::None;
+};
+
 struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
@@ -255,6 +265,12 @@ struct FMCODEX_API FMatchPlayAuthoritativeBeginResolutionSessionResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackBeginResolutionSessionWriterResult BeginResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitBranchIntentResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackBranchIntentSelectionWriterResult IntentResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeStateAdoptionResult
