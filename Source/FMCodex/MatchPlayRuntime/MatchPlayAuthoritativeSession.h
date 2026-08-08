@@ -99,6 +99,9 @@ public:
 	FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
 	ResolveDirectShotPostRouteDecisionOrPlan();
 
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DecisionOrPlanResult
+	ResolveThroughBallBehindDefenseP1DecisionOrPlan();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:
