@@ -18,6 +18,7 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -75,6 +76,17 @@ const FFMCodexLocalMatchCommandDiagnostic&
 AFMCodexLocalMatchPlayerController::GetLastDiagnostic() const
 {
 	return LastDiagnostic;
+}
+
+const FFMCodexLocalMatchHotSeatHandoffState&
+AFMCodexLocalMatchPlayerController::GetHotSeatHandoffState() const
+{
+	return HotSeatHandoffState;
+}
+
+bool AFMCodexLocalMatchPlayerController::IsAwaitingHotSeatHandoff() const
+{
+	return HotSeatHandoffState.bAwaitingAcknowledgement;
 }
 
 void AFMCodexLocalMatchPlayerController::BeginPlay()
@@ -143,8 +155,10 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr || !Host->HasActiveLocalMatch())
 	{
-		InteractionView =
+		const auto NewView =
 			FFMCodexLocalMatchInteractionViewBuilder::BuildNoActiveMatch();
+		UpdateHotSeatHandoff(NewView);
+		InteractionView = NewView;
 		RebuildControlSurface();
 		return;
 	}
@@ -154,18 +168,116 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 		Host->GetSkillRuleSnapshot();
 	if (!State.bSuccess || !Rules.bSuccess)
 	{
-		InteractionView =
+		auto NewView =
 			FFMCodexLocalMatchInteractionViewBuilder::BuildNoActiveMatch();
-		InteractionView.Diagnostic = !State.bSuccess
+		NewView.bMatchActive = true;
+		NewView.InteractionCategory =
+			EFMCodexLocalMatchInteractionCategory::None;
+		NewView.Diagnostic = !State.bSuccess
 			? State.ErrorMessage
 			: Rules.ErrorMessage;
+		UpdateHotSeatHandoff(NewView);
+		InteractionView = MoveTemp(NewView);
 		RebuildControlSurface();
 		return;
 	}
 
-	InteractionView = FFMCodexLocalMatchInteractionViewBuilder::Build(
+	auto NewView = FFMCodexLocalMatchInteractionViewBuilder::Build(
 		State.Snapshot, Rules.Snapshot);
+	UpdateHotSeatHandoff(NewView);
+	InteractionView = MoveTemp(NewView);
 	RebuildControlSurface();
+}
+
+void AFMCodexLocalMatchPlayerController::UpdateHotSeatHandoff(
+	const FFMCodexLocalMatchInteractionView& NewInteractionView)
+{
+	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(
+		NewInteractionView, HotSeatHandoffState);
+}
+
+void FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(
+	const FFMCodexLocalMatchInteractionView& NewInteractionView,
+	FFMCodexLocalMatchHotSeatHandoffState& HandoffState)
+{
+	if (!NewInteractionView.bMatchActive || NewInteractionView.bMatchEnded)
+	{
+		HandoffState = {};
+		return;
+	}
+
+	if (!NewInteractionView.bHumanInteraction
+		|| NewInteractionView.ExpectedActingPlayer
+			== EInitialTurnOrderPlayer::None)
+	{
+		HandoffState.bAwaitingAcknowledgement = false;
+		HandoffState.PendingPlayer = EInitialTurnOrderPlayer::None;
+		HandoffState.PendingInteraction =
+			EFMCodexLocalMatchInteractionCategory::None;
+		return;
+	}
+
+	if (NewInteractionView.ExpectedActingPlayer
+		== HandoffState.LastRevealedHumanPlayer)
+	{
+		HandoffState.bAwaitingAcknowledgement = false;
+		HandoffState.PendingPlayer = EInitialTurnOrderPlayer::None;
+		HandoffState.PendingInteraction =
+			EFMCodexLocalMatchInteractionCategory::None;
+		return;
+	}
+
+	HandoffState.bAwaitingAcknowledgement = true;
+	HandoffState.PendingPlayer =
+		NewInteractionView.ExpectedActingPlayer;
+	HandoffState.PendingInteraction =
+		NewInteractionView.InteractionCategory;
+}
+
+bool FFMCodexLocalMatchHotSeatHandoffPolicy::Acknowledge(
+	const FFMCodexLocalMatchInteractionView& InteractionView,
+	FFMCodexLocalMatchHotSeatHandoffState& HandoffState)
+{
+	if (!HandoffState.bAwaitingAcknowledgement
+		|| !InteractionView.bHumanInteraction
+		|| InteractionView.bMatchEnded
+		|| HandoffState.PendingPlayer
+			!= InteractionView.ExpectedActingPlayer)
+	{
+		return false;
+	}
+
+	HandoffState.LastRevealedHumanPlayer =
+		InteractionView.ExpectedActingPlayer;
+	HandoffState.bAwaitingAcknowledgement = false;
+	HandoffState.PendingPlayer = EInitialTurnOrderPlayer::None;
+	HandoffState.PendingInteraction =
+		EFMCodexLocalMatchInteractionCategory::None;
+	return true;
+}
+
+void AFMCodexLocalMatchPlayerController::AcknowledgeHotSeatHandoff()
+{
+	RefreshPresentation();
+	if (!FFMCodexLocalMatchHotSeatHandoffPolicy::Acknowledge(
+		InteractionView, HotSeatHandoffState))
+	{
+		return;
+	}
+	RebuildControlSurface();
+}
+
+bool AFMCodexLocalMatchPlayerController::AllowGameplayCommand(
+	const FString& CommandName)
+{
+	if (!HotSeatHandoffState.bAwaitingAcknowledgement)
+	{
+		return true;
+	}
+	RecordLocalFailure(
+		CommandName,
+		TEXT("Gameplay input is blocked until the pending player confirms Ready."));
+	return false;
 }
 
 void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
@@ -182,6 +294,10 @@ void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
 
 void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 {
+	if (!AllowGameplayCommand(TEXT("StartNewLocalMatch")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -198,6 +314,10 @@ void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 
 void AFMCodexLocalMatchPlayerController::BeginDemoOrdinaryAttack()
 {
+	if (!AllowGameplayCommand(TEXT("BeginOrdinaryAttack")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -215,6 +335,10 @@ void AFMCodexLocalMatchPlayerController::DeployOrdinary(
 	const FName CardId,
 	const FName SlotId)
 {
+	if (!AllowGameplayCommand(TEXT("DeployOrdinary")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -230,6 +354,10 @@ void AFMCodexLocalMatchPlayerController::DeployOrdinary(
 
 void AFMCodexLocalMatchPlayerController::DeployGoalkeeper(const FName SlotId)
 {
+	if (!AllowGameplayCommand(TEXT("DeployGoalkeeper")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -244,6 +372,10 @@ void AFMCodexLocalMatchPlayerController::DeployGoalkeeper(const FName SlotId)
 
 void AFMCodexLocalMatchPlayerController::FinishDeployment()
 {
+	if (!AllowGameplayCommand(TEXT("FinishDeployment")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -259,6 +391,10 @@ void AFMCodexLocalMatchPlayerController::FinishDeployment()
 
 void AFMCodexLocalMatchPlayerController::SubmitCarrier(const FName CardId)
 {
+	if (!AllowGameplayCommand(TEXT("SubmitCarrier")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -273,6 +409,10 @@ void AFMCodexLocalMatchPlayerController::SubmitCarrier(const FName CardId)
 
 void AFMCodexLocalMatchPlayerController::SubmitMarker(const FName CardId)
 {
+	if (!AllowGameplayCommand(TEXT("SubmitMarker")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -287,6 +427,10 @@ void AFMCodexLocalMatchPlayerController::SubmitMarker(const FName CardId)
 
 void AFMCodexLocalMatchPlayerController::SubmitSkill(const FName SkillId)
 {
+	if (!AllowGameplayCommand(TEXT("SubmitSkill")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -308,6 +452,10 @@ void AFMCodexLocalMatchPlayerController::SubmitSkill(const FName SkillId)
 
 void AFMCodexLocalMatchPlayerController::SubmitRunner(const FName CardId)
 {
+	if (!AllowGameplayCommand(TEXT("SubmitRunner")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -322,6 +470,10 @@ void AFMCodexLocalMatchPlayerController::SubmitRunner(const FName CardId)
 
 void AFMCodexLocalMatchPlayerController::SubmitHelper(const FName CardId)
 {
+	if (!AllowGameplayCommand(TEXT("SubmitHelper")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -336,6 +488,10 @@ void AFMCodexLocalMatchPlayerController::SubmitHelper(const FName CardId)
 
 void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 {
+	if (!AllowGameplayCommand(TEXT("DeclineSelection")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -391,6 +547,10 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 
 void AFMCodexLocalMatchPlayerController::ResolveNoLegalCurrentSelection()
 {
+	if (!AllowGameplayCommand(TEXT("ResolveNoLegalChoice")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -440,6 +600,10 @@ void AFMCodexLocalMatchPlayerController::ResolveNoLegalCurrentSelection()
 void AFMCodexLocalMatchPlayerController::SubmitBranchIntent(
 	const EMatchPlayElectiveBranchIntent Intent)
 {
+	if (!AllowGameplayCommand(TEXT("SubmitBranchIntent")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -456,6 +620,10 @@ void AFMCodexLocalMatchPlayerController::SubmitBranchIntent(
 void AFMCodexLocalMatchPlayerController::SubmitOneOnOneShotChoice(
 	const EMatchPlayThroughBallOneOnOneShotChoice Choice)
 {
+	if (!AllowGameplayCommand(TEXT("SubmitThroughBallOneOnOneShotChoice")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -474,6 +642,10 @@ void AFMCodexLocalMatchPlayerController::SubmitOneOnOneShotChoice(
 
 void AFMCodexLocalMatchPlayerController::ContinueResolution()
 {
+	if (!AllowGameplayCommand(TEXT("ContinueResolution")))
+	{
+		return;
+	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -754,6 +926,77 @@ void AFMCodexLocalMatchPlayerController::RebuildControlSurface()
 TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 {
 	using namespace FMCodexLocalMatchPlayerController;
+	if (HotSeatHandoffState.bAwaitingAcknowledgement)
+	{
+		const FString NextPlayer =
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				HotSeatHandoffState.PendingPlayer);
+		const FString NextInteraction =
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				HotSeatHandoffState.PendingInteraction);
+		const FString Diagnostic = FString::Printf(
+			TEXT("Last: %s | Host=%s | Accepted=%s | Domain=%s | %s"),
+			*LastDiagnostic.CommandName,
+			LastDiagnostic.bHostSuccess ? TEXT("OK") : TEXT("FAIL"),
+			LastDiagnostic.bAuthoritativeAccepted ? TEXT("YES") : TEXT("NO"),
+			LastDiagnostic.bAuthoritativeSuccess ? TEXT("OK") : TEXT("FAIL"),
+			*LastDiagnostic.Message);
+		return SNew(SBorder)
+			.Padding(24.0f)
+			.BorderBackgroundColor(FLinearColor(0.01f, 0.01f, 0.01f, 1.0f))
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			[
+				SNew(SBox)
+				.MinDesiredWidth(640.0f)
+				.MinDesiredHeight(420.0f)
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight().Padding(8.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("PASS CONTROL")))
+						.Justification(ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(8.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("Next Player: ") + NextPlayer))
+						.Justification(ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("Next Interaction: ") + NextInteraction))
+						.Justification(ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(FString::Printf(
+							TEXT("Score: Player A %d - %d Player B"),
+							InteractionView.PlayerAScore,
+							InteractionView.PlayerBScore)))
+						.Justification(ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(Diagnostic))
+						.Justification(ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(12.0f)
+					[
+						MakeButton(NextPlayer + TEXT(" Ready"), [this]()
+						{
+							AcknowledgeHotSeatHandoff();
+						})
+					]
+				]
+			];
+	}
 
 	TSharedRef<SVerticalBox> Content = SNew(SVerticalBox);
 	auto AddText = [&Content](const FString& Text)
@@ -821,10 +1064,21 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			*Placement.CardId.ToString(),
 			*Placement.SlotId.ToString()));
 	}
+	EFMCodexLocalMatchRollGroup LastRollGroup =
+		EFMCodexLocalMatchRollGroup::PostRoute;
+	bool bHasRollGroup = false;
 	for (const FFMCodexLocalMatchRollView& Roll : InteractionView.AcceptedRolls)
 	{
+		if (!bHasRollGroup || Roll.Group != LastRollGroup)
+		{
+			AddText(Roll.Group == EFMCodexLocalMatchRollGroup::InitialRoute
+				? TEXT("Accepted Dice - Initial Route")
+				: TEXT("Accepted Dice - Post-route"));
+			LastRollGroup = Roll.Group;
+			bHasRollGroup = true;
+		}
 		AddText(FString::Printf(
-			TEXT("D6: %s = %d"), *Roll.Purpose, Roll.RawD6));
+			TEXT("  %s: D6 = %d"), *Roll.Purpose, Roll.RawD6));
 	}
 
 	switch (InteractionView.InteractionCategory)
@@ -842,25 +1096,62 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory::Deploy:
-		for (const FFMCodexLocalMatchDeploymentOption& Option
-			: InteractionView.DeploymentOptions)
+		AddText(TEXT("Current Deployment Side: ")
+			+ FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				InteractionView.CurrentLegalDeploymentSide));
+		AddText(TEXT("Ordinary Cards"));
+		for (const FFMCodexLocalMatchDeploymentGroup& Group
+			: InteractionView.DeploymentGroups)
 		{
-			const FString Label = FString::Printf(
-				TEXT("%s %s -> %s"),
-				Option.bGoalkeeper ? TEXT("Deploy GK") : TEXT("Deploy"),
-				*Option.CardId.ToString(),
-				*Option.SlotId.ToString());
-			AddButton(MakeButton(Label, [this, Option]()
+			if (Group.bGoalkeeper)
 			{
-				if (Option.bGoalkeeper)
-				{
-					DeployGoalkeeper(Option.SlotId);
-				}
-				else
-				{
-					DeployOrdinary(Option.CardId, Option.SlotId);
-				}
-			}));
+				continue;
+			}
+			AddText(FString::Printf(
+				TEXT("Card: %s | Side: %s | Legal slots:"),
+				*Group.CardId.ToString(),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(Group.Side)));
+			TSharedRef<SWrapBox> Slots = SNew(SWrapBox)
+				.UseAllottedSize(true)
+				.InnerSlotPadding(FVector2D(3.0f, 3.0f));
+			for (const FName SlotId : Group.LegalSlotIds)
+			{
+				Slots->AddSlot()
+				[
+					MakeButton(SlotId.ToString(), [this, Group, SlotId]()
+					{
+						DeployOrdinary(Group.CardId, SlotId);
+					})
+				];
+			}
+			AddButton(Slots);
+		}
+		AddText(TEXT("Goalkeeper"));
+		for (const FFMCodexLocalMatchDeploymentGroup& Group
+			: InteractionView.DeploymentGroups)
+		{
+			if (!Group.bGoalkeeper)
+			{
+				continue;
+			}
+			AddText(FString::Printf(
+				TEXT("GK: %s | Side: %s | Legal slots:"),
+				*Group.CardId.ToString(),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(Group.Side)));
+			TSharedRef<SWrapBox> Slots = SNew(SWrapBox)
+				.UseAllottedSize(true)
+				.InnerSlotPadding(FVector2D(3.0f, 3.0f));
+			for (const FName SlotId : Group.LegalSlotIds)
+			{
+				Slots->AddSlot()
+				[
+					MakeButton(SlotId.ToString(), [this, SlotId]()
+					{
+						DeployGoalkeeper(SlotId);
+					})
+				];
+			}
+			AddButton(Slots);
 		}
 		AddButton(MakeButton(TEXT("Finish Deployment"), [this]()
 		{
@@ -872,10 +1163,19 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 	case EFMCodexLocalMatchInteractionCategory::SelectSkill:
 	case EFMCodexLocalMatchInteractionCategory::SelectRunner:
 	case EFMCodexLocalMatchInteractionCategory::SelectHelper:
+		AddText(FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			InteractionView.InteractionCategory)
+			+ TEXT(" | Acting Side: ")
+			+ FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				InteractionView.ExpectedActingPlayer));
 		for (const FFMCodexLocalMatchSelectionOption& Option
 			: InteractionView.SelectionOptions)
 		{
-			AddButton(MakeButton(Option.Label, [this, Option]()
+			const FString Label = FString::Printf(
+				TEXT("%s | Side: %s"),
+				*Option.Label,
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(Option.Side));
+			AddButton(MakeButton(Label, [this, Option]()
 			{
 				switch (InteractionView.InteractionCategory)
 				{
@@ -909,6 +1209,7 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		}
 		break;
 	case EFMCodexLocalMatchInteractionCategory::SelectBranchIntent:
+		AddText(TEXT("Branch / Shot Type"));
 		for (const EMatchPlayElectiveBranchIntent Intent
 			: InteractionView.BranchIntentOptions)
 		{
@@ -919,6 +1220,7 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		}
 		break;
 	case EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot:
+		AddText(TEXT("One-on-One Shot Type"));
 		for (const EMatchPlayThroughBallOneOnOneShotChoice Choice
 			: InteractionView.OneOnOneOptions)
 		{
@@ -929,7 +1231,8 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		}
 		break;
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution:
-		AddButton(MakeButton(TEXT("Continue Resolution"), [this]()
+		AddText(TEXT("System-controlled resolution step"));
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
 		{
 			ContinueResolution();
 		}));
@@ -939,6 +1242,7 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 	}
 
 	return SNew(SScrollBox)
+		.ScrollBarAlwaysVisible(true)
 		+ SScrollBox::Slot()
 		[
 			Content

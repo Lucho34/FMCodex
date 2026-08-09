@@ -20,6 +20,28 @@ struct FMCODEX_API FFMCodexLocalMatchCommandDiagnostic
 	FString Message = TEXT("No command has been submitted.");
 };
 
+struct FMCODEX_API FFMCodexLocalMatchHotSeatHandoffState
+{
+	bool bAwaitingAcknowledgement = false;
+	EInitialTurnOrderPlayer PendingPlayer = EInitialTurnOrderPlayer::None;
+	EFMCodexLocalMatchInteractionCategory PendingInteraction =
+		EFMCodexLocalMatchInteractionCategory::None;
+	EInitialTurnOrderPlayer LastRevealedHumanPlayer =
+		EInitialTurnOrderPlayer::None;
+};
+
+class FMCODEX_API FFMCodexLocalMatchHotSeatHandoffPolicy final
+{
+public:
+	static void Reconcile(
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		FFMCodexLocalMatchHotSeatHandoffState& HandoffState);
+
+	static bool Acknowledge(
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		FFMCodexLocalMatchHotSeatHandoffState& HandoffState);
+};
+
 UCLASS()
 class FMCODEX_API AFMCodexLocalMatchPlayerController final
 	: public APlayerController
@@ -31,8 +53,11 @@ public:
 
 	const FFMCodexLocalMatchInteractionView& GetInteractionView() const;
 	const FFMCodexLocalMatchCommandDiagnostic& GetLastDiagnostic() const;
+	const FFMCodexLocalMatchHotSeatHandoffState& GetHotSeatHandoffState() const;
+	bool IsAwaitingHotSeatHandoff() const;
 
 	void RefreshPresentation();
+	void AcknowledgeHotSeatHandoff();
 	void StartNewDemoMatch();
 	void BeginDemoOrdinaryAttack();
 	void DeployOrdinary(FName CardId, FName SlotId);
@@ -58,6 +83,9 @@ private:
 	AFMCodexLocalMatchHostGameMode* FindLocalMatchHost() const;
 	void RebuildControlSurface();
 	TSharedRef<SWidget> BuildControlSurface();
+	void UpdateHotSeatHandoff(
+		const FFMCodexLocalMatchInteractionView& NewInteractionView);
+	bool AllowGameplayCommand(const FString& CommandName);
 	void RecordLocalFailure(const FString& CommandName, const FString& Message);
 
 	template <typename TResult>
@@ -78,6 +106,7 @@ private:
 	}
 
 	FFMCodexLocalMatchInteractionView InteractionView;
+	FFMCodexLocalMatchHotSeatHandoffState HotSeatHandoffState;
 	FFMCodexLocalMatchCommandDiagnostic LastDiagnostic;
 	TSharedPtr<SWidget> ViewportWidget;
 	TSharedPtr<SBox> SurfaceContainer;

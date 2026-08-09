@@ -41,14 +41,31 @@ struct FMCODEX_API FFMCodexLocalMatchDeploymentOption
 	bool bGoalkeeper = false;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchDeploymentGroup
+{
+	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
+	FName CardId = NAME_None;
+	bool bGoalkeeper = false;
+	TArray<FName> LegalSlotIds;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchSelectionOption
 {
+	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
 	FName Id = NAME_None;
 	FString Label;
 };
 
+enum class EFMCodexLocalMatchRollGroup : uint8
+{
+	InitialRoute,
+	PostRoute
+};
+
 struct FMCODEX_API FFMCodexLocalMatchRollView
 {
+	EFMCodexLocalMatchRollGroup Group =
+		EFMCodexLocalMatchRollGroup::InitialRoute;
 	FString Purpose;
 	int32 RawD6 = 0;
 };
@@ -81,10 +98,12 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	FString Diagnostic;
 	TArray<FMatchPlayDeploymentPlacement> DeploymentPlacements;
 	TArray<FFMCodexLocalMatchDeploymentOption> DeploymentOptions;
+	TArray<FFMCodexLocalMatchDeploymentGroup> DeploymentGroups;
 	TArray<FFMCodexLocalMatchSelectionOption> SelectionOptions;
 	TArray<EMatchPlayElectiveBranchIntent> BranchIntentOptions;
 	TArray<EMatchPlayThroughBallOneOnOneShotChoice> OneOnOneOptions;
 	TArray<FFMCodexLocalMatchRollView> AcceptedRolls;
+	FString ContinueActionLabel = TEXT("Continue Resolution");
 };
 
 class FMCODEX_API FFMCodexLocalMatchInteractionViewBuilder final

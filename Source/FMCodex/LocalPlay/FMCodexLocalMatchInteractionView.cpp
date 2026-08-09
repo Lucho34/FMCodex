@@ -4,6 +4,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackHelperSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionAvailability.h"
+#include "../CoreRules/MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionAvailability.h"
@@ -43,10 +44,12 @@ namespace FMCodexLocalMatchInteractionView
 
 	void AddSelectionOption(
 		TArray<FFMCodexLocalMatchSelectionOption>& Options,
+		const EInitialTurnOrderPlayer Side,
 		const FName Id,
 		const FString& Suffix = FString())
 	{
 		FFMCodexLocalMatchSelectionOption Option;
+		Option.Side = Side;
 		Option.Id = Id;
 		Option.Label = Suffix.IsEmpty()
 			? Id.ToString()
@@ -139,6 +142,11 @@ namespace FMCodexLocalMatchInteractionView
 				View.Diagnostic = Availability.ErrorMessage;
 				continue;
 			}
+			if (Availability.LegalSlotIds.Num() > 0)
+			{
+				View.DeploymentGroups.Add({
+					Side, CardId, false, Availability.LegalSlotIds });
+			}
 			for (const FName SlotId : Availability.LegalSlotIds)
 			{
 				View.DeploymentOptions.Add({ Side, CardId, SlotId, false });
@@ -151,6 +159,14 @@ namespace FMCodexLocalMatchInteractionView
 				State, Attack.AttackSequence, Side, GoalkeeperId);
 		if (GoalkeeperAvailability.bQuerySucceeded)
 		{
+			if (GoalkeeperAvailability.LegalSlotIds.Num() > 0)
+			{
+				View.DeploymentGroups.Add({
+					Side,
+					GoalkeeperId,
+					true,
+					GoalkeeperAvailability.LegalSlotIds });
+			}
 			for (const FName SlotId : GoalkeeperAvailability.LegalSlotIds)
 			{
 				View.DeploymentOptions.Add({
@@ -185,7 +201,9 @@ namespace FMCodexLocalMatchInteractionView
 				if (Candidate.LegalityResult.bIsLegal)
 				{
 					AddSelectionOption(
-						View.SelectionOptions, Candidate.CarrierCardId);
+						View.SelectionOptions,
+						Attacker,
+						Candidate.CarrierCardId);
 				}
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
@@ -206,7 +224,9 @@ namespace FMCodexLocalMatchInteractionView
 				if (Candidate.LegalityResult.bIsLegal)
 				{
 					AddSelectionOption(
-						View.SelectionOptions, Candidate.MarkerCardId);
+						View.SelectionOptions,
+						Defender,
+						Candidate.MarkerCardId);
 				}
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
@@ -235,6 +255,7 @@ namespace FMCodexLocalMatchInteractionView
 						SkillRuleSet, QueryInput);
 				AddSelectionOption(
 					View.SelectionOptions,
+					Attacker,
 					Candidate.SkillId,
 					Rule.bSuccess
 						? StaticEnum<ESkillRuleType>()->GetNameStringByValue(
@@ -259,7 +280,9 @@ namespace FMCodexLocalMatchInteractionView
 				if (Candidate.LegalityResult.bIsLegal)
 				{
 					AddSelectionOption(
-						View.SelectionOptions, Candidate.RunnerCardId);
+						View.SelectionOptions,
+						Attacker,
+						Candidate.RunnerCardId);
 				}
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
@@ -280,7 +303,9 @@ namespace FMCodexLocalMatchInteractionView
 				if (Candidate.LegalityResult.bSuccess)
 				{
 					AddSelectionOption(
-						View.SelectionOptions, Candidate.HelperCardId);
+						View.SelectionOptions,
+						Defender,
+						Candidate.HelperCardId);
 				}
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
@@ -395,12 +420,18 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 		for (const FMatchPlayCurrentAttackResolutionRollRecord& Roll
 			: Session.InitialRouteRollRecords)
 		{
-			Result.AcceptedRolls.Add({ TEXT("Initial Route"), Roll.RawD6 });
+			Result.AcceptedRolls.Add({
+				EFMCodexLocalMatchRollGroup::InitialRoute,
+				TEXT("Initial Route"),
+				Roll.RawD6 });
 		}
 		for (const FMatchPlayCurrentAttackPostRouteRollRecord& Roll
 			: Session.PostRouteRollProgress.RollRecords)
 		{
-			Result.AcceptedRolls.Add({ RollPurpose(Roll.Purpose), Roll.RawD6 });
+			Result.AcceptedRolls.Add({
+				EFMCodexLocalMatchRollGroup::PostRoute,
+				RollPurpose(Roll.Purpose),
+				Roll.RawD6 });
 		}
 
 		Result.MajorPhase = EFMCodexLocalMatchMajorPhase::Resolution;
@@ -420,6 +451,20 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 		}
 		Result.InteractionCategory =
 			EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+		if (Session.Stage
+			== EMatchPlayCurrentAttackResolutionStage::AwaitingRoute)
+		{
+			Result.ContinueActionLabel = TEXT("Continue - Resolve Route");
+		}
+		else
+		{
+			const auto Progress =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(Session);
+			Result.ContinueActionLabel = Progress.bIsCanonical
+				&& Progress.bContractComplete
+					? TEXT("Continue - Apply Formula / Result")
+					: TEXT("Continue - Resolve Post-route Step");
+		}
 		return Result;
 	}
 
@@ -427,6 +472,11 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	Result.bHumanInteraction = Attack.SelectionStage
 		!= EMatchPlayCurrentAttackSelectionStage::ReadyForResolution;
 	BuildSelectionOptions(Snapshot, SkillRuleSet, Result);
+	if (Result.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		Result.ContinueActionLabel = TEXT("Continue - Begin Resolution");
+	}
 	return Result;
 }
 

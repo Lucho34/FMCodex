@@ -10,9 +10,19 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Serialization/MemoryWriter.h"
 
 namespace FMCodexLocalMatchControlSurfaceTests
 {
+	void AcknowledgeIfPending(
+		AFMCodexLocalMatchPlayerController& Controller)
+	{
+		if (Controller.IsAwaitingHotSeatHandoff())
+		{
+			Controller.AcknowledgeHotSeatHandoff();
+		}
+	}
+
 	class FScopedPlayableWorld final
 	{
 	public:
@@ -67,10 +77,20 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				FPaths::ProjectDir() / RelativePath));
 	}
 
+	TArray<uint8> SerializeState(const FMatchPlayState& State)
+	{
+		TArray<uint8> Bytes;
+		FMemoryWriter Writer(Bytes);
+		FMatchPlayState Copy = State;
+		FMatchPlayState::StaticStruct()->SerializeItem(Writer, &Copy, nullptr);
+		return Bytes;
+	}
+
 	bool DeployNextOrdinary(
 		AFMCodexLocalMatchPlayerController& Controller,
 		const FString& SlotFragment)
 	{
+		AcknowledgeIfPending(Controller);
 		const auto& View = Controller.GetInteractionView();
 		for (const FFMCodexLocalMatchDeploymentOption& Option
 			: View.DeploymentOptions)
@@ -89,6 +109,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		AFMCodexLocalMatchPlayerController& Controller,
 		const EFMCodexLocalMatchInteractionCategory Expected)
 	{
+		AcknowledgeIfPending(Controller);
 		const auto& View = Controller.GetInteractionView();
 		if (View.InteractionCategory != Expected
 			|| View.SelectionOptions.IsEmpty())
@@ -226,6 +247,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		AFMCodexLocalMatchPlayerController& Controller,
 		const TCHAR* Label)
 	{
+		AcknowledgeIfPending(Controller);
 		Controller.BeginDemoOrdinaryAttack();
 		if (!Controller.GetLastDiagnostic().bHostSuccess)
 		{
@@ -252,6 +274,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			}
 		}
 
+		AcknowledgeIfPending(Controller);
 		Controller.FinishDeployment();
 		if (!Controller.GetLastDiagnostic().bHostSuccess)
 		{
@@ -259,6 +282,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				TEXT("%s: first FinishDeployment failed."), Label));
 			return false;
 		}
+		AcknowledgeIfPending(Controller);
 		Controller.FinishDeployment();
 		if (!Controller.GetLastDiagnostic().bHostSuccess)
 		{
@@ -294,6 +318,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				TEXT("%s: Cross did not request BranchIntent."), Label));
 			return false;
 		}
+		AcknowledgeIfPending(Controller);
 		Controller.SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
 		if (!Controller.GetLastDiagnostic().bHostSuccess)
 		{
@@ -304,6 +329,13 @@ namespace FMCodexLocalMatchControlSurfaceTests
 
 		for (int32 Step = 0; Step < 3; ++Step)
 		{
+			if (Controller.IsAwaitingHotSeatHandoff())
+			{
+				Test.AddError(FString::Printf(
+					TEXT("%s: system step %d created a false handoff."),
+					Label, Step + 1));
+				return false;
+			}
 			if (Controller.GetInteractionView().InteractionCategory
 				!= EFMCodexLocalMatchInteractionCategory::ContinueResolution)
 			{
@@ -320,6 +352,13 @@ namespace FMCodexLocalMatchControlSurfaceTests
 					Label,
 					Step + 1,
 					*Controller.GetLastDiagnostic().Message));
+				return false;
+			}
+			if (Controller.IsAwaitingHotSeatHandoff())
+			{
+				Test.AddError(FString::Printf(
+					TEXT("%s: completed system step %d created a false handoff."),
+					Label, Step + 1));
 				return false;
 			}
 		}
@@ -340,7 +379,8 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				*Controller.GetLastDiagnostic().Message));
 			return false;
 		}
-		return !Controller.GetInteractionView().bCurrentAttackActive;
+		return !Controller.GetInteractionView().bCurrentAttackActive
+			&& Controller.IsAwaitingHotSeatHandoff();
 	}
 }
 
@@ -422,6 +462,11 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 	TestEqual(TEXT("Snapshot refresh asks BeginAttack"),
 		Controller->GetInteractionView().InteractionCategory,
 		EFMCodexLocalMatchInteractionCategory::BeginAttack);
+	TestTrue(TEXT("Initial human interaction requires hot-seat handoff"),
+		Controller->IsAwaitingHotSeatHandoff());
+	Controller->AcknowledgeHotSeatHandoff();
+	TestFalse(TEXT("Ready reveals initial human interaction"),
+		Controller->IsAwaitingHotSeatHandoff());
 
 	Controller->FinishDeployment();
 	TestFalse(TEXT("Rejected out-of-stage command is displayed"),
@@ -434,6 +479,8 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 		Controller->GetInteractionView().CurrentAttackingPlayer;
 	TestTrue(TEXT("Representative Cross attack completes"),
 		CompleteCrossAttack(*this, *Controller, TEXT("AttackOne")));
+	TestTrue(TEXT("Completion exposes next-player hot-seat handoff"),
+		Controller->IsAwaitingHotSeatHandoff());
 	TestTrue(TEXT("Terminal completion switches the current attacker"),
 		Controller->GetInteractionView().CurrentAttackingPlayer
 			!= FirstAttacker);
@@ -568,6 +615,317 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 		View.ExpectedActingPlayer, Attacker);
 	TestEqual(TEXT("OneOnOne exposes exactly ChipShot and DirectShot"),
 		View.OneOnOneOptions.Num(), 2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchHotSeatPolicyTest,
+	"FMCodex.LocalPlay.ControlSurface.14.HotSeatPolicy",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchHotSeatPolicyTest::RunTest(const FString& Parameters)
+{
+	FFMCodexLocalMatchHotSeatHandoffState State;
+	FFMCodexLocalMatchInteractionView View;
+	View.bMatchActive = true;
+	View.bHumanInteraction = true;
+	View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerA;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::Deploy;
+
+	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
+	TestTrue(TEXT("Initial human actor requires handoff"),
+		State.bAwaitingAcknowledgement);
+	TestEqual(TEXT("Initial handoff targets Player A"),
+		State.PendingPlayer, EInitialTurnOrderPlayer::PlayerA);
+	TestTrue(TEXT("Ready acknowledges the current authoritative actor"),
+		FFMCodexLocalMatchHotSeatHandoffPolicy::Acknowledge(View, State));
+	TestFalse(TEXT("Ready clears presentation mask"),
+		State.bAwaitingAcknowledgement);
+
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::SelectCarrier;
+	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
+	TestFalse(TEXT("Same human actor after refresh has no handoff"),
+		State.bAwaitingAcknowledgement);
+
+	View.bHumanInteraction = false;
+	View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerB;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
+	TestFalse(TEXT("System continuation has no handoff"),
+		State.bAwaitingAcknowledgement);
+	TestEqual(TEXT("System continuation does not replace revealed human actor"),
+		State.LastRevealedHumanPlayer, EInitialTurnOrderPlayer::PlayerA);
+
+	View.bHumanInteraction = true;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::SelectMarker;
+	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
+	TestTrue(TEXT("Player A to Player B triggers handoff"),
+		State.bAwaitingAcknowledgement);
+	TestEqual(TEXT("Pending interaction is rebuilt from newest view"),
+		State.PendingInteraction,
+		EFMCodexLocalMatchInteractionCategory::SelectMarker);
+
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::SelectHelper;
+	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
+	TestEqual(TEXT("Visible mask tracks authoritative interaction changes"),
+		State.PendingInteraction,
+		EFMCodexLocalMatchInteractionCategory::SelectHelper);
+
+	View.bMatchEnded = true;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::MatchEnded;
+	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
+	TestFalse(TEXT("MatchEnded suppresses pending handoff"),
+		State.bAwaitingAcknowledgement);
+	TestEqual(TEXT("MatchEnded clears pending player"),
+		State.PendingPlayer, EInitialTurnOrderPlayer::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchHotSeatAuthorityAndReadabilityTest,
+	"FMCodex.LocalPlay.ControlSurface.15.HotSeatAuthorityAndReadability",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchHotSeatAuthorityAndReadabilityTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Host = PlayableWorld.GetHost();
+	auto* Controller = PlayableWorld.GetController();
+	TestNotNull(TEXT("Hot-seat Host exists"), Host);
+	TestNotNull(TEXT("Hot-seat Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->StartNewDemoMatch();
+	TestTrue(TEXT("Start succeeds"), Controller->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("First human interaction is masked"),
+		Controller->IsAwaitingHotSeatHandoff());
+	const auto BeforeBlocked = SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Controller->BeginDemoOrdinaryAttack();
+	TestFalse(TEXT("Gameplay command is rejected while masked"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("Blocked command leaves authority byte-identical"),
+		BeforeBlocked == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	TestTrue(TEXT("Blocked command leaves handoff pending"),
+		Controller->IsAwaitingHotSeatHandoff());
+	const FFMCodexLocalMatchCommandDiagnostic BlockedDiagnostic =
+		Controller->GetLastDiagnostic();
+
+	const auto BeforeReady = SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Controller->AcknowledgeHotSeatHandoff();
+	TestFalse(TEXT("Ready reveals gameplay surface"),
+		Controller->IsAwaitingHotSeatHandoff());
+	TestTrue(TEXT("Ready leaves authority byte-identical"),
+		BeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	TestEqual(TEXT("Ready preserves gameplay diagnostic command"),
+		Controller->GetLastDiagnostic().CommandName,
+		BlockedDiagnostic.CommandName);
+	TestEqual(TEXT("Ready preserves gameplay diagnostic message"),
+		Controller->GetLastDiagnostic().Message,
+		BlockedDiagnostic.Message);
+	Controller->RefreshPresentation();
+	TestFalse(TEXT("Same actor refresh does not re-mask"),
+		Controller->IsAwaitingHotSeatHandoff());
+
+	Controller->FinishDeployment();
+	TestFalse(TEXT("Out-of-stage command fails authoritatively"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestFalse(TEXT("Failed command does not trigger handoff"),
+		Controller->IsAwaitingHotSeatHandoff());
+	Controller->BeginDemoOrdinaryAttack();
+	TestTrue(TEXT("Begin remains reachable after Ready"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestFalse(TEXT("Begin to same-player deployment has no handoff"),
+		Controller->IsAwaitingHotSeatHandoff());
+
+	const auto& DeploymentView = Controller->GetInteractionView();
+	int32 GroupedSlotCount = 0;
+	bool bHasOrdinaryGroup = false;
+	bool bHasGoalkeeperGroup = false;
+	for (const FFMCodexLocalMatchDeploymentGroup& Group
+		: DeploymentView.DeploymentGroups)
+	{
+		GroupedSlotCount += Group.LegalSlotIds.Num();
+		bHasGoalkeeperGroup |= Group.bGoalkeeper;
+		bHasOrdinaryGroup |= !Group.bGoalkeeper;
+	}
+	TestTrue(TEXT("Deployment has readable ordinary groups"), bHasOrdinaryGroup);
+	TestEqual(TEXT("Grouping preserves every legal deployment option"),
+		GroupedSlotCount, DeploymentView.DeploymentOptions.Num());
+	TestTrue(TEXT("Large legal option set remains complete"),
+		DeploymentView.DeploymentOptions.Num() > 10);
+
+	const FFMCodexLocalMatchDeploymentOption FirstOption =
+		DeploymentView.DeploymentOptions[0];
+	Controller->DeployOrdinary(FirstOption.CardId, FirstOption.SlotId);
+	TestTrue(TEXT("First deployment succeeds"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("Deployment actor change triggers handoff"),
+		Controller->IsAwaitingHotSeatHandoff());
+	bHasGoalkeeperGroup = false;
+	for (const FFMCodexLocalMatchDeploymentGroup& Group
+		: Controller->GetInteractionView().DeploymentGroups)
+	{
+		bHasGoalkeeperGroup |= Group.bGoalkeeper;
+	}
+	TestTrue(TEXT("Defender deployment has readable goalkeeper group"),
+		bHasGoalkeeperGroup);
+	const auto BeforeSecondBlocked =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	const FFMCodexLocalMatchDeploymentOption SecondOption =
+		Controller->GetInteractionView().DeploymentOptions[0];
+	Controller->DeployOrdinary(SecondOption.CardId, SecondOption.SlotId);
+	TestFalse(TEXT("Second side cannot deploy before Ready"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("Masked deployment leaves authority unchanged"),
+		BeforeSecondBlocked == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	Controller->AcknowledgeHotSeatHandoff();
+	Controller->DeployOrdinary(SecondOption.CardId, SecondOption.SlotId);
+	TestTrue(TEXT("Second-side deployment works after Ready"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+
+	FString ControllerSource;
+	TestTrue(TEXT("Controller source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+		ControllerSource));
+	TestTrue(TEXT("Full control surface remains scrollable"),
+		ControllerSource.Contains(TEXT("SNew(SScrollBox)"))
+			&& ControllerSource.Contains(TEXT("ScrollBarAlwaysVisible(true)")));
+	TestTrue(TEXT("Deployment uses wrapped grouped slot controls"),
+		ControllerSource.Contains(TEXT("DeploymentGroups"))
+			&& ControllerSource.Contains(TEXT("SNew(SWrapBox)")));
+	TestTrue(TEXT("Handoff screen replaces normal controls"),
+		ControllerSource.Contains(TEXT("PASS CONTROL"))
+			&& ControllerSource.Contains(TEXT("AllowGameplayCommand")));
+	TestTrue(TEXT("Choice controls carry explicit presentation headings"),
+		ControllerSource.Contains(TEXT("Branch / Shot Type"))
+			&& ControllerSource.Contains(TEXT("One-on-One Shot Type")));
+	const int32 ReadyStart = ControllerSource.Find(
+		TEXT("void AFMCodexLocalMatchPlayerController::AcknowledgeHotSeatHandoff"));
+	const int32 ReadyEnd = ControllerSource.Find(
+		TEXT("bool AFMCodexLocalMatchPlayerController::AllowGameplayCommand"));
+	const FString ReadyBody = ReadyStart != INDEX_NONE && ReadyEnd > ReadyStart
+		? ControllerSource.Mid(ReadyStart, ReadyEnd - ReadyStart)
+		: FString();
+	TestTrue(TEXT("Ready production body is statically isolated"),
+		!ReadyBody.IsEmpty()
+			&& !ReadyBody.Contains(TEXT("Host->"))
+			&& !ReadyBody.Contains(TEXT("AuthoritativeSession"))
+			&& !ReadyBody.Contains(TEXT("D6Provider"))
+			&& !ReadyBody.Contains(TEXT("RecordCommandResult")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchHotSeatTwoSideFlowTest,
+	"FMCodex.LocalPlay.ControlSurface.16.HotSeatTwoSideFlow",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Controller = PlayableWorld.GetController();
+	if (Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->StartNewDemoMatch();
+	Controller->AcknowledgeHotSeatHandoff();
+	Controller->BeginDemoOrdinaryAttack();
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const FString PhysicalForward =
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? TEXT("NearB") : TEXT("NearA");
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		TestTrue(TEXT("Two-side flow deploys through handoffs"),
+			DeployNextOrdinary(*Controller, PhysicalForward));
+	}
+	AcknowledgeIfPending(*Controller);
+	Controller->FinishDeployment();
+	AcknowledgeIfPending(*Controller);
+	Controller->FinishDeployment();
+	AcknowledgeIfPending(*Controller);
+	TestEqual(TEXT("Attacker is prompted for Carrier"),
+		Controller->GetInteractionView().InteractionCategory,
+		EFMCodexLocalMatchInteractionCategory::SelectCarrier);
+	const FName CarrierId =
+		Controller->GetInteractionView().SelectionOptions[0].Id;
+	TestEqual(TEXT("Carrier option shows attacker side"),
+		Controller->GetInteractionView().SelectionOptions[0].Side,
+		Attacker);
+	Controller->SubmitCarrier(CarrierId);
+	TestTrue(TEXT("Carrier selection succeeds"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("Carrier to Marker actor transition is masked"),
+		Controller->IsAwaitingHotSeatHandoff());
+	TestEqual(TEXT("Marker is assigned to the other player"),
+		Controller->GetHotSeatHandoffState().PendingPlayer,
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA);
+	Controller->AcknowledgeHotSeatHandoff();
+	const FName MarkerId =
+		Controller->GetInteractionView().SelectionOptions[0].Id;
+	TestEqual(TEXT("Marker option shows defender side"),
+		Controller->GetInteractionView().SelectionOptions[0].Side,
+		Controller->GetInteractionView().ExpectedActingPlayer);
+	Controller->SubmitMarker(MarkerId);
+	TestTrue(TEXT("Marker selection succeeds after defender Ready"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+
+	for (const EFMCodexLocalMatchInteractionCategory Category : {
+		EFMCodexLocalMatchInteractionCategory::SelectSkill,
+		EFMCodexLocalMatchInteractionCategory::SelectRunner,
+		EFMCodexLocalMatchInteractionCategory::SelectHelper })
+	{
+		AcknowledgeIfPending(*Controller);
+		if (Category
+			== EFMCodexLocalMatchInteractionCategory::SelectSkill)
+		{
+			TestTrue(TEXT("Skill choice includes readable family text"),
+				Controller->GetInteractionView().SelectionOptions[0]
+					.Label.Contains(TEXT("Cross")));
+		}
+		TestTrue(TEXT("Remaining selection stays reachable"),
+			SubmitFirstSelection(*Controller, Category));
+	}
+	AcknowledgeIfPending(*Controller);
+	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
+	TestTrue(TEXT("BranchIntent remains reachable"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestFalse(TEXT("System resolution begins without handoff"),
+		Controller->IsAwaitingHotSeatHandoff());
+	TestEqual(TEXT("Continue label identifies Begin Resolution"),
+		Controller->GetInteractionView().ContinueActionLabel,
+		FString(TEXT("Continue - Begin Resolution")));
+	Controller->ContinueResolution();
+	TestFalse(TEXT("BeginResolutionSession has no handoff"),
+		Controller->IsAwaitingHotSeatHandoff());
+	TestEqual(TEXT("Continue label identifies route resolution"),
+		Controller->GetInteractionView().ContinueActionLabel,
+		FString(TEXT("Continue - Resolve Route")));
+	Controller->ContinueResolution();
+	TestFalse(TEXT("RNG route resolution has no handoff"),
+		Controller->IsAwaitingHotSeatHandoff());
+	TestTrue(TEXT("Authoritative route D6 remains visible"),
+		Controller->GetInteractionView().AcceptedRolls.Num() > 0);
+	TestEqual(TEXT("Initial roll is grouped separately"),
+		Controller->GetInteractionView().AcceptedRolls[0].Group,
+		EFMCodexLocalMatchRollGroup::InitialRoute);
 	return true;
 }
 
