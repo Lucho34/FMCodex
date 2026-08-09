@@ -1,5 +1,7 @@
 #include "FMCodexLocalMatchHostGameMode.h"
 
+#include "FMCodexLocalMatchPlayerController.h"
+
 namespace FMCodexLocalMatchHost
 {
 	constexpr const TCHAR* NoActiveMatchMessage =
@@ -48,6 +50,11 @@ namespace FMCodexLocalMatchHost
 		}
 		return true;
 	}
+}
+
+AFMCodexLocalMatchHostGameMode::AFMCodexLocalMatchHostGameMode()
+{
+	PlayerControllerClass = AFMCodexLocalMatchPlayerController::StaticClass();
 }
 
 AFMCodexLocalMatchHostGameMode::FLocalMatchRuntime::FLocalMatchRuntime(
@@ -149,6 +156,24 @@ AFMCodexLocalMatchHostGameMode::GetMatchSnapshot() const
 
 	Result.Snapshot =
 		ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot();
+	Result.bSuccess = true;
+	return Result;
+}
+
+FFMCodexLocalMatchSkillRuleSnapshotResult
+AFMCodexLocalMatchHostGameMode::GetSkillRuleSnapshot() const
+{
+	using namespace FMCodexLocalMatchHost;
+
+	FFMCodexLocalMatchSkillRuleSnapshotResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+
+	Result.Snapshot = ActiveMatchRuntime->SkillRuleSet;
 	Result.bSuccess = true;
 	return Result;
 }

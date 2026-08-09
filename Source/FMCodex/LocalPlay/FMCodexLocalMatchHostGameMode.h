@@ -36,6 +36,15 @@ struct FMCODEX_API FFMCodexLocalMatchSnapshotResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchSkillRuleSnapshotResult
+{
+	bool bSuccess = false;
+	FSkillRuleSnapshotSet Snapshot;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchBeginOrdinaryAttackResult
 {
 	bool bSuccess = false;
@@ -439,6 +448,8 @@ class FMCODEX_API AFMCodexLocalMatchHostGameMode final
 	GENERATED_BODY()
 
 public:
+	AFMCodexLocalMatchHostGameMode();
+
 	bool HasActiveLocalMatch() const;
 
 	FFMCodexStartNewLocalMatchResult StartNewLocalMatch(
@@ -456,6 +467,9 @@ public:
 #endif
 
 	FFMCodexLocalMatchSnapshotResult GetMatchSnapshot() const;
+
+	FFMCodexLocalMatchSkillRuleSnapshotResult
+		GetSkillRuleSnapshot() const;
 
 	FFMCodexLocalMatchBeginOrdinaryAttackResult BeginOrdinaryAttack(
 		int32 ActionPoint);
