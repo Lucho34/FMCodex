@@ -157,6 +157,15 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	FString ContinueActionLabel = TEXT("Continue Resolution");
 };
 
+struct FMCODEX_API FFMCodexLocalMatchScreenPresentation
+{
+	FString MatchStatusLabel;
+	FString ActingStatusLabel;
+	FString InteractionKicker;
+	FString InteractionTitle;
+	bool bSystemResolution = false;
+};
+
 class FMCODEX_API FFMCodexLocalMatchInteractionViewBuilder final
 {
 public:
@@ -165,6 +174,9 @@ public:
 	static FFMCodexLocalMatchInteractionView Build(
 		const FMatchPlayState& Snapshot,
 		const FSkillRuleSnapshotSet& SkillRuleSet);
+
+	static FFMCodexLocalMatchScreenPresentation BuildScreenPresentation(
+		const FFMCodexLocalMatchInteractionView& View);
 
 	static FString ToString(EFMCodexLocalMatchMajorPhase Phase);
 	static FString ToString(EFMCodexLocalMatchInteractionCategory Category);

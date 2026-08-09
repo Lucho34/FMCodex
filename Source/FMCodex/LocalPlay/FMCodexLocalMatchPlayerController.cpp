@@ -17,6 +17,7 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SExpandableArea.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/SBoxPanel.h"
@@ -83,10 +84,9 @@ namespace FMCodexLocalMatchPlayerController
 				: FLinearColor(0.50f, 0.16f, 0.14f, 0.95f);
 		AddLine(Card.DisplayLabel, FLinearColor(1.0f, 0.88f, 0.42f));
 		AddLine(FString::Printf(
-			TEXT("%s | %s | ID %s"),
+			TEXT("%s  |  %s"),
 			*FFMCodexLocalMatchInteractionViewBuilder::ToString(Card.Side),
-			Card.bGoalkeeper ? TEXT("Goalkeeper") : *Card.PositionLabel,
-			*Card.CardId.ToString()),
+			Card.bGoalkeeper ? TEXT("Goalkeeper") : *Card.PositionLabel),
 			FLinearColor(0.82f, 0.86f, 0.90f));
 		AddLine(Card.bGoalkeeper && !Card.GoalkeeperAttributeSummary.IsEmpty()
 			? Card.GoalkeeperAttributeSummary
@@ -122,6 +122,8 @@ namespace FMCodexLocalMatchPlayerController
 					Card.RelativeZone),
 				*Card.SlotId.ToString()));
 		}
+		AddLine(TEXT("Card reference: ") + Card.CardId.ToString(),
+			FLinearColor(0.50f, 0.56f, 0.62f));
 
 		return SNew(SBorder)
 			.Padding(7.0f)
@@ -157,7 +159,8 @@ namespace FMCodexLocalMatchPlayerController
 		AddLine(
 			Feedback.bRejected
 				? TEXT("COMMAND REJECTED")
-				: bResolutionOperation ? TEXT("RESOLUTION") : TEXT("LAST ACTION"),
+				: bResolutionOperation
+					? TEXT("RESOLUTION RESULT") : TEXT("LAST ACTION"),
 			Feedback.bRejected
 				? FLinearColor(1.0f, 0.38f, 0.30f)
 				: FLinearColor(0.42f, 0.82f, 1.0f));
@@ -166,20 +169,99 @@ namespace FMCodexLocalMatchPlayerController
 		AddLine(Feedback.RouteSummary.IsEmpty()
 			? FString() : TEXT("Route: ") + Feedback.RouteSummary);
 
-		for (const FFMCodexLocalMatchRollView& Die : Feedback.DiceEntries)
+		if (!Feedback.DiceEntries.IsEmpty())
 		{
-			AddLine(FString::Printf(
-				TEXT("D6 | %s: %d"), *Die.Purpose, Die.RawD6),
-				FLinearColor(1.0f, 0.88f, 0.42f));
+			AddLine(TEXT("DICE"), FLinearColor(0.62f, 0.78f, 0.92f));
+			TSharedRef<SWrapBox> DiceRow = SNew(SWrapBox)
+				.UseAllottedSize(true)
+				.InnerSlotPadding(FVector2D(4.0f, 4.0f));
+			for (const FFMCodexLocalMatchRollView& Die : Feedback.DiceEntries)
+			{
+				DiceRow->AddSlot()
+				[
+					SNew(SBorder)
+					.Padding(FMargin(10.0f, 6.0f))
+					.BorderBackgroundColor(FLinearColor(0.13f, 0.20f, 0.27f, 1.0f))
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(Die.Purpose))
+							.ColorAndOpacity(FLinearColor(0.70f, 0.78f, 0.86f))
+						]
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(FString::Printf(
+								TEXT("D6  %d"), Die.RawD6)))
+							.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
+						]
+					]
+				];
+			}
+			Body->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 6.0f)
+			[
+				DiceRow
+			];
 		}
-		for (const FString& Comparison : Feedback.ComparisonEntries)
+		if (!Feedback.ComparisonEntries.IsEmpty())
 		{
-			AddLine(TEXT("Comparison: ") + Comparison);
+			AddLine(TEXT("FORMULA COMPARISON"),
+				FLinearColor(0.62f, 0.78f, 0.92f));
+			TSharedRef<SHorizontalBox> ComparisonRow = SNew(SHorizontalBox);
+			for (int32 Index = 0;
+				Index < FMath::Min(2, Feedback.ComparisonEntries.Num()); ++Index)
+			{
+				ComparisonRow->AddSlot().FillWidth(1.0f).Padding(2.0f)
+				[
+					SNew(SBorder)
+					.Padding(7.0f)
+					.BorderBackgroundColor(Index == 0
+						? FLinearColor(0.08f, 0.24f, 0.40f, 1.0f)
+						: FLinearColor(0.34f, 0.11f, 0.10f, 1.0f))
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(Index == 0
+								? TEXT("ATTACK") : TEXT("DEFENSE")))
+						]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 3.0f)
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(
+								Feedback.ComparisonEntries[Index]))
+							.AutoWrapText(true)
+						]
+					]
+				];
+			}
+			Body->AddSlot().AutoHeight()[ComparisonRow];
+			for (int32 Index = 2; Index < Feedback.ComparisonEntries.Num(); ++Index)
+			{
+				AddLine(TEXT("Evidence: ") + Feedback.ComparisonEntries[Index]);
+			}
 		}
 		AddLine(Feedback.DecisionSummary.IsEmpty()
 			? FString() : TEXT("Decision: ") + Feedback.DecisionSummary);
 		AddLine(Feedback.ContinuationSummary);
-		AddLine(Feedback.TerminalSummary, FLinearColor(1.0f, 0.80f, 0.22f));
+		if (!Feedback.TerminalSummary.IsEmpty())
+		{
+			Body->AddSlot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 2.0f)
+			[
+				SNew(SBorder)
+				.Padding(10.0f)
+				.BorderBackgroundColor(FLinearColor(0.36f, 0.24f, 0.03f, 1.0f))
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(Feedback.TerminalSummary))
+					.Justification(ETextJustify::Center)
+					.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
+				]
+			];
+		}
 		if (Feedback.bRejected)
 		{
 			AddLine(TEXT("Command: ") + Feedback.CommandName);
@@ -1104,8 +1186,9 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 					+ SVerticalBox::Slot().AutoHeight().Padding(8.0f)
 					[
 						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("PASS CONTROL")))
+						.Text(FText::FromString(TEXT("PASS CONTROL — HANDOFF")))
 						.Justification(ETextJustify::Center)
+						.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(8.0f)
 					[
@@ -1130,13 +1213,23 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
 					[
-						SNew(STextBlock)
-						.Text(FText::FromString(Diagnostic))
-						.Justification(ETextJustify::Center)
+						MakeFeedbackPanel(ResolutionFeedback)
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
 					[
-						MakeFeedbackPanel(ResolutionFeedback)
+						SNew(SExpandableArea)
+						.InitiallyCollapsed(true)
+						.HeaderContent()
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(TEXT("Developer Details")))
+						]
+						.BodyContent()
+						[
+							SNew(STextBlock)
+							.Text(FText::FromString(Diagnostic))
+							.AutoWrapText(true)
+						]
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(12.0f)
 					[
@@ -1149,33 +1242,26 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			];
 	}
 
-	TSharedRef<SVerticalBox> Content = SNew(SVerticalBox);
-	auto AddText = [&Content](const FString& Text)
+	const FFMCodexLocalMatchScreenPresentation Screen =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
+			InteractionView);
+	TSharedRef<SVerticalBox> InteractionBody = SNew(SVerticalBox);
+	auto AddText = [&InteractionBody](const FString& Text)
 	{
-		Content->AddSlot().AutoHeight().Padding(2.0f)
+		InteractionBody->AddSlot().AutoHeight().Padding(2.0f)
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(Text))
 			.ColorAndOpacity(FLinearColor::White)
+			.AutoWrapText(true)
 		];
 	};
-	auto AddButton = [&Content](const TSharedRef<SWidget>& Button)
+	auto AddButton = [&InteractionBody](const TSharedRef<SWidget>& Button)
 	{
-		Content->AddSlot().AutoHeight().Padding(2.0f)[Button];
+		InteractionBody->AddSlot().AutoHeight().Padding(2.0f)[Button];
 	};
 
-	const FString MatchStateLabel = InteractionView.bMatchEnded
-		? TEXT("MATCH ENDED")
-		: InteractionView.bMatchActive ? TEXT("MATCH IN PROGRESS") : TEXT("READY");
-	const FString ActingLabel = InteractionView.ExpectedActingPlayer
-		== EInitialTurnOrderPlayer::None
-			? TEXT("System resolution")
-			: FString::Printf(
-				TEXT("%s to act"),
-				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
-					InteractionView.ExpectedActingPlayer));
-	Content->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 10.0f)
-	[
+	const TSharedRef<SWidget> Header =
 		SNew(SBorder)
 		.Padding(12.0f)
 		.BorderBackgroundColor(FLinearColor(0.07f, 0.11f, 0.15f, 1.0f))
@@ -1183,63 +1269,135 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("FMCODEX LOCAL MATCH")))
-				.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("MATCH HEADER  |  FMCODEX LOCAL MATCH")))
+					.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
+				]
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(Screen.MatchStatusLabel))
+					.ColorAndOpacity(FLinearColor(0.58f, 0.86f, 1.0f))
+				]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f)
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 10.0f, 0.0f, 5.0f)
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(FString::Printf(
-					TEXT("PLAYER A   %d  -  %d   PLAYER B"),
-					InteractionView.PlayerAScore,
-					InteractionView.PlayerBScore)))
-				.Justification(ETextJustify::Center)
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("PLAYER A")))
+					.ColorAndOpacity(FLinearColor(0.45f, 0.72f, 1.0f))
+				]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(20.0f, 0.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(FString::Printf(
+						TEXT("%d   -   %d"),
+						InteractionView.PlayerAScore,
+						InteractionView.PlayerBScore)))
+					.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("PLAYER B")))
+					.ColorAndOpacity(FLinearColor(1.0f, 0.52f, 0.46f))
+				]
 			]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(STextBlock)
 				.Text(FText::FromString(FString::Printf(
-					TEXT("%s | Attacker: %s | %s"),
-					*MatchStateLabel,
+					TEXT("ATTACKER: %s   |   %s"),
 					*FFMCodexLocalMatchInteractionViewBuilder::ToString(
 						InteractionView.CurrentAttackingPlayer),
-					*ActingLabel)))
+					*Screen.ActingStatusLabel)))
 				.Justification(ETextJustify::Center)
 			]
-		]
-	];
+		];
 
-	AddText(TEXT("FOOTBALL FIELD"));
+	TSharedRef<SVerticalBox> FieldBody = SNew(SVerticalBox);
+	FieldBody->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 6.0f)
+	[
+		SNew(STextBlock)
+		.Text(FText::FromString(TEXT("FOOTBALL FIELD")))
+		.ColorAndOpacity(FLinearColor(0.72f, 0.94f, 0.74f))
+	];
 	TSharedRef<SHorizontalBox> Pitch = SNew(SHorizontalBox);
-	for (const FFMCodexLocalMatchPitchRegionView& Region
-		: InteractionView.PitchRegions)
+	for (const EMatchPlayNeutralSlotSide FieldSide : {
+		EMatchPlayNeutralSlotSide::NearPlayerB,
+		EMatchPlayNeutralSlotSide::NearPlayerA })
 	{
+		const FFMCodexLocalMatchPitchRegionView* RegionPtr =
+			InteractionView.PitchRegions.FindByPredicate(
+				[FieldSide](const FFMCodexLocalMatchPitchRegionView& Candidate)
+				{
+					return Candidate.NeutralSide == FieldSide;
+				});
+		if (RegionPtr == nullptr)
+		{
+			continue;
+		}
+		const FFMCodexLocalMatchPitchRegionView& Region = *RegionPtr;
 		TSharedRef<SVerticalBox> RegionBody = SNew(SVerticalBox);
 		RegionBody->AddSlot().AutoHeight().Padding(2.0f)
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(FString::Printf(
-				TEXT("%s | %d canonical slots"),
-				*Region.Label,
-				Region.CanonicalSlotIds.Num())))
+			.Text(FText::FromString(Region.Label))
 			.Justification(ETextJustify::Center)
+			.ColorAndOpacity(FLinearColor(0.84f, 0.96f, 0.84f))
 		];
-		if (Region.DeployedCards.IsEmpty())
+		for (const EMatchPlayRelativeDeploymentZone Zone : {
+			EMatchPlayRelativeDeploymentZone::Forward,
+			EMatchPlayRelativeDeploymentZone::Midfield,
+			EMatchPlayRelativeDeploymentZone::Backfield })
 		{
-			RegionBody->AddSlot().AutoHeight().Padding(8.0f)
+			TSharedRef<SVerticalBox> ZoneBody = SNew(SVerticalBox);
+			bool bHasCards = false;
+			for (const FFMCodexLocalMatchCardView& Card : Region.DeployedCards)
+			{
+				if (Card.RelativeZone == Zone)
+				{
+					bHasCards = true;
+					ZoneBody->AddSlot().AutoHeight().Padding(3.0f)
+					[
+						MakeCardPanel(Card)
+					];
+				}
+			}
+			if (!bHasCards)
+			{
+				ZoneBody->AddSlot().AutoHeight().Padding(4.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("Open space")))
+					.Justification(ETextJustify::Center)
+					.ColorAndOpacity(FLinearColor(0.47f, 0.58f, 0.49f))
+				];
+			}
+			RegionBody->AddSlot().AutoHeight().Padding(1.0f, 4.0f)
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("No deployed cards")))
-				.Justification(ETextJustify::Center)
-				.ColorAndOpacity(FLinearColor(0.55f, 0.62f, 0.58f))
-			];
-		}
-		for (const FFMCodexLocalMatchCardView& Card : Region.DeployedCards)
-		{
-			RegionBody->AddSlot().AutoHeight().Padding(3.0f)
-			[
-				MakeCardPanel(Card)
+				SNew(SBorder)
+				.Padding(5.0f)
+				.BorderBackgroundColor(FLinearColor(0.04f, 0.18f, 0.08f, 0.80f))
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(
+							FFMCodexLocalMatchInteractionViewBuilder::ToString(Zone)))
+						.Justification(ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						ZoneBody
+					]
+				]
 			];
 		}
 		Pitch->AddSlot().FillWidth(1.0f).Padding(3.0f)
@@ -1252,48 +1410,63 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			]
 		];
 	}
-	Content->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 10.0f)
+	FieldBody->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 10.0f)
 	[
 		Pitch
 	];
-	if (ResolutionFeedback.bVisible)
-	{
-		Content->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 10.0f)
+
+	InteractionBody->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 8.0f)
+	[
+		SNew(SBorder)
+		.Padding(9.0f)
+		.BorderBackgroundColor(Screen.bSystemResolution
+			? FLinearColor(0.12f, 0.19f, 0.28f, 1.0f)
+			: FLinearColor(0.12f, 0.24f, 0.19f, 1.0f))
 		[
-			MakeFeedbackPanel(ResolutionFeedback)
-		];
-	}
-	AddText(TEXT("CURRENT INTERACTION"));
-	AddText(FString::Printf(
-		TEXT("Status: %s | Score A %d - %d B"),
-		InteractionView.bMatchActive ? TEXT("Active") : TEXT("No Match"),
-		InteractionView.PlayerAScore,
-		InteractionView.PlayerBScore));
-	AddText(FString::Printf(
-		TEXT("Attacking: %s | Expected: %s"),
-		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
-			InteractionView.CurrentAttackingPlayer),
-		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
-			InteractionView.ExpectedActingPlayer)));
-	AddText(FString::Printf(
-		TEXT("Phase: %s | Interaction: %s | Attack #%lld | AP %d"),
-		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
-			InteractionView.MajorPhase),
-		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
-			InteractionView.InteractionCategory),
-		InteractionView.AttackSequence,
-		InteractionView.ActionPoint));
-	AddText(FString::Printf(
-		TEXT("CurrentAttack: %s"),
-		InteractionView.bCurrentAttackActive ? TEXT("Active") : TEXT("None")));
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("CURRENT INTERACTION")))
+				.ColorAndOpacity(FLinearColor(0.62f, 0.78f, 0.92f))
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f, 0.0f, 2.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Screen.InteractionKicker))
+				.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
+			]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Screen.InteractionTitle))
+				.AutoWrapText(true)
+			]
+		]
+	];
+	AddText(Screen.bSystemResolution
+		? TEXT("The match system has the next step.")
+		: Screen.ActingStatusLabel);
 	if (InteractionView.bMatchEnded)
 	{
 		AddText(FString(TEXT("FINAL RESULT: "))
 			+ FFMCodexLocalMatchInteractionViewBuilder::ToString(
 				InteractionView.MatchResult));
 	}
-	AddText(TEXT("Presentation: ") + LastDiagnostic.PresentationSummary);
-	AddText(FString::Printf(
+
+	TSharedRef<SVerticalBox> DiagnosticsBody = SNew(SVerticalBox);
+	auto AddDiagnostic = [&DiagnosticsBody](const FString& Text)
+	{
+		DiagnosticsBody->AddSlot().AutoHeight().Padding(2.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Text))
+			.AutoWrapText(true)
+			.ColorAndOpacity(FLinearColor(0.64f, 0.69f, 0.74f))
+		];
+	};
+	AddDiagnostic(TEXT("Presentation: ") + LastDiagnostic.PresentationSummary);
+	AddDiagnostic(FString::Printf(
 		TEXT("Last: %s | Host=%s | Accepted=%s | Domain=%s | %s"),
 		*LastDiagnostic.CommandName,
 		LastDiagnostic.bHostSuccess ? TEXT("OK") : TEXT("FAIL"),
@@ -1302,13 +1475,22 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		*LastDiagnostic.Message));
 	if (!InteractionView.Diagnostic.IsEmpty())
 	{
-		AddText(TEXT("View diagnostic: ") + InteractionView.Diagnostic);
+		AddDiagnostic(TEXT("View diagnostic: ") + InteractionView.Diagnostic);
 	}
+	AddDiagnostic(FString::Printf(
+		TEXT("Phase: %s | Interaction: %s | Attack #%lld | AP %d | CurrentAttack: %s"),
+		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			InteractionView.MajorPhase),
+		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			InteractionView.InteractionCategory),
+		InteractionView.AttackSequence,
+		InteractionView.ActionPoint,
+		InteractionView.bCurrentAttackActive ? TEXT("Active") : TEXT("None")));
 
 	for (const FMatchPlayDeploymentPlacement& Placement
 		: InteractionView.DeploymentPlacements)
 	{
-		AddText(FString::Printf(
+		AddDiagnostic(FString::Printf(
 			TEXT("Placed: %s / %s -> %s"),
 			*FFMCodexLocalMatchInteractionViewBuilder::ToString(
 				Placement.PlayerSide),
@@ -1335,11 +1517,11 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 				RollHeading = TEXT("Accepted Dice - Post-route");
 				break;
 			}
-			AddText(RollHeading);
+			AddDiagnostic(RollHeading);
 			LastRollGroup = Roll.Group;
 			bHasRollGroup = true;
 		}
-		AddText(FString::Printf(
+		AddDiagnostic(FString::Printf(
 			TEXT("  %s: D6 = %d"), *Roll.Purpose, Roll.RawD6));
 	}
 
@@ -1374,7 +1556,7 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			{
 				continue;
 			}
-			Content->AddSlot().AutoHeight().Padding(3.0f)
+			InteractionBody->AddSlot().AutoHeight().Padding(3.0f)
 			[
 				MakeCardPanel(Group.Card, false)
 			];
@@ -1403,7 +1585,7 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			{
 				continue;
 			}
-			Content->AddSlot().AutoHeight().Padding(3.0f)
+			InteractionBody->AddSlot().AutoHeight().Padding(3.0f)
 			[
 				MakeCardPanel(Group.Card, false)
 			];
@@ -1444,7 +1626,7 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		{
 			if (Option.bHasCard)
 			{
-				Content->AddSlot().AutoHeight().Padding(3.0f)
+				InteractionBody->AddSlot().AutoHeight().Padding(3.0f)
 				[
 					MakeCardPanel(Option.Card)
 				];
@@ -1519,10 +1701,74 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		break;
 	}
 
-	return SNew(SScrollBox)
-		.ScrollBarAlwaysVisible(true)
-		+ SScrollBox::Slot()
+	TSharedRef<SWidget> ResultPanel =
+		SNew(SBorder)
+			.Padding(10.0f)
+			.BorderBackgroundColor(FLinearColor(0.05f, 0.09f, 0.12f, 1.0f))
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT(
+					"RESOLUTION RESULT  |  No resolution result yet")))
+				.ColorAndOpacity(FLinearColor(0.54f, 0.62f, 0.70f))
+			];
+	if (ResolutionFeedback.bVisible)
+	{
+		ResultPanel = MakeFeedbackPanel(ResolutionFeedback);
+	}
+
+	return SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 8.0f)
 		[
-			Content
+			Header
+		]
+		+ SVerticalBox::Slot().FillHeight(1.0f).Padding(2.0f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.45f).Padding(0.0f, 0.0f, 4.0f, 0.0f)
+			[
+				SNew(SBorder)
+				.Padding(8.0f)
+				.BorderBackgroundColor(FLinearColor(0.025f, 0.10f, 0.045f, 1.0f))
+				[
+					SNew(SScrollBox)
+					+ SScrollBox::Slot()
+					[
+						FieldBody
+					]
+				]
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4.0f, 0.0f, 0.0f, 0.0f)
+			[
+				SNew(SBorder)
+				.Padding(8.0f)
+				.BorderBackgroundColor(FLinearColor(0.05f, 0.07f, 0.09f, 1.0f))
+				[
+					SNew(SScrollBox)
+					.ScrollBarAlwaysVisible(true)
+					+ SScrollBox::Slot()
+					[
+						InteractionBody
+					]
+				]
+			]
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(2.0f, 8.0f, 2.0f, 2.0f)
+		[
+			ResultPanel
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(2.0f)
+		[
+			SNew(SExpandableArea)
+			.InitiallyCollapsed(true)
+			.HeaderContent()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Developer Details")))
+				.ColorAndOpacity(FLinearColor(0.54f, 0.60f, 0.66f))
+			]
+			.BodyContent()
+			[
+				DiagnosticsBody
+			]
 		];
 }

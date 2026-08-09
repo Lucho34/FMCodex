@@ -2119,4 +2119,127 @@ bool FFMCodexLocalMatchNormalDemoFullFamilyReachabilityTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchPlayerFacingScreenFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.25.PlayerFacingScreenFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchPlayerFacingScreenFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FFMCodexLocalMatchInteractionView View;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::StartMatch;
+	auto Screen =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(View);
+	TestEqual(TEXT("No-match status is player-readable"),
+		Screen.MatchStatusLabel, FString(TEXT("READY TO PLAY")));
+	TestEqual(TEXT("No-match interaction invites a local match"),
+		Screen.InteractionTitle, FString(TEXT("Start a Local Match")));
+	TestFalse(TEXT("No-match waiting state is not system resolution"),
+		Screen.bSystemResolution);
+
+	View.bMatchActive = true;
+	View.bHumanInteraction = true;
+	View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerB;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::SelectMarker;
+	Screen =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(View);
+	TestEqual(TEXT("Human action is explicit"), Screen.InteractionKicker,
+		FString(TEXT("PLAYER ACTION")));
+	TestEqual(TEXT("Acting player is prominent"), Screen.ActingStatusLabel,
+		FString(TEXT("PLAYER B TO ACT")));
+	TestEqual(TEXT("Human task is plain language"), Screen.InteractionTitle,
+		FString(TEXT("Select Marker")));
+
+	View.bHumanInteraction = false;
+	View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+	View.ContinueActionLabel = TEXT("Roll Route Dice");
+	Screen =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(View);
+	TestTrue(TEXT("System-owned step is explicit"), Screen.bSystemResolution);
+	TestEqual(TEXT("System action uses authoritative continuation label"),
+		Screen.InteractionTitle, FString(TEXT("Roll Route Dice")));
+
+	View.bHumanInteraction = true;
+	View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerA;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::SelectBranchIntent;
+	View.ActionLabel = TEXT("Cross");
+	Screen =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(View);
+	TestEqual(TEXT("Cross branch prompt is family-specific"),
+		Screen.InteractionTitle, FString(TEXT("Choose Cross Type")));
+	View.ActionLabel = TEXT("Long Shot");
+	Screen =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(View);
+	TestEqual(TEXT("Shot branch prompt is family-specific"),
+		Screen.InteractionTitle, FString(TEXT("Choose Shot Type")));
+
+	View.bMatchEnded = true;
+	View.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::MatchEnded;
+	Screen =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(View);
+	TestEqual(TEXT("Ended match has final-result status"),
+		Screen.ActingStatusLabel, FString(TEXT("FINAL RESULT")));
+	TestEqual(TEXT("Ended match has completion title"),
+		Screen.InteractionTitle, FString(TEXT("Match Complete")));
+
+	FString ControllerSource;
+	TestTrue(TEXT("Player-facing production source loads"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+			ControllerSource));
+	TestTrue(TEXT("Four primary screen regions are explicit"),
+		ControllerSource.Contains(TEXT("MATCH HEADER"))
+			&& ControllerSource.Contains(TEXT("FOOTBALL FIELD"))
+			&& ControllerSource.Contains(TEXT("CURRENT INTERACTION"))
+			&& ControllerSource.Contains(TEXT("RESOLUTION RESULT")));
+	TestTrue(TEXT("Developer diagnostics are secondary and collapsible"),
+		ControllerSource.Contains(TEXT("SNew(SExpandableArea)"))
+			&& ControllerSource.Contains(TEXT("Developer Details"))
+			&& ControllerSource.Contains(TEXT("InitiallyCollapsed(true)")));
+	TestTrue(TEXT("Field exposes the three relative football zones"),
+		ControllerSource.Contains(
+			TEXT("EMatchPlayRelativeDeploymentZone::Forward"))
+			&& ControllerSource.Contains(
+				TEXT("EMatchPlayRelativeDeploymentZone::Midfield"))
+			&& ControllerSource.Contains(
+				TEXT("EMatchPlayRelativeDeploymentZone::Backfield")));
+	TestTrue(TEXT("Card reference is secondary to readable card data"),
+		ControllerSource.Contains(TEXT("Card reference: "))
+			&& ControllerSource.Contains(TEXT("Skills: ")));
+	TestTrue(TEXT("Resolution evidence has structured dice and comparison labels"),
+		ControllerSource.Contains(TEXT("DICE"))
+			&& ControllerSource.Contains(TEXT("D6  %d"))
+			&& ControllerSource.Contains(TEXT("FORMULA COMPARISON"))
+			&& ControllerSource.Contains(TEXT("ATTACK"))
+			&& ControllerSource.Contains(TEXT("DEFENSE")));
+	TestTrue(TEXT("All established player controls remain reachable"),
+		ControllerSource.Contains(TEXT("Finish Deployment"))
+			&& ControllerSource.Contains(TEXT("Decline"))
+			&& ControllerSource.Contains(TEXT("Resolve No Legal Choice"))
+			&& ControllerSource.Contains(TEXT("Branch / Shot Type"))
+			&& ControllerSource.Contains(TEXT("One-on-One Shot Type"))
+			&& ControllerSource.Contains(TEXT("ContinueResolution()"))
+			&& ControllerSource.Contains(TEXT("PASS CONTROL")));
+
+	const int32 SurfaceStart = ControllerSource.Find(
+		TEXT("AFMCodexLocalMatchPlayerController::BuildControlSurface"));
+	const FString SurfaceBody = SurfaceStart == INDEX_NONE
+		? FString() : ControllerSource.Mid(SurfaceStart);
+	TestTrue(TEXT("Screen builder remains a presentation-only consumer"),
+		!SurfaceBody.IsEmpty()
+			&& !SurfaceBody.Contains(TEXT("Host->"))
+			&& !SurfaceBody.Contains(TEXT("RandRange"))
+			&& !SurfaceBody.Contains(TEXT("ResolveFormula("))
+			&& !SurfaceBody.Contains(TEXT("RuntimeState.")));
+	return true;
+}
+
 #endif

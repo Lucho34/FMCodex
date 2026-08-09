@@ -758,6 +758,81 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	}
 }
 
+FFMCodexLocalMatchScreenPresentation
+FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
+	const FFMCodexLocalMatchInteractionView& View)
+{
+	FFMCodexLocalMatchScreenPresentation Result;
+	Result.MatchStatusLabel = View.bMatchEnded
+		? TEXT("MATCH ENDED")
+		: View.bMatchActive ? TEXT("MATCH IN PROGRESS") : TEXT("READY TO PLAY");
+	Result.bSystemResolution = View.bMatchActive
+		&& !View.bMatchEnded
+		&& View.ExpectedActingPlayer == EInitialTurnOrderPlayer::None;
+	Result.ActingStatusLabel = View.bMatchEnded
+		? TEXT("FINAL RESULT")
+		: View.ExpectedActingPlayer == EInitialTurnOrderPlayer::PlayerA
+			? TEXT("PLAYER A TO ACT")
+			: View.ExpectedActingPlayer == EInitialTurnOrderPlayer::PlayerB
+				? TEXT("PLAYER B TO ACT")
+				: Result.bSystemResolution
+					? TEXT("SYSTEM RESOLUTION") : TEXT("WAITING TO START");
+	Result.InteractionKicker = View.bMatchEnded
+		? TEXT("MATCH COMPLETE")
+		: View.bHumanInteraction ? TEXT("PLAYER ACTION")
+			: Result.bSystemResolution ? TEXT("SYSTEM RESOLUTION")
+				: TEXT("LOCAL MATCH");
+
+	switch (View.InteractionCategory)
+	{
+	case EFMCodexLocalMatchInteractionCategory::StartMatch:
+		Result.InteractionTitle = TEXT("Start a Local Match");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::BeginAttack:
+		Result.InteractionTitle = TEXT("Begin an Attack");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::Deploy:
+		Result.InteractionTitle = TEXT("Deploy Your Cards");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::SelectCarrier:
+		Result.InteractionTitle = TEXT("Select Carrier");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::SelectMarker:
+		Result.InteractionTitle = TEXT("Select Marker");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::SelectSkill:
+		Result.InteractionTitle = TEXT("Choose Skill");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::SelectRunner:
+		Result.InteractionTitle = TEXT("Select Runner");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::SelectHelper:
+		Result.InteractionTitle = TEXT("Select Helper");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::SelectBranchIntent:
+		Result.InteractionTitle = View.ActionLabel == TEXT("Cross")
+			? TEXT("Choose Cross Type") : TEXT("Choose Shot Type");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot:
+		Result.InteractionTitle = TEXT("Choose One-on-One Shot");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::ContinueResolution:
+		Result.InteractionTitle = View.ContinueActionLabel.IsEmpty()
+			? TEXT("Continue Resolution") : View.ContinueActionLabel;
+		break;
+	case EFMCodexLocalMatchInteractionCategory::AttackComplete:
+		Result.InteractionTitle = TEXT("Attack Complete");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::MatchEnded:
+		Result.InteractionTitle = TEXT("Match Complete");
+		break;
+	default:
+		Result.InteractionTitle = TEXT("Unable to Load Match");
+		break;
+	}
+	return Result;
+}
+
 FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	const EFMCodexLocalMatchInteractionCategory Category)
 {
