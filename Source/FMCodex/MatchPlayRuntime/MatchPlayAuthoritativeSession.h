@@ -126,6 +126,9 @@ public:
 	FMatchPlayAuthoritativeApplyPassControlTerminalResolutionResult
 	ApplyPassControlTerminalResolution();
 
+	FMatchPlayAuthoritativeApplyShotTerminalResolutionResult
+	ApplyShotTerminalResolution();
+
 	FMatchPlayState GetStateSnapshot() const;
 
 private:

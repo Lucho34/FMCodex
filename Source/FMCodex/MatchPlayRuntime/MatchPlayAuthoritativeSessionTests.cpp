@@ -6022,11 +6022,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All thirty-six mutations use the gate"),
+	TestEqual(TEXT("All thirty-seven mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		36);
+		37);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9712,9 +9712,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All thirty-six mutations share serialized gate"),
+	TestEqual(TEXT("All thirty-seven mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		36);
+		37);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -18714,8 +18714,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 36 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 36);
+	TestEqual(TEXT("E2E preserves 37 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 37);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -18789,8 +18789,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All thirty-six commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 36);
+	TestEqual(TEXT("All thirty-seven commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 37);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -18798,8 +18798,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 			CompletionSource,
 			TEXT("::ApplyCurrentAttackTerminalMutation(")),
 		1);
-	TestEqual(TEXT("GoalResolver has exactly four bounded call sites"),
-		CountOccurrences(CompletionSource, TEXT("FGoalResolver::RecordGoal")), 4);
+	TestEqual(TEXT("GoalResolver has exactly five bounded call sites"),
+		CountOccurrences(CompletionSource, TEXT("FGoalResolver::RecordGoal")), 5);
 	TestEqual(TEXT("Cross terminal regenerates SingleCard Formula once"),
 		CountOccurrences(
 			OrchestratorSource,
@@ -19262,8 +19262,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All thirty-six commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 36);
+	TestEqual(TEXT("All thirty-seven commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 37);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -19272,9 +19272,9 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 			CompletionSource,
 			TEXT("::ApplyCurrentAttackTerminalMutation(")),
 		1);
-	TestEqual(TEXT("GoalResolver has exactly four bounded call sites"),
+	TestEqual(TEXT("GoalResolver has exactly five bounded call sites"),
 		CountOccurrences(
-			CompletionSource, TEXT("FGoalResolver::RecordGoal")), 4);
+			CompletionSource, TEXT("FGoalResolver::RecordGoal")), 5);
 	TestEqual(TEXT("PassControl terminal regenerates SingleCard Formula once"),
 		CountOccurrences(
 			OrchestratorSource,
@@ -19678,6 +19678,590 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 				&& ResultA.OrchestrationResult.bIsGoal
 					== ResultB.OrchestrationResult.bIsGoal);
 		TestTrue(TEXT("PassControl terminal States deterministic"),
+			AreStatesEqual(
+				SessionA.GetStateSnapshot(), SessionB.GetStateSnapshot()));
+	}
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest,
+	"59.ApplyShotTerminalResolutionAuthority")
+
+bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EError = EMatchPlayCurrentAttackApplyShotTerminalResolutionErrorCode;
+	using ESource = EMatchPlayShotTerminalSource;
+	using EFamily = EMatchPlaySingleCardFinishingFormulaFamily;
+	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ApplyShotTerminalResolution),
+		FMatchPlayAuthoritativeApplyShotTerminalResolutionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ApplyThroughBallTerminalResolution),
+		FMatchPlayAuthoritativeApplyThroughBallTerminalResolutionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ApplyCrossTerminalResolution),
+		FMatchPlayAuthoritativeApplyCrossTerminalResolutionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ApplyPassControlTerminalResolution),
+		FMatchPlayAuthoritativeApplyPassControlTerminalResolutionResult
+		(FMatchPlayAuthoritativeSession::*)()>);
+	TestEqual(TEXT("Shot terminal command appended"),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::ApplyShotTerminalResolution),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ApplyPassControlTerminalResolution) + 1);
+
+	FString SessionSource;
+	FString SessionHeader;
+	FString SessionTypes;
+	FString OrchestratorSource;
+	FString CapabilityHeader;
+	FString CompletionHeader;
+	FString CompletionSource;
+	TestTrue(TEXT("Shot terminal Session source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		SessionSource));
+	TestTrue(TEXT("Shot terminal Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		SessionHeader));
+	TestTrue(TEXT("Shot terminal Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		SessionTypes));
+	TestTrue(TEXT("Shot terminal orchestrator loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator.cpp"),
+		OrchestratorSource));
+	TestTrue(TEXT("Shot terminal capability loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayShotResolutionTerminalCapability.h"),
+		CapabilityHeader));
+	TestTrue(TEXT("Shot Completion header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.h"),
+		CompletionHeader));
+	TestTrue(TEXT("Shot Completion source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
+		CompletionSource));
+	TestTrue(TEXT("Shot terminal command has no gameplay arguments"),
+		SessionHeader.Contains(TEXT("ApplyShotTerminalResolution();")));
+	TestFalse(TEXT("No public Shot terminal request exists"),
+		SessionTypes.Contains(TEXT(
+			"FMatchPlayAuthoritativeApplyShotTerminalResolutionRequest")));
+	TestTrue(TEXT("Shot capability default construction unavailable"),
+		!std::is_default_constructible_v<
+			FMatchPlayShotResolutionTerminalCapability>);
+	TestTrue(TEXT("Shot capability copy construction unavailable"),
+		!std::is_copy_constructible_v<
+			FMatchPlayShotResolutionTerminalCapability>);
+	TestTrue(TEXT("Shot issuer tag is private"),
+		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
+			&& CapabilityHeader.Contains(TEXT("private:")));
+	TestEqual(TEXT("All thirty-seven commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 37);
+	TestEqual(TEXT("Shot Completion has one bounded definition"),
+		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
+	TestEqual(TEXT("Common terminal mutation definition remains one"),
+		CountOccurrences(CompletionSource,
+			TEXT("::ApplyCurrentAttackTerminalMutation(")), 1);
+	TestEqual(TEXT("GoalResolver has exactly five bounded call sites"),
+		CountOccurrences(CompletionSource, TEXT("FGoalResolver::RecordGoal")),
+		5);
+	TestEqual(TEXT("Shot terminal has one DirectShot authority reference"),
+		CountOccurrences(OrchestratorSource,
+			TEXT("FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator")),
+		1);
+	TestEqual(TEXT("Shot terminal has one DeadCorner authority reference"),
+		CountOccurrences(OrchestratorSource,
+			TEXT("FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator")),
+		1);
+	TestEqual(TEXT("Shot terminal has one Formula authority reference"),
+		CountOccurrences(OrchestratorSource,
+			TEXT("FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator")),
+		1);
+	TestFalse(TEXT("Shot terminal duplicates no DirectShot threshold"),
+		OrchestratorSource.Contains(TEXT("ImmediateMissMaxD6"))
+			|| OrchestratorSource.Contains(TEXT("ConditionalContinuationMinD6")));
+	TestFalse(TEXT("Shot terminal duplicates no DeadCorner threshold"),
+		OrchestratorSource.Contains(TEXT("DeadCornerGoal"))
+			&& OrchestratorSource.Contains(TEXT("ExternalAttackD6A")));
+	TestFalse(TEXT("Shot terminal performs no direct RNG"),
+		OrchestratorSource.Contains(TEXT("RollD6(")));
+	TestFalse(TEXT("Shot adds no persistent Outcome State"),
+		SessionTypes.Contains(TEXT("ShotOutcome"))
+			|| SessionTypes.Contains(TEXT("LongShotOutcome"))
+			|| SessionTypes.Contains(TEXT("CutInsideOutcome"))
+			|| SessionTypes.Contains(TEXT("PendingOutcome"))
+			|| SessionTypes.Contains(TEXT("OutcomeApplied"))
+			|| SessionTypes.Contains(TEXT("CompletionPending"))
+			|| SessionTypes.Contains(TEXT("TerminalOutcome")));
+
+	auto SkillId = [](const FString& Prefix, const ESkillRuleType Type)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix, static_cast<int32>(Type)));
+	};
+	auto ReachShot = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const ESkillRuleType Type,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session, Prefix, Type, Intent, Trace)
+			&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess;
+	};
+	auto ScoreFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.Score
+			: State.RuntimeState.PlayerBState.Score;
+	};
+	auto UsedFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.UsedAttackCount
+			: State.RuntimeState.PlayerBState.UsedAttackCount;
+	};
+
+	enum class EShape : uint8
+	{
+		DirectImmediateMiss,
+		DirectFormula,
+		DeadCorner
+	};
+	struct FShotTerminalCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType Action;
+		EShape Shape;
+		int32 RollA;
+		int32 RollB;
+		ESource ExpectedSource;
+		EFamily ExpectedFamily;
+		bool bGoal;
+	};
+	const FShotTerminalCase Cases[] = {
+		{ TEXT("ShotLongDirectImmediateMiss"), ESkillRuleType::LongShot,
+			EShape::DirectImmediateMiss, 1, 0,
+			ESource::LongShotDirectShotImmediateMiss, EFamily::None, false },
+		{ TEXT("ShotCutInsideDirectImmediateMiss"),
+			ESkillRuleType::CutInsideShot, EShape::DirectImmediateMiss, 2, 0,
+			ESource::CutInsideShotDirectShotImmediateMiss, EFamily::None, false },
+		{ TEXT("ShotLongDirectFormulaGoal"), ESkillRuleType::LongShot,
+			EShape::DirectFormula, 6, 1,
+			ESource::LongShotDirectShotFormulaGoal,
+			EFamily::LongShotDirectShot, true },
+		{ TEXT("ShotCutInsideDirectFormulaMiss"),
+			ESkillRuleType::CutInsideShot, EShape::DirectFormula, 3, 6,
+			ESource::CutInsideShotDirectShotFormulaMiss,
+			EFamily::CutInsideShotDirectShot, false },
+		{ TEXT("ShotLongDeadCornerGoal"), ESkillRuleType::LongShot,
+			EShape::DeadCorner, 6, 5,
+			ESource::LongShotDeadCornerGoal, EFamily::None, true },
+		{ TEXT("ShotCutInsideDeadCornerMiss"),
+			ESkillRuleType::CutInsideShot, EShape::DeadCorner, 2, 3,
+			ESource::CutInsideShotDeadCornerMiss, EFamily::None, false }
+	};
+	for (const FShotTerminalCase& Case : Cases)
+	{
+		const FString Prefix(Case.Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, Case.Action), Case.Action);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(Case.RollA));
+		if (Case.Shape != EShape::DirectImmediateMiss)
+		{
+			Post.Enqueue(MakePostRouteSuccess(Case.RollB));
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		const EMatchPlayElectiveBranchIntent Intent =
+			Case.Shape == EShape::DeadCorner
+				? EMatchPlayElectiveBranchIntent::DeadCorner
+				: EMatchPlayElectiveBranchIntent::DirectShot;
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Case.Label),
+			ReachShot(Session, Prefix, Case.Action, Intent));
+		const bool bSourceReady = Case.Shape == EShape::DeadCorner
+			? Session.ResolveDeadCornerPostRouteDecision()
+				.OrchestrationResult.bSuccess
+			: Session.ResolveDirectShotPostRouteDecisionOrPlan()
+				.OrchestrationResult.bSuccess;
+		TestTrue(*FString::Printf(TEXT("%s source ready"), Case.Label),
+			bSourceReady);
+
+		FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaResult
+			FormulaDomain;
+		const FMatchPlayState BeforeFormula = Session.GetStateSnapshot();
+		if (Case.Shape == EShape::DirectFormula)
+		{
+			const auto Formula = Session.ResolveSingleCardFinishingFormula();
+			FormulaDomain = Formula.OrchestrationResult;
+			TestTrue(*FString::Printf(TEXT("%s Formula succeeds"), Case.Label),
+				FormulaDomain.bSuccess && FormulaDomain.bHasFormulaResolution);
+			TestEqual(*FString::Printf(TEXT("%s Formula family"), Case.Label),
+				FormulaDomain.Family, Case.ExpectedFamily);
+			TestEqual(*FString::Printf(TEXT("%s Formula winner"), Case.Label),
+				FormulaDomain.FormulaResolutionResult.Winner,
+				Case.bGoal ? EFormulaWinner::Attacker
+					: EFormulaWinner::Defender);
+			TestTrue(*FString::Printf(TEXT("%s Formula State-pure"), Case.Label),
+				AreStatesEqual(BeforeFormula, Session.GetStateSnapshot()));
+		}
+
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const EInitialTurnOrderPlayer Attacker =
+			Before.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
+		const int32 AttackerScoreBefore = ScoreFor(Before, Attacker);
+		const int32 DefenderScoreBefore = ScoreFor(Before, Defender);
+		const int32 UsedBefore = UsedFor(Before, Attacker);
+		const int32 InitialCallsBefore = Initial.GetCallCount();
+		const int32 PostCallsBefore = Post.GetCallCount();
+		const int32 InitialRecordsBefore = Before.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num();
+		const int32 PostRecordsBefore = Before.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords.Num();
+
+		const auto Terminal = Session.ApplyShotTerminalResolution();
+		const auto& Domain = Terminal.OrchestrationResult;
+		const auto& Completion = Domain.CompletionResult;
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s terminal succeeds"), Case.Label),
+			Terminal.RuntimeEnvelope.bDomainSuccess
+				&& Domain.bSuccess && Completion.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s action provenance"), Case.Label),
+			Domain.ActionType, Case.Action);
+		TestEqual(*FString::Printf(TEXT("%s terminal source"), Case.Label),
+			Domain.TerminalSource, Case.ExpectedSource);
+		TestEqual(*FString::Printf(TEXT("%s terminal Goal"), Case.Label),
+			Domain.bIsGoal, Case.bGoal);
+		TestEqual(*FString::Printf(TEXT("%s source regeneration count"),
+			Case.Label), Domain.SourceRegenerationCount, 1);
+		TestEqual(*FString::Printf(TEXT("%s Formula regeneration count"),
+			Case.Label), Domain.FormulaRegenerationCount,
+			Case.Shape == EShape::DirectFormula ? 1 : 0);
+		TestEqual(*FString::Printf(TEXT("%s Formula usage"), Case.Label),
+			Domain.bUsedFormula, Case.Shape == EShape::DirectFormula);
+		TestEqual(*FString::Printf(TEXT("%s Completion count"), Case.Label),
+			Domain.CompletionExecutionCount, 1);
+		TestEqual(*FString::Printf(TEXT("%s regeneration RNG"), Case.Label),
+			Domain.RegenerationProviderCallCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s initial provider delta"), Case.Label),
+			Initial.GetCallCount() - InitialCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s post provider delta"), Case.Label),
+			Post.GetCallCount() - PostCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s initial records preserved"), Case.Label),
+			Domain.BeforeState.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords.Num(), InitialRecordsBefore);
+		TestEqual(*FString::Printf(TEXT("%s post records preserved"), Case.Label),
+			Domain.BeforeState.CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Num(), PostRecordsBefore);
+		if (Case.Shape == EShape::DirectFormula)
+		{
+			TestTrue(*FString::Printf(TEXT("%s Formula provenance equivalent"),
+				Case.Label), AreReflectedValuesEqual(
+					Domain.FormulaRegenerationResult.FormulaResolutionResult,
+					FormulaDomain.FormulaResolutionResult));
+		}
+		if (Case.Shape != EShape::DeadCorner)
+		{
+			TestEqual(*FString::Printf(TEXT("%s DirectShot typed action"),
+				Case.Label), Domain.DirectShotRegenerationResult.ActionType,
+				Case.Action);
+			if (Case.Action == ESkillRuleType::LongShot)
+			{
+				TestEqual(*FString::Printf(TEXT("%s LongShot DirectShot class"),
+					Case.Label),
+					Domain.DirectShotRegenerationResult.LongShotResult.Decision,
+					Case.Shape == EShape::DirectImmediateMiss
+						? ELongShotDirectShotDecision::ImmediateMiss
+						: ELongShotDirectShotDecision::FormulaResolutionRequired);
+			}
+			else
+			{
+				TestEqual(*FString::Printf(TEXT("%s CutInside DirectShot class"),
+					Case.Label),
+					Domain.DirectShotRegenerationResult.CutInsideShotResult.Decision,
+					Case.Shape == EShape::DirectImmediateMiss
+						? ECutInsideShotDirectShotDecision::ImmediateMiss
+						: ECutInsideShotDirectShotDecision::FormulaResolutionRequired);
+			}
+		}
+		else
+		{
+			TestEqual(*FString::Printf(TEXT("%s DeadCorner typed action"),
+				Case.Label), Domain.DeadCornerRegenerationResult.ActionType,
+				Case.Action);
+			const bool bTypedGoal = Case.Action == ESkillRuleType::LongShot
+				? Domain.DeadCornerRegenerationResult.LongShotResult.bIsGoal
+				: Domain.DeadCornerRegenerationResult.CutInsideShotResult.bIsGoal;
+			TestEqual(*FString::Printf(TEXT("%s DeadCorner typed decision"),
+				Case.Label), bTypedGoal, Case.bGoal);
+		}
+		TestEqual(*FString::Printf(TEXT("%s attacker score delta"), Case.Label),
+			ScoreFor(After, Attacker) - AttackerScoreBefore,
+			Case.bGoal ? 1 : 0);
+		TestEqual(*FString::Printf(TEXT("%s defender score delta"), Case.Label),
+			ScoreFor(After, Defender) - DefenderScoreBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s opportunity delta"), Case.Label),
+			UsedFor(After, Attacker) - UsedBefore, 1);
+		TestFalse(*FString::Printf(TEXT("%s CurrentAttack cleared"), Case.Label),
+			After.bHasCurrentAttack);
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack reset"), Case.Label),
+			AreReflectedValuesEqual(
+				After.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(*FString::Printf(TEXT("%s canonical next attacker"), Case.Label),
+			After.RuntimeState.CurrentAttackingPlayer,
+			Completion.NextAttackingPlayer);
+		TestFalse(*FString::Printf(TEXT("%s no automatic next attack"), Case.Label),
+			After.bHasCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s GoalResolver success"), Case.Label),
+			Completion.GoalResolveResult.bSuccess, Case.bGoal);
+		TestTrue(*FString::Printf(TEXT("%s opportunity delegation"), Case.Label),
+			Completion.OpportunityResolveResult.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s match-end delegation"), Case.Label),
+			Completion.MatchEndResolveResult.bSuccess);
+
+		const FMatchPlayState Completed = After;
+		const int32 ScoreBeforeReplay = ScoreFor(After, Attacker);
+		const int32 UsedBeforeReplay = UsedFor(After, Attacker);
+		const int32 CallsBeforeReplay =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Replay = Session.ApplyShotTerminalResolution();
+		TestEqual(*FString::Printf(TEXT("%s replay NoCurrentAttack"), Case.Label),
+			Replay.OrchestrationResult.ErrorCode, EError::NoCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s replay score delta"), Case.Label),
+			ScoreFor(Session.GetStateSnapshot(), Attacker) - ScoreBeforeReplay, 0);
+		TestEqual(*FString::Printf(TEXT("%s replay opportunity delta"), Case.Label),
+			UsedFor(Session.GetStateSnapshot(), Attacker) - UsedBeforeReplay, 0);
+		TestEqual(*FString::Printf(TEXT("%s replay provider delta"), Case.Label),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeReplay, 0);
+		TestTrue(*FString::Printf(TEXT("%s replay State unchanged"), Case.Label),
+			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+	}
+
+	// Formula Goal succeeds locally before a later card-consumption failure.
+	{
+		const FString Prefix(TEXT("ShotTerminalAtomicFailure"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::LongShot), ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(MakePostRouteSuccess(1));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Shot atomic failure reaches route"), ReachShot(
+			Session, Prefix, ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DirectShot));
+		TestTrue(TEXT("Shot atomic failure resolves DirectShot"),
+			Session.ResolveDirectShotPostRouteDecisionOrPlan()
+				.OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Shot atomic failure resolves Formula"),
+			Session.ResolveSingleCardFinishingFormula()
+				.OrchestrationResult.bSuccess);
+		const FMatchPlayState AuthoritativeBefore = Session.GetStateSnapshot();
+		FMatchPlayState InvalidInput = AuthoritativeBefore;
+		const FMatchPlayDeploymentPlacement& Placement =
+			InvalidInput.CurrentAttack.DeploymentPlacements[0];
+		const FPlayCardResolveResult Preconsumed = FPlayCardResolver::PlayCard(
+			InvalidInput.CardUsageState,
+			Placement.PlayerSide,
+			Placement.CardId);
+		TestTrue(TEXT("Shot atomic failure preconsumes ordinary card"),
+			Preconsumed.bSuccess);
+		InvalidInput.CardUsageState = Preconsumed.UpdatedMatchCardUsageState;
+		const auto Failed =
+			FMatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator
+				::Resolve(InvalidInput, &Rules);
+		TestEqual(TEXT("Shot atomic failure maps Completion"),
+			Failed.ErrorCode, EError::CompletionFailed);
+		TestTrue(TEXT("Shot atomic failure follows GoalResolver success"),
+			Failed.CompletionResult.GoalResolveResult.bSuccess);
+		TestFalse(TEXT("Shot atomic failure rejects Completion"),
+			Failed.CompletionResult.bSuccess);
+		TestTrue(TEXT("Shot atomic failure returns unchanged supplied State"),
+			AreStatesEqual(Failed.AfterState, InvalidInput));
+		TestTrue(TEXT("Shot atomic failure cannot mutate Session"),
+			AreStatesEqual(Session.GetStateSnapshot(), AuthoritativeBefore));
+	}
+
+	// Before-route and incomplete typed roll contracts cannot acquire RNG.
+	{
+		const FString Prefix(TEXT("ShotTerminalIncomplete"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::LongShot), ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Incomplete Shot reaches AwaitingRoute"),
+			BuildStage7166ToAwaitingRoute(
+				Session, Prefix, ESkillRuleType::LongShot,
+				EMatchPlayElectiveBranchIntent::DirectShot, Trace));
+		const FMatchPlayState Awaiting = Session.GetStateSnapshot();
+		const auto BeforeRoute = Session.ApplyShotTerminalResolution();
+		TestEqual(TEXT("Shot before route rejects"),
+			BeforeRoute.OrchestrationResult.ErrorCode, EError::RouteNotResolved);
+		TestEqual(TEXT("Shot before route zero post RNG"), Post.GetCallCount(), 0);
+		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Shot before route"),
+			BeforeRoute.RuntimeEnvelope, Awaiting, Session.GetStateSnapshot());
+		TestTrue(TEXT("Incomplete Shot resolves DirectShot route"),
+			Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess);
+		const FMatchPlayState RouteOnly = Session.GetStateSnapshot();
+
+		FMatchPlayState DirectPrefix = RouteOnly;
+		DirectPrefix.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+			EPhase::PrimaryBranch;
+		FMatchPlayCurrentAttackPostRouteRollRecord AttackRecord;
+		AttackRecord.Purpose = EPurpose::PrimaryAttack;
+		AttackRecord.RawD6 = 3;
+		DirectPrefix.CurrentAttack.ResolutionSession.PostRouteRollProgress
+			.RollRecords.Add(AttackRecord);
+		TestTrue(TEXT("Incomplete DirectShot prefix canonical"),
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				DirectPrefix).bIsCanonical);
+		const auto IncompleteDirect =
+			FMatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator
+				::Resolve(DirectPrefix, &Rules);
+		TestEqual(TEXT("Incomplete DirectShot rejects source regeneration"),
+			IncompleteDirect.ErrorCode, EError::SourceRegenerationFailed);
+		TestEqual(TEXT("Incomplete DirectShot no Completion"),
+			IncompleteDirect.CompletionExecutionCount, 0);
+		TestTrue(TEXT("Incomplete DirectShot State unchanged"),
+			AreStatesEqual(IncompleteDirect.AfterState, DirectPrefix));
+
+		FMatchPlayState MissingBranch = RouteOnly;
+		MissingBranch.CurrentAttack.ResolutionSession.bHasActualBranch = false;
+		MissingBranch.CurrentAttack.ResolutionSession.ActualBranch =
+			FMatchPlayCurrentAttackActualBranch();
+		const auto InvalidBranch =
+			FMatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator
+				::Resolve(MissingBranch, &Rules);
+		TestEqual(TEXT("Shot missing ActualBranch rejects canonically"),
+			InvalidBranch.ErrorCode, EError::InvalidResolutionSessionState);
+
+		const FString DeadPrefixName(TEXT("ShotDeadCornerIncomplete"));
+		const FSkillRuleSnapshotSet DeadRules = MakeSkillRuleSet(
+			SkillId(DeadPrefixName, ESkillRuleType::LongShot),
+			ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider DeadInitial;
+		FQueuePostRouteRollProvider DeadPost;
+		FMatchPlayAuthoritativeSession DeadSession(
+			DeadInitial, DeadPost, DeadRules);
+		TestTrue(TEXT("Incomplete DeadCorner reaches route"), ReachShot(
+			DeadSession, DeadPrefixName, ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DeadCorner));
+		FMatchPlayState DeadPrefix = DeadSession.GetStateSnapshot();
+		DeadPrefix.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+			EPhase::PrimaryBranch;
+		FMatchPlayCurrentAttackPostRouteRollRecord PairedA;
+		PairedA.Purpose = EPurpose::PairedAttackA;
+		PairedA.RawD6 = 6;
+		DeadPrefix.CurrentAttack.ResolutionSession.PostRouteRollProgress
+			.RollRecords.Add(PairedA);
+		TestTrue(TEXT("Incomplete DeadCorner prefix canonical"),
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				DeadPrefix).bIsCanonical);
+		const auto IncompleteDead =
+			FMatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator
+				::Resolve(DeadPrefix, &DeadRules);
+		TestEqual(TEXT("Incomplete DeadCorner rejects source regeneration"),
+			IncompleteDead.ErrorCode, EError::SourceRegenerationFailed);
+		TestEqual(TEXT("Incomplete DeadCorner no Completion"),
+			IncompleteDead.CompletionExecutionCount, 0);
+		TestEqual(TEXT("Incomplete terminal provider delta zero"),
+			Post.GetCallCount() + DeadPost.GetCallCount(), 0);
+		TestTrue(TEXT("Incomplete DeadCorner State unchanged"),
+			AreStatesEqual(IncompleteDead.AfterState, DeadPrefix));
+	}
+
+	// Bounded Shot authority rejects Cross and PassControl.
+	struct FWrongActionCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType Action;
+		EMatchPlayElectiveBranchIntent Intent;
+		int32 InitialD6;
+	};
+	const FWrongActionCase WrongActions[] = {
+		{ TEXT("ShotRejectsCross"), ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh, 4 },
+		{ TEXT("ShotRejectsPassControl"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None, 2 }
+	};
+	for (const FWrongActionCase& Case : WrongActions)
+	{
+		const FString Prefix(Case.Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, Case.Action), Case.Action);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(Case.InitialD6));
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(*FString::Printf(TEXT("%s reaches route"), Case.Label),
+			BuildStage7166ToAwaitingRoute(
+				Session, Prefix, Case.Action, Case.Intent, Trace)
+				&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore = Initial.GetCallCount() + Post.GetCallCount();
+		const auto Rejected = Session.ApplyShotTerminalResolution();
+		TestEqual(*FString::Printf(TEXT("%s exact error"), Case.Label),
+			Rejected.OrchestrationResult.ErrorCode, EError::NotShotResolution);
+		TestEqual(*FString::Printf(TEXT("%s no Completion"), Case.Label),
+			Rejected.OrchestrationResult.CompletionExecutionCount, 0);
+		TestEqual(*FString::Printf(TEXT("%s zero RNG"), Case.Label),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBefore, 0);
+		TestAcceptedDomainFailureNoAdopt(*this, Case.Label,
+			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
+	}
+
+	// Identical independent Shot sessions produce identical terminal States.
+	{
+		const FString Prefix(TEXT("ShotTerminalDeterminism"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, ESkillRuleType::LongShot), ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider InitialA;
+		InitialRouteFixtures::FQueueRollProvider InitialB;
+		FQueuePostRouteRollProvider PostA;
+		FQueuePostRouteRollProvider PostB;
+		PostA.Enqueue(MakePostRouteSuccess(1));
+		PostB.Enqueue(MakePostRouteSuccess(1));
+		FMatchPlayAuthoritativeSession SessionA(InitialA, PostA, Rules);
+		FMatchPlayAuthoritativeSession SessionB(InitialB, PostB, Rules);
+		for (FMatchPlayAuthoritativeSession* Session : { &SessionA, &SessionB })
+		{
+			TestTrue(TEXT("Shot deterministic route"), ReachShot(
+				*Session, Prefix, ESkillRuleType::LongShot,
+				EMatchPlayElectiveBranchIntent::DirectShot));
+			TestTrue(TEXT("Shot deterministic source"),
+				Session->ResolveDirectShotPostRouteDecisionOrPlan()
+					.OrchestrationResult.bSuccess);
+		}
+		const FMatchPlayState BeforeB = SessionB.GetStateSnapshot();
+		const int32 CallsBeforeB = PostB.GetCallCount();
+		const auto ResultA = SessionA.ApplyShotTerminalResolution();
+		TestTrue(TEXT("Shot Session A cannot mutate B"),
+			AreStatesEqual(BeforeB, SessionB.GetStateSnapshot()));
+		TestEqual(TEXT("Shot Session A cannot consume provider B"),
+			PostB.GetCallCount() - CallsBeforeB, 0);
+		const auto ResultB = SessionB.ApplyShotTerminalResolution();
+		TestTrue(TEXT("Shot terminal semantics deterministic"),
+			ResultA.OrchestrationResult.bSuccess
+				&& ResultB.OrchestrationResult.bSuccess
+				&& ResultA.OrchestrationResult.TerminalSource
+					== ResultB.OrchestrationResult.TerminalSource);
+		TestTrue(TEXT("Shot terminal States deterministic"),
 			AreStatesEqual(
 				SessionA.GetStateSnapshot(), SessionB.GetStateSnapshot()));
 	}

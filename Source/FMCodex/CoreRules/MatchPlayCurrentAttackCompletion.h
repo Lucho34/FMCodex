@@ -6,6 +6,7 @@
 #include "GoalResolver.h"
 #include "MatchPlayCrossResolutionTerminalCapability.h"
 #include "MatchPlayPassControlResolutionTerminalCapability.h"
+#include "MatchPlayShotResolutionTerminalCapability.h"
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 #include "MatchPlayThroughBallResolutionTerminalCapability.h"
 #include "MatchPlayMarkerNoSelectionGoalCapability.h"
@@ -144,6 +145,8 @@ private:
 	friend class
 		FMatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator;
 	friend class
+		FMatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator;
+	friend class
 		FMatchPlayCurrentAttackApplyThroughBallTerminalResolutionOrchestrator;
 
 	FMatchPlayCurrentAttackCompletion() = delete;
@@ -177,6 +180,10 @@ private:
 	CompletePassControlResolution(
 		const FMatchPlayState& BeforeState,
 		const FMatchPlayPassControlResolutionTerminalCapability& Capability);
+
+	static FMatchPlayCurrentAttackCompletionResult CompleteShotResolution(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayShotResolutionTerminalCapability& Capability);
 
 	static FMatchPlayCurrentAttackCompletionResult
 	CompleteThroughBallResolution(

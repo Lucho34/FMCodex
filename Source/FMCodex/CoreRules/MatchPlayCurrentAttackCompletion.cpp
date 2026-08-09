@@ -806,6 +806,157 @@ FMatchPlayCurrentAttackCompletion::CompletePassControlResolution(
 }
 
 FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion::CompleteShotResolution(
+	const FMatchPlayState& BeforeState,
+	const FMatchPlayShotResolutionTerminalCapability& Capability)
+{
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+	using ESource = EMatchPlayShotTerminalSource;
+
+	FMatchPlayCurrentAttackCompletionResult Result;
+	Result.BeforeState = BeforeState;
+	Result.AfterState = BeforeState;
+
+	const ESource Source = Capability.GetSource();
+	const bool bGoalSource =
+		Source == ESource::LongShotDirectShotFormulaGoal
+		|| Source == ESource::CutInsideShotDirectShotFormulaGoal
+		|| Source == ESource::LongShotDeadCornerGoal
+		|| Source == ESource::CutInsideShotDeadCornerGoal;
+	if (Source == ESource::None)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::UnsupportedCapabilitySource,
+			TEXT("Shot completion requires a terminal source."));
+		return Result;
+	}
+	if (Capability.IsGoal() != bGoalSource)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityReason,
+			TEXT("Shot terminal source and Goal effect are inconsistent."));
+		return Result;
+	}
+
+	EInitialTurnOrderPlayer Attacker = EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer Defender = EInitialTurnOrderPlayer::None;
+	if (!ValidateCommonOuter(
+		BeforeState,
+		Capability.GetAttackSequence(),
+		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution,
+		Result,
+		Attacker,
+		Defender))
+	{
+		return Result;
+	}
+	if (!BeforeState.CurrentAttack.bHasResolutionSession)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			TEXT("Shot completion requires a Resolution Session."));
+		return Result;
+	}
+	const auto SessionValidation =
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			BeforeState);
+	const FMatchPlayCurrentAttackResolutionSession& Session =
+		BeforeState.CurrentAttack.ResolutionSession;
+	if (!SessionValidation.bIsCanonical
+		|| Session.Stage
+			!= EMatchPlayCurrentAttackResolutionStage::RouteResolved
+		|| !Session.bHasActualBranch
+		|| (Session.ActualBranch.ActionType != ESkillRuleType::LongShot
+			&& Session.ActualBranch.ActionType
+				!= ESkillRuleType::CutInsideShot))
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			SessionValidation.bIsCanonical
+				? TEXT("Shot capability requires a resolved LongShot/CutInsideShot branch.")
+				: SessionValidation.ErrorMessage);
+		return Result;
+	}
+
+	const bool bLongShotDirectSource =
+		Source == ESource::LongShotDirectShotImmediateMiss
+		|| Source == ESource::LongShotDirectShotFormulaGoal
+		|| Source == ESource::LongShotDirectShotFormulaMiss;
+	const bool bCutInsideDirectSource =
+		Source == ESource::CutInsideShotDirectShotImmediateMiss
+		|| Source == ESource::CutInsideShotDirectShotFormulaGoal
+		|| Source == ESource::CutInsideShotDirectShotFormulaMiss;
+	const bool bLongShotDeadCornerSource =
+		Source == ESource::LongShotDeadCornerGoal
+		|| Source == ESource::LongShotDeadCornerMiss;
+	const bool bCutInsideDeadCornerSource =
+		Source == ESource::CutInsideShotDeadCornerGoal
+		|| Source == ESource::CutInsideShotDeadCornerMiss;
+	const bool bSourceMatchesBranch =
+		(bLongShotDirectSource
+			&& Session.ActualBranch.ActionType == ESkillRuleType::LongShot
+			&& Session.ActualBranch.LongShot
+				== EMatchPlayLongShotActualBranch::DirectShot)
+		|| (bCutInsideDirectSource
+			&& Session.ActualBranch.ActionType
+				== ESkillRuleType::CutInsideShot
+			&& Session.ActualBranch.CutInsideShot
+				== EMatchPlayCutInsideShotActualBranch::DirectShot)
+		|| (bLongShotDeadCornerSource
+			&& Session.ActualBranch.ActionType == ESkillRuleType::LongShot
+			&& Session.ActualBranch.LongShot
+				== EMatchPlayLongShotActualBranch::DeadCorner)
+		|| (bCutInsideDeadCornerSource
+			&& Session.ActualBranch.ActionType
+				== ESkillRuleType::CutInsideShot
+			&& Session.ActualBranch.CutInsideShot
+				== EMatchPlayCutInsideShotActualBranch::DeadCorner);
+	if (!bSourceMatchesBranch)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			TEXT("Shot terminal source does not match ActionType/ActualBranch."));
+		return Result;
+	}
+	if (!ValidateScoreState(BeforeState, Result))
+	{
+		return Result;
+	}
+
+	FMatchPlayState WorkingState = BeforeState;
+	if (Capability.IsGoal())
+	{
+		Result.GoalResolveResult = FGoalResolver::RecordGoal(
+			WorkingState.RuntimeState,
+			Attacker);
+		if (!Result.GoalResolveResult.bSuccess)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode::GoalResolutionFailed,
+				Result.GoalResolveResult.ErrorMessage);
+			return Result;
+		}
+		WorkingState.RuntimeState =
+			Result.GoalResolveResult.UpdatedRuntimeState;
+		Result.ScoringSide = Attacker;
+	}
+
+	return ApplyCurrentAttackTerminalMutation(
+		BeforeState,
+		MoveTemp(WorkingState),
+		Attacker,
+		Defender,
+		MoveTemp(Result));
+}
+
+FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion::CompleteThroughBallResolution(
 	const FMatchPlayState& BeforeState,
 	const FMatchPlayThroughBallResolutionTerminalCapability& Capability)
