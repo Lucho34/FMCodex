@@ -390,6 +390,85 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 		}
 		return Result;
 	}
+
+	FResult ValidateOneOnOneDirectShot(
+		const FMatchPlayCurrentAttackActualBranch& Branch,
+		const TArray<FRecord>& Records)
+	{
+		FResult Result;
+		TArray<EPurpose> Expected;
+		int32 MinimumCount = 0;
+		if (Branch.ActionType == ESkillRuleType::ThroughBall
+			&& Branch.ThroughBall
+				== EMatchPlayThroughBallActualBranch::AntiOffside)
+		{
+			Expected = {
+				EPurpose::PrimaryAttack,
+				EPurpose::OneOnOneDirectShotAttack,
+				EPurpose::OneOnOneDirectShotDefense
+			};
+			MinimumCount = 1;
+		}
+		else if (Branch.ActionType == ESkillRuleType::ThroughBall
+			&& Branch.ThroughBall
+				== EMatchPlayThroughBallActualBranch::BehindDefense)
+		{
+			Expected = {
+				EPurpose::PrimaryAttack,
+				EPurpose::PrimaryDefense,
+				EPurpose::BehindDefenseP2Defense,
+				EPurpose::OneOnOneDirectShotAttack,
+				EPurpose::OneOnOneDirectShotDefense
+			};
+			MinimumCount = 3;
+		}
+		else
+		{
+			SetFailure(
+				Result,
+				EError::UnsupportedPhaseForBranch,
+				TEXT("OneOnOneDirectShot roll acquisition requires a supported ThroughBall branch."));
+			return Result;
+		}
+
+		if (!ValidateRecordValuesAndDuplicates(Records, Result)
+			|| !ValidateOrderedPrefix(Records, Expected, MinimumCount, Result))
+		{
+			return Result;
+		}
+
+		if (Branch.ThroughBall
+			== EMatchPlayThroughBallActualBranch::AntiOffside)
+		{
+			if (Records[0].RawD6 != AntiOffsideOneOnOneD6)
+			{
+				SetFailure(
+					Result,
+					EError::InvalidLaterPhasePrerequisite,
+					TEXT("AntiOffside OneOnOne DirectShot requires its accepted Primary Attack roll to be 6."));
+				return Result;
+			}
+		}
+		else if (Records[0].RawD6 < ConditionalContinuationMinD6
+			|| Records[2].RawD6 > BehindDefenseP2OneOnOneMaxD6)
+		{
+			SetFailure(
+				Result,
+				EError::InvalidLaterPhasePrerequisite,
+				TEXT("BehindDefense OneOnOne DirectShot roll prerequisites are inconsistent."));
+			return Result;
+		}
+
+		if (Records.Num() == Expected.Num())
+		{
+			SetSuccess(Result, true);
+		}
+		else
+		{
+			SetSuccess(Result, false, Expected[Records.Num()]);
+		}
+		return Result;
+	}
 }
 
 FMatchPlayCurrentAttackPostRouteRollProgressResult
@@ -446,6 +525,11 @@ FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
 
 	case EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneChipShot:
 		return ValidateOneOnOneChipShot(
+			Session.ActualBranch,
+			Progress.RollRecords);
+
+	case EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneDirectShot:
+		return ValidateOneOnOneDirectShot(
 			Session.ActualBranch,
 			Progress.RollRecords);
 

@@ -1,0 +1,41 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanTypes.h"
+
+enum class EMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaErrorCode : uint8
+{
+	None,
+	MatchPlayStateNotInitialized,
+	NoCurrentAttack,
+	MissingResolutionSession,
+	InvalidResolutionSessionState,
+	RouteNotResolved,
+	UnsupportedThroughBallBranch,
+	ChoiceDoesNotPermitDirectShot,
+	InvalidPostRouteProgress,
+	IncompletePostRouteRollProgress,
+	PlanRegenerationFailed,
+	PlanRegenerationConsumedRng,
+	PlanRegenerationMutatedState,
+	FormulaPlanUnavailable,
+	FormulaExecutionFailed
+};
+
+struct FMCODEX_API FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaResult
+{
+	bool bSuccess = false;
+	FMatchPlayState BeforeState;
+	FMatchPlayState AfterState;
+	EMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaErrorCode ErrorCode =
+		EMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaErrorCode::None;
+	FString ErrorMessage;
+	FName InvalidField = NAME_None;
+	FMatchPlayCurrentAttackResolutionSessionStateValidationResult SessionStateValidationResult;
+	FMatchPlayCurrentAttackPostRouteRollProgressResult ProgressResult;
+	int32 PlanRegenerationProviderCallCount = 0;
+	int32 FormulaExecutionCount = 0;
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult PlanRegenerationResult;
+	FThroughBallOneOnOneDirectShotFormulaResult DirectShotFormulaResult;
+	EThroughBallOneOnOneDirectShotDecision Decision = EThroughBallOneOnOneDirectShotDecision::None;
+};

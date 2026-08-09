@@ -285,6 +285,20 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 			}
 			return true;
 		}
+		if (Phase == EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneDirectShot)
+		{
+			if (Choice
+				!= EMatchPlayThroughBallOneOnOneShotChoice::DirectShot)
+			{
+				SetFailure(
+					Result,
+					EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+						::OneOnOneDirectShotPhaseChoiceMismatch,
+					TEXT("OneOnOneDirectShot phase requires the accepted DirectShot choice."));
+				return false;
+			}
+			return true;
+		}
 
 		if (Choice == EMatchPlayThroughBallOneOnOneShotChoice::None)
 		{

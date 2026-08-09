@@ -126,6 +126,12 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
 	ResolveThroughBallOneOnOneChipShotDecision();
 
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+	ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
+
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotFormulaResult
+	ResolveThroughBallOneOnOneDirectShotFormula();
+
 	FMatchPlayAuthoritativeApplyThroughBallTerminalResolutionResult
 	ApplyThroughBallTerminalResolution();
 

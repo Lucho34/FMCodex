@@ -6,6 +6,7 @@
 #include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallFeetFormulaOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator.h"
+#include "MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaOrchestrator.h"
 
 namespace MatchPlayCurrentAttackApplyThroughBallTerminalResolution
 {
@@ -79,6 +80,27 @@ namespace MatchPlayCurrentAttackApplyThroughBallTerminalResolution
 		const FSkillRuleSnapshotSet* SkillRuleSet,
 		const EPhase Phase)
 	{
+		if (Phase == EPhase::OneOnOneDirectShot)
+		{
+			++Result.DirectShotRegenerationCount;
+			Result.DirectShotRegenerationResult =
+				FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaOrchestrator::Resolve(
+					Result.BeforeState, SkillRuleSet);
+			Result.RegenerationProviderCallCount +=
+				Result.DirectShotRegenerationResult.PlanRegenerationProviderCallCount;
+			if (!Result.DirectShotRegenerationResult.bSuccess)
+			{
+				SetFailure(Result, EError::SourceRegenerationFailed,
+					Result.DirectShotRegenerationResult.ErrorMessage,
+					Result.DirectShotRegenerationResult.InvalidField);
+				return false;
+			}
+			const bool bGoal = Result.DirectShotRegenerationResult.Decision
+				== EThroughBallOneOnOneDirectShotDecision::Goal;
+			return SetTerminal(Result,
+				bGoal ? ESource::AntiOffsideOneOnOneGoal : ESource::AntiOffsideOneOnOneMiss,
+				bGoal);
+		}
 		if (Phase == EPhase::OneOnOneChipShot)
 		{
 			++Result.OneOnOneRegenerationCount;
@@ -161,6 +183,27 @@ namespace MatchPlayCurrentAttackApplyThroughBallTerminalResolution
 		const FSkillRuleSnapshotSet* SkillRuleSet,
 		const EPhase Phase)
 	{
+		if (Phase == EPhase::OneOnOneDirectShot)
+		{
+			++Result.DirectShotRegenerationCount;
+			Result.DirectShotRegenerationResult =
+				FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaOrchestrator::Resolve(
+					Result.BeforeState, SkillRuleSet);
+			Result.RegenerationProviderCallCount +=
+				Result.DirectShotRegenerationResult.PlanRegenerationProviderCallCount;
+			if (!Result.DirectShotRegenerationResult.bSuccess)
+			{
+				SetFailure(Result, EError::SourceRegenerationFailed,
+					Result.DirectShotRegenerationResult.ErrorMessage,
+					Result.DirectShotRegenerationResult.InvalidField);
+				return false;
+			}
+			const bool bGoal = Result.DirectShotRegenerationResult.Decision
+				== EThroughBallOneOnOneDirectShotDecision::Goal;
+			return SetTerminal(Result,
+				bGoal ? ESource::BehindDefenseOneOnOneGoal : ESource::BehindDefenseOneOnOneMiss,
+				bGoal);
+		}
 		if (Phase == EPhase::OneOnOneChipShot)
 		{
 			++Result.OneOnOneRegenerationCount;

@@ -15,7 +15,11 @@ enum class EMatchPlayCurrentAttackPostRouteRollPurpose : uint8
 	BehindDefenseP2Defense = 5
 		UMETA(DisplayName = "Behind Defense P2 Defense"),
 	OneOnOneChipShotAttack = 6
-		UMETA(DisplayName = "One-on-One Chip Shot Attack")
+		UMETA(DisplayName = "One-on-One Chip Shot Attack"),
+	OneOnOneDirectShotAttack = 7
+		UMETA(DisplayName = "One-on-One Direct Shot Attack"),
+	OneOnOneDirectShotDefense = 8
+		UMETA(DisplayName = "One-on-One Direct Shot Defense")
 };
 
 USTRUCT(BlueprintType)
@@ -37,7 +41,8 @@ enum class EMatchPlayCurrentAttackPostRouteRollPhase : uint8
 	None = 0 UMETA(DisplayName = "None"),
 	PrimaryBranch = 1 UMETA(DisplayName = "Primary Branch"),
 	BehindDefenseP2 = 2 UMETA(DisplayName = "Behind Defense P2"),
-	OneOnOneChipShot = 3 UMETA(DisplayName = "One-on-One Chip Shot")
+	OneOnOneChipShot = 3 UMETA(DisplayName = "One-on-One Chip Shot"),
+	OneOnOneDirectShot = 4 UMETA(DisplayName = "One-on-One Direct Shot")
 };
 
 USTRUCT(BlueprintType)

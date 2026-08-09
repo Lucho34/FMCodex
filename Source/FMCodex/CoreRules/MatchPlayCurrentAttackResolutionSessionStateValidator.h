@@ -68,7 +68,9 @@ enum class EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 	OneOnOneShotChoiceRequiresCanonicalSource
 		UMETA(DisplayName = "One-on-One Shot Choice Requires Canonical Source"),
 	OneOnOneChipShotPhaseChoiceMismatch
-		UMETA(DisplayName = "One-on-One Chip Shot Phase Choice Mismatch")
+		UMETA(DisplayName = "One-on-One Chip Shot Phase Choice Mismatch"),
+	OneOnOneDirectShotPhaseChoiceMismatch
+		UMETA(DisplayName = "One-on-One Direct Shot Phase Choice Mismatch")
 };
 
 USTRUCT(BlueprintType)

@@ -15,6 +15,10 @@ namespace MatchPlayPostRouteRollProvider
 			::BehindDefenseP2Defense:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose
 			::OneOnOneChipShotAttack:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::OneOnOneDirectShotAttack:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::OneOnOneDirectShotDefense:
 			return true;
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::None:
 		default:

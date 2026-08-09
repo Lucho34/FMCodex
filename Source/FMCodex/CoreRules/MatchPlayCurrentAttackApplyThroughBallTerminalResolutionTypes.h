@@ -9,6 +9,7 @@
 #include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionTypes.h"
 #include "MatchPlayCurrentAttackResolveThroughBallFeetFormulaTypes.h"
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionTypes.h"
+#include "MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaTypes.h"
 
 enum class
 	EMatchPlayCurrentAttackApplyThroughBallTerminalResolutionErrorCode
@@ -67,6 +68,9 @@ struct FMCODEX_API
 	int32 OneOnOneRegenerationCount = 0;
 	FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
 		OneOnOneRegenerationResult;
+	int32 DirectShotRegenerationCount = 0;
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaResult
+		DirectShotRegenerationResult;
 
 	int32 CompletionExecutionCount = 0;
 	FMatchPlayCurrentAttackCompletionResult CompletionResult;
