@@ -638,6 +638,30 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	Result.SelectionStage = Attack.SelectionStage;
 	Result.CurrentLegalDeploymentSide = Attack.CurrentLegalDeploymentSide;
 	Result.DeploymentPlacements = Attack.DeploymentPlacements;
+	const ESkillRuleType PresentedActionType = Attack.bHasResolutionSession
+		? Attack.ResolutionSession.Bundle.Binding.ActionType
+		: Attack.bHasSelectedAction
+			? Attack.SelectedAction.ActionType
+			: Attack.ActionPreparation.ActionType;
+	if (PresentedActionType != ESkillRuleType::None)
+	{
+		Result.ActionLabel = ToString(PresentedActionType);
+	}
+	if (Attack.bHasResolutionSession)
+	{
+		const FMatchPlayCurrentAttackResolutionSession& Session =
+			Attack.ResolutionSession;
+		if (Session.bHasActualBranch)
+		{
+			Result.ActualBranchLabel = ToString(Session.ActualBranch);
+		}
+		if (Session.ThroughBallOneOnOneShotChoice
+			!= EMatchPlayThroughBallOneOnOneShotChoice::None)
+		{
+			Result.OneOnOneChoiceLabel = ToString(
+				Session.ThroughBallOneOnOneShotChoice);
+		}
+	}
 	BuildPitchRegions(Snapshot, SkillRuleSet, Result);
 
 	if (Attack.Phase == EMatchPlayCurrentAttackPhase::Deployment)
@@ -830,5 +854,70 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case ESkillRuleType::Cross: return TEXT("Cross");
 	case ESkillRuleType::ThroughBall: return TEXT("Through Ball");
 	default: return TEXT("Unknown Skill");
+	}
+}
+
+FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
+	const FMatchPlayCurrentAttackActualBranch& ActualBranch)
+{
+	switch (ActualBranch.ActionType)
+	{
+	case ESkillRuleType::LongShot:
+		return ActualBranch.LongShot == EMatchPlayLongShotActualBranch::DirectShot
+			? TEXT("Direct Shot")
+			: ActualBranch.LongShot == EMatchPlayLongShotActualBranch::DeadCorner
+				? TEXT("Dead Corner") : TEXT("Unknown Route");
+	case ESkillRuleType::CutInsideShot:
+		return ActualBranch.CutInsideShot
+			== EMatchPlayCutInsideShotActualBranch::DirectShot
+				? TEXT("Direct Shot")
+				: ActualBranch.CutInsideShot
+					== EMatchPlayCutInsideShotActualBranch::DeadCorner
+						? TEXT("Dead Corner") : TEXT("Unknown Route");
+	case ESkillRuleType::Cross:
+		return ActualBranch.Cross == EMatchPlayCrossActualBranch::High
+			? TEXT("High Cross")
+			: ActualBranch.Cross == EMatchPlayCrossActualBranch::Low
+				? TEXT("Low Cross") : TEXT("Unknown Route");
+	case ESkillRuleType::PassControl:
+		switch (ActualBranch.PassControl)
+		{
+		case EMatchPlayPassControlActualBranch::PassAdvance:
+			return TEXT("Pass Advance");
+		case EMatchPlayPassControlActualBranch::DribbleAdvance:
+			return TEXT("Dribble Advance");
+		case EMatchPlayPassControlActualBranch::RunAdvance:
+			return TEXT("Run Advance");
+		default:
+			return TEXT("Unknown Route");
+		}
+	case ESkillRuleType::ThroughBall:
+		switch (ActualBranch.ThroughBall)
+		{
+		case EMatchPlayThroughBallActualBranch::Feet:
+			return TEXT("To Feet");
+		case EMatchPlayThroughBallActualBranch::BehindDefense:
+			return TEXT("Behind Defense");
+		case EMatchPlayThroughBallActualBranch::AntiOffside:
+			return TEXT("Anti-Offside");
+		default:
+			return TEXT("Unknown Route");
+		}
+	default:
+		return TEXT("Unknown Route");
+	}
+}
+
+FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
+	const EMatchPlayThroughBallOneOnOneShotChoice Choice)
+{
+	switch (Choice)
+	{
+	case EMatchPlayThroughBallOneOnOneShotChoice::ChipShot:
+		return TEXT("Chip Shot");
+	case EMatchPlayThroughBallOneOnOneShotChoice::DirectShot:
+		return TEXT("Direct Shot");
+	default:
+		return TEXT("No One-on-One Choice");
 	}
 }

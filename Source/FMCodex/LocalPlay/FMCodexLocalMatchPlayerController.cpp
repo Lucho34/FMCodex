@@ -130,6 +130,72 @@ namespace FMCodexLocalMatchPlayerController
 				Body
 			];
 	}
+
+	TSharedRef<SWidget> MakeFeedbackPanel(
+		const FFMCodexLocalMatchResolutionFeedback& Feedback)
+	{
+		TSharedRef<SVerticalBox> Body = SNew(SVerticalBox);
+		auto AddLine = [&Body](
+			const FString& Text,
+			const FLinearColor Color = FLinearColor::White)
+		{
+			if (!Text.IsEmpty())
+			{
+				Body->AddSlot().AutoHeight().Padding(2.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(Text))
+					.ColorAndOpacity(Color)
+				];
+			}
+		};
+
+		const bool bResolutionOperation =
+			Feedback.CommandName.StartsWith(TEXT("Resolve"))
+			|| Feedback.CommandName.StartsWith(TEXT("Apply"))
+			|| Feedback.CommandName == TEXT("BeginResolutionSession");
+		AddLine(
+			Feedback.bRejected
+				? TEXT("COMMAND REJECTED")
+				: bResolutionOperation ? TEXT("RESOLUTION") : TEXT("LAST ACTION"),
+			Feedback.bRejected
+				? FLinearColor(1.0f, 0.38f, 0.30f)
+				: FLinearColor(0.42f, 0.82f, 1.0f));
+		AddLine(TEXT("Step: ") + Feedback.StepTitle);
+		AddLine(Feedback.StepSummary);
+		AddLine(Feedback.RouteSummary.IsEmpty()
+			? FString() : TEXT("Route: ") + Feedback.RouteSummary);
+
+		for (const FFMCodexLocalMatchRollView& Die : Feedback.DiceEntries)
+		{
+			AddLine(FString::Printf(
+				TEXT("D6 | %s: %d"), *Die.Purpose, Die.RawD6),
+				FLinearColor(1.0f, 0.88f, 0.42f));
+		}
+		for (const FString& Comparison : Feedback.ComparisonEntries)
+		{
+			AddLine(TEXT("Comparison: ") + Comparison);
+		}
+		AddLine(Feedback.DecisionSummary.IsEmpty()
+			? FString() : TEXT("Decision: ") + Feedback.DecisionSummary);
+		AddLine(Feedback.ContinuationSummary);
+		AddLine(Feedback.TerminalSummary, FLinearColor(1.0f, 0.80f, 0.22f));
+		if (Feedback.bRejected)
+		{
+			AddLine(TEXT("Command: ") + Feedback.CommandName);
+			AddLine(TEXT("Reason: ") + Feedback.StepSummary);
+			AddLine(TEXT("Message: ") + Feedback.ErrorMessage);
+		}
+
+		return SNew(SBorder)
+			.Padding(10.0f)
+			.BorderBackgroundColor(Feedback.bRejected
+				? FLinearColor(0.30f, 0.06f, 0.05f, 0.96f)
+				: FLinearColor(0.05f, 0.14f, 0.22f, 0.96f))
+			[
+				Body
+			];
+	}
 }
 
 AFMCodexLocalMatchPlayerController::AFMCodexLocalMatchPlayerController()
@@ -147,6 +213,12 @@ const FFMCodexLocalMatchCommandDiagnostic&
 AFMCodexLocalMatchPlayerController::GetLastDiagnostic() const
 {
 	return LastDiagnostic;
+}
+
+const FFMCodexLocalMatchResolutionFeedback&
+AFMCodexLocalMatchPlayerController::GetResolutionFeedback() const
+{
+	return ResolutionFeedback;
 }
 
 const FFMCodexLocalMatchHotSeatHandoffState&
@@ -361,6 +433,9 @@ void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
 	LastDiagnostic.bAuthoritativeSuccess = false;
 	LastDiagnostic.Message = Message;
 	LastDiagnostic.PresentationSummary = TEXT("Command rejected");
+	ResolutionFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRejected(
+			CommandName, Message, false);
 	RefreshPresentation();
 }
 
@@ -1059,6 +1134,10 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 						.Text(FText::FromString(Diagnostic))
 						.Justification(ETextJustify::Center)
 					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
+					[
+						MakeFeedbackPanel(ResolutionFeedback)
+					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(12.0f)
 					[
 						MakeButton(NextPlayer + TEXT(" Ready"), [this]()
@@ -1177,6 +1256,13 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 	[
 		Pitch
 	];
+	if (ResolutionFeedback.bVisible)
+	{
+		Content->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 10.0f)
+		[
+			MakeFeedbackPanel(ResolutionFeedback)
+		];
+	}
 	AddText(TEXT("CURRENT INTERACTION"));
 	AddText(FString::Printf(
 		TEXT("Status: %s | Score A %d - %d B"),

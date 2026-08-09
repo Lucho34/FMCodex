@@ -361,6 +361,26 @@ namespace FMCodexLocalMatchControlSurfaceTests
 					Label, Step + 1));
 				return false;
 			}
+			const auto& Feedback = Controller.GetResolutionFeedback();
+			if (Step == 1
+				&& (!Feedback.StepTitle.Contains(TEXT("Route"))
+					|| !Feedback.RouteSummary.Contains(TEXT("Cross"))
+					|| Feedback.DiceEntries.IsEmpty()))
+			{
+				Test.AddError(FString::Printf(
+					TEXT("%s: route feedback did not expose authoritative Cross branch/D6 evidence."),
+					Label));
+				return false;
+			}
+			if (Step == 2
+				&& (!Feedback.DecisionSummary.Contains(TEXT("Formula"))
+					|| Feedback.DiceEntries.Num() != 3))
+			{
+				Test.AddError(FString::Printf(
+					TEXT("%s: Cross plan feedback did not retain its three authoritative D6 records."),
+					Label));
+				return false;
+			}
 		}
 		if (Controller.GetInteractionView().AcceptedRolls.Num() != 3)
 		{
@@ -377,6 +397,18 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				TEXT("%s: terminal application failed: %s"),
 				Label,
 				*Controller.GetLastDiagnostic().Message));
+			return false;
+		}
+		const auto& TerminalFeedback = Controller.GetResolutionFeedback();
+		if (!TerminalFeedback.bTerminal
+			|| !TerminalFeedback.TerminalSummary.StartsWith(TEXT("RESULT: "))
+			|| TerminalFeedback.ComparisonEntries.Num() < 2
+			|| !TerminalFeedback.DecisionSummary.Contains(TEXT("Winner:"))
+			|| !TerminalFeedback.ContinuationSummary.Contains(TEXT("Next attacker:")))
+		{
+			Test.AddError(FString::Printf(
+				TEXT("%s: terminal feedback did not expose authoritative Formula/Completion evidence."),
+				Label));
 			return false;
 		}
 		return !Controller.GetInteractionView().bCurrentAttackActive
@@ -603,6 +635,7 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 		Host->ResolveThroughBallBehindDefenseP1DecisionOrPlan().bSuccess);
 	TestTrue(TEXT("OneOnOne fixture resolves P1 Formula"),
 		Host->ResolveThroughBallBehindDefenseP1Formula().bSuccess);
+	const auto BeforeP2View = ViewFor(*Host, Demo.SkillRuleSet);
 	const auto P2 = Host->ResolveThroughBallBehindDefenseP2Decision();
 	TestTrue(TEXT("OneOnOne fixture resolves P2"), P2.bSuccess);
 	TestEqual(TEXT("P2 authority requires OneOnOne"),
@@ -619,6 +652,80 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 		View.ExpectedActingPlayer, Attacker);
 	TestEqual(TEXT("OneOnOne exposes exactly ChipShot and DirectShot"),
 		View.OneOnOneOptions.Num(), 2);
+	const auto P2Feedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			TEXT("ResolveThroughBallBehindDefenseP2Decision"),
+			P2,
+			BeforeP2View,
+			View);
+	TestTrue(TEXT("P2 feedback exposes authoritative continuation"),
+		P2Feedback.StepTitle.Contains(TEXT("P2"))
+			&& P2Feedback.DecisionSummary.Contains(TEXT("One-on-One")));
+	TestTrue(TEXT("P2 feedback exposes regenerated P1 Formula evidence"),
+		P2Feedback.ComparisonEntries.Num() >= 2);
+
+	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Choice;
+	Choice.RequestingSide = Attacker;
+	Choice.Choice = EMatchPlayThroughBallOneOnOneShotChoice::DirectShot;
+	TestTrue(TEXT("DirectShot choice succeeds"),
+		Host->SubmitThroughBallOneOnOneShotChoice(Choice).bSuccess);
+	const auto BeforePlanView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto DirectPlan =
+		Host->ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
+	TestTrue(TEXT("DirectShot authoritative plan succeeds"),
+		DirectPlan.bSuccess);
+	const auto AfterPlanView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto PlanFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			TEXT("ResolveThroughBallOneOnOneDirectShotPostRoutePlan"),
+			DirectPlan,
+			BeforePlanView,
+			AfterPlanView);
+	TestTrue(TEXT("DirectShot plan shows shooter and goalkeeper evidence"),
+		PlanFeedback.ComparisonEntries.Num() == 2
+			&& PlanFeedback.ComparisonEntries[0].Contains(TEXT("Shooting"))
+			&& PlanFeedback.ComparisonEntries[1].Contains(TEXT("OneOnOne"))
+			&& PlanFeedback.ComparisonEntries[1].Contains(TEXT("activation")));
+	TestTrue(TEXT("DirectShot plan exposes both OneOnOne D6 records"),
+		PlanFeedback.DiceEntries.Num() >= 2);
+
+	const auto DirectFormula =
+		Host->ResolveThroughBallOneOnOneDirectShotFormula();
+	TestTrue(TEXT("DirectShot authoritative Formula succeeds"),
+		DirectFormula.bSuccess);
+	const auto FormulaFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			TEXT("ResolveThroughBallOneOnOneDirectShotFormula"),
+			DirectFormula,
+			AfterPlanView,
+			AfterPlanView);
+	TestTrue(TEXT("DirectShot Formula feedback exposes final values"),
+		FormulaFeedback.ComparisonEntries.Num() == 2
+			&& FormulaFeedback.ComparisonEntries[0].Contains(TEXT("final"))
+			&& FormulaFeedback.ComparisonEntries[1].Contains(
+				TEXT("authoritative modifier")));
+	TestTrue(TEXT("DirectShot Formula feedback exposes winner/reason"),
+		FormulaFeedback.DecisionSummary.Contains(TEXT("Winner:"))
+			&& FormulaFeedback.DecisionSummary.Contains(TEXT("Reason:")));
+
+	const auto BeforeTerminalView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto Terminal = Host->ApplyThroughBallTerminalResolution();
+	TestTrue(TEXT("DirectShot terminal application succeeds"),
+		Terminal.bSuccess);
+	const auto AfterTerminalView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto TerminalFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			TEXT("ApplyThroughBallTerminalResolution"),
+			Terminal,
+			BeforeTerminalView,
+			AfterTerminalView);
+	TestTrue(TEXT("DirectShot terminal shows Goal or Miss"),
+		TerminalFeedback.TerminalSummary == TEXT("RESULT: GOAL")
+			|| TerminalFeedback.TerminalSummary == TEXT("RESULT: MISS"));
+	TestTrue(TEXT("DirectShot terminal shows score and next attacker"),
+		TerminalFeedback.ContinuationSummary.Contains(TEXT("Score:"))
+			&& TerminalFeedback.ContinuationSummary.Contains(
+				TEXT("Next attacker:")));
 	return true;
 }
 
@@ -1266,6 +1373,181 @@ bool FFMCodexLocalMatchPresentationShellContractTest::RunTest(
 		ControllerSource.Contains(TEXT("CurrentAttack.DeploymentPlacements.Add"))
 			|| ControllerSource.Contains(TEXT("RuntimeState.PlayerAState.Score ="))
 			|| ControllerSource.Contains(TEXT("RuntimeState.PlayerBState.Score =")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchFeedbackSemanticShapesTest,
+	"FMCodex.LocalPlay.ControlSurface.20.FeedbackSemanticShapes",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchFeedbackSemanticShapesTest::RunTest(
+	const FString& Parameters)
+{
+	FFMCodexLocalMatchInteractionView View;
+	View.ActionLabel = TEXT("Through Ball");
+	View.ActualBranchLabel = TEXT("Anti-Offside");
+
+	FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult AntiOffside;
+	AntiOffside.AuthoritativeResult.OrchestrationResult.OutcomeResult.Decision =
+		EThroughBallAntiOffsideOutcomeDecision::Offside;
+	const auto AntiOffsideFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			TEXT("ResolveThroughBallAntiOffsideDecision"),
+			AntiOffside, View, View);
+	TestTrue(TEXT("AntiOffside uses authoritative decision label"),
+		AntiOffsideFeedback.DecisionSummary.Contains(TEXT("Offside")));
+	TestTrue(TEXT("AntiOffside retains authoritative route context"),
+		AntiOffsideFeedback.RouteSummary.Contains(TEXT("Anti-Offside")));
+
+	FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotDecisionResult Chip;
+	Chip.AuthoritativeResult.OrchestrationResult.QueryResult.Decision =
+		EThroughBallOneOnOneChipShotOutcomeDecision::Goal;
+	const auto ChipFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			TEXT("ResolveThroughBallOneOnOneChipShotDecision"),
+			Chip, View, View);
+	TestEqual(TEXT("ChipShot exposes authoritative Goal"),
+		ChipFeedback.DecisionSummary, FString(TEXT("Goal")));
+	TestTrue(TEXT("ChipShot never fabricates goalkeeper Formula evidence"),
+		ChipFeedback.ComparisonEntries.IsEmpty());
+	TestTrue(TEXT("ChipShot explicitly identifies non-Formula shape"),
+		ChipFeedback.StepSummary.Contains(TEXT("without Formula")));
+
+	FFMCodexLocalMatchApplyShotTerminalResolutionResult ImmediateMiss;
+	auto& ShotTerminal =
+		ImmediateMiss.AuthoritativeResult.OrchestrationResult;
+	ShotTerminal.TerminalSource =
+		EMatchPlayShotTerminalSource::LongShotDirectShotImmediateMiss;
+	ShotTerminal.CompletionResult.bSuccess = true;
+	ShotTerminal.CompletionResult.AfterState.RuntimeState.PlayerAState.Score = 0;
+	ShotTerminal.CompletionResult.AfterState.RuntimeState.PlayerBState.Score = 0;
+	ShotTerminal.CompletionResult.NextAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerB;
+	ShotTerminal.CompletionResult.OpportunityResolveResult.bSuccess = true;
+	const auto ImmediateMissFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			TEXT("ApplyShotTerminalResolution"),
+			ImmediateMiss, View, FFMCodexLocalMatchInteractionView());
+	TestEqual(TEXT("ImmediateMiss terminal semantic is direct"),
+		ImmediateMissFeedback.TerminalSummary,
+		FString(TEXT("RESULT: IMMEDIATE MISS")));
+	TestTrue(TEXT("Non-Formula terminal has no fake comparison"),
+		ImmediateMissFeedback.ComparisonEntries.IsEmpty());
+	TestTrue(TEXT("Completion feedback exposes score/opportunity/next actor"),
+		ImmediateMissFeedback.ContinuationSummary.Contains(TEXT("Score:"))
+			&& ImmediateMissFeedback.ContinuationSummary.Contains(
+				TEXT("Opportunity consumed: yes"))
+			&& ImmediateMissFeedback.ContinuationSummary.Contains(
+				TEXT("Next attacker: Player B")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchRejectedFeedbackAuthorityTest,
+	"FMCodex.LocalPlay.ControlSurface.21.RejectedFeedbackAuthority",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchRejectedFeedbackAuthorityTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Host = PlayableWorld.GetHost();
+	auto* Controller = PlayableWorld.GetController();
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->StartNewDemoMatch();
+	const TArray<uint8> BeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	const auto CategoryBefore =
+		Controller->GetInteractionView().InteractionCategory;
+	Controller->BeginDemoOrdinaryAttack();
+	const auto& Rejected = Controller->GetResolutionFeedback();
+	TestTrue(TEXT("Rejected feedback is explicit"),
+		Rejected.bVisible && Rejected.bRejected
+			&& Rejected.StepTitle == TEXT("Command Rejected"));
+	TestEqual(TEXT("Rejected feedback preserves typed command"),
+		Rejected.CommandName, FString(TEXT("BeginOrdinaryAttack")));
+	TestTrue(TEXT("Rejected feedback preserves diagnostic reason"),
+		!Rejected.ErrorMessage.IsEmpty()
+			&& Rejected.StepSummary.Contains(TEXT("blocked")));
+	TestTrue(TEXT("Rejected feedback has no false accepted evidence"),
+		Rejected.DiceEntries.IsEmpty()
+			&& Rejected.ComparisonEntries.IsEmpty()
+			&& Rejected.TerminalSummary.IsEmpty());
+	TestTrue(TEXT("Rejected feedback leaves State byte-identical"),
+		BeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	TestEqual(TEXT("Feedback does not drive InteractionCategory"),
+		Controller->GetInteractionView().InteractionCategory, CategoryBefore);
+
+	const FString FeedbackBeforeReady = Rejected.ErrorMessage;
+	Controller->AcknowledgeHotSeatHandoff();
+	TestTrue(TEXT("Ready remains authority-neutral with feedback present"),
+		BeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	TestEqual(TEXT("Ready retains the public previous feedback"),
+		Controller->GetResolutionFeedback().ErrorMessage,
+		FeedbackBeforeReady);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchFeedbackAuthorityBoundaryTest,
+	"FMCodex.LocalPlay.ControlSurface.22.FeedbackAuthorityBoundary",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchFeedbackAuthorityBoundaryTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FString FeedbackSource;
+	FString ControllerSource;
+	TestTrue(TEXT("Feedback production source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchResolutionFeedback.cpp"),
+		FeedbackSource));
+	TestTrue(TEXT("Controller production source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+		ControllerSource));
+	const FString PresentationSource = FeedbackSource + ControllerSource;
+	TestFalse(TEXT("Presentation never calls FormulaResolver"),
+		PresentationSource.Contains(TEXT("ResolveFormula(")));
+	TestFalse(TEXT("Presentation never calculates goalkeeper half"),
+		PresentationSource.Contains(TEXT("CalculateGoalkeeperHalf(")));
+	TestFalse(TEXT("Presentation contains no route threshold table"),
+		PresentationSource.Contains(TEXT("Roll <="))
+			|| PresentationSource.Contains(TEXT("RawD6 <="))
+			|| PresentationSource.Contains(TEXT("Roll >=")));
+	TestFalse(TEXT("Feedback contains no RNG or authoritative history cache"),
+		FeedbackSource.Contains(TEXT("RandRange"))
+			|| FeedbackSource.Contains(TEXT("LastGameplayD6"))
+			|| FeedbackSource.Contains(TEXT("CurrentAttackRolls"))
+			|| FeedbackSource.Contains(TEXT("FormulaHistoryAuthority")));
+	TestTrue(TEXT("Feedback panel is visibly separate"),
+		ControllerSource.Contains(TEXT("MakeFeedbackPanel"))
+			&& ControllerSource.Contains(TEXT("RESOLUTION"))
+			&& ControllerSource.Contains(TEXT("COMMAND REJECTED")));
+
+	const int32 ContinueStart = ControllerSource.Find(
+		TEXT("void AFMCodexLocalMatchPlayerController::ContinueResolution"));
+	const int32 ContinueEnd = ControllerSource.Find(
+		TEXT("void AFMCodexLocalMatchPlayerController::RebuildControlSurface"));
+	const FString ContinueBody = ContinueStart != INDEX_NONE
+		&& ContinueEnd > ContinueStart
+			? ControllerSource.Mid(
+				ContinueStart, ContinueEnd - ContinueStart)
+			: FString();
+	TestTrue(TEXT("Feedback never selects the next gameplay command"),
+		!ContinueBody.IsEmpty()
+			&& !ContinueBody.Contains(TEXT("ResolutionFeedback")));
+	TestTrue(TEXT("Stage 5.7 card/pitch shell remains present"),
+		ControllerSource.Contains(TEXT("FMCODEX LOCAL MATCH"))
+			&& ControllerSource.Contains(TEXT("FOOTBALL FIELD"))
+			&& ControllerSource.Contains(TEXT("MakeCardPanel")));
+	TestTrue(TEXT("Handoff remains a blocking early return"),
+		ControllerSource.Contains(TEXT("PASS CONTROL"))
+			&& ControllerSource.Contains(TEXT("AllowGameplayCommand")));
 	return true;
 }
 

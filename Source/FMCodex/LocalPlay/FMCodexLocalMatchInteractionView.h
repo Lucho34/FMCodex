@@ -143,6 +143,9 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCanDecline = false;
 	bool bCanResolveNoLegalChoice = false;
 	FString Diagnostic;
+	FString ActionLabel;
+	FString ActualBranchLabel;
+	FString OneOnOneChoiceLabel;
 	TArray<FMatchPlayDeploymentPlacement> DeploymentPlacements;
 	TArray<FFMCodexLocalMatchDeploymentOption> DeploymentOptions;
 	TArray<FFMCodexLocalMatchDeploymentGroup> DeploymentGroups;
@@ -171,4 +174,8 @@ public:
 	static FString ToString(EMatchPlayNeutralSlotSide Side);
 	static FString ToString(EMatchPlayRelativeDeploymentZone Zone);
 	static FString ToString(ESkillRuleType SkillType);
+	static FString ToString(
+		const FMatchPlayCurrentAttackActualBranch& ActualBranch);
+	static FString ToString(
+		EMatchPlayThroughBallOneOnOneShotChoice Choice);
 };

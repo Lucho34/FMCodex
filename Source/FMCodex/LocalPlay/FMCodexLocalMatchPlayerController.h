@@ -4,6 +4,7 @@
 #include "GameFramework/PlayerController.h"
 
 #include "FMCodexLocalMatchInteractionView.h"
+#include "FMCodexLocalMatchResolutionFeedback.h"
 
 #include "FMCodexLocalMatchPlayerController.generated.h"
 
@@ -54,6 +55,8 @@ public:
 
 	const FFMCodexLocalMatchInteractionView& GetInteractionView() const;
 	const FFMCodexLocalMatchCommandDiagnostic& GetLastDiagnostic() const;
+	const FFMCodexLocalMatchResolutionFeedback&
+		GetResolutionFeedback() const;
 	const FFMCodexLocalMatchHotSeatHandoffState& GetHotSeatHandoffState() const;
 	bool IsAwaitingHotSeatHandoff() const;
 
@@ -92,8 +95,7 @@ private:
 	template <typename TResult>
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
 	{
-		const int32 PreviousPlayerAScore = InteractionView.PlayerAScore;
-		const int32 PreviousPlayerBScore = InteractionView.PlayerBScore;
+		const FFMCodexLocalMatchInteractionView PreviousView = InteractionView;
 		LastDiagnostic.CommandName = CommandName;
 		LastDiagnostic.bHostSuccess = Result.bSuccess;
 		LastDiagnostic.bAuthoritativeAccepted =
@@ -108,37 +110,30 @@ private:
 		RefreshPresentation();
 		if (!Result.bSuccess)
 		{
+			ResolutionFeedback =
+				FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRejected(
+					CommandName,
+					LastDiagnostic.Message,
+					LastDiagnostic.bAuthoritativeAccepted);
 			LastDiagnostic.PresentationSummary = TEXT("Command rejected");
-		}
-		else if (CommandName.StartsWith(TEXT("Apply")))
-		{
-			LastDiagnostic.PresentationSummary =
-				InteractionView.PlayerAScore > PreviousPlayerAScore
-					|| InteractionView.PlayerBScore > PreviousPlayerBScore
-						? TEXT("GOAL")
-						: TEXT("Attack complete - no goal");
-		}
-		else if (CommandName.Contains(TEXT("Route")))
-		{
-			LastDiagnostic.PresentationSummary = TEXT("Route resolved");
-		}
-		else if (CommandName.StartsWith(TEXT("Resolve")))
-		{
-			LastDiagnostic.PresentationSummary =
-				TEXT("Resolution step accepted");
-		}
-		else if (CommandName.StartsWith(TEXT("Deploy")))
-		{
-			LastDiagnostic.PresentationSummary = TEXT("Card deployed");
-		}
-		else if (CommandName.StartsWith(TEXT("Submit")))
-		{
-			LastDiagnostic.PresentationSummary = TEXT("Selection accepted");
 		}
 		else
 		{
-			LastDiagnostic.PresentationSummary =
-				TEXT("Authoritative command accepted");
+			ResolutionFeedback =
+				FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+					CommandName, Result, PreviousView, InteractionView);
+			if (ResolutionFeedback.bTerminal)
+			{
+				LastDiagnostic.PresentationSummary =
+					ResolutionFeedback.TerminalSummary == TEXT("RESULT: GOAL")
+						? TEXT("GOAL")
+						: TEXT("Attack complete - no goal");
+			}
+			else
+			{
+				LastDiagnostic.PresentationSummary =
+					ResolutionFeedback.StepSummary;
+			}
 		}
 		RebuildControlSurface();
 	}
@@ -146,6 +141,7 @@ private:
 	FFMCodexLocalMatchInteractionView InteractionView;
 	FFMCodexLocalMatchHotSeatHandoffState HotSeatHandoffState;
 	FFMCodexLocalMatchCommandDiagnostic LastDiagnostic;
+	FFMCodexLocalMatchResolutionFeedback ResolutionFeedback;
 	TSharedPtr<SWidget> ViewportWidget;
 	TSharedPtr<SBox> SurfaceContainer;
 };
