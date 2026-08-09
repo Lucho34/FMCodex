@@ -2,6 +2,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionAvailability.h"
+#include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionAvailability.h"
+#include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
+#include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
+
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
@@ -77,6 +82,157 @@ namespace FMCodexLocalMatchHostTests
 			PlayerBSlot
 		};
 		return Input;
+	}
+
+	FMatchPlayOpeningInitializeInput MakeInteractionInput(
+		const FString& Prefix,
+		const FName SkillId = NAME_None)
+	{
+		FMatchPlayOpeningInitializeInput Input = MakeValidInput(Prefix);
+		for (TArray<FPlayerCardData>* Deck : {
+			&Input.OpeningInput.PlayerADeck,
+			&Input.OpeningInput.PlayerBDeck })
+		{
+			for (FPlayerCardData& Card : *Deck)
+			{
+				if (!Card.bIsGoalkeeper)
+				{
+					Card.PositionTypes = {
+						EPlayerPositionType::Attack,
+						EPlayerPositionType::Midfield,
+						EPlayerPositionType::Defense
+					};
+					if (!SkillId.IsNone())
+					{
+						Card.AttackSkillIds = { SkillId };
+					}
+				}
+			}
+		}
+
+		Input.DeploymentSlotCatalog.Slots.Reset();
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			FMatchPlayDeploymentSlotDefinition NearA;
+			NearA.SlotId = FName(*FString::Printf(
+				TEXT("%s_NearA_%d"), *Prefix, Index));
+			NearA.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+			Input.DeploymentSlotCatalog.Slots.Add(NearA);
+			FMatchPlayDeploymentSlotDefinition NearB;
+			NearB.SlotId = FName(*FString::Printf(
+				TEXT("%s_NearB_%d"), *Prefix, Index));
+			NearB.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerB;
+			Input.DeploymentSlotCatalog.Slots.Add(NearB);
+		}
+		return Input;
+	}
+
+	FSkillRuleSnapshotSet MakeSkillRuleSet(
+		const FName SkillId,
+		const ESkillRuleType SkillType)
+	{
+		FSkillRuleSnapshot Rule;
+		Rule.SkillId = SkillId;
+		Rule.SkillType = SkillType;
+		Rule.MinTriggerActionPoint = 2;
+		Rule.MaxTriggerActionPoint = 8;
+		FSkillRuleSnapshotSet Rules;
+		Rules.SkillRules = { Rule };
+		return Rules;
+	}
+
+	EInitialTurnOrderPlayer OtherPlayer(
+		const EInitialTurnOrderPlayer Player)
+	{
+		return Player == EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA;
+	}
+
+	const TArray<FName>& AvailableCards(
+		const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.CardUsageState.PlayerACardUsageState.AvailableCardIds
+			: State.CardUsageState.PlayerBCardUsageState.AvailableCardIds;
+	}
+
+	bool FindLegalDeployment(
+		const FMatchPlayState& State,
+		const EMatchPlayRelativeDeploymentZone PreferredZone,
+		FMatchPlayAuthoritativeDeployOrdinaryRequest& OutRequest)
+	{
+		if (!State.bHasCurrentAttack)
+		{
+			return false;
+		}
+		const EInitialTurnOrderPlayer Side =
+			State.CurrentAttack.CurrentLegalDeploymentSide;
+		for (const FName CardId : AvailableCards(State, Side))
+		{
+			const auto Availability =
+				FMatchPlayOrdinaryDeploymentAvailability::Query(
+					State,
+					State.CurrentAttack.AttackSequence,
+					Side,
+					CardId);
+			for (const auto& Slot : Availability.SlotResults)
+			{
+				if (Slot.LegalityResult.bIsLegal
+					&& Slot.LegalityResult.ResolvedRelativeZone
+						== PreferredZone)
+				{
+					OutRequest.RequestingSide = Side;
+					OutRequest.CardId = CardId;
+					OutRequest.SlotId = Slot.SlotId;
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	bool FindLegalCarrier(
+		const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer AttackingSide,
+		FName& OutCardId)
+	{
+		const auto Availability =
+			FMatchPlayCurrentAttackCarrierSelectionAvailability::Query(
+				State,
+				State.CurrentAttack.AttackSequence,
+				AttackingSide);
+		for (const auto& Candidate : Availability.Candidates)
+		{
+			if (Candidate.LegalityResult.bIsLegal)
+			{
+				OutCardId = Candidate.CarrierCardId;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool FindLegalMarker(
+		const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer DefendingSide,
+		FName& OutCardId)
+	{
+		const auto Availability =
+			FMatchPlayCurrentAttackMarkerSelectionAvailability::Query(
+				State,
+				State.CurrentAttack.AttackSequence,
+				DefendingSide);
+		for (const auto& Candidate : Availability.Candidates)
+		{
+			if (Candidate.LegalityResult.bIsLegal)
+			{
+				OutCardId = Candidate.MarkerCardId;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	bool AreStatesEqual(
@@ -173,6 +329,10 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		(AFMCodexLocalMatchHostGameMode::*)() const;
 	using FBeginMethod = FFMCodexLocalMatchBeginOrdinaryAttackResult
 		(AFMCodexLocalMatchHostGameMode::*)(int32);
+	using FOneOnOneChoiceMethod =
+		FFMCodexLocalMatchSubmitThroughBallOneOnOneShotChoiceResult
+		(AFMCodexLocalMatchHostGameMode::*)(
+			const FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest&);
 	TestTrue(TEXT("StartNewLocalMatch is a typed canonical-input method"),
 		(std::is_same_v<
 			decltype(&AFMCodexLocalMatchHostGameMode::StartNewLocalMatch),
@@ -185,6 +345,11 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		(std::is_same_v<
 			decltype(&AFMCodexLocalMatchHostGameMode::BeginOrdinaryAttack),
 			FBeginMethod>));
+	TestTrue(TEXT("OneOnOne choice preserves its exact typed request/result"),
+		(std::is_same_v<
+			decltype(&AFMCodexLocalMatchHostGameMode
+				::SubmitThroughBallOneOnOneShotChoice),
+			FOneOnOneChoiceMethod>));
 
 	FString Header;
 	FString Source;
@@ -211,6 +376,23 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 			|| Header.Contains(TEXT("ExecuteAction"))
 			|| Source.Contains(TEXT("ExecuteCommand"))
 			|| Source.Contains(TEXT("ExecuteAction")));
+	for (const TCHAR* ForbiddenResolutionMethod : {
+		TEXT("BeginResolutionSession("),
+		TEXT("ResolveInitialRoute("),
+		TEXT("ResolveIntentDeterminedRoute("),
+		TEXT("ResolveCrossPostRoutePlan("),
+		TEXT("ResolvePassControlPostRoutePlan("),
+		TEXT("ResolveThroughBallFeetFormula("),
+		TEXT("ApplyThroughBallTerminalResolution(") })
+	{
+		TestFalse(*FString::Printf(
+			TEXT("Stage 5.3 has no system-resolution Host API: %s"),
+			ForbiddenResolutionMethod),
+			Header.Contains(ForbiddenResolutionMethod)
+				|| Source.Contains(ForbiddenResolutionMethod));
+	}
+	TestFalse(TEXT("Interaction routing does not consume D6"),
+		Source.Contains(TEXT(".RollD6(")));
 	for (const TCHAR* CacheName : {
 		TEXT("CachedScore"),
 		TEXT("CachedCurrentPlayer"),
@@ -232,6 +414,33 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		CountOccurrences(Source,
 			TEXT("ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot()")),
 		1);
+	for (const TCHAR* Delegation : {
+		TEXT(".DeployOrdinary("),
+		TEXT(".DeployGoalkeeper("),
+		TEXT(".FinishDeployment("),
+		TEXT(".SubmitCarrier("),
+		TEXT(".ResolveNoLegalCarrier("),
+		TEXT(".SubmitMarker("),
+		TEXT(".ResolveNoLegalMarker("),
+		TEXT(".DeclineMarker("),
+		TEXT(".SubmitSkill("),
+		TEXT(".ResolveNoLegalSkill("),
+		TEXT(".DeclineSkill("),
+		TEXT(".SubmitRunner("),
+		TEXT(".ResolveNoLegalRunner("),
+		TEXT(".DeclineRunner("),
+		TEXT(".SubmitHelper("),
+		TEXT(".ResolveNoLegalHelper("),
+		TEXT(".DeclineHelper("),
+		TEXT(".SubmitBranchIntent("),
+		TEXT(".SubmitThroughBallOneOnOneShotChoice(") })
+	{
+		TestEqual(*FString::Printf(
+			TEXT("Exactly one typed Session delegation exists: %s"),
+			Delegation),
+			CountOccurrences(Source, Delegation),
+			1);
+	}
 	TestEqual(TEXT("Provider and Session adopt through one runtime bundle"),
 		CountOccurrences(Source,
 			TEXT("ActiveMatchRuntime = MoveTemp(CandidateRuntime);")),
@@ -272,6 +481,50 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 	TestEqual(TEXT("Pre-start Begin does not invent a Session command"),
 		Begin.AuthoritativeResult.RuntimeEnvelope.CommandKind,
 		EMatchPlayAuthoritativeCommandKind::None);
+
+	const FSkillRuleSnapshotSet EmptyRules;
+	auto TestNoActiveCommand = [this](
+		const TCHAR* Label,
+		const auto& Result)
+	{
+		TestFalse(*FString::Printf(TEXT("%s fails before start"), Label),
+			Result.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s reports NoActiveMatch"), Label),
+			Result.ErrorCode,
+			EFMCodexLocalMatchHostErrorCode::NoActiveMatch);
+		TestEqual(*FString::Printf(TEXT("%s never calls Session"), Label),
+			Result.AuthoritativeResult.RuntimeEnvelope.CommandKind,
+			EMatchPlayAuthoritativeCommandKind::None);
+	};
+	TestNoActiveCommand(TEXT("DeployOrdinary"), Host->DeployOrdinary({}));
+	TestNoActiveCommand(TEXT("DeployGoalkeeper"), Host->DeployGoalkeeper({}));
+	TestNoActiveCommand(TEXT("FinishDeployment"), Host->FinishDeployment(
+		0, EInitialTurnOrderPlayer::None));
+	TestNoActiveCommand(TEXT("SubmitCarrier"), Host->SubmitCarrier({}));
+	TestNoActiveCommand(TEXT("ResolveNoLegalCarrier"),
+		Host->ResolveNoLegalCarrier());
+	TestNoActiveCommand(TEXT("SubmitMarker"), Host->SubmitMarker({}));
+	TestNoActiveCommand(TEXT("ResolveNoLegalMarker"),
+		Host->ResolveNoLegalMarker());
+	TestNoActiveCommand(TEXT("DeclineMarker"), Host->DeclineMarker({}));
+	TestNoActiveCommand(TEXT("SubmitSkill"),
+		Host->SubmitSkill(EmptyRules, {}));
+	TestNoActiveCommand(TEXT("ResolveNoLegalSkill"),
+		Host->ResolveNoLegalSkill(EmptyRules));
+	TestNoActiveCommand(TEXT("DeclineSkill"),
+		Host->DeclineSkill(EmptyRules, {}));
+	TestNoActiveCommand(TEXT("SubmitRunner"), Host->SubmitRunner({}));
+	TestNoActiveCommand(TEXT("ResolveNoLegalRunner"),
+		Host->ResolveNoLegalRunner());
+	TestNoActiveCommand(TEXT("DeclineRunner"), Host->DeclineRunner({}));
+	TestNoActiveCommand(TEXT("SubmitHelper"), Host->SubmitHelper({}));
+	TestNoActiveCommand(TEXT("ResolveNoLegalHelper"),
+		Host->ResolveNoLegalHelper());
+	TestNoActiveCommand(TEXT("DeclineHelper"), Host->DeclineHelper({}));
+	TestNoActiveCommand(TEXT("SubmitBranchIntent"),
+		Host->SubmitBranchIntent({}));
+	TestNoActiveCommand(TEXT("SubmitThroughBallOneOnOneShotChoice"),
+		Host->SubmitThroughBallOneOnOneShotChoice({}));
 
 	const FFMCodexStartNewLocalMatchResult InvalidStart =
 		Host->StartNewLocalMatch({});
@@ -458,6 +711,410 @@ bool FFMCodexLocalMatchHostIsolationTest::RunTest(
 		AreStatesEqual(
 			HostA->GetMatchSnapshot().Snapshot,
 			HostB->GetMatchSnapshot().Snapshot));
+
+	const FMatchPlayState BBeforeDeployment =
+		HostB->GetMatchSnapshot().Snapshot;
+	FMatchPlayAuthoritativeDeployOrdinaryRequest DeploymentRequest;
+	TestTrue(TEXT("Host A has a legal deployment"),
+		FindLegalDeployment(
+			HostA->GetMatchSnapshot().Snapshot,
+			EMatchPlayRelativeDeploymentZone::Forward,
+			DeploymentRequest));
+	TestTrue(TEXT("Host A deployment advances independently"),
+		HostA->DeployOrdinary(DeploymentRequest).bSuccess);
+	TestTrue(TEXT("Host A deployment cannot mutate Host B"),
+		AreStatesEqual(
+			HostB->GetMatchSnapshot().Snapshot,
+			BBeforeDeployment));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchHostInteractionEquivalenceTest,
+	"FMCodex.LocalPlay.LocalMatchHost.04.InteractionEquivalence",
+	EAutomationTestFlags::EditorContext
+		| EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchHostTests;
+	FScopedLocalMatchTestWorld TestWorld;
+	AFMCodexLocalMatchHostGameMode* Host = TestWorld.GetHost();
+	TestNotNull(TEXT("Interaction host exists"), Host);
+	if (Host == nullptr)
+	{
+		return false;
+	}
+	{
+		const FMatchPlayOpeningInitializeInput GoalkeeperInput =
+			MakeInteractionInput(TEXT("LocalHostGoalkeeper"));
+		FMatchPlayAuthoritativeSession GoalkeeperDirect;
+		TestTrue(TEXT("Goalkeeper direct initialize succeeds"),
+			GoalkeeperDirect.InitializeMatch(GoalkeeperInput)
+				.OpeningResult.bSuccess);
+		TestTrue(TEXT("Goalkeeper Host initialize succeeds"),
+			Host->StartNewLocalMatch(GoalkeeperInput).bSuccess);
+		TestTrue(TEXT("Goalkeeper direct attack begins"),
+			GoalkeeperDirect.BeginOrdinaryAttack(6).BeginResult.bSuccess);
+		TestTrue(TEXT("Goalkeeper Host attack begins"),
+			Host->BeginOrdinaryAttack(6).bSuccess);
+		FMatchPlayAuthoritativeDeployOrdinaryRequest AttackDeploy;
+		TestTrue(TEXT("Goalkeeper fixture attacker deployment exists"),
+			FindLegalDeployment(
+				Host->GetMatchSnapshot().Snapshot,
+				EMatchPlayRelativeDeploymentZone::Forward,
+				AttackDeploy));
+		TestTrue(TEXT("Goalkeeper fixture direct attacker deploys"),
+			GoalkeeperDirect.DeployOrdinary(AttackDeploy)
+				.DeploymentResult.bSuccess);
+		TestTrue(TEXT("Goalkeeper fixture Host attacker deploys"),
+			Host->DeployOrdinary(AttackDeploy).bSuccess);
+		const FMatchPlayState GoalkeeperState =
+			Host->GetMatchSnapshot().Snapshot;
+		const EInitialTurnOrderPlayer Defender = OtherPlayer(
+			GoalkeeperState.RuntimeState.CurrentAttackingPlayer);
+		const FName GoalkeeperCardId = FName(*(
+			Defender == EInitialTurnOrderPlayer::PlayerA
+				? GoalkeeperState.RuntimeState.PlayerAState.GoalkeeperCardId
+				: GoalkeeperState.RuntimeState.PlayerBState.GoalkeeperCardId));
+		const auto Availability =
+			FMatchPlayGoalkeeperDeploymentAvailability::Query(
+				GoalkeeperState,
+				GoalkeeperState.CurrentAttack.AttackSequence,
+				Defender,
+				GoalkeeperCardId);
+		TestTrue(TEXT("A legal derived goalkeeper slot exists"),
+			Availability.bCanDeployToAnySlot
+				&& !Availability.LegalSlotIds.IsEmpty());
+		if (Availability.LegalSlotIds.IsEmpty())
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+		Request.SlotId = Availability.LegalSlotIds[0];
+		TestTrue(TEXT("Direct goalkeeper deployment succeeds"),
+			GoalkeeperDirect.DeployGoalkeeper(Request)
+				.DeploymentResult.bSucceeded);
+		const auto HostGoalkeeper = Host->DeployGoalkeeper(Request);
+		TestTrue(TEXT("Host goalkeeper deployment succeeds"),
+			HostGoalkeeper.bSuccess);
+		TestEqual(TEXT("Goalkeeper request preserves genuine SlotId"),
+			HostGoalkeeper.AuthoritativeResult.DeploymentResult.Request.SlotId,
+			Request.SlotId);
+		TestTrue(TEXT("Goalkeeper Host State equals direct Session"),
+			AreStatesEqual(
+				Host->GetMatchSnapshot().Snapshot,
+				GoalkeeperDirect.GetStateSnapshot()));
+	}
+
+	const FName SkillId(TEXT("Skill.LocalHost.LongShot"));
+	const FSkillRuleSnapshotSet Rules =
+		MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
+	const FMatchPlayOpeningInitializeInput Input =
+		MakeInteractionInput(TEXT("LocalHostInteraction"), SkillId);
+	FMatchPlayAuthoritativeSession DirectSession;
+	TestTrue(TEXT("Direct initialize succeeds"),
+		DirectSession.InitializeMatch(Input).OpeningResult.bSuccess);
+	TestTrue(TEXT("Host initialize succeeds"),
+		Host->StartNewLocalMatch(Input).bSuccess);
+	TestTrue(TEXT("Direct begin succeeds"),
+		DirectSession.BeginOrdinaryAttack(6).BeginResult.bSuccess);
+	TestTrue(TEXT("Host begin succeeds"),
+		Host->BeginOrdinaryAttack(6).bSuccess);
+
+	auto TestEquivalent = [this, Host, &DirectSession](const TCHAR* Label)
+	{
+		const auto Snapshot = Host->GetMatchSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s snapshot succeeds"), Label),
+			Snapshot.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s State equals direct Session"), Label),
+			AreStatesEqual(Snapshot.Snapshot, DirectSession.GetStateSnapshot()));
+	};
+	TestEquivalent(TEXT("Begin"));
+
+	FMatchPlayAuthoritativeDeployOrdinaryRequest AttackerDeploy;
+	TestTrue(TEXT("A legal attacker Forward deployment exists"),
+		FindLegalDeployment(
+			Host->GetMatchSnapshot().Snapshot,
+			EMatchPlayRelativeDeploymentZone::Forward,
+			AttackerDeploy));
+	const FMatchPlayState BeforeWrongTurn = Host->GetMatchSnapshot().Snapshot;
+	auto WrongTurn = AttackerDeploy;
+	WrongTurn.RequestingSide = OtherPlayer(WrongTurn.RequestingSide);
+	const auto WrongTurnResult = Host->DeployOrdinary(WrongTurn);
+	TestFalse(TEXT("Wrong deployment side remains an authoritative failure"),
+		WrongTurnResult.bSuccess);
+	TestEqual(TEXT("Wrong deployment side maps to Host command failure"),
+		WrongTurnResult.ErrorCode,
+		EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed);
+	TestTrue(TEXT("Wrong deployment side preserves typed diagnostics"),
+		WrongTurnResult.AuthoritativeResult.RuntimeEnvelope.bAccepted
+			&& !WrongTurnResult.AuthoritativeResult.DeploymentResult.bSuccess
+			&& !WrongTurnResult.AuthoritativeResult.DeploymentResult
+				.ErrorMessage.IsEmpty());
+	TestTrue(TEXT("Wrong deployment side preserves hosted State"),
+		AreStatesEqual(
+			Host->GetMatchSnapshot().Snapshot,
+			BeforeWrongTurn));
+
+	TestTrue(TEXT("Direct attacker deployment succeeds"),
+		DirectSession.DeployOrdinary(AttackerDeploy)
+			.DeploymentResult.bSuccess);
+	const auto HostAttackerDeploy = Host->DeployOrdinary(AttackerDeploy);
+	TestTrue(TEXT("Host attacker deployment succeeds"),
+		HostAttackerDeploy.bSuccess);
+	TestEqual(TEXT("DeployOrdinary preserves command kind"),
+		HostAttackerDeploy.AuthoritativeResult.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::DeployOrdinary);
+	TestEquivalent(TEXT("Attacker deployment"));
+
+	FMatchPlayState State = Host->GetMatchSnapshot().Snapshot;
+	const EInitialTurnOrderPlayer AttackingSide =
+		State.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer DefendingSide = OtherPlayer(AttackingSide);
+
+	FMatchPlayAuthoritativeDeployOrdinaryRequest DefenderDeploy;
+	TestTrue(TEXT("A legal defender Backfield deployment exists"),
+		FindLegalDeployment(
+			Host->GetMatchSnapshot().Snapshot,
+			EMatchPlayRelativeDeploymentZone::Backfield,
+			DefenderDeploy));
+	TestTrue(TEXT("Direct defender deployment succeeds"),
+		DirectSession.DeployOrdinary(DefenderDeploy)
+			.DeploymentResult.bSuccess);
+	TestTrue(TEXT("Host defender deployment succeeds"),
+		Host->DeployOrdinary(DefenderDeploy).bSuccess);
+	TestEquivalent(TEXT("Defender deployment"));
+
+	for (int32 FinishIndex = 0; FinishIndex < 2; ++FinishIndex)
+	{
+		State = Host->GetMatchSnapshot().Snapshot;
+		const int64 AttackSequence = State.CurrentAttack.AttackSequence;
+		const EInitialTurnOrderPlayer Side =
+			State.CurrentAttack.CurrentLegalDeploymentSide;
+		TestTrue(TEXT("Direct FinishDeployment succeeds"),
+			DirectSession.FinishDeployment(AttackSequence, Side)
+				.FinishResult.bSuccess);
+		TestTrue(TEXT("Host FinishDeployment succeeds"),
+			Host->FinishDeployment(AttackSequence, Side).bSuccess);
+		TestEquivalent(TEXT("FinishDeployment"));
+	}
+	State = Host->GetMatchSnapshot().Snapshot;
+	TestEqual(TEXT("Both finishes canonically reach AwaitingCarrier"),
+		State.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier);
+
+	FName CarrierCardId;
+	TestTrue(TEXT("A legal Carrier exists"),
+		FindLegalCarrier(State, AttackingSide, CarrierCardId));
+	FMatchPlayAuthoritativeSubmitCarrierRequest CarrierRequest;
+	CarrierRequest.RequestingSide = AttackingSide;
+	CarrierRequest.CarrierCardId = CarrierCardId;
+	TestTrue(TEXT("Direct Carrier succeeds"),
+		DirectSession.SubmitCarrier(CarrierRequest).CarrierResult.bSuccess);
+	TestTrue(TEXT("Host Carrier succeeds"),
+		Host->SubmitCarrier(CarrierRequest).bSuccess);
+	TestEquivalent(TEXT("Carrier"));
+
+	State = Host->GetMatchSnapshot().Snapshot;
+	FName MarkerCardId;
+	TestTrue(TEXT("A legal Marker exists"),
+		FindLegalMarker(State, DefendingSide, MarkerCardId));
+	FMatchPlayAuthoritativeSubmitMarkerRequest MarkerRequest;
+	MarkerRequest.RequestingSide = DefendingSide;
+	MarkerRequest.MarkerCardId = MarkerCardId;
+	TestTrue(TEXT("Direct Marker succeeds"),
+		DirectSession.SubmitMarker(MarkerRequest).MarkerResult.bSuccess);
+	TestTrue(TEXT("Host Marker succeeds"),
+		Host->SubmitMarker(MarkerRequest).bSuccess);
+	TestEquivalent(TEXT("Marker"));
+
+	FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+	SkillRequest.RequestingSide = AttackingSide;
+	SkillRequest.SkillId = SkillId;
+	TestTrue(TEXT("Direct Skill succeeds"),
+		DirectSession.SubmitSkill(Rules, SkillRequest).SkillResult.bSuccess);
+	TestTrue(TEXT("Host Skill succeeds with current external rule set"),
+		Host->SubmitSkill(Rules, SkillRequest).bSuccess);
+	TestEquivalent(TEXT("Skill"));
+	State = Host->GetMatchSnapshot().Snapshot;
+	TestEqual(TEXT("LongShot reaches AwaitingBranchIntent"),
+		State.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent);
+
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest IntentRequest;
+	IntentRequest.RequestingSide = AttackingSide;
+	IntentRequest.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	TestTrue(TEXT("Direct BranchIntent succeeds"),
+		DirectSession.SubmitBranchIntent(IntentRequest)
+			.IntentResult.bSuccess);
+	const auto HostIntent = Host->SubmitBranchIntent(IntentRequest);
+	TestTrue(TEXT("Host BranchIntent succeeds"), HostIntent.bSuccess);
+	TestEquivalent(TEXT("BranchIntent"));
+	State = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Branch choice reaches canonical State"),
+		State.CurrentAttack.bHasSelectedAction
+			&& State.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+			&& !State.CurrentAttack.bHasResolutionSession);
+
+	const FMatchPlayState BeforeRepeatedIntent = State;
+	const auto RepeatedIntent = Host->SubmitBranchIntent(IntentRequest);
+	TestFalse(TEXT("Repeated BranchIntent is authoritatively rejected"),
+		RepeatedIntent.bSuccess);
+	TestTrue(TEXT("Repeated BranchIntent preserves exact State"),
+		AreStatesEqual(
+			Host->GetMatchSnapshot().Snapshot,
+			BeforeRepeatedIntent));
+	TestFalse(TEXT("Focused flow never starts resolution or consumes route RNG"),
+		State.CurrentAttack.bHasResolutionSession);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchHostExceptionalRoutingTest,
+	"FMCodex.LocalPlay.LocalMatchHost.05.ExceptionalRouting",
+	EAutomationTestFlags::EditorContext
+		| EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchHostExceptionalRoutingTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchHostTests;
+
+	FScopedLocalMatchTestWorld NoCarrierWorld;
+	auto* NoCarrierHost = NoCarrierWorld.GetHost();
+	TestNotNull(TEXT("No-Carrier host exists"), NoCarrierHost);
+	if (NoCarrierHost == nullptr)
+	{
+		return false;
+	}
+	TestTrue(TEXT("No-Carrier match starts"), NoCarrierHost
+		->StartNewLocalMatch(MakeInteractionInput(TEXT("NoCarrier")))
+		.bSuccess);
+	TestTrue(TEXT("No-Carrier attack begins"),
+		NoCarrierHost->BeginOrdinaryAttack(6).bSuccess);
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const FMatchPlayState State =
+			NoCarrierHost->GetMatchSnapshot().Snapshot;
+		TestTrue(TEXT("Empty deployment side can finish"),
+			NoCarrierHost->FinishDeployment(
+				State.CurrentAttack.AttackSequence,
+				State.CurrentAttack.CurrentLegalDeploymentSide).bSuccess);
+	}
+	TestEqual(TEXT("Empty deployment reaches AwaitingCarrier"),
+		NoCarrierHost->GetMatchSnapshot().Snapshot
+			.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier);
+	const auto NoCarrier = NoCarrierHost->ResolveNoLegalCarrier();
+	TestTrue(TEXT("ResolveNoLegalCarrier is Host-reachable"),
+		NoCarrier.bSuccess);
+	TestEqual(TEXT("No-Carrier preserves authoritative command kind"),
+		NoCarrier.AuthoritativeResult.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalCarrier);
+	TestFalse(TEXT("No legal Carrier canonically completes attack"),
+		NoCarrierHost->GetMatchSnapshot().Snapshot.bHasCurrentAttack);
+
+	auto ReachAwaitingMarker = [this](
+		AFMCodexLocalMatchHostGameMode& Host,
+		const FString& Prefix,
+		const EMatchPlayRelativeDeploymentZone DefenderZone,
+		EInitialTurnOrderPlayer& OutDefendingSide)
+	{
+		if (!Host.StartNewLocalMatch(MakeInteractionInput(Prefix)).bSuccess
+			|| !Host.BeginOrdinaryAttack(6).bSuccess)
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
+		if (!FindLegalDeployment(
+			Host.GetMatchSnapshot().Snapshot,
+			EMatchPlayRelativeDeploymentZone::Forward,
+			Request)
+			|| !Host.DeployOrdinary(Request).bSuccess)
+		{
+			return false;
+		}
+		if (!FindLegalDeployment(
+			Host.GetMatchSnapshot().Snapshot,
+			DefenderZone,
+			Request)
+			|| !Host.DeployOrdinary(Request).bSuccess)
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < 2; ++Index)
+		{
+			const FMatchPlayState State = Host.GetMatchSnapshot().Snapshot;
+			if (!Host.FinishDeployment(
+				State.CurrentAttack.AttackSequence,
+				State.CurrentAttack.CurrentLegalDeploymentSide).bSuccess)
+			{
+				return false;
+			}
+		}
+		const FMatchPlayState State = Host.GetMatchSnapshot().Snapshot;
+		const EInitialTurnOrderPlayer AttackingSide =
+			State.RuntimeState.CurrentAttackingPlayer;
+		OutDefendingSide = OtherPlayer(AttackingSide);
+		FName CarrierCardId;
+		if (!FindLegalCarrier(State, AttackingSide, CarrierCardId))
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeSubmitCarrierRequest CarrierRequest;
+		CarrierRequest.RequestingSide = AttackingSide;
+		CarrierRequest.CarrierCardId = CarrierCardId;
+		return Host.SubmitCarrier(CarrierRequest).bSuccess
+			&& Host.GetMatchSnapshot().Snapshot.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::AwaitingMarker;
+	};
+
+	FScopedLocalMatchTestWorld NoMarkerWorld;
+	auto* NoMarkerHost = NoMarkerWorld.GetHost();
+	EInitialTurnOrderPlayer NoMarkerDefender =
+		EInitialTurnOrderPlayer::None;
+	TestNotNull(TEXT("No-Marker host exists"), NoMarkerHost);
+	if (NoMarkerHost == nullptr)
+	{
+		return false;
+	}
+	TestTrue(TEXT("Midfield defender flow reaches AwaitingMarker"),
+		ReachAwaitingMarker(
+			*NoMarkerHost,
+			TEXT("NoMarker"),
+			EMatchPlayRelativeDeploymentZone::Midfield,
+			NoMarkerDefender));
+	const auto NoMarker = NoMarkerHost->ResolveNoLegalMarker();
+	TestTrue(TEXT("ResolveNoLegalMarker is Host-reachable"),
+		NoMarker.bSuccess);
+	TestFalse(TEXT("No legal Marker canonically completes attack"),
+		NoMarkerHost->GetMatchSnapshot().Snapshot.bHasCurrentAttack);
+
+	FScopedLocalMatchTestWorld DeclineWorld;
+	auto* DeclineHost = DeclineWorld.GetHost();
+	EInitialTurnOrderPlayer DeclineDefender =
+		EInitialTurnOrderPlayer::None;
+	TestNotNull(TEXT("Decline host exists"), DeclineHost);
+	if (DeclineHost == nullptr)
+	{
+		return false;
+	}
+	TestTrue(TEXT("Backfield defender flow reaches AwaitingMarker"),
+		ReachAwaitingMarker(
+			*DeclineHost,
+			TEXT("DeclineMarker"),
+			EMatchPlayRelativeDeploymentZone::Backfield,
+			DeclineDefender));
+	FMatchPlayAuthoritativeDeclineMarkerRequest DeclineRequest;
+	DeclineRequest.RequestingSide = DeclineDefender;
+	const auto Decline = DeclineHost->DeclineMarker(DeclineRequest);
+	TestTrue(TEXT("Player DeclineMarker is Host-reachable"),
+		Decline.bSuccess);
+	TestFalse(TEXT("Marker decline canonically completes attack"),
+		DeclineHost->GetMatchSnapshot().Snapshot.bHasCurrentAttack);
 	return true;
 }
 
