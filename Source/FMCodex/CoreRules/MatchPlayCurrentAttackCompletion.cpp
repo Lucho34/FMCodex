@@ -673,6 +673,139 @@ FMatchPlayCurrentAttackCompletion::CompleteCrossResolution(
 }
 
 FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion::CompletePassControlResolution(
+	const FMatchPlayState& BeforeState,
+	const FMatchPlayPassControlResolutionTerminalCapability& Capability)
+{
+	// The Goal effect and the common terminal mutation remain on one local
+	// working State so a later Completion failure cannot expose a partial Goal.
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+
+	FMatchPlayCurrentAttackCompletionResult Result;
+	Result.BeforeState = BeforeState;
+	Result.AfterState = BeforeState;
+
+	using ESource = EMatchPlayPassControlTerminalSource;
+	const ESource Source = Capability.GetSource();
+	const bool bGoalSource =
+		Source == ESource::PassAdvanceFormulaGoal
+		|| Source == ESource::DribbleAdvanceFormulaGoal
+		|| Source == ESource::RunAdvanceFormulaGoal;
+	if (Source == ESource::None)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::UnsupportedCapabilitySource,
+			TEXT("PassControl completion requires a terminal source."));
+		return Result;
+	}
+	if (Capability.IsGoal() != bGoalSource)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityReason,
+			TEXT("PassControl terminal source and Goal effect are inconsistent."));
+		return Result;
+	}
+
+	EInitialTurnOrderPlayer Attacker = EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer Defender = EInitialTurnOrderPlayer::None;
+	if (!ValidateCommonOuter(
+		BeforeState,
+		Capability.GetAttackSequence(),
+		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution,
+		Result,
+		Attacker,
+		Defender))
+	{
+		return Result;
+	}
+	if (!BeforeState.CurrentAttack.bHasResolutionSession)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			TEXT("PassControl completion requires a Resolution Session."));
+		return Result;
+	}
+	const auto SessionValidation =
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			BeforeState);
+	if (!SessionValidation.bIsCanonical
+		|| BeforeState.CurrentAttack.ResolutionSession.Stage
+			!= EMatchPlayCurrentAttackResolutionStage::RouteResolved
+		|| !BeforeState.CurrentAttack.ResolutionSession.bHasActualBranch
+		|| BeforeState.CurrentAttack.ResolutionSession.ActualBranch.ActionType
+			!= ESkillRuleType::PassControl)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			SessionValidation.bIsCanonical
+				? TEXT("PassControl capability requires a resolved PassControl branch.")
+				: SessionValidation.ErrorMessage);
+		return Result;
+	}
+	const EMatchPlayPassControlActualBranch ActualBranch =
+		BeforeState.CurrentAttack.ResolutionSession.ActualBranch.PassControl;
+	const bool bPassAdvanceSource =
+		Source == ESource::PassAdvanceFormulaGoal
+		|| Source == ESource::PassAdvanceFormulaMiss;
+	const bool bDribbleAdvanceSource =
+		Source == ESource::DribbleAdvanceFormulaGoal
+		|| Source == ESource::DribbleAdvanceFormulaMiss;
+	const bool bRunAdvanceSource =
+		Source == ESource::RunAdvanceFormulaGoal
+		|| Source == ESource::RunAdvanceFormulaMiss;
+	const bool bSourceMatchesBranch =
+		(bPassAdvanceSource
+			&& ActualBranch == EMatchPlayPassControlActualBranch::PassAdvance)
+		|| (bDribbleAdvanceSource
+			&& ActualBranch == EMatchPlayPassControlActualBranch::DribbleAdvance)
+		|| (bRunAdvanceSource
+			&& ActualBranch == EMatchPlayPassControlActualBranch::RunAdvance);
+	if (!bSourceMatchesBranch)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode::InvalidCapabilityProvenance,
+			TEXT("PassControl terminal source does not match ActualBranch."));
+		return Result;
+	}
+	if (!ValidateScoreState(BeforeState, Result))
+	{
+		return Result;
+	}
+
+	FMatchPlayState WorkingState = BeforeState;
+	if (Capability.IsGoal())
+	{
+		Result.GoalResolveResult = FGoalResolver::RecordGoal(
+			WorkingState.RuntimeState,
+			Attacker);
+		if (!Result.GoalResolveResult.bSuccess)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackCompletionErrorCode::GoalResolutionFailed,
+				Result.GoalResolveResult.ErrorMessage);
+			return Result;
+		}
+		WorkingState.RuntimeState =
+			Result.GoalResolveResult.UpdatedRuntimeState;
+		Result.ScoringSide = Attacker;
+	}
+
+	return ApplyCurrentAttackTerminalMutation(
+		BeforeState,
+		MoveTemp(WorkingState),
+		Attacker,
+		Defender,
+		MoveTemp(Result));
+}
+
+FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion::CompleteThroughBallResolution(
 	const FMatchPlayState& BeforeState,
 	const FMatchPlayThroughBallResolutionTerminalCapability& Capability)
