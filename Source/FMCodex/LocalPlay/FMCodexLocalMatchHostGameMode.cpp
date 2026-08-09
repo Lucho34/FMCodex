@@ -13,11 +13,28 @@ namespace FMCodexLocalMatchHost
 			? RuntimeEnvelope.ErrorMessage
 			: DomainErrorMessage;
 	}
+
+	int32 GenerateLocalMatchSeed()
+	{
+		const FGuid MatchGuid = FGuid::NewGuid();
+		return static_cast<int32>(
+			MatchGuid.A ^ MatchGuid.B ^ MatchGuid.C ^ MatchGuid.D);
+	}
+}
+
+AFMCodexLocalMatchHostGameMode::FLocalMatchRuntime::FLocalMatchRuntime(
+	const int32 Seed)
+	: D6Provider(Seed)
+	, AuthoritativeSession(
+		D6Provider,
+		D6Provider,
+		FSkillRuleSnapshotSet())
+{
 }
 
 bool AFMCodexLocalMatchHostGameMode::HasActiveLocalMatch() const
 {
-	return AuthoritativeSession.IsValid();
+	return ActiveMatchRuntime.IsValid();
 }
 
 FFMCodexStartNewLocalMatchResult
@@ -27,9 +44,10 @@ AFMCodexLocalMatchHostGameMode::StartNewLocalMatch(
 	using namespace FMCodexLocalMatchHost;
 
 	FFMCodexStartNewLocalMatchResult Result;
-	TUniquePtr<FMatchPlayAuthoritativeSession> CandidateSession =
-		MakeUnique<FMatchPlayAuthoritativeSession>();
-	Result.AuthoritativeResult = CandidateSession->InitializeMatch(Input);
+	TUniquePtr<FLocalMatchRuntime> CandidateRuntime =
+		MakeUnique<FLocalMatchRuntime>(GenerateLocalMatchSeed());
+	Result.AuthoritativeResult =
+		CandidateRuntime->AuthoritativeSession.InitializeMatch(Input);
 	Result.bSuccess =
 		Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
@@ -44,8 +62,8 @@ AFMCodexLocalMatchHostGameMode::StartNewLocalMatch(
 		return Result;
 	}
 
-	Result.bReplacedExistingMatch = AuthoritativeSession.IsValid();
-	AuthoritativeSession = MoveTemp(CandidateSession);
+	Result.bReplacedExistingMatch = ActiveMatchRuntime.IsValid();
+	ActiveMatchRuntime = MoveTemp(CandidateRuntime);
 	return Result;
 }
 
@@ -55,7 +73,7 @@ AFMCodexLocalMatchHostGameMode::GetMatchSnapshot() const
 	using namespace FMCodexLocalMatchHost;
 
 	FFMCodexLocalMatchSnapshotResult Result;
-	if (!AuthoritativeSession.IsValid())
+	if (!ActiveMatchRuntime.IsValid())
 	{
 		Result.ErrorCode =
 			EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
@@ -63,7 +81,8 @@ AFMCodexLocalMatchHostGameMode::GetMatchSnapshot() const
 		return Result;
 	}
 
-	Result.Snapshot = AuthoritativeSession->GetStateSnapshot();
+	Result.Snapshot =
+		ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot();
 	Result.bSuccess = true;
 	return Result;
 }
@@ -75,7 +94,7 @@ AFMCodexLocalMatchHostGameMode::BeginOrdinaryAttack(
 	using namespace FMCodexLocalMatchHost;
 
 	FFMCodexLocalMatchBeginOrdinaryAttackResult Result;
-	if (!AuthoritativeSession.IsValid())
+	if (!ActiveMatchRuntime.IsValid())
 	{
 		Result.ErrorCode =
 			EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
@@ -84,7 +103,8 @@ AFMCodexLocalMatchHostGameMode::BeginOrdinaryAttack(
 	}
 
 	Result.AuthoritativeResult =
-		AuthoritativeSession->BeginOrdinaryAttack(ActionPoint);
+		ActiveMatchRuntime->AuthoritativeSession.BeginOrdinaryAttack(
+			ActionPoint);
 	Result.bSuccess =
 		Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess

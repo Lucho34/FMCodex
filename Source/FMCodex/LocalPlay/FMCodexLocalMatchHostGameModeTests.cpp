@@ -196,7 +196,11 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		Source));
 	TestEqual(TEXT("Host owns exactly one authoritative Session"),
 		CountOccurrences(Header,
-			TEXT("TUniquePtr<FMatchPlayAuthoritativeSession> AuthoritativeSession;")),
+			TEXT("FMatchPlayAuthoritativeSession AuthoritativeSession;")),
+		1);
+	TestEqual(TEXT("Host owns exactly one provider composition"),
+		CountOccurrences(Header,
+			TEXT("FFMCodexLocalMatchD6Provider D6Provider;")),
 		1);
 	TestFalse(TEXT("No public GetSession escape exists"),
 		Header.Contains(TEXT("GetSession")));
@@ -217,15 +221,20 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 			Header.Contains(CacheName) || Source.Contains(CacheName));
 	}
 	TestEqual(TEXT("InitializeMatch has one host delegation"),
-		CountOccurrences(Source, TEXT("CandidateSession->InitializeMatch(Input)")),
+		CountOccurrences(Source,
+			TEXT("CandidateRuntime->AuthoritativeSession.InitializeMatch(Input)")),
 		1);
 	TestEqual(TEXT("BeginOrdinaryAttack has one host delegation"),
 		CountOccurrences(Source,
-			TEXT("AuthoritativeSession->BeginOrdinaryAttack(ActionPoint)")),
+			TEXT("ActiveMatchRuntime->AuthoritativeSession.BeginOrdinaryAttack(")),
 		1);
 	TestEqual(TEXT("Snapshot has one host delegation"),
 		CountOccurrences(Source,
-			TEXT("AuthoritativeSession->GetStateSnapshot()")),
+			TEXT("ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot()")),
+		1);
+	TestEqual(TEXT("Provider and Session adopt through one runtime bundle"),
+		CountOccurrences(Source,
+			TEXT("ActiveMatchRuntime = MoveTemp(CandidateRuntime);")),
 		1);
 	for (const TCHAR* ForbiddenWrite : {
 		TEXT("RuntimeState.Score ="),

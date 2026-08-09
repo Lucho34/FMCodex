@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 
+#include "FMCodexLocalMatchD6Provider.h"
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
 
 #include "FMCodexLocalMatchHostGameMode.generated.h"
@@ -61,5 +62,13 @@ public:
 		int32 ActionPoint);
 
 private:
-	TUniquePtr<FMatchPlayAuthoritativeSession> AuthoritativeSession;
+	struct FLocalMatchRuntime final
+	{
+		explicit FLocalMatchRuntime(int32 Seed);
+
+		FFMCodexLocalMatchD6Provider D6Provider;
+		FMatchPlayAuthoritativeSession AuthoritativeSession;
+	};
+
+	TUniquePtr<FLocalMatchRuntime> ActiveMatchRuntime;
 };
