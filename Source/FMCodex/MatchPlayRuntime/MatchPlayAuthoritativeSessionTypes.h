@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "../CoreRules/MatchPlayBeginOrdinaryAttack.h"
+#include "../CoreRules/MatchPlayCarrierNoSelectionNoGoal.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator.h"
@@ -90,7 +91,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ApplyCrossTerminalResolution,
 	ApplyPassControlTerminalResolution,
 	ApplyShotTerminalResolution,
-	DeployGoalkeeper
+	DeployGoalkeeper,
+	ResolveNoLegalCarrier
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -252,6 +254,12 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackCarrierSelectionWriterResult CarrierResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveNoLegalCarrierResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayResolveNoLegalCarrierResult ResolutionResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeSubmitMarkerResult

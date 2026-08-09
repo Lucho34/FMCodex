@@ -35,6 +35,9 @@ public:
 	FMatchPlayAuthoritativeSubmitCarrierResult SubmitCarrier(
 		const FMatchPlayAuthoritativeSubmitCarrierRequest& Request);
 
+	FMatchPlayAuthoritativeResolveNoLegalCarrierResult
+	ResolveNoLegalCarrier();
+
 	FMatchPlayAuthoritativeSubmitMarkerResult SubmitMarker(
 		const FMatchPlayAuthoritativeSubmitMarkerRequest& Request);
 

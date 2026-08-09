@@ -10,6 +10,7 @@
 #include "MatchPlayCurrentAttackSelectionStateValidator.h"
 #include "MatchPlayThroughBallResolutionTerminalCapability.h"
 #include "MatchPlayMarkerNoSelectionGoalCapability.h"
+#include "MatchPlayNoLegalCarrierCompletionCapability.h"
 #include "MatchPlayRunnerNoSelectionNoGoalCapability.h"
 #include "MatchPlaySkillNoSelectionNoGoalCapability.h"
 #include "MatchResultResolver.h"
@@ -135,6 +136,7 @@ class FMCODEX_API FMatchPlayCurrentAttackCompletion final
 {
 private:
 	friend class FMatchPlayMarkerDecline;
+	friend class FMatchPlayResolveNoLegalCarrier;
 	friend class FMatchPlayResolveNoLegalMarker;
 	friend class FMatchPlayResolveNoLegalSkill;
 	friend class FMatchPlayResolveNoLegalRunner;
@@ -154,6 +156,10 @@ private:
 	static FMatchPlayCurrentAttackCompletionResult CompleteMarkerGoal(
 		const FMatchPlayState& BeforeState,
 		const FMatchPlayMarkerNoSelectionGoalCapability& Capability);
+
+	static FMatchPlayCurrentAttackCompletionResult CompleteCarrierNoGoal(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayNoLegalCarrierCompletionCapability& Capability);
 
 	static FMatchPlayCurrentAttackCompletionResult CompleteSkillNoGoal(
 		const FMatchPlayState& BeforeState,

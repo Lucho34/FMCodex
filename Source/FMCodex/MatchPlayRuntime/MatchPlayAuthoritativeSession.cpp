@@ -354,6 +354,36 @@ FMatchPlayAuthoritativeSession::SubmitCarrier(
 		});
 }
 
+FMatchPlayAuthoritativeResolveNoLegalCarrierResult
+FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveNoLegalCarrierResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalCarrier,
+		true,
+		AttackSequence,
+		[AttackSequence](
+			FMatchPlayAuthoritativeResolveNoLegalCarrierResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayResolveNoLegalCarrier::Resolve(BeforeState);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeSubmitMarkerResult
 FMatchPlayAuthoritativeSession::SubmitMarker(
 	const FMatchPlayAuthoritativeSubmitMarkerRequest& Request)

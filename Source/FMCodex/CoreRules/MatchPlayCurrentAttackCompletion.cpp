@@ -134,6 +134,10 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			FString StageErrorMessage;
 			switch (RequiredStage)
 			{
+			case EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier:
+				StageErrorMessage =
+					TEXT("Carrier no-selection completion requires AwaitingCarrier stage.");
+				break;
 			case EMatchPlayCurrentAttackSelectionStage::AwaitingMarker:
 				StageErrorMessage =
 					TEXT("Marker no-selection completion requires AwaitingMarker stage.");
@@ -225,6 +229,104 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 				EMatchPlayCurrentAttackCompletionErrorCode
 					::InvalidScoreState,
 				TEXT("Match scores cannot be negative."));
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidateCarrierAvailabilityProvenance(
+		const FMatchPlayState& BeforeState,
+		const FMatchPlayNoLegalCarrierCompletionCapability& Capability,
+		const EInitialTurnOrderPlayer Attacker,
+		FString& OutErrorMessage)
+	{
+		const FMatchPlayCurrentAttackCarrierSelectionAvailabilityResult&
+			Availability = Capability.GetAuthorityResult();
+		if (!Availability.bQuerySucceeded)
+		{
+			OutErrorMessage =
+				TEXT("Carrier capability availability query did not succeed.");
+			return false;
+		}
+		if (Availability.bHasGlobalBlockingLegalityResult)
+		{
+			OutErrorMessage =
+				TEXT("Carrier capability availability contains a global blocker.");
+			return false;
+		}
+		if (Availability.AttackSequence != Capability.GetAttackSequence())
+		{
+			OutErrorMessage =
+				TEXT("Carrier capability and availability sequences do not match.");
+			return false;
+		}
+		if (Availability.RequestingSide != Attacker)
+		{
+			OutErrorMessage =
+				TEXT("Carrier capability availability was not queried for the current attacker.");
+			return false;
+		}
+
+		TArray<const FMatchPlayDeploymentPlacement*> AttackerPlacements;
+		for (const FMatchPlayDeploymentPlacement& Placement :
+			BeforeState.CurrentAttack.DeploymentPlacements)
+		{
+			if (Placement.PlayerSide == Attacker)
+			{
+				AttackerPlacements.Add(&Placement);
+			}
+		}
+		if (Availability.Candidates.Num() != AttackerPlacements.Num())
+		{
+			OutErrorMessage =
+				TEXT("Carrier capability candidates do not match attacker placements.");
+			return false;
+		}
+
+		bool bAnyLegalCandidate = false;
+		for (int32 Index = 0; Index < AttackerPlacements.Num(); ++Index)
+		{
+			const FMatchPlayCurrentAttackCarrierSelectionCandidateAvailability&
+				Candidate = Availability.Candidates[Index];
+			const FMatchPlayDeploymentPlacement& Placement =
+				*AttackerPlacements[Index];
+			if (Candidate.CarrierCardId != Placement.CardId)
+			{
+				OutErrorMessage =
+					TEXT("Carrier capability candidate order or identity is invalid.");
+				return false;
+			}
+			const FMatchPlayCurrentAttackCarrierSelectionRequest& Request =
+				Candidate.LegalityResult.Request;
+			if (Request.AttackSequence != Capability.GetAttackSequence()
+				|| Request.RequestingSide != Attacker
+				|| Request.CarrierCardId != Candidate.CarrierCardId)
+			{
+				OutErrorMessage =
+					TEXT("Carrier capability candidate request provenance is invalid.");
+				return false;
+			}
+			if (Candidate.LegalityResult.bIsLegal
+				!= (Candidate.LegalityResult.ErrorCode
+					== EMatchPlayCurrentAttackCarrierSelectionErrorCode::None))
+			{
+				OutErrorMessage =
+					TEXT("Carrier capability candidate legality is inconsistent.");
+				return false;
+			}
+			bAnyLegalCandidate =
+				bAnyLegalCandidate || Candidate.LegalityResult.bIsLegal;
+		}
+		if (Availability.bCanSelectAnyCarrier != bAnyLegalCandidate)
+		{
+			OutErrorMessage =
+				TEXT("Carrier capability availability summary is inconsistent.");
+			return false;
+		}
+		if (Availability.bCanSelectAnyCarrier)
+		{
+			OutErrorMessage =
+				TEXT("No-legal Carrier capability contains a legal Carrier.");
 			return false;
 		}
 		return true;
@@ -1084,6 +1186,57 @@ FMatchPlayCurrentAttackCompletion::CompleteThroughBallResolution(
 	return ApplyCurrentAttackTerminalMutation(
 		BeforeState,
 		MoveTemp(WorkingState),
+		Attacker,
+		Defender,
+		MoveTemp(Result));
+}
+
+FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion::CompleteCarrierNoGoal(
+	const FMatchPlayState& BeforeState,
+	const FMatchPlayNoLegalCarrierCompletionCapability& Capability)
+{
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+
+	FMatchPlayCurrentAttackCompletionResult Result;
+	Result.BeforeState = BeforeState;
+	Result.AfterState = BeforeState;
+
+	EInitialTurnOrderPlayer Attacker = EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer Defender = EInitialTurnOrderPlayer::None;
+	if (!ValidateCommonOuter(
+		BeforeState,
+		Capability.GetAttackSequence(),
+		EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier,
+		Result,
+		Attacker,
+		Defender))
+	{
+		return Result;
+	}
+
+	FString CapabilityProvenanceError;
+	if (!ValidateCarrierAvailabilityProvenance(
+		BeforeState,
+		Capability,
+		Attacker,
+		CapabilityProvenanceError))
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::InvalidCapabilityProvenance,
+			CapabilityProvenanceError);
+		return Result;
+	}
+	if (!ValidateScoreState(BeforeState, Result))
+	{
+		return Result;
+	}
+
+	return ApplyCurrentAttackTerminalMutation(
+		BeforeState,
+		BeforeState,
 		Attacker,
 		Defender,
 		MoveTemp(Result));

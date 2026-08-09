@@ -6101,11 +6101,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All forty-one mutations use the gate"),
+	TestEqual(TEXT("All forty-two mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		41);
+		42);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7438,6 +7438,345 @@ bool FMatchPlayAuthoritativeSessionCarrierDeterminismTest::RunTest(
 	SessionB.SubmitCarrier(MakeCarrierRequest(TraceB));
 	TestTrue(TEXT("B Carrier cannot change A"),
 		AreStatesEqual(SessionA.GetStateSnapshot(), ABeforeB));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest,
+	"17A.ResolveNoLegalCarrierCompletionClosure")
+
+bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using FNoArgCommand =
+		FMatchPlayAuthoritativeResolveNoLegalCarrierResult
+		(FMatchPlayAuthoritativeSession::*)();
+	TestTrue(TEXT("ResolveNoLegalCarrier is exactly one no-argument command"),
+		(std::is_same_v<
+			decltype(&FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier),
+			FNoArgCommand>));
+	TestFalse(TEXT("Capability cannot be default constructed"),
+		std::is_default_constructible_v<
+			FMatchPlayNoLegalCarrierCompletionCapability>);
+	TestFalse(TEXT("Capability cannot be copied"),
+		std::is_copy_constructible_v<
+			FMatchPlayNoLegalCarrierCompletionCapability>);
+	TestFalse(TEXT("Capability cannot be moved"),
+		std::is_move_constructible_v<
+			FMatchPlayNoLegalCarrierCompletionCapability>);
+
+	FString SessionHeader;
+	FString SessionSource;
+	FString SessionTypes;
+	FString ResolverSource;
+	FString CapabilityHeader;
+	FString CompletionSource;
+	TestTrue(TEXT("No-legal Carrier Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		SessionHeader));
+	TestTrue(TEXT("No-legal Carrier Session source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		SessionSource));
+	TestTrue(TEXT("No-legal Carrier Session types load"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		SessionTypes));
+	TestTrue(TEXT("No-legal Carrier resolver source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCarrierNoSelectionNoGoal.cpp"),
+		ResolverSource));
+	TestTrue(TEXT("No-legal Carrier capability header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayNoLegalCarrierCompletionCapability.h"),
+		CapabilityHeader));
+	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
+		CompletionSource));
+	TestEqual(TEXT("All forty-two commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 42);
+	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
+		CountOccurrences(SessionSource,
+			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
+	TestFalse(TEXT("No public no-legal Carrier request type exists"),
+		SessionTypes.Contains(
+			TEXT("FMatchPlayAuthoritativeResolveNoLegalCarrierRequest")));
+	TestEqual(TEXT("Resolver uses canonical Carrier availability once"),
+		CountOccurrences(ResolverSource,
+			TEXT("FMatchPlayCurrentAttackCarrierSelectionAvailability::Query(")),
+		1);
+	TestFalse(TEXT("Resolver does not enumerate deployment placements"),
+		ResolverSource.Contains(TEXT("DeploymentPlacements")));
+	for (const TCHAR* Forbidden : {
+		TEXT("RollD6"), TEXT("Formula"), TEXT("FGoalResolver"),
+		TEXT("ResolutionSession") })
+	{
+		TestFalse(*FString::Printf(
+			TEXT("No-legal Carrier resolver excludes %s"), Forbidden),
+			ResolverSource.Contains(Forbidden));
+	}
+	TestTrue(TEXT("Capability uses a private resolver-only issuer tag"),
+		CapabilityHeader.Contains(TEXT("FResolveNoLegalCarrierIssuerTag"))
+			&& CapabilityHeader.Contains(TEXT("private:")));
+	TestEqual(TEXT("GoalResolver production callsites remain five"),
+		CountOccurrences(CompletionSource, TEXT("FGoalResolver::RecordGoal(")), 5);
+	TestEqual(TEXT("Common terminal mutation implementation remains singular"),
+		CountOccurrences(
+			CompletionSource,
+			TEXT("::ApplyCurrentAttackTerminalMutation(")), 1);
+
+	auto ScoreFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.Score
+			: State.RuntimeState.PlayerBState.Score;
+	};
+	auto UsedAttacksFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.UsedAttackCount
+			: State.RuntimeState.PlayerBState.UsedAttackCount;
+	};
+	auto BuildEmptyAwaitingCarrier = [this](
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix)
+	{
+		const auto Initialize = Session.InitializeMatch(MakeValidInput(Prefix));
+		const auto Begin = Session.BeginOrdinaryAttack(6);
+		if (!Initialize.OpeningResult.bSuccess || !Begin.BeginResult.bSuccess)
+		{
+			return false;
+		}
+		FMatchPlayState State = Session.GetStateSnapshot();
+		const auto FirstFinish = Session.FinishDeployment(
+			State.CurrentAttack.AttackSequence,
+			State.CurrentAttack.CurrentLegalDeploymentSide);
+		State = Session.GetStateSnapshot();
+		const auto SecondFinish = Session.FinishDeployment(
+			State.CurrentAttack.AttackSequence,
+			State.CurrentAttack.CurrentLegalDeploymentSide);
+		State = Session.GetStateSnapshot();
+		return FirstFinish.FinishResult.bSuccess
+			&& SecondFinish.FinishResult.bSuccess
+			&& State.bHasCurrentAttack
+			&& State.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier
+			&& State.CurrentAttack.DeploymentPlacements.IsEmpty();
+	};
+
+	FMatchPlayAuthoritativeSession Uninitialized;
+	const FMatchPlayState DefaultState;
+	const auto UninitializedResult = Uninitialized.ResolveNoLegalCarrier();
+	TestFalse(TEXT("Uninitialized command is runtime rejected"),
+		UninitializedResult.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized command has exact runtime error"),
+		UninitializedResult.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+	TestTrue(TEXT("Uninitialized command preserves default State"),
+		AreStatesEqual(Uninitialized.GetStateSnapshot(), DefaultState));
+
+	FMatchPlayAuthoritativeSession WrongStage;
+	WrongStage.InitializeMatch(MakeValidInput(TEXT("NoCarrierWrongStage")));
+	WrongStage.BeginOrdinaryAttack(6);
+	const FMatchPlayState WrongStageBefore = WrongStage.GetStateSnapshot();
+	const auto WrongStageResult = WrongStage.ResolveNoLegalCarrier();
+	TestEqual(TEXT("Wrong stage fails through availability"),
+		WrongStageResult.ResolutionResult.ErrorCode,
+		EMatchPlayCarrierNoSelectionNoGoalErrorCode::AvailabilityQueryFailed);
+	TestEqual(TEXT("Wrong stage executes Completion zero times"),
+		WrongStageResult.ResolutionResult.CompletionExecutionCount, 0);
+	TestNoAdoptDomainFailure(*this, TEXT("Wrong-stage no-legal Carrier"),
+		WrongStageResult.RuntimeEnvelope, WrongStageBefore);
+	TestTrue(TEXT("Wrong stage preserves authoritative State"),
+		AreStatesEqual(WrongStage.GetStateSnapshot(), WrongStageBefore));
+
+	FMatchPlayAuthoritativeSession LegalCarrierSession;
+	FReachabilityTrace LegalTrace;
+	TestTrue(TEXT("Legal-Carrier fixture reaches AwaitingCarrier"),
+		BuildToAwaitingCarrier(
+			LegalCarrierSession, TEXT("NoCarrierLegalExists"), LegalTrace));
+	const FMatchPlayState LegalBefore = LegalCarrierSession.GetStateSnapshot();
+	const auto LegalRejected = LegalCarrierSession.ResolveNoLegalCarrier();
+	TestEqual(TEXT("Legal Carrier blocks system completion"),
+		LegalRejected.ResolutionResult.ErrorCode,
+		EMatchPlayCarrierNoSelectionNoGoalErrorCode::LegalCarrierExists);
+	TestEqual(TEXT("Legal Carrier rejection executes Completion zero times"),
+		LegalRejected.ResolutionResult.CompletionExecutionCount, 0);
+	TestNoAdoptDomainFailure(*this, TEXT("Legal Carrier exists"),
+		LegalRejected.RuntimeEnvelope, LegalBefore);
+	TestTrue(TEXT("Legal Carrier rejection preserves State"),
+		AreStatesEqual(LegalCarrierSession.GetStateSnapshot(), LegalBefore));
+	const auto CarrierStillWorks = LegalCarrierSession.SubmitCarrier(
+		MakeCarrierRequest(LegalTrace));
+	TestTrue(TEXT("SubmitCarrier remains usable after rejected system command"),
+		CarrierStillWorks.CarrierResult.bSuccess);
+
+	InitialRouteFixtures::FQueueRollProvider InitialA;
+	InitialRouteFixtures::FQueueRollProvider InitialB;
+	FQueuePostRouteRollProvider PostA;
+	FQueuePostRouteRollProvider PostB;
+	const FSkillRuleSnapshotSet EmptyRules;
+	FMatchPlayAuthoritativeSession SessionA(InitialA, PostA, EmptyRules);
+	FMatchPlayAuthoritativeSession SessionB(InitialB, PostB, EmptyRules);
+	TestTrue(TEXT("Public no-player flow A reaches AwaitingCarrier"),
+		BuildEmptyAwaitingCarrier(SessionA, TEXT("NoCarrierDeterministic")));
+	TestTrue(TEXT("Public no-player flow B reaches AwaitingCarrier"),
+		BuildEmptyAwaitingCarrier(SessionB, TEXT("NoCarrierDeterministic")));
+	const FMatchPlayState BeforeA = SessionA.GetStateSnapshot();
+	const FMatchPlayState BeforeB = SessionB.GetStateSnapshot();
+	TestTrue(TEXT("Identical public dead ends start equal"),
+		AreStatesEqual(BeforeA, BeforeB));
+	TestFalse(TEXT("No ResolutionSession exists before Carrier closure"),
+		BeforeA.CurrentAttack.bHasResolutionSession);
+	const EInitialTurnOrderPlayer Attacker =
+		BeforeA.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
+	const int32 AttackerScoreBefore = ScoreFor(BeforeA, Attacker);
+	const int32 DefenderScoreBefore = ScoreFor(BeforeA, Defender);
+	const int32 AttackerUsedBefore = UsedAttacksFor(BeforeA, Attacker);
+	const int32 DefenderUsedBefore = UsedAttacksFor(BeforeA, Defender);
+	const int32 InitialCallsBefore = InitialA.GetCallCount();
+	const int32 PostCallsBefore = PostA.GetCallCount();
+	const FMatchPlayState BBeforeA = SessionB.GetStateSnapshot();
+
+	const auto ClosedA = SessionA.ResolveNoLegalCarrier();
+	const FMatchPlayState AfterA = SessionA.GetStateSnapshot();
+	TestTrue(TEXT("No-legal Carrier command succeeds exactly once"),
+		ClosedA.RuntimeEnvelope.bAccepted
+			&& ClosedA.RuntimeEnvelope.bDomainSuccess
+			&& ClosedA.ResolutionResult.bSuccess
+			&& ClosedA.ResolutionResult.CompletionResult.bSuccess);
+	TestEqual(TEXT("No-legal Carrier command kind"),
+		ClosedA.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalCarrier);
+	TestEqual(TEXT("No-legal Carrier Completion execution count"),
+		ClosedA.ResolutionResult.CompletionExecutionCount, 1);
+	TestFalse(TEXT("No-legal Carrier produces no GoalResolver success"),
+		ClosedA.ResolutionResult.CompletionResult.GoalResolveResult.bSuccess);
+	TestEqual(TEXT("Attacker score remains unchanged"),
+		ScoreFor(AfterA, Attacker) - AttackerScoreBefore, 0);
+	TestEqual(TEXT("Defender score remains unchanged"),
+		ScoreFor(AfterA, Defender) - DefenderScoreBefore, 0);
+	TestEqual(TEXT("Attacker opportunity advances exactly once"),
+		UsedAttacksFor(AfterA, Attacker) - AttackerUsedBefore, 1);
+	TestEqual(TEXT("Defender opportunity does not advance"),
+		UsedAttacksFor(AfterA, Defender) - DefenderUsedBefore, 0);
+	TestFalse(TEXT("No-legal Carrier clears CurrentAttack"),
+		AfterA.bHasCurrentAttack);
+	TestTrue(TEXT("No-legal Carrier resets CurrentAttack"),
+		AreReflectedValuesEqual(
+			AfterA.CurrentAttack, FMatchPlayCurrentAttackState()));
+	TestEqual(TEXT("No-legal Carrier installs canonical next attacker"),
+		AfterA.RuntimeState.CurrentAttackingPlayer,
+		ClosedA.ResolutionResult.CompletionResult.NextAttackingPlayer);
+	TestTrue(TEXT("Match-end resolver is delegated"),
+		ClosedA.ResolutionResult.CompletionResult.MatchEndResolveResult.bSuccess);
+	TestEqual(TEXT("Match-end flag comes from resolver"),
+		ClosedA.ResolutionResult.CompletionResult.bMatchEnded,
+		ClosedA.ResolutionResult.CompletionResult.MatchEndResolveResult.bIsMatchEnded);
+	if (ClosedA.ResolutionResult.CompletionResult.bMatchEnded)
+	{
+		TestTrue(TEXT("Match-result resolver is delegated at match end"),
+			ClosedA.ResolutionResult.CompletionResult
+				.MatchResultResolveResult.bSuccess);
+	}
+	TestTrue(TEXT("Session adopts exact Completion State"),
+		AreStatesEqual(AfterA,
+			ClosedA.ResolutionResult.CompletionResult.AfterState));
+	TestEqual(TEXT("No initial-route RNG is consumed"),
+		InitialA.GetCallCount() - InitialCallsBefore, 0);
+	TestEqual(TEXT("No post-route RNG is consumed"),
+		PostA.GetCallCount() - PostCallsBefore, 0);
+	TestTrue(TEXT("Resolving Session A cannot mutate Session B"),
+		AreStatesEqual(SessionB.GetStateSnapshot(), BBeforeA));
+
+	const auto ClosedB = SessionB.ResolveNoLegalCarrier();
+	const FMatchPlayState AfterB = SessionB.GetStateSnapshot();
+	TestTrue(TEXT("Identical no-legal Carrier result succeeds"),
+		ClosedB.ResolutionResult.bSuccess);
+	TestTrue(TEXT("No-legal Carrier final State is deterministic"),
+		AreStatesEqual(AfterA, AfterB));
+	const FMatchPlayState ABeforeB = SessionA.GetStateSnapshot();
+	TestTrue(TEXT("Resolving Session B cannot mutate Session A"),
+		AreStatesEqual(SessionA.GetStateSnapshot(), ABeforeB));
+
+	const int32 UsedBeforeReplay = UsedAttacksFor(AfterA, Attacker);
+	const auto Replay = SessionA.ResolveNoLegalCarrier();
+	TestEqual(TEXT("Replay rejects without CurrentAttack"),
+		Replay.ResolutionResult.ErrorCode,
+		EMatchPlayCarrierNoSelectionNoGoalErrorCode::NoCurrentAttack);
+	TestEqual(TEXT("Replay executes Completion zero times"),
+		Replay.ResolutionResult.CompletionExecutionCount, 0);
+	TestNoAdoptDomainFailure(*this, TEXT("No-legal Carrier replay"),
+		Replay.RuntimeEnvelope, AfterA);
+	TestEqual(TEXT("Replay does not consume another opportunity"),
+		UsedAttacksFor(SessionA.GetStateSnapshot(), Attacker) - UsedBeforeReplay,
+		0);
+	TestTrue(TEXT("Replay preserves completed State"),
+		AreStatesEqual(SessionA.GetStateSnapshot(), AfterA));
+
+	FMatchPlayAuthoritativeSession DefenderCardSession;
+	DefenderCardSession.InitializeMatch(
+		MakeValidInput(TEXT("NoCarrierDefenderCard")));
+	DefenderCardSession.BeginOrdinaryAttack(6);
+	FMatchPlayState DefenderState = DefenderCardSession.GetStateSnapshot();
+	const EInitialTurnOrderPlayer DefenderCardAttacker =
+		DefenderState.RuntimeState.CurrentAttackingPlayer;
+	const auto AttackerFinish = DefenderCardSession.FinishDeployment(
+		DefenderState.CurrentAttack.AttackSequence,
+		DefenderState.CurrentAttack.CurrentLegalDeploymentSide);
+	DefenderState = DefenderCardSession.GetStateSnapshot();
+	FDeploymentChoice DefenderChoice;
+	TestTrue(TEXT("Defender-only fixture finds a legal ordinary card"),
+		FindLegalDeployment(DefenderState,
+			EMatchPlayRelativeDeploymentZone::Midfield, DefenderChoice));
+	const auto DefenderDeploy = DefenderCardSession.DeployOrdinary(
+		MakeDeployRequest(DefenderChoice));
+	DefenderState = DefenderCardSession.GetStateSnapshot();
+	const auto DefenderFinish = DefenderCardSession.FinishDeployment(
+		DefenderState.CurrentAttack.AttackSequence,
+		DefenderState.CurrentAttack.CurrentLegalDeploymentSide);
+	const FMatchPlayState BeforeDefenderClosure =
+		DefenderCardSession.GetStateSnapshot();
+	TestTrue(TEXT("Defender-only public flow reaches no-legal Carrier"),
+		AttackerFinish.FinishResult.bSuccess
+			&& DefenderDeploy.DeploymentResult.bSuccess
+			&& DefenderFinish.FinishResult.bSuccess
+			&& BeforeDefenderClosure.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier
+			&& BeforeDefenderClosure.CurrentAttack.DeploymentPlacements.Num() == 1
+			&& BeforeDefenderClosure.CurrentAttack.DeploymentPlacements[0].PlayerSide
+				== OtherPlayer(DefenderCardAttacker));
+	const FMatchCardUsageState UsageBefore =
+		BeforeDefenderClosure.CardUsageState;
+	const auto DefenderClosed = DefenderCardSession.ResolveNoLegalCarrier();
+	TestTrue(TEXT("Defender-only no-legal Carrier completion succeeds"),
+		DefenderClosed.ResolutionResult.bSuccess);
+	TestEqual(TEXT("Common Completion consumes the defender ordinary card once"),
+		DefenderClosed.ResolutionResult.CompletionResult
+			.OrdinaryCardUsageResults.Num(), 1);
+	TestTrue(TEXT("Defender ordinary card usage advances"),
+		!AreReflectedValuesEqual(
+			UsageBefore, DefenderCardSession.GetStateSnapshot().CardUsageState));
+
+	FMatchPlayState PreconsumedInput = BeforeDefenderClosure;
+	const FMatchPlayDeploymentPlacement& Placement =
+		PreconsumedInput.CurrentAttack.DeploymentPlacements[0];
+	const FPlayCardResolveResult Preconsume = FPlayCardResolver::PlayCard(
+		PreconsumedInput.CardUsageState,
+		Placement.PlayerSide,
+		Placement.CardId);
+	TestTrue(TEXT("Failure-isolation fixture preconsumes deployed card"),
+		Preconsume.bSuccess);
+	PreconsumedInput.CardUsageState = Preconsume.UpdatedMatchCardUsageState;
+	const auto CompletionFailure =
+		FMatchPlayResolveNoLegalCarrier::Resolve(PreconsumedInput);
+	TestEqual(TEXT("Natural Completion failure is surfaced"),
+		CompletionFailure.ErrorCode,
+		EMatchPlayCarrierNoSelectionNoGoalErrorCode::CompletionFailed);
+	TestEqual(TEXT("Completion failure executes Completion once"),
+		CompletionFailure.CompletionExecutionCount, 1);
+	TestTrue(TEXT("Completion failure is atomic"),
+		AreStatesEqual(CompletionFailure.AfterState, PreconsumedInput));
 	return true;
 }
 
@@ -9764,6 +10103,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		Types));
 
 	for (const TPair<const TCHAR*, const TCHAR*>& Operation : {
+		TPair<const TCHAR*, const TCHAR*>(TEXT("No-legal Carrier"),
+			TEXT("FMatchPlayResolveNoLegalCarrier::Resolve(")),
 		TPair<const TCHAR*, const TCHAR*>(TEXT("Marker writer"),
 			TEXT("FMatchPlayCurrentAttackMarkerSelectionWriter::Select(")),
 		TPair<const TCHAR*, const TCHAR*>(TEXT("No-legal marker"),
@@ -9801,9 +10142,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All forty-one mutations share serialized gate"),
+	TestEqual(TEXT("All forty-two mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		41);
+		42);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -9811,6 +10152,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 		1);
 	TestFalse(TEXT("No public system marker request type"),
 		Types.Contains(TEXT("FMatchPlayAuthoritativeResolveNoLegalMarkerRequest")));
+	TestFalse(TEXT("No public system Carrier request type"),
+		Types.Contains(TEXT("FMatchPlayAuthoritativeResolveNoLegalCarrierRequest")));
 	TestFalse(TEXT("No public system skill request type"),
 		Types.Contains(TEXT("FMatchPlayAuthoritativeResolveNoLegalSkillRequest")));
 	TestFalse(TEXT("No public system runner request type"),
@@ -19566,8 +19909,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 41 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 41);
+	TestEqual(TEXT("E2E preserves 42 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 42);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -19641,8 +19984,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-one commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 41);
+	TestEqual(TEXT("All forty-two commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 42);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -20114,8 +20457,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-one commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 41);
+	TestEqual(TEXT("All forty-two commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 42);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -20616,8 +20959,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-one commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 41);
+	TestEqual(TEXT("All forty-two commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 42);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -21168,8 +21511,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All forty-one commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 41);
+	TestEqual(TEXT("All forty-two commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 42);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);
