@@ -207,6 +207,9 @@ bool FResolutionSessionDefaultStateTest::RunTest(
 	TestEqual(TEXT("Default Session stage"),
 		CurrentAttack.ResolutionSession.Stage,
 		EMatchPlayCurrentAttackResolutionStage::None);
+	TestEqual(TEXT("Default Session OneOnOne shot choice"),
+		CurrentAttack.ResolutionSession.ThroughBallOneOnOneShotChoice,
+		EMatchPlayThroughBallOneOnOneShotChoice::None);
 	const FMatchPlayCurrentAttackResolutionSessionBundle DefaultBundle;
 	TestTrue(TEXT("Default Session bundle is empty"),
 		FMatchPlayCurrentAttackResolutionSessionBundle::StaticStruct()
@@ -281,6 +284,9 @@ bool FResolutionSessionFiveActionBeginTest::RunTest(
 		TestEqual(TEXT("Session starts AwaitingRoute"),
 			Result.Session.Stage,
 			EMatchPlayCurrentAttackResolutionStage::AwaitingRoute);
+		TestEqual(TEXT("Session starts without a OneOnOne shot choice"),
+			Result.Session.ThroughBallOneOnOneShotChoice,
+			EMatchPlayThroughBallOneOnOneShotChoice::None);
 		TestTrue(TEXT("Session matches formal normalization"),
 			SessionFixtures::SessionMatchesNormalization(
 				Result.Session,
@@ -685,6 +691,34 @@ bool FResolutionSessionStateValidatorTest::RunTest(
 			Begun);
 	TestTrue(TEXT("Canonical presence accepted"),
 		Validation.bIsCanonical);
+
+	FMatchPlayState UnexpectedAwaitingRouteChoice = Begun;
+	UnexpectedAwaitingRouteChoice.CurrentAttack.ResolutionSession
+		.ThroughBallOneOnOneShotChoice =
+			EMatchPlayThroughBallOneOnOneShotChoice::ChipShot;
+	Validation =
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			UnexpectedAwaitingRouteChoice);
+	TestFalse(TEXT("AwaitingRoute rejects a OneOnOne shot choice"),
+		Validation.bIsCanonical);
+	TestEqual(TEXT("AwaitingRoute choice error is exact"),
+		Validation.ErrorCode,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::UnexpectedOneOnOneShotChoiceWhileAwaitingRoute);
+
+	FMatchPlayState InvalidChoice = Begun;
+	InvalidChoice.CurrentAttack.ResolutionSession
+		.ThroughBallOneOnOneShotChoice =
+			static_cast<EMatchPlayThroughBallOneOnOneShotChoice>(255);
+	Validation =
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			InvalidChoice);
+	TestFalse(TEXT("Unknown OneOnOne shot choice while AwaitingRoute rejected"),
+		Validation.bIsCanonical);
+	TestEqual(TEXT("AwaitingRoute precedence remains exact"),
+		Validation.ErrorCode,
+		EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+			::UnexpectedOneOnOneShotChoiceWhileAwaitingRoute);
 
 	Begun.CurrentAttack.ResolutionSession.Bundle.Carrier.Values.Passing = 0;
 	Validation =

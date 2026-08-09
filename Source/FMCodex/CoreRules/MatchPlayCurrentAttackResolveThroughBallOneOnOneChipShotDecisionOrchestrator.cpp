@@ -285,6 +285,24 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
 			TEXT("This ThroughBall branch has no supported OneOnOne provenance."));
 		return Result;
 	}
+	if (BeforeSession.ThroughBallOneOnOneShotChoice
+		== EMatchPlayThroughBallOneOnOneShotChoice::None)
+	{
+		SetFailure(
+			Result,
+			EError::OneOnOneShotChoiceNotSelected,
+			TEXT("OneOnOne ChipShot requires an accepted ChipShot choice."));
+		return Result;
+	}
+	if (BeforeSession.ThroughBallOneOnOneShotChoice
+		!= EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+	{
+		SetFailure(
+			Result,
+			EError::OneOnOneShotChoiceDoesNotPermitChipShot,
+			TEXT("The accepted OneOnOne Shot Choice does not permit ChipShot resolution."));
+		return Result;
+	}
 
 	Result.BeforeProgressResult =
 		FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(

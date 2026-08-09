@@ -44,6 +44,8 @@ enum class EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 		UMETA(DisplayName = "Unexpected Initial Route Roll While Awaiting Route"),
 	UnexpectedPostRouteRollProgressWhileAwaitingRoute
 		UMETA(DisplayName = "Unexpected Post-Route Roll Progress While Awaiting Route"),
+	UnexpectedOneOnOneShotChoiceWhileAwaitingRoute
+		UMETA(DisplayName = "Unexpected One-on-One Shot Choice While Awaiting Route"),
 	MissingActualBranchForRouteResolved
 		UMETA(DisplayName = "Missing Actual Branch For Route Resolved"),
 	DefaultActualBranchForRouteResolved
@@ -60,7 +62,13 @@ enum class EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 	InitialRouteMappingMismatch
 		UMETA(DisplayName = "Initial Route Mapping Mismatch"),
 	InvalidPostRouteRollProgress
-		UMETA(DisplayName = "Invalid Post-Route Roll Progress")
+		UMETA(DisplayName = "Invalid Post-Route Roll Progress"),
+	InvalidOneOnOneShotChoice
+		UMETA(DisplayName = "Invalid One-on-One Shot Choice"),
+	OneOnOneShotChoiceRequiresCanonicalSource
+		UMETA(DisplayName = "One-on-One Shot Choice Requires Canonical Source"),
+	OneOnOneChipShotPhaseChoiceMismatch
+		UMETA(DisplayName = "One-on-One Chip Shot Phase Choice Mismatch")
 };
 
 USTRUCT(BlueprintType)

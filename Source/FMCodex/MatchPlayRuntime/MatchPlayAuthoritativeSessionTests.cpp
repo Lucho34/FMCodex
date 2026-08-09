@@ -1462,6 +1462,22 @@ namespace MatchPlayAuthoritativeSessionTests
 			: EInitialTurnOrderPlayer::PlayerA;
 	}
 
+	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceResult
+	SubmitOneOnOneShotChoice(
+		FMatchPlayAuthoritativeSession& Session,
+		const EMatchPlayThroughBallOneOnOneShotChoice Choice)
+	{
+		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
+			Request;
+		const FMatchPlayState State = Session.GetStateSnapshot();
+		Request.RequestingSide = State.bHasCurrentAttack
+			&& State.CurrentAttack.bHasResolutionSession
+			? State.CurrentAttack.ResolutionSession.Bundle.CurrentAttackingPlayer
+			: EInitialTurnOrderPlayer::None;
+		Request.Choice = Choice;
+		return Session.SubmitThroughBallOneOnOneShotChoice(Request);
+	}
+
 	const TArray<FName>& AvailableCardIdsForSide(
 		const FMatchPlayState& State,
 		const EInitialTurnOrderPlayer Side)
@@ -6022,11 +6038,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All thirty-eight mutations use the gate"),
+	TestEqual(TEXT("All thirty-nine mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		38);
+		39);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -9722,9 +9738,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All thirty-eight mutations share serialized gate"),
+	TestEqual(TEXT("All thirty-nine mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		38);
+		39);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -17028,8 +17044,347 @@ FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP2DecisionTest
 }
 
 MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionSubmitThroughBallOneOnOneShotChoiceTest,
+	"54.SubmitThroughBallOneOnOneShotChoiceAuthority")
+
+bool
+FMatchPlayAuthoritativeSessionSubmitThroughBallOneOnOneShotChoiceTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EChoice = EMatchPlayThroughBallOneOnOneShotChoice;
+	using EChoiceError =
+		EMatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionErrorCode;
+	using EChipError =
+		EMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionErrorCode;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::SubmitThroughBallOneOnOneShotChoice),
+		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceResult
+		(FMatchPlayAuthoritativeSession::*)(const
+			FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
+			::RequestingSide),
+		EInitialTurnOrderPlayer>);
+	static_assert(std::is_same_v<
+		decltype(FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
+			::Choice),
+		EChoice>);
+	TestEqual(TEXT("Choice enum None is stable"),
+		static_cast<uint8>(EChoice::None), static_cast<uint8>(0));
+	TestEqual(TEXT("Choice enum ChipShot is stable"),
+		static_cast<uint8>(EChoice::ChipShot), static_cast<uint8>(1));
+	TestEqual(TEXT("Choice enum DirectShot is stable"),
+		static_cast<uint8>(EChoice::DirectShot), static_cast<uint8>(2));
+	TestEqual(TEXT("Choice command follows P2"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::SubmitThroughBallOneOnOneShotChoice),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallBehindDefenseP2Decision) + 1);
+	TestEqual(TEXT("ChipShot command follows Choice"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneChipShotDecision),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::SubmitThroughBallOneOnOneShotChoice) + 1);
+
+	auto SkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::ThroughBall)));
+	};
+	auto ReachRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None,
+				Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+	auto ReachAntiOneOnOne = [&ReachRoute](
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix)
+	{
+		return ReachRoute(Session, Prefix)
+			&& Session.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.OutcomeResult.Decision
+					== EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired;
+	};
+	auto ReachBehindOneOnOne = [&ReachRoute](
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix)
+	{
+		return ReachRoute(Session, Prefix)
+			&& Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+				.OrchestrationResult.bSuccess
+			&& Session.ResolveThroughBallBehindDefenseP2Decision()
+				.OrchestrationResult.QueryResult.Decision
+					== EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired;
+	};
+
+	auto TestAcceptedChoice = [this, &SkillId, &ReachAntiOneOnOne,
+		&ReachBehindOneOnOne](
+		const TCHAR* Label,
+		const bool bBehindDefense,
+		const EChoice Choice)
+	{
+		const FString Prefix(Label);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(
+			bBehindDefense ? 3 : 5));
+		FQueuePostRouteRollProvider Post;
+		if (bBehindDefense)
+		{
+			for (const int32 D6 : { 6, 1, 2 })
+			{
+				Post.Enqueue(MakePostRouteSuccess(D6));
+			}
+		}
+		else
+		{
+			Post.Enqueue(MakePostRouteSuccess(6));
+		}
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("%s reaches OneOnOne"), Label),
+			bBehindDefense
+				? ReachBehindOneOnOne(Session, Prefix)
+				: ReachAntiOneOnOne(Session, Prefix));
+
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s None source State is canonical"), Label),
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				Before).bIsCanonical);
+		const auto BeforePhase = Before.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.Phase;
+		const auto BeforeProgress = Before.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress;
+		const int32 CallsBefore = Post.GetCallCount();
+		const auto Operation = SubmitOneOnOneShotChoice(Session, Choice);
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		FMatchPlayState Expected = Before;
+		Expected.CurrentAttack.ResolutionSession
+			.ThroughBallOneOnOneShotChoice = Choice;
+		TestTrue(*FString::Printf(TEXT("%s choice succeeds"), Label),
+			Operation.RuntimeEnvelope.bAccepted
+				&& Operation.RuntimeEnvelope.bDomainSuccess
+				&& Operation.ChoiceResult.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s selected source State is canonical"), Label),
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				After).bIsCanonical);
+		FMatchPlayState InvalidEnumState = After;
+		InvalidEnumState.CurrentAttack.ResolutionSession
+			.ThroughBallOneOnOneShotChoice = static_cast<EChoice>(255);
+		const auto InvalidEnumValidation =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				InvalidEnumState);
+		TestEqual(*FString::Printf(TEXT("%s validator rejects invalid enum"), Label),
+			InvalidEnumValidation.ErrorCode,
+			EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+				::InvalidOneOnOneShotChoice);
+		TestEqual(*FString::Printf(TEXT("%s choice persisted"), Label),
+			After.CurrentAttack.ResolutionSession
+				.ThroughBallOneOnOneShotChoice,
+			Choice);
+		TestEqual(*FString::Printf(TEXT("%s source regeneration RNG"), Label),
+			Operation.ChoiceResult.LegalityResult
+				.SourceRegenerationProviderCallCount,
+			0);
+		TestEqual(*FString::Printf(TEXT("%s provider delta"), Label),
+			Post.GetCallCount() - CallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s phase unchanged"), Label),
+			After.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase,
+			BeforePhase);
+		TestTrue(*FString::Printf(TEXT("%s progress unchanged"), Label),
+			AreReflectedValuesEqual(
+				After.CurrentAttack.ResolutionSession
+					.PostRouteRollProgress,
+				BeforeProgress));
+		TestTrue(*FString::Printf(TEXT("%s only choice mutates"), Label),
+			AreStatesEqual(After, Expected));
+	};
+
+	TestAcceptedChoice(TEXT("ChoiceAntiChip"), false, EChoice::ChipShot);
+	TestAcceptedChoice(TEXT("ChoiceAntiDirect"), false, EChoice::DirectShot);
+	TestAcceptedChoice(TEXT("ChoiceBehindChip"), true, EChoice::ChipShot);
+	TestAcceptedChoice(TEXT("ChoiceBehindDirect"), true, EChoice::DirectShot);
+
+	{
+		const FString Prefix(TEXT("ChoiceRejections"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Choice rejection source reaches OneOnOne"),
+			ReachAntiOneOnOne(Session, Prefix));
+
+		auto ExpectRejected = [this, &Session, &Post](
+			const TCHAR* Label,
+			const FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest&
+				Request,
+			const EChoiceError ExpectedError)
+		{
+			const FMatchPlayState Before = Session.GetStateSnapshot();
+			const int32 CallsBefore = Post.GetCallCount();
+			const auto Rejected =
+				Session.SubmitThroughBallOneOnOneShotChoice(Request);
+			TestEqual(*FString::Printf(TEXT("%s error"), Label),
+				Rejected.ChoiceResult.LegalityResult.ErrorCode,
+				ExpectedError);
+			TestEqual(*FString::Printf(TEXT("%s RNG"), Label),
+				Post.GetCallCount() - CallsBefore, 0);
+			TestAcceptedDomainFailureNoAdopt(
+				*this,
+				Label,
+				Rejected.RuntimeEnvelope,
+				Before,
+				Session.GetStateSnapshot());
+		};
+
+		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
+			Request;
+		Request.RequestingSide = Session.GetStateSnapshot().CurrentAttack
+			.ResolutionSession.Bundle.CurrentAttackingPlayer;
+		Request.Choice = EChoice::ChipShot;
+		auto WrongSide = Request;
+		WrongSide.RequestingSide = OtherPlayer(Request.RequestingSide);
+		ExpectRejected(TEXT("ChoiceWrongSide"), WrongSide,
+			EChoiceError::RequestingSideIsNotCurrentAttacker);
+		auto NoneChoice = Request;
+		NoneChoice.Choice = EChoice::None;
+		ExpectRejected(TEXT("ChoiceNone"), NoneChoice,
+			EChoiceError::InvalidChoice);
+		auto InvalidChoice = Request;
+		InvalidChoice.Choice = static_cast<EChoice>(255);
+		ExpectRejected(TEXT("ChoiceInvalidEnum"), InvalidChoice,
+			EChoiceError::InvalidChoice);
+
+		const auto Accepted =
+			Session.SubmitThroughBallOneOnOneShotChoice(Request);
+		TestTrue(TEXT("Choice accepted before replay checks"),
+			Accepted.ChoiceResult.bSuccess);
+		ExpectRejected(TEXT("ChoiceSameReplay"), Request,
+			EChoiceError::ChoiceAlreadySelected);
+		auto DifferentChoice = Request;
+		DifferentChoice.Choice = EChoice::DirectShot;
+		ExpectRejected(TEXT("ChoiceDifferentReplay"), DifferentChoice,
+			EChoiceError::ChoiceAlreadySelected);
+	}
+
+	{
+		const FString Prefix(TEXT("ChoiceRejectsOffside"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(5));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("Choice wrong source route"), ReachRoute(Session, Prefix));
+		TestTrue(TEXT("Choice wrong source resolves Offside"),
+			Session.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.OutcomeResult.Decision
+					== EThroughBallAntiOffsideOutcomeDecision::Offside);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore = Post.GetCallCount();
+		const auto Rejected =
+			SubmitOneOnOneShotChoice(Session, EChoice::ChipShot);
+		TestEqual(TEXT("Offside choice rejected"),
+			Rejected.ChoiceResult.LegalityResult.ErrorCode,
+			EChoiceError::SourceDoesNotRequireOneOnOne);
+		TestEqual(TEXT("Offside choice RNG"),
+			Post.GetCallCount() - CallsBefore, 0);
+		TestTrue(TEXT("Offside choice State unchanged"),
+			AreStatesEqual(Before, Session.GetStateSnapshot()));
+	}
+
+	{
+		const FString Prefix(TEXT("ChoiceGatesChipShot"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(TEXT("ChipShot gate source"),
+			ReachAntiOneOnOne(Session, Prefix));
+		const int32 NoneCalls = Post.GetCallCount();
+		const auto NoneRejected =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestEqual(TEXT("ChipShot rejects None choice"),
+			NoneRejected.OrchestrationResult.ErrorCode,
+			EChipError::OneOnOneShotChoiceNotSelected);
+		TestEqual(TEXT("ChipShot None choice RNG"),
+			Post.GetCallCount() - NoneCalls, 0);
+		TestTrue(TEXT("DirectShot choice accepted"),
+			SubmitOneOnOneShotChoice(Session, EChoice::DirectShot)
+				.ChoiceResult.bSuccess);
+		const FMatchPlayState BeforeDirectReject = Session.GetStateSnapshot();
+		const int32 DirectCalls = Post.GetCallCount();
+		const auto DirectRejected =
+			Session.ResolveThroughBallOneOnOneChipShotDecision();
+		TestEqual(TEXT("ChipShot rejects DirectShot choice"),
+			DirectRejected.OrchestrationResult.ErrorCode,
+			EChipError::OneOnOneShotChoiceDoesNotPermitChipShot);
+		TestEqual(TEXT("ChipShot DirectShot choice RNG"),
+			Post.GetCallCount() - DirectCalls, 0);
+		TestTrue(TEXT("ChipShot DirectShot rejection is atomic"),
+			AreStatesEqual(BeforeDirectReject, Session.GetStateSnapshot()));
+	}
+
+	{
+		const FString Prefix(TEXT("ChoiceDeterminism"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider InitialA;
+		InitialRouteFixtures::FQueueRollProvider InitialB;
+		InitialA.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		InitialB.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider PostA;
+		FQueuePostRouteRollProvider PostB;
+		PostA.Enqueue(MakePostRouteSuccess(6));
+		PostB.Enqueue(MakePostRouteSuccess(6));
+		FMatchPlayAuthoritativeSession SessionA(InitialA, PostA, Rules);
+		FMatchPlayAuthoritativeSession SessionB(InitialB, PostB, Rules);
+		TestTrue(TEXT("Choice determinism A source"),
+			ReachAntiOneOnOne(SessionA, Prefix));
+		TestTrue(TEXT("Choice determinism B source"),
+			ReachAntiOneOnOne(SessionB, Prefix));
+		const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
+		const int32 BCallsBefore = PostB.GetCallCount();
+		const auto ResultA =
+			SubmitOneOnOneShotChoice(SessionA, EChoice::ChipShot);
+		TestTrue(TEXT("Choice Session A cannot mutate Session B"),
+			AreStatesEqual(SessionBBefore, SessionB.GetStateSnapshot()));
+		TestEqual(TEXT("Choice Session A cannot consume Provider B"),
+			PostB.GetCallCount() - BCallsBefore, 0);
+		const auto ResultB =
+			SubmitOneOnOneShotChoice(SessionB, EChoice::ChipShot);
+		TestTrue(TEXT("Choice deterministic operations succeed"),
+			ResultA.ChoiceResult.bSuccess && ResultB.ChoiceResult.bSuccess);
+		TestTrue(TEXT("Choice deterministic States"),
+			AreStatesEqual(SessionA.GetStateSnapshot(),
+				SessionB.GetStateSnapshot()));
+	}
+
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
 	FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest,
-	"54.ResolveThroughBallOneOnOneChipShotDecisionAuthority")
+	"55.ResolveThroughBallOneOnOneChipShotDecisionAuthority")
 
 bool
 FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
@@ -17052,7 +17407,7 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
 			::ResolveThroughBallOneOnOneChipShotDecision),
 		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
-			::ResolveThroughBallBehindDefenseP2Decision) + 1);
+			::SubmitThroughBallOneOnOneShotChoice) + 1);
 
 	FString Header;
 	FString Types;
@@ -17180,6 +17535,11 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 			Session.ResolveThroughBallAntiOffsideDecision()
 				.OrchestrationResult.OutcomeResult.Decision,
 			EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired);
+		TestTrue(TEXT("AntiOffside ChipShot choice accepted"),
+			SubmitOneOnOneShotChoice(
+				Session,
+				EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+				.ChoiceResult.bSuccess);
 
 		const FMatchPlayState Before = Session.GetStateSnapshot();
 		const auto BeforeRecords = Before.CurrentAttack.ResolutionSession
@@ -17228,6 +17588,26 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 			Post.GetPurposes().Last(), EPurpose::OneOnOneChipShotAttack);
 		TestEqual(TEXT("AntiOffside phase"),
 			AfterSession.PostRouteRollProgress.Phase, EPhase::OneOnOneChipShot);
+		TestTrue(TEXT("Completed ChipShot State is canonical"),
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				After).bIsCanonical);
+		for (const EMatchPlayThroughBallOneOnOneShotChoice InvalidPhaseChoice : {
+			EMatchPlayThroughBallOneOnOneShotChoice::None,
+			EMatchPlayThroughBallOneOnOneShotChoice::DirectShot })
+		{
+			FMatchPlayState InvalidPhaseState = After;
+			InvalidPhaseState.CurrentAttack.ResolutionSession
+				.ThroughBallOneOnOneShotChoice = InvalidPhaseChoice;
+			const auto InvalidPhaseValidation =
+				FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+					InvalidPhaseState);
+			TestFalse(TEXT("OneOnOneChipShot phase rejects non-ChipShot choice"),
+				InvalidPhaseValidation.bIsCanonical);
+			TestEqual(TEXT("OneOnOneChipShot phase mismatch error is exact"),
+				InvalidPhaseValidation.ErrorCode,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::OneOnOneChipShotPhaseChoiceMismatch);
+		}
 		TestEqual(TEXT("AntiOffside stays RouteResolved"), AfterSession.Stage,
 			EMatchPlayCurrentAttackResolutionStage::RouteResolved);
 		TestEqual(TEXT("AntiOffside branch preserved"),
@@ -17313,6 +17693,11 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 			Session.ResolveThroughBallBehindDefenseP2Decision()
 				.OrchestrationResult.QueryResult.Decision,
 			EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired);
+		TestTrue(TEXT("BehindDefense ChipShot choice accepted"),
+			SubmitOneOnOneShotChoice(
+				Session,
+				EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+				.ChoiceResult.bSuccess);
 
 		const FMatchPlayState Before = Session.GetStateSnapshot();
 		const auto BeforeRecords = Before.CurrentAttack.ResolutionSession
@@ -17413,6 +17798,11 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		TestTrue(TEXT("Missing-provider source ready"),
 			Session.ResolveThroughBallAntiOffsideDecision()
 				.OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Missing-provider ChipShot choice accepted"),
+			SubmitOneOnOneShotChoice(
+				Session,
+				EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+				.ChoiceResult.bSuccess);
 		const FMatchPlayState Before = Session.GetStateSnapshot();
 		const auto Rejected =
 			FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
@@ -17448,6 +17838,11 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		TestTrue(*FString::Printf(TEXT("%s source ready"), Label),
 			Session.ResolveThroughBallAntiOffsideDecision()
 				.OrchestrationResult.bSuccess);
+		TestTrue(*FString::Printf(TEXT("%s ChipShot choice"), Label),
+			SubmitOneOnOneShotChoice(
+				Session,
+				EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+				.ChoiceResult.bSuccess);
 		const FMatchPlayState Before = Session.GetStateSnapshot();
 		const int32 CallsBefore = Post.GetCallCount();
 		const auto Rejected =
@@ -17491,7 +17886,7 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 			Session.ResolveThroughBallOneOnOneChipShotDecision();
 		TestEqual(TEXT("AntiOffside Offside rejects OneOnOne"),
 			Rejected.OrchestrationResult.ErrorCode,
-			EError::SourceDecisionDoesNotRequireOneOnOne);
+			EError::OneOnOneShotChoiceNotSelected);
 		TestEqual(TEXT("AntiOffside Offside ChipShot RNG"),
 			Post.GetCallCount() - CallsBefore, 0);
 		TestEqual(TEXT("AntiOffside Offside handoff count"),
@@ -17569,7 +17964,7 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 			Session.ResolveThroughBallOneOnOneChipShotDecision();
 		TestEqual(TEXT("Incomplete source rejected"),
 			Rejected.OrchestrationResult.ErrorCode,
-			EError::IncompleteSourceProvenance);
+			EError::OneOnOneShotChoiceNotSelected);
 		TestEqual(TEXT("Incomplete source RNG"), Post.GetCallCount(), 0);
 		TestAcceptedDomainFailureNoAdopt(*this, TEXT("Incomplete source"),
 			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
@@ -17635,6 +18030,16 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 	TestTrue(TEXT("OneOnOne determinism B source"),
 		SessionB.ResolveThroughBallAntiOffsideDecision()
 			.OrchestrationResult.bSuccess);
+	TestTrue(TEXT("OneOnOne determinism A choice"),
+		SubmitOneOnOneShotChoice(
+			SessionA,
+			EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+			.ChoiceResult.bSuccess);
+	TestTrue(TEXT("OneOnOne determinism B choice"),
+		SubmitOneOnOneShotChoice(
+			SessionB,
+			EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+			.ChoiceResult.bSuccess);
 	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
 	const int32 SessionBCallsBefore = PostB.GetCallCount();
 	const int32 SessionBRecordsBefore = SessionBBefore.CurrentAttack
@@ -17879,6 +18284,11 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 			TestTrue(*FString::Printf(TEXT("%s AntiOffside"), Case.Label),
 				Session.ResolveThroughBallAntiOffsideDecision()
 					.OrchestrationResult.bSuccess);
+			TestTrue(*FString::Printf(TEXT("%s ChipShot choice"), Case.Label),
+				SubmitOneOnOneShotChoice(
+					Session,
+					EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+					.ChoiceResult.bSuccess);
 			TestTrue(*FString::Printf(TEXT("%s OneOnOne"), Case.Label),
 				Session.ResolveThroughBallOneOnOneChipShotDecision()
 					.OrchestrationResult.bSuccess);
@@ -17890,6 +18300,11 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 			TestTrue(*FString::Printf(TEXT("%s Behind P2"), Case.Label),
 				Session.ResolveThroughBallBehindDefenseP2Decision()
 					.OrchestrationResult.bSuccess);
+			TestTrue(*FString::Printf(TEXT("%s ChipShot choice"), Case.Label),
+				SubmitOneOnOneShotChoice(
+					Session,
+					EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+					.ChoiceResult.bSuccess);
 			TestTrue(*FString::Printf(TEXT("%s OneOnOne"), Case.Label),
 				Session.ResolveThroughBallOneOnOneChipShotDecision()
 					.OrchestrationResult.bSuccess);
@@ -18086,7 +18501,9 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 	auto TestNonTerminal = [this, &SkillId, &ReachRoute](
 		const TCHAR* Label,
 		const TArray<int32>& PostD6,
-		const int32 ContinuationDepth)
+		const int32 ContinuationDepth,
+		const EMatchPlayThroughBallOneOnOneShotChoice Choice =
+			EMatchPlayThroughBallOneOnOneShotChoice::None)
 	{
 		const FString Prefix(Label);
 		const auto Rules = MakeSkillRuleSet(
@@ -18122,6 +18539,12 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 						.OrchestrationResult.bSuccess);
 			}
 		}
+		if (Choice != EMatchPlayThroughBallOneOnOneShotChoice::None)
+		{
+			TestTrue(*FString::Printf(TEXT("%s choice accepted"), Label),
+				SubmitOneOnOneShotChoice(Session, Choice)
+					.ChoiceResult.bSuccess);
+		}
 		const FMatchPlayState Before = Session.GetStateSnapshot();
 		const int32 CallsBefore = Post.GetCallCount();
 		const auto Rejected = Session.ApplyThroughBallTerminalResolution();
@@ -18135,7 +18558,11 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 		TestAcceptedDomainFailureNoAdopt(*this, Label,
 			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
 	};
-	TestNonTerminal(TEXT("TerminalRejectsAntiOneOnOne"), { 6 }, 1);
+	TestNonTerminal(TEXT("TerminalRejectsAntiOneOnOneNone"), { 6 }, 1);
+	TestNonTerminal(TEXT("TerminalRejectsAntiOneOnOneChipChoice"), { 6 }, 1,
+		EMatchPlayThroughBallOneOnOneShotChoice::ChipShot);
+	TestNonTerminal(TEXT("TerminalRejectsAntiOneOnOneDirectChoice"), { 6 }, 1,
+		EMatchPlayThroughBallOneOnOneShotChoice::DirectShot);
 	TestNonTerminal(TEXT("TerminalRejectsP2Required"), { 6, 1 }, 2);
 	TestNonTerminal(TEXT("TerminalRejectsBehindOneOnOne"), { 6, 1, 2 }, 3);
 
@@ -18579,6 +19006,18 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 			P2.OrchestrationResult.P1FormulaRegenerationResult
 				.FormulaExecutionResult.Decision,
 			P1Formula.OrchestrationResult.FormulaExecutionResult.Decision);
+		const int32 CallsBeforeChoice = Post.GetCallCount();
+		const auto Choice = SubmitOneOnOneShotChoice(
+			Session,
+			EMatchPlayThroughBallOneOnOneShotChoice::ChipShot);
+		TestTrue(TEXT("Flow C explicit ChipShot choice succeeds"),
+			Choice.ChoiceResult.bSuccess);
+		TestEqual(TEXT("Flow C explicit choice consumes zero RNG"),
+			Post.GetCallCount() - CallsBeforeChoice, 0);
+		TestEqual(TEXT("Flow C explicit choice is persisted before ChipShot"),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.ThroughBallOneOnOneShotChoice,
+			EMatchPlayThroughBallOneOnOneShotChoice::ChipShot);
 		const auto Chip =
 			Session.ResolveThroughBallOneOnOneChipShotDecision();
 		TestTrue(TEXT("Flow C ChipShot succeeds"),
@@ -18640,6 +19079,19 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
 		TestEqual(TEXT("Flow C terminal RNG delta"),
 			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeTerminal, 0);
+		TestEqual(TEXT("Flow C Completion clears OneOnOne shot choice"),
+			Completed.CurrentAttack.ResolutionSession
+				.ThroughBallOneOnOneShotChoice,
+			EMatchPlayThroughBallOneOnOneShotChoice::None);
+		const auto NextAttack = Session.BeginOrdinaryAttack(6);
+		TestTrue(TEXT("Flow C can begin a fresh attack after Completion"),
+			NextAttack.BeginResult.bSuccess);
+		TestFalse(TEXT("Flow C fresh attack has no ResolutionSession"),
+			Session.GetStateSnapshot().CurrentAttack.bHasResolutionSession);
+		TestEqual(TEXT("Flow C fresh attack cannot inherit OneOnOne shot choice"),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.ThroughBallOneOnOneShotChoice,
+			EMatchPlayThroughBallOneOnOneShotChoice::None);
 	}
 
 	// Flow D: AntiOffside Offside Completion plus narrow Session isolation.
@@ -18724,8 +19176,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 38 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
+	TestEqual(TEXT("E2E preserves 39 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 39);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -18799,8 +19251,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All thirty-eight commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
+	TestEqual(TEXT("All thirty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 39);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -19272,8 +19724,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All thirty-eight commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
+	TestEqual(TEXT("All thirty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 39);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -19774,8 +20226,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All thirty-eight commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
+	TestEqual(TEXT("All thirty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 39);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -20326,8 +20778,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All thirty-eight commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
+	TestEqual(TEXT("All thirty-nine commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 39);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);

@@ -243,6 +243,79 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 				0);
 	}
 
+	bool IsKnownOneOnOneShotChoice(
+		const EMatchPlayThroughBallOneOnOneShotChoice Choice)
+	{
+		return Choice == EMatchPlayThroughBallOneOnOneShotChoice::None
+			|| Choice == EMatchPlayThroughBallOneOnOneShotChoice::ChipShot
+			|| Choice == EMatchPlayThroughBallOneOnOneShotChoice::DirectShot;
+	}
+
+	bool ValidateOneOnOneShotChoice(
+		const FMatchPlayCurrentAttackResolutionSession& Session,
+		const FMatchPlayCurrentAttackPostRouteRollProgressResult&
+			ProgressResult,
+		FMatchPlayCurrentAttackResolutionSessionStateValidationResult& Result)
+	{
+		const EMatchPlayThroughBallOneOnOneShotChoice Choice =
+			Session.ThroughBallOneOnOneShotChoice;
+		if (!IsKnownOneOnOneShotChoice(Choice))
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::InvalidOneOnOneShotChoice,
+				TEXT("ThroughBall OneOnOne Shot Choice must be a known enum value."));
+			return false;
+		}
+
+		const EMatchPlayCurrentAttackPostRouteRollPhase Phase =
+			Session.PostRouteRollProgress.Phase;
+		if (Phase == EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneChipShot)
+		{
+			if (Choice
+				!= EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+			{
+				SetFailure(
+					Result,
+					EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+						::OneOnOneChipShotPhaseChoiceMismatch,
+					TEXT("OneOnOneChipShot phase requires the accepted ChipShot choice."));
+				return false;
+			}
+			return true;
+		}
+
+		if (Choice == EMatchPlayThroughBallOneOnOneShotChoice::None)
+		{
+			return true;
+		}
+
+		const bool bIsThroughBall =
+			Session.Bundle.Binding.ActionType == ESkillRuleType::ThroughBall
+			&& Session.ActualBranch.ActionType == ESkillRuleType::ThroughBall;
+		const bool bIsAntiOffsideSource = bIsThroughBall
+			&& Session.ActualBranch.ThroughBall
+				== EMatchPlayThroughBallActualBranch::AntiOffside
+			&& Phase == EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch;
+		const bool bIsBehindDefenseP2Source = bIsThroughBall
+			&& Session.ActualBranch.ThroughBall
+				== EMatchPlayThroughBallActualBranch::BehindDefense
+			&& Phase == EMatchPlayCurrentAttackPostRouteRollPhase::BehindDefenseP2;
+		if ((!bIsAntiOffsideSource && !bIsBehindDefenseP2Source)
+			|| !ProgressResult.bContractComplete)
+		{
+			SetFailure(
+				Result,
+				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+					::OneOnOneShotChoiceRequiresCanonicalSource,
+				TEXT("An accepted OneOnOne Shot Choice requires complete AntiOffside or BehindDefense P2 source progress."));
+			return false;
+		}
+
+		return true;
+	}
+
 	bool ValidateActualBranchPayload(
 		const FMatchPlayCurrentAttackResolutionSession& Session,
 		FMatchPlayCurrentAttackResolutionSessionStateValidationResult&
@@ -380,6 +453,16 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 		if (Session.Stage
 			== EMatchPlayCurrentAttackResolutionStage::AwaitingRoute)
 		{
+			if (Session.ThroughBallOneOnOneShotChoice
+				!= EMatchPlayThroughBallOneOnOneShotChoice::None)
+			{
+				SetFailure(
+					Result,
+					EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
+						::UnexpectedOneOnOneShotChoiceWhileAwaitingRoute,
+					TEXT("AwaitingRoute must not contain a OneOnOne Shot Choice."));
+				return false;
+			}
 			if (Session.bHasActualBranch
 				|| !IsActualBranchDefault(Session.ActualBranch))
 			{
@@ -515,6 +598,13 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 				FString::Printf(
 					TEXT("Post-route roll progress is not canonical: %s"),
 					*PostRouteProgressResult.ErrorMessage));
+			return false;
+		}
+		if (!ValidateOneOnOneShotChoice(
+				Session,
+				PostRouteProgressResult,
+				Result))
+		{
 			return false;
 		}
 

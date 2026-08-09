@@ -117,6 +117,12 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP2DecisionResult
 	ResolveThroughBallBehindDefenseP2Decision();
 
+	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceResult
+	SubmitThroughBallOneOnOneShotChoice(
+		const
+			FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest&
+				Request);
+
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
 	ResolveThroughBallOneOnOneChipShotDecision();
 

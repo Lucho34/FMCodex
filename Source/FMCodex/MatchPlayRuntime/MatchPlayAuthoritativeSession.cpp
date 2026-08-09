@@ -1338,6 +1338,50 @@ FMatchPlayAuthoritativeSession::ResolveThroughBallBehindDefenseP2Decision()
 		});
 }
 
+FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceResult
+FMatchPlayAuthoritativeSession::SubmitThroughBallOneOnOneShotChoice(
+	const FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest&
+		Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::SubmitThroughBallOneOnOneShotChoice,
+		true,
+		AttackSequence,
+		[this, Request, AttackSequence](
+			FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceResult&
+				Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			DomainRequest.Choice = Request.Choice;
+			Result.ChoiceResult =
+				FMatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionWriter
+					::Select(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet
+							? &AuthoritativeSkillRuleSet
+							: nullptr);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ChoiceResult.bSuccess;
+			Execution.CandidateAfterState = Result.ChoiceResult.AfterState;
+			Execution.StateDisposition = Result.ChoiceResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
 FMatchPlayAuthoritativeSession::ResolveThroughBallOneOnOneChipShotDecision()
 {

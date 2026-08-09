@@ -43,6 +43,10 @@ namespace MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2Decision
 		{
 			Progress.Phase = EPhase::PrimaryBranch;
 			Progress.RollRecords.SetNum(2);
+			// This is a historical P1 provenance projection. The late
+			// OneOnOne choice did not exist at that point in the flow.
+			Session.ThroughBallOneOnOneShotChoice =
+				EMatchPlayThroughBallOneOnOneShotChoice::None;
 		}
 		else if (Progress.Phase != EPhase::PrimaryBranch)
 		{

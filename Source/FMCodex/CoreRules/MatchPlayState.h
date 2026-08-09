@@ -54,6 +54,14 @@ enum class EMatchPlayCurrentAttackResolutionStage : uint8
 	RouteResolved = 2 UMETA(DisplayName = "Route Resolved")
 };
 
+UENUM(BlueprintType)
+enum class EMatchPlayThroughBallOneOnOneShotChoice : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	ChipShot = 1 UMETA(DisplayName = "Chip Shot"),
+	DirectShot = 2 UMETA(DisplayName = "Direct Shot")
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchPlayDeploymentPlacement
 {
@@ -241,6 +249,10 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionSession
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
 	FMatchPlayCurrentAttackPostRouteRollProgress PostRouteRollProgress;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
+	EMatchPlayThroughBallOneOnOneShotChoice ThroughBallOneOnOneShotChoice =
+		EMatchPlayThroughBallOneOnOneShotChoice::None;
 };
 
 USTRUCT(BlueprintType)

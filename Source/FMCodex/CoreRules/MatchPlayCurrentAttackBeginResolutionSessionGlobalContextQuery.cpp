@@ -69,6 +69,8 @@ namespace MatchPlayCurrentAttackBeginResolutionSessionGlobalContextImplementatio
 		Session.AttackSequence = Source.AttackSequence;
 		Session.Stage =
 			EMatchPlayCurrentAttackResolutionStage::AwaitingRoute;
+		Session.ThroughBallOneOnOneShotChoice =
+			EMatchPlayThroughBallOneOnOneShotChoice::None;
 		Session.Bundle.Binding = Source.Binding;
 		Session.Bundle.CurrentAttackingPlayer =
 			Source.CurrentAttackingPlayer;

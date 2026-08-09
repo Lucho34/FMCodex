@@ -26,6 +26,8 @@ enum class
 	InvalidResolutionSessionState,
 	RouteNotResolved,
 	UnsupportedThroughBallBranch,
+	OneOnOneShotChoiceNotSelected,
+	OneOnOneShotChoiceDoesNotPermitChipShot,
 	InvalidPostRouteProgress,
 	IncompleteSourceProvenance,
 	UnsupportedSourcePhase,

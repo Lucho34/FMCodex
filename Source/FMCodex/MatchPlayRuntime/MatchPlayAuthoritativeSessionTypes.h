@@ -25,6 +25,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator.h"
+#include "../CoreRules/MatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveInitialRouteWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionWriter.h"
@@ -79,6 +80,7 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveThroughBallFeetFormula,
 	ResolveThroughBallBehindDefenseP1Formula,
 	ResolveThroughBallBehindDefenseP2Decision,
+	SubmitThroughBallOneOnOneShotChoice,
 	ResolveThroughBallOneOnOneChipShotDecision,
 	ApplyThroughBallTerminalResolution,
 	ApplyCrossTerminalResolution,
@@ -219,6 +221,14 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitBranchIntentRequest
 		EInitialTurnOrderPlayer::None;
 	EMatchPlayElectiveBranchIntent Intent =
 		EMatchPlayElectiveBranchIntent::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
+{
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+	EMatchPlayThroughBallOneOnOneShotChoice Choice =
+		EMatchPlayThroughBallOneOnOneShotChoice::None;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryResult
@@ -420,6 +430,14 @@ struct FMCODEX_API
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionResult
 		OrchestrationResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionWriterResult
+		ChoiceResult;
 };
 
 struct FMCODEX_API
