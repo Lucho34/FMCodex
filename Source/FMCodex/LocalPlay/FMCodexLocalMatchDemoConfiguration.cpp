@@ -2,7 +2,36 @@
 
 namespace FMCodexLocalMatchDemoConfiguration
 {
+	constexpr const TCHAR* LongShotSkillId = TEXT("Demo.Skill.LongShot");
+	constexpr const TCHAR* CutInsideShotSkillId =
+		TEXT("Demo.Skill.CutInsideShot");
+	constexpr const TCHAR* PassControlSkillId = TEXT("Demo.Skill.PassControl");
 	constexpr const TCHAR* CrossSkillId = TEXT("Demo.Skill.Cross");
+	constexpr const TCHAR* ThroughBallSkillId = TEXT("Demo.Skill.ThroughBall");
+
+	FName SkillIdForOutfieldCard(const int32 Index)
+	{
+		switch ((Index - 1) % 5)
+		{
+		case 0: return FName(CrossSkillId);
+		case 1: return FName(LongShotSkillId);
+		case 2: return FName(CutInsideShotSkillId);
+		case 3: return FName(PassControlSkillId);
+		default: return FName(ThroughBallSkillId);
+		}
+	}
+
+	FSkillRuleSnapshot MakeSkillRule(
+		const TCHAR* SkillId,
+		const ESkillRuleType SkillType)
+	{
+		FSkillRuleSnapshot Rule;
+		Rule.SkillId = FName(SkillId);
+		Rule.SkillType = SkillType;
+		Rule.MinTriggerActionPoint = 2;
+		Rule.MaxTriggerActionPoint = 8;
+		return Rule;
+	}
 
 	FPlayerCardData MakeOutfieldCard(
 		const EInitialTurnOrderPlayer Side,
@@ -20,7 +49,7 @@ namespace FMCodexLocalMatchDemoConfiguration
 			EPlayerPositionType::Midfield,
 			EPlayerPositionType::Defense
 		};
-		Card.AttackSkillIds = { FName(CrossSkillId) };
+		Card.AttackSkillIds = { SkillIdForOutfieldCard(Index) };
 		return Card;
 	}
 
@@ -80,11 +109,12 @@ FFMCodexLocalMatchDemoConfigurationFactory::Create()
 		Result.OpeningInput.DeploymentSlotCatalog.Slots.Add(NearB);
 	}
 
-	FSkillRuleSnapshot CrossRule;
-	CrossRule.SkillId = FName(CrossSkillId);
-	CrossRule.SkillType = ESkillRuleType::Cross;
-	CrossRule.MinTriggerActionPoint = 2;
-	CrossRule.MaxTriggerActionPoint = 8;
-	Result.SkillRuleSet.SkillRules = { CrossRule };
+	Result.SkillRuleSet.SkillRules = {
+		MakeSkillRule(LongShotSkillId, ESkillRuleType::LongShot),
+		MakeSkillRule(CutInsideShotSkillId, ESkillRuleType::CutInsideShot),
+		MakeSkillRule(PassControlSkillId, ESkillRuleType::PassControl),
+		MakeSkillRule(CrossSkillId, ESkillRuleType::Cross),
+		MakeSkillRule(ThroughBallSkillId, ESkillRuleType::ThroughBall)
+	};
 	return Result;
 }

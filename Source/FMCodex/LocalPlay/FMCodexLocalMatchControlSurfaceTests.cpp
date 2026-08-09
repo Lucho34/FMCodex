@@ -1551,4 +1551,572 @@ bool FFMCodexLocalMatchFeedbackAuthorityBoundaryTest::RunTest(
 	return true;
 }
 
+namespace FMCodexLocalMatchFullFamilyTests
+{
+	struct FFamilyExpectation
+	{
+		ESkillRuleType SkillType = ESkillRuleType::None;
+		const TCHAR* SkillId = TEXT("");
+		const TCHAR* ReadableLabel = TEXT("");
+		int32 FirstCardIndex = 0;
+		int32 CardsPerSide = 0;
+	};
+
+	TArray<FFamilyExpectation> FamilyExpectations()
+	{
+		return {
+			{ ESkillRuleType::Cross, TEXT("Demo.Skill.Cross"),
+				TEXT("Cross"), 1, 4 },
+			{ ESkillRuleType::LongShot, TEXT("Demo.Skill.LongShot"),
+				TEXT("Long Shot"), 2, 4 },
+			{ ESkillRuleType::CutInsideShot,
+				TEXT("Demo.Skill.CutInsideShot"), TEXT("Cut Inside"), 3, 4 },
+			{ ESkillRuleType::PassControl, TEXT("Demo.Skill.PassControl"),
+				TEXT("Pass Control"), 4, 4 },
+			{ ESkillRuleType::ThroughBall, TEXT("Demo.Skill.ThroughBall"),
+				TEXT("Through Ball"), 5, 3 }
+		};
+	}
+
+	FName OutfieldCardId(
+		const EInitialTurnOrderPlayer Side,
+		const int32 Index)
+	{
+		return FName(*FString::Printf(
+			TEXT("Demo.%s.Outfield.%02d"),
+			Side == EInitialTurnOrderPlayer::PlayerA ? TEXT("A") : TEXT("B"),
+			Index));
+	}
+
+	EInitialTurnOrderPlayer OtherSide(const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA;
+	}
+
+	bool Fail(
+		FAutomationTestBase& Test,
+		const FString& Family,
+		const FString& Message)
+	{
+		Test.AddError(Family + TEXT(": ") + Message);
+		return false;
+	}
+
+	bool DeployParticipants(
+		FAutomationTestBase& Test,
+		AFMCodexLocalMatchPlayerController& Controller,
+		const FFamilyExpectation& Family,
+		const EInitialTurnOrderPlayer Attacker)
+	{
+		using namespace FMCodexLocalMatchControlSurfaceTests;
+		const FString FamilyLabel(Family.ReadableLabel);
+		const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
+		const FName CarrierCardId = OutfieldCardId(
+			Attacker, Family.FirstCardIndex);
+		const FString PhysicalForward =
+			Attacker == EInitialTurnOrderPlayer::PlayerA
+				? TEXT("NearB") : TEXT("NearA");
+		bool bCarrierDeployed = false;
+		bool bDefenderGoalkeeperDeployed = false;
+
+		for (int32 Step = 0; Step < 6; ++Step)
+		{
+			AcknowledgeIfPending(Controller);
+			const auto& View = Controller.GetInteractionView();
+			if (View.InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory::Deploy)
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("deployment interaction was not available"));
+			}
+
+			FFMCodexLocalMatchDeploymentOption SelectedOption;
+			bool bFoundOption = false;
+			if (View.CurrentLegalDeploymentSide == Defender
+				&& !bDefenderGoalkeeperDeployed)
+			{
+				for (const auto& Option : View.DeploymentOptions)
+				{
+					if (Option.bGoalkeeper)
+					{
+						SelectedOption = Option;
+						bFoundOption = true;
+						break;
+					}
+				}
+			}
+
+			if (!bFoundOption)
+			{
+				for (const auto& Option : View.DeploymentOptions)
+				{
+					if (Option.bGoalkeeper
+						|| !Option.SlotId.ToString().Contains(PhysicalForward))
+					{
+						continue;
+					}
+					if (View.CurrentLegalDeploymentSide == Attacker
+						&& !bCarrierDeployed
+						&& Option.CardId != CarrierCardId)
+					{
+						continue;
+					}
+					SelectedOption = Option;
+					bFoundOption = true;
+					break;
+				}
+			}
+
+			if (!bFoundOption)
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("no required normal-demo deployment option was available"));
+			}
+
+			if (SelectedOption.bGoalkeeper)
+			{
+				Controller.DeployGoalkeeper(SelectedOption.SlotId);
+				bDefenderGoalkeeperDeployed = true;
+			}
+			else
+			{
+				Controller.DeployOrdinary(
+					SelectedOption.CardId, SelectedOption.SlotId);
+				bCarrierDeployed = bCarrierDeployed
+					|| SelectedOption.CardId == CarrierCardId;
+			}
+
+			if (!Controller.GetLastDiagnostic().bHostSuccess)
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("normal-demo deployment command was rejected: ")
+					+ Controller.GetLastDiagnostic().Message);
+			}
+		}
+
+		if (!bCarrierDeployed || !bDefenderGoalkeeperDeployed)
+		{
+			return Fail(Test, FamilyLabel,
+				TEXT("carrier or defending goalkeeper was not deployed"));
+		}
+
+		for (int32 SideIndex = 0; SideIndex < 2; ++SideIndex)
+		{
+			AcknowledgeIfPending(Controller);
+			Controller.FinishDeployment();
+			if (!Controller.GetLastDiagnostic().bHostSuccess)
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("Finish Deployment was rejected: ")
+					+ Controller.GetLastDiagnostic().Message);
+			}
+		}
+		return true;
+	}
+
+	bool SubmitRequiredSelections(
+		FAutomationTestBase& Test,
+		AFMCodexLocalMatchPlayerController& Controller,
+		const FFamilyExpectation& Family,
+		const EInitialTurnOrderPlayer Attacker)
+	{
+		using namespace FMCodexLocalMatchControlSurfaceTests;
+		const FString FamilyLabel(Family.ReadableLabel);
+		const FName CarrierCardId = OutfieldCardId(
+			Attacker, Family.FirstCardIndex);
+		const FName SkillId(Family.SkillId);
+
+		AcknowledgeIfPending(Controller);
+		if (Controller.GetInteractionView().InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectCarrier)
+		{
+			return Fail(Test, FamilyLabel, TEXT("Carrier was not requested"));
+		}
+		bool bCarrierVisible = false;
+		for (const auto& Option
+			: Controller.GetInteractionView().SelectionOptions)
+		{
+			bCarrierVisible = bCarrierVisible || Option.Id == CarrierCardId;
+		}
+		if (!bCarrierVisible)
+		{
+			return Fail(Test, FamilyLabel,
+				TEXT("the family carrier was not an authoritative legal option"));
+		}
+		Controller.SubmitCarrier(CarrierCardId);
+		if (!Controller.GetLastDiagnostic().bHostSuccess)
+		{
+			return Fail(Test, FamilyLabel, TEXT("Carrier submission failed"));
+		}
+
+		AcknowledgeIfPending(Controller);
+		if (!SubmitFirstSelection(
+			Controller, EFMCodexLocalMatchInteractionCategory::SelectMarker))
+		{
+			return Fail(Test, FamilyLabel, TEXT("Marker submission failed"));
+		}
+
+		AcknowledgeIfPending(Controller);
+		const auto& SkillView = Controller.GetInteractionView();
+		if (SkillView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectSkill)
+		{
+			return Fail(Test, FamilyLabel, TEXT("Skill was not requested"));
+		}
+		bool bSkillVisible = false;
+		bool bReadableLabelVisible = false;
+		for (const auto& Option : SkillView.SelectionOptions)
+		{
+			if (Option.Id == SkillId)
+			{
+				bSkillVisible = true;
+				bReadableLabelVisible = Option.Label.Contains(Family.ReadableLabel);
+			}
+		}
+		if (!bSkillVisible || !bReadableLabelVisible)
+		{
+			return Fail(Test, FamilyLabel,
+				TEXT("SkillId or readable family label was not presented"));
+		}
+		Controller.SubmitSkill(SkillId);
+		if (!Controller.GetLastDiagnostic().bHostSuccess)
+		{
+			return Fail(Test, FamilyLabel, TEXT("Skill submission failed"));
+		}
+
+		for (int32 Guard = 0; Guard < 4; ++Guard)
+		{
+			AcknowledgeIfPending(Controller);
+			const auto& View = Controller.GetInteractionView();
+			if (View.InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory::SelectRunner
+				&& View.InteractionCategory
+					!= EFMCodexLocalMatchInteractionCategory::SelectHelper)
+			{
+				break;
+			}
+			if (!View.SelectionOptions.IsEmpty())
+			{
+				if (!SubmitFirstSelection(Controller, View.InteractionCategory))
+				{
+					return Fail(Test, FamilyLabel,
+						TEXT("Runner/Helper submission failed"));
+				}
+			}
+			else if (View.bCanResolveNoLegalChoice)
+			{
+				Controller.ResolveNoLegalCurrentSelection();
+			}
+			else if (View.bCanDecline)
+			{
+				Controller.DeclineCurrentSelection();
+			}
+			else
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("Runner/Helper stage had no actionable operation"));
+			}
+			if (!Controller.GetLastDiagnostic().bHostSuccess)
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("Runner/Helper operation was rejected"));
+			}
+		}
+
+		AcknowledgeIfPending(Controller);
+		const auto& ChoiceView = Controller.GetInteractionView();
+		if (Family.SkillType == ESkillRuleType::LongShot
+			|| Family.SkillType == ESkillRuleType::CutInsideShot)
+		{
+			if (ChoiceView.InteractionCategory
+					!= EFMCodexLocalMatchInteractionCategory::SelectBranchIntent
+				|| !ChoiceView.BranchIntentOptions.Contains(
+					EMatchPlayElectiveBranchIntent::DirectShot)
+				|| !ChoiceView.BranchIntentOptions.Contains(
+					EMatchPlayElectiveBranchIntent::DeadCorner))
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("DirectShot/DeadCorner choices were incomplete"));
+			}
+			Controller.SubmitBranchIntent(
+				EMatchPlayElectiveBranchIntent::DirectShot);
+		}
+		else if (Family.SkillType == ESkillRuleType::Cross)
+		{
+			if (ChoiceView.InteractionCategory
+					!= EFMCodexLocalMatchInteractionCategory::SelectBranchIntent
+				|| !ChoiceView.BranchIntentOptions.Contains(
+					EMatchPlayElectiveBranchIntent::CrossHigh)
+				|| !ChoiceView.BranchIntentOptions.Contains(
+					EMatchPlayElectiveBranchIntent::CrossLow))
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("Cross High/Low choices were incomplete"));
+			}
+			Controller.SubmitBranchIntent(
+				EMatchPlayElectiveBranchIntent::CrossHigh);
+		}
+
+		if ((Family.SkillType == ESkillRuleType::LongShot
+				|| Family.SkillType == ESkillRuleType::CutInsideShot
+				|| Family.SkillType == ESkillRuleType::Cross)
+			&& !Controller.GetLastDiagnostic().bHostSuccess)
+		{
+			return Fail(Test, FamilyLabel, TEXT("Branch choice was rejected"));
+		}
+
+		if (Controller.GetInteractionView().InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+		{
+			return Fail(Test, FamilyLabel,
+				TEXT("normal selections did not reach Begin Resolution"));
+		}
+		return true;
+	}
+
+	bool CompleteNormalDemoFamilyAttack(
+		FAutomationTestBase& Test,
+		AFMCodexLocalMatchHostGameMode& Host,
+		AFMCodexLocalMatchPlayerController& Controller,
+		const FFMCodexLocalMatchDemoConfiguration& Demo,
+		const FFamilyExpectation& Family,
+		const int32 Seed)
+	{
+		using namespace FMCodexLocalMatchControlSurfaceTests;
+		const FString FamilyLabel(Family.ReadableLabel);
+		if (!Host.StartNewLocalMatch(
+			Demo.OpeningInput, Demo.SkillRuleSet, Seed).bSuccess)
+		{
+			return Fail(Test, FamilyLabel,
+				TEXT("normal production demo configuration did not start"));
+		}
+		Controller.RefreshPresentation();
+		AcknowledgeIfPending(Controller);
+		Controller.BeginDemoOrdinaryAttack();
+		if (!Controller.GetLastDiagnostic().bHostSuccess)
+		{
+			return Fail(Test, FamilyLabel, TEXT("attack did not begin"));
+		}
+
+		const EInitialTurnOrderPlayer Attacker =
+			Controller.GetInteractionView().CurrentAttackingPlayer;
+		if (!DeployParticipants(Test, Controller, Family, Attacker)
+			|| !SubmitRequiredSelections(Test, Controller, Family, Attacker))
+		{
+			return false;
+		}
+
+		bool bSawResolvedRoute = false;
+		bool bSawOneOnOne = false;
+		for (int32 Guard = 0;
+			Guard < 12 && Controller.GetInteractionView().bCurrentAttackActive;
+			++Guard)
+		{
+			const auto& View = Controller.GetInteractionView();
+			bSawResolvedRoute = bSawResolvedRoute
+				|| !View.ActualBranchLabel.IsEmpty();
+			if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
+			{
+				if (Family.SkillType != ESkillRuleType::ThroughBall
+					|| !View.OneOnOneOptions.Contains(
+						EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
+					|| !View.OneOnOneOptions.Contains(
+						EMatchPlayThroughBallOneOnOneShotChoice::DirectShot))
+				{
+					return Fail(Test, FamilyLabel,
+						TEXT("OneOnOne choices were missing or unexpected"));
+				}
+				bSawOneOnOne = true;
+				AcknowledgeIfPending(Controller);
+				Controller.SubmitOneOnOneShotChoice(
+					EMatchPlayThroughBallOneOnOneShotChoice::DirectShot);
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+			{
+				Controller.ContinueResolution();
+			}
+			else
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("resolution reached an unexpected interaction category"));
+			}
+
+			if (!Controller.GetLastDiagnostic().bHostSuccess)
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("typed Host resolution command was rejected: ")
+					+ Controller.GetLastDiagnostic().Message);
+			}
+		}
+
+		if (Controller.GetInteractionView().bCurrentAttackActive)
+		{
+			return Fail(Test, FamilyLabel,
+				TEXT("attack did not reach terminal Completion within the guard"));
+		}
+		const auto& Feedback = Controller.GetResolutionFeedback();
+		if (!bSawResolvedRoute
+			|| !Feedback.bTerminal
+			|| !Feedback.TerminalSummary.StartsWith(TEXT("RESULT: "))
+			|| !Feedback.RouteSummary.Contains(Family.ReadableLabel))
+		{
+			return Fail(Test, FamilyLabel,
+				TEXT("route/feedback/terminal evidence was incomplete"));
+		}
+		if (Family.SkillType == ESkillRuleType::ThroughBall)
+		{
+			bool bHasActiveGoalkeeperEvidence = false;
+			for (const FString& Entry : Feedback.ComparisonEntries)
+			{
+				bHasActiveGoalkeeperEvidence = bHasActiveGoalkeeperEvidence
+					|| (Entry.Contains(TEXT("Goalkeeper"))
+						&& Entry.Contains(TEXT("activation active")));
+			}
+			if (!bSawOneOnOne || !bHasActiveGoalkeeperEvidence)
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("normal-demo OneOnOne or active GK Formula evidence was absent"));
+			}
+		}
+		return true;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchNormalDemoFamilyInventoryTest,
+	"FMCodex.LocalPlay.ControlSurface.23.NormalDemoFamilyInventory",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchFullFamilyTests;
+	const FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	const TArray<FFamilyExpectation> Expected = FamilyExpectations();
+	TestEqual(TEXT("Normal demo contains exactly five Skill rules"),
+		Demo.SkillRuleSet.SkillRules.Num(), 5);
+
+	TSet<FName> RuleIds;
+	TSet<uint8> RuleTypes;
+	for (const FSkillRuleSnapshot& Rule : Demo.SkillRuleSet.SkillRules)
+	{
+		RuleIds.Add(Rule.SkillId);
+		RuleTypes.Add(static_cast<uint8>(Rule.SkillType));
+		TestEqual(TEXT("Demo family minimum AP remains two"),
+			Rule.MinTriggerActionPoint, 2);
+		TestEqual(TEXT("Demo family maximum AP remains eight"),
+			Rule.MaxTriggerActionPoint, 8);
+	}
+	TestEqual(TEXT("Five demo SkillIds are unique"), RuleIds.Num(), 5);
+	TestEqual(TEXT("Five demo Skill types are unique"), RuleTypes.Num(), 5);
+
+	for (const FFamilyExpectation& Family : Expected)
+	{
+		const FName ExpectedSkillId(Family.SkillId);
+		const FSkillRuleSnapshot* MatchingRule =
+			Demo.SkillRuleSet.SkillRules.FindByPredicate(
+				[&](const FSkillRuleSnapshot& Rule)
+				{
+					return Rule.SkillId == ExpectedSkillId;
+				});
+		TestNotNull(FString::Printf(TEXT("%s rule exists"), Family.ReadableLabel),
+			MatchingRule);
+		if (MatchingRule != nullptr)
+		{
+			TestEqual(FString::Printf(TEXT("%s rule maps unambiguously"),
+				Family.ReadableLabel), MatchingRule->SkillType, Family.SkillType);
+		}
+		TestEqual(FString::Printf(TEXT("%s readable UI mapping"),
+			Family.ReadableLabel),
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(Family.SkillType),
+			FString(Family.ReadableLabel));
+	}
+
+	TSet<FName> AllCardIds;
+	for (const TArray<FPlayerCardData>* Deck : {
+		&Demo.OpeningInput.OpeningInput.PlayerADeck,
+		&Demo.OpeningInput.OpeningInput.PlayerBDeck })
+	{
+		TestEqual(TEXT("Each normal demo deck still has twenty cards"),
+			Deck->Num(), 20);
+		int32 GoalkeeperCount = 0;
+		TMap<FName, int32> FamilyCounts;
+		for (const FPlayerCardData& Card : *Deck)
+		{
+			AllCardIds.Add(Card.CardId);
+			if (Card.bIsGoalkeeper)
+			{
+				++GoalkeeperCount;
+				continue;
+			}
+			TestEqual(TEXT("Each ordinary demo card has one readable family"),
+				Card.AttackSkillIds.Num(), 1);
+			if (Card.AttackSkillIds.Num() == 1)
+			{
+				FamilyCounts.FindOrAdd(Card.AttackSkillIds[0])++;
+			}
+		}
+		TestEqual(TEXT("Existing goalkeeper composition is preserved"),
+			GoalkeeperCount, 1);
+		for (const FFamilyExpectation& Family : Expected)
+		{
+			TestEqual(FString::Printf(TEXT("%s mirrored card distribution"),
+				Family.ReadableLabel),
+				FamilyCounts.FindRef(FName(Family.SkillId)), Family.CardsPerSide);
+		}
+	}
+	TestEqual(TEXT("All forty demo CardIds remain unique"),
+		AllCardIds.Num(), 40);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchNormalDemoFullFamilyReachabilityTest,
+	"FMCodex.LocalPlay.ControlSurface.24.NormalDemoFullFamilyReachability",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchNormalDemoFullFamilyReachabilityTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Host = PlayableWorld.GetHost();
+	auto* Controller = PlayableWorld.GetController();
+	TestNotNull(TEXT("Normal-demo full-family Host exists"), Host);
+	TestNotNull(TEXT("Normal-demo full-family Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	const FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	const int32 ThroughBallSeed = FindSeedForRolls({ 3, 6, 1, 2 });
+	TestTrue(TEXT("Deterministic normal-demo OneOnOne seed exists"),
+		ThroughBallSeed != INDEX_NONE);
+	if (ThroughBallSeed == INDEX_NONE)
+	{
+		return false;
+	}
+
+	for (const FFamilyExpectation& Family : FamilyExpectations())
+	{
+		const int32 Seed = Family.SkillType == ESkillRuleType::ThroughBall
+			? ThroughBallSeed
+			: 1000 + static_cast<int32>(Family.SkillType);
+		TestTrue(FString::Printf(
+			TEXT("Normal production demo reaches %s selection/resolution/terminal"),
+			Family.ReadableLabel),
+			CompleteNormalDemoFamilyAttack(
+				*this, *Host, *Controller, Demo, Family, Seed));
+	}
+	return true;
+}
+
 #endif
