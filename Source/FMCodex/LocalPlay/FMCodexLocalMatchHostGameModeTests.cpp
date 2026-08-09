@@ -335,7 +335,8 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 			const FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest&);
 	TestTrue(TEXT("StartNewLocalMatch is a typed canonical-input method"),
 		(std::is_same_v<
-			decltype(&AFMCodexLocalMatchHostGameMode::StartNewLocalMatch),
+			decltype(static_cast<FStartMethod>(
+				&AFMCodexLocalMatchHostGameMode::StartNewLocalMatch)),
 			FStartMethod>));
 	TestTrue(TEXT("Snapshot is returned through one const by-value method"),
 		(std::is_same_v<
@@ -376,21 +377,6 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 			|| Header.Contains(TEXT("ExecuteAction"))
 			|| Source.Contains(TEXT("ExecuteCommand"))
 			|| Source.Contains(TEXT("ExecuteAction")));
-	for (const TCHAR* ForbiddenResolutionMethod : {
-		TEXT("BeginResolutionSession("),
-		TEXT("ResolveInitialRoute("),
-		TEXT("ResolveIntentDeterminedRoute("),
-		TEXT("ResolveCrossPostRoutePlan("),
-		TEXT("ResolvePassControlPostRoutePlan("),
-		TEXT("ResolveThroughBallFeetFormula("),
-		TEXT("ApplyThroughBallTerminalResolution(") })
-	{
-		TestFalse(*FString::Printf(
-			TEXT("Stage 5.3 has no system-resolution Host API: %s"),
-			ForbiddenResolutionMethod),
-			Header.Contains(ForbiddenResolutionMethod)
-				|| Source.Contains(ForbiddenResolutionMethod));
-	}
 	TestFalse(TEXT("Interaction routing does not consume D6"),
 		Source.Contains(TEXT(".RollD6(")));
 	for (const TCHAR* CacheName : {
@@ -817,7 +803,7 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 	TestTrue(TEXT("Direct initialize succeeds"),
 		DirectSession.InitializeMatch(Input).OpeningResult.bSuccess);
 	TestTrue(TEXT("Host initialize succeeds"),
-		Host->StartNewLocalMatch(Input).bSuccess);
+		Host->StartNewLocalMatch(Input, Rules).bSuccess);
 	TestTrue(TEXT("Direct begin succeeds"),
 		DirectSession.BeginOrdinaryAttack(6).BeginResult.bSuccess);
 	TestTrue(TEXT("Host begin succeeds"),

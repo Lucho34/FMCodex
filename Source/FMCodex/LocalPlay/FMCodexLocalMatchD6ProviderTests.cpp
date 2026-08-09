@@ -249,7 +249,7 @@ bool FFMCodexLocalMatchD6ProviderChronologyAndAuthorityTest::RunTest(
 		1);
 	TestEqual(TEXT("Every start creates one fresh runtime bundle"),
 		CountOccurrences(HostSource,
-			TEXT("MakeUnique<FLocalMatchRuntime>(GenerateLocalMatchSeed())")),
+			TEXT("MakeUnique<FLocalMatchRuntime>(")),
 		1);
 	return true;
 }

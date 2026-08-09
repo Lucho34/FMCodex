@@ -13,7 +13,8 @@ enum class EFMCodexLocalMatchHostErrorCode : uint8
 	None,
 	NoActiveMatch,
 	AuthoritativeInitializationFailed,
-	AuthoritativeCommandFailed
+	AuthoritativeCommandFailed,
+	RuleConfigurationMismatch
 };
 
 struct FMCODEX_API FFMCodexStartNewLocalMatchResult
@@ -216,6 +217,221 @@ struct FMCODEX_API FFMCodexLocalMatchSubmitThroughBallOneOnOneShotChoiceResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchBeginResolutionSessionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeBeginResolutionSessionResult AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveIntentDeterminedRouteResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveIntentDeterminedRouteResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveInitialRouteResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveInitialRouteResult AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveCrossPostRoutePlanResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallFeetPostRoutePlanResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolvePassControlPostRoutePlanResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveDirectShotPostRouteDecisionOrPlanResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DecisionOrPlanResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveSingleCardFinishingFormulaResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveSingleCardFinishingFormulaResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveThroughBallFeetFormulaResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallFeetFormulaResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1FormulaResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1FormulaResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP2DecisionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP2DecisionResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotDecisionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotFormulaResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotFormulaResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchApplyThroughBallTerminalResolutionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeApplyThroughBallTerminalResolutionResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchApplyCrossTerminalResolutionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeApplyCrossTerminalResolutionResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchApplyPassControlTerminalResolutionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeApplyPassControlTerminalResolutionResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchApplyShotTerminalResolutionResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeApplyShotTerminalResolutionResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 UCLASS()
 class FMCODEX_API AFMCodexLocalMatchHostGameMode final
 	: public AGameModeBase
@@ -227,6 +443,17 @@ public:
 
 	FFMCodexStartNewLocalMatchResult StartNewLocalMatch(
 		const FMatchPlayOpeningInitializeInput& Input);
+
+	FFMCodexStartNewLocalMatchResult StartNewLocalMatch(
+		const FMatchPlayOpeningInitializeInput& Input,
+		const FSkillRuleSnapshotSet& SkillRuleSet);
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FFMCodexStartNewLocalMatchResult StartNewLocalMatch(
+		const FMatchPlayOpeningInitializeInput& Input,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		int32 DeterministicSeedForTesting);
+#endif
 
 	FFMCodexLocalMatchSnapshotResult GetMatchSnapshot() const;
 
@@ -291,12 +518,81 @@ public:
 		const FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest&
 			Request);
 
+	FFMCodexLocalMatchBeginResolutionSessionResult BeginResolutionSession();
+
+	FFMCodexLocalMatchResolveIntentDeterminedRouteResult
+	ResolveIntentDeterminedRoute();
+
+	FFMCodexLocalMatchResolveInitialRouteResult ResolveInitialRoute();
+
+	FFMCodexLocalMatchResolveCrossPostRoutePlanResult
+	ResolveCrossPostRoutePlan();
+
+	FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult
+	ResolveThroughBallFeetPostRoutePlan();
+
+	FFMCodexLocalMatchResolvePassControlPostRoutePlanResult
+	ResolvePassControlPostRoutePlan();
+
+	FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult
+	ResolveDeadCornerPostRouteDecision();
+
+	FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult
+	ResolveThroughBallAntiOffsideDecision();
+
+	FFMCodexLocalMatchResolveDirectShotPostRouteDecisionOrPlanResult
+	ResolveDirectShotPostRouteDecisionOrPlan();
+
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult
+	ResolveThroughBallBehindDefenseP1DecisionOrPlan();
+
+	FFMCodexLocalMatchResolveSingleCardFinishingFormulaResult
+	ResolveSingleCardFinishingFormula();
+
+	FFMCodexLocalMatchResolveThroughBallFeetFormulaResult
+	ResolveThroughBallFeetFormula();
+
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1FormulaResult
+	ResolveThroughBallBehindDefenseP1Formula();
+
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP2DecisionResult
+	ResolveThroughBallBehindDefenseP2Decision();
+
+	FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotDecisionResult
+	ResolveThroughBallOneOnOneChipShotDecision();
+
+	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+	ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
+
+	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotFormulaResult
+	ResolveThroughBallOneOnOneDirectShotFormula();
+
+	FFMCodexLocalMatchApplyThroughBallTerminalResolutionResult
+	ApplyThroughBallTerminalResolution();
+
+	FFMCodexLocalMatchApplyCrossTerminalResolutionResult
+	ApplyCrossTerminalResolution();
+
+	FFMCodexLocalMatchApplyPassControlTerminalResolutionResult
+	ApplyPassControlTerminalResolution();
+
+	FFMCodexLocalMatchApplyShotTerminalResolutionResult
+	ApplyShotTerminalResolution();
+
 private:
+	FFMCodexStartNewLocalMatchResult StartNewLocalMatchWithSeed(
+		const FMatchPlayOpeningInitializeInput& Input,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		int32 Seed);
+
 	struct FLocalMatchRuntime final
 	{
-		explicit FLocalMatchRuntime(int32 Seed);
+		FLocalMatchRuntime(
+			int32 Seed,
+			const FSkillRuleSnapshotSet& InSkillRuleSet);
 
 		FFMCodexLocalMatchD6Provider D6Provider;
+		const FSkillRuleSnapshotSet SkillRuleSet;
 		FMatchPlayAuthoritativeSession AuthoritativeSession;
 	};
 
