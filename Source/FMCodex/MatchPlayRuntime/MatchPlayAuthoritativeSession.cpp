@@ -263,6 +263,61 @@ FMatchPlayAuthoritativeSession::DeployOrdinary(
 		});
 }
 
+FMatchPlayAuthoritativeDeployGoalkeeperResult
+FMatchPlayAuthoritativeSession::DeployGoalkeeper(
+	const FMatchPlayAuthoritativeDeployGoalkeeperRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	const EInitialTurnOrderPlayer RequestingSide =
+		AuthoritativeState.bHasCurrentAttack
+			? AuthoritativeState.CurrentAttack.CurrentLegalDeploymentSide
+			: EInitialTurnOrderPlayer::None;
+	const FName GoalkeeperCardId = RequestingSide
+		== EInitialTurnOrderPlayer::PlayerA
+			? FName(*AuthoritativeState.RuntimeState.PlayerAState.GoalkeeperCardId)
+			: RequestingSide == EInitialTurnOrderPlayer::PlayerB
+				? FName(*AuthoritativeState.RuntimeState.PlayerBState.GoalkeeperCardId)
+				: NAME_None;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeDeployGoalkeeperResult>(
+		EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper,
+		true,
+		AttackSequence,
+		[Request, AttackSequence, RequestingSide, GoalkeeperCardId](
+			FMatchPlayAuthoritativeDeployGoalkeeperResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.AvailabilityResult =
+				FMatchPlayGoalkeeperDeploymentAvailability::Query(
+					BeforeState,
+					AttackSequence,
+					RequestingSide,
+					GoalkeeperCardId);
+
+			FMatchPlayGoalkeeperDeploymentRequest DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.RequestingSide = RequestingSide;
+			DomainRequest.CardId = GoalkeeperCardId;
+			DomainRequest.SlotId = Request.SlotId;
+			Result.DeploymentResult =
+				FMatchPlayGoalkeeperDeploymentWriter::Deploy(
+					BeforeState,
+					DomainRequest);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.DeploymentResult.bSucceeded;
+			Execution.CandidateAfterState =
+				Result.DeploymentResult.AfterState;
+			Execution.StateDisposition = Result.DeploymentResult.bSucceeded
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeSubmitCarrierResult
 FMatchPlayAuthoritativeSession::SubmitCarrier(
 	const FMatchPlayAuthoritativeSubmitCarrierRequest& Request)

@@ -6022,11 +6022,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All thirty-seven mutations use the gate"),
+	TestEqual(TEXT("All thirty-eight mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		37);
+		38);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7446,8 +7446,18 @@ bool FMatchPlayAuthoritativeSessionResolutionFoundationBoundaryTest::RunTest(
 		1);
 	TestFalse(TEXT("SubmitAction remains absent"),
 		Production.Contains(TEXT("SubmitAction")));
-	TestFalse(TEXT("DeployGoalkeeper remains absent"),
+	TestTrue(TEXT("DeployGoalkeeper is Session-reachable"),
 		Production.Contains(TEXT("DeployGoalkeeper")));
+	TestEqual(TEXT("Goalkeeper availability has one Session call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")),
+		1);
+	TestEqual(TEXT("Goalkeeper Writer has one Session call"),
+		CountOccurrences(
+			Implementation,
+			TEXT("FMatchPlayGoalkeeperDeploymentWriter::Deploy(")),
+		1);
 	for (const TCHAR* Forbidden : {
 		TEXT("RollD6"),
 		TEXT("UObject"),
@@ -9712,9 +9722,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All thirty-seven mutations share serialized gate"),
+	TestEqual(TEXT("All thirty-eight mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		37);
+		38);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -18714,8 +18724,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 37 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 37);
+	TestEqual(TEXT("E2E preserves 38 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -18789,8 +18799,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All thirty-seven commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 37);
+	TestEqual(TEXT("All thirty-eight commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -19262,8 +19272,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All thirty-seven commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 37);
+	TestEqual(TEXT("All thirty-eight commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -19764,8 +19774,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All thirty-seven commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 37);
+	TestEqual(TEXT("All thirty-eight commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -20265,6 +20275,284 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 			AreStatesEqual(
 				SessionA.GetStateSnapshot(), SessionB.GetStateSnapshot()));
 	}
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionDeployGoalkeeperTest,
+	"60.DeployGoalkeeperAuthority")
+
+bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using FDeploySignature = FMatchPlayAuthoritativeDeployGoalkeeperResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeDeployGoalkeeperRequest&);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::DeployGoalkeeper),
+		FDeploySignature>);
+
+	FString SessionHeader;
+	FString SessionSource;
+	FString SessionTypes;
+	LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		SessionHeader);
+	LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		SessionSource);
+	LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
+		SessionTypes);
+	const int32 RequestStart = SessionTypes.Find(
+		TEXT("struct FMCODEX_API FMatchPlayAuthoritativeDeployGoalkeeperRequest"));
+	const int32 RequestEnd = SessionTypes.Find(
+		TEXT("struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierRequest"),
+		ESearchCase::CaseSensitive,
+		ESearchDir::FromStart,
+		RequestStart);
+	const FString RequestSurface = RequestStart != INDEX_NONE
+		&& RequestEnd != INDEX_NONE
+		? SessionTypes.Mid(RequestStart, RequestEnd - RequestStart)
+		: FString();
+	TestTrue(TEXT("Goalkeeper request surface is discoverable"),
+		!RequestSurface.IsEmpty());
+	TestTrue(TEXT("SlotId is an exposed player choice"),
+		RequestSurface.Contains(TEXT("FName SlotId")));
+	TestFalse(TEXT("Goalkeeper CardId is authority-derived"),
+		RequestSurface.Contains(TEXT("CardId")));
+	TestFalse(TEXT("AttackSequence is authority-derived"),
+		RequestSurface.Contains(TEXT("AttackSequence")));
+	TestFalse(TEXT("RequestingSide is authority-derived"),
+		RequestSurface.Contains(TEXT("RequestingSide")));
+	TestEqual(TEXT("All thirty-eight commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 38);
+	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
+		CountOccurrences(SessionSource,
+			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);
+	TestEqual(TEXT("Goalkeeper writer has one Session callsite"),
+		CountOccurrences(SessionSource,
+			TEXT("FMatchPlayGoalkeeperDeploymentWriter::Deploy(")), 1);
+	for (const TCHAR* ForbiddenWrite : {
+		TEXT("AuthoritativeState.GoalkeeperUsageState ="),
+		TEXT("AuthoritativeState.CurrentAttack.bCurrentDefenseGoalkeeperActivated ="),
+		TEXT("AuthoritativeState.CurrentAttack.DeploymentPlacements.Add(") })
+	{
+		TestFalse(TEXT("Session performs no direct goalkeeper gameplay writes"),
+			SessionSource.Contains(ForbiddenWrite));
+	}
+
+	const FMatchPlayAuthoritativeDeployGoalkeeperRequest DefaultRequest;
+	TestTrue(TEXT("Goalkeeper request defaults SlotId"),
+		DefaultRequest.SlotId.IsNone());
+	FMatchPlayAuthoritativeSession Uninitialized;
+	const FMatchPlayState DefaultState;
+	const auto Gated = Uninitialized.DeployGoalkeeper(DefaultRequest);
+	TestFalse(TEXT("Uninitialized goalkeeper deployment is rejected"),
+		Gated.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Uninitialized goalkeeper deployment runtime error"),
+		Gated.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::NotInitialized);
+	TestTrue(TEXT("Uninitialized goalkeeper deployment preserves State"),
+		AreStatesEqual(Uninitialized.GetStateSnapshot(), DefaultState));
+
+	const FString Prefix(TEXT("GoalkeeperSession"));
+	InitialRouteFixtures::FQueueRollProvider Initial;
+	FQueuePostRouteRollProvider Post;
+	const FSkillRuleSnapshotSet Rules;
+	FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+	TestTrue(TEXT("Goalkeeper public flow initializes"),
+		Session.InitializeMatch(MakeFoundationBInput(Prefix))
+			.OpeningResult.bSuccess);
+	TestTrue(TEXT("Goalkeeper public flow begins attack"),
+		Session.BeginOrdinaryAttack(6).BeginResult.bSuccess);
+
+	auto GoalkeeperIdFor = [&Prefix](const EInitialTurnOrderPlayer Side)
+	{
+		return FName(*FString::Printf(
+			TEXT("%s_%s_GK"),
+			*Prefix,
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? TEXT("A") : TEXT("B")));
+	};
+	auto ScoreFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.Score
+			: State.RuntimeState.PlayerBState.Score;
+	};
+	auto UsedAttacksFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.UsedAttackCount
+			: State.RuntimeState.PlayerBState.UsedAttackCount;
+	};
+	auto GoalkeeperUsedFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed
+			: State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed;
+	};
+
+	const FMatchPlayState InitialAttack = Session.GetStateSnapshot();
+	const EInitialTurnOrderPlayer Attacker =
+		InitialAttack.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
+	FMatchPlayAuthoritativeDeployGoalkeeperRequest AttackerRequest;
+	AttackerRequest.SlotId =
+		InitialAttack.DeploymentSlotCatalog.Slots[0].SlotId;
+	const auto AttackerRejected = Session.DeployGoalkeeper(AttackerRequest);
+	TestEqual(TEXT("Attacker goalkeeper deployment is canonically rejected"),
+		AttackerRejected.DeploymentResult.LegalityResult.ErrorCode,
+		EMatchPlayGoalkeeperDeploymentErrorCode::RequestingSideIsNotDefender);
+	TestNoAdoptDomainFailure(
+		*this,
+		TEXT("Attacker goalkeeper deployment"),
+		AttackerRejected.RuntimeEnvelope,
+		InitialAttack);
+
+	FDeploymentChoice FirstAttackerChoice;
+	TestTrue(TEXT("Public ordinary flow finds attacker deployment"),
+		FindLegalDeployment(
+			Session.GetStateSnapshot(),
+			EMatchPlayRelativeDeploymentZone::Forward,
+			FirstAttackerChoice));
+	TestTrue(TEXT("Public ordinary deployment reaches defender turn"),
+		Session.DeployOrdinary(MakeDeployRequest(FirstAttackerChoice))
+			.DeploymentResult.bSuccess);
+
+	const FMatchPlayState Before = Session.GetStateSnapshot();
+	const FName DefenderGoalkeeperId = GoalkeeperIdFor(Defender);
+	const FMatchPlayGoalkeeperDeploymentAvailabilityResult Availability =
+		FMatchPlayGoalkeeperDeploymentAvailability::Query(
+			Before,
+			Before.CurrentAttack.AttackSequence,
+			Defender,
+			DefenderGoalkeeperId);
+	TestTrue(TEXT("Existing availability finds a defensive goalkeeper slot"),
+		Availability.bQuerySucceeded
+			&& Availability.bCanDeployToAnySlot
+			&& !Availability.LegalSlotIds.IsEmpty());
+	if (Availability.LegalSlotIds.IsEmpty())
+	{
+		return false;
+	}
+	FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+	Request.SlotId = Availability.LegalSlotIds[0];
+	const int32 InitialCallsBefore = Initial.GetCallCount();
+	const int32 PostCallsBefore = Post.GetCallCount();
+	const int32 AttackerScoreBefore = ScoreFor(Before, Attacker);
+	const int32 DefenderScoreBefore = ScoreFor(Before, Defender);
+	const int32 AttackerUsedBefore = UsedAttacksFor(Before, Attacker);
+	const int32 DefenderUsedBefore = UsedAttacksFor(Before, Defender);
+	const auto Deployment = Session.DeployGoalkeeper(Request);
+	const FMatchPlayState After = Session.GetStateSnapshot();
+	TestTrue(TEXT("Defensive goalkeeper deployment succeeds publicly"),
+		Deployment.RuntimeEnvelope.bDomainSuccess
+			&& Deployment.DeploymentResult.bSucceeded);
+	TestEqual(TEXT("Goalkeeper command kind is exact"),
+		Deployment.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper);
+	TestEqual(TEXT("AttackSequence is derived from State"),
+		Deployment.DeploymentResult.Request.AttackSequence,
+		Before.CurrentAttack.AttackSequence);
+	TestEqual(TEXT("RequestingSide is derived from deployment turn"),
+		Deployment.DeploymentResult.Request.RequestingSide, Defender);
+	TestEqual(TEXT("Goalkeeper CardId is derived from authoritative runtime"),
+		Deployment.DeploymentResult.Request.CardId, DefenderGoalkeeperId);
+	TestEqual(TEXT("Availability uses derived side"),
+		Deployment.AvailabilityResult.RequestingSide, Defender);
+	TestTrue(TEXT("Availability includes selected slot"),
+		Deployment.AvailabilityResult.LegalSlotIds.Contains(Request.SlotId));
+	TestEqual(TEXT("Writer appends exactly one placement"),
+		After.CurrentAttack.DeploymentPlacements.Num()
+			- Before.CurrentAttack.DeploymentPlacements.Num(), 1);
+	const FMatchPlayDeploymentPlacement& Placement =
+		After.CurrentAttack.DeploymentPlacements.Last();
+	TestEqual(TEXT("Writer placement side"), Placement.PlayerSide, Defender);
+	TestEqual(TEXT("Writer placement card is authority-derived"),
+		Placement.CardId, DefenderGoalkeeperId);
+	TestEqual(TEXT("Writer placement slot"), Placement.SlotId, Request.SlotId);
+	TestFalse(TEXT("Defender goalkeeper was unused before"),
+		GoalkeeperUsedFor(Before, Defender));
+	TestTrue(TEXT("Defender goalkeeper is persistently used after"),
+		GoalkeeperUsedFor(After, Defender));
+	TestFalse(TEXT("Opposite-side goalkeeper usage remains isolated"),
+		GoalkeeperUsedFor(After, Attacker));
+	TestFalse(TEXT("Current defense goalkeeper was inactive before"),
+		Before.CurrentAttack.bCurrentDefenseGoalkeeperActivated);
+	TestTrue(TEXT("Current defense goalkeeper is active after"),
+		After.CurrentAttack.bCurrentDefenseGoalkeeperActivated);
+	TestEqual(TEXT("Deployment rotates from defender to attacker"),
+		After.CurrentAttack.CurrentLegalDeploymentSide, Attacker);
+	TestEqual(TEXT("Deployment remains in Deployment phase"),
+		After.CurrentAttack.Phase, EMatchPlayCurrentAttackPhase::Deployment);
+	TestEqual(TEXT("AttackSequence identity is preserved"),
+		After.CurrentAttack.AttackSequence, Before.CurrentAttack.AttackSequence);
+	TestEqual(TEXT("ActionPoint identity is preserved"),
+		After.CurrentAttack.ActionPoint, Before.CurrentAttack.ActionPoint);
+	TestEqual(TEXT("Current attacker identity is preserved"),
+		After.RuntimeState.CurrentAttackingPlayer,
+		Before.RuntimeState.CurrentAttackingPlayer);
+	TestFalse(TEXT("Resolution Session remains absent"),
+		After.CurrentAttack.bHasResolutionSession);
+	TestTrue(TEXT("Resolution Session payload remains unchanged"),
+		AreReflectedValuesEqual(
+			After.CurrentAttack.ResolutionSession,
+			Before.CurrentAttack.ResolutionSession));
+	TestEqual(TEXT("Initial-route provider delta is zero"),
+		Initial.GetCallCount() - InitialCallsBefore, 0);
+	TestEqual(TEXT("Post-route provider delta is zero"),
+		Post.GetCallCount() - PostCallsBefore, 0);
+	TestEqual(TEXT("Attacker score delta is zero"),
+		ScoreFor(After, Attacker) - AttackerScoreBefore, 0);
+	TestEqual(TEXT("Defender score delta is zero"),
+		ScoreFor(After, Defender) - DefenderScoreBefore, 0);
+	TestEqual(TEXT("Attacker opportunity delta is zero"),
+		UsedAttacksFor(After, Attacker) - AttackerUsedBefore, 0);
+	TestEqual(TEXT("Defender opportunity delta is zero"),
+		UsedAttacksFor(After, Defender) - DefenderUsedBefore, 0);
+
+	TestTrue(TEXT("Attacker FinishDeployment returns turn to defender"),
+		Session.FinishDeployment(
+			After.CurrentAttack.AttackSequence,
+			Attacker).FinishResult.bSuccess);
+	const FMatchPlayState BeforeRepeat = Session.GetStateSnapshot();
+	const auto Repeat = Session.DeployGoalkeeper(Request);
+	TestEqual(TEXT("Repeated goalkeeper deployment uses canonical rejection"),
+		Repeat.DeploymentResult.LegalityResult.ErrorCode,
+		EMatchPlayGoalkeeperDeploymentErrorCode
+			::GoalkeeperAlreadyActivatedThisAttack);
+	TestNoAdoptDomainFailure(
+		*this,
+		TEXT("Repeated goalkeeper deployment"),
+		Repeat.RuntimeEnvelope,
+		BeforeRepeat);
+	TestEqual(TEXT("Repeat adds no duplicate placement"),
+		Session.GetStateSnapshot().CurrentAttack.DeploymentPlacements.Num(),
+		BeforeRepeat.CurrentAttack.DeploymentPlacements.Num());
+	TestTrue(TEXT("Persistent usage remains used after repeat"),
+		GoalkeeperUsedFor(Session.GetStateSnapshot(), Defender));
+
+	const int64 AttackSequence =
+		Session.GetStateSnapshot().CurrentAttack.AttackSequence;
+	TestTrue(TEXT("Defender FinishDeployment remains successful"),
+		Session.FinishDeployment(AttackSequence, Defender)
+			.FinishResult.bSuccess);
+	const FMatchPlayState AfterFinished = Session.GetStateSnapshot();
+	const auto WrongStage = Session.DeployGoalkeeper(Request);
+	TestEqual(TEXT("Post-deployment goalkeeper command is rejected"),
+		WrongStage.DeploymentResult.LegalityResult.ErrorCode,
+		EMatchPlayGoalkeeperDeploymentErrorCode::CurrentAttackNotInDeployment);
+	TestNoAdoptDomainFailure(
+		*this,
+		TEXT("Post-deployment goalkeeper command"),
+		WrongStage.RuntimeEnvelope,
+		AfterFinished);
 	return true;
 }
 

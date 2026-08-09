@@ -29,6 +29,9 @@ public:
 	FMatchPlayAuthoritativeDeployOrdinaryResult DeployOrdinary(
 		const FMatchPlayAuthoritativeDeployOrdinaryRequest& Request);
 
+	FMatchPlayAuthoritativeDeployGoalkeeperResult DeployGoalkeeper(
+		const FMatchPlayAuthoritativeDeployGoalkeeperRequest& Request);
+
 	FMatchPlayAuthoritativeSubmitCarrierResult SubmitCarrier(
 		const FMatchPlayAuthoritativeSubmitCarrierRequest& Request);
 

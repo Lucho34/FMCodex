@@ -29,6 +29,8 @@
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionWriter.h"
 #include "../CoreRules/MatchPlayFinishDeployment.h"
+#include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
+#include "../CoreRules/MatchPlayGoalkeeperDeploymentWriter.h"
 #include "../CoreRules/MatchPlayHelperAbsence.h"
 #include "../CoreRules/MatchPlayMarkerNoSelectionGoal.h"
 #include "../CoreRules/MatchPlayOpeningInitializer.h"
@@ -81,7 +83,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ApplyThroughBallTerminalResolution,
 	ApplyCrossTerminalResolution,
 	ApplyPassControlTerminalResolution,
-	ApplyShotTerminalResolution
+	ApplyShotTerminalResolution,
+	DeployGoalkeeper
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -143,6 +146,11 @@ struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryRequest
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 	FName CardId = NAME_None;
+	FName SlotId = NAME_None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeployGoalkeeperRequest
+{
 	FName SlotId = NAME_None;
 };
 
@@ -217,6 +225,13 @@ struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayOrdinaryDeploymentWriterResult DeploymentResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeDeployGoalkeeperResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayGoalkeeperDeploymentAvailabilityResult AvailabilityResult;
+	FMatchPlayGoalkeeperDeploymentWriterResult DeploymentResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierResult
