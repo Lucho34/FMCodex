@@ -41,25 +41,72 @@ struct FMCODEX_API FFMCodexLocalMatchDeploymentOption
 	bool bGoalkeeper = false;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchSlotView
+{
+	FName SlotId = NAME_None;
+	EMatchPlayNeutralSlotSide NeutralSide =
+		EMatchPlayNeutralSlotSide::None;
+	EMatchPlayRelativeDeploymentZone RelativeZone =
+		EMatchPlayRelativeDeploymentZone::None;
+	FString Label;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchCardView
+{
+	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
+	FName CardId = NAME_None;
+	FString DisplayLabel;
+	FString PositionLabel;
+	FString AttributeSummary;
+	FString GoalkeeperAttributeSummary;
+	TArray<FString> SkillLabels;
+	bool bGoalkeeper = false;
+	bool bAvailable = false;
+	bool bUsed = false;
+	bool bDeployed = false;
+	bool bGoalkeeperUsedThisMatch = false;
+	bool bGoalkeeperActivatedThisAttack = false;
+	FName SlotId = NAME_None;
+	EMatchPlayNeutralSlotSide NeutralSide =
+		EMatchPlayNeutralSlotSide::None;
+	EMatchPlayRelativeDeploymentZone RelativeZone =
+		EMatchPlayRelativeDeploymentZone::None;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchDeploymentGroup
 {
 	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
 	FName CardId = NAME_None;
 	bool bGoalkeeper = false;
 	TArray<FName> LegalSlotIds;
+	FFMCodexLocalMatchCardView Card;
+	TArray<FFMCodexLocalMatchSlotView> LegalSlots;
 };
 
 struct FMCODEX_API FFMCodexLocalMatchSelectionOption
 {
 	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
 	FName Id = NAME_None;
+	FName RelatedCardId = NAME_None;
 	FString Label;
+	bool bHasCard = false;
+	FFMCodexLocalMatchCardView Card;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchPitchRegionView
+{
+	EMatchPlayNeutralSlotSide NeutralSide =
+		EMatchPlayNeutralSlotSide::None;
+	FString Label;
+	TArray<FName> CanonicalSlotIds;
+	TArray<FFMCodexLocalMatchCardView> DeployedCards;
 };
 
 enum class EFMCodexLocalMatchRollGroup : uint8
 {
 	InitialRoute,
-	PostRoute
+	PostRoute,
+	OneOnOne
 };
 
 struct FMCODEX_API FFMCodexLocalMatchRollView
@@ -100,6 +147,7 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	TArray<FFMCodexLocalMatchDeploymentOption> DeploymentOptions;
 	TArray<FFMCodexLocalMatchDeploymentGroup> DeploymentGroups;
 	TArray<FFMCodexLocalMatchSelectionOption> SelectionOptions;
+	TArray<FFMCodexLocalMatchPitchRegionView> PitchRegions;
 	TArray<EMatchPlayElectiveBranchIntent> BranchIntentOptions;
 	TArray<EMatchPlayThroughBallOneOnOneShotChoice> OneOnOneOptions;
 	TArray<FFMCodexLocalMatchRollView> AcceptedRolls;
@@ -119,4 +167,8 @@ public:
 	static FString ToString(EFMCodexLocalMatchInteractionCategory Category);
 	static FString ToString(EInitialTurnOrderPlayer Player);
 	static FString ToString(EMatchResultType Result);
+	static FString ToString(EPlayerPositionType Position);
+	static FString ToString(EMatchPlayNeutralSlotSide Side);
+	static FString ToString(EMatchPlayRelativeDeploymentZone Zone);
+	static FString ToString(ESkillRuleType SkillType);
 };

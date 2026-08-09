@@ -42,15 +42,195 @@ namespace FMCodexLocalMatchInteractionView
 			: State.RuntimeState.PlayerBState.GoalkeeperCardId));
 	}
 
+	const FCardUsageState& CardUsage(
+		const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.CardUsageState.PlayerACardUsageState
+			: State.CardUsageState.PlayerBCardUsageState;
+	}
+
+	FString JoinLabels(const TArray<FString>& Labels)
+	{
+		return FString::Join(Labels, TEXT(" / "));
+	}
+
+	FString SkillLabel(
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		const FName SkillId)
+	{
+		FSkillRuleSnapshotQueryInput Input;
+		Input.SkillId = SkillId;
+		const auto Query = FSkillRuleSnapshotQuery::FindBySkillId(
+			SkillRuleSet, Input);
+		return Query.bSuccess
+			? FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				Query.Snapshot.SkillType)
+			: FString::Printf(TEXT("Skill %s"), *SkillId.ToString());
+	}
+
+	FFMCodexLocalMatchSlotView MakeSlotView(
+		const FMatchPlayState& State,
+		const FName SlotId,
+		const EInitialTurnOrderPlayer EvaluatedSide)
+	{
+		FFMCodexLocalMatchSlotView View;
+		View.SlotId = SlotId;
+		const auto Slot = FMatchPlayDeploymentSlotCatalogQuery::FindSlot(
+			State.DeploymentSlotCatalog, SlotId);
+		if (Slot.bSuccess)
+		{
+			View.NeutralSide = Slot.SlotDefinition.NeutralSide;
+		}
+		const auto Zone = FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+			State.DeploymentSlotCatalog,
+			SlotId,
+			State.RuntimeState.CurrentAttackingPlayer,
+			EvaluatedSide);
+		if (Zone.bSuccess)
+		{
+			View.RelativeZone = Zone.RelativeZone;
+		}
+		View.Label = FString::Printf(
+			TEXT("%s | %s | %s"),
+			*SlotId.ToString(),
+			*FFMCodexLocalMatchInteractionViewBuilder::ToString(View.NeutralSide),
+			*FFMCodexLocalMatchInteractionViewBuilder::ToString(View.RelativeZone));
+		return View;
+	}
+
+	FFMCodexLocalMatchCardView MakeCardView(
+		const FMatchPlayState& State,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		const EInitialTurnOrderPlayer Side,
+		const FName CardId)
+	{
+		FFMCodexLocalMatchCardView View;
+		View.Side = Side;
+		View.CardId = CardId;
+		View.DisplayLabel = FString::Printf(TEXT("Card %s"), *CardId.ToString());
+		const auto Card =
+			FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+				State.CardSnapshotAuthority, Side, CardId);
+		if (!Card.bSuccess)
+		{
+			return View;
+		}
+
+		View.bGoalkeeper = Card.Snapshot.bIsGoalkeeper;
+		TArray<FString> Positions;
+		for (const EPlayerPositionType Position : Card.Snapshot.PositionTypes)
+		{
+			Positions.Add(
+				FFMCodexLocalMatchInteractionViewBuilder::ToString(Position));
+		}
+		View.PositionLabel = JoinLabels(Positions);
+		const FPlayerAttributes& A = Card.Snapshot.Attributes;
+		View.AttributeSummary = FString::Printf(
+			TEXT("SHO %d | PAS %d | DRI %d | SPD %d | MRK %d | TKL %d | STA %d | LS %d"),
+			A.Shooting, A.Passing, A.Dribbling, A.Speed,
+			A.Marking, A.Tackling, A.Stamina, A.LongShot);
+		if (Card.Snapshot.bHasGoalkeeperAttributes)
+		{
+			const FGoalkeeperAttributes& G = Card.Snapshot.GoalkeeperAttributes;
+			View.GoalkeeperAttributeSummary = FString::Printf(
+				TEXT("HAN %d | POS %d | REF %d | AER %d | ANT %d | 1v1 %d"),
+				G.Handling, G.Positioning, G.Reflex,
+				G.Aerial, G.Anticipation, G.OneOnOne);
+		}
+		for (const FName SkillId : Card.Snapshot.SkillIds)
+		{
+			View.SkillLabels.Add(SkillLabel(SkillRuleSet, SkillId));
+		}
+
+		const FCardUsageState& Usage = CardUsage(State, Side);
+		View.bAvailable = Usage.AvailableCardIds.Contains(CardId);
+		View.bUsed = Usage.UsedCardIds.Contains(CardId);
+		View.bGoalkeeperUsedThisMatch = View.bGoalkeeper
+			&& (Side == EInitialTurnOrderPlayer::PlayerA
+				? State.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed
+				: State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed);
+
+		if (State.bHasCurrentAttack)
+		{
+			for (const FMatchPlayDeploymentPlacement& Placement
+				: State.CurrentAttack.DeploymentPlacements)
+			{
+				if (Placement.PlayerSide == Side
+					&& Placement.CardId == CardId)
+				{
+					View.bDeployed = true;
+					View.SlotId = Placement.SlotId;
+					const auto Slot = MakeSlotView(State, Placement.SlotId, Side);
+					View.NeutralSide = Slot.NeutralSide;
+					View.RelativeZone = Slot.RelativeZone;
+					break;
+				}
+			}
+			View.bGoalkeeperActivatedThisAttack = View.bGoalkeeper
+				&& View.bDeployed
+				&& State.CurrentAttack.bCurrentDefenseGoalkeeperActivated
+				&& Side != State.RuntimeState.CurrentAttackingPlayer;
+		}
+		return View;
+	}
+
+	void BuildPitchRegions(
+		const FMatchPlayState& State,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		for (const EMatchPlayNeutralSlotSide Side : {
+			EMatchPlayNeutralSlotSide::NearPlayerA,
+			EMatchPlayNeutralSlotSide::NearPlayerB })
+		{
+			FFMCodexLocalMatchPitchRegionView Region;
+			Region.NeutralSide = Side;
+			Region.Label =
+				FFMCodexLocalMatchInteractionViewBuilder::ToString(Side);
+			for (const FMatchPlayDeploymentSlotDefinition& Slot
+				: State.DeploymentSlotCatalog.Slots)
+			{
+				if (Slot.NeutralSide == Side)
+				{
+					Region.CanonicalSlotIds.Add(Slot.SlotId);
+				}
+			}
+			if (State.bHasCurrentAttack)
+			{
+				for (const FMatchPlayDeploymentPlacement& Placement
+					: State.CurrentAttack.DeploymentPlacements)
+				{
+					const auto Slot =
+						FMatchPlayDeploymentSlotCatalogQuery::FindSlot(
+							State.DeploymentSlotCatalog, Placement.SlotId);
+					if (Slot.bSuccess
+						&& Slot.SlotDefinition.NeutralSide == Side)
+					{
+						Region.DeployedCards.Add(MakeCardView(
+							State,
+							SkillRuleSet,
+							Placement.PlayerSide,
+							Placement.CardId));
+					}
+				}
+			}
+			View.PitchRegions.Add(MoveTemp(Region));
+		}
+	}
+
 	void AddSelectionOption(
 		TArray<FFMCodexLocalMatchSelectionOption>& Options,
 		const EInitialTurnOrderPlayer Side,
 		const FName Id,
+		const FName RelatedCardId,
 		const FString& Suffix = FString())
 	{
 		FFMCodexLocalMatchSelectionOption Option;
 		Option.Side = Side;
 		Option.Id = Id;
+		Option.RelatedCardId = RelatedCardId;
 		Option.Label = Suffix.IsEmpty()
 			? Id.ToString()
 			: FString::Printf(TEXT("%s (%s)"), *Id.ToString(), *Suffix);
@@ -80,6 +260,20 @@ namespace FMCodexLocalMatchInteractionView
 			return TEXT("One-on-One Direct Shot Defense");
 		default:
 			return TEXT("Unknown Post-Route Roll");
+		}
+	}
+
+	EFMCodexLocalMatchRollGroup RollGroup(
+		const EMatchPlayCurrentAttackPostRouteRollPurpose Purpose)
+	{
+		switch (Purpose)
+		{
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneChipShotAttack:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotAttack:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotDefense:
+			return EFMCodexLocalMatchRollGroup::OneOnOne;
+		default:
+			return EFMCodexLocalMatchRollGroup::PostRoute;
 		}
 	}
 
@@ -128,6 +322,7 @@ namespace FMCodexLocalMatchInteractionView
 
 	void BuildDeploymentOptions(
 		const FMatchPlayState& State,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
 		FFMCodexLocalMatchInteractionView& View)
 	{
 		const FMatchPlayCurrentAttackState& Attack = State.CurrentAttack;
@@ -144,8 +339,17 @@ namespace FMCodexLocalMatchInteractionView
 			}
 			if (Availability.LegalSlotIds.Num() > 0)
 			{
-				View.DeploymentGroups.Add({
-					Side, CardId, false, Availability.LegalSlotIds });
+				FFMCodexLocalMatchDeploymentGroup Group;
+				Group.Side = Side;
+				Group.CardId = CardId;
+				Group.LegalSlotIds = Availability.LegalSlotIds;
+				Group.Card = MakeCardView(
+					State, SkillRuleSet, Side, CardId);
+				for (const FName SlotId : Availability.LegalSlotIds)
+				{
+					Group.LegalSlots.Add(MakeSlotView(State, SlotId, Side));
+				}
+				View.DeploymentGroups.Add(MoveTemp(Group));
 			}
 			for (const FName SlotId : Availability.LegalSlotIds)
 			{
@@ -161,11 +365,18 @@ namespace FMCodexLocalMatchInteractionView
 		{
 			if (GoalkeeperAvailability.LegalSlotIds.Num() > 0)
 			{
-				View.DeploymentGroups.Add({
-					Side,
-					GoalkeeperId,
-					true,
-					GoalkeeperAvailability.LegalSlotIds });
+				FFMCodexLocalMatchDeploymentGroup Group;
+				Group.Side = Side;
+				Group.CardId = GoalkeeperId;
+				Group.bGoalkeeper = true;
+				Group.LegalSlotIds = GoalkeeperAvailability.LegalSlotIds;
+				Group.Card = MakeCardView(
+					State, SkillRuleSet, Side, GoalkeeperId);
+				for (const FName SlotId : GoalkeeperAvailability.LegalSlotIds)
+				{
+					Group.LegalSlots.Add(MakeSlotView(State, SlotId, Side));
+				}
+				View.DeploymentGroups.Add(MoveTemp(Group));
 			}
 			for (const FName SlotId : GoalkeeperAvailability.LegalSlotIds)
 			{
@@ -203,6 +414,7 @@ namespace FMCodexLocalMatchInteractionView
 					AddSelectionOption(
 						View.SelectionOptions,
 						Attacker,
+						Candidate.CarrierCardId,
 						Candidate.CarrierCardId);
 				}
 			}
@@ -226,6 +438,7 @@ namespace FMCodexLocalMatchInteractionView
 					AddSelectionOption(
 						View.SelectionOptions,
 						Defender,
+						Candidate.MarkerCardId,
 						Candidate.MarkerCardId);
 				}
 			}
@@ -257,9 +470,10 @@ namespace FMCodexLocalMatchInteractionView
 					View.SelectionOptions,
 					Attacker,
 					Candidate.SkillId,
+					Attack.ActionPreparation.CarrierCardId,
 					Rule.bSuccess
-						? StaticEnum<ESkillRuleType>()->GetNameStringByValue(
-							static_cast<int64>(Rule.Snapshot.SkillType))
+						? FFMCodexLocalMatchInteractionViewBuilder::ToString(
+							Rule.Snapshot.SkillType)
 						: TEXT("Unknown Skill"));
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
@@ -282,6 +496,7 @@ namespace FMCodexLocalMatchInteractionView
 					AddSelectionOption(
 						View.SelectionOptions,
 						Attacker,
+						Candidate.RunnerCardId,
 						Candidate.RunnerCardId);
 				}
 			}
@@ -305,6 +520,7 @@ namespace FMCodexLocalMatchInteractionView
 					AddSelectionOption(
 						View.SelectionOptions,
 						Defender,
+						Candidate.HelperCardId,
 						Candidate.HelperCardId);
 				}
 			}
@@ -338,6 +554,27 @@ namespace FMCodexLocalMatchInteractionView
 			View.InteractionCategory =
 				EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 			break;
+		}
+	}
+
+	void AttachSelectionCardViews(
+		const FMatchPlayState& State,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		for (FFMCodexLocalMatchSelectionOption& Option
+			: View.SelectionOptions)
+		{
+			if (Option.RelatedCardId.IsNone())
+			{
+				continue;
+			}
+			Option.Card = MakeCardView(
+				State,
+				SkillRuleSet,
+				Option.Side,
+				Option.RelatedCardId);
+			Option.bHasCard = !Option.Card.CardId.IsNone();
 		}
 	}
 }
@@ -401,6 +638,7 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	Result.SelectionStage = Attack.SelectionStage;
 	Result.CurrentLegalDeploymentSide = Attack.CurrentLegalDeploymentSide;
 	Result.DeploymentPlacements = Attack.DeploymentPlacements;
+	BuildPitchRegions(Snapshot, SkillRuleSet, Result);
 
 	if (Attack.Phase == EMatchPlayCurrentAttackPhase::Deployment)
 	{
@@ -409,7 +647,7 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 			EFMCodexLocalMatchInteractionCategory::Deploy;
 		Result.ExpectedActingPlayer = Attack.CurrentLegalDeploymentSide;
 		Result.bHumanInteraction = true;
-		BuildDeploymentOptions(Snapshot, Result);
+		BuildDeploymentOptions(Snapshot, SkillRuleSet, Result);
 		return Result;
 	}
 
@@ -429,7 +667,7 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 			: Session.PostRouteRollProgress.RollRecords)
 		{
 			Result.AcceptedRolls.Add({
-				EFMCodexLocalMatchRollGroup::PostRoute,
+				RollGroup(Roll.Purpose),
 				RollPurpose(Roll.Purpose),
 				Roll.RawD6 });
 		}
@@ -472,6 +710,7 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	Result.bHumanInteraction = Attack.SelectionStage
 		!= EMatchPlayCurrentAttackSelectionStage::ReadyForResolution;
 	BuildSelectionOptions(Snapshot, SkillRuleSet, Result);
+	AttachSelectionCardViews(Snapshot, SkillRuleSet, Result);
 	if (Result.InteractionCategory
 		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
 	{
@@ -538,5 +777,58 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EMatchResultType::AwayWin: return TEXT("Player B Win");
 	case EMatchResultType::Draw: return TEXT("Draw");
 	default: return TEXT("Not Ended");
+	}
+}
+
+FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
+	const EPlayerPositionType Position)
+{
+	switch (Position)
+	{
+	case EPlayerPositionType::Attack: return TEXT("Forward");
+	case EPlayerPositionType::Midfield: return TEXT("Midfielder");
+	case EPlayerPositionType::Defense: return TEXT("Defender");
+	case EPlayerPositionType::Goalkeeper: return TEXT("Goalkeeper");
+	default: return TEXT("Unknown Role");
+	}
+}
+
+FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
+	const EMatchPlayNeutralSlotSide Side)
+{
+	switch (Side)
+	{
+	case EMatchPlayNeutralSlotSide::NearPlayerA:
+		return TEXT("Player A Half");
+	case EMatchPlayNeutralSlotSide::NearPlayerB:
+		return TEXT("Player B Half");
+	default:
+		return TEXT("Unknown Field Region");
+	}
+}
+
+FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
+	const EMatchPlayRelativeDeploymentZone Zone)
+{
+	switch (Zone)
+	{
+	case EMatchPlayRelativeDeploymentZone::Forward: return TEXT("Forward");
+	case EMatchPlayRelativeDeploymentZone::Midfield: return TEXT("Midfield");
+	case EMatchPlayRelativeDeploymentZone::Backfield: return TEXT("Backfield");
+	default: return TEXT("Unknown Zone");
+	}
+}
+
+FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
+	const ESkillRuleType SkillType)
+{
+	switch (SkillType)
+	{
+	case ESkillRuleType::LongShot: return TEXT("Long Shot");
+	case ESkillRuleType::CutInsideShot: return TEXT("Cut Inside");
+	case ESkillRuleType::PassControl: return TEXT("Pass Control");
+	case ESkillRuleType::Cross: return TEXT("Cross");
+	case ESkillRuleType::ThroughBall: return TEXT("Through Ball");
+	default: return TEXT("Unknown Skill");
 	}
 }

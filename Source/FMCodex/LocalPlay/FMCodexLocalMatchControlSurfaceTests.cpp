@@ -490,6 +490,10 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 	TestEqual(TEXT("Rendered score B matches snapshot"),
 		Controller->GetInteractionView().PlayerBScore,
 		Host->GetMatchSnapshot().Snapshot.RuntimeState.PlayerBState.Score);
+	TestTrue(TEXT("Terminal command exposes safe readable result summary"),
+		Controller->GetLastDiagnostic().PresentationSummary == TEXT("GOAL")
+			|| Controller->GetLastDiagnostic().PresentationSummary
+				== TEXT("Attack complete - no goal"));
 
 	FMatchPlayState EndedSnapshot = Host->GetMatchSnapshot().Snapshot;
 	EndedSnapshot.RuntimeState.PlayerAState.UsedAttackCount =
@@ -926,6 +930,342 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 	TestEqual(TEXT("Initial roll is grouped separately"),
 		Controller->GetInteractionView().AcceptedRolls[0].Group,
 		EFMCodexLocalMatchRollGroup::InitialRoute);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchCardPitchPresentationTest,
+	"FMCodex.LocalPlay.ControlSurface.17.CardPitchPresentation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchCardPitchPresentationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Host = PlayableWorld.GetHost();
+	auto* Controller = PlayableWorld.GetController();
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->StartNewDemoMatch();
+	Controller->AcknowledgeHotSeatHandoff();
+	Controller->BeginDemoOrdinaryAttack();
+	TestTrue(TEXT("Presentation fixture begins attack"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	const auto& InitialView = Controller->GetInteractionView();
+	TestEqual(TEXT("Pitch has both canonical physical halves"),
+		InitialView.PitchRegions.Num(), 2);
+	int32 PresentedSlotCount = 0;
+	for (const FFMCodexLocalMatchPitchRegionView& Region
+		: InitialView.PitchRegions)
+	{
+		PresentedSlotCount += Region.CanonicalSlotIds.Num();
+		TestFalse(TEXT("Pitch region has a player-readable label"),
+			Region.Label.IsEmpty());
+	}
+	TestEqual(TEXT("Pitch regions preserve every canonical slot"),
+		PresentedSlotCount,
+		Host->GetMatchSnapshot().Snapshot.DeploymentSlotCatalog.Slots.Num());
+
+	int32 PresentedLegalSlots = 0;
+	const FFMCodexLocalMatchDeploymentGroup* OrdinaryGroup = nullptr;
+	for (const FFMCodexLocalMatchDeploymentGroup& Group
+		: InitialView.DeploymentGroups)
+	{
+		PresentedLegalSlots += Group.LegalSlots.Num();
+		TestEqual(TEXT("Readable locations preserve raw legal slot count"),
+			Group.LegalSlots.Num(), Group.LegalSlotIds.Num());
+		if (!Group.bGoalkeeper && OrdinaryGroup == nullptr)
+		{
+			OrdinaryGroup = &Group;
+		}
+	}
+	TestEqual(TEXT("Card grouping preserves all legal options"),
+		PresentedLegalSlots, InitialView.DeploymentOptions.Num());
+	TestNotNull(TEXT("An ordinary readable card is available"), OrdinaryGroup);
+	if (OrdinaryGroup == nullptr || OrdinaryGroup->LegalSlots.IsEmpty())
+	{
+		return false;
+	}
+	TestEqual(TEXT("Card view preserves canonical CardId"),
+		OrdinaryGroup->Card.CardId, OrdinaryGroup->CardId);
+	TestTrue(TEXT("Missing display name uses explicit Card fallback"),
+		OrdinaryGroup->Card.DisplayLabel.StartsWith(TEXT("Card ")));
+	TestFalse(TEXT("Card shows canonical role"),
+		OrdinaryGroup->Card.PositionLabel.IsEmpty());
+	TestTrue(TEXT("Card shows compact authoritative attributes"),
+		OrdinaryGroup->Card.AttributeSummary.Contains(TEXT("SHO"))
+			&& OrdinaryGroup->Card.AttributeSummary.Contains(TEXT("PAS")));
+	TestTrue(TEXT("Demo ordinary card shows readable Cross skill"),
+		OrdinaryGroup->Card.SkillLabels.Contains(TEXT("Cross")));
+
+	const FName DeployedCardId = OrdinaryGroup->CardId;
+	const FName DeployedSlotId = OrdinaryGroup->LegalSlots[0].SlotId;
+	const EMatchPlayNeutralSlotSide ExpectedHalf =
+		OrdinaryGroup->LegalSlots[0].NeutralSide;
+	const EMatchPlayRelativeDeploymentZone ExpectedZone =
+		OrdinaryGroup->LegalSlots[0].RelativeZone;
+	Controller->DeployOrdinary(DeployedCardId, DeployedSlotId);
+	TestTrue(TEXT("Readable deployment command succeeds"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+
+	int32 PresentedPlacements = 0;
+	bool bFoundCanonicalCard = false;
+	for (const FFMCodexLocalMatchPitchRegionView& Region
+		: Controller->GetInteractionView().PitchRegions)
+	{
+		PresentedPlacements += Region.DeployedCards.Num();
+		for (const FFMCodexLocalMatchCardView& Card : Region.DeployedCards)
+		{
+			if (Card.CardId == DeployedCardId)
+			{
+				bFoundCanonicalCard = Card.bDeployed
+					&& Card.SlotId == DeployedSlotId
+					&& Card.NeutralSide == ExpectedHalf
+					&& Card.RelativeZone == ExpectedZone;
+			}
+		}
+	}
+	TestEqual(TEXT("Exactly one deployed card appears on pitch"),
+		PresentedPlacements, 1);
+	TestTrue(TEXT("Deployed card maps to canonical half, zone and slot"),
+		bFoundCanonicalCard);
+
+	const TArray<uint8> BeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	const int32 ScoreABefore = Controller->GetInteractionView().PlayerAScore;
+	const int32 ScoreBBefore = Controller->GetInteractionView().PlayerBScore;
+	const auto CategoryBefore =
+		Controller->GetInteractionView().InteractionCategory;
+	TestFalse(TEXT("Next side still has canonical deployment options"),
+		Controller->GetInteractionView().DeploymentOptions.IsEmpty());
+	if (Controller->GetInteractionView().DeploymentOptions.IsEmpty())
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchDeploymentOption MaskedOption =
+		Controller->GetInteractionView().DeploymentOptions[0];
+	Controller->DeployOrdinary(MaskedOption.CardId, MaskedOption.SlotId);
+	TestFalse(TEXT("Masked next-side deployment is rejected"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestEqual(TEXT("Rejected command has readable result summary"),
+		Controller->GetLastDiagnostic().PresentationSummary,
+		FString(TEXT("Command rejected")));
+	TestTrue(TEXT("Rejected command leaves authority byte-identical"),
+		BeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	TestEqual(TEXT("Rejected command leaves score A unchanged"),
+		Controller->GetInteractionView().PlayerAScore, ScoreABefore);
+	TestEqual(TEXT("Rejected command leaves score B unchanged"),
+		Controller->GetInteractionView().PlayerBScore, ScoreBBefore);
+	TestEqual(TEXT("Rejected command leaves interaction unchanged"),
+		Controller->GetInteractionView().InteractionCategory, CategoryBefore);
+
+	int32 PlacementsAfterFailure = 0;
+	for (const FFMCodexLocalMatchPitchRegionView& Region
+		: Controller->GetInteractionView().PitchRegions)
+	{
+		PlacementsAfterFailure += Region.DeployedCards.Num();
+	}
+	TestEqual(TEXT("Rejected command causes no optimistic card movement"),
+		PlacementsAfterFailure, PresentedPlacements);
+
+	Controller->AcknowledgeHotSeatHandoff();
+	bool bHasReadableGoalkeeper = false;
+	for (const FFMCodexLocalMatchDeploymentGroup& Group
+		: Controller->GetInteractionView().DeploymentGroups)
+	{
+		if (Group.bGoalkeeper)
+		{
+			bHasReadableGoalkeeper = Group.Card.bGoalkeeper
+				&& Group.Card.PositionLabel.Contains(TEXT("Goalkeeper"))
+				&& Group.Card.GoalkeeperAttributeSummary.Contains(TEXT("HAN"))
+				&& !Group.Card.bGoalkeeperUsedThisMatch;
+			break;
+		}
+	}
+	TestTrue(TEXT("Defender goalkeeper is visibly distinct and authoritative"),
+		bHasReadableGoalkeeper);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchCandidatePresentationTest,
+	"FMCodex.LocalPlay.ControlSurface.18.CandidatePresentation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchCandidatePresentationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Host = PlayableWorld.GetHost();
+	auto* Controller = PlayableWorld.GetController();
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->StartNewDemoMatch();
+	Controller->AcknowledgeHotSeatHandoff();
+	Controller->BeginDemoOrdinaryAttack();
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const FString PhysicalForward =
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? TEXT("NearB") : TEXT("NearA");
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		TestTrue(TEXT("Candidate fixture deploys through readable options"),
+			DeployNextOrdinary(*Controller, PhysicalForward));
+	}
+	AcknowledgeIfPending(*Controller);
+	Controller->FinishDeployment();
+	AcknowledgeIfPending(*Controller);
+	Controller->FinishDeployment();
+	AcknowledgeIfPending(*Controller);
+
+	const auto& CarrierView = Controller->GetInteractionView();
+	TestEqual(TEXT("Fixture reaches Carrier"), CarrierView.InteractionCategory,
+		EFMCodexLocalMatchInteractionCategory::SelectCarrier);
+	TestFalse(TEXT("Carrier candidates exist"),
+		CarrierView.SelectionOptions.IsEmpty());
+	if (CarrierView.SelectionOptions.IsEmpty())
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchSelectionOption Carrier =
+		CarrierView.SelectionOptions[0];
+	TestTrue(TEXT("Carrier candidate includes its card view"),
+		Carrier.bHasCard);
+	TestEqual(TEXT("Carrier button and card share canonical identity"),
+		Carrier.RelatedCardId, Carrier.Id);
+	TestEqual(TEXT("Carrier card keeps expected acting side"),
+		Carrier.Card.Side, CarrierView.ExpectedActingPlayer);
+	TestTrue(TEXT("Carrier card is visibly deployed"),
+		Carrier.Card.bDeployed);
+	TestEqual(TEXT("Header attacker derives from authority"),
+		CarrierView.CurrentAttackingPlayer,
+		Host->GetMatchSnapshot().Snapshot.RuntimeState.CurrentAttackingPlayer);
+	TestEqual(TEXT("Header score A derives from authority"),
+		CarrierView.PlayerAScore,
+		Host->GetMatchSnapshot().Snapshot.RuntimeState.PlayerAState.Score);
+	TestEqual(TEXT("Header score B derives from authority"),
+		CarrierView.PlayerBScore,
+		Host->GetMatchSnapshot().Snapshot.RuntimeState.PlayerBState.Score);
+
+	Controller->SubmitCarrier(Carrier.Id);
+	AcknowledgeIfPending(*Controller);
+	const auto& MarkerView = Controller->GetInteractionView();
+	TestFalse(TEXT("Marker candidates exist"),
+		MarkerView.SelectionOptions.IsEmpty());
+	if (MarkerView.SelectionOptions.IsEmpty())
+	{
+		return false;
+	}
+	const auto Marker = MarkerView.SelectionOptions[0];
+	TestTrue(TEXT("Marker candidate includes matching deployed card"),
+		Marker.bHasCard && Marker.RelatedCardId == Marker.Id
+			&& Marker.Card.CardId == Marker.Id && Marker.Card.bDeployed);
+	Controller->SubmitMarker(Marker.Id);
+	AcknowledgeIfPending(*Controller);
+
+	const auto& SkillView = Controller->GetInteractionView();
+	TestEqual(TEXT("Fixture reaches Skill"), SkillView.InteractionCategory,
+		EFMCodexLocalMatchInteractionCategory::SelectSkill);
+	TestFalse(TEXT("Skill choices exist"), SkillView.SelectionOptions.IsEmpty());
+	if (SkillView.SelectionOptions.IsEmpty())
+	{
+		return false;
+	}
+	const auto Skill = SkillView.SelectionOptions[0];
+	TestTrue(TEXT("Skill label maps canonical enum to readable text"),
+		Skill.Label.Contains(TEXT("Cross")));
+	TestTrue(TEXT("Skill choice shows the carrier using it"),
+		Skill.bHasCard && Skill.RelatedCardId == Carrier.Id
+			&& Skill.Card.CardId == Carrier.Id);
+	TestEqual(TEXT("Expected actor remains snapshot-derived"),
+		SkillView.ExpectedActingPlayer, Attacker);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchPresentationShellContractTest,
+	"FMCodex.LocalPlay.ControlSurface.19.PresentationShellContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchPresentationShellContractTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Host = PlayableWorld.GetHost();
+	if (Host == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	TestTrue(TEXT("Ended-view fixture starts"),
+		Host->StartNewLocalMatch(Demo.OpeningInput, Demo.SkillRuleSet).bSuccess);
+	FMatchPlayState EndedState = Host->GetMatchSnapshot().Snapshot;
+	EndedState.RuntimeState.PlayerAState.Score = 2;
+	EndedState.RuntimeState.PlayerBState.Score = 1;
+	EndedState.RuntimeState.PlayerAState.UsedAttackCount =
+		EndedState.RuntimeState.PlayerAState.TotalAttackCount;
+	EndedState.RuntimeState.PlayerBState.UsedAttackCount =
+		EndedState.RuntimeState.PlayerBState.TotalAttackCount;
+	EndedState.bHasCurrentAttack = false;
+	const auto EndedView = FFMCodexLocalMatchInteractionViewBuilder::Build(
+		EndedState, Demo.SkillRuleSet);
+	TestTrue(TEXT("Ended shell is snapshot-derived"), EndedView.bMatchEnded);
+	TestEqual(TEXT("Ended shell retains final score A"),
+		EndedView.PlayerAScore, 2);
+	TestEqual(TEXT("Ended shell retains final score B"),
+		EndedView.PlayerBScore, 1);
+	TestEqual(TEXT("Ended shell exposes canonical winner"),
+		EndedView.MatchResult, EMatchResultType::HomeWin);
+	TestEqual(TEXT("Ended shell exposes no human actor"),
+		EndedView.ExpectedActingPlayer, EInitialTurnOrderPlayer::None);
+
+	TestEqual(TEXT("LongShot readable mapping"),
+		FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			ESkillRuleType::LongShot), FString(TEXT("Long Shot")));
+	TestEqual(TEXT("CutInside readable mapping"),
+		FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			ESkillRuleType::CutInsideShot), FString(TEXT("Cut Inside")));
+	TestEqual(TEXT("PassControl readable mapping"),
+		FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			ESkillRuleType::PassControl), FString(TEXT("Pass Control")));
+	TestEqual(TEXT("ThroughBall readable mapping"),
+		FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			ESkillRuleType::ThroughBall), FString(TEXT("Through Ball")));
+
+	FString ControllerSource;
+	TestTrue(TEXT("Presentation source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+		ControllerSource));
+	TestTrue(TEXT("Player-readable header and field shell exist"),
+		ControllerSource.Contains(TEXT("FMCODEX LOCAL MATCH"))
+			&& ControllerSource.Contains(TEXT("FOOTBALL FIELD"))
+			&& ControllerSource.Contains(TEXT("CURRENT INTERACTION")));
+	TestTrue(TEXT("Cards and legal locations use derived view types"),
+		ControllerSource.Contains(TEXT("MakeCardPanel"))
+			&& ControllerSource.Contains(TEXT("Group.LegalSlots")));
+	TestTrue(TEXT("Dice groups include canonical OneOnOne presentation"),
+		ControllerSource.Contains(TEXT("Accepted Dice - One-on-One")));
+	TestTrue(TEXT("Match-ended shell offers explicit final result/restart"),
+		ControllerSource.Contains(TEXT("FINAL RESULT"))
+			&& ControllerSource.Contains(TEXT("Start New Local Match")));
+	TestTrue(TEXT("Interaction remains scrollable for large option sets"),
+		ControllerSource.Contains(TEXT("SNew(SScrollBox)"))
+			&& ControllerSource.Contains(TEXT("SNew(SWrapBox)")));
+	TestFalse(TEXT("Presentation source has no direct authoritative State write"),
+		ControllerSource.Contains(TEXT("CurrentAttack.DeploymentPlacements.Add"))
+			|| ControllerSource.Contains(TEXT("RuntimeState.PlayerAState.Score ="))
+			|| ControllerSource.Contains(TEXT("RuntimeState.PlayerBState.Score =")));
 	return true;
 }
 

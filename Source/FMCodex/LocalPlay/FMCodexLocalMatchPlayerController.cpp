@@ -59,6 +59,77 @@ namespace FMCodexLocalMatchPlayerController
 				SNew(STextBlock).Text(FText::FromString(Label))
 			];
 	}
+
+	TSharedRef<SWidget> MakeCardPanel(
+		const FFMCodexLocalMatchCardView& Card,
+		const bool bShowLocation = true)
+	{
+		TSharedRef<SVerticalBox> Body = SNew(SVerticalBox);
+		auto AddLine = [&Body](
+			const FString& Text,
+			const FLinearColor Color = FLinearColor::White)
+		{
+			Body->AddSlot().AutoHeight().Padding(2.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Text))
+				.ColorAndOpacity(Color)
+			];
+		};
+
+		const FLinearColor SideColor =
+			Card.Side == EInitialTurnOrderPlayer::PlayerA
+				? FLinearColor(0.12f, 0.30f, 0.55f, 0.95f)
+				: FLinearColor(0.50f, 0.16f, 0.14f, 0.95f);
+		AddLine(Card.DisplayLabel, FLinearColor(1.0f, 0.88f, 0.42f));
+		AddLine(FString::Printf(
+			TEXT("%s | %s | ID %s"),
+			*FFMCodexLocalMatchInteractionViewBuilder::ToString(Card.Side),
+			Card.bGoalkeeper ? TEXT("Goalkeeper") : *Card.PositionLabel,
+			*Card.CardId.ToString()),
+			FLinearColor(0.82f, 0.86f, 0.90f));
+		AddLine(Card.bGoalkeeper && !Card.GoalkeeperAttributeSummary.IsEmpty()
+			? Card.GoalkeeperAttributeSummary
+			: Card.AttributeSummary);
+		AddLine(Card.SkillLabels.IsEmpty()
+			? TEXT("Skills: None")
+			: TEXT("Skills: ") + FString::Join(Card.SkillLabels, TEXT(", ")),
+			FLinearColor(0.72f, 0.88f, 0.72f));
+
+		FString State = Card.bUsed
+			? TEXT("Used")
+			: Card.bAvailable ? TEXT("Available") : TEXT("Unavailable");
+		if (Card.bDeployed)
+		{
+			State += TEXT(" | Deployed");
+		}
+		if (Card.bGoalkeeperUsedThisMatch)
+		{
+			State += TEXT(" | GK used this match");
+		}
+		if (Card.bGoalkeeperActivatedThisAttack)
+		{
+			State += TEXT(" | GK active");
+		}
+		AddLine(State, FLinearColor(0.72f, 0.78f, 0.84f));
+		if (bShowLocation && Card.bDeployed)
+		{
+			AddLine(FString::Printf(
+				TEXT("%s | %s | Slot %s"),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					Card.NeutralSide),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					Card.RelativeZone),
+				*Card.SlotId.ToString()));
+		}
+
+		return SNew(SBorder)
+			.Padding(7.0f)
+			.BorderBackgroundColor(SideColor)
+			[
+				Body
+			];
+	}
 }
 
 AFMCodexLocalMatchPlayerController::AFMCodexLocalMatchPlayerController()
@@ -289,6 +360,7 @@ void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
 	LastDiagnostic.bAuthoritativeAccepted = false;
 	LastDiagnostic.bAuthoritativeSuccess = false;
 	LastDiagnostic.Message = Message;
+	LastDiagnostic.PresentationSummary = TEXT("Command rejected");
 	RefreshPresentation();
 }
 
@@ -1013,7 +1085,99 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		Content->AddSlot().AutoHeight().Padding(2.0f)[Button];
 	};
 
-	AddText(TEXT("FMCodex - Developer Hot-seat Control Surface"));
+	const FString MatchStateLabel = InteractionView.bMatchEnded
+		? TEXT("MATCH ENDED")
+		: InteractionView.bMatchActive ? TEXT("MATCH IN PROGRESS") : TEXT("READY");
+	const FString ActingLabel = InteractionView.ExpectedActingPlayer
+		== EInitialTurnOrderPlayer::None
+			? TEXT("System resolution")
+			: FString::Printf(
+				TEXT("%s to act"),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					InteractionView.ExpectedActingPlayer));
+	Content->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 10.0f)
+	[
+		SNew(SBorder)
+		.Padding(12.0f)
+		.BorderBackgroundColor(FLinearColor(0.07f, 0.11f, 0.15f, 1.0f))
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("FMCODEX LOCAL MATCH")))
+				.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(FString::Printf(
+					TEXT("PLAYER A   %d  -  %d   PLAYER B"),
+					InteractionView.PlayerAScore,
+					InteractionView.PlayerBScore)))
+				.Justification(ETextJustify::Center)
+			]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(FString::Printf(
+					TEXT("%s | Attacker: %s | %s"),
+					*MatchStateLabel,
+					*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+						InteractionView.CurrentAttackingPlayer),
+					*ActingLabel)))
+				.Justification(ETextJustify::Center)
+			]
+		]
+	];
+
+	AddText(TEXT("FOOTBALL FIELD"));
+	TSharedRef<SHorizontalBox> Pitch = SNew(SHorizontalBox);
+	for (const FFMCodexLocalMatchPitchRegionView& Region
+		: InteractionView.PitchRegions)
+	{
+		TSharedRef<SVerticalBox> RegionBody = SNew(SVerticalBox);
+		RegionBody->AddSlot().AutoHeight().Padding(2.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(FString::Printf(
+				TEXT("%s | %d canonical slots"),
+				*Region.Label,
+				Region.CanonicalSlotIds.Num())))
+			.Justification(ETextJustify::Center)
+		];
+		if (Region.DeployedCards.IsEmpty())
+		{
+			RegionBody->AddSlot().AutoHeight().Padding(8.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("No deployed cards")))
+				.Justification(ETextJustify::Center)
+				.ColorAndOpacity(FLinearColor(0.55f, 0.62f, 0.58f))
+			];
+		}
+		for (const FFMCodexLocalMatchCardView& Card : Region.DeployedCards)
+		{
+			RegionBody->AddSlot().AutoHeight().Padding(3.0f)
+			[
+				MakeCardPanel(Card)
+			];
+		}
+		Pitch->AddSlot().FillWidth(1.0f).Padding(3.0f)
+		[
+			SNew(SBorder)
+			.Padding(6.0f)
+			.BorderBackgroundColor(FLinearColor(0.06f, 0.24f, 0.10f, 0.92f))
+			[
+				RegionBody
+			]
+		];
+	}
+	Content->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 10.0f)
+	[
+		Pitch
+	];
+	AddText(TEXT("CURRENT INTERACTION"));
 	AddText(FString::Printf(
 		TEXT("Status: %s | Score A %d - %d B"),
 		InteractionView.bMatchActive ? TEXT("Active") : TEXT("No Match"),
@@ -1038,10 +1202,11 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		InteractionView.bCurrentAttackActive ? TEXT("Active") : TEXT("None")));
 	if (InteractionView.bMatchEnded)
 	{
-		AddText(FString(TEXT("Result: "))
+		AddText(FString(TEXT("FINAL RESULT: "))
 			+ FFMCodexLocalMatchInteractionViewBuilder::ToString(
 				InteractionView.MatchResult));
 	}
+	AddText(TEXT("Presentation: ") + LastDiagnostic.PresentationSummary);
 	AddText(FString::Printf(
 		TEXT("Last: %s | Host=%s | Accepted=%s | Domain=%s | %s"),
 		*LastDiagnostic.CommandName,
@@ -1071,9 +1236,20 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 	{
 		if (!bHasRollGroup || Roll.Group != LastRollGroup)
 		{
-			AddText(Roll.Group == EFMCodexLocalMatchRollGroup::InitialRoute
-				? TEXT("Accepted Dice - Initial Route")
-				: TEXT("Accepted Dice - Post-route"));
+			FString RollHeading;
+			switch (Roll.Group)
+			{
+			case EFMCodexLocalMatchRollGroup::InitialRoute:
+				RollHeading = TEXT("Accepted Dice - Initial Route");
+				break;
+			case EFMCodexLocalMatchRollGroup::OneOnOne:
+				RollHeading = TEXT("Accepted Dice - One-on-One");
+				break;
+			default:
+				RollHeading = TEXT("Accepted Dice - Post-route");
+				break;
+			}
+			AddText(RollHeading);
 			LastRollGroup = Roll.Group;
 			bHasRollGroup = true;
 		}
@@ -1084,7 +1260,12 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 	switch (InteractionView.InteractionCategory)
 	{
 	case EFMCodexLocalMatchInteractionCategory::StartMatch:
-		AddButton(MakeButton(TEXT("Start New Local Match"), [this]()
+	case EFMCodexLocalMatchInteractionCategory::MatchEnded:
+		AddButton(MakeButton(
+			InteractionView.bMatchEnded
+				? TEXT("Start New Local Match")
+				: TEXT("Start Local Match"),
+			[this]()
 		{
 			StartNewDemoMatch();
 		}));
@@ -1107,18 +1288,20 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			{
 				continue;
 			}
-			AddText(FString::Printf(
-				TEXT("Card: %s | Side: %s | Legal slots:"),
-				*Group.CardId.ToString(),
-				*FFMCodexLocalMatchInteractionViewBuilder::ToString(Group.Side)));
+			Content->AddSlot().AutoHeight().Padding(3.0f)
+			[
+				MakeCardPanel(Group.Card, false)
+			];
+			AddText(TEXT("Legal deployment locations:"));
 			TSharedRef<SWrapBox> Slots = SNew(SWrapBox)
 				.UseAllottedSize(true)
 				.InnerSlotPadding(FVector2D(3.0f, 3.0f));
-			for (const FName SlotId : Group.LegalSlotIds)
+			for (const FFMCodexLocalMatchSlotView& Slot : Group.LegalSlots)
 			{
+				const FName SlotId = Slot.SlotId;
 				Slots->AddSlot()
 				[
-					MakeButton(SlotId.ToString(), [this, Group, SlotId]()
+					MakeButton(Slot.Label, [this, Group, SlotId]()
 					{
 						DeployOrdinary(Group.CardId, SlotId);
 					})
@@ -1134,18 +1317,20 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			{
 				continue;
 			}
-			AddText(FString::Printf(
-				TEXT("GK: %s | Side: %s | Legal slots:"),
-				*Group.CardId.ToString(),
-				*FFMCodexLocalMatchInteractionViewBuilder::ToString(Group.Side)));
+			Content->AddSlot().AutoHeight().Padding(3.0f)
+			[
+				MakeCardPanel(Group.Card, false)
+			];
+			AddText(TEXT("Legal goalkeeper locations:"));
 			TSharedRef<SWrapBox> Slots = SNew(SWrapBox)
 				.UseAllottedSize(true)
 				.InnerSlotPadding(FVector2D(3.0f, 3.0f));
-			for (const FName SlotId : Group.LegalSlotIds)
+			for (const FFMCodexLocalMatchSlotView& Slot : Group.LegalSlots)
 			{
+				const FName SlotId = Slot.SlotId;
 				Slots->AddSlot()
 				[
-					MakeButton(SlotId.ToString(), [this, SlotId]()
+					MakeButton(Slot.Label, [this, SlotId]()
 					{
 						DeployGoalkeeper(SlotId);
 					})
@@ -1171,8 +1356,15 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		for (const FFMCodexLocalMatchSelectionOption& Option
 			: InteractionView.SelectionOptions)
 		{
+			if (Option.bHasCard)
+			{
+				Content->AddSlot().AutoHeight().Padding(3.0f)
+				[
+					MakeCardPanel(Option.Card)
+				];
+			}
 			const FString Label = FString::Printf(
-				TEXT("%s | Side: %s"),
+				TEXT("Choose %s | Side: %s"),
 				*Option.Label,
 				*FFMCodexLocalMatchInteractionViewBuilder::ToString(Option.Side));
 			AddButton(MakeButton(Label, [this, Option]()

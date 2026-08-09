@@ -18,6 +18,7 @@ struct FMCODEX_API FFMCodexLocalMatchCommandDiagnostic
 	bool bAuthoritativeAccepted = false;
 	bool bAuthoritativeSuccess = false;
 	FString Message = TEXT("No command has been submitted.");
+	FString PresentationSummary = TEXT("Waiting for match input.");
 };
 
 struct FMCODEX_API FFMCodexLocalMatchHotSeatHandoffState
@@ -91,6 +92,8 @@ private:
 	template <typename TResult>
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
 	{
+		const int32 PreviousPlayerAScore = InteractionView.PlayerAScore;
+		const int32 PreviousPlayerBScore = InteractionView.PlayerBScore;
 		LastDiagnostic.CommandName = CommandName;
 		LastDiagnostic.bHostSuccess = Result.bSuccess;
 		LastDiagnostic.bAuthoritativeAccepted =
@@ -103,6 +106,41 @@ private:
 				? Result.ErrorMessage
 				: Result.AuthoritativeResult.RuntimeEnvelope.ErrorMessage;
 		RefreshPresentation();
+		if (!Result.bSuccess)
+		{
+			LastDiagnostic.PresentationSummary = TEXT("Command rejected");
+		}
+		else if (CommandName.StartsWith(TEXT("Apply")))
+		{
+			LastDiagnostic.PresentationSummary =
+				InteractionView.PlayerAScore > PreviousPlayerAScore
+					|| InteractionView.PlayerBScore > PreviousPlayerBScore
+						? TEXT("GOAL")
+						: TEXT("Attack complete - no goal");
+		}
+		else if (CommandName.Contains(TEXT("Route")))
+		{
+			LastDiagnostic.PresentationSummary = TEXT("Route resolved");
+		}
+		else if (CommandName.StartsWith(TEXT("Resolve")))
+		{
+			LastDiagnostic.PresentationSummary =
+				TEXT("Resolution step accepted");
+		}
+		else if (CommandName.StartsWith(TEXT("Deploy")))
+		{
+			LastDiagnostic.PresentationSummary = TEXT("Card deployed");
+		}
+		else if (CommandName.StartsWith(TEXT("Submit")))
+		{
+			LastDiagnostic.PresentationSummary = TEXT("Selection accepted");
+		}
+		else
+		{
+			LastDiagnostic.PresentationSummary =
+				TEXT("Authoritative command accepted");
+		}
+		RebuildControlSurface();
 	}
 
 	FFMCodexLocalMatchInteractionView InteractionView;
