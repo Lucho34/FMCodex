@@ -323,6 +323,33 @@ struct FMCODEX_API FFMCodexUMGInteractionViewModel
 };
 
 USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGDiceResultViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString ContextLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString PurposeLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	int32 RawD6 = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGComparisonEvidenceViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString HeadingLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString EvidenceLabel;
+};
+
+USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGResolutionViewModel
 {
 	GENERATED_BODY()
@@ -340,16 +367,34 @@ struct FMCODEX_API FFMCodexUMGResolutionViewModel
 	FString StepLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString StepSummaryLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString RouteLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	TArray<FFMCodexUMGDiceResultViewModel> DiceResults;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	TArray<FString> DiceLabels;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	TArray<FFMCodexUMGComparisonEvidenceViewModel> ComparisonEvidence;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	FString DecisionLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString ContinuationLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	FString TerminalLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	FString ErrorLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString EmptyStateLabel = TEXT("Waiting for an authoritative result.");
 };
 
 USTRUCT(BlueprintType)

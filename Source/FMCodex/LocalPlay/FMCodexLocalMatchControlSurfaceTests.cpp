@@ -6,9 +6,11 @@
 #include "FMCodexLocalMatchUMGPresentation.h"
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexInteractionOptionWidget.h"
+#include "FMCodexDiceResultWidget.h"
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPitchSlotWidget.h"
 #include "FMCodexPitchWidget.h"
+#include "FMCodexResolutionPanelWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -4743,6 +4745,485 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 			&& ControllerSource.Contains(TEXT("SubmitCarrier"))
 			&& ControllerSource.Contains(TEXT("ContinueResolution")));
 	TestTrue(TEXT("Stage 6.4 root regions remain intact"),
+		Screen->GetWidgetFromName(TEXT("MatchHeaderRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("CurrentInteractionRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("ResolutionResultRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) != nullptr);
+	TestTrue(TEXT("Slate developer reference surface remains available"),
+		ControllerSource.Contains(TEXT("BuildControlSurface"))
+			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexUMGResolutionVisualFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.32.UMGResolutionVisualFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Resolution foundation Host exists"), Host);
+	TestNotNull(TEXT("Resolution foundation Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Resolution foundation root UMG screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	UFMCodexResolutionPanelWidget* RootResolution =
+		Screen->GetResolutionPanel();
+	TestNotNull(TEXT("Root composes dedicated Resolution Panel"), RootResolution);
+	if (RootResolution == nullptr)
+	{
+		return false;
+	}
+	RootResolution->TakeWidget();
+	for (const TCHAR* Region : {
+		TEXT("ResolutionPanelBounds"), TEXT("ResolutionStepRegion"),
+		TEXT("ResolutionDiceRegion"), TEXT("ResolutionComparisonRegion"),
+		TEXT("ResolutionDecisionRegion"),
+		TEXT("ResolutionContinuationRegion"),
+		TEXT("ResolutionTerminalRegion"), TEXT("ResolutionRejectedRegion") })
+	{
+		TestNotNull(FString::Printf(TEXT("Resolution hierarchy contains %s"),
+			Region), RootResolution->GetWidgetFromName(Region));
+	}
+	auto IsVisible = [](const UWidget* Widget)
+	{
+		return Widget != nullptr
+			&& Widget->GetVisibility() != ESlateVisibility::Collapsed
+			&& Widget->GetVisibility() != ESlateVisibility::Hidden;
+	};
+
+	FFMCodexUMGResolutionViewModel Empty;
+	RootResolution->RefreshFromPresentation(Empty);
+	TestTrue(TEXT("No-feedback state is bounded and non-diagnostic"),
+		IsVisible(RootResolution->GetWidgetFromName(
+			TEXT("ResolutionEmptyState")))
+			&& !IsVisible(RootResolution->GetWidgetFromName(
+				TEXT("ResolutionAcceptedHierarchy"))));
+
+	FFMCodexUMGResolutionViewModel Rich;
+	Rich.bVisible = true;
+	Rich.StepLabel = TEXT("One-on-One - Direct Shot");
+	Rich.StepSummaryLabel = TEXT("Direct Shot Formula resolved");
+	Rich.RouteLabel = TEXT("Through Ball -> Behind Defense");
+	Rich.DiceResults = {
+		{ TEXT("ROUTE"), TEXT("Initial Route"), 6 },
+		{ TEXT("ONE-ON-ONE"), TEXT("One-on-One Direct Shot Attack"), 4 },
+		{ TEXT("ONE-ON-ONE"), TEXT("One-on-One Direct Shot Defense"), 2 }
+	};
+	Rich.ComparisonEvidence = {
+		{ TEXT("ATTACK"),
+			TEXT("Shooter: Shooting 5 | modifier +1.0 | D6 4 | final 10.0") },
+		{ TEXT("DEFENSE"),
+			TEXT("Goalkeeper: OneOnOne 5 | activation active | authoritative modifier +2.5 | D6 2 | final 9.5") },
+		{ TEXT("EVIDENCE"),
+			TEXT("Goalkeeper participated in the authoritative Formula") }
+	};
+	Rich.DecisionLabel =
+		TEXT("Winner: Attacker | Reason: Higher final value");
+	Rich.ContinuationLabel = TEXT("Continue: Apply terminal result");
+	Rich.TerminalLabel = TEXT("RESULT: GOAL");
+	Rich.bTerminal = true;
+	RootResolution->RefreshFromPresentation(Rich);
+	TestEqual(TEXT("Every authoritative die receives one Dice Widget"),
+		RootResolution->GetRenderedDiceWidgets().Num(), 3);
+	bool bExactDiceBinding = true;
+	for (int32 Index = 0;
+		Index < RootResolution->GetRenderedDiceWidgets().Num(); ++Index)
+	{
+		const UFMCodexDiceResultWidget* Die =
+			RootResolution->GetRenderedDiceWidgets()[Index];
+		bExactDiceBinding = bExactDiceBinding && Die != nullptr
+			&& Die->GetDisplayedRawD6() == Rich.DiceResults[Index].RawD6
+			&& Die->GetPresentation().PurposeLabel
+				== Rich.DiceResults[Index].PurposeLabel;
+	}
+	TestTrue(TEXT("Dice Widgets bind exact accepted RawD6 and Purpose"),
+		bExactDiceBinding);
+	TestTrue(TEXT("Formula evidence renders ATTACK VS DEFENSE without math"),
+		RootResolution->GetRenderedComparisonCount() == 3
+			&& RootResolution->GetWidgetFromName(
+				TEXT("ResolutionVersusLabel")) != nullptr
+			&& Cast<UTextBlock>(RootResolution->GetWidgetFromName(
+				TEXT("ComparisonEvidenceValue0")))->GetText().ToString()
+					== Rich.ComparisonEvidence[0].EvidenceLabel
+			&& Cast<UTextBlock>(RootResolution->GetWidgetFromName(
+				TEXT("ComparisonEvidenceValue1")))->GetText().ToString()
+					== Rich.ComparisonEvidence[1].EvidenceLabel);
+	TestTrue(TEXT("Winner/reason and GK evidence remain authoritative text"),
+		Cast<UTextBlock>(RootResolution->GetWidgetFromName(
+			TEXT("ResolutionDecisionSectionValue")))->GetText().ToString()
+				== Rich.DecisionLabel
+			&& Rich.ComparisonEvidence[1].EvidenceLabel.Contains(
+				TEXT("Goalkeeper"))
+			&& Rich.ComparisonEvidence[1].EvidenceLabel.Contains(TEXT("final 9.5")));
+	TestTrue(TEXT("Terminal result is a distinct prominent section"),
+		IsVisible(RootResolution->GetWidgetFromName(
+			TEXT("ResolutionTerminalRegion")))
+			&& Cast<UTextBlock>(RootResolution->GetWidgetFromName(
+				TEXT("ResolutionTerminalSectionValue")))->GetText().ToString()
+					== TEXT("RESULT: GOAL"));
+
+	FFMCodexUMGResolutionViewModel Chip;
+	Chip.bVisible = true;
+	Chip.StepLabel = TEXT("One-on-One - Chip Shot");
+	Chip.StepSummaryLabel = TEXT("Chip Shot decision resolved without Formula");
+	Chip.DiceResults = {
+		{ TEXT("ONE-ON-ONE"), TEXT("One-on-One Chip Shot Attack"), 5 }
+	};
+	Chip.DecisionLabel = TEXT("Goal");
+	RootResolution->RefreshFromPresentation(Chip);
+	TestTrue(TEXT("ChipShot is a distinct non-Formula presentation"),
+		RootResolution->GetRenderedDiceWidgets().Num() == 1
+			&& RootResolution->GetRenderedComparisonCount() == 0
+			&& !IsVisible(RootResolution->GetWidgetFromName(
+				TEXT("ResolutionComparisonRegion")))
+			&& !IsVisible(RootResolution->GetWidgetFromName(
+				TEXT("ResolutionTerminalRegion"))));
+
+	const TArray<TPair<FString, FString>> ReadableShapes = {
+		{ TEXT("Cross - High Cross"), TEXT("Cross -> High Cross") },
+		{ TEXT("Pass Control"), TEXT("Pass Control -> Pass Advance") },
+		{ TEXT("Long Shot - Direct Shot"), TEXT("Long Shot -> Direct Shot") },
+		{ TEXT("Cut Inside - Dead Corner"), TEXT("Cut Inside -> Dead Corner") },
+		{ TEXT("Through Ball - Behind Defense P1"),
+			TEXT("Through Ball -> Behind Defense") },
+		{ TEXT("Through Ball - Behind Defense P2"),
+			TEXT("Through Ball -> Behind Defense") },
+		{ TEXT("Through Ball - Anti-Offside"),
+			TEXT("Through Ball -> Anti-Offside") }
+	};
+	for (const TPair<FString, FString>& Shape : ReadableShapes)
+	{
+		FFMCodexUMGResolutionViewModel ShapeDTO;
+		ShapeDTO.bVisible = true;
+		ShapeDTO.StepLabel = Shape.Key;
+		ShapeDTO.RouteLabel = Shape.Value;
+		ShapeDTO.DecisionLabel = TEXT("Authoritative decision");
+		RootResolution->RefreshFromPresentation(ShapeDTO);
+		TestTrue(FString::Printf(TEXT("%s shape renders without bespoke rules"),
+			*Shape.Key),
+			Cast<UTextBlock>(RootResolution->GetWidgetFromName(
+				TEXT("ResolutionStepTitle")))->GetText().ToString() == Shape.Key
+				&& Cast<UTextBlock>(RootResolution->GetWidgetFromName(
+					TEXT("ResolutionRouteSummary")))->GetText().ToString()
+						== Shape.Value);
+	}
+
+	for (const TCHAR* TerminalSemantic : {
+		TEXT("RESULT: GOAL"), TEXT("RESULT: MISS"), TEXT("RESULT: NO GOAL"),
+		TEXT("RESULT: IMMEDIATE MISS"), TEXT("RESULT: OFFSIDE"),
+		TEXT("RESULT: OUT OF PLAY"),
+		TEXT("RESULT: DEFENDER STOPPED ATTACK") })
+	{
+		FFMCodexUMGResolutionViewModel TerminalDTO;
+		TerminalDTO.bVisible = true;
+		TerminalDTO.bTerminal = true;
+		TerminalDTO.StepLabel = TEXT("Attack Completed");
+		TerminalDTO.TerminalLabel = TerminalSemantic;
+		TerminalDTO.ContinuationLabel =
+			TEXT("Attack complete | Score: Player A 1 - 0 Player B | Next attacker: Player B | Opportunity consumed: yes");
+		RootResolution->RefreshFromPresentation(TerminalDTO);
+		TestTrue(FString::Printf(TEXT("%s remains readable"), TerminalSemantic),
+			Cast<UTextBlock>(RootResolution->GetWidgetFromName(
+				TEXT("ResolutionTerminalSectionValue")))->GetText().ToString()
+					== TerminalSemantic
+				&& Cast<UTextBlock>(RootResolution->GetWidgetFromName(
+					TEXT("ResolutionContinuationSectionValue")))
+					->GetText().ToString().Contains(TEXT("Next attacker: Player B")));
+	}
+
+	FFMCodexUMGResolutionViewModel Rejected = Rich;
+	Rejected.bRejected = true;
+	Rejected.StepLabel = TEXT("Command Rejected");
+	Rejected.DecisionLabel = TEXT("No resolution result was accepted");
+	Rejected.ErrorLabel = TEXT("Readable rejection reason");
+	RootResolution->RefreshFromPresentation(Rejected);
+	TestTrue(TEXT("Rejected command cannot visually mix old accepted evidence"),
+		IsVisible(RootResolution->GetWidgetFromName(
+			TEXT("ResolutionRejectedRegion")))
+			&& !IsVisible(RootResolution->GetWidgetFromName(
+				TEXT("ResolutionAcceptedHierarchy")))
+			&& RootResolution->GetRenderedDiceWidgets().IsEmpty()
+			&& RootResolution->GetRenderedComparisonCount() == 0
+			&& !IsVisible(RootResolution->GetWidgetFromName(
+				TEXT("ResolutionTerminalRegion"))));
+
+	// Normal-demo Cross: use the existing public demo configuration and the
+	// Interaction Panel for resolution advancement while observing the new panel.
+	UFMCodexInteractionPanelWidget* Interaction = Screen->GetInteractionPanel();
+	TestNotNull(TEXT("Cross flow retains dedicated Interaction Panel"), Interaction);
+	if (Interaction == nullptr)
+	{
+		return false;
+	}
+	Interaction->RequestStartMatch();
+	TestTrue(TEXT("Cross UMG flow starts through Interaction Panel"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Screen->GetPresentation().Handoff.bVisible
+			&& Screen->GetResolutionPanel() == RootResolution);
+	const TArray<uint8> CrossStateBeforeReady =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestReady();
+	TestTrue(TEXT("Handoff remains above Resolution and Ready is neutral"),
+		CrossStateBeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& !Screen->GetPresentation().Handoff.bVisible);
+	Interaction->RequestBeginAttack();
+	TestTrue(TEXT("Cross UMG flow begins through Interaction Panel"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	const EInitialTurnOrderPlayer CrossAttacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
+	if (!DeployParticipants(*this, *Controller, CrossFamily, CrossAttacker)
+		|| !SubmitRequiredSelections(
+			*this, *Controller, CrossFamily, CrossAttacker))
+	{
+		return false;
+	}
+	bool bSawCrossRouteDice = false;
+	bool bSawCrossComparison = false;
+	for (int32 Guard = 0;
+		Guard < 12 && Controller->GetInteractionView().bCurrentAttackActive;
+		++Guard)
+	{
+		if (Controller->GetInteractionView().InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+		{
+			AddError(TEXT("Cross resolution left ContinueResolution unexpectedly"));
+			return false;
+		}
+		Interaction->RequestContinue();
+		if (!Controller->GetLastDiagnostic().bHostSuccess)
+		{
+			AddError(TEXT("Cross UMG Continue was rejected"));
+			return false;
+		}
+		const FFMCodexUMGResolutionViewModel& Resolution =
+			RootResolution->GetPresentation();
+		bSawCrossRouteDice = bSawCrossRouteDice
+			|| (Resolution.RouteLabel.Contains(TEXT("Cross"))
+				&& !Resolution.DiceResults.IsEmpty());
+		bSawCrossComparison = bSawCrossComparison
+			|| (Resolution.ComparisonEvidence.Num() >= 2
+				&& Resolution.DecisionLabel.Contains(TEXT("Winner:")));
+	}
+	TestTrue(TEXT("Cross ResolutionPanel progresses route/dice/comparison"),
+		bSawCrossRouteDice && bSawCrossComparison);
+	TestTrue(TEXT("Cross terminal renders result and completion summary"),
+		RootResolution->GetPresentation().bTerminal
+			&& RootResolution->GetPresentation().TerminalLabel.StartsWith(
+				TEXT("RESULT: "))
+			&& RootResolution->GetPresentation().ContinuationLabel.Contains(
+				TEXT("Attack complete"))
+			&& RootResolution->GetPresentation().ContinuationLabel.Contains(
+				TEXT("Score:"))
+			&& RootResolution->GetPresentation().ContinuationLabel.Contains(
+				TEXT("Next attacker:")));
+
+	// Normal-demo deterministic ThroughBall: no test-only rules or deck mutation.
+	FScopedPlayableWorld OneOnOneWorld;
+	AFMCodexLocalMatchHostGameMode* OneOnOneHost = OneOnOneWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* OneOnOneController =
+		OneOnOneWorld.GetController();
+	if (OneOnOneHost == nullptr || OneOnOneController == nullptr)
+	{
+		return false;
+	}
+	OneOnOneController->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* OneOnOneScreen =
+		OneOnOneController->GetPlayerMatchScreen();
+	if (OneOnOneScreen == nullptr)
+	{
+		return false;
+	}
+	OneOnOneScreen->TakeWidget();
+	UFMCodexInteractionPanelWidget* OneOnOneInteraction =
+		OneOnOneScreen->GetInteractionPanel();
+	UFMCodexResolutionPanelWidget* OneOnOneResolution =
+		OneOnOneScreen->GetResolutionPanel();
+	const FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	const FFamilyExpectation ThroughBallFamily = FamilyExpectations()[4];
+	const int32 ThroughBallSeed = FindSeedForRolls({ 3, 6, 1, 2 });
+	if (ThroughBallSeed == INDEX_NONE
+		|| !OneOnOneHost->StartNewLocalMatch(
+			Demo.OpeningInput, Demo.SkillRuleSet, ThroughBallSeed).bSuccess)
+	{
+		return false;
+	}
+	OneOnOneController->RefreshPresentation();
+	AcknowledgeIfPending(*OneOnOneController);
+	OneOnOneController->BeginDemoOrdinaryAttack();
+	const EInitialTurnOrderPlayer ThroughBallAttacker =
+		OneOnOneController->GetInteractionView().CurrentAttackingPlayer;
+	if (!OneOnOneController->GetLastDiagnostic().bHostSuccess
+		|| !DeployParticipants(
+			*this, *OneOnOneController, ThroughBallFamily,
+			ThroughBallAttacker)
+		|| !SubmitRequiredSelections(
+			*this, *OneOnOneController, ThroughBallFamily,
+			ThroughBallAttacker))
+	{
+		return false;
+	}
+	bool bSawOneOnOneHandoff = false;
+	bool bSawShooterGoalkeeperPlan = false;
+	bool bSawAuthoritativeDirectFormula = false;
+	for (int32 Guard = 0;
+		Guard < 14 && OneOnOneController->GetInteractionView().bCurrentAttackActive;
+		++Guard)
+	{
+		const EFMCodexLocalMatchInteractionCategory Category =
+			OneOnOneController->GetInteractionView().InteractionCategory;
+		if (Category
+			== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
+		{
+			bSawOneOnOneHandoff = true;
+			TestTrue(TEXT("P2 feedback announces authoritative OneOnOne handoff"),
+				OneOnOneResolution->GetPresentation().DecisionLabel.Contains(
+					TEXT("One-on-One")));
+			if (OneOnOneController->IsAwaitingHotSeatHandoff())
+			{
+				OneOnOneScreen->RequestReady();
+			}
+			OneOnOneInteraction->RequestOneOnOne(
+				EFMCodexUMGOneOnOneChoice::DirectShot);
+		}
+		else if (Category
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+		{
+			OneOnOneInteraction->RequestContinue();
+		}
+		else
+		{
+			AddError(TEXT("Normal-demo OneOnOne reached unexpected category"));
+			return false;
+		}
+		if (!OneOnOneController->GetLastDiagnostic().bHostSuccess)
+		{
+			return false;
+		}
+		const FFMCodexUMGResolutionViewModel& Resolution =
+			OneOnOneResolution->GetPresentation();
+		if (Resolution.ComparisonEvidence.Num() >= 2
+			&& Resolution.ComparisonEvidence[0].EvidenceLabel.Contains(
+				TEXT("Shooter"))
+			&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
+				TEXT("Goalkeeper")))
+		{
+			bSawShooterGoalkeeperPlan = bSawShooterGoalkeeperPlan
+				|| (Resolution.ComparisonEvidence[0].EvidenceLabel.Contains(
+					TEXT("Shooter"))
+					&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
+						TEXT("Goalkeeper")));
+			bSawAuthoritativeDirectFormula = bSawAuthoritativeDirectFormula
+				|| (Resolution.DecisionLabel.Contains(TEXT("Winner:"))
+					&& Resolution.DecisionLabel.Contains(TEXT("Reason:"))
+					&& Resolution.ComparisonEvidence[0].EvidenceLabel.Contains(
+						TEXT("D6"))
+					&& Resolution.ComparisonEvidence[0].EvidenceLabel.Contains(
+						TEXT("final"))
+					&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
+						TEXT("D6"))
+					&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
+						TEXT("authoritative modifier"))
+					&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
+						TEXT("final")));
+		}
+	}
+	TestTrue(TEXT("Normal demo reaches OneOnOne and shooter/GK plan"),
+		bSawOneOnOneHandoff && bSawShooterGoalkeeperPlan);
+	TestTrue(TEXT("DirectShot shows authoritative final values/winner/reason"),
+		bSawAuthoritativeDirectFormula);
+	TestTrue(TEXT("OneOnOne terminal remains Goal/Miss with completion"),
+		OneOnOneResolution->GetPresentation().bTerminal
+			&& (OneOnOneResolution->GetPresentation().TerminalLabel
+					== TEXT("RESULT: GOAL")
+				|| OneOnOneResolution->GetPresentation().TerminalLabel
+					== TEXT("RESULT: MISS"))
+			&& OneOnOneResolution->GetPresentation().ContinuationLabel.Contains(
+				TEXT("Attack complete")));
+
+	FString ResolutionHeader;
+	FString ResolutionSource;
+	FString DiceHeader;
+	FString DiceSource;
+	FString RootHeader;
+	FString RootSource;
+	FString InteractionSource;
+	FString ControllerSource;
+	TestTrue(TEXT("Resolution authority audit sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexResolutionPanelWidget.h"),
+			ResolutionHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexResolutionPanelWidget.cpp"),
+				ResolutionSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexDiceResultWidget.h"),
+				DiceHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexDiceResultWidget.cpp"),
+				DiceSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.h"),
+				RootHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+				RootSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionPanelWidget.cpp"),
+				InteractionSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+				ControllerSource));
+	const FString ResolutionWidgetSources =
+		ResolutionHeader + ResolutionSource + DiceHeader + DiceSource;
+	TestTrue(TEXT("Resolution Widgets receive reflected presentation only"),
+		ResolutionHeader.Contains(TEXT("FFMCodexUMGResolutionViewModel"))
+			&& DiceHeader.Contains(TEXT("FFMCodexUMGDiceResultViewModel"))
+			&& !ResolutionWidgetSources.Contains(TEXT("AuthoritativeSession"))
+			&& !ResolutionWidgetSources.Contains(TEXT("HostGameMode"))
+			&& !ResolutionWidgetSources.Contains(TEXT("FMatchPlayState"))
+			&& !ResolutionWidgetSources.Contains(TEXT("D6Provider")));
+	TestTrue(TEXT("Resolution Widgets contain no Formula/route/RNG authority"),
+		!ResolutionWidgetSources.Contains(TEXT("FormulaResolver"))
+			&& !ResolutionWidgetSources.Contains(TEXT("CalculateGoalkeeperHalf"))
+			&& !ResolutionWidgetSources.Contains(TEXT("EFormulaWinner"))
+			&& !ResolutionWidgetSources.Contains(TEXT("RouteThreshold"))
+			&& !ResolutionWidgetSources.Contains(TEXT("RandomStream"))
+			&& !ResolutionWidgetSources.Contains(TEXT("RandRange"))
+			&& !ResolutionWidgetSources.Contains(TEXT("RollD6")));
+	TestTrue(TEXT("Resolution Widgets own no commands or generic dispatcher"),
+		!ResolutionWidgetSources.Contains(TEXT("UButton"))
+			&& !ResolutionWidgetSources.Contains(TEXT("OnClicked"))
+			&& !ResolutionWidgetSources.Contains(TEXT("ExecuteCommandByName"))
+			&& !ResolutionWidgetSources.Contains(TEXT("ProcessEvent"))
+			&& InteractionSource.Contains(TEXT("RequestContinue")));
+	TestTrue(TEXT("Root delegates result rendering to configurable panel"),
+		RootHeader.Contains(TEXT("TSubclassOf<UFMCodexResolutionPanelWidget>"))
+			&& RootSource.Contains(TEXT("DedicatedResolutionPanelWidget"))
+			&& RootSource.Contains(TEXT("RefreshFromPresentation"))
+			&& !RootSource.Contains(TEXT("ResolutionResultText")));
+	TestTrue(TEXT("Stage 6.4-6.7 root regions remain intact"),
 		Screen->GetWidgetFromName(TEXT("MatchHeaderRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("CurrentInteractionRegion")) != nullptr

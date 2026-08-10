@@ -12,6 +12,7 @@ class UBorder;
 class UFMCodexInteractionPanelWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
+class UFMCodexResolutionPanelWidget;
 class UTextBlock;
 class UVerticalBox;
 class SWidget;
@@ -85,6 +86,7 @@ public:
 	AFMCodexLocalMatchPlayerController* GetMatchController() const;
 	UFMCodexPitchWidget* GetPitchWidget() const;
 	UFMCodexInteractionPanelWidget* GetInteractionPanel() const;
+	UFMCodexResolutionPanelWidget* GetResolutionPanel() const;
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
 		GetRenderedCandidateCardWidgets() const;
 
@@ -170,8 +172,11 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexInteractionPanelWidget> InteractionPanel;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Resolution Presentation")
+	TSubclassOf<UFMCodexResolutionPanelWidget> ResolutionPanelWidgetClass;
+
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> ResolutionText;
+	TObjectPtr<UFMCodexResolutionPanelWidget> ResolutionPanel;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> HandoffOverlay;

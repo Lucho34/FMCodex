@@ -3,6 +3,7 @@
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexPitchWidget.h"
+#include "FMCodexResolutionPanelWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -55,6 +56,7 @@ UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
 {
 	PitchWidgetClass = UFMCodexPitchWidget::StaticClass();
 	InteractionPanelWidgetClass = UFMCodexInteractionPanelWidget::StaticClass();
+	ResolutionPanelWidgetClass = UFMCodexResolutionPanelWidget::StaticClass();
 }
 
 void UFMCodexLocalMatchScreenWidget::NativeOnInitialized()
@@ -114,6 +116,12 @@ UFMCodexInteractionPanelWidget*
 UFMCodexLocalMatchScreenWidget::GetInteractionPanel() const
 {
 	return InteractionPanel;
+}
+
+UFMCodexResolutionPanelWidget*
+UFMCodexLocalMatchScreenWidget::GetResolutionPanel() const
+{
+	return ResolutionPanel;
 }
 
 const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
@@ -448,8 +456,13 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 
 	UBorder* ResolutionRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionResultRegion"));
-	ResolutionText = MakeText(*WidgetTree, TEXT("ResolutionResultText"));
-	ResolutionRegion->AddChild(ResolutionText);
+	UClass* ResolvedResolutionClass = ResolutionPanelWidgetClass != nullptr
+		? ResolutionPanelWidgetClass.Get()
+		: UFMCodexResolutionPanelWidget::StaticClass();
+	ResolutionPanel =
+		WidgetTree->ConstructWidget<UFMCodexResolutionPanelWidget>(
+			ResolvedResolutionClass, TEXT("DedicatedResolutionPanelWidget"));
+	ResolutionRegion->AddChild(ResolutionPanel);
 	MainScreen->AddChildToVerticalBox(ResolutionRegion);
 
 	HandoffOverlay = MakeRegion(*WidgetTree, TEXT("HotSeatHandoffOverlay"));
@@ -487,24 +500,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		*Presentation.Header.MatchStatusLabel)));
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
-
-	TArray<FString> ResultLines;
-	ResultLines.Add(TEXT("RESOLUTION RESULT"));
-	if (Presentation.Resolution.bVisible)
-	{
-		ResultLines.Add(Presentation.Resolution.StepLabel);
-		ResultLines.Append(Presentation.Resolution.DiceLabels);
-		ResultLines.Add(Presentation.Resolution.DecisionLabel);
-		ResultLines.Add(Presentation.Resolution.TerminalLabel);
-		ResultLines.Add(Presentation.Resolution.ErrorLabel);
-	}
-	else
-	{
-		ResultLines.Add(TEXT("Waiting for an authoritative result."));
-	}
-	ResultLines.RemoveAll([](const FString& Line) { return Line.IsEmpty(); });
-	ResolutionText->SetText(FText::FromString(FString::Join(
-		ResultLines, TEXT("\n"))));
+	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);
 
 	HandoffOverlay->SetVisibility(Presentation.Handoff.bVisible
 		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);

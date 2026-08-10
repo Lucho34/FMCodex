@@ -167,6 +167,21 @@ namespace FMCodexLocalMatchUMGPresentation
 			return FString();
 		}
 	}
+
+	FString DiceContextLabel(const EFMCodexLocalMatchRollGroup Group)
+	{
+		switch (Group)
+		{
+		case EFMCodexLocalMatchRollGroup::InitialRoute:
+			return TEXT("ROUTE");
+		case EFMCodexLocalMatchRollGroup::PostRoute:
+			return TEXT("POST-ROUTE");
+		case EFMCodexLocalMatchRollGroup::OneOnOne:
+			return TEXT("ONE-ON-ONE");
+		default:
+			return TEXT("ACCEPTED DICE");
+		}
+	}
 }
 
 FFMCodexUMGCardViewModel FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(
@@ -358,13 +373,30 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Resolution.bTerminal = ResolutionFeedback.bTerminal;
 	Result.Resolution.StepLabel = ResolutionFeedback.StepTitle.IsEmpty()
 		? ResolutionFeedback.StepSummary : ResolutionFeedback.StepTitle;
-	for (const FFMCodexLocalMatchRollView& Roll
-		: ResolutionFeedback.DiceEntries)
+	Result.Resolution.StepSummaryLabel = ResolutionFeedback.StepSummary;
+	Result.Resolution.RouteLabel = ResolutionFeedback.RouteSummary;
+	if (!ResolutionFeedback.bRejected)
 	{
-		Result.Resolution.DiceLabels.Add(FString::Printf(
-			TEXT("D6 %d | %s"), Roll.RawD6, *Roll.Purpose));
+		for (const FFMCodexLocalMatchRollView& Roll
+			: ResolutionFeedback.DiceEntries)
+		{
+			Result.Resolution.DiceResults.Add({
+				DiceContextLabel(Roll.Group), Roll.Purpose, Roll.RawD6 });
+			Result.Resolution.DiceLabels.Add(FString::Printf(
+				TEXT("D6 %d | %s"), Roll.RawD6, *Roll.Purpose));
+		}
+		for (int32 Index = 0;
+			Index < ResolutionFeedback.ComparisonEntries.Num(); ++Index)
+		{
+			const FString Heading = Index == 0 ? TEXT("ATTACK")
+				: Index == 1 ? TEXT("DEFENSE") : TEXT("EVIDENCE");
+			Result.Resolution.ComparisonEvidence.Add({
+				Heading, ResolutionFeedback.ComparisonEntries[Index] });
+		}
 	}
 	Result.Resolution.DecisionLabel = ResolutionFeedback.DecisionSummary;
+	Result.Resolution.ContinuationLabel =
+		ResolutionFeedback.ContinuationSummary;
 	Result.Resolution.TerminalLabel = ResolutionFeedback.TerminalSummary;
 	Result.Resolution.ErrorLabel = ResolutionFeedback.ErrorMessage;
 
