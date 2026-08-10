@@ -56,6 +56,69 @@ namespace FMCodexLocalMatchInteractionView
 		return FString::Join(Labels, TEXT(" / "));
 	}
 
+	FString CompactRoleLabel(const TArray<EPlayerPositionType>& Positions)
+	{
+		TArray<FString> Labels;
+		for (const EPlayerPositionType Position : Positions)
+		{
+			switch (Position)
+			{
+			case EPlayerPositionType::Attack: Labels.Add(TEXT("FW")); break;
+			case EPlayerPositionType::Midfield: Labels.Add(TEXT("MF")); break;
+			case EPlayerPositionType::Defense: Labels.Add(TEXT("DF")); break;
+			case EPlayerPositionType::Goalkeeper: Labels.Add(TEXT("GK")); break;
+			default: break;
+			}
+		}
+		return Labels.IsEmpty() ? TEXT("ROLE N/A") : JoinLabels(Labels);
+	}
+
+	FString RarityLabel(const ECardRarity Rarity)
+	{
+		switch (Rarity)
+		{
+		case ECardRarity::Common: return TEXT("Common");
+		case ECardRarity::Regional: return TEXT("Regional");
+		case ECardRarity::National: return TEXT("National");
+		case ECardRarity::Continental: return TEXT("Continental");
+		case ECardRarity::WorldClass: return TEXT("World Class");
+		default: return TEXT("Unknown Rarity");
+		}
+	}
+
+	void FinalizeCardPresentation(FFMCodexLocalMatchCardView& View)
+	{
+		View.SkillSummaryLabel = View.SkillLabels.IsEmpty()
+			? TEXT("NO SKILL")
+			: FString::Join(View.SkillLabels, TEXT("  |  "));
+		if (View.bAvailable)
+		{
+			View.StatusLabels.Add(TEXT("AVAILABLE"));
+		}
+		if (View.bUsed)
+		{
+			View.StatusLabels.Add(TEXT("USED"));
+		}
+		if (View.bDeployed)
+		{
+			View.StatusLabels.Add(TEXT("DEPLOYED"));
+		}
+		if (View.bGoalkeeperUsedThisMatch)
+		{
+			View.StatusLabels.Add(TEXT("GK USED"));
+		}
+		if (View.bGoalkeeperActivatedThisAttack)
+		{
+			View.StatusLabels.Add(TEXT("GK ACTIVE"));
+		}
+		if (View.StatusLabels.IsEmpty())
+		{
+			View.StatusLabels.Add(TEXT("UNAVAILABLE"));
+		}
+		View.StatusSummaryLabel = FString::Join(
+			View.StatusLabels, TEXT("  |  "));
+	}
+
 	FString SkillLabel(
 		const FSkillRuleSnapshotSet& SkillRuleSet,
 		const FName SkillId)
@@ -109,12 +172,18 @@ namespace FMCodexLocalMatchInteractionView
 		FFMCodexLocalMatchCardView View;
 		View.Side = Side;
 		View.CardId = CardId;
-		View.DisplayLabel = FString::Printf(TEXT("Card %s"), *CardId.ToString());
+		View.DisplayLabel = CardId.IsNone()
+			? TEXT("UNKNOWN CARD")
+			: FString::Printf(TEXT("Card %s"), *CardId.ToString());
 		const auto Card =
 			FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
 				State.CardSnapshotAuthority, Side, CardId);
 		if (!Card.bSuccess)
 		{
+			View.CompactRoleLabel = TEXT("ROLE N/A");
+			View.DeveloperReferenceLabel =
+				TEXT("Card reference unavailable");
+			FinalizeCardPresentation(View);
 			return View;
 		}
 
@@ -126,14 +195,16 @@ namespace FMCodexLocalMatchInteractionView
 				FFMCodexLocalMatchInteractionViewBuilder::ToString(Position));
 		}
 		View.PositionLabel = JoinLabels(Positions);
+		View.CompactRoleLabel = CompactRoleLabel(Card.Snapshot.PositionTypes);
 		const FPlayerAttributes& A = Card.Snapshot.Attributes;
 		View.AttributeSummary = FString::Printf(
-			TEXT("SHO %d | PAS %d | DRI %d | SPD %d | MRK %d | TKL %d | STA %d | LS %d"),
-			A.Shooting, A.Passing, A.Dribbling, A.Speed,
-			A.Marking, A.Tackling, A.Stamina, A.LongShot);
+			TEXT("SHO %d | DRI %d | PAS %d | OFF %d | MRK %d | TKL %d | SPD %d | STR %d | STA %d | LS %d"),
+			A.Shooting, A.Dribbling, A.Passing, A.OffBall,
+			A.Marking, A.Tackling, A.Speed, A.Strength,
+			A.Stamina, A.LongShot);
 		View.CompactAttributeSummary = FString::Printf(
-			TEXT("SHO %d | PAS %d | DRI %d | MRK %d | TKL %d"),
-			A.Shooting, A.Passing, A.Dribbling, A.Marking, A.Tackling);
+			TEXT("SHO %d | PAS %d | DRI %d | SPD %d"),
+			A.Shooting, A.Passing, A.Dribbling, A.Speed);
 		if (Card.Snapshot.bHasGoalkeeperAttributes)
 		{
 			const FGoalkeeperAttributes& G = Card.Snapshot.GoalkeeperAttributes;
@@ -142,13 +213,16 @@ namespace FMCodexLocalMatchInteractionView
 				G.Handling, G.Positioning, G.Reflex,
 				G.Aerial, G.Anticipation, G.OneOnOne);
 			View.CompactAttributeSummary = FString::Printf(
-				TEXT("HAN %d | REF %d | 1v1 %d"),
-				G.Handling, G.Reflex, G.OneOnOne);
+				TEXT("HAN %d | REF %d | AER %d | 1v1 %d"),
+				G.Handling, G.Reflex, G.Aerial, G.OneOnOne);
 		}
 		for (const FName SkillId : Card.Snapshot.SkillIds)
 		{
 			View.SkillLabels.Add(SkillLabel(SkillRuleSet, SkillId));
 		}
+		View.DeveloperReferenceLabel = FString::Printf(
+			TEXT("Card reference: %s  |  Rarity: %s"),
+			*View.CardId.ToString(), *RarityLabel(Card.Snapshot.Rarity));
 
 		const FCardUsageState& Usage = CardUsage(State, Side);
 		View.bAvailable = Usage.AvailableCardIds.Contains(CardId);
@@ -179,6 +253,7 @@ namespace FMCodexLocalMatchInteractionView
 				&& State.CurrentAttack.bCurrentDefenseGoalkeeperActivated
 				&& Side != State.RuntimeState.CurrentAttackingPlayer;
 		}
+		FinalizeCardPresentation(View);
 		return View;
 	}
 

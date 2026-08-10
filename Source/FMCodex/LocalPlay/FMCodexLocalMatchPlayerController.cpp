@@ -14,6 +14,7 @@
 #include "Engine/World.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/GameModeBase.h"
+#include "Styling/CoreStyle.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -66,70 +67,131 @@ namespace FMCodexLocalMatchPlayerController
 		const bool bShowLocation = true)
 	{
 		TSharedRef<SVerticalBox> Body = SNew(SVerticalBox);
-		auto AddLine = [&Body](
-			const FString& Text,
-			const FLinearColor Color = FLinearColor::White)
-		{
-			Body->AddSlot().AutoHeight().Padding(2.0f)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(Text))
-				.ColorAndOpacity(Color)
-			];
-		};
-
 		const FLinearColor SideColor =
 			Card.Side == EInitialTurnOrderPlayer::PlayerA
 				? FLinearColor(0.12f, 0.30f, 0.55f, 0.95f)
 				: FLinearColor(0.50f, 0.16f, 0.14f, 0.95f);
-		AddLine(Card.DisplayLabel, FLinearColor(1.0f, 0.88f, 0.42f));
-		AddLine(FString::Printf(
-			TEXT("%s  |  %s"),
-			*FFMCodexLocalMatchInteractionViewBuilder::ToString(Card.Side),
-			Card.bGoalkeeper ? TEXT("Goalkeeper") : *Card.PositionLabel),
-			FLinearColor(0.82f, 0.86f, 0.90f));
-		AddLine(Card.bGoalkeeper && !Card.GoalkeeperAttributeSummary.IsEmpty()
-			? Card.GoalkeeperAttributeSummary
-			: Card.AttributeSummary);
-		AddLine(Card.SkillLabels.IsEmpty()
-			? TEXT("Skills: None")
-			: TEXT("Skills: ") + FString::Join(Card.SkillLabels, TEXT(", ")),
-			FLinearColor(0.72f, 0.88f, 0.72f));
-
-		FString State = Card.bUsed
-			? TEXT("Used")
-			: Card.bAvailable ? TEXT("Available") : TEXT("Unavailable");
-		if (Card.bDeployed)
-		{
-			State += TEXT(" | Deployed");
-		}
-		if (Card.bGoalkeeperUsedThisMatch)
-		{
-			State += TEXT(" | GK used this match");
-		}
-		if (Card.bGoalkeeperActivatedThisAttack)
-		{
-			State += TEXT(" | GK active");
-		}
-		AddLine(State, FLinearColor(0.72f, 0.78f, 0.84f));
+		Body->AddSlot().AutoHeight()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Card.DisplayLabel))
+				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
+				.ColorAndOpacity(FLinearColor(1.0f, 0.90f, 0.52f))
+				.AutoWrapText(true)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(8.0f, 0.0f)
+			[
+				SNew(SBorder)
+				.Padding(FMargin(8.0f, 3.0f))
+				.BorderBackgroundColor(FLinearColor(0.04f, 0.07f, 0.10f, 0.72f))
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(Card.CompactRoleLabel))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+				]
+			]
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 3.0f, 0.0f, 7.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(FString::Printf(
+				TEXT("%s  |  %s"),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(Card.Side),
+				Card.PositionLabel.IsEmpty()
+					? TEXT("Role unavailable") : *Card.PositionLabel)))
+			.ColorAndOpacity(FLinearColor(0.78f, 0.84f, 0.90f))
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 7.0f)
+		[
+			SNew(SBorder)
+			.Padding(7.0f)
+			.BorderBackgroundColor(FLinearColor(0.05f, 0.16f, 0.10f, 0.90f))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("SKILL")))
+					.ColorAndOpacity(FLinearColor(0.62f, 0.78f, 0.66f))
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 2.0f)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(Card.SkillSummaryLabel))
+					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
+					.ColorAndOpacity(FLinearColor(0.82f, 1.0f, 0.82f))
+					.AutoWrapText(true)
+				]
+			]
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Card.bGoalkeeper
+				? TEXT("GOALKEEPER ATTRIBUTES") : TEXT("OUTFIELD ATTRIBUTES")))
+			.ColorAndOpacity(FLinearColor(0.62f, 0.68f, 0.74f))
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 7.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Card.bGoalkeeper
+				&& !Card.GoalkeeperAttributeSummary.IsEmpty()
+					? Card.GoalkeeperAttributeSummary
+					: Card.AttributeSummary.IsEmpty()
+						? TEXT("Attributes unavailable") : Card.AttributeSummary))
+			.AutoWrapText(true)
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 5.0f)
+		[
+			SNew(SBorder)
+			.Padding(FMargin(7.0f, 4.0f))
+			.BorderBackgroundColor(FLinearColor(0.05f, 0.08f, 0.11f, 0.82f))
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(
+					TEXT("STATUS  |  ") + Card.StatusSummaryLabel))
+				.ColorAndOpacity(Card.bGoalkeeperActivatedThisAttack
+					? FLinearColor(1.0f, 0.80f, 0.28f)
+					: FLinearColor(0.72f, 0.80f, 0.88f))
+				.AutoWrapText(true)
+			]
+		];
 		if (bShowLocation && Card.bDeployed)
 		{
-			AddLine(FString::Printf(
-				TEXT("%s | %s | Slot %s"),
-				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
-					Card.NeutralSide),
-				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
-					Card.RelativeZone),
-				*Card.SlotId.ToString()));
-		}
-		AddLine(TEXT("Card reference: ") + Card.CardId.ToString(),
-			FLinearColor(0.50f, 0.56f, 0.62f));
-
-		return SNew(SBorder)
-			.Padding(7.0f)
-			.BorderBackgroundColor(SideColor)
+			Body->AddSlot().AutoHeight().Padding(0.0f, 3.0f)
 			[
-				Body
+				SNew(STextBlock)
+				.Text(FText::FromString(FString::Printf(
+					TEXT("Location: %s | %s | Slot %s"),
+					*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+						Card.NeutralSide),
+					*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+						Card.RelativeZone),
+					*Card.SlotId.ToString())))
+				.ColorAndOpacity(FLinearColor(0.58f, 0.66f, 0.72f))
+				.AutoWrapText(true)
+			];
+		}
+		Body->AddSlot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Card.DeveloperReferenceLabel))
+			.ColorAndOpacity(FLinearColor(0.44f, 0.50f, 0.56f))
+			.AutoWrapText(true)
+		];
+
+		return SNew(SBox)
+			.MaxDesiredWidth(520.0f)
+			[
+				SNew(SBorder)
+				.Padding(10.0f)
+				.BorderBackgroundColor(SideColor)
+				[
+					Body
+				]
 			];
 	}
 
@@ -137,44 +199,53 @@ namespace FMCodexLocalMatchPlayerController
 		const FFMCodexLocalMatchCardView& Card)
 	{
 		TSharedRef<SVerticalBox> Body = SNew(SVerticalBox);
-		auto AddLine = [&Body](
-			const FString& Text,
-			const FLinearColor Color = FLinearColor::White)
-		{
-			Body->AddSlot().AutoHeight().Padding(1.0f)
+		Body->AddSlot().AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Card.DisplayLabel))
+			.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
+			.ColorAndOpacity(FLinearColor(1.0f, 0.90f, 0.52f))
+			.AutoWrapText(true)
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 5.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(FString::Printf(
+				TEXT("%s  |  %s"),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(Card.Side),
+				*Card.CompactRoleLabel)))
+			.ColorAndOpacity(FLinearColor(0.80f, 0.86f, 0.92f))
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 5.0f)
+		[
+			SNew(SBorder)
+			.Padding(5.0f)
+			.BorderBackgroundColor(FLinearColor(0.04f, 0.13f, 0.08f, 0.92f))
 			[
 				SNew(STextBlock)
-				.Text(FText::FromString(Text))
-				.ColorAndOpacity(Color)
+				.Text(FText::FromString(Card.SkillSummaryLabel))
+				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
+				.ColorAndOpacity(FLinearColor(0.80f, 1.0f, 0.80f))
 				.AutoWrapText(true)
-			];
-		};
-
-		AddLine(Card.DisplayLabel, FLinearColor(1.0f, 0.88f, 0.42f));
-		AddLine(FString::Printf(
-			TEXT("%s  |  %s"),
-			*FFMCodexLocalMatchInteractionViewBuilder::ToString(Card.Side),
-			Card.bGoalkeeper ? TEXT("GK") : *Card.PositionLabel));
-		AddLine(Card.SkillLabels.IsEmpty()
-			? TEXT("Skill: None")
-			: TEXT("Skill: ") + FString::Join(Card.SkillLabels, TEXT(", ")),
-			FLinearColor(0.72f, 0.88f, 0.72f));
-		AddLine(Card.CompactAttributeSummary,
-			FLinearColor(0.78f, 0.82f, 0.86f));
-		FString Status = Card.bUsed ? TEXT("Used") : TEXT("Deployed");
-		if (Card.bGoalkeeperUsedThisMatch)
-		{
-			Status += TEXT(" | GK used this match");
-		}
-		if (Card.bGoalkeeperActivatedThisAttack)
-		{
-			Status += TEXT(" | GK ACTIVE");
-		}
-		AddLine(Status, Card.bGoalkeeperActivatedThisAttack
-			? FLinearColor(1.0f, 0.78f, 0.28f)
-			: FLinearColor(0.64f, 0.70f, 0.76f));
-		AddLine(TEXT("Card reference: ") + Card.CardId.ToString(),
-			FLinearColor(0.43f, 0.49f, 0.55f));
+			]
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 1.0f, 0.0f, 5.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Card.CompactAttributeSummary.IsEmpty()
+				? TEXT("Attributes unavailable") : Card.CompactAttributeSummary))
+			.ColorAndOpacity(FLinearColor(0.76f, 0.82f, 0.88f))
+			.AutoWrapText(true)
+		];
+		Body->AddSlot().AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Card.StatusSummaryLabel))
+			.ColorAndOpacity(Card.bGoalkeeperActivatedThisAttack
+				? FLinearColor(1.0f, 0.78f, 0.28f)
+				: FLinearColor(0.58f, 0.68f, 0.76f))
+			.AutoWrapText(true)
+		];
 
 		return SNew(SBorder)
 			.Padding(6.0f)

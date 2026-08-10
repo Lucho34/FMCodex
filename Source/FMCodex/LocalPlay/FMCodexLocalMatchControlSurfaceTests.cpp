@@ -2218,8 +2218,8 @@ bool FFMCodexLocalMatchPlayerFacingScreenFoundationTest::RunTest(
 			&& ControllerSource.Contains(TEXT("Slot.PlayerARelativeZone"))
 			&& ControllerSource.Contains(TEXT("Slot.PlayerBRelativeZone")));
 	TestTrue(TEXT("Card reference is secondary to readable card data"),
-		ControllerSource.Contains(TEXT("Card reference: "))
-			&& ControllerSource.Contains(TEXT("Skills: ")));
+		ControllerSource.Contains(TEXT("DeveloperReferenceLabel"))
+			&& ControllerSource.Contains(TEXT("SkillSummaryLabel")));
 	TestTrue(TEXT("Resolution evidence has structured dice and comparison labels"),
 		ControllerSource.Contains(TEXT("DICE"))
 			&& ControllerSource.Contains(TEXT("D6  %d"))
@@ -2564,6 +2564,358 @@ bool FFMCodexLocalMatchPitchAndZoneRefinementTest::RunTest(
 			&& !PitchModelBody.Contains(TEXT("Availability"))
 			&& !PitchModelBody.Contains(TEXT("ResolveFormula("))
 			&& !PitchModelBody.Contains(TEXT("RandRange")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchCardVisualHierarchyRefinementTest,
+	"FMCodex.LocalPlay.ControlSurface.27.CardVisualHierarchyRefinement",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchCardVisualHierarchyRefinementTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Host = PlayableWorld.GetHost();
+	auto* Controller = PlayableWorld.GetController();
+	TestNotNull(TEXT("Card hierarchy Host exists"), Host);
+	TestNotNull(TEXT("Card hierarchy Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	const FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	Controller->StartNewDemoMatch();
+	AcknowledgeIfPending(*Controller);
+	Controller->BeginDemoOrdinaryAttack();
+	AcknowledgeIfPending(*Controller);
+	const FFMCodexLocalMatchInteractionView InitialView =
+		Controller->GetInteractionView();
+	const FFMCodexLocalMatchDeploymentGroup* OrdinaryGroup =
+		InitialView.DeploymentGroups.FindByPredicate(
+			[](const FFMCodexLocalMatchDeploymentGroup& Candidate)
+			{
+				return !Candidate.bGoalkeeper
+					&& !Candidate.LegalSlots.IsEmpty();
+			});
+	TestNotNull(TEXT("Ordinary interaction card exists"), OrdinaryGroup);
+	if (OrdinaryGroup == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchCardView OrdinaryCard = OrdinaryGroup->Card;
+	TestEqual(TEXT("DisplayName fallback remains deterministic"),
+		OrdinaryCard.DisplayLabel,
+		FString::Printf(TEXT("Card %s"), *OrdinaryCard.CardId.ToString()));
+	TestFalse(TEXT("Compact role is derived and readable"),
+		OrdinaryCard.CompactRoleLabel.IsEmpty());
+	TestTrue(TEXT("Production card exposes a readable Skill"),
+		!OrdinaryCard.SkillLabels.IsEmpty()
+			&& OrdinaryCard.SkillSummaryLabel.Contains(
+				OrdinaryCard.SkillLabels[0]));
+	TestTrue(TEXT("Available status is presentation-derived"),
+		OrdinaryCard.bAvailable
+			&& OrdinaryCard.StatusLabels.Contains(TEXT("AVAILABLE"))
+			&& OrdinaryCard.StatusSummaryLabel.Contains(TEXT("AVAILABLE")));
+	TestTrue(TEXT("Developer reference retains CardId and rarity"),
+		OrdinaryCard.DeveloperReferenceLabel.Contains(
+			OrdinaryCard.CardId.ToString())
+			&& OrdinaryCard.DeveloperReferenceLabel.Contains(TEXT("Rarity:")));
+	for (const TCHAR* FullAttribute : {
+		TEXT("SHO"), TEXT("DRI"), TEXT("PAS"), TEXT("OFF"), TEXT("MRK"),
+		TEXT("TKL"), TEXT("SPD"), TEXT("STR"), TEXT("STA"), TEXT("LS") })
+	{
+		TestTrue(FString::Printf(TEXT("Interaction attributes retain %s"),
+			FullAttribute), OrdinaryCard.AttributeSummary.Contains(FullAttribute));
+	}
+	TestTrue(TEXT("Compact outfield subset is stable and bounded"),
+		OrdinaryCard.CompactAttributeSummary.Contains(TEXT("SHO"))
+			&& OrdinaryCard.CompactAttributeSummary.Contains(TEXT("PAS"))
+			&& OrdinaryCard.CompactAttributeSummary.Contains(TEXT("DRI"))
+			&& OrdinaryCard.CompactAttributeSummary.Contains(TEXT("SPD"))
+			&& !OrdinaryCard.CompactAttributeSummary.Contains(TEXT("OFF"))
+			&& !OrdinaryCard.CompactAttributeSummary.Contains(TEXT("STR")));
+
+	auto FindGroup = [](const FFMCodexLocalMatchInteractionView& View,
+		const FName CardId) -> const FFMCodexLocalMatchDeploymentGroup*
+	{
+		return View.DeploymentGroups.FindByPredicate(
+			[CardId](const FFMCodexLocalMatchDeploymentGroup& Candidate)
+			{
+				return Candidate.CardId == CardId;
+			});
+	};
+	auto FindAuthorityCard = [](FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side,
+		const FName CardId) -> FPlayerCardRuleSnapshot*
+	{
+		FPlayerCardRuleSnapshotSet& Set =
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? State.CardSnapshotAuthority.PlayerACardSnapshots
+				: State.CardSnapshotAuthority.PlayerBCardSnapshots;
+		return Set.Cards.FindByPredicate(
+			[CardId](const FPlayerCardRuleSnapshot& Candidate)
+			{
+				return Candidate.CardId == CardId;
+			});
+	};
+	FMatchPlayState MultiSkillState = Host->GetMatchSnapshot().Snapshot;
+	FPlayerCardRuleSnapshot* MultiSkillSnapshot = FindAuthorityCard(
+		MultiSkillState, OrdinaryCard.Side, OrdinaryCard.CardId);
+	TestNotNull(TEXT("Multi-Skill fixture finds authoritative snapshot"),
+		MultiSkillSnapshot);
+	if (MultiSkillSnapshot != nullptr && Demo.SkillRuleSet.SkillRules.Num() >= 2)
+	{
+		MultiSkillSnapshot->SkillIds = {
+			Demo.SkillRuleSet.SkillRules[0].SkillId,
+			Demo.SkillRuleSet.SkillRules[1].SkillId
+		};
+		const FFMCodexLocalMatchInteractionView MultiSkillView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(
+				MultiSkillState, Demo.SkillRuleSet);
+		const FFMCodexLocalMatchDeploymentGroup* MultiSkillGroup =
+			FindGroup(MultiSkillView, OrdinaryCard.CardId);
+		TestNotNull(TEXT("Multi-Skill card remains present"), MultiSkillGroup);
+		if (MultiSkillGroup != nullptr)
+		{
+			TestEqual(TEXT("All authoritative Skills remain in CardView"),
+				MultiSkillGroup->Card.SkillLabels.Num(), 2);
+			for (const FString& Skill : MultiSkillGroup->Card.SkillLabels)
+			{
+				TestTrue(TEXT("Compact/detail summary never drops a Skill"),
+					MultiSkillGroup->Card.SkillSummaryLabel.Contains(Skill));
+			}
+		}
+
+		MultiSkillSnapshot->SkillIds.Reset();
+		const FFMCodexLocalMatchInteractionView NoSkillView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(
+				MultiSkillState, Demo.SkillRuleSet);
+		const FFMCodexLocalMatchDeploymentGroup* NoSkillGroup =
+			FindGroup(NoSkillView, OrdinaryCard.CardId);
+		TestNotNull(TEXT("No-Skill fallback card remains present"), NoSkillGroup);
+		if (NoSkillGroup != nullptr)
+		{
+			TestTrue(TEXT("No-Skill fallback is bounded and explicit"),
+				NoSkillGroup->Card.SkillLabels.IsEmpty()
+					&& NoSkillGroup->Card.SkillSummaryLabel == TEXT("NO SKILL"));
+		}
+	}
+
+	auto FindPitchSlot = [](const FFMCodexLocalMatchInteractionView& View,
+		const FName SlotId) -> const FFMCodexLocalMatchPitchSlotView*
+	{
+		for (const FFMCodexLocalMatchPitchRegionView& Region : View.PitchRegions)
+		{
+			if (const FFMCodexLocalMatchPitchSlotView* Slot =
+				Region.Slots.FindByPredicate(
+					[SlotId](const FFMCodexLocalMatchPitchSlotView& Candidate)
+					{
+						return Candidate.SlotId == SlotId;
+					}))
+			{
+				return Slot;
+			}
+		}
+		return nullptr;
+	};
+	const FFMCodexLocalMatchSlotView OrdinaryDestination =
+		OrdinaryGroup->LegalSlots[0];
+	Controller->DeployOrdinary(
+		OrdinaryCard.CardId, OrdinaryDestination.SlotId);
+	TestTrue(TEXT("Card hierarchy deployment succeeds"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	const FFMCodexLocalMatchInteractionView AfterOrdinary =
+		Controller->GetInteractionView();
+	const FFMCodexLocalMatchPitchSlotView* OrdinaryPitchSlot =
+		FindPitchSlot(AfterOrdinary, OrdinaryDestination.SlotId);
+	TestNotNull(TEXT("Deployed ordinary card appears on pitch"),
+		OrdinaryPitchSlot);
+	if (OrdinaryPitchSlot != nullptr)
+	{
+		const FFMCodexLocalMatchCardView& PitchCard = OrdinaryPitchSlot->Card;
+		TestTrue(TEXT("Pitch and interaction use identical shared identity"),
+			PitchCard.CardId == OrdinaryCard.CardId
+				&& PitchCard.DisplayLabel == OrdinaryCard.DisplayLabel
+				&& PitchCard.Side == OrdinaryCard.Side
+				&& PitchCard.CompactRoleLabel == OrdinaryCard.CompactRoleLabel
+				&& PitchCard.SkillLabels == OrdinaryCard.SkillLabels
+				&& PitchCard.SkillSummaryLabel == OrdinaryCard.SkillSummaryLabel
+				&& PitchCard.DeveloperReferenceLabel
+					== OrdinaryCard.DeveloperReferenceLabel);
+		TestTrue(TEXT("Deployed status is freshly snapshot-derived"),
+			PitchCard.bDeployed
+				&& PitchCard.StatusLabels.Contains(TEXT("DEPLOYED")));
+	}
+
+	FFMCodexLocalMatchDeploymentGroup GoalkeeperGroup;
+	bool bFoundGoalkeeper = false;
+	for (int32 Attempt = 0; Attempt < 2 && !bFoundGoalkeeper; ++Attempt)
+	{
+		AcknowledgeIfPending(*Controller);
+		const FFMCodexLocalMatchInteractionView View =
+			Controller->GetInteractionView();
+		if (const FFMCodexLocalMatchDeploymentGroup* Found =
+			View.DeploymentGroups.FindByPredicate(
+				[](const FFMCodexLocalMatchDeploymentGroup& Candidate)
+				{
+					return Candidate.bGoalkeeper
+						&& !Candidate.LegalSlots.IsEmpty();
+				}))
+		{
+			GoalkeeperGroup = *Found;
+			bFoundGoalkeeper = true;
+			break;
+		}
+		const FFMCodexLocalMatchDeploymentGroup* NextOrdinary =
+			View.DeploymentGroups.FindByPredicate(
+				[](const FFMCodexLocalMatchDeploymentGroup& Candidate)
+				{
+					return !Candidate.bGoalkeeper
+						&& !Candidate.LegalSlots.IsEmpty();
+				});
+		if (NextOrdinary == nullptr)
+		{
+			break;
+		}
+		Controller->DeployOrdinary(
+			NextOrdinary->CardId, NextOrdinary->LegalSlots[0].SlotId);
+	}
+	TestTrue(TEXT("Authoritative deployment exposes goalkeeper card"),
+		bFoundGoalkeeper);
+	if (bFoundGoalkeeper)
+	{
+		TestTrue(TEXT("GK hierarchy uses only faithful goalkeeper data"),
+			GoalkeeperGroup.Card.bGoalkeeper
+				&& GoalkeeperGroup.Card.CompactRoleLabel == TEXT("GK")
+				&& GoalkeeperGroup.Card.GoalkeeperAttributeSummary.Contains(TEXT("HAN"))
+				&& GoalkeeperGroup.Card.GoalkeeperAttributeSummary.Contains(TEXT("POS"))
+				&& GoalkeeperGroup.Card.GoalkeeperAttributeSummary.Contains(TEXT("REF"))
+				&& GoalkeeperGroup.Card.GoalkeeperAttributeSummary.Contains(TEXT("AER"))
+				&& GoalkeeperGroup.Card.GoalkeeperAttributeSummary.Contains(TEXT("ANT"))
+				&& GoalkeeperGroup.Card.GoalkeeperAttributeSummary.Contains(TEXT("1v1"))
+				&& GoalkeeperGroup.Card.CompactAttributeSummary.Contains(TEXT("AER"))
+				&& !GoalkeeperGroup.Card.CompactAttributeSummary.Contains(TEXT("SHO")));
+		const FName GoalkeeperSlotId = GoalkeeperGroup.LegalSlots[0].SlotId;
+		Controller->DeployGoalkeeper(GoalkeeperSlotId);
+		TestTrue(TEXT("Goalkeeper deployment succeeds"),
+			Controller->GetLastDiagnostic().bHostSuccess);
+		const FFMCodexLocalMatchPitchSlotView* GoalkeeperPitchSlot =
+			FindPitchSlot(Controller->GetInteractionView(), GoalkeeperSlotId);
+		TestNotNull(TEXT("Goalkeeper appears in exact pitch slot"),
+			GoalkeeperPitchSlot);
+		if (GoalkeeperPitchSlot != nullptr)
+		{
+			TestTrue(TEXT("GK pitch/candidate/developer identity agrees"),
+				GoalkeeperPitchSlot->Card.CardId == GoalkeeperGroup.Card.CardId
+					&& GoalkeeperPitchSlot->Card.DisplayLabel
+						== GoalkeeperGroup.Card.DisplayLabel
+					&& GoalkeeperPitchSlot->Card.CompactRoleLabel == TEXT("GK")
+					&& GoalkeeperPitchSlot->Card.DeveloperReferenceLabel
+						== GoalkeeperGroup.Card.DeveloperReferenceLabel
+					&& GoalkeeperPitchSlot->Card.StatusLabels.Contains(
+						TEXT("DEPLOYED")));
+		}
+	}
+
+	AcknowledgeIfPending(*Controller);
+	const TArray<uint8> StateBeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	const FFMCodexLocalMatchPitchSlotView* BeforeRejectedSlot =
+		FindPitchSlot(
+			Controller->GetInteractionView(), OrdinaryDestination.SlotId);
+	TestNotNull(TEXT("Rejected fixture retains ordinary pitch card"),
+		BeforeRejectedSlot);
+	if (BeforeRejectedSlot == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchCardView CardBeforeRejected =
+		BeforeRejectedSlot->Card;
+	Controller->DeployOrdinary(
+		OrdinaryCard.CardId, OrdinaryDestination.SlotId);
+	TestFalse(TEXT("Repeated card deployment is rejected"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("Rejected card action leaves State byte-identical"),
+		StateBeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	const FFMCodexLocalMatchPitchSlotView* CardAfterRejected =
+		FindPitchSlot(Controller->GetInteractionView(), OrdinaryDestination.SlotId);
+	TestNotNull(TEXT("Rejected refresh retains the pitch card"),
+		CardAfterRejected);
+	if (CardAfterRejected != nullptr)
+	{
+		TestTrue(TEXT("Rejected action changes no card presentation evidence"),
+			CardAfterRejected->Card.CardId == CardBeforeRejected.CardId
+				&& CardAfterRejected->Card.DisplayLabel
+					== CardBeforeRejected.DisplayLabel
+				&& CardAfterRejected->Card.SkillLabels
+					== CardBeforeRejected.SkillLabels
+				&& CardAfterRejected->Card.AttributeSummary
+					== CardBeforeRejected.AttributeSummary
+				&& CardAfterRejected->Card.CompactAttributeSummary
+					== CardBeforeRejected.CompactAttributeSummary
+				&& CardAfterRejected->Card.StatusLabels
+					== CardBeforeRejected.StatusLabels);
+	}
+
+	FString ControllerSource;
+	FString ViewSource;
+	TestTrue(TEXT("Card renderer source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+		ControllerSource));
+	TestTrue(TEXT("Card presentation source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchInteractionView.cpp"),
+		ViewSource));
+	TestTrue(TEXT("Typography and bounded interaction hierarchy are explicit"),
+		ControllerSource.Contains(TEXT("GetDefaultFontStyle(\"Bold\", 16)"))
+			&& ControllerSource.Contains(TEXT("MaxDesiredWidth(520.0f)"))
+			&& ControllerSource.Contains(TEXT("OUTFIELD ATTRIBUTES"))
+			&& ControllerSource.Contains(TEXT("GOALKEEPER ATTRIBUTES"))
+			&& ControllerSource.Contains(TEXT("STATUS  |  ")));
+	const int32 InteractionCardStart = ControllerSource.Find(
+		TEXT("TSharedRef<SWidget> MakeCardPanel"));
+	const int32 CompactCardStart = ControllerSource.Find(
+		TEXT("TSharedRef<SWidget> MakeCompactPitchCard"));
+	const int32 PitchSlotStart = ControllerSource.Find(
+		TEXT("TSharedRef<SWidget> MakePitchSlot"));
+	const FString InteractionCardBody = InteractionCardStart != INDEX_NONE
+		&& CompactCardStart > InteractionCardStart
+			? ControllerSource.Mid(
+				InteractionCardStart, CompactCardStart - InteractionCardStart)
+			: FString();
+	const FString CompactCardBody = CompactCardStart != INDEX_NONE
+		&& PitchSlotStart > CompactCardStart
+			? ControllerSource.Mid(
+				CompactCardStart, PitchSlotStart - CompactCardStart)
+			: FString();
+	TestTrue(TEXT("Both variants consume one shared CardView presentation"),
+		!InteractionCardBody.IsEmpty() && !CompactCardBody.IsEmpty()
+			&& InteractionCardBody.Contains(TEXT("Card.SkillSummaryLabel"))
+			&& CompactCardBody.Contains(TEXT("Card.SkillSummaryLabel"))
+			&& InteractionCardBody.Contains(TEXT("Card.StatusSummaryLabel"))
+			&& CompactCardBody.Contains(TEXT("Card.StatusSummaryLabel")));
+	TestTrue(TEXT("Developer reference stays out of compact pitch hierarchy"),
+		InteractionCardBody.Contains(TEXT("Card.DeveloperReferenceLabel"))
+			&& !CompactCardBody.Contains(TEXT("Card.DeveloperReferenceLabel")));
+	TestTrue(TEXT("Card renderers contain no gameplay legality or command logic"),
+		!InteractionCardBody.Contains(TEXT("LegalityEvaluator"))
+			&& !CompactCardBody.Contains(TEXT("LegalityEvaluator"))
+			&& !InteractionCardBody.Contains(TEXT("AvailabilityQuery"))
+			&& !CompactCardBody.Contains(TEXT("AvailabilityQuery"))
+			&& !InteractionCardBody.Contains(TEXT("Host->"))
+			&& !CompactCardBody.Contains(TEXT("Host->")));
+	TestTrue(TEXT("Stage 6.2 pitch and hot-seat shell remain present"),
+		ControllerSource.Contains(TEXT("CENTER / PHYSICAL HALF BOUNDARY"))
+			&& ControllerSource.Contains(TEXT("RELATIVE ZONES"))
+			&& ControllerSource.Contains(TEXT("EMPTY SLOT"))
+			&& ControllerSource.Contains(TEXT("CURRENT ATTACKING SIDE"))
+			&& ControllerSource.Contains(TEXT("PASS CONTROL")));
+	TestTrue(TEXT("Card status derivation contains no legality calculation"),
+		ViewSource.Contains(TEXT("FinalizeCardPresentation"))
+			&& !ViewSource.Contains(TEXT("StatusSummaryLabel ==")));
 	return true;
 }
 

@@ -57,10 +57,15 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	FName CardId = NAME_None;
 	FString DisplayLabel;
 	FString PositionLabel;
+	FString CompactRoleLabel;
 	FString AttributeSummary;
 	FString GoalkeeperAttributeSummary;
 	FString CompactAttributeSummary;
 	TArray<FString> SkillLabels;
+	FString SkillSummaryLabel;
+	TArray<FString> StatusLabels;
+	FString StatusSummaryLabel;
+	FString DeveloperReferenceLabel;
 	bool bGoalkeeper = false;
 	bool bAvailable = false;
 	bool bUsed = false;
