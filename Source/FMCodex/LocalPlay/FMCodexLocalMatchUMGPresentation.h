@@ -44,6 +44,9 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 	FString StatusSummaryLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString RarityLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	FString DeveloperReferenceLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")

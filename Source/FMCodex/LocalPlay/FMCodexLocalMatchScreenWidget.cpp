@@ -56,6 +56,7 @@ UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
 	: Super(ObjectInitializer)
 {
 	PitchWidgetClass = UFMCodexPitchWidget::StaticClass();
+	InteractionCardWidgetClass = UFMCodexPlayerCardWidget::StaticClass();
 }
 
 void UFMCodexLocalMatchScreenWidget::NativeOnInitialized()
@@ -109,6 +110,12 @@ UFMCodexLocalMatchScreenWidget::GetMatchController() const
 UFMCodexPitchWidget* UFMCodexLocalMatchScreenWidget::GetPitchWidget() const
 {
 	return PitchWidget;
+}
+
+const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
+UFMCodexLocalMatchScreenWidget::GetRenderedCandidateCardWidgets() const
+{
+	return RenderedCandidateCardWidgets;
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
@@ -341,6 +348,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshInteraction()
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
 	CandidateCardsBody->ClearChildren();
+	RenderedCandidateCardWidgets.Reset();
 	for (int32 Index = 0;
 		Index < Presentation.Interaction.CandidateCards.Num(); ++Index)
 	{
@@ -348,13 +356,18 @@ void UFMCodexLocalMatchScreenWidget::RefreshInteraction()
 			USizeBox::StaticClass(),
 			FName(*FString::Printf(TEXT("InteractionCardSize%d"), Index)));
 		CardSize->SetWidthOverride(260.0f);
+		UClass* ResolvedCardClass = InteractionCardWidgetClass != nullptr
+			? InteractionCardWidgetClass.Get()
+			: UFMCodexPlayerCardWidget::StaticClass();
 		UFMCodexPlayerCardWidget* CardWidget =
 			WidgetTree->ConstructWidget<UFMCodexPlayerCardWidget>(
-				UFMCodexPlayerCardWidget::StaticClass(),
+				ResolvedCardClass,
 				FName(*FString::Printf(TEXT("InteractionCard%d"), Index)));
 		CardWidget->RefreshFromPresentation(
-			Presentation.Interaction.CandidateCards[Index]);
+			Presentation.Interaction.CandidateCards[Index],
+			EFMCodexPlayerCardPresentationMode::InteractionChoice);
 		CardSize->AddChild(CardWidget);
 		CandidateCardsBody->AddChildToHorizontalBox(CardSize);
+		RenderedCandidateCardWidgets.Add(CardWidget);
 	}
 }

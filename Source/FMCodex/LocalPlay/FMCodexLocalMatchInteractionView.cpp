@@ -223,6 +223,7 @@ namespace FMCodexLocalMatchInteractionView
 		View.DeveloperReferenceLabel = FString::Printf(
 			TEXT("Card reference: %s  |  Rarity: %s"),
 			*View.CardId.ToString(), *RarityLabel(Card.Snapshot.Rarity));
+		View.RarityLabel = RarityLabel(Card.Snapshot.Rarity);
 
 		const FCardUsageState& Usage = CardUsage(State, Side);
 		View.bAvailable = Usage.AvailableCardIds.Contains(CardId);

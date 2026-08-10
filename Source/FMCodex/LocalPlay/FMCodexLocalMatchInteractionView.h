@@ -65,6 +65,7 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	FString SkillSummaryLabel;
 	TArray<FString> StatusLabels;
 	FString StatusSummaryLabel;
+	FString RarityLabel;
 	FString DeveloperReferenceLabel;
 	bool bGoalkeeper = false;
 	bool bAvailable = false;

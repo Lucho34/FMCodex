@@ -19,6 +19,8 @@ class FMCODEX_API UFMCodexPitchSlotWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	UFMCodexPitchSlotWidget(const FObjectInitializer& ObjectInitializer);
+
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Pitch Presentation")
 	void RefreshFromPitchSlotPresentation(
 		const FFMCodexUMGPitchSlotViewModel& InPresentation);
@@ -39,6 +41,11 @@ private:
 		Category = "Local Match|Pitch Presentation",
 		meta = (AllowPrivateAccess = "true"))
 	FFMCodexUMGPitchSlotViewModel Presentation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
+		Category = "Local Match|Pitch Presentation",
+		meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UFMCodexPlayerCardWidget> PlayerCardWidgetClass;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> SlotBorder;

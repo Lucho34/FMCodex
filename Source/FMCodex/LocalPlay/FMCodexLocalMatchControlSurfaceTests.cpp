@@ -16,6 +16,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Serialization/MemoryWriter.h"
+#include "Components/TextBlock.h"
 
 namespace FMCodexLocalMatchControlSurfaceTests
 {
@@ -3638,6 +3639,426 @@ bool FFMCodexUMGPitchWidgetVisualFoundationTest::RunTest(
 	TestTrue(TEXT("Slate developer surface remains unchanged and available"),
 		ControllerSource.Contains(TEXT("BuildControlSurface"))
 			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexUMGPlayerCardVisualFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.30.UMGPlayerCardVisualFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Card foundation Host exists"), Host);
+	TestNotNull(TEXT("Card foundation Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Card foundation root UMG screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+
+	FFMCodexUMGCardViewModel MultiSkillFixture;
+	MultiSkillFixture.CardId = TEXT("VisualCard");
+	MultiSkillFixture.IdentityLabel = TEXT("Card VisualCard");
+	MultiSkillFixture.OwnerLabel = TEXT("Player A");
+	MultiSkillFixture.RoleLabel = TEXT("FW / MF");
+	MultiSkillFixture.RarityLabel = TEXT("National");
+	MultiSkillFixture.SkillLabels = {
+		TEXT("Long Shot"), TEXT("Cut Inside"), TEXT("Pass Control"),
+		TEXT("Cross"), TEXT("Through Ball")
+	};
+	MultiSkillFixture.SkillSummaryLabel = FString::Join(
+		MultiSkillFixture.SkillLabels, TEXT(" | "));
+	MultiSkillFixture.CompactAttributeSummary =
+		TEXT("SHO 5 | PAS 4 | DRI 3 | SPD 2");
+	MultiSkillFixture.FullAttributeSummary =
+		TEXT("SHO 5 | DRI 3 | PAS 4 | OFF 2 | MRK 1 | TKL 1 | SPD 2 | STR 3 | STA 4 | LS 5");
+	MultiSkillFixture.StatusLabels = { TEXT("AVAILABLE") };
+	MultiSkillFixture.StatusSummaryLabel = TEXT("AVAILABLE");
+	MultiSkillFixture.DeveloperReferenceLabel =
+		TEXT("Card reference: VisualCard | Rarity: National");
+
+	UFMCodexPlayerCardWidget* CardWidget =
+		CreateWidget<UFMCodexPlayerCardWidget>(
+			Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
+	TestNotNull(TEXT("Reusable Player Card Widget constructs"), CardWidget);
+	if (CardWidget == nullptr)
+	{
+		return false;
+	}
+	CardWidget->RefreshFromPresentation(
+		MultiSkillFixture,
+		EFMCodexPlayerCardPresentationMode::PitchCompact);
+	CardWidget->TakeWidget();
+	for (const TCHAR* RegionName : {
+		TEXT("PlayerCardFrame"), TEXT("RoleRarityHeaderRegion"),
+		TEXT("PortraitPresentationRegion"), TEXT("CardIdentityRegion"),
+		TEXT("SkillPresentationRegion"),
+		TEXT("AttributePresentationRegion"),
+		TEXT("StatusBadgePresentationRegion") })
+	{
+		TestNotNull(FString::Printf(TEXT("Card hierarchy contains %s"),
+			RegionName), CardWidget->GetWidgetFromName(RegionName));
+	}
+	TestTrue(TEXT("PitchCompact has bounded card and portrait shells"),
+		CardWidget->GetWidgetFromName(TEXT("PlayerCardBounds")) != nullptr
+			&& CardWidget->GetWidgetFromName(TEXT("PortraitAssetBounds"))
+				!= nullptr);
+	TestTrue(TEXT("Role and rarity have independent discoverable positions"),
+		CardWidget->GetWidgetFromName(TEXT("CardRole")) != nullptr
+			&& CardWidget->GetWidgetFromName(TEXT("CardRarity")) != nullptr
+			&& CardWidget->GetWidgetFromName(TEXT("RoleIconHook")) != nullptr);
+	TestTrue(TEXT("Portrait and Skill future asset hooks are explicit"),
+		CardWidget->GetWidgetFromName(TEXT("PortraitPlaceholderText")) != nullptr
+			&& CardWidget->GetWidgetFromName(TEXT("SkillIconHook0")) != nullptr);
+	TestTrue(TEXT("PitchCompact preserves every multi-Skill identity"),
+		CardWidget->GetPresentationMode()
+			== EFMCodexPlayerCardPresentationMode::PitchCompact
+			&& CardWidget->GetRenderedSkillCount()
+				== MultiSkillFixture.SkillLabels.Num());
+	TestTrue(TEXT("PitchCompact renders stable SHO PAS DRI SPD stat block"),
+		CardWidget->GetRenderedAttributeCount() == 4
+			&& CardWidget->GetRenderedAttributeSummary()
+				== MultiSkillFixture.CompactAttributeSummary
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("SHO"))
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("PAS"))
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("DRI"))
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("SPD")));
+	TestEqual(TEXT("Status labels become structured badge entries"),
+		CardWidget->GetRenderedStatusBadgeCount(), 1);
+	const UTextBlock* DeveloperReference = Cast<UTextBlock>(
+		CardWidget->GetWidgetFromName(TEXT("CardDeveloperReference")));
+	TestTrue(TEXT("Developer reference does not dominate PitchCompact"),
+		DeveloperReference != nullptr
+			&& DeveloperReference->GetVisibility()
+				== ESlateVisibility::Collapsed);
+
+	CardWidget->SetPresentationMode(
+		EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	TestTrue(TEXT("Interaction mode preserves all ten outfield attributes"),
+		CardWidget->GetPresentationMode()
+			== EFMCodexPlayerCardPresentationMode::InteractionChoice
+			&& CardWidget->GetRenderedAttributeCount() == 10
+			&& CardWidget->GetRenderedAttributeSummary()
+				== MultiSkillFixture.FullAttributeSummary);
+	for (const TCHAR* Attribute : {
+		TEXT("SHO"), TEXT("DRI"), TEXT("PAS"), TEXT("OFF"), TEXT("MRK"),
+		TEXT("TKL"), TEXT("SPD"), TEXT("STR"), TEXT("STA"), TEXT("LS") })
+	{
+		TestTrue(FString::Printf(TEXT("Interaction mode retains %s"),
+			Attribute),
+			CardWidget->GetRenderedAttributeSummary().Contains(Attribute));
+	}
+	TestTrue(TEXT("Developer reference remains secondary interaction detail"),
+		DeveloperReference != nullptr
+			&& DeveloperReference->GetVisibility()
+				== ESlateVisibility::Visible);
+
+	FFMCodexUMGCardViewModel GoalkeeperFixture = MultiSkillFixture;
+	GoalkeeperFixture.CardId = TEXT("VisualGK");
+	GoalkeeperFixture.IdentityLabel = TEXT("Card VisualGK");
+	GoalkeeperFixture.RoleLabel = TEXT("GK");
+	GoalkeeperFixture.CompactAttributeSummary =
+		TEXT("HAN 5 | REF 4 | AER 3 | 1v1 2");
+	GoalkeeperFixture.FullAttributeSummary =
+		TEXT("HAN 5 | POS 4 | REF 4 | AER 3 | ANT 3 | 1v1 2");
+	GoalkeeperFixture.StatusLabels = { TEXT("GK USED"), TEXT("GK ACTIVE") };
+	GoalkeeperFixture.StatusSummaryLabel = TEXT("GK USED | GK ACTIVE");
+	GoalkeeperFixture.bGoalkeeper = true;
+	CardWidget->RefreshFromPresentation(
+		GoalkeeperFixture,
+		EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	TestTrue(TEXT("GK is a distinct presentation-only card variant"),
+		CardWidget->IsGoalkeeperVisualVariant()
+			&& CardWidget->GetPresentation().RoleLabel == TEXT("GK")
+			&& CardWidget->GetRenderedAttributeCount() == 6
+			&& CardWidget->GetRenderedStatusBadgeCount() == 2
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("HAN"))
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("POS"))
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("REF"))
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("AER"))
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("ANT"))
+			&& CardWidget->GetRenderedAttributeSummary().Contains(TEXT("1v1"))
+			&& !CardWidget->GetRenderedAttributeSummary().Contains(TEXT("SHO")));
+
+	FFMCodexLocalMatchCardView MissingCardView;
+	const FFMCodexUMGCardViewModel MissingFixture =
+		FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(MissingCardView);
+	CardWidget->RefreshFromPresentation(
+		MissingFixture,
+		EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	TestTrue(TEXT("Missing presentation data has safe bounded fallbacks"),
+		MissingFixture.IdentityLabel == TEXT("UNKNOWN CARD")
+			&& MissingFixture.RoleLabel == TEXT("ROLE N/A")
+			&& MissingFixture.SkillSummaryLabel == TEXT("NO SKILL")
+			&& MissingFixture.CompactAttributeSummary
+				== TEXT("Attributes unavailable")
+			&& MissingFixture.FullAttributeSummary
+				== TEXT("Attributes unavailable")
+			&& MissingFixture.StatusSummaryLabel == TEXT("UNAVAILABLE")
+			&& MissingFixture.RarityLabel == TEXT("RARITY N/A")
+			&& CardWidget->GetRenderedSkillCount() == 1
+			&& CardWidget->GetRenderedAttributeCount() == 1
+			&& CardWidget->GetRenderedStatusBadgeCount() == 1);
+
+	Screen->RequestStartNewMatch();
+	TestTrue(TEXT("Card stage preserves full-screen hot-seat blocking"),
+		Controller->IsAwaitingHotSeatHandoff()
+			&& Screen->GetPresentation().Handoff.bVisible);
+	if (!Controller->IsAwaitingHotSeatHandoff())
+	{
+		return false;
+	}
+	const TArray<uint8> StateBeforeReady =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestReady();
+	TestTrue(TEXT("Card-stage Ready remains authority-neutral"),
+		StateBeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& !Screen->GetPresentation().Handoff.bVisible);
+	Screen->RequestBeginOrdinaryAttack();
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+	TestTrue(TEXT("Card fixture reaches authoritative deployment"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::Deploy);
+
+	const TArray<FFMCodexUMGCardViewModel>& CandidateDTOs =
+		Screen->GetPresentation().Interaction.CandidateCards;
+	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>& CandidateWidgets =
+		Screen->GetRenderedCandidateCardWidgets();
+	TestEqual(TEXT("Every candidate DTO receives one Card Widget"),
+		CandidateWidgets.Num(), CandidateDTOs.Num());
+	bool bCandidateBindingsExact = CandidateWidgets.Num() == CandidateDTOs.Num();
+	TSet<FString> CandidateSkillFamilies;
+	for (int32 Index = 0; Index < CandidateWidgets.Num(); ++Index)
+	{
+		const UFMCodexPlayerCardWidget* CandidateWidget = CandidateWidgets[Index];
+		bCandidateBindingsExact = bCandidateBindingsExact
+			&& CandidateWidget != nullptr
+			&& CandidateWidget->GetPresentationMode()
+				== EFMCodexPlayerCardPresentationMode::InteractionChoice
+			&& CandidateWidget->GetPresentation().CardId
+				== CandidateDTOs[Index].CardId
+			&& CandidateWidget->GetPresentation().IdentityLabel
+				== CandidateDTOs[Index].IdentityLabel;
+		for (const FString& Skill : CandidateDTOs[Index].SkillLabels)
+		{
+			CandidateSkillFamilies.Add(Skill);
+		}
+	}
+	TestTrue(TEXT("Interaction candidates use shared DTO in Interaction mode"),
+		bCandidateBindingsExact);
+	for (const TCHAR* Family : {
+		TEXT("Long Shot"), TEXT("Cut Inside"), TEXT("Pass Control"),
+		TEXT("Cross"), TEXT("Through Ball") })
+	{
+		TestTrue(FString::Printf(TEXT("Card Widget supports %s family"), Family),
+			CandidateSkillFamilies.Contains(Family));
+	}
+
+	const FFMCodexLocalMatchInteractionView& DeploymentView =
+		Controller->GetInteractionView();
+	const FFMCodexLocalMatchDeploymentGroup* OrdinaryGroup =
+		DeploymentView.DeploymentGroups.FindByPredicate(
+			[](const FFMCodexLocalMatchDeploymentGroup& Candidate)
+			{
+				return !Candidate.bGoalkeeper
+					&& !Candidate.LegalSlots.IsEmpty();
+			});
+	TestNotNull(TEXT("Card refresh fixture has ordinary candidate"),
+		OrdinaryGroup);
+	if (OrdinaryGroup == nullptr)
+	{
+		return false;
+	}
+	const FName CardId = OrdinaryGroup->CardId;
+	const FName SlotId = OrdinaryGroup->LegalSlots[0].SlotId;
+	const FFMCodexUMGCardViewModel* CandidateBeforeDeployment =
+		CandidateDTOs.FindByPredicate(
+			[CardId](const FFMCodexUMGCardViewModel& Candidate)
+			{
+				return Candidate.CardId == CardId;
+			});
+	TestNotNull(TEXT("Selected candidate has shared UMG Card DTO"),
+		CandidateBeforeDeployment);
+	if (CandidateBeforeDeployment == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexUMGCardViewModel CandidateSnapshot =
+		*CandidateBeforeDeployment;
+	Screen->RequestDeployOrdinary(CardId, SlotId);
+	TestTrue(TEXT("Successful command refreshes card from authority"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+
+	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
+	TestNotNull(TEXT("Card stage retains dedicated Pitch Widget"), Pitch);
+	if (Pitch == nullptr)
+	{
+		return false;
+	}
+	auto FindRenderedSlot = [](UFMCodexPitchWidget& PitchWidget,
+		const FName ExpectedSlotId) -> UFMCodexPitchSlotWidget*
+	{
+		for (UFMCodexPitchSlotWidget* SlotWidget
+			: PitchWidget.GetRenderedSlotWidgets())
+		{
+			if (SlotWidget != nullptr
+				&& SlotWidget->GetPresentation().SlotId == ExpectedSlotId)
+			{
+				return SlotWidget;
+			}
+		}
+		return nullptr;
+	};
+	UFMCodexPitchSlotWidget* OccupiedSlot = FindRenderedSlot(*Pitch, SlotId);
+	TestNotNull(TEXT("Successful refresh keeps deployed card in exact slot"),
+		OccupiedSlot);
+	if (OccupiedSlot == nullptr)
+	{
+		return false;
+	}
+	OccupiedSlot->TakeWidget();
+	UFMCodexPlayerCardWidget* PitchCard = OccupiedSlot->GetCardWidget();
+	TestTrue(TEXT("PitchSlot reuses Card Widget in PitchCompact mode"),
+		Pitch->GetRenderedSlotWidgets().Num() == 20
+			&& PitchCard != nullptr
+			&& PitchCard->GetPresentationMode()
+				== EFMCodexPlayerCardPresentationMode::PitchCompact);
+	if (PitchCard == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexUMGCardViewModel DeployedSnapshot =
+		PitchCard->GetPresentation();
+	TestTrue(TEXT("Pitch and candidate retain one presentation identity"),
+		DeployedSnapshot.CardId == CandidateSnapshot.CardId
+			&& DeployedSnapshot.IdentityLabel == CandidateSnapshot.IdentityLabel
+			&& DeployedSnapshot.OwnerLabel == CandidateSnapshot.OwnerLabel
+			&& DeployedSnapshot.RoleLabel == CandidateSnapshot.RoleLabel
+			&& DeployedSnapshot.RarityLabel == CandidateSnapshot.RarityLabel
+			&& DeployedSnapshot.SkillLabels == CandidateSnapshot.SkillLabels
+			&& DeployedSnapshot.CompactAttributeSummary
+				== CandidateSnapshot.CompactAttributeSummary
+			&& DeployedSnapshot.FullAttributeSummary
+				== CandidateSnapshot.FullAttributeSummary
+			&& DeployedSnapshot.StatusLabels.Contains(TEXT("DEPLOYED")));
+
+	const TArray<uint8> StateBeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestDeployOrdinary(CardId, SlotId);
+	TestFalse(TEXT("Repeated deployment is rejected"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	UFMCodexPitchSlotWidget* RejectedSlot = FindRenderedSlot(*Pitch, SlotId);
+	if (RejectedSlot != nullptr)
+	{
+		RejectedSlot->TakeWidget();
+	}
+	const UFMCodexPlayerCardWidget* RejectedCard = RejectedSlot != nullptr
+		? RejectedSlot->GetCardWidget() : nullptr;
+	TestTrue(TEXT("Rejected command has no optimistic card/status mutation"),
+		StateBeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& RejectedSlot != nullptr
+			&& RejectedCard != nullptr
+			&& RejectedSlot->GetPresentation().SlotId == SlotId
+			&& RejectedCard->GetPresentation().CardId
+				== DeployedSnapshot.CardId
+			&& RejectedCard->GetPresentation().IdentityLabel
+				== DeployedSnapshot.IdentityLabel
+			&& RejectedCard->GetPresentation().RoleLabel
+				== DeployedSnapshot.RoleLabel
+			&& RejectedCard->GetPresentation().SkillLabels
+				== DeployedSnapshot.SkillLabels
+			&& RejectedCard->GetPresentation().CompactAttributeSummary
+				== DeployedSnapshot.CompactAttributeSummary
+			&& RejectedCard->GetPresentation().FullAttributeSummary
+				== DeployedSnapshot.FullAttributeSummary
+			&& RejectedCard->GetPresentation().StatusLabels
+				== DeployedSnapshot.StatusLabels);
+
+	FString CardHeader;
+	FString CardSource;
+	FString DTOHeader;
+	FString RootSource;
+	FString SlotSource;
+	FString ControllerSource;
+	TestTrue(TEXT("Card visual boundary production sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.h"),
+			CardHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"),
+				CardSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchUMGPresentation.h"),
+				DTOHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+				RootSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchSlotWidget.cpp"),
+				SlotSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+				ControllerSource));
+	const FString CardWidgetSources = CardHeader + CardSource;
+	TestTrue(TEXT("Card Widget consumes reflected presentation DTO only"),
+		CardHeader.Contains(TEXT("FFMCodexUMGCardViewModel"))
+			&& DTOHeader.Contains(TEXT("BlueprintType"))
+			&& !CardWidgetSources.Contains(TEXT("FMatchPlayState"))
+			&& !CardWidgetSources.Contains(TEXT("AuthoritativeSession"))
+			&& !CardWidgetSources.Contains(TEXT("D6Provider"))
+			&& !CardWidgetSources.Contains(TEXT("HostGameMode")));
+	TestTrue(TEXT("Card Widget contains zero gameplay calculation or input"),
+		!CardWidgetSources.Contains(TEXT("Legality"))
+			&& !CardWidgetSources.Contains(TEXT("AvailabilityQuery"))
+			&& !CardWidgetSources.Contains(TEXT("FormulaResolver"))
+			&& !CardWidgetSources.Contains(TEXT("RandRange"))
+			&& !CardWidgetSources.Contains(TEXT("UButton"))
+			&& !CardWidgetSources.Contains(TEXT("OnClicked"))
+			&& !CardWidgetSources.Contains(TEXT("ExecuteCommandByName")));
+	TestTrue(TEXT("Card modes affect presentation density only"),
+		CardHeader.Contains(TEXT("PitchCompact"))
+			&& CardHeader.Contains(TEXT("InteractionChoice"))
+			&& CardSource.Contains(TEXT("SetWidthOverride"))
+			&& CardSource.Contains(TEXT("FullAttributeSummary"))
+			&& CardSource.Contains(TEXT("CompactAttributeSummary")));
+	TestTrue(TEXT("Pitch and interaction select one shared configurable card"),
+		SlotSource.Contains(TEXT("PlayerCardWidgetClass"))
+			&& SlotSource.Contains(TEXT("PitchCompact"))
+			&& RootSource.Contains(TEXT("InteractionCardWidgetClass"))
+			&& RootSource.Contains(TEXT("InteractionChoice")));
+	TestTrue(TEXT("Controller remains unaware of card visual geometry"),
+		!ControllerSource.Contains(TEXT("PlayerCardBounds"))
+			&& !ControllerSource.Contains(TEXT("PortraitPresentationRegion"))
+			&& !ControllerSource.Contains(TEXT("StructuredAttributeGrid")));
+	TestTrue(TEXT("Root and Pitch semantics remain intact"),
+		Screen->GetWidgetFromName(TEXT("MatchHeaderRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("CurrentInteractionRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("ResolutionResultRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) != nullptr
+			&& Pitch->GetWidgetFromName(TEXT("PlayerBPhysicalHalf")) != nullptr
+			&& Pitch->GetWidgetFromName(TEXT("CenterFieldVisualSeparator")) != nullptr
+			&& Pitch->GetWidgetFromName(TEXT("PlayerAPhysicalHalf")) != nullptr);
 	return true;
 }
 

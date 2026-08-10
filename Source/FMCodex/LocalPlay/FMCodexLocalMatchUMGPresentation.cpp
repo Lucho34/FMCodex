@@ -23,9 +23,15 @@ namespace FMCodexLocalMatchUMGPresentation
 			? TEXT("Attributes unavailable") : Card.CompactAttributeSummary;
 		Result.FullAttributeSummary = Card.bGoalkeeper
 			? Card.GoalkeeperAttributeSummary : Card.AttributeSummary;
+		if (Result.FullAttributeSummary.IsEmpty())
+		{
+			Result.FullAttributeSummary = TEXT("Attributes unavailable");
+		}
 		Result.StatusLabels = Card.StatusLabels;
 		Result.StatusSummaryLabel = Card.StatusSummaryLabel.IsEmpty()
 			? TEXT("UNAVAILABLE") : Card.StatusSummaryLabel;
+		Result.RarityLabel = Card.RarityLabel.IsEmpty()
+			? TEXT("RARITY N/A") : Card.RarityLabel;
 		Result.DeveloperReferenceLabel = Card.DeveloperReferenceLabel;
 		Result.bGoalkeeper = Card.bGoalkeeper;
 		return Result;

@@ -8,6 +8,13 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 
+UFMCodexPitchSlotWidget::UFMCodexPitchSlotWidget(
+	const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	PlayerCardWidgetClass = UFMCodexPlayerCardWidget::StaticClass();
+}
+
 void UFMCodexPitchSlotWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -106,9 +113,14 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 	if (Presentation.bOccupied)
 	{
 		SlotBorder->SetBrushColor(FLinearColor(0.03f, 0.12f, 0.16f, 0.94f));
+		UClass* ResolvedCardClass = PlayerCardWidgetClass != nullptr
+			? PlayerCardWidgetClass.Get()
+			: UFMCodexPlayerCardWidget::StaticClass();
 		CardWidget = WidgetTree->ConstructWidget<UFMCodexPlayerCardWidget>(
-			UFMCodexPlayerCardWidget::StaticClass(), TEXT("OccupiedPitchCard"));
-		CardWidget->RefreshFromPresentation(Presentation.Card);
+			ResolvedCardClass, TEXT("OccupiedPitchCard"));
+		CardWidget->RefreshFromPresentation(
+			Presentation.Card,
+			EFMCodexPlayerCardPresentationMode::PitchCompact);
 		ContentBody->AddChildToVerticalBox(CardWidget);
 	}
 	else

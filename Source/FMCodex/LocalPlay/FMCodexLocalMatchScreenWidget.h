@@ -11,6 +11,7 @@ class AFMCodexLocalMatchPlayerController;
 class UBorder;
 class UButton;
 class UFMCodexPitchWidget;
+class UFMCodexPlayerCardWidget;
 class UHorizontalBox;
 class UTextBlock;
 class UVerticalBox;
@@ -51,6 +52,8 @@ public:
 	const FFMCodexUMGMatchScreenViewModel& GetPresentation() const;
 	AFMCodexLocalMatchPlayerController* GetMatchController() const;
 	UFMCodexPitchWidget* GetPitchWidget() const;
+	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
+		GetRenderedCandidateCardWidgets() const;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -93,6 +96,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexPitchWidget> PitchWidget;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Card Presentation")
+	TSubclassOf<UFMCodexPlayerCardWidget> InteractionCardWidgetClass;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> InteractionTitleText;
 
@@ -101,6 +107,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> CandidateCardsBody;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UFMCodexPlayerCardWidget>>
+		RenderedCandidateCardWidgets;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> StartNewMatchButton;
