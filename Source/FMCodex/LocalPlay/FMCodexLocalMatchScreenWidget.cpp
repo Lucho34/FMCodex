@@ -2,6 +2,7 @@
 
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPitchWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -13,7 +14,6 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "Components/WrapBox.h"
 
 namespace FMCodexLocalMatchScreenWidget
 {
@@ -49,6 +49,13 @@ namespace FMCodexLocalMatchScreenWidget
 			Tree, FName(*(Name.ToString() + TEXT("Label"))), Label));
 		return Result;
 	}
+}
+
+UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
+	const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	PitchWidgetClass = UFMCodexPitchWidget::StaticClass();
 }
 
 void UFMCodexLocalMatchScreenWidget::NativeOnInitialized()
@@ -97,6 +104,11 @@ AFMCodexLocalMatchPlayerController*
 UFMCodexLocalMatchScreenWidget::GetMatchController() const
 {
 	return MatchController;
+}
+
+UFMCodexPitchWidget* UFMCodexLocalMatchScreenWidget::GetPitchWidget() const
+{
+	return PitchWidget;
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
@@ -186,9 +198,11 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	MainScreen->AddChildToVerticalBox(HeaderRegion);
 
 	UBorder* PitchRegion = MakeRegion(*WidgetTree, TEXT("FootballCardFieldRegion"));
-	PitchBody = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(), TEXT("FootballCardFieldBody"));
-	PitchRegion->AddChild(PitchBody);
+	UClass* ResolvedPitchClass = PitchWidgetClass != nullptr
+		? PitchWidgetClass.Get() : UFMCodexPitchWidget::StaticClass();
+	PitchWidget = WidgetTree->ConstructWidget<UFMCodexPitchWidget>(
+		ResolvedPitchClass, TEXT("DedicatedFootballPitchWidget"));
+	PitchRegion->AddChild(PitchWidget);
 	MainScreen->AddChildToVerticalBox(PitchRegion);
 
 	UBorder* InteractionRegion = MakeRegion(
@@ -272,7 +286,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		*Presentation.Header.CurrentAttackerLabel,
 		*Presentation.Header.ExpectedActorLabel,
 		*Presentation.Header.MatchStatusLabel)));
-	RefreshPitch();
+	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
 	RefreshInteraction();
 
 	TArray<FString> ResultLines;
@@ -300,71 +314,6 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		TEXT("%s\n%s\n%s"), *Presentation.Handoff.TitleLabel,
 		*Presentation.Handoff.NextPlayerLabel,
 		*Presentation.Handoff.ReadyLabel)));
-}
-
-void UFMCodexLocalMatchScreenWidget::RefreshPitch()
-{
-	using namespace FMCodexLocalMatchScreenWidget;
-	PitchBody->ClearChildren();
-	PitchBody->AddChildToVerticalBox(
-		MakeText(*WidgetTree, TEXT("PitchHeading"), TEXT("FOOTBALL / CARD FIELD")));
-	for (int32 RegionIndex = 0;
-		RegionIndex < Presentation.PitchRegions.Num(); ++RegionIndex)
-	{
-		if (RegionIndex > 0)
-		{
-			PitchBody->AddChildToVerticalBox(MakeText(
-				*WidgetTree,
-				FName(*FString::Printf(TEXT("CenterSeparator%d"), RegionIndex)),
-				TEXT("CENTER / PHYSICAL HALF BOUNDARY")));
-		}
-		const FFMCodexUMGPitchRegionViewModel& Region =
-			Presentation.PitchRegions[RegionIndex];
-		PitchBody->AddChildToVerticalBox(MakeText(
-			*WidgetTree,
-			FName(*FString::Printf(TEXT("PitchRegionHeading%d"), RegionIndex)),
-			Region.RegionLabel + TEXT("\n") + Region.ZoneContextLabel));
-		UWrapBox* SlotRow = WidgetTree->ConstructWidget<UWrapBox>(
-			UWrapBox::StaticClass(),
-			FName(*FString::Printf(TEXT("PitchSlotRow%d"), RegionIndex)));
-		SlotRow->SetInnerSlotPadding(FVector2D(5.0f, 5.0f));
-		for (int32 SlotIndex = 0; SlotIndex < Region.Slots.Num(); ++SlotIndex)
-		{
-			const FFMCodexUMGPitchSlotViewModel& SlotView =
-				Region.Slots[SlotIndex];
-			USizeBox* SlotSize = WidgetTree->ConstructWidget<USizeBox>(
-				USizeBox::StaticClass(), FName(*FString::Printf(
-					TEXT("PitchSlotSize%d_%d"), RegionIndex, SlotIndex)));
-			SlotSize->SetWidthOverride(190.0f);
-			UVerticalBox* SlotBody = WidgetTree->ConstructWidget<UVerticalBox>(
-				UVerticalBox::StaticClass(), FName(*FString::Printf(
-					TEXT("PitchSlotBody%d_%d"), RegionIndex, SlotIndex)));
-			SlotSize->AddChild(SlotBody);
-			SlotBody->AddChildToVerticalBox(MakeText(
-				*WidgetTree, FName(*FString::Printf(
-					TEXT("PitchSlotLabel%d_%d"), RegionIndex, SlotIndex)),
-				SlotView.SlotLabel));
-			if (SlotView.bOccupied)
-			{
-				UFMCodexPlayerCardWidget* CardWidget =
-					WidgetTree->ConstructWidget<UFMCodexPlayerCardWidget>(
-						UFMCodexPlayerCardWidget::StaticClass(),
-						FName(*FString::Printf(TEXT("PitchCard%d_%d"),
-							RegionIndex, SlotIndex)));
-				CardWidget->RefreshFromPresentation(SlotView.Card);
-				SlotBody->AddChildToVerticalBox(CardWidget);
-			}
-			else
-			{
-				SlotBody->AddChildToVerticalBox(MakeText(
-					*WidgetTree, FName(*FString::Printf(
-						TEXT("EmptyPitchSlot%d_%d"), RegionIndex, SlotIndex)),
-					TEXT("EMPTY SLOT")));
-			}
-			SlotRow->AddChildToWrapBox(SlotSize);
-		}
-		PitchBody->AddChildToVerticalBox(SlotRow);
-	}
 }
 
 void UFMCodexLocalMatchScreenWidget::RefreshInteraction()

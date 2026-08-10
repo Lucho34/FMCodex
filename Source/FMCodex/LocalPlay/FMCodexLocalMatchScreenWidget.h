@@ -10,6 +10,7 @@
 class AFMCodexLocalMatchPlayerController;
 class UBorder;
 class UButton;
+class UFMCodexPitchWidget;
 class UHorizontalBox;
 class UTextBlock;
 class UVerticalBox;
@@ -21,6 +22,9 @@ class FMCODEX_API UFMCodexLocalMatchScreenWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	UFMCodexLocalMatchScreenWidget(
+		const FObjectInitializer& ObjectInitializer);
+
 	void SetMatchController(
 		AFMCodexLocalMatchPlayerController* InController);
 	void ClearMatchController();
@@ -46,6 +50,7 @@ public:
 
 	const FFMCodexUMGMatchScreenViewModel& GetPresentation() const;
 	AFMCodexLocalMatchPlayerController* GetMatchController() const;
+	UFMCodexPitchWidget* GetPitchWidget() const;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -54,7 +59,6 @@ protected:
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
-	void RefreshPitch();
 	void RefreshInteraction();
 
 	UFUNCTION()
@@ -83,8 +87,11 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> HeaderText;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Pitch Presentation")
+	TSubclassOf<UFMCodexPitchWidget> PitchWidgetClass;
+
 	UPROPERTY(Transient)
-	TObjectPtr<UVerticalBox> PitchBody;
+	TObjectPtr<UFMCodexPitchWidget> PitchWidget;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> InteractionTitleText;

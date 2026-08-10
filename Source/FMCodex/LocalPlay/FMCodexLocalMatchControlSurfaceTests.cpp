@@ -5,6 +5,8 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPitchSlotWidget.h"
+#include "FMCodexPitchWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -3261,6 +3263,381 @@ bool FFMCodexLocalMatchUMGPlayerFacingFoundationTest::RunTest(
 		BuildRules.Contains(TEXT("\"Slate\", \"SlateCore\", \"UMG\""))
 			&& !BuildRules.Contains(
 				TEXT("PrivateDependencyModuleNames.Add(\"OnlineSubsystemSteam\")")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexUMGPitchWidgetVisualFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.29.UMGPitchWidgetVisualFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexUMGPitchWidgetVisualFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Pitch foundation Host exists"), Host);
+	TestNotNull(TEXT("Pitch foundation Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Root UMG screen exists for Pitch composition"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
+	TestNotNull(TEXT("Root composes dedicated Pitch Widget"), Pitch);
+	if (Pitch == nullptr)
+	{
+		return false;
+	}
+	Pitch->TakeWidget();
+	TestNotNull(TEXT("Root keeps dedicated Pitch region"),
+		Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")));
+
+	Screen->RequestStartNewMatch();
+	TestTrue(TEXT("Pitch stage preserves blocking handoff overlay"),
+		Controller->IsAwaitingHotSeatHandoff()
+			&& Screen->GetPresentation().Handoff.bVisible);
+	if (!Controller->IsAwaitingHotSeatHandoff())
+	{
+		return false;
+	}
+	const TArray<uint8> StateBeforeReady =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestReady();
+	TestTrue(TEXT("Pitch-stage Ready remains authority-neutral"),
+		StateBeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& !Screen->GetPresentation().Handoff.bVisible);
+	Screen->RequestBeginOrdinaryAttack();
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+	TestTrue(TEXT("Pitch fixture reaches authoritative deployment"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::Deploy);
+
+	const TArray<FFMCodexUMGPitchRegionViewModel>& PitchPresentation =
+		Pitch->GetPresentation();
+	TestTrue(TEXT("Stable pitch orientation is Player B top / Player A bottom"),
+		PitchPresentation.Num() == 2
+			&& PitchPresentation[0].RegionLabel == TEXT("Player B Half")
+			&& PitchPresentation[1].RegionLabel == TEXT("Player A Half")
+			&& Pitch->GetWidgetFromName(TEXT("PlayerBPhysicalHalf")) != nullptr
+			&& Pitch->GetWidgetFromName(TEXT("PlayerAPhysicalHalf")) != nullptr);
+	TestNotNull(TEXT("Pitch contains visual-only center field separator"),
+		Pitch->GetWidgetFromName(TEXT("CenterFieldVisualSeparator")));
+
+	const TArray<TObjectPtr<UFMCodexPitchSlotWidget>>& RenderedSlots =
+		Pitch->GetRenderedSlotWidgets();
+	int32 DTOCount = 0;
+	TArray<FName> ExpectedSlotOrder;
+	for (const FFMCodexUMGPitchRegionViewModel& Region : PitchPresentation)
+	{
+		DTOCount += Region.Slots.Num();
+		for (const FFMCodexUMGPitchSlotViewModel& PitchSlot : Region.Slots)
+		{
+			ExpectedSlotOrder.Add(PitchSlot.SlotId);
+		}
+	}
+	TestTrue(TEXT("Dedicated Pitch Widget renders 20/20 canonical slots"),
+		DTOCount == 20 && RenderedSlots.Num() == 20);
+	bool bDeterministicOrder = RenderedSlots.Num() == ExpectedSlotOrder.Num();
+	for (int32 Index = 0;
+		bDeterministicOrder && Index < RenderedSlots.Num(); ++Index)
+	{
+		bDeterministicOrder = RenderedSlots[Index] != nullptr
+			&& RenderedSlots[Index]->GetPresentation().SlotId
+				== ExpectedSlotOrder[Index];
+	}
+	TestTrue(TEXT("Pitch slots preserve deterministic catalog ordering"),
+		bDeterministicOrder);
+
+	int32 EmptySlots = 0;
+	for (UFMCodexPitchSlotWidget* SlotWidget : RenderedSlots)
+	{
+		if (SlotWidget == nullptr)
+		{
+			continue;
+		}
+		SlotWidget->TakeWidget();
+		if (!SlotWidget->GetPresentation().bOccupied)
+		{
+			++EmptySlots;
+			TestFalse(TEXT("Empty slot never fabricates a Card binding"),
+				SlotWidget->IsShowingOccupiedCard());
+			TestNotNull(TEXT("Empty slot exposes non-action spatial state"),
+				SlotWidget->GetWidgetFromName(TEXT("EmptySpatialLocation")));
+		}
+	}
+	TestEqual(TEXT("Initial deployment pitch has 20 empty locations"),
+		EmptySlots, 20);
+
+	const FFMCodexLocalMatchInteractionView& DeploymentView =
+		Controller->GetInteractionView();
+	const FFMCodexLocalMatchDeploymentGroup* OrdinaryGroup =
+		DeploymentView.DeploymentGroups.FindByPredicate(
+			[](const FFMCodexLocalMatchDeploymentGroup& Candidate)
+			{
+				return !Candidate.bGoalkeeper
+					&& !Candidate.LegalSlots.IsEmpty();
+			});
+	TestNotNull(TEXT("Pitch correspondence finds legal deployment candidate"),
+		OrdinaryGroup);
+	if (OrdinaryGroup == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchCardView DeployedCardSource = OrdinaryGroup->Card;
+	const FFMCodexLocalMatchSlotView Destination = OrdinaryGroup->LegalSlots[0];
+	auto FindRenderedSlot = [](UFMCodexPitchWidget& PitchWidget,
+		const FName SlotId) -> UFMCodexPitchSlotWidget*
+	{
+		for (UFMCodexPitchSlotWidget* SlotWidget
+			: PitchWidget.GetRenderedSlotWidgets())
+		{
+			if (SlotWidget != nullptr
+				&& SlotWidget->GetPresentation().SlotId == SlotId)
+			{
+				return SlotWidget;
+			}
+		}
+		return nullptr;
+	};
+	UFMCodexPitchSlotWidget* DestinationBefore =
+		FindRenderedSlot(*Pitch, Destination.SlotId);
+	TestNotNull(TEXT("Every legal destination corresponds to a visible slot"),
+		DestinationBefore);
+	if (DestinationBefore != nullptr)
+	{
+		const FFMCodexUMGPitchSlotViewModel& DestinationPresentation =
+			DestinationBefore->GetPresentation();
+		const FString ExpectedZone =
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				Destination.RelativeZone);
+		const FString& ActingSideZone =
+			DeploymentView.ExpectedActingPlayer
+				== EInitialTurnOrderPlayer::PlayerA
+					? DestinationPresentation.PlayerARelativeZoneLabel
+					: DestinationPresentation.PlayerBRelativeZoneLabel;
+		TestTrue(TEXT("Destination and Pitch share physical half and relative zone"),
+			DestinationPresentation.PhysicalHalfLabel
+				== FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					Destination.NeutralSide)
+				&& ActingSideZone == ExpectedZone);
+	}
+
+	int32 AttackingRegionCount = 0;
+	for (const FFMCodexUMGPitchRegionViewModel& Region : PitchPresentation)
+	{
+		AttackingRegionCount += Region.bCurrentAttackingSide ? 1 : 0;
+		TestTrue(TEXT("Each Pitch half retains readable relative-zone context"),
+			!Region.ZoneContextLabel.IsEmpty()
+				&& Region.ZoneContextLabel.Contains(TEXT("Player A:"))
+				&& Region.ZoneContextLabel.Contains(TEXT("Player B:")));
+	}
+	TestEqual(TEXT("Exactly one physical half receives attacker emphasis"),
+		AttackingRegionCount, 1);
+	const int32 ExpectedAttackingRegion =
+		DeploymentView.CurrentAttackingPlayer
+			== EInitialTurnOrderPlayer::PlayerB ? 0 : 1;
+	TestTrue(TEXT("Attacker emphasis comes from DTO, never Widget calculation"),
+		PitchPresentation.IsValidIndex(ExpectedAttackingRegion)
+			&& PitchPresentation[ExpectedAttackingRegion].bCurrentAttackingSide);
+
+	TSet<FString> SkillFamilies;
+	for (const FFMCodexUMGCardViewModel& Candidate
+		: Screen->GetPresentation().Interaction.CandidateCards)
+	{
+		for (const FString& Skill : Candidate.SkillLabels)
+		{
+			SkillFamilies.Add(Skill);
+		}
+	}
+	for (const TCHAR* Family : {
+		TEXT("Long Shot"), TEXT("Cut Inside"), TEXT("Pass Control"),
+		TEXT("Cross"), TEXT("Through Ball") })
+	{
+		TestTrue(FString::Printf(TEXT("Pitch stage preserves %s family"), Family),
+			SkillFamilies.Contains(Family));
+	}
+
+	const TArray<uint8> BeforeDeployment =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestDeployOrdinary(DeployedCardSource.CardId, Destination.SlotId);
+	TestTrue(TEXT("Successful deployment refreshes Pitch from authority"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& BeforeDeployment
+				!= SerializeState(Host->GetMatchSnapshot().Snapshot));
+	UFMCodexPitchSlotWidget* DestinationAfter =
+		FindRenderedSlot(*Pitch, Destination.SlotId);
+	TestNotNull(TEXT("Refreshed occupied slot remains visible"), DestinationAfter);
+	if (DestinationAfter != nullptr)
+	{
+		DestinationAfter->TakeWidget();
+		UFMCodexPlayerCardWidget* PitchCard =
+			DestinationAfter->GetCardWidget();
+		TestNotNull(TEXT("Occupied Slot binds shared Player Card Widget"), PitchCard);
+		TestTrue(TEXT("Pitch Card binding preserves Stage 6.3 Card contract"),
+			DestinationAfter->IsShowingOccupiedCard()
+				&& PitchCard != nullptr
+				&& PitchCard->GetPresentation().CardId
+					== DeployedCardSource.CardId
+				&& PitchCard->GetPresentation().IdentityLabel
+					== DeployedCardSource.DisplayLabel
+				&& PitchCard->GetPresentation().RoleLabel
+					== DeployedCardSource.CompactRoleLabel
+				&& PitchCard->GetPresentation().SkillLabels
+					== DeployedCardSource.SkillLabels
+				&& PitchCard->GetPresentation().CompactAttributeSummary
+					== DeployedCardSource.CompactAttributeSummary
+				&& PitchCard->GetPresentation().StatusLabels.Contains(
+					TEXT("DEPLOYED")));
+	}
+
+	TArray<FName> OccupancyOrderBeforeRejected;
+	for (UFMCodexPitchSlotWidget* SlotWidget
+		: Pitch->GetRenderedSlotWidgets())
+	{
+		OccupancyOrderBeforeRejected.Add(
+			SlotWidget != nullptr
+				? SlotWidget->GetPresentation().SlotId : NAME_None);
+	}
+	const TArray<uint8> BeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestDeployOrdinary(DeployedCardSource.CardId, Destination.SlotId);
+	TArray<FName> OccupancyOrderAfterRejected;
+	for (UFMCodexPitchSlotWidget* SlotWidget
+		: Pitch->GetRenderedSlotWidgets())
+	{
+		OccupancyOrderAfterRejected.Add(
+			SlotWidget != nullptr
+				? SlotWidget->GetPresentation().SlotId : NAME_None);
+	}
+	UFMCodexPitchSlotWidget* DestinationRejected =
+		FindRenderedSlot(*Pitch, Destination.SlotId);
+	TestTrue(TEXT("Rejected deployment causes no optimistic Pitch movement"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& BeforeRejected
+				== SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& OccupancyOrderBeforeRejected == OccupancyOrderAfterRejected
+			&& DestinationRejected != nullptr
+			&& DestinationRejected->GetPresentation().bOccupied
+			&& DestinationRejected->GetPresentation().Card.CardId
+				== DeployedCardSource.CardId);
+
+	FFMCodexUMGPitchSlotViewModel GoalkeeperSlotFixture =
+		Pitch->GetPresentation()[0].Slots[0];
+	GoalkeeperSlotFixture.bOccupied = true;
+	GoalkeeperSlotFixture.Card.CardId = TEXT("PitchGK");
+	GoalkeeperSlotFixture.Card.IdentityLabel = TEXT("Card PitchGK");
+	GoalkeeperSlotFixture.Card.OwnerLabel = TEXT("Player B");
+	GoalkeeperSlotFixture.Card.RoleLabel = TEXT("GK");
+	GoalkeeperSlotFixture.Card.SkillLabels = { TEXT("Cross"), TEXT("Through Ball") };
+	GoalkeeperSlotFixture.Card.SkillSummaryLabel = TEXT("Cross | Through Ball");
+	GoalkeeperSlotFixture.Card.CompactAttributeSummary =
+		TEXT("HAN 5 | REF 4 | AER 3 | 1v1 2");
+	GoalkeeperSlotFixture.Card.StatusLabels = { TEXT("GK ACTIVE") };
+	GoalkeeperSlotFixture.Card.StatusSummaryLabel = TEXT("GK ACTIVE");
+	GoalkeeperSlotFixture.Card.bGoalkeeper = true;
+	UFMCodexPitchSlotWidget* GoalkeeperSlotWidget =
+		CreateWidget<UFMCodexPitchSlotWidget>(
+			Screen->GetWorld(), UFMCodexPitchSlotWidget::StaticClass());
+	TestNotNull(TEXT("Standalone GK Pitch Slot constructs"), GoalkeeperSlotWidget);
+	if (GoalkeeperSlotWidget != nullptr)
+	{
+		GoalkeeperSlotWidget->RefreshFromPitchSlotPresentation(
+			GoalkeeperSlotFixture);
+		GoalkeeperSlotWidget->TakeWidget();
+		const UFMCodexPlayerCardWidget* GKCard =
+			GoalkeeperSlotWidget->GetCardWidget();
+		TestTrue(TEXT("GK Slot retains GK role, Skills, attributes and status"),
+			GoalkeeperSlotWidget->IsShowingOccupiedCard()
+				&& GKCard != nullptr
+				&& GKCard->GetPresentation().bGoalkeeper
+				&& GKCard->GetPresentation().RoleLabel == TEXT("GK")
+				&& GKCard->GetPresentation().SkillLabels.Num() == 2
+				&& GKCard->GetPresentation().CompactAttributeSummary
+					== GoalkeeperSlotFixture.Card.CompactAttributeSummary
+				&& GKCard->GetPresentation().StatusSummaryLabel
+					== TEXT("GK ACTIVE"));
+	}
+
+	FString PitchHeader;
+	FString PitchSource;
+	FString SlotHeader;
+	FString SlotSource;
+	FString RootHeader;
+	FString RootSource;
+	FString ControllerSource;
+	TestTrue(TEXT("Pitch boundary production sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexPitchWidget.h"), PitchHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchWidget.cpp"), PitchSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchSlotWidget.h"), SlotHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchSlotWidget.cpp"), SlotSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.h"),
+				RootHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+				RootSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+				ControllerSource));
+	const FString PitchWidgetSources = PitchHeader + PitchSource
+		+ SlotHeader + SlotSource;
+	TestTrue(TEXT("Pitch/Slot Widgets receive presentation DTOs only"),
+		PitchHeader.Contains(TEXT("FFMCodexUMGPitchRegionViewModel"))
+			&& SlotHeader.Contains(TEXT("FFMCodexUMGPitchSlotViewModel"))
+			&& !PitchWidgetSources.Contains(TEXT("FMatchPlayState"))
+			&& !PitchWidgetSources.Contains(TEXT("AuthoritativeSession"))
+			&& !PitchWidgetSources.Contains(TEXT("D6Provider"))
+			&& !PitchWidgetSources.Contains(TEXT("HostGameMode")));
+	TestTrue(TEXT("Pitch/Slot Widgets contain zero gameplay authority or input"),
+		!PitchWidgetSources.Contains(TEXT("FormulaResolver"))
+			&& !PitchWidgetSources.Contains(TEXT("Legality"))
+			&& !PitchWidgetSources.Contains(TEXT("AvailabilityQuery"))
+			&& !PitchWidgetSources.Contains(TEXT("RandRange"))
+			&& !PitchWidgetSources.Contains(TEXT("RouteThreshold"))
+			&& !PitchWidgetSources.Contains(TEXT("UButton"))
+			&& !PitchWidgetSources.Contains(TEXT("OnClicked"))
+			&& !PitchWidgetSources.Contains(TEXT("ExecuteCommandByName")));
+	TestTrue(TEXT("Pitch shell is recognizable without gameplay geography"),
+		PitchSource.Contains(TEXT("FootballFieldBackground"))
+			&& PitchSource.Contains(TEXT("PlayerBPhysicalHalf"))
+			&& PitchSource.Contains(TEXT("CenterFieldVisualSeparator"))
+			&& PitchSource.Contains(TEXT("PlayerAPhysicalHalf"))
+			&& PitchSource.Contains(TEXT("ATTACKING SIDE"))
+			&& !PitchSource.Contains(TEXT("Backfield row"))
+			&& !PitchSource.Contains(TEXT("Forward row")));
+	TestTrue(TEXT("Root delegates Pitch layout to dedicated configurable class"),
+		RootHeader.Contains(TEXT("TSubclassOf<UFMCodexPitchWidget>"))
+			&& RootSource.Contains(TEXT("DedicatedFootballPitchWidget"))
+			&& RootSource.Contains(TEXT("RefreshFromPitchPresentation"))
+			&& !RootSource.Contains(TEXT("UWrapBox* SlotRow")));
+	TestTrue(TEXT("Controller remains unaware of Pitch geometry"),
+		!ControllerSource.Contains(TEXT("UFMCodexPitchWidget"))
+			&& !ControllerSource.Contains(TEXT("UniformGrid"))
+			&& !ControllerSource.Contains(TEXT("SlotIndex / 5")));
+	TestTrue(TEXT("Slate developer surface remains unchanged and available"),
+		ControllerSource.Contains(TEXT("BuildControlSurface"))
+			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));
 	return true;
 }
 
