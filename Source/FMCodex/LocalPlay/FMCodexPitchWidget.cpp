@@ -1,5 +1,6 @@
 #include "FMCodexPitchWidget.h"
 
+#include "FMCodexPlayerUIStyle.h"
 #include "FMCodexPitchSlotWidget.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -78,19 +79,25 @@ void UFMCodexPitchWidget::BuildWidgetTree()
 
 	USizeBox* FieldSize = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("FootballFieldAspectShell"));
-	FieldSize->SetMinDesiredWidth(840.0f);
-	FieldSize->SetMaxDesiredWidth(1120.0f);
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	FieldSize->SetMinDesiredWidth(Style.GetPanelMinWidth());
+	FieldSize->SetMaxDesiredWidth(Style.GetPanelMaxWidth());
 	WidgetTree->RootWidget = FieldSize;
 
 	UBorder* FieldBorder = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("FootballFieldBackground"));
-	FieldBorder->SetPadding(FMargin(14.0f));
-	FieldBorder->SetBrushColor(FLinearColor(0.025f, 0.16f, 0.075f, 0.98f));
+	Style.ApplyBorder(*FieldBorder,
+		EFMCodexPlayerUIColorRole::PanelBackground, Style.GetOuterPadding());
 	FieldSize->AddChild(FieldBorder);
+	UBorder* BackgroundAssetHook = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("PitchBackgroundAssetHook"));
+	Style.ApplyBorder(*BackgroundAssetHook,
+		EFMCodexPlayerUIColorRole::PitchBackground, Style.GetPanelPadding());
+	FieldBorder->AddChild(BackgroundAssetHook);
 
 	FieldBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("StablePhysicalHalfLayout"));
-	FieldBorder->AddChild(FieldBody);
+	BackgroundAssetHook->AddChild(FieldBody);
 }
 
 void UFMCodexPitchWidget::RefreshVisuals()
@@ -102,8 +109,12 @@ void UFMCodexPitchWidget::RefreshVisuals()
 	}
 	FieldBody->ClearChildren();
 	RenderedSlotWidgets.Reset();
-	FieldBody->AddChildToVerticalBox(MakeText(
-		*WidgetTree, TEXT("FootballFieldHeading"), TEXT("FOOTBALL FIELD")));
+	UTextBlock* FieldHeading = MakeText(
+		*WidgetTree, TEXT("FootballFieldHeading"), TEXT("MATCH PITCH"));
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*FieldHeading, EFMCodexPlayerUITextRole::ActionTitle);
+	FieldHeading->SetJustification(ETextJustify::Center);
+	FieldBody->AddChildToVerticalBox(FieldHeading);
 
 	for (int32 RegionIndex = 0; RegionIndex < Presentation.Num(); ++RegionIndex)
 	{
@@ -111,12 +122,19 @@ void UFMCodexPitchWidget::RefreshVisuals()
 		{
 			UBorder* CenterField = WidgetTree->ConstructWidget<UBorder>(
 				UBorder::StaticClass(), TEXT("CenterFieldVisualSeparator"));
-			CenterField->SetPadding(FMargin(8.0f));
-			CenterField->SetBrushColor(
-				FLinearColor(0.78f, 0.82f, 0.78f, 0.92f));
-			CenterField->AddChild(MakeText(
+			const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+			Style.ApplyBorder(*CenterField,
+				EFMCodexPlayerUIColorRole::PitchCenterLine,
+				Style.GetCompactPadding());
+			UTextBlock* CenterLabel = MakeText(
 				*WidgetTree, TEXT("CenterFieldLabel"),
-				TEXT("CENTER FIELD  |  VISUAL SEPARATOR")));
+				TEXT("CENTER LINE  •  MIDFIELD"));
+			Style.ApplyText(
+				*CenterLabel, EFMCodexPlayerUITextRole::SectionHeading);
+			CenterLabel->SetColorAndOpacity(FSlateColor(
+				FLinearColor(0.02f, 0.06f, 0.035f, 1.0f)));
+			CenterLabel->SetJustification(ETextJustify::Center);
+			CenterField->AddChild(CenterLabel);
 			FieldBody->AddChildToVerticalBox(CenterField);
 		}
 
@@ -129,27 +147,33 @@ void UFMCodexPitchWidget::RefreshVisuals()
 				: FName(*FString::Printf(TEXT("PhysicalHalf%d"), RegionIndex));
 		UBorder* HalfBorder = WidgetTree->ConstructWidget<UBorder>(
 			UBorder::StaticClass(), HalfName);
-		HalfBorder->SetPadding(FMargin(10.0f));
-		HalfBorder->SetBrushColor(Region.bCurrentAttackingSide
-			? FLinearColor(0.34f, 0.31f, 0.08f, 0.94f)
-			: FLinearColor(0.045f, 0.22f, 0.10f, 0.90f));
+		const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+		Style.ApplyBorder(*HalfBorder,
+			Region.bCurrentAttackingSide
+				? EFMCodexPlayerUIColorRole::PitchAttackingHalf
+				: EFMCodexPlayerUIColorRole::PitchHalf,
+			Style.GetOuterPadding());
 		UVerticalBox* HalfBody = WidgetTree->ConstructWidget<UVerticalBox>(
 			UVerticalBox::StaticClass(), FName(*FString::Printf(
 				TEXT("PhysicalHalfBody%d"), RegionIndex)));
 		HalfBorder->AddChild(HalfBody);
-		HalfBody->AddChildToVerticalBox(MakeText(
+		UTextBlock* HalfHeading = MakeText(
 			*WidgetTree,
 			FName(*FString::Printf(TEXT("PhysicalHalfHeading%d"), RegionIndex)),
 			FString::Printf(TEXT("%s%s\n%s"),
 				Region.bCurrentAttackingSide ? TEXT("ATTACKING SIDE  |  ") : TEXT(""),
 				*Region.RegionLabel,
-				*Region.ZoneContextLabel)));
+				*Region.ZoneContextLabel));
+		Style.ApplyText(*HalfHeading, Region.bCurrentAttackingSide
+			? EFMCodexPlayerUITextRole::Status
+			: EFMCodexPlayerUITextRole::SectionHeading);
+		HalfBody->AddChildToVerticalBox(HalfHeading);
 
 		UUniformGridPanel* SlotGrid =
 			WidgetTree->ConstructWidget<UUniformGridPanel>(
 				UUniformGridPanel::StaticClass(), FName(*FString::Printf(
 					TEXT("CanonicalSlotGrid%d"), RegionIndex)));
-		SlotGrid->SetSlotPadding(FMargin(4.0f));
+		SlotGrid->SetSlotPadding(Style.GetCompactPadding());
 		for (int32 SlotIndex = 0; SlotIndex < Region.Slots.Num(); ++SlotIndex)
 		{
 			UClass* SlotClass = PitchSlotWidgetClass != nullptr

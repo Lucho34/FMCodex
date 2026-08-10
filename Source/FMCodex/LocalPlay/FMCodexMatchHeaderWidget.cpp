@@ -1,5 +1,7 @@
 #include "FMCodexMatchHeaderWidget.h"
 
+#include "FMCodexPlayerUIStyle.h"
+
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
@@ -22,13 +24,6 @@ namespace FMCodexMatchHeaderWidget
 		return Result;
 	}
 
-	void SetTextSize(UTextBlock& Text, const int32 Size)
-	{
-		FSlateFontInfo Font = Text.GetFont();
-		Font.Size = Size;
-		Text.SetFont(Font);
-	}
-
 	void AddFillChild(UHorizontalBox& Parent, UWidget* Child)
 	{
 		UHorizontalBoxSlot* Slot = Parent.AddChildToHorizontalBox(Child);
@@ -40,13 +35,13 @@ namespace FMCodexMatchHeaderWidget
 	UBorder* MakeRegion(
 		UWidgetTree& Tree,
 		const FName Name,
-		const FLinearColor& Color,
-		const FMargin Padding = FMargin(8.0f))
+		const EFMCodexPlayerUIColorRole ColorRole,
+		const FMargin& Padding)
 	{
 		UBorder* Result = Tree.ConstructWidget<UBorder>(
 			UBorder::StaticClass(), Name);
-		Result->SetPadding(Padding);
-		Result->SetBrushColor(Color);
+		FFMCodexPlayerUIStyle::Get().ApplyBorder(
+			*Result, ColorRole, Padding);
 		return Result;
 	}
 
@@ -60,18 +55,23 @@ namespace FMCodexMatchHeaderWidget
 			FName(*(Prefix.ToString() + TEXT("IdentityHierarchy"))));
 		UBorder* AssetHook = MakeRegion(
 			Tree, FName(*(Prefix.ToString() + TEXT("CrestAssetHook"))),
-			FLinearColor(0.08f, 0.12f, 0.16f, 1.0f), FMargin(3.0f));
+			Prefix == TEXT("PlayerA")
+				? EFMCodexPlayerUIColorRole::PlayerAAccent
+				: EFMCodexPlayerUIColorRole::PlayerBAccent,
+			FFMCodexPlayerUIStyle::Get().GetCompactPadding());
 		UTextBlock* HookText = MakeText(
 			Tree, FName(*(Prefix.ToString() + TEXT("CrestPlaceholder"))),
-			TEXT("TEAM"));
+			TEXT("CREST"));
 		HookText->SetJustification(ETextJustify::Center);
-		SetTextSize(*HookText, 10);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*HookText, EFMCodexPlayerUITextRole::Secondary);
 		AssetHook->AddChild(HookText);
 		Body->AddChildToVerticalBox(AssetHook);
 		IdentityText = MakeText(
 			Tree, FName(*(Prefix.ToString() + TEXT("IdentityLabel"))));
 		IdentityText->SetJustification(ETextJustify::Center);
-		SetTextSize(*IdentityText, 16);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*IdentityText, EFMCodexPlayerUITextRole::Identity);
 		Body->AddChildToVerticalBox(IdentityText);
 		return Body;
 	}
@@ -139,13 +139,15 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 
 	USizeBox* Bounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("MatchHeaderBounds"));
-	Bounds->SetMinDesiredWidth(840.0f);
-	Bounds->SetMaxDesiredWidth(1120.0f);
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Bounds->SetMinDesiredWidth(Style.GetPanelMinWidth());
+	Bounds->SetMaxDesiredWidth(Style.GetPanelMaxWidth());
 	Bounds->SetMaxDesiredHeight(230.0f);
 	WidgetTree->RootWidget = Bounds;
 	UBorder* Frame = MakeRegion(
 		*WidgetTree, TEXT("MatchHeaderFrame"),
-		FLinearColor(0.02f, 0.045f, 0.07f, 0.98f), FMargin(12.0f));
+		EFMCodexPlayerUIColorRole::PanelBackground,
+		Style.GetPanelPadding());
 	Bounds->AddChild(Frame);
 	UVerticalBox* RootBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("MatchHeaderHierarchy"));
@@ -154,12 +156,13 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	MatchStatusText = MakeText(
 		*WidgetTree, TEXT("MatchHeaderStatusLabel"), TEXT("READY TO PLAY"));
 	MatchStatusText->SetJustification(ETextJustify::Center);
-	SetTextSize(*MatchStatusText, 13);
+	Style.ApplyText(*MatchStatusText, EFMCodexPlayerUITextRole::Kicker);
 	RootBody->AddChildToVerticalBox(MatchStatusText);
 
 	UBorder* ScoreboardRegion = MakeRegion(
 		*WidgetTree, TEXT("MatchHeaderScoreboardRegion"),
-		FLinearColor(0.045f, 0.105f, 0.15f, 1.0f));
+		EFMCodexPlayerUIColorRole::PanelRaised,
+		Style.GetSectionPadding());
 	UHorizontalBox* Scoreboard = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("MatchHeaderScoreboardHierarchy"));
 	UTextBlock* PlayerARaw = nullptr;
@@ -168,19 +171,20 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	PlayerAIdentityText = PlayerARaw;
 	UBorder* ScoreRegion = MakeRegion(
 		*WidgetTree, TEXT("MatchHeaderCentralScoreRegion"),
-		FLinearColor(0.07f, 0.17f, 0.23f, 1.0f), FMargin(14.0f));
+		EFMCodexPlayerUIColorRole::NeutralAccent,
+		Style.GetPanelPadding());
 	UHorizontalBox* ScoreBody = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("MatchHeaderCentralScoreHierarchy"));
 	PlayerAScoreText = MakeText(*WidgetTree, TEXT("PlayerAScoreValue"));
 	PlayerAScoreText->SetJustification(ETextJustify::Center);
-	SetTextSize(*PlayerAScoreText, 34);
+	Style.ApplyText(*PlayerAScoreText, EFMCodexPlayerUITextRole::Score);
 	UTextBlock* Separator = MakeText(
 		*WidgetTree, TEXT("MatchHeaderScoreSeparator"), TEXT(" - "));
 	Separator->SetJustification(ETextJustify::Center);
-	SetTextSize(*Separator, 24);
+	Style.ApplyText(*Separator, EFMCodexPlayerUITextRole::ActionTitle);
 	PlayerBScoreText = MakeText(*WidgetTree, TEXT("PlayerBScoreValue"));
 	PlayerBScoreText->SetJustification(ETextJustify::Center);
-	SetTextSize(*PlayerBScoreText, 34);
+	Style.ApplyText(*PlayerBScoreText, EFMCodexPlayerUITextRole::Score);
 	ScoreBody->AddChildToHorizontalBox(PlayerAScoreText);
 	ScoreBody->AddChildToHorizontalBox(Separator);
 	ScoreBody->AddChildToHorizontalBox(PlayerBScoreText);
@@ -197,31 +201,35 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 		UHorizontalBox::StaticClass(), TEXT("MatchHeaderStatusHierarchy"));
 	AttackerStatusRegion = MakeRegion(
 		*WidgetTree, TEXT("MatchHeaderAttackerStatusRegion"),
-		FLinearColor(0.11f, 0.20f, 0.12f, 1.0f));
+		EFMCodexPlayerUIColorRole::NeutralAccent,
+		Style.GetSectionPadding());
 	AttackerStatusText = MakeText(
 		*WidgetTree, TEXT("MatchHeaderAttackerStatusLabel"));
 	AttackerStatusText->SetJustification(ETextJustify::Center);
-	SetTextSize(*AttackerStatusText, 16);
+	Style.ApplyText(*AttackerStatusText, EFMCodexPlayerUITextRole::Status);
 	AttackerStatusRegion->AddChild(AttackerStatusText);
 	AddFillChild(*StatusBody, AttackerStatusRegion);
 	ActorStatusRegion = MakeRegion(
 		*WidgetTree, TEXT("MatchHeaderActorStatusRegion"),
-		FLinearColor(0.10f, 0.13f, 0.22f, 1.0f));
+		EFMCodexPlayerUIColorRole::SystemStatus,
+		Style.GetSectionPadding());
 	ActorStatusText = MakeText(
 		*WidgetTree, TEXT("MatchHeaderActorStatusLabel"));
 	ActorStatusText->SetJustification(ETextJustify::Center);
-	SetTextSize(*ActorStatusText, 17);
+	Style.ApplyText(*ActorStatusText, EFMCodexPlayerUITextRole::Status);
 	ActorStatusRegion->AddChild(ActorStatusText);
 	AddFillChild(*StatusBody, ActorStatusRegion);
 	RootBody->AddChildToVerticalBox(StatusBody);
 
 	FinalResultRegion = MakeRegion(
 		*WidgetTree, TEXT("MatchHeaderFinalResultRegion"),
-		FLinearColor(0.20f, 0.15f, 0.055f, 1.0f), FMargin(12.0f));
+		EFMCodexPlayerUIColorRole::Warning,
+		Style.GetPanelPadding());
 	FinalResultText = MakeText(
 		*WidgetTree, TEXT("MatchHeaderFinalResultLabel"));
 	FinalResultText->SetJustification(ETextJustify::Center);
-	SetTextSize(*FinalResultText, 22);
+	Style.ApplyText(
+		*FinalResultText, EFMCodexPlayerUITextRole::TerminalResult);
 	FinalResultRegion->AddChild(FinalResultText);
 	RootBody->AddChildToVerticalBox(FinalResultRegion);
 }
@@ -244,14 +252,24 @@ void UFMCodexMatchHeaderWidget::RefreshVisuals()
 		&& !Presentation.bMatchEnded;
 	AttackerStatusText->SetText(FText::FromString(
 		Presentation.AttackerStatusLabel));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	AttackerStatusRegion->SetBrushColor(
+		Style.GetPlayerAccentColor(Presentation.AttackerStatusLabel));
 	AttackerStatusRegion->SetVisibility(
 		bShowActiveStatus && !Presentation.AttackerStatusLabel.IsEmpty()
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	ActorStatusText->SetText(FText::FromString(Presentation.ActorStatusLabel));
+	ActorStatusRegion->SetBrushColor(Presentation.bSystemResolution
+		? Style.GetColor(EFMCodexPlayerUIColorRole::SystemStatus)
+		: Style.GetPlayerAccentColor(Presentation.ActorStatusLabel));
 	ActorStatusRegion->SetVisibility(
 		!Presentation.bMatchEnded && !Presentation.ActorStatusLabel.IsEmpty()
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	FinalResultText->SetText(FText::FromString(Presentation.MatchResultLabel));
+	FinalResultRegion->SetBrushColor(Presentation.MatchResultLabel.Contains(
+		TEXT("Player A")) || Presentation.MatchResultLabel.Contains(TEXT("Player B"))
+		? Style.GetPlayerAccentColor(Presentation.MatchResultLabel)
+		: Style.GetColor(EFMCodexPlayerUIColorRole::Warning));
 	FinalResultRegion->SetVisibility(Presentation.bMatchEnded
 		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }

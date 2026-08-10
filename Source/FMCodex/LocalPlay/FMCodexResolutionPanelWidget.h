@@ -8,6 +8,7 @@
 #include "FMCodexResolutionPanelWidget.generated.h"
 
 class UFMCodexDiceResultWidget;
+class UBorder;
 class UHorizontalBox;
 class UTextBlock;
 class UVerticalBox;
@@ -60,6 +61,9 @@ private:
 	TObjectPtr<UVerticalBox> RejectionBody;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> RejectionRegion;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RejectionReasonText;
 
 	UPROPERTY(Transient)
@@ -100,6 +104,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> TerminalSection;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TerminalRegion;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> TerminalText;

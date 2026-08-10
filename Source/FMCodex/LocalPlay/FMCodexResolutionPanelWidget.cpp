@@ -1,6 +1,7 @@
 #include "FMCodexResolutionPanelWidget.h"
 
 #include "FMCodexDiceResultWidget.h"
+#include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -28,13 +29,13 @@ namespace FMCodexResolutionPanelWidget
 	UBorder* MakeRegion(
 		UWidgetTree& Tree,
 		const FName Name,
-		const FLinearColor& Color,
-		const FMargin Padding = FMargin(9.0f))
+		const EFMCodexPlayerUIColorRole ColorRole,
+		const FMargin& Padding)
 	{
 		UBorder* Result = Tree.ConstructWidget<UBorder>(
 			UBorder::StaticClass(), Name);
-		Result->SetPadding(Padding);
-		Result->SetBrushColor(Color);
+		FFMCodexPlayerUIStyle::Get().ApplyBorder(
+			*Result, ColorRole, Padding);
 		return Result;
 	}
 
@@ -46,10 +47,15 @@ namespace FMCodexResolutionPanelWidget
 	{
 		UVerticalBox* Result = Tree.ConstructWidget<UVerticalBox>(
 			UVerticalBox::StaticClass(), Name);
-		Result->AddChildToVerticalBox(MakeText(
-			Tree, FName(*(Name.ToString() + TEXT("Heading"))), Label));
+		UTextBlock* Heading = MakeText(
+			Tree, FName(*(Name.ToString() + TEXT("Heading"))), Label);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*Heading, EFMCodexPlayerUITextRole::SectionHeading);
+		Result->AddChildToVerticalBox(Heading);
 		ValueText = MakeText(
 			Tree, FName(*(Name.ToString() + TEXT("Value"))));
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*ValueText, EFMCodexPlayerUITextRole::Body);
 		Result->AddChildToVerticalBox(ValueText);
 		return Result;
 	}
@@ -114,12 +120,14 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 
 	USizeBox* Bounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("ResolutionPanelBounds"));
-	Bounds->SetMinDesiredWidth(840.0f);
-	Bounds->SetMaxDesiredWidth(1120.0f);
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Bounds->SetMinDesiredWidth(Style.GetPanelMinWidth());
+	Bounds->SetMaxDesiredWidth(Style.GetPanelMaxWidth());
 	WidgetTree->RootWidget = Bounds;
 	UBorder* Frame = MakeRegion(
 		*WidgetTree, TEXT("ResolutionPanelFrame"),
-		FLinearColor(0.025f, 0.045f, 0.07f, 0.98f), FMargin(12.0f));
+		EFMCodexPlayerUIColorRole::PanelBackground,
+		Style.GetPanelPadding());
 	Bounds->AddChild(Frame);
 	UVerticalBox* RootBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("ResolutionPanelHierarchy"));
@@ -128,20 +136,29 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 	EmptyStateText = MakeText(
 		*WidgetTree, TEXT("ResolutionEmptyState"),
 		TEXT("Waiting for an authoritative result."));
+	Style.ApplyText(*EmptyStateText, EFMCodexPlayerUITextRole::Secondary);
 	RootBody->AddChildToVerticalBox(EmptyStateText);
 
-	UBorder* RejectionRegion = MakeRegion(
+	RejectionRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionRejectedRegion"),
-		FLinearColor(0.28f, 0.045f, 0.045f, 1.0f));
+		EFMCodexPlayerUIColorRole::Danger,
+		Style.GetPanelPadding());
 	RejectionBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("ResolutionRejectedHierarchy"));
-	RejectionBody->AddChildToVerticalBox(MakeText(
+	UTextBlock* RejectionHeading = MakeText(
 		*WidgetTree, TEXT("ResolutionRejectedHeading"),
-		TEXT("COMMAND REJECTED")));
+		TEXT("COMMAND REJECTED"));
+	Style.ApplyText(
+		*RejectionHeading, EFMCodexPlayerUITextRole::ActionTitle);
+	RejectionBody->AddChildToVerticalBox(RejectionHeading);
 	RejectionReasonText = MakeText(
 		*WidgetTree, TEXT("ResolutionRejectedReason"));
 	RejectionMessageText = MakeText(
 		*WidgetTree, TEXT("ResolutionRejectedMessage"));
+	Style.ApplyText(
+		*RejectionReasonText, EFMCodexPlayerUITextRole::Status);
+	Style.ApplyText(
+		*RejectionMessageText, EFMCodexPlayerUITextRole::Body);
 	RejectionBody->AddChildToVerticalBox(RejectionReasonText);
 	RejectionBody->AddChildToVerticalBox(RejectionMessageText);
 	RejectionRegion->AddChild(RejectionBody);
@@ -153,14 +170,20 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 
 	UBorder* StepRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionStepRegion"),
-		FLinearColor(0.06f, 0.13f, 0.19f, 1.0f));
+		EFMCodexPlayerUIColorRole::PanelRaised,
+		Style.GetSectionPadding());
 	UVerticalBox* StepBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("ResolutionStepHierarchy"));
-	StepBody->AddChildToVerticalBox(MakeText(
-		*WidgetTree, TEXT("ResolutionStepHeading"), TEXT("STEP")));
+	UTextBlock* StepHeading = MakeText(
+		*WidgetTree, TEXT("ResolutionStepHeading"), TEXT("STEP"));
+	Style.ApplyText(*StepHeading, EFMCodexPlayerUITextRole::SectionHeading);
+	StepBody->AddChildToVerticalBox(StepHeading);
 	StepTitleText = MakeText(*WidgetTree, TEXT("ResolutionStepTitle"));
 	StepSummaryText = MakeText(*WidgetTree, TEXT("ResolutionStepSummary"));
 	RouteText = MakeText(*WidgetTree, TEXT("ResolutionRouteSummary"));
+	Style.ApplyText(*StepTitleText, EFMCodexPlayerUITextRole::ActionTitle);
+	Style.ApplyText(*StepSummaryText, EFMCodexPlayerUITextRole::Body);
+	Style.ApplyText(*RouteText, EFMCodexPlayerUITextRole::Secondary);
 	StepBody->AddChildToVerticalBox(StepTitleText);
 	StepBody->AddChildToVerticalBox(StepSummaryText);
 	StepBody->AddChildToVerticalBox(RouteText);
@@ -169,17 +192,20 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 
 	UBorder* DiceRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionDiceRegion"),
-		FLinearColor(0.035f, 0.09f, 0.13f, 1.0f));
+		EFMCodexPlayerUIColorRole::PanelInset,
+		Style.GetSectionPadding());
 	DiceSection = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("ResolutionDiceSection"));
-	DiceSection->AddChildToVerticalBox(MakeText(
-		*WidgetTree, TEXT("ResolutionDiceHeading"), TEXT("DICE")));
+	UTextBlock* DiceHeading = MakeText(
+		*WidgetTree, TEXT("ResolutionDiceHeading"), TEXT("DICE"));
+	Style.ApplyText(*DiceHeading, EFMCodexPlayerUITextRole::SectionHeading);
+	DiceSection->AddChildToVerticalBox(DiceHeading);
 	UScrollBox* DiceScroll = WidgetTree->ConstructWidget<UScrollBox>(
 		UScrollBox::StaticClass(), TEXT("ResolutionDiceScroll"));
 	DiceScroll->SetOrientation(Orient_Horizontal);
 	DiceBody = WidgetTree->ConstructWidget<UWrapBox>(
 		UWrapBox::StaticClass(), TEXT("ResolutionDiceBody"));
-	DiceBody->SetInnerSlotPadding(FVector2D(7.0f, 7.0f));
+	DiceBody->SetInnerSlotPadding(Style.GetControlGap());
 	DiceScroll->AddChild(DiceBody);
 	DiceSection->AddChildToVerticalBox(DiceScroll);
 	DiceRegion->AddChild(DiceSection);
@@ -187,11 +213,15 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 
 	UBorder* ComparisonRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionComparisonRegion"),
-		FLinearColor(0.04f, 0.105f, 0.145f, 1.0f));
+		EFMCodexPlayerUIColorRole::PanelRaised,
+		Style.GetSectionPadding());
 	ComparisonSection = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("ResolutionComparisonSection"));
-	ComparisonSection->AddChildToVerticalBox(MakeText(
-		*WidgetTree, TEXT("ResolutionComparisonHeading"), TEXT("COMPARISON")));
+	UTextBlock* ComparisonHeading = MakeText(
+		*WidgetTree, TEXT("ResolutionComparisonHeading"), TEXT("FORMULA COMPARISON"));
+	Style.ApplyText(
+		*ComparisonHeading, EFMCodexPlayerUITextRole::SectionHeading);
+	ComparisonSection->AddChildToVerticalBox(ComparisonHeading);
 	ComparisonBody = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("ResolutionComparisonBody"));
 	ComparisonSection->AddChildToVerticalBox(ComparisonBody);
@@ -200,7 +230,8 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 
 	UBorder* DecisionRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionDecisionRegion"),
-		FLinearColor(0.07f, 0.13f, 0.18f, 1.0f));
+		EFMCodexPlayerUIColorRole::PanelRaised,
+		Style.GetSectionPadding());
 	UTextBlock* DecisionValue = nullptr;
 	DecisionSection = MakeLabeledSection(
 		*WidgetTree, TEXT("ResolutionDecisionSection"),
@@ -211,7 +242,8 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 
 	UBorder* ContinuationRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionContinuationRegion"),
-		FLinearColor(0.09f, 0.12f, 0.16f, 1.0f));
+		EFMCodexPlayerUIColorRole::PanelInset,
+		Style.GetSectionPadding());
 	UTextBlock* ContinuationValue = nullptr;
 	ContinuationSection = MakeLabeledSection(
 		*WidgetTree, TEXT("ResolutionContinuationSection"),
@@ -220,14 +252,26 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 	ContinuationRegion->AddChild(ContinuationSection);
 	AcceptedResultBody->AddChildToVerticalBox(ContinuationRegion);
 
-	UBorder* TerminalRegion = MakeRegion(
+	TerminalRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionTerminalRegion"),
-		FLinearColor(0.11f, 0.28f, 0.16f, 1.0f), FMargin(16.0f));
+		EFMCodexPlayerUIColorRole::TerminalNeutral,
+		Style.GetPanelPadding());
+	UBorder* ResultIconHook = MakeRegion(
+		*WidgetTree, TEXT("ResultIconAssetHook"),
+		EFMCodexPlayerUIColorRole::NeutralAccent,
+		Style.GetCompactPadding());
+	UTextBlock* ResultIconPlaceholder = MakeText(
+		*WidgetTree, TEXT("ResultIconPlaceholder"), TEXT("RESULT"));
+	Style.ApplyText(
+		*ResultIconPlaceholder, EFMCodexPlayerUITextRole::Kicker);
+	ResultIconHook->AddChild(ResultIconPlaceholder);
 	UTextBlock* TerminalValue = nullptr;
 	TerminalSection = MakeLabeledSection(
 		*WidgetTree, TEXT("ResolutionTerminalSection"),
 		TEXT("RESULT"), TerminalValue);
 	TerminalText = TerminalValue;
+	Style.ApplyText(*TerminalText, EFMCodexPlayerUITextRole::TerminalResult);
+	TerminalSection->AddChildToVerticalBox(ResultIconHook);
 	TerminalRegion->AddChild(TerminalSection);
 	AcceptedResultBody->AddChildToVerticalBox(TerminalRegion);
 }
@@ -279,6 +323,9 @@ void UFMCodexResolutionPanelWidget::RefreshVisuals()
 		bShowAccepted && !Presentation.ContinuationLabel.IsEmpty()
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	TerminalText->SetText(FText::FromString(Presentation.TerminalLabel));
+	TerminalRegion->SetBrushColor(
+		FFMCodexPlayerUIStyle::Get().GetTerminalColor(
+			Presentation.TerminalLabel));
 	TerminalSection->GetParent()->SetVisibility(
 		bShowAccepted && !Presentation.TerminalLabel.IsEmpty()
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -330,6 +377,8 @@ void UFMCodexResolutionPanelWidget::RefreshComparisonEvidence()
 			UTextBlock* Versus = MakeText(
 				*WidgetTree, TEXT("ResolutionVersusLabel"), TEXT("VS"));
 			Versus->SetJustification(ETextJustify::Center);
+			FFMCodexPlayerUIStyle::Get().ApplyText(
+				*Versus, EFMCodexPlayerUITextRole::Identity);
 			ComparisonBody->AddChildToHorizontalBox(Versus);
 		}
 		const FFMCodexUMGComparisonEvidenceViewModel& Evidence =
@@ -337,18 +386,27 @@ void UFMCodexResolutionPanelWidget::RefreshComparisonEvidence()
 		UBorder* Card = MakeRegion(
 			*WidgetTree,
 			FName(*FString::Printf(TEXT("ComparisonEvidenceCard%d"), Index)),
-			FLinearColor(0.055f, 0.14f, 0.19f, 1.0f));
+			Evidence.HeadingLabel.Contains(TEXT("ATTACK"))
+				? EFMCodexPlayerUIColorRole::ActionPrimary
+				: EFMCodexPlayerUIColorRole::ActionSecondary,
+			FFMCodexPlayerUIStyle::Get().GetSectionPadding());
 		UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 			UVerticalBox::StaticClass(),
 			FName(*FString::Printf(TEXT("ComparisonEvidenceBody%d"), Index)));
-		Body->AddChildToVerticalBox(MakeText(
+		UTextBlock* EvidenceHeading = MakeText(
 			*WidgetTree,
 			FName(*FString::Printf(TEXT("ComparisonEvidenceHeading%d"), Index)),
-			Evidence.HeadingLabel));
-		Body->AddChildToVerticalBox(MakeText(
+			Evidence.HeadingLabel);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*EvidenceHeading, EFMCodexPlayerUITextRole::SectionHeading);
+		Body->AddChildToVerticalBox(EvidenceHeading);
+		UTextBlock* EvidenceValue = MakeText(
 			*WidgetTree,
 			FName(*FString::Printf(TEXT("ComparisonEvidenceValue%d"), Index)),
-			Evidence.EvidenceLabel));
+			Evidence.EvidenceLabel);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*EvidenceValue, EFMCodexPlayerUITextRole::ActionTitle);
+		Body->AddChildToVerticalBox(EvidenceValue);
 		Card->AddChild(Body);
 		ComparisonBody->AddChildToHorizontalBox(Card);
 	}

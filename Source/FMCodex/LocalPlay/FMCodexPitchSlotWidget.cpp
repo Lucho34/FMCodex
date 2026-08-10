@@ -1,6 +1,7 @@
 #include "FMCodexPitchSlotWidget.h"
 
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -71,7 +72,10 @@ void UFMCodexPitchSlotWidget::BuildWidgetTree()
 
 	SlotBorder = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("CanonicalPitchSlotBorder"));
-	SlotBorder->SetPadding(FMargin(6.0f));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Style.ApplyBorder(*SlotBorder,
+		EFMCodexPlayerUIColorRole::EmptyPitchSlot,
+		Style.GetSectionPadding());
 	SlotSize->AddChild(SlotBorder);
 
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
@@ -81,11 +85,13 @@ void UFMCodexPitchSlotWidget::BuildWidgetTree()
 	SlotLabelText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("CanonicalSlotLabel"));
 	SlotLabelText->SetAutoWrapText(true);
+	Style.ApplyText(*SlotLabelText, EFMCodexPlayerUITextRole::SectionHeading);
 	Body->AddChildToVerticalBox(SlotLabelText);
 
 	ContextText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("RelativeZoneContext"));
 	ContextText->SetAutoWrapText(true);
+	Style.ApplyText(*ContextText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToVerticalBox(ContextText);
 
 	ContentBody = WidgetTree->ConstructWidget<UVerticalBox>(
@@ -112,7 +118,8 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 	EmptyStateText = nullptr;
 	if (Presentation.bOccupied)
 	{
-		SlotBorder->SetBrushColor(FLinearColor(0.03f, 0.12f, 0.16f, 0.94f));
+		SlotBorder->SetBrushColor(FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::OccupiedPitchSlot));
 		UClass* ResolvedCardClass = PlayerCardWidgetClass != nullptr
 			? PlayerCardWidgetClass.Get()
 			: UFMCodexPlayerCardWidget::StaticClass();
@@ -125,12 +132,15 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 	}
 	else
 	{
-		SlotBorder->SetBrushColor(FLinearColor(0.08f, 0.20f, 0.11f, 0.78f));
+		SlotBorder->SetBrushColor(FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::EmptyPitchSlot));
 		EmptyStateText = WidgetTree->ConstructWidget<UTextBlock>(
 			UTextBlock::StaticClass(), TEXT("EmptySpatialLocation"));
 		EmptyStateText->SetText(FText::FromString(
 			TEXT("VACANT POSITION\nPitch display only")));
 		EmptyStateText->SetAutoWrapText(true);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*EmptyStateText, EFMCodexPlayerUITextRole::Secondary);
 		ContentBody->AddChildToVerticalBox(EmptyStateText);
 	}
 }

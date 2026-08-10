@@ -187,5 +187,11 @@ private:
 	TObjectPtr<UBorder> HandoffOverlay;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> HandoffText;
+	TObjectPtr<UTextBlock> HandoffTitleText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> HandoffPlayerText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> HandoffReadyText;
 };

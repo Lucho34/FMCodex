@@ -4,14 +4,17 @@
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexPitchWidget.h"
+#include "FMCodexPlayerUIStyle.h"
 #include "FMCodexResolutionPanelWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/BorderSlot.h"
 #include "Components/Button.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/ScrollBox.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 
@@ -33,8 +36,9 @@ namespace FMCodexLocalMatchScreenWidget
 	{
 		UBorder* Result = Tree.ConstructWidget<UBorder>(
 			UBorder::StaticClass(), Name);
-		Result->SetPadding(FMargin(12.0f));
-		Result->SetBrushColor(FLinearColor(0.025f, 0.045f, 0.07f, 0.96f));
+		FFMCodexPlayerUIStyle::Get().ApplyBorder(
+			*Result, EFMCodexPlayerUIColorRole::PanelBackground,
+			FFMCodexPlayerUIStyle::Get().GetOuterPadding());
 		return Result;
 	}
 
@@ -45,8 +49,14 @@ namespace FMCodexLocalMatchScreenWidget
 	{
 		UButton* Result = Tree.ConstructWidget<UButton>(
 			UButton::StaticClass(), Name);
-		Result->AddChild(MakeText(
-			Tree, FName(*(Name.ToString() + TEXT("Label"))), Label));
+		UTextBlock* LabelText = MakeText(
+			Tree, FName(*(Name.ToString() + TEXT("Label"))), Label);
+		LabelText->SetJustification(ETextJustify::Center);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*LabelText, EFMCodexPlayerUITextRole::Status);
+		Result->AddChild(LabelText);
+		FFMCodexPlayerUIStyle::Get().ApplyButton(
+			*Result, EFMCodexPlayerUIActionRole::Primary);
 		return Result;
 	}
 }
@@ -400,6 +410,16 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	UOverlay* Root = WidgetTree->ConstructWidget<UOverlay>(
 		UOverlay::StaticClass(), TEXT("MatchScreenRoot"));
 	WidgetTree->RootWidget = Root;
+	UBorder* ScreenBackground = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("MatchScreenStyleBackground"));
+	FFMCodexPlayerUIStyle::Get().ApplyBorder(
+		*ScreenBackground, EFMCodexPlayerUIColorRole::ScreenBackground,
+		FMargin(0.0f));
+	if (UOverlaySlot* BackgroundSlot = Root->AddChildToOverlay(ScreenBackground))
+	{
+		BackgroundSlot->SetHorizontalAlignment(HAlign_Fill);
+		BackgroundSlot->SetVerticalAlignment(VAlign_Fill);
+	}
 
 	UScrollBox* MainScroll = WidgetTree->ConstructWidget<UScrollBox>(
 		UScrollBox::StaticClass(), TEXT("PlayerMatchScroll"));
@@ -477,12 +497,44 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	MainScreen->AddChildToVerticalBox(ResolutionRegion);
 
 	HandoffOverlay = MakeRegion(*WidgetTree, TEXT("HotSeatHandoffOverlay"));
-	HandoffOverlay->SetBrushColor(FLinearColor(0.01f, 0.01f, 0.015f, 0.995f));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Style.ApplyBorder(*HandoffOverlay,
+		EFMCodexPlayerUIColorRole::ScreenBackground, FMargin(0.0f));
+	USizeBox* HandoffBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("HotSeatHandoffBounds"));
+	HandoffBounds->SetWidthOverride(520.0f);
+	HandoffBounds->SetMinDesiredHeight(260.0f);
+	if (UBorderSlot* ModalSlot = Cast<UBorderSlot>(
+		HandoffOverlay->AddChild(HandoffBounds)))
+	{
+		ModalSlot->SetHorizontalAlignment(HAlign_Center);
+		ModalSlot->SetVerticalAlignment(VAlign_Center);
+	}
+	UBorder* HandoffCard = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("HotSeatHandoffCard"));
+	Style.ApplyBorder(*HandoffCard,
+		EFMCodexPlayerUIColorRole::PanelRaised, Style.GetPanelPadding());
+	HandoffBounds->AddChild(HandoffCard);
 	UVerticalBox* HandoffBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("HotSeatHandoffBody"));
-	HandoffOverlay->AddChild(HandoffBody);
-	HandoffText = MakeText(*WidgetTree, TEXT("HotSeatHandoffText"));
-	HandoffBody->AddChildToVerticalBox(HandoffText);
+	HandoffCard->AddChild(HandoffBody);
+	HandoffTitleText = MakeText(*WidgetTree, TEXT("HotSeatHandoffText"));
+	HandoffTitleText->SetJustification(ETextJustify::Center);
+	Style.ApplyText(
+		*HandoffTitleText, EFMCodexPlayerUITextRole::HandoffTitle);
+	HandoffPlayerText = MakeText(
+		*WidgetTree, TEXT("HotSeatNextPlayerText"));
+	HandoffPlayerText->SetJustification(ETextJustify::Center);
+	Style.ApplyText(
+		*HandoffPlayerText, EFMCodexPlayerUITextRole::HandoffPlayer);
+	HandoffReadyText = MakeText(
+		*WidgetTree, TEXT("HotSeatReadyInstruction"));
+	HandoffReadyText->SetJustification(ETextJustify::Center);
+	Style.ApplyText(
+		*HandoffReadyText, EFMCodexPlayerUITextRole::Body);
+	HandoffBody->AddChildToVerticalBox(HandoffTitleText);
+	HandoffBody->AddChildToVerticalBox(HandoffPlayerText);
+	HandoffBody->AddChildToVerticalBox(HandoffReadyText);
 	UButton* ReadyButton = MakeButton(
 		*WidgetTree, TEXT("HotSeatReadyButton"), TEXT("Ready"));
 	ReadyButton->OnClicked.AddDynamic(
@@ -510,8 +562,13 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	MainScreen->SetIsEnabled(!Presentation.Handoff.bVisible);
 	InteractionPanel->SetInteractionBlocked(Presentation.Handoff.bVisible);
-	HandoffText->SetText(FText::FromString(FString::Printf(
-		TEXT("%s\n%s\n%s"), *Presentation.Handoff.TitleLabel,
-		*Presentation.Handoff.NextPlayerLabel,
-		*Presentation.Handoff.ReadyLabel)));
+	HandoffTitleText->SetText(FText::FromString(
+		Presentation.Handoff.TitleLabel));
+	HandoffPlayerText->SetText(FText::FromString(
+		Presentation.Handoff.NextPlayerLabel));
+	HandoffPlayerText->SetColorAndOpacity(FSlateColor(
+		FFMCodexPlayerUIStyle::Get().GetPlayerAccentColor(
+			Presentation.Handoff.NextPlayerLabel)));
+	HandoffReadyText->SetText(FText::FromString(
+		Presentation.Handoff.ReadyLabel));
 }

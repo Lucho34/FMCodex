@@ -8,6 +8,7 @@
 #include "FMCodexInteractionPanelWidget.generated.h"
 
 class UButton;
+class UBorder;
 class UFMCodexInteractionOptionWidget;
 class UFMCodexPlayerCardWidget;
 class UHorizontalBox;
@@ -225,6 +226,9 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Interaction Presentation")
 	TSubclassOf<UFMCodexInteractionOptionWidget> OptionWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> ActionHeaderRegion;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> KickerText;

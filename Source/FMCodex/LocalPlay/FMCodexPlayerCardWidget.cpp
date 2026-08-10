@@ -1,5 +1,7 @@
 #include "FMCodexPlayerCardWidget.h"
 
+#include "FMCodexPlayerUIStyle.h"
+
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
@@ -136,25 +138,41 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	WidgetTree->RootWidget = CardBounds;
 
 	CardFrame = MakeRegion(*WidgetTree, TEXT("PlayerCardFrame"),
-		FLinearColor(0.035f, 0.075f, 0.12f, 0.985f), FMargin(6.0f));
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::CardFrame),
+		FFMCodexPlayerUIStyle::Get().GetSectionPadding());
 	CardBounds->AddChild(CardFrame);
+	UBorder* FrameAssetHook = MakeRegion(
+		*WidgetTree, TEXT("CardFrameAssetHook"),
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelInset),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
+	CardFrame->AddChild(FrameAssetHook);
 
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("PlayerCardVisualHierarchy"));
-	CardFrame->AddChild(Body);
+	FrameAssetHook->AddChild(Body);
 
 	UBorder* HeaderRegion = MakeRegion(
 		*WidgetTree, TEXT("RoleRarityHeaderRegion"),
-		FLinearColor(0.08f, 0.17f, 0.25f, 1.0f), FMargin(4.0f));
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelRaised),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
 	UHorizontalBox* Header = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("RoleRarityHeader"));
 	HeaderRegion->AddChild(Header);
 	RoleIconHook = MakeRegion(*WidgetTree, TEXT("RoleIconHook"),
-		FLinearColor(0.12f, 0.34f, 0.46f, 1.0f), FMargin(3.0f));
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::NeutralAccent),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
 	RoleText = MakeText(*WidgetTree, TEXT("CardRole"));
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*RoleText, EFMCodexPlayerUITextRole::SectionHeading);
 	RoleIconHook->AddChild(RoleText);
 	Header->AddChildToHorizontalBox(RoleIconHook);
 	RarityText = MakeText(*WidgetTree, TEXT("CardRarity"));
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*RarityText, EFMCodexPlayerUITextRole::Secondary);
 	Header->AddChildToHorizontalBox(RarityText);
 	Body->AddChildToVerticalBox(HeaderRegion);
 
@@ -162,23 +180,41 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 		USizeBox::StaticClass(), TEXT("PortraitAssetBounds"));
 	PortraitPresentationRegion = MakeRegion(
 		*WidgetTree, TEXT("PortraitPresentationRegion"),
-		FLinearColor(0.07f, 0.14f, 0.19f, 1.0f), FMargin(4.0f));
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelRaised),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
+	UBorder* PortraitAssetHook = MakeRegion(
+		*WidgetTree, TEXT("PortraitAssetHook"),
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelInset),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
 	PortraitPlaceholderText = MakeText(
 		*WidgetTree, TEXT("PortraitPlaceholderText"));
 	PortraitPlaceholderText->SetJustification(ETextJustify::Center);
-	PortraitPresentationRegion->AddChild(PortraitPlaceholderText);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*PortraitPlaceholderText, EFMCodexPlayerUITextRole::Secondary);
+	PortraitAssetHook->AddChild(PortraitPlaceholderText);
+	PortraitPresentationRegion->AddChild(PortraitAssetHook);
 	PortraitBounds->AddChild(PortraitPresentationRegion);
 	Body->AddChildToVerticalBox(PortraitBounds);
 
 	UBorder* IdentityRegion = MakeRegion(
 		*WidgetTree, TEXT("CardIdentityRegion"),
-		FLinearColor(0.10f, 0.19f, 0.25f, 1.0f), FMargin(4.0f));
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelRaised),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
 	UVerticalBox* IdentityBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("CardIdentityBody"));
 	IdentityText = MakeText(*WidgetTree, TEXT("CardIdentity"));
 	OwnerText = MakeText(*WidgetTree, TEXT("CardOwner"));
 	DeveloperReferenceText = MakeText(
 		*WidgetTree, TEXT("CardDeveloperReference"));
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*IdentityText, EFMCodexPlayerUITextRole::Identity);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*OwnerText, EFMCodexPlayerUITextRole::Kicker);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*DeveloperReferenceText, EFMCodexPlayerUITextRole::Secondary);
 	IdentityBody->AddChildToVerticalBox(IdentityText);
 	IdentityBody->AddChildToVerticalBox(OwnerText);
 	IdentityBody->AddChildToVerticalBox(DeveloperReferenceText);
@@ -187,11 +223,16 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 
 	UBorder* SkillRegion = MakeRegion(
 		*WidgetTree, TEXT("SkillPresentationRegion"),
-		FLinearColor(0.05f, 0.13f, 0.18f, 1.0f), FMargin(4.0f));
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelInset),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
 	UVerticalBox* SkillBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("SkillPresentationBody"));
-	SkillBody->AddChildToVerticalBox(MakeText(
-		*WidgetTree, TEXT("SkillRegionTitle"), TEXT("SKILLS")));
+	UTextBlock* SkillTitle = MakeText(
+		*WidgetTree, TEXT("SkillRegionTitle"), TEXT("SKILLS"));
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*SkillTitle, EFMCodexPlayerUITextRole::SectionHeading);
+	SkillBody->AddChildToVerticalBox(SkillTitle);
 	SkillList = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("SkillIdentityList"));
 	SkillBody->AddChildToVerticalBox(SkillList);
@@ -200,11 +241,16 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 
 	UBorder* AttributeRegion = MakeRegion(
 		*WidgetTree, TEXT("AttributePresentationRegion"),
-		FLinearColor(0.04f, 0.10f, 0.15f, 1.0f), FMargin(4.0f));
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelInset),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
 	UVerticalBox* AttributeBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("AttributePresentationBody"));
-	AttributeBody->AddChildToVerticalBox(MakeText(
-		*WidgetTree, TEXT("AttributeRegionTitle"), TEXT("ATTRIBUTES")));
+	UTextBlock* AttributeTitle = MakeText(
+		*WidgetTree, TEXT("AttributeRegionTitle"), TEXT("ATTRIBUTES"));
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*AttributeTitle, EFMCodexPlayerUITextRole::SectionHeading);
+	AttributeBody->AddChildToVerticalBox(AttributeTitle);
 	AttributeGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(
 		UUniformGridPanel::StaticClass(), TEXT("StructuredAttributeGrid"));
 	AttributeBody->AddChildToVerticalBox(AttributeGrid);
@@ -213,7 +259,9 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 
 	UBorder* StatusRegion = MakeRegion(
 		*WidgetTree, TEXT("StatusBadgePresentationRegion"),
-		FLinearColor(0.07f, 0.16f, 0.20f, 1.0f), FMargin(4.0f));
+		FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelRaised),
+		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
 	StatusBadgeBox = WidgetTree->ConstructWidget<UWrapBox>(
 		UWrapBox::StaticClass(), TEXT("StatusBadgeList"));
 	StatusRegion->AddChild(StatusBadgeBox);
@@ -232,9 +280,13 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	CardBounds->SetWidthOverride(bCompact ? 148.0f : 240.0f);
 	CardBounds->SetHeightOverride(bCompact ? 208.0f : 360.0f);
 	PortraitBounds->SetHeightOverride(bCompact ? 32.0f : 82.0f);
-	CardFrame->SetBrushColor(Presentation.bGoalkeeper
-		? FLinearColor(0.16f, 0.12f, 0.035f, 0.985f)
-		: FLinearColor(0.035f, 0.075f, 0.12f, 0.985f));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	CardFrame->SetBrushColor(Style.GetColor(Presentation.bGoalkeeper
+		? EFMCodexPlayerUIColorRole::GoalkeeperCardFrame
+		: EFMCodexPlayerUIColorRole::CardFrame));
+	RoleIconHook->SetBrushColor(Presentation.bGoalkeeper
+		? Style.GetColor(EFMCodexPlayerUIColorRole::GoalkeeperCardFrame)
+		: Style.GetPlayerAccentColor(Presentation.OwnerLabel));
 
 	IdentityText->SetText(FText::FromString(
 		Presentation.IdentityLabel.IsEmpty()
@@ -275,12 +327,18 @@ void UFMCodexPlayerCardWidget::RefreshSkills()
 				TEXT("SkillIdentityRow%d"), Index)));
 		UBorder* IconHook = MakeRegion(*WidgetTree, FName(*FString::Printf(
 			TEXT("SkillIconHook%d"), Index)),
-			FLinearColor(0.12f, 0.30f, 0.34f, 1.0f), FMargin(2.0f));
-		IconHook->AddChild(MakeText(*WidgetTree, FName(*FString::Printf(
-			TEXT("SkillIconPlaceholder%d"), Index)), TEXT("S")));
+			FFMCodexPlayerUIStyle::Get().GetColor(
+				EFMCodexPlayerUIColorRole::SkillBadge), FMargin(3.0f));
+		UTextBlock* IconText = MakeText(*WidgetTree, FName(*FString::Printf(
+			TEXT("SkillIconPlaceholder%d"), Index)), TEXT("SK"));
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*IconText, EFMCodexPlayerUITextRole::Secondary);
+		IconHook->AddChild(IconText);
 		Row->AddChildToHorizontalBox(IconHook);
 		UTextBlock* SkillText = MakeText(*WidgetTree, FName(*FString::Printf(
 			TEXT("SkillIdentity%d"), Index)), TEXT("  ") + Skills[Index]);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*SkillText, EFMCodexPlayerUITextRole::Body);
 		Row->AddChildToHorizontalBox(SkillText);
 		SkillList->AddChildToVerticalBox(Row);
 		RenderedSkillTexts.Add(SkillText);
@@ -306,9 +364,12 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 	{
 		UBorder* StatCell = MakeRegion(*WidgetTree, FName(*FString::Printf(
 			TEXT("AttributeCell%d"), Index)),
-			FLinearColor(0.08f, 0.18f, 0.23f, 1.0f), FMargin(2.0f));
+			FFMCodexPlayerUIStyle::Get().GetColor(
+				EFMCodexPlayerUIColorRole::AttributeCell), FMargin(3.0f));
 		UTextBlock* StatText = MakeText(*WidgetTree, FName(*FString::Printf(
 			TEXT("AttributeValue%d"), Index)), Attributes[Index]);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*StatText, EFMCodexPlayerUITextRole::Body);
 		StatCell->AddChild(StatText);
 		AttributeGrid->AddChildToUniformGrid(
 			StatCell, Index / 2, Index % 2);
@@ -329,9 +390,12 @@ void UFMCodexPlayerCardWidget::RefreshStatusBadges()
 	{
 		UBorder* Badge = MakeRegion(*WidgetTree, FName(*FString::Printf(
 			TEXT("StatusBadge%d"), Index)),
-			FLinearColor(0.10f, 0.30f, 0.27f, 1.0f), FMargin(3.0f));
+			FFMCodexPlayerUIStyle::Get().GetStatusBadgeColor(Statuses[Index]),
+			FMargin(5.0f, 3.0f));
 		UTextBlock* BadgeText = MakeText(*WidgetTree, FName(*FString::Printf(
 			TEXT("StatusBadgeLabel%d"), Index)), Statuses[Index]);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*BadgeText, EFMCodexPlayerUITextRole::Kicker);
 		Badge->AddChild(BadgeText);
 		StatusBadgeBox->AddChildToWrapBox(Badge);
 		RenderedStatusTexts.Add(BadgeText);

@@ -2,6 +2,7 @@
 
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -30,27 +31,31 @@ namespace FMCodexInteractionPanelWidget
 	UButton* MakeButton(
 		UWidgetTree& Tree,
 		const FName Name,
-		UTextBlock*& LabelText)
+		UTextBlock*& LabelText,
+		const EFMCodexPlayerUIActionRole Role)
 	{
 		UButton* Result = Tree.ConstructWidget<UButton>(
 			UButton::StaticClass(), Name);
 		LabelText = MakeText(
 			Tree, FName(*(Name.ToString() + TEXT("Label"))));
 		LabelText->SetJustification(ETextJustify::Center);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*LabelText, EFMCodexPlayerUITextRole::Body);
 		Result->AddChild(LabelText);
+		FFMCodexPlayerUIStyle::Get().ApplyButton(*Result, Role);
 		return Result;
 	}
 
 	UBorder* MakeRegion(
 		UWidgetTree& Tree,
 		const FName Name,
-		const FLinearColor& Color,
-		const FMargin Padding = FMargin(8.0f))
+		const EFMCodexPlayerUIColorRole ColorRole,
+		const FMargin& Padding)
 	{
 		UBorder* Result = Tree.ConstructWidget<UBorder>(
 			UBorder::StaticClass(), Name);
-		Result->SetPadding(Padding);
-		Result->SetBrushColor(Color);
+		FFMCodexPlayerUIStyle::Get().ApplyBorder(
+			*Result, ColorRole, Padding);
 		return Result;
 	}
 }
@@ -252,37 +257,45 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 
 	USizeBox* Bounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("InteractionPanelBounds"));
-	Bounds->SetMinDesiredWidth(840.0f);
-	Bounds->SetMaxDesiredWidth(1120.0f);
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Bounds->SetMinDesiredWidth(Style.GetPanelMinWidth());
+	Bounds->SetMaxDesiredWidth(Style.GetPanelMaxWidth());
 	WidgetTree->RootWidget = Bounds;
 
 	UBorder* Frame = MakeRegion(
 		*WidgetTree, TEXT("InteractionPanelFrame"),
-		FLinearColor(0.025f, 0.055f, 0.085f, 0.98f), FMargin(12.0f));
+		EFMCodexPlayerUIColorRole::PanelBackground,
+		Style.GetPanelPadding());
 	Bounds->AddChild(Frame);
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("InteractionPanelHierarchy"));
 	Frame->AddChild(Body);
 
-	UBorder* Header = MakeRegion(
+	ActionHeaderRegion = MakeRegion(
 		*WidgetTree, TEXT("InteractionActionHeader"),
-		FLinearColor(0.07f, 0.16f, 0.23f, 1.0f));
+		EFMCodexPlayerUIColorRole::NeutralAccent,
+		Style.GetSectionPadding());
 	UVerticalBox* HeaderBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("InteractionActionHeaderBody"));
 	KickerText = MakeText(*WidgetTree, TEXT("InteractionActionKicker"));
 	ActorText = MakeText(*WidgetTree, TEXT("InteractionExpectedActor"));
 	TitleText = MakeText(*WidgetTree, TEXT("InteractionActionTitle"));
 	ContextText = MakeText(*WidgetTree, TEXT("InteractionActionContext"));
+	Style.ApplyText(*KickerText, EFMCodexPlayerUITextRole::Kicker);
+	Style.ApplyText(*ActorText, EFMCodexPlayerUITextRole::Status);
+	Style.ApplyText(*TitleText, EFMCodexPlayerUITextRole::ActionTitle);
+	Style.ApplyText(*ContextText, EFMCodexPlayerUITextRole::Secondary);
 	HeaderBody->AddChildToVerticalBox(KickerText);
 	HeaderBody->AddChildToVerticalBox(ActorText);
 	HeaderBody->AddChildToVerticalBox(TitleText);
 	HeaderBody->AddChildToVerticalBox(ContextText);
-	Header->AddChild(HeaderBody);
-	Body->AddChildToVerticalBox(Header);
+	ActionHeaderRegion->AddChild(HeaderBody);
+	Body->AddChildToVerticalBox(ActionHeaderRegion);
 
 	UBorder* CandidateRegion = MakeRegion(
 		*WidgetTree, TEXT("InteractionCandidateRegion"),
-		FLinearColor(0.035f, 0.09f, 0.12f, 1.0f));
+		EFMCodexPlayerUIColorRole::PanelInset,
+		Style.GetSectionPadding());
 	UScrollBox* CandidateScroll = WidgetTree->ConstructWidget<UScrollBox>(
 		UScrollBox::StaticClass(), TEXT("InteractionCandidateScroll"));
 	CandidateScroll->SetOrientation(Orient_Horizontal);
@@ -294,14 +307,17 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 
 	UBorder* ChoiceRegion = MakeRegion(
 		*WidgetTree, TEXT("InteractionChoiceRegion"),
-		FLinearColor(0.04f, 0.11f, 0.16f, 1.0f));
+		EFMCodexPlayerUIColorRole::PanelRaised,
+		Style.GetSectionPadding());
 	UVerticalBox* ChoiceBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("InteractionChoiceBody"));
 	ChoiceSectionText = MakeText(
 		*WidgetTree, TEXT("InteractionChoiceSectionTitle"));
+	Style.ApplyText(
+		*ChoiceSectionText, EFMCodexPlayerUITextRole::SectionHeading);
 	ChoiceOptionsBody = WidgetTree->ConstructWidget<UWrapBox>(
 		UWrapBox::StaticClass(), TEXT("InteractionChoiceOptions"));
-	ChoiceOptionsBody->SetInnerSlotPadding(FVector2D(5.0f, 5.0f));
+	ChoiceOptionsBody->SetInnerSlotPadding(Style.GetControlGap());
 	ChoiceBody->AddChildToVerticalBox(ChoiceSectionText);
 	ChoiceBody->AddChildToVerticalBox(ChoiceOptionsBody);
 	ChoiceRegion->AddChild(ChoiceBody);
@@ -312,13 +328,15 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 			UHorizontalBox::StaticClass(), TEXT("InteractionSecondaryActions"));
 	UTextBlock* DeclineLabel = nullptr;
 	DeclineButton = MakeButton(
-		*WidgetTree, TEXT("InteractionDeclineButton"), DeclineLabel);
+		*WidgetTree, TEXT("InteractionDeclineButton"), DeclineLabel,
+		EFMCodexPlayerUIActionRole::Decline);
 	DeclineButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleDeclineClicked);
 	SecondaryActions->AddChildToHorizontalBox(DeclineButton);
 	UTextBlock* NoLegalLabel = nullptr;
 	NoLegalButton = MakeButton(
-		*WidgetTree, TEXT("InteractionNoLegalButton"), NoLegalLabel);
+		*WidgetTree, TEXT("InteractionNoLegalButton"), NoLegalLabel,
+		EFMCodexPlayerUIActionRole::Secondary);
 	NoLegalButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleNoLegalClicked);
 	SecondaryActions->AddChildToHorizontalBox(NoLegalButton);
@@ -329,31 +347,36 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 			UHorizontalBox::StaticClass(), TEXT("InteractionPrimaryActions"));
 	UTextBlock* StartLabel = nullptr;
 	StartButton = MakeButton(
-		*WidgetTree, TEXT("InteractionStartMatchButton"), StartLabel);
+		*WidgetTree, TEXT("InteractionStartMatchButton"), StartLabel,
+		EFMCodexPlayerUIActionRole::Primary);
 	StartButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleStartClicked);
 	PrimaryActions->AddChildToHorizontalBox(StartButton);
 	UTextBlock* BeginLabel = nullptr;
 	BeginButton = MakeButton(
-		*WidgetTree, TEXT("InteractionBeginAttackButton"), BeginLabel);
+		*WidgetTree, TEXT("InteractionBeginAttackButton"), BeginLabel,
+		EFMCodexPlayerUIActionRole::Primary);
 	BeginButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleBeginClicked);
 	PrimaryActions->AddChildToHorizontalBox(BeginButton);
 	UTextBlock* FinishLabel = nullptr;
 	FinishButton = MakeButton(
-		*WidgetTree, TEXT("InteractionFinishDeploymentButton"), FinishLabel);
+		*WidgetTree, TEXT("InteractionFinishDeploymentButton"), FinishLabel,
+		EFMCodexPlayerUIActionRole::Primary);
 	FinishButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleFinishClicked);
 	PrimaryActions->AddChildToHorizontalBox(FinishButton);
 	UTextBlock* ContinueLabel = nullptr;
 	ContinueButton = MakeButton(
-		*WidgetTree, TEXT("InteractionContinueButton"), ContinueLabel);
+		*WidgetTree, TEXT("InteractionContinueButton"), ContinueLabel,
+		EFMCodexPlayerUIActionRole::Primary);
 	ContinueButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleContinueClicked);
 	PrimaryActions->AddChildToHorizontalBox(ContinueButton);
 	Body->AddChildToVerticalBox(PrimaryActions);
 
 	EmptyStateText = MakeText(*WidgetTree, TEXT("InteractionBoundedFallback"));
+	Style.ApplyText(*EmptyStateText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToVerticalBox(EmptyStateText);
 }
 
@@ -376,6 +399,11 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		[](const FString& Line) { return Line.IsEmpty(); });
 	ContextText->SetText(FText::FromString(
 		FString::Join(ContextLines, TEXT(" | "))));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	ActionHeaderRegion->SetBrushColor(
+		Presentation.KickerLabel.Contains(TEXT("SYSTEM"))
+			? Style.GetColor(EFMCodexPlayerUIColorRole::SystemStatus)
+			: Style.GetPlayerAccentColor(Presentation.ExpectedActorLabel));
 	ChoiceSectionText->SetText(FText::FromString(
 		Presentation.BranchSectionLabel.IsEmpty()
 			? TEXT("LEGAL OPTIONS") : Presentation.BranchSectionLabel));

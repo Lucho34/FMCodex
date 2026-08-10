@@ -9,6 +9,7 @@
 #include "FMCodexDiceResultWidget.h"
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPlayerUIStyle.h"
 #include "FMCodexPitchSlotWidget.h"
 #include "FMCodexPitchWidget.h"
 #include "FMCodexResolutionPanelWidget.h"
@@ -23,6 +24,7 @@
 #include "Serialization/MemoryWriter.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
+#include "Components/Border.h"
 
 namespace FMCodexLocalMatchControlSurfaceTests
 {
@@ -5685,6 +5687,433 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	TestTrue(TEXT("Slate developer reference surface remains available"),
 		ControllerSource.Contains(TEXT("BuildControlSurface"))
 			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexUMGVisualStyleFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.34.UMGVisualStyleFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	TestTrue(TEXT("Shared UI style defaults are valid"),
+		Style.HasValidDefaults());
+	TestTrue(TEXT("Score and terminal typography dominate body text"),
+		Style.GetFontSize(EFMCodexPlayerUITextRole::Score)
+			> Style.GetFontSize(EFMCodexPlayerUITextRole::Identity)
+			&& Style.GetFontSize(EFMCodexPlayerUITextRole::TerminalResult)
+				> Style.GetFontSize(EFMCodexPlayerUITextRole::Body));
+	TestTrue(TEXT("Temporary player accents are replaceable and distinct"),
+		!Style.GetColor(EFMCodexPlayerUIColorRole::PlayerAAccent).Equals(
+			Style.GetColor(EFMCodexPlayerUIColorRole::PlayerBAccent)));
+	TestTrue(TEXT("Action roles have visibly distinct presentation colors"),
+		!Style.GetColor(EFMCodexPlayerUIColorRole::ActionPrimary).Equals(
+			Style.GetColor(EFMCodexPlayerUIColorRole::ActionSecondary))
+			&& !Style.GetColor(EFMCodexPlayerUIColorRole::ActionDecline).Equals(
+				Style.GetColor(EFMCodexPlayerUIColorRole::ActionPrimary)));
+	TestTrue(TEXT("Presentation-only status and terminal emphasis is defined"),
+		Style.GetStatusBadgeColor(TEXT("AVAILABLE")).Equals(
+			Style.GetColor(EFMCodexPlayerUIColorRole::StatusAvailable))
+			&& Style.GetStatusBadgeColor(TEXT("USED")).Equals(
+				Style.GetColor(EFMCodexPlayerUIColorRole::StatusUsed))
+			&& Style.GetTerminalColor(TEXT("GOAL")).Equals(
+				Style.GetColor(EFMCodexPlayerUIColorRole::Success))
+			&& Style.GetTerminalColor(TEXT("NO GOAL")).Equals(
+				Style.GetColor(EFMCodexPlayerUIColorRole::Danger)));
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Style foundation Host exists"), Host);
+	TestNotNull(TEXT("Style foundation Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	for (const TCHAR* RootRegion : {
+		TEXT("MatchScreenStyleBackground"), TEXT("MatchHeaderRegion"),
+		TEXT("FootballCardFieldRegion"), TEXT("CurrentInteractionRegion"),
+		TEXT("ResolutionResultRegion"), TEXT("HotSeatHandoffOverlay"),
+		TEXT("HotSeatHandoffCard"), TEXT("HotSeatReadyButton") })
+	{
+		TestNotNull(FString::Printf(TEXT("Styled root contains %s"), RootRegion),
+			Screen->GetWidgetFromName(RootRegion));
+	}
+
+	UFMCodexMatchHeaderWidget* Header = Screen->GetMatchHeader();
+	if (Header == nullptr)
+	{
+		return false;
+	}
+	Header->TakeWidget();
+	FFMCodexUMGMatchHeaderViewModel HeaderDTO;
+	HeaderDTO.bMatchActive = true;
+	HeaderDTO.bAttackActive = true;
+	HeaderDTO.MatchStatusLabel = TEXT("MATCH IN PROGRESS");
+	HeaderDTO.PlayerAScoreLabel = TEXT("2");
+	HeaderDTO.PlayerBScoreLabel = TEXT("1");
+	HeaderDTO.ScoreLabel = TEXT("2 - 1");
+	HeaderDTO.AttackerStatusLabel = TEXT("PLAYER A ATTACKING");
+	HeaderDTO.ActorStatusLabel = TEXT("PLAYER B TO ACT");
+	HeaderDTO.bHumanAction = true;
+	Header->RefreshFromPresentation(HeaderDTO);
+	const UBorder* AttackerRegion = Cast<UBorder>(Header->GetWidgetFromName(
+		TEXT("MatchHeaderAttackerStatusRegion")));
+	const UBorder* ActorRegion = Cast<UBorder>(Header->GetWidgetFromName(
+		TEXT("MatchHeaderActorStatusRegion")));
+	TestTrue(TEXT("Header styling preserves ATTACKING versus TO ACT"),
+		AttackerRegion != nullptr && ActorRegion != nullptr
+			&& AttackerRegion->GetBrushColor().Equals(
+				Style.GetColor(EFMCodexPlayerUIColorRole::PlayerAAccent))
+			&& ActorRegion->GetBrushColor().Equals(
+				Style.GetColor(EFMCodexPlayerUIColorRole::PlayerBAccent))
+			&& Header->GetDisplayedAttackerLabel()
+				== TEXT("PLAYER A ATTACKING")
+			&& Header->GetDisplayedActorLabel() == TEXT("PLAYER B TO ACT"));
+	HeaderDTO.bSystemResolution = true;
+	HeaderDTO.bHumanAction = false;
+	HeaderDTO.ActorStatusLabel = TEXT("SYSTEM RESOLUTION");
+	Header->RefreshFromPresentation(HeaderDTO);
+	TestTrue(TEXT("Header system resolution uses dedicated shared style"),
+		ActorRegion != nullptr && ActorRegion->GetBrushColor().Equals(
+			Style.GetColor(EFMCodexPlayerUIColorRole::SystemStatus)));
+	HeaderDTO.bMatchEnded = true;
+	HeaderDTO.MatchStatusLabel = TEXT("MATCH ENDED");
+	HeaderDTO.MatchResultLabel = TEXT("Player A Win");
+	Header->RefreshFromPresentation(HeaderDTO);
+	TestTrue(TEXT("Match-ended style preserves canonical result priority"),
+		Header->GetPresentation().MatchResultLabel == TEXT("Player A Win")
+			&& Header->GetWidgetFromName(TEXT("MatchHeaderFinalResultRegion"))
+				->GetVisibility() == ESlateVisibility::Visible
+			&& Header->GetWidgetFromName(
+				TEXT("MatchHeaderActorStatusRegion"))->GetVisibility()
+					== ESlateVisibility::Collapsed);
+
+	FFMCodexUMGCardViewModel Card;
+	Card.CardId = TEXT("Style.Card.AllFamilies");
+	Card.IdentityLabel = TEXT("Style Foundation Card");
+	Card.OwnerLabel = TEXT("Player A");
+	Card.RoleLabel = TEXT("FW");
+	Card.RarityLabel = TEXT("Club");
+	Card.SkillLabels = { TEXT("Long Shot"), TEXT("Cut Inside"),
+		TEXT("Pass Control"), TEXT("Cross"), TEXT("Through Ball") };
+	Card.SkillSummaryLabel = FString::Join(Card.SkillLabels, TEXT(" | "));
+	Card.CompactAttributeSummary = TEXT("SHO 5 | PAS 4 | DRI 3 | SPD 4");
+	Card.FullAttributeSummary =
+		TEXT("SHO 5 | DRI 3 | PAS 4 | OFF 4 | MRK 2 | TKL 1 | SPD 4 | STR 3 | STA 4 | LS 5");
+	Card.StatusLabels = { TEXT("AVAILABLE") };
+	Card.StatusSummaryLabel = TEXT("AVAILABLE");
+
+	TArray<FFMCodexUMGPitchRegionViewModel> PitchPresentation;
+	for (int32 RegionIndex = 0; RegionIndex < 2; ++RegionIndex)
+	{
+		FFMCodexUMGPitchRegionViewModel Region;
+		Region.RegionLabel = RegionIndex == 0
+			? TEXT("PLAYER B HALF") : TEXT("PLAYER A HALF");
+		Region.ZoneContextLabel = TEXT("Canonical relative zones");
+		Region.bCurrentAttackingSide = RegionIndex == 0;
+		for (int32 SlotIndex = 0; SlotIndex < 10; ++SlotIndex)
+		{
+			FFMCodexUMGPitchSlotViewModel Slot;
+			Slot.SlotId = FName(*FString::Printf(
+				TEXT("Style.Slot.%d.%d"), RegionIndex, SlotIndex));
+			Slot.SlotLabel = FString::Printf(TEXT("POSITION %d"), SlotIndex + 1);
+			Slot.PhysicalHalfLabel = Region.RegionLabel;
+			Slot.PlayerARelativeZoneLabel = TEXT("Relative A");
+			Slot.PlayerBRelativeZoneLabel = TEXT("Relative B");
+			Slot.bOccupied = RegionIndex == 0 && SlotIndex == 0;
+			if (Slot.bOccupied)
+			{
+				Slot.Card = Card;
+			}
+			Region.Slots.Add(Slot);
+		}
+		PitchPresentation.Add(Region);
+	}
+	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
+	if (Pitch == nullptr)
+	{
+		return false;
+	}
+	Pitch->TakeWidget();
+	Pitch->RefreshFromPitchPresentation(PitchPresentation);
+	TestTrue(TEXT("Styled Pitch preserves two halves and 20/20 slots"),
+		Pitch->GetPresentation().Num() == 2
+			&& Pitch->GetRenderedSlotWidgets().Num() == 20
+			&& Pitch->GetWidgetFromName(TEXT("PitchBackgroundAssetHook"))
+				!= nullptr
+			&& Pitch->GetWidgetFromName(TEXT("CenterFieldVisualSeparator"))
+				!= nullptr);
+	UFMCodexPitchSlotWidget* OccupiedSlot =
+		Pitch->GetRenderedSlotWidgets()[0];
+	UFMCodexPitchSlotWidget* EmptySlot =
+		Pitch->GetRenderedSlotWidgets()[1];
+	OccupiedSlot->TakeWidget();
+	EmptySlot->TakeWidget();
+	TestTrue(TEXT("Pitch slots distinguish occupied from passive empty state"),
+		OccupiedSlot->IsShowingOccupiedCard()
+			&& !EmptySlot->IsShowingOccupiedCard()
+			&& EmptySlot->GetWidgetFromName(TEXT("EmptySpatialLocation"))
+				!= nullptr
+			&& Cast<UBorder>(OccupiedSlot->GetWidgetFromName(
+				TEXT("CanonicalPitchSlotBorder")))->GetBrushColor().Equals(
+					Style.GetColor(
+						EFMCodexPlayerUIColorRole::OccupiedPitchSlot))
+			&& Cast<UBorder>(EmptySlot->GetWidgetFromName(
+				TEXT("CanonicalPitchSlotBorder")))->GetBrushColor().Equals(
+					Style.GetColor(
+						EFMCodexPlayerUIColorRole::EmptyPitchSlot)));
+	UFMCodexPlayerCardWidget* PitchCard = OccupiedSlot->GetCardWidget();
+	if (PitchCard == nullptr)
+	{
+		return false;
+	}
+	PitchCard->TakeWidget();
+	TestTrue(TEXT("PitchCompact Card preserves identity and asset-ready hooks"),
+		PitchCard->GetPresentationMode()
+			== EFMCodexPlayerCardPresentationMode::PitchCompact
+			&& PitchCard->GetRenderedSkillCount() == 5
+			&& PitchCard->GetWidgetFromName(TEXT("CardFrameAssetHook")) != nullptr
+			&& PitchCard->GetWidgetFromName(TEXT("PortraitAssetHook")) != nullptr
+			&& PitchCard->GetWidgetFromName(TEXT("RoleIconHook")) != nullptr
+			&& PitchCard->GetWidgetFromName(TEXT("SkillIconHook0")) != nullptr);
+	PitchCard->RefreshFromPresentation(
+		Card, EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	TestTrue(TEXT("InteractionChoice retains all five Skill labels"),
+		PitchCard->GetPresentationMode()
+			== EFMCodexPlayerCardPresentationMode::InteractionChoice
+			&& PitchCard->GetRenderedSkillCount() == Card.SkillLabels.Num()
+			&& PitchCard->GetRenderedAttributeCount() == 10);
+	Card.bGoalkeeper = true;
+	Card.RoleLabel = TEXT("GK");
+	Card.StatusLabels = { TEXT("GK USED"), TEXT("GK ACTIVE") };
+	Card.CompactAttributeSummary = TEXT("HAN 5 | REF 4 | AER 3 | 1v1 4");
+	Card.FullAttributeSummary =
+		TEXT("HAN 5 | POS 4 | REF 4 | AER 3 | ANT 3 | 1v1 4");
+	PitchCard->RefreshFromPresentation(
+		Card, EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	TestTrue(TEXT("GK Card uses style-only visual variant and status badges"),
+		PitchCard->IsGoalkeeperVisualVariant()
+			&& PitchCard->GetRenderedStatusBadgeCount() == 2
+			&& Cast<UBorder>(PitchCard->GetWidgetFromName(
+				TEXT("PlayerCardFrame")))->GetBrushColor().Equals(
+					Style.GetColor(
+						EFMCodexPlayerUIColorRole::GoalkeeperCardFrame)));
+
+	UFMCodexInteractionPanelWidget* Interaction =
+		Screen->GetInteractionPanel();
+	if (Interaction == nullptr)
+	{
+		return false;
+	}
+	Interaction->TakeWidget();
+	FFMCodexUMGInteractionViewModel Action;
+	Action.Category = EFMCodexUMGInteractionCategory::ContinueResolution;
+	Action.KickerLabel = TEXT("PLAYER ACTION");
+	Action.ExpectedActorLabel = TEXT("PLAYER A TO ACT");
+	Action.TitleLabel = TEXT("CHOOSE NEXT ACTION");
+	Action.bCanContinue = true;
+	Action.bCanDecline = true;
+	Action.bCanResolveNoLegal = true;
+	Action.PrimaryActionLabel = TEXT("CONTINUE");
+	Action.DeclineActionLabel = TEXT("DECLINE");
+	Action.NoLegalActionLabel = TEXT("NO LEGAL CHOICE");
+	Interaction->RefreshFromPresentation(Action);
+	auto ButtonTint = [](const UButton* Button)
+	{
+		return Button->GetStyle().Normal.TintColor.GetSpecifiedColor();
+	};
+	const UButton* PrimaryButton = Cast<UButton>(
+		Interaction->GetWidgetFromName(TEXT("InteractionContinueButton")));
+	const UButton* DeclineButton = Cast<UButton>(
+		Interaction->GetWidgetFromName(TEXT("InteractionDeclineButton")));
+	const UButton* SecondaryButton = Cast<UButton>(
+		Interaction->GetWidgetFromName(TEXT("InteractionNoLegalButton")));
+	TestTrue(TEXT("Interaction primary secondary and decline styles are distinct"),
+		PrimaryButton != nullptr && DeclineButton != nullptr
+			&& SecondaryButton != nullptr
+			&& !ButtonTint(PrimaryButton).Equals(ButtonTint(SecondaryButton))
+			&& !ButtonTint(PrimaryButton).Equals(ButtonTint(DeclineButton)));
+	Action.Category = EFMCodexUMGInteractionCategory::SelectOneOnOneShot;
+	Action.bCanContinue = false;
+	Action.bCanDecline = false;
+	Action.bCanResolveNoLegal = false;
+	Action.OneOnOneChoices = {
+		{ EFMCodexUMGOneOnOneChoice::ChipShot, TEXT("CHIP SHOT") },
+		{ EFMCodexUMGOneOnOneChoice::DirectShot, TEXT("DIRECT SHOT") }
+	};
+	Interaction->RefreshFromPresentation(Action);
+	TestEqual(TEXT("OneOnOne choices retain styled typed options"),
+		Interaction->GetRenderedOptionWidgets().Num(), 2);
+	Action.KickerLabel = TEXT("SYSTEM RESOLUTION");
+	Action.ExpectedActorLabel = TEXT("SYSTEM RESOLUTION");
+	Interaction->RefreshFromPresentation(Action);
+	TestTrue(TEXT("Interaction system mode has dedicated visual treatment"),
+		Cast<UBorder>(Interaction->GetWidgetFromName(
+			TEXT("InteractionActionHeader")))->GetBrushColor().Equals(
+				Style.GetColor(EFMCodexPlayerUIColorRole::SystemStatus)));
+
+	UFMCodexResolutionPanelWidget* Resolution =
+		Screen->GetResolutionPanel();
+	if (Resolution == nullptr)
+	{
+		return false;
+	}
+	Resolution->TakeWidget();
+	FFMCodexUMGResolutionViewModel Result;
+	Result.bVisible = true;
+	Result.bTerminal = true;
+	Result.StepLabel = TEXT("FINISHING FORMULA");
+	Result.StepSummaryLabel = TEXT("Authoritative comparison accepted");
+	Result.DiceResults = { { TEXT("ATTACK"), TEXT("Finishing roll"), 6 } };
+	Result.ComparisonEvidence = {
+		{ TEXT("ATTACK"), TEXT("11") },
+		{ TEXT("DEFENSE"), TEXT("8") }
+	};
+	Result.DecisionLabel = TEXT("ATTACK WINS");
+	Result.TerminalLabel = TEXT("GOAL");
+	Resolution->RefreshFromPresentation(Result);
+	TestTrue(TEXT("Resolution styles Dice Comparison Decision and terminal result"),
+		Resolution->GetRenderedDiceWidgets().Num() == 1
+			&& Resolution->GetRenderedComparisonCount() == 2
+			&& Resolution->GetWidgetFromName(TEXT("ResolutionVersusLabel"))
+				!= nullptr
+			&& Resolution->GetWidgetFromName(TEXT("ResultIconAssetHook"))
+				!= nullptr
+			&& Cast<UBorder>(Resolution->GetWidgetFromName(
+				TEXT("ResolutionTerminalRegion")))->GetBrushColor().Equals(
+					Style.GetColor(EFMCodexPlayerUIColorRole::Success)));
+	UFMCodexDiceResultWidget* Die = Resolution->GetRenderedDiceWidgets()[0];
+	Die->TakeWidget();
+	TestTrue(TEXT("Dice reads as a bounded result object"),
+		Die->GetWidgetFromName(TEXT("DiceFaceAssetHook")) != nullptr
+			&& Cast<UTextBlock>(Die->GetWidgetFromName(
+				TEXT("DiceRawD6Value")))->GetText().ToString() == TEXT("[ 6 ]"));
+	for (const TCHAR* TerminalLabel : {
+		TEXT("MISS"), TEXT("NO GOAL"), TEXT("IMMEDIATE MISS"),
+		TEXT("OFFSIDE"), TEXT("OUT OF PLAY"),
+		TEXT("DEFENDER STOPPED ATTACK") })
+	{
+		Result.TerminalLabel = TerminalLabel;
+		Resolution->RefreshFromPresentation(Result);
+		TestTrue(FString::Printf(TEXT("%s receives failure emphasis"),
+			TerminalLabel),
+			Cast<UBorder>(Resolution->GetWidgetFromName(
+				TEXT("ResolutionTerminalRegion")))->GetBrushColor().Equals(
+					Style.GetColor(EFMCodexPlayerUIColorRole::Danger)));
+	}
+	Result.bRejected = true;
+	Result.DecisionLabel = TEXT("COMMAND REJECTED");
+	Result.ErrorLabel = TEXT("Authoritative state unchanged");
+	Resolution->RefreshFromPresentation(Result);
+	TestTrue(TEXT("Rejected command is distinct from successful resolution"),
+		Resolution->GetWidgetFromName(TEXT("ResolutionRejectedRegion"))
+			->GetVisibility() == ESlateVisibility::Visible
+			&& Resolution->GetWidgetFromName(
+				TEXT("ResolutionAcceptedHierarchy"))->GetVisibility()
+					== ESlateVisibility::Collapsed);
+
+	const TArray<uint8> StateBeforeStyleRefresh =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	FFMCodexUMGMatchScreenViewModel HandoffPresentation =
+		Screen->GetPresentation();
+	HandoffPresentation.Handoff.bVisible = true;
+	HandoffPresentation.Handoff.TitleLabel = TEXT("PASS CONTROL");
+	HandoffPresentation.Handoff.NextPlayerLabel = TEXT("Next Player: Player B");
+	HandoffPresentation.Handoff.ReadyLabel = TEXT("Confirm the handoff, then press Ready");
+	Screen->RefreshFromPresentation(HandoffPresentation);
+	TestTrue(TEXT("Styled handoff remains presentation-only and blocks interaction"),
+		StateBeforeStyleRefresh == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& !Screen->GetInteractionPanel()->GetIsEnabled()
+			&& Cast<UTextBlock>(Screen->GetWidgetFromName(
+				TEXT("HotSeatHandoffText")))->GetText().ToString()
+					== TEXT("PASS CONTROL")
+			&& Cast<UTextBlock>(Screen->GetWidgetFromName(
+				TEXT("HotSeatNextPlayerText")))->GetText().ToString().Contains(
+					TEXT("Player B")));
+
+	FString StyleHeader;
+	FString StyleSource;
+	FString RootSource;
+	FString HeaderSource;
+	FString PitchSource;
+	FString SlotSource;
+	FString CardSource;
+	FString InteractionSource;
+	FString OptionSource;
+	FString ResolutionSource;
+	FString DiceSource;
+	FString ControllerSource;
+	TestTrue(TEXT("Visual style boundary sources load"),
+		LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIStyle.h"), StyleHeader)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIStyle.cpp"), StyleSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"), RootSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexMatchHeaderWidget.cpp"), HeaderSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexPitchWidget.cpp"), PitchSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexPitchSlotWidget.cpp"), SlotSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"), CardSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionPanelWidget.cpp"), InteractionSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionOptionWidget.cpp"), OptionSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexResolutionPanelWidget.cpp"), ResolutionSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexDiceResultWidget.cpp"), DiceSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"), ControllerSource));
+	const FString StyleSources = StyleHeader + StyleSource;
+	const FString StyledWidgetSources = RootSource + HeaderSource + PitchSource
+		+ SlotSource + CardSource + InteractionSource + OptionSource
+		+ ResolutionSource + DiceSource;
+	TestTrue(TEXT("Shared style owns no gameplay authority"),
+		!StyleSources.Contains(TEXT("FMatchPlayState"))
+			&& !StyleSources.Contains(TEXT("AuthoritativeSession"))
+			&& !StyleSources.Contains(TEXT("HostGameMode"))
+			&& !StyleSources.Contains(TEXT("D6Provider"))
+			&& !StyleSources.Contains(TEXT("FormulaResolver"))
+			&& !StyleSources.Contains(TEXT("Legality"))
+			&& !StyleSources.Contains(TEXT("RouteThreshold"))
+			&& !StyleSources.Contains(TEXT("RandRange"))
+			&& !StyleSources.Contains(TEXT("RandomStream")));
+	TestTrue(TEXT("Every major UMG structure consumes one shared visual style"),
+		RootSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& HeaderSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& PitchSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& SlotSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& CardSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& InteractionSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& OptionSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& ResolutionSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& DiceSource.Contains(TEXT("FMCodexPlayerUIStyle.h")));
+	TestTrue(TEXT("Asset integration hooks remain bounded to visual Widgets"),
+		StyledWidgetSources.Contains(TEXT("CardFrameAssetHook"))
+			&& StyledWidgetSources.Contains(TEXT("PortraitAssetHook"))
+			&& StyledWidgetSources.Contains(TEXT("SkillIconHook"))
+			&& StyledWidgetSources.Contains(TEXT("RoleIconHook"))
+			&& StyledWidgetSources.Contains(TEXT("CrestAssetHook"))
+			&& StyledWidgetSources.Contains(TEXT("PitchBackgroundAssetHook"))
+			&& StyledWidgetSources.Contains(TEXT("ResultIconAssetHook")));
+	TestTrue(TEXT("Style introduces no generic dispatch or gameplay calculations"),
+		!StyleSources.Contains(TEXT("ExecuteCommandByName"))
+			&& !StyleSources.Contains(TEXT("CommandDispatcher"))
+			&& !StyleSources.Contains(TEXT("ScoreResolver"))
+			&& !StyleSources.Contains(TEXT("CurrentAttackingPlayer"))
+			&& !StyleSources.Contains(TEXT("ExpectedActingPlayer")));
+	TestTrue(TEXT("Typed Controller and Slate developer surface remain owned"),
+		ControllerSource.Contains(TEXT("BuildControlSurface"))
+			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface"))
+			&& ControllerSource.Contains(TEXT("SubmitCarrier"))
+			&& ControllerSource.Contains(TEXT("ContinueResolution"))
+			&& !ControllerSource.Contains(TEXT("ExecuteCommandByName")));
 	return true;
 }
 

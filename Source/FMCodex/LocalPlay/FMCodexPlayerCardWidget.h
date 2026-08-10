@@ -71,7 +71,8 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
 		Category = "Local Match|Visual Hooks",
 		meta = (AllowPrivateAccess = "true"))
-	FText PortraitPlaceholderLabel = FText::FromString(TEXT("PLAYER\nPORTRAIT"));
+	FText PortraitPlaceholderLabel =
+		FText::FromString(TEXT("PORTRAIT\nASSET READY"));
 
 	UPROPERTY(Transient)
 	TObjectPtr<USizeBox> CardBounds;

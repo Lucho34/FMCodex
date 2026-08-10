@@ -1,5 +1,7 @@
 #include "FMCodexInteractionOptionWidget.h"
 
+#include "FMCodexPlayerUIStyle.h"
+
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
@@ -89,16 +91,20 @@ void UFMCodexInteractionOptionWidget::BuildWidgetTree()
 
 	UBorder* OptionFrame = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("InteractionOptionFrame"));
-	OptionFrame->SetPadding(FMargin(3.0f));
-	OptionFrame->SetBrushColor(FLinearColor(0.08f, 0.18f, 0.24f, 1.0f));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Style.ApplyBorder(*OptionFrame,
+		EFMCodexPlayerUIColorRole::PanelRaised, Style.GetCompactPadding());
 	WidgetTree->RootWidget = OptionFrame;
 
 	OptionButton = WidgetTree->ConstructWidget<UButton>(
 		UButton::StaticClass(), TEXT("InteractionOptionButton"));
+	Style.ApplyButton(
+		*OptionButton, EFMCodexPlayerUIActionRole::Secondary);
 	OptionLabelText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("InteractionOptionLabel"));
 	OptionLabelText->SetAutoWrapText(true);
 	OptionLabelText->SetJustification(ETextJustify::Center);
+	Style.ApplyText(*OptionLabelText, EFMCodexPlayerUITextRole::Body);
 	OptionButton->AddChild(OptionLabelText);
 	OptionFrame->AddChild(OptionButton);
 }
@@ -111,6 +117,12 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	}
 	OptionLabelText->SetText(FText::FromString(
 		Label.IsEmpty() ? TEXT("OPTION UNAVAILABLE") : Label));
+	const bool bConfigured = BindingMode != EBindingMode::None
+		&& !Label.IsEmpty();
+	OptionButton->SetIsEnabled(bConfigured);
+	FFMCodexPlayerUIStyle::Get().ApplyButton(*OptionButton,
+		bConfigured ? EFMCodexPlayerUIActionRole::Secondary
+			: EFMCodexPlayerUIActionRole::Disabled);
 	BindConfiguredHandler();
 }
 

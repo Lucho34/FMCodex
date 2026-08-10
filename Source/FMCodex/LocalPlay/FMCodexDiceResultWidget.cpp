@@ -1,5 +1,7 @@
 #include "FMCodexDiceResultWidget.h"
 
+#include "FMCodexPlayerUIStyle.h"
+
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/SizeBox.h"
@@ -64,8 +66,9 @@ void UFMCodexDiceResultWidget::BuildWidgetTree()
 
 	UBorder* DieFrame = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("DiceResultFrame"));
-	DieFrame->SetPadding(FMargin(10.0f));
-	DieFrame->SetBrushColor(FLinearColor(0.07f, 0.16f, 0.22f, 1.0f));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Style.ApplyBorder(*DieFrame,
+		EFMCodexPlayerUIColorRole::PanelRaised, Style.GetSectionPadding());
 	Bounds->AddChild(DieFrame);
 
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
@@ -74,15 +77,23 @@ void UFMCodexDiceResultWidget::BuildWidgetTree()
 	ContextText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("DiceContextLabel"));
 	ContextText->SetJustification(ETextJustify::Center);
+	Style.ApplyText(*ContextText, EFMCodexPlayerUITextRole::Kicker);
 	Body->AddChildToVerticalBox(ContextText);
+	UBorder* DiceFace = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("DiceFaceAssetHook"));
+	Style.ApplyBorder(*DiceFace,
+		EFMCodexPlayerUIColorRole::NeutralAccent, Style.GetCompactPadding());
 	RawValueText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("DiceRawD6Value"));
 	RawValueText->SetJustification(ETextJustify::Center);
-	Body->AddChildToVerticalBox(RawValueText);
+	Style.ApplyText(*RawValueText, EFMCodexPlayerUITextRole::DiceValue);
+	DiceFace->AddChild(RawValueText);
+	Body->AddChildToVerticalBox(DiceFace);
 	PurposeText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("DicePurposeLabel"));
 	PurposeText->SetJustification(ETextJustify::Center);
 	PurposeText->SetAutoWrapText(true);
+	Style.ApplyText(*PurposeText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToVerticalBox(PurposeText);
 }
 
@@ -98,5 +109,6 @@ void UFMCodexDiceResultWidget::RefreshVisuals()
 	PurposeText->SetText(FText::FromString(
 		Presentation.PurposeLabel.IsEmpty()
 			? TEXT("Authoritative roll") : Presentation.PurposeLabel));
-	RawValueText->SetText(FText::AsNumber(Presentation.RawD6));
+	RawValueText->SetText(FText::FromString(FString::Printf(
+		TEXT("[ %d ]"), Presentation.RawD6)));
 }
