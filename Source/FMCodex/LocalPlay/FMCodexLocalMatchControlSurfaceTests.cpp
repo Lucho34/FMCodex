@@ -1069,7 +1069,7 @@ bool FFMCodexLocalMatchCardPitchPresentationTest::RunTest(
 	for (const FFMCodexLocalMatchPitchRegionView& Region
 		: InitialView.PitchRegions)
 	{
-		PresentedSlotCount += Region.CanonicalSlotIds.Num();
+		PresentedSlotCount += Region.Slots.Num();
 		TestFalse(TEXT("Pitch region has a player-readable label"),
 			Region.Label.IsEmpty());
 	}
@@ -1124,12 +1124,18 @@ bool FFMCodexLocalMatchCardPitchPresentationTest::RunTest(
 	for (const FFMCodexLocalMatchPitchRegionView& Region
 		: Controller->GetInteractionView().PitchRegions)
 	{
-		PresentedPlacements += Region.DeployedCards.Num();
-		for (const FFMCodexLocalMatchCardView& Card : Region.DeployedCards)
+		for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
 		{
+			if (!Slot.bOccupied)
+			{
+				continue;
+			}
+			++PresentedPlacements;
+			const FFMCodexLocalMatchCardView& Card = Slot.Card;
 			if (Card.CardId == DeployedCardId)
 			{
 				bFoundCanonicalCard = Card.bDeployed
+					&& Slot.SlotId == DeployedSlotId
 					&& Card.SlotId == DeployedSlotId
 					&& Card.NeutralSide == ExpectedHalf
 					&& Card.RelativeZone == ExpectedZone;
@@ -1174,7 +1180,10 @@ bool FFMCodexLocalMatchCardPitchPresentationTest::RunTest(
 	for (const FFMCodexLocalMatchPitchRegionView& Region
 		: Controller->GetInteractionView().PitchRegions)
 	{
-		PlacementsAfterFailure += Region.DeployedCards.Num();
+		for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
+		{
+			PlacementsAfterFailure += Slot.bOccupied ? 1 : 0;
+		}
 	}
 	TestEqual(TEXT("Rejected command causes no optimistic card movement"),
 		PlacementsAfterFailure, PresentedPlacements);
@@ -2204,13 +2213,10 @@ bool FFMCodexLocalMatchPlayerFacingScreenFoundationTest::RunTest(
 		ControllerSource.Contains(TEXT("SNew(SExpandableArea)"))
 			&& ControllerSource.Contains(TEXT("Developer Details"))
 			&& ControllerSource.Contains(TEXT("InitiallyCollapsed(true)")));
-	TestTrue(TEXT("Field exposes the three relative football zones"),
-		ControllerSource.Contains(
-			TEXT("EMatchPlayRelativeDeploymentZone::Forward"))
-			&& ControllerSource.Contains(
-				TEXT("EMatchPlayRelativeDeploymentZone::Midfield"))
-			&& ControllerSource.Contains(
-				TEXT("EMatchPlayRelativeDeploymentZone::Backfield")));
+	TestTrue(TEXT("Field exposes canonical side-relative football zones"),
+		ControllerSource.Contains(TEXT("RELATIVE ZONES"))
+			&& ControllerSource.Contains(TEXT("Slot.PlayerARelativeZone"))
+			&& ControllerSource.Contains(TEXT("Slot.PlayerBRelativeZone")));
 	TestTrue(TEXT("Card reference is secondary to readable card data"),
 		ControllerSource.Contains(TEXT("Card reference: "))
 			&& ControllerSource.Contains(TEXT("Skills: ")));
@@ -2239,6 +2245,325 @@ bool FFMCodexLocalMatchPlayerFacingScreenFoundationTest::RunTest(
 			&& !SurfaceBody.Contains(TEXT("RandRange"))
 			&& !SurfaceBody.Contains(TEXT("ResolveFormula("))
 			&& !SurfaceBody.Contains(TEXT("RuntimeState.")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchPitchAndZoneRefinementTest,
+	"FMCodex.LocalPlay.ControlSurface.26.PitchAndZoneRefinement",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchPitchAndZoneRefinementTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	auto* Host = PlayableWorld.GetHost();
+	auto* Controller = PlayableWorld.GetController();
+	TestNotNull(TEXT("Pitch refinement Host exists"), Host);
+	TestNotNull(TEXT("Pitch refinement Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	const FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	Controller->StartNewDemoMatch();
+	AcknowledgeIfPending(*Controller);
+	Controller->BeginDemoOrdinaryAttack();
+	AcknowledgeIfPending(*Controller);
+	TestTrue(TEXT("Pitch fixture begins authoritative deployment"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+
+	const FFMCodexLocalMatchInteractionView InitialView =
+		Controller->GetInteractionView();
+	TestEqual(TEXT("Pitch has two physical halves"),
+		InitialView.PitchRegions.Num(), 2);
+	if (InitialView.PitchRegions.Num() != 2)
+	{
+		return false;
+	}
+	TestEqual(TEXT("Player B half is stably first"),
+		InitialView.PitchRegions[0].NeutralSide,
+		EMatchPlayNeutralSlotSide::NearPlayerB);
+	TestEqual(TEXT("Player A half is stably second"),
+		InitialView.PitchRegions[1].NeutralSide,
+		EMatchPlayNeutralSlotSide::NearPlayerA);
+
+	TArray<FName> PresentedSlotOrder;
+	int32 EmptySlotCount = 0;
+	int32 AttackingSideEmphasisCount = 0;
+	for (const FFMCodexLocalMatchPitchRegionView& Region
+		: InitialView.PitchRegions)
+	{
+		AttackingSideEmphasisCount += Region.bCurrentAttackingSide ? 1 : 0;
+		TestFalse(TEXT("Physical half has side-relative zone context"),
+			Region.ZoneContextLabel.IsEmpty());
+		for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
+		{
+			PresentedSlotOrder.Add(Slot.SlotId);
+			EmptySlotCount += Slot.bOccupied ? 0 : 1;
+			const auto PlayerAZone =
+				FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+					Host->GetMatchSnapshot().Snapshot.DeploymentSlotCatalog,
+					Slot.SlotId,
+					InitialView.CurrentAttackingPlayer,
+					EInitialTurnOrderPlayer::PlayerA);
+			const auto PlayerBZone =
+				FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+					Host->GetMatchSnapshot().Snapshot.DeploymentSlotCatalog,
+					Slot.SlotId,
+					InitialView.CurrentAttackingPlayer,
+					EInitialTurnOrderPlayer::PlayerB);
+			TestTrue(TEXT("Canonical resolver accepts displayed slot for A"),
+				PlayerAZone.bSuccess);
+			TestTrue(TEXT("Canonical resolver accepts displayed slot for B"),
+				PlayerBZone.bSuccess);
+			if (PlayerAZone.bSuccess && PlayerBZone.bSuccess)
+			{
+				TestEqual(TEXT("Player A displayed zone equals canonical resolver"),
+					Slot.PlayerARelativeZone, PlayerAZone.RelativeZone);
+				TestEqual(TEXT("Player B displayed zone equals canonical resolver"),
+					Slot.PlayerBRelativeZone, PlayerBZone.RelativeZone);
+			}
+		}
+	}
+	TestEqual(TEXT("All canonical slots are represented"),
+		PresentedSlotOrder.Num(),
+		Host->GetMatchSnapshot().Snapshot.DeploymentSlotCatalog.Slots.Num());
+	TestEqual(TEXT("Initial field visibly represents every slot as empty"),
+		EmptySlotCount, PresentedSlotOrder.Num());
+	TestEqual(TEXT("Exactly one physical side is emphasized as attacking"),
+		AttackingSideEmphasisCount, 1);
+	TestTrue(TEXT("Direction is derived and player-readable"),
+		InitialView.AttackDirectionLabel.Contains(
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				InitialView.CurrentAttackingPlayer))
+			&& InitialView.AttackDirectionLabel.Contains(TEXT("Half")));
+
+	TArray<FName> ExpectedStableOrder;
+	for (const EMatchPlayNeutralSlotSide Side : {
+		EMatchPlayNeutralSlotSide::NearPlayerB,
+		EMatchPlayNeutralSlotSide::NearPlayerA })
+	{
+		for (const FMatchPlayDeploymentSlotDefinition& Slot
+			: Host->GetMatchSnapshot().Snapshot.DeploymentSlotCatalog.Slots)
+		{
+			if (Slot.NeutralSide == Side)
+			{
+				ExpectedStableOrder.Add(Slot.SlotId);
+			}
+		}
+	}
+	TestTrue(TEXT("Slot ordering is physical-half then canonical catalog order"),
+		PresentedSlotOrder == ExpectedStableOrder);
+
+	auto FindPitchSlot = [](
+		const FFMCodexLocalMatchInteractionView& View,
+		const FName SlotId) -> const FFMCodexLocalMatchPitchSlotView*
+	{
+		for (const FFMCodexLocalMatchPitchRegionView& Region : View.PitchRegions)
+		{
+			if (const FFMCodexLocalMatchPitchSlotView* Slot =
+				Region.Slots.FindByPredicate(
+					[SlotId](const FFMCodexLocalMatchPitchSlotView& Candidate)
+					{
+						return Candidate.SlotId == SlotId;
+					}))
+			{
+				return Slot;
+			}
+		}
+		return nullptr;
+	};
+
+	FName RejectedCardId = NAME_None;
+	FName RejectedSlotId = NAME_None;
+	bool bDeployedGoalkeeper = false;
+	TSet<EInitialTurnOrderPlayer> PopulatedSides;
+	for (int32 Step = 0; Step < 4; ++Step)
+	{
+		AcknowledgeIfPending(*Controller);
+		const FFMCodexLocalMatchInteractionView BeforeView =
+			Controller->GetInteractionView();
+		const EInitialTurnOrderPlayer Side =
+			BeforeView.CurrentLegalDeploymentSide;
+		const bool bPreferGoalkeeper = !bDeployedGoalkeeper
+			&& Side != BeforeView.CurrentAttackingPlayer;
+		const FFMCodexLocalMatchDeploymentGroup* Group =
+			BeforeView.DeploymentGroups.FindByPredicate(
+				[Side, bPreferGoalkeeper](
+					const FFMCodexLocalMatchDeploymentGroup& Candidate)
+				{
+					return Candidate.Side == Side
+						&& Candidate.bGoalkeeper == bPreferGoalkeeper
+						&& !Candidate.LegalSlots.IsEmpty();
+				});
+		TestNotNull(TEXT("Dense fixture has a legal authoritative group"), Group);
+		if (Group == nullptr)
+		{
+			return false;
+		}
+		const FFMCodexLocalMatchSlotView Destination = Group->LegalSlots[0];
+		TestTrue(TEXT("Destination label relates action to zone and canonical slot"),
+			Destination.Label.Contains(TEXT("Slot "))
+				&& Destination.Label.Contains(
+					FFMCodexLocalMatchInteractionViewBuilder::ToString(
+						Destination.RelativeZone))
+				&& Destination.Label.Contains(
+					FFMCodexLocalMatchInteractionViewBuilder::ToString(
+						Destination.NeutralSide)));
+		const FFMCodexLocalMatchCardView ExpectedCard = Group->Card;
+		if (Group->bGoalkeeper)
+		{
+			Controller->DeployGoalkeeper(Destination.SlotId);
+			bDeployedGoalkeeper = true;
+		}
+		else
+		{
+			Controller->DeployOrdinary(Group->CardId, Destination.SlotId);
+			if (RejectedCardId.IsNone())
+			{
+				RejectedCardId = Group->CardId;
+				RejectedSlotId = Destination.SlotId;
+			}
+		}
+		TestTrue(TEXT("Authoritative deployment succeeds"),
+			Controller->GetLastDiagnostic().bHostSuccess);
+		const FFMCodexLocalMatchInteractionView AfterView =
+			Controller->GetInteractionView();
+		const FFMCodexLocalMatchPitchSlotView* PresentedSlot =
+			FindPitchSlot(AfterView, Destination.SlotId);
+		TestNotNull(TEXT("Snapshot rebuild retains exact destination slot"),
+			PresentedSlot);
+		if (PresentedSlot != nullptr)
+		{
+			TestTrue(TEXT("Exact slot becomes occupied by authoritative card"),
+				PresentedSlot->bOccupied
+					&& PresentedSlot->Card.CardId == ExpectedCard.CardId
+					&& PresentedSlot->Card.SlotId == Destination.SlotId);
+			TestTrue(TEXT("Pitch and candidate identity presentation agree"),
+				PresentedSlot->Card.DisplayLabel == ExpectedCard.DisplayLabel
+					&& PresentedSlot->Card.Side == ExpectedCard.Side
+					&& PresentedSlot->Card.SkillLabels == ExpectedCard.SkillLabels);
+			TestEqual(TEXT("Pitch card zone equals destination resolver zone"),
+				PresentedSlot->Card.RelativeZone, Destination.RelativeZone);
+		}
+		PopulatedSides.Add(Side);
+	}
+	TestTrue(TEXT("Dense fixture includes a goalkeeper"), bDeployedGoalkeeper);
+	TestEqual(TEXT("Dense fixture populates both player sides"),
+		PopulatedSides.Num(), 2);
+
+	int32 OccupiedSlotCount = 0;
+	int32 GoalkeeperCount = 0;
+	TArray<FName> OrderAfterDeployments;
+	for (const FFMCodexLocalMatchPitchRegionView& Region
+		: Controller->GetInteractionView().PitchRegions)
+	{
+		for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
+		{
+			OrderAfterDeployments.Add(Slot.SlotId);
+			if (Slot.bOccupied)
+			{
+				++OccupiedSlotCount;
+				GoalkeeperCount += Slot.Card.bGoalkeeper ? 1 : 0;
+			}
+		}
+	}
+	TestEqual(TEXT("Dense pitch drops no deployed cards"), OccupiedSlotCount, 4);
+	TestEqual(TEXT("Goalkeeper is represented exactly once"), GoalkeeperCount, 1);
+	TestTrue(TEXT("Deployment refresh never changes stable slot order"),
+		OrderAfterDeployments == ExpectedStableOrder);
+
+	AcknowledgeIfPending(*Controller);
+	const TArray<uint8> StateBeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	auto PitchSignature = [](const FFMCodexLocalMatchInteractionView& View)
+	{
+		TArray<FString> Result;
+		for (const FFMCodexLocalMatchPitchRegionView& Region : View.PitchRegions)
+		{
+			for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
+			{
+				Result.Add(FString::Printf(
+					TEXT("%s|%s|%s"),
+					*Slot.SlotId.ToString(),
+					Slot.bOccupied ? TEXT("occupied") : TEXT("empty"),
+					*Slot.Card.CardId.ToString()));
+			}
+		}
+		return Result;
+	};
+	const TArray<FString> PitchBeforeRejected =
+		PitchSignature(Controller->GetInteractionView());
+	Controller->DeployOrdinary(RejectedCardId, RejectedSlotId);
+	TestFalse(TEXT("Repeated deployment is rejected"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("Rejected deployment leaves State byte-identical"),
+		StateBeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	TestTrue(TEXT("Rejected deployment causes no optimistic pitch movement"),
+		PitchBeforeRejected == PitchSignature(Controller->GetInteractionView()));
+	TestTrue(TEXT("Rejected deployment remains visibly diagnosed"),
+		Controller->GetResolutionFeedback().bRejected);
+
+	FString ControllerSource;
+	FString ViewSource;
+	TestTrue(TEXT("Pitch controller source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+		ControllerSource));
+	TestTrue(TEXT("Pitch view source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchInteractionView.cpp"),
+		ViewSource));
+	TestTrue(TEXT("Dense slots use wrapping and bounded compact cards"),
+		ControllerSource.Contains(TEXT("MakeCompactPitchCard"))
+			&& ControllerSource.Contains(TEXT("SNew(SWrapBox)"))
+			&& ControllerSource.Contains(TEXT("WidthOverride(218.0f)")));
+	TestTrue(TEXT("Empty slot copy explicitly avoids false legality"),
+		ControllerSource.Contains(TEXT("EMPTY SLOT"))
+			&& ControllerSource.Contains(
+				TEXT("Legality is shown in player actions")));
+	TestTrue(TEXT("Stage 6.1 architecture and handoff remain present"),
+		ControllerSource.Contains(TEXT("MATCH HEADER"))
+			&& ControllerSource.Contains(TEXT("FOOTBALL FIELD"))
+			&& ControllerSource.Contains(TEXT("CURRENT INTERACTION"))
+			&& ControllerSource.Contains(TEXT("RESOLUTION RESULT"))
+			&& ControllerSource.Contains(TEXT("Developer Details"))
+			&& ControllerSource.Contains(TEXT("PASS CONTROL")));
+
+	const int32 PitchSlotStart = ControllerSource.Find(
+		TEXT("TSharedRef<SWidget> MakePitchSlot"));
+	const int32 FeedbackStart = ControllerSource.Find(
+		TEXT("TSharedRef<SWidget> MakeFeedbackPanel"));
+	const FString PitchWidgetBody = PitchSlotStart != INDEX_NONE
+		&& FeedbackStart > PitchSlotStart
+			? ControllerSource.Mid(
+				PitchSlotStart, FeedbackStart - PitchSlotStart)
+			: FString();
+	TestTrue(TEXT("Pitch slots remain non-interactive state presentation"),
+		!PitchWidgetBody.IsEmpty()
+			&& !PitchWidgetBody.Contains(TEXT("MakeButton"))
+			&& !PitchWidgetBody.Contains(TEXT("Host->"))
+			&& !PitchWidgetBody.Contains(TEXT("LegalityEvaluator"))
+			&& !PitchWidgetBody.Contains(TEXT("AvailabilityQuery")));
+
+	const int32 PitchModelStart = ViewSource.Find(
+		TEXT("void BuildPitchRegions"));
+	const int32 SelectionStart = ViewSource.Find(
+		TEXT("void AddSelectionOption"));
+	const FString PitchModelBody = PitchModelStart != INDEX_NONE
+		&& SelectionStart > PitchModelStart
+			? ViewSource.Mid(PitchModelStart, SelectionStart - PitchModelStart)
+			: FString();
+	TestTrue(TEXT("Pitch model reuses canonical resolver without legality logic"),
+		!PitchModelBody.IsEmpty()
+			&& PitchModelBody.Contains(
+				TEXT("FMatchPlayRelativeDeploymentZoneResolver::Resolve"))
+			&& !PitchModelBody.Contains(TEXT("Legality"))
+			&& !PitchModelBody.Contains(TEXT("Availability"))
+			&& !PitchModelBody.Contains(TEXT("ResolveFormula("))
+			&& !PitchModelBody.Contains(TEXT("RandRange")));
 	return true;
 }
 

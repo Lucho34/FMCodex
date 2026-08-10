@@ -93,10 +93,10 @@ namespace FMCodexLocalMatchInteractionView
 			View.RelativeZone = Zone.RelativeZone;
 		}
 		View.Label = FString::Printf(
-			TEXT("%s | %s | %s"),
+			TEXT("%s - Slot %s (%s)"),
+			*FFMCodexLocalMatchInteractionViewBuilder::ToString(View.RelativeZone),
 			*SlotId.ToString(),
-			*FFMCodexLocalMatchInteractionViewBuilder::ToString(View.NeutralSide),
-			*FFMCodexLocalMatchInteractionViewBuilder::ToString(View.RelativeZone));
+			*FFMCodexLocalMatchInteractionViewBuilder::ToString(View.NeutralSide));
 		return View;
 	}
 
@@ -131,6 +131,9 @@ namespace FMCodexLocalMatchInteractionView
 			TEXT("SHO %d | PAS %d | DRI %d | SPD %d | MRK %d | TKL %d | STA %d | LS %d"),
 			A.Shooting, A.Passing, A.Dribbling, A.Speed,
 			A.Marking, A.Tackling, A.Stamina, A.LongShot);
+		View.CompactAttributeSummary = FString::Printf(
+			TEXT("SHO %d | PAS %d | DRI %d | MRK %d | TKL %d"),
+			A.Shooting, A.Passing, A.Dribbling, A.Marking, A.Tackling);
 		if (Card.Snapshot.bHasGoalkeeperAttributes)
 		{
 			const FGoalkeeperAttributes& G = Card.Snapshot.GoalkeeperAttributes;
@@ -138,6 +141,9 @@ namespace FMCodexLocalMatchInteractionView
 				TEXT("HAN %d | POS %d | REF %d | AER %d | ANT %d | 1v1 %d"),
 				G.Handling, G.Positioning, G.Reflex,
 				G.Aerial, G.Anticipation, G.OneOnOne);
+			View.CompactAttributeSummary = FString::Printf(
+				TEXT("HAN %d | REF %d | 1v1 %d"),
+				G.Handling, G.Reflex, G.OneOnOne);
 		}
 		for (const FName SkillId : Card.Snapshot.SkillIds)
 		{
@@ -182,39 +188,93 @@ namespace FMCodexLocalMatchInteractionView
 		FFMCodexLocalMatchInteractionView& View)
 	{
 		for (const EMatchPlayNeutralSlotSide Side : {
-			EMatchPlayNeutralSlotSide::NearPlayerA,
-			EMatchPlayNeutralSlotSide::NearPlayerB })
+			EMatchPlayNeutralSlotSide::NearPlayerB,
+			EMatchPlayNeutralSlotSide::NearPlayerA })
 		{
 			FFMCodexLocalMatchPitchRegionView Region;
 			Region.NeutralSide = Side;
 			Region.Label =
 				FFMCodexLocalMatchInteractionViewBuilder::ToString(Side);
+			Region.bCurrentAttackingSide =
+				(State.RuntimeState.CurrentAttackingPlayer
+						== EInitialTurnOrderPlayer::PlayerA
+					&& Side == EMatchPlayNeutralSlotSide::NearPlayerA)
+				|| (State.RuntimeState.CurrentAttackingPlayer
+						== EInitialTurnOrderPlayer::PlayerB
+					&& Side == EMatchPlayNeutralSlotSide::NearPlayerB);
 			for (const FMatchPlayDeploymentSlotDefinition& Slot
 				: State.DeploymentSlotCatalog.Slots)
 			{
-				if (Slot.NeutralSide == Side)
+				if (Slot.NeutralSide != Side)
 				{
-					Region.CanonicalSlotIds.Add(Slot.SlotId);
+					continue;
 				}
-			}
-			if (State.bHasCurrentAttack)
-			{
-				for (const FMatchPlayDeploymentPlacement& Placement
-					: State.CurrentAttack.DeploymentPlacements)
+
+				FFMCodexLocalMatchPitchSlotView SlotView;
+				SlotView.SlotId = Slot.SlotId;
+				SlotView.Label = FString::Printf(
+					TEXT("Slot %s"), *Slot.SlotId.ToString());
+				SlotView.NeutralSide = Slot.NeutralSide;
+				const auto PlayerAZone =
+					FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+						State.DeploymentSlotCatalog,
+						Slot.SlotId,
+						State.RuntimeState.CurrentAttackingPlayer,
+						EInitialTurnOrderPlayer::PlayerA);
+				const auto PlayerBZone =
+					FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+						State.DeploymentSlotCatalog,
+						Slot.SlotId,
+						State.RuntimeState.CurrentAttackingPlayer,
+						EInitialTurnOrderPlayer::PlayerB);
+				if (PlayerAZone.bSuccess)
 				{
-					const auto Slot =
-						FMatchPlayDeploymentSlotCatalogQuery::FindSlot(
-							State.DeploymentSlotCatalog, Placement.SlotId);
-					if (Slot.bSuccess
-						&& Slot.SlotDefinition.NeutralSide == Side)
+					SlotView.PlayerARelativeZone = PlayerAZone.RelativeZone;
+					Region.PlayerARelativeZone = PlayerAZone.RelativeZone;
+				}
+				if (PlayerBZone.bSuccess)
+				{
+					SlotView.PlayerBRelativeZone = PlayerBZone.RelativeZone;
+					Region.PlayerBRelativeZone = PlayerBZone.RelativeZone;
+				}
+				if (State.bHasCurrentAttack)
+				{
+					const FMatchPlayDeploymentPlacement* Placement =
+						State.CurrentAttack.DeploymentPlacements.FindByPredicate(
+							[&Slot](const FMatchPlayDeploymentPlacement& Candidate)
+							{
+								return Candidate.SlotId == Slot.SlotId;
+							});
+					if (Placement != nullptr)
 					{
-						Region.DeployedCards.Add(MakeCardView(
+						SlotView.bOccupied = true;
+						SlotView.Card = MakeCardView(
 							State,
 							SkillRuleSet,
-							Placement.PlayerSide,
-							Placement.CardId));
+							Placement->PlayerSide,
+							Placement->CardId);
 					}
 				}
+				Region.Slots.Add(MoveTemp(SlotView));
+			}
+			Region.ZoneContextLabel = FString::Printf(
+				TEXT("Player A: %s  |  Player B: %s"),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					Region.PlayerARelativeZone),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					Region.PlayerBRelativeZone));
+			const EMatchPlayRelativeDeploymentZone AttackerZone =
+				State.RuntimeState.CurrentAttackingPlayer
+					== EInitialTurnOrderPlayer::PlayerA
+						? Region.PlayerARelativeZone
+						: Region.PlayerBRelativeZone;
+			if (AttackerZone == EMatchPlayRelativeDeploymentZone::Forward)
+			{
+				View.AttackDirectionLabel = FString::Printf(
+					TEXT("%s attacks toward %s"),
+					*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+						State.RuntimeState.CurrentAttackingPlayer),
+					*Region.Label);
 			}
 			View.PitchRegions.Add(MoveTemp(Region));
 		}

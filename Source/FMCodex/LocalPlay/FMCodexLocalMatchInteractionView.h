@@ -59,6 +59,7 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	FString PositionLabel;
 	FString AttributeSummary;
 	FString GoalkeeperAttributeSummary;
+	FString CompactAttributeSummary;
 	TArray<FString> SkillLabels;
 	bool bGoalkeeper = false;
 	bool bAvailable = false;
@@ -93,13 +94,32 @@ struct FMCODEX_API FFMCodexLocalMatchSelectionOption
 	FFMCodexLocalMatchCardView Card;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchPitchSlotView
+{
+	FName SlotId = NAME_None;
+	FString Label;
+	EMatchPlayNeutralSlotSide NeutralSide =
+		EMatchPlayNeutralSlotSide::None;
+	EMatchPlayRelativeDeploymentZone PlayerARelativeZone =
+		EMatchPlayRelativeDeploymentZone::None;
+	EMatchPlayRelativeDeploymentZone PlayerBRelativeZone =
+		EMatchPlayRelativeDeploymentZone::None;
+	bool bOccupied = false;
+	FFMCodexLocalMatchCardView Card;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchPitchRegionView
 {
 	EMatchPlayNeutralSlotSide NeutralSide =
 		EMatchPlayNeutralSlotSide::None;
 	FString Label;
-	TArray<FName> CanonicalSlotIds;
-	TArray<FFMCodexLocalMatchCardView> DeployedCards;
+	FString ZoneContextLabel;
+	EMatchPlayRelativeDeploymentZone PlayerARelativeZone =
+		EMatchPlayRelativeDeploymentZone::None;
+	EMatchPlayRelativeDeploymentZone PlayerBRelativeZone =
+		EMatchPlayRelativeDeploymentZone::None;
+	bool bCurrentAttackingSide = false;
+	TArray<FFMCodexLocalMatchPitchSlotView> Slots;
 };
 
 enum class EFMCodexLocalMatchRollGroup : uint8
@@ -146,6 +166,7 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	FString ActionLabel;
 	FString ActualBranchLabel;
 	FString OneOnOneChoiceLabel;
+	FString AttackDirectionLabel;
 	TArray<FMatchPlayDeploymentPlacement> DeploymentPlacements;
 	TArray<FFMCodexLocalMatchDeploymentOption> DeploymentOptions;
 	TArray<FFMCodexLocalMatchDeploymentGroup> DeploymentGroups;

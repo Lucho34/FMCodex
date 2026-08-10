@@ -133,6 +133,114 @@ namespace FMCodexLocalMatchPlayerController
 			];
 	}
 
+	TSharedRef<SWidget> MakeCompactPitchCard(
+		const FFMCodexLocalMatchCardView& Card)
+	{
+		TSharedRef<SVerticalBox> Body = SNew(SVerticalBox);
+		auto AddLine = [&Body](
+			const FString& Text,
+			const FLinearColor Color = FLinearColor::White)
+		{
+			Body->AddSlot().AutoHeight().Padding(1.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Text))
+				.ColorAndOpacity(Color)
+				.AutoWrapText(true)
+			];
+		};
+
+		AddLine(Card.DisplayLabel, FLinearColor(1.0f, 0.88f, 0.42f));
+		AddLine(FString::Printf(
+			TEXT("%s  |  %s"),
+			*FFMCodexLocalMatchInteractionViewBuilder::ToString(Card.Side),
+			Card.bGoalkeeper ? TEXT("GK") : *Card.PositionLabel));
+		AddLine(Card.SkillLabels.IsEmpty()
+			? TEXT("Skill: None")
+			: TEXT("Skill: ") + FString::Join(Card.SkillLabels, TEXT(", ")),
+			FLinearColor(0.72f, 0.88f, 0.72f));
+		AddLine(Card.CompactAttributeSummary,
+			FLinearColor(0.78f, 0.82f, 0.86f));
+		FString Status = Card.bUsed ? TEXT("Used") : TEXT("Deployed");
+		if (Card.bGoalkeeperUsedThisMatch)
+		{
+			Status += TEXT(" | GK used this match");
+		}
+		if (Card.bGoalkeeperActivatedThisAttack)
+		{
+			Status += TEXT(" | GK ACTIVE");
+		}
+		AddLine(Status, Card.bGoalkeeperActivatedThisAttack
+			? FLinearColor(1.0f, 0.78f, 0.28f)
+			: FLinearColor(0.64f, 0.70f, 0.76f));
+		AddLine(TEXT("Card reference: ") + Card.CardId.ToString(),
+			FLinearColor(0.43f, 0.49f, 0.55f));
+
+		return SNew(SBorder)
+			.Padding(6.0f)
+			.BorderBackgroundColor(
+				Card.Side == EInitialTurnOrderPlayer::PlayerA
+					? FLinearColor(0.10f, 0.25f, 0.45f, 1.0f)
+					: FLinearColor(0.42f, 0.13f, 0.12f, 1.0f))
+			[
+				Body
+			];
+	}
+
+	TSharedRef<SWidget> MakePitchSlot(
+		const FFMCodexLocalMatchPitchSlotView& Slot)
+	{
+		TSharedRef<SVerticalBox> Body = SNew(SVerticalBox);
+		Body->AddSlot().AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Slot.Label))
+			.ColorAndOpacity(FLinearColor(0.72f, 0.82f, 0.72f))
+			.AutoWrapText(true)
+		];
+		Body->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 5.0f)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(FString::Printf(
+				TEXT("A %s  |  B %s"),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					Slot.PlayerARelativeZone),
+				*FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					Slot.PlayerBRelativeZone))))
+			.ColorAndOpacity(FLinearColor(0.50f, 0.60f, 0.54f))
+		];
+		if (Slot.bOccupied)
+		{
+			Body->AddSlot().AutoHeight()
+			[
+				MakeCompactPitchCard(Slot.Card)
+			];
+		}
+		else
+		{
+			Body->AddSlot().AutoHeight().Padding(5.0f, 12.0f)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT(
+					"EMPTY SLOT\nLegality is shown in player actions")))
+				.Justification(ETextJustify::Center)
+				.ColorAndOpacity(FLinearColor(0.42f, 0.52f, 0.45f))
+				.AutoWrapText(true)
+			];
+		}
+
+		return SNew(SBox)
+			.WidthOverride(218.0f)
+			[
+				SNew(SBorder)
+				.Padding(7.0f)
+				.BorderBackgroundColor(FLinearColor(0.035f, 0.13f, 0.06f, 1.0f))
+				[
+					Body
+				]
+			];
+	}
+
 	TSharedRef<SWidget> MakeFeedbackPanel(
 		const FFMCodexLocalMatchResolutionFeedback& Feedback)
 	{
@@ -1323,90 +1431,99 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 	TSharedRef<SVerticalBox> FieldBody = SNew(SVerticalBox);
 	FieldBody->AddSlot().AutoHeight().Padding(2.0f, 2.0f, 2.0f, 6.0f)
 	[
-		SNew(STextBlock)
-		.Text(FText::FromString(TEXT("FOOTBALL FIELD")))
-		.ColorAndOpacity(FLinearColor(0.72f, 0.94f, 0.74f))
-	];
-	TSharedRef<SHorizontalBox> Pitch = SNew(SHorizontalBox);
-	for (const EMatchPlayNeutralSlotSide FieldSide : {
-		EMatchPlayNeutralSlotSide::NearPlayerB,
-		EMatchPlayNeutralSlotSide::NearPlayerA })
-	{
-		const FFMCodexLocalMatchPitchRegionView* RegionPtr =
-			InteractionView.PitchRegions.FindByPredicate(
-				[FieldSide](const FFMCodexLocalMatchPitchRegionView& Candidate)
-				{
-					return Candidate.NeutralSide == FieldSide;
-				});
-		if (RegionPtr == nullptr)
-		{
-			continue;
-		}
-		const FFMCodexLocalMatchPitchRegionView& Region = *RegionPtr;
-		TSharedRef<SVerticalBox> RegionBody = SNew(SVerticalBox);
-		RegionBody->AddSlot().AutoHeight().Padding(2.0f)
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().FillWidth(1.0f)
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(Region.Label))
-			.Justification(ETextJustify::Center)
-			.ColorAndOpacity(FLinearColor(0.84f, 0.96f, 0.84f))
-		];
-		for (const EMatchPlayRelativeDeploymentZone Zone : {
-			EMatchPlayRelativeDeploymentZone::Forward,
-			EMatchPlayRelativeDeploymentZone::Midfield,
-			EMatchPlayRelativeDeploymentZone::Backfield })
+			.Text(FText::FromString(TEXT("FOOTBALL FIELD")))
+			.ColorAndOpacity(FLinearColor(0.72f, 0.94f, 0.74f))
+		]
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(InteractionView.AttackDirectionLabel))
+			.ColorAndOpacity(FLinearColor(1.0f, 0.82f, 0.35f))
+		]
+	];
+	TSharedRef<SVerticalBox> Pitch = SNew(SVerticalBox);
+	for (int32 RegionIndex = 0;
+		RegionIndex < InteractionView.PitchRegions.Num(); ++RegionIndex)
+	{
+		const FFMCodexLocalMatchPitchRegionView& Region =
+			InteractionView.PitchRegions[RegionIndex];
+		if (RegionIndex > 0)
 		{
-			TSharedRef<SVerticalBox> ZoneBody = SNew(SVerticalBox);
-			bool bHasCards = false;
-			for (const FFMCodexLocalMatchCardView& Card : Region.DeployedCards)
-			{
-				if (Card.RelativeZone == Zone)
-				{
-					bHasCards = true;
-					ZoneBody->AddSlot().AutoHeight().Padding(3.0f)
-					[
-						MakeCardPanel(Card)
-					];
-				}
-			}
-			if (!bHasCards)
-			{
-				ZoneBody->AddSlot().AutoHeight().Padding(4.0f)
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Open space")))
-					.Justification(ETextJustify::Center)
-					.ColorAndOpacity(FLinearColor(0.47f, 0.58f, 0.49f))
-				];
-			}
-			RegionBody->AddSlot().AutoHeight().Padding(1.0f, 4.0f)
+			Pitch->AddSlot().AutoHeight().Padding(4.0f, 7.0f)
 			[
 				SNew(SBorder)
 				.Padding(5.0f)
-				.BorderBackgroundColor(FLinearColor(0.04f, 0.18f, 0.08f, 0.80f))
+				.BorderBackgroundColor(FLinearColor(0.68f, 0.68f, 0.62f, 0.85f))
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(
-							FFMCodexLocalMatchInteractionViewBuilder::ToString(Zone)))
-						.Justification(ETextJustify::Center)
-					]
-					+ SVerticalBox::Slot().AutoHeight()
-					[
-						ZoneBody
-					]
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT(
+						"CENTER / PHYSICAL HALF BOUNDARY")))
+					.Justification(ETextJustify::Center)
+					.ColorAndOpacity(FLinearColor(0.08f, 0.10f, 0.09f))
 				]
 			];
 		}
-		Pitch->AddSlot().FillWidth(1.0f).Padding(3.0f)
+
+		TSharedRef<SWrapBox> SlotGrid = SNew(SWrapBox)
+			.UseAllottedSize(true)
+			.InnerSlotPadding(FVector2D(5.0f, 5.0f));
+		for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
+		{
+			SlotGrid->AddSlot()
+			[
+				MakePitchSlot(Slot)
+			];
+		}
+
+		Pitch->AddSlot().AutoHeight().Padding(2.0f)
 		[
 			SNew(SBorder)
-			.Padding(6.0f)
-			.BorderBackgroundColor(FLinearColor(0.06f, 0.24f, 0.10f, 0.92f))
+			.Padding(9.0f)
+			.BorderBackgroundColor(
+				Region.NeutralSide == EMatchPlayNeutralSlotSide::NearPlayerB
+					? FLinearColor(0.11f, 0.20f, 0.12f, 1.0f)
+					: FLinearColor(0.045f, 0.17f, 0.13f, 1.0f))
 			[
-				RegionBody
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(Region.Label.ToUpper()))
+						.ColorAndOpacity(FLinearColor(0.84f, 0.96f, 0.84f))
+					]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(Region.bCurrentAttackingSide
+							? TEXT("CURRENT ATTACKING SIDE") : TEXT("DEFENDING SIDE")))
+						.ColorAndOpacity(Region.bCurrentAttackingSide
+							? FLinearColor(1.0f, 0.82f, 0.35f)
+							: FLinearColor(0.62f, 0.70f, 0.66f))
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f, 0.0f, 7.0f)
+				[
+					SNew(SBorder)
+					.Padding(5.0f)
+					.BorderBackgroundColor(FLinearColor(0.035f, 0.11f, 0.055f, 1.0f))
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(
+							TEXT("RELATIVE ZONES  |  ") + Region.ZoneContextLabel))
+						.Justification(ETextJustify::Center)
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SlotGrid
+				]
 			]
 		];
 	}
