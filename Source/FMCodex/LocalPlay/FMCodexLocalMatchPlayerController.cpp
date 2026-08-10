@@ -2,6 +2,8 @@
 
 #include "FMCodexLocalMatchDemoConfiguration.h"
 #include "FMCodexLocalMatchHostGameMode.h"
+#include "FMCodexLocalMatchScreenWidget.h"
+#include "FMCodexLocalMatchUMGPresentation.h"
 
 #include "../CoreRules/MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
@@ -462,6 +464,7 @@ namespace FMCodexLocalMatchPlayerController
 AFMCodexLocalMatchPlayerController::AFMCodexLocalMatchPlayerController()
 {
 	bShowMouseCursor = true;
+	PlayerMatchScreenClass = UFMCodexLocalMatchScreenWidget::StaticClass();
 }
 
 const FFMCodexLocalMatchInteractionView&
@@ -493,34 +496,82 @@ bool AFMCodexLocalMatchPlayerController::IsAwaitingHotSeatHandoff() const
 	return HotSeatHandoffState.bAwaitingAcknowledgement;
 }
 
+UFMCodexLocalMatchScreenWidget*
+AFMCodexLocalMatchPlayerController::GetPlayerMatchScreen() const
+{
+	return PlayerMatchScreen;
+}
+
 void AFMCodexLocalMatchPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	RefreshPresentation();
+	if (IsLocalController())
+	{
+		InitializePlayerFacingUI();
+		InitializeDeveloperSlateSurface();
+	}
+}
 
+void AFMCodexLocalMatchPlayerController::InitializePlayerFacingUI()
+{
+	if (!bEnablePlayerUMGSurface || PlayerMatchScreen != nullptr)
+	{
+		return;
+	}
+	UClass* ScreenClass = PlayerMatchScreenClass != nullptr
+		? PlayerMatchScreenClass.Get()
+		: UFMCodexLocalMatchScreenWidget::StaticClass();
+	PlayerMatchScreen = Player != nullptr
+		? CreateWidget<UFMCodexLocalMatchScreenWidget>(this, ScreenClass)
+		: CreateWidget<UFMCodexLocalMatchScreenWidget>(GetWorld(), ScreenClass);
+	if (PlayerMatchScreen == nullptr)
+	{
+		return;
+	}
+	PlayerMatchScreen->SetMatchController(this);
+	RefreshPlayerMatchScreen();
 	if (IsLocalController() && GEngine != nullptr
 		&& GEngine->GameViewport != nullptr)
 	{
-		SAssignNew(SurfaceContainer, SBox)
-		[
-			BuildControlSurface()
-		];
-		ViewportWidget = SNew(SBorder)
-			.Padding(12.0f)
-			.BorderBackgroundColor(FLinearColor(0.02f, 0.02f, 0.02f, 0.94f))
-			[
-				SurfaceContainer.ToSharedRef()
-			];
-		GEngine->GameViewport->AddViewportWidgetContent(
-			ViewportWidget.ToSharedRef(), 100);
-		FInputModeUIOnly InputMode;
+		PlayerMatchScreen->AddToViewport(50);
+		FInputModeGameAndUI InputMode;
+		InputMode.SetHideCursorDuringCapture(false);
+		InputMode.SetWidgetToFocus(PlayerMatchScreen->TakeWidget());
 		SetInputMode(InputMode);
 	}
+}
+
+void AFMCodexLocalMatchPlayerController::InitializeDeveloperSlateSurface()
+{
+	if (!bEnableDeveloperSlateSurface || SurfaceContainer.IsValid()
+		|| GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+	SAssignNew(SurfaceContainer, SBox)
+	[
+		BuildControlSurface()
+	];
+	ViewportWidget = SNew(SBorder)
+		.Padding(12.0f)
+		.BorderBackgroundColor(FLinearColor(0.02f, 0.02f, 0.02f, 0.94f))
+		[
+			SurfaceContainer.ToSharedRef()
+		];
+	GEngine->GameViewport->AddViewportWidgetContent(
+		ViewportWidget.ToSharedRef(), 100);
 }
 
 void AFMCodexLocalMatchPlayerController::EndPlay(
 	const EEndPlayReason::Type EndPlayReason)
 {
+	if (PlayerMatchScreen != nullptr)
+	{
+		PlayerMatchScreen->ClearMatchController();
+		PlayerMatchScreen->RemoveFromParent();
+		PlayerMatchScreen = nullptr;
+	}
 	if (ViewportWidget.IsValid() && GEngine != nullptr
 		&& GEngine->GameViewport != nullptr)
 	{
@@ -1325,10 +1376,27 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 
 void AFMCodexLocalMatchPlayerController::RebuildControlSurface()
 {
+	RefreshPlayerMatchScreen();
 	if (SurfaceContainer.IsValid())
 	{
 		SurfaceContainer->SetContent(BuildControlSurface());
 	}
+}
+
+void AFMCodexLocalMatchPlayerController::RefreshPlayerMatchScreen()
+{
+	if (PlayerMatchScreen == nullptr)
+	{
+		return;
+	}
+	PlayerMatchScreen->RefreshFromPresentation(
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			InteractionView,
+			ResolutionFeedback,
+			LastDiagnostic.Message,
+			HotSeatHandoffState.bAwaitingAcknowledgement,
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				HotSeatHandoffState.PendingPlayer)));
 }
 
 TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()

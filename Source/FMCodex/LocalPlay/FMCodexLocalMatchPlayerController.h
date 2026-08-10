@@ -9,6 +9,7 @@
 #include "FMCodexLocalMatchPlayerController.generated.h"
 
 class AFMCodexLocalMatchHostGameMode;
+class UFMCodexLocalMatchScreenWidget;
 class SBox;
 class SWidget;
 
@@ -59,7 +60,9 @@ public:
 		GetResolutionFeedback() const;
 	const FFMCodexLocalMatchHotSeatHandoffState& GetHotSeatHandoffState() const;
 	bool IsAwaitingHotSeatHandoff() const;
+	UFMCodexLocalMatchScreenWidget* GetPlayerMatchScreen() const;
 
+	void InitializePlayerFacingUI();
 	void RefreshPresentation();
 	void AcknowledgeHotSeatHandoff();
 	void StartNewDemoMatch();
@@ -85,6 +88,8 @@ protected:
 
 private:
 	AFMCodexLocalMatchHostGameMode* FindLocalMatchHost() const;
+	void InitializeDeveloperSlateSurface();
+	void RefreshPlayerMatchScreen();
 	void RebuildControlSurface();
 	TSharedRef<SWidget> BuildControlSurface();
 	void UpdateHotSeatHandoff(
@@ -142,6 +147,19 @@ private:
 	FFMCodexLocalMatchHotSeatHandoffState HotSeatHandoffState;
 	FFMCodexLocalMatchCommandDiagnostic LastDiagnostic;
 	FFMCodexLocalMatchResolutionFeedback ResolutionFeedback;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|UI")
+	TSubclassOf<UFMCodexLocalMatchScreenWidget> PlayerMatchScreenClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|UI")
+	bool bEnablePlayerUMGSurface = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|UI")
+	bool bEnableDeveloperSlateSurface = false;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexLocalMatchScreenWidget> PlayerMatchScreen;
+
 	TSharedPtr<SWidget> ViewportWidget;
 	TSharedPtr<SBox> SurfaceContainer;
 };

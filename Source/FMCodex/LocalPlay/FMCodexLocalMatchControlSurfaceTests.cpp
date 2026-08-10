@@ -2,6 +2,9 @@
 #include "FMCodexLocalMatchHostGameMode.h"
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchPlayerController.h"
+#include "FMCodexLocalMatchScreenWidget.h"
+#include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexPlayerCardWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -2916,6 +2919,348 @@ bool FFMCodexLocalMatchCardVisualHierarchyRefinementTest::RunTest(
 	TestTrue(TEXT("Card status derivation contains no legality calculation"),
 		ViewSource.Contains(TEXT("FinalizeCardPresentation"))
 			&& !ViewSource.Contains(TEXT("StatusSummaryLabel ==")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchUMGPlayerFacingFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.28.UMGPlayerFacingFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchUMGPlayerFacingFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("UMG foundation Host exists"), Host);
+	TestNotNull(TEXT("UMG foundation Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Controller creates and owns root UMG screen"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	TestTrue(TEXT("Widget input boundary points only to its Controller"),
+		Screen->GetMatchController() == Controller
+			&& (Screen->GetOwningPlayer() == Controller
+				|| Screen->GetOwningPlayer() == nullptr));
+	for (const FName RegionName : {
+		FName(TEXT("MatchHeaderRegion")),
+		FName(TEXT("FootballCardFieldRegion")),
+		FName(TEXT("CurrentInteractionRegion")),
+		FName(TEXT("ResolutionResultRegion")) })
+	{
+		TestNotNull(FString::Printf(TEXT("Root screen exposes %s"),
+			*RegionName.ToString()), Screen->GetWidgetFromName(RegionName));
+	}
+	TestTrue(TEXT("No-match UMG exposes explicit Start intent"),
+		Screen->GetPresentation().Interaction.bCanStartNewMatch
+			&& Screen->GetPresentation().Interaction.CategoryLabel
+				== TEXT("Start Match"));
+
+	Screen->RequestStartNewMatch();
+	TestTrue(TEXT("UMG StartNewMatch reaches typed authoritative Host path"),
+		Host->HasActiveLocalMatch()
+			&& Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("StartNewLocalMatch"));
+	const FFMCodexLocalMatchInteractionView& StartedView =
+		Controller->GetInteractionView();
+	const FFMCodexUMGMatchScreenViewModel& StartedUMG =
+		Screen->GetPresentation();
+	TestTrue(TEXT("UMG header equals authoritative presentation contract"),
+		StartedUMG.Header.ScoreLabel == FString::Printf(
+			TEXT("%d - %d"), StartedView.PlayerAScore,
+			StartedView.PlayerBScore)
+			&& StartedUMG.Header.CurrentAttackerLabel.Contains(
+				FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					StartedView.CurrentAttackingPlayer))
+			&& StartedUMG.Header.ExpectedActorLabel.Contains(
+				FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					StartedView.ExpectedActingPlayer))
+			&& StartedUMG.Header.bMatchEnded == StartedView.bMatchEnded);
+	TestTrue(TEXT("Authoritative human transition displays UMG handoff"),
+		Controller->IsAwaitingHotSeatHandoff()
+			&& StartedUMG.Handoff.bVisible
+			&& StartedUMG.Handoff.TitleLabel == TEXT("PASS CONTROL")
+			&& StartedUMG.Handoff.NextPlayerLabel.Contains(TEXT("Player")));
+	if (!Controller->IsAwaitingHotSeatHandoff())
+	{
+		return false;
+	}
+	const TArray<uint8> StateBeforeReady =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestReady();
+	TestTrue(TEXT("UMG Ready is presentation-only and reveals controls"),
+		!Controller->IsAwaitingHotSeatHandoff()
+			&& !Screen->GetPresentation().Handoff.bVisible
+			&& StateBeforeReady
+				== SerializeState(Host->GetMatchSnapshot().Snapshot));
+
+	Screen->RequestBeginOrdinaryAttack();
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+	TestTrue(TEXT("UMG BeginAttack creates authoritative CurrentAttack"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().bCurrentAttackActive
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::Deploy
+			&& Screen->GetPresentation().Interaction.bCanFinishDeployment);
+
+	const FFMCodexLocalMatchInteractionView& DeploymentView =
+		Controller->GetInteractionView();
+	const FFMCodexUMGMatchScreenViewModel& DeploymentUMG =
+		Screen->GetPresentation();
+	int32 PitchSlotCount = 0;
+	for (const FFMCodexUMGPitchRegionViewModel& Region
+		: DeploymentUMG.PitchRegions)
+	{
+		PitchSlotCount += Region.Slots.Num();
+	}
+	TestTrue(TEXT("UMG pitch preserves two physical halves and 20 slots"),
+		DeploymentUMG.PitchRegions.Num() == 2 && PitchSlotCount == 20);
+	TestTrue(TEXT("UMG interaction preserves bounded candidate cards"),
+		!DeploymentUMG.Interaction.CandidateCards.IsEmpty()
+			&& DeploymentUMG.Interaction.CandidateCards.Num()
+				== DeploymentView.DeploymentGroups.Num());
+
+	TSet<FString> SkillFamilies;
+	for (const FFMCodexUMGCardViewModel& Card
+		: DeploymentUMG.Interaction.CandidateCards)
+	{
+		for (const FString& Skill : Card.SkillLabels)
+		{
+			SkillFamilies.Add(Skill);
+		}
+	}
+	for (const TCHAR* Family : {
+		TEXT("Long Shot"), TEXT("Cut Inside"), TEXT("Pass Control"),
+		TEXT("Cross"), TEXT("Through Ball") })
+	{
+		TestTrue(FString::Printf(TEXT("UMG retains %s family"), Family),
+			SkillFamilies.Contains(Family));
+	}
+
+	const FFMCodexLocalMatchDeploymentGroup* OrdinaryGroup =
+		DeploymentView.DeploymentGroups.FindByPredicate(
+			[](const FFMCodexLocalMatchDeploymentGroup& Candidate)
+			{
+				return !Candidate.bGoalkeeper
+					&& !Candidate.LegalSlots.IsEmpty();
+			});
+	TestNotNull(TEXT("UMG deployment proof finds ordinary candidate"),
+		OrdinaryGroup);
+	if (OrdinaryGroup == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchCardView OrdinaryCardView = OrdinaryGroup->Card;
+	const FFMCodexUMGCardViewModel* CandidateCard =
+		DeploymentUMG.Interaction.CandidateCards.FindByPredicate(
+			[OrdinaryGroup](const FFMCodexUMGCardViewModel& Candidate)
+			{
+				return Candidate.CardId == OrdinaryGroup->CardId;
+			});
+	TestNotNull(TEXT("UMG candidate has shared Card identity"), CandidateCard);
+	if (CandidateCard != nullptr)
+	{
+		TestTrue(TEXT("UMG Card DTO preserves Stage 6.3 semantics"),
+			CandidateCard->IdentityLabel == OrdinaryGroup->Card.DisplayLabel
+				&& CandidateCard->RoleLabel
+					== OrdinaryGroup->Card.CompactRoleLabel
+				&& CandidateCard->SkillLabels == OrdinaryGroup->Card.SkillLabels
+				&& CandidateCard->CompactAttributeSummary
+					== OrdinaryGroup->Card.CompactAttributeSummary
+				&& CandidateCard->StatusLabels
+					== OrdinaryGroup->Card.StatusLabels);
+	}
+
+	const FName DeployedCardId = OrdinaryGroup->CardId;
+	const FName DeployedSlotId = OrdinaryGroup->LegalSlots[0].SlotId;
+	const TArray<uint8> BeforeDeployment =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestDeployOrdinary(DeployedCardId, DeployedSlotId);
+	TestTrue(TEXT("Representative typed UMG deployment succeeds"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& BeforeDeployment
+				!= SerializeState(Host->GetMatchSnapshot().Snapshot));
+	auto FindUMGSlot = [](const FFMCodexUMGMatchScreenViewModel& View,
+		const FName SlotId) -> const FFMCodexUMGPitchSlotViewModel*
+	{
+		for (const FFMCodexUMGPitchRegionViewModel& Region : View.PitchRegions)
+		{
+			if (const FFMCodexUMGPitchSlotViewModel* Found =
+				Region.Slots.FindByPredicate(
+					[SlotId](const FFMCodexUMGPitchSlotViewModel& Candidate)
+					{
+						return Candidate.SlotId == SlotId;
+					}))
+			{
+				return Found;
+			}
+		}
+		return nullptr;
+	};
+	const FFMCodexUMGPitchSlotViewModel* DeployedSlot =
+		FindUMGSlot(Screen->GetPresentation(), DeployedSlotId);
+	TestNotNull(TEXT("Successful UMG command refreshes exact pitch slot"),
+		DeployedSlot);
+	if (DeployedSlot != nullptr)
+	{
+		TestTrue(TEXT("Candidate-to-pitch UMG identity remains equivalent"),
+			DeployedSlot->bOccupied
+				&& DeployedSlot->Card.CardId == DeployedCardId
+				&& DeployedSlot->Card.IdentityLabel
+					== OrdinaryCardView.DisplayLabel
+				&& DeployedSlot->Card.SkillLabels
+					== OrdinaryCardView.SkillLabels);
+	}
+
+	const TArray<uint8> BeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestDeployOrdinary(DeployedCardId, DeployedSlotId);
+	TestTrue(TEXT("Rejected UMG intent leaves State unchanged and refreshes failure"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& BeforeRejected
+				== SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& Screen->GetPresentation().Resolution.bVisible
+			&& Screen->GetPresentation().Resolution.bRejected
+			&& !Screen->GetPresentation().Resolution.ErrorLabel.IsEmpty());
+	const FFMCodexUMGPitchSlotViewModel* AfterRejectedSlot =
+		FindUMGSlot(Screen->GetPresentation(), DeployedSlotId);
+	TestTrue(TEXT("Rejected UMG intent performs no optimistic card mutation"),
+		AfterRejectedSlot != nullptr && AfterRejectedSlot->bOccupied
+			&& AfterRejectedSlot->Card.CardId == DeployedCardId
+			&& AfterRejectedSlot->Card.SkillLabels
+				== OrdinaryCardView.SkillLabels);
+
+	FFMCodexLocalMatchCardView GoalkeeperSource;
+	GoalkeeperSource.CardId = TEXT("TestGK");
+	GoalkeeperSource.DisplayLabel = TEXT("Card TestGK");
+	GoalkeeperSource.CompactRoleLabel = TEXT("GK");
+	GoalkeeperSource.SkillLabels = { TEXT("Cross"), TEXT("Through Ball") };
+	GoalkeeperSource.SkillSummaryLabel = TEXT("Cross  |  Through Ball");
+	GoalkeeperSource.CompactAttributeSummary =
+		TEXT("HAN 5 | REF 4 | AER 3 | 1v1 2");
+	GoalkeeperSource.GoalkeeperAttributeSummary =
+		TEXT("HAN 5 | POS 4 | REF 4 | AER 3 | ANT 2 | 1v1 2");
+	GoalkeeperSource.StatusLabels = { TEXT("GK USED"), TEXT("GK ACTIVE") };
+	GoalkeeperSource.StatusSummaryLabel = TEXT("GK USED  |  GK ACTIVE");
+	GoalkeeperSource.bGoalkeeper = true;
+	const FFMCodexUMGCardViewModel GoalkeeperDTO =
+		FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(GoalkeeperSource);
+	TestTrue(TEXT("UMG DTO retains complete multi-Skill GK presentation"),
+		GoalkeeperDTO.bGoalkeeper && GoalkeeperDTO.RoleLabel == TEXT("GK")
+			&& GoalkeeperDTO.SkillLabels.Num() == 2
+			&& GoalkeeperDTO.FullAttributeSummary
+				== GoalkeeperSource.GoalkeeperAttributeSummary
+			&& GoalkeeperDTO.StatusLabels == GoalkeeperSource.StatusLabels);
+	const FFMCodexUMGCardViewModel MissingCardDTO =
+		FFMCodexLocalMatchUMGPresentationBuilder::BuildCard({});
+	TestTrue(TEXT("UMG Card DTO missing-data fallback is bounded"),
+		MissingCardDTO.IdentityLabel == TEXT("UNKNOWN CARD")
+			&& MissingCardDTO.RoleLabel == TEXT("ROLE N/A")
+			&& MissingCardDTO.SkillSummaryLabel == TEXT("NO SKILL")
+			&& MissingCardDTO.StatusSummaryLabel == TEXT("UNAVAILABLE"));
+
+	FFMCodexLocalMatchResolutionFeedback FeedbackFixture;
+	FeedbackFixture.bVisible = true;
+	FeedbackFixture.bTerminal = true;
+	FeedbackFixture.StepTitle = TEXT("STEP FIXTURE");
+	FeedbackFixture.DiceEntries.Add({
+		EFMCodexLocalMatchRollGroup::PostRoute, TEXT("Fixture"), 6 });
+	FeedbackFixture.DecisionSummary = TEXT("DECISION FIXTURE");
+	FeedbackFixture.TerminalSummary = TEXT("RESULT: GOAL");
+	const FFMCodexUMGMatchScreenViewModel FeedbackDTO =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			Controller->GetInteractionView(), FeedbackFixture,
+			Controller->GetLastDiagnostic().Message, false, FString());
+	TestTrue(TEXT("UMG resolution DTO preserves Step/Dice/Decision/Terminal"),
+		FeedbackDTO.Resolution.bVisible
+			&& FeedbackDTO.Resolution.StepLabel == TEXT("STEP FIXTURE")
+			&& FeedbackDTO.Resolution.DiceLabels.Num() == 1
+			&& FeedbackDTO.Resolution.DiceLabels[0].Contains(TEXT("D6 6"))
+			&& FeedbackDTO.Resolution.DecisionLabel
+				== TEXT("DECISION FIXTURE")
+			&& FeedbackDTO.Resolution.TerminalLabel == TEXT("RESULT: GOAL"));
+
+	FString RootWidgetHeader;
+	FString RootWidgetSource;
+	FString CardWidgetSource;
+	FString PresentationHeader;
+	FString PresentationSource;
+	FString ControllerSource;
+	FString BuildRules;
+	TestTrue(TEXT("UMG source boundary files load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.h"),
+			RootWidgetHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+				RootWidgetSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"),
+				CardWidgetSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchUMGPresentation.h"),
+				PresentationHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchUMGPresentation.cpp"),
+				PresentationSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+				ControllerSource)
+			&& LoadProductionSource(TEXT("Source/FMCodex/FMCodex.Build.cs"),
+				BuildRules));
+	const FString WidgetSources = RootWidgetHeader + RootWidgetSource
+		+ CardWidgetSource;
+	TestTrue(TEXT("Widget has no Session/provider/State authority escape"),
+		!WidgetSources.Contains(TEXT("AuthoritativeSession"))
+			&& !WidgetSources.Contains(TEXT("D6Provider"))
+			&& !WidgetSources.Contains(TEXT("FMatchPlayState"))
+			&& !WidgetSources.Contains(TEXT("HostGameMode")));
+	TestTrue(TEXT("Widget contains no rule, Formula, route, or legality logic"),
+		!WidgetSources.Contains(TEXT("FormulaResolver"))
+			&& !WidgetSources.Contains(TEXT("Legality"))
+			&& !WidgetSources.Contains(TEXT("RandRange"))
+			&& !WidgetSources.Contains(TEXT("RouteThreshold")));
+	TestTrue(TEXT("Widget exposes explicit typed intents, not generic dispatch"),
+		RootWidgetHeader.Contains(TEXT("RequestStartNewMatch"))
+			&& RootWidgetHeader.Contains(TEXT("RequestBeginOrdinaryAttack"))
+			&& RootWidgetHeader.Contains(TEXT("RequestDeployOrdinary"))
+			&& !WidgetSources.Contains(TEXT("ExecuteCommandByName"))
+			&& !WidgetSources.Contains(TEXT("ProcessEvent"))
+			&& !WidgetSources.Contains(TEXT("FindFunction")));
+	TestTrue(TEXT("Presentation DTO is bounded and never mirrors MatchPlay State"),
+		PresentationHeader.Contains(TEXT("FFMCodexUMGMatchHeaderViewModel"))
+			&& PresentationHeader.Contains(TEXT("FFMCodexUMGCardViewModel"))
+			&& PresentationHeader.Contains(TEXT("FFMCodexUMGPitchSlotViewModel"))
+			&& PresentationHeader.Contains(TEXT("FFMCodexUMGResolutionViewModel"))
+			&& !PresentationHeader.Contains(TEXT("FMatchPlayState")));
+	TestTrue(TEXT("Controller owns UMG lifecycle and preserves Slate fallback"),
+		ControllerSource.Contains(TEXT("InitializePlayerFacingUI"))
+			&& ControllerSource.Contains(TEXT("RefreshPlayerMatchScreen"))
+			&& ControllerSource.Contains(TEXT("PlayerMatchScreen->RemoveFromParent"))
+			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface"))
+			&& ControllerSource.Contains(TEXT("BuildControlSurface"))
+			&& ControllerSource.Contains(TEXT("bEnableDeveloperSlateSurface")));
+	TestTrue(TEXT("UMG is the only added module dependency"),
+		BuildRules.Contains(TEXT("\"Slate\", \"SlateCore\", \"UMG\""))
+			&& !BuildRules.Contains(
+				TEXT("PrivateDependencyModuleNames.Add(\"OnlineSubsystemSteam\")")));
 	return true;
 }
 
