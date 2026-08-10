@@ -9,10 +9,9 @@
 
 class AFMCodexLocalMatchPlayerController;
 class UBorder;
-class UButton;
+class UFMCodexInteractionPanelWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
-class UHorizontalBox;
 class UTextBlock;
 class UVerticalBox;
 class SWidget;
@@ -44,7 +43,40 @@ public:
 	void RequestDeployOrdinary(FName CardId, FName SlotId);
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestDeployGoalkeeper(FName SlotId);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
 	void RequestFinishDeployment();
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestSubmitCarrier(FName CardId);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestSubmitMarker(FName CardId);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestSubmitSkill(FName SkillId);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestSubmitRunner(FName CardId);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestSubmitHelper(FName CardId);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestDeclineSelection();
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestResolveNoLegalSelection();
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestSubmitBranchIntent(EFMCodexUMGBranchIntent Intent);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestSubmitOneOnOneChoice(EFMCodexUMGOneOnOneChoice Choice);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
+	void RequestContinueResolution();
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
 	void RequestReady();
@@ -52,6 +84,7 @@ public:
 	const FFMCodexUMGMatchScreenViewModel& GetPresentation() const;
 	AFMCodexLocalMatchPlayerController* GetMatchController() const;
 	UFMCodexPitchWidget* GetPitchWidget() const;
+	UFMCodexInteractionPanelWidget* GetInteractionPanel() const;
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
 		GetRenderedCandidateCardWidgets() const;
 
@@ -62,7 +95,6 @@ protected:
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
-	void RefreshInteraction();
 
 	UFUNCTION()
 	void HandleStartNewMatchClicked();
@@ -71,7 +103,43 @@ private:
 	void HandleBeginOrdinaryAttackClicked();
 
 	UFUNCTION()
+	void HandleDeployOrdinaryRequested(FName CardId, FName SlotId);
+
+	UFUNCTION()
+	void HandleDeployGoalkeeperRequested(FName SlotId);
+
+	UFUNCTION()
 	void HandleFinishDeploymentClicked();
+
+	UFUNCTION()
+	void HandleCarrierRequested(FName CardId);
+
+	UFUNCTION()
+	void HandleMarkerRequested(FName CardId);
+
+	UFUNCTION()
+	void HandleSkillRequested(FName SkillId);
+
+	UFUNCTION()
+	void HandleRunnerRequested(FName CardId);
+
+	UFUNCTION()
+	void HandleHelperRequested(FName CardId);
+
+	UFUNCTION()
+	void HandleDeclineRequested();
+
+	UFUNCTION()
+	void HandleNoLegalRequested();
+
+	UFUNCTION()
+	void HandleBranchRequested(EFMCodexUMGBranchIntent Intent);
+
+	UFUNCTION()
+	void HandleOneOnOneRequested(EFMCodexUMGOneOnOneChoice Choice);
+
+	UFUNCTION()
+	void HandleContinueRequested();
 
 	UFUNCTION()
 	void HandleReadyClicked();
@@ -96,30 +164,11 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexPitchWidget> PitchWidget;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Card Presentation")
-	TSubclassOf<UFMCodexPlayerCardWidget> InteractionCardWidgetClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Interaction Presentation")
+	TSubclassOf<UFMCodexInteractionPanelWidget> InteractionPanelWidgetClass;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> InteractionTitleText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> InteractionActionsText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UHorizontalBox> CandidateCardsBody;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UFMCodexPlayerCardWidget>>
-		RenderedCandidateCardWidgets;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> StartNewMatchButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> BeginOrdinaryAttackButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> FinishDeploymentButton;
+	TObjectPtr<UFMCodexInteractionPanelWidget> InteractionPanel;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ResolutionText;

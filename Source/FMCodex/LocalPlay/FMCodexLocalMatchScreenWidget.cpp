@@ -1,17 +1,15 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 
+#include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexLocalMatchPlayerController.h"
-#include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPitchWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
-#include "Components/HorizontalBox.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/ScrollBox.h"
-#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 
@@ -56,7 +54,7 @@ UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
 	: Super(ObjectInitializer)
 {
 	PitchWidgetClass = UFMCodexPitchWidget::StaticClass();
-	InteractionCardWidgetClass = UFMCodexPlayerCardWidget::StaticClass();
+	InteractionPanelWidgetClass = UFMCodexInteractionPanelWidget::StaticClass();
 }
 
 void UFMCodexLocalMatchScreenWidget::NativeOnInitialized()
@@ -112,10 +110,18 @@ UFMCodexPitchWidget* UFMCodexLocalMatchScreenWidget::GetPitchWidget() const
 	return PitchWidget;
 }
 
+UFMCodexInteractionPanelWidget*
+UFMCodexLocalMatchScreenWidget::GetInteractionPanel() const
+{
+	return InteractionPanel;
+}
+
 const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
 UFMCodexLocalMatchScreenWidget::GetRenderedCandidateCardWidgets() const
 {
-	return RenderedCandidateCardWidgets;
+	static const TArray<TObjectPtr<UFMCodexPlayerCardWidget>> Empty;
+	return InteractionPanel != nullptr
+		? InteractionPanel->GetRenderedCandidateCardWidgets() : Empty;
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
@@ -144,11 +150,133 @@ void UFMCodexLocalMatchScreenWidget::RequestDeployOrdinary(
 	}
 }
 
+void UFMCodexLocalMatchScreenWidget::RequestDeployGoalkeeper(
+	const FName SlotId)
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->DeployGoalkeeper(SlotId);
+	}
+}
+
 void UFMCodexLocalMatchScreenWidget::RequestFinishDeployment()
 {
 	if (MatchController != nullptr)
 	{
 		MatchController->FinishDeployment();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitCarrier(const FName CardId)
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->SubmitCarrier(CardId);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitMarker(const FName CardId)
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->SubmitMarker(CardId);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitSkill(const FName SkillId)
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->SubmitSkill(SkillId);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitRunner(const FName CardId)
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->SubmitRunner(CardId);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitHelper(const FName CardId)
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->SubmitHelper(CardId);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestDeclineSelection()
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->DeclineCurrentSelection();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestResolveNoLegalSelection()
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->ResolveNoLegalCurrentSelection();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitBranchIntent(
+	const EFMCodexUMGBranchIntent Intent)
+{
+	if (MatchController == nullptr)
+	{
+		return;
+	}
+	switch (Intent)
+	{
+	case EFMCodexUMGBranchIntent::DirectShot:
+		MatchController->SubmitBranchIntent(
+			EMatchPlayElectiveBranchIntent::DirectShot);
+		break;
+	case EFMCodexUMGBranchIntent::DeadCorner:
+		MatchController->SubmitBranchIntent(
+			EMatchPlayElectiveBranchIntent::DeadCorner);
+		break;
+	case EFMCodexUMGBranchIntent::CrossHigh:
+		MatchController->SubmitBranchIntent(
+			EMatchPlayElectiveBranchIntent::CrossHigh);
+		break;
+	case EFMCodexUMGBranchIntent::CrossLow:
+		MatchController->SubmitBranchIntent(
+			EMatchPlayElectiveBranchIntent::CrossLow);
+		break;
+	default:
+		break;
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitOneOnOneChoice(
+	const EFMCodexUMGOneOnOneChoice Choice)
+{
+	if (MatchController == nullptr)
+	{
+		return;
+	}
+	if (Choice == EFMCodexUMGOneOnOneChoice::ChipShot)
+	{
+		MatchController->SubmitOneOnOneShotChoice(
+			EMatchPlayThroughBallOneOnOneShotChoice::ChipShot);
+	}
+	else if (Choice == EFMCodexUMGOneOnOneChoice::DirectShot)
+	{
+		MatchController->SubmitOneOnOneShotChoice(
+			EMatchPlayThroughBallOneOnOneShotChoice::DirectShot);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
+{
+	if (MatchController != nullptr)
+	{
+		MatchController->ContinueResolution();
 	}
 }
 
@@ -170,9 +298,74 @@ void UFMCodexLocalMatchScreenWidget::HandleBeginOrdinaryAttackClicked()
 	RequestBeginOrdinaryAttack();
 }
 
+void UFMCodexLocalMatchScreenWidget::HandleDeployOrdinaryRequested(
+	const FName CardId,
+	const FName SlotId)
+{
+	RequestDeployOrdinary(CardId, SlotId);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleDeployGoalkeeperRequested(
+	const FName SlotId)
+{
+	RequestDeployGoalkeeper(SlotId);
+}
+
 void UFMCodexLocalMatchScreenWidget::HandleFinishDeploymentClicked()
 {
 	RequestFinishDeployment();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleCarrierRequested(const FName CardId)
+{
+	RequestSubmitCarrier(CardId);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleMarkerRequested(const FName CardId)
+{
+	RequestSubmitMarker(CardId);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleSkillRequested(const FName SkillId)
+{
+	RequestSubmitSkill(SkillId);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleRunnerRequested(const FName CardId)
+{
+	RequestSubmitRunner(CardId);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleHelperRequested(const FName CardId)
+{
+	RequestSubmitHelper(CardId);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleDeclineRequested()
+{
+	RequestDeclineSelection();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleNoLegalRequested()
+{
+	RequestResolveNoLegalSelection();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleBranchRequested(
+	const EFMCodexUMGBranchIntent Intent)
+{
+	RequestSubmitBranchIntent(Intent);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleOneOnOneRequested(
+	const EFMCodexUMGOneOnOneChoice Choice)
+{
+	RequestSubmitOneOnOneChoice(Choice);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleContinueRequested()
+{
+	RequestContinueResolution();
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleReadyClicked()
@@ -214,44 +407,43 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 
 	UBorder* InteractionRegion = MakeRegion(
 		*WidgetTree, TEXT("CurrentInteractionRegion"));
-	UVerticalBox* InteractionBody = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(), TEXT("CurrentInteractionBody"));
-	InteractionRegion->AddChild(InteractionBody);
-	InteractionTitleText = MakeText(
-		*WidgetTree, TEXT("CurrentInteractionTitle"));
-	InteractionBody->AddChildToVerticalBox(InteractionTitleText);
-	InteractionActionsText = MakeText(
-		*WidgetTree, TEXT("CurrentInteractionActions"));
-	InteractionBody->AddChildToVerticalBox(InteractionActionsText);
-	CandidateCardsBody = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(), TEXT("InteractionCandidateCards"));
-	UScrollBox* CandidateScroll = WidgetTree->ConstructWidget<UScrollBox>(
-		UScrollBox::StaticClass(), TEXT("InteractionCandidateScroll"));
-	CandidateScroll->SetOrientation(Orient_Horizontal);
-	CandidateScroll->AddChild(CandidateCardsBody);
-	InteractionBody->AddChildToVerticalBox(CandidateScroll);
-
-	UHorizontalBox* CommandRow = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(), TEXT("TypedIntentButtons"));
-	StartNewMatchButton = MakeButton(
-		*WidgetTree, TEXT("StartNewMatchButton"), TEXT("Start New Match"));
-	StartNewMatchButton->OnClicked.AddDynamic(
+	UClass* ResolvedInteractionClass = InteractionPanelWidgetClass != nullptr
+		? InteractionPanelWidgetClass.Get()
+		: UFMCodexInteractionPanelWidget::StaticClass();
+	InteractionPanel =
+		WidgetTree->ConstructWidget<UFMCodexInteractionPanelWidget>(
+			ResolvedInteractionClass, TEXT("DedicatedInteractionPanelWidget"));
+	InteractionPanel->OnStartMatchRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleStartNewMatchClicked);
-	CommandRow->AddChildToHorizontalBox(StartNewMatchButton);
-	BeginOrdinaryAttackButton = MakeButton(
-		*WidgetTree, TEXT("BeginOrdinaryAttackButton"),
-		TEXT("Begin Ordinary Attack"));
-	BeginOrdinaryAttackButton->OnClicked.AddDynamic(
-		this,
-		&UFMCodexLocalMatchScreenWidget::HandleBeginOrdinaryAttackClicked);
-	CommandRow->AddChildToHorizontalBox(BeginOrdinaryAttackButton);
-	FinishDeploymentButton = MakeButton(
-		*WidgetTree, TEXT("FinishDeploymentButton"),
-		TEXT("Finish Deployment"));
-	FinishDeploymentButton->OnClicked.AddDynamic(
+	InteractionPanel->OnBeginAttackRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleBeginOrdinaryAttackClicked);
+	InteractionPanel->OnDeployOrdinaryRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleDeployOrdinaryRequested);
+	InteractionPanel->OnDeployGoalkeeperRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleDeployGoalkeeperRequested);
+	InteractionPanel->OnFinishDeploymentRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleFinishDeploymentClicked);
-	CommandRow->AddChildToHorizontalBox(FinishDeploymentButton);
-	InteractionBody->AddChildToVerticalBox(CommandRow);
+	InteractionPanel->OnCarrierRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleCarrierRequested);
+	InteractionPanel->OnMarkerRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleMarkerRequested);
+	InteractionPanel->OnSkillRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleSkillRequested);
+	InteractionPanel->OnRunnerRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleRunnerRequested);
+	InteractionPanel->OnHelperRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleHelperRequested);
+	InteractionPanel->OnDeclineRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleDeclineRequested);
+	InteractionPanel->OnNoLegalRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleNoLegalRequested);
+	InteractionPanel->OnBranchRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleBranchRequested);
+	InteractionPanel->OnOneOnOneRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneRequested);
+	InteractionPanel->OnContinueRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleContinueRequested);
+	InteractionRegion->AddChild(InteractionPanel);
 	MainScreen->AddChildToVerticalBox(InteractionRegion);
 
 	UBorder* ResolutionRegion = MakeRegion(
@@ -294,7 +486,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		*Presentation.Header.ExpectedActorLabel,
 		*Presentation.Header.MatchStatusLabel)));
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
-	RefreshInteraction();
+	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
 
 	TArray<FString> ResultLines;
 	ResultLines.Add(TEXT("RESOLUTION RESULT"));
@@ -317,57 +509,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	HandoffOverlay->SetVisibility(Presentation.Handoff.bVisible
 		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	MainScreen->SetIsEnabled(!Presentation.Handoff.bVisible);
+	InteractionPanel->SetInteractionBlocked(Presentation.Handoff.bVisible);
 	HandoffText->SetText(FText::FromString(FString::Printf(
 		TEXT("%s\n%s\n%s"), *Presentation.Handoff.TitleLabel,
 		*Presentation.Handoff.NextPlayerLabel,
 		*Presentation.Handoff.ReadyLabel)));
-}
-
-void UFMCodexLocalMatchScreenWidget::RefreshInteraction()
-{
-	using namespace FMCodexLocalMatchScreenWidget;
-	InteractionTitleText->SetText(FText::FromString(FString::Printf(
-		TEXT("CURRENT INTERACTION\n%s | %s\n%s\n%s"),
-		*Presentation.Interaction.KickerLabel,
-		*Presentation.Interaction.ClassificationLabel,
-		*Presentation.Interaction.TitleLabel,
-		*Presentation.Interaction.CategoryLabel)));
-	InteractionActionsText->SetText(FText::FromString(
-		Presentation.Interaction.LegalActionLabels.IsEmpty()
-			? TEXT("No player action required.")
-			: FString::Join(Presentation.Interaction.LegalActionLabels,
-				TEXT(" | "))));
-	StartNewMatchButton->SetVisibility(
-		Presentation.Interaction.bCanStartNewMatch
-			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	BeginOrdinaryAttackButton->SetVisibility(
-		Presentation.Interaction.bCanBeginOrdinaryAttack
-			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	FinishDeploymentButton->SetVisibility(
-		Presentation.Interaction.bCanFinishDeployment
-			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-
-	CandidateCardsBody->ClearChildren();
-	RenderedCandidateCardWidgets.Reset();
-	for (int32 Index = 0;
-		Index < Presentation.Interaction.CandidateCards.Num(); ++Index)
-	{
-		USizeBox* CardSize = WidgetTree->ConstructWidget<USizeBox>(
-			USizeBox::StaticClass(),
-			FName(*FString::Printf(TEXT("InteractionCardSize%d"), Index)));
-		CardSize->SetWidthOverride(260.0f);
-		UClass* ResolvedCardClass = InteractionCardWidgetClass != nullptr
-			? InteractionCardWidgetClass.Get()
-			: UFMCodexPlayerCardWidget::StaticClass();
-		UFMCodexPlayerCardWidget* CardWidget =
-			WidgetTree->ConstructWidget<UFMCodexPlayerCardWidget>(
-				ResolvedCardClass,
-				FName(*FString::Printf(TEXT("InteractionCard%d"), Index)));
-		CardWidget->RefreshFromPresentation(
-			Presentation.Interaction.CandidateCards[Index],
-			EFMCodexPlayerCardPresentationMode::InteractionChoice);
-		CardSize->AddChild(CardWidget);
-		CandidateCardsBody->AddChildToHorizontalBox(CardSize);
-		RenderedCandidateCardWidgets.Add(CardWidget);
-	}
 }

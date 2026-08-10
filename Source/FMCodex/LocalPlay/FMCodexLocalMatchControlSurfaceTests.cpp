@@ -4,6 +4,8 @@
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPitchSlotWidget.h"
 #include "FMCodexPitchWidget.h"
@@ -17,6 +19,7 @@
 #include "Misc/Paths.h"
 #include "Serialization/MemoryWriter.h"
 #include "Components/TextBlock.h"
+#include "Components/Button.h"
 
 namespace FMCodexLocalMatchControlSurfaceTests
 {
@@ -3998,6 +4001,7 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 	FString CardSource;
 	FString DTOHeader;
 	FString RootSource;
+	FString InteractionPanelSource;
 	FString SlotSource;
 	FString ControllerSource;
 	TestTrue(TEXT("Card visual boundary production sources load"),
@@ -4013,6 +4017,9 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 			&& LoadProductionSource(
 				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
 				RootSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionPanelWidget.cpp"),
+				InteractionPanelSource)
 			&& LoadProductionSource(
 				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchSlotWidget.cpp"),
 				SlotSource)
@@ -4044,8 +4051,9 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 	TestTrue(TEXT("Pitch and interaction select one shared configurable card"),
 		SlotSource.Contains(TEXT("PlayerCardWidgetClass"))
 			&& SlotSource.Contains(TEXT("PitchCompact"))
-			&& RootSource.Contains(TEXT("InteractionCardWidgetClass"))
-			&& RootSource.Contains(TEXT("InteractionChoice")));
+			&& RootSource.Contains(TEXT("InteractionPanelWidgetClass"))
+			&& InteractionPanelSource.Contains(TEXT("PlayerCardWidgetClass"))
+			&& InteractionPanelSource.Contains(TEXT("InteractionChoice")));
 	TestTrue(TEXT("Controller remains unaware of card visual geometry"),
 		!ControllerSource.Contains(TEXT("PlayerCardBounds"))
 			&& !ControllerSource.Contains(TEXT("PortraitPresentationRegion"))
@@ -4059,6 +4067,690 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 			&& Pitch->GetWidgetFromName(TEXT("PlayerBPhysicalHalf")) != nullptr
 			&& Pitch->GetWidgetFromName(TEXT("CenterFieldVisualSeparator")) != nullptr
 			&& Pitch->GetWidgetFromName(TEXT("PlayerAPhysicalHalf")) != nullptr);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexUMGInteractionPanelVisualFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.31.UMGInteractionPanelVisualFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Interaction foundation Host exists"), Host);
+	TestNotNull(TEXT("Interaction foundation Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Interaction foundation root screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
+	TestNotNull(TEXT("Root composes dedicated Interaction Panel"), Panel);
+	if (Panel == nullptr)
+	{
+		return false;
+	}
+	Panel->TakeWidget();
+	for (const TCHAR* Region : {
+		TEXT("InteractionPanelBounds"), TEXT("InteractionActionHeader"),
+		TEXT("InteractionCandidateScroll"), TEXT("InteractionChoiceRegion"),
+		TEXT("InteractionSecondaryActions"), TEXT("InteractionPrimaryActions"),
+		TEXT("InteractionBoundedFallback") })
+	{
+		TestNotNull(FString::Printf(TEXT("Panel hierarchy contains %s"), Region),
+			Panel->GetWidgetFromName(Region));
+	}
+
+	FFMCodexUMGCardViewModel Card;
+	Card.CardId = TEXT("Panel.Card.Cross");
+	Card.IdentityLabel = TEXT("Panel Candidate");
+	Card.OwnerLabel = TEXT("Player A");
+	Card.RoleLabel = TEXT("FW");
+	Card.SkillLabels = { TEXT("Cross") };
+	Card.SkillSummaryLabel = TEXT("Cross");
+	Card.CompactAttributeSummary = TEXT("SHO 4 | PAS 5 | DRI 3 | SPD 4");
+	Card.FullAttributeSummary =
+		TEXT("SHO 4 | DRI 3 | PAS 5 | OFF 4 | MRK 1 | TKL 1 | SPD 4 | STR 2 | STA 3 | LS 2");
+	Card.StatusLabels = { TEXT("AVAILABLE") };
+	Card.StatusSummaryLabel = TEXT("AVAILABLE");
+	Card.RarityLabel = TEXT("Club");
+
+	auto BasePresentation = [](
+		const EFMCodexUMGInteractionCategory Category,
+		const TCHAR* Title)
+	{
+		FFMCodexUMGInteractionViewModel Result;
+		Result.Category = Category;
+		Result.KickerLabel = TEXT("PLAYER ACTION");
+		Result.ExpectedActorLabel = TEXT("Player A");
+		Result.TitleLabel = Title;
+		Result.CategoryLabel = Title;
+		return Result;
+	};
+	auto IsVisible = [](const UWidget* Widget)
+	{
+		return Widget != nullptr
+			&& Widget->GetVisibility() != ESlateVisibility::Collapsed
+			&& Widget->GetVisibility() != ESlateVisibility::Hidden;
+	};
+
+	FFMCodexUMGInteractionViewModel Start = BasePresentation(
+		EFMCodexUMGInteractionCategory::StartMatch, TEXT("START LOCAL MATCH"));
+	Start.bCanStartNewMatch = true;
+	Start.PrimaryActionLabel = TEXT("START LOCAL MATCH");
+	Panel->RefreshFromPresentation(Start);
+	TestTrue(TEXT("StartMatch exposes one readable primary action"),
+		IsVisible(Panel->GetWidgetFromName(TEXT("InteractionStartMatchButton")))
+			&& Panel->GetPresentation().TitleLabel == TEXT("START LOCAL MATCH"));
+
+	FFMCodexUMGInteractionViewModel Begin = BasePresentation(
+		EFMCodexUMGInteractionCategory::BeginAttack, TEXT("BEGIN ATTACK"));
+	Begin.bCanBeginOrdinaryAttack = true;
+	Begin.PrimaryActionLabel = TEXT("BEGIN ATTACK");
+	Begin.ActionPointLabel = TEXT("Action Point: 6");
+	Panel->RefreshFromPresentation(Begin);
+	TestTrue(TEXT("BeginAttack exposes AP presentation without gameplay rules"),
+		IsVisible(Panel->GetWidgetFromName(TEXT("InteractionBeginAttackButton")))
+			&& Panel->GetPresentation().ActionPointLabel.Contains(TEXT("6")));
+
+	FFMCodexUMGInteractionViewModel Deploy = BasePresentation(
+		EFMCodexUMGInteractionCategory::Deploy, TEXT("DEPLOYMENT"));
+	Deploy.bCanFinishDeployment = true;
+	Deploy.PrimaryActionLabel = TEXT("FINISH DEPLOYMENT");
+	FFMCodexUMGDeploymentChoiceViewModel Ordinary;
+	Ordinary.CardId = Card.CardId;
+	Ordinary.Card = Card;
+	Ordinary.Destinations.Add({ TEXT("Slot.A"), TEXT("Slot A") });
+	Ordinary.Destinations.Add({ TEXT("Slot.B"), TEXT("Slot B") });
+	FFMCodexUMGDeploymentChoiceViewModel Goalkeeper = Ordinary;
+	Goalkeeper.CardId = TEXT("Panel.Card.GK");
+	Goalkeeper.Card.CardId = Goalkeeper.CardId;
+	Goalkeeper.Card.IdentityLabel = TEXT("Panel Goalkeeper");
+	Goalkeeper.Card.RoleLabel = TEXT("GK");
+	Goalkeeper.Card.bGoalkeeper = true;
+	Goalkeeper.bGoalkeeper = true;
+	Goalkeeper.Destinations = { { TEXT("Slot.GK"), TEXT("Goalkeeper Slot") } };
+	Deploy.DeploymentChoices = { Ordinary, Goalkeeper };
+	Panel->RefreshFromPresentation(Deploy);
+	TestTrue(TEXT("Deployment preserves every card and destination"),
+		Panel->GetRenderedCandidateCardWidgets().Num() == 2
+			&& Panel->GetRenderedOptionWidgets().Num() == 3
+			&& Panel->GetRenderedCandidateCardWidgets()[0]->GetPresentationMode()
+				== EFMCodexPlayerCardPresentationMode::InteractionChoice
+			&& Panel->GetRenderedCandidateCardWidgets()[1]
+				->IsGoalkeeperVisualVariant()
+			&& IsVisible(Panel->GetWidgetFromName(
+				TEXT("InteractionFinishDeploymentButton"))));
+
+	const TArray<EFMCodexUMGInteractionCategory> SelectionCategories = {
+		EFMCodexUMGInteractionCategory::SelectCarrier,
+		EFMCodexUMGInteractionCategory::SelectMarker,
+		EFMCodexUMGInteractionCategory::SelectSkill,
+		EFMCodexUMGInteractionCategory::SelectRunner,
+		EFMCodexUMGInteractionCategory::SelectHelper
+	};
+	for (const EFMCodexUMGInteractionCategory Category : SelectionCategories)
+	{
+		FFMCodexUMGInteractionViewModel Selection = BasePresentation(
+			Category, TEXT("SELECT LEGAL OPTION"));
+		FFMCodexUMGSelectionChoiceViewModel Choice;
+		Choice.OptionId = Category == EFMCodexUMGInteractionCategory::SelectSkill
+			? FName(TEXT("Demo.Skill.Cross")) : Card.CardId;
+		Choice.Label = Category == EFMCodexUMGInteractionCategory::SelectSkill
+			? TEXT("Cross") : TEXT("Select Panel Candidate");
+		Choice.bHasCard = Category != EFMCodexUMGInteractionCategory::SelectSkill;
+		Choice.Card = Card;
+		Selection.SelectionChoices = { Choice, Choice };
+		Selection.SelectionChoices[1].OptionId = TEXT("Panel.SecondOption");
+		Selection.bCanDecline = Category
+			!= EFMCodexUMGInteractionCategory::SelectCarrier;
+		Selection.bCanResolveNoLegal = true;
+		Selection.DeclineActionLabel = TEXT("DECLINE");
+		Selection.NoLegalActionLabel = TEXT("RESOLVE NO LEGAL");
+		Panel->RefreshFromPresentation(Selection);
+		TestTrue(FString::Printf(TEXT("Category %d preserves all supplied options"),
+			static_cast<int32>(Category)),
+			Panel->GetRenderedOptionWidgets().Num() == 2
+				&& Panel->GetRenderedCandidateCardWidgets().Num()
+					== (Choice.bHasCard ? 2 : 0)
+				&& IsVisible(Panel->GetWidgetFromName(
+					TEXT("InteractionNoLegalButton"))));
+	}
+	FFMCodexUMGInteractionViewModel DistinctFallbacks = BasePresentation(
+		EFMCodexUMGInteractionCategory::SelectMarker, TEXT("SELECT MARKER"));
+	DistinctFallbacks.bCanDecline = true;
+	DistinctFallbacks.bCanResolveNoLegal = true;
+	DistinctFallbacks.DeclineActionLabel = TEXT("DECLINE MARKER");
+	DistinctFallbacks.NoLegalActionLabel = TEXT("NO LEGAL MARKER - RESOLVE");
+	Panel->RefreshFromPresentation(DistinctFallbacks);
+	const UButton* DeclineButton = Cast<UButton>(
+		Panel->GetWidgetFromName(TEXT("InteractionDeclineButton")));
+	const UButton* NoLegalButton = Cast<UButton>(
+		Panel->GetWidgetFromName(TEXT("InteractionNoLegalButton")));
+	TestTrue(TEXT("Decline and NoLegal remain distinct secondary actions"),
+		IsVisible(DeclineButton) && IsVisible(NoLegalButton)
+			&& Cast<UTextBlock>(DeclineButton->GetChildAt(0))->GetText().ToString()
+				!= Cast<UTextBlock>(NoLegalButton->GetChildAt(0))->GetText().ToString());
+
+	auto VerifyBranch = [this, Panel, &BasePresentation](
+		const FString& Section,
+		const EFMCodexUMGBranchIntent First,
+		const EFMCodexUMGBranchIntent Second)
+	{
+		FFMCodexUMGInteractionViewModel Branch = BasePresentation(
+			EFMCodexUMGInteractionCategory::SelectBranchIntent,
+			TEXT("CHOOSE ROUTE"));
+		Branch.BranchSectionLabel = Section;
+		Branch.BranchChoices = {
+			{ First, First == EFMCodexUMGBranchIntent::CrossHigh
+				? TEXT("HIGH") : TEXT("DIRECT SHOT") },
+			{ Second, Second == EFMCodexUMGBranchIntent::CrossLow
+				? TEXT("LOW") : TEXT("DEAD CORNER") }
+		};
+		Panel->RefreshFromPresentation(Branch);
+		TestTrue(FString::Printf(TEXT("%s renders two distinct branch intents"),
+			*Section), Panel->GetRenderedOptionWidgets().Num() == 2
+			&& Panel->GetPresentation().BranchSectionLabel == Section);
+	};
+	VerifyBranch(TEXT("SHOT TYPE"), EFMCodexUMGBranchIntent::DirectShot,
+		EFMCodexUMGBranchIntent::DeadCorner);
+	VerifyBranch(TEXT("CROSS TYPE"), EFMCodexUMGBranchIntent::CrossHigh,
+		EFMCodexUMGBranchIntent::CrossLow);
+
+	FFMCodexUMGInteractionViewModel OneOnOne = BasePresentation(
+		EFMCodexUMGInteractionCategory::SelectOneOnOneShot,
+		TEXT("ONE-ON-ONE"));
+	OneOnOne.BranchSectionLabel = TEXT("CHOOSE SHOT");
+	OneOnOne.OneOnOneChoices = {
+		{ EFMCodexUMGOneOnOneChoice::ChipShot, TEXT("CHIP SHOT") },
+		{ EFMCodexUMGOneOnOneChoice::DirectShot, TEXT("DIRECT SHOT") }
+	};
+	Panel->RefreshFromPresentation(OneOnOne);
+	TestEqual(TEXT("OneOnOne renders ChipShot and DirectShot only"),
+		Panel->GetRenderedOptionWidgets().Num(), 2);
+
+	FFMCodexUMGInteractionViewModel Continue = BasePresentation(
+		EFMCodexUMGInteractionCategory::ContinueResolution,
+		TEXT("Resolve Route"));
+	Continue.KickerLabel = TEXT("SYSTEM RESOLUTION");
+	Continue.bSystemResolution = true;
+	Continue.bCanContinue = true;
+	Continue.PrimaryActionLabel = TEXT("CONTINUE");
+	Panel->RefreshFromPresentation(Continue);
+	TestTrue(TEXT("System resolution presents advancing rather than choosing"),
+		Panel->GetPresentation().bSystemResolution
+			&& IsVisible(Panel->GetWidgetFromName(
+				TEXT("InteractionContinueButton"))));
+
+	FFMCodexUMGInteractionViewModel Ended = BasePresentation(
+		EFMCodexUMGInteractionCategory::MatchEnded, TEXT("MATCH COMPLETE"));
+	Ended.bMatchEnded = true;
+	Ended.EmptyStateLabel = TEXT("Match complete. No action required.");
+	Panel->RefreshFromPresentation(Ended);
+	TestTrue(TEXT("MatchEnded contains no gameplay progression control"),
+		Panel->GetRenderedOptionWidgets().IsEmpty()
+			&& !IsVisible(Panel->GetWidgetFromName(
+				TEXT("InteractionStartMatchButton")))
+			&& !IsVisible(Panel->GetWidgetFromName(
+				TEXT("InteractionBeginAttackButton")))
+			&& !IsVisible(Panel->GetWidgetFromName(
+				TEXT("InteractionFinishDeploymentButton")))
+			&& !IsVisible(Panel->GetWidgetFromName(
+				TEXT("InteractionContinueButton"))));
+
+	// Real player-facing flow: Panel -> root -> Controller -> authoritative Host.
+	Controller->RefreshPresentation();
+	Panel = Screen->GetInteractionPanel();
+	TestEqual(TEXT("Real panel starts in StartMatch"),
+		Panel->GetPresentation().Category,
+		EFMCodexUMGInteractionCategory::StartMatch);
+	Panel->RequestStartMatch();
+	TestTrue(TEXT("Panel StartMatch reaches authoritative Host"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->IsAwaitingHotSeatHandoff()
+			&& Panel->IsInteractionBlocked());
+	const TArray<uint8> StateWhileBlocked =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Panel->RequestBeginAttack();
+	TestTrue(TEXT("Handoff blocks every Interaction Panel intent"),
+		StateWhileBlocked == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	Screen->RequestReady();
+	TestTrue(TEXT("Ready is presentation-only and unblocks panel"),
+		StateWhileBlocked == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& !Panel->IsInteractionBlocked());
+	Panel->RequestBeginAttack();
+	TestTrue(TEXT("Panel BeginAttack reaches authoritative Host"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	const EInitialTurnOrderPlayer FlowAttacker =
+		Host->GetMatchSnapshot().Snapshot.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer FlowDefender =
+		FMCodexLocalMatchFullFamilyTests::OtherSide(FlowAttacker);
+	const FName CrossCarrierId =
+		FMCodexLocalMatchFullFamilyTests::OutfieldCardId(FlowAttacker, 1);
+	const FString FlowPhysicalForward =
+		FlowAttacker == EInitialTurnOrderPlayer::PlayerA
+			? TEXT("NearB") : TEXT("NearA");
+
+	auto ReadyIfPending = [Controller, Screen]()
+	{
+		if (Controller->IsAwaitingHotSeatHandoff())
+		{
+			Screen->RequestReady();
+		}
+	};
+	ReadyIfPending();
+	int32 SuccessfulDeployments = 0;
+	bool bRejectedIntentVerified = false;
+	bool bCrossCarrierDeployed = false;
+	bool bDefenderGoalkeeperDeployed = false;
+	while (SuccessfulDeployments < 6)
+	{
+		const FFMCodexUMGInteractionViewModel& Deployment =
+			Panel->GetPresentation();
+		if (Deployment.Category != EFMCodexUMGInteractionCategory::Deploy
+			|| Deployment.DeploymentChoices.IsEmpty())
+		{
+			AddError(TEXT("Real Panel flow lost deployment choices"));
+			return false;
+		}
+		const EInitialTurnOrderPlayer CurrentDeploymentSide =
+			Controller->GetInteractionView().CurrentLegalDeploymentSide;
+		const bool bNeedDefenderGoalkeeper =
+			CurrentDeploymentSide == FlowDefender
+			&& !bDefenderGoalkeeperDeployed;
+		const FFMCodexUMGDeploymentChoiceViewModel* Choice = nullptr;
+		if (bNeedDefenderGoalkeeper)
+		{
+			Choice = Deployment.DeploymentChoices.FindByPredicate(
+				[](const FFMCodexUMGDeploymentChoiceViewModel& Candidate)
+				{
+					return Candidate.bGoalkeeper
+						&& !Candidate.Destinations.IsEmpty();
+				});
+		}
+		else
+		{
+			Choice = Deployment.DeploymentChoices.FindByPredicate(
+				[CurrentDeploymentSide, FlowAttacker, CrossCarrierId,
+					bCrossCarrierDeployed, &FlowPhysicalForward](
+					const FFMCodexUMGDeploymentChoiceViewModel& Candidate)
+				{
+					if (Candidate.bGoalkeeper
+						|| (CurrentDeploymentSide == FlowAttacker
+							&& !bCrossCarrierDeployed
+							&& Candidate.CardId != CrossCarrierId))
+					{
+						return false;
+					}
+					return Candidate.Destinations.ContainsByPredicate(
+						[&FlowPhysicalForward](
+							const FFMCodexUMGDeploymentDestinationViewModel& Destination)
+						{
+							return Destination.SlotId.ToString().Contains(
+								FlowPhysicalForward);
+						});
+				});
+		}
+		if (Choice == nullptr)
+		{
+			AddError(TEXT("Real Panel flow found no required deployment"));
+			return false;
+		}
+		const FName DeployedCardId = Choice->CardId;
+		const bool bDeployedGoalkeeper = Choice->bGoalkeeper;
+		const FFMCodexUMGDeploymentDestinationViewModel* Destination =
+			bDeployedGoalkeeper ? &Choice->Destinations[0]
+			: Choice->Destinations.FindByPredicate(
+				[&FlowPhysicalForward](
+					const FFMCodexUMGDeploymentDestinationViewModel& Candidate)
+				{
+					return Candidate.SlotId.ToString().Contains(
+						FlowPhysicalForward);
+				});
+		if (Destination == nullptr)
+		{
+			return false;
+		}
+		const FName DeployedSlotId = Destination->SlotId;
+		Panel->RequestDeployment(
+			DeployedCardId, DeployedSlotId, bDeployedGoalkeeper);
+		if (!Controller->GetLastDiagnostic().bHostSuccess)
+		{
+			AddError(TEXT("Real Panel ordinary deployment was rejected"));
+			return false;
+		}
+		bCrossCarrierDeployed = bCrossCarrierDeployed
+			|| DeployedCardId == CrossCarrierId;
+		bDefenderGoalkeeperDeployed = bDefenderGoalkeeperDeployed
+			|| bDeployedGoalkeeper;
+		++SuccessfulDeployments;
+		ReadyIfPending();
+		if (!bRejectedIntentVerified)
+		{
+			const TArray<uint8> BeforeRejected =
+				SerializeState(Host->GetMatchSnapshot().Snapshot);
+			const EFMCodexUMGInteractionCategory BeforeCategory =
+				Panel->GetPresentation().Category;
+			const int32 BeforeChoiceCount =
+				Panel->GetPresentation().DeploymentChoices.Num();
+			Panel->RequestDeployment(
+				DeployedCardId, DeployedSlotId, bDeployedGoalkeeper);
+			bRejectedIntentVerified =
+				!Controller->GetLastDiagnostic().bHostSuccess
+				&& BeforeRejected
+					== SerializeState(Host->GetMatchSnapshot().Snapshot)
+				&& Panel->GetPresentation().Category == BeforeCategory
+				&& Panel->GetPresentation().DeploymentChoices.Num()
+					== BeforeChoiceCount;
+		}
+	}
+	TestTrue(TEXT("Rejected Panel intent has no optimistic selection mutation"),
+		bRejectedIntentVerified);
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		ReadyIfPending();
+		Panel->RequestFinishDeployment();
+		TestTrue(TEXT("Panel FinishDeployment reaches authoritative Host"),
+			Controller->GetLastDiagnostic().bHostSuccess);
+	}
+	ReadyIfPending();
+
+	TestTrue(TEXT("Real Panel deployment includes Cross carrier and defender GK"),
+		bCrossCarrierDeployed && bDefenderGoalkeeperDeployed);
+	const FFMCodexUMGSelectionChoiceViewModel* Carrier =
+		Panel->GetPresentation().SelectionChoices.FindByPredicate(
+			[CrossCarrierId](const FFMCodexUMGSelectionChoiceViewModel& Candidate)
+			{
+				return Candidate.OptionId == CrossCarrierId;
+			});
+	TestNotNull(TEXT("Real Panel exposes deployed Cross carrier"), Carrier);
+	if (Carrier == nullptr)
+	{
+		return false;
+	}
+	Panel->RequestCarrier(Carrier->OptionId);
+	TestTrue(TEXT("Panel Carrier reaches authoritative Host"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	ReadyIfPending();
+	if (!Panel->GetPresentation().SelectionChoices.IsEmpty())
+	{
+		Panel->RequestMarker(
+			Panel->GetPresentation().SelectionChoices[0].OptionId);
+	}
+	else if (Panel->GetPresentation().bCanResolveNoLegal)
+	{
+		Panel->RequestNoLegal();
+	}
+	else
+	{
+		AddError(TEXT("Real Panel exposes neither Marker nor NoLegal Marker"));
+		return false;
+	}
+	TestTrue(TEXT("Panel Marker/NoLegal Marker reaches authoritative Host"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	ReadyIfPending();
+	const FFMCodexUMGSelectionChoiceViewModel* CrossSkill =
+		Panel->GetPresentation().SelectionChoices.FindByPredicate(
+			[](const FFMCodexUMGSelectionChoiceViewModel& Candidate)
+			{
+				return Candidate.Label.Contains(TEXT("Cross"));
+			});
+	TestNotNull(TEXT("Real Panel exposes only authoritative legal Skills"),
+		CrossSkill);
+	if (CrossSkill == nullptr)
+	{
+		return false;
+	}
+	Panel->RequestSkill(CrossSkill->OptionId);
+	TestTrue(TEXT("Panel Skill reaches authoritative Host"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	ReadyIfPending();
+	for (int32 Guard = 0; Guard < 4
+		&& (Panel->GetPresentation().Category
+			== EFMCodexUMGInteractionCategory::SelectRunner
+			|| Panel->GetPresentation().Category
+				== EFMCodexUMGInteractionCategory::SelectHelper); ++Guard)
+	{
+		const EFMCodexUMGInteractionCategory Category =
+			Panel->GetPresentation().Category;
+		if (!Panel->GetPresentation().SelectionChoices.IsEmpty())
+		{
+			const FName Id =
+				Panel->GetPresentation().SelectionChoices[0].OptionId;
+			if (Category == EFMCodexUMGInteractionCategory::SelectRunner)
+			{
+				Panel->RequestRunner(Id);
+			}
+			else
+			{
+				Panel->RequestHelper(Id);
+			}
+		}
+		else if (Panel->GetPresentation().bCanResolveNoLegal)
+		{
+			Panel->RequestNoLegal();
+		}
+		else
+		{
+			Panel->RequestDecline();
+		}
+		TestTrue(TEXT("Panel Runner/Helper route reaches Host"),
+			Controller->GetLastDiagnostic().bHostSuccess);
+		ReadyIfPending();
+	}
+	TestTrue(TEXT("Representative Panel flow reaches Cross BranchIntent"),
+		Panel->GetPresentation().Category
+			== EFMCodexUMGInteractionCategory::SelectBranchIntent
+			&& Panel->GetPresentation().BranchChoices.Num() == 2);
+	if (Panel->GetPresentation().Category
+		== EFMCodexUMGInteractionCategory::SelectBranchIntent)
+	{
+		Panel->RequestBranch(EFMCodexUMGBranchIntent::CrossHigh);
+		TestTrue(TEXT("Panel Cross BranchIntent reaches authoritative Host"),
+			Controller->GetLastDiagnostic().bHostSuccess);
+	}
+
+	// Deterministic normal-demo OneOnOne proof, with the actual choice routed
+	// through the dedicated Widget and existing typed Controller method.
+	FScopedPlayableWorld OneOnOneWorld;
+	AFMCodexLocalMatchHostGameMode* OneOnOneHost = OneOnOneWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* OneOnOneController =
+		OneOnOneWorld.GetController();
+	TestNotNull(TEXT("OneOnOne UMG Host exists"), OneOnOneHost);
+	TestNotNull(TEXT("OneOnOne UMG Controller exists"), OneOnOneController);
+	if (OneOnOneHost == nullptr || OneOnOneController == nullptr)
+	{
+		return false;
+	}
+	FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	const FName ThroughBallSkillId(TEXT("Demo.Skill.ThroughBall"));
+	for (TArray<FPlayerCardData>* Deck : {
+		&Demo.OpeningInput.OpeningInput.PlayerADeck,
+		&Demo.OpeningInput.OpeningInput.PlayerBDeck })
+	{
+		for (FPlayerCardData& DemoCard : *Deck)
+		{
+			if (!DemoCard.bIsGoalkeeper)
+			{
+				DemoCard.AttackSkillIds = { ThroughBallSkillId };
+			}
+		}
+	}
+	FSkillRuleSnapshot ThroughBallRule;
+	ThroughBallRule.SkillId = ThroughBallSkillId;
+	ThroughBallRule.SkillType = ESkillRuleType::ThroughBall;
+	ThroughBallRule.MinTriggerActionPoint = 2;
+	ThroughBallRule.MaxTriggerActionPoint = 8;
+	Demo.SkillRuleSet.SkillRules = { ThroughBallRule };
+	const int32 OneOnOneSeed = FindSeedForRolls({ 3, 6, 1, 2 });
+	if (OneOnOneSeed == INDEX_NONE
+		|| !OneOnOneHost->StartNewLocalMatch(
+			Demo.OpeningInput, Demo.SkillRuleSet, OneOnOneSeed).bSuccess
+		|| !OneOnOneHost->BeginOrdinaryAttack(6).bSuccess)
+	{
+		AddError(TEXT("Could not initialize deterministic OneOnOne UMG fixture"));
+		return false;
+	}
+	const EInitialTurnOrderPlayer OneOnOneAttacker = OneOnOneHost
+		->GetMatchSnapshot().Snapshot.RuntimeState.CurrentAttackingPlayer;
+	const FString PhysicalForward =
+		OneOnOneAttacker == EInitialTurnOrderPlayer::PlayerA
+			? TEXT("NearB") : TEXT("NearA");
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		if (!DeployNextOrdinary(
+			*OneOnOneHost, Demo.SkillRuleSet, PhysicalForward))
+		{
+			AddError(TEXT("Could not deploy deterministic OneOnOne fixture"));
+			return false;
+		}
+	}
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const FFMCodexLocalMatchInteractionView View =
+			ViewFor(*OneOnOneHost, Demo.SkillRuleSet);
+		if (!OneOnOneHost->FinishDeployment(
+			View.AttackSequence, View.ExpectedActingPlayer).bSuccess)
+		{
+			return false;
+		}
+	}
+	for (const EFMCodexLocalMatchInteractionCategory Category : {
+		EFMCodexLocalMatchInteractionCategory::SelectCarrier,
+		EFMCodexLocalMatchInteractionCategory::SelectMarker,
+		EFMCodexLocalMatchInteractionCategory::SelectSkill,
+		EFMCodexLocalMatchInteractionCategory::SelectRunner,
+		EFMCodexLocalMatchInteractionCategory::SelectHelper })
+	{
+		if (!SubmitFirstHostSelection(
+			*OneOnOneHost, Demo.SkillRuleSet, Category))
+		{
+			AddError(TEXT("Could not select deterministic OneOnOne fixture"));
+			return false;
+		}
+	}
+	if (!OneOnOneHost->BeginResolutionSession().bSuccess
+		|| !OneOnOneHost->ResolveInitialRoute().bSuccess
+		|| !OneOnOneHost->ResolveThroughBallBehindDefenseP1DecisionOrPlan().bSuccess
+		|| !OneOnOneHost->ResolveThroughBallBehindDefenseP1Formula().bSuccess
+		|| !OneOnOneHost->ResolveThroughBallBehindDefenseP2Decision().bSuccess)
+	{
+		AddError(TEXT("Could not reach deterministic OneOnOne decision"));
+		return false;
+	}
+	OneOnOneController->RefreshPresentation();
+	OneOnOneController->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* OneOnOneScreen =
+		OneOnOneController->GetPlayerMatchScreen();
+	if (OneOnOneScreen == nullptr)
+	{
+		return false;
+	}
+	OneOnOneScreen->TakeWidget();
+	UFMCodexInteractionPanelWidget* OneOnOnePanel =
+		OneOnOneScreen->GetInteractionPanel();
+	TestTrue(TEXT("Authoritative OneOnOne renders both player choices"),
+		OneOnOnePanel != nullptr
+			&& OneOnOnePanel->GetPresentation().Category
+				== EFMCodexUMGInteractionCategory::SelectOneOnOneShot
+			&& OneOnOnePanel->GetPresentation().OneOnOneChoices.Num() == 2
+			&& OneOnOnePanel->GetRenderedOptionWidgets().Num() == 2);
+	if (OneOnOnePanel == nullptr)
+	{
+		return false;
+	}
+	if (OneOnOneController->IsAwaitingHotSeatHandoff())
+	{
+		OneOnOneScreen->RequestReady();
+	}
+	TestFalse(TEXT("OneOnOne player acknowledges handoff before choosing"),
+		OneOnOnePanel->IsInteractionBlocked());
+	OneOnOnePanel->RequestOneOnOne(EFMCodexUMGOneOnOneChoice::DirectShot);
+	TestTrue(TEXT("OneOnOne Widget choice is accepted by Host"),
+		OneOnOneController->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("Accepted OneOnOne refresh changes interaction category"),
+		OneOnOnePanel->GetPresentation().Category
+			!= EFMCodexUMGInteractionCategory::SelectOneOnOneShot);
+	TestTrue(TEXT("Accepted OneOnOne refresh removes choice controls"),
+		OneOnOnePanel->GetPresentation().OneOnOneChoices.IsEmpty());
+
+	FString PanelHeader;
+	FString PanelSource;
+	FString OptionHeader;
+	FString OptionSource;
+	FString RootHeader;
+	FString RootSource;
+	FString ControllerSource;
+	TestTrue(TEXT("Interaction authority audit sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionPanelWidget.h"),
+			PanelHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionPanelWidget.cpp"),
+				PanelSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionOptionWidget.h"),
+				OptionHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionOptionWidget.cpp"),
+				OptionSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.h"),
+				RootHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+				RootSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+				ControllerSource));
+	const FString InteractionWidgetSources =
+		PanelHeader + PanelSource + OptionHeader + OptionSource;
+	TestTrue(TEXT("Interaction widgets consume reflected DTOs only"),
+		PanelHeader.Contains(TEXT("FFMCodexUMGInteractionViewModel"))
+			&& !InteractionWidgetSources.Contains(TEXT("FMatchPlayState"))
+			&& !InteractionWidgetSources.Contains(TEXT("HostGameMode"))
+			&& !InteractionWidgetSources.Contains(TEXT("AuthoritativeSession"))
+			&& !InteractionWidgetSources.Contains(TEXT("D6Provider")));
+	TestTrue(TEXT("Interaction widgets contain no gameplay authority"),
+		!InteractionWidgetSources.Contains(TEXT("FormulaResolver"))
+			&& !InteractionWidgetSources.Contains(TEXT("AvailabilityQuery"))
+			&& !InteractionWidgetSources.Contains(TEXT("RandRange"))
+			&& !InteractionWidgetSources.Contains(TEXT("RouteThreshold"))
+			&& !InteractionWidgetSources.Contains(TEXT("ExecuteCommandByName"))
+			&& !InteractionWidgetSources.Contains(TEXT("ProcessEvent")));
+	TestTrue(TEXT("Root delegates to panel and Controller owns typed commands"),
+		RootHeader.Contains(TEXT("TSubclassOf<UFMCodexInteractionPanelWidget>"))
+			&& RootSource.Contains(TEXT("DedicatedInteractionPanelWidget"))
+			&& RootSource.Contains(TEXT("RequestSubmitCarrier"))
+			&& RootSource.Contains(TEXT("RequestContinueResolution"))
+			&& ControllerSource.Contains(TEXT("SubmitCarrier"))
+			&& ControllerSource.Contains(TEXT("ContinueResolution")));
+	TestTrue(TEXT("Stage 6.4 root regions remain intact"),
+		Screen->GetWidgetFromName(TEXT("MatchHeaderRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("CurrentInteractionRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("ResolutionResultRegion")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) != nullptr);
+	TestTrue(TEXT("Slate developer reference surface remains available"),
+		ControllerSource.Contains(TEXT("BuildControlSurface"))
+			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));
 	return true;
 }
 

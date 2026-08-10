@@ -8,6 +8,43 @@ struct FFMCodexLocalMatchCardView;
 struct FFMCodexLocalMatchInteractionView;
 struct FFMCodexLocalMatchResolutionFeedback;
 
+UENUM(BlueprintType)
+enum class EFMCodexUMGInteractionCategory : uint8
+{
+	None,
+	StartMatch,
+	BeginAttack,
+	Deploy,
+	SelectCarrier,
+	SelectMarker,
+	SelectSkill,
+	SelectRunner,
+	SelectHelper,
+	SelectBranchIntent,
+	SelectOneOnOneShot,
+	ContinueResolution,
+	AttackComplete,
+	MatchEnded
+};
+
+UENUM(BlueprintType)
+enum class EFMCodexUMGBranchIntent : uint8
+{
+	None,
+	DirectShot,
+	DeadCorner,
+	CrossHigh,
+	CrossLow
+};
+
+UENUM(BlueprintType)
+enum class EFMCodexUMGOneOnOneChoice : uint8
+{
+	None,
+	ChipShot,
+	DirectShot
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGCardViewModel
 {
@@ -129,9 +166,85 @@ struct FMCODEX_API FFMCodexUMGMatchHeaderViewModel
 };
 
 USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGDeploymentDestinationViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FName SlotId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString Label;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGDeploymentChoiceViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FName CardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bGoalkeeper = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FFMCodexUMGCardViewModel Card;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	TArray<FFMCodexUMGDeploymentDestinationViewModel> Destinations;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGSelectionChoiceViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FName OptionId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString Label;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bHasCard = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FFMCodexUMGCardViewModel Card;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGBranchChoiceViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	EFMCodexUMGBranchIntent Intent = EFMCodexUMGBranchIntent::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString Label;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGOneOnOneChoiceViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	EFMCodexUMGOneOnOneChoice Choice = EFMCodexUMGOneOnOneChoice::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString Label;
+};
+
+USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGInteractionViewModel
 {
 	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	EFMCodexUMGInteractionCategory Category =
+		EFMCodexUMGInteractionCategory::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	FString KickerLabel;
@@ -146,10 +259,28 @@ struct FMCODEX_API FFMCodexUMGInteractionViewModel
 	FString CategoryLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString ExpectedActorLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString ActionPointLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	TArray<FString> LegalActionLabels;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	TArray<FFMCodexUMGCardViewModel> CandidateCards;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	TArray<FFMCodexUMGDeploymentChoiceViewModel> DeploymentChoices;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	TArray<FFMCodexUMGSelectionChoiceViewModel> SelectionChoices;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	TArray<FFMCodexUMGBranchChoiceViewModel> BranchChoices;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	TArray<FFMCodexUMGOneOnOneChoiceViewModel> OneOnOneChoices;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bCanStartNewMatch = false;
@@ -159,6 +290,36 @@ struct FMCODEX_API FFMCodexUMGInteractionViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bCanFinishDeployment = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bCanDecline = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bCanResolveNoLegal = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bCanContinue = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bSystemResolution = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bMatchEnded = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString PrimaryActionLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString DeclineActionLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString NoLegalActionLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString BranchSectionLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString EmptyStateLabel;
 };
 
 USTRUCT(BlueprintType)
