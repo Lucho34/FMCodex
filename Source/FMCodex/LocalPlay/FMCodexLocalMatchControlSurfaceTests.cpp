@@ -7,6 +7,7 @@
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexDiceResultWidget.h"
+#include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPitchSlotWidget.h"
 #include "FMCodexPitchWidget.h"
@@ -5229,6 +5230,458 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			&& Screen->GetWidgetFromName(TEXT("CurrentInteractionRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("ResolutionResultRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) != nullptr);
+	TestTrue(TEXT("Slate developer reference surface remains available"),
+		ControllerSource.Contains(TEXT("BuildControlSurface"))
+			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexUMGMatchHeaderVisualRefinementTest,
+	"FMCodex.LocalPlay.ControlSurface.33.UMGMatchHeaderVisualRefinement",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Header refinement Host exists"), Host);
+	TestNotNull(TEXT("Header refinement Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	UFMCodexMatchHeaderWidget* Header = Screen->GetMatchHeader();
+	TestNotNull(TEXT("Root composes dedicated Match Header"), Header);
+	if (Header == nullptr)
+	{
+		return false;
+	}
+	Header->TakeWidget();
+	for (const TCHAR* Region : {
+		TEXT("MatchHeaderBounds"), TEXT("MatchHeaderScoreboardRegion"),
+		TEXT("PlayerACrestAssetHook"), TEXT("PlayerBCrestAssetHook"),
+		TEXT("MatchHeaderCentralScoreRegion"),
+		TEXT("MatchHeaderAttackerStatusRegion"),
+		TEXT("MatchHeaderActorStatusRegion"),
+		TEXT("MatchHeaderFinalResultRegion") })
+	{
+		TestNotNull(FString::Printf(TEXT("Header hierarchy contains %s"), Region),
+			Header->GetWidgetFromName(Region));
+	}
+	auto IsVisible = [](const UWidget* Widget)
+	{
+		return Widget != nullptr
+			&& Widget->GetVisibility() != ESlateVisibility::Collapsed
+			&& Widget->GetVisibility() != ESlateVisibility::Hidden;
+	};
+	auto BuildHeader = [](const FFMCodexLocalMatchInteractionView& View)
+	{
+		return FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			View, FFMCodexLocalMatchResolutionFeedback(), FString(),
+			false, FString()).Header;
+	};
+
+	const FFMCodexLocalMatchInteractionView PreMatch =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildNoActiveMatch();
+	const FFMCodexUMGMatchHeaderViewModel PreMatchDTO = BuildHeader(PreMatch);
+	Header->RefreshFromPresentation(PreMatchDTO);
+	TestTrue(TEXT("Pre-match Header is neutral and bounded"),
+		!PreMatchDTO.bMatchActive && !PreMatchDTO.bMatchEnded
+			&& PreMatchDTO.MatchStatusLabel == TEXT("READY TO PLAY")
+			&& PreMatchDTO.ActorStatusLabel == TEXT("WAITING TO START")
+			&& Header->GetDisplayedScoreLabel() == TEXT("0 - 0")
+			&& !IsVisible(Header->GetWidgetFromName(
+				TEXT("MatchHeaderAttackerStatusRegion")))
+			&& !IsVisible(Header->GetWidgetFromName(
+				TEXT("MatchHeaderFinalResultRegion"))));
+
+	auto ActiveView = [](const EInitialTurnOrderPlayer Attacker,
+		const EInitialTurnOrderPlayer Actor,
+		const bool bSystem)
+	{
+		FFMCodexLocalMatchInteractionView View;
+		View.bMatchActive = true;
+		View.bCurrentAttackActive = true;
+		View.PlayerAScore = 2;
+		View.PlayerBScore = 1;
+		View.CurrentAttackingPlayer = Attacker;
+		View.ExpectedActingPlayer = bSystem
+			? EInitialTurnOrderPlayer::None : Actor;
+		View.bHumanInteraction = !bSystem;
+		View.InteractionCategory = bSystem
+			? EFMCodexLocalMatchInteractionCategory::ContinueResolution
+			: EFMCodexLocalMatchInteractionCategory::SelectMarker;
+		return View;
+	};
+	const TArray<FFMCodexLocalMatchInteractionView> ActiveCases = {
+		ActiveView(EInitialTurnOrderPlayer::PlayerA,
+			EInitialTurnOrderPlayer::PlayerA, false),
+		ActiveView(EInitialTurnOrderPlayer::PlayerA,
+			EInitialTurnOrderPlayer::PlayerB, false),
+		ActiveView(EInitialTurnOrderPlayer::PlayerA,
+			EInitialTurnOrderPlayer::None, true),
+		ActiveView(EInitialTurnOrderPlayer::PlayerB,
+			EInitialTurnOrderPlayer::PlayerA, false),
+		ActiveView(EInitialTurnOrderPlayer::PlayerB,
+			EInitialTurnOrderPlayer::PlayerB, false)
+	};
+	const TArray<FString> ExpectedAttackers = {
+		TEXT("PLAYER A ATTACKING"), TEXT("PLAYER A ATTACKING"),
+		TEXT("PLAYER A ATTACKING"), TEXT("PLAYER B ATTACKING"),
+		TEXT("PLAYER B ATTACKING")
+	};
+	const TArray<FString> ExpectedActors = {
+		TEXT("PLAYER A TO ACT"), TEXT("PLAYER B TO ACT"),
+		TEXT("SYSTEM RESOLUTION"), TEXT("PLAYER A TO ACT"),
+		TEXT("PLAYER B TO ACT")
+	};
+	for (int32 Index = 0; Index < ActiveCases.Num(); ++Index)
+	{
+		const FFMCodexUMGMatchHeaderViewModel DTO = BuildHeader(ActiveCases[Index]);
+		Header->RefreshFromPresentation(DTO);
+		TestTrue(FString::Printf(TEXT("Attacker/actor case %d stays distinct"),
+			Index), Header->GetDisplayedAttackerLabel() == ExpectedAttackers[Index]
+			&& Header->GetDisplayedActorLabel() == ExpectedActors[Index]
+			&& Header->GetDisplayedScoreLabel() == TEXT("2 - 1")
+			&& IsVisible(Header->GetWidgetFromName(
+				TEXT("MatchHeaderAttackerStatusRegion")))
+			&& IsVisible(Header->GetWidgetFromName(
+				TEXT("MatchHeaderActorStatusRegion"))));
+	}
+
+	FFMCodexUMGMatchHeaderViewModel DirectScore;
+	DirectScore.PlayerALabel = TEXT("Player A");
+	DirectScore.PlayerBLabel = TEXT("Player B");
+	DirectScore.ScoreLabel = TEXT("7 - 3");
+	DirectScore.PlayerAScoreLabel = TEXT("7");
+	DirectScore.PlayerBScoreLabel = TEXT("3");
+	DirectScore.MatchStatusLabel = TEXT("MATCH IN PROGRESS");
+	Header->RefreshFromPresentation(DirectScore);
+	TestTrue(TEXT("Scoreboard displays DTO values without score arithmetic"),
+		Header->GetDisplayedScoreLabel() == TEXT("7 - 3")
+			&& Cast<UTextBlock>(Header->GetWidgetFromName(
+				TEXT("PlayerAScoreValue")))->GetText().ToString() == TEXT("7")
+			&& Cast<UTextBlock>(Header->GetWidgetFromName(
+				TEXT("PlayerBScoreValue")))->GetText().ToString() == TEXT("3"));
+
+	const TArray<TPair<EMatchResultType, FString>> EndedCases = {
+		{ EMatchResultType::HomeWin, TEXT("Player A Win") },
+		{ EMatchResultType::AwayWin, TEXT("Player B Win") },
+		{ EMatchResultType::Draw, TEXT("Draw") }
+	};
+	for (const TPair<EMatchResultType, FString>& EndedCase : EndedCases)
+	{
+		FFMCodexLocalMatchInteractionView EndedView = ActiveCases[0];
+		EndedView.bMatchEnded = true;
+		EndedView.bCurrentAttackActive = false;
+		EndedView.MatchResult = EndedCase.Key;
+		EndedView.PlayerAScore = EndedCase.Key == EMatchResultType::AwayWin ? 1 : 3;
+		EndedView.PlayerBScore = EndedCase.Key == EMatchResultType::HomeWin ? 2 : 3;
+		EndedView.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+		const FFMCodexUMGMatchHeaderViewModel EndedDTO = BuildHeader(EndedView);
+		Header->RefreshFromPresentation(EndedDTO);
+		TestTrue(FString::Printf(TEXT("Ended result %s is canonical"),
+			*EndedCase.Value),
+			EndedDTO.MatchStatusLabel == TEXT("MATCH ENDED")
+				&& EndedDTO.MatchResultLabel == EndedCase.Value
+				&& IsVisible(Header->GetWidgetFromName(
+					TEXT("MatchHeaderFinalResultRegion")))
+				&& !IsVisible(Header->GetWidgetFromName(
+					TEXT("MatchHeaderAttackerStatusRegion")))
+				&& !IsVisible(Header->GetWidgetFromName(
+					TEXT("MatchHeaderActorStatusRegion"))));
+	}
+
+	// Real normal-demo Cross flow proves refresh, attacker/defender distinction,
+	// system resolution, rejection atomicity and completion/next-attack state.
+	UFMCodexInteractionPanelWidget* Interaction = Screen->GetInteractionPanel();
+	if (Interaction == nullptr)
+	{
+		return false;
+	}
+	Controller->RefreshPresentation();
+	Interaction->RequestStartMatch();
+	TestTrue(TEXT("Real Header refreshes active match beneath handoff"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Screen->GetPresentation().Handoff.bVisible
+			&& Header->GetPresentation().bMatchActive
+			&& Header->GetPresentation().ActorStatusLabel.Contains(TEXT("TO ACT")));
+	const FString HandoffPlayer =
+		Screen->GetPresentation().Handoff.NextPlayerLabel;
+	TestTrue(TEXT("Handoff and underlying Header actor remain consistent"),
+		(HandoffPlayer.Contains(TEXT("Player A"))
+				&& Header->GetDisplayedActorLabel().Contains(TEXT("PLAYER A")))
+			|| (HandoffPlayer.Contains(TEXT("Player B"))
+				&& Header->GetDisplayedActorLabel().Contains(TEXT("PLAYER B"))));
+	const TArray<uint8> BeforeReady =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	const FFMCodexUMGMatchHeaderViewModel HeaderBeforeReady =
+		Header->GetPresentation();
+	Screen->RequestReady();
+	TestTrue(TEXT("Ready changes neither authority nor Header snapshot values"),
+		BeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& Header->GetPresentation().ScoreLabel
+				== HeaderBeforeReady.ScoreLabel
+			&& Header->GetPresentation().AttackerStatusLabel
+				== HeaderBeforeReady.AttackerStatusLabel
+			&& Header->GetPresentation().ActorStatusLabel
+				== HeaderBeforeReady.ActorStatusLabel);
+	Interaction->RequestBeginAttack();
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		return false;
+	}
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
+	const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
+	if (!DeployParticipants(*this, *Controller, CrossFamily, Attacker))
+	{
+		return false;
+	}
+	const FName CarrierId = OutfieldCardId(Attacker, CrossFamily.FirstCardIndex);
+	AcknowledgeIfPending(*Controller);
+	TestTrue(TEXT("Carrier Header shows attacker acting"),
+		Header->GetDisplayedAttackerLabel().Contains(
+			Attacker == EInitialTurnOrderPlayer::PlayerA
+				? TEXT("PLAYER A") : TEXT("PLAYER B"))
+			&& Header->GetDisplayedActorLabel().Contains(
+				Attacker == EInitialTurnOrderPlayer::PlayerA
+					? TEXT("PLAYER A") : TEXT("PLAYER B")));
+	Interaction->RequestCarrier(CarrierId);
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		return false;
+	}
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+	TestTrue(TEXT("Marker Header keeps attacker but shows defender acting"),
+		Header->GetDisplayedAttackerLabel().Contains(
+			Attacker == EInitialTurnOrderPlayer::PlayerA
+				? TEXT("PLAYER A") : TEXT("PLAYER B"))
+			&& Header->GetDisplayedActorLabel().Contains(
+				Defender == EInitialTurnOrderPlayer::PlayerA
+					? TEXT("PLAYER A") : TEXT("PLAYER B")));
+	if (Interaction->GetPresentation().SelectionChoices.IsEmpty())
+	{
+		return false;
+	}
+	Interaction->RequestMarker(
+		Interaction->GetPresentation().SelectionChoices[0].OptionId);
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		return false;
+	}
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+	const FFMCodexUMGSelectionChoiceViewModel* CrossSkill =
+		Interaction->GetPresentation().SelectionChoices.FindByPredicate(
+			[](const FFMCodexUMGSelectionChoiceViewModel& Candidate)
+			{
+				return Candidate.Label.Contains(TEXT("Cross"));
+			});
+	if (CrossSkill == nullptr)
+	{
+		return false;
+	}
+	Interaction->RequestSkill(CrossSkill->OptionId);
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		return false;
+	}
+	for (int32 Guard = 0; Guard < 4; ++Guard)
+	{
+		if (Controller->IsAwaitingHotSeatHandoff())
+		{
+			Screen->RequestReady();
+		}
+		const EFMCodexUMGInteractionCategory Category =
+			Interaction->GetPresentation().Category;
+		if (Category != EFMCodexUMGInteractionCategory::SelectRunner
+			&& Category != EFMCodexUMGInteractionCategory::SelectHelper)
+		{
+			break;
+		}
+		if (!Interaction->GetPresentation().SelectionChoices.IsEmpty())
+		{
+			const FName Id =
+				Interaction->GetPresentation().SelectionChoices[0].OptionId;
+			if (Category == EFMCodexUMGInteractionCategory::SelectRunner)
+			{
+				Interaction->RequestRunner(Id);
+			}
+			else
+			{
+				Interaction->RequestHelper(Id);
+			}
+		}
+		else if (Interaction->GetPresentation().bCanResolveNoLegal)
+		{
+			Interaction->RequestNoLegal();
+		}
+		else
+		{
+			Interaction->RequestDecline();
+		}
+		if (!Controller->GetLastDiagnostic().bHostSuccess)
+		{
+			return false;
+		}
+	}
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+	Interaction->RequestBranch(EFMCodexUMGBranchIntent::CrossHigh);
+	TestTrue(TEXT("System resolution is explicit and attacker is retained"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Header->GetPresentation().bSystemResolution
+			&& Header->GetDisplayedActorLabel() == TEXT("SYSTEM RESOLUTION")
+			&& Header->GetDisplayedAttackerLabel().Contains(
+				Attacker == EInitialTurnOrderPlayer::PlayerA
+					? TEXT("PLAYER A") : TEXT("PLAYER B")));
+
+	const FFMCodexUMGMatchHeaderViewModel BeforeRejected =
+		Header->GetPresentation();
+	const TArray<uint8> StateBeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestBeginOrdinaryAttack();
+	TestTrue(TEXT("Rejected command cannot optimistically mutate Header"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& StateBeforeRejected
+				== SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& Header->GetPresentation().ScoreLabel == BeforeRejected.ScoreLabel
+			&& Header->GetPresentation().AttackerStatusLabel
+				== BeforeRejected.AttackerStatusLabel
+			&& Header->GetPresentation().ActorStatusLabel
+				== BeforeRejected.ActorStatusLabel
+			&& Header->GetPresentation().MatchStatusLabel
+				== BeforeRejected.MatchStatusLabel);
+
+	for (int32 Guard = 0;
+		Guard < 12 && Controller->GetInteractionView().bCurrentAttackActive;
+		++Guard)
+	{
+		Interaction->RequestContinue();
+		if (!Controller->GetLastDiagnostic().bHostSuccess)
+		{
+			return false;
+		}
+	}
+	const FMatchPlayState& CompletedState = Host->GetMatchSnapshot().Snapshot;
+	const FMatchRuntimeState& CompletedRuntime = CompletedState.RuntimeState;
+	TestTrue(TEXT("Completion Header score is refreshed from authority"),
+		Header->GetPresentation().PlayerAScoreLabel
+			== FString::FromInt(CompletedRuntime.PlayerAState.Score)
+			&& Header->GetPresentation().PlayerBScoreLabel
+				== FString::FromInt(CompletedRuntime.PlayerBState.Score));
+	TestTrue(TEXT("Between attacks identifies next attacker without active claim"),
+		!Header->GetPresentation().bAttackActive
+			&& Header->GetDisplayedAttackerLabel().StartsWith(
+				TEXT("NEXT ATTACKER:"))
+			&& !Header->GetDisplayedAttackerLabel().EndsWith(TEXT(" ATTACKING")));
+
+	FString HeaderHeader;
+	FString HeaderSource;
+	FString RootHeader;
+	FString RootSource;
+	FString PitchSource;
+	FString CardSource;
+	FString InteractionSource;
+	FString ResolutionSource;
+	FString ControllerSource;
+	TestTrue(TEXT("Header boundary audit sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexMatchHeaderWidget.h"),
+			HeaderHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexMatchHeaderWidget.cpp"),
+				HeaderSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.h"),
+				RootHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+				RootSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchWidget.cpp"),
+				PitchSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"),
+				CardSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionPanelWidget.cpp"),
+				InteractionSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexResolutionPanelWidget.cpp"),
+				ResolutionSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+				ControllerSource));
+	const FString HeaderWidgetSources = HeaderHeader + HeaderSource;
+	TestTrue(TEXT("Match Header receives reflected presentation DTO only"),
+		HeaderHeader.Contains(TEXT("FFMCodexUMGMatchHeaderViewModel"))
+			&& !HeaderWidgetSources.Contains(TEXT("AuthoritativeSession"))
+			&& !HeaderWidgetSources.Contains(TEXT("HostGameMode"))
+			&& !HeaderWidgetSources.Contains(TEXT("FMatchPlayState"))
+			&& !HeaderWidgetSources.Contains(TEXT("FMatchPlayCurrentAttack"))
+			&& !HeaderWidgetSources.Contains(TEXT("D6Provider")));
+	TestTrue(TEXT("Match Header contains no score/winner/actor calculation"),
+		!HeaderWidgetSources.Contains(TEXT("CurrentAttackingPlayer"))
+			&& !HeaderWidgetSources.Contains(TEXT("ExpectedActingPlayer"))
+			&& !HeaderWidgetSources.Contains(TEXT("EInitialTurnOrderPlayer"))
+			&& !HeaderWidgetSources.Contains(TEXT("EMatchResultType"))
+			&& !HeaderWidgetSources.Contains(TEXT("FMath"))
+			&& !HeaderWidgetSources.Contains(TEXT("Score =")));
+	TestTrue(TEXT("Match Header contains no gameplay rules, RNG or input"),
+		!HeaderWidgetSources.Contains(TEXT("FormulaResolver"))
+			&& !HeaderWidgetSources.Contains(TEXT("RouteThreshold"))
+			&& !HeaderWidgetSources.Contains(TEXT("Legality"))
+			&& !HeaderWidgetSources.Contains(TEXT("RandRange"))
+			&& !HeaderWidgetSources.Contains(TEXT("RandomStream"))
+			&& !HeaderWidgetSources.Contains(TEXT("UButton"))
+			&& !HeaderWidgetSources.Contains(TEXT("OnClicked"))
+			&& !HeaderWidgetSources.Contains(TEXT("ExecuteCommandByName")));
+	TestTrue(TEXT("Header is family-independent and contains no resolution detail"),
+		!HeaderWidgetSources.Contains(TEXT("Cross"))
+			&& !HeaderWidgetSources.Contains(TEXT("ThroughBall"))
+			&& !HeaderWidgetSources.Contains(TEXT("Dice"))
+			&& !HeaderWidgetSources.Contains(TEXT("Formula")));
+	TestTrue(TEXT("Root delegates Header to a configurable dedicated Widget"),
+		RootHeader.Contains(TEXT("TSubclassOf<UFMCodexMatchHeaderWidget>"))
+			&& RootSource.Contains(TEXT("DedicatedMatchHeaderWidget"))
+			&& !RootSource.Contains(TEXT("MatchHeaderText")));
+	TestNotNull(TEXT("Stage 6.5 Pitch Widget remains present"),
+		Screen->GetPitchWidget());
+	TestNotNull(TEXT("Stage 6.7 Interaction Panel remains present"),
+		Screen->GetInteractionPanel());
+	TestNotNull(TEXT("Stage 6.8 Resolution Panel remains present"),
+		Screen->GetResolutionPanel());
+	TestTrue(TEXT("Stage 6.5-6.8 source structures remain present"),
+		PitchSource.Contains(TEXT("CanonicalPitchSlot"))
+			&& PitchSource.Contains(TEXT("RenderedSlotWidgets.Add"))
+			&& CardSource.Contains(TEXT("PlayerCardFrame"))
+			&& InteractionSource.Contains(TEXT("InteractionPanelBounds"))
+			&& ResolutionSource.Contains(TEXT("ResolutionPanelBounds")));
 	TestTrue(TEXT("Slate developer reference surface remains available"),
 		ControllerSource.Contains(TEXT("BuildControlSurface"))
 			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));

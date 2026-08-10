@@ -150,16 +150,40 @@ struct FMCODEX_API FFMCodexUMGMatchHeaderViewModel
 	FString ScoreLabel = TEXT("0 - 0");
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString PlayerAScoreLabel = TEXT("0");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString PlayerBScoreLabel = TEXT("0");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FString CurrentAttackerLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FString ExpectedActorLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString AttackerStatusLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString ActorStatusLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString MatchResultLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FString MatchStatusLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	bool bMatchEnded = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bMatchActive = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bAttackActive = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bHumanAction = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	bool bSystemResolution = false;

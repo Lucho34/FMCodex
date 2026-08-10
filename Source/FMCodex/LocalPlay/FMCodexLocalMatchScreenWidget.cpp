@@ -2,6 +2,7 @@
 
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexLocalMatchPlayerController.h"
+#include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexPitchWidget.h"
 #include "FMCodexResolutionPanelWidget.h"
 
@@ -54,6 +55,7 @@ UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
 	const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	MatchHeaderWidgetClass = UFMCodexMatchHeaderWidget::StaticClass();
 	PitchWidgetClass = UFMCodexPitchWidget::StaticClass();
 	InteractionPanelWidgetClass = UFMCodexInteractionPanelWidget::StaticClass();
 	ResolutionPanelWidgetClass = UFMCodexResolutionPanelWidget::StaticClass();
@@ -105,6 +107,12 @@ AFMCodexLocalMatchPlayerController*
 UFMCodexLocalMatchScreenWidget::GetMatchController() const
 {
 	return MatchController;
+}
+
+UFMCodexMatchHeaderWidget*
+UFMCodexLocalMatchScreenWidget::GetMatchHeader() const
+{
+	return MatchHeader;
 }
 
 UFMCodexPitchWidget* UFMCodexLocalMatchScreenWidget::GetPitchWidget() const
@@ -401,8 +409,11 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	MainScroll->AddChild(MainScreen);
 
 	UBorder* HeaderRegion = MakeRegion(*WidgetTree, TEXT("MatchHeaderRegion"));
-	HeaderText = MakeText(*WidgetTree, TEXT("MatchHeaderText"));
-	HeaderRegion->AddChild(HeaderText);
+	UClass* ResolvedHeaderClass = MatchHeaderWidgetClass != nullptr
+		? MatchHeaderWidgetClass.Get() : UFMCodexMatchHeaderWidget::StaticClass();
+	MatchHeader = WidgetTree->ConstructWidget<UFMCodexMatchHeaderWidget>(
+		ResolvedHeaderClass, TEXT("DedicatedMatchHeaderWidget"));
+	HeaderRegion->AddChild(MatchHeader);
 	MainScreen->AddChildToVerticalBox(HeaderRegion);
 
 	UBorder* PitchRegion = MakeRegion(*WidgetTree, TEXT("FootballCardFieldRegion"));
@@ -486,18 +497,11 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 
 void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 {
-	if (HeaderText == nullptr)
+	if (MatchHeader == nullptr)
 	{
 		return;
 	}
-	HeaderText->SetText(FText::FromString(FString::Printf(
-		TEXT("MATCH HEADER\n%s  %s  %s\n%s\n%s\n%s"),
-		*Presentation.Header.PlayerALabel,
-		*Presentation.Header.ScoreLabel,
-		*Presentation.Header.PlayerBLabel,
-		*Presentation.Header.CurrentAttackerLabel,
-		*Presentation.Header.ExpectedActorLabel,
-		*Presentation.Header.MatchStatusLabel)));
+	MatchHeader->RefreshFromPresentation(Presentation.Header);
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);

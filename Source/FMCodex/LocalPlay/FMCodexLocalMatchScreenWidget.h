@@ -10,6 +10,7 @@
 class AFMCodexLocalMatchPlayerController;
 class UBorder;
 class UFMCodexInteractionPanelWidget;
+class UFMCodexMatchHeaderWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
 class UFMCodexResolutionPanelWidget;
@@ -84,6 +85,7 @@ public:
 
 	const FFMCodexUMGMatchScreenViewModel& GetPresentation() const;
 	AFMCodexLocalMatchPlayerController* GetMatchController() const;
+	UFMCodexMatchHeaderWidget* GetMatchHeader() const;
 	UFMCodexPitchWidget* GetPitchWidget() const;
 	UFMCodexInteractionPanelWidget* GetInteractionPanel() const;
 	UFMCodexResolutionPanelWidget* GetResolutionPanel() const;
@@ -157,8 +159,11 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> MainScreen;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Header Presentation")
+	TSubclassOf<UFMCodexMatchHeaderWidget> MatchHeaderWidgetClass;
+
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> HeaderText;
+	TObjectPtr<UFMCodexMatchHeaderWidget> MatchHeader;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Pitch Presentation")
 	TSubclassOf<UFMCodexPitchWidget> PitchWidgetClass;

@@ -207,6 +207,10 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Header.ScoreLabel = FString::Printf(
 		TEXT("%d - %d"), InteractionView.PlayerAScore,
 		InteractionView.PlayerBScore);
+	Result.Header.PlayerAScoreLabel = FString::FromInt(
+		InteractionView.PlayerAScore);
+	Result.Header.PlayerBScoreLabel = FString::FromInt(
+		InteractionView.PlayerBScore);
 	Result.Header.CurrentAttackerLabel = FString::Printf(
 		TEXT("Current attacker: %s"),
 		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
@@ -217,7 +221,31 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			*FFMCodexLocalMatchInteractionViewBuilder::ToString(
 				InteractionView.ExpectedActingPlayer));
 	Result.Header.MatchStatusLabel = Screen.MatchStatusLabel;
+	Result.Header.AttackerStatusLabel = FString();
+	if (InteractionView.bMatchActive && !InteractionView.bMatchEnded
+		&& InteractionView.CurrentAttackingPlayer
+			!= EInitialTurnOrderPlayer::None)
+	{
+		const FString AttackerLabel =
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				InteractionView.CurrentAttackingPlayer).ToUpper();
+		Result.Header.AttackerStatusLabel =
+			InteractionView.bCurrentAttackActive
+			? FString::Printf(TEXT("%s ATTACKING"), *AttackerLabel)
+			: FString::Printf(TEXT("NEXT ATTACKER: %s"), *AttackerLabel);
+	}
+	Result.Header.ActorStatusLabel = Screen.ActingStatusLabel;
+	Result.Header.MatchResultLabel = InteractionView.bMatchEnded
+		? FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			InteractionView.MatchResult)
+		: FString();
 	Result.Header.bMatchEnded = InteractionView.bMatchEnded;
+	Result.Header.bMatchActive = InteractionView.bMatchActive;
+	Result.Header.bAttackActive = InteractionView.bCurrentAttackActive;
+	Result.Header.bHumanAction = InteractionView.bMatchActive
+		&& !InteractionView.bMatchEnded
+		&& InteractionView.ExpectedActingPlayer
+			!= EInitialTurnOrderPlayer::None;
 	Result.Header.bSystemResolution = Screen.bSystemResolution;
 
 	for (const FFMCodexLocalMatchPitchRegionView& Region
