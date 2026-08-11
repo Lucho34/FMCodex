@@ -52,6 +52,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	EFMCodexUMGOneOnOneChoice, Choice);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
 	FFMCodexInteractionContinueRequested);
+DECLARE_MULTICAST_DELEGATE_TwoParams(
+	FFMCodexInteractionDeploymentDragStarted, FName, bool);
+DECLARE_MULTICAST_DELEGATE(FFMCodexInteractionDeploymentDragFinished);
 
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexInteractionPanelWidget : public UUserWidget
@@ -163,6 +166,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionContinueRequested OnContinueRequested;
 
+	FFMCodexInteractionDeploymentDragStarted OnDeploymentDragStarted;
+	FFMCodexInteractionDeploymentDragFinished OnDeploymentDragFinished;
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -172,6 +178,8 @@ private:
 	void RefreshVisuals();
 	void RefreshCandidateChoices();
 	UFMCodexInteractionOptionWidget* MakeOptionWidget(const FName Name);
+	void HandleDeploymentCardDragStarted(FName CardId, bool bGoalkeeper);
+	void HandleDeploymentCardDragFinished();
 
 	UFUNCTION()
 	void HandleStartClicked();
@@ -250,6 +258,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> CandidateCardsBody;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> DeploymentHandInstructionText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UWrapBox> ChoiceOptionsBody;

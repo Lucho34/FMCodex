@@ -54,6 +54,7 @@ TSharedRef<SWidget> UFMCodexPitchWidget::RebuildWidget()
 void UFMCodexPitchWidget::RefreshFromPitchPresentation(
 	const TArray<FFMCodexUMGPitchRegionViewModel>& InPresentation)
 {
+	ActiveDeploymentCardId = NAME_None;
 	Presentation = InPresentation;
 	RefreshVisuals();
 }
@@ -68,6 +69,51 @@ const TArray<TObjectPtr<UFMCodexPitchSlotWidget>>&
 UFMCodexPitchWidget::GetRenderedSlotWidgets() const
 {
 	return RenderedSlotWidgets;
+}
+
+void UFMCodexPitchWidget::BeginDeploymentDrag(
+	const FName CardId,
+	const TArray<FFMCodexUMGDeploymentChoiceViewModel>& Choices)
+{
+	ActiveDeploymentCardId = CardId;
+	for (FFMCodexUMGPitchRegionViewModel& Region : Presentation)
+	{
+		for (FFMCodexUMGPitchSlotViewModel& PitchSlot : Region.Slots)
+		{
+			FFMCodexUMGDeploymentTargetProjector::ProjectSlot(
+				PitchSlot, ActiveDeploymentCardId, Choices);
+		}
+	}
+	RefreshVisuals();
+}
+
+void UFMCodexPitchWidget::EndDeploymentDrag()
+{
+	ActiveDeploymentCardId = NAME_None;
+	for (FFMCodexUMGPitchRegionViewModel& Region : Presentation)
+	{
+		for (FFMCodexUMGPitchSlotViewModel& PitchSlot : Region.Slots)
+		{
+			PitchSlot.DeploymentTargetCardId = NAME_None;
+			PitchSlot.DeploymentTargetState = PitchSlot.bOccupied
+				? EFMCodexUMGDeploymentTargetState::Occupied
+				: EFMCodexUMGDeploymentTargetState::Neutral;
+		}
+	}
+	RefreshVisuals();
+}
+
+FName UFMCodexPitchWidget::GetActiveDeploymentCardId() const
+{
+	return ActiveDeploymentCardId;
+}
+
+void UFMCodexPitchWidget::HandleSlotDeploymentDropped(
+	const FName CardId,
+	const FName SlotId,
+	const bool bGoalkeeper)
+{
+	OnDeploymentDropped.Broadcast(CardId, SlotId, bGoalkeeper);
 }
 
 void UFMCodexPitchWidget::BuildWidgetTree()
@@ -186,8 +232,10 @@ void UFMCodexPitchWidget::RefreshVisuals()
 						RegionIndex, SlotIndex)));
 			SlotWidget->RefreshFromPitchSlotPresentation(
 				Region.Slots[SlotIndex]);
+			SlotWidget->OnDeploymentDropped.AddUObject(
+				this, &UFMCodexPitchWidget::HandleSlotDeploymentDropped);
 			UUniformGridSlot* GridSlot = SlotGrid->AddChildToUniformGrid(
-				SlotWidget, SlotIndex / 5, SlotIndex % 5);
+				SlotWidget, 0, SlotIndex);
 			GridSlot->SetHorizontalAlignment(HAlign_Fill);
 			GridSlot->SetVerticalAlignment(VAlign_Fill);
 			RenderedSlotWidgets.Add(SlotWidget);

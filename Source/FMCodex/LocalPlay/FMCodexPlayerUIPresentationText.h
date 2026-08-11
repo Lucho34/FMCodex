@@ -25,4 +25,10 @@ public:
 	static FText PortraitPlaceholder();
 	static FText SkillsHeading();
 	static FText AttributesHeading();
+	static FText DeploymentHandInstruction();
+	static FText EmptyPitchSlot();
+	static FText ValidDeploymentTarget();
+	static FText InvalidDeploymentTarget();
+	static FText OccupiedDeploymentTarget();
+	static FText UnavailableDeploymentTarget();
 };

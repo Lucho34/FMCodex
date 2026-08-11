@@ -45,6 +45,16 @@ enum class EFMCodexUMGOneOnOneChoice : uint8
 	DirectShot
 };
 
+UENUM(BlueprintType)
+enum class EFMCodexUMGDeploymentTargetState : uint8
+{
+	Neutral,
+	Valid,
+	Invalid,
+	Occupied,
+	Unavailable
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGCardViewModel
 {
@@ -112,6 +122,13 @@ struct FMCODEX_API FFMCodexUMGPitchSlotViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
 	bool bOccupied = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	EFMCodexUMGDeploymentTargetState DeploymentTargetState =
+		EFMCodexUMGDeploymentTargetState::Neutral;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	FName DeploymentTargetCardId = NAME_None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
 	FFMCodexUMGCardViewModel Card;
@@ -217,6 +234,19 @@ struct FMCODEX_API FFMCodexUMGDeploymentChoiceViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	TArray<FFMCodexUMGDeploymentDestinationViewModel> Destinations;
+};
+
+/**
+ * Presentation-only projection of authoritative deployment choices onto pitch
+ * slots. It does not query gameplay state or calculate deployment legality.
+ */
+class FMCODEX_API FFMCodexUMGDeploymentTargetProjector final
+{
+public:
+	static void ProjectSlot(
+		FFMCodexUMGPitchSlotViewModel& Slot,
+		FName DraggedCardId,
+		const TArray<FFMCodexUMGDeploymentChoiceViewModel>& Choices);
 };
 
 USTRUCT(BlueprintType)

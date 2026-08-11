@@ -1,4 +1,5 @@
 #include "FMCodexLocalMatchDemoConfiguration.h"
+#include "FMCodexDeploymentDragDropOperation.h"
 #include "FMCodexLocalMatchHostGameMode.h"
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchPlayerController.h"
@@ -29,6 +30,7 @@
 #include "Components/Button.h"
 #include "Components/Border.h"
 #include "Components/Image.h"
+#include "Components/UniformGridSlot.h"
 
 namespace FMCodexLocalMatchControlSurfaceTests
 {
@@ -1648,7 +1650,7 @@ namespace FMCodexLocalMatchFullFamilyTests
 		bool bCarrierDeployed = false;
 		bool bDefenderGoalkeeperDeployed = false;
 
-		for (int32 Step = 0; Step < 6; ++Step)
+		for (int32 Step = 0; Step < 5; ++Step)
 		{
 			AcknowledgeIfPending(Controller);
 			const auto& View = Controller.GetInteractionView();
@@ -3045,8 +3047,8 @@ bool FFMCodexLocalMatchUMGPlayerFacingFoundationTest::RunTest(
 	{
 		PitchSlotCount += Region.Slots.Num();
 	}
-	TestTrue(TEXT("UMG pitch preserves two physical halves and 20 slots"),
-		DeploymentUMG.PitchRegions.Num() == 2 && PitchSlotCount == 20);
+	TestTrue(TEXT("UMG pitch preserves two physical halves and 10 slots"),
+		DeploymentUMG.PitchRegions.Num() == 2 && PitchSlotCount == 10);
 	TestTrue(TEXT("UMG interaction preserves bounded candidate cards"),
 		!DeploymentUMG.Interaction.CandidateCards.IsEmpty()
 			&& DeploymentUMG.Interaction.CandidateCards.Num()
@@ -3346,8 +3348,8 @@ bool FFMCodexUMGPitchWidgetVisualFoundationTest::RunTest(
 		Pitch->GetPresentation();
 	TestTrue(TEXT("Stable pitch orientation is Player B top / Player A bottom"),
 		PitchPresentation.Num() == 2
-			&& PitchPresentation[0].RegionLabel == TEXT("Player B Half")
-			&& PitchPresentation[1].RegionLabel == TEXT("Player A Half")
+			&& PitchPresentation[0].RegionLabel == TEXT("Half Near Player B")
+			&& PitchPresentation[1].RegionLabel == TEXT("Half Near Player A")
 			&& Pitch->GetWidgetFromName(TEXT("PlayerBPhysicalHalf")) != nullptr
 			&& Pitch->GetWidgetFromName(TEXT("PlayerAPhysicalHalf")) != nullptr);
 	TestNotNull(TEXT("Pitch contains visual-only center field separator"),
@@ -3365,8 +3367,8 @@ bool FFMCodexUMGPitchWidgetVisualFoundationTest::RunTest(
 			ExpectedSlotOrder.Add(PitchSlot.SlotId);
 		}
 	}
-	TestTrue(TEXT("Dedicated Pitch Widget renders 20/20 canonical slots"),
-		DTOCount == 20 && RenderedSlots.Num() == 20);
+	TestTrue(TEXT("Dedicated Pitch Widget renders 10/10 canonical slots"),
+		DTOCount == 10 && RenderedSlots.Num() == 10);
 	bool bDeterministicOrder = RenderedSlots.Num() == ExpectedSlotOrder.Num();
 	for (int32 Index = 0;
 		bDeterministicOrder && Index < RenderedSlots.Num(); ++Index)
@@ -3377,6 +3379,20 @@ bool FFMCodexUMGPitchWidgetVisualFoundationTest::RunTest(
 	}
 	TestTrue(TEXT("Pitch slots preserve deterministic catalog ordering"),
 		bDeterministicOrder);
+	bool bSingleRowPerHalf = RenderedSlots.Num() == 10;
+	for (int32 Index = 0;
+		bSingleRowPerHalf && Index < RenderedSlots.Num(); ++Index)
+	{
+		const UUniformGridSlot* GridSlot = RenderedSlots[Index] == nullptr
+			? nullptr : Cast<UUniformGridSlot>(RenderedSlots[Index]->Slot);
+		bSingleRowPerHalf = GridSlot != nullptr
+			&& GridSlot->GetRow() == 0
+			&& GridSlot->GetColumn() == Index % 5;
+	}
+	TestTrue(TEXT("Each physical half renders one canonical row of five slots"),
+		bSingleRowPerHalf
+			&& PitchPresentation[0].Slots.Num() == 5
+			&& PitchPresentation[1].Slots.Num() == 5);
 
 	int32 EmptySlots = 0;
 	for (UFMCodexPitchSlotWidget* SlotWidget : RenderedSlots)
@@ -3395,8 +3411,8 @@ bool FFMCodexUMGPitchWidgetVisualFoundationTest::RunTest(
 				SlotWidget->GetWidgetFromName(TEXT("EmptySpatialLocation")));
 		}
 	}
-	TestEqual(TEXT("Initial deployment pitch has 20 empty locations"),
-		EmptySlots, 20);
+	TestEqual(TEXT("Initial deployment pitch has 10 empty locations"),
+		EmptySlots, 10);
 
 	const FFMCodexLocalMatchInteractionView& DeploymentView =
 		Controller->GetInteractionView();
@@ -3951,7 +3967,7 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 	OccupiedSlot->TakeWidget();
 	UFMCodexPlayerCardWidget* PitchCard = OccupiedSlot->GetCardWidget();
 	TestTrue(TEXT("PitchSlot reuses Card Widget in PitchCompact mode"),
-		Pitch->GetRenderedSlotWidgets().Num() == 20
+		Pitch->GetRenderedSlotWidgets().Num() == 10
 			&& PitchCard != nullptr
 			&& PitchCard->GetPresentationMode()
 				== EFMCodexPlayerCardPresentationMode::PitchCompact);
@@ -4197,13 +4213,23 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	Goalkeeper.Destinations = { { TEXT("Slot.GK"), TEXT("Goalkeeper Slot") } };
 	Deploy.DeploymentChoices = { Ordinary, Goalkeeper };
 	Panel->RefreshFromPresentation(Deploy);
-	TestTrue(TEXT("Deployment preserves every card and destination"),
+	TestTrue(TEXT("Deployment presents two draggable hand cards without buttons"),
 		Panel->GetRenderedCandidateCardWidgets().Num() == 2
-			&& Panel->GetRenderedOptionWidgets().Num() == 3
+			&& Panel->GetRenderedOptionWidgets().IsEmpty()
 			&& Panel->GetRenderedCandidateCardWidgets()[0]->GetPresentationMode()
 				== EFMCodexPlayerCardPresentationMode::InteractionChoice
+			&& Panel->GetRenderedCandidateCardWidgets()[0]
+				->IsDeploymentDragEnabled()
+			&& Panel->GetRenderedCandidateCardWidgets()[0]
+				->GetDeploymentDragCardId() == Ordinary.CardId
 			&& Panel->GetRenderedCandidateCardWidgets()[1]
 				->IsGoalkeeperVisualVariant()
+			&& Panel->GetRenderedCandidateCardWidgets()[1]
+				->IsDeploymentDragGoalkeeper()
+			&& Panel->GetRenderedCandidateCardWidgets()[1]
+				->GetDeploymentDragCardId() == Goalkeeper.CardId
+			&& IsVisible(Panel->GetWidgetFromName(
+				TEXT("DeploymentHandInstruction")))
 			&& IsVisible(Panel->GetWidgetFromName(
 				TEXT("InteractionFinishDeploymentButton"))));
 
@@ -4368,7 +4394,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	bool bRejectedIntentVerified = false;
 	bool bCrossCarrierDeployed = false;
 	bool bDefenderGoalkeeperDeployed = false;
-	while (SuccessfulDeployments < 6)
+	while (SuccessfulDeployments < 5)
 	{
 		const FFMCodexUMGInteractionViewModel& Deployment =
 			Panel->GetPresentation();
@@ -5829,7 +5855,7 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 			? TEXT("PLAYER B HALF") : TEXT("PLAYER A HALF");
 		Region.ZoneContextLabel = TEXT("Canonical relative zones");
 		Region.bCurrentAttackingSide = RegionIndex == 0;
-		for (int32 SlotIndex = 0; SlotIndex < 10; ++SlotIndex)
+		for (int32 SlotIndex = 0; SlotIndex < 5; ++SlotIndex)
 		{
 			FFMCodexUMGPitchSlotViewModel Slot;
 			Slot.SlotId = FName(*FString::Printf(
@@ -5854,9 +5880,9 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 	}
 	Pitch->TakeWidget();
 	Pitch->RefreshFromPitchPresentation(PitchPresentation);
-	TestTrue(TEXT("Styled Pitch preserves two halves and 20/20 slots"),
+	TestTrue(TEXT("Styled Pitch preserves two halves and 10/10 slots"),
 		Pitch->GetPresentation().Num() == 2
-			&& Pitch->GetRenderedSlotWidgets().Num() == 20
+			&& Pitch->GetRenderedSlotWidgets().Num() == 10
 			&& Pitch->GetWidgetFromName(TEXT("PitchBackgroundAssetHook"))
 				!= nullptr
 			&& Pitch->GetWidgetFromName(TEXT("CenterFieldVisualSeparator"))
@@ -6292,7 +6318,7 @@ bool FFMCodexValidatedPlayerCardArtPilotIntegrationTest::RunTest(
 		FFMCodexUMGPitchRegionViewModel Region;
 		Region.RegionLabel = RegionIndex == 0
 			? TEXT("PLAYER B HALF") : TEXT("PLAYER A HALF");
-		for (int32 SlotIndex = 0; SlotIndex < 10; ++SlotIndex)
+		for (int32 SlotIndex = 0; SlotIndex < 5; ++SlotIndex)
 		{
 			FFMCodexUMGPitchSlotViewModel Slot;
 			Slot.SlotId = FName(*FString::Printf(
@@ -6311,8 +6337,8 @@ bool FFMCodexValidatedPlayerCardArtPilotIntegrationTest::RunTest(
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
 	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
 	Pitch->RefreshFromPitchPresentation(PitchPresentation);
-	TestTrue(TEXT("Pilot art preserves all 20 canonical Pitch slots"),
-		Pitch->GetRenderedSlotWidgets().Num() == 20);
+	TestTrue(TEXT("Pilot art preserves all 10 canonical Pitch slots"),
+		Pitch->GetRenderedSlotWidgets().Num() == 10);
 	UFMCodexPitchSlotWidget* PilotSlot =
 		Pitch->GetRenderedSlotWidgets().IsEmpty()
 			? nullptr : Pitch->GetRenderedSlotWidgets()[0];
@@ -6628,7 +6654,7 @@ bool FFMCodexGoldenSampleVisualDirectionTest::RunTest(
 	for (int32 RegionIndex = 0; RegionIndex < 2; ++RegionIndex)
 	{
 		FFMCodexUMGPitchRegionViewModel Region;
-		for (int32 SlotIndex = 0; SlotIndex < 10; ++SlotIndex)
+		for (int32 SlotIndex = 0; SlotIndex < 5; ++SlotIndex)
 		{
 			FFMCodexUMGPitchSlotViewModel Slot;
 			Slot.SlotId = FName(*FString::Printf(
@@ -6640,8 +6666,8 @@ bool FFMCodexGoldenSampleVisualDirectionTest::RunTest(
 		PitchPresentation.Add(Region);
 	}
 	Screen->GetPitchWidget()->RefreshFromPitchPresentation(PitchPresentation);
-	TestEqual(TEXT("Golden Sample preserves the 20-slot Pitch hierarchy"),
-		Screen->GetPitchWidget()->GetRenderedSlotWidgets().Num(), 20);
+	TestEqual(TEXT("Golden Sample preserves the 10-slot Pitch hierarchy"),
+		Screen->GetPitchWidget()->GetRenderedSlotWidgets().Num(), 10);
 
 	FString ArtDirection;
 	FString AssetReferenceSource;
@@ -6683,6 +6709,470 @@ bool FFMCodexGoldenSampleVisualDirectionTest::RunTest(
 		TestTrue(FString::Printf(TEXT("Golden source exists: %s"), RelativePath),
 			FPaths::FileExists(FPaths::Combine(FPaths::ProjectDir(), RelativePath)));
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexFiveSlotDragDropDeploymentIntegrationTest,
+	"FMCodex.LocalPlay.ControlSurface.37.FiveSlotDragDropDeploymentIntegration",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+
+	const FFMCodexLocalMatchDemoConfiguration Configuration =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	const TArray<FMatchPlayDeploymentSlotDefinition>& CanonicalSlots =
+		Configuration.OpeningInput.DeploymentSlotCatalog.Slots;
+	int32 NearPlayerACount = 0;
+	int32 NearPlayerBCount = 0;
+	TSet<FName> CanonicalSlotIds;
+	for (const FMatchPlayDeploymentSlotDefinition& SlotDefinition
+		: CanonicalSlots)
+	{
+		NearPlayerACount += SlotDefinition.NeutralSide
+			== EMatchPlayNeutralSlotSide::NearPlayerA ? 1 : 0;
+		NearPlayerBCount += SlotDefinition.NeutralSide
+			== EMatchPlayNeutralSlotSide::NearPlayerB ? 1 : 0;
+		CanonicalSlotIds.Add(SlotDefinition.SlotId);
+	}
+	TestTrue(TEXT("Canonical demo owns exactly five slots per physical half"),
+		CanonicalSlots.Num() == 10
+			&& NearPlayerACount == 5
+			&& NearPlayerBCount == 5
+			&& CanonicalSlotIds.Contains(TEXT("Demo.Slot.NearA.01"))
+			&& CanonicalSlotIds.Contains(TEXT("Demo.Slot.NearA.05"))
+			&& CanonicalSlotIds.Contains(TEXT("Demo.Slot.NearB.01"))
+			&& CanonicalSlotIds.Contains(TEXT("Demo.Slot.NearB.05"))
+			&& !CanonicalSlotIds.Contains(TEXT("Demo.Slot.NearA.06"))
+			&& !CanonicalSlotIds.Contains(TEXT("Demo.Slot.NearB.06")));
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Drag/drop integration Host exists"), Host);
+	TestNotNull(TEXT("Drag/drop integration Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Drag/drop integration Screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	Screen->RequestStartNewMatch();
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+	Screen->RequestBeginOrdinaryAttack();
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+
+	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
+	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
+	TestNotNull(TEXT("Drag/drop integration Pitch exists"), Pitch);
+	TestNotNull(TEXT("Drag/drop integration Panel exists"), Panel);
+	if (Pitch == nullptr || Panel == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexUMGMatchScreenViewModel& DeploymentPresentation =
+		Screen->GetPresentation();
+	TestTrue(TEXT("Deployment hand and pitch expose bounded product DTOs"),
+		DeploymentPresentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::Deploy
+			&& !DeploymentPresentation.Interaction.DeploymentChoices.IsEmpty()
+			&& Panel->GetRenderedCandidateCardWidgets().Num()
+				== DeploymentPresentation.Interaction.DeploymentChoices.Num()
+			&& Panel->GetRenderedOptionWidgets().IsEmpty()
+			&& Pitch->GetPresentation().Num() == 2
+			&& Pitch->GetPresentation()[0].Slots.Num() == 5
+			&& Pitch->GetPresentation()[1].Slots.Num() == 5
+			&& Pitch->GetRenderedSlotWidgets().Num() == 10);
+
+	bool bCanonicalSingleRows = Pitch->GetRenderedSlotWidgets().Num() == 10;
+	for (int32 Index = 0;
+		bCanonicalSingleRows && Index < Pitch->GetRenderedSlotWidgets().Num();
+		++Index)
+	{
+		const UFMCodexPitchSlotWidget* SlotWidget =
+			Pitch->GetRenderedSlotWidgets()[Index];
+		const UUniformGridSlot* GridSlot = SlotWidget == nullptr
+			? nullptr : Cast<UUniformGridSlot>(SlotWidget->Slot);
+		bCanonicalSingleRows = GridSlot != nullptr
+			&& GridSlot->GetRow() == 0
+			&& GridSlot->GetColumn() == Index % 5;
+	}
+	TestTrue(TEXT("Rendered board is one row of five slots per half"),
+		bCanonicalSingleRows);
+
+	auto FindChoice = [](const FFMCodexUMGInteractionViewModel& Interaction,
+		const bool bGoalkeeper)
+		-> const FFMCodexUMGDeploymentChoiceViewModel*
+	{
+		return Interaction.DeploymentChoices.FindByPredicate(
+			[bGoalkeeper](const FFMCodexUMGDeploymentChoiceViewModel& Candidate)
+			{
+				return Candidate.bGoalkeeper == bGoalkeeper
+					&& !Candidate.Destinations.IsEmpty();
+			});
+	};
+	auto FindHandCard = [](UFMCodexInteractionPanelWidget& InteractionPanel,
+		const FName CardId) -> UFMCodexPlayerCardWidget*
+	{
+		for (UFMCodexPlayerCardWidget* CardWidget
+			: InteractionPanel.GetRenderedCandidateCardWidgets())
+		{
+			if (CardWidget != nullptr
+				&& CardWidget->GetDeploymentDragCardId() == CardId)
+			{
+				return CardWidget;
+			}
+		}
+		return nullptr;
+	};
+	auto FindPitchSlot = [](UFMCodexPitchWidget& PitchWidget,
+		const FName SlotId) -> UFMCodexPitchSlotWidget*
+	{
+		for (UFMCodexPitchSlotWidget* SlotWidget
+			: PitchWidget.GetRenderedSlotWidgets())
+		{
+			if (SlotWidget != nullptr
+				&& SlotWidget->GetPresentation().SlotId == SlotId)
+			{
+				return SlotWidget;
+			}
+		}
+		return nullptr;
+	};
+
+	const FFMCodexUMGDeploymentChoiceViewModel* OrdinaryChoiceSource =
+		FindChoice(Screen->GetPresentation().Interaction, false);
+	TestNotNull(TEXT("Authoritative presentation exposes ordinary hand card"),
+		OrdinaryChoiceSource);
+	if (OrdinaryChoiceSource == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexUMGDeploymentChoiceViewModel OrdinaryChoice =
+		*OrdinaryChoiceSource;
+	UFMCodexPlayerCardWidget* OrdinaryCard =
+		FindHandCard(*Panel, OrdinaryChoice.CardId);
+	TestNotNull(TEXT("Ordinary presentation card is a real drag source"),
+		OrdinaryCard);
+	if (OrdinaryCard == nullptr)
+	{
+		return false;
+	}
+
+	const TArray<uint8> StateBeforeCancel =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	const FString CommandBeforeCancel = Controller->GetLastDiagnostic().CommandName;
+	UFMCodexDeploymentDragDropOperation* CancelledOperation =
+		OrdinaryCard->BeginDeploymentDrag();
+	TestNotNull(TEXT("Mouse drag creates typed deployment operation"),
+		CancelledOperation);
+	if (CancelledOperation == nullptr)
+	{
+		return false;
+	}
+	TestTrue(TEXT("Drag payload contains presentation identity only"),
+		CancelledOperation->CardId == OrdinaryChoice.CardId
+			&& !CancelledOperation->bGoalkeeper
+			&& CancelledOperation->CardPresentation.CardId
+				== OrdinaryChoice.CardId
+			&& Pitch->GetActiveDeploymentCardId() == OrdinaryChoice.CardId);
+	CancelledOperation->DragCancelled(FPointerEvent());
+	TestTrue(TEXT("Cancelled drag emits zero command and zero State mutation"),
+		Pitch->GetActiveDeploymentCardId().IsNone()
+			&& Controller->GetLastDiagnostic().CommandName == CommandBeforeCancel
+			&& StateBeforeCancel
+				== SerializeState(Host->GetMatchSnapshot().Snapshot));
+
+	UFMCodexDeploymentDragDropOperation* OrdinaryOperation =
+		OrdinaryCard->BeginDeploymentDrag();
+	if (OrdinaryOperation == nullptr)
+	{
+		return false;
+	}
+	UFMCodexPitchSlotWidget* OrdinaryTarget = FindPitchSlot(
+		*Pitch, OrdinaryChoice.Destinations[0].SlotId);
+	TestNotNull(TEXT("Every ordinary destination maps to a rendered drop target"),
+		OrdinaryTarget);
+	if (OrdinaryTarget == nullptr)
+	{
+		return false;
+	}
+	const int32 PlacementsBeforeOrdinary =
+		Host->GetMatchSnapshot().Snapshot.CurrentAttack.DeploymentPlacements.Num();
+	TestTrue(TEXT("Ordinary destination is projected valid without rule queries"),
+		OrdinaryTarget->GetPresentation().DeploymentTargetState
+			== EFMCodexUMGDeploymentTargetState::Valid
+			&& OrdinaryTarget->CanAcceptDeploymentOperation(OrdinaryOperation));
+	const bool bOrdinaryDropAccepted =
+		OrdinaryTarget->TryHandleDeploymentDrop(OrdinaryOperation);
+	TestTrue(TEXT("Ordinary drop follows typed authoritative command chain"),
+		bOrdinaryDropAccepted
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("DeployOrdinary")
+			&& Controller->GetLastDiagnostic().bHostSuccess
+			&& Host->GetMatchSnapshot().Snapshot.CurrentAttack
+				.DeploymentPlacements.Num() == PlacementsBeforeOrdinary + 1
+			&& Host->GetMatchSnapshot().Snapshot.CurrentAttack
+				.DeploymentPlacements.ContainsByPredicate(
+					[&OrdinaryChoice](
+						const FMatchPlayDeploymentPlacement& Placement)
+					{
+						return Placement.CardId == OrdinaryChoice.CardId
+							&& Placement.SlotId
+								== OrdinaryChoice.Destinations[0].SlotId;
+					}));
+	OrdinaryOperation->Drop(FPointerEvent());
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+
+	const FFMCodexUMGDeploymentDestinationViewModel* StaleDestination =
+		OrdinaryChoice.Destinations.FindByPredicate(
+			[&OrdinaryChoice](
+				const FFMCodexUMGDeploymentDestinationViewModel& Destination)
+			{
+				return Destination.SlotId
+					!= OrdinaryChoice.Destinations[0].SlotId;
+			});
+	TestNotNull(TEXT("Ordinary fixture retains an empty stale destination"),
+		StaleDestination);
+	if (StaleDestination == nullptr)
+	{
+		return false;
+	}
+	Pitch->BeginDeploymentDrag(
+		OrdinaryChoice.CardId, { OrdinaryChoice });
+	UFMCodexPitchSlotWidget* StaleTarget =
+		FindPitchSlot(*Pitch, StaleDestination->SlotId);
+	TestNotNull(TEXT("Stale presentation projects a rendered drop target"),
+		StaleTarget);
+	if (StaleTarget == nullptr)
+	{
+		return false;
+	}
+	const TArray<uint8> StateBeforeStaleDrop =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	const bool bStaleDropLocallyAccepted =
+		StaleTarget->TryHandleDeploymentDrop(OrdinaryOperation);
+	TestTrue(TEXT("Stale rendered target still emits its typed intent"),
+		bStaleDropLocallyAccepted);
+	TestEqual(TEXT("Stale typed intent remains ordinary deployment"),
+		Controller->GetLastDiagnostic().CommandName,
+		FString(TEXT("DeployOrdinary")));
+	TestFalse(TEXT("Authority rejects the stale ordinary deployment"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	TestTrue(TEXT("Stale authoritative rejection preserves State"),
+		StateBeforeStaleDrop
+			== SerializeState(Host->GetMatchSnapshot().Snapshot));
+	TestTrue(TEXT("Stale rejection refreshes failure and clears drag projection"),
+		Screen->GetPresentation().Resolution.bRejected
+			&& Pitch->GetActiveDeploymentCardId().IsNone());
+
+	const FFMCodexUMGDeploymentChoiceViewModel* GoalkeeperChoiceSource =
+		FindChoice(Screen->GetPresentation().Interaction, true);
+	TestNotNull(TEXT("Next authoritative hand exposes goalkeeper choice"),
+		GoalkeeperChoiceSource);
+	if (GoalkeeperChoiceSource == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexUMGDeploymentChoiceViewModel GoalkeeperChoice =
+		*GoalkeeperChoiceSource;
+	UFMCodexPlayerCardWidget* GoalkeeperCard =
+		FindHandCard(*Panel, GoalkeeperChoice.CardId);
+	TestNotNull(TEXT("Goalkeeper presentation card is a real drag source"),
+		GoalkeeperCard);
+	if (GoalkeeperCard == nullptr)
+	{
+		return false;
+	}
+	UFMCodexDeploymentDragDropOperation* GoalkeeperOperation =
+		GoalkeeperCard->BeginDeploymentDrag();
+	if (GoalkeeperOperation == nullptr)
+	{
+		return false;
+	}
+	TestTrue(TEXT("Goalkeeper drag retains presentation identity and type"),
+		GoalkeeperOperation->CardId == GoalkeeperChoice.CardId
+			&& GoalkeeperOperation->bGoalkeeper);
+
+	UFMCodexPitchSlotWidget* InvalidTarget = nullptr;
+	UFMCodexPitchSlotWidget* OccupiedTarget = nullptr;
+	for (UFMCodexPitchSlotWidget* SlotWidget
+		: Pitch->GetRenderedSlotWidgets())
+	{
+		if (SlotWidget == nullptr)
+		{
+			continue;
+		}
+		if (SlotWidget->GetPresentation().DeploymentTargetState
+			== EFMCodexUMGDeploymentTargetState::Invalid)
+		{
+			InvalidTarget = SlotWidget;
+		}
+		if (SlotWidget->GetPresentation().DeploymentTargetState
+			== EFMCodexUMGDeploymentTargetState::Occupied)
+		{
+			OccupiedTarget = SlotWidget;
+		}
+	}
+	TestNotNull(TEXT("Goalkeeper projection marks non-destination invalid"),
+		InvalidTarget);
+	TestNotNull(TEXT("Goalkeeper projection preserves occupied target state"),
+		OccupiedTarget);
+	if (InvalidTarget == nullptr)
+	{
+		return false;
+	}
+	const TArray<uint8> StateBeforeInvalidDrop =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	const FString CommandBeforeInvalidDrop =
+		Controller->GetLastDiagnostic().CommandName;
+	TestTrue(TEXT("Invalid drop emits zero command and zero State mutation"),
+		!InvalidTarget->TryHandleDeploymentDrop(GoalkeeperOperation)
+			&& Controller->GetLastDiagnostic().CommandName
+				== CommandBeforeInvalidDrop
+			&& StateBeforeInvalidDrop
+				== SerializeState(Host->GetMatchSnapshot().Snapshot));
+
+	UFMCodexPitchSlotWidget* GoalkeeperTarget = FindPitchSlot(
+		*Pitch, GoalkeeperChoice.Destinations[0].SlotId);
+	TestNotNull(TEXT("Goalkeeper destination maps to a rendered drop target"),
+		GoalkeeperTarget);
+	if (GoalkeeperTarget == nullptr)
+	{
+		return false;
+	}
+	const int32 PlacementsBeforeGoalkeeper =
+		Host->GetMatchSnapshot().Snapshot.CurrentAttack.DeploymentPlacements.Num();
+	const bool bGoalkeeperDropAccepted =
+		GoalkeeperTarget->TryHandleDeploymentDrop(GoalkeeperOperation);
+	TestTrue(TEXT("Goalkeeper drop routes slot-only typed authoritative command"),
+		bGoalkeeperDropAccepted
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("DeployGoalkeeper")
+			&& Controller->GetLastDiagnostic().bHostSuccess
+			&& Host->GetMatchSnapshot().Snapshot.CurrentAttack
+				.DeploymentPlacements.Num() == PlacementsBeforeGoalkeeper + 1
+			&& Host->GetMatchSnapshot().Snapshot.CurrentAttack
+				.DeploymentPlacements.ContainsByPredicate(
+					[&GoalkeeperChoice](
+						const FMatchPlayDeploymentPlacement& Placement)
+					{
+						return Placement.CardId == GoalkeeperChoice.CardId
+							&& Placement.SlotId
+								== GoalkeeperChoice.Destinations[0].SlotId;
+					}));
+	GoalkeeperOperation->Drop(FPointerEvent());
+
+	FFMCodexUMGPitchSlotViewModel ProjectionSlot;
+	ProjectionSlot.SlotId = TEXT("Projection.Valid");
+	FFMCodexUMGDeploymentChoiceViewModel ProjectionChoice;
+	ProjectionChoice.CardId = TEXT("Projection.Card");
+	ProjectionChoice.Destinations.Add(
+		{ ProjectionSlot.SlotId, TEXT("Projection destination") });
+	FFMCodexUMGDeploymentTargetProjector::ProjectSlot(
+		ProjectionSlot, ProjectionChoice.CardId, { ProjectionChoice });
+	const bool bValidProjection = ProjectionSlot.DeploymentTargetState
+		== EFMCodexUMGDeploymentTargetState::Valid;
+	ProjectionSlot.SlotId = TEXT("Projection.Invalid");
+	FFMCodexUMGDeploymentTargetProjector::ProjectSlot(
+		ProjectionSlot, ProjectionChoice.CardId, { ProjectionChoice });
+	const bool bInvalidProjection = ProjectionSlot.DeploymentTargetState
+		== EFMCodexUMGDeploymentTargetState::Invalid;
+	ProjectionSlot.bOccupied = true;
+	FFMCodexUMGDeploymentTargetProjector::ProjectSlot(
+		ProjectionSlot, ProjectionChoice.CardId, { ProjectionChoice });
+	const bool bOccupiedProjection = ProjectionSlot.DeploymentTargetState
+		== EFMCodexUMGDeploymentTargetState::Occupied;
+	ProjectionSlot.bOccupied = false;
+	FFMCodexUMGDeploymentTargetProjector::ProjectSlot(
+		ProjectionSlot, TEXT("Projection.Unknown"), { ProjectionChoice });
+	const bool bUnavailableProjection = ProjectionSlot.DeploymentTargetState
+		== EFMCodexUMGDeploymentTargetState::Unavailable;
+	FFMCodexUMGDeploymentTargetProjector::ProjectSlot(
+		ProjectionSlot, NAME_None, { ProjectionChoice });
+	TestTrue(TEXT("Presentation projector covers all deployment target states"),
+		bValidProjection && bInvalidProjection && bOccupiedProjection
+			&& bUnavailableProjection
+			&& ProjectionSlot.DeploymentTargetState
+				== EFMCodexUMGDeploymentTargetState::Neutral);
+
+	FString DragOperationHeader;
+	FString CardWidgetSource;
+	FString PitchSlotSource;
+	FString PitchWidgetSource;
+	FString ScreenSource;
+	FString ControllerSource;
+	FString HostSource;
+	FString SessionSource;
+	TestTrue(TEXT("Deployment drag/drop authority boundary sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexDeploymentDragDropOperation.h"),
+			DragOperationHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"),
+				CardWidgetSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchSlotWidget.cpp"),
+				PitchSlotSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchWidget.cpp"),
+				PitchWidgetSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+				ScreenSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+				ControllerSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.cpp"),
+				HostSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+				SessionSource));
+	const FString DragDropSources = DragOperationHeader + CardWidgetSource
+		+ PitchSlotSource + PitchWidgetSource;
+	TestTrue(TEXT("Drag/drop layer contains no gameplay authority or legality"),
+		!DragDropSources.Contains(TEXT("FMatchPlayState"))
+			&& !DragDropSources.Contains(TEXT("AuthoritativeSession"))
+			&& !DragDropSources.Contains(TEXT("LocalMatchHost"))
+			&& !DragDropSources.Contains(TEXT("RelativeDeploymentZoneResolver"))
+			&& !DragDropSources.Contains(TEXT("Legality"))
+			&& !DragDropSources.Contains(TEXT("Formula")));
+	TestTrue(TEXT("Screen preserves explicit ordinary and slot-only GK routing"),
+		ScreenSource.Contains(TEXT("RequestDeployOrdinary(CardId, SlotId)"))
+			&& ScreenSource.Contains(TEXT("RequestDeployGoalkeeper(SlotId)"))
+			&& !ScreenSource.Contains(TEXT("RequestDeployGoalkeeper(CardId"))
+			&& ControllerSource.Contains(TEXT("Host->DeployOrdinary(Request)"))
+			&& ControllerSource.Contains(TEXT("Host->DeployGoalkeeper(Request)"))
+			&& HostSource.Contains(
+				TEXT("AuthoritativeSession.DeployGoalkeeper(Request)")));
+	FString SessionCountSource = SessionSource;
+	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
+		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
+	TestEqual(TEXT("Authoritative Session serialized entrypoint count is unchanged"),
+		SerializedEntrypointCount, 42);
+
 	return true;
 }
 

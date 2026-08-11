@@ -94,7 +94,7 @@ FFMCodexLocalMatchDemoConfigurationFactory::Create()
 	Result.OpeningInput.OpeningInput.PlayerATieBreakerRoll = 2;
 	Result.OpeningInput.OpeningInput.PlayerBTieBreakerRoll = 6;
 
-	for (int32 Index = 0; Index < 10; ++Index)
+	for (int32 Index = 0; Index < 5; ++Index)
 	{
 		FMatchPlayDeploymentSlotDefinition NearA;
 		NearA.SlotId = FName(*FString::Printf(

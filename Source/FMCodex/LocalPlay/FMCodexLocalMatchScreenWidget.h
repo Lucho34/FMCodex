@@ -99,6 +99,10 @@ protected:
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
+	void HandleDeploymentDragStarted(FName CardId, bool bGoalkeeper);
+	void HandleDeploymentDragFinished();
+	void HandlePitchDeploymentDropped(
+		FName CardId, FName SlotId, bool bGoalkeeper);
 
 	UFUNCTION()
 	void HandleStartNewMatchClicked();

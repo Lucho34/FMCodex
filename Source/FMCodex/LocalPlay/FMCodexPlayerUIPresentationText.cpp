@@ -135,4 +135,37 @@ FText FFMCodexPlayerUIPresentationText::PortraitPlaceholder() { return LOCTEXT("
 FText FFMCodexPlayerUIPresentationText::SkillsHeading() { return LOCTEXT("SkillsHeading", "技能"); }
 FText FFMCodexPlayerUIPresentationText::AttributesHeading() { return LOCTEXT("AttributesHeading", "属性"); }
 
+FText FFMCodexPlayerUIPresentationText::DeploymentHandInstruction()
+{
+	return LOCTEXT("DeploymentHandInstruction",
+		"\u62D6\u52A8\u7403\u5458\u5361\u8FDB\u884C\u90E8\u7F72");
+}
+
+FText FFMCodexPlayerUIPresentationText::EmptyPitchSlot()
+{
+	return LOCTEXT("EmptyPitchSlot", "\u7A7A\u4F4D\u7F6E");
+}
+
+FText FFMCodexPlayerUIPresentationText::ValidDeploymentTarget()
+{
+	return LOCTEXT("ValidDeploymentTarget",
+		"\u53EF\u90E8\u7F72\u4F4D\u7F6E");
+}
+
+FText FFMCodexPlayerUIPresentationText::InvalidDeploymentTarget()
+{
+	return LOCTEXT("InvalidDeploymentTarget", "\u4E0D\u53EF\u90E8\u7F72");
+}
+
+FText FFMCodexPlayerUIPresentationText::OccupiedDeploymentTarget()
+{
+	return LOCTEXT("OccupiedDeploymentTarget", "\u5DF2\u5360\u7528");
+}
+
+FText FFMCodexPlayerUIPresentationText::UnavailableDeploymentTarget()
+{
+	return LOCTEXT("UnavailableDeploymentTarget",
+		"\u4F4D\u7F6E\u4E0D\u53EF\u7528");
+}
+
 #undef LOCTEXT_NAMESPACE

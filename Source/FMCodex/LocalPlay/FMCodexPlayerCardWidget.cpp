@@ -1,10 +1,12 @@
 #include "FMCodexPlayerCardWidget.h"
 
+#include "FMCodexDeploymentDragDropOperation.h"
 #include "FMCodexPlayerUIAssetReferences.h"
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/Image.h"
@@ -16,6 +18,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/WrapBox.h"
 #include "Engine/Texture2D.h"
+#include "InputCoreTypes.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFMCodexPlayerCardArt, Log, All);
 
@@ -80,6 +83,30 @@ TSharedRef<SWidget> UFMCodexPlayerCardWidget::RebuildWidget()
 	return Super::RebuildWidget();
 }
 
+FReply UFMCodexPlayerCardWidget::NativeOnMouseButtonDown(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent)
+{
+	if (bDeploymentDragEnabled)
+	{
+		return UWidgetBlueprintLibrary::DetectDragIfPressed(
+			InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+	}
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+void UFMCodexPlayerCardWidget::NativeOnDragDetected(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent,
+	UDragDropOperation*& OutOperation)
+{
+	OutOperation = BeginDeploymentDrag();
+	if (OutOperation == nullptr)
+	{
+		Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
+	}
+}
+
 void UFMCodexPlayerCardWidget::RefreshFromPresentation(
 	const FFMCodexUMGCardViewModel& InPresentation,
 	const EFMCodexPlayerCardPresentationMode InMode)
@@ -94,6 +121,77 @@ void UFMCodexPlayerCardWidget::SetPresentationMode(
 {
 	PresentationMode = InMode;
 	RefreshVisuals();
+}
+
+void UFMCodexPlayerCardWidget::ConfigureDeploymentDrag(
+	const FName CardId,
+	const bool bGoalkeeper)
+{
+	DeploymentDragCardId = CardId;
+	bDeploymentDragGoalkeeper = bGoalkeeper;
+	bDeploymentDragEnabled = !CardId.IsNone();
+}
+
+void UFMCodexPlayerCardWidget::ClearDeploymentDrag()
+{
+	DeploymentDragCardId = NAME_None;
+	bDeploymentDragGoalkeeper = false;
+	bDeploymentDragEnabled = false;
+}
+
+bool UFMCodexPlayerCardWidget::IsDeploymentDragEnabled() const
+{
+	return bDeploymentDragEnabled;
+}
+
+FName UFMCodexPlayerCardWidget::GetDeploymentDragCardId() const
+{
+	return DeploymentDragCardId;
+}
+
+bool UFMCodexPlayerCardWidget::IsDeploymentDragGoalkeeper() const
+{
+	return bDeploymentDragGoalkeeper;
+}
+
+UFMCodexDeploymentDragDropOperation*
+UFMCodexPlayerCardWidget::BeginDeploymentDrag()
+{
+	if (!bDeploymentDragEnabled || DeploymentDragCardId.IsNone())
+	{
+		return nullptr;
+	}
+
+	UFMCodexDeploymentDragDropOperation* Operation =
+		NewObject<UFMCodexDeploymentDragDropOperation>(this);
+	Operation->CardId = DeploymentDragCardId;
+	Operation->bGoalkeeper = bDeploymentDragGoalkeeper;
+	Operation->CardPresentation = Presentation;
+	Operation->Pivot = EDragPivot::CenterCenter;
+	if (APlayerController* OwningPlayer = GetOwningPlayer())
+	{
+		UFMCodexPlayerCardWidget* DragVisual =
+			CreateWidget<UFMCodexPlayerCardWidget>(OwningPlayer, GetClass());
+		if (DragVisual != nullptr)
+		{
+			DragVisual->RefreshFromPresentation(
+				Presentation, EFMCodexPlayerCardPresentationMode::PitchCompact);
+			Operation->DefaultDragVisual = DragVisual;
+		}
+	}
+	Operation->OnDrop.AddDynamic(
+		this, &UFMCodexPlayerCardWidget::HandleDeploymentDragFinished);
+	Operation->OnDragCancelled.AddDynamic(
+		this, &UFMCodexPlayerCardWidget::HandleDeploymentDragFinished);
+	OnDeploymentDragStarted.Broadcast(
+		DeploymentDragCardId, bDeploymentDragGoalkeeper);
+	return Operation;
+}
+
+void UFMCodexPlayerCardWidget::HandleDeploymentDragFinished(
+	UDragDropOperation* Operation)
+{
+	OnDeploymentDragFinished.Broadcast();
 }
 
 const FFMCodexUMGCardViewModel&

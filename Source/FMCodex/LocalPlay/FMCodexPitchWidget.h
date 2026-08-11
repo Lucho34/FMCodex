@@ -11,6 +11,9 @@ class UFMCodexPitchSlotWidget;
 class UVerticalBox;
 class SWidget;
 
+DECLARE_MULTICAST_DELEGATE_ThreeParams(
+	FFMCodexPitchWidgetDeploymentDropped, FName, FName, bool);
+
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexPitchWidget : public UUserWidget
 {
@@ -26,6 +29,13 @@ public:
 	const TArray<FFMCodexUMGPitchRegionViewModel>& GetPresentation() const;
 	const TArray<TObjectPtr<UFMCodexPitchSlotWidget>>&
 		GetRenderedSlotWidgets() const;
+	void BeginDeploymentDrag(
+		FName CardId,
+		const TArray<FFMCodexUMGDeploymentChoiceViewModel>& Choices);
+	void EndDeploymentDrag();
+	FName GetActiveDeploymentCardId() const;
+
+	FFMCodexPitchWidgetDeploymentDropped OnDeploymentDropped;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -34,6 +44,8 @@ protected:
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
+	void HandleSlotDeploymentDropped(
+		FName CardId, FName SlotId, bool bGoalkeeper);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Pitch Presentation",
@@ -48,4 +60,6 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UFMCodexPitchSlotWidget>> RenderedSlotWidgets;
+
+	FName ActiveDeploymentCardId = NAME_None;
 };

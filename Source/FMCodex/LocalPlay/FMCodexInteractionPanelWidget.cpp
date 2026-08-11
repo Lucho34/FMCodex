@@ -2,6 +2,7 @@
 
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -296,13 +297,21 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 		*WidgetTree, TEXT("InteractionCandidateRegion"),
 		EFMCodexPlayerUIColorRole::PanelInset,
 		Style.GetSectionPadding());
+	UVerticalBox* CandidateBody = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("InteractionCandidateBody"));
+	DeploymentHandInstructionText = MakeText(
+		*WidgetTree, TEXT("DeploymentHandInstruction"));
+	Style.ApplyText(*DeploymentHandInstructionText,
+		EFMCodexPlayerUITextRole::SectionHeading);
+	CandidateBody->AddChildToVerticalBox(DeploymentHandInstructionText);
 	UScrollBox* CandidateScroll = WidgetTree->ConstructWidget<UScrollBox>(
 		UScrollBox::StaticClass(), TEXT("InteractionCandidateScroll"));
 	CandidateScroll->SetOrientation(Orient_Horizontal);
 	CandidateCardsBody = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("InteractionCandidateCards"));
 	CandidateScroll->AddChild(CandidateCardsBody);
-	CandidateRegion->AddChild(CandidateScroll);
+	CandidateBody->AddChildToVerticalBox(CandidateScroll);
+	CandidateRegion->AddChild(CandidateBody);
 	Body->AddChildToVerticalBox(CandidateRegion);
 
 	UBorder* ChoiceRegion = MakeRegion(
@@ -407,6 +416,12 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	ChoiceSectionText->SetText(FText::FromString(
 		Presentation.BranchSectionLabel.IsEmpty()
 			? TEXT("LEGAL OPTIONS") : Presentation.BranchSectionLabel));
+	DeploymentHandInstructionText->SetText(
+		FFMCodexPlayerUIPresentationText::DeploymentHandInstruction());
+	DeploymentHandInstructionText->SetVisibility(
+		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
 
 	RefreshCandidateChoices();
 
@@ -475,28 +490,15 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 		Card->RefreshFromPresentation(
 			Choice.Card,
 			EFMCodexPlayerCardPresentationMode::InteractionChoice);
+		Card->ConfigureDeploymentDrag(Choice.CardId, Choice.bGoalkeeper);
+		Card->OnDeploymentDragStarted.AddUObject(
+			this,
+			&UFMCodexInteractionPanelWidget::HandleDeploymentCardDragStarted);
+		Card->OnDeploymentDragFinished.AddUObject(
+			this,
+			&UFMCodexInteractionPanelWidget::HandleDeploymentCardDragFinished);
 		Group->AddChildToVerticalBox(Card);
 		RenderedCandidateCardWidgets.Add(Card);
-		UWrapBox* Destinations = WidgetTree->ConstructWidget<UWrapBox>(
-			UWrapBox::StaticClass(), FName(*FString::Printf(
-				TEXT("DeploymentDestinations%d"), ChoiceIndex)));
-		for (int32 DestinationIndex = 0;
-			DestinationIndex < Choice.Destinations.Num(); ++DestinationIndex)
-		{
-			const FFMCodexUMGDeploymentDestinationViewModel& Destination =
-				Choice.Destinations[DestinationIndex];
-			UFMCodexInteractionOptionWidget* Option = MakeOptionWidget(
-				FName(*FString::Printf(TEXT("DeploymentOption%d_%d"),
-					ChoiceIndex, DestinationIndex)));
-			Option->ConfigureDeployment(
-				Destination.Label, Choice.CardId,
-				Destination.SlotId, Choice.bGoalkeeper);
-			Option->OnDeploymentRequested.AddDynamic(
-				this,
-				&UFMCodexInteractionPanelWidget::HandleDeploymentOption);
-			Destinations->AddChildToWrapBox(Option);
-		}
-		Group->AddChildToVerticalBox(Destinations);
 		CandidateCardsBody->AddChildToHorizontalBox(Group);
 	}
 
@@ -586,6 +588,21 @@ UFMCodexInteractionPanelWidget::MakeOptionWidget(const FName Name)
 			ResolvedClass, Name);
 	RenderedOptionWidgets.Add(Result);
 	return Result;
+}
+
+void UFMCodexInteractionPanelWidget::HandleDeploymentCardDragStarted(
+	const FName CardId,
+	const bool bGoalkeeper)
+{
+	if (!bInteractionBlocked)
+	{
+		OnDeploymentDragStarted.Broadcast(CardId, bGoalkeeper);
+	}
+}
+
+void UFMCodexInteractionPanelWidget::HandleDeploymentCardDragFinished()
+{
+	OnDeploymentDragFinished.Broadcast();
 }
 
 void UFMCodexInteractionPanelWidget::HandleStartClicked()

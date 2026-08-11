@@ -8,6 +8,7 @@
 #include "FMCodexPlayerCardWidget.generated.h"
 
 class UBorder;
+class UDragDropOperation;
 class UHorizontalBox;
 class UImage;
 class USizeBox;
@@ -17,6 +18,11 @@ class UUniformGridPanel;
 class UVerticalBox;
 class UWrapBox;
 class SWidget;
+class UFMCodexDeploymentDragDropOperation;
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(
+	FFMCodexDeploymentCardDragStarted, FName, bool);
+DECLARE_MULTICAST_DELEGATE(FFMCodexDeploymentCardDragFinished);
 
 UENUM(BlueprintType)
 enum class EFMCodexPlayerCardPresentationMode : uint8
@@ -53,9 +59,26 @@ public:
 	UTexture2D* GetResolvedRoleIconTexture() const;
 	UTexture2D* GetResolvedLongShotSkillIconTexture() const;
 
+	void ConfigureDeploymentDrag(FName CardId, bool bGoalkeeper);
+	void ClearDeploymentDrag();
+	bool IsDeploymentDragEnabled() const;
+	FName GetDeploymentDragCardId() const;
+	bool IsDeploymentDragGoalkeeper() const;
+	UFMCodexDeploymentDragDropOperation* BeginDeploymentDrag();
+
+	FFMCodexDeploymentCardDragStarted OnDeploymentDragStarted;
+	FFMCodexDeploymentCardDragFinished OnDeploymentDragFinished;
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual FReply NativeOnMouseButtonDown(
+		const FGeometry& InGeometry,
+		const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnDragDetected(
+		const FGeometry& InGeometry,
+		const FPointerEvent& InMouseEvent,
+		UDragDropOperation*& OutOperation) override;
 
 private:
 	void BuildWidgetTree();
@@ -64,6 +87,9 @@ private:
 	void RefreshSkills();
 	void RefreshAttributes();
 	void RefreshStatusBadges();
+
+	UFUNCTION()
+	void HandleDeploymentDragFinished(UDragDropOperation* Operation);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Presentation",
@@ -159,4 +185,7 @@ private:
 
 	FString RenderedAttributeSummary;
 	FName ResolvedArtIdentity = NAME_None;
+	FName DeploymentDragCardId = NAME_None;
+	bool bDeploymentDragEnabled = false;
+	bool bDeploymentDragGoalkeeper = false;
 };

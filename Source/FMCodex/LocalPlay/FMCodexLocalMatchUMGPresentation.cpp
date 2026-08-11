@@ -184,6 +184,47 @@ namespace FMCodexLocalMatchUMGPresentation
 	}
 }
 
+void FFMCodexUMGDeploymentTargetProjector::ProjectSlot(
+	FFMCodexUMGPitchSlotViewModel& Slot,
+	const FName DraggedCardId,
+	const TArray<FFMCodexUMGDeploymentChoiceViewModel>& Choices)
+{
+	Slot.DeploymentTargetCardId = DraggedCardId;
+	if (Slot.bOccupied)
+	{
+		Slot.DeploymentTargetState =
+			EFMCodexUMGDeploymentTargetState::Occupied;
+		return;
+	}
+	if (DraggedCardId.IsNone())
+	{
+		Slot.DeploymentTargetState =
+			EFMCodexUMGDeploymentTargetState::Neutral;
+		return;
+	}
+
+	const FFMCodexUMGDeploymentChoiceViewModel* Choice = Choices.FindByPredicate(
+		[DraggedCardId](const FFMCodexUMGDeploymentChoiceViewModel& Candidate)
+		{
+			return Candidate.CardId == DraggedCardId;
+		});
+	if (Choice == nullptr)
+	{
+		Slot.DeploymentTargetState =
+			EFMCodexUMGDeploymentTargetState::Unavailable;
+		return;
+	}
+
+	const bool bIsDestination = Choice->Destinations.ContainsByPredicate(
+		[&Slot](const FFMCodexUMGDeploymentDestinationViewModel& Destination)
+		{
+			return Destination.SlotId == Slot.SlotId;
+		});
+	Slot.DeploymentTargetState = bIsDestination
+		? EFMCodexUMGDeploymentTargetState::Valid
+		: EFMCodexUMGDeploymentTargetState::Invalid;
+}
+
 FFMCodexUMGCardViewModel FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(
 	const FFMCodexLocalMatchCardView& CardView)
 {
@@ -270,6 +311,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				FFMCodexLocalMatchInteractionViewBuilder::ToString(
 					Slot.PlayerBRelativeZone);
 			SlotResult.bOccupied = Slot.bOccupied;
+			SlotResult.DeploymentTargetState = Slot.bOccupied
+				? EFMCodexUMGDeploymentTargetState::Occupied
+				: EFMCodexUMGDeploymentTargetState::Neutral;
 			if (Slot.bOccupied)
 			{
 				SlotResult.Card = MakeCard(Slot.Card);

@@ -1034,9 +1034,9 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	switch (Side)
 	{
 	case EMatchPlayNeutralSlotSide::NearPlayerA:
-		return TEXT("Player A Half");
+		return TEXT("Half Near Player A");
 	case EMatchPlayNeutralSlotSide::NearPlayerB:
-		return TEXT("Player B Half");
+		return TEXT("Half Near Player B");
 	default:
 		return TEXT("Unknown Field Region");
 	}

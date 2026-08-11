@@ -1,6 +1,8 @@
 #include "FMCodexPitchSlotWidget.h"
 
+#include "FMCodexDeploymentDragDropOperation.h"
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -57,6 +59,69 @@ bool UFMCodexPitchSlotWidget::IsShowingOccupiedCard() const
 	return Presentation.bOccupied && CardWidget != nullptr;
 }
 
+bool UFMCodexPitchSlotWidget::CanAcceptDeploymentOperation(
+	const UFMCodexDeploymentDragDropOperation* Operation) const
+{
+	return Operation != nullptr
+		&& !Operation->CardId.IsNone()
+		&& !Presentation.SlotId.IsNone()
+		&& !Presentation.bOccupied
+		&& Presentation.DeploymentTargetState
+			== EFMCodexUMGDeploymentTargetState::Valid
+		&& Presentation.DeploymentTargetCardId == Operation->CardId;
+}
+
+bool UFMCodexPitchSlotWidget::TryHandleDeploymentDrop(
+	UFMCodexDeploymentDragDropOperation* Operation)
+{
+	if (!CanAcceptDeploymentOperation(Operation))
+	{
+		return false;
+	}
+	OnDeploymentDropped.Broadcast(
+		Operation->CardId, Presentation.SlotId, Operation->bGoalkeeper);
+	return true;
+}
+
+void UFMCodexPitchSlotWidget::NativeOnDragEnter(
+	const FGeometry& InGeometry,
+	const FDragDropEvent& InDragDropEvent,
+	UDragDropOperation* InOperation)
+{
+	Super::NativeOnDragEnter(InGeometry, InDragDropEvent, InOperation);
+	bDragHovered = Cast<UFMCodexDeploymentDragDropOperation>(InOperation)
+		!= nullptr;
+	RefreshVisuals();
+}
+
+void UFMCodexPitchSlotWidget::NativeOnDragLeave(
+	const FDragDropEvent& InDragDropEvent,
+	UDragDropOperation* InOperation)
+{
+	Super::NativeOnDragLeave(InDragDropEvent, InOperation);
+	bDragHovered = false;
+	RefreshVisuals();
+}
+
+bool UFMCodexPitchSlotWidget::NativeOnDragOver(
+	const FGeometry& InGeometry,
+	const FDragDropEvent& InDragDropEvent,
+	UDragDropOperation* InOperation)
+{
+	return CanAcceptDeploymentOperation(
+		Cast<UFMCodexDeploymentDragDropOperation>(InOperation));
+}
+
+bool UFMCodexPitchSlotWidget::NativeOnDrop(
+	const FGeometry& InGeometry,
+	const FDragDropEvent& InDragDropEvent,
+	UDragDropOperation* InOperation)
+{
+	bDragHovered = false;
+	return TryHandleDeploymentDrop(
+		Cast<UFMCodexDeploymentDragDropOperation>(InOperation));
+}
+
 void UFMCodexPitchSlotWidget::BuildWidgetTree()
 {
 	if (WidgetTree == nullptr || WidgetTree->RootWidget != nullptr)
@@ -94,6 +159,12 @@ void UFMCodexPitchSlotWidget::BuildWidgetTree()
 	Style.ApplyText(*ContextText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToVerticalBox(ContextText);
 
+	TargetStateText = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(), TEXT("DeploymentTargetState"));
+	TargetStateText->SetAutoWrapText(true);
+	Style.ApplyText(*TargetStateText, EFMCodexPlayerUITextRole::Status);
+	Body->AddChildToVerticalBox(TargetStateText);
+
 	ContentBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("SlotCardPresentationHost"));
 	Body->AddChildToVerticalBox(ContentBody);
@@ -116,10 +187,47 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 	ContentBody->ClearChildren();
 	CardWidget = nullptr;
 	EmptyStateText = nullptr;
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	const EFMCodexUMGDeploymentTargetState VisibleTargetState =
+		Presentation.bOccupied
+			? EFMCodexUMGDeploymentTargetState::Occupied
+			: Presentation.DeploymentTargetState;
+	FText TargetLabel = FFMCodexPlayerUIPresentationText::EmptyPitchSlot();
+	EFMCodexPlayerUIColorRole TargetColorRole =
+		EFMCodexPlayerUIColorRole::EmptyPitchSlot;
+	switch (VisibleTargetState)
+	{
+	case EFMCodexUMGDeploymentTargetState::Valid:
+		TargetLabel = FFMCodexPlayerUIPresentationText::ValidDeploymentTarget();
+		TargetColorRole = bDragHovered
+			? EFMCodexPlayerUIColorRole::Warning
+			: EFMCodexPlayerUIColorRole::Success;
+		break;
+	case EFMCodexUMGDeploymentTargetState::Invalid:
+		TargetLabel = FFMCodexPlayerUIPresentationText::InvalidDeploymentTarget();
+		TargetColorRole = EFMCodexPlayerUIColorRole::Danger;
+		break;
+	case EFMCodexUMGDeploymentTargetState::Occupied:
+		TargetLabel = FFMCodexPlayerUIPresentationText::OccupiedDeploymentTarget();
+		TargetColorRole = EFMCodexPlayerUIColorRole::OccupiedPitchSlot;
+		break;
+	case EFMCodexUMGDeploymentTargetState::Unavailable:
+		TargetLabel = FFMCodexPlayerUIPresentationText::UnavailableDeploymentTarget();
+		TargetColorRole = EFMCodexPlayerUIColorRole::ActionDisabled;
+		break;
+	default:
+		break;
+	}
+	TargetStateText->SetText(TargetLabel);
+	TargetStateText->SetVisibility(
+		VisibleTargetState
+			== EFMCodexUMGDeploymentTargetState::Neutral
+			? ESlateVisibility::Collapsed
+			: ESlateVisibility::HitTestInvisible);
+	SlotBorder->SetBrushColor(Style.GetColor(TargetColorRole));
+
 	if (Presentation.bOccupied)
 	{
-		SlotBorder->SetBrushColor(FFMCodexPlayerUIStyle::Get().GetColor(
-			EFMCodexPlayerUIColorRole::OccupiedPitchSlot));
 		UClass* ResolvedCardClass = PlayerCardWidgetClass != nullptr
 			? PlayerCardWidgetClass.Get()
 			: UFMCodexPlayerCardWidget::StaticClass();
@@ -132,12 +240,10 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 	}
 	else
 	{
-		SlotBorder->SetBrushColor(FFMCodexPlayerUIStyle::Get().GetColor(
-			EFMCodexPlayerUIColorRole::EmptyPitchSlot));
 		EmptyStateText = WidgetTree->ConstructWidget<UTextBlock>(
 			UTextBlock::StaticClass(), TEXT("EmptySpatialLocation"));
-		EmptyStateText->SetText(FText::FromString(
-			TEXT("VACANT POSITION\nPitch display only")));
+		EmptyStateText->SetText(
+			FFMCodexPlayerUIPresentationText::EmptyPitchSlot());
 		EmptyStateText->SetAutoWrapText(true);
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*EmptyStateText, EFMCodexPlayerUITextRole::Secondary);

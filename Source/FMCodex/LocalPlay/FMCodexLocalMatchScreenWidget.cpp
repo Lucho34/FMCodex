@@ -103,6 +103,10 @@ void UFMCodexLocalMatchScreenWidget::ClearMatchController()
 void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 	const FFMCodexUMGMatchScreenViewModel& InPresentation)
 {
+	if (PitchWidget != nullptr)
+	{
+		PitchWidget->EndDeploymentDrag();
+	}
 	Presentation = InPresentation;
 	RefreshVisuals();
 }
@@ -399,6 +403,58 @@ void UFMCodexLocalMatchScreenWidget::HandleReadyClicked()
 	RequestReady();
 }
 
+void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragStarted(
+	const FName CardId,
+	const bool bGoalkeeper)
+{
+	if (PitchWidget == nullptr || Presentation.Handoff.bVisible
+		|| Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::Deploy)
+	{
+		return;
+	}
+	const bool bPresentedChoice =
+		Presentation.Interaction.DeploymentChoices.ContainsByPredicate(
+			[CardId, bGoalkeeper](
+				const FFMCodexUMGDeploymentChoiceViewModel& Choice)
+			{
+				return Choice.CardId == CardId
+					&& Choice.bGoalkeeper == bGoalkeeper;
+			});
+	if (bPresentedChoice)
+	{
+		PitchWidget->BeginDeploymentDrag(
+			CardId, Presentation.Interaction.DeploymentChoices);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragFinished()
+{
+	if (PitchWidget != nullptr)
+	{
+		PitchWidget->EndDeploymentDrag();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::HandlePitchDeploymentDropped(
+	const FName CardId,
+	const FName SlotId,
+	const bool bGoalkeeper)
+{
+	if (PitchWidget != nullptr)
+	{
+		PitchWidget->EndDeploymentDrag();
+	}
+	if (bGoalkeeper)
+	{
+		RequestDeployGoalkeeper(SlotId);
+	}
+	else
+	{
+		RequestDeployOrdinary(CardId, SlotId);
+	}
+}
+
 void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 {
 	using namespace FMCodexLocalMatchScreenWidget;
@@ -441,6 +497,9 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		? PitchWidgetClass.Get() : UFMCodexPitchWidget::StaticClass();
 	PitchWidget = WidgetTree->ConstructWidget<UFMCodexPitchWidget>(
 		ResolvedPitchClass, TEXT("DedicatedFootballPitchWidget"));
+	PitchWidget->OnDeploymentDropped.AddUObject(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandlePitchDeploymentDropped);
 	PitchRegion->AddChild(PitchWidget);
 	MainScreen->AddChildToVerticalBox(PitchRegion);
 
@@ -482,6 +541,10 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneRequested);
 	InteractionPanel->OnContinueRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleContinueRequested);
+	InteractionPanel->OnDeploymentDragStarted.AddUObject(
+		this, &UFMCodexLocalMatchScreenWidget::HandleDeploymentDragStarted);
+	InteractionPanel->OnDeploymentDragFinished.AddUObject(
+		this, &UFMCodexLocalMatchScreenWidget::HandleDeploymentDragFinished);
 	InteractionRegion->AddChild(InteractionPanel);
 	MainScreen->AddChildToVerticalBox(InteractionRegion);
 
