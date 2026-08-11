@@ -6,11 +6,21 @@ namespace FMCodexPlayerUIAssetReferences
 {
 	const FName PilotCardId(TEXT("Demo.A.Outfield.01"));
 	const FName PilotArtIdentity(TEXT("Pilot.PlayerCard.01"));
+	const FName GoldenSampleCardId(TEXT("Demo.A.Outfield.02"));
+	const FName GoldenSampleArtIdentity(TEXT("GoldenSample.PlayerCard.01"));
 
 	const FSoftObjectPath PilotCardFramePath(
 		TEXT("/Game/UI/Cards/T_Pilot_CardFrame_01.T_Pilot_CardFrame_01"));
 	const FSoftObjectPath PilotPortraitPath(
 		TEXT("/Game/UI/Portraits/T_Pilot_PlayerPortrait_01.T_Pilot_PlayerPortrait_01"));
+	const FSoftObjectPath GoldenCardFramePath(TEXT(
+		"/Game/UI/Cards/GoldenSample/T_Golden_CardFrame_01.T_Golden_CardFrame_01"));
+	const FSoftObjectPath GoldenPortraitPath(TEXT(
+		"/Game/UI/Portraits/GoldenSample/T_Golden_PlayerPortrait_01.T_Golden_PlayerPortrait_01"));
+	const FSoftObjectPath GoldenRoleIconPath(TEXT(
+		"/Game/UI/Icons/GoldenSample/T_Golden_Role_Forward_01.T_Golden_Role_Forward_01"));
+	const FSoftObjectPath GoldenLongShotSkillIconPath(TEXT(
+		"/Game/UI/Icons/GoldenSample/T_Golden_Skill_LongShot_01.T_Golden_Skill_LongShot_01"));
 }
 
 const FFMCodexPlayerUIAssetReferences&
@@ -23,6 +33,11 @@ FFMCodexPlayerUIAssetReferences::Get()
 FFMCodexPlayerUIAssetReferences::FFMCodexPlayerUIAssetReferences()
 	: PilotCardFrame(FMCodexPlayerUIAssetReferences::PilotCardFramePath)
 	, PilotPortrait(FMCodexPlayerUIAssetReferences::PilotPortraitPath)
+	, GoldenCardFrame(FMCodexPlayerUIAssetReferences::GoldenCardFramePath)
+	, GoldenPortrait(FMCodexPlayerUIAssetReferences::GoldenPortraitPath)
+	, GoldenRoleIcon(FMCodexPlayerUIAssetReferences::GoldenRoleIconPath)
+	, GoldenLongShotSkillIcon(
+		FMCodexPlayerUIAssetReferences::GoldenLongShotSkillIconPath)
 {
 }
 
@@ -30,14 +45,23 @@ FFMCodexPlayerUICardArtReferences
 FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 {
 	FFMCodexPlayerUICardArtReferences Result;
-	if (CardId != GetPilotCardId())
+	if (CardId == GetPilotCardId())
+	{
+		Result.ArtIdentity = GetPilotArtIdentity();
+		Result.CardFrame = PilotCardFrame;
+		Result.Portrait = PilotPortrait;
+		return Result;
+	}
+	if (CardId != GetGoldenSampleCardId())
 	{
 		return Result;
 	}
 
-	Result.ArtIdentity = GetPilotArtIdentity();
-	Result.CardFrame = PilotCardFrame;
-	Result.Portrait = PilotPortrait;
+	Result.ArtIdentity = GetGoldenSampleArtIdentity();
+	Result.CardFrame = GoldenCardFrame;
+	Result.Portrait = GoldenPortrait;
+	Result.RoleIcon = GoldenRoleIcon;
+	Result.LongShotSkillIcon = GoldenLongShotSkillIcon;
 	return Result;
 }
 
@@ -49,4 +73,14 @@ FName FFMCodexPlayerUIAssetReferences::GetPilotCardId() const
 FName FFMCodexPlayerUIAssetReferences::GetPilotArtIdentity() const
 {
 	return FMCodexPlayerUIAssetReferences::PilotArtIdentity;
+}
+
+FName FFMCodexPlayerUIAssetReferences::GetGoldenSampleCardId() const
+{
+	return FMCodexPlayerUIAssetReferences::GoldenSampleCardId;
+}
+
+FName FFMCodexPlayerUIAssetReferences::GetGoldenSampleArtIdentity() const
+{
+	return FMCodexPlayerUIAssetReferences::GoldenSampleArtIdentity;
 }

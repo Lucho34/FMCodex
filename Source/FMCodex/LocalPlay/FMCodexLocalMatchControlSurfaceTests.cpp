@@ -10,6 +10,7 @@
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPlayerUIAssetReferences.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexPitchSlotWidget.h"
 #include "FMCodexPitchWidget.h"
@@ -6398,6 +6399,290 @@ bool FFMCodexValidatedPlayerCardArtPilotIntegrationTest::RunTest(
 			&& CardSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
 			&& CardSource.Contains(TEXT("CardFrameAssetHook"))
 			&& CardSource.Contains(TEXT("PortraitAssetHook")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexGoldenSampleVisualDirectionTest,
+	"FMCodex.LocalPlay.ControlSurface.36.GoldenSampleVisualDirection",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexGoldenSampleVisualDirectionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	const FFMCodexPlayerUIAssetReferences& References =
+		FFMCodexPlayerUIAssetReferences::Get();
+	const FFMCodexPlayerUICardArtReferences Golden =
+		References.ResolveCardArt(References.GetGoldenSampleCardId());
+	const FFMCodexPlayerUICardArtReferences Missing =
+		References.ResolveCardArt(TEXT("Demo.Missing.GoldenSample"));
+	TestTrue(TEXT("Golden Sample uses one deterministic presentation identity"),
+		References.GetGoldenSampleCardId() == FName(TEXT("Demo.A.Outfield.02"))
+			&& References.GetGoldenSampleArtIdentity()
+				== FName(TEXT("GoldenSample.PlayerCard.01"))
+			&& Golden.ArtIdentity == References.GetGoldenSampleArtIdentity()
+			&& !Golden.CardFrame.IsNull()
+			&& !Golden.Portrait.IsNull()
+			&& !Golden.RoleIcon.IsNull()
+			&& !Golden.LongShotSkillIcon.IsNull());
+	TestTrue(TEXT("Unknown CardId has all four cosmetic fallbacks"),
+		Missing.ArtIdentity.IsNone()
+			&& Missing.CardFrame.IsNull()
+			&& Missing.Portrait.IsNull()
+			&& Missing.RoleIcon.IsNull()
+			&& Missing.LongShotSkillIcon.IsNull());
+
+	UTexture2D* FrameTexture = Golden.CardFrame.LoadSynchronous();
+	UTexture2D* PortraitTexture = Golden.Portrait.LoadSynchronous();
+	UTexture2D* RoleIconTexture = Golden.RoleIcon.LoadSynchronous();
+	UTexture2D* SkillIconTexture = Golden.LongShotSkillIcon.LoadSynchronous();
+	TestTrue(TEXT("All four Golden Sample packages load with expected dimensions"),
+		FrameTexture != nullptr && PortraitTexture != nullptr
+			&& RoleIconTexture != nullptr && SkillIconTexture != nullptr
+			&& FrameTexture->GetImportedSize() == FIntPoint(1024, 1536)
+			&& PortraitTexture->GetImportedSize() == FIntPoint(1024, 1536)
+			&& RoleIconTexture->GetImportedSize() == FIntPoint(1254, 1254)
+			&& SkillIconTexture->GetImportedSize() == FIntPoint(1254, 1254)
+			&& !RoleIconTexture->CompressionNoAlpha
+			&& !SkillIconTexture->CompressionNoAlpha);
+	if (FrameTexture == nullptr || PortraitTexture == nullptr
+		|| RoleIconTexture == nullptr || SkillIconTexture == nullptr)
+	{
+		return false;
+	}
+
+	TestEqual(TEXT("Forward role has centralized zh-CN presentation"),
+		FFMCodexPlayerUIPresentationText::Role(TEXT("FW / MF")).ToString(),
+		FString(TEXT("前锋 / 中场")));
+	TestEqual(TEXT("Long Shot has centralized zh-CN presentation"),
+		FFMCodexPlayerUIPresentationText::Skill(TEXT("Long Shot")).ToString(),
+		FString(TEXT("远射")));
+	TestEqual(TEXT("Attribute has centralized zh-CN presentation"),
+		FFMCodexPlayerUIPresentationText::Attribute(TEXT("SHO 5")).ToString(),
+		FString(TEXT("射门 5")));
+	TestEqual(TEXT("Status has centralized zh-CN presentation"),
+		FFMCodexPlayerUIPresentationText::Status(TEXT("AVAILABLE")).ToString(),
+		FString(TEXT("可用")));
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller = PlayableWorld.GetController();
+	TestNotNull(TEXT("Golden Sample Host exists"), Host);
+	TestNotNull(TEXT("Golden Sample Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen = Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Golden Sample screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+
+	FFMCodexUMGCardViewModel Card;
+	Card.CardId = References.GetGoldenSampleCardId();
+	Card.IdentityLabel = TEXT("Golden Sample Forward");
+	Card.OwnerLabel = TEXT("Player A");
+	Card.RoleLabel = TEXT("FW / MF");
+	Card.RarityLabel = TEXT("Pilot");
+	Card.SkillLabels = { TEXT("Long Shot"), TEXT("Cut Inside"),
+		TEXT("Pass Control"), TEXT("Cross"), TEXT("Through Ball") };
+	Card.SkillSummaryLabel = FString::Join(Card.SkillLabels, TEXT(" | "));
+	Card.CompactAttributeSummary =
+		TEXT("SHO 5 | PAS 4 | DRI 3 | SPD 4");
+	Card.FullAttributeSummary =
+		TEXT("SHO 5 | DRI 3 | PAS 4 | OFF 4 | MRK 2 | TKL 1 | SPD 4 | STR 3 | STA 4 | LS 5");
+	Card.StatusLabels = { TEXT("AVAILABLE") };
+	Card.StatusSummaryLabel = TEXT("AVAILABLE");
+
+	auto MakeWidget = [Screen, &Card](
+		const EFMCodexPlayerCardPresentationMode Mode,
+		const FFMCodexUMGCardViewModel* Override = nullptr)
+	{
+		UFMCodexPlayerCardWidget* Widget =
+			CreateWidget<UFMCodexPlayerCardWidget>(
+				Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
+		if (Widget != nullptr)
+		{
+			Widget->RefreshFromPresentation(
+				Override == nullptr ? Card : *Override, Mode);
+			Widget->TakeWidget();
+		}
+		return Widget;
+	};
+	const TArray<uint8> StateBeforeWidgets =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	UFMCodexPlayerCardWidget* PitchCompact = MakeWidget(
+		EFMCodexPlayerCardPresentationMode::PitchCompact);
+	UFMCodexPlayerCardWidget* InteractionChoice = MakeWidget(
+		EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	TestNotNull(TEXT("Golden Sample PitchCompact constructs"), PitchCompact);
+	TestNotNull(TEXT("Golden Sample InteractionChoice constructs"),
+		InteractionChoice);
+	if (PitchCompact == nullptr || InteractionChoice == nullptr)
+	{
+		return false;
+	}
+
+	auto HasFourBrushes = [FrameTexture, PortraitTexture, RoleIconTexture,
+		SkillIconTexture](const UFMCodexPlayerCardWidget& Widget)
+	{
+		const UImage* Frame = Cast<UImage>(
+			Widget.GetWidgetFromName(TEXT("CardFrameAssetImage")));
+		const UImage* Portrait = Cast<UImage>(
+			Widget.GetWidgetFromName(TEXT("PortraitAssetImage")));
+		const UImage* RoleIcon = Cast<UImage>(
+			Widget.GetWidgetFromName(TEXT("RoleIconAssetImage")));
+		const UImage* SkillIcon = Cast<UImage>(
+			Widget.GetWidgetFromName(TEXT("SkillIconAssetImage0")));
+		return Frame != nullptr && Portrait != nullptr && RoleIcon != nullptr
+			&& SkillIcon != nullptr
+			&& Frame->GetBrush().GetResourceObject() == FrameTexture
+			&& Portrait->GetBrush().GetResourceObject() == PortraitTexture
+			&& RoleIcon->GetBrush().GetResourceObject() == RoleIconTexture
+			&& SkillIcon->GetBrush().GetResourceObject() == SkillIconTexture
+			&& Frame->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& Portrait->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& RoleIcon->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& SkillIcon->GetVisibility() == ESlateVisibility::HitTestInvisible;
+	};
+	TestTrue(TEXT("PitchCompact binds all four Golden Sample resources"),
+		HasFourBrushes(*PitchCompact)
+			&& PitchCompact->GetRenderedSkillCount() == 5
+			&& PitchCompact->GetRenderedAttributeCount() == 4);
+	TestTrue(TEXT("InteractionChoice binds all four Golden Sample resources"),
+		HasFourBrushes(*InteractionChoice)
+			&& InteractionChoice->GetRenderedSkillCount() == 5
+			&& InteractionChoice->GetRenderedAttributeCount() == 10
+			&& InteractionChoice->GetRenderedStatusBadgeCount() == 1);
+	TestTrue(TEXT("Golden Sample uses the same art identity in both modes"),
+		PitchCompact->GetResolvedArtIdentity()
+			== References.GetGoldenSampleArtIdentity()
+			&& PitchCompact->GetResolvedArtIdentity()
+				== InteractionChoice->GetResolvedArtIdentity()
+			&& PitchCompact->GetResolvedRoleIconTexture()
+				== RoleIconTexture
+			&& InteractionChoice->GetResolvedLongShotSkillIconTexture()
+				== SkillIconTexture);
+
+	const UTextBlock* RoleText = Cast<UTextBlock>(
+		InteractionChoice->GetWidgetFromName(TEXT("CardRole")));
+	const UTextBlock* SkillText = Cast<UTextBlock>(
+		InteractionChoice->GetWidgetFromName(TEXT("SkillIdentity0")));
+	const UTextBlock* AttributeText = Cast<UTextBlock>(
+		InteractionChoice->GetWidgetFromName(TEXT("AttributeValue0")));
+	const UTextBlock* StatusText = Cast<UTextBlock>(
+		InteractionChoice->GetWidgetFromName(TEXT("StatusBadgeLabel0")));
+	TestTrue(TEXT("Golden Sample renders live Chinese role Skill attribute status"),
+		RoleText != nullptr && RoleText->GetText().ToString() == TEXT("前锋 / 中场")
+			&& SkillText != nullptr && SkillText->GetText().ToString().Contains(TEXT("远射"))
+			&& AttributeText != nullptr && AttributeText->GetText().ToString() == TEXT("射门 5")
+			&& StatusText != nullptr && StatusText->GetText().ToString() == TEXT("可用"));
+	TestTrue(TEXT("UMG-only Golden Sample refresh cannot mutate authority"),
+		StateBeforeWidgets == SerializeState(Host->GetMatchSnapshot().Snapshot));
+
+	FFMCodexUMGCardViewModel MissingCard = Card;
+	MissingCard.CardId = TEXT("Demo.Missing.GoldenSample");
+	UFMCodexPlayerCardWidget* Fallback = MakeWidget(
+		EFMCodexPlayerCardPresentationMode::InteractionChoice, &MissingCard);
+	if (Fallback == nullptr)
+	{
+		return false;
+	}
+	const UImage* MissingFrame = Cast<UImage>(
+		Fallback->GetWidgetFromName(TEXT("CardFrameAssetImage")));
+	const UImage* MissingPortrait = Cast<UImage>(
+		Fallback->GetWidgetFromName(TEXT("PortraitAssetImage")));
+	const UImage* MissingRole = Cast<UImage>(
+		Fallback->GetWidgetFromName(TEXT("RoleIconAssetImage")));
+	const UImage* MissingSkill = Cast<UImage>(
+		Fallback->GetWidgetFromName(TEXT("SkillIconAssetImage0")));
+	const UTextBlock* MissingRoleText = Cast<UTextBlock>(
+		Fallback->GetWidgetFromName(TEXT("CardRole")));
+	const UTextBlock* MissingSkillText = Cast<UTextBlock>(
+		Fallback->GetWidgetFromName(TEXT("SkillIdentity0")));
+	TestTrue(TEXT("Frame and portrait fallbacks remain visible and semantic"),
+		MissingFrame != nullptr
+			&& MissingFrame->GetVisibility() == ESlateVisibility::Collapsed
+			&& MissingPortrait != nullptr
+			&& MissingPortrait->GetVisibility() == ESlateVisibility::Collapsed
+			&& Fallback->GetWidgetFromName(TEXT("CardFrameFallbackSurface"))
+				->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& Fallback->GetWidgetFromName(TEXT("PortraitPlaceholderText"))
+				->GetVisibility() == ESlateVisibility::HitTestInvisible);
+	TestTrue(TEXT("Missing role and Skill icons preserve Chinese text fallbacks"),
+		MissingRole != nullptr
+			&& MissingRole->GetVisibility() == ESlateVisibility::Collapsed
+			&& MissingSkill != nullptr
+			&& MissingSkill->GetVisibility() == ESlateVisibility::Collapsed
+			&& MissingRoleText != nullptr
+			&& MissingRoleText->GetText().ToString() == TEXT("前锋 / 中场")
+			&& MissingSkillText != nullptr
+			&& MissingSkillText->GetText().ToString().Contains(TEXT("远射")));
+
+	TArray<FFMCodexUMGPitchRegionViewModel> PitchPresentation;
+	for (int32 RegionIndex = 0; RegionIndex < 2; ++RegionIndex)
+	{
+		FFMCodexUMGPitchRegionViewModel Region;
+		for (int32 SlotIndex = 0; SlotIndex < 10; ++SlotIndex)
+		{
+			FFMCodexUMGPitchSlotViewModel Slot;
+			Slot.SlotId = FName(*FString::Printf(
+				TEXT("Golden.Slot.%d.%d"), RegionIndex, SlotIndex));
+			Slot.bOccupied = RegionIndex == 0 && SlotIndex == 0;
+			if (Slot.bOccupied) Slot.Card = Card;
+			Region.Slots.Add(Slot);
+		}
+		PitchPresentation.Add(Region);
+	}
+	Screen->GetPitchWidget()->RefreshFromPitchPresentation(PitchPresentation);
+	TestEqual(TEXT("Golden Sample preserves the 20-slot Pitch hierarchy"),
+		Screen->GetPitchWidget()->GetRenderedSlotWidgets().Num(), 20);
+
+	FString ArtDirection;
+	FString AssetReferenceSource;
+	FString CardSource;
+	FString TextSource;
+	TestTrue(TEXT("Golden Sample visual contracts are checked in"),
+		LoadProductionSource(TEXT("Docs/Visual/Visual_Art_Direction_v1.md"),
+			ArtDirection)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp"),
+				AssetReferenceSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"),
+				CardSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp"),
+				TextSource));
+	TestTrue(TEXT("Art direction freezes four language-neutral prompt specs"),
+		ArtDirection.Contains(TEXT("Exact prompt — Card Frame"))
+			&& ArtDirection.Contains(TEXT("Exact prompt — Player Portrait"))
+			&& ArtDirection.Contains(TEXT("Exact prompt — Forward Role Icon"))
+			&& ArtDirection.Contains(TEXT("Exact prompt — Long Shot Skill Icon"))
+			&& ArtDirection.Contains(TEXT("no readable text")));
+	TestTrue(TEXT("Golden asset paths stay centralized and presentation-only"),
+		AssetReferenceSource.Contains(TEXT("/Game/UI/Cards/GoldenSample/"))
+			&& AssetReferenceSource.Contains(TEXT("/Game/UI/Portraits/GoldenSample/"))
+			&& AssetReferenceSource.Contains(TEXT("/Game/UI/Icons/GoldenSample/"))
+			&& !CardSource.Contains(TEXT("/Game/UI/"))
+			&& TextSource.Contains(TEXT("LOCTEXT"))
+			&& !TextSource.Contains(TEXT("FMatchPlayState"))
+			&& !TextSource.Contains(TEXT("AuthoritativeSession"))
+			&& !TextSource.Contains(TEXT("D6Provider")));
+	for (const TCHAR* RelativePath : {
+		TEXT("ArtSource/UI/GoldenSample/Cards/T_Golden_CardFrame_01.png"),
+		TEXT("ArtSource/UI/GoldenSample/Portraits/T_Golden_PlayerPortrait_01.png"),
+		TEXT("ArtSource/UI/GoldenSample/Icons/T_Golden_Role_Forward_01.png"),
+		TEXT("ArtSource/UI/GoldenSample/Icons/T_Golden_Skill_LongShot_01.png") })
+	{
+		TestTrue(FString::Printf(TEXT("Golden source exists: %s"), RelativePath),
+			FPaths::FileExists(FPaths::Combine(FPaths::ProjectDir(), RelativePath)));
+	}
 	return true;
 }
 

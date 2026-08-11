@@ -50,6 +50,8 @@ public:
 	FName GetResolvedArtIdentity() const;
 	UTexture2D* GetResolvedCardFrameTexture() const;
 	UTexture2D* GetResolvedPortraitTexture() const;
+	UTexture2D* GetResolvedRoleIconTexture() const;
+	UTexture2D* GetResolvedLongShotSkillIconTexture() const;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -73,12 +75,6 @@ private:
 		meta = (AllowPrivateAccess = "true"))
 	EFMCodexPlayerCardPresentationMode PresentationMode =
 		EFMCodexPlayerCardPresentationMode::InteractionChoice;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,
-		Category = "Local Match|Visual Hooks",
-		meta = (AllowPrivateAccess = "true"))
-	FText PortraitPlaceholderLabel =
-		FText::FromString(TEXT("PORTRAIT\nASSET READY"));
 
 	UPROPERTY(Transient)
 	TObjectPtr<USizeBox> CardBounds;
@@ -114,6 +110,9 @@ private:
 	TObjectPtr<UTextBlock> RoleText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UImage> RoleIconImage;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RarityText;
 
 	UPROPERTY(Transient)
@@ -127,6 +126,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> ResolvedPortraitTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> ResolvedRoleIconTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> ResolvedLongShotSkillIconTexture;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> OwnerText;

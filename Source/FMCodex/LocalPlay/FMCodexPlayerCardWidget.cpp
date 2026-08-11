@@ -1,6 +1,7 @@
 #include "FMCodexPlayerCardWidget.h"
 
 #include "FMCodexPlayerUIAssetReferences.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -147,6 +148,16 @@ UTexture2D* UFMCodexPlayerCardWidget::GetResolvedPortraitTexture() const
 	return ResolvedPortraitTexture;
 }
 
+UTexture2D* UFMCodexPlayerCardWidget::GetResolvedRoleIconTexture() const
+{
+	return ResolvedRoleIconTexture;
+}
+
+UTexture2D* UFMCodexPlayerCardWidget::GetResolvedLongShotSkillIconTexture() const
+{
+	return ResolvedLongShotSkillIconTexture;
+}
+
 void UFMCodexPlayerCardWidget::BuildWidgetTree()
 {
 	using namespace FMCodexPlayerCardWidget;
@@ -202,7 +213,19 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	RoleText = MakeText(*WidgetTree, TEXT("CardRole"));
 	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*RoleText, EFMCodexPlayerUITextRole::SectionHeading);
-	RoleIconHook->AddChild(RoleText);
+	UHorizontalBox* RoleContent = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("RoleIconAndText"));
+	USizeBox* RoleIconBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("RoleIconAssetBounds"));
+	RoleIconBounds->SetWidthOverride(22.0f);
+	RoleIconBounds->SetHeightOverride(22.0f);
+	RoleIconImage = WidgetTree->ConstructWidget<UImage>(
+		UImage::StaticClass(), TEXT("RoleIconAssetImage"));
+	RoleIconImage->SetVisibility(ESlateVisibility::Collapsed);
+	RoleIconBounds->AddChild(RoleIconImage);
+	RoleContent->AddChildToHorizontalBox(RoleIconBounds);
+	RoleContent->AddChildToHorizontalBox(RoleText);
+	RoleIconHook->AddChild(RoleContent);
 	Header->AddChildToHorizontalBox(RoleIconHook);
 	RarityText = MakeText(*WidgetTree, TEXT("CardRarity"));
 	FFMCodexPlayerUIStyle::Get().ApplyText(
@@ -275,7 +298,8 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	UVerticalBox* SkillBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("SkillPresentationBody"));
 	UTextBlock* SkillTitle = MakeText(
-		*WidgetTree, TEXT("SkillRegionTitle"), TEXT("SKILLS"));
+		*WidgetTree, TEXT("SkillRegionTitle"));
+	SkillTitle->SetText(FFMCodexPlayerUIPresentationText::SkillsHeading());
 	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*SkillTitle, EFMCodexPlayerUITextRole::SectionHeading);
 	SkillBody->AddChildToVerticalBox(SkillTitle);
@@ -293,7 +317,9 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	UVerticalBox* AttributeBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("AttributePresentationBody"));
 	UTextBlock* AttributeTitle = MakeText(
-		*WidgetTree, TEXT("AttributeRegionTitle"), TEXT("ATTRIBUTES"));
+		*WidgetTree, TEXT("AttributeRegionTitle"));
+	AttributeTitle->SetText(
+		FFMCodexPlayerUIPresentationText::AttributesHeading());
 	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*AttributeTitle, EFMCodexPlayerUITextRole::SectionHeading);
 	AttributeBody->AddChildToVerticalBox(AttributeTitle);
@@ -334,23 +360,23 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		? Style.GetColor(EFMCodexPlayerUIColorRole::GoalkeeperCardFrame)
 		: Style.GetPlayerAccentColor(Presentation.OwnerLabel));
 
-	IdentityText->SetText(FText::FromString(
-		Presentation.IdentityLabel.IsEmpty()
-			? TEXT("UNKNOWN CARD") : Presentation.IdentityLabel));
-	OwnerText->SetText(FText::FromString(
-		Presentation.OwnerLabel.IsEmpty()
-			? TEXT("OWNER N/A") : Presentation.OwnerLabel));
-	RoleText->SetText(FText::FromString(
-		Presentation.RoleLabel.IsEmpty()
-			? TEXT("ROLE N/A") : Presentation.RoleLabel));
-	RarityText->SetText(FText::FromString(TEXT("  ")
-		+ (Presentation.RarityLabel.IsEmpty()
-			? FString(TEXT("RARITY N/A")) : Presentation.RarityLabel)));
-	PortraitPlaceholderText->SetText(PortraitPlaceholderLabel);
+	IdentityText->SetText(Presentation.IdentityLabel.IsEmpty()
+		? FFMCodexPlayerUIPresentationText::UnknownCard()
+		: FText::FromString(Presentation.IdentityLabel));
+	OwnerText->SetText(FFMCodexPlayerUIPresentationText::Owner(
+		Presentation.OwnerLabel));
+	RoleText->SetText(FFMCodexPlayerUIPresentationText::Role(
+		Presentation.RoleLabel));
+	RarityText->SetText(FText::Format(FText::FromString(TEXT("  {0}")),
+		FFMCodexPlayerUIPresentationText::Rarity(Presentation.RarityLabel)));
+	PortraitPlaceholderText->SetText(
+		FFMCodexPlayerUIPresentationText::PortraitPlaceholder());
 	RefreshPresentationArt();
 	DeveloperReferenceText->SetText(FText::FromString(
 		Presentation.DeveloperReferenceLabel));
 	DeveloperReferenceText->SetVisibility(bCompact
+		|| ResolvedArtIdentity
+			== FFMCodexPlayerUIAssetReferences::Get().GetGoldenSampleArtIdentity()
 		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 
 	RefreshSkills();
@@ -368,6 +394,10 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 		? nullptr : Art.CardFrame.LoadSynchronous();
 	ResolvedPortraitTexture = Art.Portrait.IsNull()
 		? nullptr : Art.Portrait.LoadSynchronous();
+	ResolvedRoleIconTexture = Art.RoleIcon.IsNull()
+		? nullptr : Art.RoleIcon.LoadSynchronous();
+	ResolvedLongShotSkillIconTexture = Art.LongShotSkillIcon.IsNull()
+		? nullptr : Art.LongShotSkillIcon.LoadSynchronous();
 
 	if (!Art.CardFrame.IsNull() && ResolvedCardFrameTexture == nullptr)
 	{
@@ -382,6 +412,21 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 			TEXT("Optional portrait asset failed to load for %s: %s"),
 			*Presentation.CardId.ToString(),
 			*Art.Portrait.ToSoftObjectPath().ToString());
+	}
+	if (!Art.RoleIcon.IsNull() && ResolvedRoleIconTexture == nullptr)
+	{
+		UE_LOG(LogFMCodexPlayerCardArt, Warning,
+			TEXT("Optional role-icon asset failed to load for %s: %s"),
+			*Presentation.CardId.ToString(),
+			*Art.RoleIcon.ToSoftObjectPath().ToString());
+	}
+	if (!Art.LongShotSkillIcon.IsNull()
+		&& ResolvedLongShotSkillIconTexture == nullptr)
+	{
+		UE_LOG(LogFMCodexPlayerCardArt, Warning,
+			TEXT("Optional skill-icon asset failed to load for %s: %s"),
+			*Presentation.CardId.ToString(),
+			*Art.LongShotSkillIcon.ToSoftObjectPath().ToString());
 	}
 
 	const bool bHasFrame = ResolvedCardFrameTexture != nullptr;
@@ -404,6 +449,14 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 	{
 		PortraitImage->SetBrushFromTexture(ResolvedPortraitTexture, true);
 	}
+
+	const bool bHasRoleIcon = ResolvedRoleIconTexture != nullptr;
+	RoleIconImage->SetVisibility(bHasRoleIcon
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (bHasRoleIcon)
+	{
+		RoleIconImage->SetBrushFromTexture(ResolvedRoleIconTexture, true);
+	}
 }
 
 void UFMCodexPlayerCardWidget::RefreshSkills()
@@ -424,14 +477,31 @@ void UFMCodexPlayerCardWidget::RefreshSkills()
 			TEXT("SkillIconHook%d"), Index)),
 			FFMCodexPlayerUIStyle::Get().GetColor(
 				EFMCodexPlayerUIColorRole::SkillBadge), FMargin(3.0f));
-		UTextBlock* IconText = MakeText(*WidgetTree, FName(*FString::Printf(
-			TEXT("SkillIconPlaceholder%d"), Index)), TEXT("SK"));
-		FFMCodexPlayerUIStyle::Get().ApplyText(
-			*IconText, EFMCodexPlayerUITextRole::Secondary);
-		IconHook->AddChild(IconText);
+		const bool bHasSkillIcon = Skills[Index] == TEXT("Long Shot")
+			&& ResolvedLongShotSkillIconTexture != nullptr;
+		USizeBox* IconBounds = WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(), FName(*FString::Printf(
+				TEXT("SkillIconAssetBounds%d"), Index)));
+		IconBounds->SetWidthOverride(22.0f);
+		IconBounds->SetHeightOverride(22.0f);
+		UImage* IconImage = WidgetTree->ConstructWidget<UImage>(
+			UImage::StaticClass(), FName(*FString::Printf(
+				TEXT("SkillIconAssetImage%d"), Index)));
+		IconImage->SetVisibility(bHasSkillIcon
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (bHasSkillIcon)
+		{
+			IconImage->SetBrushFromTexture(ResolvedLongShotSkillIconTexture, true);
+		}
+		IconBounds->AddChild(IconImage);
+		IconHook->AddChild(IconBounds);
+		IconHook->SetVisibility(bHasSkillIcon
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		Row->AddChildToHorizontalBox(IconHook);
 		UTextBlock* SkillText = MakeText(*WidgetTree, FName(*FString::Printf(
-			TEXT("SkillIdentity%d"), Index)), TEXT("  ") + Skills[Index]);
+			TEXT("SkillIdentity%d"), Index)));
+		SkillText->SetText(FText::Format(FText::FromString(TEXT("  {0}")),
+			FFMCodexPlayerUIPresentationText::Skill(Skills[Index])));
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*SkillText, EFMCodexPlayerUITextRole::Body);
 		Row->AddChildToHorizontalBox(SkillText);
@@ -462,7 +532,9 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 			FFMCodexPlayerUIStyle::Get().GetColor(
 				EFMCodexPlayerUIColorRole::AttributeCell), FMargin(3.0f));
 		UTextBlock* StatText = MakeText(*WidgetTree, FName(*FString::Printf(
-			TEXT("AttributeValue%d"), Index)), Attributes[Index]);
+			TEXT("AttributeValue%d"), Index)));
+		StatText->SetText(
+			FFMCodexPlayerUIPresentationText::Attribute(Attributes[Index]));
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*StatText, EFMCodexPlayerUITextRole::Body);
 		StatCell->AddChild(StatText);
@@ -488,7 +560,9 @@ void UFMCodexPlayerCardWidget::RefreshStatusBadges()
 			FFMCodexPlayerUIStyle::Get().GetStatusBadgeColor(Statuses[Index]),
 			FMargin(5.0f, 3.0f));
 		UTextBlock* BadgeText = MakeText(*WidgetTree, FName(*FString::Printf(
-			TEXT("StatusBadgeLabel%d"), Index)), Statuses[Index]);
+			TEXT("StatusBadgeLabel%d"), Index)));
+		BadgeText->SetText(
+			FFMCodexPlayerUIPresentationText::Status(Statuses[Index]));
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*BadgeText, EFMCodexPlayerUITextRole::Kicker);
 		Badge->AddChild(BadgeText);
