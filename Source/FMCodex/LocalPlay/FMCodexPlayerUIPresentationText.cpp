@@ -1,5 +1,7 @@
 #include "FMCodexPlayerUIPresentationText.h"
 
+#include "FMCodexPrototypeTeamContent.h"
+
 #define LOCTEXT_NAMESPACE "FMCodexPlayerUIPresentationText"
 
 namespace FMCodexPlayerUIPresentationText
@@ -51,6 +53,25 @@ namespace FMCodexPlayerUIPresentationText
 		if (Token == TEXT("1V1")) return LOCTEXT("AttributeOneOnOne", "单刀");
 		return FText::FromString(Token);
 	}
+}
+
+FText FFMCodexPlayerUIPresentationText::PlayerName(
+	const FName CardId,
+	const FString& FallbackLabel)
+{
+	const FText PrototypeName =
+		FFMCodexPrototypeTeamContent::PlayerDisplayName(CardId);
+	if (!PrototypeName.IsEmpty())
+	{
+		return PrototypeName;
+	}
+	return FallbackLabel.IsEmpty()
+		? UnknownCard() : FText::FromString(FallbackLabel);
+}
+
+FText FFMCodexPlayerUIPresentationText::TeamName(const FName CardId)
+{
+	return FFMCodexPrototypeTeamContent::TeamDisplayName(CardId);
 }
 
 FText FFMCodexPlayerUIPresentationText::Role(const FString& CanonicalLabel)

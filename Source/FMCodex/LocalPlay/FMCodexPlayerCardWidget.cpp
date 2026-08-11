@@ -226,6 +226,16 @@ int32 UFMCodexPlayerCardWidget::GetRenderedStatusBadgeCount() const
 	return RenderedStatusTexts.Num();
 }
 
+FText UFMCodexPlayerCardWidget::GetRenderedIdentityText() const
+{
+	return IdentityText == nullptr ? FText::GetEmpty() : IdentityText->GetText();
+}
+
+FText UFMCodexPlayerCardWidget::GetRenderedTeamText() const
+{
+	return TeamText == nullptr ? FText::GetEmpty() : TeamText->GetText();
+}
+
 bool UFMCodexPlayerCardWidget::IsGoalkeeperVisualVariant() const
 {
 	return Presentation.bGoalkeeper;
@@ -373,16 +383,20 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	UVerticalBox* IdentityBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("CardIdentityBody"));
 	IdentityText = MakeText(*WidgetTree, TEXT("CardIdentity"));
+	TeamText = MakeText(*WidgetTree, TEXT("CardTeam"));
 	OwnerText = MakeText(*WidgetTree, TEXT("CardOwner"));
 	DeveloperReferenceText = MakeText(
 		*WidgetTree, TEXT("CardDeveloperReference"));
 	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*IdentityText, EFMCodexPlayerUITextRole::Identity);
 	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*TeamText, EFMCodexPlayerUITextRole::Secondary);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*OwnerText, EFMCodexPlayerUITextRole::Kicker);
 	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*DeveloperReferenceText, EFMCodexPlayerUITextRole::Secondary);
 	IdentityBody->AddChildToVerticalBox(IdentityText);
+	IdentityBody->AddChildToVerticalBox(TeamText);
 	IdentityBody->AddChildToVerticalBox(OwnerText);
 	IdentityBody->AddChildToVerticalBox(DeveloperReferenceText);
 	IdentityRegion->AddChild(IdentityBody);
@@ -458,9 +472,12 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		? Style.GetColor(EFMCodexPlayerUIColorRole::GoalkeeperCardFrame)
 		: Style.GetPlayerAccentColor(Presentation.OwnerLabel));
 
-	IdentityText->SetText(Presentation.IdentityLabel.IsEmpty()
-		? FFMCodexPlayerUIPresentationText::UnknownCard()
-		: FText::FromString(Presentation.IdentityLabel));
+	IdentityText->SetText(FFMCodexPlayerUIPresentationText::PlayerName(
+		Presentation.CardId, Presentation.IdentityLabel));
+	TeamText->SetText(FFMCodexPlayerUIPresentationText::TeamName(
+		Presentation.CardId));
+	TeamText->SetVisibility(TeamText->GetText().IsEmpty()
+		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	OwnerText->SetText(FFMCodexPlayerUIPresentationText::Owner(
 		Presentation.OwnerLabel));
 	RoleText->SetText(FFMCodexPlayerUIPresentationText::Role(
@@ -475,6 +492,7 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	DeveloperReferenceText->SetVisibility(bCompact
 		|| ResolvedArtIdentity
 			== FFMCodexPlayerUIAssetReferences::Get().GetGoldenSampleArtIdentity()
+		|| ResolvedArtIdentity.ToString().StartsWith(TEXT("PrototypeTeam."))
 		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 
 	RefreshSkills();

@@ -39,6 +39,53 @@ FFMCodexPlayerUIAssetReferences::FFMCodexPlayerUIAssetReferences()
 	, GoldenLongShotSkillIcon(
 		FMCodexPlayerUIAssetReferences::GoldenLongShotSkillIconPath)
 {
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.BukayoSaka"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BukayoSaka_01.T_Prototype_Arsenal_BukayoSaka_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.MartinOdegaard"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinOdegaard_01.T_Prototype_Arsenal_MartinOdegaard_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.DeclanRice"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DeclanRice_01.T_Prototype_Arsenal_DeclanRice_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.WilliamSaliba"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_WilliamSaliba_01.T_Prototype_Arsenal_WilliamSaliba_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.DavidRaya"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01.T_Prototype_Arsenal_DavidRaya_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01.T_Prototype_ManchesterCity_ErlingHaaland_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.PhilFoden"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_PhilFoden_01.T_Prototype_ManchesterCity_PhilFoden_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.Rodri"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_Rodri_01.T_Prototype_ManchesterCity_Rodri_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.RubenDias"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RubenDias_01.T_Prototype_ManchesterCity_RubenDias_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_GianluigiDonnarumma_01.T_Prototype_ManchesterCity_GianluigiDonnarumma_01"))));
+
+	PrototypeForwardRoleCards = {
+		TEXT("Prototype.Arsenal.BukayoSaka"),
+		TEXT("Prototype.Arsenal.MartinOdegaard"),
+		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+		TEXT("Prototype.ManchesterCity.PhilFoden")
+	};
 }
 
 FFMCodexPlayerUICardArtReferences
@@ -50,6 +97,20 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 		Result.ArtIdentity = GetPilotArtIdentity();
 		Result.CardFrame = PilotCardFrame;
 		Result.Portrait = PilotPortrait;
+		return Result;
+	}
+	if (const TSoftObjectPtr<UTexture2D>* PrototypePortrait =
+			PrototypePortraits.Find(CardId))
+	{
+		Result.ArtIdentity = FName(*FString::Printf(
+			TEXT("PrototypeTeam.PlayerCard.%s"), *CardId.ToString()));
+		Result.CardFrame = GoldenCardFrame;
+		Result.Portrait = *PrototypePortrait;
+		Result.LongShotSkillIcon = GoldenLongShotSkillIcon;
+		if (PrototypeForwardRoleCards.Contains(CardId))
+		{
+			Result.RoleIcon = GoldenRoleIcon;
+		}
 		return Result;
 	}
 	if (CardId != GetGoldenSampleCardId())

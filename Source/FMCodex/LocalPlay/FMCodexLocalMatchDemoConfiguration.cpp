@@ -1,5 +1,7 @@
 #include "FMCodexLocalMatchDemoConfiguration.h"
 
+#include "FMCodexPrototypeTeamContent.h"
+
 namespace FMCodexLocalMatchDemoConfiguration
 {
 	constexpr const TCHAR* LongShotSkillId = TEXT("Demo.Skill.LongShot");
@@ -75,6 +77,7 @@ namespace FMCodexLocalMatchDemoConfiguration
 			Deck.Add(MakeOutfieldCard(Side, Index + 1));
 		}
 		Deck.Add(MakeGoalkeeper(Side));
+		FFMCodexPrototypeTeamContent::IntegrateIntoDemoDeck(Side, Deck);
 		return Deck;
 	}
 }

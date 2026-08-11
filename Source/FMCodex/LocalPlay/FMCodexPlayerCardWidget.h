@@ -52,6 +52,8 @@ public:
 	int32 GetRenderedSkillCount() const;
 	int32 GetRenderedAttributeCount() const;
 	int32 GetRenderedStatusBadgeCount() const;
+	FText GetRenderedIdentityText() const;
+	FText GetRenderedTeamText() const;
 	bool IsGoalkeeperVisualVariant() const;
 	FName GetResolvedArtIdentity() const;
 	UTexture2D* GetResolvedCardFrameTexture() const;
@@ -161,6 +163,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> OwnerText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TeamText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> DeveloperReferenceText;

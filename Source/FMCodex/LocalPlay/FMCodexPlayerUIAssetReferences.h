@@ -38,4 +38,6 @@ private:
 	TSoftObjectPtr<UTexture2D> GoldenPortrait;
 	TSoftObjectPtr<UTexture2D> GoldenRoleIcon;
 	TSoftObjectPtr<UTexture2D> GoldenLongShotSkillIcon;
+	TMap<FName, TSoftObjectPtr<UTexture2D>> PrototypePortraits;
+	TSet<FName> PrototypeForwardRoleCards;
 };

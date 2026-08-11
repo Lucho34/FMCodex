@@ -9,6 +9,8 @@
 class FMCODEX_API FFMCodexPlayerUIPresentationText final
 {
 public:
+	static FText PlayerName(FName CardId, const FString& FallbackLabel);
+	static FText TeamName(FName CardId);
 	static FText Role(const FString& CanonicalLabel);
 	static FText Skill(const FString& CanonicalLabel);
 	static FText Attribute(const FString& CanonicalEntry);
