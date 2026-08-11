@@ -9,8 +9,10 @@
 
 class UBorder;
 class UHorizontalBox;
+class UImage;
 class USizeBox;
 class UTextBlock;
+class UTexture2D;
 class UUniformGridPanel;
 class UVerticalBox;
 class UWrapBox;
@@ -45,6 +47,9 @@ public:
 	int32 GetRenderedAttributeCount() const;
 	int32 GetRenderedStatusBadgeCount() const;
 	bool IsGoalkeeperVisualVariant() const;
+	FName GetResolvedArtIdentity() const;
+	UTexture2D* GetResolvedCardFrameTexture() const;
+	UTexture2D* GetResolvedPortraitTexture() const;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -53,6 +58,7 @@ protected:
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
+	void RefreshPresentationArt();
 	void RefreshSkills();
 	void RefreshAttributes();
 	void RefreshStatusBadges();
@@ -82,6 +88,12 @@ private:
 		meta = (AllowPrivateAccess = "true", BindWidgetOptional))
 	TObjectPtr<UBorder> CardFrame;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> CardFrameImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> CardFrameFallbackSurface;
+
 	UPROPERTY(Transient, BlueprintReadOnly,
 		Category = "Local Match|Visual Hooks",
 		meta = (AllowPrivateAccess = "true", BindWidgetOptional))
@@ -108,6 +120,15 @@ private:
 	TObjectPtr<UTextBlock> PortraitPlaceholderText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UImage> PortraitImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> ResolvedCardFrameTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> ResolvedPortraitTexture;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> OwnerText;
 
 	UPROPERTY(Transient)
@@ -132,4 +153,5 @@ private:
 	TArray<TObjectPtr<UTextBlock>> RenderedStatusTexts;
 
 	FString RenderedAttributeSummary;
+	FName ResolvedArtIdentity = NAME_None;
 };

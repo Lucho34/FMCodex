@@ -9,6 +9,7 @@
 #include "FMCodexDiceResultWidget.h"
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPlayerUIAssetReferences.h"
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexPitchSlotWidget.h"
 #include "FMCodexPitchWidget.h"
@@ -17,6 +18,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Engine/Engine.h"
+#include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
@@ -25,6 +27,7 @@
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 #include "Components/Border.h"
+#include "Components/Image.h"
 
 namespace FMCodexLocalMatchControlSurfaceTests
 {
@@ -6114,6 +6117,287 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 			&& ControllerSource.Contains(TEXT("SubmitCarrier"))
 			&& ControllerSource.Contains(TEXT("ContinueResolution"))
 			&& !ControllerSource.Contains(TEXT("ExecuteCommandByName")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexValidatedPlayerCardArtPilotIntegrationTest,
+	"FMCodex.LocalPlay.ControlSurface.35.ValidatedPlayerCardArtPilotIntegration",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexValidatedPlayerCardArtPilotIntegrationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	const FFMCodexPlayerUIAssetReferences& AssetReferences =
+		FFMCodexPlayerUIAssetReferences::Get();
+	const FFMCodexPlayerUICardArtReferences PilotArt =
+		AssetReferences.ResolveCardArt(AssetReferences.GetPilotCardId());
+	const FFMCodexPlayerUICardArtReferences MissingArt =
+		AssetReferences.ResolveCardArt(TEXT("Demo.Missing.Cosmetic"));
+	TestTrue(TEXT("Pilot catalog uses one deterministic presentation mapping"),
+		AssetReferences.GetPilotCardId() == FName(TEXT("Demo.A.Outfield.01"))
+			&& PilotArt.ArtIdentity == AssetReferences.GetPilotArtIdentity()
+			&& !PilotArt.CardFrame.IsNull()
+			&& !PilotArt.Portrait.IsNull()
+			&& MissingArt.ArtIdentity.IsNone()
+			&& MissingArt.CardFrame.IsNull()
+			&& MissingArt.Portrait.IsNull());
+
+	UTexture2D* FrameTexture = PilotArt.CardFrame.LoadSynchronous();
+	UTexture2D* PortraitTexture = PilotArt.Portrait.LoadSynchronous();
+	TestTrue(TEXT("Imported pilot packages load as substantial Texture2D assets"),
+		FrameTexture != nullptr && PortraitTexture != nullptr
+			&& FrameTexture->GetImportedSize() == FIntPoint(1024, 1536)
+			&& PortraitTexture->GetImportedSize() == FIntPoint(1024, 1536));
+	if (FrameTexture == nullptr || PortraitTexture == nullptr)
+	{
+		return false;
+	}
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Pilot art integration Host exists"), Host);
+	TestNotNull(TEXT("Pilot art integration Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Pilot art integration screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+
+	FFMCodexUMGCardViewModel Card;
+	Card.CardId = AssetReferences.GetPilotCardId();
+	Card.IdentityLabel = TEXT("Pilot Prototype Player");
+	Card.OwnerLabel = TEXT("Player A");
+	Card.RoleLabel = TEXT("FW / MF");
+	Card.RarityLabel = TEXT("Pilot");
+	Card.SkillLabels = { TEXT("Long Shot"), TEXT("Cut Inside"),
+		TEXT("Pass Control"), TEXT("Cross"), TEXT("Through Ball") };
+	Card.SkillSummaryLabel = FString::Join(Card.SkillLabels, TEXT(" | "));
+	Card.CompactAttributeSummary =
+		TEXT("SHO 5 | PAS 4 | DRI 3 | SPD 4");
+	Card.FullAttributeSummary =
+		TEXT("SHO 5 | DRI 3 | PAS 4 | OFF 4 | MRK 2 | TKL 1 | SPD 4 | STR 3 | STA 4 | LS 5");
+	Card.StatusLabels = { TEXT("AVAILABLE") };
+	Card.StatusSummaryLabel = TEXT("AVAILABLE");
+
+	auto MakeCardWidget = [Screen, &Card](
+		const EFMCodexPlayerCardPresentationMode Mode)
+	{
+		UFMCodexPlayerCardWidget* Widget =
+			CreateWidget<UFMCodexPlayerCardWidget>(
+				Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
+		if (Widget != nullptr)
+		{
+			Widget->RefreshFromPresentation(Card, Mode);
+			Widget->TakeWidget();
+		}
+		return Widget;
+	};
+	UFMCodexPlayerCardWidget* PitchCompactCard = MakeCardWidget(
+		EFMCodexPlayerCardPresentationMode::PitchCompact);
+	UFMCodexPlayerCardWidget* InteractionChoiceCard = MakeCardWidget(
+		EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	TestNotNull(TEXT("PitchCompact pilot Card constructs"), PitchCompactCard);
+	TestNotNull(TEXT("InteractionChoice pilot Card constructs"),
+		InteractionChoiceCard);
+	if (PitchCompactCard == nullptr || InteractionChoiceCard == nullptr)
+	{
+		return false;
+	}
+
+	auto HasBoundPilotBrushes = [FrameTexture, PortraitTexture](
+		const UFMCodexPlayerCardWidget& Widget)
+	{
+		const UImage* FrameImage = Cast<UImage>(
+			Widget.GetWidgetFromName(TEXT("CardFrameAssetImage")));
+		const UImage* PortraitImage = Cast<UImage>(
+			Widget.GetWidgetFromName(TEXT("PortraitAssetImage")));
+		return FrameImage != nullptr && PortraitImage != nullptr
+			&& FrameImage->GetBrush().GetResourceObject() == FrameTexture
+			&& PortraitImage->GetBrush().GetResourceObject() == PortraitTexture
+			&& FrameImage->GetVisibility()
+				== ESlateVisibility::HitTestInvisible
+			&& PortraitImage->GetVisibility()
+				== ESlateVisibility::HitTestInvisible;
+	};
+	TestTrue(TEXT("PitchCompact binds real frame and portrait brush resources"),
+		HasBoundPilotBrushes(*PitchCompactCard)
+			&& PitchCompactCard->GetPresentationMode()
+				== EFMCodexPlayerCardPresentationMode::PitchCompact);
+	TestTrue(TEXT("InteractionChoice binds the same art identity and resources"),
+		HasBoundPilotBrushes(*InteractionChoiceCard)
+			&& InteractionChoiceCard->GetPresentationMode()
+				== EFMCodexPlayerCardPresentationMode::InteractionChoice
+			&& PitchCompactCard->GetResolvedArtIdentity()
+				== InteractionChoiceCard->GetResolvedArtIdentity()
+			&& PitchCompactCard->GetResolvedCardFrameTexture()
+				== InteractionChoiceCard->GetResolvedCardFrameTexture()
+			&& PitchCompactCard->GetResolvedPortraitTexture()
+				== InteractionChoiceCard->GetResolvedPortraitTexture());
+	TestTrue(TEXT("Pilot art supplements and preserves card semantics"),
+		PitchCompactCard->GetPresentation().CardId == Card.CardId
+			&& PitchCompactCard->GetRenderedSkillCount() == 5
+			&& PitchCompactCard->GetRenderedAttributeCount() == 4
+			&& PitchCompactCard->GetRenderedStatusBadgeCount() == 1
+			&& InteractionChoiceCard->GetRenderedSkillCount() == 5
+			&& InteractionChoiceCard->GetRenderedAttributeCount() == 10
+			&& InteractionChoiceCard->GetRenderedStatusBadgeCount() == 1);
+
+	FFMCodexUMGCardViewModel MissingCard = Card;
+	MissingCard.CardId = TEXT("Demo.Missing.Cosmetic");
+	UFMCodexPlayerCardWidget* FallbackCard =
+		CreateWidget<UFMCodexPlayerCardWidget>(
+			Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
+	if (FallbackCard == nullptr)
+	{
+		return false;
+	}
+	FallbackCard->RefreshFromPresentation(
+		MissingCard, EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	FallbackCard->TakeWidget();
+	const UImage* MissingFrameImage = Cast<UImage>(
+		FallbackCard->GetWidgetFromName(TEXT("CardFrameAssetImage")));
+	const UImage* MissingPortraitImage = Cast<UImage>(
+		FallbackCard->GetWidgetFromName(TEXT("PortraitAssetImage")));
+	TestTrue(TEXT("Missing frame safely restores standard style surface"),
+		FallbackCard->GetResolvedCardFrameTexture() == nullptr
+			&& MissingFrameImage != nullptr
+			&& MissingFrameImage->GetVisibility() == ESlateVisibility::Collapsed
+			&& FallbackCard->GetWidgetFromName(TEXT("CardFrameFallbackSurface"))
+				->GetVisibility() == ESlateVisibility::HitTestInvisible);
+	TestTrue(TEXT("Missing portrait safely restores placeholder"),
+		FallbackCard->GetResolvedPortraitTexture() == nullptr
+			&& MissingPortraitImage != nullptr
+			&& MissingPortraitImage->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& FallbackCard->GetWidgetFromName(TEXT("PortraitPlaceholderText"))
+				->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& FallbackCard->GetPresentation().CardId == MissingCard.CardId);
+
+	TArray<FFMCodexUMGPitchRegionViewModel> PitchPresentation;
+	for (int32 RegionIndex = 0; RegionIndex < 2; ++RegionIndex)
+	{
+		FFMCodexUMGPitchRegionViewModel Region;
+		Region.RegionLabel = RegionIndex == 0
+			? TEXT("PLAYER B HALF") : TEXT("PLAYER A HALF");
+		for (int32 SlotIndex = 0; SlotIndex < 10; ++SlotIndex)
+		{
+			FFMCodexUMGPitchSlotViewModel Slot;
+			Slot.SlotId = FName(*FString::Printf(
+				TEXT("Pilot.Slot.%d.%d"), RegionIndex, SlotIndex));
+			Slot.SlotLabel = FString::Printf(TEXT("POSITION %d"), SlotIndex + 1);
+			Slot.bOccupied = RegionIndex == 0 && SlotIndex == 0;
+			if (Slot.bOccupied)
+			{
+				Slot.Card = Card;
+			}
+			Region.Slots.Add(Slot);
+		}
+		PitchPresentation.Add(Region);
+	}
+	const TArray<uint8> StateBeforePresentation =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
+	Pitch->RefreshFromPitchPresentation(PitchPresentation);
+	TestTrue(TEXT("Pilot art preserves all 20 canonical Pitch slots"),
+		Pitch->GetRenderedSlotWidgets().Num() == 20);
+	UFMCodexPitchSlotWidget* PilotSlot =
+		Pitch->GetRenderedSlotWidgets().IsEmpty()
+			? nullptr : Pitch->GetRenderedSlotWidgets()[0];
+	if (PilotSlot != nullptr)
+	{
+		PilotSlot->TakeWidget();
+	}
+	UFMCodexPlayerCardWidget* PilotPitchCard = PilotSlot == nullptr
+		? nullptr : PilotSlot->GetCardWidget();
+	TestTrue(TEXT("Pitch slot uses the centralized pilot art identity"),
+		PilotPitchCard != nullptr
+			&& PilotPitchCard->GetPresentationMode()
+				== EFMCodexPlayerCardPresentationMode::PitchCompact
+			&& PilotPitchCard->GetResolvedArtIdentity()
+				== InteractionChoiceCard->GetResolvedArtIdentity()
+			&& HasBoundPilotBrushes(*PilotPitchCard));
+	TestTrue(TEXT("Cosmetic Pitch enrichment cannot mutate authority"),
+		StateBeforePresentation
+			== SerializeState(Host->GetMatchSnapshot().Snapshot));
+
+	Screen->RequestStartNewMatch();
+	const TArray<uint8> StateBeforeRejected =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	Screen->RequestDeployOrdinary(
+		AssetReferences.GetPilotCardId(), NAME_None);
+	TestTrue(TEXT("Rejected typed command preserves State handoff and pilot art"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& StateBeforeRejected
+				== SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& Controller->IsAwaitingHotSeatHandoff()
+			&& Screen->GetPresentation().Handoff.bVisible
+			&& HasBoundPilotBrushes(*InteractionChoiceCard)
+			&& InteractionChoiceCard->GetPresentation().CardId == Card.CardId);
+
+	FString AssetReferenceHeader;
+	FString AssetReferenceSource;
+	FString CardSource;
+	FString AuthoritySources;
+	FString SourcePart;
+	TestTrue(TEXT("Pilot presentation boundary sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.h"),
+			AssetReferenceHeader)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp"),
+				AssetReferenceSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"),
+				CardSource));
+	for (const TCHAR* Path : {
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.h"),
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.cpp"),
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchD6Provider.h"),
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchD6Provider.cpp"),
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+		TEXT("Source/FMCodex/CoreRules/MatchPlayState.h") })
+	{
+		if (LoadProductionSource(Path, SourcePart))
+		{
+			AuthoritySources += SourcePart;
+		}
+		else
+		{
+			AddError(FString::Printf(TEXT("Could not audit %s"), Path));
+		}
+	}
+	TestTrue(TEXT("Soft asset paths are centralized in UI presentation"),
+		AssetReferenceHeader.Contains(TEXT("TSoftObjectPtr<UTexture2D>"))
+			&& AssetReferenceSource.Contains(TEXT("/Game/UI/Cards/"))
+			&& AssetReferenceSource.Contains(TEXT("/Game/UI/Portraits/"))
+			&& !CardSource.Contains(TEXT("/Game/UI/")));
+	TestTrue(TEXT("Authority State Host Session and D6 provider have zero UI refs"),
+		!AuthoritySources.Contains(TEXT("/Game/UI/"))
+			&& !AuthoritySources.Contains(TEXT("TSoftObjectPtr<UTexture2D>"))
+			&& !AuthoritySources.Contains(TEXT("LoadObject<UTexture2D>"))
+			&& !AuthoritySources.Contains(TEXT("LoadSynchronous")));
+	TestTrue(TEXT("Card asset layer stays presentation-only"),
+		!CardSource.Contains(TEXT("FMatchPlayState"))
+			&& !CardSource.Contains(TEXT("AuthoritativeSession"))
+			&& !CardSource.Contains(TEXT("D6Provider"))
+			&& !CardSource.Contains(TEXT("FormulaResolver"))
+			&& !CardSource.Contains(TEXT("Legality"))
+			&& CardSource.Contains(TEXT("FMCodexPlayerUIStyle.h"))
+			&& CardSource.Contains(TEXT("CardFrameAssetHook"))
+			&& CardSource.Contains(TEXT("PortraitAssetHook")));
 	return true;
 }
 

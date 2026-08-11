@@ -1,15 +1,22 @@
 #include "FMCodexPlayerCardWidget.h"
 
+#include "FMCodexPlayerUIAssetReferences.h"
 #include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
+#include "Components/Image.h"
+#include "Components/Overlay.h"
+#include "Components/ScaleBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/VerticalBox.h"
 #include "Components/WrapBox.h"
+#include "Engine/Texture2D.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogFMCodexPlayerCardArt, Log, All);
 
 namespace FMCodexPlayerCardWidget
 {
@@ -125,6 +132,21 @@ bool UFMCodexPlayerCardWidget::IsGoalkeeperVisualVariant() const
 	return Presentation.bGoalkeeper;
 }
 
+FName UFMCodexPlayerCardWidget::GetResolvedArtIdentity() const
+{
+	return ResolvedArtIdentity;
+}
+
+UTexture2D* UFMCodexPlayerCardWidget::GetResolvedCardFrameTexture() const
+{
+	return ResolvedCardFrameTexture;
+}
+
+UTexture2D* UFMCodexPlayerCardWidget::GetResolvedPortraitTexture() const
+{
+	return ResolvedPortraitTexture;
+}
+
 void UFMCodexPlayerCardWidget::BuildWidgetTree()
 {
 	using namespace FMCodexPlayerCardWidget;
@@ -142,16 +164,28 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 			EFMCodexPlayerUIColorRole::CardFrame),
 		FFMCodexPlayerUIStyle::Get().GetSectionPadding());
 	CardBounds->AddChild(CardFrame);
-	UBorder* FrameAssetHook = MakeRegion(
-		*WidgetTree, TEXT("CardFrameAssetHook"),
+	UOverlay* FrameAssetHook = WidgetTree->ConstructWidget<UOverlay>(
+		UOverlay::StaticClass(), TEXT("CardFrameAssetHook"));
+	CardFrame->AddChild(FrameAssetHook);
+	CardFrameImage = WidgetTree->ConstructWidget<UImage>(
+		UImage::StaticClass(), TEXT("CardFrameAssetImage"));
+	CardFrameImage->SetVisibility(ESlateVisibility::Collapsed);
+	CardFrameImage->SetClipping(EWidgetClipping::ClipToBounds);
+	FrameAssetHook->AddChildToOverlay(CardFrameImage);
+	CardFrameFallbackSurface = MakeRegion(
+		*WidgetTree, TEXT("CardFrameFallbackSurface"),
 		FFMCodexPlayerUIStyle::Get().GetColor(
 			EFMCodexPlayerUIColorRole::PanelInset),
-		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
-	CardFrame->AddChild(FrameAssetHook);
+		FMargin(0.0f));
+	FrameAssetHook->AddChildToOverlay(CardFrameFallbackSurface);
 
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("PlayerCardVisualHierarchy"));
-	FrameAssetHook->AddChild(Body);
+	UBorder* ContentReadabilityLayer = MakeRegion(
+		*WidgetTree, TEXT("CardContentReadabilityLayer"),
+		FLinearColor(0.005f, 0.012f, 0.02f, 0.62f), FMargin(7.0f));
+	ContentReadabilityLayer->AddChild(Body);
+	FrameAssetHook->AddChildToOverlay(ContentReadabilityLayer);
 
 	UBorder* HeaderRegion = MakeRegion(
 		*WidgetTree, TEXT("RoleRarityHeaderRegion"),
@@ -188,12 +222,24 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 		FFMCodexPlayerUIStyle::Get().GetColor(
 			EFMCodexPlayerUIColorRole::PanelInset),
 		FFMCodexPlayerUIStyle::Get().GetCompactPadding());
+	UOverlay* PortraitLayer = WidgetTree->ConstructWidget<UOverlay>(
+		UOverlay::StaticClass(), TEXT("PortraitAssetLayer"));
+	UScaleBox* PortraitScale = WidgetTree->ConstructWidget<UScaleBox>(
+		UScaleBox::StaticClass(), TEXT("PortraitAspectScale"));
+	PortraitScale->SetStretch(EStretch::ScaleToFill);
+	PortraitScale->SetClipping(EWidgetClipping::ClipToBounds);
+	PortraitImage = WidgetTree->ConstructWidget<UImage>(
+		UImage::StaticClass(), TEXT("PortraitAssetImage"));
+	PortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+	PortraitScale->AddChild(PortraitImage);
+	PortraitLayer->AddChildToOverlay(PortraitScale);
 	PortraitPlaceholderText = MakeText(
 		*WidgetTree, TEXT("PortraitPlaceholderText"));
 	PortraitPlaceholderText->SetJustification(ETextJustify::Center);
 	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*PortraitPlaceholderText, EFMCodexPlayerUITextRole::Secondary);
-	PortraitAssetHook->AddChild(PortraitPlaceholderText);
+	PortraitLayer->AddChildToOverlay(PortraitPlaceholderText);
+	PortraitAssetHook->AddChild(PortraitLayer);
 	PortraitPresentationRegion->AddChild(PortraitAssetHook);
 	PortraitBounds->AddChild(PortraitPresentationRegion);
 	Body->AddChildToVerticalBox(PortraitBounds);
@@ -301,6 +347,7 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		+ (Presentation.RarityLabel.IsEmpty()
 			? FString(TEXT("RARITY N/A")) : Presentation.RarityLabel)));
 	PortraitPlaceholderText->SetText(PortraitPlaceholderLabel);
+	RefreshPresentationArt();
 	DeveloperReferenceText->SetText(FText::FromString(
 		Presentation.DeveloperReferenceLabel));
 	DeveloperReferenceText->SetVisibility(bCompact
@@ -309,6 +356,54 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	RefreshSkills();
 	RefreshAttributes();
 	RefreshStatusBadges();
+}
+
+void UFMCodexPlayerCardWidget::RefreshPresentationArt()
+{
+	const FFMCodexPlayerUICardArtReferences Art =
+		FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(
+			Presentation.CardId);
+	ResolvedArtIdentity = Art.ArtIdentity;
+	ResolvedCardFrameTexture = Art.CardFrame.IsNull()
+		? nullptr : Art.CardFrame.LoadSynchronous();
+	ResolvedPortraitTexture = Art.Portrait.IsNull()
+		? nullptr : Art.Portrait.LoadSynchronous();
+
+	if (!Art.CardFrame.IsNull() && ResolvedCardFrameTexture == nullptr)
+	{
+		UE_LOG(LogFMCodexPlayerCardArt, Warning,
+			TEXT("Optional card-frame asset failed to load for %s: %s"),
+			*Presentation.CardId.ToString(),
+			*Art.CardFrame.ToSoftObjectPath().ToString());
+	}
+	if (!Art.Portrait.IsNull() && ResolvedPortraitTexture == nullptr)
+	{
+		UE_LOG(LogFMCodexPlayerCardArt, Warning,
+			TEXT("Optional portrait asset failed to load for %s: %s"),
+			*Presentation.CardId.ToString(),
+			*Art.Portrait.ToSoftObjectPath().ToString());
+	}
+
+	const bool bHasFrame = ResolvedCardFrameTexture != nullptr;
+	CardFrameImage->SetVisibility(bHasFrame
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	CardFrameFallbackSurface->SetVisibility(bHasFrame
+		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	if (bHasFrame)
+	{
+		CardFrameImage->SetBrushFromTexture(
+			ResolvedCardFrameTexture, false);
+	}
+
+	const bool bHasPortrait = ResolvedPortraitTexture != nullptr;
+	PortraitImage->SetVisibility(bHasPortrait
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	PortraitPlaceholderText->SetVisibility(bHasPortrait
+		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	if (bHasPortrait)
+	{
+		PortraitImage->SetBrushFromTexture(ResolvedPortraitTexture, true);
+	}
 }
 
 void UFMCodexPlayerCardWidget::RefreshSkills()
