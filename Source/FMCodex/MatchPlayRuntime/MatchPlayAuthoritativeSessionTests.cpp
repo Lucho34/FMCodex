@@ -15374,11 +15374,12 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 	auto ReachRoute = [](FMatchPlayAuthoritativeSession& Session,
 		const FString& Prefix,
 		const ESkillRuleType Type,
-		const EMatchPlayElectiveBranchIntent Intent)
+		const EMatchPlayElectiveBranchIntent Intent,
+		const bool bDeployGoalkeeper = false)
 	{
 		FReachabilityTrace Trace;
 		return BuildStage7166ToAwaitingRoute(
-				Session, Prefix, Type, Intent, Trace)
+				Session, Prefix, Type, Intent, Trace, bDeployGoalkeeper)
 			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
 	};
 
@@ -15692,6 +15693,234 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 		TestEqual(TEXT("Stamina tie reason canonical"),
 			StaminaTie.FormulaResolutionResult.WinReason,
 			EFormulaWinReason::StaminaTieBreaker);
+	}
+
+	struct FActiveGoalkeeperCase
+	{
+		const TCHAR* Label;
+		ESkillRuleType ActionType;
+		EMatchPlayElectiveBranchIntent Intent;
+		int32 InitialRouteD6;
+		EFamily ExpectedFamily;
+		int32 GoalkeeperAttribute;
+	};
+	const FActiveGoalkeeperCase ActiveGoalkeeperCases[] = {
+		{ TEXT("LongShotPositioning5"), ESkillRuleType::LongShot,
+			EMatchPlayElectiveBranchIntent::DirectShot, 0,
+			EFamily::LongShotDirectShot, 5 },
+		{ TEXT("CutInsideHandling6"), ESkillRuleType::CutInsideShot,
+			EMatchPlayElectiveBranchIntent::DirectShot, 0,
+			EFamily::CutInsideShotDirectShot, 6 },
+		{ TEXT("PassAdvanceHandling5"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None, 1,
+			EFamily::PassAdvance, 5 },
+		{ TEXT("DribbleAdvanceHandling6"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None, 3,
+			EFamily::DribbleAdvance, 6 },
+		{ TEXT("RunAdvanceHandling5"), ESkillRuleType::PassControl,
+			EMatchPlayElectiveBranchIntent::None, 5,
+			EFamily::RunAdvance, 5 }
+	};
+
+	auto FindGoalkeeperSnapshot = [](FMatchPlayState& State)
+		-> FPlayerCardRuleSnapshot*
+	{
+		const EInitialTurnOrderPlayer DefendingSide = State.CurrentAttack
+			.ResolutionSession.Bundle.CurrentDefendingPlayer;
+		const FName GoalkeeperCardId = FName(*(
+			DefendingSide == EInitialTurnOrderPlayer::PlayerA
+				? State.RuntimeState.PlayerAState.GoalkeeperCardId
+				: State.RuntimeState.PlayerBState.GoalkeeperCardId));
+		FPlayerCardRuleSnapshotSet& SnapshotSet =
+			DefendingSide == EInitialTurnOrderPlayer::PlayerA
+				? State.CardSnapshotAuthority.PlayerACardSnapshots
+				: State.CardSnapshotAuthority.PlayerBCardSnapshots;
+		return SnapshotSet.Cards.FindByPredicate(
+			[GoalkeeperCardId](const FPlayerCardRuleSnapshot& Snapshot)
+			{
+				return Snapshot.CardId == GoalkeeperCardId;
+			});
+	};
+
+	for (const FActiveGoalkeeperCase& Case : ActiveGoalkeeperCases)
+	{
+		const FString Prefix = FString(TEXT("FormulaActive")) + Case.Label;
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix, Case.ActionType), Case.ActionType);
+		InitialRouteFixtures::FQueueRollProvider InitialProvider;
+		if (Case.InitialRouteD6 != 0)
+		{
+			InitialProvider.Enqueue(
+				InitialRouteFixtures::MakeSuccess(Case.InitialRouteD6));
+		}
+		FQueuePostRouteRollProvider PostProvider;
+		PostProvider.Enqueue(MakePostRouteSuccess(4));
+		PostProvider.Enqueue(MakePostRouteSuccess(4));
+		FMatchPlayAuthoritativeSession Session(
+			InitialProvider, PostProvider, Rules);
+		const bool bUseGoalkeeperDeploymentPath =
+			Case.ActionType == ESkillRuleType::PassControl;
+		const bool bRouteReady =
+			ReachRoute(Session, Prefix, Case.ActionType, Case.Intent,
+				bUseGoalkeeperDeploymentPath);
+		TestTrue(*FString::Printf(TEXT("%s active GK route"), Case.Label),
+			bRouteReady);
+		if (!bRouteReady)
+		{
+			continue;
+		}
+		const bool bPlanReady = Case.ActionType == ESkillRuleType::PassControl
+			? Session.ResolvePassControlPostRoutePlan().OrchestrationResult.bSuccess
+			: Session.ResolveDirectShotPostRouteDecisionOrPlan()
+				.OrchestrationResult.bSuccess;
+		TestTrue(*FString::Printf(TEXT("%s active GK plan"), Case.Label),
+			bPlanReady);
+		if (!bPlanReady)
+		{
+			continue;
+		}
+
+		FMatchPlayState ActiveState = Session.GetStateSnapshot();
+		if (!bUseGoalkeeperDeploymentPath)
+		{
+			ActiveState.CurrentAttack.bCurrentDefenseGoalkeeperActivated = true;
+			const EInitialTurnOrderPlayer DefendingSide = ActiveState.CurrentAttack
+				.ResolutionSession.Bundle.CurrentDefendingPlayer;
+			if (DefendingSide == EInitialTurnOrderPlayer::PlayerA)
+			{
+				ActiveState.GoalkeeperUsageState
+					.bPlayerAGoalkeeperCardUsed = true;
+			}
+			else
+			{
+				ActiveState.GoalkeeperUsageState
+					.bPlayerBGoalkeeperCardUsed = true;
+			}
+		}
+		FPlayerCardRuleSnapshot* GoalkeeperSnapshot =
+			FindGoalkeeperSnapshot(ActiveState);
+		TestNotNull(*FString::Printf(TEXT("%s goalkeeper snapshot"), Case.Label),
+			GoalkeeperSnapshot);
+		if (GoalkeeperSnapshot == nullptr)
+		{
+			continue;
+		}
+		if (Case.ExpectedFamily == EFamily::LongShotDirectShot)
+		{
+			GoalkeeperSnapshot->GoalkeeperAttributes.Positioning =
+				Case.GoalkeeperAttribute;
+		}
+		else
+		{
+			GoalkeeperSnapshot->GoalkeeperAttributes.Handling =
+				Case.GoalkeeperAttribute;
+		}
+
+		const auto Active =
+			FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+				::Resolve(ActiveState, &Rules);
+		TestTrue(*FString::Printf(TEXT("%s active GK Formula"), Case.Label),
+			Active.bSuccess && Active.bHasFormulaResolution);
+		TestTrue(*FString::Printf(TEXT("%s active GK participation"), Case.Label),
+			Active.ResolverInputAssemblyResult.ResolverInput
+				.bGoalkeeperParticipated);
+		const float ExpectedContribution =
+			static_cast<float>(Case.GoalkeeperAttribute) * 0.5f;
+		TestEqual(*FString::Printf(TEXT("%s exact half contribution"), Case.Label),
+			Active.ResolverInputAssemblyResult.ResolverInput.Defender.Modifier
+				- Active.DefenderQueryResult.Contract.ExternalModifier,
+			ExpectedContribution);
+		TestEqual(*FString::Printf(TEXT("%s attack modifier unchanged"), Case.Label),
+			Active.ResolverInputAssemblyResult.ResolverInput.Attacker.Modifier,
+			Active.AttackerQueryResult.Contract.ExternalModifier);
+		TestTrue(*FString::Printf(TEXT("%s Formula remains State-pure"), Case.Label),
+			AreStatesEqual(ActiveState, Active.AfterState));
+
+		const EInitialTurnOrderPlayer DefendingSide = ActiveState.CurrentAttack
+			.ResolutionSession.Bundle.CurrentDefendingPlayer;
+		TestTrue(*FString::Printf(TEXT("%s transient activation true"), Case.Label),
+			ActiveState.CurrentAttack.bCurrentDefenseGoalkeeperActivated);
+		TestTrue(*FString::Printf(TEXT("%s persistent use true"), Case.Label),
+			DefendingSide == EInitialTurnOrderPlayer::PlayerA
+				? ActiveState.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed
+				: ActiveState.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed);
+
+		FMatchPlayState InactiveState = ActiveState;
+		InactiveState.CurrentAttack.bCurrentDefenseGoalkeeperActivated = false;
+		const auto Inactive =
+			FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+				::Resolve(InactiveState, &Rules);
+		TestTrue(*FString::Printf(TEXT("%s inactive GK Formula"), Case.Label),
+			Inactive.bSuccess && Inactive.bHasFormulaResolution);
+		TestFalse(*FString::Printf(TEXT("%s inactive GK participation"), Case.Label),
+			Inactive.ResolverInputAssemblyResult.ResolverInput
+				.bGoalkeeperParticipated);
+		TestEqual(*FString::Printf(TEXT("%s inactive GK zero contribution"), Case.Label),
+			Inactive.ResolverInputAssemblyResult.ResolverInput.Defender.Modifier,
+			Inactive.DefenderQueryResult.Contract.ExternalModifier);
+		TestTrue(*FString::Printf(TEXT("%s persistent use remains true"), Case.Label),
+			DefendingSide == EInitialTurnOrderPlayer::PlayerA
+				? InactiveState.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed
+				: InactiveState.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed);
+
+		bool bFoundActiveGoalkeeperTie = false;
+		for (int32 TieGoalkeeperAttribute = 1;
+			TieGoalkeeperAttribute <= 6 && !bFoundActiveGoalkeeperTie;
+			++TieGoalkeeperAttribute)
+		{
+			for (int32 AttackD6 = 3;
+				AttackD6 <= 6 && !bFoundActiveGoalkeeperTie;
+				++AttackD6)
+			{
+				for (int32 DefenseD6 = 1;
+					DefenseD6 <= 6 && !bFoundActiveGoalkeeperTie;
+					++DefenseD6)
+				{
+					if (AttackD6 == 6 && DefenseD6 <= 2)
+					{
+						continue;
+					}
+					FMatchPlayState TieState = ActiveState;
+					FPlayerCardRuleSnapshot* TieGoalkeeperSnapshot =
+						FindGoalkeeperSnapshot(TieState);
+					if (Case.ExpectedFamily == EFamily::LongShotDirectShot)
+					{
+						TieGoalkeeperSnapshot->GoalkeeperAttributes.Positioning =
+							TieGoalkeeperAttribute;
+					}
+					else
+					{
+						TieGoalkeeperSnapshot->GoalkeeperAttributes.Handling =
+							TieGoalkeeperAttribute;
+					}
+					auto& Bundle = TieState.CurrentAttack.ResolutionSession.Bundle;
+					Bundle.Carrier.Values.Stamina = 6;
+					Bundle.Marker.Values.Stamina = 1;
+					auto& Records = TieState.CurrentAttack.ResolutionSession
+						.PostRouteRollProgress.RollRecords;
+					Records[0].RawD6 = AttackD6;
+					Records[1].RawD6 = DefenseD6;
+					const auto Tie =
+						FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+							::Resolve(TieState, &Rules);
+					if (Tie.bSuccess
+						&& Tie.FormulaResolutionResult.AttackerFinalValue
+							== Tie.FormulaResolutionResult.DefenderFinalValue)
+					{
+						bFoundActiveGoalkeeperTie = true;
+						TestEqual(TEXT("Active GK tie defender wins"),
+							Tie.FormulaResolutionResult.Winner,
+							EFormulaWinner::Defender);
+						TestEqual(TEXT("Active GK tie bypasses higher attacker stamina"),
+							Tie.FormulaResolutionResult.WinReason,
+							EFormulaWinReason::DefenderWinsGoalkeeperTie);
+					}
+				}
+			}
+		}
+		TestTrue(*FString::Printf(
+			TEXT("%s active GK exact tie is covered"), Case.Label),
+			bFoundActiveGoalkeeperTie);
 	}
 
 	FMatchPlayAuthoritativeSession NoAttackSession;

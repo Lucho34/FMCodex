@@ -325,6 +325,15 @@
 - Current breakpoint：当前已经冻结 AttackSequence/Carrier/Skill/ActionType；首个未实现断点是 Resolution Consumer 尚未按 ActionType 路由。Participant Selection、具体 Skill 执行、Formula/D6/Outcome、Score/Opportunity/CardUsage 消费、Completion 与下一次 Attack 继续 Deferred，本决定不预选其中任何实现。
 - Existing debt：`7.66-B-003`、`7.70-M-001 / UQ-041`、`7.70-M-002`、`7.73-M-001`、`7.73-M-002`、`7.77-M-001`、Feet、P1、P2、Anti-Offside 与 AP1 歧义全部 unchanged。
 
+### CD-029 - Active Goalkeeper Contribution for LongShot, CutInsideShot and PassControl
+
+- 日期：2026-08-12
+- 产品决定：防守方在 Deployment 合法部署门将即表示当前防守门将激活。每名玩家整场共享一次激活机会；该机会不按门将 CardId 分别计数，永久使用事实与当前攻击临时激活事实继续保持分离。
+- 数值决定：运动战主动门将贡献固定为对应门将属性标准值的 `50%`，作为既有防守公式之外的独立额外项相加，保留 `.0 / .5`，不得截断或取整。LongShot 使用 Positioning ×0.5；CutInsideShot 使用 Handling ×0.5；PassControl 的 PassAdvance、DribbleAdvance、RunAdvance 均使用 Handling ×0.5。
+- 参与和平局：仅当前攻击临时激活事实为 true 且该额外项实际进入最终公式时，`bGoalkeeperParticipated=true`；公式平局由防守方直接获胜，不进入 Stamina 比较。仅永久使用事实为 true、当前激活为 false 时不产生加成。
+- 既有边界：Cross Low / High 的 Reflex / Aerial ×0.5、ThroughBall OneOnOne ×0.5 及其 Direct Shot 专用基础 ×1.0 / 激活 ×1.5 语义保持不变。本决定不修改部署、D6、参与者、固定修正、攻击侧公式、State schema、Session / Host / Controller / UMG API 或 Prototype Team 数据。
+- 影响：Rules Canonical、MatchPlay SingleCard Finishing Formula authoritative orchestration、定向回归与后续 Pilot 平衡审计。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

@@ -1,5 +1,6 @@
 #include "MatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator.h"
 
+#include "MatchPlayCardSnapshotAuthority.h"
 #include "MatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator.h"
 #include "MatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator.h"
@@ -74,6 +75,94 @@ namespace MatchPlayCurrentAttackResolveSingleCardFinishingFormula
 		}
 	}
 
+	FName GetGoalkeeperCardId(
+		const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer DefendingSide)
+	{
+		if (DefendingSide == EInitialTurnOrderPlayer::PlayerA)
+		{
+			return FName(*State.RuntimeState.PlayerAState.GoalkeeperCardId);
+		}
+		if (DefendingSide == EInitialTurnOrderPlayer::PlayerB)
+		{
+			return FName(*State.RuntimeState.PlayerBState.GoalkeeperCardId);
+		}
+		return NAME_None;
+	}
+
+	bool ResolveAdditionalActiveGoalkeeperContribution(
+		FResult& Result,
+		const EFamily Family,
+		float& OutContribution,
+		bool& bOutGoalkeeperParticipated)
+	{
+		OutContribution = 0.0f;
+		bOutGoalkeeperParticipated = false;
+		if (!Result.BeforeState.CurrentAttack
+				.bCurrentDefenseGoalkeeperActivated)
+		{
+			return true;
+		}
+
+		const bool bUsesPositioning =
+			Family == EFamily::LongShotDirectShot;
+		const bool bUsesHandling =
+			Family == EFamily::CutInsideShotDirectShot
+			|| Family == EFamily::PassAdvance
+			|| Family == EFamily::DribbleAdvance
+			|| Family == EFamily::RunAdvance;
+		if (!bUsesPositioning && !bUsesHandling)
+		{
+			return true;
+		}
+
+		const EInitialTurnOrderPlayer DefendingSide = Result.BeforeState
+			.CurrentAttack.ResolutionSession.Bundle.CurrentDefendingPlayer;
+		const FName GoalkeeperCardId =
+			GetGoalkeeperCardId(Result.BeforeState, DefendingSide);
+		if (GoalkeeperCardId.IsNone())
+		{
+			SetFailure(
+				Result,
+				EError::ActiveGoalkeeperSnapshotUnavailable,
+				TEXT("An active goalkeeper contribution requires an authoritative goalkeeper CardId."),
+				TEXT("GoalkeeperCardId"));
+			return false;
+		}
+
+		const FMatchPlayCardSnapshotAuthorityQueryResult QueryResult =
+			FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+				Result.BeforeState.CardSnapshotAuthority,
+				DefendingSide,
+				GoalkeeperCardId);
+		if (!QueryResult.bSuccess)
+		{
+			SetFailure(
+				Result,
+				EError::ActiveGoalkeeperSnapshotUnavailable,
+				QueryResult.ErrorMessage,
+				TEXT("GoalkeeperSnapshot"));
+			return false;
+		}
+		if (!QueryResult.Snapshot.bIsGoalkeeper
+			|| !QueryResult.Snapshot.bHasGoalkeeperAttributes)
+		{
+			SetFailure(
+				Result,
+				EError::InvalidActiveGoalkeeperSnapshot,
+				TEXT("The active goalkeeper CardId must resolve to a canonical goalkeeper snapshot."),
+				TEXT("GoalkeeperSnapshot"));
+			return false;
+		}
+
+		const int32 CanonicalAttribute = bUsesPositioning
+			? QueryResult.Snapshot.GoalkeeperAttributes.Positioning
+			: QueryResult.Snapshot.GoalkeeperAttributes.Handling;
+		OutContribution = static_cast<float>(CanonicalAttribute) * 0.5f;
+		bOutGoalkeeperParticipated = true;
+		return true;
+	}
+
 	bool ValidateRegeneration(
 		FResult& Result,
 		const bool bSucceeded,
@@ -112,6 +201,7 @@ namespace MatchPlayCurrentAttackResolveSingleCardFinishingFormula
 		const FSingleCardFormulaInputAssemblyQueryInput& DefenderInput,
 		const FName AttackerPlayerId,
 		const FName DefenderPlayerId,
+		const float AdditionalGoalkeeperContribution,
 		const bool bGoalkeeperParticipated)
 	{
 		Result.AttackerQueryResult =
@@ -159,9 +249,11 @@ namespace MatchPlayCurrentAttackResolveSingleCardFinishingFormula
 			return false;
 		}
 
-		// Cross carries goalkeeper participation as family metadata because
-		// its SingleCard defender remains the marker. Other supported plans
-		// obtain the default false value directly from the shared assembler.
+		// Active-GK contributions remain independent defensive additions.
+		// Cross already carries its path-specific contribution in the plan;
+		// the repaired families add their frozen 50% contribution here.
+		Result.ResolverInputAssemblyResult.ResolverInput.Defender.Modifier +=
+			AdditionalGoalkeeperContribution;
 		Result.ResolverInputAssemblyResult.ResolverInput
 			.bGoalkeeperParticipated = bGoalkeeperParticipated;
 
@@ -305,6 +397,16 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 	}
 
 	const int64 AttackSequence = BeforeState.CurrentAttack.AttackSequence;
+	float AdditionalGoalkeeperContribution = 0.0f;
+	bool bAdditionalGoalkeeperParticipated = false;
+	if (!ResolveAdditionalActiveGoalkeeperContribution(
+			Result,
+			Result.Family,
+			AdditionalGoalkeeperContribution,
+			bAdditionalGoalkeeperParticipated))
+	{
+		return Result;
+	}
 	switch (Result.Family)
 	{
 	case EFamily::Cross:
@@ -348,6 +450,7 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 				Plan.DefenderQueryInput,
 				Plan.CarrierPlayerId,
 				Plan.MarkerPlayerId,
+				0.0f,
 				Plan.bUseGoalkeeper))
 		{
 			return Result;
@@ -389,7 +492,8 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 				PlanResult.FormulaPlan;
 			if (!ExecutePlan(Result, Plan.AttackerQueryInput,
 				Plan.DefenderQueryInput, Plan.CarrierPlayerId,
-				Plan.MarkerPlayerId, false))
+				Plan.MarkerPlayerId, AdditionalGoalkeeperContribution,
+				bAdditionalGoalkeeperParticipated))
 			{
 				return Result;
 			}
@@ -408,7 +512,8 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 				PlanResult.FormulaPlan;
 			if (!ExecutePlan(Result, Plan.AttackerQueryInput,
 				Plan.DefenderQueryInput, Plan.CarrierPlayerId,
-				Plan.MarkerPlayerId, false))
+				Plan.MarkerPlayerId, AdditionalGoalkeeperContribution,
+				bAdditionalGoalkeeperParticipated))
 			{
 				return Result;
 			}
@@ -427,7 +532,8 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 				PlanResult.FormulaPlan;
 			if (!ExecutePlan(Result, Plan.AttackerQueryInput,
 				Plan.DefenderQueryInput, Plan.CarrierPlayerId,
-				Plan.MarkerPlayerId, false))
+				Plan.MarkerPlayerId, AdditionalGoalkeeperContribution,
+				bAdditionalGoalkeeperParticipated))
 			{
 				return Result;
 			}
@@ -472,7 +578,8 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 				PlanResult.FormulaPlan;
 			if (!ExecutePlan(Result, Plan.AttackerQueryInput,
 				Plan.DefenderQueryInput, Plan.AttackerPlayerId,
-				Plan.DefenderPlayerId, false))
+				Plan.DefenderPlayerId, AdditionalGoalkeeperContribution,
+				bAdditionalGoalkeeperParticipated))
 			{
 				return Result;
 			}
@@ -494,7 +601,8 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 				PlanResult.FormulaPlan;
 			if (!ExecutePlan(Result, Plan.AttackerQueryInput,
 				Plan.DefenderQueryInput, Plan.AttackerPlayerId,
-				Plan.DefenderPlayerId, false))
+				Plan.DefenderPlayerId, AdditionalGoalkeeperContribution,
+				bAdditionalGoalkeeperParticipated))
 			{
 				return Result;
 			}

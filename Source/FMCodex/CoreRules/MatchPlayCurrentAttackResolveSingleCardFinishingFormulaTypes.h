@@ -43,7 +43,9 @@ enum class
 	DefenderInputAssemblyFailed,
 	ResolverInputAssemblyFailed,
 	FormulaExecutionFailed,
-	InvalidFormulaResolutionResult
+	InvalidFormulaResolutionResult,
+	ActiveGoalkeeperSnapshotUnavailable,
+	InvalidActiveGoalkeeperSnapshot
 };
 
 struct FMCODEX_API
