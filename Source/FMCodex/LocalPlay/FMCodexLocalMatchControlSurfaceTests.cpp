@@ -3971,8 +3971,8 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 		MicroFixture->GetWidgetFromName(TEXT("HandMicroIdentitySurface")));
 	const UHorizontalBox* MicroContent = Cast<UHorizontalBox>(
 		MicroFixture->GetWidgetFromName(TEXT("HandMicroContent")));
-	TestTrue(TEXT("Hand Micro implements the bounded 220x64 full-name draft card"),
-		MicroFixture->GetConfiguredDimensions().Equals(FVector2D(220.0f, 64.0f))
+	TestTrue(TEXT("Hand Micro implements the approved bounded 220x68 card"),
+		MicroFixture->GetConfiguredDimensions().Equals(FVector2D(220.0f, 68.0f))
 			&& MicroFixture->GetWidgetFromName(TEXT("PlayerCardBounds"))
 				->GetClipping() == EWidgetClipping::ClipToBounds
 			&& MicroName != nullptr
@@ -3985,14 +3985,14 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 			&& MicroPortraitBounds->GetHeightOverride() == 64.0f
 			&& MicroIdentityBounds != nullptr
 			&& MicroIdentityBounds->GetWidthOverride() == 120.0f
-			&& MicroIdentityBounds->GetHeightOverride() == 64.0f
+			&& MicroIdentityBounds->GetHeightOverride() == 68.0f
 			&& MicroFixture->GetWidgetFromName(TEXT("HandMicroPortraitCrop"))
 				== nullptr
 			&& MicroFixture->GetWidgetFromName(TEXT("HandMicroPortraitScale"))
 				== nullptr
 			&& MicroRarity != nullptr && MicroRarityBounds != nullptr
 			&& MicroRarityBounds->GetWidthOverride() == 4.0f
-			&& MicroRarityBounds->GetHeightOverride() == 64.0f
+			&& MicroRarityBounds->GetHeightOverride() == 68.0f
 			&& MicroRarityBoundsSlot != nullptr
 			&& MicroRarityBoundsSlot->GetHorizontalAlignment() == HAlign_Fill
 			&& MicroRarityBoundsSlot->GetVerticalAlignment() == VAlign_Center
@@ -4055,7 +4055,7 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 	TestTrue(TEXT("Hand Micro identity is a left-aligned name-first hierarchy"),
 		MicroName != nullptr && MicroPosition != nullptr
 			&& MicroName->GetFont().Size >= 12
-			&& MicroName->GetFont().Size <= 22
+			&& MicroName->GetFont().Size <= 16
 			&& MicroName->GetFont().TypefaceFontName == TEXT("Medium")
 			&& MicroPosition->GetFont().Size == 14
 			&& MicroPosition->GetFont().TypefaceFontName == TEXT("Medium")
@@ -4109,8 +4109,8 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 		&& NameFitEnd > NameFitStart
 		? HandMicroWidgetSource.Mid(NameFitStart, NameFitEnd - NameFitStart)
 		: FString();
-	TestTrue(TEXT("Hand Micro Auto-Fit uses real Slate metrics from 22 to 12"),
-		FMCodexHandMicroDiagnostics::ExistingMaximumNameFontSize == 22
+	TestTrue(TEXT("Hand Micro Auto-Fit uses real Slate metrics from 16 to 12"),
+		FMCodexHandMicroDiagnostics::StandardNameFontSize == 16
 			&& FMCodexHandMicroDiagnostics::MinimumNameFontSize == 12
 			&& HandMicroWidgetSource.Contains(TEXT("MaximumFontSize"))
 			&& HandMicroWidgetSource.Contains(TEXT("MinimumNameFontSize"))
@@ -4195,7 +4195,7 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 			NameText != nullptr
 				&& NameText->GetText().ToString() == NameCase.ExpectedDisplayName
 				&& NameText->GetFont().Size >= 12
-				&& NameText->GetFont().Size <= 22
+				&& NameText->GetFont().Size <= 16
 				&& DisplayedWidth <= 112.0f
 				&& NameText->GetTextOverflowPolicy() == ETextOverflowPolicy::Clip
 				&& NameText->GetClipping() == EWidgetClipping::Inherit
@@ -4264,9 +4264,8 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 				PortraitArt.HandMicroPortraitTop, HandMicroPortraitTop)
 			&& FMath::IsNearlyEqual(
 				PortraitArt.HandMicroPortraitUVHeight, HandMicroPortraitUVHeight)
-			&& (PortraitCardId.ToString().StartsWith(TEXT("Demo."))
-				? PortraitAssetPath.Contains(TEXT("_Validation_05"))
-				: PortraitAssetPath.Contains(TEXT("_HandMicro_06")));
+			&& PortraitAssetPath.Contains(TEXT("HandMicroApprovedRollout"))
+			&& PortraitAssetPath.Contains(TEXT("ApprovedRuntime192"));
 		const UImage* MicroPortrait = Cast<UImage>(
 			PortraitMicroFixture->GetWidgetFromName(
 				TEXT("HandMicroFaceSafePortrait")));
@@ -4294,11 +4293,11 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 			TestEqual(FString::Printf(
 				TEXT("Portrait %s imported Micro width"),
 				*PortraitCardId.ToString()),
-				ImportedMicroSize.X, 1536);
+				ImportedMicroSize.X, 192);
 			TestEqual(FString::Printf(
 				TEXT("Portrait %s imported Micro height"),
 				*PortraitCardId.ToString()),
-				ImportedMicroSize.Y, 1024);
+				ImportedMicroSize.Y, 128);
 			TestTrue(FString::Printf(
 				TEXT("Portrait %s uses the bounded sharpness import contract"),
 				*PortraitCardId.ToString()),
@@ -7335,16 +7334,16 @@ bool FFMCodexGoldenLayoutPrototypeTest::RunTest(const FString& Parameters)
 	const UUniformGridPanel* LocalGrid = Cast<UUniformGridPanel>(
 		Screen->GetLocalRackWidget()->GetWidgetFromName(
 			TEXT("StableTwoByTenCardRackGrid")));
-	TestTrue(TEXT("Draft rack geometry fits without reflow or macro-layout change"),
+	TestTrue(TEXT("Approved rack geometry fits without reflow or macro-layout change"),
 		LocalGrid != nullptr
 			&& LocalGrid->GetSlotPadding() == FMargin(6.0f, 4.0f)
 			&& Screen->GetLocalRackWidget()->GetRenderedCardWidgets().Num() == 20
 			&& Screen->GetLocalRackWidget()->GetRenderedCardWidgets()[0]
-				->GetConfiguredDimensions().Equals(FVector2D(220.0f, 64.0f))
+				->GetConfiguredDimensions().Equals(FVector2D(220.0f, 68.0f))
 			&& FMath::IsNearlyEqual(2.0f * 220.0f + 12.0f, 452.0f)
-			&& FMath::IsNearlyEqual(10.0f * 64.0f + 9.0f * 8.0f, 712.0f)
+			&& FMath::IsNearlyEqual(10.0f * 68.0f + 9.0f * 8.0f, 752.0f)
 			&& 452.0f <= 476.0f - 12.0f
-			&& 712.0f <= 880.0f - 8.0f);
+			&& 752.0f <= 880.0f - 8.0f);
 	const UCanvasPanel* PitchCanvas = Cast<UCanvasPanel>(
 		Screen->GetPitchWidget()->GetWidgetFromName(TEXT("TwoLanePitchCanvas")));
 	TArray<float> LaneCenters;
@@ -7494,7 +7493,7 @@ bool FFMCodexGoldenLayoutPrototypeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Played cell is a text-free low-contrast Ghost Frame"),
 		GhostBounds != nullptr
 			&& GhostBounds->GetWidthOverride() == 220.0f
-			&& GhostBounds->GetHeightOverride() == 64.0f
+			&& GhostBounds->GetHeightOverride() == 68.0f
 			&& GhostCell != nullptr && GhostCell->GetRenderOpacity() == 1.0f
 			&& GhostCell->GetBrushColor().ToFColorSRGB()
 				== FColor(0x17, 0x30, 0x3B)
@@ -7502,7 +7501,7 @@ bool FFMCodexGoldenLayoutPrototypeTest::RunTest(const FString& Parameters)
 				TEXT("PlayedCardGhostStructure%d"), StableIndex))) != nullptr
 			&& GhostPortraitBounds != nullptr
 			&& GhostPortraitBounds->GetWidthOverride() == 96.0f
-			&& GhostPortraitBounds->GetHeightOverride() == 64.0f
+			&& GhostPortraitBounds->GetHeightOverride() == 68.0f
 			&& GhostPortrait != nullptr
 			&& GhostPortrait->GetRenderOpacity() == 1.0f
 			&& GhostDividerBounds != nullptr
@@ -8192,1425 +8191,19 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FFMCodexHandMicroFullNameAndSharpnessDiagnosticTest,
-	"FMCodex.LocalPlay.ControlSurface.39.HandMicroFullNameAndSharpnessDiagnostic",
+	FFMCodexHandMicroProductionContractTest,
+	"FMCodex.LocalPlay.ControlSurface.39.HandMicroProductionContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FFMCodexHandMicroFullNameAndSharpnessDiagnosticTest::RunTest(
+bool FFMCodexHandMicroProductionContractTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace FMCodexLocalMatchControlSurfaceTests;
-	IConsoleVariable* FullNameCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroFullNameCandidate"));
-	IConsoleVariable* SharpnessCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnostic"));
-	IConsoleVariable* DiagnosticPageCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnosticPage"));
-	TestNotNull(TEXT("Full-name candidate console variable exists"), FullNameCVar);
-	TestNotNull(TEXT("Sharpness diagnostic console variable exists"), SharpnessCVar);
-	TestNotNull(TEXT("Sharpness diagnostic page console variable exists"),
-		DiagnosticPageCVar);
-	if (FullNameCVar == nullptr || SharpnessCVar == nullptr
-		|| DiagnosticPageCVar == nullptr)
-	{
-		return false;
-	}
-	struct FScopedDiagnosticConsoleState
-	{
-		IConsoleVariable* FullName = nullptr;
-		IConsoleVariable* Sharpness = nullptr;
-		IConsoleVariable* Page = nullptr;
-		int32 SavedFullName = 0;
-		int32 SavedSharpness = 0;
-		int32 SavedPage = 0;
-		~FScopedDiagnosticConsoleState()
-		{
-			FullName->Set(SavedFullName, ECVF_SetByConsole);
-			Sharpness->Set(SavedSharpness, ECVF_SetByConsole);
-			Page->Set(SavedPage, ECVF_SetByConsole);
-		}
-	} ConsoleState {
-		FullNameCVar,
-		SharpnessCVar,
-		DiagnosticPageCVar,
-		FullNameCVar->GetInt(),
-		SharpnessCVar->GetInt(),
-		DiagnosticPageCVar->GetInt()
-	};
-	FullNameCVar->Set(0, ECVF_SetByCode);
-	SharpnessCVar->Set(0, ECVF_SetByCode);
-	DiagnosticPageCVar->Set(0, ECVF_SetByCode);
-	bool bConsoleCommandHandled = false;
-	{
-		FScopedPlayableWorld DisabledWorld;
-		AFMCodexLocalMatchPlayerController* DisabledController =
-			DisabledWorld.GetController();
-		if (DisabledController == nullptr)
-		{
-			return false;
-		}
-		DisabledController->InitializePlayerFacingUI();
-		UFMCodexLocalMatchScreenWidget* DisabledScreen =
-			DisabledController->GetPlayerMatchScreen();
-		if (DisabledScreen == nullptr)
-		{
-			return false;
-		}
-		DisabledScreen->TakeWidget();
-		TestNull(TEXT("Diagnostic-off Match Screen instantiates no diagnostic UI"),
-			DisabledScreen->GetWidgetFromName(
-				TEXT("HandMicroSharpnessDiagnosticSurface")));
-		bConsoleCommandHandled = GEngine != nullptr
-			&& GEngine->Exec(DisabledScreen->GetWorld(),
-				TEXT("FMCodex.UI.HandMicroSharpnessDiagnostic 1"));
-	}
-	TestTrue(TEXT("Output Log console path accepts sharpness diagnostic command"),
-		bConsoleCommandHandled && SharpnessCVar->GetInt() == 1);
-
-	FScopedPlayableWorld PlayableWorld;
-	AFMCodexLocalMatchPlayerController* Controller =
-		PlayableWorld.GetController();
-	TestNotNull(TEXT("Diagnostic test Controller exists"), Controller);
-	if (Controller == nullptr)
-	{
-		return false;
-	}
-	Controller->InitializePlayerFacingUI();
-	UFMCodexLocalMatchScreenWidget* Screen =
-		Controller->GetPlayerMatchScreen();
-	TestNotNull(TEXT("Diagnostic test Match Screen exists"), Screen);
-	if (Screen == nullptr)
-	{
-		return false;
-	}
-	Screen->TakeWidget();
-	const UOverlay* MatchScreenRoot = Cast<UOverlay>(
-		Screen->GetWidgetFromName(TEXT("MatchScreenRoot")));
-	const USizeBox* DiagnosticBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessDiagnosticBounds")));
-	TestTrue(TEXT("Enabled diagnostic bounds are attached and visible"),
-		MatchScreenRoot != nullptr && DiagnosticBounds != nullptr
-			&& DiagnosticBounds->GetParent() == MatchScreenRoot
-			&& DiagnosticBounds->GetVisibility()
-				== ESlateVisibility::HitTestInvisible);
-	FString ViewportControllerSource;
-	TestTrue(TEXT("Production Controller connects this Match Screen to viewport Z=50"),
-		LoadProductionSource(
-			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
-			ViewportControllerSource)
-			&& ViewportControllerSource.Contains(
-				TEXT("PlayerMatchScreen->AddToViewport(50)")));
-	const USizeBox* DefaultLocalRackBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("LocalPlayerCardRackRegion")));
-	const USizeBox* DefaultPitchBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("CentralPitchRegion")));
-	const USizeBox* DefaultOpponentRackBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("OpponentCardRackRegion")));
-	TestTrue(TEXT("Normal production Draft remains 422/1076/422"),
-		DefaultLocalRackBounds != nullptr && DefaultPitchBounds != nullptr
-			&& DefaultOpponentRackBounds != nullptr
-			&& DefaultLocalRackBounds->GetWidthOverride()
-				== FMCodexHandMicroDiagnostics::ProductionRackWidth
-			&& DefaultPitchBounds->GetWidthOverride()
-				== FMCodexHandMicroDiagnostics::ProductionPitchWidth
-			&& DefaultOpponentRackBounds->GetWidthOverride()
-				== FMCodexHandMicroDiagnostics::ProductionRackWidth);
-
-	FFMCodexUMGCardViewModel DefaultCard;
-	DefaultCard.CardId = TEXT("Visual.HandMicro.Kvaratskhelia");
-	DefaultCard.IdentityLabel = TEXT("\u514B\u74E6\u62C9\u8328\u8D6B\u5229\u4E9A");
-	DefaultCard.RoleLabel = TEXT("AMD");
-	DefaultCard.RarityLabel = TEXT("Continental");
-	UFMCodexPlayerCardWidget* ProductionCard =
-		CreateWidget<UFMCodexPlayerCardWidget>(
-			Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
-	ProductionCard->RefreshFromPresentation(DefaultCard,
-		EFMCodexPlayerCardPresentationMode::HandMicro);
-	ProductionCard->TakeWidget();
-	const USizeBox* ProductionIdentityBounds = Cast<USizeBox>(
-		ProductionCard->GetWidgetFromName(TEXT("HandMicroIdentityBounds")));
-	const UVerticalBox* ProductionTextHierarchy = Cast<UVerticalBox>(
-		ProductionCard->GetWidgetFromName(TEXT("HandMicroTextHierarchy")));
-	const UOverlaySlot* ProductionTextSlot = ProductionTextHierarchy != nullptr
-		? Cast<UOverlaySlot>(ProductionTextHierarchy->Slot) : nullptr;
-	TestTrue(TEXT("Normal 188 Draft geometry and 72px safe area are preserved"),
-		ProductionCard->GetConfiguredDimensions().Equals(FVector2D(188.0f, 64.0f))
-			&& ProductionIdentityBounds != nullptr
-			&& ProductionIdentityBounds->GetWidthOverride() == 88.0f
-			&& ProductionTextSlot != nullptr
-			&& ProductionTextSlot->GetPadding()
-				== FMargin(10.0f, 7.0f, 6.0f, 7.0f));
-
-	FullNameCVar->Set(1, ECVF_SetByCode);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TestTrue(TEXT("Candidate macro is bounded to 476/968/476 and sums to 1920"),
-		DefaultLocalRackBounds->GetWidthOverride()
-			== FMCodexHandMicroDiagnostics::CandidateRackWidth
-			&& DefaultPitchBounds->GetWidthOverride()
-				== FMCodexHandMicroDiagnostics::CandidatePitchWidth
-			&& DefaultOpponentRackBounds->GetWidthOverride()
-				== FMCodexHandMicroDiagnostics::CandidateRackWidth
-			&& FMath::IsNearlyEqual(
-				DefaultLocalRackBounds->GetWidthOverride()
-					+ DefaultPitchBounds->GetWidthOverride()
-					+ DefaultOpponentRackBounds->GetWidthOverride(),
-				FMCodexHandMicroDiagnostics::GoldenLayoutWidth));
-	TestTrue(TEXT("Candidate minimum Rack includes Grid and Frame costs"),
-		FMath::IsNearlyEqual(
-			FMCodexHandMicroDiagnostics::CandidateMinimumRackWidth, 476.0f)
-			&& FMCodexHandMicroDiagnostics::CandidateRackWidth
-				>= FMCodexHandMicroDiagnostics::CandidateMinimumRackWidth);
-
-	struct FFullNameMetricCase
-	{
-		FName CardId;
-		FString Name;
-	};
-	const TArray<FFullNameMetricCase> NameCases = {
-		{ TEXT("Prototype.Arsenal.DavidRaya"), TEXT("\u62C9\u4E9A") },
-		{ TEXT("Prototype.Arsenal.WilliamSaliba"), TEXT("\u8428\u5229\u5DF4") },
-		{ TEXT("Prototype.Arsenal.MartinOdegaard"), TEXT("\u5384\u5FB7\u9AD8") },
-		{ TEXT("Demo.A.Outfield.01"), TEXT("\u9A6C\u4E01\u5185\u5229") },
-		{ TEXT("Demo.A.Outfield.02"), TEXT("\u52A0\u5E03\u91CC\u57C3\u5C14") },
-		{ TEXT("Demo.B.Outfield.01"), TEXT("\u683C\u74E6\u8FEA\u5965\u5C14") },
-		{ TEXT("Visual.HandMicro.Kvaratskhelia"),
-			TEXT("\u514B\u74E6\u62C9\u8328\u8D6B\u5229\u4E9A") }
-	};
-	const TSharedRef<FSlateFontMeasure> FontMeasure =
-		FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
-	bool bAllCompleteNamesFit = true;
-	for (const FFullNameMetricCase& NameCase : NameCases)
-	{
-		FFMCodexUMGCardViewModel CandidateView = DefaultCard;
-		CandidateView.CardId = NameCase.CardId;
-		CandidateView.IdentityLabel = NameCase.Name;
-		UFMCodexPlayerCardWidget* CandidateCard =
-			CreateWidget<UFMCodexPlayerCardWidget>(
-				Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
-		CandidateCard->RefreshFromPresentation(CandidateView,
-			EFMCodexPlayerCardPresentationMode::HandMicro);
-		CandidateCard->TakeWidget();
-		const UTextBlock* CandidateName = Cast<UTextBlock>(
-			CandidateCard->GetWidgetFromName(TEXT("HandMicroPlayerName")));
-		const USizeBox* CandidateIdentityBounds = Cast<USizeBox>(
-			CandidateCard->GetWidgetFromName(TEXT("HandMicroIdentityBounds")));
-		const UVerticalBox* CandidateHierarchy = Cast<UVerticalBox>(
-			CandidateCard->GetWidgetFromName(TEXT("HandMicroTextHierarchy")));
-		const UOverlaySlot* CandidateTextSlot = CandidateHierarchy != nullptr
-			? Cast<UOverlaySlot>(CandidateHierarchy->Slot) : nullptr;
-		TestTrue(FString::Printf(TEXT("Candidate %s uses 220/96/120/4 geometry"),
-			*NameCase.Name),
-			CandidateName != nullptr && CandidateIdentityBounds != nullptr
-				&& CandidateTextSlot != nullptr
-				&& CandidateCard->GetConfiguredDimensions()
-					.Equals(FVector2D(220.0f, 64.0f))
-				&& CandidateIdentityBounds->GetWidthOverride() == 120.0f
-				&& CandidateTextSlot->GetPadding()
-					== FMargin(4.0f, 7.0f, 4.0f, 7.0f)
-				&& Cast<USizeBox>(CandidateCard->GetWidgetFromName(
-					TEXT("HandMicroPortraitBounds")))->GetWidthOverride() == 96.0f
-				&& Cast<USizeBox>(CandidateCard->GetWidgetFromName(
-					TEXT("HandMicroRarityAccentBounds")))->GetWidthOverride() == 4.0f);
-
-		FSlateFontInfo MetricFont = CandidateName->GetFont();
-		TMap<int32, float> Widths;
-		for (const int32 ReferenceSize : { 22, 18, 15, 12 })
-		{
-			MetricFont.Size = ReferenceSize;
-			Widths.Add(ReferenceSize,
-				FontMeasure->Measure(FText::FromString(NameCase.Name), MetricFont).X);
-		}
-		int32 SelectedSize = 12;
-		float SelectedWidth = Widths[12];
-		for (int32 Size = 22; Size >= 12; --Size)
-		{
-			MetricFont.Size = Size;
-			const float Width = FontMeasure->Measure(
-				FText::FromString(NameCase.Name), MetricFont).X;
-			if (Width <= FMCodexHandMicroDiagnostics::CandidateNameSafeWidth)
-			{
-				SelectedSize = Size;
-				SelectedWidth = Width;
-				break;
-			}
-		}
-		const bool bFits = SelectedWidth
-			<= FMCodexHandMicroDiagnostics::CandidateNameSafeWidth;
-		bAllCompleteNamesFit = bAllCompleteNamesFit && bFits;
-		AddInfo(FString::Printf(
-			TEXT("FULL_NAME_CANDIDATE_METRIC name=%s w22=%.2f w18=%.2f "
-				"w15=%.2f w12=%.2f selected=%d selected_width=%.2f "
-				"margin=%.2f fit=%s"),
-			*NameCase.Name, Widths[22], Widths[18], Widths[15], Widths[12],
-			SelectedSize, SelectedWidth,
-			FMCodexHandMicroDiagnostics::CandidateNameSafeWidth - SelectedWidth,
-			bFits ? TEXT("YES") : TEXT("NO")));
-		TestTrue(FString::Printf(TEXT("Candidate keeps complete name %s at >=12"),
-			*NameCase.Name),
-			CandidateName->GetText().ToString() == NameCase.Name
-				&& CandidateName->GetFont().Size == SelectedSize
-				&& CandidateName->GetFont().Size >= 12
-				&& CandidateName->GetTextOverflowPolicy()
-					== ETextOverflowPolicy::Clip
-				&& bFits);
-	}
-	TestTrue(TEXT("220 candidate full-name metric set is feasible"),
-		bAllCompleteNamesFit);
-
-	FFMCodexUMGCardRackViewModel CandidateRack;
-	CandidateRack.SideLabel = TEXT("Player A");
-	CandidateRack.bLocalRack = true;
-	CandidateRack.ColumnCount = 2;
-	CandidateRack.RowCount = 10;
-	for (int32 Index = 0; Index < 20; ++Index)
-	{
-		FFMCodexUMGCardRackCellViewModel& Cell =
-			CandidateRack.Cells.AddDefaulted_GetRef();
-		Cell.StableIndex = Index;
-		Cell.bPlayed = Index == 0;
-		Cell.Card = DefaultCard;
-	}
-	UFMCodexCardRackWidget* CandidateRackWidget =
-		CreateWidget<UFMCodexCardRackWidget>(
-			Screen->GetWorld(), UFMCodexCardRackWidget::StaticClass());
-	CandidateRackWidget->RefreshFromPresentation(CandidateRack);
-	CandidateRackWidget->TakeWidget();
-	const USizeBox* CandidateGhost = Cast<USizeBox>(
-		CandidateRackWidget->GetWidgetFromName(TEXT("PlayedCardGhostBounds0")));
-	TestTrue(TEXT("Candidate preserves 2x10 no-scroll Rack and 220 Ghost geometry"),
-		CandidateRackWidget->GetRenderedCellCount() == 20
-			&& CandidateRackWidget->GetWidgetFromName(
-				TEXT("StableTwoByTenCardRackGrid")) != nullptr
-			&& CandidateRackWidget->GetWidgetFromName(TEXT("CardRackScrollBox"))
-				== nullptr
-			&& CandidateRackWidget->GetWidgetFromName(TEXT("CardRackPageControl"))
-				== nullptr
-			&& CandidateGhost != nullptr
-			&& CandidateGhost->GetWidthOverride() == 220.0f
-			&& CandidateGhost->GetHeightOverride() == 64.0f);
-
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	const UBorder* DiagnosticSurface = Cast<UBorder>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessDiagnosticSurface")));
-	const USizeBox* AView = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessAView")));
-	const USizeBox* BView = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessBView")));
-	const USizeBox* CView = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessCView")));
-	const UImage* DirectImage = Cast<UImage>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessADirectImage")));
-	const UFMCodexPlayerCardWidget* ProductionHighRes =
-		Cast<UFMCodexPlayerCardWidget>(Screen->GetWidgetFromName(
-			TEXT("HandMicroSharpnessBProductionCard")));
-	const UFMCodexPlayerCardWidget* ProductionRuntime =
-		Cast<UFMCodexPlayerCardWidget>(Screen->GetWidgetFromName(
-			TEXT("HandMicroSharpnessCRuntimeCard")));
-	TestTrue(TEXT("A/B/C diagnostic surface is development-only and 96x64 matched"),
-		DiagnosticSurface != nullptr && DiagnosticSurface->GetParent() != nullptr
-			&& DiagnosticBounds != nullptr
-			&& DiagnosticBounds->GetVisibility()
-				== ESlateVisibility::HitTestInvisible
-			&& AView != nullptr && BView != nullptr && CView != nullptr
-			&& AView->GetWidthOverride() == 96.0f
-			&& AView->GetHeightOverride() == 64.0f
-			&& BView->GetWidthOverride() == 96.0f
-			&& BView->GetHeightOverride() == 64.0f
-			&& CView->GetWidthOverride() == 96.0f
-			&& CView->GetHeightOverride() == 64.0f);
-	TestTrue(TEXT("Enabled A/B/C bounds are the topmost real Match Screen child"),
-		MatchScreenRoot != nullptr && DiagnosticBounds != nullptr
-			&& DiagnosticBounds->GetParent() == MatchScreenRoot
-			&& MatchScreenRoot->GetChildIndex(DiagnosticBounds)
-				== MatchScreenRoot->GetChildrenCount() - 1);
-	UTexture2D* DirectTexture = DirectImage != nullptr
-		? Cast<UTexture2D>(DirectImage->GetBrush().GetResourceObject()) : nullptr;
-	UTexture2D* ProductionHighResTexture = ProductionHighRes != nullptr
-		? ProductionHighRes->GetResolvedHandMicroPortraitTexture() : nullptr;
-	UTexture2D* ProductionRuntimeTexture = ProductionRuntime != nullptr
-		? ProductionRuntime->GetResolvedHandMicroPortraitTexture() : nullptr;
-	const FBox2f DirectUV = DirectImage != nullptr
-		? static_cast<FBox2f>(DirectImage->GetBrush().GetUVRegion()) : FBox2f();
-	auto FindIsolatedProductionPortraitImage = [](const USizeBox* View) -> const UImage*
-	{
-		const UBorder* Background = View != nullptr
-			? Cast<UBorder>(View->GetContent()) : nullptr;
-		const USizeBox* PortraitBounds = Background != nullptr
-			? Cast<USizeBox>(Background->GetContent()) : nullptr;
-		const UOverlay* PortraitLayer = PortraitBounds != nullptr
-			? Cast<UOverlay>(PortraitBounds->GetContent()) : nullptr;
-		if (PortraitLayer == nullptr)
-		{
-			return nullptr;
-		}
-		for (int32 Index = 0; Index < PortraitLayer->GetChildrenCount(); ++Index)
-		{
-			if (const UImage* Image = Cast<UImage>(PortraitLayer->GetChildAt(Index)))
-			{
-				return Image;
-			}
-		}
-		return nullptr;
-	};
-	const UImage* ProductionHighResImage =
-		FindIsolatedProductionPortraitImage(BView);
-	const UImage* ProductionRuntimeImage =
-		FindIsolatedProductionPortraitImage(CView);
-	const FBox2f ProductionHighResUV = ProductionHighResImage != nullptr
-		? static_cast<FBox2f>(ProductionHighResImage->GetBrush().GetUVRegion())
-		: FBox2f();
-	const FBox2f ProductionRuntimeUV = ProductionRuntimeImage != nullptr
-		? static_cast<FBox2f>(ProductionRuntimeImage->GetBrush().GetUVRegion())
-		: FBox2f();
-	AddInfo(FString::Printf(
-		TEXT("RAYA_ABC_AUDIT direct=%s high=%s runtime=%s "
-			"direct_uv=%s high_uv=%s runtime_uv=%s high_image=%s runtime_image=%s"),
-		*GetNameSafe(DirectTexture), *GetNameSafe(ProductionHighResTexture),
-		*GetNameSafe(ProductionRuntimeTexture),
-		DirectUV.bIsValid ? TEXT("VALID") : TEXT("INVALID"),
-		ProductionHighResUV.bIsValid ? TEXT("VALID") : TEXT("INVALID"),
-		ProductionRuntimeUV.bIsValid ? TEXT("VALID") : TEXT("INVALID"),
-		*GetNameSafe(ProductionHighResImage), *GetNameSafe(ProductionRuntimeImage)));
-	TestTrue(TEXT("A and B isolate direct versus production paths using one high-res source"),
-		DirectTexture != nullptr && DirectTexture == ProductionHighResTexture
-			&& DirectTexture->GetImportedSize() == FIntPoint(1536, 1024)
-			&& DirectImage->GetBrush().DrawAs == ESlateBrushDrawType::Image
-			&& DirectUV.bIsValid && ProductionHighResUV.bIsValid
-			&& DirectUV.Min == FVector2f(0.0f, 0.0f)
-			&& DirectUV.Max == FVector2f(1.0f, 1.0f)
-			&& ProductionHighResUV.Min == DirectUV.Min
-			&& ProductionHighResUV.Max == DirectUV.Max);
-	TestTrue(TEXT("C is a full-UV 192x128 same-composition production-path texture"),
-		ProductionRuntimeTexture != nullptr
-			&& ProductionRuntimeTexture != ProductionHighResTexture
-			&& ProductionRuntimeTexture->GetImportedSize() == FIntPoint(192, 128)
-			&& ProductionRuntimeTexture->GetPathName().Contains(
-				TEXT("/Game/Developers/FMCodex/HandMicroDiagnostics/"))
-			&& ProductionRuntimeUV.bIsValid
-			&& ProductionRuntimeUV.Min == FVector2f(0.0f, 0.0f)
-			&& ProductionRuntimeUV.Max == FVector2f(1.0f, 1.0f)
-			&& ProductionRuntimeImage->GetBrush().DrawAs
-				== ESlateBrushDrawType::Image
-			&& ProductionRuntimeTexture->LODGroup == TEXTUREGROUP_UI
-			&& ProductionRuntimeTexture->CompressionSettings == TC_BC7
-			&& ProductionRuntimeTexture->MipGenSettings == TMGS_Sharpen1
-			&& ProductionRuntimeTexture->Filter == TF_Trilinear
-			&& ProductionRuntimeTexture->NeverStream
-			&& ProductionRuntimeTexture->SRGB
-			&& ProductionRuntimeTexture->LODBias == 0);
-	TestTrue(TEXT("A/B/C uses no ScaleBox crop or render-transform scaling"),
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessScaleBox")) == nullptr
-			&& Screen->GetWidgetFromName(TEXT("HandMicroSharpnessCrop")) == nullptr
-			&& DirectImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
-			&& ProductionHighRes->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
-			&& ProductionRuntime->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f));
-	FString GenerateScript;
-	FString DiagnosticScreenSource;
-	TestTrue(TEXT("C derivative and diagnostic isolation sources load"),
-		LoadProductionSource(
-			TEXT("Scripts/GenerateHandMicroSharpnessDiagnostic.py"), GenerateScript)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
-				DiagnosticScreenSource));
-	TestTrue(TEXT("C records same-master Lanczos/no-crop/no-sharpen provenance"),
-		GenerateScript.Contains(TEXT("(\"Arsenal\", \"DavidRaya\")"))
-			&& GenerateScript.Contains(TEXT("HandMicro_06.png"))
-			&& GenerateScript.Contains(TEXT("(192, 128)"))
-			&& GenerateScript.Contains(TEXT("Image.Resampling.LANCZOS"))
-			&& !GenerateScript.Contains(TEXT("UnsharpMask"))
-			&& !GenerateScript.Contains(TEXT("crop(")));
-	TestTrue(TEXT("Sharpness diagnostic is compile-time excluded from Shipping"),
-		DiagnosticScreenSource.Contains(TEXT("#if !UE_BUILD_SHIPPING"))
-			&& DiagnosticScreenSource.Contains(
-				TEXT("HandMicroSharpnessDiagnosticSurface")));
-
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FFMCodexHandMicroPortraitSharpnessRuntimeVariantTest,
-	"FMCodex.LocalPlay.ControlSurface.40.HandMicroPortraitSharpnessRuntimeVariant",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FFMCodexHandMicroPortraitSharpnessRuntimeVariantTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace FMCodexLocalMatchControlSurfaceTests;
-	IConsoleVariable* FullNameCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroFullNameCandidate"));
-	IConsoleVariable* SharpnessCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnostic"));
+	IConsoleVariable* ReviewCVar = IConsoleManager::Get().FindConsoleVariable(
+		TEXT("FMCodex.UI.HandMicroReview"));
 	IConsoleVariable* PageCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnosticPage"));
-	if (FullNameCVar == nullptr || SharpnessCVar == nullptr || PageCVar == nullptr)
-	{
-		return false;
-	}
-	struct FScopedConsoleState
-	{
-		IConsoleVariable* FullName;
-		IConsoleVariable* Sharpness;
-		IConsoleVariable* Page;
-		int32 SavedFullName;
-		int32 SavedSharpness;
-		int32 SavedPage;
-		~FScopedConsoleState()
-		{
-			FullName->Set(SavedFullName, ECVF_SetByConsole);
-			Sharpness->Set(SavedSharpness, ECVF_SetByConsole);
-			Page->Set(SavedPage, ECVF_SetByConsole);
-		}
-	} ConsoleState { FullNameCVar, SharpnessCVar, PageCVar,
-		FullNameCVar->GetInt(), SharpnessCVar->GetInt(), PageCVar->GetInt() };
-	FullNameCVar->Set(1, ECVF_SetByConsole);
-	SharpnessCVar->Set(1, ECVF_SetByConsole);
-	PageCVar->Set(1, ECVF_SetByConsole);
-
-	FScopedPlayableWorld PlayableWorld;
-	AFMCodexLocalMatchPlayerController* Controller = PlayableWorld.GetController();
-	if (Controller == nullptr)
-	{
-		return false;
-	}
-	Controller->InitializePlayerFacingUI();
-	UFMCodexLocalMatchScreenWidget* Screen = Controller->GetPlayerMatchScreen();
-	if (Screen == nullptr)
-	{
-		return false;
-	}
-	Screen->TakeWidget();
-	const USizeBox* DiagnosticBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessDiagnosticBounds")));
-	const UWidget* RayaPage = Screen->GetWidgetFromName(
-		TEXT("HandMicroSharpnessDiagnosticBody"));
-	const UWidget* RepresentativePage = Screen->GetWidgetFromName(
-		TEXT("HandMicroSharpnessRepresentativePage"));
-	const UUniformGridPanel* RepresentativeGrid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessRepresentativeGrid")));
-	TestTrue(TEXT("Representative B/C page is a bounded six-player diagnostic"),
-		DiagnosticBounds != nullptr
-			&& DiagnosticBounds->GetWidthOverride() == 560.0f
-			&& DiagnosticBounds->GetHeightOverride() == 352.0f
-			&& RayaPage != nullptr
-			&& RayaPage->GetVisibility() == ESlateVisibility::Collapsed
-			&& RepresentativePage != nullptr
-			&& RepresentativePage->GetVisibility()
-				== ESlateVisibility::HitTestInvisible
-			&& RepresentativeGrid != nullptr
-			&& RepresentativeGrid->GetChildrenCount() == 6);
-	const UUserInterfaceSettings* UISettings = GetDefault<UUserInterfaceSettings>();
-	const float ReferenceDPIScale = UISettings != nullptr
-		? UISettings->GetDPIScaleBasedOnSize(FIntPoint(1920, 1080)) : 0.0f;
-	TestTrue(TEXT("1920x1080 reference keeps each logical 96x64 viewport at 96x64 raster"),
-		FMath::IsNearlyEqual(ReferenceDPIScale, 1.0f)
-			&& FMath::IsNearlyEqual(96.0f * ReferenceDPIScale, 96.0f)
-			&& FMath::IsNearlyEqual(64.0f * ReferenceDPIScale, 64.0f));
-
-	auto FindPortraitBounds = [](const USizeBox* View) -> const USizeBox*
-	{
-		const UBorder* Background = View != nullptr
-			? Cast<UBorder>(View->GetContent()) : nullptr;
-		return Background != nullptr
-			? Cast<USizeBox>(Background->GetContent()) : nullptr;
-	};
-	auto FindPortraitImage = [&FindPortraitBounds](const USizeBox* View) -> const UImage*
-	{
-		const USizeBox* PortraitBounds = FindPortraitBounds(View);
-		const UOverlay* PortraitLayer = PortraitBounds != nullptr
-			? Cast<UOverlay>(PortraitBounds->GetContent()) : nullptr;
-		if (PortraitLayer == nullptr)
-		{
-			return nullptr;
-		}
-		for (int32 Index = 0; Index < PortraitLayer->GetChildrenCount(); ++Index)
-		{
-			if (const UImage* Image = Cast<UImage>(PortraitLayer->GetChildAt(Index)))
-			{
-				return Image;
-			}
-		}
-		return nullptr;
-	};
-
-	struct FRepresentativeExpectation
-	{
-		FString Slug;
-		FName CardId;
-	};
-	const TArray<FRepresentativeExpectation> Representatives = {
-		{ TEXT("Raya"), TEXT("Prototype.Arsenal.DavidRaya") },
-		{ TEXT("Saliba"), TEXT("Prototype.Arsenal.WilliamSaliba") },
-		{ TEXT("Saka"), TEXT("Prototype.Arsenal.BukayoSaka") },
-		{ TEXT("Odegaard"), TEXT("Prototype.Arsenal.MartinOdegaard") },
-		{ TEXT("Donnarumma"),
-			TEXT("Prototype.ManchesterCity.GianluigiDonnarumma") },
-		{ TEXT("Haaland"), TEXT("Prototype.ManchesterCity.ErlingHaaland") }
-	};
-	bool bAllRepresentativePairsValid = Representatives.Num() == 6;
-	for (const FRepresentativeExpectation& Representative : Representatives)
-	{
-		const FString Prefix = TEXT("Representative") + Representative.Slug;
-		const USizeBox* HighView = Cast<USizeBox>(Screen->GetWidgetFromName(
-			FName(*(Prefix + TEXT("HighView")))));
-		const USizeBox* RuntimeView = Cast<USizeBox>(Screen->GetWidgetFromName(
-			FName(*(Prefix + TEXT("RuntimeView")))));
-		const UFMCodexPlayerCardWidget* HighCard =
-			Cast<UFMCodexPlayerCardWidget>(Screen->GetWidgetFromName(
-				FName(*(Prefix + TEXT("HighCard")))));
-		const UFMCodexPlayerCardWidget* RuntimeCard =
-			Cast<UFMCodexPlayerCardWidget>(Screen->GetWidgetFromName(
-				FName(*(Prefix + TEXT("RuntimeCard")))));
-		const USizeBox* HighPortraitBounds = FindPortraitBounds(HighView);
-		const USizeBox* RuntimePortraitBounds = FindPortraitBounds(RuntimeView);
-		const UImage* HighImage = FindPortraitImage(HighView);
-		const UImage* RuntimeImage = FindPortraitImage(RuntimeView);
-		const UTexture2D* HighTexture = HighCard != nullptr
-			? HighCard->GetResolvedHandMicroPortraitTexture() : nullptr;
-		const UTexture2D* RuntimeTexture = RuntimeCard != nullptr
-			? RuntimeCard->GetResolvedHandMicroPortraitTexture() : nullptr;
-		const UTexture2D* HighFullTexture = HighCard != nullptr
-			? HighCard->GetResolvedPortraitTexture() : nullptr;
-		const UTexture2D* RuntimeFullTexture = RuntimeCard != nullptr
-			? RuntimeCard->GetResolvedPortraitTexture() : nullptr;
-		const USizeBox* HighIdentity = HighCard != nullptr
-			? Cast<USizeBox>(HighCard->GetWidgetFromName(
-				TEXT("HandMicroIdentityBounds"))) : nullptr;
-		const UBorder* HighBackground = HighView != nullptr
-			? Cast<UBorder>(HighView->GetContent()) : nullptr;
-		const FBox2f HighUV = HighImage != nullptr
-			? static_cast<FBox2f>(HighImage->GetBrush().GetUVRegion()) : FBox2f();
-		const FBox2f RuntimeUV = RuntimeImage != nullptr
-			? static_cast<FBox2f>(RuntimeImage->GetBrush().GetUVRegion()) : FBox2f();
-		const bool bPairValid = HighView != nullptr && RuntimeView != nullptr
-			&& HighCard != nullptr && RuntimeCard != nullptr
-			&& HighCard->GetPresentation().CardId == Representative.CardId
-			&& RuntimeCard->GetPresentation().CardId == Representative.CardId
-			&& HighView->GetWidthOverride() == 96.0f
-			&& HighView->GetHeightOverride() == 64.0f
-			&& RuntimeView->GetWidthOverride() == 96.0f
-			&& RuntimeView->GetHeightOverride() == 64.0f
-			&& HighPortraitBounds != nullptr && RuntimePortraitBounds != nullptr
-			&& HighPortraitBounds->GetWidthOverride() == 96.0f
-			&& HighPortraitBounds->GetHeightOverride() == 64.0f
-			&& RuntimePortraitBounds->GetWidthOverride() == 96.0f
-			&& RuntimePortraitBounds->GetHeightOverride() == 64.0f
-			&& HighImage != nullptr && RuntimeImage != nullptr
-			&& HighImage->GetBrush().DrawAs == ESlateBrushDrawType::Image
-			&& RuntimeImage->GetBrush().DrawAs == ESlateBrushDrawType::Image
-			&& HighUV.bIsValid && RuntimeUV.bIsValid
-			&& HighUV.Min == FVector2f(0.0f, 0.0f)
-			&& HighUV.Max == FVector2f(1.0f, 1.0f)
-			&& RuntimeUV.Min == HighUV.Min && RuntimeUV.Max == HighUV.Max
-			&& HighImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
-			&& RuntimeImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
-			&& HighPortraitBounds->GetRenderTransform().Scale
-				== FVector2D(1.0f, 1.0f)
-			&& RuntimePortraitBounds->GetRenderTransform().Scale
-				== FVector2D(1.0f, 1.0f)
-			&& HighTexture != nullptr
-			&& HighTexture->GetImportedSize() == FIntPoint(1536, 1024)
-			&& !HighTexture->GetPathName().Contains(TEXT("/Developers/"))
-			&& RuntimeTexture != nullptr
-			&& RuntimeTexture->GetImportedSize() == FIntPoint(192, 128)
-			&& RuntimeTexture->GetPathName().Contains(
-				TEXT("/Game/Developers/FMCodex/HandMicroDiagnostics/"))
-			&& RuntimeTexture->LODGroup == TEXTUREGROUP_UI
-			&& RuntimeTexture->CompressionSettings == TC_BC7
-			&& RuntimeTexture->MipGenSettings == TMGS_Sharpen1
-			&& RuntimeTexture->Filter == TF_Trilinear
-			&& RuntimeTexture->NeverStream && RuntimeTexture->SRGB
-			&& RuntimeTexture->LODBias == 0
-			&& HighFullTexture != nullptr && HighFullTexture == RuntimeFullTexture
-			&& !HighFullTexture->GetPathName().Contains(TEXT("Runtime192"))
-			&& HighIdentity != nullptr && HighBackground != nullptr
-			&& HighIdentity->GetParent() != HighBackground;
-		bAllRepresentativePairsValid = bAllRepresentativePairsValid && bPairValid;
-		TestTrue(FString::Printf(TEXT("%s B/C pair is production-honest 96x64"),
-			*Representative.Slug), bPairValid);
-	}
-	TestTrue(TEXT("All six representative B/C pairs share one controlled path"),
-		bAllRepresentativePairsValid);
-
-	PageCVar->Set(0, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TestTrue(TEXT("Page CVar switches back to standardized Raya A/B/C"),
-		DiagnosticBounds != nullptr
-			&& DiagnosticBounds->GetHeightOverride() == 154.0f
-			&& RayaPage->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& RepresentativePage->GetVisibility() == ESlateVisibility::Collapsed);
-	SharpnessCVar->Set(0, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TestTrue(TEXT("Existing enabled diagnostic collapses cleanly when switched off"),
-		DiagnosticBounds->GetVisibility() == ESlateVisibility::Collapsed);
-
-	FString AssetReferenceSource;
-	FString GeneratorSource;
-	TestTrue(TEXT("Production-binding and deterministic generator sources load"),
-		LoadProductionSource(
-			TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp"),
-			AssetReferenceSource)
-			&& LoadProductionSource(
-				TEXT("Scripts/GenerateHandMicroSharpnessDiagnostic.py"),
-				GeneratorSource));
-	TestTrue(TEXT("Runtime192 remains diagnostic-only and is never production-bound"),
-		!AssetReferenceSource.Contains(TEXT("Runtime192"))
-			&& GeneratorSource.Contains(TEXT("source_count="))
-			&& GeneratorSource.Contains(TEXT("Image.Resampling.LANCZOS"))
-			&& GeneratorSource.Contains(TEXT("sharpen=none"))
-			&& GeneratorSource.Contains(TEXT("crop=none"))
-			&& !GeneratorSource.Contains(TEXT("UnsharpMask")));
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FFMCodexHandMicroPortraitArtConformanceCandidateTest,
-	"FMCodex.LocalPlay.ControlSurface.41.HandMicroPortraitArtConformanceCandidate",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FFMCodexHandMicroPortraitArtConformanceCandidateTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace FMCodexLocalMatchControlSurfaceTests;
-	IConsoleVariable* FullNameCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroFullNameCandidate"));
-	IConsoleVariable* SharpnessCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnostic"));
-	IConsoleVariable* PageCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnosticPage"));
-	IConsoleVariable* OverrideCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroArtConformanceOverride"));
-	if (FullNameCVar == nullptr || SharpnessCVar == nullptr
-		|| PageCVar == nullptr || OverrideCVar == nullptr)
-	{
-		return false;
-	}
-	struct FScopedConsoleState
-	{
-		IConsoleVariable* FullName;
-		IConsoleVariable* Sharpness;
-		IConsoleVariable* Page;
-		IConsoleVariable* Override;
-		int32 SavedFullName;
-		int32 SavedSharpness;
-		int32 SavedPage;
-		int32 SavedOverride;
-		~FScopedConsoleState()
-		{
-			FullName->Set(SavedFullName, ECVF_SetByConsole);
-			Sharpness->Set(SavedSharpness, ECVF_SetByConsole);
-			Page->Set(SavedPage, ECVF_SetByConsole);
-			Override->Set(SavedOverride, ECVF_SetByConsole);
-		}
-	} ConsoleState { FullNameCVar, SharpnessCVar, PageCVar, OverrideCVar,
-		FullNameCVar->GetInt(), SharpnessCVar->GetInt(), PageCVar->GetInt(),
-		OverrideCVar->GetInt() };
-	FullNameCVar->Set(1, ECVF_SetByConsole);
-	SharpnessCVar->Set(1, ECVF_SetByConsole);
-	PageCVar->Set(2, ECVF_SetByConsole);
-	OverrideCVar->Set(0, ECVF_SetByConsole);
-
-	FScopedPlayableWorld PlayableWorld;
-	AFMCodexLocalMatchPlayerController* Controller = PlayableWorld.GetController();
-	if (Controller == nullptr)
-	{
-		return false;
-	}
-	Controller->InitializePlayerFacingUI();
-	UFMCodexLocalMatchScreenWidget* Screen = Controller->GetPlayerMatchScreen();
-	if (Screen == nullptr)
-	{
-		return false;
-	}
-	Screen->TakeWidget();
-
-	const USizeBox* DiagnosticBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessDiagnosticBounds")));
-	const UWidget* RayaPage = Screen->GetWidgetFromName(
-		TEXT("HandMicroSharpnessDiagnosticBody"));
-	const UWidget* RuntimePage = Screen->GetWidgetFromName(
-		TEXT("HandMicroSharpnessRepresentativePage"));
-	const UWidget* Page2 = Screen->GetWidgetFromName(
-		TEXT("HandMicroArtConformancePage2"));
-	const UWidget* Page3 = Screen->GetWidgetFromName(
-		TEXT("HandMicroArtConformancePage3"));
-	const UUniformGridPanel* Page2Grid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroArtConformancePage2Grid")));
-	const UUniformGridPanel* Page3Grid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroArtConformancePage3Grid")));
-	TestTrue(TEXT("Page 2 exposes exactly three fully bounded C/D pairs"),
-		DiagnosticBounds != nullptr
-			&& DiagnosticBounds->GetWidthOverride() == 560.0f
-			&& DiagnosticBounds->GetHeightOverride() == 352.0f
-			&& Page2 != nullptr
-			&& Page2->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& Page2Grid != nullptr && Page2Grid->GetChildrenCount() == 3
-			&& Page3 != nullptr && Page3->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page3Grid != nullptr && Page3Grid->GetChildrenCount() == 3
-			&& RayaPage != nullptr && RayaPage->GetVisibility() == ESlateVisibility::Collapsed
-			&& RuntimePage != nullptr
-			&& RuntimePage->GetVisibility() == ESlateVisibility::Collapsed);
-
-	auto FindPortraitBounds = [](const USizeBox* View) -> const USizeBox*
-	{
-		const UBorder* Background = View != nullptr
-			? Cast<UBorder>(View->GetContent()) : nullptr;
-		return Background != nullptr
-			? Cast<USizeBox>(Background->GetContent()) : nullptr;
-	};
-	auto FindPortraitImage = [&FindPortraitBounds](const USizeBox* View) -> const UImage*
-	{
-		const USizeBox* PortraitBounds = FindPortraitBounds(View);
-		const UOverlay* PortraitLayer = PortraitBounds != nullptr
-			? Cast<UOverlay>(PortraitBounds->GetContent()) : nullptr;
-		if (PortraitLayer == nullptr)
-		{
-			return nullptr;
-		}
-		for (int32 Index = 0; Index < PortraitLayer->GetChildrenCount(); ++Index)
-		{
-			if (const UImage* Image = Cast<UImage>(PortraitLayer->GetChildAt(Index)))
-			{
-				return Image;
-			}
-		}
-		return nullptr;
-	};
-
-	struct FExpectation
-	{
-		FString Page;
-		FString Slug;
-		FName CardId;
-	};
-	const TArray<FExpectation> Expectations = {
-		{ TEXT("HandMicroArtConformancePage2"), TEXT("Raya"),
-			TEXT("Prototype.Arsenal.DavidRaya") },
-		{ TEXT("HandMicroArtConformancePage2"), TEXT("Saliba"),
-			TEXT("Prototype.Arsenal.WilliamSaliba") },
-		{ TEXT("HandMicroArtConformancePage2"), TEXT("Saka"),
-			TEXT("Prototype.Arsenal.BukayoSaka") },
-		{ TEXT("HandMicroArtConformancePage3"), TEXT("Odegaard"),
-			TEXT("Prototype.Arsenal.MartinOdegaard") },
-		{ TEXT("HandMicroArtConformancePage3"), TEXT("Donnarumma"),
-			TEXT("Prototype.ManchesterCity.GianluigiDonnarumma") },
-		{ TEXT("HandMicroArtConformancePage3"), TEXT("Haaland"),
-			TEXT("Prototype.ManchesterCity.ErlingHaaland") }
-	};
-	bool bAllPairsValid = Expectations.Num() == 6;
-	for (const FExpectation& Expectation : Expectations)
-	{
-		const FString Prefix = Expectation.Page + Expectation.Slug;
-		const USizeBox* CurrentView = Cast<USizeBox>(Screen->GetWidgetFromName(
-			FName(*(Prefix + TEXT("CurrentView")))));
-		const USizeBox* CandidateView = Cast<USizeBox>(Screen->GetWidgetFromName(
-			FName(*(Prefix + TEXT("CandidateView")))));
-		const UFMCodexPlayerCardWidget* CurrentCard =
-			Cast<UFMCodexPlayerCardWidget>(Screen->GetWidgetFromName(
-				FName(*(Prefix + TEXT("CurrentCard")))));
-		const UFMCodexPlayerCardWidget* CandidateCard =
-			Cast<UFMCodexPlayerCardWidget>(Screen->GetWidgetFromName(
-				FName(*(Prefix + TEXT("CandidateCard")))));
-		const USizeBox* CurrentBounds = FindPortraitBounds(CurrentView);
-		const USizeBox* CandidateBounds = FindPortraitBounds(CandidateView);
-		const UImage* CurrentImage = FindPortraitImage(CurrentView);
-		const UImage* CandidateImage = FindPortraitImage(CandidateView);
-		const UTexture2D* CurrentTexture = CurrentCard != nullptr
-			? CurrentCard->GetResolvedHandMicroPortraitTexture() : nullptr;
-		const UTexture2D* CandidateTexture = CandidateCard != nullptr
-			? CandidateCard->GetResolvedHandMicroPortraitTexture() : nullptr;
-		const FBox2f CurrentUV = CurrentImage != nullptr
-			? static_cast<FBox2f>(CurrentImage->GetBrush().GetUVRegion()) : FBox2f();
-		const FBox2f CandidateUV = CandidateImage != nullptr
-			? static_cast<FBox2f>(CandidateImage->GetBrush().GetUVRegion()) : FBox2f();
-		const bool bPairValid = CurrentView != nullptr && CandidateView != nullptr
-			&& CurrentCard != nullptr && CandidateCard != nullptr
-			&& CurrentCard->GetPresentation().CardId == Expectation.CardId
-			&& CandidateCard->GetPresentation().CardId == Expectation.CardId
-			&& CurrentView->GetWidthOverride() == 96.0f
-			&& CurrentView->GetHeightOverride() == 64.0f
-			&& CandidateView->GetWidthOverride() == 96.0f
-			&& CandidateView->GetHeightOverride() == 64.0f
-			&& CurrentBounds != nullptr && CandidateBounds != nullptr
-			&& CurrentBounds->GetWidthOverride() == 96.0f
-			&& CurrentBounds->GetHeightOverride() == 64.0f
-			&& CandidateBounds->GetWidthOverride() == 96.0f
-			&& CandidateBounds->GetHeightOverride() == 64.0f
-			&& CurrentImage != nullptr && CandidateImage != nullptr
-			&& CurrentImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
-			&& CandidateImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
-			&& CurrentUV.bIsValid && CandidateUV.bIsValid
-			&& CurrentUV.Min == FVector2f(0.0f, 0.0f)
-			&& CurrentUV.Max == FVector2f(1.0f, 1.0f)
-			&& CandidateUV.Min == CurrentUV.Min && CandidateUV.Max == CurrentUV.Max
-			&& CurrentTexture != nullptr
-			&& CurrentTexture->GetImportedSize() == FIntPoint(192, 128)
-			&& CurrentTexture->GetPathName().Contains(TEXT("HandMicroDiagnostics"))
-			&& CandidateTexture != nullptr
-			&& CandidateTexture->GetImportedSize() == FIntPoint(192, 128)
-			&& CandidateTexture->GetPathName().Contains(
-				TEXT("HandMicroArtConformance"))
-			&& CandidateTexture->LODGroup == TEXTUREGROUP_UI
-			&& CandidateTexture->CompressionSettings == TC_BC7
-			&& CandidateTexture->MipGenSettings == TMGS_Sharpen1
-			&& CandidateTexture->Filter == TF_Trilinear
-			&& CandidateTexture->NeverStream && CandidateTexture->SRGB
-			&& CandidateTexture->LODBias == 0
-			&& CurrentCard->GetResolvedPortraitTexture()
-				== CandidateCard->GetResolvedPortraitTexture();
-		bAllPairsValid = bAllPairsValid && bPairValid;
-		TestTrue(FString::Printf(TEXT("%s C/D pair is production-honest 96x64"),
-			*Expectation.Slug), bPairValid);
-	}
-	TestTrue(TEXT("All six C/D pairs isolate only baked art composition"),
-		bAllPairsValid);
-
-	PageCVar->Set(3, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TestTrue(TEXT("Page 3 exposes the remaining three complete C/D pairs"),
-		Page2->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page3->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& DiagnosticBounds->GetHeightOverride() == 352.0f);
-	PageCVar->Set(0, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TestTrue(TEXT("Existing Page 0 remains reachable and unchanged"),
-		RayaPage->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& Page2->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page3->GetVisibility() == ESlateVisibility::Collapsed
-			&& DiagnosticBounds->GetHeightOverride() == 154.0f);
-	PageCVar->Set(1, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TestTrue(TEXT("Existing Page 1 remains reachable and unchanged"),
-		RuntimePage->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& Page2->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page3->GetVisibility() == ESlateVisibility::Collapsed
-			&& DiagnosticBounds->GetHeightOverride() == 352.0f);
-	Screen->RequestStartNewMatch();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
-
-	const TSet<FName> RepresentativeIds = {
-		TEXT("Prototype.Arsenal.DavidRaya"),
-		TEXT("Prototype.Arsenal.WilliamSaliba"),
-		TEXT("Prototype.Arsenal.BukayoSaka"),
-		TEXT("Prototype.Arsenal.MartinOdegaard"),
-		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
-		TEXT("Prototype.ManchesterCity.ErlingHaaland")
-	};
-	TMap<FName, FString> OffPaths;
-	auto AuditRack = [&RepresentativeIds, &OffPaths](
-		const UFMCodexCardRackWidget* Rack,
-		const bool bOverrideOn,
-		TSet<FName>& SeenCandidates) -> bool
-	{
-		if (Rack == nullptr)
-		{
-			return false;
-		}
-		bool bValid = true;
-		for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets())
-		{
-			if (Card == nullptr)
-			{
-				bValid = false;
-				continue;
-			}
-			Card->TakeWidget();
-			const FName CardId = Card->GetPresentation().CardId;
-			const UTexture2D* HandTexture = Card->GetResolvedHandMicroPortraitTexture();
-			const UTexture2D* FullTexture = Card->GetResolvedPortraitTexture();
-			const FString HandPath = HandTexture != nullptr
-				? HandTexture->GetPathName() : FString();
-			const bool bRepresentative = RepresentativeIds.Contains(CardId);
-			bool bCardValid = true;
-			if (!bOverrideOn && bRepresentative)
-			{
-				OffPaths.Add(CardId, HandPath);
-			}
-			if (bOverrideOn && bRepresentative)
-			{
-				bCardValid = bCardValid
-					&& HandPath.Contains(TEXT("HandMicroArtConformance"));
-				SeenCandidates.Add(CardId);
-			}
-			else
-			{
-				bCardValid = bCardValid
-					&& !HandPath.Contains(TEXT("HandMicroArtConformance"));
-			}
-			bCardValid = bCardValid
-				&& Card->GetConfiguredDimensions() == FVector2D(220.0f, 64.0f)
-				&& (FullTexture == nullptr
-					|| !FullTexture->GetPathName().Contains(TEXT("ArtConformed")))
-				&& (!bRepresentative || FullTexture != nullptr);
-			bValid = bValid && bCardValid;
-		}
-		return bValid;
-	};
-	TSet<FName> UnusedSeen;
-	const bool bLocalOffValid = AuditRack(
-		Screen->GetLocalRackWidget(), false, UnusedSeen);
-	const bool bOpponentOffValid = AuditRack(
-		Screen->GetOpponentRackWidget(), false, UnusedSeen);
-	TestTrue(TEXT("Default-off normal 220 racks retain existing portrait bindings"),
-		bLocalOffValid && bOpponentOffValid
-			&& OffPaths.Num() == 6);
-	OverrideCVar->Set(1, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TSet<FName> SeenCandidates;
-	const bool bLocalOverrideValid = AuditRack(
-		Screen->GetLocalRackWidget(), true, SeenCandidates);
-	const bool bOpponentOverrideValid = AuditRack(
-		Screen->GetOpponentRackWidget(), true, SeenCandidates);
-	TestTrue(TEXT("Override-on swaps only the six representative Hand Micro cards"),
-		bLocalOverrideValid && bOpponentOverrideValid
-			&& SeenCandidates.Num() == 6);
-	OverrideCVar->Set(0, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TSet<FName> RestoredIds;
-	bool bRestored = true;
-	for (const UFMCodexCardRackWidget* Rack : {
-		Screen->GetLocalRackWidget(), Screen->GetOpponentRackWidget() })
-	{
-		for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets())
-		{
-			if (Card != nullptr && RepresentativeIds.Contains(
-				Card->GetPresentation().CardId))
-			{
-				Card->TakeWidget();
-				const UTexture2D* Texture = Card->GetResolvedHandMicroPortraitTexture();
-				bRestored = bRestored && Texture != nullptr
-					&& OffPaths.FindRef(Card->GetPresentation().CardId)
-						== Texture->GetPathName();
-				RestoredIds.Add(Card->GetPresentation().CardId);
-			}
-		}
-	}
-	TestTrue(TEXT("Override-off restores the exact prior Hand Micro paths"),
-		bRestored && RestoredIds.Num() == 6);
-	FString GeneratorSource;
-	FString AssetReferenceSource;
-	FString RackSource;
-	FString DiagnosticsSource;
-	FString ScreenSource;
-	TestTrue(TEXT("Art-conformance provenance and isolation sources load"),
-		LoadProductionSource(
-			TEXT("Scripts/GenerateHandMicroArtConformanceCandidates.py"),
-			GeneratorSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp"),
-				AssetReferenceSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexCardRackWidget.cpp"), RackSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexHandMicroDiagnostics.cpp"),
-				DiagnosticsSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
-				ScreenSource));
-	TestTrue(TEXT("Candidate generation is deterministic source-space conformance"),
-		GeneratorSource.Contains(TEXT("CANDIDATES ="))
-			&& GeneratorSource.Contains(TEXT("Image.Resampling.LANCZOS"))
-			&& GeneratorSource.Contains(TEXT("crop_view"))
-			&& GeneratorSource.Contains(TEXT("reconstruction=none"))
-			&& GeneratorSource.Contains(TEXT("sharpen=none"))
-			&& !GeneratorSource.Contains(TEXT("UnsharpMask"))
-			&& !GeneratorSource.Contains(TEXT("ImageEnhance")));
-	TestTrue(TEXT("No per-player runtime transform or production binding was added"),
-		!RackSource.Contains(TEXT("SetRenderTransform"))
-			&& !RackSource.Contains(TEXT("SetRenderScale"))
-			&& !AssetReferenceSource.Contains(TEXT("ArtConformedRuntime192"))
-			&& DiagnosticsSource.Contains(
-				TEXT("FMCodex.UI.HandMicroArtConformanceOverride"))
-			&& DiagnosticsSource.Contains(TEXT("#if UE_BUILD_SHIPPING"))
-			&& ScreenSource.Contains(TEXT("#if !UE_BUILD_SHIPPING")));
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FFMCodexHandMicroPortraitPresenceRebalanceTest,
-	"FMCodex.LocalPlay.ControlSurface.42.HandMicroPortraitPresenceRebalance",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FFMCodexHandMicroPortraitPresenceRebalanceTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace FMCodexLocalMatchControlSurfaceTests;
-	IConsoleVariable* FullNameCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroFullNameCandidate"));
-	IConsoleVariable* SharpnessCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnostic"));
-	IConsoleVariable* PageCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnosticPage"));
-	IConsoleVariable* OverrideCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroArtConformanceOverride"));
-	if (FullNameCVar == nullptr || SharpnessCVar == nullptr
-		|| PageCVar == nullptr || OverrideCVar == nullptr)
-	{
-		return false;
-	}
-	struct FScopedConsoleState
-	{
-		IConsoleVariable* FullName;
-		IConsoleVariable* Sharpness;
-		IConsoleVariable* Page;
-		IConsoleVariable* Override;
-		int32 SavedFullName;
-		int32 SavedSharpness;
-		int32 SavedPage;
-		int32 SavedOverride;
-		~FScopedConsoleState()
-		{
-			FullName->Set(SavedFullName, ECVF_SetByConsole);
-			Sharpness->Set(SavedSharpness, ECVF_SetByConsole);
-			Page->Set(SavedPage, ECVF_SetByConsole);
-			Override->Set(SavedOverride, ECVF_SetByConsole);
-		}
-	} ConsoleState { FullNameCVar, SharpnessCVar, PageCVar, OverrideCVar,
-		FullNameCVar->GetInt(), SharpnessCVar->GetInt(), PageCVar->GetInt(),
-		OverrideCVar->GetInt() };
-	TestEqual(TEXT("Preferred 220 full-name Draft is the normal validation state"),
-		FullNameCVar->GetInt(), 1);
-	FullNameCVar->Set(1, ECVF_SetByConsole);
-	SharpnessCVar->Set(1, ECVF_SetByConsole);
-	PageCVar->Set(4, ECVF_SetByConsole);
-	OverrideCVar->Set(0, ECVF_SetByConsole);
-
-	FScopedPlayableWorld PlayableWorld;
-	AFMCodexLocalMatchPlayerController* Controller = PlayableWorld.GetController();
-	if (Controller == nullptr)
-	{
-		return false;
-	}
-	Controller->InitializePlayerFacingUI();
-	UFMCodexLocalMatchScreenWidget* Screen = Controller->GetPlayerMatchScreen();
-	if (Screen == nullptr)
-	{
-		return false;
-	}
-	Screen->TakeWidget();
-	const USizeBox* DiagnosticBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessDiagnosticBounds")));
-	const UWidget* Page4 = Screen->GetWidgetFromName(
-		TEXT("HandMicroPortraitRebalancePage4"));
-	const UWidget* Page5 = Screen->GetWidgetFromName(
-		TEXT("HandMicroPortraitRebalancePage5"));
-	const UUniformGridPanel* Page4Grid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroPortraitRebalancePage4Grid")));
-	const UUniformGridPanel* Page5Grid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroPortraitRebalancePage5Grid")));
-	TestTrue(TEXT("D1/D2 Page 4 exposes three fully bounded player pairs"),
-		DiagnosticBounds != nullptr
-			&& DiagnosticBounds->GetWidthOverride() == 560.0f
-			&& DiagnosticBounds->GetHeightOverride() == 352.0f
-			&& Page4 != nullptr
-			&& Page4->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& Page4Grid != nullptr && Page4Grid->GetChildrenCount() == 3
-			&& Page5 != nullptr && Page5->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page5Grid != nullptr && Page5Grid->GetChildrenCount() == 3);
-
-	struct FRebalanceRepresentative
-	{
-		FString Page;
-		FString Slug;
-		FName CardId;
-	};
-	const TArray<FRebalanceRepresentative> Representatives = {
-		{ TEXT("HandMicroPortraitRebalancePage4"), TEXT("Raya"),
-			TEXT("Prototype.Arsenal.DavidRaya") },
-		{ TEXT("HandMicroPortraitRebalancePage4"), TEXT("Saliba"),
-			TEXT("Prototype.Arsenal.WilliamSaliba") },
-		{ TEXT("HandMicroPortraitRebalancePage4"), TEXT("Saka"),
-			TEXT("Prototype.Arsenal.BukayoSaka") },
-		{ TEXT("HandMicroPortraitRebalancePage5"), TEXT("Odegaard"),
-			TEXT("Prototype.Arsenal.MartinOdegaard") },
-		{ TEXT("HandMicroPortraitRebalancePage5"), TEXT("Donnarumma"),
-			TEXT("Prototype.ManchesterCity.GianluigiDonnarumma") },
-		{ TEXT("HandMicroPortraitRebalancePage5"), TEXT("Haaland"),
-			TEXT("Prototype.ManchesterCity.ErlingHaaland") }
-	};
-	TFunction<UWidget*(UWidget*, const FName)> FindNamedDescendant;
-	FindNamedDescendant = [&FindNamedDescendant](
-		UWidget* Root, const FName WidgetName) -> UWidget*
-	{
-		if (Root == nullptr)
-		{
-			return nullptr;
-		}
-		if (Root->GetFName() == WidgetName)
-		{
-			return Root;
-		}
-		if (UPanelWidget* Panel = Cast<UPanelWidget>(Root))
-		{
-			for (int32 ChildIndex = 0; ChildIndex < Panel->GetChildrenCount(); ++ChildIndex)
-			{
-				if (UWidget* Match = FindNamedDescendant(
-					Panel->GetChildAt(ChildIndex), WidgetName))
-				{
-					return Match;
-				}
-			}
-		}
-		return nullptr;
-	};
-	bool bAllPairsValid = true;
-	for (const FRebalanceRepresentative& Representative : Representatives)
-	{
-		UFMCodexPlayerCardWidget* PreviousCard = Cast<UFMCodexPlayerCardWidget>(
-			Screen->GetWidgetFromName(FName(*(Representative.Page
-				+ Representative.Slug + TEXT("CurrentCard")))));
-		UFMCodexPlayerCardWidget* CandidateCard = Cast<UFMCodexPlayerCardWidget>(
-			Screen->GetWidgetFromName(FName(*(Representative.Page
-				+ Representative.Slug + TEXT("CandidateCard")))));
-		if (PreviousCard == nullptr || CandidateCard == nullptr)
-		{
-			bAllPairsValid = false;
-			continue;
-		}
-		PreviousCard->TakeWidget();
-		CandidateCard->TakeWidget();
-		UWidget* PreviousView = Screen->GetWidgetFromName(FName(*(
-			Representative.Page + Representative.Slug + TEXT("CurrentView"))));
-		UWidget* CandidateView = Screen->GetWidgetFromName(FName(*(
-			Representative.Page + Representative.Slug + TEXT("CandidateView"))));
-		const USizeBox* PreviousBounds = Cast<USizeBox>(FindNamedDescendant(
-			PreviousView, TEXT("HandMicroPortraitBounds")));
-		const USizeBox* CandidateBounds = Cast<USizeBox>(FindNamedDescendant(
-			CandidateView, TEXT("HandMicroPortraitBounds")));
-		const UImage* PreviousImage = Cast<UImage>(FindNamedDescendant(
-			PreviousView, TEXT("HandMicroFaceSafePortrait")));
-		const UImage* CandidateImage = Cast<UImage>(FindNamedDescendant(
-			CandidateView, TEXT("HandMicroFaceSafePortrait")));
-		const UTexture2D* PreviousTexture =
-			PreviousCard->GetResolvedHandMicroPortraitTexture();
-		const UTexture2D* CandidateTexture =
-			CandidateCard->GetResolvedHandMicroPortraitTexture();
-		const FBox2f PreviousUV = PreviousImage != nullptr
-			? static_cast<FBox2f>(PreviousImage->GetBrush().GetUVRegion()) : FBox2f();
-		const FBox2f CandidateUV = CandidateImage != nullptr
-			? static_cast<FBox2f>(CandidateImage->GetBrush().GetUVRegion()) : FBox2f();
-		const bool bPairValid =
-			PreviousCard->GetPresentation().CardId == Representative.CardId
-			&& CandidateCard->GetPresentation().CardId == Representative.CardId
-			&& PreviousImage != nullptr
-			&& CandidateImage != nullptr
-			&& PreviousBounds != nullptr
-			&& PreviousBounds->GetWidthOverride() == 96.0f
-			&& PreviousBounds->GetHeightOverride() == 64.0f
-			&& CandidateBounds != nullptr
-			&& CandidateBounds->GetWidthOverride() == 96.0f
-			&& CandidateBounds->GetHeightOverride() == 64.0f
-			&& PreviousTexture != nullptr
-			&& PreviousTexture->GetImportedSize() == FIntPoint(192, 128)
-			&& PreviousTexture->GetPathName().Contains(TEXT("HandMicroArtConformance"))
-			&& CandidateTexture != nullptr
-			&& CandidateTexture->GetImportedSize() == FIntPoint(192, 128)
-			&& CandidateTexture->GetPathName().Contains(TEXT("HandMicroPortraitRebalance"))
-			&& PreviousUV.bIsValid && CandidateUV.bIsValid
-			&& PreviousUV.Min == FVector2f(0.0f, 0.0f)
-			&& PreviousUV.Max == FVector2f(1.0f, 1.0f)
-			&& CandidateUV.Min == FVector2f(0.0f, 0.0f)
-			&& CandidateUV.Max == FVector2f(1.0f, 1.0f)
-			&& PreviousImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
-			&& CandidateImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f);
-		bAllPairsValid = bAllPairsValid && bPairValid;
-		if (!bPairValid)
-		{
-			AddInfo(FString::Printf(
-				TEXT("HAND_MICRO_REBALANCE_PAIR_FAIL slug=%s previous=%s candidate=%s previous_uv_valid=%s candidate_uv_valid=%s previous_scale=%s candidate_scale=%s"),
-				*Representative.Slug,
-				PreviousTexture != nullptr ? *PreviousTexture->GetPathName() : TEXT("null"),
-				CandidateTexture != nullptr ? *CandidateTexture->GetPathName() : TEXT("null"),
-				PreviousUV.bIsValid ? TEXT("true") : TEXT("false"),
-				CandidateUV.bIsValid ? TEXT("true") : TEXT("false"),
-				PreviousImage != nullptr
-					? *PreviousImage->GetRenderTransform().Scale.ToString() : TEXT("null"),
-				CandidateImage != nullptr
-					? *CandidateImage->GetRenderTransform().Scale.ToString() : TEXT("null")));
-		}
-	}
-	TestTrue(TEXT("All six D1/D2 pairs use the same production 96x64 renderer"),
-		bAllPairsValid);
-	PageCVar->Set(5, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TestTrue(TEXT("D1/D2 Page 5 is reachable without shrinking the portrait"),
-		Page4->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page5->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& DiagnosticBounds->GetHeightOverride() == 352.0f);
-
-	UFMCodexPlayerCardWidget* GabrielCard =
-		CreateWidget<UFMCodexPlayerCardWidget>(
-			Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
-	FFMCodexUMGCardViewModel GabrielModel;
-	GabrielModel.CardId = TEXT("Demo.A.Outfield.02");
-	GabrielModel.IdentityLabel = TEXT("Card Demo.A.Outfield.02");
-	GabrielModel.OwnerLabel = TEXT("Player A");
-	GabrielModel.RoleLabel = TEXT("AMD");
-	GabrielModel.RarityLabel = TEXT("National");
-	GabrielCard->RefreshFromPresentation(
-		GabrielModel, EFMCodexPlayerCardPresentationMode::HandMicro);
-	GabrielCard->TakeWidget();
-	GabrielCard->ForceLayoutPrepass();
-	const UTextBlock* GabrielName = Cast<UTextBlock>(
-		GabrielCard->GetWidgetFromName(TEXT("HandMicroPlayerName")));
-	float GabrielWidth = TNumericLimits<float>::Max();
-	if (GabrielName != nullptr && FSlateApplication::IsInitialized()
-		&& FSlateApplication::Get().GetRenderer() != nullptr)
-	{
-		GabrielWidth = FSlateApplication::Get().GetRenderer()
-			->GetFontMeasureService()->Measure(
-				GabrielName->GetText(), GabrielName->GetFont()).X;
-	}
-	TestTrue(TEXT("Gabriel uses the complete five-character Hand Micro name"),
-		GabrielName != nullptr
-			&& GabrielName->GetText().ToString() == TEXT("\u52A0\u5E03\u91CC\u57C3\u5C14")
-			&& GabrielName->GetFont().Size >= 12
-			&& GabrielWidth <= 112.0f
-			&& GabrielName->GetTextOverflowPolicy() == ETextOverflowPolicy::Clip
-			&& FFMCodexPlayerUIPresentationText::HandMicroFallbackPlayerName(
-				TEXT("Demo.A.Outfield.02")).IsEmpty());
-
-	Controller->InitializePlayerFacingUI();
-	Screen = Controller->GetPlayerMatchScreen();
-	Screen->RequestStartNewMatch();
-	if (Screen->GetPresentation().Handoff.bVisible)
-	{
-		Screen->RequestReady();
-	}
-	const TSet<FName> RepresentativeIds = {
-		TEXT("Prototype.Arsenal.DavidRaya"),
-		TEXT("Prototype.Arsenal.WilliamSaliba"),
-		TEXT("Prototype.Arsenal.BukayoSaka"),
-		TEXT("Prototype.Arsenal.MartinOdegaard"),
-		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
-		TEXT("Prototype.ManchesterCity.ErlingHaaland")
-	};
-	auto AuditOverrideMode = [&RepresentativeIds](
-		const UFMCodexCardRackWidget* Rack,
-		const FString& ExpectedPathToken,
-		TSet<FName>& Seen) -> bool
-	{
-		if (Rack == nullptr)
-		{
-			return false;
-		}
-		bool bValid = true;
-		for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets())
-		{
-			if (Card == nullptr)
-			{
-				bValid = false;
-				continue;
-			}
-			Card->TakeWidget();
-			if (RepresentativeIds.Contains(Card->GetPresentation().CardId))
-			{
-				const UTexture2D* Texture =
-					Card->GetResolvedHandMicroPortraitTexture();
-				bValid = bValid && Texture != nullptr
-					&& Texture->GetPathName().Contains(ExpectedPathToken)
-					&& Card->GetConfiguredDimensions() == FVector2D(220.0f, 64.0f);
-				Seen.Add(Card->GetPresentation().CardId);
-			}
-		}
-		return bValid;
-	};
-	OverrideCVar->Set(1, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TSet<FName> SeenD1;
-	const bool bD1Local = AuditOverrideMode(Screen->GetLocalRackWidget(),
-		TEXT("HandMicroArtConformance"), SeenD1);
-	const bool bD1Opponent = AuditOverrideMode(Screen->GetOpponentRackWidget(),
-		TEXT("HandMicroArtConformance"), SeenD1);
-	TestTrue(TEXT("Override mode 1 preserves the previous D1 set"),
-		bD1Local && bD1Opponent && SeenD1.Num() == 6);
-	OverrideCVar->Set(2, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TSet<FName> SeenD2;
-	const bool bD2Local = AuditOverrideMode(Screen->GetLocalRackWidget(),
-		TEXT("HandMicroPortraitRebalance"), SeenD2);
-	const bool bD2Opponent = AuditOverrideMode(Screen->GetOpponentRackWidget(),
-		TEXT("HandMicroPortraitRebalance"), SeenD2);
-	TestTrue(TEXT("Override mode 2 swaps exactly the six D2 Hand Micro portraits"),
-		bD2Local && bD2Opponent && SeenD2.Num() == 6);
-	OverrideCVar->Set(0, ECVF_SetByConsole);
-	TestTrue(TEXT("Default-off candidate lookup returns no production override"),
-		FMCodexHandMicroDiagnostics::GetArtConformanceCandidateTexturePath(
-			TEXT("Prototype.Arsenal.DavidRaya")).IsEmpty());
-
-	FString GeneratorSource;
-	FString AssetReferenceSource;
-	FString RackSource;
-	FString DiagnosticsSource;
-	FString PitchSource;
-	FString NameSource;
-	TestTrue(TEXT("Rebalance provenance and isolation sources load"),
-		LoadProductionSource(
-			TEXT("Scripts/GenerateHandMicroPortraitRebalanceCandidates.py"),
-			GeneratorSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp"),
-				AssetReferenceSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexCardRackWidget.cpp"), RackSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexHandMicroDiagnostics.cpp"),
-				DiagnosticsSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchWidget.cpp"), PitchSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp"),
-				NameSource));
-	TestTrue(TEXT("D2 generation remains deterministic and source-only"),
-		GeneratorSource.Contains(TEXT("d1_crop"))
-			&& GeneratorSource.Contains(TEXT("d2_crop"))
-			&& GeneratorSource.Contains(TEXT("Image.Resampling.LANCZOS"))
-			&& GeneratorSource.Contains(TEXT("crop_width * 2 != crop_height * 3"))
-			&& GeneratorSource.Contains(TEXT("sharpen=none"))
-			&& GeneratorSource.Contains(TEXT("reconstruction=none"))
-			&& !GeneratorSource.Contains(TEXT("UnsharpMask"))
-			&& !GeneratorSource.Contains(TEXT("ImageEnhance")));
-	TestTrue(TEXT("D2 is Developer-only and isolated from production variants"),
-		!AssetReferenceSource.Contains(TEXT("RebalancedRuntime192"))
-			&& !PitchSource.Contains(TEXT("HandMicroPortraitRebalance"))
-			&& !RackSource.Contains(TEXT("SetRenderTransform"))
-			&& !RackSource.Contains(TEXT("SetRenderScale"))
-			&& DiagnosticsSource.Contains(TEXT("#if UE_BUILD_SHIPPING"))
-			&& DiagnosticsSource.Contains(TEXT("GetArtConformanceOverrideMode"))
-			&& !NameSource.Contains(TEXT("HandMicroFallbackGabriel")));
-
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FFMCodexHandMicroReferenceADensityTypographyPortraitTest,
-	"FMCodex.LocalPlay.ControlSurface.43.HandMicroReferenceADensityTypographyPortrait",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FFMCodexHandMicroReferenceADensityTypographyPortraitTest::RunTest(
-	const FString& Parameters)
-{
-	using namespace FMCodexLocalMatchControlSurfaceTests;
-	IConsoleVariable* FullNameCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroFullNameCandidate"));
-	IConsoleVariable* SharpnessCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnostic"));
-	IConsoleVariable* PageCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroSharpnessDiagnosticPage"));
-	IConsoleVariable* PortraitCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroArtConformanceOverride"));
-	IConsoleVariable* UnifiedNameCVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroUnifiedNameSize"));
-	IConsoleVariable* Height68CVar = IConsoleManager::Get().FindConsoleVariable(
-		TEXT("FMCodex.UI.HandMicroHeight68"));
-	TestNotNull(TEXT("Reference-A portrait CVar exists"), PortraitCVar);
-	TestNotNull(TEXT("Unified name-size CVar exists"), UnifiedNameCVar);
-	TestNotNull(TEXT("Height-68 CVar exists"), Height68CVar);
-	if (FullNameCVar == nullptr || SharpnessCVar == nullptr || PageCVar == nullptr
-		|| PortraitCVar == nullptr || UnifiedNameCVar == nullptr
-		|| Height68CVar == nullptr)
+		TEXT("FMCodex.UI.HandMicroReviewPage"));
+	if (ReviewCVar == nullptr || PageCVar == nullptr)
 	{
 		return false;
 	}
@@ -9625,19 +8218,84 @@ bool FFMCodexHandMicroReferenceADensityTypographyPortraitTest::RunTest(
 			}
 		}
 	} ConsoleState { {
-		{ FullNameCVar, FullNameCVar->GetInt() },
-		{ SharpnessCVar, SharpnessCVar->GetInt() },
-		{ PageCVar, PageCVar->GetInt() },
-		{ PortraitCVar, PortraitCVar->GetInt() },
-		{ UnifiedNameCVar, UnifiedNameCVar->GetInt() },
-		{ Height68CVar, Height68CVar->GetInt() }
+		{ ReviewCVar, ReviewCVar->GetInt() },
+		{ PageCVar, PageCVar->GetInt() }
 	} };
-	FullNameCVar->Set(1, ECVF_SetByConsole);
-	SharpnessCVar->Set(1, ECVF_SetByConsole);
-	PageCVar->Set(6, ECVF_SetByConsole);
-	PortraitCVar->Set(0, ECVF_SetByConsole);
-	UnifiedNameCVar->Set(0, ECVF_SetByConsole);
-	Height68CVar->Set(0, ECVF_SetByConsole);
+	TestEqual(TEXT("Production review is opt-in"), ReviewCVar->GetInt(), 0);
+	TestTrue(TEXT("Historical experiment CVars are removed"),
+		IConsoleManager::Get().FindConsoleVariable(
+			TEXT("FMCodex.UI.HandMicroFullNameCandidate")) == nullptr
+		&& IConsoleManager::Get().FindConsoleVariable(
+			TEXT("FMCodex.UI.HandMicroUnifiedNameSize")) == nullptr
+		&& IConsoleManager::Get().FindConsoleVariable(
+			TEXT("FMCodex.UI.HandMicroHeight68")) == nullptr
+		&& IConsoleManager::Get().FindConsoleVariable(
+			TEXT("FMCodex.UI.HandMicroSharpnessDiagnostic")) == nullptr
+		&& IConsoleManager::Get().FindConsoleVariable(
+			TEXT("FMCodex.UI.HandMicroSharpnessDiagnosticPage")) == nullptr
+		&& IConsoleManager::Get().FindConsoleVariable(
+			TEXT("FMCodex.UI.HandMicroArtConformanceOverride")) == nullptr);
+	ReviewCVar->Set(1, ECVF_SetByConsole);
+	PageCVar->Set(0, ECVF_SetByConsole);
+
+	struct FPortraitInventoryEntry
+	{
+		FName CardId;
+		FString DisplayName;
+		bool bGolden;
+	};
+	const TArray<FPortraitInventoryEntry> Inventory = {
+		{ TEXT("Prototype.Arsenal.DavidRaya"), TEXT("拉亚"), true },
+		{ TEXT("Prototype.Arsenal.WilliamSaliba"), TEXT("萨利巴"), true },
+		{ TEXT("Prototype.Arsenal.BukayoSaka"), TEXT("萨卡"), true },
+		{ TEXT("Prototype.Arsenal.MartinOdegaard"), TEXT("厄德高"), true },
+		{ TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
+			TEXT("多纳鲁马"), true },
+		{ TEXT("Prototype.ManchesterCity.ErlingHaaland"), TEXT("哈兰德"), true },
+		{ TEXT("Prototype.Arsenal.DeclanRice"), TEXT("赖斯"), false },
+		{ TEXT("Demo.A.Outfield.01"), TEXT("马丁内利"), false },
+		{ TEXT("Demo.A.Outfield.02"), TEXT("加布里埃尔"), false },
+		{ TEXT("Demo.A.Outfield.03"), TEXT("梅里诺"), false },
+		{ TEXT("Prototype.ManchesterCity.PhilFoden"), TEXT("福登"), false },
+		{ TEXT("Prototype.ManchesterCity.Rodri"), TEXT("罗德里"), false },
+		{ TEXT("Prototype.ManchesterCity.RubenDias"), TEXT("迪亚斯"), false },
+		{ TEXT("Demo.B.Outfield.01"), TEXT("格瓦迪奥尔"), false },
+		{ TEXT("Demo.B.Outfield.02"), TEXT("贝尔纳多"), false },
+		{ TEXT("Demo.B.Outfield.03"), TEXT("多库"), false }
+	};
+	TestEqual(TEXT("Current actually-used portrait inventory is explicit"),
+		Inventory.Num(), 16);
+	int32 GoldenCount = 0;
+	int32 ExpandedCount = 0;
+	bool bAllProductionAssetsValid = true;
+	for (const FPortraitInventoryEntry& Entry : Inventory)
+	{
+		const FFMCodexPlayerUICardArtReferences Art =
+			FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Entry.CardId);
+		UTexture2D* HandTexture = Art.HandMicroPortrait.IsNull()
+			? nullptr : Art.HandMicroPortrait.LoadSynchronous();
+		const FString HandPath = Art.HandMicroPortrait.ToSoftObjectPath().ToString();
+		bAllProductionAssetsValid = bAllProductionAssetsValid
+			&& HandTexture != nullptr
+			&& HandTexture->GetImportedSize() == FIntPoint(192, 128)
+			&& HandTexture->LODGroup == TEXTUREGROUP_UI
+			&& HandTexture->CompressionSettings == TC_BC7
+			&& HandTexture->MipGenSettings == TMGS_Sharpen1
+			&& HandTexture->Filter == TF_Trilinear
+			&& HandTexture->NeverStream && HandTexture->SRGB
+			&& HandTexture->LODBias == 0
+			&& HandPath.Contains(TEXT("/Game/UI/Portraits/PrototypeTeams/"
+				"HandMicroApprovedRollout/"))
+			&& HandPath.Contains(TEXT("ApprovedRuntime192"))
+			&& !HandPath.Contains(TEXT("/Developers/"))
+			&& FMath::IsNearlyEqual(Art.HandMicroPortraitTop, 0.0f)
+			&& FMath::IsNearlyEqual(Art.HandMicroPortraitUVHeight, 1.0f)
+			&& (Art.Portrait.IsNull()
+				|| Art.Portrait.ToSoftObjectPath() != Art.HandMicroPortrait.ToSoftObjectPath());
+		Entry.bGolden ? ++GoldenCount : ++ExpandedCount;
+	}
+	TestTrue(TEXT("Golden six plus ten expanded players use one production Runtime192 contract"),
+		bAllProductionAssetsValid && GoldenCount == 6 && ExpandedCount == 10);
 
 	FScopedPlayableWorld PlayableWorld;
 	AFMCodexLocalMatchPlayerController* Controller = PlayableWorld.GetController();
@@ -9652,258 +8310,133 @@ bool FFMCodexHandMicroReferenceADensityTypographyPortraitTest::RunTest(
 		return false;
 	}
 	Screen->TakeWidget();
+	const UWidget* RolloutPage = Screen->GetWidgetFromName(
+		TEXT("HandMicroProductionReviewPortraitsPage"));
+	const UUniformGridPanel* RolloutGrid = Cast<UUniformGridPanel>(
+		Screen->GetWidgetFromName(TEXT("HandMicroProductionReviewPortraitsGrid")));
 	const USizeBox* DiagnosticBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("HandMicroSharpnessDiagnosticBounds")));
-	const UWidget* Page6 = Screen->GetWidgetFromName(TEXT("HandMicroReferenceAPage6"));
-	const UWidget* Page7 = Screen->GetWidgetFromName(TEXT("HandMicroReferenceAPage7"));
-	const UWidget* Page8 = Screen->GetWidgetFromName(TEXT("HandMicroReferenceAPage8"));
-	const UUniformGridPanel* Page6Grid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroReferenceAPage6Grid")));
-	const UUniformGridPanel* Page7Grid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroReferenceAPage7Grid")));
-	const UUniformGridPanel* Page8Grid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroReferenceAPage8Grid")));
-	TestTrue(TEXT("D2/D3 pages use two players per page with safe bounds"),
-		DiagnosticBounds != nullptr
+		Screen->GetWidgetFromName(TEXT("HandMicroProductionReviewBounds")));
+	TestTrue(TEXT("Production review page 0 exposes the approved 16 portraits"),
+		RolloutPage != nullptr
+			&& RolloutPage->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& RolloutGrid != nullptr && RolloutGrid->GetChildrenCount() == 16
+			&& DiagnosticBounds != nullptr
 			&& DiagnosticBounds->GetWidthOverride() == 560.0f
-			&& DiagnosticBounds->GetHeightOverride() == 258.0f
-			&& Page6 != nullptr
-			&& Page6->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& Page7 != nullptr && Page7->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page8 != nullptr && Page8->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page6Grid != nullptr && Page6Grid->GetChildrenCount() == 2
-			&& Page7Grid != nullptr && Page7Grid->GetChildrenCount() == 2
-			&& Page8Grid != nullptr && Page8Grid->GetChildrenCount() == 2);
-	if (DiagnosticBounds == nullptr || Page6 == nullptr || Page7 == nullptr
-		|| Page8 == nullptr)
-	{
-		return false;
-	}
-
-	struct FReferenceARepresentative
-	{
-		FString Page;
-		FString Slug;
-		FName CardId;
-	};
-	const TArray<FReferenceARepresentative> Representatives = {
-		{ TEXT("HandMicroReferenceAPage6"), TEXT("Raya"),
-			TEXT("Prototype.Arsenal.DavidRaya") },
-		{ TEXT("HandMicroReferenceAPage6"), TEXT("Saliba"),
-			TEXT("Prototype.Arsenal.WilliamSaliba") },
-		{ TEXT("HandMicroReferenceAPage7"), TEXT("Saka"),
-			TEXT("Prototype.Arsenal.BukayoSaka") },
-		{ TEXT("HandMicroReferenceAPage7"), TEXT("Odegaard"),
-			TEXT("Prototype.Arsenal.MartinOdegaard") },
-		{ TEXT("HandMicroReferenceAPage8"), TEXT("Donnarumma"),
-			TEXT("Prototype.ManchesterCity.GianluigiDonnarumma") },
-		{ TEXT("HandMicroReferenceAPage8"), TEXT("Haaland"),
-			TEXT("Prototype.ManchesterCity.ErlingHaaland") }
-	};
-	bool bAllPortraitPairsValid = true;
-	for (const FReferenceARepresentative& Representative : Representatives)
-	{
-		UFMCodexPlayerCardWidget* D2Card = Cast<UFMCodexPlayerCardWidget>(
-			Screen->GetWidgetFromName(FName(*(
-				Representative.Page + Representative.Slug + TEXT("D2Card")))));
-		UFMCodexPlayerCardWidget* D3Card = Cast<UFMCodexPlayerCardWidget>(
-			Screen->GetWidgetFromName(FName(*(
-				Representative.Page + Representative.Slug + TEXT("D3Card")))));
-		const USizeBox* D2View = Cast<USizeBox>(Screen->GetWidgetFromName(FName(*(
-			Representative.Page + Representative.Slug + TEXT("D2View")))));
-		const USizeBox* D3View = Cast<USizeBox>(Screen->GetWidgetFromName(FName(*(
-			Representative.Page + Representative.Slug + TEXT("D3View")))));
-		if (D2Card == nullptr || D3Card == nullptr)
-		{
-			bAllPortraitPairsValid = false;
-			continue;
-		}
-		D2Card->TakeWidget();
-		D3Card->TakeWidget();
-		const UTexture2D* D2Texture = D2Card->GetResolvedHandMicroPortraitTexture();
-		const UTexture2D* D3Texture = D3Card->GetResolvedHandMicroPortraitTexture();
-		bAllPortraitPairsValid = bAllPortraitPairsValid
-			&& D2Card->GetPresentation().CardId == Representative.CardId
-			&& D3Card->GetPresentation().CardId == Representative.CardId
-			&& D2View != nullptr && D2View->GetWidthOverride() == 96.0f
-			&& D2View->GetHeightOverride() == 64.0f
-			&& D3View != nullptr && D3View->GetWidthOverride() == 96.0f
-			&& D3View->GetHeightOverride() == 64.0f
-			&& D2Texture != nullptr
-			&& D2Texture->GetImportedSize() == FIntPoint(192, 128)
-			&& D2Texture->GetPathName().Contains(TEXT("HandMicroPortraitRebalance"))
-			&& D3Texture != nullptr
-			&& D3Texture->GetImportedSize() == FIntPoint(192, 128)
-			&& D3Texture->GetPathName().Contains(TEXT("HandMicroReferenceA"))
-			&& D2Card->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
-			&& D3Card->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f);
-	}
-	TestTrue(TEXT("Golden six D2/D3 pairs use the same exact 96x64 renderer"),
-		bAllPortraitPairsValid);
-	PageCVar->Set(7, ECVF_SetByConsole);
+			&& DiagnosticBounds->GetHeightOverride() == 660.0f);
+	PageCVar->Set(1, ECVF_SetByConsole);
 	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	const bool bPage7Reachable = Page6->GetVisibility() == ESlateVisibility::Collapsed
-		&& Page7->GetVisibility() == ESlateVisibility::HitTestInvisible;
-	PageCVar->Set(8, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	TestTrue(TEXT("All three unclipped D2/D3 pages are independently reachable"),
-		bPage7Reachable && Page7->GetVisibility() == ESlateVisibility::Collapsed
-			&& Page8->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& DiagnosticBounds->GetHeightOverride() == 258.0f);
-
-	PageCVar->Set(9, ECVF_SetByConsole);
-	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	const UWidget* TypographyPage = Screen->GetWidgetFromName(
-		TEXT("HandMicroTypographyPage9"));
 	const UUniformGridPanel* TypographyGrid = Cast<UUniformGridPanel>(
-		Screen->GetWidgetFromName(TEXT("HandMicroTypographyPage9Grid")));
-	TestTrue(TEXT("Typography comparison page exposes five real full-card pairs"),
-		TypographyPage != nullptr
-			&& TypographyPage->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& TypographyGrid != nullptr && TypographyGrid->GetChildrenCount() == 5
-			&& DiagnosticBounds->GetHeightOverride() == 520.0f);
-	struct FTypographyExpectation
-	{
-		FString Slug;
-		FString Name;
-		int32 CandidateSize;
-	};
-	const TArray<FTypographyExpectation> TypographyCases = {
-		{ TEXT("Raya"), TEXT("拉亚"), 16 },
-		{ TEXT("Saliba"), TEXT("萨利巴"), 16 },
-		{ TEXT("Martinelli"), TEXT("马丁内利"), 16 },
-		{ TEXT("Gabriel"), TEXT("加布里埃尔"), 16 },
-		{ TEXT("Stress"), TEXT("克瓦拉茨赫利亚"), 12 }
-	};
-	bool bTypographyValid = true;
-	for (const FTypographyExpectation& TypographyCase : TypographyCases)
-	{
-		UFMCodexPlayerCardWidget* CurrentCard = Cast<UFMCodexPlayerCardWidget>(
-			Screen->GetWidgetFromName(FName(*(
-				TEXT("Typography") + TypographyCase.Slug + TEXT("CurrentCard")))));
-		UFMCodexPlayerCardWidget* CandidateCard = Cast<UFMCodexPlayerCardWidget>(
-			Screen->GetWidgetFromName(FName(*(
-				TEXT("Typography") + TypographyCase.Slug + TEXT("CandidateCard")))));
-		if (CurrentCard == nullptr || CandidateCard == nullptr)
-		{
-			bTypographyValid = false;
-			continue;
-		}
-		CurrentCard->TakeWidget();
-		CandidateCard->TakeWidget();
-		const UTextBlock* CurrentName = Cast<UTextBlock>(
-			CurrentCard->GetWidgetFromName(TEXT("HandMicroPlayerName")));
-		const UTextBlock* CandidateName = Cast<UTextBlock>(
-			CandidateCard->GetWidgetFromName(TEXT("HandMicroPlayerName")));
-		bTypographyValid = bTypographyValid
-			&& CurrentName != nullptr && CandidateName != nullptr
-			&& CurrentName->GetText().ToString() == TypographyCase.Name
-			&& CandidateName->GetText().ToString() == TypographyCase.Name
-			&& CandidateName->GetFont().Size == TypographyCase.CandidateSize
-			&& CandidateName->GetFont().Size
-				<= FMCodexHandMicroDiagnostics::StandardNameSizeCandidate
-			&& CandidateName->GetFont().Size
-				>= FMCodexHandMicroDiagnostics::MinimumNameFontSize
-			&& CandidateName->GetTextOverflowPolicy() == ETextOverflowPolicy::Clip
-			&& CurrentCard->GetConfiguredDimensions() == FVector2D(220.0f, 64.0f)
-			&& CandidateCard->GetConfiguredDimensions() == FVector2D(220.0f, 64.0f);
-		if (TypographyCase.Slug == TEXT("Raya"))
-		{
-			bTypographyValid = bTypographyValid
-				&& CurrentName->GetFont().Size == 22;
-		}
-	}
-	TestTrue(TEXT("16px Gabriel-resolved standard stabilizes short names and shrinks only"),
-		FMCodexHandMicroDiagnostics::StandardNameSizeCandidate == 16
-			&& FMCodexHandMicroDiagnostics::MinimumNameFontSize == 12
-			&& bTypographyValid
-			&& FFMCodexPlayerUIPresentationText::HandMicroFallbackPlayerName(
-				TEXT("Demo.A.Outfield.02")).IsEmpty());
-
-	PageCVar->Set(10, ECVF_SetByConsole);
+		Screen->GetWidgetFromName(TEXT("HandMicroProductionReviewTypographyGrid")));
+	TestTrue(TEXT("Production review page 1 is the bounded five-name stress surface"),
+		TypographyGrid != nullptr && TypographyGrid->GetChildrenCount() == 5
+			&& Screen->GetWidgetFromName(TEXT("HandMicroProductionReviewTypographyPage"))
+				->GetVisibility() == ESlateVisibility::HitTestInvisible);
+	PageCVar->Set(2, ECVF_SetByConsole);
 	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	UFMCodexPlayerCardWidget* Height64Card = Cast<UFMCodexPlayerCardWidget>(
-		Screen->GetWidgetFromName(TEXT("HandMicroHeightPage10BaselineCard")));
-	UFMCodexPlayerCardWidget* Height68Card = Cast<UFMCodexPlayerCardWidget>(
-		Screen->GetWidgetFromName(TEXT("HandMicroHeightPage10CandidateCard")));
-	if (Height64Card == nullptr || Height68Card == nullptr)
-	{
-		return false;
-	}
-	Height64Card->TakeWidget();
-	Height68Card->TakeWidget();
-	const USizeBox* Height64Cell = Cast<USizeBox>(
-		Height64Card->GetWidgetFromName(TEXT("HandMicroPortraitCellBounds")));
-	const USizeBox* Height68Cell = Cast<USizeBox>(
-		Height68Card->GetWidgetFromName(TEXT("HandMicroPortraitCellBounds")));
-	const USizeBox* Height64Image = Cast<USizeBox>(
-		Height64Card->GetWidgetFromName(TEXT("HandMicroPortraitBounds")));
-	const USizeBox* Height68Image = Cast<USizeBox>(
-		Height68Card->GetWidgetFromName(TEXT("HandMicroPortraitBounds")));
-	const USizeBox* Height64Identity = Cast<USizeBox>(
-		Height64Card->GetWidgetFromName(TEXT("HandMicroIdentityBounds")));
-	const USizeBox* Height68Identity = Cast<USizeBox>(
-		Height68Card->GetWidgetFromName(TEXT("HandMicroIdentityBounds")));
-	const USizeBox* Height64Rarity = Cast<USizeBox>(
-		Height64Card->GetWidgetFromName(TEXT("HandMicroRarityAccentBounds")));
-	const USizeBox* Height68Rarity = Cast<USizeBox>(
-		Height68Card->GetWidgetFromName(TEXT("HandMicroRarityAccentBounds")));
-	const UTextBlock* Height64Name = Cast<UTextBlock>(
-		Height64Card->GetWidgetFromName(TEXT("HandMicroPlayerName")));
-	const UTextBlock* Height68Name = Cast<UTextBlock>(
-		Height68Card->GetWidgetFromName(TEXT("HandMicroPlayerName")));
-	TestTrue(TEXT("Fair height A/B changes only 64 to 68 around an exact 96x64 image"),
-		Height64Card->GetConfiguredDimensions() == FVector2D(220.0f, 64.0f)
-			&& Height68Card->GetConfiguredDimensions() == FVector2D(220.0f, 68.0f)
-			&& Height64Cell != nullptr && Height64Cell->GetWidthOverride() == 96.0f
-			&& Height64Cell->GetHeightOverride() == 64.0f
-			&& Height68Cell != nullptr && Height68Cell->GetWidthOverride() == 96.0f
-			&& Height68Cell->GetHeightOverride() == 68.0f
-			&& Height64Image != nullptr && Height64Image->GetWidthOverride() == 96.0f
-			&& Height64Image->GetHeightOverride() == 64.0f
-			&& Height68Image != nullptr && Height68Image->GetWidthOverride() == 96.0f
-			&& Height68Image->GetHeightOverride() == 64.0f
-			&& Height64Identity != nullptr
-			&& Height64Identity->GetWidthOverride() == 120.0f
-			&& Height64Identity->GetHeightOverride() == 64.0f
-			&& Height68Identity != nullptr
-			&& Height68Identity->GetWidthOverride() == 120.0f
-			&& Height68Identity->GetHeightOverride() == 68.0f
-			&& Height64Rarity != nullptr && Height64Rarity->GetWidthOverride() == 4.0f
-			&& Height64Rarity->GetHeightOverride() == 64.0f
-			&& Height68Rarity != nullptr && Height68Rarity->GetWidthOverride() == 4.0f
-			&& Height68Rarity->GetHeightOverride() == 68.0f
-			&& Height64Name != nullptr && Height68Name != nullptr
-			&& Height64Name->GetFont().Size == 16
-			&& Height68Name->GetFont().Size == 16
-			&& Height64Card->GetResolvedHandMicroPortraitTexture()
-				== Height68Card->GetResolvedHandMicroPortraitTexture()
-			&& Height68Card->GetResolvedHandMicroPortraitTexture()->GetPathName()
-				.Contains(TEXT("HandMicroReferenceA"))
-			&& DiagnosticBounds->GetHeightOverride() == 190.0f);
+	const UFMCodexCardRackWidget* ReviewRack = Cast<UFMCodexCardRackWidget>(
+		Screen->GetWidgetFromName(TEXT("HandMicroProductionReviewRack")));
+	TestTrue(TEXT("Production review page 2 uses the real 2x10 rack renderer"),
+		ReviewRack != nullptr && ReviewRack->GetRenderedCellCount() == 20
+			&& ReviewRack->GetWidgetFromName(TEXT("CardRackScrollBox")) == nullptr
+			&& ReviewRack->GetWidgetFromName(TEXT("CardRackPageControl")) == nullptr
+			&& ReviewRack->GetWidgetFromName(TEXT("PlayedCardGhostBounds4")) != nullptr);
 
-	Controller->InitializePlayerFacingUI();
-	Screen = Controller->GetPlayerMatchScreen();
+	bool bAllCardsUseApprovedRenderer = true;
+	for (const FPortraitInventoryEntry& Entry : Inventory)
+	{
+		FFMCodexUMGCardViewModel Model;
+		Model.CardId = Entry.CardId;
+		Model.IdentityLabel = Entry.DisplayName;
+		Model.RoleLabel = TEXT("AMD");
+		Model.RarityLabel = TEXT("Continental");
+		UFMCodexPlayerCardWidget* Card =
+			CreateWidget<UFMCodexPlayerCardWidget>(
+				Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
+		Card->RefreshFromPresentation(
+			Model, EFMCodexPlayerCardPresentationMode::HandMicro);
+		Card->TakeWidget();
+		const USizeBox* PortraitCell = Cast<USizeBox>(
+			Card->GetWidgetFromName(TEXT("HandMicroPortraitCellBounds")));
+		const USizeBox* PortraitImage = Cast<USizeBox>(
+			Card->GetWidgetFromName(TEXT("HandMicroPortraitBounds")));
+		const USizeBox* Identity = Cast<USizeBox>(
+			Card->GetWidgetFromName(TEXT("HandMicroIdentityBounds")));
+		const USizeBox* Rarity = Cast<USizeBox>(
+			Card->GetWidgetFromName(TEXT("HandMicroRarityAccentBounds")));
+		const UTextBlock* Name = Cast<UTextBlock>(
+			Card->GetWidgetFromName(TEXT("HandMicroPlayerName")));
+		const UImage* HandImage = Cast<UImage>(
+			Card->GetWidgetFromName(TEXT("HandMicroFaceSafePortrait")));
+		const FBox2f UV = HandImage != nullptr
+			? static_cast<FBox2f>(HandImage->GetBrush().GetUVRegion()) : FBox2f();
+		bAllCardsUseApprovedRenderer = bAllCardsUseApprovedRenderer
+			&& Card->GetConfiguredDimensions() == FVector2D(220.0f, 68.0f)
+			&& PortraitCell != nullptr
+			&& PortraitCell->GetWidthOverride() == 96.0f
+			&& PortraitCell->GetHeightOverride() == 68.0f
+			&& PortraitImage != nullptr
+			&& PortraitImage->GetWidthOverride() == 96.0f
+			&& PortraitImage->GetHeightOverride() == 64.0f
+			&& Identity != nullptr && Identity->GetWidthOverride() == 120.0f
+			&& Identity->GetHeightOverride() == 68.0f
+			&& Rarity != nullptr && Rarity->GetWidthOverride() == 4.0f
+			&& Rarity->GetHeightOverride() == 68.0f
+			&& Name != nullptr && Name->GetText().ToString() == Entry.DisplayName
+			&& Name->GetFont().Size <= 16 && Name->GetFont().Size >= 12
+			&& Name->GetTextOverflowPolicy() == ETextOverflowPolicy::Clip
+			&& UV.bIsValid && UV.Min == FVector2f(0.0f, 0.0f)
+			&& UV.Max == FVector2f(1.0f, 1.0f)
+			&& HandImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
+			&& Card->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f);
+		if (Entry.CardId == TEXT("Demo.A.Outfield.02"))
+		{
+			bAllCardsUseApprovedRenderer = bAllCardsUseApprovedRenderer
+				&& Name->GetText().ToString() == TEXT("加布里埃尔");
+		}
+	}
+	TestTrue(TEXT("All 16 portraits use approved geometry, typography, full UV and no transforms"),
+		bAllCardsUseApprovedRenderer);
+
+	FFMCodexUMGCardViewModel IsolationModel;
+	IsolationModel.CardId = TEXT("Prototype.Arsenal.DavidRaya");
+	IsolationModel.IdentityLabel = TEXT("拉亚");
+	IsolationModel.RoleLabel = TEXT("GK");
+	UFMCodexPlayerCardWidget* FullCard =
+		CreateWidget<UFMCodexPlayerCardWidget>(
+			Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
+	FullCard->RefreshFromPresentation(
+		IsolationModel, EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	FullCard->TakeWidget();
+	UFMCodexPlayerCardWidget* PitchMini =
+		CreateWidget<UFMCodexPlayerCardWidget>(
+			Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
+	PitchMini->RefreshFromPresentation(
+		IsolationModel, EFMCodexPlayerCardPresentationMode::PitchMini);
+	PitchMini->TakeWidget();
+	const UImage* FullPortraitImage = Cast<UImage>(
+		FullCard->GetWidgetFromName(TEXT("PortraitAssetImage")));
+	const UImage* PitchPortraitImage = Cast<UImage>(
+		PitchMini->GetWidgetFromName(TEXT("PitchMiniPortraitImage")));
+	TestTrue(TEXT("Full Card and Pitch Mini remain on their original portrait path"),
+		FullCard->GetResolvedPortraitTexture() != nullptr
+			&& FullCard->GetResolvedPortraitTexture()->GetPathName().Contains(
+				TEXT("T_Prototype_Arsenal_DavidRaya_01"))
+			&& FullPortraitImage != nullptr
+			&& FullPortraitImage->GetBrush().GetResourceObject()
+				== FullCard->GetResolvedPortraitTexture()
+			&& PitchPortraitImage != nullptr
+			&& PitchPortraitImage->GetBrush().GetResourceObject()
+				== PitchMini->GetResolvedPortraitTexture()
+			&& PitchMini->GetConfiguredDimensions() == FVector2D(136.0f, 140.0f));
+
 	Screen->RequestStartNewMatch();
 	if (Screen->GetPresentation().Handoff.bVisible)
 	{
 		Screen->RequestReady();
 	}
-	PortraitCVar->Set(3, ECVF_SetByConsole);
-	UnifiedNameCVar->Set(1, ECVF_SetByConsole);
-	Height68CVar->Set(1, ECVF_SetByConsole);
 	Screen->RefreshFromPresentation(Screen->GetPresentation());
-	Screen->TakeWidget();
 	Screen->ForceLayoutPrepass();
-	const USizeBox* HeaderBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("BroadcastMatchHeaderRegion")));
-	const USizeBox* MainAreaBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("GoldenLayoutMainMatchArea")));
-	const USizeBox* DockBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("ContextActionDockRegion")));
-	const USizeBox* PitchBounds = Cast<USizeBox>(
-		Screen->GetWidgetFromName(TEXT("CentralPitchRegion")));
-	auto AuditHeight68Rack = [](const UFMCodexCardRackWidget* Rack) -> bool
+	auto AuditRack = [](const UFMCodexCardRackWidget* Rack) -> bool
 	{
 		if (Rack == nullptr || Rack->GetRenderedCellCount() != 20
 			|| Rack->GetWidgetFromName(TEXT("CardRackScrollBox")) != nullptr
@@ -9911,118 +8444,96 @@ bool FFMCodexHandMicroReferenceADensityTypographyPortraitTest::RunTest(
 		{
 			return false;
 		}
-		for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets())
+		for (const UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets())
 		{
-			if (Card == nullptr || Card->GetConfiguredDimensions()
-				!= FVector2D(220.0f, 68.0f))
+			if (Card == nullptr
+				|| Card->GetConfiguredDimensions() != FVector2D(220.0f, 68.0f))
 			{
 				return false;
 			}
 		}
-		return true;
+		return Rack->GetDesiredSize().Y <= 880.0f;
 	};
-	UFMCodexCardRackWidget* LocalRack = Screen->GetLocalRackWidget();
-	UFMCodexCardRackWidget* OpponentRack = Screen->GetOpponentRackWidget();
-	const float LocalRackDesiredHeight = LocalRack != nullptr
-		? LocalRack->GetDesiredSize().Y : TNumericLimits<float>::Max();
-	const float OpponentRackDesiredHeight = OpponentRack != nullptr
-		? OpponentRack->GetDesiredSize().Y : TNumericLimits<float>::Max();
-	TestTrue(TEXT("220x68 retains both 2x10 no-scroll racks inside the 880px stage"),
-		AuditHeight68Rack(LocalRack) && AuditHeight68Rack(OpponentRack)
-			&& LocalRackDesiredHeight <= 880.0f
-			&& OpponentRackDesiredHeight <= 880.0f
+	const USizeBox* HeaderBounds = Cast<USizeBox>(
+		Screen->GetWidgetFromName(TEXT("BroadcastMatchHeaderRegion")));
+	const USizeBox* MainBounds = Cast<USizeBox>(
+		Screen->GetWidgetFromName(TEXT("GoldenLayoutMainMatchArea")));
+	const USizeBox* DockBounds = Cast<USizeBox>(
+		Screen->GetWidgetFromName(TEXT("ContextActionDockRegion")));
+	const USizeBox* PitchBounds = Cast<USizeBox>(
+		Screen->GetWidgetFromName(TEXT("CentralPitchRegion")));
+	TestTrue(TEXT("220x68 preserves 10-row 1080p no-scroll fit and macro layout"),
+		AuditRack(Screen->GetLocalRackWidget())
+			&& AuditRack(Screen->GetOpponentRackWidget())
+			&& 10.0f * 68.0f + 9.0f * 8.0f == 752.0f
 			&& HeaderBounds != nullptr && HeaderBounds->GetHeightOverride() == 80.0f
-			&& MainAreaBounds != nullptr
-			&& MainAreaBounds->GetHeightOverride() == 880.0f
+			&& MainBounds != nullptr && MainBounds->GetHeightOverride() == 880.0f
 			&& DockBounds != nullptr && DockBounds->GetHeightOverride() == 120.0f
 			&& PitchBounds != nullptr
 			&& PitchBounds->GetWidthOverride()
-				== FMCodexHandMicroDiagnostics::CandidatePitchWidth);
-
-	const TArray<FName> GoldenSix = {
-		TEXT("Prototype.Arsenal.DavidRaya"),
-		TEXT("Prototype.Arsenal.WilliamSaliba"),
-		TEXT("Prototype.Arsenal.BukayoSaka"),
-		TEXT("Prototype.Arsenal.MartinOdegaard"),
-		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
-		TEXT("Prototype.ManchesterCity.ErlingHaaland")
-	};
-	TSet<FName> SeenD3;
-	for (const UFMCodexCardRackWidget* Rack : { LocalRack, OpponentRack })
-	{
-		for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets())
-		{
-			if (Card != nullptr && GoldenSix.Contains(Card->GetPresentation().CardId))
-			{
-				const UTexture2D* Texture = Card->GetResolvedHandMicroPortraitTexture();
-				if (Texture != nullptr
-					&& Texture->GetPathName().Contains(TEXT("HandMicroReferenceA")))
-				{
-					SeenD3.Add(Card->GetPresentation().CardId);
-				}
-			}
-		}
-	}
-	TestEqual(TEXT("Full Match Screen D3 override reaches exactly the Golden six"),
-		SeenD3.Num(), 6);
-	PortraitCVar->Set(0, ECVF_SetByConsole);
-	UnifiedNameCVar->Set(0, ECVF_SetByConsole);
-	Height68CVar->Set(0, ECVF_SetByConsole);
-	TestTrue(TEXT("All new candidate controls are default-off and recoverable"),
-		FMCodexHandMicroDiagnostics::GetArtConformanceCandidateTexturePath(
-			TEXT("Prototype.Arsenal.DavidRaya")).IsEmpty()
-			&& !FMCodexHandMicroDiagnostics::IsUnifiedNameSizeCandidateEnabled()
-			&& !FMCodexHandMicroDiagnostics::IsHeight68CandidateEnabled()
-			&& FMath::IsNearlyEqual(
-				FMCodexHandMicroDiagnostics::GetCardHeight(), 64.0f));
+				== FMCodexHandMicroDiagnostics::PitchWidth);
 
 	FString GeneratorSource;
-	FString AssetReferenceSource;
-	FString DiagnosticsSource;
+	FString AssetSource;
 	FString CardSource;
 	FString RackSource;
 	FString PitchSource;
+	FString HeaderSource;
+	FString DockSource;
 	FString HostSource;
-	TestTrue(TEXT("Reference-A provenance and isolation sources load"),
+	FString SessionSource;
+	TestTrue(TEXT("Rollout provenance and isolation sources load"),
 		LoadProductionSource(
-			TEXT("Scripts/GenerateHandMicroReferenceACandidates.py"), GeneratorSource)
+			TEXT("Scripts/GenerateHandMicroPortraits.py"),
+			GeneratorSource)
 			&& LoadProductionSource(
 				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp"),
-				AssetReferenceSource)
+				AssetSource)
 			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexHandMicroDiagnostics.cpp"),
-				DiagnosticsSource)
-			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"), CardSource)
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"),
+				CardSource)
 			&& LoadProductionSource(
 				TEXT("Source/FMCodex/LocalPlay/FMCodexCardRackWidget.cpp"), RackSource)
 			&& LoadProductionSource(
 				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchWidget.cpp"), PitchSource)
 			&& LoadProductionSource(
-				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.cpp"),
-				HostSource));
-	TestTrue(TEXT("D3 generation is deterministic source-space-only"),
-		GeneratorSource.Contains(TEXT("d2_crop"))
-			&& GeneratorSource.Contains(TEXT("d3_crop"))
-			&& GeneratorSource.Contains(TEXT("Image.Resampling.LANCZOS"))
+				TEXT("Source/FMCodex/LocalPlay/FMCodexMatchHeaderWidget.cpp"), HeaderSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexInteractionPanelWidget.cpp"), DockSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.cpp"), HostSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
+				SessionSource));
+	FString RuntimeBindingCount = AssetSource;
+	const int32 BoundPathTokenCount = RuntimeBindingCount.ReplaceInline(
+		TEXT("ApprovedRuntime192"), TEXT(""), ESearchCase::CaseSensitive);
+	FString SessionCountSource = SessionSource;
+	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
+		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
+	TestTrue(TEXT("Canonical generator is deterministic and freezes all 16 outputs"),
+		GeneratorSource.Contains(TEXT("CANDIDATES ="))
+			&& GeneratorSource.Contains(TEXT("EXPECTED_HASHES ="))
 			&& GeneratorSource.Contains(TEXT("crop_width * 2 != crop_height * 3"))
-			&& GeneratorSource.Contains(TEXT("runtime_transform=none"))
+			&& GeneratorSource.Contains(TEXT("Image.Resampling.LANCZOS"))
+			&& GeneratorSource.Contains(TEXT("sha256(runtime_output) != expected_runtime"))
+			&& GeneratorSource.Contains(TEXT("hashes_verified"))
 			&& GeneratorSource.Contains(TEXT("sharpen=none"))
 			&& GeneratorSource.Contains(TEXT("reconstruction=none"))
+			&& GeneratorSource.Contains(TEXT("runtime_transform=none"))
 			&& !GeneratorSource.Contains(TEXT("UnsharpMask"))
 			&& !GeneratorSource.Contains(TEXT("ImageEnhance")));
-	TestTrue(TEXT("D3 typography and height remain Development-only Hand-Micro presentation"),
-		!AssetReferenceSource.Contains(TEXT("ReferenceARuntime192"))
-			&& DiagnosticsSource.Contains(TEXT("FMCodex.UI.HandMicroUnifiedNameSize"))
-			&& DiagnosticsSource.Contains(TEXT("FMCodex.UI.HandMicroHeight68"))
-			&& DiagnosticsSource.Contains(TEXT("#if UE_BUILD_SHIPPING"))
-			&& !PitchSource.Contains(TEXT("HandMicroReferenceA"))
-			&& !PitchSource.Contains(TEXT("HandMicroHeight68"))
-			&& !HostSource.Contains(TEXT("HandMicroReferenceA"))
-			&& !HostSource.Contains(TEXT("HandMicroUnifiedNameSize"))
+	TestTrue(TEXT("Production rollout remains exactly 16 Hand-Micro-only bindings"),
+		BoundPathTokenCount == 32
+			&& !PitchSource.Contains(TEXT("HandMicroApprovedRollout"))
+			&& !HeaderSource.Contains(TEXT("HandMicroApprovedRollout"))
+			&& !DockSource.Contains(TEXT("HandMicroApprovedRollout"))
+			&& !HostSource.Contains(TEXT("HandMicroApprovedRollout"))
 			&& !RackSource.Contains(TEXT("SetRenderTransform"))
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
+	TestEqual(TEXT("Authority typed serialized entrypoint contract remains 42/42"),
+		SerializedEntrypointCount, 42);
 
 	return true;
 }

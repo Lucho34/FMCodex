@@ -2,7 +2,7 @@
 
 ## UE5 足球卡牌游戏 — Hand Micro Visual Specification v1
 
-**Status：Draft for Freeze**
+**Status：Hand Micro Core Production Contract — FROZEN / Commercial Polish Open**
 **Reference Canvas：1920 × 1080 @ UI Scale 1.0**
 **Reference：Hand Micro Design Reference A / 设计方案 1**
 
@@ -45,10 +45,10 @@ Hand Micro 必须是一张微型足球卡，而不是列表 Item，也不是 Ful
 
 因此：
 
-`220 × 64`
+`220 × 68`
 约表现为：
 
-`235 × 68 px`
+`235 × 73 px`
 
 这与当前 Golden Match Screen 的实际侧栏密度相匹配。
 
@@ -70,23 +70,23 @@ Hand Micro 必须是一张微型足球卡，而不是列表 Item，也不是 Ful
 
 | Element               |         Size |
 | --------------------- | -----------: |
-| Hand Micro Card       | **220 × 64** |
+| Hand Micro Card       | **220 × 68** |
 | Column Gap            |       **12** |
 | Row Gap               |        **8** |
 | Two-card row width    |      **452** |
-| 10-row content height |      **712** |
+| 10-row content height |      **752** |
 
 公式：
 
 `220 + 12 + 220 = 452`
 
-`64 × 10 + 8 × 9 = 712`
+`68 × 10 + 8 × 9 = 752`
 
 当前 1920 reference Golden candidate 的宏观分配为：
 
 `Rack / Pitch / Rack ≈ 476 / 968 / 476`
 
-这是可逆的 Preferred Draft 验证分配，不是 Frozen Match Screen 合同。
+这是 Hand Micro Core Production Contract 的固定宏观分配。
 
 Rack 不应通过压缩单张卡内部布局来解决空间不足。
 
@@ -98,10 +98,10 @@ Rack 不应通过压缩单张卡内部布局来解决空间不足。
 
 # 3. Hand Micro Canonical Card Geometry
 
-当前视觉接受的 Preferred Draft Candidate（尚未 Frozen）：
+当前 Frozen 生产几何：
 
 `W = 220`
-`H = 64`
+`H = 68`
 
 内部 X 坐标：
 
@@ -109,7 +109,7 @@ Rack 不应通过压缩单张卡内部布局来解决空间不足。
 0                       96                         216   220
 │                        │                      │     │
 │      PORTRAIT          │      IDENTITY        │RARITY
-│       96×64            │       120×64             │4×64
+│   96×68 cell / 96×64 image │       120×68          │4×68
 │                        │                      │     │
 ```
 
@@ -117,10 +117,11 @@ Rack 不应通过压缩单张卡内部布局来解决空间不足。
 
 | Region       |   X |  Y |       W |      H |
 | ------------ | --: | -: | ------: | -----: |
-| Outer Card   |   0 |  0 | **220** | **64** |
-| Portrait     |   0 |  0 |  **96** | **64** |
-| Identity     |  96 |  0 | **120** | **64** |
-| Rarity Strip | 216 |  0 |   **4** | **64** |
+| Outer Card   |   0 |  0 | **220** | **68** |
+| Portrait Cell |   0 |  0 |  **96** | **68** |
+| Portrait Image |   0 |  2 |  **96** | **64** |
+| Identity     |  96 |  0 | **120** | **68** |
+| Rarity Strip | 216 |  0 |   **4** | **68** |
 
 比例约为：
 
@@ -128,7 +129,7 @@ Rack 不应通过压缩单张卡内部布局来解决空间不足。
 * Identity：**54.5%**
 * Rarity：**1.8%**
 
-该比例是当前首选 Draft 方向，不是 Frozen 值。
+该比例属于 Frozen Hand Micro Core Production Contract。
 
 允许最终工程存在 ≤2 px 的实现误差。
 
@@ -263,7 +264,7 @@ Opacity：
 
 Identity Region：
 
-`120 × 64`
+`120 × 68`
 
 ## Text Safe Area
 
@@ -298,7 +299,7 @@ Player Name：
 
 | Property          |              Value |
 | ----------------- | -----------------: |
-| Base Font Size    |             **22** |
+| Base Font Size    |             **16** |
 | Minimum Font Size |             **12** |
 | Runtime Typeface  | **Roboto Medium (Latin) / DroidSansFallback (CJK)** |
 | Weight            | **Medium intent; CJK has no separate 600 face** |
@@ -336,7 +337,7 @@ Reference A 的感觉应来自：
 ## Order
 
 1. 使用 Hand Micro `DisplayShortName`
-2. 使用 Slate Font Measure 对实际 Composite Font 从 `22 px` 开始测量
+2. 使用 Slate Font Measure 对实际 Composite Font 从 `16 px` 开始测量
 3. 若超过 `112 px` Name Safe Width，则逐级缩小字号
 4. 最低允许降至 `12 px`
 5. 不得低于 `12 px`，不得在本阶段缩短已批准的完整玩家可见名
@@ -357,19 +358,19 @@ Reference A 的感觉应来自：
 短名：
 
 `拉亚`
-→ 22 px
+→ 16 px
 
 `厄德高`
-→ 22 px
+→ 16 px
 
 `马丁内利`
-→ 在 `22 → 12 px` 中选择可完整容纳的最大字号
+→ 在 `16 → 12 px` 中选择可完整容纳的最大字号
 
 `加布里埃尔`
-→ 在 Preferred `220 × 64` Draft 的 `112 px` Name Safe Width 内保留完整五字名，并在 `22 → 12 px` 中选择可完整容纳的最大字号；不得回退为 `加布`
+→ 在 `220 × 68` Approved Direction 的 `112 px` Name Safe Width 内保留完整五字名，并在 `16 → 12 px` 中选择可完整容纳的最大字号；不得回退为 `加布`
 
 `格瓦迪奥尔`
-→ 在 `22 → 12 px` 中选择可完整容纳的最大字号；当前 Draft 不默认改写为两字别名
+→ 在 `16 → 12 px` 中选择可完整容纳的最大字号；当前 Draft 不默认改写为两字别名
 
 `克瓦拉茨赫利亚`
 → `12 px ≈ 112 px`，在当前 `112 px` Name Safe Width 中约为 `0 px` 水平安全余量；这是最终 Closure 的开放验证项，本阶段不得用改几何或缩短名字掩盖。
@@ -516,7 +517,7 @@ Rarity Strip 必须作为：
 X = 216
 Y = 0
 W = 4
-H = 64
+H = 68
 ```
 
 即：
@@ -611,7 +612,7 @@ Ghost Slot 与真实 Hand Micro：
 
 **同尺寸**
 
-`220 × 64`
+`220 × 68`
 
 但必须明显退到背景层。
 
@@ -749,7 +750,7 @@ Team Identity 由：
 
 新增或修改任何 Hand Micro 后必须检查：
 
-* [ ] Card 参考尺寸为 220 × 64（Preferred Draft Candidate，未 Frozen）
+* [ ] Card 生产尺寸为 220 × 68（Frozen）
 * [ ] Portrait 参考尺寸为 96 × 64
 * [ ] Portrait 为 Head-and-Shoulders
 * [ ] Portrait 没有 Face-only Crop
@@ -758,7 +759,7 @@ Team Identity 由：
 * [ ] 姓名区域宽度符合规范
 * [ ] 长名字通过字号缩小处理
 * [ ] Position 使用正式 Slash Mapping
-* [ ] Rarity Strip 为 4 × 64
+* [ ] Rarity Strip 为 4 × 68
 * [ ] Rarity Strip 完整填满并严格对齐
 * [ ] Rarity Base RGB 正确
 * [ ] 默认 Rarity 不抢视觉
@@ -780,81 +781,55 @@ Team Identity 由：
 
 ---
 
-# 26. Art-Conformance Candidate Validation
+# 26. Frozen Core Production Contract
 
-当前优选 Hand Micro Draft 几何保持为：
+Stage `6.13.1.3.10.6` 将 Hand Micro 核心合同冻结为单一正常路径：
 
-`220 × 64 = 96 Portrait + 120 Identity + 4 Rarity`
+* Card：`220×68`。
+* Portrait cell：`96×68`；实际图像 `96×64`，垂直居中、保持 3:2、不拉伸。
+* Identity：`120×68`；Name Safe Width `112 px`。
+* Rarity：最右侧 `4×68`，固定全高、无 glow。
+* Name：标准 `16 px`，仅在真实 `FSlateFontMeasure` 证明放不下时逐级缩至 `12 px`；默认不使用短名回退和 ellipsis。
+* Position：Hand-Micro-only 斜杠展示（`MD→M/D`、`AM→A/M`、`AMD→A/M/D`、`AD→A/D`）。
+* Rack：`2×10`、不滚动、不分页、不重排；Ghost 保留原物理槽位。
+* Match Screen 宏观宽度：`476 / 968 / 476`。Header、Dock 与 Main Area 高度不变。
 
-该方向仍为 `Draft for Freeze`，未 Frozen。本阶段只比较 Portrait composition，不重新开启卡片比例、Name Safe Width、2×10 Rack、Ghost 或 Match Screen 宏观布局。
+上述值不再由 CVar 选择，也不存在 legacy/candidate 正常路径。Shipping 只编译该生产合同。
 
-开发诊断页使用真实生产 Hand Micro Portrait subtree、相同 `96 × 64` viewport、相同 `0–1` UV 和相同无 transform renderer：
+# 27. Production Portrait and Rendering Contract
 
-* Page 2：Raya / Saliba / Saka，C Runtime192 对 D Art-Conformed Runtime192。
-* Page 3：Ødegaard / Donnarumma / Haaland，C Runtime192 对 D Art-Conformed Runtime192。
-* C 保持 `.10.3` 的既有 Runtime192 技术候选不变。
-* D 只改变 source-space crop/scale；不生成、不重绘、不锐化、不增加运行时 offset。
+当前实际使用的 16 名球员全部绑定到：
 
-开发覆盖 `FMCodex.UI.HandMicroArtConformanceOverride` 默认为 `0`。`1` 显示 D1 Art-Conformed，`2` 显示 D2 Portrait-Rebalanced；两种非零模式都仅替换上述六名球员在普通 220 Hand Micro Rack 中的 portrait。恢复 `0` 后回到 production 路径。该开关与候选资产在 Shipping 中排除，不写入 production asset binding，Pitch Mini 与 Full Card 始终不受影响。
+`/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/`
 
-最终判断仍需要真实 PIE 同时检查完整头部、眼线节奏、双肩/球衣保留、96×64 下的脸部可读性、halo/过锐和整列一致性。自动化只证明实现边界、资源属性和切换可逆，不宣称主观视觉验收已经完成。
+每张运行时 Texture2D 固定为 `192×128`、UI、BC7、Sharpen1、Trilinear、Never Stream、sRGB、LOD Bias 0，并通过完整 `0–1` UV 映射到 `96×64`。禁止 runtime per-player UV、scale、offset、二次 crop 或隐藏 ScaleBox。Full Card 与 Pitch Mini 保持各自原有 portrait path。
 
----
+唯一生成入口为：
 
-# 27. Portrait Presence Rebalance D2 — Under User PIE Validation
+* `Scripts/GenerateHandMicroPortraits.py`
+* `Scripts/ImportHandMicroPortraits.py`
+* `Scripts/ValidateHandMicroPortraits.py`
 
-D1 解决了人物构图一致性，但在 Reference A 对比下仍有“肩部存在感偏强、脸部存在感偏弱”的开放问题。D2 是同一六名球员、同一既有 Master 的确定性紧裁候选，只调整 source-space crop；不生成、不重绘、不重建、不额外锐化，也不在 UMG 增加 per-player transform。
+生成器显式记录 16 名球员的 source、3:2 crop、focal metrics 与 Frozen SHA-256；输出只使用单次 Lanczos，不做重建、重绘或额外锐化。
 
-开发诊断 Page 4 / Page 5 在相同 production `96 × 64` renderer 中直接比较 D1 Previous 与 D2 Rebalanced：
+# 28. Developer Production Review Surface
 
-* Page 4：Raya / Saliba / Saka。
-* Page 5：Ødegaard / Donnarumma / Haaland。
-* D2 相对 D1 的人物 presence 增益为约 `4.4%–5.3%`。
-* D2 仍保留完整头部、完整脸、颈部与健康的上部球衣信息；不得解读为 face-only crop。
+非 Shipping 环境保留一个小型生产审阅面，不承载历史候选：
 
-普通 Hand Micro 的 Preferred Draft 状态使用 `220 × 64 = 96 Portrait + 120 Identity + 4 Rarity`，Name Safe Width 约 `112 px`。`Demo.A.Outfield.02` 必须显示完整 `加布里埃尔`；这是 Hand-Micro-only player-facing presentation，不改 CardId、Gameplay identity、Pitch Mini 或 Full Card。
+* `FMCodex.UI.HandMicroReview 0/1`：默认关闭。
+* `FMCodex.UI.HandMicroReviewPage 0..2`：
+  * Page 0：当前 16 人生产 Portrait。
+  * Page 1：Name/typography 压力样例。
+  * Page 2：真实 `2×10`、Ghost、无分页布局边界。
 
-D2 仍是隔离候选，production binding 不变。只有真实 PIE 对 Reference A、D1、D2 和完整 Match Screen 的人工比较通过后，才可讨论采用；自动化通过不代表视觉批准或 Frozen。
+正常 PIE 不依赖这些 CVar。历史 A/B/C、D1/D2/D3、64/68、maximise-to-fit 及 override 路径已删除。
 
----
+# 29. Freeze Boundary and Commercial Polish
 
-# 28. Reference-A Density / Typography / Portrait Candidates — User PIE Required
+`HAND MICRO CORE PRODUCTION CONTRACT / FROZEN AND CONSOLIDATED`
 
-宽度 `220 px` 已稳定，本阶段不重新开启。既有 `220 × 64` 保持可达；新增 `220 × 68` 仅作为默认关闭、Shipping 排除的密度候选：
+Core freeze 覆盖几何、2×10 Rack、Ghost、Name 策略、Position 展示、16 人生产 Portrait pipeline、Texture 设置和无 runtime transform 约束。
 
-| Element | 64 baseline | 68 candidate |
-|---|---:|---:|
-| Card | `220 × 64` | `220 × 68` |
-| Portrait cell | `96 × 64` | `96 × 68` |
-| Actual portrait image | `96 × 64` | `96 × 64`（垂直居中，不拉伸） |
-| Identity | `120 × 64` | `120 × 68` |
-| Rarity | `4 × 64` | `4 × 68` |
+`HAND MICRO COMMERCIAL POLISH / READY FOR NEXT STAGE`
 
-68 候选的 4 px 只用于上下呼吸感。Name 不放大，Position 不放大，Portrait image 不变形。两个 2×10 Rack 仍须在 `1920×1080` 的既有 `80 Header + 880 Main Area + 120 Dock` 中完整可见；不得用全局 DPI 或压缩 Pitch/Header/Dock 隐藏高度成本。
-
-真实 `FSlateFontMeasure` 测得 `加布里埃尔` 在当前 112 px Name Safe Width 中解析为 `16 px`，因此：
-
-* `StandardNameSizeCandidate = 16 px`。
-* 能在 16 px 完整容纳的名字统一使用 16 px；短名字不得放大到 22 px。
-* 超长名字从 16 px 逐级缩小，最低仍为 12 px。
-* 不使用字符数启发式、不自动缩写、不默认 ellipsis、不更换中文字体。
-* `加布里埃尔` 的完整五字名及其已认可外观保持关闭状态，不得回退为 `加布`。
-
-三个变量可独立控制：
-
-* Portrait：`FMCodex.UI.HandMicroArtConformanceOverride 2` 为 D2，`3` 为 D3。
-* Name：`FMCodex.UI.HandMicroUnifiedNameSize 0/1`。
-* Height：`FMCodex.UI.HandMicroHeight68 0/1`。
-
-诊断页：Page 6–8 每页只显示两名球员的 D2/D3 `96×64` 公平对比；Page 9 比较旧 maximize-to-fit 与 16→12 shrink-only；Page 10 在 D3 与统一 Name 都固定时只比较 64/68 高度。所有候选默认关闭且 Shipping 不可启用，不写入 production binding，不影响 Full Card / Pitch Mini / Gameplay / Authority。
-
-状态：
-
-* Width `220 px`：`STABLE / NOT REOPENED`
-* Height 64：`EXISTING BASELINE`
-* Height 68：`REFERENCE-A DENSITY CANDIDATE — USER PIE VALIDATION REQUIRED`
-* Runtime192：`PREFERRED HAND-MICRO TECHNICAL DIRECTION`
-* D2：`DIRECTIONALLY CORRECT INTERMEDIATE`
-* D3：`REFERENCE-A HEAD/SHOULDER RATIO CANDIDATE — USER PIE VALIDATION REQUIRED`
-* Unified Name Size：`REFERENCE-A TYPOGRAPHY RHYTHM CANDIDATE — USER PIE VALIDATION REQUIRED`
-* Hand Micro：`NOT CLOSED`
+商业美术仍可在未来阶段更换符合相同合同的高质量源素材、完善授权 likeness、细修背景与色彩；不得借商业抛光重新打开本合同的结构与 Gameplay 边界。Pitch、Header、Dock、Pitch Mini、Full Card、Tactical Badge、Resolution、Gameplay、Authority、CoreRules、MatchPlayRuntime 均不属于本次 freeze 变更。

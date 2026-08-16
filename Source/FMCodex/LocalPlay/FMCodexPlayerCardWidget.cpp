@@ -370,18 +370,9 @@ FVector2D UFMCodexPlayerCardWidget::GetConfiguredDimensions() const
 	switch (PresentationMode)
 	{
 	case EFMCodexPlayerCardPresentationMode::HandMicro:
-		{
-			const bool bHeight68 = bHasDiagnosticHeight68Override
-				? bDiagnosticHeight68Enabled
-				: FMCodexHandMicroDiagnostics::IsHeight68CandidateEnabled();
 		return FVector2D(
-			FMCodexHandMicroDiagnostics::IsFullNameCandidateEnabled()
-				? FMCodexHandMicroDiagnostics::CandidateCardWidth
-				: FMCodexHandMicroDiagnostics::ProductionCardWidth,
-			bHeight68
-				? FMCodexHandMicroDiagnostics::CandidateCardHeight
-				: FMCodexHandMicroDiagnostics::BaselineCardHeight);
-		}
+			FMCodexHandMicroDiagnostics::CardWidth,
+			FMCodexHandMicroDiagnostics::CardHeight);
 	case EFMCodexPlayerCardPresentationMode::PitchMini:
 		return FVector2D(136.0f, 140.0f);
 	case EFMCodexPlayerCardPresentationMode::PitchCompact:
@@ -389,44 +380,6 @@ FVector2D UFMCodexPlayerCardWidget::GetConfiguredDimensions() const
 	default:
 		return FVector2D(240.0f, 360.0f);
 	}
-}
-
-void UFMCodexPlayerCardWidget::SetDiagnosticHandMicroPortraitOverride(
-	UTexture2D* InTexture)
-{
-#if !UE_BUILD_SHIPPING
-	DiagnosticHandMicroPortraitOverride = InTexture;
-	if (HandMicroPortraitImage != nullptr)
-	{
-		RefreshPresentationArt();
-	}
-#endif
-}
-
-void UFMCodexPlayerCardWidget::SetDiagnosticHandMicroUnifiedNameOverride(
-	const bool bEnabled)
-{
-#if !UE_BUILD_SHIPPING
-	bHasDiagnosticUnifiedNameOverride = true;
-	bDiagnosticUnifiedNameEnabled = bEnabled;
-	if (HandMicroIdentityText != nullptr)
-	{
-		RefreshVisuals();
-	}
-#endif
-}
-
-void UFMCodexPlayerCardWidget::SetDiagnosticHandMicroHeight68Override(
-	const bool bEnabled)
-{
-#if !UE_BUILD_SHIPPING
-	bHasDiagnosticHeight68Override = true;
-	bDiagnosticHeight68Enabled = bEnabled;
-	if (CardBounds != nullptr)
-	{
-		RefreshVisuals();
-	}
-#endif
 }
 
 void UFMCodexPlayerCardWidget::BuildWidgetTree()
@@ -485,7 +438,7 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	HandPortraitCellBounds->SetWidthOverride(
 		FMCodexHandMicroDiagnostics::PortraitWidth);
 	HandPortraitCellBounds->SetHeightOverride(
-		FMCodexHandMicroDiagnostics::BaselineCardHeight);
+		FMCodexHandMicroDiagnostics::CardHeight);
 	HandPortraitCellBounds->SetClipping(EWidgetClipping::ClipToBounds);
 	UOverlay* HandPortraitCell = WidgetTree->ConstructWidget<UOverlay>(
 		UOverlay::StaticClass(), TEXT("HandMicroPortraitCell"));
@@ -914,22 +867,14 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		== EFMCodexPlayerCardPresentationMode::InteractionChoice;
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	const FVector2D Dimensions = GetConfiguredDimensions();
-	const bool bFullNameCandidate = bHandMicro
-		&& FMCodexHandMicroDiagnostics::IsFullNameCandidateEnabled();
-	const bool bUnifiedNameSize = bHandMicro &&
-		(bHasDiagnosticUnifiedNameOverride
-			? bDiagnosticUnifiedNameEnabled
-			: FMCodexHandMicroDiagnostics::IsUnifiedNameSizeCandidateEnabled());
 	const float HandMicroCardHeight = bHandMicro
-		? Dimensions.Y : FMCodexHandMicroDiagnostics::BaselineCardHeight;
-	const float HandMicroNameSafeWidth = bFullNameCandidate
-		? FMCodexHandMicroDiagnostics::CandidateNameSafeWidth
-		: FMCodexHandMicroDiagnostics::ProductionNameSafeWidth;
+		? Dimensions.Y : FMCodexHandMicroDiagnostics::CardHeight;
+	const float HandMicroNameSafeWidth =
+		FMCodexHandMicroDiagnostics::NameSafeWidth;
 	CardBounds->SetWidthOverride(Dimensions.X);
 	CardBounds->SetHeightOverride(Dimensions.Y);
-	HandMicroIdentityBounds->SetWidthOverride(bFullNameCandidate
-		? FMCodexHandMicroDiagnostics::CandidateIdentityWidth
-		: FMCodexHandMicroDiagnostics::ProductionIdentityWidth);
+	HandMicroIdentityBounds->SetWidthOverride(
+		FMCodexHandMicroDiagnostics::IdentityWidth);
 	HandMicroIdentityBounds->SetHeightOverride(HandMicroCardHeight);
 	if (USizeBox* PortraitCellBounds = Cast<USizeBox>(
 		GetWidgetFromName(TEXT("HandMicroPortraitCellBounds"))))
@@ -957,17 +902,11 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	if (UOverlaySlot* IdentityTextSlot = HandMicroTextHierarchy != nullptr
 		? Cast<UOverlaySlot>(HandMicroTextHierarchy->Slot) : nullptr)
 	{
-		IdentityTextSlot->SetPadding(bFullNameCandidate
-			? FMargin(
-				FMCodexHandMicroDiagnostics::CandidateNamePaddingLeft,
-				7.0f,
-				FMCodexHandMicroDiagnostics::CandidateNamePaddingRight,
-				7.0f)
-			: FMargin(
-				FMCodexHandMicroDiagnostics::ProductionNamePaddingLeft,
-				7.0f,
-				FMCodexHandMicroDiagnostics::ProductionNamePaddingRight,
-				7.0f));
+		IdentityTextSlot->SetPadding(FMargin(
+			FMCodexHandMicroDiagnostics::NamePaddingLeft,
+			7.0f,
+			FMCodexHandMicroDiagnostics::NamePaddingRight,
+			7.0f));
 	}
 	CardFrame->SetPadding(bHandMicro ? FMargin(0.0f)
 		: bPitchMini ? FMargin(3.0f) : Style.GetSectionPadding());
@@ -1013,39 +952,10 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	FSlateFontInfo HandMicroNameFont = HandMicroIdentityText->GetFont();
 	HandMicroNameFont.Size = FMCodexPlayerCardWidget::GetHandMicroNameFontSize(
 		PrimaryHandMicroPlayerName, HandMicroNameFont, HandMicroNameSafeWidth,
-		bUnifiedNameSize
-			? FMCodexHandMicroDiagnostics::StandardNameSizeCandidate
-			: FMCodexHandMicroDiagnostics::ExistingMaximumNameFontSize);
-	FText ResolvedHandMicroPlayerName = PrimaryHandMicroPlayerName;
-	bool bRequiresEllipsis = !bFullNameCandidate && !bUnifiedNameSize &&
-		FMCodexPlayerCardWidget::DoesHandMicroNameRequireEllipsis(
-			PrimaryHandMicroPlayerName, HandMicroNameFont, HandMicroNameSafeWidth);
-	if (bRequiresEllipsis)
-	{
-		const FText FallbackAlias =
-			FFMCodexPlayerUIPresentationText::HandMicroFallbackPlayerName(
-				Presentation.CardId);
-		if (!FallbackAlias.IsEmpty())
-		{
-			FSlateFontInfo FallbackFont = HandMicroNameFont;
-			FallbackFont.Size =
-				FMCodexPlayerCardWidget::GetHandMicroNameFontSize(
-					FallbackAlias, FallbackFont, HandMicroNameSafeWidth,
-					FMCodexHandMicroDiagnostics::ExistingMaximumNameFontSize);
-			if (!FMCodexPlayerCardWidget::DoesHandMicroNameRequireEllipsis(
-				FallbackAlias, FallbackFont, HandMicroNameSafeWidth))
-			{
-				ResolvedHandMicroPlayerName = FallbackAlias;
-				HandMicroNameFont = FallbackFont;
-				bRequiresEllipsis = false;
-			}
-		}
-	}
-	HandMicroIdentityText->SetText(ResolvedHandMicroPlayerName);
+		FMCodexHandMicroDiagnostics::StandardNameFontSize);
+	HandMicroIdentityText->SetText(PrimaryHandMicroPlayerName);
 	HandMicroIdentityText->SetFont(HandMicroNameFont);
-	HandMicroIdentityText->SetTextOverflowPolicy(
-		bRequiresEllipsis
-			? ETextOverflowPolicy::Ellipsis : ETextOverflowPolicy::Clip);
+	HandMicroIdentityText->SetTextOverflowPolicy(ETextOverflowPolicy::Clip);
 	PitchMiniIdentityText->SetText(PlayerName);
 	TeamText->SetText(FFMCodexPlayerUIPresentationText::TeamName(
 		Presentation.CardId));
@@ -1096,13 +1006,6 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 		? nullptr : Art.Portrait.LoadSynchronous();
 	ResolvedHandMicroPortraitTexture = Art.HandMicroPortrait.IsNull()
 		? ResolvedPortraitTexture.Get() : Art.HandMicroPortrait.LoadSynchronous();
-#if !UE_BUILD_SHIPPING
-	if (PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro
-		&& DiagnosticHandMicroPortraitOverride != nullptr)
-	{
-		ResolvedHandMicroPortraitTexture = DiagnosticHandMicroPortraitOverride;
-	}
-#endif
 	ResolvedRoleIconTexture = Art.RoleIcon.IsNull()
 		? nullptr : Art.RoleIcon.LoadSynchronous();
 	ResolvedLongShotSkillIconTexture = Art.LongShotSkillIcon.IsNull()

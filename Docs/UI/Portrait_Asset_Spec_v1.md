@@ -2,7 +2,7 @@
 
 ## UE5 足球卡牌游戏 — Player Portrait Asset Specification v1
 
-**Status：Draft for Freeze**
+**Status：Hand Micro Core Production Contract — FROZEN / Commercial Polish Open**
 
 本文定义所有 Player Portrait 资产的视觉生产规范。
 
@@ -588,101 +588,65 @@ Portrait 出现争议时按以下优先级：
 
 ---
 
-# 26. Hand Micro Runtime Portrait Variant — Under Validation
+# 26. Frozen Runtime Portrait Contract
 
-Hand Micro 的 1536 × 1024 source 会缩小到 96 × 64。若 source 本身已有清楚的脸部、头发和球衣细节，必须先检查 import 与 sampling，不得直接重新生成或增加高强度锐化。
+Hand Micro 的生产 Portrait pipeline 已冻结：
 
-当前高分 Master Texture2D 的 working implementation 为：
+* 原始源图：`1536×1024` PNG，3:2。
+* 生产 review master：`1536×1024`。
+* UE runtime image：`192×128`。
+* 最终 UMG 显示：`96×64`，在 `96×68` cell 内垂直居中。
+* 映射：完整 `0–1` UV、scale `1.0`、无 per-player offset/transform。
+* 生成：原始 source-space 3:2 crop 后分别单次 Lanczos 输出 review/runtime，不串联 resize。
+* 禁止：生成式重建、重绘、额外 sharpen、halo、runtime crop、隐藏 ScaleBox。
+* UE Texture2D：UI / BC7 / Sharpen1 / Trilinear / Never Stream / sRGB / LOD Bias 0。
 
-* `Texture Group = UI`
-* `Compression = BC7`
-* `Mip Generation = Sharpen1`
-* `Filter = Trilinear`
-* `Never Stream = true`
-* `sRGB = true`
-* `LOD Bias = 0`
+当前 16 个生产绑定位于 `/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/`。Pitch Mini 与 Full Card 不读取该目录。
 
-这些是待真实 PIE 对比验证的 working values，不是 Frozen 产品真值。`Sharpen1` 是低强度 mip 生成选项，不代表允许额外的锐化材质、描边、glow 或高反差滤镜。
+# 27. Frozen 16-Player Source/Crop Inventory
 
-Hand Micro UMG 仍直接将完整 `3:2` brush 映射到 `96 × 64` Overlay slot；不得在中间加入隐藏的 `ScaleBox`、二次 resize 或随机 crop。Full Card 与 Pitch Mini 的 texture/import/render path 不受此 contract 影响。
+下表由 `Scripts/GenerateHandMicroPortraits.py` 机器可读地重复声明；source、crop 与焦点指标共同构成生产 provenance。
 
-自动化必须验证上述 import flags、1536 × 1024 source、完整 `0–1` UV、direct brush mapping 和独立 Hand Micro binding。最终清晰度、噪点、halo、过锐与 Reference A 的观感仍必须由真实 PIE 人眼确认。
+| Player | Source | Crop (L,T,R,B) | Head | Eyes | Chin | Shoulders |
+|---|---|---:|---:|---:|---:|---:|
+| David Raya | `06` | `(174,34,1362,826)` | 5.1% | 40.7% | 72.7% | 94.2% |
+| William Saliba | `06` | `(183,46,1353,826)` | 5.0% | 36.4% | 71.0% | 87.1% |
+| Bukayo Saka | `06` | `(228,40,1308,760)` | 5.0% | 38.9% | 70.1% | 94.4% |
+| Martin Ødegaard | `06` | `(168,15,1368,815)` | 5.0% | 41.9% | 74.6% | 89.4% |
+| Gianluigi Donnarumma | `06` | `(183,31,1353,811)` | 5.0% | 39.6% | 72.9% | 88.3% |
+| Erling Haaland | `06` | `(228,46,1308,766)` | 5.0% | 37.4% | 70.7% | 93.6% |
+| Declan Rice | `06` | `(183,25,1353,805)` | 5.1% | 36.4% | 73.2% | 87.6% |
+| Gabriel Martinelli | `Validation_05` | `(153,45,1383,865)` | 5.5% | 37.2% | 70.9% | 84.1% |
+| Gabriel Magalhaes | `Validation_05` | `(168,50,1368,850)` | 5.1% | 38.4% | 73.1% | 83.1% |
+| Mikel Merino | `Validation_05` | `(168,35,1368,835)` | 5.0% | 40.0% | 74.4% | 83.1% |
+| Phil Foden | `06` | `(228,35,1308,755)` | 5.4% | 39.7% | 71.5% | 87.5% |
+| Rodri | `06` | `(198,45,1338,805)` | 5.0% | 38.8% | 72.8% | 84.9% |
+| Ruben Dias | `06` | `(228,45,1308,765)` | 5.3% | 37.5% | 69.9% | 85.4% |
+| Josko Gvardiol | `Validation_05` | `(228,35,1308,755)` | 4.9% | 39.3% | 74.3% | 89.6% |
+| Bernardo Silva | `Validation_05` | `(183,40,1353,820)` | 4.9% | 39.5% | 75.0% | 82.7% |
+| Jeremy Doku | `Validation_05` | `(168,30,1368,830)` | 4.8% | 40.2% | 73.8% | 81.2% |
 
-Master 与 Runtime Variant 是两个独立概念：
+各 crop 必须严格为 3:2 且在 source bounds 内。Frozen SHA-256 保存在 canonical generator 中，保证重新生成不会无声改变已验收像素。
 
-* Portrait Master：当前 1536 × 1024、3:2、构图来源。
-* Runtime Portrait Variant：从同一 Master 以确定性离线流程生成的诊断候选。
-* 当前 `192 × 128` 只代表 `RUNTIME PORTRAIT DIAGNOSTIC CANDIDATE`，不是全量生产规范，也不得绑定到普通 Hand Micro、Pitch Mini 或 Full Card。
-* 是否采用 Runtime Variant 必须等待多球员真实 PIE 对比，当前不得 Freeze 分辨率或批量替换生产绑定。
+# 28. Adding a New Hand Micro Portrait
 
----
+1. 先准备符合本规范第 1–25 节的 `1536×1024` 3:2 PNG；不得覆盖现有生产 source。
+2. 在 `Scripts/GenerateHandMicroPortraits.py` 的 `CANDIDATES` 增加一条显式记录：team、player、source variant、3:2 crop、head/eyes/chin/shoulders。
+3. 运行 `python Scripts/GenerateHandMicroPortraits.py`，人工检查 review master 与最终 `96×64` 表现；不得以 runtime Widget transform 修图。
+4. 视觉批准后，将新 master/runtime SHA-256 写入 `EXPECTED_HASHES` 并再次运行生成器，确认 deterministic PASS。
+5. 运行 Unreal Python `Scripts/ImportHandMicroPortraits.py`，确保新 asset 名称进入明确的 `ASSET_NAMES` 清单并采用固定 Texture2D 设置。
+6. 在 `FFMCodexPlayerUIAssetReferences` 添加 Hand-Micro-only binding；不要更改 Full Card 或 Pitch Mini binding。
+7. 运行 `Scripts/ValidateHandMicroPortraits.py` 的 fresh-process audit，并更新 production contract automation 的 inventory 数量与绑定数量。
+8. 在真实 PIE 中检查完整 Rack：完整头部、眼线节奏、双肩/球衣、Name 层级、Ghost 与无滚动边界。只有人工批准后才能称为 production。
 
-# 27. Hand Micro Art-Conformance Candidate — Under User PIE Validation
+不能通过复制 Developer candidate UAsset、per-player UV、RenderTransform、随机 crop 或默认 ellipsis 绕过此流程。
 
-本阶段在现有 `1536 × 1024` Hand Micro Master 内进行确定性的 source-space 重构图，只验证构图一致性，不生成新人物、不重绘、不锐化，也不改变球员 Identity、球衣或背景风格。
+# 29. Production Ownership and Future Art
 
-当前六名代表球员的 Draft composition band：
+`HAND MICRO CORE PRODUCTION CONTRACT / FROZEN AND CONSOLIDATED`
 
-* 水平主体锚点：约 `50%`
-* Head Top：约 `5–8%`
-* Eye Line：约 `32–37%`
-* Chin：约 `57–64%`
-* Shoulder / Jersey Entry：约 `75–82%`
-* 必须完整保留头部、脸、颈部、双肩和上部球衣；不得放大成 face-only crop。
+Core 生产真值由本规范、`HandMicro_Visual_Spec_v1.md`、canonical generator/import/validator、16 个 production Texture2D binding 和 durable automation 共同维护。
 
-当前候选使用的原始像素裁切框与相对 source scale：
+`HAND MICRO COMMERCIAL POLISH / READY FOR NEXT STAGE`
 
-| Player | Source crop `(L,T,R,B)` | Scale |
-|---|---:|---:|
-| Raya | `(63,12,1473,952)` | `1.0894×` |
-| Saliba | `(70,18,1465,948)` | `1.1011×` |
-| Saka | `(76,18,1459,940)` | `1.1106×` |
-| Ødegaard | `(49,0,1486,958)` | `1.0689×` |
-| Donnarumma | `(63,12,1473,952)` | `1.0894×` |
-| Haaland | `(76,20,1459,942)` | `1.1106×` |
-
-每个裁切框保持 `3:2`，直接从原始 Master 以 Lanczos 下采样到 `192 × 128`。禁止二次缩放链、生成式重建、修脸、描边、halo、额外 sharpen 或运行时 per-player transform。
-
-这些数值是六人候选的可复现 provenance，不是全量 Portrait Frozen 标准。现有 Runtime192 C 仍是技术基线；新 D 是 art-conformed composition candidate。是否采用 D 必须经过真实 PIE 对比确认，且不得自动替换普通 Hand Micro、Pitch Mini 或 Full Card 的生产绑定。
-
----
-
-# 28. Hand Micro Portrait Presence Rebalance D2 — Isolated Candidate
-
-D2 从上述 D1 裁切继续做单次、居中的 3:2 source-space reframe，目标是在 `96 × 64` 中提高头部/脸部存在感并降低肩部主导感。输入仍为既有 `_HandMicro_06.png` Master；输出为 `1536 × 1024` review view 与直接 Lanczos 下采样的 `192 × 128` Runtime192。中间不经过第二次 resize。
-
-| Player | D1 crop `(L,T,R,B)` | D2 crop `(L,T,R,B)` | Presence gain |
-|---|---:|---:|---:|
-| Raya | `(63,12,1473,952)` | `(93,20,1443,920)` | `4.4%` |
-| Saliba | `(70,18,1465,948)` | `(100,27,1435,917)` | `4.5%` |
-| Saka | `(76,18,1459,940)` | `(108,23,1428,903)` | `4.8%` |
-| Ødegaard | `(49,0,1486,958)` | `(85,0,1450,910)` | `5.3%` |
-| Donnarumma | `(63,12,1473,952)` | `(93,16,1443,916)` | `4.4%` |
-| Haaland | `(76,20,1459,942)` | `(108,20,1428,900)` | `4.8%` |
-
-D2 的代表性构图带为：Head Top `6.0–7.0%`、Eye Line `33.5–38.5%`、Chin `59.3–67.3%`、Shoulder/Jersey Entry `78.2–84.4%`。这些是候选观测值，不取代本规范的全量资产目标；Ødegaard / Raya 等超出通用带的局部值必须由真实 PIE 结合完整头部与球衣保留情况判断。
-
-六张 D2 Runtime192 必须保持 `192 × 128`、UI、BC7、Sharpen1、Trilinear、Never Stream、sRGB、LOD Bias 0，与 D1 使用完整 `0–1` UV、scale `1.0` 和同一 production `96 × 64` portrait subtree。D2 资产位于 Developer-only 隔离目录，不进入 production asset references，也不影响 Pitch Mini / Full Card。
-
-此阶段状态为 `READY FOR USER PIE VALIDATION`，不是视觉批准、production adoption 或 Frozen。
-
----
-
-# 29. Hand Micro Reference-A D3 — Isolated Candidate
-
-D3 继续只使用既有 `_HandMicro_06.png` 1536×1024 Master，并为六名 Golden 球员分别定义确定性的 3:2 source-space crop。目标是更大的头/脸、更晚出现的肩部与更少的胸部，同时保留完整头顶、脸、下巴、颈部和可辨识球衣下轮廓。
-
-| Player | D2 crop `(L,T,R,B)` | D3 crop `(L,T,R,B)` | Presence gain vs D2 | Head top | Chin | Shoulder entry |
-|---|---:|---:|---:|---:|---:|---:|
-| Raya | `(93,20,1443,920)` | `(174,34,1362,826)` | `13.6%` | `5.1%` | `72.7%` | `94.2%` |
-| Saliba | `(100,27,1435,917)` | `(183,46,1353,826)` | `14.1%` | `5.0%` | `71.0%` | `87.1%` |
-| Saka | `(108,23,1428,903)` | `(228,40,1308,760)` | `22.2%` | `5.0%` | `70.1%` | `94.4%` |
-| Ødegaard | `(85,0,1450,910)` | `(168,15,1368,815)` | `13.7%` | `5.0%` | `74.6%` | `89.4%` |
-| Donnarumma | `(93,16,1443,916)` | `(183,31,1353,811)` | `15.4%` | `5.0%` | `72.9%` | `88.3%` |
-| Haaland | `(108,20,1428,900)` | `(228,46,1308,766)` | `22.2%` | `5.0%` | `70.7%` | `93.6%` |
-
-Saka 与 Haaland 的 source head-to-body 比例要求更强的个体化裁切，因此不强行限制在通用 +10–15% 预期内。上述数值是可复现的候选 provenance，不是仅凭指标得出的美术批准。
-
-生成管线保持：approved Master → 单次 3:2 crop → 1536×1024 review view 与直接 Lanczos 192×128 RGB PNG → UE Texture2D（UI / BC7 / Sharpen1 / Trilinear / Never Stream / sRGB / LOD Bias 0）→ production Hand Micro portrait subtree → 精确 `96×64` image。禁止生成式重建、重绘、额外锐化、二次 resize 链、runtime UV trick、per-player Widget scale 或 Y offset。
-
-D1 与 D2 资产和诊断页必须保留；D3 位于 Developer-only 隔离目录，不进入 `FMCodexPlayerUIAssetReferences` production binding。Page 6–8 每页两人，左 D2、右 D3，标签在 portrait 外部。只有真实 PIE 对 Reference A 的人工判断可以批准 D3；当前状态为 `REFERENCE-A HEAD/SHOULDER RATIO CANDIDATE — USER PIE VALIDATION REQUIRED`。
+未来商业美术可以在保持同一 pipeline、几何、焦点安全和 runtime 设置的前提下替换更高质量或已授权 source。任何改变 source/crop/hash 的工作都必须走第 28 节，不得复活历史 A/B/C、D1/D2/D3 或 Developer override。

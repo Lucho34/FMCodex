@@ -225,75 +225,17 @@ private:
 	TObjectPtr<UTextBlock> HandoffReadyText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UBorder> HandMicroSharpnessDiagnosticSurface;
+	TObjectPtr<UBorder> HandMicroProductionReviewSurface;
 
 	UPROPERTY(Transient)
-	TObjectPtr<USizeBox> HandMicroSharpnessDiagnosticBounds;
+	TObjectPtr<USizeBox> HandMicroProductionReviewBounds;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroSharpnessRayaPage;
+	TObjectPtr<UWidget> HandMicroProductionReviewPortraitsPage;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroSharpnessRepresentativePage;
+	TObjectPtr<UWidget> HandMicroProductionReviewTypographyPage;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroArtConformancePage2;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroArtConformancePage3;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroPortraitRebalancePage4;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroPortraitRebalancePage5;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroReferenceAPage6;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroReferenceAPage7;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroReferenceAPage8;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroTypographyPage9;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UWidget> HandMicroHeightPage10;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UImage> HandMicroSharpnessDirectImage;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UFMCodexPlayerCardWidget> HandMicroSharpnessProductionCard;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UFMCodexPlayerCardWidget> HandMicroSharpnessRuntimeCard;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTexture2D> HandMicroSharpnessHighResolutionTexture;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTexture2D> HandMicroSharpnessRuntimeTexture;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UFMCodexPlayerCardWidget>>
-		HandMicroRepresentativeHighResolutionCards;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroRepresentativeRuntimeCards;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroConformanceCurrentCards;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroConformanceCandidateCards;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroRebalancePreviousCards;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroRebalanceCandidateCards;
+	TObjectPtr<UWidget> HandMicroProductionReviewLayoutPage;
 };

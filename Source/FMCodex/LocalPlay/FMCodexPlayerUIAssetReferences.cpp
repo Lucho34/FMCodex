@@ -83,49 +83,49 @@ FFMCodexPlayerUIAssetReferences::FFMCodexPlayerUIAssetReferences()
 	PrototypeHandMicroPortraits = {
 		{ TEXT("Prototype.Arsenal.BukayoSaka"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_BukayoSaka_HandMicro_06.T_Prototype_Arsenal_BukayoSaka_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_Arsenal_BukayoSaka_HandMicro_ApprovedRuntime192.T_Prototype_Arsenal_BukayoSaka_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.Arsenal.MartinOdegaard"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_MartinOdegaard_HandMicro_06.T_Prototype_Arsenal_MartinOdegaard_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_Arsenal_MartinOdegaard_HandMicro_ApprovedRuntime192.T_Prototype_Arsenal_MartinOdegaard_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.Arsenal.DeclanRice"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_DeclanRice_HandMicro_06.T_Prototype_Arsenal_DeclanRice_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_Arsenal_DeclanRice_HandMicro_ApprovedRuntime192.T_Prototype_Arsenal_DeclanRice_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.Arsenal.WilliamSaliba"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_WilliamSaliba_HandMicro_06.T_Prototype_Arsenal_WilliamSaliba_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_Arsenal_WilliamSaliba_HandMicro_ApprovedRuntime192.T_Prototype_Arsenal_WilliamSaliba_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.Arsenal.DavidRaya"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_DavidRaya_HandMicro_06.T_Prototype_Arsenal_DavidRaya_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_Arsenal_DavidRaya_HandMicro_ApprovedRuntime192.T_Prototype_Arsenal_DavidRaya_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.ManchesterCity.ErlingHaaland"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_ErlingHaaland_HandMicro_06.T_Prototype_ManchesterCity_ErlingHaaland_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_ManchesterCity_ErlingHaaland_HandMicro_ApprovedRuntime192.T_Prototype_ManchesterCity_ErlingHaaland_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.ManchesterCity.PhilFoden"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_PhilFoden_HandMicro_06.T_Prototype_ManchesterCity_PhilFoden_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_ManchesterCity_PhilFoden_HandMicro_ApprovedRuntime192.T_Prototype_ManchesterCity_PhilFoden_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.ManchesterCity.Rodri"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_Rodri_HandMicro_06.T_Prototype_ManchesterCity_Rodri_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_ManchesterCity_Rodri_HandMicro_ApprovedRuntime192.T_Prototype_ManchesterCity_Rodri_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.ManchesterCity.RubenDias"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_RubenDias_HandMicro_06.T_Prototype_ManchesterCity_RubenDias_HandMicro_06"))) },
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_ManchesterCity_RubenDias_HandMicro_ApprovedRuntime192.T_Prototype_ManchesterCity_RubenDias_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_GianluigiDonnarumma_HandMicro_06.T_Prototype_ManchesterCity_GianluigiDonnarumma_HandMicro_06"))) }
+				"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_ManchesterCity_GianluigiDonnarumma_HandMicro_ApprovedRuntime192.T_Prototype_ManchesterCity_GianluigiDonnarumma_HandMicro_ApprovedRuntime192"))) }
 	};
 
 	HandMicroValidationPortraits = {
 		{ TEXT("Demo.A.Outfield.01"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-			"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_GabrielMartinelli_HandMicro_Validation_05.T_Prototype_Arsenal_GabrielMartinelli_HandMicro_Validation_05"))) },
+			"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_Arsenal_GabrielMartinelli_HandMicro_ApprovedRuntime192.T_Prototype_Arsenal_GabrielMartinelli_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Demo.A.Outfield.02"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-			"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_GabrielMagalhaes_HandMicro_Validation_05.T_Prototype_Arsenal_GabrielMagalhaes_HandMicro_Validation_05"))) },
+			"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_Arsenal_GabrielMagalhaes_HandMicro_ApprovedRuntime192.T_Prototype_Arsenal_GabrielMagalhaes_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Demo.A.Outfield.03"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-			"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_MikelMerino_HandMicro_Validation_05.T_Prototype_Arsenal_MikelMerino_HandMicro_Validation_05"))) },
+			"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_Arsenal_MikelMerino_HandMicro_ApprovedRuntime192.T_Prototype_Arsenal_MikelMerino_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Demo.B.Outfield.01"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_JoskoGvardiol_HandMicro_Validation_05.T_Prototype_ManchesterCity_JoskoGvardiol_HandMicro_Validation_05"))) },
+			"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_ManchesterCity_JoskoGvardiol_HandMicro_ApprovedRuntime192.T_Prototype_ManchesterCity_JoskoGvardiol_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Demo.B.Outfield.02"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_BernardoSilva_HandMicro_Validation_05.T_Prototype_ManchesterCity_BernardoSilva_HandMicro_Validation_05"))) },
+			"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_ManchesterCity_BernardoSilva_HandMicro_ApprovedRuntime192.T_Prototype_ManchesterCity_BernardoSilva_HandMicro_ApprovedRuntime192"))) },
 		{ TEXT("Demo.B.Outfield.03"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_JeremyDoku_HandMicro_Validation_05.T_Prototype_ManchesterCity_JeremyDoku_HandMicro_Validation_05"))) }
+			"/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/T_Prototype_ManchesterCity_JeremyDoku_HandMicro_ApprovedRuntime192.T_Prototype_ManchesterCity_JeremyDoku_HandMicro_ApprovedRuntime192"))) }
 	};
 
 	// Presentation-only focal alignment. The crop height stays fixed and

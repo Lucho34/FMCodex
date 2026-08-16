@@ -65,9 +65,6 @@ public:
 	UTexture2D* GetResolvedRoleIconTexture() const;
 	UTexture2D* GetResolvedLongShotSkillIconTexture() const;
 	FVector2D GetConfiguredDimensions() const;
-	void SetDiagnosticHandMicroPortraitOverride(UTexture2D* InTexture);
-	void SetDiagnosticHandMicroUnifiedNameOverride(bool bEnabled);
-	void SetDiagnosticHandMicroHeight68Override(bool bEnabled);
 
 	void ConfigureDeploymentDrag(FName CardId, bool bGoalkeeper);
 	void ClearDeploymentDrag();
@@ -230,9 +227,6 @@ private:
 	TObjectPtr<UTexture2D> ResolvedHandMicroPortraitTexture;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTexture2D> DiagnosticHandMicroPortraitOverride;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> ResolvedRoleIconTexture;
 
 	UPROPERTY(Transient)
@@ -270,8 +264,4 @@ private:
 	FName DeploymentDragCardId = NAME_None;
 	bool bDeploymentDragEnabled = false;
 	bool bDeploymentDragGoalkeeper = false;
-	bool bHasDiagnosticUnifiedNameOverride = false;
-	bool bDiagnosticUnifiedNameEnabled = false;
-	bool bHasDiagnosticHeight68Override = false;
-	bool bDiagnosticHeight68Enabled = false;
 };

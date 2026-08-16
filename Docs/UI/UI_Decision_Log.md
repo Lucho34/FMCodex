@@ -2,6 +2,23 @@
 
 This log records approved player-facing UI decisions separately from gameplay canonical rules.
 
+## 2026-08-16 — Hand Micro core production contract frozen and consolidated
+
+- Stage `6.13.1.3.10.6` closes the Hand Micro design-experiment infrastructure after the 16-player `.10.5` rollout passed engineering validation and real user PIE review. The conclusion is `HAND MICRO CORE PRODUCTION CONTRACT / FROZEN AND CONSOLIDATED`; commercial-quality source-art replacement remains `HAND MICRO COMMERCIAL POLISH / READY FOR NEXT STAGE`.
+- Normal production is now one unconditional path: `220×68`, `96×68` portrait cell with centered `96×64` image, `120×68` identity, `4×68` rarity, `16→12` real-measurement shrink-only Name, complete `加布里埃尔`, slash Position display, `2×10` no-scroll/no-page Rack, original-slot Ghost, and `476 / 968 / 476` macro widths.
+- Historical A/B/C, Runtime192 diagnostic, D1/D2/D3, 64/68, maximise-to-fit, full-name candidate and portrait override CVars/pages/assets/tests/scripts are removed. Shipping and normal PIE no longer depend on experiment selection. A non-Shipping production review surface remains opt-in with exactly three pages: 16 portraits, typography stress, and real `2×10`/Ghost layout.
+- The canonical production toolchain is `GenerateHandMicroPortraits.py`, `ImportHandMicroPortraits.py`, and `ValidateHandMicroPortraits.py`. It explicitly records 16 source/crop/focal entries, produces deterministic review/runtime images by one Lanczos resize, freezes output hashes, imports `192×128` UI/BC7/Sharpen1/Trilinear/Never Stream/sRGB/LOD0 assets, and forbids runtime per-player transforms.
+- Full Card, Pitch Mini, Pitch, Header, Dock, Tactical Badge, Resolution, Gameplay, Authority, legality, CoreRules and MatchPlayRuntime remain outside this decision. Stage `.11`, `6.13.2`, and Stage 7 are not started here.
+
+## 2026-08-16 — Hand Micro approved baseline rollout validation
+
+- User PIE has approved the Golden D3 portrait direction, `16 px` standard shrink-only Name rule (`12 px` floor), `220×68` geometry, `96 / 120 / 4` horizontal allocation, full `加布里埃尔`, and Runtime192 technical direction. These decisions are not reopened by Stage `.10.5`.
+- The normal Hand Micro path now uses `220×68`, with a `96×68` portrait cell containing one centered undistorted `96×64` image, `120×68` Identity, and `4×68` rarity. Short names do not exceed 16 px; real Slate measurement shrinks only when required. Shipping uses the approved values while development CVars preserve reversible legacy comparisons.
+- The complete current eligible inventory is 16 portrait-bearing prototype players. Six Golden Runtime192 outputs are SHA-256-identical to approved D3; ten additional players receive deterministic centered 3:2 source crops from existing `_06` / `Validation_05` masters. All 16 production textures use UI / BC7 / Sharpen1 / Trilinear / Never Stream / sRGB / LOD Bias 0 and full `0–1` UV through the existing `96×64` Hand Micro subtree.
+- Review Page 11 presents the ten expanded players in one bounded 2×5 surface. Prior diagnostic Pages 0–10 and D1/D2/D3 overrides remain available and non-Shipping. The normal production binding is no longer a speculative candidate.
+- The 2×10 racks remain no-scroll and no-pagination; `10×68 + 9×8 = 752 px` fits the unchanged 880 px Main Area. Header, Dock, Pitch macro geometry, Full Card, Pitch Mini, Gameplay, CoreRules, MatchPlayRuntime and Authority remain isolated.
+- Product state: Hand Micro Portrait `APPROVED GOLDEN DIRECTION — ROLLOUT IN PROGRESS`; Name `16px STANDARD SHRINK-ONLY — APPROVED`; Geometry `220×68 APPROVED DIRECTION`; Runtime192 `PREFERRED TECHNICAL DIRECTION`; Gabriel `APPROVED / CLOSED`; Hand Micro `ROLLOUT VALIDATION IN PROGRESS — NOT YET CLOSED`. Stage `.10.5` is current; `.11` and `6.13.2` are not started.
+
 ## 2026-08-16 — Reference-A density, typography, and D3 portrait candidates
 
 - `220 px` width is stable and not reopened. `220×64` remains the reachable existing baseline; `220×68` is a default-off, non-Shipping density candidate. Both retain `96 Portrait + 120 Identity + 4 Rarity`; in the 68 candidate the portrait cell becomes `96×68` while the actual centered portrait image remains undistorted at `96×64`.

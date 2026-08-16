@@ -126,11 +126,8 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 	RenderedCellCount = 0;
 
 	const int32 ColumnCount = FMath::Max(1, Presentation.ColumnCount);
-	const float CardWidth =
-		FMCodexHandMicroDiagnostics::IsFullNameCandidateEnabled()
-			? FMCodexHandMicroDiagnostics::CandidateCardWidth
-			: FMCodexHandMicroDiagnostics::ProductionCardWidth;
-	const float CardHeight = FMCodexHandMicroDiagnostics::GetCardHeight();
+	const float CardWidth = FMCodexHandMicroDiagnostics::CardWidth;
+	const float CardHeight = FMCodexHandMicroDiagnostics::CardHeight;
 	for (int32 Index = 0; Index < Presentation.Cells.Num(); ++Index)
 	{
 		const FFMCodexUMGCardRackCellViewModel& Cell = Presentation.Cells[Index];
@@ -274,19 +271,6 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 						TEXT("StableRackCard%d"), Cell.StableIndex)));
 			Card->RefreshFromPresentation(
 				Cell.Card, EFMCodexPlayerCardPresentationMode::HandMicro);
-#if !UE_BUILD_SHIPPING
-			if (FMCodexHandMicroDiagnostics::IsArtConformanceOverrideEnabled())
-			{
-				const FString CandidatePath =
-					FMCodexHandMicroDiagnostics::
-						GetArtConformanceCandidateTexturePath(Cell.Card.CardId);
-				if (!CandidatePath.IsEmpty())
-				{
-					Card->SetDiagnosticHandMicroPortraitOverride(
-						LoadObject<UTexture2D>(nullptr, *CandidatePath));
-				}
-			}
-#endif
 			if (Presentation.bLocalRack && Cell.bDeploymentDraggable)
 			{
 				Card->ConfigureDeploymentDrag(Cell.Card.CardId, Cell.bGoalkeeper);
