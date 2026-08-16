@@ -131,8 +131,8 @@ void UFMCodexPitchSlotWidget::BuildWidgetTree()
 
 	USizeBox* SlotSize = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("CanonicalPitchSlotSize"));
-	SlotSize->SetMinDesiredWidth(160.0f);
-	SlotSize->SetMinDesiredHeight(138.0f);
+	SlotSize->SetWidthOverride(148.0f);
+	SlotSize->SetHeightOverride(148.0f);
 	WidgetTree->RootWidget = SlotSize;
 
 	SlotBorder = WidgetTree->ConstructWidget<UBorder>(
@@ -140,7 +140,7 @@ void UFMCodexPitchSlotWidget::BuildWidgetTree()
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	Style.ApplyBorder(*SlotBorder,
 		EFMCodexPlayerUIColorRole::EmptyPitchSlot,
-		Style.GetSectionPadding());
+		FMargin(4.0f));
 	SlotSize->AddChild(SlotBorder);
 
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
@@ -158,6 +158,8 @@ void UFMCodexPitchSlotWidget::BuildWidgetTree()
 	ContextText->SetAutoWrapText(true);
 	Style.ApplyText(*ContextText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToVerticalBox(ContextText);
+	SlotLabelText->SetVisibility(ESlateVisibility::Collapsed);
+	ContextText->SetVisibility(ESlateVisibility::Collapsed);
 
 	TargetStateText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("DeploymentTargetState"));
@@ -208,7 +210,7 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 		TargetColorRole = EFMCodexPlayerUIColorRole::Danger;
 		break;
 	case EFMCodexUMGDeploymentTargetState::Occupied:
-		TargetLabel = FFMCodexPlayerUIPresentationText::OccupiedDeploymentTarget();
+		TargetLabel = FText::GetEmpty();
 		TargetColorRole = EFMCodexPlayerUIColorRole::OccupiedPitchSlot;
 		break;
 	case EFMCodexUMGDeploymentTargetState::Unavailable:
@@ -220,8 +222,8 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 	}
 	TargetStateText->SetText(TargetLabel);
 	TargetStateText->SetVisibility(
-		VisibleTargetState
-			== EFMCodexUMGDeploymentTargetState::Neutral
+		VisibleTargetState == EFMCodexUMGDeploymentTargetState::Neutral
+			|| VisibleTargetState == EFMCodexUMGDeploymentTargetState::Occupied
 			? ESlateVisibility::Collapsed
 			: ESlateVisibility::HitTestInvisible);
 	SlotBorder->SetBrushColor(Style.GetColor(TargetColorRole));
@@ -235,7 +237,7 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 			ResolvedCardClass, TEXT("OccupiedPitchCard"));
 		CardWidget->RefreshFromPresentation(
 			Presentation.Card,
-			EFMCodexPlayerCardPresentationMode::PitchCompact);
+			EFMCodexPlayerCardPresentationMode::PitchMini);
 		ContentBody->AddChildToVerticalBox(CardWidget);
 	}
 	else
@@ -247,6 +249,7 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 		EmptyStateText->SetAutoWrapText(true);
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*EmptyStateText, EFMCodexPlayerUITextRole::Secondary);
+		EmptyStateText->SetVisibility(ESlateVisibility::Collapsed);
 		ContentBody->AddChildToVerticalBox(EmptyStateText);
 	}
 }

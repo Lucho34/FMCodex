@@ -651,6 +651,21 @@ void AFMCodexLocalMatchPlayerController::UpdateHotSeatHandoff(
 		NewInteractionView, HotSeatHandoffState);
 }
 
+void AFMCodexLocalMatchPlayerController::AutoAcknowledgeSuccessfulDeployment(
+	const FString& CommandName)
+{
+	if (CommandName != TEXT("DeployOrdinary")
+		&& CommandName != TEXT("DeployGoalkeeper"))
+	{
+		return;
+	}
+
+	// Authority has already accepted the typed deployment and RefreshPresentation
+	// has projected its next actor. Reveal that actor immediately for hot-seat play.
+	FFMCodexLocalMatchHotSeatHandoffPolicy::Acknowledge(
+		InteractionView, HotSeatHandoffState);
+}
+
 void FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(
 	const FFMCodexLocalMatchInteractionView& NewInteractionView,
 	FFMCodexLocalMatchHotSeatHandoffState& HandoffState)
@@ -1389,6 +1404,11 @@ void AFMCodexLocalMatchPlayerController::RefreshPlayerMatchScreen()
 	{
 		return;
 	}
+	const EInitialTurnOrderPlayer LocalViewerSide =
+		HotSeatHandoffState.LastRevealedHumanPlayer
+			== EInitialTurnOrderPlayer::None
+				? EInitialTurnOrderPlayer::PlayerA
+				: HotSeatHandoffState.LastRevealedHumanPlayer;
 	PlayerMatchScreen->RefreshFromPresentation(
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			InteractionView,
@@ -1396,7 +1416,8 @@ void AFMCodexLocalMatchPlayerController::RefreshPlayerMatchScreen()
 			LastDiagnostic.Message,
 			HotSeatHandoffState.bAwaitingAcknowledgement,
 			FFMCodexLocalMatchInteractionViewBuilder::ToString(
-				HotSeatHandoffState.PendingPlayer)));
+				HotSeatHandoffState.PendingPlayer),
+			LocalViewerSide));
 }
 
 TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()

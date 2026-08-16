@@ -10,8 +10,14 @@ struct FFMCodexPlayerUICardArtReferences
 	FName ArtIdentity = NAME_None;
 	TSoftObjectPtr<UTexture2D> CardFrame;
 	TSoftObjectPtr<UTexture2D> Portrait;
+	/** Dedicated horizontal portrait variant used only by Hand Micro. */
+	TSoftObjectPtr<UTexture2D> HandMicroPortrait;
 	TSoftObjectPtr<UTexture2D> RoleIcon;
 	TSoftObjectPtr<UTexture2D> LongShotSkillIcon;
+	/** Presentation-only top edge for the Hand Micro portrait UV window. */
+	float HandMicroPortraitTop = 0.06f;
+	/** Presentation-only Hand Micro crop height; width remains the full asset. */
+	float HandMicroPortraitUVHeight = 0.426667f;
 };
 
 /**
@@ -39,5 +45,8 @@ private:
 	TSoftObjectPtr<UTexture2D> GoldenRoleIcon;
 	TSoftObjectPtr<UTexture2D> GoldenLongShotSkillIcon;
 	TMap<FName, TSoftObjectPtr<UTexture2D>> PrototypePortraits;
+	TMap<FName, TSoftObjectPtr<UTexture2D>> PrototypeHandMicroPortraits;
+	TMap<FName, TSoftObjectPtr<UTexture2D>> HandMicroValidationPortraits;
+	TMap<FName, float> HandMicroPortraitTops;
 	TSet<FName> PrototypeForwardRoleCards;
 };

@@ -239,6 +239,12 @@ private:
 	TObjectPtr<UBorder> ActionHeaderRegion;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> CandidateRegion;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> ChoiceRegion;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> KickerText;
 
 	UPROPERTY(Transient)

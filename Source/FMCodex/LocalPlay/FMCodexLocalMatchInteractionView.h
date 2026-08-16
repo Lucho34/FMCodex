@@ -67,6 +67,7 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	FString StatusSummaryLabel;
 	FString RarityLabel;
 	FString DeveloperReferenceLabel;
+	int32 RackSortGroup = 3;
 	bool bGoalkeeper = false;
 	bool bAvailable = false;
 	bool bUsed = false;
@@ -178,6 +179,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	TArray<FFMCodexLocalMatchDeploymentGroup> DeploymentGroups;
 	TArray<FFMCodexLocalMatchSelectionOption> SelectionOptions;
 	TArray<FFMCodexLocalMatchPitchRegionView> PitchRegions;
+	TArray<FFMCodexLocalMatchCardView> PlayerACardRoster;
+	TArray<FFMCodexLocalMatchCardView> PlayerBCardRoster;
 	TArray<EMatchPlayElectiveBranchIntent> BranchIntentOptions;
 	TArray<EMatchPlayThroughBallOneOnOneShotChoice> OneOnOneOptions;
 	TArray<FFMCodexLocalMatchRollView> AcceptedRolls;

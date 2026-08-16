@@ -83,6 +83,7 @@ struct FMCODEX_API FFMCodexPlayerUIStyle
 	FLinearColor GetColor(EFMCodexPlayerUIColorRole Role) const;
 	int32 GetFontSize(EFMCodexPlayerUITextRole Role) const;
 	FLinearColor GetPlayerAccentColor(const FString& PresentationLabel) const;
+	FLinearColor GetRarityAccentColor(const FString& CanonicalLabel) const;
 	FLinearColor GetStatusBadgeColor(const FString& PresentationLabel) const;
 	FLinearColor GetTerminalColor(const FString& PresentationLabel) const;
 	FButtonStyle MakeButtonStyle(EFMCodexPlayerUIActionRole Role) const;

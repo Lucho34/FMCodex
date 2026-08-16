@@ -8,7 +8,7 @@
 #include "FMCodexPitchWidget.generated.h"
 
 class UFMCodexPitchSlotWidget;
-class UVerticalBox;
+class UCanvasPanel;
 class SWidget;
 
 DECLARE_MULTICAST_DELEGATE_ThreeParams(
@@ -56,7 +56,7 @@ private:
 	TSubclassOf<UFMCodexPitchSlotWidget> PitchSlotWidgetClass;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UVerticalBox> FieldBody;
+	TObjectPtr<UCanvasPanel> FieldCanvas;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UFMCodexPitchSlotWidget>> RenderedSlotWidgets;

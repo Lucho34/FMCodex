@@ -69,6 +69,154 @@ FText FFMCodexPlayerUIPresentationText::PlayerName(
 		? UnknownCard() : FText::FromString(FallbackLabel);
 }
 
+FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+	const FString& CanonicalLabel)
+{
+	if (CanonicalLabel.IsEmpty()) return FText::GetEmpty();
+	if (CanonicalLabel == TEXT("LOCAL MATCH")) return LOCTEXT("MatchLocal", "\u672C\u5730\u5BF9\u6218");
+	if (CanonicalLabel == TEXT("LIVE MATCH")) return LOCTEXT("MatchLive", "\u6BD4\u8D5B\u8FDB\u884C\u4E2D");
+	if (CanonicalLabel == TEXT("PLAYER ACTION") || CanonicalLabel == TEXT("HUMAN INPUT")) return LOCTEXT("PlayerAction", "\u73A9\u5BB6\u64CD\u4F5C");
+	if (CanonicalLabel == TEXT("SYSTEM") || CanonicalLabel == TEXT("SYSTEM RESOLUTION")) return LOCTEXT("SystemResolution", "\u7CFB\u7EDF\u7ED3\u7B97");
+	if (CanonicalLabel == TEXT("INFORMATION")) return LOCTEXT("Information", "\u4FE1\u606F");
+	if (CanonicalLabel == TEXT("MATCH COMPLETE") || CanonicalLabel == TEXT("MATCH ENDED")) return LOCTEXT("MatchComplete", "\u6BD4\u8D5B\u7ED3\u675F");
+	if (CanonicalLabel == TEXT("MATCH IN PROGRESS")) return LOCTEXT("MatchInProgress", "\u6BD4\u8D5B\u8FDB\u884C\u4E2D");
+	if (CanonicalLabel == TEXT("READY TO PLAY")) return LOCTEXT("ReadyToPlay", "\u51C6\u5907\u5F00\u59CB");
+	if (CanonicalLabel == TEXT("Start a Local Match") || CanonicalLabel == TEXT("START LOCAL MATCH")) return LOCTEXT("StartLocalMatch", "\u5F00\u59CB\u672C\u5730\u5BF9\u6218");
+	if (CanonicalLabel == TEXT("Begin an Attack") || CanonicalLabel == TEXT("BEGIN ATTACK") || CanonicalLabel == TEXT("Begin Attack")) return LOCTEXT("BeginAttack", "\u5F00\u59CB\u8FDB\u653B");
+	if (CanonicalLabel == TEXT("Deploy Your Cards")) return LOCTEXT("DeployCards", "\u90E8\u7F72\u7403\u5458");
+	if (CanonicalLabel == TEXT("FINISH DEPLOYMENT") || CanonicalLabel == TEXT("Deploy / Finish Deployment")) return LOCTEXT("FinishDeployment", "\u5B8C\u6210\u90E8\u7F72");
+	if (CanonicalLabel == TEXT("Select Carrier")) return LOCTEXT("SelectCarrier", "\u9009\u62E9\u6301\u7403\u7403\u5458");
+	if (CanonicalLabel == TEXT("Select Marker")) return LOCTEXT("SelectMarker", "\u9009\u62E9\u76EF\u9632\u7403\u5458");
+	if (CanonicalLabel == TEXT("Choose Skill") || CanonicalLabel == TEXT("Select Skill")) return LOCTEXT("ChooseSkill", "\u9009\u62E9\u6280\u80FD");
+	if (CanonicalLabel == TEXT("Select Runner")) return LOCTEXT("SelectRunner", "\u9009\u62E9\u524D\u63D2\u7403\u5458");
+	if (CanonicalLabel == TEXT("Select Helper")) return LOCTEXT("SelectHelper", "\u9009\u62E9\u63A5\u5E94\u7403\u5458");
+	if (CanonicalLabel == TEXT("Choose Cross Type")) return LOCTEXT("ChooseCrossType", "\u9009\u62E9\u4F20\u4E2D\u65B9\u5F0F");
+	if (CanonicalLabel == TEXT("Choose Shot Type")) return LOCTEXT("ChooseShotType", "\u9009\u62E9\u5C04\u95E8\u65B9\u5F0F");
+	if (CanonicalLabel == TEXT("Choose One-on-One Shot")) return LOCTEXT("ChooseOneOnOneShot", "\u9009\u62E9\u5355\u5200\u5C04\u95E8");
+	if (CanonicalLabel == TEXT("Continue Resolution") || CanonicalLabel == TEXT("CONTINUE")) return LOCTEXT("Continue", "\u7EE7\u7EED");
+	if (CanonicalLabel.StartsWith(TEXT("Continue -"))) return LOCTEXT("ContinueStep", "\u7EE7\u7EED\u7ED3\u7B97");
+	if (CanonicalLabel == TEXT("No player action is available.")) return LOCTEXT("NoPlayerAction", "\u5F53\u524D\u65E0\u73A9\u5BB6\u64CD\u4F5C");
+	if (CanonicalLabel == TEXT("Attack Complete") || CanonicalLabel == TEXT("ATTACK COMPLETE")) return LOCTEXT("AttackComplete", "\u8FDB\u653B\u7ED3\u675F");
+	if (CanonicalLabel == TEXT("Unable to Load Match") || CanonicalLabel == TEXT("Interaction unavailable") || CanonicalLabel == TEXT("Interaction unavailable.")) return LOCTEXT("InteractionUnavailable", "\u5F53\u524D\u65E0\u53EF\u7528\u64CD\u4F5C");
+	if (CanonicalLabel == TEXT("LEGAL OPTIONS")) return LOCTEXT("LegalOptions", "\u53EF\u9009\u64CD\u4F5C");
+	if (CanonicalLabel == TEXT("CROSS TYPE")) return LOCTEXT("CrossType", "\u4F20\u4E2D\u65B9\u5F0F");
+	if (CanonicalLabel == TEXT("SHOT TYPE")) return LOCTEXT("ShotType", "\u5C04\u95E8\u65B9\u5F0F");
+	if (CanonicalLabel == TEXT("ONE-ON-ONE | CHOOSE SHOT")) return LOCTEXT("OneOnOneChooseShot", "\u5355\u5200\uFF5C\u9009\u62E9\u5C04\u95E8");
+	if (CanonicalLabel == TEXT("Player A")) return LOCTEXT("PlayerA", "\u73A9\u5BB6 A");
+	if (CanonicalLabel == TEXT("Player B")) return LOCTEXT("PlayerB", "\u73A9\u5BB6 B");
+	if (CanonicalLabel == TEXT("PLAYER A TO ACT")) return LOCTEXT("PlayerAToAct", "\u8BF7\u73A9\u5BB6 A \u64CD\u4F5C");
+	if (CanonicalLabel == TEXT("PLAYER B TO ACT")) return LOCTEXT("PlayerBToAct", "\u8BF7\u73A9\u5BB6 B \u64CD\u4F5C");
+	if (CanonicalLabel == TEXT("FINAL RESULT")) return LOCTEXT("FinalResult", "\u6700\u7EC8\u7ED3\u679C");
+	if (CanonicalLabel == TEXT("WAITING TO START")) return LOCTEXT("WaitingToStart", "\u7B49\u5F85\u5F00\u59CB");
+	if (CanonicalLabel.StartsWith(TEXT("Action Points: ")))
+	{
+		return FText::Format(LOCTEXT("ActionPoints", "\u884C\u52A8\u70B9 {0}"),
+			FText::FromString(CanonicalLabel.RightChop(15)));
+	}
+	return FText::FromString(CanonicalLabel);
+}
+
+FText FFMCodexPlayerUIPresentationText::CompactPlayerName(
+	const FName CardId,
+	const FString& FallbackLabel)
+{
+	const FText PrototypeName =
+		FFMCodexPrototypeTeamContent::PlayerDisplayName(CardId);
+	if (!PrototypeName.IsEmpty())
+	{
+		FString ShortName = PrototypeName.ToString();
+		int32 SeparatorIndex = INDEX_NONE;
+		if (ShortName.FindLastChar(TEXT('\u00B7'), SeparatorIndex)
+			&& SeparatorIndex + 1 < ShortName.Len())
+		{
+			ShortName.RightChopInline(SeparatorIndex + 1);
+		}
+		return FText::FromString(ShortName);
+	}
+
+	const FString Id = CardId.ToString();
+	if (Id.StartsWith(TEXT("Demo.A.Outfield."))
+		|| Id.StartsWith(TEXT("Demo.B.Outfield.")))
+	{
+		const bool bPlayerA = Id.StartsWith(TEXT("Demo.A."));
+		FString Number;
+		Id.Split(TEXT("."), nullptr, &Number, ESearchCase::CaseSensitive,
+			ESearchDir::FromEnd);
+		return FText::Format(LOCTEXT("CompactDemoPlayer", "{0}\u961F {1}\u53F7"),
+			bPlayerA ? LOCTEXT("CompactDemoTeamA", "A")
+				: LOCTEXT("CompactDemoTeamB", "B"),
+			FText::FromString(Number));
+	}
+	if (Id == TEXT("Demo.A.Goalkeeper") || Id == TEXT("Demo.B.Goalkeeper"))
+	{
+		return Id.Contains(TEXT(".A."))
+			? LOCTEXT("CompactDemoGoalkeeperA", "A\u961F \u95E8\u5C06")
+			: LOCTEXT("CompactDemoGoalkeeperB", "B\u961F \u95E8\u5C06");
+	}
+	if (!FallbackLabel.IsEmpty()
+		&& FallbackLabel != Id
+		&& !FallbackLabel.Contains(TEXT("CardId"))
+		&& !FallbackLabel.Contains(TEXT("Demo.")))
+	{
+		return FText::FromString(FallbackLabel);
+	}
+	return LOCTEXT("CompactAnonymousPlayer", "\u7403\u5458");
+}
+
+FText FFMCodexPlayerUIPresentationText::HandMicroPlayerName(
+	const FName CardId,
+	const FString& FallbackLabel)
+{
+	// These aliases validate representative portrait/name rhythm in Hand Micro
+	// only. Pitch Mini and canonical gameplay identity remain untouched.
+	if (CardId == TEXT("Demo.A.Outfield.01"))
+	{
+		return LOCTEXT("HandMicroMartinelli", "\u9A6C\u4E01\u5185\u5229");
+	}
+	if (CardId == TEXT("Demo.A.Outfield.02"))
+	{
+		return LOCTEXT("HandMicroGabriel", "\u52A0\u5E03\u91CC\u57C3\u5C14");
+	}
+	if (CardId == TEXT("Demo.A.Outfield.03"))
+	{
+		return LOCTEXT("HandMicroMerino", "\u6885\u91CC\u8BFA");
+	}
+	if (CardId == TEXT("Demo.B.Outfield.01"))
+	{
+		return LOCTEXT("HandMicroGvardiol", "\u683C\u74E6\u8FEA\u5965\u5C14");
+	}
+	if (CardId == TEXT("Demo.B.Outfield.02"))
+	{
+		return LOCTEXT("HandMicroBernardo", "\u8D1D\u5C14\u7EB3\u591A");
+	}
+	if (CardId == TEXT("Demo.B.Outfield.03"))
+	{
+		return LOCTEXT("HandMicroDoku", "\u591A\u5E93");
+	}
+	if (CardId == TEXT("Visual.HandMicro.Kvaratskhelia"))
+	{
+		return LOCTEXT(
+			"HandMicroKvaratskhelia", "\u514B\u74E6\u62C9\u8328\u8D6B\u5229\u4E9A");
+	}
+	return CompactPlayerName(CardId, FallbackLabel);
+}
+
+FText FFMCodexPlayerUIPresentationText::HandMicroFallbackPlayerName(
+	const FName CardId)
+{
+	// Exceptional, localization-ready presentation aliases. The Widget asks
+	// for these only after the primary display name fails at the 12 px floor.
+	if (CardId == TEXT("Demo.B.Outfield.01"))
+	{
+		return LOCTEXT("HandMicroFallbackGvardiol", "\u683C\u74E6");
+	}
+	if (CardId == TEXT("Visual.HandMicro.Kvaratskhelia"))
+	{
+		return LOCTEXT("HandMicroFallbackKvaratskhelia", "\u514B\u74E6\u62C9");
+	}
+	return FText::GetEmpty();
+}
+
 FText FFMCodexPlayerUIPresentationText::TeamName(const FName CardId)
 {
 	return FFMCodexPrototypeTeamContent::TeamDisplayName(CardId);
@@ -89,6 +237,59 @@ FText FFMCodexPlayerUIPresentationText::Role(const FString& CanonicalLabel)
 		Localized.Add(FMCodexPlayerUIPresentationText::MapRoleToken(Token).ToString());
 	}
 	return FText::FromString(FString::Join(Localized, TEXT(" / ")));
+}
+
+FText FFMCodexPlayerUIPresentationText::CompactRole(
+	const FString& CanonicalLabel)
+{
+	if (CanonicalLabel.IsEmpty() || CanonicalLabel == TEXT("ROLE N/A"))
+	{
+		return LOCTEXT("CompactRoleUnknown", "?");
+	}
+	TArray<FString> Tokens;
+	CanonicalLabel.ParseIntoArray(Tokens, TEXT("/"), true);
+	TArray<FString> Abbreviations;
+	for (FString Token : Tokens)
+	{
+		Token.TrimStartAndEndInline();
+		if (Token == TEXT("FW")) Abbreviations.Add(TEXT("A"));
+		else if (Token == TEXT("MF")) Abbreviations.Add(TEXT("M"));
+		else if (Token == TEXT("DF")) Abbreviations.Add(TEXT("D"));
+		else if (Token == TEXT("GK")) Abbreviations.Add(TEXT("GK"));
+	}
+	return Abbreviations.IsEmpty()
+		? LOCTEXT("CompactRoleUnknownFallback", "?")
+		: FText::FromString(FString::Join(Abbreviations, TEXT("")));
+}
+
+FText FFMCodexPlayerUIPresentationText::HandMicroCompactRole(
+	const FString& CanonicalLabel)
+{
+	FString Compact = CompactRole(CanonicalLabel).ToString();
+	if (Compact == TEXT("?"))
+	{
+		Compact = CanonicalLabel.ToUpper();
+		Compact.ReplaceInline(TEXT(" "), TEXT(""));
+		Compact.ReplaceInline(TEXT("/"), TEXT(""));
+		if (Compact != TEXT("A") && Compact != TEXT("M")
+			&& Compact != TEXT("D") && Compact != TEXT("AM")
+			&& Compact != TEXT("MD") && Compact != TEXT("AD")
+			&& Compact != TEXT("AMD") && Compact != TEXT("GK"))
+		{
+			return LOCTEXT("HandMicroCompactRoleUnknown", "?");
+		}
+	}
+	if (Compact == TEXT("GK") || Compact.Len() <= 1)
+	{
+		return FText::FromString(Compact);
+	}
+	TArray<FString> RoleLetters;
+	RoleLetters.Reserve(Compact.Len());
+	for (const TCHAR Letter : Compact)
+	{
+		RoleLetters.Add(FString::Chr(Letter));
+	}
+	return FText::FromString(FString::Join(RoleLetters, TEXT("/")));
 }
 
 FText FFMCodexPlayerUIPresentationText::Skill(const FString& CanonicalLabel)
@@ -138,12 +339,77 @@ FText FFMCodexPlayerUIPresentationText::Rarity(const FString& CanonicalLabel)
 	return FText::FromString(CanonicalLabel);
 }
 
+FText FFMCodexPlayerUIPresentationText::CompactRarity(
+	const FString& CanonicalLabel)
+{
+	if (CanonicalLabel == TEXT("Common")) return LOCTEXT("CompactRarityCommon", "\u666E");
+	if (CanonicalLabel == TEXT("Regional")) return LOCTEXT("CompactRarityRegional", "\u533A");
+	if (CanonicalLabel == TEXT("National")) return LOCTEXT("CompactRarityNational", "\u56FD");
+	if (CanonicalLabel == TEXT("Continental")) return LOCTEXT("CompactRarityContinental", "\u6D32");
+	if (CanonicalLabel == TEXT("World Class")) return LOCTEXT("CompactRarityWorldClass", "\u4E16");
+	if (CanonicalLabel == TEXT("Pilot")) return LOCTEXT("CompactRarityPilot", "\u8BD5");
+	return LOCTEXT("CompactRarityUnknown", "?");
+}
+
 FText FFMCodexPlayerUIPresentationText::Owner(const FString& CanonicalLabel)
 {
 	if (CanonicalLabel == TEXT("Player A")) return LOCTEXT("OwnerPlayerA", "玩家 A");
 	if (CanonicalLabel == TEXT("Player B")) return LOCTEXT("OwnerPlayerB", "玩家 B");
 	return CanonicalLabel.IsEmpty()
 		? LOCTEXT("OwnerUnavailable", "玩家未知") : FText::FromString(CanonicalLabel);
+}
+
+FText FFMCodexPlayerUIPresentationText::RackHeading(
+	const FString& SideLabel,
+	const bool bLocalRack)
+{
+	return bLocalRack
+		? LOCTEXT("LocalRackHeading", "\u672C\u65B9")
+		: LOCTEXT("OpponentRackHeading", "\u5BF9\u65B9");
+}
+
+FText FFMCodexPlayerUIPresentationText::TacticalRegion(
+	const FString& CanonicalLabel)
+{
+	if (CanonicalLabel == TEXT("Forward")) return LOCTEXT("RegionForward", "\u524D\u573A");
+	if (CanonicalLabel == TEXT("Midfield")) return LOCTEXT("RegionMidfield", "\u4E2D\u573A");
+	if (CanonicalLabel == TEXT("Backfield")) return LOCTEXT("RegionBackfield", "\u540E\u573A");
+	return FText::FromString(CanonicalLabel);
+}
+
+FText FFMCodexPlayerUIPresentationText::TacticalLaneHeading(
+	const FString& CanonicalLabel,
+	const bool bAttacking)
+{
+	return TacticalRegion(CanonicalLabel);
+}
+
+FText FFMCodexPlayerUIPresentationText::Turn(const int64 AttackSequence)
+{
+	return AttackSequence > 0
+		? FText::Format(LOCTEXT("TurnFormat", "\u7B2C {0} \u8F6E\u8FDB\u653B"),
+			FText::AsNumber(AttackSequence))
+		: LOCTEXT("PreMatchTurn", "\u8D5B\u524D");
+}
+
+FText FFMCodexPlayerUIPresentationText::TacticalPoints(const int32 ActionPoint)
+{
+	return FText::Format(LOCTEXT("TacticalPointsFormat", "\u6218\u672F\u70B9  {0}"),
+		FText::AsNumber(ActionPoint));
+}
+
+FText FFMCodexPlayerUIPresentationText::BroadcastStatus(
+	const bool bMatchEnded,
+	const bool bAttackActive,
+	const FString& MatchResultLabel)
+{
+	if (bMatchEnded)
+	{
+		return FText::FromString(MatchResultLabel);
+	}
+	return bAttackActive
+		? LOCTEXT("LiveMatch", "\u6BD4\u8D5B\u8FDB\u884C\u4E2D")
+		: LOCTEXT("LocalMatch", "\u672C\u5730\u5BF9\u6218");
 }
 
 FText FFMCodexPlayerUIPresentationText::UnknownCard() { return LOCTEXT("UnknownCard", "未知球员卡"); }

@@ -37,3 +37,40 @@ Avoid: photoreal celebrity resemblance, generic cyberpunk, fantasy ornament, cas
 | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_GianluigiDonnarumma_01.png` | Very tall fair-to-olive Italian athlete in his mid twenties; broad goalkeeper build; short dark slightly wavy hair; clean-shaven; calm vigilant expression; shot-stopper profile. | One narrow desaturated pale-blue/silver seam as a restrained Team B cue only. |
 
 All ten selected outputs are `1024 x 1536`, opaque RGB PNG files. The portrait is fictional supporting art for a named prototype card; identity remains live localized UMG text and is never encoded in the pixels.
+
+## Stage 6.13.1.3.10 Hand Micro Draft-Spec portrait pass
+
+Generation mode: Codex built-in `image_gen`, `precise-object-edit`, one isolated
+edit call per opaque PNG. The previous `_04` / `Validation_03` portrait was the
+sole edit target; Hand Micro Design Reference A was composition/finish reference
+only. Existing files were not overwritten.
+
+Shared prompt contract:
+
+```text
+Output a production-ready 1536×1024 exact 3:2 horizontal head-and-shoulders
+football portrait. Preserve the target's fictional identity and jersey family.
+Subject center X 50%; eyes 35% image height; head top 10%; chin 57%; shoulder
+line 80%; visible shoulder width at y=80% approximately 76%. Show full head,
+face, neck, both shoulders, and upper jersey, front-facing and centered.
+Use a clean low-noise matte deep navy/deep teal studio field centered near
+sRGB #0C2330, with only a barely perceptible tonal gradient within #102D38 to
+#091C27. Use a neutral/cool soft key, soft fill, readable natural eyes and skin,
+and only a very subtle neutral rim. No stadium lights, light bands, glowing arcs,
+halo, bokeh, crowd, architecture, text, logos, UI, noise texture, bright
+orange/blue decoration, pure black, or added objects. The full image maps
+uncropped into a 96×64 UE5 Hand Micro portrait region.
+```
+
+The first generated candidates remain as the non-destructive `_05` /
+`Validation_04` set. Technical corner sampling found that their matte fields
+still read too close to dead black, so a background-only correction produced
+the accepted five Arsenal `_06` files, three Arsenal `Validation_05` files,
+five Manchester City `_06` files, and three Manchester City `Validation_05`
+files under the sibling `HandMicroPortraits` directories. All accepted files
+are opaque 1536×1024 PNG sources. Automated validation covers canvas, aspect,
+routing, import dimensions, no pure-black corner samples, and full 0.0–1.0 UV
+mapping.
+
+`MANUAL PORTRAIT COMPOSITION REVIEW REQUIRED` for subject landmarks, natural
+lighting, identity continuity, and visual match to Reference A before freeze.

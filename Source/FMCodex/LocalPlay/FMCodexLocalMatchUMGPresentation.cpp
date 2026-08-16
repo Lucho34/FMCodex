@@ -1,5 +1,7 @@
 #include "FMCodexLocalMatchUMGPresentation.h"
 
+#include "FMCodexPlayerUIPresentationText.h"
+
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
 
@@ -34,7 +36,64 @@ namespace FMCodexLocalMatchUMGPresentation
 			? TEXT("RARITY N/A") : Card.RarityLabel;
 		Result.DeveloperReferenceLabel = Card.DeveloperReferenceLabel;
 		Result.bGoalkeeper = Card.bGoalkeeper;
+		Result.bAvailable = Card.bAvailable;
+		Result.bUsed = Card.bUsed;
+		Result.bDeployed = Card.bDeployed;
 		return Result;
+	}
+
+	EInitialTurnOrderPlayer OtherSide(const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerB
+			? EInitialTurnOrderPlayer::PlayerA
+			: EInitialTurnOrderPlayer::PlayerB;
+	}
+
+	EMatchPlayNeutralSlotSide PhysicalSide(
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerB
+			? EMatchPlayNeutralSlotSide::NearPlayerB
+			: EMatchPlayNeutralSlotSide::NearPlayerA;
+	}
+
+	void BuildRack(
+		const TArray<FFMCodexLocalMatchCardView>& Roster,
+		const TArray<FFMCodexLocalMatchDeploymentGroup>& DeploymentGroups,
+		const bool bLocalRack,
+		const FString& SideLabel,
+		FFMCodexUMGCardRackViewModel& Rack)
+	{
+		Rack.bLocalRack = bLocalRack;
+		Rack.SideLabel = SideLabel;
+		TArray<const FFMCodexLocalMatchCardView*> Sorted;
+		Sorted.Reserve(Roster.Num());
+		for (const FFMCodexLocalMatchCardView& Card : Roster)
+		{
+			Sorted.Add(&Card);
+		}
+		Sorted.StableSort(
+			[](const FFMCodexLocalMatchCardView& Left,
+				const FFMCodexLocalMatchCardView& Right)
+			{
+				return Left.RackSortGroup < Right.RackSortGroup;
+			});
+		for (int32 Index = 0; Index < Sorted.Num(); ++Index)
+		{
+			const FFMCodexLocalMatchCardView& Card = *Sorted[Index];
+			FFMCodexUMGCardRackCellViewModel Cell;
+			Cell.StableIndex = Index;
+			Cell.bPlayed = Card.bUsed || Card.bDeployed;
+			Cell.bGoalkeeper = Card.bGoalkeeper;
+			Cell.bDeploymentDraggable = bLocalRack && !Cell.bPlayed
+				&& DeploymentGroups.ContainsByPredicate(
+					[&Card](const FFMCodexLocalMatchDeploymentGroup& Group)
+					{
+						return Group.CardId == Card.CardId;
+					});
+			Cell.Card = MakeCard(Card);
+			Rack.Cells.Add(MoveTemp(Cell));
+		}
 	}
 
 	void AddUniqueCard(
@@ -237,7 +296,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
 	const FString& DiagnosticMessage,
 	const bool bAwaitingHandoff,
-	const FString& PendingPlayerLabel)
+	const FString& PendingPlayerLabel,
+	const EInitialTurnOrderPlayer LocalViewerSide)
 {
 	using namespace FMCodexLocalMatchUMGPresentation;
 	FFMCodexUMGMatchScreenViewModel Result;
@@ -252,6 +312,32 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		InteractionView.PlayerAScore);
 	Result.Header.PlayerBScoreLabel = FString::FromInt(
 		InteractionView.PlayerBScore);
+	const EInitialTurnOrderPlayer OpponentSide = OtherSide(LocalViewerSide);
+	Result.LocalPlayerLabel =
+		FFMCodexLocalMatchInteractionViewBuilder::ToString(LocalViewerSide);
+	Result.Header.LeftPlayerLabel = Result.LocalPlayerLabel;
+	Result.Header.RightPlayerLabel =
+		FFMCodexLocalMatchInteractionViewBuilder::ToString(OpponentSide);
+	Result.Header.LeftScoreLabel = FString::FromInt(
+		LocalViewerSide == EInitialTurnOrderPlayer::PlayerA
+			? InteractionView.PlayerAScore : InteractionView.PlayerBScore);
+	Result.Header.RightScoreLabel = FString::FromInt(
+		OpponentSide == EInitialTurnOrderPlayer::PlayerA
+			? InteractionView.PlayerAScore : InteractionView.PlayerBScore);
+	Result.Header.TurnLabel = InteractionView.AttackSequence > 0
+		? FString::Printf(TEXT("TURN %lld"), InteractionView.AttackSequence)
+		: TEXT("PRE-MATCH");
+	Result.Header.CurrentAttackerTacticalPointsLabel =
+		InteractionView.CurrentAttackingPlayer != EInitialTurnOrderPlayer::None
+			? FString::Printf(TEXT("TACTICAL POINTS  %d"),
+				InteractionView.ActionPoint)
+			: FString();
+	Result.Header.AttackSequence = InteractionView.AttackSequence;
+	Result.Header.CurrentAttackerTacticalPoints = InteractionView.ActionPoint;
+	Result.Header.bHasCurrentAttacker =
+		InteractionView.CurrentAttackingPlayer != EInitialTurnOrderPlayer::None;
+	Result.Header.bCurrentAttackerOnLeft =
+		InteractionView.CurrentAttackingPlayer == LocalViewerSide;
 	Result.Header.CurrentAttackerLabel = FString::Printf(
 		TEXT("Current attacker: %s"),
 		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
@@ -289,12 +375,66 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			!= EInitialTurnOrderPlayer::None;
 	Result.Header.bSystemResolution = Screen.bSystemResolution;
 
-	for (const FFMCodexLocalMatchPitchRegionView& Region
-		: InteractionView.PitchRegions)
+	BuildRack(
+		LocalViewerSide == EInitialTurnOrderPlayer::PlayerA
+			? InteractionView.PlayerACardRoster
+			: InteractionView.PlayerBCardRoster,
+		InteractionView.DeploymentGroups,
+		true,
+		Result.Header.LeftPlayerLabel,
+		Result.LocalRack);
+	BuildRack(
+		OpponentSide == EInitialTurnOrderPlayer::PlayerA
+			? InteractionView.PlayerACardRoster
+			: InteractionView.PlayerBCardRoster,
+		InteractionView.DeploymentGroups,
+		false,
+		Result.Header.RightPlayerLabel,
+		Result.OpponentRack);
+
+	for (const EMatchPlayNeutralSlotSide VisualSide : {
+		PhysicalSide(LocalViewerSide), PhysicalSide(OpponentSide) })
 	{
+		const FFMCodexLocalMatchPitchRegionView* RegionPtr =
+			InteractionView.PitchRegions.FindByPredicate(
+				[VisualSide](const FFMCodexLocalMatchPitchRegionView& Candidate)
+				{
+					return Candidate.NeutralSide == VisualSide;
+				});
+		if (RegionPtr == nullptr)
+		{
+			continue;
+		}
+		const FFMCodexLocalMatchPitchRegionView& Region = *RegionPtr;
 		FFMCodexUMGPitchRegionViewModel RegionResult;
 		RegionResult.RegionLabel = Region.Label;
 		RegionResult.ZoneContextLabel = Region.ZoneContextLabel;
+		RegionResult.PhysicalHalfLabel =
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				Region.NeutralSide);
+		RegionResult.bLocalFacingLane = Region.NeutralSide
+			== PhysicalSide(LocalViewerSide);
+		RegionResult.VisualLaneIndex = Result.PitchRegions.Num();
+		RegionResult.TacticalRegionLabel =
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				LocalViewerSide == EInitialTurnOrderPlayer::PlayerA
+					? Region.PlayerARelativeZone
+					: Region.PlayerBRelativeZone);
+		if (RegionResult.TacticalRegionLabel == TEXT("Forward"))
+		{
+			RegionResult.VisualRole = EFMCodexUMGPitchVisualRole::Forward;
+		}
+		else if (RegionResult.TacticalRegionLabel == TEXT("Backfield"))
+		{
+			RegionResult.VisualRole = EFMCodexUMGPitchVisualRole::Backfield;
+		}
+		else
+		{
+			RegionResult.VisualRole = EFMCodexUMGPitchVisualRole::Midfield;
+		}
+		RegionResult.VisualRoleLabel =
+			FFMCodexPlayerUIPresentationText::TacticalRegion(
+				RegionResult.TacticalRegionLabel);
 		RegionResult.bCurrentAttackingSide = Region.bCurrentAttackingSide;
 		for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
 		{
@@ -334,9 +474,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		FFMCodexLocalMatchInteractionViewBuilder::ToString(
 			InteractionView.InteractionCategory);
 	Result.Interaction.ExpectedActorLabel = Screen.ActingStatusLabel;
-	Result.Interaction.ActionPointLabel = InteractionView.ActionPoint > 0
-		? FString::Printf(TEXT("Action Points: %d"), InteractionView.ActionPoint)
-		: FString();
+	// Persistent Tactical Points are a Header fact. The Dock presentation does
+	// not duplicate them; it remains operation-context focused.
+	Result.Interaction.ActionPointLabel = FString();
 	Result.Interaction.bSystemResolution = Screen.bSystemResolution;
 	Result.Interaction.bMatchEnded = InteractionView.bMatchEnded;
 	Result.Interaction.bCanStartNewMatch =

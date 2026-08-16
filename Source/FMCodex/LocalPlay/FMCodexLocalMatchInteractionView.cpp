@@ -86,6 +86,31 @@ namespace FMCodexLocalMatchInteractionView
 		}
 	}
 
+	int32 RackSortGroup(const FPlayerCardRuleSnapshot& Card)
+	{
+		if (Card.bIsGoalkeeper
+			|| Card.PositionTypes.Contains(EPlayerPositionType::Goalkeeper))
+		{
+			return 0;
+		}
+		const bool bAttack = Card.PositionTypes.Contains(
+			EPlayerPositionType::Attack);
+		const bool bMidfield = Card.PositionTypes.Contains(
+			EPlayerPositionType::Midfield);
+		const bool bDefense = Card.PositionTypes.Contains(
+			EPlayerPositionType::Defense);
+		// A/M and A/M/D belong to the M group; M/D belongs to D.
+		if (bAttack && bMidfield)
+		{
+			return 2;
+		}
+		if (bDefense)
+		{
+			return 1;
+		}
+		return bMidfield ? 2 : 3;
+	}
+
 	void FinalizeCardPresentation(FFMCodexLocalMatchCardView& View)
 	{
 		View.SkillSummaryLabel = View.SkillLabels.IsEmpty()
@@ -188,6 +213,7 @@ namespace FMCodexLocalMatchInteractionView
 		}
 
 		View.bGoalkeeper = Card.Snapshot.bIsGoalkeeper;
+		View.RackSortGroup = RackSortGroup(Card.Snapshot);
 		TArray<FString> Positions;
 		for (const EPlayerPositionType Position : Card.Snapshot.PositionTypes)
 		{
@@ -256,6 +282,31 @@ namespace FMCodexLocalMatchInteractionView
 		}
 		FinalizeCardPresentation(View);
 		return View;
+	}
+
+	void BuildCardRosters(
+		const FMatchPlayState& State,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		for (const EInitialTurnOrderPlayer Side : {
+			EInitialTurnOrderPlayer::PlayerA,
+			EInitialTurnOrderPlayer::PlayerB })
+		{
+			const FPlayerCardRuleSnapshotSet& SnapshotSet =
+				Side == EInitialTurnOrderPlayer::PlayerA
+					? State.CardSnapshotAuthority.PlayerACardSnapshots
+					: State.CardSnapshotAuthority.PlayerBCardSnapshots;
+			TArray<FFMCodexLocalMatchCardView>& Roster =
+				Side == EInitialTurnOrderPlayer::PlayerA
+					? View.PlayerACardRoster : View.PlayerBCardRoster;
+			Roster.Reserve(SnapshotSet.Cards.Num());
+			for (const FPlayerCardRuleSnapshot& Card : SnapshotSet.Cards)
+			{
+				Roster.Add(MakeCardView(
+					State, SkillRuleSet, Side, Card.CardId));
+			}
+		}
 	}
 
 	void BuildPitchRegions(
@@ -742,6 +793,8 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	Result.PlayerBScore = Snapshot.RuntimeState.PlayerBState.Score;
 	Result.CurrentAttackingPlayer =
 		Snapshot.RuntimeState.CurrentAttackingPlayer;
+	BuildCardRosters(Snapshot, SkillRuleSet, Result);
+	BuildPitchRegions(Snapshot, SkillRuleSet, Result);
 
 	const FMatchEndResolveResult MatchEnd =
 		FMatchEndResolver::ResolveMatchEnd(Snapshot.RuntimeState);
@@ -798,8 +851,6 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 				Session.ThroughBallOneOnOneShotChoice);
 		}
 	}
-	BuildPitchRegions(Snapshot, SkillRuleSet, Result);
-
 	if (Attack.Phase == EMatchPlayCurrentAttackPhase::Deployment)
 	{
 		Result.MajorPhase = EFMCodexLocalMatchMajorPhase::Deployment;

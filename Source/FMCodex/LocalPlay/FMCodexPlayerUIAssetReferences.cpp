@@ -80,6 +80,70 @@ FFMCodexPlayerUIAssetReferences::FFMCodexPlayerUIAssetReferences()
 		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
 			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_GianluigiDonnarumma_01.T_Prototype_ManchesterCity_GianluigiDonnarumma_01"))));
 
+	PrototypeHandMicroPortraits = {
+		{ TEXT("Prototype.Arsenal.BukayoSaka"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_BukayoSaka_HandMicro_06.T_Prototype_Arsenal_BukayoSaka_HandMicro_06"))) },
+		{ TEXT("Prototype.Arsenal.MartinOdegaard"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_MartinOdegaard_HandMicro_06.T_Prototype_Arsenal_MartinOdegaard_HandMicro_06"))) },
+		{ TEXT("Prototype.Arsenal.DeclanRice"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_DeclanRice_HandMicro_06.T_Prototype_Arsenal_DeclanRice_HandMicro_06"))) },
+		{ TEXT("Prototype.Arsenal.WilliamSaliba"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_WilliamSaliba_HandMicro_06.T_Prototype_Arsenal_WilliamSaliba_HandMicro_06"))) },
+		{ TEXT("Prototype.Arsenal.DavidRaya"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_DavidRaya_HandMicro_06.T_Prototype_Arsenal_DavidRaya_HandMicro_06"))) },
+		{ TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_ErlingHaaland_HandMicro_06.T_Prototype_ManchesterCity_ErlingHaaland_HandMicro_06"))) },
+		{ TEXT("Prototype.ManchesterCity.PhilFoden"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_PhilFoden_HandMicro_06.T_Prototype_ManchesterCity_PhilFoden_HandMicro_06"))) },
+		{ TEXT("Prototype.ManchesterCity.Rodri"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_Rodri_HandMicro_06.T_Prototype_ManchesterCity_Rodri_HandMicro_06"))) },
+		{ TEXT("Prototype.ManchesterCity.RubenDias"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_RubenDias_HandMicro_06.T_Prototype_ManchesterCity_RubenDias_HandMicro_06"))) },
+		{ TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_GianluigiDonnarumma_HandMicro_06.T_Prototype_ManchesterCity_GianluigiDonnarumma_HandMicro_06"))) }
+	};
+
+	HandMicroValidationPortraits = {
+		{ TEXT("Demo.A.Outfield.01"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_GabrielMartinelli_HandMicro_Validation_05.T_Prototype_Arsenal_GabrielMartinelli_HandMicro_Validation_05"))) },
+		{ TEXT("Demo.A.Outfield.02"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_GabrielMagalhaes_HandMicro_Validation_05.T_Prototype_Arsenal_GabrielMagalhaes_HandMicro_Validation_05"))) },
+		{ TEXT("Demo.A.Outfield.03"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/HandMicro/T_Prototype_Arsenal_MikelMerino_HandMicro_Validation_05.T_Prototype_Arsenal_MikelMerino_HandMicro_Validation_05"))) },
+		{ TEXT("Demo.B.Outfield.01"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_JoskoGvardiol_HandMicro_Validation_05.T_Prototype_ManchesterCity_JoskoGvardiol_HandMicro_Validation_05"))) },
+		{ TEXT("Demo.B.Outfield.02"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_BernardoSilva_HandMicro_Validation_05.T_Prototype_ManchesterCity_BernardoSilva_HandMicro_Validation_05"))) },
+		{ TEXT("Demo.B.Outfield.03"), TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/HandMicro/T_Prototype_ManchesterCity_JeremyDoku_HandMicro_Validation_05.T_Prototype_ManchesterCity_JeremyDoku_HandMicro_Validation_05"))) }
+	};
+
+	// Presentation-only focal alignment. The crop height stays fixed and
+	// aspect-ratio safe; only the vertical window moves to preserve the full
+	// face and shoulders across the current representative portrait set.
+	HandMicroPortraitTops = {
+		{ TEXT("Prototype.Arsenal.BukayoSaka"), 0.08f },
+		{ TEXT("Prototype.Arsenal.MartinOdegaard"), 0.03f },
+		{ TEXT("Prototype.Arsenal.DeclanRice"), 0.06f },
+		{ TEXT("Prototype.Arsenal.WilliamSaliba"), 0.04f },
+		{ TEXT("Prototype.Arsenal.DavidRaya"), 0.06f },
+		{ TEXT("Prototype.ManchesterCity.ErlingHaaland"), 0.04f },
+		{ TEXT("Prototype.ManchesterCity.PhilFoden"), 0.03f },
+		{ TEXT("Prototype.ManchesterCity.Rodri"), 0.05f },
+		{ TEXT("Prototype.ManchesterCity.RubenDias"), 0.05f },
+		{ TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"), 0.03f }
+	};
+
 	PrototypeForwardRoleCards = {
 		TEXT("Prototype.Arsenal.BukayoSaka"),
 		TEXT("Prototype.Arsenal.MartinOdegaard"),
@@ -92,11 +156,28 @@ FFMCodexPlayerUICardArtReferences
 FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 {
 	FFMCodexPlayerUICardArtReferences Result;
+	const auto ApplyDedicatedHandMicroPortrait =
+		[this, CardId](FFMCodexPlayerUICardArtReferences& Target)
+		{
+			const TSoftObjectPtr<UTexture2D>* HandMicroPortrait =
+				PrototypeHandMicroPortraits.Find(CardId);
+			if (HandMicroPortrait == nullptr)
+			{
+				HandMicroPortrait = HandMicroValidationPortraits.Find(CardId);
+			}
+			if (HandMicroPortrait != nullptr)
+			{
+				Target.HandMicroPortrait = *HandMicroPortrait;
+				Target.HandMicroPortraitTop = 0.0f;
+				Target.HandMicroPortraitUVHeight = 1.0f;
+			}
+		};
 	if (CardId == GetPilotCardId())
 	{
 		Result.ArtIdentity = GetPilotArtIdentity();
 		Result.CardFrame = PilotCardFrame;
 		Result.Portrait = PilotPortrait;
+		ApplyDedicatedHandMicroPortrait(Result);
 		return Result;
 	}
 	if (const TSoftObjectPtr<UTexture2D>* PrototypePortrait =
@@ -106,6 +187,14 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 			TEXT("PrototypeTeam.PlayerCard.%s"), *CardId.ToString()));
 		Result.CardFrame = GoldenCardFrame;
 		Result.Portrait = *PrototypePortrait;
+		ApplyDedicatedHandMicroPortrait(Result);
+		if (const float* PortraitTop = HandMicroPortraitTops.Find(CardId))
+		{
+			if (Result.HandMicroPortrait.IsNull())
+			{
+				Result.HandMicroPortraitTop = *PortraitTop;
+			}
+		}
 		Result.LongShotSkillIcon = GoldenLongShotSkillIcon;
 		if (PrototypeForwardRoleCards.Contains(CardId))
 		{
@@ -113,16 +202,22 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 		}
 		return Result;
 	}
-	if (CardId != GetGoldenSampleCardId())
+	if (CardId == GetGoldenSampleCardId())
 	{
+		Result.ArtIdentity = GetGoldenSampleArtIdentity();
+		Result.CardFrame = GoldenCardFrame;
+		Result.Portrait = GoldenPortrait;
+		Result.RoleIcon = GoldenRoleIcon;
+		Result.LongShotSkillIcon = GoldenLongShotSkillIcon;
+		ApplyDedicatedHandMicroPortrait(Result);
 		return Result;
 	}
-
-	Result.ArtIdentity = GetGoldenSampleArtIdentity();
-	Result.CardFrame = GoldenCardFrame;
-	Result.Portrait = GoldenPortrait;
-	Result.RoleIcon = GoldenRoleIcon;
-	Result.LongShotSkillIcon = GoldenLongShotSkillIcon;
+	if (HandMicroValidationPortraits.Contains(CardId))
+	{
+		Result.ArtIdentity = FName(*FString::Printf(
+			TEXT("HandMicroValidation.PlayerCard.%s"), *CardId.ToString()));
+		ApplyDedicatedHandMicroPortrait(Result);
+	}
 	return Result;
 }
 

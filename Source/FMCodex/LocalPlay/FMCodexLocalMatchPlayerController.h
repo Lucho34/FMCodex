@@ -94,6 +94,7 @@ private:
 	TSharedRef<SWidget> BuildControlSurface();
 	void UpdateHotSeatHandoff(
 		const FFMCodexLocalMatchInteractionView& NewInteractionView);
+	void AutoAcknowledgeSuccessfulDeployment(const FString& CommandName);
 	bool AllowGameplayCommand(const FString& CommandName);
 	void RecordLocalFailure(const FString& CommandName, const FString& Message);
 
@@ -113,6 +114,10 @@ private:
 				? Result.ErrorMessage
 				: Result.AuthoritativeResult.RuntimeEnvelope.ErrorMessage;
 		RefreshPresentation();
+		if (Result.bSuccess)
+		{
+			AutoAcknowledgeSuccessfulDeployment(CommandName);
+		}
 		if (!Result.bSuccess)
 		{
 			ResolutionFeedback =

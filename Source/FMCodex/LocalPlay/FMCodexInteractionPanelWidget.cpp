@@ -26,6 +26,7 @@ namespace FMCodexInteractionPanelWidget
 			UTextBlock::StaticClass(), Name);
 		Result->SetText(FText::FromString(Text));
 		Result->SetAutoWrapText(true);
+		Result->SetClipping(EWidgetClipping::ClipToBounds);
 		return Result;
 	}
 
@@ -39,6 +40,8 @@ namespace FMCodexInteractionPanelWidget
 			UButton::StaticClass(), Name);
 		LabelText = MakeText(
 			Tree, FName(*(Name.ToString() + TEXT("Label"))));
+		LabelText->SetAutoWrapText(false);
+		LabelText->SetTextOverflowPolicy(ETextOverflowPolicy::Clip);
 		LabelText->SetJustification(ETextJustify::Center);
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*LabelText, EFMCodexPlayerUITextRole::Body);
@@ -268,8 +271,8 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 		EFMCodexPlayerUIColorRole::PanelBackground,
 		Style.GetPanelPadding());
 	Bounds->AddChild(Frame);
-	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(), TEXT("InteractionPanelHierarchy"));
+	UHorizontalBox* Body = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("InteractionPanelHierarchy"));
 	Frame->AddChild(Body);
 
 	ActionHeaderRegion = MakeRegion(
@@ -282,18 +285,27 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	ActorText = MakeText(*WidgetTree, TEXT("InteractionExpectedActor"));
 	TitleText = MakeText(*WidgetTree, TEXT("InteractionActionTitle"));
 	ContextText = MakeText(*WidgetTree, TEXT("InteractionActionContext"));
+	KickerText->SetAutoWrapText(false);
+	ActorText->SetAutoWrapText(false);
+	TitleText->SetAutoWrapText(false);
+	ContextText->SetAutoWrapText(false);
+	KickerText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+	ActorText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+	TitleText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+	ContextText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
 	Style.ApplyText(*KickerText, EFMCodexPlayerUITextRole::Kicker);
 	Style.ApplyText(*ActorText, EFMCodexPlayerUITextRole::Status);
 	Style.ApplyText(*TitleText, EFMCodexPlayerUITextRole::ActionTitle);
 	Style.ApplyText(*ContextText, EFMCodexPlayerUITextRole::Secondary);
-	HeaderBody->AddChildToVerticalBox(KickerText);
+	// Match-level state belongs in the Broadcast Header. The Dock begins with
+	// the acting-player hint and operation context only.
 	HeaderBody->AddChildToVerticalBox(ActorText);
 	HeaderBody->AddChildToVerticalBox(TitleText);
 	HeaderBody->AddChildToVerticalBox(ContextText);
 	ActionHeaderRegion->AddChild(HeaderBody);
-	Body->AddChildToVerticalBox(ActionHeaderRegion);
+	Body->AddChildToHorizontalBox(ActionHeaderRegion);
 
-	UBorder* CandidateRegion = MakeRegion(
+	CandidateRegion = MakeRegion(
 		*WidgetTree, TEXT("InteractionCandidateRegion"),
 		EFMCodexPlayerUIColorRole::PanelInset,
 		Style.GetSectionPadding());
@@ -301,6 +313,9 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 		UVerticalBox::StaticClass(), TEXT("InteractionCandidateBody"));
 	DeploymentHandInstructionText = MakeText(
 		*WidgetTree, TEXT("DeploymentHandInstruction"));
+	DeploymentHandInstructionText->SetAutoWrapText(false);
+	DeploymentHandInstructionText->SetTextOverflowPolicy(
+		ETextOverflowPolicy::Ellipsis);
 	Style.ApplyText(*DeploymentHandInstructionText,
 		EFMCodexPlayerUITextRole::SectionHeading);
 	CandidateBody->AddChildToVerticalBox(DeploymentHandInstructionText);
@@ -312,9 +327,9 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	CandidateScroll->AddChild(CandidateCardsBody);
 	CandidateBody->AddChildToVerticalBox(CandidateScroll);
 	CandidateRegion->AddChild(CandidateBody);
-	Body->AddChildToVerticalBox(CandidateRegion);
+	Body->AddChildToHorizontalBox(CandidateRegion);
 
-	UBorder* ChoiceRegion = MakeRegion(
+	ChoiceRegion = MakeRegion(
 		*WidgetTree, TEXT("InteractionChoiceRegion"),
 		EFMCodexPlayerUIColorRole::PanelRaised,
 		Style.GetSectionPadding());
@@ -330,7 +345,7 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	ChoiceBody->AddChildToVerticalBox(ChoiceSectionText);
 	ChoiceBody->AddChildToVerticalBox(ChoiceOptionsBody);
 	ChoiceRegion->AddChild(ChoiceBody);
-	Body->AddChildToVerticalBox(ChoiceRegion);
+	Body->AddChildToHorizontalBox(ChoiceRegion);
 
 	UHorizontalBox* SecondaryActions =
 		WidgetTree->ConstructWidget<UHorizontalBox>(
@@ -349,7 +364,7 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	NoLegalButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleNoLegalClicked);
 	SecondaryActions->AddChildToHorizontalBox(NoLegalButton);
-	Body->AddChildToVerticalBox(SecondaryActions);
+	Body->AddChildToHorizontalBox(SecondaryActions);
 
 	UHorizontalBox* PrimaryActions =
 		WidgetTree->ConstructWidget<UHorizontalBox>(
@@ -382,11 +397,11 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	ContinueButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleContinueClicked);
 	PrimaryActions->AddChildToHorizontalBox(ContinueButton);
-	Body->AddChildToVerticalBox(PrimaryActions);
+	Body->AddChildToHorizontalBox(PrimaryActions);
 
 	EmptyStateText = MakeText(*WidgetTree, TEXT("InteractionBoundedFallback"));
 	Style.ApplyText(*EmptyStateText, EFMCodexPlayerUITextRole::Secondary);
-	Body->AddChildToVerticalBox(EmptyStateText);
+	Body->AddChildToHorizontalBox(EmptyStateText);
 }
 
 void UFMCodexInteractionPanelWidget::RefreshVisuals()
@@ -395,25 +410,32 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	{
 		return;
 	}
-	KickerText->SetText(FText::FromString(Presentation.KickerLabel.IsEmpty()
-		? TEXT("LOCAL MATCH") : Presentation.KickerLabel));
-	ActorText->SetText(FText::FromString(Presentation.ExpectedActorLabel));
-	TitleText->SetText(FText::FromString(Presentation.TitleLabel.IsEmpty()
-		? TEXT("Interaction unavailable") : Presentation.TitleLabel));
-	TArray<FString> ContextLines = {
-		Presentation.CategoryLabel,
-		Presentation.ActionPointLabel
-	};
+	KickerText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+		Presentation.KickerLabel.IsEmpty()
+			? TEXT("LOCAL MATCH") : Presentation.KickerLabel));
+	KickerText->SetVisibility(ESlateVisibility::Collapsed);
+	ActorText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+		Presentation.ExpectedActorLabel));
+	TitleText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+		Presentation.TitleLabel.IsEmpty()
+			? TEXT("Interaction unavailable") : Presentation.TitleLabel));
+	TArray<FString> ContextLines = { Presentation.CategoryLabel };
 	ContextLines.RemoveAll(
 		[](const FString& Line) { return Line.IsEmpty(); });
+	TArray<FString> LocalizedContextLines;
+	for (const FString& Line : ContextLines)
+	{
+		LocalizedContextLines.Add(
+			FFMCodexPlayerUIPresentationText::MatchScreenLabel(Line).ToString());
+	}
 	ContextText->SetText(FText::FromString(
-		FString::Join(ContextLines, TEXT(" | "))));
+		FString::Join(LocalizedContextLines, TEXT(" | "))));
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	ActionHeaderRegion->SetBrushColor(
 		Presentation.KickerLabel.Contains(TEXT("SYSTEM"))
 			? Style.GetColor(EFMCodexPlayerUIColorRole::SystemStatus)
 			: Style.GetPlayerAccentColor(Presentation.ExpectedActorLabel));
-	ChoiceSectionText->SetText(FText::FromString(
+	ChoiceSectionText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Presentation.BranchSectionLabel.IsEmpty()
 			? TEXT("LEGAL OPTIONS") : Presentation.BranchSectionLabel));
 	DeploymentHandInstructionText->SetText(
@@ -424,6 +446,14 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 			: ESlateVisibility::Collapsed);
 
 	RefreshCandidateChoices();
+	CandidateRegion->SetVisibility(
+		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
+			|| !Presentation.SelectionChoices.IsEmpty()
+				? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	ChoiceRegion->SetVisibility(
+		!Presentation.BranchChoices.IsEmpty()
+			|| !Presentation.OneOnOneChoices.IsEmpty()
+				? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
 	auto SetButton = [](UButton* Button, const bool bVisible,
 		const FString& Label)
@@ -432,7 +462,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		if (UTextBlock* LabelText = Cast<UTextBlock>(Button->GetChildAt(0)))
 		{
-			LabelText->SetText(FText::FromString(Label));
+			LabelText->SetText(
+				FFMCodexPlayerUIPresentationText::MatchScreenLabel(Label));
 		}
 	};
 	SetButton(StartButton, Presentation.bCanStartNewMatch,
@@ -459,7 +490,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		? Presentation.EmptyStateLabel
 		: !bHasDynamicChoices && !bHasPrimaryAction
 			? FString(TEXT("No player action is available.")) : FString();
-	EmptyStateText->SetText(FText::FromString(Fallback));
+	EmptyStateText->SetText(
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(Fallback));
 	EmptyStateText->SetVisibility(Fallback.IsEmpty()
 		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	SetIsEnabled(!bInteractionBlocked);
@@ -475,32 +507,8 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 
 	UClass* CardClass = PlayerCardWidgetClass != nullptr
 		? PlayerCardWidgetClass.Get() : UFMCodexPlayerCardWidget::StaticClass();
-	for (int32 ChoiceIndex = 0;
-		ChoiceIndex < Presentation.DeploymentChoices.Num(); ++ChoiceIndex)
-	{
-		const FFMCodexUMGDeploymentChoiceViewModel& Choice =
-			Presentation.DeploymentChoices[ChoiceIndex];
-		UVerticalBox* Group = WidgetTree->ConstructWidget<UVerticalBox>(
-			UVerticalBox::StaticClass(), FName(*FString::Printf(
-				TEXT("DeploymentChoiceGroup%d"), ChoiceIndex)));
-		UFMCodexPlayerCardWidget* Card =
-			WidgetTree->ConstructWidget<UFMCodexPlayerCardWidget>(
-				CardClass, FName(*FString::Printf(
-					TEXT("DeploymentCandidateCard%d"), ChoiceIndex)));
-		Card->RefreshFromPresentation(
-			Choice.Card,
-			EFMCodexPlayerCardPresentationMode::InteractionChoice);
-		Card->ConfigureDeploymentDrag(Choice.CardId, Choice.bGoalkeeper);
-		Card->OnDeploymentDragStarted.AddUObject(
-			this,
-			&UFMCodexInteractionPanelWidget::HandleDeploymentCardDragStarted);
-		Card->OnDeploymentDragFinished.AddUObject(
-			this,
-			&UFMCodexInteractionPanelWidget::HandleDeploymentCardDragFinished);
-		Group->AddChildToVerticalBox(Card);
-		RenderedCandidateCardWidgets.Add(Card);
-		CandidateCardsBody->AddChildToHorizontalBox(Group);
-	}
+	// Deployment cards live in the persistent local rack. The dock only
+	// presents contextual actions, so it cannot resize the pitch.
 
 	for (int32 ChoiceIndex = 0;
 		ChoiceIndex < Presentation.SelectionChoices.Num(); ++ChoiceIndex)
@@ -512,15 +520,8 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 				TEXT("SelectionChoiceGroup%d"), ChoiceIndex)));
 		if (Choice.bHasCard)
 		{
-			UFMCodexPlayerCardWidget* Card =
-				WidgetTree->ConstructWidget<UFMCodexPlayerCardWidget>(
-					CardClass, FName(*FString::Printf(
-						TEXT("SelectionCandidateCard%d"), ChoiceIndex)));
-			Card->RefreshFromPresentation(
-				Choice.Card,
-				EFMCodexPlayerCardPresentationMode::InteractionChoice);
-			Group->AddChildToVerticalBox(Card);
-			RenderedCandidateCardWidgets.Add(Card);
+			// The permanent rack already preserves card identity. Selection
+			// actions stay compact in the stable bottom dock.
 		}
 		UFMCodexInteractionOptionWidget* Option = MakeOptionWidget(
 			FName(*FString::Printf(TEXT("SelectionOption%d"), ChoiceIndex)));

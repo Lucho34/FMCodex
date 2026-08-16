@@ -346,7 +346,9 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::BuildGenericAccepted(
 {
 	using namespace FMCodexLocalMatchResolutionFeedback;
 	FFMCodexLocalMatchResolutionFeedback Feedback;
-	Feedback.bVisible = true;
+	Feedback.bVisible =
+		BeforeView.MajorPhase == EFMCodexLocalMatchMajorPhase::Resolution
+		|| AfterView.MajorPhase == EFMCodexLocalMatchMajorPhase::Resolution;
 	Feedback.CommandName = CommandName;
 	Feedback.StepTitle = ReadableCommand(CommandName);
 	Feedback.StepSummary = TEXT("Accepted by the authoritative local Host");

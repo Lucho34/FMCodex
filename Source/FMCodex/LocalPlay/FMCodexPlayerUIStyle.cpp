@@ -169,6 +169,29 @@ FLinearColor FFMCodexPlayerUIStyle::GetPlayerAccentColor(
 	return GetColor(EFMCodexPlayerUIColorRole::NeutralAccent);
 }
 
+FLinearColor FFMCodexPlayerUIStyle::GetRarityAccentColor(
+	const FString& CanonicalLabel) const
+{
+	if (CanonicalLabel == TEXT("Regional") || CanonicalLabel == TEXT("Club"))
+	{
+		return FLinearColor(0.18f, 0.72f, 0.34f, 1.0f);
+	}
+	if (CanonicalLabel == TEXT("National"))
+	{
+		return FLinearColor(0.18f, 0.48f, 0.92f, 1.0f);
+	}
+	if (CanonicalLabel == TEXT("Continental"))
+	{
+		return FLinearColor(0.56f, 0.28f, 0.86f, 1.0f);
+	}
+	if (CanonicalLabel == TEXT("World Class")
+		|| CanonicalLabel == TEXT("Pilot"))
+	{
+		return FLinearColor(0.94f, 0.48f, 0.08f, 1.0f);
+	}
+	return FLinearColor(0.86f, 0.88f, 0.90f, 1.0f);
+}
+
 FLinearColor FFMCodexPlayerUIStyle::GetStatusBadgeColor(
 	const FString& PresentationLabel) const
 {

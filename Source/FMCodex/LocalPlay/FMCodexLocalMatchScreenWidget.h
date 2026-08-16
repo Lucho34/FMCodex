@@ -9,12 +9,17 @@
 
 class AFMCodexLocalMatchPlayerController;
 class UBorder;
+class UFMCodexCardRackWidget;
 class UFMCodexInteractionPanelWidget;
 class UFMCodexMatchHeaderWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
 class UFMCodexResolutionPanelWidget;
+class UImage;
+class USizeBox;
 class UTextBlock;
+class UTexture2D;
+class UWidget;
 class UVerticalBox;
 class SWidget;
 
@@ -89,6 +94,8 @@ public:
 	UFMCodexPitchWidget* GetPitchWidget() const;
 	UFMCodexInteractionPanelWidget* GetInteractionPanel() const;
 	UFMCodexResolutionPanelWidget* GetResolutionPanel() const;
+	UFMCodexCardRackWidget* GetLocalRackWidget() const;
+	UFMCodexCardRackWidget* GetOpponentRackWidget() const;
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
 		GetRenderedCandidateCardWidgets() const;
 
@@ -163,6 +170,21 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> MainScreen;
 
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> LocalRackBounds;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> PitchBounds;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> OpponentRackBounds;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexCardRackWidget> LocalRackWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexCardRackWidget> OpponentRackWidget;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Header Presentation")
 	TSubclassOf<UFMCodexMatchHeaderWidget> MatchHeaderWidgetClass;
 
@@ -188,6 +210,9 @@ private:
 	TObjectPtr<UFMCodexResolutionPanelWidget> ResolutionPanel;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> ResolutionOverlay;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UBorder> HandoffOverlay;
 
 	UPROPERTY(Transient)
@@ -198,4 +223,77 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> HandoffReadyText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> HandMicroSharpnessDiagnosticSurface;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> HandMicroSharpnessDiagnosticBounds;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroSharpnessRayaPage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroSharpnessRepresentativePage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroArtConformancePage2;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroArtConformancePage3;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroPortraitRebalancePage4;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroPortraitRebalancePage5;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroReferenceAPage6;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroReferenceAPage7;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroReferenceAPage8;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroTypographyPage9;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> HandMicroHeightPage10;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> HandMicroSharpnessDirectImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexPlayerCardWidget> HandMicroSharpnessProductionCard;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexPlayerCardWidget> HandMicroSharpnessRuntimeCard;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> HandMicroSharpnessHighResolutionTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> HandMicroSharpnessRuntimeTexture;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UFMCodexPlayerCardWidget>>
+		HandMicroRepresentativeHighResolutionCards;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroRepresentativeRuntimeCards;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroConformanceCurrentCards;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroConformanceCandidateCards;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroRebalancePreviousCards;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> HandMicroRebalanceCandidateCards;
 };

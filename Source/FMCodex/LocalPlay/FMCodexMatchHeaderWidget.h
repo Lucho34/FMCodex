@@ -48,13 +48,22 @@ private:
 	TObjectPtr<UTextBlock> PlayerAIdentityText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> LeftAttackerPointerText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PlayerBIdentityText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> PlayerAScoreText;
+	TObjectPtr<UTextBlock> RightAttackerPointerText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> PlayerBScoreText;
+	TObjectPtr<UTextBlock> TurnText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TacticalPointsText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CentralScoreText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> AttackerStatusRegion;

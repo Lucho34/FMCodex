@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "../CoreRules/InitialTurnOrderResolver.h"
 
 #include "FMCodexLocalMatchUMGPresentation.generated.h"
 
@@ -55,6 +56,15 @@ enum class EFMCodexUMGDeploymentTargetState : uint8
 	Unavailable
 };
 
+/** Presentation-only football landmark treatment for a physical Half. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGPitchVisualRole : uint8
+{
+	Midfield,
+	Forward,
+	Backfield
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGCardViewModel
 {
@@ -98,6 +108,57 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	bool bGoalkeeper = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	bool bAvailable = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	bool bUsed = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	bool bDeployed = false;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGCardRackCellViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	int32 StableIndex = INDEX_NONE;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	bool bPlayed = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	bool bDeploymentDraggable = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	bool bGoalkeeper = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	FFMCodexUMGCardViewModel Card;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGCardRackViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	FString SideLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	bool bLocalRack = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	int32 ColumnCount = 2;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	int32 RowCount = 10;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	TArray<FFMCodexUMGCardRackCellViewModel> Cells;
 };
 
 USTRUCT(BlueprintType)
@@ -146,6 +207,25 @@ struct FMCODEX_API FFMCodexUMGPitchRegionViewModel
 	FString ZoneContextLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	FString PhysicalHalfLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	FString TacticalRegionLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	EFMCodexUMGPitchVisualRole VisualRole =
+		EFMCodexUMGPitchVisualRole::Midfield;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	FText VisualRoleLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	bool bLocalFacingLane = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	int32 VisualLaneIndex = INDEX_NONE;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
 	bool bCurrentAttackingSide = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
@@ -165,6 +245,36 @@ struct FMCODEX_API FFMCodexUMGMatchHeaderViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FString ScoreLabel = TEXT("0 - 0");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString LeftPlayerLabel = TEXT("Player A");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString RightPlayerLabel = TEXT("Player B");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString LeftScoreLabel = TEXT("0");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString RightScoreLabel = TEXT("0");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString TurnLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString CurrentAttackerTacticalPointsLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int64 AttackSequence = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 CurrentAttackerTacticalPoints = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bHasCurrentAttacker = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bCurrentAttackerOnLeft = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FString PlayerAScoreLabel = TEXT("0");
@@ -478,6 +588,15 @@ struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 	FFMCodexUMGMatchHeaderViewModel Header;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
+	FFMCodexUMGCardRackViewModel LocalRack;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
+	FFMCodexUMGCardRackViewModel OpponentRack;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
+	FString LocalPlayerLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	TArray<FFMCodexUMGPitchRegionViewModel> PitchRegions;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
@@ -504,5 +623,7 @@ public:
 		const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
 		const FString& DiagnosticMessage,
 		bool bAwaitingHandoff,
-		const FString& PendingPlayerLabel);
+		const FString& PendingPlayerLabel,
+		EInitialTurnOrderPlayer LocalViewerSide =
+			EInitialTurnOrderPlayer::PlayerA);
 };

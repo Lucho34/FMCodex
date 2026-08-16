@@ -10,13 +10,28 @@ class FMCODEX_API FFMCodexPlayerUIPresentationText final
 {
 public:
 	static FText PlayerName(FName CardId, const FString& FallbackLabel);
+	static FText CompactPlayerName(FName CardId, const FString& FallbackLabel);
+	static FText HandMicroPlayerName(FName CardId, const FString& FallbackLabel);
+	static FText HandMicroFallbackPlayerName(FName CardId);
+	static FText HandMicroCompactRole(const FString& CanonicalLabel);
+	static FText MatchScreenLabel(const FString& CanonicalLabel);
 	static FText TeamName(FName CardId);
 	static FText Role(const FString& CanonicalLabel);
+	static FText CompactRole(const FString& CanonicalLabel);
 	static FText Skill(const FString& CanonicalLabel);
 	static FText Attribute(const FString& CanonicalEntry);
 	static FText Status(const FString& CanonicalLabel);
 	static FText Rarity(const FString& CanonicalLabel);
+	static FText CompactRarity(const FString& CanonicalLabel);
 	static FText Owner(const FString& CanonicalLabel);
+	static FText RackHeading(const FString& SideLabel, bool bLocalRack);
+	static FText TacticalRegion(const FString& CanonicalLabel);
+	static FText TacticalLaneHeading(
+		const FString& CanonicalLabel, bool bAttacking);
+	static FText Turn(int64 AttackSequence);
+	static FText TacticalPoints(int32 ActionPoint);
+	static FText BroadcastStatus(bool bMatchEnded, bool bAttackActive,
+		const FString& MatchResultLabel);
 
 	static FText UnknownCard();
 	static FText UnknownRole();

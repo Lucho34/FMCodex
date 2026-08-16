@@ -3,6 +3,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "FMCodexDeploymentDragDropOperation.h"
+#include "FMCodexCardRackWidget.h"
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexLocalMatchDemoConfiguration.h"
 #include "FMCodexLocalMatchHostGameMode.h"
@@ -20,6 +21,7 @@
 #include "Engine/Engine.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
+#include "Components/TextBlock.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
 
@@ -128,11 +130,11 @@ namespace FMCodexPrototypeTeamContentTests
 	}
 
 	UFMCodexPlayerCardWidget* FindHandCard(
-		UFMCodexInteractionPanelWidget& Panel,
+		UFMCodexCardRackWidget& Rack,
 		const FName CardId)
 	{
 		for (UFMCodexPlayerCardWidget* Widget
-			: Panel.GetRenderedCandidateCardWidgets())
+			: Rack.GetRenderedCardWidgets())
 		{
 			if (Widget != nullptr
 				&& Widget->GetDeploymentDragCardId() == CardId)
@@ -391,10 +393,11 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	}
 
 	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
+	UFMCodexCardRackWidget* LocalRack = Screen->GetLocalRackWidget();
 	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
 	TestNotNull(TEXT("Prototype deployment hand exists"), Panel);
 	TestNotNull(TEXT("Prototype five-slot pitch exists"), Pitch);
-	if (Panel == nullptr || Pitch == nullptr)
+	if (Panel == nullptr || Pitch == nullptr || LocalRack == nullptr)
 	{
 		return false;
 	}
@@ -415,7 +418,7 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 			FFMCodexPrototypeTeamContent::TeamIdForCard(Choice.CardId));
 
 		UFMCodexPlayerCardWidget* CardWidget =
-			FindHandCard(*Panel, Choice.CardId);
+			FindHandCard(*LocalRack, Choice.CardId);
 		TestNotNull(TEXT("Prototype card is rendered as the real drag source"),
 			CardWidget);
 		if (CardWidget == nullptr)
@@ -423,11 +426,12 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 			return false;
 		}
 		CardWidget->TakeWidget();
-		TestTrue(TEXT("PlayerCard renders localized identity, team, skill and stats"),
-			!CardWidget->GetRenderedIdentityText().IsEmpty()
-				&& !CardWidget->GetRenderedTeamText().IsEmpty()
-				&& CardWidget->GetRenderedSkillCount() == 1
-				&& CardWidget->GetRenderedAttributeCount() > 0
+		const UTextBlock* MicroName = Cast<UTextBlock>(
+			CardWidget->GetWidgetFromName(TEXT("HandMicroPlayerName")));
+		TestTrue(TEXT("Rack micro card renders localized identity and real art"),
+			MicroName != nullptr && !MicroName->GetText().IsEmpty()
+				&& CardWidget->GetRenderedSkillCount() == 0
+				&& CardWidget->GetRenderedAttributeCount() == 0
 				&& CardWidget->GetResolvedPortraitTexture() != nullptr
 				&& CardWidget->GetResolvedCardFrameTexture() != nullptr);
 
@@ -456,10 +460,8 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 				&& Host->GetMatchSnapshot().Snapshot.CurrentAttack
 					.DeploymentPlacements.Num() == BeforePlacements + 1);
 		Operation->Drop(FPointerEvent());
-		if (Controller->IsAwaitingHotSeatHandoff())
-		{
-			Screen->RequestReady();
-		}
+		TestFalse(TEXT("Successful prototype drop auto-hands off without Ready"),
+			Controller->IsAwaitingHotSeatHandoff());
 	}
 
 	TestTrue(TEXT("Public flow renders and deploys both prototype teams"),

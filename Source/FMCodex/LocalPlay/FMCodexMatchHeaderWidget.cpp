@@ -1,6 +1,7 @@
 #include "FMCodexMatchHeaderWidget.h"
 
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexPlayerUIPresentationText.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -12,68 +13,26 @@
 
 namespace FMCodexMatchHeaderWidget
 {
-	UTextBlock* MakeText(
-		UWidgetTree& Tree,
-		const FName Name,
-		const FString& Text = FString())
+	UTextBlock* MakeText(UWidgetTree& Tree, const FName Name)
 	{
 		UTextBlock* Result = Tree.ConstructWidget<UTextBlock>(
 			UTextBlock::StaticClass(), Name);
-		Result->SetText(FText::FromString(Text));
-		Result->SetAutoWrapText(true);
+		Result->SetAutoWrapText(false);
+		Result->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+		Result->SetClipping(EWidgetClipping::ClipToBounds);
+		Result->SetJustification(ETextJustify::Center);
 		return Result;
 	}
 
-	void AddFillChild(UHorizontalBox& Parent, UWidget* Child)
+	void AddFill(UHorizontalBox& Parent, UWidget* Child, const float Value)
 	{
 		UHorizontalBoxSlot* Slot = Parent.AddChildToHorizontalBox(Child);
-		Slot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		FSlateChildSize Size;
+		Size.SizeRule = ESlateSizeRule::Fill;
+		Size.Value = Value;
+		Slot->SetSize(Size);
 		Slot->SetHorizontalAlignment(HAlign_Fill);
 		Slot->SetVerticalAlignment(VAlign_Center);
-	}
-
-	UBorder* MakeRegion(
-		UWidgetTree& Tree,
-		const FName Name,
-		const EFMCodexPlayerUIColorRole ColorRole,
-		const FMargin& Padding)
-	{
-		UBorder* Result = Tree.ConstructWidget<UBorder>(
-			UBorder::StaticClass(), Name);
-		FFMCodexPlayerUIStyle::Get().ApplyBorder(
-			*Result, ColorRole, Padding);
-		return Result;
-	}
-
-	UVerticalBox* MakeIdentity(
-		UWidgetTree& Tree,
-		const FName Prefix,
-		UTextBlock*& IdentityText)
-	{
-		UVerticalBox* Body = Tree.ConstructWidget<UVerticalBox>(
-			UVerticalBox::StaticClass(),
-			FName(*(Prefix.ToString() + TEXT("IdentityHierarchy"))));
-		UBorder* AssetHook = MakeRegion(
-			Tree, FName(*(Prefix.ToString() + TEXT("CrestAssetHook"))),
-			Prefix == TEXT("PlayerA")
-				? EFMCodexPlayerUIColorRole::PlayerAAccent
-				: EFMCodexPlayerUIColorRole::PlayerBAccent,
-			FFMCodexPlayerUIStyle::Get().GetCompactPadding());
-		UTextBlock* HookText = MakeText(
-			Tree, FName(*(Prefix.ToString() + TEXT("CrestPlaceholder"))),
-			TEXT("CREST"));
-		HookText->SetJustification(ETextJustify::Center);
-		FFMCodexPlayerUIStyle::Get().ApplyText(
-			*HookText, EFMCodexPlayerUITextRole::Secondary);
-		AssetHook->AddChild(HookText);
-		Body->AddChildToVerticalBox(AssetHook);
-		IdentityText = MakeText(
-			Tree, FName(*(Prefix.ToString() + TEXT("IdentityLabel"))));
-		IdentityText->SetJustification(ETextJustify::Center);
-		FFMCodexPlayerUIStyle::Get().ApplyText(
-			*IdentityText, EFMCodexPlayerUITextRole::Identity);
-		Body->AddChildToVerticalBox(IdentityText);
-		return Body;
 	}
 }
 
@@ -138,100 +97,105 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	}
 
 	USizeBox* Bounds = WidgetTree->ConstructWidget<USizeBox>(
-		USizeBox::StaticClass(), TEXT("MatchHeaderBounds"));
-	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
-	Bounds->SetMinDesiredWidth(Style.GetPanelMinWidth());
-	Bounds->SetMaxDesiredWidth(Style.GetPanelMaxWidth());
-	Bounds->SetMaxDesiredHeight(230.0f);
+		USizeBox::StaticClass(), TEXT("BroadcastMatchHeaderBounds"));
+	Bounds->SetHeightOverride(80.0f);
 	WidgetTree->RootWidget = Bounds;
-	UBorder* Frame = MakeRegion(
-		*WidgetTree, TEXT("MatchHeaderFrame"),
-		EFMCodexPlayerUIColorRole::PanelBackground,
-		Style.GetPanelPadding());
+	UBorder* Frame = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("MatchHeaderFrame"));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Style.ApplyBorder(*Frame, EFMCodexPlayerUIColorRole::PanelBackground,
+		Style.GetCompactPadding());
 	Bounds->AddChild(Frame);
-	UVerticalBox* RootBody = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(), TEXT("MatchHeaderHierarchy"));
-	Frame->AddChild(RootBody);
+	UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("BroadcastScoreboardRow"));
+	Frame->AddChild(Row);
 
-	MatchStatusText = MakeText(
-		*WidgetTree, TEXT("MatchHeaderStatusLabel"), TEXT("READY TO PLAY"));
-	MatchStatusText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(*MatchStatusText, EFMCodexPlayerUITextRole::Kicker);
-	RootBody->AddChildToVerticalBox(MatchStatusText);
+	AttackerStatusRegion = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("LeftPlayerBroadcastRegion"));
+	Style.ApplyBorder(*AttackerStatusRegion,
+		EFMCodexPlayerUIColorRole::PlayerAAccent, Style.GetCompactPadding());
+	UVerticalBox* Left = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("LeftPlayerBroadcastBody"));
+	AttackerStatusRegion->AddChild(Left);
+	PlayerAIdentityText = MakeText(*WidgetTree, TEXT("LeftPlayerIdentityLabel"));
+	LeftAttackerPointerText = MakeText(
+		*WidgetTree, TEXT("LeftCurrentAttackerPointer"));
+	LeftAttackerPointerText->SetText(FText::FromString(TEXT("\u25BC")));
+	Style.ApplyText(*LeftAttackerPointerText, EFMCodexPlayerUITextRole::Kicker);
+	Style.ApplyText(*PlayerAIdentityText, EFMCodexPlayerUITextRole::Identity);
+	Left->AddChildToVerticalBox(LeftAttackerPointerText);
+	Left->AddChildToVerticalBox(PlayerAIdentityText);
+	AddFill(*Row, AttackerStatusRegion, 1.0f);
 
-	UBorder* ScoreboardRegion = MakeRegion(
-		*WidgetTree, TEXT("MatchHeaderScoreboardRegion"),
-		EFMCodexPlayerUIColorRole::PanelRaised,
-		Style.GetSectionPadding());
-	UHorizontalBox* Scoreboard = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(), TEXT("MatchHeaderScoreboardHierarchy"));
-	UTextBlock* PlayerARaw = nullptr;
-	AddFillChild(*Scoreboard, MakeIdentity(
-		*WidgetTree, TEXT("PlayerA"), PlayerARaw));
-	PlayerAIdentityText = PlayerARaw;
-	UBorder* ScoreRegion = MakeRegion(
-		*WidgetTree, TEXT("MatchHeaderCentralScoreRegion"),
-		EFMCodexPlayerUIColorRole::NeutralAccent,
-		Style.GetPanelPadding());
-	UHorizontalBox* ScoreBody = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(), TEXT("MatchHeaderCentralScoreHierarchy"));
-	PlayerAScoreText = MakeText(*WidgetTree, TEXT("PlayerAScoreValue"));
-	PlayerAScoreText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(*PlayerAScoreText, EFMCodexPlayerUITextRole::Score);
-	UTextBlock* Separator = MakeText(
-		*WidgetTree, TEXT("MatchHeaderScoreSeparator"), TEXT(" - "));
-	Separator->SetJustification(ETextJustify::Center);
-	Style.ApplyText(*Separator, EFMCodexPlayerUITextRole::ActionTitle);
-	PlayerBScoreText = MakeText(*WidgetTree, TEXT("PlayerBScoreValue"));
-	PlayerBScoreText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(*PlayerBScoreText, EFMCodexPlayerUITextRole::Score);
-	ScoreBody->AddChildToHorizontalBox(PlayerAScoreText);
-	ScoreBody->AddChildToHorizontalBox(Separator);
-	ScoreBody->AddChildToHorizontalBox(PlayerBScoreText);
-	ScoreRegion->AddChild(ScoreBody);
-	AddFillChild(*Scoreboard, ScoreRegion);
-	UTextBlock* PlayerBRaw = nullptr;
-	AddFillChild(*Scoreboard, MakeIdentity(
-		*WidgetTree, TEXT("PlayerB"), PlayerBRaw));
-	PlayerBIdentityText = PlayerBRaw;
-	ScoreboardRegion->AddChild(Scoreboard);
-	RootBody->AddChildToVerticalBox(ScoreboardRegion);
-
-	UHorizontalBox* StatusBody = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(), TEXT("MatchHeaderStatusHierarchy"));
-	AttackerStatusRegion = MakeRegion(
-		*WidgetTree, TEXT("MatchHeaderAttackerStatusRegion"),
-		EFMCodexPlayerUIColorRole::NeutralAccent,
-		Style.GetSectionPadding());
-	AttackerStatusText = MakeText(
-		*WidgetTree, TEXT("MatchHeaderAttackerStatusLabel"));
-	AttackerStatusText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(*AttackerStatusText, EFMCodexPlayerUITextRole::Status);
-	AttackerStatusRegion->AddChild(AttackerStatusText);
-	AddFillChild(*StatusBody, AttackerStatusRegion);
-	ActorStatusRegion = MakeRegion(
-		*WidgetTree, TEXT("MatchHeaderActorStatusRegion"),
-		EFMCodexPlayerUIColorRole::SystemStatus,
-		Style.GetSectionPadding());
-	ActorStatusText = MakeText(
-		*WidgetTree, TEXT("MatchHeaderActorStatusLabel"));
-	ActorStatusText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(*ActorStatusText, EFMCodexPlayerUITextRole::Status);
-	ActorStatusRegion->AddChild(ActorStatusText);
-	AddFillChild(*StatusBody, ActorStatusRegion);
-	RootBody->AddChildToVerticalBox(StatusBody);
-
-	FinalResultRegion = MakeRegion(
-		*WidgetTree, TEXT("MatchHeaderFinalResultRegion"),
-		EFMCodexPlayerUIColorRole::Warning,
-		Style.GetPanelPadding());
-	FinalResultText = MakeText(
-		*WidgetTree, TEXT("MatchHeaderFinalResultLabel"));
-	FinalResultText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(
-		*FinalResultText, EFMCodexPlayerUITextRole::TerminalResult);
+	UBorder* Center = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("CentralBroadcastMatchFacts"));
+	Style.ApplyBorder(*Center, EFMCodexPlayerUIColorRole::PanelRaised,
+		Style.GetCompactPadding());
+	UHorizontalBox* CenterBody = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("CentralBroadcastMatchFactsBody"));
+	Center->AddChild(CenterBody);
+	UVerticalBox* StateColumn = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("HeaderMatchStateColumn"));
+	MatchStatusText = MakeText(*WidgetTree, TEXT("MatchHeaderStatusLabel"));
+	FinalResultRegion = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("MatchHeaderFinalResultRegion"));
+	FinalResultText = MakeText(*WidgetTree, TEXT("MatchHeaderFinalResultLabel"));
 	FinalResultRegion->AddChild(FinalResultText);
-	RootBody->AddChildToVerticalBox(FinalResultRegion);
+	FinalResultRegion->SetVisibility(ESlateVisibility::Collapsed);
+	StateColumn->AddChildToVerticalBox(MatchStatusText);
+	StateColumn->AddChildToVerticalBox(FinalResultRegion);
+	AddFill(*CenterBody, StateColumn, 1.0f);
+
+	USizeBox* ScoreBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("HeaderCentralScoreBounds"));
+	ScoreBounds->SetMinDesiredWidth(180.0f);
+	CentralScoreText = MakeText(*WidgetTree, TEXT("CentralBroadcastScoreValue"));
+	ScoreBounds->AddChild(CentralScoreText);
+	CenterBody->AddChildToHorizontalBox(ScoreBounds);
+
+	UVerticalBox* PhaseColumn = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("HeaderPhaseFactsColumn"));
+	TurnText = MakeText(*WidgetTree, TEXT("CurrentTurnLabel"));
+	TacticalPointsText = MakeText(*WidgetTree, TEXT("CurrentAttackerTacticalPoints"));
+	AttackerStatusText = MakeText(*WidgetTree, TEXT("MatchHeaderAttackerStatusLabel"));
+	ActorStatusText = MakeText(*WidgetTree, TEXT("MatchHeaderActorStatusLabel"));
+	Style.ApplyText(*MatchStatusText, EFMCodexPlayerUITextRole::Kicker);
+	Style.ApplyText(*CentralScoreText, EFMCodexPlayerUITextRole::Score);
+	Style.ApplyText(*TurnText, EFMCodexPlayerUITextRole::Status);
+	Style.ApplyText(*TacticalPointsText, EFMCodexPlayerUITextRole::Secondary);
+	FSlateFontInfo MatchStatusFont = MatchStatusText->GetFont();
+	MatchStatusFont.Size = 10;
+	MatchStatusText->SetFont(MatchStatusFont);
+	FSlateFontInfo CentralScoreFont = CentralScoreText->GetFont();
+	CentralScoreFont.Size = 32;
+	CentralScoreText->SetFont(CentralScoreFont);
+	FSlateFontInfo TurnFont = TurnText->GetFont();
+	TurnFont.Size = 14;
+	TurnText->SetFont(TurnFont);
+	FSlateFontInfo TacticalPointsFont = TacticalPointsText->GetFont();
+	TacticalPointsFont.Size = 10;
+	TacticalPointsText->SetFont(TacticalPointsFont);
+	PhaseColumn->AddChildToVerticalBox(TurnText);
+	PhaseColumn->AddChildToVerticalBox(TacticalPointsText);
+	AddFill(*CenterBody, PhaseColumn, 1.0f);
+	AddFill(*Row, Center, 1.35f);
+
+	ActorStatusRegion = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("RightPlayerBroadcastRegion"));
+	Style.ApplyBorder(*ActorStatusRegion,
+		EFMCodexPlayerUIColorRole::PlayerBAccent, Style.GetCompactPadding());
+	UVerticalBox* Right = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("RightPlayerBroadcastBody"));
+	ActorStatusRegion->AddChild(Right);
+	PlayerBIdentityText = MakeText(*WidgetTree, TEXT("RightPlayerIdentityLabel"));
+	RightAttackerPointerText = MakeText(
+		*WidgetTree, TEXT("RightCurrentAttackerPointer"));
+	RightAttackerPointerText->SetText(FText::FromString(TEXT("\u25BC")));
+	Style.ApplyText(*RightAttackerPointerText, EFMCodexPlayerUITextRole::Kicker);
+	Style.ApplyText(*PlayerBIdentityText, EFMCodexPlayerUITextRole::Identity);
+	Right->AddChildToVerticalBox(RightAttackerPointerText);
+	Right->AddChildToVerticalBox(PlayerBIdentityText);
+	AddFill(*Row, ActorStatusRegion, 1.0f);
 }
 
 void UFMCodexMatchHeaderWidget::RefreshVisuals()
@@ -240,36 +204,39 @@ void UFMCodexMatchHeaderWidget::RefreshVisuals()
 	{
 		return;
 	}
-	MatchStatusText->SetText(FText::FromString(
-		Presentation.MatchStatusLabel.IsEmpty()
-			? TEXT("LOCAL MATCH") : Presentation.MatchStatusLabel));
-	PlayerAIdentityText->SetText(FText::FromString(Presentation.PlayerALabel));
-	PlayerBIdentityText->SetText(FText::FromString(Presentation.PlayerBLabel));
-	PlayerAScoreText->SetText(FText::FromString(Presentation.PlayerAScoreLabel));
-	PlayerBScoreText->SetText(FText::FromString(Presentation.PlayerBScoreLabel));
-
-	const bool bShowActiveStatus = Presentation.bMatchActive
-		&& !Presentation.bMatchEnded;
-	AttackerStatusText->SetText(FText::FromString(
-		Presentation.AttackerStatusLabel));
+	MatchStatusText->SetText(FFMCodexPlayerUIPresentationText::BroadcastStatus(
+		Presentation.bMatchEnded, Presentation.bAttackActive,
+		Presentation.MatchResultLabel));
+	CentralScoreText->SetText(FText::FromString(Presentation.ScoreLabel));
+	TurnText->SetText(FFMCodexPlayerUIPresentationText::Turn(
+		Presentation.AttackSequence));
+	TacticalPointsText->SetText(
+		!Presentation.bHasCurrentAttacker
+			? FText::GetEmpty()
+			: FFMCodexPlayerUIPresentationText::TacticalPoints(
+				Presentation.CurrentAttackerTacticalPoints));
+	PlayerAIdentityText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+		Presentation.LeftPlayerLabel));
+	PlayerBIdentityText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+		Presentation.RightPlayerLabel));
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
-	AttackerStatusRegion->SetBrushColor(
-		Style.GetPlayerAccentColor(Presentation.AttackerStatusLabel));
-	AttackerStatusRegion->SetVisibility(
-		bShowActiveStatus && !Presentation.AttackerStatusLabel.IsEmpty()
-			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	ActorStatusText->SetText(FText::FromString(Presentation.ActorStatusLabel));
-	ActorStatusRegion->SetBrushColor(Presentation.bSystemResolution
-		? Style.GetColor(EFMCodexPlayerUIColorRole::SystemStatus)
-		: Style.GetPlayerAccentColor(Presentation.ActorStatusLabel));
-	ActorStatusRegion->SetVisibility(
-		!Presentation.bMatchEnded && !Presentation.ActorStatusLabel.IsEmpty()
-			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	AttackerStatusRegion->SetBrushColor(Style.GetPlayerAccentColor(
+		Presentation.LeftPlayerLabel));
+	ActorStatusRegion->SetBrushColor(Style.GetPlayerAccentColor(
+		Presentation.RightPlayerLabel));
+	AttackerStatusRegion->SetRenderOpacity(
+		Presentation.bAttackActive && !Presentation.bCurrentAttackerOnLeft
+			? 0.62f : 1.0f);
+	ActorStatusRegion->SetRenderOpacity(
+		Presentation.bAttackActive && Presentation.bCurrentAttackerOnLeft
+			? 0.62f : 1.0f);
+	LeftAttackerPointerText->SetVisibility(
+		Presentation.bAttackActive && Presentation.bCurrentAttackerOnLeft
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	RightAttackerPointerText->SetVisibility(
+		Presentation.bAttackActive && !Presentation.bCurrentAttackerOnLeft
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	FinalResultText->SetText(FText::FromString(Presentation.MatchResultLabel));
-	FinalResultRegion->SetBrushColor(Presentation.MatchResultLabel.Contains(
-		TEXT("Player A")) || Presentation.MatchResultLabel.Contains(TEXT("Player B"))
-		? Style.GetPlayerAccentColor(Presentation.MatchResultLabel)
-		: Style.GetColor(EFMCodexPlayerUIColorRole::Warning));
 	FinalResultRegion->SetVisibility(Presentation.bMatchEnded
 		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }

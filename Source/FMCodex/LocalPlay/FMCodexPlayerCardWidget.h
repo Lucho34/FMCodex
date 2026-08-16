@@ -11,6 +11,7 @@ class UBorder;
 class UDragDropOperation;
 class UHorizontalBox;
 class UImage;
+class UOverlay;
 class USizeBox;
 class UTextBlock;
 class UTexture2D;
@@ -27,6 +28,8 @@ DECLARE_MULTICAST_DELEGATE(FFMCodexDeploymentCardDragFinished);
 UENUM(BlueprintType)
 enum class EFMCodexPlayerCardPresentationMode : uint8
 {
+	HandMicro,
+	PitchMini,
 	PitchCompact,
 	InteractionChoice
 };
@@ -58,8 +61,13 @@ public:
 	FName GetResolvedArtIdentity() const;
 	UTexture2D* GetResolvedCardFrameTexture() const;
 	UTexture2D* GetResolvedPortraitTexture() const;
+	UTexture2D* GetResolvedHandMicroPortraitTexture() const;
 	UTexture2D* GetResolvedRoleIconTexture() const;
 	UTexture2D* GetResolvedLongShotSkillIconTexture() const;
+	FVector2D GetConfiguredDimensions() const;
+	void SetDiagnosticHandMicroPortraitOverride(UTexture2D* InTexture);
+	void SetDiagnosticHandMicroUnifiedNameOverride(bool bEnabled);
+	void SetDiagnosticHandMicroHeight68Override(bool bEnabled);
 
 	void ConfigureDeploymentDrag(FName CardId, bool bGoalkeeper);
 	void ClearDeploymentDrag();
@@ -107,6 +115,54 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<USizeBox> CardBounds;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> DetailedContentLayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UOverlay> HandMicroVisualSystem;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> HandMicroContent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> HandMicroIdentityBounds;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> HandMicroTextHierarchy;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> HandMicroPortraitImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> HandMicroPortraitFallback;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> HandMicroIdentityText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> HandMicroRoleText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> HandMicroRarityAccent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> PitchMiniContent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> PitchMiniPortraitImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniPortraitFallback;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> PitchMiniIdentityText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> PitchMiniRoleText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniRarityAccent;
+
 	UPROPERTY(Transient, BlueprintReadOnly,
 		Category = "Local Match|Visual Hooks",
 		meta = (AllowPrivateAccess = "true", BindWidgetOptional))
@@ -132,6 +188,21 @@ private:
 	TObjectPtr<USizeBox> PortraitBounds;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> HeaderRegion;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> IdentityRegion;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> SkillRegion;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> AttributeRegion;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> StatusRegion;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> IdentityText;
 
 	UPROPERTY(Transient)
@@ -154,6 +225,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> ResolvedPortraitTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> ResolvedHandMicroPortraitTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> DiagnosticHandMicroPortraitOverride;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> ResolvedRoleIconTexture;
@@ -193,4 +270,8 @@ private:
 	FName DeploymentDragCardId = NAME_None;
 	bool bDeploymentDragEnabled = false;
 	bool bDeploymentDragGoalkeeper = false;
+	bool bHasDiagnosticUnifiedNameOverride = false;
+	bool bDiagnosticUnifiedNameEnabled = false;
+	bool bHasDiagnosticHeight68Override = false;
+	bool bDiagnosticHeight68Enabled = false;
 };
