@@ -2,6 +2,80 @@
 
 This log records approved player-facing UI decisions separately from gameplay canonical rules.
 
+## 2026-08-17 — Four-player Full Card club-identity artwork pilot
+
+- Stage `6.13.1.3.11.5` is intentionally limited to Saka, Raya, Rodri and
+  Donnarumma: one outfield and one goalkeeper representative for each current
+  Prototype team. It does not expand to the other twelve players or begin the
+  missing-six Full Card artwork program.
+- Four versioned `1024×1536` `_FullCardPilot_02` sources preserve the current
+  fictional faces, poses, stadiums and hero-bust framing while replacing the
+  generic navy training tops. Saka uses dominant red with white shoulders;
+  Rodri uses dominant sky blue; Raya uses an emerald/charcoal long-sleeve
+  goalkeeper treatment with red/white family accents; Donnarumma uses a
+  graphite/sky-blue long-sleeve goalkeeper treatment.
+- The pilot is inspired by recognizable club color and garment language but
+  contains no crest, sponsor, manufacturer mark, badge, number or text. The
+  original `_01` sources remain intact, and a focused four-item import plus
+  fresh-process validation path owns the versioned UE textures.
+- Full Card `360×540` geometry, hero crop, identity scrim, nationality/club
+  line, BirthDate/Height/Weight/PositionType order, outfield `5×2`, goalkeeper
+  `3×2`, Skills `0–3`, Serial and rarity treatment remain unchanged. Hand
+  Micro, Pitch Mini, Drag Proxy, Gameplay, Authority, CoreRules and
+  MatchPlayRuntime remain on their existing contracts.
+- This is an artwork candidate only. Identity continuity, club-at-a-glance
+  readability and overlay fit remain gated on user PIE screenshots.
+
+## 2026-08-17 — Full Card portrait emphasis and metadata simplification candidate
+
+- Stage `6.13.1.3.11.4.1` responds only to the post-`.11.4` Page 1 and Page 3 PIE findings. The Full Card remains `360×540`; its hero grows from `272` to `292 px`, uses one ratio-matched global inset crop, and lets the identity band span the full portrait width so face, shoulders, existing kit treatment and name read as one player-first unit.
+- The right metadata footprint narrows from `110` to `100 px`, aligns to the top instead of filling the hero height, and uses one reduced-alpha open surface. Position, BirthDate, Height and Weight keep their data and order, but their individual filled plates and repeated vertical markers are removed in favor of label/value hierarchy, whitespace and fine inset dividers.
+- Overall remains prominent and authoritative but moves from `48` to `44 px` so it no longer competes as strongly with the player. Rarity, outfield `5×2`, goalkeeper `3×2`, GK value anchors, Skills `0–3`, Serial and separator discipline remain intact.
+- The portrait asset pipeline and current `10/16` dedicated-art boundary are unchanged. No per-player Full Card offsets, new artwork, Hand Micro crop changes, Gameplay, Authority, formula, value or content changes are introduced. The result remains `DRAFT FOR USER PIE VALIDATION`.
+
+## 2026-08-16 — In-Match Full Card visual-language refinement candidate
+
+- Stage `6.13.1.3.11.4` keeps the `360×540` Hover Full Card, `272 px` hero, outfield `5×2`, goalkeeper `3×2`, Skills `0–3`, short Chinese identity, Overall, biography, Serial and `10/16` dedicated artwork boundary unchanged. Current outfield/GK PIE captures and the supplied target are explicit visual inputs, but no reference likeness, branding, English subtitle, rarity text or demonstration value is copied.
+- The Full Card now uses a rarity outer edge, cool neutral one-pixel inner edge, two-pixel rarity rail and reduced-alpha identity transition. Position leaves the detached hero header and joins BirthDate/Height/Weight in one right-side metadata family. One inset divider separates Position from physical facts; repeated full-width row separators are removed.
+- Metadata markers, attribute tier ticks and Skill accents form one restrained geometric micro-detail family. Section headings use short paired rules. The lower content stack adds no redundant full-width separator, glow, animation or background flood.
+- Outfield and goalkeeper cells both use fixed `30 px` height, fixed label bounds (`29 px` / `58 px`), a fill spacer, and fixed value bounds (`20 px` / `26 px`). The numeric column is therefore structurally right-anchored inside equal cells instead of being positioned by label length or per-stat exceptions.
+- The non-Shipping `FMCodex.UI.FullCardReview` surface expands to five true-size pages, adding Haaland/Foden while retaining Saka/Rodri, missing-art/no-Skill, both goalkeepers and the three-Skill stress case. The candidate remains `DRAFT FOR USER PIE VALIDATION`; it does not freeze commercial polish or implement the held Attribute Scale Recalibration proposal.
+- Hand Micro, Pitch Mini, Hand Micro Drag Proxy, Pitch, Match Screen macro layout, Prototype data, Overall calculation, rarity/Skill/Position semantics, Gameplay, CoreRules, MatchPlayRuntime and Authority remain unchanged.
+
+## 2026-08-16 — In-Match Full Card information-architecture refinement candidate
+
+- Stage `6.13.1.3.11.3` keeps the approved working size at `360×540` and refines only the internal In-Match Full Card hierarchy. The sixteen formal players now use explicit deterministic short Chinese names on this surface; complete Chinese and English metadata remain unchanged, but the English subtitle is no longer rendered.
+- Position is neutral compact slash notation (`GK`, `D`, `M`, `A`, `A/M`, `M/D`, `M/A`, `A/M/D`). Textual rarity names are removed. Rarity remains limited to the outer/accent frame, two-pixel rail, Overall number and Serial over the stable `#071521` surface.
+- Outfield Attributes are a canonical `5×2` matrix; goalkeeper Attributes are a legitimate `3×2` matrix. Equal cells use fixed value-badge geometry so label length cannot move numeric alignment. No values, attribute schema, Overall, Serial, content or Gameplay semantics change.
+- Skills support `0–3` rows and collapse at zero. Page 4 of the non-Shipping `FMCodex.UI.FullCardReview` surface compares a development-only three-Skill layout DTO assembled from existing canonical Skill identities with Gabriel's real zero-Skill state; it cannot enter Prototype content or authority.
+- Dedicated Full Card portrait coverage remains honestly `10/16`. Missing: Gabriel Martinelli, Gabriel Magalhães, Mikel Merino, Joško Gvardiol, Bernardo Silva and Jérémy Doku. Normal runtime keeps a clean neutral surface and does not promote Hand Micro `Runtime192`, Pilot, Golden Sample or another player's art.
+- The existing edge-aware Hover overlay and frozen Hand-Micro-based `1.10×` Drag Proxy remain unchanged. The result is `DRAFT FOR USER PIE VALIDATION`, not Frozen and not commercial-final.
+
+## 2026-08-16 — Full Card 360×540 reframe and Hand Micro drag-proxy candidate
+
+- Stage `6.13.1.3.11.2` separates inspection from manipulation. Local/opponent Hand hover and populated Pitch hover use one complete `360×540`, `2:3` In-Match Full Card; dragging never carries that Full Card and instead uses the frozen `220×68` Hand Micro presentation at one uniform `1.10×` scale (approximately `242×75`).
+- The larger Full Card preserves Position, restrained Rarity, presentation-supplied Overall, dedicated portrait or clean missing-art surface, full measured Chinese/English names, BirthDate/Height/Weight, canonical outfield ten or goalkeeper six Attributes, real Skills where present, and explicit Serial. No field is removed to rescue the former `240×360` density.
+- The hero grows to a `272 px` portrait-first region. Biography remains an opaque, quiet right-side area with three text-only rows and subtle separators; identity is protected from that column. The two-column attribute grid uses roomier neutral rows, while goalkeeper rows receive additional vertical breathing room. Rarity remains limited to the thin outer frame/rail, Overall number, and Serial over the common `#071521` surface family.
+- The `FMCodex.UI.FullCardReview` diagnostic now has three true-size pages: Saka/Rodri, Martinelli/Gabriel, and Raya/Donnarumma. It intentionally renders only two cards per page so the review never invalidates readability by shrinking four large cards into the old surface.
+- Full Card edge placement retains the 12 px usable-viewport margin and center-opening preference with the larger geometry. Dragging still suppresses hover, reserves the exact source StableIndex at 28% opacity, clears on cancel/success, and leaves the established permanent Ghost after authoritative deployment.
+- The result remains `DRAFT FOR USER PIE VALIDATION`. It does not Freeze the Full Card, complete the six missing dedicated artworks, change the frozen Hand Micro, alter Prototype content, or enter commercial polish.
+
+## 2026-08-16 — In-Match Full Card production foundation candidate
+
+- Stage `6.13.1.3.11.1` replaces the player-visible Full Card debug/prototype hierarchy with one dynamic `240×360` In-Match production candidate shared by local/opponent Hand hover, the existing drag proxy, and deployed Pitch hover. Collection/Showcase Card remains explicitly deferred.
+- The Full Card now uses the dedicated vertical portrait source in a larger bounded hero region, a stable `#071521` deep-navy family, measured `20→14 px` Full-Card-only name fitting, neutral Name/Position/body typography, restrained rarity frame/rail treatment, canonical two-column outfield ten or goalkeeper six, approved `1–6` value-tier colors, and real structured Skill thresholds.
+- Current prototype biography fields exist but contain no values; Overall, English display name, and player-facing serial have no legitimate current sources. They therefore collapse. UMG derives none of them and exposes no CardId, developer reference, asset path, owner/team diagnostic, placeholder, duplicate Type, preferred foot, biography icon, attribute icon, or invented Creativity row.
+- A default-hidden, Cheat-gated, non-Shipping `FMCodex.UI.FullCardReview` surface selects four real dynamic prototype cards for name/rarity/position/attribute/GK comparison. Visual approval still requires this surface plus normal local hover, opponent hover, drag, deployment and Pitch-hover PIE review.
+- Hand Micro, Pitch Mini, Match Screen geometry, Stage `.11` interaction precedence/legality/cancel/success/Ghost behavior, Gameplay, Authority and MatchPlayRuntime semantics remain unchanged. The dedicated visual specification is `DRAFT FOR USER PIE VALIDATION`; no Full Card Freeze or commercial-final claim is made.
+
+## 2026-08-16 — Match Screen core interaction UX ready for user PIE validation
+
+- Stage `6.13.1.3.11` completes the technical Hand Micro → Full Card hover → drag → legal target → cancel/deploy → Pitch hover loop without reopening the frozen Hand Micro core. Automation establishes `MATCH SCREEN INTERACTION UX / READY FOR USER PIE VALIDATION`; it does not grant visual or commercial approval.
+- Local and opponent Hand Micro plus populated deployed Pitch cards share one transient, hit-test-invisible, edge-aware `240×360` Full Card detail instance. Left/right Rack overlays open inward and vertical placement clamps to a 12 px viewport margin. Ghosts and empty cells never create detail.
+- Eligible local drag suppresses hover, preserves the exact `220×68` source cell at 28% opacity, and reuses the actual `240×360` Full Card at 94% opacity with a `CenterRight` pointer pivot. Cancel restores the source with zero command; authoritative success leaves the existing permanent original-slot Ghost and uses the existing Pitch Mini representation on the field.
+- Legal slot visuals continue to consume `Interaction.DeploymentChoices` through `FFMCodexUMGDeploymentTargetProjector`; Widgets derive no legality. Legal slots use restrained surface emphasis, the current legal hover target uses a stronger cue, and prototype target-state text is hidden from normal UX.
+- Presentation precedence is `Dragging > Hover Full Card`. Hover, proxy and target state are cleared on drag completion, presentation refresh, handoff and teardown. Full Card, Pitch Mini and frozen Hand Micro geometry/assets remain separate; Gameplay, Authority and MatchPlayRuntime semantics are unchanged.
+
 ## 2026-08-16 — Hand Micro core production contract frozen and consolidated
 
 - Stage `6.13.1.3.10.6` closes the Hand Micro design-experiment infrastructure after the 16-player `.10.5` rollout passed engineering validation and real user PIE review. The conclusion is `HAND MICRO CORE PRODUCTION CONTRACT / FROZEN AND CONSOLIDATED`; commercial-quality source-art replacement remains `HAND MICRO COMMERCIAL POLISH / READY FOR NEXT STAGE`.
@@ -162,3 +236,68 @@ This log records approved player-facing UI decisions separately from gameplay ca
 - The normal Match Screen is Simplified-Chinese-first, with compact position abbreviations as the approved exception.
 - Successful authoritative deployment continues to auto-handoff in LocalPlay; invalid or rejected deployment does not hand off.
 - Resolution remains a temporary overlay and ordinary match-start success must not open a blocking Resolution layer.
+
+## 2026-08-16 — Prototype Player Content v1 integration
+
+- The normal Prototype roster is exactly sixteen formal `Prototype.*` records:
+  eight Arsenal and eight Manchester City players. The six former
+  `Demo.A/B.Outfield.01-.03` visual stand-ins remain isolated legacy
+  test/diagnostic fixtures and are no longer normal gameplay records.
+- The six reviewed Stage `6.13.2.1` profiles are integrated without changing
+  the existing ten players' gameplay values. Gabriel Magalhães deliberately
+  has no Skill; the other five use existing Skill identities and the existing
+  `2–8` range.
+- All sixteen formal records have approved Chinese and English names,
+  BirthDate, Height, Weight and explicit three-digit Serial `001`–`016`.
+  These presentation fields do not affect Gameplay or Authority.
+- Overall v1 is a single pure LocalPlay presentation calculation: outfield
+  highest six attributes times three plus explicit rarity value; goalkeeper
+  all six attributes times three plus explicit rarity value. Mapping is
+  Common `1`, National `2`, Continental `3`, WorldClass `4`, Legendary `5`;
+  values above 100 are valid. The unmapped gameplay `Regional` tier fails
+  closed rather than receiving an invented value.
+- Existing approved Runtime192 portraits are rebound directly to all sixteen
+  formal Hand Micro identities. Dedicated Full Card art remains honestly
+  `10/16`; the six newly formalized players use clean missing-art behavior and
+  do not promote Hand Micro assets or legacy Pilot/Golden Sample art.
+- Full Card geometry and styling remain Draft for user PIE validation. This
+  content stage populates the existing DTO and exposes real complete-data
+  pressure without redesigning the frozen `240×360` foundation.
+## 2026-08-17 — Full Card club/nationality and jersey-presence refinement
+
+- The newly selected Rodri reference supersedes earlier target-reference
+  priority for Full Card Stage `.11.4.2`; post-`.11.4.1` Page 1 and Page 3 PIE
+  captures remain the implementation and goalkeeper stability baselines.
+- Nationality and club are presentation-only Prototype metadata. The Full Card
+  renders them as one restrained text line beneath the short Chinese name:
+  `国籍：…  |  俱乐部：…`. Flags, club badges and extra identity icons remain
+  outside this stage.
+- The open right metadata family is now ordered BirthDate, Height, Weight,
+  PositionType. The player-facing label is `位置类型`; compact values such as
+  `A/M`, `M/D` and `GK` retain their existing meaning.
+- The hero grows from `292` to `300 px`. Its single global ratio-safe crop moves
+  from `3.5%–96.5% / 3.5%–55.5%` to
+  `1.5%–98.5% / 2.5%–58.3%`, revealing more existing shoulder and upper-chest
+  shirt area without per-player crop hacks or a new artwork pipeline.
+- The `360×540` shell, deep-navy/rarity treatment, open biography surface,
+  uncapped supplied Overall, Serial, outfield `5×2`, goalkeeper `3×2`, Skills
+  `0–3`, Hand Micro, Pitch Mini, Drag Proxy, Gameplay and Authority remain
+  unchanged. Visual closure still requires user PIE review.
+## 2026-08-17 — Full Card hero-bust and portrait-backed identity overlay
+
+- Post-`.11.4.2` Page 1 and Page 3 PIE captures establish the new implementation
+  and goalkeeper baselines. The newest Rodri target supersedes earlier target
+  priority for Stage `.11.4.3` and establishes continuity of player artwork
+  through the lower identity zone as the primary composition correction.
+- The Full Card hero grows from `300` to `320 px`. One systemic full-width,
+  ratio-matched crop (`0%–100% / 4.5%–65.8%`) shows more existing shoulder,
+  neckline and upper-chest art while making the face modestly smaller relative
+  to the complete hero. No per-player offset or source-art edit is introduced.
+- The former `0.94`-alpha identity rectangle is removed. Name, nationality,
+  club and Serial now sit over the portrait on a three-level dark readability
+  scrim (`0.12 / 0.34 / 0.62` alpha). The rarity accent moves to the lower edge
+  at `0.30` alpha so there is no hard line cutting the bust above the name.
+- Nationality/club placement, BirthDate/Height/Weight/PositionType order,
+  Overall, Serial, outfield `5×2`, goalkeeper `3×2`, Skills `0–3`, `360×540`,
+  Hand Micro, Pitch Mini, Drag Proxy, Gameplay and Authority remain unchanged.
+  The composition remains gated on user PIE visual review.

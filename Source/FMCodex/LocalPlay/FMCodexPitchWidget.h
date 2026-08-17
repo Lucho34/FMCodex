@@ -8,11 +8,14 @@
 #include "FMCodexPitchWidget.generated.h"
 
 class UFMCodexPitchSlotWidget;
+class UFMCodexPlayerCardWidget;
 class UCanvasPanel;
 class SWidget;
 
 DECLARE_MULTICAST_DELEGATE_ThreeParams(
 	FFMCodexPitchWidgetDeploymentDropped, FName, FName, bool);
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FFMCodexPitchWidgetCardDetailHover, UFMCodexPlayerCardWidget*);
 
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexPitchWidget : public UUserWidget
@@ -36,6 +39,8 @@ public:
 	FName GetActiveDeploymentCardId() const;
 
 	FFMCodexPitchWidgetDeploymentDropped OnDeploymentDropped;
+	FFMCodexPitchWidgetCardDetailHover OnCardDetailHoverRequested;
+	FFMCodexPitchWidgetCardDetailHover OnCardDetailHoverDismissed;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -46,6 +51,8 @@ private:
 	void RefreshVisuals();
 	void HandleSlotDeploymentDropped(
 		FName CardId, FName SlotId, bool bGoalkeeper);
+	void HandleCardDetailHoverRequested(UFMCodexPlayerCardWidget* SourceCard);
+	void HandleCardDetailHoverDismissed(UFMCodexPlayerCardWidget* SourceCard);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Pitch Presentation",

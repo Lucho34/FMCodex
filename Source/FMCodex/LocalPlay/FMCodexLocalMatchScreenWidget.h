@@ -9,6 +9,7 @@
 
 class AFMCodexLocalMatchPlayerController;
 class UBorder;
+class UCanvasPanel;
 class UFMCodexCardRackWidget;
 class UFMCodexInteractionPanelWidget;
 class UFMCodexMatchHeaderWidget;
@@ -19,6 +20,7 @@ class UImage;
 class USizeBox;
 class UTextBlock;
 class UTexture2D;
+class UUniformGridPanel;
 class UWidget;
 class UVerticalBox;
 class SWidget;
@@ -98,10 +100,27 @@ public:
 	UFMCodexCardRackWidget* GetOpponentRackWidget() const;
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
 		GetRenderedCandidateCardWidgets() const;
+	UFMCodexPlayerCardWidget* GetDetailOverlayCard() const;
+	bool IsDetailOverlayVisible() const;
+	bool IsDetailOverlayHitTestInvisible() const;
+	FVector2D GetDetailOverlayPosition() const;
+	EFMCodexUMGCardInteractionState GetInteractionState() const;
+	EFMCodexUMGCardInteractionState GetLastCompletedDragState() const;
+	int32 GetFullCardProductionReviewCardCount() const;
+	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
+		GetFullCardProductionReviewCards() const;
+	bool IsFullCardProductionReviewVisible() const;
+	static FVector2D GetCanonicalFullCardDimensions();
+	static FVector2D CalculateDetailOverlayPosition(
+		const FVector2D& SourcePosition,
+		const FVector2D& SourceSize,
+		const FVector2D& ViewportSize,
+		bool bOpenTowardRight);
 
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void NativeDestruct() override;
 
 private:
 	void BuildWidgetTree();
@@ -110,6 +129,13 @@ private:
 	void HandleDeploymentDragFinished();
 	void HandlePitchDeploymentDropped(
 		FName CardId, FName SlotId, bool bGoalkeeper);
+	void BindDetailHoverSources();
+	void HandleDetailHoverRequested(UFMCodexPlayerCardWidget* SourceCard);
+	void HandleDetailHoverDismissed(UFMCodexPlayerCardWidget* SourceCard);
+	void ShowDetailOverlay(UFMCodexPlayerCardWidget* SourceCard);
+	void HideDetailOverlay();
+	void PositionDetailOverlay(UFMCodexPlayerCardWidget* SourceCard);
+	void RefreshFullCardProductionReviewSurface();
 
 	UFUNCTION()
 	void HandleStartNewMatchClicked();
@@ -169,6 +195,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> MainScreen;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> DetailOverlayCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexPlayerCardWidget> DetailOverlayCard;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexPlayerCardWidget> DetailHoverSource;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USizeBox> LocalRackBounds;
@@ -238,4 +273,22 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UWidget> HandMicroProductionReviewLayoutPage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> FullCardProductionReviewBounds;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUniformGridPanel> FullCardProductionReviewGrid;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UFMCodexPlayerCardWidget>>
+		FullCardProductionReviewCards;
+
+	FVector2D DetailOverlayPosition = FVector2D::ZeroVector;
+	EFMCodexUMGCardInteractionState InteractionState =
+		EFMCodexUMGCardInteractionState::Default;
+	EFMCodexUMGCardInteractionState LastCompletedDragState =
+		EFMCodexUMGCardInteractionState::Default;
+	bool bDeploymentDragActive = false;
+	bool bDeploymentDropSubmitted = false;
 };

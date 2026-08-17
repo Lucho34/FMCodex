@@ -38,7 +38,7 @@ namespace FMCodexPlayerUIPresentationText
 		if (Token == TEXT("SHO")) return LOCTEXT("AttributeShooting", "射门");
 		if (Token == TEXT("DRI")) return LOCTEXT("AttributeDribbling", "盘带");
 		if (Token == TEXT("PAS")) return LOCTEXT("AttributePassing", "传球");
-		if (Token == TEXT("OFF")) return LOCTEXT("AttributeOffBall", "无球");
+		if (Token == TEXT("OFF")) return LOCTEXT("AttributeOffBall", "跑位");
 		if (Token == TEXT("MRK")) return LOCTEXT("AttributeMarking", "盯防");
 		if (Token == TEXT("TKL")) return LOCTEXT("AttributeTackling", "抢断");
 		if (Token == TEXT("SPD")) return LOCTEXT("AttributeSpeed", "速度");
@@ -65,8 +65,64 @@ FText FFMCodexPlayerUIPresentationText::PlayerName(
 	{
 		return PrototypeName;
 	}
+	if (FallbackLabel.StartsWith(TEXT("Card "))
+		|| FallbackLabel.Contains(TEXT("Demo."))
+		|| FallbackLabel.Contains(TEXT("Prototype."))
+		|| FallbackLabel.Contains(TEXT("CardId"))
+		|| FallbackLabel.Equals(TEXT("UNKNOWN CARD"), ESearchCase::IgnoreCase)
+		|| FallbackLabel.Contains(TEXT("reference"), ESearchCase::IgnoreCase))
+	{
+		// Hand-Micro-only aliases are visual validation labels, not canonical
+		// Full Card identity data. Missing player-facing identity stays omitted.
+		return FText::GetEmpty();
+	}
 	return FallbackLabel.IsEmpty()
-		? UnknownCard() : FText::FromString(FallbackLabel);
+		? FText::GetEmpty() : FText::FromString(FallbackLabel);
+}
+
+FText FFMCodexPlayerUIPresentationText::InMatchShortPlayerName(
+	const FName CardId,
+	const FString& FallbackLabel)
+{
+	// Explicit In-Match Full Card aliases. They are intentionally not derived
+	// from the legal display name so compound surnames and common football
+	// names remain a deterministic presentation contract.
+	if (CardId == TEXT("Prototype.Arsenal.DavidRaya"))
+		return LOCTEXT("InMatchShortDavidRaya", "拉亚");
+	if (CardId == TEXT("Prototype.Arsenal.WilliamSaliba"))
+		return LOCTEXT("InMatchShortWilliamSaliba", "萨利巴");
+	if (CardId == TEXT("Prototype.Arsenal.BukayoSaka"))
+		return LOCTEXT("InMatchShortBukayoSaka", "萨卡");
+	if (CardId == TEXT("Prototype.Arsenal.MartinOdegaard"))
+		return LOCTEXT("InMatchShortMartinOdegaard", "厄德高");
+	if (CardId == TEXT("Prototype.Arsenal.DeclanRice"))
+		return LOCTEXT("InMatchShortDeclanRice", "赖斯");
+	if (CardId == TEXT("Prototype.Arsenal.GabrielMartinelli"))
+		return LOCTEXT("InMatchShortGabrielMartinelli", "马丁内利");
+	if (CardId == TEXT("Prototype.Arsenal.GabrielMagalhaes"))
+		return LOCTEXT("InMatchShortGabrielMagalhaes", "加布里埃尔");
+	if (CardId == TEXT("Prototype.Arsenal.MikelMerino"))
+		return LOCTEXT("InMatchShortMikelMerino", "梅里诺");
+	if (CardId == TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"))
+		return LOCTEXT("InMatchShortGianluigiDonnarumma", "多纳鲁马");
+	if (CardId == TEXT("Prototype.ManchesterCity.ErlingHaaland"))
+		return LOCTEXT("InMatchShortErlingHaaland", "哈兰德");
+	if (CardId == TEXT("Prototype.ManchesterCity.PhilFoden"))
+		return LOCTEXT("InMatchShortPhilFoden", "福登");
+	if (CardId == TEXT("Prototype.ManchesterCity.Rodri"))
+		return LOCTEXT("InMatchShortRodri", "罗德里");
+	if (CardId == TEXT("Prototype.ManchesterCity.RubenDias"))
+		return LOCTEXT("InMatchShortRubenDias", "迪亚斯");
+	if (CardId == TEXT("Prototype.ManchesterCity.JoskoGvardiol"))
+		return LOCTEXT("InMatchShortJoskoGvardiol", "格瓦迪奥尔");
+	if (CardId == TEXT("Prototype.ManchesterCity.BernardoSilva"))
+		return LOCTEXT("InMatchShortBernardoSilva", "贝尔纳多");
+	if (CardId == TEXT("Prototype.ManchesterCity.JeremyDoku"))
+		return LOCTEXT("InMatchShortJeremyDoku", "多库");
+
+	// Non-Prototype cards keep a legitimate player-facing name if one exists;
+	// PlayerName already rejects CardId/debug fallbacks.
+	return PlayerName(CardId, FallbackLabel);
 }
 
 FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
@@ -167,29 +223,35 @@ FText FFMCodexPlayerUIPresentationText::HandMicroPlayerName(
 	const FName CardId,
 	const FString& FallbackLabel)
 {
-	// These aliases validate representative portrait/name rhythm in Hand Micro
-	// only. Pitch Mini and canonical gameplay identity remain untouched.
-	if (CardId == TEXT("Demo.A.Outfield.01"))
+	// These aliases are Hand-Micro-only. Formal player identity and Full Card
+	// continue to use the complete localized display name.
+	if (CardId == TEXT("Prototype.Arsenal.GabrielMartinelli")
+		|| CardId == TEXT("Demo.A.Outfield.01"))
 	{
 		return LOCTEXT("HandMicroMartinelli", "\u9A6C\u4E01\u5185\u5229");
 	}
-	if (CardId == TEXT("Demo.A.Outfield.02"))
+	if (CardId == TEXT("Prototype.Arsenal.GabrielMagalhaes")
+		|| CardId == TEXT("Demo.A.Outfield.02"))
 	{
 		return LOCTEXT("HandMicroGabriel", "\u52A0\u5E03\u91CC\u57C3\u5C14");
 	}
-	if (CardId == TEXT("Demo.A.Outfield.03"))
+	if (CardId == TEXT("Prototype.Arsenal.MikelMerino")
+		|| CardId == TEXT("Demo.A.Outfield.03"))
 	{
 		return LOCTEXT("HandMicroMerino", "\u6885\u91CC\u8BFA");
 	}
-	if (CardId == TEXT("Demo.B.Outfield.01"))
+	if (CardId == TEXT("Prototype.ManchesterCity.JoskoGvardiol")
+		|| CardId == TEXT("Demo.B.Outfield.01"))
 	{
 		return LOCTEXT("HandMicroGvardiol", "\u683C\u74E6\u8FEA\u5965\u5C14");
 	}
-	if (CardId == TEXT("Demo.B.Outfield.02"))
+	if (CardId == TEXT("Prototype.ManchesterCity.BernardoSilva")
+		|| CardId == TEXT("Demo.B.Outfield.02"))
 	{
 		return LOCTEXT("HandMicroBernardo", "\u8D1D\u5C14\u7EB3\u591A");
 	}
-	if (CardId == TEXT("Demo.B.Outfield.03"))
+	if (CardId == TEXT("Prototype.ManchesterCity.JeremyDoku")
+		|| CardId == TEXT("Demo.B.Outfield.03"))
 	{
 		return LOCTEXT("HandMicroDoku", "\u591A\u5E93");
 	}
@@ -206,7 +268,8 @@ FText FFMCodexPlayerUIPresentationText::HandMicroFallbackPlayerName(
 {
 	// Exceptional, localization-ready presentation aliases. The Widget asks
 	// for these only after the primary display name fails at the 12 px floor.
-	if (CardId == TEXT("Demo.B.Outfield.01"))
+	if (CardId == TEXT("Prototype.ManchesterCity.JoskoGvardiol")
+		|| CardId == TEXT("Demo.B.Outfield.01"))
 	{
 		return LOCTEXT("HandMicroFallbackGvardiol", "\u683C\u74E6");
 	}
@@ -292,6 +355,12 @@ FText FFMCodexPlayerUIPresentationText::HandMicroCompactRole(
 	return FText::FromString(FString::Join(RoleLetters, TEXT("/")));
 }
 
+FText FFMCodexPlayerUIPresentationText::InMatchCompactRole(
+	const FString& CanonicalLabel)
+{
+	return HandMicroCompactRole(CanonicalLabel);
+}
+
 FText FFMCodexPlayerUIPresentationText::Skill(const FString& CanonicalLabel)
 {
 	return CanonicalLabel.IsEmpty() || CanonicalLabel == TEXT("NO SKILL")
@@ -318,6 +387,16 @@ FText FFMCodexPlayerUIPresentationText::Attribute(const FString& CanonicalEntry)
 		FText::FromString(Value));
 }
 
+FText FFMCodexPlayerUIPresentationText::AttributeLabel(
+	const FString& CanonicalToken)
+{
+	FString Token = CanonicalToken;
+	Token.TrimStartAndEndInline();
+	return Token.IsEmpty()
+		? AttributesUnavailable()
+		: FMCodexPlayerUIPresentationText::MapAttributeToken(Token.ToUpper());
+}
+
 FText FFMCodexPlayerUIPresentationText::Status(const FString& CanonicalLabel)
 {
 	const FString Label = CanonicalLabel.ToUpper();
@@ -333,8 +412,10 @@ FText FFMCodexPlayerUIPresentationText::Rarity(const FString& CanonicalLabel)
 {
 	if (CanonicalLabel.IsEmpty() || CanonicalLabel == TEXT("RARITY N/A")) return UnknownRarity();
 	if (CanonicalLabel == TEXT("Common")) return LOCTEXT("RarityCommon", "普通");
-	if (CanonicalLabel == TEXT("Club")) return LOCTEXT("RarityClub", "俱乐部");
+	if (CanonicalLabel == TEXT("Regional") || CanonicalLabel == TEXT("Club")) return LOCTEXT("RarityRegional", "区域级");
 	if (CanonicalLabel == TEXT("National")) return LOCTEXT("RarityNational", "国家级");
+	if (CanonicalLabel == TEXT("Continental")) return LOCTEXT("RarityContinental", "洲际级");
+	if (CanonicalLabel == TEXT("World Class")) return LOCTEXT("RarityWorldClass", "世界级");
 	if (CanonicalLabel == TEXT("Pilot")) return LOCTEXT("RarityPilot", "试制");
 	return FText::FromString(CanonicalLabel);
 }
@@ -421,6 +502,43 @@ FText FFMCodexPlayerUIPresentationText::Unavailable() { return LOCTEXT("Unavaila
 FText FFMCodexPlayerUIPresentationText::PortraitPlaceholder() { return LOCTEXT("PortraitPlaceholder", "球员肖像\n素材待接入"); }
 FText FFMCodexPlayerUIPresentationText::SkillsHeading() { return LOCTEXT("SkillsHeading", "技能"); }
 FText FFMCodexPlayerUIPresentationText::AttributesHeading() { return LOCTEXT("AttributesHeading", "属性"); }
+FText FFMCodexPlayerUIPresentationText::FullCardAttributesHeading() { return LOCTEXT("FullCardAttributesHeading", "球员属性"); }
+FText FFMCodexPlayerUIPresentationText::OverallHeading() { return LOCTEXT("OverallHeading", "总能力值"); }
+FText FFMCodexPlayerUIPresentationText::PositionHeading() { return LOCTEXT("PositionHeading", "位置"); }
+FText FFMCodexPlayerUIPresentationText::FullCardPositionTypeHeading()
+{
+	return LOCTEXT("FullCardPositionTypeHeading", "位置类型");
+}
+
+FText FFMCodexPlayerUIPresentationText::FullCardIdentitySupplement(
+	const FString& NationalityLabel,
+	const FString& ClubLabel)
+{
+	if (!NationalityLabel.IsEmpty() && !ClubLabel.IsEmpty())
+	{
+		return FText::Format(
+			LOCTEXT("FullCardIdentitySupplementBoth",
+				"国籍：{0}  |  俱乐部：{1}"),
+			FText::FromString(NationalityLabel), FText::FromString(ClubLabel));
+	}
+	if (!NationalityLabel.IsEmpty())
+	{
+		return FText::Format(
+			LOCTEXT("FullCardIdentitySupplementNationality", "国籍：{0}"),
+			FText::FromString(NationalityLabel));
+	}
+	if (!ClubLabel.IsEmpty())
+	{
+		return FText::Format(
+			LOCTEXT("FullCardIdentitySupplementClub", "俱乐部：{0}"),
+			FText::FromString(ClubLabel));
+	}
+	return FText::GetEmpty();
+}
+
+FText FFMCodexPlayerUIPresentationText::BirthDateHeading() { return LOCTEXT("BirthDateHeading", "出生日期"); }
+FText FFMCodexPlayerUIPresentationText::HeightHeading() { return LOCTEXT("HeightHeading", "身高"); }
+FText FFMCodexPlayerUIPresentationText::WeightHeading() { return LOCTEXT("WeightHeading", "体重"); }
 
 FText FFMCodexPlayerUIPresentationText::DeploymentHandInstruction()
 {

@@ -9,11 +9,14 @@ struct FFMCodexPrototypePlayerDefinition
 {
 	FName TeamId = NAME_None;
 	FText TeamDisplayName;
+	FText EnglishDisplayName;
+	FText NationalityDisplayName;
+	FString PlayerFacingSerial;
 	FPlayerCardData Card;
 };
 
 /**
- * Bounded Stage 6.13 content catalog. It supplies exactly five prototype
+ * Formal Prototype content catalog. It supplies exactly eight real-player
  * identities per team while continuing to use the existing player-card
  * gameplay schema and the existing twenty-card LocalPlay decks.
  */

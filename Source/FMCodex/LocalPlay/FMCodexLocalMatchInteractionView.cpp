@@ -12,6 +12,8 @@
 #include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
 #include "../CoreRules/SkillRuleSnapshotQuery.h"
+#include "FMCodexPlayerOverall.h"
+#include "FMCodexPrototypeTeamContent.h"
 
 namespace FMCodexLocalMatchInteractionView
 {
@@ -144,18 +146,24 @@ namespace FMCodexLocalMatchInteractionView
 			View.StatusLabels, TEXT("  |  "));
 	}
 
-	FString SkillLabel(
+	FFMCodexLocalMatchCardView::FSkill SkillPresentation(
 		const FSkillRuleSnapshotSet& SkillRuleSet,
 		const FName SkillId)
 	{
+		FFMCodexLocalMatchCardView::FSkill Result;
 		FSkillRuleSnapshotQueryInput Input;
 		Input.SkillId = SkillId;
 		const auto Query = FSkillRuleSnapshotQuery::FindBySkillId(
 			SkillRuleSet, Input);
-		return Query.bSuccess
-			? FFMCodexLocalMatchInteractionViewBuilder::ToString(
-				Query.Snapshot.SkillType)
-			: FString::Printf(TEXT("Skill %s"), *SkillId.ToString());
+		if (Query.bSuccess)
+		{
+			Result.CanonicalLabel =
+				FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					Query.Snapshot.SkillType);
+			Result.MinTriggerActionPoint = Query.Snapshot.MinTriggerActionPoint;
+			Result.MaxTriggerActionPoint = Query.Snapshot.MaxTriggerActionPoint;
+		}
+		return Result;
 	}
 
 	FFMCodexLocalMatchSlotView MakeSlotView(
@@ -214,6 +222,30 @@ namespace FMCodexLocalMatchInteractionView
 
 		View.bGoalkeeper = Card.Snapshot.bIsGoalkeeper;
 		View.RackSortGroup = RackSortGroup(Card.Snapshot);
+		if (const FFMCodexPrototypePlayerDefinition* Prototype =
+			FFMCodexPrototypeTeamContent::Find(CardId))
+		{
+			View.DisplayLabel = Prototype->Card.DisplayName.ToString();
+			View.EnglishDisplayLabel =
+				Prototype->EnglishDisplayName.ToString();
+			View.NationalityLabel =
+				Prototype->NationalityDisplayName.ToString();
+			View.ClubLabel = Prototype->TeamDisplayName.ToString();
+			View.BirthDate = Prototype->Card.BirthDate;
+			View.HeightCm = Prototype->Card.HeightCm;
+			View.WeightKg = Prototype->Card.WeightKg;
+			View.PlayerFacingSerialLabel = Prototype->PlayerFacingSerial;
+			const FFMCodexPlayerOverallResult Overall =
+				Card.Snapshot.bHasGoalkeeperAttributes
+					? FFMCodexPlayerOverall::CalculateGoalkeeper(
+						Card.Snapshot.GoalkeeperAttributes,
+						Card.Snapshot.Rarity)
+					: FFMCodexPlayerOverall::CalculateOutfield(
+						Card.Snapshot.Attributes,
+						Card.Snapshot.Rarity);
+			View.OverallRating = Overall.Value;
+			View.bHasOverallRating = Overall.bSuccess;
+		}
 		TArray<FString> Positions;
 		for (const EPlayerPositionType Position : Card.Snapshot.PositionTypes)
 		{
@@ -223,6 +255,18 @@ namespace FMCodexLocalMatchInteractionView
 		View.PositionLabel = JoinLabels(Positions);
 		View.CompactRoleLabel = CompactRoleLabel(Card.Snapshot.PositionTypes);
 		const FPlayerAttributes& A = Card.Snapshot.Attributes;
+		View.AttributeValues = {
+			{ TEXT("SHO"), A.Shooting },
+			{ TEXT("DRI"), A.Dribbling },
+			{ TEXT("PAS"), A.Passing },
+			{ TEXT("OFF"), A.OffBall },
+			{ TEXT("MRK"), A.Marking },
+			{ TEXT("TKL"), A.Tackling },
+			{ TEXT("SPD"), A.Speed },
+			{ TEXT("STR"), A.Strength },
+			{ TEXT("STA"), A.Stamina },
+			{ TEXT("LS"), A.LongShot }
+		};
 		View.AttributeSummary = FString::Printf(
 			TEXT("SHO %d | DRI %d | PAS %d | OFF %d | MRK %d | TKL %d | SPD %d | STR %d | STA %d | LS %d"),
 			A.Shooting, A.Dribbling, A.Passing, A.OffBall,
@@ -234,6 +278,14 @@ namespace FMCodexLocalMatchInteractionView
 		if (Card.Snapshot.bHasGoalkeeperAttributes)
 		{
 			const FGoalkeeperAttributes& G = Card.Snapshot.GoalkeeperAttributes;
+			View.AttributeValues = {
+				{ TEXT("HAN"), G.Handling },
+				{ TEXT("POS"), G.Positioning },
+				{ TEXT("REF"), G.Reflex },
+				{ TEXT("AER"), G.Aerial },
+				{ TEXT("ANT"), G.Anticipation },
+				{ TEXT("1V1"), G.OneOnOne }
+			};
 			View.GoalkeeperAttributeSummary = FString::Printf(
 				TEXT("HAN %d | POS %d | REF %d | AER %d | ANT %d | 1v1 %d"),
 				G.Handling, G.Positioning, G.Reflex,
@@ -244,7 +296,13 @@ namespace FMCodexLocalMatchInteractionView
 		}
 		for (const FName SkillId : Card.Snapshot.SkillIds)
 		{
-			View.SkillLabels.Add(SkillLabel(SkillRuleSet, SkillId));
+			const FFMCodexLocalMatchCardView::FSkill Skill =
+				SkillPresentation(SkillRuleSet, SkillId);
+			if (!Skill.CanonicalLabel.IsEmpty())
+			{
+				View.Skills.Add(Skill);
+				View.SkillLabels.Add(Skill.CanonicalLabel);
+			}
 		}
 		View.DeveloperReferenceLabel = FString::Printf(
 			TEXT("Card reference: %s  |  Rarity: %s"),

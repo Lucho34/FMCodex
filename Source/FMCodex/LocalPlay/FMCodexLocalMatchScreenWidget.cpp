@@ -2,10 +2,12 @@
 
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexCardRackWidget.h"
+#include "FMCodexFullCardDiagnostics.h"
 #include "FMCodexHandMicroDiagnostics.h"
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexPitchWidget.h"
+#include "FMCodexPitchSlotWidget.h"
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexResolutionPanelWidget.h"
@@ -14,6 +16,8 @@
 #include "Components/Border.h"
 #include "Components/BorderSlot.h"
 #include "Components/Button.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/HorizontalBox.h"
@@ -98,6 +102,19 @@ TSharedRef<SWidget> UFMCodexLocalMatchScreenWidget::RebuildWidget()
 	return Super::RebuildWidget();
 }
 
+void UFMCodexLocalMatchScreenWidget::NativeDestruct()
+{
+	HideDetailOverlay();
+	if (PitchWidget != nullptr)
+	{
+		PitchWidget->EndDeploymentDrag();
+	}
+	bDeploymentDragActive = false;
+	bDeploymentDropSubmitted = false;
+	InteractionState = EFMCodexUMGCardInteractionState::Default;
+	Super::NativeDestruct();
+}
+
 void UFMCodexLocalMatchScreenWidget::SetMatchController(
 	AFMCodexLocalMatchPlayerController* InController)
 {
@@ -112,11 +129,16 @@ void UFMCodexLocalMatchScreenWidget::ClearMatchController()
 void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 	const FFMCodexUMGMatchScreenViewModel& InPresentation)
 {
+	HideDetailOverlay();
 	if (PitchWidget != nullptr)
 	{
 		PitchWidget->EndDeploymentDrag();
 	}
 	Presentation = InPresentation;
+	if (!bDeploymentDragActive)
+	{
+		InteractionState = EFMCodexUMGCardInteractionState::Default;
+	}
 	RefreshVisuals();
 }
 
@@ -173,6 +195,90 @@ UFMCodexLocalMatchScreenWidget::GetRenderedCandidateCardWidgets() const
 	static const TArray<TObjectPtr<UFMCodexPlayerCardWidget>> Empty;
 	return InteractionPanel != nullptr
 		? InteractionPanel->GetRenderedCandidateCardWidgets() : Empty;
+}
+
+UFMCodexPlayerCardWidget*
+UFMCodexLocalMatchScreenWidget::GetDetailOverlayCard() const
+{
+	return DetailOverlayCard;
+}
+
+bool UFMCodexLocalMatchScreenWidget::IsDetailOverlayVisible() const
+{
+	return DetailOverlayCard != nullptr
+		&& DetailOverlayCard->GetVisibility() != ESlateVisibility::Collapsed;
+}
+
+bool UFMCodexLocalMatchScreenWidget::IsDetailOverlayHitTestInvisible() const
+{
+	return DetailOverlayCanvas != nullptr && DetailOverlayCard != nullptr
+		&& DetailOverlayCanvas->GetVisibility()
+			== ESlateVisibility::HitTestInvisible
+		&& DetailOverlayCard->GetVisibility()
+			== ESlateVisibility::HitTestInvisible;
+}
+
+FVector2D UFMCodexLocalMatchScreenWidget::GetDetailOverlayPosition() const
+{
+	return DetailOverlayPosition;
+}
+
+EFMCodexUMGCardInteractionState
+UFMCodexLocalMatchScreenWidget::GetInteractionState() const
+{
+	return InteractionState;
+}
+
+EFMCodexUMGCardInteractionState
+UFMCodexLocalMatchScreenWidget::GetLastCompletedDragState() const
+{
+	return LastCompletedDragState;
+}
+
+int32 UFMCodexLocalMatchScreenWidget::GetFullCardProductionReviewCardCount() const
+{
+	return FullCardProductionReviewCards.Num();
+}
+
+const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
+UFMCodexLocalMatchScreenWidget::GetFullCardProductionReviewCards() const
+{
+	return FullCardProductionReviewCards;
+}
+
+bool UFMCodexLocalMatchScreenWidget::IsFullCardProductionReviewVisible() const
+{
+	return FullCardProductionReviewBounds != nullptr
+		&& FullCardProductionReviewBounds->GetVisibility()
+			!= ESlateVisibility::Collapsed;
+}
+
+FVector2D UFMCodexLocalMatchScreenWidget::GetCanonicalFullCardDimensions()
+{
+	return FVector2D(360.0f, 540.0f);
+}
+
+FVector2D UFMCodexLocalMatchScreenWidget::CalculateDetailOverlayPosition(
+	const FVector2D& SourcePosition,
+	const FVector2D& SourceSize,
+	const FVector2D& ViewportSize,
+	const bool bOpenTowardRight)
+{
+	constexpr float Gap = 16.0f;
+	constexpr float ViewportMargin = 12.0f;
+	const FVector2D FullCardSize = GetCanonicalFullCardDimensions();
+	const float DesiredX = bOpenTowardRight
+		? SourcePosition.X + SourceSize.X + Gap
+		: SourcePosition.X - FullCardSize.X - Gap;
+	const float DesiredY = SourcePosition.Y
+		+ (SourceSize.Y - FullCardSize.Y) * 0.5f;
+	const float MaximumX = FMath::Max(
+		ViewportMargin, ViewportSize.X - FullCardSize.X - ViewportMargin);
+	const float MaximumY = FMath::Max(
+		ViewportMargin, ViewportSize.Y - FullCardSize.Y - ViewportMargin);
+	return FVector2D(
+		FMath::Clamp(DesiredX, ViewportMargin, MaximumX),
+		FMath::Clamp(DesiredY, ViewportMargin, MaximumY));
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
@@ -444,6 +550,10 @@ void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragStarted(
 			});
 	if (bPresentedChoice)
 	{
+		HideDetailOverlay();
+		bDeploymentDragActive = true;
+		bDeploymentDropSubmitted = false;
+		InteractionState = EFMCodexUMGCardInteractionState::Dragging;
 		PitchWidget->BeginDeploymentDrag(
 			CardId, Presentation.Interaction.DeploymentChoices);
 	}
@@ -455,6 +565,13 @@ void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragFinished()
 	{
 		PitchWidget->EndDeploymentDrag();
 	}
+	HideDetailOverlay();
+	LastCompletedDragState = bDeploymentDropSubmitted
+		? EFMCodexUMGCardInteractionState::DropSuccess
+		: EFMCodexUMGCardInteractionState::DropCancelled;
+	InteractionState = LastCompletedDragState;
+	bDeploymentDragActive = false;
+	bDeploymentDropSubmitted = false;
 }
 
 void UFMCodexLocalMatchScreenWidget::HandlePitchDeploymentDropped(
@@ -462,6 +579,7 @@ void UFMCodexLocalMatchScreenWidget::HandlePitchDeploymentDropped(
 	const FName SlotId,
 	const bool bGoalkeeper)
 {
+	HideDetailOverlay();
 	if (PitchWidget != nullptr)
 	{
 		PitchWidget->EndDeploymentDrag();
@@ -473,6 +591,128 @@ void UFMCodexLocalMatchScreenWidget::HandlePitchDeploymentDropped(
 	else
 	{
 		RequestDeployOrdinary(CardId, SlotId);
+	}
+	const FString ExpectedCommand = bGoalkeeper
+		? TEXT("DeployGoalkeeper") : TEXT("DeployOrdinary");
+	bDeploymentDropSubmitted = MatchController != nullptr
+		&& MatchController->GetLastDiagnostic().CommandName == ExpectedCommand
+		&& MatchController->GetLastDiagnostic().bHostSuccess;
+	InteractionState = bDeploymentDropSubmitted
+		? EFMCodexUMGCardInteractionState::DropSuccess
+		: EFMCodexUMGCardInteractionState::DropCancelled;
+}
+
+void UFMCodexLocalMatchScreenWidget::BindDetailHoverSources()
+{
+	auto BindCard = [this](UFMCodexPlayerCardWidget* Card)
+	{
+		if (Card == nullptr)
+		{
+			return;
+		}
+		Card->OnDetailHoverRequested.AddUObject(
+			this, &UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested);
+		Card->OnDetailHoverDismissed.AddUObject(
+			this, &UFMCodexLocalMatchScreenWidget::HandleDetailHoverDismissed);
+	};
+	if (LocalRackWidget != nullptr)
+	{
+		for (UFMCodexPlayerCardWidget* Card
+			: LocalRackWidget->GetRenderedCardWidgets())
+		{
+			BindCard(Card);
+		}
+	}
+	if (OpponentRackWidget != nullptr)
+	{
+		for (UFMCodexPlayerCardWidget* Card
+			: OpponentRackWidget->GetRenderedCardWidgets())
+		{
+			BindCard(Card);
+		}
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested(
+	UFMCodexPlayerCardWidget* SourceCard)
+{
+	if (!bDeploymentDragActive && !Presentation.Handoff.bVisible)
+	{
+		ShowDetailOverlay(SourceCard);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleDetailHoverDismissed(
+	UFMCodexPlayerCardWidget* SourceCard)
+{
+	if (DetailHoverSource == SourceCard)
+	{
+		HideDetailOverlay();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::ShowDetailOverlay(
+	UFMCodexPlayerCardWidget* SourceCard)
+{
+	if (SourceCard == nullptr || DetailOverlayCard == nullptr
+		|| !SourceCard->CanExposeFullCardDetail())
+	{
+		return;
+	}
+	DetailHoverSource = SourceCard;
+	DetailOverlayCard->RefreshFromPresentation(
+		SourceCard->GetPresentation(),
+		EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	DetailOverlayCard->SetVisibility(ESlateVisibility::HitTestInvisible);
+	PositionDetailOverlay(SourceCard);
+	InteractionState = EFMCodexUMGCardInteractionState::Hover;
+}
+
+void UFMCodexLocalMatchScreenWidget::HideDetailOverlay()
+{
+	DetailHoverSource = nullptr;
+	if (DetailOverlayCard != nullptr)
+	{
+		DetailOverlayCard->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (!bDeploymentDragActive
+		&& InteractionState == EFMCodexUMGCardInteractionState::Hover)
+	{
+		InteractionState = EFMCodexUMGCardInteractionState::Default;
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::PositionDetailOverlay(
+	UFMCodexPlayerCardWidget* SourceCard)
+{
+	if (SourceCard == nullptr || DetailOverlayCard == nullptr)
+	{
+		return;
+	}
+	const FGeometry ScreenGeometry = GetCachedGeometry();
+	const FGeometry SourceGeometry = SourceCard->GetCachedGeometry();
+	FVector2D ViewportSize = ScreenGeometry.GetLocalSize();
+	if (ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
+	{
+		ViewportSize = FVector2D(1920.0f, 1080.0f);
+	}
+	const FVector2D SourcePosition = ScreenGeometry.AbsoluteToLocal(
+		SourceGeometry.LocalToAbsolute(FVector2D::ZeroVector));
+	FVector2D SourceSize = SourceGeometry.GetLocalSize();
+	if (SourceSize.X <= 0.0f || SourceSize.Y <= 0.0f)
+	{
+		SourceSize = SourceCard->GetConfiguredDimensions();
+	}
+	const bool bOpenTowardRight = SourcePosition.X + SourceSize.X * 0.5f
+		<= ViewportSize.X * 0.5f;
+	DetailOverlayPosition = CalculateDetailOverlayPosition(
+		SourcePosition, SourceSize, ViewportSize, bOpenTowardRight);
+	if (UCanvasPanelSlot* OverlaySlot = Cast<UCanvasPanelSlot>(
+		DetailOverlayCard->Slot))
+	{
+		OverlaySlot->SetPosition(DetailOverlayPosition);
+		OverlaySlot->SetSize(GetCanonicalFullCardDimensions());
+		OverlaySlot->SetAutoSize(false);
 	}
 }
 
@@ -551,6 +791,10 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	PitchWidget->OnDeploymentDropped.AddUObject(
 		this,
 		&UFMCodexLocalMatchScreenWidget::HandlePitchDeploymentDropped);
+	PitchWidget->OnCardDetailHoverRequested.AddUObject(
+		this, &UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested);
+	PitchWidget->OnCardDetailHoverDismissed.AddUObject(
+		this, &UFMCodexLocalMatchScreenWidget::HandleDetailHoverDismissed);
 	PitchRegion->AddChild(PitchWidget);
 	PitchBounds->AddChild(PitchRegion);
 	if (UHorizontalBoxSlot* PitchSlot = MainArea->AddChildToHorizontalBox(PitchBounds))
@@ -618,6 +862,25 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	DockBounds->AddChild(InteractionRegion);
 	MainScreen->AddChildToVerticalBox(DockBounds);
 
+	DetailOverlayCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(), TEXT("FullCardDetailOverlayCanvas"));
+	DetailOverlayCanvas->SetVisibility(ESlateVisibility::HitTestInvisible);
+	DetailOverlayCard = WidgetTree->ConstructWidget<UFMCodexPlayerCardWidget>(
+		UFMCodexPlayerCardWidget::StaticClass(), TEXT("TransientFullCardDetail"));
+	DetailOverlayCard->SetVisibility(ESlateVisibility::Collapsed);
+	if (UCanvasPanelSlot* DetailCardSlot =
+		DetailOverlayCanvas->AddChildToCanvas(DetailOverlayCard))
+	{
+		DetailCardSlot->SetPosition(FVector2D::ZeroVector);
+		DetailCardSlot->SetSize(GetCanonicalFullCardDimensions());
+	}
+	if (UOverlaySlot* DetailCanvasSlot =
+		Root->AddChildToOverlay(DetailOverlayCanvas))
+	{
+		DetailCanvasSlot->SetHorizontalAlignment(HAlign_Fill);
+		DetailCanvasSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+
 #if !UE_BUILD_SHIPPING
 	if (FMCodexHandMicroDiagnostics::IsProductionReviewEnabled())
 	{
@@ -643,19 +906,19 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		};
 		const TArray<FProductionReviewCase> ProductionCases = {
 			{ TEXT("Prototype.Arsenal.DavidRaya"), TEXT("拉亚"), TEXT("GK"),
-				TEXT("Raya"), TEXT("Legendary"), true },
+				TEXT("Raya"), TEXT("Continental"), true },
 			{ TEXT("Prototype.Arsenal.WilliamSaliba"), TEXT("萨利巴"), TEXT("D"),
 				TEXT("Saliba"), TEXT("Continental") },
 			{ TEXT("Prototype.Arsenal.DeclanRice"), TEXT("赖斯"), TEXT("M/D"),
 				TEXT("Rice"), TEXT("Continental") },
-			{ TEXT("Demo.A.Outfield.01"), TEXT("马丁内利"), TEXT("A/M/D"),
-				TEXT("Martinelli"), TEXT("Common") },
-			{ TEXT("Demo.A.Outfield.02"), TEXT("加布里埃尔"), TEXT("A/M/D"),
-				TEXT("Gabriel"), TEXT("Common") },
-			{ TEXT("Demo.A.Outfield.03"), TEXT("梅里诺"), TEXT("A/M/D"),
-				TEXT("Merino"), TEXT("Common") },
+			{ TEXT("Prototype.Arsenal.GabrielMartinelli"), TEXT("马丁内利"), TEXT("A"),
+				TEXT("Martinelli"), TEXT("National") },
+			{ TEXT("Prototype.Arsenal.GabrielMagalhaes"), TEXT("加布里埃尔"), TEXT("D"),
+				TEXT("Gabriel"), TEXT("Continental") },
+			{ TEXT("Prototype.Arsenal.MikelMerino"), TEXT("梅里诺"), TEXT("M/A"),
+				TEXT("Merino"), TEXT("National") },
 			{ TEXT("Prototype.Arsenal.BukayoSaka"), TEXT("萨卡"), TEXT("A/M"),
-				TEXT("Saka"), TEXT("Legendary") },
+				TEXT("Saka"), TEXT("World Class") },
 			{ TEXT("Prototype.Arsenal.MartinOdegaard"), TEXT("厄德高"), TEXT("M/A"),
 				TEXT("Odegaard"), TEXT("Continental") },
 			{ TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
@@ -665,16 +928,16 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 				TEXT("Dias"), TEXT("Continental") },
 			{ TEXT("Prototype.ManchesterCity.Rodri"), TEXT("罗德里"), TEXT("M/D"),
 				TEXT("Rodri"), TEXT("Continental") },
-			{ TEXT("Demo.B.Outfield.01"), TEXT("格瓦迪奥尔"), TEXT("A/M/D"),
-				TEXT("Gvardiol"), TEXT("Common") },
-			{ TEXT("Demo.B.Outfield.02"), TEXT("贝尔纳多"), TEXT("A/M/D"),
-				TEXT("Bernardo"), TEXT("Common") },
-			{ TEXT("Demo.B.Outfield.03"), TEXT("多库"), TEXT("A/M/D"),
-				TEXT("Doku"), TEXT("Common") },
+			{ TEXT("Prototype.ManchesterCity.JoskoGvardiol"), TEXT("格瓦迪奥尔"), TEXT("D"),
+				TEXT("Gvardiol"), TEXT("Continental") },
+			{ TEXT("Prototype.ManchesterCity.BernardoSilva"), TEXT("贝尔纳多"), TEXT("M/A"),
+				TEXT("Bernardo"), TEXT("Continental") },
+			{ TEXT("Prototype.ManchesterCity.JeremyDoku"), TEXT("多库"), TEXT("A"),
+				TEXT("Doku"), TEXT("National") },
 			{ TEXT("Prototype.ManchesterCity.PhilFoden"), TEXT("福登"), TEXT("A/M"),
 				TEXT("Foden"), TEXT("Continental") },
 			{ TEXT("Prototype.ManchesterCity.ErlingHaaland"), TEXT("哈兰德"), TEXT("A"),
-				TEXT("Haaland"), TEXT("Legendary") }
+				TEXT("Haaland"), TEXT("World Class") }
 		};
 		auto MakeReviewCard = [this](const FProductionReviewCase& ReviewCase,
 			const FString& Prefix) -> UFMCodexPlayerCardWidget*
@@ -810,6 +1073,40 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		HandMicroProductionReviewBounds->AddChild(
 			HandMicroProductionReviewSurface);
 	}
+	// Construct the review surface in non-shipping builds even when the CVar is
+	// currently off. This lets a developer toggle it during a live PIE session;
+	// RefreshFullCardProductionReviewSurface owns its visibility.
+	{
+		FullCardProductionReviewBounds = WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(), TEXT("FullCardProductionReviewBounds"));
+		FullCardProductionReviewBounds->SetWidthOverride(780.0f);
+		FullCardProductionReviewBounds->SetHeightOverride(610.0f);
+		FullCardProductionReviewBounds->SetVisibility(
+			ESlateVisibility::Collapsed);
+		UBorder* FullCardReviewSurface = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(), TEXT("FullCardProductionReviewSurface"));
+		FullCardReviewSurface->SetBrushColor(
+			FLinearColor::FromSRGBColor(FColor(0x04, 0x0E, 0x16)));
+		FullCardReviewSurface->SetPadding(FMargin(12.0f, 8.0f));
+		UVerticalBox* ReviewBody = WidgetTree->ConstructWidget<UVerticalBox>(
+			UVerticalBox::StaticClass(), TEXT("FullCardProductionReviewBody"));
+		UTextBlock* ReviewTitle = MakeText(*WidgetTree,
+			TEXT("FullCardProductionReviewTitle"),
+			TEXT("IN-MATCH FULL CARD — DRAFT PRODUCTION REVIEW"));
+		ReviewTitle->SetAutoWrapText(false);
+		ReviewTitle->SetJustification(ETextJustify::Center);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*ReviewTitle, EFMCodexPlayerUITextRole::Status);
+		ReviewBody->AddChildToVerticalBox(ReviewTitle);
+		FullCardProductionReviewGrid =
+			WidgetTree->ConstructWidget<UUniformGridPanel>(
+				UUniformGridPanel::StaticClass(),
+				TEXT("FullCardProductionReviewGrid"));
+		FullCardProductionReviewGrid->SetSlotPadding(FMargin(5.0f, 3.0f));
+		ReviewBody->AddChildToVerticalBox(FullCardProductionReviewGrid);
+		FullCardReviewSurface->AddChild(ReviewBody);
+		FullCardProductionReviewBounds->AddChild(FullCardReviewSurface);
+	}
 #endif
 	ResolutionOverlay = MakeRegion(
 		*WidgetTree, TEXT("ResolutionPresentationLayer"));
@@ -897,6 +1194,241 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 			ReviewSlot->SetVerticalAlignment(VAlign_Center);
 		}
 	}
+	if (FullCardProductionReviewBounds != nullptr)
+	{
+		if (UOverlaySlot* ReviewSlot = Root->AddChildToOverlay(
+			FullCardProductionReviewBounds))
+		{
+			ReviewSlot->SetHorizontalAlignment(HAlign_Center);
+			ReviewSlot->SetVerticalAlignment(VAlign_Center);
+		}
+	}
+#endif
+}
+
+void UFMCodexLocalMatchScreenWidget::RefreshFullCardProductionReviewSurface()
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (FullCardProductionReviewBounds == nullptr
+		|| FullCardProductionReviewGrid == nullptr)
+	{
+		return;
+	}
+	const bool bReviewEnabled =
+		FMCodexFullCardDiagnostics::IsProductionReviewEnabled();
+	FullCardProductionReviewBounds->SetVisibility(bReviewEnabled
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (!bReviewEnabled)
+	{
+		return;
+	}
+	FullCardProductionReviewGrid->ClearChildren();
+	FullCardProductionReviewCards.Reset();
+	TArray<const FFMCodexUMGCardViewModel*> Candidates;
+	auto CollectCandidates = [&Candidates](
+		const FFMCodexUMGCardRackViewModel& Rack, const bool bPrototypeOnly)
+	{
+		for (const FFMCodexUMGCardRackCellViewModel& Cell : Rack.Cells)
+		{
+			if (!Cell.Card.CardId.IsNone()
+				&& (!bPrototypeOnly || Cell.Card.CardId.ToString().StartsWith(
+					TEXT("Prototype."))))
+			{
+				Candidates.Add(&Cell.Card);
+			}
+		}
+	};
+	CollectCandidates(Presentation.LocalRack, true);
+	CollectCandidates(Presentation.OpponentRack, true);
+	if (Candidates.IsEmpty())
+	{
+		CollectCandidates(Presentation.LocalRack, false);
+		CollectCandidates(Presentation.OpponentRack, false);
+	}
+	TArray<const FFMCodexUMGCardViewModel*> Selected;
+	TArray<FFMCodexUMGCardViewModel> ReviewOnlyModels;
+	ReviewOnlyModels.Reserve(2);
+	auto AddUnique = [&Selected](const FFMCodexUMGCardViewModel* Candidate)
+	{
+		if (Selected.Num() < 2 && Candidate != nullptr
+			&& !Selected.ContainsByPredicate(
+			[Candidate](const FFMCodexUMGCardViewModel* Existing)
+			{
+				return Existing != nullptr
+					&& Existing->CardId == Candidate->CardId;
+			}))
+		{
+			Selected.Add(Candidate);
+		}
+	};
+	auto FindCandidate = [&Candidates](const FName CardId)
+		-> const FFMCodexUMGCardViewModel*
+	{
+		const FFMCodexUMGCardViewModel* const* Match =
+			Candidates.FindByPredicate(
+				[CardId](const FFMCodexUMGCardViewModel* Candidate)
+				{
+					return Candidate != nullptr
+						&& Candidate->CardId == CardId;
+				});
+		return Match == nullptr ? nullptr : *Match;
+	};
+	// Two true-size cards fit comfortably at 1920x1080. Five bounded review
+	// pages cover real art, missing art/no-Skill, both GK cases, Haaland, and a
+	// presentation-only three-Skill capacity stress DTO without shrinking the
+	// 360x540 production candidate.
+	const int32 ReviewPage =
+		FMCodexFullCardDiagnostics::GetProductionReviewPage();
+	if (ReviewPage == 0)
+	{
+		AddUnique(FindCandidate(TEXT("Prototype.Arsenal.BukayoSaka")));
+		AddUnique(FindCandidate(TEXT("Prototype.ManchesterCity.Rodri")));
+	}
+	else if (ReviewPage == 1)
+	{
+		AddUnique(FindCandidate(
+			TEXT("Prototype.Arsenal.GabrielMartinelli")));
+		AddUnique(FindCandidate(
+			TEXT("Prototype.Arsenal.GabrielMagalhaes")));
+	}
+	else if (ReviewPage == 2)
+	{
+		AddUnique(FindCandidate(TEXT("Prototype.Arsenal.DavidRaya")));
+		AddUnique(FindCandidate(
+			TEXT("Prototype.ManchesterCity.GianluigiDonnarumma")));
+	}
+	else if (ReviewPage == 3)
+	{
+		AddUnique(FindCandidate(
+			TEXT("Prototype.ManchesterCity.ErlingHaaland")));
+		AddUnique(FindCandidate(
+			TEXT("Prototype.ManchesterCity.PhilFoden")));
+	}
+	else
+	{
+		const FFMCodexUMGCardViewModel* StressBase = FindCandidate(
+			TEXT("Prototype.ManchesterCity.Rodri"));
+		if (StressBase != nullptr)
+		{
+			FFMCodexUMGCardViewModel StressCard = *StressBase;
+			StressCard.Skills.Reset();
+			StressCard.SkillLabels.Reset();
+			StressCard.DeveloperReferenceLabel =
+				TEXT("FullCardReview.ThreeSkillStress");
+			TSet<FString> AddedSkillLabels;
+			for (const FFMCodexUMGCardViewModel* Candidate : Candidates)
+			{
+				if (Candidate == nullptr)
+				{
+					continue;
+				}
+				for (const FFMCodexUMGSkillViewModel& Skill : Candidate->Skills)
+				{
+					if (StressCard.Skills.Num() >= 3)
+					{
+						break;
+					}
+					if (!Skill.CanonicalLabel.IsEmpty()
+						&& Skill.MinTriggerActionPoint > 0
+						&& Skill.MaxTriggerActionPoint
+							>= Skill.MinTriggerActionPoint
+						&& !AddedSkillLabels.Contains(Skill.CanonicalLabel))
+					{
+						StressCard.Skills.Add(Skill);
+						AddedSkillLabels.Add(Skill.CanonicalLabel);
+					}
+				}
+				if (StressCard.Skills.Num() >= 3)
+				{
+					break;
+				}
+			}
+			ReviewOnlyModels.Add(MoveTemp(StressCard));
+			AddUnique(&ReviewOnlyModels.Last());
+		}
+		AddUnique(FindCandidate(
+			TEXT("Prototype.Arsenal.GabrielMagalhaes")));
+	}
+	if (UTextBlock* ReviewTitle = Cast<UTextBlock>(
+		GetWidgetFromName(TEXT("FullCardProductionReviewTitle"))))
+	{
+		ReviewTitle->SetText(FText::FromString(FString::Printf(
+			TEXT("IN-MATCH FULL CARD — 360x540 VISUAL REVIEW — PAGE %d/5"),
+			ReviewPage + 1)));
+	}
+	const FFMCodexUMGCardViewModel* ShortName = nullptr;
+	const FFMCodexUMGCardViewModel* LongName = nullptr;
+	const FFMCodexUMGCardViewModel* Goalkeeper = nullptr;
+	for (const FFMCodexUMGCardViewModel* Candidate : Candidates)
+	{
+		if (Candidate == nullptr)
+		{
+			continue;
+		}
+		if (ShortName == nullptr
+			|| Candidate->IdentityLabel.Len() < ShortName->IdentityLabel.Len())
+		{
+			ShortName = Candidate;
+		}
+		if (LongName == nullptr
+			|| Candidate->IdentityLabel.Len() > LongName->IdentityLabel.Len())
+		{
+			LongName = Candidate;
+		}
+		if (Goalkeeper == nullptr && Candidate->bGoalkeeper)
+		{
+			Goalkeeper = Candidate;
+		}
+	}
+	AddUnique(ShortName);
+	AddUnique(LongName);
+	AddUnique(Goalkeeper);
+	for (const FFMCodexUMGCardViewModel* Candidate : Candidates)
+	{
+		if (Selected.Num() >= 2)
+		{
+			break;
+		}
+		const bool bAddsRarity = Selected.IsEmpty()
+			|| !Selected.ContainsByPredicate(
+				[Candidate](const FFMCodexUMGCardViewModel* Existing)
+				{
+					return Candidate != nullptr && Existing != nullptr
+						&& Existing->RarityLabel == Candidate->RarityLabel;
+				});
+		if (bAddsRarity)
+		{
+			AddUnique(Candidate);
+		}
+	}
+	for (const FFMCodexUMGCardViewModel* Candidate : Candidates)
+	{
+		if (Selected.Num() >= 2)
+		{
+			break;
+		}
+		AddUnique(Candidate);
+	}
+	for (int32 Index = 0; Index < Selected.Num(); ++Index)
+	{
+		UFMCodexPlayerCardWidget* Card =
+			WidgetTree->ConstructWidget<UFMCodexPlayerCardWidget>(
+				UFMCodexPlayerCardWidget::StaticClass(),
+				FName(*FString::Printf(TEXT("FullCardProductionReviewCard%d"),
+					Index)));
+		Card->RefreshFromPresentation(*Selected[Index],
+			EFMCodexPlayerCardPresentationMode::InteractionChoice);
+		Card->TakeWidget();
+		if (UUniformGridSlot* GridSlot =
+			FullCardProductionReviewGrid->AddChildToUniformGrid(Card, 0, Index))
+		{
+			GridSlot->SetHorizontalAlignment(HAlign_Center);
+			GridSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		FullCardProductionReviewCards.Add(Card);
+	}
 #endif
 }
 
@@ -936,11 +1468,13 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 				? ESlateVisibility::HitTestInvisible
 				: ESlateVisibility::Collapsed);
 	}
+	RefreshFullCardProductionReviewSurface();
 #endif
 	MatchHeader->RefreshFromPresentation(Presentation.Header);
 	LocalRackWidget->RefreshFromPresentation(Presentation.LocalRack);
 	OpponentRackWidget->RefreshFromPresentation(Presentation.OpponentRack);
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
+	BindDetailHoverSources();
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);
 	ResolutionOverlay->SetVisibility(Presentation.Resolution.bVisible

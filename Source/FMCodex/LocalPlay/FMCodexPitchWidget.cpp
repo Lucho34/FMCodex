@@ -240,6 +240,18 @@ void UFMCodexPitchWidget::HandleSlotDeploymentDropped(
 	OnDeploymentDropped.Broadcast(CardId, SlotId, bGoalkeeper);
 }
 
+void UFMCodexPitchWidget::HandleCardDetailHoverRequested(
+	UFMCodexPlayerCardWidget* SourceCard)
+{
+	OnCardDetailHoverRequested.Broadcast(SourceCard);
+}
+
+void UFMCodexPitchWidget::HandleCardDetailHoverDismissed(
+	UFMCodexPlayerCardWidget* SourceCard)
+{
+	OnCardDetailHoverDismissed.Broadcast(SourceCard);
+}
+
 void UFMCodexPitchWidget::BuildWidgetTree()
 {
 	if (WidgetTree == nullptr || WidgetTree->RootWidget != nullptr)
@@ -327,6 +339,10 @@ void UFMCodexPitchWidget::RefreshVisuals()
 			SlotWidget->RefreshFromPitchSlotPresentation(Region.Slots[SlotIndex]);
 			SlotWidget->OnDeploymentDropped.AddUObject(
 				this, &UFMCodexPitchWidget::HandleSlotDeploymentDropped);
+			SlotWidget->OnCardDetailHoverRequested.AddUObject(
+				this, &UFMCodexPitchWidget::HandleCardDetailHoverRequested);
+			SlotWidget->OnCardDetailHoverDismissed.AddUObject(
+				this, &UFMCodexPitchWidget::HandleCardDetailHoverDismissed);
 			UUniformGridSlot* GridSlot = SlotGrid->AddChildToUniformGrid(
 				SlotWidget, SlotIndex, 0);
 			GridSlot->SetHorizontalAlignment(HAlign_Center);

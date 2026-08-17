@@ -12,12 +12,40 @@ namespace FMCodexLocalMatchUMGPresentation
 	{
 		FFMCodexUMGCardViewModel Result;
 		Result.CardId = Card.CardId;
+		// Keep the shared DTO contract stable for Pitch Mini and legacy callers.
+		// Full Card performs its player-facing identity cleanup in its own
+		// presentation path so this production pass cannot change other modes.
 		Result.IdentityLabel = Card.DisplayLabel.IsEmpty()
 			? TEXT("UNKNOWN CARD") : Card.DisplayLabel;
+		Result.EnglishIdentityLabel = Card.EnglishDisplayLabel;
+		Result.NationalityLabel = Card.NationalityLabel;
+		Result.ClubLabel = Card.ClubLabel;
 		Result.OwnerLabel =
 			FFMCodexLocalMatchInteractionViewBuilder::ToString(Card.Side);
 		Result.RoleLabel = Card.CompactRoleLabel.IsEmpty()
 			? TEXT("ROLE N/A") : Card.CompactRoleLabel;
+		Result.OverallRating = Card.OverallRating;
+		Result.bHasOverallRating = Card.bHasOverallRating;
+		Result.BirthDate = Card.BirthDate;
+		Result.HeightCm = Card.HeightCm;
+		Result.WeightKg = Card.WeightKg;
+		for (const FFMCodexLocalMatchCardView::FAttribute& Attribute
+			: Card.AttributeValues)
+		{
+			FFMCodexUMGAttributeViewModel& AttributeView =
+				Result.AttributeValues.AddDefaulted_GetRef();
+			AttributeView.CanonicalLabel = Attribute.CanonicalLabel;
+			AttributeView.Value = Attribute.Value;
+		}
+		for (const FFMCodexLocalMatchCardView::FSkill& Skill : Card.Skills)
+		{
+			FFMCodexUMGSkillViewModel& SkillView =
+				Result.Skills.AddDefaulted_GetRef();
+			SkillView.CanonicalLabel = Skill.CanonicalLabel;
+			SkillView.MinTriggerActionPoint = Skill.MinTriggerActionPoint;
+			SkillView.MaxTriggerActionPoint = Skill.MaxTriggerActionPoint;
+		}
+		Result.PlayerFacingSerialLabel = Card.PlayerFacingSerialLabel;
 		Result.SkillLabels = Card.SkillLabels;
 		Result.SkillSummaryLabel = Card.SkillSummaryLabel.IsEmpty()
 			? TEXT("NO SKILL") : Card.SkillSummaryLabel;

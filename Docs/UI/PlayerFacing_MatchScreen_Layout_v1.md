@@ -47,9 +47,44 @@ rarity hint. All detailed Hand Micro geometry, typography, color, rarity,
 Ghost, fallback, responsive-scaling, and acceptance rules are owned by
 [HandMicro_Visual_Spec_v1.md](HandMicro_Visual_Spec_v1.md). Portrait source,
 composition, background, lighting, import, and validation rules are owned by
-[Portrait_Asset_Spec_v1.md](Portrait_Asset_Spec_v1.md). Both documents remain
-`Draft for Freeze`; this layout contract deliberately does not duplicate their
-candidate metrics.
+[Portrait_Asset_Spec_v1.md](Portrait_Asset_Spec_v1.md). Their Hand Micro core
+production contract is frozen; this layout contract deliberately does not
+duplicate its normative metrics.
+
+### Card interaction UX contract
+
+The production-candidate visual and data rules for the shared detail surface
+are owned by
+[InMatch_FullCard_Visual_Spec_v1.md](InMatch_FullCard_Visual_Spec_v1.md).
+That specification remains `DRAFT FOR USER PIE VALIDATION` and does not define
+a Collection/Showcase Card.
+
+- A populated local or opponent Hand Micro exposes the existing `Full Card`
+  presentation while hovered. A populated deployed Pitch card uses the same
+  transient detail system. Empty cells and Ghosts expose no detail.
+- Exactly one `360×540` Full Card detail overlay exists. It opens from either
+  Rack toward the center, clamps to a 12 px usable-viewport margin, is
+  hit-test-invisible, and disappears when its source is no longer hovered.
+- Drag takes precedence over hover detail. Starting an eligible local Hand
+  drag closes the detail overlay, leaves the original `220×68` Rack cell
+  reserved in a temporary low-opacity DragSource state, and uses a presentation-
+  only copy of the frozen `220×68` Hand Micro at a uniform `1.10×` scale
+  (approximately `242×75`) as the drag proxy. The proxy carries only portrait,
+  Chinese name, compact position, and rarity accent; it never shows Overall,
+  English name, biography, Attributes, Skills, Serial, or debug data.
+- Legal slot presentation consumes `Interaction.DeploymentChoices` through the
+  existing deployment-target projector. UMG does not calculate legality. All
+  legal destinations receive a restrained surface cue; the legal slot under
+  the pointer receives the stronger cue. Prototype labels such as
+  `可部署位置` are not shown in normal interaction UX.
+- A cancelled drag emits no deployment command, clears all highlights and the
+  proxy, and restores the exact source card. A successful drop continues
+  through the existing typed authoritative command, clears temporary states,
+  renders the Pitch-facing card variant, and leaves the permanent original-slot
+  Ghost.
+- The durable precedence is `Dragging > Hover Full Card`. Detail/proxy/target
+  state must also clear on presentation refresh, handoff, phase transition and
+  screen teardown.
 
 ### Dynamic local-facing Pitch
 
@@ -86,9 +121,9 @@ These values support the current 1920×1080 review and are not final:
 | Metric | Working value |
 |---|---:|
 | Header / Main / Dock | 80 / 880 / 120 px |
-| Local Rack / Pitch / Opponent Rack | 422 / 1076 / 422 px |
-| Horizontal share | 21.98% / 56.04% / 21.98% |
-| Hand Micro / Rack detail | See the two linked `Draft for Freeze` specifications above |
+| Local Rack / Pitch / Opponent Rack | 476 / 968 / 476 px |
+| Horizontal share | 24.79% / 50.42% / 24.79% |
+| Hand Micro / Rack detail | See the linked frozen core production specifications above |
 | Pitch Slot shell | 148×148 px |
 | Pitch Mini | 136×140 px |
 | Pitch lane centers | 33% / 67% |
@@ -100,7 +135,7 @@ Pitch width is deliberately not reduced again in this pass. Dynamic internal foo
 
 ## Deferred
 
-- Full Card hover timing, preview direction, collision avoidance, and final artwork
+- Advanced Full Card hover/drag animation and final artwork
 - Final Pitch Mini artwork
 - Tactical Badge system and Marker/Runner/Helper/Possession visual language
 - Ball, shot, save, goal, event, Dice, and Resolution animation

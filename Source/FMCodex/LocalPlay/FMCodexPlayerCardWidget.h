@@ -20,10 +20,13 @@ class UVerticalBox;
 class UWrapBox;
 class SWidget;
 class UFMCodexDeploymentDragDropOperation;
+class UFMCodexPlayerCardWidget;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(
 	FFMCodexDeploymentCardDragStarted, FName, bool);
 DECLARE_MULTICAST_DELEGATE(FFMCodexDeploymentCardDragFinished);
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FFMCodexPlayerCardDetailHover, UFMCodexPlayerCardWidget*);
 
 UENUM(BlueprintType)
 enum class EFMCodexPlayerCardPresentationMode : uint8
@@ -56,7 +59,20 @@ public:
 	int32 GetRenderedAttributeCount() const;
 	int32 GetRenderedStatusBadgeCount() const;
 	FText GetRenderedIdentityText() const;
+	FText GetRenderedPositionText() const;
+	FText GetRenderedRarityText() const;
 	FText GetRenderedTeamText() const;
+	int32 GetRenderedBiographyRowCount() const;
+	int32 GetFullCardNameFontSize() const;
+	bool IsOverallVisible() const;
+	bool IsPlayerFacingSerialVisible() const;
+	bool IsDeveloperReferenceVisible() const;
+	bool IsOwnerVisible() const;
+	bool IsTeamVisible() const;
+	bool IsRoleIconVisible() const;
+	FLinearColor GetFullCardBaseSurfaceColor() const;
+	const TArray<FLinearColor>& GetRenderedAttributeTierColors() const;
+	static FLinearColor GetAttributeTierColor(int32 Value);
 	bool IsGoalkeeperVisualVariant() const;
 	FName GetResolvedArtIdentity() const;
 	UTexture2D* GetResolvedCardFrameTexture() const;
@@ -65,6 +81,9 @@ public:
 	UTexture2D* GetResolvedRoleIconTexture() const;
 	UTexture2D* GetResolvedLongShotSkillIconTexture() const;
 	FVector2D GetConfiguredDimensions() const;
+	bool CanExposeFullCardDetail() const;
+	bool IsDragSourcePresentationActive() const;
+	EFMCodexUMGCardInteractionState GetInteractionState() const;
 
 	void ConfigureDeploymentDrag(FName CardId, bool bGoalkeeper);
 	void ClearDeploymentDrag();
@@ -75,6 +94,8 @@ public:
 
 	FFMCodexDeploymentCardDragStarted OnDeploymentDragStarted;
 	FFMCodexDeploymentCardDragFinished OnDeploymentDragFinished;
+	FFMCodexPlayerCardDetailHover OnDetailHoverRequested;
+	FFMCodexPlayerCardDetailHover OnDetailHoverDismissed;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -86,11 +107,17 @@ protected:
 		const FGeometry& InGeometry,
 		const FPointerEvent& InMouseEvent,
 		UDragDropOperation*& OutOperation) override;
+	virtual void NativeOnMouseEnter(
+		const FGeometry& InGeometry,
+		const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseLeave(
+		const FPointerEvent& InMouseEvent) override;
 
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
 	void RefreshPresentationArt();
+	void RefreshBiography();
 	void RefreshSkills();
 	void RefreshAttributes();
 	void RefreshStatusBadges();
@@ -114,6 +141,18 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DetailedContentLayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> FullCardBaseSurface;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> FullCardInnerFrame;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> FullCardRarityRail;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> FullCardIdentityAccent;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UOverlay> HandMicroVisualSystem;
@@ -203,6 +242,12 @@ private:
 	TObjectPtr<UTextBlock> IdentityText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> EnglishIdentityText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> FullCardIdentitySupplementText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RoleText;
 
 	UPROPERTY(Transient)
@@ -210,6 +255,21 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RarityText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> OverallNumberText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> OverallLabelText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> PlayerFacingSerialText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> BiographyRegion;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> BiographyList;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PortraitPlaceholderText;
@@ -257,11 +317,17 @@ private:
 	TArray<TObjectPtr<UTextBlock>> RenderedAttributeTexts;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> RenderedAttributeValueTexts;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> RenderedStatusTexts;
 
 	FString RenderedAttributeSummary;
+	TArray<FLinearColor> RenderedAttributeTierColors;
+	int32 RenderedBiographyRowCount = 0;
 	FName ResolvedArtIdentity = NAME_None;
 	FName DeploymentDragCardId = NAME_None;
 	bool bDeploymentDragEnabled = false;
 	bool bDeploymentDragGoalkeeper = false;
+	bool bDragSourcePresentationActive = false;
 };

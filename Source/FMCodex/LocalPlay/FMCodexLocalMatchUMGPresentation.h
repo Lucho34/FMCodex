@@ -56,6 +56,21 @@ enum class EFMCodexUMGDeploymentTargetState : uint8
 	Unavailable
 };
 
+/** Presentation-only states for the Match Screen card interaction loop. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGCardInteractionState : uint8
+{
+	Default,
+	Hover,
+	DragSource,
+	Dragging,
+	DragOverLegalSlot,
+	DropSuccess,
+	DropCancelled,
+	Deployed,
+	Ghost
+};
+
 /** Presentation-only football landmark treatment for a physical Half. */
 UENUM(BlueprintType)
 enum class EFMCodexUMGPitchVisualRole : uint8
@@ -63,6 +78,33 @@ enum class EFMCodexUMGPitchVisualRole : uint8
 	Midfield,
 	Forward,
 	Backfield
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGAttributeViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString CanonicalLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	int32 Value = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGSkillViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString CanonicalLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	int32 MinTriggerActionPoint = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	int32 MaxTriggerActionPoint = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -77,10 +119,43 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 	FString IdentityLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString EnglishIdentityLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString NationalityLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString ClubLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	FString OwnerLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	FString RoleLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	int32 OverallRating = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	bool bHasOverallRating = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString BirthDate;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	int32 HeightCm = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	int32 WeightKg = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	TArray<FFMCodexUMGAttributeViewModel> AttributeValues;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	TArray<FFMCodexUMGSkillViewModel> Skills;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString PlayerFacingSerialLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FString> SkillLabels;

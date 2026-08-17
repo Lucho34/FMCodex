@@ -10,6 +10,8 @@ struct FFMCodexPlayerUICardArtReferences
 	FName ArtIdentity = NAME_None;
 	TSoftObjectPtr<UTexture2D> CardFrame;
 	TSoftObjectPtr<UTexture2D> Portrait;
+	/** Optional vertical portrait override used only by the in-match Full Card. */
+	TSoftObjectPtr<UTexture2D> FullCardPortrait;
 	/** Dedicated horizontal portrait variant used only by Hand Micro. */
 	TSoftObjectPtr<UTexture2D> HandMicroPortrait;
 	TSoftObjectPtr<UTexture2D> RoleIcon;
@@ -45,6 +47,7 @@ private:
 	TSoftObjectPtr<UTexture2D> GoldenRoleIcon;
 	TSoftObjectPtr<UTexture2D> GoldenLongShotSkillIcon;
 	TMap<FName, TSoftObjectPtr<UTexture2D>> PrototypePortraits;
+	TMap<FName, TSoftObjectPtr<UTexture2D>> PrototypeFullCardPortraits;
 	TMap<FName, TSoftObjectPtr<UTexture2D>> PrototypeHandMicroPortraits;
 	TMap<FName, TSoftObjectPtr<UTexture2D>> HandMicroValidationPortraits;
 	TMap<FName, float> HandMicroPortraitTops;

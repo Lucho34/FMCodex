@@ -74,3 +74,40 @@ mapping.
 
 `MANUAL PORTRAIT COMPOSITION REVIEW REQUIRED` for subject landmarks, natural
 lighting, identity continuity, and visual match to Reference A before freeze.
+
+## Stage 6.13.1.3.11.5 four-player Full Card artwork pilot
+
+Generation mode: Codex built-in `image_gen`, identity-preserving edit, one
+isolated call per `1024×1536` opaque PNG. Each existing `_01` portrait was the
+authoritative identity, pose, stadium and lighting reference. The supplied
+Full Card target v3 was composition/mood reference only; the supplied
+Arsenal-inspired or Manchester-City-inspired shirt image was garment and
+color-language reference only. Existing source files were not overwritten.
+
+Shared edit contract:
+
+```text
+Preserve the authoritative portrait's exact fictional identity, face, skin
+tone, hair, ears, facial proportions, expression, gaze, head pose, stadium
+background, cyan/warm rim lighting, photorealism and vertical 2:3 composition.
+Replace only the generic dark training top with an unbranded modern match
+shirt. Keep the athlete large and centered; face, collar, both shoulders,
+sleeves and generous upper chest must remain readable in the upper 65% for the
+existing Full Card overlay. No crest, logo, sponsor, manufacturer mark, badge,
+letters, numbers, text, UI, border, hands, ball, trophy or extra person.
+```
+
+| New versioned source | Pilot garment direction |
+|---|---|
+| `Arsenal/Portraits/T_Prototype_Arsenal_BukayoSaka_FullCardPilot_02.png` | Arsenal-inspired outfield: vivid deep-red torso, white raglan sleeves/shoulders, narrow navy/red piping, short sleeves. |
+| `Arsenal/Portraits/T_Prototype_Arsenal_DavidRaya_FullCardPilot_02.png` | Arsenal-family goalkeeper: emerald body, charcoal textured long sleeves, red shoulder flashes, white collar/cuff accents. |
+| `ManchesterCity/Portraits/T_Prototype_ManchesterCity_Rodri_FullCardPilot_02.png` | Manchester-City-inspired outfield: dominant sky blue, tonal performance knit, white inserts, navy/white trim, short sleeves. |
+| `ManchesterCity/Portraits/T_Prototype_ManchesterCity_GianluigiDonnarumma_FullCardPilot_02.png` | City-family goalkeeper: graphite body, vivid sky-blue textured long sleeves/shoulders, navy/white collar and cuffs. |
+
+`Scripts/ImportFullCardPilotPortraits.ps1` imports and then validates only these
+four versioned textures. Full Card bindings change only for the four listed
+Prototype CardIds. Hand Micro, Pitch Mini and the other dedicated Full Card
+portraits retain their existing paths.
+
+`USER PIE VISUAL REVIEW REQUIRED` for identity continuity, club readability,
+goalkeeper/outfield separation and fit beneath the live Full Card overlay.

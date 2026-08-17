@@ -31,6 +31,8 @@ public:
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
 		GetRenderedCardWidgets() const;
 	int32 GetRenderedCellCount() const;
+	EFMCodexUMGCardInteractionState GetCellInteractionState(
+		int32 StableIndex) const;
 
 	FFMCodexRackCardDragStarted OnCardDragStarted;
 	FFMCodexRackCardDragFinished OnCardDragFinished;

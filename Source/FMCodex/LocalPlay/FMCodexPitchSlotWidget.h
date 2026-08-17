@@ -17,6 +17,8 @@ class SWidget;
 
 DECLARE_MULTICAST_DELEGATE_ThreeParams(
 	FFMCodexPitchDeploymentDropped, FName, FName, bool);
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FFMCodexPitchCardDetailHover, UFMCodexPlayerCardWidget*);
 
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexPitchSlotWidget : public UUserWidget
@@ -37,8 +39,16 @@ public:
 		const UFMCodexDeploymentDragDropOperation* Operation) const;
 	bool TryHandleDeploymentDrop(
 		UFMCodexDeploymentDragDropOperation* Operation);
+	void SetDeploymentDragHovered(
+		const UFMCodexDeploymentDragDropOperation* Operation,
+		bool bHovered);
+	bool IsDeploymentDragHovered() const;
+	bool IsDeploymentTargetLabelVisible() const;
+	EFMCodexUMGCardInteractionState GetInteractionState() const;
 
 	FFMCodexPitchDeploymentDropped OnDeploymentDropped;
+	FFMCodexPitchCardDetailHover OnCardDetailHoverRequested;
+	FFMCodexPitchCardDetailHover OnCardDetailHoverDismissed;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -62,6 +72,8 @@ protected:
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
+	void HandleCardDetailHoverRequested(UFMCodexPlayerCardWidget* SourceCard);
+	void HandleCardDetailHoverDismissed(UFMCodexPlayerCardWidget* SourceCard);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Pitch Presentation",

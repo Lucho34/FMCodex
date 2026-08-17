@@ -56,8 +56,30 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
 	FName CardId = NAME_None;
 	FString DisplayLabel;
+	FString EnglishDisplayLabel;
+	FString NationalityLabel;
+	FString ClubLabel;
 	FString PositionLabel;
 	FString CompactRoleLabel;
+	int32 OverallRating = 0;
+	bool bHasOverallRating = false;
+	FString BirthDate;
+	int32 HeightCm = 0;
+	int32 WeightKg = 0;
+	struct FAttribute
+	{
+		FString CanonicalLabel;
+		int32 Value = 0;
+	};
+	struct FSkill
+	{
+		FString CanonicalLabel;
+		int32 MinTriggerActionPoint = 0;
+		int32 MaxTriggerActionPoint = 0;
+	};
+	TArray<FAttribute> AttributeValues;
+	TArray<FSkill> Skills;
+	FString PlayerFacingSerialLabel;
 	FString AttributeSummary;
 	FString GoalkeeperAttributeSummary;
 	FString CompactAttributeSummary;

@@ -68,6 +68,35 @@ int32 UFMCodexCardRackWidget::GetRenderedCellCount() const
 	return RenderedCellCount;
 }
 
+EFMCodexUMGCardInteractionState
+UFMCodexCardRackWidget::GetCellInteractionState(const int32 StableIndex) const
+{
+	const FFMCodexUMGCardRackCellViewModel* Cell =
+		Presentation.Cells.FindByPredicate(
+			[StableIndex](const FFMCodexUMGCardRackCellViewModel& Candidate)
+			{
+				return Candidate.StableIndex == StableIndex;
+			});
+	if (Cell == nullptr)
+	{
+		return EFMCodexUMGCardInteractionState::Default;
+	}
+	if (Cell->bPlayed)
+	{
+		return EFMCodexUMGCardInteractionState::Ghost;
+	}
+	const TObjectPtr<UFMCodexPlayerCardWidget>* RenderedCard =
+		RenderedCardWidgets.FindByPredicate(
+			[Cell](const UFMCodexPlayerCardWidget* Candidate)
+			{
+				return Candidate != nullptr
+					&& Candidate->GetPresentation().CardId == Cell->Card.CardId;
+			});
+	return RenderedCard == nullptr || RenderedCard->Get() == nullptr
+		? EFMCodexUMGCardInteractionState::Default
+		: RenderedCard->Get()->GetInteractionState();
+}
+
 void UFMCodexCardRackWidget::HandleCardDragStarted(
 	const FName CardId,
 	const bool bGoalkeeper)

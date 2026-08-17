@@ -10,6 +10,8 @@ class FMCODEX_API FFMCodexPlayerUIPresentationText final
 {
 public:
 	static FText PlayerName(FName CardId, const FString& FallbackLabel);
+	static FText InMatchShortPlayerName(
+		FName CardId, const FString& FallbackLabel);
 	static FText CompactPlayerName(FName CardId, const FString& FallbackLabel);
 	static FText HandMicroPlayerName(FName CardId, const FString& FallbackLabel);
 	static FText HandMicroFallbackPlayerName(FName CardId);
@@ -18,8 +20,10 @@ public:
 	static FText TeamName(FName CardId);
 	static FText Role(const FString& CanonicalLabel);
 	static FText CompactRole(const FString& CanonicalLabel);
+	static FText InMatchCompactRole(const FString& CanonicalLabel);
 	static FText Skill(const FString& CanonicalLabel);
 	static FText Attribute(const FString& CanonicalEntry);
+	static FText AttributeLabel(const FString& CanonicalToken);
 	static FText Status(const FString& CanonicalLabel);
 	static FText Rarity(const FString& CanonicalLabel);
 	static FText CompactRarity(const FString& CanonicalLabel);
@@ -42,6 +46,15 @@ public:
 	static FText PortraitPlaceholder();
 	static FText SkillsHeading();
 	static FText AttributesHeading();
+	static FText FullCardAttributesHeading();
+	static FText OverallHeading();
+	static FText PositionHeading();
+	static FText FullCardPositionTypeHeading();
+	static FText FullCardIdentitySupplement(
+		const FString& NationalityLabel, const FString& ClubLabel);
+	static FText BirthDateHeading();
+	static FText HeightHeading();
+	static FText WeightHeading();
 	static FText DeploymentHandInstruction();
 	static FText EmptyPitchSlot();
 	static FText ValidDeploymentTarget();
