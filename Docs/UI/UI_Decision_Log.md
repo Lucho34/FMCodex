@@ -2,6 +2,29 @@
 
 This log records approved player-facing UI decisions separately from gameplay canonical rules.
 
+## 2026-08-18 — Full Card final artwork and regression closure
+
+- Stage `6.13.1.3.11.8.1` records dedicated Full Card coverage, latest-generation
+  technical conformance, and external user/ChatGPT manual visual approval at
+  `16/16`. No visual-contract, production-layout, gameplay, authority, Pitch
+  Mini, Hand Micro, or Drag Proxy mutation is authorized.
+- The Full Card visual/layout contract is frozen, but individual player artwork
+  remains intentionally replaceable and versionable. A replacement creates a
+  new Hero Bust version, uses the existing importer/validator, changes only the
+  player's `FullCardPortrait`, preserves all other variant routes, and returns
+  to the true-size review surface.
+- `FMCodex.UI.FullCardReview` is retained as a long-term non-Shipping review
+  tool. It is the only convenient two-card true-size comparison surface, is
+  directly covered by automation, supports future artwork replacement, and is
+  low risk because it is Cheat-gated and default hidden.
+- The final runtime inventory contains ten active shared/Pitch Mini textures,
+  sixteen active Full Card textures, and sixteen active Runtime192 Hand Micro
+  textures. No present runtime package is a proven cleanup candidate.
+- The seventy-four unselected Hand Micro source variants remain provenance-only
+  Category C material pending an explicit source-art archive manifest. They do
+  not justify a Full Card runtime cleanup stage, so the closure decision is
+  `NO FINAL CLEANUP STAGE REQUIRED`.
+
 ## 2026-08-18 — Existing-six Full Card artwork conformance rollout
 
 - Stage `6.13.1.3.11.8` is limited to William Saliba, Martin Ødegaard, Declan

@@ -6,15 +6,22 @@ Freeze stage: `6.13.1.3.11.6`
 
 Cleanup closure stage: `6.13.1.3.11.6.1`
 
-Artwork-completion follow-up: `6.13.1.3.11.7`
+Artwork-completion follow-ups: `6.13.1.3.11.7` and `6.13.1.3.11.8`
 
-Production implementation mutation: **Six FullCardPortrait-only bindings;
-frozen geometry and Drag Proxy behavior unchanged**
+Final artwork/regression closure: `6.13.1.3.11.8.1`
+
+Production implementation state: **Sixteen dedicated FullCardPortrait bindings;
+frozen geometry and all variant-isolation behavior unchanged**
 
 Approved repository mutation: **74 legacy imported Hand Micro packages deleted;
-six Full Card Hero Bust source/packages added; this freeze record synchronized**
+12 Full Card Hero Bust source/packages added across the two completion stages;
+this freeze record synchronized**
 
-Audit baseline: branch `main`, HEAD `4ee71a5484b57cfe557e124e00485ef9cf5b4c25`
+Original freeze audit baseline: branch `main`, HEAD
+`4ee71a5484b57cfe557e124e00485ef9cf5b4c25`
+
+Final closure baseline: branch `main`, HEAD
+`1db1335940912292a120bae935fd7c032aede2f8`
 
 ## 1. Purpose and boundaries
 
@@ -22,8 +29,9 @@ This record freezes the visual contract that is actually implemented for the
 `360×540` in-match Full Card and its Hand Micro-based deployment Drag Proxy.
 The external user/ChatGPT visual gate approved both contracts and authorized
 only the exact legacy-package cleanup recorded in sections 11–14. Follow-up
-stage `.11.7` completes the bounded six-player artwork gap without redesigning
-either surface; its six new compositions still require the external PIE gate.
+stages `.11.7` and `.11.8` completed all twelve production Hero Busts without
+redesigning either surface. The final external artwork gate is recorded as
+accepted `16/16` in closure stage `.11.8.1`.
 
 The freeze and cleanup did not change Gameplay, Authority, CoreRules,
 MatchPlayRuntime, player values, Overall calculation, Skills, production
@@ -470,11 +478,11 @@ an audit classification; only Category D received separate deletion approval.
 | `Docs/UI/InMatch_FullCard_Visual_Spec_v1.md` | Current Full Card design source, directly linked from the active player-facing Match Screen layout doc. This freeze draft supplements it; it does not yet supersede it. |
 | `Docs/UI/HandMicro_Visual_Spec_v1.md`, `Portrait_Asset_Spec_v1.md`, `UI_Decision_Log.md`, `Docs/Visual/Prototype_Team_Content_Pilot.md`, and `Prototype_Player_Content_Draft_v1.md` | Frozen contract, asset rules, decisions, artwork provenance, and integrated content/source ledger used to interpret production. |
 
-### B. REVIEW / DIAGNOSTIC INFRASTRUCTURE — KEEP FOR NOW
+### B. REVIEW / DIAGNOSTIC / PROVENANCE — KEEP
 
 | Item | Evidence and recommended lifetime |
 |---|---|
-| `FMCodexFullCardDiagnostics.cpp/.h` and CVar `FMCodex.UI.FullCardReview` | Non-Shipping `ECVF_Cheat` selector, directly consumed and tested. Keep until Full Card artwork completion and closure. |
+| `FMCodexFullCardDiagnostics.cpp/.h` and CVar `FMCodex.UI.FullCardReview` | Non-Shipping `ECVF_Cheat` selector, directly consumed and tested. Keep as a long-term non-Shipping review tool for regression and versioned artwork replacement. |
 | `FullCardProductionReviewBounds/Grid/Cards` and `RefreshFullCardProductionReviewSurface()` in the Match Screen widget | Only retained path proving two true-size `360×540` cards across five bounded review pages; directly tested. Keep with the CVar. |
 | Five review pages | `1` Saliba/Ødegaard; `2` Rice/Haaland; `3` Foden/Dias; `4` Saka/Rodri; `5` Rodri three-Skill stress/Gabriel zero-Skill. They cover all six conformance-rollout Hero Busts in three screenshots, a frozen comparison pair, and `0/3` Skill capacity without shrinking the card. |
 | `FMCodexHandMicroDiagnostics.cpp/.h` and existing Hand Micro review surface | Non-Shipping review support remains tied to frozen-contract automation and diagnostic presentation. This audit did not prove a safe replacement or authorize reopening/removal. |
@@ -502,14 +510,16 @@ proxy is constructed directly from the live Hand Micro widget.
 
 ## 12. FullCardReview preservation decision
 
-Decision: **KEEP THROUGH EXISTING-SIX USER PIE VISUAL CLOSURE**.
+Decision: **KEEP AS LONG-TERM NON-SHIPPING REVIEW TOOL**.
 
 `FMCodex.UI.FullCardReview` is non-Shipping and off by default, but it is not
 obsolete. It remains the only retained selector that shows two production-size
 cards, covers the exact five content/stress pages, and is asserted by the Full
-Card contract test. Technical coverage is `16/16`, but the latest six Hero Busts
-still require the user PIE visual gate. No equally capable replacement path was
-found.
+Card contract test. Technical coverage and the external manual artwork gate are
+both `16/16`. Future user-supplied replacement artwork still needs the same
+true-size comparison surface, and no equally capable replacement path was
+found. Runtime risk is negligible because the selector is non-Shipping,
+`ECVF_Cheat`, default hidden, and has no production behavior when disabled.
 
 Accepted console values are `0=hidden`, `1=Saliba/Odegaard`,
 `2=Rice/Haaland`, `3=Foden/Dias`, `4=Saka/Rodri`, and `5=0/3 Skill
@@ -603,3 +613,55 @@ Follow-up stage `6.13.1.3.11.8` additionally verified:
 - Pitch Mini `_01`, Hand Micro Runtime192, Drag Proxy, layout constants,
   gameplay, authority and the prior ten accepted Full Card packages remain
   unchanged. The six new compositions still require the user PIE visual gate.
+
+Final closure stage `6.13.1.3.11.8.1` independently verified:
+
+- all sixteen active Full Card source PNGs decode as opaque RGB at exactly
+  `1024×1536`, and all sixteen matching packages exist;
+- fresh-process Full Card validation PASS `16/16`: `Texture2D`, UI group, sRGB,
+  loaded, and no redirectors; observed incidental settings remain `TC_DEFAULT`,
+  `TMGS_NO_MIPMAPS`, `TF_DEFAULT`, NeverStream true, and LOD bias zero;
+- validation-only Hand Micro PASS `16/16`, obsolete assets `0`, errors `0`,
+  warnings `0`;
+- PrototypeTeams PASS `6/6`, ControlSurface `40–42` PASS `3/3`, explicit
+  variant isolation PASS `1/1`, and complete LocalPlay PASS `48/48` with no
+  failures, skips, or warnings;
+- `FMCodexEditor Win64 Development` compiled, linked, and wrote metadata with
+  exit success; UHT was not invoked because no reflected header changed;
+- the external user/ChatGPT manual visual Gate is accepted `16/16`;
+- the Full Card layout remains frozen while individual versioned Full Card
+  artwork remains intentionally replaceable through the existing
+  importer/validator and per-player `FullCardPortrait` override;
+- `FMCodex.UI.FullCardReview` is retained as the long-term non-Shipping review
+  surface for regression and future artwork replacement;
+- the active runtime set remains exactly ten shared/Pitch Mini packages,
+  sixteen Full Card packages, and sixteen Runtime192 packages; no current
+  package qualifies as Category D;
+- seventy-four unselected Hand Micro source variants remain Category C until a
+  separate source-art archival policy and exact manifest are approved; and
+- no deletion or cleanup implementation is required for final Full Card
+  closure.
+
+Final outcome: **FULL CARD READY TO CLOSE / NO FINAL CLEANUP STAGE REQUIRED**.
+
+Replacement policy: the Full Card visual/layout contract is frozen, but an
+individual artwork may be replaced by creating a new versioned Hero Bust,
+validating it against the frozen source/texture contract, changing only that
+player's `FullCardPortrait`, preserving Pitch Mini/Hand Micro/Drag Proxy routes,
+and reviewing it through `FMCodex.UI.FullCardReview`.
+
+Bounded source-art retention policy:
+
+- keep every currently bound production source and every source required by an
+  active deterministic importer/generator;
+- after a successful replacement, keep one immediately prior Full Card source
+  version in `ArtSource` for rollback until the next replacement is accepted;
+- do not retain a superseded imported package in runtime `Content` merely for
+  provenance: it may be proposed for exact-path cleanup only after C++/script/
+  test searches and a fresh Asset Registry audit prove zero consumers;
+- archive older generated experiments outside runtime `Content` after an exact
+  source manifest and retention location are approved; and
+- retain the current seventy-four unselected Hand Micro inputs as Category C
+  until that first explicit archive manifest exists. This avoids irreversible
+  loss while preventing their current status from becoming an indefinite rule
+  for future generations.
