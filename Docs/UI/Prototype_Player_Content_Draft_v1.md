@@ -235,17 +235,17 @@ Every gameplay cell in this table is current Prototype Content v1.
 | Bukayo Saka | **INTEGRATED** | A/M | WorldClass | CutInsideShot | 2–8 | dedicated runtime-bound Prototype Full Card portrait |
 | Martin Ødegaard | **INTEGRATED** | M/A | Continental | PassControl | 2–8 | dedicated runtime-bound Prototype Full Card portrait |
 | Declan Rice | **INTEGRATED** | M/D | Continental | LongShot | 2–8 | dedicated runtime-bound Prototype Full Card portrait |
-| Gabriel Martinelli | **APPROVED AND INTEGRATED** | A | National | CutInsideShot | 2–8 | dedicated Full Card art missing |
-| Gabriel Magalhães | **APPROVED AND INTEGRATED** | D | Continental | none | N/A | dedicated Full Card art missing |
-| Mikel Merino | **APPROVED AND INTEGRATED** | M/A | National | PassControl | 2–8 | dedicated Full Card art missing |
+| Gabriel Martinelli | **APPROVED AND INTEGRATED** | A | National | CutInsideShot | 2–8 | dedicated `_FullCardHeroBust_01` bound Full Card-only |
+| Gabriel Magalhães | **APPROVED AND INTEGRATED** | D | Continental | none | N/A | dedicated `_FullCardHeroBust_01` bound Full Card-only |
+| Mikel Merino | **APPROVED AND INTEGRATED** | M/A | National | PassControl | 2–8 | dedicated `_FullCardHeroBust_01` bound Full Card-only |
 | Gianluigi Donnarumma | **INTEGRATED** | GK | Continental | none — GK | N/A | dedicated runtime-bound Prototype Full Card portrait |
 | Erling Haaland | **INTEGRATED** | A | WorldClass | LongShot | 2–8 | dedicated runtime-bound Prototype Full Card portrait |
 | Phil Foden | **INTEGRATED** | A/M | Continental | CutInsideShot | 2–8 | dedicated runtime-bound Prototype Full Card portrait |
 | Rodri | **INTEGRATED** | M/D | Continental | PassControl | 2–8 | dedicated runtime-bound Prototype Full Card portrait |
 | Rúben Dias | **INTEGRATED** | D | Continental | Cross | 2–8 | dedicated runtime-bound Prototype Full Card portrait |
-| Joško Gvardiol | **APPROVED AND INTEGRATED** | D | Continental | Cross | 2–8 | dedicated Full Card art missing |
-| Bernardo Silva | **APPROVED AND INTEGRATED** | M/A | Continental | ThroughBall | 2–8 | dedicated Full Card art missing |
-| Jérémy Doku | **APPROVED AND INTEGRATED** | A | National | CutInsideShot | 2–8 | dedicated Full Card art missing |
+| Joško Gvardiol | **APPROVED AND INTEGRATED** | D | Continental | Cross | 2–8 | dedicated `_FullCardHeroBust_01` bound Full Card-only |
+| Bernardo Silva | **APPROVED AND INTEGRATED** | M/A | Continental | ThroughBall | 2–8 | dedicated `_FullCardHeroBust_01` bound Full Card-only |
+| Jérémy Doku | **APPROVED AND INTEGRATED** | A | National | CutInsideShot | 2–8 | dedicated `_FullCardHeroBust_01` bound Full Card-only |
 
 ## 9. Full 16-player canonical attribute matrix
 
@@ -358,32 +358,23 @@ This classification is based on current runtime bindings and on-disk assets.
 “Dedicated” here means a player-specific vertical Prototype portrait is bound;
 commercial licensing/final-art approval is outside this code audit.
 
-### Production-ready dedicated Full Card artwork — 10/16 (repository/runtime sense)
+### Dedicated Full Card artwork — 16/16 (repository/runtime sense)
 
-- David Raya
-- William Saliba
-- Bukayo Saka
-- Martin Ødegaard
-- Declan Rice
-- Gianluigi Donnarumma
-- Erling Haaland
-- Phil Foden
-- Rodri
-- Rúben Dias
+- Accepted four-player `_FullCardPilot_02` overrides: Bukayo Saka, David Raya,
+  Rodri, Gianluigi Donnarumma.
+- Stage `.11.7` `_FullCardHeroBust_01` overrides: Gabriel Martinelli, Gabriel
+  Magalhães, Mikel Merino, Joško Gvardiol, Bernardo Silva, Jérémy Doku.
+- Older shared `_01` vertical portraits used by both Full Card fallback and
+  Pitch Mini: William Saliba, Martin Ødegaard, Declan Rice, Erling Haaland,
+  Phil Foden, Rúben Dias.
 
-### Missing dedicated Full Card artwork — 6/16
+### Missing dedicated Full Card artwork — 0/16
 
-- Gabriel Martinelli
-- Gabriel Magalhães
-- Mikel Merino
-- Joško Gvardiol
-- Bernardo Silva
-- Jérémy Doku
-
-All six formal identities have approved Hand Micro `Runtime192` portraits, but
-those assets are intentionally not bound as Full Card substitutes. The clean
-missing-art presentation remains active until a later bounded artwork stage
-produces six dedicated vertical Full Card portraits.
+All sixteen formal identities also retain their approved independent Hand
+Micro `Runtime192` portraits. The six new Hero Busts are bound only through
+`FullCardPortrait`; they do not alter `Portrait`/Pitch Mini, Hand Micro, or
+Drag Proxy routing. Repository/runtime coverage is complete, while the six new
+compositions remain subject to the external user PIE visual gate.
 
 ## 14. Completeness counts and integration prerequisites
 
@@ -418,17 +409,16 @@ produces six dedicated vertical Full Card portraits.
 | WeightKg | 16/16 |
 | Approved gameplay position/rarity/attributes | 16/16 |
 | Approved Skill disposition | 16/16 by applicability |
-| Dedicated Full Card portrait | 10/16 |
+| Dedicated Full Card portrait | 16/16 |
 | Sample/pilot art promoted as formal portrait | 0/16 |
-| Missing dedicated Full Card portrait | 6/16 |
+| Missing dedicated Full Card portrait | 0/16 |
 | Legitimate Overall v1 | 16/16 |
 | Player-facing Serial v1 | 16/16 |
 
-Full Card PIE is now representative of the complete 16-player data contract.
-It is **not representative of final 16-player artwork completeness**: six
-dedicated Full Card portraits still require a separate bounded art stage.
-Complete-data crowding and hierarchy also remain subject to user PIE review
-before the Full Card visual specification can be frozen.
+Full Card PIE is now representative of the complete 16-player data and
+repository/runtime artwork contract. The new six Hero Busts still require user
+PIE review for identity continuity, crop fit and shirt-family readability;
+that visual gate is separate from the `16/16` technical coverage count.
 
 ## 15. Source attribution
 

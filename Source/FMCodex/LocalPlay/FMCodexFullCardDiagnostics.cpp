@@ -8,8 +8,8 @@ namespace
 		TEXT("FMCodex.UI.FullCardReview"),
 		0,
 		TEXT("Development-only In-Match Full Card production review: "
-			"0=hidden, 1=Saka/Rodri, 2=Martinelli/Gabriel, "
-			"3=Raya/Donnarumma, 4=Haaland/Foden, "
+			"0=hidden, 1=Martinelli/Gabriel, 2=Merino/Gvardiol, "
+			"3=Bernardo/Doku, 4=Raya/Donnarumma, "
 			"5=0/3 Skill capacity stress."),
 		ECVF_Cheat);
 }

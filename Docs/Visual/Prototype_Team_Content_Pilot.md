@@ -61,8 +61,18 @@ Stage `6.13.1.3.11.5` adds a bounded four-player Full Card artwork pilot for
 Saka, Raya, Rodri and Donnarumma. Versioned `_FullCardPilot_02` sources replace
 only those four Full Card portrait bindings; the original `_01` sources remain
 available and all Hand Micro bindings remain independent. The focused
-`Scripts/ImportFullCardPilotPortraits.ps1` pipeline imports only those four
-textures and validates `1024×1536`, `TEXTUREGROUP_UI`, sRGB and fresh-process
-loadability. This does not start the missing-six portrait program.
+`Scripts/ImportFullCardPilotPortraits.ps1` pipeline originally imported only
+those four textures and validated `1024×1536`, `TEXTUREGROUP_UI`, sRGB and
+fresh-process loadability.
+
+Stage `6.13.1.3.11.7` completes the former six-player artwork gap with
+versioned `_FullCardHeroBust_01` sources for Martinelli, Gabriel Magalhães,
+Merino, Gvardiol, Bernardo and Doku. The same focused wrapper preserves the
+four accepted pilot packages, imports the six new sources, and fresh-process
+validates all ten Full Card-only overrides. Runtime coverage is therefore
+`16/16`: four pilots, six new Hero Busts, and six older shared `_01` vertical
+portraits. The new assets bind only to `FullCardPortrait`; Pitch Mini, Hand
+Micro and Drag Proxy routing remain unchanged. User PIE visual review of the
+six new compositions is still required.
 
 All pilot cards reuse the Golden Sample frame. Existing Forward and Long Shot icons are reused only where their current meanings match. Other roles and skills retain readable live labels rather than receiving invented icons. Missing CardIds and missing optional assets keep the established fallback frame/portrait behavior.

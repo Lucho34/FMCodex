@@ -1,4 +1,4 @@
-"""Editor-only import for the Stage 6.13.1.3.11.5 Full Card artwork pilot."""
+"""Editor-only import for dedicated Prototype Full Card portrait artwork."""
 
 from pathlib import Path
 
@@ -6,13 +6,19 @@ import unreal
 
 
 IMPORTS = (
-    ("Arsenal", "BukayoSaka"),
-    ("Arsenal", "DavidRaya"),
-    ("ManchesterCity", "Rodri"),
-    ("ManchesterCity", "GianluigiDonnarumma"),
+    ("Arsenal", "BukayoSaka", "FullCardPilot_02"),
+    ("Arsenal", "DavidRaya", "FullCardPilot_02"),
+    ("ManchesterCity", "Rodri", "FullCardPilot_02"),
+    ("ManchesterCity", "GianluigiDonnarumma", "FullCardPilot_02"),
+    ("Arsenal", "GabrielMartinelli", "FullCardHeroBust_01"),
+    ("Arsenal", "GabrielMagalhaes", "FullCardHeroBust_01"),
+    ("Arsenal", "MikelMerino", "FullCardHeroBust_01"),
+    ("ManchesterCity", "JoskoGvardiol", "FullCardHeroBust_01"),
+    ("ManchesterCity", "BernardoSilva", "FullCardHeroBust_01"),
+    ("ManchesterCity", "JeremyDoku", "FullCardHeroBust_01"),
 )
-ASSET_SUFFIX = "FullCardPilot_02"
 EXPECTED_SIZE = (1024, 1536)
+PRESERVED_SUFFIXES = {"FullCardPilot_02"}
 
 
 def texture_size(texture: unreal.Texture2D) -> tuple[int, int]:
@@ -23,8 +29,8 @@ project_root = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.proj
 tasks = []
 expected_by_task = {}
 
-for team, player in IMPORTS:
-    asset_name = f"T_Prototype_{team}_{player}_{ASSET_SUFFIX}"
+for team, player, asset_suffix in IMPORTS:
+    asset_name = f"T_Prototype_{team}_{player}_{asset_suffix}"
     source_path = (
         project_root
         / "ArtSource"
@@ -37,7 +43,16 @@ for team, player in IMPORTS:
     destination = f"/Game/UI/Portraits/PrototypeTeams/{team}"
     expected_asset_path = f"{destination}/{asset_name}"
     if not source_path.is_file():
-        raise RuntimeError(f"Full Card pilot source image is missing: {source_path}")
+        raise RuntimeError(f"Full Card source image is missing: {source_path}")
+
+    if asset_suffix in PRESERVED_SUFFIXES and unreal.EditorAssetLibrary.does_asset_exist(
+        expected_asset_path
+    ):
+        unreal.log(
+            "FMCODEX_FULL_CARD_PORTRAIT_PRESERVE "
+            f"source={source_path} asset={expected_asset_path}"
+        )
+        continue
 
     task = unreal.AssetImportTask()
     task.set_editor_property("filename", str(source_path))
@@ -76,11 +91,17 @@ for task in tasks:
         raise RuntimeError(f"Failed to save package: {expected_asset_path}")
 
     unreal.log(
-        "FMCODEX_FULL_CARD_PILOT_IMPORT "
+        "FMCODEX_FULL_CARD_PORTRAIT_IMPORT "
         f"source={task.get_editor_property('filename')} "
         f"asset={expected_asset_path} class={asset.get_class().get_name()} "
         f"dimensions={width}x{height} lod_group=TEXTUREGROUP_UI "
         "srgb=true saved=true"
     )
 
+preserved_count = len(IMPORTS) - len(tasks)
+unreal.log(
+    "FMCODEX_FULL_CARD_PORTRAIT_IMPORT=PASS "
+    f"imported={len(tasks)} preserved={preserved_count} total={len(IMPORTS)}"
+)
+# Compatibility sentinel retained for callers of the established pilot wrapper.
 unreal.log("FMCODEX_FULL_CARD_PILOT_IMPORT=PASS")

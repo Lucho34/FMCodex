@@ -9176,15 +9176,20 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 	{
 		return false;
 	}
-	TestTrue(TEXT("Integrated Hand-Micro-only art does not suppress Full Card data"),
+	TestTrue(TEXT("Integrated Full Card-only Hero Bust preserves data and Hand Micro isolation"),
 		IntegratedContentFullCard->GetRenderedIdentityText().ToString()
 				== TEXT("马丁内利")
 			&& IntegratedContentFullCard->GetWidgetFromName(
 				TEXT("CardIdentityRegion"))->GetVisibility()
 				== ESlateVisibility::HitTestInvisible
-			&& IntegratedContentFullCard->GetResolvedPortraitTexture() == nullptr
+			&& IntegratedContentFullCard->GetResolvedPortraitTexture() != nullptr
+			&& IntegratedContentFullCard->GetResolvedPortraitTexture()
+				->GetPathName().Contains(TEXT(
+					"T_Prototype_Arsenal_GabrielMartinelli_FullCardHeroBust_01"))
 			&& IntegratedContentFullCard->GetResolvedHandMicroPortraitTexture()
 				!= nullptr
+			&& IntegratedContentFullCard->GetResolvedHandMicroPortraitTexture()
+				!= IntegratedContentFullCard->GetResolvedPortraitTexture()
 			&& FFMCodexPlayerUIPresentationText::HandMicroPlayerName(
 				IntegratedContentCard->CardId,
 				IntegratedContentCard->IdentityLabel).ToString()
@@ -9677,14 +9682,14 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 		const FFMCodexUMGMatchScreenViewModel ReviewPresentation =
 			Screen->GetPresentation();
 		const TArray<TSet<FName>> ExpectedReviewPages = {
-			{ TEXT("Prototype.Arsenal.BukayoSaka"),
-				TEXT("Prototype.ManchesterCity.Rodri") },
 			{ TEXT("Prototype.Arsenal.GabrielMartinelli"),
 				TEXT("Prototype.Arsenal.GabrielMagalhaes") },
+			{ TEXT("Prototype.Arsenal.MikelMerino"),
+				TEXT("Prototype.ManchesterCity.JoskoGvardiol") },
+			{ TEXT("Prototype.ManchesterCity.BernardoSilva"),
+				TEXT("Prototype.ManchesterCity.JeremyDoku") },
 			{ TEXT("Prototype.Arsenal.DavidRaya"),
 				TEXT("Prototype.ManchesterCity.GianluigiDonnarumma") },
-			{ TEXT("Prototype.ManchesterCity.ErlingHaaland"),
-				TEXT("Prototype.ManchesterCity.PhilFoden") },
 			{ TEXT("Prototype.ManchesterCity.Rodri"),
 				TEXT("Prototype.Arsenal.GabrielMagalhaes") }
 		};
@@ -9735,8 +9740,8 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 				&& Screen->IsFullCardProductionReviewVisible()
 				&& Screen->GetFullCardProductionReviewCardCount() == 2;
 		}
-		TestTrue(TEXT("Five true-size review pages cover real and stress cases"),
-			bEveryReviewPageIsRepresentative && AllReviewCardIds.Num() == 8);
+		TestTrue(TEXT("Five true-size review pages cover the new six, GKs and stress cases"),
+			bEveryReviewPageIsRepresentative && AllReviewCardIds.Num() == 9);
 		ReviewCVar->Set(0, ECVF_SetByCode);
 		Screen->RefreshFromPresentation(ReviewPresentation);
 		TestFalse(TEXT("Full Card review page is absent from normal PIE"),
@@ -9833,7 +9838,7 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 		{ TEXT("Prototype.ManchesterCity.BernardoSilva"), TEXT("贝尔纳多"), TEXT("贝尔纳多·席尔瓦") },
 		{ TEXT("Prototype.ManchesterCity.JeremyDoku"), TEXT("多库"), TEXT("杰里米·多库") }
 	};
-	const TSet<FName> ExpectedMissingFullCardArt = {
+	const TSet<FName> ExpectedFullCardHeroBustArt = {
 		TEXT("Prototype.Arsenal.GabrielMartinelli"),
 		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
 		TEXT("Prototype.Arsenal.MikelMerino"),
@@ -9850,6 +9855,7 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 	int32 DedicatedFullCardArtCount = 0;
 	int32 MissingFullCardArtCount = 0;
 	int32 FullCardPilotArtCount = 0;
+	int32 FullCardHeroBustArtCount = 0;
 	bool bAllShortNamesExplicit = ExpectedIdentities.Num() == 16;
 	bool bAllMetadataPreserved = true;
 	bool bArtBoundaryIsHonest = true;
@@ -9878,8 +9884,6 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 		const FFMCodexPlayerUICardArtReferences Art =
 			FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(
 				Expected.CardId);
-		const bool bExpectedMissing =
-			ExpectedMissingFullCardArt.Contains(Expected.CardId);
 		const TSoftObjectPtr<UTexture2D>& FullCardPortrait =
 			Art.FullCardPortrait.IsNull()
 				? Art.Portrait : Art.FullCardPortrait;
@@ -9887,9 +9891,15 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 			FullCardPortrait.ToSoftObjectPath().ToString();
 		const bool bUsesFullCardPilotArtwork =
 			PortraitPath.Contains(TEXT("_FullCardPilot_02"));
+		const bool bUsesFullCardHeroBustArtwork =
+			PortraitPath.Contains(TEXT("_FullCardHeroBust_01"));
 		if (bUsesFullCardPilotArtwork)
 		{
 			++FullCardPilotArtCount;
+		}
+		if (bUsesFullCardHeroBustArtwork)
+		{
+			++FullCardHeroBustArtCount;
 		}
 		if (FullCardPortrait.IsNull())
 		{
@@ -9900,24 +9910,28 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 			++DedicatedFullCardArtCount;
 		}
 		bArtBoundaryIsHonest = bArtBoundaryIsHonest
-			&& FullCardPortrait.IsNull() == bExpectedMissing
+			&& !FullCardPortrait.IsNull()
 			&& bUsesFullCardPilotArtwork
 				== ExpectedFullCardPilotArt.Contains(Expected.CardId)
+			&& bUsesFullCardHeroBustArtwork
+				== ExpectedFullCardHeroBustArt.Contains(Expected.CardId)
+			&& (!bUsesFullCardHeroBustArtwork
+				|| (Art.Portrait.IsNull() && !Art.FullCardPortrait.IsNull()))
 			&& !Art.HandMicroPortrait.IsNull()
-			&& (FullCardPortrait.IsNull()
-				|| (!PortraitPath.Contains(TEXT("Runtime192"))
-					&& !PortraitPath.Contains(
-						TEXT("/Game/UI/Portraits/T_Pilot_PlayerPortrait_01"))
-					&& !PortraitPath.Contains(TEXT("GoldenSample"))));
+			&& !PortraitPath.Contains(TEXT("Runtime192"))
+			&& !PortraitPath.Contains(
+				TEXT("/Game/UI/Portraits/T_Pilot_PlayerPortrait_01"))
+			&& !PortraitPath.Contains(TEXT("GoldenSample"));
 	}
 	TestTrue(TEXT("All 16 Full Card short names are explicit and deterministic"),
 		bAllShortNamesExplicit);
 	TestTrue(TEXT("Short-name presentation preserves full Chinese and English metadata"),
 		bAllMetadataPreserved);
-	TestTrue(TEXT("Full Card art audit is exactly 10 dedicated and 6 missing"),
-		bArtBoundaryIsHonest && DedicatedFullCardArtCount == 10
-			&& MissingFullCardArtCount == 6
-			&& FullCardPilotArtCount == 4);
+	TestTrue(TEXT("Full Card art audit is exactly 16 dedicated and 0 missing"),
+		bArtBoundaryIsHonest && DedicatedFullCardArtCount == 16
+			&& MissingFullCardArtCount == 0
+			&& FullCardPilotArtCount == 4
+			&& FullCardHeroBustArtCount == 6);
 	TestTrue(TEXT("In-Match position uses compact slash notation"),
 		FFMCodexPlayerUIPresentationText::InMatchCompactRole(TEXT("GK"))
 			.ToString() == TEXT("GK")

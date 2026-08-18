@@ -616,7 +616,7 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 	using namespace FMCodexPrototypeTeamContentTests;
 	const FFMCodexPlayerUIAssetReferences& References =
 		FFMCodexPlayerUIAssetReferences::Get();
-	const TSet<FName> DedicatedFullCardIds = {
+	const TSet<FName> OriginalSharedFullCardIds = {
 		TEXT("Prototype.Arsenal.DavidRaya"),
 		TEXT("Prototype.Arsenal.WilliamSaliba"),
 		TEXT("Prototype.Arsenal.BukayoSaka"),
@@ -634,9 +634,18 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 		TEXT("Prototype.ManchesterCity.Rodri"),
 		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma")
 	};
+	const TSet<FName> FullCardHeroBustIds = {
+		TEXT("Prototype.Arsenal.GabrielMartinelli"),
+		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
+		TEXT("Prototype.Arsenal.MikelMerino"),
+		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+		TEXT("Prototype.ManchesterCity.BernardoSilva"),
+		TEXT("Prototype.ManchesterCity.JeremyDoku")
+	};
 	int32 DedicatedFullCardCount = 0;
 	int32 MissingFullCardCount = 0;
 	int32 FullCardPilotCount = 0;
+	int32 FullCardHeroBustCount = 0;
 	for (const FFMCodexPrototypePlayerDefinition& Definition
 		: FFMCodexPrototypeTeamContent::GetDefinitions())
 	{
@@ -655,37 +664,49 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 				&& HandMicroPortrait != nullptr
 				&& HandMicroPortrait->GetImportedSize()
 					== FIntPoint(192, 128));
-		if (DedicatedFullCardIds.Contains(Definition.Card.CardId))
+		if (!FullCardPortrait.IsNull())
 		{
 			++DedicatedFullCardCount;
-			TestTrue(TEXT("Dedicated Full Card art remains complete for original ten"),
-				Frame != nullptr && Portrait != nullptr
-					&& !Art.LongShotSkillIcon.IsNull()
-					&& Portrait->GetImportedSize()
-						== FIntPoint(1024, 1536));
+			TestTrue(TEXT("All sixteen players resolve vertical Full Card artwork"),
+				Portrait != nullptr && Portrait->GetImportedSize()
+					== FIntPoint(1024, 1536));
 			const bool bUsesPilotArtwork = FullCardPortrait.ToSoftObjectPath()
 				.ToString().Contains(TEXT("_FullCardPilot_02"));
+			const bool bUsesHeroBustArtwork = FullCardPortrait.ToSoftObjectPath()
+				.ToString().Contains(TEXT("_FullCardHeroBust_01"));
 			if (FullCardPilotIds.Contains(Definition.Card.CardId))
 			{
 				++FullCardPilotCount;
 				TestTrue(TEXT("Selected four use versioned Full Card pilot artwork"),
 					bUsesPilotArtwork);
 			}
-			else
+			else if (OriginalSharedFullCardIds.Contains(Definition.Card.CardId))
 			{
 				TestFalse(TEXT("Other dedicated portraits remain on existing artwork"),
-					bUsesPilotArtwork);
+					bUsesPilotArtwork || bUsesHeroBustArtwork);
+			}
+			if (OriginalSharedFullCardIds.Contains(Definition.Card.CardId))
+			{
+				TestTrue(TEXT("Original ten retain shared portrait and frame routing"),
+					Frame != nullptr && !Art.Portrait.IsNull()
+						&& !Art.LongShotSkillIcon.IsNull());
+			}
+			else if (FullCardHeroBustIds.Contains(Definition.Card.CardId))
+			{
+				++FullCardHeroBustCount;
+				TestTrue(TEXT("New six use Full Card-only Hero Bust routing"),
+					bUsesHeroBustArtwork && Art.Portrait.IsNull()
+						&& !Art.FullCardPortrait.IsNull()
+						&& Art.CardFrame.IsNull() && Frame == nullptr
+						&& Art.HandMicroPortrait.ToSoftObjectPath()
+							!= Art.FullCardPortrait.ToSoftObjectPath());
 			}
 		}
 		else
 		{
 			++MissingFullCardCount;
-			TestTrue(TEXT("New six keep clean missing Full Card art behavior"),
-				Art.CardFrame.IsNull() && Art.Portrait.IsNull()
-					&& Art.FullCardPortrait.IsNull()
-					&& Frame == nullptr && Portrait == nullptr
-					&& Art.HandMicroPortrait.ToSoftObjectPath()
-						!= Art.Portrait.ToSoftObjectPath());
+			AddError(FString::Printf(TEXT("Missing Full Card artwork: %s"),
+				*Definition.Card.CardId.ToString()));
 		}
 
 		const FString TeamFolder = Definition.TeamId
@@ -703,10 +724,12 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 			FFMCodexPlayerUIPresentationText::TeamName(
 				Definition.Card.CardId).IsEmpty());
 	}
-	TestTrue(TEXT("Full Card artwork audit remains honestly 10 dedicated / 6 missing"),
-		DedicatedFullCardCount == 10 && MissingFullCardCount == 6);
+	TestTrue(TEXT("Full Card artwork coverage is exactly 16 dedicated / 0 missing"),
+		DedicatedFullCardCount == 16 && MissingFullCardCount == 0);
 	TestEqual(TEXT("Full Card artwork pilot remains bounded to four players"),
 		FullCardPilotCount, 4);
+	TestEqual(TEXT("Full Card Hero Bust completion remains bounded to six players"),
+		FullCardHeroBustCount, 6);
 
 	const FFMCodexPlayerUICardArtReferences Missing =
 		References.ResolveCardArt(TEXT("Prototype.Missing.Card"));

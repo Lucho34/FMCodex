@@ -6,10 +6,13 @@ Freeze stage: `6.13.1.3.11.6`
 
 Cleanup closure stage: `6.13.1.3.11.6.1`
 
-Production implementation mutation: **None**
+Artwork-completion follow-up: `6.13.1.3.11.7`
+
+Production implementation mutation: **Six FullCardPortrait-only bindings;
+frozen geometry and Drag Proxy behavior unchanged**
 
 Approved repository mutation: **74 legacy imported Hand Micro packages deleted;
-this freeze record synchronized**
+six Full Card Hero Bust source/packages added; this freeze record synchronized**
 
 Audit baseline: branch `main`, HEAD `4ee71a5484b57cfe557e124e00485ef9cf5b4c25`
 
@@ -18,8 +21,9 @@ Audit baseline: branch `main`, HEAD `4ee71a5484b57cfe557e124e00485ef9cf5b4c25`
 This record freezes the visual contract that is actually implemented for the
 `360×540` in-match Full Card and its Hand Micro-based deployment Drag Proxy.
 The external user/ChatGPT visual gate approved both contracts and authorized
-only the exact legacy-package cleanup recorded in sections 11–14. It does not
-redesign either surface or complete missing artwork.
+only the exact legacy-package cleanup recorded in sections 11–14. Follow-up
+stage `.11.7` completes the bounded six-player artwork gap without redesigning
+either surface; its six new compositions still require the external PIE gate.
 
 The freeze and cleanup did not change Gameplay, Authority, CoreRules,
 MatchPlayRuntime, player values, Overall calculation, Skills, production
@@ -214,22 +218,23 @@ The art-reference struct has three distinct portrait fields:
 - `FullCardPortrait`: optional override read only by `InteractionChoice`;
 - `HandMicroPortrait`: dedicated Hand Micro source, inherited by Drag Proxy.
 
-Current Prototype Full Card coverage is exactly `10 dedicated / 6 missing`:
+Current Prototype Full Card coverage is exactly `16 dedicated / 0 missing`:
 
 - ten shared vertical `_01` portraits are current Full Card fallbacks and Pitch
   Mini sources;
 - Saka, Raya, Rodri, and Donnarumma replace that Full Card fallback only with
   `_FullCardPilot_02`;
-- Martinelli, Gabriel Magalhães, Merino, Gvardiol, Bernardo, and Doku have no
-  Full Card/shared portrait and deliberately remain the six-item artwork gap;
+- Martinelli, Gabriel Magalhães, Merino, Gvardiol, Bernardo, and Doku use new
+  Full Card-only `_FullCardHeroBust_01` overrides while keeping `Portrait` null;
 - all sixteen have a dedicated Hand Micro Runtime192 portrait.
 
-The ten `_01` and four `_FullCardPilot_02` source PNGs inspected are actual
-opaque `1024×1536` vertical images. Fresh-process validation passed for all four
-pilot packages: `Texture2D`, `1024×1536`, `TEXTUREGROUP_UI`, sRGB true, loadable,
-and not redirectors.
+The ten `_01`, four `_FullCardPilot_02`, and six `_FullCardHeroBust_01` source
+PNGs inspected are actual opaque `1024×1536` vertical images. The focused
+fresh-process validator covers all ten Full Card-only packages as `Texture2D`,
+`1024×1536`, `TEXTUREGROUP_UI`, sRGB true, loadable, and not redirectors.
 
-A read-only property query found all four pilot packages currently share:
+A read-only property query records the incidental package properties alongside
+the enforced contract:
 
 - compression `TC_DEFAULT`;
 - mip generation `TMGS_NO_MIPMAPS`;
@@ -239,10 +244,11 @@ A read-only property query found all four pilot packages currently share:
 - `LODBias = 0`;
 - texture group `TEXTUREGROUP_UI`.
 
-`Scripts/ImportFullCardPilotPortraits.py` imports only the four versioned pilot
-sources and checks `1024×1536`; `Scripts/ValidateFullCardPilotPortraits.py`
-fresh-process validates dimensions, UI group, sRGB, class, loadability, and no
-redirector. The wrapper runs import then validation in separate UE processes.
+`Scripts/ImportFullCardPilotPortraits.py` preserves the four accepted pilot
+packages, imports the six versioned Hero Bust sources, and checks `1024×1536`;
+`Scripts/ValidateFullCardPilotPortraits.py` fresh-process validates all ten
+Full Card-only assets for dimensions, UI group, sRGB, class, loadability, and
+no redirector. The wrapper runs import then validation in separate UE processes.
 
 ## 4. FULL CARD VISUAL CONTRACT — FROZEN
 
@@ -283,10 +289,10 @@ summarized normatively here:
 
 ## 5. Full Card post-freeze artwork and pipeline follow-up
 
-1. **Artwork completion:** six of sixteen Prototype players intentionally lack
-   a Full Card/shared vertical portrait. This does not reopen or invalidate the
-   frozen visual contract. A later bounded missing-six artwork stage may fill
-   those slots and use the five-page manual PIE review surface.
+1. **Artwork completion:** stage `.11.7` fills the former six-player gap using
+   Full Card-only Hero Busts, reaching `16/16` technical coverage without
+   reopening the frozen visual contract. Visual acceptance of those six
+   compositions remains at the external five-page manual PIE gate.
 2. **Texture-pipeline completeness:** current packages all have the observed
    settings listed in section 3.8, but the Full Card importer/validator only
    explicitly enforces dimensions, UI group, sRGB, class/loadability, and no
@@ -448,10 +454,11 @@ an audit classification; only Category D received separate deletion approval.
 | `FMCodexPlayerUIAssetReferences.cpp/.h` | Owns all current shared, Full Card-only, and Hand Micro soft paths and isolation fields. |
 | `FMCodexPlayerUIPresentationText.cpp/.h` and `FMCodexPlayerUIStyle.cpp/.h` | Directly supply localized identity/metadata labels, compact roles, shared type roles, colors, and rarity accents. |
 | `FMCodexLocalMatchScreenWidget.cpp/.h`, `FMCodexDeploymentDragDropOperation.h`, and `FMCodexPitchSlotWidget.cpp/.h` | Own hover, active drag, typed payload, accepted drop intent, and review-surface integration. |
-| Full Card and Hand Micro ControlSurface tests plus Prototype content asset-pipeline tests | Direct regression coverage for geometry, content, routing, 0/1/2/3 Skills, five review pages, Drag Proxy, and exact `10/6/4` art boundary. |
-| Ten `_01` vertical source PNGs and matching UE packages | All ten are current shared `Portrait` bindings. Pitch Mini consumes them; six also remain the Full Card fallback. They are not cleanup candidates. |
+| Full Card and Hand Micro ControlSurface tests plus Prototype content asset-pipeline tests | Direct regression coverage for geometry, content, routing, 0/1/2/3 Skills, five review pages, Drag Proxy, and exact `16/0/4/6` dedicated/missing/pilot/Hero-Bust boundary. |
+| Ten `_01` vertical source PNGs and matching UE packages | All ten remain current shared `Portrait` bindings. Pitch Mini consumes them; six also remain the Full Card fallback. They are not cleanup candidates. |
 | Four `_FullCardPilot_02` source PNGs and UE packages | Exact Full Card-only C++ soft paths for Saka, Raya, Rodri, and Donnarumma; pilot validator passed. |
-| `ImportFullCardPilotPortraits.ps1/.py` and `ValidateFullCardPilotPortraits.py` | Current four-item reproducible import plus separate-process validation path. Distinct from the ten-item shared portrait pipeline. |
+| Six `_FullCardHeroBust_01` source PNGs and UE packages | Exact Full Card-only C++ soft paths for Martinelli, Gabriel Magalhães, Merino, Gvardiol, Bernardo, and Doku; they do not populate shared `Portrait`. |
+| `ImportFullCardPilotPortraits.ps1/.py` and `ValidateFullCardPilotPortraits.py` | Reproducible six-item Hero Bust import that preserves four pilots, plus separate-process validation of all ten overrides. Distinct from the ten-item shared portrait pipeline. |
 | Sixteen selected `_06`/`Validation_05` Hand Micro source PNGs | Exact direct `GenerateHandMicroPortraits.py` inputs for the sixteen-player frozen output. |
 | Sixteen `ApprovedMasterViews`, sixteen `Runtime192` source PNGs, sixteen imported `ApprovedRuntime192` UE textures | Hash-locked generator output, current importer/validator input, and exact direct C++ Hand Micro/Drag Proxy bindings. |
 | `GenerateHandMicroPortraits.py`, `ImportHandMicroPortraits.py`, `ValidateHandMicroPortraits.py` | Current deterministic frozen Hand Micro pipeline and texture contract. |
@@ -467,7 +474,7 @@ an audit classification; only Category D received separate deletion approval.
 |---|---|
 | `FMCodexFullCardDiagnostics.cpp/.h` and CVar `FMCodex.UI.FullCardReview` | Non-Shipping `ECVF_Cheat` selector, directly consumed and tested. Keep until Full Card artwork completion and closure. |
 | `FullCardProductionReviewBounds/Grid/Cards` and `RefreshFullCardProductionReviewSurface()` in the Match Screen widget | Only retained path proving two true-size `360×540` cards across five bounded review pages; directly tested. Keep with the CVar. |
-| Five review pages | `1` Saka/Rodri; `2` Martinelli/Gabriel; `3` Raya/Donnarumma; `4` Haaland/Foden; `5` Rodri three-Skill stress/Gabriel zero-Skill. They cover pilot art, missing art, both GKs, representative names/rarities, and `0/3` Skill capacity without shrinking the card. |
+| Five review pages | `1` Martinelli/Gabriel; `2` Merino/Gvardiol; `3` Bernardo/Doku; `4` Raya/Donnarumma; `5` Rodri three-Skill stress/Gabriel zero-Skill. They cover all six new Hero Busts, both accepted goalkeeper pilots, and `0/3` Skill capacity without shrinking the card. |
 | `FMCodexHandMicroDiagnostics.cpp/.h` and existing Hand Micro review surface | Non-Shipping review support remains tied to frozen-contract automation and diagnostic presentation. This audit did not prove a safe replacement or authorize reopening/removal. |
 
 ### C. SUPERSEDED BUT NOT YET SAFE TO DELETE
@@ -493,19 +500,20 @@ proxy is constructed directly from the live Hand Micro widget.
 
 ## 12. FullCardReview preservation decision
 
-Decision: **KEEP UNTIL FULL CARD ARTWORK COMPLETION**.
+Decision: **KEEP THROUGH MISSING-SIX USER PIE VISUAL CLOSURE**.
 
 `FMCodex.UI.FullCardReview` is non-Shipping and off by default, but it is not
 obsolete. It remains the only retained selector that shows two production-size
 cards, covers the exact five content/stress pages, and is asserted by the Full
-Card contract test. Six Prototype Full Card portraits remain missing. No equally
-capable replacement path was found.
+Card contract test. Technical coverage is `16/16`, but all six new Hero Busts
+still require the user PIE visual gate. No equally capable replacement path was
+found.
 
-Accepted console values are `0=hidden`, `1=Saka/Rodri`,
-`2=Martinelli/Gabriel`, `3=Raya/Donnarumma`, `4=Haaland/Foden`, and
-`5=0/3 Skill capacity stress`. Any nonzero out-of-range value still enables the
-surface and clamps the page index to `0..4`; callers should use only the six
-documented values.
+Accepted console values are `0=hidden`, `1=Martinelli/Gabriel`,
+`2=Merino/Gvardiol`, `3=Bernardo/Doku`, `4=Raya/Donnarumma`, and `5=0/3 Skill
+capacity stress`. Any nonzero out-of-range value still enables the surface and
+clamps the page index to `0..4`; callers should use only the six documented
+values.
 
 ## 13. Remaining retention boundaries
 
@@ -546,10 +554,29 @@ Performed across freeze stage `6.13.1.3.11.6` and cleanup closure stage
   not invoked because no reflected header changed;
 - final diff, boundary, preservation, and status checks.
 
+Follow-up stage `6.13.1.3.11.7` additionally verified:
+
+- six new opaque RGB source PNGs decode at exactly `1024×1536`;
+- focused import PASS: `6` Hero Busts imported, `4` accepted pilots preserved,
+  `10` Full Card-only assets in the manifest;
+- fresh-process Full Card validator PASS `10/10`, with actual compression,
+  mip, filter, NeverStream and LOD-bias values reported rather than newly
+  frozen;
+- validation-only Hand Micro PASS `16/16`, obsolete assets `0`, errors `0`,
+  warnings `0`;
+- complete `FMCodex.LocalPlay` PASS `48/48`, including PrototypeTeams `6/6`
+  and ControlSurface `40–42` PASS `3/3`;
+- `FMCodexEditor Win64 Development` compile/link/metadata PASS after no
+  reflected-header change, so UHT was not required;
+- only the six new source PNGs/packages, their Full Card-only routing, focused
+  pipeline/tests, review roster, provenance and coverage documentation changed.
+
 The Full Card and Drag Proxy external user/ChatGPT visual gate is closed. The
 current cursor/proxy relationship, pivot, offset, opacity, Runtime192 routing,
 content omissions, and no-shadow/no-tint treatment are approved.
 
 Closure outcome: **FULL CARD FROZEN / DRAG PROXY FROZEN / CLEANUP PASS**.
 
-Do not begin the missing-six artwork stage from this cleanup record alone.
+Do not begin an upgrade of the six older shared `_01` Full Card portraits from
+this record. First close the external user PIE visual gate for the six new Hero
+Busts.

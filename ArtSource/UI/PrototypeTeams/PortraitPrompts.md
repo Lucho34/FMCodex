@@ -104,10 +104,56 @@ letters, numbers, text, UI, border, hands, ball, trophy or extra person.
 | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_Rodri_FullCardPilot_02.png` | Manchester-City-inspired outfield: dominant sky blue, tonal performance knit, white inserts, navy/white trim, short sleeves. |
 | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_GianluigiDonnarumma_FullCardPilot_02.png` | City-family goalkeeper: graphite body, vivid sky-blue textured long sleeves/shoulders, navy/white collar and cuffs. |
 
-`Scripts/ImportFullCardPilotPortraits.ps1` imports and then validates only these
-four versioned textures. Full Card bindings change only for the four listed
-Prototype CardIds. Hand Micro, Pitch Mini and the other dedicated Full Card
-portraits retain their existing paths.
+Stage `.11.5` imported and validated only these four versioned textures. Stage
+`.11.7` preserves those four packages and extends the same focused pipeline to
+the six Hero Bust sources recorded below. Full Card bindings change only for
+the listed Prototype CardIds. Hand Micro and Pitch Mini retain their existing
+paths.
 
 `USER PIE VISUAL REVIEW REQUIRED` for identity continuity, club readability,
 goalkeeper/outfield separation and fit beneath the live Full Card overlay.
+
+## Stage 6.13.1.3.11.7 missing-six Full Card Hero Bust completion
+
+Generation mode: Codex built-in `image_gen`, identity-preserving edit, one
+isolated call per player. The authoritative identity input for each player was
+the selected Hand Micro provenance image ending `_Validation_05.png`; the edit
+was not allowed to reinterpret face, skin tone, hair, facial hair, age,
+expression, gaze, or head pose. The accepted Saka/Rodri pilots supplied the
+team-specific composition and lighting anchor, the supplied unbranded Arsenal-
+inspired/Manchester-City-inspired shirt images supplied garment language, and
+Full Card target v3 supplied crop/layout context only.
+
+Shared edit contract:
+
+```text
+Preserve the exact identity in input image 1. Produce an opaque photorealistic
+vertical 2:3 football hero bust at 1024×1536, head through mid torso, with the
+head safely inside frame and face, collar, both shoulders, sleeves, neckline,
+and useful upper chest readable inside the Full Card global y=0.045–0.658 crop.
+Retain a premium night-stadium background and cool/warm match-light separation.
+Use an unbranded modern match shirt in the requested team color family. No
+crest, sponsor, manufacturer mark, badge, number, letters, text, UI, border,
+watermark, ball, hands, trophy, or extra person.
+```
+
+| Player | Authoritative identity source | New dedicated Full Card source | Shirt family |
+|---|---|---|---|
+| Gabriel Martinelli | `Arsenal/HandMicroPortraits/T_Prototype_Arsenal_GabrielMartinelli_HandMicro_Validation_05.png` | `Arsenal/Portraits/T_Prototype_Arsenal_GabrielMartinelli_FullCardHeroBust_01.png` | Arsenal: deep-red torso, white shoulders/sleeves, restrained navy/red piping. |
+| Gabriel Magalhães | `Arsenal/HandMicroPortraits/T_Prototype_Arsenal_GabrielMagalhaes_HandMicro_Validation_05.png` | `Arsenal/Portraits/T_Prototype_Arsenal_GabrielMagalhaes_FullCardHeroBust_01.png` | Arsenal: deep-red torso, white shoulders/sleeves, restrained navy/red piping. |
+| Mikel Merino | `Arsenal/HandMicroPortraits/T_Prototype_Arsenal_MikelMerino_HandMicro_Validation_05.png` | `Arsenal/Portraits/T_Prototype_Arsenal_MikelMerino_FullCardHeroBust_01.png` | Arsenal: deep-red torso, white shoulders/sleeves, restrained navy/red piping. |
+| Joško Gvardiol | `ManchesterCity/HandMicroPortraits/T_Prototype_ManchesterCity_JoskoGvardiol_HandMicro_Validation_05.png` | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_JoskoGvardiol_FullCardHeroBust_01.png` | Manchester City: sky-blue torso, tonal knit, restrained navy/white trim. |
+| Bernardo Silva | `ManchesterCity/HandMicroPortraits/T_Prototype_ManchesterCity_BernardoSilva_HandMicro_Validation_05.png` | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_BernardoSilva_FullCardHeroBust_01.png` | Manchester City: sky-blue torso, tonal knit, restrained navy/white trim. |
+| Jérémy Doku | `ManchesterCity/HandMicroPortraits/T_Prototype_ManchesterCity_JeremyDoku_HandMicro_Validation_05.png` | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_JeremyDoku_FullCardHeroBust_01.png` | Manchester City: sky-blue torso, tonal knit, restrained navy/white trim. |
+
+All six selected outputs are opaque RGB PNGs at exactly `1024×1536` and keep
+their generated originals in Codex image-generation storage. The focused
+wrapper imports the six new `_FullCardHeroBust_01` sources, preserves the four
+accepted `_FullCardPilot_02` packages, and fresh-process validates all ten
+dedicated Full Card overrides. Only `FullCardPortrait` consumes the six new
+assets; `Portrait`/Pitch Mini, `HandMicroPortrait`, and the Drag Proxy remain
+unchanged.
+
+`USER PIE VISUAL REVIEW REQUIRED` for identity continuity, shirt-family read,
+global-crop safety, live metadata/name overlay fit, and all six side-by-side
+comparisons before visual closure.

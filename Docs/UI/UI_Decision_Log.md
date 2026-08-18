@@ -2,6 +2,32 @@
 
 This log records approved player-facing UI decisions separately from gameplay canonical rules.
 
+## 2026-08-18 — Missing-six Full Card Hero Bust artwork completion
+
+- Stage `6.13.1.3.11.7` is limited to Gabriel Martinelli, Gabriel Magalhães,
+  Mikel Merino, Joško Gvardiol, Bernardo Silva and Jérémy Doku. It completes
+  the repository/runtime Full Card portrait boundary at `16/16` without
+  changing Full Card geometry or reopening the accepted four-player pilot.
+- Six opaque `1024×1536` `_FullCardHeroBust_01` sources use the selected
+  `_HandMicro_Validation_05` images as authoritative identity inputs. The
+  accepted Saka/Rodri pilots, supplied club-family shirt references and Full
+  Card target v3 guide composition, garment language and crop context only.
+- Martinelli, Gabriel and Merino use an unbranded red/white Arsenal family;
+  Gvardiol, Bernardo and Doku use an unbranded sky-blue Manchester City family.
+  No crest, sponsor, manufacturer mark, badge, number or text is introduced.
+- The six new textures bind only to `FullCardPortrait`. Their shared
+  `Portrait` remains null, and their existing Hand Micro `Runtime192` routing
+  remains unchanged, so Pitch Mini, Hand Micro and Drag Proxy do not consume
+  the new art.
+- The focused importer preserves four `_FullCardPilot_02` packages, imports
+  the six Hero Bust packages, and the separate validator covers all ten Full
+  Card-only overrides. The five-page review selector now exposes the six new
+  players on pages 1–3, the two goalkeeper pilots on page 4, and the unchanged
+  0/3-Skill stress comparison on page 5.
+- Technical artwork coverage is four accepted pilots, six new Hero Busts and
+  six older shared `_01` vertical portraits. The six new compositions are not
+  declared visually approved until the user completes the external PIE gate.
+
 ## 2026-08-17 — Four-player Full Card club-identity artwork pilot
 
 - Stage `6.13.1.3.11.5` is intentionally limited to Saka, Raya, Rodri and

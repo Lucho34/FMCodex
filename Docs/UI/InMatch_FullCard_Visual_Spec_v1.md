@@ -95,9 +95,10 @@ Attributes, Skills/None, names, biography, Overall and Serial. Their legacy
 `Demo.A/B.Outfield.01-.03` mappings remain isolated automation/diagnostic
 fixtures and are not normal production player records.
 
-Data completeness and artwork completeness are separate. Full Card content is
-complete 16/16, while dedicated vertical Full Card portrait art remains 10/16.
-The six formalized players keep clean missing-art presentation; their approved
+Data completeness and repository/runtime artwork coverage are both complete
+16/16. The artwork ledger is four accepted `_FullCardPilot_02` overrides, six
+new `_FullCardHeroBust_01` overrides, and six older shared `_01` vertical
+portraits. The new six remain isolated to `FullCardPortrait`; their approved
 Hand Micro `Runtime192` textures are not promoted as Full Card art.
 
 ### In-Match short-name mapping
@@ -121,11 +122,12 @@ Hand Micro `Runtime192` textures are not promoted as Full Card art.
 | Bernardo Silva | `贝尔纳多` |
 | Jérémy Doku | `多库` |
 
-The dedicated Full Card artwork gaps are Gabriel Martinelli, Gabriel
-Magalhães, Mikel Merino, Joško Gvardiol, Bernardo Silva and Jérémy Doku. This
-is exactly 6/16 missing. Normal runtime shows a neutral player-agnostic surface
-with no debug copy; it never substitutes Hand Micro, Pilot, Golden Sample or
-another player's portrait.
+Stage `.11.7` fills the former six-item gap for Gabriel Martinelli, Gabriel
+Magalhães, Mikel Merino, Joško Gvardiol, Bernardo Silva and Jérémy Doku with
+dedicated `_FullCardHeroBust_01` sources. Coverage is exactly `16/16`, with
+`0/16` missing. Normal runtime still uses a clean player-agnostic surface if a
+legitimate asset ever fails to resolve; it never substitutes Hand Micro,
+Golden Sample, or another player's portrait.
 
 ## Information architecture
 
@@ -309,10 +311,10 @@ Non-Shipping builds expose the bounded cheat CVar:
 The surface uses five true-size pages so `360×540` is never squeezed
 for convenience:
 
-- `1`: Saka / Rodri (Overall, outfield density, rarity);
-- `2`: Martinelli / Gabriel Magalhães (missing-art behavior and no-Skill);
-- `3`: Raya / Donnarumma (goalkeeper six-attribute layout and alignment);
-- `4`: Haaland / Foden (additional artwork, Overall and outfield pressure);
+- `1`: Martinelli / Gabriel Magalhães (new Arsenal Hero Busts; real no-Skill);
+- `2`: Merino / Gvardiol (new cross-team Hero Bust comparison);
+- `3`: Bernardo / Doku (new Manchester City Hero Busts);
+- `4`: Raya / Donnarumma (accepted goalkeeper pilots and six-attribute layout);
 - `5`: a Rodri review-only three-Skill DTO / real Gabriel no-Skill card.
 
 It is for production comparison only, defaults hidden, and returns to the

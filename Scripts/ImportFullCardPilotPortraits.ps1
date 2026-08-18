@@ -41,10 +41,10 @@ function Invoke-UnrealPython {
 }
 
 Invoke-UnrealPython -ScriptPath $importScript `
-    -RequiredSentinel "FMCODEX_FULL_CARD_PILOT_IMPORT=PASS" `
-    -Operation "Full Card pilot portrait import"
+    -RequiredSentinel "FMCODEX_FULL_CARD_PORTRAIT_IMPORT=PASS imported=6 preserved=4 total=10" `
+    -Operation "Dedicated Full Card portrait import"
 
 # A separate process proves package discovery and load without importer memory.
 Invoke-UnrealPython -ScriptPath $validateScript `
-    -RequiredSentinel "FMCODEX_FULL_CARD_PILOT_VALIDATION=PASS" `
-    -Operation "Fresh-process Full Card pilot portrait validation"
+    -RequiredSentinel "FMCODEX_FULL_CARD_PORTRAIT_VALIDATION=PASS count=10" `
+    -Operation "Fresh-process dedicated Full Card portrait validation"
