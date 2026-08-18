@@ -1276,36 +1276,37 @@ void UFMCodexLocalMatchScreenWidget::RefreshFullCardProductionReviewSurface()
 		return Match == nullptr ? nullptr : *Match;
 	};
 	// Two true-size cards fit comfortably at 1920x1080. Five bounded review
-	// pages cover all six newly completed Hero Bust portraits, both GK pilots,
-	// and the presentation-only three-Skill capacity stress DTO without
+	// pages cover all six current conformance-rollout Hero Bust portraits, one
+	// frozen comparison pair, and the presentation-only three-Skill stress DTO
+	// without
 	// shrinking the frozen 360x540 production card.
 	const int32 ReviewPage =
 		FMCodexFullCardDiagnostics::GetProductionReviewPage();
 	if (ReviewPage == 0)
 	{
 		AddUnique(FindCandidate(
-			TEXT("Prototype.Arsenal.GabrielMartinelli")));
+			TEXT("Prototype.Arsenal.WilliamSaliba")));
 		AddUnique(FindCandidate(
-			TEXT("Prototype.Arsenal.GabrielMagalhaes")));
+			TEXT("Prototype.Arsenal.MartinOdegaard")));
 	}
 	else if (ReviewPage == 1)
 	{
-		AddUnique(FindCandidate(TEXT("Prototype.Arsenal.MikelMerino")));
+		AddUnique(FindCandidate(TEXT("Prototype.Arsenal.DeclanRice")));
 		AddUnique(FindCandidate(
-			TEXT("Prototype.ManchesterCity.JoskoGvardiol")));
+			TEXT("Prototype.ManchesterCity.ErlingHaaland")));
 	}
 	else if (ReviewPage == 2)
 	{
 		AddUnique(FindCandidate(
-			TEXT("Prototype.ManchesterCity.BernardoSilva")));
+			TEXT("Prototype.ManchesterCity.PhilFoden")));
 		AddUnique(FindCandidate(
-			TEXT("Prototype.ManchesterCity.JeremyDoku")));
+			TEXT("Prototype.ManchesterCity.RubenDias")));
 	}
 	else if (ReviewPage == 3)
 	{
-		AddUnique(FindCandidate(TEXT("Prototype.Arsenal.DavidRaya")));
+		AddUnique(FindCandidate(TEXT("Prototype.Arsenal.BukayoSaka")));
 		AddUnique(FindCandidate(
-			TEXT("Prototype.ManchesterCity.GianluigiDonnarumma")));
+			TEXT("Prototype.ManchesterCity.Rodri")));
 	}
 	else
 	{

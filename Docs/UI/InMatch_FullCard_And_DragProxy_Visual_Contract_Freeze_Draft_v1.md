@@ -220,17 +220,19 @@ The art-reference struct has three distinct portrait fields:
 
 Current Prototype Full Card coverage is exactly `16 dedicated / 0 missing`:
 
-- ten shared vertical `_01` portraits are current Full Card fallbacks and Pitch
-  Mini sources;
+- ten shared vertical `_01` portraits remain current Pitch Mini sources;
 - Saka, Raya, Rodri, and Donnarumma replace that Full Card fallback only with
   `_FullCardPilot_02`;
 - Martinelli, Gabriel Magalhães, Merino, Gvardiol, Bernardo, and Doku use new
   Full Card-only `_FullCardHeroBust_01` overrides while keeping `Portrait` null;
+- Saliba, Ødegaard, Rice, Haaland, Foden, and Dias use conforming
+  `_FullCardHeroBust_01` overrides while preserving their shared `_01`
+  `Portrait` bindings for Pitch Mini;
 - all sixteen have a dedicated Hand Micro Runtime192 portrait.
 
-The ten `_01`, four `_FullCardPilot_02`, and six `_FullCardHeroBust_01` source
+The ten `_01`, four `_FullCardPilot_02`, and twelve `_FullCardHeroBust_01` source
 PNGs inspected are actual opaque `1024×1536` vertical images. The focused
-fresh-process validator covers all ten Full Card-only packages as `Texture2D`,
+fresh-process validator covers all sixteen Full Card-only packages as `Texture2D`,
 `1024×1536`, `TEXTUREGROUP_UI`, sRGB true, loadable, and not redirectors.
 
 A read-only property query records the incidental package properties alongside
@@ -244,9 +246,9 @@ the enforced contract:
 - `LODBias = 0`;
 - texture group `TEXTUREGROUP_UI`.
 
-`Scripts/ImportFullCardPilotPortraits.py` preserves the four accepted pilot
-packages, imports the six versioned Hero Bust sources, and checks `1024×1536`;
-`Scripts/ValidateFullCardPilotPortraits.py` fresh-process validates all ten
+`Scripts/ImportFullCardPilotPortraits.py` preserves the ten accepted Full Card
+packages, imports the six conformance-rollout Hero Bust sources, and checks
+`1024×1536`; `Scripts/ValidateFullCardPilotPortraits.py` fresh-process validates all sixteen
 Full Card-only assets for dimensions, UI group, sRGB, class, loadability, and
 no redirector. The wrapper runs import then validation in separate UE processes.
 
@@ -454,16 +456,16 @@ an audit classification; only Category D received separate deletion approval.
 | `FMCodexPlayerUIAssetReferences.cpp/.h` | Owns all current shared, Full Card-only, and Hand Micro soft paths and isolation fields. |
 | `FMCodexPlayerUIPresentationText.cpp/.h` and `FMCodexPlayerUIStyle.cpp/.h` | Directly supply localized identity/metadata labels, compact roles, shared type roles, colors, and rarity accents. |
 | `FMCodexLocalMatchScreenWidget.cpp/.h`, `FMCodexDeploymentDragDropOperation.h`, and `FMCodexPitchSlotWidget.cpp/.h` | Own hover, active drag, typed payload, accepted drop intent, and review-surface integration. |
-| Full Card and Hand Micro ControlSurface tests plus Prototype content asset-pipeline tests | Direct regression coverage for geometry, content, routing, 0/1/2/3 Skills, five review pages, Drag Proxy, and exact `16/0/4/6` dedicated/missing/pilot/Hero-Bust boundary. |
-| Ten `_01` vertical source PNGs and matching UE packages | All ten remain current shared `Portrait` bindings. Pitch Mini consumes them; six also remain the Full Card fallback. They are not cleanup candidates. |
+| Full Card and Hand Micro ControlSurface tests plus Prototype content asset-pipeline tests | Direct regression coverage for geometry, content, routing, 0/1/2/3 Skills, five review pages, Drag Proxy, and exact `16/0/4/12` dedicated/missing/pilot/Hero-Bust boundary. |
+| Ten `_01` vertical source PNGs and matching UE packages | All ten remain current shared `Portrait` bindings consumed by Pitch Mini. They are not cleanup candidates. |
 | Four `_FullCardPilot_02` source PNGs and UE packages | Exact Full Card-only C++ soft paths for Saka, Raya, Rodri, and Donnarumma; pilot validator passed. |
-| Six `_FullCardHeroBust_01` source PNGs and UE packages | Exact Full Card-only C++ soft paths for Martinelli, Gabriel Magalhães, Merino, Gvardiol, Bernardo, and Doku; they do not populate shared `Portrait`. |
-| `ImportFullCardPilotPortraits.ps1/.py` and `ValidateFullCardPilotPortraits.py` | Reproducible six-item Hero Bust import that preserves four pilots, plus separate-process validation of all ten overrides. Distinct from the ten-item shared portrait pipeline. |
+| Twelve `_FullCardHeroBust_01` source PNGs and UE packages | Exact Full Card-only C++ soft paths for the Stage `.11.7` and `.11.8` Hero Bust sets. The latest six preserve shared `_01` `Portrait` bindings for Pitch Mini. |
+| `ImportFullCardPilotPortraits.ps1/.py` and `ValidateFullCardPilotPortraits.py` | Reproducible six-item conformance import that preserves ten accepted Full Card packages, plus separate-process validation of all sixteen overrides. Distinct from the ten-item shared portrait pipeline. |
 | Sixteen selected `_06`/`Validation_05` Hand Micro source PNGs | Exact direct `GenerateHandMicroPortraits.py` inputs for the sixteen-player frozen output. |
 | Sixteen `ApprovedMasterViews`, sixteen `Runtime192` source PNGs, sixteen imported `ApprovedRuntime192` UE textures | Hash-locked generator output, current importer/validator input, and exact direct C++ Hand Micro/Drag Proxy bindings. |
 | `GenerateHandMicroPortraits.py`, `ImportHandMicroPortraits.py`, `ValidateHandMicroPortraits.py` | Current deterministic frozen Hand Micro pipeline and texture contract. |
 | Pilot and Golden Sample source/assets/importers/validators | Still have direct resolver soft paths and automation dependencies. A historical-sounding name is not evidence of obsolescence. |
-| `ImportPrototypeTeamUIAssets.ps1/.py` and `ValidatePrototypeTeamUIAssets.py` | Current reproducible pipeline for the ten shared `_01` vertical assets consumed by Pitch Mini and Full Card fallback. |
+| `ImportPrototypeTeamUIAssets.ps1/.py` and `ValidatePrototypeTeamUIAssets.py` | Current reproducible pipeline for the ten shared `_01` vertical assets consumed by Pitch Mini. |
 | `ArtSource/UI/PrototypeTeams/PortraitPrompts.md` | Direct provenance for the `_01`, Hand Micro, and four-player Full Card artwork; linked by the active Prototype team content document and relevant to future artwork completion. |
 | `Docs/UI/InMatch_FullCard_Visual_Spec_v1.md` | Current Full Card design source, directly linked from the active player-facing Match Screen layout doc. This freeze draft supplements it; it does not yet supersede it. |
 | `Docs/UI/HandMicro_Visual_Spec_v1.md`, `Portrait_Asset_Spec_v1.md`, `UI_Decision_Log.md`, `Docs/Visual/Prototype_Team_Content_Pilot.md`, and `Prototype_Player_Content_Draft_v1.md` | Frozen contract, asset rules, decisions, artwork provenance, and integrated content/source ledger used to interpret production. |
@@ -474,7 +476,7 @@ an audit classification; only Category D received separate deletion approval.
 |---|---|
 | `FMCodexFullCardDiagnostics.cpp/.h` and CVar `FMCodex.UI.FullCardReview` | Non-Shipping `ECVF_Cheat` selector, directly consumed and tested. Keep until Full Card artwork completion and closure. |
 | `FullCardProductionReviewBounds/Grid/Cards` and `RefreshFullCardProductionReviewSurface()` in the Match Screen widget | Only retained path proving two true-size `360×540` cards across five bounded review pages; directly tested. Keep with the CVar. |
-| Five review pages | `1` Martinelli/Gabriel; `2` Merino/Gvardiol; `3` Bernardo/Doku; `4` Raya/Donnarumma; `5` Rodri three-Skill stress/Gabriel zero-Skill. They cover all six new Hero Busts, both accepted goalkeeper pilots, and `0/3` Skill capacity without shrinking the card. |
+| Five review pages | `1` Saliba/Ødegaard; `2` Rice/Haaland; `3` Foden/Dias; `4` Saka/Rodri; `5` Rodri three-Skill stress/Gabriel zero-Skill. They cover all six conformance-rollout Hero Busts in three screenshots, a frozen comparison pair, and `0/3` Skill capacity without shrinking the card. |
 | `FMCodexHandMicroDiagnostics.cpp/.h` and existing Hand Micro review surface | Non-Shipping review support remains tied to frozen-contract automation and diagnostic presentation. This audit did not prove a safe replacement or authorize reopening/removal. |
 
 ### C. SUPERSEDED BUT NOT YET SAFE TO DELETE
@@ -500,17 +502,17 @@ proxy is constructed directly from the live Hand Micro widget.
 
 ## 12. FullCardReview preservation decision
 
-Decision: **KEEP THROUGH MISSING-SIX USER PIE VISUAL CLOSURE**.
+Decision: **KEEP THROUGH EXISTING-SIX USER PIE VISUAL CLOSURE**.
 
 `FMCodex.UI.FullCardReview` is non-Shipping and off by default, but it is not
 obsolete. It remains the only retained selector that shows two production-size
 cards, covers the exact five content/stress pages, and is asserted by the Full
-Card contract test. Technical coverage is `16/16`, but all six new Hero Busts
+Card contract test. Technical coverage is `16/16`, but the latest six Hero Busts
 still require the user PIE visual gate. No equally capable replacement path was
 found.
 
-Accepted console values are `0=hidden`, `1=Martinelli/Gabriel`,
-`2=Merino/Gvardiol`, `3=Bernardo/Doku`, `4=Raya/Donnarumma`, and `5=0/3 Skill
+Accepted console values are `0=hidden`, `1=Saliba/Odegaard`,
+`2=Rice/Haaland`, `3=Foden/Dias`, `4=Saka/Rodri`, and `5=0/3 Skill
 capacity stress`. Any nonzero out-of-range value still enables the surface and
 clamps the page index to `0..4`; callers should use only the six documented
 values.
@@ -577,6 +579,27 @@ content omissions, and no-shadow/no-tint treatment are approved.
 
 Closure outcome: **FULL CARD FROZEN / DRAG PROXY FROZEN / CLEANUP PASS**.
 
-Do not begin an upgrade of the six older shared `_01` Full Card portraits from
-this record. First close the external user PIE visual gate for the six new Hero
-Busts.
+That `.11.7` record did not itself authorize an upgrade of the six older shared
+`_01` Full Card portraits. Stage `.11.8` is the later explicit authorization:
+it adds independent Hero Bust overrides while retaining every `_01` file and
+binding for Pitch Mini. Its six new compositions have a separate user PIE gate.
+
+Follow-up stage `6.13.1.3.11.8` additionally verified:
+
+- six new opaque RGB source PNGs decode at exactly `1024×1536`;
+- focused import PASS: `6` new Hero Busts imported, `10` accepted Full Card
+  packages preserved, and `16` dedicated Full Card assets covered;
+- fresh-process Full Card validator PASS `16/16`; all textures are UI-group,
+  sRGB, loaded without redirectors, and the observed compression, mip, filter,
+  NeverStream and LOD-bias settings remain reported rather than frozen;
+- validation-only Hand Micro PASS `16/16`, obsolete assets `0`, errors `0`,
+  warnings `0`;
+- PrototypeTeams PASS `6/6`, variant-isolation PASS `1/1`, ControlSurface
+  `40–42` PASS `3/3`, and complete `FMCodex.LocalPlay` PASS `48/48`;
+- `FMCodexEditor Win64 Development` compile/link/metadata PASS; UHT was not
+  invoked because no reflected header changed;
+- Full Card review pages now expose the exact six-player rollout, the frozen
+  Saka/Rodri comparison pair, and the existing `0/3` Skill stress page; and
+- Pitch Mini `_01`, Hand Micro Runtime192, Drag Proxy, layout constants,
+  gameplay, authority and the prior ten accepted Full Card packages remain
+  unchanged. The six new compositions still require the user PIE visual gate.

@@ -635,9 +635,15 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma")
 	};
 	const TSet<FName> FullCardHeroBustIds = {
+		TEXT("Prototype.Arsenal.WilliamSaliba"),
+		TEXT("Prototype.Arsenal.MartinOdegaard"),
+		TEXT("Prototype.Arsenal.DeclanRice"),
 		TEXT("Prototype.Arsenal.GabrielMartinelli"),
 		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
 		TEXT("Prototype.Arsenal.MikelMerino"),
+		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+		TEXT("Prototype.ManchesterCity.PhilFoden"),
+		TEXT("Prototype.ManchesterCity.RubenDias"),
 		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
 		TEXT("Prototype.ManchesterCity.BernardoSilva"),
 		TEXT("Prototype.ManchesterCity.JeremyDoku")
@@ -680,10 +686,11 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 				TestTrue(TEXT("Selected four use versioned Full Card pilot artwork"),
 					bUsesPilotArtwork);
 			}
-			else if (OriginalSharedFullCardIds.Contains(Definition.Card.CardId))
+			else if (FullCardHeroBustIds.Contains(Definition.Card.CardId))
 			{
-				TestFalse(TEXT("Other dedicated portraits remain on existing artwork"),
-					bUsesPilotArtwork || bUsesHeroBustArtwork);
+				++FullCardHeroBustCount;
+				TestTrue(TEXT("Twelve players use versioned Full Card Hero Bust artwork"),
+					bUsesHeroBustArtwork && !bUsesPilotArtwork);
 			}
 			if (OriginalSharedFullCardIds.Contains(Definition.Card.CardId))
 			{
@@ -693,8 +700,7 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 			}
 			else if (FullCardHeroBustIds.Contains(Definition.Card.CardId))
 			{
-				++FullCardHeroBustCount;
-				TestTrue(TEXT("New six use Full Card-only Hero Bust routing"),
+				TestTrue(TEXT("Newly formalized six keep Full Card-only Hero Bust routing"),
 					bUsesHeroBustArtwork && Art.Portrait.IsNull()
 						&& !Art.FullCardPortrait.IsNull()
 						&& Art.CardFrame.IsNull() && Frame == nullptr
@@ -728,8 +734,8 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 		DedicatedFullCardCount == 16 && MissingFullCardCount == 0);
 	TestEqual(TEXT("Full Card artwork pilot remains bounded to four players"),
 		FullCardPilotCount, 4);
-	TestEqual(TEXT("Full Card Hero Bust completion remains bounded to six players"),
-		FullCardHeroBustCount, 6);
+	TestEqual(TEXT("Full Card Hero Bust conformance covers twelve players"),
+		FullCardHeroBustCount, 12);
 
 	const FFMCodexPlayerUICardArtReferences Missing =
 		References.ResolveCardArt(TEXT("Prototype.Missing.Card"));

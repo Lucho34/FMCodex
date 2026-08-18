@@ -2,7 +2,7 @@
 
 Status: **DRAFT FOR USER PIE VALIDATION**  
 Scope: transient In-Match Full Card used for Match Screen Hover inspection  
-Stage: `6.13.1.3.11.4.3`
+Stage: `6.13.1.3.11.8`
 
 Data contract integrated by: `6.13.2.2`
 
@@ -96,9 +96,10 @@ Attributes, Skills/None, names, biography, Overall and Serial. Their legacy
 fixtures and are not normal production player records.
 
 Data completeness and repository/runtime artwork coverage are both complete
-16/16. The artwork ledger is four accepted `_FullCardPilot_02` overrides, six
-new `_FullCardHeroBust_01` overrides, and six older shared `_01` vertical
-portraits. The new six remain isolated to `FullCardPortrait`; their approved
+16/16. The artwork ledger is four accepted `_FullCardPilot_02` overrides and
+twelve `_FullCardHeroBust_01` overrides. Stage `.11.8` replaces the final six
+Full Card fallbacks while preserving their older shared `_01` portraits for
+Pitch Mini. Every Hero Bust remains isolated to `FullCardPortrait`; approved
 Hand Micro `Runtime192` textures are not promoted as Full Card art.
 
 ### In-Match short-name mapping
@@ -129,6 +130,13 @@ dedicated `_FullCardHeroBust_01` sources. Coverage is exactly `16/16`, with
 legitimate asset ever fails to resolve; it never substitutes Hand Micro,
 Golden Sample, or another player's portrait.
 
+Stage `.11.8` adds conforming `_FullCardHeroBust_01` overrides for William
+Saliba, Martin Ødegaard, Declan Rice, Erling Haaland, Phil Foden and Rúben Dias.
+Their original `_01` portraits stay intact and remain the Pitch Mini source.
+The final technical artwork split is `4` accepted pilots, `12` Hero Busts, and
+`0` shared-fallback Full Cards; visual acceptance of the latest six remains a
+user PIE gate.
+
 ## Information architecture
 
 The layout candidate is ordered as:
@@ -151,13 +159,13 @@ repeat pictogram assets or introduce new semantic icons.
 
 ## Portrait contract
 
-Full Card uses the existing dedicated vertical player portrait source, not the
-Hand Micro `Runtime192` texture. The shared hero window is `320 px` high and
+Full Card uses the dedicated vertical player portrait override, not the Hand
+Micro `Runtime192` texture or shared Pitch Mini portrait. The shared hero window is `320 px` high and
 uses one full-width, ratio-matched global crop (`0%–100%` horizontal,
 `4.5%–65.8%` vertical). Compared with `.11.4.2`, the face is modestly smaller
 relative to the hero while more shoulder, neckline and upper chest enter the
 window. The image continues beneath the identity copy; there are no per-player
-offsets, asset edits or anatomy distortion. The top-aligned metadata surface
+runtime offsets, runtime crops or anatomy distortion. The top-aligned metadata surface
 stays narrow and translucent. Hand Micro retains its separate production asset
 and crop; Pitch Mini retains its existing path and geometry.
 
@@ -311,10 +319,10 @@ Non-Shipping builds expose the bounded cheat CVar:
 The surface uses five true-size pages so `360×540` is never squeezed
 for convenience:
 
-- `1`: Martinelli / Gabriel Magalhães (new Arsenal Hero Busts; real no-Skill);
-- `2`: Merino / Gvardiol (new cross-team Hero Bust comparison);
-- `3`: Bernardo / Doku (new Manchester City Hero Busts);
-- `4`: Raya / Donnarumma (accepted goalkeeper pilots and six-attribute layout);
+- `1`: Saliba / Ødegaard (new Arsenal conformance pair);
+- `2`: Rice / Haaland (new cross-team conformance pair);
+- `3`: Foden / Rúben Dias (new Manchester City conformance pair);
+- `4`: Saka / Rodri (accepted frozen comparison pair);
 - `5`: a Rodri review-only three-Skill DTO / real Gabriel no-Skill card.
 
 It is for production comparison only, defaults hidden, and returns to the

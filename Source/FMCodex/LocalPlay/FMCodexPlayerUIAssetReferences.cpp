@@ -110,7 +110,25 @@ FFMCodexPlayerUIAssetReferences::FFMCodexPlayerUIAssetReferences()
 				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_BernardoSilva_FullCardHeroBust_01.T_Prototype_ManchesterCity_BernardoSilva_FullCardHeroBust_01"))) },
 		{ TEXT("Prototype.ManchesterCity.JeremyDoku"),
 			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
-				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_FullCardHeroBust_01.T_Prototype_ManchesterCity_JeremyDoku_FullCardHeroBust_01"))) }
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_FullCardHeroBust_01.T_Prototype_ManchesterCity_JeremyDoku_FullCardHeroBust_01"))) },
+		{ TEXT("Prototype.Arsenal.WilliamSaliba"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_WilliamSaliba_FullCardHeroBust_01.T_Prototype_Arsenal_WilliamSaliba_FullCardHeroBust_01"))) },
+		{ TEXT("Prototype.Arsenal.MartinOdegaard"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinOdegaard_FullCardHeroBust_01.T_Prototype_Arsenal_MartinOdegaard_FullCardHeroBust_01"))) },
+		{ TEXT("Prototype.Arsenal.DeclanRice"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DeclanRice_FullCardHeroBust_01.T_Prototype_Arsenal_DeclanRice_FullCardHeroBust_01"))) },
+		{ TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01.T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01"))) },
+		{ TEXT("Prototype.ManchesterCity.PhilFoden"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_PhilFoden_FullCardHeroBust_01.T_Prototype_ManchesterCity_PhilFoden_FullCardHeroBust_01"))) },
+		{ TEXT("Prototype.ManchesterCity.RubenDias"),
+			TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+				"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RubenDias_FullCardHeroBust_01.T_Prototype_ManchesterCity_RubenDias_FullCardHeroBust_01"))) }
 	};
 
 	PrototypeHandMicroPortraits = {

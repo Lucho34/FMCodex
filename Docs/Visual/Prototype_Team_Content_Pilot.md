@@ -75,4 +75,12 @@ portraits. The new assets bind only to `FullCardPortrait`; Pitch Mini, Hand
 Micro and Drag Proxy routing remain unchanged. User PIE visual review of the
 six new compositions is still required.
 
+Stage `6.13.1.3.11.8` upgrades the remaining six shared-fallback Full Card
+identities: Saliba, Ødegaard, Rice, Haaland, Foden and Rúben Dias. New
+`_FullCardHeroBust_01` siblings preserve the existing `_01` files for Pitch
+Mini. The focused wrapper now imports only these six new packages, preserves
+the ten accepted Full Card packages, and fresh-process validates all sixteen.
+The final technical split is four pilots plus twelve Hero Busts; Hand Micro
+and Drag Proxy remain on Runtime192. Visual acceptance still requires user PIE.
+
 All pilot cards reuse the Golden Sample frame. Existing Forward and Long Shot icons are reused only where their current meanings match. Other roles and skills retain readable live labels rather than receiving invented icons. Missing CardIds and missing optional assets keep the established fallback frame/portrait behavior.

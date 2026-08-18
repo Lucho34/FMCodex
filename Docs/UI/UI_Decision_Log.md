@@ -2,6 +2,31 @@
 
 This log records approved player-facing UI decisions separately from gameplay canonical rules.
 
+## 2026-08-18 — Existing-six Full Card artwork conformance rollout
+
+- Stage `6.13.1.3.11.8` is limited to William Saliba, Martin Ødegaard, Declan
+  Rice, Erling Haaland, Phil Foden and Rúben Dias. It changes no Full Card
+  geometry, metadata, typography, attribute, Skill, Serial, rarity, hover, or
+  drag behavior.
+- Each existing vertical `_01` portrait is the primary identity/pose edit
+  target. The corresponding approved Hand Micro master is only a secondary
+  facial cross-check; Target v3, the accepted Saka/Rodri direction, the Stage
+  `.11.7` Hero Bust examples and supplied unbranded shirt references guide
+  composition, lighting, and garment language without supplying identity.
+- Saliba, Ødegaard and Rice receive opaque `1024×1536` unbranded red/white
+  Arsenal-family Hero Busts. Haaland, Foden and Dias receive opaque
+  `1024×1536` unbranded sky-blue/navy/white City-family Hero Busts.
+- The six new textures bind only through `FullCardPortrait`. Their shared
+  `_01` `Portrait` bindings remain the Pitch Mini source; existing Runtime192
+  bindings remain the Hand Micro and Drag Proxy source.
+- The established focused importer preserves the ten accepted Full Card
+  packages, imports six new Hero Bust packages, and fresh-process validates all
+  sixteen dedicated overrides. The final technical artwork split is four
+  pilots, twelve Hero Busts, and zero Full Card fallbacks.
+- Review pages `1–3` expose the six rollout players in three screenshots;
+  page `4` preserves Saka/Rodri as a frozen comparison; page `5` preserves the
+  existing 0/3-Skill stress case. Visual acceptance remains a user PIE gate.
+
 ## 2026-08-18 — Missing-six Full Card Hero Bust artwork completion
 
 - Stage `6.13.1.3.11.7` is limited to Gabriel Martinelli, Gabriel Magalhães,

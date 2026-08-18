@@ -157,3 +157,45 @@ unchanged.
 `USER PIE VISUAL REVIEW REQUIRED` for identity continuity, shirt-family read,
 global-crop safety, live metadata/name overlay fit, and all six side-by-side
 comparisons before visual closure.
+
+## Stage 6.13.1.3.11.8 existing-six Full Card artwork conformance
+
+Generation mode: Codex built-in `image_gen`, identity-preserving edit, one
+isolated call per player. Each existing vertical `_01` portrait was the primary
+identity and pose edit target. The corresponding approved Hand Micro master was
+used only as a secondary facial cross-check. Target v3 supplied overall hero
+context; the accepted Saka/Rodri pilots and Stage `.11.7` Hero Busts supplied
+crop, lighting, and stadium context; the supplied unbranded shirt references
+supplied the two garment families.
+
+Shared edit contract:
+
+```text
+Preserve the exact person, facial structure, skin tone, hair, facial hair,
+expression, gaze, head angle, neck proportions, pose, and build from input
+image 1. Produce an opaque photorealistic 1024×1536 vertical 2:3 hero bust with
+the full head, both shoulders, complete neckline, upper chest, and substantial
+shirt torso visible. Use a restrained dark navy/teal night-stadium background
+with cool/warm match-light separation. Replace only the generic dark top with
+the requested unbranded technical-knit team shirt. No crest, sponsor,
+manufacturer mark, badge, number, text, UI, border, or watermark.
+```
+
+| Player | Primary identity/edit target | Secondary identity cross-check | New dedicated Full Card source | Shirt family |
+|---|---|---|---|---|
+| William Saliba | `Arsenal/Portraits/T_Prototype_Arsenal_WilliamSaliba_01.png` | `HandMicroApprovedRollout/ApprovedMasterViews/T_Prototype_Arsenal_WilliamSaliba_HandMicro_ApprovedMaster.png` | `Arsenal/Portraits/T_Prototype_Arsenal_WilliamSaliba_FullCardHeroBust_01.png` | Arsenal red torso, white shoulders/sleeves, restrained red/white trim. |
+| Martin Ødegaard | `Arsenal/Portraits/T_Prototype_Arsenal_MartinOdegaard_01.png` | `HandMicroApprovedRollout/ApprovedMasterViews/T_Prototype_Arsenal_MartinOdegaard_HandMicro_ApprovedMaster.png` | `Arsenal/Portraits/T_Prototype_Arsenal_MartinOdegaard_FullCardHeroBust_01.png` | Arsenal red torso, white shoulders/sleeves, restrained red/white trim. |
+| Declan Rice | `Arsenal/Portraits/T_Prototype_Arsenal_DeclanRice_01.png` | `HandMicroApprovedRollout/ApprovedMasterViews/T_Prototype_Arsenal_DeclanRice_HandMicro_ApprovedMaster.png` | `Arsenal/Portraits/T_Prototype_Arsenal_DeclanRice_FullCardHeroBust_01.png` | Arsenal red torso, white shoulders/sleeves, restrained red/white trim. |
+| Erling Haaland | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_ErlingHaaland_01.png` | `HandMicroApprovedRollout/ApprovedMasterViews/T_Prototype_ManchesterCity_ErlingHaaland_HandMicro_ApprovedMaster.png` | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01.png` | Manchester City sky blue, tonal knit, restrained navy/white trim. |
+| Phil Foden | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_PhilFoden_01.png` | `HandMicroApprovedRollout/ApprovedMasterViews/T_Prototype_ManchesterCity_PhilFoden_HandMicro_ApprovedMaster.png` | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_PhilFoden_FullCardHeroBust_01.png` | Manchester City sky blue, tonal knit, restrained navy/white trim. |
+| Rúben Dias | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_RubenDias_01.png` | `HandMicroApprovedRollout/ApprovedMasterViews/T_Prototype_ManchesterCity_RubenDias_HandMicro_ApprovedMaster.png` | `ManchesterCity/Portraits/T_Prototype_ManchesterCity_RubenDias_FullCardHeroBust_01.png` | Manchester City sky blue, tonal knit, restrained navy/white trim. |
+
+All six selected outputs are opaque RGB PNGs at exactly `1024×1536`. The
+focused wrapper imports only these six new packages, preserves the ten accepted
+Full Card packages, and fresh-process validates all sixteen dedicated Full Card
+overrides. The existing six `_01` files remain shared `Portrait`/Pitch Mini
+sources; Hand Micro and its Drag Proxy remain on the frozen Runtime192 assets.
+
+`USER PIE VISUAL REVIEW REQUIRED` for identity continuity, shirt-family read,
+global-crop safety, live identity-overlay fit, and side-by-side comparison of
+the six new compositions before visual closure.

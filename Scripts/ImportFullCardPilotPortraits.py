@@ -16,9 +16,22 @@ IMPORTS = (
     ("ManchesterCity", "JoskoGvardiol", "FullCardHeroBust_01"),
     ("ManchesterCity", "BernardoSilva", "FullCardHeroBust_01"),
     ("ManchesterCity", "JeremyDoku", "FullCardHeroBust_01"),
+    ("Arsenal", "WilliamSaliba", "FullCardHeroBust_01"),
+    ("Arsenal", "MartinOdegaard", "FullCardHeroBust_01"),
+    ("Arsenal", "DeclanRice", "FullCardHeroBust_01"),
+    ("ManchesterCity", "ErlingHaaland", "FullCardHeroBust_01"),
+    ("ManchesterCity", "PhilFoden", "FullCardHeroBust_01"),
+    ("ManchesterCity", "RubenDias", "FullCardHeroBust_01"),
 )
 EXPECTED_SIZE = (1024, 1536)
-PRESERVED_SUFFIXES = {"FullCardPilot_02"}
+ROLLOUT_IMPORTS = {
+    ("Arsenal", "WilliamSaliba", "FullCardHeroBust_01"),
+    ("Arsenal", "MartinOdegaard", "FullCardHeroBust_01"),
+    ("Arsenal", "DeclanRice", "FullCardHeroBust_01"),
+    ("ManchesterCity", "ErlingHaaland", "FullCardHeroBust_01"),
+    ("ManchesterCity", "PhilFoden", "FullCardHeroBust_01"),
+    ("ManchesterCity", "RubenDias", "FullCardHeroBust_01"),
+}
 
 
 def texture_size(texture: unreal.Texture2D) -> tuple[int, int]:
@@ -45,7 +58,8 @@ for team, player, asset_suffix in IMPORTS:
     if not source_path.is_file():
         raise RuntimeError(f"Full Card source image is missing: {source_path}")
 
-    if asset_suffix in PRESERVED_SUFFIXES and unreal.EditorAssetLibrary.does_asset_exist(
+    import_key = (team, player, asset_suffix)
+    if import_key not in ROLLOUT_IMPORTS and unreal.EditorAssetLibrary.does_asset_exist(
         expected_asset_path
     ):
         unreal.log(

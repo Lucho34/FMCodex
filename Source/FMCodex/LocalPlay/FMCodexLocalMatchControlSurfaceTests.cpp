@@ -8474,9 +8474,9 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 		bAllCardsUseApprovedRenderer);
 
 	FFMCodexUMGCardViewModel IsolationModel;
-	IsolationModel.CardId = TEXT("Prototype.Arsenal.DavidRaya");
-	IsolationModel.IdentityLabel = TEXT("拉亚");
-	IsolationModel.RoleLabel = TEXT("GK");
+	IsolationModel.CardId = TEXT("Prototype.Arsenal.WilliamSaliba");
+	IsolationModel.IdentityLabel = TEXT("萨利巴");
+	IsolationModel.RoleLabel = TEXT("DF");
 	UFMCodexPlayerCardWidget* FullCard =
 		CreateWidget<UFMCodexPlayerCardWidget>(
 			Screen->GetWorld(), UFMCodexPlayerCardWidget::StaticClass());
@@ -8493,19 +8493,26 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 		FullCard->GetWidgetFromName(TEXT("PortraitAssetImage")));
 	const UImage* PitchPortraitImage = Cast<UImage>(
 		PitchMini->GetWidgetFromName(TEXT("PitchMiniPortraitImage")));
-	TestTrue(TEXT("Full Card pilot is isolated from the original Pitch Mini portrait"),
+	TestTrue(TEXT("Full Card Hero Bust is isolated from Pitch Mini and Hand Micro portraits"),
 		FullCard->GetResolvedPortraitTexture() != nullptr
 			&& FullCard->GetResolvedPortraitTexture()->GetPathName().Contains(
-				TEXT("T_Prototype_Arsenal_DavidRaya_FullCardPilot_02"))
+				TEXT("T_Prototype_Arsenal_WilliamSaliba_FullCardHeroBust_01"))
 			&& FullPortraitImage != nullptr
 			&& FullPortraitImage->GetBrush().GetResourceObject()
 				== FullCard->GetResolvedPortraitTexture()
 			&& PitchMini->GetResolvedPortraitTexture() != nullptr
 			&& PitchMini->GetResolvedPortraitTexture()->GetPathName().Contains(
-				TEXT("T_Prototype_Arsenal_DavidRaya_01"))
+				TEXT("T_Prototype_Arsenal_WilliamSaliba_01"))
 			&& PitchPortraitImage != nullptr
 			&& PitchPortraitImage->GetBrush().GetResourceObject()
 				== PitchMini->GetResolvedPortraitTexture()
+			&& FullCard->GetResolvedHandMicroPortraitTexture() != nullptr
+			&& FullCard->GetResolvedHandMicroPortraitTexture()->GetPathName()
+				.Contains(TEXT("T_Prototype_Arsenal_WilliamSaliba_HandMicro_ApprovedRuntime192"))
+			&& FullCard->GetResolvedHandMicroPortraitTexture()
+				!= FullCard->GetResolvedPortraitTexture()
+			&& FullCard->GetResolvedHandMicroPortraitTexture()
+				!= PitchMini->GetResolvedPortraitTexture()
 			&& PitchMini->GetConfiguredDimensions() == FVector2D(136.0f, 140.0f));
 
 	Screen->RequestStartNewMatch();
@@ -9682,14 +9689,14 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 		const FFMCodexUMGMatchScreenViewModel ReviewPresentation =
 			Screen->GetPresentation();
 		const TArray<TSet<FName>> ExpectedReviewPages = {
-			{ TEXT("Prototype.Arsenal.GabrielMartinelli"),
-				TEXT("Prototype.Arsenal.GabrielMagalhaes") },
-			{ TEXT("Prototype.Arsenal.MikelMerino"),
-				TEXT("Prototype.ManchesterCity.JoskoGvardiol") },
-			{ TEXT("Prototype.ManchesterCity.BernardoSilva"),
-				TEXT("Prototype.ManchesterCity.JeremyDoku") },
-			{ TEXT("Prototype.Arsenal.DavidRaya"),
-				TEXT("Prototype.ManchesterCity.GianluigiDonnarumma") },
+			{ TEXT("Prototype.Arsenal.WilliamSaliba"),
+				TEXT("Prototype.Arsenal.MartinOdegaard") },
+			{ TEXT("Prototype.Arsenal.DeclanRice"),
+				TEXT("Prototype.ManchesterCity.ErlingHaaland") },
+			{ TEXT("Prototype.ManchesterCity.PhilFoden"),
+				TEXT("Prototype.ManchesterCity.RubenDias") },
+			{ TEXT("Prototype.Arsenal.BukayoSaka"),
+				TEXT("Prototype.ManchesterCity.Rodri") },
 			{ TEXT("Prototype.ManchesterCity.Rodri"),
 				TEXT("Prototype.Arsenal.GabrielMagalhaes") }
 		};
@@ -9740,7 +9747,7 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 				&& Screen->IsFullCardProductionReviewVisible()
 				&& Screen->GetFullCardProductionReviewCardCount() == 2;
 		}
-		TestTrue(TEXT("Five true-size review pages cover the new six, GKs and stress cases"),
+		TestTrue(TEXT("Five true-size review pages cover the rollout six, frozen pair and stress cases"),
 			bEveryReviewPageIsRepresentative && AllReviewCardIds.Num() == 9);
 		ReviewCVar->Set(0, ECVF_SetByCode);
 		Screen->RefreshFromPresentation(ReviewPresentation);
@@ -9839,12 +9846,26 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 		{ TEXT("Prototype.ManchesterCity.JeremyDoku"), TEXT("多库"), TEXT("杰里米·多库") }
 	};
 	const TSet<FName> ExpectedFullCardHeroBustArt = {
+		TEXT("Prototype.Arsenal.WilliamSaliba"),
+		TEXT("Prototype.Arsenal.MartinOdegaard"),
+		TEXT("Prototype.Arsenal.DeclanRice"),
 		TEXT("Prototype.Arsenal.GabrielMartinelli"),
 		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
 		TEXT("Prototype.Arsenal.MikelMerino"),
+		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+		TEXT("Prototype.ManchesterCity.PhilFoden"),
+		TEXT("Prototype.ManchesterCity.RubenDias"),
 		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
 		TEXT("Prototype.ManchesterCity.BernardoSilva"),
 		TEXT("Prototype.ManchesterCity.JeremyDoku")
+	};
+	const TSet<FName> ExpectedSharedPortraitHeroBustArt = {
+		TEXT("Prototype.Arsenal.WilliamSaliba"),
+		TEXT("Prototype.Arsenal.MartinOdegaard"),
+		TEXT("Prototype.Arsenal.DeclanRice"),
+		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+		TEXT("Prototype.ManchesterCity.PhilFoden"),
+		TEXT("Prototype.ManchesterCity.RubenDias")
 	};
 	const TSet<FName> ExpectedFullCardPilotArt = {
 		TEXT("Prototype.Arsenal.BukayoSaka"),
@@ -9916,7 +9937,11 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 			&& bUsesFullCardHeroBustArtwork
 				== ExpectedFullCardHeroBustArt.Contains(Expected.CardId)
 			&& (!bUsesFullCardHeroBustArtwork
-				|| (Art.Portrait.IsNull() && !Art.FullCardPortrait.IsNull()))
+				|| (!Art.FullCardPortrait.IsNull()
+					&& (ExpectedSharedPortraitHeroBustArt.Contains(Expected.CardId)
+						? !Art.Portrait.IsNull() : Art.Portrait.IsNull())
+					&& Art.Portrait.ToSoftObjectPath()
+						!= Art.FullCardPortrait.ToSoftObjectPath()))
 			&& !Art.HandMicroPortrait.IsNull()
 			&& !PortraitPath.Contains(TEXT("Runtime192"))
 			&& !PortraitPath.Contains(
@@ -9931,7 +9956,7 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 		bArtBoundaryIsHonest && DedicatedFullCardArtCount == 16
 			&& MissingFullCardArtCount == 0
 			&& FullCardPilotArtCount == 4
-			&& FullCardHeroBustArtCount == 6);
+			&& FullCardHeroBustArtCount == 12);
 	TestTrue(TEXT("In-Match position uses compact slash notation"),
 		FFMCodexPlayerUIPresentationText::InMatchCompactRole(TEXT("GK"))
 			.ToString() == TEXT("GK")
