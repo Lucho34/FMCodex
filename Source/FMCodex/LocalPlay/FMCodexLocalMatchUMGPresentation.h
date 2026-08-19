@@ -98,6 +98,9 @@ struct FMCODEX_API FFMCodexUMGSkillViewModel
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FName SkillId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	FString CanonicalLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
@@ -153,6 +156,9 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FFMCodexUMGSkillViewModel> Skills;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	TArray<FFMCodexUMGSkillViewModel> EligibleTacticalSkills;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	FString PlayerFacingSerialLabel;

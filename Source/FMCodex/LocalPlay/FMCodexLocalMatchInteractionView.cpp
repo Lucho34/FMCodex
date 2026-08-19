@@ -157,6 +157,7 @@ namespace FMCodexLocalMatchInteractionView
 			SkillRuleSet, Input);
 		if (Query.bSuccess)
 		{
+			Result.SkillId = SkillId;
 			Result.CanonicalLabel =
 				FFMCodexLocalMatchInteractionViewBuilder::ToString(
 					Query.Snapshot.SkillType);
@@ -303,6 +304,14 @@ namespace FMCodexLocalMatchInteractionView
 				View.Skills.Add(Skill);
 				View.SkillLabels.Add(Skill.CanonicalLabel);
 			}
+		}
+		if (State.bHasCurrentAttack)
+		{
+			View.EligibleTacticalSkills =
+				FFMCodexLocalMatchInteractionViewBuilder::
+					ProjectEligibleTacticalSkills(
+						View.Skills,
+						State.CurrentAttack.ActionPoint);
 		}
 		View.DeveloperReferenceLabel = FString::Printf(
 			TEXT("Card reference: %s  |  Rarity: %s"),
@@ -985,6 +994,27 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	{
 		Result.ContinueActionLabel = TEXT("Continue - Begin Resolution");
 	}
+	return Result;
+}
+
+TArray<FFMCodexLocalMatchCardView::FSkill>
+FFMCodexLocalMatchInteractionViewBuilder::ProjectEligibleTacticalSkills(
+	const TArray<FFMCodexLocalMatchCardView::FSkill>& StaticSkills,
+	const int32 CurrentTacticalPoint)
+{
+	TArray<FFMCodexLocalMatchCardView::FSkill> Result;
+	for (const FFMCodexLocalMatchCardView::FSkill& Skill : StaticSkills)
+	{
+		if (CurrentTacticalPoint >= Skill.MinTriggerActionPoint
+			&& CurrentTacticalPoint <= Skill.MaxTriggerActionPoint)
+		{
+			Result.Add(Skill);
+		}
+	}
+
+	ensureAlwaysMsgf(Result.Num() <= 2,
+		TEXT("Canonical player content projected %d eligible Tactical Skills at TP %d; the supported invariant is at most 2."),
+		Result.Num(), CurrentTacticalPoint);
 	return Result;
 }
 

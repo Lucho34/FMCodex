@@ -345,6 +345,15 @@
 - 校验：严格要求 40=20+20、每队恰好 1 GK、正确属性 schema、0–3 Skills、TP 2–8、任意 TP 同人 overlap 不超过 2、唯一身份/编号/阵容槽位，以及 source-to-generated exact match；任一失败不发布部分 catalog。
 - 影响：`Docs/Canonical_Player_Content.md`、Data Schema、开发期 importer、packaged runtime JSON、prototype team adapter、现有 LocalPlay/UI compatibility regression。
 
+### CD-031 - Current Tactical Point Eligible Skill Projection
+
+- 日期：2026-08-19
+- 决策：`FMatchPlayState::CurrentAttack.ActionPoint` 是当前普通攻击唯一权威 Tactical Point；它属于当前攻击，而不是某张卡、某一玩家侧或 UMG。当前攻击内所有卡牌投影读取同一个值；无当前攻击时不建立 UI-owned 替代值。
+- 投影：`FFMCodexLocalMatchInteractionViewBuilder` 从卡牌权威 Snapshot 的 authored-order SkillIds 与 Skill Rule Snapshot 生成完整 `Skills`，再按 inclusive `MinTriggerActionPoint <= CurrentAttack.ActionPoint <= MaxTriggerActionPoint` 生成独立的 `EligibleTacticalSkills`。投影不排序、不截断；超过 2 个表示 canonical content invariant violation。
+- 展示边界：UMG 只复制已经解析的 `EligibleTacticalSkills`，不得读取 TP 后自行计算。Full Card 继续消费完整静态 `Skills`；Hand Micro、Drag Proxy 和本阶段 Pitch Mini 视觉合同不变。后续 Pitch Mini 实现只能消费投影结果。
+- 范围：当前 ordinary attack Begin 只接受 TP 2–8；无 active current attack 时展示投影使用 canonical empty（0 个 eligible）。投影本身不 clamp 输入，因而超出各 Skill range 的值自然得到 0 个匹配项。
+- 影响：LocalPlay InteractionView / UMG presentation DTO、当前 TP 合格技能自动化测试，以及后续 Pitch Mini production presentation。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

@@ -7,6 +7,17 @@
 
 namespace FMCodexLocalMatchUMGPresentation
 {
+	FFMCodexUMGSkillViewModel MakeSkill(
+		const FFMCodexLocalMatchCardView::FSkill& Skill)
+	{
+		FFMCodexUMGSkillViewModel Result;
+		Result.SkillId = Skill.SkillId;
+		Result.CanonicalLabel = Skill.CanonicalLabel;
+		Result.MinTriggerActionPoint = Skill.MinTriggerActionPoint;
+		Result.MaxTriggerActionPoint = Skill.MaxTriggerActionPoint;
+		return Result;
+	}
+
 	FFMCodexUMGCardViewModel MakeCard(
 		const FFMCodexLocalMatchCardView& Card)
 	{
@@ -39,11 +50,12 @@ namespace FMCodexLocalMatchUMGPresentation
 		}
 		for (const FFMCodexLocalMatchCardView::FSkill& Skill : Card.Skills)
 		{
-			FFMCodexUMGSkillViewModel& SkillView =
-				Result.Skills.AddDefaulted_GetRef();
-			SkillView.CanonicalLabel = Skill.CanonicalLabel;
-			SkillView.MinTriggerActionPoint = Skill.MinTriggerActionPoint;
-			SkillView.MaxTriggerActionPoint = Skill.MaxTriggerActionPoint;
+			Result.Skills.Add(MakeSkill(Skill));
+		}
+		for (const FFMCodexLocalMatchCardView::FSkill& Skill
+			: Card.EligibleTacticalSkills)
+		{
+			Result.EligibleTacticalSkills.Add(MakeSkill(Skill));
 		}
 		Result.PlayerFacingSerialLabel = Card.PlayerFacingSerialLabel;
 		Result.SkillLabels = Card.SkillLabels;

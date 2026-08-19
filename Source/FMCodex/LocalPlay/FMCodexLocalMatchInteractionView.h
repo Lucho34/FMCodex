@@ -73,12 +73,14 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	};
 	struct FSkill
 	{
+		FName SkillId = NAME_None;
 		FString CanonicalLabel;
 		int32 MinTriggerActionPoint = 0;
 		int32 MaxTriggerActionPoint = 0;
 	};
 	TArray<FAttribute> AttributeValues;
 	TArray<FSkill> Skills;
+	TArray<FSkill> EligibleTacticalSkills;
 	FString PlayerFacingSerialLabel;
 	FString AttributeSummary;
 	FString GoalkeeperAttributeSummary;
@@ -229,6 +231,11 @@ public:
 
 	static FFMCodexLocalMatchScreenPresentation BuildScreenPresentation(
 		const FFMCodexLocalMatchInteractionView& View);
+
+	static TArray<FFMCodexLocalMatchCardView::FSkill>
+	ProjectEligibleTacticalSkills(
+		const TArray<FFMCodexLocalMatchCardView::FSkill>& StaticSkills,
+		int32 CurrentTacticalPoint);
 
 	static FString ToString(EFMCodexLocalMatchMajorPhase Phase);
 	static FString ToString(EFMCodexLocalMatchInteractionCategory Category);

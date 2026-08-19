@@ -79,3 +79,13 @@ The 16 previously integrated players retain their established `PlayerKey`, prese
 
 The current verified inventory is 16 Hand Micro mappings, 16 Full Card mappings, 10 shared/Pitch-compatible portrait mappings, and 24 players relying on safe artwork fallback surfaces. Those are asset-production gaps, not canonical-data failures.
 
+## Current Tactical Point eligible Skill projection
+
+Canonical Skill assignments and current eligibility are intentionally separate presentation facts:
+
+- `Skills` means every Skill owned by the player. It retains canonical authored order and the exact runtime rule range, and remains the Full Card source.
+- `EligibleTacticalSkills` means the owned Skills whose inclusive range contains the current authoritative Tactical Point: `MinTP <= CurrentTP <= MaxTP`.
+
+The authoritative value is `FMatchPlayState::CurrentAttack.ActionPoint`. It belongs to the active current attack, so all card projections in that attack evaluate against the same value. `FFMCodexLocalMatchInteractionViewBuilder` performs the projection after resolving the player's authored-order SkillIds through the canonical Skill Rule Snapshot. UMG only copies the resolved collection and must not compare Tactical Point values with ranges.
+
+The projection preserves authored order, does not clamp Tactical Point, and does not truncate output. The 40-player content validator guarantees no more than two eligible Skills per player for each authored ordinary-attack TP from 2 through 8; observing more than two at runtime is an invariant violation. With no active current attack, no Skill is projected as currently eligible. Full Card continues to receive all static Skills, while Hand Micro and Drag Proxy remain unaffected. Pitch Mini visual consumption is deferred to its production-presentation stage.
