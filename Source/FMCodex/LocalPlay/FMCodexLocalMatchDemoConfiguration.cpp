@@ -23,18 +23,6 @@ namespace FMCodexLocalMatchDemoConfiguration
 		}
 	}
 
-	FSkillRuleSnapshot MakeSkillRule(
-		const TCHAR* SkillId,
-		const ESkillRuleType SkillType)
-	{
-		FSkillRuleSnapshot Rule;
-		Rule.SkillId = FName(SkillId);
-		Rule.SkillType = SkillType;
-		Rule.MinTriggerActionPoint = 2;
-		Rule.MaxTriggerActionPoint = 8;
-		return Rule;
-	}
-
 	FPlayerCardData MakeOutfieldCard(
 		const EInitialTurnOrderPlayer Side,
 		const int32 Index)
@@ -112,12 +100,6 @@ FFMCodexLocalMatchDemoConfigurationFactory::Create()
 		Result.OpeningInput.DeploymentSlotCatalog.Slots.Add(NearB);
 	}
 
-	Result.SkillRuleSet.SkillRules = {
-		MakeSkillRule(LongShotSkillId, ESkillRuleType::LongShot),
-		MakeSkillRule(CutInsideShotSkillId, ESkillRuleType::CutInsideShot),
-		MakeSkillRule(PassControlSkillId, ESkillRuleType::PassControl),
-		MakeSkillRule(CrossSkillId, ESkillRuleType::Cross),
-		MakeSkillRule(ThroughBallSkillId, ESkillRuleType::ThroughBall)
-	};
+	FFMCodexPrototypeTeamContent::AppendSkillRules(Result.SkillRuleSet);
 	return Result;
 }

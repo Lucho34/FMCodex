@@ -38,6 +38,21 @@
 - 门将只能是 `GK` 类型，不允许 `GK/A`、`GK/M`、`GK/D`。
 - `AttackSkills` 数量不能超过 3。
 
+## Canonical 40-Player Content Record（Implemented）
+
+生产内容的完整导入、版本、校验与维护流程见 `Docs/Canonical_Player_Content.md`。运行时记录由 `Content/Data/CanonicalPlayerContent.json` 提供，不读取 XLSX。
+
+- `PlayerKey`：稳定技术身份，进入运行时 `CardId`；不从姓名或展示编号临时推导。
+- `Team + RosterSlot`：每队 1–20 的确定性阵容顺序；`RosterSlot` 不是身份。
+- `DisplaySerial`：工作簿 `PlayerId` 的展示投影，只生成三位球员可见编号，不得参与 authority 或 lookup。
+- `ChineseName / EnglishName / Position / Notes`：工作簿原值。
+- `OutfieldAttributes` 与 `GoalkeeperAttributes`：严格二选一；GK 只有后者，非 GK 只有前者。
+- `Skills`：0–3 个 `{ SkillId, MinTP, MaxTP }`。运行时 RuleId 为 `Canonical.Skill.<SkillId>.<MinTP>.<MaxTP>`，显示名仍由现有 `ESkillRuleType` 映射。
+- `Presentation`：现有已批准的国籍、出生日期、身高、体重、稀有度覆盖；未提供时使用明确安全默认，不从工作簿外猜测事实。
+- `schemaVersion`：数据形状版本；`balanceContentVersion`：批准平衡内容版本；`sourceWorkbookSha256`：导入来源审计值。
+
+当前冻结规模：40 人、Arsenal 20、Manchester City 20、门将 2、非门将 38、Skill assignments 36。每名球员每个 TP 2–8 的活跃技能数不得超过 2。
+
 ## CardRarity
 
 卡牌稀有度枚举。用于计算初始牌组稀有度积分。

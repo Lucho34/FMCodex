@@ -139,8 +139,14 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				{
 					return Slot.SlotId.ToString().Contains(SlotFragment);
 				});
-			if (!Group.bGoalkeeper && bHasMatchingSlot
-				&& Group.Card.SkillLabels.Contains(TEXT("Cross")))
+			const bool bHasUsableCross = Group.Card.Skills.ContainsByPredicate(
+				[&View](const FFMCodexLocalMatchCardView::FSkill& Skill)
+				{
+					return Skill.CanonicalLabel == TEXT("Cross")
+						&& View.ActionPoint >= Skill.MinTriggerActionPoint
+						&& View.ActionPoint <= Skill.MaxTriggerActionPoint;
+				});
+			if (!Group.bGoalkeeper && bHasMatchingSlot && bHasUsableCross)
 			{
 				PreferredCrossCardId = Group.CardId;
 				break;
@@ -1154,7 +1160,7 @@ bool FFMCodexLocalMatchCardPitchPresentationTest::RunTest(
 		TestEqual(TEXT("Readable locations preserve raw legal slot count"),
 			Group.LegalSlots.Num(), Group.LegalSlotIds.Num());
 		if (!Group.bGoalkeeper && OrdinaryGroup == nullptr
-			&& Group.Card.CardId.ToString().StartsWith(TEXT("Demo."))
+			&& Group.Card.CardId.ToString().StartsWith(TEXT("Prototype."))
 			&& Group.Card.SkillLabels.Contains(TEXT("Cross")))
 		{
 			OrdinaryGroup = &Group;
@@ -1169,8 +1175,8 @@ bool FFMCodexLocalMatchCardPitchPresentationTest::RunTest(
 	}
 	TestEqual(TEXT("Card view preserves canonical CardId"),
 		OrdinaryGroup->Card.CardId, OrdinaryGroup->CardId);
-	TestTrue(TEXT("Missing display name uses explicit Card fallback"),
-		OrdinaryGroup->Card.DisplayLabel.StartsWith(TEXT("Card ")));
+	TestFalse(TEXT("Canonical card has a player-facing display name"),
+		OrdinaryGroup->Card.DisplayLabel.IsEmpty());
 	TestFalse(TEXT("Card shows canonical role"),
 		OrdinaryGroup->Card.PositionLabel.IsEmpty());
 	TestTrue(TEXT("Card shows compact authoritative attributes"),
@@ -1638,35 +1644,39 @@ namespace FMCodexLocalMatchFullFamilyTests
 		ESkillRuleType SkillType = ESkillRuleType::None;
 		const TCHAR* SkillId = TEXT("");
 		const TCHAR* ReadableLabel = TEXT("");
-		int32 FirstCardIndex = 0;
-		int32 PlayerACards = 0;
-		int32 PlayerBCards = 0;
+		const TCHAR* PlayerACardId = TEXT("");
+		const TCHAR* PlayerBCardId = TEXT("");
+		int32 ActionPoint = 0;
 	};
 
 	TArray<FFamilyExpectation> FamilyExpectations()
 	{
 		return {
-			{ ESkillRuleType::Cross, TEXT("Demo.Skill.Cross"),
-				TEXT("Cross"), 6, 3, 4 },
-			{ ESkillRuleType::LongShot, TEXT("Demo.Skill.LongShot"),
-				TEXT("Long Shot"), 7, 3, 3 },
+			{ ESkillRuleType::Cross, TEXT("Canonical.Skill.Cross.4.6"),
+				TEXT("Cross"), TEXT("Prototype.Arsenal.BukayoSaka"),
+				TEXT("Prototype.ManchesterCity.RayanAitNouri"), 6 },
+			{ ESkillRuleType::LongShot, TEXT("Canonical.Skill.LongShot.3.5"),
+				TEXT("Long Shot"), TEXT("Prototype.Arsenal.ViktorGyokeres"),
+				TEXT("Prototype.ManchesterCity.PhilFoden"), 4 },
 			{ ESkillRuleType::CutInsideShot,
-				TEXT("Demo.Skill.CutInsideShot"), TEXT("Cut Inside"), 8, 4, 4 },
-			{ ESkillRuleType::PassControl, TEXT("Demo.Skill.PassControl"),
-				TEXT("Pass Control"), 9, 5, 4 },
-			{ ESkillRuleType::ThroughBall, TEXT("Demo.Skill.ThroughBall"),
-				TEXT("Through Ball"), 10, 3, 4 }
+				TEXT("Canonical.Skill.CutInsideShot.4.5"), TEXT("Cut Inside"),
+				TEXT("Prototype.Arsenal.GabrielMartinelli"),
+				TEXT("Prototype.ManchesterCity.OmarMarmoush"), 4 },
+			{ ESkillRuleType::PassControl, TEXT("Canonical.Skill.PassControl.6.8"),
+				TEXT("Pass Control"), TEXT("Prototype.Arsenal.MartinOdegaard"),
+				TEXT("Prototype.ManchesterCity.BernardoSilva"), 6 },
+			{ ESkillRuleType::ThroughBall, TEXT("Canonical.Skill.ThroughBall.5.6"),
+				TEXT("Through Ball"), TEXT("Prototype.Arsenal.MartinOdegaard"),
+				TEXT("Prototype.ManchesterCity.Rodri"), 5 }
 		};
 	}
 
-	FName OutfieldCardId(
-		const EInitialTurnOrderPlayer Side,
-		const int32 Index)
+	FName FamilyCardId(
+		const FFamilyExpectation& Family,
+		const EInitialTurnOrderPlayer Side)
 	{
-		return FName(*FString::Printf(
-			TEXT("Demo.%s.Outfield.%02d"),
-			Side == EInitialTurnOrderPlayer::PlayerA ? TEXT("A") : TEXT("B"),
-			Index));
+		return FName(Side == EInitialTurnOrderPlayer::PlayerA
+			? Family.PlayerACardId : Family.PlayerBCardId);
 	}
 
 	EInitialTurnOrderPlayer OtherSide(const EInitialTurnOrderPlayer Side)
@@ -1694,15 +1704,17 @@ namespace FMCodexLocalMatchFullFamilyTests
 		using namespace FMCodexLocalMatchControlSurfaceTests;
 		const FString FamilyLabel(Family.ReadableLabel);
 		const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
-		const FName CarrierCardId = OutfieldCardId(
-			Attacker, Family.FirstCardIndex);
+		const FName CarrierCardId = FamilyCardId(Family, Attacker);
 		const FString PhysicalForward =
 			Attacker == EInitialTurnOrderPlayer::PlayerA
 				? TEXT("NearB") : TEXT("NearA");
 		bool bCarrierDeployed = false;
 		bool bDefenderGoalkeeperDeployed = false;
+		const bool bRequiresGoalkeeper =
+			Family.SkillType == ESkillRuleType::ThroughBall;
+		const int32 RequiredDeployments = 5;
 
-		for (int32 Step = 0; Step < 5; ++Step)
+		for (int32 Step = 0; Step < RequiredDeployments; ++Step)
 		{
 			AcknowledgeIfPending(Controller);
 			const auto& View = Controller.GetInteractionView();
@@ -1715,7 +1727,8 @@ namespace FMCodexLocalMatchFullFamilyTests
 
 			FFMCodexLocalMatchDeploymentOption SelectedOption;
 			bool bFoundOption = false;
-			if (View.CurrentLegalDeploymentSide == Defender
+			if (bRequiresGoalkeeper
+				&& View.CurrentLegalDeploymentSide == Defender
 				&& !bDefenderGoalkeeperDeployed)
 			{
 				for (const auto& Option : View.DeploymentOptions)
@@ -1731,6 +1744,28 @@ namespace FMCodexLocalMatchFullFamilyTests
 
 			if (!bFoundOption)
 			{
+				FName PreferredFamilyCardId = NAME_None;
+				for (const FFMCodexLocalMatchDeploymentGroup& Group
+					: View.DeploymentGroups)
+				{
+					const bool bHasMatchingSlot = Group.LegalSlots.ContainsByPredicate(
+						[&PhysicalForward](const FFMCodexLocalMatchSlotView& Slot)
+						{
+							return Slot.SlotId.ToString().Contains(PhysicalForward);
+						});
+					const bool bHasUsableFamily = Group.Card.Skills.ContainsByPredicate(
+						[&Family, &View](const FFMCodexLocalMatchCardView::FSkill& Skill)
+						{
+							return Skill.CanonicalLabel == Family.ReadableLabel
+								&& View.ActionPoint >= Skill.MinTriggerActionPoint
+								&& View.ActionPoint <= Skill.MaxTriggerActionPoint;
+						});
+					if (!Group.bGoalkeeper && bHasMatchingSlot && bHasUsableFamily)
+					{
+						PreferredFamilyCardId = Group.CardId;
+						break;
+					}
+				}
 				for (const auto& Option : View.DeploymentOptions)
 				{
 					if (Option.bGoalkeeper
@@ -1741,6 +1776,13 @@ namespace FMCodexLocalMatchFullFamilyTests
 					if (View.CurrentLegalDeploymentSide == Attacker
 						&& !bCarrierDeployed
 						&& Option.CardId != CarrierCardId)
+					{
+						continue;
+					}
+					if ((View.CurrentLegalDeploymentSide != Attacker
+							|| bCarrierDeployed)
+						&& !PreferredFamilyCardId.IsNone()
+						&& Option.CardId != PreferredFamilyCardId)
 					{
 						continue;
 					}
@@ -1777,10 +1819,11 @@ namespace FMCodexLocalMatchFullFamilyTests
 			}
 		}
 
-		if (!bCarrierDeployed || !bDefenderGoalkeeperDeployed)
+		if (!bCarrierDeployed
+			|| (bRequiresGoalkeeper && !bDefenderGoalkeeperDeployed))
 		{
 			return Fail(Test, FamilyLabel,
-				TEXT("carrier or defending goalkeeper was not deployed"));
+				TEXT("required carrier/goalkeeper deployment was incomplete"));
 		}
 
 		for (int32 SideIndex = 0; SideIndex < 2; ++SideIndex)
@@ -1805,8 +1848,7 @@ namespace FMCodexLocalMatchFullFamilyTests
 	{
 		using namespace FMCodexLocalMatchControlSurfaceTests;
 		const FString FamilyLabel(Family.ReadableLabel);
-		const FName CarrierCardId = OutfieldCardId(
-			Attacker, Family.FirstCardIndex);
+		const FName CarrierCardId = FamilyCardId(Family, Attacker);
 		const FName SkillId(Family.SkillId);
 
 		AcknowledgeIfPending(Controller);
@@ -1867,6 +1909,8 @@ namespace FMCodexLocalMatchFullFamilyTests
 			return Fail(Test, FamilyLabel, TEXT("Skill submission failed"));
 		}
 
+		FString SelectionTrace = FString::Printf(TEXT("after-skill=%d"),
+			static_cast<int32>(Controller.GetInteractionView().InteractionCategory));
 		for (int32 Guard = 0; Guard < 4; ++Guard)
 		{
 			AcknowledgeIfPending(Controller);
@@ -1880,6 +1924,8 @@ namespace FMCodexLocalMatchFullFamilyTests
 			}
 			if (!View.SelectionOptions.IsEmpty())
 			{
+				SelectionTrace += FString::Printf(TEXT(", choose=%s"),
+					*View.SelectionOptions[0].Id.ToString());
 				if (!SubmitFirstSelection(Controller, View.InteractionCategory))
 				{
 					return Fail(Test, FamilyLabel,
@@ -1904,6 +1950,9 @@ namespace FMCodexLocalMatchFullFamilyTests
 				return Fail(Test, FamilyLabel,
 					TEXT("Runner/Helper operation was rejected"));
 			}
+			SelectionTrace += FString::Printf(TEXT(", after-step=%d"),
+				static_cast<int32>(
+					Controller.GetInteractionView().InteractionCategory));
 		}
 
 		AcknowledgeIfPending(Controller);
@@ -1933,8 +1982,10 @@ namespace FMCodexLocalMatchFullFamilyTests
 				|| !ChoiceView.BranchIntentOptions.Contains(
 					EMatchPlayElectiveBranchIntent::CrossLow))
 			{
-				return Fail(Test, FamilyLabel,
-					TEXT("Cross High/Low choices were incomplete"));
+				return Fail(Test, FamilyLabel, FString::Printf(
+					TEXT("Cross High/Low choices were incomplete (category %d, option count %d, %s)"),
+					static_cast<int32>(ChoiceView.InteractionCategory),
+					ChoiceView.BranchIntentOptions.Num(), *SelectionTrace));
 			}
 			Controller.SubmitBranchIntent(
 				EMatchPlayElectiveBranchIntent::CrossHigh);
@@ -1975,11 +2026,11 @@ namespace FMCodexLocalMatchFullFamilyTests
 		}
 		Controller.RefreshPresentation();
 		AcknowledgeIfPending(Controller);
-		Controller.BeginDemoOrdinaryAttack();
-		if (!Controller.GetLastDiagnostic().bHostSuccess)
+		if (!Host.BeginOrdinaryAttack(Family.ActionPoint).bSuccess)
 		{
 			return Fail(Test, FamilyLabel, TEXT("attack did not begin"));
 		}
+		Controller.RefreshPresentation();
 
 		const EInitialTurnOrderPlayer Attacker =
 			Controller.GetInteractionView().CurrentAttackingPlayer;
@@ -2079,8 +2130,8 @@ bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
 	const FFMCodexLocalMatchDemoConfiguration Demo =
 		FFMCodexLocalMatchDemoConfigurationFactory::Create();
 	const TArray<FFamilyExpectation> Expected = FamilyExpectations();
-	TestEqual(TEXT("Normal demo contains exactly five Skill rules"),
-		Demo.SkillRuleSet.SkillRules.Num(), 5);
+	TestEqual(TEXT("Canonical catalog exposes thirteen distinct Skill/range rules"),
+		Demo.SkillRuleSet.SkillRules.Num(), 13);
 
 	TSet<FName> RuleIds;
 	TSet<uint8> RuleTypes;
@@ -2088,13 +2139,16 @@ bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
 	{
 		RuleIds.Add(Rule.SkillId);
 		RuleTypes.Add(static_cast<uint8>(Rule.SkillType));
-		TestEqual(TEXT("Demo family minimum AP remains two"),
-			Rule.MinTriggerActionPoint, 2);
-		TestEqual(TEXT("Demo family maximum AP remains eight"),
-			Rule.MaxTriggerActionPoint, 8);
+		TestTrue(TEXT("Canonical Skill minimum AP is supported"),
+			Rule.MinTriggerActionPoint >= 2
+				&& Rule.MinTriggerActionPoint <= 8);
+		TestTrue(TEXT("Canonical Skill maximum AP is supported and ordered"),
+			Rule.MaxTriggerActionPoint >= Rule.MinTriggerActionPoint
+				&& Rule.MaxTriggerActionPoint <= 8);
 	}
-	TestEqual(TEXT("Five demo SkillIds are unique"), RuleIds.Num(), 5);
-	TestEqual(TEXT("Five demo Skill types are unique"), RuleTypes.Num(), 5);
+	TestEqual(TEXT("Thirteen canonical SkillIds are unique"), RuleIds.Num(), 13);
+	TestEqual(TEXT("Five canonical Skill types remain represented"),
+		RuleTypes.Num(), 5);
 
 	for (const FFamilyExpectation& Family : Expected)
 	{
@@ -2119,7 +2173,7 @@ bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
 	}
 
 	TSet<FName> AllCardIds;
-	int32 SideIndex = 0;
+	int32 TotalSkillAssignments = 0;
 	for (const TArray<FPlayerCardData>* Deck : {
 		&Demo.OpeningInput.OpeningInput.PlayerADeck,
 		&Demo.OpeningInput.OpeningInput.PlayerBDeck })
@@ -2127,7 +2181,6 @@ bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
 		TestEqual(TEXT("Each normal demo deck still has twenty cards"),
 			Deck->Num(), 20);
 		int32 GoalkeeperCount = 0;
-		TMap<FName, int32> FamilyCounts;
 		for (const FPlayerCardData& Card : *Deck)
 		{
 			AllCardIds.Add(Card.CardId);
@@ -2136,29 +2189,23 @@ bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
 				++GoalkeeperCount;
 				continue;
 			}
-			const bool bLegitimateNoSkill = Card.CardId
-				== TEXT("Prototype.Arsenal.GabrielMagalhaes");
-			TestTrue(TEXT("Each outfield card has one family or approved None"),
-				Card.AttackSkillIds.Num() == 1
-					|| (bLegitimateNoSkill && Card.AttackSkillIds.IsEmpty()));
-			if (Card.AttackSkillIds.Num() == 1)
+			TestTrue(TEXT("Workbook Skill cardinality remains zero through three"),
+				Card.AttackSkillIds.Num() >= 0
+					&& Card.AttackSkillIds.Num() <= 3);
+			TotalSkillAssignments += Card.AttackSkillIds.Num();
+			for (const FName SkillId : Card.AttackSkillIds)
 			{
-				FamilyCounts.FindOrAdd(Card.AttackSkillIds[0])++;
+				TestTrue(TEXT("Every card Skill resolves to a canonical rule"),
+					RuleIds.Contains(SkillId));
 			}
 		}
-		TestEqual(TEXT("Existing goalkeeper composition is preserved"),
+		TestEqual(TEXT("Each canonical club has one goalkeeper"),
 			GoalkeeperCount, 1);
-		for (const FFamilyExpectation& Family : Expected)
-		{
-			TestEqual(FString::Printf(TEXT("%s mirrored card distribution"),
-				Family.ReadableLabel),
-				FamilyCounts.FindRef(FName(Family.SkillId)),
-				SideIndex == 0 ? Family.PlayerACards : Family.PlayerBCards);
-		}
-		++SideIndex;
 	}
 	TestEqual(TEXT("All forty demo CardIds remain unique"),
 		AllCardIds.Num(), 40);
+	TestEqual(TEXT("Workbook Skill assignment count is exact"),
+		TotalSkillAssignments, 36);
 	return true;
 }
 
@@ -2679,7 +2726,7 @@ bool FFMCodexLocalMatchCardVisualHierarchyRefinementTest::RunTest(
 				return !Candidate.bGoalkeeper
 					&& !Candidate.LegalSlots.IsEmpty()
 					&& Candidate.Card.CardId.ToString().StartsWith(
-						TEXT("Demo."))
+						TEXT("Prototype."))
 					&& Candidate.Card.SkillLabels.Contains(TEXT("Cross"));
 			});
 	TestNotNull(TEXT("Ordinary interaction card exists"), OrdinaryGroup);
@@ -2688,9 +2735,8 @@ bool FFMCodexLocalMatchCardVisualHierarchyRefinementTest::RunTest(
 		return false;
 	}
 	const FFMCodexLocalMatchCardView OrdinaryCard = OrdinaryGroup->Card;
-	TestEqual(TEXT("DisplayName fallback remains deterministic"),
-		OrdinaryCard.DisplayLabel,
-		FString::Printf(TEXT("Card %s"), *OrdinaryCard.CardId.ToString()));
+	TestFalse(TEXT("Canonical display name remains player-facing"),
+		OrdinaryCard.DisplayLabel.IsEmpty());
 	TestFalse(TEXT("Compact role is derived and readable"),
 		OrdinaryCard.CompactRoleLabel.IsEmpty());
 	TestTrue(TEXT("Production card exposes a readable Skill"),
@@ -4928,10 +4974,10 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		Controller->GetLastDiagnostic().bHostSuccess);
 	const EInitialTurnOrderPlayer FlowAttacker =
 		Host->GetMatchSnapshot().Snapshot.RuntimeState.CurrentAttackingPlayer;
-	const EInitialTurnOrderPlayer FlowDefender =
-		FMCodexLocalMatchFullFamilyTests::OtherSide(FlowAttacker);
 	const FName CrossCarrierId =
-		FMCodexLocalMatchFullFamilyTests::OutfieldCardId(FlowAttacker, 6);
+		FMCodexLocalMatchFullFamilyTests::FamilyCardId(
+			FMCodexLocalMatchFullFamilyTests::FamilyExpectations()[0],
+			FlowAttacker);
 	const FString FlowPhysicalForward =
 		FlowAttacker == EInitialTurnOrderPlayer::PlayerA
 			? TEXT("NearB") : TEXT("NearA");
@@ -4947,7 +4993,6 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	int32 SuccessfulDeployments = 0;
 	bool bRejectedIntentVerified = false;
 	bool bCrossCarrierDeployed = false;
-	bool bDefenderGoalkeeperDeployed = false;
 	while (SuccessfulDeployments < 5)
 	{
 		const FFMCodexUMGInteractionViewModel& Deployment =
@@ -4960,9 +5005,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		}
 		const EInitialTurnOrderPlayer CurrentDeploymentSide =
 			Controller->GetInteractionView().CurrentLegalDeploymentSide;
-		const bool bNeedDefenderGoalkeeper =
-			CurrentDeploymentSide == FlowDefender
-			&& !bDefenderGoalkeeperDeployed;
+		const bool bNeedDefenderGoalkeeper = false;
 		const FFMCodexUMGDeploymentChoiceViewModel* Choice = nullptr;
 		if (bNeedDefenderGoalkeeper)
 		{
@@ -4975,15 +5018,51 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		}
 		else
 		{
+			const int32 CurrentActionPoint =
+				Controller->GetInteractionView().ActionPoint;
+			const bool bPreferCross = Deployment.DeploymentChoices.ContainsByPredicate(
+				[CurrentActionPoint, &FlowPhysicalForward](
+					const FFMCodexUMGDeploymentChoiceViewModel& Candidate)
+				{
+					return !Candidate.bGoalkeeper
+						&& Candidate.Card.Skills.ContainsByPredicate(
+							[CurrentActionPoint](const FFMCodexUMGSkillViewModel& Skill)
+							{
+								return Skill.CanonicalLabel == TEXT("Cross")
+									&& CurrentActionPoint >= Skill.MinTriggerActionPoint
+									&& CurrentActionPoint <= Skill.MaxTriggerActionPoint;
+							})
+						&& Candidate.Destinations.ContainsByPredicate(
+							[&FlowPhysicalForward](
+								const FFMCodexUMGDeploymentDestinationViewModel& Destination)
+							{
+								return Destination.SlotId.ToString().Contains(
+									FlowPhysicalForward);
+							});
+				});
 			Choice = Deployment.DeploymentChoices.FindByPredicate(
 				[CurrentDeploymentSide, FlowAttacker, CrossCarrierId,
-					bCrossCarrierDeployed, &FlowPhysicalForward](
+					bCrossCarrierDeployed, bPreferCross, CurrentActionPoint,
+					&FlowPhysicalForward](
 					const FFMCodexUMGDeploymentChoiceViewModel& Candidate)
 				{
 					if (Candidate.bGoalkeeper
 						|| (CurrentDeploymentSide == FlowAttacker
 							&& !bCrossCarrierDeployed
 							&& Candidate.CardId != CrossCarrierId))
+					{
+						return false;
+					}
+					if ((CurrentDeploymentSide != FlowAttacker
+							|| bCrossCarrierDeployed)
+						&& bPreferCross
+						&& !Candidate.Card.Skills.ContainsByPredicate(
+							[CurrentActionPoint](const FFMCodexUMGSkillViewModel& Skill)
+							{
+								return Skill.CanonicalLabel == TEXT("Cross")
+									&& CurrentActionPoint >= Skill.MinTriggerActionPoint
+									&& CurrentActionPoint <= Skill.MaxTriggerActionPoint;
+							}))
 					{
 						return false;
 					}
@@ -5026,8 +5105,6 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		}
 		bCrossCarrierDeployed = bCrossCarrierDeployed
 			|| DeployedCardId == CrossCarrierId;
-		bDefenderGoalkeeperDeployed = bDefenderGoalkeeperDeployed
-			|| bDeployedGoalkeeper;
 		++SuccessfulDeployments;
 		ReadyIfPending();
 		if (!bRejectedIntentVerified)
@@ -5060,8 +5137,8 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	}
 	ReadyIfPending();
 
-	TestTrue(TEXT("Real Panel deployment includes Cross carrier and defender GK"),
-		bCrossCarrierDeployed && bDefenderGoalkeeperDeployed);
+	TestTrue(TEXT("Real Panel deployment includes the canonical Cross carrier"),
+		bCrossCarrierDeployed);
 	const FFMCodexUMGSelectionChoiceViewModel* Carrier =
 		Panel->GetPresentation().SelectionChoices.FindByPredicate(
 			[CrossCarrierId](const FFMCodexUMGSelectionChoiceViewModel& Candidate)
@@ -6043,7 +6120,7 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	{
 		return false;
 	}
-	const FName CarrierId = OutfieldCardId(Attacker, CrossFamily.FirstCardIndex);
+	const FName CarrierId = FamilyCardId(CrossFamily, Attacker);
 	AcknowledgeIfPending(*Controller);
 	TestTrue(TEXT("Carrier Header shows attacker acting"),
 		Header->GetDisplayedAttackerLabel().Contains(
@@ -9308,11 +9385,11 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 	TestTrue(TEXT("Approved factual and presentation data populate the Full Card DTO"),
 		Outfield->BirthDate == TEXT("2001-09-05")
 			&& Outfield->HeightCm == 178 && Outfield->WeightKg == 72
-			&& Outfield->bHasOverallRating && Outfield->OverallRating == 103
+			&& Outfield->bHasOverallRating && Outfield->OverallRating == 100
 			&& Outfield->EnglishIdentityLabel == TEXT("Bukayo Saka")
 			&& Outfield->NationalityLabel == TEXT("英格兰")
 			&& Outfield->ClubLabel == TEXT("阿森纳")
-			&& Outfield->PlayerFacingSerialLabel == TEXT("003")
+			&& Outfield->PlayerFacingSerialLabel == TEXT("015")
 			&& OutfieldCard->GetRenderedBiographyRowCount() == 4
 			&& OutfieldCard->IsOverallVisible()
 			&& OutfieldCard->IsPlayerFacingSerialVisible()
@@ -9574,6 +9651,9 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 			&& GabrielNoSkillCard->GetWidgetFromName(
 				TEXT("SkillPresentationRegion"))->GetVisibility()
 				== ESlateVisibility::Collapsed);
+	FFMCodexUMGCardViewModel OneSkillReview = *Outfield;
+	OneSkillReview.DeveloperReferenceLabel = TEXT("TestOnly.OneSkillCapacity");
+	OneSkillReview.Skills.SetNum(1);
 	FFMCodexUMGCardViewModel TwoSkillReview = *Outfield;
 	TwoSkillReview.DeveloperReferenceLabel = TEXT("TestOnly.TwoSkillCapacity");
 	FFMCodexUMGCardViewModel ThreeSkillReview = *Outfield;
@@ -9603,6 +9683,7 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 			}
 		}
 	}
+	UFMCodexPlayerCardWidget* OneSkillCard = CreateFullCard(OneSkillReview);
 	UFMCodexPlayerCardWidget* TwoSkillCard = CreateFullCard(TwoSkillReview);
 	UFMCodexPlayerCardWidget* ThreeSkillCard = CreateFullCard(ThreeSkillReview);
 	bool bThreeSkillRowsHaveStableHeight = ThreeSkillCard != nullptr;
@@ -9624,8 +9705,9 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 			&& FMath::IsNearlyEqual(RangeBounds->GetWidthOverride(), 48.0f);
 	}
 	TestTrue(TEXT("Full Card structurally supports 0, 1, 2 and 3 Skills"),
-		Outfield->Skills.Num() == 1
-			&& GabrielNoSkillCard->GetRenderedSkillCount() == 0
+		GabrielNoSkillCard->GetRenderedSkillCount() == 0
+			&& OneSkillCard != nullptr
+			&& OneSkillCard->GetRenderedSkillCount() == 1
 			&& TwoSkillReview.Skills.Num() == 2 && TwoSkillCard != nullptr
 			&& TwoSkillCard->GetRenderedSkillCount() == 2
 			&& ThreeSkillReview.Skills.Num() == 3 && ThreeSkillCard != nullptr

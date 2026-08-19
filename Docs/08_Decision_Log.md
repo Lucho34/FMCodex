@@ -334,6 +334,17 @@
 - 既有边界：Cross Low / High 的 Reflex / Aerial ×0.5、ThroughBall OneOnOne ×0.5 及其 Direct Shot 专用基础 ×1.0 / 激活 ×1.5 语义保持不变。本决定不修改部署、D6、参与者、固定修正、攻击侧公式、State schema、Session / Host / Controller / UMG API 或 Prototype Team 数据。
 - 影响：Rules Canonical、MatchPlay SingleCard Finishing Formula authoritative orchestration、定向回归与后续 Pilot 平衡审计。
 
+### CD-030 - Canonical 40-Player Data Pipeline and Identity Boundary
+
+- 日期：2026-08-19
+- 决策：批准工作簿 `FMCodex_40_Player_Attribute_Skill_PointRules.xlsx` 的 `球员配置` 页是 40 人平衡内容 authoring source；运行时不读取 XLSX，而读取由独立校验导入器生成并随包发布的 `Content/Data/CanonicalPlayerContent.json`。
+- 身份：工作簿 `PlayerId` 只映射到 `DisplaySerial`，绝不作为 identity。稳定身份为显式 `PlayerKey`，运行时继续进入 `CardId`；`RosterSlot` 只决定每队 1–20 顺序。
+- 技能：每个批准的 `SkillId + MinTP + MaxTP` tuple 生成唯一 runtime RuleId，继续复用既有 `ESkillRuleType`、Skill Rule Snapshot、TP filtering、authority 与 UI DTO；不建立第二套玩法或显示语义。
+- 版本与维护：当前 `schemaVersion=1`、`balanceContentVersion=Prototype40_v1`。同 schema 的数值变更不需要 C++；新增/重命名球员必须显式更新 source-side PlayerKey mapping；schema/rule semantics 变更必须单独审查。
+- 兼容：既有 16 个 PlayerKey、卡牌艺术与展示覆盖保持；新增 24 人使用安全 fallback。本决定不生成 artwork，不修改 MatchPlay authority，不修改 Pitch Mini/Full Card/TP filtering 产品行为。
+- 校验：严格要求 40=20+20、每队恰好 1 GK、正确属性 schema、0–3 Skills、TP 2–8、任意 TP 同人 overlap 不超过 2、唯一身份/编号/阵容槽位，以及 source-to-generated exact match；任一失败不发布部分 catalog。
+- 影响：`Docs/Canonical_Player_Content.md`、Data Schema、开发期 importer、packaged runtime JSON、prototype team adapter、现有 LocalPlay/UI compatibility regression。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

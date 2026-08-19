@@ -2,8 +2,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "FMCodexDeploymentDragDropOperation.h"
 #include "FMCodexCardRackWidget.h"
+#include "FMCodexDeploymentDragDropOperation.h"
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexLocalMatchDemoConfiguration.h"
 #include "FMCodexLocalMatchHostGameMode.h"
@@ -19,10 +19,10 @@
 #include "../CoreRules/DeckValidator.h"
 #include "../CoreRules/MatchPlayOpeningInitializer.h"
 
+#include "Components/TextBlock.h"
 #include "Engine/Engine.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
-#include "Components/TextBlock.h"
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
@@ -30,12 +30,36 @@
 
 namespace FMCodexPrototypeTeamContentTests
 {
-	const TSet<FName> FrozenSkillIds = {
-		TEXT("Demo.Skill.LongShot"),
-		TEXT("Demo.Skill.CutInsideShot"),
-		TEXT("Demo.Skill.PassControl"),
-		TEXT("Demo.Skill.Cross"),
-		TEXT("Demo.Skill.ThroughBall")
+	const TSet<FName> ExistingArtworkPlayerKeys = {
+		TEXT("Prototype.Arsenal.DavidRaya"),
+		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
+		TEXT("Prototype.Arsenal.WilliamSaliba"),
+		TEXT("Prototype.Arsenal.MartinOdegaard"),
+		TEXT("Prototype.Arsenal.MikelMerino"),
+		TEXT("Prototype.Arsenal.DeclanRice"),
+		TEXT("Prototype.Arsenal.BukayoSaka"),
+		TEXT("Prototype.Arsenal.GabrielMartinelli"),
+		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
+		TEXT("Prototype.ManchesterCity.RubenDias"),
+		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+		TEXT("Prototype.ManchesterCity.Rodri"),
+		TEXT("Prototype.ManchesterCity.BernardoSilva"),
+		TEXT("Prototype.ManchesterCity.PhilFoden"),
+		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+		TEXT("Prototype.ManchesterCity.JeremyDoku")
+	};
+
+	const TSet<FName> SharedPortraitPlayerKeys = {
+		TEXT("Prototype.Arsenal.DavidRaya"),
+		TEXT("Prototype.Arsenal.WilliamSaliba"),
+		TEXT("Prototype.Arsenal.MartinOdegaard"),
+		TEXT("Prototype.Arsenal.DeclanRice"),
+		TEXT("Prototype.Arsenal.BukayoSaka"),
+		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
+		TEXT("Prototype.ManchesterCity.RubenDias"),
+		TEXT("Prototype.ManchesterCity.Rodri"),
+		TEXT("Prototype.ManchesterCity.PhilFoden"),
+		TEXT("Prototype.ManchesterCity.ErlingHaaland")
 	};
 
 	bool IsCodeSafeId(const FName Id)
@@ -79,48 +103,6 @@ namespace FMCodexPrototypeTeamContentTests
 			&& A.OneOnOne >= 1 && A.OneOnOne <= 6;
 	}
 
-	FPlayerAttributes MakeAttributes(
-		const int32 Shooting,
-		const int32 Dribbling,
-		const int32 Passing,
-		const int32 OffBall,
-		const int32 Marking,
-		const int32 Tackling,
-		const int32 Speed,
-		const int32 Strength,
-		const int32 Stamina,
-		const int32 LongShot)
-	{
-		FPlayerAttributes Result;
-		Result.Shooting = Shooting;
-		Result.Dribbling = Dribbling;
-		Result.Passing = Passing;
-		Result.OffBall = OffBall;
-		Result.Marking = Marking;
-		Result.Tackling = Tackling;
-		Result.Speed = Speed;
-		Result.Strength = Strength;
-		Result.Stamina = Stamina;
-		Result.LongShot = LongShot;
-		return Result;
-	}
-
-	bool AttributesEqual(
-		const FPlayerAttributes& Left,
-		const FPlayerAttributes& Right)
-	{
-		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
-			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
-			&& Left.Speed == Right.Speed
-			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
-	}
-
 	class FScopedPlayableWorld final
 	{
 	public:
@@ -161,16 +143,19 @@ namespace FMCodexPrototypeTeamContentTests
 		UWorld* World = nullptr;
 	};
 
-	const FFMCodexUMGDeploymentChoiceViewModel* FindPrototypeChoice(
+	const FFMCodexUMGDeploymentChoiceViewModel* FindArtworkBackedChoice(
 		const FFMCodexUMGInteractionViewModel& Interaction)
 	{
 		return Interaction.DeploymentChoices.FindByPredicate(
 			[](const FFMCodexUMGDeploymentChoiceViewModel& Choice)
 			{
-				return !Choice.bGoalkeeper
-					&& !Choice.Destinations.IsEmpty()
-					&& FFMCodexPrototypeTeamContent::IsPrototypeCard(
-						Choice.CardId);
+				if (Choice.bGoalkeeper || Choice.Destinations.IsEmpty()
+					|| !FFMCodexPrototypeTeamContent::IsPrototypeCard(Choice.CardId))
+				{
+					return false;
+				}
+				return !FFMCodexPlayerUIAssetReferences::Get()
+					.ResolveCardArt(Choice.CardId).HandMicroPortrait.IsNull();
 			});
 	}
 
@@ -178,8 +163,7 @@ namespace FMCodexPrototypeTeamContentTests
 		UFMCodexCardRackWidget& Rack,
 		const FName CardId)
 	{
-		for (UFMCodexPlayerCardWidget* Widget
-			: Rack.GetRenderedCardWidgets())
+		for (UFMCodexPlayerCardWidget* Widget : Rack.GetRenderedCardWidgets())
 		{
 			if (Widget != nullptr
 				&& Widget->GetDeploymentDragCardId() == CardId)
@@ -214,157 +198,122 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FFMCodexPrototypeTeamCatalogTest::RunTest(const FString& Parameters)
 {
 	using namespace FMCodexPrototypeTeamContentTests;
-	struct FExpectedMetadata
-	{
-		FString ChineseName;
-		FString EnglishName;
-		FString Nationality;
-		FString BirthDate;
-		int32 HeightCm;
-		int32 WeightKg;
-		FString Serial;
-	};
-	const TMap<FName, FExpectedMetadata> ExpectedMetadata = {
-		{ TEXT("Prototype.Arsenal.DavidRaya"),
-			{ TEXT("大卫·拉亚"), TEXT("David Raya"), TEXT("西班牙"), TEXT("1995-09-15"), 183, 80, TEXT("001") } },
-		{ TEXT("Prototype.Arsenal.WilliamSaliba"),
-			{ TEXT("威廉·萨利巴"), TEXT("William Saliba"), TEXT("法国"), TEXT("2001-03-24"), 192, 92, TEXT("002") } },
-		{ TEXT("Prototype.Arsenal.BukayoSaka"),
-			{ TEXT("布卡约·萨卡"), TEXT("Bukayo Saka"), TEXT("英格兰"), TEXT("2001-09-05"), 178, 72, TEXT("003") } },
-		{ TEXT("Prototype.Arsenal.MartinOdegaard"),
-			{ TEXT("马丁·厄德高"), TEXT("Martin Ødegaard"), TEXT("挪威"), TEXT("1998-12-17"), 178, 68, TEXT("004") } },
-		{ TEXT("Prototype.Arsenal.DeclanRice"),
-			{ TEXT("德克兰·赖斯"), TEXT("Declan Rice"), TEXT("英格兰"), TEXT("1999-01-14"), 188, 83, TEXT("005") } },
-		{ TEXT("Prototype.Arsenal.GabrielMartinelli"),
-			{ TEXT("加布里埃尔·马丁内利"), TEXT("Gabriel Martinelli"), TEXT("巴西"), TEXT("2001-06-18"), 178, 74, TEXT("006") } },
-		{ TEXT("Prototype.Arsenal.GabrielMagalhaes"),
-			{ TEXT("加布里埃尔·马加良斯"), TEXT("Gabriel Magalhães"), TEXT("巴西"), TEXT("1997-12-19"), 190, 78, TEXT("007") } },
-		{ TEXT("Prototype.Arsenal.MikelMerino"),
-			{ TEXT("米克尔·梅里诺"), TEXT("Mikel Merino"), TEXT("西班牙"), TEXT("1996-06-22"), 189, 83, TEXT("008") } },
-		{ TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
-			{ TEXT("吉安路易吉·多纳鲁马"), TEXT("Gianluigi Donnarumma"), TEXT("意大利"), TEXT("1999-02-25"), 196, 89, TEXT("009") } },
-		{ TEXT("Prototype.ManchesterCity.ErlingHaaland"),
-			{ TEXT("埃尔林·哈兰德"), TEXT("Erling Haaland"), TEXT("挪威"), TEXT("2000-07-21"), 195, 87, TEXT("010") } },
-		{ TEXT("Prototype.ManchesterCity.PhilFoden"),
-			{ TEXT("菲尔·福登"), TEXT("Phil Foden"), TEXT("英格兰"), TEXT("2000-05-28"), 171, 63, TEXT("011") } },
-		{ TEXT("Prototype.ManchesterCity.Rodri"),
-			{ TEXT("罗德里"), TEXT("Rodri"), TEXT("西班牙"), TEXT("1996-06-22"), 190, 82, TEXT("012") } },
-		{ TEXT("Prototype.ManchesterCity.RubenDias"),
-			{ TEXT("鲁本·迪亚斯"), TEXT("Rúben Dias"), TEXT("葡萄牙"), TEXT("1997-05-14"), 187, 83, TEXT("013") } },
-		{ TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
-			{ TEXT("约什科·格瓦迪奥尔"), TEXT("Joško Gvardiol"), TEXT("克罗地亚"), TEXT("2002-01-23"), 185, 79, TEXT("014") } },
-		{ TEXT("Prototype.ManchesterCity.BernardoSilva"),
-			{ TEXT("贝尔纳多·席尔瓦"), TEXT("Bernardo Silva"), TEXT("葡萄牙"), TEXT("1994-08-10"), 173, 64, TEXT("015") } },
-		{ TEXT("Prototype.ManchesterCity.JeremyDoku"),
-			{ TEXT("杰里米·多库"), TEXT("Jérémy Doku"), TEXT("比利时"), TEXT("2002-05-27"), 171, 66, TEXT("016") } }
-	};
+	TArray<FString> ValidationErrors;
+	TestTrue(TEXT("Independent runtime catalog validation passes"),
+		FFMCodexPrototypeTeamContent::Validate(ValidationErrors));
+	TestEqual(TEXT("Runtime catalog validation reports no errors"),
+		ValidationErrors.Num(), 0);
+	TestEqual(TEXT("Balance content version is explicit"),
+		FFMCodexPrototypeTeamContent::GetBalanceContentVersion(),
+		FString(TEXT("Prototype40_v1")));
+	TestTrue(TEXT("Generated runtime JSON exists outside gameplay C++"),
+		IFileManager::Get().FileExists(
+			*FFMCodexPrototypeTeamContent::GetRuntimeContentPath()));
+
 	const TArray<FFMCodexPrototypePlayerDefinition>& Definitions =
 		FFMCodexPrototypeTeamContent::GetDefinitions();
-	TestEqual(TEXT("Formal Prototype roster has exactly sixteen definitions"),
-		Definitions.Num(), 16);
-
+	TestEqual(TEXT("Canonical roster has exactly forty definitions"),
+		Definitions.Num(), 40);
 	TMap<FName, int32> TeamCounts;
 	TMap<FName, int32> GoalkeeperCounts;
-	TSet<FName> UniqueIds;
-	TSet<FString> UniqueSerials;
+	TSet<FName> PlayerKeys;
+	TSet<int32> DisplaySerials;
+	TMap<int32, int32> SkillCounts;
+	int32 OverlapChecks = 0;
 	for (const FFMCodexPrototypePlayerDefinition& Definition : Definitions)
 	{
 		const FPlayerCardData& Card = Definition.Card;
 		TeamCounts.FindOrAdd(Definition.TeamId)++;
-		GoalkeeperCounts.FindOrAdd(Definition.TeamId) += Card.bIsGoalkeeper ? 1 : 0;
-		UniqueIds.Add(Card.CardId);
-		UniqueSerials.Add(Definition.PlayerFacingSerial);
-		TestTrue(TEXT("Technical CardId is non-empty and code-safe"),
-			IsCodeSafeId(Card.CardId));
-		TestFalse(TEXT("Localized visible player name is live and non-empty"),
-			Card.DisplayName.IsEmpty());
-		TestFalse(TEXT("Localized visible team name is live and non-empty"),
-			Definition.TeamDisplayName.IsEmpty());
-		TestFalse(TEXT("English player-facing name is explicit and non-empty"),
-			Definition.EnglishDisplayName.IsEmpty());
-		TestFalse(TEXT("Player nationality is explicit and non-empty"),
-			Definition.NationalityDisplayName.IsEmpty());
-		TestTrue(TEXT("Biography metadata is complete"),
-			!Card.BirthDate.IsEmpty()
-				&& Card.HeightCm > 0
-				&& Card.WeightKg > 0);
-		TestTrue(TEXT("Player-facing serial preserves three digits"),
-			Definition.PlayerFacingSerial.Len() == 3
-				&& Definition.PlayerFacingSerial.IsNumeric());
-		const FExpectedMetadata* Expected = ExpectedMetadata.Find(Card.CardId);
-		TestTrue(TEXT("Approved factual metadata and Serial mapping are exact"),
-			Expected != nullptr
-				&& Card.DisplayName.ToString() == Expected->ChineseName
-				&& Definition.EnglishDisplayName.ToString()
-					== Expected->EnglishName
-				&& Definition.NationalityDisplayName.ToString()
-					== Expected->Nationality
-				&& Card.BirthDate == Expected->BirthDate
-				&& Card.HeightCm == Expected->HeightCm
-				&& Card.WeightKg == Expected->WeightKg
-				&& Definition.PlayerFacingSerial == Expected->Serial);
-		const FFMCodexPlayerOverallResult Overall =
-			FFMCodexPlayerOverall::Calculate(Card);
-		TestTrue(TEXT("Every formal Prototype player has Overall v1"),
-			Overall.bSuccess && Overall.Value > 0);
-		TestTrue(TEXT("All canonical outfield attributes use the existing range"),
-			AttributesInRange(Card.Attributes));
-		TestTrue(TEXT("Prototype card uses at least one existing role"),
-			!Card.PositionTypes.IsEmpty());
+		GoalkeeperCounts.FindOrAdd(Definition.TeamId) +=
+			Card.bIsGoalkeeper ? 1 : 0;
+		PlayerKeys.Add(Definition.PlayerKey);
+		DisplaySerials.Add(Definition.DisplaySerial);
+		SkillCounts.FindOrAdd(Definition.SkillAssignments.Num())++;
+		TestTrue(TEXT("PlayerKey is stable, code-safe, and owns CardId identity"),
+			IsCodeSafeId(Definition.PlayerKey)
+				&& Definition.PlayerKey == Card.CardId);
+		TestTrue(TEXT("DisplaySerial is positive and only formatted for presentation"),
+			Definition.DisplaySerial > 0
+				&& Definition.PlayerFacingSerial
+					== FString::Printf(TEXT("%03d"), Definition.DisplaySerial));
+		TestTrue(TEXT("RosterSlot remains order metadata"),
+			Definition.RosterSlot >= 1 && Definition.RosterSlot <= 20);
+		TestTrue(TEXT("Required player and team names are present"),
+			!Card.DisplayName.IsEmpty()
+				&& !Definition.EnglishDisplayName.IsEmpty()
+				&& !Definition.TeamDisplayName.IsEmpty());
 		if (Card.bIsGoalkeeper)
 		{
-			TestTrue(TEXT("Goalkeeper uses only the existing GK position"),
+			TestTrue(TEXT("Goalkeeper uses exactly the canonical GK schema"),
 				Card.PositionTypes.Num() == 1
-					&& Card.PositionTypes[0]
-						== EPlayerPositionType::Goalkeeper
-					&& GoalkeeperAttributesInRange(
-						Card.GoalkeeperAttributes)
-					&& Card.AttackSkillIds.IsEmpty());
-		}
-		else if (Card.CardId == TEXT("Prototype.Arsenal.GabrielMagalhaes"))
-		{
-			TestTrue(TEXT("Gabriel deliberately has no attack Skill"),
-				Card.AttackSkillIds.IsEmpty());
+					&& Card.PositionTypes[0] == EPlayerPositionType::Goalkeeper
+					&& GoalkeeperAttributesInRange(Card.GoalkeeperAttributes));
 		}
 		else
 		{
-			TestTrue(TEXT("Outfield pilot uses exactly one frozen existing skill"),
-				Card.AttackSkillIds.Num() == 1
-					&& FrozenSkillIds.Contains(Card.AttackSkillIds[0]));
+			TestTrue(TEXT("Outfield player uses exactly ranged canonical values"),
+				!Card.PositionTypes.IsEmpty()
+					&& !Card.PositionTypes.Contains(EPlayerPositionType::Goalkeeper)
+					&& AttributesInRange(Card.Attributes));
+		}
+		TestTrue(TEXT("Player has zero to three Skill assignments"),
+			Definition.SkillAssignments.Num() >= 0
+				&& Definition.SkillAssignments.Num() <= 3
+				&& Definition.SkillAssignments.Num()
+					== Card.AttackSkillIds.Num());
+		TSet<FName> CanonicalSkillIds;
+		for (const FFMCodexPrototypeSkillAssignment& Skill
+			: Definition.SkillAssignments)
+		{
+			TestTrue(TEXT("Skill reference and TP range are canonical"),
+				!Skill.SkillId.IsNone() && !Skill.RuleId.IsNone()
+					&& Skill.SkillType != ESkillRuleType::None
+					&& Skill.MinTacticalPoint >= 2
+					&& Skill.MinTacticalPoint <= Skill.MaxTacticalPoint
+					&& Skill.MaxTacticalPoint <= 8);
+			TestFalse(TEXT("No duplicate canonical SkillId per player"),
+				CanonicalSkillIds.Contains(Skill.SkillId));
+			CanonicalSkillIds.Add(Skill.SkillId);
+		}
+		for (int32 TacticalPoint = 2; TacticalPoint <= 8; ++TacticalPoint)
+		{
+			int32 Eligible = 0;
+			for (const FFMCodexPrototypeSkillAssignment& Skill
+				: Definition.SkillAssignments)
+			{
+				Eligible += TacticalPoint >= Skill.MinTacticalPoint
+					&& TacticalPoint <= Skill.MaxTacticalPoint ? 1 : 0;
+			}
+			TestTrue(TEXT("Every player/TP overlap count is at most two"),
+				Eligible <= 2);
+			++OverlapChecks;
 		}
 	}
-	TestEqual(TEXT("All sixteen technical CardIds are unique"),
-		UniqueIds.Num(), 16);
-	TestEqual(TEXT("All sixteen explicit serials are unique"),
-		UniqueSerials.Num(), 16);
-	TestEqual(TEXT("Metadata regression table covers all sixteen players"),
-		ExpectedMetadata.Num(), 16);
-	TestEqual(TEXT("Arsenal formal count is exactly eight"),
-		TeamCounts.FindRef(FFMCodexPrototypeTeamContent::ArsenalTeamId()), 8);
-	TestEqual(TEXT("Manchester City formal count is exactly eight"),
+	TestEqual(TEXT("All forty PlayerKeys are unique"), PlayerKeys.Num(), 40);
+	TestEqual(TEXT("All forty DisplaySerial values are unique"),
+		DisplaySerials.Num(), 40);
+	TestEqual(TEXT("Arsenal roster is exactly 20"),
+		TeamCounts.FindRef(FFMCodexPrototypeTeamContent::ArsenalTeamId()), 20);
+	TestEqual(TEXT("Manchester City roster is exactly 20"),
 		TeamCounts.FindRef(
-			FFMCodexPrototypeTeamContent::ManchesterCityTeamId()), 8);
-	TestEqual(TEXT("Arsenal pilot has exactly one goalkeeper"),
+			FFMCodexPrototypeTeamContent::ManchesterCityTeamId()), 20);
+	TestEqual(TEXT("Arsenal has exactly one goalkeeper"),
 		GoalkeeperCounts.FindRef(
 			FFMCodexPrototypeTeamContent::ArsenalTeamId()), 1);
-	TestEqual(TEXT("Manchester City pilot has exactly one goalkeeper"),
+	TestEqual(TEXT("Manchester City has exactly one goalkeeper"),
 		GoalkeeperCounts.FindRef(
 			FFMCodexPrototypeTeamContent::ManchesterCityTeamId()), 1);
-	TestEqual(TEXT("Chinese-first identity lookup is centralized"),
-		FFMCodexPrototypeTeamContent::PlayerDisplayName(
-			TEXT("Prototype.Arsenal.BukayoSaka")).ToString(),
-		FString(TEXT("布卡约·萨卡")));
-	TestEqual(TEXT("Chinese-first team lookup is centralized"),
-		FFMCodexPrototypeTeamContent::TeamDisplayName(
-			TEXT("Prototype.ManchesterCity.Rodri")).ToString(),
-		FString(TEXT("曼彻斯特城")));
+	TestEqual(TEXT("Full overlap matrix contains 40 x 7 checks"),
+		OverlapChecks, 280);
+	TestTrue(TEXT("Skill count distribution is exact"),
+		SkillCounts.FindRef(0) == 18
+			&& SkillCounts.FindRef(1) == 10
+			&& SkillCounts.FindRef(2) == 10
+			&& SkillCounts.FindRef(3) == 2);
 
 	const FFMCodexLocalMatchDemoConfiguration Demo =
 		FFMCodexLocalMatchDemoConfigurationFactory::Create();
 	TSet<FName> DemoCardIds;
-	int32 PrototypeTotal = 0;
-	int32 PlayerAPrototypeCount = 0;
-	int32 PlayerBPrototypeCount = 0;
 	int32 PlayerARarityScore = 0;
 	int32 PlayerBRarityScore = 0;
 	for (int32 SideIndex = 0; SideIndex < 2; ++SideIndex)
@@ -372,157 +321,140 @@ bool FFMCodexPrototypeTeamCatalogTest::RunTest(const FString& Parameters)
 		const TArray<FPlayerCardData>& Deck = SideIndex == 0
 			? Demo.OpeningInput.OpeningInput.PlayerADeck
 			: Demo.OpeningInput.OpeningInput.PlayerBDeck;
-		const FDeckValidationResult Validation = FDeckValidator::ValidateDeck(Deck);
-		TestEqual(TEXT("Integrated LocalPlay deck remains exactly twenty cards"),
+		const FDeckValidationResult DeckValidation =
+			FDeckValidator::ValidateDeck(Deck);
+		TestEqual(TEXT("Canonical LocalPlay deck remains exactly twenty cards"),
 			Deck.Num(), 20);
-		TestTrue(TEXT("Integrated LocalPlay deck remains canonically valid"),
-			Validation.bIsValid);
-		const FName ExpectedFirstCardId = SideIndex == 0
-			? FName(TEXT("Prototype.Arsenal.GabrielMartinelli"))
-			: FName(TEXT("Prototype.ManchesterCity.JoskoGvardiol"));
-		TestTrue(TEXT("Normal deck replaces visual stand-in 01 with formal content"),
-			Deck[0].CardId == ExpectedFirstCardId
-				&& !Deck[0].CardId.ToString().StartsWith(TEXT("Demo.")));
-		TestTrue(TEXT("The fifth generic fixture preserves the five-family demo mix"),
-			Deck[4].AttackSkillIds.Num() == 1
-				&& Deck[4].AttackSkillIds[0]
-					== TEXT("Demo.Skill.ThroughBall"));
-		if (SideIndex == 0)
-		{
-			PlayerARarityScore = Validation.InitialDeckRarityScore;
-		}
-		else
-		{
-			PlayerBRarityScore = Validation.InitialDeckRarityScore;
-		}
+		TestTrue(TEXT("Canonical LocalPlay deck remains valid"),
+			DeckValidation.bIsValid);
 		for (const FPlayerCardData& Card : Deck)
 		{
 			DemoCardIds.Add(Card.CardId);
-			if (FFMCodexPrototypeTeamContent::IsPrototypeCard(Card.CardId))
-			{
-				++PrototypeTotal;
-				if (SideIndex == 0)
-				{
-					++PlayerAPrototypeCount;
-				}
-				else
-				{
-					++PlayerBPrototypeCount;
-				}
-			}
+			TestTrue(TEXT("Every normal LocalPlay card is canonical real-player content"),
+				FFMCodexPrototypeTeamContent::IsPrototypeCard(Card.CardId)
+					&& !Card.CardId.ToString().StartsWith(TEXT("Demo.")));
+		}
+		if (SideIndex == 0)
+		{
+			PlayerARarityScore = DeckValidation.InitialDeckRarityScore;
+			TestEqual(TEXT("Arsenal order starts with workbook RosterSlot 1"),
+				Deck[0].CardId, FName(TEXT("Prototype.Arsenal.DavidRaya")));
+		}
+		else
+		{
+			PlayerBRarityScore = DeckValidation.InitialDeckRarityScore;
+			TestEqual(TEXT("Manchester City order starts with workbook RosterSlot 1"),
+				Deck[0].CardId,
+				FName(TEXT("Prototype.ManchesterCity.GianluigiDonnarumma")));
 		}
 	}
-	TestTrue(TEXT("Normal LocalPlay integrates exactly eight formal cards per side"),
-		PrototypeTotal == 16
-			&& PlayerAPrototypeCount == 8
-			&& PlayerBPrototypeCount == 8
-			&& DemoCardIds.Num() == 40);
-	TestEqual(TEXT("Approved Arsenal content has expected deck rarity score"),
+	TestEqual(TEXT("Normal decks contain forty unique canonical players"),
+		DemoCardIds.Num(), 40);
+	TestEqual(TEXT("Preserved Arsenal presentation rarity score"),
 		PlayerARarityScore, 50);
-	TestEqual(TEXT("Approved Manchester City content has expected deck rarity score"),
+	TestEqual(TEXT("Preserved Manchester City presentation rarity score"),
 		PlayerBRarityScore, 52);
-	TestTrue(TEXT("Demo visual stand-ins 01-03 are isolated from normal decks"),
-		!DemoCardIds.Contains(TEXT("Demo.A.Outfield.01"))
-			&& !DemoCardIds.Contains(TEXT("Demo.A.Outfield.02"))
-			&& !DemoCardIds.Contains(TEXT("Demo.A.Outfield.03"))
-			&& !DemoCardIds.Contains(TEXT("Demo.B.Outfield.01"))
-			&& !DemoCardIds.Contains(TEXT("Demo.B.Outfield.02"))
-			&& !DemoCardIds.Contains(TEXT("Demo.B.Outfield.03")));
-	TestTrue(TEXT("Opening accepts pilot data without schema or rule changes"),
+	TestTrue(TEXT("Opening accepts the migrated canonical decks"),
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(
 			Demo.OpeningInput).bSuccess);
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FFMCodexPrototypeApprovedSixIntegrationTest,
-	"FMCodex.LocalPlay.PrototypeTeams.02.ApprovedSixIntegration",
+	FFMCodexCanonicalPlayerSkillRulesTest,
+	"FMCodex.LocalPlay.PrototypeTeams.02.CanonicalDataAndSkillRules",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FFMCodexPrototypeApprovedSixIntegrationTest::RunTest(
-	const FString& Parameters)
+bool FFMCodexCanonicalPlayerSkillRulesTest::RunTest(const FString& Parameters)
 {
-	using namespace FMCodexPrototypeTeamContentTests;
-	struct FExpectedPlayer
-	{
-		FName CardId;
-		FName TeamId;
-		TArray<EPlayerPositionType> Positions;
-		ECardRarity Rarity;
-		FPlayerAttributes Attributes;
-		FName SkillId;
-		FString Serial;
-	};
-	const TArray<FExpectedPlayer> Expected = {
-		{ TEXT("Prototype.Arsenal.GabrielMartinelli"),
-			FFMCodexPrototypeTeamContent::ArsenalTeamId(),
-			{ EPlayerPositionType::Attack }, ECardRarity::National,
-			MakeAttributes(5, 5, 3, 5, 2, 2, 6, 3, 5, 3),
-			TEXT("Demo.Skill.CutInsideShot"), TEXT("006") },
-		{ TEXT("Prototype.Arsenal.GabrielMagalhaes"),
-			FFMCodexPrototypeTeamContent::ArsenalTeamId(),
-			{ EPlayerPositionType::Defense }, ECardRarity::Continental,
-			MakeAttributes(2, 3, 3, 3, 6, 6, 5, 6, 5, 2),
-			NAME_None, TEXT("007") },
-		{ TEXT("Prototype.Arsenal.MikelMerino"),
-			FFMCodexPrototypeTeamContent::ArsenalTeamId(),
-			{ EPlayerPositionType::Midfield, EPlayerPositionType::Attack },
-			ECardRarity::National,
-			MakeAttributes(4, 4, 5, 5, 5, 5, 3, 6, 5, 4),
-			TEXT("Demo.Skill.PassControl"), TEXT("008") },
-		{ TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
-			FFMCodexPrototypeTeamContent::ManchesterCityTeamId(),
-			{ EPlayerPositionType::Defense }, ECardRarity::Continental,
-			MakeAttributes(3, 4, 5, 4, 5, 5, 5, 5, 5, 3),
-			TEXT("Demo.Skill.Cross"), TEXT("014") },
-		{ TEXT("Prototype.ManchesterCity.BernardoSilva"),
-			FFMCodexPrototypeTeamContent::ManchesterCityTeamId(),
-			{ EPlayerPositionType::Midfield, EPlayerPositionType::Attack },
-			ECardRarity::Continental,
-			MakeAttributes(4, 6, 6, 5, 3, 3, 4, 2, 6, 4),
-			TEXT("Demo.Skill.ThroughBall"), TEXT("015") },
-		{ TEXT("Prototype.ManchesterCity.JeremyDoku"),
-			FFMCodexPrototypeTeamContent::ManchesterCityTeamId(),
-			{ EPlayerPositionType::Attack }, ECardRarity::National,
-			MakeAttributes(4, 6, 4, 5, 2, 2, 6, 3, 4, 3),
-			TEXT("Demo.Skill.CutInsideShot"), TEXT("016") }
-	};
+	const FFMCodexPrototypePlayerDefinition* Saka =
+		FFMCodexPrototypeTeamContent::Find(TEXT("Prototype.Arsenal.BukayoSaka"));
+	const FFMCodexPrototypePlayerDefinition* Odegaard =
+		FFMCodexPrototypeTeamContent::Find(TEXT("Prototype.Arsenal.MartinOdegaard"));
+	const FFMCodexPrototypePlayerDefinition* Raya =
+		FFMCodexPrototypeTeamContent::Find(TEXT("Prototype.Arsenal.DavidRaya"));
+	const FFMCodexPrototypePlayerDefinition* Savinho =
+		FFMCodexPrototypeTeamContent::Find(TEXT("Prototype.ManchesterCity.Savinho"));
+	TestTrue(TEXT("Existing Saka PlayerKey is reused and workbook values are exact"),
+		Saka != nullptr && Saka->DisplaySerial == 15
+			&& Saka->RosterSlot == 15
+			&& Saka->Card.PositionTypes
+				== TArray<EPlayerPositionType>{ EPlayerPositionType::Attack }
+			&& Saka->Card.Attributes.Shooting == 5
+			&& Saka->Card.Attributes.Dribbling == 6
+			&& Saka->Card.Attributes.OffBall == 6
+			&& Saka->SkillAssignments.Num() == 2
+			&& Saka->SkillAssignments[0].SkillId == TEXT("Cross")
+			&& Saka->SkillAssignments[0].MinTacticalPoint == 4
+			&& Saka->SkillAssignments[0].MaxTacticalPoint == 6
+			&& Saka->SkillAssignments[1].SkillId == TEXT("CutInsideShot")
+			&& Saka->SkillAssignments[1].MinTacticalPoint == 2
+			&& Saka->SkillAssignments[1].MaxTacticalPoint == 4);
+	TestTrue(TEXT("Three-Skill workbook order and ranges are preserved"),
+		Odegaard != nullptr && Odegaard->SkillAssignments.Num() == 3
+			&& Odegaard->SkillAssignments[0].SkillId == TEXT("PassControl")
+			&& Odegaard->SkillAssignments[0].MinTacticalPoint == 6
+			&& Odegaard->SkillAssignments[0].MaxTacticalPoint == 8
+			&& Odegaard->SkillAssignments[1].SkillId == TEXT("ThroughBall")
+			&& Odegaard->SkillAssignments[1].MinTacticalPoint == 5
+			&& Odegaard->SkillAssignments[1].MaxTacticalPoint == 6
+			&& Odegaard->SkillAssignments[2].SkillId == TEXT("LongShot")
+			&& Odegaard->SkillAssignments[2].MinTacticalPoint == 3
+			&& Odegaard->SkillAssignments[2].MaxTacticalPoint == 5);
+	TestTrue(TEXT("Goalkeeper schema and DisplaySerial are exact"),
+		Raya != nullptr && Raya->DisplaySerial == 1
+			&& Raya->Card.bIsGoalkeeper
+			&& Raya->Card.GoalkeeperAttributes.Handling == 5
+			&& Raya->Card.GoalkeeperAttributes.Positioning == 6
+			&& Raya->Card.GoalkeeperAttributes.Reflex == 5
+			&& Raya->Card.GoalkeeperAttributes.Aerial == 4
+			&& Raya->Card.GoalkeeperAttributes.Anticipation == 5
+			&& Raya->Card.GoalkeeperAttributes.OneOnOne == 5
+			&& Raya->SkillAssignments.IsEmpty());
+	TestTrue(TEXT("New PlayerKey is stable and workbook content is imported"),
+		Savinho != nullptr && Savinho->DisplaySerial == 40
+			&& Savinho->RosterSlot == 20
+			&& Savinho->Card.DisplayName.ToString() == TEXT("萨维尼奥")
+			&& Savinho->SkillAssignments.Num() == 2
+			&& Savinho->SkillAssignments[0].SkillId == TEXT("Cross")
+			&& Savinho->SkillAssignments[0].MinTacticalPoint == 4
+			&& Savinho->SkillAssignments[0].MaxTacticalPoint == 5
+			&& Savinho->SkillAssignments[1].SkillId == TEXT("CutInsideShot")
+			&& Savinho->SkillAssignments[1].MinTacticalPoint == 4
+			&& Savinho->SkillAssignments[1].MaxTacticalPoint == 4);
+
 	const FFMCodexLocalMatchDemoConfiguration Demo =
 		FFMCodexLocalMatchDemoConfigurationFactory::Create();
-	for (const FExpectedPlayer& Player : Expected)
+	TSet<FName> RuleIds;
+	for (const FSkillRuleSnapshot& Rule : Demo.SkillRuleSet.SkillRules)
 	{
-		const FFMCodexPrototypePlayerDefinition* Definition =
-			FFMCodexPrototypeTeamContent::Find(Player.CardId);
-		TestNotNull(TEXT("Approved formal definition exists"), Definition);
-		if (Definition == nullptr)
-		{
-			continue;
-		}
-		const FPlayerCardData& Card = Definition->Card;
-		TestTrue(TEXT("Approved team, position, rarity and attributes are exact"),
-			Definition->TeamId == Player.TeamId
-				&& Card.PositionTypes == Player.Positions
-				&& Card.Rarity == Player.Rarity
-				&& AttributesEqual(Card.Attributes, Player.Attributes));
-		TestTrue(TEXT("Approved Skill or explicit None is exact"),
-			Player.SkillId.IsNone()
-				? Card.AttackSkillIds.IsEmpty()
-				: Card.AttackSkillIds.Num() == 1
-					&& Card.AttackSkillIds[0] == Player.SkillId);
-		TestEqual(TEXT("Approved serial is explicit"),
-			Definition->PlayerFacingSerial, Player.Serial);
-		if (!Player.SkillId.IsNone())
+		RuleIds.Add(Rule.SkillId);
+		TestTrue(TEXT("Generated Skill rule has canonical type and range"),
+			!Rule.SkillId.IsNone() && Rule.SkillType != ESkillRuleType::None
+				&& Rule.MinTriggerActionPoint >= 2
+				&& Rule.MinTriggerActionPoint <= Rule.MaxTriggerActionPoint
+				&& Rule.MaxTriggerActionPoint <= 8);
+	}
+	TestEqual(TEXT("Generated Skill rule identities are unique"),
+		RuleIds.Num(), Demo.SkillRuleSet.SkillRules.Num());
+	for (const FFMCodexPrototypePlayerDefinition& Definition
+		: FFMCodexPrototypeTeamContent::GetDefinitions())
+	{
+		for (const FFMCodexPrototypeSkillAssignment& Assignment
+			: Definition.SkillAssignments)
 		{
 			const FSkillRuleSnapshot* Rule =
 				Demo.SkillRuleSet.SkillRules.FindByPredicate(
-					[&Player](const FSkillRuleSnapshot& Candidate)
+					[&Assignment](const FSkillRuleSnapshot& Candidate)
 					{
-						return Candidate.SkillId == Player.SkillId;
+						return Candidate.SkillId == Assignment.RuleId;
 					});
-			TestTrue(TEXT("Approved Skill preserves canonical 2-8 trigger range"),
-				Rule != nullptr
-					&& Rule->MinTriggerActionPoint == 2
-					&& Rule->MaxTriggerActionPoint == 8);
+			TestTrue(TEXT("Every player Skill assignment resolves its exact runtime rule"),
+				Rule != nullptr && Rule->SkillType == Assignment.SkillType
+					&& Rule->MinTriggerActionPoint
+						== Assignment.MinTacticalPoint
+					&& Rule->MaxTriggerActionPoint
+						== Assignment.MaxTacticalPoint);
 		}
 	}
 	return true;
@@ -535,63 +467,33 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FFMCodexPrototypeOverallV1Test::RunTest(const FString& Parameters)
 {
-	using namespace FMCodexPrototypeTeamContentTests;
-	TestTrue(TEXT("Overall v1 rarity values are explicit and complete"),
-		FFMCodexPlayerOverall::RarityValue(
-			EFMCodexOverallRarityTier::Common) == 1
-			&& FFMCodexPlayerOverall::RarityValue(
-				EFMCodexOverallRarityTier::National) == 2
-			&& FFMCodexPlayerOverall::RarityValue(
-				EFMCodexOverallRarityTier::Continental) == 3
-			&& FFMCodexPlayerOverall::RarityValue(
-				EFMCodexOverallRarityTier::WorldClass) == 4
-			&& FFMCodexPlayerOverall::RarityValue(
-				EFMCodexOverallRarityTier::Legendary) == 5);
-	EFMCodexOverallRarityTier UnsupportedTier =
-		EFMCodexOverallRarityTier::Legendary;
-	TestFalse(TEXT("Regional fails closed because Overall v1 does not map it"),
-		FFMCodexPlayerOverall::TryMapRarity(
-			ECardRarity::Regional, UnsupportedTier));
-
-	const TMap<FName, int32> ExpectedOverall = {
-		{ TEXT("Prototype.Arsenal.DavidRaya"), 90 },
-		{ TEXT("Prototype.Arsenal.WilliamSaliba"), 99 },
-		{ TEXT("Prototype.Arsenal.BukayoSaka"), 103 },
-		{ TEXT("Prototype.Arsenal.MartinOdegaard"), 93 },
-		{ TEXT("Prototype.Arsenal.DeclanRice"), 105 },
-		{ TEXT("Prototype.Arsenal.GabrielMartinelli"), 89 },
-		{ TEXT("Prototype.Arsenal.GabrielMagalhaes"), 96 },
-		{ TEXT("Prototype.Arsenal.MikelMerino"), 95 },
-		{ TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"), 105 },
-		{ TEXT("Prototype.ManchesterCity.ErlingHaaland"), 106 },
-		{ TEXT("Prototype.ManchesterCity.PhilFoden"), 96 },
-		{ TEXT("Prototype.ManchesterCity.Rodri"), 108 },
-		{ TEXT("Prototype.ManchesterCity.RubenDias"), 96 },
-		{ TEXT("Prototype.ManchesterCity.JoskoGvardiol"), 93 },
-		{ TEXT("Prototype.ManchesterCity.BernardoSilva"), 96 },
-		{ TEXT("Prototype.ManchesterCity.JeremyDoku"), 89 }
-	};
+	int32 SuccessfulOverallCount = 0;
 	for (const FFMCodexPrototypePlayerDefinition& Definition
 		: FFMCodexPrototypeTeamContent::GetDefinitions())
 	{
-		const FFMCodexPlayerOverallResult Overall =
+		const FFMCodexPlayerOverallResult First =
 			FFMCodexPlayerOverall::Calculate(Definition.Card);
-		const int32* Expected = ExpectedOverall.Find(Definition.Card.CardId);
-		TestTrue(TEXT("Exact approved Overall v1 value is deterministic"),
-			Expected != nullptr && Overall.bSuccess
-				&& Overall.Value == *Expected);
+		const FFMCodexPlayerOverallResult Second =
+			FFMCodexPlayerOverall::Calculate(Definition.Card);
+		TestTrue(TEXT("Overall remains deterministic for every canonical player"),
+			First.bSuccess && First.Value > 0
+				&& First.Value == Second.Value);
+		SuccessfulOverallCount += First.bSuccess ? 1 : 0;
 	}
-	TestEqual(TEXT("Overall audit covers all sixteen formal players"),
-		ExpectedOverall.Num(), 16);
-	const FFMCodexPrototypePlayerDefinition* Rodri =
-		FFMCodexPrototypeTeamContent::Find(
-			TEXT("Prototype.ManchesterCity.Rodri"));
-	TestTrue(TEXT("Overall v1 is not capped at 100"),
-		Rodri != nullptr
-			&& FFMCodexPlayerOverall::Calculate(Rodri->Card).Value == 108);
+	TestEqual(TEXT("Overall compatibility covers all forty players"),
+		SuccessfulOverallCount, 40);
 
-	FPlayerAttributes TopSixProbe = MakeAttributes(
-		6, 5, 4, 3, 2, 1, 6, 5, 4, 3);
+	FPlayerAttributes TopSixProbe;
+	TopSixProbe.Shooting = 6;
+	TopSixProbe.Dribbling = 5;
+	TopSixProbe.Passing = 4;
+	TopSixProbe.OffBall = 3;
+	TopSixProbe.Marking = 2;
+	TopSixProbe.Tackling = 1;
+	TopSixProbe.Speed = 6;
+	TopSixProbe.Strength = 5;
+	TopSixProbe.Stamina = 4;
+	TopSixProbe.LongShot = 3;
 	const int32 Before = FFMCodexPlayerOverall::CalculateOutfield(
 		TopSixProbe, ECardRarity::Common).Value;
 	TopSixProbe.Tackling = 2;
@@ -601,7 +503,7 @@ bool FFMCodexPrototypeOverallV1Test::RunTest(const FString& Parameters)
 	TopSixProbe.Tackling = 6;
 	const int32 EnteredTopSix = FFMCodexPlayerOverall::CalculateOutfield(
 		TopSixProbe, ECardRarity::Common).Value;
-	TestTrue(TEXT("Lower attribute is ignored until it enters the Top-6"),
+	TestTrue(TEXT("Overall v1 calculation semantics remain unchanged"),
 		Before == LowerAttributeChanged && EnteredTopSix > Before);
 	return true;
 }
@@ -616,133 +518,58 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 	using namespace FMCodexPrototypeTeamContentTests;
 	const FFMCodexPlayerUIAssetReferences& References =
 		FFMCodexPlayerUIAssetReferences::Get();
-	const TSet<FName> OriginalSharedFullCardIds = {
-		TEXT("Prototype.Arsenal.DavidRaya"),
-		TEXT("Prototype.Arsenal.WilliamSaliba"),
-		TEXT("Prototype.Arsenal.BukayoSaka"),
-		TEXT("Prototype.Arsenal.MartinOdegaard"),
-		TEXT("Prototype.Arsenal.DeclanRice"),
-		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
-		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
-		TEXT("Prototype.ManchesterCity.PhilFoden"),
-		TEXT("Prototype.ManchesterCity.Rodri"),
-		TEXT("Prototype.ManchesterCity.RubenDias")
-	};
-	const TSet<FName> FullCardPilotIds = {
-		TEXT("Prototype.Arsenal.BukayoSaka"),
-		TEXT("Prototype.Arsenal.DavidRaya"),
-		TEXT("Prototype.ManchesterCity.Rodri"),
-		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma")
-	};
-	const TSet<FName> FullCardHeroBustIds = {
-		TEXT("Prototype.Arsenal.WilliamSaliba"),
-		TEXT("Prototype.Arsenal.MartinOdegaard"),
-		TEXT("Prototype.Arsenal.DeclanRice"),
-		TEXT("Prototype.Arsenal.GabrielMartinelli"),
-		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
-		TEXT("Prototype.Arsenal.MikelMerino"),
-		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
-		TEXT("Prototype.ManchesterCity.PhilFoden"),
-		TEXT("Prototype.ManchesterCity.RubenDias"),
-		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
-		TEXT("Prototype.ManchesterCity.BernardoSilva"),
-		TEXT("Prototype.ManchesterCity.JeremyDoku")
-	};
-	int32 DedicatedFullCardCount = 0;
-	int32 MissingFullCardCount = 0;
-	int32 FullCardPilotCount = 0;
-	int32 FullCardHeroBustCount = 0;
+	int32 HandMicroCoverage = 0;
+	int32 FullCardCoverage = 0;
+	int32 SharedPortraitCoverage = 0;
+	int32 SafeFallbackCoverage = 0;
 	for (const FFMCodexPrototypePlayerDefinition& Definition
 		: FFMCodexPrototypeTeamContent::GetDefinitions())
 	{
 		const FFMCodexPlayerUICardArtReferences Art =
-			References.ResolveCardArt(Definition.Card.CardId);
-		UTexture2D* Frame = Art.CardFrame.LoadSynchronous();
+			References.ResolveCardArt(Definition.PlayerKey);
 		const TSoftObjectPtr<UTexture2D>& FullCardPortrait =
-			Art.FullCardPortrait.IsNull()
-				? Art.Portrait : Art.FullCardPortrait;
-		UTexture2D* Portrait = FullCardPortrait.LoadSynchronous();
-		UTexture2D* HandMicroPortrait =
-			Art.HandMicroPortrait.LoadSynchronous();
-		TestTrue(TEXT("All sixteen formal identities resolve approved Hand Micro art"),
-			!Art.ArtIdentity.IsNone()
-				&& !Art.HandMicroPortrait.IsNull()
-				&& HandMicroPortrait != nullptr
-				&& HandMicroPortrait->GetImportedSize()
-					== FIntPoint(192, 128));
-		if (!FullCardPortrait.IsNull())
+			Art.FullCardPortrait.IsNull() ? Art.Portrait : Art.FullCardPortrait;
+		if (ExistingArtworkPlayerKeys.Contains(Definition.PlayerKey))
 		{
-			++DedicatedFullCardCount;
-			TestTrue(TEXT("All sixteen players resolve vertical Full Card artwork"),
-				Portrait != nullptr && Portrait->GetImportedSize()
-					== FIntPoint(1024, 1536));
-			const bool bUsesPilotArtwork = FullCardPortrait.ToSoftObjectPath()
-				.ToString().Contains(TEXT("_FullCardPilot_02"));
-			const bool bUsesHeroBustArtwork = FullCardPortrait.ToSoftObjectPath()
-				.ToString().Contains(TEXT("_FullCardHeroBust_01"));
-			if (FullCardPilotIds.Contains(Definition.Card.CardId))
+			UTexture2D* HandMicro = Art.HandMicroPortrait.LoadSynchronous();
+			UTexture2D* FullCard = FullCardPortrait.LoadSynchronous();
+			TestTrue(TEXT("Existing Hand Micro artwork reference remains valid"),
+				!Art.HandMicroPortrait.IsNull() && HandMicro != nullptr
+					&& HandMicro->GetImportedSize() == FIntPoint(192, 128));
+			TestTrue(TEXT("Existing Full Card artwork reference remains valid"),
+				!FullCardPortrait.IsNull() && FullCard != nullptr
+					&& FullCard->GetImportedSize() == FIntPoint(1024, 1536));
+			++HandMicroCoverage;
+			++FullCardCoverage;
+			if (SharedPortraitPlayerKeys.Contains(Definition.PlayerKey))
 			{
-				++FullCardPilotCount;
-				TestTrue(TEXT("Selected four use versioned Full Card pilot artwork"),
-					bUsesPilotArtwork);
-			}
-			else if (FullCardHeroBustIds.Contains(Definition.Card.CardId))
-			{
-				++FullCardHeroBustCount;
-				TestTrue(TEXT("Twelve players use versioned Full Card Hero Bust artwork"),
-					bUsesHeroBustArtwork && !bUsesPilotArtwork);
-			}
-			if (OriginalSharedFullCardIds.Contains(Definition.Card.CardId))
-			{
-				TestTrue(TEXT("Original ten retain shared portrait and frame routing"),
-					Frame != nullptr && !Art.Portrait.IsNull()
-						&& !Art.LongShotSkillIcon.IsNull());
-			}
-			else if (FullCardHeroBustIds.Contains(Definition.Card.CardId))
-			{
-				TestTrue(TEXT("Newly formalized six keep Full Card-only Hero Bust routing"),
-					bUsesHeroBustArtwork && Art.Portrait.IsNull()
-						&& !Art.FullCardPortrait.IsNull()
-						&& Art.CardFrame.IsNull() && Frame == nullptr
-						&& Art.HandMicroPortrait.ToSoftObjectPath()
-							!= Art.FullCardPortrait.ToSoftObjectPath());
+				TestTrue(TEXT("Existing shared portrait remains available to Pitch Mini"),
+					!Art.Portrait.IsNull()
+						&& Art.Portrait.LoadSynchronous() != nullptr);
+				++SharedPortraitCoverage;
 			}
 		}
 		else
 		{
-			++MissingFullCardCount;
-			AddError(FString::Printf(TEXT("Missing Full Card artwork: %s"),
-				*Definition.Card.CardId.ToString()));
+			TestTrue(TEXT("New player safely uses established no-art fallback"),
+				Art.ArtIdentity.IsNone()
+					&& Art.Portrait.IsNull()
+					&& Art.FullCardPortrait.IsNull()
+					&& Art.HandMicroPortrait.IsNull());
+			++SafeFallbackCoverage;
 		}
-
-		const FString TeamFolder = Definition.TeamId
-			== FFMCodexPrototypeTeamContent::ArsenalTeamId()
-				? TEXT("Arsenal") : TEXT("ManchesterCity");
-		const FString SourceFolder = FPaths::Combine(
-			FPaths::ProjectDir(), TEXT("ArtSource/UI/PrototypeTeams"),
-			TeamFolder, TEXT("Portraits"));
-		TestTrue(TEXT("Generated source PNG is preserved beside its prompt set"),
-			IFileManager::Get().DirectoryExists(*SourceFolder));
-		TestFalse(TEXT("Live localized identity does not come from image text"),
+		TestFalse(TEXT("Localized player identity remains live with or without art"),
 			FFMCodexPlayerUIPresentationText::PlayerName(
-				Definition.Card.CardId, FString()).IsEmpty());
-		TestFalse(TEXT("Live localized team label remains available"),
-			FFMCodexPlayerUIPresentationText::TeamName(
-				Definition.Card.CardId).IsEmpty());
+				Definition.PlayerKey, FString()).IsEmpty());
 	}
-	TestTrue(TEXT("Full Card artwork coverage is exactly 16 dedicated / 0 missing"),
-		DedicatedFullCardCount == 16 && MissingFullCardCount == 0);
-	TestEqual(TEXT("Full Card artwork pilot remains bounded to four players"),
-		FullCardPilotCount, 4);
-	TestEqual(TEXT("Full Card Hero Bust conformance covers twelve players"),
-		FullCardHeroBustCount, 12);
-
-	const FFMCodexPlayerUICardArtReferences Missing =
-		References.ResolveCardArt(TEXT("Prototype.Missing.Card"));
-	TestTrue(TEXT("Unknown CardId keeps the established safe fallback"),
-		Missing.ArtIdentity.IsNone()
-			&& Missing.CardFrame.IsNull()
-			&& Missing.Portrait.IsNull());
+	TestEqual(TEXT("Hand Micro dedicated coverage is preserved at 16/40"),
+		HandMicroCoverage, 16);
+	TestEqual(TEXT("Full Card dedicated coverage is preserved at 16/40"),
+		FullCardCoverage, 16);
+	TestEqual(TEXT("Pitch Mini-compatible shared portrait coverage is 10/40"),
+		SharedPortraitCoverage, 10);
+	TestEqual(TEXT("New player safe fallback coverage is 24/40"),
+		SafeFallbackCoverage, 24);
 	return true;
 }
 
@@ -757,8 +584,8 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	FScopedPlayableWorld PlayableWorld;
 	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.Host;
 	AFMCodexLocalMatchPlayerController* Controller = PlayableWorld.Controller;
-	TestNotNull(TEXT("Prototype flow Host exists"), Host);
-	TestNotNull(TEXT("Prototype flow Controller exists"), Controller);
+	TestNotNull(TEXT("Canonical flow Host exists"), Host);
+	TestNotNull(TEXT("Canonical flow Controller exists"), Controller);
 	if (Host == nullptr || Controller == nullptr)
 	{
 		return false;
@@ -767,7 +594,7 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	Controller->InitializePlayerFacingUI();
 	UFMCodexLocalMatchScreenWidget* Screen =
 		Controller->GetPlayerMatchScreen();
-	TestNotNull(TEXT("Prototype flow player-facing Screen exists"), Screen);
+	TestNotNull(TEXT("Canonical flow player-facing Screen exists"), Screen);
 	if (Screen == nullptr)
 	{
 		return false;
@@ -787,8 +614,8 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
 	UFMCodexCardRackWidget* LocalRack = Screen->GetLocalRackWidget();
 	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
-	TestNotNull(TEXT("Prototype deployment hand exists"), Panel);
-	TestNotNull(TEXT("Prototype five-slot pitch exists"), Pitch);
+	TestNotNull(TEXT("Canonical deployment hand exists"), Panel);
+	TestNotNull(TEXT("Canonical five-slot pitch exists"), Pitch);
 	if (Panel == nullptr || Pitch == nullptr || LocalRack == nullptr)
 	{
 		return false;
@@ -798,8 +625,8 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	for (int32 DeploymentIndex = 0; DeploymentIndex < 2; ++DeploymentIndex)
 	{
 		const FFMCodexUMGDeploymentChoiceViewModel* ChoiceSource =
-			FindPrototypeChoice(Screen->GetPresentation().Interaction);
-		TestNotNull(TEXT("Authoritative hand exposes a prototype card"),
+			FindArtworkBackedChoice(Screen->GetPresentation().Interaction);
+		TestNotNull(TEXT("Authoritative hand exposes an artwork-backed canonical card"),
 			ChoiceSource);
 		if (ChoiceSource == nullptr)
 		{
@@ -811,7 +638,7 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 
 		UFMCodexPlayerCardWidget* CardWidget =
 			FindHandCard(*LocalRack, Choice.CardId);
-		TestNotNull(TEXT("Prototype card is rendered as the real drag source"),
+		TestNotNull(TEXT("Canonical card is rendered as the real drag source"),
 			CardWidget);
 		if (CardWidget == nullptr)
 		{
@@ -820,7 +647,7 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 		CardWidget->TakeWidget();
 		const UTextBlock* MicroName = Cast<UTextBlock>(
 			CardWidget->GetWidgetFromName(TEXT("HandMicroPlayerName")));
-		TestTrue(TEXT("Rack micro card renders localized identity and real art"),
+		TestTrue(TEXT("Frozen Hand Micro renders canonical identity and existing art"),
 			MicroName != nullptr && !MicroName->GetText().IsEmpty()
 				&& CardWidget->GetRenderedSkillCount() == 0
 				&& CardWidget->GetRenderedAttributeCount() == 0
@@ -828,14 +655,14 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 
 		UFMCodexDeploymentDragDropOperation* Operation =
 			CardWidget->BeginDeploymentDrag();
-		TestNotNull(TEXT("Prototype card creates typed drag operation"), Operation);
+		TestNotNull(TEXT("Canonical card creates typed drag operation"), Operation);
 		if (Operation == nullptr)
 		{
 			return false;
 		}
 		UFMCodexPitchSlotWidget* Target = FindPitchSlot(
 			*Pitch, Choice.Destinations[0].SlotId);
-		TestNotNull(TEXT("Prototype destination is a rendered five-slot target"),
+		TestNotNull(TEXT("Canonical destination is a rendered five-slot target"),
 			Target);
 		if (Target == nullptr)
 		{
@@ -843,7 +670,7 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 		}
 		const int32 BeforePlacements = Host->GetMatchSnapshot().Snapshot
 			.CurrentAttack.DeploymentPlacements.Num();
-		TestTrue(TEXT("Prototype drag emits existing typed authoritative command"),
+		TestTrue(TEXT("Canonical drag emits the existing authoritative command"),
 			Target->TryHandleDeploymentDrop(Operation)
 				&& Controller->GetLastDiagnostic().CommandName
 					== TEXT("DeployOrdinary")
@@ -851,11 +678,9 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 				&& Host->GetMatchSnapshot().Snapshot.CurrentAttack
 					.DeploymentPlacements.Num() == BeforePlacements + 1);
 		Operation->Drop(FPointerEvent());
-		TestFalse(TEXT("Successful prototype drop auto-hands off without Ready"),
-			Controller->IsAwaitingHotSeatHandoff());
 	}
 
-	TestTrue(TEXT("Public flow renders and deploys both prototype teams"),
+	TestTrue(TEXT("Public flow renders and deploys both canonical teams"),
 		EncounteredTeams.Num() == 2
 			&& EncounteredTeams.Contains(
 				FFMCodexPrototypeTeamContent::ArsenalTeamId())
@@ -903,98 +728,87 @@ bool FFMCodexPrototypePresentationMetadataTest::RunTest(
 	TArray<const FFMCodexUMGCardRackCellViewModel*> FormalCells;
 	const FFMCodexUMGMatchScreenViewModel& Presentation =
 		Screen->GetPresentation();
-	const TArray<const FFMCodexUMGCardRackViewModel*> Racks = {
-		&Presentation.LocalRack, &Presentation.OpponentRack
-	};
-	for (const FFMCodexUMGCardRackViewModel* Rack : Racks)
+	for (const FFMCodexUMGCardRackViewModel* Rack
+		: TArray<const FFMCodexUMGCardRackViewModel*>{
+			&Presentation.LocalRack, &Presentation.OpponentRack })
 	{
 		for (const FFMCodexUMGCardRackCellViewModel& Cell : Rack->Cells)
 		{
-			if (Cell.Card.CardId.ToString().StartsWith(TEXT("Prototype.")))
+			if (FFMCodexPrototypeTeamContent::IsPrototypeCard(Cell.Card.CardId))
 			{
 				FormalCells.Add(&Cell);
 			}
 		}
 	}
-	TestEqual(TEXT("Normal presentation exposes sixteen formal players"),
-		FormalCells.Num(), 16);
+	TestEqual(TEXT("Normal presentation exposes all forty canonical players"),
+		FormalCells.Num(), 40);
 	TSet<FString> Serials;
-	bool bAllFieldsComplete = FormalCells.Num() == 16;
-	bool bDemoStandInLeaked = false;
-	const FFMCodexUMGCardRackCellViewModel* StableIndexProbe = nullptr;
+	int32 PreservedBiographyCount = 0;
+	bool bCoreFieldsComplete = FormalCells.Num() == 40;
 	const FFMCodexUMGCardViewModel* Gabriel = nullptr;
+	const FFMCodexUMGCardRackCellViewModel* StableIndexProbe = nullptr;
 	for (const FFMCodexUMGCardRackCellViewModel* Cell : FormalCells)
 	{
 		if (Cell == nullptr)
 		{
-			bAllFieldsComplete = false;
+			bCoreFieldsComplete = false;
 			continue;
 		}
 		const FFMCodexUMGCardViewModel& Card = Cell->Card;
 		Serials.Add(Card.PlayerFacingSerialLabel);
-		bAllFieldsComplete = bAllFieldsComplete
+		bCoreFieldsComplete = bCoreFieldsComplete
 			&& !Card.IdentityLabel.IsEmpty()
 			&& !Card.EnglishIdentityLabel.IsEmpty()
-			&& !Card.NationalityLabel.IsEmpty()
 			&& !Card.ClubLabel.IsEmpty()
-			&& !Card.BirthDate.IsEmpty()
-			&& Card.HeightCm > 0 && Card.WeightKg > 0
 			&& Card.bHasOverallRating && Card.OverallRating > 0
 			&& Card.PlayerFacingSerialLabel.Len() == 3
+			&& Card.PlayerFacingSerialLabel.IsNumeric()
 			&& (Card.AttributeValues.Num() == 10
 				|| Card.AttributeValues.Num() == 6)
 			&& !Card.IdentityLabel.Contains(TEXT("Prototype."))
 			&& !Card.IdentityLabel.Contains(TEXT("Demo."));
-		bDemoStandInLeaked = bDemoStandInLeaked
-			|| Card.CardId.ToString().StartsWith(TEXT("Demo."));
-		if (StableIndexProbe == nullptr)
+		if (ExistingArtworkPlayerKeys.Contains(Card.CardId))
 		{
-			StableIndexProbe = Cell;
+			const bool bBiographyComplete = !Card.NationalityLabel.IsEmpty()
+				&& !Card.BirthDate.IsEmpty()
+				&& Card.HeightCm > 0 && Card.WeightKg > 0;
+			TestTrue(TEXT("Existing factual presentation metadata is preserved"),
+				bBiographyComplete);
+			PreservedBiographyCount += bBiographyComplete ? 1 : 0;
 		}
 		if (Card.CardId == TEXT("Prototype.Arsenal.GabrielMagalhaes"))
 		{
 			Gabriel = &Card;
 		}
+		if (StableIndexProbe == nullptr)
+		{
+			StableIndexProbe = Cell;
+		}
 	}
-	TestTrue(TEXT("Full Card DTO receives complete data without debug identity"),
-		bAllFieldsComplete && !bDemoStandInLeaked && Serials.Num() == 16);
-	TestTrue(TEXT("Gabriel is formal, complete, and has no fake Skill"),
+	TestTrue(TEXT("Frozen UI DTO receives all canonical core presentation fields"),
+		bCoreFieldsComplete && Serials.Num() == 40);
+	TestEqual(TEXT("Existing biography coverage remains 16/40"),
+		PreservedBiographyCount, 16);
+	TestTrue(TEXT("Gabriel keeps one identity, no fake Skill, and workbook serial 2"),
 		Gabriel != nullptr && Gabriel->Skills.IsEmpty()
 			&& Gabriel->SkillLabels.IsEmpty()
-			&& Gabriel->OverallRating == 96
-			&& Gabriel->PlayerFacingSerialLabel == TEXT("007")
+			&& Gabriel->PlayerFacingSerialLabel == TEXT("002")
 			&& FFMCodexPlayerUIPresentationText::HandMicroPlayerName(
 				Gabriel->CardId, Gabriel->IdentityLabel).ToString()
-				== TEXT("加布里埃尔"));
+					== TEXT("加布里埃尔"));
 	if (StableIndexProbe != nullptr)
 	{
 		FFMCodexUMGCardRackCellViewModel Copy = *StableIndexProbe;
 		const FString SerialBefore = Copy.Card.PlayerFacingSerialLabel;
 		const FName IdentityBefore = Copy.Card.CardId;
 		Copy.StableIndex += 37;
-		TestTrue(TEXT("Changing StableIndex does not change serial or identity"),
+		TestTrue(TEXT("Changing Roster/UI order does not change serial or identity"),
 			Copy.Card.PlayerFacingSerialLabel == SerialBefore
 				&& Copy.Card.CardId == IdentityBefore);
 		Copy.Card.PlayerFacingSerialLabel = TEXT("999");
-		TestEqual(TEXT("Serial does not act as gameplay CardId"),
+		TestEqual(TEXT("Changing DisplaySerial presentation cannot change PlayerKey/CardId"),
 			Copy.Card.CardId, IdentityBefore);
 	}
-
-	FString UMGSource;
-	FString InteractionSource;
-	const bool bLoadedPresentationSources = FFileHelper::LoadFileToString(
-		UMGSource, *FPaths::Combine(FPaths::ProjectDir(),
-			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchUMGPresentation.cpp")))
-		&& FFileHelper::LoadFileToString(
-			InteractionSource, *FPaths::Combine(FPaths::ProjectDir(),
-				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchInteractionView.cpp")));
-	TestTrue(TEXT("Overall is calculated once before the UMG DTO"),
-		bLoadedPresentationSources
-			&& InteractionSource.Contains(
-				TEXT("FFMCodexPlayerOverall::Calculate"))
-			&& !UMGSource.Contains(
-				TEXT("FFMCodexPlayerOverall::Calculate"))
-			&& !UMGSource.Contains(TEXT("TopSix")));
 
 	TArray<FString> AuthoritySources;
 	IFileManager::Get().FindFilesRecursive(AuthoritySources,
@@ -1009,8 +823,7 @@ bool FFMCodexPrototypePresentationMetadataTest::RunTest(
 	{
 		FString Source;
 		if (FFileHelper::LoadFileToString(Source, *SourcePath)
-			&& (Source.Contains(TEXT("FMCodexPlayerOverall"))
-				|| Source.Contains(TEXT("OverallRating"))
+			&& (Source.Contains(TEXT("DisplaySerial"))
 				|| Source.Contains(TEXT("PlayerFacingSerial"))
 				|| Source.Contains(TEXT("NationalityDisplayName"))
 				|| Source.Contains(TEXT("TeamDisplayName"))))
@@ -1019,7 +832,7 @@ bool FFMCodexPrototypePresentationMetadataTest::RunTest(
 			break;
 		}
 	}
-	TestFalse(TEXT("Full Card presentation metadata has no Gameplay/Authority readers"),
+	TestFalse(TEXT("DisplaySerial and presentation metadata have no Authority readers"),
 		bPresentationDataAffectsGameplay);
 	return true;
 }

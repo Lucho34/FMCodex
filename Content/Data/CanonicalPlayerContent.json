@@ -1,0 +1,1443 @@
+{
+  "schemaVersion": 1,
+  "balanceContentVersion": "Prototype40_v1",
+  "sourceWorkbook": "FMCodex_40_Player_Attribute_Skill_PointRules.xlsx",
+  "sourceWorkbookSha256": "fd15a6af82df81efd991da9f966ff56c173f77c4e205a96c4fc8957eb3a9e63c",
+  "sourceSheet": "球员配置",
+  "players": [
+    {
+      "playerKey": "Prototype.Arsenal.DavidRaya",
+      "team": "Arsenal",
+      "rosterSlot": 1,
+      "displaySerial": 1,
+      "chineseName": "大卫·拉亚",
+      "englishName": "David Raya",
+      "position": "GK",
+      "outfieldAttributes": null,
+      "goalkeeperAttributes": {
+        "HAN": 5,
+        "POS_GK": 6,
+        "REF": 5,
+        "AER": 4,
+        "ANT": 5,
+        "1V1": 5
+      },
+      "skills": [],
+      "notes": "首发门将；站位与出球稳定，6分只给门将站位。",
+      "presentation": {
+        "nationality": "西班牙",
+        "birthDate": "1995-09-15",
+        "heightCm": 183,
+        "weightKg": 80,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
+      "team": "Arsenal",
+      "rosterSlot": 2,
+      "displaySerial": 2,
+      "chineseName": "加布里埃尔·马加良斯",
+      "englishName": "Gabriel Magalhães",
+      "position": "D",
+      "outfieldAttributes": {
+        "SHO": 2,
+        "DRI": 3,
+        "PAS": 3,
+        "OFF": 3,
+        "MRK": 6,
+        "TKL": 5,
+        "SPD": 3,
+        "STR": 5,
+        "STA": 4,
+        "LS": 1
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "左中卫核心；盯防与对抗突出，不配置Skill。",
+      "presentation": {
+        "nationality": "巴西",
+        "birthDate": "1997-12-19",
+        "heightCm": 190,
+        "weightKg": 78,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.WilliamSaliba",
+      "team": "Arsenal",
+      "rosterSlot": 3,
+      "displaySerial": 3,
+      "chineseName": "威廉·萨利巴",
+      "englishName": "William Saliba",
+      "position": "D",
+      "outfieldAttributes": {
+        "SHO": 1,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 2,
+        "MRK": 5,
+        "TKL": 6,
+        "SPD": 4,
+        "STR": 5,
+        "STA": 4,
+        "LS": 1
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "右中卫核心；上抢与带球出压强，不配置Skill。",
+      "presentation": {
+        "nationality": "法国",
+        "birthDate": "2001-03-24",
+        "heightCm": 192,
+        "weightKg": 92,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.BenWhite",
+      "team": "Arsenal",
+      "rosterSlot": 4,
+      "displaySerial": 4,
+      "chineseName": "本·怀特",
+      "englishName": "Ben White",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 1,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 3,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 4,
+        "STR": 4,
+        "STA": 4,
+        "LS": 1
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 5,
+          "maxTP": 5
+        }
+      ],
+      "notes": "进攻型右后卫；标记M/D，以Cross体现套边支援。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.PieroHincapie",
+      "team": "Arsenal",
+      "rosterSlot": 5,
+      "displaySerial": 5,
+      "chineseName": "皮耶罗·因卡皮耶",
+      "englishName": "Piero Hincapié",
+      "position": "D",
+      "outfieldAttributes": {
+        "SHO": 1,
+        "DRI": 3,
+        "PAS": 3,
+        "OFF": 2,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 5,
+        "STR": 4,
+        "STA": 4,
+        "LS": 1
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "左脚中卫；速度快、善于回追，不配置Skill。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.JurrienTimber",
+      "team": "Arsenal",
+      "rosterSlot": 6,
+      "displaySerial": 6,
+      "chineseName": "尤里恩·廷贝尔",
+      "englishName": "Jurriën Timber",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 2,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 3,
+        "MRK": 4,
+        "TKL": 5,
+        "SPD": 4,
+        "STR": 4,
+        "STA": 5,
+        "LS": 2
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 5,
+          "maxTP": 5
+        }
+      ],
+      "notes": "进攻型多面边后卫；标记M/D，保留Cross。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
+      "team": "Arsenal",
+      "rosterSlot": 7,
+      "displaySerial": 7,
+      "chineseName": "里卡多·卡拉菲奥里",
+      "englishName": "Riccardo Calafiori",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 4,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 4,
+        "STR": 4,
+        "STA": 4,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 4,
+          "maxTP": 5
+        }
+      ],
+      "notes": "进攻型左后卫；标记M/D，以前插和Cross为核心。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
+      "team": "Arsenal",
+      "rosterSlot": 8,
+      "displaySerial": 8,
+      "chineseName": "迈尔斯·刘易斯-斯凯利",
+      "englishName": "Myles Lewis-Skelly",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 2,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 3,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 4,
+        "STR": 4,
+        "STA": 4,
+        "LS": 2
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "年轻内收边卫；重视持球安全与中场衔接。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MartinOdegaard",
+      "team": "Arsenal",
+      "rosterSlot": 9,
+      "displaySerial": 9,
+      "chineseName": "马丁·厄德高",
+      "englishName": "Martin Ødegaard",
+      "position": "M",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 5,
+        "PAS": 6,
+        "OFF": 5,
+        "MRK": 3,
+        "TKL": 3,
+        "SPD": 3,
+        "STR": 2,
+        "STA": 5,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "PassControl",
+          "minTP": 6,
+          "maxTP": 8
+        },
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 6
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 5
+        }
+      ],
+      "notes": "前场组织核心；PassControl、ThroughBall与LongShot形成完整链路。",
+      "presentation": {
+        "nationality": "挪威",
+        "birthDate": "1998-12-17",
+        "heightCm": 178,
+        "weightKg": 68,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.EberechiEze",
+      "team": "Arsenal",
+      "rosterSlot": 10,
+      "displaySerial": 10,
+      "chineseName": "埃贝雷希·埃泽",
+      "englishName": "Eberechi Eze",
+      "position": "A/M",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 6,
+        "PAS": 5,
+        "OFF": 5,
+        "MRK": 2,
+        "TKL": 2,
+        "SPD": 4,
+        "STR": 3,
+        "STA": 4,
+        "LS": 5
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "ThroughBall",
+          "minTP": 6,
+          "maxTP": 8
+        },
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 4,
+          "maxTP": 5
+        }
+      ],
+      "notes": "左肋持球手；一对一突破后可选择直塞或内切。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MikelMerino",
+      "team": "Arsenal",
+      "rosterSlot": 11,
+      "displaySerial": 11,
+      "chineseName": "米克尔·梅里诺",
+      "englishName": "Mikel Merino",
+      "position": "M",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 4,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 3,
+        "STR": 4,
+        "STA": 4,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "全能中场；没有极端短板，提供二线支援。",
+      "presentation": {
+        "nationality": "西班牙",
+        "birthDate": "1996-06-22",
+        "heightCm": 189,
+        "weightKg": 83,
+        "rarity": "National"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MartinZubimendi",
+      "team": "Arsenal",
+      "rosterSlot": 12,
+      "displaySerial": 12,
+      "chineseName": "马丁·苏比门迪",
+      "englishName": "Martín Zubimendi",
+      "position": "M",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 4,
+        "PAS": 5,
+        "OFF": 3,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 3,
+        "STR": 3,
+        "STA": 4,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "PassControl",
+          "minTP": 7,
+          "maxTP": 7
+        }
+      ],
+      "notes": "低位组织；以站位、拦截与节奏转换见长。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.DeclanRice",
+      "team": "Arsenal",
+      "rosterSlot": 13,
+      "displaySerial": 13,
+      "chineseName": "德克兰·赖斯",
+      "englishName": "Declan Rice",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 4,
+        "PAS": 5,
+        "OFF": 4,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 4,
+        "STR": 5,
+        "STA": 6,
+        "LS": 5
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "PassControl",
+          "minTP": 6,
+          "maxTP": 7
+        },
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 6
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 3
+        }
+      ],
+      "notes": "中场覆盖核心；高续航、推进和远射兼备。",
+      "presentation": {
+        "nationality": "英格兰",
+        "birthDate": "1999-01-14",
+        "heightCm": 188,
+        "weightKg": 83,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.ChristianNorgaard",
+      "team": "Arsenal",
+      "rosterSlot": 14,
+      "displaySerial": 14,
+      "chineseName": "克里斯蒂安·诺尔高",
+      "englishName": "Christian Nørgaard",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 3,
+        "PAS": 4,
+        "OFF": 3,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 2,
+        "STR": 4,
+        "STA": 4,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "防守型轮换；位置纪律与拦截可靠。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.BukayoSaka",
+      "team": "Arsenal",
+      "rosterSlot": 15,
+      "displaySerial": 15,
+      "chineseName": "布卡约·萨卡",
+      "englishName": "Bukayo Saka",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 5,
+        "DRI": 6,
+        "PAS": 5,
+        "OFF": 6,
+        "MRK": 3,
+        "TKL": 3,
+        "SPD": 5,
+        "STR": 4,
+        "STA": 5,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 4,
+          "maxTP": 6
+        },
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 2,
+          "maxTP": 4
+        }
+      ],
+      "notes": "右路核心；持球、无球进入危险区和终结都属顶级。",
+      "presentation": {
+        "nationality": "英格兰",
+        "birthDate": "2001-09-05",
+        "heightCm": 178,
+        "weightKg": 72,
+        "rarity": "WorldClass"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMartinelli",
+      "team": "Arsenal",
+      "rosterSlot": 16,
+      "displaySerial": 16,
+      "chineseName": "加布里埃尔·马丁内利",
+      "englishName": "Gabriel Martinelli",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 5,
+        "MRK": 2,
+        "TKL": 2,
+        "SPD": 6,
+        "STR": 3,
+        "STA": 5,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 4,
+          "maxTP": 5
+        }
+      ],
+      "notes": "左路纵深手；以极高速度持续冲击防线。",
+      "presentation": {
+        "nationality": "巴西",
+        "birthDate": "2001-06-18",
+        "heightCm": 178,
+        "weightKg": 74,
+        "rarity": "National"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.ViktorGyokeres",
+      "team": "Arsenal",
+      "rosterSlot": 17,
+      "displaySerial": 17,
+      "chineseName": "维克托·哲凯赖什",
+      "englishName": "Viktor Gyökeres",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 6,
+        "DRI": 4,
+        "PAS": 3,
+        "OFF": 5,
+        "MRK": 1,
+        "TKL": 1,
+        "SPD": 5,
+        "STR": 6,
+        "STA": 5,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 5
+        }
+      ],
+      "notes": "强力中锋；终结与身体对抗是两项招牌能力。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.LeandroTrossard",
+      "team": "Arsenal",
+      "rosterSlot": 18,
+      "displaySerial": 18,
+      "chineseName": "莱安德罗·特罗萨德",
+      "englishName": "Leandro Trossard",
+      "position": "A/M",
+      "outfieldAttributes": {
+        "SHO": 5,
+        "DRI": 5,
+        "PAS": 4,
+        "OFF": 5,
+        "MRK": 2,
+        "TKL": 2,
+        "SPD": 4,
+        "STR": 2,
+        "STA": 4,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "技术型攻击手；狭小空间处理和弱侧终结稳定。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.NoniMadueke",
+      "team": "Arsenal",
+      "rosterSlot": 19,
+      "displaySerial": 19,
+      "chineseName": "诺尼·马杜埃凯",
+      "englishName": "Noni Madueke",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 5,
+        "PAS": 4,
+        "OFF": 4,
+        "MRK": 2,
+        "TKL": 2,
+        "SPD": 6,
+        "STR": 3,
+        "STA": 4,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 5,
+          "maxTP": 5
+        },
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 4,
+          "maxTP": 5
+        }
+      ],
+      "notes": "右路爆点；速度突出，提供传中与内切两种选择。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.KaiHavertz",
+      "team": "Arsenal",
+      "rosterSlot": 20,
+      "displaySerial": 20,
+      "chineseName": "凯·哈弗茨",
+      "englishName": "Kai Havertz",
+      "position": "A/M",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 5,
+        "MRK": 3,
+        "TKL": 2,
+        "SPD": 3,
+        "STR": 4,
+        "STA": 5,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "前场连接点；无球跑位、背身衔接与高位压迫均衡。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",
+      "team": "Manchester City",
+      "rosterSlot": 1,
+      "displaySerial": 21,
+      "chineseName": "吉安路易吉·多纳鲁马",
+      "englishName": "Gianluigi Donnarumma",
+      "position": "GK",
+      "outfieldAttributes": null,
+      "goalkeeperAttributes": {
+        "HAN": 6,
+        "POS_GK": 5,
+        "REF": 6,
+        "AER": 5,
+        "ANT": 5,
+        "1V1": 5
+      },
+      "skills": [],
+      "notes": "首发门将；扑救覆盖与反应达到招牌级。",
+      "presentation": {
+        "nationality": "意大利",
+        "birthDate": "1999-02-25",
+        "heightCm": 196,
+        "weightKg": 89,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RubenDias",
+      "team": "Manchester City",
+      "rosterSlot": 2,
+      "displaySerial": 22,
+      "chineseName": "鲁本·迪亚斯",
+      "englishName": "Rúben Dias",
+      "position": "D",
+      "outfieldAttributes": {
+        "SHO": 1,
+        "DRI": 3,
+        "PAS": 3,
+        "OFF": 2,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 3,
+        "STR": 5,
+        "STA": 4,
+        "LS": 1
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "防线领袖；强对抗和盯人，不配置Skill。",
+      "presentation": {
+        "nationality": "葡萄牙",
+        "birthDate": "1997-05-14",
+        "heightCm": 187,
+        "weightKg": 83,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.MarcGuehi",
+      "team": "Manchester City",
+      "rosterSlot": 3,
+      "displaySerial": 23,
+      "chineseName": "马克·格伊",
+      "englishName": "Marc Guéhi",
+      "position": "D",
+      "outfieldAttributes": {
+        "SHO": 1,
+        "DRI": 3,
+        "PAS": 3,
+        "OFF": 2,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 4,
+        "STR": 4,
+        "STA": 4,
+        "LS": 1
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "稳健中卫；机动与一对一均衡，不配置Skill。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
+      "team": "Manchester City",
+      "rosterSlot": 4,
+      "displaySerial": 24,
+      "chineseName": "约什科·格瓦迪奥尔",
+      "englishName": "Joško Gvardiol",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 4,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 4,
+        "STR": 5,
+        "STA": 5,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 4,
+          "maxTP": 5
+        }
+      ],
+      "notes": "进攻型左后卫；标记M/D，以推进和Cross支援。",
+      "presentation": {
+        "nationality": "克罗地亚",
+        "birthDate": "2002-01-23",
+        "heightCm": 185,
+        "weightKg": 79,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.NathanAke",
+      "team": "Manchester City",
+      "rosterSlot": 5,
+      "displaySerial": 25,
+      "chineseName": "纳坦·阿克",
+      "englishName": "Nathan Aké",
+      "position": "D",
+      "outfieldAttributes": {
+        "SHO": 2,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 3,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 4,
+        "STR": 4,
+        "STA": 4,
+        "LS": 2
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "左脚中卫轮换；稳定灵活，不配置Skill。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JohnStones",
+      "team": "Manchester City",
+      "rosterSlot": 6,
+      "displaySerial": 26,
+      "chineseName": "约翰·斯通斯",
+      "englishName": "John Stones",
+      "position": "D",
+      "outfieldAttributes": {
+        "SHO": 2,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 3,
+        "MRK": 5,
+        "TKL": 5,
+        "SPD": 3,
+        "STR": 4,
+        "STA": 3,
+        "LS": 2
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "组织型中卫；虽能前提出球，本表仍不配置Skill。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
+      "team": "Manchester City",
+      "rosterSlot": 7,
+      "displaySerial": 27,
+      "chineseName": "拉扬·艾特-努里",
+      "englishName": "Rayan Aït-Nouri",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 2,
+        "DRI": 5,
+        "PAS": 4,
+        "OFF": 4,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 5,
+        "STR": 3,
+        "STA": 5,
+        "LS": 2
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 4,
+          "maxTP": 6
+        }
+      ],
+      "notes": "攻击型左翼卫；M/D，盘带推进后用Cross制造机会。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.Rodri",
+      "team": "Manchester City",
+      "rosterSlot": 8,
+      "displaySerial": 28,
+      "chineseName": "罗德里",
+      "englishName": "Rodri",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 5,
+        "DRI": 5,
+        "PAS": 6,
+        "OFF": 4,
+        "MRK": 6,
+        "TKL": 5,
+        "SPD": 2,
+        "STR": 5,
+        "STA": 5,
+        "LS": 5
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "PassControl",
+          "minTP": 6,
+          "maxTP": 8
+        },
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 6
+        }
+      ],
+      "notes": "中场中枢；传控与预判是两项招牌能力。",
+      "presentation": {
+        "nationality": "西班牙",
+        "birthDate": "1996-06-22",
+        "heightCm": 190,
+        "weightKg": 82,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.TijjaniReijnders",
+      "team": "Manchester City",
+      "rosterSlot": 9,
+      "displaySerial": 29,
+      "chineseName": "蒂贾尼·赖因德斯",
+      "englishName": "Tijjani Reijnders",
+      "position": "M",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 5,
+        "PAS": 5,
+        "OFF": 5,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 4,
+        "STR": 4,
+        "STA": 5,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "PassControl",
+          "minTP": 6,
+          "maxTP": 7
+        },
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 6
+        }
+      ],
+      "notes": "推进型中场；持球摆脱、连续跑动与向前传递均衡。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.BernardoSilva",
+      "team": "Manchester City",
+      "rosterSlot": 10,
+      "displaySerial": 30,
+      "chineseName": "贝尔纳多·席尔瓦",
+      "englishName": "Bernardo Silva",
+      "position": "M",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 6,
+        "PAS": 5,
+        "OFF": 5,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 3,
+        "STR": 2,
+        "STA": 5,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "PassControl",
+          "minTP": 6,
+          "maxTP": 8
+        },
+        {
+          "skillId": "ThroughBall",
+          "minTP": 6,
+          "maxTP": 8
+        }
+      ],
+      "notes": "技术型核心；可在中路控场，也可去边路创造机会。",
+      "presentation": {
+        "nationality": "葡萄牙",
+        "birthDate": "1994-08-10",
+        "heightCm": 173,
+        "weightKg": 64,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.PhilFoden",
+      "team": "Manchester City",
+      "rosterSlot": 11,
+      "displaySerial": 31,
+      "chineseName": "菲尔·福登",
+      "englishName": "Phil Foden",
+      "position": "A/M",
+      "outfieldAttributes": {
+        "SHO": 5,
+        "DRI": 6,
+        "PAS": 5,
+        "OFF": 5,
+        "MRK": 3,
+        "TKL": 2,
+        "SPD": 4,
+        "STR": 2,
+        "STA": 4,
+        "LS": 5
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 2,
+          "maxTP": 4
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 5
+        }
+      ],
+      "notes": "左脚攻击核心；狭小空间持球、内切和远射突出。",
+      "presentation": {
+        "nationality": "英格兰",
+        "birthDate": "2000-05-28",
+        "heightCm": 171,
+        "weightKg": 63,
+        "rarity": "Continental"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanCherki",
+      "team": "Manchester City",
+      "rosterSlot": 12,
+      "displaySerial": 32,
+      "chineseName": "拉扬·谢尔基",
+      "englishName": "Rayan Cherki",
+      "position": "A/M",
+      "outfieldAttributes": {
+        "SHO": 4,
+        "DRI": 5,
+        "PAS": 5,
+        "OFF": 4,
+        "MRK": 1,
+        "TKL": 1,
+        "SPD": 4,
+        "STR": 3,
+        "STA": 3,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "ThroughBall",
+          "minTP": 6,
+          "maxTP": 8
+        }
+      ],
+      "notes": "自由型创造者；以盘带和最后一传撕开密集防守。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.NicoGonzalez",
+      "team": "Manchester City",
+      "rosterSlot": 13,
+      "displaySerial": 33,
+      "chineseName": "尼科·冈萨雷斯",
+      "englishName": "Nico González",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 3,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 3,
+        "STR": 5,
+        "STA": 4,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "后腰轮换；身材、控球与防守覆盖相对均衡。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.MatheusNunes",
+      "team": "Manchester City",
+      "rosterSlot": 14,
+      "displaySerial": 34,
+      "chineseName": "马特乌斯·努内斯",
+      "englishName": "Matheus Nunes",
+      "position": "M/D",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 4,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 5,
+        "STR": 4,
+        "STA": 5,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 5,
+          "maxTP": 5
+        }
+      ],
+      "notes": "边中场/边后卫轮换；M/D，以Cross体现边路输送。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.MateoKovacic",
+      "team": "Manchester City",
+      "rosterSlot": 15,
+      "displaySerial": 35,
+      "chineseName": "马特奥·科瓦契奇",
+      "englishName": "Mateo Kovačić",
+      "position": "M",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 5,
+        "PAS": 5,
+        "OFF": 3,
+        "MRK": 4,
+        "TKL": 4,
+        "SPD": 3,
+        "STR": 3,
+        "STA": 4,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "抗压中场；擅长转身摆脱并把球送入前场。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
+      "team": "Manchester City",
+      "rosterSlot": 16,
+      "displaySerial": 36,
+      "chineseName": "埃尔林·哈兰德",
+      "englishName": "Erling Haaland",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 6,
+        "DRI": 4,
+        "PAS": 3,
+        "OFF": 6,
+        "MRK": 1,
+        "TKL": 1,
+        "SPD": 5,
+        "STR": 5,
+        "STA": 4,
+        "LS": 5
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "禁区终结核心；射门与无球跑位为两项招牌能力。",
+      "presentation": {
+        "nationality": "挪威",
+        "birthDate": "2000-07-21",
+        "heightCm": 195,
+        "weightKg": 87,
+        "rarity": "WorldClass"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.OmarMarmoush",
+      "team": "Manchester City",
+      "rosterSlot": 17,
+      "displaySerial": 37,
+      "chineseName": "奥马尔·马尔穆什",
+      "englishName": "Omar Marmoush",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 5,
+        "DRI": 5,
+        "PAS": 4,
+        "OFF": 5,
+        "MRK": 2,
+        "TKL": 2,
+        "SPD": 6,
+        "STR": 3,
+        "STA": 4,
+        "LS": 5
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 4,
+          "maxTP": 5
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 5
+        }
+      ],
+      "notes": "高速得分手；擅长内切、远射和纵向冲刺。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JeremyDoku",
+      "team": "Manchester City",
+      "rosterSlot": 18,
+      "displaySerial": 38,
+      "chineseName": "杰里米·多库",
+      "englishName": "Jérémy Doku",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 6,
+        "PAS": 4,
+        "OFF": 4,
+        "MRK": 1,
+        "TKL": 1,
+        "SPD": 6,
+        "STR": 3,
+        "STA": 4,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 4,
+          "maxTP": 6
+        },
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 2,
+          "maxTP": 4
+        }
+      ],
+      "notes": "边路爆点；速度和一对一盘带都是招牌能力。",
+      "presentation": {
+        "nationality": "比利时",
+        "birthDate": "2002-05-27",
+        "heightCm": 171,
+        "weightKg": 66,
+        "rarity": "National"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.AntoineSemenyo",
+      "team": "Manchester City",
+      "rosterSlot": 19,
+      "displaySerial": 39,
+      "chineseName": "安托万·塞梅尼奥",
+      "englishName": "Antoine Semenyo",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 5,
+        "DRI": 4,
+        "PAS": 4,
+        "OFF": 5,
+        "MRK": 2,
+        "TKL": 2,
+        "SPD": 5,
+        "STR": 5,
+        "STA": 5,
+        "LS": 4
+      },
+      "goalkeeperAttributes": null,
+      "skills": [],
+      "notes": "强壮型边锋；能持球推进，也能从两侧完成终结。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.Savinho",
+      "team": "Manchester City",
+      "rosterSlot": 20,
+      "displaySerial": 40,
+      "chineseName": "萨维尼奥",
+      "englishName": "Savinho",
+      "position": "A",
+      "outfieldAttributes": {
+        "SHO": 3,
+        "DRI": 5,
+        "PAS": 4,
+        "OFF": 4,
+        "MRK": 1,
+        "TKL": 1,
+        "SPD": 6,
+        "STR": 2,
+        "STA": 4,
+        "LS": 3
+      },
+      "goalkeeperAttributes": null,
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 4,
+          "maxTP": 5
+        },
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 4,
+          "maxTP": 4
+        }
+      ],
+      "notes": "左脚边锋；速度、变向和边路创造力突出。",
+      "presentation": {
+        "nationality": "",
+        "birthDate": "",
+        "heightCm": 0,
+        "weightKg": 0,
+        "rarity": "Common"
+      }
+    }
+  ]
+}
