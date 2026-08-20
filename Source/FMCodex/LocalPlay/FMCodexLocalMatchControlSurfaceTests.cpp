@@ -6555,7 +6555,12 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 			&& PitchCard->GetWidgetFromName(TEXT("CardFrameAssetHook")) != nullptr
 			&& PitchCard->GetWidgetFromName(TEXT("PitchMiniPortraitImage")) != nullptr
 			&& PitchCard->GetWidgetFromName(TEXT("PitchMiniPlayerName")) != nullptr
-			&& PitchCard->GetWidgetFromName(TEXT("PitchMiniRarityAccent")) != nullptr
+			&& PitchCard->GetWidgetFromName(TEXT("PitchMiniIdentityRow")) != nullptr
+			&& PitchCard->GetWidgetFromName(TEXT("PitchMiniSkillBand")) == nullptr
+			&& PitchCard->GetWidgetFromName(
+				TEXT("PitchMiniTacticalMatchStrokeTop")) != nullptr
+			&& PitchCard->GetWidgetFromName(TEXT("PitchMiniRarityAccent")) == nullptr
+			&& PitchCard->GetWidgetFromName(TEXT("PitchMiniRarityAccentBounds")) == nullptr
 			&& PitchCard->GetWidgetFromName(TEXT("PitchMiniRarityBadge")) == nullptr
 			&& OccupiedSlot->GetWidgetFromName(TEXT("DeploymentTargetState"))
 				->GetVisibility() == ESlateVisibility::Collapsed);

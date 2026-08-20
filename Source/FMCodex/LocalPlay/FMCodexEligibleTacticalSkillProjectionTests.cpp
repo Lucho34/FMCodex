@@ -73,6 +73,34 @@ namespace FMCodexEligibleTacticalSkillProjectionTests
 			OutSource,
 			*FPaths::Combine(FPaths::ProjectDir(), RelativePath));
 	}
+
+	bool AddDeployedCard(
+		FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side,
+		const FName CardId)
+	{
+		const EMatchPlayNeutralSlotSide RequiredSlotSide =
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? EMatchPlayNeutralSlotSide::NearPlayerA
+				: EMatchPlayNeutralSlotSide::NearPlayerB;
+		const FMatchPlayDeploymentSlotDefinition* Slot =
+			State.DeploymentSlotCatalog.Slots.FindByPredicate(
+				[RequiredSlotSide](
+					const FMatchPlayDeploymentSlotDefinition& Candidate)
+				{
+					return Candidate.NeutralSide == RequiredSlotSide;
+				});
+		if (Slot == nullptr)
+		{
+			return false;
+		}
+		FMatchPlayDeploymentPlacement Placement;
+		Placement.PlayerSide = Side;
+		Placement.CardId = CardId;
+		Placement.SlotId = Slot->SlotId;
+		State.CurrentAttack.DeploymentPlacements.Add(Placement);
+		return true;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -156,6 +184,24 @@ bool FFMCodexEligibleTacticalSkillAuthorityProjectionTest::RunTest(
 	{
 		return false;
 	}
+	const FFMCodexPrototypePlayerDefinition* SavinhoDefinition =
+		FFMCodexPrototypeTeamContent::Find(
+			TEXT("Prototype.ManchesterCity.Savinho"));
+	if (!TestNotNull(TEXT("Canonical Savinho fixture exists"),
+		SavinhoDefinition)
+		|| !TestTrue(TEXT("Presentation fixture deploys both sides"),
+			(StateAtFour.RuntimeState.CurrentAttackingPlayer =
+				EInitialTurnOrderPlayer::PlayerA,
+			AddDeployedCard(StateAtFour, EInitialTurnOrderPlayer::PlayerA,
+				SakaDefinition->PlayerKey)
+				&& AddDeployedCard(StateAtFour,
+					EInitialTurnOrderPlayer::PlayerB,
+					SavinhoDefinition->PlayerKey))))
+	{
+		return false;
+	}
+	ViewAtFour = FFMCodexLocalMatchInteractionViewBuilder::Build(
+		StateAtFour, Demo.SkillRuleSet);
 	TestTrue(TEXT("Projection source is the authoritative current attack"),
 		StateAtFour.bHasCurrentAttack
 			&& StateAtFour.CurrentAttack.ActionPoint == 4
@@ -174,14 +220,32 @@ bool FFMCodexEligibleTacticalSkillAuthorityProjectionTest::RunTest(
 				== SakaDefinition->SkillAssignments[0].RuleId
 			&& SakaAtFour->EligibleTacticalSkills[1].SkillId
 				== SakaDefinition->SkillAssignments[1].RuleId);
+	const bool bSakaIsAttackingAtFour =
+		StateAtFour.RuntimeState.CurrentAttackingPlayer
+			== EInitialTurnOrderPlayer::PlayerA;
+	TestEqual(TEXT("Pitch Mini visibility is resolved from attacking ownership"),
+		SakaAtFour->PitchMiniVisibleTacticalSkills.Num(),
+		bSakaIsAttackingAtFour ? 2 : 0);
+	TestEqual(TEXT("Pitch Mini count is resolved from attacking ownership"),
+		SakaAtFour->PitchMiniTacticalMatchCount,
+		bSakaIsAttackingAtFour ? 2 : 0);
+	TestEqual(TEXT("Two eligible attacking Skills resolve tactical match ON"),
+		SakaAtFour->bHasPitchMiniTacticalMatch,
+		bSakaIsAttackingAtFour);
 
 	const FFMCodexUMGCardViewModel SakaUMG =
 		FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(*SakaAtFour);
-	TestTrue(TEXT("UMG copies static and already-resolved eligible Skills"),
+	TestTrue(TEXT("UMG copies static, eligible, and resolved Pitch Mini state"),
 		SakaUMG.Skills.Num() == 2
 			&& SakaUMG.EligibleTacticalSkills.Num() == 2
 			&& SakaUMG.EligibleTacticalSkills[0].SkillId
-				== SakaAtFour->EligibleTacticalSkills[0].SkillId);
+				== SakaAtFour->EligibleTacticalSkills[0].SkillId
+			&& SakaUMG.PitchMiniVisibleTacticalSkills.Num()
+				== SakaAtFour->PitchMiniVisibleTacticalSkills.Num()
+			&& SakaUMG.PitchMiniTacticalMatchCount
+				== SakaAtFour->PitchMiniTacticalMatchCount
+			&& SakaUMG.bHasPitchMiniTacticalMatch
+				== SakaAtFour->bHasPitchMiniTacticalMatch);
 	const FFMCodexUMGMatchScreenViewModel ScreenAtFour =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			ViewAtFour,
@@ -194,14 +258,80 @@ bool FFMCodexEligibleTacticalSkillAuthorityProjectionTest::RunTest(
 			&& ScreenAtFour.Header.CurrentAttackerTacticalPointsLabel
 				.Contains(TEXT("4")));
 
-	const FFMCodexPrototypePlayerDefinition* SavinhoDefinition =
-		FFMCodexPrototypeTeamContent::Find(
-			TEXT("Prototype.ManchesterCity.Savinho"));
 	const FFMCodexLocalMatchCardView* SavinhoAtFour = SavinhoDefinition == nullptr
 		? nullptr : FindCard(ViewAtFour, SavinhoDefinition->PlayerKey);
 	TestTrue(TEXT("The current attack TP applies consistently across both side rosters"),
 		SavinhoAtFour != nullptr
 			&& SavinhoAtFour->EligibleTacticalSkills.Num() == 2);
+	if (SavinhoAtFour != nullptr)
+	{
+		TestTrue(TEXT("Defending side hides two mathematically eligible Pitch Mini Skills"),
+			bSakaIsAttackingAtFour
+				? SavinhoAtFour->PitchMiniVisibleTacticalSkills.IsEmpty()
+				: SakaAtFour->PitchMiniVisibleTacticalSkills.IsEmpty());
+		TestTrue(TEXT("Defending side resolves tactical match OFF despite two eligible Skills"),
+			bSakaIsAttackingAtFour
+				? SavinhoAtFour->PitchMiniTacticalMatchCount == 0
+					&& !SavinhoAtFour->bHasPitchMiniTacticalMatch
+				: SakaAtFour->PitchMiniTacticalMatchCount == 0
+					&& !SakaAtFour->bHasPitchMiniTacticalMatch);
+		TestTrue(TEXT("Attacking side exposes its projected Pitch Mini Skills"),
+			bSakaIsAttackingAtFour
+				? SakaAtFour->PitchMiniVisibleTacticalSkills.Num() == 2
+				: SavinhoAtFour->PitchMiniVisibleTacticalSkills.Num() == 2);
+	}
+
+	FMatchPlayState StateAfterAttackerTransition = StateAtFour;
+	StateAfterAttackerTransition.RuntimeState.CurrentAttackingPlayer =
+		bSakaIsAttackingAtFour
+			? EInitialTurnOrderPlayer::PlayerB
+			: EInitialTurnOrderPlayer::PlayerA;
+	const FFMCodexLocalMatchInteractionView ViewAfterAttackerTransition =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			StateAfterAttackerTransition, Demo.SkillRuleSet);
+	const FFMCodexLocalMatchCardView* SakaAfterAttackerTransition = FindCard(
+		ViewAfterAttackerTransition, SakaDefinition->PlayerKey);
+	const FFMCodexLocalMatchCardView* SavinhoAfterAttackerTransition =
+		SavinhoDefinition == nullptr ? nullptr : FindCard(
+			ViewAfterAttackerTransition, SavinhoDefinition->PlayerKey);
+	TestTrue(TEXT("Attack-side transition moves tactical-match ownership deterministically"),
+		SakaAfterAttackerTransition != nullptr
+			&& SavinhoAfterAttackerTransition != nullptr
+			&& (bSakaIsAttackingAtFour
+				? SakaAfterAttackerTransition->PitchMiniVisibleTacticalSkills.IsEmpty()
+					&& SakaAfterAttackerTransition->PitchMiniTacticalMatchCount == 0
+					&& !SakaAfterAttackerTransition->bHasPitchMiniTacticalMatch
+					&& SavinhoAfterAttackerTransition->
+						PitchMiniVisibleTacticalSkills.Num() == 2
+					&& SavinhoAfterAttackerTransition->
+						PitchMiniTacticalMatchCount == 2
+					&& SavinhoAfterAttackerTransition->
+						bHasPitchMiniTacticalMatch
+				: SavinhoAfterAttackerTransition->
+						PitchMiniVisibleTacticalSkills.IsEmpty()
+					&& SavinhoAfterAttackerTransition->
+						PitchMiniTacticalMatchCount == 0
+					&& !SavinhoAfterAttackerTransition->
+						bHasPitchMiniTacticalMatch
+					&& SakaAfterAttackerTransition->
+						PitchMiniVisibleTacticalSkills.Num() == 2
+					&& SakaAfterAttackerTransition->
+						PitchMiniTacticalMatchCount == 2
+					&& SakaAfterAttackerTransition->
+						bHasPitchMiniTacticalMatch));
+	const FFMCodexLocalMatchCardView* DefendingCardAtFour =
+		bSakaIsAttackingAtFour ? SavinhoAtFour : SakaAtFour;
+	if (DefendingCardAtFour != nullptr)
+	{
+		const FFMCodexUMGCardViewModel DefendingUMG =
+			FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(
+				*DefendingCardAtFour);
+		TestTrue(TEXT("Defending Full Card keeps every canonical Skill"),
+			DefendingUMG.Skills.Num() == DefendingCardAtFour->Skills.Num()
+				&& DefendingUMG.PitchMiniVisibleTacticalSkills.IsEmpty()
+				&& DefendingUMG.PitchMiniTacticalMatchCount == 0
+				&& !DefendingUMG.bHasPitchMiniTacticalMatch);
+	}
 
 	FMatchPlayState StateAtFive;
 	FFMCodexLocalMatchInteractionView ViewAtFive;
@@ -210,6 +340,16 @@ bool FFMCodexEligibleTacticalSkillAuthorityProjectionTest::RunTest(
 	{
 		return false;
 	}
+	StateAtFive.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerA;
+	if (!TestTrue(TEXT("One-Skill tactical-match fixture deploys Saka"),
+		AddDeployedCard(StateAtFive, EInitialTurnOrderPlayer::PlayerA,
+			SakaDefinition->PlayerKey)))
+	{
+		return false;
+	}
+	ViewAtFive = FFMCodexLocalMatchInteractionViewBuilder::Build(
+		StateAtFive, Demo.SkillRuleSet);
 	const FFMCodexLocalMatchCardView* SakaAtFive = FindCard(
 		ViewAtFive, SakaDefinition->PlayerKey);
 	TestTrue(TEXT("Authoritative TP change deterministically updates eligibility"),
@@ -219,7 +359,37 @@ bool FFMCodexEligibleTacticalSkillAuthorityProjectionTest::RunTest(
 			&& SakaAtFive->Skills.Num() == 2
 			&& SakaAtFive->EligibleTacticalSkills.Num() == 1
 			&& SakaAtFive->EligibleTacticalSkills[0].SkillId
-				== SakaDefinition->SkillAssignments[0].RuleId);
+				== SakaDefinition->SkillAssignments[0].RuleId
+			&& SakaAtFive->PitchMiniTacticalMatchCount == 1
+			&& SakaAtFive->bHasPitchMiniTacticalMatch);
+
+	FMatchPlayState ZeroEligibleState;
+	FFMCodexLocalMatchInteractionView ZeroEligibleView;
+	if (!TestTrue(TEXT("Authority accepts a zero-Skill tactical-match fixture"),
+		BuildAtTacticalPoint(Demo, 4, ZeroEligibleState, ZeroEligibleView)))
+	{
+		return false;
+	}
+	ZeroEligibleState.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerA;
+	const FName ZeroSkillCardId = TEXT("Prototype.Arsenal.GabrielMagalhaes");
+	if (!TestTrue(TEXT("Zero-Skill attacking fixture deploys Gabriel"),
+		AddDeployedCard(ZeroEligibleState,
+			EInitialTurnOrderPlayer::PlayerA, ZeroSkillCardId)))
+	{
+		return false;
+	}
+	ZeroEligibleView = FFMCodexLocalMatchInteractionViewBuilder::Build(
+		ZeroEligibleState, Demo.SkillRuleSet);
+	const FFMCodexLocalMatchCardView* ZeroEligibleAttacker = FindCard(
+		ZeroEligibleView, ZeroSkillCardId);
+	TestTrue(TEXT("Deployed attacker with zero eligible Skills resolves tactical match OFF"),
+		ZeroEligibleAttacker != nullptr
+			&& ZeroEligibleAttacker->bDeployed
+			&& ZeroEligibleAttacker->Skills.IsEmpty()
+			&& ZeroEligibleAttacker->EligibleTacticalSkills.IsEmpty()
+			&& ZeroEligibleAttacker->PitchMiniTacticalMatchCount == 0
+			&& !ZeroEligibleAttacker->bHasPitchMiniTacticalMatch);
 
 	FMatchPlayAuthoritativeSession BetweenAttacksSession;
 	TestTrue(TEXT("Authority initializes a between-attacks state"),
@@ -233,7 +403,10 @@ bool FFMCodexEligibleTacticalSkillAuthorityProjectionTest::RunTest(
 	TestTrue(TEXT("No active attack preserves static Skills but projects no eligibility"),
 		SakaBetweenAttacks != nullptr
 			&& SakaBetweenAttacks->Skills.Num() == 2
-			&& SakaBetweenAttacks->EligibleTacticalSkills.IsEmpty());
+			&& SakaBetweenAttacks->EligibleTacticalSkills.IsEmpty()
+			&& SakaBetweenAttacks->PitchMiniVisibleTacticalSkills.IsEmpty()
+			&& SakaBetweenAttacks->PitchMiniTacticalMatchCount == 0
+			&& !SakaBetweenAttacks->bHasPitchMiniTacticalMatch);
 	return true;
 }
 
@@ -273,6 +446,21 @@ bool FFMCodexEligibleTacticalSkillCanonicalInvariantTest::RunTest(
 		{
 			TestTrue(TEXT("Projected eligible Skill count never exceeds two"),
 				Card.EligibleTacticalSkills.Num() <= 2);
+			TestTrue(TEXT("Pitch Mini visible Skill count never exceeds two"),
+				Card.PitchMiniVisibleTacticalSkills.Num() <= 2);
+			TestEqual(TEXT("Only current-attacker cards receive Pitch Mini Skills"),
+				Card.PitchMiniVisibleTacticalSkills.Num(),
+				Card.bDeployed
+					&& Card.Side == State.RuntimeState.CurrentAttackingPlayer
+					? Card.EligibleTacticalSkills.Num() : 0);
+			TestEqual(TEXT("Tactical match is resolved only for eligible deployed attackers"),
+				Card.bHasPitchMiniTacticalMatch,
+				Card.bDeployed
+					&& Card.Side == State.RuntimeState.CurrentAttackingPlayer
+					&& !Card.EligibleTacticalSkills.IsEmpty());
+			TestEqual(TEXT("Tactical count equals resolved visible collection size"),
+				Card.PitchMiniTacticalMatchCount,
+				Card.PitchMiniVisibleTacticalSkills.Num());
 			for (const FFMCodexLocalMatchCardView::FSkill& Eligible
 				: Card.EligibleTacticalSkills)
 			{
@@ -336,14 +524,41 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 	TestTrue(TEXT("Projection reports the at-most-two invariant without truncating"),
 		InteractionSource.Contains(TEXT("ensureAlwaysMsgf(Result.Num() <= 2"))
 			&& !InteractionSource.Contains(TEXT("Result.SetNum(2)")));
-	TestTrue(TEXT("UMG only copies the pre-resolved eligible collection"),
+	TestTrue(TEXT("UMG only copies pre-resolved Skill collections"),
 		UMGSource.Contains(TEXT("Card.EligibleTacticalSkills"))
 			&& UMGSource.Contains(
 				TEXT("Result.EligibleTacticalSkills.Add(MakeSkill(Skill))"))
+			&& UMGSource.Contains(TEXT("Card.PitchMiniVisibleTacticalSkills"))
+			&& UMGSource.Contains(
+				TEXT("Result.PitchMiniVisibleTacticalSkills.Add(MakeSkill(Skill))"))
+			&& UMGSource.Contains(
+				TEXT("Result.bHasPitchMiniTacticalMatch"))
+			&& UMGSource.Contains(
+				TEXT("Result.PitchMiniTacticalMatchCount"))
 			&& !UMGSource.Contains(TEXT("CurrentTacticalPoint")));
-	TestTrue(TEXT("Pitch Mini and Pitch Slot perform no eligibility calculation"),
-		!CardWidgetSource.Contains(TEXT("EligibleTacticalSkills"))
-			&& !PitchSlotSource.Contains(TEXT("EligibleTacticalSkills")));
+	TestTrue(TEXT("InteractionView resolves Pitch Mini attacking-side visibility"),
+		InteractionSource.Contains(
+			TEXT("Side == State.RuntimeState.CurrentAttackingPlayer"))
+			&& InteractionSource.Contains(
+				TEXT("View.PitchMiniVisibleTacticalSkills"))
+			&& InteractionSource.Contains(
+				TEXT("View.bHasPitchMiniTacticalMatch"))
+			&& InteractionSource.Contains(
+				TEXT("View.PitchMiniTacticalMatchCount")));
+	TestTrue(TEXT("Pitch Mini consumes resolved match state without TP or ownership calculation"),
+		CardWidgetSource.Contains(
+			TEXT("Presentation.PitchMiniTacticalMatchCount"))
+			&& !CardWidgetSource.Contains(
+				TEXT("Presentation.PitchMiniVisibleTacticalSkills"))
+			&& !CardWidgetSource.Contains(
+				TEXT("Presentation.EligibleTacticalSkills"))
+			&& !CardWidgetSource.Contains(TEXT("CurrentTacticalPoint"))
+			&& !CardWidgetSource.Contains(TEXT("CurrentAttackingPlayer"))
+			&& !CardWidgetSource.Contains(TEXT("ProjectEligibleTacticalSkills"))
+			&& !PitchSlotSource.Contains(TEXT("EligibleTacticalSkills"))
+			&& !PitchSlotSource.Contains(TEXT("PitchMiniVisibleTacticalSkills"))
+			&& !PitchSlotSource.Contains(TEXT("bHasPitchMiniTacticalMatch"))
+			&& !PitchSlotSource.Contains(TEXT("PitchMiniTacticalMatchCount")));
 	TestTrue(TEXT("Full Card remains bound to the complete static Skills collection"),
 		CardWidgetSource.Contains(
 			TEXT("TArray<FFMCodexUMGSkillViewModel> Skills = Presentation.Skills"))

@@ -16,6 +16,7 @@ public:
 	static FText HandMicroPlayerName(FName CardId, const FString& FallbackLabel);
 	static FText HandMicroFallbackPlayerName(FName CardId);
 	static FText HandMicroCompactRole(const FString& CanonicalLabel);
+	static FText PitchMiniCompactRole(const FString& CanonicalLabel);
 	static FText MatchScreenLabel(const FString& CanonicalLabel);
 	static FText TeamName(FName CardId);
 	static FText Role(const FString& CanonicalLabel);

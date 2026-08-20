@@ -28,6 +28,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
 #include "Rendering/SlateRenderer.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFMCodexPlayerCardArt, Log, All);
 
@@ -42,6 +43,27 @@ namespace FMCodexPlayerCardWidget
 	constexpr float FullCardPortraitRight = 1.0f;
 	constexpr float FullCardPortraitBottom = 0.658f;
 	constexpr float HandMicroDragProxyScale = 1.10f;
+	constexpr float PitchMiniInteriorWidth = 130.0f;
+	constexpr float PitchMiniInteriorHeight = 134.0f;
+	constexpr float PitchMiniPortraitHeight = 112.0f;
+	constexpr float PitchMiniHeroZoom = 1.08f;
+	constexpr float PitchMiniHeroFocalX = 0.50f;
+	constexpr float PitchMiniHeroFocalY = 0.278f;
+	constexpr float PitchMiniHeroFocalFrameY = 0.42f;
+	constexpr float PitchMiniIdentityHeight = 22.0f;
+	constexpr float PitchMiniTacticalMatchInset = 2.0f;
+	constexpr float PitchMiniTacticalMatchGlowThickness = 3.0f;
+	constexpr float PitchMiniTacticalMatchStrokeThickness = 1.5f;
+	constexpr float PitchMiniTacticalMatchPipDiameter = 4.0f;
+	constexpr float PitchMiniTacticalMatchPipGap = 3.0f;
+	constexpr float PitchMiniTacticalMatchPipLeftInset = 9.0f;
+	constexpr float PitchMiniTacticalMatchPipTopInset = 8.0f;
+	constexpr int32 PitchMiniNameMaximumFontSize = 15;
+	constexpr int32 PitchMiniNameMinimumFontSize = 12;
+	constexpr int32 PitchMiniRoleFontSize = 11;
+	static_assert(PitchMiniPortraitHeight + PitchMiniIdentityHeight
+		== PitchMiniInteriorHeight,
+		"Pitch Mini fixed interior regions must total 134 px.");
 
 	UTextBlock* MakeText(
 		UWidgetTree& Tree,
@@ -622,6 +644,42 @@ FVector2D UFMCodexPlayerCardWidget::GetConfiguredDimensions() const
 	}
 }
 
+FBox2f UFMCodexPlayerCardWidget::CalculatePitchMiniHeroCrop(
+	const FIntPoint SourceSize)
+{
+	using namespace FMCodexPlayerCardWidget;
+	if (SourceSize.X <= 0 || SourceSize.Y <= 0)
+	{
+		return FBox2f(ForceInit);
+	}
+
+	const float SourceAspect =
+		static_cast<float>(SourceSize.X) / static_cast<float>(SourceSize.Y);
+	const float TargetAspect = PitchMiniInteriorWidth / PitchMiniPortraitHeight;
+	FVector2f AspectFillSize(1.0f, 1.0f);
+	if (SourceAspect > TargetAspect)
+	{
+		AspectFillSize.X = TargetAspect / SourceAspect;
+	}
+	else if (SourceAspect < TargetAspect)
+	{
+		AspectFillSize.Y = SourceAspect / TargetAspect;
+	}
+
+	// Start from the distortion-free aspect-fill window, then apply one global
+	// tactical-card hero zoom. The focal anchor retains a small amount of hair
+	// breathing room while carrying the neck/upper-shirt edge to the lower crop.
+	const FVector2f HeroSize = AspectFillSize / PitchMiniHeroZoom;
+	const float HeroLeft = FMath::Clamp(
+		PitchMiniHeroFocalX - HeroSize.X * 0.5f,
+		0.0f, 1.0f - HeroSize.X);
+	const float HeroTop = FMath::Clamp(
+		PitchMiniHeroFocalY - HeroSize.Y * PitchMiniHeroFocalFrameY,
+		0.0f, 1.0f - HeroSize.Y);
+	return FBox2f(FVector2f(HeroLeft, HeroTop),
+		FVector2f(HeroLeft + HeroSize.X, HeroTop + HeroSize.Y));
+}
+
 void UFMCodexPlayerCardWidget::BuildWidgetTree()
 {
 	using namespace FMCodexPlayerCardWidget;
@@ -900,43 +958,274 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	PitchMiniContent->SetClipping(EWidgetClipping::ClipToBounds);
 	USizeBox* PitchPortraitBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("PitchMiniPortraitBounds"));
-	PitchPortraitBounds->SetHeightOverride(94.0f);
+	PitchPortraitBounds->SetWidthOverride(PitchMiniInteriorWidth);
+	PitchPortraitBounds->SetHeightOverride(PitchMiniPortraitHeight);
 	PitchPortraitBounds->SetClipping(EWidgetClipping::ClipToBounds);
 	UOverlay* PitchPortraitLayer = WidgetTree->ConstructWidget<UOverlay>(
 		UOverlay::StaticClass(), TEXT("PitchMiniPortraitLayer"));
+	PitchPortraitLayer->SetClipping(EWidgetClipping::ClipToBounds);
 	PitchMiniPortraitFallback = MakeRegion(*WidgetTree,
 		TEXT("PitchMiniPortraitFallback"),
 		FFMCodexPlayerUIStyle::Get().GetColor(
 			EFMCodexPlayerUIColorRole::NeutralAccent), FMargin(0.0f));
-	PitchPortraitLayer->AddChildToOverlay(PitchMiniPortraitFallback);
+	if (UOverlaySlot* FallbackSlot =
+		PitchPortraitLayer->AddChildToOverlay(PitchMiniPortraitFallback))
+	{
+		FallbackSlot->SetHorizontalAlignment(HAlign_Fill);
+		FallbackSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+	USizeBox* PitchFallbackAtmosphereBounds =
+		WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),
+			TEXT("PitchMiniPortraitFallbackAtmosphereBounds"));
+	PitchFallbackAtmosphereBounds->SetHeightOverride(28.0f);
+	PitchMiniPortraitFallbackAtmosphere = MakeRegion(*WidgetTree,
+		TEXT("PitchMiniPortraitFallbackAtmosphere"),
+		FLinearColor(0.18f, 0.31f, 0.36f, 0.20f), FMargin(0.0f));
+	PitchFallbackAtmosphereBounds->AddChild(
+		PitchMiniPortraitFallbackAtmosphere);
+	if (UOverlaySlot* AtmosphereSlot = PitchPortraitLayer->AddChildToOverlay(
+		PitchFallbackAtmosphereBounds))
+	{
+		AtmosphereSlot->SetHorizontalAlignment(HAlign_Fill);
+		AtmosphereSlot->SetVerticalAlignment(VAlign_Top);
+	}
+	USizeBox* PitchFallbackHorizonBounds =
+		WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),
+			TEXT("PitchMiniPortraitFallbackHorizonBounds"));
+	PitchFallbackHorizonBounds->SetHeightOverride(1.0f);
+	PitchFallbackHorizonBounds->AddChild(MakeRegion(*WidgetTree,
+		TEXT("PitchMiniPortraitFallbackHorizon"),
+		FLinearColor(0.29f, 0.45f, 0.50f, 0.20f), FMargin(0.0f)));
+	if (UOverlaySlot* HorizonSlot = PitchPortraitLayer->AddChildToOverlay(
+		PitchFallbackHorizonBounds))
+	{
+		HorizonSlot->SetPadding(FMargin(8.0f, 0.0f, 8.0f, 12.0f));
+		HorizonSlot->SetHorizontalAlignment(HAlign_Fill);
+		HorizonSlot->SetVerticalAlignment(VAlign_Bottom);
+	}
 	PitchMiniPortraitImage = WidgetTree->ConstructWidget<UImage>(
 		UImage::StaticClass(), TEXT("PitchMiniPortraitImage"));
 	PitchMiniPortraitImage->SetClipping(EWidgetClipping::ClipToBounds);
-	PitchPortraitLayer->AddChildToOverlay(PitchMiniPortraitImage);
+	if (UOverlaySlot* PortraitSlot =
+		PitchPortraitLayer->AddChildToOverlay(PitchMiniPortraitImage))
+	{
+		PortraitSlot->SetHorizontalAlignment(HAlign_Fill);
+		PortraitSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+	PitchMiniPortraitTonalWash = MakeRegion(*WidgetTree,
+		TEXT("PitchMiniPortraitTonalWash"),
+		FLinearColor(0.03f, 0.11f, 0.15f, 0.20f), FMargin(0.0f));
+	if (UOverlaySlot* WashSlot =
+		PitchPortraitLayer->AddChildToOverlay(PitchMiniPortraitTonalWash))
+	{
+		WashSlot->SetHorizontalAlignment(HAlign_Fill);
+		WashSlot->SetVerticalAlignment(VAlign_Fill);
+	}
 	PitchPortraitBounds->AddChild(PitchPortraitLayer);
 	PitchMiniContent->AddChildToVerticalBox(PitchPortraitBounds);
+
+	USizeBox* PitchIdentityBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("PitchMiniIdentityBounds"));
+	PitchIdentityBounds->SetWidthOverride(PitchMiniInteriorWidth);
+	PitchIdentityBounds->SetHeightOverride(PitchMiniIdentityHeight);
+	UBorder* PitchIdentitySurface = MakeRegion(*WidgetTree,
+		TEXT("PitchMiniIdentitySurface"),
+		FLinearColor::FromSRGBColor(FColor(0x0B, 0x20, 0x2E, 0xF2)),
+		FMargin(5.0f, 0.0f));
+	UHorizontalBox* PitchIdentityRow =
+		WidgetTree->ConstructWidget<UHorizontalBox>(
+			UHorizontalBox::StaticClass(), TEXT("PitchMiniIdentityRow"));
 	PitchMiniIdentityText = MakeText(
 		*WidgetTree, TEXT("PitchMiniPlayerName"));
+	PitchMiniIdentitySeparatorText = MakeText(
+		*WidgetTree, TEXT("PitchMiniIdentitySeparator"), TEXT("|"));
 	PitchMiniRoleText = MakeText(*WidgetTree, TEXT("PitchMiniPosition"));
 	ConfigureBoundedSingleLine(*PitchMiniIdentityText);
+	ConfigureBoundedSingleLine(*PitchMiniIdentitySeparatorText);
 	ConfigureBoundedSingleLine(*PitchMiniRoleText);
 	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*PitchMiniIdentityText, EFMCodexPlayerUITextRole::Kicker);
 	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*PitchMiniIdentitySeparatorText, EFMCodexPlayerUITextRole::Secondary);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*PitchMiniRoleText, EFMCodexPlayerUITextRole::Secondary);
-	PitchMiniContent->AddChildToVerticalBox(PitchMiniIdentityText);
-	UHorizontalBox* PitchMeta = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(), TEXT("PitchMiniPositionLine"));
-	PitchMeta->AddChildToHorizontalBox(PitchMiniRoleText);
-	PitchMiniContent->AddChildToVerticalBox(PitchMeta);
-	USizeBox* PitchRarityBounds = WidgetTree->ConstructWidget<USizeBox>(
-		USizeBox::StaticClass(), TEXT("PitchMiniRarityAccentBounds"));
-	PitchRarityBounds->SetHeightOverride(5.0f);
-	PitchMiniRarityAccent = MakeRegion(*WidgetTree,
-		TEXT("PitchMiniRarityAccent"), FLinearColor::White, FMargin(0.0f));
-	PitchRarityBounds->AddChild(PitchMiniRarityAccent);
-	PitchMiniContent->AddChildToVerticalBox(PitchRarityBounds);
+	if (UHorizontalBoxSlot* NameSlot =
+		PitchIdentityRow->AddChildToHorizontalBox(PitchMiniIdentityText))
+	{
+		NameSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		NameSlot->SetVerticalAlignment(VAlign_Center);
+	}
+	if (UHorizontalBoxSlot* SeparatorSlot =
+		PitchIdentityRow->AddChildToHorizontalBox(
+			PitchMiniIdentitySeparatorText))
+	{
+		SeparatorSlot->SetPadding(FMargin(3.0f, 0.0f));
+		SeparatorSlot->SetVerticalAlignment(VAlign_Center);
+	}
+	if (UHorizontalBoxSlot* RoleSlot =
+		PitchIdentityRow->AddChildToHorizontalBox(PitchMiniRoleText))
+	{
+		RoleSlot->SetVerticalAlignment(VAlign_Center);
+	}
+	PitchIdentitySurface->AddChild(PitchIdentityRow);
+	PitchIdentityBounds->AddChild(PitchIdentitySurface);
+	PitchMiniContent->AddChildToVerticalBox(PitchIdentityBounds);
 	FrameAssetHook->AddChildToOverlay(PitchMiniContent);
+
+	auto AddPitchMiniTacticalMatchSegment =
+		[this, FrameAssetHook](const TCHAR* Name,
+			const float Width, const float Height,
+			const EHorizontalAlignment HorizontalAlignment,
+			const EVerticalAlignment VerticalAlignment,
+			const FMargin& SegmentPadding,
+			TArray<TObjectPtr<UBorder>>& SegmentCollection)
+		{
+			const FString SegmentName(Name);
+			USizeBox* SegmentBounds = WidgetTree->ConstructWidget<USizeBox>(
+				USizeBox::StaticClass(),
+				FName(*(SegmentName + TEXT("Bounds"))));
+			if (Width > 0.0f)
+			{
+				SegmentBounds->SetWidthOverride(Width);
+			}
+			if (Height > 0.0f)
+			{
+				SegmentBounds->SetHeightOverride(Height);
+			}
+			UBorder* Segment = MakeRegion(*WidgetTree, FName(*SegmentName),
+				FLinearColor::Transparent, FMargin(0.0f));
+			Segment->SetVisibility(ESlateVisibility::Collapsed);
+			SegmentBounds->AddChild(Segment);
+			if (UOverlaySlot* SegmentSlot =
+				FrameAssetHook->AddChildToOverlay(SegmentBounds))
+			{
+				SegmentSlot->SetPadding(SegmentPadding);
+				SegmentSlot->SetHorizontalAlignment(HorizontalAlignment);
+				SegmentSlot->SetVerticalAlignment(VerticalAlignment);
+			}
+			SegmentCollection.Add(Segment);
+		};
+
+	const auto AddPitchMiniTacticalMatchPerimeter =
+		[&AddPitchMiniTacticalMatchSegment](const TCHAR* Prefix,
+			const float Thickness,
+			TArray<TObjectPtr<UBorder>>& SegmentCollection)
+		{
+			AddPitchMiniTacticalMatchSegment(
+				*FString::Printf(TEXT("%sTop"), Prefix),
+				0.0f, Thickness, HAlign_Fill, VAlign_Top,
+				FMargin(PitchMiniTacticalMatchInset,
+					PitchMiniTacticalMatchInset,
+					PitchMiniTacticalMatchInset, 0.0f), SegmentCollection);
+			AddPitchMiniTacticalMatchSegment(
+				*FString::Printf(TEXT("%sBottom"), Prefix),
+				0.0f, Thickness, HAlign_Fill, VAlign_Bottom,
+				FMargin(PitchMiniTacticalMatchInset, 0.0f,
+					PitchMiniTacticalMatchInset,
+					PitchMiniTacticalMatchInset), SegmentCollection);
+			AddPitchMiniTacticalMatchSegment(
+				*FString::Printf(TEXT("%sLeft"), Prefix),
+				Thickness, 0.0f, HAlign_Left, VAlign_Fill,
+				FMargin(PitchMiniTacticalMatchInset,
+					PitchMiniTacticalMatchInset, 0.0f,
+					PitchMiniTacticalMatchInset), SegmentCollection);
+			AddPitchMiniTacticalMatchSegment(
+				*FString::Printf(TEXT("%sRight"), Prefix),
+				Thickness, 0.0f, HAlign_Right, VAlign_Fill,
+				FMargin(0.0f, PitchMiniTacticalMatchInset,
+					PitchMiniTacticalMatchInset,
+					PitchMiniTacticalMatchInset), SegmentCollection);
+		};
+	AddPitchMiniTacticalMatchPerimeter(TEXT("PitchMiniTacticalMatchGlow"),
+		PitchMiniTacticalMatchGlowThickness,
+		PitchMiniTacticalMatchGlowSegments);
+	AddPitchMiniTacticalMatchPerimeter(TEXT("PitchMiniTacticalMatchStroke"),
+		PitchMiniTacticalMatchStrokeThickness,
+		PitchMiniTacticalMatchStrokeSegments);
+
+	USizeBox* PitchTacticalPipGroupBounds =
+		WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),
+			TEXT("PitchMiniTacticalMatchPipGroupBounds"));
+	PitchTacticalPipGroupBounds->SetWidthOverride(
+		PitchMiniTacticalMatchPipDiameter);
+	PitchTacticalPipGroupBounds->SetHeightOverride(
+		PitchMiniTacticalMatchPipDiameter * 2.0f
+			+ PitchMiniTacticalMatchPipGap);
+	UOverlay* PitchTacticalPipGroup =
+		WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(),
+			TEXT("PitchMiniTacticalMatchPipGroup"));
+	PitchTacticalPipGroupBounds->AddChild(PitchTacticalPipGroup);
+	const auto AddPitchMiniTacticalMatchPip =
+		[this, PitchTacticalPipGroup](const TCHAR* PipName,
+			const TCHAR* BoundsName,
+			const EVerticalAlignment VerticalAlignment,
+			TObjectPtr<UBorder>& OutPip)
+		{
+			USizeBox* PipBounds = WidgetTree->ConstructWidget<USizeBox>(
+				USizeBox::StaticClass(), FName(BoundsName));
+			PipBounds->SetWidthOverride(PitchMiniTacticalMatchPipDiameter);
+			PipBounds->SetHeightOverride(PitchMiniTacticalMatchPipDiameter);
+			OutPip = MakeRegion(*WidgetTree, FName(PipName),
+				FLinearColor::Transparent, FMargin(0.0f));
+			OutPip->SetBrush(FSlateRoundedBoxBrush(FLinearColor::White,
+				PitchMiniTacticalMatchPipDiameter * 0.5f,
+				FVector2f(PitchMiniTacticalMatchPipDiameter,
+					PitchMiniTacticalMatchPipDiameter)));
+			OutPip->SetBrushColor(FLinearColor::Transparent);
+			OutPip->SetVisibility(ESlateVisibility::Collapsed);
+			PipBounds->AddChild(OutPip);
+			if (UOverlaySlot* PipSlot =
+				PitchTacticalPipGroup->AddChildToOverlay(PipBounds))
+			{
+				PipSlot->SetHorizontalAlignment(HAlign_Center);
+				PipSlot->SetVerticalAlignment(VerticalAlignment);
+			}
+		};
+	AddPitchMiniTacticalMatchPip(TEXT("PitchMiniTacticalMatchPipTop"),
+		TEXT("PitchMiniTacticalMatchPipTopBounds"), VAlign_Top,
+		PitchMiniTacticalMatchPipTop);
+	AddPitchMiniTacticalMatchPip(TEXT("PitchMiniTacticalMatchPipBottom"),
+		TEXT("PitchMiniTacticalMatchPipBottomBounds"), VAlign_Bottom,
+		PitchMiniTacticalMatchPipBottom);
+	if (UOverlaySlot* PipGroupSlot =
+		FrameAssetHook->AddChildToOverlay(PitchTacticalPipGroupBounds))
+	{
+		PipGroupSlot->SetPadding(
+			FMargin(PitchMiniTacticalMatchPipLeftInset,
+				PitchMiniTacticalMatchPipTopInset, 0.0f, 0.0f));
+		PipGroupSlot->SetHorizontalAlignment(HAlign_Left);
+		PipGroupSlot->SetVerticalAlignment(VAlign_Top);
+	}
+
+	USizeBox* PitchOwnershipRailLeftBounds =
+		WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),
+			TEXT("PitchMiniOwnershipRailLeftBounds"));
+	PitchOwnershipRailLeftBounds->SetWidthOverride(3.0f);
+	PitchMiniOwnershipRailLeft = MakeRegion(*WidgetTree,
+		TEXT("PitchMiniOwnershipRailLeft"), FLinearColor::Transparent,
+		FMargin(0.0f));
+	PitchOwnershipRailLeftBounds->AddChild(PitchMiniOwnershipRailLeft);
+	if (UOverlaySlot* LeftRailSlot = FrameAssetHook->AddChildToOverlay(
+		PitchOwnershipRailLeftBounds))
+	{
+		LeftRailSlot->SetHorizontalAlignment(HAlign_Left);
+		LeftRailSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+
+	USizeBox* PitchOwnershipRailRightBounds =
+		WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),
+			TEXT("PitchMiniOwnershipRailRightBounds"));
+	PitchOwnershipRailRightBounds->SetWidthOverride(3.0f);
+	PitchMiniOwnershipRailRight = MakeRegion(*WidgetTree,
+		TEXT("PitchMiniOwnershipRailRight"), FLinearColor::Transparent,
+		FMargin(0.0f));
+	PitchOwnershipRailRightBounds->AddChild(PitchMiniOwnershipRailRight);
+	if (UOverlaySlot* RightRailSlot = FrameAssetHook->AddChildToOverlay(
+		PitchOwnershipRailRightBounds))
+	{
+		RightRailSlot->SetHorizontalAlignment(HAlign_Right);
+		RightRailSlot->SetVerticalAlignment(VAlign_Fill);
+	}
 
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("InMatchFullCardHierarchy"));
@@ -1382,8 +1671,111 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	CardFrame->SetBrushColor(bHandMicro
 		? Style.GetColor(EFMCodexPlayerUIColorRole::CardFrame)
 		: bPitchMini
-			? FLinearColor::LerpUsingHSV(BaseFrame, RarityAccent, 0.10f)
+			? BaseFrame
 			: bDetailed ? RarityAccent : BaseFrame);
+	const bool bHasPitchMiniOwnershipAccent = bPitchMini
+		&& Presentation.bHasPitchMiniOwnershipAccent
+		&& Presentation.PitchMiniOwnershipAccentEdge
+			!= EFMCodexUMGPitchMiniOwnershipEdge::None;
+	const bool bShowLeftPitchMiniOwnershipRail =
+		bHasPitchMiniOwnershipAccent
+		&& Presentation.PitchMiniOwnershipAccentEdge
+			== EFMCodexUMGPitchMiniOwnershipEdge::Left;
+	const bool bShowRightPitchMiniOwnershipRail =
+		bHasPitchMiniOwnershipAccent
+		&& Presentation.PitchMiniOwnershipAccentEdge
+			== EFMCodexUMGPitchMiniOwnershipEdge::Right;
+	PitchMiniOwnershipRailLeft->SetBrushColor(
+		Presentation.PitchMiniOwnershipAccentColor);
+	PitchMiniOwnershipRailRight->SetBrushColor(
+		Presentation.PitchMiniOwnershipAccentColor);
+	PitchMiniOwnershipRailLeft->SetVisibility(
+		bShowLeftPitchMiniOwnershipRail
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	PitchMiniOwnershipRailRight->SetVisibility(
+		bShowRightPitchMiniOwnershipRail
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+
+	const bool bPitchMiniTacticalMatchCountValid = ensureAlwaysMsgf(
+		Presentation.PitchMiniTacticalMatchCount >= 0
+			&& Presentation.PitchMiniTacticalMatchCount <= 2,
+		TEXT("Pitch Mini tactical-match presentation count must be 0..2, got %d"),
+		Presentation.PitchMiniTacticalMatchCount);
+	const bool bPitchMiniTacticalMatchStateConsistent = ensureAlwaysMsgf(
+		!bPitchMiniTacticalMatchCountValid
+			|| Presentation.bHasPitchMiniTacticalMatch
+				== (Presentation.PitchMiniTacticalMatchCount > 0),
+		TEXT("Pitch Mini tactical-match count and highlight state disagree"));
+	const int32 PitchMiniTacticalMatchCount = bPitchMini
+		&& bPitchMiniTacticalMatchCountValid
+		&& bPitchMiniTacticalMatchStateConsistent
+		? Presentation.PitchMiniTacticalMatchCount : 0;
+	const bool bShowPitchMiniTacticalMatch =
+		PitchMiniTacticalMatchCount > 0;
+	FLinearColor TacticalMatchAccent =
+		FLinearColor::FromSRGBColor(FColor(0x8F, 0xE6, 0xC2));
+	TacticalMatchAccent.A = 0.88f;
+	FLinearColor TacticalMatchGlow = TacticalMatchAccent;
+	TacticalMatchGlow.A = 0.09f;
+	for (UBorder* Segment : PitchMiniTacticalMatchGlowSegments)
+	{
+		if (Segment != nullptr)
+		{
+			Segment->SetBrushColor(TacticalMatchGlow);
+			Segment->SetVisibility(bShowPitchMiniTacticalMatch
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
+		}
+	}
+	for (UBorder* Segment : PitchMiniTacticalMatchStrokeSegments)
+	{
+		if (Segment != nullptr)
+		{
+			Segment->SetBrushColor(TacticalMatchAccent);
+			Segment->SetVisibility(bShowPitchMiniTacticalMatch
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
+		}
+	}
+	FLinearColor TacticalMatchPipAccent = TacticalMatchAccent;
+	TacticalMatchPipAccent.A = 0.96f;
+	PitchMiniTacticalMatchPipTop->SetBrushColor(
+		TacticalMatchPipAccent);
+	PitchMiniTacticalMatchPipBottom->SetBrushColor(
+		TacticalMatchPipAccent);
+	PitchMiniTacticalMatchPipTop->SetVisibility(
+		PitchMiniTacticalMatchCount >= 1
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	PitchMiniTacticalMatchPipBottom->SetVisibility(
+		PitchMiniTacticalMatchCount == 2
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+
+	const FLinearColor PitchMiniPortraitBase =
+		FLinearColor::FromSRGBColor(FColor(0x14, 0x2B, 0x36));
+	const FLinearColor PitchMiniWashBase =
+		FLinearColor::FromSRGBColor(FColor(0x09, 0x22, 0x2E));
+	FLinearColor PitchMiniFallbackColor = PitchMiniPortraitBase;
+	FLinearColor PitchMiniWashColor = PitchMiniWashBase;
+	FLinearColor PitchMiniFallbackAtmosphereColor =
+		FLinearColor::FromSRGBColor(FColor(0x2A, 0x4A, 0x58));
+	if (bHasPitchMiniOwnershipAccent)
+	{
+		PitchMiniFallbackColor = FLinearColor::LerpUsingHSV(
+			PitchMiniPortraitBase,
+			Presentation.PitchMiniOwnershipAccentColor, 0.12f);
+		PitchMiniWashColor = FLinearColor::LerpUsingHSV(PitchMiniWashBase,
+			Presentation.PitchMiniOwnershipAccentColor, 0.08f);
+		PitchMiniFallbackAtmosphereColor = FLinearColor::LerpUsingHSV(
+			PitchMiniFallbackAtmosphereColor,
+			Presentation.PitchMiniOwnershipAccentColor, 0.18f);
+	}
+	PitchMiniFallbackColor.A = 1.0f;
+	PitchMiniWashColor.A = 0.12f;
+	PitchMiniFallbackAtmosphereColor.A = 0.24f;
+	PitchMiniPortraitFallback->SetBrushColor(PitchMiniFallbackColor);
+	PitchMiniPortraitFallbackAtmosphere->SetBrushColor(
+		PitchMiniFallbackAtmosphereColor);
+	PitchMiniPortraitTonalWash->SetBrushColor(PitchMiniWashColor);
 	if (FullCardBaseSurface != nullptr)
 	{
 		FullCardBaseSurface->SetBrushColor(
@@ -1457,7 +1849,6 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	HandMicroIdentityText->SetText(PrimaryHandMicroPlayerName);
 	HandMicroIdentityText->SetFont(HandMicroNameFont);
 	HandMicroIdentityText->SetTextOverflowPolicy(ETextOverflowPolicy::Clip);
-	PitchMiniIdentityText->SetText(PlayerName);
 	TeamText->SetText(FFMCodexPlayerUIPresentationText::TeamName(
 		Presentation.CardId));
 	TeamText->SetVisibility(ESlateVisibility::Collapsed);
@@ -1470,12 +1861,50 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		: FFMCodexPlayerUIPresentationText::Role(Presentation.RoleLabel));
 	RoleText->SetColorAndOpacity(FSlateColor(
 		FLinearColor::FromSRGBColor(FColor(0xEE, 0xF1, 0xF0))));
-	const FText CompactRole = FFMCodexPlayerUIPresentationText::CompactRole(
-		Presentation.RoleLabel);
 	HandMicroRoleText->SetText(
 		FFMCodexPlayerUIPresentationText::HandMicroCompactRole(
 			Presentation.RoleLabel));
-	PitchMiniRoleText->SetText(CompactRole);
+	const FText PitchMiniRole =
+		FFMCodexPlayerUIPresentationText::PitchMiniCompactRole(
+			Presentation.RoleLabel);
+	PitchMiniRoleText->SetText(PitchMiniRole);
+	PitchMiniIdentitySeparatorText->SetText(FText::FromString(TEXT("|")));
+	FSlateFontInfo PitchMiniRoleFont = PitchMiniRoleText->GetFont();
+	PitchMiniRoleFont.Size =
+		FMCodexPlayerCardWidget::PitchMiniRoleFontSize;
+	PitchMiniRoleFont.TypefaceFontName = TEXT("Medium");
+	PitchMiniRoleText->SetFont(PitchMiniRoleFont);
+	FSlateFontInfo PitchMiniSeparatorFont =
+		PitchMiniIdentitySeparatorText->GetFont();
+	PitchMiniSeparatorFont.Size =
+		FMCodexPlayerCardWidget::PitchMiniRoleFontSize;
+	PitchMiniSeparatorFont.TypefaceFontName = TEXT("Medium");
+	PitchMiniIdentitySeparatorText->SetFont(PitchMiniSeparatorFont);
+	float RoleWidth = 24.0f;
+	float SeparatorWidth = 4.0f;
+	FMCodexPlayerCardWidget::TryMeasureHandMicroName(
+		PitchMiniRole, PitchMiniRoleFont, RoleWidth);
+	FMCodexPlayerCardWidget::TryMeasureHandMicroName(
+		PitchMiniIdentitySeparatorText->GetText(),
+		PitchMiniSeparatorFont, SeparatorWidth);
+	const float PitchMiniNameSafeWidth = FMath::Max(1.0f,
+		FMCodexPlayerCardWidget::PitchMiniInteriorWidth - 10.0f
+			- RoleWidth - SeparatorWidth - 6.0f);
+	FSlateFontInfo PitchMiniNameFont = PitchMiniIdentityText->GetFont();
+	PitchMiniNameFont.Size =
+		FMCodexPlayerCardWidget::GetMeasuredSingleLineFontSize(
+		PlayerName, PitchMiniNameFont, PitchMiniNameSafeWidth,
+		FMCodexPlayerCardWidget::PitchMiniNameMaximumFontSize,
+		FMCodexPlayerCardWidget::PitchMiniNameMinimumFontSize);
+	PitchMiniNameFont.TypefaceFontName = TEXT("Medium");
+	PitchMiniIdentityText->SetText(PlayerName);
+	PitchMiniIdentityText->SetFont(PitchMiniNameFont);
+	PitchMiniIdentityText->SetColorAndOpacity(FSlateColor(
+		FLinearColor::FromSRGBColor(FColor(0xF2, 0xF3, 0xF1))));
+	PitchMiniRoleText->SetColorAndOpacity(FSlateColor(
+		FLinearColor::FromSRGBColor(FColor(0xC8, 0xD4, 0xD8))));
+	PitchMiniIdentitySeparatorText->SetColorAndOpacity(FSlateColor(
+		FLinearColor::FromSRGBColor(FColor(0x62, 0x75, 0x7D))));
 	RarityText->SetText(
 		bDetailed ? FText::GetEmpty()
 			: FFMCodexPlayerUIPresentationText::Rarity(
@@ -1495,7 +1924,6 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	OverallLabelText->SetColorAndOpacity(FSlateColor(
 		FLinearColor::FromSRGBColor(FColor(0xD4, 0xD9, 0xD8))));
 	HandMicroRarityAccent->SetBrushColor(HandRarityColor);
-	PitchMiniRarityAccent->SetBrushColor(RarityAccent);
 	PortraitPlaceholderText->SetText(
 		FFMCodexPlayerUIPresentationText::PortraitPlaceholder());
 	RefreshPresentationArt();
@@ -1612,7 +2040,16 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 			FVector2f(FMCodexPlayerCardWidget::FullCardPortraitRight,
 				FMCodexPlayerCardWidget::FullCardPortraitBottom)));
 		PortraitImage->SetBrush(FullCardPortraitBrush);
-		PitchMiniPortraitImage->SetBrushFromTexture(ResolvedPortraitTexture, true);
+		PitchMiniPortraitImage->SetBrushFromTexture(ResolvedPortraitTexture, false);
+		FSlateBrush PitchMiniPortraitBrush = PitchMiniPortraitImage->GetBrush();
+		PitchMiniPortraitBrush.DrawAs = ESlateBrushDrawType::Image;
+		const FBox2f PitchMiniHeroCrop = CalculatePitchMiniHeroCrop(
+			ResolvedPortraitTexture->GetImportedSize());
+		if (PitchMiniHeroCrop.bIsValid)
+		{
+			PitchMiniPortraitBrush.SetUVRegion(PitchMiniHeroCrop);
+		}
+		PitchMiniPortraitImage->SetBrush(PitchMiniPortraitBrush);
 	}
 	if (bHasHandMicroPortrait)
 	{
@@ -1792,8 +2229,11 @@ void UFMCodexPlayerCardWidget::RefreshSkills()
 	using namespace FMCodexPlayerCardWidget;
 	SkillList->ClearChildren();
 	RenderedSkillTexts.Reset();
-	if (PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro
-		|| PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini)
+	if (PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro)
+	{
+		return;
+	}
+	if (PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini)
 	{
 		return;
 	}

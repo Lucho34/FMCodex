@@ -347,6 +347,19 @@ namespace FMCodexLocalMatchInteractionView
 				&& State.CurrentAttack.bCurrentDefenseGoalkeeperActivated
 				&& Side != State.RuntimeState.CurrentAttackingPlayer;
 		}
+		if (View.bDeployed
+			&& Side == State.RuntimeState.CurrentAttackingPlayer)
+		{
+			View.PitchMiniVisibleTacticalSkills =
+				View.EligibleTacticalSkills;
+		}
+		View.PitchMiniTacticalMatchCount =
+			View.PitchMiniVisibleTacticalSkills.Num();
+		ensureAlwaysMsgf(View.PitchMiniTacticalMatchCount <= 2,
+			TEXT("Pitch Mini tactical-match count invariant exceeded for %s: %d"),
+			*View.CardId.ToString(), View.PitchMiniTacticalMatchCount);
+		View.bHasPitchMiniTacticalMatch =
+			View.PitchMiniTacticalMatchCount > 0;
 		FinalizeCardPresentation(View);
 		return View;
 	}

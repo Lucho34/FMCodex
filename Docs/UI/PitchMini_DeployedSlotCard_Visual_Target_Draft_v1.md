@@ -1,16 +1,19 @@
 # Pitch Mini / Deployed Slot Card Visual Target Draft v1
 
-Status: **DRAFT CANDIDATE — NOT FROZEN**
+Status: **FINAL-REFINEMENT CANDIDATE — PENDING MANUAL VISUAL GATE**
 
-Stage: `6.13.1.3.12 — Deployed Slot Card / Pitch Mini Visual Audit & Target Contract Draft`
+Current implementation stage: `6.13.1.3.13.3.1 — Pitch Mini Tactical Match Count Cue & Highlight Refinement`
+
+Originating audit stage: `6.13.1.3.12 — Deployed Slot Card / Pitch Mini Visual Audit & Target Contract Draft`
 
 Audit baseline: branch `main`, HEAD
 `61bcafded580cfb6e2bf95807184110bdc01db30` (`61bcafd docs: close full card visual and artwork contract`), clean worktree and zero staged files before this draft.
 
-This document records implemented production facts separately from a proposed
-Pitch Mini target. It authorizes no production implementation. Full Card, Hand
-Micro, Drag Proxy, gameplay, authority, CoreRules and MatchPlayRuntime remain
-outside this draft.
+This document preserves the original audit and now records the implemented
+candidate contract in section 14. Full Card, Hand Micro, Drag Proxy, gameplay,
+CoreRules and MatchPlayRuntime remain outside the presentation change. The
+InteractionView-only attacker/defender visibility gate in section 14 is the
+bounded authority-facing delta requested during implementation.
 
 ## 1. Purpose and player-facing intent
 
@@ -495,3 +498,267 @@ separate, exact referencer check.
 - empty, occupied, valid and drag-hover slot states remain readable;
 - one approximately eight-to-ten-card `1920×1080` PIE capture passes visual
   review without overlap, scrolling or unreadable Skill collisions.
+
+## 14. Stage 6.13.1.3.13 implemented candidate contract
+
+Status: **IMPLEMENTED CANDIDATE — PENDING MANUAL VISUAL GATE**
+
+The implementation preserves the external `136×140` card, `148×148` slot,
+`968×880` pitch and `2 × 5` / ten-slot topology. The fixed Pitch Mini interior
+is:
+
+| Region | Fixed geometry |
+|---|---:|
+| Interior | `130×134` |
+| Portrait | `130×76` |
+| Identity row | `130×22` |
+| Tactical Skill band | `130×36` |
+| Tactical Skill rows | `0–2`, stacked full-width at `130×18` each |
+
+The portrait uses clipped, aspect-preserving fill/crop. Its route remains the
+shared compatible `Portrait` field, then the neutral fallback. It never falls
+back to `FullCardPortrait`, and `HandMicroPortrait` is unchanged.
+
+Name and Position share one row in the form `ChineseName | Position`. The name
+starts at 15 px Medium and shrinks using Slate font measurement to a 12 px
+floor. Position is 11 px Medium and preserves slash notation such as `A/M` and
+`M/D`.
+
+Pitch Mini does not consume canonical `Skills` directly. InteractionView first
+projects `EligibleTacticalSkills` from the authoritative current attack, then
+resolves a separate `PitchMiniVisibleTacticalSkills` collection:
+
+- deployed card on the current attacking side:
+  `EligibleTacticalSkills[0..2]` in projected order;
+- current defending side: no visible Tactical Skills;
+- non-deployed card: no Pitch-Mini-visible Tactical Skills;
+- no active attack: no visible Tactical Skills.
+
+The Widget only renders `PitchMiniVisibleTacticalSkills`. It does not compare
+Tactical Point ranges and does not determine attacking/defending ownership.
+For zero or one visible Skill, the unused portion of the fixed 36 px band stays
+empty; no fake `无技能`, disabled row, icon or card resize is introduced. Each
+visible row displays the localized Skill name on the left and the DTO's
+canonical `MinTP–MaxTP` range on the right.
+
+Pitch Mini has no rarity bar, rail, badge, text or rarity-driven frame tint.
+Rarity data remains available to other variants. Full Card continues to render
+all canonical `Skills` for both sides. Hand Micro and Drag Proxy are unchanged.
+
+The candidate is not permanently frozen until the user completes the manual
+PIE implementation review and near-full-pitch density review.
+
+## 15. Stage 6.13.1.3.13.1 refined candidate contract
+
+Status: **REFINED IMPLEMENTED CANDIDATE — PENDING MANUAL VISUAL GATE**
+
+Deployed Pitch Mini ownership is now an explicit presentation input and does
+not depend on Tactical Skill visibility. `FFMCodexUMGSidePrimaryColors` is the
+replaceable side-palette seam. The current prototype defaults are:
+
+| Match side | Prototype association | Primary accent |
+|---|---|---:|
+| Player A | Arsenal | `#A4474F` restrained red |
+| Player B | Manchester City | `#4F7892` restrained blue |
+
+These colors are not selected by club logic inside the Widget. The UMG
+presentation builder receives the side palette, resolves the deployed card's
+side color and its local-viewer relation, and emits an already-resolved color
+plus edge. A future pre-match player-selected palette can replace the defaults
+at this seam without changing the Pitch Mini renderer.
+
+Color is not the only ownership cue. The stable structural rule is:
+
+- self/local card: `3 px` left ownership rail;
+- opponent card: `3 px` right ownership rail.
+
+The rail overlays the existing card interior and does not alter layout. It is
+present for portrait and fallback cards, for `0`, `1` or `2` visible Skill
+rows, and for both attacking and defending cards. It is resolved from card
+side plus local-viewer relation, so it remains stable when attack ownership
+changes.
+
+The attack contract from section 14 is unchanged and remains independent:
+
+- **attacking side:** `PitchMiniVisibleTacticalSkills[0..2]`;
+- **defending side:** no Tactical Skill text;
+- **zero eligible Skills:** no Tactical Skill text;
+- the fixed `130×36` band remains reserved in every case.
+
+The current opaque shared portrait assets do not provide safe subject masks,
+so this refinement uses the approved next-best low-risk path rather than
+brittle per-player extraction. Pitch Mini applies a restrained dark teal tonal
+wash above every shared portrait to subdue stadium-light noise while retaining
+face clarity. The no-portrait fallback now uses a deep navy/slate base, a
+subtle side-tinted upper atmosphere band and a restrained horizon rule under
+the same tonal wash. This gives portrait and fallback cards a common visual
+language without creating forty new assets or using `FullCardPortrait`.
+
+All geometry remains exact: external `136×140`, interior `130×134`, portrait
+`130×76`, identity `130×22`, Tactical Skill band `130×36`, and slot `148×148`.
+Name/Position, slash preservation, two-row maximum, and rarity absence are
+unchanged. Full Card, Hand Micro and Drag Proxy do not consume the new
+ownership treatment and remain outside this refinement.
+
+This remains a candidate rather than a permanent freeze. The user manual PIE
+gate must confirm ownership legibility, portrait facial clarity, fallback
+unity and near-full-pitch density at the target presentation scale.
+
+## 16. Stage 6.13.1.3.13.2 portrait-presence refinement
+
+Status: **REFINED IMPLEMENTED CANDIDATE — PENDING MANUAL VISUAL GATE**
+
+The latest near-full-pitch PIE evidence confirmed that the fixed portrait
+region was present and readable, but the shared subject was not consistently
+the first visual read. The generalized aspect-fill crop retained too much
+stadium background, left excess air around the head, and did not give the face
+enough horizontal presence at deployed-card scale.
+
+The `130×76` portrait region remains unchanged. Pitch Mini now starts from the
+same distortion-free aspect-fill window and applies one deterministic `1.15×`
+hero zoom around a centered horizontal focal point and a normalized `0.255`
+vertical face anchor. For the current `1024×1536` shared portraits this:
+
+- reduces the visible source width and height by the reciprocal of `1.15`;
+- increases subject scale by exactly `15%` on both axes;
+- moves the crop below the former neutral `0.045` top bias to approximately
+  `0.086`, retaining minimal hair breathing room while carrying the neck and
+  upper-shirt edge toward the lower boundary;
+- preserves the exact `130:76` source-pixel aspect, so no face stretching is
+  introduced;
+- uses one source-size-driven helper rather than a per-player crop table.
+
+The existing uniform Pitch-Mini-only dark teal wash is reduced from `20%` to
+`12%` opacity. The tighter crop now removes more background by composition, so
+the lighter wash preserves skin, shirt and collar clarity without returning
+the stadium to the primary visual read.
+
+Routing remains isolated. Pitch Mini still consumes the shared `Portrait`; it
+does not consume `FullCardPortrait` or the Hand Micro `ApprovedRuntime192`
+texture. The existing fallback base, upper atmosphere, horizon rule and
+ownership tint remain structurally unchanged; only the shared wash strength is
+rebalanced consistently.
+
+All successful layout and semantic contracts remain unchanged: external
+`136×140`, portrait `130×76`, identity `130×22`, Tactical Skill band `130×36`,
+same-row Name/Position, slash preservation, `0–2` attack-gated rows, empty
+defending rows, `3 px` self-left/opponent-right ownership rail, and no rarity.
+Full Card, Hand Micro and Drag Proxy remain outside this refinement.
+
+Manual PIE review must still confirm that the global crop gives the desired
+face, shoulder and collar balance across the representative shared portraits
+and remains comfortable at near-full-pitch density. This section does not
+permanently freeze the crop.
+
+## 17. Stage 6.13.1.3.13.3 simplified candidate contract
+
+Status: **SIMPLIFIED IMPLEMENTED CANDIDATE — PENDING MANUAL VISUAL GATE**
+
+Pitch Mini now prioritizes the deployed player over tactical text while
+preserving the fixed external card and pitch topology:
+
+| Region | Current candidate |
+| --- | ---: |
+| External card | `136×140` |
+| Interior after frame padding | `130×134` |
+| Portrait | `130×112` |
+| Identity row | `130×22` |
+| Dedicated Skill band / rows | `NONE` |
+| Slot | `148×148` |
+
+The former `130×36` Skill band is removed rather than left as an empty
+placeholder. Pitch Mini displays no Skill names, trigger ranges, icons, AP
+text or count indicators in any state. `EligibleTacticalSkills` and the
+existing attacking-side projection remain intact for authoritative and other
+presentation uses; Full Card continues to display all static canonical Skills.
+
+Pitch Mini replaces Skill text with one resolved binary presentation signal:
+`bHasPitchMiniTacticalMatch`. InteractionView sets it only when a deployed
+card belongs to the current attacking side and its existing authoritative
+projection contains one or more current-TP-matching Skills. UMG presentation
+copies the resolved value. The Widget does not read Tactical Point, compare
+Skill ranges, count eligible Skills, or determine attack/defense ownership.
+
+The exact state table is:
+
+- attacking side + one or two eligible Skills: tactical match `ON`;
+- attacking side + zero eligible Skills: tactical match `OFF`;
+- defending side, even with mathematically eligible Skills: `OFF`;
+- no active attack: `OFF`.
+
+The static `ON` treatment is a `1.5 px` inner perimeter at a `2 px` inset,
+using the global mint/yellow-green accent `#9BEA6F` at `88%` opacity. A
+co-located `4 px` reinforcement at `12%` opacity supplies a restrained
+low-radius glow. It is not animated and carries no count or icon. The existing
+side-primary ownership cue remains independent: self/local uses a `3 px` left
+rail and opponent uses a `3 px` right rail. Slot deployment and drag-hover
+treatments remain on the Slot layer and do not share the tactical-match
+semantic.
+
+The shared portrait route is unchanged, but the taller cell uses a retuned
+deterministic aspect-fill hero crop: global zoom `1.08×`, focal X `0.500`,
+focal Y `0.278`, and focal frame Y `0.420`. This retains a small head/hair
+margin and materially more shoulder/upper-shirt area at the new `130:112`
+aspect without per-player tables or stretching. The Pitch-Mini-only tonal wash
+remains `12%`. No `FullCardPortrait` or Hand Micro `ApprovedRuntime192` asset
+is routed into Pitch Mini.
+
+Fallback cards use the same enlarged `130×112` top region, deep navy/slate
+base, upper atmosphere band, horizon rule, tonal wash, ownership rail and
+optional tactical-match perimeter. Hand Micro and Drag Proxy remain unchanged.
+This candidate still requires the user manual PIE visual gate before any
+permanent freeze or commit recommendation.
+
+## 18. Stage 6.13.1.3.13.3.1 final-refinement candidate contract
+
+Status: **FINAL-REFINEMENT CANDIDATE — PENDING MANUAL VISUAL GATE**
+
+The portrait-dominant information architecture from section 17 remains fixed.
+Pitch Mini still uses a `136×140` external card, `130×134` interior,
+`130×112` portrait and `130×22` identity row. It has no Skill text, Skill
+band, trigger range, Skill icon, rarity or numeric badge.
+
+InteractionView now resolves `PitchMiniTacticalMatchCount` from the existing
+attacker-gated `PitchMiniVisibleTacticalSkills` collection. Legal values are
+`0`, `1` and `2`; an observed value above two is an invariant failure rather
+than a supported UI state. UMG presentation copies this count without reading
+Tactical Point, Skill ranges or attacking ownership. The Widget only renders
+the resolved count:
+
+| Tactical Match | Pitch Mini treatment |
+| --- | --- |
+| `0` matches | `NONE` — no highlight and no pip |
+| `1` match | tactical highlight + `1` pip |
+| `2` matches | tactical highlight + `2` pips |
+
+Defending-side cards and cards outside an active attack always receive count
+`0`, even if their canonical Skill ranges mathematically match the current
+Tactical Point. Full Card remains bound to the complete canonical Skills
+collection for both sides.
+
+Each pip is a `4 px` circle. The two-pip treatment uses a `3 px` vertical gap,
+producing a `4×11 px` group. The group is fixed inside the portrait at the
+upper left, inset `9 px` from the inner left edge and `8 px` from the top. This
+keeps it visibly separate from the `3 px` ownership rail without anchoring it
+to the ownership relation. One match displays the top pip; two matches display
+both vertically stacked pips. Pips render above the tactical perimeter and
+below the ownership-rail layer. They have no badge, label, number, icon or
+animation.
+
+The final tactical accent is `#8FE6C2`, a restrained cyan-mint that separates
+the tactical state from the green pitch and from the Arsenal red / Manchester
+City blue ownership colors. The inner stroke remains `1.5 px` at a `2 px`
+inset. The reinforcement is reduced to `3 px` at `9%` opacity; the stroke uses
+`88%` opacity and pips use `96%` opacity. This keeps the treatment legible on
+deep navy while secondary to the portrait and distinct from hover, selection
+and deployment-valid states.
+
+Ownership remains an independent `3 px` side-primary-color rail: self/local
+on the left and opponent on the right. Portrait geometry, the `1.08×` crop,
+focal treatment, `148×148` Slot, Hand Micro, Drag Proxy and Full Card are
+unchanged.
+
+Jersey and kit-color correction is **DEFERRED TO PORTRAIT ARTWORK COVERAGE
+STAGE**. No club tint, skin tint, image shader or other kit-color manipulation
+is introduced in Widget code. The remaining gates are manual PIE review,
+40-player portrait coverage, and portrait kit/background art consistency.

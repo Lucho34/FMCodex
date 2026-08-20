@@ -57,6 +57,19 @@ namespace FMCodexLocalMatchUMGPresentation
 		{
 			Result.EligibleTacticalSkills.Add(MakeSkill(Skill));
 		}
+		for (const FFMCodexLocalMatchCardView::FSkill& Skill
+			: Card.PitchMiniVisibleTacticalSkills)
+		{
+			Result.PitchMiniVisibleTacticalSkills.Add(MakeSkill(Skill));
+		}
+		Result.PitchMiniTacticalMatchCount =
+			Card.PitchMiniTacticalMatchCount;
+		ensureAlwaysMsgf(Result.PitchMiniTacticalMatchCount >= 0
+				&& Result.PitchMiniTacticalMatchCount <= 2,
+			TEXT("Invalid Pitch Mini tactical-match count for %s: %d"),
+			*Card.CardId.ToString(), Result.PitchMiniTacticalMatchCount);
+		Result.bHasPitchMiniTacticalMatch =
+			Card.bHasPitchMiniTacticalMatch;
 		Result.PlayerFacingSerialLabel = Card.PlayerFacingSerialLabel;
 		Result.SkillLabels = Card.SkillLabels;
 		Result.SkillSummaryLabel = Card.SkillSummaryLabel.IsEmpty()
@@ -80,6 +93,28 @@ namespace FMCodexLocalMatchUMGPresentation
 		Result.bUsed = Card.bUsed;
 		Result.bDeployed = Card.bDeployed;
 		return Result;
+	}
+
+	void ResolvePitchMiniOwnershipAccent(
+		FFMCodexUMGCardViewModel& Card,
+		const EInitialTurnOrderPlayer CardSide,
+		const EInitialTurnOrderPlayer LocalViewerSide,
+		const FFMCodexUMGSidePrimaryColors& SidePrimaryColors)
+	{
+		if (CardSide != EInitialTurnOrderPlayer::PlayerA
+			&& CardSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			return;
+		}
+
+		Card.bHasPitchMiniOwnershipAccent = true;
+		Card.PitchMiniOwnershipAccentColor =
+			CardSide == EInitialTurnOrderPlayer::PlayerA
+				? SidePrimaryColors.PlayerAPrimaryColor
+				: SidePrimaryColors.PlayerBPrimaryColor;
+		Card.PitchMiniOwnershipAccentEdge = CardSide == LocalViewerSide
+			? EFMCodexUMGPitchMiniOwnershipEdge::Left
+			: EFMCodexUMGPitchMiniOwnershipEdge::Right;
 	}
 
 	EInitialTurnOrderPlayer OtherSide(const EInitialTurnOrderPlayer Side)
@@ -339,6 +374,21 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	const FString& PendingPlayerLabel,
 	const EInitialTurnOrderPlayer LocalViewerSide)
 {
+	return Build(InteractionView, ResolutionFeedback, DiagnosticMessage,
+		bAwaitingHandoff, PendingPlayerLabel, LocalViewerSide,
+		FFMCodexUMGSidePrimaryColors());
+}
+
+FFMCodexUMGMatchScreenViewModel
+FFMCodexLocalMatchUMGPresentationBuilder::Build(
+	const FFMCodexLocalMatchInteractionView& InteractionView,
+	const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
+	const FString& DiagnosticMessage,
+	const bool bAwaitingHandoff,
+	const FString& PendingPlayerLabel,
+	const EInitialTurnOrderPlayer LocalViewerSide,
+	const FFMCodexUMGSidePrimaryColors& SidePrimaryColors)
+{
 	using namespace FMCodexLocalMatchUMGPresentation;
 	FFMCodexUMGMatchScreenViewModel Result;
 	const FFMCodexLocalMatchScreenPresentation Screen =
@@ -497,6 +547,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			if (Slot.bOccupied)
 			{
 				SlotResult.Card = MakeCard(Slot.Card);
+				ResolvePitchMiniOwnershipAccent(SlotResult.Card,
+					Slot.Card.Side, LocalViewerSide, SidePrimaryColors);
 			}
 			RegionResult.Slots.Add(MoveTemp(SlotResult));
 		}

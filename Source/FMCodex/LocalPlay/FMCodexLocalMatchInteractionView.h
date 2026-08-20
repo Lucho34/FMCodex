@@ -81,6 +81,21 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	TArray<FAttribute> AttributeValues;
 	TArray<FSkill> Skills;
 	TArray<FSkill> EligibleTacticalSkills;
+	/**
+	 * Already-resolved Pitch Mini visibility. InteractionView owns the
+	 * attacking-side gate; presentation widgets must not infer ownership.
+	 */
+	TArray<FSkill> PitchMiniVisibleTacticalSkills;
+	/**
+	 * Resolved Pitch Mini count cue. Legal values are 0..2; presentation
+	 * widgets must not derive this from Skills or gameplay state.
+	 */
+	int32 PitchMiniTacticalMatchCount = 0;
+	/**
+	 * Resolved Pitch Mini status signal. True only for a deployed card on the
+	 * current attacking side with at least one TP-matching Tactical Skill.
+	 */
+	bool bHasPitchMiniTacticalMatch = false;
 	FString PlayerFacingSerialLabel;
 	FString AttributeSummary;
 	FString GoalkeeperAttributeSummary;

@@ -361,6 +361,12 @@ FText FFMCodexPlayerUIPresentationText::InMatchCompactRole(
 	return HandMicroCompactRole(CanonicalLabel);
 }
 
+FText FFMCodexPlayerUIPresentationText::PitchMiniCompactRole(
+	const FString& CanonicalLabel)
+{
+	return HandMicroCompactRole(CanonicalLabel);
+}
+
 FText FFMCodexPlayerUIPresentationText::Skill(const FString& CanonicalLabel)
 {
 	return CanonicalLabel.IsEmpty() || CanonicalLabel == TEXT("NO SKILL")

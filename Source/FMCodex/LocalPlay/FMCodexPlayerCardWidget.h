@@ -81,6 +81,7 @@ public:
 	UTexture2D* GetResolvedRoleIconTexture() const;
 	UTexture2D* GetResolvedLongShotSkillIconTexture() const;
 	FVector2D GetConfiguredDimensions() const;
+	static FBox2f CalculatePitchMiniHeroCrop(FIntPoint SourceSize);
 	bool CanExposeFullCardDetail() const;
 	bool IsDragSourcePresentationActive() const;
 	EFMCodexUMGCardInteractionState GetInteractionState() const;
@@ -191,13 +192,37 @@ private:
 	TObjectPtr<UBorder> PitchMiniPortraitFallback;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniPortraitFallbackAtmosphere;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniPortraitTonalWash;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniOwnershipRailLeft;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniOwnershipRailRight;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> PitchMiniTacticalMatchGlowSegments;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> PitchMiniTacticalMatchStrokeSegments;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniTacticalMatchPipTop;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniTacticalMatchPipBottom;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PitchMiniIdentityText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PitchMiniRoleText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UBorder> PitchMiniRarityAccent;
+	TObjectPtr<UTextBlock> PitchMiniIdentitySeparatorText;
 
 	UPROPERTY(Transient, BlueprintReadOnly,
 		Category = "Local Match|Visual Hooks",

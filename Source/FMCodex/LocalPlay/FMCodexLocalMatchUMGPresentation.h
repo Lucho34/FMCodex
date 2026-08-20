@@ -80,6 +80,36 @@ enum class EFMCodexUMGPitchVisualRole : uint8
 	Backfield
 };
 
+/** Already-resolved structural ownership marker for a deployed Pitch Mini. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGPitchMiniOwnershipEdge : uint8
+{
+	None,
+	Left,
+	Right
+};
+
+/**
+ * Replaceable presentation palette for the two match sides. The prototype
+ * defaults intentionally live above UMG widgets so later team selection can
+ * supply club-derived colors without adding club rules to card rendering.
+ */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGSidePrimaryColors
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,
+		Category = "Local Match|Pitch Mini")
+	FLinearColor PlayerAPrimaryColor = FLinearColor::FromSRGBColor(
+		FColor(0xA4, 0x47, 0x4F));
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,
+		Category = "Local Match|Pitch Mini")
+	FLinearColor PlayerBPrimaryColor = FLinearColor::FromSRGBColor(
+		FColor(0x4F, 0x78, 0x92));
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGAttributeViewModel
 {
@@ -159,6 +189,30 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FFMCodexUMGSkillViewModel> EligibleTacticalSkills;
+
+	/** Resolved by InteractionView: empty for the current defending side. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	TArray<FFMCodexUMGSkillViewModel> PitchMiniVisibleTacticalSkills;
+
+	/** Already resolved outside UMG; legal values are 0..2. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	int32 PitchMiniTacticalMatchCount = 0;
+
+	/** Already resolved outside UMG; the Widget only renders this state. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	bool bHasPitchMiniTacticalMatch = false;
+
+	/** Presentation-resolved side color; never inferred from club data in UMG. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FLinearColor PitchMiniOwnershipAccentColor = FLinearColor::Transparent;
+
+	/** Self uses the left rail; opponent uses the right rail. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	EFMCodexUMGPitchMiniOwnershipEdge PitchMiniOwnershipAccentEdge =
+		EFMCodexUMGPitchMiniOwnershipEdge::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	bool bHasPitchMiniOwnershipAccent = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	FString PlayerFacingSerialLabel;
@@ -707,4 +761,13 @@ public:
 		const FString& PendingPlayerLabel,
 		EInitialTurnOrderPlayer LocalViewerSide =
 			EInitialTurnOrderPlayer::PlayerA);
+
+	static FFMCodexUMGMatchScreenViewModel Build(
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
+		const FString& DiagnosticMessage,
+		bool bAwaitingHandoff,
+		const FString& PendingPlayerLabel,
+		EInitialTurnOrderPlayer LocalViewerSide,
+		const FFMCodexUMGSidePrimaryColors& SidePrimaryColors);
 };
