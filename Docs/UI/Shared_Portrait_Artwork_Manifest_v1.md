@@ -1,0 +1,154 @@
+# Shared Portrait Artwork Manifest v1
+
+Stage: `6.13.1.3.13.4`
+
+Canonical source: `Content/Data/CanonicalPlayerContent.json` (`Prototype40_v1`). Audit source: native soft mappings in `FFMCodexPlayerUIAssetReferences`, source PNG inventory, and imported `.uasset` inventory. Audit date: `2026-08-20`.
+
+## 1. Coverage summary
+
+| Surface | File/mapping coverage | Visual/conformance result |
+|---|---:|---|
+| Shared / Pitch-compatible | `10/40` mapped; all 10 source PNGs and all 10 packages exist | all 10 are crop-safe and usable now; `0/10` meets the final team-kit contract; all 10 are `KEEP / LATER POLISH` |
+| Shared fallback | `30/40` | no Shared mapping; restrained Pitch Mini fallback; `CREATE` required |
+| Shared invalid mapping/package | `0/40` | no dangling mapped path found |
+| Shared substantially unsuitable composition | `0/10` existing | no immediate composition rejection; later replacement is for team kit/background consistency |
+| Hand Micro | `16/40` dedicated packages exist | report only; frozen; no visual reconformance claimed in this Stage |
+| Full Card | `16/40` dedicated packages exist | report only; frozen; no Shared coverage credit |
+
+Honest production workload is `30 CREATE + 10 later-polish replacements`. Technical coverage is `10 valid + 30 fallback`; final-contract artwork conformance is `0/40` until the planned kit/background pass is approved. `FILE EXISTS`, `CROP-SAFE`, and `FINAL VISUAL CONFORMANCE` are deliberately separate facts.
+
+The earlier documentation shorthand that described only the 24 newly added players as fallback did not include six legacy players with Hand/Full-only art. The native Shared map proves the current Pitch Mini total is 10 mapped and 30 fallback.
+
+## 2. Manifest legend
+
+- `VALID`: Shared `Portrait` mapping exists and the matching source/package exists.
+- `FALLBACK`: `Portrait` is null; Pitch Mini uses the restrained fallback atmosphere.
+- `HM` / `FC`: dedicated Hand Micro / Full Card availability only. `YES` does not authorize cross-variant runtime reuse.
+- `Crop`: visual suitability of the current Shared source for the frozen `130x112` crop.
+- `KEEP / LATER POLISH`: usable current artwork; preserve until an approved replacement passes review.
+- `CREATE`: no Shared source or route exists.
+- Target paths are Unreal asset paths. Runtime soft object paths append `.<AssetName>`.
+
+## 3. Complete 40-player manifest
+
+| PlayerKey | Serial | Team | Chinese name | English name | Pos | Current Shared asset | Pitch result | HM | FC | Crop | Disposition | Target Shared asset | Kit family | Background family | Notes |
+|---|---:|---|---|---|---|---|---|:---:|:---:|:---:|---|---|---|---|---|
+| `Prototype.Arsenal.DavidRaya` | `001` | Arsenal | 大卫·拉亚 | David Raya | `GK` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01` | Arsenal GK | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.Arsenal.GabrielMagalhaes` | `002` | Arsenal | 加布里埃尔·马加良斯 | Gabriel Magalhães | `D` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01` | Arsenal outfield | Navy/teal + warm accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
+| `Prototype.Arsenal.WilliamSaliba` | `003` | Arsenal | 威廉·萨利巴 | William Saliba | `D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_WilliamSaliba_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_WilliamSaliba_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.Arsenal.BenWhite` | `004` | Arsenal | 本·怀特 | Ben White | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BenWhite_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.PieroHincapie` | `005` | Arsenal | 皮耶罗·因卡皮耶 | Piero Hincapié | `D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_PieroHincapie_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.JurrienTimber` | `006` | Arsenal | 尤里恩·廷贝尔 | Jurriën Timber | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_JurrienTimber_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.RiccardoCalafiori` | `007` | Arsenal | 里卡多·卡拉菲奥里 | Riccardo Calafiori | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_RiccardoCalafiori_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.MylesLewisSkelly` | `008` | Arsenal | 迈尔斯·刘易斯-斯凯利 | Myles Lewis-Skelly | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MylesLewisSkelly_01` | Arsenal outfield | Navy/teal + warm accent | First-batch crop/identity diversity case. |
+| `Prototype.Arsenal.MartinOdegaard` | `009` | Arsenal | 马丁·厄德高 | Martin Ødegaard | `M` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinOdegaard_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinOdegaard_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.Arsenal.EberechiEze` | `010` | Arsenal | 埃贝雷希·埃泽 | Eberechi Eze | `A/M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_EberechiEze_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.MikelMerino` | `011` | Arsenal | 米克尔·梅里诺 | Mikel Merino | `M` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MikelMerino_01` | Arsenal outfield | Navy/teal + warm accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
+| `Prototype.Arsenal.MartinZubimendi` | `012` | Arsenal | 马丁·苏比门迪 | Martín Zubimendi | `M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinZubimendi_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.DeclanRice` | `013` | Arsenal | 德克兰·赖斯 | Declan Rice | `M/D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DeclanRice_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DeclanRice_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.Arsenal.ChristianNorgaard` | `014` | Arsenal | 克里斯蒂安·诺尔高 | Christian Nørgaard | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ChristianNorgaard_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.BukayoSaka` | `015` | Arsenal | 布卡约·萨卡 | Bukayo Saka | `A` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BukayoSaka_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BukayoSaka_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.Arsenal.GabrielMartinelli` | `016` | Arsenal | 加布里埃尔·马丁内利 | Gabriel Martinelli | `A` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMartinelli_01` | Arsenal outfield | Navy/teal + warm accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
+| `Prototype.Arsenal.ViktorGyokeres` | `017` | Arsenal | 维克托·哲凯赖什 | Viktor Gyökeres | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ViktorGyokeres_01` | Arsenal outfield | Navy/teal + warm accent | First-batch striker/crop case. |
+| `Prototype.Arsenal.LeandroTrossard` | `018` | Arsenal | 莱安德罗·特罗萨德 | Leandro Trossard | `A/M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_LeandroTrossard_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.NoniMadueke` | `019` | Arsenal | 诺尼·马杜埃凯 | Noni Madueke | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_NoniMadueke_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.KaiHavertz` | `020` | Arsenal | 凯·哈弗茨 | Kai Havertz | `A/M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_KaiHavertz_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.GianluigiDonnarumma` | `021` | Manchester City | 吉安路易吉·多纳鲁马 | Gianluigi Donnarumma | `GK` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_GianluigiDonnarumma_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_GianluigiDonnarumma_01` | City GK | Navy/teal + cool accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.ManchesterCity.RubenDias` | `022` | Manchester City | 鲁本·迪亚斯 | Rúben Dias | `D` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RubenDias_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RubenDias_01` | City outfield | Navy/teal + cool accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.ManchesterCity.MarcGuehi` | `023` | Manchester City | 马克·格伊 | Marc Guéhi | `D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_MarcGuehi_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.JoskoGvardiol` | `024` | Manchester City | 约什科·格瓦迪奥尔 | Joško Gvardiol | `M/D` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JoskoGvardiol_01` | City outfield | Navy/teal + cool accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
+| `Prototype.ManchesterCity.NathanAke` | `025` | Manchester City | 纳坦·阿克 | Nathan Aké | `D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_NathanAke_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.JohnStones` | `026` | Manchester City | 约翰·斯通斯 | John Stones | `D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JohnStones_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.RayanAitNouri` | `027` | Manchester City | 拉扬·艾特-努里 | Rayan Aït-Nouri | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RayanAitNouri_01` | City outfield | Navy/teal + cool accent | First-batch multi-position/crop case. |
+| `Prototype.ManchesterCity.Rodri` | `028` | Manchester City | 罗德里 | Rodri | `M/D` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_Rodri_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_Rodri_01` | City outfield | Navy/teal + cool accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.ManchesterCity.TijjaniReijnders` | `029` | Manchester City | 蒂贾尼·赖因德斯 | Tijjani Reijnders | `M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_TijjaniReijnders_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.BernardoSilva` | `030` | Manchester City | 贝尔纳多·席尔瓦 | Bernardo Silva | `M` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_BernardoSilva_01` | City outfield | Navy/teal + cool accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
+| `Prototype.ManchesterCity.PhilFoden` | `031` | Manchester City | 菲尔·福登 | Phil Foden | `A/M` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_PhilFoden_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_PhilFoden_01` | City outfield | Navy/teal + cool accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
+| `Prototype.ManchesterCity.RayanCherki` | `032` | Manchester City | 拉扬·谢尔基 | Rayan Cherki | `A/M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RayanCherki_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.NicoGonzalez` | `033` | Manchester City | 尼科·冈萨雷斯 | Nico González | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_NicoGonzalez_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.MatheusNunes` | `034` | Manchester City | 马特乌斯·努内斯 | Matheus Nunes | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_MatheusNunes_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.MateoKovacic` | `035` | Manchester City | 马特奥·科瓦契奇 | Mateo Kovačić | `M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_MateoKovacic_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.ErlingHaaland` | `036` | Manchester City | 埃尔林·哈兰德 | Erling Haaland | `A` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | City outfield | Navy/teal + cool accent | Technically valid and crop-safe; tied hair is a first-batch replacement crop stress case. |
+| `Prototype.ManchesterCity.OmarMarmoush` | `037` | Manchester City | 奥马尔·马尔穆什 | Omar Marmoush | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_OmarMarmoush_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.JeremyDoku` | `038` | Manchester City | 杰里米·多库 | Jérémy Doku | `A` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_01` | City outfield | Navy/teal + cool accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
+| `Prototype.ManchesterCity.AntoineSemenyo` | `039` | Manchester City | 安托万·塞梅尼奥 | Antoine Semenyo | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_AntoineSemenyo_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+| `Prototype.ManchesterCity.Savinho` | `040` | Manchester City | 萨维尼奥 | Savinho | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_Savinho_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
+
+## 4. Existing artwork quality review
+
+### KEEP
+
+None. The ten mapped portraits are technically valid and compositionally usable, but all use the older generic dark training-shirt family.
+
+### KEEP / LATER POLISH
+
+- Arsenal: David Raya, William Saliba, Martin Ødegaard, Declan Rice, Bukayo Saka.
+- Manchester City: Gianluigi Donnarumma, Rúben Dias, Rodri, Phil Foden, Erling Haaland.
+
+All ten are opaque `1024x1536` RGB sources, have matching imported packages, remain face-first through the global crop, and require no per-player crop override. Preserve them until approved replacements exist. Their later-polish scope is team/GK shirt family and background-family consistency, not emergency composition repair.
+
+### REPLACE now
+
+None. No current Shared portrait conflicts enough with the crop contract to remove before replacement approval.
+
+### CREATE
+
+Thirty players have no Shared route. Six of them have Hand/Full-only identity provenance (Gabriel Magalhães, Mikel Merino, Gabriel Martinelli, Joško Gvardiol, Bernardo Silva, Jérémy Doku); the other twenty-four have no dedicated portrait variant in the repository.
+
+## 5. Hand Micro and Full Card report-only inventory
+
+Both frozen dedicated sets contain 16 imported packages:
+
+- Arsenal: David Raya, Gabriel Magalhães, William Saliba, Martin Ødegaard, Mikel Merino, Declan Rice, Bukayo Saka, Gabriel Martinelli.
+- Manchester City: Gianluigi Donnarumma, Rúben Dias, Joško Gvardiol, Rodri, Bernardo Silva, Phil Foden, Erling Haaland, Jérémy Doku.
+
+Hand Micro assets are under `/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout` and use `_HandMicro_ApprovedRuntime192`. Full Card assets remain under the team folders and use `_FullCardPilot_02` or `_FullCardHeroBust_01`. These files may provide identity/kit provenance during art review, but they are not Shared coverage and must not be routed to Pitch Mini.
+
+## 6. Recommended first batch — 10 players
+
+| Team | Player | Pos | Work | Why this validates the contract |
+|---|---|---|---|---|
+| Arsenal | David Raya | GK | later-polish replacement | goalkeeper kit separation, beard/face readability, existing crop comparison |
+| Arsenal | Gabriel Magalhães | D | create | fallback conversion with frozen Hand/Full identity provenance |
+| Arsenal | Myles Lewis-Skelly | M/D | create | multi-position, distinct young face/hair, no prior artwork |
+| Arsenal | Gabriel Martinelli | A | create | fallback conversion with prior identity provenance and outfield shirt test |
+| Arsenal | Viktor Gyökeres | A | create | striker silhouette and new-identity crop stress case |
+| Manchester City | Erling Haaland | A | later-polish replacement | tied long hair, large frame, sky-blue shirt and global crop stress case |
+| Manchester City | Joško Gvardiol | M/D | create | multi-position fallback with frozen identity provenance |
+| Manchester City | Bernardo Silva | M | create | compact face/shoulder composition with frozen identity provenance |
+| Manchester City | Jérémy Doku | A | create | complexion/hair/lighting diversity with frozen identity provenance |
+| Manchester City | Rayan Aït-Nouri | M/D | create | new identity, multi-position, no prior artwork |
+
+This is a balanced `5 Arsenal / 5 Manchester City` contract-validation sample with one GK, varied outfield roles, four multi-position/role stress cases, broad face/hair/skin variation, eight fallback conversions, and two direct before/after replacements. Review and correct this batch before continuing.
+
+## 7. Remaining batch sequence
+
+Each batch is ten players and must follow source review -> deterministic import -> fresh-process validation -> mapping -> focused tests -> PIE review.
+
+### Batch 2 — remaining Arsenal CREATE work
+
+Ben White, Piero Hincapié, Jurriën Timber, Riccardo Calafiori, Eberechi Eze, Mikel Merino, Martín Zubimendi, Christian Nørgaard, Leandro Trossard, Noni Madueke.
+
+### Batch 3 — Manchester City CREATE work
+
+Marc Guéhi, Nathan Aké, John Stones, Tijjani Reijnders, Rayan Cherki, Nico González, Matheus Nunes, Mateo Kovačić, Omar Marmoush, Antoine Semenyo.
+
+### Batch 4 — close remaining gaps and later-polish set
+
+- CREATE: Kai Havertz, Savinho.
+- Arsenal later-polish replacement: William Saliba, Martin Ødegaard, Declan Rice, Bukayo Saka.
+- Manchester City later-polish replacement: Gianluigi Donnarumma, Rúben Dias, Rodri, Phil Foden.
+
+After Batch 4, the planned workload totals exactly 40 production-contract portraits: 30 first-time Shared creations and 10 approved replacements of the older generic-shirt set.
+
+## 8. Batch approval gates
+
+No batch may claim coverage until:
+
+- the source and imported package both exist;
+- the exact PlayerKey mapping resolves in a fresh process;
+- texture settings and cook inclusion pass;
+- the `130x112` global crop remains face-first without per-player override;
+- kit and background contracts pass actual-size PIE review;
+- mint tactical pips/highlight and both ownership rail colors remain readable;
+- Full Card, Hand Micro, Drag Proxy, Pitch Mini structure, gameplay, and Authority remain unchanged.
