@@ -36,6 +36,17 @@ FIXTURE_KEYS = (
     "Prototype.Arsenal.GabrielMagalhaes",
     "Prototype.ManchesterCity.ErlingHaaland",
 )
+FIRST_BATCH_KEYS = (
+    "Prototype.Arsenal.DavidRaya",
+    "Prototype.Arsenal.MylesLewisSkelly",
+    "Prototype.Arsenal.GabrielMartinelli",
+    "Prototype.Arsenal.ViktorGyokeres",
+    "Prototype.ManchesterCity.JoskoGvardiol",
+    "Prototype.ManchesterCity.BernardoSilva",
+    "Prototype.ManchesterCity.JeremyDoku",
+    "Prototype.ManchesterCity.RayanAitNouri",
+)
+BATCH_CANDIDATE_STATUS = "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
 GABRIEL_V3_CANDIDATE_STATUS = (
     "V3 REFINEMENT CANDIDATE IMPORTED — PENDING FINAL MANUAL ARTWORK GATE"
 )
@@ -163,6 +174,52 @@ class SharedPortraitRuntimeDerivativePipelineTest(unittest.TestCase):
                 f"{expected_asset}.{entry['assetName']}",
             )
             self.assertTrue(expected_asset.startswith("/Game/UI/Portraits/"))
+
+    def test_first_batch_is_exact_unique_structurally_valid_and_provenanced(self) -> None:
+        self.assertEqual(len(FIRST_BATCH_KEYS), 8)
+        self.assertEqual(len(set(FIRST_BATCH_KEYS)), 8)
+        master_paths = set()
+        runtime_paths = set()
+        master_hashes = set()
+        for player_key in FIRST_BATCH_KEYS:
+            entry = self.by_key[player_key]
+            self.assertEqual(entry["visualStatus"], BATCH_CANDIDATE_STATUS)
+            master = master_path(self.project_root, entry)
+            derivative = runtime_derivative_path(self.project_root, entry)
+            validate_source_png(master, MASTER_SIZE)
+            validate_source_png(derivative, RUNTIME_SIZE)
+            self.assertNotIn(master, master_paths)
+            self.assertNotIn(derivative, runtime_paths)
+            master_paths.add(master)
+            runtime_paths.add(derivative)
+
+            master_hash = hashlib.sha256(master.read_bytes()).hexdigest().upper()
+            self.assertNotIn(master_hash, master_hashes)
+            master_hashes.add(master_hash)
+            first = encode_runtime_derivative(master)
+            second = encode_runtime_derivative(master)
+            self.assertEqual(first, second)
+            self.assertEqual(first, derivative.read_bytes())
+
+            record = self.provenance_by_key[player_key]
+            self.assertEqual(record["masterSha256"], master_hash)
+            self.assertEqual(
+                record["runtimeDerivativeSha256"],
+                hashlib.sha256(derivative.read_bytes()).hexdigest().upper(),
+            )
+            self.assertEqual(record["masterDimensions"], list(MASTER_SIZE))
+            self.assertEqual(
+                record["runtimeDerivativeDimensions"], list(RUNTIME_SIZE)
+            )
+            self.assertEqual(record["visualStatus"], BATCH_CANDIDATE_STATUS)
+            self.assertEqual(
+                record["runtimeAssetPath"],
+                f"{asset_path(entry)}.{entry['assetName']}",
+            )
+
+        self.assertEqual(len(master_paths), 8)
+        self.assertEqual(len(runtime_paths), 8)
+        self.assertEqual(len(master_hashes), 8)
 
 
 if __name__ == "__main__":

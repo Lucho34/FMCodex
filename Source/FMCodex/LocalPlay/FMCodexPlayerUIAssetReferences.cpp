@@ -64,9 +64,37 @@ FFMCodexPlayerUIAssetReferences::FFMCodexPlayerUIAssetReferences()
 		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
 			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01.T_Prototype_Arsenal_GabrielMagalhaes_01"))));
 	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.MylesLewisSkelly"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MylesLewisSkelly_01.T_Prototype_Arsenal_MylesLewisSkelly_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.GabrielMartinelli"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMartinelli_01.T_Prototype_Arsenal_GabrielMartinelli_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.ViktorGyokeres"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ViktorGyokeres_01.T_Prototype_Arsenal_ViktorGyokeres_01"))));
+	PrototypePortraits.Add(
 		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
 		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
 			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01.T_Prototype_ManchesterCity_ErlingHaaland_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JoskoGvardiol_01.T_Prototype_ManchesterCity_JoskoGvardiol_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.BernardoSilva"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_BernardoSilva_01.T_Prototype_ManchesterCity_BernardoSilva_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.JeremyDoku"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_01.T_Prototype_ManchesterCity_JeremyDoku_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.ManchesterCity.RayanAitNouri"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RayanAitNouri_01.T_Prototype_ManchesterCity_RayanAitNouri_01"))));
 	PrototypePortraits.Add(
 		TEXT("Prototype.ManchesterCity.PhilFoden"),
 		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(

@@ -1951,14 +1951,21 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 	ResolvedArtIdentity = Art.ArtIdentity;
 	ResolvedCardFrameTexture = Art.CardFrame.IsNull()
 		? nullptr : Art.CardFrame.LoadSynchronous();
-	const TSoftObjectPtr<UTexture2D>& ActivePortrait =
-		PresentationMode == EFMCodexPlayerCardPresentationMode::InteractionChoice
-			&& !Art.FullCardPortrait.IsNull()
-				? Art.FullCardPortrait : Art.Portrait;
+	const bool bPrototypePlayer = Presentation.CardId.ToString().StartsWith(
+		TEXT("Prototype."));
+	TSoftObjectPtr<UTexture2D> ActivePortrait = Art.Portrait;
+	if (PresentationMode
+		== EFMCodexPlayerCardPresentationMode::InteractionChoice)
+	{
+		ActivePortrait = !Art.FullCardPortrait.IsNull()
+			? Art.FullCardPortrait
+			: (bPrototypePlayer ? TSoftObjectPtr<UTexture2D>() : Art.Portrait);
+	}
 	ResolvedPortraitTexture = ActivePortrait.IsNull()
 		? nullptr : ActivePortrait.LoadSynchronous();
 	ResolvedHandMicroPortraitTexture = Art.HandMicroPortrait.IsNull()
-		? ResolvedPortraitTexture.Get() : Art.HandMicroPortrait.LoadSynchronous();
+		? (bPrototypePlayer ? nullptr : ResolvedPortraitTexture.Get())
+		: Art.HandMicroPortrait.LoadSynchronous();
 	ResolvedRoleIconTexture = Art.RoleIcon.IsNull()
 		? nullptr : Art.RoleIcon.LoadSynchronous();
 	ResolvedLongShotSkillIconTexture = Art.LongShotSkillIcon.IsNull()

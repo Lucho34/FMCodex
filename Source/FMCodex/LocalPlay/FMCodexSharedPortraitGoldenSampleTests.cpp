@@ -11,6 +11,25 @@
 
 namespace FMCodexSharedPortraitGoldenSampleTests
 {
+	const TArray<FName> FirstBatchPlayerKeys = {
+		TEXT("Prototype.Arsenal.DavidRaya"),
+		TEXT("Prototype.Arsenal.MylesLewisSkelly"),
+		TEXT("Prototype.Arsenal.GabrielMartinelli"),
+		TEXT("Prototype.Arsenal.ViktorGyokeres"),
+		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+		TEXT("Prototype.ManchesterCity.BernardoSilva"),
+		TEXT("Prototype.ManchesterCity.JeremyDoku"),
+		TEXT("Prototype.ManchesterCity.RayanAitNouri")
+	};
+
+	const TSet<FName> FirstBatchExistingDedicatedVariants = {
+		TEXT("Prototype.Arsenal.DavidRaya"),
+		TEXT("Prototype.Arsenal.GabrielMartinelli"),
+		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+		TEXT("Prototype.ManchesterCity.BernardoSilva"),
+		TEXT("Prototype.ManchesterCity.JeremyDoku")
+	};
+
 	bool HasRuntimeTextureContract(const UTexture2D* Texture)
 	{
 		return Texture != nullptr
@@ -23,6 +42,56 @@ namespace FMCodexSharedPortraitGoldenSampleTests
 			&& Texture->NeverStream
 			&& Texture->SRGB;
 	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexSharedPortraitFirstBatchRoutingTest,
+	"FMCodex.LocalPlay.SharedPortraitGoldenSample.03.FirstBatchRoutingTextureAndIsolation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexSharedPortraitFirstBatchRoutingTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexSharedPortraitGoldenSampleTests;
+	const FFMCodexPlayerUIAssetReferences& References =
+		FFMCodexPlayerUIAssetReferences::Get();
+	for (const FName PlayerKey : FirstBatchPlayerKeys)
+	{
+		const FFMCodexPlayerUICardArtReferences Art =
+			References.ResolveCardArt(PlayerKey);
+		const FString SharedPath = Art.Portrait.ToSoftObjectPath().ToString();
+		const FString PlayerSuffix = PlayerKey.ToString().RightChop(
+			PlayerKey.ToString().Find(TEXT("."), ESearchCase::CaseSensitive,
+				ESearchDir::FromEnd) + 1);
+		const FString ExpectedTeam = PlayerKey.ToString().Contains(
+			TEXT(".Arsenal.")) ? TEXT("Arsenal") : TEXT("ManchesterCity");
+		const FString ExpectedAsset = FString::Printf(
+			TEXT("T_Prototype_%s_%s_01"), *ExpectedTeam, *PlayerSuffix);
+		TestTrue(TEXT("First-batch Shared Portrait resolves its stable PlayerKey path"),
+			SharedPath.Contains(ExpectedAsset)
+				&& SharedPath.StartsWith(FString::Printf(
+					TEXT("/Game/UI/Portraits/PrototypeTeams/%s/"), *ExpectedTeam)));
+		TestTrue(TEXT("First-batch Shared Portrait uses the runtime texture contract"),
+			HasRuntimeTextureContract(Art.Portrait.LoadSynchronous()));
+
+		if (FirstBatchExistingDedicatedVariants.Contains(PlayerKey))
+		{
+			TestTrue(TEXT("Existing Full Card and Hand Micro routes remain isolated"),
+				!Art.FullCardPortrait.IsNull()
+					&& !Art.HandMicroPortrait.IsNull()
+					&& Art.FullCardPortrait.ToSoftObjectPath()
+						!= Art.Portrait.ToSoftObjectPath()
+					&& Art.HandMicroPortrait.ToSoftObjectPath()
+						!= Art.Portrait.ToSoftObjectPath());
+		}
+		else
+		{
+			TestTrue(TEXT("Shared-only batch players do not gain cross-Variant routes"),
+				Art.FullCardPortrait.IsNull()
+					&& Art.HandMicroPortrait.IsNull());
+		}
+	}
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -119,8 +188,8 @@ bool FFMCodexSharedPortraitGoldenSampleCoverageAndCookTest::RunTest(
 	}
 	TestEqual(TEXT("Canonical roster remains exactly 40 players"),
 		Definitions.Num(), 40);
-	TestEqual(TEXT("Gabriel increases technical Shared coverage to 11"),
-		SharedPortraitCount, 11);
+	TestEqual(TEXT("First production batch increases technical Shared coverage to 18"),
+		SharedPortraitCount, 18);
 	TestEqual(TEXT("Dedicated Full Card coverage remains unchanged"),
 		FullCardPortraitCount, 16);
 	TestEqual(TEXT("Dedicated Hand Micro coverage remains unchanged"),
@@ -158,6 +227,15 @@ bool FFMCodexSharedPortraitGoldenSampleCoverageAndCookTest::RunTest(
 				"SUPERSEDED BY V3"))
 			&& ProvenanceSource.Contains(
 				TEXT("VISUAL CONFORMANCE FAIL")));
+	for (const FName PlayerKey
+		: FMCodexSharedPortraitGoldenSampleTests::FirstBatchPlayerKeys)
+	{
+		TestTrue(TEXT("Provenance records every first-batch PlayerKey"),
+			ProvenanceSource.Contains(PlayerKey.ToString()));
+	}
+	TestTrue(TEXT("Every first-batch record remains pending the manual PIE gate"),
+		ProvenanceSource.Contains(TEXT(
+			"BATCH CANDIDATE — PENDING MANUAL PIE GATE")));
 
 	FString CardWidgetSource;
 	const FString CardWidgetPath = FPaths::Combine(

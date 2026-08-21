@@ -9951,9 +9951,13 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
 		TEXT("Prototype.Arsenal.MartinOdegaard"),
 		TEXT("Prototype.Arsenal.DeclanRice"),
+		TEXT("Prototype.Arsenal.GabrielMartinelli"),
 		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
 		TEXT("Prototype.ManchesterCity.PhilFoden"),
-		TEXT("Prototype.ManchesterCity.RubenDias")
+		TEXT("Prototype.ManchesterCity.RubenDias"),
+		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+		TEXT("Prototype.ManchesterCity.BernardoSilva"),
+		TEXT("Prototype.ManchesterCity.JeremyDoku")
 	};
 	const TSet<FName> ExpectedFullCardPilotArt = {
 		TEXT("Prototype.Arsenal.BukayoSaka"),

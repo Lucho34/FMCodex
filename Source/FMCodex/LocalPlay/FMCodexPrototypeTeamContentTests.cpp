@@ -51,15 +51,36 @@ namespace FMCodexPrototypeTeamContentTests
 
 	const TSet<FName> SharedPortraitPlayerKeys = {
 		TEXT("Prototype.Arsenal.DavidRaya"),
+		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
+		TEXT("Prototype.Arsenal.MylesLewisSkelly"),
+		TEXT("Prototype.Arsenal.GabrielMartinelli"),
+		TEXT("Prototype.Arsenal.ViktorGyokeres"),
 		TEXT("Prototype.Arsenal.WilliamSaliba"),
 		TEXT("Prototype.Arsenal.MartinOdegaard"),
 		TEXT("Prototype.Arsenal.DeclanRice"),
 		TEXT("Prototype.Arsenal.BukayoSaka"),
 		TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
 		TEXT("Prototype.ManchesterCity.RubenDias"),
+		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
 		TEXT("Prototype.ManchesterCity.Rodri"),
+		TEXT("Prototype.ManchesterCity.BernardoSilva"),
 		TEXT("Prototype.ManchesterCity.PhilFoden"),
-		TEXT("Prototype.ManchesterCity.ErlingHaaland")
+		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+		TEXT("Prototype.ManchesterCity.JeremyDoku"),
+		TEXT("Prototype.ManchesterCity.RayanAitNouri")
+	};
+
+	const TSet<FName> ProductionContractSharedPortraitPlayerKeys = {
+		TEXT("Prototype.Arsenal.DavidRaya"),
+		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
+		TEXT("Prototype.Arsenal.MylesLewisSkelly"),
+		TEXT("Prototype.Arsenal.GabrielMartinelli"),
+		TEXT("Prototype.Arsenal.ViktorGyokeres"),
+		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+		TEXT("Prototype.ManchesterCity.BernardoSilva"),
+		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+		TEXT("Prototype.ManchesterCity.JeremyDoku"),
+		TEXT("Prototype.ManchesterCity.RayanAitNouri")
 	};
 
 	bool IsCodeSafeId(const FName Id)
@@ -527,35 +548,46 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 	{
 		const FFMCodexPlayerUICardArtReferences Art =
 			References.ResolveCardArt(Definition.PlayerKey);
-		const TSoftObjectPtr<UTexture2D>& FullCardPortrait =
-			Art.FullCardPortrait.IsNull() ? Art.Portrait : Art.FullCardPortrait;
 		if (ExistingArtworkPlayerKeys.Contains(Definition.PlayerKey))
 		{
 			UTexture2D* HandMicro = Art.HandMicroPortrait.LoadSynchronous();
-			UTexture2D* FullCard = FullCardPortrait.LoadSynchronous();
+			UTexture2D* FullCard = Art.FullCardPortrait.LoadSynchronous();
 			TestTrue(TEXT("Existing Hand Micro artwork reference remains valid"),
 				!Art.HandMicroPortrait.IsNull() && HandMicro != nullptr
 					&& HandMicro->GetImportedSize() == FIntPoint(192, 128));
 			TestTrue(TEXT("Existing Full Card artwork reference remains valid"),
-				!FullCardPortrait.IsNull() && FullCard != nullptr
+				!Art.FullCardPortrait.IsNull() && FullCard != nullptr
 					&& FullCard->GetImportedSize() == FIntPoint(1024, 1536));
 			++HandMicroCoverage;
 			++FullCardCoverage;
-			if (SharedPortraitPlayerKeys.Contains(Definition.PlayerKey))
-			{
-				TestTrue(TEXT("Existing shared portrait remains available to Pitch Mini"),
-					!Art.Portrait.IsNull()
-						&& Art.Portrait.LoadSynchronous() != nullptr);
-				++SharedPortraitCoverage;
-			}
 		}
 		else
 		{
-			TestTrue(TEXT("New player safely uses established no-art fallback"),
-				Art.ArtIdentity.IsNone()
-					&& Art.Portrait.IsNull()
-					&& Art.FullCardPortrait.IsNull()
+			TestTrue(TEXT("Shared coverage does not populate dedicated variants"),
+				Art.FullCardPortrait.IsNull()
 					&& Art.HandMicroPortrait.IsNull());
+		}
+		if (SharedPortraitPlayerKeys.Contains(Definition.PlayerKey))
+		{
+			UTexture2D* SharedPortrait = Art.Portrait.LoadSynchronous();
+			TestTrue(TEXT("Shared portrait is available through the Pitch Mini route"),
+				!Art.Portrait.IsNull()
+					&& SharedPortrait != nullptr);
+			if (SharedPortrait != nullptr)
+			{
+				const FIntPoint ExpectedSize =
+					ProductionContractSharedPortraitPlayerKeys.Contains(
+						Definition.PlayerKey)
+						? FIntPoint(512, 768) : FIntPoint(1024, 1536);
+				TestEqual(TEXT("Shared portrait uses its recorded pipeline generation"),
+					SharedPortrait->GetImportedSize(), ExpectedSize);
+			}
+			++SharedPortraitCoverage;
+		}
+		else
+		{
+			TestTrue(TEXT("Uncovered Pitch Mini keeps the established portrait fallback"),
+				Art.Portrait.IsNull());
 			++SafeFallbackCoverage;
 		}
 		TestFalse(TEXT("Localized player identity remains live with or without art"),
@@ -566,10 +598,10 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 		HandMicroCoverage, 16);
 	TestEqual(TEXT("Full Card dedicated coverage is preserved at 16/40"),
 		FullCardCoverage, 16);
-	TestEqual(TEXT("Pitch Mini-compatible shared portrait coverage is 10/40"),
-		SharedPortraitCoverage, 10);
-	TestEqual(TEXT("New player safe fallback coverage is 24/40"),
-		SafeFallbackCoverage, 24);
+	TestEqual(TEXT("Pitch Mini-compatible shared portrait coverage is 18/40"),
+		SharedPortraitCoverage, 18);
+	TestEqual(TEXT("Pitch Mini shared fallback coverage is 22/40"),
+		SafeFallbackCoverage, 22);
 	return true;
 }
 

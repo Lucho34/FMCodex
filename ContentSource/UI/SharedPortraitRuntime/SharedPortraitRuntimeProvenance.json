@@ -3,6 +3,98 @@
   "description": "Generated Shared Portrait runtime-source provenance; Art Masters remain the source of truth.",
   "entries": [
     {
+      "playerKey": "Prototype.Arsenal.DavidRaya",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_DavidRaya_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "3888B5EDA1AC3DAED0E07C56E1506458A9663E489EF0F5A05D52914810269905",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_DavidRaya_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "EE2A1E711C6680C9B251F8A77727D651F8C10BE93F5F791EF8CDC556CB75BB04",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01.T_Prototype_Arsenal_DavidRaya_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "replacementHistory": [
+        {
+          "version": "legacy-shared",
+          "masterSha256": "95101AC67E2B56D07E03E35449FE408E62723710F944E5839B8E1E6253DD80CD",
+          "visualStatus": "TECHNICAL COVERAGE — SUPERSEDED BY FIRST-BATCH ART-CONTRACT CANDIDATE",
+          "reason": "Stable Shared Portrait route was already covered, but the source predated the 1024x1536 Master-to-derivative provenance workflow and approved goalkeeper production-family gate."
+        }
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_MylesLewisSkelly_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "0BF1AA131D7BFBE4505539ABDB2F68B033D67AAD34E6652A1AD08B8F20D8DADC",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_MylesLewisSkelly_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "C30EEC77D97A2330E3DC19ABBB4A5B698241A6B3EF7E6271147E16DC3671DE82",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MylesLewisSkelly_01.T_Prototype_Arsenal_MylesLewisSkelly_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMartinelli",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_GabrielMartinelli_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "D8D4EB7B16C09D40A43E4B41CC6B37DE22EE16172E9C5728AFAD79E48866F922",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_GabrielMartinelli_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "4922FD1D4C21B234AA0FCDB759FF96D2B5983CBEB96765D5CCD46550E250C9D3",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMartinelli_01.T_Prototype_Arsenal_GabrielMartinelli_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.ViktorGyokeres",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_ViktorGyokeres_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "78E5BB9F3ED018E0DCDF4B9DCF0F149990227D824036D1B31D85ECEEA9BA90BD",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_ViktorGyokeres_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "A8BBDB009A0850754EF02BC3AEB1DD69E72A348C17778144ADC16D1BCF9914D7",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ViktorGyokeres_01.T_Prototype_Arsenal_ViktorGyokeres_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
       "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
       "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_GabrielMagalhaes_01.png",
       "masterDimensions": [
@@ -68,6 +160,90 @@
           "reason": "Frozen Pitch Mini crop retained insufficient bilateral shoulders, upper torso, and Manchester City sky-blue kit presence."
         }
       ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_JoskoGvardiol_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "DC3368377FA57E391CCE80B76D788B9C1ABEA4C5236C0068EDF6B19096F958DC",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/ManchesterCity/T_Prototype_ManchesterCity_JoskoGvardiol_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "2CD083D595ECAFB1A87B7A0B66B372D0BA0D1811CF812401681CECDDBC989FC1",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JoskoGvardiol_01.T_Prototype_ManchesterCity_JoskoGvardiol_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.BernardoSilva",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_BernardoSilva_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "2FB44F7DD391357B17C62654AA2DA0870DC1099E7902A148306F70B1E14909E2",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/ManchesterCity/T_Prototype_ManchesterCity_BernardoSilva_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "55BDC10FED47AC336820051E34CDEF965F3BB1483BD0B6B6D5E7D5DEA5253B25",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_BernardoSilva_01.T_Prototype_ManchesterCity_BernardoSilva_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JeremyDoku",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_JeremyDoku_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "0D0EEBC1F1369D9287E7851F4F0225C6F0608F4F2B91FA04671FD31E2E40BEA3",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "E39E187AC1BC0E0E438F4B5A8452ACBE8ABBAE1D51120245288CE950C3250139",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_01.T_Prototype_ManchesterCity_JeremyDoku_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_RayanAitNouri_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "C29151663D382D69107A8291ED701886EC986D55AD1A62553594352B1345F07B",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/ManchesterCity/T_Prototype_ManchesterCity_RayanAitNouri_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "464767A563E8EF8FD6386C59C109C943D52867D4C1FB38847EC9342F42F5AB5C",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RayanAitNouri_01.T_Prototype_ManchesterCity_RayanAitNouri_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
     }
   ]
 }

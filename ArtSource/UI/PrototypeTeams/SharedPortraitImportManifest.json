@@ -24,7 +24,34 @@
     {
       "playerKey": "Prototype.Arsenal.DavidRaya",
       "team": "Arsenal",
-      "assetName": "T_Prototype_Arsenal_DavidRaya_01"
+      "assetName": "T_Prototype_Arsenal_DavidRaya_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "replacementHistory": [
+        {
+          "version": "legacy-shared",
+          "masterSha256": "95101AC67E2B56D07E03E35449FE408E62723710F944E5839B8E1E6253DD80CD",
+          "visualStatus": "TECHNICAL COVERAGE — SUPERSEDED BY FIRST-BATCH ART-CONTRACT CANDIDATE",
+          "reason": "Stable Shared Portrait route was already covered, but the source predated the 1024x1536 Master-to-derivative provenance workflow and approved goalkeeper production-family gate."
+        }
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_MylesLewisSkelly_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMartinelli",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_GabrielMartinelli_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.ViktorGyokeres",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_ViktorGyokeres_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
     },
     {
       "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
@@ -62,6 +89,30 @@
           "reason": "Frozen Pitch Mini crop retained insufficient bilateral shoulders, upper torso, and Manchester City sky-blue kit presence."
         }
       ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_JoskoGvardiol_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.BernardoSilva",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_BernardoSilva_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JeremyDoku",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_JeremyDoku_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_RayanAitNouri_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
     },
     {
       "playerKey": "Prototype.ManchesterCity.PhilFoden",
