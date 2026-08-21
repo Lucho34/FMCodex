@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "balanceContentVersion": "Prototype40_v1",
   "sourceWorkbook": "FMCodex_40_Player_Attribute_Skill_PointRules.xlsx",
   "sourceWorkbookSha256": "fd15a6af82df81efd991da9f966ff56c173f77c4e205a96c4fc8957eb3a9e63c",
@@ -7,6 +7,7 @@
   "players": [
     {
       "playerKey": "Prototype.Arsenal.DavidRaya",
+      "displayName": "拉亚",
       "team": "Arsenal",
       "rosterSlot": 1,
       "displaySerial": 1,
@@ -34,6 +35,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
+      "displayName": "加布里埃尔",
       "team": "Arsenal",
       "rosterSlot": 2,
       "displaySerial": 2,
@@ -65,6 +67,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.WilliamSaliba",
+      "displayName": "萨利巴",
       "team": "Arsenal",
       "rosterSlot": 3,
       "displaySerial": 3,
@@ -96,6 +99,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.BenWhite",
+      "displayName": "怀特",
       "team": "Arsenal",
       "rosterSlot": 4,
       "displaySerial": 4,
@@ -133,6 +137,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.PieroHincapie",
+      "displayName": "因卡皮耶",
       "team": "Arsenal",
       "rosterSlot": 5,
       "displaySerial": 5,
@@ -164,6 +169,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.JurrienTimber",
+      "displayName": "廷贝尔",
       "team": "Arsenal",
       "rosterSlot": 6,
       "displaySerial": 6,
@@ -201,6 +207,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
+      "displayName": "卡拉菲奥里",
       "team": "Arsenal",
       "rosterSlot": 7,
       "displaySerial": 7,
@@ -238,6 +245,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
+      "displayName": "刘易斯-斯凯利",
       "team": "Arsenal",
       "rosterSlot": 8,
       "displaySerial": 8,
@@ -269,6 +277,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.MartinOdegaard",
+      "displayName": "厄德高",
       "team": "Arsenal",
       "rosterSlot": 9,
       "displaySerial": 9,
@@ -316,6 +325,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.EberechiEze",
+      "displayName": "埃泽",
       "team": "Arsenal",
       "rosterSlot": 10,
       "displaySerial": 10,
@@ -358,6 +368,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.MikelMerino",
+      "displayName": "梅里诺",
       "team": "Arsenal",
       "rosterSlot": 11,
       "displaySerial": 11,
@@ -389,6 +400,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.MartinZubimendi",
+      "displayName": "苏比门迪",
       "team": "Arsenal",
       "rosterSlot": 12,
       "displaySerial": 12,
@@ -426,6 +438,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.DeclanRice",
+      "displayName": "赖斯",
       "team": "Arsenal",
       "rosterSlot": 13,
       "displaySerial": 13,
@@ -473,6 +486,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.ChristianNorgaard",
+      "displayName": "诺尔高",
       "team": "Arsenal",
       "rosterSlot": 14,
       "displaySerial": 14,
@@ -504,6 +518,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.BukayoSaka",
+      "displayName": "萨卡",
       "team": "Arsenal",
       "rosterSlot": 15,
       "displaySerial": 15,
@@ -546,6 +561,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.GabrielMartinelli",
+      "displayName": "马丁内利",
       "team": "Arsenal",
       "rosterSlot": 16,
       "displaySerial": 16,
@@ -583,6 +599,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.ViktorGyokeres",
+      "displayName": "哲凯赖什",
       "team": "Arsenal",
       "rosterSlot": 17,
       "displaySerial": 17,
@@ -620,6 +637,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.LeandroTrossard",
+      "displayName": "特罗萨德",
       "team": "Arsenal",
       "rosterSlot": 18,
       "displaySerial": 18,
@@ -651,6 +669,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.NoniMadueke",
+      "displayName": "马杜埃凯",
       "team": "Arsenal",
       "rosterSlot": 19,
       "displaySerial": 19,
@@ -693,6 +712,7 @@
     },
     {
       "playerKey": "Prototype.Arsenal.KaiHavertz",
+      "displayName": "哈弗茨",
       "team": "Arsenal",
       "rosterSlot": 20,
       "displaySerial": 20,
@@ -724,6 +744,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",
+      "displayName": "多纳鲁马",
       "team": "Manchester City",
       "rosterSlot": 1,
       "displaySerial": 21,
@@ -751,6 +772,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.RubenDias",
+      "displayName": "迪亚斯",
       "team": "Manchester City",
       "rosterSlot": 2,
       "displaySerial": 22,
@@ -782,6 +804,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.MarcGuehi",
+      "displayName": "格伊",
       "team": "Manchester City",
       "rosterSlot": 3,
       "displaySerial": 23,
@@ -813,6 +836,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
+      "displayName": "格瓦迪奥尔",
       "team": "Manchester City",
       "rosterSlot": 4,
       "displaySerial": 24,
@@ -850,6 +874,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.NathanAke",
+      "displayName": "阿克",
       "team": "Manchester City",
       "rosterSlot": 5,
       "displaySerial": 25,
@@ -881,6 +906,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.JohnStones",
+      "displayName": "斯通斯",
       "team": "Manchester City",
       "rosterSlot": 6,
       "displaySerial": 26,
@@ -912,6 +938,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
+      "displayName": "艾特-努里",
       "team": "Manchester City",
       "rosterSlot": 7,
       "displaySerial": 27,
@@ -949,6 +976,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.Rodri",
+      "displayName": "罗德里",
       "team": "Manchester City",
       "rosterSlot": 8,
       "displaySerial": 28,
@@ -991,6 +1019,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.TijjaniReijnders",
+      "displayName": "赖因德斯",
       "team": "Manchester City",
       "rosterSlot": 9,
       "displaySerial": 29,
@@ -1033,6 +1062,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.BernardoSilva",
+      "displayName": "贝尔纳多",
       "team": "Manchester City",
       "rosterSlot": 10,
       "displaySerial": 30,
@@ -1075,6 +1105,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.PhilFoden",
+      "displayName": "福登",
       "team": "Manchester City",
       "rosterSlot": 11,
       "displaySerial": 31,
@@ -1117,6 +1148,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.RayanCherki",
+      "displayName": "谢尔基",
       "team": "Manchester City",
       "rosterSlot": 12,
       "displaySerial": 32,
@@ -1154,6 +1186,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.NicoGonzalez",
+      "displayName": "冈萨雷斯",
       "team": "Manchester City",
       "rosterSlot": 13,
       "displaySerial": 33,
@@ -1185,6 +1218,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.MatheusNunes",
+      "displayName": "努内斯",
       "team": "Manchester City",
       "rosterSlot": 14,
       "displaySerial": 34,
@@ -1222,6 +1256,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.MateoKovacic",
+      "displayName": "科瓦契奇",
       "team": "Manchester City",
       "rosterSlot": 15,
       "displaySerial": 35,
@@ -1253,6 +1288,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
+      "displayName": "哈兰德",
       "team": "Manchester City",
       "rosterSlot": 16,
       "displaySerial": 36,
@@ -1284,6 +1320,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.OmarMarmoush",
+      "displayName": "马尔穆什",
       "team": "Manchester City",
       "rosterSlot": 17,
       "displaySerial": 37,
@@ -1326,6 +1363,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.JeremyDoku",
+      "displayName": "多库",
       "team": "Manchester City",
       "rosterSlot": 18,
       "displaySerial": 38,
@@ -1368,6 +1406,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.AntoineSemenyo",
+      "displayName": "塞梅尼奥",
       "team": "Manchester City",
       "rosterSlot": 19,
       "displaySerial": 39,
@@ -1399,6 +1438,7 @@
     },
     {
       "playerKey": "Prototype.ManchesterCity.Savinho",
+      "displayName": "萨维尼奥",
       "team": "Manchester City",
       "rosterSlot": 20,
       "displaySerial": 40,

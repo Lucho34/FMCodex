@@ -226,7 +226,7 @@ namespace FMCodexLocalMatchInteractionView
 		if (const FFMCodexPrototypePlayerDefinition* Prototype =
 			FFMCodexPrototypeTeamContent::Find(CardId))
 		{
-			View.DisplayLabel = Prototype->Card.DisplayName.ToString();
+			View.DisplayLabel = Prototype->PreferredDisplayName.ToString();
 			View.EnglishDisplayLabel =
 				Prototype->EnglishDisplayName.ToString();
 			View.NationalityLabel =

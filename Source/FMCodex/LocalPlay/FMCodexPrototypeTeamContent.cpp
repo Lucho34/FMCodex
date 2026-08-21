@@ -14,7 +14,7 @@ namespace FMCodexPrototypeTeamContent
 	const FName ManchesterCityId(TEXT("Prototype.Team.ManchesterCity"));
 	constexpr int32 CanonicalPlayersPerTeam = 20;
 	constexpr int32 CanonicalPlayerCount = CanonicalPlayersPerTeam * 2;
-	constexpr int32 RuntimeSchemaVersion = 1;
+	constexpr int32 RuntimeSchemaVersion = 2;
 
 	struct FCatalog
 	{
@@ -375,10 +375,17 @@ namespace FMCodexPrototypeTeamContent
 				OutErrors.Add(Context + TEXT(": Full Card serial format is not derived from DisplaySerial"));
 			}
 			if (Definition.Card.DisplayName.IsEmpty()
+				|| Definition.CanonicalChineseDisplayName.IsEmpty()
+				|| Definition.PreferredDisplayName.IsEmpty()
 				|| Definition.EnglishDisplayName.IsEmpty()
 				|| Definition.TeamDisplayName.IsEmpty())
 			{
 				OutErrors.Add(Context + TEXT(": required identity/display field is empty"));
+			}
+			if (!Definition.Card.DisplayName.EqualTo(
+				Definition.CanonicalChineseDisplayName))
+			{
+				OutErrors.Add(Context + TEXT(": canonical Chinese identity fields diverge"));
 			}
 			if (Definition.Card.PositionTypes.IsEmpty())
 			{
@@ -520,6 +527,7 @@ namespace FMCodexPrototypeTeamContent
 			FFMCodexPrototypePlayerDefinition Definition;
 			FString PlayerKey;
 			FString Team;
+			FString DisplayName;
 			FString ChineseName;
 			FString EnglishName;
 			FString Position;
@@ -527,6 +535,8 @@ namespace FMCodexPrototypeTeamContent
 			TryReadString(PlayerObject, TEXT("playerKey"), PlayerKey,
 				Result.Errors, Context);
 			TryReadString(PlayerObject, TEXT("team"), Team,
+				Result.Errors, Context);
+			TryReadString(PlayerObject, TEXT("displayName"), DisplayName,
 				Result.Errors, Context);
 			TryReadString(PlayerObject, TEXT("chineseName"), ChineseName,
 				Result.Errors, Context);
@@ -546,6 +556,9 @@ namespace FMCodexPrototypeTeamContent
 			Definition.TeamId = TeamIdFromSource(Team);
 			Definition.TeamDisplayName = TeamDisplayName(Definition.TeamId);
 			Definition.Card.DisplayName = FText::FromString(ChineseName);
+			Definition.CanonicalChineseDisplayName =
+				FText::FromString(ChineseName);
+			Definition.PreferredDisplayName = FText::FromString(DisplayName);
 			Definition.EnglishDisplayName = FText::FromString(EnglishName);
 			Definition.PlayerFacingSerial = FString::Printf(
 				TEXT("%03d"), Definition.DisplaySerial);
@@ -731,7 +744,16 @@ FName FFMCodexPrototypeTeamContent::TeamIdForCard(const FName CardId)
 FText FFMCodexPrototypeTeamContent::PlayerDisplayName(const FName CardId)
 {
 	const FFMCodexPrototypePlayerDefinition* Definition = Find(CardId);
-	return Definition == nullptr ? FText::GetEmpty() : Definition->Card.DisplayName;
+	return Definition == nullptr
+		? FText::GetEmpty() : Definition->PreferredDisplayName;
+}
+
+FText FFMCodexPrototypeTeamContent::CanonicalChinesePlayerName(
+	const FName CardId)
+{
+	const FFMCodexPrototypePlayerDefinition* Definition = Find(CardId);
+	return Definition == nullptr
+		? FText::GetEmpty() : Definition->CanonicalChineseDisplayName;
 }
 
 FText FFMCodexPrototypeTeamContent::TeamDisplayName(const FName CardId)

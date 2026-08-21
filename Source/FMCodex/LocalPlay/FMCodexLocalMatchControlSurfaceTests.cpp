@@ -9983,12 +9983,18 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 			&& Definition != nullptr
 			&& Definition->Card.DisplayName.ToString()
 				== Expected.LegalChineseName
+			&& Definition->CanonicalChineseDisplayName.ToString()
+				== Expected.LegalChineseName
+			&& Definition->PreferredDisplayName.ToString()
+				== Expected.ShortName
 			&& !Definition->EnglishDisplayName.IsEmpty()
 			&& !Definition->NationalityDisplayName.IsEmpty()
 			&& !Definition->TeamDisplayName.IsEmpty()
 			&& FFMCodexPlayerUIPresentationText::PlayerName(
 				Expected.CardId, FString()).ToString()
-				== Expected.LegalChineseName;
+				== Expected.ShortName
+			&& FFMCodexPrototypeTeamContent::CanonicalChinesePlayerName(
+				Expected.CardId).ToString() == Expected.LegalChineseName;
 
 		const FFMCodexPlayerUICardArtReferences Art =
 			FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(

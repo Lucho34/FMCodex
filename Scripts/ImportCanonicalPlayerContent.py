@@ -36,7 +36,8 @@ SOURCE_HEADERS = (
     "Skill2", "S2_MinTP", "S2_MaxTP",
     "Skill3", "S3_MinTP", "S3_MaxTP", "Notes",
 )
-RUNTIME_SCHEMA_VERSION = 1
+CONFIG_SCHEMA_VERSION = 2
+RUNTIME_SCHEMA_VERSION = 2
 PLAYER_KEY_PATTERN = re.compile(r"^[A-Za-z0-9.]+$")
 
 
@@ -161,8 +162,10 @@ def optional_text(value: Any) -> str:
 
 
 def validate_config(config: dict[str, Any], errors: list[str]) -> dict[tuple[str, str], dict[str, Any]]:
-    if config.get("schemaVersion") != 1:
-        errors.append("Import config schemaVersion must be 1")
+    if config.get("schemaVersion") != CONFIG_SCHEMA_VERSION:
+        errors.append(
+            f"Import config schemaVersion must be {CONFIG_SCHEMA_VERSION}"
+        )
     version = optional_text(config.get("balanceContentVersion"))
     if not version:
         errors.append("Import config balanceContentVersion is required")
@@ -184,6 +187,7 @@ def validate_config(config: dict[str, Any], errors: list[str]) -> dict[tuple[str
         team = optional_text(entry.get("team"))
         english_name = optional_text(entry.get("englishName"))
         player_key = optional_text(entry.get("playerKey"))
+        display_name = optional_text(entry.get("displayName"))
         join_key = (team, english_name)
         if team not in TEAMS:
             errors.append(f"Import config player {index}: invalid team {team!r}")
@@ -193,6 +197,8 @@ def validate_config(config: dict[str, Any], errors: list[str]) -> dict[tuple[str
             errors.append(f"Import config duplicate mapping: {team} / {english_name}")
         if not PLAYER_KEY_PATTERN.fullmatch(player_key):
             errors.append(f"Import config player {index}: invalid PlayerKey {player_key!r}")
+        if not display_name:
+            errors.append(f"Import config player {index}: displayName is required")
         if player_key in player_keys:
             errors.append(f"Import config duplicate PlayerKey: {player_key}")
         player_keys.add(player_key)
@@ -326,6 +332,7 @@ def parse_players(rows: list[list[Any]], config: dict[str, Any], workbook_hash: 
         errors.extend(row_errors)
         players.append({
             "playerKey": identity.get("playerKey", ""),
+            "displayName": optional_text(identity.get("displayName")),
             "team": team,
             "rosterSlot": roster_slot,
             "displaySerial": display_serial,

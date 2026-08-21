@@ -45,7 +45,8 @@
 - `PlayerKey`：稳定技术身份，进入运行时 `CardId`；不从姓名或展示编号临时推导。
 - `Team + RosterSlot`：每队 1–20 的确定性阵容顺序；`RosterSlot` 不是身份。
 - `DisplaySerial`：工作簿 `PlayerId` 的展示投影，只生成三位球员可见编号，不得参与 authority 或 lookup。
-- `ChineseName / EnglishName / Position / Notes`：工作簿原值。
+- `ChineseName / EnglishName / Position / Notes`：工作簿原值；中英文完整身份名与紧凑展示名分离保存。
+- `DisplayName`：`CanonicalPlayerImportConfig.json` 中按 `PlayerKey` 显式配置的首选球员可见标题/紧凑名，40/40 必填；不得由 Widget 从姓名标点、姓氏、字符数或英文名推导。
 - `OutfieldAttributes` 与 `GoalkeeperAttributes`：严格二选一；GK 只有后者，非 GK 只有前者。
 - `Skills`：0–3 个 `{ SkillId, MinTP, MaxTP }`。运行时 RuleId 为 `Canonical.Skill.<SkillId>.<MinTP>.<MaxTP>`，显示名仍由现有 `ESkillRuleType` 映射。
 - `Presentation`：现有已批准的国籍、出生日期、身高、体重、稀有度覆盖；未提供时使用明确安全默认，不从工作簿外猜测事实。

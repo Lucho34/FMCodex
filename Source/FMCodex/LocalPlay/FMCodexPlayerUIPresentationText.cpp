@@ -84,44 +84,8 @@ FText FFMCodexPlayerUIPresentationText::InMatchShortPlayerName(
 	const FName CardId,
 	const FString& FallbackLabel)
 {
-	// Explicit In-Match Full Card aliases. They are intentionally not derived
-	// from the legal display name so compound surnames and common football
-	// names remain a deterministic presentation contract.
-	if (CardId == TEXT("Prototype.Arsenal.DavidRaya"))
-		return LOCTEXT("InMatchShortDavidRaya", "拉亚");
-	if (CardId == TEXT("Prototype.Arsenal.WilliamSaliba"))
-		return LOCTEXT("InMatchShortWilliamSaliba", "萨利巴");
-	if (CardId == TEXT("Prototype.Arsenal.BukayoSaka"))
-		return LOCTEXT("InMatchShortBukayoSaka", "萨卡");
-	if (CardId == TEXT("Prototype.Arsenal.MartinOdegaard"))
-		return LOCTEXT("InMatchShortMartinOdegaard", "厄德高");
-	if (CardId == TEXT("Prototype.Arsenal.DeclanRice"))
-		return LOCTEXT("InMatchShortDeclanRice", "赖斯");
-	if (CardId == TEXT("Prototype.Arsenal.GabrielMartinelli"))
-		return LOCTEXT("InMatchShortGabrielMartinelli", "马丁内利");
-	if (CardId == TEXT("Prototype.Arsenal.GabrielMagalhaes"))
-		return LOCTEXT("InMatchShortGabrielMagalhaes", "加布里埃尔");
-	if (CardId == TEXT("Prototype.Arsenal.MikelMerino"))
-		return LOCTEXT("InMatchShortMikelMerino", "梅里诺");
-	if (CardId == TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"))
-		return LOCTEXT("InMatchShortGianluigiDonnarumma", "多纳鲁马");
-	if (CardId == TEXT("Prototype.ManchesterCity.ErlingHaaland"))
-		return LOCTEXT("InMatchShortErlingHaaland", "哈兰德");
-	if (CardId == TEXT("Prototype.ManchesterCity.PhilFoden"))
-		return LOCTEXT("InMatchShortPhilFoden", "福登");
-	if (CardId == TEXT("Prototype.ManchesterCity.Rodri"))
-		return LOCTEXT("InMatchShortRodri", "罗德里");
-	if (CardId == TEXT("Prototype.ManchesterCity.RubenDias"))
-		return LOCTEXT("InMatchShortRubenDias", "迪亚斯");
-	if (CardId == TEXT("Prototype.ManchesterCity.JoskoGvardiol"))
-		return LOCTEXT("InMatchShortJoskoGvardiol", "格瓦迪奥尔");
-	if (CardId == TEXT("Prototype.ManchesterCity.BernardoSilva"))
-		return LOCTEXT("InMatchShortBernardoSilva", "贝尔纳多");
-	if (CardId == TEXT("Prototype.ManchesterCity.JeremyDoku"))
-		return LOCTEXT("InMatchShortJeremyDoku", "多库");
-
-	// Non-Prototype cards keep a legitimate player-facing name if one exists;
-	// PlayerName already rejects CardId/debug fallbacks.
+	// The production roster resolves its explicit presentation name from data.
+	// PlayerName also supplies the defensive non-production fallback contract.
 	return PlayerName(CardId, FallbackLabel);
 }
 
@@ -180,14 +144,7 @@ FText FFMCodexPlayerUIPresentationText::CompactPlayerName(
 		FFMCodexPrototypeTeamContent::PlayerDisplayName(CardId);
 	if (!PrototypeName.IsEmpty())
 	{
-		FString ShortName = PrototypeName.ToString();
-		int32 SeparatorIndex = INDEX_NONE;
-		if (ShortName.FindLastChar(TEXT('\u00B7'), SeparatorIndex)
-			&& SeparatorIndex + 1 < ShortName.Len())
-		{
-			ShortName.RightChopInline(SeparatorIndex + 1);
-		}
-		return FText::FromString(ShortName);
+		return PrototypeName;
 	}
 
 	const FString Id = CardId.ToString();
@@ -223,35 +180,35 @@ FText FFMCodexPlayerUIPresentationText::HandMicroPlayerName(
 	const FName CardId,
 	const FString& FallbackLabel)
 {
-	// These aliases are Hand-Micro-only. Formal player identity and Full Card
-	// continue to use the complete localized display name.
-	if (CardId == TEXT("Prototype.Arsenal.GabrielMartinelli")
-		|| CardId == TEXT("Demo.A.Outfield.01"))
+	const FText PrototypeName =
+		FFMCodexPrototypeTeamContent::PlayerDisplayName(CardId);
+	if (!PrototypeName.IsEmpty())
+	{
+		return PrototypeName;
+	}
+
+	// Non-production validation aliases remain bounded defensive fixtures.
+	if (CardId == TEXT("Demo.A.Outfield.01"))
 	{
 		return LOCTEXT("HandMicroMartinelli", "\u9A6C\u4E01\u5185\u5229");
 	}
-	if (CardId == TEXT("Prototype.Arsenal.GabrielMagalhaes")
-		|| CardId == TEXT("Demo.A.Outfield.02"))
+	if (CardId == TEXT("Demo.A.Outfield.02"))
 	{
 		return LOCTEXT("HandMicroGabriel", "\u52A0\u5E03\u91CC\u57C3\u5C14");
 	}
-	if (CardId == TEXT("Prototype.Arsenal.MikelMerino")
-		|| CardId == TEXT("Demo.A.Outfield.03"))
+	if (CardId == TEXT("Demo.A.Outfield.03"))
 	{
 		return LOCTEXT("HandMicroMerino", "\u6885\u91CC\u8BFA");
 	}
-	if (CardId == TEXT("Prototype.ManchesterCity.JoskoGvardiol")
-		|| CardId == TEXT("Demo.B.Outfield.01"))
+	if (CardId == TEXT("Demo.B.Outfield.01"))
 	{
 		return LOCTEXT("HandMicroGvardiol", "\u683C\u74E6\u8FEA\u5965\u5C14");
 	}
-	if (CardId == TEXT("Prototype.ManchesterCity.BernardoSilva")
-		|| CardId == TEXT("Demo.B.Outfield.02"))
+	if (CardId == TEXT("Demo.B.Outfield.02"))
 	{
 		return LOCTEXT("HandMicroBernardo", "\u8D1D\u5C14\u7EB3\u591A");
 	}
-	if (CardId == TEXT("Prototype.ManchesterCity.JeremyDoku")
-		|| CardId == TEXT("Demo.B.Outfield.03"))
+	if (CardId == TEXT("Demo.B.Outfield.03"))
 	{
 		return LOCTEXT("HandMicroDoku", "\u591A\u5E93");
 	}
@@ -268,8 +225,7 @@ FText FFMCodexPlayerUIPresentationText::HandMicroFallbackPlayerName(
 {
 	// Exceptional, localization-ready presentation aliases. The Widget asks
 	// for these only after the primary display name fails at the 12 px floor.
-	if (CardId == TEXT("Prototype.ManchesterCity.JoskoGvardiol")
-		|| CardId == TEXT("Demo.B.Outfield.01"))
+	if (CardId == TEXT("Demo.B.Outfield.01"))
 	{
 		return LOCTEXT("HandMicroFallbackGvardiol", "\u683C\u74E6");
 	}

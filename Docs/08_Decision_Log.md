@@ -354,6 +354,16 @@
 - 范围：当前 ordinary attack Begin 只接受 TP 2–8；无 active current attack 时展示投影使用 canonical empty（0 个 eligible）。投影本身不 clamp 输入，因而超出各 Skill range 的值自然得到 0 个匹配项。
 - 影响：LocalPlay InteractionView / UMG presentation DTO、当前 TP 合格技能自动化测试，以及后续 Pitch Mini production presentation。
 
+### CD-032 - Data-Driven Player Display Name Boundary
+
+- 日期：2026-08-21
+- 决策：40 名生产球员都必须在 `CanonicalPlayerImportConfig.json` 中显式提供 `displayName`。`PlayerKey/CardId` 是稳定技术身份；工作簿 `ChineseName/EnglishName` 是完整身份/来源数据；`displayName` 是 Pitch Mini、Hand Micro、Drag Proxy 与 Full Card 主标题消费的首选球员可见名称。
+- 展示边界：importer 将 `displayName` 写入生成的 runtime JSON，Prototype catalog 在 `FText` 边界解析并由 InteractionView/展示帮助函数提供给 Widget。Widget 不再按 `·`、姓氏、字符数或生产球员特例推导名称。无效/测试内容可保留受限防御 fallback；生产内容缺失值直接校验失败。
+- 隔离：DisplayName 仅为 presentation data；修改它不得改变 PlayerKey/CardId、DisplaySerial、artwork route、team、Attributes、Skills、TP、Gameplay 或 Authority。完整中英文姓名保持独立可取。
+- 当前批准值：40/40 显式覆盖；`Prototype.Arsenal.GabrielMagalhaes` 为 `加布里埃尔`，不得在卡牌紧凑/标题展示中回退为 `马加良斯`。
+- 版本：新增必填 `displayName` 改变生成/runtime shape，因此 config 与 runtime `schemaVersion` 从 `1` 升至 `2`；`balanceContentVersion=Prototype40_v1` 不变，因为 Attributes、Skills、TP 与其他平衡载荷未变。
+- 维护：仅改名时编辑配置、运行 importer `--write`/`--check`、presentation tests 与 build，不需要 C++ 修改。完整映射见 `Docs/UI/Player_Display_Name_Contract_v1.md`。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

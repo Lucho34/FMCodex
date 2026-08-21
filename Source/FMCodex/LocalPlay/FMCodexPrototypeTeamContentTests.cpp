@@ -825,6 +825,8 @@ bool FFMCodexPrototypePresentationMetadataTest::RunTest(
 		if (FFileHelper::LoadFileToString(Source, *SourcePath)
 			&& (Source.Contains(TEXT("DisplaySerial"))
 				|| Source.Contains(TEXT("PlayerFacingSerial"))
+				|| Source.Contains(TEXT("PreferredDisplayName"))
+				|| Source.Contains(TEXT("CanonicalChineseDisplayName"))
 				|| Source.Contains(TEXT("NationalityDisplayName"))
 				|| Source.Contains(TEXT("TeamDisplayName"))))
 		{
@@ -834,6 +836,127 @@ bool FFMCodexPrototypePresentationMetadataTest::RunTest(
 	}
 	TestFalse(TEXT("DisplaySerial and presentation metadata have no Authority readers"),
 		bPresentationDataAffectsGameplay);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexPrototypeDisplayNameContractTest,
+	"FMCodex.LocalPlay.PrototypeTeams.07.DisplayNameContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexPrototypeDisplayNameContractTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexPrototypeTeamContentTests;
+	const TArray<FString> ExpectedDisplayNames = {
+		TEXT("拉亚"), TEXT("加布里埃尔"), TEXT("萨利巴"), TEXT("怀特"),
+		TEXT("因卡皮耶"), TEXT("廷贝尔"), TEXT("卡拉菲奥里"),
+		TEXT("刘易斯-斯凯利"), TEXT("厄德高"), TEXT("埃泽"), TEXT("梅里诺"),
+		TEXT("苏比门迪"), TEXT("赖斯"), TEXT("诺尔高"), TEXT("萨卡"),
+		TEXT("马丁内利"), TEXT("哲凯赖什"), TEXT("特罗萨德"),
+		TEXT("马杜埃凯"), TEXT("哈弗茨"), TEXT("多纳鲁马"), TEXT("迪亚斯"),
+		TEXT("格伊"), TEXT("格瓦迪奥尔"), TEXT("阿克"), TEXT("斯通斯"),
+		TEXT("艾特-努里"), TEXT("罗德里"), TEXT("赖因德斯"), TEXT("贝尔纳多"),
+		TEXT("福登"), TEXT("谢尔基"), TEXT("冈萨雷斯"), TEXT("努内斯"),
+		TEXT("科瓦契奇"), TEXT("哈兰德"), TEXT("马尔穆什"), TEXT("多库"),
+		TEXT("塞梅尼奥"), TEXT("萨维尼奥")
+	};
+	const TArray<FFMCodexPrototypePlayerDefinition>& Definitions =
+		FFMCodexPrototypeTeamContent::GetDefinitions();
+	TestEqual(TEXT("DisplayName expectation covers the forty-player roster"),
+		ExpectedDisplayNames.Num(), 40);
+	TestEqual(TEXT("Runtime catalog exposes forty explicit DisplayNames"),
+		Definitions.Num(), ExpectedDisplayNames.Num());
+
+	bool bAllExplicitNamesMatch = Definitions.Num() == ExpectedDisplayNames.Num();
+	for (int32 Index = 0; Index < Definitions.Num(); ++Index)
+	{
+		const FFMCodexPrototypePlayerDefinition& Definition = Definitions[Index];
+		bAllExplicitNamesMatch = bAllExplicitNamesMatch
+			&& !Definition.PreferredDisplayName.IsEmpty()
+			&& Definition.PreferredDisplayName.ToString()
+				== ExpectedDisplayNames[Index]
+			&& Definition.Card.DisplayName.EqualTo(
+				Definition.CanonicalChineseDisplayName)
+			&& !Definition.CanonicalChineseDisplayName.IsEmpty()
+			&& !Definition.EnglishDisplayName.IsEmpty()
+			&& FFMCodexPrototypeTeamContent::PlayerDisplayName(
+				Definition.PlayerKey).EqualTo(Definition.PreferredDisplayName);
+	}
+	TestTrue(TEXT("All 40 preferred names are explicit while full identities remain separate"),
+		bAllExplicitNamesMatch);
+
+	FString ConfigSource;
+	const FString ConfigPath = FPaths::Combine(
+		FPaths::ProjectDir(),
+		TEXT("ContentSource/PlayerContent/CanonicalPlayerImportConfig.json"));
+	TestTrue(TEXT("DisplayName presentation configuration loads"),
+		FFileHelper::LoadFileToString(ConfigSource, *ConfigPath));
+	TArray<FString> DisplayNameFields;
+	ConfigSource.ParseIntoArray(
+		DisplayNameFields, TEXT("\"displayName\""), false);
+	TestEqual(TEXT("Presentation configuration has 40/40 explicit displayName fields"),
+		FMath::Max(0, DisplayNameFields.Num() - 1), 40);
+
+	const FName GabrielId(TEXT("Prototype.Arsenal.GabrielMagalhaes"));
+	const FFMCodexPrototypePlayerDefinition* Gabriel =
+		FFMCodexPrototypeTeamContent::Find(GabrielId);
+	TestTrue(TEXT("Gabriel uses the configured preferred name and preserves full identity"),
+		Gabriel != nullptr
+			&& Gabriel->PreferredDisplayName.ToString() == TEXT("加布里埃尔")
+			&& Gabriel->CanonicalChineseDisplayName.ToString()
+				== TEXT("加布里埃尔·马加良斯")
+			&& Gabriel->EnglishDisplayName.ToString()
+				== TEXT("Gabriel Magalhães")
+			&& FFMCodexPlayerUIPresentationText::CompactPlayerName(
+				GabrielId, FString()).ToString() == TEXT("加布里埃尔")
+			&& FFMCodexPlayerUIPresentationText::HandMicroPlayerName(
+				GabrielId, FString()).ToString() == TEXT("加布里埃尔")
+			&& FFMCodexPlayerUIPresentationText::InMatchShortPlayerName(
+				GabrielId, FString()).ToString() == TEXT("加布里埃尔"));
+
+	FString PresentationTextSource;
+	const FString PresentationTextPath = FPaths::Combine(
+		FPaths::ProjectDir(),
+		TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp"));
+	TestTrue(TEXT("Player presentation-name source loads"),
+		FFileHelper::LoadFileToString(
+			PresentationTextSource, *PresentationTextPath));
+	TestTrue(TEXT("Production name presentation has no roster heuristics or player cases"),
+		!PresentationTextSource.Contains(TEXT("FindLastChar"))
+			&& !PresentationTextSource.Contains(TEXT("Prototype.Arsenal."))
+			&& !PresentationTextSource.Contains(TEXT("Prototype.ManchesterCity.")));
+
+	const FName IsolationId(TEXT("Prototype.Arsenal.BukayoSaka"));
+	const FFMCodexPrototypePlayerDefinition* Saka =
+		FFMCodexPrototypeTeamContent::Find(IsolationId);
+	TestNotNull(TEXT("DisplayName mutation fixture resolves"), Saka);
+	if (Saka != nullptr)
+	{
+		const FFMCodexPlayerUICardArtReferences ArtBefore =
+			FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Saka->PlayerKey);
+		FFMCodexPrototypePlayerDefinition Mutated = *Saka;
+		Mutated.PreferredDisplayName = FText::FromString(TEXT("测试显示名"));
+		const FFMCodexPlayerUICardArtReferences ArtAfter =
+			FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Mutated.PlayerKey);
+		TestTrue(TEXT("DisplayName mutation is isolated from identity, serial, art, and gameplay"),
+			Mutated.PlayerKey == Saka->PlayerKey
+				&& Mutated.Card.CardId == Saka->Card.CardId
+				&& Mutated.DisplaySerial == Saka->DisplaySerial
+				&& Mutated.TeamId == Saka->TeamId
+				&& Mutated.Card.PositionTypes == Saka->Card.PositionTypes
+				&& Mutated.Card.AttackSkillIds == Saka->Card.AttackSkillIds
+				&& Mutated.Card.Attributes.Shooting
+					== Saka->Card.Attributes.Shooting
+				&& Mutated.Card.Attributes.Passing
+					== Saka->Card.Attributes.Passing
+				&& ArtAfter.Portrait.ToSoftObjectPath()
+					== ArtBefore.Portrait.ToSoftObjectPath()
+				&& ArtAfter.FullCardPortrait.ToSoftObjectPath()
+					== ArtBefore.FullCardPortrait.ToSoftObjectPath()
+				&& ArtAfter.HandMicroPortrait.ToSoftObjectPath()
+					== ArtBefore.HandMicroPortrait.ToSoftObjectPath());
+	}
 	return true;
 }
 

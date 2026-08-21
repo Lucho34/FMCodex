@@ -22,6 +22,8 @@ approved XLSX
 ## Identity and ordering
 
 - `PlayerKey` is the stable technical identity and becomes the runtime `CardId`. It is supplied by the import config, not inferred from a mutable name or serial.
+- `displayName` is a required presentation-sidecar value for every mapped player. It is the preferred compact/title UI name and is not inferred from either canonical identity name.
+- `chineseName` and `englishName` remain complete identity/provenance names from the workbook and are preserved separately from `displayName`.
 - `DisplaySerial` is copied from the workbook `PlayerId`. It is presentation-only and is formatted as a three-digit player-facing serial. It is never used for joins, lookup, save identity, rule identity, or authority.
 - `RosterSlot` controls the deterministic 1–20 order inside each club roster. It is not identity.
 - The source-side mapping key is `(Team, EnglishName)` and must resolve exactly once to an explicit `PlayerKey`.
@@ -34,7 +36,7 @@ Outfield positions use the workbook values `A`, `M`, `D`, `A/M`, and `M/D`. Goal
 
 A skill assignment consists of the canonical skill identity plus `MinTP` and `MaxTP`. Runtime rule identity is derived deterministically as `Canonical.Skill.<SkillId>.<MinTP>.<MaxTP>`, allowing the existing rule lookup and TP filter to represent different approved ranges for the same skill family without duplicating player-facing skill names.
 
-`balanceContentVersion` is currently `Prototype40_v1`. Advance it when an approved balance payload changes. Advance `schemaVersion` only when the generated/runtime shape changes.
+`balanceContentVersion` is currently `Prototype40_v1`. The current config and runtime `schemaVersion` is `2`, introduced when explicit required `displayName` became part of the generated/runtime shape. Advance the balance version when an approved balance payload changes, and advance the schema version only when that shape changes.
 
 ## Validation contract
 
@@ -49,6 +51,7 @@ The importer validates before writing:
 - skill ranges within TP 2–8 with `MinTP <= MaxTP`;
 - no more than two active skills for any player at each TP from 2 through 8;
 - unique `PlayerKey`, exact source-to-config mapping, and no duplicate player rows;
+- exactly 40 non-empty explicit `displayName` values in the import config;
 - generated output equality in `--check` mode.
 
 Current approved totals are 40 players, 36 skill assignments, skill-count distribution `0:18 / 1:10 / 2:10 / 3:2`, 280 per-player TP overlap checks, and zero overlap violations.
@@ -72,6 +75,12 @@ python Scripts/ImportCanonicalPlayerContent.py `
 ```
 
 Normal value-only workbook changes require no C++ edit when the schema, supported enums, and player mapping are unchanged: update the workbook, advance `balanceContentVersion`, run `--write`, review the JSON diff, then run `--check`, automation, and the build. Adding/renaming a player requires an explicit mapping update in `CanonicalPlayerImportConfig.json`. A schema or rule-semantics change requires a deliberate importer/runtime change and schema-version review.
+
+A preferred-name-only change is separate from balance authoring: edit the
+player's `displayName` in `CanonicalPlayerImportConfig.json`, run `--write`,
+review the generated JSON, run `--check`, presentation automation, and the
+build. It requires no C++ change. The complete 40-player mapping and UI
+consumer contract are recorded in `Docs/UI/Player_Display_Name_Contract_v1.md`.
 
 ## Presentation and artwork compatibility
 

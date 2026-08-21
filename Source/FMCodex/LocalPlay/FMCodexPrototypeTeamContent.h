@@ -23,6 +23,10 @@ struct FFMCodexPrototypePlayerDefinition
 	FName PlayerKey = NAME_None;
 	FName TeamId = NAME_None;
 	FText TeamDisplayName;
+	/** Complete Chinese identity/provenance name from canonical balance content. */
+	FText CanonicalChineseDisplayName;
+	/** Explicit player-facing compact/title name from presentation configuration. */
+	FText PreferredDisplayName;
 	FText EnglishDisplayName;
 	FText NationalityDisplayName;
 	int32 RosterSlot = 0;
@@ -49,6 +53,7 @@ public:
 	static bool IsPrototypeCard(FName CardId);
 	static FName TeamIdForCard(FName CardId);
 	static FText PlayerDisplayName(FName CardId);
+	static FText CanonicalChinesePlayerName(FName CardId);
 	static FText TeamDisplayName(FName CardId);
 
 	static FName ArsenalTeamId();

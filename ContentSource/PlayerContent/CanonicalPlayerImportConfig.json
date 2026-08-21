@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "balanceContentVersion": "Prototype40_v1",
   "sourceSheet": "球员配置",
   "defaultRarity": "Common",
@@ -8,6 +8,7 @@
       "team": "Arsenal",
       "englishName": "David Raya",
       "playerKey": "Prototype.Arsenal.DavidRaya",
+      "displayName": "拉亚",
       "presentation": {
         "nationality": "西班牙",
         "birthDate": "1995-09-15",
@@ -20,6 +21,7 @@
       "team": "Arsenal",
       "englishName": "Gabriel Magalhães",
       "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
+      "displayName": "加布里埃尔",
       "presentation": {
         "nationality": "巴西",
         "birthDate": "1997-12-19",
@@ -32,6 +34,7 @@
       "team": "Arsenal",
       "englishName": "William Saliba",
       "playerKey": "Prototype.Arsenal.WilliamSaliba",
+      "displayName": "萨利巴",
       "presentation": {
         "nationality": "法国",
         "birthDate": "2001-03-24",
@@ -43,32 +46,38 @@
     {
       "team": "Arsenal",
       "englishName": "Ben White",
-      "playerKey": "Prototype.Arsenal.BenWhite"
+      "playerKey": "Prototype.Arsenal.BenWhite",
+      "displayName": "怀特"
     },
     {
       "team": "Arsenal",
       "englishName": "Piero Hincapié",
-      "playerKey": "Prototype.Arsenal.PieroHincapie"
+      "playerKey": "Prototype.Arsenal.PieroHincapie",
+      "displayName": "因卡皮耶"
     },
     {
       "team": "Arsenal",
       "englishName": "Jurriën Timber",
-      "playerKey": "Prototype.Arsenal.JurrienTimber"
+      "playerKey": "Prototype.Arsenal.JurrienTimber",
+      "displayName": "廷贝尔"
     },
     {
       "team": "Arsenal",
       "englishName": "Riccardo Calafiori",
-      "playerKey": "Prototype.Arsenal.RiccardoCalafiori"
+      "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
+      "displayName": "卡拉菲奥里"
     },
     {
       "team": "Arsenal",
       "englishName": "Myles Lewis-Skelly",
-      "playerKey": "Prototype.Arsenal.MylesLewisSkelly"
+      "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
+      "displayName": "刘易斯-斯凯利"
     },
     {
       "team": "Arsenal",
       "englishName": "Martin Ødegaard",
       "playerKey": "Prototype.Arsenal.MartinOdegaard",
+      "displayName": "厄德高",
       "presentation": {
         "nationality": "挪威",
         "birthDate": "1998-12-17",
@@ -80,12 +89,14 @@
     {
       "team": "Arsenal",
       "englishName": "Eberechi Eze",
-      "playerKey": "Prototype.Arsenal.EberechiEze"
+      "playerKey": "Prototype.Arsenal.EberechiEze",
+      "displayName": "埃泽"
     },
     {
       "team": "Arsenal",
       "englishName": "Mikel Merino",
       "playerKey": "Prototype.Arsenal.MikelMerino",
+      "displayName": "梅里诺",
       "presentation": {
         "nationality": "西班牙",
         "birthDate": "1996-06-22",
@@ -97,12 +108,14 @@
     {
       "team": "Arsenal",
       "englishName": "Martín Zubimendi",
-      "playerKey": "Prototype.Arsenal.MartinZubimendi"
+      "playerKey": "Prototype.Arsenal.MartinZubimendi",
+      "displayName": "苏比门迪"
     },
     {
       "team": "Arsenal",
       "englishName": "Declan Rice",
       "playerKey": "Prototype.Arsenal.DeclanRice",
+      "displayName": "赖斯",
       "presentation": {
         "nationality": "英格兰",
         "birthDate": "1999-01-14",
@@ -114,12 +127,14 @@
     {
       "team": "Arsenal",
       "englishName": "Christian Nørgaard",
-      "playerKey": "Prototype.Arsenal.ChristianNorgaard"
+      "playerKey": "Prototype.Arsenal.ChristianNorgaard",
+      "displayName": "诺尔高"
     },
     {
       "team": "Arsenal",
       "englishName": "Bukayo Saka",
       "playerKey": "Prototype.Arsenal.BukayoSaka",
+      "displayName": "萨卡",
       "presentation": {
         "nationality": "英格兰",
         "birthDate": "2001-09-05",
@@ -132,6 +147,7 @@
       "team": "Arsenal",
       "englishName": "Gabriel Martinelli",
       "playerKey": "Prototype.Arsenal.GabrielMartinelli",
+      "displayName": "马丁内利",
       "presentation": {
         "nationality": "巴西",
         "birthDate": "2001-06-18",
@@ -143,27 +159,32 @@
     {
       "team": "Arsenal",
       "englishName": "Viktor Gyökeres",
-      "playerKey": "Prototype.Arsenal.ViktorGyokeres"
+      "playerKey": "Prototype.Arsenal.ViktorGyokeres",
+      "displayName": "哲凯赖什"
     },
     {
       "team": "Arsenal",
       "englishName": "Leandro Trossard",
-      "playerKey": "Prototype.Arsenal.LeandroTrossard"
+      "playerKey": "Prototype.Arsenal.LeandroTrossard",
+      "displayName": "特罗萨德"
     },
     {
       "team": "Arsenal",
       "englishName": "Noni Madueke",
-      "playerKey": "Prototype.Arsenal.NoniMadueke"
+      "playerKey": "Prototype.Arsenal.NoniMadueke",
+      "displayName": "马杜埃凯"
     },
     {
       "team": "Arsenal",
       "englishName": "Kai Havertz",
-      "playerKey": "Prototype.Arsenal.KaiHavertz"
+      "playerKey": "Prototype.Arsenal.KaiHavertz",
+      "displayName": "哈弗茨"
     },
     {
       "team": "Manchester City",
       "englishName": "Gianluigi Donnarumma",
       "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",
+      "displayName": "多纳鲁马",
       "presentation": {
         "nationality": "意大利",
         "birthDate": "1999-02-25",
@@ -176,6 +197,7 @@
       "team": "Manchester City",
       "englishName": "Rúben Dias",
       "playerKey": "Prototype.ManchesterCity.RubenDias",
+      "displayName": "迪亚斯",
       "presentation": {
         "nationality": "葡萄牙",
         "birthDate": "1997-05-14",
@@ -187,12 +209,14 @@
     {
       "team": "Manchester City",
       "englishName": "Marc Guéhi",
-      "playerKey": "Prototype.ManchesterCity.MarcGuehi"
+      "playerKey": "Prototype.ManchesterCity.MarcGuehi",
+      "displayName": "格伊"
     },
     {
       "team": "Manchester City",
       "englishName": "Joško Gvardiol",
       "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
+      "displayName": "格瓦迪奥尔",
       "presentation": {
         "nationality": "克罗地亚",
         "birthDate": "2002-01-23",
@@ -204,22 +228,26 @@
     {
       "team": "Manchester City",
       "englishName": "Nathan Aké",
-      "playerKey": "Prototype.ManchesterCity.NathanAke"
+      "playerKey": "Prototype.ManchesterCity.NathanAke",
+      "displayName": "阿克"
     },
     {
       "team": "Manchester City",
       "englishName": "John Stones",
-      "playerKey": "Prototype.ManchesterCity.JohnStones"
+      "playerKey": "Prototype.ManchesterCity.JohnStones",
+      "displayName": "斯通斯"
     },
     {
       "team": "Manchester City",
       "englishName": "Rayan Aït-Nouri",
-      "playerKey": "Prototype.ManchesterCity.RayanAitNouri"
+      "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
+      "displayName": "艾特-努里"
     },
     {
       "team": "Manchester City",
       "englishName": "Rodri",
       "playerKey": "Prototype.ManchesterCity.Rodri",
+      "displayName": "罗德里",
       "presentation": {
         "nationality": "西班牙",
         "birthDate": "1996-06-22",
@@ -231,12 +259,14 @@
     {
       "team": "Manchester City",
       "englishName": "Tijjani Reijnders",
-      "playerKey": "Prototype.ManchesterCity.TijjaniReijnders"
+      "playerKey": "Prototype.ManchesterCity.TijjaniReijnders",
+      "displayName": "赖因德斯"
     },
     {
       "team": "Manchester City",
       "englishName": "Bernardo Silva",
       "playerKey": "Prototype.ManchesterCity.BernardoSilva",
+      "displayName": "贝尔纳多",
       "presentation": {
         "nationality": "葡萄牙",
         "birthDate": "1994-08-10",
@@ -249,6 +279,7 @@
       "team": "Manchester City",
       "englishName": "Phil Foden",
       "playerKey": "Prototype.ManchesterCity.PhilFoden",
+      "displayName": "福登",
       "presentation": {
         "nationality": "英格兰",
         "birthDate": "2000-05-28",
@@ -260,27 +291,32 @@
     {
       "team": "Manchester City",
       "englishName": "Rayan Cherki",
-      "playerKey": "Prototype.ManchesterCity.RayanCherki"
+      "playerKey": "Prototype.ManchesterCity.RayanCherki",
+      "displayName": "谢尔基"
     },
     {
       "team": "Manchester City",
       "englishName": "Nico González",
-      "playerKey": "Prototype.ManchesterCity.NicoGonzalez"
+      "playerKey": "Prototype.ManchesterCity.NicoGonzalez",
+      "displayName": "冈萨雷斯"
     },
     {
       "team": "Manchester City",
       "englishName": "Matheus Nunes",
-      "playerKey": "Prototype.ManchesterCity.MatheusNunes"
+      "playerKey": "Prototype.ManchesterCity.MatheusNunes",
+      "displayName": "努内斯"
     },
     {
       "team": "Manchester City",
       "englishName": "Mateo Kovačić",
-      "playerKey": "Prototype.ManchesterCity.MateoKovacic"
+      "playerKey": "Prototype.ManchesterCity.MateoKovacic",
+      "displayName": "科瓦契奇"
     },
     {
       "team": "Manchester City",
       "englishName": "Erling Haaland",
       "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
+      "displayName": "哈兰德",
       "presentation": {
         "nationality": "挪威",
         "birthDate": "2000-07-21",
@@ -292,12 +328,14 @@
     {
       "team": "Manchester City",
       "englishName": "Omar Marmoush",
-      "playerKey": "Prototype.ManchesterCity.OmarMarmoush"
+      "playerKey": "Prototype.ManchesterCity.OmarMarmoush",
+      "displayName": "马尔穆什"
     },
     {
       "team": "Manchester City",
       "englishName": "Jérémy Doku",
       "playerKey": "Prototype.ManchesterCity.JeremyDoku",
+      "displayName": "多库",
       "presentation": {
         "nationality": "比利时",
         "birthDate": "2002-05-27",
@@ -309,12 +347,14 @@
     {
       "team": "Manchester City",
       "englishName": "Antoine Semenyo",
-      "playerKey": "Prototype.ManchesterCity.AntoineSemenyo"
+      "playerKey": "Prototype.ManchesterCity.AntoineSemenyo",
+      "displayName": "塞梅尼奥"
     },
     {
       "team": "Manchester City",
       "englishName": "Savinho",
-      "playerKey": "Prototype.ManchesterCity.Savinho"
+      "playerKey": "Prototype.ManchesterCity.Savinho",
+      "displayName": "萨维尼奥"
     }
   ]
 }
