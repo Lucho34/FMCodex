@@ -36,8 +36,14 @@ FIXTURE_KEYS = (
     "Prototype.Arsenal.GabrielMagalhaes",
     "Prototype.ManchesterCity.ErlingHaaland",
 )
-V2_CANDIDATE_STATUS = "V2 CANDIDATE IMPORTED — PENDING MANUAL PIE GATE"
+GABRIEL_V3_CANDIDATE_STATUS = (
+    "V3 REFINEMENT CANDIDATE IMPORTED — PENDING FINAL MANUAL ARTWORK GATE"
+)
+HAALAND_V2_CANDIDATE_STATUS = "V2 CANDIDATE IMPORTED — PENDING MANUAL PIE GATE"
 V1_VISUAL_FAIL_STATUS = "VISUAL CONFORMANCE FAIL — REQUIRES V2 ART MASTER"
+GABRIEL_V2_SUPERSEDED_STATUS = (
+    "TECHNICALLY CONFORMING — SUPERSEDED BY V3 COMPOSITION REFINEMENT"
+)
 
 
 class SharedPortraitRuntimeDerivativePipelineTest(unittest.TestCase):
@@ -55,10 +61,18 @@ class SharedPortraitRuntimeDerivativePipelineTest(unittest.TestCase):
         }
 
     def test_fixture_identity_candidate_status_and_history_are_explicit(self) -> None:
+        gabriel = self.by_key[FIXTURE_KEYS[0]]
+        haaland = self.by_key[FIXTURE_KEYS[1]]
+        self.assertEqual(gabriel["visualStatus"], GABRIEL_V3_CANDIDATE_STATUS)
+        self.assertEqual(len(gabriel["replacementHistory"]), 2)
+        self.assertEqual(
+            gabriel["replacementHistory"][1]["visualStatus"],
+            GABRIEL_V2_SUPERSEDED_STATUS,
+        )
+        self.assertEqual(haaland["visualStatus"], HAALAND_V2_CANDIDATE_STATUS)
+        self.assertEqual(len(haaland["replacementHistory"]), 1)
         for player_key in FIXTURE_KEYS:
             entry = self.by_key[player_key]
-            self.assertEqual(entry["visualStatus"], V2_CANDIDATE_STATUS)
-            self.assertEqual(len(entry["replacementHistory"]), 1)
             self.assertEqual(
                 entry["replacementHistory"][0]["visualStatus"],
                 V1_VISUAL_FAIL_STATUS,
@@ -108,7 +122,12 @@ class SharedPortraitRuntimeDerivativePipelineTest(unittest.TestCase):
             self.assertEqual(
                 record["runtimeDerivativeDimensions"], list(RUNTIME_SIZE)
             )
-            self.assertEqual(record["visualStatus"], V2_CANDIDATE_STATUS)
+            expected_status = (
+                GABRIEL_V3_CANDIDATE_STATUS
+                if player_key == FIXTURE_KEYS[0]
+                else HAALAND_V2_CANDIDATE_STATUS
+            )
+            self.assertEqual(record["visualStatus"], expected_status)
             self.assertEqual(
                 record["replacementHistory"][0]["visualStatus"],
                 V1_VISUAL_FAIL_STATUS,
@@ -121,6 +140,16 @@ class SharedPortraitRuntimeDerivativePipelineTest(unittest.TestCase):
                 record["runtimeDerivativeSha256"],
                 record["replacementHistory"][0]["runtimeDerivativeSha256"],
             )
+        gabriel_record = self.provenance_by_key[FIXTURE_KEYS[0]]
+        self.assertEqual(len(gabriel_record["replacementHistory"]), 2)
+        self.assertEqual(
+            gabriel_record["replacementHistory"][1]["masterSha256"],
+            "DEFACB5F836E6B304956675244A014C8C9968F2A50E5717343F80F6B3F577427",
+        )
+        self.assertEqual(
+            gabriel_record["replacementHistory"][1]["runtimeDerivativeSha256"],
+            "7079A5E8AF6E3A1C0B806D9C1BE2EB85D09D0DF7B4161A4A4993BBAFAE1CA55C",
+        )
 
     def test_runtime_paths_are_stable_and_generated_sources_do_not_ship(self) -> None:
         for player_key in FIXTURE_KEYS:

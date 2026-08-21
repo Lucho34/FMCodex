@@ -58,7 +58,7 @@ bool FFMCodexSharedPortraitGoldenSampleRoutingTest::RunTest(
 
 	UTexture2D* GabrielTexture = Gabriel.Portrait.LoadSynchronous();
 	UTexture2D* HaalandTexture = Haaland.Portrait.LoadSynchronous();
-	TestTrue(TEXT("Both active v2 candidates use the runtime texture contract"),
+	TestTrue(TEXT("Gabriel v3 and Haaland v2 use the runtime texture contract"),
 		HasRuntimeTextureContract(GabrielTexture)
 			&& HasRuntimeTextureContract(HaalandTexture));
 	if (GabrielTexture != nullptr && HaalandTexture != nullptr)
@@ -144,14 +144,18 @@ bool FFMCodexSharedPortraitGoldenSampleCoverageAndCookTest::RunTest(
 			"SharedPortraitRuntimeProvenance.json"));
 	TestTrue(TEXT("Runtime derivative provenance remains readable"),
 		FFileHelper::LoadFileToString(ProvenanceSource, *ProvenancePath));
-	TestTrue(TEXT("Provenance records both active v2 candidates and rejected v1 history"),
+	TestTrue(TEXT("Provenance records Gabriel v3, Haaland v2, and replacement history"),
 		ProvenanceSource.Contains(TEXT("Prototype.Arsenal.GabrielMagalhaes"))
 			&& ProvenanceSource.Contains(
 				TEXT("Prototype.ManchesterCity.ErlingHaaland"))
 			&& ProvenanceSource.Contains(TEXT("512"))
 			&& ProvenanceSource.Contains(TEXT("768"))
 			&& ProvenanceSource.Contains(TEXT(
+				"V3 REFINEMENT CANDIDATE IMPORTED"))
+			&& ProvenanceSource.Contains(TEXT(
 				"V2 CANDIDATE IMPORTED"))
+			&& ProvenanceSource.Contains(TEXT(
+				"SUPERSEDED BY V3"))
 			&& ProvenanceSource.Contains(
 				TEXT("VISUAL CONFORMANCE FAIL")));
 

@@ -1,8 +1,8 @@
 # Shared Portrait Art Contract v1
 
-Stage: `6.13.1.3.13.5A.2`
+Stage: `6.13.1.3.13.5A.4`
 
-Status: production contract for future artwork batches. This document does not authorize artwork generation, import, routing, or Widget changes by itself.
+Status: `GOLDEN SAMPLE PAIR — PENDING FINAL MANUAL ARTWORK GATE`. This is the concrete production-spec candidate for future artwork batches, not the final frozen 40-player artwork specification. This document does not authorize artwork generation, import, routing, or Widget changes by itself.
 
 ## 1. Scope and frozen consumers
 
@@ -32,7 +32,7 @@ The manually authored **Art Master** is the sole visual source of truth:
 | Composition | **Upper-torso Hero Bust**; complete head, controlled headroom, full neck, both shoulders, collar, and meaningful upper-chest/shirt area |
 | Embedded content | no text, number, logo, crest, sponsor, manufacturer mark, watermark, UI, card frame, ball, trophy, or extra person |
 
-The Art Master is provenance/editing content under `ArtSource`; it is not a runtime or shipping texture. It must be framed farther back than a close-up headshot. As an initial V2 direction, the subject should generally be `10–15%` smaller/farther from camera than the rejected Gabriel/Haaland v1 compositions.
+The Art Master is provenance/editing content under `ArtSource`; it is not a runtime or shipping texture. It must be framed farther back than a close-up headshot while keeping face identity dominant. Gabriel v3 and Haaland v2 establish the candidate scale family: controlled headroom, complete head and neck, both shoulders, and enough upper shirt for team identity without allowing chest area to dominate the portrait.
 
 The generated **Runtime Shared Portrait Derivative** contract is:
 
@@ -74,7 +74,15 @@ This is a global calculation, not a per-player crop table. Artwork must preserve
 
 Reject a candidate if the crop cuts hair, ears, jaw, collar, or either shoulder; reduces the kit to a tiny collar fragment; makes the head too small; leaves a large empty background; depends on a manual crop override; or loses fast identity recognition at actual Pitch Mini size. Arsenal outfield art must retain meaningful deep-red body and white shoulder/sleeve presence. Manchester City outfield art must retain meaningful sky-blue shirt body.
 
-Gabriel Magalhães v1 and Erling Haaland v1 failed this outcome in actual PIE: their faces remained readable, but shoulders, upper torso, and kit-family presence were insufficient. That historical result remains `VISUAL CONFORMANCE FAIL — REQUIRES V2 ART MASTER`; the frozen crop was not changed to rescue them. Their replacement v2 Masters and deterministic derivatives are now active with status `V2 CANDIDATE IMPORTED — PENDING MANUAL PIE GATE`. Neither candidate is approved until actual-size PIE review passes.
+Gabriel Magalhães v1 and Erling Haaland v1 failed this outcome in actual PIE: their faces remained readable, but shoulders, upper torso, and kit-family presence were insufficient. That historical result remains `VISUAL CONFORMANCE FAIL — REQUIRES V2 ART MASTER`; the frozen crop was not changed to rescue them. Gabriel v2 corrected kit visibility and technically conformed, but was superseded because it read slightly low/distant with excessive upper-chest dominance relative to Haaland v2. The active pair is Gabriel v3 plus Haaland v2. Neither is the final frozen Golden Sample until actual-size PIE approves the pair.
+
+### Golden Sample pair candidate
+
+- Arsenal: Gabriel Magalhães v3.
+- Manchester City: Erling Haaland v2.
+- Status: `GOLDEN SAMPLE PAIR — PENDING FINAL MANUAL ARTWORK GATE`.
+
+Use the pair as a practical family, not a requirement for identical poses. Match perceived face prominence, subject-scale range, bilateral shoulder/upper-torso balance, restrained team-kit readability, low-noise navy/teal stadium depth, lighting quality, and clear upper-left pip space. Preserve individual facial direction and natural portrait variation. A later batch that needs a per-player crop override, hides the kit, overweights the torso, or loses face-first recognition fails the artwork contract.
 
 ## 4. Subject and identity continuity
 

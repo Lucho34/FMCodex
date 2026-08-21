@@ -9,19 +9,19 @@
         1024,
         1536
       ],
-      "masterSha256": "DEFACB5F836E6B304956675244A014C8C9968F2A50E5717343F80F6B3F577427",
+      "masterSha256": "644CDB840BBD83869A93716FE0178EF9E526E06F9B902C5A80EA57D2E93D056C",
       "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01.png",
       "runtimeDerivativeDimensions": [
         512,
         768
       ],
-      "runtimeDerivativeSha256": "7079A5E8AF6E3A1C0B806D9C1BE2EB85D09D0DF7B4161A4A4993BBAFAE1CA55C",
+      "runtimeDerivativeSha256": "663B3333AA8FCDB53F1B4CADAF4F16B0F8416F2D7E854E11E25BF8DFD8FBDEDD",
       "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01.T_Prototype_Arsenal_GabrielMagalhaes_01",
       "generatorVersion": 1,
       "pillowVersion": "9.4.0",
       "resampling": "Pillow.Resampling.LANCZOS",
       "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
-      "visualStatus": "V2 CANDIDATE IMPORTED — PENDING MANUAL PIE GATE",
+      "visualStatus": "V3 REFINEMENT CANDIDATE IMPORTED — PENDING FINAL MANUAL ARTWORK GATE",
       "replacementHistory": [
         {
           "version": "v1",
@@ -29,6 +29,13 @@
           "runtimeDerivativeSha256": "12BCA247081A3153327CED96D116662E0065AA949B7F0940FD86223DE4BBFDAD",
           "visualStatus": "VISUAL CONFORMANCE FAIL — REQUIRES V2 ART MASTER",
           "reason": "Frozen Pitch Mini crop retained insufficient bilateral shoulders, upper torso, and Arsenal red/white kit presence."
+        },
+        {
+          "version": "v2",
+          "masterSha256": "DEFACB5F836E6B304956675244A014C8C9968F2A50E5717343F80F6B3F577427",
+          "runtimeDerivativeSha256": "7079A5E8AF6E3A1C0B806D9C1BE2EB85D09D0DF7B4161A4A4993BBAFAE1CA55C",
+          "visualStatus": "TECHNICALLY CONFORMING — SUPERSEDED BY V3 COMPOSITION REFINEMENT",
+          "reason": "Kit visibility and frozen-crop compatibility passed, but comparison with Haaland v2 found Gabriel slightly low/distant, with excess upper-chest dominance and weaker face prominence."
         }
       ]
     },
