@@ -1,6 +1,6 @@
 # Shared Portrait Art Contract v1
 
-Stage: `6.13.1.3.13.4`
+Stage: `6.13.1.3.13.5A.2`
 
 Status: production contract for future artwork batches. This document does not authorize artwork generation, import, routing, or Widget changes by itself.
 
@@ -17,9 +17,9 @@ The following variant boundaries are frozen:
 - Missing Shared Portraits keep the current restrained fallback surface. Fake silhouettes and cross-variant rebinding do not count as coverage.
 - Gameplay, Authority, PlayerKey, DisplaySerial, Position, Attributes, Tactical Skills, TP ranges, formulas, and deployment are outside this contract.
 
-## 2. Source contract
+## 2. Two-tier source and runtime contract
 
-Every new or replacement Shared Portrait must meet all of the following:
+The manually authored **Art Master** is the sole visual source of truth:
 
 | Property | Required value |
 |---|---|
@@ -29,10 +29,23 @@ Every new or replacement Shared Portrait must meet all of the following:
 | Alpha | none; opaque `24-bit RGB` PNG preferred |
 | File type | `.png` |
 | Subject count | one player only |
-| Composition | upper-body / hero bust, face dominant, both shoulders and collar visible |
+| Composition | **Upper-torso Hero Bust**; complete head, controlled headroom, full neck, both shoulders, collar, and meaningful upper-chest/shirt area |
 | Embedded content | no text, number, logo, crest, sponsor, manufacturer mark, watermark, UI, card frame, ball, trophy, or extra person |
 
-The image must look correct through the production Pitch Mini crop, not merely at full source resolution.
+The Art Master is provenance/editing content under `ArtSource`; it is not a runtime or shipping texture. It must be framed farther back than a close-up headshot. As an initial V2 direction, the subject should generally be `10–15%` smaller/farther from camera than the rejected Gabriel/Haaland v1 compositions.
+
+The generated **Runtime Shared Portrait Derivative** contract is:
+
+| Property | Required value |
+|---|---|
+| Canvas | exactly `512x768` |
+| Aspect | `2:3`, portrait |
+| Color/alpha | opaque RGB PNG |
+| Generation | deterministic, uncropped Lanczos downsample from the `1024x1536` Master |
+| Manual edits | prohibited; regenerate from the Master |
+| Consumer | Shared Portrait runtime surfaces only; not Full Card or Hand Micro |
+
+The derivative is an import input under `ContentSource`, while the imported UE texture remains under `/Game/UI/Portraits`. The final Pitch Mini crop—not the uncropped Master preview—is the visual acceptance surface.
 
 ## 3. Deterministic Pitch Mini crop compatibility
 
@@ -44,7 +57,7 @@ The frozen crop is implemented by `UFMCodexPlayerCardWidget::CalculatePitchMiniH
 - focal anchor `X=0.50`, `Y=0.278`;
 - focal-frame factor `0.42`.
 
-For the required `1024x1536` source, the effective normalized window is approximately:
+For either `2:3` tier, the effective normalized window is approximately:
 
 - `U = 0.0370 .. 0.9630`;
 - `V = 0.0546 .. 0.5865`.
@@ -54,12 +67,14 @@ This is a global calculation, not a per-player crop table. Artwork must preserve
 - minimal but non-zero headroom inside the effective window;
 - the full head and both face edges;
 - eyes in the upper-middle of the visible result;
-- readable neck, collar, shoulders, and upper shirt;
+- readable full neck, collar, bilateral shoulders, and meaningful upper shirt;
 - face as the first read at `136x140` card size;
 - enough left/right safety for the `1.08` zoom;
 - enough upper-left negative space that the two `4 px` tactical-match pips do not cover an eye or a defining facial feature.
 
-Reject a candidate if the crop cuts hair, ears, jaw, collar, or both shoulders; makes the head small; leaves a large empty background; depends on a manual crop override; or loses fast identity recognition at actual Pitch Mini size.
+Reject a candidate if the crop cuts hair, ears, jaw, collar, or either shoulder; reduces the kit to a tiny collar fragment; makes the head too small; leaves a large empty background; depends on a manual crop override; or loses fast identity recognition at actual Pitch Mini size. Arsenal outfield art must retain meaningful deep-red body and white shoulder/sleeve presence. Manchester City outfield art must retain meaningful sky-blue shirt body.
+
+Gabriel Magalhães v1 and Erling Haaland v1 failed this outcome in actual PIE: their faces remained readable, but shoulders, upper torso, and kit-family presence were insufficient. That historical result remains `VISUAL CONFORMANCE FAIL — REQUIRES V2 ART MASTER`; the frozen crop was not changed to rescue them. Their replacement v2 Masters and deterministic derivatives are now active with status `V2 CANDIDATE IMPORTED — PENDING MANUAL PIE GATE`. Neither candidate is approved until actual-size PIE review passes.
 
 ## 4. Subject and identity continuity
 
@@ -106,7 +121,7 @@ Use a simplified, dark, low-noise football/stadium atmosphere:
 - base family: deep navy / deep teal;
 - restrained stadium-light or tactical-light cues;
 - natural subject separation and readable silhouette;
-- no large light cluster directly behind the face;
+- no large light cluster directly behind the face or the upper-left tactical-pip area;
 - no detailed crowd faces, advertisements, legible signage, or visual clutter;
 - no dead-flat placeholder rectangle;
 - individual variation in light direction, subtle stadium depth, and tonal balance.
@@ -125,10 +140,17 @@ Player-selected Side Primary Color must never recolor, tint, select, or replace 
 
 Artwork identity is keyed by stable `PlayerKey`, never by mutable `DisplaySerial`.
 
-Source convention:
+Art Master convention:
 
 ```text
 ArtSource/UI/PrototypeTeams/<Team>/Portraits/
+T_Prototype_<Team>_<PlayerKeySuffix>_01.png
+```
+
+Generated runtime-source convention:
+
+```text
+ContentSource/UI/SharedPortraitRuntime/<Team>/
 T_Prototype_<Team>_<PlayerKeySuffix>_01.png
 ```
 
@@ -154,12 +176,16 @@ Do not use serials in filenames, create silent aliases, or overwrite a different
 ### Current source and import entry points
 
 - Wrapper: `Scripts/ImportPrototypeTeamUIAssets.ps1`
+- Derivative generator: `Scripts/GenerateSharedPortraitRuntimeDerivatives.py`
+- Generator dependency: `Scripts/requirements-shared-portrait.txt`
 - Importer: `Scripts/ImportPrototypeTeamUIAssets.py`
 - Fresh-process validator: `Scripts/ValidatePrototypeTeamUIAssets.py`
-- Current source root: `ArtSource/UI/PrototypeTeams/<Team>/Portraits`
+- Art Master root: `ArtSource/UI/PrototypeTeams/<Team>/Portraits`
+- Generated derivative root: `ContentSource/UI/SharedPortraitRuntime/<Team>`
+- Generated provenance: `ContentSource/UI/SharedPortraitRuntime/SharedPortraitRuntimeProvenance.json`
 - Current UE destination: `/Game/UI/Portraits/PrototypeTeams/<Team>`
 
-The current importer has a hard-coded ten-entry `IMPORTS` tuple, requires exactly `1024x1536`, imports with `replace_existing=true`, `replace_existing_settings=false`, saves the package, and explicitly sets only `lod_group=TEXTUREGROUP_UI` after import. The current validator checks package existence, `Texture2D`, size, and `TEXTUREGROUP_UI`; it logs sRGB but does not enforce the remaining production settings.
+The pipeline uses the single source-controlled `ArtSource/UI/PrototypeTeams/SharedPortraitImportManifest.json` inventory. The wrapper first runs the pinned Pillow preprocessing stage: Master validation -> deterministic `Image.Resampling.LANCZOS` downsample with no crop/sharpen/color conversion -> derivative validation -> provenance SHA recording. The importer then reads only the generated `512x768` source. The validator runs in a fresh UE process and asserts exact object path, `Texture2D`, dimensions, and every texture setting. PlayerKey selection is shared across all three stages and is never derived from DisplaySerial.
 
 ### Required production texture settings for later batches
 
@@ -168,16 +194,16 @@ The batch importer and fresh-process validator must set and assert:
 | Setting | Contract |
 |---|---|
 | Asset class | `Texture2D` |
-| Imported size | `1024x1536` |
+| Imported size | `512x768` |
 | Texture group | `TEXTUREGROUP_UI` |
 | Compression | `TC_BC7` |
 | sRGB | `true` |
 | Mip generation | `TMGS_SHARPEN1` |
 | Filter | `TF_TRILINEAR` |
 | LOD bias | `0` |
-| Streaming | `never_stream=false` for the `1024x1536` shared set |
+| Streaming | inspect actual value; currently `NeverStream=true` for the non-power-of-two `512x768` UI derivative |
 
-The Shared set deliberately does not inherit Hand Micro's `never_stream=true`: Runtime192 is small, while up to forty full-resolution Shared textures should remain streamable. A later integration Stage must verify this setting in a fresh editor-command process before accepting a batch.
+UE5.3 still forces `NeverStream=true` while caching platform data because `768` is not a power of two, and `TEXTUREGROUP_UI` is independently non-streamable in `UTexture::IsPossibleToStream()`. The derivative is therefore a memory/package reduction, not a claim that NPOT streaming is solved. Padding to `512x1024` is prohibited because it would change the art/content contract. Every batch must assert and report the actual engine value.
 
 ### Runtime mapping and lookup
 
@@ -193,31 +219,30 @@ If no mapping exists, or an unknown CardId resolves, `Portrait` remains null. Pi
 
 ### Cook/package implications
 
-`Config/DefaultGame.ini` currently stages only `Content/Data` as UFS and has no explicit `DirectoriesToAlwaysCook` entry for the portrait directory. The Shared textures are referenced by native-code soft object path literals, so a shipping cook must not assume that PIE package discovery proves cook inclusion.
-
-Before a production artwork batch is declared shippable, choose and validate one explicit cook rule for `/Game/UI/Portraits/PrototypeTeams` (for example a packaging `DirectoriesToAlwaysCook` entry or an equivalent Primary Asset label), then perform a cooked-build asset load check. That packaging change is intentionally not made in this documentation-only Stage.
+`Config/DefaultGame.ini` explicitly includes `/Game/UI/Portraits/PrototypeTeams` in `DirectoriesToAlwaysCook`. This covers Shared textures referenced only by native-code soft object path literals. `ArtSource` and `ContentSource` are outside UE `/Game` and are not cook roots; only imported `.uasset/.uexp` runtime content ships. Package existence and a headless cook must still be validated for each imported batch.
 
 ## 10. Deterministic later batch workflow
 
 For each approved batch:
 
-1. Produce or acquire only the named source PNGs in the manifest; retain legal/provenance records.
-2. Review source canvas, opacity, identity, kit family, background, and crop landmarks before import.
-3. Extend the import/validation inventory from a single deterministic batch manifest instead of maintaining divergent tuples.
-4. Import headlessly with the exact settings above and save only the listed packages.
-5. Update `PrototypePortraits` with the exact PlayerKey mappings for the batch.
-6. Run fresh-process validation for file count, package load, dimensions, class, all texture settings, mapping count, and no redirectors.
-7. Run focused C++ presentation tests proving mapped Shared portraits resolve and unmapped cards still fall back safely.
-8. Run PIE visual review at actual Pitch Mini size for crop, identity, team kit read, background hierarchy, ownership rails, and `0/1/2` mint pips.
-9. Correct art direction before starting the next batch.
+1. Produce or acquire only the named `1024x1536` Art Masters; retain legal provenance.
+2. Review Master opacity, identity, Upper-torso Hero Bust framing, kit family, background, and crop landmarks.
+3. Extend the single PlayerKey manifest; never infer identity from DisplaySerial.
+4. Run the deterministic generator and record Master/derivative SHA-256, dimensions, Pillow version, resampler, and runtime path.
+5. Import only the generated `512x768` derivatives and save only the selected packages.
+6. Update `PrototypePortraits` with exact stable PlayerKey mappings where coverage is new.
+7. Run fresh-process validation for package load, exact object path, dimensions, class, settings, and no redirectors.
+8. Run focused tooling/C++ tests and a headless cook check.
+9. Run PIE review at actual Pitch Mini size for face, headroom, shoulders, collar, meaningful kit presence, background, rails, and `0/1/2` mint pips.
+10. Correct the Art Master—not Widget crop—before continuing when visual conformance fails.
 
-Recommended small tooling delta for that later Stage: replace the importer and validator's duplicated hard-coded `IMPORTS` tuples with one source-controlled batch JSON/CSV containing PlayerKey, source file, target asset path, expected size, and action. Do not infer paths from DisplaySerial.
+The source-controlled JSON manifest now provides PlayerKey, team, and asset name; source and destination paths are derived deterministically from those fields and never from DisplaySerial. Add later entries only through this shared inventory so importer and validator cannot diverge.
 
 ## 11. Acceptance checklist
 
 A Shared Portrait is production-conforming only when all are true:
 
-- source and imported asset satisfy section 2 and section 9 settings;
+- Art Master, generated derivative, provenance, and imported asset satisfy sections 2 and 9;
 - stable PlayerKey path and mapping resolve in a fresh process;
 - file is included in a cooked-build asset load check;
 - face is the first read at `136x140`;
@@ -227,3 +252,7 @@ A Shared Portrait is production-conforming only when all are true:
 - no per-player crop override is required;
 - no Full Card, Hand Micro, or Drag Proxy route changed;
 - PIE side-by-side review is approved.
+
+## 12. Later Artwork Cleanup & Art Spec Consolidation
+
+The later independent cleanup Stage must audit obsolete v1/v2 derivatives, delete only proven-unreferenced art, preserve required provenance Masters, re-evaluate NPOT/`NeverStream` cost at larger roster scale, and freeze the final runtime portrait memory, naming, import, and art contracts. No broad source or asset cleanup is authorized by this repair Stage.

@@ -1,23 +1,28 @@
 # Shared Portrait Artwork Manifest v1
 
-Stage: `6.13.1.3.13.4`
+Stage: `6.13.1.3.13.5A.2`
 
-Canonical source: `Content/Data/CanonicalPlayerContent.json` (`Prototype40_v1`). Audit source: native soft mappings in `FFMCodexPlayerUIAssetReferences`, source PNG inventory, and imported `.uasset` inventory. Audit date: `2026-08-20`.
+Status: **GOLDEN SAMPLE V2 CANDIDATES IMPORTED — PENDING MANUAL PIE GATE**
+
+Canonical source: `Content/Data/CanonicalPlayerContent.json` (`Prototype40_v1`). Audit source: native soft mappings in `FFMCodexPlayerUIAssetReferences`, source PNG inventory, and imported `.uasset` inventory. Audit date: `2026-08-21`.
 
 ## 1. Coverage summary
 
 | Surface | File/mapping coverage | Visual/conformance result |
 |---|---:|---|
-| Shared / Pitch-compatible | `10/40` mapped; all 10 source PNGs and all 10 packages exist | all 10 are crop-safe and usable now; `0/10` meets the final team-kit contract; all 10 are `KEEP / LATER POLISH` |
-| Shared fallback | `30/40` | no Shared mapping; restrained Pitch Mini fallback; `CREATE` required |
+| Shared / Pitch-compatible | `11/40` mapped; all 11 Master/source PNGs and all 11 packages exist | 9 older portraits remain `KEEP / LATER POLISH`; Gabriel Magalhães and Erling Haaland use active v2 candidates pending manual PIE review |
+| Shared fallback | `29/40` | no Shared mapping; restrained Pitch Mini fallback; `CREATE` required |
 | Shared invalid mapping/package | `0/40` | no dangling mapped path found |
-| Shared substantially unsuitable composition | `0/10` existing | no immediate composition rejection; later replacement is for team kit/background consistency |
+| Runtime-derivative technical validation | `2/2` | active v2 Masters deterministically produce `512x768` runtime derivatives; package/settings/routing checks pass |
+| Golden-sample visual validation | `0/2 approved; 2/2 pending` | both active v2 candidates require the user manual PIE gate; the rejected v1 result remains historical |
 | Hand Micro | `16/40` dedicated packages exist | report only; frozen; no visual reconformance claimed in this Stage |
 | Full Card | `16/40` dedicated packages exist | report only; frozen; no Shared coverage credit |
 
-Honest production workload is `30 CREATE + 10 later-polish replacements`. Technical coverage is `10 valid + 30 fallback`; final-contract artwork conformance is `0/40` until the planned kit/background pass is approved. `FILE EXISTS`, `CROP-SAFE`, and `FINAL VISUAL CONFORMANCE` are deliberately separate facts.
+Honest remaining production workload is `29 CREATE + 9 later-polish replacements`, plus the Gabriel/Haaland v2 manual PIE gate. Technical coverage remains `11 valid + 29 fallback`; neither active v2 candidate is an approved Golden Sample yet. `FILE EXISTS`, `RUNTIME DERIVATIVE VALID`, and `FINAL VISUAL CONFORMANCE` are deliberately separate facts.
 
-The earlier documentation shorthand that described only the 24 newly added players as fallback did not include six legacy players with Hand/Full-only art. The native Shared map proves the current Pitch Mini total is 10 mapped and 30 fallback.
+Before Stage 6.13.1.3.13.5A, the native Shared map contained 10 mappings and 30 fallbacks. This Stage adds Gabriel Magalhães and replaces Erling Haaland in place, producing 11 mappings and 29 fallbacks without changing the canonical 40-player roster.
+
+V2 composition target: `1024x1536` Upper-torso Hero Bust Master, generally `10–15%` farther from camera than v1, with full head/neck, bilateral shoulders, collar, and meaningful upper-shirt area. Its deterministic `512x768` derivative must retain clear Arsenal red/white or Manchester City sky-blue kit presence after the unchanged `130x112`, `1.08` Pitch Mini crop.
 
 ## 2. Manifest legend
 
@@ -26,6 +31,8 @@ The earlier documentation shorthand that described only the 24 newly added playe
 - `HM` / `FC`: dedicated Hand Micro / Full Card availability only. `YES` does not authorize cross-variant runtime reuse.
 - `Crop`: visual suitability of the current Shared source for the frozen `130x112` crop.
 - `KEEP / LATER POLISH`: usable current artwork; preserve until an approved replacement passes review.
+- `VISUAL FAIL — V2 REQUIRED`: technically usable pipeline fixture whose composition failed the frozen Pitch Mini artwork gate; it is not an approved Golden Sample.
+- `V2 CANDIDATE — PENDING MANUAL PIE GATE`: active Master/derivative/runtime asset passed technical validation but has no visual approval yet.
 - `CREATE`: no Shared source or route exists.
 - Target paths are Unreal asset paths. Runtime soft object paths append `.<AssetName>`.
 
@@ -34,7 +41,7 @@ The earlier documentation shorthand that described only the 24 newly added playe
 | PlayerKey | Serial | Team | Chinese name | English name | Pos | Current Shared asset | Pitch result | HM | FC | Crop | Disposition | Target Shared asset | Kit family | Background family | Notes |
 |---|---:|---|---|---|---|---|---|:---:|:---:|:---:|---|---|---|---|---|
 | `Prototype.Arsenal.DavidRaya` | `001` | Arsenal | 大卫·拉亚 | David Raya | `GK` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01` | Arsenal GK | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
-| `Prototype.Arsenal.GabrielMagalhaes` | `002` | Arsenal | 加布里埃尔·马加良斯 | Gabriel Magalhães | `D` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01` | Arsenal outfield | Navy/teal + warm accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
+| `Prototype.Arsenal.GabrielMagalhaes` | `002` | Arsenal | 加布里埃尔·马加良斯 | Gabriel Magalhães | `D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01` | VALID | YES | YES | PENDING | **V2 CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01` | Arsenal outfield | Navy/teal + warm accent | Active v2 Master/derivative imported at the stable path. Technical validation passes; actual-size PIE must confirm face, shoulders, upper torso, red/white kit, pip clearance, rail, and highlight compatibility. Dedicated Hand/Full routes are unchanged. |
 | `Prototype.Arsenal.WilliamSaliba` | `003` | Arsenal | 威廉·萨利巴 | William Saliba | `D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_WilliamSaliba_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_WilliamSaliba_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
 | `Prototype.Arsenal.BenWhite` | `004` | Arsenal | 本·怀特 | Ben White | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BenWhite_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
 | `Prototype.Arsenal.PieroHincapie` | `005` | Arsenal | 皮耶罗·因卡皮耶 | Piero Hincapié | `D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_PieroHincapie_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
@@ -68,7 +75,7 @@ The earlier documentation shorthand that described only the 24 newly added playe
 | `Prototype.ManchesterCity.NicoGonzalez` | `033` | Manchester City | 尼科·冈萨雷斯 | Nico González | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_NicoGonzalez_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
 | `Prototype.ManchesterCity.MatheusNunes` | `034` | Manchester City | 马特乌斯·努内斯 | Matheus Nunes | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_MatheusNunes_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
 | `Prototype.ManchesterCity.MateoKovacic` | `035` | Manchester City | 马特奥·科瓦契奇 | Mateo Kovačić | `M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_MateoKovacic_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
-| `Prototype.ManchesterCity.ErlingHaaland` | `036` | Manchester City | 埃尔林·哈兰德 | Erling Haaland | `A` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | City outfield | Navy/teal + cool accent | Technically valid and crop-safe; tied hair is a first-batch replacement crop stress case. |
+| `Prototype.ManchesterCity.ErlingHaaland` | `036` | Manchester City | 埃尔林·哈兰德 | Erling Haaland | `A` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | VALID | YES | YES | PENDING | **V2 CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | City outfield | Navy/teal + cool accent | Active v2 Master/derivative imported at the stable path. Technical validation passes; actual-size PIE must confirm face, shoulders, upper torso, sky-blue kit, pip clearance, rail, and highlight compatibility. Dedicated Hand/Full routes are unchanged. |
 | `Prototype.ManchesterCity.OmarMarmoush` | `037` | Manchester City | 奥马尔·马尔穆什 | Omar Marmoush | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_OmarMarmoush_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
 | `Prototype.ManchesterCity.JeremyDoku` | `038` | Manchester City | 杰里米·多库 | Jérémy Doku | `A` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_01` | City outfield | Navy/teal + cool accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
 | `Prototype.ManchesterCity.AntoineSemenyo` | `039` | Manchester City | 安托万·塞梅尼奥 | Antoine Semenyo | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_AntoineSemenyo_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
@@ -78,22 +85,29 @@ The earlier documentation shorthand that described only the 24 newly added playe
 
 ### KEEP
 
-None. The ten mapped portraits are technically valid and compositionally usable, but all use the older generic dark training-shirt family.
+None approved as final Golden Sample art. Gabriel/Haaland v2 are active candidates pending manual PIE review; their v1 predecessors remain explicitly rejected history.
 
 ### KEEP / LATER POLISH
 
 - Arsenal: David Raya, William Saliba, Martin Ødegaard, Declan Rice, Bukayo Saka.
-- Manchester City: Gianluigi Donnarumma, Rúben Dias, Rodri, Phil Foden, Erling Haaland.
+- Manchester City: Gianluigi Donnarumma, Rúben Dias, Rodri, Phil Foden.
 
-All ten are opaque `1024x1536` RGB sources, have matching imported packages, remain face-first through the global crop, and require no per-player crop override. Preserve them until approved replacements exist. Their later-polish scope is team/GK shirt family and background-family consistency, not emergency composition repair.
+All nine older portraits are opaque `1024x1536` RGB sources and have matching imported packages. Preserve them until approved replacements exist. Their later-polish scope is team/GK shirt family and background-family consistency, not emergency composition repair.
 
-### REPLACE now
+### V2 CANDIDATE IMPORTED — PENDING MANUAL PIE GATE
 
-None. No current Shared portrait conflicts enough with the crop contract to remove before replacement approval.
+- Arsenal: Gabriel Magalhães v2.
+- Manchester City: Erling Haaland v2.
+
+Both active v2 Masters pass structural PNG validation and are intended to restore shoulders, upper torso, and kit identity without changing the frozen crop. Their deterministic derivatives and stable-path runtime assets pass the technical gates, but their Golden Sample status remains `NOT APPROVED` until manual PIE review.
+
+### Historical v1 visual failure
+
+Gabriel Magalhães v1 and Erling Haaland v1 failed actual PIE because the frozen crop retained insufficient bilateral shoulders, upper torso, and team-kit presence. They are no longer active. Their v1 Master/derivative SHA-256 values and failure reasons remain in replacement history provenance.
 
 ### CREATE
 
-Thirty players have no Shared route. Six of them have Hand/Full-only identity provenance (Gabriel Magalhães, Mikel Merino, Gabriel Martinelli, Joško Gvardiol, Bernardo Silva, Jérémy Doku); the other twenty-four have no dedicated portrait variant in the repository.
+Twenty-nine players have no Shared route. Five of them have Hand/Full-only identity provenance (Mikel Merino, Gabriel Martinelli, Joško Gvardiol, Bernardo Silva, Jérémy Doku); the other twenty-four have no dedicated portrait variant in the repository.
 
 ## 5. Hand Micro and Full Card report-only inventory
 
@@ -109,21 +123,21 @@ Hand Micro assets are under `/Game/UI/Portraits/PrototypeTeams/HandMicroApproved
 | Team | Player | Pos | Work | Why this validates the contract |
 |---|---|---|---|---|
 | Arsenal | David Raya | GK | later-polish replacement | goalkeeper kit separation, beard/face readability, existing crop comparison |
-| Arsenal | Gabriel Magalhães | D | create | fallback conversion with frozen Hand/Full identity provenance |
+| Arsenal | Gabriel Magalhães | D | **V2 candidate pending PIE** | active replacement must prove shoulder/torso/red-white kit survival |
 | Arsenal | Myles Lewis-Skelly | M/D | create | multi-position, distinct young face/hair, no prior artwork |
 | Arsenal | Gabriel Martinelli | A | create | fallback conversion with prior identity provenance and outfield shirt test |
 | Arsenal | Viktor Gyökeres | A | create | striker silhouette and new-identity crop stress case |
-| Manchester City | Erling Haaland | A | later-polish replacement | tied long hair, large frame, sky-blue shirt and global crop stress case |
+| Manchester City | Erling Haaland | A | **V2 candidate pending PIE** | active replacement must prove shoulder/torso/sky-blue kit survival |
 | Manchester City | Joško Gvardiol | M/D | create | multi-position fallback with frozen identity provenance |
 | Manchester City | Bernardo Silva | M | create | compact face/shoulder composition with frozen identity provenance |
 | Manchester City | Jérémy Doku | A | create | complexion/hair/lighting diversity with frozen identity provenance |
 | Manchester City | Rayan Aït-Nouri | M/D | create | new identity, multi-position, no prior artwork |
 
-This is a balanced `5 Arsenal / 5 Manchester City` contract-validation sample with one GK, varied outfield roles, four multi-position/role stress cases, broad face/hair/skin variation, eight fallback conversions, and two direct before/after replacements. Review and correct this batch before continuing.
+This remains the balanced `5 Arsenal / 5 Manchester City` production sequence. The two v1 examples remain rejected history; their active v2 candidates must pass manual PIE before directing the remaining batch.
 
 ## 7. Remaining batch sequence
 
-Each batch is ten players and must follow source review -> deterministic import -> fresh-process validation -> mapping -> focused tests -> PIE review.
+Each batch must follow `1024x1536` Art Master review -> deterministic `512x768` derivative -> fresh-process import validation -> mapping -> focused tests -> PIE review.
 
 ### Batch 2 — remaining Arsenal CREATE work
 
@@ -139,16 +153,25 @@ Marc Guéhi, Nathan Aké, John Stones, Tijjani Reijnders, Rayan Cherki, Nico Gon
 - Arsenal later-polish replacement: William Saliba, Martin Ødegaard, Declan Rice, Bukayo Saka.
 - Manchester City later-polish replacement: Gianluigi Donnarumma, Rúben Dias, Rodri, Phil Foden.
 
-After Batch 4, the planned workload totals exactly 40 production-contract portraits: 30 first-time Shared creations and 10 approved replacements of the older generic-shirt set.
+After approved V2 replacements and later batches, the planned inventory still totals exactly 40 production-contract portraits: 30 first-time Shared creations and 10 approved replacements of the older generic-shirt set. Stage 6.13.1.3.13.5A proved one new route and one stable-path replacement technically; `.13.5A.2` refreshes both stable assets with v2 candidates but grants no Golden Sample visual-conformance credit before PIE.
 
 ## 8. Batch approval gates
 
 No batch may claim coverage until:
 
 - the source and imported package both exist;
+- the `1024x1536` Master deterministically reproduces the recorded `512x768` derivative and SHA-256 provenance;
 - the exact PlayerKey mapping resolves in a fresh process;
 - texture settings and cook inclusion pass;
 - the `130x112` global crop remains face-first without per-player override;
 - kit and background contracts pass actual-size PIE review;
 - mint tactical pips/highlight and both ownership rail colors remain readable;
 - Full Card, Hand Micro, Drag Proxy, Pitch Mini structure, gameplay, and Authority remain unchanged.
+
+## 9. Runtime derivative and future cleanup status
+
+Gabriel/Haaland active v2 candidates currently exercise the repaired architecture; rejected v1 hashes and reasons remain in provenance history:
+
+`ArtSource 1024x1536 Master -> ContentSource 512x768 generated derivative -> stable /Game Texture2D`.
+
+The later independent `Artwork Cleanup & Art Spec Consolidation` Stage must audit obsolete v1/v2 derivatives, delete only proven-unreferenced artwork, preserve required Masters, re-evaluate NPOT/`NeverStream` cost at larger roster scale, and freeze the final portrait memory, naming, import, and art contracts. No broad cleanup is performed here.

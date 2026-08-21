@@ -1,23 +1,25 @@
-"""Editor-only, repeatable import for the Stage 6.13 prototype portraits."""
+"""Editor-only, repeatable import for production Shared Portraits."""
 
 from pathlib import Path
+import sys
 
 import unreal
 
+sys.dont_write_bytecode = True
 
-IMPORTS = (
-    ("Arsenal", "BukayoSaka"),
-    ("Arsenal", "MartinOdegaard"),
-    ("Arsenal", "DeclanRice"),
-    ("Arsenal", "WilliamSaliba"),
-    ("Arsenal", "DavidRaya"),
-    ("ManchesterCity", "ErlingHaaland"),
-    ("ManchesterCity", "PhilFoden"),
-    ("ManchesterCity", "Rodri"),
-    ("ManchesterCity", "RubenDias"),
-    ("ManchesterCity", "GianluigiDonnarumma"),
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from SharedPortraitImportCatalog import (  # noqa: E402
+    RUNTIME_SIZE,
+    asset_path,
+    destination_path,
+    load_catalog,
+    runtime_derivative_path,
+    select_entries,
+    validate_source_png,
 )
-EXPECTED_SIZE = (1024, 1536)
 
 
 def texture_size(texture: unreal.Texture2D) -> tuple[int, int]:
@@ -25,27 +27,26 @@ def texture_size(texture: unreal.Texture2D) -> tuple[int, int]:
 
 
 project_root = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()))
+entries = select_entries(load_catalog(project_root))
 tasks = []
 expected_by_task = {}
 
-for team, player in IMPORTS:
-    asset_name = f"T_Prototype_{team}_{player}_01"
-    source_path = (
-        project_root
-        / "ArtSource"
-        / "UI"
-        / "PrototypeTeams"
-        / team
-        / "Portraits"
-        / f"{asset_name}.png"
+for entry in entries:
+    asset_name = entry["assetName"]
+    source = runtime_derivative_path(project_root, entry)
+    destination = destination_path(entry)
+    expected_asset_path = asset_path(entry)
+    if not source.is_file():
+        raise RuntimeError(f"Shared Portrait runtime derivative is missing: {source}")
+    validate_source_png(source, RUNTIME_SIZE)
+    unreal.log(
+        "FMCODEX_SHARED_PORTRAIT_RUNTIME_SOURCE=PASS "
+        f"player_key={entry['playerKey']} source={source} "
+        f"dimensions={RUNTIME_SIZE[0]}x{RUNTIME_SIZE[1]} rgb=true opaque=true"
     )
-    destination = f"/Game/UI/Portraits/PrototypeTeams/{team}"
-    expected_asset_path = f"{destination}/{asset_name}"
-    if not source_path.is_file():
-        raise RuntimeError(f"Prototype-team source image is missing: {source_path}")
 
     task = unreal.AssetImportTask()
-    task.set_editor_property("filename", str(source_path))
+    task.set_editor_property("filename", str(source))
     task.set_editor_property("destination_path", destination)
     task.set_editor_property("automated", True)
     task.set_editor_property("replace_existing", True)
@@ -70,12 +71,26 @@ for task in tasks:
     if not isinstance(asset, unreal.Texture2D):
         raise RuntimeError(f"Imported object is not Texture2D: {expected_asset_path}")
     width, height = texture_size(asset)
-    if (width, height) != EXPECTED_SIZE:
+    if (width, height) != RUNTIME_SIZE:
         raise RuntimeError(
             f"Unexpected dimensions {width}x{height}, expected "
-            f"{EXPECTED_SIZE[0]}x{EXPECTED_SIZE[1]}: {expected_asset_path}"
+            f"{RUNTIME_SIZE[0]}x{RUNTIME_SIZE[1]}: {expected_asset_path}"
         )
     asset.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_UI)
+    asset.set_editor_property(
+        "compression_settings", unreal.TextureCompressionSettings.TC_BC7
+    )
+    asset.set_editor_property(
+        "mip_gen_settings", unreal.TextureMipGenSettings.TMGS_SHARPEN1
+    )
+    asset.set_editor_property("filter", unreal.TextureFilter.TF_TRILINEAR)
+    # UE5.3 forces non-power-of-two sources to NeverStream while caching
+    # platform data. The required 512x768 derivative is therefore intentionally
+    # non-streaming; padding it to 512x1024 would alter the art contract.
+    asset.set_editor_property("never_stream", True)
+    asset.set_editor_property("srgb", True)
+    asset.set_editor_property("lod_bias", 0)
+    asset.modify()
     if not unreal.EditorAssetLibrary.save_loaded_asset(asset, only_if_is_dirty=False):
         raise RuntimeError(f"Failed to save package: {expected_asset_path}")
 
@@ -83,7 +98,10 @@ for task in tasks:
         "FMCODEX_PROTOTYPE_TEAM_IMPORT "
         f"source={task.get_editor_property('filename')} "
         f"asset={expected_asset_path} class={asset.get_class().get_name()} "
-        f"dimensions={width}x{height} lod_group=TEXTUREGROUP_UI saved=true"
+        f"dimensions={width}x{height} lod_group=TEXTUREGROUP_UI "
+        "compression=TC_BC7 srgb=true mip_generation=TMGS_SHARPEN1 "
+        "filter=TF_TRILINEAR lod_bias=0 never_stream=true "
+        "streaming_equivalent=UE53_NPOT_UI saved=true"
     )
 
-unreal.log("FMCODEX_PROTOTYPE_TEAM_IMPORT=PASS")
+unreal.log(f"FMCODEX_PROTOTYPE_TEAM_IMPORT=PASS selected={len(entries)}")

@@ -60,6 +60,10 @@ FFMCodexPlayerUIAssetReferences::FFMCodexPlayerUIAssetReferences()
 		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
 			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01.T_Prototype_Arsenal_DavidRaya_01"))));
 	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01.T_Prototype_Arsenal_GabrielMagalhaes_01"))));
+	PrototypePortraits.Add(
 		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
 		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
 			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01.T_Prototype_ManchesterCity_ErlingHaaland_01"))));

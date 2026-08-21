@@ -9948,6 +9948,7 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 	};
 	const TSet<FName> ExpectedSharedPortraitHeroBustArt = {
 		TEXT("Prototype.Arsenal.WilliamSaliba"),
+		TEXT("Prototype.Arsenal.GabrielMagalhaes"),
 		TEXT("Prototype.Arsenal.MartinOdegaard"),
 		TEXT("Prototype.Arsenal.DeclanRice"),
 		TEXT("Prototype.ManchesterCity.ErlingHaaland"),

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "playerKey": "Prototype.Arsenal.BukayoSaka",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_BukayoSaka_01"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MartinOdegaard",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_MartinOdegaard_01"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.DeclanRice",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_DeclanRice_01"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.WilliamSaliba",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_WilliamSaliba_01"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.DavidRaya",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_DavidRaya_01"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_GabrielMagalhaes_01",
+      "visualStatus": "V2 CANDIDATE IMPORTED — PENDING MANUAL PIE GATE",
+      "replacementHistory": [
+        {
+          "version": "v1",
+          "masterSha256": "9BABA396B5637CD5C123B462124482E9CC0F291F61DEB443900D85ECCE9DC50D",
+          "runtimeDerivativeSha256": "12BCA247081A3153327CED96D116662E0065AA949B7F0940FD86223DE4BBFDAD",
+          "visualStatus": "VISUAL CONFORMANCE FAIL — REQUIRES V2 ART MASTER",
+          "reason": "Frozen Pitch Mini crop retained insufficient bilateral shoulders, upper torso, and Arsenal red/white kit presence."
+        }
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_ErlingHaaland_01",
+      "visualStatus": "V2 CANDIDATE IMPORTED — PENDING MANUAL PIE GATE",
+      "replacementHistory": [
+        {
+          "version": "v1",
+          "masterSha256": "6EBEED6F2637967E39BC575D18805F4DB498F3A37183DB22906483263C20E836",
+          "runtimeDerivativeSha256": "46A3D47FC3A6D16A9F1E53EF3450CAEB26A76D95873C142999722BC175957D4E",
+          "visualStatus": "VISUAL CONFORMANCE FAIL — REQUIRES V2 ART MASTER",
+          "reason": "Frozen Pitch Mini crop retained insufficient bilateral shoulders, upper torso, and Manchester City sky-blue kit presence."
+        }
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.PhilFoden",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_PhilFoden_01"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.Rodri",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_Rodri_01"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RubenDias",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_RubenDias_01"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_GianluigiDonnarumma_01"
+    }
+  ]
+}
