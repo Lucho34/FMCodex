@@ -23,28 +23,6 @@ struct FMCODEX_API FFMCodexLocalMatchCommandDiagnostic
 	FString PresentationSummary = TEXT("Waiting for match input.");
 };
 
-struct FMCODEX_API FFMCodexLocalMatchHotSeatHandoffState
-{
-	bool bAwaitingAcknowledgement = false;
-	EInitialTurnOrderPlayer PendingPlayer = EInitialTurnOrderPlayer::None;
-	EFMCodexLocalMatchInteractionCategory PendingInteraction =
-		EFMCodexLocalMatchInteractionCategory::None;
-	EInitialTurnOrderPlayer LastRevealedHumanPlayer =
-		EInitialTurnOrderPlayer::None;
-};
-
-class FMCODEX_API FFMCodexLocalMatchHotSeatHandoffPolicy final
-{
-public:
-	static void Reconcile(
-		const FFMCodexLocalMatchInteractionView& InteractionView,
-		FFMCodexLocalMatchHotSeatHandoffState& HandoffState);
-
-	static bool Acknowledge(
-		const FFMCodexLocalMatchInteractionView& InteractionView,
-		FFMCodexLocalMatchHotSeatHandoffState& HandoffState);
-};
-
 UCLASS()
 class FMCODEX_API AFMCodexLocalMatchPlayerController final
 	: public APlayerController
@@ -58,13 +36,10 @@ public:
 	const FFMCodexLocalMatchCommandDiagnostic& GetLastDiagnostic() const;
 	const FFMCodexLocalMatchResolutionFeedback&
 		GetResolutionFeedback() const;
-	const FFMCodexLocalMatchHotSeatHandoffState& GetHotSeatHandoffState() const;
-	bool IsAwaitingHotSeatHandoff() const;
 	UFMCodexLocalMatchScreenWidget* GetPlayerMatchScreen() const;
 
 	void InitializePlayerFacingUI();
 	void RefreshPresentation();
-	void AcknowledgeHotSeatHandoff();
 	void StartNewDemoMatch();
 #if WITH_DEV_AUTOMATION_TESTS
 	void SetNextDemoMatchSeedForTesting(int32 Seed);
@@ -95,10 +70,6 @@ private:
 	void RefreshPlayerMatchScreen();
 	void RebuildControlSurface();
 	TSharedRef<SWidget> BuildControlSurface();
-	void UpdateHotSeatHandoff(
-		const FFMCodexLocalMatchInteractionView& NewInteractionView);
-	void AutoAcknowledgeSuccessfulDeployment(const FString& CommandName);
-	bool AllowGameplayCommand(const FString& CommandName);
 	void RecordLocalFailure(const FString& CommandName, const FString& Message);
 
 	template <typename TResult>
@@ -117,10 +88,6 @@ private:
 				? Result.ErrorMessage
 				: Result.AuthoritativeResult.RuntimeEnvelope.ErrorMessage;
 		RefreshPresentation();
-		if (Result.bSuccess)
-		{
-			AutoAcknowledgeSuccessfulDeployment(CommandName);
-		}
 		if (!Result.bSuccess)
 		{
 			ResolutionFeedback =
@@ -152,7 +119,6 @@ private:
 	}
 
 	FFMCodexLocalMatchInteractionView InteractionView;
-	FFMCodexLocalMatchHotSeatHandoffState HotSeatHandoffState;
 	FFMCodexLocalMatchCommandDiagnostic LastDiagnostic;
 	FFMCodexLocalMatchResolutionFeedback ResolutionFeedback;
 

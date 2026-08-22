@@ -561,7 +561,7 @@ bool FFMCodexPitchMiniOwnershipAccentAndFallbackTest::RunTest(
 	const FFMCodexLocalMatchResolutionFeedback Feedback;
 	const FFMCodexUMGMatchScreenViewModel AttackerA =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(View, Feedback,
-			FString(), false, FString(), EInitialTurnOrderPlayer::PlayerA,
+			FString(), EInitialTurnOrderPlayer::PlayerA,
 			Palette);
 	if (!TestTrue(TEXT("Both occupied pitch cards are presented"),
 		AttackerA.PitchRegions.Num() == 2
@@ -604,7 +604,7 @@ bool FFMCodexPitchMiniOwnershipAccentAndFallbackTest::RunTest(
 	View.PitchRegions[1].Slots[0].Card.bHasPitchMiniTacticalMatch = true;
 	const FFMCodexUMGMatchScreenViewModel AttackerB =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(View, Feedback,
-			FString(), false, FString(), EInitialTurnOrderPlayer::PlayerA,
+			FString(), EInitialTurnOrderPlayer::PlayerA,
 			Palette);
 	const FFMCodexUMGCardViewModel& SelfAfterTransition =
 		AttackerB.PitchRegions[0].Slots[0].Card;
@@ -628,7 +628,7 @@ bool FFMCodexPitchMiniOwnershipAccentAndFallbackTest::RunTest(
 
 	const FFMCodexUMGMatchScreenViewModel PlayerBViewer =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(View, Feedback,
-			FString(), false, FString(), EInitialTurnOrderPlayer::PlayerB,
+			FString(), EInitialTurnOrderPlayer::PlayerB,
 			Palette);
 	TestTrue(TEXT("Local-view relation flips rail edges but preserves side colors"),
 		PlayerBViewer.PitchRegions[0].Slots[0].Card

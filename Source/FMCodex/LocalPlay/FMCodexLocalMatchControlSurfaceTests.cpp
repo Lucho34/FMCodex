@@ -56,10 +56,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 	void AcknowledgeIfPending(
 		AFMCodexLocalMatchPlayerController& Controller)
 	{
-		if (Controller.IsAwaitingHotSeatHandoff())
-		{
-			Controller.AcknowledgeHotSeatHandoff();
-		}
+		Controller.RefreshPresentation();
 	}
 
 	class FScopedPlayableWorld final
@@ -480,13 +477,6 @@ namespace FMCodexLocalMatchControlSurfaceTests
 
 		for (int32 Step = 0; Step < 3; ++Step)
 		{
-			if (Controller.IsAwaitingHotSeatHandoff())
-			{
-				Test.AddError(FString::Printf(
-					TEXT("%s: system step %d created a false handoff."),
-					Label, Step + 1));
-				return false;
-			}
 			if (Controller.GetInteractionView().InteractionCategory
 				!= EFMCodexLocalMatchInteractionCategory::ContinueResolution)
 			{
@@ -503,13 +493,6 @@ namespace FMCodexLocalMatchControlSurfaceTests
 					Label,
 					Step + 1,
 					*Controller.GetLastDiagnostic().Message));
-				return false;
-			}
-			if (Controller.IsAwaitingHotSeatHandoff())
-			{
-				Test.AddError(FString::Printf(
-					TEXT("%s: completed system step %d created a false handoff."),
-					Label, Step + 1));
 				return false;
 			}
 			const auto& Feedback = Controller.GetResolutionFeedback();
@@ -563,7 +546,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			return false;
 		}
 		return !Controller.GetInteractionView().bCurrentAttackActive
-			&& Controller.IsAwaitingHotSeatHandoff();
+			&& Controller.GetInteractionView().bTacticalPointRollReady;
 	}
 }
 
@@ -743,7 +726,7 @@ bool FFMCodexLocalMatchAttackTurnTrackerProjectionTest::RunTest(
 	const FFMCodexUMGMatchScreenViewModel EntryPresentation =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			EntryView, FFMCodexLocalMatchResolutionFeedback(), FString(),
-			false, FString(), First);
+			First);
 	const FFMCodexUMGAttackTurnTrackerViewModel& CurrentTracker =
 		EntryPresentation.Header.LeftAttackTurnTracker;
 	const FFMCodexUMGAttackTurnTrackerViewModel& OtherTracker =
@@ -782,7 +765,7 @@ bool FFMCodexLocalMatchAttackTurnTrackerProjectionTest::RunTest(
 	const FFMCodexUMGMatchScreenViewModel SwitchedPresentation =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			SwitchedView, FFMCodexLocalMatchResolutionFeedback(), FString(),
-			false, FString(), First);
+			First);
 	TestEqual(TEXT("Completed side projects one used opportunity"),
 		SwitchedPresentation.Header.LeftAttackTurnTracker.Steps[0].State,
 		EFMCodexUMGAttackTurnStepState::Used);
@@ -839,11 +822,8 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 	TestEqual(TEXT("Snapshot refresh asks TacticalPointRoll"),
 		Controller->GetInteractionView().InteractionCategory,
 		EFMCodexLocalMatchInteractionCategory::TacticalPointRoll);
-	TestTrue(TEXT("Initial human interaction requires hot-seat handoff"),
-		Controller->IsAwaitingHotSeatHandoff());
-	Controller->AcknowledgeHotSeatHandoff();
-	TestFalse(TEXT("Ready reveals initial human interaction"),
-		Controller->IsAwaitingHotSeatHandoff());
+	TestTrue(TEXT("Initial Tactical Point roll is immediately ready"),
+		Controller->GetInteractionView().bTacticalPointRollReady);
 
 	Controller->FinishDeployment();
 	TestFalse(TEXT("Rejected out-of-stage command is displayed"),
@@ -856,8 +836,8 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 		Controller->GetInteractionView().CurrentAttackingPlayer;
 	TestTrue(TEXT("Representative Cross attack completes"),
 		CompleteCrossAttack(*this, *Controller, TEXT("AttackOne")));
-	TestTrue(TEXT("Completion exposes next-player hot-seat handoff"),
-		Controller->IsAwaitingHotSeatHandoff());
+	TestTrue(TEXT("Completion exposes next-player roll readiness"),
+		Controller->GetInteractionView().bTacticalPointRollReady);
 	TestTrue(TEXT("Terminal completion switches the current attacker"),
 		Controller->GetInteractionView().CurrentAttackingPlayer
 			!= FirstAttacker);
@@ -869,6 +849,16 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 			: AfterFirstCompletion.RuntimeState.PlayerBState;
 	TestEqual(TEXT("Used count advances only at canonical completion"),
 		CompletedAttackerState.UsedAttackCount, 1);
+	const TArray<uint8> HandoffStateBytes = SerializeState(AfterFirstCompletion);
+	const auto OldAttackerRoll = Host->RollTacticalPoints(FirstAttacker);
+	TestFalse(TEXT("Completed old attacker cannot roll for the new attack"),
+		OldAttackerRoll.bSuccess);
+	TestEqual(TEXT("Old attacker receives exact ownership error after handoff"),
+		OldAttackerRoll.ErrorCode,
+		EFMCodexLocalMatchHostErrorCode::RequestingSideNotCurrentAttacker);
+	TestTrue(TEXT("Rejected old-attacker roll leaves handoff state byte-identical"),
+		HandoffStateBytes
+			== SerializeState(Host->GetMatchSnapshot().Snapshot));
 	const FFMCodexLocalMatchInteractionView& AfterCompletionView =
 		Controller->GetInteractionView();
 	TestEqual(TEXT("Completed side projects no current attack index"),
@@ -897,6 +887,8 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 		EndedSnapshot.RuntimeState.PlayerAState.TotalAttackCount;
 	EndedSnapshot.RuntimeState.PlayerBState.UsedAttackCount =
 		EndedSnapshot.RuntimeState.PlayerBState.TotalAttackCount;
+	EndedSnapshot.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::None;
 	EndedSnapshot.bHasCurrentAttack = false;
 	const auto Rules = Host->GetSkillRuleSnapshot();
 	const auto EndedView = FFMCodexLocalMatchInteractionViewBuilder::Build(
@@ -906,6 +898,8 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 	TestEqual(TEXT("Canonical ended snapshot derives MatchEnded category"),
 		EndedView.InteractionCategory,
 		EFMCodexLocalMatchInteractionCategory::MatchEnded);
+	TestFalse(TEXT("Canonical three-per-side boundary exposes no fourth roll"),
+		EndedView.bTacticalPointRollReady);
 	return true;
 }
 
@@ -1095,71 +1089,44 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FFMCodexLocalMatchHotSeatPolicyTest,
-	"FMCodex.LocalPlay.ControlSurface.14.HotSeatPolicy",
+	FFMCodexLocalMatchAutomaticHandoffPresentationContractTest,
+	"FMCodex.LocalPlay.ControlSurface.14.AutomaticHandoffPresentationContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FFMCodexLocalMatchHotSeatPolicyTest::RunTest(const FString& Parameters)
+bool FFMCodexLocalMatchAutomaticHandoffPresentationContractTest::RunTest(
+	const FString& Parameters)
 {
-	FFMCodexLocalMatchHotSeatHandoffState State;
-	FFMCodexLocalMatchInteractionView View;
-	View.bMatchActive = true;
-	View.bHumanInteraction = true;
-	View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerA;
-	View.InteractionCategory =
-		EFMCodexLocalMatchInteractionCategory::Deploy;
-
-	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
-	TestTrue(TEXT("Initial human actor requires handoff"),
-		State.bAwaitingAcknowledgement);
-	TestEqual(TEXT("Initial handoff targets Player A"),
-		State.PendingPlayer, EInitialTurnOrderPlayer::PlayerA);
-	TestTrue(TEXT("Ready acknowledges the current authoritative actor"),
-		FFMCodexLocalMatchHotSeatHandoffPolicy::Acknowledge(View, State));
-	TestFalse(TEXT("Ready clears presentation mask"),
-		State.bAwaitingAcknowledgement);
-
-	View.InteractionCategory =
-		EFMCodexLocalMatchInteractionCategory::SelectCarrier;
-	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
-	TestFalse(TEXT("Same human actor after refresh has no handoff"),
-		State.bAwaitingAcknowledgement);
-
-	View.bHumanInteraction = false;
-	View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerB;
-	View.InteractionCategory =
-		EFMCodexLocalMatchInteractionCategory::ContinueResolution;
-	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
-	TestFalse(TEXT("System continuation has no handoff"),
-		State.bAwaitingAcknowledgement);
-	TestEqual(TEXT("System continuation does not replace revealed human actor"),
-		State.LastRevealedHumanPlayer, EInitialTurnOrderPlayer::PlayerA);
-
-	View.bHumanInteraction = true;
-	View.InteractionCategory =
-		EFMCodexLocalMatchInteractionCategory::SelectMarker;
-	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
-	TestTrue(TEXT("Player A to Player B triggers handoff"),
-		State.bAwaitingAcknowledgement);
-	TestEqual(TEXT("Pending interaction is rebuilt from newest view"),
-		State.PendingInteraction,
-		EFMCodexLocalMatchInteractionCategory::SelectMarker);
-
-	View.InteractionCategory =
-		EFMCodexLocalMatchInteractionCategory::SelectHelper;
-	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
-	TestEqual(TEXT("Visible mask tracks authoritative interaction changes"),
-		State.PendingInteraction,
-		EFMCodexLocalMatchInteractionCategory::SelectHelper);
-
-	View.bMatchEnded = true;
-	View.InteractionCategory =
-		EFMCodexLocalMatchInteractionCategory::MatchEnded;
-	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(View, State);
-	TestFalse(TEXT("MatchEnded suppresses pending handoff"),
-		State.bAwaitingAcknowledgement);
-	TestEqual(TEXT("MatchEnded clears pending player"),
-		State.PendingPlayer, EInitialTurnOrderPlayer::None);
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	FString ControllerHeader;
+	FString ControllerSource;
+	FString ScreenHeader;
+	FString ScreenSource;
+	FString PresentationHeader;
+	TestTrue(TEXT("Automatic handoff production sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.h"),
+			ControllerHeader)
+		&& LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+			ControllerSource)
+		&& LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.h"),
+			ScreenHeader)
+		&& LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+			ScreenSource)
+		&& LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchUMGPresentation.h"),
+			PresentationHeader));
+	const FString ProductionReadySurface = ControllerSource + ScreenSource
+		+ PresentationHeader;
+	TestTrue(TEXT("Production has no manual Ready or handoff presentation path"),
+		!ProductionReadySurface.Contains(TEXT("AcknowledgeHotSeatHandoff"))
+			&& !ProductionReadySurface.Contains(TEXT("IsAwaitingHotSeatHandoff"))
+			&& !ProductionReadySurface.Contains(TEXT("RequestReady"))
+			&& !ProductionReadySurface.Contains(TEXT("HotSeatHandoffOverlay"))
+			&& !ProductionReadySurface.Contains(TEXT("PASS CONTROL"))
+			&& !ProductionReadySurface.Contains(TEXT("Next Player:")));
 	return true;
 }
 
@@ -1175,8 +1142,8 @@ bool FFMCodexLocalMatchHotSeatAuthorityAndReadabilityTest::RunTest(
 	FScopedPlayableWorld PlayableWorld;
 	auto* Host = PlayableWorld.GetHost();
 	auto* Controller = PlayableWorld.GetController();
-	TestNotNull(TEXT("Hot-seat Host exists"), Host);
-	TestNotNull(TEXT("Hot-seat Controller exists"), Controller);
+	TestNotNull(TEXT("Local Host exists"), Host);
+	TestNotNull(TEXT("Local Controller exists"), Controller);
 	if (Host == nullptr || Controller == nullptr)
 	{
 		return false;
@@ -1184,45 +1151,12 @@ bool FFMCodexLocalMatchHotSeatAuthorityAndReadabilityTest::RunTest(
 
 	Controller->StartNewDemoMatch();
 	TestTrue(TEXT("Start succeeds"), Controller->GetLastDiagnostic().bHostSuccess);
-	TestTrue(TEXT("First human interaction is masked"),
-		Controller->IsAwaitingHotSeatHandoff());
-	const auto BeforeBlocked = SerializeState(Host->GetMatchSnapshot().Snapshot);
-	Controller->RollDemoTacticalPoints();
-	TestFalse(TEXT("Gameplay command is rejected while masked"),
-		Controller->GetLastDiagnostic().bHostSuccess);
-	TestTrue(TEXT("Blocked command leaves authority byte-identical"),
-		BeforeBlocked == SerializeState(Host->GetMatchSnapshot().Snapshot));
-	TestTrue(TEXT("Blocked command leaves handoff pending"),
-		Controller->IsAwaitingHotSeatHandoff());
-	const FFMCodexLocalMatchCommandDiagnostic BlockedDiagnostic =
-		Controller->GetLastDiagnostic();
-
-	const auto BeforeReady = SerializeState(Host->GetMatchSnapshot().Snapshot);
-	Controller->AcknowledgeHotSeatHandoff();
-	TestFalse(TEXT("Ready reveals gameplay surface"),
-		Controller->IsAwaitingHotSeatHandoff());
-	TestTrue(TEXT("Ready leaves authority byte-identical"),
-		BeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot));
-	TestEqual(TEXT("Ready preserves gameplay diagnostic command"),
-		Controller->GetLastDiagnostic().CommandName,
-		BlockedDiagnostic.CommandName);
-	TestEqual(TEXT("Ready preserves gameplay diagnostic message"),
-		Controller->GetLastDiagnostic().Message,
-		BlockedDiagnostic.Message);
-	Controller->RefreshPresentation();
-	TestFalse(TEXT("Same actor refresh does not re-mask"),
-		Controller->IsAwaitingHotSeatHandoff());
-
 	Controller->FinishDeployment();
 	TestFalse(TEXT("Out-of-stage command fails authoritatively"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	TestFalse(TEXT("Failed command does not trigger handoff"),
-		Controller->IsAwaitingHotSeatHandoff());
 	Controller->RollDemoTacticalPoints();
-	TestTrue(TEXT("Begin remains reachable after Ready"),
+	TestTrue(TEXT("Tactical Point roll is immediately reachable"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	TestFalse(TEXT("Begin to same-player deployment has no handoff"),
-		Controller->IsAwaitingHotSeatHandoff());
 
 	const auto& DeploymentView = Controller->GetInteractionView();
 	int32 GroupedSlotCount = 0;
@@ -1246,8 +1180,6 @@ bool FFMCodexLocalMatchHotSeatAuthorityAndReadabilityTest::RunTest(
 	Controller->DeployOrdinary(FirstOption.CardId, FirstOption.SlotId);
 	TestTrue(TEXT("First deployment succeeds"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	TestFalse(TEXT("Successful deployment auto-reveals the next player"),
-		Controller->IsAwaitingHotSeatHandoff());
 	bHasGoalkeeperGroup = false;
 	for (const FFMCodexLocalMatchDeploymentGroup& Group
 		: Controller->GetInteractionView().DeploymentGroups)
@@ -1263,9 +1195,8 @@ bool FFMCodexLocalMatchHotSeatAuthorityAndReadabilityTest::RunTest(
 	Controller->DeployOrdinary(SecondOption.CardId, NAME_None);
 	TestFalse(TEXT("Rejected deployment does not auto-handoff"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	TestTrue(TEXT("Rejected deployment leaves authority and player reveal unchanged"),
-		BeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& !Controller->IsAwaitingHotSeatHandoff());
+	TestTrue(TEXT("Rejected deployment leaves authority unchanged"),
+		BeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot));
 	const FFMCodexLocalMatchDeploymentGroup* GoalkeeperGroup =
 		Controller->GetInteractionView().DeploymentGroups.FindByPredicate(
 			[](const FFMCodexLocalMatchDeploymentGroup& Group)
@@ -1278,9 +1209,8 @@ bool FFMCodexLocalMatchHotSeatAuthorityAndReadabilityTest::RunTest(
 		return false;
 	}
 	Controller->DeployGoalkeeper(GoalkeeperGroup->LegalSlotIds[0]);
-	TestTrue(TEXT("Goalkeeper deployment works without an extra Ready"),
-		Controller->GetLastDiagnostic().bHostSuccess
-			&& !Controller->IsAwaitingHotSeatHandoff());
+	TestTrue(TEXT("Goalkeeper deployment remains directly reachable"),
+		Controller->GetLastDiagnostic().bHostSuccess);
 
 	FString ControllerSource;
 	TestTrue(TEXT("Controller source loads"), LoadProductionSource(
@@ -1292,25 +1222,12 @@ bool FFMCodexLocalMatchHotSeatAuthorityAndReadabilityTest::RunTest(
 	TestTrue(TEXT("Deployment uses wrapped grouped slot controls"),
 		ControllerSource.Contains(TEXT("DeploymentGroups"))
 			&& ControllerSource.Contains(TEXT("SNew(SWrapBox)")));
-	TestTrue(TEXT("Handoff screen replaces normal controls"),
-		ControllerSource.Contains(TEXT("PASS CONTROL"))
-			&& ControllerSource.Contains(TEXT("AllowGameplayCommand")));
+	TestTrue(TEXT("Normal controls have no obsolete Ready gate"),
+		!ControllerSource.Contains(TEXT("PASS CONTROL"))
+			&& !ControllerSource.Contains(TEXT("AllowGameplayCommand")));
 	TestTrue(TEXT("Choice controls carry explicit presentation headings"),
 		ControllerSource.Contains(TEXT("Branch / Shot Type"))
 			&& ControllerSource.Contains(TEXT("One-on-One Shot Type")));
-	const int32 ReadyStart = ControllerSource.Find(
-		TEXT("void AFMCodexLocalMatchPlayerController::AcknowledgeHotSeatHandoff"));
-	const int32 ReadyEnd = ControllerSource.Find(
-		TEXT("bool AFMCodexLocalMatchPlayerController::AllowGameplayCommand"));
-	const FString ReadyBody = ReadyStart != INDEX_NONE && ReadyEnd > ReadyStart
-		? ControllerSource.Mid(ReadyStart, ReadyEnd - ReadyStart)
-		: FString();
-	TestTrue(TEXT("Ready production body is statically isolated"),
-		!ReadyBody.IsEmpty()
-			&& !ReadyBody.Contains(TEXT("Host->"))
-			&& !ReadyBody.Contains(TEXT("AuthoritativeSession"))
-			&& !ReadyBody.Contains(TEXT("D6Provider"))
-			&& !ReadyBody.Contains(TEXT("RecordCommandResult")));
 	return true;
 }
 
@@ -1330,7 +1247,6 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 		return false;
 	}
 	Controller->StartNewDemoMatch();
-	Controller->AcknowledgeHotSeatHandoff();
 	Controller->RollDemoTacticalPoints();
 	const EInitialTurnOrderPlayer Attacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
@@ -1358,21 +1274,18 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 	Controller->SubmitCarrier(CarrierId);
 	TestTrue(TEXT("Carrier selection succeeds"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	TestTrue(TEXT("Carrier to Marker actor transition is masked"),
-		Controller->IsAwaitingHotSeatHandoff());
 	TestEqual(TEXT("Marker is assigned to the other player"),
-		Controller->GetHotSeatHandoffState().PendingPlayer,
+		Controller->GetInteractionView().ExpectedActingPlayer,
 		Attacker == EInitialTurnOrderPlayer::PlayerA
 			? EInitialTurnOrderPlayer::PlayerB
 			: EInitialTurnOrderPlayer::PlayerA);
-	Controller->AcknowledgeHotSeatHandoff();
 	const FName MarkerId =
 		Controller->GetInteractionView().SelectionOptions[0].Id;
 	TestEqual(TEXT("Marker option shows defender side"),
 		Controller->GetInteractionView().SelectionOptions[0].Side,
 		Controller->GetInteractionView().ExpectedActingPlayer);
 	Controller->SubmitMarker(MarkerId);
-	TestTrue(TEXT("Marker selection succeeds after defender Ready"),
+	TestTrue(TEXT("Marker selection succeeds for projected defender"),
 		Controller->GetLastDiagnostic().bHostSuccess);
 
 	for (const EFMCodexLocalMatchInteractionCategory Category : {
@@ -1395,20 +1308,14 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
 	TestTrue(TEXT("BranchIntent remains reachable"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	TestFalse(TEXT("System resolution begins without handoff"),
-		Controller->IsAwaitingHotSeatHandoff());
 	TestEqual(TEXT("Continue label identifies Begin Resolution"),
 		Controller->GetInteractionView().ContinueActionLabel,
 		FString(TEXT("Continue - Begin Resolution")));
 	Controller->ContinueResolution();
-	TestFalse(TEXT("BeginResolutionSession has no handoff"),
-		Controller->IsAwaitingHotSeatHandoff());
 	TestEqual(TEXT("Continue label identifies route resolution"),
 		Controller->GetInteractionView().ContinueActionLabel,
 		FString(TEXT("Continue - Resolve Route")));
 	Controller->ContinueResolution();
-	TestFalse(TEXT("RNG route resolution has no handoff"),
-		Controller->IsAwaitingHotSeatHandoff());
 	TestTrue(TEXT("Authoritative route D6 remains visible"),
 		Controller->GetInteractionView().AcceptedRolls.Num() > 0);
 	TestEqual(TEXT("Initial roll is grouped separately"),
@@ -1435,7 +1342,6 @@ bool FFMCodexLocalMatchCardPitchPresentationTest::RunTest(
 	}
 
 	Controller->StartNewDemoMatch();
-	Controller->AcknowledgeHotSeatHandoff();
 	Controller->RollDemoTacticalPoints();
 	TestTrue(TEXT("Presentation fixture begins attack"),
 		Controller->GetLastDiagnostic().bHostSuccess);
@@ -1567,8 +1473,6 @@ bool FFMCodexLocalMatchCardPitchPresentationTest::RunTest(
 	TestEqual(TEXT("Rejected command causes no optimistic card movement"),
 		PlacementsAfterFailure, PresentedPlacements);
 
-	TestFalse(TEXT("Rejected deployment does not introduce a handoff"),
-		Controller->IsAwaitingHotSeatHandoff());
 	bool bHasReadableGoalkeeper = false;
 	for (const FFMCodexLocalMatchDeploymentGroup& Group
 		: Controller->GetInteractionView().DeploymentGroups)
@@ -1605,7 +1509,6 @@ bool FFMCodexLocalMatchCandidatePresentationTest::RunTest(
 	}
 
 	Controller->StartNewDemoMatch();
-	Controller->AcknowledgeHotSeatHandoff();
 	Controller->RollDemoTacticalPoints();
 	const EInitialTurnOrderPlayer Attacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
@@ -1853,16 +1756,15 @@ bool FFMCodexLocalMatchRejectedFeedbackAuthorityTest::RunTest(
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
 	const auto CategoryBefore =
 		Controller->GetInteractionView().InteractionCategory;
-	Controller->RollDemoTacticalPoints();
+	Controller->FinishDeployment();
 	const auto& Rejected = Controller->GetResolutionFeedback();
 	TestTrue(TEXT("Rejected feedback is explicit"),
 		Rejected.bVisible && Rejected.bRejected
 			&& Rejected.StepTitle == TEXT("Command Rejected"));
 	TestEqual(TEXT("Rejected feedback preserves typed command"),
-		Rejected.CommandName, FString(TEXT("RollTacticalPoints")));
+		Rejected.CommandName, FString(TEXT("FinishDeployment")));
 	TestTrue(TEXT("Rejected feedback preserves diagnostic reason"),
-		!Rejected.ErrorMessage.IsEmpty()
-			&& Rejected.StepSummary.Contains(TEXT("blocked")));
+		!Rejected.ErrorMessage.IsEmpty());
 	TestTrue(TEXT("Rejected feedback has no false accepted evidence"),
 		Rejected.DiceEntries.IsEmpty()
 			&& Rejected.ComparisonEntries.IsEmpty()
@@ -1872,13 +1774,9 @@ bool FFMCodexLocalMatchRejectedFeedbackAuthorityTest::RunTest(
 	TestEqual(TEXT("Feedback does not drive InteractionCategory"),
 		Controller->GetInteractionView().InteractionCategory, CategoryBefore);
 
-	const FString FeedbackBeforeReady = Rejected.ErrorMessage;
-	Controller->AcknowledgeHotSeatHandoff();
-	TestTrue(TEXT("Ready remains authority-neutral with feedback present"),
+	Controller->RefreshPresentation();
+	TestTrue(TEXT("Presentation refresh remains authority-neutral"),
 		BeforeRejected == SerializeState(Host->GetMatchSnapshot().Snapshot));
-	TestEqual(TEXT("Ready retains the public previous feedback"),
-		Controller->GetResolutionFeedback().ErrorMessage,
-		FeedbackBeforeReady);
 	return true;
 }
 
@@ -1934,9 +1832,9 @@ bool FFMCodexLocalMatchFeedbackAuthorityBoundaryTest::RunTest(
 		ControllerSource.Contains(TEXT("FMCODEX LOCAL MATCH"))
 			&& ControllerSource.Contains(TEXT("FOOTBALL FIELD"))
 			&& ControllerSource.Contains(TEXT("MakeCardPanel")));
-	TestTrue(TEXT("Handoff remains a blocking early return"),
-		ControllerSource.Contains(TEXT("PASS CONTROL"))
-			&& ControllerSource.Contains(TEXT("AllowGameplayCommand")));
+	TestTrue(TEXT("Obsolete handoff blocker is absent"),
+		!ControllerSource.Contains(TEXT("PASS CONTROL"))
+			&& !ControllerSource.Contains(TEXT("AllowGameplayCommand")));
 	return true;
 }
 
@@ -2681,8 +2579,7 @@ bool FFMCodexLocalMatchPlayerFacingScreenFoundationTest::RunTest(
 			&& ControllerSource.Contains(TEXT("Resolve No Legal Choice"))
 			&& ControllerSource.Contains(TEXT("Branch / Shot Type"))
 			&& ControllerSource.Contains(TEXT("One-on-One Shot Type"))
-			&& ControllerSource.Contains(TEXT("ContinueResolution()"))
-			&& ControllerSource.Contains(TEXT("PASS CONTROL")));
+			&& ControllerSource.Contains(TEXT("ContinueResolution()")));
 
 	const int32 SurfaceStart = ControllerSource.Find(
 		TEXT("AFMCodexLocalMatchPlayerController::BuildControlSurface"));
@@ -2973,13 +2870,12 @@ bool FFMCodexLocalMatchPitchAndZoneRefinementTest::RunTest(
 		ControllerSource.Contains(TEXT("EMPTY SLOT"))
 			&& ControllerSource.Contains(
 				TEXT("Legality is shown in player actions")));
-	TestTrue(TEXT("Stage 6.1 architecture and handoff remain present"),
+	TestTrue(TEXT("Stage 6.1 architecture remains present"),
 		ControllerSource.Contains(TEXT("MATCH HEADER"))
 			&& ControllerSource.Contains(TEXT("FOOTBALL FIELD"))
 			&& ControllerSource.Contains(TEXT("CURRENT INTERACTION"))
 			&& ControllerSource.Contains(TEXT("RESOLUTION RESULT"))
-			&& ControllerSource.Contains(TEXT("Developer Details"))
-			&& ControllerSource.Contains(TEXT("PASS CONTROL")));
+			&& ControllerSource.Contains(TEXT("Developer Details")));
 
 	const int32 PitchSlotStart = ControllerSource.Find(
 		TEXT("TSharedRef<SWidget> MakePitchSlot"));
@@ -3358,12 +3254,11 @@ bool FFMCodexLocalMatchCardVisualHierarchyRefinementTest::RunTest(
 			&& !CompactCardBody.Contains(TEXT("AvailabilityQuery"))
 			&& !InteractionCardBody.Contains(TEXT("Host->"))
 			&& !CompactCardBody.Contains(TEXT("Host->")));
-	TestTrue(TEXT("Stage 6.2 pitch and hot-seat shell remain present"),
+	TestTrue(TEXT("Stage 6.2 pitch shell remains present"),
 		ControllerSource.Contains(TEXT("CENTER / PHYSICAL HALF BOUNDARY"))
 			&& ControllerSource.Contains(TEXT("RELATIVE ZONES"))
 			&& ControllerSource.Contains(TEXT("EMPTY SLOT"))
-			&& ControllerSource.Contains(TEXT("CURRENT ATTACKING SIDE"))
-			&& ControllerSource.Contains(TEXT("PASS CONTROL")));
+			&& ControllerSource.Contains(TEXT("CURRENT ATTACKING SIDE")));
 	TestTrue(TEXT("Card status derivation contains no legality calculation"),
 		ViewSource.Contains(TEXT("FinalizeCardPresentation"))
 			&& !ViewSource.Contains(TEXT("StatusSummaryLabel ==")));
@@ -3438,29 +3333,11 @@ bool FFMCodexLocalMatchUMGPlayerFacingFoundationTest::RunTest(
 				FFMCodexLocalMatchInteractionViewBuilder::ToString(
 					StartedView.ExpectedActingPlayer))
 			&& StartedUMG.Header.bMatchEnded == StartedView.bMatchEnded);
-	TestTrue(TEXT("Authoritative human transition displays UMG handoff"),
-		Controller->IsAwaitingHotSeatHandoff()
-			&& StartedUMG.Handoff.bVisible
-			&& StartedUMG.Handoff.TitleLabel == TEXT("PASS CONTROL")
-			&& StartedUMG.Handoff.NextPlayerLabel.Contains(TEXT("Player")));
-	if (!Controller->IsAwaitingHotSeatHandoff())
-	{
-		return false;
-	}
-	const TArray<uint8> StateBeforeReady =
-		SerializeState(Host->GetMatchSnapshot().Snapshot);
-	Screen->RequestReady();
-	TestTrue(TEXT("UMG Ready is presentation-only and reveals controls"),
-		!Controller->IsAwaitingHotSeatHandoff()
-			&& !Screen->GetPresentation().Handoff.bVisible
-			&& StateBeforeReady
-				== SerializeState(Host->GetMatchSnapshot().Snapshot));
+	TestTrue(TEXT("Authoritative human transition exposes roll immediately"),
+		StartedView.bTacticalPointRollReady
+			&& StartedUMG.Interaction.bCanRollTacticalPoints);
 
 	Screen->RequestRollTacticalPoints();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 	TestTrue(TEXT("UMG TacticalPointRoll creates authoritative CurrentAttack"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().bCurrentAttackActive
@@ -3635,7 +3512,7 @@ bool FFMCodexLocalMatchUMGPlayerFacingFoundationTest::RunTest(
 	const FFMCodexUMGMatchScreenViewModel FeedbackDTO =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			Controller->GetInteractionView(), FeedbackFixture,
-			Controller->GetLastDiagnostic().Message, false, FString());
+			Controller->GetLastDiagnostic().Message);
 	TestTrue(TEXT("UMG resolution DTO preserves Step/Dice/Decision/Terminal"),
 		FeedbackDTO.Resolution.bVisible
 			&& FeedbackDTO.Resolution.StepLabel == TEXT("STEP FIXTURE")
@@ -3752,24 +3629,9 @@ bool FFMCodexUMGPitchWidgetVisualFoundationTest::RunTest(
 		Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")));
 
 	Screen->RequestStartNewMatch();
-	TestTrue(TEXT("Pitch stage preserves blocking handoff overlay"),
-		Controller->IsAwaitingHotSeatHandoff()
-			&& Screen->GetPresentation().Handoff.bVisible);
-	if (!Controller->IsAwaitingHotSeatHandoff())
-	{
-		return false;
-	}
-	const TArray<uint8> StateBeforeReady =
-		SerializeState(Host->GetMatchSnapshot().Snapshot);
-	Screen->RequestReady();
-	TestTrue(TEXT("Pitch-stage Ready remains authority-neutral"),
-		StateBeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& !Screen->GetPresentation().Handoff.bVisible);
+	TestTrue(TEXT("Pitch stage exposes Tactical Point roll without a modal"),
+		Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
 	Screen->RequestRollTacticalPoints();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 	TestTrue(TEXT("Pitch fixture reaches authoritative deployment"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().InteractionCategory
@@ -4295,24 +4157,9 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 			&& CardWidget->GetRenderedStatusBadgeCount() == 0);
 
 	Screen->RequestStartNewMatch();
-	TestTrue(TEXT("Card stage preserves full-screen hot-seat blocking"),
-		Controller->IsAwaitingHotSeatHandoff()
-			&& Screen->GetPresentation().Handoff.bVisible);
-	if (!Controller->IsAwaitingHotSeatHandoff())
-	{
-		return false;
-	}
-	const TArray<uint8> StateBeforeReady =
-		SerializeState(Host->GetMatchSnapshot().Snapshot);
-	Screen->RequestReady();
-	TestTrue(TEXT("Card-stage Ready remains authority-neutral"),
-		StateBeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& !Screen->GetPresentation().Handoff.bVisible);
+	TestTrue(TEXT("Card stage has no full-screen handoff blocker"),
+		Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
 	Screen->RequestRollTacticalPoints();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 	TestTrue(TEXT("Card fixture reaches authoritative deployment"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().InteractionCategory
@@ -5017,7 +4864,7 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 			&& Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("CurrentInteractionRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("ResolutionResultRegion")) != nullptr
-			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) != nullptr
+			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) == nullptr
 			&& Pitch->GetWidgetFromName(TEXT("PlayerBPhysicalHalf")) != nullptr
 			&& Pitch->GetWidgetFromName(TEXT("PhysicalHalfVisualSeparator")) != nullptr
 			&& Pitch->GetWidgetFromName(TEXT("PlayerAPhysicalHalf")) != nullptr);
@@ -5310,17 +5157,8 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	Panel->RequestStartMatch();
 	TestTrue(TEXT("Panel StartMatch reaches authoritative Host"),
 		Controller->GetLastDiagnostic().bHostSuccess
-			&& Controller->IsAwaitingHotSeatHandoff()
-			&& Panel->IsInteractionBlocked());
-	const TArray<uint8> StateWhileBlocked =
-		SerializeState(Host->GetMatchSnapshot().Snapshot);
-	Panel->RequestTacticalPointRoll();
-	TestTrue(TEXT("Handoff blocks every Interaction Panel intent"),
-		StateWhileBlocked == SerializeState(Host->GetMatchSnapshot().Snapshot));
-	Screen->RequestReady();
-	TestTrue(TEXT("Ready is presentation-only and unblocks panel"),
-		StateWhileBlocked == SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& !Panel->IsInteractionBlocked());
+			&& !Panel->IsInteractionBlocked()
+			&& Panel->GetPresentation().bCanRollTacticalPoints);
 	Panel->RequestTacticalPointRoll();
 	TestTrue(TEXT("Panel TacticalPointRoll reaches authoritative Host"),
 		Controller->GetLastDiagnostic().bHostSuccess);
@@ -5334,14 +5172,6 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		FlowAttacker == EInitialTurnOrderPlayer::PlayerA
 			? TEXT("NearB") : TEXT("NearA");
 
-	auto ReadyIfPending = [Controller, Screen]()
-	{
-		if (Controller->IsAwaitingHotSeatHandoff())
-		{
-			Screen->RequestReady();
-		}
-	};
-	ReadyIfPending();
 	int32 SuccessfulDeployments = 0;
 	bool bRejectedIntentVerified = false;
 	bool bCrossCarrierDeployed = false;
@@ -5475,7 +5305,6 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		bCrossRunnerDeployed = bCrossRunnerDeployed
 			|| DeployedCardId == CrossRunnerId;
 		++SuccessfulDeployments;
-		ReadyIfPending();
 		if (!bRejectedIntentVerified)
 		{
 			const TArray<uint8> BeforeRejected =
@@ -5499,13 +5328,10 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		bRejectedIntentVerified);
 	for (int32 Side = 0; Side < 2; ++Side)
 	{
-		ReadyIfPending();
 		Panel->RequestFinishDeployment();
 		TestTrue(TEXT("Panel FinishDeployment reaches authoritative Host"),
 			Controller->GetLastDiagnostic().bHostSuccess);
 	}
-	ReadyIfPending();
-
 	TestTrue(TEXT("Real Panel deployment includes the canonical Cross carrier"),
 		bCrossCarrierDeployed);
 	const FFMCodexUMGSelectionChoiceViewModel* Carrier =
@@ -5522,7 +5348,6 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	Panel->RequestCarrier(Carrier->OptionId);
 	TestTrue(TEXT("Panel Carrier reaches authoritative Host"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	ReadyIfPending();
 	if (!Panel->GetPresentation().SelectionChoices.IsEmpty())
 	{
 		Panel->RequestMarker(
@@ -5539,7 +5364,6 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	}
 	TestTrue(TEXT("Panel Marker/NoLegal Marker reaches authoritative Host"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	ReadyIfPending();
 	const FFMCodexUMGSelectionChoiceViewModel* CrossSkill =
 		Panel->GetPresentation().SelectionChoices.FindByPredicate(
 			[](const FFMCodexUMGSelectionChoiceViewModel& Candidate)
@@ -5555,7 +5379,6 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	Panel->RequestSkill(CrossSkill->OptionId);
 	TestTrue(TEXT("Panel Skill reaches authoritative Host"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	ReadyIfPending();
 	for (int32 Guard = 0; Guard < 4
 		&& (Panel->GetPresentation().Category
 			== EFMCodexUMGInteractionCategory::SelectRunner
@@ -5587,7 +5410,6 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		}
 		TestTrue(TEXT("Panel Runner/Helper route reaches Host"),
 			Controller->GetLastDiagnostic().bHostSuccess);
-		ReadyIfPending();
 	}
 	TestTrue(TEXT("Representative Panel flow reaches Cross BranchIntent"),
 		Panel->GetPresentation().Category
@@ -5711,11 +5533,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	{
 		return false;
 	}
-	if (OneOnOneController->IsAwaitingHotSeatHandoff())
-	{
-		OneOnOneScreen->RequestReady();
-	}
-	TestFalse(TEXT("OneOnOne player acknowledges handoff before choosing"),
+	TestFalse(TEXT("OneOnOne choice is immediately unblocked"),
 		OneOnOnePanel->IsInteractionBlocked());
 	OneOnOnePanel->RequestOneOnOne(EFMCodexUMGOneOnOneChoice::DirectShot);
 	TestTrue(TEXT("OneOnOne Widget choice is accepted by Host"),
@@ -5782,7 +5600,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 			&& Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("CurrentInteractionRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("ResolutionResultRegion")) != nullptr
-			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) != nullptr);
+			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) == nullptr);
 	TestTrue(TEXT("Slate developer reference surface remains available"),
 		ControllerSource.Contains(TEXT("BuildControlSurface"))
 			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));
@@ -6028,14 +5846,8 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 	Interaction->RequestStartMatch();
 	TestTrue(TEXT("Cut Inside UMG flow starts through Interaction Panel"),
 		Controller->GetLastDiagnostic().bHostSuccess
-			&& Screen->GetPresentation().Handoff.bVisible
+			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints
 			&& Screen->GetResolutionPanel() == RootResolution);
-	const TArray<uint8> CrossStateBeforeReady =
-		SerializeState(Host->GetMatchSnapshot().Snapshot);
-	Screen->RequestReady();
-	TestTrue(TEXT("Handoff remains above Resolution and Ready is neutral"),
-		CrossStateBeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& !Screen->GetPresentation().Handoff.bVisible);
 	Interaction->RequestTacticalPointRoll();
 	TestTrue(TEXT("Cut Inside UMG flow begins through Interaction Panel"),
 		Controller->GetLastDiagnostic().bHostSuccess
@@ -6112,17 +5924,13 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 				TEXT("Score:"))
 			&& RootResolution->GetPresentation().ContinuationLabel.Contains(
 				TEXT("Next attacker:")));
-	TestTrue(TEXT("Completed attack enters the next-player handoff"),
-		Controller->IsAwaitingHotSeatHandoff()
-			&& Screen->GetPresentation().Handoff.bVisible);
-	const TArray<uint8> StateBeforeNextPlayerReady =
-		SerializeState(Host->GetMatchSnapshot().Snapshot);
-	Screen->RequestReady();
+	TestTrue(TEXT("Completed attack enters next-player roll readiness"),
+		Controller->GetInteractionView().bTacticalPointRollReady
+			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
 	const FFMCodexUMGMatchHeaderViewModel& SwitchedHeader =
 		Screen->GetPresentation().Header;
-	TestTrue(TEXT("Ready dismisses terminal feedback without authority mutation"),
-		StateBeforeNextPlayerReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& !Screen->GetPresentation().Resolution.bVisible
+	TestTrue(TEXT("Terminal feedback no longer masks the next attacker"),
+		!Screen->GetPresentation().Resolution.bVisible
 			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
 				->GetVisibility() == ESlateVisibility::Collapsed);
 	TestTrue(TEXT("Completed attack projects Used then next-side Current"),
@@ -6197,10 +6005,6 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			TestTrue(TEXT("P2 feedback announces authoritative OneOnOne handoff"),
 				OneOnOneResolution->GetPresentation().DecisionLabel.Contains(
 					TEXT("One-on-One")));
-			if (OneOnOneController->IsAwaitingHotSeatHandoff())
-			{
-				OneOnOneScreen->RequestReady();
-			}
 			OneOnOneInteraction->RequestOneOnOne(
 				EFMCodexUMGOneOnOneChoice::DirectShot);
 		}
@@ -6327,7 +6131,7 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			&& Screen->GetWidgetFromName(TEXT("FootballCardFieldRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("CurrentInteractionRegion")) != nullptr
 			&& Screen->GetWidgetFromName(TEXT("ResolutionResultRegion")) != nullptr
-			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) != nullptr);
+			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffOverlay")) == nullptr);
 	TestTrue(TEXT("Slate developer reference surface remains available"),
 		ControllerSource.Contains(TEXT("BuildControlSurface"))
 			&& ControllerSource.Contains(TEXT("InitializeDeveloperSlateSurface")));
@@ -6397,8 +6201,7 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	auto BuildHeader = [](const FFMCodexLocalMatchInteractionView& View)
 	{
 		return FFMCodexLocalMatchUMGPresentationBuilder::Build(
-			View, FFMCodexLocalMatchResolutionFeedback(), FString(),
-			false, FString()).Header;
+			View, FFMCodexLocalMatchResolutionFeedback(), FString()).Header;
 	};
 
 	const FFMCodexLocalMatchInteractionView PreMatch =
@@ -6523,9 +6326,8 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	}
 	Controller->RefreshPresentation();
 	Interaction->RequestStartMatch();
-	TestTrue(TEXT("Real Header refreshes active match beneath handoff"),
+	TestTrue(TEXT("Real Header refreshes active match without handoff"),
 		Controller->GetLastDiagnostic().bHostSuccess
-			&& Screen->GetPresentation().Handoff.bVisible
 			&& Header->GetPresentation().bMatchActive
 			&& Header->GetPresentation().ActorStatusLabel.Contains(TEXT("TO ACT")));
 	const bool bFirstAttackerOnLeft =
@@ -6615,26 +6417,10 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			&& FMath::IsNearlyEqual(UsedTrackerBounds->GetWidthOverride(), 24.0f)
 			&& FMath::IsNearlyEqual(UsedTrackerBounds->GetHeightOverride(), 24.0f));
 	Controller->RefreshPresentation();
-	const FString HandoffPlayer =
-		Screen->GetPresentation().Handoff.NextPlayerLabel;
-	TestTrue(TEXT("Handoff and underlying Header actor remain consistent"),
-		(HandoffPlayer.Contains(TEXT("Player A"))
-				&& Header->GetDisplayedActorLabel().Contains(TEXT("PLAYER A")))
-			|| (HandoffPlayer.Contains(TEXT("Player B"))
-				&& Header->GetDisplayedActorLabel().Contains(TEXT("PLAYER B"))));
-	const TArray<uint8> BeforeReady =
-		SerializeState(Host->GetMatchSnapshot().Snapshot);
-	const FFMCodexUMGMatchHeaderViewModel HeaderBeforeReady =
-		Header->GetPresentation();
-	Screen->RequestReady();
-	TestTrue(TEXT("Ready changes neither authority nor Header snapshot values"),
-		BeforeReady == SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& Header->GetPresentation().ScoreLabel
-				== HeaderBeforeReady.ScoreLabel
-			&& Header->GetPresentation().AttackerStatusLabel
-				== HeaderBeforeReady.AttackerStatusLabel
-			&& Header->GetPresentation().ActorStatusLabel
-				== HeaderBeforeReady.ActorStatusLabel);
+	TestTrue(TEXT("Header actor follows the projected authoritative actor"),
+		Header->GetDisplayedActorLabel().Contains(
+			FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				Controller->GetInteractionView().ExpectedActingPlayer).ToUpper()));
 	Interaction->RequestTacticalPointRoll();
 	if (!Controller->GetLastDiagnostic().bHostSuccess)
 	{
@@ -6707,10 +6493,6 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	{
 		return false;
 	}
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 	TestTrue(TEXT("Marker Header keeps attacker but shows defender acting"),
 		Header->GetDisplayedAttackerLabel().Contains(
 			Attacker == EInitialTurnOrderPlayer::PlayerA
@@ -6727,10 +6509,6 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	if (!Controller->GetLastDiagnostic().bHostSuccess)
 	{
 		return false;
-	}
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
 	}
 	const FFMCodexUMGSelectionChoiceViewModel* CrossSkill =
 		Interaction->GetPresentation().SelectionChoices.FindByPredicate(
@@ -6749,10 +6527,6 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	}
 	for (int32 Guard = 0; Guard < 4; ++Guard)
 	{
-		if (Controller->IsAwaitingHotSeatHandoff())
-		{
-			Screen->RequestReady();
-		}
 		const EFMCodexUMGInteractionCategory Category =
 			Interaction->GetPresentation().Category;
 		if (Category != EFMCodexUMGInteractionCategory::SelectRunner
@@ -6785,10 +6559,6 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 		{
 			return false;
 		}
-	}
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
 	}
 	Interaction->RequestBranch(EFMCodexUMGBranchIntent::CrossHigh);
 	TestTrue(TEXT("System resolution is explicit and attacker is retained"),
@@ -6840,12 +6610,14 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			&& !Header->GetDisplayedAttackerLabel().EndsWith(TEXT(" ATTACKING")));
 	const FFMCodexUMGMatchHeaderViewModel& SwitchedHeader =
 		Header->GetPresentation();
+	const bool bCompletedAttackerOnLeft =
+		SwitchedHeader.LeftPlayerLabel == FirstAttackerLabel;
 	const FFMCodexUMGAttackTurnTrackerViewModel& CompletedAttackerTracker =
-		bFirstAttackerOnLeft
+		bCompletedAttackerOnLeft
 			? SwitchedHeader.LeftAttackTurnTracker
 			: SwitchedHeader.RightAttackTurnTracker;
 	const FFMCodexUMGAttackTurnTrackerViewModel& NewAttackerTracker =
-		bFirstAttackerOnLeft
+		bCompletedAttackerOnLeft
 			? SwitchedHeader.RightAttackTurnTracker
 			: SwitchedHeader.LeftAttackTurnTracker;
 	TestTrue(TEXT("Side switch clears stale TP and projects Used then Current"),
@@ -6861,10 +6633,6 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 				TEXT("LeftTacticalPointChip")))
 			&& !IsVisible(Header->GetWidgetFromName(
 				TEXT("RightTacticalPointChip"))));
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 	Interaction->RequestTacticalPointRoll();
 	const FFMCodexUMGMatchHeaderViewModel& NewAttackHeader =
 		Header->GetPresentation();
@@ -6875,6 +6643,7 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			? NewAttackHeader.LeftPlayerLabel : NewAttackHeader.RightPlayerLabel;
 	TestTrue(TEXT("New attacker receives TP only after its own authoritative roll"),
 		Controller->GetLastDiagnostic().bHostSuccess
+			&& !Controller->GetResolutionFeedback().bTerminal
 			&& NewAttackHeader.CurrentAttackerLabel != FirstAttackerLabel
 			&& NewAttackHeader.bShowLeftTacticalPointChip
 				!= NewAttackHeader.bShowRightTacticalPointChip
@@ -7031,8 +6800,7 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 	for (const TCHAR* RootRegion : {
 		TEXT("MatchScreenStyleBackground"), TEXT("MatchHeaderRegion"),
 		TEXT("FootballCardFieldRegion"), TEXT("CurrentInteractionRegion"),
-		TEXT("ResolutionResultRegion"), TEXT("HotSeatHandoffOverlay"),
-		TEXT("HotSeatHandoffCard"), TEXT("HotSeatReadyButton") })
+		TEXT("ResolutionResultRegion") })
 	{
 		TestNotNull(FString::Printf(TEXT("Styled root contains %s"), RootRegion),
 			Screen->GetWidgetFromName(RootRegion));
@@ -7326,22 +7094,14 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 
 	const TArray<uint8> StateBeforeStyleRefresh =
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
-	FFMCodexUMGMatchScreenViewModel HandoffPresentation =
+	FFMCodexUMGMatchScreenViewModel RefreshedPresentation =
 		Screen->GetPresentation();
-	HandoffPresentation.Handoff.bVisible = true;
-	HandoffPresentation.Handoff.TitleLabel = TEXT("PASS CONTROL");
-	HandoffPresentation.Handoff.NextPlayerLabel = TEXT("Next Player: Player B");
-	HandoffPresentation.Handoff.ReadyLabel = TEXT("Confirm the handoff, then press Ready");
-	Screen->RefreshFromPresentation(HandoffPresentation);
-	TestTrue(TEXT("Styled handoff remains presentation-only and blocks interaction"),
+	Screen->RefreshFromPresentation(RefreshedPresentation);
+	TestTrue(TEXT("Style refresh has no obsolete handoff surface"),
 		StateBeforeStyleRefresh == SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& !Screen->GetInteractionPanel()->GetIsEnabled()
-			&& Cast<UTextBlock>(Screen->GetWidgetFromName(
-				TEXT("HotSeatHandoffText")))->GetText().ToString()
-					== TEXT("PASS CONTROL")
-			&& Cast<UTextBlock>(Screen->GetWidgetFromName(
-				TEXT("HotSeatNextPlayerText")))->GetText().ToString().Contains(
-					TEXT("Player B")));
+			&& Screen->GetInteractionPanel()->GetIsEnabled()
+			&& Screen->GetWidgetFromName(TEXT("HotSeatHandoffText")) == nullptr
+			&& Screen->GetWidgetFromName(TEXT("HotSeatReadyButton")) == nullptr);
 
 	FString StyleHeader;
 	FString StyleSource;
@@ -7647,12 +7407,10 @@ bool FFMCodexValidatedPlayerCardArtPilotIntegrationTest::RunTest(
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
 	Screen->RequestDeployOrdinary(
 		AssetReferences.GetPilotCardId(), NAME_None);
-	TestTrue(TEXT("Rejected typed command preserves State handoff and pilot art"),
+	TestTrue(TEXT("Rejected typed command preserves State and pilot art"),
 		!Controller->GetLastDiagnostic().bHostSuccess
 			&& StateBeforeRejected
 				== SerializeState(Host->GetMatchSnapshot().Snapshot)
-			&& Controller->IsAwaitingHotSeatHandoff()
-			&& Screen->GetPresentation().Handoff.bVisible
 			&& HasBoundPilotFullCard(*InteractionChoiceCard)
 			&& InteractionChoiceCard->GetPresentation().CardId == Card.CardId);
 
@@ -8078,25 +7836,17 @@ bool FFMCodexGoldenLayoutPrototypeTest::RunTest(const FString& Parameters)
 		!Screen->GetPresentation().Resolution.bVisible
 			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
 				->GetVisibility() == ESlateVisibility::Collapsed);
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 	Screen->RequestRollTacticalPoints();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 
 	const FFMCodexUMGMatchScreenViewModel PlayerAView =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			Controller->GetInteractionView(),
-			FFMCodexLocalMatchResolutionFeedback(), FString(), false, FString(),
+			FFMCodexLocalMatchResolutionFeedback(), FString(),
 			EInitialTurnOrderPlayer::PlayerA);
 	const FFMCodexUMGMatchScreenViewModel PlayerBView =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			Controller->GetInteractionView(),
-			FFMCodexLocalMatchResolutionFeedback(), FString(), false, FString(),
+			FFMCodexLocalMatchResolutionFeedback(), FString(),
 			EInitialTurnOrderPlayer::PlayerB);
 	TestTrue(TEXT("Local-left orientation reverses presentation only"),
 		PlayerAView.LocalRack.SideLabel == TEXT("Player A")
@@ -8224,8 +7974,6 @@ bool FFMCodexGoldenLayoutPrototypeTest::RunTest(const FString& Parameters)
 		}
 	}
 	Screen->RequestDeployOrdinary(PlayedCardId, Ordinary->LegalSlots[0].SlotId);
-	TestFalse(TEXT("Golden deployment auto-handoff removes extra Ready"),
-		Controller->IsAwaitingHotSeatHandoff());
 	const auto& AfterLocalRack = Screen->GetPresentation().LocalRack;
 	const auto& AfterOpponentRack = Screen->GetPresentation().OpponentRack;
 	const FFMCodexUMGCardRackCellViewModel* PlayedCell =
@@ -8577,15 +8325,7 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	}
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 	Screen->RequestRollTacticalPoints();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 
 	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
 	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
@@ -8749,11 +8489,6 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 								== OrdinaryChoice.Destinations[0].SlotId;
 					}));
 	OrdinaryOperation->Drop(FPointerEvent());
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
-
 	const FFMCodexUMGDeploymentDestinationViewModel* StaleDestination =
 		OrdinaryChoice.Destinations.FindByPredicate(
 			[&OrdinaryChoice](
@@ -9235,10 +8970,6 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& PitchMini->GetConfiguredDimensions() == FVector2D(136.0f, 140.0f));
 
 	Screen->RequestStartNewMatch();
-	if (Screen->GetPresentation().Handoff.bVisible)
-	{
-		Screen->RequestReady();
-	}
 	Screen->RefreshFromPresentation(Screen->GetPresentation());
 	Screen->ForceLayoutPrepass();
 	auto AuditRack = [](const UFMCodexCardRackWidget* Rack) -> bool

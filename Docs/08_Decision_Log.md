@@ -379,7 +379,7 @@
 - 日期：2026-08-22
 - 缺陷分类：PIE 的 `Resolution Started` 停滞是 presentation routing defect，不是 authoritative gameplay logic bug。`BeginResolutionSession` 已成功把权威 Session 推进到 `AwaitingRoute`；Controller 也已存在 Long Shot / Cut Inside 的 `ResolveIntentDeterminedRoute` 与其他技能的 `ResolveInitialRoute` 路由。缺口是全屏 Resolution Overlay 只显示反馈、没有自己的 Continue 控件，而底层 Interaction Panel 的合法 Continue 被视觉遮住。
 - 修复边界：Presentation DTO 明确投影 `bCanContinue / ContinueActionLabel`；Resolution Panel 只广播无参数 Continue intent，Screen 将其转发到既有 `Controller::ContinueResolution`。Overlay 使用 self-only hit-test invisibility，使子控件可点击。Widget 不读取 Session Stage、不选择技能分支、不调用 Host。
-- 生命周期：攻击 terminal feedback 在下一玩家的 blocking handoff 中保持可见；该玩家确认 Ready 后，Controller 只清除旧 feedback 展示对象。Ready 前后权威 State 必须 byte-identical，新攻击方的 TacticalPointRoll readiness 直接来自刷新后的 InteractionView。
+- 生命周期（已由 CD-036 取代）：本阶段曾让 terminal feedback 在 blocking handoff 中保持可见并由 Ready 清理；Stage 6.13.1.4.3 已移除该生产门禁，现行生命周期见 CD-036。
 - UI 修复：三步 Tracker 继续消费 `Used / Current / Remaining` DTO，但使用真实圆形 RoundedBox 节点并居中到玩家身份区域；中央 `战术点 X` 提升可读性但低于比分/当前进攻；左下掷点模块隐藏重复标题/分类，保留小型行动方提示与单一 `156 x 48` CTA。
 - 范围：不修改 Pitch、Slot state、Ball marker、Hand Micro、Pitch Mini、Full Card、玩法公式、随机规则或 Authority API。
 
@@ -390,7 +390,17 @@
 - 生命周期：BetweenAttacks 手动掷点 readiness 下不显示空 Chip 或假零值，中央保留 `等待掷出战术点`。建立 CurrentAttack 后只有当前攻击方侧显示紧凑 Chip，中央改显示已有 MajorPhase 的本地化状态。攻击完成后 ActionPoint 随 CurrentAttack 清除，因此在新攻击方下一次权威掷点前两侧 Chip 都为空；Hot-seat 左右视角可以重映射，归属必须按玩家身份而非固定屏幕侧验证。
 - Tracker 语义：`Remaining / Used / Current` 继续完全消费 DTO step state。Remaining 为低填充近空心、Used 为高对比实心完成态、Current 为暗内层加最强 ring；三者同时使用填充、轮廓、亮度和数字对比，不只依赖可配置 Primary Side Color。节点数量与当前/已用索引仍不由 Widget 计算。
 - 布局：两侧统一使用居中的 Player Identity Group；名字旁只在有效时出现小型 TP Chip，下方统一按 `进攻回合 → 1 2 3` 顺序排列，不再对右侧反转标签/节点次序。Score → 当前进攻序号 → phase/status 的中央层级不变。
-- 范围：这是 Presentation DTO、Header Widget、本地化、测试与文档的小型阶段；不修改 Ready/Handoff、Resolution、Host/Session、RNG、selection、skill、Pitch、Card 或 artwork。
+- 范围：这是 Presentation DTO、Header Widget、本地化、测试与文档的小型阶段；本阶段本身不修改当时的 Ready/Handoff、Resolution、Host/Session、RNG、selection、skill、Pitch、Card 或 artwork。后续 Ready/Handoff 决策由 CD-036 取代。
+
+### CD-036 - Automatic Attack Handoff and Ready Gate Removal
+
+- 日期：2026-08-22
+- 权威合同：一次攻击完成的既有权威路径负责清除 CurrentAttack、为旧攻击方增加一次 `UsedAttackCount`、选择仍有机会的下一攻击方，并在非终局时写入 `CurrentAttackingPlayer`。这组事实已经是原子 completion 结果；Ready 从来不是 Gameplay State、Host/Session 命令或权威 mutation。
+- 生产流：`Attack Complete → authoritative attacker switch → TacticalPointRoll ready`。InteractionView 在无 active CurrentAttack、比赛未结束且当前攻击方合法时直接投影下一方的手动掷点 readiness。不会自动掷点，也不存在 PASS CONTROL、Next Player、Ready、计时器、自动点击或隐藏确认门禁。
+- LocalPlay：Controller 在刷新时可把本地观看侧映射到当前 Expected Actor / Current Attacker，供同屏测试自然继续；该映射只影响展示和请求 Side，不决定攻击完成、次数增加或攻击方切换。
+- 反馈生命周期：Controller 可保留刚完成攻击的 terminal feedback 供诊断与语义断言，但 Presentation Builder 在 authoritative CurrentAttack 已结束时不再显示其全屏 Resolution 层；下一次合法/拒绝命令会显式替换反馈。该清理不写 Match State。
+- 权限与终局：只有投影出的下一攻击方能请求战术点；旧攻击方/防守方仍由 Host 权限校验拒绝。双方没有剩余机会时既有 completion 写入 `CurrentAttackingPlayer=None` 并结束比赛，不建立第四次攻击。
+- 范围：仅移除 Controller/UMG 的 Hot-seat Ready gate 与交接 DTO/Overlay，并迁移测试和文档；Header/Tracker/TP Chip 视觉、RNG、公式、选人、技能、Pitch、卡面和 artwork 均保持冻结。
 
 ## Resolved UQ Summary
 

@@ -86,10 +86,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
 	void RequestContinueResolution();
-
-	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
-	void RequestReady();
-
 	const FFMCodexUMGMatchScreenViewModel& GetPresentation() const;
 	AFMCodexLocalMatchPlayerController* GetMatchController() const;
 	UFMCodexMatchHeaderWidget* GetMatchHeader() const;
@@ -182,9 +178,6 @@ private:
 	UFUNCTION()
 	void HandleContinueRequested();
 
-	UFUNCTION()
-	void HandleReadyClicked();
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Presentation",
 		meta = (AllowPrivateAccess = "true"))
@@ -246,18 +239,6 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> ResolutionOverlay;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UBorder> HandoffOverlay;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> HandoffTitleText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> HandoffPlayerText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> HandoffReadyText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> HandMicroProductionReviewSurface;

@@ -437,14 +437,6 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	}
 }
 
-void UFMCodexLocalMatchScreenWidget::RequestReady()
-{
-	if (MatchController != nullptr)
-	{
-		MatchController->AcknowledgeHotSeatHandoff();
-	}
-}
-
 void UFMCodexLocalMatchScreenWidget::HandleStartNewMatchClicked()
 {
 	RequestStartNewMatch();
@@ -525,17 +517,11 @@ void UFMCodexLocalMatchScreenWidget::HandleContinueRequested()
 	RequestContinueResolution();
 }
 
-void UFMCodexLocalMatchScreenWidget::HandleReadyClicked()
-{
-	RequestReady();
-}
-
 void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragStarted(
 	const FName CardId,
 	const bool bGoalkeeper)
 {
-	if (PitchWidget == nullptr || Presentation.Handoff.bVisible
-		|| Presentation.Interaction.Category
+	if (PitchWidget == nullptr || Presentation.Interaction.Category
 			!= EFMCodexUMGInteractionCategory::Deploy)
 	{
 		return;
@@ -636,7 +622,7 @@ void UFMCodexLocalMatchScreenWidget::BindDetailHoverSources()
 void UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested(
 	UFMCodexPlayerCardWidget* SourceCard)
 {
-	if (!bDeploymentDragActive && !Presentation.Handoff.bVisible)
+	if (!bDeploymentDragActive)
 	{
 		ShowDetailOverlay(SourceCard);
 	}
@@ -1135,56 +1121,6 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		OverlaySlot->SetVerticalAlignment(VAlign_Fill);
 	}
 
-	HandoffOverlay = MakeRegion(*WidgetTree, TEXT("HotSeatHandoffOverlay"));
-	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
-	Style.ApplyBorder(*HandoffOverlay,
-		EFMCodexPlayerUIColorRole::ScreenBackground, FMargin(0.0f));
-	USizeBox* HandoffBounds = WidgetTree->ConstructWidget<USizeBox>(
-		USizeBox::StaticClass(), TEXT("HotSeatHandoffBounds"));
-	HandoffBounds->SetWidthOverride(520.0f);
-	HandoffBounds->SetMinDesiredHeight(260.0f);
-	if (UBorderSlot* ModalSlot = Cast<UBorderSlot>(
-		HandoffOverlay->AddChild(HandoffBounds)))
-	{
-		ModalSlot->SetHorizontalAlignment(HAlign_Center);
-		ModalSlot->SetVerticalAlignment(VAlign_Center);
-	}
-	UBorder* HandoffCard = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(), TEXT("HotSeatHandoffCard"));
-	Style.ApplyBorder(*HandoffCard,
-		EFMCodexPlayerUIColorRole::PanelRaised, Style.GetPanelPadding());
-	HandoffBounds->AddChild(HandoffCard);
-	UVerticalBox* HandoffBody = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(), TEXT("HotSeatHandoffBody"));
-	HandoffCard->AddChild(HandoffBody);
-	HandoffTitleText = MakeText(*WidgetTree, TEXT("HotSeatHandoffText"));
-	HandoffTitleText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(
-		*HandoffTitleText, EFMCodexPlayerUITextRole::HandoffTitle);
-	HandoffPlayerText = MakeText(
-		*WidgetTree, TEXT("HotSeatNextPlayerText"));
-	HandoffPlayerText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(
-		*HandoffPlayerText, EFMCodexPlayerUITextRole::HandoffPlayer);
-	HandoffReadyText = MakeText(
-		*WidgetTree, TEXT("HotSeatReadyInstruction"));
-	HandoffReadyText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(
-		*HandoffReadyText, EFMCodexPlayerUITextRole::Body);
-	HandoffBody->AddChildToVerticalBox(HandoffTitleText);
-	HandoffBody->AddChildToVerticalBox(HandoffPlayerText);
-	HandoffBody->AddChildToVerticalBox(HandoffReadyText);
-	UButton* ReadyButton = MakeButton(
-		*WidgetTree, TEXT("HotSeatReadyButton"), TEXT("Ready"));
-	ReadyButton->OnClicked.AddDynamic(
-		this, &UFMCodexLocalMatchScreenWidget::HandleReadyClicked);
-	HandoffBody->AddChildToVerticalBox(ReadyButton);
-	if (UOverlaySlot* HandoffSlot = Root->AddChildToOverlay(HandoffOverlay))
-	{
-		HandoffSlot->SetHorizontalAlignment(HAlign_Fill);
-		HandoffSlot->SetVerticalAlignment(VAlign_Fill);
-	}
-
 #if !UE_BUILD_SHIPPING
 	// Keep the opt-in development review above full-screen presentation layers.
 	if (HandMicroProductionReviewBounds != nullptr)
@@ -1484,17 +1420,4 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	ResolutionOverlay->SetVisibility(Presentation.Resolution.bVisible
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 
-	HandoffOverlay->SetVisibility(Presentation.Handoff.bVisible
-		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	MainScreen->SetIsEnabled(!Presentation.Handoff.bVisible);
-	InteractionPanel->SetInteractionBlocked(Presentation.Handoff.bVisible);
-	HandoffTitleText->SetText(FText::FromString(
-		Presentation.Handoff.TitleLabel));
-	HandoffPlayerText->SetText(FText::FromString(
-		Presentation.Handoff.NextPlayerLabel));
-	HandoffPlayerText->SetColorAndOpacity(FSlateColor(
-		FFMCodexPlayerUIStyle::Get().GetPlayerAccentColor(
-			Presentation.Handoff.NextPlayerLabel)));
-	HandoffReadyText->SetText(FText::FromString(
-		Presentation.Handoff.ReadyLabel));
 }

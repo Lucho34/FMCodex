@@ -314,7 +314,7 @@
 
 - 完成部署与技能/分支选择后，专用 Resolution Overlay 必须从 DTO 获得 `bCanContinue / ContinueActionLabel`，并通过 `Overlay -> Screen -> Controller -> Host` 的既有 typed route 继续结算；Widget 不自行选择下一条玩法命令。
 - `BeginResolutionSession` 成功并显示 `Resolution Started` 后，Continue 必须仍可点击；Cut Inside / Long Shot 的下一步到达 `ResolveIntentDeterminedRoute`，不得停留在 `AwaitingRoute`。
-- 结算必须能继续到权威攻击完成；下一玩家确认 Ready 后，上一攻击的 terminal feedback 被清出展示层，但 Ready 不改变任何权威 Match State 字节。
+- 结算必须能继续到权威攻击完成；上一攻击的 terminal feedback 随完成边界退出阻塞展示，下一玩家无需 Ready 即可获得掷点 readiness，清理过程不改变额外权威 Match State 事实。
 - 完成第一轮进攻后，旧进攻方第一节点为 `Used`，新进攻方第一节点为 `Current`，其余节点为 `Remaining`，并重新投影手动掷战术点 readiness。
 - Header 的三个节点使用真正的 circular/rounded brush；Current 的强调强于 Remaining，且两侧 Tracker 均居中对齐到各自玩家身份区域。
 - 掷出战术点后，中央 `战术点 X` 使用清晰但低于比分和当前第 x/y 次进攻的字号层级。
@@ -329,7 +329,18 @@
 - Chip 内 `战术点` 为次级标签、数值为主值；所有玩家可见文本使用集中本地化入口。
 - 掷点后中央第三层显示 DTO 投影的当前 phase/status，不再重复 `战术点 X`；比分和当前第 x/y 次进攻仍为更高层级。
 - 一次攻击完成且下一方尚未掷点时，上一攻击的战术点不保留在任一侧；旧攻击方第一节点为 `Used`，新攻击方第一节点为 `Current`。
-- Hot-seat Ready 可能重新映射本方/对方左右面板；测试必须按玩家身份确认 Chip 随新攻击方移动，不得假设某个玩家永久位于固定屏幕侧。
+- LocalPlay 可按当前合法操作方重新映射本方/对方左右面板；测试必须按玩家身份确认 Chip 随新攻击方移动，不得假设某个玩家永久位于固定屏幕侧。
 - 两侧身份组采用相同的“玩家名（可选 TP Chip）/ 进攻回合 1 2 3”结构并整体居中。三个节点均保持 `24 x 24` circular RoundedBox。
 - `Remaining` 使用近乎空心的低填充、弱轮廓和低数字对比；`Used` 使用明显实心填充和高对比数字；`Current` 使用最强轮廓及不同内层对比。状态不得只依赖 Arsenal/Manchester City 的固定色相。
+
+## LocalPlay 自动攻击交接（Stage 6.13.1.4.3）
+
+应验证：
+
+- 一次攻击权威完成时，旧攻击方 `UsedAttackCount` 只增加 1，`CurrentAttackingPlayer` 在同一权威完成结果中切换到仍有机会的下一方。
+- 不调用 Ready、Next Player 或 PASS CONTROL 路径，也能直接投影 `TacticalPointRoll` readiness；此时还没有新 `CurrentAttack`，也没有自动生成战术点。
+- 新攻击方可以手动请求掷战术点；旧攻击方、防守方或无效 Side 的请求失败且权威 State byte-identical。
+- 完成后的 UMG 不显示 PASS CONTROL、Next Player、Ready 或全屏交接层；旧 terminal Resolution 不遮挡下一方操作，下一次合法命令会替换旧反馈。
+- Header 继续完全消费 DTO：旧方节点为 `Used`、新方节点为 `Current`，双方 TP Chip 在新方实际掷点前均隐藏，中央显示新攻击方及 `等待掷出战术点`。
+- 双方三次机会全部消费后，比赛按既有终局规则结束，`CurrentAttackingPlayer=None`，不能产生非法第四次攻击。
 

@@ -387,7 +387,7 @@ This log records approved player-facing UI decisions separately from gameplay ca
 ## 2026-08-22 — Stage 6.13.1.4.1 PIE repair
 
 - The latest PIE captures supersede automation-only acceptance: the previous slice remains unaccepted until the resolution route and the three reported visual groups pass PIE.
-- `Resolution Started` was a reachable-authority but unreachable-presentation defect. The dedicated overlay now owns a DTO-driven Continue intent control and forwards it through Screen to the existing Controller route. It never interprets Session Stage or chooses the next command. Terminal feedback is dismissed only when the next player acknowledges the authoritative handoff.
+- `Resolution Started` was a reachable-authority but unreachable-presentation defect. The dedicated overlay now owns a DTO-driven Continue intent control and forwards it through Screen to the existing Controller route. It never interprets Session Stage or chooses the next command. The later automatic-handoff lifecycle supersedes the former Ready-based terminal dismissal.
 - Attack-turn markers remain the approved three-step pattern but use actual circular RoundedBox brushes. Current receives the strongest fill/outline, Used remains visibly completed, Remaining stays subdued, and both mirrored tracker rows are centered beneath their player identities.
 - Header hierarchy remains Score → current attack progress → phase/Tactical Point. A rolled `战术点 X` is 14 px and deliberately readable; waiting text remains secondary.
 - The lower-left tactical-point module contains one visible `掷战术点` phrase: a small acting-player prompt plus one `156 x 48`, 12 px CTA. The former duplicated title/category copy and oversized `196 x 72` block are superseded.
@@ -397,6 +397,13 @@ This log records approved player-facing UI decisions separately from gameplay ca
 
 - Tactical Points move out of the central global-state column and into one compact side-owned Chip beside the projected current attacker identity. Before roll and between attacks no empty/zero Chip is rendered; after roll the defending side never receives a duplicate.
 - The Header DTO explicitly projects left/right Chip visibility and value plus the canonical current phase. UMG no longer treats a positive number as proof that a roll occurred. The central column remains Score → current attack index → localized phase/status, with `等待掷出战术点` retained only for the authoritative pre-roll state.
-- Both player identity groups now share the same centered structure: player name with an optional TP Chip, followed by `进攻回合` and numbered steps in the same order. Hot-seat side remapping is expected, so visual ownership follows the projected player identity rather than a permanently assigned screen edge.
+- Both player identity groups now share the same centered structure: player name with an optional TP Chip, followed by `进攻回合` and numbered steps in the same order. LocalPlay side remapping is expected, so visual ownership follows the projected player identity rather than a permanently assigned screen edge.
 - Remaining uses a near-hollow low-alpha fill and subdued number; Used uses an unmistakable solid fill and high-contrast number; Current uses the strongest ring with a contrasting inner field. All remain `24 x 24` circular RoundedBoxes and use fill/border/luminance as well as the configurable side color.
-- Ready/Handoff, Resolution, RNG, selection, skills, Pitch, Slots, Ball marker, Hand Micro, Pitch Mini, Full Card and artwork remain frozen.
+- At this stage Ready/Handoff, Resolution, RNG, selection, skills, Pitch, Slots, Ball marker, Hand Micro, Pitch Mini, Full Card and artwork remained frozen. The later automatic-handoff decision supersedes only the Ready/Handoff lifecycle.
+
+## 2026-08-22 — Automatic attack handoff and Ready gate removal
+
+- PASS CONTROL, Next Player, Ready CTA and the full-screen handoff modal are removed from the production Match Screen; no replacement modal is introduced.
+- The UI consumes the authoritative completion result and naturally refreshes to the next attacker's pre-roll state. It does not increment attack counts, choose the attacker, decide match end, auto-roll Tactical Points or invoke a hidden Ready route.
+- Terminal Resolution feedback may remain in the Controller's diagnostic model, but the full-screen Resolution layer collapses once the authoritative CurrentAttack ends. The next command replaces that feedback, so it cannot mask the new attacker's manual roll action.
+- The Stage 6.13.1.4.2 Header, tracker nodes and TP Chip styling are unchanged. Existing DTO projection produces old-side Used, new-side Current, no pre-roll TP Chip and the center waiting status.

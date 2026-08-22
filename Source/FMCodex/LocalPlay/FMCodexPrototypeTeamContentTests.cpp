@@ -653,15 +653,7 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	}
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 	Screen->RequestRollTacticalPoints();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 
 	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
 	UFMCodexCardRackWidget* LocalRack = Screen->GetLocalRackWidget();
@@ -772,10 +764,6 @@ bool FFMCodexPrototypePresentationMetadataTest::RunTest(
 	}
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
-	if (Controller->IsAwaitingHotSeatHandoff())
-	{
-		Screen->RequestReady();
-	}
 
 	TArray<const FFMCodexUMGCardRackCellViewModel*> FormalCells;
 	const FFMCodexUMGMatchScreenViewModel& Presentation =

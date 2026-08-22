@@ -485,17 +485,6 @@ AFMCodexLocalMatchPlayerController::GetResolutionFeedback() const
 	return ResolutionFeedback;
 }
 
-const FFMCodexLocalMatchHotSeatHandoffState&
-AFMCodexLocalMatchPlayerController::GetHotSeatHandoffState() const
-{
-	return HotSeatHandoffState;
-}
-
-bool AFMCodexLocalMatchPlayerController::IsAwaitingHotSeatHandoff() const
-{
-	return HotSeatHandoffState.bAwaitingAcknowledgement;
-}
-
 UFMCodexLocalMatchScreenWidget*
 AFMCodexLocalMatchPlayerController::GetPlayerMatchScreen() const
 {
@@ -612,7 +601,6 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 	{
 		const auto NewView =
 			FFMCodexLocalMatchInteractionViewBuilder::BuildNoActiveMatch();
-		UpdateHotSeatHandoff(NewView);
 		InteractionView = NewView;
 		RebuildControlSurface();
 		return;
@@ -631,7 +619,6 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 		NewView.Diagnostic = !State.bSuccess
 			? State.ErrorMessage
 			: Rules.ErrorMessage;
-		UpdateHotSeatHandoff(NewView);
 		InteractionView = MoveTemp(NewView);
 		RebuildControlSurface();
 		return;
@@ -639,122 +626,8 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 
 	auto NewView = FFMCodexLocalMatchInteractionViewBuilder::Build(
 		State.Snapshot, Rules.Snapshot);
-	UpdateHotSeatHandoff(NewView);
 	InteractionView = MoveTemp(NewView);
 	RebuildControlSurface();
-}
-
-void AFMCodexLocalMatchPlayerController::UpdateHotSeatHandoff(
-	const FFMCodexLocalMatchInteractionView& NewInteractionView)
-{
-	FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(
-		NewInteractionView, HotSeatHandoffState);
-}
-
-void AFMCodexLocalMatchPlayerController::AutoAcknowledgeSuccessfulDeployment(
-	const FString& CommandName)
-{
-	if (CommandName != TEXT("DeployOrdinary")
-		&& CommandName != TEXT("DeployGoalkeeper"))
-	{
-		return;
-	}
-
-	// Authority has already accepted the typed deployment and RefreshPresentation
-	// has projected its next actor. Reveal that actor immediately for hot-seat play.
-	FFMCodexLocalMatchHotSeatHandoffPolicy::Acknowledge(
-		InteractionView, HotSeatHandoffState);
-}
-
-void FFMCodexLocalMatchHotSeatHandoffPolicy::Reconcile(
-	const FFMCodexLocalMatchInteractionView& NewInteractionView,
-	FFMCodexLocalMatchHotSeatHandoffState& HandoffState)
-{
-	if (!NewInteractionView.bMatchActive || NewInteractionView.bMatchEnded)
-	{
-		HandoffState = {};
-		return;
-	}
-
-	if (!NewInteractionView.bHumanInteraction
-		|| NewInteractionView.ExpectedActingPlayer
-			== EInitialTurnOrderPlayer::None)
-	{
-		HandoffState.bAwaitingAcknowledgement = false;
-		HandoffState.PendingPlayer = EInitialTurnOrderPlayer::None;
-		HandoffState.PendingInteraction =
-			EFMCodexLocalMatchInteractionCategory::None;
-		return;
-	}
-
-	if (NewInteractionView.ExpectedActingPlayer
-		== HandoffState.LastRevealedHumanPlayer)
-	{
-		HandoffState.bAwaitingAcknowledgement = false;
-		HandoffState.PendingPlayer = EInitialTurnOrderPlayer::None;
-		HandoffState.PendingInteraction =
-			EFMCodexLocalMatchInteractionCategory::None;
-		return;
-	}
-
-	HandoffState.bAwaitingAcknowledgement = true;
-	HandoffState.PendingPlayer =
-		NewInteractionView.ExpectedActingPlayer;
-	HandoffState.PendingInteraction =
-		NewInteractionView.InteractionCategory;
-}
-
-bool FFMCodexLocalMatchHotSeatHandoffPolicy::Acknowledge(
-	const FFMCodexLocalMatchInteractionView& InteractionView,
-	FFMCodexLocalMatchHotSeatHandoffState& HandoffState)
-{
-	if (!HandoffState.bAwaitingAcknowledgement
-		|| !InteractionView.bHumanInteraction
-		|| InteractionView.bMatchEnded
-		|| HandoffState.PendingPlayer
-			!= InteractionView.ExpectedActingPlayer)
-	{
-		return false;
-	}
-
-	HandoffState.LastRevealedHumanPlayer =
-		InteractionView.ExpectedActingPlayer;
-	HandoffState.bAwaitingAcknowledgement = false;
-	HandoffState.PendingPlayer = EInitialTurnOrderPlayer::None;
-	HandoffState.PendingInteraction =
-		EFMCodexLocalMatchInteractionCategory::None;
-	return true;
-}
-
-void AFMCodexLocalMatchPlayerController::AcknowledgeHotSeatHandoff()
-{
-	RefreshPresentation();
-	if (!FFMCodexLocalMatchHotSeatHandoffPolicy::Acknowledge(
-		InteractionView, HotSeatHandoffState))
-	{
-		return;
-	}
-	if (ResolutionFeedback.bTerminal)
-	{
-		// The terminal result is presented beneath the blocking handoff. Once the
-		// next player acknowledges that handoff, the old attack feedback must not
-		// continue masking the newly authoritative between-attacks interaction.
-		ResolutionFeedback = {};
-	}
-	RebuildControlSurface();
-}
-
-bool AFMCodexLocalMatchPlayerController::AllowGameplayCommand(
-	const FString& CommandName)
-{
-	if (!HotSeatHandoffState.bAwaitingAcknowledgement)
-	{
-		return true;
-	}
-	RecordLocalFailure(
-		CommandName,
-		TEXT("Gameplay input is blocked until the pending player confirms Ready."));
-	return false;
 }
 
 void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
@@ -775,10 +648,6 @@ void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
 
 void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 {
-	if (!AllowGameplayCommand(TEXT("StartNewLocalMatch")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -815,10 +684,6 @@ void AFMCodexLocalMatchPlayerController::SetNextDemoMatchSeedForTesting(
 
 void AFMCodexLocalMatchPlayerController::RollDemoTacticalPoints()
 {
-	if (!AllowGameplayCommand(TEXT("RollTacticalPoints")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -834,10 +699,6 @@ void AFMCodexLocalMatchPlayerController::DeployOrdinary(
 	const FName CardId,
 	const FName SlotId)
 {
-	if (!AllowGameplayCommand(TEXT("DeployOrdinary")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -853,10 +714,6 @@ void AFMCodexLocalMatchPlayerController::DeployOrdinary(
 
 void AFMCodexLocalMatchPlayerController::DeployGoalkeeper(const FName SlotId)
 {
-	if (!AllowGameplayCommand(TEXT("DeployGoalkeeper")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -871,10 +728,6 @@ void AFMCodexLocalMatchPlayerController::DeployGoalkeeper(const FName SlotId)
 
 void AFMCodexLocalMatchPlayerController::FinishDeployment()
 {
-	if (!AllowGameplayCommand(TEXT("FinishDeployment")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -890,10 +743,6 @@ void AFMCodexLocalMatchPlayerController::FinishDeployment()
 
 void AFMCodexLocalMatchPlayerController::SubmitCarrier(const FName CardId)
 {
-	if (!AllowGameplayCommand(TEXT("SubmitCarrier")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -908,10 +757,6 @@ void AFMCodexLocalMatchPlayerController::SubmitCarrier(const FName CardId)
 
 void AFMCodexLocalMatchPlayerController::SubmitMarker(const FName CardId)
 {
-	if (!AllowGameplayCommand(TEXT("SubmitMarker")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -926,10 +771,6 @@ void AFMCodexLocalMatchPlayerController::SubmitMarker(const FName CardId)
 
 void AFMCodexLocalMatchPlayerController::SubmitSkill(const FName SkillId)
 {
-	if (!AllowGameplayCommand(TEXT("SubmitSkill")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -951,10 +792,6 @@ void AFMCodexLocalMatchPlayerController::SubmitSkill(const FName SkillId)
 
 void AFMCodexLocalMatchPlayerController::SubmitRunner(const FName CardId)
 {
-	if (!AllowGameplayCommand(TEXT("SubmitRunner")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -969,10 +806,6 @@ void AFMCodexLocalMatchPlayerController::SubmitRunner(const FName CardId)
 
 void AFMCodexLocalMatchPlayerController::SubmitHelper(const FName CardId)
 {
-	if (!AllowGameplayCommand(TEXT("SubmitHelper")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -987,10 +820,6 @@ void AFMCodexLocalMatchPlayerController::SubmitHelper(const FName CardId)
 
 void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 {
-	if (!AllowGameplayCommand(TEXT("DeclineSelection")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -1046,10 +875,6 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 
 void AFMCodexLocalMatchPlayerController::ResolveNoLegalCurrentSelection()
 {
-	if (!AllowGameplayCommand(TEXT("ResolveNoLegalChoice")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -1099,10 +924,6 @@ void AFMCodexLocalMatchPlayerController::ResolveNoLegalCurrentSelection()
 void AFMCodexLocalMatchPlayerController::SubmitBranchIntent(
 	const EMatchPlayElectiveBranchIntent Intent)
 {
-	if (!AllowGameplayCommand(TEXT("SubmitBranchIntent")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -1119,10 +940,6 @@ void AFMCodexLocalMatchPlayerController::SubmitBranchIntent(
 void AFMCodexLocalMatchPlayerController::SubmitOneOnOneShotChoice(
 	const EMatchPlayThroughBallOneOnOneShotChoice Choice)
 {
-	if (!AllowGameplayCommand(TEXT("SubmitThroughBallOneOnOneShotChoice")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -1141,10 +958,6 @@ void AFMCodexLocalMatchPlayerController::SubmitOneOnOneShotChoice(
 
 void AFMCodexLocalMatchPlayerController::ContinueResolution()
 {
-	if (!AllowGameplayCommand(TEXT("ContinueResolution")))
-	{
-		return;
-	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -1430,111 +1243,27 @@ void AFMCodexLocalMatchPlayerController::RefreshPlayerMatchScreen()
 		return;
 	}
 	const EInitialTurnOrderPlayer LocalViewerSide =
-		HotSeatHandoffState.LastRevealedHumanPlayer
-			== EInitialTurnOrderPlayer::None
-				? EInitialTurnOrderPlayer::PlayerA
-				: HotSeatHandoffState.LastRevealedHumanPlayer;
+		InteractionView.ExpectedActingPlayer == EInitialTurnOrderPlayer::PlayerA
+			|| InteractionView.ExpectedActingPlayer
+				== EInitialTurnOrderPlayer::PlayerB
+				? InteractionView.ExpectedActingPlayer
+				: InteractionView.CurrentAttackingPlayer
+					== EInitialTurnOrderPlayer::PlayerA
+					|| InteractionView.CurrentAttackingPlayer
+						== EInitialTurnOrderPlayer::PlayerB
+						? InteractionView.CurrentAttackingPlayer
+						: EInitialTurnOrderPlayer::PlayerA;
 	PlayerMatchScreen->RefreshFromPresentation(
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			InteractionView,
 			ResolutionFeedback,
 			LastDiagnostic.Message,
-			HotSeatHandoffState.bAwaitingAcknowledgement,
-			FFMCodexLocalMatchInteractionViewBuilder::ToString(
-				HotSeatHandoffState.PendingPlayer),
 			LocalViewerSide));
 }
 
 TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 {
 	using namespace FMCodexLocalMatchPlayerController;
-	if (HotSeatHandoffState.bAwaitingAcknowledgement)
-	{
-		const FString NextPlayer =
-			FFMCodexLocalMatchInteractionViewBuilder::ToString(
-				HotSeatHandoffState.PendingPlayer);
-		const FString NextInteraction =
-			FFMCodexLocalMatchInteractionViewBuilder::ToString(
-				HotSeatHandoffState.PendingInteraction);
-		const FString Diagnostic = FString::Printf(
-			TEXT("Last: %s | Host=%s | Accepted=%s | Domain=%s | %s"),
-			*LastDiagnostic.CommandName,
-			LastDiagnostic.bHostSuccess ? TEXT("OK") : TEXT("FAIL"),
-			LastDiagnostic.bAuthoritativeAccepted ? TEXT("YES") : TEXT("NO"),
-			LastDiagnostic.bAuthoritativeSuccess ? TEXT("OK") : TEXT("FAIL"),
-			*LastDiagnostic.Message);
-		return SNew(SBorder)
-			.Padding(24.0f)
-			.BorderBackgroundColor(FLinearColor(0.01f, 0.01f, 0.01f, 1.0f))
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			[
-				SNew(SBox)
-				.MinDesiredWidth(640.0f)
-				.MinDesiredHeight(420.0f)
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight().Padding(8.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("PASS CONTROL — HANDOFF")))
-						.Justification(ETextJustify::Center)
-						.ColorAndOpacity(FLinearColor(1.0f, 0.88f, 0.42f))
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(8.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Next Player: ") + NextPlayer))
-						.Justification(ETextJustify::Center)
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(TEXT("Next Interaction: ") + NextInteraction))
-						.Justification(ETextJustify::Center)
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
-					[
-						SNew(STextBlock)
-						.Text(FText::FromString(FString::Printf(
-							TEXT("Score: Player A %d - %d Player B"),
-							InteractionView.PlayerAScore,
-							InteractionView.PlayerBScore)))
-						.Justification(ETextJustify::Center)
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
-					[
-						MakeFeedbackPanel(ResolutionFeedback)
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(4.0f)
-					[
-						SNew(SExpandableArea)
-						.InitiallyCollapsed(true)
-						.HeaderContent()
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("Developer Details")))
-						]
-						.BodyContent()
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(Diagnostic))
-							.AutoWrapText(true)
-						]
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(12.0f)
-					[
-						MakeButton(NextPlayer + TEXT(" Ready"), [this]()
-						{
-							AcknowledgeHotSeatHandoff();
-						})
-					]
-				]
-			];
-	}
-
 	const FFMCodexLocalMatchScreenPresentation Screen =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 			InteractionView);

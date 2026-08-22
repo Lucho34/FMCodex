@@ -250,8 +250,6 @@ bool FFMCodexEligibleTacticalSkillAuthorityProjectionTest::RunTest(
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			ViewAtFour,
 			FFMCodexLocalMatchResolutionFeedback(),
-			FString(),
-			false,
 			FString());
 	TestTrue(TEXT("Header and Skill projection share the same authority path"),
 		ScreenAtFour.Header.CurrentAttackerTacticalPoints == 4

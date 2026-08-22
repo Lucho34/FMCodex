@@ -407,13 +407,10 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	const FFMCodexLocalMatchInteractionView& InteractionView,
 	const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
 	const FString& DiagnosticMessage,
-	const bool bAwaitingHandoff,
-	const FString& PendingPlayerLabel,
 	const EInitialTurnOrderPlayer LocalViewerSide)
 {
 	return Build(InteractionView, ResolutionFeedback, DiagnosticMessage,
-		bAwaitingHandoff, PendingPlayerLabel, LocalViewerSide,
-		FFMCodexUMGSidePrimaryColors());
+		LocalViewerSide, FFMCodexUMGSidePrimaryColors());
 }
 
 FFMCodexUMGMatchScreenViewModel
@@ -421,8 +418,6 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	const FFMCodexLocalMatchInteractionView& InteractionView,
 	const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
 	const FString& DiagnosticMessage,
-	const bool bAwaitingHandoff,
-	const FString& PendingPlayerLabel,
 	const EInitialTurnOrderPlayer LocalViewerSide,
 	const FFMCodexUMGSidePrimaryColors& SidePrimaryColors)
 {
@@ -767,7 +762,12 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			FFMCodexLocalMatchInteractionViewBuilder::ToString(Choice) });
 	}
 
-	Result.Resolution.bVisible = ResolutionFeedback.bVisible;
+	// Terminal feedback remains available for diagnostics, but attack completion
+	// has already exposed the next authoritative between-attacks interaction.
+	// Do not let the old full-screen result mask the new attacker's roll intent.
+	Result.Resolution.bVisible = ResolutionFeedback.bVisible
+		&& !(ResolutionFeedback.bTerminal
+			&& !InteractionView.bCurrentAttackActive);
 	Result.Resolution.bRejected = ResolutionFeedback.bRejected;
 	Result.Resolution.bTerminal = ResolutionFeedback.bTerminal;
 	Result.Resolution.bCanContinue = Result.Interaction.bCanContinue;
@@ -803,9 +803,6 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Resolution.TerminalLabel = ResolutionFeedback.TerminalSummary;
 	Result.Resolution.ErrorLabel = ResolutionFeedback.ErrorMessage;
 
-	Result.Handoff.bVisible = bAwaitingHandoff;
-	Result.Handoff.NextPlayerLabel = FString::Printf(
-		TEXT("Next Player: %s"), *PendingPlayerLabel);
 	Result.DiagnosticLabel = DiagnosticMessage;
 	return Result;
 }

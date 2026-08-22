@@ -786,24 +786,6 @@ struct FMCODEX_API FFMCodexUMGResolutionViewModel
 };
 
 USTRUCT(BlueprintType)
-struct FMCODEX_API FFMCodexUMGHandoffViewModel
-{
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Handoff")
-	bool bVisible = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Handoff")
-	FString TitleLabel = TEXT("PASS CONTROL");
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Handoff")
-	FString NextPlayerLabel;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Handoff")
-	FString ReadyLabel = TEXT("Ready");
-};
-
-USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 {
 	GENERATED_BODY()
@@ -830,9 +812,6 @@ struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 	FFMCodexUMGResolutionViewModel Resolution;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
-	FFMCodexUMGHandoffViewModel Handoff;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FString DiagnosticLabel;
 };
 
@@ -846,8 +825,6 @@ public:
 		const FFMCodexLocalMatchInteractionView& InteractionView,
 		const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
 		const FString& DiagnosticMessage,
-		bool bAwaitingHandoff,
-		const FString& PendingPlayerLabel,
 		EInitialTurnOrderPlayer LocalViewerSide =
 			EInitialTurnOrderPlayer::PlayerA);
 
@@ -855,8 +832,6 @@ public:
 		const FFMCodexLocalMatchInteractionView& InteractionView,
 		const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
 		const FString& DiagnosticMessage,
-		bool bAwaitingHandoff,
-		const FString& PendingPlayerLabel,
 		EInitialTurnOrderPlayer LocalViewerSide,
 		const FFMCodexUMGSidePrimaryColors& SidePrimaryColors);
 };
