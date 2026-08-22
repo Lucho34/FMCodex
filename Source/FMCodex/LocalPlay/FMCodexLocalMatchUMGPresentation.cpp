@@ -124,6 +124,43 @@ namespace FMCodexLocalMatchUMGPresentation
 			: EInitialTurnOrderPlayer::PlayerB;
 	}
 
+	FLinearColor PrimaryColorForSide(
+		const EInitialTurnOrderPlayer Side,
+		const FFMCodexUMGSidePrimaryColors& Colors)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? Colors.PlayerAPrimaryColor : Colors.PlayerBPrimaryColor;
+	}
+
+	FFMCodexUMGAttackTurnTrackerViewModel MakeAttackTurnTracker(
+		const int32 MaxAttackTurns,
+		const int32 UsedAttackTurns,
+		const int32 CurrentAttackIndex,
+		const bool bCurrentAttackingSide,
+		const FLinearColor& PrimarySideColor)
+	{
+		FFMCodexUMGAttackTurnTrackerViewModel Result;
+		Result.MaxAttackTurns = MaxAttackTurns;
+		Result.UsedAttackTurns = UsedAttackTurns;
+		Result.CurrentAttackIndex = CurrentAttackIndex;
+		Result.bCurrentAttackingSide = bCurrentAttackingSide;
+		Result.PrimarySideColor = PrimarySideColor;
+		for (int32 AttackIndex = 1;
+			AttackIndex <= MaxAttackTurns; ++AttackIndex)
+		{
+			FFMCodexUMGAttackTurnStepViewModel& Step =
+				Result.Steps.AddDefaulted_GetRef();
+			Step.AttackIndex = AttackIndex;
+			Step.State = AttackIndex <= UsedAttackTurns
+				? EFMCodexUMGAttackTurnStepState::Used
+				: bCurrentAttackingSide
+					&& AttackIndex == CurrentAttackIndex
+						? EFMCodexUMGAttackTurnStepState::Current
+						: EFMCodexUMGAttackTurnStepState::Remaining;
+		}
+		return Result;
+	}
+
 	EMatchPlayNeutralSlotSide PhysicalSide(
 		const EInitialTurnOrderPlayer Side)
 	{
@@ -209,8 +246,8 @@ namespace FMCodexLocalMatchUMGPresentation
 		{
 		case EFMCodexLocalMatchInteractionCategory::StartMatch:
 			return EFMCodexUMGInteractionCategory::StartMatch;
-		case EFMCodexLocalMatchInteractionCategory::BeginAttack:
-			return EFMCodexUMGInteractionCategory::BeginAttack;
+		case EFMCodexLocalMatchInteractionCategory::TacticalPointRoll:
+			return EFMCodexUMGInteractionCategory::TacticalPointRoll;
 		case EFMCodexLocalMatchInteractionCategory::Deploy:
 			return EFMCodexUMGInteractionCategory::Deploy;
 		case EFMCodexLocalMatchInteractionCategory::SelectCarrier:
@@ -414,6 +451,25 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Header.RightScoreLabel = FString::FromInt(
 		OpponentSide == EInitialTurnOrderPlayer::PlayerA
 			? InteractionView.PlayerAScore : InteractionView.PlayerBScore);
+	auto TrackerForSide = [&](const EInitialTurnOrderPlayer Side)
+	{
+		return MakeAttackTurnTracker(
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? InteractionView.PlayerAMaxAttackTurns
+				: InteractionView.PlayerBMaxAttackTurns,
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? InteractionView.PlayerAUsedAttackTurns
+				: InteractionView.PlayerBUsedAttackTurns,
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? InteractionView.PlayerACurrentAttackIndex
+				: InteractionView.PlayerBCurrentAttackIndex,
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? InteractionView.bPlayerACurrentAttackTurn
+				: InteractionView.bPlayerBCurrentAttackTurn,
+			PrimaryColorForSide(Side, SidePrimaryColors));
+	};
+	Result.Header.LeftAttackTurnTracker = TrackerForSide(LocalViewerSide);
+	Result.Header.RightAttackTurnTracker = TrackerForSide(OpponentSide);
 	Result.Header.TurnLabel = InteractionView.AttackSequence > 0
 		? FString::Printf(TEXT("TURN %lld"), InteractionView.AttackSequence)
 		: TEXT("PRE-MATCH");
@@ -428,10 +484,21 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		InteractionView.CurrentAttackingPlayer != EInitialTurnOrderPlayer::None;
 	Result.Header.bCurrentAttackerOnLeft =
 		InteractionView.CurrentAttackingPlayer == LocalViewerSide;
-	Result.Header.CurrentAttackerLabel = FString::Printf(
-		TEXT("Current attacker: %s"),
-		*FFMCodexLocalMatchInteractionViewBuilder::ToString(
-			InteractionView.CurrentAttackingPlayer));
+	Result.Header.CurrentAttackerAttackIndex =
+		InteractionView.CurrentAttackingPlayer
+			== EInitialTurnOrderPlayer::PlayerA
+				? InteractionView.PlayerACurrentAttackIndex
+				: InteractionView.PlayerBCurrentAttackIndex;
+	Result.Header.CurrentAttackerMaxAttackTurns =
+		InteractionView.CurrentAttackingPlayer
+			== EInitialTurnOrderPlayer::PlayerA
+				? InteractionView.PlayerAMaxAttackTurns
+				: InteractionView.PlayerBMaxAttackTurns;
+	Result.Header.bTacticalPointRollReady =
+		InteractionView.bTacticalPointRollReady;
+	Result.Header.CurrentAttackerLabel =
+		FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			InteractionView.CurrentAttackingPlayer);
 	Result.Header.ExpectedActorLabel = Screen.bSystemResolution
 		? TEXT("System Resolution")
 		: FString::Printf(TEXT("Expected actor: %s"),
@@ -574,9 +641,19 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Interaction.bCanStartNewMatch =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::StartMatch;
-	Result.Interaction.bCanBeginOrdinaryAttack =
+	Result.Interaction.bCanRollTacticalPoints =
 		InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::BeginAttack;
+			== EFMCodexLocalMatchInteractionCategory::TacticalPointRoll;
+	Result.Interaction.bHasActingSidePrimaryColor =
+		InteractionView.ExpectedActingPlayer
+			== EInitialTurnOrderPlayer::PlayerA
+		|| InteractionView.ExpectedActingPlayer
+			== EInitialTurnOrderPlayer::PlayerB;
+	if (Result.Interaction.bHasActingSidePrimaryColor)
+	{
+		Result.Interaction.ActingSidePrimaryColor = PrimaryColorForSide(
+			InteractionView.ExpectedActingPlayer, SidePrimaryColors);
+	}
 	Result.Interaction.bCanFinishDeployment =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::Deploy;
@@ -588,7 +665,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			== EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 	Result.Interaction.PrimaryActionLabel =
 		Result.Interaction.bCanStartNewMatch ? TEXT("START LOCAL MATCH")
-		: Result.Interaction.bCanBeginOrdinaryAttack ? TEXT("BEGIN ATTACK")
+		: Result.Interaction.bCanRollTacticalPoints
+			? TEXT("ROLL TACTICAL POINTS")
 		: Result.Interaction.bCanFinishDeployment ? TEXT("FINISH DEPLOYMENT")
 		: Result.Interaction.bCanContinue
 			? (InteractionView.ContinueActionLabel.IsEmpty()
@@ -675,6 +753,10 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Resolution.bVisible = ResolutionFeedback.bVisible;
 	Result.Resolution.bRejected = ResolutionFeedback.bRejected;
 	Result.Resolution.bTerminal = ResolutionFeedback.bTerminal;
+	Result.Resolution.bCanContinue = Result.Interaction.bCanContinue;
+	Result.Resolution.ContinueActionLabel =
+		Result.Interaction.bCanContinue
+			? Result.Interaction.PrimaryActionLabel : FString();
 	Result.Resolution.StepLabel = ResolutionFeedback.StepTitle.IsEmpty()
 		? ResolutionFeedback.StepSummary : ResolutionFeedback.StepTitle;
 	Result.Resolution.StepSummaryLabel = ResolutionFeedback.StepSummary;

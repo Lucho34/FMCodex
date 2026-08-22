@@ -4,12 +4,14 @@
 #include "FMCodexPlayerUIPresentationText.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 
 namespace FMCodexMatchHeaderWidget
 {
@@ -33,6 +35,72 @@ namespace FMCodexMatchHeaderWidget
 		Slot->SetSize(Size);
 		Slot->SetHorizontalAlignment(HAlign_Fill);
 		Slot->SetVerticalAlignment(VAlign_Center);
+	}
+
+	void RefreshTracker(
+		UWidgetTree& Tree,
+		UHorizontalBox& Steps,
+		const FFMCodexUMGAttackTurnTrackerViewModel& Presentation)
+	{
+		Steps.ClearChildren();
+		const FString WidgetPrefix = Steps.GetName();
+		for (int32 StepIndex = 0;
+			StepIndex < Presentation.Steps.Num(); ++StepIndex)
+		{
+			const FFMCodexUMGAttackTurnStepViewModel& Step =
+				Presentation.Steps[StepIndex];
+			USizeBox* Bounds = Tree.ConstructWidget<USizeBox>(
+				USizeBox::StaticClass(), FName(*FString::Printf(
+					TEXT("%sBounds%d"), *WidgetPrefix, StepIndex)));
+			Bounds->SetWidthOverride(24.0f);
+			Bounds->SetHeightOverride(24.0f);
+			UBorder* Frame = Tree.ConstructWidget<UBorder>(
+				UBorder::StaticClass(), FName(*FString::Printf(
+					TEXT("%sFrame%d"), *WidgetPrefix, StepIndex)));
+			FLinearColor StepColor;
+			FLinearColor OutlineColor;
+			float OutlineWidth = 1.0f;
+			switch (Step.State)
+			{
+			case EFMCodexUMGAttackTurnStepState::Used:
+				StepColor = Presentation.PrimarySideColor * 0.46f;
+				StepColor.A = 0.92f;
+				OutlineColor = Presentation.PrimarySideColor;
+				break;
+			case EFMCodexUMGAttackTurnStepState::Current:
+				StepColor = Presentation.PrimarySideColor;
+				OutlineColor = FLinearColor(0.95f, 0.97f, 1.0f, 0.92f);
+				OutlineWidth = 1.5f;
+				break;
+			case EFMCodexUMGAttackTurnStepState::Remaining:
+			default:
+				StepColor = FLinearColor(0.09f, 0.12f, 0.15f, 0.78f);
+				OutlineColor = FLinearColor(0.68f, 0.73f, 0.78f, 0.48f);
+				break;
+			}
+			Frame->SetBrush(FSlateRoundedBoxBrush(
+				StepColor, 12.0f, OutlineColor, OutlineWidth,
+				FVector2f(24.0f, 24.0f)));
+			Frame->SetBrushColor(FLinearColor::White);
+			Frame->SetPadding(FMargin(2.0f));
+			UTextBlock* Label = MakeText(Tree, FName(*FString::Printf(
+				TEXT("%sLabel%d"), *WidgetPrefix, StepIndex)));
+			Label->SetText(FText::AsNumber(Step.AttackIndex));
+			FFMCodexPlayerUIStyle::Get().ApplyText(
+				*Label, EFMCodexPlayerUITextRole::Body);
+			Label->SetRenderOpacity(
+				Step.State == EFMCodexUMGAttackTurnStepState::Current
+					? 1.0f : Step.State == EFMCodexUMGAttackTurnStepState::Used
+						? 0.82f : 0.62f);
+			Frame->AddChild(Label);
+			Bounds->AddChild(Frame);
+			if (UHorizontalBoxSlot* Slot = Steps.AddChildToHorizontalBox(Bounds))
+			{
+				Slot->SetPadding(FMargin(StepIndex == 0 ? 0.0f : 4.0f,
+					0.0f, 0.0f, 0.0f));
+				Slot->SetVerticalAlignment(VAlign_Center);
+			}
+		}
 	}
 }
 
@@ -118,66 +186,69 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 		UVerticalBox::StaticClass(), TEXT("LeftPlayerBroadcastBody"));
 	AttackerStatusRegion->AddChild(Left);
 	PlayerAIdentityText = MakeText(*WidgetTree, TEXT("LeftPlayerIdentityLabel"));
-	LeftAttackerPointerText = MakeText(
-		*WidgetTree, TEXT("LeftCurrentAttackerPointer"));
-	LeftAttackerPointerText->SetText(FText::FromString(TEXT("\u25BC")));
-	Style.ApplyText(*LeftAttackerPointerText, EFMCodexPlayerUITextRole::Kicker);
 	Style.ApplyText(*PlayerAIdentityText, EFMCodexPlayerUITextRole::Identity);
-	Left->AddChildToVerticalBox(LeftAttackerPointerText);
 	Left->AddChildToVerticalBox(PlayerAIdentityText);
+	UHorizontalBox* LeftTrackerRow =
+		WidgetTree->ConstructWidget<UHorizontalBox>(
+			UHorizontalBox::StaticClass(), TEXT("LeftAttackTurnTracker"));
+	UTextBlock* LeftTrackerHeading = MakeText(
+		*WidgetTree, TEXT("LeftAttackTurnHeading"));
+	LeftTrackerHeading->SetText(
+		FFMCodexPlayerUIPresentationText::AttackTurnHeading());
+	Style.ApplyText(*LeftTrackerHeading, EFMCodexPlayerUITextRole::Kicker);
+	LeftTrackerRow->AddChildToHorizontalBox(LeftTrackerHeading);
+	LeftAttackTurnSteps = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("LeftAttackTurnSteps"));
+	LeftTrackerRow->AddChildToHorizontalBox(LeftAttackTurnSteps);
+	if (UVerticalBoxSlot* TrackerSlot =
+		Left->AddChildToVerticalBox(LeftTrackerRow))
+	{
+		TrackerSlot->SetHorizontalAlignment(HAlign_Center);
+		TrackerSlot->SetPadding(FMargin(0.0f, 3.0f, 0.0f, 0.0f));
+	}
 	AddFill(*Row, AttackerStatusRegion, 1.0f);
 
 	UBorder* Center = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("CentralBroadcastMatchFacts"));
 	Style.ApplyBorder(*Center, EFMCodexPlayerUIColorRole::PanelRaised,
 		Style.GetCompactPadding());
-	UHorizontalBox* CenterBody = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(), TEXT("CentralBroadcastMatchFactsBody"));
+	UVerticalBox* CenterBody = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("CentralBroadcastMatchFactsBody"));
 	Center->AddChild(CenterBody);
-	UVerticalBox* StateColumn = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(), TEXT("HeaderMatchStateColumn"));
-	MatchStatusText = MakeText(*WidgetTree, TEXT("MatchHeaderStatusLabel"));
 	FinalResultRegion = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("MatchHeaderFinalResultRegion"));
 	FinalResultText = MakeText(*WidgetTree, TEXT("MatchHeaderFinalResultLabel"));
 	FinalResultRegion->AddChild(FinalResultText);
 	FinalResultRegion->SetVisibility(ESlateVisibility::Collapsed);
-	StateColumn->AddChildToVerticalBox(MatchStatusText);
-	StateColumn->AddChildToVerticalBox(FinalResultRegion);
-	AddFill(*CenterBody, StateColumn, 1.0f);
-
-	USizeBox* ScoreBounds = WidgetTree->ConstructWidget<USizeBox>(
-		USizeBox::StaticClass(), TEXT("HeaderCentralScoreBounds"));
-	ScoreBounds->SetMinDesiredWidth(180.0f);
 	CentralScoreText = MakeText(*WidgetTree, TEXT("CentralBroadcastScoreValue"));
-	ScoreBounds->AddChild(CentralScoreText);
-	CenterBody->AddChildToHorizontalBox(ScoreBounds);
-
-	UVerticalBox* PhaseColumn = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(), TEXT("HeaderPhaseFactsColumn"));
-	TurnText = MakeText(*WidgetTree, TEXT("CurrentTurnLabel"));
-	TacticalPointsText = MakeText(*WidgetTree, TEXT("CurrentAttackerTacticalPoints"));
-	AttackerStatusText = MakeText(*WidgetTree, TEXT("MatchHeaderAttackerStatusLabel"));
-	ActorStatusText = MakeText(*WidgetTree, TEXT("MatchHeaderActorStatusLabel"));
-	Style.ApplyText(*MatchStatusText, EFMCodexPlayerUITextRole::Kicker);
+	CurrentAttackProgressText = MakeText(
+		*WidgetTree, TEXT("CurrentAttackProgressLabel"));
+	CurrentMatchPhaseText = MakeText(
+		*WidgetTree, TEXT("CurrentMatchPhaseStatusLabel"));
 	Style.ApplyText(*CentralScoreText, EFMCodexPlayerUITextRole::Score);
-	Style.ApplyText(*TurnText, EFMCodexPlayerUITextRole::Status);
-	Style.ApplyText(*TacticalPointsText, EFMCodexPlayerUITextRole::Secondary);
-	FSlateFontInfo MatchStatusFont = MatchStatusText->GetFont();
-	MatchStatusFont.Size = 10;
-	MatchStatusText->SetFont(MatchStatusFont);
+	Style.ApplyText(*CurrentAttackProgressText, EFMCodexPlayerUITextRole::Status);
+	Style.ApplyText(*CurrentMatchPhaseText, EFMCodexPlayerUITextRole::Secondary);
 	FSlateFontInfo CentralScoreFont = CentralScoreText->GetFont();
-	CentralScoreFont.Size = 32;
+	CentralScoreFont.Size = 30;
 	CentralScoreText->SetFont(CentralScoreFont);
-	FSlateFontInfo TurnFont = TurnText->GetFont();
-	TurnFont.Size = 14;
-	TurnText->SetFont(TurnFont);
-	FSlateFontInfo TacticalPointsFont = TacticalPointsText->GetFont();
-	TacticalPointsFont.Size = 10;
-	TacticalPointsText->SetFont(TacticalPointsFont);
-	PhaseColumn->AddChildToVerticalBox(TurnText);
-	PhaseColumn->AddChildToVerticalBox(TacticalPointsText);
-	AddFill(*CenterBody, PhaseColumn, 1.0f);
+	FSlateFontInfo ProgressFont = CurrentAttackProgressText->GetFont();
+	ProgressFont.Size = 14;
+	CurrentAttackProgressText->SetFont(ProgressFont);
+	FSlateFontInfo PhaseFont = CurrentMatchPhaseText->GetFont();
+	PhaseFont.Size = 10;
+	CurrentMatchPhaseText->SetFont(PhaseFont);
+	CenterBody->AddChildToVerticalBox(CentralScoreText);
+	if (UVerticalBoxSlot* ProgressSlot =
+		CenterBody->AddChildToVerticalBox(CurrentAttackProgressText))
+	{
+		ProgressSlot->SetPadding(FMargin(0.0f, 1.0f, 0.0f, 0.0f));
+	}
+	if (UVerticalBoxSlot* PhaseSlot =
+		CenterBody->AddChildToVerticalBox(CurrentMatchPhaseText))
+	{
+		PhaseSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 0.0f));
+	}
+	CenterBody->AddChildToVerticalBox(FinalResultRegion);
 	AddFill(*Row, Center, 1.35f);
 
 	ActorStatusRegion = WidgetTree->ConstructWidget<UBorder>(
@@ -188,54 +259,90 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 		UVerticalBox::StaticClass(), TEXT("RightPlayerBroadcastBody"));
 	ActorStatusRegion->AddChild(Right);
 	PlayerBIdentityText = MakeText(*WidgetTree, TEXT("RightPlayerIdentityLabel"));
-	RightAttackerPointerText = MakeText(
-		*WidgetTree, TEXT("RightCurrentAttackerPointer"));
-	RightAttackerPointerText->SetText(FText::FromString(TEXT("\u25BC")));
-	Style.ApplyText(*RightAttackerPointerText, EFMCodexPlayerUITextRole::Kicker);
 	Style.ApplyText(*PlayerBIdentityText, EFMCodexPlayerUITextRole::Identity);
-	Right->AddChildToVerticalBox(RightAttackerPointerText);
 	Right->AddChildToVerticalBox(PlayerBIdentityText);
+	UHorizontalBox* RightTrackerRow =
+		WidgetTree->ConstructWidget<UHorizontalBox>(
+			UHorizontalBox::StaticClass(), TEXT("RightAttackTurnTracker"));
+	UTextBlock* RightTrackerHeading = MakeText(
+		*WidgetTree, TEXT("RightAttackTurnHeading"));
+	RightTrackerHeading->SetText(
+		FFMCodexPlayerUIPresentationText::AttackTurnHeading());
+	Style.ApplyText(*RightTrackerHeading, EFMCodexPlayerUITextRole::Kicker);
+	RightAttackTurnSteps = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("RightAttackTurnSteps"));
+	RightTrackerRow->AddChildToHorizontalBox(RightAttackTurnSteps);
+	RightTrackerRow->AddChildToHorizontalBox(RightTrackerHeading);
+	if (UVerticalBoxSlot* TrackerSlot =
+		Right->AddChildToVerticalBox(RightTrackerRow))
+	{
+		TrackerSlot->SetHorizontalAlignment(HAlign_Center);
+		TrackerSlot->SetPadding(FMargin(0.0f, 3.0f, 0.0f, 0.0f));
+	}
 	AddFill(*Row, ActorStatusRegion, 1.0f);
 }
 
 void UFMCodexMatchHeaderWidget::RefreshVisuals()
 {
-	if (MatchStatusText == nullptr)
+	using namespace FMCodexMatchHeaderWidget;
+	if (CurrentAttackProgressText == nullptr)
 	{
 		return;
 	}
-	MatchStatusText->SetText(FFMCodexPlayerUIPresentationText::BroadcastStatus(
-		Presentation.bMatchEnded, Presentation.bAttackActive,
-		Presentation.MatchResultLabel));
 	CentralScoreText->SetText(FText::FromString(Presentation.ScoreLabel));
-	TurnText->SetText(FFMCodexPlayerUIPresentationText::Turn(
-		Presentation.AttackSequence));
-	TacticalPointsText->SetText(
-		!Presentation.bHasCurrentAttacker
-			? FText::GetEmpty()
-			: FFMCodexPlayerUIPresentationText::TacticalPoints(
-				Presentation.CurrentAttackerTacticalPoints));
+	CurrentAttackProgressText->SetText(
+		Presentation.bHasCurrentAttacker
+			&& Presentation.CurrentAttackerAttackIndex > 0
+			&& Presentation.CurrentAttackerMaxAttackTurns > 0
+				? FFMCodexPlayerUIPresentationText::CurrentAttackProgress(
+					Presentation.CurrentAttackerLabel,
+					Presentation.CurrentAttackerAttackIndex,
+					Presentation.CurrentAttackerMaxAttackTurns)
+				: FText::GetEmpty());
+	CurrentMatchPhaseText->SetText(Presentation.bMatchEnded
+		? FText::FromString(Presentation.MatchResultLabel)
+		: Presentation.bTacticalPointRollReady
+			? FFMCodexPlayerUIPresentationText::WaitingForTacticalPointRoll()
+			: Presentation.CurrentAttackerTacticalPoints > 0
+				? FFMCodexPlayerUIPresentationText::TacticalPoints(
+					Presentation.CurrentAttackerTacticalPoints)
+				: FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+					Presentation.ActorStatusLabel));
+	FSlateFontInfo PhaseFont = CurrentMatchPhaseText->GetFont();
+	PhaseFont.Size = Presentation.CurrentAttackerTacticalPoints > 0 ? 14 : 10;
+	CurrentMatchPhaseText->SetFont(PhaseFont);
+	if (Presentation.CurrentAttackerTacticalPoints > 0)
+	{
+		const FLinearColor AttackerColor = Presentation.bCurrentAttackerOnLeft
+			? Presentation.LeftAttackTurnTracker.PrimarySideColor
+			: Presentation.RightAttackTurnTracker.PrimarySideColor;
+		CurrentMatchPhaseText->SetColorAndOpacity(FSlateColor(
+			AttackerColor * 0.62f
+				+ FLinearColor(0.95f, 0.97f, 1.0f, 1.0f) * 0.38f));
+	}
+	else
+	{
+		CurrentMatchPhaseText->SetColorAndOpacity(FSlateColor(
+			FLinearColor(0.62f, 0.68f, 0.73f, 1.0f)));
+	}
 	PlayerAIdentityText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Presentation.LeftPlayerLabel));
 	PlayerBIdentityText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Presentation.RightPlayerLabel));
-	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
-	AttackerStatusRegion->SetBrushColor(Style.GetPlayerAccentColor(
-		Presentation.LeftPlayerLabel));
-	ActorStatusRegion->SetBrushColor(Style.GetPlayerAccentColor(
-		Presentation.RightPlayerLabel));
+	RefreshTracker(*WidgetTree, *LeftAttackTurnSteps,
+		Presentation.LeftAttackTurnTracker);
+	RefreshTracker(*WidgetTree, *RightAttackTurnSteps,
+		Presentation.RightAttackTurnTracker);
+	AttackerStatusRegion->SetBrushColor(
+		Presentation.LeftAttackTurnTracker.PrimarySideColor);
+	ActorStatusRegion->SetBrushColor(
+		Presentation.RightAttackTurnTracker.PrimarySideColor);
 	AttackerStatusRegion->SetRenderOpacity(
-		Presentation.bAttackActive && !Presentation.bCurrentAttackerOnLeft
+		Presentation.bHasCurrentAttacker && !Presentation.bCurrentAttackerOnLeft
 			? 0.62f : 1.0f);
 	ActorStatusRegion->SetRenderOpacity(
-		Presentation.bAttackActive && Presentation.bCurrentAttackerOnLeft
+		Presentation.bHasCurrentAttacker && Presentation.bCurrentAttackerOnLeft
 			? 0.62f : 1.0f);
-	LeftAttackerPointerText->SetVisibility(
-		Presentation.bAttackActive && Presentation.bCurrentAttackerOnLeft
-			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	RightAttackerPointerText->SetVisibility(
-		Presentation.bAttackActive && !Presentation.bCurrentAttackerOnLeft
-			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	FinalResultText->SetText(FText::FromString(Presentation.MatchResultLabel));
 	FinalResultRegion->SetVisibility(Presentation.bMatchEnded
 		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);

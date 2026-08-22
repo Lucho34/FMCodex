@@ -76,6 +76,46 @@ FFMCodexPlayerUIAssetReferences::FFMCodexPlayerUIAssetReferences()
 		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
 			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ViktorGyokeres_01.T_Prototype_Arsenal_ViktorGyokeres_01"))));
 	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.MikelMerino"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MikelMerino_01.T_Prototype_Arsenal_MikelMerino_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.BenWhite"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BenWhite_01.T_Prototype_Arsenal_BenWhite_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.PieroHincapie"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_PieroHincapie_01.T_Prototype_Arsenal_PieroHincapie_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.JurrienTimber"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_JurrienTimber_01.T_Prototype_Arsenal_JurrienTimber_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.RiccardoCalafiori"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_RiccardoCalafiori_01.T_Prototype_Arsenal_RiccardoCalafiori_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.EberechiEze"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_EberechiEze_01.T_Prototype_Arsenal_EberechiEze_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.MartinZubimendi"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinZubimendi_01.T_Prototype_Arsenal_MartinZubimendi_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.ChristianNorgaard"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ChristianNorgaard_01.T_Prototype_Arsenal_ChristianNorgaard_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.LeandroTrossard"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_LeandroTrossard_01.T_Prototype_Arsenal_LeandroTrossard_01"))));
+	PrototypePortraits.Add(
+		TEXT("Prototype.Arsenal.NoniMadueke"),
+		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
+			"/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_NoniMadueke_01.T_Prototype_Arsenal_NoniMadueke_01"))));
+	PrototypePortraits.Add(
 		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
 		TSoftObjectPtr<UTexture2D>(FSoftObjectPath(TEXT(
 			"/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01.T_Prototype_ManchesterCity_ErlingHaaland_01"))));

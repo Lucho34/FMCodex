@@ -364,6 +364,25 @@
 - 版本：新增必填 `displayName` 改变生成/runtime shape，因此 config 与 runtime `schemaVersion` 从 `1` 升至 `2`；`balanceContentVersion=Prototype40_v1` 不变，因为 Attributes、Skills、TP 与其他平衡载荷未变。
 - 维护：仅改名时编辑配置、运行 importer `--write`/`--check`、presentation tests 与 build，不需要 C++ 修改。完整映射见 `Docs/UI/Player_Display_Name_Contract_v1.md`。
 
+### CD-033 - LocalPlay Match Start and Attack Turn Tracker Foundation
+
+- 日期：2026-08-22
+- 进入合同：LocalPlay 比赛初始化成功后已经有权威 `CurrentAttackingPlayer`，但保持 `bHasCurrentAttack=false`、战术点为 0。InteractionView 直接投影 `TacticalPointRoll` readiness；不存在额外的玩家“开始进攻”步骤，也不在进入画面时自动掷点。
+- 权限与随机：生产 Controller 只提交 `RequestingSide`；Host 在消费随机数前验证 Side、当前进攻方、剩余机会与无 active CurrentAttack，再由每场 runtime 持有的随机流生成当前普通运动战子集支持的 TP 2-8，并调用既有 authoritative Session `BeginOrdinaryAttack`。防守方、无效 Side 与重复请求在随机数和状态层都无副作用。测试可保留受编译开关保护的直接 Begin seam；生产入口不接受 caller-supplied TP。
+- 三次原型合同：LocalPlay Demo Opening 使用显式 `bUseFixedPrototypeAttackTurnContract`，双方只取基础 3 次，不应用稀有度/D6 加成；正式默认 Opening 仍验证并使用原有 D6 公式。最终 Max/Used 继续只存于权威 Player Runtime State。
+- Tracker 投影：InteractionView 按 Side 投影 Max、Used、CurrentIndex 与是否当前方；Presentation DTO 再建立可变长度的 Used/Current/Remaining 步骤和可配置 Primary Side Color。Widget 不读取 Runtime State、不监听按钮推断完成，也不独立硬编码 3。
+- UI 范围：只替换 Header 的回合 Tracker、中央比分/当前进攻/等待掷点层级，以及左下操作模块的 `掷战术点` CTA 与交互态；Hand Rack、Pitch、Pitch Mini、Hand Micro、Resolution 与其他冻结布局不改。
+- 完整 D12 边界：Canonical 行动点仍是 D12；当前生产 MatchPlay Begin 仅支持 2-8 普通运动战。行动点 1 与 9-12 的权威消费未在本小阶段扩展，后续必须在 Host/Session/State 链补齐，不得由 Widget 重掷、夹取或推断。
+
+### CD-034 - Stage 6.13.1.4.1 PIE Resolution Reachability Repair
+
+- 日期：2026-08-22
+- 缺陷分类：PIE 的 `Resolution Started` 停滞是 presentation routing defect，不是 authoritative gameplay logic bug。`BeginResolutionSession` 已成功把权威 Session 推进到 `AwaitingRoute`；Controller 也已存在 Long Shot / Cut Inside 的 `ResolveIntentDeterminedRoute` 与其他技能的 `ResolveInitialRoute` 路由。缺口是全屏 Resolution Overlay 只显示反馈、没有自己的 Continue 控件，而底层 Interaction Panel 的合法 Continue 被视觉遮住。
+- 修复边界：Presentation DTO 明确投影 `bCanContinue / ContinueActionLabel`；Resolution Panel 只广播无参数 Continue intent，Screen 将其转发到既有 `Controller::ContinueResolution`。Overlay 使用 self-only hit-test invisibility，使子控件可点击。Widget 不读取 Session Stage、不选择技能分支、不调用 Host。
+- 生命周期：攻击 terminal feedback 在下一玩家的 blocking handoff 中保持可见；该玩家确认 Ready 后，Controller 只清除旧 feedback 展示对象。Ready 前后权威 State 必须 byte-identical，新攻击方的 TacticalPointRoll readiness 直接来自刷新后的 InteractionView。
+- UI 修复：三步 Tracker 继续消费 `Used / Current / Remaining` DTO，但使用真实圆形 RoundedBox 节点并居中到玩家身份区域；中央 `战术点 X` 提升可读性但低于比分/当前进攻；左下掷点模块隐藏重复标题/分类，保留小型行动方提示与单一 `156 x 48` CTA。
+- 范围：不修改 Pitch、Slot state、Ball marker、Hand Micro、Pitch Mini、Full Card、玩法公式、随机规则或 Authority API。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

@@ -14,7 +14,7 @@ enum class EFMCodexUMGInteractionCategory : uint8
 {
 	None,
 	StartMatch,
-	BeginAttack,
+	TacticalPointRoll,
 	Deploy,
 	SelectCarrier,
 	SelectMarker,
@@ -26,6 +26,51 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	ContinueResolution,
 	AttackComplete,
 	MatchEnded
+};
+
+UENUM(BlueprintType)
+enum class EFMCodexUMGAttackTurnStepState : uint8
+{
+	Used,
+	Current,
+	Remaining
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGAttackTurnStepViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 AttackIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	EFMCodexUMGAttackTurnStepState State =
+		EFMCodexUMGAttackTurnStepState::Remaining;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGAttackTurnTrackerViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 MaxAttackTurns = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 UsedAttackTurns = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 CurrentAttackIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bCurrentAttackingSide = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FLinearColor PrimarySideColor = FLinearColor::White;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	TArray<FFMCodexUMGAttackTurnStepViewModel> Steps;
 };
 
 UENUM(BlueprintType)
@@ -102,12 +147,12 @@ struct FMCODEX_API FFMCodexUMGSidePrimaryColors
 	UPROPERTY(EditAnywhere, BlueprintReadWrite,
 		Category = "Local Match|Pitch Mini")
 	FLinearColor PlayerAPrimaryColor = FLinearColor::FromSRGBColor(
-		FColor(0xA4, 0x47, 0x4F));
+		FColor(0x4F, 0x78, 0x92));
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite,
 		Category = "Local Match|Pitch Mini")
 	FLinearColor PlayerBPrimaryColor = FLinearColor::FromSRGBColor(
-		FColor(0x4F, 0x78, 0x92));
+		FColor(0xA4, 0x47, 0x4F));
 };
 
 USTRUCT(BlueprintType)
@@ -400,6 +445,21 @@ struct FMCODEX_API FFMCodexUMGMatchHeaderViewModel
 	FString CurrentAttackerTacticalPointsLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FFMCodexUMGAttackTurnTrackerViewModel LeftAttackTurnTracker;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FFMCodexUMGAttackTurnTrackerViewModel RightAttackTurnTracker;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 CurrentAttackerAttackIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 CurrentAttackerMaxAttackTurns = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bTacticalPointRollReady = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	int64 AttackSequence = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
@@ -585,7 +645,13 @@ struct FMCODEX_API FFMCodexUMGInteractionViewModel
 	bool bCanStartNewMatch = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
-	bool bCanBeginOrdinaryAttack = false;
+	bool bCanRollTacticalPoints = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bHasActingSidePrimaryColor = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FLinearColor ActingSidePrimaryColor = FLinearColor::White;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bCanFinishDeployment = false;
@@ -661,6 +727,12 @@ struct FMCODEX_API FFMCodexUMGResolutionViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	bool bTerminal = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	bool bCanContinue = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FString ContinueActionLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	FString StepLabel;

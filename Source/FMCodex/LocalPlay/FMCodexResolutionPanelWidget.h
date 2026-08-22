@@ -9,11 +9,14 @@
 
 class UFMCodexDiceResultWidget;
 class UBorder;
+class UButton;
 class UHorizontalBox;
 class UTextBlock;
 class UVerticalBox;
 class UWrapBox;
 class SWidget;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FFMCodexResolutionContinueRequested);
 
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexResolutionPanelWidget : public UUserWidget
@@ -33,6 +36,12 @@ public:
 		GetRenderedDiceWidgets() const;
 	int32 GetRenderedComparisonCount() const;
 
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Resolution Presentation")
+	void RequestContinue();
+
+	UPROPERTY(BlueprintAssignable, Category = "Local Match|Resolution Presentation")
+	FFMCodexResolutionContinueRequested OnContinueRequested;
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -42,6 +51,9 @@ private:
 	void RefreshVisuals();
 	void RefreshDiceResults();
 	void RefreshComparisonEvidence();
+
+	UFUNCTION()
+	void HandleContinueClicked();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Resolution Presentation",
@@ -101,6 +113,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ContinuationText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ContinueButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> TerminalSection;

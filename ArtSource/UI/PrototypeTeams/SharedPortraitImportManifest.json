@@ -76,6 +76,66 @@
       ]
     },
     {
+      "playerKey": "Prototype.Arsenal.MikelMerino",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_MikelMerino_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.BenWhite",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_BenWhite_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.PieroHincapie",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_PieroHincapie_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.JurrienTimber",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_JurrienTimber_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_RiccardoCalafiori_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.EberechiEze",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_EberechiEze_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MartinZubimendi",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_MartinZubimendi_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.ChristianNorgaard",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_ChristianNorgaard_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.LeandroTrossard",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_LeandroTrossard_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.NoniMadueke",
+      "team": "Arsenal",
+      "assetName": "T_Prototype_Arsenal_NoniMadueke_01",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
       "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
       "team": "ManchesterCity",
       "assetName": "T_Prototype_ManchesterCity_ErlingHaaland_01",

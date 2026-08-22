@@ -9,6 +9,7 @@
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
@@ -134,11 +135,11 @@ void UFMCodexInteractionPanelWidget::RequestStartMatch()
 	}
 }
 
-void UFMCodexInteractionPanelWidget::RequestBeginAttack()
+void UFMCodexInteractionPanelWidget::RequestTacticalPointRoll()
 {
 	if (!bInteractionBlocked)
 	{
-		OnBeginAttackRequested.Broadcast();
+		OnTacticalPointRollRequested.Broadcast();
 	}
 }
 
@@ -278,7 +279,8 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	ActionHeaderRegion = MakeRegion(
 		*WidgetTree, TEXT("InteractionActionHeader"),
 		EFMCodexPlayerUIColorRole::NeutralAccent,
-		Style.GetSectionPadding());
+		FMargin(10.0f, 6.0f));
+	ActionHeaderRegion->SetVerticalAlignment(VAlign_Center);
 	UVerticalBox* HeaderBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("InteractionActionHeaderBody"));
 	KickerText = MakeText(*WidgetTree, TEXT("InteractionActionKicker"));
@@ -376,13 +378,26 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	StartButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleStartClicked);
 	PrimaryActions->AddChildToHorizontalBox(StartButton);
-	UTextBlock* BeginLabel = nullptr;
-	BeginButton = MakeButton(
-		*WidgetTree, TEXT("InteractionBeginAttackButton"), BeginLabel,
+	UTextBlock* RollLabel = nullptr;
+	TacticalPointRollButton = MakeButton(
+		*WidgetTree, TEXT("InteractionTacticalPointRollButton"), RollLabel,
 		EFMCodexPlayerUIActionRole::Primary);
-	BeginButton->OnClicked.AddDynamic(
-		this, &UFMCodexInteractionPanelWidget::HandleBeginClicked);
-	PrimaryActions->AddChildToHorizontalBox(BeginButton);
+	Style.ApplyText(*RollLabel, EFMCodexPlayerUITextRole::Kicker);
+	TacticalPointRollButton->OnClicked.AddDynamic(
+		this,
+		&UFMCodexInteractionPanelWidget::HandleTacticalPointRollClicked);
+	USizeBox* TacticalPointRollBounds =
+		WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(), TEXT("TacticalPointPrimaryActionBounds"));
+	TacticalPointRollBounds->SetWidthOverride(156.0f);
+	TacticalPointRollBounds->SetHeightOverride(48.0f);
+	TacticalPointRollBounds->AddChild(TacticalPointRollButton);
+	if (UHorizontalBoxSlot* RollSlot =
+		PrimaryActions->AddChildToHorizontalBox(TacticalPointRollBounds))
+	{
+		RollSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
+		RollSlot->SetVerticalAlignment(VAlign_Center);
+	}
 	UTextBlock* FinishLabel = nullptr;
 	FinishButton = MakeButton(
 		*WidgetTree, TEXT("InteractionFinishDeploymentButton"), FinishLabel,
@@ -431,6 +446,15 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	ContextText->SetText(FText::FromString(
 		FString::Join(LocalizedContextLines, TEXT(" | "))));
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	const bool bCompactTacticalPointAction =
+		Presentation.bCanRollTacticalPoints;
+	Style.ApplyText(*ActorText, bCompactTacticalPointAction
+		? EFMCodexPlayerUITextRole::Kicker
+		: EFMCodexPlayerUITextRole::Status);
+	TitleText->SetVisibility(bCompactTacticalPointAction
+		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	ContextText->SetVisibility(bCompactTacticalPointAction
+		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	ActionHeaderRegion->SetBrushColor(
 		Presentation.KickerLabel.Contains(TEXT("SYSTEM"))
 			? Style.GetColor(EFMCodexPlayerUIColorRole::SystemStatus)
@@ -468,8 +492,24 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	};
 	SetButton(StartButton, Presentation.bCanStartNewMatch,
 		Presentation.PrimaryActionLabel);
-	SetButton(BeginButton, Presentation.bCanBeginOrdinaryAttack,
+	SetButton(TacticalPointRollButton, Presentation.bCanRollTacticalPoints,
 		Presentation.PrimaryActionLabel);
+	if (UWidget* RollBounds = TacticalPointRollButton->GetParent())
+	{
+		RollBounds->SetVisibility(Presentation.bCanRollTacticalPoints
+			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (Presentation.bCanRollTacticalPoints
+		&& Presentation.bHasActingSidePrimaryColor)
+	{
+		TacticalPointRollButton->SetStyle(
+			Style.MakeAccentButtonStyle(
+				Presentation.ActingSidePrimaryColor));
+		const FLinearColor PanelBase =
+			Style.GetColor(EFMCodexPlayerUIColorRole::PanelRaised);
+		ActionHeaderRegion->SetBrushColor(FMath::Lerp(
+			PanelBase, Presentation.ActingSidePrimaryColor, 0.30f));
+	}
 	SetButton(FinishButton, Presentation.bCanFinishDeployment,
 		Presentation.PrimaryActionLabel);
 	SetButton(ContinueButton, Presentation.bCanContinue,
@@ -481,7 +521,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 
 	const bool bHasDynamicChoices = !RenderedOptionWidgets.IsEmpty();
 	const bool bHasPrimaryAction = Presentation.bCanStartNewMatch
-		|| Presentation.bCanBeginOrdinaryAttack
+		|| Presentation.bCanRollTacticalPoints
 		|| Presentation.bCanFinishDeployment
 		|| Presentation.bCanContinue
 		|| Presentation.bCanDecline
@@ -611,9 +651,9 @@ void UFMCodexInteractionPanelWidget::HandleStartClicked()
 	RequestStartMatch();
 }
 
-void UFMCodexInteractionPanelWidget::HandleBeginClicked()
+void UFMCodexInteractionPanelWidget::HandleTacticalPointRollClicked()
 {
-	RequestBeginAttack();
+	RequestTacticalPointRoll();
 }
 
 void UFMCodexInteractionPanelWidget::HandleFinishClicked()

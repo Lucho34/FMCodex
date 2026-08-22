@@ -289,11 +289,11 @@ void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
 	}
 }
 
-void UFMCodexLocalMatchScreenWidget::RequestBeginOrdinaryAttack()
+void UFMCodexLocalMatchScreenWidget::RequestRollTacticalPoints()
 {
 	if (MatchController != nullptr)
 	{
-		MatchController->BeginDemoOrdinaryAttack();
+		MatchController->RollDemoTacticalPoints();
 	}
 }
 
@@ -450,9 +450,9 @@ void UFMCodexLocalMatchScreenWidget::HandleStartNewMatchClicked()
 	RequestStartNewMatch();
 }
 
-void UFMCodexLocalMatchScreenWidget::HandleBeginOrdinaryAttackClicked()
+void UFMCodexLocalMatchScreenWidget::HandleTacticalPointRollClicked()
 {
-	RequestBeginOrdinaryAttack();
+	RequestRollTacticalPoints();
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleDeployOrdinaryRequested(
@@ -826,8 +826,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 			ResolvedInteractionClass, TEXT("DedicatedInteractionPanelWidget"));
 	InteractionPanel->OnStartMatchRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleStartNewMatchClicked);
-	InteractionPanel->OnBeginAttackRequested.AddDynamic(
-		this, &UFMCodexLocalMatchScreenWidget::HandleBeginOrdinaryAttackClicked);
+	InteractionPanel->OnTacticalPointRollRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleTacticalPointRollClicked);
 	InteractionPanel->OnDeployOrdinaryRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleDeployOrdinaryRequested);
 	InteractionPanel->OnDeployGoalkeeperRequested.AddDynamic(
@@ -1120,6 +1120,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	ResolutionPanel =
 		WidgetTree->ConstructWidget<UFMCodexResolutionPanelWidget>(
 			ResolvedResolutionClass, TEXT("DedicatedResolutionPanelWidget"));
+	ResolutionPanel->OnContinueRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleContinueRequested);
 	ResolutionBounds->AddChild(ResolutionPanel);
 	if (UBorderSlot* ResolutionSlot = Cast<UBorderSlot>(
 		ResolutionOverlay->AddChild(ResolutionBounds)))
@@ -1480,7 +1482,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);
 	ResolutionOverlay->SetVisibility(Presentation.Resolution.bVisible
-		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 
 	HandoffOverlay->SetVisibility(Presentation.Handoff.bVisible
 		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);

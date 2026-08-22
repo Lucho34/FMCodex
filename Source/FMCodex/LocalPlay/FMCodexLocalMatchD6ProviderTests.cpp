@@ -74,6 +74,19 @@ bool FFMCodexLocalMatchD6ProviderContractTest::RunTest(
 	constexpr int32 Seed = 0x5132A6;
 	FFMCodexLocalMatchD6Provider ProviderA(Seed);
 	FFMCodexLocalMatchD6Provider ProviderB(Seed);
+	FFMCodexLocalMatchD6Provider TacticalProviderA(Seed);
+	FFMCodexLocalMatchD6Provider TacticalProviderB(Seed);
+	for (int32 Index = 0; Index < 128; ++Index)
+	{
+		const int32 TacticalPointA =
+			TacticalProviderA.RollOrdinaryTacticalPoint();
+		const int32 TacticalPointB =
+			TacticalProviderB.RollOrdinaryTacticalPoint();
+		TestTrue(TEXT("Ordinary Tactical Point stays in supported 2..8 slice"),
+			TacticalPointA >= 2 && TacticalPointA <= 8);
+		TestEqual(TEXT("Same seed Tactical Point sequence is deterministic"),
+			TacticalPointA, TacticalPointB);
+	}
 	for (int32 Index = 0; Index < 128; ++Index)
 	{
 		if (Index % 3 == 0)
@@ -209,6 +222,10 @@ bool FFMCodexLocalMatchD6ProviderChronologyAndAuthorityTest::RunTest(
 	TestEqual(TEXT("All successful rolls use one local RandRange callsite"),
 		CountOccurrences(ProviderSource,
 			TEXT("RandomStream.RandRange(1, 6)")),
+		1);
+	TestEqual(TEXT("Ordinary Tactical Point uses one supported-range callsite"),
+		CountOccurrences(ProviderSource,
+			TEXT("RandomStream.RandRange(2, 8)")),
 		1);
 	TestFalse(TEXT("No global gameplay RNG is used"),
 		ProviderSource.Contains(TEXT("FMath::Rand"))

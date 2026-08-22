@@ -20,7 +20,7 @@ class SWidget;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
 	FFMCodexInteractionStartMatchRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
-	FFMCodexInteractionBeginAttackRequested);
+	FFMCodexInteractionTacticalPointRollRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
 	FFMCodexInteractionDeployOrdinaryRequested,
 	FName, CardId,
@@ -83,7 +83,7 @@ public:
 	void RequestStartMatch();
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Intent")
-	void RequestBeginAttack();
+	void RequestTacticalPointRoll();
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Intent")
 	void RequestDeployment(FName CardId, FName SlotId, bool bGoalkeeper);
@@ -125,7 +125,8 @@ public:
 	FFMCodexInteractionStartMatchRequested OnStartMatchRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
-	FFMCodexInteractionBeginAttackRequested OnBeginAttackRequested;
+	FFMCodexInteractionTacticalPointRollRequested
+		OnTacticalPointRollRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionDeployOrdinaryRequested OnDeployOrdinaryRequested;
@@ -185,7 +186,7 @@ private:
 	void HandleStartClicked();
 
 	UFUNCTION()
-	void HandleBeginClicked();
+	void HandleTacticalPointRollClicked();
 
 	UFUNCTION()
 	void HandleFinishClicked();
@@ -275,7 +276,7 @@ private:
 	TObjectPtr<UButton> StartButton;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> BeginButton;
+	TObjectPtr<UButton> TacticalPointRollButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> FinishButton;

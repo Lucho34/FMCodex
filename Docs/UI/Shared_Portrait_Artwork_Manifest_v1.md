@@ -1,26 +1,26 @@
 # Shared Portrait Artwork Manifest v1
 
-Stage: `6.13.1.3.13.5B`
+Stage: `6.13.1.3.13.5C`
 
-Status: **FIRST PRODUCTION BATCH IMPORTED — PENDING MANUAL PIE ARTWORK GATE**
+Status: **SECOND PRODUCTION BATCH IMPORTED — PENDING MANUAL SECOND-BATCH PIE ARTWORK GATE**
 
-Canonical source: `Content/Data/CanonicalPlayerContent.json` (`Prototype40_v1`). Audit source: native soft mappings in `FFMCodexPlayerUIAssetReferences`, source PNG inventory, and imported `.uasset` inventory. Audit date: `2026-08-21`.
+Canonical source: `Content/Data/CanonicalPlayerContent.json` (`Prototype40_v1`). Audit source: native soft mappings in `FFMCodexPlayerUIAssetReferences`, source PNG inventory, and imported `.uasset` inventory. Audit date: `2026-08-22`.
 
 ## 1. Coverage summary
 
 | Surface | File/mapping coverage | Visual/conformance result |
 |---|---:|---|
-| Shared / Pitch-compatible | `18/40` mapped; all 18 packages exist | 8 older portraits remain `KEEP / LATER POLISH`; Gabriel Magalhães v3 and Erling Haaland v2 are the unchanged Golden baseline; all 8 first-batch records are pending the manual PIE gate |
-| Shared fallback | `22/40` | no Shared mapping; restrained Pitch Mini fallback; `CREATE` required |
+| Shared / Pitch-compatible | `28/40` mapped; all 28 packages exist | 8 older portraits remain `KEEP / LATER POLISH`; Gabriel Magalhães v3 and Erling Haaland v2 are the unchanged Golden baseline; the ten second-batch records are pending the manual PIE gate |
+| Shared fallback | `12/40` | no Shared mapping; restrained Pitch Mini fallback; `CREATE` required |
 | Shared invalid mapping/package | `0/40` | no dangling mapped path found |
-| Runtime-derivative technical validation | `10/10` | Golden baseline plus first-batch Masters deterministically produce `512x768` runtime derivatives with complete provenance |
-| Current art-contract coverage | `10/40` | 2 unchanged Golden baseline portraits + 8 first-batch candidates; the 8 batch candidates remain pending manual PIE approval |
+| Runtime-derivative technical validation | `20/20` | Golden baseline plus first- and second-batch Masters deterministically produce `512x768` runtime derivatives with complete provenance |
+| Current art-contract candidate / approved coverage | `20/40` | 2 unchanged Golden baseline portraits + 8 first-batch family portraits + 10 second-batch candidates; this Stage grants no final approval to the new ten before PIE |
 | Hand Micro | `16/40` dedicated packages exist | report only; frozen; no visual reconformance claimed in this Stage |
 | Full Card | `16/40` dedicated packages exist | report only; frozen; no Shared coverage credit |
 
-Honest remaining production workload is `22 CREATE + 8 later-polish replacements`, plus the eight-player first-batch manual PIE gate. Technical coverage is `18 valid + 22 fallback`. `FILE EXISTS`, `RUNTIME DERIVATIVE VALID`, and `FINAL VISUAL CONFORMANCE` remain deliberately separate facts.
+Honest remaining production workload is `12 CREATE + 8 later-polish replacements`, plus the ten-player second-batch manual PIE gate. Technical coverage is `28 valid + 12 fallback`. `FILE EXISTS`, `RUNTIME DERIVATIVE VALID`, and `FINAL VISUAL CONFORMANCE` remain deliberately separate facts.
 
-Before Stage 6.13.1.3.13.5B, the native Shared map contained 11 mappings and 29 fallbacks. This Stage adds seven new mappings and replaces David Raya in place at his stable path, producing 18 mappings and 22 fallbacks without changing the canonical 40-player roster.
+Stage 6.13.1.3.13.5C starts from 18 mappings and 22 fallbacks. It adds exactly ten new Arsenal Shared mappings, producing 28 mappings and 12 fallbacks without changing the canonical 40-player roster.
 
 V2 composition target: `1024x1536` Upper-torso Hero Bust Master, generally `10–15%` farther from camera than v1, with full head/neck, bilateral shoulders, collar, and meaningful upper-shirt area. Its deterministic `512x768` derivative must retain clear Arsenal red/white or Manchester City sky-blue kit presence after the unchanged `130x112`, `1.08` Pitch Mini crop.
 
@@ -33,7 +33,7 @@ V2 composition target: `1024x1536` Upper-torso Hero Bust Master, generally `10�
 - `KEEP / LATER POLISH`: usable current artwork; preserve until an approved replacement passes review.
 - `VISUAL FAIL — V2 REQUIRED`: technically usable pipeline fixture whose composition failed the frozen Pitch Mini artwork gate; it is not an approved Golden Sample.
 - `GOLDEN BASELINE — UNCHANGED`: approved production-direction reference retained byte-for-byte during this Stage.
-- `BATCH CANDIDATE — PENDING MANUAL PIE GATE`: first-batch Master/derivative/runtime asset passed technical validation but has no batch visual approval yet.
+- `BATCH CANDIDATE — PENDING MANUAL PIE GATE`: generated Master/derivative/runtime asset passed technical validation but has no batch visual approval yet.
 - `CREATE`: no Shared source or route exists.
 - Target paths are Unreal asset paths. Runtime soft object paths append `.<AssetName>`.
 
@@ -42,24 +42,24 @@ V2 composition target: `1024x1536` Upper-torso Hero Bust Master, generally `10�
 | PlayerKey | Serial | Team | Chinese name | English name | Pos | Current Shared asset | Pitch result | HM | FC | Crop | Disposition | Target Shared asset | Kit family | Background family | Notes |
 |---|---:|---|---|---|---|---|---|:---:|:---:|:---:|---|---|---|---|---|
 | `Prototype.Arsenal.DavidRaya` | `001` | Arsenal | 大卫·拉亚 | David Raya | `GK` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01` | VALID | YES | YES | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DavidRaya_01` | Arsenal GK | Navy/teal + warm accent | Stable-path replacement uses emerald/deep-green and charcoal goalkeeper family; generated Master, derivative, texture settings, routing, and cook contract pass. |
-| `Prototype.Arsenal.GabrielMagalhaes` | `002` | Arsenal | 加布里埃尔·马加良斯 | Gabriel Magalhães | `D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01` | VALID | YES | YES | YES | **GOLDEN BASELINE — UNCHANGED** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01` | Arsenal outfield | Navy/teal + warm accent | Active Gabriel v3 Golden production-direction baseline; Master, derivative, and UE package are unchanged in Stage 5B. |
+| `Prototype.Arsenal.GabrielMagalhaes` | `002` | Arsenal | 加布里埃尔·马加良斯 | Gabriel Magalhães | `D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01` | VALID | YES | YES | YES | **GOLDEN BASELINE — UNCHANGED** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMagalhaes_01` | Arsenal outfield | Navy/teal + warm accent | Active Gabriel v3 Golden production-direction baseline; Master, derivative, and UE package are unchanged in Stage 5C. |
 | `Prototype.Arsenal.WilliamSaliba` | `003` | Arsenal | 威廉·萨利巴 | William Saliba | `D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_WilliamSaliba_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_WilliamSaliba_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
-| `Prototype.Arsenal.BenWhite` | `004` | Arsenal | 本·怀特 | Ben White | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BenWhite_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
-| `Prototype.Arsenal.PieroHincapie` | `005` | Arsenal | 皮耶罗·因卡皮耶 | Piero Hincapié | `D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_PieroHincapie_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
-| `Prototype.Arsenal.JurrienTimber` | `006` | Arsenal | 尤里恩·廷贝尔 | Jurriën Timber | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_JurrienTimber_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
-| `Prototype.Arsenal.RiccardoCalafiori` | `007` | Arsenal | 里卡多·卡拉菲奥里 | Riccardo Calafiori | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_RiccardoCalafiori_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.BenWhite` | `004` | Arsenal | 本·怀特 | Ben White | `M/D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BenWhite_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BenWhite_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
+| `Prototype.Arsenal.PieroHincapie` | `005` | Arsenal | 皮耶罗·因卡皮耶 | Piero Hincapié | `D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_PieroHincapie_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_PieroHincapie_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
+| `Prototype.Arsenal.JurrienTimber` | `006` | Arsenal | 尤里恩·廷贝尔 | Jurriën Timber | `M/D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_JurrienTimber_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_JurrienTimber_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
+| `Prototype.Arsenal.RiccardoCalafiori` | `007` | Arsenal | 里卡多·卡拉菲奥里 | Riccardo Calafiori | `M/D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_RiccardoCalafiori_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_RiccardoCalafiori_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
 | `Prototype.Arsenal.MylesLewisSkelly` | `008` | Arsenal | 迈尔斯·刘易斯-斯凯利 | Myles Lewis-Skelly | `M/D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MylesLewisSkelly_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MylesLewisSkelly_01` | Arsenal outfield | Navy/teal + warm accent | New Shared-only batch route; dedicated Full Card and Hand Micro remain null. |
 | `Prototype.Arsenal.MartinOdegaard` | `009` | Arsenal | 马丁·厄德高 | Martin Ødegaard | `M` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinOdegaard_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinOdegaard_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
-| `Prototype.Arsenal.EberechiEze` | `010` | Arsenal | 埃贝雷希·埃泽 | Eberechi Eze | `A/M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_EberechiEze_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
-| `Prototype.Arsenal.MikelMerino` | `011` | Arsenal | 米克尔·梅里诺 | Mikel Merino | `M` | `—` | FALLBACK | YES | YES | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MikelMerino_01` | Arsenal outfield | Navy/teal + warm accent | Dedicated Hand/Full identity reference exists but must not be reused at runtime. |
-| `Prototype.Arsenal.MartinZubimendi` | `012` | Arsenal | 马丁·苏比门迪 | Martín Zubimendi | `M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinZubimendi_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.EberechiEze` | `010` | Arsenal | 埃贝雷希·埃泽 | Eberechi Eze | `A/M` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_EberechiEze_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_EberechiEze_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
+| `Prototype.Arsenal.MikelMerino` | `011` | Arsenal | 米克尔·梅里诺 | Mikel Merino | `M` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MikelMerino_01` | VALID | YES | YES | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MikelMerino_01` | Arsenal outfield | Navy/teal + warm accent | New Shared route; dedicated Hand/Full art was identity-only generation reference and remains runtime-isolated. |
+| `Prototype.Arsenal.MartinZubimendi` | `012` | Arsenal | 马丁·苏比门迪 | Martín Zubimendi | `M` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinZubimendi_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinZubimendi_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
 | `Prototype.Arsenal.DeclanRice` | `013` | Arsenal | 德克兰·赖斯 | Declan Rice | `M/D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DeclanRice_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_DeclanRice_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
-| `Prototype.Arsenal.ChristianNorgaard` | `014` | Arsenal | 克里斯蒂安·诺尔高 | Christian Nørgaard | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ChristianNorgaard_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.ChristianNorgaard` | `014` | Arsenal | 克里斯蒂安·诺尔高 | Christian Nørgaard | `M/D` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ChristianNorgaard_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ChristianNorgaard_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
 | `Prototype.Arsenal.BukayoSaka` | `015` | Arsenal | 布卡约·萨卡 | Bukayo Saka | `A` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BukayoSaka_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BukayoSaka_01` | Arsenal outfield | Navy/teal + warm accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
 | `Prototype.Arsenal.GabrielMartinelli` | `016` | Arsenal | 加布里埃尔·马丁内利 | Gabriel Martinelli | `A` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMartinelli_01` | VALID | YES | YES | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_GabrielMartinelli_01` | Arsenal outfield | Navy/teal + warm accent | New Shared route uses dedicated Full/Hand art only as identity provenance; runtime variant paths remain distinct. |
 | `Prototype.Arsenal.ViktorGyokeres` | `017` | Arsenal | 维克托·哲凯赖什 | Viktor Gyökeres | `A` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ViktorGyokeres_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ViktorGyokeres_01` | Arsenal outfield | Navy/teal + warm accent | New Shared-only striker portrait; dedicated Full Card and Hand Micro remain null. |
-| `Prototype.Arsenal.LeandroTrossard` | `018` | Arsenal | 莱安德罗·特罗萨德 | Leandro Trossard | `A/M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_LeandroTrossard_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
-| `Prototype.Arsenal.NoniMadueke` | `019` | Arsenal | 诺尼·马杜埃凯 | Noni Madueke | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_NoniMadueke_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
+| `Prototype.Arsenal.LeandroTrossard` | `018` | Arsenal | 莱安德罗·特罗萨德 | Leandro Trossard | `A/M` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_LeandroTrossard_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_LeandroTrossard_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
+| `Prototype.Arsenal.NoniMadueke` | `019` | Arsenal | 诺尼·马杜埃凯 | Noni Madueke | `A` | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_NoniMadueke_01` | VALID | NO | NO | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_NoniMadueke_01` | Arsenal outfield | Navy/teal + warm accent | New second-batch Shared-only route; dedicated Full Card and Hand Micro remain null. |
 | `Prototype.Arsenal.KaiHavertz` | `020` | Arsenal | 凯·哈弗茨 | Kai Havertz | `A/M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_KaiHavertz_01` | Arsenal outfield | Navy/teal + warm accent | No existing variant artwork. |
 | `Prototype.ManchesterCity.GianluigiDonnarumma` | `021` | Manchester City | 吉安路易吉·多纳鲁马 | Gianluigi Donnarumma | `GK` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_GianluigiDonnarumma_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_GianluigiDonnarumma_01` | City GK | Navy/teal + cool accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
 | `Prototype.ManchesterCity.RubenDias` | `022` | Manchester City | 鲁本·迪亚斯 | Rúben Dias | `D` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RubenDias_01` | VALID | YES | YES | YES | **KEEP / LATER POLISH** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_RubenDias_01` | City outfield | Navy/teal + cool accent | Technically valid and crop-safe; generic dark training shirt needs later team-family replacement. |
@@ -76,7 +76,7 @@ V2 composition target: `1024x1536` Upper-torso Hero Bust Master, generally `10�
 | `Prototype.ManchesterCity.NicoGonzalez` | `033` | Manchester City | 尼科·冈萨雷斯 | Nico González | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_NicoGonzalez_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
 | `Prototype.ManchesterCity.MatheusNunes` | `034` | Manchester City | 马特乌斯·努内斯 | Matheus Nunes | `M/D` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_MatheusNunes_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
 | `Prototype.ManchesterCity.MateoKovacic` | `035` | Manchester City | 马特奥·科瓦契奇 | Mateo Kovačić | `M` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_MateoKovacic_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
-| `Prototype.ManchesterCity.ErlingHaaland` | `036` | Manchester City | 埃尔林·哈兰德 | Erling Haaland | `A` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | VALID | YES | YES | YES | **GOLDEN BASELINE — UNCHANGED** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | City outfield | Navy/teal + cool accent | Active Haaland v2 Golden production-direction baseline; Master, derivative, and UE package are unchanged in Stage 5B. |
+| `Prototype.ManchesterCity.ErlingHaaland` | `036` | Manchester City | 埃尔林·哈兰德 | Erling Haaland | `A` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | VALID | YES | YES | YES | **GOLDEN BASELINE — UNCHANGED** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_ErlingHaaland_01` | City outfield | Navy/teal + cool accent | Active Haaland v2 Golden production-direction baseline; Master, derivative, and UE package are unchanged in Stage 5C. |
 | `Prototype.ManchesterCity.OmarMarmoush` | `037` | Manchester City | 奥马尔·马尔穆什 | Omar Marmoush | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_OmarMarmoush_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
 | `Prototype.ManchesterCity.JeremyDoku` | `038` | Manchester City | 杰里米·多库 | Jérémy Doku | `A` | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_01` | VALID | YES | YES | PENDING | **BATCH CANDIDATE — PENDING MANUAL PIE GATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_JeremyDoku_01` | City outfield | Navy/teal + cool accent | New Shared route; dedicated Full/Hand routes remain distinct and unchanged. |
 | `Prototype.ManchesterCity.AntoineSemenyo` | `039` | Manchester City | 安托万·塞梅尼奥 | Antoine Semenyo | `A` | `—` | FALLBACK | NO | NO | N/A | **CREATE** | `/Game/UI/Portraits/PrototypeTeams/ManchesterCity/T_Prototype_ManchesterCity_AntoineSemenyo_01` | City outfield | Navy/teal + cool accent | No existing variant artwork. |
@@ -86,7 +86,7 @@ V2 composition target: `1024x1536` Upper-torso Hero Bust Master, generally `10�
 
 ### KEEP
 
-The production-direction Golden baseline is unchanged: Gabriel Magalhães v3 for Arsenal and Erling Haaland v2 for Manchester City. Their Master, derivative, runtime package, and routing hashes remain unchanged in Stage 5B.
+The production-direction Golden baseline is unchanged: Gabriel Magalhães v3 for Arsenal and Erling Haaland v2 for Manchester City. Their Master, derivative, runtime package, and routing hashes remain unchanged in Stage 5C.
 
 ### KEEP / LATER POLISH
 
@@ -99,8 +99,9 @@ All eight older portraits have matching imported packages. Preserve them until a
 
 - Arsenal: David Raya, Myles Lewis-Skelly, Gabriel Martinelli, Viktor Gyökeres.
 - Manchester City: Joško Gvardiol, Bernardo Silva, Jérémy Doku, Rayan Aït-Nouri.
+- Arsenal second batch: Mikel Merino, Ben White, Piero Hincapié, Jurriën Timber, Riccardo Calafiori, Eberechi Eze, Martín Zubimendi, Christian Nørgaard, Leandro Trossard, Noni Madueke.
 
-All eight generated Masters pass exact `1024x1536` opaque-RGB validation, are unique by PlayerKey/path/payload, deterministically produce `512x768` derivatives, and resolve as conforming UE textures. Their batch visual status remains `PENDING` until the user's actual-size PIE review.
+All eighteen generated batch Masters pass exact `1024x1536` opaque-RGB validation, are unique by PlayerKey/path/payload within their batches, deterministically produce `512x768` derivatives, and resolve as conforming UE textures. The ten new second-batch portraits remain `PENDING` until the user's actual-size PIE review.
 
 ### Historical v1 visual failure
 
@@ -108,7 +109,7 @@ Gabriel Magalhães v1 and Erling Haaland v1 failed actual PIE because the frozen
 
 ### CREATE
 
-Twenty-two players have no Shared route. Mikel Merino retains Hand/Full-only identity provenance; the other twenty-one have no dedicated portrait variant in the repository.
+Twelve players have no Shared route. They remain explicit `CREATE` work; no cross-variant fallback is permitted.
 
 ## 5. Hand Micro and Full Card report-only inventory
 
@@ -134,13 +135,26 @@ Hand Micro assets are under `/Game/UI/Portraits/PrototypeTeams/HandMicroApproved
 
 This batch is balanced `4 Arsenal / 4 Manchester City`. Gabriel v3 and Haaland v2 remain the side-specific comparison references and were not regenerated. All eight generated candidates require manual PIE review before approval.
 
-## 7. Remaining batch sequence
+## 7. Second production batch — 10 Arsenal candidates
+
+| Player | Pos | Work | Art-contract preflight |
+|---|---|---|---|
+| Mikel Merino | M | new Shared candidate | dedicated Full/Hand identity reference remained routing-isolated |
+| Ben White | M/D | new Shared-only candidate | angular face, bilateral white shoulders, dark upper-left pip field |
+| Piero Hincapié | D | new Shared-only candidate | compact face and distinct textured hair/facial-hair read |
+| Jurriën Timber | M/D | new Shared-only candidate | distinct tight-curl silhouette and balanced upper torso |
+| Riccardo Calafiori | M/D | new Shared-only candidate | long-hair silhouette remains complete under the Master frame |
+| Eberechi Eze | A/M | new Shared-only candidate | distinctive swept dreadlock silhouette and natural skin lighting |
+| Martín Zubimendi | M | new Shared-only candidate | lean clean-shaven identity remains distinct from Merino/White |
+| Christian Nørgaard | M/D | new Shared-only candidate | light-hair/full-beard identity variation with crop-safe shoulders |
+| Leandro Trossard | A/M | new Shared-only candidate | narrow face and recognizable deep-set-eye read |
+| Noni Madueke | A | new Shared-only candidate | short-twist/fade silhouette remains distinct from Eze/Timber |
+
+All ten Masters are unique opaque-RGB `1024x1536` PNGs. All ten deterministic derivatives are unique `512x768` PNGs, all ten UE packages pass fresh-process validation, and all ten remain `BATCH CANDIDATE — PENDING MANUAL PIE GATE`.
+
+## 8. Remaining batch sequence
 
 Each batch must follow `1024x1536` Art Master review -> deterministic `512x768` derivative -> fresh-process import validation -> mapping -> focused tests -> PIE review.
-
-### Batch 2 — remaining Arsenal CREATE work
-
-Ben White, Piero Hincapié, Jurriën Timber, Riccardo Calafiori, Eberechi Eze, Mikel Merino, Martín Zubimendi, Christian Nørgaard, Leandro Trossard, Noni Madueke.
 
 ### Batch 3 — Manchester City CREATE work
 
@@ -152,9 +166,9 @@ Marc Guéhi, Nathan Aké, John Stones, Tijjani Reijnders, Rayan Cherki, Nico Gon
 - Arsenal later-polish replacement: William Saliba, Martin Ødegaard, Declan Rice, Bukayo Saka.
 - Manchester City later-polish replacement: Gianluigi Donnarumma, Rúben Dias, Rodri, Phil Foden.
 
-After later batches and polish replacements, the planned inventory still totals exactly 40 production-contract portraits. Stage 5B adds seven first-time Shared routes and one stable-path Raya replacement; it grants technical coverage immediately but no manual visual-approval credit to the eight candidates before PIE.
+After later batches and polish replacements, the planned inventory still totals exactly 40 production-contract portraits. Stage 5C adds ten first-time Shared routes; it grants technical coverage immediately but no manual visual-approval credit to the ten new candidates before PIE.
 
-## 8. Batch approval gates
+## 9. Batch approval gates
 
 No batch may claim coverage until:
 
@@ -167,9 +181,9 @@ No batch may claim coverage until:
 - mint tactical pips/highlight and both ownership rail colors remain readable;
 - Full Card, Hand Micro, Drag Proxy, Pitch Mini structure, gameplay, and Authority remain unchanged.
 
-## 9. Runtime derivative and future cleanup status
+## 10. Runtime derivative and future cleanup status
 
-Gabriel v3 / Haaland v2 plus the eight first-batch records exercise the repaired architecture; historical replacement hashes and reasons remain in provenance:
+Gabriel v3 / Haaland v2 plus the first- and second-batch records exercise the repaired architecture; historical replacement hashes and reasons remain in provenance:
 
 `ArtSource 1024x1536 Master -> ContentSource 512x768 generated derivative -> stable /Game Texture2D`.
 

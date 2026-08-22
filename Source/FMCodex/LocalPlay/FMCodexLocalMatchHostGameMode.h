@@ -14,7 +14,10 @@ enum class EFMCodexLocalMatchHostErrorCode : uint8
 	NoActiveMatch,
 	AuthoritativeInitializationFailed,
 	AuthoritativeCommandFailed,
-	RuleConfigurationMismatch
+	RuleConfigurationMismatch,
+	InvalidRequestingSide,
+	RequestingSideNotCurrentAttacker,
+	TacticalPointRollNotReady
 };
 
 struct FMCODEX_API FFMCodexStartNewLocalMatchResult
@@ -48,6 +51,16 @@ struct FMCODEX_API FFMCodexLocalMatchSkillRuleSnapshotResult
 struct FMCODEX_API FFMCodexLocalMatchBeginOrdinaryAttackResult
 {
 	bool bSuccess = false;
+	FMatchPlayAuthoritativeBeginOrdinaryAttackResult AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchRollTacticalPointsResult
+{
+	bool bSuccess = false;
+	int32 TacticalPoints = 0;
 	FMatchPlayAuthoritativeBeginOrdinaryAttackResult AuthoritativeResult;
 	EFMCodexLocalMatchHostErrorCode ErrorCode =
 		EFMCodexLocalMatchHostErrorCode::None;
@@ -471,8 +484,13 @@ public:
 	FFMCodexLocalMatchSkillRuleSnapshotResult
 		GetSkillRuleSnapshot() const;
 
+	FFMCodexLocalMatchRollTacticalPointsResult RollTacticalPoints(
+		EInitialTurnOrderPlayer RequestingSide);
+
+#if WITH_DEV_AUTOMATION_TESTS
 	FFMCodexLocalMatchBeginOrdinaryAttackResult BeginOrdinaryAttack(
 		int32 ActionPoint);
+#endif
 
 	FFMCodexLocalMatchDeployOrdinaryResult DeployOrdinary(
 		const FMatchPlayAuthoritativeDeployOrdinaryRequest& Request);

@@ -262,6 +262,26 @@ FButtonStyle FFMCodexPlayerUIStyle::MakeButtonStyle(
 	return Result;
 }
 
+FButtonStyle FFMCodexPlayerUIStyle::MakeAccentButtonStyle(
+	const FLinearColor& PrimarySideColor) const
+{
+	using namespace FMCodexPlayerUIStyle;
+	const FLinearColor Base(
+		FMath::Clamp(PrimarySideColor.R * 0.82f, 0.0f, 1.0f),
+		FMath::Clamp(PrimarySideColor.G * 0.82f, 0.0f, 1.0f),
+		FMath::Clamp(PrimarySideColor.B * 0.82f, 0.0f, 1.0f),
+		1.0f);
+	FButtonStyle Result;
+	Result.SetNormal(MakeSolidBrush(Base));
+	Result.SetHovered(MakeSolidBrush(Emphasize(Base, 1.16f)));
+	Result.SetPressed(MakeSolidBrush(Emphasize(Base, 0.70f)));
+	Result.SetDisabled(MakeSolidBrush(
+		GetColor(EFMCodexPlayerUIColorRole::ActionDisabled)));
+	Result.SetNormalPadding(FMargin(14.0f, 7.0f));
+	Result.SetPressedPadding(FMargin(14.0f, 8.0f, 14.0f, 6.0f));
+	return Result;
+}
+
 void FFMCodexPlayerUIStyle::ApplyText(
 	UTextBlock& Text,
 	const EFMCodexPlayerUITextRole Role) const

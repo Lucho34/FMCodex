@@ -19,7 +19,7 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 {
 	None,
 	StartMatch,
-	BeginAttack,
+	TacticalPointRoll,
 	Deploy,
 	SelectCarrier,
 	SelectMarker,
@@ -194,6 +194,15 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 		EInitialTurnOrderPlayer::None;
 	EInitialTurnOrderPlayer ExpectedActingPlayer =
 		EInitialTurnOrderPlayer::None;
+	int32 PlayerAMaxAttackTurns = 0;
+	int32 PlayerAUsedAttackTurns = 0;
+	int32 PlayerACurrentAttackIndex = 0;
+	int32 PlayerBMaxAttackTurns = 0;
+	int32 PlayerBUsedAttackTurns = 0;
+	int32 PlayerBCurrentAttackIndex = 0;
+	bool bPlayerACurrentAttackTurn = false;
+	bool bPlayerBCurrentAttackTurn = false;
+	bool bTacticalPointRollReady = false;
 	bool bCurrentAttackActive = false;
 	int64 AttackSequence = 0;
 	int32 ActionPoint = 0;

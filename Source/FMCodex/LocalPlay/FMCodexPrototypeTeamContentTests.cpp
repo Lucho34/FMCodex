@@ -55,6 +55,16 @@ namespace FMCodexPrototypeTeamContentTests
 		TEXT("Prototype.Arsenal.MylesLewisSkelly"),
 		TEXT("Prototype.Arsenal.GabrielMartinelli"),
 		TEXT("Prototype.Arsenal.ViktorGyokeres"),
+		TEXT("Prototype.Arsenal.MikelMerino"),
+		TEXT("Prototype.Arsenal.BenWhite"),
+		TEXT("Prototype.Arsenal.PieroHincapie"),
+		TEXT("Prototype.Arsenal.JurrienTimber"),
+		TEXT("Prototype.Arsenal.RiccardoCalafiori"),
+		TEXT("Prototype.Arsenal.EberechiEze"),
+		TEXT("Prototype.Arsenal.MartinZubimendi"),
+		TEXT("Prototype.Arsenal.ChristianNorgaard"),
+		TEXT("Prototype.Arsenal.LeandroTrossard"),
+		TEXT("Prototype.Arsenal.NoniMadueke"),
 		TEXT("Prototype.Arsenal.WilliamSaliba"),
 		TEXT("Prototype.Arsenal.MartinOdegaard"),
 		TEXT("Prototype.Arsenal.DeclanRice"),
@@ -76,6 +86,16 @@ namespace FMCodexPrototypeTeamContentTests
 		TEXT("Prototype.Arsenal.MylesLewisSkelly"),
 		TEXT("Prototype.Arsenal.GabrielMartinelli"),
 		TEXT("Prototype.Arsenal.ViktorGyokeres"),
+		TEXT("Prototype.Arsenal.MikelMerino"),
+		TEXT("Prototype.Arsenal.BenWhite"),
+		TEXT("Prototype.Arsenal.PieroHincapie"),
+		TEXT("Prototype.Arsenal.JurrienTimber"),
+		TEXT("Prototype.Arsenal.RiccardoCalafiori"),
+		TEXT("Prototype.Arsenal.EberechiEze"),
+		TEXT("Prototype.Arsenal.MartinZubimendi"),
+		TEXT("Prototype.Arsenal.ChristianNorgaard"),
+		TEXT("Prototype.Arsenal.LeandroTrossard"),
+		TEXT("Prototype.Arsenal.NoniMadueke"),
 		TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
 		TEXT("Prototype.ManchesterCity.BernardoSilva"),
 		TEXT("Prototype.ManchesterCity.ErlingHaaland"),
@@ -598,10 +618,10 @@ bool FFMCodexPrototypeTeamAssetPipelineTest::RunTest(const FString& Parameters)
 		HandMicroCoverage, 16);
 	TestEqual(TEXT("Full Card dedicated coverage is preserved at 16/40"),
 		FullCardCoverage, 16);
-	TestEqual(TEXT("Pitch Mini-compatible shared portrait coverage is 18/40"),
-		SharedPortraitCoverage, 18);
-	TestEqual(TEXT("Pitch Mini shared fallback coverage is 22/40"),
-		SafeFallbackCoverage, 22);
+	TestEqual(TEXT("Pitch Mini-compatible shared portrait coverage is 28/40"),
+		SharedPortraitCoverage, 28);
+	TestEqual(TEXT("Pitch Mini shared fallback coverage is 12/40"),
+		SafeFallbackCoverage, 12);
 	return true;
 }
 
@@ -637,7 +657,7 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	{
 		Screen->RequestReady();
 	}
-	Screen->RequestBeginOrdinaryAttack();
+	Screen->RequestRollTacticalPoints();
 	if (Controller->IsAwaitingHotSeatHandoff())
 	{
 		Screen->RequestReady();

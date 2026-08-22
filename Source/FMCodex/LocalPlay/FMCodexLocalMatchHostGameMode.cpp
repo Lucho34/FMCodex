@@ -178,6 +178,7 @@ AFMCodexLocalMatchHostGameMode::GetSkillRuleSnapshot() const
 	return Result;
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
 FFMCodexLocalMatchBeginOrdinaryAttackResult
 AFMCodexLocalMatchHostGameMode::BeginOrdinaryAttack(
 	const int32 ActionPoint)
@@ -196,6 +197,75 @@ AFMCodexLocalMatchHostGameMode::BeginOrdinaryAttack(
 	Result.AuthoritativeResult =
 		ActiveMatchRuntime->AuthoritativeSession.BeginOrdinaryAttack(
 			ActionPoint);
+	Result.bSuccess =
+		Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.BeginResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			Result.AuthoritativeResult.BeginResult.ErrorMessage);
+	}
+	return Result;
+}
+#endif
+
+FFMCodexLocalMatchRollTacticalPointsResult
+AFMCodexLocalMatchHostGameMode::RollTacticalPoints(
+	const EInitialTurnOrderPlayer RequestingSide)
+{
+	using namespace FMCodexLocalMatchHost;
+
+	FFMCodexLocalMatchRollTacticalPointsResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+
+	const FMatchPlayState Snapshot =
+		ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot();
+	if (RequestingSide != EInitialTurnOrderPlayer::PlayerA
+		&& RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::InvalidRequestingSide;
+		Result.ErrorMessage =
+			TEXT("Tactical Point roll requires PlayerA or PlayerB.");
+		return Result;
+	}
+	if (RequestingSide != Snapshot.RuntimeState.CurrentAttackingPlayer)
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode
+			::RequestingSideNotCurrentAttacker;
+		Result.ErrorMessage =
+			TEXT("Only the current attacking player may roll Tactical Points.");
+		return Result;
+	}
+
+	const FPlayerRuntimeState& AttackerState =
+		RequestingSide == EInitialTurnOrderPlayer::PlayerA
+			? Snapshot.RuntimeState.PlayerAState
+			: Snapshot.RuntimeState.PlayerBState;
+	if (Snapshot.bHasCurrentAttack
+		|| AttackerState.UsedAttackCount >= AttackerState.TotalAttackCount)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::TacticalPointRollNotReady;
+		Result.ErrorMessage =
+			TEXT("Tactical Point roll is not ready for the current match state.");
+		return Result;
+	}
+
+	Result.TacticalPoints =
+		ActiveMatchRuntime->D6Provider.RollOrdinaryTacticalPoint();
+	Result.AuthoritativeResult =
+		ActiveMatchRuntime->AuthoritativeSession.BeginOrdinaryAttack(
+			Result.TacticalPoints);
 	Result.bSuccess =
 		Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess

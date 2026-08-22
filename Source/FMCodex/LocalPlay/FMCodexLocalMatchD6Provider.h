@@ -19,6 +19,12 @@ public:
 	virtual FMatchPlayPostRouteRollProviderResult RollD6(
 		EMatchPlayCurrentAttackPostRouteRollPurpose Purpose) override;
 
+	/**
+	 * Host-owned roll for the currently implemented ordinary-attack Tactical
+	 * Point slice. Values outside 2..8 belong to deferred AP1/set-piece flows.
+	 */
+	int32 RollOrdinaryTacticalPoint();
+
 private:
 	FFMCodexLocalMatchD6Provider(
 		const FFMCodexLocalMatchD6Provider&) = delete;

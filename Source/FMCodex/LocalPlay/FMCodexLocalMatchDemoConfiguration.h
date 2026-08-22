@@ -9,7 +9,6 @@ struct FMCODEX_API FFMCodexLocalMatchDemoConfiguration
 {
 	FMatchPlayOpeningInitializeInput OpeningInput;
 	FSkillRuleSnapshotSet SkillRuleSet;
-	int32 OrdinaryAttackActionPoint = 6;
 };
 
 class FMCODEX_API FFMCodexLocalMatchDemoConfigurationFactory final

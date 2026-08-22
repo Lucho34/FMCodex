@@ -51,11 +51,13 @@ FMatchOpeningResolveResult FMatchOpeningResolver::ResolveMatchOpening(
 	const int32 PlayerBInitialDeckRarityScore =
 		Result.MatchInitializationResult.PlayerBDeckValidation.InitialDeckRarityScore;
 
-	Result.AttackCountResult = FAttackCountResolver::ResolveAttackCounts(
-		PlayerAInitialDeckRarityScore,
-		PlayerBInitialDeckRarityScore,
-		Input.PlayerAAttackCountD6Roll,
-		Input.PlayerBAttackCountD6Roll);
+	Result.AttackCountResult = Input.bUseFixedPrototypeAttackTurnContract
+		? FAttackCountResolver::ResolveFixedPrototypeAttackCounts()
+		: FAttackCountResolver::ResolveAttackCounts(
+			PlayerAInitialDeckRarityScore,
+			PlayerBInitialDeckRarityScore,
+			Input.PlayerAAttackCountD6Roll,
+			Input.PlayerBAttackCountD6Roll);
 	if (!Result.AttackCountResult.bSuccess)
 	{
 		MatchOpeningResolver::AddStageFailure(

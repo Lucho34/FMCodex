@@ -1,15 +1,18 @@
 #include "FMCodexResolutionPanelWidget.h"
 
 #include "FMCodexDiceResultWidget.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/Button.h"
 #include "Components/HorizontalBox.h"
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Components/WrapBox.h"
 
 namespace FMCodexResolutionPanelWidget
@@ -108,6 +111,14 @@ UFMCodexResolutionPanelWidget::GetRenderedDiceWidgets() const
 int32 UFMCodexResolutionPanelWidget::GetRenderedComparisonCount() const
 {
 	return RenderedComparisonCount;
+}
+
+void UFMCodexResolutionPanelWidget::RequestContinue()
+{
+	if (Presentation.bCanContinue)
+	{
+		OnContinueRequested.Broadcast();
+	}
 }
 
 void UFMCodexResolutionPanelWidget::BuildWidgetTree()
@@ -252,6 +263,29 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 	ContinuationRegion->AddChild(ContinuationSection);
 	AcceptedResultBody->AddChildToVerticalBox(ContinuationRegion);
 
+	ContinueButton = WidgetTree->ConstructWidget<UButton>(
+		UButton::StaticClass(), TEXT("ResolutionContinueButton"));
+	UTextBlock* ContinueLabel = MakeText(
+		*WidgetTree, TEXT("ResolutionContinueButtonLabel"), TEXT("CONTINUE"));
+	ContinueLabel->SetAutoWrapText(false);
+	ContinueLabel->SetJustification(ETextJustify::Center);
+	Style.ApplyText(*ContinueLabel, EFMCodexPlayerUITextRole::Body);
+	ContinueButton->AddChild(ContinueLabel);
+	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
+	ContinueButton->OnClicked.AddDynamic(
+		this, &UFMCodexResolutionPanelWidget::HandleContinueClicked);
+	USizeBox* ContinueBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("ResolutionContinueActionBounds"));
+	ContinueBounds->SetWidthOverride(176.0f);
+	ContinueBounds->SetHeightOverride(46.0f);
+	ContinueBounds->AddChild(ContinueButton);
+	if (UVerticalBoxSlot* ContinueSlot =
+		RootBody->AddChildToVerticalBox(ContinueBounds))
+	{
+		ContinueSlot->SetHorizontalAlignment(HAlign_Center);
+		ContinueSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
+	}
+
 	TerminalRegion = MakeRegion(
 		*WidgetTree, TEXT("ResolutionTerminalRegion"),
 		EFMCodexPlayerUIColorRole::TerminalNeutral,
@@ -329,6 +363,22 @@ void UFMCodexResolutionPanelWidget::RefreshVisuals()
 	TerminalSection->GetParent()->SetVisibility(
 		bShowAccepted && !Presentation.TerminalLabel.IsEmpty()
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	ContinueButton->GetParent()->SetVisibility(Presentation.bVisible
+		&& Presentation.bCanContinue
+			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	if (UTextBlock* ContinueLabel =
+		Cast<UTextBlock>(ContinueButton->GetChildAt(0)))
+	{
+		ContinueLabel->SetText(
+			FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+				Presentation.ContinueActionLabel.IsEmpty()
+					? TEXT("CONTINUE") : Presentation.ContinueActionLabel));
+	}
+}
+
+void UFMCodexResolutionPanelWidget::HandleContinueClicked()
+{
+	RequestContinue();
 }
 
 void UFMCodexResolutionPanelWidget::RefreshDiceResults()

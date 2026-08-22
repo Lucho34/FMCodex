@@ -66,7 +66,10 @@ public:
 	void RefreshPresentation();
 	void AcknowledgeHotSeatHandoff();
 	void StartNewDemoMatch();
-	void BeginDemoOrdinaryAttack();
+#if WITH_DEV_AUTOMATION_TESTS
+	void SetNextDemoMatchSeedForTesting(int32 Seed);
+#endif
+	void RollDemoTacticalPoints();
 	void DeployOrdinary(FName CardId, FName SlotId);
 	void DeployGoalkeeper(FName SlotId);
 	void FinishDeployment();
@@ -152,6 +155,10 @@ private:
 	FFMCodexLocalMatchHotSeatHandoffState HotSeatHandoffState;
 	FFMCodexLocalMatchCommandDiagnostic LastDiagnostic;
 	FFMCodexLocalMatchResolutionFeedback ResolutionFeedback;
+
+#if WITH_DEV_AUTOMATION_TESTS
+	int32 NextDemoMatchSeedForTesting = INDEX_NONE;
+#endif
 
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|UI")
 	TSubclassOf<UFMCodexLocalMatchScreenWidget> PlayerMatchScreenClass;

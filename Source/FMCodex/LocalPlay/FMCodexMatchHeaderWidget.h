@@ -8,6 +8,7 @@
 #include "FMCodexMatchHeaderWidget.generated.h"
 
 class UBorder;
+class UHorizontalBox;
 class UTextBlock;
 class SWidget;
 
@@ -42,25 +43,22 @@ private:
 	FFMCodexUMGMatchHeaderViewModel Presentation;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> MatchStatusText;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PlayerAIdentityText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> LeftAttackerPointerText;
+	TObjectPtr<UHorizontalBox> LeftAttackTurnSteps;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PlayerBIdentityText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> RightAttackerPointerText;
+	TObjectPtr<UHorizontalBox> RightAttackTurnSteps;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> TurnText;
+	TObjectPtr<UTextBlock> CurrentAttackProgressText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> TacticalPointsText;
+	TObjectPtr<UTextBlock> CurrentMatchPhaseText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> CentralScoreText;
@@ -69,13 +67,7 @@ private:
 	TObjectPtr<UBorder> AttackerStatusRegion;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> AttackerStatusText;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UBorder> ActorStatusRegion;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> ActorStatusText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> FinalResultRegion;

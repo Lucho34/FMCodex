@@ -132,6 +132,216 @@
       ]
     },
     {
+      "playerKey": "Prototype.Arsenal.MikelMerino",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_MikelMerino_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "62D6642CE151E1194EE7D93AEAFCA2F9C7712D184AB634AB17F6511A99C286B6",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_MikelMerino_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "BEEFCE92349041D099741B56470B77C6C078EE660A8D6A14B599D6F92CCC074B",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MikelMerino_01.T_Prototype_Arsenal_MikelMerino_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.BenWhite",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_BenWhite_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "585724FD948502B004E56A6A5FB13F17986A369D06083A24F2832D003DFB9813",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_BenWhite_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "00D2B6B42033B5CDFEE5ACFC226094FA4867CC0AAE309D33F3231BFFE30078BF",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_BenWhite_01.T_Prototype_Arsenal_BenWhite_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.PieroHincapie",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_PieroHincapie_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "EA96350C3DDC3080E61F0B015975A3588ABC906A8637754502E896BE45EA2264",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_PieroHincapie_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "2AA9006BF9A2B40ECA75295ED29333ECD0C0D5536AE2793CFD27A94FF0143AEE",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_PieroHincapie_01.T_Prototype_Arsenal_PieroHincapie_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.JurrienTimber",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_JurrienTimber_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "8DE585EB55109BBC11AE4BF983242E9314399850EEEA1CFB345423DB71223812",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_JurrienTimber_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "7527B4ABD25AEC33AD18E41910B84015BE9EA5E72DBF96435BBD050A6E34CA34",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_JurrienTimber_01.T_Prototype_Arsenal_JurrienTimber_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_RiccardoCalafiori_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "B2623D24768E5B0DE9E6E99DFF09754F22BFCFB0B2B24B8524FE6C80E5A76F33",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_RiccardoCalafiori_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "2450D938DB34A0EB001799F2F2BBF51489D88C86EE0930289BC1927917CEDADC",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_RiccardoCalafiori_01.T_Prototype_Arsenal_RiccardoCalafiori_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.EberechiEze",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_EberechiEze_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "785C2D24E3C72DD662EB2ABAF5640F583221EAED651254CC4071AFBD9A63C348",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_EberechiEze_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "5273CCE7E800C107733950A50EAB0125DD4C57D37D65CF874ABF3BC2E7FC42BC",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_EberechiEze_01.T_Prototype_Arsenal_EberechiEze_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MartinZubimendi",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_MartinZubimendi_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "7DE4013AC98A3C16532AF3527B1DAD3B534B929143499EDA09962406FC2BBACD",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_MartinZubimendi_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "CCE7C96CC435C268EC03EE5DE1CF8C39FE09B42D526935DF0A9712E33A04E4D7",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_MartinZubimendi_01.T_Prototype_Arsenal_MartinZubimendi_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.ChristianNorgaard",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_ChristianNorgaard_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "D60918B11B365FCD5169F9C5D9C2614EE2A5B8973ECF784F1FE50FB0DADD39AA",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_ChristianNorgaard_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "856C17EF07C40BD70439B05CFAF7A7B35C7CA18CD01B661E339DA7B730E0F3D8",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_ChristianNorgaard_01.T_Prototype_Arsenal_ChristianNorgaard_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.LeandroTrossard",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_LeandroTrossard_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "0EAD3E56A79910737D0CE2202D7542FC51CFF9F1C2A5C8403BBBDC3FE4218724",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_LeandroTrossard_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "30ABDC1D711379AF5307F2726C07DED885C386CC5FEA438CB0E62F9AC83B4AEB",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_LeandroTrossard_01.T_Prototype_Arsenal_LeandroTrossard_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
+      "playerKey": "Prototype.Arsenal.NoniMadueke",
+      "masterSourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_NoniMadueke_01.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "E64D315B52417257FE1E3079D162DFF6327AE9024F14C388F87C379CF9FE363F",
+      "runtimeDerivativePath": "ContentSource/UI/SharedPortraitRuntime/Arsenal/T_Prototype_Arsenal_NoniMadueke_01.png",
+      "runtimeDerivativeDimensions": [
+        512,
+        768
+      ],
+      "runtimeDerivativeSha256": "00C2A6F4FB60F32D3EA21D20F55D00F2810279968DD681098A8A575290ED79AB",
+      "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Arsenal/T_Prototype_Arsenal_NoniMadueke_01.T_Prototype_Arsenal_NoniMadueke_01",
+      "generatorVersion": 1,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+    },
+    {
       "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
       "masterSourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_ErlingHaaland_01.png",
       "masterDimensions": [

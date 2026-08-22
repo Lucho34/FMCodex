@@ -329,6 +329,9 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		(AFMCodexLocalMatchHostGameMode::*)() const;
 	using FBeginMethod = FFMCodexLocalMatchBeginOrdinaryAttackResult
 		(AFMCodexLocalMatchHostGameMode::*)(int32);
+	using FRollTacticalPointsMethod =
+		FFMCodexLocalMatchRollTacticalPointsResult
+		(AFMCodexLocalMatchHostGameMode::*)(EInitialTurnOrderPlayer);
 	using FOneOnOneChoiceMethod =
 		FFMCodexLocalMatchSubmitThroughBallOneOnOneShotChoiceResult
 		(AFMCodexLocalMatchHostGameMode::*)(
@@ -346,6 +349,10 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		(std::is_same_v<
 			decltype(&AFMCodexLocalMatchHostGameMode::BeginOrdinaryAttack),
 			FBeginMethod>));
+	TestTrue(TEXT("Production Tactical Point command requires requesting side"),
+		(std::is_same_v<
+			decltype(&AFMCodexLocalMatchHostGameMode::RollTacticalPoints),
+			FRollTacticalPointsMethod>));
 	TestTrue(TEXT("OneOnOne choice preserves its exact typed request/result"),
 		(std::is_same_v<
 			decltype(&AFMCodexLocalMatchHostGameMode
@@ -392,14 +399,14 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		CountOccurrences(Source,
 			TEXT("CandidateRuntime->AuthoritativeSession.InitializeMatch(Input)")),
 		1);
-	TestEqual(TEXT("BeginOrdinaryAttack has one host delegation"),
+	TestEqual(TEXT("Test seam plus production roll have two Begin delegations"),
 		CountOccurrences(Source,
 			TEXT("ActiveMatchRuntime->AuthoritativeSession.BeginOrdinaryAttack(")),
-		1);
-	TestEqual(TEXT("Snapshot has one host delegation"),
+		2);
+	TestEqual(TEXT("Public snapshot plus roll preflight have two snapshot reads"),
 		CountOccurrences(Source,
 			TEXT("ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot()")),
-		1);
+		2);
 	for (const TCHAR* Delegation : {
 		TEXT(".DeployOrdinary("),
 		TEXT(".DeployGoalkeeper("),

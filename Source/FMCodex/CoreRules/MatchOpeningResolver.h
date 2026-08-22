@@ -34,6 +34,14 @@ struct FMCODEX_API FMatchOpeningResolveInput
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Opening")
 	int32 PlayerBAttackCountD6Roll = 0;
 
+	/**
+	 * LocalPlay prototype contract: use only the three canonical base attack
+	 * opportunities per side. Formal match openings leave this false and use
+	 * the validated D6 inputs above.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Opening")
+	bool bUseFixedPrototypeAttackTurnContract = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Opening")
 	int32 PlayerATieBreakerRoll = 0;
 

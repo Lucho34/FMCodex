@@ -46,7 +46,7 @@ public:
 	void RequestStartNewMatch();
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
-	void RequestBeginOrdinaryAttack();
+	void RequestRollTacticalPoints();
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Intent")
 	void RequestDeployOrdinary(FName CardId, FName SlotId);
@@ -141,7 +141,7 @@ private:
 	void HandleStartNewMatchClicked();
 
 	UFUNCTION()
-	void HandleBeginOrdinaryAttackClicked();
+	void HandleTacticalPointRollClicked();
 
 	UFUNCTION()
 	void HandleDeployOrdinaryRequested(FName CardId, FName SlotId);

@@ -80,6 +80,9 @@ FFMCodexLocalMatchDemoConfigurationFactory::Create()
 		MakeDeck(EInitialTurnOrderPlayer::PlayerA);
 	Result.OpeningInput.OpeningInput.PlayerBDeck =
 		MakeDeck(EInitialTurnOrderPlayer::PlayerB);
+	// This LocalPlay slice deliberately exposes the three base opportunities
+	// without opening-roll bonuses. Formal matches keep the canonical D6 path.
+	Result.OpeningInput.OpeningInput.bUseFixedPrototypeAttackTurnContract = true;
 	Result.OpeningInput.OpeningInput.PlayerAAttackCountD6Roll = 1;
 	Result.OpeningInput.OpeningInput.PlayerBAttackCountD6Roll = 1;
 	Result.OpeningInput.OpeningInput.PlayerATieBreakerRoll = 2;

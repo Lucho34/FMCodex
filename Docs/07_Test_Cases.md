@@ -295,3 +295,28 @@
 - 平局时不强制点球大战。
 - 平局时不强制重赛。
 
+## LocalPlay 比赛进入与进攻回合 Tracker（Stage 6.13.1.4.1）
+
+应验证：
+
+- 创建当前 LocalPlay 原型比赛后，双方权威 `TotalAttackCount` 都为 3、`UsedAttackCount` 都为 0，并且已有合法 `CurrentAttackingPlayer`。
+- 进入 Match Screen 不自动生成 `CurrentAttack` 或战术点，InteractionView 直接投影为可手动掷战术点。
+- 不需要、也不暴露额外的“开始进攻”玩家命令。
+- 只有 `CurrentAttackingPlayer` 能请求掷战术点；防守方、无效 Side 与已有 `CurrentAttack` 时的重复请求均失败且状态不变。
+- 成功请求由 Host 生成当前普通运动战子集支持的 2-8 战术点，并通过既有 Session Begin 写入 `CurrentAttack.ActionPoint`。
+- 每方 Tracker 的 `Max / Used / CurrentIndex / CurrentSide` 来自 InteractionView；UMG 只把投影转换为 `Used / Current / Remaining` 步骤，不读取 Match State 计数器。
+- 当前进攻完成前不增加 `UsedAttackCount`；在既有权威完成边界增加 1 后，原进攻方第一步为 Used，新进攻方第一步为 Current，并重新进入手动掷点等待。
+- Header 不显示“本地对战”或“赛前”；中央层级显示比分、当前玩家第 x/y 次进攻、等待掷出战术点；左下操作区显示当前操作方与“掷战术点”。
+
+## LocalPlay 6.13.1.4.1 PIE Repair
+
+应验证：
+
+- 完成部署与技能/分支选择后，专用 Resolution Overlay 必须从 DTO 获得 `bCanContinue / ContinueActionLabel`，并通过 `Overlay -> Screen -> Controller -> Host` 的既有 typed route 继续结算；Widget 不自行选择下一条玩法命令。
+- `BeginResolutionSession` 成功并显示 `Resolution Started` 后，Continue 必须仍可点击；Cut Inside / Long Shot 的下一步到达 `ResolveIntentDeterminedRoute`，不得停留在 `AwaitingRoute`。
+- 结算必须能继续到权威攻击完成；下一玩家确认 Ready 后，上一攻击的 terminal feedback 被清出展示层，但 Ready 不改变任何权威 Match State 字节。
+- 完成第一轮进攻后，旧进攻方第一节点为 `Used`，新进攻方第一节点为 `Current`，其余节点为 `Remaining`，并重新投影手动掷战术点 readiness。
+- Header 的三个节点使用真正的 circular/rounded brush；Current 的强调强于 Remaining，且两侧 Tracker 均居中对齐到各自玩家身份区域。
+- 掷出战术点后，中央 `战术点 X` 使用清晰但低于比分和当前第 x/y 次进攻的字号层级。
+- 等待掷点时，左下只显示小型当前玩家提示与一个 `掷战术点` 主操作；标题/分类不得再次重复同一句。CTA 固定为紧凑 `156 x 48`，按钮文字为 12 px。
+

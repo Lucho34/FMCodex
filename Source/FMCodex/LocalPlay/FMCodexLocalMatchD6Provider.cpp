@@ -74,6 +74,11 @@ FFMCodexLocalMatchD6Provider::RollD6(
 	return Result;
 }
 
+int32 FFMCodexLocalMatchD6Provider::RollOrdinaryTacticalPoint()
+{
+	return RandomStream.RandRange(2, 8);
+}
+
 int32 FFMCodexLocalMatchD6Provider::RollCanonicalD6()
 {
 	return RandomStream.RandRange(1, 6);

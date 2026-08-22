@@ -873,6 +873,26 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	Result.PlayerBScore = Snapshot.RuntimeState.PlayerBState.Score;
 	Result.CurrentAttackingPlayer =
 		Snapshot.RuntimeState.CurrentAttackingPlayer;
+	Result.PlayerAMaxAttackTurns =
+		Snapshot.RuntimeState.PlayerAState.TotalAttackCount;
+	Result.PlayerAUsedAttackTurns =
+		Snapshot.RuntimeState.PlayerAState.UsedAttackCount;
+	Result.PlayerBMaxAttackTurns =
+		Snapshot.RuntimeState.PlayerBState.TotalAttackCount;
+	Result.PlayerBUsedAttackTurns =
+		Snapshot.RuntimeState.PlayerBState.UsedAttackCount;
+	Result.bPlayerACurrentAttackTurn =
+		Result.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA
+		&& Result.PlayerAUsedAttackTurns < Result.PlayerAMaxAttackTurns;
+	Result.bPlayerBCurrentAttackTurn =
+		Result.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerB
+		&& Result.PlayerBUsedAttackTurns < Result.PlayerBMaxAttackTurns;
+	Result.PlayerACurrentAttackIndex = Result.bPlayerACurrentAttackTurn
+		? Result.PlayerAUsedAttackTurns + 1 : 0;
+	Result.PlayerBCurrentAttackIndex = Result.bPlayerBCurrentAttackTurn
+		? Result.PlayerBUsedAttackTurns + 1 : 0;
+	Result.AttackSequence = static_cast<int64>(
+		Result.PlayerAUsedAttackTurns + Result.PlayerBUsedAttackTurns + 1);
 	BuildCardRosters(Snapshot, SkillRuleSet, Result);
 	BuildPitchRegions(Snapshot, SkillRuleSet, Result);
 
@@ -895,8 +915,9 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	{
 		Result.MajorPhase = EFMCodexLocalMatchMajorPhase::BetweenAttacks;
 		Result.InteractionCategory =
-			EFMCodexLocalMatchInteractionCategory::BeginAttack;
+			EFMCodexLocalMatchInteractionCategory::TacticalPointRoll;
 		Result.ExpectedActingPlayer = Result.CurrentAttackingPlayer;
+		Result.bTacticalPointRollReady = true;
 		Result.bHumanInteraction = true;
 		return Result;
 	}
@@ -1076,8 +1097,8 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 	case EFMCodexLocalMatchInteractionCategory::StartMatch:
 		Result.InteractionTitle = TEXT("Start a Local Match");
 		break;
-	case EFMCodexLocalMatchInteractionCategory::BeginAttack:
-		Result.InteractionTitle = TEXT("Begin an Attack");
+	case EFMCodexLocalMatchInteractionCategory::TacticalPointRoll:
+		Result.InteractionTitle = TEXT("Roll Tactical Points");
 		break;
 	case EFMCodexLocalMatchInteractionCategory::Deploy:
 		Result.InteractionTitle = TEXT("Deploy Your Cards");
@@ -1128,7 +1149,7 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	{
 	case EFMCodexLocalMatchInteractionCategory::None: return TEXT("None");
 	case EFMCodexLocalMatchInteractionCategory::StartMatch: return TEXT("Start Match");
-	case EFMCodexLocalMatchInteractionCategory::BeginAttack: return TEXT("Begin Attack");
+	case EFMCodexLocalMatchInteractionCategory::TacticalPointRoll: return TEXT("Tactical Point Roll");
 	case EFMCodexLocalMatchInteractionCategory::Deploy: return TEXT("Deploy / Finish Deployment");
 	case EFMCodexLocalMatchInteractionCategory::SelectCarrier: return TEXT("Select Carrier");
 	case EFMCodexLocalMatchInteractionCategory::SelectMarker: return TEXT("Select Marker");

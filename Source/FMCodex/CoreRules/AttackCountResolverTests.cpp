@@ -66,6 +66,32 @@ bool FAttackCountResolverD6MappingTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FAttackCountResolverFixedPrototypeContractTest,
+	"FMCodex.CoreRules.AttackCountResolver.FixedPrototypeContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAttackCountResolverFixedPrototypeContractTest::RunTest(
+	const FString& Parameters)
+{
+	const FAttackCountResolveResult Result =
+		FAttackCountResolver::ResolveFixedPrototypeAttackCounts();
+	TestTrue(TEXT("Explicit prototype contract resolves"), Result.bSuccess);
+	TestEqual(TEXT("Player A keeps three base opportunities"),
+		Result.PlayerAAttackCount, 3);
+	TestEqual(TEXT("Player B keeps three base opportunities"),
+		Result.PlayerBAttackCount, 3);
+	TestEqual(TEXT("Prototype contract applies no rarity bonus"),
+		Result.PlayerARarityBonusAttackCount, 0);
+	TestEqual(TEXT("Prototype contract applies no random bonus"),
+		Result.PlayerARandomBonusAttackCount, 0);
+	const FAttackCountResolveResult InvalidZeroes =
+		FAttackCountResolver::ResolveAttackCounts(72, 60, 0, 0);
+	TestFalse(TEXT("Prototype contract does not weaken D6 validation"),
+		InvalidZeroes.bSuccess);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAttackCountResolverInvalidRollTest,
 	"FMCodex.CoreRules.AttackCountResolver.InvalidRoll",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

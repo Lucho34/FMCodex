@@ -54,6 +54,8 @@ struct FMCODEX_API FAttackCountResolveResult
 class FMCODEX_API FAttackCountResolver final
 {
 public:
+	static FAttackCountResolveResult ResolveFixedPrototypeAttackCounts();
+
 	static FAttackCountResolveResult ResolveAttackCounts(
 		int32 PlayerAInitialDeckRarityScore,
 		int32 PlayerBInitialDeckRarityScore,

@@ -375,3 +375,20 @@ This log records approved player-facing UI decisions separately from gameplay ca
   Overall, Serial, outfield `5×2`, goalkeeper `3×2`, Skills `0–3`, `360×540`,
   Hand Micro, Pitch Mini, Drag Proxy, Gameplay and Authority remain unchanged.
   The composition remains gated on user PIE visual review.
+
+## 2026-08-22 — Match-start Tracker and tactical-point action slice
+
+- The current UE runtime remains the layout authority. The target image is used only for the per-side Attack Turn Tracker, top-center state hierarchy, and lower-left tactical-point action module; Rack, Pitch, Pitch Mini, Hand Micro, Resolution, and their geometry remain frozen.
+- Each side header consumes a projected, variable-length `Used / Current / Remaining` tracker. The prototype displays three steps because authoritative LocalPlay state supplies three, not because the Widget owns a literal match rule.
+- The central header removes the static `本地对战` and `赛前` labels. Score remains dominant, followed by localized current-attack progress and the waiting/rolled Tactical Point state.
+- The lower-left start-state CTA is `掷战术点`, uses the projected acting side's configurable primary color, and has distinct normal, hover, pressed, and disabled treatments inside a compact raised container. It does not add dice animation or alter downstream operation layouts.
+- No visual click state advances the tracker. Match State → InteractionView → UMG presentation DTO remains the only source of attacker, progress, readiness, Tactical Point, score, and completion facts.
+
+## 2026-08-22 — Stage 6.13.1.4.1 PIE repair
+
+- The latest PIE captures supersede automation-only acceptance: the previous slice remains unaccepted until the resolution route and the three reported visual groups pass PIE.
+- `Resolution Started` was a reachable-authority but unreachable-presentation defect. The dedicated overlay now owns a DTO-driven Continue intent control and forwards it through Screen to the existing Controller route. It never interprets Session Stage or chooses the next command. Terminal feedback is dismissed only when the next player acknowledges the authoritative handoff.
+- Attack-turn markers remain the approved three-step pattern but use actual circular RoundedBox brushes. Current receives the strongest fill/outline, Used remains visibly completed, Remaining stays subdued, and both mirrored tracker rows are centered beneath their player identities.
+- Header hierarchy remains Score → current attack progress → phase/Tactical Point. A rolled `战术点 X` is 14 px and deliberately readable; waiting text remains secondary.
+- The lower-left tactical-point module contains one visible `掷战术点` phrase: a small acting-player prompt plus one `156 x 48`, 12 px CTA. The former duplicated title/category copy and oversized `196 x 72` block are superseded.
+- Pitch, Slot visuals, Ball/progress marker, Hand Micro, Pitch Mini, Full Card, Resolution narrative polish, animation and artwork remain outside this repair.

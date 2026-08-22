@@ -102,7 +102,7 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("MATCH IN PROGRESS")) return LOCTEXT("MatchInProgress", "\u6BD4\u8D5B\u8FDB\u884C\u4E2D");
 	if (CanonicalLabel == TEXT("READY TO PLAY")) return LOCTEXT("ReadyToPlay", "\u51C6\u5907\u5F00\u59CB");
 	if (CanonicalLabel == TEXT("Start a Local Match") || CanonicalLabel == TEXT("START LOCAL MATCH")) return LOCTEXT("StartLocalMatch", "\u5F00\u59CB\u672C\u5730\u5BF9\u6218");
-	if (CanonicalLabel == TEXT("Begin an Attack") || CanonicalLabel == TEXT("BEGIN ATTACK") || CanonicalLabel == TEXT("Begin Attack")) return LOCTEXT("BeginAttack", "\u5F00\u59CB\u8FDB\u653B");
+	if (CanonicalLabel == TEXT("Roll Tactical Points") || CanonicalLabel == TEXT("ROLL TACTICAL POINTS") || CanonicalLabel == TEXT("Tactical Point Roll")) return LOCTEXT("RollTacticalPoints", "\u63B7\u6218\u672F\u70B9");
 	if (CanonicalLabel == TEXT("Deploy Your Cards")) return LOCTEXT("DeployCards", "\u90E8\u7F72\u7403\u5458");
 	if (CanonicalLabel == TEXT("FINISH DEPLOYMENT") || CanonicalLabel == TEXT("Deploy / Finish Deployment")) return LOCTEXT("FinishDeployment", "\u5B8C\u6210\u90E8\u7F72");
 	if (CanonicalLabel == TEXT("Select Carrier")) return LOCTEXT("SelectCarrier", "\u9009\u62E9\u6301\u7403\u7403\u5458");
@@ -439,6 +439,27 @@ FText FFMCodexPlayerUIPresentationText::TacticalPoints(const int32 ActionPoint)
 {
 	return FText::Format(LOCTEXT("TacticalPointsFormat", "\u6218\u672F\u70B9  {0}"),
 		FText::AsNumber(ActionPoint));
+}
+
+FText FFMCodexPlayerUIPresentationText::AttackTurnHeading()
+{
+	return LOCTEXT("AttackTurnHeading", "\u8FDB\u653B\u56DE\u5408");
+}
+
+FText FFMCodexPlayerUIPresentationText::CurrentAttackProgress(
+	const FString& PlayerLabel,
+	const int32 AttackIndex,
+	const int32 MaxAttackTurns)
+{
+	return FText::Format(
+		LOCTEXT("CurrentAttackProgress", "{0} \u7B2C {1}/{2} \u6B21\u8FDB\u653B"),
+		MatchScreenLabel(PlayerLabel), FText::AsNumber(AttackIndex),
+		FText::AsNumber(MaxAttackTurns));
+}
+
+FText FFMCodexPlayerUIPresentationText::WaitingForTacticalPointRoll()
+{
+	return LOCTEXT("WaitingForTacticalPointRoll", "\u7B49\u5F85\u63B7\u51FA\u6218\u672F\u70B9");
 }
 
 FText FFMCodexPlayerUIPresentationText::BroadcastStatus(

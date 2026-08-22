@@ -734,6 +734,13 @@ void AFMCodexLocalMatchPlayerController::AcknowledgeHotSeatHandoff()
 	{
 		return;
 	}
+	if (ResolutionFeedback.bTerminal)
+	{
+		// The terminal result is presented beneath the blocking handoff. Once the
+		// next player acknowledges that handoff, the old attack feedback must not
+		// continue masking the newly authoritative between-attacks interaction.
+		ResolutionFeedback = {};
+	}
 	RebuildControlSurface();
 }
 
@@ -781,28 +788,46 @@ void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 	}
 	const FFMCodexLocalMatchDemoConfiguration Demo =
 		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	#if WITH_DEV_AUTOMATION_TESTS
+	if (NextDemoMatchSeedForTesting != INDEX_NONE)
+	{
+		const int32 Seed = NextDemoMatchSeedForTesting;
+		NextDemoMatchSeedForTesting = INDEX_NONE;
+		RecordCommandResult(
+			TEXT("StartNewLocalMatch"),
+			Host->StartNewLocalMatch(
+				Demo.OpeningInput, Demo.SkillRuleSet, Seed));
+		return;
+	}
+	#endif
 	RecordCommandResult(
 		TEXT("StartNewLocalMatch"),
 		Host->StartNewLocalMatch(Demo.OpeningInput, Demo.SkillRuleSet));
 }
 
-void AFMCodexLocalMatchPlayerController::BeginDemoOrdinaryAttack()
+#if WITH_DEV_AUTOMATION_TESTS
+void AFMCodexLocalMatchPlayerController::SetNextDemoMatchSeedForTesting(
+	const int32 Seed)
 {
-	if (!AllowGameplayCommand(TEXT("BeginOrdinaryAttack")))
+	NextDemoMatchSeedForTesting = Seed;
+}
+#endif
+
+void AFMCodexLocalMatchPlayerController::RollDemoTacticalPoints()
+{
+	if (!AllowGameplayCommand(TEXT("RollTacticalPoints")))
 	{
 		return;
 	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
-		RecordLocalFailure(TEXT("BeginOrdinaryAttack"), TEXT("Host unavailable."));
+		RecordLocalFailure(TEXT("RollTacticalPoints"), TEXT("Host unavailable."));
 		return;
 	}
-	const int32 ActionPoint =
-		FFMCodexLocalMatchDemoConfigurationFactory::Create()
-			.OrdinaryAttackActionPoint;
 	RecordCommandResult(
-		TEXT("BeginOrdinaryAttack"), Host->BeginOrdinaryAttack(ActionPoint));
+		TEXT("RollTacticalPoints"),
+		Host->RollTacticalPoints(InteractionView.ExpectedActingPlayer));
 }
 
 void AFMCodexLocalMatchPlayerController::DeployOrdinary(
@@ -1815,10 +1840,10 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			StartNewDemoMatch();
 		}));
 		break;
-	case EFMCodexLocalMatchInteractionCategory::BeginAttack:
-		AddButton(MakeButton(TEXT("Begin Ordinary Attack (AP 6)"), [this]()
+	case EFMCodexLocalMatchInteractionCategory::TacticalPointRoll:
+		AddButton(MakeButton(TEXT("Roll Tactical Points"), [this]()
 		{
-			BeginDemoOrdinaryAttack();
+			RollDemoTacticalPoints();
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory::Deploy:

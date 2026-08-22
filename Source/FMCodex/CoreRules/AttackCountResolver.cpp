@@ -35,6 +35,16 @@ namespace AttackCountResolver
 	}
 }
 
+FAttackCountResolveResult
+FAttackCountResolver::ResolveFixedPrototypeAttackCounts()
+{
+	FAttackCountResolveResult Result;
+	Result.PlayerAAttackCount = Result.PlayerABaseAttackCount;
+	Result.PlayerBAttackCount = Result.PlayerBBaseAttackCount;
+	Result.bSuccess = true;
+	return Result;
+}
+
 FAttackCountResolveResult FAttackCountResolver::ResolveAttackCounts(
 	const int32 PlayerAInitialDeckRarityScore,
 	const int32 PlayerBInitialDeckRarityScore,
@@ -42,7 +52,6 @@ FAttackCountResolveResult FAttackCountResolver::ResolveAttackCounts(
 	const int32 PlayerBD6Roll)
 {
 	FAttackCountResolveResult Result;
-
 	if (!AttackCountResolver::IsValidD6Roll(PlayerAD6Roll))
 	{
 		AttackCountResolver::AddError(
