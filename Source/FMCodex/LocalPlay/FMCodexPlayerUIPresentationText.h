@@ -35,6 +35,7 @@ public:
 		const FString& CanonicalLabel, bool bAttacking);
 	static FText Turn(int64 AttackSequence);
 	static FText TacticalPoints(int32 ActionPoint);
+	static FText TacticalPointsHeading();
 	static FText AttackTurnHeading();
 	static FText CurrentAttackProgress(
 		const FString& PlayerLabel, int32 AttackIndex, int32 MaxAttackTurns);

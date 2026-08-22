@@ -392,3 +392,11 @@ This log records approved player-facing UI decisions separately from gameplay ca
 - Header hierarchy remains Score → current attack progress → phase/Tactical Point. A rolled `战术点 X` is 14 px and deliberately readable; waiting text remains secondary.
 - The lower-left tactical-point module contains one visible `掷战术点` phrase: a small acting-player prompt plus one `156 x 48`, 12 px CTA. The former duplicated title/category copy and oversized `196 x 72` block are superseded.
 - Pitch, Slot visuals, Ball/progress marker, Hand Micro, Pitch Mini, Full Card, Resolution narrative polish, animation and artwork remain outside this repair.
+
+## 2026-08-22 — Header state ownership and attack Tracker polish
+
+- Tactical Points move out of the central global-state column and into one compact side-owned Chip beside the projected current attacker identity. Before roll and between attacks no empty/zero Chip is rendered; after roll the defending side never receives a duplicate.
+- The Header DTO explicitly projects left/right Chip visibility and value plus the canonical current phase. UMG no longer treats a positive number as proof that a roll occurred. The central column remains Score → current attack index → localized phase/status, with `等待掷出战术点` retained only for the authoritative pre-roll state.
+- Both player identity groups now share the same centered structure: player name with an optional TP Chip, followed by `进攻回合` and numbered steps in the same order. Hot-seat side remapping is expected, so visual ownership follows the projected player identity rather than a permanently assigned screen edge.
+- Remaining uses a near-hollow low-alpha fill and subdued number; Used uses an unmistakable solid fill and high-contrast number; Current uses the strongest ring with a contrasting inner field. All remain `24 x 24` circular RoundedBoxes and use fill/border/luminance as well as the configurable side color.
+- Ready/Handoff, Resolution, RNG, selection, skills, Pitch, Slots, Ball marker, Hand Micro, Pitch Mini, Full Card and artwork remain frozen.

@@ -761,6 +761,12 @@ bool FFMCodexLocalMatchAttackTurnTrackerProjectionTest::RunTest(
 	TestEqual(TEXT("Other side has no used/current opportunity yet"),
 		OtherTracker.Steps[0].State,
 		EFMCodexUMGAttackTurnStepState::Remaining);
+	TestTrue(TEXT("Pre-roll Header projects no Tactical Point owner or fake zero"),
+		!EntryPresentation.Header.bShowLeftTacticalPointChip
+			&& !EntryPresentation.Header.bShowRightTacticalPointChip
+			&& EntryPresentation.Header.LeftTacticalPoints == 0
+			&& EntryPresentation.Header.RightTacticalPoints == 0
+			&& EntryPresentation.Header.CurrentAttackerTacticalPointsLabel.IsEmpty());
 
 	FMatchPlayState Switched = Entry;
 	FPlayerRuntimeState& FirstState =
@@ -785,6 +791,11 @@ bool FFMCodexLocalMatchAttackTurnTrackerProjectionTest::RunTest(
 		EFMCodexUMGAttackTurnStepState::Current);
 	TestTrue(TEXT("Switch projects manual roll readiness for new attacker"),
 		SwitchedPresentation.Header.bTacticalPointRollReady);
+	TestTrue(TEXT("Switch clears stale Tactical Point ownership before the new roll"),
+		!SwitchedPresentation.Header.bShowLeftTacticalPointChip
+			&& !SwitchedPresentation.Header.bShowRightTacticalPointChip
+			&& SwitchedPresentation.Header.LeftTacticalPoints == 0
+			&& SwitchedPresentation.Header.RightTacticalPoints == 0);
 
 	FString HeaderWidgetSource;
 	TestTrue(TEXT("Header Widget source loads"), LoadProductionSource(
@@ -6365,6 +6376,10 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 		TEXT("LeftPlayerBroadcastRegion"),
 		TEXT("CentralBroadcastMatchFacts"),
 		TEXT("RightPlayerBroadcastRegion"),
+		TEXT("LeftPlayerIdentityGroup"),
+		TEXT("RightPlayerIdentityGroup"),
+		TEXT("LeftTacticalPointChip"),
+		TEXT("RightTacticalPointChip"),
 		TEXT("LeftAttackTurnSteps"),
 		TEXT("RightAttackTurnSteps"),
 		TEXT("CurrentAttackProgressLabel"),
@@ -6513,6 +6528,22 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			&& Screen->GetPresentation().Handoff.bVisible
 			&& Header->GetPresentation().bMatchActive
 			&& Header->GetPresentation().ActorStatusLabel.Contains(TEXT("TO ACT")));
+	const bool bFirstAttackerOnLeft =
+		Header->GetPresentation().bCurrentAttackerOnLeft;
+	const FString FirstAttackerLabel =
+		Header->GetPresentation().CurrentAttackerLabel;
+	const UTextBlock* PreRollPhase = Cast<UTextBlock>(
+		Header->GetWidgetFromName(TEXT("CurrentMatchPhaseStatusLabel")));
+	TestTrue(TEXT("Pre-roll Header keeps TP absent and central waiting state"),
+		!Header->GetPresentation().bShowLeftTacticalPointChip
+			&& !Header->GetPresentation().bShowRightTacticalPointChip
+			&& !IsVisible(Header->GetWidgetFromName(
+				TEXT("LeftTacticalPointChip")))
+			&& !IsVisible(Header->GetWidgetFromName(
+				TEXT("RightTacticalPointChip")))
+			&& PreRollPhase != nullptr
+			&& PreRollPhase->GetText().EqualTo(
+				FFMCodexPlayerUIPresentationText::WaitingForTacticalPointRoll()));
 	const FString CurrentTrackerPrefix =
 		Header->GetPresentation().bCurrentAttackerOnLeft
 			? TEXT("LeftAttackTurnSteps") : TEXT("RightAttackTurnSteps");
@@ -6536,6 +6567,54 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			&& LeftTrackerSlot->GetHorizontalAlignment() == HAlign_Center
 			&& RightTrackerSlot != nullptr
 			&& RightTrackerSlot->GetHorizontalAlignment() == HAlign_Center);
+	FFMCodexUMGMatchHeaderViewModel TrackerStyleFixture =
+		Header->GetPresentation();
+	FFMCodexUMGAttackTurnTrackerViewModel& StyledTracker =
+		bFirstAttackerOnLeft
+			? TrackerStyleFixture.LeftAttackTurnTracker
+			: TrackerStyleFixture.RightAttackTurnTracker;
+	StyledTracker.Steps[0].State = EFMCodexUMGAttackTurnStepState::Used;
+	StyledTracker.Steps[1].State = EFMCodexUMGAttackTurnStepState::Current;
+	StyledTracker.Steps[2].State = EFMCodexUMGAttackTurnStepState::Remaining;
+	Header->RefreshFromPresentation(TrackerStyleFixture);
+	const UBorder* UsedTrackerNode = Cast<UBorder>(Header->GetWidgetFromName(
+		FName(*(CurrentTrackerPrefix + TEXT("Frame0")))));
+	const UBorder* StyledCurrentTrackerNode = Cast<UBorder>(
+		Header->GetWidgetFromName(
+			FName(*(CurrentTrackerPrefix + TEXT("Frame1")))));
+	const UBorder* StyledRemainingTrackerNode = Cast<UBorder>(
+		Header->GetWidgetFromName(
+			FName(*(CurrentTrackerPrefix + TEXT("Frame2")))));
+	const UTextBlock* UsedTrackerLabel = Cast<UTextBlock>(
+		Header->GetWidgetFromName(
+			FName(*(CurrentTrackerPrefix + TEXT("Label0")))));
+	const UTextBlock* RemainingTrackerLabel = Cast<UTextBlock>(
+		Header->GetWidgetFromName(
+			FName(*(CurrentTrackerPrefix + TEXT("Label2")))));
+	const USizeBox* UsedTrackerBounds = Cast<USizeBox>(
+		Header->GetWidgetFromName(
+			FName(*(CurrentTrackerPrefix + TEXT("Bounds0")))));
+	TestTrue(TEXT("Tracker states use hollow Remaining, filled Used and ringed Current"),
+		UsedTrackerNode != nullptr && StyledCurrentTrackerNode != nullptr
+			&& StyledRemainingTrackerNode != nullptr
+			&& UsedTrackerLabel != nullptr && RemainingTrackerLabel != nullptr
+			&& UsedTrackerBounds != nullptr
+			&& UsedTrackerNode->Background.DrawAs
+				== ESlateBrushDrawType::RoundedBox
+			&& StyledCurrentTrackerNode->Background.DrawAs
+				== ESlateBrushDrawType::RoundedBox
+			&& StyledRemainingTrackerNode->Background.DrawAs
+				== ESlateBrushDrawType::RoundedBox
+			&& UsedTrackerNode->Background.TintColor.GetSpecifiedColor().A
+				> StyledRemainingTrackerNode->Background.TintColor
+					.GetSpecifiedColor().A
+			&& StyledCurrentTrackerNode->Background.OutlineSettings.Width
+				> UsedTrackerNode->Background.OutlineSettings.Width
+			&& UsedTrackerLabel->GetRenderOpacity()
+				> RemainingTrackerLabel->GetRenderOpacity()
+			&& FMath::IsNearlyEqual(UsedTrackerBounds->GetWidthOverride(), 24.0f)
+			&& FMath::IsNearlyEqual(UsedTrackerBounds->GetHeightOverride(), 24.0f));
+	Controller->RefreshPresentation();
 	const FString HandoffPlayer =
 		Screen->GetPresentation().Handoff.NextPlayerLabel;
 	TestTrue(TEXT("Handoff and underlying Header actor remain consistent"),
@@ -6563,13 +6642,46 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	}
 	const UTextBlock* TacticalPointStatus = Cast<UTextBlock>(
 		Header->GetWidgetFromName(TEXT("CurrentMatchPhaseStatusLabel")));
-	TestTrue(TEXT("Post-roll Tactical Point status is deliberate but subordinate"),
+	const bool bTacticalPointChipOnLeft =
+		Header->GetPresentation().bShowLeftTacticalPointChip;
+	const UWidget* CurrentTacticalPointChip = Header->GetWidgetFromName(
+		bTacticalPointChipOnLeft
+			? TEXT("LeftTacticalPointChip") : TEXT("RightTacticalPointChip"));
+	const UWidget* DefendingTacticalPointChip = Header->GetWidgetFromName(
+		bTacticalPointChipOnLeft
+			? TEXT("RightTacticalPointChip") : TEXT("LeftTacticalPointChip"));
+	const UTextBlock* TacticalPointValue = Cast<UTextBlock>(
+		Header->GetWidgetFromName(bTacticalPointChipOnLeft
+			? TEXT("LeftTacticalPointChipValue")
+			: TEXT("RightTacticalPointChipValue")));
+	const UTextBlock* TacticalPointHeading = Cast<UTextBlock>(
+		Header->GetWidgetFromName(bTacticalPointChipOnLeft
+			? TEXT("LeftTacticalPointChipLabel")
+			: TEXT("RightTacticalPointChipLabel")));
+	TestTrue(TEXT("Post-roll TP belongs only to the current attacker Header"),
 		Header->GetPresentation().CurrentAttackerTacticalPoints > 0
+			&& Header->GetPresentation().bShowLeftTacticalPointChip
+				!= Header->GetPresentation().bShowRightTacticalPointChip
+			&& bTacticalPointChipOnLeft == bFirstAttackerOnLeft
+			&& IsVisible(CurrentTacticalPointChip)
+			&& !IsVisible(DefendingTacticalPointChip)
+			&& TacticalPointValue != nullptr
+			&& TacticalPointValue->GetText().ToString()
+				== FString::FromInt(
+					Header->GetPresentation().CurrentAttackerTacticalPoints)
+			&& TacticalPointValue->GetFont().Size == 14
+			&& TacticalPointHeading != nullptr
+			&& TacticalPointHeading->GetText().EqualTo(
+				FFMCodexPlayerUIPresentationText::TacticalPointsHeading())
+			&& TacticalPointHeading->GetFont().Size == 9
 			&& TacticalPointStatus != nullptr
 			&& TacticalPointStatus->GetText().EqualTo(
+				FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+					Header->GetPresentation().CurrentPhaseLabel))
+			&& !TacticalPointStatus->GetText().EqualTo(
 				FFMCodexPlayerUIPresentationText::TacticalPoints(
 					Header->GetPresentation().CurrentAttackerTacticalPoints))
-			&& TacticalPointStatus->GetFont().Size == 14
+			&& TacticalPointStatus->GetFont().Size == 10
 			&& TacticalPointStatus->GetFont().Size
 				< Cast<UTextBlock>(Header->GetWidgetFromName(
 					TEXT("CentralBroadcastScoreValue")))->GetFont().Size);
@@ -6726,6 +6838,54 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			&& Header->GetDisplayedAttackerLabel().StartsWith(
 				TEXT("NEXT ATTACKER:"))
 			&& !Header->GetDisplayedAttackerLabel().EndsWith(TEXT(" ATTACKING")));
+	const FFMCodexUMGMatchHeaderViewModel& SwitchedHeader =
+		Header->GetPresentation();
+	const FFMCodexUMGAttackTurnTrackerViewModel& CompletedAttackerTracker =
+		bFirstAttackerOnLeft
+			? SwitchedHeader.LeftAttackTurnTracker
+			: SwitchedHeader.RightAttackTurnTracker;
+	const FFMCodexUMGAttackTurnTrackerViewModel& NewAttackerTracker =
+		bFirstAttackerOnLeft
+			? SwitchedHeader.RightAttackTurnTracker
+			: SwitchedHeader.LeftAttackTurnTracker;
+	TestTrue(TEXT("Side switch clears stale TP and projects Used then Current"),
+		CompletedAttackerTracker.Steps[0].State
+			== EFMCodexUMGAttackTurnStepState::Used
+			&& NewAttackerTracker.Steps[0].State
+				== EFMCodexUMGAttackTurnStepState::Current
+			&& !SwitchedHeader.bShowLeftTacticalPointChip
+			&& !SwitchedHeader.bShowRightTacticalPointChip
+			&& SwitchedHeader.LeftTacticalPoints == 0
+			&& SwitchedHeader.RightTacticalPoints == 0
+			&& !IsVisible(Header->GetWidgetFromName(
+				TEXT("LeftTacticalPointChip")))
+			&& !IsVisible(Header->GetWidgetFromName(
+				TEXT("RightTacticalPointChip"))));
+	if (Controller->IsAwaitingHotSeatHandoff())
+	{
+		Screen->RequestReady();
+	}
+	Interaction->RequestTacticalPointRoll();
+	const FFMCodexUMGMatchHeaderViewModel& NewAttackHeader =
+		Header->GetPresentation();
+	const bool bFirstAttackerNowOnLeft =
+		NewAttackHeader.LeftPlayerLabel == FirstAttackerLabel;
+	const FString& NewAttackerPanelLabel =
+		NewAttackHeader.bShowLeftTacticalPointChip
+			? NewAttackHeader.LeftPlayerLabel : NewAttackHeader.RightPlayerLabel;
+	TestTrue(TEXT("New attacker receives TP only after its own authoritative roll"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& NewAttackHeader.CurrentAttackerLabel != FirstAttackerLabel
+			&& NewAttackHeader.bShowLeftTacticalPointChip
+				!= NewAttackHeader.bShowRightTacticalPointChip
+			&& NewAttackHeader.bShowLeftTacticalPointChip
+				== NewAttackHeader.bCurrentAttackerOnLeft
+			&& NewAttackerPanelLabel == NewAttackHeader.CurrentAttackerLabel
+			&& (bFirstAttackerNowOnLeft
+				? NewAttackHeader.LeftTacticalPoints == 0
+					&& NewAttackHeader.RightTacticalPoints > 0
+				: NewAttackHeader.RightTacticalPoints == 0
+					&& NewAttackHeader.LeftTacticalPoints > 0));
 
 	FString HeaderHeader;
 	FString HeaderSource;

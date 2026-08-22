@@ -444,6 +444,23 @@ struct FMCODEX_API FFMCodexUMGMatchHeaderViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FString CurrentAttackerTacticalPointsLabel;
 
+	/** Canonical authoritative phase label, localized only when rendered. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	FString CurrentPhaseLabel;
+
+	/** Fully projected side ownership for the current attack's TP resource. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bShowLeftTacticalPointChip = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	bool bShowRightTacticalPointChip = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 LeftTacticalPoints = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 RightTacticalPoints = 0;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FFMCodexUMGAttackTurnTrackerViewModel LeftAttackTurnTracker;
 

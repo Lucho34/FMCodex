@@ -103,6 +103,9 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("READY TO PLAY")) return LOCTEXT("ReadyToPlay", "\u51C6\u5907\u5F00\u59CB");
 	if (CanonicalLabel == TEXT("Start a Local Match") || CanonicalLabel == TEXT("START LOCAL MATCH")) return LOCTEXT("StartLocalMatch", "\u5F00\u59CB\u672C\u5730\u5BF9\u6218");
 	if (CanonicalLabel == TEXT("Roll Tactical Points") || CanonicalLabel == TEXT("ROLL TACTICAL POINTS") || CanonicalLabel == TEXT("Tactical Point Roll")) return LOCTEXT("RollTacticalPoints", "\u63B7\u6218\u672F\u70B9");
+	if (CanonicalLabel == TEXT("Deployment")) return LOCTEXT("DeploymentPhase", "\u90E8\u7F72\u9636\u6BB5");
+	if (CanonicalLabel == TEXT("Selection")) return LOCTEXT("SelectionPhase", "\u9009\u62E9\u9636\u6BB5");
+	if (CanonicalLabel == TEXT("Resolution")) return LOCTEXT("ResolutionPhase", "\u7ED3\u7B97\u9636\u6BB5");
 	if (CanonicalLabel == TEXT("Deploy Your Cards")) return LOCTEXT("DeployCards", "\u90E8\u7F72\u7403\u5458");
 	if (CanonicalLabel == TEXT("FINISH DEPLOYMENT") || CanonicalLabel == TEXT("Deploy / Finish Deployment")) return LOCTEXT("FinishDeployment", "\u5B8C\u6210\u90E8\u7F72");
 	if (CanonicalLabel == TEXT("Select Carrier")) return LOCTEXT("SelectCarrier", "\u9009\u62E9\u6301\u7403\u7403\u5458");
@@ -439,6 +442,11 @@ FText FFMCodexPlayerUIPresentationText::TacticalPoints(const int32 ActionPoint)
 {
 	return FText::Format(LOCTEXT("TacticalPointsFormat", "\u6218\u672F\u70B9  {0}"),
 		FText::AsNumber(ActionPoint));
+}
+
+FText FFMCodexPlayerUIPresentationText::TacticalPointsHeading()
+{
+	return LOCTEXT("TacticalPointsHeading", "\u6218\u672F\u70B9");
 }
 
 FText FFMCodexPlayerUIPresentationText::AttackTurnHeading()

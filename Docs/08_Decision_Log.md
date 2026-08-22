@@ -383,6 +383,15 @@
 - UI 修复：三步 Tracker 继续消费 `Used / Current / Remaining` DTO，但使用真实圆形 RoundedBox 节点并居中到玩家身份区域；中央 `战术点 X` 提升可读性但低于比分/当前进攻；左下掷点模块隐藏重复标题/分类，保留小型行动方提示与单一 `156 x 48` CTA。
 - 范围：不修改 Pitch、Slot state、Ball marker、Hand Micro、Pitch Mini、Full Card、玩法公式、随机规则或 Authority API。
 
+### CD-035 - Header Tactical Point Ownership and Tracker State Semantics
+
+- 日期：2026-08-22
+- 资源归属：战术点是当前攻击方、当前攻击实例的资源表现，不再作为中央全局数值。`CurrentAttack.ActionPoint` 仍是唯一权威值；InteractionView 不变，UMG Presentation Builder 最小扩展为已解析的 left/right Chip visibility/value 与 canonical phase label。Widget 只排版这些字段，不以 `ActionPoint > 0`、按钮状态或玩家名推断是否已掷点、归属方或阶段。
+- 生命周期：BetweenAttacks 手动掷点 readiness 下不显示空 Chip 或假零值，中央保留 `等待掷出战术点`。建立 CurrentAttack 后只有当前攻击方侧显示紧凑 Chip，中央改显示已有 MajorPhase 的本地化状态。攻击完成后 ActionPoint 随 CurrentAttack 清除，因此在新攻击方下一次权威掷点前两侧 Chip 都为空；Hot-seat 左右视角可以重映射，归属必须按玩家身份而非固定屏幕侧验证。
+- Tracker 语义：`Remaining / Used / Current` 继续完全消费 DTO step state。Remaining 为低填充近空心、Used 为高对比实心完成态、Current 为暗内层加最强 ring；三者同时使用填充、轮廓、亮度和数字对比，不只依赖可配置 Primary Side Color。节点数量与当前/已用索引仍不由 Widget 计算。
+- 布局：两侧统一使用居中的 Player Identity Group；名字旁只在有效时出现小型 TP Chip，下方统一按 `进攻回合 → 1 2 3` 顺序排列，不再对右侧反转标签/节点次序。Score → 当前进攻序号 → phase/status 的中央层级不变。
+- 范围：这是 Presentation DTO、Header Widget、本地化、测试与文档的小型阶段；不修改 Ready/Handoff、Resolution、Host/Session、RNG、selection、skill、Pitch、Card 或 artwork。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

@@ -46,10 +46,22 @@ private:
 	TObjectPtr<UTextBlock> PlayerAIdentityText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> LeftTacticalPointChip;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> LeftTacticalPointValueText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> LeftAttackTurnSteps;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PlayerBIdentityText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> RightTacticalPointChip;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RightTacticalPointValueText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> RightAttackTurnSteps;

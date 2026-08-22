@@ -473,17 +473,34 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Header.TurnLabel = InteractionView.AttackSequence > 0
 		? FString::Printf(TEXT("TURN %lld"), InteractionView.AttackSequence)
 		: TEXT("PRE-MATCH");
+	const bool bProjectTacticalPointChip =
+		InteractionView.bCurrentAttackActive;
 	Result.Header.CurrentAttackerTacticalPointsLabel =
-		InteractionView.CurrentAttackingPlayer != EInitialTurnOrderPlayer::None
+		bProjectTacticalPointChip
 			? FString::Printf(TEXT("TACTICAL POINTS  %d"),
 				InteractionView.ActionPoint)
 			: FString();
+	Result.Header.CurrentPhaseLabel =
+		FFMCodexLocalMatchInteractionViewBuilder::ToString(
+			InteractionView.MajorPhase);
 	Result.Header.AttackSequence = InteractionView.AttackSequence;
 	Result.Header.CurrentAttackerTacticalPoints = InteractionView.ActionPoint;
 	Result.Header.bHasCurrentAttacker =
 		InteractionView.CurrentAttackingPlayer != EInitialTurnOrderPlayer::None;
 	Result.Header.bCurrentAttackerOnLeft =
 		InteractionView.CurrentAttackingPlayer == LocalViewerSide;
+	Result.Header.bShowLeftTacticalPointChip =
+		bProjectTacticalPointChip
+		&& Result.Header.bCurrentAttackerOnLeft;
+	Result.Header.bShowRightTacticalPointChip =
+		bProjectTacticalPointChip
+		&& !Result.Header.bCurrentAttackerOnLeft;
+	Result.Header.LeftTacticalPoints =
+		Result.Header.bShowLeftTacticalPointChip
+			? InteractionView.ActionPoint : 0;
+	Result.Header.RightTacticalPoints =
+		Result.Header.bShowRightTacticalPointChip
+			? InteractionView.ActionPoint : 0;
 	Result.Header.CurrentAttackerAttackIndex =
 		InteractionView.CurrentAttackingPlayer
 			== EInitialTurnOrderPlayer::PlayerA
