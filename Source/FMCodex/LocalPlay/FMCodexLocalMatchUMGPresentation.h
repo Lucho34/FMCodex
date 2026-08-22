@@ -107,6 +107,7 @@ enum class EFMCodexUMGCardInteractionState : uint8
 {
 	Default,
 	Hover,
+	OnPitchSelectable,
 	DragSource,
 	Dragging,
 	DragOverLegalSlot,
@@ -114,6 +115,14 @@ enum class EFMCodexUMGCardInteractionState : uint8
 	DropCancelled,
 	Deployed,
 	Ghost
+};
+
+/** Explicit presentation intent carried by an authoritative on-pitch candidate. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGOnPitchSelectionIntent : uint8
+{
+	None,
+	SubmitCarrier
 };
 
 /** Presentation-only football landmark treatment for a physical Half. */
@@ -370,6 +379,17 @@ struct FMCODEX_API FFMCodexUMGPitchSlotViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
 	FName DeploymentTargetCardId = NAME_None;
+
+	/** Structural selectability projected for the current player prompt. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	bool bSelectableForCurrentPrompt = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	FName OnPitchSelectionOptionId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	EFMCodexUMGOnPitchSelectionIntent OnPitchSelectionIntent =
+		EFMCodexUMGOnPitchSelectionIntent::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
 	FFMCodexUMGCardViewModel Card;
@@ -651,6 +671,13 @@ struct FMCODEX_API FFMCodexUMGInteractionViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	TArray<FFMCodexUMGSelectionChoiceViewModel> SelectionChoices;
+
+	/** The normal player-facing selection surface is the deployed pitch card. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bUseOnPitchPlayerSelection = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString OnPitchSelectionHintLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	TArray<FFMCodexUMGBranchChoiceViewModel> BranchChoices;

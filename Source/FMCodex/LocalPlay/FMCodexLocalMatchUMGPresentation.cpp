@@ -423,6 +423,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 {
 	using namespace FMCodexLocalMatchUMGPresentation;
 	FFMCodexUMGMatchScreenViewModel Result;
+	const bool bProjectCarrierSelectabilityToPitch =
+		InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectCarrier;
 	const FFMCodexLocalMatchScreenPresentation Screen =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 			InteractionView);
@@ -628,6 +631,23 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				SlotResult.Card = MakeCard(Slot.Card);
 				ResolvePitchMiniOwnershipAccent(SlotResult.Card,
 					Slot.Card.Side, LocalViewerSide, SidePrimaryColors);
+				if (bProjectCarrierSelectabilityToPitch)
+				{
+					const FFMCodexLocalMatchSelectionOption* ProjectedOption =
+						InteractionView.SelectionOptions.FindByPredicate(
+							[&Slot](const FFMCodexLocalMatchSelectionOption& Option)
+							{
+								return !Option.Id.IsNone()
+									&& Option.RelatedCardId == Slot.Card.CardId;
+							});
+					if (ProjectedOption != nullptr)
+					{
+						SlotResult.bSelectableForCurrentPrompt = true;
+						SlotResult.OnPitchSelectionOptionId = ProjectedOption->Id;
+						SlotResult.OnPitchSelectionIntent =
+							EFMCodexUMGOnPitchSelectionIntent::SubmitCarrier;
+					}
+				}
 			}
 			RegionResult.Slots.Add(MoveTemp(SlotResult));
 		}
@@ -638,6 +658,11 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Interaction.TitleLabel = Screen.InteractionTitle;
 	Result.Interaction.Category = InteractionCategory(
 		InteractionView.InteractionCategory);
+	Result.Interaction.bUseOnPitchPlayerSelection =
+		bProjectCarrierSelectabilityToPitch;
+	Result.Interaction.OnPitchSelectionHintLabel =
+		bProjectCarrierSelectabilityToPitch
+			? TEXT("Click a player on the pitch") : FString();
 	Result.Interaction.ClassificationLabel = Screen.bSystemResolution
 		? TEXT("SYSTEM") : InteractionView.bHumanInteraction
 			? TEXT("HUMAN INPUT") : TEXT("INFORMATION");

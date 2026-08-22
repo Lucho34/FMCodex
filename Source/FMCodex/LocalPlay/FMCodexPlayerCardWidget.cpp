@@ -291,6 +291,11 @@ FReply UFMCodexPlayerCardWidget::NativeOnMouseButtonDown(
 	const FGeometry& InGeometry,
 	const FPointerEvent& InMouseEvent)
 {
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton
+		&& RequestOnPitchSelection())
+	{
+		return FReply::Handled();
+	}
 	if (bDeploymentDragEnabled)
 	{
 		return UWidgetBlueprintLibrary::DetectDragIfPressed(
@@ -316,10 +321,7 @@ void UFMCodexPlayerCardWidget::NativeOnMouseEnter(
 	const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
-	if (CanExposeFullCardDetail())
-	{
-		OnDetailHoverRequested.Broadcast(this);
-	}
+	RequestFullCardDetailHover();
 }
 
 void UFMCodexPlayerCardWidget::NativeOnMouseLeave(
@@ -335,6 +337,12 @@ void UFMCodexPlayerCardWidget::RefreshFromPresentation(
 {
 	Presentation = InPresentation;
 	PresentationMode = InMode;
+	if (PresentationMode != EFMCodexPlayerCardPresentationMode::PitchMini)
+	{
+		OnPitchSelectionOptionId = NAME_None;
+		bSelectableForCurrentPrompt = false;
+		SetCursor(EMouseCursor::Default);
+	}
 	RefreshVisuals();
 }
 
@@ -402,9 +410,61 @@ UFMCodexPlayerCardWidget::GetInteractionState() const
 	{
 		return EFMCodexUMGCardInteractionState::Hover;
 	}
+	if (bSelectableForCurrentPrompt)
+	{
+		return EFMCodexUMGCardInteractionState::OnPitchSelectable;
+	}
 	return PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini
 		? EFMCodexUMGCardInteractionState::Deployed
 		: EFMCodexUMGCardInteractionState::Default;
+}
+
+void UFMCodexPlayerCardWidget::ConfigureOnPitchSelection(
+	const FName OptionId,
+	const bool bSelectable)
+{
+	bSelectableForCurrentPrompt = bSelectable
+		&& PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini
+		&& !OptionId.IsNone();
+	OnPitchSelectionOptionId = bSelectableForCurrentPrompt
+		? OptionId : NAME_None;
+	SetCursor(bSelectableForCurrentPrompt
+		? EMouseCursor::Hand : EMouseCursor::Default);
+}
+
+void UFMCodexPlayerCardWidget::ClearOnPitchSelection()
+{
+	ConfigureOnPitchSelection(NAME_None, false);
+}
+
+bool UFMCodexPlayerCardWidget::IsSelectableForCurrentPrompt() const
+{
+	return bSelectableForCurrentPrompt;
+}
+
+FName UFMCodexPlayerCardWidget::GetOnPitchSelectionOptionId() const
+{
+	return OnPitchSelectionOptionId;
+}
+
+bool UFMCodexPlayerCardWidget::RequestOnPitchSelection()
+{
+	if (!bSelectableForCurrentPrompt || OnPitchSelectionOptionId.IsNone())
+	{
+		return false;
+	}
+	OnOnPitchSelectionRequested.Broadcast(OnPitchSelectionOptionId);
+	return true;
+}
+
+bool UFMCodexPlayerCardWidget::RequestFullCardDetailHover()
+{
+	if (!CanExposeFullCardDetail())
+	{
+		return false;
+	}
+	OnDetailHoverRequested.Broadcast(this);
+	return true;
 }
 
 UFMCodexDeploymentDragDropOperation*

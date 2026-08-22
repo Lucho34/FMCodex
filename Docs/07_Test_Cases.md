@@ -344,3 +344,16 @@
 - Header 继续完全消费 DTO：旧方节点为 `Used`、新方节点为 `Current`，双方 TP Chip 在新方实际掷点前均隐藏，中央显示新攻击方及 `等待掷出战术点`。
 - 双方三次机会全部消费后，比赛按既有终局规则结束，`CurrentAttackingPlayer=None`，不能产生非法第四次攻击。
 
+## LocalPlay 场上持球球员直选修复（Stage 6.13.1.4.4A）
+
+应验证：
+
+- 精确目标是 `CurrentAttack.SelectionStage=AwaitingCarrier` 对应的 `InteractionCategory=SelectCarrier`；合法候选继续来自 `FMatchPlayCurrentAttackCarrierSelectionAvailability`，不得由 Widget 按球员名称、阵营颜色、Slot 位置或卡面内容重算。
+- `InteractionView.SelectionOptions` 中的每个结构合法 `RelatedCardId` 必须一对一投影到同一已部署 Pitch Slot 的 `bSelectableForCurrentPrompt / OnPitchSelectionOptionId / SubmitCarrier` 能力。当前 Carrier 结构合法集合为当前进攻方唯一部署的非门将球员；不按行动点、技能匹配、位置、属性或 Tactical Match 缩窄。
+- 目标状态的底部 Interaction Panel 保留中文优先的操作方、`选择持球球员` 与 `点击场上球员选择`，但玩家可见区域不渲染旧 PlayerKey 选项按钮，也不显示 raw canonical ID。
+- Selectable 不创建 cyan outline、glow、lift、scale 或专属 hover。正常 Pitch Mini Full Card hover 必须继续工作，且 selectable + Tactical Match 与 selectable + no Tactical Match 都能打开同一 Full Card。
+- Tactical Match mint perimeter 与 1/2 pips 保持原投影和视觉，不参与点击合法性判断。
+- 单击合法候选必须通过 `Slot -> Pitch -> Screen -> Controller::SubmitCarrier -> Host/Session` 立即提交同一个投影 OptionId，并直接进入下一权威步骤；不增加二次确认或 cancel/back-out 路径。
+- 单击本方无 Tactical Match 的结构合法球员同样必须提交；单击对方球员不得广播本方 Carrier intent，空槽位与未部署 Rack 卡不提供场上提交路径，拒绝时权威 State byte-identical。
+- 其他 SelectMarker、SelectRunner、SelectHelper 等选人阶段在本 Stage 不迁移；其既有路径不得被此代表性 rollout 意外改变。
+

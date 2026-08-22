@@ -407,3 +407,12 @@ This log records approved player-facing UI decisions separately from gameplay ca
 - The UI consumes the authoritative completion result and naturally refreshes to the next attacker's pre-roll state. It does not increment attack counts, choose the attacker, decide match end, auto-roll Tactical Points or invoke a hidden Ready route.
 - Terminal Resolution feedback may remain in the Controller's diagnostic model, but the full-screen Resolution layer collapses once the authoritative CurrentAttack ends. The next command replaces that feedback, so it cannot mask the new attacker's manual roll action.
 - The Stage 6.13.1.4.2 Header, tracker nodes and TP Chip styling are unchanged. Existing DTO projection produces old-side Used, new-side Current, no pre-roll TP Chip and the center waiting status.
+
+## 2026-08-22 — On-pitch Carrier selection foundation
+
+- The first production rollout is exactly `SelectCarrier`. Structural selectability comes from existing InteractionView selection options and is attached to occupied Pitch Slot DTOs by stable CardId; Pitch widgets never infer it from visual location, Tactical Match, skill, attribute, position or color.
+- Stage `6.13.1.4.4A` removes the unaccepted cyan selection perimeter, glow and `1.025` scale. Selectable has no dedicated visual layer or hover treatment. Normal Pitch Mini Full Card hover is restored and coexists with the hand cursor and single-click commit.
+- Tactical Match remains mint `#8FE6C2` with one/two pips and retains its original TP/Skill relevance meaning. A selectable player may have Tactical Match or no Tactical Match; both remain valid click targets under the Carrier structural contract.
+- One left click directly emits the projected `SubmitCarrier` intent through the existing Screen/Controller/Host path. Non-candidates do not emit. There is no confirmation dialog, cancel gesture, modal, pitch dimming, or large floating label.
+- The lower dock remains contextual: acting player, localized `选择持球球员`, and `点击场上球员选择` remain, while the old PlayerKey choice buttons are collapsed for this state. SelectionChoices remain available to diagnostics but are not rendered as a player fallback.
+- Header, Tactical Point module, Resolution, Pitch/Pitch Mini geometry, ownership rail, tactical-match cue, rarity, Hand Micro, Full Card, artwork, gameplay formulae and every other selection category remain frozen.

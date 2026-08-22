@@ -434,7 +434,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	TitleText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Presentation.TitleLabel.IsEmpty()
 			? TEXT("Interaction unavailable") : Presentation.TitleLabel));
-	TArray<FString> ContextLines = { Presentation.CategoryLabel };
+	TArray<FString> ContextLines = { Presentation.CategoryLabel,
+		Presentation.OnPitchSelectionHintLabel };
 	ContextLines.RemoveAll(
 		[](const FString& Line) { return Line.IsEmpty(); });
 	TArray<FString> LocalizedContextLines;
@@ -472,7 +473,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	RefreshCandidateChoices();
 	CandidateRegion->SetVisibility(
 		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
-			|| !Presentation.SelectionChoices.IsEmpty()
+			|| (!Presentation.bUseOnPitchPlayerSelection
+				&& !Presentation.SelectionChoices.IsEmpty())
 				? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	ChoiceRegion->SetVisibility(
 		!Presentation.BranchChoices.IsEmpty()
@@ -528,6 +530,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		|| Presentation.bCanResolveNoLegal;
 	const FString Fallback = !Presentation.EmptyStateLabel.IsEmpty()
 		? Presentation.EmptyStateLabel
+		: Presentation.bUseOnPitchPlayerSelection
+			? FString()
 		: !bHasDynamicChoices && !bHasPrimaryAction
 			? FString(TEXT("No player action is available.")) : FString();
 	EmptyStateText->SetText(
@@ -549,6 +553,11 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 		? PlayerCardWidgetClass.Get() : UFMCodexPlayerCardWidget::StaticClass();
 	// Deployment cards live in the persistent local rack. The dock only
 	// presents contextual actions, so it cannot resize the pitch.
+
+	if (Presentation.bUseOnPitchPlayerSelection)
+	{
+		return;
+	}
 
 	for (int32 ChoiceIndex = 0;
 		ChoiceIndex < Presentation.SelectionChoices.Num(); ++ChoiceIndex)

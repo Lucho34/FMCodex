@@ -470,6 +470,36 @@ void UFMCodexLocalMatchScreenWidget::HandleCarrierRequested(const FName CardId)
 	RequestSubmitCarrier(CardId);
 }
 
+void UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested(
+	const EFMCodexUMGOnPitchSelectionIntent Intent,
+	const FName OptionId)
+{
+	if (!Presentation.Interaction.bUseOnPitchPlayerSelection
+		|| Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectCarrier
+		|| Intent != EFMCodexUMGOnPitchSelectionIntent::SubmitCarrier
+		|| OptionId.IsNone())
+	{
+		return;
+	}
+	const bool bProjectedCandidate = Presentation.PitchRegions.ContainsByPredicate(
+		[Intent, OptionId](const FFMCodexUMGPitchRegionViewModel& Region)
+		{
+			return Region.Slots.ContainsByPredicate(
+				[Intent, OptionId](const FFMCodexUMGPitchSlotViewModel& PitchSlot)
+				{
+					return PitchSlot.bSelectableForCurrentPrompt
+						&& PitchSlot.OnPitchSelectionIntent == Intent
+						&& PitchSlot.OnPitchSelectionOptionId == OptionId;
+				});
+		});
+	if (bProjectedCandidate)
+	{
+		HideDetailOverlay();
+		RequestSubmitCarrier(OptionId);
+	}
+}
+
 void UFMCodexLocalMatchScreenWidget::HandleMarkerRequested(const FName CardId)
 {
 	RequestSubmitMarker(CardId);
@@ -781,6 +811,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this, &UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested);
 	PitchWidget->OnCardDetailHoverDismissed.AddUObject(
 		this, &UFMCodexLocalMatchScreenWidget::HandleDetailHoverDismissed);
+	PitchWidget->OnOnPitchSelectionRequested.AddUObject(
+		this, &UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested);
 	PitchRegion->AddChild(PitchWidget);
 	PitchBounds->AddChild(PitchRegion);
 	if (UHorizontalBoxSlot* PitchSlot = MainArea->AddChildToHorizontalBox(PitchBounds))

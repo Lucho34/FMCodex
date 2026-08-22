@@ -5066,6 +5066,25 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 				&& IsVisible(Panel->GetWidgetFromName(
 					TEXT("InteractionNoLegalButton"))));
 	}
+	FFMCodexUMGInteractionViewModel OnPitchCarrier = BasePresentation(
+		EFMCodexUMGInteractionCategory::SelectCarrier, TEXT("Select Carrier"));
+	OnPitchCarrier.SelectionChoices = {
+		{ Card.CardId, TEXT("Select Panel Candidate"), true, Card } };
+	OnPitchCarrier.bUseOnPitchPlayerSelection = true;
+	OnPitchCarrier.OnPitchSelectionHintLabel =
+		TEXT("Click a player on the pitch");
+	Panel->RefreshFromPresentation(OnPitchCarrier);
+	const UTextBlock* OnPitchContext = Cast<UTextBlock>(
+		Panel->GetWidgetFromName(TEXT("InteractionActionContext")));
+	TestTrue(TEXT("On-pitch Carrier keeps instruction and removes bottom PlayerKey buttons"),
+		Panel->GetRenderedOptionWidgets().IsEmpty()
+			&& Panel->GetWidgetFromName(TEXT("InteractionCandidateRegion"))
+				->GetVisibility() == ESlateVisibility::Collapsed
+			&& Panel->GetWidgetFromName(TEXT("InteractionBoundedFallback"))
+				->GetVisibility() == ESlateVisibility::Collapsed
+			&& OnPitchContext != nullptr
+			&& OnPitchContext->GetText().ToString().Contains(
+				TEXT("\u573A\u4E0A\u7403\u5458")));
 	FFMCodexUMGInteractionViewModel DistinctFallbacks = BasePresentation(
 		EFMCodexUMGInteractionCategory::SelectMarker, TEXT("SELECT MARKER"));
 	DistinctFallbacks.bCanDecline = true;
@@ -10449,6 +10468,242 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 			&& !ReviewSource.Contains(TEXT("Card.AttackSkillIds.Add"))
 			&& CardSource.Contains(TEXT("Index / ColumnCount"))
 			&& CardSource.Contains(TEXT("Presentation.bGoalkeeper ? 3 : 5")));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexOnPitchCarrierSelectionFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.43.OnPitchCarrierSelectionFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexOnPitchCarrierSelectionFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("On-pitch selection Host exists"), Host);
+	TestNotNull(TEXT("On-pitch selection Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("On-pitch selection Screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	Screen->RequestStartNewMatch();
+	Screen->RequestRollTacticalPoints();
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
+	if (!DeployParticipants(*this, *Controller, CrossFamily, Attacker))
+	{
+		return false;
+	}
+	Controller->RefreshPresentation();
+
+	const FFMCodexLocalMatchInteractionView& InteractionView =
+		Controller->GetInteractionView();
+	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
+	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
+	TestNotNull(TEXT("On-pitch selection Pitch exists"), Pitch);
+	TestNotNull(TEXT("On-pitch selection Panel exists"), Panel);
+	if (Pitch == nullptr || Panel == nullptr)
+	{
+		return false;
+	}
+
+	TSet<FName> LegalOptionIds;
+	for (const FFMCodexLocalMatchSelectionOption& Option
+		: InteractionView.SelectionOptions)
+	{
+		LegalOptionIds.Add(Option.Id);
+	}
+	TSet<FName> StructurallySelectableOwnIds;
+	TSet<FName> OpponentDeployedIds;
+	TSet<FName> NonDeployedOwnIds;
+	const TArray<FFMCodexLocalMatchCardView>& AttackerRoster =
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? InteractionView.PlayerACardRoster
+			: InteractionView.PlayerBCardRoster;
+	for (const FFMCodexLocalMatchCardView& Card : AttackerRoster)
+	{
+		if (!Card.bDeployed)
+		{
+			NonDeployedOwnIds.Add(Card.CardId);
+		}
+	}
+	for (const FFMCodexLocalMatchPitchRegionView& Region
+		: InteractionView.PitchRegions)
+	{
+		for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
+		{
+			if (!Slot.bOccupied)
+			{
+				continue;
+			}
+			if (Slot.Card.Side == Attacker && !Slot.Card.bGoalkeeper)
+			{
+				StructurallySelectableOwnIds.Add(Slot.Card.CardId);
+			}
+			else if (Slot.Card.Side != Attacker)
+			{
+				OpponentDeployedIds.Add(Slot.Card.CardId);
+			}
+		}
+	}
+
+	TSet<FName> ProjectedSelectableIds;
+	UFMCodexPlayerCardWidget* OwnNoTacticalMatchCard = nullptr;
+	UFMCodexPlayerCardWidget* OwnTacticalMatchCard = nullptr;
+	UFMCodexPlayerCardWidget* OpponentCard = nullptr;
+	UFMCodexPitchSlotWidget* EmptyPitchSlot = nullptr;
+	for (UFMCodexPitchSlotWidget* Slot : Pitch->GetRenderedSlotWidgets())
+	{
+		if (Slot == nullptr)
+		{
+			continue;
+		}
+		Slot->TakeWidget();
+		const FFMCodexUMGPitchSlotViewModel& SlotView = Slot->GetPresentation();
+		if (!SlotView.bOccupied)
+		{
+			EmptyPitchSlot = EmptyPitchSlot != nullptr ? EmptyPitchSlot : Slot;
+			continue;
+		}
+		UFMCodexPlayerCardWidget* CardWidget = Slot->GetCardWidget();
+		if (SlotView.bSelectableForCurrentPrompt)
+		{
+			ProjectedSelectableIds.Add(SlotView.OnPitchSelectionOptionId);
+			if (SlotView.Card.PitchMiniTacticalMatchCount == 0)
+			{
+				OwnNoTacticalMatchCard = OwnNoTacticalMatchCard != nullptr
+					? OwnNoTacticalMatchCard : CardWidget;
+			}
+			else
+			{
+				OwnTacticalMatchCard = OwnTacticalMatchCard != nullptr
+					? OwnTacticalMatchCard : CardWidget;
+			}
+		}
+		else if (OpponentDeployedIds.Contains(SlotView.Card.CardId))
+		{
+			OpponentCard = OpponentCard != nullptr ? OpponentCard : CardWidget;
+		}
+	}
+
+	TestTrue(TEXT("Carrier authority exposes every structurally selectable own deployment"),
+		InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectCarrier
+			&& !LegalOptionIds.IsEmpty()
+			&& LegalOptionIds.Num() == StructurallySelectableOwnIds.Num()
+			&& LegalOptionIds.Includes(StructurallySelectableOwnIds)
+			&& ProjectedSelectableIds.Num() == LegalOptionIds.Num()
+			&& ProjectedSelectableIds.Includes(LegalOptionIds));
+	TestTrue(TEXT("Carrier UI is instructional and has no bottom PlayerKey buttons"),
+		Screen->GetPresentation().Interaction.bUseOnPitchPlayerSelection
+			&& Screen->GetPresentation().Interaction.Category
+				== EFMCodexUMGInteractionCategory::SelectCarrier
+			&& !Screen->GetPresentation().Interaction.OnPitchSelectionHintLabel.IsEmpty()
+			&& Panel->GetRenderedOptionWidgets().IsEmpty()
+			&& Panel->GetWidgetFromName(TEXT("InteractionCandidateRegion"))
+				->GetVisibility() == ESlateVisibility::Collapsed);
+	TestNotNull(TEXT("Own deployed card without Tactical Match remains selectable"),
+		OwnNoTacticalMatchCard);
+	TestNotNull(TEXT("Tactical Match own deployed card remains independently visible"),
+		OwnTacticalMatchCard);
+	TestNotNull(TEXT("Opponent deployed card remains non-selectable"), OpponentCard);
+	TestNotNull(TEXT("Empty pitch slot remains non-selectable"), EmptyPitchSlot);
+	if (OwnNoTacticalMatchCard == nullptr || OwnTacticalMatchCard == nullptr
+		|| OpponentCard == nullptr || EmptyPitchSlot == nullptr)
+	{
+		return false;
+	}
+
+	OwnNoTacticalMatchCard->TakeWidget();
+	OwnTacticalMatchCard->TakeWidget();
+	OpponentCard->TakeWidget();
+	TestTrue(TEXT("Structural selectability has no dedicated outline glow or lift"),
+		OwnNoTacticalMatchCard->IsSelectableForCurrentPrompt()
+			&& OwnNoTacticalMatchCard->GetInteractionState()
+				== EFMCodexUMGCardInteractionState::OnPitchSelectable
+			&& OwnNoTacticalMatchCard->GetWidgetFromName(
+				TEXT("PitchMiniSelectionStrokeTop")) == nullptr
+			&& OwnNoTacticalMatchCard->GetWidgetFromName(
+				TEXT("PitchMiniSelectionGlowTop")) == nullptr
+			&& OwnNoTacticalMatchCard->GetRenderTransform().Scale
+				.Equals(FVector2D(1.0f, 1.0f))
+			&& !OpponentCard->IsSelectableForCurrentPrompt());
+	TestTrue(TEXT("Tactical Match pips remain independent from click selectability"),
+		OwnNoTacticalMatchCard->GetPresentation()
+			.PitchMiniTacticalMatchCount == 0
+			&& OwnTacticalMatchCard->GetPresentation()
+				.PitchMiniTacticalMatchCount > 0
+			&& OwnTacticalMatchCard->IsSelectableForCurrentPrompt());
+
+	TestTrue(TEXT("SelectCarrier preserves the normal Pitch Mini Full Card hover route"),
+		OwnNoTacticalMatchCard->RequestFullCardDetailHover()
+			&& Screen->IsDetailOverlayVisible()
+			&& Screen->GetDetailOverlayCard() != nullptr
+			&& Screen->GetDetailOverlayCard()->GetPresentation().CardId
+				== OwnNoTacticalMatchCard->GetPresentation().CardId);
+
+	const TArray<uint8> BeforeIllegalClick =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	TestFalse(TEXT("Opponent deployed card refuses own-player selection click"),
+		OpponentCard->RequestOnPitchSelection());
+	TestTrue(TEXT("Opponent click leaves authority state unchanged"),
+		BeforeIllegalClick == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectCarrier);
+	TestTrue(TEXT("Empty slot exposes no on-pitch card submission surface"),
+		!EmptyPitchSlot->GetPresentation().bSelectableForCurrentPrompt
+			&& EmptyPitchSlot->GetCardWidget() == nullptr);
+
+	UFMCodexPlayerCardWidget* NonDeployedRackCard = nullptr;
+	for (UFMCodexPlayerCardWidget* RackCard
+		: Screen->GetLocalRackWidget()->GetRenderedCardWidgets())
+	{
+		if (RackCard != nullptr
+			&& NonDeployedOwnIds.Contains(
+				RackCard->GetPresentation().CardId))
+		{
+			NonDeployedRackCard = RackCard;
+			break;
+		}
+	}
+	TestNotNull(TEXT("A non-deployed rack card exists for path isolation"),
+		NonDeployedRackCard);
+	if (NonDeployedRackCard == nullptr)
+	{
+		return false;
+	}
+	TestFalse(TEXT("Non-deployed rack card cannot submit through on-pitch path"),
+		NonDeployedRackCard->RequestOnPitchSelection());
+
+	const FName CommittedCarrierId =
+		OwnNoTacticalMatchCard->GetOnPitchSelectionOptionId();
+	TestTrue(TEXT("Single no-Tactical-Match own-card click emits Carrier intent"),
+		OwnNoTacticalMatchCard->RequestOnPitchSelection());
+	TestTrue(TEXT("Poor tactical choice commits immediately and advances"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName == TEXT("SubmitCarrier")
+			&& Controller->GetInteractionView().InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory::SelectCarrier
+			&& Host->GetMatchSnapshot().Snapshot.CurrentAttack.ActionPreparation
+				.CarrierCardId == CommittedCarrierId);
 
 	return true;
 }

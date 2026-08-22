@@ -27,6 +27,8 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(
 DECLARE_MULTICAST_DELEGATE(FFMCodexDeploymentCardDragFinished);
 DECLARE_MULTICAST_DELEGATE_OneParam(
 	FFMCodexPlayerCardDetailHover, UFMCodexPlayerCardWidget*);
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FFMCodexPlayerCardOnPitchSelectionRequested, FName);
 
 UENUM(BlueprintType)
 enum class EFMCodexPlayerCardPresentationMode : uint8
@@ -92,11 +94,18 @@ public:
 	FName GetDeploymentDragCardId() const;
 	bool IsDeploymentDragGoalkeeper() const;
 	UFMCodexDeploymentDragDropOperation* BeginDeploymentDrag();
+	void ConfigureOnPitchSelection(FName OptionId, bool bSelectable);
+	void ClearOnPitchSelection();
+	bool IsSelectableForCurrentPrompt() const;
+	FName GetOnPitchSelectionOptionId() const;
+	bool RequestOnPitchSelection();
+	bool RequestFullCardDetailHover();
 
 	FFMCodexDeploymentCardDragStarted OnDeploymentDragStarted;
 	FFMCodexDeploymentCardDragFinished OnDeploymentDragFinished;
 	FFMCodexPlayerCardDetailHover OnDetailHoverRequested;
 	FFMCodexPlayerCardDetailHover OnDetailHoverDismissed;
+	FFMCodexPlayerCardOnPitchSelectionRequested OnOnPitchSelectionRequested;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -223,6 +232,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PitchMiniIdentitySeparatorText;
+
+	FName OnPitchSelectionOptionId = NAME_None;
+	bool bSelectableForCurrentPrompt = false;
 
 	UPROPERTY(Transient, BlueprintReadOnly,
 		Category = "Local Match|Visual Hooks",

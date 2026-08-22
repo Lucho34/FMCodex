@@ -150,6 +150,8 @@ private:
 
 	UFUNCTION()
 	void HandleCarrierRequested(FName CardId);
+	void HandleOnPitchSelectionRequested(
+		EFMCodexUMGOnPitchSelectionIntent Intent, FName OptionId);
 
 	UFUNCTION()
 	void HandleMarkerRequested(FName CardId);

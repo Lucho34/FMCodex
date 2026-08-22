@@ -252,6 +252,13 @@ void UFMCodexPitchWidget::HandleCardDetailHoverDismissed(
 	OnCardDetailHoverDismissed.Broadcast(SourceCard);
 }
 
+void UFMCodexPitchWidget::HandleOnPitchSelectionRequested(
+	const EFMCodexUMGOnPitchSelectionIntent Intent,
+	const FName OptionId)
+{
+	OnOnPitchSelectionRequested.Broadcast(Intent, OptionId);
+}
+
 void UFMCodexPitchWidget::BuildWidgetTree()
 {
 	if (WidgetTree == nullptr || WidgetTree->RootWidget != nullptr)
@@ -343,6 +350,8 @@ void UFMCodexPitchWidget::RefreshVisuals()
 				this, &UFMCodexPitchWidget::HandleCardDetailHoverRequested);
 			SlotWidget->OnCardDetailHoverDismissed.AddUObject(
 				this, &UFMCodexPitchWidget::HandleCardDetailHoverDismissed);
+			SlotWidget->OnOnPitchSelectionRequested.AddUObject(
+				this, &UFMCodexPitchWidget::HandleOnPitchSelectionRequested);
 			UUniformGridSlot* GridSlot = SlotGrid->AddChildToUniformGrid(
 				SlotWidget, SlotIndex, 0);
 			GridSlot->SetHorizontalAlignment(HAlign_Center);

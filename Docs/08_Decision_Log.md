@@ -402,6 +402,17 @@
 - 权限与终局：只有投影出的下一攻击方能请求战术点；旧攻击方/防守方仍由 Host 权限校验拒绝。双方没有剩余机会时既有 completion 写入 `CurrentAttackingPlayer=None` 并结束比赛，不建立第四次攻击。
 - 范围：仅移除 Controller/UMG 的 Hot-seat Ready gate 与交接 DTO/Overlay，并迁移测试和文档；Header/Tracker/TP Chip 视觉、RNG、公式、选人、技能、Pitch、卡面和 artwork 均保持冻结。
 
+### CD-037 - On-Pitch Carrier Selection Foundation
+
+- 日期：2026-08-22
+- 代表性范围：首个场上直选只覆盖生产 `AwaitingCarrier -> SelectCarrier -> SubmitCarrier`。它是部署完成后的通用持球球员选择步骤，并非只属于 Pass Control；本阶段不顺带迁移 Marker、Runner、Helper 或其他选择流。
+- 权威来源：`FMatchPlayCurrentAttackCarrierSelectionLegality` 的结构合法合同是当前进攻方、唯一部署、非门将、正确阶段；它不检查 TP、技能范围、位置、属性或 Tactical Match。Availability/InteractionView 继续输出这组结构合法 `SelectionOptions`，Presentation Builder 仅按稳定 `RelatedCardId/CardId` 将已投影 OptionId 附着到对应已占用 Slot。
+- 输入合同：合法 Pitch Mini 单击一次即携带显式 `SubmitCarrier` intent，经 Slot、Pitch、Screen 进入现有 Controller/Host/Session route。Screen 只接受当前 DTO 中仍存在的显式候选；非法卡不广播，且不新增确认、ESC、右键或取消命令。
+- 玩家界面：Interaction Panel 保留中文优先的操作方、`选择持球球员` 和简短场上点击提示，但在该状态不渲染旧 PlayerKey 选项按钮。底层 SelectionChoices 可继续作为只读投影/诊断数据，不是玩家 fallback surface。
+- 6.13.1.4.4A 修正：DTO 使用 `bSelectableForCurrentPrompt` 表示结构可提交性。Selectable 不创建 outline、glow、lift、scale、pips 或专属 hover；Pitch Mini 正常 Full Card hover 与单击提交共存。Tactical Match 继续独立使用 mint `#8FE6C2` 与 1/2 个 pips，只表达当前 TP/Skill 战术信息，绝不作为 Carrier 点击门禁。
+- 防守 rollout 审计：`AwaitingMarker/SelectMarker` 结构限制为当前防守方已部署、非门将、与 Carrier 同 physical area；`AwaitingHelper/SelectHelper` 限制为当前防守方已部署、非门将且不同于已冻结 Marker。两者都有稳定 CardId 和 Availability，但当前仍使用底部按钮，后续应分成防守场上直选 rollout，不在本修复实现。
+- 范围：不修改 Authority 规则、RNG、骰子、公式、Resolution narrative、Header、Tracker、TP Chip、技能本地化、Pitch/Slot 几何、Ball marker、Hand Micro、Full Card 或 artwork。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
