@@ -11454,4 +11454,318 @@ bool FFMCodexMarkerWrongAreaFeedbackTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexOnPitchRunnerSelectionRolloutTest,
+	"FMCodex.LocalPlay.ControlSurface.47.OnPitchRunnerSelectionRollout",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+
+	{
+		FScopedPlayableWorld PlayableWorld;
+		AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+		AFMCodexLocalMatchPlayerController* Controller =
+			PlayableWorld.GetController();
+		if (Host == nullptr || Controller == nullptr)
+		{
+			AddError(TEXT("On-pitch Runner world did not initialize"));
+			return false;
+		}
+		Controller->InitializePlayerFacingUI();
+		UFMCodexLocalMatchScreenWidget* Screen =
+			Controller->GetPlayerMatchScreen();
+		if (Screen == nullptr)
+		{
+			AddError(TEXT("On-pitch Runner Screen did not initialize"));
+			return false;
+		}
+		Screen->TakeWidget();
+		Screen->RequestStartNewMatch();
+		Screen->RequestRollTacticalPoints();
+		const EInitialTurnOrderPlayer Attacker =
+			Controller->GetInteractionView().CurrentAttackingPlayer;
+		const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
+		if (!DeployParticipants(*this, *Controller, CrossFamily, Attacker))
+		{
+			return false;
+		}
+		const FName CarrierId = FamilyCardId(CrossFamily, Attacker);
+		Controller->SubmitCarrier(CarrierId);
+		const FName MarkerId =
+			Controller->GetInteractionView().SelectionOptions.IsEmpty()
+				? NAME_None
+				: Controller->GetInteractionView().SelectionOptions[0].Id;
+		Controller->SubmitMarker(MarkerId);
+		Controller->SubmitSkill(FName(CrossFamily.SkillId));
+		if (!Controller->GetLastDiagnostic().bHostSuccess)
+		{
+			AddError(TEXT("Runner setup did not reach AwaitingRunner"));
+			return false;
+		}
+		Controller->RefreshPresentation();
+
+		const FFMCodexLocalMatchInteractionView& RunnerView =
+			Controller->GetInteractionView();
+		UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
+		UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
+		if (Pitch == nullptr || Panel == nullptr)
+		{
+			AddError(TEXT("Runner Pitch or Interaction Panel did not initialize"));
+			return false;
+		}
+		Panel->TakeWidget();
+
+		TSet<FName> LegalRunnerIds;
+		for (const FFMCodexLocalMatchSelectionOption& Option
+			: RunnerView.SelectionOptions)
+		{
+			TestTrue(TEXT("Runner option keeps stable Id/RelatedCardId"),
+				!Option.Id.IsNone() && Option.Id == Option.RelatedCardId);
+			LegalRunnerIds.Add(Option.Id);
+		}
+		TSet<FName> ProjectedRunnerIds;
+		UFMCodexPlayerCardWidget* LegalNoTacticalMatchCard = nullptr;
+		UFMCodexPlayerCardWidget* CarrierCard = nullptr;
+		UFMCodexPlayerCardWidget* OpponentCard = nullptr;
+		UFMCodexPitchSlotWidget* EmptySlot = nullptr;
+		for (UFMCodexPitchSlotWidget* SlotWidget
+			: Pitch->GetRenderedSlotWidgets())
+		{
+			if (SlotWidget == nullptr)
+			{
+				continue;
+			}
+			SlotWidget->TakeWidget();
+			const FFMCodexUMGPitchSlotViewModel& Slot =
+				SlotWidget->GetPresentation();
+			if (!Slot.bOccupied)
+			{
+				EmptySlot = EmptySlot != nullptr ? EmptySlot : SlotWidget;
+				continue;
+			}
+			UFMCodexPlayerCardWidget* Card = SlotWidget->GetCardWidget();
+			if (Slot.bSelectableForCurrentPrompt)
+			{
+				ProjectedRunnerIds.Add(Slot.OnPitchSelectionOptionId);
+				TestTrue(TEXT("Runner candidate carries explicit SubmitRunner intent"),
+					Slot.OnPitchSelectionIntent
+						== EFMCodexUMGOnPitchSelectionIntent::SubmitRunner);
+				if (Slot.Card.PitchMiniTacticalMatchCount == 0)
+				{
+					LegalNoTacticalMatchCard =
+						LegalNoTacticalMatchCard != nullptr
+							? LegalNoTacticalMatchCard : Card;
+				}
+			}
+			else if (Slot.Card.CardId == CarrierId)
+			{
+				CarrierCard = Card;
+			}
+			else if (Slot.Card.OwnerLabel !=
+				FFMCodexLocalMatchInteractionViewBuilder::ToString(Attacker))
+			{
+				OpponentCard = OpponentCard != nullptr ? OpponentCard : Card;
+			}
+		}
+
+		TestTrue(TEXT("Runner authority options project one-to-one to Pitch cards"),
+			RunnerView.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::AwaitingRunner
+				&& RunnerView.InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::SelectRunner
+				&& RunnerView.ExpectedActingPlayer == Attacker
+				&& !LegalRunnerIds.IsEmpty()
+				&& ProjectedRunnerIds.Num() == LegalRunnerIds.Num()
+				&& ProjectedRunnerIds.Includes(LegalRunnerIds));
+		TestNotNull(TEXT("A legal no-Tactical-Match Runner remains selectable"),
+			LegalNoTacticalMatchCard);
+		TestNotNull(TEXT("Frozen Carrier remains blocked as Runner"), CarrierCard);
+		TestNotNull(TEXT("Opponent remains blocked as Runner"), OpponentCard);
+		TestNotNull(TEXT("Empty slot exists for Runner path isolation"), EmptySlot);
+		if (LegalNoTacticalMatchCard == nullptr || CarrierCard == nullptr
+			|| OpponentCard == nullptr || EmptySlot == nullptr)
+		{
+			return false;
+		}
+
+		const UTextBlock* RunnerTitle = Cast<UTextBlock>(
+			Panel->GetWidgetFromName(TEXT("InteractionActionTitle")));
+		const UTextBlock* RunnerContext = Cast<UTextBlock>(
+			Panel->GetWidgetFromName(TEXT("InteractionActionContext")));
+		const UButton* DeclineButton = Cast<UButton>(
+			Panel->GetWidgetFromName(TEXT("InteractionDeclineButton")));
+		const UTextBlock* DeclineLabel = DeclineButton != nullptr
+			? Cast<UTextBlock>(DeclineButton->GetChildAt(0)) : nullptr;
+		TestTrue(TEXT("Runner Dock is compact, localized, and removes PlayerKey buttons"),
+			Panel->GetPresentation().bUseOnPitchPlayerSelection
+				&& Panel->GetPresentation().Category
+					== EFMCodexUMGInteractionCategory::SelectRunner
+				&& !Panel->GetPresentation().SelectionChoices.IsEmpty()
+				&& Panel->GetRenderedOptionWidgets().IsEmpty()
+				&& Panel->GetWidgetFromName(TEXT("InteractionCandidateRegion"))
+					->GetVisibility() == ESlateVisibility::Collapsed
+				&& RunnerTitle != nullptr
+				&& RunnerTitle->GetText().ToString()
+					== TEXT("\u9009\u62E9\u8DD1\u4F4D\u7403\u5458")
+				&& RunnerContext != nullptr
+				&& RunnerContext->GetText().ToString()
+					== TEXT("\u70B9\u51FB\u573A\u4E0A\u7403\u5458\u9009\u62E9")
+				&& DeclineButton != nullptr
+				&& DeclineButton->GetVisibility() == ESlateVisibility::Visible
+				&& DeclineLabel != nullptr
+				&& DeclineLabel->GetText().ToString()
+					== TEXT("\u653E\u5F03\u8DD1\u4F4D"));
+
+		LegalNoTacticalMatchCard->TakeWidget();
+		CarrierCard->TakeWidget();
+		OpponentCard->TakeWidget();
+		TestTrue(TEXT("Runner selectability is visual-neutral and Tactical Match independent"),
+			LegalNoTacticalMatchCard->IsSelectableForCurrentPrompt()
+				&& LegalNoTacticalMatchCard->GetPresentation()
+					.PitchMiniTacticalMatchCount == 0
+				&& LegalNoTacticalMatchCard->GetRenderTransform().Scale
+					.Equals(FVector2D(1.0f, 1.0f))
+				&& !CarrierCard->IsSelectableForCurrentPrompt()
+				&& !OpponentCard->IsSelectableForCurrentPrompt());
+		TestTrue(TEXT("Runner selection preserves normal Full Card hover"),
+			LegalNoTacticalMatchCard->RequestFullCardDetailHover()
+				&& Screen->IsDetailOverlayVisible()
+				&& Screen->GetDetailOverlayCard() != nullptr
+				&& Screen->GetDetailOverlayCard()->GetPresentation().CardId
+					== LegalNoTacticalMatchCard->GetPresentation().CardId);
+
+		UFMCodexSelectionFeedbackToastWidget* Toast =
+			Screen->GetSelectionFeedbackToast();
+		const TArray<uint8> BeforeBlockedClicks =
+			SerializeState(Host->GetMatchSnapshot().Snapshot);
+		TestTrue(TEXT("Frozen Carrier exposes canonical Runner feedback without submit"),
+			Toast != nullptr
+				&& CarrierCard->GetSelectionFeedbackReason()
+					== EFMCodexUMGSelectionFeedbackReason::RunnerMatchesCarrier
+				&& CarrierCard->RequestSelectionFeedback());
+		TestTrue(TEXT("Runner feedback is exact and authority-safe"),
+			BeforeBlockedClicks == SerializeState(Host->GetMatchSnapshot().Snapshot)
+				&& Controller->GetInteractionView().InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::SelectRunner
+				&& Toast->GetDisplayedText().ToString()
+					== TEXT("\u8DD1\u4F4D\u7403\u5458\u4E0D\u80FD\u4E0E\u6301\u7403\u7403\u5458\u76F8\u540C"));
+		TestFalse(TEXT("Opponent Pitch card cannot emit Runner intent"),
+			OpponentCard->RequestOnPitchSelection());
+		TestTrue(TEXT("Empty slot and non-candidate clicks do not mutate authority"),
+			BeforeBlockedClicks == SerializeState(Host->GetMatchSnapshot().Snapshot)
+				&& EmptySlot->GetCardWidget() == nullptr);
+
+		UFMCodexPlayerCardWidget* NonDeployedRackCard = nullptr;
+		for (UFMCodexPlayerCardWidget* RackCard
+			: Screen->GetLocalRackWidget()->GetRenderedCardWidgets())
+		{
+			if (RackCard != nullptr
+				&& !RackCard->GetPresentation().bDeployed)
+			{
+				NonDeployedRackCard = RackCard;
+				break;
+			}
+		}
+		TestNotNull(TEXT("A non-deployed Rack card exists"), NonDeployedRackCard);
+		if (NonDeployedRackCard == nullptr)
+		{
+			return false;
+		}
+		TestFalse(TEXT("Non-deployed Rack card has no Runner on-pitch path"),
+			NonDeployedRackCard->RequestOnPitchSelection());
+
+		const FName RunnerId =
+			LegalNoTacticalMatchCard->GetOnPitchSelectionOptionId();
+		TestTrue(TEXT("One click submits a structurally legal poor tactical Runner"),
+			LegalNoTacticalMatchCard->RequestOnPitchSelection());
+		Controller->RefreshPresentation();
+		TestTrue(TEXT("Runner click commits immediately and advances to Helper"),
+			Controller->GetLastDiagnostic().bHostSuccess
+				&& Controller->GetLastDiagnostic().CommandName == TEXT("SubmitRunner")
+				&& Controller->GetInteractionView().InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::SelectHelper
+				&& Host->GetMatchSnapshot().Snapshot.CurrentAttack.ActionPreparation
+					.RunnerCardId == RunnerId);
+
+		bool bCarrierRolePreserved = false;
+		bool bRunnerRoleProjected = false;
+		for (const FFMCodexUMGPitchRegionViewModel& Region
+			: Screen->GetPresentation().PitchRegions)
+		{
+			for (const FFMCodexUMGPitchSlotViewModel& Slot : Region.Slots)
+			{
+				bCarrierRolePreserved |= Slot.bOccupied
+					&& Slot.Card.CardId == CarrierId
+					&& Slot.Card.SelectedRole == EFMCodexUMGSelectedRole::Carrier
+					&& Slot.Card.SelectedRoleLabel == TEXT("\u6301\u7403");
+				bRunnerRoleProjected |= Slot.bOccupied
+					&& Slot.Card.CardId == RunnerId
+					&& Slot.Card.SelectedRole == EFMCodexUMGSelectedRole::Runner
+					&& Slot.Card.SelectedRoleLabel == TEXT("\u8DD1\u4F4D");
+			}
+		}
+		TestTrue(TEXT("Runner 跑位 and Carrier 持球 roles project together"),
+			bCarrierRolePreserved && bRunnerRoleProjected);
+		Panel->TakeWidget();
+		TestTrue(TEXT("Helper rollout remains untouched"),
+			!Panel->GetPresentation().bUseOnPitchPlayerSelection
+				&& !Panel->GetRenderedOptionWidgets().IsEmpty());
+	}
+
+	{
+		FScopedPlayableWorld DeclineWorld;
+		AFMCodexLocalMatchPlayerController* Controller =
+			DeclineWorld.GetController();
+		if (Controller == nullptr)
+		{
+			AddError(TEXT("Runner decline world did not initialize"));
+			return false;
+		}
+		Controller->InitializePlayerFacingUI();
+		UFMCodexLocalMatchScreenWidget* Screen =
+			Controller->GetPlayerMatchScreen();
+		if (Screen == nullptr)
+		{
+			AddError(TEXT("Runner decline Screen did not initialize"));
+			return false;
+		}
+		Screen->TakeWidget();
+		Screen->RequestStartNewMatch();
+		Screen->RequestRollTacticalPoints();
+		const EInitialTurnOrderPlayer Attacker =
+			Controller->GetInteractionView().CurrentAttackingPlayer;
+		const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
+		if (!DeployParticipants(*this, *Controller, CrossFamily, Attacker))
+		{
+			return false;
+		}
+		Controller->SubmitCarrier(FamilyCardId(CrossFamily, Attacker));
+		const FName MarkerId =
+			Controller->GetInteractionView().SelectionOptions.IsEmpty()
+				? NAME_None
+				: Controller->GetInteractionView().SelectionOptions[0].Id;
+		Controller->SubmitMarker(MarkerId);
+		Controller->SubmitSkill(FName(CrossFamily.SkillId));
+		if (Controller->GetInteractionView().InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectRunner)
+		{
+			AddError(TEXT("Runner decline setup did not reach SelectRunner"));
+			return false;
+		}
+		Screen->RequestDeclineSelection();
+		TestTrue(TEXT("Localized Runner decline preserves the typed authority route"),
+			Controller->GetLastDiagnostic().bHostSuccess
+				&& Controller->GetLastDiagnostic().CommandName
+					== TEXT("DeclineRunner")
+				&& Controller->GetInteractionView().InteractionCategory
+					!= EFMCodexLocalMatchInteractionCategory::SelectRunner);
+	}
+
+	return true;
+}
+
 #endif

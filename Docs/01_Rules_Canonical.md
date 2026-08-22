@@ -410,6 +410,8 @@ LocalPlay 的“选择盯人球员”交互同样采用场上直选，但结构�
 
 当前进攻中已选定的四种参与角色统一以单值语义投影到场上球员：Carrier=`持球`、Runner=`跑位`、Marker=`盯人`、Helper=`协防`。每名球员最多显示一个角色标签；角色来源只能是当前权威 `CurrentAttack.ActionPreparation`，或在动作冻结后来自 `CurrentAttack.SelectedAction`，不得由 Widget、点击历史或动画状态推断。标签在后续选择与结算阶段继续保留，并在 `CurrentAttack` 清除时一并清除。此标签只表达已选定角色，不扩大 Runner/Helper 的场上选择能力。
 
+LocalPlay 的“选择跑位球员”交互采用场上直选，但 Runner 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackRunnerSelectionAvailability`。候选只能是当前进攻方唯一部署的非门将球员，且不得与已冻结 Carrier 相同；Pass Control 要求 Midfield 位置，Cross 要求 Attack 位置，Through Ball 还要求候选处于进攻方相对 Forward 区域。Presentation 只按稳定 `CardId/RelatedCardId` 投影权威合法候选，不得依据 Tactical Match、TP、属性或战术优劣重算。单击合法 Pitch Mini 立即提交既有 Runner 命令并进入下一权威步骤，Full Card hover 保留，无二次确认或取消；底部不显示 PlayerKey 候选按钮，但保留既有 DeclineRunner 行为，玩家文案为 `放弃跑位`。Helper 仍使用既有选择合同。
+
 Marker 候选若由权威合法性结果以 `MarkerNotInCarrierPhysicalArea` 拒绝，LocalPlay 可在玩家单击对应已部署非门将球员时显示非模态提示 `盯人球员必须与持球球员位于同一半区`。该提示不提交命令、不改变权威状态，约两秒后自动消失；重复触发重启计时。空槽与背景点击不产生该提示，提示层不得阻塞 Pitch Mini 或 Full Card hover。UMG 只能消费投影的拒绝原因，不得自行比较视觉槽位或 physical area。
 
 ### 9.3 无合法球员处理

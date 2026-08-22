@@ -144,7 +144,11 @@ struct FMCODEX_API FFMCodexLocalMatchSelectionOption
 enum class EFMCodexLocalMatchSelectionFeedbackReason : uint8
 {
 	None,
-	MarkerWrongPhysicalArea
+	MarkerWrongPhysicalArea,
+	RunnerIsGoalkeeper,
+	RunnerMatchesCarrier,
+	RunnerMissingRequiredPositionType,
+	RunnerNotInAttackingForwardArea
 };
 
 struct FMCODEX_API FFMCodexLocalMatchSelectionFeedbackCandidate

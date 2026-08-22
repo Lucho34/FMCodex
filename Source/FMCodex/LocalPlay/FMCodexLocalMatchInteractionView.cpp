@@ -775,6 +775,40 @@ namespace FMCodexLocalMatchInteractionView
 						Candidate.RunnerCardId,
 						Candidate.RunnerCardId);
 				}
+				else
+				{
+					EFMCodexLocalMatchSelectionFeedbackReason FeedbackReason =
+						EFMCodexLocalMatchSelectionFeedbackReason::None;
+					switch (Candidate.LegalityResult.ErrorCode)
+					{
+					case EMatchPlayCurrentAttackRunnerSelectionErrorCode::RunnerIsGoalkeeper:
+						FeedbackReason = EFMCodexLocalMatchSelectionFeedbackReason::
+							RunnerIsGoalkeeper;
+						break;
+					case EMatchPlayCurrentAttackRunnerSelectionErrorCode::RunnerMatchesCarrier:
+						FeedbackReason = EFMCodexLocalMatchSelectionFeedbackReason::
+							RunnerMatchesCarrier;
+						break;
+					case EMatchPlayCurrentAttackRunnerSelectionErrorCode::
+						RunnerMissingRequiredPositionType:
+						FeedbackReason = EFMCodexLocalMatchSelectionFeedbackReason::
+							RunnerMissingRequiredPositionType;
+						break;
+					case EMatchPlayCurrentAttackRunnerSelectionErrorCode::
+						RunnerNotInAttackingForwardArea:
+						FeedbackReason = EFMCodexLocalMatchSelectionFeedbackReason::
+							RunnerNotInAttackingForwardArea;
+						break;
+					default:
+						break;
+					}
+					if (FeedbackReason !=
+						EFMCodexLocalMatchSelectionFeedbackReason::None)
+					{
+						View.SelectionFeedbackCandidates.Add({
+							Candidate.RunnerCardId, FeedbackReason });
+					}
+				}
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
 				&& !Availability.bCanSelectAnyRunner;

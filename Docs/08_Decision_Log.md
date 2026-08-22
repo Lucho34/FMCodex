@@ -432,6 +432,16 @@
 - 术语合同：玩家可见角色和动作统一使用 `盯人 / 选择盯人球员 / 放弃盯人`；内部 `Marker` 标识、错误码、命令和权威效果不重命名。球员属性 `盯防` 不属于本次 Marker 角色术语修正。
 - 范围：不修改 CoreRules authority、RNG、骰子、公式、Resolution、Header、Pitch/Slot 几何、Tactical Match、Full Card 或 artwork；不实施 Runner/Helper 场上直选。
 
+### CD-040 - Attacking Runner On-Pitch Selection
+
+- 日期：2026-08-22
+- 精确范围：只迁移生产 `AwaitingRunner -> SelectRunner -> SubmitRunner`。Helper 与其他选择阶段继续使用原合同。
+- 权威来源：Runner 候选完全来自 `FMatchPlayCurrentAttackRunnerSelectionAvailability`。候选属于当前进攻方、已唯一部署、非门将且不同于冻结 Carrier；Pass Control/Cross/Through Ball 各自既有 position/relative-zone 约束保持不变。Tactical Match、TP、属性与战术优劣不构成门禁。
+- 输入合同：Presentation 按稳定 `RelatedCardId/CardId` 为权威合法候选附着显式 `SubmitRunner` intent。单击经 Slot、Pitch、Screen 进入既有 Controller/Host/Session Runner 路由；Screen 只接受当前 DTO 仍投影的候选。
+- 玩家界面：Runner 状态隐藏旧 PlayerKey 按钮，保留 Full Card hover、单击立即提交、现有 `跑位` Role Tag 与 DeclineRunner 行为。玩家文案为 `选择跑位球员 / 放弃跑位 / 跑位`，不新增选前视觉标记、确认或取消。
+- 反馈合同：InteractionView 可把 Availability 已给出的 Runner canonical 结构拒绝原因映射到既有 Selection Feedback reason；UMG 只显示集中本地化文本，不推导合法性，也不新建 Runner Toast。
+- 范围：不修改 CoreRules authority、RNG、骰子、公式、Resolution、Header、Tracker、TP、Pitch 几何、Full Card、Hand Micro 或 artwork；不实施 Helper 场上直选。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

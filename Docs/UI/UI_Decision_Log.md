@@ -431,3 +431,12 @@ This log records approved player-facing UI decisions separately from gameplay ca
 - A reusable lower-center Toast sits above the operation dock. It is hit-test-invisible, has no acknowledgement control or dimming, auto-dismisses after roughly two seconds and restarts its timer on repetition.
 - The first feedback reason is only Marker wrong physical area, projected from the canonical legality result and localized as `盯人球员必须与持球球员位于同一半区`. Empty/background clicks remain silent; hover Full Card and legal one-click Marker submit remain available while the Toast is shown.
 - Player-facing Marker vocabulary is now `盯人 / 选择盯人球员 / 放弃盯人`. Internal Marker identifiers and the separate player attribute label `盯防` remain unchanged.
+
+## 2026-08-22 — Attacking Runner on-pitch selection rollout
+
+- `SelectRunner` joins the accepted Carrier/Marker deployed-player interaction model. Existing authoritative Runner options are projected to occupied attacking Pitch Slots by stable CardId and explicit `SubmitRunner` intent; widgets do not infer legality from Tactical Match, TP, attributes, visual position or tactical quality.
+- Runner retains its distinct canonical restrictions: current attacker, unique deployment, non-goalkeeper, different from frozen Carrier, plus the existing action-specific position/relative-zone requirement. A structurally legal player without Tactical Match remains clickable.
+- The old Runner PlayerKey buttons are collapsed. The compact dock retains the acting player, one localized `选择跑位球员` title, `点击场上球员选择`, and `放弃跑位` backed by the unchanged DeclineRunner route.
+- Full Card hover and one-click commit coexist with no Runner-specific outline, glow, lift, scale, dimming, confirmation or cancel. Successful authority projection reuses the existing `跑位` role badge while retaining Carrier `持球`.
+- Canonical Runner rejection reasons may use the existing hit-test-invisible Selection Feedback Toast through bounded DTO reasons; UMG does not calculate them and no Runner-specific feedback widget is introduced.
+- Helper remains on its existing bottom-choice flow. Header, Tracker, TP, Pitch geometry, Tactical Match visuals, Full Card, Hand Micro, formulas, Resolution and artwork remain frozen.

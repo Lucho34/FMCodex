@@ -382,3 +382,16 @@
 - 空槽和场地背景不触发 Toast；UMG 不按槽位位置重新判断半区，也不为本 Stage 未定义的其他拒绝原因编造玩家文案。
 - 本 Stage 不启用 Runner/Helper 场上直选，不修改 Authority、RNG、公式、Resolution 流程、Header、Pitch 几何或卡面资产。
 
+## LocalPlay 进攻方跑位球员场上直选（Stage 6.13.1.4.6）
+
+应验证：
+
+- 精确目标是 `CurrentAttack.SelectionStage=AwaitingRunner` 对应的 `InteractionCategory=SelectRunner`；合法候选继续来自 `FMatchPlayCurrentAttackRunnerSelectionAvailability`，UMG 不根据 Tactical Match、TP、属性、卡面或视觉位置重算。
+- 权威合法 Runner 的稳定 `Id/RelatedCardId` 一对一投影为对应已占用 Pitch Slot 的 `bSelectableForCurrentPrompt / OnPitchSelectionOptionId / SubmitRunner`。候选属于当前进攻方、唯一部署、非门将且不同于冻结 Carrier，并保留各动作类型既有位置/相对区域限制。
+- 无 Tactical Match 但结构合法的 Runner 仍可单击提交；Tactical Match pips 不构成硬门禁。对方球员、空槽、未部署 Rack 卡及有明确 canonical Runner 拒绝原因的本方对象不得提交，拒绝后权威 State 不变。
+- Runner 状态不渲染旧 PlayerKey 按钮或 canonical ID；底部保留操作方、唯一 `选择跑位球员`、`点击场上球员选择` 与 `放弃跑位`。Decline 继续进入既有 DeclineRunner 权威路径。
+- 单击合法 Pitch Mini 立即提交且进入下一权威阶段，无确认、取消或返回；正常 Full Card hover 不被抑制，不新增 outline、glow、lift、scale 或全场 dimming。
+- 成功提交后 Runner 显示既有 `跑位` 标签，Carrier 的 `持球` 保留；Marker/Helper 角色投影保持不变。
+- 若 Availability 提供玩家可理解的真实结构拒绝原因，只能由 InteractionView 映射到既有非模态 Selection Feedback Toast；空槽/背景不显示 Toast，Widget 不推导原因。
+- Helper 场上直选仍未启用，`SelectHelper` 继续显示其既有候选按钮与 typed command 路径。
+

@@ -160,10 +160,45 @@ namespace FMCodexLocalMatchUMGPresentation
 	EFMCodexUMGSelectionFeedbackReason SelectionFeedbackReason(
 		const EFMCodexLocalMatchSelectionFeedbackReason Reason)
 	{
-		return Reason ==
-			EFMCodexLocalMatchSelectionFeedbackReason::MarkerWrongPhysicalArea
-				? EFMCodexUMGSelectionFeedbackReason::MarkerWrongPhysicalArea
-				: EFMCodexUMGSelectionFeedbackReason::None;
+		switch (Reason)
+		{
+		case EFMCodexLocalMatchSelectionFeedbackReason::MarkerWrongPhysicalArea:
+			return EFMCodexUMGSelectionFeedbackReason::MarkerWrongPhysicalArea;
+		case EFMCodexLocalMatchSelectionFeedbackReason::RunnerIsGoalkeeper:
+			return EFMCodexUMGSelectionFeedbackReason::RunnerIsGoalkeeper;
+		case EFMCodexLocalMatchSelectionFeedbackReason::RunnerMatchesCarrier:
+			return EFMCodexUMGSelectionFeedbackReason::RunnerMatchesCarrier;
+		case EFMCodexLocalMatchSelectionFeedbackReason::
+			RunnerMissingRequiredPositionType:
+			return EFMCodexUMGSelectionFeedbackReason::
+				RunnerMissingRequiredPositionType;
+		case EFMCodexLocalMatchSelectionFeedbackReason::
+			RunnerNotInAttackingForwardArea:
+			return EFMCodexUMGSelectionFeedbackReason::
+				RunnerNotInAttackingForwardArea;
+		default:
+			return EFMCodexUMGSelectionFeedbackReason::None;
+		}
+	}
+
+	FString SelectionFeedbackReasonKey(
+		const EFMCodexUMGSelectionFeedbackReason Reason)
+	{
+		switch (Reason)
+		{
+		case EFMCodexUMGSelectionFeedbackReason::MarkerWrongPhysicalArea:
+			return TEXT("MarkerWrongPhysicalArea");
+		case EFMCodexUMGSelectionFeedbackReason::RunnerIsGoalkeeper:
+			return TEXT("RunnerIsGoalkeeper");
+		case EFMCodexUMGSelectionFeedbackReason::RunnerMatchesCarrier:
+			return TEXT("RunnerMatchesCarrier");
+		case EFMCodexUMGSelectionFeedbackReason::RunnerMissingRequiredPositionType:
+			return TEXT("RunnerMissingRequiredPositionType");
+		case EFMCodexUMGSelectionFeedbackReason::RunnerNotInAttackingForwardArea:
+			return TEXT("RunnerNotInAttackingForwardArea");
+		default:
+			return FString();
+		}
 	}
 
 	EInitialTurnOrderPlayer OtherSide(const EInitialTurnOrderPlayer Side)
@@ -476,15 +511,20 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::SelectCarrier
 		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::SelectMarker;
+			== EFMCodexLocalMatchInteractionCategory::SelectMarker
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectRunner;
 	const EFMCodexUMGOnPitchSelectionIntent OnPitchSelectionIntent =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::SelectCarrier
 				? EFMCodexUMGOnPitchSelectionIntent::SubmitCarrier
-				: InteractionView.InteractionCategory
-					== EFMCodexLocalMatchInteractionCategory::SelectMarker
-						? EFMCodexUMGOnPitchSelectionIntent::SubmitMarker
-						: EFMCodexUMGOnPitchSelectionIntent::None;
+					: InteractionView.InteractionCategory
+						== EFMCodexLocalMatchInteractionCategory::SelectMarker
+							? EFMCodexUMGOnPitchSelectionIntent::SubmitMarker
+							: InteractionView.InteractionCategory
+								== EFMCodexLocalMatchInteractionCategory::SelectRunner
+									? EFMCodexUMGOnPitchSelectionIntent::SubmitRunner
+									: EFMCodexUMGOnPitchSelectionIntent::None;
 	const FFMCodexLocalMatchScreenPresentation Screen =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 			InteractionView);
@@ -720,12 +760,13 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				{
 					SlotResult.SelectionFeedbackReason = SelectionFeedbackReason(
 						FeedbackCandidate->Reason);
-					if (SlotResult.SelectionFeedbackReason ==
-						EFMCodexUMGSelectionFeedbackReason::MarkerWrongPhysicalArea)
+					if (SlotResult.SelectionFeedbackReason !=
+						EFMCodexUMGSelectionFeedbackReason::None)
 					{
 						SlotResult.SelectionFeedbackLabel =
 							FFMCodexPlayerUIPresentationText::SelectionFeedback(
-								TEXT("MarkerWrongPhysicalArea")).ToString();
+								SelectionFeedbackReasonKey(
+									SlotResult.SelectionFeedbackReason)).ToString();
 					}
 				}
 			}

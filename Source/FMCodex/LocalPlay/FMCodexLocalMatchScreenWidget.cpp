@@ -139,13 +139,15 @@ void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 	{
 		PitchWidget->EndDeploymentDrag();
 	}
-	const bool bLeavingMarkerSelection =
+	const bool bLeavingFeedbackSelection =
 		Presentation.Interaction.Category
-			== EFMCodexUMGInteractionCategory::SelectMarker
-		&& InPresentation.Interaction.Category
-			!= EFMCodexUMGInteractionCategory::SelectMarker;
+			!= InPresentation.Interaction.Category
+		&& (Presentation.Interaction.Category
+				== EFMCodexUMGInteractionCategory::SelectMarker
+			|| Presentation.Interaction.Category
+				== EFMCodexUMGInteractionCategory::SelectRunner);
 	Presentation = InPresentation;
-	if (bLeavingMarkerSelection && SelectionFeedbackToast != nullptr)
+	if (bLeavingFeedbackSelection && SelectionFeedbackToast != nullptr)
 	{
 		SelectionFeedbackToast->DismissFeedback();
 	}
@@ -502,8 +504,13 @@ void UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested(
 		Presentation.Interaction.Category
 			== EFMCodexUMGInteractionCategory::SelectMarker
 		&& Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitMarker;
+	const bool bMatchesRunnerPrompt =
+		Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectRunner
+		&& Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitRunner;
 	if (!Presentation.Interaction.bUseOnPitchPlayerSelection
-		|| (!bMatchesCarrierPrompt && !bMatchesMarkerPrompt)
+		|| (!bMatchesCarrierPrompt && !bMatchesMarkerPrompt
+			&& !bMatchesRunnerPrompt)
 		|| OptionId.IsNone())
 	{
 		return;
@@ -534,14 +541,20 @@ void UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested(
 		{
 			RequestSubmitMarker(OptionId);
 		}
+		else if (Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitRunner)
+		{
+			RequestSubmitRunner(OptionId);
+		}
 	}
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleSelectionFeedbackRequested(
 	const FName CardId)
 {
-	if (Presentation.Interaction.Category
+	if ((Presentation.Interaction.Category
 			!= EFMCodexUMGInteractionCategory::SelectMarker
+		&& Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectRunner)
 		|| SelectionFeedbackToast == nullptr || CardId.IsNone())
 	{
 		return;

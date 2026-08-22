@@ -113,7 +113,8 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("Select Marker")) return LOCTEXT("SelectMarker", "\u9009\u62E9\u76EF\u4EBA\u7403\u5458");
 	if (CanonicalLabel == TEXT("DECLINE MARKER") || CanonicalLabel == TEXT("Decline Marker")) return LOCTEXT("DeclineMarker", "\u653E\u5F03\u76EF\u4EBA");
 	if (CanonicalLabel == TEXT("Choose Skill") || CanonicalLabel == TEXT("Select Skill")) return LOCTEXT("ChooseSkill", "\u9009\u62E9\u6280\u80FD");
-	if (CanonicalLabel == TEXT("Select Runner")) return LOCTEXT("SelectRunner", "\u9009\u62E9\u524D\u63D2\u7403\u5458");
+	if (CanonicalLabel == TEXT("Select Runner")) return LOCTEXT("SelectRunner", "\u9009\u62E9\u8DD1\u4F4D\u7403\u5458");
+	if (CanonicalLabel == TEXT("DECLINE RUNNER") || CanonicalLabel == TEXT("Decline Runner")) return LOCTEXT("DeclineRunner", "\u653E\u5F03\u8DD1\u4F4D");
 	if (CanonicalLabel == TEXT("Select Helper")) return LOCTEXT("SelectHelper", "\u9009\u62E9\u63A5\u5E94\u7403\u5458");
 	if (CanonicalLabel == TEXT("Choose Cross Type")) return LOCTEXT("ChooseCrossType", "\u9009\u62E9\u4F20\u4E2D\u65B9\u5F0F");
 	if (CanonicalLabel == TEXT("Choose Shot Type")) return LOCTEXT("ChooseShotType", "\u9009\u62E9\u5C04\u95E8\u65B9\u5F0F");
@@ -158,6 +159,26 @@ FText FFMCodexPlayerUIPresentationText::SelectionFeedback(
 	{
 		return LOCTEXT("MarkerWrongPhysicalArea",
 			"\u76EF\u4EBA\u7403\u5458\u5FC5\u987B\u4E0E\u6301\u7403\u7403\u5458\u4F4D\u4E8E\u540C\u4E00\u534A\u533A");
+	}
+	if (CanonicalReason == TEXT("RunnerIsGoalkeeper"))
+	{
+		return LOCTEXT("RunnerIsGoalkeeper",
+			"\u95E8\u5C06\u4E0D\u80FD\u4F5C\u4E3A\u8DD1\u4F4D\u7403\u5458");
+	}
+	if (CanonicalReason == TEXT("RunnerMatchesCarrier"))
+	{
+		return LOCTEXT("RunnerMatchesCarrier",
+			"\u8DD1\u4F4D\u7403\u5458\u4E0D\u80FD\u4E0E\u6301\u7403\u7403\u5458\u76F8\u540C");
+	}
+	if (CanonicalReason == TEXT("RunnerMissingRequiredPositionType"))
+	{
+		return LOCTEXT("RunnerMissingRequiredPositionType",
+			"\u8BE5\u7403\u5458\u4E0D\u7B26\u5408\u5F53\u524D\u8DD1\u4F4D\u4F4D\u7F6E\u8981\u6C42");
+	}
+	if (CanonicalReason == TEXT("RunnerNotInAttackingForwardArea"))
+	{
+		return LOCTEXT("RunnerNotInAttackingForwardArea",
+			"\u8DD1\u4F4D\u7403\u5458\u5FC5\u987B\u4F4D\u4E8E\u8FDB\u653B\u524D\u573A");
 	}
 	return FText::GetEmpty();
 }
