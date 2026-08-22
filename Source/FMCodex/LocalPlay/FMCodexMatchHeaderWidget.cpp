@@ -409,7 +409,8 @@ void UFMCodexMatchHeaderWidget::RefreshVisuals()
 					Presentation.CurrentAttackerMaxAttackTurns)
 				: FText::GetEmpty());
 	CurrentMatchPhaseText->SetText(Presentation.bMatchEnded
-		? FText::FromString(Presentation.MatchResultLabel)
+		? FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+			Presentation.MatchResultLabel)
 		: Presentation.bTacticalPointRollReady
 			? FFMCodexPlayerUIPresentationText::WaitingForTacticalPointRoll()
 			: Presentation.bAttackActive
@@ -450,7 +451,9 @@ void UFMCodexMatchHeaderWidget::RefreshVisuals()
 	ActorStatusRegion->SetRenderOpacity(
 		Presentation.bHasCurrentAttacker && Presentation.bCurrentAttackerOnLeft
 			? 0.62f : 1.0f);
-	FinalResultText->SetText(FText::FromString(Presentation.MatchResultLabel));
+	FinalResultText->SetText(
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+			Presentation.MatchResultLabel));
 	FinalResultRegion->SetVisibility(Presentation.bMatchEnded
 		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }

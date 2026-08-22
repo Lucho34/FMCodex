@@ -440,3 +440,12 @@ This log records approved player-facing UI decisions separately from gameplay ca
 - Full Card hover and one-click commit coexist with no Runner-specific outline, glow, lift, scale, dimming, confirmation or cancel. Successful authority projection reuses the existing `跑位` role badge while retaining Carrier `持球`.
 - Canonical Runner rejection reasons may use the existing hit-test-invisible Selection Feedback Toast through bounded DTO reasons; UMG does not calculate them and no Runner-specific feedback widget is introduced.
 - Helper remains on its existing bottom-choice flow. Header, Tracker, TP, Pitch geometry, Tactical Match visuals, Full Card, Hand Micro, formulas, Resolution and artwork remain frozen.
+
+## 2026-08-22 — Defensive Helper on-pitch selection and Match Flow Chinese cleanup
+
+- `SelectHelper` completes the four-role deployed-player interaction rollout. Authoritative Helper options project to occupied defending Pitch Slots by stable CardId and explicit `SubmitHelper`; normal Full Card hover and one-click commit remain visual-neutral and Tactical Match-independent.
+- The canonical Marker conflict and goalkeeper rejection may reuse the one existing non-modal Selection Feedback Toast. The Marker-conflict copy is `该球员已被指定为盯人球员，请选择其他协防球员`; UMG never derives this from the visible `盯人` badge.
+- The Helper dock contains acting player, one `选择协防球员` title, `点击场上球员选择`, and `放弃协防`; raw PlayerKey buttons and `选择接应球员 / DECLINE HELPER` are removed from player presentation.
+- Normal Match Flow uses `战术` rather than `技能`: `选择战术`, `不使用战术`, and centralized tactical option names `控球推进 / 传中 / 直塞 / 内切 / 远射`. Stable SkillId and gameplay naming remain unchanged.
+- Production decline/no-legal, branch/one-on-one options, bounded empty states and final Header results use centralized Chinese display mapping. The no-legal Marker action remains the same typed operation and displays `无可用盯人球员，继续结算`.
+- Position abbreviations and developer-only identifiers/logs are explicitly excluded. No formula, narrative, Header layout, Pitch geometry, card surface, Role Tag visual or artwork redesign is authorized.

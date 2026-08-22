@@ -395,3 +395,16 @@
 - 若 Availability 提供玩家可理解的真实结构拒绝原因，只能由 InteractionView 映射到既有非模态 Selection Feedback Toast；空槽/背景不显示 Toast，Widget 不推导原因。
 - Helper 场上直选仍未启用，`SelectHelper` 继续显示其既有候选按钮与 typed command 路径。
 
+## LocalPlay 防守方协防球员场上直选与 Match Flow 本地化（Stage 6.13.1.4.6A）
+
+应验证：
+
+- `AwaitingHelper / SelectHelper` 的合法集合继续来自 `FMatchPlayCurrentAttackHelperSelectionAvailability`，并一对一投影稳定 `Id/RelatedCardId/CardId` 与显式 `SubmitHelper`。合法候选属于当前防守方、唯一部署、非门将且不同于冻结 Marker。
+- 无 Tactical Match 但结构合法的防守球员仍可单击一次立即提交；正常 Full Card hover 保留，不新增 selection outline、glow、lift、scale、dimming、确认或取消。
+- Helper 状态底部不渲染 PlayerKey 选项；显示 `选择协防球员 / 点击场上球员选择 / 放弃协防`。Decline 继续调用既有 DeclineHelper 路径。
+- 单击冻结 Marker 不提交 Helper、保持 `SelectHelper` 且 Match State byte-identical，并由 canonical `HelperMatchesMarker` 显示 `该球员已被指定为盯人球员，请选择其他协防球员`；Toast 不阻塞 Full Card hover，随后合法 Helper 仍可立即提交。
+- 成功提交后 Helper 显示既有 `协防` 标签，Carrier/Runner/Marker 标签不变，每名球员仍最多一个角色。
+- Match Flow 的 `Choose/Select Skill` 玩家术语显示为 `选择战术`，DeclineSkill 显示 `不使用战术`；Pass Control、Cross、Through Ball、Cut Inside、Long Shot 选项分别显示 `控球推进 / 传中 / 直塞 / 内切 / 远射`，不得暴露 `Canonical.Skill.*`、触发范围或英文括注。
+- `RESOLVE NO LEGAL MARKER` 的既有 typed no-legal 行为不变，玩家可见按钮为 `无可用盯人球员，继续结算`；其他当前生产选人 no-legal/decline 按钮也不得泄漏 `DECLINE ...` 或 `RESOLVE NO LEGAL ...`。
+- 正常生产 Match Flow 的战术、分支、单刀选择、结束/空状态及 Header 终局结果使用集中中文映射；`GK / D / M / A / A/M / M/D` 等已批准位置缩写不属于失败。
+

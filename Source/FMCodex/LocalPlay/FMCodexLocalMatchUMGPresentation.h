@@ -124,7 +124,8 @@ enum class EFMCodexUMGOnPitchSelectionIntent : uint8
 	None,
 	SubmitCarrier,
 	SubmitMarker,
-	SubmitRunner
+	SubmitRunner,
+	SubmitHelper
 };
 
 /** Exactly one optional current-attack role may be attached to a Pitch Mini. */
@@ -147,7 +148,9 @@ enum class EFMCodexUMGSelectionFeedbackReason : uint8
 	RunnerIsGoalkeeper,
 	RunnerMatchesCarrier,
 	RunnerMissingRequiredPositionType,
-	RunnerNotInAttackingForwardArea
+	RunnerNotInAttackingForwardArea,
+	HelperIsGoalkeeper,
+	HelperMatchesMarker
 };
 
 /** Presentation-only football landmark treatment for a physical Half. */

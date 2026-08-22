@@ -102,6 +102,7 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("MATCH IN PROGRESS")) return LOCTEXT("MatchInProgress", "\u6BD4\u8D5B\u8FDB\u884C\u4E2D");
 	if (CanonicalLabel == TEXT("READY TO PLAY")) return LOCTEXT("ReadyToPlay", "\u51C6\u5907\u5F00\u59CB");
 	if (CanonicalLabel == TEXT("Start a Local Match") || CanonicalLabel == TEXT("START LOCAL MATCH")) return LOCTEXT("StartLocalMatch", "\u5F00\u59CB\u672C\u5730\u5BF9\u6218");
+	if (CanonicalLabel == TEXT("Start Match")) return LOCTEXT("StartMatch", "\u5F00\u59CB\u6BD4\u8D5B");
 	if (CanonicalLabel == TEXT("Roll Tactical Points") || CanonicalLabel == TEXT("ROLL TACTICAL POINTS") || CanonicalLabel == TEXT("Tactical Point Roll")) return LOCTEXT("RollTacticalPoints", "\u63B7\u6218\u672F\u70B9");
 	if (CanonicalLabel == TEXT("Deployment")) return LOCTEXT("DeploymentPhase", "\u90E8\u7F72\u9636\u6BB5");
 	if (CanonicalLabel == TEXT("Selection")) return LOCTEXT("SelectionPhase", "\u9009\u62E9\u9636\u6BB5");
@@ -112,10 +113,12 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("Click a player on the pitch")) return LOCTEXT("ClickPitchPlayer", "\u70B9\u51FB\u573A\u4E0A\u7403\u5458\u9009\u62E9");
 	if (CanonicalLabel == TEXT("Select Marker")) return LOCTEXT("SelectMarker", "\u9009\u62E9\u76EF\u4EBA\u7403\u5458");
 	if (CanonicalLabel == TEXT("DECLINE MARKER") || CanonicalLabel == TEXT("Decline Marker")) return LOCTEXT("DeclineMarker", "\u653E\u5F03\u76EF\u4EBA");
-	if (CanonicalLabel == TEXT("Choose Skill") || CanonicalLabel == TEXT("Select Skill")) return LOCTEXT("ChooseSkill", "\u9009\u62E9\u6280\u80FD");
+	if (CanonicalLabel == TEXT("Choose Skill") || CanonicalLabel == TEXT("Select Skill")) return LOCTEXT("ChooseTactical", "\u9009\u62E9\u6218\u672F");
+	if (CanonicalLabel == TEXT("DECLINE SKILL") || CanonicalLabel == TEXT("Decline Skill")) return LOCTEXT("DeclineTactical", "\u4E0D\u4F7F\u7528\u6218\u672F");
 	if (CanonicalLabel == TEXT("Select Runner")) return LOCTEXT("SelectRunner", "\u9009\u62E9\u8DD1\u4F4D\u7403\u5458");
 	if (CanonicalLabel == TEXT("DECLINE RUNNER") || CanonicalLabel == TEXT("Decline Runner")) return LOCTEXT("DeclineRunner", "\u653E\u5F03\u8DD1\u4F4D");
-	if (CanonicalLabel == TEXT("Select Helper")) return LOCTEXT("SelectHelper", "\u9009\u62E9\u63A5\u5E94\u7403\u5458");
+	if (CanonicalLabel == TEXT("Select Helper")) return LOCTEXT("SelectHelper", "\u9009\u62E9\u534F\u9632\u7403\u5458");
+	if (CanonicalLabel == TEXT("DECLINE HELPER") || CanonicalLabel == TEXT("Decline Helper")) return LOCTEXT("DeclineHelper", "\u653E\u5F03\u534F\u9632");
 	if (CanonicalLabel == TEXT("Choose Cross Type")) return LOCTEXT("ChooseCrossType", "\u9009\u62E9\u4F20\u4E2D\u65B9\u5F0F");
 	if (CanonicalLabel == TEXT("Choose Shot Type")) return LOCTEXT("ChooseShotType", "\u9009\u62E9\u5C04\u95E8\u65B9\u5F0F");
 	if (CanonicalLabel == TEXT("Choose One-on-One Shot")) return LOCTEXT("ChooseOneOnOneShot", "\u9009\u62E9\u5355\u5200\u5C04\u95E8");
@@ -128,6 +131,21 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("CROSS TYPE")) return LOCTEXT("CrossType", "\u4F20\u4E2D\u65B9\u5F0F");
 	if (CanonicalLabel == TEXT("SHOT TYPE")) return LOCTEXT("ShotType", "\u5C04\u95E8\u65B9\u5F0F");
 	if (CanonicalLabel == TEXT("ONE-ON-ONE | CHOOSE SHOT")) return LOCTEXT("OneOnOneChooseShot", "\u5355\u5200\uFF5C\u9009\u62E9\u5C04\u95E8");
+	if (CanonicalLabel == TEXT("Direct Shot")) return LOCTEXT("DirectShot", "\u76F4\u63A5\u5C04\u95E8");
+	if (CanonicalLabel == TEXT("Dead Corner")) return LOCTEXT("DeadCorner", "\u5C04\u5411\u6B7B\u89D2");
+	if (CanonicalLabel == TEXT("Cross High")) return LOCTEXT("CrossHigh", "\u9AD8\u7403\u4F20\u4E2D");
+	if (CanonicalLabel == TEXT("Cross Low")) return LOCTEXT("CrossLow", "\u4F4E\u5E73\u7403\u4F20\u4E2D");
+	if (CanonicalLabel == TEXT("Chip Shot")) return LOCTEXT("ChipShot", "\u6311\u5C04");
+	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL CARRIER")) return LOCTEXT("NoLegalCarrier", "\u65E0\u53EF\u7528\u6301\u7403\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
+	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL MARKER")) return LOCTEXT("NoLegalMarker", "\u65E0\u53EF\u7528\u76EF\u4EBA\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
+	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL SKILL")) return LOCTEXT("NoLegalTactical", "\u65E0\u53EF\u7528\u6218\u672F\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
+	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL RUNNER")) return LOCTEXT("NoLegalRunner", "\u65E0\u53EF\u7528\u8DD1\u4F4D\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
+	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL HELPER")) return LOCTEXT("NoLegalHelper", "\u65E0\u53EF\u7528\u534F\u9632\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
+	if (CanonicalLabel == TEXT("MATCH COMPLETE | No gameplay progression is available.")) return LOCTEXT("MatchCompleteNoAction", "\u6BD4\u8D5B\u7ED3\u675F\uFF5C\u5F53\u524D\u65E0\u53EF\u7EE7\u7EED\u7684\u6BD4\u8D5B\u64CD\u4F5C");
+	if (CanonicalLabel == TEXT("ATTACK COMPLETE | Waiting for the next match state.")) return LOCTEXT("AttackCompleteWaiting", "\u8FDB\u653B\u7ED3\u675F\uFF5C\u7B49\u5F85\u4E0B\u4E00\u6BD4\u8D5B\u72B6\u6001");
+	if (CanonicalLabel == TEXT("Player A Win")) return LOCTEXT("PlayerAWin", "\u73A9\u5BB6 A \u83B7\u80DC");
+	if (CanonicalLabel == TEXT("Player B Win")) return LOCTEXT("PlayerBWin", "\u73A9\u5BB6 B \u83B7\u80DC");
+	if (CanonicalLabel == TEXT("Draw")) return LOCTEXT("MatchDraw", "\u5E73\u5C40");
 	if (CanonicalLabel == TEXT("Player A")) return LOCTEXT("PlayerA", "\u73A9\u5BB6 A");
 	if (CanonicalLabel == TEXT("Player B")) return LOCTEXT("PlayerB", "\u73A9\u5BB6 B");
 	if (CanonicalLabel == TEXT("PLAYER A TO ACT")) return LOCTEXT("PlayerAToAct", "\u8BF7\u73A9\u5BB6 A \u64CD\u4F5C");
@@ -179,6 +197,16 @@ FText FFMCodexPlayerUIPresentationText::SelectionFeedback(
 	{
 		return LOCTEXT("RunnerNotInAttackingForwardArea",
 			"\u8DD1\u4F4D\u7403\u5458\u5FC5\u987B\u4F4D\u4E8E\u8FDB\u653B\u524D\u573A");
+	}
+	if (CanonicalReason == TEXT("HelperIsGoalkeeper"))
+	{
+		return LOCTEXT("HelperIsGoalkeeper",
+			"\u95E8\u5C06\u4E0D\u80FD\u4F5C\u4E3A\u534F\u9632\u7403\u5458");
+	}
+	if (CanonicalReason == TEXT("HelperMatchesMarker"))
+	{
+		return LOCTEXT("HelperMatchesMarker",
+			"\u8BE5\u7403\u5458\u5DF2\u88AB\u6307\u5B9A\u4E3A\u76EF\u4EBA\u7403\u5458\uFF0C\u8BF7\u9009\u62E9\u5176\u4ED6\u534F\u9632\u7403\u5458");
 	}
 	return FText::GetEmpty();
 }

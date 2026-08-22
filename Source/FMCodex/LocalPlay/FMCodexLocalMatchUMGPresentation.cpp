@@ -176,6 +176,10 @@ namespace FMCodexLocalMatchUMGPresentation
 			RunnerNotInAttackingForwardArea:
 			return EFMCodexUMGSelectionFeedbackReason::
 				RunnerNotInAttackingForwardArea;
+		case EFMCodexLocalMatchSelectionFeedbackReason::HelperIsGoalkeeper:
+			return EFMCodexUMGSelectionFeedbackReason::HelperIsGoalkeeper;
+		case EFMCodexLocalMatchSelectionFeedbackReason::HelperMatchesMarker:
+			return EFMCodexUMGSelectionFeedbackReason::HelperMatchesMarker;
 		default:
 			return EFMCodexUMGSelectionFeedbackReason::None;
 		}
@@ -196,6 +200,10 @@ namespace FMCodexLocalMatchUMGPresentation
 			return TEXT("RunnerMissingRequiredPositionType");
 		case EFMCodexUMGSelectionFeedbackReason::RunnerNotInAttackingForwardArea:
 			return TEXT("RunnerNotInAttackingForwardArea");
+		case EFMCodexUMGSelectionFeedbackReason::HelperIsGoalkeeper:
+			return TEXT("HelperIsGoalkeeper");
+		case EFMCodexUMGSelectionFeedbackReason::HelperMatchesMarker:
+			return TEXT("HelperMatchesMarker");
 		default:
 			return FString();
 		}
@@ -308,19 +316,26 @@ namespace FMCodexLocalMatchUMGPresentation
 
 	FString BranchIntentLabel(const EMatchPlayElectiveBranchIntent Intent)
 	{
+		FString CanonicalLabel;
 		switch (Intent)
 		{
 		case EMatchPlayElectiveBranchIntent::DirectShot:
-			return TEXT("Direct Shot");
+			CanonicalLabel = TEXT("Direct Shot");
+			break;
 		case EMatchPlayElectiveBranchIntent::DeadCorner:
-			return TEXT("Dead Corner");
+			CanonicalLabel = TEXT("Dead Corner");
+			break;
 		case EMatchPlayElectiveBranchIntent::CrossHigh:
-			return TEXT("Cross High");
+			CanonicalLabel = TEXT("Cross High");
+			break;
 		case EMatchPlayElectiveBranchIntent::CrossLow:
-			return TEXT("Cross Low");
+			CanonicalLabel = TEXT("Cross Low");
+			break;
 		default:
-			return TEXT("Unknown Branch");
+			return FString();
 		}
+		return FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+			CanonicalLabel).ToString();
 	}
 
 	EFMCodexUMGInteractionCategory InteractionCategory(
@@ -513,7 +528,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::SelectMarker
 		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::SelectRunner;
+			== EFMCodexLocalMatchInteractionCategory::SelectRunner
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectHelper;
 	const EFMCodexUMGOnPitchSelectionIntent OnPitchSelectionIntent =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::SelectCarrier
@@ -524,7 +541,10 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 							: InteractionView.InteractionCategory
 								== EFMCodexLocalMatchInteractionCategory::SelectRunner
 									? EFMCodexUMGOnPitchSelectionIntent::SubmitRunner
-									: EFMCodexUMGOnPitchSelectionIntent::None;
+									: InteractionView.InteractionCategory
+										== EFMCodexLocalMatchInteractionCategory::SelectHelper
+											? EFMCodexUMGOnPitchSelectionIntent::SubmitHelper
+											: EFMCodexUMGOnPitchSelectionIntent::None;
 	const FFMCodexLocalMatchScreenPresentation Screen =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 			InteractionView);
@@ -788,8 +808,15 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		? TEXT("SYSTEM") : InteractionView.bHumanInteraction
 			? TEXT("HUMAN INPUT") : TEXT("INFORMATION");
 	Result.Interaction.CategoryLabel =
-		FFMCodexLocalMatchInteractionViewBuilder::ToString(
-			InteractionView.InteractionCategory);
+		(InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectSkill
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectBranchIntent
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
+				? FString()
+				: FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					InteractionView.InteractionCategory);
 	Result.Interaction.ExpectedActorLabel = Screen.ActingStatusLabel;
 	// Persistent Tactical Points are a Header fact. The Dock presentation does
 	// not duplicate them; it remains operation-context focused.
@@ -875,15 +902,20 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	for (const FFMCodexLocalMatchSelectionOption& Option
 		: InteractionView.SelectionOptions)
 	{
-		Result.Interaction.LegalActionLabels.Add(Option.Label);
+		const FString PlayerFacingOptionLabel =
+			InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectSkill
+					? FFMCodexPlayerUIPresentationText::Skill(
+						Option.Label).ToString()
+					: Option.Label;
+		Result.Interaction.LegalActionLabels.Add(PlayerFacingOptionLabel);
 		if (Option.bHasCard)
 		{
 			AddUniqueCard(Result.Interaction.CandidateCards, Option.Card);
 		}
 		FFMCodexUMGSelectionChoiceViewModel Choice;
 		Choice.OptionId = Option.Id;
-		Choice.Label = Option.Label.IsEmpty()
-			? Option.Id.ToString() : Option.Label;
+		Choice.Label = PlayerFacingOptionLabel;
 		Choice.bHasCard = Option.bHasCard;
 		if (Option.bHasCard)
 		{
@@ -901,11 +933,13 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	for (const EMatchPlayThroughBallOneOnOneShotChoice Choice
 		: InteractionView.OneOnOneOptions)
 	{
-		Result.Interaction.LegalActionLabels.Add(
-			FFMCodexLocalMatchInteractionViewBuilder::ToString(Choice));
+		const FString PlayerFacingChoiceLabel =
+			FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+				FFMCodexLocalMatchInteractionViewBuilder::ToString(Choice))
+				.ToString();
+		Result.Interaction.LegalActionLabels.Add(PlayerFacingChoiceLabel);
 		Result.Interaction.OneOnOneChoices.Add({
-			OneOnOneChoice(Choice),
-			FFMCodexLocalMatchInteractionViewBuilder::ToString(Choice) });
+			OneOnOneChoice(Choice), PlayerFacingChoiceLabel });
 	}
 
 	// Terminal feedback remains available for diagnostics, but attack completion

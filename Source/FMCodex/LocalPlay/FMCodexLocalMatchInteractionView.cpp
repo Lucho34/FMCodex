@@ -492,15 +492,15 @@ namespace FMCodexLocalMatchInteractionView
 		const EInitialTurnOrderPlayer Side,
 		const FName Id,
 		const FName RelatedCardId,
-		const FString& Suffix = FString())
+		const FString& DisplayLabel = FString())
 	{
 		FFMCodexLocalMatchSelectionOption Option;
 		Option.Side = Side;
 		Option.Id = Id;
 		Option.RelatedCardId = RelatedCardId;
-		Option.Label = Suffix.IsEmpty()
+		Option.Label = DisplayLabel.IsEmpty()
 			? Id.ToString()
-			: FString::Printf(TEXT("%s (%s)"), *Id.ToString(), *Suffix);
+			: DisplayLabel;
 		Options.Add(MoveTemp(Option));
 	}
 
@@ -832,6 +832,24 @@ namespace FMCodexLocalMatchInteractionView
 						Defender,
 						Candidate.HelperCardId,
 						Candidate.HelperCardId);
+				}
+				else if (Candidate.LegalityResult.ErrorCode ==
+					EMatchPlayCurrentAttackHelperSelectionErrorCode::
+						HelperIsGoalkeeper)
+				{
+					View.SelectionFeedbackCandidates.Add({
+						Candidate.HelperCardId,
+						EFMCodexLocalMatchSelectionFeedbackReason::
+							HelperIsGoalkeeper });
+				}
+				else if (Candidate.LegalityResult.ErrorCode ==
+					EMatchPlayCurrentAttackHelperSelectionErrorCode::
+						HelperMatchesMarker)
+				{
+					View.SelectionFeedbackCandidates.Add({
+						Candidate.HelperCardId,
+						EFMCodexLocalMatchSelectionFeedbackReason::
+							HelperMatchesMarker });
 				}
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded

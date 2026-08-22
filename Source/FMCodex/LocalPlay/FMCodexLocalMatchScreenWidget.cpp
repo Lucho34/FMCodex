@@ -145,7 +145,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 		&& (Presentation.Interaction.Category
 				== EFMCodexUMGInteractionCategory::SelectMarker
 			|| Presentation.Interaction.Category
-				== EFMCodexUMGInteractionCategory::SelectRunner);
+				== EFMCodexUMGInteractionCategory::SelectRunner
+			|| Presentation.Interaction.Category
+				== EFMCodexUMGInteractionCategory::SelectHelper);
 	Presentation = InPresentation;
 	if (bLeavingFeedbackSelection && SelectionFeedbackToast != nullptr)
 	{
@@ -508,9 +510,13 @@ void UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested(
 		Presentation.Interaction.Category
 			== EFMCodexUMGInteractionCategory::SelectRunner
 		&& Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitRunner;
+	const bool bMatchesHelperPrompt =
+		Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectHelper
+		&& Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitHelper;
 	if (!Presentation.Interaction.bUseOnPitchPlayerSelection
 		|| (!bMatchesCarrierPrompt && !bMatchesMarkerPrompt
-			&& !bMatchesRunnerPrompt)
+			&& !bMatchesRunnerPrompt && !bMatchesHelperPrompt)
 		|| OptionId.IsNone())
 	{
 		return;
@@ -545,6 +551,10 @@ void UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested(
 		{
 			RequestSubmitRunner(OptionId);
 		}
+		else if (Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitHelper)
+		{
+			RequestSubmitHelper(OptionId);
+		}
 	}
 }
 
@@ -554,7 +564,9 @@ void UFMCodexLocalMatchScreenWidget::HandleSelectionFeedbackRequested(
 	if ((Presentation.Interaction.Category
 			!= EFMCodexUMGInteractionCategory::SelectMarker
 		&& Presentation.Interaction.Category
-			!= EFMCodexUMGInteractionCategory::SelectRunner)
+			!= EFMCodexUMGInteractionCategory::SelectRunner
+		&& Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectHelper)
 		|| SelectionFeedbackToast == nullptr || CardId.IsNone())
 	{
 		return;

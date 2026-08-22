@@ -148,7 +148,9 @@ enum class EFMCodexLocalMatchSelectionFeedbackReason : uint8
 	RunnerIsGoalkeeper,
 	RunnerMatchesCarrier,
 	RunnerMissingRequiredPositionType,
-	RunnerNotInAttackingForwardArea
+	RunnerNotInAttackingForwardArea,
+	HelperIsGoalkeeper,
+	HelperMatchesMarker
 };
 
 struct FMCODEX_API FFMCodexLocalMatchSelectionFeedbackCandidate

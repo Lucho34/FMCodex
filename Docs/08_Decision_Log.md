@@ -442,6 +442,16 @@
 - 反馈合同：InteractionView 可把 Availability 已给出的 Runner canonical 结构拒绝原因映射到既有 Selection Feedback reason；UMG 只显示集中本地化文本，不推导合法性，也不新建 Runner Toast。
 - 范围：不修改 CoreRules authority、RNG、骰子、公式、Resolution、Header、Tracker、TP、Pitch 几何、Full Card、Hand Micro 或 artwork；不实施 Helper 场上直选。
 
+### CD-041 - Defensive Helper On-Pitch Selection and Match Flow Localization
+
+- 日期：2026-08-22
+- Helper 范围：只迁移生产 `AwaitingHelper -> SelectHelper -> SubmitHelper`。权威合法集合继续来自 `FMatchPlayCurrentAttackHelperSelectionAvailability`：当前防守方唯一部署、非门将且不同于冻结 Marker；Pass Control/Cross/Through Ball 以外的 action type 仍不支持。Tactical Match、TP、属性和战术优劣不是门禁。
+- 输入与反馈：复用 Carrier/Marker/Runner 的稳定 CardId typed Pitch-click 链路，新增显式 `SubmitHelper` intent。`HelperMatchesMarker` 与 `HelperIsGoalkeeper` 可映射到既有 Selection Feedback Toast；UMG 不读取角色标签推断拒绝。
+- 玩家界面：Helper 状态隐藏 PlayerKey 按钮，保留 Full Card hover、单击立即提交、`协防` Role Tag、DeclineHelper 语义与视觉中性。玩家文案固定为 `选择协防球员 / 放弃协防 / 协防`。
+- 战术术语：生产 Match Flow 的玩家可见 Skill 术语统一为 `战术`。SkillId、Skill 类/枚举与规则不重命名；选项显示复用集中 `控球推进 / 传中 / 直塞 / 内切 / 远射` 映射，不显示 canonical ID、范围或英文概念。
+- No-Legal 语义：`RESOLVE NO LEGAL MARKER` 是 Availability 已确认无合法 Marker 后调用既有 ResolveNoLegalMarker 的生产 typed action，不是开发按钮；玩家文案改为 `无可用盯人球员，继续结算`，权威效果不变。其他生产 decline/no-legal、分支、单刀及终局纯表现泄漏同样通过集中映射清理。
+- 范围：不修改 CoreRules/Authority 玩法、RNG、骰子、公式、Resolution narrative、Header 结构、Tracker、TP、Pitch/Slot 几何、Role Tag 视觉、Full Card、Hand Micro 或 artwork。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
