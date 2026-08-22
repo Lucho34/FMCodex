@@ -117,6 +117,55 @@ namespace FMCodexLocalMatchUMGPresentation
 			: EFMCodexUMGPitchMiniOwnershipEdge::Right;
 	}
 
+	void ResolveSelectedRole(
+		FFMCodexUMGCardViewModel& Card,
+		const FFMCodexLocalMatchInteractionView& InteractionView)
+	{
+		struct FRoleMatch
+		{
+			FName CardId;
+			EFMCodexUMGSelectedRole Role;
+			const TCHAR* CanonicalLabel;
+		};
+		const FRoleMatch RoleMatches[] = {
+			{ InteractionView.SelectedCarrierCardId,
+				EFMCodexUMGSelectedRole::Carrier, TEXT("Carrier") },
+			{ InteractionView.SelectedRunnerCardId,
+				EFMCodexUMGSelectedRole::Runner, TEXT("Runner") },
+			{ InteractionView.SelectedMarkerCardId,
+				EFMCodexUMGSelectedRole::Marker, TEXT("Marker") },
+			{ InteractionView.SelectedHelperCardId,
+				EFMCodexUMGSelectedRole::Helper, TEXT("Helper") }
+		};
+		int32 MatchingRoleCount = 0;
+		for (const FRoleMatch& Match : RoleMatches)
+		{
+			if (!Match.CardId.IsNone() && Match.CardId == Card.CardId)
+			{
+				++MatchingRoleCount;
+				if (Card.SelectedRole == EFMCodexUMGSelectedRole::None)
+				{
+					Card.SelectedRole = Match.Role;
+					Card.SelectedRoleLabel =
+						FFMCodexPlayerUIPresentationText::SelectedRoleTag(
+							Match.CanonicalLabel).ToString();
+				}
+			}
+		}
+		ensureAlwaysMsgf(MatchingRoleCount <= 1,
+			TEXT("Pitch Mini %s matched %d selected attack roles; one is allowed"),
+			*Card.CardId.ToString(), MatchingRoleCount);
+	}
+
+	EFMCodexUMGSelectionFeedbackReason SelectionFeedbackReason(
+		const EFMCodexLocalMatchSelectionFeedbackReason Reason)
+	{
+		return Reason ==
+			EFMCodexLocalMatchSelectionFeedbackReason::MarkerWrongPhysicalArea
+				? EFMCodexUMGSelectionFeedbackReason::MarkerWrongPhysicalArea
+				: EFMCodexUMGSelectionFeedbackReason::None;
+	}
+
 	EInitialTurnOrderPlayer OtherSide(const EInitialTurnOrderPlayer Side)
 	{
 		return Side == EInitialTurnOrderPlayer::PlayerB
@@ -423,9 +472,19 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 {
 	using namespace FMCodexLocalMatchUMGPresentation;
 	FFMCodexUMGMatchScreenViewModel Result;
-	const bool bProjectCarrierSelectabilityToPitch =
+	const bool bProjectOnPitchPlayerSelection =
 		InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::SelectCarrier;
+			== EFMCodexLocalMatchInteractionCategory::SelectCarrier
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectMarker;
+	const EFMCodexUMGOnPitchSelectionIntent OnPitchSelectionIntent =
+		InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectCarrier
+				? EFMCodexUMGOnPitchSelectionIntent::SubmitCarrier
+				: InteractionView.InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::SelectMarker
+						? EFMCodexUMGOnPitchSelectionIntent::SubmitMarker
+						: EFMCodexUMGOnPitchSelectionIntent::None;
 	const FFMCodexLocalMatchScreenPresentation Screen =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 			InteractionView);
@@ -631,7 +690,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				SlotResult.Card = MakeCard(Slot.Card);
 				ResolvePitchMiniOwnershipAccent(SlotResult.Card,
 					Slot.Card.Side, LocalViewerSide, SidePrimaryColors);
-				if (bProjectCarrierSelectabilityToPitch)
+				ResolveSelectedRole(SlotResult.Card, InteractionView);
+				if (bProjectOnPitchPlayerSelection)
 				{
 					const FFMCodexLocalMatchSelectionOption* ProjectedOption =
 						InteractionView.SelectionOptions.FindByPredicate(
@@ -645,7 +705,27 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 						SlotResult.bSelectableForCurrentPrompt = true;
 						SlotResult.OnPitchSelectionOptionId = ProjectedOption->Id;
 						SlotResult.OnPitchSelectionIntent =
-							EFMCodexUMGOnPitchSelectionIntent::SubmitCarrier;
+							OnPitchSelectionIntent;
+					}
+				}
+				const FFMCodexLocalMatchSelectionFeedbackCandidate*
+					FeedbackCandidate =
+					InteractionView.SelectionFeedbackCandidates.FindByPredicate(
+						[&Slot](
+							const FFMCodexLocalMatchSelectionFeedbackCandidate& Candidate)
+						{
+							return Candidate.CardId == Slot.Card.CardId;
+						});
+				if (FeedbackCandidate != nullptr)
+				{
+					SlotResult.SelectionFeedbackReason = SelectionFeedbackReason(
+						FeedbackCandidate->Reason);
+					if (SlotResult.SelectionFeedbackReason ==
+						EFMCodexUMGSelectionFeedbackReason::MarkerWrongPhysicalArea)
+					{
+						SlotResult.SelectionFeedbackLabel =
+							FFMCodexPlayerUIPresentationText::SelectionFeedback(
+								TEXT("MarkerWrongPhysicalArea")).ToString();
 					}
 				}
 			}
@@ -659,9 +739,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Interaction.Category = InteractionCategory(
 		InteractionView.InteractionCategory);
 	Result.Interaction.bUseOnPitchPlayerSelection =
-		bProjectCarrierSelectabilityToPitch;
+		bProjectOnPitchPlayerSelection;
 	Result.Interaction.OnPitchSelectionHintLabel =
-		bProjectCarrierSelectabilityToPitch
+		bProjectOnPitchPlayerSelection
 			? TEXT("Click a player on the pitch") : FString();
 	Result.Interaction.ClassificationLabel = Screen.bSystemResolution
 		? TEXT("SYSTEM") : InteractionView.bHumanInteraction

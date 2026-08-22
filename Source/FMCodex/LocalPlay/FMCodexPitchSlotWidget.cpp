@@ -139,6 +139,18 @@ void UFMCodexPitchSlotWidget::HandleOnPitchSelectionRequested(
 	}
 }
 
+void UFMCodexPitchSlotWidget::HandleSelectionFeedbackRequested(
+	const FName CardId)
+{
+	if (Presentation.bOccupied
+		&& Presentation.Card.CardId == CardId
+		&& Presentation.SelectionFeedbackReason
+			!= EFMCodexUMGSelectionFeedbackReason::None)
+	{
+		OnSelectionFeedbackRequested.Broadcast(CardId);
+	}
+}
+
 void UFMCodexPitchSlotWidget::NativeOnDragEnter(
 	const FGeometry& InGeometry,
 	const FDragDropEvent& InDragDropEvent,
@@ -289,8 +301,12 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 		CardWidget->ConfigureOnPitchSelection(
 			Presentation.OnPitchSelectionOptionId,
 			Presentation.bSelectableForCurrentPrompt);
+		CardWidget->ConfigureSelectionFeedback(
+			Presentation.SelectionFeedbackReason);
 		CardWidget->OnOnPitchSelectionRequested.AddUObject(
 			this, &UFMCodexPitchSlotWidget::HandleOnPitchSelectionRequested);
+		CardWidget->OnSelectionFeedbackRequested.AddUObject(
+			this, &UFMCodexPitchSlotWidget::HandleSelectionFeedbackRequested);
 		CardWidget->OnDetailHoverRequested.AddUObject(
 			this, &UFMCodexPitchSlotWidget::HandleCardDetailHoverRequested);
 		CardWidget->OnDetailHoverDismissed.AddUObject(

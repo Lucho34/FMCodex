@@ -413,6 +413,25 @@
 - 防守 rollout 审计：`AwaitingMarker/SelectMarker` 结构限制为当前防守方已部署、非门将、与 Carrier 同 physical area；`AwaitingHelper/SelectHelper` 限制为当前防守方已部署、非门将且不同于已冻结 Marker。两者都有稳定 CardId 和 Availability，但当前仍使用底部按钮，后续应分成防守场上直选 rollout，不在本修复实现。
 - 范围：不修改 Authority 规则、RNG、骰子、公式、Resolution narrative、Header、Tracker、TP Chip、技能本地化、Pitch/Slot 几何、Ball marker、Hand Micro、Full Card 或 artwork。
 
+### CD-038 - Defensive Marker On-Pitch Selection
+
+- 日期：2026-08-22
+- 精确范围：只迁移生产 `AwaitingMarker -> SelectMarker -> SubmitMarker`。Helper、Runner 与其他选择阶段继续使用原合同。
+- 权威来源：Marker 的结构合法集合完全来自 `FMatchPlayCurrentAttackMarkerSelectionAvailability`。候选必须是当前防守方唯一部署的非门将球员，并与已冻结 Carrier 位于同一 physical area；Tactical Match、属性和战术优劣不构成门禁。
+- 输入合同：Presentation 按稳定 `RelatedCardId/CardId` 将现有 OptionId 与显式 `SubmitMarker` intent 附着到对应 Pitch Slot。合法 Pitch Mini 单击经 Slot、Pitch、Screen 进入既有 Controller/Host/Session 路由；Screen 只接受当前 DTO 仍投影的候选。
+- 玩家界面：Marker 状态隐藏旧 PlayerKey 候选按钮，保留正常 Pitch Mini Full Card hover、单击立即提交与既有 DeclineMarker 行为。Decline 的玩家可见中文为 `放弃盯人`，内部标识和权威效果不变。
+- 共享面板：Carrier 与 Marker 的场上直选面板保留操作方、一个主动作 Title 与一个短提示；Context 不再重复 CategoryLabel，因此 `选择持球球员/选择盯人球员` 各只显示一次。
+- 视觉与范围：不新增 selection outline、glow、lift、scale、动画或全场变暗；不迁移 Helper，不修改 Authority、RNG、骰子、公式、Resolution、Header、TP、Pitch 几何、卡面或 artwork。
+
+### CD-039 - Selected Role Tags and Marker Selection Feedback
+
+- 日期：2026-08-22
+- 角色合同：当前攻击的 Carrier、Runner、Marker、Helper 由 `ActionPreparation` 或冻结后的 `SelectedAction` 单值字段投影；每张场上卡最多一个角色，标签随攻击存在并在 `CurrentAttack` 清除时消失。Widget 不保存点击历史，也不反推 Gameplay State。
+- 表现合同：Pitch Mini 右上角显示一个紧凑深色半透明角色徽标，玩家文案固定为 `持球 / 跑位 / 盯人 / 协防`。它与左上 Tactical Match pips、ownership rail、底部身份区分离，不改变卡片几何，也不扩展 Runner/Helper 的选择交互。
+- 反馈合同：Marker 同半区规则仍由 CoreRules 合法性决定。InteractionView 只把既有 `MarkerNotInCarrierPhysicalArea` 映射为小型 Presentation reason；玩家点击该对象时不发命令、不改 State，只触发 hit-test-invisible、约两秒自动消失的 Toast：`盯人球员必须与持球球员位于同一半区`。重复触发重启计时，空槽/背景无反馈。
+- 术语合同：玩家可见角色和动作统一使用 `盯人 / 选择盯人球员 / 放弃盯人`；内部 `Marker` 标识、错误码、命令和权威效果不重命名。球员属性 `盯防` 不属于本次 Marker 角色术语修正。
+- 范围：不修改 CoreRules authority、RNG、骰子、公式、Resolution、Header、Pitch/Slot 几何、Tactical Match、Full Card 或 artwork；不实施 Runner/Helper 场上直选。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

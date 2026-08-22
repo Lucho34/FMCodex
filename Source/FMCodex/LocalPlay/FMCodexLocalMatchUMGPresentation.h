@@ -122,7 +122,27 @@ UENUM(BlueprintType)
 enum class EFMCodexUMGOnPitchSelectionIntent : uint8
 {
 	None,
-	SubmitCarrier
+	SubmitCarrier,
+	SubmitMarker
+};
+
+/** Exactly one optional current-attack role may be attached to a Pitch Mini. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGSelectedRole : uint8
+{
+	None,
+	Carrier,
+	Runner,
+	Marker,
+	Helper
+};
+
+/** Player feedback reasons already resolved outside UMG. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGSelectionFeedbackReason : uint8
+{
+	None,
+	MarkerWrongPhysicalArea
 };
 
 /** Presentation-only football landmark treatment for a physical Half. */
@@ -255,6 +275,13 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 	/** Already resolved outside UMG; the Widget only renders this state. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	bool bHasPitchMiniTacticalMatch = false;
+
+	/** Authoritative current-attack role; only populated on Pitch Slot cards. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	EFMCodexUMGSelectedRole SelectedRole = EFMCodexUMGSelectedRole::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString SelectedRoleLabel;
 
 	/** Presentation-resolved side color; never inferred from club data in UMG. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
@@ -390,6 +417,13 @@ struct FMCODEX_API FFMCodexUMGPitchSlotViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
 	EFMCodexUMGOnPitchSelectionIntent OnPitchSelectionIntent =
 		EFMCodexUMGOnPitchSelectionIntent::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	EFMCodexUMGSelectionFeedbackReason SelectionFeedbackReason =
+		EFMCodexUMGSelectionFeedbackReason::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
+	FString SelectionFeedbackLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Pitch")
 	FFMCodexUMGCardViewModel Card;

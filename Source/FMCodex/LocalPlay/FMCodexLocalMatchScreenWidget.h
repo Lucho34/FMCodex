@@ -16,6 +16,7 @@ class UFMCodexMatchHeaderWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
 class UFMCodexResolutionPanelWidget;
+class UFMCodexSelectionFeedbackToastWidget;
 class UImage;
 class USizeBox;
 class UTextBlock;
@@ -92,6 +93,7 @@ public:
 	UFMCodexPitchWidget* GetPitchWidget() const;
 	UFMCodexInteractionPanelWidget* GetInteractionPanel() const;
 	UFMCodexResolutionPanelWidget* GetResolutionPanel() const;
+	UFMCodexSelectionFeedbackToastWidget* GetSelectionFeedbackToast() const;
 	UFMCodexCardRackWidget* GetLocalRackWidget() const;
 	UFMCodexCardRackWidget* GetOpponentRackWidget() const;
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
@@ -152,6 +154,7 @@ private:
 	void HandleCarrierRequested(FName CardId);
 	void HandleOnPitchSelectionRequested(
 		EFMCodexUMGOnPitchSelectionIntent Intent, FName OptionId);
+	void HandleSelectionFeedbackRequested(FName CardId);
 
 	UFUNCTION()
 	void HandleMarkerRequested(FName CardId);
@@ -226,6 +229,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexPitchWidget> PitchWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexSelectionFeedbackToastWidget> SelectionFeedbackToast;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Interaction Presentation")
 	TSubclassOf<UFMCodexInteractionPanelWidget> InteractionPanelWidgetClass;

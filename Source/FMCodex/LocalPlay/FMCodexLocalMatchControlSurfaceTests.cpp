@@ -19,6 +19,7 @@
 #include "FMCodexPitchSlotWidget.h"
 #include "FMCodexPitchWidget.h"
 #include "FMCodexResolutionPanelWidget.h"
+#include "FMCodexSelectionFeedbackToastWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -50,6 +51,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "HAL/IConsoleManager.h"
 #include "Rendering/SlateRenderer.h"
+#include "TimerManager.h"
 
 namespace FMCodexLocalMatchControlSurfaceTests
 {
@@ -107,6 +109,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		{
 			return Controller;
 		}
+		UWorld* GetWorld() const { return World; }
 
 	private:
 		UWorld* World = nullptr;
@@ -5084,7 +5087,38 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 				->GetVisibility() == ESlateVisibility::Collapsed
 			&& OnPitchContext != nullptr
 			&& OnPitchContext->GetText().ToString().Contains(
-				TEXT("\u573A\u4E0A\u7403\u5458")));
+				TEXT("\u573A\u4E0A\u7403\u5458"))
+			&& !OnPitchContext->GetText().ToString().Contains(
+				TEXT("\u9009\u62E9\u6301\u7403\u7403\u5458")));
+	FFMCodexUMGInteractionViewModel OnPitchMarker = BasePresentation(
+		EFMCodexUMGInteractionCategory::SelectMarker, TEXT("Select Marker"));
+	OnPitchMarker.SelectionChoices = OnPitchCarrier.SelectionChoices;
+	OnPitchMarker.bUseOnPitchPlayerSelection = true;
+	OnPitchMarker.OnPitchSelectionHintLabel =
+		TEXT("Click a player on the pitch");
+	OnPitchMarker.bCanDecline = true;
+	OnPitchMarker.DeclineActionLabel = TEXT("DECLINE MARKER");
+	Panel->RefreshFromPresentation(OnPitchMarker);
+	const UTextBlock* OnPitchMarkerTitle = Cast<UTextBlock>(
+		Panel->GetWidgetFromName(TEXT("InteractionActionTitle")));
+	const UTextBlock* OnPitchMarkerContext = Cast<UTextBlock>(
+		Panel->GetWidgetFromName(TEXT("InteractionActionContext")));
+	const UButton* OnPitchMarkerDecline = Cast<UButton>(
+		Panel->GetWidgetFromName(TEXT("InteractionDeclineButton")));
+	TestTrue(TEXT("On-pitch Marker uses one compact Chinese-first prompt and localized decline"),
+		Panel->GetRenderedOptionWidgets().IsEmpty()
+			&& Panel->GetWidgetFromName(TEXT("InteractionCandidateRegion"))
+				->GetVisibility() == ESlateVisibility::Collapsed
+			&& OnPitchMarkerTitle != nullptr
+			&& OnPitchMarkerTitle->GetText().ToString()
+				== TEXT("\u9009\u62E9\u76EF\u4EBA\u7403\u5458")
+			&& OnPitchMarkerContext != nullptr
+			&& OnPitchMarkerContext->GetText().ToString()
+				== TEXT("\u70B9\u51FB\u573A\u4E0A\u7403\u5458\u9009\u62E9")
+			&& OnPitchMarkerDecline != nullptr
+			&& IsVisible(OnPitchMarkerDecline)
+			&& Cast<UTextBlock>(OnPitchMarkerDecline->GetChildAt(0))
+				->GetText().ToString() == TEXT("\u653E\u5F03\u76EF\u4EBA"));
 	FFMCodexUMGInteractionViewModel DistinctFallbacks = BasePresentation(
 		EFMCodexUMGInteractionCategory::SelectMarker, TEXT("SELECT MARKER"));
 	DistinctFallbacks.bCanDecline = true;
@@ -10704,6 +10738,718 @@ bool FFMCodexOnPitchCarrierSelectionFoundationTest::RunTest(
 				!= EFMCodexLocalMatchInteractionCategory::SelectCarrier
 			&& Host->GetMatchSnapshot().Snapshot.CurrentAttack.ActionPreparation
 				.CarrierCardId == CommittedCarrierId);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexOnPitchMarkerSelectionRolloutTest,
+	"FMCodex.LocalPlay.ControlSurface.44.OnPitchMarkerSelectionRollout",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexOnPitchMarkerSelectionRolloutTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("On-pitch Marker Host exists"), Host);
+	TestNotNull(TEXT("On-pitch Marker Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("On-pitch Marker Screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	Screen->RequestStartNewMatch();
+	Screen->RequestRollTacticalPoints();
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
+	const FFamilyExpectation ThroughBallFamily = FamilyExpectations()[4];
+	if (!DeployParticipants(*this, *Controller, ThroughBallFamily, Attacker))
+	{
+		return false;
+	}
+	Controller->SubmitCarrier(FamilyCardId(ThroughBallFamily, Attacker));
+	TestTrue(TEXT("Marker setup submits the authoritative carrier"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		return false;
+	}
+	Controller->RefreshPresentation();
+
+	const FFMCodexLocalMatchInteractionView& InteractionView =
+		Controller->GetInteractionView();
+	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
+	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
+	TestNotNull(TEXT("On-pitch Marker Pitch exists"), Pitch);
+	TestNotNull(TEXT("On-pitch Marker Panel exists"), Panel);
+	if (Pitch == nullptr || Panel == nullptr)
+	{
+		return false;
+	}
+	Panel->TakeWidget();
+
+	TSet<FName> LegalMarkerIds;
+	for (const FFMCodexLocalMatchSelectionOption& Option
+		: InteractionView.SelectionOptions)
+	{
+		LegalMarkerIds.Add(Option.Id);
+	}
+	TSet<FName> AttackerDeployedIds;
+	TSet<FName> DefenderDeployedIds;
+	for (const FFMCodexLocalMatchPitchRegionView& Region
+		: InteractionView.PitchRegions)
+	{
+		for (const FFMCodexLocalMatchPitchSlotView& Slot : Region.Slots)
+		{
+			if (!Slot.bOccupied)
+			{
+				continue;
+			}
+			if (Slot.Card.Side == Attacker)
+			{
+				AttackerDeployedIds.Add(Slot.Card.CardId);
+			}
+			else if (Slot.Card.Side == Defender)
+			{
+				DefenderDeployedIds.Add(Slot.Card.CardId);
+			}
+		}
+	}
+	TSet<FName> ProjectedMarkerIds;
+	UFMCodexPlayerCardWidget* SelectableNoTacticalMatchCard = nullptr;
+	UFMCodexPlayerCardWidget* AttackingCard = nullptr;
+	UFMCodexPlayerCardWidget* StructurallyForbiddenDefenderCard = nullptr;
+	UFMCodexPitchSlotWidget* EmptyPitchSlot = nullptr;
+	for (UFMCodexPitchSlotWidget* Slot : Pitch->GetRenderedSlotWidgets())
+	{
+		if (Slot == nullptr)
+		{
+			continue;
+		}
+		Slot->TakeWidget();
+		const FFMCodexUMGPitchSlotViewModel& SlotView = Slot->GetPresentation();
+		if (!SlotView.bOccupied)
+		{
+			EmptyPitchSlot = EmptyPitchSlot != nullptr ? EmptyPitchSlot : Slot;
+			continue;
+		}
+		UFMCodexPlayerCardWidget* CardWidget = Slot->GetCardWidget();
+		if (SlotView.bSelectableForCurrentPrompt)
+		{
+			ProjectedMarkerIds.Add(SlotView.OnPitchSelectionOptionId);
+			if (SlotView.Card.PitchMiniTacticalMatchCount == 0)
+			{
+				SelectableNoTacticalMatchCard =
+					SelectableNoTacticalMatchCard != nullptr
+						? SelectableNoTacticalMatchCard : CardWidget;
+			}
+		}
+		else if (AttackerDeployedIds.Contains(SlotView.Card.CardId))
+		{
+			AttackingCard = AttackingCard != nullptr
+				? AttackingCard : CardWidget;
+		}
+		else if (DefenderDeployedIds.Contains(SlotView.Card.CardId)
+			&& !LegalMarkerIds.Contains(SlotView.Card.CardId))
+		{
+			StructurallyForbiddenDefenderCard =
+				StructurallyForbiddenDefenderCard != nullptr
+					? StructurallyForbiddenDefenderCard : CardWidget;
+		}
+	}
+
+	TestTrue(TEXT("Marker authority options project one-to-one to defending Pitch cards"),
+		InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectMarker
+			&& InteractionView.ExpectedActingPlayer == Defender
+			&& !LegalMarkerIds.IsEmpty()
+			&& ProjectedMarkerIds.Num() == LegalMarkerIds.Num()
+			&& ProjectedMarkerIds.Includes(LegalMarkerIds));
+	TestNotNull(TEXT("No-Tactical-Match legal Marker remains selectable"),
+		SelectableNoTacticalMatchCard);
+	TestNotNull(TEXT("Attacking player is structurally forbidden for Marker"),
+		AttackingCard);
+	TestNotNull(TEXT("Defending goalkeeper remains structurally forbidden for Marker"),
+		StructurallyForbiddenDefenderCard);
+	TestNotNull(TEXT("Empty Pitch slot exists for Marker isolation"), EmptyPitchSlot);
+	if (SelectableNoTacticalMatchCard == nullptr || AttackingCard == nullptr
+		|| StructurallyForbiddenDefenderCard == nullptr
+		|| EmptyPitchSlot == nullptr)
+	{
+		return false;
+	}
+
+	const FFMCodexUMGInteractionViewModel& PanelPresentation =
+		Panel->GetPresentation();
+	const UTextBlock* MarkerTitle = Cast<UTextBlock>(
+		Panel->GetWidgetFromName(TEXT("InteractionActionTitle")));
+	const UTextBlock* MarkerContext = Cast<UTextBlock>(
+		Panel->GetWidgetFromName(TEXT("InteractionActionContext")));
+	const UButton* DeclineButton = Cast<UButton>(
+		Panel->GetWidgetFromName(TEXT("InteractionDeclineButton")));
+	const UTextBlock* DeclineLabel = DeclineButton != nullptr
+		? Cast<UTextBlock>(DeclineButton->GetChildAt(0)) : nullptr;
+	TestTrue(TEXT("Marker Dock removes PlayerKey buttons and keeps compact localized actions"),
+		PanelPresentation.bUseOnPitchPlayerSelection
+			&& PanelPresentation.Category
+				== EFMCodexUMGInteractionCategory::SelectMarker
+			&& !PanelPresentation.SelectionChoices.IsEmpty()
+			&& Panel->GetRenderedOptionWidgets().IsEmpty()
+			&& Panel->GetWidgetFromName(TEXT("InteractionCandidateRegion"))
+				->GetVisibility() == ESlateVisibility::Collapsed
+			&& MarkerTitle != nullptr
+			&& MarkerTitle->GetText().ToString()
+				== TEXT("\u9009\u62E9\u76EF\u4EBA\u7403\u5458")
+			&& MarkerContext != nullptr
+			&& MarkerContext->GetText().ToString()
+				== TEXT("\u70B9\u51FB\u573A\u4E0A\u7403\u5458\u9009\u62E9")
+			&& DeclineButton != nullptr
+			&& DeclineButton->GetVisibility() == ESlateVisibility::Visible
+			&& DeclineLabel != nullptr
+			&& DeclineLabel->GetText().ToString()
+				== TEXT("\u653E\u5F03\u76EF\u4EBA"));
+
+	SelectableNoTacticalMatchCard->TakeWidget();
+	AttackingCard->TakeWidget();
+	StructurallyForbiddenDefenderCard->TakeWidget();
+	TestTrue(TEXT("Marker selectability stays visual-neutral and Tactical Match independent"),
+		SelectableNoTacticalMatchCard->IsSelectableForCurrentPrompt()
+			&& SelectableNoTacticalMatchCard->GetPresentation()
+				.PitchMiniTacticalMatchCount == 0
+			&& SelectableNoTacticalMatchCard->GetRenderTransform().Scale
+				.Equals(FVector2D(1.0f, 1.0f))
+			&& !StructurallyForbiddenDefenderCard
+				->IsSelectableForCurrentPrompt());
+	TestTrue(TEXT("SelectMarker preserves the normal Pitch Mini Full Card hover route"),
+		SelectableNoTacticalMatchCard->RequestFullCardDetailHover()
+			&& Screen->IsDetailOverlayVisible()
+			&& Screen->GetDetailOverlayCard() != nullptr
+			&& Screen->GetDetailOverlayCard()->GetPresentation().CardId
+				== SelectableNoTacticalMatchCard->GetPresentation().CardId);
+
+	const TArray<uint8> BeforeForbiddenClicks =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	TestFalse(TEXT("Attacking Pitch card cannot emit Marker intent"),
+		AttackingCard->RequestOnPitchSelection());
+	TestFalse(TEXT("Defending goalkeeper cannot emit Marker intent"),
+		StructurallyForbiddenDefenderCard->RequestOnPitchSelection());
+	TestTrue(TEXT("Structurally forbidden Marker clicks leave authority unchanged"),
+		BeforeForbiddenClicks == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectMarker);
+	TestTrue(TEXT("Empty slot has no Marker submission surface"),
+		!EmptyPitchSlot->GetPresentation().bSelectableForCurrentPrompt
+			&& EmptyPitchSlot->GetCardWidget() == nullptr);
+
+	const FName CommittedMarkerId =
+		SelectableNoTacticalMatchCard->GetOnPitchSelectionOptionId();
+	TestTrue(TEXT("Single no-Tactical-Match defending-card click emits Marker intent"),
+		SelectableNoTacticalMatchCard->RequestOnPitchSelection());
+	TestTrue(TEXT("Marker click commits immediately through existing authority route"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName == TEXT("SubmitMarker")
+			&& Controller->GetInteractionView().InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory::SelectMarker
+			&& Host->GetMatchSnapshot().Snapshot.CurrentAttack.ActionPreparation
+				.MarkerCardId == CommittedMarkerId);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexSelectedRoleTagsFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.45.SelectedRoleTagsFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexSelectedRoleTagsFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	TestNotNull(TEXT("Selected-role Host exists"), Host);
+	TestNotNull(TEXT("Selected-role Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	TestNotNull(TEXT("Selected-role Screen exists"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	TestTrue(TEXT("Selected-role localization vocabulary is centralized"),
+		FFMCodexPlayerUIPresentationText::SelectedRoleTag(TEXT("Carrier")).ToString()
+			== TEXT("\u6301\u7403")
+			&& FFMCodexPlayerUIPresentationText::SelectedRoleTag(TEXT("Runner")).ToString()
+				== TEXT("\u8DD1\u4F4D")
+			&& FFMCodexPlayerUIPresentationText::SelectedRoleTag(TEXT("Marker")).ToString()
+				== TEXT("\u76EF\u4EBA")
+			&& FFMCodexPlayerUIPresentationText::SelectedRoleTag(TEXT("Helper")).ToString()
+				== TEXT("\u534F\u9632")
+			&& FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+				TEXT("Select Marker")).ToString()
+					== TEXT("\u9009\u62E9\u76EF\u4EBA\u7403\u5458")
+			&& FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+				TEXT("DECLINE MARKER")).ToString()
+					== TEXT("\u653E\u5F03\u76EF\u4EBA"));
+	Screen->RequestStartNewMatch();
+	Screen->RequestRollTacticalPoints();
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
+	if (!DeployParticipants(*this, *Controller, CrossFamily, Attacker))
+	{
+		return false;
+	}
+	const auto ExpectProjectedRole = [this, Controller, Screen](
+		const TCHAR* StepLabel, const FName CardId,
+		const EFMCodexUMGSelectedRole ExpectedRole,
+		const TCHAR* ExpectedLabel)
+	{
+		Controller->RefreshPresentation();
+		for (const FFMCodexUMGPitchRegionViewModel& Region
+			: Screen->GetPresentation().PitchRegions)
+		{
+			for (const FFMCodexUMGPitchSlotViewModel& Slot : Region.Slots)
+			{
+				if (Slot.bOccupied && Slot.Card.CardId == CardId)
+				{
+					return TestTrue(StepLabel,
+						Slot.Card.SelectedRole == ExpectedRole
+							&& Slot.Card.SelectedRoleLabel == ExpectedLabel);
+				}
+			}
+		}
+		AddError(FString(StepLabel) + TEXT(": selected CardId was not on Pitch"));
+		return false;
+	};
+
+	const FName CarrierId = FamilyCardId(CrossFamily, Attacker);
+	Controller->SubmitCarrier(CarrierId);
+	if (!Controller->GetLastDiagnostic().bHostSuccess
+		|| !ExpectProjectedRole(TEXT("Carrier appears immediately as 持球"),
+			CarrierId, EFMCodexUMGSelectedRole::Carrier, TEXT("\u6301\u7403")))
+	{
+		return false;
+	}
+	const FName MarkerId = Controller->GetInteractionView().SelectionOptions.IsEmpty()
+		? NAME_None : Controller->GetInteractionView().SelectionOptions[0].Id;
+	Controller->SubmitMarker(MarkerId);
+	if (!Controller->GetLastDiagnostic().bHostSuccess
+		|| !ExpectProjectedRole(TEXT("Marker appears immediately as 盯人"),
+			MarkerId, EFMCodexUMGSelectedRole::Marker, TEXT("\u76EF\u4EBA")))
+	{
+		return false;
+	}
+	Controller->SubmitSkill(FName(CrossFamily.SkillId));
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		AddError(TEXT("Cross skill submission failed in selected-role setup"));
+		return false;
+	}
+	Controller->RefreshPresentation();
+	const FName RunnerId = Controller->GetInteractionView().SelectionOptions.IsEmpty()
+		? NAME_None : Controller->GetInteractionView().SelectionOptions[0].Id;
+	Controller->SubmitRunner(RunnerId);
+	if (!Controller->GetLastDiagnostic().bHostSuccess
+		|| !ExpectProjectedRole(TEXT("Runner appears immediately as 跑位"),
+			RunnerId, EFMCodexUMGSelectedRole::Runner, TEXT("\u8DD1\u4F4D")))
+	{
+		return false;
+	}
+	const FName HelperId = Controller->GetInteractionView().SelectionOptions.IsEmpty()
+		? NAME_None : Controller->GetInteractionView().SelectionOptions[0].Id;
+	Controller->SubmitHelper(HelperId);
+	if (!Controller->GetLastDiagnostic().bHostSuccess
+		|| !ExpectProjectedRole(TEXT("Helper appears immediately as 协防"),
+			HelperId, EFMCodexUMGSelectedRole::Helper, TEXT("\u534F\u9632")))
+	{
+		return false;
+	}
+	TestTrue(TEXT("All preparation roles persist into the branch prompt"),
+		Controller->GetInteractionView().SelectedCarrierCardId == CarrierId
+			&& Controller->GetInteractionView().SelectedMarkerCardId == MarkerId
+			&& Controller->GetInteractionView().SelectedRunnerCardId == RunnerId
+			&& Controller->GetInteractionView().SelectedHelperCardId == HelperId);
+	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		AddError(TEXT("Cross branch submission failed in selected-role setup"));
+		return false;
+	}
+	Controller->RefreshPresentation();
+
+	const FMatchPlayState& State = Host->GetMatchSnapshot().Snapshot;
+	const FFMCodexLocalMatchInteractionView& View =
+		Controller->GetInteractionView();
+	TestTrue(TEXT("Cross selection freezes the four authoritative role ids"),
+		State.bHasCurrentAttack && State.CurrentAttack.bHasSelectedAction
+			&& !State.CurrentAttack.SelectedAction.CarrierCardId.IsNone()
+			&& !State.CurrentAttack.SelectedAction.RunnerCardId.IsNone()
+			&& !State.CurrentAttack.SelectedAction.MarkerCardId.IsNone()
+			&& State.CurrentAttack.SelectedAction.bHasHelper
+			&& !State.CurrentAttack.SelectedAction.HelperCardId.IsNone()
+			&& View.SelectedCarrierCardId
+				== State.CurrentAttack.SelectedAction.CarrierCardId
+			&& View.SelectedRunnerCardId
+				== State.CurrentAttack.SelectedAction.RunnerCardId
+			&& View.SelectedMarkerCardId
+				== State.CurrentAttack.SelectedAction.MarkerCardId
+			&& View.SelectedHelperCardId
+				== State.CurrentAttack.SelectedAction.HelperCardId);
+
+	TMap<FName, TPair<EFMCodexUMGSelectedRole, FString>> ExpectedRoles;
+	ExpectedRoles.Add(View.SelectedCarrierCardId,
+		{ EFMCodexUMGSelectedRole::Carrier, TEXT("\u6301\u7403") });
+	ExpectedRoles.Add(View.SelectedRunnerCardId,
+		{ EFMCodexUMGSelectedRole::Runner, TEXT("\u8DD1\u4F4D") });
+	ExpectedRoles.Add(View.SelectedMarkerCardId,
+		{ EFMCodexUMGSelectedRole::Marker, TEXT("\u76EF\u4EBA") });
+	ExpectedRoles.Add(View.SelectedHelperCardId,
+		{ EFMCodexUMGSelectedRole::Helper, TEXT("\u534F\u9632") });
+
+	int32 ProjectedRoleCount = 0;
+	TSet<EInitialTurnOrderPlayer> RoleSides;
+	for (UFMCodexPitchSlotWidget* SlotWidget
+		: Screen->GetPitchWidget()->GetRenderedSlotWidgets())
+	{
+		if (SlotWidget == nullptr || !SlotWidget->GetPresentation().bOccupied)
+		{
+			continue;
+		}
+		SlotWidget->TakeWidget();
+		const FFMCodexUMGPitchSlotViewModel& Slot = SlotWidget->GetPresentation();
+		const TPair<EFMCodexUMGSelectedRole, FString>* Expected =
+			ExpectedRoles.Find(Slot.Card.CardId);
+		if (Expected == nullptr)
+		{
+			TestTrue(TEXT("Unselected Pitch Mini has no role tag"),
+				Slot.Card.SelectedRole == EFMCodexUMGSelectedRole::None
+					&& Slot.Card.SelectedRoleLabel.IsEmpty());
+			continue;
+		}
+		++ProjectedRoleCount;
+		RoleSides.Add(Slot.Card.OwnerLabel == TEXT("Player A")
+			? EInitialTurnOrderPlayer::PlayerA
+			: EInitialTurnOrderPlayer::PlayerB);
+		UFMCodexPlayerCardWidget* CardWidget = SlotWidget->GetCardWidget();
+		TestTrue(TEXT("Pitch Mini renders exactly its projected role"),
+			Slot.Card.SelectedRole == Expected->Key
+				&& Slot.Card.SelectedRoleLabel == Expected->Value
+				&& CardWidget != nullptr
+				&& CardWidget->IsSelectedRoleTagVisible()
+				&& CardWidget->GetSelectedRoleTagText().ToString()
+					== Expected->Value);
+	}
+	TestTrue(TEXT("All four roles are visible across both sides"),
+		ProjectedRoleCount == 4 && RoleSides.Num() == 2);
+
+	for (UFMCodexPlayerCardWidget* RackCard
+		: Screen->GetLocalRackWidget()->GetRenderedCardWidgets())
+	{
+		if (RackCard != nullptr)
+		{
+			TestTrue(TEXT("Rack cards do not receive selected-role tags"),
+				RackCard->GetPresentation().SelectedRole
+					== EFMCodexUMGSelectedRole::None);
+		}
+	}
+
+	FMatchPlayState ClearedState = State;
+	ClearedState.bHasCurrentAttack = false;
+	ClearedState.CurrentAttack = FMatchPlayCurrentAttackState();
+	const FFMCodexLocalMatchSkillRuleSnapshotResult SkillRules =
+		Host->GetSkillRuleSnapshot();
+	TestTrue(TEXT("Skill rules remain available for clear-boundary projection"),
+		SkillRules.bSuccess);
+	const FFMCodexLocalMatchInteractionView ClearedView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			ClearedState, SkillRules.Snapshot);
+	TestTrue(TEXT("Clearing CurrentAttack clears every projected role"),
+		ClearedView.SelectedCarrierCardId.IsNone()
+			&& ClearedView.SelectedRunnerCardId.IsNone()
+			&& ClearedView.SelectedMarkerCardId.IsNone()
+			&& ClearedView.SelectedHelperCardId.IsNone());
+	const FFMCodexUMGMatchScreenViewModel ClearedPresentation =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			ClearedView, FFMCodexLocalMatchResolutionFeedback(), FString(),
+			Attacker);
+	for (const FFMCodexUMGPitchRegionViewModel& Region
+		: ClearedPresentation.PitchRegions)
+	{
+		for (const FFMCodexUMGPitchSlotViewModel& Slot : Region.Slots)
+		{
+			TestTrue(TEXT("No Pitch Mini role survives the attack boundary"),
+				Slot.Card.SelectedRole == EFMCodexUMGSelectedRole::None
+					&& Slot.Card.SelectedRoleLabel.IsEmpty());
+		}
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexMarkerWrongAreaFeedbackTest,
+	"FMCodex.LocalPlay.ControlSurface.46.MarkerWrongAreaFeedback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexMarkerWrongAreaFeedbackTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller =
+		PlayableWorld.GetController();
+	if (Host == nullptr || Controller == nullptr)
+	{
+		AddError(TEXT("Marker wrong-area world did not initialize"));
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	if (Screen == nullptr)
+	{
+		AddError(TEXT("Marker wrong-area Screen did not initialize"));
+		return false;
+	}
+	Screen->TakeWidget();
+	Screen->RequestStartNewMatch();
+	Screen->RequestRollTacticalPoints();
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
+	const FName CarrierId = FamilyCardId(FamilyExpectations()[0], Attacker);
+	const FString CarrierHalf = Attacker == EInitialTurnOrderPlayer::PlayerA
+		? TEXT("NearB") : TEXT("NearA");
+	const FString OppositeHalf = Attacker == EInitialTurnOrderPlayer::PlayerA
+		? TEXT("NearA") : TEXT("NearB");
+	int32 AttackerDeployments = 0;
+	int32 DefenderDeployments = 0;
+	FName SameHalfDefenderId = NAME_None;
+	FName WrongHalfDefenderId = NAME_None;
+	for (int32 Step = 0; Step < 5; ++Step)
+	{
+		Controller->RefreshPresentation();
+		const FFMCodexLocalMatchInteractionView& DeployView =
+			Controller->GetInteractionView();
+		const bool bAttackerTurn =
+			DeployView.CurrentLegalDeploymentSide == Attacker;
+		const FString& RequiredHalf = bAttackerTurn
+			? CarrierHalf
+			: DefenderDeployments == 0 ? CarrierHalf : OppositeHalf;
+		const FFMCodexLocalMatchDeploymentOption* Chosen =
+			DeployView.DeploymentOptions.FindByPredicate(
+				[&](const FFMCodexLocalMatchDeploymentOption& Option)
+				{
+					return !Option.bGoalkeeper
+						&& Option.SlotId.ToString().Contains(RequiredHalf)
+						&& (!bAttackerTurn || AttackerDeployments > 0
+							|| Option.CardId == CarrierId);
+				});
+		TestNotNull(TEXT("Required half-area deployment option exists"), Chosen);
+		if (Chosen == nullptr)
+		{
+			return false;
+		}
+		const FName ChosenCardId = Chosen->CardId;
+		Controller->DeployOrdinary(ChosenCardId, Chosen->SlotId);
+		TestTrue(TEXT("Custom half-area deployment succeeds"),
+			Controller->GetLastDiagnostic().bHostSuccess);
+		if (!Controller->GetLastDiagnostic().bHostSuccess)
+		{
+			return false;
+		}
+		if (bAttackerTurn)
+		{
+			++AttackerDeployments;
+		}
+		else
+		{
+			if (DefenderDeployments == 0)
+			{
+				SameHalfDefenderId = ChosenCardId;
+			}
+			else
+			{
+				WrongHalfDefenderId = ChosenCardId;
+			}
+			++DefenderDeployments;
+		}
+	}
+	for (int32 SideIndex = 0; SideIndex < 2; ++SideIndex)
+	{
+		Controller->RefreshPresentation();
+		Controller->FinishDeployment();
+		if (!Controller->GetLastDiagnostic().bHostSuccess)
+		{
+			AddError(TEXT("Custom deployment FinishDeployment failed"));
+			return false;
+		}
+	}
+	Controller->SubmitCarrier(CarrierId);
+	TestTrue(TEXT("Custom setup submits Carrier"),
+		Controller->GetLastDiagnostic().bHostSuccess);
+	Controller->RefreshPresentation();
+
+	const FFMCodexLocalMatchInteractionView& MarkerView =
+		Controller->GetInteractionView();
+	TestTrue(TEXT("Canonical Marker projection separates legal and wrong-area cards"),
+		MarkerView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectMarker
+			&& MarkerView.ExpectedActingPlayer == Defender
+			&& MarkerView.SelectionOptions.ContainsByPredicate(
+				[SameHalfDefenderId](const FFMCodexLocalMatchSelectionOption& Option)
+				{
+					return Option.RelatedCardId == SameHalfDefenderId;
+				})
+			&& MarkerView.SelectionFeedbackCandidates.ContainsByPredicate(
+				[WrongHalfDefenderId](
+					const FFMCodexLocalMatchSelectionFeedbackCandidate& Candidate)
+				{
+					return Candidate.CardId == WrongHalfDefenderId
+						&& Candidate.Reason ==
+							EFMCodexLocalMatchSelectionFeedbackReason::
+								MarkerWrongPhysicalArea;
+				}));
+	FString CardWidgetSource;
+	FString PitchSlotSource;
+	FString ScreenSource;
+	TestTrue(TEXT("UMG selection layers do not reimplement the same-half rule"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexPlayerCardWidget.cpp"),
+			CardWidgetSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexPitchSlotWidget.cpp"),
+				PitchSlotSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+				ScreenSource)
+			&& !CardWidgetSource.Contains(TEXT("PhysicalAreaMatchQuery"))
+			&& !PitchSlotSource.Contains(TEXT("PhysicalAreaMatchQuery"))
+			&& !ScreenSource.Contains(TEXT("PhysicalAreaMatchQuery"))
+			&& !CardWidgetSource.Contains(
+				TEXT("MarkerNotInCarrierPhysicalArea"))
+			&& !PitchSlotSource.Contains(
+				TEXT("MarkerNotInCarrierPhysicalArea"))
+			&& !ScreenSource.Contains(
+				TEXT("MarkerNotInCarrierPhysicalArea")));
+
+	UFMCodexPlayerCardWidget* WrongAreaCard = nullptr;
+	UFMCodexPlayerCardWidget* LegalMarkerCard = nullptr;
+	UFMCodexPitchSlotWidget* EmptySlot = nullptr;
+	for (UFMCodexPitchSlotWidget* SlotWidget
+		: Screen->GetPitchWidget()->GetRenderedSlotWidgets())
+	{
+		if (SlotWidget == nullptr)
+		{
+			continue;
+		}
+		SlotWidget->TakeWidget();
+		const FFMCodexUMGPitchSlotViewModel& Slot = SlotWidget->GetPresentation();
+		if (!Slot.bOccupied)
+		{
+			EmptySlot = EmptySlot != nullptr ? EmptySlot : SlotWidget;
+		}
+		else if (Slot.Card.CardId == WrongHalfDefenderId)
+		{
+			WrongAreaCard = SlotWidget->GetCardWidget();
+		}
+		else if (Slot.Card.CardId == SameHalfDefenderId)
+		{
+			LegalMarkerCard = SlotWidget->GetCardWidget();
+		}
+	}
+	UFMCodexSelectionFeedbackToastWidget* Toast =
+		Screen->GetSelectionFeedbackToast();
+	TestNotNull(TEXT("Wrong-area Pitch card exists"), WrongAreaCard);
+	TestNotNull(TEXT("Legal Marker Pitch card exists"), LegalMarkerCard);
+	TestNotNull(TEXT("Reusable feedback Toast exists"), Toast);
+	TestNotNull(TEXT("Empty Pitch slot exists"), EmptySlot);
+	if (WrongAreaCard == nullptr || LegalMarkerCard == nullptr
+		|| Toast == nullptr || EmptySlot == nullptr)
+	{
+		return false;
+	}
+
+	WrongAreaCard->TakeWidget();
+	LegalMarkerCard->TakeWidget();
+	const TArray<uint8> BeforeWrongClick =
+		SerializeState(Host->GetMatchSnapshot().Snapshot);
+	TestTrue(TEXT("Wrong-area card exposes feedback but no submit intent"),
+		!WrongAreaCard->IsSelectableForCurrentPrompt()
+			&& WrongAreaCard->GetSelectionFeedbackReason()
+				== EFMCodexUMGSelectionFeedbackReason::MarkerWrongPhysicalArea
+			&& WrongAreaCard->RequestSelectionFeedback());
+	TestTrue(TEXT("Wrong-area feedback is authority-safe and remains SelectMarker"),
+		BeforeWrongClick == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectMarker);
+	TestTrue(TEXT("Toast is exact, non-modal and two-second bounded"),
+		Toast->IsFeedbackVisible()
+			&& Toast->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& Toast->GetDisplayedText().ToString()
+				== TEXT("\u76EF\u4EBA\u7403\u5458\u5FC5\u987B\u4E0E\u6301\u7403\u7403\u5458\u4F4D\u4E8E\u540C\u4E00\u534A\u533A")
+			&& FMath::IsNearlyEqual(Toast->GetDisplayDurationSeconds(), 2.0f));
+	TestTrue(TEXT("Toast does not block the existing Full Card hover route"),
+		WrongAreaCard->RequestFullCardDetailHover()
+			&& Screen->IsDetailOverlayVisible()
+			&& Toast->IsFeedbackVisible());
+	const int32 FirstTriggerSerial = Toast->GetTriggerSerial();
+	TestTrue(TEXT("Repeated wrong-area feedback restarts the Toast"),
+		WrongAreaCard->RequestSelectionFeedback()
+			&& Toast->GetTriggerSerial() == FirstTriggerSerial + 1
+			&& Toast->IsFeedbackVisible());
+	// A timer registered after this synthetic world's last frame enters the
+	// pending set first; activate it, then advance the following synthetic frame.
+	PlayableWorld.GetWorld()->GetTimerManager().Tick(0.0f);
+	++GFrameCounter;
+	PlayableWorld.GetWorld()->GetTimerManager().Tick(2.1f);
+	TestFalse(TEXT("Toast automatically dismisses after its duration"),
+		Toast->IsFeedbackVisible());
+	TestTrue(TEXT("Empty slot and background expose no feedback source"),
+		EmptySlot->GetCardWidget() == nullptr);
+
+	TestTrue(TEXT("Feedback can be shown again before a valid submit"),
+		WrongAreaCard->RequestSelectionFeedback() && Toast->IsFeedbackVisible());
+	TestTrue(TEXT("Legal Marker remains immediately selectable"),
+		LegalMarkerCard->IsSelectableForCurrentPrompt()
+			&& LegalMarkerCard->RequestOnPitchSelection());
+	TestTrue(TEXT("Valid submit dismisses Toast and advances authority"),
+		!Toast->IsFeedbackVisible()
+			&& Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName == TEXT("SubmitMarker")
+			&& Host->GetMatchSnapshot().Snapshot.CurrentAttack.ActionPreparation
+				.MarkerCardId == SameHalfDefenderId);
 
 	return true;
 }

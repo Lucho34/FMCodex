@@ -416,3 +416,18 @@ This log records approved player-facing UI decisions separately from gameplay ca
 - One left click directly emits the projected `SubmitCarrier` intent through the existing Screen/Controller/Host path. Non-candidates do not emit. There is no confirmation dialog, cancel gesture, modal, pitch dimming, or large floating label.
 - The lower dock remains contextual: acting player, localized `选择持球球员`, and `点击场上球员选择` remain, while the old PlayerKey choice buttons are collapsed for this state. SelectionChoices remain available to diagnostics but are not rendered as a player fallback.
 - Header, Tactical Point module, Resolution, Pitch/Pitch Mini geometry, ownership rail, tactical-match cue, rarity, Hand Micro, Full Card, artwork, gameplay formulae and every other selection category remain frozen.
+
+## 2026-08-22 — Defensive Marker on-pitch selection and compact prompt text
+
+- `SelectMarker` is the second bounded deployed-player selection rollout. Existing authoritative Marker selection options are projected to occupied defending Pitch Slots by stable CardId and explicit `SubmitMarker` intent; widgets do not infer legality from Tactical Match or visual position.
+- Marker structural selectability remains narrower than Carrier: current defender, unique deployment, non-goalkeeper and the same physical area as the frozen Carrier. The existing Full Card hover and one-click commit coexist with no selection-specific highlight, scale, animation or pitch dimming.
+- The old Marker PlayerKey buttons are collapsed. The contextual dock retains the acting player, one localized `选择盯人球员` title, the short `点击场上球员选择` guidance and a compact `放弃盯人` button backed by the unchanged DeclineMarker route.
+- The same compact prompt composition applies to Carrier: its title is no longer repeated in Context. Helper and every other selection category remain outside this rollout; Header, TP, Pitch geometry, Tactical Match visuals, Full Card, formulas, Resolution and artwork remain frozen.
+
+## 2026-08-22 — Selected role tags and non-modal Marker feedback
+
+- Occupied Pitch Mini DTOs receive exactly one optional selected-role value. The upper-right badge renders `持球 / 跑位 / 盯人 / 协防` from authoritative CurrentAttack projection; it never derives a role from local clicks and clears with the attack.
+- The badge is a compact dark navy translucent plate with a restrained border and light two-character text. It remains spatially separate from top-left Tactical Match pips, the ownership rail and bottom identity, and does not resize Pitch Mini or propagate to Full Card/Rack surfaces.
+- A reusable lower-center Toast sits above the operation dock. It is hit-test-invisible, has no acknowledgement control or dimming, auto-dismisses after roughly two seconds and restarts its timer on repetition.
+- The first feedback reason is only Marker wrong physical area, projected from the canonical legality result and localized as `盯人球员必须与持球球员位于同一半区`. Empty/background clicks remain silent; hover Full Card and legal one-click Marker submit remain available while the Toast is shown.
+- Player-facing Marker vocabulary is now `盯人 / 选择盯人球员 / 放弃盯人`. Internal Marker identifiers and the separate player attribute label `盯防` remain unchanged.

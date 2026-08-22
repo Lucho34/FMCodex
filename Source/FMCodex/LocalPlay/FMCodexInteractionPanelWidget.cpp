@@ -434,8 +434,12 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	TitleText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Presentation.TitleLabel.IsEmpty()
 			? TEXT("Interaction unavailable") : Presentation.TitleLabel));
-	TArray<FString> ContextLines = { Presentation.CategoryLabel,
-		Presentation.OnPitchSelectionHintLabel };
+	TArray<FString> ContextLines;
+	if (!Presentation.bUseOnPitchPlayerSelection)
+	{
+		ContextLines.Add(Presentation.CategoryLabel);
+	}
+	ContextLines.Add(Presentation.OnPitchSelectionHintLabel);
 	ContextLines.RemoveAll(
 		[](const FString& Line) { return Line.IsEmpty(); });
 	TArray<FString> LocalizedContextLines;

@@ -140,6 +140,20 @@ struct FMCODEX_API FFMCodexLocalMatchSelectionOption
 	FFMCodexLocalMatchCardView Card;
 };
 
+/** Bounded, presentation-facing reasons copied from canonical legality. */
+enum class EFMCodexLocalMatchSelectionFeedbackReason : uint8
+{
+	None,
+	MarkerWrongPhysicalArea
+};
+
+struct FMCODEX_API FFMCodexLocalMatchSelectionFeedbackCandidate
+{
+	FName CardId = NAME_None;
+	EFMCodexLocalMatchSelectionFeedbackReason Reason =
+		EFMCodexLocalMatchSelectionFeedbackReason::None;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchPitchSlotView
 {
 	FName SlotId = NAME_None;
@@ -226,6 +240,12 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	TArray<FFMCodexLocalMatchDeploymentOption> DeploymentOptions;
 	TArray<FFMCodexLocalMatchDeploymentGroup> DeploymentGroups;
 	TArray<FFMCodexLocalMatchSelectionOption> SelectionOptions;
+	TArray<FFMCodexLocalMatchSelectionFeedbackCandidate>
+		SelectionFeedbackCandidates;
+	FName SelectedCarrierCardId = NAME_None;
+	FName SelectedRunnerCardId = NAME_None;
+	FName SelectedMarkerCardId = NAME_None;
+	FName SelectedHelperCardId = NAME_None;
 	TArray<FFMCodexLocalMatchPitchRegionView> PitchRegions;
 	TArray<FFMCodexLocalMatchCardView> PlayerACardRoster;
 	TArray<FFMCodexLocalMatchCardView> PlayerBCardRoster;

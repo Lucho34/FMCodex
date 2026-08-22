@@ -11,6 +11,7 @@
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexResolutionPanelWidget.h"
+#include "FMCodexSelectionFeedbackToastWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -105,6 +106,10 @@ TSharedRef<SWidget> UFMCodexLocalMatchScreenWidget::RebuildWidget()
 void UFMCodexLocalMatchScreenWidget::NativeDestruct()
 {
 	HideDetailOverlay();
+	if (SelectionFeedbackToast != nullptr)
+	{
+		SelectionFeedbackToast->DismissFeedback();
+	}
 	if (PitchWidget != nullptr)
 	{
 		PitchWidget->EndDeploymentDrag();
@@ -134,7 +139,16 @@ void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 	{
 		PitchWidget->EndDeploymentDrag();
 	}
+	const bool bLeavingMarkerSelection =
+		Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectMarker
+		&& InPresentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectMarker;
 	Presentation = InPresentation;
+	if (bLeavingMarkerSelection && SelectionFeedbackToast != nullptr)
+	{
+		SelectionFeedbackToast->DismissFeedback();
+	}
 	if (!bDeploymentDragActive)
 	{
 		InteractionState = EFMCodexUMGCardInteractionState::Default;
@@ -169,6 +183,12 @@ UFMCodexInteractionPanelWidget*
 UFMCodexLocalMatchScreenWidget::GetInteractionPanel() const
 {
 	return InteractionPanel;
+}
+
+UFMCodexSelectionFeedbackToastWidget*
+UFMCodexLocalMatchScreenWidget::GetSelectionFeedbackToast() const
+{
+	return SelectionFeedbackToast;
 }
 
 UFMCodexResolutionPanelWidget*
@@ -474,10 +494,16 @@ void UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested(
 	const EFMCodexUMGOnPitchSelectionIntent Intent,
 	const FName OptionId)
 {
+	const bool bMatchesCarrierPrompt =
+		Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectCarrier
+		&& Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitCarrier;
+	const bool bMatchesMarkerPrompt =
+		Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectMarker
+		&& Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitMarker;
 	if (!Presentation.Interaction.bUseOnPitchPlayerSelection
-		|| Presentation.Interaction.Category
-			!= EFMCodexUMGInteractionCategory::SelectCarrier
-		|| Intent != EFMCodexUMGOnPitchSelectionIntent::SubmitCarrier
+		|| (!bMatchesCarrierPrompt && !bMatchesMarkerPrompt)
 		|| OptionId.IsNone())
 	{
 		return;
@@ -496,7 +522,53 @@ void UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested(
 	if (bProjectedCandidate)
 	{
 		HideDetailOverlay();
-		RequestSubmitCarrier(OptionId);
+		if (SelectionFeedbackToast != nullptr)
+		{
+			SelectionFeedbackToast->DismissFeedback();
+		}
+		if (Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitCarrier)
+		{
+			RequestSubmitCarrier(OptionId);
+		}
+		else if (Intent == EFMCodexUMGOnPitchSelectionIntent::SubmitMarker)
+		{
+			RequestSubmitMarker(OptionId);
+		}
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleSelectionFeedbackRequested(
+	const FName CardId)
+{
+	if (Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectMarker
+		|| SelectionFeedbackToast == nullptr || CardId.IsNone())
+	{
+		return;
+	}
+	const FFMCodexUMGPitchSlotViewModel* FeedbackSlot = nullptr;
+	for (const FFMCodexUMGPitchRegionViewModel& Region
+		: Presentation.PitchRegions)
+	{
+		FeedbackSlot = Region.Slots.FindByPredicate(
+			[CardId](const FFMCodexUMGPitchSlotViewModel& PitchSlotView)
+			{
+				return PitchSlotView.bOccupied
+					&& PitchSlotView.Card.CardId == CardId
+					&& PitchSlotView.SelectionFeedbackReason
+						!= EFMCodexUMGSelectionFeedbackReason::None
+					&& !PitchSlotView.SelectionFeedbackLabel.IsEmpty();
+			});
+		if (FeedbackSlot != nullptr)
+		{
+			break;
+		}
+	}
+	if (FeedbackSlot != nullptr)
+	{
+		SelectionFeedbackToast->ShowFeedback(
+			FeedbackSlot->SelectionFeedbackReason,
+			FeedbackSlot->SelectionFeedbackLabel);
 	}
 }
 
@@ -813,6 +885,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this, &UFMCodexLocalMatchScreenWidget::HandleDetailHoverDismissed);
 	PitchWidget->OnOnPitchSelectionRequested.AddUObject(
 		this, &UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested);
+	PitchWidget->OnSelectionFeedbackRequested.AddUObject(
+		this, &UFMCodexLocalMatchScreenWidget::HandleSelectionFeedbackRequested);
 	PitchRegion->AddChild(PitchWidget);
 	PitchBounds->AddChild(PitchRegion);
 	if (UHorizontalBoxSlot* PitchSlot = MainArea->AddChildToHorizontalBox(PitchBounds))
@@ -879,6 +953,19 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	InteractionRegion->AddChild(InteractionPanel);
 	DockBounds->AddChild(InteractionRegion);
 	MainScreen->AddChildToVerticalBox(DockBounds);
+
+	SelectionFeedbackToast =
+		WidgetTree->ConstructWidget<UFMCodexSelectionFeedbackToastWidget>(
+			UFMCodexSelectionFeedbackToastWidget::StaticClass(),
+			TEXT("SelectionFeedbackToast"));
+	SelectionFeedbackToast->SetVisibility(ESlateVisibility::Collapsed);
+	if (UOverlaySlot* ToastSlot = Root->AddChildToOverlay(
+		SelectionFeedbackToast))
+	{
+		ToastSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 132.0f));
+		ToastSlot->SetHorizontalAlignment(HAlign_Center);
+		ToastSlot->SetVerticalAlignment(VAlign_Bottom);
+	}
 
 	DetailOverlayCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
 		UCanvasPanel::StaticClass(), TEXT("FullCardDetailOverlayCanvas"));

@@ -357,3 +357,28 @@
 - 单击本方无 Tactical Match 的结构合法球员同样必须提交；单击对方球员不得广播本方 Carrier intent，空槽位与未部署 Rack 卡不提供场上提交路径，拒绝时权威 State byte-identical。
 - 其他 SelectMarker、SelectRunner、SelectHelper 等选人阶段在本 Stage 不迁移；其既有路径不得被此代表性 rollout 意外改变。
 
+## LocalPlay 防守方盯人球员场上直选（Stage 6.13.1.4.5）
+
+应验证：
+
+- 精确目标是 `CurrentAttack.SelectionStage=AwaitingMarker` 对应的 `InteractionCategory=SelectMarker`；合法候选继续来自 `FMatchPlayCurrentAttackMarkerSelectionAvailability`，不得由 UMG 根据 Tactical Match、卡面颜色或视觉位置重算。
+- `InteractionView.SelectionOptions` 的稳定 `Id/RelatedCardId` 必须一对一投影为对应已占用 Pitch Slot 的 `bSelectableForCurrentPrompt / OnPitchSelectionOptionId / SubmitMarker`。真实结构集合仅包括当前防守方唯一部署、非门将且与冻结 Carrier 同 physical area 的球员。
+- 目标状态不渲染旧 PlayerKey 选择按钮或 raw canonical ID；操作方、`选择盯人球员` 与短提示保留，`放弃盯人` 按钮继续调用原有 DeclineMarker 路径。
+- Carrier 与 Marker 共用的场上直选面板只渲染一次主要动作短语；Context 只保留 `点击场上球员选择`，不得再次重复 Title。
+- Selectable 不创建 outline、glow、lift、scale、动画或 whole-pitch dimming。正常 Pitch Mini Full Card hover 在 Marker 状态继续工作。
+- Tactical Match 不参与 Marker 提交门禁。至少一个无 Tactical Match 的权威合法防守球员必须仍可单击并立即提交；对方球员、空槽位以及因 physical area 或门将规则被排除的防守对象不得提交，拒绝后权威 State byte-identical。
+- 本 Stage 不迁移 `SelectHelper`、Runner 或其他选择状态。
+
+## 已选角色标签与选择反馈（Stage 6.13.1.4.5A）
+
+应验证：
+
+- Carrier、Runner、Marker、Helper 分别投影为 `持球 / 跑位 / 盯人 / 协防`；每个已占用 Pitch Mini 只有一个可选角色字段，不使用标签数组。
+- 角色只来自权威 `ActionPreparation` 或冻结后的 `SelectedAction`。进入后续选择与 Resolution 后标签仍保留；权威 `CurrentAttack` 清除后所有标签消失。
+- 攻守双方角色都可见。标签位于 Pitch Mini 右上角，与左上 Tactical Match pips、ownership rail 和底部身份信息分离，不改变 Pitch Mini 尺寸，也不出现在 Rack、Hand Micro 或 Full Card。
+- 玩家可见 Marker 术语为 `盯人 / 选择盯人球员 / 放弃盯人`；内部 Marker 类型、命令与错误码保持不变。
+- `SelectMarker` 时单击权威拒绝原因为 `MarkerNotInCarrierPhysicalArea` 的本方已部署非门将球员，不提交、不换阶段且 Match State byte-identical，并显示 `盯人球员必须与持球球员位于同一半区`。
+- Toast 位于底部操作 Dock 上方、非模态且 hit-test-invisible，约两秒自动消失；重复错误点击重启计时。显示期间 Pitch Mini hover/Full Card 仍有效，合法 Marker 仍能立即提交。
+- 空槽和场地背景不触发 Toast；UMG 不按槽位位置重新判断半区，也不为本 Stage 未定义的其他拒绝原因编造玩家文案。
+- 本 Stage 不启用 Runner/Helper 场上直选，不修改 Authority、RNG、公式、Resolution 流程、Header、Pitch 几何或卡面资产。
+

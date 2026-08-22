@@ -29,6 +29,8 @@ DECLARE_MULTICAST_DELEGATE_OneParam(
 	FFMCodexPlayerCardDetailHover, UFMCodexPlayerCardWidget*);
 DECLARE_MULTICAST_DELEGATE_OneParam(
 	FFMCodexPlayerCardOnPitchSelectionRequested, FName);
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FFMCodexPlayerCardSelectionFeedbackRequested, FName);
 
 UENUM(BlueprintType)
 enum class EFMCodexPlayerCardPresentationMode : uint8
@@ -72,6 +74,8 @@ public:
 	bool IsOwnerVisible() const;
 	bool IsTeamVisible() const;
 	bool IsRoleIconVisible() const;
+	bool IsSelectedRoleTagVisible() const;
+	FText GetSelectedRoleTagText() const;
 	FLinearColor GetFullCardBaseSurfaceColor() const;
 	const TArray<FLinearColor>& GetRenderedAttributeTierColors() const;
 	static FLinearColor GetAttributeTierColor(int32 Value);
@@ -99,6 +103,10 @@ public:
 	bool IsSelectableForCurrentPrompt() const;
 	FName GetOnPitchSelectionOptionId() const;
 	bool RequestOnPitchSelection();
+	void ConfigureSelectionFeedback(
+		EFMCodexUMGSelectionFeedbackReason InReason);
+	EFMCodexUMGSelectionFeedbackReason GetSelectionFeedbackReason() const;
+	bool RequestSelectionFeedback();
 	bool RequestFullCardDetailHover();
 
 	FFMCodexDeploymentCardDragStarted OnDeploymentDragStarted;
@@ -106,6 +114,7 @@ public:
 	FFMCodexPlayerCardDetailHover OnDetailHoverRequested;
 	FFMCodexPlayerCardDetailHover OnDetailHoverDismissed;
 	FFMCodexPlayerCardOnPitchSelectionRequested OnOnPitchSelectionRequested;
+	FFMCodexPlayerCardSelectionFeedbackRequested OnSelectionFeedbackRequested;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -231,10 +240,18 @@ private:
 	TObjectPtr<UTextBlock> PitchMiniRoleText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PitchMiniSelectedRoleTag;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> PitchMiniSelectedRoleText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PitchMiniIdentitySeparatorText;
 
 	FName OnPitchSelectionOptionId = NAME_None;
 	bool bSelectableForCurrentPrompt = false;
+	EFMCodexUMGSelectionFeedbackReason SelectionFeedbackReason =
+		EFMCodexUMGSelectionFeedbackReason::None;
 
 	UPROPERTY(Transient, BlueprintReadOnly,
 		Category = "Local Match|Visual Hooks",

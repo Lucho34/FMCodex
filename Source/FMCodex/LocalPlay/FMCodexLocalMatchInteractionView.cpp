@@ -708,6 +708,15 @@ namespace FMCodexLocalMatchInteractionView
 						Candidate.MarkerCardId,
 						Candidate.MarkerCardId);
 				}
+				else if (Candidate.LegalityResult.ErrorCode ==
+					EMatchPlayCurrentAttackMarkerSelectionErrorCode::
+						MarkerNotInCarrierPhysicalArea)
+				{
+					View.SelectionFeedbackCandidates.Add({
+						Candidate.MarkerCardId,
+						EFMCodexLocalMatchSelectionFeedbackReason::
+							MarkerWrongPhysicalArea });
+				}
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
 				&& !Availability.bCanSelectAnyMarker;
@@ -928,6 +937,22 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	Result.SelectionStage = Attack.SelectionStage;
 	Result.CurrentLegalDeploymentSide = Attack.CurrentLegalDeploymentSide;
 	Result.DeploymentPlacements = Attack.DeploymentPlacements;
+	if (Attack.bHasSelectedAction)
+	{
+		Result.SelectedCarrierCardId = Attack.SelectedAction.CarrierCardId;
+		Result.SelectedRunnerCardId = Attack.SelectedAction.RunnerCardId;
+		Result.SelectedMarkerCardId = Attack.SelectedAction.MarkerCardId;
+		Result.SelectedHelperCardId = Attack.SelectedAction.bHasHelper
+			? Attack.SelectedAction.HelperCardId : NAME_None;
+	}
+	else
+	{
+		Result.SelectedCarrierCardId = Attack.ActionPreparation.CarrierCardId;
+		Result.SelectedRunnerCardId = Attack.ActionPreparation.RunnerCardId;
+		Result.SelectedMarkerCardId = Attack.ActionPreparation.MarkerCardId;
+		Result.SelectedHelperCardId = Attack.ActionPreparation.bHasHelper
+			? Attack.ActionPreparation.HelperCardId : NAME_None;
+	}
 	const ESkillRuleType PresentedActionType = Attack.bHasResolutionSession
 		? Attack.ResolutionSession.Bundle.Binding.ActionType
 		: Attack.bHasSelectedAction

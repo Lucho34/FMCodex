@@ -22,6 +22,8 @@ DECLARE_MULTICAST_DELEGATE_OneParam(
 DECLARE_MULTICAST_DELEGATE_TwoParams(
 	FFMCodexPitchOnPitchSelectionRequested,
 	EFMCodexUMGOnPitchSelectionIntent, FName);
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FFMCodexPitchSelectionFeedbackRequested, FName);
 
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexPitchSlotWidget : public UUserWidget
@@ -53,6 +55,7 @@ public:
 	FFMCodexPitchCardDetailHover OnCardDetailHoverRequested;
 	FFMCodexPitchCardDetailHover OnCardDetailHoverDismissed;
 	FFMCodexPitchOnPitchSelectionRequested OnOnPitchSelectionRequested;
+	FFMCodexPitchSelectionFeedbackRequested OnSelectionFeedbackRequested;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -79,6 +82,7 @@ private:
 	void HandleCardDetailHoverRequested(UFMCodexPlayerCardWidget* SourceCard);
 	void HandleCardDetailHoverDismissed(UFMCodexPlayerCardWidget* SourceCard);
 	void HandleOnPitchSelectionRequested(FName OptionId);
+	void HandleSelectionFeedbackRequested(FName CardId);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Pitch Presentation",

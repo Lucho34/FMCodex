@@ -296,6 +296,11 @@ FReply UFMCodexPlayerCardWidget::NativeOnMouseButtonDown(
 	{
 		return FReply::Handled();
 	}
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton
+		&& RequestSelectionFeedback())
+	{
+		return FReply::Handled();
+	}
 	if (bDeploymentDragEnabled)
 	{
 		return UWidgetBlueprintLibrary::DetectDragIfPressed(
@@ -341,6 +346,7 @@ void UFMCodexPlayerCardWidget::RefreshFromPresentation(
 	{
 		OnPitchSelectionOptionId = NAME_None;
 		bSelectableForCurrentPrompt = false;
+		SelectionFeedbackReason = EFMCodexUMGSelectionFeedbackReason::None;
 		SetCursor(EMouseCursor::Default);
 	}
 	RefreshVisuals();
@@ -374,6 +380,19 @@ void UFMCodexPlayerCardWidget::ClearDeploymentDrag()
 bool UFMCodexPlayerCardWidget::IsDeploymentDragEnabled() const
 {
 	return bDeploymentDragEnabled;
+}
+
+bool UFMCodexPlayerCardWidget::IsSelectedRoleTagVisible() const
+{
+	return PitchMiniSelectedRoleTag != nullptr
+		&& PitchMiniSelectedRoleTag->GetVisibility()
+			== ESlateVisibility::HitTestInvisible;
+}
+
+FText UFMCodexPlayerCardWidget::GetSelectedRoleTagText() const
+{
+	return PitchMiniSelectedRoleText != nullptr
+		? PitchMiniSelectedRoleText->GetText() : FText::GetEmpty();
 }
 
 FName UFMCodexPlayerCardWidget::GetDeploymentDragCardId() const
@@ -429,6 +448,7 @@ void UFMCodexPlayerCardWidget::ConfigureOnPitchSelection(
 	OnPitchSelectionOptionId = bSelectableForCurrentPrompt
 		? OptionId : NAME_None;
 	SetCursor(bSelectableForCurrentPrompt
+		|| SelectionFeedbackReason != EFMCodexUMGSelectionFeedbackReason::None
 		? EMouseCursor::Hand : EMouseCursor::Default);
 }
 
@@ -454,6 +474,34 @@ bool UFMCodexPlayerCardWidget::RequestOnPitchSelection()
 		return false;
 	}
 	OnOnPitchSelectionRequested.Broadcast(OnPitchSelectionOptionId);
+	return true;
+}
+
+void UFMCodexPlayerCardWidget::ConfigureSelectionFeedback(
+	const EFMCodexUMGSelectionFeedbackReason InReason)
+{
+	SelectionFeedbackReason =
+		PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini
+			? InReason : EFMCodexUMGSelectionFeedbackReason::None;
+	SetCursor(bSelectableForCurrentPrompt
+		|| SelectionFeedbackReason != EFMCodexUMGSelectionFeedbackReason::None
+		? EMouseCursor::Hand : EMouseCursor::Default);
+}
+
+EFMCodexUMGSelectionFeedbackReason
+UFMCodexPlayerCardWidget::GetSelectionFeedbackReason() const
+{
+	return SelectionFeedbackReason;
+}
+
+bool UFMCodexPlayerCardWidget::RequestSelectionFeedback()
+{
+	if (SelectionFeedbackReason == EFMCodexUMGSelectionFeedbackReason::None
+		|| Presentation.CardId.IsNone())
+	{
+		return false;
+	}
+	OnSelectionFeedbackRequested.Broadcast(Presentation.CardId);
 	return true;
 }
 
@@ -1132,6 +1180,45 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	PitchMiniContent->AddChildToVerticalBox(PitchIdentityBounds);
 	FrameAssetHook->AddChildToOverlay(PitchMiniContent);
 
+	USizeBox* PitchSelectedRoleBounds =
+		WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),
+			TEXT("PitchMiniSelectedRoleBounds"));
+	PitchSelectedRoleBounds->SetWidthOverride(38.0f);
+	PitchSelectedRoleBounds->SetHeightOverride(20.0f);
+	PitchMiniSelectedRoleTag = MakeRegion(*WidgetTree,
+		TEXT("PitchMiniSelectedRoleTag"),
+		FLinearColor::FromSRGBColor(FColor(0x08, 0x1C, 0x2A, 0xE6)),
+		FMargin(5.0f, 1.0f));
+	PitchMiniSelectedRoleTag->SetBrush(FSlateRoundedBoxBrush(
+		FLinearColor::FromSRGBColor(FColor(0x08, 0x1C, 0x2A, 0xE6)),
+		3.0f,
+		FLinearColor::FromSRGBColor(FColor(0x8D, 0xA9, 0xB8, 0x88)),
+		1.0f));
+	PitchMiniSelectedRoleTag->SetBrushColor(FLinearColor::White);
+	PitchMiniSelectedRoleTag->SetVisibility(ESlateVisibility::Collapsed);
+	PitchMiniSelectedRoleText = MakeText(*WidgetTree,
+		TEXT("PitchMiniSelectedRoleText"));
+	ConfigureBoundedSingleLine(*PitchMiniSelectedRoleText);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*PitchMiniSelectedRoleText, EFMCodexPlayerUITextRole::Secondary);
+	FSlateFontInfo SelectedRoleFont = PitchMiniSelectedRoleText->GetFont();
+	SelectedRoleFont.Size = 11;
+	SelectedRoleFont.TypefaceFontName = TEXT("Medium");
+	PitchMiniSelectedRoleText->SetFont(SelectedRoleFont);
+	PitchMiniSelectedRoleText->SetColorAndOpacity(
+		FSlateColor(FLinearColor::FromSRGBColor(
+			FColor(0xE7, 0xF0, 0xF3))));
+	PitchMiniSelectedRoleText->SetJustification(ETextJustify::Center);
+	PitchMiniSelectedRoleTag->AddChild(PitchMiniSelectedRoleText);
+	PitchSelectedRoleBounds->AddChild(PitchMiniSelectedRoleTag);
+	if (UOverlaySlot* SelectedRoleSlot =
+		FrameAssetHook->AddChildToOverlay(PitchSelectedRoleBounds))
+	{
+		SelectedRoleSlot->SetPadding(FMargin(0.0f, 7.0f, 7.0f, 0.0f));
+		SelectedRoleSlot->SetHorizontalAlignment(HAlign_Right);
+		SelectedRoleSlot->SetVerticalAlignment(VAlign_Top);
+	}
+
 	auto AddPitchMiniTacticalMatchSegment =
 		[this, FrameAssetHook](const TCHAR* Name,
 			const float Width, const float Height,
@@ -1755,6 +1842,13 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	PitchMiniOwnershipRailRight->SetVisibility(
 		bShowRightPitchMiniOwnershipRail
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	const bool bShowSelectedRole = bPitchMini
+		&& Presentation.SelectedRole != EFMCodexUMGSelectedRole::None
+		&& !Presentation.SelectedRoleLabel.IsEmpty();
+	PitchMiniSelectedRoleText->SetText(
+		FText::FromString(Presentation.SelectedRoleLabel));
+	PitchMiniSelectedRoleTag->SetVisibility(bShowSelectedRole
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 
 	const bool bPitchMiniTacticalMatchCountValid = ensureAlwaysMsgf(
 		Presentation.PitchMiniTacticalMatchCount >= 0

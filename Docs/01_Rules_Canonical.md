@@ -404,7 +404,13 @@
 6. 技能配置表中可以存在多个同名技能，例如多个“传中”，但触发点数范围可以不同。
 7. 技能是否可用由技能配置中的触发点数范围决定。
 
-LocalPlay 当前代表性“选择持球球员”交互采用场上直选：Presentation 只为权威结构合法的本方已部署非门将球员附加 selectable 能力，玩家单击对应 Pitch Mini 后立即提交既有持球球员选择命令。Selectable 不产生专属高亮，也不等于 Tactical Match；现有 mint pips 只表示战术匹配信息，不能作为点击合法性。对方球员、门将、空槽位和未部署卡牌不可通过场上路径提交。选择期间继续使用正常 Pitch Mini Full Card hover，且没有二次确认或取消步骤。此处不把场上直选扩展为其他选人阶段。
+LocalPlay 的“选择持球球员”交互采用场上直选：Presentation 只为权威结构合法的本方已部署非门将球员附加 selectable 能力，玩家单击对应 Pitch Mini 后立即提交既有持球球员选择命令。Selectable 不产生专属高亮，也不等于 Tactical Match；现有 mint pips 只表示战术匹配信息，不能作为点击合法性。对方球员、门将、空槽位和未部署卡牌不可通过场上路径提交。选择期间继续使用正常 Pitch Mini Full Card hover，且没有二次确认或取消步骤。
+
+LocalPlay 的“选择盯人球员”交互同样采用场上直选，但结构合法集合不得照搬持球球员规则。候选必须由当前 `MarkerSelectionAvailability` 确认为当前防守方唯一部署的非门将球员，并且与已冻结持球球员处于同一 physical area。Presentation 只投影这个权威集合；Tactical Match 与战术优劣不构成点击门禁。单击合法 Pitch Mini 后立即提交既有 Marker 选择命令，正常 Full Card hover 保留，不增加确认或取消。底部不显示 PlayerKey 候选按钮，但保留既有放弃 Marker 权威动作，其玩家可见文案为 `放弃盯人`。本规则不扩展到 Helper 或其他选择阶段。
+
+当前进攻中已选定的四种参与角色统一以单值语义投影到场上球员：Carrier=`持球`、Runner=`跑位`、Marker=`盯人`、Helper=`协防`。每名球员最多显示一个角色标签；角色来源只能是当前权威 `CurrentAttack.ActionPreparation`，或在动作冻结后来自 `CurrentAttack.SelectedAction`，不得由 Widget、点击历史或动画状态推断。标签在后续选择与结算阶段继续保留，并在 `CurrentAttack` 清除时一并清除。此标签只表达已选定角色，不扩大 Runner/Helper 的场上选择能力。
+
+Marker 候选若由权威合法性结果以 `MarkerNotInCarrierPhysicalArea` 拒绝，LocalPlay 可在玩家单击对应已部署非门将球员时显示非模态提示 `盯人球员必须与持球球员位于同一半区`。该提示不提交命令、不改变权威状态，约两秒后自动消失；重复触发重启计时。空槽与背景点击不产生该提示，提示层不得阻塞 Pitch Mini 或 Full Card hover。UMG 只能消费投影的拒绝原因，不得自行比较视觉槽位或 physical area。
 
 ### 9.3 无合法球员处理
 

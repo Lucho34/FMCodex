@@ -18,6 +18,8 @@ public:
 	static FText HandMicroCompactRole(const FString& CanonicalLabel);
 	static FText PitchMiniCompactRole(const FString& CanonicalLabel);
 	static FText MatchScreenLabel(const FString& CanonicalLabel);
+	static FText SelectedRoleTag(const FString& CanonicalRole);
+	static FText SelectionFeedback(const FString& CanonicalReason);
 	static FText TeamName(FName CardId);
 	static FText Role(const FString& CanonicalLabel);
 	static FText CompactRole(const FString& CanonicalLabel);

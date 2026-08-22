@@ -110,7 +110,8 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("FINISH DEPLOYMENT") || CanonicalLabel == TEXT("Deploy / Finish Deployment")) return LOCTEXT("FinishDeployment", "\u5B8C\u6210\u90E8\u7F72");
 	if (CanonicalLabel == TEXT("Select Carrier")) return LOCTEXT("SelectCarrier", "\u9009\u62E9\u6301\u7403\u7403\u5458");
 	if (CanonicalLabel == TEXT("Click a player on the pitch")) return LOCTEXT("ClickPitchPlayer", "\u70B9\u51FB\u573A\u4E0A\u7403\u5458\u9009\u62E9");
-	if (CanonicalLabel == TEXT("Select Marker")) return LOCTEXT("SelectMarker", "\u9009\u62E9\u76EF\u9632\u7403\u5458");
+	if (CanonicalLabel == TEXT("Select Marker")) return LOCTEXT("SelectMarker", "\u9009\u62E9\u76EF\u4EBA\u7403\u5458");
+	if (CanonicalLabel == TEXT("DECLINE MARKER") || CanonicalLabel == TEXT("Decline Marker")) return LOCTEXT("DeclineMarker", "\u653E\u5F03\u76EF\u4EBA");
 	if (CanonicalLabel == TEXT("Choose Skill") || CanonicalLabel == TEXT("Select Skill")) return LOCTEXT("ChooseSkill", "\u9009\u62E9\u6280\u80FD");
 	if (CanonicalLabel == TEXT("Select Runner")) return LOCTEXT("SelectRunner", "\u9009\u62E9\u524D\u63D2\u7403\u5458");
 	if (CanonicalLabel == TEXT("Select Helper")) return LOCTEXT("SelectHelper", "\u9009\u62E9\u63A5\u5E94\u7403\u5458");
@@ -138,6 +139,27 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 			FText::FromString(CanonicalLabel.RightChop(15)));
 	}
 	return FText::FromString(CanonicalLabel);
+}
+
+FText FFMCodexPlayerUIPresentationText::SelectedRoleTag(
+	const FString& CanonicalRole)
+{
+	if (CanonicalRole == TEXT("Carrier")) return LOCTEXT("SelectedRoleCarrier", "\u6301\u7403");
+	if (CanonicalRole == TEXT("Runner")) return LOCTEXT("SelectedRoleRunner", "\u8DD1\u4F4D");
+	if (CanonicalRole == TEXT("Marker")) return LOCTEXT("SelectedRoleMarker", "\u76EF\u4EBA");
+	if (CanonicalRole == TEXT("Helper")) return LOCTEXT("SelectedRoleHelper", "\u534F\u9632");
+	return FText::GetEmpty();
+}
+
+FText FFMCodexPlayerUIPresentationText::SelectionFeedback(
+	const FString& CanonicalReason)
+{
+	if (CanonicalReason == TEXT("MarkerWrongPhysicalArea"))
+	{
+		return LOCTEXT("MarkerWrongPhysicalArea",
+			"\u76EF\u4EBA\u7403\u5458\u5FC5\u987B\u4E0E\u6301\u7403\u7403\u5458\u4F4D\u4E8E\u540C\u4E00\u534A\u533A");
+	}
+	return FText::GetEmpty();
 }
 
 FText FFMCodexPlayerUIPresentationText::CompactPlayerName(
