@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "MatchPlayCurrentAttackMarkerSelectionLegality.h"
+#include "SkillRuleSnapshot.h"
 
 #include "MatchPlayCurrentAttackMarkerSelectionWriter.generated.h"
 
@@ -40,6 +41,17 @@ struct FMCODEX_API FMatchPlayCurrentAttackMarkerSelectionWriterResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Marker Selection Writer")
 	FName SelectedMarkerCardId = NAME_None;
 
+	/**
+	 * True for the production participant-first preparation contract.
+	 * The historical field name is retained for serialization compatibility;
+	 * no SkillId or ActionType is frozen until final tactical selection.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Marker Selection Writer")
+	bool bDeferredSkillSelection = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Marker Selection Writer")
+	ESkillRuleType DeferredActionType = ESkillRuleType::None;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Marker Selection Writer")
 	FString ErrorMessage;
 };
@@ -49,5 +61,10 @@ class FMCODEX_API FMatchPlayCurrentAttackMarkerSelectionWriter final
 public:
 	static FMatchPlayCurrentAttackMarkerSelectionWriterResult Select(
 		const FMatchPlayState& BeforeState,
+		const FMatchPlayCurrentAttackMarkerSelectionRequest& Request);
+
+	static FMatchPlayCurrentAttackMarkerSelectionWriterResult SelectWithSkillRules(
+		const FMatchPlayState& BeforeState,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
 		const FMatchPlayCurrentAttackMarkerSelectionRequest& Request);
 };

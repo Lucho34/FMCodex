@@ -549,6 +549,10 @@ FText FFMCodexPlayerUIPresentationText::ResolutionContest(
 	{
 		return LOCTEXT("ResolutionCrossHigh", "\u9AD8\u7403\u4F20\u4E2D");
 	}
+	if (ContestId == TEXT("Cross.Low"))
+	{
+		return LOCTEXT("ResolutionCrossLow", "\u4F4E\u7403\u4F20\u4E2D");
+	}
 	return FText::GetEmpty();
 }
 

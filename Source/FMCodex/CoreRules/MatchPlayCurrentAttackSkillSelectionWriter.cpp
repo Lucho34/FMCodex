@@ -1,5 +1,8 @@
 #include "MatchPlayCurrentAttackSkillSelectionWriter.h"
 
+#include "MatchPlayElectiveBranchIntentRules.h"
+#include "MatchPlayCurrentAttackHelperFinalization.h"
+
 FMatchPlayCurrentAttackSkillSelectionWriterResult
 FMatchPlayCurrentAttackSkillSelectionWriter::Select(
 	const FMatchPlayState& BeforeState,
@@ -30,23 +33,43 @@ FMatchPlayCurrentAttackSkillSelectionWriter::Select(
 		WorkingState.CurrentAttack;
 	const FMatchPlaySkillParticipantRequirementResult& Requirement =
 		Result.LegalityResult.ParticipantRequirementResult;
+	const bool bParticipantsSelectedFirst =
+		CurrentAttack.ActionPreparation.bSkillSelectionDeferred;
 
-	if (Requirement.bCanBecomeReadyImmediately)
+	CurrentAttack.ActionPreparation.SkillId = Request.SkillId;
+	CurrentAttack.ActionPreparation.ActionType =
+		Result.LegalityResult.ResolvedActionType;
+	CurrentAttack.ActionPreparation.bSkillSelectionDeferred = false;
+
+	if (bParticipantsSelectedFirst)
 	{
-		CurrentAttack.ActionPreparation.SkillId =
-			Request.SkillId;
-		CurrentAttack.ActionPreparation.ActionType =
-			Result.LegalityResult.ResolvedActionType;
+		if (!Requirement.bRequiresRunner)
+		{
+			CurrentAttack.ActionPreparation.RunnerCardId = NAME_None;
+			CurrentAttack.ActionPreparation.bHasHelper = false;
+			CurrentAttack.ActionPreparation.HelperCardId = NAME_None;
+		}
+		if (MatchPlayElectiveBranchIntentRules::IsElectiveActionType(
+			Result.LegalityResult.ResolvedActionType))
+		{
+			CurrentAttack.SelectionStage =
+				EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent;
+		}
+		else
+		{
+			FMatchPlayCurrentAttackHelperFinalization::ApplyFinalSelectedAction(
+				WorkingState,
+				EMatchPlayElectiveBranchIntent::None);
+		}
+	}
+	else if (Requirement.bCanBecomeReadyImmediately)
+	{
 		CurrentAttack.SelectionStage =
 			EMatchPlayCurrentAttackSelectionStage
 				::AwaitingBranchIntent;
 	}
 	else
 	{
-		CurrentAttack.ActionPreparation.SkillId =
-			Request.SkillId;
-		CurrentAttack.ActionPreparation.ActionType =
-			Result.LegalityResult.ResolvedActionType;
 		CurrentAttack.SelectionStage =
 			EMatchPlayCurrentAttackSelectionStage::AwaitingRunner;
 	}

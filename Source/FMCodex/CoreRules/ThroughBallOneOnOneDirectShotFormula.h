@@ -60,5 +60,7 @@ class FMCODEX_API FThroughBallOneOnOneDirectShotFormula final
 {
 public:
 	static FThroughBallOneOnOneDirectShotFormulaResult Resolve(
-		const FThroughBallOneOnOneDirectShotFormulaPlan& Plan);
+		const FThroughBallOneOnOneDirectShotFormulaPlan& Plan,
+		float AttackerTacticalPlayerModifier = 0.0f,
+		float DefenderTacticalPlayerModifier = 0.0f);
 };

@@ -29,8 +29,9 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	SelectHelper,
 	SelectBranchIntent,
 	SelectOneOnOneShot,
-	RollCrossHighAttack,
-	RollCrossHighDefense,
+	RollCrossAttack,
+	RollCrossDefense,
+	CompleteCrossAndAdvance,
 	ContinueResolution,
 	AttackComplete,
 	MatchEnded
@@ -264,6 +265,10 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	TArray<EMatchPlayThroughBallOneOnOneShotChoice> OneOnOneOptions;
 	TArray<FFMCodexLocalMatchRollView> AcceptedRolls;
 	FMatchPlayCurrentAttackResolutionFactProjection ResolutionFacts;
+	bool bCrossAttackRollPending = false;
+	bool bCrossDefenseRollPending = false;
+	bool bCrossFormulaComplete = false;
+	bool bCrossTerminalActionAvailable = false;
 	FString ContinueActionLabel = TEXT("Continue Resolution");
 };
 

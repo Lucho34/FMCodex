@@ -6,6 +6,7 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 
 #include "Editor.h"
+#include "Components/TextBlock.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Misc/AutomationTest.h"
@@ -18,7 +19,7 @@
 namespace FMCodexInlineResolutionFormulaPIETests
 {
 	const FString CaptureDirectory = FPaths::ConvertRelativePathToFull(
-		FPaths::ProjectSavedDir() / TEXT("PIE/Stage6131418"));
+		FPaths::ProjectSavedDir() / TEXT("PIE/Stage6131418A"));
 
 	AFMCodexLocalMatchPlayerController* GetPIEController()
 	{
@@ -194,6 +195,9 @@ namespace FMCodexInlineResolutionFormulaPIETests
 			&& Formula.bSuppressLegacyResolution
 			&& Formula.ContestId == TEXT("Cross.High")
 			&& Formula.ContestLabel == TEXT("高球传中")
+			&& Formula.RouteResultLabel
+				== TEXT("路线掷点 2 → 判定为高球传中")
+			&& Formula.TacticalPlayerSummaryLabel.IsEmpty()
 			&& !Screen->IsLegacyResolutionOverlayVisible()
 			&& Screen->GetMatchHeader() != nullptr
 			&& Screen->GetPitchWidget() != nullptr
@@ -214,6 +218,18 @@ namespace FMCodexInlineResolutionFormulaPIETests
 		case 1:
 			bStateTruth = !Formula.AttackRow.bFinalValueResolved
 				&& !Formula.DefenseRow.bFinalValueResolved
+				&& Formula.AttackRow.bDisplayedResultResolved
+				&& Formula.DefenseRow.bDisplayedResultResolved
+				&& !Formula.AttackRow.bDisplayedResultIsFinalValue
+				&& !Formula.DefenseRow.bDisplayedResultIsFinalValue
+				&& FMath::IsNearlyEqual(
+					Formula.AttackRow.DisplayedResult,
+					Formula.AttackRow.KnownNonRollSubtotal)
+				&& FMath::IsNearlyEqual(
+					Formula.DefenseRow.DisplayedResult,
+					Formula.DefenseRow.KnownNonRollSubtotal)
+				&& Formula.AttackRow.DisplayedResultLabel != TEXT("?")
+				&& Formula.DefenseRow.DisplayedResultLabel != TEXT("?")
 				&& Surface->GetRenderedPendingTermCount() == 1
 				&& Formula.bCanContinue
 				&& Formula.StatusLabel == TEXT("等待进攻方掷点")
@@ -222,14 +238,22 @@ namespace FMCodexInlineResolutionFormulaPIETests
 				&& AttackRoll->DisplayLabel == TEXT("掷点 ?")
 				&& DefenseRoll != nullptr && !DefenseRoll->bResolved
 				&& Controller->GetInteractionView().InteractionCategory
-					== EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack
+					== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 				&& Controller->GetInteractionView().ExpectedActingPlayer
 					== Controller->GetInteractionView().CurrentAttackingPlayer;
 			break;
 		case 2:
 			bStateTruth = Formula.AttackRow.bFinalValueResolved
 				&& FMath::IsNearlyEqual(Formula.AttackRow.FinalValue, 9.5f)
+				&& Formula.AttackRow.bDisplayedResultIsFinalValue
+				&& FMath::IsNearlyEqual(
+					Formula.AttackRow.DisplayedResult,
+					Formula.AttackRow.FinalValue)
 				&& !Formula.DefenseRow.bFinalValueResolved
+				&& !Formula.DefenseRow.bDisplayedResultIsFinalValue
+				&& FMath::IsNearlyEqual(
+					Formula.DefenseRow.DisplayedResult,
+					Formula.DefenseRow.KnownNonRollSubtotal)
 				&& AttackRoll != nullptr && AttackRoll->bResolved
 				&& AttackRoll->RawD6 == 4
 				&& AttackRoll->DisplayLabel == TEXT("掷点 4")
@@ -240,13 +264,21 @@ namespace FMCodexInlineResolutionFormulaPIETests
 				&& Formula.StatusLabel == TEXT("等待防守方掷点")
 				&& Formula.ContinueActionLabel == TEXT("防守方掷点")
 				&& Controller->GetInteractionView().InteractionCategory
-					== EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense
+					== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
 				&& Controller->GetInteractionView().ExpectedActingPlayer
 					!= Controller->GetInteractionView().CurrentAttackingPlayer;
 			break;
 		case 3:
 			bStateTruth = Formula.AttackRow.bFinalValueResolved
 				&& Formula.DefenseRow.bFinalValueResolved
+				&& Formula.AttackRow.bDisplayedResultIsFinalValue
+				&& Formula.DefenseRow.bDisplayedResultIsFinalValue
+				&& FMath::IsNearlyEqual(
+					Formula.AttackRow.DisplayedResult,
+					Formula.AttackRow.FinalValue)
+				&& FMath::IsNearlyEqual(
+					Formula.DefenseRow.DisplayedResult,
+					Formula.DefenseRow.FinalValue)
 				&& FMath::IsNearlyEqual(Formula.AttackRow.FinalValue, 9.5f)
 				&& FMath::IsNearlyEqual(Formula.DefenseRow.FinalValue, 9.5f)
 				&& AttackRoll != nullptr && AttackRoll->RawD6 == 4
@@ -254,6 +286,13 @@ namespace FMCodexInlineResolutionFormulaPIETests
 				&& Surface->GetRenderedPendingTermCount() == 0
 				&& Formula.bCanContinue
 				&& Formula.StatusLabel == TEXT("双方掷点已完成")
+				&& Formula.ContinueActionLabel == TEXT("下一回合")
+				&& Controller->GetInteractionView().InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory
+						::CompleteCrossAndAdvance
+				&& Controller->GetInteractionView().bCrossFormulaComplete
+				&& Controller->GetInteractionView()
+					.bCrossTerminalActionAvailable
 				&& !Screen->GetInteractionPanel()->IsInteractionBlocked()
 				&& !Controller->GetResolutionFeedback().bTerminal;
 			break;
@@ -273,11 +312,19 @@ namespace FMCodexInlineResolutionFormulaPIETests
 	FString CapturePath(const int32 StateIndex)
 	{
 		static const TCHAR* Names[] = {
-			TEXT("Invalid"), TEXT("PreRoll"), TEXT("AttackSettled_DefensePending"),
-			TEXT("Completed")
+			TEXT("Invalid"), TEXT("RouteResult_HighPreRoll"),
+			TEXT("AttackSettled_DefensePending"), TEXT("Completed")
 		};
-		return CaptureDirectory / FString::Printf(TEXT("CrossHigh_State%d_%s.png"),
-			StateIndex, Names[FMath::Clamp(StateIndex, 0, 3)]);
+		return CaptureDirectory / FString::Printf(TEXT("CrossFlow_%02d_%s.png"),
+			StateIndex + 2,
+			Names[FMath::Clamp(StateIndex, 0, 3)]);
+	}
+
+	FString FlowCapturePath(const int32 StateIndex)
+	{
+		return CaptureDirectory / (StateIndex == 1
+			? TEXT("CrossFlow_01_AfterMarker_Runner.png")
+			: TEXT("CrossFlow_02_SingleRouteAction.png"));
 	}
 }
 
@@ -337,12 +384,68 @@ bool FPrepareCrossHighPIECommand::Update()
 		Test->AddError(TEXT("PIE Cross High Carrier/Marker selection failed."));
 		return true;
 	}
-	Controller->SubmitSkill(TEXT("Canonical.Skill.Cross.4.6"));
-	if (!Controller->GetLastDiagnostic().bHostSuccess
-		|| !SubmitFirst(*Controller,
-			EFMCodexLocalMatchInteractionCategory::SelectRunner))
+	Controller->RefreshPresentation();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	UFMCodexInteractionPanelWidget* Panel =
+		Screen == nullptr ? nullptr : Screen->GetInteractionPanel();
+	if (Panel != nullptr)
 	{
-		Test->AddError(TEXT("PIE Cross High Skill/Runner selection failed."));
+		Panel->TakeWidget();
+	}
+	const UTextBlock* RunnerTitle = Panel == nullptr
+		? nullptr
+		: Cast<UTextBlock>(
+			Panel->GetWidgetFromName(TEXT("InteractionActionTitle")));
+	const FFMCodexLocalMatchInteractionView& RunnerView =
+		Controller->GetInteractionView();
+	if (Screen == nullptr
+		|| RunnerView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectRunner
+		|| RunnerView.SelectedCarrierCardId.IsNone()
+		|| RunnerView.SelectedMarkerCardId.IsNone()
+		|| !RunnerView.SelectedRunnerCardId.IsNone()
+		|| Screen->GetPresentation().Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectRunner
+		|| RunnerTitle == nullptr
+		|| RunnerTitle->GetText().ToString() != TEXT("选择跑位球员"))
+	{
+		Test->AddError(FString::Printf(TEXT(
+			"PIE flow did not advance Marker -> Runner before tactical selection "
+			"(category=%d stage=%d title='%s' carrier=%s marker=%s runner=%s)."),
+			static_cast<int32>(RunnerView.InteractionCategory),
+			static_cast<int32>(RunnerView.SelectionStage),
+			Screen == nullptr
+				? TEXT("<no-screen>")
+				: *Screen->GetPresentation().Interaction.TitleLabel,
+			*RunnerView.SelectedCarrierCardId.ToString(),
+			*RunnerView.SelectedMarkerCardId.ToString(),
+			*RunnerView.SelectedRunnerCardId.ToString()));
+		return true;
+	}
+	const FString Path = FlowCapturePath(1);
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true);
+	FScreenshotRequest::RequestScreenshot(Path, true, false);
+	return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(
+	FAdvanceCrossToRouteEntryPIECommand,
+	FAutomationTestBase*, Test);
+
+bool FAdvanceCrossToRouteEntryPIECommand::Update()
+{
+	using namespace FMCodexInlineResolutionFormulaPIETests;
+	AFMCodexLocalMatchPlayerController* Controller = GetPIEController();
+	if (Controller == nullptr)
+	{
+		Test->AddError(TEXT("PIE Controller disappeared before route entry."));
+		return true;
+	}
+	if (!SubmitFirst(*Controller,
+		EFMCodexLocalMatchInteractionCategory::SelectRunner))
+	{
+		Test->AddError(TEXT("PIE Cross High Runner selection failed."));
 		return true;
 	}
 	Controller->RefreshPresentation();
@@ -364,8 +467,45 @@ bool FPrepareCrossHighPIECommand::Update()
 	{
 		Controller->DeclineCurrentSelection();
 	}
+	Controller->SubmitSkill(TEXT("Canonical.Skill.Cross.4.6"));
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		Test->AddError(TEXT("PIE Cross High deferred Skill selection failed."));
+		return true;
+	}
 	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
-	Controller->ContinueResolution();
+	Controller->RefreshPresentation();
+	const FFMCodexLocalMatchInteractionView& RouteEntryView =
+		Controller->GetInteractionView();
+	if (!Controller->GetLastDiagnostic().bHostSuccess
+		|| RouteEntryView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::ContinueResolution
+		|| RouteEntryView.ContinueActionLabel != TEXT("判定传中路线")
+		|| !RouteEntryView.AcceptedRolls.IsEmpty())
+	{
+		Test->AddError(TEXT(
+			"PIE Cross route entry was not one clear pre-roll action."));
+		return true;
+	}
+	const FString Path = FlowCapturePath(2);
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true);
+	FScreenshotRequest::RequestScreenshot(Path, true, false);
+	return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(
+	FResolveMergedCrossRoutePIECommand,
+	FAutomationTestBase*, Test);
+
+bool FResolveMergedCrossRoutePIECommand::Update()
+{
+	using namespace FMCodexInlineResolutionFormulaPIETests;
+	AFMCodexLocalMatchPlayerController* Controller = GetPIEController();
+	if (Controller == nullptr)
+	{
+		Test->AddError(TEXT("PIE Controller disappeared before merged route action."));
+		return true;
+	}
 	Controller->ContinueResolution();
 	const bool bInitialRouteIsTwo = Controller->GetInteractionView()
 		.ResolutionFacts.Rolls.ContainsByPredicate(
@@ -376,10 +516,14 @@ bool FPrepareCrossHighPIECommand::Update()
 					&& Roll.bResolved && Roll.RawD6 == 2;
 			});
 	if (!Controller->GetLastDiagnostic().bHostSuccess
+		|| Controller->GetLastDiagnostic().CommandName
+			!= TEXT("ResolveCrossRoute")
+		|| Controller->GetInteractionView().AcceptedRolls.Num() != 1
 		|| !bInitialRouteIsTwo
 		|| !ValidateSurfaceState(*Test, 1))
 	{
-		Test->AddError(TEXT("PIE did not reach Cross High pre-roll formula state."));
+		Test->AddError(TEXT(
+			"PIE merged route action did not produce exactly one route D6 and High pre-roll state."));
 	}
 	return true;
 }
@@ -454,6 +598,24 @@ bool FVerifyPIECaptureCommand::Update()
 	return true;
 }
 
+DEFINE_LATENT_AUTOMATION_COMMAND_TWO_PARAMETER(
+	FVerifyPIEFlowCaptureCommand,
+	FAutomationTestBase*, Test,
+	int32, StateIndex);
+
+bool FVerifyPIEFlowCaptureCommand::Update()
+{
+	using namespace FMCodexInlineResolutionFormulaPIETests;
+	const FString Path = FlowCapturePath(StateIndex);
+	if (!FPaths::FileExists(Path))
+	{
+		Test->AddError(FString::Printf(
+			TEXT("PIE flow state %d screenshot was not written: %s"),
+			StateIndex, *Path));
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FFMCodexInlineResolutionFormulaPIEVisualGateTest,
 	"FMCodex.PIE.InlineFormula.CrossHighManualRollVisualGate",
@@ -464,6 +626,10 @@ bool FFMCodexInlineResolutionFormulaPIEVisualGateTest::RunTest(
 {
 	using namespace FMCodexInlineResolutionFormulaPIETests;
 	IFileManager::Get().MakeDirectory(*CaptureDirectory, true);
+	for (int32 StateIndex = 1; StateIndex <= 2; ++StateIndex)
+	{
+		IFileManager::Get().Delete(*FlowCapturePath(StateIndex), false, true);
+	}
 	for (int32 StateIndex = 1; StateIndex <= 3; ++StateIndex)
 	{
 		IFileManager::Get().Delete(*CapturePath(StateIndex), false, true);
@@ -471,6 +637,13 @@ bool FFMCodexInlineResolutionFormulaPIEVisualGateTest::RunTest(
 	ADD_LATENT_AUTOMATION_COMMAND(FStartPIECommand(false));
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.0f));
 	ADD_LATENT_AUTOMATION_COMMAND(FPrepareCrossHighPIECommand(this));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
+	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIEFlowCaptureCommand(this, 1));
+	ADD_LATENT_AUTOMATION_COMMAND(
+		FAdvanceCrossToRouteEntryPIECommand(this));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
+	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIEFlowCaptureCommand(this, 2));
+	ADD_LATENT_AUTOMATION_COMMAND(FResolveMergedCrossRoutePIECommand(this));
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.5f));
 	ADD_LATENT_AUTOMATION_COMMAND(
 		FAdvanceCrossHighPIECommand(this, 1, false));

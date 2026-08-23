@@ -82,6 +82,14 @@ struct FMCODEX_API FMatchPlayCurrentAttackActionPreparationState
 {
 	GENERATED_BODY()
 
+	/**
+	 * Authority-only marker for participant-first preparation. The historical
+	 * name is retained for compatibility; it is not Cross-specific and does not
+	 * imply that SkillId or ActionType has already been selected.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	bool bSkillSelectionDeferred = false;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	FName CarrierCardId = NAME_None;
 

@@ -3,6 +3,9 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "MatchPlayCurrentAttackMarkerSelectionTestFixtures.h"
+#include "MatchPlayCurrentAttackHelperSelectionWriter.h"
+#include "MatchPlayCurrentAttackRunnerSelectionWriter.h"
+#include "MatchPlayCurrentAttackSkillSelectionWriter.h"
 #include "Misc/AutomationTest.h"
 
 #include <type_traits>
@@ -83,7 +86,7 @@ bool FMarkerWriterContractTest::RunTest(const FString& Parameters)
 
 MARKER_WRITER_TEST(
 	FMarkerWriterSuccessTest,
-	"FreezesMarkerAndEntersAwaitingSkill")
+	"FreezesMarkerAndEntersAwaitingRunner")
 
 bool FMarkerWriterSuccessTest::RunTest(const FString& Parameters)
 {
@@ -93,8 +96,10 @@ bool FMarkerWriterSuccessTest::RunTest(const FString& Parameters)
 	FMatchPlayState ExpectedState = BeforeState;
 	ExpectedState.CurrentAttack.ActionPreparation.MarkerCardId =
 		MarkerOneId;
+	ExpectedState.CurrentAttack.ActionPreparation.bSkillSelectionDeferred =
+		true;
 	ExpectedState.CurrentAttack.SelectionStage =
-		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner;
 	const auto Result =
 		FMatchPlayCurrentAttackMarkerSelectionWriter::Select(
 			BeforeState,
@@ -103,8 +108,13 @@ bool FMarkerWriterSuccessTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Legality succeeds"), Result.LegalityResult.bIsLegal);
 	TestEqual(TEXT("Selected marker echoed"),
 		Result.SelectedMarkerCardId, MarkerOneId);
-	TestTrue(TEXT("Only marker and stage change"),
+	TestTrue(TEXT("Only marker, participant-first flag, and stage change"),
 		AreStatesEqual(Result.AfterState, ExpectedState));
+	TestTrue(TEXT("Skill remains unselected"),
+		Result.AfterState.CurrentAttack.ActionPreparation.SkillId.IsNone());
+	TestEqual(TEXT("Action family remains unfrozen"),
+		Result.AfterState.CurrentAttack.ActionPreparation.ActionType,
+		ESkillRuleType::None);
 	TestTrue(TEXT("Input state unchanged"),
 		AreStatesEqual(Result.BeforeState, BeforeState));
 	TestEqual(TEXT("Carrier preserved"),
@@ -122,6 +132,206 @@ bool FMarkerWriterSuccessTest::RunTest(const FString& Parameters)
 				&Result.AfterState.CurrentAttack.SelectedAction,
 				&EmptySelectedAction,
 				0));
+	return true;
+}
+
+MARKER_WRITER_TEST(
+	FMarkerWriterCrossDefersSkillTest,
+	"CrossOnlyDefersSkillUntilAfterParticipants")
+
+bool FMarkerWriterCrossDefersSkillTest::RunTest(const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackMarkerSelection;
+	const FName CrossSkillId(TEXT("Skill.Cross.Deferred"));
+	const FName AlternateCrossSkillId(TEXT("Skill.Cross.Deferred.Alternate"));
+	FMatchPlayState BeforeState = MakeState();
+	BeforeState.CardSnapshotAuthority.PlayerACardSnapshots.Cards[0]
+		.SkillIds = { CrossSkillId, AlternateCrossSkillId };
+	FSkillRuleSnapshot CrossRule;
+	CrossRule.SkillId = CrossSkillId;
+	CrossRule.SkillType = ESkillRuleType::Cross;
+	CrossRule.MinTriggerActionPoint = 4;
+	CrossRule.MaxTriggerActionPoint = 6;
+	FSkillRuleSnapshot AlternateCrossRule = CrossRule;
+	AlternateCrossRule.SkillId = AlternateCrossSkillId;
+	FSkillRuleSnapshotSet Rules;
+	Rules.SkillRules = { CrossRule, AlternateCrossRule };
+
+	const auto Result =
+		FMatchPlayCurrentAttackMarkerSelectionWriter::SelectWithSkillRules(
+			BeforeState,
+			Rules,
+			MakeRequest());
+	TestTrue(TEXT("Cross marker succeeds"), Result.bSuccess);
+	TestTrue(TEXT("Deferred path is explicit"), Result.bDeferredSkillSelection);
+	TestEqual(TEXT("Action family is not frozen before Skill selection"),
+		Result.DeferredActionType, ESkillRuleType::None);
+	TestEqual(TEXT("Marker advances to Runner, not Skill"),
+		Result.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner);
+	TestTrue(TEXT("Authority marks deferred Skill selection"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.bSkillSelectionDeferred);
+	TestTrue(TEXT("Specific Skill remains unselected"),
+		Result.AfterState.CurrentAttack.ActionPreparation.SkillId.IsNone());
+	TestEqual(TEXT("Action family remains unfrozen"),
+		Result.AfterState.CurrentAttack.ActionPreparation.ActionType,
+		ESkillRuleType::None);
+	return true;
+}
+
+MARKER_WRITER_TEST(
+	FMarkerWriterMixedFamiliesRemainParticipantFirstTest,
+	"MixedFamiliesRemainParticipantFirst")
+
+bool FMarkerWriterMixedFamiliesRemainParticipantFirstTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackMarkerSelection;
+	const FName CrossSkillId(TEXT("Skill.Cross.Ambiguous"));
+	const FName LongShotSkillId(TEXT("Skill.LongShot.Ambiguous"));
+	FMatchPlayState BeforeState = MakeState();
+	BeforeState.CardSnapshotAuthority.PlayerACardSnapshots.Cards[0]
+		.SkillIds = { CrossSkillId, LongShotSkillId };
+	FSkillRuleSnapshot CrossRule;
+	CrossRule.SkillId = CrossSkillId;
+	CrossRule.SkillType = ESkillRuleType::Cross;
+	CrossRule.MinTriggerActionPoint = 4;
+	CrossRule.MaxTriggerActionPoint = 6;
+	FSkillRuleSnapshot LongShotRule = CrossRule;
+	LongShotRule.SkillId = LongShotSkillId;
+	LongShotRule.SkillType = ESkillRuleType::LongShot;
+	FSkillRuleSnapshotSet Rules;
+	Rules.SkillRules = { CrossRule, LongShotRule };
+
+	const auto Result =
+		FMatchPlayCurrentAttackMarkerSelectionWriter::SelectWithSkillRules(
+			BeforeState,
+			Rules,
+			MakeRequest());
+	TestTrue(TEXT("Ambiguous marker still succeeds"), Result.bSuccess);
+	TestTrue(TEXT("Mixed action families use participant-first flow"),
+		Result.bDeferredSkillSelection);
+	TestEqual(TEXT("Mixed action families advance to Runner"),
+		Result.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner);
+	TestTrue(TEXT("Participant-first marker is set"),
+		Result.AfterState.CurrentAttack.ActionPreparation
+			.bSkillSelectionDeferred);
+	TestEqual(TEXT("No action family is guessed"),
+		Result.AfterState.CurrentAttack.ActionPreparation.ActionType,
+		ESkillRuleType::None);
+	TestTrue(TEXT("Specific Skill remains unselected"),
+		Result.AfterState.CurrentAttack.ActionPreparation.SkillId.IsNone());
+	return true;
+}
+
+MARKER_WRITER_TEST(
+	FCrossParticipantFirstAuthoritySequenceTest,
+	"CrossAuthoritySequenceMarkerRunnerHelperSkill")
+
+bool FCrossParticipantFirstAuthoritySequenceTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackMarkerSelection;
+	const FName CrossSkillId(TEXT("Skill.Cross.Sequence"));
+	const FName RunnerId(TEXT("PlayerA.CrossRunner"));
+	const FName HelperId(TEXT("PlayerB.CrossHelper"));
+	const FName RunnerSlot(TEXT("Physical.NearB.Runner"));
+	const FName HelperSlot(TEXT("Physical.NearB.Helper"));
+	FMatchPlayState State = MakeState();
+	State.CurrentAttack.DeploymentPlacements.RemoveAll(
+		[](const FMatchPlayDeploymentPlacement& Placement)
+		{
+			return Placement.CardId == AttackerOnlyMarkerId;
+		});
+	State.CardSnapshotAuthority.PlayerACardSnapshots.Cards[0]
+		.SkillIds = { CrossSkillId };
+	FPlayerCardRuleSnapshot Runner = MakeCard(RunnerId);
+	Runner.PositionTypes = { EPlayerPositionType::Attack };
+	State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.Add(Runner);
+	State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.Add(
+		MakeCard(HelperId));
+	State.DeploymentSlotCatalog.Slots.Add(
+		MakeSlot(RunnerSlot, EMatchPlayNeutralSlotSide::NearPlayerB));
+	State.DeploymentSlotCatalog.Slots.Add(
+		MakeSlot(HelperSlot, EMatchPlayNeutralSlotSide::NearPlayerB));
+	State.CurrentAttack.DeploymentPlacements.Add(MakePlacement(
+		EInitialTurnOrderPlayer::PlayerA, RunnerId, RunnerSlot));
+	State.CurrentAttack.DeploymentPlacements.Add(MakePlacement(
+		EInitialTurnOrderPlayer::PlayerB, HelperId, HelperSlot));
+	FSkillRuleSnapshot CrossRule;
+	CrossRule.SkillId = CrossSkillId;
+	CrossRule.SkillType = ESkillRuleType::Cross;
+	CrossRule.MinTriggerActionPoint = 4;
+	CrossRule.MaxTriggerActionPoint = 6;
+	FSkillRuleSnapshotSet Rules;
+	Rules.SkillRules = { CrossRule };
+
+	const auto Marker =
+		FMatchPlayCurrentAttackMarkerSelectionWriter::SelectWithSkillRules(
+			State, Rules, MakeRequest());
+	TestTrue(TEXT("Marker succeeds"), Marker.bSuccess);
+	TestEqual(TEXT("After Marker awaits Runner"),
+		Marker.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner);
+
+	FMatchPlayCurrentAttackRunnerSelectionRequest RunnerRequest;
+	RunnerRequest.AttackSequence = ValidAttackSequence;
+	RunnerRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	RunnerRequest.RunnerCardId = RunnerId;
+	const auto RunnerResult =
+		FMatchPlayCurrentAttackRunnerSelectionWriter::Select(
+			Marker.AfterState, RunnerRequest);
+	if (!RunnerResult.bSuccess)
+	{
+		AddError(FString::Printf(TEXT("Runner failure: %s"),
+			*RunnerResult.ErrorMessage));
+		return false;
+	}
+	TestTrue(TEXT("Runner succeeds"), RunnerResult.bSuccess);
+	TestEqual(TEXT("After Runner awaits Helper"),
+		RunnerResult.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingHelper);
+
+	FMatchPlayCurrentAttackHelperSelectionRequest HelperRequest;
+	HelperRequest.AttackSequence = ValidAttackSequence;
+	HelperRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerB;
+	HelperRequest.HelperCardId = HelperId;
+	const auto HelperResult =
+		FMatchPlayCurrentAttackHelperSelectionWriter::Select(
+			RunnerResult.AfterState, HelperRequest);
+	if (!HelperResult.bSuccess)
+	{
+		AddError(FString::Printf(TEXT("Helper failure: %s"),
+			*HelperResult.ErrorMessage));
+		return false;
+	}
+	TestTrue(TEXT("Helper succeeds"), HelperResult.bSuccess);
+	TestEqual(TEXT("After Helper finally awaits Skill"),
+		HelperResult.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
+
+	FMatchPlayCurrentAttackSkillSelectionRequest SkillRequest;
+	SkillRequest.AttackSequence = ValidAttackSequence;
+	SkillRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	SkillRequest.SkillId = CrossSkillId;
+	const auto SkillResult =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			HelperResult.AfterState, Rules, SkillRequest);
+	TestTrue(TEXT("Final Cross Skill succeeds"), SkillResult.bSuccess);
+	TestEqual(TEXT("Cross then awaits branch intent"),
+		SkillResult.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent);
+	TestEqual(TEXT("Runner remains authoritative"),
+		SkillResult.AfterState.CurrentAttack.ActionPreparation.RunnerCardId,
+		RunnerId);
+	TestEqual(TEXT("Helper remains authoritative"),
+		SkillResult.AfterState.CurrentAttack.ActionPreparation.HelperCardId,
+		HelperId);
 	return true;
 }
 

@@ -79,6 +79,12 @@ private:
 	TObjectPtr<UTextBlock> StatusText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RouteResultText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TacticalPlayerText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DiceRevealRegion;
 
 	UPROPERTY(Transient)

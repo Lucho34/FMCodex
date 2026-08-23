@@ -541,4 +541,4 @@ ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份�
 
 该 Projection 可重复从同一 State 构建且不得消费 RNG。CurrentAttack 被 terminal completion 清除时，command-scoped ResolutionFeedback 可保留清除前的同一值事实；它不重新创建 authority。
 
-Cross High 的 `PostRouteRollProgress.RollRecords` 允许两个合法前缀：空记录表示等待进攻方掷点；仅含 `PrimaryAttack` 表示进攻已完成、等待防守方掷点。第二个显式权威命令追加 `PrimaryDefense` 后才形成完整合同。错误阵营、错误 purpose、重复或越序请求不得追加记录。
+Cross High 与 Cross Low 的 `PostRouteRollProgress.RollRecords` 均允许两个合法未完成前缀：空记录表示等待进攻方掷点；仅含 `PrimaryAttack` 表示进攻已完成、等待防守方掷点。对应实际分支的第二个显式权威命令追加 `PrimaryDefense` 后才形成完整合同。错误分支、错误阵营、错误 purpose、重复或越序请求不得追加记录；完成后的 terminal 命令只消费这些持久化记录，不再追加随机结果。

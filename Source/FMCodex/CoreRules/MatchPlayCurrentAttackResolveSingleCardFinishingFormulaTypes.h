@@ -7,6 +7,7 @@
 #include "MatchPlayCurrentAttackResolveCrossPostRoutePlanTypes.h"
 #include "MatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanTypes.h"
 #include "MatchPlayCurrentAttackResolvePassControlPostRoutePlanTypes.h"
+#include "MatchPlayTacticalPlayerAdvantageQuery.h"
 #include "SingleCardFormulaResolverInputAssembler.h"
 #include "SingleCardFormulaResolutionExecutor.h"
 
@@ -45,7 +46,8 @@ enum class
 	FormulaExecutionFailed,
 	InvalidFormulaResolutionResult,
 	ActiveGoalkeeperSnapshotUnavailable,
-	InvalidActiveGoalkeeperSnapshot
+	InvalidActiveGoalkeeperSnapshot,
+	TacticalPlayerAdvantageQueryFailed
 };
 
 struct FMCODEX_API
@@ -62,6 +64,7 @@ struct FMCODEX_API
 	FMatchPlayCurrentAttackResolutionSessionStateValidationResult
 		SessionStateValidationResult;
 	FMatchPlayCurrentAttackPostRouteRollProgressResult ProgressResult;
+	FMatchPlayTacticalPlayerAdvantageResult TacticalPlayerAdvantageResult;
 	EMatchPlaySingleCardFinishingFormulaFamily Family =
 		EMatchPlaySingleCardFinishingFormulaFamily::None;
 

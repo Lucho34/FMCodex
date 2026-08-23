@@ -2,6 +2,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "MatchPlayCurrentAttackBranchIntentSelectionWriter.h"
 #include "MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
 #include "Misc/AutomationTest.h"
 
@@ -80,6 +81,82 @@ bool FSkillWriterNoRunnerFinalizationTest::RunTest(
 				Attack)
 				.bIsCanonical);
 	}
+	return true;
+}
+
+SKILL_WRITER_TEST(
+	FSkillWriterParticipantFirstShotDropsIrrelevantRolesTest,
+	"ParticipantFirstShotDropsIrrelevantRunnerAndHelper")
+
+bool FSkillWriterParticipantFirstShotDropsIrrelevantRolesTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	const FName PreparedRunnerId(TEXT("PlayerA.PreparedRunner"));
+	const FName PreparedHelperId(TEXT("PlayerB.PreparedHelper"));
+	FMatchPlayState Before = MakeState({CrossSkillId, CutInsideSkillId});
+	Before.CardSnapshotAuthority.PlayerACardSnapshots.Cards.Add(
+		MakeCard(PreparedRunnerId));
+	Before.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.Add(
+		MakeCard(PreparedHelperId));
+	Before.CurrentAttack.DeploymentPlacements.Add(MakePlacement(
+		EInitialTurnOrderPlayer::PlayerA,
+		PreparedRunnerId,
+		TEXT("Slot.PreparedRunner")));
+	Before.CurrentAttack.DeploymentPlacements.Add(MakePlacement(
+		EInitialTurnOrderPlayer::PlayerB,
+		PreparedHelperId,
+		TEXT("Slot.PreparedHelper")));
+	Before.CurrentAttack.ActionPreparation.RunnerCardId = PreparedRunnerId;
+	Before.CurrentAttack.ActionPreparation.bHasHelper = true;
+	Before.CurrentAttack.ActionPreparation.HelperCardId = PreparedHelperId;
+	Before.CurrentAttack.ActionPreparation.bSkillSelectionDeferred = true;
+	Before.CurrentAttack.ActionPreparation.SkillId = NAME_None;
+	Before.CurrentAttack.ActionPreparation.ActionType = ESkillRuleType::None;
+
+	const auto SkillResult =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			Before,
+			MakeRuleSet(),
+			MakeRequest(CutInsideSkillId));
+	TestTrue(TEXT("Participant-first Cut Inside selection succeeds"),
+		SkillResult.bSuccess);
+	TestEqual(TEXT("Cut Inside awaits intent"),
+		SkillResult.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent);
+	TestTrue(TEXT("Irrelevant prepared Runner is cleared"),
+		SkillResult.AfterState.CurrentAttack.ActionPreparation
+			.RunnerCardId.IsNone());
+	TestFalse(TEXT("Irrelevant prepared Helper presence is cleared"),
+		SkillResult.AfterState.CurrentAttack.ActionPreparation.bHasHelper);
+	TestTrue(TEXT("Irrelevant prepared Helper id is cleared"),
+		SkillResult.AfterState.CurrentAttack.ActionPreparation
+			.HelperCardId.IsNone());
+	if (!SkillResult.bSuccess)
+	{
+		return false;
+	}
+
+	FMatchPlayCurrentAttackBranchIntentSelectionRequest IntentRequest;
+	IntentRequest.AttackSequence = ValidAttackSequence;
+	IntentRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	IntentRequest.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	const auto IntentResult =
+		FMatchPlayCurrentAttackBranchIntentSelectionWriter::Select(
+			SkillResult.AfterState,
+			IntentRequest);
+	TestTrue(TEXT("Cut Inside intent finalizes"), IntentResult.bSuccess);
+	TestTrue(TEXT("Final selected action exists"),
+		IntentResult.AfterState.CurrentAttack.bHasSelectedAction);
+	TestTrue(TEXT("Final selected action omits irrelevant Runner"),
+		IntentResult.AfterState.CurrentAttack.SelectedAction
+			.RunnerCardId.IsNone());
+	TestFalse(TEXT("Final selected action omits irrelevant Helper presence"),
+		IntentResult.AfterState.CurrentAttack.SelectedAction.bHasHelper);
+	TestTrue(TEXT("Final selected action omits irrelevant Helper id"),
+		IntentResult.AfterState.CurrentAttack.SelectedAction
+			.HelperCardId.IsNone());
 	return true;
 }
 

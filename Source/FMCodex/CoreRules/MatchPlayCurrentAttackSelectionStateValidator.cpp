@@ -33,7 +33,8 @@ namespace MatchPlayCurrentAttackSelectionStateValidatorImplementation
 	bool IsPreparationEmpty(
 		const FMatchPlayCurrentAttackActionPreparationState& Preparation)
 	{
-		return Preparation.CarrierCardId.IsNone()
+		return !Preparation.bSkillSelectionDeferred
+			&& Preparation.CarrierCardId.IsNone()
 			&& Preparation.MarkerCardId.IsNone()
 			&& Preparation.SkillId.IsNone()
 			&& Preparation.ActionType == ESkillRuleType::None
@@ -53,6 +54,8 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 	FMatchPlayCurrentAttackSelectionStateValidationResult Result;
 	const bool bPreparationHasCarrier =
 		!CurrentAttack.ActionPreparation.CarrierCardId.IsNone();
+	const bool bSkillSelectionDeferred =
+		CurrentAttack.ActionPreparation.bSkillSelectionDeferred;
 	const bool bPreparationHasMarker =
 		!CurrentAttack.ActionPreparation.MarkerCardId.IsNone();
 	const bool bPreparationHasSkill =
@@ -77,6 +80,27 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 			EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 				::DuplicateCarrierAuthority,
 			TEXT("Preparation and SelectedAction cannot both hold a carrier."));
+		return Result;
+	}
+
+	if (bSkillSelectionDeferred && bPreparationHasActionType
+		&& CurrentAttack.ActionPreparation.ActionType != ESkillRuleType::Cross)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+				::ActionTypeDoesNotMatchSelectionStage,
+			TEXT("Deferred preparation may be generic or retain the legacy frozen Cross action type only."));
+		return Result;
+	}
+
+	if (bSkillSelectionDeferred && bPreparationHasSkill)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+				::UnexpectedPreparationSkill,
+			TEXT("Deferred Skill selection requires an empty preparation SkillId."));
 		return Result;
 	}
 
@@ -105,6 +129,8 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 	}
 
 	if (CurrentAttack.SelectionStage
+			!= EMatchPlayCurrentAttackSelectionStage::AwaitingSkill
+		&& CurrentAttack.SelectionStage
 			!= EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent
 		&& CurrentAttack.SelectionStage
 			!= EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
@@ -306,22 +332,55 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingSkill requires an empty preparation skill."));
 				return Result;
 			}
-			if (bPreparationHasActionType)
+			if (bSkillSelectionDeferred)
+			{
+				if (bPreparationHasActionType
+					&& CurrentAttack.ActionPreparation.ActionType
+						!= ESkillRuleType::Cross)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::UnexpectedPreparationActionType,
+						TEXT("Deferred AwaitingSkill supports generic participant-first authority or legacy Cross only."));
+					return Result;
+				}
+				if (!bPreparationHasRunner)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::MissingPreparationRunner,
+						TEXT("Deferred AwaitingSkill requires a frozen preparation runner."));
+					return Result;
+				}
+				if (bPreparationHasHelper != bPreparationHasHelperCardId)
+				{
+					SetError(
+						Result,
+						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+							::InvalidPreparationHelperPresence,
+						TEXT("Deferred AwaitingSkill Helper presence is inconsistent."));
+					return Result;
+				}
+			}
+			else if (bPreparationHasActionType)
 			{
 				SetError(
 					Result,
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::UnexpectedPreparationActionType,
-					TEXT("AwaitingSkill requires an empty preparation action type."));
+					TEXT("Ordinary AwaitingSkill requires an empty preparation action type."));
 				return Result;
 			}
-			if (bPreparationHasRunner)
+			else if (bPreparationHasRunner
+				|| bPreparationHasHelper || bPreparationHasHelperCardId)
 			{
 				SetError(
 					Result,
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::UnexpectedPreparationRunner,
-					TEXT("AwaitingSkill requires an empty preparation runner."));
+					TEXT("Ordinary AwaitingSkill cannot contain participant selections."));
 				return Result;
 			}
 			break;
@@ -345,22 +404,26 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingRunner requires a frozen preparation marker."));
 				return Result;
 			}
-			if (!bPreparationHasSkill)
+			if (!bPreparationHasSkill && !bSkillSelectionDeferred)
 			{
 				SetError(
 					Result,
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::MissingPreparationSkill,
-					TEXT("AwaitingRunner requires a frozen preparation skill."));
+					TEXT("AwaitingRunner requires a selected Skill or participant-first authority."));
 				return Result;
 			}
-			if (!bPreparationHasActionType)
+			{
+			const bool bGenericParticipantFirstRunner =
+				bSkillSelectionDeferred && !bPreparationHasSkill
+				&& !bPreparationHasActionType;
+			if (!bGenericParticipantFirstRunner && !bPreparationHasActionType)
 			{
 				SetError(
 					Result,
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::MissingPreparationActionType,
-					TEXT("AwaitingRunner requires a frozen preparation action type."));
+					TEXT("Non-generic AwaitingRunner requires a frozen action type."));
 				return Result;
 			}
 			if (bPreparationHasRunner)
@@ -404,21 +467,12 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingRunner requires ActionPoint within 2 through 8."));
 				return Result;
 			}
+			if (!bGenericParticipantFirstRunner)
 			{
-				const FMatchPlaySkillParticipantRequirementResult
-					Requirement =
-						FMatchPlaySkillParticipantRequirementQuery::Query(
-							CurrentAttack.ActionPreparation.ActionType);
-				if (!Requirement.bSuccess)
-				{
-					SetError(
-						Result,
-						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
-							::ParticipantRequirementResolutionFailed,
-						Requirement.ErrorMessage);
-					return Result;
-				}
-				if (!Requirement.bRequiresRunner
+				const FMatchPlaySkillParticipantRequirementResult Requirement =
+					FMatchPlaySkillParticipantRequirementQuery::Query(
+						CurrentAttack.ActionPreparation.ActionType);
+				if (!Requirement.bSuccess || !Requirement.bRequiresRunner
 					|| !Requirement.bRequiresHelperStage
 					|| Requirement.bCanBecomeReadyImmediately)
 				{
@@ -426,9 +480,10 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 						Result,
 						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 							::ActionTypeDoesNotMatchSelectionStage,
-						TEXT("AwaitingRunner requires a runner-and-helper skill action type."));
+						TEXT("AwaitingRunner action type must consume Runner and Helper."));
 					return Result;
 				}
+			}
 			}
 			break;
 
@@ -451,22 +506,26 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingHelper requires a frozen preparation marker."));
 				return Result;
 			}
-			if (!bPreparationHasSkill)
+			if (!bPreparationHasSkill && !bSkillSelectionDeferred)
 			{
 				SetError(
 					Result,
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::MissingPreparationSkill,
-					TEXT("AwaitingHelper requires a frozen preparation skill."));
+					TEXT("AwaitingHelper requires a selected Skill or participant-first authority."));
 				return Result;
 			}
-			if (!bPreparationHasActionType)
+			{
+			const bool bGenericParticipantFirstHelper =
+				bSkillSelectionDeferred && !bPreparationHasSkill
+				&& !bPreparationHasActionType;
+			if (!bGenericParticipantFirstHelper && !bPreparationHasActionType)
 			{
 				SetError(
 					Result,
 					EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 						::MissingPreparationActionType,
-					TEXT("AwaitingHelper requires a frozen preparation action type."));
+					TEXT("Non-generic AwaitingHelper requires a frozen action type."));
 				return Result;
 			}
 			if (!bPreparationHasRunner)
@@ -510,21 +569,12 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 					TEXT("AwaitingHelper requires ActionPoint within 2 through 8."));
 				return Result;
 			}
+			if (!bGenericParticipantFirstHelper)
 			{
-				const FMatchPlaySkillParticipantRequirementResult
-					Requirement =
-						FMatchPlaySkillParticipantRequirementQuery::Query(
-							CurrentAttack.ActionPreparation.ActionType);
-				if (!Requirement.bSuccess)
-				{
-					SetError(
-						Result,
-						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
-							::ParticipantRequirementResolutionFailed,
-						Requirement.ErrorMessage);
-					return Result;
-				}
-				if (!Requirement.bRequiresRunner
+				const FMatchPlaySkillParticipantRequirementResult Requirement =
+					FMatchPlaySkillParticipantRequirementQuery::Query(
+						CurrentAttack.ActionPreparation.ActionType);
+				if (!Requirement.bSuccess || !Requirement.bRequiresRunner
 					|| !Requirement.bRequiresHelperStage
 					|| Requirement.bCanBecomeReadyImmediately)
 				{
@@ -532,9 +582,10 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 						Result,
 						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 							::ActionTypeDoesNotMatchSelectionStage,
-						TEXT("AwaitingHelper requires a runner-and-helper skill action type."));
+						TEXT("AwaitingHelper action type must consume Runner and Helper."));
 					return Result;
 				}
+			}
 			}
 			break;
 

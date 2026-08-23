@@ -39,6 +39,10 @@ struct FMCODEX_API FFormulaSideInput
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Formula")
 	float Modifier = 0.0f;
 
+	/** Rules 4.4 deployment-count advantage; consumed only by Finishing formulas. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Formula")
+	float TacticalPlayerModifier = 0.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Formula")
 	int32 ComparePoint = 0;
 
@@ -97,6 +101,12 @@ struct FMCODEX_API FFormulaResolutionResult
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Formula")
 	float DefenderFinalValue = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Formula")
+	float AttackerTacticalPlayerModifier = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Formula")
+	float DefenderTacticalPlayerModifier = 0.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Formula")
 	EFormulaWinner Winner = EFormulaWinner::None;

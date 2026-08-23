@@ -154,14 +154,16 @@ namespace FormulaResolver
 		}
 
 		Log.FormulaInputs = FString::Printf(
-			TEXT("AttackerBase=%.1f; AttackerModifier=%.1f; AttackerComparePoint=%d; ")
-			TEXT("DefenderBase=%.1f; DefenderModifier=%.1f; DefenderComparePoint=%d; ")
+			TEXT("AttackerBase=%.1f; AttackerModifier=%.1f; AttackerTacticalPlayerModifier=%.1f; AttackerComparePoint=%d; ")
+			TEXT("DefenderBase=%.1f; DefenderModifier=%.1f; DefenderTacticalPlayerModifier=%.1f; DefenderComparePoint=%d; ")
 			TEXT("AttackerStamina=%d; DefenderStamina=%d; GoalkeeperParticipated=%s"),
 			Input.Attacker.BaseValue,
 			Input.Attacker.Modifier,
+			Result.AttackerTacticalPlayerModifier,
 			Input.Attacker.ComparePoint,
 			Input.Defender.BaseValue,
 			Input.Defender.Modifier,
+			Result.DefenderTacticalPlayerModifier,
 			Input.Defender.ComparePoint,
 			AttackerStamina,
 			DefenderStamina,
@@ -185,10 +187,21 @@ FFormulaResolutionResult UFormulaResolver::ResolveFormula(const FFormulaResolver
 {
 	FFormulaResolutionResult Result;
 	Result.FormulaType = Input.FormulaType;
+	if (Input.FormulaType == EFormulaType::Finishing)
+	{
+		Result.AttackerTacticalPlayerModifier =
+			Input.Attacker.TacticalPlayerModifier;
+		Result.DefenderTacticalPlayerModifier =
+			Input.Defender.TacticalPlayerModifier;
+	}
 	Result.AttackerFinalValue = RoundToOneDecimal(
-		Input.Attacker.BaseValue + Input.Attacker.Modifier + Input.Attacker.ComparePoint);
+		Input.Attacker.BaseValue + Input.Attacker.Modifier
+			+ Result.AttackerTacticalPlayerModifier
+			+ Input.Attacker.ComparePoint);
 	Result.DefenderFinalValue = RoundToOneDecimal(
-		Input.Defender.BaseValue + Input.Defender.Modifier + Input.Defender.ComparePoint);
+		Input.Defender.BaseValue + Input.Defender.Modifier
+			+ Result.DefenderTacticalPlayerModifier
+			+ Input.Defender.ComparePoint);
 
 	const bool bIsSupportedFormula = Input.FormulaType == EFormulaType::Transition
 		|| Input.FormulaType == EFormulaType::Finishing;

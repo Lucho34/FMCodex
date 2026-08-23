@@ -114,7 +114,7 @@ bool FRunnerSelectionAuthorityTest::RunTest(const FString& Parameters)
 		TEXT("RunnerSelectionAvailability")), 0);
 	TestEqual(TEXT("Writer no completion"), Count(WriterSource,
 		TEXT("Completion")), 0);
-	TestEqual(TEXT("Validator requirement calls include Runner Helper Ready"),
+	TestEqual(TEXT("Validator requirement calls cover legacy Runner Helper Ready boundaries"),
 		Count(ValidatorSource,
 			TEXT("FMatchPlaySkillParticipantRequirementQuery::Query")), 3);
 	TestTrue(TEXT("Validator has AwaitingHelper"),

@@ -62,8 +62,20 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaOrchestrator::
 	if (Result.PlanRegenerationProviderCallCount != 0) { Fail(Result, EError::PlanRegenerationConsumedRng, TEXT("DirectShot Formula plan regeneration must consume zero RNG.")); return Result; }
 	if (!StatesEqual(BeforeState, Result.PlanRegenerationResult.AfterState)) { Fail(Result, EError::PlanRegenerationMutatedState, TEXT("DirectShot Formula plan regeneration must not mutate State.")); return Result; }
 	if (!Result.PlanRegenerationResult.bHasFormulaPlan) { Fail(Result, EError::FormulaPlanUnavailable, TEXT("DirectShot Formula plan is unavailable.")); return Result; }
+	Result.TacticalPlayerAdvantageResult =
+		FMatchPlayTacticalPlayerAdvantageQuery::Evaluate(BeforeState);
+	if (!Result.TacticalPlayerAdvantageResult.bSuccess)
+	{
+		Fail(Result, EError::TacticalPlayerAdvantageQueryFailed,
+			Result.TacticalPlayerAdvantageResult.ErrorMessage,
+			TEXT("TacticalPlayerAdvantage"));
+		return Result;
+	}
 	++Result.FormulaExecutionCount;
-	Result.DirectShotFormulaResult = FThroughBallOneOnOneDirectShotFormula::Resolve(Result.PlanRegenerationResult.FormulaPlan);
+	Result.DirectShotFormulaResult = FThroughBallOneOnOneDirectShotFormula::Resolve(
+		Result.PlanRegenerationResult.FormulaPlan,
+		Result.TacticalPlayerAdvantageResult.AttackerFinishingModifier,
+		Result.TacticalPlayerAdvantageResult.DefenderFinishingModifier);
 	if (!Result.DirectShotFormulaResult.bSuccess) { Fail(Result, EError::FormulaExecutionFailed, Result.DirectShotFormulaResult.ErrorMessage, Result.DirectShotFormulaResult.InvalidField); return Result; }
 	Result.Decision = Result.DirectShotFormulaResult.Decision;
 	Result.bSuccess = true;

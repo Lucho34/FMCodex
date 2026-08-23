@@ -680,6 +680,62 @@ bool FSelectionStateAwaitingRunnerCorruptionTest::RunTest(
 }
 
 SELECTION_STATE_TEST(
+	FSelectionStateLegacyDeferredCrossSkillContractTest,
+	"LegacyDeferredCrossCompatibilityHasNoSkillId")
+
+bool FSelectionStateLegacyDeferredCrossSkillContractTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState DeferredRunner =
+		SelectionStateValidatorTests::MakeAwaitingRunner();
+	DeferredRunner.ActionPreparation.SkillId = NAME_None;
+	DeferredRunner.ActionPreparation.bSkillSelectionDeferred = true;
+	const auto RunnerResult =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			DeferredRunner);
+	TestTrue(TEXT("Legacy deferred Cross AwaitingRunner canonical"),
+		RunnerResult.bIsCanonical);
+
+	FMatchPlayCurrentAttackState DeferredHelper =
+		SelectionStateValidatorTests::MakeAwaitingHelper();
+	DeferredHelper.ActionPreparation.SkillId = NAME_None;
+	DeferredHelper.ActionPreparation.bSkillSelectionDeferred = true;
+	const auto HelperResult =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			DeferredHelper);
+	TestTrue(TEXT("Legacy deferred Cross AwaitingHelper canonical"),
+		HelperResult.bIsCanonical);
+
+	FMatchPlayCurrentAttackState DeferredAwaitingSkill = DeferredHelper;
+	DeferredAwaitingSkill.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+	const auto AwaitingSkillResult =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(
+			DeferredAwaitingSkill);
+	TestTrue(TEXT("Legacy deferred Cross AwaitingSkill canonical"),
+		AwaitingSkillResult.bIsCanonical);
+
+	FMatchPlayCurrentAttackState WrongType = DeferredRunner;
+	WrongType.ActionPreparation.ActionType = ESkillRuleType::PassControl;
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Legacy deferred non-Cross action type"),
+		WrongType,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::ActionTypeDoesNotMatchSelectionStage);
+
+	FMatchPlayCurrentAttackState PrefilledSkill = DeferredRunner;
+	PrefilledSkill.ActionPreparation.SkillId =
+		SelectionStateValidatorTests::SkillId;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Legacy deferred Cross with SkillId"),
+		PrefilledSkill,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::UnexpectedPreparationSkill);
+}
+
+SELECTION_STATE_TEST(
 	FSelectionStateAwaitingHelperCorruptionTest,
 	"AwaitingHelperRejectsCorruption")
 

@@ -356,22 +356,26 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 	const bool bExplicitHighStep = Request.Mode
 		== EMode::ResolveCrossHighAttackRoll
 		|| Request.Mode == EMode::ResolveCrossHighDefenseRoll;
+	const bool bExplicitLowStep = Request.Mode
+		== EMode::ResolveCrossLowAttackRoll
+		|| Request.Mode == EMode::ResolveCrossLowDefenseRoll;
+	const bool bExplicitRollStep = bExplicitHighStep || bExplicitLowStep;
 	const bool bCompletedPlanRegeneration = Request.Mode
 		== EMode::RegenerateCompletedPlan;
-	if (bCrossHigh && !bExplicitHighStep && !bCompletedPlanRegeneration)
+	if (!bExplicitRollStep && !bCompletedPlanRegeneration)
 	{
 		SetFailure(
 			Result,
-			EError::CrossHighRequiresExplicitRollStep,
-			TEXT("Cross High requires an explicit attacker or defender roll command."));
+			EError::CrossRequiresExplicitRollStep,
+			TEXT("Cross High and Low require an explicit attacker or defender roll command."));
 		return Result;
 	}
-	if (!bCrossHigh && bExplicitHighStep)
+	if (bExplicitRollStep && bCrossHigh != bExplicitHighStep)
 	{
 		SetFailure(
 			Result,
-			EError::ExplicitRollStepRequiresCrossHigh,
-			TEXT("Explicit Cross High roll commands support only Cross High."));
+			EError::ExplicitRollStepWrongCrossBranch,
+			TEXT("The typed Cross roll command does not match the authoritative High/Low branch."));
 		return Result;
 	}
 
@@ -412,7 +416,7 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 			TEXT("Cross plan regeneration requires an already-complete roll contract."));
 		return Result;
 	}
-	if (bExplicitHighStep)
+	if (bExplicitRollStep)
 	{
 		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
 			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
@@ -420,11 +424,12 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 			SetFailure(
 				Result,
 				EError::InvalidRequestingSide,
-				TEXT("Cross High roll commands require PlayerA or PlayerB as RequestingSide."));
+				TEXT("Cross roll commands require PlayerA or PlayerB as RequestingSide."));
 			return Result;
 		}
 		const EPurpose RequestedPurpose = Request.Mode
 			== EMode::ResolveCrossHighAttackRoll
+			|| Request.Mode == EMode::ResolveCrossLowAttackRoll
 				? EPurpose::PrimaryAttack
 				: EPurpose::PrimaryDefense;
 		if (Result.ProgressResult.bContractComplete
@@ -432,8 +437,8 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 		{
 			SetFailure(
 				Result,
-				EError::WrongCrossHighRollStep,
-				TEXT("The requested Cross High roll is not the current authoritative step."));
+				EError::WrongCrossRollStep,
+				TEXT("The requested Cross roll is not the current authoritative step."));
 			return Result;
 		}
 		const EInitialTurnOrderPlayer ExpectedSide = RequestedPurpose
@@ -445,7 +450,7 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 			SetFailure(
 				Result,
 				EError::WrongRequestingSide,
-				TEXT("The requesting side does not own the current Cross High roll."));
+				TEXT("The requesting side does not own the current Cross roll."));
 			return Result;
 		}
 	}
@@ -467,7 +472,7 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 		return Result;
 	}
 
-	const int32 MaximumRollsThisCommand = bExplicitHighStep ? 1 : MAX_int32;
+	const int32 MaximumRollsThisCommand = bExplicitRollStep ? 1 : MAX_int32;
 	while (!Result.ProgressResult.bContractComplete
 		&& Result.ProviderCallCount < MaximumRollsThisCommand)
 	{
@@ -508,7 +513,7 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 		}
 	}
 
-	if (bExplicitHighStep && !Result.ProgressResult.bContractComplete)
+	if (bExplicitRollStep && !Result.ProgressResult.bContractComplete)
 	{
 		Result.SessionStateValidationResult =
 			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
@@ -558,7 +563,7 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 
 	Result.AfterState = MoveTemp(CandidateState);
 	Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
-	Result.bReplayedCompleteRolls = !bExplicitHighStep
+	Result.bReplayedCompleteRolls = !bExplicitRollStep
 		&& Result.ProviderCallCount == 0;
 	Result.bSuccess = true;
 	return Result;

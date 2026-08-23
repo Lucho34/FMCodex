@@ -94,7 +94,9 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	DeployGoalkeeper,
 	ResolveNoLegalCarrier,
 	ResolveCrossHighAttackRoll,
-	ResolveCrossHighDefenseRoll
+	ResolveCrossHighDefenseRoll,
+	ResolveCrossLowAttackRoll,
+	ResolveCrossLowDefenseRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -386,6 +388,30 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossHighAttackRollResult
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossHighDefenseRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveCrossPostRoutePlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest
+{
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest
+{
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossLowAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveCrossPostRoutePlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossLowDefenseRollResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveCrossPostRoutePlanResult

@@ -58,8 +58,9 @@ public:
 	void SubmitBranchIntent(EMatchPlayElectiveBranchIntent Intent);
 	void SubmitOneOnOneShotChoice(
 		EMatchPlayThroughBallOneOnOneShotChoice Choice);
-	void RollCrossHighAttack();
-	void RollCrossHighDefense();
+	void RollCrossAttack();
+	void RollCrossDefense();
+	void CompleteCrossAndAdvance();
 	void ContinueResolution();
 
 protected:
@@ -123,7 +124,8 @@ private:
 	FFMCodexLocalMatchInteractionView InteractionView;
 	FFMCodexLocalMatchCommandDiagnostic LastDiagnostic;
 	FFMCodexLocalMatchResolutionFeedback ResolutionFeedback;
-	bool bCrossHighRollCommandInFlight = false;
+	bool bCrossRouteCommandInFlight = false;
+	bool bCrossRollCommandInFlight = false;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	int32 NextDemoMatchSeedForTesting = INDEX_NONE;

@@ -75,6 +75,33 @@ namespace FMCodexLocalMatchInteractionView
 		return Labels.IsEmpty() ? TEXT("ROLE N/A") : JoinLabels(Labels);
 	}
 
+	bool HasCompletedCrossTerminalContest(
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts)
+	{
+		if (!Facts.bSuccess || !Facts.bHasFacts
+			|| !Facts.bHasActualBranch
+			|| Facts.ActualBranch.ActionType != ESkillRuleType::Cross)
+		{
+			return false;
+		}
+		const FName ContestId = Facts.ActualBranch.Cross
+			== EMatchPlayCrossActualBranch::High
+				? FName(TEXT("Cross.High")) : FName(TEXT("Cross.Low"));
+		const FMatchPlayResolutionFormulaContestFact* Contest =
+			Facts.FormulaContests.FindByPredicate(
+				[ContestId](
+					const FMatchPlayResolutionFormulaContestFact& Candidate)
+				{
+					return Candidate.ContestId == ContestId;
+				});
+		return Contest != nullptr
+			&& Contest->bHasResolvedFormula
+			&& Contest->AttackRow.bFinalValueResolved
+			&& Contest->DefenseRow.bFinalValueResolved
+			&& Contest->ResolvedResult.bAttackEnded
+			&& !Contest->ResolvedResult.bContinueResolution;
+	}
+
 	FString RarityLabel(const ECardRarity Rarity)
 	{
 		switch (Rarity)
@@ -1089,8 +1116,10 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
 			&& Session.bHasActualBranch
 			&& Session.ActualBranch.ActionType == ESkillRuleType::Cross
-			&& Session.ActualBranch.Cross
-				== EMatchPlayCrossActualBranch::High)
+			&& (Session.ActualBranch.Cross
+					== EMatchPlayCrossActualBranch::High
+				|| Session.ActualBranch.Cross
+					== EMatchPlayCrossActualBranch::Low))
 		{
 			const auto Progress =
 				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
@@ -1104,9 +1133,11 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 							::PrimaryAttack;
 				Result.InteractionCategory = bAttackRoll
 					? EFMCodexLocalMatchInteractionCategory
-						::RollCrossHighAttack
+						::RollCrossAttack
 					: EFMCodexLocalMatchInteractionCategory
-						::RollCrossHighDefense;
+						::RollCrossDefense;
+				Result.bCrossAttackRollPending = bAttackRoll;
+				Result.bCrossDefenseRollPending = !bAttackRoll;
 				Result.ExpectedActingPlayer = bAttackRoll
 					? Session.Bundle.CurrentAttackingPlayer
 					: Session.Bundle.CurrentDefendingPlayer;
@@ -1116,30 +1147,44 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 					: TEXT("防守方掷点");
 				return Result;
 			}
+			if (Progress.bIsCanonical && Progress.bContractComplete
+				&& HasCompletedCrossTerminalContest(Result.ResolutionFacts))
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory
+						::CompleteCrossAndAdvance;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.bCrossFormulaComplete = true;
+				Result.bCrossTerminalActionAvailable = true;
+				Result.ContinueActionLabel = TEXT("下一回合");
+				return Result;
+			}
+			if (Progress.bIsCanonical && Progress.bContractComplete)
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::None;
+				Result.Diagnostic = TEXT(
+					"Completed Cross rolls do not project one authoritative terminal contest.");
+				return Result;
+			}
 		}
 		Result.InteractionCategory =
 			EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 		if (Session.Stage
 			== EMatchPlayCurrentAttackResolutionStage::AwaitingRoute)
 		{
-			Result.ContinueActionLabel = Result.ElectiveBranchIntent
-				== EMatchPlayElectiveBranchIntent::CrossHigh
-					? TEXT("判定高球传中路线")
+			Result.ContinueActionLabel =
+				Session.Bundle.Binding.ActionType == ESkillRuleType::Cross
+					? TEXT("判定传中路线")
 					: TEXT("Continue - Resolve Route");
 		}
 		else
 		{
 			const auto Progress =
 				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(Session);
-			const bool bCompletedCrossHigh = Progress.bIsCanonical
-				&& Progress.bContractComplete
-				&& Session.bHasActualBranch
-				&& Session.ActualBranch.ActionType == ESkillRuleType::Cross
-				&& Session.ActualBranch.Cross
-					== EMatchPlayCrossActualBranch::High;
-			Result.ContinueActionLabel = bCompletedCrossHigh
-				? TEXT("继续结算")
-				: Progress.bIsCanonical
+			Result.ContinueActionLabel = Progress.bIsCanonical
 				&& Progress.bContractComplete
 					? TEXT("Continue - Apply Formula / Result")
 					: TEXT("Continue - Resolve Post-route Step");
@@ -1155,10 +1200,9 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	if (Result.InteractionCategory
 		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
 	{
-		Result.ContinueActionLabel = Result.ElectiveBranchIntent
-			== EMatchPlayElectiveBranchIntent::CrossHigh
-				? TEXT("进入高球传中结算")
-				: TEXT("Continue - Begin Resolution");
+		Result.ContinueActionLabel = PresentedActionType == ESkillRuleType::Cross
+			? TEXT("判定传中路线")
+			: TEXT("Continue - Begin Resolution");
 	}
 	return Result;
 }
@@ -1257,11 +1301,14 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 	case EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot:
 		Result.InteractionTitle = TEXT("Choose One-on-One Shot");
 		break;
-	case EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack:
+	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack:
 		Result.InteractionTitle = TEXT("进攻方掷点");
 		break;
-	case EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense:
+	case EFMCodexLocalMatchInteractionCategory::RollCrossDefense:
 		Result.InteractionTitle = TEXT("防守方掷点");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance:
+		Result.InteractionTitle = TEXT("下一回合");
 		break;
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution:
 		Result.InteractionTitle = View.ContinueActionLabel.IsEmpty()
@@ -1296,8 +1343,9 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EFMCodexLocalMatchInteractionCategory::SelectHelper: return TEXT("Select Helper");
 	case EFMCodexLocalMatchInteractionCategory::SelectBranchIntent: return TEXT("Select Branch Intent");
 	case EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot: return TEXT("Select One-on-One Shot");
-	case EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack: return TEXT("进攻方掷点");
-	case EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense: return TEXT("防守方掷点");
+	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack: return TEXT("进攻方掷点");
+	case EFMCodexLocalMatchInteractionCategory::RollCrossDefense: return TEXT("防守方掷点");
+	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance: return TEXT("下一回合");
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution: return TEXT("Continue Resolution");
 	case EFMCodexLocalMatchInteractionCategory::AttackComplete: return TEXT("Attack Complete");
 	case EFMCodexLocalMatchInteractionCategory::MatchEnded: return TEXT("Match Ended");

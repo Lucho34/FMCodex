@@ -6,6 +6,7 @@
 
 class FMatchPlayCurrentAttackHelperSelectionWriter;
 class FMatchPlayCurrentAttackBranchIntentSelectionWriter;
+class FMatchPlayCurrentAttackSkillSelectionWriter;
 class FMatchPlayHelperAbsenceFinalizer;
 
 class FMatchPlayValidatedHelperPresence final
@@ -72,6 +73,7 @@ class FMatchPlayCurrentAttackHelperFinalization final
 private:
 	friend class FMatchPlayCurrentAttackHelperSelectionWriter;
 	friend class FMatchPlayCurrentAttackBranchIntentSelectionWriter;
+	friend class FMatchPlayCurrentAttackSkillSelectionWriter;
 	friend class FMatchPlayHelperAbsenceFinalizer;
 
 	static void ApplyValidatedHelperCompletion(

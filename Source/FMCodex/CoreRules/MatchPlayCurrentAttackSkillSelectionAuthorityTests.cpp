@@ -190,7 +190,7 @@ bool FSkillSelectionAuthorityTest::RunTest(
 			TEXT("switch (SkillRuleType)")),
 		1);
 	TestEqual(
-		TEXT("Validator calls participant requirement authority at Runner, Helper, and Ready boundaries"),
+		TEXT("Validator calls participant requirement authority at legacy Runner, Helper, and Ready boundaries"),
 		CountOccurrences(
 			ValidatorSource,
 			TEXT("FMatchPlaySkillParticipantRequirementQuery::Query")),

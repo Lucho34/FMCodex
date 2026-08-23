@@ -169,7 +169,7 @@ FMatchPlayCurrentAttackRunnerSelectionLegalityEvaluator::Evaluate(
 			return Result;
 		}
 	}
-	else
+	else if (Result.ResolvedActionType != ESkillRuleType::None)
 	{
 		SetError(
 			Result,

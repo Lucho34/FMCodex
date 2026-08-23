@@ -56,22 +56,36 @@ namespace MatchPlayAuthoritativeSessionTests
 		}
 		const auto& Resolution = State.CurrentAttack.ResolutionSession;
 		if (Resolution.ActualBranch.Cross
-			!= EMatchPlayCrossActualBranch::High)
+			== EMatchPlayCrossActualBranch::High)
 		{
-			return Session.ResolveCrossPostRoutePlan()
+			FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Attack;
+			Attack.RequestingSide = Resolution.Bundle.CurrentAttackingPlayer;
+			if (!Session.ResolveCrossHighAttackRoll(Attack)
+				.OrchestrationResult.bSuccess)
+			{
+				return false;
+			}
+			FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Defense;
+			Defense.RequestingSide = Resolution.Bundle.CurrentDefendingPlayer;
+			return Session.ResolveCrossHighDefenseRoll(Defense)
 				.OrchestrationResult.bSuccess;
 		}
-		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Attack;
-		Attack.RequestingSide = Resolution.Bundle.CurrentAttackingPlayer;
-		if (!Session.ResolveCrossHighAttackRoll(Attack)
-			.OrchestrationResult.bSuccess)
+		if (Resolution.ActualBranch.Cross
+			== EMatchPlayCrossActualBranch::Low)
 		{
-			return false;
+			FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest Attack;
+			Attack.RequestingSide = Resolution.Bundle.CurrentAttackingPlayer;
+			if (!Session.ResolveCrossLowAttackRoll(Attack)
+				.OrchestrationResult.bSuccess)
+			{
+				return false;
+			}
+			FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest Defense;
+			Defense.RequestingSide = Resolution.Bundle.CurrentDefendingPlayer;
+			return Session.ResolveCrossLowDefenseRoll(Defense)
+				.OrchestrationResult.bSuccess;
 		}
-		FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Defense;
-		Defense.RequestingSide = Resolution.Bundle.CurrentDefendingPlayer;
-		return Session.ResolveCrossHighDefenseRoll(Defense)
-			.OrchestrationResult.bSuccess;
+		return false;
 	}
 
 	class FQueuePostRouteRollProvider final
@@ -1722,10 +1736,25 @@ namespace MatchPlayAuthoritativeSessionTests
 		const FString& Prefix,
 		const bool bCreateLegalMarker,
 		const TArray<FName>& CarrierSkillIds,
-		FReachabilityTrace& OutTrace)
+		FReachabilityTrace& OutTrace,
+		const int32 DeploymentCount = 2)
 	{
-		OutTrace.Initialize = Session.InitializeMatch(
-			MakeFoundationBInput(Prefix, CarrierSkillIds));
+		FMatchPlayOpeningInitializeInput Input =
+			MakeFoundationBInput(Prefix, CarrierSkillIds);
+		for (int32 Index = 3; Index <= DeploymentCount; ++Index)
+		{
+			FMatchPlayDeploymentSlotDefinition NearA;
+			NearA.SlotId = FName(*FString::Printf(
+				TEXT("%s_NearA%d"), *Prefix, Index));
+			NearA.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerA;
+			Input.DeploymentSlotCatalog.Slots.Add(NearA);
+			FMatchPlayDeploymentSlotDefinition NearB;
+			NearB.SlotId = FName(*FString::Printf(
+				TEXT("%s_NearB%d"), *Prefix, Index));
+			NearB.NeutralSide = EMatchPlayNeutralSlotSide::NearPlayerB;
+			Input.DeploymentSlotCatalog.Slots.Add(NearB);
+		}
+		OutTrace.Initialize = Session.InitializeMatch(Input);
 		OutTrace.AfterInitialize = Session.GetStateSnapshot();
 		OutTrace.Begin = Session.BeginOrdinaryAttack(6);
 		OutTrace.AfterBegin = Session.GetStateSnapshot();
@@ -1770,8 +1799,28 @@ namespace MatchPlayAuthoritativeSessionTests
 		{
 			return false;
 		}
+		for (int32 Index = 2; Index < DeploymentCount; ++Index)
+		{
+			State = Session.GetStateSnapshot();
+			const bool bAttackerDeploying =
+				State.CurrentAttack.CurrentLegalDeploymentSide
+					== OutTrace.AttackingSide;
+			FDeploymentChoice AdditionalChoice;
+			if (!FindLegalDeployment(
+				State,
+				bAttackerDeploying
+					? EMatchPlayRelativeDeploymentZone::Forward
+					: EMatchPlayRelativeDeploymentZone::Backfield,
+				AdditionalChoice)
+				|| !Session.DeployOrdinary(
+					MakeDeployRequest(AdditionalChoice))
+						.DeploymentResult.bSuccess)
+			{
+				return false;
+			}
+		}
 
-		State = OutTrace.AfterSecondDeploy;
+		State = Session.GetStateSnapshot();
 		OutTrace.FirstFinish = Session.FinishDeployment(
 			State.CurrentAttack.AttackSequence,
 			State.CurrentAttack.CurrentLegalDeploymentSide);
@@ -1859,7 +1908,8 @@ namespace MatchPlayAuthoritativeSessionTests
 			Prefix,
 			true,
 			CarrierSkillIds,
-			OutTrace))
+			OutTrace,
+			4))
 		{
 			return false;
 		}
@@ -1873,9 +1923,69 @@ namespace MatchPlayAuthoritativeSessionTests
 		}
 		OutMarker = Session.SubmitMarker(
 			MakeMarkerRequest(OutTrace, MarkerCardId));
-		return OutMarker.MarkerResult.bSuccess
-			&& Session.GetStateSnapshot().CurrentAttack.SelectionStage
-				== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+		if (!OutMarker.MarkerResult.bSuccess
+			|| Session.GetStateSnapshot().CurrentAttack.SelectionStage
+				!= EMatchPlayCurrentAttackSelectionStage::AwaitingRunner)
+		{
+			return false;
+		}
+
+		FMatchPlayState State = Session.GetStateSnapshot();
+		const auto RunnerAvailability =
+			FMatchPlayCurrentAttackRunnerSelectionAvailability::Query(
+				State,
+				State.CurrentAttack.AttackSequence,
+				OutTrace.AttackingSide);
+		const auto* RunnerCandidate = RunnerAvailability.Candidates.FindByPredicate(
+			[](const FMatchPlayCurrentAttackRunnerSelectionCandidateAvailability& Candidate)
+			{
+				return Candidate.LegalityResult.bIsLegal;
+			});
+		if (RunnerCandidate == nullptr)
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeSubmitRunnerRequest RunnerRequest;
+		RunnerRequest.RequestingSide = OutTrace.AttackingSide;
+		RunnerRequest.RunnerCardId = RunnerCandidate->RunnerCardId;
+		const auto RunnerSubmit = Session.SubmitRunner(RunnerRequest);
+		if (!RunnerSubmit.RunnerResult.bSuccess)
+		{
+			return false;
+		}
+
+		State = Session.GetStateSnapshot();
+		const auto HelperAvailability =
+			FMatchPlayCurrentAttackHelperSelectionAvailability::Query(
+				State,
+				State.CurrentAttack.AttackSequence,
+				OutTrace.DefendingSide);
+		const auto* HelperCandidate = HelperAvailability.Candidates.FindByPredicate(
+			[](const FMatchPlayCurrentAttackHelperSelectionCandidateAvailability& Candidate)
+			{
+				return Candidate.LegalityResult.bSuccess;
+			});
+		if (HelperCandidate != nullptr)
+		{
+			FMatchPlayAuthoritativeSubmitHelperRequest HelperRequest;
+			HelperRequest.RequestingSide = OutTrace.DefendingSide;
+			HelperRequest.HelperCardId = HelperCandidate->HelperCardId;
+			const auto HelperSubmit = Session.SubmitHelper(HelperRequest);
+			if (!HelperSubmit.HelperResult.bSuccess)
+			{
+				return false;
+			}
+		}
+		else if (!Session.ResolveNoLegalHelper().ResolutionResult.bSuccess)
+		{
+			return false;
+		}
+		const auto FinalStage = Session.GetStateSnapshot().CurrentAttack.SelectionStage;
+		if (FinalStage != EMatchPlayCurrentAttackSelectionStage::AwaitingSkill)
+		{
+			return false;
+		}
+		return true;
 	}
 
 	bool BuildStage7162ToAwaitingRunner(
@@ -1895,12 +2005,26 @@ namespace MatchPlayAuthoritativeSessionTests
 		FMatchPlayAuthoritativeSubmitMarkerResult Marker;
 		if (!bCreateLegalRunner)
 		{
-			if (!BuildFoundationBToAwaitingSkill(
+			if (!BuildFoundationBToAwaitingMarker(
 				Session,
 				Prefix,
+				true,
 				{SkillId},
-				OutTrace,
-				Marker))
+				OutTrace))
+			{
+				return false;
+			}
+			FName MarkerCardId;
+			if (!FindLegalMarker(
+				OutTrace.FinalState,
+				OutTrace.DefendingSide,
+				MarkerCardId))
+			{
+				return false;
+			}
+			Marker = Session.SubmitMarker(
+				MakeMarkerRequest(OutTrace, MarkerCardId));
+			if (!Marker.MarkerResult.bSuccess)
 			{
 				return false;
 			}
@@ -2052,15 +2176,33 @@ namespace MatchPlayAuthoritativeSessionTests
 			}
 		}
 
-		FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
-		SkillRequest.RequestingSide = OutTrace.AttackingSide;
-		SkillRequest.SkillId = SkillId;
-		const auto SkillResult = Session.SubmitSkill(
-			MakeSkillRuleSet(SkillId, SkillType),
-			SkillRequest);
-		if (!SkillResult.SkillResult.bSuccess
-			|| Session.GetStateSnapshot().CurrentAttack.SelectionStage
-				!= EMatchPlayCurrentAttackSelectionStage::AwaitingRunner)
+		FMatchPlayState SelectionState = Session.GetStateSnapshot();
+		if (SelectionState.CurrentAttack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill)
+		{
+			FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+			SkillRequest.RequestingSide = OutTrace.AttackingSide;
+			SkillRequest.SkillId = SkillId;
+			const auto SkillResult = Session.SubmitSkill(
+				MakeSkillRuleSet(SkillId, SkillType),
+				SkillRequest);
+			if (!SkillResult.SkillResult.bSuccess)
+			{
+				return false;
+			}
+			SelectionState = Session.GetStateSnapshot();
+		}
+		else if (SelectionState.CurrentAttack.SelectionStage
+				!= EMatchPlayCurrentAttackSelectionStage::AwaitingRunner
+			|| !SelectionState.CurrentAttack.ActionPreparation
+				.bSkillSelectionDeferred
+			|| SelectionState.CurrentAttack.ActionPreparation.ActionType
+				!= ESkillRuleType::None)
+		{
+			return false;
+		}
+		if (SelectionState.CurrentAttack.SelectionStage
+			!= EMatchPlayCurrentAttackSelectionStage::AwaitingRunner)
 		{
 			return false;
 		}
@@ -2161,21 +2303,37 @@ namespace MatchPlayAuthoritativeSessionTests
 		if (bDeployGoalkeeper)
 		{
 			const auto Result = Session.ResolveNoLegalHelper();
-			const FMatchPlayState State = Session.GetStateSnapshot();
-			return Result.ResolutionResult.bSuccess
-				&& State.bHasCurrentAttack
-				&& State.CurrentAttack.SelectionStage
-					== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
-				&& !State.CurrentAttack.bHasResolutionSession;
+			if (!Result.ResolutionResult.bSuccess)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			FMatchPlayAuthoritativeSubmitHelperRequest Request;
+			Request.RequestingSide = OutTrace.DefendingSide;
+			Request.HelperCardId = HelperCardId;
+			if (!Session.SubmitHelper(Request).HelperResult.bSuccess)
+			{
+				return false;
+			}
 		}
 
-		FMatchPlayAuthoritativeSubmitHelperRequest Request;
-		Request.RequestingSide = OutTrace.DefendingSide;
-		Request.HelperCardId = HelperCardId;
-		const auto Result = Session.SubmitHelper(Request);
+		const FName SkillId(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(SkillType)));
+		FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+		SkillRequest.RequestingSide = OutTrace.AttackingSide;
+		SkillRequest.SkillId = SkillId;
+		if (!Session.SubmitSkill(
+			MakeSkillRuleSet(SkillId, SkillType),
+			SkillRequest).SkillResult.bSuccess)
+		{
+			return false;
+		}
 		const FMatchPlayState State = Session.GetStateSnapshot();
-		return Result.HelperResult.bSuccess
-			&& State.bHasCurrentAttack
+		return State.bHasCurrentAttack
 			&& State.CurrentAttack.SelectionStage
 				== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
 			&& !State.CurrentAttack.bHasResolutionSession;
@@ -2207,6 +2365,25 @@ namespace MatchPlayAuthoritativeSessionTests
 			if (!Session.SubmitHelper(HelperRequest).HelperResult.bSuccess)
 			{
 				return false;
+			}
+
+			const FMatchPlayState AfterHelper = Session.GetStateSnapshot();
+			if (AfterHelper.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill)
+			{
+				const FName SkillId(*FString::Printf(
+					TEXT("Skill.%s.%d"),
+					*Prefix,
+					static_cast<int32>(SkillType)));
+				FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+				SkillRequest.RequestingSide = OutTrace.AttackingSide;
+				SkillRequest.SkillId = SkillId;
+				if (!Session.SubmitSkill(
+					MakeSkillRuleSet(SkillId, SkillType),
+					SkillRequest).SkillResult.bSuccess)
+				{
+					return false;
+				}
 			}
 		}
 		else
@@ -2367,7 +2544,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			State.CurrentAttack.ResolutionSession.InitialRouteRollRecords.IsEmpty());
 	}
 
-	void TestAwaitingSkillEndpoint(
+	void TestAwaitingRunnerEndpoint(
 		FAutomationTestBase& Test,
 		const FString& Context,
 		const FMatchPlayState& BeforeState,
@@ -2381,7 +2558,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			EMatchPlayCurrentAttackPhase::Resolution);
 		Test.TestEqual(*FString::Printf(TEXT("%s stage"), *Context),
 			AfterState.CurrentAttack.SelectionStage,
-			EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
+			EMatchPlayCurrentAttackSelectionStage::AwaitingRunner);
 		Test.TestEqual(*FString::Printf(TEXT("%s carrier preserved"), *Context),
 			AfterState.CurrentAttack.ActionPreparation.CarrierCardId,
 			BeforeState.CurrentAttack.ActionPreparation.CarrierCardId);
@@ -2393,6 +2570,8 @@ namespace MatchPlayAuthoritativeSessionTests
 		Test.TestEqual(*FString::Printf(TEXT("%s action type absent"), *Context),
 			AfterState.CurrentAttack.ActionPreparation.ActionType,
 			ESkillRuleType::None);
+		Test.TestTrue(*FString::Printf(TEXT("%s participant-first marker set"), *Context),
+			AfterState.CurrentAttack.ActionPreparation.bSkillSelectionDeferred);
 		Test.TestTrue(*FString::Printf(TEXT("%s runner absent"), *Context),
 			AfterState.CurrentAttack.ActionPreparation.RunnerCardId.IsNone());
 		Test.TestFalse(*FString::Printf(TEXT("%s helper absent"), *Context),
@@ -2426,26 +2605,57 @@ namespace MatchPlayAuthoritativeSessionTests
 		Test.TestEqual(*FString::Printf(TEXT("%s stage"), *Context),
 			AfterState.CurrentAttack.SelectionStage,
 			ExpectedStage);
-		Test.TestEqual(*FString::Printf(TEXT("%s carrier preserved"), *Context),
-			AfterState.CurrentAttack.ActionPreparation.CarrierCardId,
-			BeforeState.CurrentAttack.ActionPreparation.CarrierCardId);
-		Test.TestEqual(*FString::Printf(TEXT("%s marker preserved"), *Context),
-			AfterState.CurrentAttack.ActionPreparation.MarkerCardId,
-			BeforeState.CurrentAttack.ActionPreparation.MarkerCardId);
-		Test.TestEqual(*FString::Printf(TEXT("%s skill selected"), *Context),
-			AfterState.CurrentAttack.ActionPreparation.SkillId,
-			SkillId);
-		Test.TestEqual(*FString::Printf(TEXT("%s action type selected"), *Context),
-			AfterState.CurrentAttack.ActionPreparation.ActionType,
-			ActionType);
-		Test.TestTrue(*FString::Printf(TEXT("%s runner absent"), *Context),
-			AfterState.CurrentAttack.ActionPreparation.RunnerCardId.IsNone());
-		Test.TestFalse(*FString::Printf(TEXT("%s helper absent"), *Context),
-			AfterState.CurrentAttack.ActionPreparation.bHasHelper);
-		Test.TestTrue(*FString::Printf(TEXT("%s helper identity absent"), *Context),
-			AfterState.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
-		Test.TestFalse(*FString::Printf(TEXT("%s selected action absent"), *Context),
-			AfterState.CurrentAttack.bHasSelectedAction);
+		const bool bReady = ExpectedStage
+			== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution;
+		const bool bShotWithoutPreparedRoles =
+			ActionType == ESkillRuleType::LongShot
+			|| ActionType == ESkillRuleType::CutInsideShot;
+		if (bReady)
+		{
+			Test.TestTrue(*FString::Printf(TEXT("%s preparation cleared"), *Context),
+				AfterState.CurrentAttack.ActionPreparation.CarrierCardId.IsNone());
+			Test.TestTrue(*FString::Printf(TEXT("%s selected action present"), *Context),
+				AfterState.CurrentAttack.bHasSelectedAction);
+			Test.TestEqual(*FString::Printf(TEXT("%s selected carrier"), *Context),
+				AfterState.CurrentAttack.SelectedAction.CarrierCardId,
+				BeforeState.CurrentAttack.ActionPreparation.CarrierCardId);
+			Test.TestEqual(*FString::Printf(TEXT("%s selected marker"), *Context),
+				AfterState.CurrentAttack.SelectedAction.MarkerCardId,
+				BeforeState.CurrentAttack.ActionPreparation.MarkerCardId);
+			Test.TestEqual(*FString::Printf(TEXT("%s selected skill"), *Context),
+				AfterState.CurrentAttack.SelectedAction.SkillId,
+				SkillId);
+			Test.TestEqual(*FString::Printf(TEXT("%s selected action type"), *Context),
+				AfterState.CurrentAttack.SelectedAction.ActionType,
+				ActionType);
+		}
+		else
+		{
+			Test.TestEqual(*FString::Printf(TEXT("%s carrier preserved"), *Context),
+				AfterState.CurrentAttack.ActionPreparation.CarrierCardId,
+				BeforeState.CurrentAttack.ActionPreparation.CarrierCardId);
+			Test.TestEqual(*FString::Printf(TEXT("%s marker preserved"), *Context),
+				AfterState.CurrentAttack.ActionPreparation.MarkerCardId,
+				BeforeState.CurrentAttack.ActionPreparation.MarkerCardId);
+			Test.TestEqual(*FString::Printf(TEXT("%s skill selected"), *Context),
+				AfterState.CurrentAttack.ActionPreparation.SkillId,
+				SkillId);
+			Test.TestEqual(*FString::Printf(TEXT("%s action type selected"), *Context),
+				AfterState.CurrentAttack.ActionPreparation.ActionType,
+				ActionType);
+			Test.TestFalse(*FString::Printf(TEXT("%s selected action absent"), *Context),
+				AfterState.CurrentAttack.bHasSelectedAction);
+			Test.TestEqual(*FString::Printf(TEXT("%s runner canonical consumption"), *Context),
+				AfterState.CurrentAttack.ActionPreparation.RunnerCardId,
+				bShotWithoutPreparedRoles
+					? NAME_None
+					: BeforeState.CurrentAttack.ActionPreparation.RunnerCardId);
+			Test.TestEqual(*FString::Printf(TEXT("%s helper canonical consumption"), *Context),
+				AfterState.CurrentAttack.ActionPreparation.bHasHelper,
+				bShotWithoutPreparedRoles
+					? false
+					: BeforeState.CurrentAttack.ActionPreparation.bHasHelper);
+		}
 		Test.TestEqual(*FString::Printf(TEXT("%s branch intent absent"), *Context),
 			AfterState.CurrentAttack.SelectedAction.ElectiveBranchIntent,
 			EMatchPlayElectiveBranchIntent::None);
@@ -6131,11 +6341,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All forty-four mutations use the gate"),
+	TestEqual(TEXT("All forty-six mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		44);
+		46);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7520,8 +7730,8 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
 		CompletionSource));
-	TestEqual(TEXT("All forty-four commands use one serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 44);
+	TestEqual(TEXT("All forty-six commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
 	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
@@ -8116,10 +8326,10 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 		AreStatesEqual(
 			Success.MarkerResult.AfterState,
 			Session.GetStateSnapshot()));
-	TestEqual(TEXT("Marker transitions to AwaitingSkill"),
+	TestEqual(TEXT("Marker transitions to AwaitingRunner"),
 		Session.GetStateSnapshot().CurrentAttack.SelectionStage,
-		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
-	TestAwaitingSkillEndpoint(
+		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner);
+	TestAwaitingRunnerEndpoint(
 		*this,
 		TEXT("Valid marker post-state"),
 		BeforeFailures,
@@ -8632,13 +8842,13 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFiveActionTest::RunTest(
 			EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent},
 		{TEXT("PassControl"), TEXT("Skill.FoundationB.PassControl"),
 			ESkillRuleType::PassControl,
-			EMatchPlayCurrentAttackSelectionStage::AwaitingRunner},
+			EMatchPlayCurrentAttackSelectionStage::ReadyForResolution},
 		{TEXT("Cross"), TEXT("Skill.FoundationB.Cross"),
 			ESkillRuleType::Cross,
-			EMatchPlayCurrentAttackSelectionStage::AwaitingRunner},
+			EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent},
 		{TEXT("ThroughBall"), TEXT("Skill.FoundationB.ThroughBall"),
 			ESkillRuleType::ThroughBall,
-			EMatchPlayCurrentAttackSelectionStage::AwaitingRunner}
+			EMatchPlayCurrentAttackSelectionStage::ReadyForResolution}
 	};
 
 	for (const FCase& Case : Cases)
@@ -10172,9 +10382,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All forty-four mutations share serialized gate"),
+	TestEqual(TEXT("All forty-six mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		44);
+		46);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -10756,7 +10966,7 @@ bool FMatchPlayAuthoritativeSessionSubmitHelperTest::RunTest(
 	const auto Success = Session.SubmitHelper(Request);
 	const FMatchPlayState After = Session.GetStateSnapshot();
 	TestTrue(TEXT("Legal Helper succeeds"), Success.HelperResult.bSuccess);
-	TestTrue(TEXT("Helper Writer validates Ready state"),
+	TestFalse(TEXT("Helper Writer defers Ready validation until Skill selection"),
 		Success.HelperResult.ReadyValidationResult.bSuccess);
 	TestEqual(TEXT("SubmitHelper exact command"),
 		Success.RuntimeEnvelope.CommandKind,
@@ -10764,20 +10974,20 @@ bool FMatchPlayAuthoritativeSessionSubmitHelperTest::RunTest(
 	TestEqual(TEXT("SubmitHelper derives authoritative sequence"),
 		Success.HelperResult.Request.AttackSequence,
 		Before.CurrentAttack.AttackSequence);
-	TestEqual(TEXT("SubmitHelper reaches ReadyForResolution"),
+	TestEqual(TEXT("SubmitHelper reaches AwaitingSkill"),
 		After.CurrentAttack.SelectionStage,
-		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
-	TestTrue(TEXT("Selected action is finalized"),
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
+	TestFalse(TEXT("Selected action waits for tactical selection"),
 		After.CurrentAttack.bHasSelectedAction);
-	TestTrue(TEXT("Selected action records Helper presence"),
-		After.CurrentAttack.SelectedAction.bHasHelper);
-	TestEqual(TEXT("Selected action records exact Helper"),
-		After.CurrentAttack.SelectedAction.HelperCardId,
-		HelperCardId);
-	TestFalse(TEXT("Preparation is reset after finalization"),
+	TestTrue(TEXT("Preparation records Helper presence"),
 		After.CurrentAttack.ActionPreparation.bHasHelper);
-	TestTrue(TEXT("Preparation Helper identity is reset"),
-		After.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
+	TestEqual(TEXT("Preparation records exact Helper"),
+		After.CurrentAttack.ActionPreparation.HelperCardId,
+		HelperCardId);
+	TestTrue(TEXT("Participant-first Skill remains deferred"),
+		After.CurrentAttack.ActionPreparation.bSkillSelectionDeferred);
+	TestTrue(TEXT("Skill identity remains empty"),
+		After.CurrentAttack.ActionPreparation.SkillId.IsNone());
 	TestTrue(TEXT("Helper selection does not complete attack"),
 		After.bHasCurrentAttack);
 	TestAdoptedSuccessEnvelope(
@@ -10892,18 +11102,18 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalHelperTest::RunTest(
 	TestEqual(TEXT("No-legal Helper sequence derived internally"),
 		Success.ResolutionResult.Request.AttackSequence,
 		Before.CurrentAttack.AttackSequence);
-	TestEqual(TEXT("No-legal Helper reaches ReadyForResolution"),
+	TestEqual(TEXT("No-legal Helper reaches AwaitingSkill"),
 		After.CurrentAttack.SelectionStage,
-		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
-	TestTrue(TEXT("No-legal Helper finalizes selected action"),
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
+	TestFalse(TEXT("No-legal Helper waits for tactical selection"),
 		After.CurrentAttack.bHasSelectedAction);
 	TestFalse(TEXT("No-legal Helper records formal absence"),
-		After.CurrentAttack.SelectedAction.bHasHelper);
+		After.CurrentAttack.ActionPreparation.bHasHelper);
 	TestTrue(TEXT("No-legal Helper identity is empty"),
-		After.CurrentAttack.SelectedAction.HelperCardId.IsNone());
+		After.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
 	TestTrue(TEXT("No-legal Helper does not complete attack"),
 		After.bHasCurrentAttack);
-	TestTrue(TEXT("Formal absence Ready validation succeeds"),
+	TestFalse(TEXT("Formal absence defers Ready validation until Skill selection"),
 		Success.ResolutionResult.FinalizationResult
 			.ReadyValidationResult.bSuccess);
 	TestFalse(TEXT("Formal absence performs no Helper authority lookup"),
@@ -11070,13 +11280,15 @@ bool FMatchPlayAuthoritativeSessionDeclineHelperTest::RunTest(
 	TestEqual(TEXT("Helper decline sequence derived internally"),
 		Success.DeclineResult.Request.AttackSequence,
 		Before.CurrentAttack.AttackSequence);
-	TestEqual(TEXT("Helper decline reaches ReadyForResolution"),
+	TestEqual(TEXT("Helper decline reaches AwaitingSkill"),
 		After.CurrentAttack.SelectionStage,
-		EMatchPlayCurrentAttackSelectionStage::ReadyForResolution);
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
+	TestFalse(TEXT("Helper decline waits for tactical selection"),
+		After.CurrentAttack.bHasSelectedAction);
 	TestFalse(TEXT("Helper decline records formal absence"),
-		After.CurrentAttack.SelectedAction.bHasHelper);
+		After.CurrentAttack.ActionPreparation.bHasHelper);
 	TestTrue(TEXT("Helper decline identity is empty"),
-		After.CurrentAttack.SelectedAction.HelperCardId.IsNone());
+		After.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
 	TestTrue(TEXT("Helper decline does not complete attack"),
 		After.bHasCurrentAttack);
 	TestAdoptedSuccessEnvelope(
@@ -12389,16 +12601,27 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 	const auto Legacy = Session.ResolveCrossPostRoutePlan();
 	TestEqual(TEXT("Legacy atomic command rejects Cross High"),
 		Legacy.OrchestrationResult.ErrorCode,
-		EError::CrossHighRequiresExplicitRollStep);
+		EError::CrossRequiresExplicitRollStep);
 	TestEqual(TEXT("Legacy rejection consumes no RNG"), Post.GetCallCount(), 0);
 	TestTrue(TEXT("Legacy rejection preserves State"),
+		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
+	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest WrongBranchLow;
+	WrongBranchLow.RequestingSide = Attacker;
+	const auto WrongBranchLowResult =
+		Session.ResolveCrossLowAttackRoll(WrongBranchLow);
+	TestEqual(TEXT("Low typed request rejects High branch"),
+		WrongBranchLowResult.OrchestrationResult.ErrorCode,
+		EError::ExplicitRollStepWrongCrossBranch);
+	TestEqual(TEXT("Wrong branch request consumes no RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Wrong branch request preserves State"),
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest EarlyDefense;
 	EarlyDefense.RequestingSide = Defender;
 	const auto Early = Session.ResolveCrossHighDefenseRoll(EarlyDefense);
 	TestEqual(TEXT("Defense cannot roll before attack"),
-		Early.OrchestrationResult.ErrorCode, EError::WrongCrossHighRollStep);
+		Early.OrchestrationResult.ErrorCode, EError::WrongCrossRollStep);
 	TestEqual(TEXT("Early defense consumes no RNG"), Post.GetCallCount(), 0);
 	TestTrue(TEXT("Early defense preserves State"),
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
@@ -12459,7 +12682,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 		Session.ResolveCrossHighAttackRoll(AttackRequest);
 	TestEqual(TEXT("Duplicate attack exact error"),
 		DuplicateAttack.OrchestrationResult.ErrorCode,
-		EError::WrongCrossHighRollStep);
+		EError::WrongCrossRollStep);
 	TestEqual(TEXT("Duplicate attack consumes no RNG"), Post.GetCallCount(), 1);
 	TestTrue(TEXT("Duplicate attack preserves State"),
 		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
@@ -12532,36 +12755,225 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 		Session.ResolveCrossHighDefenseRoll(DefenseRequest);
 	TestEqual(TEXT("Duplicate defense exact error"),
 		DuplicateDefense.OrchestrationResult.ErrorCode,
-		EError::WrongCrossHighRollStep);
+		EError::WrongCrossRollStep);
 	TestEqual(TEXT("Duplicate defense consumes no RNG"), Post.GetCallCount(), 2);
 	TestTrue(TEXT("Duplicate defense preserves State"),
 		AreStatesEqual(CompleteState, Session.GetStateSnapshot()));
 
-	InitialRouteFixtures::FQueueRollProvider LowInitial;
-	LowInitial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
-	FQueuePostRouteRollProvider LowPost;
-	LowPost.Enqueue(MakePostRouteSuccess(6));
-	LowPost.Enqueue(MakePostRouteSuccess(2));
-	const FString LowPrefix(TEXT("CrossLowLegacy"));
-	const FSkillRuleSnapshotSet LowRules = MakeSkillRuleSet(
-		FName(*FString::Printf(
-			TEXT("Skill.%s.%d"),
-			*LowPrefix,
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest,
+	"43B.ResolveCrossLowManualRollAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EError =
+		EMatchPlayCurrentAttackResolveCrossPostRoutePlanErrorCode;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+
+	const FString Prefix(TEXT("CrossLowManual"));
+	const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+		FName(*FString::Printf(TEXT("Skill.%s.%d"), *Prefix,
 			static_cast<int32>(ESkillRuleType::Cross))),
 		ESkillRuleType::Cross);
-	FMatchPlayAuthoritativeSession LowSession(
-		LowInitial, LowPost, LowRules);
-	TestTrue(TEXT("Cross Low route remains reachable"),
-		ReachResolvedCross(
-			LowSession,
-			LowPrefix,
-			EMatchPlayElectiveBranchIntent::CrossHigh));
-	const auto LowResult = LowSession.ResolveCrossPostRoutePlan();
-	TestTrue(TEXT("Cross Low keeps legacy atomic plan"),
-		LowResult.OrchestrationResult.bSuccess
-			&& LowResult.OrchestrationResult.PlanResult.bSuccess);
-	TestEqual(TEXT("Cross Low still consumes two rolls"),
-		LowResult.OrchestrationResult.ProviderCallCount, 2);
+	InitialRouteFixtures::FQueueRollProvider Initial;
+	Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider Post;
+	Post.Enqueue(MakePostRouteSuccess(6));
+	Post.Enqueue(MakePostRouteSuccess(2));
+	FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+	FReachabilityTrace Trace;
+	TestTrue(TEXT("Cross Low reaches AwaitingRoute"),
+		BuildStage7166ToAwaitingRoute(
+			Session, Prefix, ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh, Trace));
+	TestTrue(TEXT("Cross Low route resolves"),
+		Session.ResolveInitialRoute().OrchestrationResult.bSuccess);
+	const FMatchPlayState RouteState = Session.GetStateSnapshot();
+	const auto& Resolution = RouteState.CurrentAttack.ResolutionSession;
+	TestEqual(TEXT("Authoritative branch is Low"),
+		Resolution.ActualBranch.Cross, EMatchPlayCrossActualBranch::Low);
+	const EInitialTurnOrderPlayer Attacker =
+		Resolution.Bundle.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender =
+		Resolution.Bundle.CurrentDefendingPlayer;
+
+	const auto Legacy = Session.ResolveCrossPostRoutePlan();
+	TestEqual(TEXT("Legacy atomic Low command is retired"),
+		Legacy.OrchestrationResult.ErrorCode,
+		EError::CrossRequiresExplicitRollStep);
+	TestEqual(TEXT("Legacy Low rejection consumes no RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Legacy Low rejection preserves State"),
+		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest WrongBranchHigh;
+	WrongBranchHigh.RequestingSide = Attacker;
+	const auto WrongBranchHighResult =
+		Session.ResolveCrossHighAttackRoll(WrongBranchHigh);
+	TestEqual(TEXT("High typed request rejects Low branch"),
+		WrongBranchHighResult.OrchestrationResult.ErrorCode,
+		EError::ExplicitRollStepWrongCrossBranch);
+	TestEqual(TEXT("Wrong branch consumes no RNG"), Post.GetCallCount(), 0);
+	TestTrue(TEXT("Wrong branch preserves State"),
+		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest EarlyDefense;
+	EarlyDefense.RequestingSide = Defender;
+	const auto Early = Session.ResolveCrossLowDefenseRoll(EarlyDefense);
+	TestEqual(TEXT("Low defense cannot roll before attack"),
+		Early.OrchestrationResult.ErrorCode, EError::WrongCrossRollStep);
+	TestEqual(TEXT("Early Low defense consumes no RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Early Low defense preserves State"),
+		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest WrongAttack;
+	WrongAttack.RequestingSide = Defender;
+	const auto WrongAttackResult =
+		Session.ResolveCrossLowAttackRoll(WrongAttack);
+	TestEqual(TEXT("Defender cannot request Low attack roll"),
+		WrongAttackResult.OrchestrationResult.ErrorCode,
+		EError::WrongRequestingSide);
+	TestEqual(TEXT("Wrong Low attack side consumes no RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Wrong Low attack side preserves State"),
+		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest AttackRequest;
+	AttackRequest.RequestingSide = Attacker;
+	const auto AttackResult = Session.ResolveCrossLowAttackRoll(AttackRequest);
+	const FMatchPlayState AttackState = Session.GetStateSnapshot();
+	const auto& AttackRecords = AttackState.CurrentAttack.ResolutionSession
+		.PostRouteRollProgress.RollRecords;
+	TestTrue(TEXT("Owning attacker resolves Low attack roll"),
+		AttackResult.OrchestrationResult.bSuccess);
+	TestEqual(TEXT("Low attack command kind is typed"),
+		AttackResult.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll);
+	TestEqual(TEXT("Low attack consumes one RNG"), Post.GetCallCount(), 1);
+	TestEqual(TEXT("Low attack-only prefix has one record"),
+		AttackRecords.Num(), 1);
+	if (AttackRecords.IsValidIndex(0))
+	{
+		TestEqual(TEXT("Low attack purpose"),
+			AttackRecords[0].Purpose, EPurpose::PrimaryAttack);
+		TestEqual(TEXT("Low attack value"), AttackRecords[0].RawD6, 6);
+	}
+	const auto AttackFacts =
+		FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+			AttackState, &Rules);
+	const auto* AttackContest = AttackFacts.FormulaContests.FindByPredicate(
+		[](const FMatchPlayResolutionFormulaContestFact& Contest)
+		{
+			return Contest.ContestId == TEXT("Cross.Low");
+		});
+	TestTrue(TEXT("Low mixed formula state is authoritative"),
+		AttackContest != nullptr
+			&& AttackContest->AttackRow.bKnownNonRollSubtotalResolved
+			&& AttackContest->DefenseRow.bKnownNonRollSubtotalResolved
+			&& AttackContest->AttackRow.bFinalValueResolved
+			&& !AttackContest->DefenseRow.bFinalValueResolved);
+
+	const auto DuplicateAttack =
+		Session.ResolveCrossLowAttackRoll(AttackRequest);
+	TestEqual(TEXT("Duplicate Low attack is rejected"),
+		DuplicateAttack.OrchestrationResult.ErrorCode,
+		EError::WrongCrossRollStep);
+	TestEqual(TEXT("Duplicate Low attack consumes no RNG"),
+		Post.GetCallCount(), 1);
+	TestTrue(TEXT("Duplicate Low attack preserves State"),
+		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest WrongDefense;
+	WrongDefense.RequestingSide = Attacker;
+	const auto WrongDefenseResult =
+		Session.ResolveCrossLowDefenseRoll(WrongDefense);
+	TestEqual(TEXT("Attacker cannot request Low defense roll"),
+		WrongDefenseResult.OrchestrationResult.ErrorCode,
+		EError::WrongRequestingSide);
+	TestEqual(TEXT("Wrong Low defense side consumes no RNG"),
+		Post.GetCallCount(), 1);
+	TestTrue(TEXT("Wrong Low defense side preserves State"),
+		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest DefenseRequest;
+	DefenseRequest.RequestingSide = Defender;
+	const auto DefenseResult =
+		Session.ResolveCrossLowDefenseRoll(DefenseRequest);
+	const FMatchPlayState CompleteState = Session.GetStateSnapshot();
+	TestTrue(TEXT("Owning defender resolves Low defense roll"),
+		DefenseResult.OrchestrationResult.bSuccess
+			&& DefenseResult.OrchestrationResult.PlanResult.bSuccess);
+	TestEqual(TEXT("Low defense command kind is typed"),
+		DefenseResult.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll);
+	TestEqual(TEXT("Low dual-roll flow consumes exactly two RNG"),
+		Post.GetCallCount(), 2);
+	const FCrossPlanQueryResult Direct = FCrossPlanQuery::BuildPlan(
+		DefenseResult.OrchestrationResult.ScopedPlayerCardSnapshots,
+		Rules,
+		DefenseResult.OrchestrationResult.QueryInput);
+	TestTrue(TEXT("Low manual result equals unchanged canonical formula"),
+		Direct.bSuccess && AreCrossPlanResultsEquivalent(
+			Direct, DefenseResult.OrchestrationResult.PlanResult));
+	const auto CompleteFacts =
+		FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+			CompleteState, &Rules);
+	const auto* CompleteContest = CompleteFacts.FormulaContests.FindByPredicate(
+		[](const FMatchPlayResolutionFormulaContestFact& Contest)
+		{
+			return Contest.ContestId == TEXT("Cross.Low");
+		});
+	TestTrue(TEXT("Completed Low contest has both authoritative finals"),
+		CompleteContest != nullptr && CompleteContest->bHasResolvedFormula
+			&& CompleteContest->AttackRow.bFinalValueResolved
+			&& CompleteContest->DefenseRow.bFinalValueResolved);
+
+	const auto DuplicateDefense =
+		Session.ResolveCrossLowDefenseRoll(DefenseRequest);
+	TestEqual(TEXT("Duplicate Low defense is rejected"),
+		DuplicateDefense.OrchestrationResult.ErrorCode,
+		EError::WrongCrossRollStep);
+	TestEqual(TEXT("Duplicate Low defense consumes no RNG"),
+		Post.GetCallCount(), 2);
+	TestTrue(TEXT("Duplicate Low defense preserves State"),
+		AreStatesEqual(CompleteState, Session.GetStateSnapshot()));
+
+	const int32 UsedBefore = Attacker == EInitialTurnOrderPlayer::PlayerA
+		? CompleteState.RuntimeState.PlayerAState.UsedAttackCount
+		: CompleteState.RuntimeState.PlayerBState.UsedAttackCount;
+	const auto Terminal = Session.ApplyCrossTerminalResolution();
+	const FMatchPlayState AfterTerminal = Session.GetStateSnapshot();
+	TestTrue(TEXT("Completed Low contest directly applies terminal"),
+		Terminal.OrchestrationResult.bSuccess
+			&& Terminal.OrchestrationResult.FormulaRegenerationCount == 1
+			&& Terminal.OrchestrationResult.RegenerationProviderCallCount == 0
+			&& Terminal.OrchestrationResult.CompletionExecutionCount == 1);
+	TestEqual(TEXT("Terminal consumes no extra arithmetic RNG"),
+		Post.GetCallCount(), 2);
+	TestFalse(TEXT("Terminal clears CurrentAttack"),
+		AfterTerminal.bHasCurrentAttack);
+	const int32 UsedAfter = Attacker == EInitialTurnOrderPlayer::PlayerA
+		? AfterTerminal.RuntimeState.PlayerAState.UsedAttackCount
+		: AfterTerminal.RuntimeState.PlayerBState.UsedAttackCount;
+	TestEqual(TEXT("Terminal advances UsedAttackCount once"),
+		UsedAfter, UsedBefore + 1);
+	TestTrue(TEXT("Terminal hands off to the next attacker"),
+		AfterTerminal.RuntimeState.CurrentAttackingPlayer != Attacker
+			&& AfterTerminal.RuntimeState.CurrentAttackingPlayer
+				!= EInitialTurnOrderPlayer::None);
+
+	const auto Stale = Session.ResolveCrossLowDefenseRoll(DefenseRequest);
+	TestFalse(TEXT("Stale Low roll after terminal is rejected"),
+		Stale.OrchestrationResult.bSuccess);
+	TestEqual(TEXT("Stale Low roll consumes no RNG"), Post.GetCallCount(), 2);
+	TestTrue(TEXT("Stale Low roll preserves handoff State"),
+		AreStatesEqual(AfterTerminal, Session.GetStateSnapshot()));
 	return true;
 }
 
@@ -19957,8 +20369,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 44 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 44);
+	TestEqual(TEXT("E2E preserves 46 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -20032,8 +20444,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-four commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 44);
+	TestEqual(TEXT("All forty-six commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -20505,8 +20917,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-four commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 44);
+	TestEqual(TEXT("All forty-six commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -21007,8 +21419,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-four commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 44);
+	TestEqual(TEXT("All forty-six commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -21559,8 +21971,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All forty-four commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 44);
+	TestEqual(TEXT("All forty-six commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);

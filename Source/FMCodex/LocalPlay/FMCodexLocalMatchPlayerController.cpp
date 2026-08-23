@@ -956,76 +956,128 @@ void AFMCodexLocalMatchPlayerController::SubmitOneOnOneShotChoice(
 		Host->SubmitThroughBallOneOnOneShotChoice(Request));
 }
 
-void AFMCodexLocalMatchPlayerController::RollCrossHighAttack()
+void AFMCodexLocalMatchPlayerController::RollCrossAttack()
 {
-	if (bCrossHighRollCommandInFlight)
+	if (bCrossRollCommandInFlight)
 	{
 		return;
 	}
 	if (InteractionView.InteractionCategory
-		!= EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack)
+		!= EFMCodexLocalMatchInteractionCategory::RollCrossAttack)
 	{
 		RecordLocalFailure(
-			TEXT("ResolveCrossHighAttackRoll"),
-			TEXT("Cross High attack roll is not the current interaction."));
+			TEXT("ResolveCrossAttackRoll"),
+			TEXT("Cross attack roll is not the current interaction."));
 		return;
 	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
 		RecordLocalFailure(
-			TEXT("ResolveCrossHighAttackRoll"), TEXT("Host unavailable."));
+			TEXT("ResolveCrossAttackRoll"), TEXT("Host unavailable."));
 		return;
 	}
-	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Request;
-	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-	bCrossHighRollCommandInFlight = true;
-	const FFMCodexLocalMatchResolveCrossHighAttackRollResult Result =
-		Host->ResolveCrossHighAttackRoll(Request);
-	bCrossHighRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveCrossHighAttackRoll"), Result);
+	const bool bHigh = InteractionView.ResolutionFacts.bHasActualBranch
+		&& InteractionView.ResolutionFacts.ActualBranch.Cross
+			== EMatchPlayCrossActualBranch::High;
+	bCrossRollCommandInFlight = true;
+	if (bHigh)
+	{
+		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		const auto Result = Host->ResolveCrossHighAttackRoll(Request);
+		bCrossRollCommandInFlight = false;
+		RecordCommandResult(TEXT("ResolveCrossHighAttackRoll"), Result);
+	}
+	else
+	{
+		FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		const auto Result = Host->ResolveCrossLowAttackRoll(Request);
+		bCrossRollCommandInFlight = false;
+		RecordCommandResult(TEXT("ResolveCrossLowAttackRoll"), Result);
+	}
 }
 
-void AFMCodexLocalMatchPlayerController::RollCrossHighDefense()
+void AFMCodexLocalMatchPlayerController::RollCrossDefense()
 {
-	if (bCrossHighRollCommandInFlight)
+	if (bCrossRollCommandInFlight)
 	{
 		return;
 	}
 	if (InteractionView.InteractionCategory
-		!= EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense)
+		!= EFMCodexLocalMatchInteractionCategory::RollCrossDefense)
 	{
 		RecordLocalFailure(
-			TEXT("ResolveCrossHighDefenseRoll"),
-			TEXT("Cross High defense roll is not the current interaction."));
+			TEXT("ResolveCrossDefenseRoll"),
+			TEXT("Cross defense roll is not the current interaction."));
 		return;
 	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
 		RecordLocalFailure(
-			TEXT("ResolveCrossHighDefenseRoll"), TEXT("Host unavailable."));
+			TEXT("ResolveCrossDefenseRoll"), TEXT("Host unavailable."));
 		return;
 	}
-	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Request;
-	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-	bCrossHighRollCommandInFlight = true;
-	const FFMCodexLocalMatchResolveCrossHighDefenseRollResult Result =
-		Host->ResolveCrossHighDefenseRoll(Request);
-	bCrossHighRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveCrossHighDefenseRoll"), Result);
+	const bool bHigh = InteractionView.ResolutionFacts.bHasActualBranch
+		&& InteractionView.ResolutionFacts.ActualBranch.Cross
+			== EMatchPlayCrossActualBranch::High;
+	bCrossRollCommandInFlight = true;
+	if (bHigh)
+	{
+		FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		const auto Result = Host->ResolveCrossHighDefenseRoll(Request);
+		bCrossRollCommandInFlight = false;
+		RecordCommandResult(TEXT("ResolveCrossHighDefenseRoll"), Result);
+	}
+	else
+	{
+		FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		const auto Result = Host->ResolveCrossLowDefenseRoll(Request);
+		bCrossRollCommandInFlight = false;
+		RecordCommandResult(TEXT("ResolveCrossLowDefenseRoll"), Result);
+	}
+}
+
+void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
+{
+	if (InteractionView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance
+		|| !InteractionView.bCrossFormulaComplete
+		|| !InteractionView.bCrossTerminalActionAvailable)
+	{
+		RecordLocalFailure(
+			TEXT("ApplyCrossTerminalResolution"),
+			TEXT("The completed Cross terminal action is not available."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ApplyCrossTerminalResolution"), TEXT("Host unavailable."));
+		return;
+	}
+	RecordCommandResult(
+		TEXT("ApplyCrossTerminalResolution"),
+		Host->ApplyCrossTerminalResolution());
 }
 
 void AFMCodexLocalMatchPlayerController::ContinueResolution()
 {
 	if (InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack
+			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense)
+			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance)
 	{
 		RecordLocalFailure(
 			TEXT("ContinueResolution"),
-			TEXT("Cross High arithmetic rolls require the explicit owning-side command."));
+			TEXT("Cross arithmetic rolls and terminal completion require their explicit commands."));
 		return;
 	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
@@ -1051,6 +1103,27 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 		Snapshot.Snapshot.CurrentAttack;
 	if (!Attack.bHasResolutionSession)
 	{
+		if (Attack.bHasSelectedAction
+			&& Attack.SelectedAction.ActionType == ESkillRuleType::Cross)
+		{
+			if (bCrossRouteCommandInFlight)
+			{
+				return;
+			}
+			bCrossRouteCommandInFlight = true;
+			const auto BeginResult = Host->BeginResolutionSession();
+			if (!BeginResult.bSuccess)
+			{
+				bCrossRouteCommandInFlight = false;
+				RecordCommandResult(
+					TEXT("BeginResolutionSession"), BeginResult);
+				return;
+			}
+			const auto RouteResult = Host->ResolveInitialRoute();
+			bCrossRouteCommandInFlight = false;
+			RecordCommandResult(TEXT("ResolveCrossRoute"), RouteResult);
+			return;
+		}
 		RecordCommandResult(
 			TEXT("BeginResolutionSession"), Host->BeginResolutionSession());
 		return;
@@ -1098,9 +1171,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	case ESkillRuleType::Cross:
 		if (!Progress.bContractComplete)
 		{
-			RecordCommandResult(
-				TEXT("ResolveCrossPostRoutePlan"),
-				Host->ResolveCrossPostRoutePlan());
+			RecordLocalFailure(
+				TEXT("ContinueResolution"),
+				TEXT("Cross High and Low require explicit side-owned arithmetic roll commands."));
 		}
 		else
 		{
@@ -1791,16 +1864,22 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			}));
 		}
 		break;
-	case EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack:
+	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack:
 		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
 		{
-			RollCrossHighAttack();
+			RollCrossAttack();
 		}));
 		break;
-	case EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense:
+	case EFMCodexLocalMatchInteractionCategory::RollCrossDefense:
 		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
 		{
-			RollCrossHighDefense();
+			RollCrossDefense();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			CompleteCrossAndAdvance();
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution:

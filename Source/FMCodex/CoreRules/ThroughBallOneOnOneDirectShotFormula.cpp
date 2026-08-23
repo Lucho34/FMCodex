@@ -20,7 +20,9 @@ namespace ThroughBallOneOnOneDirectShotFormula
 
 FThroughBallOneOnOneDirectShotFormulaResult
 FThroughBallOneOnOneDirectShotFormula::Resolve(
-	const FThroughBallOneOnOneDirectShotFormulaPlan& Plan)
+	const FThroughBallOneOnOneDirectShotFormulaPlan& Plan,
+	const float AttackerTacticalPlayerModifier,
+	const float DefenderTacticalPlayerModifier)
 {
 	using namespace ThroughBallOneOnOneDirectShotFormula;
 	FResult Result;
@@ -69,12 +71,14 @@ FThroughBallOneOnOneDirectShotFormula::Resolve(
 	Input.FormulaType = EFormulaType::Finishing;
 	Input.Attacker.BaseValue = static_cast<float>(Plan.ShooterShooting);
 	Input.Attacker.Modifier = 1.0f;
+	Input.Attacker.TacticalPlayerModifier = AttackerTacticalPlayerModifier;
 	Input.Attacker.ComparePoint = Plan.AttackD6;
 	Input.Attacker.bComparePointWasRolledOnD6 = true;
 	Input.Defender.BaseValue = static_cast<float>(Plan.GoalkeeperOneOnOne);
 	Input.Defender.Modifier = Plan.bGoalkeeperActivated
 		? UFormulaResolver::CalculateGoalkeeperHalf(Plan.GoalkeeperOneOnOne)
 		: 0.0f;
+	Input.Defender.TacticalPlayerModifier = DefenderTacticalPlayerModifier;
 	Input.Defender.ComparePoint = Plan.DefenseD6;
 	Input.Defender.bComparePointWasRolledOnD6 = true;
 	Input.bGoalkeeperParticipated = true;

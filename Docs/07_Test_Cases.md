@@ -420,19 +420,19 @@
 - 重复构建 InteractionView、ResolutionFeedback 与 UMG DTO 不调用任何 D6 provider、不改变权威 State、不增加 roll record，且结果逐字段确定。
 - terminal command 清除 CurrentAttack 后，本次 command 的 ResolutionFeedback 仍保留 terminal 前已解析的结构化公式与 Raw Roll facts，供后续表现使用。
 
-## Cross High 场内公式面板（Stage 6.13.1.4.7A）
+## Cross High/Low 场内公式面板（Stage 6.13.1.4.7A、6.13.1.4.8A.3）
 
 应验证：
 
-- 只有成功的 Cross High 算术 Contest 激活 Inline Formula Surface，并抑制旧全屏 Resolution Overlay；Cross Initial Route、Cross Low 及所有未覆盖路线仍使用旧 Overlay。
+- 成功的 Cross High 或 Cross Low 算术 Contest 激活完整 Inline Formula Surface，并抑制旧全屏 Resolution Overlay；路线层先显示实际 High/Low 结果，随后同一内联层按实际分支投影真实算术行。其他未覆盖路线仍使用旧 Overlay。
 - 面板位于中央 Pitch 容器的居中紧凑层，不改变 Pitch/lane/slot/Pitch Mini 几何。Header、两侧 Rack、Pitch 上下文、Role Tag 和底部 Continue 操作保持可见、可用。
-- 标题为 `高球传中`；两条结构行明确标为 `进攻 / 防守`。参与者使用 `持球 / 跑位 / 盯人 / 协防 / 门将` 与既有 PreferredDisplayName 投影，不显示 CardId、PlayerKey、FormulaType、TermId 或内部枚举名。
+- 标题为实际分支的 `高球传中 / 低球传中`；两条结构行明确标为 `进攻 / 防守`。参与者使用 `持球 / 跑位 / 盯人 / 协防 / 门将` 与既有 PreferredDisplayName 投影，不显示 CardId、PlayerKey、FormulaType、TermId 或内部枚举名。
 - 属性项显示本地化属性、权威 SourceValue 与 Multiplier，例如 `传球 5 ×0.5`；固定项显示投影的 `+2`；Widget 不累加 Contribution，不从 Final Value 反推 Raw Roll。
-- unresolved Raw Roll 显示 `D6 ?`，且仅 `NextPendingRollSequenceIndex` 对应项使用静态暖色强调；resolved 项显示权威 `D6 N`。未解析行显示 `= ?`，解析行显示投影的紧凑 Final Value。
+- unresolved Raw Roll 显示 `掷点 ?`，resolved 项显示权威 `掷点 N`。未解析行的主结果显示投影的 `基础值 X`，解析行显示投影的紧凑 Final Value。
 - Helper 缺席时不显示协防参与者或 term；GK 未激活时不显示门将参与者或 term。存在时必须使用实际身份、实际属性、SourceValue、Multiplier 和 Contribution。
-- 重复构建 DTO、创建/刷新 Widget 不消费 RNG、不改变 State、不增加 Roll Record。继续操作复用现有 `Controller::ContinueResolution` typed route，不新增假 `掷骰` 命令、timer 或 autoplay。
-- Cross 当前 post-route plan 单次命令原子地写入 PrimaryAttack 与 PrimaryDefense D6；测试既要覆盖通用 DTO 可表达一枚 resolved/另一枚 pending，也要确认真实生产状态直接从双 pending 进入双 resolved/Final Value，不能为了视觉拆改 authority sequencing。
-- Formula resolve/terminal feedback可继续保留双行 Final Value；不得用旧全屏 Overlay 再覆盖目标公式，也不得加入结果叙事、动画或 cinematic。
+- 重复构建 DTO、创建/刷新 Widget 不消费 RNG、不改变 State、不增加 Roll Record。操作必须调用实际 High/Low 分支对应的 Attack/Defense typed command，不新增假掷点、timer 或 autoplay。
+- 真实生产状态必须按双 pending -> Attack resolved/Defense pending -> 双 resolved/Final Value 推进；Attack 步恰好一枚 D6，Defense 步恰好一枚 D6。
+- Formula 完成后保留双行 Final Value 与 Role Tag，显示 `下一回合`；该 CTA 以零 RNG 调用 terminal，之后才换攻并清除角色/面板。不得显示第二次 finishing contest、旧全屏 Overlay、结果叙事、动画或 cinematic。
 
 ## Cross High 权威 D6 分阶段揭示
 
@@ -449,16 +449,28 @@
 - rolling tile 不发布中间点数，只使用短时、非 RNG 的旋转/缩放；Timer 在 Completed、hidden 或 destruct 时停止。Header、Pitch、Role Tag、Rack 与旧 Overlay 抑制行为保持 .7A 契约。
 - 生产激活仍只覆盖 Cross High ArithmeticContest。Initial Route、Cross Low 与其他战术不动画；无 audio、commentary、winner/tie 文案或 result cinematic。
 
-## Cross High 两步手动掷点（Stage 6.13.1.4.8）
+## Cross High/Low 两步手动掷点（Stage 6.13.1.4.8、6.13.1.4.8A.3）
 
 应验证：
 
-- `ResolveCrossHighAttackRoll` 只接受当前进攻方，在空 post-route 前缀上恰好消费一枚 `PrimaryAttack` D6；成功后 State 只多一条记录，Attack RawD6/FinalValue 已解析，Defense 仍 pending，provider 不发生第二次调用。
-- `ResolveCrossHighDefenseRoll` 只接受当前防守方，只在唯一 `PrimaryAttack` 合法前缀后恰好消费一枚 `PrimaryDefense` D6；成功后双方记录完整，构建的 Cross Query/Formula Result 与相同两枚 D6 下原规则结果完全一致。
-- 两条命令的错误阵营、越序、重复与 wrong-purpose 请求均失败；provider call count 为 0，权威 Before/After State 逐字段相同。旧 `ResolveCrossPostRoutePlan` 对 Cross High 失败且不消费 RNG，对 Cross Low 保持既有行为。
+- `ResolveCrossHighAttackRoll / ResolveCrossLowAttackRoll` 只接受实际分支的当前进攻方，在空 post-route 前缀上恰好消费一枚 `PrimaryAttack` D6；成功后 State 只多一条记录，Attack RawD6/FinalValue 已解析，Defense 仍 pending，provider 不发生第二次调用。
+- `ResolveCrossHighDefenseRoll / ResolveCrossLowDefenseRoll` 只接受实际分支的当前防守方，只在唯一 `PrimaryAttack` 合法前缀后恰好消费一枚 `PrimaryDefense` D6；成功后双方记录完整，构建的 High/Low Cross Query/Formula Result 分别与相同两枚 D6 下原规则结果完全一致。
+- 四条命令的错误分支、错误阵营、越序、重复与 wrong-purpose 请求均失败；provider call count 为 0，权威 Before/After State 逐字段相同。旧 `ResolveCrossPostRoutePlan` 对 High/Low 正常生产状态都失败且不消费 RNG。
 - 确定性序列只消费 Initial Route、PrimaryAttack、PrimaryDefense 三枚 D6；重复构建 Fact Projection、InteractionView、UMG DTO/Widget 不消费 RNG，也不改变 State。
-- pre-roll Formula Fact 两行均含权威投影的 `KnownNonRollSubtotal`、pending RawRoll 和 pending FinalValue；Attack 步后仅 Attack FinalValue 解析；Defense 步后双方 FinalValue 均解析并等于 Resolver Result。
-- Pitch 内联面板依次显示 `等待进攻方掷点 / 进攻方掷点`、`等待防守方掷点 / 防守方掷点`、双方完成后的既有继续结算。主玩家文案使用 `基础值 X / 掷点 ? / 掷点 N`，不显示 `D6 ?` 或 covered English CTA。
+- pre-roll Formula Fact 两行均含权威投影的 `KnownNonRollSubtotal`、pending RawRoll 和 unresolved FinalValue；主结果位显示各自 `KnownNonRollSubtotal`，同时 RawRoll 仍显示 `掷点 ?`。Attack 步后 Attack 主结果切换为权威 FinalValue，Defense 主结果仍显示自己的 KnownNonRollSubtotal；Defense 步后双方主结果均显示权威 FinalValue 并等于 Resolver Result。Widget 不执行 subtotal、D6 或 Tactical Player 加法。
+- Pitch 内联面板依次显示 `等待进攻方掷点 / 进攻方掷点`、`等待防守方掷点 / 防守方掷点`、双方完成后的 `下一回合`。主玩家文案使用 `基础值 X / 掷点 ? / 掷点 N`，不显示 `D6 ?`、`继续结算` 或 covered English CTA。
 - 三个现场状态均保持 Header、Pitch、Rack、Role Tag 可见且抑制旧 full-screen Resolution Overlay：① 双基础值可见、双 roll pending、进攻方拥有操作；② Attack roll/total 可见、Defense pending、防守方拥有操作且没有自动掷点；③ 双 roll/total 与 comparison 可读，Overlay 未返回。
-- 命令处理中的重复点击、非当前按钮、底部 Panel 与 Screen generic Continue 都不能绕过阶段。无 narrative/result headline/audio/cinematic；其他路线行为不变。
+- 命令处理中的重复点击、非当前按钮、底部 Panel 与 Screen generic Continue 都不能绕过阶段。双方完成后没有自动推进；`下一回合` 调用 `ApplyCrossTerminalResolution`，消费零 RNG，之后才清除 CurrentAttack/Role Tag 并换攻。无第二次玩家可见 finishing contest、narrative/result headline/audio/cinematic；其他路线行为不变。
+
+## Cross 生产顺序与单动作路线入口修复（Stage 6.13.1.4.8A）
+
+应验证：
+
+- 正常生产路径的权威阶段严格为 Carrier -> Marker -> Runner -> Helper stage -> Skill；这也必须覆盖候选同时包含 Cross + Cut Inside 的 mixed-family setup。Marker 后 Authority 为 `AwaitingRunner`、InteractionView 为 `选择跑位球员`；Runner 后 Authority 为 `AwaitingHelper`、InteractionView 为 `选择协防球员`；Helper 选择、Decline 与 No-Legal 三条路径完成后 Authority 才为 `AwaitingSkill`、InteractionView 才为 `选择战术`。
+- 参与者优先标志必须由 Authority 显式写入，并在 Skill 选择前保持 `ActionType=None / SkillId=None`。最终提交 Skill 时才冻结动作族并验证 canonical 参与者合同；不消费 Runner/Helper 的战术不得把已准备角色复制进最终 SelectedAction 或 Formula Fact。mixed-family 不得回退到 Marker/Runner -> Skill shortcut。
+- 战术球员投影逐项可回溯到权威 DeploymentPlacement、相对区域和 Card Snapshot `PositionTypes` 的精确匹配；双方人数与人数优势修正来自同一 CoreRules Query。人数领先 2/3+ 时，所有生产 `Finishing` 公式分别消费 +1/+2，Transition 不消费；FormulaFacts 只在真实非零时显示 `战术球员 +N`，Widget 不计数。路线结果层不列姓名。
+- Cross route-entry 的玩家界面只有一个 `判定传中路线` 动作。一次调用内部按顺序通过 `BeginResolutionSession` 与 `ResolveInitialRoute`，最终 diagnostic 为合并 route 命令，AcceptedRolls 只新增一枚 BranchSelection D6；重复/并发输入不得生成第二个 Session、命令或 D6。
+- 路线完成后 Pitch 内联层显示精确 `路线掷点 N -> 判定为高球传中/低球传中`，且 CurrentAttack/攻击方/UsedAttackCount/下一方战术点准备状态不变。High 与 Low 均依次进入各自的两步手动掷点；二者只共享时序，不共享公式。
+- E2E 必须覆盖 High + Helper selected、High + Helper declined、High + no-legal Helper、Low。每个场景都断言 Marker -> Runner -> Helper -> Skill、SkillId 延迟写入、route 后不换攻、Attack-only 混合状态、双掷点后 `下一回合`、Role Tag 持续，以及真实零 RNG terminal 后才换攻并折叠旧面板。fresh rendered PIE 另验证这些玩家可见状态。
+- 本修复不实现结果叙事 headline、随机破坏者/进球者文案、audio、commentary、cinematic 或全局视觉改版。
 

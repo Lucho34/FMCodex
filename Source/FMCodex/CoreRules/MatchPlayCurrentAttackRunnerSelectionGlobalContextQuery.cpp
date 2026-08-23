@@ -196,39 +196,45 @@ FMatchPlayCurrentAttackRunnerSelectionGlobalContextQuery::Query(
 			TEXT("The frozen preparation marker must be non-empty."));
 		return Result;
 	}
-	if (Result.FrozenSkillId.IsNone())
+	const bool bParticipantFirstPreparation =
+		CurrentAttack.ActionPreparation.bSkillSelectionDeferred
+		&& Result.FrozenSkillId.IsNone()
+		&& Result.FrozenActionType == ESkillRuleType::None;
+	if (Result.FrozenSkillId.IsNone() && !bParticipantFirstPreparation)
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackRunnerSelectionErrorCode
 				::InvalidFrozenSkillId,
-			TEXT("The frozen preparation skill must be non-empty."));
+			TEXT("The frozen preparation Skill may be empty only for explicit deferred-Skill authority."));
 		return Result;
 	}
 
-	Result.ParticipantRequirementResult =
-		FMatchPlaySkillParticipantRequirementQuery::Query(
-			Result.FrozenActionType);
-	if (!Result.ParticipantRequirementResult.bSuccess)
+	if (!bParticipantFirstPreparation)
 	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackRunnerSelectionErrorCode
-				::ParticipantRequirementResolutionFailed,
-			Result.ParticipantRequirementResult.ErrorMessage);
-		return Result;
-	}
-	if (!Result.ParticipantRequirementResult.bRequiresRunner
-		|| !Result.ParticipantRequirementResult.bRequiresHelperStage
-		|| Result.ParticipantRequirementResult
-			.bCanBecomeReadyImmediately)
-	{
-		SetError(
-			Result,
-			EMatchPlayCurrentAttackRunnerSelectionErrorCode
-				::ParticipantRequirementMismatch,
-			TEXT("AwaitingRunner requires a runner-and-helper action type."));
-		return Result;
+		Result.ParticipantRequirementResult =
+			FMatchPlaySkillParticipantRequirementQuery::Query(
+				Result.FrozenActionType);
+		if (!Result.ParticipantRequirementResult.bSuccess)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackRunnerSelectionErrorCode
+					::ParticipantRequirementResolutionFailed,
+				Result.ParticipantRequirementResult.ErrorMessage);
+			return Result;
+		}
+		if (!Result.ParticipantRequirementResult.bRequiresRunner
+			|| !Result.ParticipantRequirementResult.bRequiresHelperStage
+			|| Result.ParticipantRequirementResult.bCanBecomeReadyImmediately)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackRunnerSelectionErrorCode
+					::ParticipantRequirementMismatch,
+				TEXT("AwaitingRunner requires participant-first preparation or a runner-and-helper action type."));
+			return Result;
+		}
 	}
 
 	TSet<FString> SeenDeploymentCards;
@@ -351,7 +357,8 @@ FMatchPlayCurrentAttackRunnerSelectionGlobalContextQuery::Query(
 		return Result;
 	}
 
-	if (Result.FrozenActionType == ESkillRuleType::ThroughBall)
+	if (!bParticipantFirstPreparation
+		&& Result.FrozenActionType == ESkillRuleType::ThroughBall)
 	{
 		Result.SlotCatalogValidationResult =
 			FMatchPlayDeploymentSlotCatalogValidator::Validate(

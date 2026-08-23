@@ -86,6 +86,28 @@ bool FFormulaResolverFinishingTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Finishing defender winner"), DefenderWin.Winner, EFormulaWinner::Defender);
 	TestFalse(TEXT("Finishing defender win is not a goal"), DefenderWin.bIsGoal);
 	TestTrue(TEXT("Finishing defender win ends attack"), DefenderWin.bAttackEnded);
+
+	FFormulaResolverInput TacticalInput =
+		FormulaResolverTests::MakeInput(EFormulaType::Finishing);
+	TacticalInput.Attacker.BaseValue = 5.0f;
+	TacticalInput.Attacker.TacticalPlayerModifier = 2.0f;
+	TacticalInput.Defender.BaseValue = 6.0f;
+	const FFormulaResolutionResult TacticalResult =
+		UFormulaResolver::ResolveFormula(TacticalInput);
+	TestEqual(TEXT("Finishing consumes attacker tactical-player modifier"),
+		TacticalResult.AttackerFinalValue, 7.0f);
+	TestEqual(TEXT("Finishing exposes applied tactical-player modifier"),
+		TacticalResult.AttackerTacticalPlayerModifier, 2.0f);
+	TestEqual(TEXT("Tactical-player modifier can change the winner"),
+		TacticalResult.Winner, EFormulaWinner::Attacker);
+
+	TacticalInput.FormulaType = EFormulaType::Transition;
+	const FFormulaResolutionResult TransitionResult =
+		UFormulaResolver::ResolveFormula(TacticalInput);
+	TestEqual(TEXT("Transition formulas do not consume tactical-player modifier"),
+		TransitionResult.AttackerFinalValue, 5.0f);
+	TestEqual(TEXT("Transition reports no tactical-player modifier"),
+		TransitionResult.AttackerTacticalPlayerModifier, 0.0f);
 	return true;
 }
 

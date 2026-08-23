@@ -373,12 +373,12 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 		FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
 		SkillRequest.RequestingSide = OutTrace.Attacker;
 		SkillRequest.SkillId = OutTrace.SkillId;
-		if (!Direct.SubmitSkill(Rules, SkillRequest).SkillResult.bSuccess
-			|| !Host.SubmitSkill(Rules, SkillRequest).bSuccess)
+		auto SubmitSkillToBoth = [&]()
 		{
-			return false;
-		}
-
+			return Direct.SubmitSkill(Rules, SkillRequest)
+					.SkillResult.bSuccess
+				&& Host.SubmitSkill(Rules, SkillRequest).bSuccess;
+		};
 		State = Host.GetMatchSnapshot().Snapshot;
 		const auto RunnerAvailability =
 			FMatchPlayCurrentAttackRunnerSelectionAvailability::Query(
@@ -438,6 +438,11 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 			{
 				return false;
 			}
+		}
+
+		if (!SubmitSkillToBoth())
+		{
+			return false;
 		}
 
 		if (SkillType == ESkillRuleType::Cross)
@@ -653,6 +658,14 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	TestNoActive(TEXT("ResolveIntentDeterminedRoute"), EmptyHost->ResolveIntentDeterminedRoute());
 	TestNoActive(TEXT("ResolveInitialRoute"), EmptyHost->ResolveInitialRoute());
 	TestNoActive(TEXT("ResolveCrossPostRoutePlan"), EmptyHost->ResolveCrossPostRoutePlan());
+	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest LowAttackRequest;
+	LowAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolveCrossLowAttackRoll"),
+		EmptyHost->ResolveCrossLowAttackRoll(LowAttackRequest));
+	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest LowDefenseRequest;
+	LowDefenseRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerB;
+	TestNoActive(TEXT("ResolveCrossLowDefenseRoll"),
+		EmptyHost->ResolveCrossLowDefenseRoll(LowDefenseRequest));
 	TestNoActive(TEXT("ResolveThroughBallFeetPostRoutePlan"), EmptyHost->ResolveThroughBallFeetPostRoutePlan());
 	TestNoActive(TEXT("ResolvePassControlPostRoutePlan"), EmptyHost->ResolvePassControlPostRoutePlan());
 	TestNoActive(TEXT("ResolveDeadCornerPostRouteDecision"), EmptyHost->ResolveDeadCornerPostRouteDecision());

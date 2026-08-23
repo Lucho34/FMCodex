@@ -371,10 +371,22 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		}
 	}
 
+	enum class ECrossE2EHelperMode : uint8
+	{
+		Selected,
+		Declined,
+		NoLegal
+	};
+
 	bool CompleteCrossAttack(
 		FAutomationTestBase& Test,
+		AFMCodexLocalMatchHostGameMode& Host,
 		AFMCodexLocalMatchPlayerController& Controller,
-		const TCHAR* Label)
+		const TCHAR* Label,
+		const ECrossE2EHelperMode HelperMode = ECrossE2EHelperMode::Selected,
+		const EMatchPlayElectiveBranchIntent Intent =
+			EMatchPlayElectiveBranchIntent::CrossHigh,
+		const bool bExpectMixedSkillCandidates = false)
 	{
 		AcknowledgeIfPending(Controller);
 		Controller.RollDemoTacticalPoints();
@@ -392,7 +404,9 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			Attacker == EInitialTurnOrderPlayer::PlayerA
 				? TEXT("NearB")
 				: TEXT("NearA");
-		for (int32 Index = 0; Index < 4; ++Index)
+		const int32 DeploymentCount =
+			HelperMode == ECrossE2EHelperMode::NoLegal ? 3 : 4;
+		for (int32 Index = 0; Index < DeploymentCount; ++Index)
 		{
 			if (!DeployNextOrdinary(Controller, PhysicalForward))
 			{
@@ -423,9 +437,9 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		for (const EFMCodexLocalMatchInteractionCategory Category : {
 			EFMCodexLocalMatchInteractionCategory::SelectCarrier,
 			EFMCodexLocalMatchInteractionCategory::SelectMarker,
-			EFMCodexLocalMatchInteractionCategory::SelectSkill,
 			EFMCodexLocalMatchInteractionCategory::SelectRunner,
-			EFMCodexLocalMatchInteractionCategory::SelectHelper })
+			EFMCodexLocalMatchInteractionCategory::SelectHelper,
+			EFMCodexLocalMatchInteractionCategory::SelectSkill })
 		{
 			bool bSubmitted = false;
 			if (Category == EFMCodexLocalMatchInteractionCategory::SelectCarrier)
@@ -441,9 +455,70 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				== EFMCodexLocalMatchInteractionCategory::SelectSkill)
 			{
 				AcknowledgeIfPending(Controller);
+				const FFMCodexLocalMatchInteractionView& SkillView =
+					Controller.GetInteractionView();
+				if (bExpectMixedSkillCandidates)
+				{
+					const bool bHasCross = SkillView.SelectionOptions.ContainsByPredicate(
+						[](const FFMCodexLocalMatchSelectionOption& Option)
+						{
+							return Option.Id == FName(TEXT("Canonical.Skill.Cross.4.6"));
+						});
+					const bool bHasCutInside = SkillView.SelectionOptions.ContainsByPredicate(
+						[](const FFMCodexLocalMatchSelectionOption& Option)
+						{
+							return Option.Id == FName(TEXT("Demo.Skill.CutInside.Mixed"));
+						});
+					if (!bHasCross || !bHasCutInside)
+					{
+						Test.AddError(FString::Printf(
+							TEXT("%s: mixed-family Skill candidates were lost after participant selection."),
+							Label));
+						return false;
+					}
+				}
 				Controller.SubmitSkill(
 					FName(TEXT("Canonical.Skill.Cross.4.6")));
 				bSubmitted = Controller.GetLastDiagnostic().bHostSuccess;
+			}
+			else if (Category
+				== EFMCodexLocalMatchInteractionCategory::SelectRunner)
+			{
+				AcknowledgeIfPending(Controller);
+				Controller.SubmitRunner(Attacker
+					== EInitialTurnOrderPlayer::PlayerA
+						? FName(TEXT("Prototype.Arsenal.ViktorGyokeres"))
+						: FName(TEXT("Prototype.ManchesterCity.ErlingHaaland")));
+				bSubmitted = Controller.GetLastDiagnostic().bHostSuccess;
+			}
+			else if (Category
+				== EFMCodexLocalMatchInteractionCategory::SelectHelper)
+			{
+				AcknowledgeIfPending(Controller);
+				const FFMCodexLocalMatchInteractionView& HelperView =
+					Controller.GetInteractionView();
+				if (HelperMode == ECrossE2EHelperMode::Selected)
+				{
+					bSubmitted = SubmitFirstSelection(Controller, Category);
+				}
+				else if (HelperMode == ECrossE2EHelperMode::Declined)
+				{
+					Controller.DeclineCurrentSelection();
+					bSubmitted = Controller.GetLastDiagnostic().bHostSuccess;
+				}
+				else
+				{
+					if (!HelperView.SelectionOptions.IsEmpty()
+						|| !HelperView.bCanResolveNoLegalChoice)
+					{
+						Test.AddError(FString::Printf(
+							TEXT("%s: no-legal Helper state was not explicit."),
+							Label));
+						return false;
+					}
+					Controller.ResolveNoLegalCurrentSelection();
+					bSubmitted = Controller.GetLastDiagnostic().bHostSuccess;
+				}
 			}
 			else
 			{
@@ -460,6 +535,85 @@ namespace FMCodexLocalMatchControlSurfaceTests
 					*Controller.GetLastDiagnostic().Message));
 				return false;
 			}
+			AcknowledgeIfPending(Controller);
+			const FMatchPlayState SelectionState =
+				Host.GetMatchSnapshot().Snapshot;
+			const EFMCodexLocalMatchInteractionCategory ExpectedNext =
+				Category == EFMCodexLocalMatchInteractionCategory::SelectMarker
+					? EFMCodexLocalMatchInteractionCategory::SelectRunner
+					: Category == EFMCodexLocalMatchInteractionCategory::SelectRunner
+						? EFMCodexLocalMatchInteractionCategory::SelectHelper
+						: Category == EFMCodexLocalMatchInteractionCategory::SelectHelper
+							? EFMCodexLocalMatchInteractionCategory::SelectSkill
+							: Controller.GetInteractionView().InteractionCategory;
+			if ((Category == EFMCodexLocalMatchInteractionCategory::SelectMarker
+					|| Category == EFMCodexLocalMatchInteractionCategory::SelectRunner
+					|| Category == EFMCodexLocalMatchInteractionCategory::SelectHelper)
+				&& Controller.GetInteractionView().InteractionCategory
+					!= ExpectedNext)
+			{
+				Test.AddError(FString::Printf(
+					TEXT("%s: selection order regressed after category %d."),
+					Label, static_cast<int32>(Category)));
+				return false;
+			}
+			const EMatchPlayCurrentAttackSelectionStage ExpectedAuthorityStage =
+				Category == EFMCodexLocalMatchInteractionCategory::SelectCarrier
+					? EMatchPlayCurrentAttackSelectionStage::AwaitingMarker
+					: Category == EFMCodexLocalMatchInteractionCategory::SelectMarker
+						? EMatchPlayCurrentAttackSelectionStage::AwaitingRunner
+						: Category == EFMCodexLocalMatchInteractionCategory::SelectRunner
+							? EMatchPlayCurrentAttackSelectionStage::AwaitingHelper
+							: Category == EFMCodexLocalMatchInteractionCategory::SelectHelper
+								? EMatchPlayCurrentAttackSelectionStage::AwaitingSkill
+								: EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent;
+			if (!SelectionState.bHasCurrentAttack
+				|| SelectionState.CurrentAttack.Phase
+					!= EMatchPlayCurrentAttackPhase::Resolution
+				|| SelectionState.CurrentAttack.SelectionStage
+					!= ExpectedAuthorityStage
+				|| SelectionState.RuntimeState.CurrentAttackingPlayer != Attacker)
+			{
+				Test.AddError(FString::Printf(
+					TEXT("%s: authoritative preparation stage diverged after category %d."),
+					Label, static_cast<int32>(Category)));
+				return false;
+			}
+			const FMatchPlayCurrentAttackActionPreparationState& Preparation =
+				SelectionState.CurrentAttack.ActionPreparation;
+			if (Preparation.CarrierCardId.IsNone()
+				|| (Category != EFMCodexLocalMatchInteractionCategory::SelectCarrier
+					&& Preparation.MarkerCardId.IsNone())
+				|| ((Category == EFMCodexLocalMatchInteractionCategory::SelectRunner
+						|| Category == EFMCodexLocalMatchInteractionCategory::SelectHelper
+						|| Category == EFMCodexLocalMatchInteractionCategory::SelectSkill)
+					&& Preparation.RunnerCardId.IsNone())
+				|| (Category == EFMCodexLocalMatchInteractionCategory::SelectHelper
+					&& HelperMode == ECrossE2EHelperMode::Selected
+					&& (!Preparation.bHasHelper
+						|| Preparation.HelperCardId.IsNone())))
+			{
+				Test.AddError(FString::Printf(
+					TEXT("%s: authoritative participant identities were not frozen in order."),
+					Label));
+				return false;
+			}
+			if (Category != EFMCodexLocalMatchInteractionCategory::SelectSkill)
+			{
+				const bool bDeferredAuthorityExpected = Category
+					!= EFMCodexLocalMatchInteractionCategory::SelectCarrier;
+				if ((bDeferredAuthorityExpected
+						&& !Preparation.bSkillSelectionDeferred)
+					|| !Preparation.SkillId.IsNone()
+					|| (bDeferredAuthorityExpected
+						&& Preparation.ActionType != ESkillRuleType::None))
+				{
+					Test.AddError(FString::Printf(
+						TEXT("%s: participant-first authority froze Skill or action family too early."),
+						Label));
+					return false;
+				}
+			}
 		}
 
 		if (Controller.GetInteractionView().InteractionCategory
@@ -470,7 +624,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			return false;
 		}
 		AcknowledgeIfPending(Controller);
-		Controller.SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
+		Controller.SubmitBranchIntent(Intent);
 		if (!Controller.GetLastDiagnostic().bHostSuccess)
 		{
 			Test.AddError(FString::Printf(
@@ -478,61 +632,111 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			return false;
 		}
 
-		for (int32 Step = 0; Step < 4; ++Step)
+		const FMatchPlayState BeforeRoute = Host.GetMatchSnapshot().Snapshot;
+		const EInitialTurnOrderPlayer BeforeRouteAttacker =
+			BeforeRoute.RuntimeState.CurrentAttackingPlayer;
+		const int32 BeforeRouteUsedCount = BeforeRouteAttacker
+			== EInitialTurnOrderPlayer::PlayerA
+				? BeforeRoute.RuntimeState.PlayerAState.UsedAttackCount
+				: BeforeRoute.RuntimeState.PlayerBState.UsedAttackCount;
+		if (!Controller.GetInteractionView().AcceptedRolls.IsEmpty())
 		{
-			const EFMCodexLocalMatchInteractionCategory ExpectedCategory =
-				Step < 2
-					? EFMCodexLocalMatchInteractionCategory::ContinueResolution
-					: (Step == 2
-						? EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack
-						: EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense);
-			if (Controller.GetInteractionView().InteractionCategory
-				!= ExpectedCategory)
-			{
-				Test.AddError(FString::Printf(
-					TEXT("%s: system step %d did not expose its expected typed action."),
-					Label, Step + 1));
-				return false;
-			}
-			if (Step < 2)
-			{
-				Controller.ContinueResolution();
-			}
-			else if (Step == 2)
-			{
-				Controller.RollCrossHighAttack();
-			}
-			else
-			{
-				Controller.RollCrossHighDefense();
-			}
-			if (!Controller.GetLastDiagnostic().bHostSuccess)
-			{
-				Test.AddError(FString::Printf(
-					TEXT("%s: system step %d failed: %s"),
-					Label,
-					Step + 1,
-					*Controller.GetLastDiagnostic().Message));
-				return false;
-			}
-			const auto& Feedback = Controller.GetResolutionFeedback();
-			if (Step == 1
-				&& (!Feedback.StepTitle.Contains(TEXT("Route"))
-					|| !Feedback.RouteSummary.Contains(TEXT("Cross"))
-					|| Feedback.DiceEntries.IsEmpty()))
-			{
-				Test.AddError(FString::Printf(
-					TEXT("%s: route feedback did not expose authoritative Cross branch/D6 evidence."),
-					Label));
-				return false;
-			}
-			if (Step == 3 && Feedback.DiceEntries.Num() != 3)
-			{
-				Test.AddError(FString::Printf(
-					TEXT("%s: Cross plan feedback did not retain its three authoritative D6 records."),
-					Label));
-				return false;
-			}
+			Test.AddError(FString::Printf(
+				TEXT("%s: Cross consumed resolution RNG before Initial Route."), Label));
+			return false;
+		}
+
+		Controller.ContinueResolution();
+		if (!Controller.GetLastDiagnostic().bHostSuccess)
+		{
+			Test.AddError(FString::Printf(
+				TEXT("%s: route resolution failed: %s"), Label,
+				*Controller.GetLastDiagnostic().Message));
+			return false;
+		}
+		const FMatchPlayState AfterRoute = Host.GetMatchSnapshot().Snapshot;
+		const int32 AfterRouteUsedCount = BeforeRouteAttacker
+			== EInitialTurnOrderPlayer::PlayerA
+				? AfterRoute.RuntimeState.PlayerAState.UsedAttackCount
+				: AfterRoute.RuntimeState.PlayerBState.UsedAttackCount;
+		if (!AfterRoute.bHasCurrentAttack
+			|| AfterRoute.RuntimeState.CurrentAttackingPlayer
+				!= BeforeRouteAttacker
+			|| AfterRouteUsedCount != BeforeRouteUsedCount
+			|| Controller.GetInteractionView().bTacticalPointRollReady
+			|| Controller.GetInteractionView().AcceptedRolls.Num() != 1)
+		{
+			Test.AddError(FString::Printf(
+				TEXT("%s: initial route crossed the terminal/handoff boundary."),
+				Label));
+			return false;
+		}
+		const auto RouteUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			Controller.GetInteractionView(), Controller.GetResolutionFeedback(),
+			FString());
+		if (!RouteUMG.InlineFormula.bVisible
+			|| RouteUMG.InlineFormula.RouteResultLabel.IsEmpty()
+			|| !RouteUMG.InlineFormula.bShowFormulaRows
+			|| !RouteUMG.InlineFormula.AttackRow
+				.bKnownNonRollSubtotalResolved
+			|| !RouteUMG.InlineFormula.DefenseRow
+				.bKnownNonRollSubtotalResolved
+			|| RouteUMG.InlineFormula.AttackRow.bFinalValueResolved
+			|| RouteUMG.InlineFormula.DefenseRow.bFinalValueResolved
+			|| Controller.GetInteractionView().InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory::RollCrossAttack
+			|| !Controller.GetInteractionView().bCrossAttackRollPending
+			|| !RouteUMG.InlineFormula.TacticalPlayerSummaryLabel.IsEmpty())
+		{
+			Test.AddError(FString::Printf(
+				TEXT("%s: route surface did not expose the pending Cross formula."), Label));
+			return false;
+		}
+
+		const bool bHigh = AfterRoute.CurrentAttack.ResolutionSession.ActualBranch
+			.Cross == EMatchPlayCrossActualBranch::High;
+		Controller.RollCrossAttack();
+		const auto AttackOnlyUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			Controller.GetInteractionView(), Controller.GetResolutionFeedback(),
+			FString());
+		if (!Controller.GetLastDiagnostic().bHostSuccess
+			|| Controller.GetInteractionView().InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory::RollCrossDefense
+			|| !Controller.GetInteractionView().bCrossDefenseRollPending
+			|| Controller.GetInteractionView().AcceptedRolls.Num() != 2
+			|| !AttackOnlyUMG.InlineFormula.AttackRow.bFinalValueResolved
+			|| AttackOnlyUMG.InlineFormula.DefenseRow.bFinalValueResolved)
+		{
+			Test.AddError(FString::Printf(
+				TEXT("%s: %s attacker roll did not produce the mixed authoritative state."),
+				Label, bHigh ? TEXT("High") : TEXT("Low")));
+			return false;
+		}
+		Controller.RollCrossDefense();
+		const auto CompletedUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			Controller.GetInteractionView(), Controller.GetResolutionFeedback(),
+			FString());
+		if (!Controller.GetLastDiagnostic().bHostSuccess
+			|| Controller.GetInteractionView().AcceptedRolls.Num() != 3
+			|| Controller.GetInteractionView().InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory
+					::CompleteCrossAndAdvance
+			|| !Controller.GetInteractionView().bCrossFormulaComplete
+			|| !Controller.GetInteractionView().bCrossTerminalActionAvailable
+			|| Controller.GetInteractionView().ContinueActionLabel
+				!= TEXT("下一回合")
+			|| Controller.GetInteractionView().SelectedCarrierCardId.IsNone()
+			|| Controller.GetInteractionView().SelectedRunnerCardId.IsNone()
+			|| Controller.GetInteractionView().SelectedMarkerCardId.IsNone()
+			|| !CompletedUMG.InlineFormula.AttackRow.bFinalValueResolved
+			|| !CompletedUMG.InlineFormula.DefenseRow.bFinalValueResolved
+			|| CompletedUMG.InlineFormula.ContinueActionLabel
+				!= TEXT("下一回合"))
+		{
+			Test.AddError(FString::Printf(
+				TEXT("%s: completed %s formula did not expose truthful 下一回合."),
+				Label, bHigh ? TEXT("High") : TEXT("Low")));
+			return false;
 		}
 		if (Controller.GetInteractionView().AcceptedRolls.Num() != 3)
 		{
@@ -542,7 +746,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			return false;
 		}
 
-		Controller.ContinueResolution();
+		Controller.CompleteCrossAndAdvance();
 		if (!Controller.GetLastDiagnostic().bHostSuccess)
 		{
 			Test.AddError(FString::Printf(
@@ -563,8 +767,18 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				Label));
 			return false;
 		}
+		const auto TerminalUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			Controller.GetInteractionView(), Controller.GetResolutionFeedback(),
+			FString());
 		return !Controller.GetInteractionView().bCurrentAttackActive
-			&& Controller.GetInteractionView().bTacticalPointRollReady;
+			&& Controller.GetInteractionView().bTacticalPointRollReady
+			&& Controller.GetInteractionView().CurrentAttackingPlayer
+				!= BeforeRouteAttacker
+			&& Controller.GetInteractionView().SelectedCarrierCardId.IsNone()
+			&& Controller.GetInteractionView().SelectedRunnerCardId.IsNone()
+			&& Controller.GetInteractionView().SelectedMarkerCardId.IsNone()
+			&& Controller.GetInteractionView().SelectedHelperCardId.IsNone()
+			&& !TerminalUMG.InlineFormula.bVisible;
 	}
 }
 
@@ -853,7 +1067,7 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 	const EInitialTurnOrderPlayer FirstAttacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
 	TestTrue(TEXT("Representative Cross attack completes"),
-		CompleteCrossAttack(*this, *Controller, TEXT("AttackOne")));
+		CompleteCrossAttack(*this, *Host, *Controller, TEXT("AttackOne")));
 	TestTrue(TEXT("Completion exposes next-player roll readiness"),
 		Controller->GetInteractionView().bTacticalPointRollReady);
 	TestTrue(TEXT("Terminal completion switches the current attacker"),
@@ -918,6 +1132,92 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 		EFMCodexLocalMatchInteractionCategory::MatchEnded);
 	TestFalse(TEXT("Canonical three-per-side boundary exposes no fourth roll"),
 		EndedView.bTacticalPointRollReady);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexCrossStateMachineVariantE2ETest,
+	"FMCodex.LocalPlay.ControlSurface.12A.CrossStateMachineVariants",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexCrossStateMachineVariantE2ETest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+
+	const int32 Seed = FindSeedForTacticalPointAndRolls(6, { 1, 4, 3 });
+	TestTrue(TEXT("Cross E2E deterministic route/plan seed exists"),
+		Seed != INDEX_NONE);
+	if (Seed == INDEX_NONE)
+	{
+		return false;
+	}
+
+	const auto RunScenario = [this, Seed](
+		const TCHAR* Label,
+		const ECrossE2EHelperMode HelperMode,
+		const EMatchPlayElectiveBranchIntent Intent)
+	{
+		FScopedPlayableWorld World;
+		AFMCodexLocalMatchHostGameMode* Host = World.GetHost();
+		AFMCodexLocalMatchPlayerController* Controller = World.GetController();
+		if (Host == nullptr || Controller == nullptr)
+		{
+			AddError(FString::Printf(TEXT("%s: production World unavailable."),
+				Label));
+			return false;
+		}
+		FFMCodexLocalMatchDemoConfiguration Demo =
+			FFMCodexLocalMatchDemoConfigurationFactory::Create();
+		const FName CrossSkillId(TEXT("Canonical.Skill.Cross.4.6"));
+		const FName CutInsideSkillId(TEXT("Demo.Skill.CutInside.Mixed"));
+		for (TArray<FPlayerCardData>* Deck : {
+			&Demo.OpeningInput.OpeningInput.PlayerADeck,
+			&Demo.OpeningInput.OpeningInput.PlayerBDeck })
+		{
+			for (FPlayerCardData& Card : *Deck)
+			{
+				if (!Card.bIsGoalkeeper)
+				{
+					Card.AttackSkillIds = { CrossSkillId, CutInsideSkillId };
+				}
+			}
+		}
+		Demo.SkillRuleSet.SkillRules.RemoveAll(
+			[CrossSkillId](const FSkillRuleSnapshot& Rule)
+			{
+				return Rule.SkillId != CrossSkillId;
+			});
+		FSkillRuleSnapshot CutInsideRule;
+		CutInsideRule.SkillId = CutInsideSkillId;
+		CutInsideRule.SkillType = ESkillRuleType::CutInsideShot;
+		CutInsideRule.MinTriggerActionPoint = 2;
+		CutInsideRule.MaxTriggerActionPoint = 8;
+		Demo.SkillRuleSet.SkillRules.Add(CutInsideRule);
+		const auto Start = Host->StartNewLocalMatch(
+			Demo.OpeningInput, Demo.SkillRuleSet, Seed);
+		Controller->RefreshPresentation();
+		if (!Start.bSuccess)
+		{
+			AddError(FString::Printf(TEXT("%s: match start failed."), Label));
+			return false;
+		}
+		return CompleteCrossAttack(
+			*this, *Host, *Controller, Label, HelperMode, Intent, true);
+	};
+
+	TestTrue(TEXT("Cross High completes with Helper declined"),
+		RunScenario(TEXT("High.HelperDeclined"),
+			ECrossE2EHelperMode::Declined,
+			EMatchPlayElectiveBranchIntent::CrossHigh));
+	TestTrue(TEXT("Cross High completes through explicit no-legal Helper"),
+		RunScenario(TEXT("High.NoLegalHelper"),
+			ECrossE2EHelperMode::NoLegal,
+			EMatchPlayElectiveBranchIntent::CrossHigh));
+	TestTrue(TEXT("Cross Low remains active after route and completes later"),
+		RunScenario(TEXT("Low.HelperSelected"),
+			ECrossE2EHelperMode::Selected,
+			EMatchPlayElectiveBranchIntent::CrossLow));
 	return true;
 }
 
@@ -992,9 +1292,9 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 	for (const EFMCodexLocalMatchInteractionCategory Category : {
 		EFMCodexLocalMatchInteractionCategory::SelectCarrier,
 		EFMCodexLocalMatchInteractionCategory::SelectMarker,
-		EFMCodexLocalMatchInteractionCategory::SelectSkill,
 		EFMCodexLocalMatchInteractionCategory::SelectRunner,
-		EFMCodexLocalMatchInteractionCategory::SelectHelper })
+		EFMCodexLocalMatchInteractionCategory::SelectHelper,
+		EFMCodexLocalMatchInteractionCategory::SelectSkill })
 	{
 		TestTrue(TEXT("OneOnOne fixture submits canonical selection"),
 			SubmitFirstHostSelection(*Host, Demo.SkillRuleSet, Category));
@@ -1265,6 +1565,8 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 		return false;
 	}
 	Controller->StartNewDemoMatch();
+	Controller->SetNextDemoMatchSeedForTesting(
+		FindSeedForTacticalPointAndRolls(5, { 2, 4, 3 }));
 	Controller->RollDemoTacticalPoints();
 	const EInitialTurnOrderPlayer Attacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
@@ -1307,9 +1609,9 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 		Controller->GetLastDiagnostic().bHostSuccess);
 
 	for (const EFMCodexLocalMatchInteractionCategory Category : {
-		EFMCodexLocalMatchInteractionCategory::SelectSkill,
 		EFMCodexLocalMatchInteractionCategory::SelectRunner,
-		EFMCodexLocalMatchInteractionCategory::SelectHelper })
+		EFMCodexLocalMatchInteractionCategory::SelectHelper,
+		EFMCodexLocalMatchInteractionCategory::SelectSkill })
 	{
 		AcknowledgeIfPending(*Controller);
 		if (Category
@@ -1326,16 +1628,22 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
 	TestTrue(TEXT("BranchIntent remains reachable"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	TestEqual(TEXT("Cross High begins resolution with a Chinese board action"),
+	TestEqual(TEXT("Cross exposes one Chinese route action"),
 		Controller->GetInteractionView().ContinueActionLabel,
-		FString(TEXT("进入高球传中结算")));
+		FString(TEXT("判定传中路线")));
 	Controller->ContinueResolution();
-	TestEqual(TEXT("Cross High route resolution stays Chinese-first"),
-		Controller->GetInteractionView().ContinueActionLabel,
-		FString(TEXT("判定高球传中路线")));
-	Controller->ContinueResolution();
-	TestTrue(TEXT("Authoritative route D6 remains visible"),
-		Controller->GetInteractionView().AcceptedRolls.Num() > 0);
+	TestTrue(TEXT("One action creates the session and resolves exactly one route D6"),
+		Controller->GetLastDiagnostic().CommandName == TEXT("ResolveCrossRoute")
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 1
+			&& Controller->GetInteractionView().ResolutionFacts.Rolls[0].RawD6 == 2);
+	const auto RoutePresentation =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			Controller->GetInteractionView(),
+			Controller->GetResolutionFeedback(), FString());
+	TestTrue(TEXT("Inline Pitch surface explains route roll and outcome"),
+		RoutePresentation.InlineFormula.bVisible
+			&& RoutePresentation.InlineFormula.RouteResultLabel
+				== TEXT("路线掷点 2 → 判定为高球传中"));
 	TestEqual(TEXT("Initial roll is grouped separately"),
 		Controller->GetInteractionView().AcceptedRolls[0].Group,
 		EFMCodexLocalMatchRollGroup::InitialRoute);
@@ -1589,6 +1897,23 @@ bool FFMCodexLocalMatchCandidatePresentationTest::RunTest(
 	Controller->SubmitMarker(Marker.Id);
 	AcknowledgeIfPending(*Controller);
 
+	for (int32 Guard = 0; Guard < 4; ++Guard)
+	{
+		const auto& ParticipantView = Controller->GetInteractionView();
+		if (ParticipantView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectRunner
+			&& ParticipantView.InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory::SelectHelper)
+		{
+			break;
+		}
+		if (!SubmitFirstSelection(
+			*Controller, ParticipantView.InteractionCategory))
+		{
+			return false;
+		}
+		AcknowledgeIfPending(*Controller);
+	}
 	const auto& SkillView = Controller->GetInteractionView();
 	TestEqual(TEXT("Fixture reaches Skill"), SkillView.InteractionCategory,
 		EFMCodexLocalMatchInteractionCategory::SelectSkill);
@@ -2121,6 +2446,46 @@ namespace FMCodexLocalMatchFullFamilyTests
 			return Fail(Test, FamilyLabel, TEXT("Marker submission failed"));
 		}
 
+		for (int32 Guard = 0; Guard < 4; ++Guard)
+		{
+			AcknowledgeIfPending(Controller);
+			const auto& ParticipantView = Controller.GetInteractionView();
+			if (ParticipantView.InteractionCategory
+				!= EFMCodexLocalMatchInteractionCategory::SelectRunner
+				&& ParticipantView.InteractionCategory
+					!= EFMCodexLocalMatchInteractionCategory::SelectHelper)
+			{
+				break;
+			}
+			if (!ParticipantView.SelectionOptions.IsEmpty())
+			{
+				if (!SubmitFirstSelection(
+					Controller, ParticipantView.InteractionCategory))
+				{
+					return Fail(Test, FamilyLabel,
+						TEXT("Pre-Skill Runner/Helper submission failed"));
+				}
+			}
+			else if (ParticipantView.bCanResolveNoLegalChoice)
+			{
+				Controller.ResolveNoLegalCurrentSelection();
+			}
+			else if (ParticipantView.bCanDecline)
+			{
+				Controller.DeclineCurrentSelection();
+			}
+			else
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("Pre-Skill participant stage had no action"));
+			}
+			if (!Controller.GetLastDiagnostic().bHostSuccess)
+			{
+				return Fail(Test, FamilyLabel,
+					TEXT("Pre-Skill participant operation was rejected"));
+			}
+		}
+
 		AcknowledgeIfPending(Controller);
 		const auto& SkillView = Controller.GetInteractionView();
 		if (SkillView.InteractionCategory
@@ -2312,14 +2677,20 @@ namespace FMCodexLocalMatchFullFamilyTests
 				Controller.ContinueResolution();
 			}
 			else if (View.InteractionCategory
-				== EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack)
+				== EFMCodexLocalMatchInteractionCategory::RollCrossAttack)
 			{
-				Controller.RollCrossHighAttack();
+				Controller.RollCrossAttack();
 			}
 			else if (View.InteractionCategory
-				== EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense)
+				== EFMCodexLocalMatchInteractionCategory::RollCrossDefense)
 			{
-				Controller.RollCrossHighDefense();
+				Controller.RollCrossDefense();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::CompleteCrossAndAdvance)
+			{
+				Controller.CompleteCrossAndAdvance();
 			}
 			else
 			{
@@ -5442,6 +5813,38 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	}
 	TestTrue(TEXT("Panel Marker/NoLegal Marker reaches authoritative Host"),
 		Controller->GetLastDiagnostic().bHostSuccess);
+	for (int32 Guard = 0; Guard < 4
+		&& (Panel->GetPresentation().Category
+			== EFMCodexUMGInteractionCategory::SelectRunner
+			|| Panel->GetPresentation().Category
+				== EFMCodexUMGInteractionCategory::SelectHelper); ++Guard)
+	{
+		const EFMCodexUMGInteractionCategory Category =
+			Panel->GetPresentation().Category;
+		if (!Panel->GetPresentation().SelectionChoices.IsEmpty())
+		{
+			const FName Id =
+				Panel->GetPresentation().SelectionChoices[0].OptionId;
+			if (Category == EFMCodexUMGInteractionCategory::SelectRunner)
+			{
+				Panel->RequestRunner(Id);
+			}
+			else
+			{
+				Panel->RequestHelper(Id);
+			}
+		}
+		else if (Panel->GetPresentation().bCanResolveNoLegal)
+		{
+			Panel->RequestNoLegal();
+		}
+		else
+		{
+			Panel->RequestDecline();
+		}
+		TestTrue(TEXT("Panel pre-Skill participant route reaches Host"),
+			Controller->GetLastDiagnostic().bHostSuccess);
+	}
 	const FFMCodexUMGSelectionChoiceViewModel* CrossSkill =
 		Panel->GetPresentation().SelectionChoices.FindByPredicate(
 			[](const FFMCodexUMGSelectionChoiceViewModel& Candidate)
@@ -5570,9 +5973,9 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	for (const EFMCodexLocalMatchInteractionCategory Category : {
 		EFMCodexLocalMatchInteractionCategory::SelectCarrier,
 		EFMCodexLocalMatchInteractionCategory::SelectMarker,
-		EFMCodexLocalMatchInteractionCategory::SelectSkill,
 		EFMCodexLocalMatchInteractionCategory::SelectRunner,
-		EFMCodexLocalMatchInteractionCategory::SelectHelper })
+		EFMCodexLocalMatchInteractionCategory::SelectHelper,
+		EFMCodexLocalMatchInteractionCategory::SelectSkill })
 	{
 		if (!SubmitFirstHostSelection(
 			*OneOnOneHost, Demo.SkillRuleSet, Category))
@@ -6587,6 +6990,41 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	if (!Controller->GetLastDiagnostic().bHostSuccess)
 	{
 		return false;
+	}
+	for (int32 Guard = 0; Guard < 4; ++Guard)
+	{
+		const EFMCodexUMGInteractionCategory Category =
+			Interaction->GetPresentation().Category;
+		if (Category != EFMCodexUMGInteractionCategory::SelectRunner
+			&& Category != EFMCodexUMGInteractionCategory::SelectHelper)
+		{
+			break;
+		}
+		if (!Interaction->GetPresentation().SelectionChoices.IsEmpty())
+		{
+			const FName Id = Interaction->GetPresentation()
+				.SelectionChoices[0].OptionId;
+			if (Category == EFMCodexUMGInteractionCategory::SelectRunner)
+			{
+				Interaction->RequestRunner(Id);
+			}
+			else
+			{
+				Interaction->RequestHelper(Id);
+			}
+		}
+		else if (Interaction->GetPresentation().bCanResolveNoLegal)
+		{
+			Interaction->RequestNoLegal();
+		}
+		else
+		{
+			Interaction->RequestDecline();
+		}
+		if (!Controller->GetLastDiagnostic().bHostSuccess)
+		{
+			return false;
+		}
 	}
 	const FFMCodexUMGSelectionChoiceViewModel* CrossSkill =
 		Interaction->GetPresentation().SelectionChoices.FindByPredicate(
@@ -8798,8 +9236,8 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authoritative Session exposes the two explicit Cross High roll entrypoints"),
-		SerializedEntrypointCount, 44);
+	TestEqual(TEXT("Authoritative Session exposes the four explicit Cross High/Low roll entrypoints"),
+		SerializedEntrypointCount, 46);
 
 	return true;
 }
@@ -9162,8 +9600,8 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderTransform"))
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
-	TestEqual(TEXT("Authority typed serialized entrypoint contract includes both Cross High rolls"),
-		SerializedEntrypointCount, 44);
+	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross High/Low rolls"),
+		SerializedEntrypointCount, 46);
 
 	return true;
 }
@@ -9585,8 +10023,8 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authority typed serialized entrypoint includes both Cross High rolls"),
-		SerializedEntrypointCount, 44);
+	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross High/Low rolls"),
+		SerializedEntrypointCount, 46);
 
 	return true;
 }
@@ -11098,13 +11536,6 @@ bool FFMCodexSelectedRoleTagsFoundationTest::RunTest(
 	{
 		return false;
 	}
-	Controller->SubmitSkill(FName(CrossFamily.SkillId));
-	if (!Controller->GetLastDiagnostic().bHostSuccess)
-	{
-		AddError(TEXT("Cross skill submission failed in selected-role setup"));
-		return false;
-	}
-	Controller->RefreshPresentation();
 	const FName RunnerId = Controller->GetInteractionView().SelectionOptions.IsEmpty()
 		? NAME_None : Controller->GetInteractionView().SelectionOptions[0].Id;
 	Controller->SubmitRunner(RunnerId);
@@ -11121,6 +11552,12 @@ bool FFMCodexSelectedRoleTagsFoundationTest::RunTest(
 		|| !ExpectProjectedRole(TEXT("Helper appears immediately as 协防"),
 			HelperId, EFMCodexUMGSelectedRole::Helper, TEXT("\u534F\u9632")))
 	{
+		return false;
+	}
+	Controller->SubmitSkill(FName(CrossFamily.SkillId));
+	if (!Controller->GetLastDiagnostic().bHostSuccess)
+	{
+		AddError(TEXT("Cross skill submission failed after participant selection"));
 		return false;
 	}
 	TestTrue(TEXT("All preparation roles persist into the branch prompt"),
@@ -11531,7 +11968,6 @@ bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
 				? NAME_None
 				: Controller->GetInteractionView().SelectionOptions[0].Id;
 		Controller->SubmitMarker(MarkerId);
-		Controller->SubmitSkill(FName(CrossFamily.SkillId));
 		if (!Controller->GetLastDiagnostic().bHostSuccess)
 		{
 			AddError(TEXT("Runner setup did not reach AwaitingRunner"));
@@ -12169,6 +12605,22 @@ bool FFMCodexProductionMatchFlowLocalizationTest::RunTest(
 			: Controller->GetInteractionView().SelectionOptions[0].Id;
 	Controller->SubmitMarker(MarkerId);
 	Controller->RefreshPresentation();
+	for (int32 Guard = 0; Guard < 4; ++Guard)
+	{
+		const EFMCodexLocalMatchInteractionCategory Category =
+			Controller->GetInteractionView().InteractionCategory;
+		if (Category != EFMCodexLocalMatchInteractionCategory::SelectRunner
+			&& Category != EFMCodexLocalMatchInteractionCategory::SelectHelper)
+		{
+			break;
+		}
+		if (!SubmitFirstSelection(*Controller, Category))
+		{
+			AddError(TEXT("Localization participant-first setup failed"));
+			return false;
+		}
+		Controller->RefreshPresentation();
+	}
 	if (Controller->GetInteractionView().InteractionCategory
 		!= EFMCodexLocalMatchInteractionCategory::SelectSkill)
 	{
@@ -12429,7 +12881,6 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 	for (const EFMCodexLocalMatchInteractionCategory Category : {
 		EFMCodexLocalMatchInteractionCategory::SelectCarrier,
 		EFMCodexLocalMatchInteractionCategory::SelectMarker,
-		EFMCodexLocalMatchInteractionCategory::SelectSkill,
 		EFMCodexLocalMatchInteractionCategory::SelectRunner })
 	{
 		if (!SubmitFirstHostSelection(*Host, Demo.SkillRuleSet, Category))
@@ -12470,6 +12921,13 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			AddError(TEXT("Formula fixture could not resolve the optional Helper stage"));
 			return false;
 		}
+	}
+	if (!SubmitFirstHostSelection(
+		*Host, Demo.SkillRuleSet,
+		EFMCodexLocalMatchInteractionCategory::SelectSkill))
+	{
+		AddError(TEXT("Formula fixture could not submit deferred Cross Skill"));
+		return false;
 	}
 	{
 		const FFMCodexLocalMatchInteractionView BranchView =
@@ -12628,11 +13086,77 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 		BeforePostRollProjection
 			== SerializeState(Host->GetMatchSnapshot().Snapshot)
 			&& PreFormulaUMG.Resolution.FormulaFacts.bHasFacts);
+	bool bEveryTacticalIdentityIsCanonical =
+		!PreFormulaFacts.TacticalPlayers.IsEmpty();
+	FString FirstTacticalPlayerName;
+	for (const FMatchPlayResolutionTacticalPlayerFact& Tactical
+		: PreFormulaFacts.TacticalPlayers)
+	{
+		const FMatchPlayDeploymentPlacement* Placement =
+			PreFormulaState.CurrentAttack.DeploymentPlacements.FindByPredicate(
+				[&Tactical](const FMatchPlayDeploymentPlacement& Candidate)
+				{
+					return Candidate.PlayerSide == Tactical.Side
+						&& Candidate.CardId == Tactical.CardId;
+				});
+		const auto Zone = Placement == nullptr
+			? FMatchPlayRelativeDeploymentZoneResolveResult()
+			: FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+				PreFormulaState.DeploymentSlotCatalog,
+				Placement->SlotId,
+				Attacker,
+				Tactical.Side);
+		const auto Snapshot =
+			FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+				PreFormulaState.CardSnapshotAuthority,
+				Tactical.Side,
+				Tactical.CardId);
+		const bool bPositionMatches = Snapshot.bSuccess && Zone.bSuccess
+			&& ((Zone.RelativeZone == EMatchPlayRelativeDeploymentZone::Forward
+					&& Snapshot.Snapshot.PositionTypes.Contains(
+						EPlayerPositionType::Attack))
+				|| (Zone.RelativeZone
+						== EMatchPlayRelativeDeploymentZone::Midfield
+					&& Snapshot.Snapshot.PositionTypes.Contains(
+						EPlayerPositionType::Midfield))
+				|| (Zone.RelativeZone
+						== EMatchPlayRelativeDeploymentZone::Backfield
+					&& Snapshot.Snapshot.PositionTypes.Contains(
+						EPlayerPositionType::Defense)));
+		bEveryTacticalIdentityIsCanonical =
+			bEveryTacticalIdentityIsCanonical
+			&& Placement != nullptr
+			&& Zone.RelativeZone == Tactical.RelativeZone
+			&& bPositionMatches;
+		if (FirstTacticalPlayerName.IsEmpty())
+		{
+			const TArray<FFMCodexLocalMatchCardView>& Roster =
+				Tactical.Side == EInitialTurnOrderPlayer::PlayerA
+					? PreFormulaView.PlayerACardRoster
+					: PreFormulaView.PlayerBCardRoster;
+			if (const FFMCodexLocalMatchCardView* Card =
+				Roster.FindByPredicate(
+					[&Tactical](const FFMCodexLocalMatchCardView& Candidate)
+					{
+						return Candidate.CardId == Tactical.CardId;
+					}))
+			{
+				FirstTacticalPlayerName =
+					FFMCodexPlayerUIPresentationText::InMatchShortPlayerName(
+						Tactical.CardId, Card->DisplayLabel).ToString();
+			}
+		}
+	}
+	TestTrue(TEXT("Tactical players come only from authoritative zone/position matches"),
+		bEveryTacticalIdentityIsCanonical);
+	TestTrue(TEXT("Route/formula surface omits tactical-player name lists"),
+		!FirstTacticalPlayerName.IsEmpty()
+			&& PreFormulaUMG.InlineFormula.TacticalPlayerSummaryLabel.IsEmpty());
 
 	const auto BeforeAttackRollView = ViewFor(*Host, Demo.SkillRuleSet);
 	TestTrue(TEXT("Pre-roll ownership belongs to attacker"),
 		BeforeAttackRollView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack
+			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 			&& BeforeAttackRollView.ExpectedActingPlayer == Attacker
 			&& BeforeAttackRollView.ContinueActionLabel == TEXT("进攻方掷点"));
 	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest AttackRequest;
@@ -12661,7 +13185,7 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			&& AttackSettledContest->AttackRow.bFinalValueResolved
 			&& !AttackSettledContest->DefenseRow.bFinalValueResolved
 			&& AttackSettledView.InteractionCategory
-				== EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense
+				== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
 			&& AttackSettledView.ExpectedActingPlayer
 				== Session.Bundle.CurrentDefendingPlayer
 			&& AttackSettledView.ContinueActionLabel == TEXT("防守方掷点"));
@@ -12729,20 +13253,14 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 				->CompareScriptStruct(
 					&PostRollFacts, &PlanUMG.Resolution.FormulaFacts, 0));
 
-	const auto Formula = Host->ResolveSingleCardFinishingFormula();
-	TestTrue(TEXT("Existing authoritative Formula command remains unchanged"),
-		Formula.bSuccess
-			&& Formula.AuthoritativeResult.OrchestrationResult
-				.bHasFormulaResolution
-			&& FMath::IsNearlyEqual(
-				Formula.AuthoritativeResult.OrchestrationResult
-					.FormulaResolutionResult.AttackerFinalValue,
-				Contest.ResolvedResult.AttackerFinalValue)
-			&& FMath::IsNearlyEqual(
-				Formula.AuthoritativeResult.OrchestrationResult
-					.FormulaResolutionResult.DefenderFinalValue,
-				Contest.ResolvedResult.DefenderFinalValue));
 	const auto BeforeTerminalView = ViewFor(*Host, Demo.SkillRuleSet);
+	TestTrue(TEXT("Completed Cross projects only the truthful terminal CTA"),
+		BeforeTerminalView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::CompleteCrossAndAdvance
+			&& BeforeTerminalView.bCrossFormulaComplete
+			&& BeforeTerminalView.bCrossTerminalActionAvailable
+			&& BeforeTerminalView.ContinueActionLabel == TEXT("下一回合"));
 	const auto Terminal = Host->ApplyCrossTerminalResolution();
 	const auto AfterTerminalView = ViewFor(*Host, Demo.SkillRuleSet);
 	const auto TerminalFeedback =
@@ -12753,6 +13271,10 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 		AfterTerminalView, TerminalFeedback, FString());
 	TestTrue(TEXT("Terminal feedback preserves facts after CurrentAttack clears"),
 		Terminal.bSuccess
+			&& Terminal.AuthoritativeResult.OrchestrationResult
+				.FormulaRegenerationCount == 1
+			&& Terminal.AuthoritativeResult.OrchestrationResult
+				.RegenerationProviderCallCount == 0
 			&& !AfterTerminalView.ResolutionFacts.bHasFacts
 			&& TerminalFeedback.ResolutionFacts.bHasFacts
 			&& TerminalUMG.Resolution.FormulaFacts.bHasFacts

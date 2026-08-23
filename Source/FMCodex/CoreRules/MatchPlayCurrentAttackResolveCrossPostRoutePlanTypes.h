@@ -14,10 +14,14 @@ struct FMCODEX_API
 
 	enum class EMode : uint8
 	{
+		// Legacy/dev compatibility entry. Production Cross High and Low must use
+		// the explicit side-owned arithmetic roll commands below.
 		CompleteCrossLowPlan,
 		RegenerateCompletedPlan,
 		ResolveCrossHighAttackRoll,
-		ResolveCrossHighDefenseRoll
+		ResolveCrossHighDefenseRoll,
+		ResolveCrossLowAttackRoll,
+		ResolveCrossLowDefenseRoll
 	};
 
 	EMode Mode = EMode::CompleteCrossLowPlan;
@@ -36,11 +40,11 @@ enum class EMatchPlayCurrentAttackResolveCrossPostRoutePlanErrorCode : uint8
 	InvalidResolutionSessionState,
 	RouteNotResolved,
 	NotCrossBranch,
-	CrossHighRequiresExplicitRollStep,
-	ExplicitRollStepRequiresCrossHigh,
+	CrossRequiresExplicitRollStep,
+	ExplicitRollStepWrongCrossBranch,
 	InvalidRequestingSide,
 	WrongRequestingSide,
-	WrongCrossHighRollStep,
+	WrongCrossRollStep,
 	CompletedPlanRequired,
 	InvalidPostRouteProgress,
 	PostRouteRollProviderUnavailable,

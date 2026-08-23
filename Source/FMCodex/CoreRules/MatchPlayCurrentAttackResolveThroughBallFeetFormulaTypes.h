@@ -5,6 +5,7 @@
 #include "MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
 #include "MatchPlayCurrentAttackResolutionSessionStateValidator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanTypes.h"
+#include "MatchPlayTacticalPlayerAdvantageQuery.h"
 #include "ThroughBallFeetFormulaResolutionExecutor.h"
 
 enum class
@@ -26,7 +27,8 @@ enum class
 	FormulaPlanUnavailable,
 	ResolverInputAssemblyFailed,
 	FormulaExecutionFailed,
-	InvalidFormulaResolutionResult
+	InvalidFormulaResolutionResult,
+	TacticalPlayerAdvantageQueryFailed
 };
 
 struct FMCODEX_API
@@ -43,6 +45,7 @@ struct FMCODEX_API
 	FMatchPlayCurrentAttackResolutionSessionStateValidationResult
 		SessionStateValidationResult;
 	FMatchPlayCurrentAttackPostRouteRollProgressResult ProgressResult;
+	FMatchPlayTacticalPlayerAdvantageResult TacticalPlayerAdvantageResult;
 
 	int32 PlanRegenerationProviderCallCount = 0;
 	int32 FormulaExecutionCount = 0;

@@ -70,8 +70,12 @@ enum class EMatchPlayCurrentAttackSkillSelectionErrorCode : uint8
 		UMETA(DisplayName = "Unsupported Skill Rule Type"),
 	ParticipantRequirementResolutionFailed
 		UMETA(DisplayName = "Participant Requirement Resolution Failed"),
+	PreparedRunnerIncompatibleWithSkill
+		UMETA(DisplayName = "Prepared Runner Incompatible With Skill"),
 	InvalidCurrentAttackActionPoint
 		UMETA(DisplayName = "Invalid Current Attack Action Point"),
 	ActionPointOutsideSkillRange
-		UMETA(DisplayName = "Action Point Outside Skill Range")
+		UMETA(DisplayName = "Action Point Outside Skill Range"),
+	DeferredActionTypeMismatch
+		UMETA(DisplayName = "Deferred Action Type Mismatch")
 };

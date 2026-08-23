@@ -6,6 +6,7 @@
 #include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallFeetFormulaOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaOrchestrator.h"
+#include "MatchPlayTacticalPlayerAdvantageQuery.h"
 
 namespace MatchPlayCurrentAttackResolutionFactProjection
 {
@@ -136,6 +137,28 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 				EParticipantRole::Goalkeeper,
 				Goalkeeper.Side,
 				Goalkeeper.CardId });
+		}
+	}
+
+	void AddTacticalPlayers(
+		FProjection& Projection,
+		const FMatchPlayTacticalPlayerAdvantageResult& Tactical)
+	{
+		Projection.AttackerTacticalPlayerCount =
+			Tactical.AttackerTacticalPlayerCount;
+		Projection.DefenderTacticalPlayerCount =
+			Tactical.DefenderTacticalPlayerCount;
+		Projection.AttackerTacticalPlayerModifier =
+			Tactical.AttackerFinishingModifier;
+		Projection.DefenderTacticalPlayerModifier =
+			Tactical.DefenderFinishingModifier;
+		for (const FMatchPlayTacticalPlayerIdentity& Player
+			: Tactical.TacticalPlayers)
+		{
+			Projection.TacticalPlayers.Add({
+				Player.Side,
+				Player.CardId,
+				Player.RelativeZone });
 		}
 	}
 
@@ -305,6 +328,34 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		Term.SourceValue = Value;
 		Term.Contribution = Value;
 		Row.Terms.Add(Term);
+	}
+
+	void AddTacticalPlayerAdvantageTerms(
+		FContest& Contest,
+		const FProjection& Projection)
+	{
+		if (Contest.FormulaType != EFormulaType::Finishing)
+		{
+			return;
+		}
+		auto AddTerm = [](FRow& Row, const FName TermId, const float Value)
+		{
+			if (FMath::IsNearlyZero(Value))
+			{
+				return;
+			}
+			FMatchPlayResolutionFormulaTermFact Term;
+			Term.TermId = TermId;
+			Term.Kind = ETermKind::TacticalPlayerAdvantage;
+			Term.Side = Row.Side;
+			Term.SourceValue = Value;
+			Term.Contribution = Value;
+			Row.Terms.Add(Term);
+		};
+		AddTerm(Contest.AttackRow, TEXT("TacticalPlayer.Advantage.Attack"),
+			Projection.AttackerTacticalPlayerModifier);
+		AddTerm(Contest.DefenseRow, TEXT("TacticalPlayer.Advantage.Defense"),
+			Projection.DefenderTacticalPlayerModifier);
 	}
 
 	void AddRollTerm(
@@ -939,6 +990,7 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		{
 			return false;
 		}
+		AddTacticalPlayerAdvantageTerms(Contest, Projection);
 		ProjectKnownRowValues(Contest.AttackRow);
 		ProjectKnownRowValues(Contest.DefenseRow);
 
@@ -1032,6 +1084,7 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		}
 		AddRollTerm(Contest.DefenseRow, Projection,
 			EPostPurpose::OneOnOneDirectShotDefense);
+		AddTacticalPlayerAdvantageTerms(Contest, Projection);
 		ProjectKnownRowValues(Contest.AttackRow);
 		ProjectKnownRowValues(Contest.DefenseRow);
 
@@ -1312,6 +1365,14 @@ FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
 	AddParticipant(Projection, EParticipantRole::Runner, Session.Bundle.Runner);
 	AddParticipant(Projection, EParticipantRole::Marker, Session.Bundle.Marker);
 	AddParticipant(Projection, EParticipantRole::Helper, Session.Bundle.Helper);
+	const FMatchPlayTacticalPlayerAdvantageResult Tactical =
+		FMatchPlayTacticalPlayerAdvantageQuery::Evaluate(State);
+	if (!Tactical.bSuccess)
+	{
+		Fail(Projection, Tactical.ErrorMessage);
+		return Projection;
+	}
+	AddTacticalPlayers(Projection, Tactical);
 
 	if (RequiresInitialRouteRoll(Projection.ActionType))
 	{

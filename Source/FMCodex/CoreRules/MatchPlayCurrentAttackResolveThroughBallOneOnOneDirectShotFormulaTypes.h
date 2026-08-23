@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanTypes.h"
+#include "MatchPlayTacticalPlayerAdvantageQuery.h"
 
 enum class EMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaErrorCode : uint8
 {
@@ -19,7 +20,8 @@ enum class EMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaErr
 	PlanRegenerationConsumedRng,
 	PlanRegenerationMutatedState,
 	FormulaPlanUnavailable,
-	FormulaExecutionFailed
+	FormulaExecutionFailed,
+	TacticalPlayerAdvantageQueryFailed
 };
 
 struct FMCODEX_API FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaResult
@@ -33,6 +35,7 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFo
 	FName InvalidField = NAME_None;
 	FMatchPlayCurrentAttackResolutionSessionStateValidationResult SessionStateValidationResult;
 	FMatchPlayCurrentAttackPostRouteRollProgressResult ProgressResult;
+	FMatchPlayTacticalPlayerAdvantageResult TacticalPlayerAdvantageResult;
 	int32 PlanRegenerationProviderCallCount = 0;
 	int32 FormulaExecutionCount = 0;
 	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult PlanRegenerationResult;

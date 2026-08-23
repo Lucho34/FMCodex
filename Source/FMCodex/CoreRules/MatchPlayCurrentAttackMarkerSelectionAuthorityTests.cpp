@@ -102,8 +102,14 @@ bool FMarkerSelectionAuthorityCallGraphTest::RunTest(
 		ProductionSources.Contains(TEXT("NeutralSide")));
 	TestFalse(TEXT("Marker modules do not compare RelativeZone"),
 		ProductionSources.Contains(TEXT("RelativeZone")));
-	TestFalse(TEXT("Marker modules do not query SkillRule"),
-		ProductionSources.Contains(TEXT("SkillRule")));
+	TestTrue(TEXT("Marker writer retains the Skill-rule-aware API boundary"),
+		WriterHeader.Contains(TEXT("SelectWithSkillRules")));
+	TestFalse(TEXT("Marker writer never chooses order from Skill availability"),
+		WriterSource.Contains(
+			TEXT("FMatchPlayCurrentAttackSkillSelectionAvailability::Query")));
+	TestTrue(TEXT("Marker writer always enters participant-first Runner selection"),
+		WriterSource.Contains(TEXT("::AwaitingRunner"))
+			&& WriterSource.Contains(TEXT("bSkillSelectionDeferred = true")));
 	TestFalse(TEXT("Marker modules do not query ActionPoint"),
 		ProductionSources.Contains(TEXT("ActionPoint")));
 	TestFalse(TEXT("Marker modules do not use Formula"),

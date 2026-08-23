@@ -3,7 +3,9 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionAvailability.h"
+#include "../CoreRules/MatchPlayCurrentAttackHelperSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionAvailability.h"
+#include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionAvailability.h"
 #include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
 
@@ -879,6 +881,26 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 	TestTrue(TEXT("Host defender deployment succeeds"),
 		Host->DeployOrdinary(DefenderDeploy).bSuccess);
 	TestEquivalent(TEXT("Defender deployment"));
+	for (int32 Index = 0; Index < 1; ++Index)
+	{
+		State = Host->GetMatchSnapshot().Snapshot;
+		const bool bAttackerDeploying =
+			State.CurrentAttack.CurrentLegalDeploymentSide == AttackingSide;
+		FMatchPlayAuthoritativeDeployOrdinaryRequest AdditionalDeploy;
+		TestTrue(TEXT("An additional participant deployment exists"),
+			FindLegalDeployment(
+				State,
+				bAttackerDeploying
+					? EMatchPlayRelativeDeploymentZone::Forward
+					: EMatchPlayRelativeDeploymentZone::Backfield,
+				AdditionalDeploy));
+		TestTrue(TEXT("Direct additional participant deploys"),
+			DirectSession.DeployOrdinary(AdditionalDeploy)
+				.DeploymentResult.bSuccess);
+		TestTrue(TEXT("Host additional participant deploys"),
+			Host->DeployOrdinary(AdditionalDeploy).bSuccess);
+		TestEquivalent(TEXT("Additional participant deployment"));
+	}
 
 	for (int32 FinishIndex = 0; FinishIndex < 2; ++FinishIndex)
 	{
@@ -922,6 +944,57 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 	TestTrue(TEXT("Host Marker succeeds"),
 		Host->SubmitMarker(MarkerRequest).bSuccess);
 	TestEquivalent(TEXT("Marker"));
+
+	State = Host->GetMatchSnapshot().Snapshot;
+	const auto RunnerAvailability =
+		FMatchPlayCurrentAttackRunnerSelectionAvailability::Query(
+			State, State.CurrentAttack.AttackSequence, AttackingSide);
+	const auto* Runner = RunnerAvailability.Candidates.FindByPredicate(
+		[](const FMatchPlayCurrentAttackRunnerSelectionCandidateAvailability& Candidate)
+		{
+			return Candidate.LegalityResult.bIsLegal;
+		});
+	TestNotNull(TEXT("A legal participant-first Runner exists"), Runner);
+	if (Runner == nullptr)
+	{
+		return false;
+	}
+	FMatchPlayAuthoritativeSubmitRunnerRequest RunnerRequest;
+	RunnerRequest.RequestingSide = AttackingSide;
+	RunnerRequest.RunnerCardId = Runner->RunnerCardId;
+	TestTrue(TEXT("Direct Runner succeeds"),
+		DirectSession.SubmitRunner(RunnerRequest).RunnerResult.bSuccess);
+	TestTrue(TEXT("Host Runner succeeds"),
+		Host->SubmitRunner(RunnerRequest).bSuccess);
+	TestEquivalent(TEXT("Runner"));
+
+	State = Host->GetMatchSnapshot().Snapshot;
+	const auto HelperAvailability =
+		FMatchPlayCurrentAttackHelperSelectionAvailability::Query(
+			State, State.CurrentAttack.AttackSequence, DefendingSide);
+	const auto* Helper = HelperAvailability.Candidates.FindByPredicate(
+		[](const FMatchPlayCurrentAttackHelperSelectionCandidateAvailability& Candidate)
+		{
+			return Candidate.LegalityResult.bSuccess;
+		});
+	if (Helper != nullptr)
+	{
+		FMatchPlayAuthoritativeSubmitHelperRequest HelperRequest;
+		HelperRequest.RequestingSide = DefendingSide;
+		HelperRequest.HelperCardId = Helper->HelperCardId;
+		TestTrue(TEXT("Direct Helper succeeds"),
+			DirectSession.SubmitHelper(HelperRequest).HelperResult.bSuccess);
+		TestTrue(TEXT("Host Helper succeeds"),
+			Host->SubmitHelper(HelperRequest).bSuccess);
+	}
+	else
+	{
+		TestTrue(TEXT("Direct explicit no-legal Helper succeeds"),
+			DirectSession.ResolveNoLegalHelper().ResolutionResult.bSuccess);
+		TestTrue(TEXT("Host explicit no-legal Helper succeeds"),
+			Host->ResolveNoLegalHelper().bSuccess);
+	}
+	TestEquivalent(TEXT("Helper"));
 
 	FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
 	SkillRequest.RequestingSide = AttackingSide;

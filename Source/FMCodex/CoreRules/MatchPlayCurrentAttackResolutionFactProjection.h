@@ -54,7 +54,8 @@ enum class EMatchPlayResolutionFormulaTermKind : uint8
 	Attribute = 1 UMETA(DisplayName = "Attribute"),
 	RawRoll = 2 UMETA(DisplayName = "Raw Roll"),
 	FixedModifier = 3 UMETA(DisplayName = "Fixed Modifier"),
-	GoalkeeperContribution = 4 UMETA(DisplayName = "Goalkeeper Contribution")
+	GoalkeeperContribution = 4 UMETA(DisplayName = "Goalkeeper Contribution"),
+	TacticalPlayerAdvantage = 5 UMETA(DisplayName = "Tactical Player Advantage")
 };
 
 UENUM(BlueprintType)
@@ -105,6 +106,26 @@ struct FMCODEX_API FMatchPlayResolutionParticipantFact
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
 	FName CardId = NAME_None;
+};
+
+/**
+ * Canonical deployment classification from Rules 4.4. A tactical player is
+ * context, not an additional selected formula participant role.
+ */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayResolutionTacticalPlayerFact
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	FName CardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	EMatchPlayRelativeDeploymentZone RelativeZone =
+		EMatchPlayRelativeDeploymentZone::None;
 };
 
 USTRUCT(BlueprintType)
@@ -310,6 +331,22 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionFactProjection
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
 	TArray<FMatchPlayResolutionParticipantFact> Participants;
+
+	/** Read-only canonical deployment matches; never parsed or inferred by UMG. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	TArray<FMatchPlayResolutionTacticalPlayerFact> TacticalPlayers;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	int32 AttackerTacticalPlayerCount = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	int32 DefenderTacticalPlayerCount = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	float AttackerTacticalPlayerModifier = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	float DefenderTacticalPlayerModifier = 0.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
 	TArray<FMatchPlayResolutionRollFact> Rolls;

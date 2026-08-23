@@ -1,5 +1,7 @@
 #include "MatchPlayCurrentAttackSkillSelectionLegality.h"
 
+#include "MatchPlayDeploymentSlotCatalog.h"
+
 namespace MatchPlayCurrentAttackSkillSelectionLegalityImplementation
 {
 	void SetError(
@@ -151,6 +153,86 @@ FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator::Evaluate(
 				::ParticipantRequirementResolutionFailed,
 			Result.ParticipantRequirementResult.ErrorMessage);
 		return Result;
+	}
+
+	const FMatchPlayCurrentAttackActionPreparationState& Preparation =
+		BeforeState.CurrentAttack.ActionPreparation;
+	const bool bParticipantFirstPreparation =
+		Preparation.bSkillSelectionDeferred;
+	if (bParticipantFirstPreparation
+		&& Preparation.ActionType != ESkillRuleType::None
+		&& Preparation.ActionType != Result.ResolvedActionType)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::DeferredActionTypeMismatch,
+			TEXT("Selected Skill does not match the retained deferred action family."));
+		return Result;
+	}
+	if (bParticipantFirstPreparation
+		&& (!Preparation.SkillId.IsNone()
+			|| Preparation.RunnerCardId.IsNone()))
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::DeferredActionTypeMismatch,
+			TEXT("Participant-first Skill selection requires an unfrozen tactic and a prepared Runner."));
+		return Result;
+	}
+
+	if (bParticipantFirstPreparation
+		&& Result.ParticipantRequirementResult.bRequiresRunner)
+	{
+		const FName PreparedRunnerCardId = Preparation.RunnerCardId;
+		const FMatchPlayCardSnapshotAuthorityQueryResult RunnerQuery =
+			FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+				BeforeState.CardSnapshotAuthority,
+				Result.GlobalContextResult.CurrentAttackingPlayer,
+				PreparedRunnerCardId);
+		const FMatchPlayDeploymentPlacement* RunnerPlacement =
+			BeforeState.CurrentAttack.DeploymentPlacements.FindByPredicate(
+				[&](const FMatchPlayDeploymentPlacement& Placement)
+				{
+					return Placement.PlayerSide
+							== Result.GlobalContextResult.CurrentAttackingPlayer
+						&& Placement.CardId == PreparedRunnerCardId;
+				});
+		bool bCompatible = RunnerQuery.bSuccess && RunnerPlacement != nullptr;
+		if (bCompatible && Result.ResolvedActionType == ESkillRuleType::Cross)
+		{
+			bCompatible = RunnerQuery.Snapshot.PositionTypes.Contains(
+				EPlayerPositionType::Attack);
+		}
+		else if (bCompatible
+			&& Result.ResolvedActionType == ESkillRuleType::PassControl)
+		{
+			bCompatible = RunnerQuery.Snapshot.PositionTypes.Contains(
+				EPlayerPositionType::Midfield);
+		}
+		else if (bCompatible
+			&& Result.ResolvedActionType == ESkillRuleType::ThroughBall)
+		{
+			const FMatchPlayRelativeDeploymentZoneResolveResult Zone =
+				FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+					BeforeState.DeploymentSlotCatalog,
+					RunnerPlacement->SlotId,
+					Result.GlobalContextResult.CurrentAttackingPlayer,
+					Result.GlobalContextResult.CurrentAttackingPlayer);
+			bCompatible = Zone.bSuccess
+				&& Zone.RelativeZone
+					== EMatchPlayRelativeDeploymentZone::Forward;
+		}
+		if (!bCompatible)
+		{
+			SetError(
+				Result,
+				EMatchPlayCurrentAttackSkillSelectionErrorCode
+					::PreparedRunnerIncompatibleWithSkill,
+				TEXT("The prepared Runner does not satisfy the selected tactic's canonical participant contract."));
+			return Result;
+		}
 	}
 
 	const int32 ValidatedActionPoint =

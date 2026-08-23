@@ -170,6 +170,8 @@
 
 多类型球员只要有一个类型符合部署区域，即算战术球员。
 
+战术球员是当前部署与位置类型匹配后得到的分类，不是一次技能结算中额外选择的第五名角色，也不等同于持球、跑位、盯人或协防。需要向玩家解释公式上下文时，应从当前权威部署、相对区域与球员 `PositionTypes` 投影双方实际战术球员身份；不得从卡面文字或 UI 标签猜测。
+
 终结公式中，战术球员人数优势提供加成：
 
 - 多出至少 2 名战术球员：点数 +1。
@@ -414,7 +416,11 @@ LocalPlay 的“选择跑位球员”交互采用场上直选，但 Runner 的�
 
 LocalPlay 的“选择协防球员”交互采用场上直选。Helper 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackHelperSelectionAvailability`：候选属于当前防守方、已唯一部署、快照有效、非门将且不得与已冻结 Marker 相同；该阶段只存在于既有 Pass Control、Cross、Through Ball 参与者合同中，不新增半区、位置、TP、Tactical Match、属性或战术优劣门禁。单击合法 Pitch Mini 立即提交既有 Helper 命令，Full Card hover 保留，无确认或取消；底部不显示 PlayerKey 候选按钮，但保留 DeclineHelper，玩家文案为 `放弃协防`。Marker 被点作 Helper 时必须由 canonical `HelperMatchesMarker` 投影拒绝原因，显示既有非模态反馈而不改变权威状态。生产 Match Flow 中玩家可见 Skill 术语统一为 `战术`，稳定 SkillId 与内部 Skill 命名保持不变。
 
+当前原型普通进攻的生产选择顺序统一为：持球球员 -> 盯人球员 -> 跑位球员 -> 协防球员阶段 -> 战术。该顺序不因当前合法战术候选属于单一动作族或同时包含传中、内切等多个动作族而改变。Marker 后 Authority 不提前写入 `SkillId` 或冻结 `ActionType`，而是写入参与者优先状态并进入 Runner；Runner 后必须进入 Helper resolution。协防球员仍为可选：该阶段可以选择合法 Helper，也可以沿既有 Decline/No-Legal 权威路径完成，不能硬编码为必须选择一名球员。三个 Helper 结果都完成后才进入战术选择。最终所选战术只消费其 canonical 参与者合同要求的角色；预先选择但与该战术无关的 Runner/Helper 不得生成公式贡献。选择顺序和公式参与者消费是两个独立规则，均不得由 UMG 推测。
+
 Resolution 表现只能读取权威 CurrentAttack Resolution Session 已接受的原始掷点和规则层生成的结构化公式事实。Initial Route 与 Post-route 的每个 D6 必须按语义、顺序、拥有方和公式 operand 关系保留；Presentation/UMG 不得重新掷骰、从 Final Value 反推 Raw Roll、解析日志字符串或重新选择属性/分支。公式事实必须在掷点前表达已知属性、倍率、固定修正、待定 D6=`?` 和待定 Final Value，在掷点后使用同一逻辑公式身份填入已接受 Raw Roll，并投影权威 Resolver Input、Final Value、比较结果与平局语义。分支选择、结果表和算术比较 D6 是不同语义，不得统一伪装成 `+ D6` 公式项。
+
+Cross 在战术与高/低意图确定后，玩家只执行一次 `判定传中路线`。该玩家动作必须按顺序完成 Resolution Session 建立与 Initial Route 判定，并且只消费一次路线 D6；不得把“进入传中结算”和“判定传中路线”暴露为两个连续按钮。路线 D6 被权威接受后，Pitch 内联层显示 `路线掷点 N -> 判定为高球传中/低球传中`。实际路线无论为高球还是低球，随后都按当前进攻方、当前防守方的顺序各执行一次显式比较掷点；二者共享玩家操作时序，但必须使用各自独立的权威命令与既有公式。
 
 Marker 候选若由权威合法性结果以 `MarkerNotInCarrierPhysicalArea` 拒绝，LocalPlay 可在玩家单击对应已部署非门将球员时显示非模态提示 `盯人球员必须与持球球员位于同一半区`。该提示不提交命令、不改变权威状态，约两秒后自动消失；重复触发重启计时。空槽与背景点击不产生该提示，提示层不得阻塞 Pitch Mini 或 Full Card hover。UMG 只能消费投影的拒绝原因，不得自行比较视觉槽位或 physical area。
 
@@ -562,13 +568,15 @@ B. 直射死角：判定公式。
 
 - (持球球员传球 + 跑位球员强壮) / 2 + 进攻方比较点数 VS (盯人球员抢断 + 协防球员强壮) / 2 + 门将高空球 × 0.5（仅主动使用唯一门将手牌时，否则为 0）+ 防守方比较点数 + 2。
 
-高球算术比较采用两步玩家操作，但不改变上述公式：
+高球与低球的算术比较均采用两步玩家操作，但不改变各自公式：
 
-- 路线已确定为高球后，先公开双方所有已知的非掷点公式项及各自基础值；此时双方比较点数均为待定。
+- 路线已确定后，先公开实际 High/Low 分支双方所有已知的非掷点公式项及各自基础值；此时双方比较点数均为待定。
 - 当前进攻方执行一次显式掷点，只取得并记录进攻方比较点数；该步骤恰好消费一个 D6。进攻方最终点数随即公开，防守方比较点数仍保持待定。
 - 随后仅当前防守方可执行一次显式掷点，只取得并记录防守方比较点数；该步骤恰好消费一个 D6。不得由进攻方步骤自动触发防守方掷点。
 - 掷点的权威语义顺序固定为：路线 D6、进攻方比较 D6、防守方比较 D6。错误阵营、错误阶段或重复请求均被拒绝，不消费 D6，也不改变权威状态。
-- 只有双方比较点数均已取得后，才完成既有终结公式比较并开放后续结算。高球以外的传中及其他战术不采用本条两步操作合同。
+- High 使用 `ResolveCrossHighAttackRoll / ResolveCrossHighDefenseRoll`；Low 使用 `ResolveCrossLowAttackRoll / ResolveCrossLowDefenseRoll`。旧 `ResolveCrossPostRoutePlan` 不得作为任一分支的正常生产入口。
+- 只有双方比较点数均已取得后，才完成对应的既有终结公式比较并显示 `下一回合`。该 High/Low 算术比较就是 Cross 的最终终结比较，不再创建第二次玩家可见的 finishing contest。
+- `下一回合` 调用 `ApplyCrossTerminalResolution`：它只按已持久化的路线和两枚比较 D6应用终结结果，消费零 RNG；成功后才完成 CurrentAttack、增加本方已用进攻次数并换攻。CTA 执行前球场角色标签保持，执行后随攻击状态一同清除。
 
 门将高空球 × 0.5 在盯人球员 / 协防球员平均值计算完成后独立相加，不进入该平均值的分子或分母。
 

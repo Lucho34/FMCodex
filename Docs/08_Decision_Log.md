@@ -485,6 +485,7 @@
 ### CD-045 - Cross High Manual Attacker/Defender Roll Contract
 
 - 日期：2026-08-23
+- 状态：High 合同继续有效；“Low 保持原子流程”与完成 CTA 解释由 CD-049 取代。
 - 适用范围：只覆盖路线已经确定为 `Cross.High` 的 Attack/Defense ArithmeticContest。Cross Low、Pass Control、Through Ball、Long Shot、Cut Inside、One-on-One、BranchSelection 与其他 OutcomeDecision 保持既有命令和表现。
 - 权威命令：新增 `ResolveCrossHighAttackRoll(RequestingSide)` 与 `ResolveCrossHighDefenseRoll(RequestingSide)`。前者只允许当前进攻方、只追加 `PrimaryAttack`、恰好调用一次 post-route D6 provider；后者只允许当前防守方、只在合法 Attack 前缀后追加 `PrimaryDefense`、恰好调用一次 provider。错误阵营、错误阶段、重复与越序请求均以零 provider call、零 State 变化失败。
 - 旧命令门禁：`ResolveCrossPostRoutePlan` 对 Cross High 拒绝，防止 generic Continue 绕过两步玩家操作；它继续服务 Cross Low 的既有原子流程。双方 High 掷点完成后沿用相同 `FCrossPlanQuery` 输入、FormulaResolver、属性、倍率、固定 `+2`、GK/Helper 和 tie/winner 规则。
@@ -493,6 +494,43 @@
 - 玩家流程：目标 Contest 在 Pitch 内直接显示 `高球传中`、公式项、`基础值 X` 和 `掷点 ?`。阶段依次为 `等待进攻方掷点`、`等待防守方掷点`、双方已完成；CTA 依次为 `进攻方掷点`、`防守方掷点`、既有后续结算。行动提示归属随阶段从进攻方切换到防守方。
 - Overlay 与门禁：Cross High 算术 Contest 激活时抑制旧全屏 Resolution Overlay，不显示 `Resolution Started / Accepted by... / Continue - Resolve Route`。命令处理期间锁定重复提交，底部 Interaction Panel 与 Screen intent 都只能调用当前显式 typed command，不能预掷或绕过阶段。
 - 明确不做：本阶段不加入结果 headline、叙事句、随机破坏者、音效、观众/解说、cinematic，也不推广到其他路线。
+
+### CD-046 - Cross Participant-First Selection and Single-Action Route Entry
+
+- 日期：2026-08-23
+- 状态：选择顺序部分由 CD-048 取代；单动作路线入口、路线展示和范围边界继续有效。
+- 根因与顺序：旧 Marker Writer 无条件进入 `AwaitingSkill`，因此生产 Cross 在盯人后过早显示战术。现行 Cross 目标顺序为 Carrier -> Marker -> Runner -> Helper stage -> Skill -> BranchIntent；Helper 仍按 canonical contract 可选择、Decline 或 No-Legal，不改成必选球员。
+- 历史门禁：本条原先只对纯 Cross 冻结动作族并保留 mixed-family Skill-first；该设计已被现场 PIE 否定，现行规则见 CD-048。
+- 战术球员：canonical `战术球员` 是部署相对区域与静态 `PositionTypes` 匹配的分类，不是额外选择角色。Resolution Fact Projection 从权威 Placement、Relative Zone Resolver 与 Card Snapshot 生成双方身份，Presentation 只显示中文名称；缺失时为空，不伪造。本阶段只补只读上下文，不偷偷改变任何现有公式算术。
+- 单动作路线：玩家只看到并执行一次 `判定传中路线`。Controller 在同一受 guard 保护的 intent 中先执行 `BeginResolutionSession`，仅成功后执行 `ResolveInitialRoute`；只有第二步调用既有 route provider，因此概率、validation 与恰好一枚 Initial Route D6 不变，无隐藏重试或重复命令。
+- 路线展示：权威 BranchSelection Roll 和实际分支由 DTO 显式投影到 Pitch 内联层，显示 `路线掷点 N -> 判定为高球传中/低球传中`。High 后续仍是 CD-045 的进攻方/防守方手动双掷点；Low 不进入 High 命令。旧英文 standalone modal 不用于该 covered route-result 状态。
+- 范围：不实现 result narrative/headline、破坏者/进球者句子、audio、commentary、cinematic、其他路线算术 rollout 或全局 UI polish。
+
+### CD-047 - Cross End-to-End Completion Boundary and Tactical-Player Formula Repair
+
+- 日期：2026-08-23
+- 状态：mixed-family Skill-first 解释与保留决定由 CD-048 明确否决；Low 原子双掷点由 CD-049 取代，换攻边界、战术球员规则与路线层职责继续有效。
+- 历史 Runner/Helper 审计：纯 Cross deferred 路径中的 Runner Writer 已写入 `AwaitingHelper`，但现场 PIE 证明 mixed-family 仍会过早进入 Skill。该行为不再视为安全消歧。
+- Low 换攻边界：`ResolveInitialRoute` 只写 BranchSelection fact 与 `RouteResolved`。Low 后续必须先由 `ResolveCrossPostRoutePlan` 自动取得两枚比较 D6 并投影 `Cross.Low` 公式，再由独立 `ApplyCrossTerminalResolution` 完成攻击。终结后旧 feedback facts 不得继续显示路线面板。
+- 战术球员规则缺口：Rules 4.4 明确要求终结公式按人数优势获得 +1/+2，原生产代码只有身份投影、未参与算术，分类为 `GAMEPLAY RULE GAP`。新增 CoreRules 权威 Query，所有当前生产 Finishing 入口消费结构化 TacticalPlayerModifier；FormulaFacts 只投影真实贡献，Transition/纯 D6 不使用。
+- 路线层职责：只显示路线 D6 和 High/Low 结果，不显示双方战术球员姓名。权威身份与人数字段仍保留，供后续独立的球场人数指示器使用。
+
+### CD-048 - Unified Participant-First Preparation and Pre-Roll Known Result
+
+- 日期：2026-08-23
+- 权威顺序：正常原型进攻统一为 Carrier -> Marker -> Runner -> Helper resolution -> Skill。Marker 后保持 `ActionType=None / SkillId=None` 并进入 `AwaitingRunner`；Runner 后进入 `AwaitingHelper`；Helper selected、declined、no-legal 三种显式完成方式均进入 `AwaitingSkill`。该顺序对 Cross + Cut Inside 等 mixed-family 候选同样生效，不存在 Marker/Runner -> Skill shortcut。
+- 角色消费：参与者准备顺序不定义最终公式参与者。Skill 最终选择后只保留 canonical 战术合同相关的角色；不消费 Runner/Helper 的战术不得因其先前已准备而产生 SelectedAction 或 Formula contribution。Skill Legality 在最终选择点验证需要 Runner 的战术兼容性。
+- Formula 主结果：pre-roll 时，主结果位直接显示权威 `KnownNonRollSubtotal`，RawRoll operand 仍显示 `掷点 ?`，内部 `FinalValue` 仍 unresolved。某一方掷点完成后，该方主结果切换为权威 `FinalValue`；另一方仍显示自己的 KnownNonRollSubtotal，直到其权威掷点完成。Presentation 只选择已投影字段，Widget 不执行任何公式加法。
+- 保留边界：Cross High 继续由进攻方与防守方分别手动掷点；Cross Low 在真实 terminal 前保持同一 CurrentAttack 与攻击方；Tactical Player contribution 已包含在 authoritative subtotal 中，不由 UMG 重加。本决定不扩展 narrative、战术球员数量 UI、音效、动画、cinematic 或 Header/Pitch/Card polish。
+
+### CD-049 - Cross High/Low Manual Dual-Roll and Terminal CTA
+
+- 日期：2026-08-23
+- 玩家时序：实际路线无论为 High 或 Low，均采用进攻方显式掷点 -> 防守方显式掷点。High 使用 `ResolveCrossHighAttackRoll / ResolveCrossHighDefenseRoll`，Low 使用 `ResolveCrossLowAttackRoll / ResolveCrossLowDefenseRoll`；每个成功命令恰好消费一枚对应 D6，进攻步骤绝不自动调用防守步骤。
+- 算术边界：共享手动时序不合并公式。High 与 Low 继续使用各自既有属性、倍率、Helper/GK、防守 `+2`、Tactical Player contribution 和 tie/winner 规则。两枚比较 D6 完成后的 `Cross.High / Cross.Low` Formula Result 就是最终 Cross finishing contest；不再创建第二次玩家可见的终结比较。
+- 生产门禁：旧 `ResolveCrossPostRoutePlan` 对 High/Low 正常生产路径均拒绝，避免 generic Continue 绕过手动步骤。错误分支、阵营、顺序、重复和 stale 请求在 provider 调用前失败，State 不变。
+- 完成边界：双掷点完成后不自动推进，Pitch 内联层保留公式结果与 Role Tag，并只显示 `下一回合`。该 CTA 调用 `ApplyCrossTerminalResolution`；它用已持久化的路线和比较 D6重建/应用同一结果，消费零 RNG，成功后才清除 CurrentAttack、增加 UsedAttackCount、换攻并清除角色标签。
+- 范围：保留 participant-first、单动作路线、Header/Pitch/Rack/Card 几何及现有视觉边界；不新增 narrative、随机人物文案、音效、动画、commentary、cinematic 或其他战术 rollout。
 
 ## Resolved UQ Summary
 

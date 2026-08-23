@@ -24,8 +24,9 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	SelectHelper,
 	SelectBranchIntent,
 	SelectOneOnOneShot,
-	RollCrossHighAttack,
-	RollCrossHighDefense,
+	RollCrossAttack,
+	RollCrossDefense,
+	CompleteCrossAndAdvance,
 	ContinueResolution,
 	AttackComplete,
 	MatchEnded
@@ -992,6 +993,26 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaRowViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString FinalValueLabel = TEXT("?");
+
+	/**
+	 * Main result-box source selected by Presentation without arithmetic:
+	 * FinalValue when resolved, otherwise KnownNonRollSubtotal when resolved.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bDisplayedResultResolved = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bDisplayedResultIsFinalValue = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	float DisplayedResult = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString DisplayedResultLabel = TEXT("?");
 };
 
 USTRUCT(BlueprintType)
@@ -1020,6 +1041,20 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString StatusLabel;
+
+	/** Authoritative initial-route D6 and enum outcome, formatted by presentation. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString RouteResultLabel;
+
+	/** Canonical deployment/position matches from the facts DTO. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString TacticalPlayerSummaryLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bShowFormulaRows = true;
 
 	/** Legacy display field retained for serialized compatibility; manual roll flow leaves it None. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,

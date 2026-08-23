@@ -235,6 +235,26 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 		StatusSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 7.0f));
 	}
 
+	RouteResultText = MakeText(*WidgetTree, TEXT("InlineFormulaRouteResult"));
+	RouteResultText->SetJustification(ETextJustify::Center);
+	Style.ApplyText(*RouteResultText, EFMCodexPlayerUITextRole::SectionHeading);
+	if (UVerticalBoxSlot* RouteSlot =
+		RootBody->AddChildToVerticalBox(RouteResultText))
+	{
+		RouteSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 7.0f));
+	}
+
+	TacticalPlayerText = MakeText(
+		*WidgetTree, TEXT("InlineFormulaTacticalPlayers"));
+	TacticalPlayerText->SetJustification(ETextJustify::Center);
+	TacticalPlayerText->SetAutoWrapText(true);
+	Style.ApplyText(*TacticalPlayerText, EFMCodexPlayerUITextRole::Secondary);
+	if (UVerticalBoxSlot* TacticalSlot =
+		RootBody->AddChildToVerticalBox(TacticalPlayerText))
+	{
+		TacticalSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
+	}
+
 	DiceRevealRegion = MakeBorder(
 		*WidgetTree, TEXT("InlineFormulaDiceRevealRegion"),
 		EFMCodexPlayerUIColorRole::PanelInset, FMargin(10.0f, 7.0f));
@@ -351,6 +371,15 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		: ESlateVisibility::Collapsed);
 	ContestText->SetText(FText::FromString(Presentation.ContestLabel));
 	StatusText->SetText(FText::FromString(Presentation.StatusLabel));
+	RouteResultText->SetText(FText::FromString(Presentation.RouteResultLabel));
+	RouteResultText->SetVisibility(Presentation.RouteResultLabel.IsEmpty()
+		? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	TacticalPlayerText->SetText(
+		FText::FromString(Presentation.TacticalPlayerSummaryLabel));
+	TacticalPlayerText->SetVisibility(
+		Presentation.TacticalPlayerSummaryLabel.IsEmpty()
+			? ESlateVisibility::Collapsed
+			: ESlateVisibility::SelfHitTestInvisible);
 	DiceRevealRegion->SetVisibility(
 		Presentation.bVisible && Presentation.bDiceRevealVisible
 			? ESlateVisibility::SelfHitTestInvisible
@@ -376,11 +405,15 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 			? EFMCodexPlayerUIColorRole::Warning
 			: EFMCodexPlayerUIColorRole::PanelRaised,
 		FMargin(12.0f, 9.0f));
+	AttackRegion->SetVisibility(Presentation.bShowFormulaRows
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	Style.ApplyBorder(*DefenseRegion,
 		Presentation.bDefenseRowActive
 			? EFMCodexPlayerUIColorRole::Warning
 			: EFMCodexPlayerUIColorRole::PanelRaised,
 		FMargin(12.0f, 9.0f));
+	DefenseRegion->SetVisibility(Presentation.bShowFormulaRows
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	if (Presentation.bAttackRowActive)
 	{
 		FLinearColor ActiveColor = Style.GetColor(
@@ -578,8 +611,8 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 			? EFMCodexPlayerUITextRole::Status
 			: EFMCodexPlayerUITextRole::Body);
 	}
-	FinalValueText->SetText(FText::FromString(Row.FinalValueLabel));
-	Style.ApplyText(*FinalValueText, Row.bFinalValueResolved
+	FinalValueText->SetText(FText::FromString(Row.DisplayedResultLabel));
+	Style.ApplyText(*FinalValueText, Row.bDisplayedResultResolved
 		? EFMCodexPlayerUITextRole::DiceValue
 		: EFMCodexPlayerUITextRole::Status);
 }

@@ -190,6 +190,23 @@ FMatchPlayCurrentAttackResolveThroughBallFeetFormulaOrchestrator::Resolve(
 			Result.ResolverInputAssemblyResult.InvalidField);
 		return Result;
 	}
+	Result.TacticalPlayerAdvantageResult =
+		FMatchPlayTacticalPlayerAdvantageQuery::Evaluate(BeforeState);
+	if (!Result.TacticalPlayerAdvantageResult.bSuccess)
+	{
+		SetFailure(
+			Result,
+			EError::TacticalPlayerAdvantageQueryFailed,
+			Result.TacticalPlayerAdvantageResult.ErrorMessage,
+			TEXT("TacticalPlayerAdvantage"));
+		return Result;
+	}
+	Result.ResolverInputAssemblyResult.ResolverInput.Attacker
+		.TacticalPlayerModifier = Result.TacticalPlayerAdvantageResult
+		.AttackerFinishingModifier;
+	Result.ResolverInputAssemblyResult.ResolverInput.Defender
+		.TacticalPlayerModifier = Result.TacticalPlayerAdvantageResult
+		.DefenderFinishingModifier;
 
 	FThroughBallFeetFormulaResolutionExecutionInput ExecutionInput;
 	ExecutionInput.ResolverInputAssemblyResult =

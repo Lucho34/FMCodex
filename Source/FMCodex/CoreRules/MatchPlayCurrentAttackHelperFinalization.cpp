@@ -10,6 +10,12 @@ void FMatchPlayCurrentAttackHelperFinalization
 	Attack.ActionPreparation.bHasHelper = Presence.HasHelper();
 	Attack.ActionPreparation.HelperCardId =
 		Presence.GetHelperCardId();
+	if (Attack.ActionPreparation.bSkillSelectionDeferred)
+	{
+		Attack.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+		return;
+	}
 	if (Attack.ActionPreparation.ActionType == ESkillRuleType::Cross)
 	{
 		Attack.SelectionStage =

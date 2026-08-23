@@ -254,6 +254,12 @@ namespace MatchPlayCurrentAttackResolveSingleCardFinishingFormula
 		// the repaired families add their frozen 50% contribution here.
 		Result.ResolverInputAssemblyResult.ResolverInput.Defender.Modifier +=
 			AdditionalGoalkeeperContribution;
+		Result.ResolverInputAssemblyResult.ResolverInput.Attacker
+			.TacticalPlayerModifier = Result.TacticalPlayerAdvantageResult
+			.AttackerFinishingModifier;
+		Result.ResolverInputAssemblyResult.ResolverInput.Defender
+			.TacticalPlayerModifier = Result.TacticalPlayerAdvantageResult
+			.DefenderFinishingModifier;
 		Result.ResolverInputAssemblyResult.ResolverInput
 			.bGoalkeeperParticipated = bGoalkeeperParticipated;
 
@@ -393,6 +399,17 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 			Result,
 			EError::SkillRuleSetUnavailable,
 			TEXT("SingleCard finishing Formula resolution requires the authoritative SkillRuleSet."));
+		return Result;
+	}
+	Result.TacticalPlayerAdvantageResult =
+		FMatchPlayTacticalPlayerAdvantageQuery::Evaluate(BeforeState);
+	if (!Result.TacticalPlayerAdvantageResult.bSuccess)
+	{
+		SetFailure(
+			Result,
+			EError::TacticalPlayerAdvantageQueryFailed,
+			Result.TacticalPlayerAdvantageResult.ErrorMessage,
+			TEXT("TacticalPlayerAdvantage"));
 		return Result;
 	}
 

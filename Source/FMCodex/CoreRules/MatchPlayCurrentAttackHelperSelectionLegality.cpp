@@ -33,7 +33,8 @@ FMatchPlayCurrentAttackHelperSelectionLegalityEvaluator
 		return Result;
 	}
 	Result.ResolvedActionType = GlobalContext.FrozenActionType;
-	if (Result.ResolvedActionType != ESkillRuleType::PassControl
+	if (Result.ResolvedActionType != ESkillRuleType::None
+		&& Result.ResolvedActionType != ESkillRuleType::PassControl
 		&& Result.ResolvedActionType != ESkillRuleType::Cross
 		&& Result.ResolvedActionType != ESkillRuleType::ThroughBall)
 	{

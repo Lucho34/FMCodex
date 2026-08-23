@@ -561,11 +561,14 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	}
 	switch (Presentation.Interaction.Category)
 	{
-	case EFMCodexUMGInteractionCategory::RollCrossHighAttack:
-		MatchController->RollCrossHighAttack();
+	case EFMCodexUMGInteractionCategory::RollCrossAttack:
+		MatchController->RollCrossAttack();
 		break;
-	case EFMCodexUMGInteractionCategory::RollCrossHighDefense:
-		MatchController->RollCrossHighDefense();
+	case EFMCodexUMGInteractionCategory::RollCrossDefense:
+		MatchController->RollCrossDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance:
+		MatchController->CompleteCrossAndAdvance();
 		break;
 	default:
 		MatchController->ContinueResolution();

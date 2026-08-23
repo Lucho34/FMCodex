@@ -190,15 +190,20 @@ FMatchPlayCurrentAttackHelperSelectionGlobalContextQuery::Query(
 			TEXT("Frozen MarkerCardId must be non-empty."));
 		return Result;
 	}
-	if (Result.FrozenSkillId.IsNone())
+	const bool bParticipantFirstPreparation =
+		Attack.ActionPreparation.bSkillSelectionDeferred
+		&& Result.FrozenSkillId.IsNone()
+		&& Result.FrozenActionType == ESkillRuleType::None;
+	if (Result.FrozenSkillId.IsNone() && !bParticipantFirstPreparation)
 	{
 		SetError(Result,
 			EMatchPlayCurrentAttackHelperSelectionErrorCode
 				::InvalidFrozenSkillId,
-			TEXT("Frozen SkillId must be non-empty."));
+			TEXT("Frozen SkillId may be empty only for explicit deferred-Skill authority."));
 		return Result;
 	}
-	if (Result.FrozenActionType == ESkillRuleType::None)
+	if (Result.FrozenActionType == ESkillRuleType::None
+		&& !bParticipantFirstPreparation)
 	{
 		SetError(Result,
 			EMatchPlayCurrentAttackHelperSelectionErrorCode
@@ -215,27 +220,29 @@ FMatchPlayCurrentAttackHelperSelectionGlobalContextQuery::Query(
 		return Result;
 	}
 
-	Result.ParticipantRequirementResult =
-		FMatchPlaySkillParticipantRequirementQuery::Query(
-			Result.FrozenActionType);
-	if (!Result.ParticipantRequirementResult.bSuccess)
+	if (!bParticipantFirstPreparation)
 	{
-		SetError(Result,
-			EMatchPlayCurrentAttackHelperSelectionErrorCode
-				::ParticipantRequirementResolutionFailed,
-			Result.ParticipantRequirementResult.ErrorMessage);
-		return Result;
-	}
-	if (!Result.ParticipantRequirementResult.bRequiresRunner
-		|| !Result.ParticipantRequirementResult.bRequiresHelperStage
-		|| Result.ParticipantRequirementResult
-			.bCanBecomeReadyImmediately)
-	{
-		SetError(Result,
-			EMatchPlayCurrentAttackHelperSelectionErrorCode
-				::ParticipantRequirementMismatch,
-			TEXT("AwaitingHelper requires a runner-and-helper action type."));
-		return Result;
+		Result.ParticipantRequirementResult =
+			FMatchPlaySkillParticipantRequirementQuery::Query(
+				Result.FrozenActionType);
+		if (!Result.ParticipantRequirementResult.bSuccess)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackHelperSelectionErrorCode
+					::ParticipantRequirementResolutionFailed,
+				Result.ParticipantRequirementResult.ErrorMessage);
+			return Result;
+		}
+		if (!Result.ParticipantRequirementResult.bRequiresRunner
+			|| !Result.ParticipantRequirementResult.bRequiresHelperStage
+			|| Result.ParticipantRequirementResult.bCanBecomeReadyImmediately)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackHelperSelectionErrorCode
+					::ParticipantRequirementMismatch,
+				TEXT("AwaitingHelper requires participant-first preparation or a runner-and-helper action type."));
+			return Result;
+		}
 	}
 
 	for (const FMatchPlayDeploymentPlacement& Placement :
