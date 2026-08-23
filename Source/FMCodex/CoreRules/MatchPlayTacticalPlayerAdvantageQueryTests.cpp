@@ -100,4 +100,110 @@ bool FMatchPlayTacticalPlayerAdvantageQueryTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayTacticalPlayerBoardStatusQueryTest,
+	"FMCodex.CoreRules.MatchPlay.TacticalPlayer.BoardStatusProjection",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayTacticalPlayerBoardStatusQueryTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayTacticalPlayerAdvantageQueryTests;
+
+	FMatchPlayState BetweenAttacks;
+	BetweenAttacks.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerA;
+	const FMatchPlayTacticalPlayerAdvantageResult Zero =
+		FMatchPlayTacticalPlayerAdvantageQuery::EvaluateBoardStatus(
+			BetweenAttacks);
+	TestTrue(TEXT("Board status remains queryable outside a Resolution Session"),
+		Zero.bSuccess);
+	TestTrue(TEXT("Between attacks projects explicit zero counts"),
+		Zero.AttackerTacticalPlayerCount == 0
+			&& Zero.DefenderTacticalPlayerCount == 0);
+
+	FMatchPlayState State;
+	State.bHasCurrentAttack = true;
+	State.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerA;
+	AddCard(State, EInitialTurnOrderPlayer::PlayerA, TEXT("A.ForwardOne"),
+		EPlayerPositionType::Attack, TEXT("Slot.A.ForwardOne"),
+		EMatchPlayNeutralSlotSide::NearPlayerB);
+	AddCard(State, EInitialTurnOrderPlayer::PlayerA, TEXT("A.Midfield"),
+		EPlayerPositionType::Midfield, TEXT("Slot.A.Midfield"),
+		EMatchPlayNeutralSlotSide::NearPlayerA);
+	AddCard(State, EInitialTurnOrderPlayer::PlayerA, TEXT("A.ForwardTwo"),
+		EPlayerPositionType::Attack, TEXT("Slot.A.ForwardTwo"),
+		EMatchPlayNeutralSlotSide::NearPlayerB);
+	AddCard(State, EInitialTurnOrderPlayer::PlayerA, TEXT("A.MultiPosition"),
+		EPlayerPositionType::Defense, TEXT("Slot.A.MultiPosition"),
+		EMatchPlayNeutralSlotSide::NearPlayerB);
+	State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.Last()
+		.PositionTypes.Add(EPlayerPositionType::Attack);
+	State.CardSnapshotAuthority.PlayerACardSnapshots.Cards[0]
+		.PositionTypes.Add(EPlayerPositionType::Midfield);
+	State.CardSnapshotAuthority.PlayerACardSnapshots.Cards[1]
+		.PositionTypes.Add(EPlayerPositionType::Defense);
+	State.CardSnapshotAuthority.PlayerACardSnapshots.Cards[2]
+		.PositionTypes.Add(EPlayerPositionType::Midfield);
+	State.CardSnapshotAuthority.PlayerACardSnapshots.Cards[3]
+		.PositionTypes.Add(EPlayerPositionType::Midfield);
+	AddCard(State, EInitialTurnOrderPlayer::PlayerB, TEXT("B.Midfield"),
+		EPlayerPositionType::Midfield, TEXT("Slot.B.Midfield"),
+		EMatchPlayNeutralSlotSide::NearPlayerA);
+	AddCard(State, EInitialTurnOrderPlayer::PlayerB, TEXT("B.Backfield"),
+		EPlayerPositionType::Defense, TEXT("Slot.B.Backfield"),
+		EMatchPlayNeutralSlotSide::NearPlayerB);
+	State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards[0]
+		.PositionTypes.Add(EPlayerPositionType::Attack);
+	State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards[1]
+		.PositionTypes.Add(EPlayerPositionType::Midfield);
+	AddCard(State, EInitialTurnOrderPlayer::PlayerB, TEXT("B.Goalkeeper"),
+		EPlayerPositionType::Goalkeeper, TEXT("Slot.B.Goalkeeper"),
+		EMatchPlayNeutralSlotSide::NearPlayerB);
+	State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.Last()
+		.bIsGoalkeeper = true;
+	State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.Last()
+		.bHasGoalkeeperAttributes = true;
+	AddCard(State, EInitialTurnOrderPlayer::PlayerB, TEXT("B.Mismatch"),
+		EPlayerPositionType::Attack, TEXT("Slot.B.Mismatch"),
+		EMatchPlayNeutralSlotSide::NearPlayerB);
+
+	const FMatchPlayTacticalPlayerAdvantageResult Result =
+		FMatchPlayTacticalPlayerAdvantageQuery::EvaluateBoardStatus(State);
+	TestTrue(TEXT("Deployment board status succeeds without frozen session"),
+		Result.bSuccess);
+	TestTrue(TEXT("Current attack identity remains explicit"),
+		Result.AttackingPlayer == EInitialTurnOrderPlayer::PlayerA
+			&& Result.DefendingPlayer == EInitialTurnOrderPlayer::PlayerB);
+	TestEqual(TEXT("Multi-position matching card is included"),
+		Result.AttackerTacticalPlayerCount, 4);
+	TestEqual(TEXT("Goalkeeper and mismatched cards are excluded"),
+		Result.DefenderTacticalPlayerCount, 2);
+	TestEqual(TEXT("Raw 4 versus 2 count projects canonical +1 modifier"),
+		Result.AttackerFinishingModifier, 1.0f);
+	TestEqual(TEXT("Status keeps all six qualifying player identities"),
+		Result.TacticalPlayers.Num(), 6);
+
+	State.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerB;
+	const FMatchPlayTacticalPlayerAdvantageResult Switched =
+		FMatchPlayTacticalPlayerAdvantageQuery::EvaluateBoardStatus(State);
+	TestTrue(TEXT("Attack-side switch preserves side identity in relative fields"),
+		Switched.bSuccess
+			&& Switched.AttackingPlayer == EInitialTurnOrderPlayer::PlayerB
+			&& Switched.DefendingPlayer == EInitialTurnOrderPlayer::PlayerA
+			&& Switched.AttackerTacticalPlayerCount == 2
+			&& Switched.DefenderTacticalPlayerCount == 4);
+
+	const FMatchPlayTacticalPlayerAdvantageResult SessionOnly =
+		FMatchPlayTacticalPlayerAdvantageQuery::Evaluate(State);
+	TestFalse(TEXT("Formula query keeps its Resolution Session requirement"),
+		SessionOnly.bSuccess);
+	TestEqual(TEXT("Formula query error contract is unchanged"),
+		SessionOnly.ErrorCode,
+		EMatchPlayTacticalPlayerAdvantageErrorCode::MissingResolutionSession);
+	return true;
+}
+
 #endif

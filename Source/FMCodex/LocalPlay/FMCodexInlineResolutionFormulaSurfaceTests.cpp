@@ -2,6 +2,7 @@
 
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 
+#include "FMCodexCardRackWidget.h"
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
@@ -108,7 +109,11 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 		const bool bHelper,
 		const bool bGoalkeeper,
 		const bool bAttackRollResolved,
-		const bool bDefenseRollResolved)
+		const bool bDefenseRollResolved,
+		const EFormulaWinner Winner = EFormulaWinner::None,
+		const EMatchPlayCrossActualBranch Branch =
+			EMatchPlayCrossActualBranch::High,
+		const int64 AttackSequence = 1)
 	{
 		const FName CarrierId(TEXT("Fixture.Carrier"));
 		const FName RunnerId(TEXT("Fixture.Runner"));
@@ -118,11 +123,11 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 		FMatchPlayCurrentAttackResolutionFactProjection Facts;
 		Facts.bSuccess = true;
 		Facts.bHasFacts = true;
-		Facts.AttackSequence = 1;
+		Facts.AttackSequence = AttackSequence;
 		Facts.ActionType = ESkillRuleType::Cross;
 		Facts.bHasActualBranch = true;
 		Facts.ActualBranch.ActionType = ESkillRuleType::Cross;
-		Facts.ActualBranch.Cross = EMatchPlayCrossActualBranch::High;
+		Facts.ActualBranch.Cross = Branch;
 		Facts.Participants.Add({ EParticipantRole::Carrier,
 			EInitialTurnOrderPlayer::PlayerA, CarrierId });
 		Facts.Participants.Add({ EParticipantRole::Runner,
@@ -154,7 +159,7 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 			EMatchPlayResolutionRollSemantics::BranchSelection;
 		RouteRoll.OwningSide = EInitialTurnOrderPlayer::PlayerA;
 		RouteRoll.bResolved = true;
-		RouteRoll.RawD6 = 5;
+		RouteRoll.RawD6 = Branch == EMatchPlayCrossActualBranch::High ? 5 : 2;
 		Facts.Rolls.Add(RouteRoll);
 		Facts.Rolls.Add(RollFact(1, ERollPurpose::PrimaryAttack,
 			bAttackRollResolved, 4, EInitialTurnOrderPlayer::PlayerA));
@@ -165,12 +170,15 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 			: !bDefenseRollResolved ? 2 : INDEX_NONE;
 
 		FMatchPlayResolutionFormulaContestFact Contest;
-		Contest.ContestId = TEXT("Cross.High");
+		Contest.ContestId = Branch == EMatchPlayCrossActualBranch::High
+			? FName(TEXT("Cross.High")) : FName(TEXT("Cross.Low"));
 		Contest.FormulaType = EFormulaType::Finishing;
 		Contest.Application = bAttackRollResolved && bDefenseRollResolved
 			? EMatchPlayResolutionFormulaApplication::Applied
 			: EMatchPlayResolutionFormulaApplication::Pending;
-		Contest.AttackRow.RowId = TEXT("Cross.High.Attack");
+		Contest.AttackRow.RowId = Branch == EMatchPlayCrossActualBranch::High
+			? FName(TEXT("Cross.High.Attack"))
+			: FName(TEXT("Cross.Low.Attack"));
 		Contest.AttackRow.Side = EInitialTurnOrderPlayer::PlayerA;
 		Contest.AttackRow.Terms.Add(AttributeTerm(
 			TEXT("Carrier.PrimaryHalf"), EParticipantRole::Carrier,
@@ -190,7 +198,9 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 			Contest.AttackRow.FinalValue = 8.5f;
 		}
 
-		Contest.DefenseRow.RowId = TEXT("Cross.High.Defense");
+		Contest.DefenseRow.RowId = Branch == EMatchPlayCrossActualBranch::High
+			? FName(TEXT("Cross.High.Defense"))
+			: FName(TEXT("Cross.Low.Defense"));
 		Contest.DefenseRow.Side = EInitialTurnOrderPlayer::PlayerB;
 		Contest.DefenseRow.Terms.Add(AttributeTerm(
 			TEXT("Marker.PrimaryHalf"), EParticipantRole::Marker,
@@ -223,6 +233,15 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 			Contest.DefenseRow.FinalValue = bHelper && bGoalkeeper
 				? 12.0f : bHelper ? 9.5f : bGoalkeeper ? 10.0f : 7.5f;
 			Contest.bHasResolvedFormula = true;
+			if (Winner != EFormulaWinner::None)
+			{
+				Contest.ResolvedResult.FormulaType = EFormulaType::Finishing;
+				Contest.ResolvedResult.Winner = Winner;
+				Contest.ResolvedResult.bIsGoal =
+					Winner == EFormulaWinner::Attacker;
+				Contest.ResolvedResult.bAttackEnded = true;
+				Contest.ResolvedResult.bContinueResolution = false;
+			}
 		}
 		Facts.FormulaContests.Add(Contest);
 		return Facts;
@@ -253,9 +272,21 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 	}
 
 	FFMCodexUMGMatchScreenViewModel BuildPresentation(
-		const FMatchPlayCurrentAttackResolutionFactProjection& Facts)
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts,
+		const EInitialTurnOrderPlayer LocalViewerSide =
+			EInitialTurnOrderPlayer::PlayerA,
+		const bool bIncludeRosterNames = true)
 	{
 		FFMCodexLocalMatchInteractionView View = MakeInteraction();
+		View.ElectiveBranchIntent = Facts.bHasActualBranch
+			&& Facts.ActualBranch.Cross == EMatchPlayCrossActualBranch::Low
+				? EMatchPlayElectiveBranchIntent::CrossLow
+				: EMatchPlayElectiveBranchIntent::CrossHigh;
+		if (!bIncludeRosterNames)
+		{
+			View.PlayerACardRoster.Reset();
+			View.PlayerBCardRoster.Reset();
+		}
 		View.ResolutionFacts = Facts;
 		const FMatchPlayResolutionRollFact* AttackRoll = Facts.Rolls.FindByPredicate(
 			[](const FMatchPlayResolutionRollFact& Roll)
@@ -295,7 +326,7 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 		Feedback.StepTitle = TEXT("Route Resolved");
 		Feedback.ResolutionFacts = Facts;
 		return FFMCodexLocalMatchUMGPresentationBuilder::Build(
-			View, Feedback, FString(), EInitialTurnOrderPlayer::PlayerA);
+			View, Feedback, FString(), LocalViewerSide);
 	}
 
 	const FFMCodexUMGInlineFormulaTermViewModel* FindTerm(
@@ -636,6 +667,200 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			&& !WidgetSource.Contains(TEXT("FinalValue ="))
 			&& !WidgetSource.Contains(TEXT("KnownNonRollSubtotal +"))
 			&& !WidgetSource.Contains(TEXT("DisplayedResult =")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexCrossResultNarrativePresentationTest,
+	"FMCodex.LocalPlay.InlineFormula.CrossResultNarrativeAndStatus",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexInlineResolutionFormulaSurfaceTests;
+
+	const FFMCodexUMGMatchScreenViewModel Pending = BuildPresentation(
+		MakeCrossHighFacts(true, true, true, false));
+	TestTrue(TEXT("Narrative remains hidden before the complete authoritative result"),
+		!Pending.InlineFormula.bNarrativeAvailable
+			&& Pending.InlineFormula.StatusLabel == TEXT("等待防守方掷点"));
+
+	// The fixture's displayed 8.5 attack is below its displayed 12 defense.
+	// An attacker winner therefore proves that presentation follows the
+	// authoritative resolved result instead of re-comparing UI values.
+	const FFMCodexUMGMatchScreenViewModel AttackWin = BuildPresentation(
+		MakeCrossHighFacts(true, true, true, true,
+			EFormulaWinner::Attacker));
+	TestTrue(TEXT("Authoritative attacker winner owns the completed narrative"),
+		AttackWin.InlineFormula.bNarrativeAvailable
+			&& AttackWin.InlineFormula.bNarrativeAttackSuccess
+			&& AttackWin.InlineFormula.NarrativeHeadline
+				== TEXT("萨卡传中，哈弗茨破门！")
+			&& AttackWin.InlineFormula.ResultSubtitle
+				== TEXT("高球传中 · 进攻成功")
+			&& AttackWin.InlineFormula.ContestLabel
+				== AttackWin.InlineFormula.NarrativeHeadline
+			&& AttackWin.InlineFormula.StatusLabel
+				== AttackWin.InlineFormula.ResultSubtitle);
+	TestTrue(TEXT("Completed Cross CTA has one presentation owner"),
+		AttackWin.InlineFormula.bCanContinue
+			&& AttackWin.InlineFormula.ContinueActionLabel == TEXT("下一回合")
+			&& AttackWin.Interaction.bPrimaryActionOwnedByInlineFormula
+			&& !AttackWin.Interaction.bCanContinue
+			&& AttackWin.Interaction.PrimaryActionLabel.IsEmpty());
+
+	const FFMCodexUMGMatchScreenViewModel MarkerDefense = BuildPresentation(
+		MakeCrossHighFacts(false, false, true, true,
+			EFormulaWinner::Defender));
+	TestTrue(TEXT("Marker-only defense uses carrier interception wording"),
+		MarkerDefense.InlineFormula.DefensiveNarrativePerformer
+			== EFMCodexUMGCrossDefensiveNarrativePerformer::Marker
+			&& MarkerDefense.InlineFormula.NarrativeHeadline
+				== TEXT("萨卡传中被萨利巴破坏")
+			&& MarkerDefense.InlineFormula.ResultSubtitle
+				== TEXT("高球传中 · 防守成功"));
+
+	FFMCodexUMGMatchScreenViewModel HelperDefense;
+	int64 HelperSequence = 0;
+	for (int64 Sequence = 1; Sequence <= 32; ++Sequence)
+	{
+		const FFMCodexUMGMatchScreenViewModel Candidate = BuildPresentation(
+			MakeCrossHighFacts(true, false, true, true,
+				EFormulaWinner::Defender,
+				EMatchPlayCrossActualBranch::High,
+				Sequence));
+		if (Candidate.InlineFormula.DefensiveNarrativePerformer
+			== EFMCodexUMGCrossDefensiveNarrativePerformer::Helper)
+		{
+			HelperDefense = Candidate;
+			HelperSequence = Sequence;
+			break;
+		}
+	}
+	TestTrue(TEXT("Immutable contest identity can deterministically select helper"),
+		HelperSequence > 0
+			&& HelperDefense.InlineFormula.NarrativeHeadline
+				== TEXT("哈弗茨抢点被赖斯破坏"));
+	if (HelperSequence > 0)
+	{
+		const auto Rebuilt = BuildPresentation(MakeCrossHighFacts(
+			true, false, true, true, EFormulaWinner::Defender,
+			EMatchPlayCrossActualBranch::High, HelperSequence));
+		const auto OppositeViewer = BuildPresentation(MakeCrossHighFacts(
+			true, false, true, true, EFormulaWinner::Defender,
+			EMatchPlayCrossActualBranch::High, HelperSequence),
+			EInitialTurnOrderPlayer::PlayerB);
+		TestTrue(TEXT("Defensive presenter is stable across rebuilds and viewers"),
+			Rebuilt.InlineFormula.NarrativeHeadline
+				== HelperDefense.InlineFormula.NarrativeHeadline
+				&& OppositeViewer.InlineFormula.NarrativeHeadline
+					== HelperDefense.InlineFormula.NarrativeHeadline
+				&& OppositeViewer.InlineFormula.DefensiveNarrativePerformer
+					== EFMCodexUMGCrossDefensiveNarrativePerformer::Helper);
+	}
+
+	const auto LowAttackWin = BuildPresentation(MakeCrossHighFacts(
+		true, true, true, true, EFormulaWinner::Attacker,
+		EMatchPlayCrossActualBranch::Low)).InlineFormula;
+	TestTrue(TEXT("Cross Low uses the same result narrative with route subtitle"),
+		LowAttackWin.NarrativeHeadline == TEXT("萨卡传中，哈弗茨破门！")
+			&& LowAttackWin.ResultSubtitle
+				== TEXT("低球传中 · 进攻成功"));
+
+	const auto AttackFallback = BuildPresentation(MakeCrossHighFacts(
+		false, false, true, true, EFormulaWinner::Attacker),
+		EInitialTurnOrderPlayer::PlayerA, false).InlineFormula;
+	const auto DefenseFallback = BuildPresentation(MakeCrossHighFacts(
+		false, false, true, true, EFormulaWinner::Defender),
+		EInitialTurnOrderPlayer::PlayerA, false).InlineFormula;
+	TestTrue(TEXT("Missing safe display names use localized generic fallbacks"),
+		AttackFallback.NarrativeHeadline == TEXT("传中进攻成功")
+			&& DefenseFallback.NarrativeHeadline
+				== TEXT("传中被防守方破坏")
+			&& !FlattenVisibleText(AttackFallback).Contains(TEXT("Fixture."))
+			&& !FlattenVisibleText(DefenseFallback).Contains(TEXT("Fixture.")));
+
+	UFMCodexLocalMatchScreenWidget* Screen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	TestNotNull(TEXT("Completed narrative screen can be constructed"), Screen);
+	if (Screen != nullptr)
+	{
+		Screen->TakeWidget();
+		Screen->RefreshFromPresentation(AttackWin);
+		TestTrue(TEXT("Bottom InteractionPanel duplicate terminal CTA is collapsed"),
+			Screen->GetInteractionPanel() != nullptr
+				&& Screen->GetInteractionPanel()->GetVisibility()
+					== ESlateVisibility::Collapsed
+				&& Screen->GetInlineFormulaSurface()->GetPresentation()
+					.ContinueActionLabel == TEXT("下一回合"));
+	}
+
+	FFMCodexLocalMatchInteractionView CountView = MakeInteraction();
+	CountView.bHasTacticalPlayerCounts = true;
+	CountView.PlayerATacticalPlayerCount = 4;
+	CountView.PlayerBTacticalPlayerCount = 2;
+	FFMCodexLocalMatchResolutionFeedback EmptyFeedback;
+	const FFMCodexUMGMatchScreenViewModel PlayerAView =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			CountView, EmptyFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerA);
+	const FFMCodexUMGMatchScreenViewModel PlayerBView =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			CountView, EmptyFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerB);
+	TestTrue(TEXT("Tactical counts map through local and opponent identity"),
+		PlayerAView.LocalRack.TacticalPlayerCountLabel
+				== TEXT("战术球员 ×4")
+			&& PlayerAView.OpponentRack.TacticalPlayerCountLabel
+				== TEXT("战术球员 ×2")
+			&& PlayerBView.LocalRack.TacticalPlayerCountLabel
+				== TEXT("战术球员 ×2")
+			&& PlayerBView.OpponentRack.TacticalPlayerCountLabel
+				== TEXT("战术球员 ×4"));
+	CountView.PlayerATacticalPlayerCount = 0;
+	CountView.PlayerBTacticalPlayerCount = 0;
+	const FFMCodexUMGMatchScreenViewModel ZeroCountView =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			CountView, EmptyFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerA);
+	TestTrue(TEXT("Zero remains an explicit meaningful rack status"),
+		ZeroCountView.LocalRack.bHasTacticalPlayerCount
+			&& ZeroCountView.OpponentRack.bHasTacticalPlayerCount
+			&& ZeroCountView.LocalRack.TacticalPlayerCountLabel
+				== TEXT("战术球员 ×0")
+			&& ZeroCountView.OpponentRack.TacticalPlayerCountLabel
+				== TEXT("战术球员 ×0"));
+	UFMCodexLocalMatchScreenWidget* CountScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	if (CountScreen != nullptr)
+	{
+		CountScreen->TakeWidget();
+		CountScreen->RefreshFromPresentation(PlayerAView);
+		const UTextBlock* LocalCount = Cast<UTextBlock>(
+			CountScreen->GetLocalRackWidget()->GetWidgetFromName(
+				TEXT("TacticalPlayerCountStatus")));
+		const UTextBlock* OpponentCount = Cast<UTextBlock>(
+			CountScreen->GetOpponentRackWidget()->GetWidgetFromName(
+				TEXT("TacticalPlayerCountStatus")));
+		TestTrue(TEXT("Both compact rack status labels render without layout duplication"),
+			LocalCount != nullptr && OpponentCount != nullptr
+				&& LocalCount->GetText().ToString() == TEXT("战术球员 ×4")
+				&& OpponentCount->GetText().ToString()
+					== TEXT("战术球员 ×2"));
+	}
+
+	FString PresentationSource;
+	const FString PresentationPath = FPaths::Combine(
+		FPaths::ProjectDir(),
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchUMGPresentation.cpp"));
+	TestTrue(TEXT("Presentation source is readable for RNG boundary guard"),
+		FFileHelper::LoadFileToString(PresentationSource, *PresentationPath));
+	TestTrue(TEXT("Narrative presentation consumes no gameplay or local RNG"),
+		!PresentationSource.Contains(TEXT("FMath::Rand"))
+			&& !PresentationSource.Contains(TEXT("FRandomStream"))
+			&& !PresentationSource.Contains(TEXT("RandRange"))
+			&& !PresentationSource.Contains(TEXT("D6Provider")));
 	return true;
 }
 

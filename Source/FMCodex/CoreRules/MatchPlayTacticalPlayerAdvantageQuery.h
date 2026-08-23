@@ -49,5 +49,14 @@ public:
 	static FMatchPlayTacticalPlayerAdvantageResult Evaluate(
 		const FMatchPlayState& State);
 
+	/**
+	 * Read-only board-status projection. Unlike the finishing-formula query,
+	 * this remains valid before a Resolution Session and between attacks. It
+	 * uses the authoritative current attacking side to resolve relative zones
+	 * and returns zero counts when no CurrentAttack placements exist.
+	 */
+	static FMatchPlayTacticalPlayerAdvantageResult EvaluateBoardStatus(
+		const FMatchPlayState& State);
+
 	static float ModifierForCountAdvantage(int32 CountAdvantage);
 };

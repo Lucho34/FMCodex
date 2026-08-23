@@ -154,7 +154,8 @@ enum class EFMCodexUMGSelectionFeedbackReason : uint8
 	RunnerMissingRequiredPositionType,
 	RunnerNotInAttackingForwardArea,
 	HelperIsGoalkeeper,
-	HelperMatchesMarker
+	HelperMatchesMarker,
+	HelperWrongPhysicalArea
 };
 
 /** Presentation-only football landmark treatment for a physical Half. */
@@ -378,6 +379,15 @@ struct FMCODEX_API FFMCodexUMGCardRackViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
 	bool bLocalRack = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	bool bHasTacticalPlayerCount = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	int32 TacticalPlayerCount = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	FString TacticalPlayerCountLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
 	int32 ColumnCount = 2;
@@ -755,6 +765,10 @@ struct FMCODEX_API FFMCodexUMGInteractionViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bCanContinue = false;
 
+	/** The Cross terminal action remains typed, but its only button is inline. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bPrimaryActionOwnedByInlineFormula = false;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bSystemResolution = false;
 
@@ -880,6 +894,14 @@ enum class EFMCodexUMGInlineFormulaRevealPhase : uint8
 	AttackSettled,
 	DefenseReveal,
 	Completed
+};
+
+UENUM(BlueprintType)
+enum class EFMCodexUMGCrossDefensiveNarrativePerformer : uint8
+{
+	None,
+	Marker,
+	Helper
 };
 
 USTRUCT(BlueprintType)
@@ -1041,6 +1063,28 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString StatusLabel;
+
+	/** Structured terminal narrative derived from authoritative winner facts. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bNarrativeAvailable = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bNarrativeAttackSuccess = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	EFMCodexUMGCrossDefensiveNarrativePerformer DefensiveNarrativePerformer =
+		EFMCodexUMGCrossDefensiveNarrativePerformer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString NarrativeHeadline;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString ResultSubtitle;
 
 	/** Authoritative initial-route D6 and enum outcome, formatted by presentation. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,

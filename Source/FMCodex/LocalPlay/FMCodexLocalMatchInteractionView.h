@@ -154,7 +154,8 @@ enum class EFMCodexLocalMatchSelectionFeedbackReason : uint8
 	RunnerMissingRequiredPositionType,
 	RunnerNotInAttackingForwardArea,
 	HelperIsGoalkeeper,
-	HelperMatchesMarker
+	HelperMatchesMarker,
+	HelperWrongPhysicalArea
 };
 
 struct FMCODEX_API FFMCodexLocalMatchSelectionFeedbackCandidate
@@ -224,6 +225,10 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	int32 PlayerBMaxAttackTurns = 0;
 	int32 PlayerBUsedAttackTurns = 0;
 	int32 PlayerBCurrentAttackIndex = 0;
+	/** Canonical board-status counts; never derived from rendered Pitch cards. */
+	bool bHasTacticalPlayerCounts = false;
+	int32 PlayerATacticalPlayerCount = 0;
+	int32 PlayerBTacticalPlayerCount = 0;
 	bool bPlayerACurrentAttackTurn = false;
 	bool bPlayerBCurrentAttackTurn = false;
 	bool bTacticalPointRollReady = false;

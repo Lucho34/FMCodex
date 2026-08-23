@@ -185,6 +185,9 @@ bool FHelperSelectionAuthorityTest::RunTest(
 			TEXT("FMatchPlayCurrentAttackHelperSelectionGlobalContextQuery::Query")), 1);
 	TestEqual(TEXT("Availability candidate core site once"),
 		Count(AvailabilitySource, TEXT("::EvaluateWithGlobalContext")), 1);
+	TestEqual(TEXT("Legality uses canonical physical-area query once"),
+		Count(LegalitySource,
+			TEXT("FMatchPlayDeploymentPhysicalAreaMatchQuery::Query")), 1);
 	TestEqual(TEXT("Writer Legality once"), Count(WriterSource,
 		TEXT("FMatchPlayCurrentAttackHelperSelectionLegalityEvaluator::Evaluate")), 1);
 	TestEqual(TEXT("Writer Availability zero"),
@@ -216,7 +219,7 @@ bool FHelperSelectionAuthorityTest::RunTest(
 		TEXT("PlayCardResolver"),
 		TEXT("OpportunityResolver"),
 		TEXT("MatchEnd"),
-		TEXT("MatchResult")})
+		TEXT("MatchResultResolver")})
 	{
 		TestFalse(TEXT("Forbidden production dependency absent"),
 			Production.Contains(Forbidden));

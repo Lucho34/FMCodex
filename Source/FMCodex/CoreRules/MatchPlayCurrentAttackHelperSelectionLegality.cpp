@@ -65,6 +65,31 @@ FMatchPlayCurrentAttackHelperSelectionLegalityEvaluator
 		return Result;
 	}
 
+	Result.PhysicalAreaMatchResult =
+		FMatchPlayDeploymentPhysicalAreaMatchQuery::Query(
+			BeforeState.DeploymentSlotCatalog,
+			GlobalContext.CurrentAttackingPlayer,
+			GlobalContext.FrozenRunnerPlacement,
+			Result.HelperPlacement);
+	if (!Result.PhysicalAreaMatchResult.bSuccess)
+	{
+		Result.ErrorCode =
+			EMatchPlayCurrentAttackHelperSelectionErrorCode
+				::PhysicalAreaQueryFailed;
+		Result.ErrorMessage = Result.PhysicalAreaMatchResult.ErrorMessage;
+		return Result;
+	}
+
+	if (!Result.PhysicalAreaMatchResult.bSamePhysicalArea)
+	{
+		Result.ErrorCode =
+			EMatchPlayCurrentAttackHelperSelectionErrorCode
+				::HelperNotInRunnerPhysicalArea;
+		Result.ErrorMessage =
+			TEXT("Helper must occupy the runner's physical area.");
+		return Result;
+	}
+
 	Result.bSuccess = true;
 	Result.ErrorCode =
 		EMatchPlayCurrentAttackHelperSelectionErrorCode::None;

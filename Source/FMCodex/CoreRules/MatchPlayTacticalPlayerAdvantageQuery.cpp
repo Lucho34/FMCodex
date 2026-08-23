@@ -34,6 +34,83 @@ namespace MatchPlayTacticalPlayerAdvantageQuery
 			return false;
 		}
 	}
+
+	FMatchPlayTacticalPlayerAdvantageResult EvaluatePlacements(
+		const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer AttackingPlayer,
+		const EInitialTurnOrderPlayer DefendingPlayer)
+	{
+		FMatchPlayTacticalPlayerAdvantageResult Result;
+		Result.AttackingPlayer = AttackingPlayer;
+		Result.DefendingPlayer = DefendingPlayer;
+		if (!IsPlayerSide(Result.AttackingPlayer))
+		{
+			Fail(Result,
+				EMatchPlayTacticalPlayerAdvantageErrorCode::InvalidAttackingPlayer,
+				TEXT("Tactical-player advantage requires PlayerA or PlayerB as the attacking player."));
+			return Result;
+		}
+		if (!IsPlayerSide(Result.DefendingPlayer)
+			|| Result.DefendingPlayer == Result.AttackingPlayer)
+		{
+			Fail(Result,
+				EMatchPlayTacticalPlayerAdvantageErrorCode::InvalidDefendingPlayer,
+				TEXT("Tactical-player advantage requires the opposing defending player."));
+			return Result;
+		}
+
+		if (State.bHasCurrentAttack)
+		{
+			for (const FMatchPlayDeploymentPlacement& Placement
+				: State.CurrentAttack.DeploymentPlacements)
+			{
+				const FMatchPlayRelativeDeploymentZoneResolveResult Zone =
+					FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+						State.DeploymentSlotCatalog,
+						Placement.SlotId,
+						Result.AttackingPlayer,
+						Placement.PlayerSide);
+				if (!Zone.bSuccess)
+				{
+					continue;
+				}
+				const FMatchPlayCardSnapshotAuthorityQueryResult Snapshot =
+					FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+						State.CardSnapshotAuthority,
+						Placement.PlayerSide,
+						Placement.CardId);
+				if (!Snapshot.bSuccess || Snapshot.Snapshot.bIsGoalkeeper
+					|| !MatchesPosition(Snapshot.Snapshot, Zone.RelativeZone))
+				{
+					continue;
+				}
+
+				Result.TacticalPlayers.Add({
+					Placement.PlayerSide,
+					Placement.CardId,
+					Zone.RelativeZone });
+				if (Placement.PlayerSide == Result.AttackingPlayer)
+				{
+					++Result.AttackerTacticalPlayerCount;
+				}
+				else if (Placement.PlayerSide == Result.DefendingPlayer)
+				{
+					++Result.DefenderTacticalPlayerCount;
+				}
+			}
+		}
+
+		Result.AttackerFinishingModifier =
+			FMatchPlayTacticalPlayerAdvantageQuery::ModifierForCountAdvantage(
+				Result.AttackerTacticalPlayerCount
+					- Result.DefenderTacticalPlayerCount);
+		Result.DefenderFinishingModifier =
+			FMatchPlayTacticalPlayerAdvantageQuery::ModifierForCountAdvantage(
+				Result.DefenderTacticalPlayerCount
+					- Result.AttackerTacticalPlayerCount);
+		Result.bSuccess = true;
+		return Result;
+	}
 }
 
 FMatchPlayTacticalPlayerAdvantageResult
@@ -59,70 +136,24 @@ FMatchPlayTacticalPlayerAdvantageQuery::Evaluate(
 
 	const FMatchPlayCurrentAttackResolutionSessionBundle& Bundle =
 		State.CurrentAttack.ResolutionSession.Bundle;
-	Result.AttackingPlayer = Bundle.CurrentAttackingPlayer;
-	Result.DefendingPlayer = Bundle.CurrentDefendingPlayer;
-	if (!IsPlayerSide(Result.AttackingPlayer))
-	{
-		Fail(Result,
-			EMatchPlayTacticalPlayerAdvantageErrorCode::InvalidAttackingPlayer,
-			TEXT("Tactical-player advantage requires PlayerA or PlayerB as the attacking player."));
-		return Result;
-	}
-	if (!IsPlayerSide(Result.DefendingPlayer)
-		|| Result.DefendingPlayer == Result.AttackingPlayer)
-	{
-		Fail(Result,
-			EMatchPlayTacticalPlayerAdvantageErrorCode::InvalidDefendingPlayer,
-			TEXT("Tactical-player advantage requires the opposing defending player."));
-		return Result;
-	}
+	return EvaluatePlacements(
+		State, Bundle.CurrentAttackingPlayer, Bundle.CurrentDefendingPlayer);
+}
 
-	for (const FMatchPlayDeploymentPlacement& Placement
-		: State.CurrentAttack.DeploymentPlacements)
-	{
-		const FMatchPlayRelativeDeploymentZoneResolveResult Zone =
-			FMatchPlayRelativeDeploymentZoneResolver::Resolve(
-				State.DeploymentSlotCatalog,
-				Placement.SlotId,
-				Result.AttackingPlayer,
-				Placement.PlayerSide);
-		if (!Zone.bSuccess)
-		{
-			continue;
-		}
-		const FMatchPlayCardSnapshotAuthorityQueryResult Snapshot =
-			FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
-				State.CardSnapshotAuthority,
-				Placement.PlayerSide,
-				Placement.CardId);
-		if (!Snapshot.bSuccess || Snapshot.Snapshot.bIsGoalkeeper
-			|| !MatchesPosition(Snapshot.Snapshot, Zone.RelativeZone))
-		{
-			continue;
-		}
-
-		Result.TacticalPlayers.Add({
-			Placement.PlayerSide,
-			Placement.CardId,
-			Zone.RelativeZone });
-		if (Placement.PlayerSide == Result.AttackingPlayer)
-		{
-			++Result.AttackerTacticalPlayerCount;
-		}
-		else if (Placement.PlayerSide == Result.DefendingPlayer)
-		{
-			++Result.DefenderTacticalPlayerCount;
-		}
-	}
-
-	Result.AttackerFinishingModifier = ModifierForCountAdvantage(
-		Result.AttackerTacticalPlayerCount
-			- Result.DefenderTacticalPlayerCount);
-	Result.DefenderFinishingModifier = ModifierForCountAdvantage(
-		Result.DefenderTacticalPlayerCount
-			- Result.AttackerTacticalPlayerCount);
-	Result.bSuccess = true;
-	return Result;
+FMatchPlayTacticalPlayerAdvantageResult
+FMatchPlayTacticalPlayerAdvantageQuery::EvaluateBoardStatus(
+	const FMatchPlayState& State)
+{
+	using namespace MatchPlayTacticalPlayerAdvantageQuery;
+	const EInitialTurnOrderPlayer AttackingPlayer =
+		State.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer DefendingPlayer =
+		AttackingPlayer == EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB
+			: AttackingPlayer == EInitialTurnOrderPlayer::PlayerB
+				? EInitialTurnOrderPlayer::PlayerA
+				: EInitialTurnOrderPlayer::None;
+	return EvaluatePlacements(State, AttackingPlayer, DefendingPlayer);
 }
 
 float FMatchPlayTacticalPlayerAdvantageQuery::ModifierForCountAdvantage(

@@ -59,6 +59,9 @@ private:
 	TObjectPtr<UTextBlock> RackHeading;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TacticalPlayerCountText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> RackGrid;
 
 	UPROPERTY(Transient)

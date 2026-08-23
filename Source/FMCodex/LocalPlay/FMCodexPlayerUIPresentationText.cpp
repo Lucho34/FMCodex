@@ -208,6 +208,11 @@ FText FFMCodexPlayerUIPresentationText::SelectionFeedback(
 		return LOCTEXT("HelperMatchesMarker",
 			"\u8BE5\u7403\u5458\u5DF2\u88AB\u6307\u5B9A\u4E3A\u76EF\u4EBA\u7403\u5458\uFF0C\u8BF7\u9009\u62E9\u5176\u4ED6\u534F\u9632\u7403\u5458");
 	}
+	if (CanonicalReason == TEXT("HelperWrongPhysicalArea"))
+	{
+		return LOCTEXT("HelperWrongPhysicalArea",
+			"\u534F\u9632\u7403\u5458\u5FC5\u987B\u4E0E\u8DD1\u4F4D\u7403\u5458\u4F4D\u4E8E\u540C\u4E00\u534A\u533A");
+	}
 	return FText::GetEmpty();
 }
 

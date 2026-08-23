@@ -14,6 +14,7 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackHelperSelection
 	inline const FName MarkerId(TEXT("Helper.Marker"));
 	inline const FName HelperId(TEXT("Helper.Valid"));
 	inline const FName HelperTwoId(TEXT("Helper.ValidTwo"));
+	inline const FName WrongHalfHelperId(TEXT("Helper.WrongHalf"));
 	inline const FName GoalkeeperId(TEXT("Helper.Goalkeeper"));
 	inline const FName MissingSnapshotId(TEXT("Helper.MissingSnapshot"));
 	inline const FName MissingId(TEXT("Helper.NotDeployed"));
@@ -138,6 +139,10 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackHelperSelection
 			MakePlacement(Defender, MarkerId, TEXT("Slot.HelperMarker")),
 			MakePlacement(Attacker, RunnerId, TEXT("Slot.HelperRunner")),
 			MakePlacement(Defender, HelperId, TEXT("Slot.HelperValid")),
+			MakePlacement(
+				Defender,
+				WrongHalfHelperId,
+				TEXT("Slot.HelperWrongHalf")),
 			MakePlacement(Defender, GoalkeeperId, TEXT("Slot.HelperGK")),
 			MakePlacement(
 				Defender,
@@ -160,6 +165,11 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackHelperSelection
 				AttackerForward),
 			MakeSlot(TEXT("Slot.HelperRunner"), AttackerForward),
 			MakeSlot(TEXT("Slot.HelperValid"), AttackerForward),
+			MakeSlot(
+				TEXT("Slot.HelperWrongHalf"),
+				Attacker == EInitialTurnOrderPlayer::PlayerA
+					? EMatchPlayNeutralSlotSide::NearPlayerA
+					: EMatchPlayNeutralSlotSide::NearPlayerB),
 			MakeSlot(TEXT("Slot.HelperGK"), AttackerForward),
 			MakeSlot(TEXT("Slot.HelperMissing"), AttackerForward)
 		};
@@ -178,6 +188,7 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackHelperSelection
 		DefenderSnapshots.Cards = {
 			MakeCard(MarkerId, {EPlayerPositionType::Defense}),
 			MakeCard(HelperId, {EPlayerPositionType::Attack}),
+			MakeCard(WrongHalfHelperId, {EPlayerPositionType::Defense}),
 			MakeGoalkeeper(GoalkeeperId)
 		};
 		if (Attacker == EInitialTurnOrderPlayer::PlayerA)

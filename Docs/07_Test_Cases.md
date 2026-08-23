@@ -432,7 +432,7 @@
 - Helper 缺席时不显示协防参与者或 term；GK 未激活时不显示门将参与者或 term。存在时必须使用实际身份、实际属性、SourceValue、Multiplier 和 Contribution。
 - 重复构建 DTO、创建/刷新 Widget 不消费 RNG、不改变 State、不增加 Roll Record。操作必须调用实际 High/Low 分支对应的 Attack/Defense typed command，不新增假掷点、timer 或 autoplay。
 - 真实生产状态必须按双 pending -> Attack resolved/Defense pending -> 双 resolved/Final Value 推进；Attack 步恰好一枚 D6，Defense 步恰好一枚 D6。
-- Formula 完成后保留双行 Final Value 与 Role Tag，显示 `下一回合`；该 CTA 以零 RNG 调用 terminal，之后才换攻并清除角色/面板。不得显示第二次 finishing contest、旧全屏 Overlay、结果叙事、动画或 cinematic。
+- Formula 完成后保留双行 Final Value 与 Role Tag，主标题使用权威 winner 与权威参与者生成 Cross 结果叙事，副标题保留高/低球与进攻/防守成功。中央只显示一个 `下一回合`，底部 Panel 重复 CTA 折叠；该 CTA 以零 RNG 调用 terminal，之后才换攻并清除角色/面板。不得显示第二次 finishing contest、旧全屏 Overlay、动画或 cinematic。
 
 ## Cross High 权威 D6 分阶段揭示
 
@@ -460,7 +460,23 @@
 - pre-roll Formula Fact 两行均含权威投影的 `KnownNonRollSubtotal`、pending RawRoll 和 unresolved FinalValue；主结果位显示各自 `KnownNonRollSubtotal`，同时 RawRoll 仍显示 `掷点 ?`。Attack 步后 Attack 主结果切换为权威 FinalValue，Defense 主结果仍显示自己的 KnownNonRollSubtotal；Defense 步后双方主结果均显示权威 FinalValue 并等于 Resolver Result。Widget 不执行 subtotal、D6 或 Tactical Player 加法。
 - Pitch 内联面板依次显示 `等待进攻方掷点 / 进攻方掷点`、`等待防守方掷点 / 防守方掷点`、双方完成后的 `下一回合`。主玩家文案使用 `基础值 X / 掷点 ? / 掷点 N`，不显示 `D6 ?`、`继续结算` 或 covered English CTA。
 - 三个现场状态均保持 Header、Pitch、Rack、Role Tag 可见且抑制旧 full-screen Resolution Overlay：① 双基础值可见、双 roll pending、进攻方拥有操作；② Attack roll/total 可见、Defense pending、防守方拥有操作且没有自动掷点；③ 双 roll/total 与 comparison 可读，Overlay 未返回。
-- 命令处理中的重复点击、非当前按钮、底部 Panel 与 Screen generic Continue 都不能绕过阶段。双方完成后没有自动推进；`下一回合` 调用 `ApplyCrossTerminalResolution`，消费零 RNG，之后才清除 CurrentAttack/Role Tag 并换攻。无第二次玩家可见 finishing contest、narrative/result headline/audio/cinematic；其他路线行为不变。
+- 命令处理中的重复点击、非当前按钮、底部 Panel 与 Screen generic Continue 都不能绕过阶段。双方完成后没有自动推进；`下一回合` 调用 `ApplyCrossTerminalResolution`，消费零 RNG，之后才清除 CurrentAttack/Role Tag 并换攻。完成叙事不得重算 winner/tie，不得消费 gameplay RNG；无第二次玩家可见 finishing contest、audio/cinematic，其他路线行为不变。
+
+## Cross 结果叙事与战术球员状态（Stage 6.13.1.4.8B）
+
+- Attack-only/Defense pending 时不得显示终结叙事。双 Raw Roll 完成且 `ResolvedResult.Winner` 可用后，进攻成功为 `{Carrier}传中，{Runner}破门！`，Marker 防守为 `{Carrier}传中被{Marker}破坏`，Helper 防守为 `{Runner}抢点被{Helper}破坏`。缺少安全显示名时只使用 `传中进攻成功 / 传中被防守方破坏`，不泄露内部 ID。
+- 故意构造 UI FinalValue 大小与 Winner 相反的 fixture，叙事必须仍跟随权威 Winner。同一 `AttackSequence|ContestId` 反复 Build/不同 LocalViewer 必须产生同一防守表现者和 headline，不调用任何 gameplay RNG。
+- High/Low 都覆盖进攻/防守 subtitle，公式 terms、Raw Roll、FinalValue 与 `战术球员 +N` 保持可见。完成态 Inline Formula 有且只有一个 `下一回合`，底部 Interaction Panel 不暴露重复 primary action。
+- 原始人数测试覆盖 `4 vs 2 -> 权威修正 +1`、GK 排除、多位置匹配、攻方切换后的 Player A/B 身份、无 Resolution Session 和无 CurrentAttack 时的零值。Presentation 测试覆盖 Local/Opponent 映射及 `战术球员 ×N`。
+
+## 战术放弃与 Helper 物理半区修复（Stage 6.13.1.4.8B.1）
+
+- SelectSkill 至少有一个合法战术时只投影 Decline capability；零合法战术时只投影 No-Legal capability。两种 CTA 都显示 `不使用战术`，但前者必须调用 `DeclineSkill`，后者必须调用 `ResolveNoLegalSkill`；反向调用继续被 Authority 拒绝且 State 不变。
+- 两条正确入口都必须成功且不消费 resolution RNG：CurrentAttack/placements/Role Tags 清除，当前攻击方 UsedAttackCount 恰好 +1，换攻完成，下一方进入 `TacticalPointRoll` readiness，双方 Board Tactical Player count 为 `0 / 0`。
+- Helper legality 对 Player A/B 两种攻击方向都使用 `FMatchPlayDeploymentPhysicalAreaMatchQuery` 比较 Runner 与 Helper placement。same-half 非 GK、非 Marker 候选合法且可提交；wrong-half 候选返回 `HelperNotInRunnerPhysicalArea`、不进入合法选项、Writer 失败原子；无 Tactical Match 不得使 same-half 候选非法。
+- Availability 必须保留 wrong-half candidate 的 canonical 诊断。场上单击该球员不得调用 SubmitHelper，SelectionStage 保持 AwaitingHelper、State byte-identical，Toast 精确为 `协防球员必须与跑位球员位于同一半区`；随后同半区合法 Helper 可立即提交。
+- Marker-as-Helper 仍优先返回 `HelperMatchesMarker` 与既有 Toast；GK、未部署、对方卡、缺失 Snapshot 等既有限制不变。physical-half 新增后若没有合法 Helper，显式 No-Legal Helper 入口仍可推进到 AwaitingSkill。
+- Cross E2E 至少覆盖 same-half Helper selected、wrong-half-only/no-legal Helper 和 Tactical abandon completion；Local Hot-seat 画面左右映射不得改变 canonical half 结果。
 
 ## Cross 生产顺序与单动作路线入口修复（Stage 6.13.1.4.8A）
 

@@ -542,3 +542,7 @@ ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份�
 该 Projection 可重复从同一 State 构建且不得消费 RNG。CurrentAttack 被 terminal completion 清除时，command-scoped ResolutionFeedback 可保留清除前的同一值事实；它不重新创建 authority。
 
 Cross High 与 Cross Low 的 `PostRouteRollProgress.RollRecords` 均允许两个合法未完成前缀：空记录表示等待进攻方掷点；仅含 `PrimaryAttack` 表示进攻已完成、等待防守方掷点。对应实际分支的第二个显式权威命令追加 `PrimaryDefense` 后才形成完整合同。错误分支、错误阵营、错误 purpose、重复或越序请求不得追加记录；完成后的 terminal 命令只消费这些持久化记录，不再追加随机结果。
+- `FFMCodexLocalMatchInteractionView` 以稳定 Player A/B 字段投影当前棋盘原始战术球员人数；`FFMCodexUMGCardRackViewModel` 再提供 Local/Opponent 单侧人数及 `战术球员 ×N` 文案。这些字段不是 Formula modifier，不代替 `TacticalPlayerAdvantage` term。
+- `FFMCodexUMGInlineFormulaSurfaceViewModel` 的 Cross 完成投影包含 Narrative available、权威进攻/防守结果、选定的 Marker/Helper 表现角色、中文 headline 与路线 subtitle。`FFMCodexUMGInteractionViewModel.bPrimaryActionOwnedByInlineFormula` 只表达 terminal CTA 展示所有权，不是新命令或换攻状态。
+- `FMatchPlayCurrentAttackHelperSelectionLegalityResult.PhysicalAreaMatchResult` 保存 Runner↔Helper canonical shared-half 查询事实；失败分类为 `PhysicalAreaQueryFailed` 或 `HelperNotInRunnerPhysicalArea`。Availability candidate 保留该结果，InteractionView 只将后者有界映射为 `HelperWrongPhysicalArea`，UMG 再映射固定中文 Toast，不从 Slot 的显示位置重建规则。
+- 战术选择投影中的 `bCanDecline` 与 `bCanResolveNoLegalChoice` 在 `SelectSkill` 时必须互斥。二者可以共享玩家文案 `不使用战术`，但仍分别代表 `DeclineSkill` 与 `ResolveNoLegalSkill` typed authority 路由；文案相同不表示合并或放宽 Authority 请求结构。

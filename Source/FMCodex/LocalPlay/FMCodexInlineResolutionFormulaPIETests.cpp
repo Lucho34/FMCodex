@@ -194,7 +194,10 @@ namespace FMCodexInlineResolutionFormulaPIETests
 		const bool bSharedContext = Formula.bVisible
 			&& Formula.bSuppressLegacyResolution
 			&& Formula.ContestId == TEXT("Cross.High")
-			&& Formula.ContestLabel == TEXT("高球传中")
+			&& (StateIndex < 3
+				? Formula.ContestLabel == TEXT("高球传中")
+				: Formula.bNarrativeAvailable
+					&& Formula.ContestLabel == Formula.NarrativeHeadline)
 			&& Formula.RouteResultLabel
 				== TEXT("路线掷点 2 → 判定为高球传中")
 			&& Formula.TacticalPlayerSummaryLabel.IsEmpty()
@@ -285,7 +288,12 @@ namespace FMCodexInlineResolutionFormulaPIETests
 				&& DefenseRoll != nullptr && DefenseRoll->RawD6 == 3
 				&& Surface->GetRenderedPendingTermCount() == 0
 				&& Formula.bCanContinue
-				&& Formula.StatusLabel == TEXT("双方掷点已完成")
+				&& Formula.bNarrativeAvailable
+				&& !Formula.NarrativeHeadline.IsEmpty()
+				&& Formula.StatusLabel
+					== (Formula.bNarrativeAttackSuccess
+						? FString(TEXT("高球传中 · 进攻成功"))
+						: FString(TEXT("高球传中 · 防守成功")))
 				&& Formula.ContinueActionLabel == TEXT("下一回合")
 				&& Controller->GetInteractionView().InteractionCategory
 					== EFMCodexLocalMatchInteractionCategory
@@ -293,6 +301,11 @@ namespace FMCodexInlineResolutionFormulaPIETests
 				&& Controller->GetInteractionView().bCrossFormulaComplete
 				&& Controller->GetInteractionView()
 					.bCrossTerminalActionAvailable
+				&& Presentation.Interaction
+					.bPrimaryActionOwnedByInlineFormula
+				&& !Presentation.Interaction.bCanContinue
+				&& Screen->GetInteractionPanel()->GetVisibility()
+					== ESlateVisibility::Collapsed
 				&& !Screen->GetInteractionPanel()->IsInteractionBlocked()
 				&& !Controller->GetResolutionFeedback().bTerminal;
 			break;

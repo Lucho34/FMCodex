@@ -142,8 +142,8 @@ bool FHelperGlobalValidTest::RunTest(const FString& Parameters)
 						HelperFixtures::ValidAttackSequence,
 						HelperFixtures::GetDefender(Attacker));
 			TestTrue(TEXT("Global succeeds"), Result.bSuccess);
-			TestEqual(TEXT("Four defender placements"),
-				Result.DefendingPlayerPlacements.Num(), 4);
+			TestEqual(TEXT("Five defender placements"),
+				Result.DefendingPlayerPlacements.Num(), 5);
 			TestEqual(TEXT("Frozen Runner"),
 				Result.FrozenRunnerCardId, HelperFixtures::RunnerId);
 			TestTrue(TEXT("Global query read-only"),

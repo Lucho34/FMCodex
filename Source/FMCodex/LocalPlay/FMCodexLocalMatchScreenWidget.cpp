@@ -492,7 +492,15 @@ void UFMCodexLocalMatchScreenWidget::RequestDeclineSelection()
 {
 	if (MatchController != nullptr)
 	{
-		MatchController->DeclineCurrentSelection();
+		if (Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectSkill)
+		{
+			MatchController->AbandonCurrentTacticalSelection();
+		}
+		else
+		{
+			MatchController->DeclineCurrentSelection();
+		}
 	}
 }
 
@@ -500,7 +508,15 @@ void UFMCodexLocalMatchScreenWidget::RequestResolveNoLegalSelection()
 {
 	if (MatchController != nullptr)
 	{
-		MatchController->ResolveNoLegalCurrentSelection();
+		if (Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectSkill)
+		{
+			MatchController->AbandonCurrentTacticalSelection();
+		}
+		else
+		{
+			MatchController->ResolveNoLegalCurrentSelection();
+		}
 	}
 }
 
@@ -1943,6 +1959,10 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	InlineFormulaSurface->RefreshFromPresentation(DisplayedInlineFormula);
 	BindDetailHoverSources();
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
+	InteractionPanel->SetVisibility(
+		Presentation.Interaction.bPrimaryActionOwnedByInlineFormula
+			? ESlateVisibility::Collapsed
+			: ESlateVisibility::Visible);
 	InteractionPanel->SetInteractionBlocked(
 		IsInlineFormulaRevealInputBlocked());
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);

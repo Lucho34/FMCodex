@@ -53,6 +53,12 @@ public:
 	void SubmitSkill(FName SkillId);
 	void SubmitRunner(FName CardId);
 	void SubmitHelper(FName CardId);
+	/**
+	 * Unified player-facing "do not use tactical" intent. The projected
+	 * authoritative capability selects DeclineSkill or ResolveNoLegalSkill;
+	 * the typed authority commands remain mutually exclusive.
+	 */
+	void AbandonCurrentTacticalSelection();
 	void DeclineCurrentSelection();
 	void ResolveNoLegalCurrentSelection();
 	void SubmitBranchIntent(EMatchPlayElectiveBranchIntent Intent);

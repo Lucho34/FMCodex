@@ -114,7 +114,8 @@ bool FHelperSelectWriterFailureAtomicTest::RunTest(
 		HelperFixtures::MissingId,
 		HelperFixtures::MissingSnapshotId,
 		HelperFixtures::GoalkeeperId,
-		HelperFixtures::MarkerId})
+		HelperFixtures::MarkerId,
+		HelperFixtures::WrongHalfHelperId})
 	{
 		const FMatchPlayState State = HelperFixtures::MakeState();
 		const auto Result =

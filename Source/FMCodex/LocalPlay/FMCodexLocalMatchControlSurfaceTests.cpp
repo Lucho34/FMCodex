@@ -23,6 +23,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "../CoreRules/MatchPlaySkillNoSelectionNoGoalTestFixtures.h"
 #include "Engine/Engine.h"
 #include "Engine/Texture2D.h"
 #include "Engine/UserInterfaceSettings.h"
@@ -2243,7 +2244,8 @@ namespace FMCodexLocalMatchFullFamilyTests
 		FAutomationTestBase& Test,
 		AFMCodexLocalMatchPlayerController& Controller,
 		const FFamilyExpectation& Family,
-		const EInitialTurnOrderPlayer Attacker)
+		const EInitialTurnOrderPlayer Attacker,
+		const bool bIncludeWrongHalfHelperCandidate = false)
 	{
 		using namespace FMCodexLocalMatchControlSurfaceTests;
 		const FString FamilyLabel(Family.ReadableLabel);
@@ -2252,12 +2254,17 @@ namespace FMCodexLocalMatchFullFamilyTests
 		const FString PhysicalForward =
 			Attacker == EInitialTurnOrderPlayer::PlayerA
 				? TEXT("NearB") : TEXT("NearA");
+		const FString PhysicalBack =
+			Attacker == EInitialTurnOrderPlayer::PlayerA
+				? TEXT("NearA") : TEXT("NearB");
 		bool bCarrierDeployed = false;
 		bool bCrossRunnerDeployed = false;
 		bool bDefenderGoalkeeperDeployed = false;
+		int32 DefenderOrdinaryDeploymentCount = 0;
 		const bool bRequiresGoalkeeper =
 			Family.SkillType == ESkillRuleType::ThroughBall;
-		const int32 RequiredDeployments = 5;
+		const int32 RequiredDeployments =
+			bIncludeWrongHalfHelperCandidate ? 6 : 5;
 
 		for (int32 Step = 0; Step < RequiredDeployments; ++Step)
 		{
@@ -2289,6 +2296,12 @@ namespace FMCodexLocalMatchFullFamilyTests
 
 			if (!bFoundOption)
 			{
+				const FString& RequiredPhysicalHalf =
+					bIncludeWrongHalfHelperCandidate
+						&& View.CurrentLegalDeploymentSide == Defender
+						&& DefenderOrdinaryDeploymentCount >= 2
+							? PhysicalBack
+							: PhysicalForward;
 				const FName RequiredCrossRunnerId =
 					Attacker == EInitialTurnOrderPlayer::PlayerA
 						? FName(TEXT("Prototype.Arsenal.ViktorGyokeres"))
@@ -2302,9 +2315,10 @@ namespace FMCodexLocalMatchFullFamilyTests
 					: View.DeploymentGroups)
 				{
 					const bool bHasMatchingSlot = Group.LegalSlots.ContainsByPredicate(
-						[&PhysicalForward](const FFMCodexLocalMatchSlotView& Slot)
+						[&RequiredPhysicalHalf](const FFMCodexLocalMatchSlotView& Slot)
 						{
-							return Slot.SlotId.ToString().Contains(PhysicalForward);
+							return Slot.SlotId.ToString().Contains(
+								RequiredPhysicalHalf);
 						});
 					const bool bHasUsableFamily = Group.Card.Skills.ContainsByPredicate(
 						[&Family, &View](const FFMCodexLocalMatchCardView::FSkill& Skill)
@@ -2322,7 +2336,8 @@ namespace FMCodexLocalMatchFullFamilyTests
 				for (const auto& Option : View.DeploymentOptions)
 				{
 					if (Option.bGoalkeeper
-						|| !Option.SlotId.ToString().Contains(PhysicalForward))
+						|| !Option.SlotId.ToString().Contains(
+							RequiredPhysicalHalf))
 					{
 						continue;
 					}
@@ -2366,6 +2381,10 @@ namespace FMCodexLocalMatchFullFamilyTests
 			{
 				Controller.DeployOrdinary(
 					SelectedOption.CardId, SelectedOption.SlotId);
+				if (SelectedOption.Side == Defender)
+				{
+					++DefenderOrdinaryDeploymentCount;
+				}
 				bCarrierDeployed = bCarrierDeployed
 					|| SelectedOption.CardId == CarrierCardId;
 				bCrossRunnerDeployed = bCrossRunnerDeployed
@@ -12266,7 +12285,12 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 		Screen->RequestStartNewMatch();
 		Screen->RequestRollTacticalPoints();
 		OutAttacker = Controller.GetInteractionView().CurrentAttackingPlayer;
-		if (!DeployParticipants(*this, Controller, CrossFamily, OutAttacker))
+		if (!DeployParticipants(
+			*this,
+			Controller,
+			CrossFamily,
+			OutAttacker,
+			true))
 		{
 			return false;
 		}
@@ -12341,10 +12365,19 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 							EFMCodexLocalMatchSelectionFeedbackReason::
 								HelperMatchesMarker;
 				}));
+		TestTrue(TEXT("Canonical Helper feedback exposes wrong physical half"),
+			HelperView.SelectionFeedbackCandidates.ContainsByPredicate(
+				[](const FFMCodexLocalMatchSelectionFeedbackCandidate& Candidate)
+				{
+					return Candidate.Reason ==
+						EFMCodexLocalMatchSelectionFeedbackReason::
+							HelperWrongPhysicalArea;
+				}));
 
 		TSet<FName> ProjectedHelperIds;
 		UFMCodexPlayerCardWidget* LegalNoTacticalMatchCard = nullptr;
 		UFMCodexPlayerCardWidget* MarkerCard = nullptr;
+		UFMCodexPlayerCardWidget* WrongHalfCard = nullptr;
 		UFMCodexPlayerCardWidget* AttackingCard = nullptr;
 		UFMCodexPitchSlotWidget* EmptySlot = nullptr;
 		for (UFMCodexPitchSlotWidget* SlotWidget
@@ -12380,6 +12413,11 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 			{
 				MarkerCard = Card;
 			}
+			else if (Slot.SelectionFeedbackReason
+				== EFMCodexUMGSelectionFeedbackReason::HelperWrongPhysicalArea)
+			{
+				WrongHalfCard = Card;
+			}
 			else if (Slot.Card.OwnerLabel ==
 				FFMCodexLocalMatchInteractionViewBuilder::ToString(Attacker))
 			{
@@ -12399,9 +12437,12 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 		TestNotNull(TEXT("A legal no-Tactical-Match Helper remains selectable"),
 			LegalNoTacticalMatchCard);
 		TestNotNull(TEXT("Frozen Marker remains blocked as Helper"), MarkerCard);
+		TestNotNull(TEXT("Wrong-half defender remains feedback-capable"),
+			WrongHalfCard);
 		TestNotNull(TEXT("Attacking player remains blocked as Helper"), AttackingCard);
 		TestNotNull(TEXT("Empty slot exists for Helper path isolation"), EmptySlot);
 		if (LegalNoTacticalMatchCard == nullptr || MarkerCard == nullptr
+			|| WrongHalfCard == nullptr
 			|| AttackingCard == nullptr || EmptySlot == nullptr)
 		{
 			return false;
@@ -12437,6 +12478,7 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 
 		LegalNoTacticalMatchCard->TakeWidget();
 		MarkerCard->TakeWidget();
+		WrongHalfCard->TakeWidget();
 		AttackingCard->TakeWidget();
 		TestTrue(TEXT("Helper selectability is visual-neutral and Tactical Match independent"),
 			LegalNoTacticalMatchCard->IsSelectableForCurrentPrompt()
@@ -12455,15 +12497,27 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 
 		UFMCodexSelectionFeedbackToastWidget* Toast =
 			Screen->GetSelectionFeedbackToast();
-		const TArray<uint8> BeforeMarkerConflict =
+		const TArray<uint8> BeforeBlockedFeedback =
 			SerializeState(Host->GetMatchSnapshot().Snapshot);
+		TestTrue(TEXT("Wrong-half Helper exposes canonical feedback without submit"),
+			Toast != nullptr
+				&& WrongHalfCard->GetSelectionFeedbackReason()
+					== EFMCodexUMGSelectionFeedbackReason::HelperWrongPhysicalArea
+				&& WrongHalfCard->RequestSelectionFeedback());
+		TestTrue(TEXT("Wrong-half Helper feedback is exact and authority-safe"),
+			BeforeBlockedFeedback
+				== SerializeState(Host->GetMatchSnapshot().Snapshot)
+				&& Controller->GetInteractionView().InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::SelectHelper
+				&& Toast->GetDisplayedText().ToString()
+					== TEXT("\u534F\u9632\u7403\u5458\u5FC5\u987B\u4E0E\u8DD1\u4F4D\u7403\u5458\u4F4D\u4E8E\u540C\u4E00\u534A\u533A"));
 		TestTrue(TEXT("Frozen Marker exposes canonical Helper feedback without submit"),
 			Toast != nullptr
 				&& MarkerCard->GetSelectionFeedbackReason()
 					== EFMCodexUMGSelectionFeedbackReason::HelperMatchesMarker
 				&& MarkerCard->RequestSelectionFeedback());
 		TestTrue(TEXT("Marker-as-Helper feedback is exact and authority-safe"),
-			BeforeMarkerConflict
+			BeforeBlockedFeedback
 				== SerializeState(Host->GetMatchSnapshot().Snapshot)
 				&& Controller->GetInteractionView().InteractionCategory
 					== EFMCodexLocalMatchInteractionCategory::SelectHelper
@@ -12476,7 +12530,7 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 		TestFalse(TEXT("Attacking Pitch card cannot emit Helper intent"),
 			AttackingCard->RequestOnPitchSelection());
 		TestTrue(TEXT("Empty slot and non-candidate clicks do not mutate authority"),
-			BeforeMarkerConflict
+			BeforeBlockedFeedback
 				== SerializeState(Host->GetMatchSnapshot().Snapshot)
 				&& EmptySlot->GetCardWidget() == nullptr);
 
@@ -13300,6 +13354,105 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			&& !UMGSource.Contains(TEXT("ResolveFormula("))
 			&& !UMGSource.Contains(TEXT("FormulaResolver::")));
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexTacticalAbandonProductionRoutingTest,
+	"FMCodex.LocalPlay.ControlSurface.51.TacticalAbandonProductionRouting",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexTacticalAbandonProductionRoutingTest::RunTest(
+	const FString& Parameters)
+{
+	namespace Fixtures =
+		FMCodex::Tests::MatchPlaySkillNoSelectionNoGoal;
+	const FSkillRuleSnapshotSet Rules =
+		Fixtures::SkillFixtures::MakeRuleSet();
+
+	const FMatchPlayState LegalState = Fixtures::MakeState(
+		EInitialTurnOrderPlayer::PlayerA,
+		{Fixtures::SkillFixtures::LongShotSkillId});
+	const FMatchPlayState ZeroLegalState = Fixtures::MakeState(
+		EInitialTurnOrderPlayer::PlayerA,
+		{});
+	const FFMCodexLocalMatchInteractionView LegalView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			LegalState,
+			Rules);
+	const FFMCodexLocalMatchInteractionView ZeroLegalView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			ZeroLegalState,
+			Rules);
+	TestTrue(TEXT("Legal tactical state projects only DeclineSkill capability"),
+		LegalView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectSkill
+			&& LegalView.bCanDecline
+			&& !LegalView.bCanResolveNoLegalChoice
+			&& !LegalView.SelectionOptions.IsEmpty());
+	TestTrue(TEXT("Zero-legal tactical state projects only no-legal capability"),
+		ZeroLegalView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectSkill
+			&& !ZeroLegalView.bCanDecline
+			&& ZeroLegalView.bCanResolveNoLegalChoice
+			&& ZeroLegalView.SelectionOptions.IsEmpty());
+
+	const FFMCodexUMGMatchScreenViewModel LegalPresentation =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			LegalView,
+			FFMCodexLocalMatchResolutionFeedback(),
+			FString());
+	const FFMCodexUMGMatchScreenViewModel ZeroLegalPresentation =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			ZeroLegalView,
+			FFMCodexLocalMatchResolutionFeedback(),
+			FString());
+	TestTrue(TEXT("Both typed routes expose the same player tactical-abandon CTA"),
+		LegalPresentation.Interaction.DeclineActionLabel
+			== TEXT("DECLINE SKILL")
+			&& ZeroLegalPresentation.Interaction.NoLegalActionLabel
+				== TEXT("DECLINE SKILL")
+			&& FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+				LegalPresentation.Interaction.DeclineActionLabel).ToString()
+				== TEXT("\u4E0D\u4F7F\u7528\u6218\u672F")
+			&& FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+				ZeroLegalPresentation.Interaction.NoLegalActionLabel).ToString()
+				== TEXT("\u4E0D\u4F7F\u7528\u6218\u672F"));
+
+	const FMatchPlaySkillDeclineResult Declined =
+		FMatchPlaySkillDecline::Decline(
+			LegalState,
+			Rules,
+			Fixtures::MakeDeclineRequest());
+	const FMatchPlayResolveNoLegalSkillResult Resolved =
+		FMatchPlayResolveNoLegalSkill::Resolve(
+			ZeroLegalState,
+			Rules,
+			Fixtures::MakeResolveRequest());
+	TestTrue(TEXT("Legal tactical abandon uses accepted DeclineSkill completion"),
+		Declined.bSuccess
+			&& Declined.Source
+				== EMatchPlaySkillNoSelectionNoGoalSource::DeclineSkill);
+	TestTrue(TEXT("Zero-legal tactical abandon uses accepted no-legal completion"),
+		Resolved.bSuccess
+			&& Resolved.Source
+				== EMatchPlaySkillNoSelectionNoGoalSource::ResolveNoLegalSkill);
+	for (const FMatchPlayState* After : {
+		&Declined.AfterState,
+		&Resolved.AfterState})
+	{
+		const FFMCodexLocalMatchInteractionView AfterView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(*After, Rules);
+		TestTrue(TEXT("Tactical abandon consumes one attack and hands off cleanly"),
+			!After->bHasCurrentAttack
+				&& After->RuntimeState.PlayerAState.UsedAttackCount == 2
+				&& After->RuntimeState.CurrentAttackingPlayer
+					== EInitialTurnOrderPlayer::PlayerB
+				&& AfterView.InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::TacticalPointRoll
+				&& AfterView.PlayerATacticalPlayerCount == 0
+				&& AfterView.PlayerBTacticalPlayerCount == 0);
+	}
 	return true;
 }
 

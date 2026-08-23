@@ -4,6 +4,7 @@
 
 #include "MatchPlayCurrentAttackHelperParticipantAuthority.h"
 #include "MatchPlayCurrentAttackHelperSelectionGlobalContextQuery.h"
+#include "MatchPlayDeploymentPhysicalAreaMatchQuery.h"
 
 #include "MatchPlayCurrentAttackHelperSelectionLegality.generated.h"
 
@@ -40,6 +41,9 @@ struct FMCODEX_API
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Helper Selection")
 	ESkillRuleType ResolvedActionType = ESkillRuleType::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Helper Selection")
+	FMatchPlayDeploymentPhysicalAreaMatchResult PhysicalAreaMatchResult;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Helper Selection")
 	FString ErrorMessage;

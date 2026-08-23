@@ -90,6 +90,10 @@ enum class EMatchPlayCurrentAttackHelperSelectionErrorCode : uint8
 		UMETA(DisplayName = "Helper Snapshot Query Failed"),
 	HelperIsGoalkeeper UMETA(DisplayName = "Helper Is Goalkeeper"),
 	HelperMatchesMarker UMETA(DisplayName = "Helper Matches Marker"),
+	PhysicalAreaQueryFailed
+		UMETA(DisplayName = "Physical Area Query Failed"),
+	HelperNotInRunnerPhysicalArea
+		UMETA(DisplayName = "Helper Not In Runner Physical Area"),
 	UnsupportedHelperActionType
 		UMETA(DisplayName = "Unsupported Helper Action Type")
 };

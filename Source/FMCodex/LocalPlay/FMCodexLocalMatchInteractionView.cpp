@@ -11,6 +11,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
 #include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
+#include "../CoreRules/MatchPlayTacticalPlayerAdvantageQuery.h"
 #include "../CoreRules/SkillRuleSnapshotQuery.h"
 #include "FMCodexPlayerOverall.h"
 #include "FMCodexPrototypeTeamContent.h"
@@ -754,10 +755,11 @@ namespace FMCodexLocalMatchInteractionView
 			View.InteractionCategory =
 				EFMCodexLocalMatchInteractionCategory::SelectSkill;
 			View.ExpectedActingPlayer = Attacker;
-			View.bCanDecline = true;
 			const auto Availability =
 				FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
 					State, Sequence, Attacker, SkillRuleSet);
+			View.bCanDecline = Availability.bQuerySucceeded
+				&& Availability.bCanSelectAnySkill;
 			for (const auto& Candidate : Availability.Candidates)
 			{
 				if (!Candidate.LegalityResult.bIsLegal)
@@ -878,6 +880,15 @@ namespace FMCodexLocalMatchInteractionView
 						EFMCodexLocalMatchSelectionFeedbackReason::
 							HelperMatchesMarker });
 				}
+				else if (Candidate.LegalityResult.ErrorCode ==
+					EMatchPlayCurrentAttackHelperSelectionErrorCode::
+						HelperNotInRunnerPhysicalArea)
+				{
+					View.SelectionFeedbackCandidates.Add({
+						Candidate.HelperCardId,
+						EFMCodexLocalMatchSelectionFeedbackReason::
+							HelperWrongPhysicalArea });
+				}
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
 				&& !Availability.bCanSelectAnyHelper;
@@ -981,6 +992,22 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 		? Result.PlayerBUsedAttackTurns + 1 : 0;
 	Result.AttackSequence = static_cast<int64>(
 		Result.PlayerAUsedAttackTurns + Result.PlayerBUsedAttackTurns + 1);
+	const FMatchPlayTacticalPlayerAdvantageResult TacticalBoardStatus =
+		FMatchPlayTacticalPlayerAdvantageQuery::EvaluateBoardStatus(Snapshot);
+	if (TacticalBoardStatus.bSuccess)
+	{
+		Result.bHasTacticalPlayerCounts = true;
+		Result.PlayerATacticalPlayerCount =
+			TacticalBoardStatus.AttackingPlayer
+				== EInitialTurnOrderPlayer::PlayerA
+					? TacticalBoardStatus.AttackerTacticalPlayerCount
+					: TacticalBoardStatus.DefenderTacticalPlayerCount;
+		Result.PlayerBTacticalPlayerCount =
+			TacticalBoardStatus.AttackingPlayer
+				== EInitialTurnOrderPlayer::PlayerB
+					? TacticalBoardStatus.AttackerTacticalPlayerCount
+					: TacticalBoardStatus.DefenderTacticalPlayerCount;
+	}
 	BuildCardRosters(Snapshot, SkillRuleSet, Result);
 	BuildPitchRegions(Snapshot, SkillRuleSet, Result);
 

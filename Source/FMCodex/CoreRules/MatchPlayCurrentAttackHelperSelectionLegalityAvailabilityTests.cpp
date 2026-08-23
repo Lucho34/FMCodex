@@ -67,6 +67,8 @@ bool FHelperLegalityFailuresTest::RunTest(const FString& Parameters)
 		E::HelperIsGoalkeeper);
 	Expect(TEXT("Marker conflict"), HelperFixtures::MarkerId,
 		E::HelperMatchesMarker);
+	Expect(TEXT("Wrong physical half"), HelperFixtures::WrongHalfHelperId,
+		E::HelperNotInRunnerPhysicalArea);
 
 	FMatchPlayState CrossSide = HelperFixtures::MakeState();
 	CrossSide.CurrentAttack.DeploymentPlacements.Add(
@@ -83,6 +85,71 @@ bool FHelperLegalityFailuresTest::RunTest(const FString& Parameters)
 			::Evaluate(CrossSide, HelperFixtures::MakeRequest());
 	TestTrue(TEXT("Cross-side same CardId allowed"),
 		CrossSideResult.bSuccess);
+	return true;
+}
+
+HELPER_QUERY_TEST(FHelperPhysicalHalfSymmetryTest,
+	"RunnerPhysicalHalfSymmetry")
+
+bool FHelperPhysicalHalfSymmetryTest::RunTest(
+	const FString& Parameters)
+{
+	using E = EMatchPlayCurrentAttackHelperSelectionErrorCode;
+	for (const EInitialTurnOrderPlayer Attacker : {
+		EInitialTurnOrderPlayer::PlayerA,
+		EInitialTurnOrderPlayer::PlayerB})
+	{
+		const EInitialTurnOrderPlayer Defender =
+			HelperFixtures::GetDefender(Attacker);
+		const FMatchPlayState State = HelperFixtures::MakeState(
+			ESkillRuleType::PassControl,
+			Attacker);
+		const auto SameHalf =
+			FMatchPlayCurrentAttackHelperSelectionLegalityEvaluator::Evaluate(
+				State,
+				HelperFixtures::MakeRequest(
+					HelperFixtures::HelperId,
+					Defender));
+		const auto WrongHalf =
+			FMatchPlayCurrentAttackHelperSelectionLegalityEvaluator::Evaluate(
+				State,
+				HelperFixtures::MakeRequest(
+					HelperFixtures::WrongHalfHelperId,
+					Defender));
+		TestTrue(TEXT("Same shared physical half is legal"),
+			SameHalf.bSuccess
+				&& SameHalf.PhysicalAreaMatchResult.bSuccess
+				&& SameHalf.PhysicalAreaMatchResult.bSamePhysicalArea);
+		TestTrue(TEXT("Opposite shared physical half is rejected"),
+			!WrongHalf.bSuccess
+				&& WrongHalf.ErrorCode == E::HelperNotInRunnerPhysicalArea
+				&& WrongHalf.PhysicalAreaMatchResult.bSuccess
+				&& !WrongHalf.PhysicalAreaMatchResult.bSamePhysicalArea);
+
+		const auto Availability =
+			FMatchPlayCurrentAttackHelperSelectionAvailability::Query(
+				State,
+				HelperFixtures::ValidAttackSequence,
+				Defender);
+		TestTrue(TEXT("Availability retains same-half Helper as legal"),
+			Availability.bQuerySucceeded
+				&& Availability.bCanSelectAnyHelper
+				&& Availability.Candidates.ContainsByPredicate(
+					[](const auto& Candidate)
+					{
+						return Candidate.HelperCardId == HelperFixtures::HelperId
+							&& Candidate.LegalityResult.bSuccess;
+					}));
+		TestTrue(TEXT("Availability retains wrong-half diagnostic"),
+			Availability.Candidates.ContainsByPredicate(
+				[](const auto& Candidate)
+				{
+					return Candidate.HelperCardId
+							== HelperFixtures::WrongHalfHelperId
+						&& Candidate.LegalityResult.ErrorCode
+							== E::HelperNotInRunnerPhysicalArea;
+				}));
+	}
 	return true;
 }
 
@@ -106,18 +173,21 @@ bool FHelperAvailabilitySemanticsTest::RunTest(
 	TestTrue(TEXT("Availability succeeds"), First.bQuerySucceeded);
 	TestTrue(TEXT("Has legal Helper"), First.bCanSelectAnyHelper);
 	TestEqual(TEXT("All defender placements retained"),
-		First.Candidates.Num(), 4);
-	if (First.Candidates.Num() == 4)
+		First.Candidates.Num(), 5);
+	if (First.Candidates.Num() == 5)
 	{
 		TestEqual(TEXT("Marker first"),
 			First.Candidates[0].HelperCardId, HelperFixtures::MarkerId);
 		TestEqual(TEXT("Legal Helper second"),
 			First.Candidates[1].HelperCardId, HelperFixtures::HelperId);
-		TestEqual(TEXT("GK third"),
+		TestEqual(TEXT("Wrong-half third"),
 			First.Candidates[2].HelperCardId,
-			HelperFixtures::GoalkeeperId);
-		TestEqual(TEXT("Missing snapshot fourth"),
+			HelperFixtures::WrongHalfHelperId);
+		TestEqual(TEXT("GK fourth"),
 			First.Candidates[3].HelperCardId,
+			HelperFixtures::GoalkeeperId);
+		TestEqual(TEXT("Missing snapshot fifth"),
+			First.Candidates[4].HelperCardId,
 			HelperFixtures::MissingSnapshotId);
 		TestEqual(TEXT("Marker diagnostic"),
 			First.Candidates[0].LegalityResult.ErrorCode,
@@ -125,12 +195,16 @@ bool FHelperAvailabilitySemanticsTest::RunTest(
 				::HelperMatchesMarker);
 		TestTrue(TEXT("Legal candidate retained"),
 			First.Candidates[1].LegalityResult.bSuccess);
-		TestEqual(TEXT("GK diagnostic"),
+		TestEqual(TEXT("Wrong-half diagnostic"),
 			First.Candidates[2].LegalityResult.ErrorCode,
+			EMatchPlayCurrentAttackHelperSelectionErrorCode
+				::HelperNotInRunnerPhysicalArea);
+		TestEqual(TEXT("GK diagnostic"),
+			First.Candidates[3].LegalityResult.ErrorCode,
 			EMatchPlayCurrentAttackHelperSelectionErrorCode
 				::HelperIsGoalkeeper);
 		TestEqual(TEXT("Missing diagnostic"),
-			First.Candidates[3].LegalityResult.ErrorCode,
+			First.Candidates[4].LegalityResult.ErrorCode,
 			EMatchPlayCurrentAttackHelperSelectionErrorCode
 				::HelperSnapshotQueryFailed);
 	}
@@ -200,7 +274,7 @@ bool FHelperAvailabilityZeroAndGlobalFailureTest::RunTest(
 	TestTrue(TEXT("Zero legal query succeeds"), Zero.bQuerySucceeded);
 	TestFalse(TEXT("Zero legal flag"), Zero.bCanSelectAnyHelper);
 	TestEqual(TEXT("Illegal candidates retained"),
-		Zero.Candidates.Num(), 3);
+		Zero.Candidates.Num(), 4);
 
 	FMatchPlayState Corrupt = HelperFixtures::MakeState();
 	Corrupt.CurrentAttack.DeploymentPlacements[0].SlotId = NAME_None;

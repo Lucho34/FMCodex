@@ -180,6 +180,8 @@ namespace FMCodexLocalMatchUMGPresentation
 			return EFMCodexUMGSelectionFeedbackReason::HelperIsGoalkeeper;
 		case EFMCodexLocalMatchSelectionFeedbackReason::HelperMatchesMarker:
 			return EFMCodexUMGSelectionFeedbackReason::HelperMatchesMarker;
+		case EFMCodexLocalMatchSelectionFeedbackReason::HelperWrongPhysicalArea:
+			return EFMCodexUMGSelectionFeedbackReason::HelperWrongPhysicalArea;
 		default:
 			return EFMCodexUMGSelectionFeedbackReason::None;
 		}
@@ -204,6 +206,8 @@ namespace FMCodexLocalMatchUMGPresentation
 			return TEXT("HelperIsGoalkeeper");
 		case EFMCodexUMGSelectionFeedbackReason::HelperMatchesMarker:
 			return TEXT("HelperMatchesMarker");
+		case EFMCodexUMGSelectionFeedbackReason::HelperWrongPhysicalArea:
+			return TEXT("HelperWrongPhysicalArea");
 		default:
 			return FString();
 		}
@@ -434,7 +438,9 @@ namespace FMCodexLocalMatchUMGPresentation
 		case EFMCodexLocalMatchInteractionCategory::SelectMarker:
 			return TEXT("RESOLVE NO LEGAL MARKER");
 		case EFMCodexLocalMatchInteractionCategory::SelectSkill:
-			return TEXT("RESOLVE NO LEGAL SKILL");
+			// Player-facing semantics are identical to voluntary tactical
+			// decline; only the typed authoritative entry point differs.
+			return TEXT("DECLINE SKILL");
 		case EFMCodexLocalMatchInteractionCategory::SelectRunner:
 			return TEXT("RESOLVE NO LEGAL RUNNER");
 		case EFMCodexLocalMatchInteractionCategory::SelectHelper:
@@ -499,6 +505,45 @@ namespace FMCodexLocalMatchUMGPresentation
 			FindCardView(InteractionView, Side, CardId);
 		return FFMCodexPlayerUIPresentationText::InMatchShortPlayerName(
 			CardId, Card == nullptr ? FString() : Card->DisplayLabel).ToString();
+	}
+
+	const FMatchPlayResolutionParticipantFact* FindParticipant(
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts,
+		const EMatchPlayResolutionParticipantRole Role)
+	{
+		return Facts.Participants.FindByPredicate(
+			[Role](const FMatchPlayResolutionParticipantFact& Participant)
+			{
+				return Participant.Role == Role;
+			});
+	}
+
+	FString ParticipantName(
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts,
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		const EMatchPlayResolutionParticipantRole Role)
+	{
+		const FMatchPlayResolutionParticipantFact* Participant =
+			FindParticipant(Facts, Role);
+		return Participant == nullptr ? FString() : PlayerFacingName(
+			InteractionView, Participant->Side, Participant->CardId);
+	}
+
+	bool StableCrossNarrativeChoosesHelper(
+		const int64 AttackSequence,
+		const FName ContestId)
+	{
+		// FNV-1a over immutable ASCII identity. This is presentation-only and
+		// never touches gameplay/session RNG.
+		const FString Identity = FString::Printf(
+			TEXT("%lld|%s"), AttackSequence, *ContestId.ToString());
+		uint32 Hash = 2166136261u;
+		for (const TCHAR Character : Identity)
+		{
+			Hash ^= static_cast<uint32>(Character);
+			Hash *= 16777619u;
+		}
+		return (Hash & 1u) != 0u;
 	}
 
 	void AddFormulaParticipant(
@@ -742,6 +787,75 @@ namespace FMCodexLocalMatchUMGPresentation
 			: !bDefenseResolved
 				? TEXT("等待防守方掷点")
 				: TEXT("双方掷点已完成");
+		const bool bNarrativeReady = bAttackResolved && bDefenseResolved
+			&& Contest->bHasResolvedFormula
+			&& Contest->ResolvedResult.Winner != EFormulaWinner::None
+			&& Contest->ResolvedResult.bAttackEnded
+			&& !Contest->ResolvedResult.bContinueResolution
+			&& InteractionView.bCrossFormulaComplete
+			&& InteractionView.bCrossTerminalActionAvailable
+			&& bCanContinue;
+		if (bNarrativeReady)
+		{
+			Result.bNarrativeAvailable = true;
+			Result.bNarrativeAttackSuccess =
+				Contest->ResolvedResult.Winner == EFormulaWinner::Attacker;
+			const FString RouteLabel = bCrossHigh
+				? TEXT("高球传中") : TEXT("低球传中");
+			Result.ResultSubtitle = FString::Printf(
+				TEXT("%s · %s"),
+				*RouteLabel,
+				Result.bNarrativeAttackSuccess
+					? TEXT("进攻成功") : TEXT("防守成功"));
+			const FString CarrierName = ParticipantName(
+				Facts, InteractionView,
+				EMatchPlayResolutionParticipantRole::Carrier);
+			const FString RunnerName = ParticipantName(
+				Facts, InteractionView,
+				EMatchPlayResolutionParticipantRole::Runner);
+			if (Result.bNarrativeAttackSuccess)
+			{
+				Result.NarrativeHeadline =
+					!CarrierName.IsEmpty() && !RunnerName.IsEmpty()
+						? FString::Printf(TEXT("%s传中，%s破门！"),
+							*CarrierName, *RunnerName)
+						: FString(TEXT("传中进攻成功"));
+			}
+			else
+			{
+				const FString MarkerName = ParticipantName(
+					Facts, InteractionView,
+					EMatchPlayResolutionParticipantRole::Marker);
+				const FString HelperName = ParticipantName(
+					Facts, InteractionView,
+					EMatchPlayResolutionParticipantRole::Helper);
+				const bool bHasMarker = !MarkerName.IsEmpty();
+				const bool bHasHelper = !HelperName.IsEmpty();
+				const bool bUseHelper = bHasHelper
+					&& (!bHasMarker || StableCrossNarrativeChoosesHelper(
+						Facts.AttackSequence, Contest->ContestId));
+				if (bUseHelper && !RunnerName.IsEmpty())
+				{
+					Result.DefensiveNarrativePerformer =
+						EFMCodexUMGCrossDefensiveNarrativePerformer::Helper;
+					Result.NarrativeHeadline = FString::Printf(
+						TEXT("%s抢点被%s破坏"), *RunnerName, *HelperName);
+				}
+				else if (bHasMarker && !CarrierName.IsEmpty())
+				{
+					Result.DefensiveNarrativePerformer =
+						EFMCodexUMGCrossDefensiveNarrativePerformer::Marker;
+					Result.NarrativeHeadline = FString::Printf(
+						TEXT("%s传中被%s破坏"), *CarrierName, *MarkerName);
+				}
+				else
+				{
+					Result.NarrativeHeadline = TEXT("传中被防守方破坏");
+				}
+			}
+			Result.ContestLabel = Result.NarrativeHeadline;
+			Result.StatusLabel = Result.ResultSubtitle;
+		}
 		Result.bAttackRowActive = !bAttackResolved;
 		Result.bDefenseRowActive =
 			bAttackResolved && !bDefenseResolved;
@@ -981,6 +1095,22 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		false,
 		Result.Header.RightPlayerLabel,
 		Result.OpponentRack);
+	Result.LocalRack.bHasTacticalPlayerCount =
+		InteractionView.bHasTacticalPlayerCounts;
+	Result.LocalRack.TacticalPlayerCount =
+		LocalViewerSide == EInitialTurnOrderPlayer::PlayerA
+			? InteractionView.PlayerATacticalPlayerCount
+			: InteractionView.PlayerBTacticalPlayerCount;
+	Result.LocalRack.TacticalPlayerCountLabel = FString::Printf(
+		TEXT("战术球员 ×%d"), Result.LocalRack.TacticalPlayerCount);
+	Result.OpponentRack.bHasTacticalPlayerCount =
+		InteractionView.bHasTacticalPlayerCounts;
+	Result.OpponentRack.TacticalPlayerCount =
+		OpponentSide == EInitialTurnOrderPlayer::PlayerA
+			? InteractionView.PlayerATacticalPlayerCount
+			: InteractionView.PlayerBTacticalPlayerCount;
+	Result.OpponentRack.TacticalPlayerCountLabel = FString::Printf(
+		TEXT("战术球员 ×%d"), Result.OpponentRack.TacticalPlayerCount);
 
 	for (const EMatchPlayNeutralSlotSide VisualSide : {
 		PhysicalSide(LocalViewerSide), PhysicalSide(OpponentSide) })
@@ -1144,15 +1274,17 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Interaction.bCanDecline = InteractionView.bCanDecline;
 	Result.Interaction.bCanResolveNoLegal =
 		InteractionView.bCanResolveNoLegalChoice;
+	Result.Interaction.bPrimaryActionOwnedByInlineFormula =
+		InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance
+		&& InteractionView.bCrossTerminalActionAvailable;
 	Result.Interaction.bCanContinue =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::ContinueResolution
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance;
+			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense;
 	Result.Interaction.PrimaryActionLabel =
 		Result.Interaction.bCanStartNewMatch ? TEXT("START LOCAL MATCH")
 		: Result.Interaction.bCanRollTacticalPoints
@@ -1290,10 +1422,13 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		ResolutionFeedback.ContinuationSummary;
 	Result.Resolution.TerminalLabel = ResolutionFeedback.TerminalSummary;
 	Result.Resolution.ErrorLabel = ResolutionFeedback.ErrorMessage;
+	const bool bInlineFormulaCanContinue =
+		Result.Interaction.bCanContinue
+		|| Result.Interaction.bPrimaryActionOwnedByInlineFormula;
 	Result.InlineFormula = BuildInlineFormulaSurface(
 		Result.Resolution.FormulaFacts,
 		InteractionView,
-		Result.Interaction.bCanContinue,
+		bInlineFormulaCanContinue,
 		!Result.Resolution.bRejected
 			&& InteractionView.bCurrentAttackActive);
 	// Once Cross High has been selected, its route/formula progression stays on

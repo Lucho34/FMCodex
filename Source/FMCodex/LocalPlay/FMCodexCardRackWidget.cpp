@@ -127,11 +127,32 @@ void UFMCodexCardRackWidget::BuildWidgetTree()
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("PersistentCardRackHierarchy"));
 	Frame->AddChild(Body);
+	UHorizontalBox* HeadingRow = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("CardRackHeadingRow"));
 	RackHeading = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("CardRackHeading"));
 	RackHeading->SetJustification(ETextJustify::Center);
 	Style.ApplyText(*RackHeading, EFMCodexPlayerUITextRole::SectionHeading);
-	Body->AddChildToVerticalBox(RackHeading);
+	if (UHorizontalBoxSlot* HeadingSlot =
+		HeadingRow->AddChildToHorizontalBox(RackHeading))
+	{
+		HeadingSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		HeadingSlot->SetHorizontalAlignment(HAlign_Right);
+		HeadingSlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
+	}
+	TacticalPlayerCountText = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(), TEXT("TacticalPlayerCountStatus"));
+	TacticalPlayerCountText->SetJustification(ETextJustify::Left);
+	Style.ApplyText(
+		*TacticalPlayerCountText, EFMCodexPlayerUITextRole::Secondary);
+	if (UHorizontalBoxSlot* CountSlot =
+		HeadingRow->AddChildToHorizontalBox(TacticalPlayerCountText))
+	{
+		CountSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		CountSlot->SetHorizontalAlignment(HAlign_Left);
+		CountSlot->SetVerticalAlignment(VAlign_Center);
+	}
+	Body->AddChildToVerticalBox(HeadingRow);
 	RackGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(
 		UUniformGridPanel::StaticClass(), TEXT("StableTwoByTenCardRackGrid"));
 	RackGrid->SetSlotPadding(FMargin(6.0f, 4.0f));
@@ -150,6 +171,15 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 	}
 	RackHeading->SetText(FFMCodexPlayerUIPresentationText::RackHeading(
 		Presentation.SideLabel, Presentation.bLocalRack));
+	if (TacticalPlayerCountText != nullptr)
+	{
+		TacticalPlayerCountText->SetText(FText::FromString(
+			Presentation.TacticalPlayerCountLabel));
+		TacticalPlayerCountText->SetVisibility(
+			Presentation.bHasTacticalPlayerCount
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
+	}
 	RackGrid->ClearChildren();
 	RenderedCardWidgets.Reset();
 	RenderedCellCount = 0;

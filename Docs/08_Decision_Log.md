@@ -532,6 +532,24 @@
 - 完成边界：双掷点完成后不自动推进，Pitch 内联层保留公式结果与 Role Tag，并只显示 `下一回合`。该 CTA 调用 `ApplyCrossTerminalResolution`；它用已持久化的路线和比较 D6重建/应用同一结果，消费零 RNG，成功后才清除 CurrentAttack、增加 UsedAttackCount、换攻并清除角色标签。
 - 范围：保留 participant-first、单动作路线、Header/Pitch/Rack/Card 几何及现有视觉边界；不新增 narrative、随机人物文案、音效、动画、commentary、cinematic 或其他战术 rollout。
 
+### CD-050 - Cross Result Narrative, Board Tactical Count and Single CTA Ownership
+
+- 日期：2026-08-23
+- 结果真相：完成叙事只消费 `FormulaContest.ResolvedResult.Winner` 及权威 Carrier/Runner/Marker/Helper facts，不比较可见 FinalValue，因此平局等语义继续属于 FormulaResolver。名称复用现有球员显示名投影；不安全时使用中文通用回退，不暴露 CardId/PlayerKey。
+- 防守表现者：只有 Marker/Helper 时必选该角色；二者同时存在时，对 UTF-16 字符序列 `AttackSequence|ContestId` 执行 32-bit FNV-1a，最低位为 1 选 Helper，否则选 Marker。该表现规则不调用 D6 provider、`FRandomStream`、`RandRange` 或 Session RNG，同一 contest 在重建和不同视角中稳定。
+- 数量状态：新的 Board Status 入口复用 canonical Tactical Player 分类，但不要求 Resolution Session。查询相对 attacker/defender 人数先映射回 Player A/B，再映射为 Local/Opponent；两侧始终以 `战术球员 ×N` 表示原始人数，包括零。Formula 内 `战术球员 +N` 仍是独立权威修正。
+- CTA 所有权：完成 Cross 时 Inline Formula 保留唯一 `下一回合`，底部 Interaction Panel 折叠重复 primary surface。中央 CTA 仍调用 CD-049 的同一 typed `ApplyCrossTerminalResolution` 路径，不新增 handler、不在 UMG 换攻。
+- 范围：本决定仅取代 CD-049 中“不新增 narrative”的表现范围限制；手动双掷点、公式、参与者、RNG、terminal 与换攻边界均不变。不实现骰子轮播、音频、cinematic、其他战术叙事或全局视觉改版。
+
+### CD-051 - Tactical Abandon Routing and Helper Shared Physical Half
+
+- 日期：2026-08-23
+- 玩家战术语义：`不使用战术` 立即放弃并结束当前进攻，不加确认。存在合法战术时内部使用 `DeclineSkill`，零合法战术时使用 `ResolveNoLegalSkill`；InteractionView 保证两种 capability 互斥，Screen/Controller 统一 player intent 后调用正确 typed path。Authority 的双向互斥拒绝保持不变。
+- 完成语义：两条正确路径都复用 canonical attack completion，零 resolution RNG，恰好增加一次 UsedAttackCount，清除 CurrentAttack、deployments 与 Role Tags，换攻并让下一方进入 Tactical Point Roll readiness。Board Tactical Player count 因空棋盘回到 0/0；UMG 不独立执行这些效果。
+- Helper 规则：实际 Helper 必须与冻结 Runner 位于同一 shared physical half。CoreRules 在既有 Helper Participant Authority 成功后调用 `FMatchPlayDeploymentPhysicalAreaMatchQuery`，wrong-half 返回 `HelperNotInRunnerPhysicalArea`；Availability 保留诊断但不将其列为合法选项。该规则不读取屏幕 X、左右或相对区文案，也不引入 Tactical Match 门禁。
+- 反馈与优先级：InteractionView/UMG 将 wrong-half 有界映射为非模态 `协防球员必须与跑位球员位于同一半区`，点击不提交且保持选择。既有 participant 错误顺序不变，因此已冻结 Marker 仍优先为 `HelperMatchesMarker`；合法 same-half Helper 可在反馈后立即提交。
+- 范围：不修改 Cross narrative、High/Low 双掷点、公式、概率、Header/Pitch 设计，不实现 6.13.1.4.8C 骰子轮播、音频或 cinematic。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

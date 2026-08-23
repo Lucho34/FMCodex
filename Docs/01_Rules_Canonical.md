@@ -414,9 +414,11 @@ LocalPlay 的“选择盯人球员”交互同样采用场上直选，但结构�
 
 LocalPlay 的“选择跑位球员”交互采用场上直选，但 Runner 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackRunnerSelectionAvailability`。候选只能是当前进攻方唯一部署的非门将球员，且不得与已冻结 Carrier 相同；Pass Control 要求 Midfield 位置，Cross 要求 Attack 位置，Through Ball 还要求候选处于进攻方相对 Forward 区域。Presentation 只按稳定 `CardId/RelatedCardId` 投影权威合法候选，不得依据 Tactical Match、TP、属性或战术优劣重算。单击合法 Pitch Mini 立即提交既有 Runner 命令并进入下一权威步骤，Full Card hover 保留，无二次确认或取消；底部不显示 PlayerKey 候选按钮，但保留既有 DeclineRunner 行为，玩家文案为 `放弃跑位`。Helper 仍使用既有选择合同。
 
-LocalPlay 的“选择协防球员”交互采用场上直选。Helper 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackHelperSelectionAvailability`：候选属于当前防守方、已唯一部署、快照有效、非门将且不得与已冻结 Marker 相同；该阶段只存在于既有 Pass Control、Cross、Through Ball 参与者合同中，不新增半区、位置、TP、Tactical Match、属性或战术优劣门禁。单击合法 Pitch Mini 立即提交既有 Helper 命令，Full Card hover 保留，无确认或取消；底部不显示 PlayerKey 候选按钮，但保留 DeclineHelper，玩家文案为 `放弃协防`。Marker 被点作 Helper 时必须由 canonical `HelperMatchesMarker` 投影拒绝原因，显示既有非模态反馈而不改变权威状态。生产 Match Flow 中玩家可见 Skill 术语统一为 `战术`，稳定 SkillId 与内部 Skill 命名保持不变。
+LocalPlay 的“选择协防球员”交互采用场上直选。Helper 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackHelperSelectionAvailability`：候选属于当前防守方、已唯一部署、快照有效、非门将、不得与已冻结 Marker 相同，并且必须与已冻结 Runner 位于同一个 canonical shared physical half。半区关系复用 Marker↔Carrier 的 `FMatchPlayDeploymentPhysicalAreaMatchQuery`，不得比较屏幕左右、玩家相对区文字或坐标。该阶段只存在于既有 Pass Control、Cross、Through Ball 参与者合同中；位置类型、TP、Tactical Match、属性或战术优劣仍不构成额外门禁。单击合法 Pitch Mini 立即提交既有 Helper 命令，Full Card hover 保留，无确认或取消；底部不显示 PlayerKey 候选按钮，但保留 DeclineHelper，玩家文案为 `放弃协防`。Marker 被点作 Helper 时必须由 canonical `HelperMatchesMarker` 投影拒绝原因；其他条件成立但与 Runner 不同半区时使用 `HelperNotInRunnerPhysicalArea`，显示 `协防球员必须与跑位球员位于同一半区`，两者均只显示既有非模态反馈且不改变权威状态。生产 Match Flow 中玩家可见 Skill 术语统一为 `战术`，稳定 SkillId 与内部 Skill 命名保持不变。
 
 当前原型普通进攻的生产选择顺序统一为：持球球员 -> 盯人球员 -> 跑位球员 -> 协防球员阶段 -> 战术。该顺序不因当前合法战术候选属于单一动作族或同时包含传中、内切等多个动作族而改变。Marker 后 Authority 不提前写入 `SkillId` 或冻结 `ActionType`，而是写入参与者优先状态并进入 Runner；Runner 后必须进入 Helper resolution。协防球员仍为可选：该阶段可以选择合法 Helper，也可以沿既有 Decline/No-Legal 权威路径完成，不能硬编码为必须选择一名球员。三个 Helper 结果都完成后才进入战术选择。最终所选战术只消费其 canonical 参与者合同要求的角色；预先选择但与该战术无关的 Runner/Helper 不得生成公式贡献。选择顺序和公式参与者消费是两个独立规则，均不得由 UMG 推测。
+
+战术选择中的玩家动作 `不使用战术` 表示主动放弃并立即结束本次进攻，不增加确认、Ready 或额外结算步骤。内部 typed command 仍严格互斥：当前至少有一个合法战术时走 `DeclineSkill`，零合法战术时走 `ResolveNoLegalSkill`；两条路径都复用 canonical attack completion，恰好消费一次进攻机会、清除 CurrentAttack/部署/角色标签、完成换攻，并使下一进攻方进入手动掷战术点准备。玩家不需要理解这两个内部入口，正常操作不得显示 typed-command 建议或 COMMAND REJECTED。
 
 Resolution 表现只能读取权威 CurrentAttack Resolution Session 已接受的原始掷点和规则层生成的结构化公式事实。Initial Route 与 Post-route 的每个 D6 必须按语义、顺序、拥有方和公式 operand 关系保留；Presentation/UMG 不得重新掷骰、从 Final Value 反推 Raw Roll、解析日志字符串或重新选择属性/分支。公式事实必须在掷点前表达已知属性、倍率、固定修正、待定 D6=`?` 和待定 Final Value，在掷点后使用同一逻辑公式身份填入已接受 Raw Roll，并投影权威 Resolver Input、Final Value、比较结果与平局语义。分支选择、结果表和算术比较 D6 是不同语义，不得统一伪装成 `+ D6` 公式项。
 
@@ -576,6 +578,7 @@ B. 直射死角：判定公式。
 - 掷点的权威语义顺序固定为：路线 D6、进攻方比较 D6、防守方比较 D6。错误阵营、错误阶段或重复请求均被拒绝，不消费 D6，也不改变权威状态。
 - High 使用 `ResolveCrossHighAttackRoll / ResolveCrossHighDefenseRoll`；Low 使用 `ResolveCrossLowAttackRoll / ResolveCrossLowDefenseRoll`。旧 `ResolveCrossPostRoutePlan` 不得作为任一分支的正常生产入口。
 - 只有双方比较点数均已取得后，才完成对应的既有终结公式比较并显示 `下一回合`。该 High/Low 算术比较就是 Cross 的最终终结比较，不再创建第二次玩家可见的 finishing contest。
+- 完成态的足球结果文案只消费已解析的 Formula Winner 与权威 Carrier/Runner/Marker/Helper 身份，不比较 UMG 数值。进攻成功为 `{Carrier}传中，{Runner}破门！`；防守成功按稳定表现角色为 `{Carrier}传中被{Marker}破坏` 或 `{Runner}抢点被{Helper}破坏`。公式继续可见，副标题保留实际高/低球路线与进攻/防守成功语义。
 - `下一回合` 调用 `ApplyCrossTerminalResolution`：它只按已持久化的路线和两枚比较 D6应用终结结果，消费零 RNG；成功后才完成 CurrentAttack、增加本方已用进攻次数并换攻。CTA 执行前球场角色标签保持，执行后随攻击状态一同清除。
 
 门将高空球 × 0.5 在盯人球员 / 协防球员平均值计算完成后独立相加，不进入该平均值的分子或分母。

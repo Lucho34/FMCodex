@@ -818,6 +818,36 @@ void AFMCodexLocalMatchPlayerController::SubmitHelper(const FName CardId)
 	RecordCommandResult(TEXT("SubmitHelper"), Host->SubmitHelper(Request));
 }
 
+void AFMCodexLocalMatchPlayerController::AbandonCurrentTacticalSelection()
+{
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::SelectSkill)
+	{
+		RecordLocalFailure(
+			TEXT("AbandonTacticalSelection"),
+			TEXT("The current authoritative stage is not tactical selection."));
+		return;
+	}
+
+	if (InteractionView.bCanDecline
+		&& !InteractionView.bCanResolveNoLegalChoice)
+	{
+		DeclineCurrentSelection();
+		return;
+	}
+
+	if (!InteractionView.bCanDecline
+		&& InteractionView.bCanResolveNoLegalChoice)
+	{
+		ResolveNoLegalCurrentSelection();
+		return;
+	}
+
+	RecordLocalFailure(
+		TEXT("AbandonTacticalSelection"),
+		TEXT("Tactical abandon requires exactly one projected authoritative path."));
+}
+
 void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 {
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
