@@ -452,6 +452,240 @@ namespace FMCodexLocalMatchUMGPresentation
 			return TEXT("ACCEPTED DICE");
 		}
 	}
+
+	FString CompactNumber(const float Value)
+	{
+		FString Result = FString::Printf(TEXT("%.3f"), Value);
+		while (Result.EndsWith(TEXT("0")))
+		{
+			Result.LeftChopInline(1);
+		}
+		if (Result.EndsWith(TEXT(".")))
+		{
+			Result.LeftChopInline(1);
+		}
+		return Result == TEXT("-0") ? TEXT("0") : Result;
+	}
+
+	const FFMCodexLocalMatchCardView* FindCardView(
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		const EInitialTurnOrderPlayer Side,
+		const FName CardId)
+	{
+		const TArray<FFMCodexLocalMatchCardView>* Roster =
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? &InteractionView.PlayerACardRoster
+				: Side == EInitialTurnOrderPlayer::PlayerB
+					? &InteractionView.PlayerBCardRoster : nullptr;
+		return Roster == nullptr ? nullptr : Roster->FindByPredicate(
+			[CardId](const FFMCodexLocalMatchCardView& Card)
+			{
+				return Card.CardId == CardId;
+			});
+	}
+
+	FString PlayerFacingName(
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		const EInitialTurnOrderPlayer Side,
+		const FName CardId)
+	{
+		const FFMCodexLocalMatchCardView* Card =
+			FindCardView(InteractionView, Side, CardId);
+		return FFMCodexPlayerUIPresentationText::InMatchShortPlayerName(
+			CardId, Card == nullptr ? FString() : Card->DisplayLabel).ToString();
+	}
+
+	void AddFormulaParticipant(
+		FFMCodexUMGInlineFormulaRowViewModel& OutRow,
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		const FMatchPlayResolutionFormulaTermFact& Term)
+	{
+		if (Term.CardId.IsNone()
+			|| Term.ParticipantRole
+				== EMatchPlayResolutionParticipantRole::None
+			|| OutRow.Participants.ContainsByPredicate(
+				[&Term, &InteractionView](
+					const FFMCodexUMGInlineFormulaParticipantViewModel& Existing)
+				{
+					return Existing.RoleLabel
+						== FFMCodexPlayerUIPresentationText
+							::ResolutionParticipantRole(Term.ParticipantRole)
+								.ToString()
+						&& Existing.PlayerName
+							== PlayerFacingName(
+								InteractionView, Term.Side, Term.CardId);
+				}))
+		{
+			return;
+		}
+		const FString Name = PlayerFacingName(
+			InteractionView, Term.Side, Term.CardId);
+		const FString Role = FFMCodexPlayerUIPresentationText
+			::ResolutionParticipantRole(Term.ParticipantRole).ToString();
+		if (!Name.IsEmpty() && !Role.IsEmpty())
+		{
+			OutRow.Participants.Add({ Role, Name });
+		}
+	}
+
+	FFMCodexUMGInlineFormulaRowViewModel BuildFormulaRow(
+		const FMatchPlayResolutionFormulaRowFact& Row,
+		const FString& SideLabel,
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts,
+		const FFMCodexLocalMatchInteractionView& InteractionView)
+	{
+		using EFactTerm = EMatchPlayResolutionFormulaTermKind;
+		FFMCodexUMGInlineFormulaRowViewModel Result;
+		Result.SideLabel = SideLabel;
+		Result.bFinalValueResolved = Row.bFinalValueResolved;
+		Result.FinalValue = Row.FinalValue;
+		Result.FinalValueLabel = Row.bFinalValueResolved
+			? CompactNumber(Row.FinalValue) : TEXT("?");
+
+		for (const FMatchPlayResolutionFormulaTermFact& Term : Row.Terms)
+		{
+			FFMCodexUMGInlineFormulaTermViewModel View;
+			View.SourceValue = Term.SourceValue;
+			View.Multiplier = Term.Multiplier;
+			View.Contribution = Term.Contribution;
+			View.RollSequenceIndex = Term.RollSequenceIndex;
+			if (Term.Kind == EFactTerm::RawRoll)
+			{
+				View.Kind = EFMCodexUMGInlineFormulaTermKind::RawRoll;
+				const FMatchPlayResolutionRollFact* Roll =
+					Facts.Rolls.FindByPredicate(
+						[&Term](const FMatchPlayResolutionRollFact& Candidate)
+						{
+							return Candidate.SequenceIndex
+								== Term.RollSequenceIndex
+								&& Candidate.Semantics
+									== EMatchPlayResolutionRollSemantics
+										::ArithmeticContest;
+						});
+				View.bResolved = Roll != nullptr && Roll->bResolved;
+				View.RawD6 = View.bResolved ? Roll->RawD6 : 0;
+				View.bNextPendingRoll = !View.bResolved
+					&& Facts.bHasPendingRoll
+					&& Facts.NextPendingRollSequenceIndex
+						== Term.RollSequenceIndex;
+				View.DisplayLabel = View.bResolved
+					? FString::Printf(TEXT("D6 %d"), View.RawD6)
+					: TEXT("D6 ?");
+			}
+			else if (Term.Kind == EFactTerm::FixedModifier)
+			{
+				View.Kind = EFMCodexUMGInlineFormulaTermKind::FixedModifier;
+				View.bResolved = Term.bResolved;
+				View.DisplayLabel = FString::Printf(
+					TEXT("%s%s"), Term.Contribution >= 0.0f ? TEXT("+") : TEXT(""),
+					*CompactNumber(Term.Contribution));
+			}
+			else if (Term.Kind == EFactTerm::Attribute
+				|| Term.Kind == EFactTerm::GoalkeeperContribution)
+			{
+				View.Kind = EFMCodexUMGInlineFormulaTermKind::Attribute;
+				View.bResolved = Term.bResolved;
+				View.AttributeLabel = FFMCodexPlayerUIPresentationText
+					::ResolutionAttribute(Term.Attribute).ToString();
+				if (View.AttributeLabel.IsEmpty())
+				{
+					continue;
+				}
+				View.DisplayLabel = FMath::IsNearlyEqual(Term.Multiplier, 1.0f)
+					? FString::Printf(TEXT("%s %s"), *View.AttributeLabel,
+						*CompactNumber(Term.SourceValue))
+					: FString::Printf(TEXT("%s %s \u00D7%s"), *View.AttributeLabel,
+						*CompactNumber(Term.SourceValue),
+						*CompactNumber(Term.Multiplier));
+				AddFormulaParticipant(Result, InteractionView, Term);
+			}
+			else
+			{
+				continue;
+			}
+			Result.Terms.Add(MoveTemp(View));
+		}
+		return Result;
+	}
+
+	FFMCodexUMGInlineFormulaSurfaceViewModel BuildInlineFormulaSurface(
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts,
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		const bool bCanContinue,
+		const bool bAcceptedResolutionState)
+	{
+		FFMCodexUMGInlineFormulaSurfaceViewModel Result;
+		const bool bCrossHigh = bAcceptedResolutionState
+			&& Facts.bSuccess && Facts.bHasFacts
+			&& Facts.ActionType == ESkillRuleType::Cross
+			&& Facts.bHasActualBranch
+			&& Facts.ActualBranch.ActionType == ESkillRuleType::Cross
+			&& Facts.ActualBranch.Cross == EMatchPlayCrossActualBranch::High;
+		if (!bCrossHigh)
+		{
+			return Result;
+		}
+		const FMatchPlayResolutionFormulaContestFact* Contest =
+			Facts.FormulaContests.FindByPredicate(
+				[](const FMatchPlayResolutionFormulaContestFact& Candidate)
+				{
+					return Candidate.ContestId == TEXT("Cross.High");
+				});
+		if (Contest == nullptr)
+		{
+			return Result;
+		}
+		auto RowHasArithmeticRoll = [&Facts](
+			const FMatchPlayResolutionFormulaRowFact& Row)
+		{
+			return Row.Terms.ContainsByPredicate(
+				[&Facts](const FMatchPlayResolutionFormulaTermFact& Term)
+				{
+					return Term.Kind
+						== EMatchPlayResolutionFormulaTermKind::RawRoll
+						&& Facts.Rolls.ContainsByPredicate(
+							[&Term](
+								const FMatchPlayResolutionRollFact& Roll)
+							{
+								return Roll.SequenceIndex
+									== Term.RollSequenceIndex
+									&& Roll.Semantics
+										== EMatchPlayResolutionRollSemantics
+											::ArithmeticContest;
+							});
+				});
+		};
+		if (!RowHasArithmeticRoll(Contest->AttackRow)
+			|| !RowHasArithmeticRoll(Contest->DefenseRow))
+		{
+			return Result;
+		}
+
+		Result.bVisible = true;
+		Result.bSuppressLegacyResolution = true;
+		Result.ContestLabel = FFMCodexPlayerUIPresentationText
+			::ResolutionContest(Contest->ContestId).ToString();
+		Result.AttackRow = BuildFormulaRow(
+			Contest->AttackRow,
+			FFMCodexPlayerUIPresentationText::ResolutionAttackRow().ToString(),
+			Facts,
+			InteractionView);
+		Result.DefenseRow = BuildFormulaRow(
+			Contest->DefenseRow,
+			FFMCodexPlayerUIPresentationText::ResolutionDefenseRow().ToString(),
+			Facts,
+			InteractionView);
+		const bool bResolved = Result.AttackRow.bFinalValueResolved
+			&& Result.DefenseRow.bFinalValueResolved;
+		Result.StatusLabel = (bResolved
+			? FFMCodexPlayerUIPresentationText::ResolutionResolved()
+			: FFMCodexPlayerUIPresentationText::ResolutionPending()).ToString();
+		Result.bCanContinue = bCanContinue;
+		Result.ContinueActionLabel = bCanContinue
+			? FFMCodexPlayerUIPresentationText::ContinueResolution().ToString()
+			: FString();
+		return Result;
+	}
 }
 
 void FFMCodexUMGDeploymentTargetProjector::ProjectSlot(
@@ -985,6 +1219,11 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		ResolutionFeedback.ContinuationSummary;
 	Result.Resolution.TerminalLabel = ResolutionFeedback.TerminalSummary;
 	Result.Resolution.ErrorLabel = ResolutionFeedback.ErrorMessage;
+	Result.InlineFormula = BuildInlineFormulaSurface(
+		Result.Resolution.FormulaFacts,
+		InteractionView,
+		Result.Interaction.bCanContinue,
+		!Result.Resolution.bRejected);
 
 	Result.DiagnosticLabel = DiagnosticMessage;
 	return Result;

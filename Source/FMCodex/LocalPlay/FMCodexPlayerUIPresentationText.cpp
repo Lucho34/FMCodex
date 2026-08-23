@@ -542,6 +542,85 @@ FText FFMCodexPlayerUIPresentationText::WaitingForTacticalPointRoll()
 	return LOCTEXT("WaitingForTacticalPointRoll", "\u7B49\u5F85\u63B7\u51FA\u6218\u672F\u70B9");
 }
 
+FText FFMCodexPlayerUIPresentationText::ResolutionContest(
+	const FName ContestId)
+{
+	if (ContestId == TEXT("Cross.High"))
+	{
+		return LOCTEXT("ResolutionCrossHigh", "\u9AD8\u7403\u4F20\u4E2D");
+	}
+	return FText::GetEmpty();
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionParticipantRole(
+	const EMatchPlayResolutionParticipantRole Role)
+{
+	switch (Role)
+	{
+	case EMatchPlayResolutionParticipantRole::Carrier:
+		return LOCTEXT("ResolutionRoleCarrier", "\u6301\u7403");
+	case EMatchPlayResolutionParticipantRole::Runner:
+		return LOCTEXT("ResolutionRoleRunner", "\u8DD1\u4F4D");
+	case EMatchPlayResolutionParticipantRole::Marker:
+		return LOCTEXT("ResolutionRoleMarker", "\u76EF\u4EBA");
+	case EMatchPlayResolutionParticipantRole::Helper:
+		return LOCTEXT("ResolutionRoleHelper", "\u534F\u9632");
+	case EMatchPlayResolutionParticipantRole::Goalkeeper:
+		return LOCTEXT("ResolutionRoleGoalkeeper", "\u95E8\u5C06");
+	default:
+		return FText::GetEmpty();
+	}
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionAttribute(
+	const EMatchPlayResolutionFormulaAttribute Attribute)
+{
+	using EAttribute = EMatchPlayResolutionFormulaAttribute;
+	switch (Attribute)
+	{
+	case EAttribute::Shooting: return AttributeLabel(TEXT("SHO"));
+	case EAttribute::Dribbling: return AttributeLabel(TEXT("DRI"));
+	case EAttribute::Passing: return AttributeLabel(TEXT("PAS"));
+	case EAttribute::OffBall: return AttributeLabel(TEXT("OFF"));
+	case EAttribute::Marking: return AttributeLabel(TEXT("MRK"));
+	case EAttribute::Tackling: return AttributeLabel(TEXT("TKL"));
+	case EAttribute::Speed: return AttributeLabel(TEXT("SPD"));
+	case EAttribute::Strength: return AttributeLabel(TEXT("STR"));
+	case EAttribute::LongShot: return AttributeLabel(TEXT("LS"));
+	case EAttribute::GoalkeeperHandling: return AttributeLabel(TEXT("HAN"));
+	case EAttribute::GoalkeeperPositioning: return AttributeLabel(TEXT("POS"));
+	case EAttribute::GoalkeeperReflex: return AttributeLabel(TEXT("REF"));
+	case EAttribute::GoalkeeperAerial: return AttributeLabel(TEXT("AER"));
+	case EAttribute::GoalkeeperOneOnOne: return AttributeLabel(TEXT("1V1"));
+	default: return FText::GetEmpty();
+	}
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionAttackRow()
+{
+	return LOCTEXT("ResolutionAttackRow", "\u8FDB\u653B");
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionDefenseRow()
+{
+	return LOCTEXT("ResolutionDefenseRow", "\u9632\u5B88");
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionPending()
+{
+	return LOCTEXT("ResolutionPending", "\u7B49\u5F85\u7ED3\u7B97");
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionResolved()
+{
+	return LOCTEXT("ResolutionResolved", "\u516C\u5F0F\u5DF2\u7ED3\u7B97");
+}
+
+FText FFMCodexPlayerUIPresentationText::ContinueResolution()
+{
+	return LOCTEXT("ContinueResolution", "\u7EE7\u7EED\u7ED3\u7B97");
+}
+
 FText FFMCodexPlayerUIPresentationText::BroadcastStatus(
 	const bool bMatchEnded,
 	const bool bAttackActive,

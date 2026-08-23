@@ -12700,8 +12700,10 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			&& !FactProjectionSource.Contains(TEXT("FRandomStream"))
 			&& !FactProjectionSource.Contains(TEXT("ResolutionFeedback"))
 			&& !UMGSource.Contains(TEXT("RandRange"))
+			&& !UMGSource.Contains(TEXT("RollD6("))
+			&& !UMGSource.Contains(TEXT("D6Provider"))
 			&& !UMGSource.Contains(TEXT("ResolveFormula("))
-			&& !UMGSource.Contains(TEXT("RawD6 =")));
+			&& !UMGSource.Contains(TEXT("FormulaResolver::")));
 
 	return true;
 }

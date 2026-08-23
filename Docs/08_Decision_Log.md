@@ -461,6 +461,17 @@
 - 公式覆盖：事实查询覆盖 Long Shot Direct/Dead Corner、Cut Inside Direct/Dead Corner、Cross High/Low、Pass Control 三推进、Through Ball Feet/BehindDefense P1/P2/AntiOffside/One-on-One Chip/Direct。具体矩阵见 `Docs/UI/Resolution_Formula_Fact_Audit.md`。
 - 边界：规则数值、roll order、条件性 roll、GK contribution、FormulaResolver、tie、branch 与 terminal outcome 不变。InteractionView/Feedback/UMG 只转发只读事实；本阶段不新增可见公式面板、骰子动画、叙事、声音或视觉改版。
 
+### CD-043 - Cross High Inline Resolution Formula Surface
+
+- 日期：2026-08-23
+- 生产激活门：首个可见 rollout 只接受成功且含事实的 `Cross.High` Formula Contest，并同时要求当前 action/actual branch 为 Cross High。Initial Route/BranchSelection 与 Cross Low、其他战术、单刀和 outcome-only D6 继续使用既有 Resolution Panel。
+- 展示合同：Presentation 把通用 Formula Fact 转成结构化 Contest、进攻/防守 Row、Participant 与 Term DTO。属性项保留本地化属性名、权威 `SourceValue`、`Multiplier` 和 `Contribution`；D6 项只读取对应 Roll Fact 的 `RawD6`；Row 结果只读取投影的 `FinalValue`。Widget 只布置这些字段，不求和、不反推、不解析公式字符串。
+- 身份与可选项：参与球员名来自既有 roster `DisplayLabel`（由 Prototype `PreferredDisplayName` 建立）并经集中 PlayerName 映射；Helper/GK 只在权威 Participant/Term 实际存在时显示，不生成零值或占位参与者。角色、战术、属性和 CTA 均为中文玩家文案。
+- Pending 语义：唯一最强 pending 提示来自 `NextPendingRollSequenceIndex` 与 term 的 `RollSequenceIndex` 对应关系。表现为静态、克制的暖色强调，不使用 Tactical Match mint，不动画、不闪烁、不产生装饰性点数。
+- 位置与 Overlay：Formula Surface 是中央 Pitch 容器内的居中紧凑浮层；Header、两侧 Rack、Pitch 上下文、Role Tag 与底部 Interaction Panel 保持可见。目标 Contest 激活时只抑制旧全屏 Resolution Overlay；目标激活前和所有未覆盖 Resolution 状态仍使用旧 Overlay。
+- 权威推进：Formula Surface 与底部 Interaction Panel 复用现有无参数 Continue intent，经 Screen 进入 `Controller::ContinueResolution` 的既有 typed route。本阶段不改变命令顺序。Cross post-route plan 当前一次权威命令写入 PrimaryAttack 与 PrimaryDefense 两枚 D6，所以生产流程没有人为拆出的“只完成攻击 D6”状态。
+- 范围：不修改公式、RNG、roll order、选人 Role Tag、Header、Pitch/lane/slot/Pitch Mini 几何或玩法；不加入骰子图形/动画/音效、叙事、终局 cinematic，也不扩展到其他 Formula Contest。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

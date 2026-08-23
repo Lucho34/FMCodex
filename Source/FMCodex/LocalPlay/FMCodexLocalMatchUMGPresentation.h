@@ -859,6 +859,148 @@ struct FMCODEX_API FFMCodexUMGResolutionViewModel
 	FString EmptyStateLabel = TEXT("Waiting for an authoritative result.");
 };
 
+UENUM(BlueprintType)
+enum class EFMCodexUMGInlineFormulaTermKind : uint8
+{
+	Attribute,
+	RawRoll,
+	FixedModifier
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGInlineFormulaParticipantViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString RoleLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString PlayerName;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGInlineFormulaTermViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	EFMCodexUMGInlineFormulaTermKind Kind =
+		EFMCodexUMGInlineFormulaTermKind::Attribute;
+
+	/** Complete player-facing text for this one structured operand. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString DisplayLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString AttributeLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	float SourceValue = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	float Multiplier = 1.0f;
+
+	/** Projected contribution retained for truth/audit; Widget does not sum it. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	float Contribution = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	int32 RollSequenceIndex = INDEX_NONE;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	int32 RawD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bResolved = false;
+
+	/** True only when this operand matches NextPendingRollSequenceIndex. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bNextPendingRoll = false;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGInlineFormulaRowViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString SideLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	TArray<FFMCodexUMGInlineFormulaParticipantViewModel> Participants;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	TArray<FFMCodexUMGInlineFormulaTermViewModel> Terms;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bFinalValueResolved = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	float FinalValue = 0.0f;
+
+	/** Presentation-formatted authoritative FinalValue, or "?". */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString FinalValueLabel = TEXT("?");
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bVisible = false;
+
+	/** Explicit screen-level replacement condition for the legacy overlay. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bSuppressLegacyResolution = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString ContestLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString StatusLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FFMCodexUMGInlineFormulaRowViewModel AttackRow;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FFMCodexUMGInlineFormulaRowViewModel DefenseRow;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bCanContinue = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString ContinueActionLabel;
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 {
@@ -884,6 +1026,9 @@ struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FFMCodexUMGResolutionViewModel Resolution;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
+	FFMCodexUMGInlineFormulaSurfaceViewModel InlineFormula;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FString DiagnosticLabel;

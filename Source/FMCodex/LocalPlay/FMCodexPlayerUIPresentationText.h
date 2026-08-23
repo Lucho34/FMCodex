@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 
+#include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
+
 /**
  * Bounded, presentation-only zh-CN terminology for player-card UMG.
  * Canonical gameplay values remain English and never depend on these labels.
@@ -42,6 +44,16 @@ public:
 	static FText CurrentAttackProgress(
 		const FString& PlayerLabel, int32 AttackIndex, int32 MaxAttackTurns);
 	static FText WaitingForTacticalPointRoll();
+	static FText ResolutionContest(FName ContestId);
+	static FText ResolutionParticipantRole(
+		EMatchPlayResolutionParticipantRole Role);
+	static FText ResolutionAttribute(
+		EMatchPlayResolutionFormulaAttribute Attribute);
+	static FText ResolutionAttackRow();
+	static FText ResolutionDefenseRow();
+	static FText ResolutionPending();
+	static FText ResolutionResolved();
+	static FText ContinueResolution();
 	static FText BroadcastStatus(bool bMatchEnded, bool bAttackActive,
 		const FString& MatchResultLabel);
 

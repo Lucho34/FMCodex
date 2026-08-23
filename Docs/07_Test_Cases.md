@@ -420,3 +420,17 @@
 - 重复构建 InteractionView、ResolutionFeedback 与 UMG DTO 不调用任何 D6 provider、不改变权威 State、不增加 roll record，且结果逐字段确定。
 - terminal command 清除 CurrentAttack 后，本次 command 的 ResolutionFeedback 仍保留 terminal 前已解析的结构化公式与 Raw Roll facts，供后续表现使用。
 
+## Cross High 场内公式面板（Stage 6.13.1.4.7A）
+
+应验证：
+
+- 只有成功的 Cross High 算术 Contest 激活 Inline Formula Surface，并抑制旧全屏 Resolution Overlay；Cross Initial Route、Cross Low 及所有未覆盖路线仍使用旧 Overlay。
+- 面板位于中央 Pitch 容器的居中紧凑层，不改变 Pitch/lane/slot/Pitch Mini 几何。Header、两侧 Rack、Pitch 上下文、Role Tag 和底部 Continue 操作保持可见、可用。
+- 标题为 `高球传中`；两条结构行明确标为 `进攻 / 防守`。参与者使用 `持球 / 跑位 / 盯人 / 协防 / 门将` 与既有 PreferredDisplayName 投影，不显示 CardId、PlayerKey、FormulaType、TermId 或内部枚举名。
+- 属性项显示本地化属性、权威 SourceValue 与 Multiplier，例如 `传球 5 ×0.5`；固定项显示投影的 `+2`；Widget 不累加 Contribution，不从 Final Value 反推 Raw Roll。
+- unresolved Raw Roll 显示 `D6 ?`，且仅 `NextPendingRollSequenceIndex` 对应项使用静态暖色强调；resolved 项显示权威 `D6 N`。未解析行显示 `= ?`，解析行显示投影的紧凑 Final Value。
+- Helper 缺席时不显示协防参与者或 term；GK 未激活时不显示门将参与者或 term。存在时必须使用实际身份、实际属性、SourceValue、Multiplier 和 Contribution。
+- 重复构建 DTO、创建/刷新 Widget 不消费 RNG、不改变 State、不增加 Roll Record。继续操作复用现有 `Controller::ContinueResolution` typed route，不新增假 `掷骰` 命令、timer 或 autoplay。
+- Cross 当前 post-route plan 单次命令原子地写入 PrimaryAttack 与 PrimaryDefense D6；测试既要覆盖通用 DTO 可表达一枚 resolved/另一枚 pending，也要确认真实生产状态直接从双 pending 进入双 resolved/Final Value，不能为了视觉拆改 authority sequencing。
+- Formula resolve/terminal feedback可继续保留双行 Final Value；不得用旧全屏 Overlay 再覆盖目标公式，也不得加入结果叙事、动画或 cinematic。
+

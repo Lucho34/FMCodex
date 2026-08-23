@@ -1,6 +1,7 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexFullCardDiagnostics.h"
 #include "FMCodexHandMicroDiagnostics.h"
@@ -82,6 +83,8 @@ UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
 	MatchHeaderWidgetClass = UFMCodexMatchHeaderWidget::StaticClass();
 	PitchWidgetClass = UFMCodexPitchWidget::StaticClass();
 	InteractionPanelWidgetClass = UFMCodexInteractionPanelWidget::StaticClass();
+	InlineFormulaSurfaceWidgetClass =
+		UFMCodexInlineResolutionFormulaSurfaceWidget::StaticClass();
 	ResolutionPanelWidgetClass = UFMCodexResolutionPanelWidget::StaticClass();
 }
 
@@ -199,6 +202,18 @@ UFMCodexResolutionPanelWidget*
 UFMCodexLocalMatchScreenWidget::GetResolutionPanel() const
 {
 	return ResolutionPanel;
+}
+
+UFMCodexInlineResolutionFormulaSurfaceWidget*
+UFMCodexLocalMatchScreenWidget::GetInlineFormulaSurface() const
+{
+	return InlineFormulaSurface;
+}
+
+bool UFMCodexLocalMatchScreenWidget::IsLegacyResolutionOverlayVisible() const
+{
+	return ResolutionOverlay != nullptr
+		&& ResolutionOverlay->GetVisibility() != ESlateVisibility::Collapsed;
 }
 
 UFMCodexCardRackWidget*
@@ -912,7 +927,31 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this, &UFMCodexLocalMatchScreenWidget::HandleOnPitchSelectionRequested);
 	PitchWidget->OnSelectionFeedbackRequested.AddUObject(
 		this, &UFMCodexLocalMatchScreenWidget::HandleSelectionFeedbackRequested);
-	PitchRegion->AddChild(PitchWidget);
+	UOverlay* PitchPresentationLayers = WidgetTree->ConstructWidget<UOverlay>(
+		UOverlay::StaticClass(), TEXT("PitchPresentationLayers"));
+	if (UOverlaySlot* PitchLayerSlot =
+		PitchPresentationLayers->AddChildToOverlay(PitchWidget))
+	{
+		PitchLayerSlot->SetHorizontalAlignment(HAlign_Fill);
+		PitchLayerSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+	UClass* ResolvedInlineFormulaClass =
+		InlineFormulaSurfaceWidgetClass != nullptr
+			? InlineFormulaSurfaceWidgetClass.Get()
+			: UFMCodexInlineResolutionFormulaSurfaceWidget::StaticClass();
+	InlineFormulaSurface = WidgetTree->ConstructWidget<
+		UFMCodexInlineResolutionFormulaSurfaceWidget>(
+			ResolvedInlineFormulaClass, TEXT("InlineResolutionFormulaSurface"));
+	InlineFormulaSurface->OnContinueRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleContinueRequested);
+	if (UOverlaySlot* FormulaLayerSlot =
+		PitchPresentationLayers->AddChildToOverlay(InlineFormulaSurface))
+	{
+		FormulaLayerSlot->SetHorizontalAlignment(HAlign_Center);
+		FormulaLayerSlot->SetVerticalAlignment(VAlign_Center);
+		FormulaLayerSlot->SetPadding(FMargin(28.0f));
+	}
+	PitchRegion->AddChild(PitchPresentationLayers);
 	PitchBounds->AddChild(PitchRegion);
 	if (UHorizontalBoxSlot* PitchSlot = MainArea->AddChildToHorizontalBox(PitchBounds))
 	{
@@ -1558,10 +1597,12 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	LocalRackWidget->RefreshFromPresentation(Presentation.LocalRack);
 	OpponentRackWidget->RefreshFromPresentation(Presentation.OpponentRack);
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
+	InlineFormulaSurface->RefreshFromPresentation(Presentation.InlineFormula);
 	BindDetailHoverSources();
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);
 	ResolutionOverlay->SetVisibility(Presentation.Resolution.bVisible
+		&& !Presentation.InlineFormula.bSuppressLegacyResolution
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 
 }

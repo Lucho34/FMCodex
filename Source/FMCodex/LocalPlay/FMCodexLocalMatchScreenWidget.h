@@ -12,6 +12,7 @@ class UBorder;
 class UCanvasPanel;
 class UFMCodexCardRackWidget;
 class UFMCodexInteractionPanelWidget;
+class UFMCodexInlineResolutionFormulaSurfaceWidget;
 class UFMCodexMatchHeaderWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
@@ -92,7 +93,10 @@ public:
 	UFMCodexMatchHeaderWidget* GetMatchHeader() const;
 	UFMCodexPitchWidget* GetPitchWidget() const;
 	UFMCodexInteractionPanelWidget* GetInteractionPanel() const;
+	UFMCodexInlineResolutionFormulaSurfaceWidget*
+		GetInlineFormulaSurface() const;
 	UFMCodexResolutionPanelWidget* GetResolutionPanel() const;
+	bool IsLegacyResolutionOverlayVisible() const;
 	UFMCodexSelectionFeedbackToastWidget* GetSelectionFeedbackToast() const;
 	UFMCodexCardRackWidget* GetLocalRackWidget() const;
 	UFMCodexCardRackWidget* GetOpponentRackWidget() const;
@@ -238,6 +242,14 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexInteractionPanelWidget> InteractionPanel;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Resolution Presentation")
+	TSubclassOf<UFMCodexInlineResolutionFormulaSurfaceWidget>
+		InlineFormulaSurfaceWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexInlineResolutionFormulaSurfaceWidget>
+		InlineFormulaSurface;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Resolution Presentation")
 	TSubclassOf<UFMCodexResolutionPanelWidget> ResolutionPanelWidgetClass;
