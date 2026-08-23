@@ -1044,6 +1044,10 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	{
 		const FMatchPlayCurrentAttackResolutionSession& Session =
 			Attack.ResolutionSession;
+		Result.ResolutionFacts =
+			FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+				Snapshot,
+				&SkillRuleSet);
 		for (const FMatchPlayCurrentAttackResolutionRollRecord& Roll
 			: Session.InitialRouteRollRecords)
 		{

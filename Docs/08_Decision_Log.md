@@ -452,6 +452,15 @@
 - No-Legal 语义：`RESOLVE NO LEGAL MARKER` 是 Availability 已确认无合法 Marker 后调用既有 ResolveNoLegalMarker 的生产 typed action，不是开发按钮；玩家文案改为 `无可用盯人球员，继续结算`，权威效果不变。其他生产 decline/no-legal、分支、单刀及终局纯表现泄漏同样通过集中映射清理。
 - 范围：不修改 CoreRules/Authority 玩法、RNG、骰子、公式、Resolution narrative、Header 结构、Tracker、TP、Pitch/Slot 几何、Role Tag 视觉、Full Card、Hand Micro 或 artwork。
 
+### CD-042 - Resolution Formula Facts and Authoritative Raw Roll Projection
+
+- 日期：2026-08-22
+- 唯一 Raw Roll：权威 `ResolutionSession.InitialRouteRollRecords` 与 `PostRouteRollProgress.RollRecords` 是生产表现唯一掷点事实。Projection 不拥有 provider，不调用 RNG，不反推或制造 D6。
+- 结构化合同：事实按 Participant、Roll、Formula Contest/Row/Term 与 Decision 分类。Term 保留角色、Side、CardId、属性、源值、倍率、贡献、pending/resolved 状态与 roll operand 关系；resolved Contest 直接附带既有 `FFormulaResolverInput/FFormulaResolutionResult`，不要求 Widget 解析字符串或重算。
+- 时序：pre-roll 与 post-roll 共享稳定 Contest/Row/Term identity。pre-roll 允许 `Raw Roll=? / Final Value=?`；post-roll 填入 Session 已接受的同一 Raw Roll 并显示权威 Final Value。Initial Route、Outcome Table 与 Arithmetic Contest D6 保持不同语义。
+- 公式覆盖：事实查询覆盖 Long Shot Direct/Dead Corner、Cut Inside Direct/Dead Corner、Cross High/Low、Pass Control 三推进、Through Ball Feet/BehindDefense P1/P2/AntiOffside/One-on-One Chip/Direct。具体矩阵见 `Docs/UI/Resolution_Formula_Fact_Audit.md`。
+- 边界：规则数值、roll order、条件性 roll、GK contribution、FormulaResolver、tie、branch 与 terminal outcome 不变。InteractionView/Feedback/UMG 只转发只读事实；本阶段不新增可见公式面板、骰子动画、叙事、声音或视觉改版。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

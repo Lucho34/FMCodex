@@ -526,3 +526,15 @@ ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份�
 - `FormulaResult`：公式结果摘要。
 - `ScoreAfterEvent`：事件后的比分。
 - `ZonesAfterEvent`：必要的区域变化摘要。
+
+## CurrentAttack Resolution Formula Fact Projection
+
+这是从权威 CurrentAttack Resolution Session 生成的只读表现事实，不是第二份玩法状态，也不是 RNG 历史。核心结构为：
+
+- `ParticipantFacts`：现有 Carrier/Runner/Marker/Helper 与适用 GK 的稳定 Side、CardId、Role；不复制或替代 Selected Role truth。
+- `RollFacts`：全局顺序、Initial/Post-route purpose、拥有方、`BranchSelection / ArithmeticContest / OutcomeDecision` 语义、pending/resolved、RawD6、条件性需求与 formula operand identity。
+- `FormulaContests`：稳定 ContestId、FormulaType、application pending/applied/skipped、Attack/Defense Rows、terms、实际参与体力、GK participation、明确 tie rule、resolved Resolver Input/Result。
+- `FormulaTerms`：Attribute、RawRoll、FixedModifier 或 GoalkeeperContribution；保存 CardId/Role/Attribute、源值、倍率、贡献和 resolved 状态。缺少 Raw Roll 时 value 保持 pending，不以 0 冒充掷点。
+- `DecisionFacts`：分支、结果表、条件门禁或 formula outcome 的结构化结果；不要求 UI 解析 Route/Resolution 文本。
+
+该 Projection 可重复从同一 State 构建且不得消费 RNG。CurrentAttack 被 terminal completion 清除时，command-scoped ResolutionFeedback 可保留清除前的同一值事实；它不重新创建 authority。

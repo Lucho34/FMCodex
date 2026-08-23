@@ -408,3 +408,15 @@
 - `RESOLVE NO LEGAL MARKER` 的既有 typed no-legal 行为不变，玩家可见按钮为 `无可用盯人球员，继续结算`；其他当前生产选人 no-legal/decline 按钮也不得泄漏 `DECLINE ...` 或 `RESOLVE NO LEGAL ...`。
 - 正常生产 Match Flow 的战术、分支、单刀选择、结束/空状态及 Header 终局结果使用集中中文映射；`GK / D / M / A / A/M / M/D` 等已批准位置缩写不属于失败。
 
+## Resolution Formula Fact 与 Raw Roll 投影（Stage 6.13.1.4.7）
+
+应验证：
+
+- `InitialRouteRollRecords` 与 `PostRouteRollProgress.RollRecords` 是 Presentation 唯一 Raw Roll 来源；投影 Raw Roll 必须逐项等于权威 State 中已接受的值、语义 purpose 与顺序，不从 Final Value 或日志反推。
+- RouteResolved 但比较 D6 尚未取得时，结构化公式已含稳定 Contest/Row/Term identity、参与方、Carrier/Runner/Marker/Helper/GK CardId、实际属性、倍率、固定修正、待定 Raw Roll operand 与未解析 Final Value。
+- 已取得全部比较 D6 时，相同 Contest/operand identity 被填入权威 Raw Roll；结构化 term 数学结果必须与既有 Resolver Input 和 `FFormulaResolutionResult` 的 Final Value、Winner、WinReason 一致。
+- Initial Route、Dead Corner、Anti-Offside、BehindDefense P2 与 Chip Shot 等分支/结果 D6 必须分类为 BranchSelection 或 OutcomeDecision，不得标记为 ArithmeticContest operand。
+- active-GK 路线保留实际 GK CardId、实际使用属性与 `×0.5` 独立贡献；One-on-One Direct Shot 保留同一 GK 的 `×1.0` 基础与条件性 `×0.5` 额外贡献，并投影 goalkeeper tie 语义。
+- 重复构建 InteractionView、ResolutionFeedback 与 UMG DTO 不调用任何 D6 provider、不改变权威 State、不增加 roll record，且结果逐字段确定。
+- terminal command 清除 CurrentAttack 后，本次 command 的 ResolutionFeedback 仍保留 terminal 前已解析的结构化公式与 Raw Roll facts，供后续表现使用。
+

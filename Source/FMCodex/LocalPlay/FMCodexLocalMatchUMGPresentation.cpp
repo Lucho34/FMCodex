@@ -958,6 +958,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		? ResolutionFeedback.StepSummary : ResolutionFeedback.StepTitle;
 	Result.Resolution.StepSummaryLabel = ResolutionFeedback.StepSummary;
 	Result.Resolution.RouteLabel = ResolutionFeedback.RouteSummary;
+	Result.Resolution.FormulaFacts = ResolutionFeedback.ResolutionFacts.bHasFacts
+		? ResolutionFeedback.ResolutionFacts
+		: InteractionView.ResolutionFacts;
 	if (!ResolutionFeedback.bRejected)
 	{
 		for (const FFMCodexLocalMatchRollView& Roll

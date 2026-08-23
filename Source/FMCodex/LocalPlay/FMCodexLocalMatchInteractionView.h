@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "../CoreRules/MatchPlayState.h"
+#include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
 #include "../CoreRules/MatchResultResolver.h"
 
 enum class EFMCodexLocalMatchMajorPhase : uint8
@@ -258,6 +259,7 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	TArray<EMatchPlayElectiveBranchIntent> BranchIntentOptions;
 	TArray<EMatchPlayThroughBallOneOnOneShotChoice> OneOnOneOptions;
 	TArray<FFMCodexLocalMatchRollView> AcceptedRolls;
+	FMatchPlayCurrentAttackResolutionFactProjection ResolutionFacts;
 	FString ContinueActionLabel = TEXT("Continue Resolution");
 };
 

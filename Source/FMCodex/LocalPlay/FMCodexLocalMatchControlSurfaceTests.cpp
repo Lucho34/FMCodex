@@ -12274,4 +12274,436 @@ bool FFMCodexProductionMatchFlowLocalizationTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexResolutionFormulaFactProjectionFoundationTest,
+	"FMCodex.LocalPlay.ControlSurface.50.ResolutionFormulaFactProjectionFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+
+	FScopedPlayableWorld PlayableWorld;
+	AFMCodexLocalMatchHostGameMode* Host = PlayableWorld.GetHost();
+	TestNotNull(TEXT("Formula facts Host exists"), Host);
+	if (Host == nullptr)
+	{
+		return false;
+	}
+
+	FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	const FName CrossSkillId(TEXT("Demo.Skill.Cross.FormulaFacts"));
+	for (TArray<FPlayerCardData>* Deck : {
+		&Demo.OpeningInput.OpeningInput.PlayerADeck,
+		&Demo.OpeningInput.OpeningInput.PlayerBDeck })
+	{
+		for (FPlayerCardData& Card : *Deck)
+		{
+			if (!Card.bIsGoalkeeper)
+			{
+				Card.AttackSkillIds = { CrossSkillId };
+			}
+		}
+	}
+	FSkillRuleSnapshot CrossRule;
+	CrossRule.SkillId = CrossSkillId;
+	CrossRule.SkillType = ESkillRuleType::Cross;
+	CrossRule.MinTriggerActionPoint = 2;
+	CrossRule.MaxTriggerActionPoint = 8;
+	Demo.SkillRuleSet.SkillRules = { CrossRule };
+
+	const int32 Seed = FindSeedForRolls({ 2, 4, 3 });
+	TestTrue(TEXT("Deterministic Formula facts seed exists"), Seed != INDEX_NONE);
+	if (Seed == INDEX_NONE
+		|| !Host->StartNewLocalMatch(
+			Demo.OpeningInput, Demo.SkillRuleSet, Seed).bSuccess
+		|| !Host->BeginOrdinaryAttack(6).bSuccess)
+	{
+		return false;
+	}
+
+	const EInitialTurnOrderPlayer Attacker = Host->GetMatchSnapshot()
+		.Snapshot.RuntimeState.CurrentAttackingPlayer;
+	const FString PhysicalForward = Attacker == EInitialTurnOrderPlayer::PlayerA
+		? TEXT("NearB") : TEXT("NearA");
+	const FName RequiredCarrierId = Attacker == EInitialTurnOrderPlayer::PlayerA
+		? FName(TEXT("Prototype.Arsenal.BukayoSaka"))
+		: FName(TEXT("Prototype.ManchesterCity.RayanAitNouri"));
+	const FName RequiredRunnerId = Attacker == EInitialTurnOrderPlayer::PlayerA
+		? FName(TEXT("Prototype.Arsenal.ViktorGyokeres"))
+		: FName(TEXT("Prototype.ManchesterCity.ErlingHaaland"));
+	const auto DeployPreferredOrdinary = [Host, &Demo, &PhysicalForward](
+		const FName PreferredCardId)
+	{
+		const FFMCodexLocalMatchInteractionView View =
+			ViewFor(*Host, Demo.SkillRuleSet);
+		const FFMCodexLocalMatchDeploymentOption* Option =
+			View.DeploymentOptions.FindByPredicate(
+				[PreferredCardId, &PhysicalForward](
+					const FFMCodexLocalMatchDeploymentOption& Candidate)
+				{
+					return !Candidate.bGoalkeeper
+						&& Candidate.SlotId.ToString().Contains(PhysicalForward)
+						&& (PreferredCardId.IsNone()
+							|| Candidate.CardId == PreferredCardId);
+				});
+		if (Option == nullptr)
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
+		Request.RequestingSide = Option->Side;
+		Request.CardId = Option->CardId;
+		Request.SlotId = Option->SlotId;
+		return Host->DeployOrdinary(Request).bSuccess;
+	};
+	TestTrue(TEXT("Formula fixture deploys its canonical Cross carrier"),
+		DeployPreferredOrdinary(RequiredCarrierId));
+	{
+		const FFMCodexLocalMatchInteractionView GoalkeeperView =
+			ViewFor(*Host, Demo.SkillRuleSet);
+		const FFMCodexLocalMatchDeploymentOption* Goalkeeper =
+			GoalkeeperView.DeploymentOptions.FindByPredicate(
+				[](const FFMCodexLocalMatchDeploymentOption& Option)
+				{
+					return Option.bGoalkeeper;
+				});
+		TestNotNull(TEXT("Defending goalkeeper deployment is available"),
+			Goalkeeper);
+		if (Goalkeeper == nullptr)
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+		Request.SlotId = Goalkeeper->SlotId;
+		TestTrue(TEXT("Formula fixture activates the defending goalkeeper"),
+			Host->DeployGoalkeeper(Request).bSuccess);
+	}
+	if (!DeployPreferredOrdinary(RequiredRunnerId)
+		|| !DeployPreferredOrdinary(NAME_None))
+	{
+		AddError(TEXT("Formula fixture could not deploy Runner/Marker participants"));
+		return false;
+	}
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const FFMCodexLocalMatchInteractionView View =
+			ViewFor(*Host, Demo.SkillRuleSet);
+		TestTrue(TEXT("Formula fixture finishes deployment"),
+			Host->FinishDeployment(
+				View.AttackSequence, View.ExpectedActingPlayer).bSuccess);
+	}
+	for (const EFMCodexLocalMatchInteractionCategory Category : {
+		EFMCodexLocalMatchInteractionCategory::SelectCarrier,
+		EFMCodexLocalMatchInteractionCategory::SelectMarker,
+		EFMCodexLocalMatchInteractionCategory::SelectSkill,
+		EFMCodexLocalMatchInteractionCategory::SelectRunner })
+	{
+		if (!SubmitFirstHostSelection(*Host, Demo.SkillRuleSet, Category))
+		{
+			const FFMCodexLocalMatchInteractionView FailureView =
+				ViewFor(*Host, Demo.SkillRuleSet);
+			AddError(FString::Printf(
+				TEXT("Formula fixture could not submit participant/skill (expected %d, actual %d, options %d)"),
+				static_cast<int32>(Category),
+				static_cast<int32>(FailureView.InteractionCategory),
+				FailureView.SelectionOptions.Num()));
+			return false;
+		}
+	}
+	{
+		const FFMCodexLocalMatchInteractionView HelperView =
+			ViewFor(*Host, Demo.SkillRuleSet);
+		bool bHelperStageResolved = false;
+		if (!HelperView.SelectionOptions.IsEmpty())
+		{
+			bHelperStageResolved = SubmitFirstHostSelection(
+				*Host,
+				Demo.SkillRuleSet,
+				EFMCodexLocalMatchInteractionCategory::SelectHelper);
+		}
+		else if (HelperView.bCanResolveNoLegalChoice)
+		{
+			bHelperStageResolved = Host->ResolveNoLegalHelper().bSuccess;
+		}
+		else if (HelperView.bCanDecline)
+		{
+			FMatchPlayAuthoritativeDeclineHelperRequest Request;
+			Request.RequestingSide = HelperView.ExpectedActingPlayer;
+			bHelperStageResolved = Host->DeclineHelper(Request).bSuccess;
+		}
+		if (!bHelperStageResolved)
+		{
+			AddError(TEXT("Formula fixture could not resolve the optional Helper stage"));
+			return false;
+		}
+	}
+	{
+		const FFMCodexLocalMatchInteractionView BranchView =
+			ViewFor(*Host, Demo.SkillRuleSet);
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
+		Request.RequestingSide = BranchView.ExpectedActingPlayer;
+		Request.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
+		TestTrue(TEXT("Formula fixture submits Cross High intent"),
+			Host->SubmitBranchIntent(Request).bSuccess);
+	}
+	TestTrue(TEXT("Formula fixture begins the authoritative session"),
+		Host->BeginResolutionSession().bSuccess);
+
+	const FMatchPlayState PreRouteState = Host->GetMatchSnapshot().Snapshot;
+	const TArray<uint8> PreRouteBytes = SerializeState(PreRouteState);
+	const FFMCodexLocalMatchInteractionView PreRouteViewA =
+		ViewFor(*Host, Demo.SkillRuleSet);
+	const FFMCodexLocalMatchInteractionView PreRouteViewB =
+		ViewFor(*Host, Demo.SkillRuleSet);
+	const FFMCodexUMGMatchScreenViewModel PreRouteUMGA =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			PreRouteViewA, FFMCodexLocalMatchResolutionFeedback(), FString());
+	const FFMCodexUMGMatchScreenViewModel PreRouteUMGB =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			PreRouteViewB, FFMCodexLocalMatchResolutionFeedback(), FString());
+	const auto& PreRouteFacts = PreRouteViewA.ResolutionFacts;
+	TestTrue(TEXT("Pre-route facts expose one pending branch-selection D6"),
+		PreRouteFacts.bSuccess && PreRouteFacts.bHasFacts
+			&& PreRouteFacts.Rolls.Num() == 1
+			&& PreRouteFacts.Rolls[0].Semantics
+				== EMatchPlayResolutionRollSemantics::BranchSelection
+			&& !PreRouteFacts.Rolls[0].bResolved
+			&& PreRouteFacts.bHasPendingRoll
+			&& PreRouteFacts.NextPendingRollSequenceIndex == 0
+			&& PreRouteFacts.FormulaContests.IsEmpty());
+	TestTrue(TEXT("Repeated View/UMG construction is deterministic and state-pure"),
+		PreRouteBytes == SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& FMatchPlayCurrentAttackResolutionFactProjection::StaticStruct()
+				->CompareScriptStruct(
+					&PreRouteViewA.ResolutionFacts,
+					&PreRouteViewB.ResolutionFacts,
+					0)
+			&& FMatchPlayCurrentAttackResolutionFactProjection::StaticStruct()
+				->CompareScriptStruct(
+					&PreRouteUMGA.Resolution.FormulaFacts,
+					&PreRouteUMGB.Resolution.FormulaFacts,
+					0));
+
+	TestTrue(TEXT("Authoritative initial-route continuation succeeds"),
+		Host->ResolveInitialRoute().bSuccess);
+	const FMatchPlayState PreFormulaState = Host->GetMatchSnapshot().Snapshot;
+	const auto& Session = PreFormulaState.CurrentAttack.ResolutionSession;
+	const FFMCodexLocalMatchInteractionView PreFormulaView =
+		ViewFor(*Host, Demo.SkillRuleSet);
+	const auto& PreFormulaFacts = PreFormulaView.ResolutionFacts;
+	TestTrue(TEXT("Projected Raw Roll is the exact stored initial-route result"),
+		Session.InitialRouteRollRecords.Num() == 1
+			&& Session.InitialRouteRollRecords[0].RawD6 == 2
+			&& PreFormulaFacts.Rolls.Num() == 3
+			&& PreFormulaFacts.Rolls[0].RawD6
+				== Session.InitialRouteRollRecords[0].RawD6
+			&& PreFormulaFacts.Rolls[0].Semantics
+				== EMatchPlayResolutionRollSemantics::BranchSelection
+			&& PreFormulaFacts.Rolls[1].Semantics
+				== EMatchPlayResolutionRollSemantics::ArithmeticContest
+			&& !PreFormulaFacts.Rolls[1].bResolved
+			&& !PreFormulaFacts.Rolls[2].bResolved
+			&& PreFormulaFacts.NextPendingRollSequenceIndex == 1);
+	TestTrue(TEXT("Pre-roll Cross formula exposes known terms and pending D6 terms"),
+		PreFormulaFacts.FormulaContests.Num() == 1
+			&& PreFormulaFacts.FormulaContests[0].ContestId
+				== FName(TEXT("Cross.High"))
+			&& PreFormulaFacts.FormulaContests[0].Application
+				== EMatchPlayResolutionFormulaApplication::Pending
+			&& PreFormulaFacts.FormulaContests[0].AttackRow.Terms.ContainsByPredicate(
+				[](const FMatchPlayResolutionFormulaTermFact& Term)
+				{
+					return Term.Kind
+						== EMatchPlayResolutionFormulaTermKind::Attribute
+					&& Term.bResolved;
+				})
+			&& PreFormulaFacts.FormulaContests[0].AttackRow.Terms.ContainsByPredicate(
+				[](const FMatchPlayResolutionFormulaTermFact& Term)
+				{
+					return Term.Kind
+						== EMatchPlayResolutionFormulaTermKind::RawRoll
+					&& !Term.bResolved;
+				}));
+	if (PreFormulaFacts.FormulaContests.Num() != 1)
+	{
+		AddError(FString::Printf(
+			TEXT("Pre-roll Cross formula fact is missing: %s"),
+			*PreFormulaFacts.ErrorMessage));
+		return false;
+	}
+	const FName GoalkeeperId = Attacker == EInitialTurnOrderPlayer::PlayerA
+		? FName(*PreFormulaState.RuntimeState.PlayerBState.GoalkeeperCardId)
+		: FName(*PreFormulaState.RuntimeState.PlayerAState.GoalkeeperCardId);
+	const auto HasParticipant = [&PreFormulaFacts](
+		const EMatchPlayResolutionParticipantRole Role,
+		const FName CardId)
+	{
+		return PreFormulaFacts.Participants.ContainsByPredicate(
+			[Role, CardId](const FMatchPlayResolutionParticipantFact& Participant)
+			{
+				return Participant.Role == Role && Participant.CardId == CardId;
+			});
+	};
+	TestTrue(TEXT("Facts preserve all frozen role identities plus goalkeeper"),
+		HasParticipant(EMatchPlayResolutionParticipantRole::Carrier,
+			Session.Bundle.Carrier.CardId)
+			&& HasParticipant(EMatchPlayResolutionParticipantRole::Runner,
+				Session.Bundle.Runner.CardId)
+			&& HasParticipant(EMatchPlayResolutionParticipantRole::Marker,
+				Session.Bundle.Marker.CardId)
+			&& (Session.Bundle.bHasHelper
+				? HasParticipant(EMatchPlayResolutionParticipantRole::Helper,
+					Session.Bundle.Helper.CardId)
+				: !PreFormulaFacts.Participants.ContainsByPredicate(
+					[](const FMatchPlayResolutionParticipantFact& Participant)
+					{
+						return Participant.Role
+							== EMatchPlayResolutionParticipantRole::Helper;
+					}))
+			&& HasParticipant(
+				EMatchPlayResolutionParticipantRole::Goalkeeper, GoalkeeperId));
+	TestTrue(TEXT("Active Cross High goalkeeper contribution is explicit and truthful"),
+		PreFormulaState.CurrentAttack.bCurrentDefenseGoalkeeperActivated
+			&& PreFormulaFacts.FormulaContests[0].bGoalkeeperParticipated
+			&& PreFormulaFacts.FormulaContests[0].DefenseRow.Terms.ContainsByPredicate(
+				[GoalkeeperId](const FMatchPlayResolutionFormulaTermFact& Term)
+				{
+					return Term.Kind
+						== EMatchPlayResolutionFormulaTermKind::GoalkeeperContribution
+					&& Term.ParticipantRole
+						== EMatchPlayResolutionParticipantRole::Goalkeeper
+					&& Term.CardId == GoalkeeperId
+					&& Term.Attribute
+						== EMatchPlayResolutionFormulaAttribute::GoalkeeperAerial
+					&& FMath::IsNearlyEqual(Term.Multiplier, 0.5f)
+					&& FMath::IsNearlyEqual(
+						Term.Contribution,
+						UFormulaResolver::RoundToOneDecimal(
+							Term.SourceValue * Term.Multiplier));
+				}));
+
+	const TArray<uint8> BeforePostRollProjection = SerializeState(
+		Host->GetMatchSnapshot().Snapshot);
+	const auto PreFormulaUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
+		PreFormulaView, FFMCodexLocalMatchResolutionFeedback(), FString());
+	TestTrue(TEXT("Pre-roll Facts survive the UMG DTO without authority mutation"),
+		BeforePostRollProjection
+			== SerializeState(Host->GetMatchSnapshot().Snapshot)
+			&& PreFormulaUMG.Resolution.FormulaFacts.bHasFacts);
+
+	const auto BeforePlanView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto Plan = Host->ResolveCrossPostRoutePlan();
+	TestTrue(TEXT("Authoritative Cross plan consumes its two formula rolls"),
+		Plan.bSuccess);
+	const FMatchPlayState PostRollState = Host->GetMatchSnapshot().Snapshot;
+	const auto& Records = PostRollState.CurrentAttack.ResolutionSession
+		.PostRouteRollProgress.RollRecords;
+	const auto PostRollView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto& PostRollFacts = PostRollView.ResolutionFacts;
+	TestTrue(TEXT("Every resolved projected Raw Roll equals ordered authority history"),
+		Records.Num() == 2
+			&& Records[0].RawD6 == 4
+			&& Records[1].RawD6 == 3
+			&& PostRollFacts.Rolls.Num() == 3
+			&& PostRollFacts.Rolls[1].PostRoutePurpose == Records[0].Purpose
+			&& PostRollFacts.Rolls[1].RawD6 == Records[0].RawD6
+			&& PostRollFacts.Rolls[2].PostRoutePurpose == Records[1].Purpose
+			&& PostRollFacts.Rolls[2].RawD6 == Records[1].RawD6);
+	if (PostRollFacts.FormulaContests.Num() != 1)
+	{
+		AddError(TEXT("Post-roll Cross formula fact is missing"));
+		return false;
+	}
+	const FMatchPlayResolutionFormulaContestFact& Contest =
+		PostRollFacts.FormulaContests[0];
+	const auto SumTerms = [](const FMatchPlayResolutionFormulaRowFact& Row)
+	{
+		float Sum = 0.0f;
+		for (const FMatchPlayResolutionFormulaTermFact& Term : Row.Terms)
+		{
+			Sum += Term.Contribution;
+		}
+		return UFormulaResolver::RoundToOneDecimal(Sum);
+	};
+	TestTrue(TEXT("Post-roll formula matches authoritative resolver input/results"),
+		Contest.Application == EMatchPlayResolutionFormulaApplication::Applied
+			&& Contest.bHasResolvedFormula
+			&& Contest.ResolvedInput.Attacker.ComparePoint == 4
+			&& Contest.ResolvedInput.Defender.ComparePoint == 3
+			&& FMath::IsNearlyEqual(
+				SumTerms(Contest.AttackRow),
+				Contest.ResolvedResult.AttackerFinalValue)
+			&& FMath::IsNearlyEqual(
+				SumTerms(Contest.DefenseRow),
+				Contest.ResolvedResult.DefenderFinalValue)
+			&& Contest.TieRule
+				== EMatchPlayResolutionTieRule::GoalkeeperDefenderWins);
+
+	const auto AfterPlanView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto PlanFeedback = FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+		TEXT("ResolveCrossPostRoutePlan"), Plan,
+		BeforePlanView, AfterPlanView);
+	const auto PlanUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
+		AfterPlanView, PlanFeedback, FString());
+	TestTrue(TEXT("Feedback and UMG preserve the same immutable structured facts"),
+		FMatchPlayCurrentAttackResolutionFactProjection::StaticStruct()
+			->CompareScriptStruct(
+				&PostRollFacts, &PlanFeedback.ResolutionFacts, 0)
+			&& FMatchPlayCurrentAttackResolutionFactProjection::StaticStruct()
+				->CompareScriptStruct(
+					&PostRollFacts, &PlanUMG.Resolution.FormulaFacts, 0));
+
+	const auto Formula = Host->ResolveSingleCardFinishingFormula();
+	TestTrue(TEXT("Existing authoritative Formula command remains unchanged"),
+		Formula.bSuccess
+			&& Formula.AuthoritativeResult.OrchestrationResult
+				.bHasFormulaResolution
+			&& FMath::IsNearlyEqual(
+				Formula.AuthoritativeResult.OrchestrationResult
+					.FormulaResolutionResult.AttackerFinalValue,
+				Contest.ResolvedResult.AttackerFinalValue)
+			&& FMath::IsNearlyEqual(
+				Formula.AuthoritativeResult.OrchestrationResult
+					.FormulaResolutionResult.DefenderFinalValue,
+				Contest.ResolvedResult.DefenderFinalValue));
+	const auto BeforeTerminalView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto Terminal = Host->ApplyCrossTerminalResolution();
+	const auto AfterTerminalView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto TerminalFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			TEXT("ApplyCrossTerminalResolution"), Terminal,
+			BeforeTerminalView, AfterTerminalView);
+	const auto TerminalUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
+		AfterTerminalView, TerminalFeedback, FString());
+	TestTrue(TEXT("Terminal feedback preserves facts after CurrentAttack clears"),
+		Terminal.bSuccess
+			&& !AfterTerminalView.ResolutionFacts.bHasFacts
+			&& TerminalFeedback.ResolutionFacts.bHasFacts
+			&& TerminalUMG.Resolution.FormulaFacts.bHasFacts
+			&& TerminalUMG.Resolution.FormulaFacts.AttackSequence
+				== PreRouteFacts.AttackSequence);
+
+	FString FactProjectionSource;
+	FString UMGSource;
+	TestTrue(TEXT("Resolution projection authority-boundary sources load"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackResolutionFactProjection.cpp"),
+			FactProjectionSource)
+			&& LoadProductionSource(
+				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchUMGPresentation.cpp"),
+				UMGSource));
+	TestTrue(TEXT("Facts and UMG contain no presentation RNG/reconstruction path"),
+		!FactProjectionSource.Contains(TEXT("RollD6("))
+			&& !FactProjectionSource.Contains(TEXT("FRandomStream"))
+			&& !FactProjectionSource.Contains(TEXT("ResolutionFeedback"))
+			&& !UMGSource.Contains(TEXT("RandRange"))
+			&& !UMGSource.Contains(TEXT("ResolveFormula("))
+			&& !UMGSource.Contains(TEXT("RawD6 =")));
+
+	return true;
+}
+
 #endif

@@ -130,6 +130,8 @@ namespace FMCodexLocalMatchResolutionFeedback
 
 		Feedback.DiceEntries = !AfterView.AcceptedRolls.IsEmpty()
 			? AfterView.AcceptedRolls : BeforeView.AcceptedRolls;
+		Feedback.ResolutionFacts = AfterView.ResolutionFacts.bHasFacts
+			? AfterView.ResolutionFacts : BeforeView.ResolutionFacts;
 		if (AfterView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
 		{

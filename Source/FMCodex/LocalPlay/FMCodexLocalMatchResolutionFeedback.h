@@ -32,6 +32,7 @@ struct FMCODEX_API FFMCodexLocalMatchResolutionFeedback
 	FString StepSummary;
 	FString RouteSummary;
 	TArray<FFMCodexLocalMatchRollView> DiceEntries;
+	FMatchPlayCurrentAttackResolutionFactProjection ResolutionFacts;
 	TArray<FString> ComparisonEntries;
 	FString DecisionSummary;
 	FString ContinuationSummary;

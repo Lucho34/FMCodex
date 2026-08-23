@@ -414,6 +414,8 @@ LocalPlay 的“选择跑位球员”交互采用场上直选，但 Runner 的�
 
 LocalPlay 的“选择协防球员”交互采用场上直选。Helper 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackHelperSelectionAvailability`：候选属于当前防守方、已唯一部署、快照有效、非门将且不得与已冻结 Marker 相同；该阶段只存在于既有 Pass Control、Cross、Through Ball 参与者合同中，不新增半区、位置、TP、Tactical Match、属性或战术优劣门禁。单击合法 Pitch Mini 立即提交既有 Helper 命令，Full Card hover 保留，无确认或取消；底部不显示 PlayerKey 候选按钮，但保留 DeclineHelper，玩家文案为 `放弃协防`。Marker 被点作 Helper 时必须由 canonical `HelperMatchesMarker` 投影拒绝原因，显示既有非模态反馈而不改变权威状态。生产 Match Flow 中玩家可见 Skill 术语统一为 `战术`，稳定 SkillId 与内部 Skill 命名保持不变。
 
+Resolution 表现只能读取权威 CurrentAttack Resolution Session 已接受的原始掷点和规则层生成的结构化公式事实。Initial Route 与 Post-route 的每个 D6 必须按语义、顺序、拥有方和公式 operand 关系保留；Presentation/UMG 不得重新掷骰、从 Final Value 反推 Raw Roll、解析日志字符串或重新选择属性/分支。公式事实必须在掷点前表达已知属性、倍率、固定修正、待定 D6=`?` 和待定 Final Value，在掷点后使用同一逻辑公式身份填入已接受 Raw Roll，并投影权威 Resolver Input、Final Value、比较结果与平局语义。分支选择、结果表和算术比较 D6 是不同语义，不得统一伪装成 `+ D6` 公式项。
+
 Marker 候选若由权威合法性结果以 `MarkerNotInCarrierPhysicalArea` 拒绝，LocalPlay 可在玩家单击对应已部署非门将球员时显示非模态提示 `盯人球员必须与持球球员位于同一半区`。该提示不提交命令、不改变权威状态，约两秒后自动消失；重复触发重启计时。空槽与背景点击不产生该提示，提示层不得阻塞 Pitch Mini 或 Full Card hover。UMG 只能消费投影的拒绝原因，不得自行比较视觉槽位或 physical area。
 
 ### 9.3 无合法球员处理

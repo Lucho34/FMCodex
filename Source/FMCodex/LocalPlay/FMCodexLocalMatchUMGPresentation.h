@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "../CoreRules/InitialTurnOrderResolver.h"
+#include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
 
 #include "FMCodexLocalMatchUMGPresentation.generated.h"
 
@@ -831,6 +832,10 @@ struct FMCODEX_API FFMCodexUMGResolutionViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	TArray<FFMCodexUMGDiceResultViewModel> DiceResults;
+
+	/** Structured, read-only facts for the future inline Formula surface. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	FMatchPlayCurrentAttackResolutionFactProjection FormulaFacts;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	TArray<FString> DiceLabels;
