@@ -363,6 +363,10 @@ namespace FMCodexLocalMatchUMGPresentation
 			return EFMCodexUMGInteractionCategory::SelectBranchIntent;
 		case EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot:
 			return EFMCodexUMGInteractionCategory::SelectOneOnOneShot;
+		case EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack:
+			return EFMCodexUMGInteractionCategory::RollCrossHighAttack;
+		case EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense:
+			return EFMCodexUMGInteractionCategory::RollCrossHighDefense;
 		case EFMCodexLocalMatchInteractionCategory::ContinueResolution:
 			return EFMCodexUMGInteractionCategory::ContinueResolution;
 		case EFMCodexLocalMatchInteractionCategory::AttackComplete:
@@ -536,7 +540,17 @@ namespace FMCodexLocalMatchUMGPresentation
 	{
 		using EFactTerm = EMatchPlayResolutionFormulaTermKind;
 		FFMCodexUMGInlineFormulaRowViewModel Result;
+		Result.Side = Row.Side;
 		Result.SideLabel = SideLabel;
+		Result.bKnownNonRollSubtotalResolved =
+			Row.bKnownNonRollSubtotalResolved;
+		Result.KnownNonRollSubtotal = Row.KnownNonRollSubtotal;
+		Result.KnownNonRollSubtotalLabel =
+			Row.bKnownNonRollSubtotalResolved
+				? FString::Printf(
+					TEXT("基础值 %s"),
+					*CompactNumber(Row.KnownNonRollSubtotal))
+				: TEXT("基础值 ?");
 		Result.bFinalValueResolved = Row.bFinalValueResolved;
 		Result.FinalValue = Row.FinalValue;
 		Result.FinalValueLabel = Row.bFinalValueResolved
@@ -569,8 +583,8 @@ namespace FMCodexLocalMatchUMGPresentation
 					&& Facts.NextPendingRollSequenceIndex
 						== Term.RollSequenceIndex;
 				View.DisplayLabel = View.bResolved
-					? FString::Printf(TEXT("D6 %d"), View.RawD6)
-					: TEXT("D6 ?");
+					? FString::Printf(TEXT("掷点 %d"), View.RawD6)
+					: TEXT("掷点 ?");
 			}
 			else if (Term.Kind == EFactTerm::FixedModifier)
 			{
@@ -663,6 +677,7 @@ namespace FMCodexLocalMatchUMGPresentation
 
 		Result.bVisible = true;
 		Result.bSuppressLegacyResolution = true;
+		Result.ContestId = Contest->ContestId;
 		Result.ContestLabel = FFMCodexPlayerUIPresentationText
 			::ResolutionContest(Contest->ContestId).ToString();
 		Result.AttackRow = BuildFormulaRow(
@@ -675,14 +690,20 @@ namespace FMCodexLocalMatchUMGPresentation
 			FFMCodexPlayerUIPresentationText::ResolutionDefenseRow().ToString(),
 			Facts,
 			InteractionView);
-		const bool bResolved = Result.AttackRow.bFinalValueResolved
-			&& Result.DefenseRow.bFinalValueResolved;
-		Result.StatusLabel = (bResolved
-			? FFMCodexPlayerUIPresentationText::ResolutionResolved()
-			: FFMCodexPlayerUIPresentationText::ResolutionPending()).ToString();
+		const bool bAttackResolved =
+			Result.AttackRow.bFinalValueResolved;
+		const bool bDefenseResolved =
+			Result.DefenseRow.bFinalValueResolved;
+		Result.StatusLabel = !bAttackResolved
+			? TEXT("等待进攻方掷点")
+			: !bDefenseResolved
+				? TEXT("等待防守方掷点")
+				: TEXT("双方掷点已完成");
+		Result.bAttackRowActive = !bAttackResolved;
+		Result.bDefenseRowActive = bAttackResolved && !bDefenseResolved;
 		Result.bCanContinue = bCanContinue;
 		Result.ContinueActionLabel = bCanContinue
-			? FFMCodexPlayerUIPresentationText::ContinueResolution().ToString()
+			? InteractionView.ContinueActionLabel
 			: FString();
 		return Result;
 	}
@@ -1081,7 +1102,11 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		InteractionView.bCanResolveNoLegalChoice;
 	Result.Interaction.bCanContinue =
 		InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense;
 	Result.Interaction.PrimaryActionLabel =
 		Result.Interaction.bCanStartNewMatch ? TEXT("START LOCAL MATCH")
 		: Result.Interaction.bCanRollTacticalPoints
@@ -1224,6 +1249,16 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		InteractionView,
 		Result.Interaction.bCanContinue,
 		!Result.Resolution.bRejected);
+	// Once Cross High has been selected, its route/formula progression stays on
+	// the board. The legacy English Resolution overlay remains available to
+	// routes outside this narrow rollout.
+	if (InteractionView.ElectiveBranchIntent
+			== EMatchPlayElectiveBranchIntent::CrossHigh
+		&& !Result.Resolution.bRejected
+		&& !Result.Resolution.FormulaFacts.bHasActualBranch)
+	{
+		Result.InlineFormula.bSuppressLegacyResolution = true;
+	}
 
 	Result.DiagnosticLabel = DiagnosticMessage;
 	return Result;

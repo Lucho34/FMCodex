@@ -29,6 +29,8 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	SelectHelper,
 	SelectBranchIntent,
 	SelectOneOnOneShot,
+	RollCrossHighAttack,
+	RollCrossHighDefense,
 	ContinueResolution,
 	AttackComplete,
 	MatchEnded
@@ -240,6 +242,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCanResolveNoLegalChoice = false;
 	FString Diagnostic;
 	FString ActionLabel;
+	EMatchPlayElectiveBranchIntent ElectiveBranchIntent =
+		EMatchPlayElectiveBranchIntent::None;
 	FString ActualBranchLabel;
 	FString OneOnOneChoiceLabel;
 	FString AttackDirectionLabel;

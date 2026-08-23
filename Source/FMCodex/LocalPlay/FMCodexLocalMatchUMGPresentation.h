@@ -24,6 +24,8 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	SelectHelper,
 	SelectBranchIntent,
 	SelectOneOnOneShot,
+	RollCrossHighAttack,
+	RollCrossHighDefense,
 	ContinueResolution,
 	AttackComplete,
 	MatchEnded
@@ -867,6 +869,18 @@ enum class EFMCodexUMGInlineFormulaTermKind : uint8
 	FixedModifier
 };
 
+/** Local presentation phase only; never represents a gameplay-resolution state. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGInlineFormulaRevealPhase : uint8
+{
+	None,
+	Pending,
+	AttackReveal,
+	AttackSettled,
+	DefenseReveal,
+	Completed
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGInlineFormulaParticipantViewModel
 {
@@ -936,6 +950,11 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaRowViewModel
 {
 	GENERATED_BODY()
 
+	/** Authoritative row owner retained for stable reveal identity. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString SideLabel;
@@ -947,6 +966,19 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaRowViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	TArray<FFMCodexUMGInlineFormulaTermViewModel> Terms;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bKnownNonRollSubtotalResolved = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	float KnownNonRollSubtotal = 0.0f;
+
+	/** Projection-formatted known subtotal; Widget never sums Terms. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString KnownNonRollSubtotalLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
@@ -976,6 +1008,11 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 		Category = "Local Match|Inline Formula")
 	bool bSuppressLegacyResolution = false;
 
+	/** Canonical fact identity. This is never derived from localized display text. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FName ContestId = NAME_None;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString ContestLabel;
@@ -983,6 +1020,46 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString StatusLabel;
+
+	/** Legacy display field retained for serialized compatibility; manual roll flow leaves it None. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	EFMCodexUMGInlineFormulaRevealPhase RevealPhase =
+		EFMCodexUMGInlineFormulaRevealPhase::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bDiceRevealVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bDiceRolling = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString DiceOwnerLabel;
+
+	/** "D6" while rolling, then the exact authoritative RawD6. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString DiceFaceLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	int32 ActiveRollSequenceIndex = INDEX_NONE;
+
+	/** Deterministic visual frame. It is not, and never supplies, a dice value. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	int32 RevealAnimationFrame = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bAttackRowActive = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bDefenseRowActive = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")

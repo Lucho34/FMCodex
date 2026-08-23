@@ -993,6 +993,62 @@ AFMCodexLocalMatchHostGameMode::ResolveCrossPostRoutePlan()
 	return Result;
 }
 
+FFMCodexLocalMatchResolveCrossHighAttackRollResult
+AFMCodexLocalMatchHostGameMode::ResolveCrossHighAttackRoll(
+	const FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest& Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolveCrossHighAttackRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
+		.ResolveCrossHighAttackRoll(Request);
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			Result.AuthoritativeResult.OrchestrationResult.ErrorMessage);
+	}
+	return Result;
+}
+
+FFMCodexLocalMatchResolveCrossHighDefenseRollResult
+AFMCodexLocalMatchHostGameMode::ResolveCrossHighDefenseRoll(
+	const FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest& Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolveCrossHighDefenseRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
+		.ResolveCrossHighDefenseRoll(Request);
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			Result.AuthoritativeResult.OrchestrationResult.ErrorMessage);
+	}
+	return Result;
+}
+
 FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult
 AFMCodexLocalMatchHostGameMode::ResolveThroughBallFeetPostRoutePlan()
 {

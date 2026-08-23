@@ -351,6 +351,35 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		return UFormulaResolver::RoundToOneDecimal(Sum);
 	}
 
+	void ProjectKnownRowValues(FRow& Row)
+	{
+		float KnownSubtotal = 0.0f;
+		bool bAllNonRollTermsResolved = true;
+		bool bAllRollTermsResolved = true;
+		for (const FMatchPlayResolutionFormulaTermFact& Term : Row.Terms)
+		{
+			if (Term.Kind == ETermKind::RawRoll)
+			{
+				bAllRollTermsResolved &= Term.bResolved;
+				continue;
+			}
+			bAllNonRollTermsResolved &= Term.bResolved;
+			if (Term.bResolved)
+			{
+				KnownSubtotal += Term.Contribution;
+			}
+		}
+		Row.bKnownNonRollSubtotalResolved = bAllNonRollTermsResolved;
+		Row.KnownNonRollSubtotal = bAllNonRollTermsResolved
+			? UFormulaResolver::RoundToOneDecimal(KnownSubtotal)
+			: 0.0f;
+		if (bAllNonRollTermsResolved && bAllRollTermsResolved)
+		{
+			Row.bFinalValueResolved = true;
+			Row.FinalValue = SumTerms(Row);
+		}
+	}
+
 	void InitializeContest(
 		FContest& Contest,
 		const FName ContestId,
@@ -910,6 +939,8 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		{
 			return false;
 		}
+		ProjectKnownRowValues(Contest.AttackRow);
+		ProjectKnownRowValues(Contest.DefenseRow);
 
 		const FMatchPlayResolutionRollFact* AttackRoll =
 			FindRoll(Projection, EPostPurpose::PrimaryAttack);
@@ -1001,6 +1032,8 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		}
 		AddRollTerm(Contest.DefenseRow, Projection,
 			EPostPurpose::OneOnOneDirectShotDefense);
+		ProjectKnownRowValues(Contest.AttackRow);
+		ProjectKnownRowValues(Contest.DefenseRow);
 
 		if (AreAllTermsResolved(Contest.AttackRow)
 			&& AreAllTermsResolved(Contest.DefenseRow))

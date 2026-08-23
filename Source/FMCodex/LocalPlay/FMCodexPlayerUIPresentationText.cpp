@@ -616,6 +616,26 @@ FText FFMCodexPlayerUIPresentationText::ResolutionResolved()
 	return LOCTEXT("ResolutionResolved", "\u516C\u5F0F\u5DF2\u7ED3\u7B97");
 }
 
+FText FFMCodexPlayerUIPresentationText::ResolutionAttackRoll()
+{
+	return LOCTEXT("ResolutionAttackRoll", "\u8FDB\u653B\u63B7\u70B9");
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionAttackRollSettled()
+{
+	return LOCTEXT("ResolutionAttackRollSettled", "\u8FDB\u653B\u63B7\u70B9\u5DF2\u843D\u5B9A");
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionDefenseRoll()
+{
+	return LOCTEXT("ResolutionDefenseRoll", "\u9632\u5B88\u63B7\u70B9");
+}
+
+FText FFMCodexPlayerUIPresentationText::ResolutionDefenseRollSettled()
+{
+	return LOCTEXT("ResolutionDefenseRollSettled", "\u9632\u5B88\u63B7\u70B9\u5DF2\u843D\u5B9A");
+}
+
 FText FFMCodexPlayerUIPresentationText::ContinueResolution()
 {
 	return LOCTEXT("ContinueResolution", "\u7EE7\u7EED\u7ED3\u7B97");

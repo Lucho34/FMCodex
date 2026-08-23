@@ -53,6 +53,10 @@ public:
 	static FText ResolutionDefenseRow();
 	static FText ResolutionPending();
 	static FText ResolutionResolved();
+	static FText ResolutionAttackRoll();
+	static FText ResolutionAttackRollSettled();
+	static FText ResolutionDefenseRoll();
+	static FText ResolutionDefenseRollSettled();
 	static FText ContinueResolution();
 	static FText BroadcastStatus(bool bMatchEnded, bool bAttackActive,
 		const FString& MatchResultLabel);

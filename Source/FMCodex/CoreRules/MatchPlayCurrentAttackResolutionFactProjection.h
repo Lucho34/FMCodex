@@ -206,6 +206,12 @@ struct FMCODEX_API FMatchPlayResolutionFormulaRowFact
 	TArray<int32> ParticipatingStamina;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	bool bKnownNonRollSubtotalResolved = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
+	float KnownNonRollSubtotal = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
 	bool bFinalValueResolved = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")

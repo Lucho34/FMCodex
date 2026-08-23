@@ -97,6 +97,12 @@ public:
 		GetInlineFormulaSurface() const;
 	UFMCodexResolutionPanelWidget* GetResolutionPanel() const;
 	bool IsLegacyResolutionOverlayVisible() const;
+	EFMCodexUMGInlineFormulaRevealPhase GetInlineFormulaRevealPhase() const;
+	bool IsInlineFormulaRevealInputBlocked() const;
+#if WITH_DEV_AUTOMATION_TESTS
+	void AdvanceInlineFormulaRevealForTesting(float DeltaSeconds);
+	void PauseInlineFormulaRevealTimerForTesting();
+#endif
 	UFMCodexSelectionFeedbackToastWidget* GetSelectionFeedbackToast() const;
 	UFMCodexCardRackWidget* GetLocalRackWidget() const;
 	UFMCodexCardRackWidget* GetOpponentRackWidget() const;
@@ -127,6 +133,29 @@ protected:
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
+	void UpdateInlineFormulaRevealState(
+		const FFMCodexUMGMatchScreenViewModel& InPresentation);
+	FFMCodexUMGInlineFormulaSurfaceViewModel
+		BuildDisplayedInlineFormula() const;
+	void AdvanceInlineFormulaReveal(float DeltaSeconds);
+	void HandleInlineFormulaRevealTimer();
+	void StartInlineFormulaRevealTimer();
+	void StopInlineFormulaRevealTimer();
+	void ResetInlineFormulaRevealState();
+	bool IsSameInlineFormulaRevealIdentity(
+		int64 AttackSequence,
+		FName ContestId,
+		int32 AttackRollSequenceIndex,
+		EInitialTurnOrderPlayer AttackSide,
+		int32 DefenseRollSequenceIndex,
+		EInitialTurnOrderPlayer DefenseSide) const;
+	void SetInlineFormulaRevealIdentity(
+		int64 AttackSequence,
+		FName ContestId,
+		int32 AttackRollSequenceIndex,
+		EInitialTurnOrderPlayer AttackSide,
+		int32 DefenseRollSequenceIndex,
+		EInitialTurnOrderPlayer DefenseSide);
 	void HandleDeploymentDragStarted(FName CardId, bool bGoalkeeper);
 	void HandleDeploymentDragFinished();
 	void HandlePitchDeploymentDropped(
@@ -191,6 +220,23 @@ private:
 		Category = "Local Match|Presentation",
 		meta = (AllowPrivateAccess = "true"))
 	FFMCodexUMGMatchScreenViewModel Presentation;
+
+	/** Last fully resolved authoritative surface; display staging only copies it. */
+	FFMCodexUMGInlineFormulaSurfaceViewModel CachedResolvedInlineFormula;
+
+	EFMCodexUMGInlineFormulaRevealPhase InlineFormulaRevealPhase =
+		EFMCodexUMGInlineFormulaRevealPhase::None;
+	float InlineFormulaRevealPhaseElapsed = 0.0f;
+	FTimerHandle InlineFormulaRevealTimerHandle;
+	bool bInlineFormulaRevealIdentityObserved = false;
+	int64 InlineFormulaRevealAttackSequence = 0;
+	FName InlineFormulaRevealContestId = NAME_None;
+	int32 InlineFormulaRevealAttackRollSequenceIndex = INDEX_NONE;
+	EInitialTurnOrderPlayer InlineFormulaRevealAttackSide =
+		EInitialTurnOrderPlayer::None;
+	int32 InlineFormulaRevealDefenseRollSequenceIndex = INDEX_NONE;
+	EInitialTurnOrderPlayer InlineFormulaRevealDefenseSide =
+		EInitialTurnOrderPlayer::None;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AFMCodexLocalMatchPlayerController> MatchController;

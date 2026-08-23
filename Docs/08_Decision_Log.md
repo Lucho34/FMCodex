@@ -472,6 +472,28 @@
 - 权威推进：Formula Surface 与底部 Interaction Panel 复用现有无参数 Continue intent，经 Screen 进入 `Controller::ContinueResolution` 的既有 typed route。本阶段不改变命令顺序。Cross post-route plan 当前一次权威命令写入 PrimaryAttack 与 PrimaryDefense 两枚 D6，所以生产流程没有人为拆出的“只完成攻击 D6”状态。
 - 范围：不修改公式、RNG、roll order、选人 Role Tag、Header、Pitch/lane/slot/Pitch Mini 几何或玩法；不加入骰子图形/动画/音效、叙事、终局 cinematic，也不扩展到其他 Formula Contest。
 
+### CD-044 - Cross High Authoritative Dice Reveal Choreography
+
+- 日期：2026-08-23
+- 状态：由 CD-045 取代。以下内容只记录旧实现背景，不再定义 Cross High 的现行玩家操作或权威时序。
+- 权威边界：`ResolveCrossPostRoutePlan` 仍在一次 authoritative continuation 中原子写入 Attack/Defense 两枚 ArithmeticContest D6。Reveal 只暂缓显示已存在的 `RawD6 / FinalValue`，不修改 FormulaFacts、InteractionView、ResolutionFeedback、CoreRules 或 roll records。
+- 本地状态：Match Screen 以 `AttackSequence + ContestId + Attack/Defense RollSequenceIndex + owning side` 标识一次现场 Contest，并区分 `Pending / AttackReveal / AttackSettled / DefenseReveal / Completed`。只有同一 Screen 先观察 pending、再观察同 identity resolved 的 live transition 才播放；首次进入已 resolved、Screen/Widget 重建或未来 resync 直接显示 Completed，不自动重播旧结果。
+- 展示时序：Attack Reveal `0.65s`，Attack Settled hold `0.28s`，Defense Reveal `0.65s`。rolling tile 只显示非数值 D6 视觉并做轻量旋转/缩放；settled tile 与 Formula operand 只显示 authority 提供的最终 RawD6。Completed 保留双方权威 operand 与 Final Value。
+- 输入门禁：Reveal active 时，Inline CTA 与底部 Interaction Panel 都禁用，Screen 的 Continue intent 入口再次检查门禁。Reveal 完成后只恢复既有 authoritative InteractionView 允许的操作，不自动调用 finishing/terminal continuation。
+- 性能与范围：短生命周期 Timer 驱动轻量 Widget transform，Completed/hidden 时停止；生产 gate 仍只覆盖 `Cross.High` 的 Attack/Defense ArithmeticContest，不覆盖 Initial Route、Cross Low 或其他战术。无音频、叙事、winner/tie 推导、结果 cinematic、外部骰子资产或几何改版。
+
+### CD-045 - Cross High Manual Attacker/Defender Roll Contract
+
+- 日期：2026-08-23
+- 适用范围：只覆盖路线已经确定为 `Cross.High` 的 Attack/Defense ArithmeticContest。Cross Low、Pass Control、Through Ball、Long Shot、Cut Inside、One-on-One、BranchSelection 与其他 OutcomeDecision 保持既有命令和表现。
+- 权威命令：新增 `ResolveCrossHighAttackRoll(RequestingSide)` 与 `ResolveCrossHighDefenseRoll(RequestingSide)`。前者只允许当前进攻方、只追加 `PrimaryAttack`、恰好调用一次 post-route D6 provider；后者只允许当前防守方、只在合法 Attack 前缀后追加 `PrimaryDefense`、恰好调用一次 provider。错误阵营、错误阶段、重复与越序请求均以零 provider call、零 State 变化失败。
+- 旧命令门禁：`ResolveCrossPostRoutePlan` 对 Cross High 拒绝，防止 generic Continue 绕过两步玩家操作；它继续服务 Cross Low 的既有原子流程。双方 High 掷点完成后沿用相同 `FCrossPlanQuery` 输入、FormulaResolver、属性、倍率、固定 `+2`、GK/Helper 和 tie/winner 规则。
+- RNG：同一权威随机源的语义消费顺序保持 Initial Route、Cross High Attack、Cross High Defense。每条新命令只消费本步骤的一枚 D6；Presentation/InteractionView/UMG 不拥有或消费 RNG，进攻命令绝不自动调用防守命令。
+- 投影：Formula Row 新增 `KnownNonRollSubtotal`。Projection 从结构化非 RawRoll contributions 生成该值；本行 RawRoll 被权威接受后即可投影该行 `FinalValue`，双方完成时再与既有 Resolver Result 做一致性校验。Widget 只展示，不求和。
+- 玩家流程：目标 Contest 在 Pitch 内直接显示 `高球传中`、公式项、`基础值 X` 和 `掷点 ?`。阶段依次为 `等待进攻方掷点`、`等待防守方掷点`、双方已完成；CTA 依次为 `进攻方掷点`、`防守方掷点`、既有后续结算。行动提示归属随阶段从进攻方切换到防守方。
+- Overlay 与门禁：Cross High 算术 Contest 激活时抑制旧全屏 Resolution Overlay，不显示 `Resolution Started / Accepted by... / Continue - Resolve Route`。命令处理期间锁定重复提交，底部 Interaction Panel 与 Screen intent 都只能调用当前显式 typed command，不能预掷或绕过阶段。
+- 明确不做：本阶段不加入结果 headline、叙事句、随机破坏者、音效、观众/解说、cinematic，也不推广到其他路线。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

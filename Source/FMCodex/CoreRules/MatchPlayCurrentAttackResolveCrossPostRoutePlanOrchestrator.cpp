@@ -10,6 +10,8 @@ namespace MatchPlayCurrentAttackResolveCrossPostRoutePlan
 	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
 	using FResult =
 		FMatchPlayCurrentAttackResolveCrossPostRoutePlanResult;
+	using EMode =
+		FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest::EMode;
 
 	void SetFailure(
 		FResult& Result,
@@ -349,6 +351,29 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 			TEXT("This operation supports only resolved Cross High or Low branches."));
 		return Result;
 	}
+	const bool bCrossHigh = BeforeSession.ActualBranch.Cross
+		== EMatchPlayCrossActualBranch::High;
+	const bool bExplicitHighStep = Request.Mode
+		== EMode::ResolveCrossHighAttackRoll
+		|| Request.Mode == EMode::ResolveCrossHighDefenseRoll;
+	const bool bCompletedPlanRegeneration = Request.Mode
+		== EMode::RegenerateCompletedPlan;
+	if (bCrossHigh && !bExplicitHighStep && !bCompletedPlanRegeneration)
+	{
+		SetFailure(
+			Result,
+			EError::CrossHighRequiresExplicitRollStep,
+			TEXT("Cross High requires an explicit attacker or defender roll command."));
+		return Result;
+	}
+	if (!bCrossHigh && bExplicitHighStep)
+	{
+		SetFailure(
+			Result,
+			EError::ExplicitRollStepRequiresCrossHigh,
+			TEXT("Explicit Cross High roll commands support only Cross High."));
+		return Result;
+	}
 
 	FMatchPlayState CandidateState = BeforeState;
 	FMatchPlayCurrentAttackResolutionSession& CandidateSession =
@@ -378,6 +403,52 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 			Result.ProgressResult.ErrorMessage);
 		return Result;
 	}
+	if (bCompletedPlanRegeneration
+		&& !Result.ProgressResult.bContractComplete)
+	{
+		SetFailure(
+			Result,
+			EError::CompletedPlanRequired,
+			TEXT("Cross plan regeneration requires an already-complete roll contract."));
+		return Result;
+	}
+	if (bExplicitHighStep)
+	{
+		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			SetFailure(
+				Result,
+				EError::InvalidRequestingSide,
+				TEXT("Cross High roll commands require PlayerA or PlayerB as RequestingSide."));
+			return Result;
+		}
+		const EPurpose RequestedPurpose = Request.Mode
+			== EMode::ResolveCrossHighAttackRoll
+				? EPurpose::PrimaryAttack
+				: EPurpose::PrimaryDefense;
+		if (Result.ProgressResult.bContractComplete
+			|| Result.ProgressResult.NextPurpose != RequestedPurpose)
+		{
+			SetFailure(
+				Result,
+				EError::WrongCrossHighRollStep,
+				TEXT("The requested Cross High roll is not the current authoritative step."));
+			return Result;
+		}
+		const EInitialTurnOrderPlayer ExpectedSide = RequestedPurpose
+			== EPurpose::PrimaryAttack
+				? BeforeSession.Bundle.CurrentAttackingPlayer
+				: BeforeSession.Bundle.CurrentDefendingPlayer;
+		if (Request.RequestingSide != ExpectedSide)
+		{
+			SetFailure(
+				Result,
+				EError::WrongRequestingSide,
+				TEXT("The requesting side does not own the current Cross High roll."));
+			return Result;
+		}
+	}
 	if (!Result.ProgressResult.bContractComplete
 		&& RollProvider == nullptr)
 	{
@@ -396,7 +467,9 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 		return Result;
 	}
 
-	while (!Result.ProgressResult.bContractComplete)
+	const int32 MaximumRollsThisCommand = bExplicitHighStep ? 1 : MAX_int32;
+	while (!Result.ProgressResult.bContractComplete
+		&& Result.ProviderCallCount < MaximumRollsThisCommand)
 	{
 		const EPurpose Purpose = Result.ProgressResult.NextPurpose;
 		const FMatchPlayPostRouteRollProviderResult ProviderResult =
@@ -435,6 +508,25 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 		}
 	}
 
+	if (bExplicitHighStep && !Result.ProgressResult.bContractComplete)
+	{
+		Result.SessionStateValidationResult =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				CandidateState);
+		if (!Result.SessionStateValidationResult.bIsCanonical)
+		{
+			SetFailure(
+				Result,
+				EError::InvalidPostRouteProgress,
+				Result.SessionStateValidationResult.ErrorMessage);
+			return Result;
+		}
+		Result.AfterState = MoveTemp(CandidateState);
+		Result.bResolvedNewRolls = true;
+		Result.bSuccess = true;
+		return Result;
+	}
+
 	Result.SessionStateValidationResult =
 		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
 			CandidateState);
@@ -466,7 +558,8 @@ FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 
 	Result.AfterState = MoveTemp(CandidateState);
 	Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
-	Result.bReplayedCompleteRolls = Result.ProviderCallCount == 0;
+	Result.bReplayedCompleteRolls = !bExplicitHighStep
+		&& Result.ProviderCallCount == 0;
 	Result.bSuccess = true;
 	return Result;
 }

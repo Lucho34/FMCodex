@@ -276,6 +276,24 @@ struct FMCODEX_API FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchResolveCrossHighAttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveCrossHighAttackRollResult AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveCrossHighDefenseRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveCrossHighDefenseRollResult AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult
 {
 	bool bSuccess = false;
@@ -559,6 +577,14 @@ public:
 
 	FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();
+
+	FFMCodexLocalMatchResolveCrossHighAttackRollResult
+	ResolveCrossHighAttackRoll(
+		const FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest& Request);
+
+	FFMCodexLocalMatchResolveCrossHighDefenseRollResult
+	ResolveCrossHighDefenseRoll(
+		const FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest& Request);
 
 	FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult
 	ResolveThroughBallFeetPostRoutePlan();

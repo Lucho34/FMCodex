@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
+#include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 
@@ -17,7 +18,7 @@
 namespace FMCodexInlineResolutionFormulaPIETests
 {
 	const FString CaptureDirectory = FPaths::ConvertRelativePathToFull(
-		FPaths::ProjectSavedDir() / TEXT("PIE/Stage613141A"));
+		FPaths::ProjectSavedDir() / TEXT("PIE/Stage6131418"));
 
 	AFMCodexLocalMatchPlayerController* GetPIEController()
 	{
@@ -155,12 +156,27 @@ namespace FMCodexInlineResolutionFormulaPIETests
 		return bCarrier && bRunner && bMarker;
 	}
 
+	const FFMCodexUMGInlineFormulaTermViewModel* FindRawRoll(
+		const FFMCodexUMGInlineFormulaRowViewModel& Row)
+	{
+		return Row.Terms.FindByPredicate(
+			[](const FFMCodexUMGInlineFormulaTermViewModel& Term)
+			{
+				return Term.Kind == EFMCodexUMGInlineFormulaTermKind::RawRoll;
+			});
+	}
+
 	bool ValidateSurfaceState(
 		FAutomationTestBase& Test,
-		const int32 StateIndex,
-		const bool bExpectResolved)
+		const int32 StateIndex)
 	{
 		AFMCodexLocalMatchPlayerController* Controller = GetPIEController();
+		if (Controller != nullptr)
+		{
+			// Exercise the production rebuild path repeatedly in every authority phase.
+			Controller->RefreshPresentation();
+			Controller->RefreshPresentation();
+		}
 		UFMCodexLocalMatchScreenWidget* Screen = Controller == nullptr
 			? nullptr : Controller->GetPlayerMatchScreen();
 		UFMCodexInlineResolutionFormulaSurfaceWidget* Surface =
@@ -176,38 +192,73 @@ namespace FMCodexInlineResolutionFormulaPIETests
 		const auto& Formula = Surface->GetPresentation();
 		const bool bSharedContext = Formula.bVisible
 			&& Formula.bSuppressLegacyResolution
+			&& Formula.ContestId == TEXT("Cross.High")
 			&& Formula.ContestLabel == TEXT("高球传中")
 			&& !Screen->IsLegacyResolutionOverlayVisible()
 			&& Screen->GetMatchHeader() != nullptr
 			&& Screen->GetPitchWidget() != nullptr
 			&& Screen->GetInteractionPanel() != nullptr
-			&& (StateIndex >= 3 || HasAllSelectedRoles(Presentation));
+			&& HasAllSelectedRoles(Presentation)
+			&& Formula.AttackRow.bKnownNonRollSubtotalResolved
+			&& Formula.DefenseRow.bKnownNonRollSubtotalResolved
+			&& Formula.AttackRow.KnownNonRollSubtotalLabel.StartsWith(TEXT("基础值 "))
+			&& Formula.DefenseRow.KnownNonRollSubtotalLabel.StartsWith(TEXT("基础值 "))
+			&& Formula.RevealPhase == EFMCodexUMGInlineFormulaRevealPhase::None
+			&& !Formula.bDiceRevealVisible
+			&& !Screen->IsInlineFormulaRevealInputBlocked();
+		const auto* AttackRoll = FindRawRoll(Formula.AttackRow);
+		const auto* DefenseRoll = FindRawRoll(Formula.DefenseRow);
 		bool bStateTruth = false;
-		if (!bExpectResolved)
+		switch (StateIndex)
 		{
+		case 1:
 			bStateTruth = !Formula.AttackRow.bFinalValueResolved
 				&& !Formula.DefenseRow.bFinalValueResolved
 				&& Surface->GetRenderedPendingTermCount() == 1
-				&& Formula.bCanContinue;
-		}
-		else
-		{
-			const auto HasResolvedD6 = [](const auto& Row)
-			{
-				return Row.Terms.ContainsByPredicate(
-					[](const FFMCodexUMGInlineFormulaTermViewModel& Term)
-					{
-						return Term.Kind
-							== EFMCodexUMGInlineFormulaTermKind::RawRoll
-							&& Term.bResolved && Term.RawD6 >= 1
-							&& Term.RawD6 <= 6;
-					});
-			};
+				&& Formula.bCanContinue
+				&& Formula.StatusLabel == TEXT("等待进攻方掷点")
+				&& Formula.ContinueActionLabel == TEXT("进攻方掷点")
+				&& AttackRoll != nullptr && !AttackRoll->bResolved
+				&& AttackRoll->DisplayLabel == TEXT("掷点 ?")
+				&& DefenseRoll != nullptr && !DefenseRoll->bResolved
+				&& Controller->GetInteractionView().InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack
+				&& Controller->GetInteractionView().ExpectedActingPlayer
+					== Controller->GetInteractionView().CurrentAttackingPlayer;
+			break;
+		case 2:
+			bStateTruth = Formula.AttackRow.bFinalValueResolved
+				&& FMath::IsNearlyEqual(Formula.AttackRow.FinalValue, 9.5f)
+				&& !Formula.DefenseRow.bFinalValueResolved
+				&& AttackRoll != nullptr && AttackRoll->bResolved
+				&& AttackRoll->RawD6 == 4
+				&& AttackRoll->DisplayLabel == TEXT("掷点 4")
+				&& DefenseRoll != nullptr && !DefenseRoll->bResolved
+				&& DefenseRoll->DisplayLabel == TEXT("掷点 ?")
+				&& Surface->GetRenderedPendingTermCount() == 1
+				&& Formula.bCanContinue
+				&& Formula.StatusLabel == TEXT("等待防守方掷点")
+				&& Formula.ContinueActionLabel == TEXT("防守方掷点")
+				&& Controller->GetInteractionView().InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense
+				&& Controller->GetInteractionView().ExpectedActingPlayer
+					!= Controller->GetInteractionView().CurrentAttackingPlayer;
+			break;
+		case 3:
 			bStateTruth = Formula.AttackRow.bFinalValueResolved
 				&& Formula.DefenseRow.bFinalValueResolved
-				&& HasResolvedD6(Formula.AttackRow)
-				&& HasResolvedD6(Formula.DefenseRow)
-				&& Surface->GetRenderedPendingTermCount() == 0;
+				&& FMath::IsNearlyEqual(Formula.AttackRow.FinalValue, 9.5f)
+				&& FMath::IsNearlyEqual(Formula.DefenseRow.FinalValue, 9.5f)
+				&& AttackRoll != nullptr && AttackRoll->RawD6 == 4
+				&& DefenseRoll != nullptr && DefenseRoll->RawD6 == 3
+				&& Surface->GetRenderedPendingTermCount() == 0
+				&& Formula.bCanContinue
+				&& Formula.StatusLabel == TEXT("双方掷点已完成")
+				&& !Screen->GetInteractionPanel()->IsInteractionBlocked()
+				&& !Controller->GetResolutionFeedback().bTerminal;
+			break;
+		default:
+			break;
 		}
 		if (!bSharedContext || !bStateTruth)
 		{
@@ -221,8 +272,12 @@ namespace FMCodexInlineResolutionFormulaPIETests
 
 	FString CapturePath(const int32 StateIndex)
 	{
-		return CaptureDirectory / FString::Printf(
-			TEXT("CrossHigh_State%d.png"), StateIndex);
+		static const TCHAR* Names[] = {
+			TEXT("Invalid"), TEXT("PreRoll"), TEXT("AttackSettled_DefensePending"),
+			TEXT("Completed")
+		};
+		return CaptureDirectory / FString::Printf(TEXT("CrossHigh_State%d_%s.png"),
+			StateIndex, Names[FMath::Clamp(StateIndex, 0, 3)]);
 	}
 }
 
@@ -312,8 +367,17 @@ bool FPrepareCrossHighPIECommand::Update()
 	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
 	Controller->ContinueResolution();
 	Controller->ContinueResolution();
+	const bool bInitialRouteIsTwo = Controller->GetInteractionView()
+		.ResolutionFacts.Rolls.ContainsByPredicate(
+			[](const FMatchPlayResolutionRollFact& Roll)
+			{
+				return Roll.Semantics
+					== EMatchPlayResolutionRollSemantics::BranchSelection
+					&& Roll.bResolved && Roll.RawD6 == 2;
+			});
 	if (!Controller->GetLastDiagnostic().bHostSuccess
-		|| !ValidateSurfaceState(*Test, 1, false))
+		|| !bInitialRouteIsTwo
+		|| !ValidateSurfaceState(*Test, 1))
 	{
 		Test->AddError(TEXT("PIE did not reach Cross High pre-roll formula state."));
 	}
@@ -337,15 +401,35 @@ bool FAdvanceCrossHighPIECommand::Update()
 	}
 	if (bAdvance)
 	{
-		Controller->ContinueResolution();
+		UFMCodexLocalMatchScreenWidget* Screen =
+			Controller->GetPlayerMatchScreen();
+		UFMCodexInlineResolutionFormulaSurfaceWidget* Surface =
+			Screen == nullptr ? nullptr : Screen->GetInlineFormulaSurface();
+		if (Screen == nullptr || Surface == nullptr)
+		{
+			Test->AddError(TEXT("PIE formula surface disappeared before manual roll."));
+			return true;
+		}
+		Surface->RequestContinue();
 		if (!Controller->GetLastDiagnostic().bHostSuccess)
 		{
 			Test->AddError(FString::Printf(
 				TEXT("PIE continuation before state %d failed."), StateIndex));
 			return true;
 		}
+		const FString ExpectedCommand = StateIndex == 2
+			? TEXT("ResolveCrossHighAttackRoll")
+			: TEXT("ResolveCrossHighDefenseRoll");
+		if (Controller->GetLastDiagnostic().CommandName != ExpectedCommand
+			|| Controller->GetResolutionFeedback().bTerminal)
+		{
+			Test->AddError(FString::Printf(
+				TEXT("PIE state %d did not use the expected typed manual roll command."),
+				StateIndex));
+			return true;
+		}
 	}
-	ValidateSurfaceState(*Test, StateIndex, StateIndex >= 2);
+	ValidateSurfaceState(*Test, StateIndex);
 	const FString Path = CapturePath(StateIndex);
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true);
 	FScreenshotRequest::RequestScreenshot(Path, true, false);
@@ -372,7 +456,7 @@ bool FVerifyPIECaptureCommand::Update()
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FFMCodexInlineResolutionFormulaPIEVisualGateTest,
-	"FMCodex.PIE.InlineFormula.CrossHighThreeStateVisualGate",
+	"FMCodex.PIE.InlineFormula.CrossHighManualRollVisualGate",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FFMCodexInlineResolutionFormulaPIEVisualGateTest::RunTest(
@@ -390,15 +474,15 @@ bool FFMCodexInlineResolutionFormulaPIEVisualGateTest::RunTest(
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.5f));
 	ADD_LATENT_AUTOMATION_COMMAND(
 		FAdvanceCrossHighPIECommand(this, 1, false));
-	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.75f));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
 	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIECaptureCommand(this, 1));
 	ADD_LATENT_AUTOMATION_COMMAND(
 		FAdvanceCrossHighPIECommand(this, 2, true));
-	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.75f));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
 	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIECaptureCommand(this, 2));
 	ADD_LATENT_AUTOMATION_COMMAND(
 		FAdvanceCrossHighPIECommand(this, 3, true));
-	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.75f));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
 	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIECaptureCommand(this, 3));
 	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(1.0f));

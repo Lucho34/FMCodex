@@ -58,6 +58,7 @@ private:
 		const FString& WidgetNamePrefix,
 		UTextBlock* SideText,
 		UWrapBox* ParticipantBody,
+		UTextBlock* KnownSubtotalText,
 		UWrapBox* FormulaBody,
 		UTextBlock* FinalValueText,
 		TArray<TObjectPtr<UWidget>>& ParticipantItems,
@@ -78,10 +79,28 @@ private:
 	TObjectPtr<UTextBlock> StatusText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> DiceRevealRegion;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> DiceOwnerText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> DiceTile;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> DiceFaceText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> AttackRegion;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> AttackSideText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UWrapBox> AttackParticipantBody;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> AttackKnownSubtotalText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UWrapBox> AttackFormulaBody;
@@ -96,10 +115,16 @@ private:
 	TArray<TObjectPtr<UWidget>> AttackTermItems;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> DefenseRegion;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> DefenseSideText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UWrapBox> DefenseParticipantBody;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> DefenseKnownSubtotalText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UWrapBox> DefenseFormulaBody;

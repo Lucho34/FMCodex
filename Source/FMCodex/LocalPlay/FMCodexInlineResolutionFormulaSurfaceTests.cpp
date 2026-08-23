@@ -2,6 +2,7 @@
 
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 
+#include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
 #include "FMCodexLocalMatchScreenWidget.h"
@@ -164,6 +165,13 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 			EAttribute::Strength, 4.0f, 0.5f));
 		Contest.AttackRow.Terms.Add(RollTerm(
 			TEXT("PrimaryAttackD6"), 1, bAttackRollResolved, 4));
+		Contest.AttackRow.bKnownNonRollSubtotalResolved = true;
+		Contest.AttackRow.KnownNonRollSubtotal = 4.5f;
+		if (bAttackRollResolved)
+		{
+			Contest.AttackRow.bFinalValueResolved = true;
+			Contest.AttackRow.FinalValue = 8.5f;
+		}
 
 		Contest.DefenseRow.RowId = TEXT("Cross.High.Defense");
 		Contest.DefenseRow.Side = EInitialTurnOrderPlayer::PlayerB;
@@ -189,10 +197,11 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 				EAttribute::GoalkeeperAerial, 5.0f, 0.5f));
 			Contest.bGoalkeeperParticipated = true;
 		}
+		Contest.DefenseRow.bKnownNonRollSubtotalResolved = true;
+		Contest.DefenseRow.KnownNonRollSubtotal = bHelper && bGoalkeeper
+			? 9.0f : bHelper ? 6.5f : bGoalkeeper ? 7.0f : 4.5f;
 		if (bAttackRollResolved && bDefenseRollResolved)
 		{
-			Contest.AttackRow.bFinalValueResolved = true;
-			Contest.AttackRow.FinalValue = 8.5f;
 			Contest.DefenseRow.bFinalValueResolved = true;
 			Contest.DefenseRow.FinalValue = bHelper && bGoalkeeper
 				? 12.0f : bHelper ? 9.5f : bGoalkeeper ? 10.0f : 7.5f;
@@ -209,6 +218,7 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 		View.bCurrentAttackActive = true;
 		View.CurrentAttackingPlayer = EInitialTurnOrderPlayer::PlayerA;
 		View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerA;
+		View.ElectiveBranchIntent = EMatchPlayElectiveBranchIntent::CrossHigh;
 		View.InteractionCategory =
 			EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 		View.ContinueActionLabel = TEXT("Continue - Resolve Cross Plan");
@@ -230,6 +240,37 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 	{
 		FFMCodexLocalMatchInteractionView View = MakeInteraction();
 		View.ResolutionFacts = Facts;
+		const FMatchPlayResolutionRollFact* AttackRoll = Facts.Rolls.FindByPredicate(
+			[](const FMatchPlayResolutionRollFact& Roll)
+			{
+				return Roll.PostRoutePurpose == ERollPurpose::PrimaryAttack;
+			});
+		const FMatchPlayResolutionRollFact* DefenseRoll = Facts.Rolls.FindByPredicate(
+			[](const FMatchPlayResolutionRollFact& Roll)
+			{
+				return Roll.PostRoutePurpose == ERollPurpose::PrimaryDefense;
+			});
+		if (AttackRoll != nullptr && !AttackRoll->bResolved)
+		{
+			View.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack;
+			View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerA;
+			View.ContinueActionLabel = TEXT("进攻方掷点");
+		}
+		else if (DefenseRoll != nullptr && !DefenseRoll->bResolved)
+		{
+			View.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense;
+			View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerB;
+			View.ContinueActionLabel = TEXT("防守方掷点");
+		}
+		else
+		{
+			View.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+			View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+			View.ContinueActionLabel = TEXT("继续结算");
+		}
 		FFMCodexLocalMatchResolutionFeedback Feedback;
 		Feedback.bVisible = true;
 		Feedback.StepTitle = TEXT("Route Resolved");
@@ -272,6 +313,8 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 	{
 		FString Result = Surface.ContestLabel + Surface.StatusLabel
 			+ Surface.AttackRow.SideLabel + Surface.DefenseRow.SideLabel
+			+ Surface.AttackRow.KnownNonRollSubtotalLabel
+			+ Surface.DefenseRow.KnownNonRollSubtotalLabel
 			+ Surface.AttackRow.FinalValueLabel
 			+ Surface.DefenseRow.FinalValueLabel
 			+ Surface.ContinueActionLabel;
@@ -312,7 +355,10 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 		PendingSurface.ContestLabel == TEXT("高球传中")
 			&& PendingSurface.AttackRow.SideLabel == TEXT("进攻")
 			&& PendingSurface.DefenseRow.SideLabel == TEXT("防守")
-			&& PendingSurface.ContinueActionLabel == TEXT("继续结算"));
+			&& PendingSurface.StatusLabel == TEXT("等待进攻方掷点")
+			&& PendingSurface.ContinueActionLabel == TEXT("进攻方掷点")
+			&& PendingSurface.bAttackRowActive
+			&& !PendingSurface.bDefenseRowActive);
 	TestTrue(TEXT("Projected preferred participant identities are role-labeled"),
 		HasParticipant(PendingSurface.AttackRow, TEXT("持球"), TEXT("萨卡"))
 			&& HasParticipant(PendingSurface.AttackRow, TEXT("跑位"), TEXT("哈弗茨"))
@@ -334,11 +380,15 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 	const auto* PendingDefenseD6 = FindTerm(
 		PendingSurface.DefenseRow,
 		EFMCodexUMGInlineFormulaTermKind::RawRoll, 2);
-	TestTrue(TEXT("NextPendingRollSequenceIndex maps only to attack D6"),
+	TestTrue(TEXT("Known subtotals and pending attack roll are projected"),
 		PendingAttackD6 != nullptr && PendingDefenseD6 != nullptr
-			&& PendingAttackD6->DisplayLabel == TEXT("D6 ?")
+			&& PendingSurface.AttackRow.KnownNonRollSubtotalLabel
+				== TEXT("基础值 4.5")
+			&& PendingSurface.DefenseRow.KnownNonRollSubtotalLabel
+				== TEXT("基础值 9")
+			&& PendingAttackD6->DisplayLabel == TEXT("掷点 ?")
 			&& PendingAttackD6->bNextPendingRoll
-			&& PendingDefenseD6->DisplayLabel == TEXT("D6 ?")
+			&& PendingDefenseD6->DisplayLabel == TEXT("掷点 ?")
 			&& !PendingDefenseD6->bNextPendingRoll
 			&& PendingSurface.AttackRow.FinalValueLabel == TEXT("?")
 			&& PendingSurface.DefenseRow.FinalValueLabel == TEXT("?"));
@@ -349,13 +399,20 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 		OneRoll.AttackRow, EFMCodexUMGInlineFormulaTermKind::RawRoll, 1);
 	const auto* StillPendingDefenseD6 = FindTerm(
 		OneRoll.DefenseRow, EFMCodexUMGInlineFormulaTermKind::RawRoll, 2);
-	TestTrue(TEXT("Generic DTO preserves one resolved and one pending operand"),
+	TestTrue(TEXT("Attack settles without auto-resolving defense"),
 		ResolvedAttackD6 != nullptr && StillPendingDefenseD6 != nullptr
 			&& ResolvedAttackD6->bResolved
 			&& ResolvedAttackD6->RawD6 == 4
-			&& ResolvedAttackD6->DisplayLabel == TEXT("D6 4")
+			&& ResolvedAttackD6->DisplayLabel == TEXT("掷点 4")
 			&& !ResolvedAttackD6->bNextPendingRoll
-			&& StillPendingDefenseD6->bNextPendingRoll);
+			&& StillPendingDefenseD6->bNextPendingRoll
+			&& OneRoll.AttackRow.bFinalValueResolved
+			&& OneRoll.AttackRow.FinalValueLabel == TEXT("8.5")
+			&& !OneRoll.DefenseRow.bFinalValueResolved
+			&& OneRoll.StatusLabel == TEXT("等待防守方掷点")
+			&& OneRoll.ContinueActionLabel == TEXT("防守方掷点")
+			&& !OneRoll.bAttackRowActive
+			&& OneRoll.bDefenseRowActive);
 
 	const auto Resolved = BuildPresentation(
 		MakeCrossHighFacts(true, true, true, true)).InlineFormula;
@@ -373,7 +430,8 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			&& Resolved.DefenseRow.bFinalValueResolved
 			&& Resolved.DefenseRow.FinalValue == 12.0f
 			&& Resolved.DefenseRow.FinalValueLabel == TEXT("12")
-			&& Resolved.StatusLabel == TEXT("公式已结算"));
+			&& Resolved.StatusLabel == TEXT("双方掷点已完成")
+			&& Resolved.ContinueActionLabel == TEXT("继续结算"));
 
 	const auto OptionalAbsent = BuildPresentation(
 		MakeCrossHighFacts(false, false, false, false)).InlineFormula;
@@ -489,6 +547,87 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			&& !WidgetSource.Contains(TEXT("SourceValue *"))
 			&& !WidgetSource.Contains(TEXT("Contribution +"))
 			&& !WidgetSource.Contains(TEXT("FinalValue =")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexInlineResolutionFormulaDiceRevealTest,
+	"FMCodex.LocalPlay.InlineFormula.CrossHighManualRollStates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexInlineResolutionFormulaDiceRevealTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexInlineResolutionFormulaSurfaceTests;
+	FFMCodexLocalMatchInteractionView PreRouteView = MakeInteraction();
+	PreRouteView.ContinueActionLabel = TEXT("判定高球传中路线");
+	FFMCodexLocalMatchResolutionFeedback LegacyPreRouteFeedback;
+	LegacyPreRouteFeedback.bVisible = true;
+	LegacyPreRouteFeedback.StepTitle = TEXT("Resolution Started");
+	LegacyPreRouteFeedback.ContinuationSummary =
+		TEXT("Continue - Resolve Route");
+	const FFMCodexUMGMatchScreenViewModel PreRoutePresentation =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			PreRouteView,
+			LegacyPreRouteFeedback,
+			FString(),
+			EInitialTurnOrderPlayer::PlayerA);
+	UFMCodexLocalMatchScreenWidget* PreRouteScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	PreRouteScreen->TakeWidget();
+	PreRouteScreen->RefreshFromPresentation(PreRoutePresentation);
+	TestTrue(TEXT("Covered pre-route step suppresses the legacy English overlay"),
+		PreRoutePresentation.InlineFormula.bSuppressLegacyResolution
+			&& !PreRouteScreen->IsLegacyResolutionOverlayVisible()
+			&& PreRoutePresentation.Interaction.PrimaryActionLabel
+				== TEXT("判定高球传中路线"));
+
+	const FFMCodexUMGMatchScreenViewModel ManualPending = BuildPresentation(
+		MakeCrossHighFacts(true, true, false, false));
+	const FFMCodexUMGMatchScreenViewModel ManualAttackSettled = BuildPresentation(
+		MakeCrossHighFacts(true, true, true, false));
+	const FFMCodexUMGMatchScreenViewModel ManualCompleted = BuildPresentation(
+		MakeCrossHighFacts(true, true, true, true));
+	UFMCodexLocalMatchScreenWidget* ManualScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	TestNotNull(TEXT("Manual roll fixture screen can be constructed"), ManualScreen);
+	if (ManualScreen == nullptr)
+	{
+		return false;
+	}
+	ManualScreen->TakeWidget();
+	ManualScreen->RefreshFromPresentation(ManualPending);
+	TestTrue(TEXT("Pre-roll is direct authority UI with no local reveal gate"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::None
+			&& !ManualScreen->IsInlineFormulaRevealInputBlocked()
+			&& ManualScreen->GetInlineFormulaSurface()->GetPresentation()
+				.StatusLabel == TEXT("等待进攻方掷点"));
+	ManualScreen->RefreshFromPresentation(ManualAttackSettled);
+	const auto& AttackOnly =
+		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
+	const auto* AttackOnlyRoll = FindTerm(
+		AttackOnly.AttackRow,
+		EFMCodexUMGInlineFormulaTermKind::RawRoll, 1);
+	const auto* PendingDefenseRoll = FindTerm(
+		AttackOnly.DefenseRow,
+		EFMCodexUMGInlineFormulaTermKind::RawRoll, 2);
+	TestTrue(TEXT("Attack-only state remains readable until defender acts"),
+		AttackOnlyRoll != nullptr && AttackOnlyRoll->RawD6 == 4
+			&& AttackOnly.AttackRow.bFinalValueResolved
+			&& PendingDefenseRoll != nullptr && !PendingDefenseRoll->bResolved
+			&& !AttackOnly.DefenseRow.bFinalValueResolved
+			&& AttackOnly.ContinueActionLabel == TEXT("防守方掷点")
+			&& !ManualScreen->IsLegacyResolutionOverlayVisible());
+	ManualScreen->RefreshFromPresentation(ManualCompleted);
+	const auto& ManualFinal =
+		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
+	TestTrue(TEXT("Completed comparison comes directly from authority facts"),
+		ManualFinal.AttackRow.bFinalValueResolved
+			&& ManualFinal.DefenseRow.bFinalValueResolved
+			&& ManualFinal.StatusLabel == TEXT("双方掷点已完成")
+			&& ManualFinal.ContinueActionLabel == TEXT("继续结算")
+			&& !ManualScreen->IsInlineFormulaRevealInputBlocked());
 	return true;
 }
 

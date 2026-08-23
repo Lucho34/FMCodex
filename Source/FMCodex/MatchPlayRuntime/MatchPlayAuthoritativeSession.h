@@ -90,6 +90,14 @@ public:
 	FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();
 
+	FMatchPlayAuthoritativeResolveCrossHighAttackRollResult
+	ResolveCrossHighAttackRoll(
+		const FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveCrossHighDefenseRollResult
+	ResolveCrossHighDefenseRoll(
+		const FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest& Request);
+
 	FMatchPlayAuthoritativeResolveThroughBallFeetPostRoutePlanResult
 	ResolveThroughBallFeetPostRoutePlan();
 

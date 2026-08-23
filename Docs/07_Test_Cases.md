@@ -434,3 +434,31 @@
 - Cross 当前 post-route plan 单次命令原子地写入 PrimaryAttack 与 PrimaryDefense D6；测试既要覆盖通用 DTO 可表达一枚 resolved/另一枚 pending，也要确认真实生产状态直接从双 pending 进入双 resolved/Final Value，不能为了视觉拆改 authority sequencing。
 - Formula resolve/terminal feedback可继续保留双行 Final Value；不得用旧全屏 Overlay 再覆盖目标公式，也不得加入结果叙事、动画或 cinematic。
 
+## Cross High 权威 D6 分阶段揭示
+
+> 本节描述的单命令本地 reveal 已由下方“两步手动掷点”合同取代；保留仅用于追踪 Stage 6.13.1.4.7B 历史回归背景。
+
+应验证：
+
+- 同一 Screen 先观察 `Cross.High` 双 pending，再收到 `ResolveCrossPostRoutePlan` 原子生成的双 resolved facts 时，表现严格按 `AttackReveal -> AttackSettled -> DefenseReveal -> Completed`，而 authority 始终已经拥有两枚 D6。
+- AttackReveal 隐藏双方 resolved RawD6/FinalValue，攻击行与 `进攻掷点` 明确成为当前焦点；AttackSettled 只显示权威 Attack RawD6/FinalValue，Defense 仍为 `D6 ? / = ?`；DefenseReveal 保留攻击结果并强调防守；Completed 显示双方权威 RawD6/FinalValue。
+- deterministic Golden Path 的 Initial Route/Attack/Defense 若为 `2/4/3`，settled tile 与 Formula operands 必须为 `4/3`；不得从 FinalValue 反推、生成装饰性最终数值或增加 roll record。
+- 同一 identity 在每一 phase 重复构建 InteractionView、Screen DTO 与 Formula Widget，不得重启或倒退 phase，不得隐藏已揭示值，不得增加 dice/term Widget。Completed 重复刷新保持 Completed。
+- 新 Screen 首次收到已 resolved Contest（Widget recreation/resync/reconnect 等价场景）直接 Completed，不重播；同一 Completed identity 收到迟到 pending DTO 时仍保留已显示结果。新 AttackSequence 的 pending Contest 可开始新的 live observation。
+- reveal active 时，Inline Surface 与底部 Interaction Panel 均不可重复提交 Continue，Screen intent guard 也拒绝 stale click；权威 command 仍只执行一次 `ResolveCrossPostRoutePlan`。Completed 后按既有 InteractionView 恢复下一次 continuation，不 autoplay finishing/terminal。
+- rolling tile 不发布中间点数，只使用短时、非 RNG 的旋转/缩放；Timer 在 Completed、hidden 或 destruct 时停止。Header、Pitch、Role Tag、Rack 与旧 Overlay 抑制行为保持 .7A 契约。
+- 生产激活仍只覆盖 Cross High ArithmeticContest。Initial Route、Cross Low 与其他战术不动画；无 audio、commentary、winner/tie 文案或 result cinematic。
+
+## Cross High 两步手动掷点（Stage 6.13.1.4.8）
+
+应验证：
+
+- `ResolveCrossHighAttackRoll` 只接受当前进攻方，在空 post-route 前缀上恰好消费一枚 `PrimaryAttack` D6；成功后 State 只多一条记录，Attack RawD6/FinalValue 已解析，Defense 仍 pending，provider 不发生第二次调用。
+- `ResolveCrossHighDefenseRoll` 只接受当前防守方，只在唯一 `PrimaryAttack` 合法前缀后恰好消费一枚 `PrimaryDefense` D6；成功后双方记录完整，构建的 Cross Query/Formula Result 与相同两枚 D6 下原规则结果完全一致。
+- 两条命令的错误阵营、越序、重复与 wrong-purpose 请求均失败；provider call count 为 0，权威 Before/After State 逐字段相同。旧 `ResolveCrossPostRoutePlan` 对 Cross High 失败且不消费 RNG，对 Cross Low 保持既有行为。
+- 确定性序列只消费 Initial Route、PrimaryAttack、PrimaryDefense 三枚 D6；重复构建 Fact Projection、InteractionView、UMG DTO/Widget 不消费 RNG，也不改变 State。
+- pre-roll Formula Fact 两行均含权威投影的 `KnownNonRollSubtotal`、pending RawRoll 和 pending FinalValue；Attack 步后仅 Attack FinalValue 解析；Defense 步后双方 FinalValue 均解析并等于 Resolver Result。
+- Pitch 内联面板依次显示 `等待进攻方掷点 / 进攻方掷点`、`等待防守方掷点 / 防守方掷点`、双方完成后的既有继续结算。主玩家文案使用 `基础值 X / 掷点 ? / 掷点 N`，不显示 `D6 ?` 或 covered English CTA。
+- 三个现场状态均保持 Header、Pitch、Rack、Role Tag 可见且抑制旧 full-screen Resolution Overlay：① 双基础值可见、双 roll pending、进攻方拥有操作；② Attack roll/total 可见、Defense pending、防守方拥有操作且没有自动掷点；③ 双 roll/total 与 comparison 可读，Overlay 未返回。
+- 命令处理中的重复点击、非当前按钮、底部 Panel 与 Screen generic Continue 都不能绕过阶段。无 narrative/result headline/audio/cinematic；其他路线行为不变。
+

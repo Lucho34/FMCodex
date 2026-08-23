@@ -11,6 +11,17 @@ struct FMCODEX_API
 	FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 {
 	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		CompleteCrossLowPlan,
+		RegenerateCompletedPlan,
+		ResolveCrossHighAttackRoll,
+		ResolveCrossHighDefenseRoll
+	};
+
+	EMode Mode = EMode::CompleteCrossLowPlan;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 enum class EMatchPlayCurrentAttackResolveCrossPostRoutePlanErrorCode : uint8
@@ -25,6 +36,12 @@ enum class EMatchPlayCurrentAttackResolveCrossPostRoutePlanErrorCode : uint8
 	InvalidResolutionSessionState,
 	RouteNotResolved,
 	NotCrossBranch,
+	CrossHighRequiresExplicitRollStep,
+	ExplicitRollStepRequiresCrossHigh,
+	InvalidRequestingSide,
+	WrongRequestingSide,
+	WrongCrossHighRollStep,
+	CompletedPlanRequired,
 	InvalidPostRouteProgress,
 	PostRouteRollProviderUnavailable,
 	PostRouteRollProviderFailed,

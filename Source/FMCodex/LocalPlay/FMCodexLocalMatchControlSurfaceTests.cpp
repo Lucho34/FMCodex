@@ -478,17 +478,34 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			return false;
 		}
 
-		for (int32 Step = 0; Step < 3; ++Step)
+		for (int32 Step = 0; Step < 4; ++Step)
 		{
+			const EFMCodexLocalMatchInteractionCategory ExpectedCategory =
+				Step < 2
+					? EFMCodexLocalMatchInteractionCategory::ContinueResolution
+					: (Step == 2
+						? EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack
+						: EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense);
 			if (Controller.GetInteractionView().InteractionCategory
-				!= EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+				!= ExpectedCategory)
 			{
 				Test.AddError(FString::Printf(
-					TEXT("%s: system step %d was not Continue."),
+					TEXT("%s: system step %d did not expose its expected typed action."),
 					Label, Step + 1));
 				return false;
 			}
-			Controller.ContinueResolution();
+			if (Step < 2)
+			{
+				Controller.ContinueResolution();
+			}
+			else if (Step == 2)
+			{
+				Controller.RollCrossHighAttack();
+			}
+			else
+			{
+				Controller.RollCrossHighDefense();
+			}
 			if (!Controller.GetLastDiagnostic().bHostSuccess)
 			{
 				Test.AddError(FString::Printf(
@@ -509,9 +526,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 					Label));
 				return false;
 			}
-			if (Step == 2
-				&& (!Feedback.DecisionSummary.Contains(TEXT("Formula"))
-					|| Feedback.DiceEntries.Num() != 3))
+			if (Step == 3 && Feedback.DiceEntries.Num() != 3)
 			{
 				Test.AddError(FString::Printf(
 					TEXT("%s: Cross plan feedback did not retain its three authoritative D6 records."),
@@ -1311,13 +1326,13 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
 	TestTrue(TEXT("BranchIntent remains reachable"),
 		Controller->GetLastDiagnostic().bHostSuccess);
-	TestEqual(TEXT("Continue label identifies Begin Resolution"),
+	TestEqual(TEXT("Cross High begins resolution with a Chinese board action"),
 		Controller->GetInteractionView().ContinueActionLabel,
-		FString(TEXT("Continue - Begin Resolution")));
+		FString(TEXT("进入高球传中结算")));
 	Controller->ContinueResolution();
-	TestEqual(TEXT("Continue label identifies route resolution"),
+	TestEqual(TEXT("Cross High route resolution stays Chinese-first"),
 		Controller->GetInteractionView().ContinueActionLabel,
-		FString(TEXT("Continue - Resolve Route")));
+		FString(TEXT("判定高球传中路线")));
 	Controller->ContinueResolution();
 	TestTrue(TEXT("Authoritative route D6 remains visible"),
 		Controller->GetInteractionView().AcceptedRolls.Num() > 0);
@@ -2295,6 +2310,16 @@ namespace FMCodexLocalMatchFullFamilyTests
 				== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
 			{
 				Controller.ContinueResolution();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack)
+			{
+				Controller.RollCrossHighAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense)
+			{
+				Controller.RollCrossHighDefense();
 			}
 			else
 			{
@@ -6643,6 +6668,12 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 		Guard < 12 && Controller->GetInteractionView().bCurrentAttackActive;
 		++Guard)
 	{
+		if (Screen->IsInlineFormulaRevealInputBlocked())
+		{
+			// This synchronous fixture has no world timer; settle the local-only
+			// Cross High reveal before requesting the next authoritative command.
+			Screen->AdvanceInlineFormulaRevealForTesting(2.0f);
+		}
 		Interaction->RequestContinue();
 		if (!Controller->GetLastDiagnostic().bHostSuccess)
 		{
@@ -8767,8 +8798,8 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authoritative Session serialized entrypoint count is unchanged"),
-		SerializedEntrypointCount, 42);
+	TestEqual(TEXT("Authoritative Session exposes the two explicit Cross High roll entrypoints"),
+		SerializedEntrypointCount, 44);
 
 	return true;
 }
@@ -9131,8 +9162,8 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderTransform"))
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
-	TestEqual(TEXT("Authority typed serialized entrypoint contract remains 42/42"),
-		SerializedEntrypointCount, 42);
+	TestEqual(TEXT("Authority typed serialized entrypoint contract includes both Cross High rolls"),
+		SerializedEntrypointCount, 44);
 
 	return true;
 }
@@ -9554,8 +9585,8 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authority typed serialized entrypoint remains 42/42"),
-		SerializedEntrypointCount, 42);
+	TestEqual(TEXT("Authority typed serialized entrypoint includes both Cross High rolls"),
+		SerializedEntrypointCount, 44);
 
 	return true;
 }
@@ -12513,6 +12544,10 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 				== FName(TEXT("Cross.High"))
 			&& PreFormulaFacts.FormulaContests[0].Application
 				== EMatchPlayResolutionFormulaApplication::Pending
+			&& PreFormulaFacts.FormulaContests[0].AttackRow
+				.bKnownNonRollSubtotalResolved
+			&& PreFormulaFacts.FormulaContests[0].DefenseRow
+				.bKnownNonRollSubtotalResolved
 			&& PreFormulaFacts.FormulaContests[0].AttackRow.Terms.ContainsByPredicate(
 				[](const FMatchPlayResolutionFormulaTermFact& Term)
 				{
@@ -12594,10 +12629,48 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			== SerializeState(Host->GetMatchSnapshot().Snapshot)
 			&& PreFormulaUMG.Resolution.FormulaFacts.bHasFacts);
 
-	const auto BeforePlanView = ViewFor(*Host, Demo.SkillRuleSet);
-	const auto Plan = Host->ResolveCrossPostRoutePlan();
-	TestTrue(TEXT("Authoritative Cross plan consumes its two formula rolls"),
-		Plan.bSuccess);
+	const auto BeforeAttackRollView = ViewFor(*Host, Demo.SkillRuleSet);
+	TestTrue(TEXT("Pre-roll ownership belongs to attacker"),
+		BeforeAttackRollView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCrossHighAttack
+			&& BeforeAttackRollView.ExpectedActingPlayer == Attacker
+			&& BeforeAttackRollView.ContinueActionLabel == TEXT("进攻方掷点"));
+	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest AttackRequest;
+	AttackRequest.RequestingSide = Attacker;
+	const auto AttackRollResult = Host->ResolveCrossHighAttackRoll(AttackRequest);
+	TestTrue(TEXT("Authoritative attacker roll consumes exactly one D6"),
+		AttackRollResult.bSuccess
+			&& AttackRollResult.AuthoritativeResult.OrchestrationResult
+				.ProviderCallCount == 1);
+	const FMatchPlayState AttackSettledState =
+		Host->GetMatchSnapshot().Snapshot;
+	const auto& AttackSettledRecords = AttackSettledState.CurrentAttack
+		.ResolutionSession.PostRouteRollProgress.RollRecords;
+	const auto AttackSettledView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto* AttackSettledContest =
+		AttackSettledView.ResolutionFacts.FormulaContests.FindByPredicate(
+			[](const FMatchPlayResolutionFormulaContestFact& Candidate)
+			{
+				return Candidate.ContestId == TEXT("Cross.High");
+			});
+	TestTrue(TEXT("Attack settles while defense remains manually pending"),
+		AttackSettledRecords.Num() == 1
+			&& AttackSettledRecords[0].Purpose
+				== EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack
+			&& AttackSettledContest != nullptr
+			&& AttackSettledContest->AttackRow.bFinalValueResolved
+			&& !AttackSettledContest->DefenseRow.bFinalValueResolved
+			&& AttackSettledView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossHighDefense
+			&& AttackSettledView.ExpectedActingPlayer
+				== Session.Bundle.CurrentDefendingPlayer
+			&& AttackSettledView.ContinueActionLabel == TEXT("防守方掷点"));
+	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest DefenseRequest;
+	DefenseRequest.RequestingSide = Session.Bundle.CurrentDefendingPlayer;
+	const auto Plan = Host->ResolveCrossHighDefenseRoll(DefenseRequest);
+	TestTrue(TEXT("Authoritative defender roll consumes exactly one D6"),
+		Plan.bSuccess
+			&& Plan.AuthoritativeResult.OrchestrationResult.ProviderCallCount == 1);
 	const FMatchPlayState PostRollState = Host->GetMatchSnapshot().Snapshot;
 	const auto& Records = PostRollState.CurrentAttack.ResolutionSession
 		.PostRouteRollProgress.RollRecords;
@@ -12644,8 +12717,8 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 
 	const auto AfterPlanView = ViewFor(*Host, Demo.SkillRuleSet);
 	const auto PlanFeedback = FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
-		TEXT("ResolveCrossPostRoutePlan"), Plan,
-		BeforePlanView, AfterPlanView);
+		TEXT("ResolveCrossHighDefenseRoll"), Plan,
+		AttackSettledView, AfterPlanView);
 	const auto PlanUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		AfterPlanView, PlanFeedback, FString());
 	TestTrue(TEXT("Feedback and UMG preserve the same immutable structured facts"),

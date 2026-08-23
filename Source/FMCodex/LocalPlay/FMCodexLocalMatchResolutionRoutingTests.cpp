@@ -778,10 +778,27 @@ bool FFMCodexLocalMatchCrossResolutionTest::RunTest(
 	TestTrue(TEXT("Wrong-family command preserves State"), AreStatesEqual(
 		Host->GetMatchSnapshot().Snapshot, BeforeWrongFamily));
 
-	TestTrue(TEXT("Direct resolves Cross post-route plan"),
-		Direct.ResolveCrossPostRoutePlan().OrchestrationResult.bSuccess);
-	const auto HostPlan = Host->ResolveCrossPostRoutePlan();
-	TestTrue(TEXT("Host resolves Cross post-route plan"), HostPlan.bSuccess);
+	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest AttackRollRequest;
+	AttackRollRequest.RequestingSide = Trace.Attacker;
+	TestTrue(TEXT("Direct accepts the explicit Cross High attack roll"),
+		Direct.ResolveCrossHighAttackRoll(AttackRollRequest)
+			.OrchestrationResult.bSuccess);
+	const auto HostAttackRoll = Host->ResolveCrossHighAttackRoll(
+		AttackRollRequest);
+	TestTrue(TEXT("Host accepts the explicit Cross High attack roll"),
+		HostAttackRoll.bSuccess);
+	TestTrue(TEXT("Attack-roll snapshot equals direct Session"), AreStatesEqual(
+		Host->GetMatchSnapshot().Snapshot, Direct.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest DefenseRollRequest;
+	DefenseRollRequest.RequestingSide = Trace.Defender;
+	TestTrue(TEXT("Direct accepts the explicit Cross High defense roll"),
+		Direct.ResolveCrossHighDefenseRoll(DefenseRollRequest)
+			.OrchestrationResult.bSuccess);
+	const auto HostPlan = Host->ResolveCrossHighDefenseRoll(
+		DefenseRollRequest);
+	TestTrue(TEXT("Host accepts the explicit Cross High defense roll"),
+		HostPlan.bSuccess);
 	const FMatchPlayState Planned = Host->GetMatchSnapshot().Snapshot;
 	TestEqual(TEXT("Cross consumes two canonical post-route rolls"),
 		Planned.CurrentAttack.ResolutionSession.PostRouteRollProgress

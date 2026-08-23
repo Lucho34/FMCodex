@@ -413,6 +413,8 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 	{
 		FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest Request;
 		Request.AttackSequence = AttackSequence;
+		Request.Mode = FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
+			::EMode::RegenerateCompletedPlan;
 		Result.CrossRegenerationResult =
 			FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
 				BeforeState,

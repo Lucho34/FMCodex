@@ -535,6 +535,10 @@ ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份�
 - `RollFacts`：全局顺序、Initial/Post-route purpose、拥有方、`BranchSelection / ArithmeticContest / OutcomeDecision` 语义、pending/resolved、RawD6、条件性需求与 formula operand identity。
 - `FormulaContests`：稳定 ContestId、FormulaType、application pending/applied/skipped、Attack/Defense Rows、terms、实际参与体力、GK participation、明确 tie rule、resolved Resolver Input/Result。
 - `FormulaTerms`：Attribute、RawRoll、FixedModifier 或 GoalkeeperContribution；保存 CardId/Role/Attribute、源值、倍率、贡献和 resolved 状态。缺少 Raw Roll 时 value 保持 pending，不以 0 冒充掷点。
+- `FormulaRow.KnownNonRollSubtotal`：由 Resolution Fact Projection 对该行所有非 `RawRoll` 的已解析贡献求和并按 Resolver 同一精度规则舍入；它是只读投影事实，不由 Widget 临时求和。公式尚待掷点时也必须可用。
+- `FormulaRow.FinalValue`：当该行的算术 `RawRoll` 已被权威状态接受时即可由 Projection 解析为 `KnownNonRollSubtotal + RawRoll`；双方完成后必须逐项等于既有 Resolver Result。未接受本行掷点时保持 pending，不用 0 冒充结果。
 - `DecisionFacts`：分支、结果表、条件门禁或 formula outcome 的结构化结果；不要求 UI 解析 Route/Resolution 文本。
 
 该 Projection 可重复从同一 State 构建且不得消费 RNG。CurrentAttack 被 terminal completion 清除时，command-scoped ResolutionFeedback 可保留清除前的同一值事实；它不重新创建 authority。
+
+Cross High 的 `PostRouteRollProgress.RollRecords` 允许两个合法前缀：空记录表示等待进攻方掷点；仅含 `PrimaryAttack` 表示进攻已完成、等待防守方掷点。第二个显式权威命令追加 `PrimaryDefense` 后才形成完整合同。错误阵营、错误 purpose、重复或越序请求不得追加记录。

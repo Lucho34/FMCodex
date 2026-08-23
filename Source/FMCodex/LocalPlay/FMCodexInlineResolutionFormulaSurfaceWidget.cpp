@@ -46,6 +46,7 @@ namespace FMCodexInlineResolutionFormulaSurfaceWidget
 		const FName Prefix,
 		UTextBlock*& OutSideText,
 		UWrapBox*& OutParticipantBody,
+		UTextBlock*& OutKnownSubtotalText,
 		UWrapBox*& OutFormulaBody,
 		UTextBlock*& OutFinalValueText)
 	{
@@ -76,6 +77,16 @@ namespace FMCodexInlineResolutionFormulaSurfaceWidget
 			ParticipantSlot->SetVerticalAlignment(VAlign_Center);
 		}
 		Body->AddChildToVerticalBox(IdentityLine);
+
+		OutKnownSubtotalText = MakeText(
+			Tree, FName(*(Prefix.ToString() + TEXT("KnownSubtotal"))));
+		Style.ApplyText(
+			*OutKnownSubtotalText, EFMCodexPlayerUITextRole::Status);
+		if (UVerticalBoxSlot* SubtotalSlot =
+			Body->AddChildToVerticalBox(OutKnownSubtotalText))
+		{
+			SubtotalSlot->SetPadding(FMargin(0.0f, 5.0f, 0.0f, 0.0f));
+		}
 
 		UHorizontalBox* FormulaLine = Tree.ConstructWidget<UHorizontalBox>(
 			UHorizontalBox::StaticClass(),
@@ -221,39 +232,82 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 	if (UVerticalBoxSlot* StatusSlot =
 		RootBody->AddChildToVerticalBox(StatusText))
 	{
-		StatusSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 10.0f));
+		StatusSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 7.0f));
 	}
 
-	UBorder* AttackRegion = MakeBorder(
+	DiceRevealRegion = MakeBorder(
+		*WidgetTree, TEXT("InlineFormulaDiceRevealRegion"),
+		EFMCodexPlayerUIColorRole::PanelInset, FMargin(10.0f, 7.0f));
+	UHorizontalBox* DiceRevealLine =
+		WidgetTree->ConstructWidget<UHorizontalBox>(
+			UHorizontalBox::StaticClass(), TEXT("InlineFormulaDiceRevealLine"));
+	DiceOwnerText = MakeText(*WidgetTree, TEXT("InlineFormulaDiceOwner"));
+	Style.ApplyText(*DiceOwnerText, EFMCodexPlayerUITextRole::SectionHeading);
+	if (UHorizontalBoxSlot* OwnerSlot =
+		DiceRevealLine->AddChildToHorizontalBox(DiceOwnerText))
+	{
+		OwnerSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		OwnerSlot->SetVerticalAlignment(VAlign_Center);
+		OwnerSlot->SetPadding(FMargin(2.0f, 0.0f, 12.0f, 0.0f));
+	}
+	USizeBox* DiceBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("InlineFormulaDiceBounds"));
+	DiceBounds->SetWidthOverride(50.0f);
+	DiceBounds->SetHeightOverride(50.0f);
+	DiceTile = MakeBorder(
+		*WidgetTree, TEXT("InlineFormulaDiceTile"),
+		EFMCodexPlayerUIColorRole::NeutralAccent, FMargin(3.0f));
+	DiceTile->SetHorizontalAlignment(HAlign_Center);
+	DiceTile->SetVerticalAlignment(VAlign_Center);
+	DiceFaceText = MakeText(*WidgetTree, TEXT("InlineFormulaDiceFace"), TEXT("D6"));
+	DiceFaceText->SetJustification(ETextJustify::Center);
+	Style.ApplyText(*DiceFaceText, EFMCodexPlayerUITextRole::DiceValue);
+	DiceTile->AddChild(DiceFaceText);
+	DiceBounds->AddChild(DiceTile);
+	DiceRevealLine->AddChildToHorizontalBox(DiceBounds);
+	DiceRevealRegion->AddChild(DiceRevealLine);
+	if (UVerticalBoxSlot* DiceSlot =
+		RootBody->AddChildToVerticalBox(DiceRevealRegion))
+	{
+		DiceSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
+	}
+
+	AttackRegion = MakeBorder(
 		*WidgetTree, TEXT("InlineFormulaAttackRegion"),
 		EFMCodexPlayerUIColorRole::PanelRaised, FMargin(12.0f, 9.0f));
 	UTextBlock* BuiltAttackSideText = nullptr;
 	UWrapBox* BuiltAttackParticipantBody = nullptr;
+	UTextBlock* BuiltAttackKnownSubtotalText = nullptr;
 	UWrapBox* BuiltAttackFormulaBody = nullptr;
 	UTextBlock* BuiltAttackFinalValueText = nullptr;
 	AttackRegion->AddChild(BuildRow(
 		*WidgetTree, TEXT("InlineFormulaAttack"), BuiltAttackSideText,
-		BuiltAttackParticipantBody, BuiltAttackFormulaBody,
+		BuiltAttackParticipantBody, BuiltAttackKnownSubtotalText,
+		BuiltAttackFormulaBody,
 		BuiltAttackFinalValueText));
 	AttackSideText = BuiltAttackSideText;
 	AttackParticipantBody = BuiltAttackParticipantBody;
+	AttackKnownSubtotalText = BuiltAttackKnownSubtotalText;
 	AttackFormulaBody = BuiltAttackFormulaBody;
 	AttackFinalValueText = BuiltAttackFinalValueText;
 	RootBody->AddChildToVerticalBox(AttackRegion);
 
-	UBorder* DefenseRegion = MakeBorder(
+	DefenseRegion = MakeBorder(
 		*WidgetTree, TEXT("InlineFormulaDefenseRegion"),
 		EFMCodexPlayerUIColorRole::PanelRaised, FMargin(12.0f, 9.0f));
 	UTextBlock* BuiltDefenseSideText = nullptr;
 	UWrapBox* BuiltDefenseParticipantBody = nullptr;
+	UTextBlock* BuiltDefenseKnownSubtotalText = nullptr;
 	UWrapBox* BuiltDefenseFormulaBody = nullptr;
 	UTextBlock* BuiltDefenseFinalValueText = nullptr;
 	DefenseRegion->AddChild(BuildRow(
 		*WidgetTree, TEXT("InlineFormulaDefense"), BuiltDefenseSideText,
-		BuiltDefenseParticipantBody, BuiltDefenseFormulaBody,
+		BuiltDefenseParticipantBody, BuiltDefenseKnownSubtotalText,
+		BuiltDefenseFormulaBody,
 		BuiltDefenseFinalValueText));
 	DefenseSideText = BuiltDefenseSideText;
 	DefenseParticipantBody = BuiltDefenseParticipantBody;
+	DefenseKnownSubtotalText = BuiltDefenseKnownSubtotalText;
 	DefenseFormulaBody = BuiltDefenseFormulaBody;
 	DefenseFinalValueText = BuiltDefenseFinalValueText;
 	if (UVerticalBoxSlot* DefenseSlot =
@@ -297,14 +351,60 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		: ESlateVisibility::Collapsed);
 	ContestText->SetText(FText::FromString(Presentation.ContestLabel));
 	StatusText->SetText(FText::FromString(Presentation.StatusLabel));
+	DiceRevealRegion->SetVisibility(
+		Presentation.bVisible && Presentation.bDiceRevealVisible
+			? ESlateVisibility::SelfHitTestInvisible
+			: ESlateVisibility::Collapsed);
+	DiceOwnerText->SetText(FText::FromString(Presentation.DiceOwnerLabel));
+	DiceFaceText->SetText(FText::FromString(Presentation.DiceFaceLabel));
+	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	Style.ApplyBorder(*DiceTile,
+		Presentation.bDiceRolling
+			? EFMCodexPlayerUIColorRole::Warning
+			: EFMCodexPlayerUIColorRole::NeutralAccent,
+		FMargin(3.0f));
+	const float RollingAngle = Presentation.bDiceRolling
+		? static_cast<float>((Presentation.RevealAnimationFrame % 4) - 1) * 4.0f
+		: 0.0f;
+	const float RollingScale = Presentation.bDiceRolling
+		? (Presentation.RevealAnimationFrame % 2 == 0 ? 0.94f : 1.0f)
+		: 1.0f;
+	DiceTile->SetRenderTransformAngle(RollingAngle);
+	DiceTile->SetRenderScale(FVector2D(RollingScale));
+	Style.ApplyBorder(*AttackRegion,
+		Presentation.bAttackRowActive
+			? EFMCodexPlayerUIColorRole::Warning
+			: EFMCodexPlayerUIColorRole::PanelRaised,
+		FMargin(12.0f, 9.0f));
+	Style.ApplyBorder(*DefenseRegion,
+		Presentation.bDefenseRowActive
+			? EFMCodexPlayerUIColorRole::Warning
+			: EFMCodexPlayerUIColorRole::PanelRaised,
+		FMargin(12.0f, 9.0f));
+	if (Presentation.bAttackRowActive)
+	{
+		FLinearColor ActiveColor = Style.GetColor(
+			EFMCodexPlayerUIColorRole::Warning);
+		ActiveColor.A = 0.32f;
+		AttackRegion->SetBrushColor(ActiveColor);
+	}
+	if (Presentation.bDefenseRowActive)
+	{
+		FLinearColor ActiveColor = Style.GetColor(
+			EFMCodexPlayerUIColorRole::Warning);
+		ActiveColor.A = 0.32f;
+		DefenseRegion->SetBrushColor(ActiveColor);
+	}
 
 	RenderedPendingTermCount = 0;
 	RefreshRow(Presentation.AttackRow, TEXT("InlineFormulaAttack"),
-		AttackSideText, AttackParticipantBody, AttackFormulaBody,
+		AttackSideText, AttackParticipantBody, AttackKnownSubtotalText,
+		AttackFormulaBody,
 		AttackFinalValueText, AttackParticipantItems, AttackTermItems);
 	RenderedAttackTermCount = Presentation.AttackRow.Terms.Num();
 	RefreshRow(Presentation.DefenseRow, TEXT("InlineFormulaDefense"),
-		DefenseSideText, DefenseParticipantBody, DefenseFormulaBody,
+		DefenseSideText, DefenseParticipantBody, DefenseKnownSubtotalText,
+		DefenseFormulaBody,
 		DefenseFinalValueText, DefenseParticipantItems, DefenseTermItems);
 	RenderedDefenseTermCount = Presentation.DefenseRow.Terms.Num();
 
@@ -323,6 +423,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 	const FString& WidgetNamePrefix,
 	UTextBlock* SideText,
 	UWrapBox* ParticipantBody,
+	UTextBlock* KnownSubtotalText,
 	UWrapBox* FormulaBody,
 	UTextBlock* FinalValueText,
 	TArray<TObjectPtr<UWidget>>& ParticipantItems,
@@ -330,6 +431,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 {
 	using namespace FMCodexInlineResolutionFormulaSurfaceWidget;
 	if (SideText == nullptr || ParticipantBody == nullptr
+		|| KnownSubtotalText == nullptr
 		|| FormulaBody == nullptr || FinalValueText == nullptr
 		|| WidgetTree == nullptr)
 	{
@@ -337,6 +439,8 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 	}
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	SideText->SetText(FText::FromString(Row.SideLabel));
+	KnownSubtotalText->SetText(
+		FText::FromString(Row.KnownNonRollSubtotalLabel));
 
 	while (ParticipantItems.Num() < Row.Participants.Num())
 	{
