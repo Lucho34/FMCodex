@@ -599,6 +599,14 @@
 - 实现：删除 `ResultStyleAlpha` 及其 Settling/ResultHold 状态投影、Widget cache 与逐帧 brush-color Lerp。Reel Border 在构建时一次性使用现有 Warning/gold style 和既有 3px padding，并在 Cycling、Settling、ResultHold 全程保持不变；center TextBlock、邻号 fade 与静态终值逻辑继续复用。
 - 冻结：不修改 0.45/1.05/1.30 秒运动、0.16 秒 3px/1.08 single landing、Formula/Tactical `0.18 + 2.40`、Route 1.45、Narrative 0.38、CTA、Authority、RNG、公式或外围 UI。C.5 仍需 fresh user PIE 确认最后约 0.5 秒只存在一次 landing/lock-in 事件。
 
+### CD-058 - Cross Golden Path v1 Production Reference
+
+- 日期：2026-08-24
+- 接受状态：Stage 6.13.1.4.8C.5 的 fresh user PIE 作为 Cross Golden Path v1 视觉基线。`掷战术点 -> participant-first preparation -> Cross route -> High/Low 双方手动掷点 -> 权威公式/叙事 -> 单一下一回合 -> 权威清场与换攻` 的功能和交互合同冻结；这不代表最终商业美术完成。
+- 复用边界：Roll Reel、公式 Row/Term、Raw Roll、KnownNonRollSubtotal、FinalValue、Toast、场上点击、Role Tag、Tactical Player 与权威 completion lifecycle 可直接或经配置复用。当前 Formula builder、Reveal controller identity、route result 与 Narrative 仍含 Cross 语义，不在本阶段提前泛化；BranchSelection 和 OutcomeDecision 不得伪装成 ArithmeticContest Formula。
+- 扩展顺序：广泛战术 Resolution rollout 暂停。下一优先为 `Stage 6.13.1.4.9 — Tactical Information Visualization v1`，先提供独立于 CurrentAttack 的 canonical tactical rule-description projection 与只读 Hover detail；live FormulaFacts 只代表真实 active Resolution，不得为部署阶段伪造。
+- 范围与记录：本决定不修改生产 C++、规则、概率、UI 或测试。完整冻结合同、复用矩阵、技术债、分支风险与 Visualization readiness 见 `Docs/UI/Cross_Golden_Path_Closeout_v1.md`。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
