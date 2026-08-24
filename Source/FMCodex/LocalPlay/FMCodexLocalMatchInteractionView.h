@@ -139,6 +139,8 @@ struct FMCODEX_API FFMCodexLocalMatchSelectionOption
 	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
 	FName Id = NAME_None;
 	FName RelatedCardId = NAME_None;
+	/** Populated only for authoritative Skill-rule choices. */
+	ESkillRuleType SkillType = ESkillRuleType::None;
 	FString Label;
 	bool bHasCard = false;
 	FFMCodexLocalMatchCardView Card;

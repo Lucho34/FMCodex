@@ -1,6 +1,7 @@
 #include "FMCodexLocalMatchUMGPresentation.h"
 
 #include "FMCodexPlayerUIPresentationText.h"
+#include "FMCodexTacticalDetailPresentation.h"
 
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
@@ -1402,6 +1403,14 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		FFMCodexUMGSelectionChoiceViewModel Choice;
 		Choice.OptionId = Option.Id;
 		Choice.Label = PlayerFacingOptionLabel;
+		Choice.SkillType = Option.SkillType;
+		if (InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectSkill)
+		{
+			Choice.SecondaryLabel =
+				FFMCodexTacticalDetailPresentationBuilder::Build(
+					Option.SkillType).CardHint;
+		}
 		Choice.bHasCard = Option.bHasCard;
 		if (Option.bHasCard)
 		{

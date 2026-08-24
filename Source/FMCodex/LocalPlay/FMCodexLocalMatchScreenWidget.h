@@ -19,6 +19,7 @@ class UFMCodexPlayerCardWidget;
 class UFMCodexResolutionPanelWidget;
 class UFMCodexRollReelWidget;
 class UFMCodexSelectionFeedbackToastWidget;
+class UFMCodexTacticalDetailPanelWidget;
 class UImage;
 class USizeBox;
 class UTextBlock;
@@ -147,6 +148,7 @@ public:
 	void BeginPendingTacticalPointRevealForTesting();
 #endif
 	UFMCodexSelectionFeedbackToastWidget* GetSelectionFeedbackToast() const;
+	UFMCodexTacticalDetailPanelWidget* GetTacticalDetailPanel() const;
 	UFMCodexCardRackWidget* GetLocalRackWidget() const;
 	UFMCodexCardRackWidget* GetOpponentRackWidget() const;
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
@@ -214,6 +216,12 @@ private:
 	void HideDetailOverlay();
 	void PositionDetailOverlay(UFMCodexPlayerCardWidget* SourceCard);
 	void RefreshFullCardProductionReviewSurface();
+	void ScheduleTacticalDetailDismiss();
+	void CancelTacticalDetailDismiss();
+	void CompleteTacticalDetailDismiss();
+	void HandleTacticalDetailPointerEntered();
+	void HandleTacticalDetailPointerLeft();
+	void HideTacticalDetail();
 
 	UFUNCTION()
 	void HandleStartNewMatchClicked();
@@ -241,6 +249,12 @@ private:
 
 	UFUNCTION()
 	void HandleSkillRequested(FName SkillId);
+
+	UFUNCTION()
+	void HandleTacticalDetailRequested(FName SkillId);
+
+	UFUNCTION()
+	void HandleTacticalDetailDismissed(FName SkillId);
 
 	UFUNCTION()
 	void HandleRunnerRequested(FName CardId);
@@ -282,6 +296,7 @@ private:
 	float RollRevealCaptureDistanceCells = 0.0f;
 	int32 RollRevealSequenceOffsetCells = 0;
 	FTimerHandle InlineFormulaRevealTimerHandle;
+	FTimerHandle TacticalDetailDismissTimerHandle;
 	FFMCodexCrossRollRevealIdentity ObservedPendingCrossRoll;
 	FFMCodexCrossRollRevealIdentity ActiveCrossRollReveal;
 	TSet<FString> SettledCrossRollRevealKeys;
@@ -335,6 +350,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexSelectionFeedbackToastWidget> SelectionFeedbackToast;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexTacticalDetailPanelWidget> TacticalDetailPanel;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Interaction Presentation")
 	TSubclassOf<UFMCodexInteractionPanelWidget> InteractionPanelWidgetClass;
@@ -403,4 +421,7 @@ private:
 		EFMCodexUMGCardInteractionState::Default;
 	bool bDeploymentDragActive = false;
 	bool bDeploymentDropSubmitted = false;
+	FName ActiveTacticalDetailSkillId = NAME_None;
+	bool bTacticalCardHoverOrFocus = false;
+	bool bTacticalDetailPointerInside = false;
 };

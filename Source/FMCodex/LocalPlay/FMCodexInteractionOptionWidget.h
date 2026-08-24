@@ -8,6 +8,7 @@
 #include "FMCodexInteractionOptionWidget.generated.h"
 
 class UButton;
+class USizeBox;
 class UTextBlock;
 class SWidget;
 
@@ -26,6 +27,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexInteractionOneOnOneOptionRequested,
 	EFMCodexUMGOneOnOneChoice, Choice);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+	FFMCodexInteractionTacticalDetailRequested, FName, SkillId);
 
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexInteractionOptionWidget : public UUserWidget
@@ -38,6 +41,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Presentation")
 	void ConfigureCard(const FString& InLabel, FName InCardId);
+
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Presentation")
+	void ConfigureTacticalCard(
+		const FString& InLabel,
+		const FString& InSecondaryLabel,
+		FName InSkillId);
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Presentation")
 	void ConfigureDeployment(
@@ -57,6 +66,8 @@ public:
 		EFMCodexUMGOneOnOneChoice InChoice);
 
 	const FString& GetLabel() const;
+	const FString& GetSecondaryLabel() const;
+	bool IsTacticalCard() const;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionSimpleOptionRequested OnSimpleRequested;
@@ -73,9 +84,17 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionOneOnOneOptionRequested OnOneOnOneRequested;
 
+	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
+	FFMCodexInteractionTacticalDetailRequested OnTacticalDetailRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
+	FFMCodexInteractionTacticalDetailRequested OnTacticalDetailDismissed;
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void NativeOnAddedToFocusPath(const FFocusEvent& InFocusEvent) override;
+	virtual void NativeOnRemovedFromFocusPath(const FFocusEvent& InFocusEvent) override;
 
 private:
 	enum class EBindingMode : uint8
@@ -83,6 +102,7 @@ private:
 		None,
 		Simple,
 		Card,
+		TacticalCard,
 		Deployment,
 		Branch,
 		OneOnOne
@@ -99,6 +119,12 @@ private:
 	void HandleCardClicked();
 
 	UFUNCTION()
+	void HandleTacticalHovered();
+
+	UFUNCTION()
+	void HandleTacticalUnhovered();
+
+	UFUNCTION()
 	void HandleDeploymentClicked();
 
 	UFUNCTION()
@@ -111,6 +137,11 @@ private:
 		Category = "Local Match|Interaction Presentation",
 		meta = (AllowPrivateAccess = "true"))
 	FString Label;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Interaction Presentation",
+		meta = (AllowPrivateAccess = "true"))
+	FString SecondaryLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Interaction Presentation",
@@ -143,7 +174,13 @@ private:
 	TObjectPtr<UButton> OptionButton;
 
 	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> OptionBounds;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> OptionLabelText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> OptionSecondaryText;
 
 	EBindingMode BindingMode = EBindingMode::None;
 };

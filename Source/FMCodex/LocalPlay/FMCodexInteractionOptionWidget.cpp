@@ -5,7 +5,9 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
 
 void UFMCodexInteractionOptionWidget::NativeOnInitialized()
 {
@@ -40,6 +42,18 @@ void UFMCodexInteractionOptionWidget::ConfigureCard(
 	Label = InLabel;
 	CardId = InCardId;
 	BindingMode = EBindingMode::Card;
+	RefreshVisuals();
+}
+
+void UFMCodexInteractionOptionWidget::ConfigureTacticalCard(
+	const FString& InLabel,
+	const FString& InSecondaryLabel,
+	const FName InSkillId)
+{
+	Label = InLabel;
+	SecondaryLabel = InSecondaryLabel;
+	CardId = InSkillId;
+	BindingMode = EBindingMode::TacticalCard;
 	RefreshVisuals();
 }
 
@@ -82,6 +96,30 @@ const FString& UFMCodexInteractionOptionWidget::GetLabel() const
 	return Label;
 }
 
+const FString& UFMCodexInteractionOptionWidget::GetSecondaryLabel() const
+{
+	return SecondaryLabel;
+}
+
+bool UFMCodexInteractionOptionWidget::IsTacticalCard() const
+{
+	return BindingMode == EBindingMode::TacticalCard;
+}
+
+void UFMCodexInteractionOptionWidget::NativeOnAddedToFocusPath(
+	const FFocusEvent& InFocusEvent)
+{
+	Super::NativeOnAddedToFocusPath(InFocusEvent);
+	HandleTacticalHovered();
+}
+
+void UFMCodexInteractionOptionWidget::NativeOnRemovedFromFocusPath(
+	const FFocusEvent& InFocusEvent)
+{
+	Super::NativeOnRemovedFromFocusPath(InFocusEvent);
+	HandleTacticalUnhovered();
+}
+
 void UFMCodexInteractionOptionWidget::BuildWidgetTree()
 {
 	if (WidgetTree == nullptr || WidgetTree->RootWidget != nullptr)
@@ -100,13 +138,26 @@ void UFMCodexInteractionOptionWidget::BuildWidgetTree()
 		UButton::StaticClass(), TEXT("InteractionOptionButton"));
 	Style.ApplyButton(
 		*OptionButton, EFMCodexPlayerUIActionRole::Secondary);
+	OptionBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("InteractionOptionBounds"));
+	UVerticalBox* Content = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("InteractionOptionContent"));
 	OptionLabelText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(), TEXT("InteractionOptionLabel"));
 	OptionLabelText->SetAutoWrapText(true);
 	OptionLabelText->SetJustification(ETextJustify::Center);
 	Style.ApplyText(*OptionLabelText, EFMCodexPlayerUITextRole::Body);
-	OptionButton->AddChild(OptionLabelText);
-	OptionFrame->AddChild(OptionButton);
+	Content->AddChildToVerticalBox(OptionLabelText);
+	OptionSecondaryText = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(), TEXT("InteractionOptionSecondaryLabel"));
+	OptionSecondaryText->SetAutoWrapText(false);
+	OptionSecondaryText->SetJustification(ETextJustify::Center);
+	OptionSecondaryText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+	Style.ApplyText(*OptionSecondaryText, EFMCodexPlayerUITextRole::Secondary);
+	Content->AddChildToVerticalBox(OptionSecondaryText);
+	OptionButton->AddChild(Content);
+	OptionBounds->AddChild(OptionButton);
+	OptionFrame->AddChild(OptionBounds);
 }
 
 void UFMCodexInteractionOptionWidget::RefreshVisuals()
@@ -117,6 +168,27 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	}
 	OptionLabelText->SetText(FText::FromString(
 		Label.IsEmpty() ? TEXT("OPTION UNAVAILABLE") : Label));
+	const bool bTacticalCard = BindingMode == EBindingMode::TacticalCard;
+	OptionSecondaryText->SetText(FText::FromString(SecondaryLabel));
+	OptionSecondaryText->SetVisibility(
+		bTacticalCard && !SecondaryLabel.IsEmpty()
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	OptionLabelText->SetAutoWrapText(!bTacticalCard);
+	OptionLabelText->SetTextOverflowPolicy(
+		bTacticalCard ? ETextOverflowPolicy::Ellipsis : ETextOverflowPolicy::Clip);
+	FFMCodexPlayerUIStyle::Get().ApplyText(*OptionLabelText,
+		bTacticalCard ? EFMCodexPlayerUITextRole::Identity
+			: EFMCodexPlayerUITextRole::Body);
+	if (bTacticalCard)
+	{
+		OptionBounds->SetWidthOverride(156.0f);
+		OptionBounds->SetHeightOverride(58.0f);
+	}
+	else
+	{
+		OptionBounds->ClearWidthOverride();
+		OptionBounds->ClearHeightOverride();
+	}
 	const bool bConfigured = BindingMode != EBindingMode::None
 		&& !Label.IsEmpty();
 	OptionButton->SetIsEnabled(bConfigured);
@@ -133,6 +205,8 @@ void UFMCodexInteractionOptionWidget::BindConfiguredHandler()
 		return;
 	}
 	OptionButton->OnClicked.Clear();
+	OptionButton->OnHovered.Clear();
+	OptionButton->OnUnhovered.Clear();
 	switch (BindingMode)
 	{
 	case EBindingMode::Simple:
@@ -142,6 +216,14 @@ void UFMCodexInteractionOptionWidget::BindConfiguredHandler()
 	case EBindingMode::Card:
 		OptionButton->OnClicked.AddDynamic(
 			this, &UFMCodexInteractionOptionWidget::HandleCardClicked);
+		break;
+	case EBindingMode::TacticalCard:
+		OptionButton->OnClicked.AddDynamic(
+			this, &UFMCodexInteractionOptionWidget::HandleCardClicked);
+		OptionButton->OnHovered.AddDynamic(
+			this, &UFMCodexInteractionOptionWidget::HandleTacticalHovered);
+		OptionButton->OnUnhovered.AddDynamic(
+			this, &UFMCodexInteractionOptionWidget::HandleTacticalUnhovered);
 		break;
 	case EBindingMode::Deployment:
 		OptionButton->OnClicked.AddDynamic(
@@ -168,6 +250,22 @@ void UFMCodexInteractionOptionWidget::HandleSimpleClicked()
 void UFMCodexInteractionOptionWidget::HandleCardClicked()
 {
 	OnCardRequested.Broadcast(CardId);
+}
+
+void UFMCodexInteractionOptionWidget::HandleTacticalHovered()
+{
+	if (BindingMode == EBindingMode::TacticalCard && !CardId.IsNone())
+	{
+		OnTacticalDetailRequested.Broadcast(CardId);
+	}
+}
+
+void UFMCodexInteractionOptionWidget::HandleTacticalUnhovered()
+{
+	if (BindingMode == EBindingMode::TacticalCard && !CardId.IsNone())
+	{
+		OnTacticalDetailDismissed.Broadcast(CardId);
+	}
 }
 
 void UFMCodexInteractionOptionWidget::HandleDeploymentClicked()

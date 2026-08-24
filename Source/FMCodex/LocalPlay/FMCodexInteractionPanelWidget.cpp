@@ -578,7 +578,21 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 		}
 		UFMCodexInteractionOptionWidget* Option = MakeOptionWidget(
 			FName(*FString::Printf(TEXT("SelectionOption%d"), ChoiceIndex)));
-		Option->ConfigureCard(Choice.Label, Choice.OptionId);
+		if (Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill)
+		{
+			Option->ConfigureTacticalCard(
+				Choice.Label, Choice.SecondaryLabel, Choice.OptionId);
+			Option->OnTacticalDetailRequested.AddDynamic(
+				this,
+				&UFMCodexInteractionPanelWidget::HandleTacticalDetailRequested);
+			Option->OnTacticalDetailDismissed.AddDynamic(
+				this,
+				&UFMCodexInteractionPanelWidget::HandleTacticalDetailDismissed);
+		}
+		else
+		{
+			Option->ConfigureCard(Choice.Label, Choice.OptionId);
+		}
 		switch (Presentation.Category)
 		{
 		case EFMCodexUMGInteractionCategory::SelectCarrier:
@@ -710,6 +724,22 @@ void UFMCodexInteractionPanelWidget::HandleMarkerOption(const FName CardId)
 void UFMCodexInteractionPanelWidget::HandleSkillOption(const FName SkillId)
 {
 	RequestSkill(SkillId);
+}
+
+void UFMCodexInteractionPanelWidget::HandleTacticalDetailRequested(
+	const FName SkillId)
+{
+	if (!bInteractionBlocked
+		&& Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill)
+	{
+		OnTacticalDetailRequested.Broadcast(SkillId);
+	}
+}
+
+void UFMCodexInteractionPanelWidget::HandleTacticalDetailDismissed(
+	const FName SkillId)
+{
+	OnTacticalDetailDismissed.Broadcast(SkillId);
 }
 
 void UFMCodexInteractionPanelWidget::HandleRunnerOption(const FName CardId)

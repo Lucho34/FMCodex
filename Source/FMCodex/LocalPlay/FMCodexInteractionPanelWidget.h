@@ -52,6 +52,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	EFMCodexUMGOneOnOneChoice, Choice);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
 	FFMCodexInteractionContinueRequested);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+	FFMCodexInteractionTacticalDetailIntent, FName, SkillId);
 DECLARE_MULTICAST_DELEGATE_TwoParams(
 	FFMCodexInteractionDeploymentDragStarted, FName, bool);
 DECLARE_MULTICAST_DELEGATE(FFMCodexInteractionDeploymentDragFinished);
@@ -167,6 +169,12 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionContinueRequested OnContinueRequested;
 
+	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
+	FFMCodexInteractionTacticalDetailIntent OnTacticalDetailRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
+	FFMCodexInteractionTacticalDetailIntent OnTacticalDetailDismissed;
+
 	FFMCodexInteractionDeploymentDragStarted OnDeploymentDragStarted;
 	FFMCodexInteractionDeploymentDragFinished OnDeploymentDragFinished;
 
@@ -212,6 +220,12 @@ private:
 
 	UFUNCTION()
 	void HandleSkillOption(FName SkillId);
+
+	UFUNCTION()
+	void HandleTacticalDetailRequested(FName SkillId);
+
+	UFUNCTION()
+	void HandleTacticalDetailDismissed(FName SkillId);
 
 	UFUNCTION()
 	void HandleRunnerOption(FName CardId);

@@ -658,6 +658,68 @@ public:
 		const TArray<FFMCodexUMGDeploymentChoiceViewModel>& Choices);
 };
 
+/** Compact role-to-attribute row derived from the rich canonical catalog. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGTacticalRoleAttributeViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	EMatchPlayResolutionParticipantRole Role =
+		EMatchPlayResolutionParticipantRole::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	FString RoleLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	TArray<EMatchPlayResolutionFormulaAttribute> Attributes;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	FString AttributeLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	bool bOptional = false;
+};
+
+/** Compact, player-facing explanation of one tactical branch. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGTacticalBranchViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	FString Label;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	TArray<FFMCodexUMGTacticalRoleAttributeViewModel> RoleAttributes;
+
+	/** True for outcome/route branches whose v1 reference is roll-only. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	bool bRollOnly = false;
+};
+
+/** Player-facing static rule description. It never contains live FormulaFacts. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGTacticalDetailViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	bool bValid = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	ESkillRuleType SkillType = ESkillRuleType::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	FString DisplayName;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	FString CardHint;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	TArray<FFMCodexUMGTacticalBranchViewModel> Branches;
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGSelectionChoiceViewModel
 {
@@ -674,6 +736,13 @@ struct FMCODEX_API FFMCodexUMGSelectionChoiceViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	FFMCodexUMGCardViewModel Card;
+
+	/** Stable rule identity for SelectSkill choices; never derived from Label. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	ESkillRuleType SkillType = ESkillRuleType::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString SecondaryLabel;
 };
 
 USTRUCT(BlueprintType)

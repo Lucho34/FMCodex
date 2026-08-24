@@ -520,12 +520,14 @@ namespace FMCodexLocalMatchInteractionView
 		const EInitialTurnOrderPlayer Side,
 		const FName Id,
 		const FName RelatedCardId,
-		const FString& DisplayLabel = FString())
+		const FString& DisplayLabel = FString(),
+		const ESkillRuleType SkillType = ESkillRuleType::None)
 	{
 		FFMCodexLocalMatchSelectionOption Option;
 		Option.Side = Side;
 		Option.Id = Id;
 		Option.RelatedCardId = RelatedCardId;
+		Option.SkillType = SkillType;
 		Option.Label = DisplayLabel.IsEmpty()
 			? Id.ToString()
 			: DisplayLabel;
@@ -779,7 +781,9 @@ namespace FMCodexLocalMatchInteractionView
 					Rule.bSuccess
 						? FFMCodexLocalMatchInteractionViewBuilder::ToString(
 							Rule.Snapshot.SkillType)
-						: TEXT("Unknown Skill"));
+						: TEXT("Unknown Skill"),
+					Rule.bSuccess
+						? Rule.Snapshot.SkillType : ESkillRuleType::None);
 			}
 			View.bCanResolveNoLegalChoice = Availability.bQuerySucceeded
 				&& !Availability.bCanSelectAnySkill;

@@ -607,6 +607,38 @@
 - 扩展顺序：广泛战术 Resolution rollout 暂停。下一优先为 `Stage 6.13.1.4.9 — Tactical Information Visualization v1`，先提供独立于 CurrentAttack 的 canonical tactical rule-description projection 与只读 Hover detail；live FormulaFacts 只代表真实 active Resolution，不得为部署阶段伪造。
 - 范围与记录：本决定不修改生产 C++、规则、概率、UI 或测试。完整冻结合同、复用矩阵、技术债、分支风险与 Visualization readiness 见 `Docs/UI/Cross_Golden_Path_Closeout_v1.md`。
 
+### CD-059 - Static Tactical Description and Shared Hover Detail
+
+- 日期：2026-08-24
+- 决定：五种 canonical tactic 采用独立、集中、只读的 `FTacticalRuleDescriptionCatalog`，以稳定 `ESkillRuleType` 作为身份；Presentation 负责中文本地化和结构化详情 DTO。catalog 不读取或伪造 live FormulaFacts，也不参与 legality、Resolver、RNG 或 Match State。
+- 交互：当前 eligible tactics 使用紧凑 name + hint card；hover 与 keyboard focus 只驱动 Match Screen 所有的一个 shared non-modal detail panel，click 继续原 typed Skill intent。`不使用战术` 保持独立动作。
+- 生命周期：authoritative refresh、选择/放弃战术、离开 Skill selection 与 Screen destruct 都清除 transient detail；card 到 panel 的指针过渡仅用 next-tick presentation dismissal，禁止长 timeout。
+- 后续：同一 catalog 可供 deployment tactical reference；current-card attribute highlighting 另建非 gameplay projection，均不在 v1 范围。
+
+### CD-060 - Tactical Hover Detail Uses Compact Role-to-Attribute Projection
+
+- 日期：2026-08-24
+- PIE 结论：Stage 6.13.1.4.9 的 architecture、五战术覆盖、hover/focus/click 与 Authority safety 接受；原 `980 × max 400` 面板因完整公式、倍率、固定项、路线/Outcome 表、Tactical Player 说明和进攻/防守标题形成规则手册密度而被拒绝。
+- 决定：保留 rich `FTacticalRuleDescriptionCatalog`，新增/收敛 player DTO 为稳定 `branch -> role -> attribute[]` 与 `bRollOnly`。Projection 过滤 RawRoll、FixedModifier、TacticalPlayerAdvantage 和 multiplier 文案；UMG 不包含 SkillType/branch 特判。
+- 表现：面板改为 820 宽、content-driven/max 460、388 宽两列 wrap branch blocks，不创建默认 ScrollBox。角色使用 secondary hierarchy，属性使用 stronger hierarchy；Outcome-only 统一显示 `只看掷点，不看属性`。
+- 冻结：不修改 Catalog fidelity、战术球员玩法、FormulaFacts、合法性、RNG、State、Hover lifecycle、typed click 或 Tactical Card。详细数学继续由 live Inline Formula Surface 展示。
+
+### CD-061 - Tactical Detail Rows Own Stable Horizontal Width
+
+- 日期：2026-08-24
+- PIE 结论：CD-060 的信息密度方向接受，但 live Slate layout 将 branch 内 role/attribute 两个 `Fill + AutoWrap` TextBlock 重新压缩，右侧属性在部分战术中变成中文单字竖排；`388` 宽分支与三分支普通 wrap 也产生不稳定空洞。
+- 修复：保留 compact DTO 与 shared panel，改为每条 mapping 一个稳定 HorizontalBox；role 放入固定 `116` SizeBox，attribute 占剩余宽度并紧跟 role 左对齐，双方禁用 AutoWrap。Panel 调整为 width `900` / max height `470`，普通分支宽 `430`，三分支最后一块宽 `867` 形成稳定 `2+1`。attribute 不再右贴 branch 边缘，避免在保证安全宽度后又产生不必要的中间空档。
+- 滚动：当前五战术均不创建 ScrollBox；Through Ball 以两列三行展示。若 fresh PIE 证明直塞在目标 viewport 仍超高，后续只允许对直塞增加轻量内部滚动，不得让常规战术回退为滚动面板。
+- 冻结：不修改 CoreRules、rich catalog、compact role/attribute facts、FormulaFacts、Authority、RNG、State、hover/click lifecycle、Tactical Card 或外围 Match UI。
+
+### CD-062 - Tactical Detail Uses a Compact Centered Reference-Card Footprint
+
+- 日期：2026-08-24
+- PIE 结论：CD-061 已解决中文单字竖排并确认 compact row 可读，但 `900` 宽外框、`430` 分支、`7` gap 与默认 wrap-row Fill 让简化后的内容仍像大面积说明面板，尤其两分支战术存在过多外围与卡内空档。
+- 修复：共享面板保持原中心锚点，宽度收至 `780`、max height `430`、外边距 `10 × 8`；分支改为 explicit centered wrap，普通宽 `365`、gap `5`、三分支末块 `735`。branch padding 收至 `8 × 5`，wrap slot 顶部对齐，使 roll-only 短卡保持内容驱动高度。Role `116`、左对齐 Attribute 与双方 NoWrap 合同不变。
+- 布局：远射、内切、传中为两列单行；控球推进为 `2+1`；直塞为两列三行。当前五战术均无 ScrollBox；只允许未来在 fresh PIE 证明确有 viewport 裁切时为直塞提供轻量兜底。
+- 冻结：不修改 compact DTO、角色/属性映射、CoreRules、Catalog、Authority、RNG、State、Skill selection typed intent、Hover/Click lifecycle、Full Card、Pitch、Header、Rack、Narrative 或滚轮。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

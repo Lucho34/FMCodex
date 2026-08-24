@@ -526,6 +526,18 @@
 - Marker-as-Helper 仍优先返回 `HelperMatchesMarker` 与既有 Toast；GK、未部署、对方卡、缺失 Snapshot 等既有限制不变。physical-half 新增后若没有合法 Helper，显式 No-Legal Helper 入口仍可推进到 AwaitingSkill。
 - Cross E2E 至少覆盖 same-half Helper selected、wrong-half-only/no-legal Helper 和 Tactical abandon completion；Local Hot-seat 画面左右映射不得改变 canonical half 结果。
 
+## 战术信息可视化 v1（Stage 6.13.1.4.9）
+
+- `FMCodex.CoreRules.TacticalRuleDescription` 覆盖五种 canonical SkillType 的稳定查询、唯一性与完整性，并逐分支断言角色、属性、倍率、固定项、门将属性、战术球员适用性及 Arithmetic/Branch/Outcome 掷点语义。
+- `FMCodex.LocalPlay.TacticalInformation` 覆盖五种中文名称与短提示、Cross High/Low、Dead Corner、身后 P2、反越位与挑射等非算术说明，且不得把 OutcomeDecision 投影成假公式。
+- hover/focus A 后显示 A，切换 B 后只显示 B；离开卡片/共享面板、点击战术、Decline/No-Legal、退出 Skill selection 或刷新 authority presentation 后说明清空。
+- 反复 hover/focus 不提交 Skill、不改变 Authority、CurrentAttack、Role Tag 或 eligible option，不消费 RNG；显示内容不含 Canonical Skill path、英文战术名、内部角色/属性枚举。
+- 点击仍走既有 `OnCardRequested -> RequestSkill` 单动作链，详情面板不增加确认步骤。Fresh PIE 另检查两项以上可选战术时的密度、换项无陈旧内容、直塞复杂分支可读性与无 hover 副作用。
+- Density Repair 必须逐分支以稳定 role/attribute enum 断言五种战术的 compact DTO；Helper 保持 optional，Outcome-only 分支 `bRollOnly=true` 且不得伪造 role/attribute formula。
+- 玩家可见文本不得包含 `进攻/防守` section、`×0.5`、固定 `+2`、Tactical Player 说明、完整加法表达式或 outcome range。rich catalog 对同一 multiplier/fixed/Tactical Player/outcome facts 的既有测试必须继续通过，证明只减少 Presentation 密度。
+- Widget footprint tightening 后为约 `780` 宽、content-driven/max `430`、`365` 宽两列 wrapping branch blocks；Wrap 使用 explicit size、居中行与集中 `5` gap，三分支最后一块使用 `735` 宽的 `2+1` 排布，六分支的 width policy 必须只能容纳两列。每条 mapping 继续具有至少 `116` role bounds，attribute 紧跟 role 左对齐，role/attribute TextBlock 均关闭 AutoWrap，`协防（可选）` 保持单行且不会形成大面积中间空档。普通战术不创建默认 ScrollBox。Fresh PIE 仍负责验证 1920×1080 下 Through Ball 的实际高度与 2–3 秒扫读目标。
+
+
 ## Cross 生产顺序与单动作路线入口修复（Stage 6.13.1.4.8A）
 
 应验证：

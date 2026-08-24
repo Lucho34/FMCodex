@@ -15,6 +15,8 @@
 #include "FMCodexResolutionPanelWidget.h"
 #include "FMCodexRollReelWidget.h"
 #include "FMCodexSelectionFeedbackToastWidget.h"
+#include "FMCodexTacticalDetailPanelWidget.h"
+#include "FMCodexTacticalDetailPresentation.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -352,6 +354,8 @@ TSharedRef<SWidget> UFMCodexLocalMatchScreenWidget::RebuildWidget()
 void UFMCodexLocalMatchScreenWidget::NativeDestruct()
 {
 	StopInlineFormulaRevealTimer();
+	CancelTacticalDetailDismiss();
+	HideTacticalDetail();
 	HideDetailOverlay();
 	if (SelectionFeedbackToast != nullptr)
 	{
@@ -382,6 +386,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 	const FFMCodexUMGMatchScreenViewModel& InPresentation)
 {
 	HideDetailOverlay();
+	// Any authoritative presentation rebuild invalidates the transient hover
+	// source. The newly rendered tactical cards can publish a fresh identity.
+	HideTacticalDetail();
 	if (PitchWidget != nullptr)
 	{
 		PitchWidget->EndDeploymentDrag();
@@ -441,6 +448,12 @@ UFMCodexSelectionFeedbackToastWidget*
 UFMCodexLocalMatchScreenWidget::GetSelectionFeedbackToast() const
 {
 	return SelectionFeedbackToast;
+}
+
+UFMCodexTacticalDetailPanelWidget*
+UFMCodexLocalMatchScreenWidget::GetTacticalDetailPanel() const
+{
+	return TacticalDetailPanel;
 }
 
 UFMCodexResolutionPanelWidget*
@@ -693,6 +706,7 @@ void UFMCodexLocalMatchScreenWidget::RequestSubmitMarker(const FName CardId)
 
 void UFMCodexLocalMatchScreenWidget::RequestSubmitSkill(const FName SkillId)
 {
+	HideTacticalDetail();
 	if (MatchController != nullptr)
 	{
 		MatchController->SubmitSkill(SkillId);
@@ -717,6 +731,11 @@ void UFMCodexLocalMatchScreenWidget::RequestSubmitHelper(const FName CardId)
 
 void UFMCodexLocalMatchScreenWidget::RequestDeclineSelection()
 {
+	if (Presentation.Interaction.Category
+		== EFMCodexUMGInteractionCategory::SelectSkill)
+	{
+		HideTacticalDetail();
+	}
 	if (MatchController != nullptr)
 	{
 		if (Presentation.Interaction.Category
@@ -733,6 +752,11 @@ void UFMCodexLocalMatchScreenWidget::RequestDeclineSelection()
 
 void UFMCodexLocalMatchScreenWidget::RequestResolveNoLegalSelection()
 {
+	if (Presentation.Interaction.Category
+		== EFMCodexUMGInteractionCategory::SelectSkill)
+	{
+		HideTacticalDetail();
+	}
 	if (MatchController != nullptr)
 	{
 		if (Presentation.Interaction.Category
@@ -978,6 +1002,114 @@ void UFMCodexLocalMatchScreenWidget::HandleMarkerRequested(const FName CardId)
 void UFMCodexLocalMatchScreenWidget::HandleSkillRequested(const FName SkillId)
 {
 	RequestSubmitSkill(SkillId);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailRequested(
+	const FName SkillId)
+{
+	if (TacticalDetailPanel == nullptr || SkillId.IsNone()
+		|| Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectSkill)
+	{
+		return;
+	}
+	const FFMCodexUMGSelectionChoiceViewModel* Choice =
+		Presentation.Interaction.SelectionChoices.FindByPredicate(
+			[SkillId](const FFMCodexUMGSelectionChoiceViewModel& Candidate)
+			{
+				return Candidate.OptionId == SkillId
+					&& Candidate.SkillType != ESkillRuleType::None;
+			});
+	if (Choice == nullptr)
+	{
+		return;
+	}
+	const FFMCodexUMGTacticalDetailViewModel Detail =
+		FFMCodexTacticalDetailPresentationBuilder::Build(Choice->SkillType);
+	if (!Detail.bValid)
+	{
+		return;
+	}
+	CancelTacticalDetailDismiss();
+	bTacticalCardHoverOrFocus = true;
+	ActiveTacticalDetailSkillId = SkillId;
+	TacticalDetailPanel->RefreshFromPresentation(Detail);
+	TacticalDetailPanel->SetVisibility(ESlateVisibility::Visible);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailDismissed(
+	const FName SkillId)
+{
+	if (SkillId == ActiveTacticalDetailSkillId)
+	{
+		bTacticalCardHoverOrFocus = false;
+		ScheduleTacticalDetailDismiss();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailPointerEntered()
+{
+	bTacticalDetailPointerInside = true;
+	CancelTacticalDetailDismiss();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailPointerLeft()
+{
+	bTacticalDetailPointerInside = false;
+	ScheduleTacticalDetailDismiss();
+}
+
+void UFMCodexLocalMatchScreenWidget::ScheduleTacticalDetailDismiss()
+{
+	if (bTacticalCardHoverOrFocus || bTacticalDetailPointerInside
+		|| TacticalDetailPanel == nullptr
+		|| TacticalDetailPanel->GetVisibility() == ESlateVisibility::Collapsed)
+	{
+		return;
+	}
+	CancelTacticalDetailDismiss();
+	if (UWorld* World = GetWorld())
+	{
+		TacticalDetailDismissTimerHandle = World->GetTimerManager()
+			.SetTimerForNextTick(FTimerDelegate::CreateUObject(
+				this,
+				&UFMCodexLocalMatchScreenWidget::CompleteTacticalDetailDismiss));
+	}
+	else
+	{
+		CompleteTacticalDetailDismiss();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::CancelTacticalDetailDismiss()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(TacticalDetailDismissTimerHandle);
+	}
+	TacticalDetailDismissTimerHandle.Invalidate();
+}
+
+void UFMCodexLocalMatchScreenWidget::CompleteTacticalDetailDismiss()
+{
+	TacticalDetailDismissTimerHandle.Invalidate();
+	if (!bTacticalCardHoverOrFocus && !bTacticalDetailPointerInside)
+	{
+		HideTacticalDetail();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::HideTacticalDetail()
+{
+	CancelTacticalDetailDismiss();
+	ActiveTacticalDetailSkillId = NAME_None;
+	bTacticalCardHoverOrFocus = false;
+	bTacticalDetailPointerInside = false;
+	if (TacticalDetailPanel != nullptr)
+	{
+		TacticalDetailPanel->ClearPresentation();
+		TacticalDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleRunnerRequested(const FName CardId)
@@ -1390,6 +1522,12 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this, &UFMCodexLocalMatchScreenWidget::HandleMarkerRequested);
 	InteractionPanel->OnSkillRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleSkillRequested);
+	InteractionPanel->OnTacticalDetailRequested.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleTacticalDetailRequested);
+	InteractionPanel->OnTacticalDetailDismissed.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleTacticalDetailDismissed);
 	InteractionPanel->OnRunnerRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleRunnerRequested);
 	InteractionPanel->OnHelperRequested.AddDynamic(
@@ -1423,6 +1561,24 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		ToastSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 132.0f));
 		ToastSlot->SetHorizontalAlignment(HAlign_Center);
 		ToastSlot->SetVerticalAlignment(VAlign_Bottom);
+	}
+
+	TacticalDetailPanel =
+		WidgetTree->ConstructWidget<UFMCodexTacticalDetailPanelWidget>(
+			UFMCodexTacticalDetailPanelWidget::StaticClass(),
+			TEXT("SharedTacticalDetailPanel"));
+	TacticalDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
+	TacticalDetailPanel->OnDetailPointerEntered.AddUObject(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleTacticalDetailPointerEntered);
+	TacticalDetailPanel->OnDetailPointerLeft.AddUObject(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleTacticalDetailPointerLeft);
+	if (UOverlaySlot* DetailSlot = Root->AddChildToOverlay(TacticalDetailPanel))
+	{
+		DetailSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 132.0f));
+		DetailSlot->SetHorizontalAlignment(HAlign_Center);
+		DetailSlot->SetVerticalAlignment(VAlign_Bottom);
 	}
 
 	DetailOverlayCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
@@ -2723,6 +2879,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	BindDetailHoverSources();
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
+	if (Presentation.Interaction.Category
+		!= EFMCodexUMGInteractionCategory::SelectSkill)
+	{
+		HideTacticalDetail();
+	}
 	InteractionPanel->SetVisibility(
 		Presentation.Interaction.bPrimaryActionOwnedByInlineFormula
 			? ESlateVisibility::Collapsed

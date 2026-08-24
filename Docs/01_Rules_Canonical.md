@@ -792,6 +792,17 @@ B. 挑射：判定公式。
 - Border brush、background、padding、字体、字号、对齐与 center geometry 在 visible reel 生命周期内保持固定。ResultHold 只保留同一 center 数字并清理已淡出的邻号，不触发第二次换皮、scale pulse、Widget swap 或 re-layout。
 - 此项仅移除 `.8C.4` 的 result-style morph；邻号淡出、0.16 秒 single landing、所有 hold/disclosure/CTA 时间与 Authority 真相边界保持不变。
 
+## 16. 战术信息静态真相边界（Stage 6.13.1.4.9）
+
+- 五种战术的玩家说明由独立、只读、无状态的 canonical tactical-description catalog 提供。它按稳定 `SkillType` 查询，描述角色、分支、属性、倍率、固定修正、掷点语义、门将参与、战术球员适用性和结果区间。
+- catalog 可在没有 `CurrentAttack`、Resolution Session 或当前合法选项时查询；它不得决定战术合法性、TP 区间、参与者合法性，也不得计算结果、消费 RNG 或修改 Match State。
+- 静态说明不包含当前球员、当前属性值、Raw Roll、Final Value 或 winner。上述实时事实继续只由真实 Resolution 的 `FormulaFacts` / authoritative result 提供，不得为帮助界面伪造 FormulaFacts。
+- Arithmetic Contest 使用结构化进攻/防守项说明；Branch Selection 与 Outcome Decision 必须显示实际路线/结果区间，不得伪装为“属性 + 掷点 = Total”。
+- 战术选择界面仍只按现有 Authority 可用性创建选项；悬停/焦点只显示说明，单击仍立即提交原有 typed Skill intent。
+- v1 Hover detail 只投影分支名与 `角色 -> 属性`；非属性 Outcome 分支只显示 `只看掷点，不看属性`。倍率、固定修正、路线/结果点数表、战术球员说明与完整公式继续保留在 rich catalog 或 live Formula Surface，不进入该紧凑玩家表面。
+- 删除 Hover detail 中的信息不改变 canonical metadata：战术球员适用性、倍率、固定项与 Outcome ranges 仍必须由 catalog contract tests 冻结。
+
+
 ### 14.2 补射
 
 补射为终结公式：
