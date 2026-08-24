@@ -1252,6 +1252,55 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Interaction.ActionPointLabel = FString();
 	Result.Interaction.bSystemResolution = Screen.bSystemResolution;
 	Result.Interaction.bMatchEnded = InteractionView.bMatchEnded;
+	const bool bTacticalPointPending =
+		InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::TacticalPointRoll;
+	const bool bCrossRoutePending =
+		InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution
+		&& (InteractionView.ElectiveBranchIntent
+				== EMatchPlayElectiveBranchIntent::CrossHigh
+			|| InteractionView.ElectiveBranchIntent
+				== EMatchPlayElectiveBranchIntent::CrossLow)
+		&& !InteractionView.ResolutionFacts.bHasActualBranch;
+	if (bTacticalPointPending)
+	{
+		Result.Interaction.CrossRollRevealKind =
+			EFMCodexUMGCrossRollRevealKind::TacticalPoint;
+		Result.Interaction.CrossRollContestId = TEXT("Match.TacticalPoint");
+		Result.Interaction.CrossRollSequenceIndex = 0;
+		Result.Interaction.CrossRollOwnerSide =
+			InteractionView.CurrentAttackingPlayer;
+	}
+	else if (bCrossRoutePending)
+	{
+		Result.Interaction.CrossRollRevealKind =
+			EFMCodexUMGCrossRollRevealKind::InitialRoute;
+		Result.Interaction.CrossRollContestId = TEXT("Cross.Route");
+		Result.Interaction.CrossRollSequenceIndex = 0;
+		Result.Interaction.CrossRollOwnerSide =
+			InteractionView.CurrentAttackingPlayer;
+	}
+	else if (InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense)
+	{
+		const bool bAttackRoll = InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack;
+		Result.Interaction.CrossRollRevealKind = bAttackRoll
+			? EFMCodexUMGCrossRollRevealKind::Attack
+			: EFMCodexUMGCrossRollRevealKind::Defense;
+		Result.Interaction.CrossRollContestId =
+			InteractionView.ResolutionFacts.ActualBranch.Cross
+				== EMatchPlayCrossActualBranch::High
+					? FName(TEXT("Cross.High"))
+					: FName(TEXT("Cross.Low"));
+		Result.Interaction.CrossRollSequenceIndex =
+			InteractionView.ResolutionFacts.NextPendingRollSequenceIndex;
+		Result.Interaction.CrossRollOwnerSide =
+			InteractionView.ExpectedActingPlayer;
+	}
 	Result.Interaction.bCanStartNewMatch =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::StartMatch;
@@ -1434,8 +1483,10 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	// Once Cross High has been selected, its route/formula progression stays on
 	// the board. The legacy English Resolution overlay remains available to
 	// routes outside this narrow rollout.
-	if (InteractionView.ElectiveBranchIntent
+	if ((InteractionView.ElectiveBranchIntent
 			== EMatchPlayElectiveBranchIntent::CrossHigh
+			|| InteractionView.ElectiveBranchIntent
+				== EMatchPlayElectiveBranchIntent::CrossLow)
 		&& !Result.Resolution.bRejected
 		&& !Result.Resolution.FormulaFacts.bHasActualBranch)
 	{

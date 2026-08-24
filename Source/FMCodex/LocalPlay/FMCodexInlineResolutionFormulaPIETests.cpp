@@ -19,7 +19,7 @@
 namespace FMCodexInlineResolutionFormulaPIETests
 {
 	const FString CaptureDirectory = FPaths::ConvertRelativePathToFull(
-		FPaths::ProjectSavedDir() / TEXT("PIE/Stage6131418A"));
+		FPaths::ProjectSavedDir() / TEXT("PIE/Stage6131418C"));
 
 	AFMCodexLocalMatchPlayerController* GetPIEController()
 	{
@@ -400,6 +400,14 @@ bool FPrepareCrossHighPIECommand::Update()
 	Controller->RefreshPresentation();
 	UFMCodexLocalMatchScreenWidget* Screen =
 		Controller->GetPlayerMatchScreen();
+	// Fixture setup drives authority directly and therefore compresses the
+	// player-facing Tactical Point hold. Complete that prior reveal explicitly
+	// before beginning the Cross-specific visual gate.
+	if (Screen != nullptr && Screen->IsInlineFormulaRevealInputBlocked())
+	{
+		Screen->PauseInlineFormulaRevealTimerForTesting();
+		Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	}
 	UFMCodexInteractionPanelWidget* Panel =
 		Screen == nullptr ? nullptr : Screen->GetInteractionPanel();
 	if (Panel != nullptr)
@@ -519,6 +527,16 @@ bool FResolveMergedCrossRoutePIECommand::Update()
 		Test->AddError(TEXT("PIE Controller disappeared before merged route action."));
 		return true;
 	}
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	if (Screen == nullptr)
+	{
+		Test->AddError(TEXT("PIE Screen disappeared before merged route action."));
+		return true;
+	}
+	// The latent command drives the Controller directly, so mirror the
+	// player-facing Screen's pre-command RequestInFlight transition first.
+	Screen->BeginPendingCrossRollRevealForTesting();
 	Controller->ContinueResolution();
 	const bool bInitialRouteIsTwo = Controller->GetInteractionView()
 		.ResolutionFacts.Rolls.ContainsByPredicate(
@@ -532,11 +550,30 @@ bool FResolveMergedCrossRoutePIECommand::Update()
 		|| Controller->GetLastDiagnostic().CommandName
 			!= TEXT("ResolveCrossRoute")
 		|| Controller->GetInteractionView().AcceptedRolls.Num() != 1
-		|| !bInitialRouteIsTwo
-		|| !ValidateSurfaceState(*Test, 1))
+		|| !bInitialRouteIsTwo)
 	{
 		Test->AddError(TEXT(
 			"PIE merged route action did not produce exactly one route D6 and High pre-roll state."));
+	}
+	const auto* Surface = Screen == nullptr
+		? nullptr : Screen->GetInlineFormulaSurface();
+	if (Screen == nullptr || Surface == nullptr
+		|| !Screen->IsInlineFormulaRevealInputBlocked()
+		|| Surface->GetPresentation().ContestId != TEXT("Cross.Route")
+		|| !Surface->GetPresentation().RouteResultLabel.IsEmpty())
+	{
+		Test->AddError(FString::Printf(TEXT(
+			"PIE route cycling did not gate the resolved branch presentation "
+			"(phase=%d blocked=%d kind=%d contest=%s route=%s)."),
+			Screen == nullptr ? -1
+				: static_cast<int32>(Screen->GetInlineFormulaRevealPhase()),
+			Screen != nullptr && Screen->IsInlineFormulaRevealInputBlocked(),
+			Screen == nullptr ? -1 : static_cast<int32>(
+				Screen->GetPresentation().Interaction.CrossRollRevealKind),
+			Surface == nullptr ? TEXT("<null>")
+				: *Surface->GetPresentation().ContestId.ToString(),
+			Surface == nullptr ? TEXT("<null>")
+				: *Surface->GetPresentation().RouteResultLabel));
 	}
 	return true;
 }
@@ -546,6 +583,60 @@ DEFINE_LATENT_AUTOMATION_COMMAND_THREE_PARAMETER(
 	FAutomationTestBase*, Test,
 	int32, StateIndex,
 	bool, bAdvance);
+
+class FWaitForDiceRevealSettlePIECommand final
+	: public IAutomationLatentCommand
+{
+public:
+	FWaitForDiceRevealSettlePIECommand(
+		FAutomationTestBase* InTest,
+		const TCHAR* InContext)
+		: Test(InTest)
+		, Context(InContext)
+	{
+	}
+
+	virtual bool Update() override
+	{
+		using namespace FMCodexInlineResolutionFormulaPIETests;
+		if (StartSeconds <= 0.0)
+		{
+			StartSeconds = FPlatformTime::Seconds();
+		}
+		AFMCodexLocalMatchPlayerController* Controller = GetPIEController();
+		UFMCodexLocalMatchScreenWidget* Screen = Controller == nullptr
+			? nullptr : Controller->GetPlayerMatchScreen();
+		// Commandlet PIE does not guarantee that game-world timers advance while
+		// offscreen screenshot work stalls the editor thread. Advance the exact
+		// production state machine deterministically; fresh interactive PIE still
+		// validates the real timer and visual feel.
+		if (Screen != nullptr && Screen->IsInlineFormulaRevealInputBlocked())
+		{
+			Screen->AdvanceInlineFormulaRevealForTesting(0.50f);
+		}
+		if (Screen != nullptr && !Screen->IsInlineFormulaRevealInputBlocked())
+		{
+			return true;
+		}
+		// Commandlet screenshot capture can stall the editor thread for several
+		// seconds, so this watchdog is deliberately much larger than the 1.1 s
+		// production reveal. It guards a stuck reveal without asserting wall-clock
+		// timing in an environment where the game world is not ticking.
+		if (FPlatformTime::Seconds() - StartSeconds >= 15.0)
+		{
+			Test->AddError(FString::Printf(
+				TEXT("PIE %s dice reveal did not settle within 15 seconds."),
+				*Context));
+			return true;
+		}
+		return false;
+	}
+
+private:
+	FAutomationTestBase* Test = nullptr;
+	FString Context;
+	double StartSeconds = 0.0;
+};
 
 bool FAdvanceCrossHighPIECommand::Update()
 {
@@ -585,6 +676,15 @@ bool FAdvanceCrossHighPIECommand::Update()
 				StateIndex));
 			return true;
 		}
+		if (!Screen->IsInlineFormulaRevealInputBlocked()
+			|| !Surface->GetPresentation().bDiceRevealVisible
+			|| Surface->GetPresentation().bCanContinue)
+		{
+			Test->AddError(FString::Printf(
+				TEXT("PIE state %d did not enter gated dice cycling."),
+				StateIndex));
+		}
+		return true;
 	}
 	ValidateSurfaceState(*Test, StateIndex);
 	const FString Path = CapturePath(StateIndex);
@@ -657,17 +757,26 @@ bool FFMCodexInlineResolutionFormulaPIEVisualGateTest::RunTest(
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
 	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIEFlowCaptureCommand(this, 2));
 	ADD_LATENT_AUTOMATION_COMMAND(FResolveMergedCrossRoutePIECommand(this));
-	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.5f));
+	ADD_LATENT_AUTOMATION_COMMAND(
+		FWaitForDiceRevealSettlePIECommand(this, TEXT("route")));
 	ADD_LATENT_AUTOMATION_COMMAND(
 		FAdvanceCrossHighPIECommand(this, 1, false));
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
 	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIECaptureCommand(this, 1));
 	ADD_LATENT_AUTOMATION_COMMAND(
 		FAdvanceCrossHighPIECommand(this, 2, true));
+	ADD_LATENT_AUTOMATION_COMMAND(
+		FWaitForDiceRevealSettlePIECommand(this, TEXT("attack")));
+	ADD_LATENT_AUTOMATION_COMMAND(
+		FAdvanceCrossHighPIECommand(this, 2, false));
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
 	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIECaptureCommand(this, 2));
 	ADD_LATENT_AUTOMATION_COMMAND(
 		FAdvanceCrossHighPIECommand(this, 3, true));
+	ADD_LATENT_AUTOMATION_COMMAND(
+		FWaitForDiceRevealSettlePIECommand(this, TEXT("defense")));
+	ADD_LATENT_AUTOMATION_COMMAND(
+		FAdvanceCrossHighPIECommand(this, 3, false));
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.15f));
 	ADD_LATENT_AUTOMATION_COMMAND(FVerifyPIECaptureCommand(this, 3));
 	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());

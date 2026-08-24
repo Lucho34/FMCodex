@@ -3756,6 +3756,8 @@ bool FFMCodexLocalMatchUMGPlayerFacingFoundationTest::RunTest(
 			&& StartedUMG.Interaction.bCanRollTacticalPoints);
 
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	TestTrue(TEXT("UMG TacticalPointRoll creates authoritative CurrentAttack"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().bCurrentAttackActive
@@ -4050,6 +4052,8 @@ bool FFMCodexUMGPitchWidgetVisualFoundationTest::RunTest(
 	TestTrue(TEXT("Pitch stage exposes Tactical Point roll without a modal"),
 		Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	TestTrue(TEXT("Pitch fixture reaches authoritative deployment"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().InteractionCategory
@@ -4578,6 +4582,8 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 	TestTrue(TEXT("Card stage has no full-screen handoff blocker"),
 		Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	TestTrue(TEXT("Card fixture reaches authoritative deployment"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().InteractionCategory
@@ -5628,6 +5634,8 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 			&& !Panel->IsInteractionBlocked()
 			&& Panel->GetPresentation().bCanRollTacticalPoints);
 	Panel->RequestTacticalPointRoll();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	TestTrue(TEXT("Panel TacticalPointRoll reaches authoritative Host"),
 		Controller->GetLastDiagnostic().bHostSuccess);
 	const EInitialTurnOrderPlayer FlowAttacker =
@@ -6349,6 +6357,8 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints
 			&& Screen->GetResolutionPanel() == RootResolution);
 	Interaction->RequestTacticalPointRoll();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	TestTrue(TEXT("Cut Inside UMG flow begins through Interaction Panel"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().ActionPoint == 4);
@@ -6477,6 +6487,8 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 	OneOnOneController->RefreshPresentation();
 	AcknowledgeIfPending(*OneOnOneController);
 	OneOnOneController->RollDemoTacticalPoints();
+	OneOnOneScreen->PauseInlineFormulaRevealTimerForTesting();
+	OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const EInitialTurnOrderPlayer ThroughBallAttacker =
 		OneOnOneController->GetInteractionView().CurrentAttackingPlayer;
 	if (!OneOnOneController->GetLastDiagnostic().bHostSuccess
@@ -6926,6 +6938,8 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	{
 		return false;
 	}
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const UTextBlock* TacticalPointStatus = Cast<UTextBlock>(
 		Header->GetWidgetFromName(TEXT("CurrentMatchPhaseStatusLabel")));
 	const bool bTacticalPointChipOnLeft =
@@ -7109,6 +7123,8 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	const TArray<uint8> StateBeforeRejected =
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	TestTrue(TEXT("Rejected command cannot optimistically mutate Header"),
 		!Controller->GetLastDiagnostic().bHostSuccess
 			&& StateBeforeRejected
@@ -7175,6 +7191,8 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			&& !IsVisible(Header->GetWidgetFromName(
 				TEXT("RightTacticalPointChip"))));
 	Interaction->RequestTacticalPointRoll();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const FFMCodexUMGMatchHeaderViewModel& NewAttackHeader =
 		Header->GetPresentation();
 	const bool bFirstAttackerNowOnLeft =
@@ -8378,6 +8396,8 @@ bool FFMCodexGoldenLayoutPrototypeTest::RunTest(const FString& Parameters)
 			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
 				->GetVisibility() == ESlateVisibility::Collapsed);
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 
 	const FFMCodexUMGMatchScreenViewModel PlayerAView =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
@@ -8867,6 +8887,8 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 
 	UFMCodexPitchWidget* Pitch = Screen->GetPitchWidget();
 	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
@@ -9657,6 +9679,8 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	Screen->RequestStartNewMatch();
 	AcknowledgeIfPending(*Controller);
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	AcknowledgeIfPending(*Controller);
 
 	UFMCodexCardRackWidget* LocalRack = Screen->GetLocalRackWidget();
@@ -10080,6 +10104,8 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 	Screen->RequestStartNewMatch();
 	AcknowledgeIfPending(*Controller);
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	AcknowledgeIfPending(*Controller);
 
 	TArray<FFMCodexUMGCardViewModel> LiveCards;
@@ -11027,6 +11053,8 @@ bool FFMCodexOnPitchCarrierSelectionFoundationTest::RunTest(
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const EInitialTurnOrderPlayer Attacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
 	const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
@@ -11263,6 +11291,8 @@ bool FFMCodexOnPitchMarkerSelectionRolloutTest::RunTest(
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const EInitialTurnOrderPlayer Attacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
 	const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
@@ -11508,6 +11538,8 @@ bool FFMCodexSelectedRoleTagsFoundationTest::RunTest(
 					== TEXT("\u653E\u5F03\u76EF\u4EBA"));
 	Screen->RequestStartNewMatch();
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const EInitialTurnOrderPlayer Attacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
 	const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
@@ -11732,6 +11764,8 @@ bool FFMCodexMarkerWrongAreaFeedbackTest::RunTest(
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const EInitialTurnOrderPlayer Attacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
 	const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
@@ -11973,6 +12007,8 @@ bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
 		Screen->TakeWidget();
 		Screen->RequestStartNewMatch();
 		Screen->RequestRollTacticalPoints();
+		Screen->PauseInlineFormulaRevealTimerForTesting();
+		Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 		const EInitialTurnOrderPlayer Attacker =
 			Controller->GetInteractionView().CurrentAttackingPlayer;
 		const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
@@ -12222,6 +12258,8 @@ bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
 		Screen->TakeWidget();
 		Screen->RequestStartNewMatch();
 		Screen->RequestRollTacticalPoints();
+		Screen->PauseInlineFormulaRevealTimerForTesting();
+		Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 		const EInitialTurnOrderPlayer Attacker =
 			Controller->GetInteractionView().CurrentAttackingPlayer;
 		const FFamilyExpectation CrossFamily = FamilyExpectations()[0];
@@ -12284,6 +12322,8 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 		Screen->TakeWidget();
 		Screen->RequestStartNewMatch();
 		Screen->RequestRollTacticalPoints();
+		Screen->PauseInlineFormulaRevealTimerForTesting();
+		Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 		OutAttacker = Controller.GetInteractionView().CurrentAttackingPlayer;
 		if (!DeployParticipants(
 			*this,
@@ -12645,6 +12685,8 @@ bool FFMCodexProductionMatchFlowLocalizationTest::RunTest(
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const EInitialTurnOrderPlayer Attacker =
 		Controller->GetInteractionView().CurrentAttackingPlayer;
 	const FFamilyExpectation CrossFamily = FamilyExpectations()[0];

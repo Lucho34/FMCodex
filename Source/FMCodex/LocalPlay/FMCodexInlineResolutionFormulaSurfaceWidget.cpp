@@ -1,6 +1,7 @@
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexRollReelWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -183,6 +184,12 @@ int32 UFMCodexInlineResolutionFormulaSurfaceWidget
 	return RenderedPendingTermCount;
 }
 
+UFMCodexRollReelWidget*
+UFMCodexInlineResolutionFormulaSurfaceWidget::GetRollReelWidget() const
+{
+	return RollReel;
+}
+
 void UFMCodexInlineResolutionFormulaSurfaceWidget::RequestContinue()
 {
 	if (Presentation.bVisible && Presentation.bCanContinue)
@@ -272,18 +279,11 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 	}
 	USizeBox* DiceBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("InlineFormulaDiceBounds"));
-	DiceBounds->SetWidthOverride(50.0f);
-	DiceBounds->SetHeightOverride(50.0f);
-	DiceTile = MakeBorder(
-		*WidgetTree, TEXT("InlineFormulaDiceTile"),
-		EFMCodexPlayerUIColorRole::NeutralAccent, FMargin(3.0f));
-	DiceTile->SetHorizontalAlignment(HAlign_Center);
-	DiceTile->SetVerticalAlignment(VAlign_Center);
-	DiceFaceText = MakeText(*WidgetTree, TEXT("InlineFormulaDiceFace"), TEXT("D6"));
-	DiceFaceText->SetJustification(ETextJustify::Center);
-	Style.ApplyText(*DiceFaceText, EFMCodexPlayerUITextRole::DiceValue);
-	DiceTile->AddChild(DiceFaceText);
-	DiceBounds->AddChild(DiceTile);
+	DiceBounds->SetWidthOverride(68.0f);
+	DiceBounds->SetHeightOverride(72.0f);
+	RollReel = WidgetTree->ConstructWidget<UFMCodexRollReelWidget>(
+		UFMCodexRollReelWidget::StaticClass(), TEXT("InlineFormulaRollReel"));
+	DiceBounds->AddChild(RollReel);
 	DiceRevealLine->AddChildToHorizontalBox(DiceBounds);
 	DiceRevealRegion->AddChild(DiceRevealLine);
 	if (UVerticalBoxSlot* DiceSlot =
@@ -385,21 +385,8 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 			? ESlateVisibility::SelfHitTestInvisible
 			: ESlateVisibility::Collapsed);
 	DiceOwnerText->SetText(FText::FromString(Presentation.DiceOwnerLabel));
-	DiceFaceText->SetText(FText::FromString(Presentation.DiceFaceLabel));
+	RollReel->RefreshFromPresentation(Presentation.RollReel);
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
-	Style.ApplyBorder(*DiceTile,
-		Presentation.bDiceRolling
-			? EFMCodexPlayerUIColorRole::Warning
-			: EFMCodexPlayerUIColorRole::NeutralAccent,
-		FMargin(3.0f));
-	const float RollingAngle = Presentation.bDiceRolling
-		? static_cast<float>((Presentation.RevealAnimationFrame % 4) - 1) * 4.0f
-		: 0.0f;
-	const float RollingScale = Presentation.bDiceRolling
-		? (Presentation.RevealAnimationFrame % 2 == 0 ? 0.94f : 1.0f)
-		: 1.0f;
-	DiceTile->SetRenderTransformAngle(RollingAngle);
-	DiceTile->SetRenderScale(FVector2D(RollingScale));
 	Style.ApplyBorder(*AttackRegion,
 		Presentation.bAttackRowActive
 			? EFMCodexPlayerUIColorRole::Warning

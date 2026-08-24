@@ -654,6 +654,8 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
 	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 
 	UFMCodexInteractionPanelWidget* Panel = Screen->GetInteractionPanel();
 	UFMCodexCardRackWidget* LocalRack = Screen->GetLocalRackWidget();

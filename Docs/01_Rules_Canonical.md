@@ -424,6 +424,8 @@ Resolution 表现只能读取权威 CurrentAttack Resolution Session 已接受�
 
 Cross 在战术与高/低意图确定后，玩家只执行一次 `判定传中路线`。该玩家动作必须按顺序完成 Resolution Session 建立与 Initial Route 判定，并且只消费一次路线 D6；不得把“进入传中结算”和“判定传中路线”暴露为两个连续按钮。路线 D6 被权威接受后，Pitch 内联层显示 `路线掷点 N -> 判定为高球传中/低球传中`。实际路线无论为高球还是低球，随后都按当前进攻方、当前防守方的顺序各执行一次显式比较掷点；二者共享玩家操作时序，但必须使用各自独立的权威命令与既有公式。
 
+Cross 路线、进攻比较与防守比较的玩家可见数字轮播只属于 Presentation。中间 `1..6` 是确定性装饰序列，不写入 State、ResolutionFeedback 或 FormulaFacts，也不调用随机源。最终落定数字只能读取相同 Roll identity 的权威 `RawD6`；权威结果可以先到达，但在最短表现周期和落定强调完成前，UMG 不公开路线分支、该行 FinalValue、完成叙事或 terminal CTA。该延迟不构成规则层计时器。
+
 Marker 候选若由权威合法性结果以 `MarkerNotInCarrierPhysicalArea` 拒绝，LocalPlay 可在玩家单击对应已部署非门将球员时显示非模态提示 `盯人球员必须与持球球员位于同一半区`。该提示不提交命令、不改变权威状态，约两秒后自动消失；重复触发重启计时。空槽与背景点击不产生该提示，提示层不得阻塞 Pitch Mini 或 Full Card hover。UMG 只能消费投影的拒绝原因，不得自行比较视觉槽位或 physical area。
 
 ### 9.3 无合法球员处理
@@ -760,6 +762,35 @@ A. 直接射门：终结公式。
 B. 挑射：判定公式。
 
 - 进攻方掷 D6，4-6 挑进；1-3 挑射失败，当前进攻回合结束。
+
+## 15. Match 掷点表现真相边界（Stage 6.13.1.4.8C.1）
+
+- 普通进攻开始时，当前生产命令通过 `RollOrdinaryTacticalPoint()` 生成一个 `[2,8]` 的权威随机整数，并将该同一整数原样传给 `BeginOrdinaryAttack`。因此当前版本中 `Raw Roll == Final Tactical Points == CurrentAttack.ActionPoint`；它不是 D6，也不存在 UI 可自行补做的换算。
+- Cross Initial Route、High/Low Attack 与 High/Low Defense 的最终可见点数继续只来自对应权威 RawD6。任何中间滚轮号码都只是 Presentation 的确定性循环，不进入 State、Formula Fact、日志或规则计算。
+- UI 可在权威结果落定后延迟开放下一操作，以保证可读节奏；这只是表现门，不改变合法动作、Authority 时序、D6 消耗或回合规则。
+
+### 15.1 连续滚轮与终局披露门（Stage 6.13.1.4.8C.2）
+
+- active 滚轮的可见位置必须按实际帧 DeltaTime 连续变化；减速改变的是位移速度，不是通过延长离散换号间隔模拟。此规则仍只属于 Presentation，不新增玩法等待或随机对象。
+- cycling/final capture 可显示相邻号码；进入 ResultHold 后必须显式隐藏相邻号码，只保留居中的权威最终值。不得依赖裁剪偶然遮住邻号。
+- Cross Defense 完成时，Authority 可以先拥有 Winner/Narrative，但玩家侧 Narrative 必须等 Defense RawD6 居中、Defense FinalValue 已公开且完整公式可读后才能显示。`下一回合` 继续等完整 ResultHold 结束后才恢复。
+
+### 15.2 结果可读时间定义（Stage 6.13.1.4.8C.3）
+
+- Formula/Tactical Point 的“结果停留”从 FinalValue/资源实际显示时开始计算，不从 Raw settle 时开始计算。当前表现目标为：Raw settle 后约 `0.18s` 公开结果，再保持约 `2.40s` 可读，之后才恢复下一合法操作。
+- Route 结果在 Raw settle 时直接公开，并保持约 `1.45s`；本项仅改变 Presentation timing，不增加确认操作、不改变合法动作或 Authority 时序。
+
+### 15.3 最终落定连续性（Stage 6.13.1.4.8C.4）
+
+- final capture 与 ResultHold 必须复用同一个 center 数字控件；权威目标到达中心后，center 的位置、缩放与透明度连续收敛到静态终值，禁止用第二个静态结果数字替换或叠放。
+- previous/next 邻号必须在既有 `0.16s` capture 窗口内、目标到达中心后逐渐淡出；切入 ResultHold 时才执行的 Collapsed 只能清理已经不可见的邻号，不得形成一帧硬切。
+- 本阶段不延长或重播 `.8C.3` 的 fast、deceleration、landing、结果披露与操作门时间。
+
+### 15.4 落定后固定滚轮外观（Stage 6.13.1.4.8C.5）
+
+- rolling、final capture、Settling 与 ResultHold 使用同一个 gold/highlighted Reel Border；权威数字落定后不得再切换或渐变为独立的 blue/gray settled style。运动停止本身就是结果确认。
+- Border brush、background、padding、字体、字号、对齐与 center geometry 在 visible reel 生命周期内保持固定。ResultHold 只保留同一 center 数字并清理已淡出的邻号，不触发第二次换皮、scale pulse、Widget swap 或 re-layout。
+- 此项仅移除 `.8C.4` 的 result-style morph；邻号淡出、0.16 秒 single landing、所有 hold/disclosure/CTA 时间与 Authority 真相边界保持不变。
 
 ### 14.2 补射
 

@@ -12,6 +12,7 @@ class UBorder;
 class UTextBlock;
 class UVerticalBox;
 class UWrapBox;
+class UFMCodexRollReelWidget;
 class SWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
@@ -39,6 +40,7 @@ public:
 	int32 GetRenderedAttackTermCount() const;
 	int32 GetRenderedDefenseTermCount() const;
 	int32 GetRenderedPendingTermCount() const;
+	UFMCodexRollReelWidget* GetRollReelWidget() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Inline Formula")
 	void RequestContinue();
@@ -91,10 +93,7 @@ private:
 	TObjectPtr<UTextBlock> DiceOwnerText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UBorder> DiceTile;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> DiceFaceText;
+	TObjectPtr<UFMCodexRollReelWidget> RollReel;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> AttackRegion;

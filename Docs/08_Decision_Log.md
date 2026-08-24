@@ -550,6 +550,55 @@
 - 反馈与优先级：InteractionView/UMG 将 wrong-half 有界映射为非模态 `协防球员必须与跑位球员位于同一半区`，点击不提交且保持选择。既有 participant 错误顺序不变，因此已冻结 Marker 仍优先为 `HelperMatchesMarker`；合法 same-half Helper 可在反馈后立即提交。
 - 范围：不修改 Cross narrative、High/Low 双掷点、公式、概率、Header/Pitch 设计，不实现 6.13.1.4.8C 骰子轮播、音频或 cinematic。
 
+### CD-052 - Cross Dice Number Cycling and Authoritative Settle
+
+- 日期：2026-08-23
+- 表现合同：Initial Route、Cross High Attack/Defense 与 Cross Low Attack/Defense 共用 `IdlePending -> RequestInFlight/Cycling -> Settling -> Settled` 表现语言。0.90 秒轮播使用确定性 `1..6`，前 0.56 秒快速、后段减速；只有相同权威 identity 的 RawD6 已存在时才进入 0.20 秒落定。网络结果较慢时继续安全轮播，拒绝请求取消并恢复 pending。
+- 真相边界：Intermediate number 只存在于临时显示 DTO，不进入 Match State、ResolutionFeedback、FormulaFacts 或 Roll Record，不调用 `RollD6`、provider、`RandRange` 或 `FRandomStream`。Screen 缓存 authority-built surface；Widget 不从 FinalValue 反推 RawD6，也不执行 subtotal + D6。
+- 显示门控：cycling 保留 KnownNonRollSubtotal 并隐藏 FinalValue。Route 在 settle 完成前隐藏 High/Low 与路线公式；Attack 在 settle 完成前隐藏 Defense 操作；Defense 在 settle 完成前隐藏 Narrative 与 `下一回合`。settle 完成后恢复权威 RawD6、FinalValue 和已有下游状态，中央 Formula Surface 继续独占 terminal CTA。
+- identity 与重建：stable key 使用 AttackSequence、Cross.Route/Cross.High/Cross.Low、RollSequenceIndex、roll kind/purpose 与 owner side，不使用 Widget/name/visible number。active refresh 不重启；settled key 和最后公开 authority surface 阻止迟到 pending DTO 倒退；首次观察 already-resolved facts 的新 Screen 直接显示 settled truth，不做 replay。
+- 性能与范围：Timer 只在 active reveal 运行并在 settled/hidden/destruct 后停止。Header、Pitch、Rack、Role Tag、战术球员数量、Scheme A Narrative 和 High/Low authority sequencing 不变；不扩展到其他战术，不实现音频、3D 骰子、粒子、cinematic、scorer display 或全局 UI 改版。本决定取代 CD-050/CD-051 中“不实现 6.13.1.4.8C 骰子轮播”的范围限制，不改变其余合同。
+
+### CD-053 - Unified Vertical Lottery Reel and Readable Result Hold
+
+- 日期：2026-08-23
+- 视觉方向：CD-052 的同位置数字替换未通过 fresh PIE，现由裁剪窗口内的竖直 previous/center/next number strip 取代。共享 UMG reel 使用确定性连续序列、可见减速、0.10 秒权威捕获和轻量 3px/1.08 落定强调；禁止另建 RNG、粒子、3D 或音频依赖。
+- 覆盖与真相：本阶段只覆盖普通战术点及 Cross Route/High/Low Attack/Defense。Cross 最终值仍是权威 RawD6；production 战术点权威对象是 `RandRange(2,8)` 的单个整数，该值原样进入 `BeginOrdinaryAttack`，故当前 Raw 与 Final Tactical Points 相同。Reel 只显示此真实域，不把 7/8 伪装成 D6。
+- 时序：motion 1.00 秒（fast 0.55、deceleration 0.45）后 capture 0.10 秒。Route hold 1.35 秒；Formula 与 Tactical Point hold 2.00 秒。权威 Formula/资源约在 hold 开始 0.20 秒后公开，下一 roll/deploy/terminal action 必须等 hold 完整结束；无额外确认点击。
+- 网络与重建：结果未到时保持受控低速运动，收到相同 stable identity 后才落定；拒绝取消并回 pending。active/hold DTO refresh 不重启、不复制 strip/timer；already-resolved first observation 不重播。Intermediate values 不复制、不持久化、不进入 FormulaFact。
+- 范围：本决定仅修复 CD-052 的表现语言与 timing，并加入 Tactical Point 同语言。Header chip、Pitch/Rack/Card/Role Tag、Scheme A Narrative、High/Low authority command、公式、概率、terminal/handoff 均冻结；Long Shot、Cut Inside、Pass Control、Through Ball、One-on-One、Dead Corner 等不在本次 rollout。
+
+### CD-054 - Frame-Continuous Reel Motion and Defense Disclosure Ownership
+
+- 日期：2026-08-23
+- 失败结论：CD-053 的三数字结构正确，但 40ms coarse Timer 同时驱动位移并重刷完整 Screen，fresh PIE 仍表现为停顿后跳格；ResultHold 继续绘制邻号；完成态 Authority 还把 Narrative 写回实际显示的 `ContestLabel/StatusLabel`，导致旧门只清 Narrative 字段仍会提前泄漏 headline。
+- 运动：active cycling/deceleration/capture 改为下一帧短生命周期调度，按实际 DeltaTime 求连续 cell position；前 0.60 秒 15 cells/s，0.60–1.15 秒连续减速到 2.5 cells/s，随后 0.15 秒沿有序域空间捕获权威目标。每帧只更新共享 reel 的稳定 child 与 RenderTransform，ResultHold 不保留逐帧工作。
+- 终态：ResultHold 显式隐藏 previous/next 并复用 center 为静态权威 tile。Formula/资源在 hold 0.20 秒公开；只有 final Defense 在公式已公开后再等到 0.38 秒才允许权威 Narrative/Contest/Status 显示。terminal CTA 仍等完整 2.00 秒 hold；Route 保留 1.35 秒 hold。
+- 安全：Authority、公式、High/Low commands、Tactical Point `[2,8]` RNG、D6 `[1,6]`、winner、terminal/handoff 与 identity/rebuild/rejection/already-resolved 合同均不变。无 audio、3D、particle、scorer、其他战术族或外围 UI 改动。CD-054 仅取代 CD-053 的运动/披露时序，且仍需 fresh user PIE 才能接受。
+
+### CD-055 - Reel Timing, Single-Lock Landing and Readable-Hold Calibration
+
+- 日期：2026-08-23
+- PIE 结论：CD-054 的连续运动方向通过；用户只反馈高速略快、减速感弱、落点偏硬、公式真正可读时间偏短。因此保留 per-frame RenderTransform、静态单数字终态、Narrative/CTA gate 与全部 Authority 边界，只调整集中式 Presentation 常量与曲线。
+- 速度：fast 改为 0–0.45 秒、12.5 cells/s；0.45–1.05 秒以平方速度尾做明显主减速，1.05–1.30 秒继续降至 2.0 cells/s。即时结果仅在首个可见帧前旋转 ordered sequence offset，让目标接近相邻进入；慢回包不改变已显示序列。
+- 落点：0.16 秒 capture 的后段只执行一次 `3px / 1.08` sin² lock pulse，回到精确 center/scale 1，不重复 oscillation。ResultHold 继续显式隐藏邻号。
+- 可读停留：Formula/Tactical 在 settle 后 0.18 秒公开权威结果，再完整保持 2.40 秒，故 input gate 总计 2.58 秒；Route 结果保持 1.45 秒。Narrative 仍沿用 CD-054 的 0.38 秒披露门，内容不变。
+- 范围：不改 CoreRules、RNG、FormulaFacts、winner、CurrentAttack、High/Low command、Header/Pitch/Card/CTA routing，也不新增 sound、particle、3D、flip、scorer 或其他 tactical family。本决定等待 fresh user PIE timing acceptance。
+
+### CD-056 - Reel Final-Settle Continuity Without Timing Redesign
+
+- 日期：2026-08-24
+- PIE 结论：CD-055 的主体滚动、减速与停留节奏已被用户接受；剩余问题仅是 final moving reel 切换到 static ResultHold 时的瞬时不连续。代码审计确认 center 本来就是同一个 TextBlock，硬切来自邻号在 ResultHold 首帧突然 Collapsed、frame 同帧由 warning 金色切为 neutral 蓝灰色，以及交接时调用整套 Border style/padding 更新。
+- 修复：保留同一个 center widget。在既有 `0.16s` capture 内，权威目标到达中心后用 smooth opacity 把邻号降到零，并把现有 frame brush 从 warning 连续插值到 neutral；ResultHold 只清理已经透明的邻号并重置精确 transform，不增加第二数字、额外 bounce、额外 phase 或延时。
+- 冻结：CD-055 的 0.45/1.05/1.30 秒速度分段、0.16 秒 single-lock、3px/1.08、Formula/Tactical `0.18 + 2.40` 秒、Route 1.45 秒、Narrative 0.38 秒全部不变。Authority、RNG、公式、High/Low、战术点、terminal/handoff 与外围 UI 不变；本决定仍需 fresh user PIE 验证最后交接帧。
+
+### CD-057 - Stopped Reel Is the Final Result Style
+
+- 日期：2026-08-24
+- PIE 结论：连续运动、速度、减速、single landing、邻号淡出与 hold 均已接受；CD-056 新增的 Warning/gold 到 NeutralAccent/blue-gray brush crossfade 仍让用户感到落定后又发生一次换皮。最终视觉语义改为“运动停止即结果确认”，不再区分 rolling container 与 settled container。
+- 实现：删除 `ResultStyleAlpha` 及其 Settling/ResultHold 状态投影、Widget cache 与逐帧 brush-color Lerp。Reel Border 在构建时一次性使用现有 Warning/gold style 和既有 3px padding，并在 Cycling、Settling、ResultHold 全程保持不变；center TextBlock、邻号 fade 与静态终值逻辑继续复用。
+- 冻结：不修改 0.45/1.05/1.30 秒运动、0.16 秒 3px/1.08 single landing、Formula/Tactical `0.18 + 2.40`、Route 1.45、Narrative 0.38、CTA、Authority、RNG、公式或外围 UI。C.5 仍需 fresh user PIE 确认最后约 0.5 秒只存在一次 landing/lock-in 事件。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

@@ -32,6 +32,17 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	MatchEnded
 };
 
+/** Typed covered-roll intent consumed by the unified reel reveal state. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGCrossRollRevealKind : uint8
+{
+	None,
+	TacticalPoint,
+	InitialRoute,
+	Attack,
+	Defense
+};
+
 UENUM(BlueprintType)
 enum class EFMCodexUMGAttackTurnStepState : uint8
 {
@@ -698,6 +709,21 @@ struct FMCODEX_API FFMCodexUMGInteractionViewModel
 	EFMCodexUMGInteractionCategory Category =
 		EFMCodexUMGInteractionCategory::None;
 
+	/** Canonical pending Cross roll. Never inferred from button or widget text. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	EFMCodexUMGCrossRollRevealKind CrossRollRevealKind =
+		EFMCodexUMGCrossRollRevealKind::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FName CrossRollContestId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	int32 CrossRollSequenceIndex = INDEX_NONE;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	EInitialTurnOrderPlayer CrossRollOwnerSide =
+		EInitialTurnOrderPlayer::None;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	FString KickerLabel;
 
@@ -889,11 +915,80 @@ UENUM(BlueprintType)
 enum class EFMCodexUMGInlineFormulaRevealPhase : uint8
 {
 	None,
-	Pending,
-	AttackReveal,
-	AttackSettled,
-	DefenseReveal,
-	Completed
+	IdlePending,
+	RequestInFlight,
+	Cycling,
+	Settling,
+	ResultHold,
+	Settled
+};
+
+/**
+ * Pure Presentation data for the lightweight clipped vertical number reel.
+ * The three values are adjacent members of the declared authoritative domain;
+ * none of them becomes gameplay truth until bAuthoritativeValue is true.
+ */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGRollReelViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	bool bVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	int32 DomainMinimum = 1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	int32 DomainMaximum = 6;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	int32 PreviousValue = 1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	int32 CenterValue = 2;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	int32 NextValue = 3;
+
+	/** 0..1 upward travel from CenterValue toward NextValue. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	float ScrollAlpha = 0.0f;
+
+	/**
+	 * Unwrapped deterministic strip position in cells. This is Presentation-only
+	 * geometry and lets tests verify frame-continuous travel without reading pixels.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	float ContinuousPositionCells = 0.0f;
+
+	/** Small final landing offset; always returns to zero at rest. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	float LandingOffsetY = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	float LandingScale = 1.0f;
+
+	/** 0..1 opacity transition for previous/next during the final settle. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	float NeighborFadeAlpha = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	bool bMoving = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	bool bAuthoritativeValue = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	bool bResultHold = false;
+
+	/** Moving neighbors are explicit and are never left to clipping at rest. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	bool bShowNeighborDigits = false;
+
+	/** ResultHold renders one centered authoritative tile only. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	bool bStaticResult = false;
 };
 
 UENUM(BlueprintType)
@@ -1100,7 +1195,7 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 		Category = "Local Match|Inline Formula")
 	bool bShowFormulaRows = true;
 
-	/** Legacy display field retained for serialized compatibility; manual roll flow leaves it None. */
+	/** Presentation-only Cross dice reveal phase; never an authority state. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	EFMCodexUMGInlineFormulaRevealPhase RevealPhase =
@@ -1118,10 +1213,15 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 		Category = "Local Match|Inline Formula")
 	FString DiceOwnerLabel;
 
-	/** "D6" while rolling, then the exact authoritative RawD6. */
+	/** Cosmetic 1..6 while cycling, then the exact authoritative RawD6. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString DiceFaceLabel;
+
+	/** Shared vertical reel geometry used by Cross and Tactical Point surfaces. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FFMCodexUMGRollReelViewModel RollReel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")

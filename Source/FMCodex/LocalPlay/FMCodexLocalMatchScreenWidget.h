@@ -17,6 +17,7 @@ class UFMCodexMatchHeaderWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
 class UFMCodexResolutionPanelWidget;
+class UFMCodexRollReelWidget;
 class UFMCodexSelectionFeedbackToastWidget;
 class UImage;
 class USizeBox;
@@ -26,6 +27,45 @@ class UUniformGridPanel;
 class UWidget;
 class UVerticalBox;
 class SWidget;
+
+/** Stable presentation identity for one covered Cross D6. */
+struct FFMCodexCrossRollRevealIdentity
+{
+	EFMCodexUMGCrossRollRevealKind Kind =
+		EFMCodexUMGCrossRollRevealKind::None;
+	int64 AttackSequence = 0;
+	FName ContestId = NAME_None;
+	int32 RollSequenceIndex = INDEX_NONE;
+	EInitialTurnOrderPlayer OwnerSide = EInitialTurnOrderPlayer::None;
+
+	bool IsValid() const
+	{
+		return Kind != EFMCodexUMGCrossRollRevealKind::None
+			&& AttackSequence > 0
+			&& !ContestId.IsNone()
+			&& RollSequenceIndex != INDEX_NONE
+			&& OwnerSide != EInitialTurnOrderPlayer::None;
+	}
+
+	bool operator==(const FFMCodexCrossRollRevealIdentity& Other) const
+	{
+		return Kind == Other.Kind
+			&& AttackSequence == Other.AttackSequence
+			&& ContestId == Other.ContestId
+			&& RollSequenceIndex == Other.RollSequenceIndex
+			&& OwnerSide == Other.OwnerSide;
+	}
+
+	FString StableKey() const
+	{
+		return FString::Printf(TEXT("%lld|%d|%s|%d|%d"),
+			AttackSequence,
+			static_cast<int32>(Kind),
+			*ContestId.ToString(),
+			RollSequenceIndex,
+			static_cast<int32>(OwnerSide));
+	}
+};
 
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexLocalMatchScreenWidget : public UUserWidget
@@ -99,9 +139,12 @@ public:
 	bool IsLegacyResolutionOverlayVisible() const;
 	EFMCodexUMGInlineFormulaRevealPhase GetInlineFormulaRevealPhase() const;
 	bool IsInlineFormulaRevealInputBlocked() const;
+	UFMCodexRollReelWidget* GetTacticalPointRollReel() const;
 #if WITH_DEV_AUTOMATION_TESTS
 	void AdvanceInlineFormulaRevealForTesting(float DeltaSeconds);
 	void PauseInlineFormulaRevealTimerForTesting();
+	void BeginPendingCrossRollRevealForTesting();
+	void BeginPendingTacticalPointRevealForTesting();
 #endif
 	UFMCodexSelectionFeedbackToastWidget* GetSelectionFeedbackToast() const;
 	UFMCodexCardRackWidget* GetLocalRackWidget() const;
@@ -137,25 +180,29 @@ private:
 		const FFMCodexUMGMatchScreenViewModel& InPresentation);
 	FFMCodexUMGInlineFormulaSurfaceViewModel
 		BuildDisplayedInlineFormula() const;
-	void AdvanceInlineFormulaReveal(float DeltaSeconds);
+	FFMCodexUMGMatchHeaderViewModel BuildDisplayedHeader() const;
+	FFMCodexUMGRollReelViewModel BuildActiveRollReelPresentation() const;
+	void AdvanceInlineFormulaReveal(float DeltaSeconds, bool bForceFullRefresh);
+	void BeginInlineFormulaFinalCapture();
+	void RefreshActiveRollReelVisuals();
 	void HandleInlineFormulaRevealTimer();
 	void StartInlineFormulaRevealTimer();
 	void StopInlineFormulaRevealTimer();
 	void ResetInlineFormulaRevealState();
-	bool IsSameInlineFormulaRevealIdentity(
-		int64 AttackSequence,
-		FName ContestId,
-		int32 AttackRollSequenceIndex,
-		EInitialTurnOrderPlayer AttackSide,
-		int32 DefenseRollSequenceIndex,
-		EInitialTurnOrderPlayer DefenseSide) const;
-	void SetInlineFormulaRevealIdentity(
-		int64 AttackSequence,
-		FName ContestId,
-		int32 AttackRollSequenceIndex,
-		EInitialTurnOrderPlayer AttackSide,
-		int32 DefenseRollSequenceIndex,
-		EInitialTurnOrderPlayer DefenseSide);
+	FFMCodexCrossRollRevealIdentity PendingCrossRollIdentity(
+		const FFMCodexUMGMatchScreenViewModel& InPresentation) const;
+	void ObservePendingCrossRoll(
+		const FFMCodexUMGMatchScreenViewModel& InPresentation);
+	void BeginInlineFormulaReveal(
+		const FFMCodexCrossRollRevealIdentity& Identity,
+		bool bRequestInFlight);
+	void CancelInlineFormulaReveal();
+	bool TryReadAuthoritativeRawRoll(
+		const FFMCodexUMGMatchScreenViewModel& InPresentation,
+		const FFMCodexCrossRollRevealIdentity& Identity,
+		int32& OutRawValue,
+		int32& OutDomainMinimum,
+		int32& OutDomainMaximum) const;
 	void HandleDeploymentDragStarted(FName CardId, bool bGoalkeeper);
 	void HandleDeploymentDragFinished();
 	void HandlePitchDeploymentDropped(
@@ -223,20 +270,26 @@ private:
 
 	/** Last fully resolved authoritative surface; display staging only copies it. */
 	FFMCodexUMGInlineFormulaSurfaceViewModel CachedResolvedInlineFormula;
+	/** Last disclosed authority surface used to ignore stale pending rebuilds. */
+	FFMCodexUMGInlineFormulaSurfaceViewModel LastDisclosedInlineFormula;
+	/** Header before a live Tactical Point roll, retained until disclosure. */
+	FFMCodexUMGMatchHeaderViewModel CachedPreRollHeader;
 
 	EFMCodexUMGInlineFormulaRevealPhase InlineFormulaRevealPhase =
 		EFMCodexUMGInlineFormulaRevealPhase::None;
 	float InlineFormulaRevealPhaseElapsed = 0.0f;
+	float RollRevealCaptureStartPositionCells = 0.0f;
+	float RollRevealCaptureDistanceCells = 0.0f;
+	int32 RollRevealSequenceOffsetCells = 0;
 	FTimerHandle InlineFormulaRevealTimerHandle;
-	bool bInlineFormulaRevealIdentityObserved = false;
-	int64 InlineFormulaRevealAttackSequence = 0;
-	FName InlineFormulaRevealContestId = NAME_None;
-	int32 InlineFormulaRevealAttackRollSequenceIndex = INDEX_NONE;
-	EInitialTurnOrderPlayer InlineFormulaRevealAttackSide =
-		EInitialTurnOrderPlayer::None;
-	int32 InlineFormulaRevealDefenseRollSequenceIndex = INDEX_NONE;
-	EInitialTurnOrderPlayer InlineFormulaRevealDefenseSide =
-		EInitialTurnOrderPlayer::None;
+	FFMCodexCrossRollRevealIdentity ObservedPendingCrossRoll;
+	FFMCodexCrossRollRevealIdentity ActiveCrossRollReveal;
+	TSet<FString> SettledCrossRollRevealKeys;
+	bool bInlineFormulaAuthorityResultAvailable = false;
+	int32 RollRevealAuthoritativeRawValue = 0;
+	int32 RollRevealDomainMinimum = 1;
+	int32 RollRevealDomainMaximum = 6;
+	int32 CachedTacticalPointFinalValue = 0;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AFMCodexLocalMatchPlayerController> MatchController;
@@ -296,6 +349,18 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexInlineResolutionFormulaSurfaceWidget>
 		InlineFormulaSurface;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TacticalPointRevealSurface;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexRollReelWidget> TacticalPointRollReel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TacticalPointRevealTitle;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TacticalPointRevealResult;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Resolution Presentation")
 	TSubclassOf<UFMCodexResolutionPanelWidget> ResolutionPanelWidgetClass;

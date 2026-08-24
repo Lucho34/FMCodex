@@ -430,7 +430,7 @@
 - 属性项显示本地化属性、权威 SourceValue 与 Multiplier，例如 `传球 5 ×0.5`；固定项显示投影的 `+2`；Widget 不累加 Contribution，不从 Final Value 反推 Raw Roll。
 - unresolved Raw Roll 显示 `掷点 ?`，resolved 项显示权威 `掷点 N`。未解析行的主结果显示投影的 `基础值 X`，解析行显示投影的紧凑 Final Value。
 - Helper 缺席时不显示协防参与者或 term；GK 未激活时不显示门将参与者或 term。存在时必须使用实际身份、实际属性、SourceValue、Multiplier 和 Contribution。
-- 重复构建 DTO、创建/刷新 Widget 不消费 RNG、不改变 State、不增加 Roll Record。操作必须调用实际 High/Low 分支对应的 Attack/Defense typed command，不新增假掷点、timer 或 autoplay。
+- 重复构建 DTO、创建/刷新 Widget 不消费 RNG、不改变 State、不增加 Roll Record。操作必须调用实际 High/Low 分支对应的 Attack/Defense typed command；Stage 6.13.1.4.8C 允许仅 active reveal 存活的短时 Presentation Timer，但不得新增假掷点、gameplay timer 或 autoplay。
 - 真实生产状态必须按双 pending -> Attack resolved/Defense pending -> 双 resolved/Final Value 推进；Attack 步恰好一枚 D6，Defense 步恰好一枚 D6。
 - Formula 完成后保留双行 Final Value 与 Role Tag，主标题使用权威 winner 与权威参与者生成 Cross 结果叙事，副标题保留高/低球与进攻/防守成功。中央只显示一个 `下一回合`，底部 Panel 重复 CTA 折叠；该 CTA 以零 RNG 调用 terminal，之后才换攻并清除角色/面板。不得显示第二次 finishing contest、旧全屏 Overlay、动画或 cinematic。
 
@@ -468,6 +468,54 @@
 - 故意构造 UI FinalValue 大小与 Winner 相反的 fixture，叙事必须仍跟随权威 Winner。同一 `AttackSequence|ContestId` 反复 Build/不同 LocalViewer 必须产生同一防守表现者和 headline，不调用任何 gameplay RNG。
 - High/Low 都覆盖进攻/防守 subtitle，公式 terms、Raw Roll、FinalValue 与 `战术球员 +N` 保持可见。完成态 Inline Formula 有且只有一个 `下一回合`，底部 Interaction Panel 不暴露重复 primary action。
 - 原始人数测试覆盖 `4 vs 2 -> 权威修正 +1`、GK 排除、多位置匹配、攻方切换后的 Player A/B 身份、无 Resolution Session 和无 CurrentAttack 时的零值。Presentation 测试覆盖 Local/Opponent 映射及 `战术球员 ×N`。
+
+## Cross 数字轮播与权威落定（Stage 6.13.1.4.8C）
+
+- 覆盖 Initial Route、High Attack/Defense、Low Attack/Defense 五个 live pending -> resolved transition。轮播固定为非 RNG 的 `1..6` 序列，0.90 秒内前约 62% 快速更新、后段减速，随后以权威 RawD6 进行 0.20 秒落定强调。Screen/UMG 源不得包含 `RollD6`、`RandRange`、`FRandomStream` 或额外 provider。
+- Route cycling 时 Inline Surface 可见但 High/Low 文案、route result 与路线专属公式行都隐藏；落定结束后才显示 `路线掷点 N -> 判定为...` 和 Attack 操作。Attack cycling 时该行主结果继续为 KnownNonRollSubtotal，Defense 保持 pending；Attack 落定结束后才显示权威 FinalValue 和 Defense 操作。
+- Defense cycling/settling 时 Attack 行保持已公开，Defense 主结果保持 KnownNonRollSubtotal，Cross Narrative 与 `下一回合` 都为空且不可点击；落定完成后 Defense RawD6/FinalValue、既有 Narrative 与中央唯一 terminal CTA 一起恢复，底部重复 CTA 不返回。
+- Authority 立即返回时原始 Screen DTO 可以已经含 RawD6/FinalValue，但复制出的显示 DTO 仍按 phase 门控；权威结果迟于 0.90 秒时继续安全轮播，收到真实结果后才落定。Rejected presentation 取消 active reveal 并恢复同一 pending truth，不以装饰数字收尾。
+- identity 固定为 AttackSequence、Cross.Route/Cross.High/Cross.Low、RollSequenceIndex、purpose/kind 与 owner side。active phase 重复 Refresh 不重置 elapsed；Settled key 拒绝同 roll 重播，迟到 pending DTO 保留最后已公开 authority surface。新 Screen 首次看到 already-resolved facts 直接显示 FinalValue，不播放历史轮播。
+- active reveal 阻断重复 Screen/Inline intent；Authority 的阶段/阵营/in-flight 校验继续作为第二层保护。测试需同时断言每条 accepted command 仍只消费一枚 D6、FormulaFacts/ResolutionFeedback/serialized State 不含 cosmetic number，High/Low 命令顺序与 terminal/handoff 不变。
+
+## 统一竖直号码滚轮与结果停留（Stage 6.13.1.4.8C.1）
+
+- 结构测试必须确认共享滚轮有裁剪窗口、固定 previous/center/next 三个数字子项、active 时 center 的竖直 offset 变化、重复 Refresh 不增加 child。禁止用同一位置只替换 Text 的“原地跳数字”冒充滚动。
+- Route、High/Low Attack/Defense 使用真实 `1..6` 域；普通战术点使用 production `2..8` 域。最终 center 必须等于权威 Raw：Cross 来自 FormulaFacts RawD6，战术点来自唯一 `RollOrdinaryTacticalPoint()` 结果；当前战术点 Raw 与 Header/CurrentAttack ActionPoint 都必须相同，且不得第二次调用 RNG。
+- 阶段至少覆盖 `Pending -> RequestInFlight/Cycling -> Settling -> ResultHold -> next interaction`。标准 motion 1.00 秒、capture 0.10 秒；Route hold 1.35 秒，Attack/Defense/Tactical Point hold 2.00 秒。Formula FinalValue、Narrative 或 Tactical Point resource 可在 hold 开始约 0.20 秒后公开，但 Defense roll、deployment 与 `下一回合` 等下一动作必须保持不可用直到完整 hold 结束。
+- authority 晚于正常 motion 时滚轮继续受控低速循环，不落定 cosmetic 值；立即本地回包仍满足最小 motion。拒绝恢复 pending，不进入成功 hold；active/hold 重建不重启，已完成 refresh 不重播，新 Screen 首次看到 resolved truth 直接显示。
+- 回归覆盖旧 Overlay 抑制、High/Low typed 双命令、单一中央 terminal CTA、Scheme A Narrative、Role Tags、战术球员数量与 zero-RNG terminal/handoff。人工 PIE 必须额外判断真实空间滚动、减速、落定和结果可读性；自动结构测试不能代替该 Gate。
+
+## 连续位移与结果披露修复（Stage 6.13.1.4.8C.2）
+
+- 以短帧间隔连续采样 `ContinuousPositionCells` 与中心 Y offset：相邻样本都必须前进，不能等到 40ms/整格回调才跳动；相同时间窗的 early average velocity 必须大于 late average velocity，且 deceleration 样本位移仍大于零。
+- 1.15 秒 cycling 后进入 0.15 秒 final capture。capture 内位置必须连续朝目标推进，完成时 center 精确等于 authority raw；D6 域仍为 `1..6`，Tactical Point 域仍为 `2..8`。
+- ResultHold 必须断言 `bStaticResult=true`、previous/next 为 Collapsed/零可见邻号、center 为唯一权威数字，固定 child count 仍为 3。Route 文案、Formula FinalValue/Tactical resource 分别在 settle 后按既有门公开。
+- 构造已经包含终局 Narrative 的权威 Defense DTO：cycling、capture、Raw settle 及 FinalValue 公开前，玩家侧 `bNarrativeAvailable=false`，且 `ContestLabel` 不得泄漏 headline；FinalValue 公开后继续经过短 transition，再显示权威 Narrative。完整 2.00 秒 hold 结束前 `下一回合` 始终为空且不可操作。
+- 源码护栏确认运动路径使用 per-frame scheduling + actual DeltaSeconds + reel-only refresh，且 Screen/Reel 不出现新 RNG。网络迟到、request rejection、active rebuild、settled replay、already-resolved first observation 继续回归。
+- Fresh PIE 为强制 Gate：记录 smoothness、fast phase、deceleration、landing 与 result hold 主观结论；自动化 PASS 不能接受本 Stage。
+
+## 连续滚轮 Timing 与 Landing 微调（Stage 6.13.1.4.8C.3）
+
+- Velocity profile 采样必须证明 early speed 低于 C.2 的 `15 cells/s` 且约为 `12.5`，并满足 `early > main deceleration > final slow > 0`。相邻帧 offset 继续变化，不得重新出现 Timer 跳格或静止尾段。
+- 1.30 秒后进入 0.16 秒 capture/settle。测试必须观察 target 空间进入中心、唯一一次负向约 3px overshoot、scale 峰值约 1.08、随后同向回归且不发生第二次 bounce；ResultHold 的 center translation 必须精确归零、scale 归 1、邻号仍为零。
+- Formula/Tactical raw settle 后 `0.17s` 时 FinalValue/resource 仍隐藏，越过约 `0.18s` 后公开；从公开时起约 2.40 秒内 Defense/deployment/terminal CTA 仍 blocked，之后只解锁一次。Route result 保持约 1.45 秒后才进入分支公式。
+- Defense Narrative early-disclosure 回归继续覆盖 rolling/capture/FinalValue 前隐藏、既有 gate 后显示，并在更长 hold 全程保持。High/Low、Tactical `[2,8]`、zero-RNG、rebuild/rejection/already-resolved 行为不变。
+
+## 滚轮最终落定连续性微调（Stage 6.13.1.4.8C.4）
+
+- capture 开始、锁定峰值、回归尾端与 ResultHold 首帧必须持有同一个 center TextBlock 指针；center opacity 始终接近 `1`，不得出现一帧空白、双数字或独立静态替身。
+- 在目标进入中心后的 capture 尾段，previous/next 最大 opacity 必须单调下降并在 ResultHold 前接近 `0`。
+- ResultHold 首帧仍断言 center translation 精确为 `0`、scale 精确为 `1`、邻号显式隐藏。active DTO rebuild 不改变 fade 进度，ResultHold rebuild 不恢复邻号、不重播 settle。
+- 保留 `.8C.3` 的全部速度、`0.16s` capture、单次 `3px / 1.08` lock、Formula/Tactical `0.18s + 2.40s`、Route `1.45s` 与 Narrative `0.38s` 回归；High/Low、Tactical `[2,8]`、rejection、already-resolved、zero-RNG、terminal/handoff 继续通过。
+- Fresh user PIE 必须专门观察 moving reel -> final static result 的最后交接帧；自动化只能证明结构连续性，不能替代视觉接受。
+
+## 落定后固定滚轮样式（Stage 6.13.1.4.8C.5）
+
+- 在 cycling、target entry、landing peak、settle return、ResultHold 首帧与 ResultHold rebuild 采样同一 Reel Border brush color；所有样本必须精确相同，不允许 result-specific color/background transition。
+- 源码结构护栏应确认 Reel 只在 Widget tree 构建时应用一次固定 Warning/gold Border，Presentation DTO 不再包含 settled-style alpha，逐帧 Refresh 不调用 brush color 插值或重写 padding。
+- 同时继续断言 center TextBlock identity/value 不变，最终 translation 为 `0`、scale 为 `1`、opacity 接近 `1`；previous/next 在 settle 中淡出并于 ResultHold 为 Collapsed。
+- `.8C.3/.8C.4` timing、single landing、result hold、Narrative/CTA、High/Low、Tactical Point `[2,8]`、rebuild/rejection/already-resolved 与 zero-RNG 合同全部继续回归。Fresh PIE 只检查最后约 0.5 秒是否还存在 landing 之后的第二次 style-change event。
 
 ## 战术放弃与 Helper 物理半区修复（Stage 6.13.1.4.8B.1）
 

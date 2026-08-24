@@ -13,6 +13,7 @@
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexResolutionPanelWidget.h"
+#include "FMCodexRollReelWidget.h"
 #include "FMCodexSelectionFeedbackToastWidget.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -38,10 +39,36 @@
 
 namespace FMCodexLocalMatchScreenWidget
 {
-	constexpr float RevealTickInterval = 0.05f;
-	constexpr float AttackRevealDuration = 0.65f;
-	constexpr float AttackSettledDuration = 0.28f;
-	constexpr float DefenseRevealDuration = 0.65f;
+	// Stage 6.13.1.4.8C.5 presentation tuning. These values never drive authority.
+	constexpr float RevealHoldTickInterval = 0.04f;
+	constexpr float FastPhaseDuration = 0.45f;
+	constexpr float MainDecelerationEndTime = 1.05f;
+	constexpr float FinalSlowEndTime = 1.30f;
+	constexpr float CaptureSettleDuration = 0.16f;
+	constexpr float CaptureOvershootPixels = 3.0f;
+	constexpr float CaptureScale = 1.08f;
+	constexpr float CaptureTargetEntryAlpha = 0.45f;
+	constexpr float NeighborFadeStartAlpha = CaptureTargetEntryAlpha;
+	constexpr float FormulaDisclosureDelay = 0.18f;
+	constexpr float NarrativeDisclosureDelay = 0.38f;
+	constexpr float FormulaReadableResultHoldDuration = 2.40f;
+	constexpr float TacticalPointReadableResultHoldDuration = 2.40f;
+	constexpr float FormulaResultHoldDuration =
+		FormulaDisclosureDelay + FormulaReadableResultHoldDuration;
+	constexpr float TacticalPointResultHoldDuration =
+		FormulaDisclosureDelay + TacticalPointReadableResultHoldDuration;
+	constexpr float RouteResultHoldDuration = 1.45f;
+	constexpr float FastVelocityCellsPerSecond = 12.5f;
+	constexpr float MainDecelerationEndVelocityCellsPerSecond = 4.5f;
+	constexpr float FinalSlowVelocityCellsPerSecond = 2.0f;
+
+	bool IsPerFrameMotionPhase(
+		const EFMCodexUMGInlineFormulaRevealPhase Phase)
+	{
+		return Phase == EFMCodexUMGInlineFormulaRevealPhase::RequestInFlight
+			|| Phase == EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			|| Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling;
+	}
 
 	const FFMCodexUMGInlineFormulaTermViewModel* FindRawRoll(
 		const FFMCodexUMGInlineFormulaRowViewModel& Row)
@@ -63,33 +90,192 @@ namespace FMCodexLocalMatchScreenWidget
 			});
 	}
 
-	bool IsFullyResolved(
-		const FFMCodexUMGInlineFormulaSurfaceViewModel& Surface)
+	float CosmeticReelPosition(const float Elapsed)
 	{
-		const FFMCodexUMGInlineFormulaTermViewModel* AttackRoll =
-			FindRawRoll(Surface.AttackRow);
-		const FFMCodexUMGInlineFormulaTermViewModel* DefenseRoll =
-			FindRawRoll(Surface.DefenseRow);
-		return AttackRoll != nullptr && DefenseRoll != nullptr
-			&& AttackRoll->bResolved && DefenseRoll->bResolved
-			&& Surface.AttackRow.bFinalValueResolved
-			&& Surface.DefenseRow.bFinalValueResolved;
+		const float SafeElapsed = FMath::Max(0.0f, Elapsed);
+		if (SafeElapsed <= FastPhaseDuration)
+		{
+			return SafeElapsed * FastVelocityCellsPerSecond;
+		}
+
+		const float FastDistance =
+			FastPhaseDuration * FastVelocityCellsPerSecond;
+		const float MainDuration =
+			MainDecelerationEndTime - FastPhaseDuration;
+		const float MainElapsed = FMath::Min(
+			SafeElapsed - FastPhaseDuration, MainDuration);
+		const float MainAlpha = MainDuration > 0.0f
+			? MainElapsed / MainDuration : 1.0f;
+		// Velocity uses a squared tail: continuous at both boundaries, with a
+		// stronger early slowdown and a visibly longer slow tail than C.2.
+		const float MainTailIntegral =
+			(1.0f - FMath::Pow(1.0f - MainAlpha, 3.0f)) / 3.0f;
+		float Position = FastDistance
+			+ MainDecelerationEndVelocityCellsPerSecond * MainElapsed
+			+ (FastVelocityCellsPerSecond
+				- MainDecelerationEndVelocityCellsPerSecond)
+				* MainDuration * MainTailIntegral;
+		if (SafeElapsed <= MainDecelerationEndTime)
+		{
+			return Position;
+		}
+
+		const float FinalSlowDuration =
+			FinalSlowEndTime - MainDecelerationEndTime;
+		const float FinalSlowElapsed = FMath::Min(
+			SafeElapsed - MainDecelerationEndTime, FinalSlowDuration);
+		const float FinalSlowAlpha = FinalSlowDuration > 0.0f
+			? FinalSlowElapsed / FinalSlowDuration : 1.0f;
+		const float FinalSlowTailIntegral =
+			(1.0f - FMath::Pow(1.0f - FinalSlowAlpha, 3.0f)) / 3.0f;
+		Position += FinalSlowVelocityCellsPerSecond * FinalSlowElapsed
+			+ (MainDecelerationEndVelocityCellsPerSecond
+				- FinalSlowVelocityCellsPerSecond)
+				* FinalSlowDuration * FinalSlowTailIntegral;
+		if (SafeElapsed > FinalSlowEndTime)
+		{
+			// Network-safe awaiting motion stays slow and continuous.
+			Position += (SafeElapsed - FinalSlowEndTime)
+				* FinalSlowVelocityCellsPerSecond;
+		}
+		return Position;
 	}
 
-	void StageRowAsPending(
+	int32 WrapDomainValue(
+		const int32 Value,
+		const int32 Minimum,
+		const int32 Maximum)
+	{
+		const int32 Count = FMath::Max(1, Maximum - Minimum + 1);
+		return Minimum + ((Value - Minimum) % Count + Count) % Count;
+	}
+
+	int32 CosmeticCycleStep(const float Elapsed)
+	{
+		return FMath::FloorToInt(CosmeticReelPosition(Elapsed));
+	}
+
+	int32 PlannedSequenceOffset(
+		const int32 AuthoritativeValue,
+		const int32 DomainMinimum,
+		const int32 DomainMaximum)
+	{
+		const int32 DomainCount = FMath::Max(
+			1, DomainMaximum - DomainMinimum + 1);
+		const int32 TargetIndex = WrapDomainValue(
+			AuthoritativeValue, DomainMinimum, DomainMaximum) - DomainMinimum;
+		const int32 PlannedTargetStep = FMath::CeilToInt(
+			CosmeticReelPosition(FinalSlowEndTime));
+		const int32 WrappedPlannedStep =
+			((PlannedTargetStep % DomainCount) + DomainCount) % DomainCount;
+		return (TargetIndex - WrappedPlannedStep + DomainCount) % DomainCount;
+	}
+
+	FFMCodexUMGRollReelViewModel BuildReelPresentation(
+		const EFMCodexUMGInlineFormulaRevealPhase Phase,
+		const float PhaseElapsed,
+		const int32 DomainMinimum,
+		const int32 DomainMaximum,
+		const int32 AuthoritativeValue,
+		const float CaptureStartPositionCells,
+		const float CaptureDistanceCells,
+		const int32 SequenceOffsetCells)
+	{
+		FFMCodexUMGRollReelViewModel Result;
+		Result.bVisible = true;
+		Result.DomainMinimum = DomainMinimum;
+		Result.DomainMaximum = DomainMaximum;
+		Result.bMoving = IsPerFrameMotionPhase(Phase);
+		Result.bResultHold = Phase
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
+		Result.bShowNeighborDigits = Result.bMoving;
+		Result.bStaticResult = Result.bResultHold
+			|| Phase == EFMCodexUMGInlineFormulaRevealPhase::Settled;
+
+		if (Phase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			|| Phase == EFMCodexUMGInlineFormulaRevealPhase::Settled)
+		{
+			Result.CenterValue = AuthoritativeValue;
+			Result.PreviousValue = WrapDomainValue(
+				AuthoritativeValue - 1, DomainMinimum, DomainMaximum);
+			Result.NextValue = WrapDomainValue(
+				AuthoritativeValue + 1, DomainMinimum, DomainMaximum);
+			Result.bAuthoritativeValue = true;
+			Result.NeighborFadeAlpha = 1.0f;
+			Result.ContinuousPositionCells =
+				CaptureStartPositionCells + CaptureDistanceCells;
+			return Result;
+		}
+
+		float Position = CosmeticReelPosition(PhaseElapsed);
+		if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling)
+		{
+			const float Alpha = FMath::Clamp(
+				PhaseElapsed / CaptureSettleDuration, 0.0f, 1.0f);
+			if (Alpha < CaptureTargetEntryAlpha)
+			{
+				const float EntryAlpha = Alpha / CaptureTargetEntryAlpha;
+				const float SmoothedEntry = EntryAlpha * EntryAlpha
+					* (3.0f - 2.0f * EntryAlpha);
+				Position = CaptureStartPositionCells
+					+ CaptureDistanceCells * SmoothedEntry;
+			}
+			else
+			{
+				Position = CaptureStartPositionCells + CaptureDistanceCells;
+				const float LandingAlpha = (Alpha - CaptureTargetEntryAlpha)
+					/ (1.0f - CaptureTargetEntryAlpha);
+				const float LandingPulse = FMath::Square(
+					FMath::Sin(LandingAlpha * PI));
+				Result.LandingOffsetY =
+					-CaptureOvershootPixels * LandingPulse;
+				Result.LandingScale = 1.0f
+					+ (CaptureScale - 1.0f) * LandingPulse;
+			}
+			const float NeighborAlpha = FMath::Clamp(
+				(Alpha - NeighborFadeStartAlpha)
+					/ (1.0f - NeighborFadeStartAlpha),
+				0.0f, 1.0f);
+			Result.NeighborFadeAlpha = NeighborAlpha * NeighborAlpha
+				* (3.0f - 2.0f * NeighborAlpha);
+		}
+		const int32 Step = FMath::FloorToInt(Position);
+		Result.ContinuousPositionCells = Position;
+		Result.CenterValue = WrapDomainValue(
+			DomainMinimum + Step + SequenceOffsetCells,
+			DomainMinimum, DomainMaximum);
+		Result.PreviousValue = WrapDomainValue(
+			Result.CenterValue - 1, DomainMinimum, DomainMaximum);
+		Result.NextValue = WrapDomainValue(
+			Result.CenterValue + 1, DomainMinimum, DomainMaximum);
+		Result.ScrollAlpha = FMath::Frac(Position);
+		return Result;
+	}
+
+	void StageRowForReveal(
 		FFMCodexUMGInlineFormulaRowViewModel& Row,
-		const bool bActive)
+		const bool bActive,
+		const bool bSettling,
+		const int32 VisibleD6)
 	{
 		if (FFMCodexUMGInlineFormulaTermViewModel* Roll = FindRawRoll(Row))
 		{
-			Roll->bResolved = false;
-			Roll->RawD6 = 0;
-			Roll->DisplayLabel = TEXT("掷点 ?");
+		Roll->bResolved = bSettling;
+		Roll->RawD6 = bSettling ? VisibleD6 : 0;
+		Roll->DisplayLabel = bSettling
+			? FString::Printf(TEXT("掷点 %d"), VisibleD6)
+			: FString(TEXT("掷点 ?"));
 			Roll->bNextPendingRoll = bActive;
 		}
 		Row.bFinalValueResolved = false;
 		Row.FinalValue = 0.0f;
 		Row.FinalValueLabel = TEXT("?");
+		Row.bDisplayedResultResolved = Row.bKnownNonRollSubtotalResolved;
+		Row.bDisplayedResultIsFinalValue = false;
+		Row.DisplayedResult = Row.KnownNonRollSubtotal;
+		Row.DisplayedResultLabel = Row.bKnownNonRollSubtotalResolved
+			? FString::SanitizeFloat(Row.KnownNonRollSubtotal)
+			: FString(TEXT("?"));
 	}
 
 	UTextBlock* MakeText(
@@ -209,9 +395,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 				== EFMCodexUMGInteractionCategory::SelectRunner
 			|| Presentation.Interaction.Category
 				== EFMCodexUMGInteractionCategory::SelectHelper);
-	// Cross High now exposes each accepted roll as an authoritative state.
-	// The former local dual-roll reveal must never delay or fabricate that flow.
-	ResetInlineFormulaRevealState();
+	UpdateInlineFormulaRevealState(InPresentation);
 	Presentation = InPresentation;
 	if (bLeavingFeedbackSelection && SelectionFeedbackToast != nullptr)
 	{
@@ -285,19 +469,48 @@ UFMCodexLocalMatchScreenWidget::GetInlineFormulaRevealPhase() const
 
 bool UFMCodexLocalMatchScreenWidget::IsInlineFormulaRevealInputBlocked() const
 {
-	return false;
+	return InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::RequestInFlight
+		|| InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+		|| InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling
+		|| InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
+}
+
+UFMCodexRollReelWidget*
+UFMCodexLocalMatchScreenWidget::GetTacticalPointRollReel() const
+{
+	return TacticalPointRollReel;
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
 void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaRevealForTesting(
 	const float DeltaSeconds)
 {
-	AdvanceInlineFormulaReveal(DeltaSeconds);
+	AdvanceInlineFormulaReveal(DeltaSeconds, true);
 }
 
 void UFMCodexLocalMatchScreenWidget::PauseInlineFormulaRevealTimerForTesting()
 {
 	StopInlineFormulaRevealTimer();
+}
+
+void UFMCodexLocalMatchScreenWidget::BeginPendingCrossRollRevealForTesting()
+{
+	BeginInlineFormulaReveal(PendingCrossRollIdentity(Presentation), true);
+}
+
+void UFMCodexLocalMatchScreenWidget
+	::BeginPendingTacticalPointRevealForTesting()
+{
+	const FFMCodexCrossRollRevealIdentity Identity =
+		PendingCrossRollIdentity(Presentation);
+	if (Identity.Kind == EFMCodexUMGCrossRollRevealKind::TacticalPoint)
+	{
+		BeginInlineFormulaReveal(Identity, true);
+	}
 }
 #endif
 
@@ -415,9 +628,23 @@ void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
 
 void UFMCodexLocalMatchScreenWidget::RequestRollTacticalPoints()
 {
-	if (MatchController != nullptr)
+	if (MatchController == nullptr || IsInlineFormulaRevealInputBlocked())
 	{
-		MatchController->RollDemoTacticalPoints();
+		return;
+	}
+	const FFMCodexCrossRollRevealIdentity RequestedIdentity =
+		PendingCrossRollIdentity(Presentation);
+	if (RequestedIdentity.Kind
+		== EFMCodexUMGCrossRollRevealKind::TacticalPoint)
+	{
+		BeginInlineFormulaReveal(RequestedIdentity, true);
+	}
+	MatchController->RollDemoTacticalPoints();
+	if (!MatchController->GetLastDiagnostic().bHostSuccess)
+	{
+		CancelInlineFormulaReveal();
+		ObservePendingCrossRoll(Presentation);
+		RefreshVisuals();
 	}
 }
 
@@ -425,7 +652,7 @@ void UFMCodexLocalMatchScreenWidget::RequestDeployOrdinary(
 	const FName CardId,
 	const FName SlotId)
 {
-	if (MatchController != nullptr)
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
 	{
 		MatchController->DeployOrdinary(CardId, SlotId);
 	}
@@ -434,7 +661,7 @@ void UFMCodexLocalMatchScreenWidget::RequestDeployOrdinary(
 void UFMCodexLocalMatchScreenWidget::RequestDeployGoalkeeper(
 	const FName SlotId)
 {
-	if (MatchController != nullptr)
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
 	{
 		MatchController->DeployGoalkeeper(SlotId);
 	}
@@ -442,7 +669,7 @@ void UFMCodexLocalMatchScreenWidget::RequestDeployGoalkeeper(
 
 void UFMCodexLocalMatchScreenWidget::RequestFinishDeployment()
 {
-	if (MatchController != nullptr)
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
 	{
 		MatchController->FinishDeployment();
 	}
@@ -575,6 +802,14 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	{
 		return;
 	}
+	const FFMCodexCrossRollRevealIdentity RequestedIdentity =
+		PendingCrossRollIdentity(Presentation);
+	if (RequestedIdentity.IsValid()
+		&& !SettledCrossRollRevealKeys.Contains(
+			RequestedIdentity.StableKey()))
+	{
+		BeginInlineFormulaReveal(RequestedIdentity, true);
+	}
 	switch (Presentation.Interaction.Category)
 	{
 	case EFMCodexUMGInteractionCategory::RollCrossAttack:
@@ -589,6 +824,13 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	default:
 		MatchController->ContinueResolution();
 		break;
+	}
+	if (RequestedIdentity.IsValid()
+		&& !MatchController->GetLastDiagnostic().bHostSuccess)
+	{
+		CancelInlineFormulaReveal();
+		ObservePendingCrossRoll(Presentation);
+		RefreshVisuals();
 	}
 }
 
@@ -1066,6 +1308,42 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		FormulaLayerSlot->SetHorizontalAlignment(HAlign_Center);
 		FormulaLayerSlot->SetVerticalAlignment(VAlign_Center);
 		FormulaLayerSlot->SetPadding(FMargin(28.0f));
+	}
+
+	TacticalPointRevealSurface = MakeRegion(
+		*WidgetTree, TEXT("TacticalPointRollRevealSurface"));
+	TacticalPointRevealSurface->SetPadding(FMargin(22.0f, 16.0f));
+	TacticalPointRevealSurface->SetVisibility(ESlateVisibility::Collapsed);
+	UVerticalBox* TacticalPointRevealBody =
+		WidgetTree->ConstructWidget<UVerticalBox>(
+			UVerticalBox::StaticClass(), TEXT("TacticalPointRollRevealHierarchy"));
+	TacticalPointRevealTitle = MakeText(
+		*WidgetTree, TEXT("TacticalPointRollRevealTitle"), TEXT("战术点掷点"));
+	TacticalPointRevealTitle->SetJustification(ETextJustify::Center);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*TacticalPointRevealTitle, EFMCodexPlayerUITextRole::ActionTitle);
+	TacticalPointRevealBody->AddChildToVerticalBox(TacticalPointRevealTitle);
+	TacticalPointRollReel = WidgetTree->ConstructWidget<UFMCodexRollReelWidget>(
+		UFMCodexRollReelWidget::StaticClass(), TEXT("TacticalPointRollReel"));
+	if (UVerticalBoxSlot* ReelSlot =
+		TacticalPointRevealBody->AddChildToVerticalBox(TacticalPointRollReel))
+	{
+		ReelSlot->SetHorizontalAlignment(HAlign_Center);
+		ReelSlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 8.0f));
+	}
+	TacticalPointRevealResult = MakeText(
+		*WidgetTree, TEXT("TacticalPointRollRevealResult"));
+	TacticalPointRevealResult->SetJustification(ETextJustify::Center);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*TacticalPointRevealResult, EFMCodexPlayerUITextRole::SectionHeading);
+	TacticalPointRevealBody->AddChildToVerticalBox(TacticalPointRevealResult);
+	TacticalPointRevealSurface->AddChild(TacticalPointRevealBody);
+	if (UOverlaySlot* TacticalPointLayerSlot =
+		PitchPresentationLayers->AddChildToOverlay(TacticalPointRevealSurface))
+	{
+		TacticalPointLayerSlot->SetHorizontalAlignment(HAlign_Center);
+		TacticalPointLayerSlot->SetVerticalAlignment(VAlign_Center);
+		TacticalPointLayerSlot->SetPadding(FMargin(28.0f));
 	}
 	PitchRegion->AddChild(PitchPresentationLayers);
 	PitchBounds->AddChild(PitchRegion);
@@ -1675,160 +1953,453 @@ void UFMCodexLocalMatchScreenWidget::UpdateInlineFormulaRevealState(
 	const FFMCodexUMGMatchScreenViewModel& InPresentation)
 {
 	using namespace FMCodexLocalMatchScreenWidget;
-	const FFMCodexUMGInlineFormulaSurfaceViewModel& Surface =
-		InPresentation.InlineFormula;
-	if (!Surface.bVisible || Surface.ContestId != TEXT("Cross.High"))
+	if (ActiveCrossRollReveal.IsValid())
 	{
-		ResetInlineFormulaRevealState();
-		return;
-	}
-
-	const FFMCodexUMGInlineFormulaTermViewModel* AttackRoll =
-		FindRawRoll(Surface.AttackRow);
-	const FFMCodexUMGInlineFormulaTermViewModel* DefenseRoll =
-		FindRawRoll(Surface.DefenseRow);
-	if (AttackRoll == nullptr || DefenseRoll == nullptr
-		|| AttackRoll->RollSequenceIndex == INDEX_NONE
-		|| DefenseRoll->RollSequenceIndex == INDEX_NONE
-		|| Surface.AttackRow.Side == EInitialTurnOrderPlayer::None
-		|| Surface.DefenseRow.Side == EInitialTurnOrderPlayer::None)
-	{
-		ResetInlineFormulaRevealState();
-		return;
-	}
-
-	const bool bSameIdentity = IsSameInlineFormulaRevealIdentity(
-		InPresentation.Header.AttackSequence,
-		Surface.ContestId,
-		AttackRoll->RollSequenceIndex,
-		Surface.AttackRow.Side,
-		DefenseRoll->RollSequenceIndex,
-		Surface.DefenseRow.Side);
-	const bool bResolved = IsFullyResolved(Surface);
-
-	if (!bSameIdentity)
-	{
-		StopInlineFormulaRevealTimer();
-		SetInlineFormulaRevealIdentity(
-			InPresentation.Header.AttackSequence,
-			Surface.ContestId,
-			AttackRoll->RollSequenceIndex,
-			Surface.AttackRow.Side,
-			DefenseRoll->RollSequenceIndex,
-			Surface.DefenseRow.Side);
-		InlineFormulaRevealPhaseElapsed = 0.0f;
-		if (bResolved)
+		if (InPresentation.Header.AttackSequence
+			!= ActiveCrossRollReveal.AttackSequence
+			|| InPresentation.Resolution.bRejected)
 		{
-			// A late join / reconstructed screen must never replay old dice.
-			CachedResolvedInlineFormula = Surface;
-			InlineFormulaRevealPhase =
-				EFMCodexUMGInlineFormulaRevealPhase::Completed;
+			CancelInlineFormulaReveal();
+			ObservePendingCrossRoll(InPresentation);
+			return;
+		}
+
+		int32 RawValue = 0;
+		int32 DomainMinimum = 1;
+		int32 DomainMaximum = 6;
+		if (TryReadAuthoritativeRawRoll(
+			InPresentation, ActiveCrossRollReveal, RawValue,
+			DomainMinimum, DomainMaximum))
+		{
+			if (!bInlineFormulaAuthorityResultAvailable
+				&& InlineFormulaRevealPhaseElapsed <= 0.05f)
+			{
+				RollRevealSequenceOffsetCells = PlannedSequenceOffset(
+					RawValue, DomainMinimum, DomainMaximum);
+			}
+			// Cache only the exact authority-built presentation. No arithmetic is
+			// reconstructed in this widget.
+			CachedResolvedInlineFormula = InPresentation.InlineFormula;
+			bInlineFormulaAuthorityResultAvailable = true;
+			RollRevealAuthoritativeRawValue = RawValue;
+			RollRevealDomainMinimum = DomainMinimum;
+			RollRevealDomainMaximum = DomainMaximum;
+			if (ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::TacticalPoint)
+			{
+				CachedTacticalPointFinalValue =
+					InPresentation.Header.CurrentAttackerTacticalPoints;
+			}
+			if (InlineFormulaRevealPhase
+				== EFMCodexUMGInlineFormulaRevealPhase::RequestInFlight)
+			{
+				InlineFormulaRevealPhase =
+					EFMCodexUMGInlineFormulaRevealPhase::Cycling;
+			}
+			if (InlineFormulaRevealPhase
+					== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+				&& InlineFormulaRevealPhaseElapsed >= FinalSlowEndTime)
+			{
+				BeginInlineFormulaFinalCapture();
+			}
+			StartInlineFormulaRevealTimer();
+		}
+		return;
+	}
+
+	if (ObservedPendingCrossRoll.IsValid())
+	{
+		if (InPresentation.Header.AttackSequence
+			!= ObservedPendingCrossRoll.AttackSequence)
+		{
+			ObservedPendingCrossRoll = {};
 		}
 		else
 		{
-			CachedResolvedInlineFormula = {};
-			InlineFormulaRevealPhase =
-				EFMCodexUMGInlineFormulaRevealPhase::Pending;
+			int32 RawValue = 0;
+			int32 DomainMinimum = 1;
+			int32 DomainMaximum = 6;
+			if (TryReadAuthoritativeRawRoll(
+				InPresentation, ObservedPendingCrossRoll, RawValue,
+				DomainMinimum, DomainMaximum))
+			{
+				const FFMCodexCrossRollRevealIdentity ResolvedIdentity =
+					ObservedPendingCrossRoll;
+				BeginInlineFormulaReveal(ResolvedIdentity, false);
+				CachedResolvedInlineFormula = InPresentation.InlineFormula;
+				bInlineFormulaAuthorityResultAvailable = true;
+				RollRevealAuthoritativeRawValue = RawValue;
+				RollRevealDomainMinimum = DomainMinimum;
+				RollRevealDomainMaximum = DomainMaximum;
+				RollRevealSequenceOffsetCells = PlannedSequenceOffset(
+					RawValue, DomainMinimum, DomainMaximum);
+				if (ResolvedIdentity.Kind
+					== EFMCodexUMGCrossRollRevealKind::TacticalPoint)
+				{
+					CachedTacticalPointFinalValue =
+						InPresentation.Header.CurrentAttackerTacticalPoints;
+				}
+				return;
+			}
+
+			// A command refresh can project the next pending side before its
+			// feedback copy exposes the accepted result. Hold the old identity.
+			const FFMCodexCrossRollRevealIdentity Candidate =
+				PendingCrossRollIdentity(InPresentation);
+			if (Candidate.IsValid()
+				&& Candidate == ObservedPendingCrossRoll)
+			{
+				InlineFormulaRevealPhase =
+					EFMCodexUMGInlineFormulaRevealPhase::IdlePending;
+			}
+			return;
 		}
-		return;
 	}
 
-	if (bResolved)
-	{
-		// Always cache the latest exact authority copy; never rebuild arithmetic.
-		CachedResolvedInlineFormula = Surface;
-		if (InlineFormulaRevealPhase
-			== EFMCodexUMGInlineFormulaRevealPhase::Pending)
-		{
-			InlineFormulaRevealPhase =
-				EFMCodexUMGInlineFormulaRevealPhase::AttackReveal;
-			InlineFormulaRevealPhaseElapsed = 0.0f;
-			StartInlineFormulaRevealTimer();
-		}
-		else if (InlineFormulaRevealPhase
-			== EFMCodexUMGInlineFormulaRevealPhase::None)
-		{
-			InlineFormulaRevealPhase =
-				EFMCodexUMGInlineFormulaRevealPhase::Completed;
-		}
-		return;
-	}
-
-	// A delayed/stale pending rebuild cannot replay or downgrade this identity.
-	if (InlineFormulaRevealPhase
-		== EFMCodexUMGInlineFormulaRevealPhase::Completed
-		|| IsInlineFormulaRevealInputBlocked())
-	{
-		return;
-	}
-	InlineFormulaRevealPhase = EFMCodexUMGInlineFormulaRevealPhase::Pending;
-	InlineFormulaRevealPhaseElapsed = 0.0f;
+	ObservePendingCrossRoll(InPresentation);
 }
 
 FFMCodexUMGInlineFormulaSurfaceViewModel
 UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 {
-	return Presentation.InlineFormula;
+	using namespace FMCodexLocalMatchScreenWidget;
+	if (ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::TacticalPoint)
+	{
+		return Presentation.InlineFormula;
+	}
+	if (!IsInlineFormulaRevealInputBlocked()
+		|| !ActiveCrossRollReveal.IsValid())
+	{
+		const FFMCodexCrossRollRevealIdentity Candidate =
+			PendingCrossRollIdentity(Presentation);
+		if (Candidate.IsValid()
+			&& SettledCrossRollRevealKeys.Contains(Candidate.StableKey())
+			&& LastDisclosedInlineFormula.bVisible)
+		{
+			return LastDisclosedInlineFormula;
+		}
+		return Presentation.InlineFormula;
+	}
+
+	FFMCodexUMGInlineFormulaSurfaceViewModel Result =
+		bInlineFormulaAuthorityResultAvailable
+			? CachedResolvedInlineFormula : Presentation.InlineFormula;
+	Result.bVisible = true;
+	Result.bSuppressLegacyResolution = true;
+	Result.RevealPhase = InlineFormulaRevealPhase;
+	Result.bDiceRevealVisible = true;
+	Result.bDiceRolling = InlineFormulaRevealPhase
+		== EFMCodexUMGInlineFormulaRevealPhase::RequestInFlight
+		|| InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+		|| InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling;
+	Result.ActiveRollSequenceIndex =
+		ActiveCrossRollReveal.RollSequenceIndex;
+	Result.RevealAnimationFrame = CosmeticCycleStep(
+		InlineFormulaRevealPhaseElapsed);
+	const bool bHolding = InlineFormulaRevealPhase
+		== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
+	const bool bSettling = InlineFormulaRevealPhase
+		== EFMCodexUMGInlineFormulaRevealPhase::Settling;
+	const bool bAuthoritativeVisible = bHolding;
+	Result.RollReel = BuildActiveRollReelPresentation();
+	const int32 VisibleD6 = bAuthoritativeVisible
+		? RollRevealAuthoritativeRawValue
+		: Result.RollReel.CenterValue;
+	Result.DiceFaceLabel = FString::FromInt(VisibleD6);
+	Result.DiceOwnerLabel =
+		ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::Defense
+				? TEXT("防守方掷点") : TEXT("进攻方掷点");
+	Result.bCanContinue = false;
+	Result.ContinueActionLabel.Empty();
+	const bool bFormulaDisclosed = bHolding
+		&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay;
+	const bool bNarrativeDisclosed =
+		ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::Defense
+		&& bHolding
+		&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
+	if (!bNarrativeDisclosed)
+	{
+		Result.bNarrativeAvailable = false;
+		Result.NarrativeHeadline.Empty();
+		Result.ResultSubtitle.Empty();
+		// Authority aliases a terminal Narrative into these two visible labels.
+		// Restore the neutral contest hierarchy until Presentation has disclosed
+		// the Defense formula and completed the short Narrative transition.
+		Result.ContestLabel = FFMCodexPlayerUIPresentationText
+			::ResolutionContest(Result.ContestId).ToString();
+		Result.StatusLabel = bHolding
+			? TEXT("权威结果已落定")
+			: bSettling ? TEXT("权威掷点落定中") : TEXT("号码滚动中");
+	}
+
+	if (ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::InitialRoute)
+	{
+		Result.ContestId = TEXT("Cross.Route");
+		Result.ContestLabel = TEXT("传中路线判定");
+		if (!bHolding)
+		{
+			Result.RouteResultLabel.Empty();
+		}
+		Result.TacticalPlayerSummaryLabel.Empty();
+		Result.bShowFormulaRows = false;
+		Result.bAttackRowActive = false;
+		Result.bDefenseRowActive = false;
+		return Result;
+	}
+
+	Result.bShowFormulaRows = true;
+	const bool bAttack = ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::Attack;
+	Result.bAttackRowActive = bAttack;
+	Result.bDefenseRowActive = !bAttack;
+	if (!bFormulaDisclosed)
+	{
+		StageRowForReveal(
+			bAttack ? Result.AttackRow : Result.DefenseRow,
+			!bHolding,
+			bAuthoritativeVisible,
+			VisibleD6);
+	}
+	return Result;
+}
+
+FFMCodexUMGMatchHeaderViewModel
+UFMCodexLocalMatchScreenWidget::BuildDisplayedHeader() const
+{
+	if (ActiveCrossRollReveal.Kind
+		!= EFMCodexUMGCrossRollRevealKind::TacticalPoint)
+	{
+		return Presentation.Header;
+	}
+	const bool bResourceDisclosed = InlineFormulaRevealPhase
+		== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+		&& InlineFormulaRevealPhaseElapsed
+			>= FMCodexLocalMatchScreenWidget::FormulaDisclosureDelay;
+	return bResourceDisclosed ? Presentation.Header : CachedPreRollHeader;
+}
+
+FFMCodexUMGRollReelViewModel
+UFMCodexLocalMatchScreenWidget::BuildActiveRollReelPresentation() const
+{
+	using namespace FMCodexLocalMatchScreenWidget;
+	if (!ActiveCrossRollReveal.IsValid()
+		|| !IsInlineFormulaRevealInputBlocked())
+	{
+		return {};
+	}
+	return BuildReelPresentation(
+		InlineFormulaRevealPhase,
+		InlineFormulaRevealPhaseElapsed,
+		RollRevealDomainMinimum,
+		RollRevealDomainMaximum,
+		RollRevealAuthoritativeRawValue,
+		RollRevealCaptureStartPositionCells,
+		RollRevealCaptureDistanceCells,
+		RollRevealSequenceOffsetCells);
 }
 
 void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
-	float DeltaSeconds)
+	float DeltaSeconds,
+	const bool bForceFullRefresh)
 {
 	using namespace FMCodexLocalMatchScreenWidget;
+	const EFMCodexUMGInlineFormulaRevealPhase PreviousPhase =
+		InlineFormulaRevealPhase;
+	const float PreviousPhaseElapsed = InlineFormulaRevealPhaseElapsed;
 	DeltaSeconds = FMath::Max(0.0f, DeltaSeconds);
 	while (DeltaSeconds > 0.0f && IsInlineFormulaRevealInputBlocked())
 	{
-		float Duration = 0.0f;
-		switch (InlineFormulaRevealPhase)
-		{
-		case EFMCodexUMGInlineFormulaRevealPhase::AttackReveal:
-			Duration = AttackRevealDuration;
-			break;
-		case EFMCodexUMGInlineFormulaRevealPhase::AttackSettled:
-			Duration = AttackSettledDuration;
-			break;
-		case EFMCodexUMGInlineFormulaRevealPhase::DefenseReveal:
-			Duration = DefenseRevealDuration;
-			break;
-		default:
-			break;
-		}
-		const float Remaining = FMath::Max(
-			0.0f, Duration - InlineFormulaRevealPhaseElapsed);
-		if (DeltaSeconds < Remaining)
-		{
-			InlineFormulaRevealPhaseElapsed += DeltaSeconds;
-			DeltaSeconds = 0.0f;
-			break;
-		}
-		DeltaSeconds -= Remaining;
-		InlineFormulaRevealPhaseElapsed = 0.0f;
 		if (InlineFormulaRevealPhase
-			== EFMCodexUMGInlineFormulaRevealPhase::AttackReveal)
+			== EFMCodexUMGInlineFormulaRevealPhase::RequestInFlight)
 		{
 			InlineFormulaRevealPhase =
-				EFMCodexUMGInlineFormulaRevealPhase::AttackSettled;
+				EFMCodexUMGInlineFormulaRevealPhase::Cycling;
 		}
-		else if (InlineFormulaRevealPhase
-			== EFMCodexUMGInlineFormulaRevealPhase::AttackSettled)
+
+		if (InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling)
 		{
-			InlineFormulaRevealPhase =
-				EFMCodexUMGInlineFormulaRevealPhase::DefenseReveal;
+			const float Remaining = FMath::Max(
+				0.0f,
+				FinalSlowEndTime - InlineFormulaRevealPhaseElapsed);
+			const float Consumed = FMath::Min(DeltaSeconds, Remaining);
+			InlineFormulaRevealPhaseElapsed += Consumed;
+			DeltaSeconds -= Consumed;
+			if (InlineFormulaRevealPhaseElapsed < FinalSlowEndTime)
+			{
+				break;
+			}
+			if (!bInlineFormulaAuthorityResultAvailable)
+			{
+				// Network-safe wait: keep cosmetic cycling, never settle a guess.
+				InlineFormulaRevealPhaseElapsed += DeltaSeconds;
+				DeltaSeconds = 0.0f;
+				break;
+			}
+			BeginInlineFormulaFinalCapture();
+			continue;
 		}
-		else
+
+		if (InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling)
 		{
+			const float Remaining = FMath::Max(
+				0.0f, CaptureSettleDuration - InlineFormulaRevealPhaseElapsed);
+			const float Consumed = FMath::Min(DeltaSeconds, Remaining);
+			InlineFormulaRevealPhaseElapsed += Consumed;
+			DeltaSeconds -= Consumed;
+			if (InlineFormulaRevealPhaseElapsed < CaptureSettleDuration)
+			{
+				break;
+			}
 			InlineFormulaRevealPhase =
-				EFMCodexUMGInlineFormulaRevealPhase::Completed;
+				EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
+			InlineFormulaRevealPhaseElapsed = 0.0f;
+			continue;
+		}
+
+		if (InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold)
+		{
+			const float HoldDuration = ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::InitialRoute
+					? RouteResultHoldDuration
+					: ActiveCrossRollReveal.Kind
+						== EFMCodexUMGCrossRollRevealKind::TacticalPoint
+							? TacticalPointResultHoldDuration
+							: FormulaResultHoldDuration;
+			const float Remaining = FMath::Max(
+				0.0f, HoldDuration - InlineFormulaRevealPhaseElapsed);
+			const float Consumed = FMath::Min(DeltaSeconds, Remaining);
+			InlineFormulaRevealPhaseElapsed += Consumed;
+			DeltaSeconds -= Consumed;
+			if (InlineFormulaRevealPhaseElapsed < HoldDuration)
+			{
+				break;
+			}
+			SettledCrossRollRevealKeys.Add(
+				ActiveCrossRollReveal.StableKey());
+			LastDisclosedInlineFormula = Presentation.InlineFormula;
+			ActiveCrossRollReveal = {};
+			ObservedPendingCrossRoll = {};
+			CachedResolvedInlineFormula = {};
+			CachedPreRollHeader = {};
+			bInlineFormulaAuthorityResultAvailable = false;
+			RollRevealAuthoritativeRawValue = 0;
+			RollRevealDomainMinimum = 1;
+			RollRevealDomainMaximum = 6;
+			RollRevealCaptureStartPositionCells = 0.0f;
+			RollRevealCaptureDistanceCells = 0.0f;
+			RollRevealSequenceOffsetCells = 0;
+			CachedTacticalPointFinalValue = 0;
+			InlineFormulaRevealPhase =
+				EFMCodexUMGInlineFormulaRevealPhase::Settled;
+			InlineFormulaRevealPhaseElapsed = 0.0f;
 			StopInlineFormulaRevealTimer();
+			ObservePendingCrossRoll(Presentation);
 		}
 	}
-	RefreshVisuals();
+	const bool bPhaseChanged = PreviousPhase != InlineFormulaRevealPhase;
+	const bool bFormulaDisclosureChanged =
+		PreviousPhase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+		&& InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+		&& PreviousPhaseElapsed < FormulaDisclosureDelay
+		&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay;
+	const bool bNarrativeDisclosureChanged =
+		PreviousPhase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+		&& InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+		&& PreviousPhaseElapsed < NarrativeDisclosureDelay
+		&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
+	if (bForceFullRefresh || bPhaseChanged || bFormulaDisclosureChanged
+		|| bNarrativeDisclosureChanged)
+	{
+		RefreshVisuals();
+	}
+	else if (IsPerFrameMotionPhase(InlineFormulaRevealPhase))
+	{
+		RefreshActiveRollReelVisuals();
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaFinalCapture()
+{
+	using namespace FMCodexLocalMatchScreenWidget;
+	if (InlineFormulaRevealPhase
+			!= EFMCodexUMGInlineFormulaRevealPhase::Cycling
+		|| !bInlineFormulaAuthorityResultAvailable)
+	{
+		return;
+	}
+	RollRevealCaptureStartPositionCells = CosmeticReelPosition(
+		InlineFormulaRevealPhaseElapsed);
+	const int32 DomainCount = FMath::Max(
+		1, RollRevealDomainMaximum - RollRevealDomainMinimum + 1);
+	const int32 TargetIndex = WrapDomainValue(
+		RollRevealAuthoritativeRawValue,
+		RollRevealDomainMinimum,
+		RollRevealDomainMaximum) - RollRevealDomainMinimum;
+	int32 TargetStep = FMath::CeilToInt(
+		RollRevealCaptureStartPositionCells);
+	const int32 WrappedStep =
+		(((TargetStep + RollRevealSequenceOffsetCells) % DomainCount)
+			+ DomainCount)
+		% DomainCount;
+	TargetStep += (TargetIndex - WrappedStep + DomainCount) % DomainCount;
+	if (TargetStep - RollRevealCaptureStartPositionCells < 0.35f)
+	{
+		TargetStep += DomainCount;
+	}
+	RollRevealCaptureDistanceCells =
+		TargetStep - RollRevealCaptureStartPositionCells;
+	InlineFormulaRevealPhase =
+		EFMCodexUMGInlineFormulaRevealPhase::Settling;
+	InlineFormulaRevealPhaseElapsed = 0.0f;
+}
+
+void UFMCodexLocalMatchScreenWidget::RefreshActiveRollReelVisuals()
+{
+	if (!ActiveCrossRollReveal.IsValid()
+		|| !IsInlineFormulaRevealInputBlocked())
+	{
+		return;
+	}
+	const FFMCodexUMGRollReelViewModel Reel =
+		BuildActiveRollReelPresentation();
+	if (ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::TacticalPoint)
+	{
+		if (TacticalPointRollReel != nullptr)
+		{
+			TacticalPointRollReel->RefreshFromPresentation(Reel);
+		}
+	}
+	else if (InlineFormulaSurface != nullptr
+		&& InlineFormulaSurface->GetRollReelWidget() != nullptr)
+	{
+		InlineFormulaSurface->GetRollReelWidget()
+			->RefreshFromPresentation(Reel);
+	}
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleInlineFormulaRevealTimer()
 {
-	AdvanceInlineFormulaReveal(
-		FMCodexLocalMatchScreenWidget::RevealTickInterval);
+	using namespace FMCodexLocalMatchScreenWidget;
+	InlineFormulaRevealTimerHandle.Invalidate();
+	const UWorld* World = GetWorld();
+	const float DeltaSeconds =
+		IsPerFrameMotionPhase(InlineFormulaRevealPhase)
+			? World != nullptr ? World->GetDeltaSeconds() : 0.0f
+			: RevealHoldTickInterval;
+	AdvanceInlineFormulaReveal(DeltaSeconds, false);
+	StartInlineFormulaRevealTimer();
 }
 
 void UFMCodexLocalMatchScreenWidget::StartInlineFormulaRevealTimer()
@@ -1842,13 +2413,25 @@ void UFMCodexLocalMatchScreenWidget::StartInlineFormulaRevealTimer()
 		if (!World->GetTimerManager().IsTimerActive(
 			InlineFormulaRevealTimerHandle))
 		{
-			World->GetTimerManager().SetTimer(
-				InlineFormulaRevealTimerHandle,
-				this,
-				&UFMCodexLocalMatchScreenWidget
-					::HandleInlineFormulaRevealTimer,
-				FMCodexLocalMatchScreenWidget::RevealTickInterval,
-				true);
+			if (FMCodexLocalMatchScreenWidget::IsPerFrameMotionPhase(
+				InlineFormulaRevealPhase))
+			{
+				InlineFormulaRevealTimerHandle = World->GetTimerManager()
+					.SetTimerForNextTick(
+						this,
+						&UFMCodexLocalMatchScreenWidget
+							::HandleInlineFormulaRevealTimer);
+			}
+			else
+			{
+				World->GetTimerManager().SetTimer(
+					InlineFormulaRevealTimerHandle,
+					this,
+					&UFMCodexLocalMatchScreenWidget
+						::HandleInlineFormulaRevealTimer,
+					FMCodexLocalMatchScreenWidget::RevealHoldTickInterval,
+					false);
+			}
 		}
 	}
 }
@@ -1865,51 +2448,197 @@ void UFMCodexLocalMatchScreenWidget::ResetInlineFormulaRevealState()
 {
 	StopInlineFormulaRevealTimer();
 	CachedResolvedInlineFormula = {};
+	LastDisclosedInlineFormula = {};
 	InlineFormulaRevealPhase = EFMCodexUMGInlineFormulaRevealPhase::None;
 	InlineFormulaRevealPhaseElapsed = 0.0f;
-	bInlineFormulaRevealIdentityObserved = false;
-	InlineFormulaRevealAttackSequence = 0;
-	InlineFormulaRevealContestId = NAME_None;
-	InlineFormulaRevealAttackRollSequenceIndex = INDEX_NONE;
-	InlineFormulaRevealAttackSide = EInitialTurnOrderPlayer::None;
-	InlineFormulaRevealDefenseRollSequenceIndex = INDEX_NONE;
-	InlineFormulaRevealDefenseSide = EInitialTurnOrderPlayer::None;
+	RollRevealCaptureStartPositionCells = 0.0f;
+	RollRevealCaptureDistanceCells = 0.0f;
+	RollRevealSequenceOffsetCells = 0;
+	ObservedPendingCrossRoll = {};
+	ActiveCrossRollReveal = {};
+	SettledCrossRollRevealKeys.Reset();
+	bInlineFormulaAuthorityResultAvailable = false;
+	RollRevealAuthoritativeRawValue = 0;
+	RollRevealDomainMinimum = 1;
+	RollRevealDomainMaximum = 6;
+	CachedTacticalPointFinalValue = 0;
+	CachedPreRollHeader = {};
 }
 
-bool UFMCodexLocalMatchScreenWidget::IsSameInlineFormulaRevealIdentity(
-	const int64 AttackSequence,
-	const FName ContestId,
-	const int32 AttackRollSequenceIndex,
-	const EInitialTurnOrderPlayer AttackSide,
-	const int32 DefenseRollSequenceIndex,
-	const EInitialTurnOrderPlayer DefenseSide) const
+FFMCodexCrossRollRevealIdentity
+UFMCodexLocalMatchScreenWidget::PendingCrossRollIdentity(
+	const FFMCodexUMGMatchScreenViewModel& InPresentation) const
 {
-	return bInlineFormulaRevealIdentityObserved
-		&& InlineFormulaRevealAttackSequence == AttackSequence
-		&& InlineFormulaRevealContestId == ContestId
-		&& InlineFormulaRevealAttackRollSequenceIndex
-			== AttackRollSequenceIndex
-		&& InlineFormulaRevealAttackSide == AttackSide
-		&& InlineFormulaRevealDefenseRollSequenceIndex
-			== DefenseRollSequenceIndex
-		&& InlineFormulaRevealDefenseSide == DefenseSide;
+	FFMCodexCrossRollRevealIdentity Result;
+	Result.Kind = InPresentation.Interaction.CrossRollRevealKind;
+	Result.AttackSequence = InPresentation.Header.AttackSequence;
+	Result.ContestId = InPresentation.Interaction.CrossRollContestId;
+	Result.RollSequenceIndex =
+		InPresentation.Interaction.CrossRollSequenceIndex;
+	Result.OwnerSide = InPresentation.Interaction.CrossRollOwnerSide;
+	return Result;
 }
 
-void UFMCodexLocalMatchScreenWidget::SetInlineFormulaRevealIdentity(
-	const int64 AttackSequence,
-	const FName ContestId,
-	const int32 AttackRollSequenceIndex,
-	const EInitialTurnOrderPlayer AttackSide,
-	const int32 DefenseRollSequenceIndex,
-	const EInitialTurnOrderPlayer DefenseSide)
+void UFMCodexLocalMatchScreenWidget::ObservePendingCrossRoll(
+	const FFMCodexUMGMatchScreenViewModel& InPresentation)
 {
-	bInlineFormulaRevealIdentityObserved = true;
-	InlineFormulaRevealAttackSequence = AttackSequence;
-	InlineFormulaRevealContestId = ContestId;
-	InlineFormulaRevealAttackRollSequenceIndex = AttackRollSequenceIndex;
-	InlineFormulaRevealAttackSide = AttackSide;
-	InlineFormulaRevealDefenseRollSequenceIndex = DefenseRollSequenceIndex;
-	InlineFormulaRevealDefenseSide = DefenseSide;
+	const FFMCodexCrossRollRevealIdentity Candidate =
+		PendingCrossRollIdentity(InPresentation);
+	if (Candidate.IsValid()
+		&& !SettledCrossRollRevealKeys.Contains(Candidate.StableKey()))
+	{
+		ObservedPendingCrossRoll = Candidate;
+		InlineFormulaRevealPhase =
+			EFMCodexUMGInlineFormulaRevealPhase::IdlePending;
+	}
+	else
+	{
+		ObservedPendingCrossRoll = {};
+		if (InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::IdlePending)
+		{
+			InlineFormulaRevealPhase =
+				EFMCodexUMGInlineFormulaRevealPhase::None;
+		}
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaReveal(
+	const FFMCodexCrossRollRevealIdentity& Identity,
+	const bool bRequestInFlight)
+{
+	if (ActiveCrossRollReveal.IsValid()
+		|| !Identity.IsValid()
+		|| SettledCrossRollRevealKeys.Contains(Identity.StableKey()))
+	{
+		return;
+	}
+	ActiveCrossRollReveal = Identity;
+	ObservedPendingCrossRoll = {};
+	CachedResolvedInlineFormula = {};
+	CachedPreRollHeader = Presentation.Header;
+	bInlineFormulaAuthorityResultAvailable = false;
+	RollRevealAuthoritativeRawValue = 0;
+	RollRevealDomainMinimum = Identity.Kind
+		== EFMCodexUMGCrossRollRevealKind::TacticalPoint ? 2 : 1;
+	RollRevealDomainMaximum = Identity.Kind
+		== EFMCodexUMGCrossRollRevealKind::TacticalPoint ? 8 : 6;
+	CachedTacticalPointFinalValue = 0;
+	InlineFormulaRevealPhase = bRequestInFlight
+		? EFMCodexUMGInlineFormulaRevealPhase::RequestInFlight
+		: EFMCodexUMGInlineFormulaRevealPhase::Cycling;
+	InlineFormulaRevealPhaseElapsed = 0.0f;
+	RollRevealCaptureStartPositionCells = 0.0f;
+	RollRevealCaptureDistanceCells = 0.0f;
+	RollRevealSequenceOffsetCells = 0;
+	StartInlineFormulaRevealTimer();
+	RefreshVisuals();
+}
+
+void UFMCodexLocalMatchScreenWidget::CancelInlineFormulaReveal()
+{
+	StopInlineFormulaRevealTimer();
+	ActiveCrossRollReveal = {};
+	CachedResolvedInlineFormula = {};
+	CachedPreRollHeader = {};
+	bInlineFormulaAuthorityResultAvailable = false;
+	RollRevealAuthoritativeRawValue = 0;
+	RollRevealDomainMinimum = 1;
+	RollRevealDomainMaximum = 6;
+	CachedTacticalPointFinalValue = 0;
+	InlineFormulaRevealPhase = EFMCodexUMGInlineFormulaRevealPhase::None;
+	InlineFormulaRevealPhaseElapsed = 0.0f;
+	RollRevealCaptureStartPositionCells = 0.0f;
+	RollRevealCaptureDistanceCells = 0.0f;
+	RollRevealSequenceOffsetCells = 0;
+}
+
+bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
+	const FFMCodexUMGMatchScreenViewModel& InPresentation,
+	const FFMCodexCrossRollRevealIdentity& Identity,
+	int32& OutRawValue,
+	int32& OutDomainMinimum,
+	int32& OutDomainMaximum) const
+{
+	using ERollPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using ERollSemantics = EMatchPlayResolutionRollSemantics;
+	if (!Identity.IsValid())
+	{
+		return false;
+	}
+	if (Identity.Kind == EFMCodexUMGCrossRollRevealKind::TacticalPoint)
+	{
+		const int32 TacticalPoints =
+			InPresentation.Header.CurrentAttackerTacticalPoints;
+		if (InPresentation.Header.AttackSequence != Identity.AttackSequence
+			|| InPresentation.Interaction.bCanRollTacticalPoints
+			|| TacticalPoints < 2 || TacticalPoints > 8)
+		{
+			return false;
+		}
+		// Current production's authoritative random object is directly 2..8;
+		// BeginOrdinaryAttack stores that same value as the Tactical Point resource.
+		OutRawValue = TacticalPoints;
+		OutDomainMinimum = 2;
+		OutDomainMaximum = 8;
+		return true;
+	}
+	const FMatchPlayCurrentAttackResolutionFactProjection& Facts =
+		InPresentation.Resolution.FormulaFacts;
+	if (!Facts.bSuccess || !Facts.bHasFacts
+		|| Facts.AttackSequence != Identity.AttackSequence)
+	{
+		return false;
+	}
+
+	if (Identity.Kind != EFMCodexUMGCrossRollRevealKind::InitialRoute
+		&& !Facts.FormulaContests.ContainsByPredicate(
+			[&Identity](
+				const FMatchPlayResolutionFormulaContestFact& Contest)
+			{
+				return Contest.ContestId == Identity.ContestId;
+			}))
+	{
+		return false;
+	}
+
+	const FMatchPlayResolutionRollFact* Roll = Facts.Rolls.FindByPredicate(
+		[&Identity](const FMatchPlayResolutionRollFact& Candidate)
+		{
+			if (!Candidate.bResolved
+				|| Candidate.SequenceIndex != Identity.RollSequenceIndex
+				|| Candidate.OwningSide != Identity.OwnerSide)
+			{
+				return false;
+			}
+			switch (Identity.Kind)
+			{
+			case EFMCodexUMGCrossRollRevealKind::InitialRoute:
+				return Candidate.bInitialRoute
+					&& Candidate.Semantics
+						== ERollSemantics::BranchSelection;
+			case EFMCodexUMGCrossRollRevealKind::Attack:
+				return Candidate.Semantics
+						== ERollSemantics::ArithmeticContest
+					&& Candidate.PostRoutePurpose
+						== ERollPurpose::PrimaryAttack;
+			case EFMCodexUMGCrossRollRevealKind::Defense:
+				return Candidate.Semantics
+						== ERollSemantics::ArithmeticContest
+					&& Candidate.PostRoutePurpose
+						== ERollPurpose::PrimaryDefense;
+			default:
+				return false;
+			}
+		});
+	if (Roll == nullptr || Roll->RawD6 < 1 || Roll->RawD6 > 6)
+	{
+		return false;
+	}
+	OutRawValue = Roll->RawD6;
+	OutDomainMinimum = 1;
+	OutDomainMaximum = 6;
+	return true;
 }
 
 void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
@@ -1950,13 +2679,48 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	RefreshFullCardProductionReviewSurface();
 #endif
-	MatchHeader->RefreshFromPresentation(Presentation.Header);
+	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader());
 	LocalRackWidget->RefreshFromPresentation(Presentation.LocalRack);
 	OpponentRackWidget->RefreshFromPresentation(Presentation.OpponentRack);
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
 	const FFMCodexUMGInlineFormulaSurfaceViewModel DisplayedInlineFormula =
 		BuildDisplayedInlineFormula();
 	InlineFormulaSurface->RefreshFromPresentation(DisplayedInlineFormula);
+	const bool bTacticalPointRevealVisible =
+		ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::TacticalPoint
+		&& IsInlineFormulaRevealInputBlocked();
+	TacticalPointRevealSurface->SetVisibility(bTacticalPointRevealVisible
+		? ESlateVisibility::SelfHitTestInvisible
+		: ESlateVisibility::Collapsed);
+	if (bTacticalPointRevealVisible)
+	{
+		const FFMCodexUMGRollReelViewModel Reel =
+			BuildActiveRollReelPresentation();
+		TacticalPointRollReel->RefreshFromPresentation(Reel);
+		const bool bHolding = InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
+		const bool bSettling = InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling;
+		TacticalPointRevealTitle->SetText(FText::FromString(
+			bHolding ? TEXT("战术点结果")
+				: bSettling ? TEXT("战术点掷点落定")
+					: TEXT("战术点号码滚动中")));
+		const bool bResourceDisclosed = bHolding
+			&& InlineFormulaRevealPhaseElapsed
+				>= FMCodexLocalMatchScreenWidget::FormulaDisclosureDelay;
+		TacticalPointRevealResult->SetText(FText::FromString(
+			bResourceDisclosed
+				? FString::Printf(TEXT("掷点 %d  →  战术点 %d"),
+					RollRevealAuthoritativeRawValue,
+					CachedTacticalPointFinalValue)
+				: bHolding
+					? FString::Printf(TEXT("掷点 %d"),
+						RollRevealAuthoritativeRawValue)
+					: bSettling
+						? FString(TEXT("掷点落定中"))
+						: FString(TEXT("等待权威结果"))));
+	}
 	BindDetailHoverSources();
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
 	InteractionPanel->SetVisibility(

@@ -7,6 +7,8 @@
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
 #include "FMCodexLocalMatchScreenWidget.h"
+#include "FMCodexMatchHeaderWidget.h"
+#include "FMCodexRollReelWidget.h"
 
 #include "Components/TextBlock.h"
 #include "Components/WrapBox.h"
@@ -252,6 +254,7 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 		FFMCodexLocalMatchInteractionView View;
 		View.bMatchActive = true;
 		View.bCurrentAttackActive = true;
+		View.AttackSequence = 1;
 		View.CurrentAttackingPlayer = EInitialTurnOrderPlayer::PlayerA;
 		View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerA;
 		View.ElectiveBranchIntent = EMatchPlayElectiveBranchIntent::CrossHigh;
@@ -288,6 +291,7 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 			View.PlayerBCardRoster.Reset();
 		}
 		View.ResolutionFacts = Facts;
+		View.AttackSequence = Facts.AttackSequence;
 		const FMatchPlayResolutionRollFact* AttackRoll = Facts.Rolls.FindByPredicate(
 			[](const FMatchPlayResolutionRollFact& Roll)
 			{
@@ -864,9 +868,10 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 	return true;
 }
 
+#if 0 // Superseded by the unified reel contract below.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FFMCodexInlineResolutionFormulaDiceRevealTest,
-	"FMCodex.LocalPlay.InlineFormula.CrossHighManualRollStates",
+	"FMCodex.LocalPlay.DiceCycling.CrossCoveredRolls",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FFMCodexInlineResolutionFormulaDiceRevealTest::RunTest(
@@ -874,7 +879,7 @@ bool FFMCodexInlineResolutionFormulaDiceRevealTest::RunTest(
 {
 	using namespace FMCodexInlineResolutionFormulaSurfaceTests;
 	FFMCodexLocalMatchInteractionView PreRouteView = MakeInteraction();
-	PreRouteView.ContinueActionLabel = TEXT("判定高球传中路线");
+	PreRouteView.ContinueActionLabel = TEXT("判定传中路线");
 	FFMCodexLocalMatchResolutionFeedback LegacyPreRouteFeedback;
 	LegacyPreRouteFeedback.bVisible = true;
 	LegacyPreRouteFeedback.StepTitle = TEXT("Resolution Started");
@@ -890,18 +895,24 @@ bool FFMCodexInlineResolutionFormulaDiceRevealTest::RunTest(
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
 	PreRouteScreen->TakeWidget();
 	PreRouteScreen->RefreshFromPresentation(PreRoutePresentation);
-	TestTrue(TEXT("Covered pre-route step suppresses the legacy English overlay"),
+	TestTrue(TEXT("Covered pre-route step exposes typed route identity"),
 		PreRoutePresentation.InlineFormula.bSuppressLegacyResolution
 			&& !PreRouteScreen->IsLegacyResolutionOverlayVisible()
+			&& PreRoutePresentation.Interaction.CrossRollRevealKind
+				== EFMCodexUMGCrossRollRevealKind::InitialRoute
+			&& PreRoutePresentation.Interaction.CrossRollContestId
+				== TEXT("Cross.Route")
+			&& PreRoutePresentation.Interaction.CrossRollSequenceIndex == 0
 			&& PreRoutePresentation.Interaction.PrimaryActionLabel
-				== TEXT("判定高球传中路线"));
+				== TEXT("判定传中路线"));
 
 	const FFMCodexUMGMatchScreenViewModel ManualPending = BuildPresentation(
 		MakeCrossHighFacts(true, true, false, false));
 	const FFMCodexUMGMatchScreenViewModel ManualAttackSettled = BuildPresentation(
 		MakeCrossHighFacts(true, true, true, false));
 	const FFMCodexUMGMatchScreenViewModel ManualCompleted = BuildPresentation(
-		MakeCrossHighFacts(true, true, true, true));
+		MakeCrossHighFacts(
+			true, true, true, true, EFormulaWinner::Attacker));
 	UFMCodexLocalMatchScreenWidget* ManualScreen =
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
 	TestNotNull(TEXT("Manual roll fixture screen can be constructed"), ManualScreen);
@@ -910,38 +921,751 @@ bool FFMCodexInlineResolutionFormulaDiceRevealTest::RunTest(
 		return false;
 	}
 	ManualScreen->TakeWidget();
+	ManualScreen->RefreshFromPresentation(PreRoutePresentation);
 	ManualScreen->RefreshFromPresentation(ManualPending);
-	TestTrue(TEXT("Pre-roll is direct authority UI with no local reveal gate"),
-		ManualScreen->GetInlineFormulaRevealPhase()
-			== EFMCodexUMGInlineFormulaRevealPhase::None
-			&& !ManualScreen->IsInlineFormulaRevealInputBlocked()
-			&& ManualScreen->GetInlineFormulaSurface()->GetPresentation()
-				.StatusLabel == TEXT("等待进攻方掷点"));
-	ManualScreen->RefreshFromPresentation(ManualAttackSettled);
-	const auto& AttackOnly =
+	ManualScreen->PauseInlineFormulaRevealTimerForTesting();
+	const auto& RouteCycling =
 		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
-	const auto* AttackOnlyRoll = FindTerm(
-		AttackOnly.AttackRow,
+	TestTrue(TEXT("Route live transition starts one inline cosmetic cycle"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& ManualScreen->IsInlineFormulaRevealInputBlocked()
+			&& RouteCycling.bVisible
+			&& RouteCycling.ContestId == TEXT("Cross.Route")
+			&& RouteCycling.RouteResultLabel.IsEmpty()
+			&& !RouteCycling.bShowFormulaRows
+			&& RouteCycling.bDiceRolling
+			&& RouteCycling.DiceFaceLabel == TEXT("1")
+			&& !RouteCycling.bCanContinue
+			&& ManualScreen->GetPresentation().InlineFormula.RouteResultLabel
+				== TEXT("路线掷点 5 → 判定为高球传中"));
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(0.60f);
+	const FString SlowerFace = ManualScreen->GetInlineFormulaSurface()
+		->GetPresentation().DiceFaceLabel;
+	TestTrue(TEXT("Cosmetic D6 advances deterministically before settle"),
+		SlowerFace != TEXT("1")
+			&& FCString::Atoi(*SlowerFace) >= 1
+			&& FCString::Atoi(*SlowerFace) <= 6);
+	ManualScreen->RefreshFromPresentation(ManualPending);
+	ManualScreen->PauseInlineFormulaRevealTimerForTesting();
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(0.30f);
+	const auto& RouteSettling =
+		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
+	TestTrue(TEXT("Route settle shows exact authority D6 but still hides branch"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling
+			&& RouteSettling.DiceFaceLabel == TEXT("5")
+			&& !RouteSettling.bDiceRolling
+			&& RouteSettling.RouteResultLabel.IsEmpty()
+			&& !RouteSettling.bCanContinue);
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(0.20f);
+	const auto& RouteSettled =
+		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
+	TestTrue(TEXT("Route outcome and attack action appear only after settle"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::IdlePending
+			&& !ManualScreen->IsInlineFormulaRevealInputBlocked()
+			&& RouteSettled.RouteResultLabel
+				== TEXT("路线掷点 5 → 判定为高球传中")
+			&& RouteSettled.ContinueActionLabel == TEXT("进攻方掷点"));
+
+	// Begin request-in-flight before the authority value exists. Crossing the
+	// minimum duration must wait safely and must not settle a cosmetic face.
+	ManualScreen->BeginPendingCrossRollRevealForTesting();
+	ManualScreen->PauseInlineFormulaRevealTimerForTesting();
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(1.20f);
+	const FString WaitingFace = ManualScreen->GetInlineFormulaSurface()
+		->GetPresentation().DiceFaceLabel;
+	ManualScreen->BeginPendingCrossRollRevealForTesting();
+	TestTrue(TEXT("Delayed authority waits in cycle and duplicate begin is ignored"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& ManualScreen->IsInlineFormulaRevealInputBlocked()
+			&& ManualScreen->GetInlineFormulaSurface()->GetPresentation()
+				.DiceFaceLabel == WaitingFace);
+	ManualScreen->RefreshFromPresentation(ManualAttackSettled);
+	ManualScreen->PauseInlineFormulaRevealTimerForTesting();
+	const auto& AttackSettling =
+		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
+	const auto* AttackSettlingRoll = FindTerm(
+		AttackSettling.AttackRow,
 		EFMCodexUMGInlineFormulaTermKind::RawRoll, 1);
 	const auto* PendingDefenseRoll = FindTerm(
-		AttackOnly.DefenseRow,
+		AttackSettling.DefenseRow,
 		EFMCodexUMGInlineFormulaTermKind::RawRoll, 2);
-	TestTrue(TEXT("Attack-only state remains readable until defender acts"),
-		AttackOnlyRoll != nullptr && AttackOnlyRoll->RawD6 == 4
-			&& AttackOnly.AttackRow.bFinalValueResolved
+	TestTrue(TEXT("Attack settle gates FinalValue and defender action"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling
+			&& AttackSettlingRoll != nullptr
+			&& AttackSettlingRoll->RawD6 == 4
+			&& AttackSettlingRoll->bResolved
+			&& !AttackSettling.AttackRow.bFinalValueResolved
+			&& !AttackSettling.AttackRow.bDisplayedResultIsFinalValue
+			&& FMath::IsNearlyEqual(
+				AttackSettling.AttackRow.DisplayedResult,
+				AttackSettling.AttackRow.KnownNonRollSubtotal)
 			&& PendingDefenseRoll != nullptr && !PendingDefenseRoll->bResolved
-			&& !AttackOnly.DefenseRow.bFinalValueResolved
-			&& AttackOnly.ContinueActionLabel == TEXT("防守方掷点")
+			&& AttackSettling.ContinueActionLabel.IsEmpty()
+			&& ManualScreen->GetPresentation().InlineFormula.AttackRow
+				.bFinalValueResolved
 			&& !ManualScreen->IsLegacyResolutionOverlayVisible());
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(0.10f);
+	ManualScreen->RefreshFromPresentation(ManualAttackSettled);
+	ManualScreen->PauseInlineFormulaRevealTimerForTesting();
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(0.11f);
+	const auto& AttackOnly =
+		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
+	TestTrue(TEXT("Repeated rebuild does not restart accepted attack settle"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::IdlePending
+			&& AttackOnly.AttackRow.bFinalValueResolved
+			&& AttackOnly.ContinueActionLabel == TEXT("防守方掷点"));
+	ManualScreen->RefreshFromPresentation(ManualPending);
+	TestTrue(TEXT("Stale attack-pending rebuild cannot replay or downgrade"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::IdlePending
+			&& ManualScreen->GetInlineFormulaSurface()->GetPresentation()
+				.AttackRow.bFinalValueResolved
+			&& ManualScreen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel == TEXT("防守方掷点"));
+	ManualScreen->RefreshFromPresentation(ManualAttackSettled);
+
+	ManualScreen->BeginPendingCrossRollRevealForTesting();
+	ManualScreen->PauseInlineFormulaRevealTimerForTesting();
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(0.35f);
 	ManualScreen->RefreshFromPresentation(ManualCompleted);
+	ManualScreen->PauseInlineFormulaRevealTimerForTesting();
+	const auto& DefenseCycling =
+		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
+	TestTrue(TEXT("Defense cycle hides terminal narrative and CTA"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& !DefenseCycling.bNarrativeAvailable
+			&& DefenseCycling.NarrativeHeadline.IsEmpty()
+			&& !DefenseCycling.DefenseRow.bFinalValueResolved
+			&& DefenseCycling.ContinueActionLabel.IsEmpty());
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(0.55f);
+	TestTrue(TEXT("Defense reaches exact authoritative settle after minimum cycle"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling
+			&& ManualScreen->GetInlineFormulaSurface()->GetPresentation()
+				.DiceFaceLabel == TEXT("3"));
+	ManualScreen->AdvanceInlineFormulaRevealForTesting(0.20f);
 	const auto& ManualFinal =
 		ManualScreen->GetInlineFormulaSurface()->GetPresentation();
-	TestTrue(TEXT("Completed comparison comes directly from authority facts"),
-		ManualFinal.AttackRow.bFinalValueResolved
+	TestTrue(TEXT("Defense settle releases authoritative narrative and terminal CTA"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settled
+			&& ManualFinal.AttackRow.bFinalValueResolved
 			&& ManualFinal.DefenseRow.bFinalValueResolved
-			&& ManualFinal.StatusLabel == TEXT("双方掷点已完成")
+			&& ManualFinal.bNarrativeAvailable
 			&& ManualFinal.ContinueActionLabel == TEXT("下一回合")
 			&& !ManualScreen->IsInlineFormulaRevealInputBlocked());
+	ManualScreen->RefreshFromPresentation(ManualCompleted);
+	TestTrue(TEXT("Repeated completed rebuild never replays settled defense"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settled
+			&& !ManualScreen->IsInlineFormulaRevealInputBlocked());
+	ManualScreen->RefreshFromPresentation(ManualAttackSettled);
+	TestTrue(TEXT("Stale defense-pending rebuild keeps disclosed final truth"),
+		ManualScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settled
+			&& ManualScreen->GetInlineFormulaSurface()->GetPresentation()
+				.DefenseRow.bFinalValueResolved
+			&& ManualScreen->GetInlineFormulaSurface()->GetPresentation()
+				.bNarrativeAvailable);
+
+	UFMCodexLocalMatchScreenWidget* ReconstructedScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	ReconstructedScreen->TakeWidget();
+	ReconstructedScreen->RefreshFromPresentation(ManualCompleted);
+	TestTrue(TEXT("Already-resolved first observation renders settled immediately"),
+		ReconstructedScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::None
+			&& !ReconstructedScreen->IsInlineFormulaRevealInputBlocked()
+			&& ReconstructedScreen->GetInlineFormulaSurface()->GetPresentation()
+				.DefenseRow.bFinalValueResolved);
+
+	UFMCodexLocalMatchScreenWidget* RejectedScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	RejectedScreen->TakeWidget();
+	RejectedScreen->RefreshFromPresentation(ManualPending);
+	RejectedScreen->BeginPendingCrossRollRevealForTesting();
+	FFMCodexUMGMatchScreenViewModel RejectedPending = ManualPending;
+	RejectedPending.Resolution.bRejected = true;
+	RejectedScreen->RefreshFromPresentation(RejectedPending);
+	TestTrue(TEXT("Rejected request cancels reveal and restores pending truth"),
+		RejectedScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::IdlePending
+			&& !RejectedScreen->IsInlineFormulaRevealInputBlocked()
+			&& RejectedScreen->GetInlineFormulaSurface()->GetPresentation()
+				.AttackRow.bFinalValueResolved == false
+			&& RejectedScreen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel == TEXT("进攻方掷点"));
+
+	const FFMCodexUMGMatchScreenViewModel LowPending = BuildPresentation(
+		MakeCrossHighFacts(false, false, false, false,
+			EFormulaWinner::None, EMatchPlayCrossActualBranch::Low, 2));
+	const FFMCodexUMGMatchScreenViewModel LowAttack = BuildPresentation(
+		MakeCrossHighFacts(false, false, true, false,
+			EFormulaWinner::None, EMatchPlayCrossActualBranch::Low, 2));
+	const FFMCodexUMGMatchScreenViewModel LowCompleted = BuildPresentation(
+		MakeCrossHighFacts(false, false, true, true,
+			EFormulaWinner::Defender, EMatchPlayCrossActualBranch::Low, 2));
+	FFMCodexLocalMatchInteractionView LowPreRouteView = MakeInteraction();
+	LowPreRouteView.AttackSequence = 2;
+	LowPreRouteView.ElectiveBranchIntent =
+		EMatchPlayElectiveBranchIntent::CrossLow;
+	LowPreRouteView.ContinueActionLabel = TEXT("判定传中路线");
+	const FFMCodexUMGMatchScreenViewModel LowPreRoute =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			LowPreRouteView, LegacyPreRouteFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerA);
+	UFMCodexLocalMatchScreenWidget* LowScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	LowScreen->TakeWidget();
+	LowScreen->RefreshFromPresentation(LowPreRoute);
+	LowScreen->RefreshFromPresentation(LowPending);
+	LowScreen->PauseInlineFormulaRevealTimerForTesting();
+	LowScreen->AdvanceInlineFormulaRevealForTesting(1.10f);
+	TestTrue(TEXT("Cross Low route uses the same reveal and settles to Low"),
+		LowScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::IdlePending
+			&& LowScreen->GetInlineFormulaSurface()->GetPresentation().ContestId
+				== TEXT("Cross.Low")
+			&& LowScreen->GetInlineFormulaSurface()->GetPresentation()
+				.RouteResultLabel
+					== TEXT("路线掷点 2 → 判定为低球传中"));
+	LowScreen->RefreshFromPresentation(LowAttack);
+	LowScreen->PauseInlineFormulaRevealTimerForTesting();
+	TestTrue(TEXT("Cross Low attack live transition cycles"),
+		LowScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& LowScreen->IsInlineFormulaRevealInputBlocked());
+	LowScreen->AdvanceInlineFormulaRevealForTesting(1.10f);
+	LowScreen->RefreshFromPresentation(LowCompleted);
+	LowScreen->PauseInlineFormulaRevealTimerForTesting();
+	TestTrue(TEXT("Cross Low defense live transition cycles"),
+		LowScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& !LowScreen->GetInlineFormulaSurface()->GetPresentation()
+				.bNarrativeAvailable);
+	LowScreen->AdvanceInlineFormulaRevealForTesting(1.10f);
+	const auto& LowFinal =
+		LowScreen->GetInlineFormulaSurface()->GetPresentation();
+	const auto* LowAttackRoll = FindTerm(
+		LowFinal.AttackRow, EFMCodexUMGInlineFormulaTermKind::RawRoll, 1);
+	const auto* LowDefenseRoll = FindTerm(
+		LowFinal.DefenseRow, EFMCodexUMGInlineFormulaTermKind::RawRoll, 2);
+	TestTrue(TEXT("Cross Low terminal truth releases exact RawD6 only after settle"),
+		LowScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settled
+			&& LowFinal.bNarrativeAvailable
+			&& LowAttackRoll != nullptr && LowAttackRoll->RawD6 == 4
+			&& LowDefenseRoll != nullptr && LowDefenseRoll->RawD6 == 3);
+
+	FString ScreenSource;
+	const FString ScreenPath = FPaths::Combine(
+		FPaths::ProjectDir(),
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"));
+	TestTrue(TEXT("Reveal source is readable for RNG boundary guard"),
+		FFileHelper::LoadFileToString(ScreenSource, *ScreenPath));
+	TestTrue(TEXT("Cosmetic cycling contains no RNG or authority D6 call"),
+		!ScreenSource.Contains(TEXT("FMath::Rand"))
+			&& !ScreenSource.Contains(TEXT("RandRange"))
+			&& !ScreenSource.Contains(TEXT("FRandomStream"))
+			&& !ScreenSource.Contains(TEXT("RollD6")));
+	return true;
+}
+#endif
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexUnifiedRollReelRevealTest,
+	"FMCodex.LocalPlay.RollReel.UnifiedCoveredRolls",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
+{
+	using namespace FMCodexInlineResolutionFormulaSurfaceTests;
+	(void)Parameters;
+
+	FFMCodexLocalMatchResolutionFeedback LegacyPreRouteFeedback;
+	LegacyPreRouteFeedback.bVisible = true;
+	LegacyPreRouteFeedback.StepTitle = TEXT("Resolution Started");
+	LegacyPreRouteFeedback.ContinuationSummary =
+		TEXT("Continue - Resolve Route");
+	FFMCodexLocalMatchInteractionView PreRouteView = MakeInteraction();
+	PreRouteView.ContinueActionLabel = TEXT("判定传中路线");
+	const FFMCodexUMGMatchScreenViewModel PreRoutePresentation =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			PreRouteView, LegacyPreRouteFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerA);
+	const FFMCodexUMGMatchScreenViewModel ManualPending = BuildPresentation(
+		MakeCrossHighFacts(true, true, false, false));
+	const FFMCodexUMGMatchScreenViewModel ManualAttackSettled = BuildPresentation(
+		MakeCrossHighFacts(true, true, true, false));
+	const FFMCodexUMGMatchScreenViewModel ManualCompleted = BuildPresentation(
+		MakeCrossHighFacts(true, true, true, true, EFormulaWinner::Attacker));
+
+	UFMCodexLocalMatchScreenWidget* Screen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	TestNotNull(TEXT("Unified reel fixture screen can be constructed"), Screen);
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	Screen->RefreshFromPresentation(PreRoutePresentation);
+	Screen->RefreshFromPresentation(ManualPending);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	const auto& RouteStart =
+		Screen->GetInlineFormulaSurface()->GetPresentation();
+	UFMCodexRollReelWidget* FormulaReel =
+		Screen->GetInlineFormulaSurface()->GetRollReelWidget();
+	TestTrue(TEXT("Route reveal starts a clipped three-number vertical reel"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& Screen->IsInlineFormulaRevealInputBlocked()
+			&& RouteStart.RollReel.bVisible
+			&& RouteStart.RollReel.DomainMinimum == 1
+			&& RouteStart.RollReel.DomainMaximum == 6
+			&& RouteStart.RouteResultLabel.IsEmpty()
+			&& !RouteStart.bShowFormulaRows
+			&& FormulaReel != nullptr
+			&& FormulaReel->HasClippedWindow()
+			&& FormulaReel->GetStripDigitCount() == 3
+			&& FormulaReel->GetRenderedChildCount() == 3);
+	const float InitialOffset = FormulaReel != nullptr
+		? FormulaReel->GetCenterVerticalOffset() : 0.0f;
+	Screen->AdvanceInlineFormulaRevealForTesting(0.016f);
+	const float FirstFramePosition = FormulaReel != nullptr
+		? FormulaReel->GetPresentation().ContinuousPositionCells : 0.0f;
+	Screen->AdvanceInlineFormulaRevealForTesting(0.016f);
+	const float SecondFramePosition = FormulaReel != nullptr
+		? FormulaReel->GetPresentation().ContinuousPositionCells : 0.0f;
+	TestTrue(TEXT("Adjacent rendered frames advance continuous spatial offset"),
+		FormulaReel != nullptr
+			&& !FMath::IsNearlyEqual(
+				FormulaReel->GetCenterVerticalOffset(), InitialOffset)
+			&& FirstFramePosition > 0.0f
+			&& SecondFramePosition > FirstFramePosition
+			&& FormulaReel->GetRenderedChildCount() == 3);
+	const float EarlyStart = SecondFramePosition;
+	Screen->AdvanceInlineFormulaRevealForTesting(0.10f);
+	const float EarlyEnd = FormulaReel->GetPresentation()
+		.ContinuousPositionCells;
+	const float EarlyVelocity = (EarlyEnd - EarlyStart) / 0.10f;
+	Screen->AdvanceInlineFormulaRevealForTesting(0.418f);
+	const float MainStart = FormulaReel->GetPresentation()
+		.ContinuousPositionCells;
+	Screen->AdvanceInlineFormulaRevealForTesting(0.10f);
+	const float MainEnd = FormulaReel->GetPresentation()
+		.ContinuousPositionCells;
+	const float MainVelocity = (MainEnd - MainStart) / 0.10f;
+	Screen->AdvanceInlineFormulaRevealForTesting(0.45f);
+	const float LateStart = FormulaReel->GetPresentation()
+		.ContinuousPositionCells;
+	Screen->AdvanceInlineFormulaRevealForTesting(0.10f);
+	const float LateEnd = FormulaReel->GetPresentation()
+		.ContinuousPositionCells;
+	const float LateVelocity = (LateEnd - LateStart) / 0.10f;
+	TestTrue(TEXT("C.3 lowers fast speed and makes both slowdown stages visible"),
+		EarlyVelocity < 14.0f && EarlyVelocity > 11.0f
+			&& EarlyVelocity > MainVelocity
+			&& MainVelocity > LateVelocity
+			&& LateVelocity > 0.0f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.10f);
+	TestTrue(TEXT("1.30-second cycling enters continuous target capture"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling
+			&& Screen->IsInlineFormulaRevealInputBlocked()
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.RollReel.bMoving
+			&& !Screen->GetInlineFormulaSurface()->GetPresentation()
+				.RollReel.bAuthoritativeValue
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.RouteResultLabel.IsEmpty());
+	const float CaptureStart = FormulaReel->GetPresentation()
+		.ContinuousPositionCells;
+	const UTextBlock* StableCenterDigit = FormulaReel->GetCenterDigitWidget();
+	const FLinearColor StableReelFrameColor =
+		FormulaReel->GetFrameBrushColor();
+	Screen->AdvanceInlineFormulaRevealForTesting(0.08f);
+	const float EarlyTransitionNeighborOpacity =
+		FormulaReel->GetMaximumNeighborRenderOpacity();
+	TestTrue(TEXT("Final capture glides spatially instead of replacing center text"),
+		FormulaReel->GetPresentation().ContinuousPositionCells > CaptureStart
+			&& !FormulaReel->GetPresentation().bAuthoritativeValue
+			&& FormulaReel->GetCenterDigitWidget() == StableCenterDigit
+			&& FormulaReel->GetFrameBrushColor().Equals(
+				StableReelFrameColor)
+			&& FormulaReel->GetCenterRenderOpacity() > 0.95f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.036f);
+	const float PeakLandingOffset = FormulaReel->GetCenterVerticalOffset();
+	const float PeakLandingScale = FormulaReel->GetCenterRenderScale();
+	TestTrue(TEXT("Landing applies one restrained three-pixel and 1.08 scale lock"),
+		PeakLandingOffset <= -2.5f && PeakLandingOffset >= -3.1f
+			&& PeakLandingScale >= 1.07f && PeakLandingScale <= 1.081f
+			&& FormulaReel->GetMaximumNeighborRenderOpacity()
+				< EarlyTransitionNeighborOpacity
+			&& FormulaReel->GetFrameBrushColor().Equals(
+				StableReelFrameColor)
+			&& FormulaReel->GetCenterRenderOpacity() > 0.99f);
+	const float PeakNeighborOpacity =
+		FormulaReel->GetMaximumNeighborRenderOpacity();
+	Screen->AdvanceInlineFormulaRevealForTesting(0.02f);
+	TestTrue(TEXT("Landing returns toward center without a second bounce"),
+		FormulaReel->GetCenterVerticalOffset() < 0.0f
+			&& FormulaReel->GetCenterVerticalOffset() > PeakLandingOffset
+			&& FormulaReel->GetCenterRenderScale() < PeakLandingScale
+			&& FormulaReel->GetMaximumNeighborRenderOpacity()
+				< PeakNeighborOpacity
+			&& FormulaReel->GetFrameBrushColor().Equals(
+				StableReelFrameColor));
+	Screen->RefreshFromPresentation(ManualPending);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	TestTrue(TEXT("DTO rebuild during settle preserves the fixed reel style"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling
+			&& FormulaReel->GetFrameBrushColor().Equals(
+				StableReelFrameColor)
+			&& FormulaReel->GetCenterDigitWidget() == StableCenterDigit);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.02f);
+	TestTrue(TEXT("Settling visually completes before ResultHold state swap"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling
+			&& FormulaReel->GetMaximumNeighborRenderOpacity() < 0.02f
+			&& FormulaReel->GetPresentation().NeighborFadeAlpha > 0.98f
+			&& FormulaReel->GetFrameBrushColor().Equals(
+				StableReelFrameColor)
+			&& FormulaReel->GetCenterRenderOpacity() > 0.99f
+			&& FMath::Abs(FormulaReel->GetCenterVerticalOffset()) < 0.10f
+			&& FMath::Abs(FormulaReel->GetCenterRenderScale() - 1.0f) < 0.01f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.004f);
+	TestTrue(TEXT("Route enters a 1.45-second result hold before next action"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& Screen->IsInlineFormulaRevealInputBlocked()
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.RouteResultLabel
+					== TEXT("路线掷点 5 → 判定为高球传中")
+			&& FormulaReel->GetPresentation().CenterValue == 5
+			&& FormulaReel->GetPresentation().bStaticResult
+			&& FormulaReel->GetVisibleNeighborDigitCount() == 0
+			&& FormulaReel->IsStaticResultTileVisible()
+			&& FormulaReel->GetCenterDigitWidget() == StableCenterDigit
+			&& FormulaReel->GetCenterRenderOpacity() > 0.99f
+			&& FormulaReel->GetFrameBrushColor().Equals(
+				StableReelFrameColor)
+			&& FMath::IsNearlyZero(FormulaReel->GetCenterVerticalOffset())
+			&& FMath::IsNearlyEqual(
+				FormulaReel->GetCenterRenderScale(), 1.0f)
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel.IsEmpty());
+	Screen->RefreshFromPresentation(ManualPending);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	TestTrue(TEXT("ResultHold rebuild cannot restore faded reel neighbors"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& FormulaReel->GetVisibleNeighborDigitCount() == 0
+			&& FormulaReel->GetCenterDigitWidget() == StableCenterDigit);
+	Screen->AdvanceInlineFormulaRevealForTesting(1.43f);
+	TestTrue(TEXT("Route remains blocked until the complete hold elapses"),
+		Screen->IsInlineFormulaRevealInputBlocked());
+	Screen->AdvanceInlineFormulaRevealForTesting(0.02f);
+	TestTrue(TEXT("Route releases the already-authoritative attack action"),
+		!Screen->IsInlineFormulaRevealInputBlocked()
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel == TEXT("进攻方掷点"));
+
+	// Begin without an authority result, then receive the accepted value late.
+	Screen->BeginPendingCrossRollRevealForTesting();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(1.35f);
+	const int32 WaitingCenter = Screen->GetInlineFormulaSurface()
+		->GetPresentation().RollReel.CenterValue;
+	Screen->BeginPendingCrossRollRevealForTesting();
+	TestTrue(TEXT("Delayed authority loops safely and duplicate begin is ignored"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& Screen->IsInlineFormulaRevealInputBlocked()
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.RollReel.CenterValue == WaitingCenter);
+	Screen->RefreshFromPresentation(ManualAttackSettled);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	TestTrue(TEXT("Late accepted attack value starts exact authority capture"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.RollReel.bMoving
+			&& !Screen->GetInlineFormulaSurface()->GetPresentation()
+				.RollReel.bAuthoritativeValue);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	TestTrue(TEXT("Attack result hold initially withholds derived final value"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& !Screen->GetInlineFormulaSurface()->GetPresentation()
+				.AttackRow.bFinalValueResolved
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel.IsEmpty());
+	Screen->AdvanceInlineFormulaRevealForTesting(0.17f);
+	TestTrue(TEXT("Formula disclosure waits approximately 0.18 seconds"),
+		!Screen->GetInlineFormulaSurface()->GetPresentation()
+			.AttackRow.bFinalValueResolved);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.02f);
+	TestTrue(TEXT("Formula updates inside hold while defender CTA stays gated"),
+		Screen->GetInlineFormulaSurface()->GetPresentation()
+			.AttackRow.bFinalValueResolved
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel.IsEmpty()
+			&& Screen->IsInlineFormulaRevealInputBlocked());
+	Screen->RefreshFromPresentation(ManualAttackSettled);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	TestTrue(TEXT("Rebuild during accepted hold does not restart the reel"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold);
+	Screen->AdvanceInlineFormulaRevealForTesting(2.37f);
+	TestTrue(TEXT("Attack remains blocked through the readable-result window"),
+		Screen->IsInlineFormulaRevealInputBlocked());
+	Screen->AdvanceInlineFormulaRevealForTesting(0.03f);
+	TestTrue(TEXT("Attack releases defender after 2.4 readable seconds"),
+		!Screen->IsInlineFormulaRevealInputBlocked()
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel == TEXT("防守方掷点"));
+	Screen->RefreshFromPresentation(ManualPending);
+	TestTrue(TEXT("Stale pending rebuild cannot replay or downgrade attack truth"),
+		!Screen->IsInlineFormulaRevealInputBlocked()
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.AttackRow.bFinalValueResolved);
+	Screen->RefreshFromPresentation(ManualAttackSettled);
+
+	Screen->BeginPendingCrossRollRevealForTesting();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(0.35f);
+	Screen->RefreshFromPresentation(ManualCompleted);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(0.95f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	TestTrue(TEXT("Defense hold starts before terminal narrative disclosure"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& !Screen->GetInlineFormulaSurface()->GetPresentation()
+				.bNarrativeAvailable
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContestLabel != ManualCompleted.InlineFormula.NarrativeHeadline
+			&& !Screen->GetInlineFormulaSurface()->GetPresentation()
+				.DefenseRow.bFinalValueResolved
+			&& Screen->IsInlineFormulaRevealInputBlocked());
+	Screen->AdvanceInlineFormulaRevealForTesting(0.21f);
+	TestTrue(TEXT("Defense FinalValue discloses before terminal Narrative"),
+		Screen->GetInlineFormulaSurface()->GetPresentation()
+			.DefenseRow.bFinalValueResolved
+			&& !Screen->GetInlineFormulaSurface()->GetPresentation()
+				.bNarrativeAvailable
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel.IsEmpty()
+			&& Screen->IsInlineFormulaRevealInputBlocked());
+	Screen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	TestFalse(TEXT("Narrative remains hidden through its short transition"),
+		Screen->GetInlineFormulaSurface()->GetPresentation()
+			.bNarrativeAvailable);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.03f);
+	TestTrue(TEXT("Terminal Narrative discloses only after the formula gate"),
+		Screen->GetInlineFormulaSurface()->GetPresentation()
+			.bNarrativeAvailable
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContestLabel
+					== ManualCompleted.InlineFormula.NarrativeHeadline
+			&& Screen->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel.IsEmpty());
+	Screen->AdvanceInlineFormulaRevealForTesting(2.17f);
+	TestTrue(TEXT("Terminal CTA remains blocked through readable result hold"),
+		Screen->IsInlineFormulaRevealInputBlocked());
+	Screen->AdvanceInlineFormulaRevealForTesting(0.03f);
+	const auto& ManualFinal =
+		Screen->GetInlineFormulaSurface()->GetPresentation();
+	TestTrue(TEXT("Defense releases terminal truth only after full hold"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settled
+			&& !Screen->IsInlineFormulaRevealInputBlocked()
+			&& ManualFinal.AttackRow.bFinalValueResolved
+			&& ManualFinal.DefenseRow.bFinalValueResolved
+			&& ManualFinal.bNarrativeAvailable
+			&& ManualFinal.ContinueActionLabel == TEXT("下一回合"));
+	Screen->RefreshFromPresentation(ManualCompleted);
+	TestTrue(TEXT("Repeated completed rebuild never replays settled defense"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Settled
+			&& !Screen->IsInlineFormulaRevealInputBlocked());
+
+	UFMCodexLocalMatchScreenWidget* Reconstructed =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	Reconstructed->TakeWidget();
+	Reconstructed->RefreshFromPresentation(ManualCompleted);
+	TestTrue(TEXT("Already-resolved first observation renders without replay"),
+		Reconstructed->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::None
+			&& !Reconstructed->IsInlineFormulaRevealInputBlocked()
+			&& Reconstructed->GetInlineFormulaSurface()->GetPresentation()
+				.DefenseRow.bFinalValueResolved);
+
+	UFMCodexLocalMatchScreenWidget* Rejected =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	Rejected->TakeWidget();
+	Rejected->RefreshFromPresentation(ManualPending);
+	Rejected->BeginPendingCrossRollRevealForTesting();
+	FFMCodexUMGMatchScreenViewModel RejectedPending = ManualPending;
+	RejectedPending.Resolution.bRejected = true;
+	Rejected->RefreshFromPresentation(RejectedPending);
+	TestTrue(TEXT("Rejected request cancels the reel and restores pending truth"),
+		Rejected->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::IdlePending
+			&& !Rejected->IsInlineFormulaRevealInputBlocked()
+			&& Rejected->GetInlineFormulaSurface()->GetPresentation()
+				.ContinueActionLabel == TEXT("进攻方掷点"));
+
+	// Tactical Points use their production 2..8 random object, not a D6 skin.
+	FFMCodexLocalMatchInteractionView TacticalPendingView = MakeInteraction();
+	TacticalPendingView.bCurrentAttackActive = false;
+	TacticalPendingView.bTacticalPointRollReady = true;
+	TacticalPendingView.ActionPoint = 0;
+	TacticalPendingView.MajorPhase = EFMCodexLocalMatchMajorPhase::BetweenAttacks;
+	TacticalPendingView.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::TacticalPointRoll;
+	TacticalPendingView.bHumanInteraction = true;
+	FFMCodexLocalMatchInteractionView TacticalResolvedView = TacticalPendingView;
+	TacticalResolvedView.bCurrentAttackActive = true;
+	TacticalResolvedView.bTacticalPointRollReady = false;
+	TacticalResolvedView.ActionPoint = 6;
+	TacticalResolvedView.MajorPhase = EFMCodexLocalMatchMajorPhase::Deployment;
+	TacticalResolvedView.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::Deploy;
+	const FFMCodexLocalMatchResolutionFeedback EmptyFeedback;
+	const auto TacticalPending =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			TacticalPendingView, EmptyFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerA);
+	const auto TacticalResolved =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			TacticalResolvedView, EmptyFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerA);
+	UFMCodexLocalMatchScreenWidget* TacticalScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	TacticalScreen->TakeWidget();
+	TacticalScreen->RefreshFromPresentation(TacticalPending);
+	TacticalScreen->BeginPendingTacticalPointRevealForTesting();
+	TacticalScreen->PauseInlineFormulaRevealTimerForTesting();
+	TacticalScreen->RefreshFromPresentation(TacticalResolved);
+	TacticalScreen->PauseInlineFormulaRevealTimerForTesting();
+	UFMCodexRollReelWidget* TacticalReel =
+		TacticalScreen->GetTacticalPointRollReel();
+	TestTrue(TEXT("Tactical Point reveal uses one clipped 2..8 reel"),
+		TacticalScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& TacticalScreen->IsInlineFormulaRevealInputBlocked()
+			&& TacticalReel != nullptr
+			&& TacticalReel->GetPresentation().DomainMinimum == 2
+			&& TacticalReel->GetPresentation().DomainMaximum == 8
+			&& TacticalReel->HasClippedWindow()
+			&& TacticalReel->GetRenderedChildCount() == 3
+			&& !TacticalScreen->GetMatchHeader()->GetPresentation()
+				.bShowLeftTacticalPointChip);
+	TacticalScreen->AdvanceInlineFormulaRevealForTesting(1.30f);
+	TacticalScreen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	TestTrue(TEXT("Tactical raw result equals authoritative final resource"),
+		TacticalScreen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& TacticalReel->GetPresentation().CenterValue == 6
+			&& TacticalReel->GetPresentation().bAuthoritativeValue
+			&& TacticalReel->GetPresentation().bStaticResult
+			&& TacticalReel->GetVisibleNeighborDigitCount() == 0
+			&& TacticalReel->IsStaticResultTileVisible()
+			&& !TacticalScreen->GetMatchHeader()->GetPresentation()
+				.bShowLeftTacticalPointChip);
+	TacticalScreen->AdvanceInlineFormulaRevealForTesting(0.21f);
+	TestTrue(TEXT("Tactical resource discloses after settle but remains gated"),
+		TacticalScreen->GetMatchHeader()->GetPresentation()
+			.bShowLeftTacticalPointChip
+			&& TacticalScreen->GetMatchHeader()->GetPresentation()
+				.CurrentAttackerTacticalPoints == 6
+			&& TacticalScreen->IsInlineFormulaRevealInputBlocked());
+	TacticalScreen->AdvanceInlineFormulaRevealForTesting(2.35f);
+	TestTrue(TEXT("Deployment remains blocked through readable resource hold"),
+		TacticalScreen->IsInlineFormulaRevealInputBlocked());
+	TacticalScreen->AdvanceInlineFormulaRevealForTesting(0.03f);
+	TestTrue(TEXT("Tactical deployment releases after 2.4 readable seconds"),
+		!TacticalScreen->IsInlineFormulaRevealInputBlocked()
+			&& TacticalScreen->GetPresentation().Interaction.Category
+				== EFMCodexUMGInteractionCategory::Deploy);
+
+	// Cross Low is covered by the same state machine and exact RawD6 facts.
+	const auto LowPending = BuildPresentation(MakeCrossHighFacts(
+		false, false, false, false, EFormulaWinner::None,
+		EMatchPlayCrossActualBranch::Low, 2));
+	const auto LowAttack = BuildPresentation(MakeCrossHighFacts(
+		false, false, true, false, EFormulaWinner::None,
+		EMatchPlayCrossActualBranch::Low, 2));
+	const auto LowCompleted = BuildPresentation(MakeCrossHighFacts(
+		false, false, true, true, EFormulaWinner::Defender,
+		EMatchPlayCrossActualBranch::Low, 2));
+	UFMCodexLocalMatchScreenWidget* LowScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	LowScreen->TakeWidget();
+	LowScreen->RefreshFromPresentation(LowPending);
+	LowScreen->BeginPendingCrossRollRevealForTesting();
+	LowScreen->PauseInlineFormulaRevealTimerForTesting();
+	LowScreen->RefreshFromPresentation(LowAttack);
+	LowScreen->PauseInlineFormulaRevealTimerForTesting();
+	LowScreen->AdvanceInlineFormulaRevealForTesting(4.20f);
+	LowScreen->BeginPendingCrossRollRevealForTesting();
+	LowScreen->PauseInlineFormulaRevealTimerForTesting();
+	LowScreen->RefreshFromPresentation(LowCompleted);
+	LowScreen->PauseInlineFormulaRevealTimerForTesting();
+	LowScreen->AdvanceInlineFormulaRevealForTesting(4.20f);
+	const auto& LowFinal =
+		LowScreen->GetInlineFormulaSurface()->GetPresentation();
+	const auto* LowAttackRoll = FindTerm(
+		LowFinal.AttackRow, EFMCodexUMGInlineFormulaTermKind::RawRoll, 1);
+	const auto* LowDefenseRoll = FindTerm(
+		LowFinal.DefenseRow, EFMCodexUMGInlineFormulaTermKind::RawRoll, 2);
+	TestTrue(TEXT("Cross Low shares terminal reveal without changing RawD6"),
+		LowFinal.bNarrativeAvailable
+			&& LowAttackRoll != nullptr && LowAttackRoll->RawD6 == 4
+			&& LowDefenseRoll != nullptr && LowDefenseRoll->RawD6 == 3);
+
+	FString ScreenSource;
+	FString ReelSource;
+	FString TacticalProviderSource;
+	FString HostSource;
+	TestTrue(TEXT("Reveal implementation sources are readable"),
+		FFileHelper::LoadFileToString(ScreenSource, *FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp")))
+		&& FFileHelper::LoadFileToString(ReelSource, *FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Source/FMCodex/LocalPlay/FMCodexRollReelWidget.cpp")))
+		&& FFileHelper::LoadFileToString(TacticalProviderSource, *FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchD6Provider.cpp")))
+		&& FFileHelper::LoadFileToString(HostSource, *FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.cpp"))));
+	TestTrue(TEXT("Cosmetic reel consumes no gameplay RNG"),
+		!ScreenSource.Contains(TEXT("FMath::Rand"))
+			&& !ScreenSource.Contains(TEXT("RandRange"))
+			&& !ScreenSource.Contains(TEXT("FRandomStream"))
+			&& !ScreenSource.Contains(TEXT("RollD6"))
+			&& !ReelSource.Contains(TEXT("FMath::Rand"))
+			&& !ReelSource.Contains(TEXT("RandRange"))
+			&& !ReelSource.Contains(TEXT("FRandomStream")));
+	TestTrue(TEXT("Active motion is scheduled per rendered frame, not by 40ms steps"),
+		ScreenSource.Contains(TEXT("SetTimerForNextTick"))
+			&& ScreenSource.Contains(TEXT("GetDeltaSeconds"))
+			&& ScreenSource.Contains(TEXT("RefreshActiveRollReelVisuals")));
+	TestTrue(TEXT("Tactical production authority remains one direct 2..8 roll"),
+		TacticalProviderSource.Contains(TEXT("RandomStream.RandRange(2, 8)"))
+			&& HostSource.Contains(TEXT("RollOrdinaryTacticalPoint()"))
+			&& HostSource.Contains(TEXT("BeginOrdinaryAttack(")));
 	return true;
 }
 
