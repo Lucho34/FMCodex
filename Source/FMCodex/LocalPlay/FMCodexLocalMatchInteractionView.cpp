@@ -6,7 +6,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackMarkerSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator.h"
-#include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
+#include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
 #include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
@@ -548,7 +548,7 @@ namespace FMCodexLocalMatchInteractionView
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackB:
 			return TEXT("Paired Attack B");
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::BehindDefenseP2Defense:
-			return TEXT("Behind Defense P2 Defense");
+			return TEXT("Legacy Behind Defense P2 (unreachable)");
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneChipShotAttack:
 			return TEXT("One-on-One Chip Shot Attack");
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotAttack:
@@ -607,12 +607,13 @@ namespace FMCodexLocalMatchInteractionView
 			== EMatchPlayThroughBallActualBranch::BehindDefense)
 		{
 			const auto Replay =
-				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator
-					::Resolve(State, &SkillRuleSet, nullptr);
+				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator
+					::Resolve(State, &SkillRuleSet);
 			return Replay.bSuccess
-				&& Replay.ProviderCallCount == 0
-				&& Replay.QueryResult.Decision
-					== EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired;
+				&& Replay.PlanRegenerationProviderCallCount == 0
+				&& Replay.FormulaExecutionResult.Decision
+					== EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+						::OneOnOneRequired;
 		}
 		return false;
 	}

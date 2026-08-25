@@ -170,6 +170,15 @@ void UFMCodexInteractionPanelWidget::RequestFinishDeployment()
 	}
 }
 
+void UFMCodexInteractionPanelWidget::RequestDeploymentTacticalReference()
+{
+	if (!bInteractionBlocked
+		&& Presentation.Category == EFMCodexUMGInteractionCategory::Deploy)
+	{
+		OnDeploymentTacticalReferenceRequested.Broadcast();
+	}
+}
+
 void UFMCodexInteractionPanelWidget::RequestCarrier(const FName CardId)
 {
 	if (!bInteractionBlocked)
@@ -366,6 +375,15 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	NoLegalButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleNoLegalClicked);
 	SecondaryActions->AddChildToHorizontalBox(NoLegalButton);
+	UTextBlock* TacticalReferenceLabel = nullptr;
+	DeploymentTacticalReferenceButton = MakeButton(
+		*WidgetTree, TEXT("DeploymentTacticalReferenceEntryButton"),
+		TacticalReferenceLabel, EFMCodexPlayerUIActionRole::Secondary);
+	DeploymentTacticalReferenceButton->OnClicked.AddDynamic(
+		this,
+		&UFMCodexInteractionPanelWidget::HandleDeploymentTacticalReferenceClicked);
+	SecondaryActions->AddChildToHorizontalBox(
+		DeploymentTacticalReferenceButton);
 	Body->AddChildToHorizontalBox(SecondaryActions);
 
 	UHorizontalBox* PrimaryActions =
@@ -524,6 +542,9 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		Presentation.DeclineActionLabel);
 	SetButton(NoLegalButton, Presentation.bCanResolveNoLegal,
 		Presentation.NoLegalActionLabel);
+	SetButton(DeploymentTacticalReferenceButton,
+		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy,
+		TEXT("TACTICAL REFERENCE"));
 
 	const bool bHasDynamicChoices = !RenderedOptionWidgets.IsEmpty();
 	const bool bHasPrimaryAction = Presentation.bCanStartNewMatch
@@ -686,6 +707,12 @@ void UFMCodexInteractionPanelWidget::HandleTacticalPointRollClicked()
 void UFMCodexInteractionPanelWidget::HandleFinishClicked()
 {
 	RequestFinishDeployment();
+}
+
+void UFMCodexInteractionPanelWidget::
+HandleDeploymentTacticalReferenceClicked()
+{
+	RequestDeploymentTacticalReference();
 }
 
 void UFMCodexInteractionPanelWidget::HandleDeclineClicked()

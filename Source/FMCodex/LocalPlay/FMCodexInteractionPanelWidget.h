@@ -30,6 +30,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FName, SlotId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
 	FFMCodexInteractionFinishDeploymentRequested);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(
+	FFMCodexInteractionDeploymentTacticalReferenceRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexInteractionCarrierRequested, FName, CardId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
@@ -93,6 +95,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Intent")
 	void RequestFinishDeployment();
 
+	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Presentation")
+	void RequestDeploymentTacticalReference();
+
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Intent")
 	void RequestCarrier(FName CardId);
 
@@ -138,6 +143,10 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionFinishDeploymentRequested OnFinishDeploymentRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
+	FFMCodexInteractionDeploymentTacticalReferenceRequested
+		OnDeploymentTacticalReferenceRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionCarrierRequested OnCarrierRequested;
@@ -198,6 +207,9 @@ private:
 
 	UFUNCTION()
 	void HandleFinishClicked();
+
+	UFUNCTION()
+	void HandleDeploymentTacticalReferenceClicked();
 
 	UFUNCTION()
 	void HandleDeclineClicked();
@@ -294,6 +306,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> FinishButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> DeploymentTacticalReferenceButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> DeclineButton;

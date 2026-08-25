@@ -93,8 +93,18 @@ namespace ThroughBallBehindDefenseP2OutcomeQueryTests
 		ExecutionInput.ResolverInputAssemblyResult =
 			FThroughBallBehindDefenseP1FormulaResolverInputAssembler::Assemble(
 				AssemblyInput);
-		return FThroughBallBehindDefenseP1FormulaResolutionExecutor::Execute(
-			ExecutionInput);
+		auto Result =
+			FThroughBallBehindDefenseP1FormulaResolutionExecutor::Execute(
+				ExecutionInput);
+		// P2 is no longer reachable from the canonical Executor.  These isolated
+		// compatibility tests explicitly reconstruct the historical source
+		// envelope so the retained pure query remains deterministic and safe.
+		Result.Decision =
+			EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+				::P2Required;
+		Result.bRequiresOneOnOne = false;
+		Result.bRequiresP2 = true;
+		return Result;
 	}
 
 	FThroughBallBehindDefenseP2OutcomeQueryInput MakeInput(

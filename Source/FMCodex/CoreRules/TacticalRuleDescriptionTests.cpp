@@ -186,12 +186,12 @@ bool FTacticalRuleDescriptionCanonicalSemanticsTest::RunTest(
 	const auto* Direct = Branch(*ThroughBall, TEXT("ThroughBall.OneOnOneDirect"));
 	const auto* Chip = Branch(*ThroughBall, TEXT("ThroughBall.OneOnOneChip"));
 	TestTrue(TEXT("Through Ball distinguishes arithmetic, conditional and outcome branches"),
-		Feet != nullptr && BehindP1 != nullptr && BehindP2 != nullptr
+		Feet != nullptr && BehindP1 != nullptr && BehindP2 == nullptr
 			&& AntiOffside != nullptr && Direct != nullptr && Chip != nullptr
+			&& ThroughBall->Branches.Num() == 5
 			&& Feet->RollSemantics == ESemantics::ArithmeticContest
+			&& BehindP1->RollSemantics == ESemantics::ArithmeticContest
 			&& BehindP1->bConditional && !BehindP1->bUsesTacticalPlayerAdvantage
-			&& BehindP2->RollSemantics == ESemantics::OutcomeDecision
-			&& HasOutcome(*BehindP2, 1, 3, TEXT("OneOnOne"))
 			&& HasOutcome(*AntiOffside, 6, 6, TEXT("OneOnOne"))
 			&& HasTerm(Direct->DefenseTerms, EKind::GoalkeeperContribution,
 				ERole::Goalkeeper, EAttribute::GoalkeeperOneOnOne, 1.0f)
@@ -200,4 +200,3 @@ bool FTacticalRuleDescriptionCanonicalSemanticsTest::RunTest(
 }
 
 #endif
-

@@ -9,6 +9,7 @@
 
 class AFMCodexLocalMatchPlayerController;
 class UBorder;
+class UButton;
 class UCanvasPanel;
 class UFMCodexCardRackWidget;
 class UFMCodexInteractionPanelWidget;
@@ -149,6 +150,11 @@ public:
 #endif
 	UFMCodexSelectionFeedbackToastWidget* GetSelectionFeedbackToast() const;
 	UFMCodexTacticalDetailPanelWidget* GetTacticalDetailPanel() const;
+	bool IsDeploymentTacticalReferenceOpen() const;
+	ESkillRuleType GetDeploymentTacticalReferenceSkillType() const;
+	void OpenDeploymentTacticalReference();
+	void SelectDeploymentTacticalReference(ESkillRuleType SkillType);
+	void CloseDeploymentTacticalReference();
 	UFMCodexCardRackWidget* GetLocalRackWidget() const;
 	UFMCodexCardRackWidget* GetOpponentRackWidget() const;
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
@@ -222,6 +228,27 @@ private:
 	void HandleTacticalDetailPointerEntered();
 	void HandleTacticalDetailPointerLeft();
 	void HideTacticalDetail();
+
+	UFUNCTION()
+	void HandleDeploymentTacticalReferenceRequested();
+
+	UFUNCTION()
+	void HandleDeploymentReferenceLongShotClicked();
+
+	UFUNCTION()
+	void HandleDeploymentReferenceCutInsideClicked();
+
+	UFUNCTION()
+	void HandleDeploymentReferencePassControlClicked();
+
+	UFUNCTION()
+	void HandleDeploymentReferenceCrossClicked();
+
+	UFUNCTION()
+	void HandleDeploymentReferenceThroughBallClicked();
+
+	UFUNCTION()
+	void HandleDeploymentReferenceCloseClicked();
 
 	UFUNCTION()
 	void HandleStartNewMatchClicked();
@@ -354,6 +381,12 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexTacticalDetailPanelWidget> TacticalDetailPanel;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> TacticalDetailSurface;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> DeploymentTacticalReferenceControls;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Interaction Presentation")
 	TSubclassOf<UFMCodexInteractionPanelWidget> InteractionPanelWidgetClass;
 
@@ -421,6 +454,8 @@ private:
 		EFMCodexUMGCardInteractionState::Default;
 	bool bDeploymentDragActive = false;
 	bool bDeploymentDropSubmitted = false;
+	bool bDeploymentTacticalReferenceOpen = false;
+	ESkillRuleType DeploymentTacticalReferenceSkillType = ESkillRuleType::None;
 	FName ActiveTacticalDetailSkillId = NAME_None;
 	bool bTacticalCardHoverOrFocus = false;
 	bool bTacticalDetailPointerInside = false;

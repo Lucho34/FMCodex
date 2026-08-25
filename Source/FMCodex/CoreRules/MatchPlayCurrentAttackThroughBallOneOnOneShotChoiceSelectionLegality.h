@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionTypes.h"
-#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionTypes.h"
+#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaTypes.h"
 #include "MatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionTypes.h"
 
 #include "MatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionLegality.generated.h"
@@ -36,8 +36,8 @@ struct FMCODEX_API
 	int32 SourceRegenerationProviderCallCount = 0;
 	FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionResult
 		AntiOffsideRegenerationResult;
-	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionResult
-		BehindDefenseP2RegenerationResult;
+	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaResult
+		BehindDefenseP1RegenerationResult;
 };
 
 class FMCODEX_API

@@ -942,7 +942,7 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 			{
 				Decision.Outcome = Contest.ResolvedResult.Winner
 					== EFormulaWinner::Attacker
-						? EOutcome::P2Required
+						? EOutcome::OneOnOneRequired
 						: EOutcome::DefenderStoppedAttack;
 			}
 			else
@@ -1172,27 +1172,6 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 				bResolved && Roll->RawD6 == 6
 					? EOutcome::OneOnOneRequired : EOutcome::Offside);
 		}
-		const bool bHasP2 = Session.PostRouteRollProgress.Phase
-			== EMatchPlayCurrentAttackPostRouteRollPhase::BehindDefenseP2
-			|| Session.PostRouteRollProgress.Phase
-				== EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneChipShot
-			|| Session.PostRouteRollProgress.Phase
-				== EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneDirectShot;
-		if (Branch.ThroughBall == EMatchPlayThroughBallActualBranch::BehindDefense
-			&& bHasP2)
-		{
-			const auto* Roll = FindRoll(
-				Projection, EPostPurpose::BehindDefenseP2Defense);
-			const bool bResolved = Roll != nullptr && Roll->bResolved;
-			AddDecision(
-				Projection,
-				TEXT("ThroughBall.BehindDefense.P2.Outcome"),
-				ERollSemantics::OutcomeDecision,
-				{ EPostPurpose::BehindDefenseP2Defense },
-				bResolved,
-				bResolved && Roll->RawD6 <= 3
-					? EOutcome::OneOnOneRequired : EOutcome::Offside);
-		}
 		if (Session.ThroughBallOneOnOneShotChoice
 			== EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
 		{
@@ -1281,16 +1260,6 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		if (Branch.ActionType != ESkillRuleType::ThroughBall)
 		{
 			return;
-		}
-		const auto Phase = Session.PostRouteRollProgress.Phase;
-		if (Branch.ThroughBall == EMatchPlayThroughBallActualBranch::BehindDefense
-			&& (Phase == EMatchPlayCurrentAttackPostRouteRollPhase::BehindDefenseP2
-				|| Phase == EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneChipShot
-				|| Phase == EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneDirectShot))
-		{
-			AddPostRouteRoll(Projection, Session,
-				EPostPurpose::BehindDefenseP2Defense,
-				ERollSemantics::OutcomeDecision);
 		}
 		if (Session.ThroughBallOneOnOneShotChoice
 			== EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)

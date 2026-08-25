@@ -24,7 +24,7 @@ namespace
 		None,
 		OutOfPlay,
 		DefenderStoppedAttack,
-		P2Required
+		OneOnOneRequired
 	};
 
 	struct FComposedP1Observation
@@ -42,7 +42,7 @@ namespace
 		EComposedP1Outcome Outcome = EComposedP1Outcome::None;
 		bool bAttackEnded = false;
 		bool bContinueResolution = false;
-		bool bRequiresP2 = false;
+		bool bRequiresOneOnOne = false;
 		FName RunnerId = NAME_None;
 	};
 
@@ -148,7 +148,7 @@ namespace
 			Observation.bAttackEnded = Observation.PlanResult.bAttackEnded;
 			Observation.bContinueResolution =
 				Observation.PlanResult.bContinueResolution;
-			Observation.bRequiresP2 = Observation.PlanResult.bRequiresP2;
+			Observation.bRequiresOneOnOne = Observation.PlanResult.bRequiresOneOnOne;
 			return Observation;
 		}
 
@@ -186,7 +186,7 @@ namespace
 		Observation.bAttackEnded = Observation.ExecutionResult.bAttackEnded;
 		Observation.bContinueResolution =
 			Observation.ExecutionResult.bContinueResolution;
-		Observation.bRequiresP2 = Observation.ExecutionResult.bRequiresP2;
+		Observation.bRequiresOneOnOne = Observation.ExecutionResult.bRequiresOneOnOne;
 		Observation.RunnerId = Observation.ExecutionResult.RunnerId;
 
 		if (Observation.ExecutionResult.Decision
@@ -197,9 +197,9 @@ namespace
 		}
 		else if (Observation.ExecutionResult.Decision
 			== EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
-				::P2Required)
+				::OneOnOneRequired)
 		{
-			Observation.Outcome = EComposedP1Outcome::P2Required;
+			Observation.Outcome = EComposedP1Outcome::OneOnOneRequired;
 		}
 
 		return Observation;
@@ -361,7 +361,7 @@ namespace
 		Test.TestEqual(TEXT("Outcome deterministic"), First.Outcome, Second.Outcome);
 		Test.TestEqual(TEXT("Attack-ended flag deterministic"), First.bAttackEnded, Second.bAttackEnded);
 		Test.TestEqual(TEXT("Continue flag deterministic"), First.bContinueResolution, Second.bContinueResolution);
-		Test.TestEqual(TEXT("P2 flag deterministic"), First.bRequiresP2, Second.bRequiresP2);
+		Test.TestEqual(TEXT("OneOnOne flag deterministic"), First.bRequiresOneOnOne, Second.bRequiresOneOnOne);
 		Test.TestEqual(TEXT("RunnerId deterministic"), First.RunnerId, Second.RunnerId);
 		Test.TestEqual(TEXT("MatchLog LogId deterministic"), LeftResolution.MatchLogEntry.LogId, RightResolution.MatchLogEntry.LogId);
 		Test.TestEqual(TEXT("MatchLog TurnIndex deterministic"), LeftResolution.MatchLogEntry.TurnIndex, RightResolution.MatchLogEntry.TurnIndex);
@@ -400,7 +400,7 @@ namespace
 			ExpectOutOfPlay(Test, Observation);
 			Test.TestTrue(TEXT("OutOfPlay ends attack"), Observation.bAttackEnded);
 			Test.TestFalse(TEXT("OutOfPlay does not continue"), Observation.bContinueResolution);
-			Test.TestFalse(TEXT("OutOfPlay does not require P2"), Observation.bRequiresP2);
+			Test.TestFalse(TEXT("OutOfPlay does not require OneOnOne"), Observation.bRequiresOneOnOne);
 			Test.TestTrue(TEXT("OutOfPlay RunnerId is None"), Observation.RunnerId.IsNone());
 			break;
 		}
@@ -424,8 +424,8 @@ namespace
 		case 6:
 		{
 			const auto Observation = Compose(MakePlanInput(false));
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
-			Test.TestTrue(TEXT("Attacker outcome requires P2"), Observation.bRequiresP2);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
+			Test.TestTrue(TEXT("Attacker outcome requires OneOnOne"), Observation.bRequiresOneOnOne);
 			break;
 		}
 		case 7:
@@ -434,7 +434,7 @@ namespace
 			Input.AttackD6 = 6;
 			Input.DefenseD6 = 1;
 			const auto Observation = Compose(Input);
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
 			Test.TestEqual(TEXT("P2 carries real Plan RunnerId"), Observation.RunnerId, Observation.PlanResult.FormulaPlan.RunnerId);
 			Test.TestEqual(TEXT("P2 carries fixture RunnerId"), Observation.RunnerId, RunnerId);
 			break;
@@ -442,7 +442,7 @@ namespace
 		case 8:
 		{
 			const auto Observation = Compose(MakePlanInput(false));
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
 			const auto& Plan = Observation.PlanResult.FormulaPlan;
 			const auto& Resolver = Observation.AssemblyResult.ResolverInput;
 			Test.TestEqual(TEXT("Fixture produces attack Base"), Plan.AttackBaseValue, 4.5f);
@@ -460,7 +460,7 @@ namespace
 			Input.AttackD6 = 6;
 			Input.DefenseD6 = 2;
 			const auto Observation = Compose(Input);
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
 			Test.TestEqual(TEXT("Selected branch is explicit"), Observation.PlanResult.Input.SelectedBranch, EThroughBallSelectedBranch::BehindDefense);
 			Test.TestNotEqual(TEXT("P1 AttackD6 is distinct fixture data from branch D6 context"), Input.AttackD6, BranchSelectionD6Context);
 			Test.TestNotEqual(TEXT("P1 DefenseD6 is distinct fixture data from branch D6 context"), Input.DefenseD6, BranchSelectionD6Context);
@@ -473,7 +473,7 @@ namespace
 		case 10:
 		{
 			const auto Observation = Compose(MakePlanInput(false));
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
 			const TArray<int32> ExpectedAttackStamina{6, 5};
 			const TArray<int32> ExpectedDefenseStamina{4};
 			const TArray<FName> ExpectedCards{CarrierId, RunnerId, MarkerId};
@@ -488,7 +488,7 @@ namespace
 			Input.AttackD6 = 6;
 			Input.DefenseD6 = 1;
 			const auto Observation = Compose(Input);
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
 			const TArray<int32> ExpectedAttackStamina{6, 5};
 			const TArray<int32> ExpectedDefenseStamina{4, 3};
 			const TArray<FName> ExpectedCards{CarrierId, RunnerId, MarkerId, HelperId};
@@ -502,7 +502,7 @@ namespace
 			const auto Input = MakePlanInput(false, true);
 			Test.TestTrue(TEXT("Real Eligibility accepts cross-side duplicate CardId"), Input.ParticipantEligibilityResult.bSuccess);
 			const auto Observation = Compose(Input);
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
 			const TArray<FName> ExpectedCards{CarrierId, RunnerId, CarrierId};
 			Test.TestTrue(TEXT("Plan preserves allowed duplicate CardId"), Observation.PlanResult.FormulaPlan.InvolvedCardIds == ExpectedCards);
 			Test.TestTrue(TEXT("Assembly preserves allowed duplicate CardId"), Observation.AssemblyResult.ResolverInput.InvolvedCardIds == ExpectedCards);
@@ -538,7 +538,7 @@ namespace
 			Input.AttackD6 = 6;
 			Input.DefenseD6 = 1;
 			const auto Observation = Compose(Input);
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
 			Test.TestEqual(TEXT("Assembly receives Plan Decision"), Observation.AssemblyResult.Input.PlanQueryResult.Decision, Observation.PlanResult.Decision);
 			Test.TestTrue(TEXT("Assembly receives Plan CardIds"), Observation.AssemblyResult.Input.PlanQueryResult.FormulaPlan.InvolvedCardIds == Observation.PlanResult.FormulaPlan.InvolvedCardIds);
 			Test.TestTrue(TEXT("Execution receives Resolver CardIds"), Observation.ExecutionResult.Input.ResolverInputAssemblyResult.ResolverInput.InvolvedCardIds == Observation.AssemblyResult.ResolverInput.InvolvedCardIds);
@@ -558,7 +558,7 @@ namespace
 			Input.DefenseD6 = 1;
 			const auto Before = Input;
 			const auto Observation = Compose(Input);
-			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
 			AssertSelectedInputFieldsUnchanged(Test, Before, Input);
 			break;
 		}
@@ -569,8 +569,8 @@ namespace
 			Input.DefenseD6 = 1;
 			const auto First = Compose(Input);
 			const auto Second = Compose(Input);
-			ExpectFormulaSuccess(Test, First, EComposedP1Outcome::P2Required);
-			ExpectFormulaSuccess(Test, Second, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, First, EComposedP1Outcome::OneOnOneRequired);
+			ExpectFormulaSuccess(Test, Second, EComposedP1Outcome::OneOnOneRequired);
 			AssertSelectedDeterministicFields(Test, First, Second);
 			break;
 		}
@@ -585,7 +585,7 @@ namespace
 			FormulaInput.AttackD6 = 6;
 			FormulaInput.DefenseD6 = 1;
 			const auto FormulaObservation = Compose(FormulaInput);
-			ExpectFormulaSuccess(Test, FormulaObservation, EComposedP1Outcome::P2Required);
+			ExpectFormulaSuccess(Test, FormulaObservation, EComposedP1Outcome::OneOnOneRequired);
 
 			FString Source;
 			const FString Path = FPaths::Combine(
@@ -637,8 +637,8 @@ THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Compo
 THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition03, "03OutOfPlayTerminalMetadata", 3)
 THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition04, "04NoHelperDefenderStoppedAttack", 4)
 THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition05, "05HelperDefenderStoppedAttack", 5)
-THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition06, "06NoHelperP2Required", 6)
-THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition07, "07HelperP2RequiredWithRunner", 7)
+THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition06, "06NoHelperOneOnOneRequired", 6)
+THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition07, "07HelperOneOnOneRequiredWithRunner", 7)
 THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition08, "08BaseAndModifierBridge", 8)
 THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition09, "09P1DiceBridgeAndBranchDiceIsolation", 9)
 THROUGH_BALL_BEHIND_DEFENSE_P1_COMPOSITION_TEST(FThroughBallBehindDefenseP1Composition10, "10NoHelperStaminaAndCardOrder", 10)

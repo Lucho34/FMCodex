@@ -30,6 +30,7 @@
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/SizeBox.h"
+#include "Components/Spacer.h"
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
@@ -456,6 +457,66 @@ UFMCodexLocalMatchScreenWidget::GetTacticalDetailPanel() const
 	return TacticalDetailPanel;
 }
 
+bool UFMCodexLocalMatchScreenWidget::
+IsDeploymentTacticalReferenceOpen() const
+{
+	return bDeploymentTacticalReferenceOpen;
+}
+
+ESkillRuleType UFMCodexLocalMatchScreenWidget::
+GetDeploymentTacticalReferenceSkillType() const
+{
+	return DeploymentTacticalReferenceSkillType;
+}
+
+void UFMCodexLocalMatchScreenWidget::OpenDeploymentTacticalReference()
+{
+	if (TacticalDetailPanel == nullptr
+		|| DeploymentTacticalReferenceControls == nullptr
+		|| Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::Deploy)
+	{
+		return;
+	}
+	bDeploymentTacticalReferenceOpen = true;
+	DeploymentTacticalReferenceControls->SetVisibility(
+		ESlateVisibility::Visible);
+	SelectDeploymentTacticalReference(ESkillRuleType::LongShot);
+}
+
+void UFMCodexLocalMatchScreenWidget::SelectDeploymentTacticalReference(
+	const ESkillRuleType SkillType)
+{
+	if (!bDeploymentTacticalReferenceOpen || TacticalDetailPanel == nullptr
+		|| Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::Deploy)
+	{
+		return;
+	}
+	const FFMCodexUMGTacticalDetailViewModel Detail =
+		FFMCodexTacticalDetailPresentationBuilder::Build(SkillType);
+	if (!Detail.bValid)
+	{
+		return;
+	}
+	CancelTacticalDetailDismiss();
+	DeploymentTacticalReferenceSkillType = SkillType;
+	TacticalDetailPanel->RefreshFromPresentation(Detail);
+	TacticalDetailPanel->SetVisibility(ESlateVisibility::Visible);
+}
+
+void UFMCodexLocalMatchScreenWidget::CloseDeploymentTacticalReference()
+{
+	bDeploymentTacticalReferenceOpen = false;
+	DeploymentTacticalReferenceSkillType = ESkillRuleType::None;
+	if (DeploymentTacticalReferenceControls != nullptr)
+	{
+		DeploymentTacticalReferenceControls->SetVisibility(
+			ESlateVisibility::Collapsed);
+	}
+	HideTacticalDetail();
+}
+
 UFMCodexResolutionPanelWidget*
 UFMCodexLocalMatchScreenWidget::GetResolutionPanel() const
 {
@@ -682,6 +743,10 @@ void UFMCodexLocalMatchScreenWidget::RequestDeployGoalkeeper(
 
 void UFMCodexLocalMatchScreenWidget::RequestFinishDeployment()
 {
+	if (bDeploymentTacticalReferenceOpen)
+	{
+		CloseDeploymentTacticalReference();
+	}
 	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
 	{
 		MatchController->FinishDeployment();
@@ -1047,6 +1112,48 @@ void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailDismissed(
 	}
 }
 
+void UFMCodexLocalMatchScreenWidget::
+HandleDeploymentTacticalReferenceRequested()
+{
+	OpenDeploymentTacticalReference();
+}
+
+void UFMCodexLocalMatchScreenWidget::
+HandleDeploymentReferenceLongShotClicked()
+{
+	SelectDeploymentTacticalReference(ESkillRuleType::LongShot);
+}
+
+void UFMCodexLocalMatchScreenWidget::
+HandleDeploymentReferenceCutInsideClicked()
+{
+	SelectDeploymentTacticalReference(ESkillRuleType::CutInsideShot);
+}
+
+void UFMCodexLocalMatchScreenWidget::
+HandleDeploymentReferencePassControlClicked()
+{
+	SelectDeploymentTacticalReference(ESkillRuleType::PassControl);
+}
+
+void UFMCodexLocalMatchScreenWidget::
+HandleDeploymentReferenceCrossClicked()
+{
+	SelectDeploymentTacticalReference(ESkillRuleType::Cross);
+}
+
+void UFMCodexLocalMatchScreenWidget::
+HandleDeploymentReferenceThroughBallClicked()
+{
+	SelectDeploymentTacticalReference(ESkillRuleType::ThroughBall);
+}
+
+void UFMCodexLocalMatchScreenWidget::
+HandleDeploymentReferenceCloseClicked()
+{
+	CloseDeploymentTacticalReference();
+}
+
 void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailPointerEntered()
 {
 	bTacticalDetailPointerInside = true;
@@ -1061,7 +1168,8 @@ void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailPointerLeft()
 
 void UFMCodexLocalMatchScreenWidget::ScheduleTacticalDetailDismiss()
 {
-	if (bTacticalCardHoverOrFocus || bTacticalDetailPointerInside
+	if (bDeploymentTacticalReferenceOpen
+		|| bTacticalCardHoverOrFocus || bTacticalDetailPointerInside
 		|| TacticalDetailPanel == nullptr
 		|| TacticalDetailPanel->GetVisibility() == ESlateVisibility::Collapsed)
 	{
@@ -1168,6 +1276,10 @@ void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragStarted(
 			});
 	if (bPresentedChoice)
 	{
+		if (bDeploymentTacticalReferenceOpen)
+		{
+			CloseDeploymentTacticalReference();
+		}
 		HideDetailOverlay();
 		bDeploymentDragActive = true;
 		bDeploymentDropSubmitted = false;
@@ -1516,6 +1628,9 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this, &UFMCodexLocalMatchScreenWidget::HandleDeployGoalkeeperRequested);
 	InteractionPanel->OnFinishDeploymentRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleFinishDeploymentClicked);
+	InteractionPanel->OnDeploymentTacticalReferenceRequested.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleDeploymentTacticalReferenceRequested);
 	InteractionPanel->OnCarrierRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleCarrierRequested);
 	InteractionPanel->OnMarkerRequested.AddDynamic(
@@ -1563,6 +1678,139 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		ToastSlot->SetVerticalAlignment(VAlign_Bottom);
 	}
 
+	TacticalDetailSurface = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("SharedTacticalDetailSurface"));
+	USizeBox* ReferenceControlsBounds =
+		WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(),
+			TEXT("DeploymentTacticalReferenceControlsBounds"));
+	ReferenceControlsBounds->SetWidthOverride(780.0f);
+	DeploymentTacticalReferenceControls =
+		WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			TEXT("DeploymentTacticalReferenceControls"));
+	FFMCodexPlayerUIStyle::Get().ApplyBorder(
+		*DeploymentTacticalReferenceControls,
+		EFMCodexPlayerUIColorRole::PanelRaised, FMargin(8.0f, 6.0f));
+	DeploymentTacticalReferenceControls->SetVisibility(
+		ESlateVisibility::Collapsed);
+	UHorizontalBox* ReferenceSelector =
+		WidgetTree->ConstructWidget<UHorizontalBox>(
+			UHorizontalBox::StaticClass(),
+			TEXT("DeploymentTacticalReferenceSelector"));
+	UTextBlock* ReferenceLabel = MakeText(
+		*WidgetTree, TEXT("DeploymentTacticalReferenceLabel"),
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+			TEXT("TACTICAL REFERENCE")).ToString());
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*ReferenceLabel, EFMCodexPlayerUITextRole::SectionHeading);
+	if (UHorizontalBoxSlot* LabelSlot =
+		ReferenceSelector->AddChildToHorizontalBox(ReferenceLabel))
+	{
+		LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 6.0f, 0.0f));
+		LabelSlot->SetVerticalAlignment(VAlign_Center);
+	}
+
+	auto AddReferenceButton = [this, ReferenceSelector](
+		UButton* Button, const float Width, const float LeftGap = 2.0f)
+	{
+		USizeBox* ButtonBounds = WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(), FName(*FString::Printf(
+				TEXT("%sBounds"), *Button->GetName())));
+		ButtonBounds->SetWidthOverride(Width);
+		ButtonBounds->SetHeightOverride(38.0f);
+		ButtonBounds->AddChild(Button);
+		if (UHorizontalBoxSlot* ButtonSlot =
+			ReferenceSelector->AddChildToHorizontalBox(ButtonBounds))
+		{
+			ButtonSlot->SetPadding(FMargin(LeftGap, 0.0f, 2.0f, 0.0f));
+			ButtonSlot->SetVerticalAlignment(VAlign_Center);
+		}
+	};
+	auto MakeReferenceButton = [this](
+		const FName Name, const ESkillRuleType SkillType)
+	{
+		const FFMCodexUMGTacticalDetailViewModel Detail =
+			FFMCodexTacticalDetailPresentationBuilder::Build(SkillType);
+		UButton* Button = MakeButton(*WidgetTree, Name, Detail.DisplayName);
+		if (UTextBlock* ButtonLabel = Cast<UTextBlock>(Button->GetChildAt(0)))
+		{
+			ButtonLabel->SetAutoWrapText(false);
+			ButtonLabel->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+			FFMCodexPlayerUIStyle::Get().ApplyText(
+				*ButtonLabel, EFMCodexPlayerUITextRole::SectionHeading);
+		}
+		FFMCodexPlayerUIStyle::Get().ApplyButton(
+			*Button, EFMCodexPlayerUIActionRole::Secondary);
+		return Button;
+	};
+	UButton* LongShotButton = MakeReferenceButton(
+		TEXT("DeploymentReferenceLongShotButton"), ESkillRuleType::LongShot);
+	LongShotButton->OnClicked.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleDeploymentReferenceLongShotClicked);
+	AddReferenceButton(LongShotButton, 74.0f);
+	UButton* CutInsideButton = MakeReferenceButton(
+		TEXT("DeploymentReferenceCutInsideButton"),
+		ESkillRuleType::CutInsideShot);
+	CutInsideButton->OnClicked.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleDeploymentReferenceCutInsideClicked);
+	AddReferenceButton(CutInsideButton, 74.0f);
+	UButton* PassControlButton = MakeReferenceButton(
+		TEXT("DeploymentReferencePassControlButton"),
+		ESkillRuleType::PassControl);
+	PassControlButton->OnClicked.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleDeploymentReferencePassControlClicked);
+	AddReferenceButton(PassControlButton, 108.0f);
+	UButton* CrossButton = MakeReferenceButton(
+		TEXT("DeploymentReferenceCrossButton"), ESkillRuleType::Cross);
+	CrossButton->OnClicked.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleDeploymentReferenceCrossClicked);
+	AddReferenceButton(CrossButton, 74.0f);
+	UButton* ThroughBallButton = MakeReferenceButton(
+		TEXT("DeploymentReferenceThroughBallButton"),
+		ESkillRuleType::ThroughBall);
+	ThroughBallButton->OnClicked.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleDeploymentReferenceThroughBallClicked);
+	AddReferenceButton(ThroughBallButton, 74.0f);
+	USpacer* ReferenceCloseSpacer = WidgetTree->ConstructWidget<USpacer>(
+		USpacer::StaticClass(), TEXT("DeploymentReferenceCloseSpacer"));
+	if (UHorizontalBoxSlot* SpacerSlot =
+		ReferenceSelector->AddChildToHorizontalBox(ReferenceCloseSpacer))
+	{
+		SpacerSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	}
+	UButton* CloseReferenceButton = MakeButton(
+		*WidgetTree, TEXT("DeploymentReferenceCloseButton"),
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+			TEXT("CLOSE TACTICAL REFERENCE")).ToString());
+	FFMCodexPlayerUIStyle::Get().ApplyButton(
+		*CloseReferenceButton, EFMCodexPlayerUIActionRole::Decline);
+	if (UTextBlock* CloseLabel = Cast<UTextBlock>(
+		CloseReferenceButton->GetChildAt(0)))
+	{
+		CloseLabel->SetAutoWrapText(false);
+		CloseLabel->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*CloseLabel, EFMCodexPlayerUITextRole::SectionHeading);
+	}
+	CloseReferenceButton->OnClicked.AddDynamic(
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleDeploymentReferenceCloseClicked);
+	AddReferenceButton(CloseReferenceButton, 146.0f, 8.0f);
+	DeploymentTacticalReferenceControls->AddChild(ReferenceSelector);
+	ReferenceControlsBounds->AddChild(DeploymentTacticalReferenceControls);
+	if (UVerticalBoxSlot* ControlsSlot =
+		TacticalDetailSurface->AddChildToVerticalBox(ReferenceControlsBounds))
+	{
+		ControlsSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 9.0f));
+		ControlsSlot->SetHorizontalAlignment(HAlign_Center);
+	}
+
 	TacticalDetailPanel =
 		WidgetTree->ConstructWidget<UFMCodexTacticalDetailPanelWidget>(
 			UFMCodexTacticalDetailPanelWidget::StaticClass(),
@@ -1574,7 +1822,13 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	TacticalDetailPanel->OnDetailPointerLeft.AddUObject(
 		this,
 		&UFMCodexLocalMatchScreenWidget::HandleTacticalDetailPointerLeft);
-	if (UOverlaySlot* DetailSlot = Root->AddChildToOverlay(TacticalDetailPanel))
+	if (UVerticalBoxSlot* PanelSlot =
+		TacticalDetailSurface->AddChildToVerticalBox(TacticalDetailPanel))
+	{
+		PanelSlot->SetHorizontalAlignment(HAlign_Center);
+	}
+	if (UOverlaySlot* DetailSlot =
+		Root->AddChildToOverlay(TacticalDetailSurface))
 	{
 		DetailSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 132.0f));
 		DetailSlot->SetHorizontalAlignment(HAlign_Center);
@@ -2879,8 +3133,15 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	BindDetailHoverSources();
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
-	if (Presentation.Interaction.Category
-		!= EFMCodexUMGInteractionCategory::SelectSkill)
+	const bool bDeploymentContext = Presentation.Interaction.Category
+		== EFMCodexUMGInteractionCategory::Deploy;
+	if (bDeploymentTacticalReferenceOpen && !bDeploymentContext)
+	{
+		CloseDeploymentTacticalReference();
+	}
+	else if (Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectSkill
+		&& !bDeploymentTacticalReferenceOpen)
 	{
 		HideTacticalDetail();
 	}

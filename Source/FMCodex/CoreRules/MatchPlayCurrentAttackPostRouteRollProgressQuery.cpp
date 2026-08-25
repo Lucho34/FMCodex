@@ -9,7 +9,6 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 
 	constexpr int32 ConditionalContinuationMinD6 = 3;
 	constexpr int32 AntiOffsideOneOnOneD6 = 6;
-	constexpr int32 BehindDefenseP2OneOnOneMaxD6 = 3;
 
 	void SetFailure(
 		FResult& Result,
@@ -265,51 +264,6 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 		return Result;
 	}
 
-	FResult ValidateBehindDefenseP2(
-		const FMatchPlayCurrentAttackActualBranch& Branch,
-		const TArray<FRecord>& Records)
-	{
-		FResult Result;
-		if (Branch.ActionType != ESkillRuleType::ThroughBall
-			|| Branch.ThroughBall
-				!= EMatchPlayThroughBallActualBranch::BehindDefense)
-		{
-			SetFailure(
-				Result,
-				EError::UnsupportedPhaseForBranch,
-				TEXT("BehindDefenseP2 roll acquisition requires the ThroughBall BehindDefense branch."));
-			return Result;
-		}
-
-		const TArray<EPurpose> Expected = {
-			EPurpose::PrimaryAttack,
-			EPurpose::PrimaryDefense,
-			EPurpose::BehindDefenseP2Defense
-		};
-		if (!ValidateRecordValuesAndDuplicates(Records, Result)
-			|| !ValidateOrderedPrefix(Records, Expected, 2, Result))
-		{
-			return Result;
-		}
-		if (Records[0].RawD6 < ConditionalContinuationMinD6)
-		{
-			SetFailure(
-				Result,
-				EError::InvalidLaterPhasePrerequisite,
-				TEXT("BehindDefenseP2 cannot follow an Attack D6 that completes P1 as OutOfPlay."));
-			return Result;
-		}
-		if (Records.Num() == Expected.Num())
-		{
-			SetSuccess(Result, true);
-		}
-		else
-		{
-			SetSuccess(Result, false, EPurpose::BehindDefenseP2Defense);
-		}
-		return Result;
-	}
-
 	FResult ValidateOneOnOneChipShot(
 		const FMatchPlayCurrentAttackActualBranch& Branch,
 		const TArray<FRecord>& Records)
@@ -334,10 +288,9 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 			Expected = {
 				EPurpose::PrimaryAttack,
 				EPurpose::PrimaryDefense,
-				EPurpose::BehindDefenseP2Defense,
 				EPurpose::OneOnOneChipShotAttack
 			};
-			MinimumCount = 3;
+			MinimumCount = 2;
 		}
 		else
 		{
@@ -370,13 +323,12 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 				return Result;
 			}
 		}
-		else if (Records[0].RawD6 < ConditionalContinuationMinD6
-			|| Records[2].RawD6 > BehindDefenseP2OneOnOneMaxD6)
+		else if (Records[0].RawD6 < ConditionalContinuationMinD6)
 		{
 			SetFailure(
 				Result,
 				EError::InvalidLaterPhasePrerequisite,
-				TEXT("BehindDefense OneOnOne roll prerequisites are inconsistent."));
+				TEXT("BehindDefense OneOnOne requires a non-OutOfPlay P1 Attack roll."));
 			return Result;
 		}
 
@@ -416,11 +368,10 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 			Expected = {
 				EPurpose::PrimaryAttack,
 				EPurpose::PrimaryDefense,
-				EPurpose::BehindDefenseP2Defense,
 				EPurpose::OneOnOneDirectShotAttack,
 				EPurpose::OneOnOneDirectShotDefense
 			};
-			MinimumCount = 3;
+			MinimumCount = 2;
 		}
 		else
 		{
@@ -449,13 +400,12 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 				return Result;
 			}
 		}
-		else if (Records[0].RawD6 < ConditionalContinuationMinD6
-			|| Records[2].RawD6 > BehindDefenseP2OneOnOneMaxD6)
+		else if (Records[0].RawD6 < ConditionalContinuationMinD6)
 		{
 			SetFailure(
 				Result,
 				EError::InvalidLaterPhasePrerequisite,
-				TEXT("BehindDefense OneOnOne DirectShot roll prerequisites are inconsistent."));
+				TEXT("BehindDefense OneOnOne DirectShot requires a non-OutOfPlay P1 Attack roll."));
 			return Result;
 		}
 
@@ -519,9 +469,11 @@ FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
 			Progress.RollRecords);
 
 	case EMatchPlayCurrentAttackPostRouteRollPhase::BehindDefenseP2:
-		return ValidateBehindDefenseP2(
-			Session.ActualBranch,
-			Progress.RollRecords);
+		SetFailure(
+			Result,
+			EError::UnsupportedPhaseForBranch,
+			TEXT("BehindDefense P2 was removed from the canonical flow."));
+		return Result;
 
 	case EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneChipShot:
 		return ValidateOneOnOneChipShot(

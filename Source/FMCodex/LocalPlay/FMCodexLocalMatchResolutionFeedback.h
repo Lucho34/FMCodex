@@ -13,6 +13,7 @@ struct FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult;
 struct FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult;
 struct FFMCodexLocalMatchResolveDirectShotPostRouteDecisionOrPlanResult;
 struct FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult;
+struct FFMCodexLocalMatchResolveThroughBallBehindDefenseP1FormulaResult;
 struct FFMCodexLocalMatchResolveThroughBallBehindDefenseP2DecisionResult;
 struct FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotDecisionResult;
 struct FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotPostRoutePlanResult;
@@ -91,6 +92,11 @@ public:
 	static FFMCodexLocalMatchResolutionFeedback Build(
 		const FString& CommandName,
 		const FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult& Result,
+		const FFMCodexLocalMatchInteractionView& BeforeView,
+		const FFMCodexLocalMatchInteractionView& AfterView);
+	static FFMCodexLocalMatchResolutionFeedback Build(
+		const FString& CommandName,
+		const FFMCodexLocalMatchResolveThroughBallBehindDefenseP1FormulaResult& Result,
 		const FFMCodexLocalMatchInteractionView& BeforeView,
 		const FFMCodexLocalMatchInteractionView& AfterView);
 	static FFMCodexLocalMatchResolutionFeedback Build(

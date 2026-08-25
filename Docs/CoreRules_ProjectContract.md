@@ -1,5 +1,7 @@
 # CoreRules Project Contract
 
+> Current ThroughBall override (Stage 6.13.1.4.9B.2, 2026-08-25): any older P1 `P2Required` / `bRequiresP2` or BehindDefense P2 contract below is historical. Canonical production now uses P1 `OneOnOneRequired` / `bRequiresOneOnOne`, consumes no P2/offside D6, and offers both DirectShot and ChipShot. See `Docs/01_Rules_Canonical.md` and CD-065.
+
 本文档记录 UE5 足球卡牌项目 CoreRules 阶段的长期约束。后续阶段提示词应优先引用本文档，避免反复粘贴长上下文。
 
 ## 项目范围

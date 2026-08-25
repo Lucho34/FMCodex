@@ -3,7 +3,6 @@
 #include "MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
-#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallFeetFormulaOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator.h"
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaOrchestrator.h"
@@ -230,43 +229,6 @@ namespace MatchPlayCurrentAttackApplyThroughBallTerminalResolution
 					: ESource::BehindDefenseOneOnOneMiss,
 				bGoal);
 		}
-		if (Phase == EPhase::BehindDefenseP2)
-		{
-			++Result.BehindDefenseP2RegenerationCount;
-			Result.BehindDefenseP2RegenerationResult =
-				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator
-					::Resolve(Result.BeforeState, SkillRuleSet, nullptr);
-			Result.RegenerationProviderCallCount +=
-				Result.BehindDefenseP2RegenerationResult.ProviderCallCount;
-			if (!Result.BehindDefenseP2RegenerationResult.bSuccess)
-			{
-				SetFailure(
-					Result,
-					EError::SourceRegenerationFailed,
-					Result.BehindDefenseP2RegenerationResult.ErrorMessage,
-					Result.BehindDefenseP2RegenerationResult.InvalidField);
-				return false;
-			}
-			if (Result.BehindDefenseP2RegenerationResult.QueryResult.Decision
-				== EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired)
-			{
-				SetFailure(
-					Result,
-					EError::SourceSemanticIsNonTerminal,
-					TEXT("BehindDefense OneOnOne requires a completed ChipShot."));
-				return false;
-			}
-			if (Result.BehindDefenseP2RegenerationResult.QueryResult.Decision
-				!= EThroughBallBehindDefenseP2OutcomeDecision::Offside)
-			{
-				SetFailure(
-					Result,
-					EError::InvalidTerminalSemantic,
-					TEXT("BehindDefense P2 returned an unsupported semantic."));
-				return false;
-			}
-			return SetTerminal(Result, ESource::BehindDefenseP2Offside, false);
-		}
 		if (Phase != EPhase::PrimaryBranch)
 		{
 			SetFailure(
@@ -336,12 +298,12 @@ namespace MatchPlayCurrentAttackApplyThroughBallTerminalResolution
 			.FormulaExecutionResult.Decision;
 		if (P1Decision
 			== EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
-				::P2Required)
+				::OneOnOneRequired)
 		{
 			SetFailure(
 				Result,
 				EError::SourceSemanticIsNonTerminal,
-				TEXT("BehindDefense P1 requires completed P2 resolution."));
+				TEXT("BehindDefense P1 attacker win requires a completed OneOnOne choice."));
 			return false;
 		}
 		if (P1Decision

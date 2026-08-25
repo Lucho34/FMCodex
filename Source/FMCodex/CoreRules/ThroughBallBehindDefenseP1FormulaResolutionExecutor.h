@@ -9,6 +9,8 @@ EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision : uint8
 {
 	None,
 	DefenderStoppedAttack,
+	OneOnOneRequired,
+	/** Legacy outcome retained only so historical P2 utilities cannot become ABI-shaped surprises. */
 	P2Required
 };
 
@@ -49,6 +51,8 @@ FThroughBallBehindDefenseP1FormulaResolutionExecutionResult
 
 	bool bAttackEnded = false;
 	bool bContinueResolution = false;
+	bool bRequiresOneOnOne = false;
+	/** Legacy compatibility flag. Canonical execution never sets it. */
 	bool bRequiresP2 = false;
 
 	FName RunnerId = NAME_None;

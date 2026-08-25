@@ -7,6 +7,9 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexTacticalDetailPresentation.h"
 
+#include "Components/Border.h"
+#include "Components/Button.h"
+#include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
@@ -24,6 +27,20 @@ namespace FMCodexTacticalInformationTests
 			[Label](const FFMCodexUMGTacticalBranchViewModel& Branch)
 			{
 				return Branch.Label == Label;
+			});
+	}
+
+	const FFMCodexUMGTacticalBranchViewModel* FindBranchInRoute(
+		const FFMCodexUMGTacticalDetailViewModel& Detail,
+		const TCHAR* Label,
+		const TCHAR* RouteLabel)
+	{
+		return Detail.Branches.FindByPredicate(
+			[Label, RouteLabel](
+				const FFMCodexUMGTacticalBranchViewModel& Branch)
+			{
+				return Branch.Label == Label
+					&& Branch.PrimaryRouteLabel == RouteLabel;
 			});
 	}
 
@@ -65,7 +82,7 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 		{ ESkillRuleType::CutInsideShot, TEXT("内切"), 2 },
 		{ ESkillRuleType::PassControl, TEXT("控球推进"), 3 },
 		{ ESkillRuleType::Cross, TEXT("传中"), 2 },
-		{ ESkillRuleType::ThroughBall, TEXT("直塞"), 6 }
+		{ ESkillRuleType::ThroughBall, TEXT("直塞"), 7 }
 	};
 	for (const FExpectation& Expectation : Expectations)
 	{
@@ -147,12 +164,20 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 
 	const auto ThroughBall = FFMCodexTacticalDetailPresentationBuilder::Build(
 		ESkillRuleType::ThroughBall);
-	const auto* Feet = FindBranch(ThroughBall, TEXT("脚下球"));
-	const auto* Behind = FindBranch(ThroughBall, TEXT("身后球 · 第一阶段"));
-	const auto* P2 = FindBranch(ThroughBall, TEXT("身后球 · 越位判定"));
-	const auto* Anti = FindBranch(ThroughBall, TEXT("反越位"));
-	const auto* Direct = FindBranch(ThroughBall, TEXT("单刀 · 直接射门"));
-	const auto* Chip = FindBranch(ThroughBall, TEXT("单刀 · 挑射"));
+	const auto* Feet = FindBranchInRoute(
+		ThroughBall, TEXT("脚下球"), TEXT("脚下球"));
+	const auto* Behind = FindBranchInRoute(
+		ThroughBall, TEXT("第一阶段"), TEXT("身后球"));
+	const auto* Anti = FindBranchInRoute(
+		ThroughBall, TEXT("越位判定"), TEXT("反越位"));
+	const auto* BehindDirect = FindBranchInRoute(
+		ThroughBall, TEXT("直接射门"), TEXT("身后球"));
+	const auto* AntiDirect = FindBranchInRoute(
+		ThroughBall, TEXT("直接射门"), TEXT("反越位"));
+	const auto* BehindChip = FindBranchInRoute(
+		ThroughBall, TEXT("挑射"), TEXT("身后球"));
+	const auto* AntiChip = FindBranchInRoute(
+		ThroughBall, TEXT("挑射"), TEXT("反越位"));
 	TestTrue(TEXT("Through Ball attribute branches stay compact and distinct"),
 		HasRoleAttribute(Feet, ERole::Carrier, EAttribute::Passing)
 			&& HasRoleAttribute(Feet, ERole::Runner, EAttribute::OffBall)
@@ -163,15 +188,42 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 			&& HasRoleAttribute(Behind, ERole::Runner, EAttribute::Speed)
 			&& HasRoleAttribute(Behind, ERole::Marker, EAttribute::Marking)
 			&& HasRoleAttribute(Behind, ERole::Helper, EAttribute::Speed, true)
-			&& HasRoleAttribute(Direct, ERole::Runner, EAttribute::Shooting)
-			&& HasRoleAttribute(Direct, ERole::Goalkeeper,
+			&& HasRoleAttribute(BehindDirect, ERole::Runner, EAttribute::Shooting)
+			&& HasRoleAttribute(BehindDirect, ERole::Goalkeeper,
+				EAttribute::GoalkeeperOneOnOne)
+			&& HasRoleAttribute(AntiDirect, ERole::Runner, EAttribute::Shooting)
+			&& HasRoleAttribute(AntiDirect, ERole::Goalkeeper,
 				EAttribute::GoalkeeperOneOnOne));
 	TestTrue(TEXT("Through Ball outcome segments are roll-only, not fake formula"),
-		P2 != nullptr && P2->bRollOnly && P2->RoleAttributes.IsEmpty()
-			&& Anti != nullptr && Anti->bRollOnly
+		Anti != nullptr && Anti->bRollOnly
 			&& Anti->RoleAttributes.IsEmpty()
-			&& Chip != nullptr && Chip->bRollOnly
-			&& Chip->RoleAttributes.IsEmpty());
+			&& BehindChip != nullptr && BehindChip->bRollOnly
+			&& BehindChip->RoleAttributes.IsEmpty()
+			&& AntiChip != nullptr && AntiChip->bRollOnly
+			&& AntiChip->RoleAttributes.IsEmpty());
+	TestTrue(TEXT("Through Ball projects three primary routes with owned steps"),
+		ThroughBall.CardHint == TEXT("脚下球 · 身后球 · 反越位")
+			&& Feet != nullptr
+			&& Feet->PrimaryRouteLabel == TEXT("脚下球")
+			&& Feet->RouteStepLabel == TEXT("属性对抗")
+			&& Behind != nullptr
+			&& Behind->PrimaryRouteLabel == TEXT("身后球")
+			&& Behind->RouteStepLabel == TEXT("第一阶段")
+			&& Anti != nullptr
+			&& Anti->PrimaryRouteLabel == TEXT("反越位")
+			&& Anti->RouteStepLabel == TEXT("越位判定")
+			&& BehindDirect != nullptr
+			&& BehindDirect->RouteStepLabel == TEXT("直接射门")
+			&& BehindDirect->RouteStageLabel == TEXT("成功后：单刀")
+			&& BehindChip != nullptr
+			&& BehindChip->RouteStepLabel == TEXT("挑射")
+			&& BehindChip->RouteStageLabel == TEXT("成功后：单刀")
+			&& AntiDirect != nullptr
+			&& AntiDirect->RouteStepLabel == TEXT("直接射门")
+			&& AntiDirect->RouteStageLabel == TEXT("成功后：单刀")
+			&& AntiChip != nullptr
+			&& AntiChip->RouteStepLabel == TEXT("挑射")
+			&& AntiChip->RouteStageLabel == TEXT("成功后：单刀"));
 	return true;
 }
 
@@ -236,7 +288,8 @@ bool FFMCodexTacticalInformationHoverLifecycleTest::RunTest(
 			&& CrossPlayerText.Contains(TEXT("高球传中"))
 			&& CrossPlayerText.Contains(TEXT("持球：传球"))
 			&& CrossPlayerText.Contains(TEXT("跑位：力量"))
-			&& CrossPlayerText.Contains(TEXT("协防（可选）：力量"))
+			&& CrossPlayerText.Contains(TEXT("协防：力量"))
+			&& !CrossPlayerText.Contains(TEXT("（可选）"))
 			&& CrossPlayerText.Contains(TEXT("门将：制空")));
 	TestTrue(TEXT("Compact player surface excludes formula/manual density"),
 		!CrossPlayerText.Contains(TEXT("进攻"))
@@ -277,7 +330,7 @@ bool FFMCodexTacticalInformationHoverLifecycleTest::RunTest(
 			&& OptionalRoleBounds != nullptr
 			&& OptionalRoleBounds->GetWidthOverride() >= 116.0f
 			&& OptionalRole != nullptr && !OptionalRole->GetAutoWrapText()
-			&& OptionalRole->GetText().ToString() == TEXT("协防（可选）")
+			&& OptionalRole->GetText().ToString() == TEXT("协防")
 			&& OptionalAttribute != nullptr
 			&& !OptionalAttribute->GetAutoWrapText()
 			&& OptionalAttributeSlot != nullptr
@@ -310,20 +363,38 @@ bool FFMCodexTacticalInformationHoverLifecycleTest::RunTest(
 	SixBranchPanel->RefreshFromPresentation(
 		FFMCodexTacticalDetailPresentationBuilder::Build(
 			ESkillRuleType::ThroughBall));
+	UHorizontalBox* ThroughBallRoutes = Cast<UHorizontalBox>(
+		SixBranchPanel->GetWidgetFromName(TEXT("TacticalDetailRoutes")));
 	UWrapBox* SixBranchBody = Cast<UWrapBox>(
 		SixBranchPanel->GetWidgetFromName(TEXT("TacticalDetailBranches")));
-	USizeBox* SixBranchFirstBounds = Cast<USizeBox>(
-		SixBranchPanel->GetWidgetFromName(TEXT("TacticalDetailBranchBounds0")));
-	TestTrue(TEXT("Through Ball keeps six compact branches in two-column policy"),
-		SixBranchBody != nullptr && SixBranchBody->GetChildrenCount() == 6
-			&& SixBranchBody->UseExplicitWrapSize()
-			&& SixBranchFirstBounds != nullptr
-			&& (SixBranchFirstBounds->GetWidthOverride() * 2.0f)
-				+ SixBranchBody->GetInnerSlotPadding().X
-				<= SixBranchBody->GetWrapSize()
-			&& (SixBranchFirstBounds->GetWidthOverride() * 3.0f)
-				+ (SixBranchBody->GetInnerSlotPadding().X * 2.0f)
-				> SixBranchBody->GetWrapSize()
+	UTextBlock* FeetRouteTitle = Cast<UTextBlock>(
+		SixBranchPanel->GetWidgetFromName(TEXT("TacticalDetailRouteTitle0")));
+	UTextBlock* BehindRouteTitle = Cast<UTextBlock>(
+		SixBranchPanel->GetWidgetFromName(TEXT("TacticalDetailRouteTitle1")));
+	UTextBlock* AntiRouteTitle = Cast<UTextBlock>(
+		SixBranchPanel->GetWidgetFromName(TEXT("TacticalDetailRouteTitle2")));
+	TestTrue(TEXT("Through Ball renders three peer route groups with nested steps"),
+		ThroughBallRoutes != nullptr
+			&& ThroughBallRoutes->GetVisibility() == ESlateVisibility::Visible
+			&& ThroughBallRoutes->GetChildrenCount() == 3
+			&& SixBranchBody != nullptr
+			&& SixBranchBody->GetVisibility() == ESlateVisibility::Collapsed
+			&& FeetRouteTitle != nullptr
+			&& FeetRouteTitle->GetText().ToString() == TEXT("脚下球")
+			&& BehindRouteTitle != nullptr
+			&& BehindRouteTitle->GetText().ToString() == TEXT("身后球")
+			&& AntiRouteTitle != nullptr
+			&& AntiRouteTitle->GetText().ToString() == TEXT("反越位")
+			&& SixBranchPanel->GetWidgetFromName(
+				TEXT("TacticalDetailRouteStepTitle0_0")) != nullptr
+			&& SixBranchPanel->GetWidgetFromName(
+				TEXT("TacticalDetailRouteStepTitle1_2")) != nullptr
+			&& SixBranchPanel->GetWidgetFromName(
+				TEXT("TacticalDetailRouteStepTitle2_2")) != nullptr
+			&& SixBranchPanel->GetWidgetFromName(
+				TEXT("TacticalDetailRouteStageTitle1_1")) != nullptr
+			&& SixBranchPanel->GetWidgetFromName(
+				TEXT("TacticalDetailRouteStageTitle2_1")) != nullptr
 			&& SixBranchPanel->GetWidgetFromName(
 				TEXT("TacticalDetailBranchScroll")) == nullptr);
 	CutCard->OnTacticalDetailRequested.Broadcast(CutChoice.OptionId);
@@ -367,6 +438,7 @@ bool FFMCodexTacticalInformationAuthorityBoundaryTest::RunTest(
 	FString PresentationSource;
 	FString OptionSource;
 	FString PanelSource;
+	FString MatchScreenSource;
 	const FString Root = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
 	TestTrue(TEXT("Catalog source loads"), FFileHelper::LoadFileToString(
 		CatalogSource, *(Root + TEXT("Source/FMCodex/CoreRules/TacticalRuleDescription.cpp"))));
@@ -379,6 +451,9 @@ bool FFMCodexTacticalInformationAuthorityBoundaryTest::RunTest(
 	TestTrue(TEXT("Panel source loads"), FFileHelper::LoadFileToString(
 		PanelSource,
 		*(Root + TEXT("Source/FMCodex/LocalPlay/FMCodexTacticalDetailPanelWidget.cpp"))));
+	TestTrue(TEXT("Match Screen source loads"), FFileHelper::LoadFileToString(
+		MatchScreenSource,
+		*(Root + TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"))));
 	const FString Combined = CatalogSource + PresentationSource;
 	const TArray<FString> Forbidden = {
 		TEXT("RollD6("), TEXT("RandRange("), TEXT("FRandomStream"),
@@ -400,6 +475,166 @@ bool FFMCodexTacticalInformationAuthorityBoundaryTest::RunTest(
 			&& !PanelSource.Contains(TEXT("ESkillRuleType::"))
 			&& !PanelSource.Contains(TEXT("ArithmeticContest"))
 			&& !PanelSource.Contains(TEXT("OutcomeDecision")));
+	TestTrue(TEXT("Deployment reference reuses shared builder and detail panel"),
+		MatchScreenSource.Contains(
+			TEXT("FFMCodexTacticalDetailPresentationBuilder::Build(SkillType)"))
+			&& MatchScreenSource.Contains(
+				TEXT("TacticalDetailPanel->RefreshFromPresentation(Detail)"))
+			&& !MatchScreenSource.Contains(
+				TEXT("DeploymentTacticalDescriptionMap"))
+			&& !MatchScreenSource.Contains(
+				TEXT("EMatchPlayResolutionFormulaAttribute::")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexDeploymentTacticalReferenceEntryTest,
+	"FMCodex.LocalPlay.TacticalInformation.04.DeploymentReferenceEntry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexDeploymentTacticalReferenceEntryTest::RunTest(
+	const FString& Parameters)
+{
+	UFMCodexLocalMatchScreenWidget* Screen =
+		NewObject<UFMCodexLocalMatchScreenWidget>();
+	if (Screen == nullptr)
+	{
+		AddError(TEXT("Deployment reference screen allocation failed"));
+		return false;
+	}
+	Screen->TakeWidget();
+	FFMCodexUMGMatchScreenViewModel DeploymentView;
+	DeploymentView.Interaction.Category =
+		EFMCodexUMGInteractionCategory::Deploy;
+	DeploymentView.Interaction.bCanFinishDeployment = true;
+	Screen->RefreshFromPresentation(DeploymentView);
+
+	UFMCodexInteractionPanelWidget* Interaction = Screen->GetInteractionPanel();
+	UFMCodexTacticalDetailPanelWidget* Detail =
+		Screen->GetTacticalDetailPanel();
+	UButton* EntryButton = Interaction != nullptr
+		? Cast<UButton>(Interaction->GetWidgetFromName(
+			TEXT("DeploymentTacticalReferenceEntryButton")))
+		: nullptr;
+	UBorder* Controls = Cast<UBorder>(Screen->GetWidgetFromName(
+		TEXT("DeploymentTacticalReferenceControls")));
+	UTextBlock* EntryLabel = EntryButton != nullptr
+		? Cast<UTextBlock>(EntryButton->GetChildAt(0)) : nullptr;
+	TestTrue(TEXT("Deployment exposes a local tactical reference entry"),
+		Interaction != nullptr && EntryButton != nullptr
+			&& EntryButton->GetVisibility() == ESlateVisibility::Visible
+			&& EntryLabel != nullptr
+			&& EntryLabel->GetText().ToString() == TEXT("战术说明")
+			&& Controls != nullptr
+			&& Controls->GetVisibility() == ESlateVisibility::Collapsed
+			&& Detail != nullptr
+			&& Detail->GetVisibility() == ESlateVisibility::Collapsed);
+
+	EntryButton->OnClicked.Broadcast();
+	TestTrue(TEXT("Entry opens the shared detail without gameplay state"),
+		Screen->IsDeploymentTacticalReferenceOpen()
+			&& Screen->GetDeploymentTacticalReferenceSkillType()
+				== ESkillRuleType::LongShot
+			&& Controls->GetVisibility() == ESlateVisibility::Visible
+			&& Detail->GetVisibility() == ESlateVisibility::Visible
+			&& Detail->GetPresentation().SkillType
+				== ESkillRuleType::LongShot
+			&& Screen->GetMatchController() == nullptr
+			&& Screen->GetPresentation().Interaction.Category
+				== EFMCodexUMGInteractionCategory::Deploy);
+
+	struct FReferenceExpectation
+	{
+		const TCHAR* ButtonName;
+		ESkillRuleType SkillType;
+		const TCHAR* ChineseName;
+	};
+	const TArray<FReferenceExpectation> Expectations = {
+		{ TEXT("DeploymentReferenceLongShotButton"),
+			ESkillRuleType::LongShot, TEXT("远射") },
+		{ TEXT("DeploymentReferenceCutInsideButton"),
+			ESkillRuleType::CutInsideShot, TEXT("内切") },
+		{ TEXT("DeploymentReferencePassControlButton"),
+			ESkillRuleType::PassControl, TEXT("控球推进") },
+		{ TEXT("DeploymentReferenceCrossButton"),
+			ESkillRuleType::Cross, TEXT("传中") },
+		{ TEXT("DeploymentReferenceThroughBallButton"),
+			ESkillRuleType::ThroughBall, TEXT("直塞") }
+	};
+	UHorizontalBox* Selector = Cast<UHorizontalBox>(Screen->GetWidgetFromName(
+		TEXT("DeploymentTacticalReferenceSelector")));
+	TestTrue(TEXT("Reference selector owns five stable canonical choices"),
+		Selector != nullptr && Selector->GetChildrenCount() == 8
+			&& Selector->GetChildAt(6)->GetName()
+				== TEXT("DeploymentReferenceCloseSpacer"));
+	for (int32 Index = 0; Index < Expectations.Num(); ++Index)
+	{
+		const FReferenceExpectation& Expectation = Expectations[Index];
+		UButton* Button = Cast<UButton>(
+			Screen->GetWidgetFromName(Expectation.ButtonName));
+		UTextBlock* Label = Button != nullptr
+			? Cast<UTextBlock>(Button->GetChildAt(0)) : nullptr;
+		TestTrue(FString::Printf(TEXT("Reference selector %s is Chinese"),
+			Expectation.ChineseName),
+			Button != nullptr && Label != nullptr
+				&& Label->GetText().ToString() == Expectation.ChineseName
+				&& !Label->GetAutoWrapText());
+		TestEqual(TEXT("Reference selector order remains canonical"),
+			Selector->GetChildAt(Index + 1)->GetName(),
+			FString(Expectation.ButtonName) + TEXT("Bounds"));
+		Screen->SelectDeploymentTacticalReference(Expectation.SkillType);
+		TestTrue(FString::Printf(TEXT("Reference selects %s read-only detail"),
+			Expectation.ChineseName),
+			Detail->GetPresentation().SkillType == Expectation.SkillType
+				&& Detail->GetPresentation().DisplayName
+					== Expectation.ChineseName);
+	}
+	USizeBox* PassControlBounds = Cast<USizeBox>(Screen->GetWidgetFromName(
+		TEXT("DeploymentReferencePassControlButtonBounds")));
+	TestTrue(TEXT("Pass Control selector owns a stable single-line width"),
+		PassControlBounds != nullptr
+			&& PassControlBounds->GetWidthOverride() >= 108.0f
+			&& PassControlBounds->GetHeightOverride() >= 38.0f);
+	const FString PlayerText = Detail->CollectPlayerFacingText();
+	TestTrue(TEXT("Deployment reference retains compact player contract"),
+		!PlayerText.Contains(TEXT("进攻"))
+			&& !PlayerText.Contains(TEXT("防守"))
+			&& !PlayerText.Contains(TEXT("战术球员"))
+			&& !PlayerText.Contains(TEXT("×"))
+			&& !PlayerText.Contains(TEXT("+2"))
+			&& !PlayerText.Contains(TEXT("Canonical.Skill")));
+
+	UButton* CloseButton = Cast<UButton>(Screen->GetWidgetFromName(
+		TEXT("DeploymentReferenceCloseButton")));
+	UTextBlock* CloseLabel = CloseButton != nullptr
+		? Cast<UTextBlock>(CloseButton->GetChildAt(0)) : nullptr;
+	TestTrue(TEXT("Reference has an explicit Chinese close action"),
+		CloseButton != nullptr && CloseLabel != nullptr
+			&& CloseLabel->GetText().ToString() == TEXT("关闭战术说明"));
+	if (CloseButton != nullptr)
+	{
+		CloseButton->OnClicked.Broadcast();
+	}
+	TestTrue(TEXT("Close returns to unchanged deployment presentation"),
+		!Screen->IsDeploymentTacticalReferenceOpen()
+			&& Controls->GetVisibility() == ESlateVisibility::Collapsed
+			&& Detail->GetVisibility() == ESlateVisibility::Collapsed
+			&& Screen->GetPresentation().Interaction.Category
+				== EFMCodexUMGInteractionCategory::Deploy
+			&& Screen->GetPresentation().Interaction.bCanFinishDeployment
+			&& !Interaction->IsInteractionBlocked());
+
+	FFMCodexUMGMatchScreenViewModel SelectionView;
+	SelectionView.Interaction.Category =
+		EFMCodexUMGInteractionCategory::SelectCarrier;
+	Screen->RefreshFromPresentation(SelectionView);
+	TestTrue(TEXT("Reference entry is not a global non-deployment control"),
+		EntryButton->GetVisibility() == ESlateVisibility::Collapsed
+			&& !Screen->IsDeploymentTacticalReferenceOpen()
+			&& Controls->GetVisibility() == ESlateVisibility::Collapsed);
+	Interaction->RequestDeploymentTacticalReference();
+	TestFalse(TEXT("Non-deployment presentation cannot open reference"),
+		Screen->IsDeploymentTacticalReferenceOpen());
 	return true;
 }
 

@@ -134,7 +134,8 @@ namespace ThroughBallBehindDefenseP1PlanQuery
 			Plan.InvolvedCardIds.Add(Plan.HelperId);
 		}
 
-		Plan.bAttackerVictoryRequiresP2 = true;
+		Plan.bAttackerVictoryRequiresOneOnOne = true;
+		Plan.bAttackerVictoryRequiresP2 = false;
 		Plan.bDefenderVictoryEndsAttack = true;
 		return Plan;
 	}

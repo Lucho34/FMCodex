@@ -639,6 +639,33 @@
 - 布局：远射、内切、传中为两列单行；控球推进为 `2+1`；直塞为两列三行。当前五战术均无 ScrollBox；只允许未来在 fresh PIE 证明确有 viewport 裁切时为直塞提供轻量兜底。
 - 冻结：不修改 compact DTO、角色/属性映射、CoreRules、Catalog、Authority、RNG、State、Skill selection typed intent、Hover/Click lifecycle、Full Card、Pitch、Header、Rack、Narrative 或滚轮。
 
+### CD-063 - Deployment Exposes the Shared Tactical Catalog as Read-only Reference
+
+- 日期：2026-08-24
+- 入口：`EFMCodexUMGInteractionCategory::Deploy` 是唯一可见性来源。既有底部 Interaction Dock 增加 secondary `战术说明` 动作；它不是永久 Header/Dock 导航，也不是 deployment mandatory step。
+- 数据链：五项 selector 固定顺序为 LongShot、CutInsideShot、PassControl、Cross、ThroughBall；玩家标签与内容继续来自 `FFMCodexTacticalDetailPresentationBuilder`，后者读取 `FTacticalRuleDescriptionCatalog`。Deployment Reference 与 SelectSkill Hover 复用同一个 `UFMCodexTacticalDetailPanelWidget` 实例，不复制 tactical attribute table。
+- 状态：打开、切换、关闭只属于 `UFMCodexLocalMatchScreenWidget` transient presentation state；不会提交 Skill、过滤 eligibility、修改 CurrentAttack、TP、部署卡、active player、角色或 RNG。离开 Deployment、完成部署或开始合法拖动时清理 reference，drag/drop legality 与现有流程不变。
+- UI：reference selector 位于既有 shared detail 上方，使用同一中心锚点和既有样式；包含明确关闭动作。compact `branch → role → attribute`、roll-only 文案、NoWrap、无规则墙合同全部冻结。
+- 冻结：不修改 Host/Session、CoreRules、Catalog 内容、FormulaResolver、Resolution、RNG、deployment legality、tactical eligibility、Pitch/Header/Rack、Full Card、Narrative 或 Roll Reel。
+
+### CD-064 - Through Ball Detail Owns Three First-level Presentation Routes
+
+- 日期：2026-08-24
+- PIE 结论：CD-063 的 deployment reference 数据链与交互成立，但 selector 的通用 AutoWrap 使 `控球推进`、关闭文案越出固定高度并侵入 detail 标题；CD-062 的直塞“两列六卡”也无法表达三个一级路线及其子步骤从属关系。
+- Header 修复：selector 与 close 全部改为单行安全文本，`控球推进` 使用稳定加宽 bounds，close 与五项 selector 留出分组间距，header/detail 之间增加垂直节奏。顺序、入口、按钮样式及关闭生命周期不变。
+- 层级：rich Catalog 与六个 canonical branch 不变；compact DTO 为每个直塞 branch 增加 presentation-only `PrimaryRouteLabel / RouteStepLabel`。shared panel 通用地把这些 metadata 渲染为 `脚下球 / 身后球 / 反越位` 三个平级 route group，并在身后球、反越位内部嵌套原有后续步骤。Panel 不读取 SkillType，不复制规则表。
+- 入口提示：直塞 compact hint 统一为 `脚下球 · 身后球 · 反越位`，因此 SelectSkill tactical card 与 Deployment Reference 共享同一入口语义和同一 corrected detail。
+- 冻结：不修改 CoreRules Catalog facts、Authority、Host/Session、Formula、RNG、CurrentAttack、legality、eligibility、deployment gameplay、typed intent、Pitch/Header/Rack、Full Card、Narrative 或 Roll Reel。
+
+### CD-065 - BehindDefense First-stage Win Directly Creates One-on-One
+
+- 日期：2026-08-25
+- 规则：ThroughBall 初始路线仍为 `1–2 脚下球 / 3–4 身后球 / 5–6 反越位`。身后球 P1 的 `1–2 OutOfPlay` 与 `3–6 第一阶段攻防 Contest` 完全保留；第一阶段防守方胜仍按既有 `DefenderStoppedAttack` terminal 处理。
+- 变更：身后球第一阶段攻击方胜后，Authority 直接进入单刀选择。旧 BehindDefense P2、第二阶段越位判断及其 D6 从 canonical flow 移除，不得作为隐藏掷点、CTA、Roll Reel 或 replay/resync 前置条件继续执行。
+- 单刀：来自身后球或反越位的合法单刀都必须同时提供 `直接射门 / 挑射` 两种 typed choice，并复用 14.1 的既有结算；不重新平衡 DirectShot、ChipShot、门将、倍率或平局语义。
+- 保留：反越位继续拥有自己独立的权威越位 D6 与 `1–5 Offside / 6 OneOnOne` 结果；删除身后球 P2 不得影响它。Feet gameplay、Tactical Player、deployment legality 和其他战术玩法不变。
+- 表现：Tactical Detail 的 Helper 仍是 optional gameplay metadata，但玩家可见标签统一为 `协防`。直塞继续显示三个一级路线；身后球为 `第一阶段 → 成功后：单刀 → 直接射门 / 挑射`，反越位为 `越位判定 → 成功后：单刀 → 直接射门 / 挑射`。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

@@ -6,7 +6,6 @@
 #include "MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionTypes.h"
 #include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanTypes.h"
 #include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaTypes.h"
-#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionTypes.h"
 #include "MatchPlayCurrentAttackResolveThroughBallFeetFormulaTypes.h"
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionTypes.h"
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotFormulaTypes.h"
@@ -62,9 +61,6 @@ struct FMCODEX_API
 	int32 BehindDefenseP1FormulaRegenerationCount = 0;
 	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaResult
 		BehindDefenseP1FormulaRegenerationResult;
-	int32 BehindDefenseP2RegenerationCount = 0;
-	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionResult
-		BehindDefenseP2RegenerationResult;
 	int32 OneOnOneRegenerationCount = 0;
 	FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
 		OneOnOneRegenerationResult;

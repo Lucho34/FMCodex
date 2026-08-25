@@ -109,6 +109,8 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("Resolution")) return LOCTEXT("ResolutionPhase", "\u7ED3\u7B97\u9636\u6BB5");
 	if (CanonicalLabel == TEXT("Deploy Your Cards")) return LOCTEXT("DeployCards", "\u90E8\u7F72\u7403\u5458");
 	if (CanonicalLabel == TEXT("FINISH DEPLOYMENT") || CanonicalLabel == TEXT("Deploy / Finish Deployment")) return LOCTEXT("FinishDeployment", "\u5B8C\u6210\u90E8\u7F72");
+	if (CanonicalLabel == TEXT("TACTICAL REFERENCE")) return LOCTEXT("TacticalReference", "\u6218\u672F\u8BF4\u660E");
+	if (CanonicalLabel == TEXT("CLOSE TACTICAL REFERENCE")) return LOCTEXT("CloseTacticalReference", "\u5173\u95ED\u6218\u672F\u8BF4\u660E");
 	if (CanonicalLabel == TEXT("Select Carrier")) return LOCTEXT("SelectCarrier", "\u9009\u62E9\u6301\u7403\u7403\u5458");
 	if (CanonicalLabel == TEXT("Click a player on the pitch")) return LOCTEXT("ClickPitchPlayer", "\u70B9\u51FB\u573A\u4E0A\u7403\u5458\u9009\u62E9");
 	if (CanonicalLabel == TEXT("Select Marker")) return LOCTEXT("SelectMarker", "\u9009\u62E9\u76EF\u4EBA\u7403\u5458");

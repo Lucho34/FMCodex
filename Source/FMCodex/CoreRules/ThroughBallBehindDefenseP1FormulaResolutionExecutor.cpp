@@ -15,10 +15,13 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutor
 	const FName HasFormulaPlanField(TEXT("PlanQueryResult.bHasFormulaPlan"));
 	const FName AttackEndedField(TEXT("PlanQueryResult.bAttackEnded"));
 	const FName ContinueResolutionField(TEXT("PlanQueryResult.bContinueResolution"));
+	const FName RequiresOneOnOneField(TEXT("PlanQueryResult.bRequiresOneOnOne"));
 	const FName RequiresP2Field(TEXT("PlanQueryResult.bRequiresP2"));
 	const FName PlanFormulaTypeField(TEXT("FormulaPlan.FormulaType"));
 	const FName RunnerIdField(TEXT("FormulaPlan.RunnerId"));
 	const FName AttackerWinnerPolicyField(
+		TEXT("FormulaPlan.bAttackerVictoryRequiresOneOnOne"));
+	const FName LegacyAttackerWinnerPolicyField(
 		TEXT("FormulaPlan.bAttackerVictoryRequiresP2"));
 	const FName DefenderWinnerPolicyField(
 		TEXT("FormulaPlan.bDefenderVictoryEndsAttack"));
@@ -259,13 +262,16 @@ FThroughBallBehindDefenseP1FormulaResolutionExecutor::Execute(
 
 	if (PlanQueryResult.bAttackEnded
 		|| PlanQueryResult.bContinueResolution
+		|| PlanQueryResult.bRequiresOneOnOne
 		|| PlanQueryResult.bRequiresP2)
 	{
 		const FName InvalidField = PlanQueryResult.bAttackEnded
 			? AttackEndedField
 			: PlanQueryResult.bContinueResolution
 				? ContinueResolutionField
-				: RequiresP2Field;
+				: PlanQueryResult.bRequiresOneOnOne
+					? RequiresOneOnOneField
+					: RequiresP2Field;
 		SetFailure(
 			Result,
 			EThroughBallBehindDefenseP1FormulaResolutionExecutionErrorCode
@@ -299,14 +305,25 @@ FThroughBallBehindDefenseP1FormulaResolutionExecutor::Execute(
 		return Result;
 	}
 
-	if (!Plan.bAttackerVictoryRequiresP2)
+	if (!Plan.bAttackerVictoryRequiresOneOnOne)
 	{
 		SetFailure(
 			Result,
 			EThroughBallBehindDefenseP1FormulaResolutionExecutionErrorCode
 				::InvalidResolverInputAssemblyResult,
-			TEXT("Attacker victory must require P2."),
+			TEXT("Attacker victory must require a One-on-One choice."),
 			AttackerWinnerPolicyField);
+		return Result;
+	}
+
+	if (Plan.bAttackerVictoryRequiresP2)
+	{
+		SetFailure(
+			Result,
+			EThroughBallBehindDefenseP1FormulaResolutionExecutionErrorCode
+				::InvalidResolverInputAssemblyResult,
+			TEXT("Canonical BehindDefense P1 must not require legacy P2."),
+			LegacyAttackerWinnerPolicyField);
 		return Result;
 	}
 
@@ -378,9 +395,10 @@ FThroughBallBehindDefenseP1FormulaResolutionExecutor::Execute(
 	{
 		Result.Decision =
 			EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
-				::P2Required;
+				::OneOnOneRequired;
 		Result.bContinueResolution = true;
-		Result.bRequiresP2 = true;
+		Result.bRequiresOneOnOne = true;
+		Result.bRequiresP2 = false;
 		Result.RunnerId = Plan.RunnerId;
 	}
 	else

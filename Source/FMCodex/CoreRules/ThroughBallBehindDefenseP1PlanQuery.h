@@ -82,6 +82,9 @@ struct FMCODEX_API FThroughBallBehindDefenseP1FormulaPlan
 	FName DefendingOwnerId = NAME_None;
 	TArray<FName> InvolvedCardIds;
 
+	/** Canonical Stage 6.13.1.4.9B.2 transition: an attacker win creates a One-on-One choice. */
+	bool bAttackerVictoryRequiresOneOnOne = false;
+	/** Legacy compatibility metadata. Canonical plans must leave this false. */
 	bool bAttackerVictoryRequiresP2 = false;
 	bool bDefenderVictoryEndsAttack = false;
 };
@@ -106,6 +109,8 @@ struct FMCODEX_API FThroughBallBehindDefenseP1PlanQueryResult
 
 	bool bAttackEnded = false;
 	bool bContinueResolution = false;
+	bool bRequiresOneOnOne = false;
+	/** Legacy compatibility metadata. Canonical results must leave this false. */
 	bool bRequiresP2 = false;
 };
 

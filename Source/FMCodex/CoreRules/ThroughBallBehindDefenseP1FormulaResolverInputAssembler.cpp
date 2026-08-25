@@ -10,6 +10,7 @@ namespace ThroughBallBehindDefenseP1FormulaResolverInputAssembler
 	const FName HasFormulaPlanField(TEXT("bHasFormulaPlan"));
 	const FName AttackEndedField(TEXT("bAttackEnded"));
 	const FName ContinueResolutionField(TEXT("bContinueResolution"));
+	const FName RequiresOneOnOneField(TEXT("bRequiresOneOnOne"));
 	const FName RequiresP2Field(TEXT("bRequiresP2"));
 	const FName FormulaTypeField(TEXT("FormulaType"));
 	const FName CarrierIdField(TEXT("CarrierId"));
@@ -31,6 +32,8 @@ namespace ThroughBallBehindDefenseP1FormulaResolverInputAssembler
 	const FName AttackingOwnerIdField(TEXT("AttackingOwnerId"));
 	const FName DefendingOwnerIdField(TEXT("DefendingOwnerId"));
 	const FName InvolvedCardIdsField(TEXT("InvolvedCardIds"));
+	const FName AttackerVictoryRequiresOneOnOneField(
+		TEXT("bAttackerVictoryRequiresOneOnOne"));
 	const FName AttackerVictoryRequiresP2Field(TEXT("bAttackerVictoryRequiresP2"));
 	const FName DefenderVictoryEndsAttackField(TEXT("bDefenderVictoryEndsAttack"));
 
@@ -204,6 +207,16 @@ FThroughBallBehindDefenseP1FormulaResolverInputAssembler::Assemble(
 				::InvalidPlanQueryResult,
 			TEXT("Formula path must not require P2 before execution."),
 			RequiresP2Field);
+		return Result;
+	}
+
+	if (PlanResult.bRequiresOneOnOne)
+	{
+		SetFailure(Result,
+			EThroughBallBehindDefenseP1FormulaResolverInputAssemblyErrorCode
+				::InvalidPlanQueryResult,
+			TEXT("Formula path must not require OneOnOne before execution."),
+			RequiresOneOnOneField);
 		return Result;
 	}
 
@@ -416,12 +429,22 @@ FThroughBallBehindDefenseP1FormulaResolverInputAssembler::Assemble(
 		return Result;
 	}
 
-	if (!Plan.bAttackerVictoryRequiresP2)
+	if (!Plan.bAttackerVictoryRequiresOneOnOne)
 	{
 		SetFailure(Result,
 			EThroughBallBehindDefenseP1FormulaResolverInputAssemblyErrorCode
 				::InvalidWinnerMetadata,
-			TEXT("Attacker victory must retain P2-required metadata."),
+			TEXT("Attacker victory must retain OneOnOne-required metadata."),
+			AttackerVictoryRequiresOneOnOneField);
+		return Result;
+	}
+
+	if (Plan.bAttackerVictoryRequiresP2)
+	{
+		SetFailure(Result,
+			EThroughBallBehindDefenseP1FormulaResolverInputAssemblyErrorCode
+				::InvalidWinnerMetadata,
+			TEXT("Canonical BehindDefense P1 must not retain legacy P2 metadata."),
 			AttackerVictoryRequiresP2Field);
 		return Result;
 	}

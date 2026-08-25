@@ -62,7 +62,8 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 		{
 			Plan.InvolvedCardIds.Add(HelperId);
 		}
-		Plan.bAttackerVictoryRequiresP2 = true;
+		Plan.bAttackerVictoryRequiresOneOnOne = true;
+		Plan.bAttackerVictoryRequiresP2 = false;
 		Plan.bDefenderVictoryEndsAttack = true;
 		return Plan;
 	}
@@ -135,6 +136,8 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 			&& Left.AttackingOwnerId == Right.AttackingOwnerId
 			&& Left.DefendingOwnerId == Right.DefendingOwnerId
 			&& Left.InvolvedCardIds == Right.InvolvedCardIds
+			&& Left.bAttackerVictoryRequiresOneOnOne
+				== Right.bAttackerVictoryRequiresOneOnOne
 			&& Left.bAttackerVictoryRequiresP2
 				== Right.bAttackerVictoryRequiresP2
 			&& Left.bDefenderVictoryEndsAttack
@@ -161,6 +164,7 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 			&& ArePlansEqual(Left.FormulaPlan, Right.FormulaPlan)
 			&& Left.bAttackEnded == Right.bAttackEnded
 			&& Left.bContinueResolution == Right.bContinueResolution
+			&& Left.bRequiresOneOnOne == Right.bRequiresOneOnOne
 			&& Left.bRequiresP2 == Right.bRequiresP2;
 	}
 
@@ -262,6 +266,7 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 			&& Left.Decision == Right.Decision
 			&& Left.bAttackEnded == Right.bAttackEnded
 			&& Left.bContinueResolution == Right.bContinueResolution
+			&& Left.bRequiresOneOnOne == Right.bRequiresOneOnOne
 			&& Left.bRequiresP2 == Right.bRequiresP2
 			&& Left.RunnerId == Right.RunnerId;
 	}
@@ -305,7 +310,10 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 		Test.TestEqual(TEXT("Failure decision is None"), Result.Decision, EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision::None);
 		Test.TestFalse(TEXT("Failure does not end attack"), Result.bAttackEnded);
 		Test.TestFalse(TEXT("Failure does not continue"), Result.bContinueResolution);
-		Test.TestFalse(TEXT("Failure does not require P2"), Result.bRequiresP2);
+		Test.TestFalse(TEXT("Failure does not require OneOnOne"),
+			Result.bRequiresOneOnOne);
+		Test.TestFalse(TEXT("Failure does not require legacy P2"),
+			Result.bRequiresP2);
 		Test.TestTrue(TEXT("Failure RunnerId is None"), Result.RunnerId.IsNone());
 		Test.TestTrue(TEXT("Failure preserves execution input"), AreAssemblyResultsEqual(Result.Input.ResolverInputAssemblyResult, Input.ResolverInputAssemblyResult));
 		return Result;
@@ -367,16 +375,22 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 			Test.TestEqual(TEXT("Defender decision"), Result.Decision, EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision::DefenderStoppedAttack);
 			Test.TestTrue(TEXT("Defender ends attack"), Result.bAttackEnded);
 			Test.TestFalse(TEXT("Defender does not continue"), Result.bContinueResolution);
-			Test.TestFalse(TEXT("Defender does not require P2"), Result.bRequiresP2);
+			Test.TestFalse(TEXT("Defender does not require OneOnOne"),
+				Result.bRequiresOneOnOne);
+			Test.TestFalse(TEXT("Defender does not require legacy P2"),
+				Result.bRequiresP2);
 			Test.TestTrue(TEXT("Defender has no Runner continuation"), Result.RunnerId.IsNone());
 			break;
 		case 3:
 			Plan = MakePlan(); Plan.AttackBaseValue = 10.0f; Plan.DefenseBaseValue = 1.0f;
 			Result = ExecuteSuccess(Test, MakeExecutionInput(Plan));
-			Test.TestEqual(TEXT("Attacker decision"), Result.Decision, EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision::P2Required);
+			Test.TestEqual(TEXT("Attacker decision"), Result.Decision, EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision::OneOnOneRequired);
 			Test.TestFalse(TEXT("Attacker does not end attack"), Result.bAttackEnded);
 			Test.TestTrue(TEXT("Attacker continues"), Result.bContinueResolution);
-			Test.TestTrue(TEXT("Attacker requires P2"), Result.bRequiresP2);
+			Test.TestTrue(TEXT("Attacker requires OneOnOne"),
+				Result.bRequiresOneOnOne);
+			Test.TestFalse(TEXT("Attacker does not require legacy P2"),
+				Result.bRequiresP2);
 			Test.TestEqual(TEXT("Runner continuation"), Result.RunnerId, RunnerId);
 			break;
 		case 4:
@@ -457,8 +471,8 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 			ExpectInvalidAssembly(Test, Input, TEXT("FormulaPlan.RunnerId"));
 			break;
 		case 22:
-			Input = MakeExecutionInput(); Input.ResolverInputAssemblyResult.Input.PlanQueryResult.FormulaPlan.bAttackerVictoryRequiresP2 = false;
-			ExpectInvalidAssembly(Test, Input, TEXT("FormulaPlan.bAttackerVictoryRequiresP2"));
+			Input = MakeExecutionInput(); Input.ResolverInputAssemblyResult.Input.PlanQueryResult.FormulaPlan.bAttackerVictoryRequiresOneOnOne = false;
+			ExpectInvalidAssembly(Test, Input, TEXT("FormulaPlan.bAttackerVictoryRequiresOneOnOne"));
 			break;
 		case 23:
 			Input = MakeExecutionInput(); Input.ResolverInputAssemblyResult.Input.PlanQueryResult.FormulaPlan.bDefenderVictoryEndsAttack = false;
@@ -612,7 +626,7 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 
 THROUGH_BALL_BEHIND_DEFENSE_P1_EXECUTOR_TEST(1, "01DefaultValuesAreFailureSafe")
 THROUGH_BALL_BEHIND_DEFENSE_P1_EXECUTOR_TEST(2, "02MapsDefenderWinnerToStoppedAttack")
-THROUGH_BALL_BEHIND_DEFENSE_P1_EXECUTOR_TEST(3, "03MapsAttackerWinnerToP2Required")
+THROUGH_BALL_BEHIND_DEFENSE_P1_EXECUTOR_TEST(3, "03MapsAttackerWinnerToOneOnOneRequired")
 THROUGH_BALL_BEHIND_DEFENSE_P1_EXECUTOR_TEST(4, "04PreservesExecutionInputAndResolverResult")
 THROUGH_BALL_BEHIND_DEFENSE_P1_EXECUTOR_TEST(5, "05RejectsAssemblyFailure")
 THROUGH_BALL_BEHIND_DEFENSE_P1_EXECUTOR_TEST(6, "06RejectsAssemblySuccessWithErrorCode")

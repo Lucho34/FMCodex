@@ -70,7 +70,8 @@ namespace ThroughBallBehindDefenseP1FormulaResolverInputAssemblerTests
 		{
 			Plan.InvolvedCardIds.Add(HelperId);
 		}
-		Plan.bAttackerVictoryRequiresP2 = true;
+		Plan.bAttackerVictoryRequiresOneOnOne = true;
+		Plan.bAttackerVictoryRequiresP2 = false;
 		Plan.bDefenderVictoryEndsAttack = true;
 		return Input;
 	}
@@ -204,7 +205,10 @@ namespace ThroughBallBehindDefenseP1FormulaResolverInputAssemblerTests
 			Result = EvaluateSuccess(Test, Input);
 			Test.TestFalse(TEXT("P1 has no GK participation"), Result.ResolverInput.bGoalkeeperParticipated);
 			Test.TestTrue(TEXT("Winner metadata remains in preserved Plan"),
-				Result.Input.PlanQueryResult.FormulaPlan.bAttackerVictoryRequiresP2
+				Result.Input.PlanQueryResult.FormulaPlan
+					.bAttackerVictoryRequiresOneOnOne
+				&& !Result.Input.PlanQueryResult.FormulaPlan
+					.bAttackerVictoryRequiresP2
 				&& Result.Input.PlanQueryResult.FormulaPlan.bDefenderVictoryEndsAttack);
 			break;
 		case 8:
@@ -381,8 +385,10 @@ namespace ThroughBallBehindDefenseP1FormulaResolverInputAssemblerTests
 		}
 		case 45:
 		{
-			FAssemblyInput MissingP2 = MakeInput(); MissingP2.PlanQueryResult.FormulaPlan.bAttackerVictoryRequiresP2 = false;
-			EvaluateFailure(Test, MissingP2, EAssemblyError::InvalidWinnerMetadata, TEXT("bAttackerVictoryRequiresP2"));
+			FAssemblyInput MissingOneOnOne = MakeInput(); MissingOneOnOne.PlanQueryResult.FormulaPlan.bAttackerVictoryRequiresOneOnOne = false;
+			EvaluateFailure(Test, MissingOneOnOne, EAssemblyError::InvalidWinnerMetadata, TEXT("bAttackerVictoryRequiresOneOnOne"));
+			FAssemblyInput LegacyP2 = MakeInput(); LegacyP2.PlanQueryResult.FormulaPlan.bAttackerVictoryRequiresP2 = true;
+			EvaluateFailure(Test, LegacyP2, EAssemblyError::InvalidWinnerMetadata, TEXT("bAttackerVictoryRequiresP2"));
 			FAssemblyInput MissingEnd = MakeInput(); MissingEnd.PlanQueryResult.FormulaPlan.bDefenderVictoryEndsAttack = false;
 			EvaluateFailure(Test, MissingEnd, EAssemblyError::InvalidWinnerMetadata, TEXT("bDefenderVictoryEndsAttack"));
 			break;

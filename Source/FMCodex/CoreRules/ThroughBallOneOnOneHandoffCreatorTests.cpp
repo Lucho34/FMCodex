@@ -17,6 +17,31 @@ namespace ThroughBallOneOnOneHandoffCreatorTests
 
 	using EError = EThroughBallOneOnOneHandoffCreationErrorCode;
 
+	FThroughBallBehindDefenseP1FormulaResolutionExecutionResult MakeP1Result()
+	{
+		FThroughBallBehindDefenseP1FormulaResolutionExecutionResult Result;
+		Result.bSuccess = true;
+		Result.Decision =
+			EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+				::OneOnOneRequired;
+		Result.bContinueResolution = true;
+		Result.bRequiresOneOnOne = true;
+		Result.bRequiresP2 = false;
+		Result.RunnerId = ShooterCardId;
+
+		FThroughBallBehindDefenseP1PlanQueryResult& PlanResult =
+			Result.Input.ResolverInputAssemblyResult.Input.PlanQueryResult;
+		PlanResult.bSuccess = true;
+		PlanResult.Decision =
+			EThroughBallBehindDefenseP1PlanQueryDecision
+				::FormulaResolutionRequired;
+		PlanResult.bHasFormulaPlan = true;
+		PlanResult.FormulaPlan.AttackingOwnerId = AttackingOwnerId;
+		PlanResult.FormulaPlan.DefendingOwnerId = DefendingOwnerId;
+		PlanResult.FormulaPlan.RunnerId = ShooterCardId;
+		return Result;
+	}
+
 	FThroughBallBehindDefenseP2OutcomeQueryResult MakeP2Result()
 	{
 		FThroughBallBehindDefenseP2OutcomeQueryResult Result;
@@ -172,8 +197,8 @@ namespace ThroughBallOneOnOneHandoffCreatorTests
 		case 2:
 			ExpectSuccess(
 				Test,
-				FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP2(
-					MakeP2Result()));
+				FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP1(
+					MakeP1Result()));
 			break;
 		case 3:
 			ExpectSuccess(
@@ -183,21 +208,19 @@ namespace ThroughBallOneOnOneHandoffCreatorTests
 			break;
 		case 4:
 		{
-			const FName ExactAttack(TEXT("Player.Exact.P2.Attack"));
-			const FName ExactDefense(TEXT("Player.Exact.P2.Defense"));
-			const FName ExactShooter(TEXT("Card.Exact.P2.Shooter"));
-			auto Source = MakeP2Result();
-			auto& P1 = Source.Input.P1ExecutionResult;
-			auto& Plan =
-				P1.Input.ResolverInputAssemblyResult.Input.PlanQueryResult.FormulaPlan;
+			const FName ExactAttack(TEXT("Player.Exact.P1.Attack"));
+			const FName ExactDefense(TEXT("Player.Exact.P1.Defense"));
+			const FName ExactShooter(TEXT("Card.Exact.P1.Shooter"));
+			auto Source = MakeP1Result();
+			auto& Plan = Source.Input.ResolverInputAssemblyResult.Input
+				.PlanQueryResult.FormulaPlan;
 			Source.RunnerId = ExactShooter;
-			P1.RunnerId = ExactShooter;
 			Plan.RunnerId = ExactShooter;
 			Plan.AttackingOwnerId = ExactAttack;
 			Plan.DefendingOwnerId = ExactDefense;
 			ExpectSuccess(
 				Test,
-				FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP2(Source),
+				FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP1(Source),
 				ExactAttack,
 				ExactDefense,
 				ExactShooter);
@@ -678,9 +701,9 @@ namespace ThroughBallOneOnOneHandoffCreatorTests
 	}
 
 THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(1, "01DefaultCreationResultIsFailureSafe")
-THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(2, "02ValidBehindDefenseP2OneOnOneCreatesHandoff")
+THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(2, "02ValidBehindDefenseP1OneOnOneCreatesHandoff")
 THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(3, "03ValidAntiOffsideOneOnOneCreatesHandoff")
-THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(4, "04BehindDefenseP2PreservesExactIdentities")
+THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(4, "04BehindDefenseP1PreservesExactIdentities")
 THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(5, "05AntiOffsidePreservesExactIdentities")
 THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(6, "06CrossSideDuplicateRawCardIdRemainsUnambiguous")
 THROUGH_BALL_ONE_ON_ONE_HANDOFF_CREATOR_TEST(7, "07BehindDefenseP2OffsideIsRejected")

@@ -312,18 +312,18 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 			&& Session.ActualBranch.ThroughBall
 				== EMatchPlayThroughBallActualBranch::AntiOffside
 			&& Phase == EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch;
-		const bool bIsBehindDefenseP2Source = bIsThroughBall
+		const bool bIsBehindDefenseP1Source = bIsThroughBall
 			&& Session.ActualBranch.ThroughBall
 				== EMatchPlayThroughBallActualBranch::BehindDefense
-			&& Phase == EMatchPlayCurrentAttackPostRouteRollPhase::BehindDefenseP2;
-		if ((!bIsAntiOffsideSource && !bIsBehindDefenseP2Source)
+			&& Phase == EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch;
+		if ((!bIsAntiOffsideSource && !bIsBehindDefenseP1Source)
 			|| !ProgressResult.bContractComplete)
 		{
 			SetFailure(
 				Result,
 				EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode
 					::OneOnOneShotChoiceRequiresCanonicalSource,
-				TEXT("An accepted OneOnOne Shot Choice requires complete AntiOffside or BehindDefense P2 source progress."));
+				TEXT("An accepted OneOnOne Shot Choice requires complete AntiOffside or BehindDefense P1 source progress."));
 			return false;
 		}
 

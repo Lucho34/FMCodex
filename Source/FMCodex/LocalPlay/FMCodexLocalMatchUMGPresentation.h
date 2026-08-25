@@ -690,6 +690,18 @@ struct FMCODEX_API FFMCodexUMGTacticalBranchViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
 	FString Label;
 
+	/** Optional first-level route heading used to group related branch steps. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	FString PrimaryRouteLabel;
+
+	/** Optional player-facing child heading inside PrimaryRouteLabel. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	FString RouteStepLabel;
+
+	/** Optional shared stage heading for consecutive nested steps, such as One-on-One choices. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
+	FString RouteStageLabel;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Tactical Detail")
 	TArray<FFMCodexUMGTacticalRoleAttributeViewModel> RoleAttributes;
 

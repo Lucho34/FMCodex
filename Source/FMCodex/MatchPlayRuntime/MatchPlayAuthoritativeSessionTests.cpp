@@ -16934,9 +16934,8 @@ FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP1FormulaTest
 		CountOccurrences(Orchestrator,
 			TEXT("FThroughBallBehindDefenseP1FormulaResolutionExecutor::Execute(")),
 		1);
-	TestFalse(TEXT("P1 Formula bridge excludes P2 and OneOnOne"),
-		Orchestrator.Contains(TEXT("BehindDefenseP2"))
-			|| Orchestrator.Contains(TEXT("OneOnOne")));
+	TestFalse(TEXT("P1 Formula bridge excludes P2"),
+		Orchestrator.Contains(TEXT("BehindDefenseP2")));
 	TestFalse(TEXT("P1 Formula bridge contains no Outcome/Completion"),
 		Orchestrator.Contains(TEXT("FGoalResolver"))
 			|| Orchestrator.Contains(
@@ -16977,13 +16976,13 @@ FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP1FormulaTest
 		EDecision ExpectedDecision;
 		bool bAttackEnded;
 		bool bContinueResolution;
-		bool bRequiresP2;
+		bool bRequiresOneOnOne;
 	};
 	const FSuccessCase SuccessCases[] = {
 		{ TEXT("P1DefenderStopped"), 3, 6, EFormulaWinner::Defender,
 			EDecision::DefenderStoppedAttack, true, false, false },
-		{ TEXT("P1RequiresP2"), 6, 1, EFormulaWinner::Attacker,
-			EDecision::P2Required, false, true, true }
+		{ TEXT("P1RequiresOneOnOne"), 6, 1, EFormulaWinner::Attacker,
+			EDecision::OneOnOneRequired, false, true, true }
 	};
 
 	for (const FSuccessCase& Case : SuccessCases)
@@ -17032,13 +17031,15 @@ FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP1FormulaTest
 			Execution.bAttackEnded, Case.bAttackEnded);
 		TestEqual(*FString::Printf(TEXT("%s continuation result"), Case.Label),
 			Execution.bContinueResolution, Case.bContinueResolution);
-		TestEqual(*FString::Printf(TEXT("%s P2-required result"), Case.Label),
-			Execution.bRequiresP2, Case.bRequiresP2);
+		TestEqual(*FString::Printf(TEXT("%s OneOnOne-required result"), Case.Label),
+			Execution.bRequiresOneOnOne, Case.bRequiresOneOnOne);
+		TestFalse(*FString::Printf(TEXT("%s legacy P2 result disabled"), Case.Label),
+			Execution.bRequiresP2);
 		TestFalse(*FString::Printf(TEXT("%s P1 is never Goal"), Case.Label),
 			Domain.FormulaResolutionResult.bIsGoal);
-		if (Case.bRequiresP2)
+		if (Case.bRequiresOneOnOne)
 		{
-			TestEqual(TEXT("P2Required preserves Runner identity"),
+			TestEqual(TEXT("OneOnOneRequired preserves Runner identity"),
 				Execution.RunnerId,
 				Domain.PlanRegenerationResult.P1PlanResult.FormulaPlan.RunnerId);
 		}
@@ -17437,6 +17438,55 @@ bool
 FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP2DecisionTest
 	::RunTest(const FString& Parameters)
 {
+	// The public command remains a compatibility boundary, but canonical play
+	// must reject it after P1 without consuming another roll or mutating State.
+	{
+		using namespace MatchPlayAuthoritativeSessionTests;
+		const FString Prefix(TEXT("LegacyP2RejectedAfterP1"));
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			FName(*FString::Printf(
+				TEXT("Skill.%s.%d"),
+				*Prefix,
+				static_cast<int32>(ESkillRuleType::ThroughBall))),
+			ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(3));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(MakePostRouteSuccess(1));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Legacy P2 rejection reaches BehindDefense"),
+			BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None,
+				Trace)
+				&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess
+				&& Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+					.OrchestrationResult.bSuccess);
+		const auto P1Formula =
+			Session.ResolveThroughBallBehindDefenseP1Formula();
+		TestEqual(TEXT("P1 directly requires OneOnOne"),
+			P1Formula.OrchestrationResult.FormulaExecutionResult.Decision,
+			EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+				::OneOnOneRequired);
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		const int32 CallsBefore = Post.GetCallCount();
+		const auto Rejected =
+			Session.ResolveThroughBallBehindDefenseP2Decision();
+		TestFalse(TEXT("Legacy P2 command is rejected"),
+			Rejected.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Legacy P2 rejection consumes zero RNG"),
+			Post.GetCallCount() - CallsBefore,
+			0);
+		TestTrue(TEXT("Legacy P2 rejection leaves State unchanged"),
+			AreStatesEqual(Before, Session.GetStateSnapshot()));
+	}
+	AddInfo(TEXT("Historical reachable-P2 cases are superseded by the canonical rejection contract."));
+	return true;
+
 	using namespace MatchPlayAuthoritativeSessionTests;
 	using EError =
 		EMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionErrorCode;
@@ -17987,12 +18037,16 @@ FMatchPlayAuthoritativeSessionSubmitThroughBallOneOnOneShotChoiceTest
 		FMatchPlayAuthoritativeSession& Session,
 		const FString& Prefix)
 	{
-		return ReachRoute(Session, Prefix)
-			&& Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
-				.OrchestrationResult.bSuccess
-			&& Session.ResolveThroughBallBehindDefenseP2Decision()
-				.OrchestrationResult.QueryResult.Decision
-					== EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired;
+		if (!ReachRoute(Session, Prefix)
+			|| !Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
+				.OrchestrationResult.bSuccess)
+		{
+			return false;
+		}
+		return Session.ResolveThroughBallBehindDefenseP1Formula()
+			.OrchestrationResult.FormulaExecutionResult.Decision
+			== EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+				::OneOnOneRequired;
 	};
 
 	auto TestAcceptedChoice = [this, &SkillId, &ReachAntiOneOnOne,
@@ -18010,7 +18064,7 @@ FMatchPlayAuthoritativeSessionSubmitThroughBallOneOnOneShotChoiceTest
 		FQueuePostRouteRollProvider Post;
 		if (bBehindDefense)
 		{
-			for (const int32 D6 : { 6, 1, 2 })
+			for (const int32 D6 : { 6, 1 })
 			{
 				Post.Enqueue(MakePostRouteSuccess(D6));
 			}
@@ -18299,7 +18353,7 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		1);
 	TestEqual(TEXT("BehindDefense handoff has one call site"),
 		CountOccurrences(Orchestrator,
-			TEXT("FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP2(")),
+			TEXT("FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP1(")),
 		1);
 	TestEqual(TEXT("ChipShot query has one call site"),
 		CountOccurrences(Orchestrator,
@@ -18544,7 +18598,7 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		InitialRouteFixtures::FQueueRollProvider Initial;
 		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(3));
 		FQueuePostRouteRollProvider Post;
-		for (const int32 D6 : { 6, 1, 2, 5 })
+		for (const int32 D6 : { 6, 1, 5 })
 		{
 			Post.Enqueue(MakePostRouteSuccess(D6));
 		}
@@ -18555,10 +18609,22 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		TestTrue(TEXT("BehindDefense P1 ready"),
 			Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
 				.OrchestrationResult.bSuccess);
-		TestEqual(TEXT("BehindDefense P2 source requires OneOnOne"),
-			Session.ResolveThroughBallBehindDefenseP2Decision()
-				.OrchestrationResult.QueryResult.Decision,
-			EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired);
+		const auto P1Formula =
+			Session.ResolveThroughBallBehindDefenseP1Formula();
+		TestEqual(TEXT("BehindDefense P1 source requires OneOnOne"),
+			P1Formula.OrchestrationResult.FormulaExecutionResult.Decision,
+			EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+				::OneOnOneRequired);
+		const int32 CallsBeforeLegacyP2 = Post.GetCallCount();
+		const FMatchPlayState StateBeforeLegacyP2 = Session.GetStateSnapshot();
+		const auto LegacyP2 =
+			Session.ResolveThroughBallBehindDefenseP2Decision();
+		TestFalse(TEXT("BehindDefense legacy P2 is unreachable"),
+			LegacyP2.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("BehindDefense rejected legacy P2 consumes zero RNG"),
+			Post.GetCallCount() - CallsBeforeLegacyP2, 0);
+		TestTrue(TEXT("BehindDefense rejected legacy P2 leaves State stable"),
+			AreStatesEqual(StateBeforeLegacyP2, Session.GetStateSnapshot()));
 		TestTrue(TEXT("BehindDefense ChipShot choice accepted"),
 			SubmitOneOnOneShotChoice(
 				Session,
@@ -18578,26 +18644,26 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		const auto& Records = After.CurrentAttack.ResolutionSession
 			.PostRouteRollProgress.RollRecords;
 		TestTrue(TEXT("BehindDefense Goal succeeds"), Domain.bSuccess
-			&& Domain.Source == ESource::BehindDefenseP2
+			&& Domain.Source == ESource::BehindDefense
 			&& Domain.bResolvedNewRoll && Domain.QueryResult.bSuccess);
 		TestEqual(TEXT("BehindDefense fresh provider delta"),
 			Post.GetCallCount() - CallsBefore, 1);
 		TestEqual(TEXT("BehindDefense regeneration RNG"),
-			Domain.BehindDefenseP2RegenerationResult.ProviderCallCount, 0);
+			Domain.BehindDefenseP1RegenerationResult
+				.PlanRegenerationProviderCallCount,
+			0);
 		TestTrue(TEXT("BehindDefense source records preserved"),
 			RecordsPreserved(BeforeRecords, Records));
-		TestEqual(TEXT("BehindDefense record count"), Records.Num(), 4);
-		if (Records.Num() == 4)
+		TestEqual(TEXT("BehindDefense record count"), Records.Num(), 3);
+		if (Records.Num() == 3)
 		{
 			TestEqual(TEXT("BehindDefense P1 Attack purpose"),
 				Records[0].Purpose, EPurpose::PrimaryAttack);
 			TestEqual(TEXT("BehindDefense P1 Defense purpose"),
 				Records[1].Purpose, EPurpose::PrimaryDefense);
-			TestEqual(TEXT("BehindDefense P2 purpose"),
-				Records[2].Purpose, EPurpose::BehindDefenseP2Defense);
 			TestEqual(TEXT("BehindDefense ChipShot purpose"),
-				Records[3].Purpose, EPurpose::OneOnOneChipShotAttack);
-			TestEqual(TEXT("BehindDefense ChipShot D6"), Records[3].RawD6, 5);
+				Records[2].Purpose, EPurpose::OneOnOneChipShotAttack);
+			TestEqual(TEXT("BehindDefense ChipShot D6"), Records[2].RawD6, 5);
 		}
 		TestEqual(TEXT("BehindDefense OneOnOne phase"),
 			After.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase,
@@ -18617,8 +18683,9 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 			After.RuntimeState.PlayerBState.Score, PlayerBScoreBefore);
 
 		const auto DirectHandoff =
-			FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP2(
-				Domain.BehindDefenseP2RegenerationResult.QueryResult);
+			FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP1(
+				Domain.BehindDefenseP1RegenerationResult
+					.FormulaExecutionResult);
 		TestTrue(TEXT("BehindDefense direct handoff equivalence"),
 			HandoffsEqual(DirectHandoff, Domain.HandoffCreationResult));
 		FThroughBallOneOnOneChipShotOutcomeQueryInput DirectInput =
@@ -18766,8 +18833,7 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 
 	auto TestBehindTerminal = [this, &SkillId, &ReachRoute](
 		const TCHAR* Label,
-		const TArray<int32>& SourceD6,
-		const bool bResolveP2)
+		const TArray<int32>& SourceD6)
 	{
 		const FString Prefix(Label);
 		const auto Rules = MakeSkillRuleSet(
@@ -18788,12 +18854,6 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		TestTrue(*FString::Printf(TEXT("%s P1 consumed"), Label),
 			Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
 				.OrchestrationResult.bSuccess);
-		if (bResolveP2)
-		{
-			TestTrue(*FString::Printf(TEXT("%s P2 consumed"), Label),
-				Session.ResolveThroughBallBehindDefenseP2Decision()
-					.OrchestrationResult.bSuccess);
-		}
 		const FMatchPlayState Before = Session.GetStateSnapshot();
 		const int32 CallsBefore = Post.GetCallCount();
 		const auto Rejected =
@@ -18809,9 +18869,8 @@ FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneChipShotDecisionTest
 		TestAcceptedDomainFailureNoAdopt(*this, Label,
 			Rejected.RuntimeEnvelope, Before, Session.GetStateSnapshot());
 	};
-	TestBehindTerminal(TEXT("OneOnOneP2Offside"), { 6, 1, 4 }, true);
-	TestBehindTerminal(TEXT("OneOnOneDefenderStopped"), { 3, 6 }, false);
-	TestBehindTerminal(TEXT("OneOnOneOutOfPlay"), { 2 }, false);
+	TestBehindTerminal(TEXT("OneOnOneDefenderStopped"), { 3, 6 });
+	TestBehindTerminal(TEXT("OneOnOneOutOfPlay"), { 2 });
 
 	{
 		const FString Prefix(TEXT("OneOnOneIncomplete"));
@@ -18997,9 +19056,11 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneDirectShotTest
 		if (!Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
 			.OrchestrationResult.bSuccess) return false;
 		OutStage = 2;
-		const bool bReached = Session.ResolveThroughBallBehindDefenseP2Decision()
-			.OrchestrationResult.QueryResult.Decision
-			== EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired;
+		const bool bReached =
+			Session.ResolveThroughBallBehindDefenseP1Formula()
+				.OrchestrationResult.FormulaExecutionResult.Decision
+			== EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+				::OneOnOneRequired;
 		if (bReached) OutStage = 3;
 		return bReached;
 	};
@@ -19029,7 +19090,6 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneDirectShotTest
 		{
 			Post.Enqueue(MakePostRouteSuccess(6));
 			Post.Enqueue(MakePostRouteSuccess(1));
-			Post.Enqueue(MakePostRouteSuccess(2));
 		}
 		else
 		{
@@ -19390,7 +19450,6 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 		Feet,
 		AntiOffside,
 		BehindP1,
-		BehindP2,
 		AntiOneOnOne,
 		BehindOneOnOne
 	};
@@ -19416,14 +19475,11 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 		{ TEXT("TerminalBehindDefenderStopped"), EScenario::BehindP1, 3,
 			{ 3, 6 }, ESource::BehindDefenseDefenderStoppedAttack,
 			false, false },
-		{ TEXT("TerminalBehindP2Offside"), EScenario::BehindP2, 3,
-			{ 6, 1, 4 }, ESource::BehindDefenseP2Offside,
-			false, false },
 		{ TEXT("TerminalAntiChipMiss"), EScenario::AntiOneOnOne, 5,
 			{ 6, 2 }, ESource::AntiOffsideOneOnOneMiss,
 			false, true },
 		{ TEXT("TerminalBehindChipGoal"), EScenario::BehindOneOnOne, 3,
-			{ 6, 1, 2, 5 }, ESource::BehindDefenseOneOnOneGoal,
+			{ 6, 1, 5 }, ESource::BehindDefenseOneOnOneGoal,
 			true, false }
 	};
 
@@ -19465,14 +19521,6 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 				Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
 					.OrchestrationResult.bSuccess);
 			break;
-		case EScenario::BehindP2:
-			TestTrue(*FString::Printf(TEXT("%s Behind P1"), Case.Label),
-				Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
-					.OrchestrationResult.bSuccess);
-			TestTrue(*FString::Printf(TEXT("%s Behind P2"), Case.Label),
-				Session.ResolveThroughBallBehindDefenseP2Decision()
-					.OrchestrationResult.bSuccess);
-			break;
 		case EScenario::AntiOneOnOne:
 			TestTrue(*FString::Printf(TEXT("%s AntiOffside"), Case.Label),
 				Session.ResolveThroughBallAntiOffsideDecision()
@@ -19489,9 +19537,6 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 		case EScenario::BehindOneOnOne:
 			TestTrue(*FString::Printf(TEXT("%s Behind P1"), Case.Label),
 				Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
-					.OrchestrationResult.bSuccess);
-			TestTrue(*FString::Printf(TEXT("%s Behind P2"), Case.Label),
-				Session.ResolveThroughBallBehindDefenseP2Decision()
 					.OrchestrationResult.bSuccess);
 			TestTrue(*FString::Printf(TEXT("%s ChipShot choice"), Case.Label),
 				SubmitOneOnOneShotChoice(
@@ -19725,12 +19770,6 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 			TestTrue(*FString::Printf(TEXT("%s P1 source"), Label),
 				Session.ResolveThroughBallBehindDefenseP1DecisionOrPlan()
 					.OrchestrationResult.bSuccess);
-			if (ContinuationDepth == 3)
-			{
-				TestTrue(*FString::Printf(TEXT("%s P2 source"), Label),
-					Session.ResolveThroughBallBehindDefenseP2Decision()
-						.OrchestrationResult.bSuccess);
-			}
 		}
 		if (Choice != EMatchPlayThroughBallOneOnOneShotChoice::None)
 		{
@@ -19756,8 +19795,11 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 		EMatchPlayThroughBallOneOnOneShotChoice::ChipShot);
 	TestNonTerminal(TEXT("TerminalRejectsAntiOneOnOneDirectChoice"), { 6 }, 1,
 		EMatchPlayThroughBallOneOnOneShotChoice::DirectShot);
-	TestNonTerminal(TEXT("TerminalRejectsP2Required"), { 6, 1 }, 2);
-	TestNonTerminal(TEXT("TerminalRejectsBehindOneOnOne"), { 6, 1, 2 }, 3);
+	TestNonTerminal(TEXT("TerminalRejectsBehindOneOnOneUnchosen"),
+		{ 6, 1 }, 2);
+	TestNonTerminal(TEXT("TerminalRejectsBehindOneOnOneChipChoice"),
+		{ 6, 1 }, 2,
+		EMatchPlayThroughBallOneOnOneShotChoice::ChipShot);
 
 	{
 		const FString Prefix(TEXT("TerminalIncompleteFeet"));
@@ -20165,7 +20207,7 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 		InitialRouteFixtures::FQueueRollProvider Initial;
 		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(3));
 		FQueuePostRouteRollProvider Post;
-		for (const int32 D6 : { 6, 1, 2, 2 })
+		for (const int32 D6 : { 6, 1, 2 })
 		{
 			Post.Enqueue(MakePostRouteSuccess(D6));
 		}
@@ -20185,20 +20227,10 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 			Session.ResolveThroughBallBehindDefenseP1Formula();
 		TestTrue(TEXT("Flow C P1 Formula succeeds"),
 			P1Formula.OrchestrationResult.bSuccess);
-		TestEqual(TEXT("Flow C P1 Formula requires P2"),
+		TestEqual(TEXT("Flow C P1 Formula requires OneOnOne"),
 			P1Formula.OrchestrationResult.FormulaExecutionResult.Decision,
 			EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
-				::P2Required);
-		const auto P2 = Session.ResolveThroughBallBehindDefenseP2Decision();
-		TestTrue(TEXT("Flow C P2 succeeds"),
-			P2.OrchestrationResult.bSuccess);
-		TestEqual(TEXT("Flow C P2 requires OneOnOne"),
-			P2.OrchestrationResult.QueryResult.Decision,
-			EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired);
-		TestEqual(TEXT("Flow C P1 provenance survives P2"),
-			P2.OrchestrationResult.P1FormulaRegenerationResult
-				.FormulaExecutionResult.Decision,
-			P1Formula.OrchestrationResult.FormulaExecutionResult.Decision);
+				::OneOnOneRequired);
 		const int32 CallsBeforeChoice = Post.GetCallCount();
 		const auto Choice = SubmitOneOnOneShotChoice(
 			Session,
@@ -20215,20 +20247,21 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 			Session.ResolveThroughBallOneOnOneChipShotDecision();
 		TestTrue(TEXT("Flow C ChipShot succeeds"),
 			Chip.OrchestrationResult.bSuccess);
-		TestEqual(TEXT("Flow C OneOnOne source is BehindDefense P2"),
+		TestEqual(TEXT("Flow C OneOnOne source is BehindDefense P1"),
 			Chip.OrchestrationResult.Source,
-			EMatchPlayThroughBallOneOnOneSource::BehindDefenseP2);
-		TestEqual(TEXT("Flow C P2 provenance survives OneOnOne"),
-			Chip.OrchestrationResult.BehindDefenseP2RegenerationResult
-				.QueryResult.Decision,
-			P2.OrchestrationResult.QueryResult.Decision);
+			EMatchPlayThroughBallOneOnOneSource::BehindDefense);
+		TestEqual(TEXT("Flow C P1 provenance survives OneOnOne"),
+			Chip.OrchestrationResult.BehindDefenseP1RegenerationResult
+				.FormulaExecutionResult.Decision,
+			P1Formula.OrchestrationResult.FormulaExecutionResult.Decision);
 		TestTrue(TEXT("Flow C handoff preserves shooter"),
 			Chip.OrchestrationResult.HandoffCreationResult.bSuccess
 				&& !Chip.OrchestrationResult.HandoffCreationResult
 					.Handoff.ShooterCardId.IsNone()
 				&& Chip.OrchestrationResult.HandoffCreationResult
 					.Handoff.ShooterCardId
-					== P2.OrchestrationResult.QueryResult.RunnerId);
+					== P1Formula.OrchestrationResult
+						.FormulaExecutionResult.RunnerId);
 		TestEqual(TEXT("Flow C ChipShot result is Miss"),
 			Chip.OrchestrationResult.QueryResult.Decision,
 			EThroughBallOneOnOneChipShotOutcomeDecision::Miss);
@@ -20244,7 +20277,6 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 		AssertChronology(TEXT("Flow C"), Initial, Post, BeforeTerminal,
 			{ EPostPurpose::PrimaryAttack,
 				EPostPurpose::PrimaryDefense,
-				EPostPurpose::BehindDefenseP2Defense,
 				EPostPurpose::OneOnOneChipShotAttack });
 		const int32 CallsBeforeTerminal =
 			Initial.GetCallCount() + Post.GetCallCount();

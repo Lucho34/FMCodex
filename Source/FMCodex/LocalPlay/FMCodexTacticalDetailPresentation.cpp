@@ -26,7 +26,8 @@ namespace FMCodexTacticalDetailPresentation
 		case ESkillRuleType::CutInsideShot: return TEXT("射门 · 盘带");
 		case ESkillRuleType::PassControl: return TEXT("传球 / 盘带 / 跑动");
 		case ESkillRuleType::Cross: return TEXT("高球 / 低球");
-		case ESkillRuleType::ThroughBall: return TEXT("脚下 / 身后 / 反越位");
+		case ESkillRuleType::ThroughBall:
+			return TEXT("脚下球 · 身后球 · 反越位");
 		default: return FString();
 		}
 	}
@@ -43,12 +44,50 @@ namespace FMCodexTacticalDetailPresentation
 		if (Id == TEXT("Cross.High")) return TEXT("高球传中");
 		if (Id == TEXT("Cross.Low")) return TEXT("低球传中");
 		if (Id == TEXT("ThroughBall.Feet")) return TEXT("脚下球");
-		if (Id == TEXT("ThroughBall.BehindDefenseP1")) return TEXT("身后球 · 第一阶段");
-		if (Id == TEXT("ThroughBall.BehindDefenseP2")) return TEXT("身后球 · 越位判定");
-		if (Id == TEXT("ThroughBall.AntiOffside")) return TEXT("反越位");
-		if (Id == TEXT("ThroughBall.OneOnOneDirect")) return TEXT("单刀 · 直接射门");
-		if (Id == TEXT("ThroughBall.OneOnOneChip")) return TEXT("单刀 · 挑射");
+		if (Id == TEXT("ThroughBall.BehindDefenseP1")) return TEXT("第一阶段");
+		if (Id == TEXT("ThroughBall.AntiOffside")) return TEXT("越位判定");
+		if (Id == TEXT("ThroughBall.OneOnOneDirect")) return TEXT("直接射门");
+		if (Id == TEXT("ThroughBall.OneOnOneChip")) return TEXT("挑射");
 		return FString();
+	}
+
+	TArray<FString> PrimaryRouteLabels(const FName Id)
+	{
+		if (Id == TEXT("ThroughBall.Feet")) return { TEXT("脚下球") };
+		if (Id == TEXT("ThroughBall.BehindDefenseP1"))
+		{
+			return { TEXT("身后球") };
+		}
+		if (Id == TEXT("ThroughBall.AntiOffside"))
+		{
+			return { TEXT("反越位") };
+		}
+		if (Id == TEXT("ThroughBall.OneOnOneDirect")
+			|| Id == TEXT("ThroughBall.OneOnOneChip"))
+		{
+			return { TEXT("身后球"), TEXT("反越位") };
+		}
+		return {};
+	}
+
+	FString RouteStepLabel(const FName Id)
+	{
+		if (Id == TEXT("ThroughBall.Feet")) return TEXT("属性对抗");
+		if (Id == TEXT("ThroughBall.BehindDefenseP1")) return TEXT("第一阶段");
+		if (Id == TEXT("ThroughBall.AntiOffside")) return TEXT("越位判定");
+		if (Id == TEXT("ThroughBall.OneOnOneDirect"))
+			return TEXT("直接射门");
+		if (Id == TEXT("ThroughBall.OneOnOneChip"))
+			return TEXT("挑射");
+		return FString();
+	}
+
+	FString RouteStageLabel(const FName Id)
+	{
+		return Id == TEXT("ThroughBall.OneOnOneDirect")
+			|| Id == TEXT("ThroughBall.OneOnOneChip")
+				? TEXT("成功后：单刀")
+				: FString();
 	}
 
 	FString RoleLabel(const EMatchPlayResolutionParticipantRole Role)
@@ -140,20 +179,31 @@ FFMCodexTacticalDetailPresentationBuilder::Build(
 
 	for (const FTacticalRuleDescriptionBranch& Branch : Description->Branches)
 	{
-		FFMCodexUMGTacticalBranchViewModel& View =
-			Result.Branches.AddDefaulted_GetRef();
-		View.Label = BranchLabel(Branch.BranchId);
-		View.bRollOnly = Branch.RollSemantics
-			!= EMatchPlayResolutionRollSemantics::ArithmeticContest;
-		for (const FTacticalRuleDescriptionTerm& TermValue : Branch.AttackTerms)
+		TArray<FString> RouteLabels = PrimaryRouteLabels(Branch.BranchId);
+		if (RouteLabels.IsEmpty())
 		{
-			AddRoleAttribute(View, *Description, TermValue);
+			RouteLabels.Add(FString());
 		}
-		for (const FTacticalRuleDescriptionTerm& TermValue : Branch.DefenseTerms)
+		for (const FString& RouteLabel : RouteLabels)
 		{
-			AddRoleAttribute(View, *Description, TermValue);
+			FFMCodexUMGTacticalBranchViewModel& View =
+				Result.Branches.AddDefaulted_GetRef();
+			View.Label = BranchLabel(Branch.BranchId);
+			View.PrimaryRouteLabel = RouteLabel;
+			View.RouteStepLabel = RouteStepLabel(Branch.BranchId);
+			View.RouteStageLabel = RouteStageLabel(Branch.BranchId);
+			View.bRollOnly = Branch.RollSemantics
+				!= EMatchPlayResolutionRollSemantics::ArithmeticContest;
+			for (const FTacticalRuleDescriptionTerm& TermValue : Branch.AttackTerms)
+			{
+				AddRoleAttribute(View, *Description, TermValue);
+			}
+			for (const FTacticalRuleDescriptionTerm& TermValue : Branch.DefenseTerms)
+			{
+				AddRoleAttribute(View, *Description, TermValue);
+			}
+			FinalizeAttributeLabels(View);
 		}
-		FinalizeAttributeLabels(View);
 	}
 	return Result;
 }

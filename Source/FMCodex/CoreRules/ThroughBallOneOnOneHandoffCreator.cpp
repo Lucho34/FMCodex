@@ -2,6 +2,7 @@
 
 #include "ThroughBallAntiOffsideOutcomeQuery.h"
 #include "ThroughBallBehindDefenseP2OutcomeQuery.h"
+#include "ThroughBallBehindDefenseP1FormulaResolutionExecutor.h"
 
 namespace ThroughBallOneOnOneHandoffCreator
 {
@@ -22,6 +23,8 @@ namespace ThroughBallOneOnOneHandoffCreator
 	const FName P1AttackEndedField(TEXT("P1ExecutionResult.bAttackEnded"));
 	const FName P1ContinueResolutionField(
 		TEXT("P1ExecutionResult.bContinueResolution"));
+	const FName P1RequiresOneOnOneField(
+		TEXT("P1ExecutionResult.bRequiresOneOnOne"));
 	const FName P1RequiresP2Field(TEXT("P1ExecutionResult.bRequiresP2"));
 	const FName PlanQueryResultField(
 		TEXT("P1ExecutionResult.PlanQueryResult"));
@@ -141,6 +144,112 @@ namespace ThroughBallOneOnOneHandoffCreator
 		Result.bSuccess = true;
 		return Result;
 	}
+}
+
+FThroughBallOneOnOneHandoffCreationResult
+FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP1(
+	const FThroughBallBehindDefenseP1FormulaResolutionExecutionResult&
+		P1ExecutionResult)
+{
+	using namespace ThroughBallOneOnOneHandoffCreator;
+
+	FThroughBallOneOnOneHandoffCreationResult Result;
+	if (!P1ExecutionResult.bSuccess)
+	{
+		SetFailure(
+			Result,
+			EThroughBallOneOnOneHandoffCreationErrorCode::SourceOutcomeFailed,
+			TEXT("Behind Defense P1 execution must succeed before Handoff creation."),
+			P1ExecutionResultField);
+		return Result;
+	}
+	if (RejectInvalidSource(
+			Result,
+			P1ExecutionResult.ErrorCode
+				== EThroughBallBehindDefenseP1FormulaResolutionExecutionErrorCode::None,
+			P1ErrorCodeField)
+		|| RejectInvalidSource(
+			Result,
+			P1ExecutionResult.ErrorMessage.IsEmpty(),
+			P1ErrorMessageField)
+		|| RejectInvalidSource(
+			Result,
+			P1ExecutionResult.InvalidField.IsNone(),
+			P1InvalidFieldField)
+		|| RejectInvalidSource(
+			Result,
+			P1ExecutionResult.Decision
+				== EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+					::OneOnOneRequired,
+			P1DecisionField)
+		|| RejectInvalidSource(Result, !P1ExecutionResult.bAttackEnded,
+			P1AttackEndedField)
+		|| RejectInvalidSource(Result, P1ExecutionResult.bContinueResolution,
+			P1ContinueResolutionField)
+		|| RejectInvalidSource(Result, P1ExecutionResult.bRequiresOneOnOne,
+			P1RequiresOneOnOneField)
+		|| RejectInvalidSource(Result, !P1ExecutionResult.bRequiresP2,
+			P1RequiresP2Field))
+	{
+		return Result;
+	}
+
+	const FThroughBallBehindDefenseP1PlanQueryResult& PlanResult =
+		P1ExecutionResult.Input.ResolverInputAssemblyResult.Input.PlanQueryResult;
+	if (RejectInvalidSource(Result, PlanResult.bSuccess, PlanQueryResultField)
+		|| RejectInvalidSource(
+			Result,
+			PlanResult.ErrorCode
+				== EThroughBallBehindDefenseP1PlanQueryErrorCode::None,
+			PlanErrorCodeField)
+		|| RejectInvalidSource(Result, PlanResult.ErrorMessage.IsEmpty(),
+			PlanErrorMessageField)
+		|| RejectInvalidSource(Result, PlanResult.InvalidField.IsNone(),
+			PlanInvalidFieldField)
+		|| RejectInvalidSource(
+			Result,
+			PlanResult.Decision
+				== EThroughBallBehindDefenseP1PlanQueryDecision
+					::FormulaResolutionRequired,
+			PlanDecisionField)
+		|| RejectInvalidSource(Result, PlanResult.bHasFormulaPlan,
+			HasFormulaPlanField))
+	{
+		return Result;
+	}
+
+	const FName AttackingOwnerId = PlanResult.FormulaPlan.AttackingOwnerId;
+	const FName DefendingOwnerId = PlanResult.FormulaPlan.DefendingOwnerId;
+	if (!ValidateOwners(Result, AttackingOwnerId, DefendingOwnerId))
+	{
+		return Result;
+	}
+	const FName ExecutionRunnerId = P1ExecutionResult.RunnerId;
+	const FName PlanRunnerId = PlanResult.FormulaPlan.RunnerId;
+	if (ExecutionRunnerId.IsNone() || PlanRunnerId.IsNone())
+	{
+		SetFailure(
+			Result,
+			EThroughBallOneOnOneHandoffCreationErrorCode::InvalidShooterIdentity,
+			TEXT("Shooter identity provenance must not be None."),
+			ShooterCardIdField);
+		return Result;
+	}
+	if (ExecutionRunnerId != PlanRunnerId)
+	{
+		SetFailure(
+			Result,
+			EThroughBallOneOnOneHandoffCreationErrorCode
+				::InconsistentShooterIdentity,
+			TEXT("Shooter identity provenance must agree."),
+			ShooterCardIdField);
+		return Result;
+	}
+
+	return CreateSuccess(
+		AttackingOwnerId,
+		DefendingOwnerId,
+		ExecutionRunnerId);
 }
 
 FThroughBallOneOnOneHandoffCreationResult

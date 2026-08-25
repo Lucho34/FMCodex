@@ -2,7 +2,7 @@
 
 #include "MatchPlayCardSnapshotAuthority.h"
 #include "MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator.h"
-#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
+#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
 
 namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlan
 {
@@ -48,12 +48,12 @@ namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePla
 		{
 			if (Progress.Phase == EPhase::OneOnOneDirectShot)
 			{
-				Progress.Phase = EPhase::BehindDefenseP2;
-				Progress.RollRecords.SetNum(3);
+				Progress.Phase = EPhase::PrimaryBranch;
+				Progress.RollRecords.SetNum(2);
 			}
-			else if (Progress.Phase != EPhase::BehindDefenseP2 && Progress.Phase != EPhase::PrimaryBranch)
+			else if (Progress.Phase != EPhase::PrimaryBranch)
 			{
-				Fail(Result, EError::UnsupportedSourcePhase, TEXT("BehindDefense DirectShot requires P1 or P2 provenance."));
+				Fail(Result, EError::UnsupportedSourcePhase, TEXT("BehindDefense DirectShot requires P1 provenance."));
 				return false;
 			}
 		}
@@ -103,23 +103,24 @@ namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePla
 		}
 		else
 		{
-			Result.BehindDefenseP2RegenerationResult =
-				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator::Resolve(
-					Result.SourceProvenanceState, Rules, nullptr);
-			if (!Result.BehindDefenseP2RegenerationResult.bSuccess)
+			Result.BehindDefenseP1RegenerationResult =
+				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator::Resolve(
+					Result.SourceProvenanceState, Rules);
+			if (!Result.BehindDefenseP1RegenerationResult.bSuccess)
 			{
-				Fail(Result, EError::SourceDecisionRegenerationFailed, Result.BehindDefenseP2RegenerationResult.ErrorMessage,
-					Result.BehindDefenseP2RegenerationResult.InvalidField);
+				Fail(Result, EError::SourceDecisionRegenerationFailed, Result.BehindDefenseP1RegenerationResult.ErrorMessage,
+					Result.BehindDefenseP1RegenerationResult.InvalidField);
 				return false;
 			}
-			if (Result.BehindDefenseP2RegenerationResult.QueryResult.Decision != EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired)
+			if (Result.BehindDefenseP1RegenerationResult.FormulaExecutionResult.Decision
+				!= EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision::OneOnOneRequired)
 			{
-				Fail(Result, EError::SourceDecisionDoesNotRequireOneOnOne, TEXT("BehindDefense P2 does not require OneOnOne."));
+				Fail(Result, EError::SourceDecisionDoesNotRequireOneOnOne, TEXT("BehindDefense P1 does not require OneOnOne."));
 				return false;
 			}
 			++Result.HandoffCreationCount;
-			Result.HandoffCreationResult = FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP2(
-				Result.BehindDefenseP2RegenerationResult.QueryResult);
+			Result.HandoffCreationResult = FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP1(
+				Result.BehindDefenseP1RegenerationResult.FormulaExecutionResult);
 		}
 		if (!Result.HandoffCreationResult.bSuccess || !Result.HandoffCreationResult.bHasHandoff)
 		{
@@ -230,7 +231,7 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanOrchestr
 	if (BeforeSession.Stage != EMatchPlayCurrentAttackResolutionStage::RouteResolved) { Fail(Result, EError::RouteNotResolved, TEXT("DirectShot requires RouteResolved.")); return Result; }
 	if (!BeforeSession.bHasActualBranch || BeforeSession.ActualBranch.ActionType != ESkillRuleType::ThroughBall) { Fail(Result, EError::UnsupportedThroughBallBranch, TEXT("DirectShot supports only ThroughBall.")); return Result; }
 	if (BeforeSession.ActualBranch.ThroughBall == EMatchPlayThroughBallActualBranch::AntiOffside) Result.Source = ESource::AntiOffside;
-	else if (BeforeSession.ActualBranch.ThroughBall == EMatchPlayThroughBallActualBranch::BehindDefense) Result.Source = ESource::BehindDefenseP2;
+	else if (BeforeSession.ActualBranch.ThroughBall == EMatchPlayThroughBallActualBranch::BehindDefense) Result.Source = ESource::BehindDefense;
 	else { Fail(Result, EError::UnsupportedThroughBallBranch, TEXT("This ThroughBall branch has no OneOnOne DirectShot provenance.")); return Result; }
 	if (BeforeSession.ThroughBallOneOnOneShotChoice == EMatchPlayThroughBallOneOnOneShotChoice::None) { Fail(Result, EError::OneOnOneShotChoiceNotSelected, TEXT("DirectShot choice has not been selected.")); return Result; }
 	if (BeforeSession.ThroughBallOneOnOneShotChoice != EMatchPlayThroughBallOneOnOneShotChoice::DirectShot) { Fail(Result, EError::OneOnOneShotChoiceDoesNotPermitDirectShot, TEXT("Accepted choice does not permit DirectShot.")); return Result; }
@@ -241,7 +242,7 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanOrchestr
 	FMatchPlayState Candidate = BeforeState;
 	auto& CandidateSession = Candidate.CurrentAttack.ResolutionSession;
 	auto& Progress = CandidateSession.PostRouteRollProgress;
-	const EPhase SourcePhase = Result.Source == ESource::AntiOffside ? EPhase::PrimaryBranch : EPhase::BehindDefenseP2;
+	const EPhase SourcePhase = EPhase::PrimaryBranch;
 	if (Progress.Phase == SourcePhase) Progress.Phase = EPhase::OneOnOneDirectShot;
 	else if (Progress.Phase != EPhase::OneOnOneDirectShot) { Fail(Result, EError::UnsupportedSourcePhase, TEXT("DirectShot source phase is unsupported.")); return Result; }
 	Result.AfterProgressResult = FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(CandidateSession);

@@ -217,11 +217,10 @@
 - P1 进攻方 D6 为 3-6 时，缺失 P1 防守方 D6 应失败；防守方 D6 越界也应失败。
 - P1 进攻方 D6 为 3-6 且防守方 D6 合法时，应返回 FormulaResolutionRequired 并生成 Transition Formula Plan；计划使用持球球员传球、跑位球员速度、盯人球员盯人、可选协防球员速度、双方 D6 与防守固定 +1。
 - 即使当前防守回合已有上场 GK，身后球 P1 Formula Plan 也不读取或计入 GK 属性。
-- 身后球 P1 公式中防守方获胜时结束进攻；进攻方获胜后才执行 P2 防守方越位判定。
-- 身后球 P2 的 D6 判断不直接加入 GK 属性。
+- 身后球 P1 公式中防守方获胜时结束进攻；进攻方获胜后直接进入单刀选择，同时提供直接射门与挑射，不执行 P2、越位或额外 gameplay D6。
 - 反越位判定中，进攻方掷 6 时跑位球员单刀，1-5 越位并结束回合。
 - 反越位的 D6 判断不直接加入 GK 属性。
-- P2 或反越位进入单刀后，使用当前防守回合已经上场的实际 GK，不重新打出或选择 GK。
+- 身后球 P1 攻击方胜或反越位成功进入单刀后，使用当前防守回合已经上场的实际 GK，不重新打出或选择 GK。
 - 不允许使用虚构、空白或默认 GK Snapshot。
 - 进球队员为跑位球员。
 
@@ -415,7 +414,7 @@
 - `InitialRouteRollRecords` 与 `PostRouteRollProgress.RollRecords` 是 Presentation 唯一 Raw Roll 来源；投影 Raw Roll 必须逐项等于权威 State 中已接受的值、语义 purpose 与顺序，不从 Final Value 或日志反推。
 - RouteResolved 但比较 D6 尚未取得时，结构化公式已含稳定 Contest/Row/Term identity、参与方、Carrier/Runner/Marker/Helper/GK CardId、实际属性、倍率、固定修正、待定 Raw Roll operand 与未解析 Final Value。
 - 已取得全部比较 D6 时，相同 Contest/operand identity 被填入权威 Raw Roll；结构化 term 数学结果必须与既有 Resolver Input 和 `FFormulaResolutionResult` 的 Final Value、Winner、WinReason 一致。
-- Initial Route、Dead Corner、Anti-Offside、BehindDefense P2 与 Chip Shot 等分支/结果 D6 必须分类为 BranchSelection 或 OutcomeDecision，不得标记为 ArithmeticContest operand。
+- Initial Route、Dead Corner、Anti-Offside 与 Chip Shot 等分支/结果 D6 必须分类为 BranchSelection 或 OutcomeDecision，不得标记为 ArithmeticContest operand；BehindDefense 不再拥有 P2 D6 fact。
 - active-GK 路线保留实际 GK CardId、实际使用属性与 `×0.5` 独立贡献；One-on-One Direct Shot 保留同一 GK 的 `×1.0` 基础与条件性 `×0.5` 额外贡献，并投影 goalkeeper tie 语义。
 - 重复构建 InteractionView、ResolutionFeedback 与 UMG DTO 不调用任何 D6 provider、不改变权威 State、不增加 roll record，且结果逐字段确定。
 - terminal command 清除 CurrentAttack 后，本次 command 的 ResolutionFeedback 仍保留 terminal 前已解析的结构化公式与 Raw Roll facts，供后续表现使用。
@@ -529,13 +528,19 @@
 ## 战术信息可视化 v1（Stage 6.13.1.4.9）
 
 - `FMCodex.CoreRules.TacticalRuleDescription` 覆盖五种 canonical SkillType 的稳定查询、唯一性与完整性，并逐分支断言角色、属性、倍率、固定项、门将属性、战术球员适用性及 Arithmetic/Branch/Outcome 掷点语义。
-- `FMCodex.LocalPlay.TacticalInformation` 覆盖五种中文名称与短提示、Cross High/Low、Dead Corner、身后 P2、反越位与挑射等非算术说明，且不得把 OutcomeDecision 投影成假公式。
+- `FMCodex.LocalPlay.TacticalInformation` 覆盖五种中文名称与短提示、Cross High/Low、Dead Corner、反越位与挑射等非算术说明，且不得把 OutcomeDecision 投影成假公式；身后球不得再投影 P2/越位步骤。
 - hover/focus A 后显示 A，切换 B 后只显示 B；离开卡片/共享面板、点击战术、Decline/No-Legal、退出 Skill selection 或刷新 authority presentation 后说明清空。
 - 反复 hover/focus 不提交 Skill、不改变 Authority、CurrentAttack、Role Tag 或 eligible option，不消费 RNG；显示内容不含 Canonical Skill path、英文战术名、内部角色/属性枚举。
 - 点击仍走既有 `OnCardRequested -> RequestSkill` 单动作链，详情面板不增加确认步骤。Fresh PIE 另检查两项以上可选战术时的密度、换项无陈旧内容、直塞复杂分支可读性与无 hover 副作用。
 - Density Repair 必须逐分支以稳定 role/attribute enum 断言五种战术的 compact DTO；Helper 保持 optional，Outcome-only 分支 `bRollOnly=true` 且不得伪造 role/attribute formula。
 - 玩家可见文本不得包含 `进攻/防守` section、`×0.5`、固定 `+2`、Tactical Player 说明、完整加法表达式或 outcome range。rich catalog 对同一 multiplier/fixed/Tactical Player/outcome facts 的既有测试必须继续通过，证明只减少 Presentation 密度。
 - Widget footprint tightening 后为约 `780` 宽、content-driven/max `430`、`365` 宽两列 wrapping branch blocks；Wrap 使用 explicit size、居中行与集中 `5` gap，三分支最后一块使用 `735` 宽的 `2+1` 排布，六分支的 width policy 必须只能容纳两列。每条 mapping 继续具有至少 `116` role bounds，attribute 紧跟 role 左对齐，role/attribute TextBlock 均关闭 AutoWrap，`协防（可选）` 保持单行且不会形成大面积中间空档。普通战术不创建默认 ScrollBox。Fresh PIE 仍负责验证 1920×1080 下 Through Ball 的实际高度与 2–3 秒扫读目标。
+- Deployment Tactical Reference 必须以真实 `EFMCodexUMGInteractionCategory::Deploy` 控制 `战术说明` 入口；SelectCarrier/Marker/Runner/Helper/Skill、Resolution 与 terminal presentation 均不得保留该入口。打开/关闭只改变 Screen transient state，不广播 Skill intent，不修改 UMG presentation、部署选项、TP、active player 或 controller state。
+- Reference selector 固定为 `远射 → 内切 → 控球推进 → 传中 → 直塞` 五项，所有详情继续经 `FFMCodexTacticalDetailPresentationBuilder` 与同一个 `UFMCodexTacticalDetailPanelWidget`；不得建立第二份属性表，不依赖 FormulaFacts/Resolution，也不得按 eligibility 过滤。
+- 自动化必须覆盖 entry open、五项切换、中文标签、compact player contract、explicit close、离开 Deployment 自动关闭与原 Hover/Click regression。Fresh PIE 另验证关闭后 deployment drag/drop 与 Hover Full Card 继续正常。
+- `.4.9B.1` selector layout contract：五个 selector 与 close label 全部禁用 AutoWrap；`控球推进` bounds 至少 `108 × 38`，固定顺序、中文标签和关闭行为不变。Fresh PIE 必须确认按钮文字不越出 header，detail title/hint 与 header 之间有清晰间距。
+- `.4.9B.2` Through Ball hierarchy contract：rich Catalog 的当前五个 canonical description branch 经通用 route metadata 投影为七个 compact DTO entry，并归入三个有序一级路线 `脚下球 → 身后球 → 反越位`。脚下球包含 `属性对抗`；身后球包含 `第一阶段 / 成功后：单刀 / 直接射门 / 挑射`；反越位包含 `越位判定 / 成功后：单刀 / 直接射门 / 挑射`。shared panel 必须显示三个 route group、隐藏普通 wrap，且仍不创建 ScrollBox。
+- Through Ball tactical-card short hint 固定为 `脚下球 · 身后球 · 反越位`；Deployment Reference 和 SelectSkill Hover 必须消费同一个 corrected builder DTO 与同一个 shared panel，不允许为 deployment 写专用 hierarchy 分支或复制 Catalog。
 
 
 ## Cross 生产顺序与单动作路线入口修复（Stage 6.13.1.4.8A）
@@ -549,4 +554,15 @@
 - 路线完成后 Pitch 内联层显示精确 `路线掷点 N -> 判定为高球传中/低球传中`，且 CurrentAttack/攻击方/UsedAttackCount/下一方战术点准备状态不变。High 与 Low 均依次进入各自的两步手动掷点；二者只共享时序，不共享公式。
 - E2E 必须覆盖 High + Helper selected、High + Helper declined、High + no-legal Helper、Low。每个场景都断言 Marker -> Runner -> Helper -> Skill、SkillId 延迟写入、route 后不换攻、Attack-only 混合状态、双掷点后 `下一回合`、Role Tag 持续，以及真实零 RNG terminal 后才换攻并折叠旧面板。fresh rendered PIE 另验证这些玩家可见状态。
 - 本修复不实现结果叙事 headline、随机破坏者/进球者文案、audio、commentary、cinematic 或全局视觉改版。
+
+## ThroughBall 身后球 canonical 简化与表现对齐（Stage 6.13.1.4.9B.2）
+
+- 初始路线回归必须继续覆盖 `1–2 Feet / 3–4 BehindDefense / 5–6 AntiOffside`。身后球 P1 的 Attack D6 `1/2` 必须保持 OutOfPlay；`3–6` 必须请求条件性 Defense D6 并执行既有第一阶段 Formula，不得跳过 Contest。
+- 第一阶段 Defender 胜必须保持既有 terminal；Attacker 胜必须投影 `OneOnOneRequired`，并直接允许攻击方提交 `DirectShot` 或 `ChipShot`。两种 choice 都必须覆盖 authority legality、State 持久化与现有终结 resolution。
+- 专项 RNG 回归必须证明：P1 Attacker 胜后 accepted post-route records 只有 `PrimaryAttack / PrimaryDefense`，旧 `BehindDefenseP2Defense` 不出现；旧 P2 command 若因兼容边界仍可调用，必须失败、零 provider delta、State byte-identical。随后单刀终结只消费自身 canonical D6。
+- AntiOffside 回归必须继续证明其独立 D6、`1–5 Offside / 6 OneOnOne`、terminal 与成功后的 DirectShot/ChipShot 双 choice 不变。Feet 与其他 tactics gameplay 不得变化。
+- InteractionView / LocalPlay 必须在身后球 P1 Attacker 胜后直接返回 `SelectOneOnOneShot`、攻击方 expected side 与恰好两个 typed options；Controller production source 不得调用旧 BehindDefense P2，且不得产生旧越位 CTA、反馈或 Roll Reel。
+- Tactical Description 不得再包含 `ThroughBall.BehindDefenseP2` 当前分支。shared Builder/Panel 必须投影三个一级路线；身后球只含 `第一阶段 / 成功后：单刀 / 直接射门 / 挑射`，反越位保留 `越位判定` 且同样包含两种单刀分支。
+- 所有 compact Tactical Detail 玩家文本不得出现 `协防（可选）`，只显示 `协防`；DTO 的 `bOptional=true` 必须保持，证明只修改 Presentation。Deployment Reference 与 SelectSkill Hover 继续共用同一 Catalog、Builder 和 Panel，且不创建默认 ScrollBox。
+- 自动化至少运行 ThroughBall CoreRules、Authority/Session、TacticalRuleDescription、TacticalInformation、LocalPlay 与 Cross shared-flow regression，并完成 UHT/compile/link。Fresh USER PIE 仍须验证直塞层级、无 BehindDefense 越位步骤，以及 P1 Attacker 胜后运行时直接出现两项单刀选择。
 

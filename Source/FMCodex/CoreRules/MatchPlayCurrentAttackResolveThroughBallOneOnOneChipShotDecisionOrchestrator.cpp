@@ -1,7 +1,7 @@
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator.h"
 
 #include "MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator.h"
-#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
+#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
 
 namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecision
 {
@@ -63,18 +63,17 @@ namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecision
 		{
 			if (Progress.Phase == EPhase::OneOnOneChipShot)
 			{
-				Progress.Phase = EPhase::BehindDefenseP2;
-				Progress.RollRecords.SetNum(3);
+				Progress.Phase = EPhase::PrimaryBranch;
+				Progress.RollRecords.SetNum(2);
 			}
-			else if (Progress.Phase != EPhase::BehindDefenseP2
-				&& Progress.Phase != EPhase::PrimaryBranch)
+			else if (Progress.Phase != EPhase::PrimaryBranch)
 			{
 				SetFailure(
 					Result,
 					Result.BeforeProgressResult.bContractComplete
 						? EError::UnsupportedSourcePhase
 						: EError::IncompleteSourceProvenance,
-					TEXT("BehindDefense OneOnOne requires complete P1 or P2 provenance."));
+					TEXT("BehindDefense OneOnOne requires complete P1 provenance."));
 				return false;
 			}
 		}
@@ -153,34 +152,32 @@ namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecision
 		}
 		else
 		{
-			Result.BehindDefenseP2RegenerationResult =
-				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator
-					::Resolve(
-						Result.SourceProvenanceState,
-						SkillRuleSet,
-						nullptr);
-			if (!Result.BehindDefenseP2RegenerationResult.bSuccess)
+			Result.BehindDefenseP1RegenerationResult =
+				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator
+					::Resolve(Result.SourceProvenanceState, SkillRuleSet);
+			if (!Result.BehindDefenseP1RegenerationResult.bSuccess)
 			{
 				SetFailure(
 					Result,
 					EError::SourceDecisionRegenerationFailed,
-					Result.BehindDefenseP2RegenerationResult.ErrorMessage,
-					Result.BehindDefenseP2RegenerationResult.InvalidField);
+					Result.BehindDefenseP1RegenerationResult.ErrorMessage,
+					Result.BehindDefenseP1RegenerationResult.InvalidField);
 				return false;
 			}
-			if (Result.BehindDefenseP2RegenerationResult.QueryResult.Decision
-				!= EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired)
+			if (Result.BehindDefenseP1RegenerationResult.FormulaExecutionResult.Decision
+				!= EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+					::OneOnOneRequired)
 			{
 				SetFailure(
 					Result,
 					EError::SourceDecisionDoesNotRequireOneOnOne,
-					TEXT("Canonical BehindDefense P2 decision does not require OneOnOne."));
+					TEXT("Canonical BehindDefense P1 decision does not require OneOnOne."));
 				return false;
 			}
 			++Result.HandoffCreationCount;
 			Result.HandoffCreationResult =
-				FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP2(
-					Result.BehindDefenseP2RegenerationResult.QueryResult);
+				FThroughBallOneOnOneHandoffCreator::CreateFromBehindDefenseP1(
+					Result.BehindDefenseP1RegenerationResult.FormulaExecutionResult);
 		}
 
 		if (!Result.HandoffCreationResult.bSuccess
@@ -275,7 +272,7 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
 	else if (BeforeSession.ActualBranch.ThroughBall
 		== EMatchPlayThroughBallActualBranch::BehindDefense)
 	{
-		Result.Source = ESource::BehindDefenseP2;
+		Result.Source = ESource::BehindDefense;
 	}
 	else
 	{
@@ -328,7 +325,7 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
 		CandidateSession.PostRouteRollProgress;
 	const EPhase ExpectedSourcePhase = Result.Source == ESource::AntiOffside
 		? EPhase::PrimaryBranch
-		: EPhase::BehindDefenseP2;
+		: EPhase::PrimaryBranch;
 	if (CandidateProgress.Phase == ExpectedSourcePhase)
 	{
 		CandidateProgress.Phase = EPhase::OneOnOneChipShot;

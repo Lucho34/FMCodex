@@ -1311,14 +1311,15 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 		EMatchPlayThroughBallActualBranch::BehindDefense);
 	TestTrue(TEXT("OneOnOne fixture resolves P1 plan"),
 		Host->ResolveThroughBallBehindDefenseP1DecisionOrPlan().bSuccess);
+	const auto BeforeP1FormulaView = ViewFor(*Host, Demo.SkillRuleSet);
+	const auto P1Formula = Host->ResolveThroughBallBehindDefenseP1Formula();
 	TestTrue(TEXT("OneOnOne fixture resolves P1 Formula"),
-		Host->ResolveThroughBallBehindDefenseP1Formula().bSuccess);
-	const auto BeforeP2View = ViewFor(*Host, Demo.SkillRuleSet);
-	const auto P2 = Host->ResolveThroughBallBehindDefenseP2Decision();
-	TestTrue(TEXT("OneOnOne fixture resolves P2"), P2.bSuccess);
-	TestEqual(TEXT("P2 authority requires OneOnOne"),
-		P2.AuthoritativeResult.OrchestrationResult.QueryResult.Decision,
-		EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired);
+		P1Formula.bSuccess);
+	TestEqual(TEXT("P1 authority directly requires OneOnOne"),
+		P1Formula.AuthoritativeResult.OrchestrationResult
+			.FormulaExecutionResult.Decision,
+		EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+			::OneOnOneRequired);
 
 	const auto View = ViewFor(*Host, Demo.SkillRuleSet);
 	TestEqual(TEXT("Snapshot-derived view asks OneOnOne choice"),
@@ -1330,17 +1331,17 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 		View.ExpectedActingPlayer, Attacker);
 	TestEqual(TEXT("OneOnOne exposes exactly ChipShot and DirectShot"),
 		View.OneOnOneOptions.Num(), 2);
-	const auto P2Feedback =
+	const auto P1Feedback =
 		FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
-			TEXT("ResolveThroughBallBehindDefenseP2Decision"),
-			P2,
-			BeforeP2View,
+			TEXT("ResolveThroughBallBehindDefenseP1Formula"),
+			P1Formula,
+			BeforeP1FormulaView,
 			View);
-	TestTrue(TEXT("P2 feedback exposes authoritative continuation"),
-		P2Feedback.StepTitle.Contains(TEXT("P2"))
-			&& P2Feedback.DecisionSummary.Contains(TEXT("One-on-One")));
-	TestTrue(TEXT("P2 feedback exposes regenerated P1 Formula evidence"),
-		P2Feedback.ComparisonEntries.Num() >= 2);
+	TestTrue(TEXT("P1 feedback exposes authoritative continuation"),
+		P1Feedback.StepTitle.Contains(TEXT("P1"))
+			&& P1Feedback.DecisionSummary.Contains(TEXT("One-on-One")));
+	TestTrue(TEXT("P1 feedback exposes Formula evidence"),
+		P1Feedback.ComparisonEntries.Num() >= 2);
 
 	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Choice;
 	Choice.RequestingSide = Attacker;
@@ -6014,8 +6015,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	if (!OneOnOneHost->BeginResolutionSession().bSuccess
 		|| !OneOnOneHost->ResolveInitialRoute().bSuccess
 		|| !OneOnOneHost->ResolveThroughBallBehindDefenseP1DecisionOrPlan().bSuccess
-		|| !OneOnOneHost->ResolveThroughBallBehindDefenseP1Formula().bSuccess
-		|| !OneOnOneHost->ResolveThroughBallBehindDefenseP2Decision().bSuccess)
+		|| !OneOnOneHost->ResolveThroughBallBehindDefenseP1Formula().bSuccess)
 	{
 		AddError(TEXT("Could not reach deterministic OneOnOne decision"));
 		return false;
@@ -6514,9 +6514,13 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
 		{
 			bSawOneOnOneHandoff = true;
-			TestTrue(TEXT("P2 feedback announces authoritative OneOnOne handoff"),
-				OneOnOneResolution->GetPresentation().DecisionLabel.Contains(
-					TEXT("One-on-One")));
+			const FString HandoffDecisionLabel =
+				OneOnOneResolution->GetPresentation().DecisionLabel;
+			TestTrue(
+				*FString::Printf(
+					TEXT("P1 feedback announces authoritative OneOnOne handoff (actual: %s)"),
+					*HandoffDecisionLabel),
+				HandoffDecisionLabel.Contains(TEXT("One-on-One")));
 			OneOnOneInteraction->RequestOneOnOne(
 				EFMCodexUMGOneOnOneChoice::DirectShot);
 		}

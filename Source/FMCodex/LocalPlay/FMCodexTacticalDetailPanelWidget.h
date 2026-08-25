@@ -8,6 +8,7 @@
 #include "FMCodexTacticalDetailPanelWidget.generated.h"
 
 class UTextBlock;
+class UHorizontalBox;
 class UWrapBox;
 class SWidget;
 
@@ -56,4 +57,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UWrapBox> BranchBody;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> RouteBody;
 };

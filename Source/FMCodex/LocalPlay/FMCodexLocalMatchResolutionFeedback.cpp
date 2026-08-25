@@ -216,9 +216,9 @@ namespace FMCodexLocalMatchResolutionFeedback
 		}
 		if (Formula.FormulaExecutionResult.Decision
 			== EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
-				::P2Required)
+				::OneOnOneRequired)
 		{
-			Feedback.DecisionSummary = TEXT("P2 required");
+			Feedback.DecisionSummary = TEXT("One-on-One choice required");
 		}
 		else if (Formula.FormulaExecutionResult.Decision
 			== EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
@@ -428,6 +428,7 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 	const FFMCodexLocalMatchInteractionView& BeforeView,
 	const FFMCodexLocalMatchInteractionView& AfterView)
 {
+	using namespace FMCodexLocalMatchResolutionFeedback;
 	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
 	const auto& Decision =
 		Result.AuthoritativeResult.OrchestrationResult;
@@ -490,11 +491,39 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
 	const EThroughBallBehindDefenseP1PlanQueryDecision Decision = Result
 		.AuthoritativeResult.OrchestrationResult.P1PlanResult.Decision;
-	Feedback.StepSummary = TEXT("Behind Defense P1 plan resolved");
-	Feedback.DecisionSummary = Decision
-		== EThroughBallBehindDefenseP1PlanQueryDecision::OutOfPlay
-			? TEXT("Out of Play")
-			: TEXT("Formula resolution required");
+	Feedback.StepSummary = TEXT("Behind Defense P1 contest resolved");
+	if (Decision == EThroughBallBehindDefenseP1PlanQueryDecision::OutOfPlay)
+	{
+		Feedback.DecisionSummary = TEXT("Out of Play");
+	}
+	else if (AfterView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
+	{
+		// The authoritative interaction projection has already replayed the
+		// completed P1 contest from accepted rolls. Present that transition;
+		// do not imply that a removed P2 or another Formula command remains.
+		Feedback.DecisionSummary = TEXT("One-on-One choice required");
+	}
+	else
+	{
+		Feedback.DecisionSummary = TEXT("Defender stopped attack");
+	}
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallBehindDefenseP1FormulaResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	using namespace FMCodexLocalMatchResolutionFeedback;
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	const auto& Formula = Result.AuthoritativeResult.OrchestrationResult;
+	Feedback.StepTitle = TEXT("Through Ball - Behind Defense P1");
+	Feedback.StepSummary = TEXT("Behind Defense P1 contest resolved");
+	AddBehindDefenseP1FormulaEvidence(Feedback, Formula);
 	return Feedback;
 }
 

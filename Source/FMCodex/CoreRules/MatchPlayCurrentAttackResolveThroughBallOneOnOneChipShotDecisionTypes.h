@@ -4,7 +4,7 @@
 
 #include "MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
 #include "MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionTypes.h"
-#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionTypes.h"
+#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaTypes.h"
 #include "MatchPlayPostRouteRollProvider.h"
 #include "ThroughBallOneOnOneChipShotOutcomeQuery.h"
 
@@ -12,7 +12,9 @@ enum class EMatchPlayThroughBallOneOnOneSource : uint8
 {
 	None,
 	AntiOffside,
-	BehindDefenseP2
+	BehindDefense,
+	/** Legacy source name retained as a non-canonical alias. */
+	BehindDefenseP2 = BehindDefense
 };
 
 enum class
@@ -70,8 +72,8 @@ struct FMCODEX_API
 	int32 SourceDecisionRegenerationCount = 0;
 	FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionResult
 		AntiOffsideRegenerationResult;
-	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionResult
-		BehindDefenseP2RegenerationResult;
+	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaResult
+		BehindDefenseP1RegenerationResult;
 
 	int32 HandoffCreationCount = 0;
 	FThroughBallOneOnOneHandoffCreationResult HandoffCreationResult;

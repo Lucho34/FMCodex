@@ -1,7 +1,7 @@
 #include "MatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionLegality.h"
 
 #include "MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator.h"
-#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator.h"
+#include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
 
 namespace MatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionLegality
 {
@@ -161,7 +161,8 @@ FMatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionLegalityEvaluator
 			TEXT("The OneOnOne Shot Choice has already been selected."));
 		return Result;
 	}
-	if (Session.PostRouteRollProgress.Phase == EPhase::OneOnOneChipShot)
+	if (Session.PostRouteRollProgress.Phase == EPhase::OneOnOneChipShot
+		|| Session.PostRouteRollProgress.Phase == EPhase::OneOnOneDirectShot)
 	{
 		SetFailure(
 			Result,
@@ -218,34 +219,36 @@ FMatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionLegalityEvaluator
 	else if (Session.ActualBranch.ThroughBall
 		== EMatchPlayThroughBallActualBranch::BehindDefense)
 	{
-		if (Session.PostRouteRollProgress.Phase != EPhase::BehindDefenseP2)
+		if (Session.PostRouteRollProgress.Phase != EPhase::PrimaryBranch)
 		{
 			SetFailure(
 				Result,
 				EError::IncompleteSourceProvenance,
-				TEXT("BehindDefense P2 OneOnOne source provenance is incomplete."));
+				TEXT("BehindDefense P1 OneOnOne source provenance is incomplete."));
 			return Result;
 		}
-		Result.BehindDefenseP2RegenerationResult =
-			FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP2DecisionOrchestrator
-				::Resolve(BeforeState, SkillRuleSet, nullptr);
+		Result.BehindDefenseP1RegenerationResult =
+			FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator
+				::Resolve(BeforeState, SkillRuleSet);
 		Result.SourceRegenerationProviderCallCount =
-			Result.BehindDefenseP2RegenerationResult.ProviderCallCount;
-		if (!Result.BehindDefenseP2RegenerationResult.bSuccess)
+			Result.BehindDefenseP1RegenerationResult
+				.PlanRegenerationProviderCallCount;
+		if (!Result.BehindDefenseP1RegenerationResult.bSuccess)
 		{
 			SetFailure(
 				Result,
 				EError::SourceRegenerationFailed,
-				Result.BehindDefenseP2RegenerationResult.ErrorMessage);
+				Result.BehindDefenseP1RegenerationResult.ErrorMessage);
 			return Result;
 		}
-		if (Result.BehindDefenseP2RegenerationResult.QueryResult.Decision
-			!= EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired)
+		if (Result.BehindDefenseP1RegenerationResult.FormulaExecutionResult.Decision
+			!= EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+				::OneOnOneRequired)
 		{
 			SetFailure(
 				Result,
 				EError::SourceDoesNotRequireOneOnOne,
-				TEXT("Canonical BehindDefense P2 outcome does not require OneOnOne."));
+				TEXT("Canonical BehindDefense P1 outcome does not require OneOnOne."));
 			return Result;
 		}
 	}

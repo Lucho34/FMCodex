@@ -520,6 +520,7 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	FString Header;
 	FString Source;
 	FString SessionTypes;
+	FString ControllerSource;
 	TestTrue(TEXT("Host header loads"), LoadSource(
 		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.h"),
 		Header));
@@ -529,6 +530,12 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	TestTrue(TEXT("Session command enum loads"), LoadSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSessionTypes.h"),
 		SessionTypes));
+	TestTrue(TEXT("Player controller source loads"), LoadSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+		ControllerSource));
+	TestFalse(TEXT("Production controller never requests legacy BehindDefense P2"),
+		ControllerSource.Contains(
+			TEXT("ResolveThroughBallBehindDefenseP2Decision(")));
 
 	struct FReachability
 	{
@@ -953,15 +960,22 @@ bool FFMCodexLocalMatchThroughBallResolutionTest::RunTest(
 	TestTrue(TEXT("Host resolves P1 Formula"), P1Formula.bSuccess);
 	TestTrue(TEXT("P1 Formula State equals direct Session"), AreStatesEqual(
 		HostA->GetMatchSnapshot().Snapshot, Direct.GetStateSnapshot()));
-
-	TestTrue(TEXT("Direct resolves P2"),
+	TestEqual(TEXT("P1 directly requires OneOnOne"),
+		P1Formula.AuthoritativeResult.OrchestrationResult
+			.FormulaExecutionResult.Decision,
+		EThroughBallBehindDefenseP1FormulaResolutionExecutionDecision
+			::OneOnOneRequired);
+	const FMatchPlayState BeforeLegacyP2 = Direct.GetStateSnapshot();
+	TestFalse(TEXT("Direct rejects legacy P2"),
 		Direct.ResolveThroughBallBehindDefenseP2Decision()
 			.OrchestrationResult.bSuccess);
-	const auto P2 = HostA->ResolveThroughBallBehindDefenseP2Decision();
-	TestTrue(TEXT("Host resolves P2"), P2.bSuccess);
-	TestEqual(TEXT("P2 requires OneOnOne"),
-		P2.AuthoritativeResult.OrchestrationResult.QueryResult.Decision,
-		EThroughBallBehindDefenseP2OutcomeDecision::OneOnOneRequired);
+	TestFalse(TEXT("Host rejects legacy P2"),
+		HostA->ResolveThroughBallBehindDefenseP2Decision().bSuccess);
+	TestTrue(TEXT("Rejected legacy P2 leaves direct State stable"),
+		AreStatesEqual(BeforeLegacyP2, Direct.GetStateSnapshot()));
+	TestTrue(TEXT("Rejected legacy P2 leaves Host State stable"),
+		AreStatesEqual(BeforeLegacyP2,
+			HostA->GetMatchSnapshot().Snapshot));
 
 	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Choice;
 	Choice.RequestingSide = TraceA.Attacker;
@@ -984,10 +998,10 @@ bool FFMCodexLocalMatchThroughBallResolutionTest::RunTest(
 	TestTrue(TEXT("Host resolves DirectShot plan"), DirectShotPlan.bSuccess);
 	const FMatchPlayState AfterDirectPlan =
 		HostA->GetMatchSnapshot().Snapshot;
-	TestEqual(TEXT("Deep path records five post-route rolls"),
+	TestEqual(TEXT("Deep path records four post-route rolls"),
 		AfterDirectPlan.CurrentAttack.ResolutionSession
 			.PostRouteRollProgress.RollRecords.Num(),
-		5);
+		4);
 	TestTrue(TEXT("DirectShot plan State equals direct Session"),
 		AreStatesEqual(AfterDirectPlan, Direct.GetStateSnapshot()));
 

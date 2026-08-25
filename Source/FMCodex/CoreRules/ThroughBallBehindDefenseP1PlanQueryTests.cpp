@@ -130,6 +130,8 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 			&& Left.AttackingOwnerId == Right.AttackingOwnerId
 			&& Left.DefendingOwnerId == Right.DefendingOwnerId
 			&& Left.InvolvedCardIds == Right.InvolvedCardIds
+			&& Left.bAttackerVictoryRequiresOneOnOne
+				== Right.bAttackerVictoryRequiresOneOnOne
 			&& Left.bAttackerVictoryRequiresP2
 				== Right.bAttackerVictoryRequiresP2
 			&& Left.bDefenderVictoryEndsAttack
@@ -200,7 +202,10 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 		Test.TestTrue(TEXT("Failure Plan is default"), IsDefaultPlan(Result.FormulaPlan));
 		Test.TestFalse(TEXT("Failure does not end attack"), Result.bAttackEnded);
 		Test.TestFalse(TEXT("Failure does not continue"), Result.bContinueResolution);
-		Test.TestFalse(TEXT("Failure does not require P2"), Result.bRequiresP2);
+		Test.TestFalse(TEXT("Failure does not require OneOnOne"),
+			Result.bRequiresOneOnOne);
+		Test.TestFalse(TEXT("Failure does not require legacy P2"),
+			Result.bRequiresP2);
 		return Result;
 	}
 
@@ -223,7 +228,10 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 		Test.TestTrue(TEXT("OutOfPlay Plan is default"), IsDefaultPlan(Result.FormulaPlan));
 		Test.TestTrue(TEXT("OutOfPlay ends attack"), Result.bAttackEnded);
 		Test.TestFalse(TEXT("OutOfPlay does not continue"), Result.bContinueResolution);
-		Test.TestFalse(TEXT("OutOfPlay does not require P2"), Result.bRequiresP2);
+		Test.TestFalse(TEXT("OutOfPlay does not require OneOnOne"),
+			Result.bRequiresOneOnOne);
+		Test.TestFalse(TEXT("OutOfPlay does not require legacy P2"),
+			Result.bRequiresP2);
 		return Result;
 	}
 
@@ -246,7 +254,10 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 		Test.TestTrue(TEXT("Formula Plan exists"), Result.bHasFormulaPlan);
 		Test.TestFalse(TEXT("Plan Query does not end attack"), Result.bAttackEnded);
 		Test.TestFalse(TEXT("Plan Query has no final continuation"), Result.bContinueResolution);
-		Test.TestFalse(TEXT("Plan Query has no final P2 requirement"), Result.bRequiresP2);
+		Test.TestFalse(TEXT("Plan Query has no final OneOnOne requirement"),
+			Result.bRequiresOneOnOne);
+		Test.TestFalse(TEXT("Plan Query has no legacy P2 requirement"),
+			Result.bRequiresP2);
 		return Result;
 	}
 
@@ -466,7 +477,10 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 			break;
 		case 46:
 			Result = EvaluateFormulaPlan(Test, MakeInput());
-			Test.TestTrue(TEXT("Attacker winner requires P2 metadata"), Result.FormulaPlan.bAttackerVictoryRequiresP2);
+			Test.TestTrue(TEXT("Attacker winner requires OneOnOne metadata"),
+				Result.FormulaPlan.bAttackerVictoryRequiresOneOnOne);
+			Test.TestFalse(TEXT("Attacker winner disables legacy P2 metadata"),
+				Result.FormulaPlan.bAttackerVictoryRequiresP2);
 			Test.TestTrue(TEXT("Defender winner ends attack metadata"), Result.FormulaPlan.bDefenderVictoryEndsAttack);
 			break;
 		case 47:

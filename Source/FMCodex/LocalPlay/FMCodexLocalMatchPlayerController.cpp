@@ -1351,19 +1351,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	{
 		if (!Progress.bContractComplete)
 		{
-			if (Session.PostRouteRollProgress.Phase
-				== EMatchPlayCurrentAttackPostRouteRollPhase::BehindDefenseP2)
-			{
-				RecordCommandResult(
-					TEXT("ResolveThroughBallBehindDefenseP2Decision"),
-					Host->ResolveThroughBallBehindDefenseP2Decision());
-			}
-			else
-			{
-				RecordCommandResult(
-					TEXT("ResolveThroughBallBehindDefenseP1DecisionOrPlan"),
-					Host->ResolveThroughBallBehindDefenseP1DecisionOrPlan());
-			}
+			RecordCommandResult(
+				TEXT("ResolveThroughBallBehindDefenseP1DecisionOrPlan"),
+				Host->ResolveThroughBallBehindDefenseP1DecisionOrPlan());
 			return;
 		}
 
@@ -1377,8 +1367,8 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 				&& Formula.FormulaResolutionResult.bContinueResolution)
 			{
 				RecordCommandResult(
-					TEXT("ResolveThroughBallBehindDefenseP2Decision"),
-					Host->ResolveThroughBallBehindDefenseP2Decision());
+					TEXT("ResolveThroughBallBehindDefenseP1Formula"),
+					Host->ResolveThroughBallBehindDefenseP1Formula());
 			}
 			else
 			{

@@ -4,6 +4,7 @@
 
 struct FThroughBallBehindDefenseP2OutcomeQueryResult;
 struct FThroughBallAntiOffsideOutcomeQueryResult;
+struct FThroughBallBehindDefenseP1FormulaResolutionExecutionResult;
 
 enum class EThroughBallOneOnOneHandoffCreationErrorCode : uint8
 {
@@ -42,6 +43,12 @@ struct FMCODEX_API FThroughBallOneOnOneHandoffCreationResult
 class FMCODEX_API FThroughBallOneOnOneHandoffCreator final
 {
 public:
+	static FThroughBallOneOnOneHandoffCreationResult
+	CreateFromBehindDefenseP1(
+		const FThroughBallBehindDefenseP1FormulaResolutionExecutionResult&
+			P1ExecutionResult);
+
+	/** Legacy helper retained for historical tests; production BehindDefense no longer reaches P2. */
 	static FThroughBallOneOnOneHandoffCreationResult
 	CreateFromBehindDefenseP2(
 		const FThroughBallBehindDefenseP2OutcomeQueryResult& P2OutcomeResult);

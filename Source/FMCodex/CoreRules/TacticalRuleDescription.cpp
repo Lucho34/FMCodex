@@ -235,10 +235,6 @@ namespace TacticalRuleDescription
 				Attribute(ERole::Helper, EAttribute::Speed, 0.5f, true),
 				Roll(), Fixed(1) }, false,
 			TEXT("BehindDefenseP1Conditional"), true));
-		Result.Branches.Add(Decision(TEXT("ThroughBall.BehindDefenseP2"),
-			{ Outcome(1, 3, TEXT("OneOnOne")),
-				Outcome(4, 6, TEXT("Offside")) }, 1, false,
-			TEXT("DefenderRoll")));
 		Result.Branches.Add(Decision(TEXT("ThroughBall.AntiOffside"),
 			{ Outcome(1, 5, TEXT("Offside")),
 				Outcome(6, 6, TEXT("OneOnOne")) }, 1, false,
@@ -283,4 +279,3 @@ FTacticalRuleDescriptionCatalog::FindBySkillType(
 			return Candidate.SkillType == SkillType;
 		});
 }
-

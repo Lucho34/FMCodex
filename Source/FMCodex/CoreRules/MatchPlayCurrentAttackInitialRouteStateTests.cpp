@@ -1320,20 +1320,13 @@ bool FPostRouteRollContractFoundationTest::RunTest(
 		MakePostRouteRecord(EPostRoutePurpose::PrimaryDefense, 4)
 	};
 	ExpectProgress(
-		TEXT("BehindDefense P2 requests later Defense"),
+		TEXT("BehindDefense legacy P2 phase is unsupported"),
 		MakeSession(10, EPostRoutePhase::BehindDefenseP2, BehindP1),
-		true, false, EPostRoutePurpose::BehindDefenseP2Defense,
-		EPostRouteError::None);
-	TArray<FMatchPlayCurrentAttackPostRouteRollRecord> BehindP2 = BehindP1;
-	BehindP2.Add(MakePostRouteRecord(
-		EPostRoutePurpose::BehindDefenseP2Defense, 2));
-	ExpectProgress(
-		TEXT("BehindDefense P2 complete"),
-		MakeSession(10, EPostRoutePhase::BehindDefenseP2, BehindP2),
-		true, true, EPostRoutePurpose::None, EPostRouteError::None);
+		false, false, EPostRoutePurpose::None,
+		EPostRouteError::UnsupportedPhaseForBranch);
 	ExpectProgress(
 		TEXT("BehindDefense OneOnOne requests ChipShot"),
-		MakeSession(10, EPostRoutePhase::OneOnOneChipShot, BehindP2),
+		MakeSession(10, EPostRoutePhase::OneOnOneChipShot, BehindP1),
 		true, false, EPostRoutePurpose::OneOnOneChipShotAttack,
 		EPostRouteError::None);
 	ExpectProgress(

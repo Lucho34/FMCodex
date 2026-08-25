@@ -87,7 +87,8 @@ enum class EMatchPlayResolutionDecisionOutcome : uint8
 	Miss = 5 UMETA(DisplayName = "Miss"),
 	OutOfPlay = 6 UMETA(DisplayName = "Out Of Play"),
 	DefenderStoppedAttack = 7 UMETA(DisplayName = "Defender Stopped Attack"),
-	P2Required = 8 UMETA(DisplayName = "P2 Required"),
+	/** Legacy reflected value retained for compatibility; canonical projection never emits it. */
+	P2Required = 8 UMETA(DisplayName = "Legacy P2 (Unreachable)"),
 	Offside = 9 UMETA(DisplayName = "Offside"),
 	OneOnOneRequired = 10 UMETA(DisplayName = "One-on-One Required")
 };

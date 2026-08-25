@@ -1,5 +1,7 @@
 # CoreRules Module Map
 
+> Current ThroughBall override (Stage 6.13.1.4.9B.2, 2026-08-25): production BehindDefense continuation is P1 attacker win → `OneOnOneRequired` → DirectShot / ChipShot choice. P2 modules/types listed in the historical inventory remain only as unreachable compatibility surfaces; they are not a canonical state-machine phase or RNG consumer. `CreateFromBehindDefenseP1` is the production handoff entry. See `Docs/01_Rules_Canonical.md` and CD-065.
+
 本文档是当前 CoreRules 模块职责速查表，目标是帮助后续 Codex 快速建立上下文。每个模块只记录边界，不替代源码和测试。
 
 截至 6.74，Pass Control 的 CoreRules-only 三分支最小切片已正式关闭：已完成 Advance Selection，以及 PassAdvance、DribbleAdvance、RunAdvance 三个独立专用 Plan Query 与测试侧 Composition。Advance Selection 和三个推进分支均拒绝 GK Carrier；Runner 继续通过 Midfield 资格表达（PassAdvance 保留 `RunnerPositionMismatch`，DribbleAdvance / RunAdvance 保留 `RunnerNotMidfield`），Marker / Helper 未新增 GK 或位置限制。三个推进分支均只生成各自的 `Finishing` Formula Plan，不执行公式链，并使用显式 `bHasHelper` 表达 Optional Helper：未选择时两个 Helper 身份为空、不查询 Helper Snapshot，并以 Marking / 体力语义 0 生成合法 Plan。6.73 已验证的 CoreRules 回归基线为 923/923。

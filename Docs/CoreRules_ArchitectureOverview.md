@@ -1,5 +1,7 @@
 # CoreRules Architecture Overview
 
+> Current ThroughBall override (Stage 6.13.1.4.9B.2, 2026-08-25): BehindDefense P1 attacker victory now emits `OneOnOneRequired` and directly enables the DirectShot / ChipShot choice. BehindDefense P2/offside and `BehindDefenseP2Defense` RNG are unreachable compatibility history. Older numbered sections below document the architecture as it was introduced and must not override `Docs/01_Rules_Canonical.md` or CD-065.
+
 本文档提供当前 CoreRules 分层速览。具体职责和依赖以 `CoreRules_ModuleMap.md`、源码及测试为准。
 
 | 分层 | 当前职责 | 代表模块 |
