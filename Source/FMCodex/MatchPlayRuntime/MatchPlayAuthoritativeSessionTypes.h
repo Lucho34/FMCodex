@@ -8,6 +8,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyThroughBallTerminalResolutionOrchestrator.h"
+#include "../CoreRules/MatchPlayCurrentAttackCompletion.h"
 #include "../CoreRules/MatchPlayCurrentAttackBeginResolutionSessionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackBranchIntentSelectionWriter.h"
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionWriter.h"
@@ -96,7 +97,10 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveCrossHighAttackRoll,
 	ResolveCrossHighDefenseRoll,
 	ResolveCrossLowAttackRoll,
-	ResolveCrossLowDefenseRoll
+	ResolveCrossLowDefenseRoll,
+	ResolveThroughBallFeetAttackRoll,
+	ResolveThroughBallFeetDefenseRoll,
+	AdvanceAfterTerminal
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -104,7 +108,8 @@ enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
 	None,
 	NotInitialized,
 	AlreadyInitialized,
-	ReentrantCommand
+	ReentrantCommand,
+	TerminalAdvanceRequired
 };
 
 enum class EMatchPlayAuthoritativeFailureDisposition : uint8
@@ -426,6 +431,30 @@ struct FMCODEX_API
 		OrchestrationResult;
 };
 
+struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest
+{
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+{
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanResult
+		OrchestrationResult;
+};
+
 struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
@@ -556,6 +585,19 @@ struct FMCODEX_API FMatchPlayAuthoritativeApplyShotTerminalResolutionResult
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackApplyShotTerminalResolutionResult
 		OrchestrationResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeAdvanceAfterTerminalRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeAdvanceAfterTerminalResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackCompletionResult CompletionResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeStateAdoptionResult

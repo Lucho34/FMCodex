@@ -130,6 +130,9 @@ FMatchPlayCurrentAttackResolveThroughBallFeetFormulaOrchestrator::Resolve(
 
 	FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest Request;
 	Request.AttackSequence = BeforeState.CurrentAttack.AttackSequence;
+	Request.Mode =
+		FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
+			::EMode::RegenerateCompletedPlan;
 	Result.PlanRegenerationResult =
 		FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
 			::Resolve(BeforeState, Request, SkillRuleSet, nullptr);

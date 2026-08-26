@@ -566,3 +566,59 @@
 - 所有 compact Tactical Detail 玩家文本不得出现 `协防（可选）`，只显示 `协防`；DTO 的 `bOptional=true` 必须保持，证明只修改 Presentation。Deployment Reference 与 SelectSkill Hover 继续共用同一 Catalog、Builder 和 Panel，且不创建默认 ScrollBox。
 - 自动化至少运行 ThroughBall CoreRules、Authority/Session、TacticalRuleDescription、TacticalInformation、LocalPlay 与 Cross shared-flow regression，并完成 UHT/compile/link。Fresh USER PIE 仍须验证直塞层级、无 BehindDefense 越位步骤，以及 P1 Attacker 胜后运行时直接出现两项单刀选择。
 
+## ThroughBall Production Presentation Foundation 与 Debug 隔离（Stage 6.13.1.4.10）
+
+- typed `PresentedActionType=ThroughBall` 且处于 active Resolution 时必须投影独立 production DTO/Widget；正常状态隐藏 generic ResolutionOverlay，authority rejection 仍显示工程诊断。生产可见文本不得包含 ThroughBall、Feet、BehindDefense、AntiOffside、P1/P2、POST-ROUTE、CONTINUES 或 raw state dump；非 ThroughBall/Cross 既有路由不被新表面接管。
+- 初始路线 pending identity 固定为 `AttackSequence + ThroughBall.Route + sequence 0 + owner`。必须复用同一 `UFMCodexRollReelWidget` 与 Screen reveal state machine，域为 `1..6`；cycling/settling 时隐藏 route/CTA，ResultHold 只显示 authority RawD6 与 canonical route projection。Widget 源不得包含区间 mapping、RNG、provider、FormulaResolver 或 Authority mutation。
+- 自动化逐一断言 authoritative route `Feet/BehindDefense/AntiOffside` 投影为 `脚下球/身后球/反越位`，语义阶段分别为 `属性对抗/第一阶段/越位判定`。BehindDefense/AntiOffside 成功后的单刀继续只提供 typed `直接射门/挑射` 两项，不增加第二 command/confirm path。
+- rebuild、snapshot refresh 与重复 completed DTO 不得重启 active/settled reveal；新 Screen 首次观察 already-resolved route 必须直接显示历史 truth 且不锁输入。Route hold 继续复用 1.45 秒合同，落定 center 必须精确等于 authority raw。
+- 回归继续覆盖 ThroughBall `1–2/3–4/5–6`、Feet、BehindDefense no-P2、AntiOffside、OneOnOne、Authority/Session、Cross shared Reel、Tactical Point、LocalPlay 与编译链接。Fresh USER PIE 必须检查真实 Production Surface 构图、Reel/settle/route reveal 顺序、CTA 归属、无工程 header/debug noise；自动化不能替代此 Gate。
+
+## ThroughBall Foundation PIE Repair 与 Feet Capability Gate（Stage 6.13.1.4.10.1）
+
+- initial-route DTO 必须只有一处 `判定直塞路线` instruction，并把唯一 resolution-local primary CTA 投影为 `掷点判定路线`。中央 Widget 点击继续复用 Screen `RequestContinueResolution()`；左下 InteractionPanel 在 pending route 与 active reveal 中折叠。真实 LocalPlay test 必须断言点击后 diagnostic 为 `ResolveInitialRoute` 且 authority InitialRouteRollRecords 恰好新增一条。
+- 正常/拒绝 Debug isolation、D6 `1..6`、authority landing、1.45 秒 hold、settled/rebuild no-replay、三路线中文 projection 与 OneOnOne typed choices 继续回归。
+- Feet capability boundary 必须由 source/authority audit 证明：当前 `ResolveThroughBallFeetPostRoutePlan` 单 command 内部循环消费 PrimaryAttack/PrimaryDefense，且没有 Feet side-owned roll command/interaction；Terminal apply 才 regeneration Formula。未完成独立 Authority stage 前，不得用 UMG 创建假 attack/defense roll、subtotal、FinalValue 或 winner。
+- DEV override 当前为 proposal-only：seeded LocalPlay provider 不是 one-shot override seam。测试应继续证明默认 provider deterministic chronology 与 production RNG 行为不变；不得只靠隐藏 Visibility 暴露可操控 production API。
+- 自动化运行 ThroughBall Production、ControlSurface、LocalPlay、InlineFormula、RollReel、ThroughBall CoreRules、AuthoritativeSession、Cross PIE 与 Build/UHT。Fresh USER PIE 本 Stage 只可验收中央 route CTA/去重与既有 reveal；Feet Production contest 仍由 Authority architecture blocker 阻止，不得报告完成。
+
+## ThroughBall Feet 手动掷点权威基础（Stage 6.13.1.4.10.2）
+
+- Feet 路线完成、零比较点数时，Resolution Facts 必须已提供双方真实 KnownNonRollSubtotal，两行 FinalValue 与 ResolvedResult 都保持 pending；InteractionView 只允许当前进攻方执行 `RollThroughBallFeetAttack`。
+- 正确进攻命令必须恰好调用一次 post-route provider，持久化唯一 `PrimaryAttack`，公开进攻行 RawD6/FinalValue，并把 expected side/category 切到防守方的 `RollThroughBallFeetDefense`。不得在同一 command 内自动取得 Defense D6。
+- 正确防守命令必须再恰好调用一次 provider，追加唯一 `PrimaryDefense`，生成完整 `ThroughBall.Feet` Contest 与既有 Resolver Result，并只允许 typed terminal persistence。两步总 provider delta 精确为 2。
+- 错误阵营、Defense-before-Attack、重复 Attack、重复 Defense、错误分支/阶段与完成后重试都必须在 provider 前失败：RNG delta 为 0，serialized Match State byte-equivalent。State Validator 还要直接拒绝 Defense-only 与 duplicate-Attack 持久化 payload。
+- 无 rolls 与 Attack-only 时调用 `ApplyThroughBallTerminalResolution` 必须失败且零 RNG；双 rolls 后必须成功、零 RNG，并持久化 terminal CurrentAttack。清除、used-attack 与 handoff 改由下方 `.4.10.3.1` 的显式 advance 合同验证。
+- parity 至少覆盖低/平/高三组 D6，包括 `1/6`、`3/3`、`6/1`。分步结果的 Plan、Formula Input、Winner、GK contribution、Tactical Player modifier、tie/goalkeeper semantics 必须与既有 Feet Plan/Formula Orchestrator 对同一持久化输入逐字段一致；regeneration 自身不得调用 provider。
+- Host/Controller E2E 必须使用实际 typed wrappers，而非测试直接绕过 Controller：route 后进攻方 ownership、Attack 后防守方 ownership、双 roll 后 terminal ownership、diagnostic command name、direct Session/Host 与 Controller 最终 State parity 都要断言。generic `ContinueResolution` 在三个 Feet production category 下必须拒绝且不改变 State；Controller production source 不得调用旧原子 `ResolveThroughBallFeetPostRoutePlan`。
+- Presentation 本阶段只验证最低兼容：Screen 的 existing continue handler 能分派三种 typed Feet intent，玩家动作文本为 `掷进攻方点数 / 掷防守方点数 / 下一回合`，且不伪造 Formula/Reel/Narrative/DEV override。完整 Feet Production Surface 留给 `.4.10.3`。
+- 回归运行 Feet/ThroughBall CoreRules、AuthoritativeSession、LocalMatchHost、ControlSurface、ThroughBallProductionPresentation、InlineFormula、RollReel、Cross PIE、全量 LocalPlay 与全量 CoreRules，并完成 UHT/compile/link。该 Authority stage 不以 Fresh PIE 作为完成条件，但也不声称完成 Feet 视觉体验。
+
+## Terminal 持久化与显式下一回合（Stage 6.13.1.4.10.3.1）
+
+- ThroughBall 的 Feet Goal/Miss、Behind Defense OutOfPlay/DefenderStoppedAttack、AntiOffside Offside、DirectShot Goal/Miss 与 ChipShot Goal/Miss 均需断言 terminal success 后 CurrentAttack 仍存在、Lifecycle 为 `TerminalPendingAdvance`、Resolution Facts/rolls/roles/placements 保持、分数只按 outcome 变化、UsedAttackCount 不变且 RNG delta 为 0。
+- Cross High/Low、PassControl 与 Shot 的 Goal/Miss terminal variants 必须经过同一合同。重复 terminal 与 terminal pending 时任意 stale gameplay command 返回 typed failure，State byte-equivalent、score/used counts 不变且 provider delta 为 0。
+- `AdvanceAfterTerminal` 在 Active、attack-only、formula-complete-but-not-terminal 等错误状态必须失败；错误 AttackSequence 与防守方请求必须失败。正确请求方固定为 pending snapshot 中的当前攻击方。
+- accepted advance 必须零 RNG，恰好清除一次 CurrentAttack、提交普通部署牌、增加一次攻击方 UsedAttackCount，并产生 canonical next attacker。重复 advance 不得重复消费、换攻或改分。
+- 最后一攻的 terminal snapshot 仍不宣布比赛结束；accepted advance 才执行 MatchEnd，清除 CurrentAttack、把 CurrentAttackingPlayer 设为 None，并保留 terminal 已写入的最终比分。
+- Host、Controller、Screen 与 UMG E2E 必须先观察 terminal pending 的唯一 `下一回合`，再通过真实 typed wrapper advance。重建 InteractionView/Feedback 必须得到相同 Formula Facts、终结文案、角色、Pitch 与战术人数，且不产生任何 RNG；advance 后这些 action-scoped projections 清空并进入下一方战术点准备。
+- Cross Inline Formula Golden Path 必须保持同一中央 `下一回合` CTA ownership，无重复底部按钮；Feet 与其他 tactics 可复用既有 resolution continue dispatch。正常 defense command 可紧接零 RNG terminal persist 以隐藏技术确认步骤，但恢复在 formula-complete 前缀时必须仍有 typed recovery action。
+- pre-resolution Carrier/Marker/Skill/Runner 无合法选择/放弃 closure 继续验证原 atomic completion，不应被误判为拥有 resolved terminal snapshot。
+
+## ThroughBall Feet Production Formula Presentation（Stage 6.13.1.4.10.3）
+
+- Preview fixture 必须投影 `ThroughBall.Feet` shared Formula DTO：双方 KnownNonRollSubtotal 精确等于 authority facts，两枚 RawD6 pending，Attack key 为 sequence 1/attacker，中央 `进攻方掷点` 可用，底部 Panel 与 standalone Cross formula surface 不重复显示。
+- Attack accepted fixture 必须进入 shared D6 reel、屏蔽 Defense CTA 与未公开数据；settle/disclosure 后显示 authority RawD6/Attack FinalValue，完整 hold 后才显示 `防守方掷点`。重复 refresh 不重启 Attack，fresh attack-complete Screen 直接显示相同值与 Defense CTA。
+- Defense accepted/terminal fixture 必须在 reel 中隐藏 result 与 `下一回合`；0.18 秒 formula gate 后双方 FinalValue 可见，0.38 秒 result gate 后显示由 authority winner 映射的中文结果，完整 readable hold 后才显示中央 `下一回合`。
+- fresh `TerminalPendingAdvance` Screen 必须直接显示双方 FinalValue、中文结果与 `下一回合`，不重播 Route/Attack/Defense reel。Interaction category 必须为 `AdvanceAfterTerminal`，底部 Panel 折叠，generic debug overlay 隐藏。
+- dispatch/source boundary 必须保持 formula child -> ThroughBall Surface -> Screen 单一 delegate 链；Screen 的 `AdvanceAfterTerminal` category 只调用 Controller typed wrapper。Authority专项继续验证 accepted advance 后才清场、消费机会、换攻/结束且零 RNG。
+- 回归至少运行 `ThroughBallProductionPresentation`、`InlineFormula`、`RollReel`、`ControlSurface`、`LocalMatchHost`、全量 LocalPlay、ThroughBall/CoreRules、Cross/CoreRules、Cross PIE gate、AuthoritativeSession、全量 CoreRules、Build/UHT/link 与 `git diff --check`。最终玩家视觉与点击节奏仍需 Fresh USER PIE。
+
+## ThroughBall / Cross Formula Presentation Consistency（Stage 6.13.1.4.10.3A）
+
+- Feet pre-route 不得显示已判定结果；route resolved 后 Preview、Attack settled/Defense pending、Defense settled/result 与 fresh terminal resync 都必须显示完全相同的 `路线掷点 N → 判定为脚下球`，active reel 期间仍遵守既有隐藏/披露 gate。
+- Cross High/Low pre-route 的中央 Inline Formula 必须显示唯一 `判定传中路线` CTA，底部 InteractionPanel 与 legacy overlay 折叠；interaction identity 继续为 `InitialRoute + Cross.Route + sequence 0 + owner`。中央 delegate 必须走既有 Screen typed continuation；authority result 到达后只启动一个 reel，stable key 不产生重复 reveal。
+- Feet attacker terminal 映射 `{Carrier}直塞，{Runner}破门！`，defender terminal 按 Marker -> Helper -> Goalkeeper 固定事实优先级映射破坏文案；Participant Facts 不足时使用简短 fallback。测试必须同时断言 winner 来自 resolved Formula、reveal gate 前 Narrative 隐藏、fresh terminal 不重播，且 presentation source 不新增 RNG。
+- Feet 与 Cross High/Low 的 Attribute/GoalkeeperContribution operand 必须分别携带并渲染球员短名；RawRoll、FixedModifier、TacticalPlayerAdvantage 不带姓名。role chip 继续存在，shared Widget 重复 refresh 不增加 term children；`姓名 + attribute` 作为单一 Wrap item、内部 TextBlock 关闭 AutoWrap，防止公式对齐被拆散。
+- 必须继续运行 InlineFormula、RollReel、ControlSurface、ThroughBallProductionPresentation、Feet/terminal Authority、Cross CoreRules/PIE、ThroughBall CoreRules、相关及全量 LocalPlay、AuthoritativeSession、全量 CoreRules、Build/UHT/link 与 `git diff --check`。Fresh USER PIE 逐项验收 Feet route context、Cross 中央 route CTA、Feet result narrative、High/Low/Feet 带姓名公式与 1920×1080 layout。
+

@@ -32,9 +32,17 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	RollCrossAttack,
 	RollCrossDefense,
 	CompleteCrossAndAdvance,
+	RollThroughBallFeetAttack,
+	RollThroughBallFeetDefense,
+	CompleteThroughBallFeetAndAdvance,
 	ContinueResolution,
 	AttackComplete,
-	MatchEnded
+	MatchEnded,
+	/** Legacy compatibility only; production uses ApplyCrossTerminalResolution. */
+	ApplyCrossTerminalResolution,
+	/** Legacy compatibility only; production uses ApplyThroughBallFeetTerminalResolution. */
+	ApplyThroughBallFeetTerminalResolution,
+	AdvanceAfterTerminal
 };
 
 struct FMCODEX_API FFMCodexLocalMatchDeploymentOption
@@ -249,6 +257,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCanDecline = false;
 	bool bCanResolveNoLegalChoice = false;
 	FString Diagnostic;
+	/** Typed presentation identity; player-facing code must not parse ActionLabel. */
+	ESkillRuleType PresentedActionType = ESkillRuleType::None;
 	FString ActionLabel;
 	EMatchPlayElectiveBranchIntent ElectiveBranchIntent =
 		EMatchPlayElectiveBranchIntent::None;
@@ -276,6 +286,11 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCrossDefenseRollPending = false;
 	bool bCrossFormulaComplete = false;
 	bool bCrossTerminalActionAvailable = false;
+	bool bThroughBallFeetAttackRollPending = false;
+	bool bThroughBallFeetDefenseRollPending = false;
+	bool bThroughBallFeetFormulaComplete = false;
+	bool bThroughBallFeetTerminalActionAvailable = false;
+	bool bTerminalPendingAdvance = false;
 	FString ContinueActionLabel = TEXT("Continue Resolution");
 };
 

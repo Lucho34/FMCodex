@@ -10,6 +10,8 @@ namespace MatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlan
 	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
 	using FResult =
 		FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanResult;
+	using EMode =
+		FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest::EMode;
 
 	void SetFailure(
 		FResult& Result,
@@ -344,6 +346,10 @@ FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
 			TEXT("This operation supports only the resolved ThroughBall Feet branch."));
 		return Result;
 	}
+	const bool bExplicitRollStep = Request.Mode == EMode::ResolveAttackRoll
+		|| Request.Mode == EMode::ResolveDefenseRoll;
+	const bool bCompletedPlanRegeneration =
+		Request.Mode == EMode::RegenerateCompletedPlan;
 
 	FMatchPlayState CandidateState = BeforeState;
 	FMatchPlayCurrentAttackResolutionSession& CandidateSession =
@@ -373,6 +379,52 @@ FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
 			Result.ProgressResult.ErrorMessage);
 		return Result;
 	}
+	if (bCompletedPlanRegeneration
+		&& !Result.ProgressResult.bContractComplete)
+	{
+		SetFailure(
+			Result,
+			EError::CompletedPlanRequired,
+			TEXT("ThroughBall Feet plan regeneration requires an already-complete roll contract."));
+		return Result;
+	}
+	if (bExplicitRollStep)
+	{
+		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			SetFailure(
+				Result,
+				EError::InvalidRequestingSide,
+				TEXT("ThroughBall Feet roll commands require PlayerA or PlayerB as RequestingSide."));
+			return Result;
+		}
+		const EPurpose RequestedPurpose = Request.Mode
+			== EMode::ResolveAttackRoll
+				? EPurpose::PrimaryAttack
+				: EPurpose::PrimaryDefense;
+		if (Result.ProgressResult.bContractComplete
+			|| Result.ProgressResult.NextPurpose != RequestedPurpose)
+		{
+			SetFailure(
+				Result,
+				EError::WrongFeetRollStep,
+				TEXT("The requested ThroughBall Feet roll is not the current authoritative step."));
+			return Result;
+		}
+		const EInitialTurnOrderPlayer ExpectedSide = RequestedPurpose
+			== EPurpose::PrimaryAttack
+				? BeforeSession.Bundle.CurrentAttackingPlayer
+				: BeforeSession.Bundle.CurrentDefendingPlayer;
+		if (Request.RequestingSide != ExpectedSide)
+		{
+			SetFailure(
+				Result,
+				EError::WrongRequestingSide,
+				TEXT("The requesting side does not own the current ThroughBall Feet roll."));
+			return Result;
+		}
+	}
 	if (!Result.ProgressResult.bContractComplete
 		&& RollProvider == nullptr)
 	{
@@ -391,7 +443,9 @@ FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
 		return Result;
 	}
 
-	while (!Result.ProgressResult.bContractComplete)
+	const int32 MaximumRollsThisCommand = bExplicitRollStep ? 1 : MAX_int32;
+	while (!Result.ProgressResult.bContractComplete
+		&& Result.ProviderCallCount < MaximumRollsThisCommand)
 	{
 		const EPurpose Purpose = Result.ProgressResult.NextPurpose;
 		const FMatchPlayPostRouteRollProviderResult ProviderResult =
@@ -430,6 +484,25 @@ FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
 		}
 	}
 
+	if (bExplicitRollStep && !Result.ProgressResult.bContractComplete)
+	{
+		Result.SessionStateValidationResult =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				CandidateState);
+		if (!Result.SessionStateValidationResult.bIsCanonical)
+		{
+			SetFailure(
+				Result,
+				EError::InvalidPostRouteProgress,
+				Result.SessionStateValidationResult.ErrorMessage);
+			return Result;
+		}
+		Result.AfterState = MoveTemp(CandidateState);
+		Result.bResolvedNewRolls = true;
+		Result.bSuccess = true;
+		return Result;
+	}
+
 	Result.SessionStateValidationResult =
 		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
 			CandidateState);
@@ -459,7 +532,8 @@ FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
 
 	Result.AfterState = MoveTemp(CandidateState);
 	Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
-	Result.bReplayedCompleteRolls = Result.ProviderCallCount == 0;
+	Result.bReplayedCompleteRolls = !bExplicitRollStep
+		&& Result.ProviderCallCount == 0;
 	Result.bSuccess = true;
 	return Result;
 }

@@ -109,6 +109,16 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallFeetPostRoutePlanResult
 	ResolveThroughBallFeetPostRoutePlan();
 
+	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult
+	ResolveThroughBallFeetAttackRoll(
+		const FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest&
+			Request);
+
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult
+	ResolveThroughBallFeetDefenseRoll(
+		const FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest&
+			Request);
+
 	FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
 	ResolvePassControlPostRoutePlan();
 
@@ -162,6 +172,9 @@ public:
 
 	FMatchPlayAuthoritativeApplyShotTerminalResolutionResult
 	ApplyShotTerminalResolution();
+
+	FMatchPlayAuthoritativeAdvanceAfterTerminalResult AdvanceAfterTerminal(
+		const FMatchPlayAuthoritativeAdvanceAfterTerminalRequest& Request);
 
 	FMatchPlayState GetStateSnapshot() const;
 

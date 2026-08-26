@@ -58,6 +58,18 @@ public:
 	static FText ResolutionDefenseRoll();
 	static FText ResolutionDefenseRollSettled();
 	static FText ContinueResolution();
+	static FText ThroughBallTitle();
+	static FText ThroughBallInitialRouteStage();
+	static FText ThroughBallInitialRouteAction();
+	static FText ThroughBallRoute(
+		EMatchPlayThroughBallActualBranch Route);
+	static FText ThroughBallFeetStage();
+	static FText ThroughBallBehindDefenseStage();
+	static FText ThroughBallAntiOffsideStage();
+	static FText ThroughBallOneOnOneStage();
+	static FText ThroughBallOneOnOnePrompt();
+	static FText ThroughBallRouteResult(
+		int32 RawD6, EMatchPlayThroughBallActualBranch Route);
 	static FText BroadcastStatus(bool bMatchEnded, bool bAttackActive,
 		const FString& MatchResultLabel);
 

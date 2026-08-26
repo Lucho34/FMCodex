@@ -322,6 +322,26 @@ struct FMCODEX_API FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchResolveThroughBallFeetAttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveThroughBallFeetDefenseRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchResolvePassControlPostRoutePlanResult
 {
 	bool bSuccess = false;
@@ -490,6 +510,15 @@ struct FMCODEX_API FFMCodexLocalMatchApplyShotTerminalResolutionResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchAdvanceAfterTerminalResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeAdvanceAfterTerminalResult AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 UCLASS()
 class FMCODEX_API AFMCodexLocalMatchHostGameMode final
 	: public AGameModeBase
@@ -615,6 +644,16 @@ public:
 	FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult
 	ResolveThroughBallFeetPostRoutePlan();
 
+	FFMCodexLocalMatchResolveThroughBallFeetAttackRollResult
+	ResolveThroughBallFeetAttackRoll(
+		const FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest&
+			Request);
+
+	FFMCodexLocalMatchResolveThroughBallFeetDefenseRollResult
+	ResolveThroughBallFeetDefenseRoll(
+		const FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest&
+			Request);
+
 	FFMCodexLocalMatchResolvePassControlPostRoutePlanResult
 	ResolvePassControlPostRoutePlan();
 
@@ -662,6 +701,9 @@ public:
 
 	FFMCodexLocalMatchApplyShotTerminalResolutionResult
 	ApplyShotTerminalResolution();
+
+	FFMCodexLocalMatchAdvanceAfterTerminalResult AdvanceAfterTerminal(
+		const FMatchPlayAuthoritativeAdvanceAfterTerminalRequest& Request);
 
 private:
 	FFMCodexStartNewLocalMatchResult StartNewLocalMatchWithSeed(

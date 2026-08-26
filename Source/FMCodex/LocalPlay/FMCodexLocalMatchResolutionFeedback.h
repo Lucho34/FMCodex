@@ -8,6 +8,8 @@ struct FFMCodexLocalMatchResolveIntentDeterminedRouteResult;
 struct FFMCodexLocalMatchResolveInitialRouteResult;
 struct FFMCodexLocalMatchResolveCrossPostRoutePlanResult;
 struct FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult;
+struct FFMCodexLocalMatchResolveThroughBallFeetAttackRollResult;
+struct FFMCodexLocalMatchResolveThroughBallFeetDefenseRollResult;
 struct FFMCodexLocalMatchResolvePassControlPostRoutePlanResult;
 struct FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult;
 struct FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult;
@@ -49,6 +51,9 @@ public:
 		const FString& ErrorMessage,
 		bool bAuthoritativeAccepted);
 
+	static FFMCodexLocalMatchResolutionFeedback BuildFromTerminalSnapshot(
+		const FFMCodexLocalMatchInteractionView& TerminalView);
+
 	static FFMCodexLocalMatchResolutionFeedback Build(
 		const FString& CommandName,
 		const FFMCodexLocalMatchResolveIntentDeterminedRouteResult& Result,
@@ -67,6 +72,16 @@ public:
 	static FFMCodexLocalMatchResolutionFeedback Build(
 		const FString& CommandName,
 		const FFMCodexLocalMatchResolveThroughBallFeetPostRoutePlanResult& Result,
+		const FFMCodexLocalMatchInteractionView& BeforeView,
+		const FFMCodexLocalMatchInteractionView& AfterView);
+	static FFMCodexLocalMatchResolutionFeedback Build(
+		const FString& CommandName,
+		const FFMCodexLocalMatchResolveThroughBallFeetAttackRollResult& Result,
+		const FFMCodexLocalMatchInteractionView& BeforeView,
+		const FFMCodexLocalMatchInteractionView& AfterView);
+	static FFMCodexLocalMatchResolutionFeedback Build(
+		const FString& CommandName,
+		const FFMCodexLocalMatchResolveThroughBallFeetDefenseRollResult& Result,
 		const FFMCodexLocalMatchInteractionView& BeforeView,
 		const FFMCodexLocalMatchInteractionView& AfterView);
 	static FFMCodexLocalMatchResolutionFeedback Build(

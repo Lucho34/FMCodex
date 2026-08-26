@@ -23,6 +23,14 @@ enum class EMatchPlayCurrentAttackPhase : uint8
 };
 
 UENUM(BlueprintType)
+enum class EMatchPlayCurrentAttackLifecycleState : uint8
+{
+	Active = 0 UMETA(DisplayName = "Active"),
+	TerminalPendingAdvance = 1
+		UMETA(DisplayName = "Terminal Pending Advance")
+};
+
+UENUM(BlueprintType)
 enum class EMatchPlayCurrentAttackSelectionStage : uint8
 {
 	None = 0 UMETA(DisplayName = "None"),
@@ -267,6 +275,10 @@ USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchPlayCurrentAttackState
 {
 	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	EMatchPlayCurrentAttackLifecycleState LifecycleState =
+		EMatchPlayCurrentAttackLifecycleState::Active;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	EMatchPlayCurrentAttackPhase Phase =

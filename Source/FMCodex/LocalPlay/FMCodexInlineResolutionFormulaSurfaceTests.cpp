@@ -319,10 +319,11 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 		else
 		{
 			View.InteractionCategory =
-				EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance;
+				EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal;
 			View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerA;
 			View.bCrossFormulaComplete = true;
-			View.bCrossTerminalActionAvailable = true;
+			View.bCrossTerminalActionAvailable = false;
+			View.bTerminalPendingAdvance = true;
 			View.ContinueActionLabel = TEXT("下一回合");
 		}
 		FFMCodexLocalMatchResolutionFeedback Feedback;
@@ -382,7 +383,8 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 			}
 			for (const auto& Term : Row->Terms)
 			{
-				Result += Term.DisplayLabel + Term.AttributeLabel;
+				Result += Term.ContributorDisplayName
+					+ Term.DisplayLabel + Term.AttributeLabel;
 			}
 		}
 		return Result;
@@ -428,19 +430,32 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 		PendingSurface.AttackRow.Terms.Num() == 3
 			&& PendingSurface.AttackRow.Terms[0].DisplayLabel
 				== TEXT("传球 5 ×0.5")
+			&& PendingSurface.AttackRow.Terms[0].ContributorDisplayName
+				== TEXT("萨卡")
 			&& PendingSurface.AttackRow.Terms[1].DisplayLabel
 				== TEXT("力量 4 ×0.5")
+			&& PendingSurface.AttackRow.Terms[1].ContributorDisplayName
+				== TEXT("哈弗茨")
 			&& PendingSurface.DefenseRow.Terms.Num() == 5
 			&& PendingSurface.DefenseRow.Terms.Last().DisplayLabel
-				== TEXT("制空 5 ×0.5"));
+				== TEXT("制空 5 ×0.5")
+			&& PendingSurface.DefenseRow.Terms.Last()
+				.ContributorDisplayName == TEXT("拉亚"));
 	const auto* PendingAttackD6 = FindTerm(
 		PendingSurface.AttackRow,
 		EFMCodexUMGInlineFormulaTermKind::RawRoll, 1);
 	const auto* PendingDefenseD6 = FindTerm(
 		PendingSurface.DefenseRow,
 		EFMCodexUMGInlineFormulaTermKind::RawRoll, 2);
+	const auto* FixedDefenseModifier = FindTerm(
+		PendingSurface.DefenseRow,
+		EFMCodexUMGInlineFormulaTermKind::FixedModifier);
 	TestTrue(TEXT("Known subtotals and pending attack roll are projected"),
 		PendingAttackD6 != nullptr && PendingDefenseD6 != nullptr
+			&& FixedDefenseModifier != nullptr
+			&& PendingAttackD6->ContributorDisplayName.IsEmpty()
+			&& PendingDefenseD6->ContributorDisplayName.IsEmpty()
+			&& FixedDefenseModifier->ContributorDisplayName.IsEmpty()
 			&& PendingSurface.AttackRow.KnownNonRollSubtotalLabel
 				== TEXT("基础值 4.5")
 			&& PendingSurface.DefenseRow.KnownNonRollSubtotalLabel
@@ -539,6 +554,8 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 				.bFinalValueResolved
 			&& UnsupportedPresentation.InlineFormula.RouteResultLabel
 				== TEXT("路线掷点 5 → 判定为低球传中")
+			&& UnsupportedPresentation.InlineFormula.AttackRow.Terms[0]
+				.ContributorDisplayName == TEXT("萨卡")
 			&& UnsupportedPresentation.Resolution.bVisible);
 	FMatchPlayCurrentAttackResolutionFactProjection SettledLow = Unsupported;
 	for (FMatchPlayResolutionRollFact& Roll : SettledLow.Rolls)
@@ -629,10 +646,20 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			Widget->GetWidgetFromName(TEXT("InlineFormulaAttackFinalValue")));
 		const UTextBlock* DefenseMainResult = Cast<UTextBlock>(
 			Widget->GetWidgetFromName(TEXT("InlineFormulaDefenseFinalValue")));
+		const UTextBlock* AttackContributorOperand = Cast<UTextBlock>(
+			Widget->GetWidgetFromName(TEXT("InlineFormulaAttackOperandText0")));
 		TestTrue(TEXT("Pre-roll main result boxes show authoritative known subtotals"),
 			AttackMainResult != nullptr && DefenseMainResult != nullptr
 				&& AttackMainResult->GetText().ToString() == TEXT("4.5")
 				&& DefenseMainResult->GetText().ToString() == TEXT("9"));
+		TestTrue(TEXT("Shared widget renders contributor and operand as one wrap item"),
+			AttackContributorOperand != nullptr
+				&& AttackContributorOperand->GetText().ToString()
+					== TEXT("萨卡 传球 5 ×0.5")
+				&& !AttackContributorOperand->GetAutoWrapText()
+				&& AttackTerms != nullptr
+				&& AttackTerms->GetChildrenCount()
+					== PendingSurface.AttackRow.Terms.Num());
 	}
 
 	UFMCodexLocalMatchScreenWidget* Screen =
@@ -1200,6 +1227,25 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			PreRouteView, LegacyPreRouteFeedback, FString(),
 			EInitialTurnOrderPlayer::PlayerA);
+	TestTrue(TEXT("Cross route CTA is centrally owned before authority roll"),
+		PreRoutePresentation.InlineFormula.bVisible
+			&& PreRoutePresentation.InlineFormula.bSuppressLegacyResolution
+			&& PreRoutePresentation.InlineFormula.ContestId
+				== TEXT("Cross.Route")
+			&& PreRoutePresentation.InlineFormula.RouteResultLabel.IsEmpty()
+			&& !PreRoutePresentation.InlineFormula.bShowFormulaRows
+			&& PreRoutePresentation.InlineFormula.bCanContinue
+			&& PreRoutePresentation.InlineFormula.ContinueActionLabel
+				== TEXT("判定传中路线")
+			&& PreRoutePresentation.Interaction
+				.bPrimaryActionOwnedByInlineFormula
+			&& !PreRoutePresentation.Interaction.bCanContinue
+			&& PreRoutePresentation.Interaction.PrimaryActionLabel.IsEmpty()
+			&& PreRoutePresentation.Interaction.CrossRollRevealKind
+				== EFMCodexUMGCrossRollRevealKind::InitialRoute
+			&& PreRoutePresentation.Interaction.CrossRollContestId
+				== TEXT("Cross.Route")
+			&& PreRoutePresentation.Interaction.CrossRollSequenceIndex == 0);
 	const FFMCodexUMGMatchScreenViewModel ManualPending = BuildPresentation(
 		MakeCrossHighFacts(true, true, false, false));
 	const FFMCodexUMGMatchScreenViewModel ManualAttackSettled = BuildPresentation(
@@ -1216,6 +1262,14 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 	}
 	Screen->TakeWidget();
 	Screen->RefreshFromPresentation(PreRoutePresentation);
+	TestTrue(TEXT("Cross route CTA renders centrally without lower duplicate"),
+		Screen->GetInlineFormulaSurface() != nullptr
+			&& Screen->GetInlineFormulaSurface()->GetPresentation().bVisible
+			&& Screen->GetInlineFormulaSurface()->GetPresentation().bCanContinue
+			&& Screen->GetInteractionPanel() != nullptr
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& !Screen->IsLegacyResolutionOverlayVisible());
 	Screen->RefreshFromPresentation(ManualPending);
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	const auto& RouteStart =
@@ -1662,6 +1716,12 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 		ScreenSource.Contains(TEXT("SetTimerForNextTick"))
 			&& ScreenSource.Contains(TEXT("GetDeltaSeconds"))
 			&& ScreenSource.Contains(TEXT("RefreshActiveRollReelVisuals")));
+	TestTrue(TEXT("Central route CTA retains the existing typed continuation dispatch"),
+		ScreenSource.Contains(
+			TEXT("InlineFormulaSurface->OnContinueRequested.AddDynamic"))
+			&& ScreenSource.Contains(TEXT("RequestContinueResolution();"))
+			&& ScreenSource.Contains(
+				TEXT("MatchController->ContinueResolution();")));
 	TestTrue(TEXT("Tactical production authority remains one direct 2..8 roll"),
 		TacticalProviderSource.Contains(TEXT("RandomStream.RandRange(2, 8)"))
 			&& HostSource.Contains(TEXT("RollOrdinaryTacticalPoint()"))

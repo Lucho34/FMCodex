@@ -666,6 +666,61 @@
 - 保留：反越位继续拥有自己独立的权威越位 D6 与 `1–5 Offside / 6 OneOnOne` 结果；删除身后球 P2 不得影响它。Feet gameplay、Tactical Player、deployment legality 和其他战术玩法不变。
 - 表现：Tactical Detail 的 Helper 仍是 optional gameplay metadata，但玩家可见标签统一为 `协防`。直塞继续显示三个一级路线；身后球为 `第一阶段 → 成功后：单刀 → 直接射门 / 挑射`，反越位为 `越位判定 → 成功后：单刀 → 直接射门 / 挑射`。
 
+### CD-066 - ThroughBall Production Presentation Uses a Thin Shared-Reel Adapter
+
+- 日期：2026-08-25
+- 路由：正常 ThroughBall Resolution 由 typed `PresentedActionType` 进入独立的 `FFMCodexUMGThroughBallResolutionViewModel` 与 `UFMCodexThroughBallResolutionSurfaceWidget`。生产 Widget 只读取已确定的中文路线、语义阶段与 typed interaction；不得解析 `ActionLabel`、工程 Step/Continuation 字符串或 D6 区间来推断玩法状态。
+- Debug 隔离：正常直塞状态抑制 generic `ResolutionOverlay / UFMCodexResolutionPanelWidget`，拒绝结果仍保留该工程诊断面。调试数据与生产数据可同时构建，但不会同时作为正常玩家表面显示；Cross 与非 ThroughBall 路由保持原样。
+- 初始路线：直塞新增 `ThroughBallInitialRoute` reveal identity，但复用 Cross/Tactical Point 已接受的 `UFMCodexRollReelWidget`、Screen reveal phase、timing、权威落定、stable settled key 与 rebuild/resync 行为。域固定为 D6 `1..6`，最终数字只读 authority `BranchSelection` fact；路线名称只读 canonical `ActualBranch` projection，Widget 不执行 `1–2 / 3–4 / 5–6` 映射。
+- 语义壳：本阶段仅建立 `脚下球/属性对抗`、`身后球/第一阶段`、`反越位/越位判定` 与共用 `单刀/直接射门/挑射` 的 production shell。合法 CTA 继续来自既有 InteractionView/UMG typed projection 与同一 InteractionPanel，不增加 command、确认步骤或第二套输入系统。
+- 冻结：Authority、Host/Session、Formula、RNG、初始路线概率、Feet、BehindDefense no-P2、AntiOffside、OneOnOne、terminal/handoff、Cross Golden Path 与 Tactical Point 全部不变。`.4.10A/B/C/D` 才分别补全三个 route 与 OneOnOne 的 production formula/narrative；Fresh USER PIE 仍是本阶段视觉接受 Gate。
+
+### CD-067 - Route CTA Is Central; Feet Manual Production Requires an Authority Stage
+
+- 日期：2026-08-25
+- PIE 修复：直塞初始路线的 semantic instruction 只显示一次 `判定直塞路线`。`UFMCodexThroughBallResolutionSurfaceWidget` 通过 read-only DTO 承载唯一 `掷点判定路线` primary CTA，Screen 把它绑定到既有 `RequestContinueResolution()`；同一期间左下 InteractionPanel 折叠，active reveal 中继续保持折叠。没有新增 Host command、route logic 或第二个 intent。
+- Feet capability decision：当前为 **Case B**。`ResolveThroughBallFeetPostRoutePlan()` 在单次 authority command 内部循环消费 `PrimaryAttack` 与 `PrimaryDefense` 两颗 D6；没有 side-owned Feet attack/defense command、typed interaction 或中间 Formula resolution state。`ApplyThroughBallTerminalResolution()` 才从已存 rolls 重新生成 Formula 并直接完成 attack。因此 Presentation 不能合法模拟 Cross-like 双手动掷点，本 Stage 不实现 Feet Formula bridge。
+- 后续 Authority Stage：需要把 Feet plan 建立、攻击方 roll、攻击方披露 gate、防守方 roll、Formula resolve、terminal apply 拆为可验证的 canonical commands/states，并为每步投影 expected side、typed interaction 与 FormulaFacts；之后 shared InlineFormula/Reel 才能接入。
+- DEV D6：现有 LocalPlay 只有 Host-owned seeded `FFMCodexLocalMatchD6Provider`，同时作为 initial/post-route provider；没有 one-shot queue、semantic target、clear 或 shipping-safe typed dev seam。因此本 Stage 仅记录 proposal，不增加 GM UI。独立 Stage 可在 `WITH_EDITOR || WITH_DEV_AUTOMATION_TESTS` 边界下向 Host-owned provider 注入 purpose-targeted one-shot override，并保证默认 stream、消费后清除和 Shipping API 缺席。
+
+### CD-068 - ThroughBall Feet Uses Side-owned Sequential Authority Rolls
+
+- 日期：2026-08-25
+- 决策：CD-067 识别的 capability blocker 由独立 Authority foundation 解除。正常 Feet production path 固定为 `ResolveThroughBallFeetAttackRoll -> ResolveThroughBallFeetDefenseRoll -> ApplyThroughBallTerminalResolution`；RequestingSide 分别必须等于当前 attacker/defender。每个 roll command 最多消费一枚 Host-owned D6，terminal 消费零枚。
+- 状态：不新建 Feet-only 随机状态。沿用 `PostRouteRollProgress` 的 canonical ordered prefix：route-resolved empty、`PrimaryAttack`、`PrimaryAttack + PrimaryDefense`。Validator 拒绝 Defense-only、duplicate 与越序 payload；所有命令在 provider 前完成 branch/phase/side/next-purpose 校验，拒绝保持 serialized State 不变。
+- 公式：数学、属性、GK、Tactical Player、tie 与 outcome 全部冻结。空前缀和 Attack-only 的增量显示来自既有 Resolution Fact Projection；双记录通过既有 Feet Plan Query、Assembler、Executor 与 Formula Resolver 生成完整 Contest。terminal 只从持久化 records 零 RNG regeneration 并应用结果。旧原子 API 仅保留兼容/参考，不是正常 Controller 入口。
+- 交互：InteractionView 新增 Attack、Defense、Terminal 三个显式 category；Controller/Host/AuthoritativeSession 提供对应 typed wrappers，并保留 serialized command boundary 与 in-flight guard。generic Continue 明确不能代替这些命令，也不得意外触发旧原子双掷点。
+- 表现边界：Stage 6.13.1.4.10.2 只补最低 Screen/UMG compatibility routing，不实现完整 Feet Inline Formula、Reel、disclosure choreography、narrative、cinematic 或全局重做；这些属于 `.4.10.3`。purpose-targeted DEV one-shot D6 override 仍是 proposal-only，不在本决策中实现。
+
+### CD-069 - Resolved Tactic Terminal Persists Before Explicit Next-Round Advance
+
+- 日期：2026-08-25
+- 审计结论：当前为 **Case B**。ThroughBall、Cross、PassControl 与 Shot 的 resolved terminal 都汇入共用 `FMatchPlayCurrentAttackCompletion`，因此生命周期修复必须在 shared authority seam 完成，不能只在 ThroughBall UI 延迟清理。Cross 既有“完成态”主要是 presentation-held formula result，不是可重连的 persisted terminal authority state。
+- 决策：正式 resolved tactic completion 拆为两个 serialized authoritative transition。terminal persist 写入 score/outcome 并把 CurrentAttack 标记为 `TerminalPendingAdvance`；显式 `AdvanceAfterTerminal(AttackSequence, RequestingSide)` 才清除 action scope、提交普通牌、消费一次机会、换攻或结束比赛。本条取代 CD-068 中把 terminal apply 与 handoff 视为同一时刻的部分，不改变其 Feet roll/Formula/RNG 决定。
+- 保留事实：terminal pending 必须保留 CurrentAttack、当前攻击方、AttackSequence、Resolution Session、roles、placements、accepted rolls、Formula Facts 与 tactical counts。普通牌、UsedAttackCount 与 next attacker 仍 pending。Goal 的分数在 terminal persist 时写入一次；advance 不重复加分。
+- Ownership/RNG：只有当前攻击方可 advance；stale sequence、错误方、错误 lifecycle、重复 terminal、重复 advance 及 pending 时其他 command 全部零 mutation、零 RNG。terminal persist 与 advance 本身都不调用 D6 provider。
+- 终局：最后一次 resolved outcome 先形成可观察 terminal snapshot；只有 accepted advance 才运行既有 MatchEnd authority。终局不切换到另一方，`CurrentAttackingPlayer=None`。
+- Resync：terminal snapshot 自足，InteractionView 与 feedback 从 State/Resolution Facts 重建同一结果和唯一 `下一回合`；不得依赖旧 Controller 的瞬时 command result，刷新/重连不得重掷或自动 advance。
+- 范围例外：Carrier、Marker、Skill、Runner 阶段的 no-legal/decline 属于 pre-resolution closure，没有正式 resolved tactic result，继续沿用既有 atomic completion。本决定不扩张它们，也不修改任何公式、概率、平局、比分或卡牌平衡。
+- 表现兼容：正常 Cross/Feet defense flow 可立即执行零 RNG terminal persist，使玩家只看到结果与 `下一回合`；formula-complete 前缀恢复时保留 typed terminal recovery action。Cross Inline Formula 已接受的中央 CTA ownership、Reel/disclosure timing 与玩家叙事保持不变。
+
+### CD-070 - ThroughBall Feet Composes the Shared Formula/Reel Presentation
+
+- 日期：2026-08-25
+- 决策：Feet Production 不建立第二套 Formula 或 Reel。`FFMCodexUMGThroughBallResolutionViewModel` 组合既有 `FFMCodexUMGInlineFormulaSurfaceViewModel`，`UFMCodexThroughBallResolutionSurfaceWidget` 组合既有 Inline Formula Widget；live values 只来自 `ThroughBall.Feet` authoritative Formula Facts。
+- Reveal：Attack 与 Defense 复用 shared Screen reveal state，stable identity 继续包含 `AttackSequence + ThroughBall.Feet + sequence + owner + kind`。两枚 roll 的 key 独立；refresh/resync 不重播已完成历史 roll，fresh terminal 直接呈现完整 truth。
+- CTA：Feet Formula child 中央承载 `进攻方掷点 / 防守方掷点 / 下一回合`，并折叠底部重复 InteractionPanel。事件沿 child -> ThroughBall Surface -> Screen 既有单一 delegate 路径分派到 typed Controller command；终结只分派 `AdvanceAfterTerminal`，UMG 不清 State。
+- Gate：Defense Authority 可先进入 `TerminalPendingAdvance`，但结果与 NextRound 分别遵守 shared formula/result/readable-hold gate。NextRound 只在完整 hold 后出现；新 Screen 第一次观察 terminal snapshot 时不制造 replay，直接显示 FinalValues、authority winner 的简短中文映射与 CTA。
+- 冻结：不修改 Feet/Cross 数学、RNG、winner/tie、route、legality、Host/Session lifecycle 或 DEV override。ThroughBall Feet 完整 Narrative、audio/cinematic 和商业 polish 继续留给后续阶段；Fresh USER PIE 是最终视觉接受 Gate。
+
+### CD-071 - Formula Presentation Keeps Route, Contributor and Terminal Context
+
+- 日期：2026-08-26
+- 路线上下文：Feet shared Formula 在 route 已由权威事实确定后持续显示 `路线掷点 N → 判定为脚下球`；pre-route DTO 不显示该结果。Cross 的初始路线 CTA 改由同一中央 Formula surface 承载，底部 InteractionPanel 折叠；`Cross.Route + sequence 0 + owner` identity、reel、single-action authority command 与 reveal gate 不变。
+- 公式参与者：shared Formula term DTO 增加可选 `ContributorDisplayName`。Presentation 仅对带 CardId 的 Attribute / GoalkeeperContribution term 从 roster/card identity 投影短球员名；RawRoll、FixedModifier 与 TacticalPlayerAdvantage 不带姓名。shared Widget 把 `姓名 + 属性 operand` 作为一个 Wrap item 渲染，现有角色 chip 保留，不创建第二套公式 Widget。
+- Feet 结果：terminal headline 只读取 authoritative Winner 与 Participant Facts。进攻方胜且 Carrier/Runner 齐全时显示 `{Carrier}直塞，{Runner}破门！`；防守方胜按 Marker、Helper、Goalkeeper 的固定事实优先级选择已有姓名并显示 `{Carrier}直塞被{Defender}破坏`；事实不足时使用简短 Feet 成功/防守成功 fallback。该选择不使用 gameplay RNG、本地 RNG、hash winner 推断或 Widget arithmetic。
+- 冻结：本决定只修改 Presentation DTO、shared UMG renderer 与自动化/文档。Feet/Cross 公式、D6、路线概率、Authority、Session/Host/Controller command、terminal persistence、handoff 与 reveal timing 全部不变；Fresh USER PIE 仍是视觉接受 Gate。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

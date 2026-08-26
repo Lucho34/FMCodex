@@ -61,6 +61,14 @@ namespace FMCodexLocalMatchResolutionFeedback
 		{
 			return TEXT("Through Ball - To Feet Plan");
 		}
+		if (CommandName == TEXT("ResolveThroughBallFeetAttackRoll"))
+		{
+			return TEXT("直塞脚下球 - 进攻方掷点");
+		}
+		if (CommandName == TEXT("ResolveThroughBallFeetDefenseRoll"))
+		{
+			return TEXT("直塞脚下球 - 防守方掷点");
+		}
 		if (CommandName == TEXT("ResolveThroughBallAntiOffsideDecision"))
 		{
 			return TEXT("Through Ball - Anti-Offside");
@@ -313,6 +321,18 @@ namespace FMCodexLocalMatchResolutionFeedback
 			return;
 		}
 		const FMatchRuntimeState& Runtime = Completion.AfterState.RuntimeState;
+		if (Completion.AfterState.bHasCurrentAttack
+			&& Completion.AfterState.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState
+					::TerminalPendingAdvance)
+		{
+			Feedback.ContinuationSummary = FString::Printf(
+				TEXT("Result persisted | Score: Player A %d - %d Player B | Current attacker unchanged: %s | Opportunity pending explicit 下一回合"),
+				Runtime.PlayerAState.Score,
+				Runtime.PlayerBState.Score,
+				*PlayerLabel(Runtime.CurrentAttackingPlayer));
+			return;
+		}
 		Feedback.ContinuationSummary = FString::Printf(
 			TEXT("Attack complete | Score: Player A %d - %d Player B | Next attacker: %s | Opportunity consumed: %s"),
 			Runtime.PlayerAState.Score,
@@ -377,6 +397,69 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRejected(
 	return Feedback;
 }
 
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::BuildFromTerminalSnapshot(
+	const FFMCodexLocalMatchInteractionView& TerminalView)
+{
+	FFMCodexLocalMatchResolutionFeedback Feedback;
+	Feedback.bVisible = true;
+	Feedback.bTerminal = true;
+	Feedback.CommandName = TEXT("TerminalSnapshot");
+	Feedback.StepTitle = TEXT("Attack Completed");
+	Feedback.StepSummary = TEXT("Authoritative terminal result restored");
+	Feedback.ResolutionFacts = TerminalView.ResolutionFacts;
+
+	FString Semantic = TEXT("NO GOAL");
+	for (const FMatchPlayResolutionDecisionFact& Decision
+		: TerminalView.ResolutionFacts.Decisions)
+	{
+		if (!Decision.bResolved)
+		{
+			continue;
+		}
+		switch (Decision.Outcome)
+		{
+		case EMatchPlayResolutionDecisionOutcome::Goal:
+			Semantic = TEXT("GOAL");
+			break;
+		case EMatchPlayResolutionDecisionOutcome::Miss:
+			Semantic = TEXT("MISS");
+			break;
+		case EMatchPlayResolutionDecisionOutcome::ImmediateMiss:
+			Semantic = TEXT("IMMEDIATE MISS");
+			break;
+		case EMatchPlayResolutionDecisionOutcome::Offside:
+			Semantic = TEXT("OFFSIDE");
+			break;
+		case EMatchPlayResolutionDecisionOutcome::OutOfPlay:
+			Semantic = TEXT("OUT OF PLAY");
+			break;
+		case EMatchPlayResolutionDecisionOutcome::DefenderStoppedAttack:
+			Semantic = TEXT("DEFENDER STOPPED ATTACK");
+			break;
+		default:
+			continue;
+		}
+	}
+	Feedback.TerminalSummary = TEXT("RESULT: ") + Semantic;
+	Feedback.DecisionSummary = Feedback.TerminalSummary;
+	Feedback.ContinuationSummary =
+		TEXT("Opportunity pending explicit 下一回合");
+	for (const FMatchPlayResolutionFormulaContestFact& Contest
+		: TerminalView.ResolutionFacts.FormulaContests)
+	{
+		if (!Contest.bHasResolvedFormula)
+		{
+			continue;
+		}
+		Feedback.ComparisonEntries.Add(FString::Printf(
+			TEXT("Attack final %.1f | Defense final %.1f"),
+			Contest.ResolvedResult.AttackerFinalValue,
+			Contest.ResolvedResult.DefenderFinalValue));
+	}
+	return Feedback;
+}
+
 #define FMCODEX_ROUTE_BUILD(ResultType) \
 	FFMCodexLocalMatchResolutionFeedback \
 	FFMCodexLocalMatchResolutionFeedbackBuilder::Build( \
@@ -420,6 +503,33 @@ FMCODEX_PLAN_BUILD(
 	TEXT("Pass Control post-route plan accepted"))
 
 #undef FMCODEX_PLAN_BUILD
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallFeetAttackRollResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	Feedback.StepSummary = TEXT("进攻方权威点数已记录");
+	Feedback.ContinuationSummary = TEXT("等待防守方掷点");
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallFeetDefenseRollResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	Feedback.StepSummary = TEXT("防守方权威点数已记录");
+	Feedback.DecisionSummary = TEXT("属性对抗已完成");
+	Feedback.ContinuationSummary = TEXT("等待权威终结应用");
+	return Feedback;
+}
 
 FFMCodexLocalMatchResolutionFeedback
 FFMCodexLocalMatchResolutionFeedbackBuilder::Build(

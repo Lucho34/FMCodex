@@ -103,6 +103,31 @@ namespace FMCodexLocalMatchInteractionView
 			&& !Contest->ResolvedResult.bContinueResolution;
 	}
 
+	bool HasCompletedThroughBallFeetTerminalContest(
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts)
+	{
+		if (!Facts.bSuccess || !Facts.bHasFacts
+			|| !Facts.bHasActualBranch
+			|| Facts.ActualBranch.ActionType != ESkillRuleType::ThroughBall
+			|| Facts.ActualBranch.ThroughBall
+				!= EMatchPlayThroughBallActualBranch::Feet)
+		{
+			return false;
+		}
+		const FMatchPlayResolutionFormulaContestFact* Contest =
+			Facts.FormulaContests.FindByPredicate(
+				[](const FMatchPlayResolutionFormulaContestFact& Candidate)
+				{
+					return Candidate.ContestId == TEXT("ThroughBall.Feet");
+				});
+		return Contest != nullptr
+			&& Contest->bHasResolvedFormula
+			&& Contest->AttackRow.bFinalValueResolved
+			&& Contest->DefenseRow.bFinalValueResolved
+			&& Contest->ResolvedResult.bAttackEnded
+			&& !Contest->ResolvedResult.bContinueResolution;
+	}
+
 	FString RarityLabel(const ECardRarity Rarity)
 	{
 		switch (Rarity)
@@ -1069,6 +1094,7 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 		: Attack.bHasSelectedAction
 			? Attack.SelectedAction.ActionType
 			: Attack.ActionPreparation.ActionType;
+	Result.PresentedActionType = PresentedActionType;
 	if (PresentedActionType != ESkillRuleType::None)
 	{
 		Result.ActionLabel = ToString(PresentedActionType);
@@ -1130,6 +1156,33 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 		}
 
 		Result.MajorPhase = EFMCodexLocalMatchMajorPhase::Resolution;
+		if (Attack.LifecycleState
+			== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
+		{
+			Result.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal;
+			Result.ExpectedActingPlayer =
+				Snapshot.RuntimeState.CurrentAttackingPlayer;
+			Result.bHumanInteraction = true;
+			Result.bTerminalPendingAdvance = true;
+			if (Session.bHasActualBranch
+				&& Session.ActualBranch.ActionType == ESkillRuleType::Cross)
+			{
+				Result.bCrossFormulaComplete =
+					HasCompletedCrossTerminalContest(Result.ResolutionFacts);
+			}
+			if (Session.bHasActualBranch
+				&& Session.ActualBranch.ActionType == ESkillRuleType::ThroughBall
+				&& Session.ActualBranch.ThroughBall
+					== EMatchPlayThroughBallActualBranch::Feet)
+			{
+				Result.bThroughBallFeetFormulaComplete =
+					HasCompletedThroughBallFeetTerminalContest(
+						Result.ResolutionFacts);
+			}
+			Result.ContinueActionLabel = TEXT("下一回合");
+			return Result;
+		}
 		if (Session.Stage
 				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
 			&& RequiresOneOnOneChoice(Snapshot, SkillRuleSet))
@@ -1184,13 +1237,13 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 			{
 				Result.InteractionCategory =
 					EFMCodexLocalMatchInteractionCategory
-						::CompleteCrossAndAdvance;
+						::ApplyCrossTerminalResolution;
 				Result.ExpectedActingPlayer =
 					Session.Bundle.CurrentAttackingPlayer;
 				Result.bHumanInteraction = true;
 				Result.bCrossFormulaComplete = true;
 				Result.bCrossTerminalActionAvailable = true;
-				Result.ContinueActionLabel = TEXT("下一回合");
+				Result.ContinueActionLabel = TEXT("确认结算结果");
 				return Result;
 			}
 			if (Progress.bIsCanonical && Progress.bContractComplete)
@@ -1202,6 +1255,63 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 				return Result;
 			}
 		}
+		if (Session.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& Session.bHasActualBranch
+			&& Session.ActualBranch.ActionType == ESkillRuleType::ThroughBall
+			&& Session.ActualBranch.ThroughBall
+				== EMatchPlayThroughBallActualBranch::Feet)
+		{
+			const auto Progress =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+					Session);
+			if (Progress.bIsCanonical && !Progress.bContractComplete)
+			{
+				const bool bAttackRoll = Session.PostRouteRollProgress.Phase
+					== EMatchPlayCurrentAttackPostRouteRollPhase::None
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::PrimaryAttack;
+				Result.InteractionCategory = bAttackRoll
+					? EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallFeetAttack
+					: EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallFeetDefense;
+				Result.bThroughBallFeetAttackRollPending = bAttackRoll;
+				Result.bThroughBallFeetDefenseRollPending = !bAttackRoll;
+				Result.ExpectedActingPlayer = bAttackRoll
+					? Session.Bundle.CurrentAttackingPlayer
+					: Session.Bundle.CurrentDefendingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = bAttackRoll
+					? TEXT("掷进攻方点数")
+					: TEXT("掷防守方点数");
+				return Result;
+			}
+			if (Progress.bIsCanonical && Progress.bContractComplete
+				&& HasCompletedThroughBallFeetTerminalContest(
+					Result.ResolutionFacts))
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory
+						::ApplyThroughBallFeetTerminalResolution;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.bThroughBallFeetFormulaComplete = true;
+				Result.bThroughBallFeetTerminalActionAvailable = true;
+				Result.ContinueActionLabel = TEXT("确认结算结果");
+				return Result;
+			}
+			if (Progress.bIsCanonical && Progress.bContractComplete)
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::None;
+				Result.Diagnostic = TEXT(
+					"Completed ThroughBall Feet rolls do not project one authoritative terminal contest.");
+				return Result;
+			}
+		}
 		Result.InteractionCategory =
 			EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 		if (Session.Stage
@@ -1210,17 +1320,37 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 			Result.ContinueActionLabel =
 				Session.Bundle.Binding.ActionType == ESkillRuleType::Cross
 					? TEXT("判定传中路线")
+					: Session.Bundle.Binding.ActionType
+						== ESkillRuleType::ThroughBall
+							? TEXT("判定直塞路线")
 					: TEXT("Continue - Resolve Route");
 		}
 		else
 		{
 			const auto Progress =
 				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(Session);
-			Result.ContinueActionLabel = Progress.bIsCanonical
+			Result.ContinueActionLabel = Session.Bundle.Binding.ActionType
+				== ESkillRuleType::ThroughBall
+					? TEXT("继续直塞结算")
+					: Progress.bIsCanonical
 				&& Progress.bContractComplete
 					? TEXT("Continue - Apply Formula / Result")
 					: TEXT("Continue - Resolve Post-route Step");
 		}
+		return Result;
+	}
+
+	if (Attack.LifecycleState
+		== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
+	{
+		Result.MajorPhase = EFMCodexLocalMatchMajorPhase::Resolution;
+		Result.InteractionCategory =
+			EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal;
+		Result.ExpectedActingPlayer =
+			Snapshot.RuntimeState.CurrentAttackingPlayer;
+		Result.bHumanInteraction = true;
+		Result.bTerminalPendingAdvance = true;
+		Result.ContinueActionLabel = TEXT("下一回合");
 		return Result;
 	}
 
@@ -1234,6 +1364,8 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	{
 		Result.ContinueActionLabel = PresentedActionType == ESkillRuleType::Cross
 			? TEXT("判定传中路线")
+			: PresentedActionType == ESkillRuleType::ThroughBall
+				? TEXT("开始直塞判定")
 			: TEXT("Continue - Begin Resolution");
 	}
 	return Result;
@@ -1342,6 +1474,24 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance:
 		Result.InteractionTitle = TEXT("下一回合");
 		break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack:
+		Result.InteractionTitle = TEXT("掷进攻方点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense:
+		Result.InteractionTitle = TEXT("掷防守方点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::CompleteThroughBallFeetAndAdvance:
+		Result.InteractionTitle = TEXT("下一回合");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::ApplyCrossTerminalResolution:
+	case EFMCodexLocalMatchInteractionCategory
+		::ApplyThroughBallFeetTerminalResolution:
+		Result.InteractionTitle = TEXT("确认结算结果");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal:
+		Result.InteractionTitle = TEXT("下一回合");
+		break;
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution:
 		Result.InteractionTitle = View.ContinueActionLabel.IsEmpty()
 			? TEXT("Continue Resolution") : View.ContinueActionLabel;
@@ -1378,6 +1528,12 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack: return TEXT("进攻方掷点");
 	case EFMCodexLocalMatchInteractionCategory::RollCrossDefense: return TEXT("防守方掷点");
 	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance: return TEXT("下一回合");
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack: return TEXT("掷进攻方点数");
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense: return TEXT("掷防守方点数");
+	case EFMCodexLocalMatchInteractionCategory::CompleteThroughBallFeetAndAdvance: return TEXT("下一回合");
+	case EFMCodexLocalMatchInteractionCategory::ApplyCrossTerminalResolution: return TEXT("确认传中结算");
+	case EFMCodexLocalMatchInteractionCategory::ApplyThroughBallFeetTerminalResolution: return TEXT("确认直塞结算");
+	case EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal: return TEXT("下一回合");
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution: return TEXT("Continue Resolution");
 	case EFMCodexLocalMatchInteractionCategory::AttackComplete: return TEXT("Attack Complete");
 	case EFMCodexLocalMatchInteractionCategory::MatchEnded: return TEXT("Match Ended");

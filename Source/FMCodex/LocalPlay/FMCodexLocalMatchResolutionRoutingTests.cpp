@@ -9,6 +9,9 @@
 #include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
 
+#include "FMCodexLocalMatchInteractionView.h"
+#include "FMCodexLocalMatchPlayerController.h"
+
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
@@ -171,6 +174,8 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 					GEngine->CreateNewWorldContext(EWorldType::Game);
 				Context.SetCurrentWorld(World);
 				Host = World->SpawnActor<AFMCodexLocalMatchHostGameMode>();
+				Controller =
+					World->SpawnActor<AFMCodexLocalMatchPlayerController>();
 			}
 		}
 
@@ -187,10 +192,15 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 		}
 
 		AFMCodexLocalMatchHostGameMode* GetHost() const { return Host; }
+		AFMCodexLocalMatchPlayerController* GetController() const
+		{
+			return Controller;
+		}
 
 	private:
 		UWorld* World = nullptr;
 		AFMCodexLocalMatchHostGameMode* Host = nullptr;
+		AFMCodexLocalMatchPlayerController* Controller = nullptr;
 	};
 
 	const TArray<FName>& AvailableCards(
@@ -566,6 +576,8 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		{ TEXT("ResolveInitialRoute"), TEXT("ResolveInitialRoute(") },
 		{ TEXT("ResolveCrossPostRoutePlan"), TEXT("ResolveCrossPostRoutePlan(") },
 		{ TEXT("ResolveThroughBallFeetPostRoutePlan"), TEXT("ResolveThroughBallFeetPostRoutePlan(") },
+		{ TEXT("ResolveThroughBallFeetAttackRoll"), TEXT("ResolveThroughBallFeetAttackRoll(") },
+		{ TEXT("ResolveThroughBallFeetDefenseRoll"), TEXT("ResolveThroughBallFeetDefenseRoll(") },
 		{ TEXT("ResolvePassControlPostRoutePlan"), TEXT("ResolvePassControlPostRoutePlan(") },
 		{ TEXT("ResolveDeadCornerPostRouteDecision"), TEXT("ResolveDeadCornerPostRouteDecision(") },
 		{ TEXT("ResolveThroughBallAntiOffsideDecision"), TEXT("ResolveThroughBallAntiOffsideDecision(") },
@@ -586,8 +598,8 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		{ TEXT("DeployGoalkeeper"), TEXT("DeployGoalkeeper(") },
 		{ TEXT("ResolveNoLegalCarrier"), TEXT("ResolveNoLegalCarrier(") }
 	};
-	TestEqual(TEXT("Session mutation inventory remains 42"),
-		static_cast<int32>(UE_ARRAY_COUNT(Commands)), 42);
+	TestEqual(TEXT("Session mutation inventory remains 44"),
+		static_cast<int32>(UE_ARRAY_COUNT(Commands)), 44);
 	for (const FReachability& Command : Commands)
 	{
 		TestTrue(*FString::Printf(
@@ -603,6 +615,8 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		TEXT(".ResolveInitialRoute("),
 		TEXT(".ResolveCrossPostRoutePlan("),
 		TEXT(".ResolveThroughBallFeetPostRoutePlan("),
+		TEXT(".ResolveThroughBallFeetAttackRoll("),
+		TEXT(".ResolveThroughBallFeetDefenseRoll("),
 		TEXT(".ResolvePassControlPostRoutePlan("),
 		TEXT(".ResolveDeadCornerPostRouteDecision("),
 		TEXT(".ResolveThroughBallAntiOffsideDecision("),
@@ -674,6 +688,16 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	TestNoActive(TEXT("ResolveCrossLowDefenseRoll"),
 		EmptyHost->ResolveCrossLowDefenseRoll(LowDefenseRequest));
 	TestNoActive(TEXT("ResolveThroughBallFeetPostRoutePlan"), EmptyHost->ResolveThroughBallFeetPostRoutePlan());
+	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest
+		FeetAttackRequest;
+	FeetAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolveThroughBallFeetAttackRoll"),
+		EmptyHost->ResolveThroughBallFeetAttackRoll(FeetAttackRequest));
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+		FeetDefenseRequest;
+	FeetDefenseRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerB;
+	TestNoActive(TEXT("ResolveThroughBallFeetDefenseRoll"),
+		EmptyHost->ResolveThroughBallFeetDefenseRoll(FeetDefenseRequest));
 	TestNoActive(TEXT("ResolvePassControlPostRoutePlan"), EmptyHost->ResolvePassControlPostRoutePlan());
 	TestNoActive(TEXT("ResolveDeadCornerPostRouteDecision"), EmptyHost->ResolveDeadCornerPostRouteDecision());
 	TestNoActive(TEXT("ResolveThroughBallAntiOffsideDecision"), EmptyHost->ResolveThroughBallAntiOffsideDecision());
@@ -843,21 +867,234 @@ bool FFMCodexLocalMatchCrossResolutionTest::RunTest(
 	TestTrue(TEXT("Cross terminal succeeds through Host/direct"),
 		DirectTerminal.OrchestrationResult.bSuccess
 			&& HostTerminal.bSuccess);
+	const FMatchPlayState Pending = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Cross terminal preserves CurrentAttack"),
+		Pending.bHasCurrentAttack);
+	TestEqual(TEXT("Cross terminal awaits explicit advance"),
+		Pending.CurrentAttack.LifecycleState,
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	TestEqual(TEXT("Cross terminal leaves opportunity pending"),
+		UsedAttacksFor(Pending, Trace.Attacker) - UsedBefore,
+		0);
+	TestEqual(TEXT("Cross score matches authoritative result"),
+		ScoreFor(Pending, Trace.Attacker) - ScoreBefore,
+		HostTerminal.AuthoritativeResult.OrchestrationResult.bIsGoal ? 1 : 0);
+	TestTrue(TEXT("Terminal State equals direct Session"), AreStatesEqual(
+		Pending, Direct.GetStateSnapshot()));
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+	AdvanceRequest.AttackSequence = Pending.CurrentAttack.AttackSequence;
+	AdvanceRequest.RequestingSide = Trace.Attacker;
+	const auto DirectAdvance = Direct.AdvanceAfterTerminal(AdvanceRequest);
+	const auto HostAdvance = Host->AdvanceAfterTerminal(AdvanceRequest);
 	const FMatchPlayState Completed = Host->GetMatchSnapshot().Snapshot;
-	TestFalse(TEXT("Cross terminal clears CurrentAttack"),
+	TestTrue(TEXT("Cross explicit advance succeeds through Host/direct"),
+		DirectAdvance.CompletionResult.bSuccess && HostAdvance.bSuccess);
+	TestFalse(TEXT("Cross explicit advance clears CurrentAttack"),
 		Completed.bHasCurrentAttack);
-	TestEqual(TEXT("Cross terminal consumes one opportunity"),
+	TestEqual(TEXT("Cross explicit advance consumes one opportunity"),
 		UsedAttacksFor(Completed, Trace.Attacker) - UsedBefore,
 		1);
-	TestEqual(TEXT("Cross score matches authoritative result"),
-		ScoreFor(Completed, Trace.Attacker) - ScoreBefore,
-		HostTerminal.AuthoritativeResult.OrchestrationResult.bIsGoal ? 1 : 0);
 	TestEqual(TEXT("Cross next attacker is canonical"),
 		Completed.RuntimeState.CurrentAttackingPlayer,
-		HostTerminal.AuthoritativeResult.OrchestrationResult
-			.CompletionResult.NextAttackingPlayer);
-	TestTrue(TEXT("Terminal State equals direct Session"), AreStatesEqual(
+		HostAdvance.AuthoritativeResult.CompletionResult.NextAttackingPlayer);
+	TestTrue(TEXT("Advanced State equals direct Session"), AreStatesEqual(
 		Completed, Direct.GetStateSnapshot()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchThroughBallFeetManualResolutionTest,
+	"FMCodex.LocalPlay.LocalMatchHost.07A.ThroughBallFeetManualResolution",
+	EAutomationTestFlags::EditorContext
+		| EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchResolutionRoutingTests;
+	(void)Parameters;
+	const int32 Seed = FindSeedForRolls({ 2, 4, 3 });
+	TestTrue(TEXT("A deterministic Feet manual seed exists"),
+		Seed != INDEX_NONE);
+	if (Seed == INDEX_NONE)
+	{
+		return false;
+	}
+	const FName SkillId(TEXT("Skill.Host.ThroughBall.FeetManual"));
+	const auto Rules = MakeRules(SkillId, ESkillRuleType::ThroughBall);
+	const auto Input = MakeInput(TEXT("HostThroughBallFeetManual"), SkillId);
+	FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+	FMatchPlayAuthoritativeSession Direct(
+		DirectProvider, DirectProvider, Rules);
+	FScopedWorld World;
+	auto* Host = World.GetHost();
+	auto* Controller = World.GetController();
+	TestNotNull(TEXT("Feet manual Host exists"), Host);
+	TestNotNull(TEXT("Feet manual Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	FReadyTrace Trace;
+	TestTrue(TEXT("Feet manual Host/direct reach ReadyForResolution"),
+		BuildReadyForResolution(
+			*Host, Direct, Input, Rules, Seed,
+			ESkillRuleType::ThroughBall, false, Trace));
+	TestTrue(TEXT("Feet manual Direct begins resolution"),
+		Direct.BeginResolutionSession().BeginResult.bSuccess);
+	TestTrue(TEXT("Feet manual Host begins resolution"),
+		Host->BeginResolutionSession().bSuccess);
+	TestTrue(TEXT("Feet manual Direct resolves route"),
+		Direct.ResolveInitialRoute().OrchestrationResult.bSuccess);
+	TestTrue(TEXT("Feet manual Host resolves route"),
+		Host->ResolveInitialRoute().bSuccess);
+	const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Feet route snapshot equals direct Session"),
+		AreStatesEqual(RouteState, Direct.GetStateSnapshot()));
+	TestEqual(TEXT("Deterministic route is Feet"),
+		RouteState.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
+		EMatchPlayThroughBallActualBranch::Feet);
+
+	const FFMCodexLocalMatchInteractionView AttackView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(RouteState, Rules);
+	Controller->RefreshPresentation();
+	TestTrue(TEXT("Feet route projects only the attacker-owned typed roll"),
+		AttackView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallFeetAttack
+			&& AttackView.ExpectedActingPlayer == Trace.Attacker
+			&& AttackView.bThroughBallFeetAttackRollPending
+			&& !AttackView.bThroughBallFeetDefenseRollPending
+			&& AttackView.ContinueActionLabel == TEXT("掷进攻方点数"));
+	const auto* PreviewContest =
+		AttackView.ResolutionFacts.FormulaContests.FindByPredicate(
+			[](const FMatchPlayResolutionFormulaContestFact& Contest)
+			{
+				return Contest.ContestId == TEXT("ThroughBall.Feet");
+			});
+	TestTrue(TEXT("InteractionView carries Feet formula preview facts"),
+		PreviewContest != nullptr
+			&& PreviewContest->AttackRow.bKnownNonRollSubtotalResolved
+			&& PreviewContest->DefenseRow.bKnownNonRollSubtotalResolved
+			&& !PreviewContest->AttackRow.bFinalValueResolved
+			&& !PreviewContest->DefenseRow.bFinalValueResolved);
+	Controller->ContinueResolution();
+	TestTrue(TEXT("Generic Continue is retired from the Feet production path"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ContinueResolution")
+			&& AreStatesEqual(
+				RouteState,
+				Host->GetMatchSnapshot().Snapshot));
+
+	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest AttackRequest;
+	AttackRequest.RequestingSide = Trace.Attacker;
+	TestTrue(TEXT("Direct accepts typed Feet attack roll"),
+		Direct.ResolveThroughBallFeetAttackRoll(AttackRequest)
+			.OrchestrationResult.bSuccess);
+	Controller->RollThroughBallFeetAttack();
+	TestTrue(TEXT("Controller routes typed Feet attack intent through Host"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolveThroughBallFeetAttackRoll"));
+	const FMatchPlayState AttackState = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Feet attack Host State equals direct Session"),
+		AreStatesEqual(AttackState, Direct.GetStateSnapshot()));
+	const FFMCodexLocalMatchInteractionView DefenseView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(AttackState, Rules);
+	TestTrue(TEXT("Refresh retains attack fact and projects defender-owned roll"),
+		DefenseView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallFeetDefense
+			&& DefenseView.ExpectedActingPlayer == Trace.Defender
+			&& !DefenseView.bThroughBallFeetAttackRollPending
+			&& DefenseView.bThroughBallFeetDefenseRollPending
+			&& DefenseView.AcceptedRolls.Num() == 2
+			&& DefenseView.AcceptedRolls.Last().RawD6 == 4
+			&& DefenseView.ContinueActionLabel == TEXT("掷防守方点数"));
+
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+		DefenseRequest;
+	DefenseRequest.RequestingSide = Trace.Defender;
+	TestTrue(TEXT("Direct accepts typed Feet defense roll"),
+		Direct.ResolveThroughBallFeetDefenseRoll(DefenseRequest)
+			.OrchestrationResult.bSuccess);
+	const auto DirectTerminal = Direct.ApplyThroughBallTerminalResolution();
+	TestTrue(TEXT("Direct persists Feet terminal after final defense roll"),
+		DirectTerminal.OrchestrationResult.bSuccess);
+	Controller->RollThroughBallFeetDefense();
+	TestTrue(TEXT("Controller routes defense and zero-RNG terminal transitions"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ApplyThroughBallTerminalResolution"));
+	const FMatchPlayState CompleteState = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Feet terminal Host State equals direct Session"),
+		AreStatesEqual(CompleteState, Direct.GetStateSnapshot()));
+	const FFMCodexLocalMatchInteractionView TerminalView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(CompleteState, Rules);
+	TestTrue(TEXT("Persisted Feet terminal projects only explicit next round"),
+		TerminalView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::AdvanceAfterTerminal
+			&& TerminalView.bTerminalPendingAdvance
+			&& TerminalView.bThroughBallFeetFormulaComplete
+			&& !TerminalView.bThroughBallFeetTerminalActionAvailable
+			&& !TerminalView.bThroughBallFeetAttackRollPending
+			&& !TerminalView.bThroughBallFeetDefenseRollPending
+			&& !TerminalView.SelectedCarrierCardId.IsNone()
+			&& !TerminalView.SelectedRunnerCardId.IsNone()
+			&& !TerminalView.SelectedMarkerCardId.IsNone()
+			&& !TerminalView.DeploymentPlacements.IsEmpty()
+			&& TerminalView.bHasTacticalPlayerCounts
+			&& TerminalView.PlayerATacticalPlayerCount
+				+ TerminalView.PlayerBTacticalPlayerCount > 0
+			&& TerminalView.ContinueActionLabel == TEXT("下一回合"));
+	const auto RefreshedTerminalView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			Host->GetMatchSnapshot().Snapshot, Rules);
+	TestTrue(TEXT("Feet terminal refresh preserves facts and next-round action"),
+		RefreshedTerminalView.bTerminalPendingAdvance
+			&& RefreshedTerminalView.ResolutionFacts.bHasFacts
+			&& FMatchPlayCurrentAttackResolutionFactProjection::StaticStruct()
+				->CompareScriptStruct(
+					&TerminalView.ResolutionFacts,
+					&RefreshedTerminalView.ResolutionFacts,
+					0));
+	const auto RestoredFeedback =
+		FFMCodexLocalMatchResolutionFeedbackBuilder::BuildFromTerminalSnapshot(
+			RefreshedTerminalView);
+	TestTrue(TEXT("Feet terminal refresh reconstructs result feedback"),
+		RestoredFeedback.bTerminal
+			&& RestoredFeedback.ResolutionFacts.bHasFacts
+			&& RestoredFeedback.TerminalSummary.StartsWith(TEXT("RESULT: "))
+			&& RestoredFeedback.ContinuationSummary.Contains(TEXT("下一回合")));
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest DirectAdvanceRequest;
+	DirectAdvanceRequest.AttackSequence = TerminalView.AttackSequence;
+	DirectAdvanceRequest.RequestingSide = TerminalView.ExpectedActingPlayer;
+	TestTrue(TEXT("Direct explicit Feet advance succeeds"),
+		Direct.AdvanceAfterTerminal(DirectAdvanceRequest)
+			.CompletionResult.bSuccess);
+	Controller->AdvanceAfterTerminal();
+	TestTrue(TEXT("Controller routes explicit next-round intent through Host"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("AdvanceAfterTerminal"));
+	TestTrue(TEXT("Feet manual advanced State equals direct Session"),
+		AreStatesEqual(
+			Host->GetMatchSnapshot().Snapshot,
+			Direct.GetStateSnapshot()));
+	const auto& AdvancedView = Controller->GetInteractionView();
+	TestTrue(TEXT("Feet advance clears pitch, roles, and Tactical Player counts"),
+		!AdvancedView.bCurrentAttackActive
+			&& AdvancedView.DeploymentPlacements.IsEmpty()
+			&& AdvancedView.SelectedCarrierCardId.IsNone()
+			&& AdvancedView.SelectedRunnerCardId.IsNone()
+			&& AdvancedView.SelectedMarkerCardId.IsNone()
+			&& AdvancedView.SelectedHelperCardId.IsNone()
+			&& AdvancedView.bHasTacticalPlayerCounts
+			&& AdvancedView.PlayerATacticalPlayerCount == 0
+			&& AdvancedView.PlayerBTacticalPlayerCount == 0
+			&& AdvancedView.bTacticalPointRollReady);
 	return true;
 }
 
@@ -1026,28 +1263,30 @@ bool FFMCodexLocalMatchThroughBallResolutionTest::RunTest(
 	TestTrue(TEXT("ThroughBall terminal succeeds"),
 		DirectTerminal.OrchestrationResult.bSuccess
 			&& HostTerminal.bSuccess);
-	const FMatchPlayState Completed = HostA->GetMatchSnapshot().Snapshot;
-	TestFalse(TEXT("ThroughBall terminal clears CurrentAttack"),
-		Completed.bHasCurrentAttack);
-	TestEqual(TEXT("ThroughBall terminal consumes one opportunity"),
-		UsedAttacksFor(Completed, TraceA.Attacker) - UsedBefore,
-		1);
+	const FMatchPlayState Pending = HostA->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("ThroughBall terminal preserves CurrentAttack"),
+		Pending.bHasCurrentAttack);
+	TestEqual(TEXT("ThroughBall terminal awaits explicit advance"),
+		Pending.CurrentAttack.LifecycleState,
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	TestEqual(TEXT("ThroughBall terminal leaves opportunity pending"),
+		UsedAttacksFor(Pending, TraceA.Attacker) - UsedBefore,
+		0);
 	TestEqual(TEXT("ThroughBall score matches authoritative semantic"),
-		ScoreFor(Completed, TraceA.Attacker) - ScoreBefore,
+		ScoreFor(Pending, TraceA.Attacker) - ScoreBefore,
 		HostTerminal.AuthoritativeResult.OrchestrationResult.bIsGoal ? 1 : 0);
 	TestTrue(TEXT("ThroughBall terminal State equals direct Session"),
-		AreStatesEqual(Completed, Direct.GetStateSnapshot()));
+		AreStatesEqual(Pending, Direct.GetStateSnapshot()));
 
-	const int32 ReplayScore = ScoreFor(Completed, TraceA.Attacker);
-	const int32 ReplayUsed = UsedAttacksFor(Completed, TraceA.Attacker);
+	const int32 ReplayScore = ScoreFor(Pending, TraceA.Attacker);
+	const int32 ReplayUsed = UsedAttacksFor(Pending, TraceA.Attacker);
 	const auto Replay = HostA->ApplyThroughBallTerminalResolution();
 	TestFalse(TEXT("Terminal replay rejects"), Replay.bSuccess);
-	TestEqual(TEXT("Terminal replay preserves NoCurrentAttack"),
-		Replay.AuthoritativeResult.OrchestrationResult.ErrorCode,
-		EMatchPlayCurrentAttackApplyThroughBallTerminalResolutionErrorCode
-			::NoCurrentAttack);
+	TestEqual(TEXT("Terminal replay requires explicit advance"),
+		Replay.AuthoritativeResult.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
 	TestTrue(TEXT("Terminal replay leaves State unchanged"), AreStatesEqual(
-		HostA->GetMatchSnapshot().Snapshot, Completed));
+		HostA->GetMatchSnapshot().Snapshot, Pending));
 	TestEqual(TEXT("Terminal replay score delta is zero"),
 		ScoreFor(HostA->GetMatchSnapshot().Snapshot, TraceA.Attacker)
 			- ReplayScore,
@@ -1056,6 +1295,27 @@ bool FFMCodexLocalMatchThroughBallResolutionTest::RunTest(
 		UsedAttacksFor(HostA->GetMatchSnapshot().Snapshot, TraceA.Attacker)
 			- ReplayUsed,
 		0);
+
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+	AdvanceRequest.AttackSequence = Pending.CurrentAttack.AttackSequence;
+	AdvanceRequest.RequestingSide = TraceA.Attacker;
+	const auto DirectAdvance = Direct.AdvanceAfterTerminal(AdvanceRequest);
+	const auto HostAdvance = HostA->AdvanceAfterTerminal(AdvanceRequest);
+	const FMatchPlayState Completed = HostA->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("ThroughBall explicit advance succeeds through Host/direct"),
+		DirectAdvance.CompletionResult.bSuccess && HostAdvance.bSuccess);
+	TestFalse(TEXT("ThroughBall explicit advance clears CurrentAttack"),
+		Completed.bHasCurrentAttack);
+	TestEqual(TEXT("ThroughBall explicit advance consumes one opportunity"),
+		UsedAttacksFor(Completed, TraceA.Attacker) - UsedBefore,
+		1);
+	TestTrue(TEXT("ThroughBall advanced State equals direct Session"),
+		AreStatesEqual(Completed, Direct.GetStateSnapshot()));
+	const auto RepeatedAdvance = HostA->AdvanceAfterTerminal(AdvanceRequest);
+	TestFalse(TEXT("Repeated ThroughBall advance rejects"),
+		RepeatedAdvance.bSuccess);
+	TestTrue(TEXT("Repeated ThroughBall advance leaves State unchanged"),
+		AreStatesEqual(HostA->GetMatchSnapshot().Snapshot, Completed));
 	return true;
 }
 

@@ -66,7 +66,15 @@ public:
 		EMatchPlayThroughBallOneOnOneShotChoice Choice);
 	void RollCrossAttack();
 	void RollCrossDefense();
+	void ApplyCrossTerminalResolution();
+	/** Legacy compatibility wrapper; production does not expose AndAdvance. */
 	void CompleteCrossAndAdvance();
+	void RollThroughBallFeetAttack();
+	void RollThroughBallFeetDefense();
+	void ApplyThroughBallFeetTerminalResolution();
+	/** Legacy compatibility wrapper; production does not expose AndAdvance. */
+	void CompleteThroughBallFeetAndAdvance();
+	void AdvanceAfterTerminal();
 	void ContinueResolution();
 
 protected:
@@ -85,6 +93,8 @@ private:
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
 	{
 		const FFMCodexLocalMatchInteractionView PreviousView = InteractionView;
+		const FFMCodexLocalMatchResolutionFeedback PreviousFeedback =
+			ResolutionFeedback;
 		LastDiagnostic.CommandName = CommandName;
 		LastDiagnostic.bHostSuccess = Result.bSuccess;
 		LastDiagnostic.bAuthoritativeAccepted =
@@ -108,9 +118,11 @@ private:
 		}
 		else
 		{
-			ResolutionFeedback =
-				FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
-					CommandName, Result, PreviousView, InteractionView);
+			ResolutionFeedback = CommandName == TEXT("AdvanceAfterTerminal")
+				&& PreviousFeedback.bTerminal
+					? PreviousFeedback
+					: FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+						CommandName, Result, PreviousView, InteractionView);
 			if (ResolutionFeedback.bTerminal)
 			{
 				LastDiagnostic.PresentationSummary =
@@ -132,6 +144,7 @@ private:
 	FFMCodexLocalMatchResolutionFeedback ResolutionFeedback;
 	bool bCrossRouteCommandInFlight = false;
 	bool bCrossRollCommandInFlight = false;
+	bool bThroughBallFeetRollCommandInFlight = false;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	int32 NextDemoMatchSeedForTesting = INDEX_NONE;

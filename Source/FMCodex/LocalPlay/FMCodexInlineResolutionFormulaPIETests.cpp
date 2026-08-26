@@ -297,17 +297,18 @@ namespace FMCodexInlineResolutionFormulaPIETests
 				&& Formula.ContinueActionLabel == TEXT("下一回合")
 				&& Controller->GetInteractionView().InteractionCategory
 					== EFMCodexLocalMatchInteractionCategory
-						::CompleteCrossAndAdvance
+						::AdvanceAfterTerminal
 				&& Controller->GetInteractionView().bCrossFormulaComplete
-				&& Controller->GetInteractionView()
+				&& !Controller->GetInteractionView()
 					.bCrossTerminalActionAvailable
+				&& Controller->GetInteractionView().bTerminalPendingAdvance
 				&& Presentation.Interaction
 					.bPrimaryActionOwnedByInlineFormula
 				&& !Presentation.Interaction.bCanContinue
 				&& Screen->GetInteractionPanel()->GetVisibility()
 					== ESlateVisibility::Collapsed
 				&& !Screen->GetInteractionPanel()->IsInteractionBlocked()
-				&& !Controller->GetResolutionFeedback().bTerminal;
+				&& Controller->GetResolutionFeedback().bTerminal;
 			break;
 		default:
 			break;
@@ -665,14 +666,18 @@ bool FAdvanceCrossHighPIECommand::Update()
 				TEXT("PIE continuation before state %d failed."), StateIndex));
 			return true;
 		}
-		const FString ExpectedCommand = StateIndex == 2
-			? TEXT("ResolveCrossHighAttackRoll")
-			: TEXT("ResolveCrossHighDefenseRoll");
-		if (Controller->GetLastDiagnostic().CommandName != ExpectedCommand
-			|| Controller->GetResolutionFeedback().bTerminal)
+		const bool bExpectedAcceptedTransition = StateIndex == 2
+			? Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolveCrossHighAttackRoll")
+				&& !Controller->GetResolutionFeedback().bTerminal
+			: Controller->GetLastDiagnostic().CommandName
+				== TEXT("ApplyCrossTerminalResolution")
+				&& Controller->GetResolutionFeedback().bTerminal
+				&& Controller->GetInteractionView().bTerminalPendingAdvance;
+		if (!bExpectedAcceptedTransition)
 		{
 			Test->AddError(FString::Printf(
-				TEXT("PIE state %d did not use the expected typed manual roll command."),
+				TEXT("PIE state %d did not use the expected typed roll/terminal transition."),
 				StateIndex));
 			return true;
 		}

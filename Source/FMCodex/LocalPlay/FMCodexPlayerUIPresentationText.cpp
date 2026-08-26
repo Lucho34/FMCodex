@@ -162,6 +162,73 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	return FText::FromString(CanonicalLabel);
 }
 
+FText FFMCodexPlayerUIPresentationText::ThroughBallTitle()
+{
+	return LOCTEXT("ThroughBallProductionTitle", "直塞");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallInitialRouteStage()
+{
+	return LOCTEXT("ThroughBallInitialRouteStage", "判定直塞路线");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallInitialRouteAction()
+{
+	return LOCTEXT("ThroughBallInitialRouteAction", "掷点判定路线");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallRoute(
+	const EMatchPlayThroughBallActualBranch Route)
+{
+	switch (Route)
+	{
+	case EMatchPlayThroughBallActualBranch::Feet:
+		return LOCTEXT("ThroughBallRouteFeet", "脚下球");
+	case EMatchPlayThroughBallActualBranch::BehindDefense:
+		return LOCTEXT("ThroughBallRouteBehindDefense", "身后球");
+	case EMatchPlayThroughBallActualBranch::AntiOffside:
+		return LOCTEXT("ThroughBallRouteAntiOffside", "反越位");
+	default:
+		return FText::GetEmpty();
+	}
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallFeetStage()
+{
+	return LOCTEXT("ThroughBallFeetStage", "属性对抗");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallBehindDefenseStage()
+{
+	return LOCTEXT("ThroughBallBehindDefenseStage", "第一阶段");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallAntiOffsideStage()
+{
+	return LOCTEXT("ThroughBallAntiOffsideStage", "越位判定");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallOneOnOneStage()
+{
+	return LOCTEXT("ThroughBallOneOnOneStage", "选择单刀方式");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallOneOnOnePrompt()
+{
+	return LOCTEXT(
+		"ThroughBallOneOnOnePrompt", "直接射门或挑射");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallRouteResult(
+	const int32 RawD6,
+	const EMatchPlayThroughBallActualBranch Route)
+{
+	return FText::Format(
+		LOCTEXT("ThroughBallRouteResult", "掷点 {0} → {1}"),
+		FText::AsNumber(RawD6),
+		ThroughBallRoute(Route));
+}
+
 FText FFMCodexPlayerUIPresentationText::SelectedRoleTag(
 	const FString& CanonicalRole)
 {

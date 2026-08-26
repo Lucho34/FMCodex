@@ -627,6 +627,13 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 	auto NewView = FFMCodexLocalMatchInteractionViewBuilder::Build(
 		State.Snapshot, Rules.Snapshot);
 	InteractionView = MoveTemp(NewView);
+	if (InteractionView.bTerminalPendingAdvance
+		&& !ResolutionFeedback.bTerminal)
+	{
+		ResolutionFeedback =
+			FFMCodexLocalMatchResolutionFeedbackBuilder
+				::BuildFromTerminalSnapshot(InteractionView);
+	}
 	RebuildControlSurface();
 }
 
@@ -1061,6 +1068,13 @@ void AFMCodexLocalMatchPlayerController::RollCrossDefense()
 		const auto Result = Host->ResolveCrossHighDefenseRoll(Request);
 		bCrossRollCommandInFlight = false;
 		RecordCommandResult(TEXT("ResolveCrossHighDefenseRoll"), Result);
+		if (Result.bSuccess
+			&& InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::ApplyCrossTerminalResolution)
+		{
+			ApplyCrossTerminalResolution();
+		}
 	}
 	else
 	{
@@ -1069,13 +1083,21 @@ void AFMCodexLocalMatchPlayerController::RollCrossDefense()
 		const auto Result = Host->ResolveCrossLowDefenseRoll(Request);
 		bCrossRollCommandInFlight = false;
 		RecordCommandResult(TEXT("ResolveCrossLowDefenseRoll"), Result);
+		if (Result.bSuccess
+			&& InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::ApplyCrossTerminalResolution)
+		{
+			ApplyCrossTerminalResolution();
+		}
 	}
 }
 
-void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
+void AFMCodexLocalMatchPlayerController::ApplyCrossTerminalResolution()
 {
 	if (InteractionView.InteractionCategory
-			!= EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance
+			!= EFMCodexLocalMatchInteractionCategory
+				::ApplyCrossTerminalResolution
 		|| !InteractionView.bCrossFormulaComplete
 		|| !InteractionView.bCrossTerminalActionAvailable)
 	{
@@ -1096,6 +1118,136 @@ void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
 		Host->ApplyCrossTerminalResolution());
 }
 
+void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
+{
+	ApplyCrossTerminalResolution();
+}
+
+void AFMCodexLocalMatchPlayerController::RollThroughBallFeetAttack()
+{
+	if (bThroughBallFeetRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallFeetAttackRoll"),
+			TEXT("ThroughBall Feet attack roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallFeetAttackRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest Request;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallFeetRollCommandInFlight = true;
+	const auto Result = Host->ResolveThroughBallFeetAttackRoll(Request);
+	bThroughBallFeetRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveThroughBallFeetAttackRoll"), Result);
+}
+
+void AFMCodexLocalMatchPlayerController::RollThroughBallFeetDefense()
+{
+	if (bThroughBallFeetRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallFeetDefenseRoll"),
+			TEXT("ThroughBall Feet defense roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallFeetDefenseRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest Request;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallFeetRollCommandInFlight = true;
+	const auto Result = Host->ResolveThroughBallFeetDefenseRoll(Request);
+	bThroughBallFeetRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveThroughBallFeetDefenseRoll"), Result);
+	if (Result.bSuccess
+		&& InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::ApplyThroughBallFeetTerminalResolution)
+	{
+		ApplyThroughBallFeetTerminalResolution();
+	}
+}
+
+void AFMCodexLocalMatchPlayerController
+	::ApplyThroughBallFeetTerminalResolution()
+{
+	if (InteractionView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory
+				::ApplyThroughBallFeetTerminalResolution
+		|| !InteractionView.bThroughBallFeetFormulaComplete
+		|| !InteractionView.bThroughBallFeetTerminalActionAvailable)
+	{
+		RecordLocalFailure(
+			TEXT("ApplyThroughBallTerminalResolution"),
+			TEXT("The completed ThroughBall Feet terminal action is not available."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ApplyThroughBallTerminalResolution"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	RecordCommandResult(
+		TEXT("ApplyThroughBallTerminalResolution"),
+		Host->ApplyThroughBallTerminalResolution());
+}
+
+void AFMCodexLocalMatchPlayerController::CompleteThroughBallFeetAndAdvance()
+{
+	ApplyThroughBallFeetTerminalResolution();
+}
+
+void AFMCodexLocalMatchPlayerController::AdvanceAfterTerminal()
+{
+	if (InteractionView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+		|| !InteractionView.bTerminalPendingAdvance)
+	{
+		RecordLocalFailure(
+			TEXT("AdvanceAfterTerminal"),
+			TEXT("The authoritative terminal next-round action is not available."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("AdvanceAfterTerminal"), TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	RecordCommandResult(
+		TEXT("AdvanceAfterTerminal"),
+		Host->AdvanceAfterTerminal(Request));
+}
+
 void AFMCodexLocalMatchPlayerController::ContinueResolution()
 {
 	if (InteractionView.InteractionCategory
@@ -1103,11 +1255,21 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
 		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance)
+			== EFMCodexLocalMatchInteractionCategory
+				::ApplyCrossTerminalResolution
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::ApplyThroughBallFeetTerminalResolution
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
 	{
 		RecordLocalFailure(
 			TEXT("ContinueResolution"),
-			TEXT("Cross arithmetic rolls and terminal completion require their explicit commands."));
+			TEXT("Side-owned arithmetic rolls and terminal completion require their explicit commands."));
 		return;
 	}
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
@@ -1274,18 +1436,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	if (Session.ActualBranch.ThroughBall
 		== EMatchPlayThroughBallActualBranch::Feet)
 	{
-		if (!Progress.bContractComplete)
-		{
-			RecordCommandResult(
-				TEXT("ResolveThroughBallFeetPostRoutePlan"),
-				Host->ResolveThroughBallFeetPostRoutePlan());
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ApplyThroughBallTerminalResolution"),
-				Host->ApplyThroughBallTerminalResolution());
-		}
+		RecordLocalFailure(
+			TEXT("ContinueResolution"),
+			TEXT("ThroughBall Feet requires explicit attacker roll, defender roll, and terminal commands."));
 		return;
 	}
 
@@ -1896,10 +2049,35 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			RollCrossDefense();
 		}));
 		break;
-	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance:
+	case EFMCodexLocalMatchInteractionCategory::ApplyCrossTerminalResolution:
 		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
 		{
-			CompleteCrossAndAdvance();
+			ApplyCrossTerminalResolution();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollThroughBallFeetAttack();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollThroughBallFeetDefense();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::ApplyThroughBallFeetTerminalResolution:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			ApplyThroughBallFeetTerminalResolution();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			AdvanceAfterTerminal();
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution:

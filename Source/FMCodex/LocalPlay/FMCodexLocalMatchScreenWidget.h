@@ -21,6 +21,7 @@ class UFMCodexResolutionPanelWidget;
 class UFMCodexRollReelWidget;
 class UFMCodexSelectionFeedbackToastWidget;
 class UFMCodexTacticalDetailPanelWidget;
+class UFMCodexThroughBallResolutionSurfaceWidget;
 class UImage;
 class USizeBox;
 class UTextBlock;
@@ -137,6 +138,8 @@ public:
 	UFMCodexInteractionPanelWidget* GetInteractionPanel() const;
 	UFMCodexInlineResolutionFormulaSurfaceWidget*
 		GetInlineFormulaSurface() const;
+	UFMCodexThroughBallResolutionSurfaceWidget*
+		GetThroughBallResolutionSurface() const;
 	UFMCodexResolutionPanelWidget* GetResolutionPanel() const;
 	bool IsLegacyResolutionOverlayVisible() const;
 	EFMCodexUMGInlineFormulaRevealPhase GetInlineFormulaRevealPhase() const;
@@ -188,6 +191,8 @@ private:
 		const FFMCodexUMGMatchScreenViewModel& InPresentation);
 	FFMCodexUMGInlineFormulaSurfaceViewModel
 		BuildDisplayedInlineFormula() const;
+	FFMCodexUMGThroughBallResolutionViewModel
+		BuildDisplayedThroughBallResolution() const;
 	FFMCodexUMGMatchHeaderViewModel BuildDisplayedHeader() const;
 	FFMCodexUMGRollReelViewModel BuildActiveRollReelPresentation() const;
 	void AdvanceInlineFormulaReveal(float DeltaSeconds, bool bForceFullRefresh);
@@ -400,6 +405,14 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexInlineResolutionFormulaSurfaceWidget>
 		InlineFormulaSurface;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Resolution Presentation")
+	TSubclassOf<UFMCodexThroughBallResolutionSurfaceWidget>
+		ThroughBallResolutionSurfaceWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexThroughBallResolutionSurfaceWidget>
+		ThroughBallResolutionSurface;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> TacticalPointRevealSurface;

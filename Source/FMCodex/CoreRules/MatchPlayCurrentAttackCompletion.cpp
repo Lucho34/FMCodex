@@ -766,7 +766,7 @@ FMatchPlayCurrentAttackCompletion::CompleteCrossResolution(
 		Result.ScoringSide = Attacker;
 	}
 
-	return ApplyCurrentAttackTerminalMutation(
+	return PersistCurrentAttackTerminal(
 		BeforeState,
 		MoveTemp(WorkingState),
 		Attacker,
@@ -899,7 +899,7 @@ FMatchPlayCurrentAttackCompletion::CompletePassControlResolution(
 		Result.ScoringSide = Attacker;
 	}
 
-	return ApplyCurrentAttackTerminalMutation(
+	return PersistCurrentAttackTerminal(
 		BeforeState,
 		MoveTemp(WorkingState),
 		Attacker,
@@ -1050,7 +1050,7 @@ FMatchPlayCurrentAttackCompletion::CompleteShotResolution(
 		Result.ScoringSide = Attacker;
 	}
 
-	return ApplyCurrentAttackTerminalMutation(
+	return PersistCurrentAttackTerminal(
 		BeforeState,
 		MoveTemp(WorkingState),
 		Attacker,
@@ -1183,7 +1183,7 @@ FMatchPlayCurrentAttackCompletion::CompleteThroughBallResolution(
 		Result.ScoringSide = Attacker;
 	}
 
-	return ApplyCurrentAttackTerminalMutation(
+	return PersistCurrentAttackTerminal(
 		BeforeState,
 		MoveTemp(WorkingState),
 		Attacker,
@@ -1234,7 +1234,7 @@ FMatchPlayCurrentAttackCompletion::CompleteCarrierNoGoal(
 		return Result;
 	}
 
-	return ApplyCurrentAttackTerminalMutation(
+	return ApplyCurrentAttackAdvanceMutation(
 		BeforeState,
 		BeforeState,
 		Attacker,
@@ -1335,7 +1335,7 @@ FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 		Result.GoalResolveResult.UpdatedRuntimeState;
 	Result.ScoringSide = Attacker;
 
-	return ApplyCurrentAttackTerminalMutation(
+	return ApplyCurrentAttackAdvanceMutation(
 		BeforeState,
 		MoveTemp(WorkingState),
 		Attacker,
@@ -1423,7 +1423,7 @@ FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(
 		return Result;
 	}
 
-	return ApplyCurrentAttackTerminalMutation(
+	return ApplyCurrentAttackAdvanceMutation(
 		BeforeState,
 		BeforeState,
 		Attacker,
@@ -1511,7 +1511,7 @@ FMatchPlayCurrentAttackCompletion::CompleteRunnerNoGoal(
 		return Result;
 	}
 
-	return ApplyCurrentAttackTerminalMutation(
+	return ApplyCurrentAttackAdvanceMutation(
 		BeforeState,
 		BeforeState,
 		Attacker,
@@ -1521,7 +1521,119 @@ FMatchPlayCurrentAttackCompletion::CompleteRunnerNoGoal(
 
 FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion
-	::ApplyCurrentAttackTerminalMutation(
+	::PersistCurrentAttackTerminal(
+		const FMatchPlayState& BeforeState,
+		FMatchPlayState WorkingState,
+		const EInitialTurnOrderPlayer Attacker,
+		const EInitialTurnOrderPlayer Defender,
+		FMatchPlayCurrentAttackCompletionResult Result)
+{
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+
+	if (BeforeState.CurrentAttack.LifecycleState
+		!= EMatchPlayCurrentAttackLifecycleState::Active)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::CurrentAttackAlreadyTerminal,
+			TEXT("Current attack terminal outcome is already persisted and awaiting advance."));
+		return Result;
+	}
+
+	// Validate the exact future clear/consume/handoff mutation now, but do not
+	// adopt any of it. Terminal application is an authoritative persistence
+	// transition: score/result effects are final, while pitch, roles, card
+	// usage, opportunity count, and attacker ownership remain unchanged.
+	FMatchPlayState TerminalState = WorkingState;
+	FMatchPlayCurrentAttackCompletionResult ValidatedAdvance =
+		ApplyCurrentAttackAdvanceMutation(
+			BeforeState,
+			MoveTemp(WorkingState),
+			Attacker,
+			Defender,
+			MoveTemp(Result));
+	if (!ValidatedAdvance.bSuccess)
+	{
+		return ValidatedAdvance;
+	}
+
+	TerminalState.CurrentAttack.LifecycleState =
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance;
+	ValidatedAdvance.AfterState = MoveTemp(TerminalState);
+	ValidatedAdvance.OrdinaryCardUsageResults.Reset();
+	ValidatedAdvance.OpportunityResolveResult =
+		FAttackOpportunityResolveResult();
+	ValidatedAdvance.MatchEndResolveResult = FMatchEndResolveResult();
+	ValidatedAdvance.MatchResultResolveResult = FMatchResultResolveResult();
+	ValidatedAdvance.NextAttackingPlayer = EInitialTurnOrderPlayer::None;
+	ValidatedAdvance.bMatchEnded = false;
+	return ValidatedAdvance;
+}
+
+FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
+	const FMatchPlayState& BeforeState,
+	const int64 AttackSequence,
+	const EInitialTurnOrderPlayer RequestingSide)
+{
+	using namespace MatchPlayCurrentAttackCompletionImplementation;
+
+	FMatchPlayCurrentAttackCompletionResult Result;
+	Result.BeforeState = BeforeState;
+	Result.AfterState = BeforeState;
+
+	EInitialTurnOrderPlayer Attacker = EInitialTurnOrderPlayer::None;
+	EInitialTurnOrderPlayer Defender = EInitialTurnOrderPlayer::None;
+	const EMatchPlayCurrentAttackSelectionStage CurrentStage =
+		BeforeState.bHasCurrentAttack
+			? BeforeState.CurrentAttack.SelectionStage
+			: EMatchPlayCurrentAttackSelectionStage::None;
+	if (!ValidateCommonOuter(
+		BeforeState,
+		AttackSequence,
+		CurrentStage,
+		Result,
+		Attacker,
+		Defender))
+	{
+		return Result;
+	}
+	if (BeforeState.CurrentAttack.LifecycleState
+		!= EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::CurrentAttackNotTerminalPendingAdvance,
+			TEXT("Advance requires a terminal current attack awaiting explicit next-round progression."));
+		return Result;
+	}
+	if (RequestingSide != Attacker)
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackCompletionErrorCode
+				::UnauthorizedAdvanceRequester,
+			TEXT("Only the current attacking player may advance after terminal."));
+		return Result;
+	}
+	if (!ValidateScoreState(BeforeState, Result))
+	{
+		return Result;
+	}
+
+	return ApplyCurrentAttackAdvanceMutation(
+		BeforeState,
+		BeforeState,
+		Attacker,
+		Defender,
+		MoveTemp(Result));
+}
+
+FMatchPlayCurrentAttackCompletionResult
+FMatchPlayCurrentAttackCompletion
+	::ApplyCurrentAttackAdvanceMutation(
 		const FMatchPlayState& BeforeState,
 		FMatchPlayState WorkingState,
 		const EInitialTurnOrderPlayer Attacker,

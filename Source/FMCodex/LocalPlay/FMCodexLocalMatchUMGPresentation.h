@@ -27,9 +27,15 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	RollCrossAttack,
 	RollCrossDefense,
 	CompleteCrossAndAdvance,
+	RollThroughBallFeetAttack,
+	RollThroughBallFeetDefense,
+	CompleteThroughBallFeetAndAdvance,
 	ContinueResolution,
 	AttackComplete,
-	MatchEnded
+	MatchEnded,
+	ApplyCrossTerminalResolution,
+	ApplyThroughBallFeetTerminalResolution,
+	AdvanceAfterTerminal
 };
 
 /** Typed covered-roll intent consumed by the unified reel reveal state. */
@@ -39,6 +45,7 @@ enum class EFMCodexUMGCrossRollRevealKind : uint8
 	None,
 	TacticalPoint,
 	InitialRoute,
+	ThroughBallInitialRoute,
 	Attack,
 	Defense
 };
@@ -983,6 +990,29 @@ struct FMCODEX_API FFMCodexUMGResolutionViewModel
 	FString EmptyStateLabel = TEXT("Waiting for an authoritative result.");
 };
 
+/** Player-facing ThroughBall routes; Widgets render labels and never map D6. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGThroughBallRoute : uint8
+{
+	None,
+	Feet,
+	BehindDefense,
+	AntiOffside
+};
+
+/** Read-only semantic stage projected from authoritative interaction state. */
+UENUM(BlueprintType)
+enum class EFMCodexUMGThroughBallStage : uint8
+{
+	None,
+	InitialRoute,
+	FeetContest,
+	BehindDefenseFirstStage,
+	AntiOffsideCheck,
+	OneOnOneChoice,
+	OneOnOneResolution
+};
+
 UENUM(BlueprintType)
 enum class EFMCodexUMGInlineFormulaTermKind : uint8
 {
@@ -1108,6 +1138,11 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaTermViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString DisplayLabel;
+
+	/** Optional player identity rendered before attribute operands only. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString ContributorDisplayName;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
@@ -1338,6 +1373,113 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	FString ContinueActionLabel;
 };
 
+/**
+ * Production ThroughBall shell. Gameplay legality and route mapping are already
+ * resolved before this DTO reaches UMG. Feet composes the shared formula DTO.
+ */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGThroughBallResolutionViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bSuppressLegacyResolution = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	EFMCodexUMGThroughBallRoute Route = EFMCodexUMGThroughBallRoute::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	EFMCodexUMGThroughBallStage Stage = EFMCodexUMGThroughBallStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString TitleLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString RouteLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString StageLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString StatusLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString RouteResultLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bInitialRouteRollAwaitingInput = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bHasAuthoritativeInitialRouteRoll = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	int32 AuthoritativeInitialRouteD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bRouteRevealComplete = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	EFMCodexUMGInlineFormulaRevealPhase RevealPhase =
+		EFMCodexUMGInlineFormulaRevealPhase::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bDiceRevealVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FFMCodexUMGRollReelViewModel RollReel;
+
+	/** Shared authoritative contest presentation used by the Feet route only. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FFMCodexUMGInlineFormulaSurfaceViewModel Formula;
+
+	/** Exact typed interaction projected beside the existing shared CTA dock. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	EFMCodexUMGInteractionCategory InteractionCategory =
+		EFMCodexUMGInteractionCategory::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString ActionPromptLabel;
+
+	/** This resolution-local action is rendered by the central surface only. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bPrimaryActionOwnedBySurface = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bCanContinue = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString ContinueActionLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	TArray<FFMCodexUMGOneOnOneChoiceViewModel> OneOnOneChoices;
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 {
@@ -1363,6 +1505,9 @@ struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FFMCodexUMGResolutionViewModel Resolution;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
+	FFMCodexUMGThroughBallResolutionViewModel ThroughBallResolution;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FFMCodexUMGInlineFormulaSurfaceViewModel InlineFormula;

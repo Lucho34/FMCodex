@@ -535,6 +535,7 @@ ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份�
 - `RollFacts`：全局顺序、Initial/Post-route purpose、拥有方、`BranchSelection / ArithmeticContest / OutcomeDecision` 语义、pending/resolved、RawD6、条件性需求与 formula operand identity。
 - `FormulaContests`：稳定 ContestId、FormulaType、application pending/applied/skipped、Attack/Defense Rows、terms、实际参与体力、GK participation、明确 tie rule、resolved Resolver Input/Result。
 - `FormulaTerms`：Attribute、RawRoll、FixedModifier 或 GoalkeeperContribution；保存 CardId/Role/Attribute、源值、倍率、贡献和 resolved 状态。缺少 Raw Roll 时 value 保持 pending，不以 0 冒充掷点。
+- `FFMCodexUMGInlineFormulaTermViewModel.ContributorDisplayName`：可选、只读的表现字段。仅 Attribute/GoalkeeperContribution term 可由其 Side + CardId 映射短球员名；RawRoll、FixedModifier 与 TacticalPlayerAdvantage 保持空值。它不进入公式求和、参与者合法性、winner 或持久化 State。
 - `FormulaRow.KnownNonRollSubtotal`：由 Resolution Fact Projection 对该行所有非 `RawRoll` 的已解析贡献求和并按 Resolver 同一精度规则舍入；它是只读投影事实，不由 Widget 临时求和。公式尚待掷点时也必须可用。
 - `FormulaRow.FinalValue`：当该行的算术 `RawRoll` 已被权威状态接受时即可由 Projection 解析为 `KnownNonRollSubtotal + RawRoll`；双方完成后必须逐项等于既有 Resolver Result。未接受本行掷点时保持 pending，不用 0 冒充结果。
 - `DecisionFacts`：分支、结果表、条件门禁或 formula outcome 的结构化结果；不要求 UI 解析 Route/Resolution 文本。
@@ -542,6 +543,10 @@ ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份�
 该 Projection 可重复从同一 State 构建且不得消费 RNG。CurrentAttack 被 terminal completion 清除时，command-scoped ResolutionFeedback 可保留清除前的同一值事实；它不重新创建 authority。
 
 Cross High 与 Cross Low 的 `PostRouteRollProgress.RollRecords` 均允许两个合法未完成前缀：空记录表示等待进攻方掷点；仅含 `PrimaryAttack` 表示进攻已完成、等待防守方掷点。对应实际分支的第二个显式权威命令追加 `PrimaryDefense` 后才形成完整合同。错误分支、错误阵营、错误 purpose、重复或越序请求不得追加记录；完成后的 terminal 命令只消费这些持久化记录，不再追加随机结果。
+
+ThroughBall Feet 使用同一字段而不增加平行 roll state。路线刚确定时保存 `Phase=None / RollRecords=[]`；第一条 accepted typed command 后保存 `Phase=PrimaryBranch / [PrimaryAttack]`；第二条后保存 `[PrimaryAttack, PrimaryDefense]`。State Validator 拒绝 Defense-only、重复 Attack、重复 Defense、错误顺序、错误 D6 或不适用于实际 Feet 分支的 payload。Formula Fact Projection 对三种合法进度分别输出：双方 KnownNonRollSubtotal 且两行 FinalValue pending；进攻行 FinalValue resolved、防守行 pending；双方行与 `ThroughBall.Feet` ResolvedResult 全部 resolved。Formula facts 是由 State 重建的只读派生数据，不是额外持久化真相。
+
+Feet typed command DTO 为 `FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest/Result` 与 `FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest/Result`；Request 只携带 `RequestingSide`，不携带 D6、属性、公式输入或结果。Local Host 与 Controller wrapper 不增加业务字段。InteractionView 的三个显式 category 分别是 `RollThroughBallFeetAttack`、`RollThroughBallFeetDefense` 与 `CompleteThroughBallFeetAndAdvance`；generic Continue 不是这些状态的别名。
 - `FFMCodexLocalMatchInteractionView` 以稳定 Player A/B 字段投影当前棋盘原始战术球员人数；`FFMCodexUMGCardRackViewModel` 再提供 Local/Opponent 单侧人数及 `战术球员 ×N` 文案。这些字段不是 Formula modifier，不代替 `TacticalPlayerAdvantage` term。
 - `FFMCodexUMGInlineFormulaSurfaceViewModel` 的 Cross 完成投影包含 Narrative available、权威进攻/防守结果、选定的 Marker/Helper 表现角色、中文 headline 与路线 subtitle。`FFMCodexUMGInteractionViewModel.bPrimaryActionOwnedByInlineFormula` 只表达 terminal CTA 展示所有权，不是新命令或换攻状态。
 - `FMatchPlayCurrentAttackHelperSelectionLegalityResult.PhysicalAreaMatchResult` 保存 Runner↔Helper canonical shared-half 查询事实；失败分类为 `PhysicalAreaQueryFailed` 或 `HelperNotInRunnerPhysicalArea`。Availability candidate 保留该结果，InteractionView 只将后者有界映射为 `HelperWrongPhysicalArea`，UMG 再映射固定中文 Toast，不从 Slot 的显示位置重建规则。

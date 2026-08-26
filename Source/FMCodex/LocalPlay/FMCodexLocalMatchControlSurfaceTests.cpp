@@ -20,6 +20,7 @@
 #include "FMCodexPitchWidget.h"
 #include "FMCodexResolutionPanelWidget.h"
 #include "FMCodexSelectionFeedbackToastWidget.h"
+#include "FMCodexThroughBallResolutionSurfaceWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -721,9 +722,10 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			|| Controller.GetInteractionView().AcceptedRolls.Num() != 3
 			|| Controller.GetInteractionView().InteractionCategory
 				!= EFMCodexLocalMatchInteractionCategory
-					::CompleteCrossAndAdvance
+					::AdvanceAfterTerminal
 			|| !Controller.GetInteractionView().bCrossFormulaComplete
-			|| !Controller.GetInteractionView().bCrossTerminalActionAvailable
+			|| Controller.GetInteractionView().bCrossTerminalActionAvailable
+			|| !Controller.GetInteractionView().bTerminalPendingAdvance
 			|| Controller.GetInteractionView().ContinueActionLabel
 				!= TEXT("下一回合")
 			|| Controller.GetInteractionView().SelectedCarrierCardId.IsNone()
@@ -747,21 +749,13 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			return false;
 		}
 
-		Controller.CompleteCrossAndAdvance();
-		if (!Controller.GetLastDiagnostic().bHostSuccess)
-		{
-			Test.AddError(FString::Printf(
-				TEXT("%s: terminal application failed: %s"),
-				Label,
-				*Controller.GetLastDiagnostic().Message));
-			return false;
-		}
 		const auto& TerminalFeedback = Controller.GetResolutionFeedback();
 		if (!TerminalFeedback.bTerminal
 			|| !TerminalFeedback.TerminalSummary.StartsWith(TEXT("RESULT: "))
 			|| TerminalFeedback.ComparisonEntries.Num() < 2
 			|| !TerminalFeedback.DecisionSummary.Contains(TEXT("Winner:"))
-			|| !TerminalFeedback.ContinuationSummary.Contains(TEXT("Next attacker:")))
+			|| !TerminalFeedback.ContinuationSummary.Contains(
+				TEXT("Opportunity pending explicit")))
 		{
 			Test.AddError(FString::Printf(
 				TEXT("%s: terminal feedback did not expose authoritative Formula/Completion evidence."),
@@ -769,6 +763,15 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			return false;
 		}
 		const auto TerminalUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			Controller.GetInteractionView(), Controller.GetResolutionFeedback(),
+			FString());
+		if (!Controller.GetInteractionView().bCurrentAttackActive
+			|| !TerminalUMG.InlineFormula.bVisible)
+		{
+			return false;
+		}
+		Controller.AdvanceAfterTerminal();
+		const auto AdvancedUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			Controller.GetInteractionView(), Controller.GetResolutionFeedback(),
 			FString());
 		return !Controller.GetInteractionView().bCurrentAttackActive
@@ -779,7 +782,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			&& Controller.GetInteractionView().SelectedRunnerCardId.IsNone()
 			&& Controller.GetInteractionView().SelectedMarkerCardId.IsNone()
 			&& Controller.GetInteractionView().SelectedHelperCardId.IsNone()
-			&& !TerminalUMG.InlineFormula.bVisible;
+			&& !AdvancedUMG.InlineFormula.bVisible;
 	}
 }
 
@@ -1401,10 +1404,15 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 	TestTrue(TEXT("DirectShot terminal shows Goal or Miss"),
 		TerminalFeedback.TerminalSummary == TEXT("RESULT: GOAL")
 			|| TerminalFeedback.TerminalSummary == TEXT("RESULT: MISS"));
-	TestTrue(TEXT("DirectShot terminal shows score and next attacker"),
+	TestTrue(TEXT("DirectShot terminal shows score and pending advance"),
 		TerminalFeedback.ContinuationSummary.Contains(TEXT("Score:"))
 			&& TerminalFeedback.ContinuationSummary.Contains(
-				TEXT("Next attacker:")));
+				TEXT("Opportunity pending explicit"))
+			&& !TerminalFeedback.ContinuationSummary.Contains(
+				TEXT("Next attacker:"))
+			&& AfterTerminalView.bTerminalPendingAdvance
+			&& AfterTerminalView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal);
 	return true;
 }
 
@@ -2708,9 +2716,14 @@ namespace FMCodexLocalMatchFullFamilyTests
 			}
 			else if (View.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
-					::CompleteCrossAndAdvance)
+					::ApplyCrossTerminalResolution)
 			{
-				Controller.CompleteCrossAndAdvance();
+				Controller.ApplyCrossTerminalResolution();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
+			{
+				Controller.AdvanceAfterTerminal();
 			}
 			else
 			{
@@ -6375,15 +6388,31 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 	bool bSawCutInsideComparison = false;
 	bool bSawResolutionStarted = false;
 	bool bAdvancedPastResolutionStarted = false;
+	bool bSawTerminalPendingAdvance = false;
 	for (int32 Guard = 0;
 		Guard < 12 && Controller->GetInteractionView().bCurrentAttackActive;
 		++Guard)
 	{
-		if (Controller->GetInteractionView().InteractionCategory
-			!= EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+		const EFMCodexLocalMatchInteractionCategory Category =
+			Controller->GetInteractionView().InteractionCategory;
+		if (Category
+			!= EFMCodexLocalMatchInteractionCategory::ContinueResolution
+			&& Category
+				!= EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
 		{
-			AddError(TEXT("Cut Inside resolution left ContinueResolution unexpectedly"));
+			AddError(TEXT("Cut Inside resolution reached an unexpected interaction"));
 			return false;
+		}
+		if (Category
+			== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
+		{
+			bSawTerminalPendingAdvance =
+				Controller->GetInteractionView().bTerminalPendingAdvance
+				&& RootResolution->GetPresentation().bTerminal
+				&& RootResolution->GetPresentation().TerminalLabel.StartsWith(
+					TEXT("RESULT: "))
+				&& RootResolution->GetPresentation().ContinuationLabel.Contains(
+					TEXT("Opportunity pending explicit"));
 		}
 		TestTrue(TEXT("Resolution overlay keeps its DTO-routed Continue reachable"),
 			RootResolution->GetPresentation().bCanContinue
@@ -6424,16 +6453,8 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 	TestTrue(TEXT("Cut Inside overlay progresses past Resolution Started"),
 		bSawResolutionStarted && bAdvancedPastResolutionStarted
 			&& bSawCutInsideRoute && bSawCutInsideComparison);
-	TestTrue(TEXT("Cut Inside terminal renders result and completion summary"),
-		RootResolution->GetPresentation().bTerminal
-			&& RootResolution->GetPresentation().TerminalLabel.StartsWith(
-				TEXT("RESULT: "))
-			&& RootResolution->GetPresentation().ContinuationLabel.Contains(
-				TEXT("Attack complete"))
-			&& RootResolution->GetPresentation().ContinuationLabel.Contains(
-				TEXT("Score:"))
-			&& RootResolution->GetPresentation().ContinuationLabel.Contains(
-				TEXT("Next attacker:")));
+	TestTrue(TEXT("Cut Inside terminal persists before explicit advance"),
+		bSawTerminalPendingAdvance);
 	TestTrue(TEXT("Completed attack enters next-player roll readiness"),
 		Controller->GetInteractionView().bTacticalPointRollReady
 			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
@@ -6504,10 +6525,20 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 	bool bSawOneOnOneHandoff = false;
 	bool bSawShooterGoalkeeperPlan = false;
 	bool bSawAuthoritativeDirectFormula = false;
+	bool bCentralRouteActionDispatchedExactlyOnce = false;
+	bool bSawOneOnOneTerminalPendingAdvance = false;
 	for (int32 Guard = 0;
 		Guard < 14 && OneOnOneController->GetInteractionView().bCurrentAttackActive;
 		++Guard)
 	{
+		// Production ThroughBall now owns the shared route reveal gate. This
+		// legacy engineering-panel fixture must wait for that accepted player
+		// presentation before exercising the next typed interaction.
+		if (OneOnOneScreen->IsInlineFormulaRevealInputBlocked())
+		{
+			OneOnOneScreen->PauseInlineFormulaRevealTimerForTesting();
+			OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(5.0f);
+		}
 		const EFMCodexLocalMatchInteractionCategory Category =
 			OneOnOneController->GetInteractionView().InteractionCategory;
 		if (Category
@@ -6527,6 +6558,43 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 		else if (Category
 			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
 		{
+			UFMCodexThroughBallResolutionSurfaceWidget* ThroughBallSurface =
+				OneOnOneScreen->GetThroughBallResolutionSurface();
+			if (ThroughBallSurface != nullptr
+				&& ThroughBallSurface->GetPresentation().bCanContinue)
+			{
+				TestTrue(TEXT("Initial route action is central and lower dock is hidden"),
+					ThroughBallSurface->GetPresentation()
+						.ContinueActionLabel == TEXT("掷点判定路线")
+						&& OneOnOneInteraction->GetVisibility()
+							== ESlateVisibility::Collapsed);
+				ThroughBallSurface->RequestContinue();
+				const auto AfterRoute = OneOnOneHost->GetMatchSnapshot();
+				bCentralRouteActionDispatchedExactlyOnce =
+					OneOnOneController->GetLastDiagnostic().CommandName
+						== TEXT("ResolveInitialRoute")
+					&& AfterRoute.bSuccess
+					&& AfterRoute.Snapshot.bHasCurrentAttack
+					&& AfterRoute.Snapshot.CurrentAttack.bHasResolutionSession
+					&& AfterRoute.Snapshot.CurrentAttack.ResolutionSession
+						.InitialRouteRollRecords.Num() == 1;
+			}
+			else
+			{
+				OneOnOneResolution->RequestContinue();
+			}
+		}
+		else if (Category
+			== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
+		{
+			bSawOneOnOneTerminalPendingAdvance =
+				OneOnOneController->GetInteractionView()
+					.bTerminalPendingAdvance
+				&& OneOnOneResolution->GetPresentation().bTerminal
+				&& OneOnOneResolution->GetPresentation().TerminalLabel.StartsWith(
+					TEXT("RESULT: "))
+				&& OneOnOneResolution->GetPresentation().ContinuationLabel.Contains(
+					TEXT("Opportunity pending explicit"));
 			OneOnOneResolution->RequestContinue();
 		}
 		else
@@ -6568,16 +6636,15 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 	}
 	TestTrue(TEXT("Normal demo reaches OneOnOne and shooter/GK plan"),
 		bSawOneOnOneHandoff && bSawShooterGoalkeeperPlan);
+	TestTrue(TEXT("Central route CTA dispatches one existing authority intent"),
+		bCentralRouteActionDispatchedExactlyOnce);
 	TestTrue(TEXT("DirectShot shows authoritative final values/winner/reason"),
 		bSawAuthoritativeDirectFormula);
-	TestTrue(TEXT("OneOnOne terminal remains Goal/Miss with completion"),
-		OneOnOneResolution->GetPresentation().bTerminal
-			&& (OneOnOneResolution->GetPresentation().TerminalLabel
-					== TEXT("RESULT: GOAL")
-				|| OneOnOneResolution->GetPresentation().TerminalLabel
-					== TEXT("RESULT: MISS"))
-			&& OneOnOneResolution->GetPresentation().ContinuationLabel.Contains(
-				TEXT("Attack complete")));
+	TestTrue(TEXT("OneOnOne terminal persists before explicit advance"),
+		bSawOneOnOneTerminalPendingAdvance);
+	TestTrue(TEXT("OneOnOne explicit advance reaches next-round readiness"),
+		!OneOnOneController->GetInteractionView().bCurrentAttackActive
+			&& OneOnOneController->GetInteractionView().bTacticalPointRollReady);
 
 	FString ResolutionHeader;
 	FString ResolutionSource;
@@ -9281,8 +9348,8 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authoritative Session exposes the four explicit Cross High/Low roll entrypoints"),
-		SerializedEntrypointCount, 46);
+	TestEqual(TEXT("Authoritative Session exposes explicit Cross and ThroughBall Feet roll entrypoints"),
+		SerializedEntrypointCount, 49);
 
 	return true;
 }
@@ -9645,8 +9712,8 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderTransform"))
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
-	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross High/Low rolls"),
-		SerializedEntrypointCount, 46);
+	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross and ThroughBall Feet rolls"),
+		SerializedEntrypointCount, 49);
 
 	return true;
 }
@@ -10070,8 +10137,8 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross High/Low rolls"),
-		SerializedEntrypointCount, 46);
+	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross and ThroughBall Feet rolls"),
+		SerializedEntrypointCount, 49);
 
 	return true;
 }
@@ -13354,13 +13421,13 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 					&PostRollFacts, &PlanUMG.Resolution.FormulaFacts, 0));
 
 	const auto BeforeTerminalView = ViewFor(*Host, Demo.SkillRuleSet);
-	TestTrue(TEXT("Completed Cross projects only the truthful terminal CTA"),
+	TestTrue(TEXT("Completed Cross exposes typed terminal recovery action"),
 		BeforeTerminalView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
-				::CompleteCrossAndAdvance
+				::ApplyCrossTerminalResolution
 			&& BeforeTerminalView.bCrossFormulaComplete
 			&& BeforeTerminalView.bCrossTerminalActionAvailable
-			&& BeforeTerminalView.ContinueActionLabel == TEXT("下一回合"));
+			&& BeforeTerminalView.ContinueActionLabel == TEXT("确认结算结果"));
 	const auto Terminal = Host->ApplyCrossTerminalResolution();
 	const auto AfterTerminalView = ViewFor(*Host, Demo.SkillRuleSet);
 	const auto TerminalFeedback =
@@ -13369,17 +13436,30 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			BeforeTerminalView, AfterTerminalView);
 	const auto TerminalUMG = FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		AfterTerminalView, TerminalFeedback, FString());
-	TestTrue(TEXT("Terminal feedback preserves facts after CurrentAttack clears"),
+	TestTrue(TEXT("Terminal feedback and State both preserve immutable facts"),
 		Terminal.bSuccess
 			&& Terminal.AuthoritativeResult.OrchestrationResult
 				.FormulaRegenerationCount == 1
 			&& Terminal.AuthoritativeResult.OrchestrationResult
 				.RegenerationProviderCallCount == 0
-			&& !AfterTerminalView.ResolutionFacts.bHasFacts
+			&& AfterTerminalView.bCurrentAttackActive
+			&& AfterTerminalView.bTerminalPendingAdvance
+			&& AfterTerminalView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+			&& AfterTerminalView.ResolutionFacts.bHasFacts
 			&& TerminalFeedback.ResolutionFacts.bHasFacts
 			&& TerminalUMG.Resolution.FormulaFacts.bHasFacts
 			&& TerminalUMG.Resolution.FormulaFacts.AttackSequence
 				== PreRouteFacts.AttackSequence);
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+	AdvanceRequest.AttackSequence = AfterTerminalView.AttackSequence;
+	AdvanceRequest.RequestingSide = AfterTerminalView.ExpectedActingPlayer;
+	const auto Advance = Host->AdvanceAfterTerminal(AdvanceRequest);
+	const auto AfterAdvanceView = ViewFor(*Host, Demo.SkillRuleSet);
+	TestTrue(TEXT("Explicit Cross advance alone clears and hands off"),
+		Advance.bSuccess
+			&& !AfterAdvanceView.bCurrentAttackActive
+			&& AfterAdvanceView.bTacticalPointRollReady);
 
 	FString FactProjectionSource;
 	FString UMGSource;

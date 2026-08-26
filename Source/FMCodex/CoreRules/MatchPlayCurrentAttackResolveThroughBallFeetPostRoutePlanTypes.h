@@ -11,6 +11,18 @@ struct FMCODEX_API
 	FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
 {
 	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		/** Legacy/reference compatibility; production must use explicit rolls. */
+		CompleteFeetPlan,
+		RegenerateCompletedPlan,
+		ResolveAttackRoll,
+		ResolveDefenseRoll
+	};
+
+	EMode Mode = EMode::CompleteFeetPlan;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 enum class
@@ -27,6 +39,10 @@ enum class
 	InvalidResolutionSessionState,
 	RouteNotResolved,
 	NotThroughBallFeetBranch,
+	InvalidRequestingSide,
+	WrongRequestingSide,
+	WrongFeetRollStep,
+	CompletedPlanRequired,
 	InvalidPostRouteProgress,
 	PostRouteRollProviderUnavailable,
 	PostRouteRollProviderFailed,

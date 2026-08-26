@@ -46,6 +46,12 @@ enum class EMatchPlayCurrentAttackCompletionErrorCode : uint8
 	InvalidScoreState UMETA(DisplayName = "Invalid Score State"),
 	InvalidOpportunityState
 		UMETA(DisplayName = "Invalid Opportunity State"),
+	CurrentAttackAlreadyTerminal
+		UMETA(DisplayName = "Current Attack Already Terminal"),
+	CurrentAttackNotTerminalPendingAdvance
+		UMETA(DisplayName = "Current Attack Not Terminal Pending Advance"),
+	UnauthorizedAdvanceRequester
+		UMETA(DisplayName = "Unauthorized Advance Requester"),
 	InvalidDeploymentPlacement
 		UMETA(DisplayName = "Invalid Deployment Placement"),
 	DeploymentSnapshotQueryFailed
@@ -134,6 +140,12 @@ struct FMCODEX_API FMatchPlayCurrentAttackCompletionResult
 
 class FMCODEX_API FMatchPlayCurrentAttackCompletion final
 {
+public:
+	static FMatchPlayCurrentAttackCompletionResult AdvanceAfterTerminal(
+		const FMatchPlayState& BeforeState,
+		int64 AttackSequence,
+		EInitialTurnOrderPlayer RequestingSide);
+
 private:
 	friend class FMatchPlayMarkerDecline;
 	friend class FMatchPlayResolveNoLegalCarrier;
@@ -170,7 +182,15 @@ private:
 		const FMatchPlayRunnerNoSelectionNoGoalCapability& Capability);
 
 	static FMatchPlayCurrentAttackCompletionResult
-	ApplyCurrentAttackTerminalMutation(
+	PersistCurrentAttackTerminal(
+		const FMatchPlayState& BeforeState,
+		FMatchPlayState WorkingState,
+		EInitialTurnOrderPlayer Attacker,
+		EInitialTurnOrderPlayer Defender,
+		FMatchPlayCurrentAttackCompletionResult Result);
+
+	static FMatchPlayCurrentAttackCompletionResult
+	ApplyCurrentAttackAdvanceMutation(
 		const FMatchPlayState& BeforeState,
 		FMatchPlayState WorkingState,
 		EInitialTurnOrderPlayer Attacker,

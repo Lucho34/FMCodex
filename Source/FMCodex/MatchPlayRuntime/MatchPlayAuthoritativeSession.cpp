@@ -8,6 +8,8 @@ namespace MatchPlayAuthoritativeSession
 		TEXT("Match play session is already initialized.");
 	constexpr const TCHAR* ReentrantCommandMessage =
 		TEXT("Match play session rejected a reentrant command.");
+	constexpr const TCHAR* TerminalAdvanceRequiredMessage =
+		TEXT("The current attack is terminal; only AdvanceAfterTerminal may progress authoritative state.");
 
 	class FScopedCommandExecution final
 	{
@@ -109,6 +111,22 @@ TTypedResult FMatchPlayAuthoritativeSession::ExecuteSerialized(
 			EMatchPlayAuthoritativeRuntimeFailureCode::AlreadyInitialized;
 		Envelope.ErrorMessage =
 			MatchPlayAuthoritativeSession::AlreadyInitializedMessage;
+		return Result;
+	}
+
+	if (bRequiresInitializedState
+		&& BeforeState.bHasCurrentAttack
+		&& BeforeState.CurrentAttack.LifecycleState
+			== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+		&& CommandKind
+			!= EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal)
+	{
+		Envelope.RuntimeFailureCode =
+			EMatchPlayAuthoritativeRuntimeFailureCode
+				::TerminalAdvanceRequired;
+		Envelope.ErrorMessage =
+			MatchPlayAuthoritativeSession
+				::TerminalAdvanceRequiredMessage;
 		return Result;
 	}
 
@@ -1200,6 +1218,96 @@ FMatchPlayAuthoritativeSession::ResolveThroughBallFeetPostRoutePlan()
 		});
 }
 
+FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult
+FMatchPlayAuthoritativeSession::ResolveThroughBallFeetAttackRoll(
+	const FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll,
+		true,
+		AttackSequence,
+		[this, AttackSequence, Request](
+			FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
+					::EMode::ResolveAttackRoll;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet
+							? &AuthoritativeSkillRuleSet
+							: nullptr,
+						PostRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult
+FMatchPlayAuthoritativeSession::ResolveThroughBallFeetDefenseRoll(
+	const FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest& Request)
+{
+	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
+		? AuthoritativeState.CurrentAttack.AttackSequence
+		: 0;
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll,
+		true,
+		AttackSequence,
+		[this, AttackSequence, Request](
+			FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
+					::EMode::ResolveDefenseRoll;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet
+							? &AuthoritativeSkillRuleSet
+							: nullptr,
+						PostRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
 FMatchPlayAuthoritativeSession::ResolvePassControlPostRoutePlan()
 {
@@ -1832,6 +1940,37 @@ FMatchPlayAuthoritativeSession::ApplyShotTerminalResolution()
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
 			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeAdvanceAfterTerminalResult
+FMatchPlayAuthoritativeSession::AdvanceAfterTerminal(
+	const FMatchPlayAuthoritativeAdvanceAfterTerminalRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeAdvanceAfterTerminalResult>(
+		EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal,
+		true,
+		Request.AttackSequence,
+		[Request](
+			FMatchPlayAuthoritativeAdvanceAfterTerminalResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.CompletionResult =
+				FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
+					BeforeState,
+					Request.AttackSequence,
+					Request.RequestingSide);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.CompletionResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.CompletionResult.AfterState;
+			Execution.StateDisposition = Result.CompletionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }

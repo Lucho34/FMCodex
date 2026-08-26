@@ -6341,11 +6341,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All forty-six mutations use the gate"),
+	TestEqual(TEXT("All forty-nine mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		46);
+		49);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7730,8 +7730,8 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
 		CompletionSource));
-	TestEqual(TEXT("All forty-six commands use one serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
+	TestEqual(TEXT("All forty-nine commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 49);
 	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
@@ -7760,7 +7760,7 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestEqual(TEXT("Common terminal mutation implementation remains singular"),
 		CountOccurrences(
 			CompletionSource,
-			TEXT("::ApplyCurrentAttackTerminalMutation(")), 1);
+			TEXT("::ApplyCurrentAttackAdvanceMutation(")), 1);
 
 	auto ScoreFor = [](const FMatchPlayState& State,
 		const EInitialTurnOrderPlayer Side)
@@ -10382,9 +10382,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All forty-six mutations share serialized gate"),
+	TestEqual(TEXT("All forty-nine mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		46);
+		49);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -12949,31 +12949,57 @@ bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
 		: CompleteState.RuntimeState.PlayerBState.UsedAttackCount;
 	const auto Terminal = Session.ApplyCrossTerminalResolution();
 	const FMatchPlayState AfterTerminal = Session.GetStateSnapshot();
-	TestTrue(TEXT("Completed Low contest directly applies terminal"),
+	TestTrue(TEXT("Completed Low contest persists terminal"),
 		Terminal.OrchestrationResult.bSuccess
 			&& Terminal.OrchestrationResult.FormulaRegenerationCount == 1
 			&& Terminal.OrchestrationResult.RegenerationProviderCallCount == 0
 			&& Terminal.OrchestrationResult.CompletionExecutionCount == 1);
 	TestEqual(TEXT("Terminal consumes no extra arithmetic RNG"),
 		Post.GetCallCount(), 2);
-	TestFalse(TEXT("Terminal clears CurrentAttack"),
+	TestTrue(TEXT("Terminal preserves CurrentAttack"),
 		AfterTerminal.bHasCurrentAttack);
-	const int32 UsedAfter = Attacker == EInitialTurnOrderPlayer::PlayerA
+	TestEqual(TEXT("Terminal lifecycle awaits explicit advance"),
+		AfterTerminal.CurrentAttack.LifecycleState,
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	const int32 UsedAtTerminal = Attacker == EInitialTurnOrderPlayer::PlayerA
 		? AfterTerminal.RuntimeState.PlayerAState.UsedAttackCount
 		: AfterTerminal.RuntimeState.PlayerBState.UsedAttackCount;
-	TestEqual(TEXT("Terminal advances UsedAttackCount once"),
-		UsedAfter, UsedBefore + 1);
-	TestTrue(TEXT("Terminal hands off to the next attacker"),
-		AfterTerminal.RuntimeState.CurrentAttackingPlayer != Attacker
-			&& AfterTerminal.RuntimeState.CurrentAttackingPlayer
-				!= EInitialTurnOrderPlayer::None);
+	TestEqual(TEXT("Terminal leaves opportunity unconsumed"),
+		UsedAtTerminal, UsedBefore);
+	TestEqual(TEXT("Terminal preserves current attacker"),
+		AfterTerminal.RuntimeState.CurrentAttackingPlayer, Attacker);
 
 	const auto Stale = Session.ResolveCrossLowDefenseRoll(DefenseRequest);
-	TestFalse(TEXT("Stale Low roll after terminal is rejected"),
-		Stale.OrchestrationResult.bSuccess);
+	TestEqual(TEXT("Stale Low roll after terminal requires advance"),
+		Stale.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
 	TestEqual(TEXT("Stale Low roll consumes no RNG"), Post.GetCallCount(), 2);
-	TestTrue(TEXT("Stale Low roll preserves handoff State"),
+	TestTrue(TEXT("Stale Low roll preserves terminal State"),
 		AreStatesEqual(AfterTerminal, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+	AdvanceRequest.AttackSequence =
+		AfterTerminal.CurrentAttack.AttackSequence;
+	AdvanceRequest.RequestingSide = Attacker;
+	const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
+	const FMatchPlayState AfterAdvance = Session.GetStateSnapshot();
+	TestTrue(TEXT("Explicit Cross advance succeeds"),
+		Advance.RuntimeEnvelope.bDomainSuccess
+			&& Advance.CompletionResult.bSuccess);
+	TestEqual(TEXT("Explicit Cross advance consumes no RNG"),
+		Post.GetCallCount(), 2);
+	TestFalse(TEXT("Explicit Cross advance clears CurrentAttack"),
+		AfterAdvance.bHasCurrentAttack);
+	const int32 UsedAfterAdvance =
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? AfterAdvance.RuntimeState.PlayerAState.UsedAttackCount
+			: AfterAdvance.RuntimeState.PlayerBState.UsedAttackCount;
+	TestEqual(TEXT("Explicit Cross advance consumes opportunity once"),
+		UsedAfterAdvance, UsedBefore + 1);
+	TestTrue(TEXT("Explicit Cross advance hands off attacker"),
+		AfterAdvance.RuntimeState.CurrentAttackingPlayer != Attacker
+			&& AfterAdvance.RuntimeState.CurrentAttackingPlayer
+				!= EInitialTurnOrderPlayer::None);
 	return true;
 }
 
@@ -13021,11 +13047,11 @@ FMatchPlayAuthoritativeSessionResolveThroughBallFeetPostRoutePlanTest
 		Header.Contains(TEXT("ResolveThroughBallFeetPostRoutePlan();")));
 	TestFalse(TEXT("Session does not call provider directly"),
 		Implementation.Contains(TEXT("RollD6(")));
-	TestEqual(TEXT("One canonical Feet orchestration call"),
+	TestEqual(TEXT("Compatibility plus two typed Feet orchestration calls"),
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanOrchestrator")),
-		1);
+		3);
 
 	auto MakeThroughBallSkillId = [](const FString& Prefix)
 	{
@@ -13416,6 +13442,580 @@ FMatchPlayAuthoritativeSessionResolveThroughBallFeetPostRoutePlanTest
 		AreStatesEqual(
 			DeterministicA.GetStateSnapshot(),
 			DeterministicB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionResolveThroughBallFeetManualRollTest,
+	"44A.ResolveThroughBallFeetManualRollAuthority")
+
+bool FMatchPlayAuthoritativeSessionResolveThroughBallFeetManualRollTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EError =
+		EMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanErrorCode;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	(void)Parameters;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveThroughBallFeetAttackRoll),
+		FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveThroughBallFeetDefenseRoll),
+		FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest&)>);
+
+	auto MakeThroughBallSkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::ThroughBall)));
+	};
+	auto ReachFeetRoute = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const bool bDeployGoalkeeper = false)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session,
+				Prefix,
+				ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None,
+				Trace,
+				bDeployGoalkeeper)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess;
+	};
+	auto FindFeetContest = [](
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts)
+	{
+		return Facts.FormulaContests.FindByPredicate(
+			[](const FMatchPlayResolutionFormulaContestFact& Contest)
+			{
+				return Contest.ContestId == TEXT("ThroughBall.Feet");
+			});
+	};
+	auto UsedFor = [](const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? State.RuntimeState.PlayerAState.UsedAttackCount
+			: State.RuntimeState.PlayerBState.UsedAttackCount;
+	};
+
+	const FString Prefix(TEXT("FeetManualAuthority"));
+	const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+		MakeThroughBallSkillId(Prefix), ESkillRuleType::ThroughBall);
+	InitialRouteFixtures::FQueueRollProvider Initial;
+	Initial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FQueuePostRouteRollProvider Post;
+	Post.Enqueue(MakePostRouteSuccess(4));
+	Post.Enqueue(MakePostRouteSuccess(3));
+	FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+	TestTrue(TEXT("Manual Feet fixture reaches Feet route"),
+		ReachFeetRoute(Session, Prefix));
+	const FMatchPlayState PreviewState = Session.GetStateSnapshot();
+	const FMatchPlayCurrentAttackResolutionSession& PreviewSession =
+		PreviewState.CurrentAttack.ResolutionSession;
+	const EInitialTurnOrderPlayer Attacker =
+		PreviewSession.Bundle.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender =
+		PreviewSession.Bundle.CurrentDefendingPlayer;
+	const auto PreviewFacts =
+		FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+			PreviewState, &Rules);
+	const auto* PreviewContest = FindFeetContest(PreviewFacts);
+	TestTrue(TEXT("Feet preview exposes authoritative known subtotals before rolls"),
+		PreviewContest != nullptr
+			&& PreviewContest->AttackRow.bKnownNonRollSubtotalResolved
+			&& PreviewContest->DefenseRow.bKnownNonRollSubtotalResolved
+			&& !PreviewContest->AttackRow.bFinalValueResolved
+			&& !PreviewContest->DefenseRow.bFinalValueResolved
+			&& !PreviewContest->bHasResolvedFormula);
+	TestTrue(TEXT("Feet preview identifies the unresolved attack roll first"),
+		PreviewFacts.bHasPendingRoll
+			&& PreviewFacts.Rolls.IsValidIndex(
+				PreviewFacts.NextPendingRollSequenceIndex)
+			&& PreviewFacts.Rolls[
+				PreviewFacts.NextPendingRollSequenceIndex].PostRoutePurpose
+					== EPurpose::PrimaryAttack);
+
+	FMatchPlayState DefenseOnlyState = PreviewState;
+	DefenseOnlyState.CurrentAttack.ResolutionSession.PostRouteRollProgress.Phase =
+		EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch;
+	FMatchPlayCurrentAttackPostRouteRollRecord DefenseOnlyRecord;
+	DefenseOnlyRecord.Purpose = EPurpose::PrimaryDefense;
+	DefenseOnlyRecord.RawD6 = 3;
+	DefenseOnlyState.CurrentAttack.ResolutionSession.PostRouteRollProgress
+		.RollRecords.Add(DefenseOnlyRecord);
+	TestFalse(TEXT("Feet validator rejects a defense-only persisted prefix"),
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			DefenseOnlyState).bIsCanonical);
+
+	FMatchPlayState DuplicateAttackState = PreviewState;
+	DuplicateAttackState.CurrentAttack.ResolutionSession.PostRouteRollProgress
+		.Phase = EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch;
+	FMatchPlayCurrentAttackPostRouteRollRecord DuplicateAttackRecord;
+	DuplicateAttackRecord.Purpose = EPurpose::PrimaryAttack;
+	DuplicateAttackRecord.RawD6 = 4;
+	DuplicateAttackState.CurrentAttack.ResolutionSession.PostRouteRollProgress
+		.RollRecords.Add(DuplicateAttackRecord);
+	DuplicateAttackState.CurrentAttack.ResolutionSession.PostRouteRollProgress
+		.RollRecords.Add(DuplicateAttackRecord);
+	TestFalse(TEXT("Feet validator rejects duplicate attack roll records"),
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			DuplicateAttackState).bIsCanonical);
+
+	const auto TerminalBeforeAttack =
+		Session.ApplyThroughBallTerminalResolution();
+	TestFalse(TEXT("Feet terminal is rejected before attack roll"),
+		TerminalBeforeAttack.OrchestrationResult.bSuccess);
+	TestEqual(TEXT("Early terminal consumes zero Feet RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Early terminal preserves preview State"),
+		AreStatesEqual(PreviewState, Session.GetStateSnapshot()));
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest EarlyAdvanceRequest;
+	EarlyAdvanceRequest.AttackSequence = PreviewState.CurrentAttack.AttackSequence;
+	EarlyAdvanceRequest.RequestingSide = Attacker;
+	const auto AdvanceBeforeAttack =
+		Session.AdvanceAfterTerminal(EarlyAdvanceRequest);
+	TestEqual(TEXT("Advance before Feet attack roll rejects wrong lifecycle"),
+		AdvanceBeforeAttack.CompletionResult.ErrorCode,
+		EMatchPlayCurrentAttackCompletionErrorCode
+			::CurrentAttackNotTerminalPendingAdvance);
+	TestEqual(TEXT("Advance before Feet attack roll consumes zero RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Advance before Feet attack roll preserves State"),
+		AreStatesEqual(PreviewState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+		EarlyDefenseRequest;
+	EarlyDefenseRequest.RequestingSide = Defender;
+	const auto EarlyDefense =
+		Session.ResolveThroughBallFeetDefenseRoll(EarlyDefenseRequest);
+	TestEqual(TEXT("Feet defense cannot roll before attack"),
+		EarlyDefense.OrchestrationResult.ErrorCode,
+		EError::WrongFeetRollStep);
+	TestEqual(TEXT("Early Feet defense consumes zero RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Early Feet defense preserves State"),
+		AreStatesEqual(PreviewState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest
+		WrongAttackRequest;
+	WrongAttackRequest.RequestingSide = Defender;
+	const auto WrongAttack =
+		Session.ResolveThroughBallFeetAttackRoll(WrongAttackRequest);
+	TestEqual(TEXT("Defender cannot request Feet attack roll"),
+		WrongAttack.OrchestrationResult.ErrorCode,
+		EError::WrongRequestingSide);
+	TestEqual(TEXT("Wrong Feet attack side consumes zero RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Wrong Feet attack side preserves State"),
+		AreStatesEqual(PreviewState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest AttackRequest;
+	AttackRequest.RequestingSide = Attacker;
+	const auto Attack = Session.ResolveThroughBallFeetAttackRoll(AttackRequest);
+	const FMatchPlayState AttackState = Session.GetStateSnapshot();
+	const auto& AttackRecords = AttackState.CurrentAttack.ResolutionSession
+		.PostRouteRollProgress.RollRecords;
+	TestTrue(TEXT("Owning attacker resolves exactly one Feet attack roll"),
+		Attack.OrchestrationResult.bSuccess
+			&& Attack.OrchestrationResult.ProviderCallCount == 1);
+	TestEqual(TEXT("Feet attack command kind is typed"),
+		Attack.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll);
+	TestEqual(TEXT("Feet attack command consumes one RNG"),
+		Post.GetCallCount(), 1);
+	TestTrue(TEXT("Feet attack RawD6 is persisted as the only prefix record"),
+		AttackRecords.Num() == 1
+			&& AttackRecords[0].Purpose == EPurpose::PrimaryAttack
+			&& AttackRecords[0].RawD6 == 4);
+	const auto AttackProgress =
+		FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+			AttackState.CurrentAttack.ResolutionSession);
+	TestTrue(TEXT("Attack-only prefix requires Defense next"),
+		AttackProgress.bIsCanonical
+			&& !AttackProgress.bContractComplete
+			&& AttackProgress.NextPurpose == EPurpose::PrimaryDefense);
+	const auto AttackFacts =
+		FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+			AttackState, &Rules);
+	const auto* AttackContest = FindFeetContest(AttackFacts);
+	TestTrue(TEXT("Attack-only Feet facts survive refresh incrementally"),
+		AttackContest != nullptr
+			&& AttackContest->AttackRow.bKnownNonRollSubtotalResolved
+			&& AttackContest->DefenseRow.bKnownNonRollSubtotalResolved
+			&& AttackContest->AttackRow.bFinalValueResolved
+			&& !AttackContest->DefenseRow.bFinalValueResolved
+			&& !AttackContest->bHasResolvedFormula);
+
+	const auto TerminalAfterAttack =
+		Session.ApplyThroughBallTerminalResolution();
+	TestFalse(TEXT("Feet terminal is rejected after attack-only prefix"),
+		TerminalAfterAttack.OrchestrationResult.bSuccess);
+	TestEqual(TEXT("Attack-only terminal consumes zero additional RNG"),
+		Post.GetCallCount(), 1);
+	TestTrue(TEXT("Attack-only terminal preserves State"),
+		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
+	const auto AdvanceAfterAttackOnly =
+		Session.AdvanceAfterTerminal(EarlyAdvanceRequest);
+	TestEqual(TEXT("Advance after Feet attack-only prefix rejects"),
+		AdvanceAfterAttackOnly.CompletionResult.ErrorCode,
+		EMatchPlayCurrentAttackCompletionErrorCode
+			::CurrentAttackNotTerminalPendingAdvance);
+	TestEqual(TEXT("Advance after Feet attack-only prefix consumes zero RNG"),
+		Post.GetCallCount(), 1);
+	TestTrue(TEXT("Advance after Feet attack-only prefix preserves State"),
+		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
+
+	const auto DuplicateAttack =
+		Session.ResolveThroughBallFeetAttackRoll(AttackRequest);
+	TestEqual(TEXT("Duplicate Feet attack is rejected"),
+		DuplicateAttack.OrchestrationResult.ErrorCode,
+		EError::WrongFeetRollStep);
+	TestEqual(TEXT("Duplicate Feet attack consumes zero RNG"),
+		Post.GetCallCount(), 1);
+	TestTrue(TEXT("Duplicate Feet attack preserves State"),
+		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+		WrongDefenseRequest;
+	WrongDefenseRequest.RequestingSide = Attacker;
+	const auto WrongDefense =
+		Session.ResolveThroughBallFeetDefenseRoll(WrongDefenseRequest);
+	TestEqual(TEXT("Attacker cannot request Feet defense roll"),
+		WrongDefense.OrchestrationResult.ErrorCode,
+		EError::WrongRequestingSide);
+	TestEqual(TEXT("Wrong Feet defense side consumes zero RNG"),
+		Post.GetCallCount(), 1);
+	TestTrue(TEXT("Wrong Feet defense side preserves State"),
+		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+		DefenseRequest;
+	DefenseRequest.RequestingSide = Defender;
+	const auto Defense =
+		Session.ResolveThroughBallFeetDefenseRoll(DefenseRequest);
+	const FMatchPlayState CompleteState = Session.GetStateSnapshot();
+	const auto& CompleteRecords = CompleteState.CurrentAttack.ResolutionSession
+		.PostRouteRollProgress.RollRecords;
+	TestTrue(TEXT("Owning defender resolves exactly one Feet defense roll"),
+		Defense.OrchestrationResult.bSuccess
+			&& Defense.OrchestrationResult.ProviderCallCount == 1
+			&& Defense.OrchestrationResult.PlanResult.bSuccess);
+	TestEqual(TEXT("Feet defense command kind is typed"),
+		Defense.RuntimeEnvelope.CommandKind,
+		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll);
+	TestEqual(TEXT("Feet attack plus defense consume exactly two RNG"),
+		Post.GetCallCount(), 2);
+	TestTrue(TEXT("Feet defense RawD6 completes the persisted ordered contract"),
+		CompleteRecords.Num() == 2
+			&& CompleteRecords[0].Purpose == EPurpose::PrimaryAttack
+			&& CompleteRecords[0].RawD6 == 4
+			&& CompleteRecords[1].Purpose == EPurpose::PrimaryDefense
+			&& CompleteRecords[1].RawD6 == 3);
+	const FThroughBallFeetPlanQueryResult DirectPlan =
+		FThroughBallFeetPlanQuery::Evaluate(
+			Defense.OrchestrationResult.QueryInput);
+	TestTrue(TEXT("Manual Feet plan equals the unchanged canonical plan query"),
+		DirectPlan.bSuccess
+			&& AreThroughBallFeetPlanResultsEquivalent(
+				DirectPlan, Defense.OrchestrationResult.PlanResult));
+	const auto CompleteFacts =
+		FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+			CompleteState, &Rules);
+	const auto* CompleteContest = FindFeetContest(CompleteFacts);
+	TestTrue(TEXT("Both Feet rolls project authoritative final values"),
+		CompleteContest != nullptr
+			&& CompleteContest->AttackRow.bFinalValueResolved
+			&& CompleteContest->DefenseRow.bFinalValueResolved
+			&& CompleteContest->bHasResolvedFormula);
+
+	const int32 CallsBeforeFormula = Post.GetCallCount();
+	const auto Formula = Session.ResolveThroughBallFeetFormula();
+	TestTrue(TEXT("Existing Feet Formula resolver accepts manual persisted rolls"),
+		Formula.OrchestrationResult.bSuccess
+			&& Formula.OrchestrationResult.bHasFormulaResolution
+			&& Formula.OrchestrationResult.PlanRegenerationProviderCallCount == 0);
+	TestEqual(TEXT("Formula resolution consumes zero RNG"),
+		Post.GetCallCount() - CallsBeforeFormula, 0);
+	TestTrue(TEXT("Formula projection equals canonical Feet resolver output"),
+		CompleteContest != nullptr
+			&& FFormulaResolutionResult::StaticStruct()->CompareScriptStruct(
+				&CompleteContest->ResolvedResult,
+				&Formula.OrchestrationResult.FormulaResolutionResult,
+				0));
+	TestTrue(TEXT("Formula query preserves State"),
+		AreStatesEqual(CompleteState, Session.GetStateSnapshot()));
+	const auto AdvanceBeforeTerminal =
+		Session.AdvanceAfterTerminal(EarlyAdvanceRequest);
+	TestEqual(TEXT("Advance before terminal apply rejects"),
+		AdvanceBeforeTerminal.CompletionResult.ErrorCode,
+		EMatchPlayCurrentAttackCompletionErrorCode
+			::CurrentAttackNotTerminalPendingAdvance);
+	TestEqual(TEXT("Advance before terminal apply consumes zero RNG"),
+		Post.GetCallCount(), 2);
+	TestTrue(TEXT("Advance before terminal apply preserves State"),
+		AreStatesEqual(CompleteState, Session.GetStateSnapshot()));
+
+	const auto DuplicateDefense =
+		Session.ResolveThroughBallFeetDefenseRoll(DefenseRequest);
+	TestEqual(TEXT("Duplicate Feet defense is rejected"),
+		DuplicateDefense.OrchestrationResult.ErrorCode,
+		EError::WrongFeetRollStep);
+	TestEqual(TEXT("Duplicate Feet defense consumes zero RNG"),
+		Post.GetCallCount(), 2);
+	TestTrue(TEXT("Duplicate Feet defense preserves State"),
+		AreStatesEqual(CompleteState, Session.GetStateSnapshot()));
+
+	const auto Terminal = Session.ApplyThroughBallTerminalResolution();
+	const FMatchPlayState TerminalState = Session.GetStateSnapshot();
+	TestTrue(TEXT("Completed manual Feet formula can apply terminal"),
+		Terminal.OrchestrationResult.bSuccess
+			&& Terminal.OrchestrationResult.FeetFormulaRegenerationCount == 1
+			&& Terminal.OrchestrationResult.RegenerationProviderCallCount == 0);
+	TestEqual(TEXT("Feet terminal consumes zero RNG"),
+		Post.GetCallCount(), 2);
+	TestTrue(TEXT("Feet terminal persists CurrentAttack"),
+		TerminalState.bHasCurrentAttack);
+	TestEqual(TEXT("Feet terminal lifecycle awaits advance"),
+		TerminalState.CurrentAttack.LifecycleState,
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	const auto TerminalFacts =
+		FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+			TerminalState, &Rules);
+	TestTrue(TEXT("Feet terminal preserves projected Formula facts"),
+		AreReflectedValuesEqual(CompleteFacts, TerminalFacts));
+	TestEqual(TEXT("Feet terminal preserves deployment count"),
+		TerminalState.CurrentAttack.DeploymentPlacements.Num(),
+		CompleteState.CurrentAttack.DeploymentPlacements.Num());
+	TestTrue(TEXT("Feet terminal preserves selected roles"),
+		AreReflectedValuesEqual(
+			TerminalState.CurrentAttack.SelectedAction,
+			CompleteState.CurrentAttack.SelectedAction));
+	TestEqual(TEXT("Feet terminal preserves UsedAttackCount"),
+		UsedFor(TerminalState, Attacker), UsedFor(CompleteState, Attacker));
+	TestEqual(TEXT("Feet terminal preserves current attacker"),
+		TerminalState.RuntimeState.CurrentAttackingPlayer, Attacker);
+	FMatchPlayState FinalAttackTerminal = TerminalState;
+	FPlayerRuntimeState& FinalAttackerState =
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? FinalAttackTerminal.RuntimeState.PlayerAState
+			: FinalAttackTerminal.RuntimeState.PlayerBState;
+	FPlayerRuntimeState& FinalDefenderState =
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? FinalAttackTerminal.RuntimeState.PlayerBState
+			: FinalAttackTerminal.RuntimeState.PlayerAState;
+	FinalAttackerState.UsedAttackCount =
+		FinalAttackerState.TotalAttackCount - 1;
+	FinalDefenderState.UsedAttackCount =
+		FinalDefenderState.TotalAttackCount;
+	const auto FinalAdvance =
+		FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
+			FinalAttackTerminal,
+			FinalAttackTerminal.CurrentAttack.AttackSequence,
+			Attacker);
+	TestTrue(TEXT("Final-attack terminal advances to match complete"),
+		FinalAdvance.bSuccess && FinalAdvance.bMatchEnded
+			&& FinalAdvance.MatchEndResolveResult.bIsMatchEnded);
+	TestFalse(TEXT("Final-attack advance clears CurrentAttack"),
+		FinalAdvance.AfterState.bHasCurrentAttack);
+	TestEqual(TEXT("Final-attack advance exposes no seventh attacker"),
+		FinalAdvance.NextAttackingPlayer,
+		EInitialTurnOrderPlayer::None);
+	const auto RepeatedTerminal = Session.ApplyThroughBallTerminalResolution();
+	TestFalse(TEXT("Repeated Feet terminal is rejected"),
+		RepeatedTerminal.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Repeated Feet terminal requires explicit advance"),
+		RepeatedTerminal.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
+	TestEqual(TEXT("Repeated Feet terminal consumes zero RNG"),
+		Post.GetCallCount(), 2);
+	TestTrue(TEXT("Repeated Feet terminal preserves terminal State"),
+		AreStatesEqual(TerminalState, Session.GetStateSnapshot()));
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest WrongOwnerAdvance;
+	WrongOwnerAdvance.AttackSequence = TerminalState.CurrentAttack.AttackSequence;
+	WrongOwnerAdvance.RequestingSide = Defender;
+	const auto WrongOwner = Session.AdvanceAfterTerminal(WrongOwnerAdvance);
+	TestEqual(TEXT("Defender cannot advance attacker terminal"),
+		WrongOwner.CompletionResult.ErrorCode,
+		EMatchPlayCurrentAttackCompletionErrorCode::UnauthorizedAdvanceRequester);
+	TestEqual(TEXT("Wrong-owner advance consumes zero RNG"),
+		Post.GetCallCount(), 2);
+	TestTrue(TEXT("Wrong-owner advance preserves terminal State"),
+		AreStatesEqual(TerminalState, Session.GetStateSnapshot()));
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+	AdvanceRequest.AttackSequence = TerminalState.CurrentAttack.AttackSequence;
+	AdvanceRequest.RequestingSide =
+		TerminalState.RuntimeState.CurrentAttackingPlayer;
+	const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
+	const FMatchPlayState AdvancedState = Session.GetStateSnapshot();
+	TestTrue(TEXT("Feet explicit advance succeeds"),
+		Advance.RuntimeEnvelope.bDomainSuccess
+			&& Advance.CompletionResult.bSuccess);
+	TestFalse(TEXT("Feet explicit advance clears CurrentAttack"),
+		AdvancedState.bHasCurrentAttack);
+	TestEqual(TEXT("Feet explicit advance increments UsedAttackCount once"),
+		UsedFor(AdvancedState, Attacker) - UsedFor(CompleteState, Attacker), 1);
+	TestEqual(TEXT("Feet explicit advance uses canonical handoff"),
+		AdvancedState.RuntimeState.CurrentAttackingPlayer,
+		Advance.CompletionResult.NextAttackingPlayer);
+	TestEqual(TEXT("Feet explicit advance consumes zero RNG"),
+		Post.GetCallCount(), 2);
+	const auto RepeatedAdvance = Session.AdvanceAfterTerminal(AdvanceRequest);
+	TestFalse(TEXT("Repeated Feet advance rejects"),
+		RepeatedAdvance.RuntimeEnvelope.bDomainSuccess);
+	TestEqual(TEXT("Repeated Feet advance cannot double consume"),
+		UsedFor(Session.GetStateSnapshot(), Attacker)
+			- UsedFor(CompleteState, Attacker), 1);
+	TestEqual(TEXT("Repeated Feet advance consumes zero RNG"),
+		Post.GetCallCount(), 2);
+	TestTrue(TEXT("Repeated Feet advance preserves advanced State"),
+		AreStatesEqual(AdvancedState, Session.GetStateSnapshot()));
+
+	struct FParityPair
+	{
+		int32 AttackD6;
+		int32 DefenseD6;
+	};
+	const FParityPair ParityPairs[] = { {1, 6}, {3, 3}, {6, 1} };
+	for (int32 PairIndex = 0; PairIndex < UE_ARRAY_COUNT(ParityPairs);
+		++PairIndex)
+	{
+		const FParityPair Pair = ParityPairs[PairIndex];
+		const FString PairPrefix = FString::Printf(
+			TEXT("FeetManualParity%d"), PairIndex);
+		const FSkillRuleSnapshotSet PairRules = MakeSkillRuleSet(
+			MakeThroughBallSkillId(PairPrefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider PairInitial;
+		PairInitial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+		FQueuePostRouteRollProvider PairPost;
+		PairPost.Enqueue(MakePostRouteSuccess(Pair.AttackD6));
+		PairPost.Enqueue(MakePostRouteSuccess(Pair.DefenseD6));
+		FMatchPlayAuthoritativeSession PairSession(
+			PairInitial, PairPost, PairRules);
+		TestTrue(*FString::Printf(TEXT("Parity pair %d reaches Feet"), PairIndex),
+			ReachFeetRoute(PairSession, PairPrefix));
+		const FMatchPlayState PairRouteState = PairSession.GetStateSnapshot();
+		const auto& PairResolution =
+			PairRouteState.CurrentAttack.ResolutionSession;
+		FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest
+			PairAttackRequest;
+		PairAttackRequest.RequestingSide =
+			PairResolution.Bundle.CurrentAttackingPlayer;
+		FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+			PairDefenseRequest;
+		PairDefenseRequest.RequestingSide =
+			PairResolution.Bundle.CurrentDefendingPlayer;
+		const auto PairAttack =
+			PairSession.ResolveThroughBallFeetAttackRoll(PairAttackRequest);
+		const auto PairDefense =
+			PairSession.ResolveThroughBallFeetDefenseRoll(PairDefenseRequest);
+		const auto PairFormula = PairSession.ResolveThroughBallFeetFormula();
+		const FThroughBallFeetPlanQueryResult PairReferencePlan =
+			FThroughBallFeetPlanQuery::Evaluate(
+				PairDefense.OrchestrationResult.QueryInput);
+		TestTrue(*FString::Printf(
+			TEXT("Parity pair %d keeps one-D6 command deltas"), PairIndex),
+			PairAttack.OrchestrationResult.ProviderCallCount == 1
+				&& PairDefense.OrchestrationResult.ProviderCallCount == 1
+				&& PairPost.GetCallCount() == 2);
+		TestTrue(*FString::Printf(
+			TEXT("Parity pair %d matches canonical plan and formula"), PairIndex),
+			PairReferencePlan.bSuccess
+				&& AreThroughBallFeetPlanResultsEquivalent(
+					PairReferencePlan,
+					PairDefense.OrchestrationResult.PlanResult)
+				&& PairFormula.OrchestrationResult.bSuccess
+				&& PairFormula.OrchestrationResult.FormulaExecutionCount == 1
+				&& PairFormula.OrchestrationResult
+					.PlanRegenerationProviderCallCount == 0);
+	}
+
+	const FString TiePrefix(TEXT("FeetManualGoalkeeperTie"));
+	const FSkillRuleSnapshotSet TieRules = MakeSkillRuleSet(
+		MakeThroughBallSkillId(TiePrefix), ESkillRuleType::ThroughBall);
+	InitialRouteFixtures::FQueueRollProvider TieInitial;
+	TieInitial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FQueuePostRouteRollProvider TiePost;
+	FMatchPlayAuthoritativeSession TieSession(
+		TieInitial, TiePost, TieRules);
+	TestTrue(TEXT("Manual Feet tie fixture reaches Feet with active goalkeeper"),
+		ReachFeetRoute(TieSession, TiePrefix, true));
+	const FMatchPlayState TieRouteState = TieSession.GetStateSnapshot();
+	const auto TiePreviewFacts =
+		FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+			TieRouteState, &TieRules);
+	const auto* TiePreviewContest = FindFeetContest(TiePreviewFacts);
+	int32 TieAttackD6 = 0;
+	int32 TieDefenseD6 = 0;
+	if (TiePreviewContest != nullptr)
+	{
+		for (int32 AttackD6 = 1;
+			AttackD6 <= 6 && TieAttackD6 == 0;
+			++AttackD6)
+		{
+			for (int32 DefenseD6 = 1; DefenseD6 <= 6; ++DefenseD6)
+			{
+				if (FMath::IsNearlyEqual(
+					TiePreviewContest->AttackRow.KnownNonRollSubtotal
+						+ AttackD6,
+					TiePreviewContest->DefenseRow.KnownNonRollSubtotal
+						+ DefenseD6))
+				{
+					TieAttackD6 = AttackD6;
+					TieDefenseD6 = DefenseD6;
+					break;
+				}
+			}
+		}
+	}
+	TestTrue(TEXT("Manual Feet fixture has a legal numeric-tie D6 pair"),
+		TieAttackD6 >= 1 && TieDefenseD6 >= 1);
+	if (TieAttackD6 < 1 || TieDefenseD6 < 1)
+	{
+		return false;
+	}
+	TiePost.Enqueue(MakePostRouteSuccess(TieAttackD6));
+	TiePost.Enqueue(MakePostRouteSuccess(TieDefenseD6));
+	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest
+		TieAttackRequest;
+	TieAttackRequest.RequestingSide = TieRouteState.CurrentAttack
+		.ResolutionSession.Bundle.CurrentAttackingPlayer;
+	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+		TieDefenseRequest;
+	TieDefenseRequest.RequestingSide = TieRouteState.CurrentAttack
+		.ResolutionSession.Bundle.CurrentDefendingPlayer;
+	const auto TieAttack =
+		TieSession.ResolveThroughBallFeetAttackRoll(TieAttackRequest);
+	const auto TieDefense =
+		TieSession.ResolveThroughBallFeetDefenseRoll(TieDefenseRequest);
+	const auto TieFormula = TieSession.ResolveThroughBallFeetFormula();
+	const FFormulaResolutionResult& TieResolution =
+		TieFormula.OrchestrationResult.FormulaResolutionResult;
+	TestTrue(TEXT("Manual Feet goalkeeper tie uses two one-D6 commands"),
+		TieAttack.OrchestrationResult.bSuccess
+			&& TieDefense.OrchestrationResult.bSuccess
+			&& TiePost.GetCallCount() == 2);
+	TestTrue(TEXT("Manual Feet tie reuses the active goalkeeper resolver input"),
+		TieFormula.OrchestrationResult.bSuccess
+			&& TieFormula.OrchestrationResult.ResolverInputAssemblyResult
+				.ResolverInput.bGoalkeeperParticipated);
+	TestTrue(TEXT("Manual Feet numeric tie preserves canonical goalkeeper tie"),
+		FMath::IsNearlyEqual(
+			TieResolution.AttackerFinalValue,
+			TieResolution.DefenderFinalValue)
+			&& TieResolution.Winner == EFormulaWinner::Defender
+			&& TieResolution.WinReason
+				== EFormulaWinReason::DefenderWinsGoalkeeperTie);
 	return true;
 }
 
@@ -19168,13 +19768,18 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallOneOnOneDirectShotTest
 		TestEqual(*FString::Printf(TEXT("%s terminal score delta"), *Prefix),
 			ScoreForSide(AfterTerminal, Attacker) - ScoreBefore, bGoal ? 1 : 0);
 		TestEqual(*FString::Printf(TEXT("%s terminal opportunity delta"), *Prefix),
-			UsedAttacksForSide(AfterTerminal, Attacker) - UsedBefore, 1);
-		TestFalse(*FString::Printf(TEXT("%s terminal clears attack"), *Prefix),
+			UsedAttacksForSide(AfterTerminal, Attacker) - UsedBefore, 0);
+		TestTrue(*FString::Printf(TEXT("%s terminal persists attack"), *Prefix),
 			AfterTerminal.bHasCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s terminal lifecycle"), *Prefix),
+			AfterTerminal.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
 		const auto TerminalReplay = Session.ApplyThroughBallTerminalResolution();
-		TestEqual(*FString::Printf(TEXT("%s terminal replay is exactly once"), *Prefix),
-			TerminalReplay.OrchestrationResult.ErrorCode,
-			EMatchPlayCurrentAttackApplyThroughBallTerminalResolutionErrorCode::NoCurrentAttack);
+		TestFalse(*FString::Printf(TEXT("%s terminal replay is rejected"), *Prefix),
+			TerminalReplay.RuntimeEnvelope.bAccepted);
+		TestEqual(*FString::Printf(TEXT("%s terminal replay requires advance"), *Prefix),
+			TerminalReplay.RuntimeEnvelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
 		TestEqual(*FString::Printf(TEXT("%s terminal replay zero RNG"), *Prefix),
 			Post.GetCallCount() - CallsBeforePlan, 2);
 		TestEqual(*FString::Printf(TEXT("%s terminal replay score delta"), *Prefix),
@@ -19385,7 +19990,7 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 				"FAuthoritativeTerminalIssuerTag")));
 	TestEqual(TEXT("One common terminal mutation definition"),
 		CountOccurrences(CompletionImplementation,
-			TEXT("::ApplyCurrentAttackTerminalMutation(")),
+			TEXT("::ApplyCurrentAttackAdvanceMutation(")),
 		1);
 	TestEqual(TEXT("Existing Marker completion remains one"),
 		CountOccurrences(CompletionImplementation,
@@ -19600,11 +20205,16 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 			Domain.BeforeState.CurrentAttack.ResolutionSession
 				.PostRouteRollProgress.RollRecords.Num(),
 			PostRecordsBefore);
-		TestFalse(*FString::Printf(TEXT("%s CurrentAttack cleared"), Case.Label),
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack persists"), Case.Label),
 			After.bHasCurrentAttack);
-		TestTrue(*FString::Printf(TEXT("%s CurrentAttack reset"), Case.Label),
-			AreReflectedValuesEqual(
-				After.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(*FString::Printf(TEXT("%s terminal lifecycle"), Case.Label),
+			After.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestTrue(*FString::Printf(TEXT("%s attack identity persists"), Case.Label),
+			After.CurrentAttack.AttackSequence == Before.CurrentAttack.AttackSequence
+				&& After.CurrentAttack.DeploymentPlacements.Num()
+					== Before.CurrentAttack.DeploymentPlacements.Num()
+				&& After.CurrentAttack.bHasResolutionSession);
 		TestEqual(*FString::Printf(TEXT("%s attacker score delta"), Case.Label),
 			ScoreFor(After, Attacker) - AttackerScoreBefore,
 			Case.bGoal ? 1 : 0);
@@ -19612,27 +20222,21 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 			ScoreFor(After, Defender) - DefenderScoreBefore, 0);
 		TestEqual(*FString::Printf(TEXT("%s attacker opportunity delta"),
 			Case.Label),
-			UsedAttacksFor(After, Attacker) - AttackerUsedBefore, 1);
+			UsedAttacksFor(After, Attacker) - AttackerUsedBefore, 0);
 		TestEqual(*FString::Printf(TEXT("%s defender opportunity delta"),
 			Case.Label),
 			UsedAttacksFor(After, Defender) - DefenderUsedBefore, 0);
-		TestEqual(*FString::Printf(TEXT("%s next attacker"), Case.Label),
+		TestEqual(*FString::Printf(TEXT("%s attacker remains current"), Case.Label),
 			After.RuntimeState.CurrentAttackingPlayer,
-			Completion.NextAttackingPlayer);
+			Attacker);
 		TestTrue(*FString::Printf(TEXT("%s Completion State equivalence"),
 			Case.Label),
 			AreStatesEqual(After, Completion.AfterState)
 				&& AreStatesEqual(Before, Completion.BeforeState));
-		TestTrue(*FString::Printf(TEXT("%s ordinary cards consumed"),
+		TestTrue(*FString::Printf(TEXT("%s ordinary cards not consumed"),
 			Case.Label),
-			!Completion.OrdinaryCardUsageResults.IsEmpty());
-		for (const FPlayCardResolveResult& CardResult :
-			Completion.OrdinaryCardUsageResults)
-		{
-			TestTrue(*FString::Printf(TEXT("%s card consumption succeeds"),
-				Case.Label), CardResult.bSuccess);
-		}
-		TestFalse(*FString::Printf(TEXT("%s card usage advances"), Case.Label),
+			Completion.OrdinaryCardUsageResults.IsEmpty());
+		TestTrue(*FString::Printf(TEXT("%s card usage persists"), Case.Label),
 			AreReflectedValuesEqual(CardUsageBefore, After.CardUsageState));
 		TestTrue(*FString::Printf(TEXT("%s goalkeeper usage preserved"),
 			Case.Label),
@@ -19652,16 +20256,10 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 					- AttackerScoreBefore,
 				1);
 		}
-		TestEqual(*FString::Printf(TEXT("%s match-end delegation"), Case.Label),
-			Completion.MatchEndResolveResult.bSuccess, true);
-		TestEqual(*FString::Printf(TEXT("%s match-ended flag"), Case.Label),
-			Completion.bMatchEnded,
-			Completion.MatchEndResolveResult.bIsMatchEnded);
-		if (Completion.bMatchEnded)
-		{
-			TestTrue(*FString::Printf(TEXT("%s match-result delegation"),
-				Case.Label), Completion.MatchResultResolveResult.bSuccess);
-		}
+		TestFalse(*FString::Printf(TEXT("%s terminal does not resolve match end"),
+			Case.Label), Completion.MatchEndResolveResult.bSuccess);
+		TestFalse(*FString::Printf(TEXT("%s terminal match-ended flag"), Case.Label),
+			Completion.bMatchEnded);
 
 		if (Case.bReplayEvidence)
 		{
@@ -19669,9 +20267,11 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 			const int32 ScoreBeforeReplay = ScoreFor(After, Attacker);
 			const int32 UsedBeforeReplay = UsedAttacksFor(After, Attacker);
 			const auto Replay = Session.ApplyThroughBallTerminalResolution();
-			TestEqual(*FString::Printf(TEXT("%s replay no CurrentAttack"),
-				Case.Label),
-				Replay.OrchestrationResult.ErrorCode, EError::NoCurrentAttack);
+			TestFalse(*FString::Printf(TEXT("%s replay rejected at Session gate"),
+				Case.Label), Replay.RuntimeEnvelope.bAccepted);
+			TestEqual(*FString::Printf(TEXT("%s replay requires advance"),
+				Case.Label), Replay.RuntimeEnvelope.RuntimeFailureCode,
+				EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
 			TestEqual(*FString::Printf(TEXT("%s replay score delta"), Case.Label),
 				ScoreFor(Session.GetStateSnapshot(), Attacker) - ScoreBeforeReplay,
 				0);
@@ -19684,6 +20284,38 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 				Case.Label),
 				AreStatesEqual(CompletedState, Session.GetStateSnapshot()));
 		}
+
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence = Before.CurrentAttack.AttackSequence;
+		AdvanceRequest.RequestingSide = Attacker;
+		const int32 CallsBeforeAdvance =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
+		const FMatchPlayState Advanced = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s explicit advance succeeds"), Case.Label),
+			Advance.RuntimeEnvelope.bAccepted
+				&& Advance.RuntimeEnvelope.bDomainSuccess
+				&& Advance.CompletionResult.bSuccess);
+		TestFalse(*FString::Printf(TEXT("%s advance clears CurrentAttack"), Case.Label),
+			Advanced.bHasCurrentAttack);
+		TestTrue(*FString::Printf(TEXT("%s advance resets CurrentAttack"), Case.Label),
+			AreReflectedValuesEqual(
+				Advanced.CurrentAttack, FMatchPlayCurrentAttackState()));
+		TestEqual(*FString::Printf(TEXT("%s advance opportunity delta"), Case.Label),
+			UsedAttacksFor(Advanced, Attacker) - AttackerUsedBefore, 1);
+		TestEqual(*FString::Printf(TEXT("%s advance defender opportunity delta"), Case.Label),
+			UsedAttacksFor(Advanced, Defender) - DefenderUsedBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s advance next attacker"), Case.Label),
+			Advanced.RuntimeState.CurrentAttackingPlayer,
+			Advance.CompletionResult.NextAttackingPlayer);
+		TestFalse(*FString::Printf(TEXT("%s advance consumes card usage"), Case.Label),
+			AreReflectedValuesEqual(CardUsageBefore, Advanced.CardUsageState));
+		TestTrue(*FString::Printf(TEXT("%s advance card results"), Case.Label),
+			!Advance.CompletionResult.OrdinaryCardUsageResults.IsEmpty());
+		TestTrue(*FString::Printf(TEXT("%s advance resolves match end"), Case.Label),
+			Advance.CompletionResult.MatchEndResolveResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s advance RNG delta"), Case.Label),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeAdvance, 0);
 	}
 
 	{
@@ -20050,6 +20682,18 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 		const int32 PostCallsBeforeTerminal = Post.GetCallCount();
 
 		const auto Terminal = Session.ApplyThroughBallTerminalResolution();
+		const FMatchPlayState PersistedTerminal = Session.GetStateSnapshot();
+		TestTrue(TEXT("Flow A terminal persists CurrentAttack"),
+			PersistedTerminal.bHasCurrentAttack);
+		TestEqual(TEXT("Flow A terminal lifecycle pending advance"),
+			PersistedTerminal.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestEqual(TEXT("Flow A terminal opportunity remains pending"),
+			UsedAttacksFor(PersistedTerminal, Attacker) - UsedBefore, 0);
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence = AttackSequence;
+		AdvanceRequest.RequestingSide = Attacker;
+		const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
 		const FMatchPlayState Completed = Session.GetStateSnapshot();
 		TestTrue(TEXT("Flow A terminal Completion succeeds"),
 			Terminal.RuntimeEnvelope.bDomainSuccess
@@ -20071,7 +20715,7 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 				Completed.CurrentAttack, FMatchPlayCurrentAttackState()));
 		TestEqual(TEXT("Flow A canonical next attacker"),
 			Completed.RuntimeState.CurrentAttackingPlayer,
-			Terminal.OrchestrationResult.CompletionResult.NextAttackingPlayer);
+			Advance.CompletionResult.NextAttackingPlayer);
 		TestFalse(TEXT("Flow A is a non-final Completion"),
 			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
 		TestEqual(TEXT("Flow A terminal initial RNG delta"),
@@ -20157,6 +20801,16 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 			Initial.GetCallCount() + Post.GetCallCount();
 
 		const auto Terminal = Session.ApplyThroughBallTerminalResolution();
+		const FMatchPlayState PersistedTerminal = Session.GetStateSnapshot();
+		TestTrue(TEXT("Flow B terminal persists CurrentAttack"),
+			PersistedTerminal.bHasCurrentAttack);
+		TestEqual(TEXT("Flow B terminal opportunity remains pending"),
+			UsedAttacksFor(PersistedTerminal, Attacker) - UsedBefore, 0);
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence =
+			BeforeTerminal.CurrentAttack.AttackSequence;
+		AdvanceRequest.RequestingSide = Attacker;
+		const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
 		const FMatchPlayState Completed = Session.GetStateSnapshot();
 		TestTrue(TEXT("Flow B terminal Completion succeeds"),
 			Terminal.OrchestrationResult.bSuccess
@@ -20177,7 +20831,7 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 				Completed.CurrentAttack, FMatchPlayCurrentAttackState()));
 		TestEqual(TEXT("Flow B canonical next attacker"),
 			Completed.RuntimeState.CurrentAttackingPlayer,
-			Terminal.OrchestrationResult.CompletionResult.NextAttackingPlayer);
+			Advance.CompletionResult.NextAttackingPlayer);
 		TestFalse(TEXT("Flow B is a non-final Completion"),
 			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
 		TestEqual(TEXT("Flow B terminal RNG delta"),
@@ -20281,6 +20935,16 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 		const int32 CallsBeforeTerminal =
 			Initial.GetCallCount() + Post.GetCallCount();
 		const auto Terminal = Session.ApplyThroughBallTerminalResolution();
+		const FMatchPlayState PersistedTerminal = Session.GetStateSnapshot();
+		TestTrue(TEXT("Flow C terminal persists CurrentAttack"),
+			PersistedTerminal.bHasCurrentAttack);
+		TestEqual(TEXT("Flow C terminal opportunity remains pending"),
+			UsedAttacksFor(PersistedTerminal, Attacker) - UsedBefore, 0);
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence =
+			BeforeTerminal.CurrentAttack.AttackSequence;
+		AdvanceRequest.RequestingSide = Attacker;
+		const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
 		const FMatchPlayState Completed = Session.GetStateSnapshot();
 		TestTrue(TEXT("Flow C terminal Completion succeeds"),
 			Terminal.OrchestrationResult.bSuccess
@@ -20299,7 +20963,7 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 				Completed.CurrentAttack, FMatchPlayCurrentAttackState()));
 		TestEqual(TEXT("Flow C canonical next attacker"),
 			Completed.RuntimeState.CurrentAttackingPlayer,
-			Terminal.OrchestrationResult.CompletionResult.NextAttackingPlayer);
+			Advance.CompletionResult.NextAttackingPlayer);
 		TestFalse(TEXT("Flow C is a non-final Completion"),
 			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
 		TestEqual(TEXT("Flow C terminal RNG delta"),
@@ -20366,6 +21030,16 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 		const int32 ACallsBeforeTerminal =
 			InitialA.GetCallCount() + PostA.GetCallCount();
 		const auto Terminal = SessionA.ApplyThroughBallTerminalResolution();
+		const FMatchPlayState PersistedTerminal = SessionA.GetStateSnapshot();
+		TestTrue(TEXT("Flow D terminal persists CurrentAttack"),
+			PersistedTerminal.bHasCurrentAttack);
+		TestEqual(TEXT("Flow D terminal opportunity remains pending"),
+			UsedAttacksFor(PersistedTerminal, Attacker) - UsedBefore, 0);
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence =
+			BeforeTerminalA.CurrentAttack.AttackSequence;
+		AdvanceRequest.RequestingSide = Attacker;
+		const auto Advance = SessionA.AdvanceAfterTerminal(AdvanceRequest);
 		const FMatchPlayState Completed = SessionA.GetStateSnapshot();
 		TestTrue(TEXT("Flow D Offside Completion succeeds"),
 			Terminal.OrchestrationResult.bSuccess
@@ -20384,7 +21058,7 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 				Completed.CurrentAttack, FMatchPlayCurrentAttackState()));
 		TestEqual(TEXT("Flow D canonical next attacker"),
 			Completed.RuntimeState.CurrentAttackingPlayer,
-			Terminal.OrchestrationResult.CompletionResult.NextAttackingPlayer);
+			Advance.CompletionResult.NextAttackingPlayer);
 		TestFalse(TEXT("Flow D is a non-final Completion"),
 			Terminal.OrchestrationResult.CompletionResult.bMatchEnded);
 		TestEqual(TEXT("Flow D terminal RNG delta"),
@@ -20401,8 +21075,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 46 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
+	TestEqual(TEXT("E2E preserves 49 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 49);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -20476,14 +21150,14 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-six commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
+	TestEqual(TEXT("All forty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 49);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
 		CountOccurrences(
 			CompletionSource,
-			TEXT("::ApplyCurrentAttackTerminalMutation(")),
+			TEXT("::ApplyCurrentAttackAdvanceMutation(")),
 		1);
 	TestEqual(TEXT("GoalResolver has exactly five bounded call sites"),
 		CountOccurrences(CompletionSource, TEXT("FGoalResolver::RecordGoal")), 5);
@@ -20651,31 +21325,23 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 		TestEqual(*FString::Printf(TEXT("%s defender score delta"), Case.Label),
 			ScoreFor(After, Defender) - DefenderScoreBefore, 0);
 		TestEqual(*FString::Printf(TEXT("%s opportunity delta"), Case.Label),
-			UsedFor(After, Attacker) - UsedBefore, 1);
-		TestFalse(*FString::Printf(TEXT("%s CurrentAttack cleared"), Case.Label),
+			UsedFor(After, Attacker) - UsedBefore, 0);
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack persists"), Case.Label),
 			After.bHasCurrentAttack);
-		TestTrue(*FString::Printf(TEXT("%s CurrentAttack reset"), Case.Label),
-			AreReflectedValuesEqual(
-				After.CurrentAttack, FMatchPlayCurrentAttackState()));
-		TestEqual(*FString::Printf(TEXT("%s canonical next attacker"), Case.Label),
+		TestEqual(*FString::Printf(TEXT("%s terminal lifecycle"), Case.Label),
+			After.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestEqual(*FString::Printf(TEXT("%s current attacker persists"), Case.Label),
 			After.RuntimeState.CurrentAttackingPlayer,
-			Completion.NextAttackingPlayer);
-		TestFalse(*FString::Printf(TEXT("%s no automatic next attack"), Case.Label),
-			After.bHasCurrentAttack);
+			Attacker);
 		TestTrue(*FString::Printf(TEXT("%s goalkeeper usage preserved"), Case.Label),
 			AreReflectedValuesEqual(
 				GoalkeeperUsageBefore, After.GoalkeeperUsageState));
-		TestTrue(*FString::Printf(TEXT("%s ordinary cards consumed"), Case.Label),
-			!Completion.OrdinaryCardUsageResults.IsEmpty());
-		for (const FPlayCardResolveResult& CardResult :
-			Completion.OrdinaryCardUsageResults)
-		{
-			TestTrue(*FString::Printf(TEXT("%s card consumption succeeds"),
-				Case.Label), CardResult.bSuccess);
-		}
+		TestTrue(*FString::Printf(TEXT("%s ordinary cards remain pending"), Case.Label),
+			Completion.OrdinaryCardUsageResults.IsEmpty());
 		TestEqual(*FString::Printf(TEXT("%s GoalResolver success"), Case.Label),
 			Completion.GoalResolveResult.bSuccess, Case.bGoal);
-		TestTrue(*FString::Printf(TEXT("%s shared match-end delegation"), Case.Label),
+		TestFalse(*FString::Printf(TEXT("%s terminal defers match-end"), Case.Label),
 			Completion.MatchEndResolveResult.bSuccess);
 
 		const FMatchPlayState Completed = After;
@@ -20684,8 +21350,11 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 		const int32 CallsBeforeReplay =
 			Initial.GetCallCount() + Post.GetCallCount();
 		const auto Replay = Session.ApplyCrossTerminalResolution();
-		TestEqual(*FString::Printf(TEXT("%s replay NoCurrentAttack"), Case.Label),
-			Replay.OrchestrationResult.ErrorCode, EError::NoCurrentAttack);
+		TestFalse(*FString::Printf(TEXT("%s replay rejected at Session gate"),
+			Case.Label), Replay.RuntimeEnvelope.bAccepted);
+		TestEqual(*FString::Printf(TEXT("%s replay requires advance"), Case.Label),
+			Replay.RuntimeEnvelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
 		TestEqual(*FString::Printf(TEXT("%s replay score delta"), Case.Label),
 			ScoreFor(Session.GetStateSnapshot(), Attacker) - ScoreBeforeReplay, 0);
 		TestEqual(*FString::Printf(TEXT("%s replay opportunity delta"), Case.Label),
@@ -20694,6 +21363,30 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeReplay, 0);
 		TestTrue(*FString::Printf(TEXT("%s replay State unchanged"), Case.Label),
 			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence = Before.CurrentAttack.AttackSequence;
+		AdvanceRequest.RequestingSide = Attacker;
+		const int32 CallsBeforeAdvance =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
+		const FMatchPlayState Advanced = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s explicit advance succeeds"), Case.Label),
+			Advance.RuntimeEnvelope.bDomainSuccess
+				&& Advance.CompletionResult.bSuccess);
+		TestFalse(*FString::Printf(TEXT("%s advance clears CurrentAttack"), Case.Label),
+			Advanced.bHasCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s advance consumes opportunity"), Case.Label),
+			UsedFor(Advanced, Attacker) - UsedBefore, 1);
+		TestEqual(*FString::Printf(TEXT("%s advance hands off"), Case.Label),
+			Advanced.RuntimeState.CurrentAttackingPlayer,
+			Advance.CompletionResult.NextAttackingPlayer);
+		TestTrue(*FString::Printf(TEXT("%s advance consumes cards"), Case.Label),
+			!Advance.CompletionResult.OrdinaryCardUsageResults.IsEmpty());
+		TestTrue(*FString::Printf(TEXT("%s advance resolves match-end"), Case.Label),
+			Advance.CompletionResult.MatchEndResolveResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s advance RNG delta"), Case.Label),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeAdvance, 0);
 	}
 	// Natural GoalResolver-success then Completion-failure candidate proof.
 	{
@@ -20949,15 +21642,15 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-six commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
+	TestEqual(TEXT("All forty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 49);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
 		CountOccurrences(
 			CompletionSource,
-			TEXT("::ApplyCurrentAttackTerminalMutation(")),
+			TEXT("::ApplyCurrentAttackAdvanceMutation(")),
 		1);
 	TestEqual(TEXT("GoalResolver has exactly five bounded call sites"),
 		CountOccurrences(
@@ -21138,22 +21831,22 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 		TestEqual(*FString::Printf(TEXT("%s defender score delta"), Case.Label),
 			ScoreFor(After, Defender) - DefenderScoreBefore, 0);
 		TestEqual(*FString::Printf(TEXT("%s opportunity delta"), Case.Label),
-			UsedFor(After, Attacker) - UsedBefore, 1);
-		TestFalse(*FString::Printf(TEXT("%s CurrentAttack cleared"), Case.Label),
+			UsedFor(After, Attacker) - UsedBefore, 0);
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack persists"), Case.Label),
 			After.bHasCurrentAttack);
-		TestTrue(*FString::Printf(TEXT("%s CurrentAttack reset"), Case.Label),
-			AreReflectedValuesEqual(
-				After.CurrentAttack, FMatchPlayCurrentAttackState()));
-		TestEqual(*FString::Printf(TEXT("%s canonical next attacker"), Case.Label),
+		TestEqual(*FString::Printf(TEXT("%s terminal lifecycle"), Case.Label),
+			After.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestEqual(*FString::Printf(TEXT("%s current attacker persists"), Case.Label),
 			After.RuntimeState.CurrentAttackingPlayer,
-			Completion.NextAttackingPlayer);
+			Attacker);
 		TestFalse(*FString::Printf(TEXT("%s non-final match"), Case.Label),
 			Completion.bMatchEnded);
 		TestEqual(*FString::Printf(TEXT("%s GoalResolver success"), Case.Label),
 			Completion.GoalResolveResult.bSuccess, Case.bGoal);
-		TestTrue(*FString::Printf(TEXT("%s opportunity delegation"), Case.Label),
+		TestFalse(*FString::Printf(TEXT("%s terminal defers opportunity"), Case.Label),
 			Completion.OpportunityResolveResult.bSuccess);
-		TestTrue(*FString::Printf(TEXT("%s match-end delegation"), Case.Label),
+		TestFalse(*FString::Printf(TEXT("%s terminal defers match-end"), Case.Label),
 			Completion.MatchEndResolveResult.bSuccess);
 
 		const FMatchPlayState Completed = After;
@@ -21162,8 +21855,11 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 		const int32 CallsBeforeReplay =
 			Initial.GetCallCount() + Post.GetCallCount();
 		const auto Replay = Session.ApplyPassControlTerminalResolution();
-		TestEqual(*FString::Printf(TEXT("%s replay NoCurrentAttack"), Case.Label),
-			Replay.OrchestrationResult.ErrorCode, EError::NoCurrentAttack);
+		TestFalse(*FString::Printf(TEXT("%s replay rejected at Session gate"),
+			Case.Label), Replay.RuntimeEnvelope.bAccepted);
+		TestEqual(*FString::Printf(TEXT("%s replay requires advance"), Case.Label),
+			Replay.RuntimeEnvelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
 		TestEqual(*FString::Printf(TEXT("%s replay score delta"), Case.Label),
 			ScoreFor(Session.GetStateSnapshot(), Attacker) - ScoreBeforeReplay, 0);
 		TestEqual(*FString::Printf(TEXT("%s replay opportunity delta"), Case.Label),
@@ -21172,6 +21868,28 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeReplay, 0);
 		TestTrue(*FString::Printf(TEXT("%s replay State unchanged"), Case.Label),
 			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence = Before.CurrentAttack.AttackSequence;
+		AdvanceRequest.RequestingSide = Attacker;
+		const int32 CallsBeforeAdvance =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
+		const FMatchPlayState Advanced = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s explicit advance succeeds"), Case.Label),
+			Advance.RuntimeEnvelope.bDomainSuccess
+				&& Advance.CompletionResult.bSuccess);
+		TestFalse(*FString::Printf(TEXT("%s advance clears CurrentAttack"), Case.Label),
+			Advanced.bHasCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s advance consumes opportunity"), Case.Label),
+			UsedFor(Advanced, Attacker) - UsedBefore, 1);
+		TestEqual(*FString::Printf(TEXT("%s advance hands off"), Case.Label),
+			Advanced.RuntimeState.CurrentAttackingPlayer,
+			Advance.CompletionResult.NextAttackingPlayer);
+		TestTrue(*FString::Printf(TEXT("%s advance resolves match-end"), Case.Label),
+			Advance.CompletionResult.MatchEndResolveResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s advance RNG delta"), Case.Label),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeAdvance, 0);
 	}
 
 	// Natural GoalResolver-success then Completion-failure candidate proof.
@@ -21451,13 +22169,13 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All forty-six commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
+	TestEqual(TEXT("All forty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 49);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
 		CountOccurrences(CompletionSource,
-			TEXT("::ApplyCurrentAttackTerminalMutation(")), 1);
+			TEXT("::ApplyCurrentAttackAdvanceMutation(")), 1);
 	TestEqual(TEXT("GoalResolver has exactly five bounded call sites"),
 		CountOccurrences(CompletionSource, TEXT("FGoalResolver::RecordGoal")),
 		5);
@@ -21701,22 +22419,20 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 		TestEqual(*FString::Printf(TEXT("%s defender score delta"), Case.Label),
 			ScoreFor(After, Defender) - DefenderScoreBefore, 0);
 		TestEqual(*FString::Printf(TEXT("%s opportunity delta"), Case.Label),
-			UsedFor(After, Attacker) - UsedBefore, 1);
-		TestFalse(*FString::Printf(TEXT("%s CurrentAttack cleared"), Case.Label),
+			UsedFor(After, Attacker) - UsedBefore, 0);
+		TestTrue(*FString::Printf(TEXT("%s CurrentAttack persists"), Case.Label),
 			After.bHasCurrentAttack);
-		TestTrue(*FString::Printf(TEXT("%s CurrentAttack reset"), Case.Label),
-			AreReflectedValuesEqual(
-				After.CurrentAttack, FMatchPlayCurrentAttackState()));
-		TestEqual(*FString::Printf(TEXT("%s canonical next attacker"), Case.Label),
+		TestEqual(*FString::Printf(TEXT("%s terminal lifecycle"), Case.Label),
+			After.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestEqual(*FString::Printf(TEXT("%s current attacker persists"), Case.Label),
 			After.RuntimeState.CurrentAttackingPlayer,
-			Completion.NextAttackingPlayer);
-		TestFalse(*FString::Printf(TEXT("%s no automatic next attack"), Case.Label),
-			After.bHasCurrentAttack);
+			Attacker);
 		TestEqual(*FString::Printf(TEXT("%s GoalResolver success"), Case.Label),
 			Completion.GoalResolveResult.bSuccess, Case.bGoal);
-		TestTrue(*FString::Printf(TEXT("%s opportunity delegation"), Case.Label),
+		TestFalse(*FString::Printf(TEXT("%s terminal defers opportunity"), Case.Label),
 			Completion.OpportunityResolveResult.bSuccess);
-		TestTrue(*FString::Printf(TEXT("%s match-end delegation"), Case.Label),
+		TestFalse(*FString::Printf(TEXT("%s terminal defers match-end"), Case.Label),
 			Completion.MatchEndResolveResult.bSuccess);
 
 		const FMatchPlayState Completed = After;
@@ -21725,8 +22441,11 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 		const int32 CallsBeforeReplay =
 			Initial.GetCallCount() + Post.GetCallCount();
 		const auto Replay = Session.ApplyShotTerminalResolution();
-		TestEqual(*FString::Printf(TEXT("%s replay NoCurrentAttack"), Case.Label),
-			Replay.OrchestrationResult.ErrorCode, EError::NoCurrentAttack);
+		TestFalse(*FString::Printf(TEXT("%s replay rejected at Session gate"),
+			Case.Label), Replay.RuntimeEnvelope.bAccepted);
+		TestEqual(*FString::Printf(TEXT("%s replay requires advance"), Case.Label),
+			Replay.RuntimeEnvelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
 		TestEqual(*FString::Printf(TEXT("%s replay score delta"), Case.Label),
 			ScoreFor(Session.GetStateSnapshot(), Attacker) - ScoreBeforeReplay, 0);
 		TestEqual(*FString::Printf(TEXT("%s replay opportunity delta"), Case.Label),
@@ -21735,6 +22454,28 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeReplay, 0);
 		TestTrue(*FString::Printf(TEXT("%s replay State unchanged"), Case.Label),
 			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence = Before.CurrentAttack.AttackSequence;
+		AdvanceRequest.RequestingSide = Attacker;
+		const int32 CallsBeforeAdvance =
+			Initial.GetCallCount() + Post.GetCallCount();
+		const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
+		const FMatchPlayState Advanced = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s explicit advance succeeds"), Case.Label),
+			Advance.RuntimeEnvelope.bDomainSuccess
+				&& Advance.CompletionResult.bSuccess);
+		TestFalse(*FString::Printf(TEXT("%s advance clears CurrentAttack"), Case.Label),
+			Advanced.bHasCurrentAttack);
+		TestEqual(*FString::Printf(TEXT("%s advance consumes opportunity"), Case.Label),
+			UsedFor(Advanced, Attacker) - UsedBefore, 1);
+		TestEqual(*FString::Printf(TEXT("%s advance hands off"), Case.Label),
+			Advanced.RuntimeState.CurrentAttackingPlayer,
+			Advance.CompletionResult.NextAttackingPlayer);
+		TestTrue(*FString::Printf(TEXT("%s advance resolves match-end"), Case.Label),
+			Advance.CompletionResult.MatchEndResolveResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s advance RNG delta"), Case.Label),
+			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeAdvance, 0);
 	}
 
 	// Formula Goal succeeds locally before a later card-consumption failure.
@@ -22003,8 +22744,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All forty-six commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 46);
+	TestEqual(TEXT("All forty-nine commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 49);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);

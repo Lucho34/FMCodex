@@ -371,10 +371,10 @@ bool FRunnerNoSelectionNoGoalStaticAuthorityTest::RunTest(
 			CompletionHeader,
 			TEXT("CompleteRunnerNoGoal(")),
 		1);
-	TestEqual(TEXT("One private shared terminal core declaration"),
+	TestEqual(TEXT("One private shared advance core declaration"),
 		CountOccurrences(
 			CompletionHeader,
-			TEXT("ApplyCurrentAttackTerminalMutation(")),
+			TEXT("ApplyCurrentAttackAdvanceMutation(")),
 		1);
 	TestTrue(TEXT("Runner-aware stage diagnostic exists"),
 		CompletionSource.Contains(

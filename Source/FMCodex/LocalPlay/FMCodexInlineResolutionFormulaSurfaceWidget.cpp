@@ -593,7 +593,11 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 			Operand->SetBrushColor(PendingColor);
 			++RenderedPendingTermCount;
 		}
-		OperandText->SetText(FText::FromString(Term.DisplayLabel));
+		const FString OperandLabel = Term.ContributorDisplayName.IsEmpty()
+			? Term.DisplayLabel
+			: FString::Printf(TEXT("%s %s"),
+				*Term.ContributorDisplayName, *Term.DisplayLabel);
+		OperandText->SetText(FText::FromString(OperandLabel));
 		Style.ApplyText(*OperandText, bPending
 			? EFMCodexPlayerUITextRole::Status
 			: EFMCodexPlayerUITextRole::Body);

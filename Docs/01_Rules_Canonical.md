@@ -616,6 +616,12 @@ B. 直射死角：判定公式。
 脚下球：终结公式。
 
 - (持球球员传球 + 跑位球员跑位) / 2 + 进攻方比较点数 VS (盯人球员抢断 + 协防球员盯人) / 2 + 门将一对一 × 0.5（当前相关防守流程已主动使用唯一门将手牌时，否则为 0）+ 防守方比较点数 + 2。
+- 路线确定为脚下球后，先公开双方所有已知的非掷点公式项及 KnownNonRollSubtotal；此时双方最终点数都保持待定。
+- 当前进攻方通过 `ResolveThroughBallFeetAttackRoll` 显式取得并持久化一枚独立 D6。该步骤恰好消费一个 D6，只公开进攻方最终点数；防守方最终点数继续待定。
+- 随后仅当前防守方可通过 `ResolveThroughBallFeetDefenseRoll` 显式取得并持久化一枚独立 D6。该步骤恰好消费一个 D6；双方比较点数齐全后，必须复用上述既有脚下球终结公式完成比较。
+- 固定权威顺序为：直塞路线 D6、脚下球进攻方比较 D6、脚下球防守方比较 D6。错误阵营、错误阶段、越序或重复请求均被拒绝，不消费 D6，也不改变权威状态。
+- 双方比较 D6 完成后才允许 `ApplyThroughBallTerminalResolution`。该命令只从已持久化点数零 RNG 重建同一公式结果并持久化 Goal / Miss 终结事实；它不得补掷或重掷，也不得在同一命令中清除 CurrentAttack、消费进攻机会或切换进攻方。
+- 终结事实持久化后，仅当前进攻方可提交匹配当前 `AttackSequence` 的显式 `AdvanceAfterTerminal`。该命令零 RNG 清除 CurrentAttack、提交普通部署牌、消费一次进攻机会，并按既有顺序规则切换进攻方或结束比赛。旧的原子 `ResolveThroughBallFeetPostRoutePlan` 只保留兼容/参考边界，不属于正常生产交互入口。
 
 身后球：
 
@@ -801,6 +807,24 @@ B. 挑射：判定公式。
 - 战术选择界面仍只按现有 Authority 可用性创建选项；悬停/焦点只显示说明，单击仍立即提交原有 typed Skill intent。
 - v1 Hover detail 只投影分支名与 `角色 -> 属性`；非属性 Outcome 分支只显示 `只看掷点，不看属性`。倍率、固定修正、路线/结果点数表、战术球员说明与完整公式继续保留在 rich catalog 或 live Formula Surface，不进入该紧凑玩家表面。
 - 删除 Hover detail 中的信息不改变 canonical metadata：战术球员适用性、倍率、固定项与 Outcome ranges 仍必须由 catalog contract tests 冻结。
+
+## 17. Resolution 终结持久化与显式下一回合（Stage 6.13.1.4.10.3.1）
+
+- 已完成公式或结果判定的 ThroughBall、Cross、PassControl 与 Shot 使用同一个两步生命周期：`Resolution Complete -> TerminalPendingAdvance -> AdvanceAfterTerminal`。第一步只持久化结果真相；第二步才执行攻击清理、机会消费、换攻或比赛结束。
+- `TerminalPendingAdvance` 期间必须保留 CurrentAttack、AttackSequence、当前进攻方、参与角色、部署/场地区域、已接受点数、Formula Facts、最终 Outcome、比分变化以及战术球员人数。普通部署牌仍未提交到 Used，当前攻击方的 `UsedAttackCount` 不增加，下一进攻方尚未产生。
+- 终结持久化和显式下一回合都不消费 RNG。错误阶段、错误 AttackSequence、错误请求方、重复终结、重复下一回合以及终结 pending 时提交其他 gameplay command 都必须失败并保持权威状态不变。
+- `AdvanceAfterTerminal` 只归当前进攻方所有。成功时恰好消费一次当前进攻机会；非终局按既有 canonical 顺序选择下一进攻方，终局设置 `CurrentAttackingPlayer=None` 并保留既有比分胜负规则。
+- 重建 Presentation、刷新 snapshot 或重连观察同一 terminal snapshot 时，必须重新显示相同结果、事实和唯一 `下一回合` 操作，不能重掷、重算或自动换攻。客户端可隐藏重复按钮，但不能代替 Authority 执行 advance。
+- 本合同覆盖已经进入 Resolution 并产生正式 tactic terminal result 的完成路径。Carrier / Marker / Skill / Runner 阶段因无合法选择或主动放弃而提前关闭的 pre-resolution closure 继续沿用既有原子 completion；它们没有可展示的 resolved tactic terminal snapshot，不纳入本次两步生命周期。
+- 本 Stage 不修改任何公式、分支概率、点数范围、平局规则、比分规则或战术平衡。
+
+### 17.1 直塞脚下球生产披露顺序（Stage 6.13.1.4.10.3）
+
+- 脚下球路线确定后，玩家必须先看到双方权威 KnownNonRollSubtotal 与两枚 pending D6，再依次执行 `进攻方掷点`、`防守方掷点`。两个动作继续对应既有 typed Authority command，不允许 generic Continue 代替。
+- 每枚 accepted D6 只通过共享 RollReel 披露。当前 roll 的 RawD6 与 FinalValue 在 reel 落定后才显示；下一动作在完整 result hold 结束后才开放。表现等待不新增 RNG、合法性或 State transition。
+- 双方完成后，中文成功/失败只映射既有 `FormulaContest.ResolvedResult.Winner`，不得比较 UI 中的数字自行推断。完整直塞 Narrative 仍不在本阶段范围内。
+- `TerminalPendingAdvance` 期间继续显示双方 FinalValue、结果与唯一中央 `下一回合`。该按钮发送 `AdvanceAfterTerminal`；只有 Authority 接受后才清理 CurrentAttack、场地/角色并换攻或结束比赛。
+- 新 Screen 首次观察 preview、attack-complete 或 terminal snapshot 时直接显示当前权威事实，不重播历史路线或比较点数。active reel 的刷新继续沿用同一 stable reveal identity 与 disclosure gate。
 
 
 ### 14.2 补射
