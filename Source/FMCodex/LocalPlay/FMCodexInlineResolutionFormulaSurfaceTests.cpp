@@ -766,8 +766,9 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 			&& AttackWin.InlineFormula.bNarrativeAttackSuccess
 			&& AttackWin.InlineFormula.NarrativeHeadline
 				== TEXT("萨卡传中，哈弗茨破门！")
+			&& AttackWin.InlineFormula.ResultTitle == TEXT("进球")
 			&& AttackWin.InlineFormula.ResultSubtitle
-				== TEXT("高球传中 · 进攻成功")
+				== TEXT("高球传中 · 进球")
 			&& AttackWin.InlineFormula.ContestLabel
 				== AttackWin.InlineFormula.NarrativeHeadline
 			&& AttackWin.InlineFormula.StatusLabel
@@ -787,7 +788,8 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 		MarkerDefense.InlineFormula.DefensiveNarrativePerformer
 			== EFMCodexUMGCrossDefensiveNarrativePerformer::Marker
 			&& MarkerDefense.InlineFormula.NarrativeHeadline
-				== TEXT("萨卡传中被萨利巴破坏")
+				== TEXT("萨卡传中被萨利巴抢断。")
+			&& MarkerDefense.InlineFormula.ResultTitle == TEXT("防守成功")
 			&& MarkerDefense.InlineFormula.ResultSubtitle
 				== TEXT("高球传中 · 防守成功"));
 
@@ -811,7 +813,7 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 	TestTrue(TEXT("Immutable contest identity can deterministically select helper"),
 		HelperSequence > 0
 			&& HelperDefense.InlineFormula.NarrativeHeadline
-				== TEXT("哈弗茨抢点被赖斯破坏"));
+				== TEXT("哈弗茨抢点被赖斯拦截。"));
 	if (HelperSequence > 0)
 	{
 		const auto Rebuilt = BuildPresentation(MakeCrossHighFacts(
@@ -836,7 +838,7 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 	TestTrue(TEXT("Cross Low uses the same result narrative with route subtitle"),
 		LowAttackWin.NarrativeHeadline == TEXT("萨卡传中，哈弗茨破门！")
 			&& LowAttackWin.ResultSubtitle
-				== TEXT("低球传中 · 进攻成功"));
+				== TEXT("低球传中 · 进球"));
 
 	const auto AttackFallback = BuildPresentation(MakeCrossHighFacts(
 		false, false, true, true, EFormulaWinner::Attacker),
@@ -845,9 +847,9 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 		false, false, true, true, EFormulaWinner::Defender),
 		EInitialTurnOrderPlayer::PlayerA, false).InlineFormula;
 	TestTrue(TEXT("Missing safe display names use localized generic fallbacks"),
-		AttackFallback.NarrativeHeadline == TEXT("传中进攻成功")
+		AttackFallback.NarrativeHeadline == TEXT("传中形成进球！")
 			&& DefenseFallback.NarrativeHeadline
-				== TEXT("传中被防守方破坏")
+				== TEXT("传中被防守方化解。")
 			&& !FlattenVisibleText(AttackFallback).Contains(TEXT("Fixture."))
 			&& !FlattenVisibleText(DefenseFallback).Contains(TEXT("Fixture.")));
 
@@ -1107,6 +1109,7 @@ bool FFMCodexInlineResolutionFormulaDiceRevealTest::RunTest(
 		ManualScreen->GetInlineFormulaRevealPhase()
 			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
 			&& !DefenseCycling.bNarrativeAvailable
+			&& DefenseCycling.ResultTitle.IsEmpty()
 			&& DefenseCycling.NarrativeHeadline.IsEmpty()
 			&& !DefenseCycling.DefenseRow.bFinalValueResolved
 			&& DefenseCycling.ContinueActionLabel.IsEmpty());

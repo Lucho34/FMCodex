@@ -718,7 +718,7 @@
 - 日期：2026-08-26
 - 路线上下文：Feet shared Formula 在 route 已由权威事实确定后持续显示 `路线掷点 N → 判定为脚下球`；pre-route DTO 不显示该结果。Cross 的初始路线 CTA 改由同一中央 Formula surface 承载，底部 InteractionPanel 折叠；`Cross.Route + sequence 0 + owner` identity、reel、single-action authority command 与 reveal gate 不变。
 - 公式参与者：shared Formula term DTO 增加可选 `ContributorDisplayName`。Presentation 仅对带 CardId 的 Attribute / GoalkeeperContribution term 从 roster/card identity 投影短球员名；RawRoll、FixedModifier 与 TacticalPlayerAdvantage 不带姓名。shared Widget 把 `姓名 + 属性 operand` 作为一个 Wrap item 渲染，现有角色 chip 保留，不创建第二套公式 Widget。
-- Feet 结果：terminal headline 只读取 authoritative Winner 与 Participant Facts。进攻方胜且 Carrier/Runner 齐全时显示 `{Carrier}直塞，{Runner}破门！`；防守方胜按 Marker、Helper、Goalkeeper 的固定事实优先级选择已有姓名并显示 `{Carrier}直塞被{Defender}破坏`；事实不足时使用简短 Feet 成功/防守成功 fallback。该选择不使用 gameplay RNG、本地 RNG、hash winner 推断或 Widget arithmetic。
+- Feet 结果：本条记录的是 `.3A` 当时的 provisional terminal headline。其固定 Marker、Helper、Goalkeeper 优先级与 `破坏` 用词已由 CD-074 的共享 Narrative v1 合同取代；authoritative Winner 与 reveal timing 边界继续有效。
 - 冻结：本决定只修改 Presentation DTO、shared UMG renderer 与自动化/文档。Feet/Cross 公式、D6、路线概率、Authority、Session/Host/Controller command、terminal persistence、handoff 与 reveal timing 全部不变；Fresh USER PIE 仍是视觉接受 Gate。
 
 ### CD-072 - Production Resolution Surfaces Claim One Shared Typed Primary Action
@@ -738,6 +738,16 @@
 - RNG：override 命中时不调用 wrapped production provider，因此 seeded `FRandomStream` cursor 不推进；无 pending override 时直接委托原 provider，seed、call order、概率与 distribution 不变。D6 在 authority seam 验证 `1..6`，普通 Tactical Point 复用同一 provider stream seam并验证 `2..8`。
 - UI：非 Shipping PlayerController 在右上角创建默认折叠的独立 Slate `DEV 掷点` surface。Widget只提交 typed request并查询 pending DTO，不持有 provider、生成点数、改 RawD6/branch/winner/Formula/reel/lifecycle，也不参与 production primary CTA ownership。
 - Shipping / 移除：provider decorator、storage、Host/Controller API、widget class/construction均由 `#if !UE_BUILD_SHIPPING` 编译期排除。Shipping runtime直接把 unchanged production provider注入 Session。Release 前可删除 dedicated DEV files和少量 guarded LocalPlay integration；CoreRules、正式 RNG provider、Formula、route、State schema与网络协议无需迁移或重设计。详细步骤见 `Docs/Dev/LocalPlay_DEV_Deterministic_Roll_Override.md`。
+
+### CD-074 - Tactical Resolution Narrative v1 Uses One Read-only Presentation Contract
+
+- 日期：2026-08-26
+- 文本分层：`ResultTitle` 只表达系统结果，`NarrativeText` 用一句简短足球语言表达场上事件。Terminal 才能使用破门、未进、越位、出界或扑出；BehindDefense/AntiOffside 的 `OneOnOneRequired` 只能表现为 `形成单刀`。普通 route selection 不生成 terminal Narrative。
+- 表现者：aggregate defensive outcome 未提供唯一 causal defender 时，只允许在具备安全 DisplayName 的 Marker/Helper 中使用 `AttackSequence|StableEventId` FNV-1a 稳定选择。这是 presentation-only dramatization；Marker 用 `抢断`，Helper 用 `拦截`，同 snapshot rebuild/resync 必须完全一致且不调用 gameplay RNG、DEV override 或时间/Widget identity。
+- GK：普通 aggregate Formula 的 GK contribution 不等于 Save，GK 不进入 LongShot、CutInside、PassControl、Cross、Feet 等普通 performer pool。OneOnOne Direct 的底层 `Miss` 是唯一 v1 产品授权例外，可展示为 `扑救成功`；Chip 绝不提 GK。通用 GK-Decisive counterfactual 与 typed GoalScorer Fact Consolidation deferred，UMG 不得自行反算。
+- 语义与身份：LongShot/CutInside `ImmediateMiss` 展示为 `射门偏出`，与 Formula Defender Win 的 `防守成功` 分开。Behind OutOfPlay 可具名 Carrier；AntiOffside 同时使用 Carrier/Runner 上下文。所有名字来自 player-facing mapping；缺失时使用 generic fallback，不泄漏 PlayerKey、ContentId、CardId、ContestId 或 enum。
+- 迁移：Cross 与 ThroughBall Feet production terminal narrative 政策改由 `FFMCodexTacticalResolutionNarrativePresentationBuilder` 统一生成；Cross 保留 goal template并把 Marker/Helper 改为 `抢断/拦截`，Feet 移除旧 GK 第三顺位并采用共享稳定选择。其他战术的完整 v1 mapping 已可供未来 surface 直接消费，不在本阶段推出其 production UI。详见 `Docs/UI/Tactical_Resolution_Narrative_v1.md`。
+- 冻结边界：Authority outcome、winner、score、Formula、route、RNG、State schema、terminal persistence/advance lifecycle 与 reveal gate 不变。Historical BehindDefense P2 不进入 v1 mapping。
 
 ## Resolved UQ Summary
 

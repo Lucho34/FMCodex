@@ -1347,6 +1347,11 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	EFMCodexUMGCrossDefensiveNarrativePerformer DefensiveNarrativePerformer =
 		EFMCodexUMGCrossDefensiveNarrativePerformer::None;
 
+	/** Canonical player-facing terminal result, separate from dramatized prose. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString ResultTitle;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString NarrativeHeadline;

@@ -14,7 +14,6 @@ class UFMCodexPlayerCardWidget;
 class UHorizontalBox;
 class UTextBlock;
 class UVerticalBox;
-class UWrapBox;
 class SWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
@@ -296,7 +295,7 @@ private:
 	TObjectPtr<UTextBlock> DeploymentHandInstructionText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UWrapBox> ChoiceOptionsBody;
+	TObjectPtr<UHorizontalBox> ChoiceOptionsBody;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> StartButton;

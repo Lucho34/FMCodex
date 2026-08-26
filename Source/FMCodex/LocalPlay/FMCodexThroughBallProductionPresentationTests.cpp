@@ -724,6 +724,7 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
 			&& FormulaSurface->GetPresentation().bDiceRevealVisible
 			&& !FormulaSurface->GetPresentation().bCanContinue
+			&& FormulaSurface->GetPresentation().ResultTitle.IsEmpty()
 			&& FormulaSurface->GetPresentation().ResultSubtitle.IsEmpty());
 	Screen->AdvanceInlineFormulaRevealForTesting(1.30f);
 	Screen->AdvanceInlineFormulaRevealForTesting(0.16f);
@@ -732,12 +733,14 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 		FormulaSurface->GetPresentation().DefenseRow.bFinalValueResolved
 			&& FMath::IsNearlyEqual(
 				FormulaSurface->GetPresentation().DefenseRow.FinalValue, 8.5f)
+			&& FormulaSurface->GetPresentation().ResultTitle.IsEmpty()
 			&& FormulaSurface->GetPresentation().ResultSubtitle.IsEmpty()
 			&& !FormulaSurface->GetPresentation().bCanContinue);
 	Screen->AdvanceInlineFormulaRevealForTesting(0.20f);
 	TestTrue(TEXT("Authority winner maps to Chinese result during hold"),
 		FormulaSurface->GetPresentation().StatusLabel
-			== TEXT("脚下球 · 进攻成功")
+			== TEXT("脚下球 · 进球")
+			&& FormulaSurface->GetPresentation().ResultTitle == TEXT("进球")
 			&& FormulaSurface->GetPresentation().ContestLabel
 				== TEXT("厄德高直塞，哈兰德破门！")
 			&& FormulaSurface->GetPresentation().bNarrativeAvailable
@@ -769,7 +772,7 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 			&& !TerminalReconstructed->IsInlineFormulaRevealInputBlocked()
 			&& RebuiltFormula.AttackRow.bFinalValueResolved
 			&& RebuiltFormula.DefenseRow.bFinalValueResolved
-			&& RebuiltFormula.StatusLabel == TEXT("脚下球 · 进攻成功")
+			&& RebuiltFormula.StatusLabel == TEXT("脚下球 · 进球")
 			&& RebuiltFormula.NarrativeHeadline
 				== TEXT("厄德高直塞，哈兰德破门！")
 			&& RebuiltFormula.RouteResultLabel
@@ -788,9 +791,62 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 		DefenderNarrative.bNarrativeAvailable
 			&& !DefenderNarrative.bNarrativeAttackSuccess
 			&& DefenderNarrative.NarrativeHeadline
-				== TEXT("厄德高直塞被萨利巴破坏")
+				== TEXT("厄德高直塞被萨利巴抢断。")
+			&& DefenderNarrative.ResultTitle == TEXT("防守成功")
 			&& DefenderNarrative.ResultSubtitle
 				== TEXT("脚下球 · 防守成功"));
+
+	bool bFeetMarkerObserved = false;
+	bool bFeetHelperObserved = false;
+	for (int64 Sequence = 1; Sequence <= 32; ++Sequence)
+	{
+		FFMCodexLocalMatchInteractionView BothDefenders = MakeFeetView(
+			true, true, true, EFormulaWinner::Defender);
+		BothDefenders.ResolutionFacts.AttackSequence = Sequence;
+		BothDefenders.ResolutionFacts.Participants.Add({
+			EMatchPlayResolutionParticipantRole::Helper,
+			EInitialTurnOrderPlayer::PlayerB, TEXT("Fixture.Feet.Helper") });
+		FFMCodexLocalMatchCardView HelperCard;
+		HelperCard.Side = EInitialTurnOrderPlayer::PlayerB;
+		HelperCard.CardId = TEXT("Fixture.Feet.Helper");
+		HelperCard.DisplayLabel = TEXT("赖斯");
+		BothDefenders.PlayerBCardRoster.Add(HelperCard);
+		const FFMCodexUMGInlineFormulaSurfaceViewModel Candidate =
+			Build(BothDefenders).ThroughBallResolution.Formula;
+		bFeetMarkerObserved |= Candidate.DefensiveNarrativePerformer
+			== EFMCodexUMGCrossDefensiveNarrativePerformer::Marker
+			&& Candidate.NarrativeHeadline
+				== TEXT("厄德高直塞被萨利巴抢断。");
+		bFeetHelperObserved |= Candidate.DefensiveNarrativePerformer
+			== EFMCodexUMGCrossDefensiveNarrativePerformer::Helper
+			&& Candidate.NarrativeHeadline
+				== TEXT("哈兰德前插被赖斯拦截。");
+	}
+	TestTrue(TEXT("Feet production migration uses stable Marker/Helper choice"),
+		bFeetMarkerObserved && bFeetHelperObserved);
+
+	FFMCodexLocalMatchInteractionView GoalkeeperOnly = MakeFeetView(
+		true, true, true, EFormulaWinner::Defender);
+	GoalkeeperOnly.ResolutionFacts.Participants.RemoveAll(
+		[](const FMatchPlayResolutionParticipantFact& Participant)
+		{
+			return Participant.Role
+				== EMatchPlayResolutionParticipantRole::Marker;
+		});
+	GoalkeeperOnly.ResolutionFacts.Participants.Add({
+		EMatchPlayResolutionParticipantRole::Goalkeeper,
+		EInitialTurnOrderPlayer::PlayerB, TEXT("Fixture.Feet.Goalkeeper") });
+	FFMCodexLocalMatchCardView GoalkeeperCard;
+	GoalkeeperCard.Side = EInitialTurnOrderPlayer::PlayerB;
+	GoalkeeperCard.CardId = TEXT("Fixture.Feet.Goalkeeper");
+	GoalkeeperCard.DisplayLabel = TEXT("阿利松");
+	GoalkeeperOnly.PlayerBCardRoster.Add(GoalkeeperCard);
+	const FFMCodexUMGInlineFormulaSurfaceViewModel GoalkeeperFallback =
+		Build(GoalkeeperOnly).ThroughBallResolution.Formula;
+	TestTrue(TEXT("Feet aggregate defense never promotes GK into the narrative"),
+		GoalkeeperFallback.NarrativeHeadline == TEXT("直塞被防守方化解。")
+			&& !GoalkeeperFallback.NarrativeHeadline.Contains(TEXT("阿利松"))
+			&& !GoalkeeperFallback.NarrativeHeadline.Contains(TEXT("扑")));
 
 	FFMCodexLocalMatchInteractionView MissingNarrativeFacts = MakeFeetView(
 		true, true, true, EFormulaWinner::Attacker);
@@ -800,7 +856,7 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 	TestTrue(TEXT("Feet terminal narrative has a concise insufficient-facts fallback"),
 		FallbackNarrative.bNarrativeAvailable
 			&& FallbackNarrative.NarrativeHeadline
-				== TEXT("脚下球进攻成功"));
+				== TEXT("直塞形成进球！"));
 	return true;
 }
 

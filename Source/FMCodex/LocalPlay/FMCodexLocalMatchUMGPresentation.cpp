@@ -2,6 +2,7 @@
 
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexTacticalDetailPresentation.h"
+#include "FMCodexTacticalResolutionNarrativePresentation.h"
 
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
@@ -537,32 +538,21 @@ namespace FMCodexLocalMatchUMGPresentation
 			});
 	}
 
-	FString ParticipantName(
+	FFMCodexTacticalNarrativeActor NarrativeActor(
 		const FMatchPlayCurrentAttackResolutionFactProjection& Facts,
 		const FFMCodexLocalMatchInteractionView& InteractionView,
 		const EMatchPlayResolutionParticipantRole Role)
 	{
+		FFMCodexTacticalNarrativeActor Result;
 		const FMatchPlayResolutionParticipantFact* Participant =
 			FindParticipant(Facts, Role);
-		return Participant == nullptr ? FString() : PlayerFacingName(
-			InteractionView, Participant->Side, Participant->CardId);
-	}
-
-	bool StableCrossNarrativeChoosesHelper(
-		const int64 AttackSequence,
-		const FName ContestId)
-	{
-		// FNV-1a over immutable ASCII identity. This is presentation-only and
-		// never touches gameplay/session RNG.
-		const FString Identity = FString::Printf(
-			TEXT("%lld|%s"), AttackSequence, *ContestId.ToString());
-		uint32 Hash = 2166136261u;
-		for (const TCHAR Character : Identity)
+		if (Participant != nullptr)
 		{
-			Hash ^= static_cast<uint32>(Character);
-			Hash *= 16777619u;
+			Result.CardId = Participant->CardId;
+			Result.DisplayName = FText::FromString(PlayerFacingName(
+				InteractionView, Participant->Side, Participant->CardId));
 		}
-		return (Hash & 1u) != 0u;
+		return Result;
 	}
 
 	void AddFormulaParticipant(
@@ -872,105 +862,52 @@ namespace FMCodexLocalMatchUMGPresentation
 		{
 			Result.bNarrativeAttackSuccess =
 				Contest->ResolvedResult.Winner == EFormulaWinner::Attacker;
-			if (!bResolvedCross)
-			{
-				Result.bNarrativeAvailable = true;
-				Result.ResultSubtitle = FString::Printf(
-					TEXT("脚下球 · %s"),
-					Result.bNarrativeAttackSuccess
-						? TEXT("进攻成功") : TEXT("防守成功"));
-				const FString CarrierName = ParticipantName(
-					Facts, InteractionView,
-					EMatchPlayResolutionParticipantRole::Carrier);
-				const FString RunnerName = ParticipantName(
-					Facts, InteractionView,
-					EMatchPlayResolutionParticipantRole::Runner);
-				if (Result.bNarrativeAttackSuccess)
-				{
-					Result.NarrativeHeadline =
-						!CarrierName.IsEmpty() && !RunnerName.IsEmpty()
-							? FString::Printf(TEXT("%s直塞，%s破门！"),
-								*CarrierName, *RunnerName)
-							: FString(TEXT("脚下球进攻成功"));
-				}
-				else
-				{
-					const FString MarkerName = ParticipantName(
-						Facts, InteractionView,
-						EMatchPlayResolutionParticipantRole::Marker);
-					const FString HelperName = ParticipantName(
-						Facts, InteractionView,
-						EMatchPlayResolutionParticipantRole::Helper);
-					const FString GoalkeeperName = ParticipantName(
-						Facts, InteractionView,
-						EMatchPlayResolutionParticipantRole::Goalkeeper);
-					const FString DefensiveName = !MarkerName.IsEmpty()
-						? MarkerName : !HelperName.IsEmpty()
-							? HelperName : GoalkeeperName;
-					Result.NarrativeHeadline =
-						!CarrierName.IsEmpty() && !DefensiveName.IsEmpty()
-							? FString::Printf(TEXT("%s直塞被%s破坏"),
-								*CarrierName, *DefensiveName)
-							: FString(TEXT("脚下球防守成功"));
-				}
-				Result.ContestLabel = Result.NarrativeHeadline;
-				Result.StatusLabel = Result.ResultSubtitle;
-			}
-			else
-			{
-				Result.bNarrativeAvailable = true;
-				const FString RouteLabel = bCrossHigh
-					? TEXT("高球传中") : TEXT("低球传中");
-				Result.ResultSubtitle = FString::Printf(
-				TEXT("%s · %s"),
-				*RouteLabel,
-				Result.bNarrativeAttackSuccess
-					? TEXT("进攻成功") : TEXT("防守成功"));
-				const FString CarrierName = ParticipantName(
-				Facts, InteractionView,
+			FFMCodexTacticalNarrativePresentationInput NarrativeInput;
+			NarrativeInput.Branch = !bResolvedCross
+				? EFMCodexTacticalNarrativeBranch::ThroughBallFeet
+				: bCrossHigh
+					? EFMCodexTacticalNarrativeBranch::CrossHigh
+					: EFMCodexTacticalNarrativeBranch::CrossLow;
+			NarrativeInput.AuthorityOutcome = Result.bNarrativeAttackSuccess
+				? EMatchPlayResolutionDecisionOutcome::Goal
+				: EMatchPlayResolutionDecisionOutcome::Miss;
+			NarrativeInput.AttackSequence = Facts.AttackSequence;
+			NarrativeInput.StableEventId = Contest->ContestId;
+			NarrativeInput.Carrier = NarrativeActor(Facts, InteractionView,
 				EMatchPlayResolutionParticipantRole::Carrier);
-				const FString RunnerName = ParticipantName(
-				Facts, InteractionView,
+			NarrativeInput.Runner = NarrativeActor(Facts, InteractionView,
 				EMatchPlayResolutionParticipantRole::Runner);
-				if (Result.bNarrativeAttackSuccess)
+			NarrativeInput.Marker = NarrativeActor(Facts, InteractionView,
+				EMatchPlayResolutionParticipantRole::Marker);
+			NarrativeInput.Helper = NarrativeActor(Facts, InteractionView,
+				EMatchPlayResolutionParticipantRole::Helper);
+			NarrativeInput.Goalkeeper = NarrativeActor(Facts, InteractionView,
+				EMatchPlayResolutionParticipantRole::Goalkeeper);
+
+			const FFMCodexTacticalNarrativePresentation Narrative =
+				FFMCodexTacticalResolutionNarrativePresentationBuilder::Build(
+					NarrativeInput);
+			if (Narrative.bSuccess)
+			{
+				Result.bNarrativeAvailable = Narrative.bNarrativeAvailable;
+				Result.ResultTitle = Narrative.ResultTitle.ToString();
+				Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
+				const FString RouteLabel = !bResolvedCross
+					? TEXT("脚下球")
+					: bCrossHigh ? TEXT("高球传中") : TEXT("低球传中");
+				Result.ResultSubtitle = FString::Printf(
+					TEXT("%s · %s"), *RouteLabel, *Result.ResultTitle);
+				if (Narrative.DefensivePerformerRole
+					== EMatchPlayResolutionParticipantRole::Marker)
 				{
-					Result.NarrativeHeadline =
-						!CarrierName.IsEmpty() && !RunnerName.IsEmpty()
-							? FString::Printf(TEXT("%s传中，%s破门！"),
-								*CarrierName, *RunnerName)
-							: FString(TEXT("传中进攻成功"));
+					Result.DefensiveNarrativePerformer =
+						EFMCodexUMGCrossDefensiveNarrativePerformer::Marker;
 				}
-				else
+				else if (Narrative.DefensivePerformerRole
+					== EMatchPlayResolutionParticipantRole::Helper)
 				{
-					const FString MarkerName = ParticipantName(
-						Facts, InteractionView,
-						EMatchPlayResolutionParticipantRole::Marker);
-					const FString HelperName = ParticipantName(
-						Facts, InteractionView,
-						EMatchPlayResolutionParticipantRole::Helper);
-					const bool bHasMarker = !MarkerName.IsEmpty();
-					const bool bHasHelper = !HelperName.IsEmpty();
-					const bool bUseHelper = bHasHelper
-						&& (!bHasMarker || StableCrossNarrativeChoosesHelper(
-							Facts.AttackSequence, Contest->ContestId));
-					if (bUseHelper && !RunnerName.IsEmpty())
-					{
-						Result.DefensiveNarrativePerformer =
-							EFMCodexUMGCrossDefensiveNarrativePerformer::Helper;
-						Result.NarrativeHeadline = FString::Printf(
-							TEXT("%s抢点被%s破坏"), *RunnerName, *HelperName);
-					}
-					else if (bHasMarker && !CarrierName.IsEmpty())
-					{
-						Result.DefensiveNarrativePerformer =
-							EFMCodexUMGCrossDefensiveNarrativePerformer::Marker;
-						Result.NarrativeHeadline = FString::Printf(
-							TEXT("%s传中被%s破坏"), *CarrierName, *MarkerName);
-					}
-					else
-					{
-						Result.NarrativeHeadline = TEXT("传中被防守方破坏");
-					}
+					Result.DefensiveNarrativePerformer =
+						EFMCodexUMGCrossDefensiveNarrativePerformer::Helper;
 				}
 				Result.ContestLabel = Result.NarrativeHeadline;
 				Result.StatusLabel = Result.ResultSubtitle;

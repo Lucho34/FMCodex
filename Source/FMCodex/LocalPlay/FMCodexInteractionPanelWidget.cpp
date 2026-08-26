@@ -14,7 +14,6 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "Components/WrapBox.h"
 
 namespace FMCodexInteractionPanelWidget
 {
@@ -350,9 +349,10 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 		*WidgetTree, TEXT("InteractionChoiceSectionTitle"));
 	Style.ApplyText(
 		*ChoiceSectionText, EFMCodexPlayerUITextRole::SectionHeading);
-	ChoiceOptionsBody = WidgetTree->ConstructWidget<UWrapBox>(
-		UWrapBox::StaticClass(), TEXT("InteractionChoiceOptions"));
-	ChoiceOptionsBody->SetInnerSlotPadding(Style.GetControlGap());
+	// The dock is intentionally a fixed-height strip. Route choices must stay
+	// on one row; a WrapBox can move the second choice below the clipped dock.
+	ChoiceOptionsBody = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("InteractionChoiceOptions"));
 	ChoiceBody->AddChildToVerticalBox(ChoiceSectionText);
 	ChoiceBody->AddChildToVerticalBox(ChoiceOptionsBody);
 	ChoiceRegion->AddChild(ChoiceBody);
@@ -653,7 +653,15 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 		Option->ConfigureBranch(Choice.Label, Choice.Intent);
 		Option->OnBranchRequested.AddDynamic(
 			this, &UFMCodexInteractionPanelWidget::HandleBranchOption);
-		ChoiceOptionsBody->AddChildToWrapBox(Option);
+		if (UHorizontalBoxSlot* ChoiceSlot =
+			ChoiceOptionsBody->AddChildToHorizontalBox(Option))
+		{
+			const FVector2D Gap =
+				FFMCodexPlayerUIStyle::Get().GetControlGap();
+			ChoiceSlot->SetPadding(FMargin(
+				Index == 0 ? 0.0f : Gap.X, 0.0f, 0.0f, 0.0f));
+			ChoiceSlot->SetVerticalAlignment(VAlign_Center);
+		}
 	}
 	for (int32 Index = 0; Index < Presentation.OneOnOneChoices.Num(); ++Index)
 	{
@@ -664,7 +672,15 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 		Option->ConfigureOneOnOne(Choice.Label, Choice.Choice);
 		Option->OnOneOnOneRequested.AddDynamic(
 			this, &UFMCodexInteractionPanelWidget::HandleOneOnOneOption);
-		ChoiceOptionsBody->AddChildToWrapBox(Option);
+		if (UHorizontalBoxSlot* ChoiceSlot =
+			ChoiceOptionsBody->AddChildToHorizontalBox(Option))
+		{
+			const FVector2D Gap =
+				FFMCodexPlayerUIStyle::Get().GetControlGap();
+			ChoiceSlot->SetPadding(FMargin(
+				Index == 0 ? 0.0f : Gap.X, 0.0f, 0.0f, 0.0f));
+			ChoiceSlot->SetVerticalAlignment(VAlign_Center);
+		}
 	}
 }
 

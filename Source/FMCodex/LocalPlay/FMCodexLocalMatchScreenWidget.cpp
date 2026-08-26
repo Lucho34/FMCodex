@@ -2622,6 +2622,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	if (!bNarrativeDisclosed)
 	{
 		Result.bNarrativeAvailable = false;
+		Result.ResultTitle.Empty();
 		Result.NarrativeHeadline.Empty();
 		Result.ResultSubtitle.Empty();
 		// Authority aliases a terminal Narrative into these two visible labels.

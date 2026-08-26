@@ -618,7 +618,7 @@
 
 - Feet pre-route 不得显示已判定结果；route resolved 后 Preview、Attack settled/Defense pending、Defense settled/result 与 fresh terminal resync 都必须显示完全相同的 `路线掷点 N → 判定为脚下球`，active reel 期间仍遵守既有隐藏/披露 gate。
 - Cross High/Low pre-route 的中央 Inline Formula 必须显示唯一 `判定传中路线` CTA，底部 InteractionPanel 与 legacy overlay 折叠；interaction identity 继续为 `InitialRoute + Cross.Route + sequence 0 + owner`。中央 delegate 必须走既有 Screen typed continuation；authority result 到达后只启动一个 reel，stable key 不产生重复 reveal。
-- Feet attacker terminal 映射 `{Carrier}直塞，{Runner}破门！`，defender terminal 按 Marker -> Helper -> Goalkeeper 固定事实优先级映射破坏文案；Participant Facts 不足时使用简短 fallback。测试必须同时断言 winner 来自 resolved Formula、reveal gate 前 Narrative 隐藏、fresh terminal 不重播，且 presentation source 不新增 RNG。
+- Feet attacker terminal 映射 `{Carrier}直塞，{Runner}破门！`；本条原有的 defender 固定 Marker -> Helper -> Goalkeeper provisional 顺序已由下方 Narrative v1 共享合同取代。测试仍须断言 winner 来自 resolved Formula、reveal gate 前 Narrative 隐藏、fresh terminal 不重播，且 presentation source 不新增 RNG。
 - Feet 与 Cross High/Low 的 Attribute/GoalkeeperContribution operand 必须分别携带并渲染球员短名；RawRoll、FixedModifier、TacticalPlayerAdvantage 不带姓名。role chip 继续存在，shared Widget 重复 refresh 不增加 term children；`姓名 + attribute` 作为单一 Wrap item、内部 TextBlock 关闭 AutoWrap，防止公式对齐被拆散。
 - 必须继续运行 InlineFormula、RollReel、ControlSurface、ThroughBallProductionPresentation、Feet/terminal Authority、Cross CoreRules/PIE、ThroughBall CoreRules、相关及全量 LocalPlay、AuthoritativeSession、全量 CoreRules、Build/UHT/link 与 `git diff --check`。Fresh USER PIE 逐项验收 Feet route context、Cross 中央 route CTA、Feet result narrative、High/Low/Feet 带姓名公式与 1920×1080 layout。
 
@@ -630,4 +630,12 @@
 - reveal 回归必须继续证明 Attack reel 期间 Defense CTA、Defense reel 期间 NextRound、Route reel 期间后续 CTA 都不可见；中央 slot 保留 claim，底部 CTA 也不得提前泄漏。settled refresh 与 fresh terminal reconstruction 不重播已完成 roll。
 - Deployment、SelectRunner 代表角色选择与 SelectSkill 必须保持底部 UI 可见；OneOnOne 继续使用现有 InteractionPanel，记录为 future centralization candidate。LongShot、CutInside、PassControl 未拥有 production central surface 时继续保留 lower primary action。
 - 回归运行 ownership 专项、ThroughBallProductionPresentation、InlineFormula、RollReel、ControlSurface、LocalMatchHost、AuthoritativeSession、Cross/ThroughBall CoreRules、全量 LocalPlay/CoreRules、Cross PIE、Build/UHT/link/no-op 与 `git diff --check`；最终按钮位置、单击手感及 High/Low/Feet 实际流程仍需 USER PIE。
+
+## Tactical Resolution Narrative v1（Stage 6.13.1.4.10.3N.1）
+
+- shared builder matrix 覆盖 LongShot/CutInside Direct 的 ImmediateMiss、Goal、Formula Miss，二者 DeadCorner Goal/Miss，PassControl 三路线 Goal/defense，Cross High/Low、Feet、BehindDefense OutOfPlay/DefenderStopped/OneOnOneRequired、AntiOffside Offside/OneOnOneRequired，以及 OneOnOne Direct/Chip Goal/Miss。逐类断言 ResultTitle、单句 Narrative、presentation category 与有效 fallback。
+- 同一 `AttackSequence|StableEventId` 连续 build 必须得到完全一致的 performer role/id/text；多个不同 immutable event fixture 应能观察 Marker 和 Helper，证明不是固定 Marker 优先。Marker 文案必须含 `抢断`，Helper 必须含 `拦截`。源码边界断言无 D6 provider、`FRandomStream`、random helper 或 DEV override 依赖，输入事实 build 前后不变。
+- aggregate Feet/Cross 在 GK 有名且 Marker/Helper 无可用名时仍使用通用 `防守方化解`，不得具名 GK 或使用扑救词。OneOnOne Direct 保持 underlying `Miss`，Presentation 可得到 `扑救成功`/GK `扑出`；Chip Goal/Miss 即使提供 GK 也不得出现 GK、门将、扑救、扑出或封堵。
+- Behind/AntiOffside progression 必须包含 `形成单刀` 且不含 `破门/进球`。ImmediateMiss 与 Formula Miss 的 Result/Narrative 必须不同。缺名 fallback 不得含 PlayerKey、ContentId、CardId、ContestId、raw enum 或未替换 placeholder；production mapping 不接受 historical BehindDefense P2。
+- Cross/Feet production migration 回归继续覆盖 authority winner、High/Low route context、Formula/Reel、Defense reveal 前 Narrative 隐藏、fresh terminal deterministic rebuild、唯一 NextRound CTA。Cross goal 保持，Marker/Helper 更新为 `抢断/拦截`；Feet defense 使用同一 stable selection并删除 GK 第三顺位。自动化后仍需 USER PIE 验收文案自然度与 reveal/CTA 节奏。
 

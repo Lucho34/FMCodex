@@ -838,3 +838,10 @@ B. 挑射：判定公式。
 打空门为判定公式：
 
 - 射门方掷 D6，2-6 进球，1 射飞并结束当前进攻回合。
+
+## 18. Tactical Resolution Narrative v1（Stage 6.13.1.4.10.3N.1）
+
+- Narrative 是只读 Presentation，不是 gameplay rule。Authority outcome、actual branch/stage、winner、score、Formula、RNG 与 terminal lifecycle 始终是事实来源；`ResultTitle` 表达系统结果，单句 `NarrativeText` 表达场上事件。
+- Terminal 与 progression 必须分离。BehindDefense/AntiOffside 的 `OneOnOneRequired` 只映射 `形成单刀`，不得使用进球/破门；route selection 继续只显示 route context。LongShot/CutInside `ImmediateMiss` 的 `射门偏出` 与正常 Formula Defender Win 的 `防守成功` 是不同玩家语义。
+- Authority 未给出唯一 causal defender 的 aggregate defense 可在 Marker/Helper 中以稳定 immutable identity 做 presentation-only dramatization：Marker=`抢断`、Helper=`拦截`。同 snapshot 重建必须一致，不消耗任何 gameplay RNG。普通 aggregate GK 不进入候选池；OneOnOne Direct `Miss` 可按明确产品例外展示 GK `扑救成功`，Chip 禁止 GK 文案。
+- 具名角色只能来自现有 player-facing DisplayName mapping；事实或名称不足时使用语义正确的 generic fallback，不泄漏 raw ID。Historical BehindDefense P2 不属于 Narrative v1。完整冻结矩阵与未来接入方式见 `Docs/UI/Tactical_Resolution_Narrative_v1.md`。

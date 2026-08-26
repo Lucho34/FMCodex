@@ -5577,7 +5577,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 			&& Cast<UTextBlock>(DeclineButton->GetChildAt(0))->GetText().ToString()
 				!= Cast<UTextBlock>(NoLegalButton->GetChildAt(0))->GetText().ToString());
 
-	auto VerifyBranch = [this, Panel, &BasePresentation](
+	auto VerifyBranch = [this, Panel, &BasePresentation, &IsVisible](
 		const FString& Section,
 		const EFMCodexUMGBranchIntent First,
 		const EFMCodexUMGBranchIntent Second)
@@ -5588,14 +5588,29 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		Branch.BranchSectionLabel = Section;
 		Branch.BranchChoices = {
 			{ First, First == EFMCodexUMGBranchIntent::CrossHigh
-				? TEXT("HIGH") : TEXT("DIRECT SHOT") },
+				? TEXT("高球传中") : TEXT("直接射门") },
 			{ Second, Second == EFMCodexUMGBranchIntent::CrossLow
-				? TEXT("LOW") : TEXT("DEAD CORNER") }
+				? TEXT("低球传中") : TEXT("射向死角") }
 		};
 		Panel->RefreshFromPresentation(Branch);
+		Panel->ForceLayoutPrepass();
+		const UHorizontalBox* ChoiceRow = Cast<UHorizontalBox>(
+			Panel->GetWidgetFromName(TEXT("InteractionChoiceOptions")));
+		const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>& Options =
+			Panel->GetRenderedOptionWidgets();
 		TestTrue(FString::Printf(TEXT("%s renders two distinct branch intents"),
-			*Section), Panel->GetRenderedOptionWidgets().Num() == 2
+			*Section), Options.Num() == 2
+			&& ChoiceRow != nullptr
+			&& ChoiceRow->GetChildrenCount() == 2
+			&& Options[0] != nullptr && Options[1] != nullptr
+			&& IsVisible(Options[0]) && IsVisible(Options[1])
+			&& Options[0]->GetLabel() == Branch.BranchChoices[0].Label
+			&& Options[1]->GetLabel() == Branch.BranchChoices[1].Label
 			&& Panel->GetPresentation().BranchSectionLabel == Section);
+		TestTrue(FString::Printf(TEXT("%s choices share one non-wrapping row"),
+			*Section), ChoiceRow != nullptr
+			&& ChoiceRow->GetChildAt(0) == Options[0]
+			&& ChoiceRow->GetChildAt(1) == Options[1]);
 	};
 	VerifyBranch(TEXT("SHOT TYPE"), EFMCodexUMGBranchIntent::DirectShot,
 		EFMCodexUMGBranchIntent::DeadCorner);

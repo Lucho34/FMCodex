@@ -2,10 +2,12 @@
 
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 
 #include "Editor.h"
+#include "Components/HorizontalBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -290,9 +292,13 @@ namespace FMCodexInlineResolutionFormulaPIETests
 				&& Formula.bCanContinue
 				&& Formula.bNarrativeAvailable
 				&& !Formula.NarrativeHeadline.IsEmpty()
+				&& Formula.ResultTitle
+					== (Formula.bNarrativeAttackSuccess
+						? FString(TEXT("进球"))
+						: FString(TEXT("防守成功")))
 				&& Formula.StatusLabel
 					== (Formula.bNarrativeAttackSuccess
-						? FString(TEXT("高球传中 · 进攻成功"))
+						? FString(TEXT("高球传中 · 进球"))
 						: FString(TEXT("高球传中 · 防守成功")))
 				&& Formula.ContinueActionLabel == TEXT("下一回合")
 				&& Controller->GetInteractionView().InteractionCategory
@@ -493,6 +499,41 @@ bool FAdvanceCrossToRouteEntryPIECommand::Update()
 	if (!Controller->GetLastDiagnostic().bHostSuccess)
 	{
 		Test->AddError(TEXT("PIE Cross High deferred Skill selection failed."));
+		return true;
+	}
+	Controller->RefreshPresentation();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		Controller->GetPlayerMatchScreen();
+	UFMCodexInteractionPanelWidget* Panel =
+		Screen == nullptr ? nullptr : Screen->GetInteractionPanel();
+	const UHorizontalBox* ChoiceRow = Panel == nullptr
+		? nullptr
+		: Cast<UHorizontalBox>(
+			Panel->GetWidgetFromName(TEXT("InteractionChoiceOptions")));
+	const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>* Options =
+		Panel == nullptr ? nullptr : &Panel->GetRenderedOptionWidgets();
+	if (Controller->GetInteractionView().InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectBranchIntent
+		|| Screen == nullptr
+		|| Screen->GetPresentation().Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectBranchIntent
+		|| Screen->GetPresentation().Interaction.BranchChoices.Num() != 2
+		|| Screen->GetPresentation().Interaction.BranchChoices[0].Intent
+			!= EFMCodexUMGBranchIntent::CrossHigh
+		|| Screen->GetPresentation().Interaction.BranchChoices[1].Intent
+			!= EFMCodexUMGBranchIntent::CrossLow
+		|| ChoiceRow == nullptr || ChoiceRow->GetChildrenCount() != 2
+		|| Options == nullptr || Options->Num() != 2
+		|| (*Options)[0] == nullptr || (*Options)[1] == nullptr
+		|| (*Options)[0]->GetVisibility() == ESlateVisibility::Collapsed
+		|| (*Options)[0]->GetVisibility() == ESlateVisibility::Hidden
+		|| (*Options)[1]->GetVisibility() == ESlateVisibility::Collapsed
+		|| (*Options)[1]->GetVisibility() == ESlateVisibility::Hidden
+		|| (*Options)[0]->GetLabel() != TEXT("高球传中")
+		|| (*Options)[1]->GetLabel() != TEXT("低平球传中"))
+	{
+		Test->AddError(TEXT(
+			"PIE Cross route choice did not render High/Low on one visible row."));
 		return true;
 	}
 	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);
