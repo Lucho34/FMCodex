@@ -5,6 +5,9 @@
 
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
+#if !UE_BUILD_SHIPPING
+#include "FMCodexLocalDevRollOverride.h"
+#endif
 
 #include "FMCodexLocalMatchPlayerController.generated.h"
 
@@ -77,6 +80,15 @@ public:
 	void AdvanceAfterTerminal();
 	void ContinueResolution();
 
+#if !UE_BUILD_SHIPPING
+	FFMCodexLocalDevRollOverrideCommandResult SetLocalDevRollOverride(
+		const FFMCodexLocalDevRollOverrideRequest& Request);
+	void ClearLocalDevRollOverride(EFMCodexLocalDevRollTarget Target);
+	void ClearAllLocalDevRollOverrides();
+	TArray<FFMCodexLocalDevPendingRollOverride>
+		GetLocalDevPendingRollOverrides() const;
+#endif
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -84,6 +96,9 @@ protected:
 private:
 	AFMCodexLocalMatchHostGameMode* FindLocalMatchHost() const;
 	void InitializeDeveloperSlateSurface();
+#if !UE_BUILD_SHIPPING
+	void InitializeLocalDevRollOverrideSurface();
+#endif
 	void RefreshPlayerMatchScreen();
 	void RebuildControlSurface();
 	TSharedRef<SWidget> BuildControlSurface();
@@ -164,4 +179,7 @@ private:
 
 	TSharedPtr<SWidget> ViewportWidget;
 	TSharedPtr<SBox> SurfaceContainer;
+#if !UE_BUILD_SHIPPING
+	TSharedPtr<SWidget> DevRollOverrideViewportWidget;
+#endif
 };

@@ -50,6 +50,27 @@ namespace FMCodexLocalMatchHost
 		}
 		return true;
 	}
+
+#if !UE_BUILD_SHIPPING
+	EFMCodexLocalDevRollInvocation InitialRouteInvocation(
+		const FMatchPlayState& State)
+	{
+		if (!State.bHasCurrentAttack
+			|| !State.CurrentAttack.bHasSelectedAction)
+		{
+			return EFMCodexLocalDevRollInvocation::None;
+		}
+		switch (State.CurrentAttack.SelectedAction.ActionType)
+		{
+		case ESkillRuleType::ThroughBall:
+			return EFMCodexLocalDevRollInvocation::ThroughBallInitialRoute;
+		case ESkillRuleType::Cross:
+			return EFMCodexLocalDevRollInvocation::CrossInitialRoute;
+		default:
+			return EFMCodexLocalDevRollInvocation::None;
+		}
+	}
+#endif
 }
 
 AFMCodexLocalMatchHostGameMode::AFMCodexLocalMatchHostGameMode()
@@ -61,13 +82,59 @@ AFMCodexLocalMatchHostGameMode::FLocalMatchRuntime::FLocalMatchRuntime(
 	const int32 Seed,
 	const FSkillRuleSnapshotSet& InSkillRuleSet)
 	: D6Provider(Seed)
+#if !UE_BUILD_SHIPPING
+	, DevRollOverride(D6Provider)
+#endif
 	, SkillRuleSet(InSkillRuleSet)
 	, AuthoritativeSession(
+#if !UE_BUILD_SHIPPING
+		DevRollOverride,
+		DevRollOverride,
+#else
 		D6Provider,
 		D6Provider,
+#endif
 		SkillRuleSet)
 {
 }
+
+#if !UE_BUILD_SHIPPING
+FFMCodexLocalDevRollOverrideCommandResult
+AFMCodexLocalMatchHostGameMode::SetLocalDevRollOverride(
+	const FFMCodexLocalDevRollOverrideRequest& Request)
+{
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		FFMCodexLocalDevRollOverrideCommandResult Result;
+		Result.ErrorMessage = FMCodexLocalMatchHost::NoActiveMatchMessage;
+		return Result;
+	}
+	return ActiveMatchRuntime->DevRollOverride.SetOverride(Request);
+}
+
+bool AFMCodexLocalMatchHostGameMode::ClearLocalDevRollOverride(
+	const EFMCodexLocalDevRollTarget Target)
+{
+	return ActiveMatchRuntime.IsValid()
+		&& ActiveMatchRuntime->DevRollOverride.ClearOverride(Target);
+}
+
+void AFMCodexLocalMatchHostGameMode::ClearAllLocalDevRollOverrides()
+{
+	if (ActiveMatchRuntime.IsValid())
+	{
+		ActiveMatchRuntime->DevRollOverride.ClearAllOverrides();
+	}
+}
+
+TArray<FFMCodexLocalDevPendingRollOverride>
+AFMCodexLocalMatchHostGameMode::GetLocalDevPendingRollOverrides() const
+{
+	return ActiveMatchRuntime.IsValid()
+		? ActiveMatchRuntime->DevRollOverride.GetPendingOverrides()
+		: TArray<FFMCodexLocalDevPendingRollOverride>();
+}
+#endif
 
 bool AFMCodexLocalMatchHostGameMode::HasActiveLocalMatch() const
 {
@@ -261,8 +328,13 @@ AFMCodexLocalMatchHostGameMode::RollTacticalPoints(
 		return Result;
 	}
 
+#if !UE_BUILD_SHIPPING
+	Result.TacticalPoints =
+		ActiveMatchRuntime->DevRollOverride.RollOrdinaryTacticalPoint();
+#else
 	Result.TacticalPoints =
 		ActiveMatchRuntime->D6Provider.RollOrdinaryTacticalPoint();
+#endif
 	Result.AuthoritativeResult =
 		ActiveMatchRuntime->AuthoritativeSession.BeginOrdinaryAttack(
 			Result.TacticalPoints);
@@ -950,8 +1022,19 @@ AFMCodexLocalMatchHostGameMode::ResolveInitialRoute()
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult =
-		ActiveMatchRuntime->AuthoritativeSession.ResolveInitialRoute();
+#if !UE_BUILD_SHIPPING
+	const EFMCodexLocalDevRollInvocation DevInvocation =
+		InitialRouteInvocation(
+			ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot());
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession.ResolveInitialRoute();
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1005,8 +1088,18 @@ AFMCodexLocalMatchHostGameMode::ResolveCrossHighAttackRoll(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveCrossHighAttackRoll(Request);
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation = EFMCodexLocalDevRollInvocation::CrossHighAttack;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveCrossHighAttackRoll(Request);
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1033,8 +1126,18 @@ AFMCodexLocalMatchHostGameMode::ResolveCrossHighDefenseRoll(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveCrossHighDefenseRoll(Request);
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation = EFMCodexLocalDevRollInvocation::CrossHighDefense;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveCrossHighDefenseRoll(Request);
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1061,8 +1164,18 @@ AFMCodexLocalMatchHostGameMode::ResolveCrossLowAttackRoll(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveCrossLowAttackRoll(Request);
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation = EFMCodexLocalDevRollInvocation::CrossLowAttack;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveCrossLowAttackRoll(Request);
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1089,8 +1202,18 @@ AFMCodexLocalMatchHostGameMode::ResolveCrossLowDefenseRoll(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveCrossLowDefenseRoll(Request);
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation = EFMCodexLocalDevRollInvocation::CrossLowDefense;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveCrossLowDefenseRoll(Request);
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1144,8 +1267,19 @@ AFMCodexLocalMatchHostGameMode::ResolveThroughBallFeetAttackRoll(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveThroughBallFeetAttackRoll(Request);
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::ThroughBallFeetAttack;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveThroughBallFeetAttackRoll(Request);
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1172,8 +1306,19 @@ AFMCodexLocalMatchHostGameMode::ResolveThroughBallFeetDefenseRoll(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveThroughBallFeetDefenseRoll(Request);
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::ThroughBallFeetDefense;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveThroughBallFeetDefenseRoll(Request);
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1253,8 +1398,19 @@ AFMCodexLocalMatchHostGameMode::ResolveThroughBallAntiOffsideDecision()
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveThroughBallAntiOffsideDecision();
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::ThroughBallAntiOffside;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveThroughBallAntiOffsideDecision();
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1309,8 +1465,19 @@ AFMCodexLocalMatchHostGameMode
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveThroughBallBehindDefenseP1DecisionOrPlan();
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::ThroughBallBehindDefenseP1;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveThroughBallBehindDefenseP1DecisionOrPlan();
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1444,8 +1611,19 @@ AFMCodexLocalMatchHostGameMode::ResolveThroughBallOneOnOneChipShotDecision()
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveThroughBallOneOnOneChipShotDecision();
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::OneOnOneChipShot;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveThroughBallOneOnOneChipShotDecision();
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
@@ -1473,8 +1651,19 @@ AFMCodexLocalMatchHostGameMode
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	Result.AuthoritativeResult = ActiveMatchRuntime->AuthoritativeSession
-		.ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::OneOnOneDirectShot;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
+		});
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;

@@ -730,6 +730,15 @@
 - reveal/dispatch：reveal gate 暂时隐藏 slot button 但保留 exact claim，防止下一步 action 从左下提前泄漏。central CTA 继续通过既有 Screen switch 调用一个 typed Controller request；Feet child -> ThroughBall parent -> Screen 仍是单 delegate 链。
 - 冻结：不修改 CoreRules、Authority/Session/Host、Controller command semantics、RNG、Formula、legality、terminal persistence、advance lifecycle、stable reveal identity、contributor names 或 `.3A` Narrative。USER PIE 仍是最终视觉接受 Gate。
 
+### CD-073 - LocalPlay Deterministic Roll Override Is a Removable Non-Shipping Provider Decorator
+
+- 日期：2026-08-26
+- 决策：Editor / Development LocalPlay 使用独立 `FFMCodexLocalDevRollOverride` 装饰既有 Host-owned `FFMCodexLocalMatchD6Provider`。storage 为 transient `Purpose → OneShotValue` map；同 purpose 后设覆盖前设，matching authority provider call 消费并自动删除，specific/all clear 不消费 RNG。
+- 语义：canonical initial/post-route purpose 继续保持 `InitialRoute`、`PrimaryAttack/Defense` 等现状。因为这些 purpose 被多个玩法复用，Host 在具体 typed authority command 周围提供 transient DEV invocation identity；它只帮助 wrapper 区分 ThroughBall/Cross/Feet/BehindDefense/AntiOffside/OneOnOne，不进入 Session command、State、FormulaFacts、ResolutionFacts、save、replay、replication 或 network protocol。
+- RNG：override 命中时不调用 wrapped production provider，因此 seeded `FRandomStream` cursor 不推进；无 pending override 时直接委托原 provider，seed、call order、概率与 distribution 不变。D6 在 authority seam 验证 `1..6`，普通 Tactical Point 复用同一 provider stream seam并验证 `2..8`。
+- UI：非 Shipping PlayerController 在右上角创建默认折叠的独立 Slate `DEV 掷点` surface。Widget只提交 typed request并查询 pending DTO，不持有 provider、生成点数、改 RawD6/branch/winner/Formula/reel/lifecycle，也不参与 production primary CTA ownership。
+- Shipping / 移除：provider decorator、storage、Host/Controller API、widget class/construction均由 `#if !UE_BUILD_SHIPPING` 编译期排除。Shipping runtime直接把 unchanged production provider注入 Session。Release 前可删除 dedicated DEV files和少量 guarded LocalPlay integration；CoreRules、正式 RNG provider、Formula、route、State schema与网络协议无需迁移或重设计。详细步骤见 `Docs/Dev/LocalPlay_DEV_Deterministic_Roll_Override.md`。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

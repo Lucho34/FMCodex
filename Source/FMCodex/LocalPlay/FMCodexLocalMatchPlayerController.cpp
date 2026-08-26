@@ -4,6 +4,9 @@
 #include "FMCodexLocalMatchHostGameMode.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
+#if !UE_BUILD_SHIPPING
+#include "FMCodexLocalDevRollOverrideWidget.h"
+#endif
 
 #include "../CoreRules/MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
@@ -22,6 +25,7 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SExpandableArea.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
@@ -499,6 +503,9 @@ void AFMCodexLocalMatchPlayerController::BeginPlay()
 	{
 		InitializePlayerFacingUI();
 		InitializeDeveloperSlateSurface();
+#if !UE_BUILD_SHIPPING
+		InitializeLocalDevRollOverrideSurface();
+#endif
 	}
 }
 
@@ -552,6 +559,29 @@ void AFMCodexLocalMatchPlayerController::InitializeDeveloperSlateSurface()
 		ViewportWidget.ToSharedRef(), 100);
 }
 
+#if !UE_BUILD_SHIPPING
+void AFMCodexLocalMatchPlayerController::InitializeLocalDevRollOverrideSurface()
+{
+	if (DevRollOverrideViewportWidget.IsValid()
+		|| GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+	DevRollOverrideViewportWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(0.0f, 74.0f, 12.0f, 0.0f))
+		[
+			SNew(SFMCodexLocalDevRollOverrideWidget)
+			.Controller(this)
+		];
+	GEngine->GameViewport->AddViewportWidgetContent(
+		DevRollOverrideViewportWidget.ToSharedRef(), 200);
+}
+#endif
+
 void AFMCodexLocalMatchPlayerController::EndPlay(
 	const EEndPlayReason::Type EndPlayReason)
 {
@@ -567,10 +597,62 @@ void AFMCodexLocalMatchPlayerController::EndPlay(
 		GEngine->GameViewport->RemoveViewportWidgetContent(
 			ViewportWidget.ToSharedRef());
 	}
+#if !UE_BUILD_SHIPPING
+	if (DevRollOverrideViewportWidget.IsValid() && GEngine != nullptr
+		&& GEngine->GameViewport != nullptr)
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(
+			DevRollOverrideViewportWidget.ToSharedRef());
+	}
+	DevRollOverrideViewportWidget.Reset();
+#endif
 	SurfaceContainer.Reset();
 	ViewportWidget.Reset();
 	Super::EndPlay(EndPlayReason);
 }
+
+#if !UE_BUILD_SHIPPING
+FFMCodexLocalDevRollOverrideCommandResult
+AFMCodexLocalMatchPlayerController::SetLocalDevRollOverride(
+	const FFMCodexLocalDevRollOverrideRequest& Request)
+{
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		FFMCodexLocalDevRollOverrideCommandResult Result;
+		Result.ErrorMessage = TEXT("Local authoritative Host unavailable.");
+		return Result;
+	}
+	return Host->SetLocalDevRollOverride(Request);
+}
+
+void AFMCodexLocalMatchPlayerController::ClearLocalDevRollOverride(
+	const EFMCodexLocalDevRollTarget Target)
+{
+	if (AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost())
+	{
+		Host->ClearLocalDevRollOverride(Target);
+	}
+}
+
+void AFMCodexLocalMatchPlayerController::ClearAllLocalDevRollOverrides()
+{
+	if (AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost())
+	{
+		Host->ClearAllLocalDevRollOverrides();
+	}
+}
+
+TArray<FFMCodexLocalDevPendingRollOverride>
+AFMCodexLocalMatchPlayerController::GetLocalDevPendingRollOverrides() const
+{
+	if (const AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost())
+	{
+		return Host->GetLocalDevPendingRollOverrides();
+	}
+	return {};
+}
+#endif
 
 AFMCodexLocalMatchHostGameMode*
 AFMCodexLocalMatchPlayerController::FindLocalMatchHost() const

@@ -4,6 +4,9 @@
 #include "GameFramework/GameModeBase.h"
 
 #include "FMCodexLocalMatchD6Provider.h"
+#if !UE_BUILD_SHIPPING
+#include "FMCodexLocalDevRollOverride.h"
+#endif
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
 
 #include "FMCodexLocalMatchHostGameMode.generated.h"
@@ -705,6 +708,15 @@ public:
 	FFMCodexLocalMatchAdvanceAfterTerminalResult AdvanceAfterTerminal(
 		const FMatchPlayAuthoritativeAdvanceAfterTerminalRequest& Request);
 
+#if !UE_BUILD_SHIPPING
+	FFMCodexLocalDevRollOverrideCommandResult SetLocalDevRollOverride(
+		const FFMCodexLocalDevRollOverrideRequest& Request);
+	bool ClearLocalDevRollOverride(EFMCodexLocalDevRollTarget Target);
+	void ClearAllLocalDevRollOverrides();
+	TArray<FFMCodexLocalDevPendingRollOverride>
+		GetLocalDevPendingRollOverrides() const;
+#endif
+
 private:
 	FFMCodexStartNewLocalMatchResult StartNewLocalMatchWithSeed(
 		const FMatchPlayOpeningInitializeInput& Input,
@@ -717,7 +729,26 @@ private:
 			int32 Seed,
 			const FSkillRuleSnapshotSet& InSkillRuleSet);
 
+		template <typename TCallable>
+		decltype(auto) ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+			const EFMCodexLocalDevRollInvocation DevInvocation,
+#endif
+			TCallable&& Callable)
+		{
+#if !UE_BUILD_SHIPPING
+			return DevRollOverride.InvokeAs(
+				DevInvocation,
+				Forward<TCallable>(Callable));
+#else
+			return Forward<TCallable>(Callable)();
+#endif
+		}
+
 		FFMCodexLocalMatchD6Provider D6Provider;
+#if !UE_BUILD_SHIPPING
+		FFMCodexLocalDevRollOverride DevRollOverride;
+#endif
 		const FSkillRuleSnapshotSet SkillRuleSet;
 		FMatchPlayAuthoritativeSession AuthoritativeSession;
 	};

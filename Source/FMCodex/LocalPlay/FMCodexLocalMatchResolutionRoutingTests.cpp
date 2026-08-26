@@ -1319,4 +1319,242 @@ bool FFMCodexLocalMatchThroughBallResolutionTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalDevRollOverrideAuthorityFlowTest,
+	"FMCodex.LocalPlay.DevRollOverride.05.RealAuthorityFlows",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchResolutionRoutingTests;
+	using ETarget = EFMCodexLocalDevRollTarget;
+	(void)Parameters;
+	auto Set = [this](
+		AFMCodexLocalMatchHostGameMode& Host,
+		const ETarget Target,
+		const int32 Value)
+	{
+		FFMCodexLocalDevRollOverrideRequest Request;
+		Request.Target = Target;
+		Request.Value = Value;
+		const auto Result = Host.SetLocalDevRollOverride(Request);
+		TestTrue(TEXT("Authority accepts typed DEV override"), Result.bSuccess);
+		return Result.bSuccess;
+	};
+
+	{
+		const int32 Seed = 10613;
+		const FName SkillId(TEXT("Skill.DevOverride.ThroughBall"));
+		const auto Rules = MakeRules(SkillId, ESkillRuleType::ThroughBall);
+		const auto Input = MakeInput(TEXT("DevOverrideTB"), SkillId);
+		FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+		FMatchPlayAuthoritativeSession Direct(
+			DirectProvider, DirectProvider, Rules);
+		FScopedWorld World;
+		auto* Host = World.GetHost();
+		TestNotNull(TEXT("ThroughBall override Host exists"), Host);
+		if (Host == nullptr)
+		{
+			return false;
+		}
+		FReadyTrace Trace;
+		TestTrue(TEXT("ThroughBall override reaches ready state"),
+			BuildReadyForResolution(
+				*Host, Direct, Input, Rules, Seed,
+				ESkillRuleType::ThroughBall, false, Trace));
+		TestTrue(TEXT("Route and P1 overrides set"),
+			Set(*Host, ETarget::ThroughBallRoute, 4)
+				&& Set(*Host, ETarget::ThroughBallBehindDefenseP1, 3));
+		TestEqual(TEXT("Two semantic entries are pending"),
+			Host->GetLocalDevPendingRollOverrides().Num(), 2);
+		TestTrue(TEXT("Authority begins resolution"),
+			Host->BeginResolutionSession().bSuccess);
+		const auto Route = Host->ResolveInitialRoute();
+		const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
+		TestTrue(TEXT("Real Host route command succeeds"), Route.bSuccess);
+		TestEqual(TEXT("Authority stored overridden route RawD6"),
+			RouteState.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords[0].RawD6, 4);
+		TestEqual(TEXT("Canonical mapping turns 4 into BehindDefense"),
+			RouteState.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
+			EMatchPlayThroughBallActualBranch::BehindDefense);
+		TestFalse(TEXT("Route override auto-consumed"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target == ETarget::ThroughBallRoute;
+				}));
+		const auto P1 =
+			Host->ResolveThroughBallBehindDefenseP1DecisionOrPlan();
+		const FMatchPlayState P1State = Host->GetMatchSnapshot().Snapshot;
+		TestTrue(TEXT("Real Host P1 command succeeds"), P1.bSuccess);
+		TestEqual(TEXT("P1 primary authority record uses override"),
+			P1State.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords[0].RawD6, 3);
+		TestTrue(TEXT("Route/P1 overrides independently auto-clear"),
+			Host->GetLocalDevPendingRollOverrides().IsEmpty());
+	}
+
+	{
+		const int32 Seed = 20613;
+		const FName SkillId(TEXT("Skill.DevOverride.Feet"));
+		const auto Rules = MakeRules(SkillId, ESkillRuleType::ThroughBall);
+		const auto Input = MakeInput(TEXT("DevOverrideFeet"), SkillId);
+		FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+		FMatchPlayAuthoritativeSession Direct(
+			DirectProvider, DirectProvider, Rules);
+		FScopedWorld World;
+		auto* Host = World.GetHost();
+		TestNotNull(TEXT("Feet override Host exists"), Host);
+		if (Host == nullptr)
+		{
+			return false;
+		}
+		FReadyTrace Trace;
+		TestTrue(TEXT("Feet override reaches ready state"),
+			BuildReadyForResolution(
+				*Host, Direct, Input, Rules, Seed,
+				ESkillRuleType::ThroughBall, false, Trace));
+		TestTrue(TEXT("Feet route/attack/defense overrides set"),
+			Set(*Host, ETarget::ThroughBallRoute, 1)
+				&& Set(*Host, ETarget::ThroughBallFeetAttack, 6)
+				&& Set(*Host, ETarget::ThroughBallFeetDefense, 1));
+		TestTrue(TEXT("Feet authority begins and resolves overridden route"),
+			Host->BeginResolutionSession().bSuccess
+				&& Host->ResolveInitialRoute().bSuccess);
+		const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
+		TestEqual(TEXT("Canonical route 1 is Feet"),
+			RouteState.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
+			EMatchPlayThroughBallActualBranch::Feet);
+		FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest Attack;
+		Attack.RequestingSide = Trace.Attacker;
+		FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest Defense;
+		Defense.RequestingSide = Trace.Defender;
+		TestTrue(TEXT("Feet typed authority rolls succeed"),
+			Host->ResolveThroughBallFeetAttackRoll(Attack).bSuccess
+				&& Host->ResolveThroughBallFeetDefenseRoll(Defense).bSuccess);
+		const FMatchPlayState RollState = Host->GetMatchSnapshot().Snapshot;
+		const auto& Records = RollState.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestEqual(TEXT("Feet attack authority RawD6 is 6"),
+			Records[0].RawD6, 6);
+		TestEqual(TEXT("Feet defense authority RawD6 is 1"),
+			Records[1].RawD6, 1);
+		const auto Formula = Host->ResolveThroughBallFeetFormula();
+		TestTrue(TEXT("Normal Feet Formula executes"), Formula.bSuccess);
+		TestEqual(TEXT("Formula plan consumes authoritative attack 6"),
+			Formula.AuthoritativeResult.OrchestrationResult
+				.PlanRegenerationResult.PlanResult.FormulaPlan.AttackD6, 6);
+		TestEqual(TEXT("Formula plan consumes authoritative defense 1"),
+			Formula.AuthoritativeResult.OrchestrationResult
+				.PlanRegenerationResult.PlanResult.FormulaPlan.DefenseD6, 1);
+		const auto View = FFMCodexLocalMatchInteractionViewBuilder::Build(
+			Host->GetMatchSnapshot().Snapshot, Rules);
+		TestTrue(TEXT("Presentation facts retain authoritative Feet rolls"),
+			View.AcceptedRolls.ContainsByPredicate([](const auto& Roll)
+			{
+				return Roll.Group == EFMCodexLocalMatchRollGroup::PostRoute
+					&& Roll.Purpose == TEXT("Primary Attack")
+					&& Roll.RawD6 == 6;
+			}));
+		TestTrue(TEXT("Feet pending map fully consumed"),
+			Host->GetLocalDevPendingRollOverrides().IsEmpty());
+	}
+
+	{
+		const int32 Seed = 30613;
+		const FName SkillId(TEXT("Skill.DevOverride.Cross"));
+		const auto Rules = MakeRules(SkillId, ESkillRuleType::Cross);
+		const auto Input = MakeInput(TEXT("DevOverrideCross"), SkillId);
+		FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+		FMatchPlayAuthoritativeSession Direct(
+			DirectProvider, DirectProvider, Rules);
+		FScopedWorld World;
+		auto* Host = World.GetHost();
+		TestNotNull(TEXT("Cross override Host exists"), Host);
+		if (Host == nullptr)
+		{
+			return false;
+		}
+		FReadyTrace Trace;
+		TestTrue(TEXT("Cross override reaches ready state"),
+			BuildReadyForResolution(
+				*Host, Direct, Input, Rules, Seed,
+				ESkillRuleType::Cross, false, Trace));
+		TestTrue(TEXT("Cross semantic overrides set"),
+			Set(*Host, ETarget::CrossRoute, 1)
+				&& Set(*Host, ETarget::CrossHighAttack, 6)
+				&& Set(*Host, ETarget::CrossHighDefense, 1));
+		TestTrue(TEXT("Cross authority route succeeds"),
+			Host->BeginResolutionSession().bSuccess
+				&& Host->ResolveInitialRoute().bSuccess);
+		const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
+		TestEqual(TEXT("Cross authority route RawD6 is 1"),
+			RouteState.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords[0].RawD6, 1);
+		TestEqual(TEXT("Canonical Cross mapping preserves intended High"),
+			RouteState.CurrentAttack.ResolutionSession.ActualBranch.Cross,
+			EMatchPlayCrossActualBranch::High);
+		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Attack;
+		Attack.RequestingSide = Trace.Attacker;
+		FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Defense;
+		Defense.RequestingSide = Trace.Defender;
+		TestTrue(TEXT("Cross typed authority rolls succeed"),
+			Host->ResolveCrossHighAttackRoll(Attack).bSuccess
+				&& Host->ResolveCrossHighDefenseRoll(Defense).bSuccess);
+		const auto& Records = Host->GetMatchSnapshot().Snapshot.CurrentAttack
+			.ResolutionSession.PostRouteRollProgress.RollRecords;
+		TestEqual(TEXT("Cross attack authority RawD6 is 6"),
+			Records[0].RawD6, 6);
+		TestEqual(TEXT("Cross defense authority RawD6 is 1"),
+			Records[1].RawD6, 1);
+		const auto View = FFMCodexLocalMatchInteractionViewBuilder::Build(
+			Host->GetMatchSnapshot().Snapshot, Rules);
+		TestTrue(TEXT("Cross presentation receives route reel target 1"),
+			View.AcceptedRolls.ContainsByPredicate([](const auto& Roll)
+			{
+				return Roll.Group == EFMCodexLocalMatchRollGroup::InitialRoute
+					&& Roll.RawD6 == 1;
+			}));
+		TestTrue(TEXT("Cross presentation receives attack reel target 6"),
+			View.AcceptedRolls.ContainsByPredicate([](const auto& Roll)
+			{
+				return Roll.Group == EFMCodexLocalMatchRollGroup::PostRoute
+					&& Roll.Purpose == TEXT("Primary Attack")
+					&& Roll.RawD6 == 6;
+			}));
+		TestTrue(TEXT("Cross pending map fully consumed"),
+			Host->GetLocalDevPendingRollOverrides().IsEmpty());
+	}
+
+	{
+		const int32 Seed = 40613;
+		const auto Input = MakeInput(TEXT("DevOverrideTactical"), NAME_None);
+		FScopedWorld World;
+		auto* Host = World.GetHost();
+		TestNotNull(TEXT("Tactical override Host exists"), Host);
+		if (Host == nullptr)
+		{
+			return false;
+		}
+		const FSkillRuleSnapshotSet Rules;
+		TestTrue(TEXT("Tactical match starts"),
+			Host->StartNewLocalMatch(Input, Rules, Seed).bSuccess);
+		TestTrue(TEXT("Tactical 8 override set"),
+			Set(*Host, ETarget::TacticalPoint, 8));
+		const EInitialTurnOrderPlayer Attacker = Host->GetMatchSnapshot().Snapshot
+			.RuntimeState.CurrentAttackingPlayer;
+		const auto Roll = Host->RollTacticalPoints(Attacker);
+		TestTrue(TEXT("Real tactical authority command succeeds"), Roll.bSuccess);
+		TestEqual(TEXT("Authority tactical output is overridden 8"),
+			Roll.TacticalPoints, 8);
+		TestEqual(TEXT("CurrentAttack stores the same tactical point"),
+			Host->GetMatchSnapshot().Snapshot.CurrentAttack.ActionPoint, 8);
+		TestTrue(TEXT("Tactical override auto-clears"),
+			Host->GetLocalDevPendingRollOverrides().IsEmpty());
+	}
+	return true;
+}
+
 #endif

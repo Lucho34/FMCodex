@@ -405,10 +405,10 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		CountOccurrences(Source,
 			TEXT("ActiveMatchRuntime->AuthoritativeSession.BeginOrdinaryAttack(")),
 		2);
-	TestEqual(TEXT("Public snapshot plus roll preflight have two snapshot reads"),
+	TestEqual(TEXT("Public snapshot, tactical preflight, and DEV route identity have three reads"),
 		CountOccurrences(Source,
 			TEXT("ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot()")),
-		2);
+		3);
 	for (const TCHAR* Delegation : {
 		TEXT(".DeployOrdinary("),
 		TEXT(".DeployGoalkeeper("),
