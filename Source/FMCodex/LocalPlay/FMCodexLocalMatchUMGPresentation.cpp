@@ -712,10 +712,42 @@ namespace FMCodexLocalMatchUMGPresentation
 		return Result;
 	}
 
+	bool CanFormulaSurfaceClaim(
+		const EFMCodexUMGInteractionCategory Category)
+	{
+		switch (Category)
+		{
+		case EFMCodexUMGInteractionCategory::RollCrossAttack:
+		case EFMCodexUMGInteractionCategory::RollCrossDefense:
+		case EFMCodexUMGInteractionCategory::RollThroughBallFeetAttack:
+		case EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense:
+		case EFMCodexUMGInteractionCategory::ApplyCrossTerminalResolution:
+		case EFMCodexUMGInteractionCategory
+			::ApplyThroughBallFeetTerminalResolution:
+		case EFMCodexUMGInteractionCategory::AdvanceAfterTerminal:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	void ClaimPrimaryAction(
+		FFMCodexUMGResolutionPrimaryActionSlotViewModel& Slot,
+		const FFMCodexUMGPrimaryActionViewModel& Action)
+	{
+		if (!Action.bAvailable)
+		{
+			return;
+		}
+		Slot.bClaimsAction = true;
+		Slot.bVisible = true;
+		Slot.Action = Action;
+	}
+
 	FFMCodexUMGInlineFormulaSurfaceViewModel BuildInlineFormulaSurface(
 		const FMatchPlayCurrentAttackResolutionFactProjection& Facts,
 		const FFMCodexLocalMatchInteractionView& InteractionView,
-		const bool bCanContinue,
+		const FFMCodexUMGPrimaryActionViewModel& PrimaryAction,
 		const bool bAcceptedResolutionState)
 	{
 		FFMCodexUMGInlineFormulaSurfaceViewModel Result;
@@ -835,7 +867,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			&& Contest->ResolvedResult.bAttackEnded
 			&& !Contest->ResolvedResult.bContinueResolution
 			&& bTerminalPresentationReady
-			&& bCanContinue;
+			&& PrimaryAction.bAvailable;
 		if (bNarrativeReady)
 		{
 			Result.bNarrativeAttackSuccess =
@@ -947,21 +979,12 @@ namespace FMCodexLocalMatchUMGPresentation
 		Result.bAttackRowActive = !bAttackResolved;
 		Result.bDefenseRowActive =
 			bAttackResolved && !bDefenseResolved;
-		Result.bCanContinue = bCanContinue;
-		if (bCanContinue)
+		if (CanFormulaSurfaceClaim(PrimaryAction.Category))
 		{
-			Result.ContinueActionLabel = bResolvedThroughBallFeet
-				&& InteractionView.InteractionCategory
-					== EFMCodexLocalMatchInteractionCategory
-						::RollThroughBallFeetAttack
-					? FString(TEXT("进攻方掷点"))
-				: bResolvedThroughBallFeet
-					&& InteractionView.InteractionCategory
-						== EFMCodexLocalMatchInteractionCategory
-							::RollThroughBallFeetDefense
-						? FString(TEXT("防守方掷点"))
-						: InteractionView.ContinueActionLabel;
+			ClaimPrimaryAction(Result.PrimaryAction, PrimaryAction);
 		}
+		Result.bCanContinue = Result.PrimaryAction.bVisible;
+		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
 		return Result;
 	}
 
@@ -1002,7 +1025,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			::ThroughBallTitle().ToString();
 		Result.InteractionCategory = Interaction.Category;
 		Result.OneOnOneChoices = Interaction.OneOnOneChoices;
-		Result.ActionPromptLabel = Interaction.PrimaryActionLabel;
+		Result.ActionPromptLabel = Interaction.PrimaryAction.Label;
 
 		const FMatchPlayCurrentAttackResolutionFactProjection& Facts =
 			InteractionView.ResolutionFacts;
@@ -1021,13 +1044,12 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.bInitialRouteRollAwaitingInput =
 				Interaction.Category
 					== EFMCodexUMGInteractionCategory::ContinueResolution;
-			Result.bPrimaryActionOwnedBySurface =
-				Result.bInitialRouteRollAwaitingInput && Interaction.bCanContinue;
-			Result.bCanContinue = Result.bPrimaryActionOwnedBySurface;
-			Result.ContinueActionLabel = Result.bCanContinue
-				? FFMCodexPlayerUIPresentationText
-					::ThroughBallInitialRouteAction().ToString()
-				: FString();
+			if (!bRejected && Result.bInitialRouteRollAwaitingInput)
+			{
+				ClaimPrimaryAction(Result.PrimaryAction, Interaction.PrimaryAction);
+			}
+			Result.bCanContinue = Result.PrimaryAction.bVisible;
+			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
 			return Result;
 		}
 
@@ -1083,7 +1105,6 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.Formula = Formula;
 			Result.StatusLabel.Empty();
 			Result.ActionPromptLabel.Empty();
-			Result.bPrimaryActionOwnedBySurface = Formula.bVisible;
 			break;
 		case EMatchPlayThroughBallActualBranch::BehindDefense:
 			Result.Stage =
@@ -1589,26 +1610,7 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Interaction.bCanDecline = InteractionView.bCanDecline;
 	Result.Interaction.bCanResolveNoLegal =
 		InteractionView.bCanResolveNoLegalChoice;
-	Result.Interaction.bPrimaryActionOwnedByInlineFormula =
-		!ResolutionFeedback.bRejected
-		&& (bCrossRoutePending
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense
-		|| (InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::ApplyCrossTerminalResolution
-			&& InteractionView.bCrossTerminalActionAvailable)
-		|| (InteractionView.InteractionCategory
-				== EFMCodexLocalMatchInteractionCategory
-					::ApplyThroughBallFeetTerminalResolution
-			&& InteractionView.bThroughBallFeetTerminalActionAvailable)
-		|| (InteractionView.InteractionCategory
-				== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
-			&& (InteractionView.bCrossFormulaComplete
-				|| InteractionView.bThroughBallFeetFormulaComplete)));
-	Result.Interaction.bCanContinue =
+	const bool bCanContinue =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::ContinueResolution
 		|| InteractionView.InteractionCategory
@@ -1627,17 +1629,40 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				::ApplyThroughBallFeetTerminalResolution
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal;
-	Result.Interaction.bCanContinue = Result.Interaction.bCanContinue
-		&& !Result.Interaction.bPrimaryActionOwnedByInlineFormula;
-	Result.Interaction.PrimaryActionLabel =
+	Result.Interaction.PrimaryAction.bAvailable =
+		Result.Interaction.bCanStartNewMatch
+		|| Result.Interaction.bCanRollTacticalPoints
+		|| Result.Interaction.bCanFinishDeployment
+		|| bCanContinue;
+	Result.Interaction.PrimaryAction.Category = Result.Interaction.Category;
+	Result.Interaction.PrimaryAction.Label =
 		Result.Interaction.bCanStartNewMatch ? TEXT("START LOCAL MATCH")
 		: Result.Interaction.bCanRollTacticalPoints
 			? TEXT("ROLL TACTICAL POINTS")
 		: Result.Interaction.bCanFinishDeployment ? TEXT("FINISH DEPLOYMENT")
-		: Result.Interaction.bCanContinue
-			? (InteractionView.ContinueActionLabel.IsEmpty()
-				? FString(TEXT("CONTINUE")) : InteractionView.ContinueActionLabel)
+		: bCanContinue
+			? bThroughBallRoutePending
+				? FFMCodexPlayerUIPresentationText
+					::ThroughBallInitialRouteAction().ToString()
+				: bCrossRoutePending
+					? (InteractionView.ContinueActionLabel.IsEmpty()
+						? FString(TEXT("判定传中路线"))
+						: InteractionView.ContinueActionLabel)
+					: InteractionView.InteractionCategory
+						== EFMCodexLocalMatchInteractionCategory
+							::RollThroughBallFeetAttack
+							? FString(TEXT("进攻方掷点"))
+						: InteractionView.InteractionCategory
+							== EFMCodexLocalMatchInteractionCategory
+								::RollThroughBallFeetDefense
+								? FString(TEXT("防守方掷点"))
+								: (InteractionView.ContinueActionLabel.IsEmpty()
+									? FString(TEXT("CONTINUE"))
+									: InteractionView.ContinueActionLabel)
 			: FString();
+	Result.Interaction.bCanContinue = bCanContinue;
+	Result.Interaction.PrimaryActionLabel =
+		Result.Interaction.PrimaryAction.Label;
 	Result.Interaction.DeclineActionLabel = InteractionView.bCanDecline
 		? DeclineLabel(InteractionView.InteractionCategory) : FString();
 	Result.Interaction.NoLegalActionLabel =
@@ -1739,10 +1764,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			&& !InteractionView.bCurrentAttackActive);
 	Result.Resolution.bRejected = ResolutionFeedback.bRejected;
 	Result.Resolution.bTerminal = ResolutionFeedback.bTerminal;
-	Result.Resolution.bCanContinue = Result.Interaction.bCanContinue;
+	Result.Resolution.bCanContinue = bCanContinue;
 	Result.Resolution.ContinueActionLabel =
-		Result.Interaction.bCanContinue
-			? Result.Interaction.PrimaryActionLabel : FString();
+		bCanContinue ? Result.Interaction.PrimaryAction.Label : FString();
 	Result.Resolution.StepLabel = ResolutionFeedback.StepTitle.IsEmpty()
 		? ResolutionFeedback.StepSummary : ResolutionFeedback.StepTitle;
 	Result.Resolution.StepSummaryLabel = ResolutionFeedback.StepSummary;
@@ -1774,14 +1798,11 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		ResolutionFeedback.ContinuationSummary;
 	Result.Resolution.TerminalLabel = ResolutionFeedback.TerminalSummary;
 	Result.Resolution.ErrorLabel = ResolutionFeedback.ErrorMessage;
-	const bool bInlineFormulaCanContinue =
-		Result.Interaction.bCanContinue
-		|| Result.Interaction.bPrimaryActionOwnedByInlineFormula;
 	const FFMCodexUMGInlineFormulaSurfaceViewModel ProjectedFormula =
 		BuildInlineFormulaSurface(
 		Result.Resolution.FormulaFacts,
 		InteractionView,
-		bInlineFormulaCanContinue,
+		Result.Interaction.PrimaryAction,
 		!Result.Resolution.bRejected
 			&& InteractionView.bCurrentAttackActive);
 	if (InteractionView.PresentedActionType != ESkillRuleType::ThroughBall)
@@ -1806,11 +1827,13 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			Result.InlineFormula.ContestLabel = TEXT("传中");
 			Result.InlineFormula.StatusLabel = TEXT("等待路线掷点");
 			Result.InlineFormula.bShowFormulaRows = false;
-			Result.InlineFormula.bCanContinue = bInlineFormulaCanContinue;
+			ClaimPrimaryAction(
+				Result.InlineFormula.PrimaryAction,
+				Result.Interaction.PrimaryAction);
+			Result.InlineFormula.bCanContinue =
+				Result.InlineFormula.PrimaryAction.bVisible;
 			Result.InlineFormula.ContinueActionLabel =
-				InteractionView.ContinueActionLabel.IsEmpty()
-					? FString(TEXT("判定传中路线"))
-					: InteractionView.ContinueActionLabel;
+				Result.InlineFormula.PrimaryAction.Action.Label;
 		}
 	}
 	Result.ThroughBallResolution = BuildThroughBallSurface(

@@ -302,9 +302,9 @@ namespace FMCodexInlineResolutionFormulaPIETests
 				&& !Controller->GetInteractionView()
 					.bCrossTerminalActionAvailable
 				&& Controller->GetInteractionView().bTerminalPendingAdvance
-				&& Presentation.Interaction
-					.bPrimaryActionOwnedByInlineFormula
-				&& !Presentation.Interaction.bCanContinue
+				&& Presentation.InlineFormula.PrimaryAction.Claims(
+					Presentation.Interaction.PrimaryAction)
+				&& Presentation.Interaction.bCanContinue
 				&& Screen->GetInteractionPanel()->GetVisibility()
 					== ESlateVisibility::Collapsed
 				&& !Screen->GetInteractionPanel()->IsInteractionBlocked()

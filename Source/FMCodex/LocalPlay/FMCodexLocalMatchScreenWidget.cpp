@@ -603,6 +603,25 @@ void UFMCodexLocalMatchScreenWidget
 		BeginInlineFormulaReveal(Identity, true);
 	}
 }
+
+void UFMCodexLocalMatchScreenWidget::ResetPrimaryActionDispatchForTesting()
+{
+	PrimaryActionDispatchCountForTesting = 0;
+	LastPrimaryActionDispatchForTesting =
+		EFMCodexUMGInteractionCategory::None;
+}
+
+int32 UFMCodexLocalMatchScreenWidget
+	::GetPrimaryActionDispatchCountForTesting() const
+{
+	return PrimaryActionDispatchCountForTesting;
+}
+
+EFMCodexUMGInteractionCategory UFMCodexLocalMatchScreenWidget
+	::GetLastPrimaryActionDispatchForTesting() const
+{
+	return LastPrimaryActionDispatchForTesting;
+}
 #endif
 
 UFMCodexCardRackWidget*
@@ -908,6 +927,10 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	{
 		return;
 	}
+#if WITH_DEV_AUTOMATION_TESTS
+	++PrimaryActionDispatchCountForTesting;
+	LastPrimaryActionDispatchForTesting = Presentation.Interaction.Category;
+#endif
 	const FFMCodexCrossRollRevealIdentity RequestedIdentity =
 		PendingCrossRollIdentity(Presentation);
 	if (RequestedIdentity.IsValid()
@@ -2584,6 +2607,9 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::Defense
 				? TEXT("防守方掷点") : TEXT("进攻方掷点");
+	// Retain the exact claim while the reveal gate hides its button. This keeps
+	// the lower panel from leaking the next authoritative action early.
+	Result.PrimaryAction.bVisible = false;
 	Result.bCanContinue = false;
 	Result.ContinueActionLabel.Empty();
 	const bool bFormulaDisclosed = bHolding
@@ -2666,7 +2692,9 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 	Result.bDiceRevealVisible = true;
 	Result.RollReel = BuildActiveRollReelPresentation();
 	Result.bInitialRouteRollAwaitingInput = false;
-	Result.bPrimaryActionOwnedBySurface = true;
+	// The route surface still owns the exact action during its reveal; only the
+	// button visibility is transient presentation state.
+	Result.PrimaryAction.bVisible = false;
 	Result.bCanContinue = false;
 	Result.ContinueActionLabel.Empty();
 	const bool bHolding = InlineFormulaRevealPhase
@@ -3283,9 +3311,14 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	{
 		HideTacticalDetail();
 	}
+	const FFMCodexUMGPrimaryActionViewModel& PrimaryAction =
+		Presentation.Interaction.PrimaryAction;
+	const bool bCentralSurfaceClaimsPrimaryAction =
+		DisplayedInlineFormula.PrimaryAction.Claims(PrimaryAction)
+		|| DisplayedThroughBall.PrimaryAction.Claims(PrimaryAction)
+		|| DisplayedThroughBall.Formula.PrimaryAction.Claims(PrimaryAction);
 	InteractionPanel->SetVisibility(
-		Presentation.Interaction.bPrimaryActionOwnedByInlineFormula
-			|| DisplayedThroughBall.bPrimaryActionOwnedBySurface
+		bCentralSurfaceClaimsPrimaryAction
 			? ESlateVisibility::Collapsed
 			: ESlateVisibility::Visible);
 	InteractionPanel->SetInteractionBlocked(

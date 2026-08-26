@@ -317,7 +317,8 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 				== TEXT("判定直塞路线")
 			&& PreRoute.ThroughBallResolution.StatusLabel.IsEmpty()
 			&& PreRoute.ThroughBallResolution.ActionPromptLabel.IsEmpty()
-			&& PreRoute.ThroughBallResolution.bPrimaryActionOwnedBySurface
+			&& PreRoute.ThroughBallResolution.PrimaryAction.Claims(
+				PreRoute.Interaction.PrimaryAction)
 			&& PreRoute.ThroughBallResolution.bCanContinue
 			&& PreRoute.ThroughBallResolution.ContinueActionLabel
 				== TEXT("掷点判定路线")
@@ -425,10 +426,19 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 			Screen->GetThroughBallResolutionSurface() != nullptr
 				&& Screen->GetThroughBallResolutionSurface()
 					->GetPresentation().bVisible
+				&& Screen->GetInteractionPanel()->GetVisibility()
+					== ESlateVisibility::Visible
 				&& !Screen->IsLegacyResolutionOverlayVisible());
-		Screen->RefreshFromPresentation(Build(OneOnOneView, true));
-		TestTrue(TEXT("Rejected authority result retains legacy diagnostic surface"),
-			Screen->IsLegacyResolutionOverlayVisible());
+		const FFMCodexUMGMatchScreenViewModel RejectedRoute =
+			Build(PreRouteView, true);
+		Screen->RefreshFromPresentation(RejectedRoute);
+		TestTrue(TEXT("Rejected central route recovers its lower action and diagnostic"),
+			Screen->IsLegacyResolutionOverlayVisible()
+				&& Screen->GetInteractionPanel()->GetVisibility()
+					== ESlateVisibility::Visible
+				&& RejectedRoute.Interaction.PrimaryAction.bAvailable
+				&& !RejectedRoute.ThroughBallResolution.PrimaryAction.Claims(
+					RejectedRoute.Interaction.PrimaryAction));
 	}
 
 	FFMCodexLocalMatchInteractionView CrossView = MakeView();
@@ -610,8 +620,9 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 			&& Preview.Interaction.CrossRollSequenceIndex == 1
 			&& Preview.Interaction.CrossRollOwnerSide
 				== EInitialTurnOrderPlayer::PlayerA
-			&& Preview.Interaction.bPrimaryActionOwnedByInlineFormula
-			&& !Preview.Interaction.bCanContinue
+			&& Preview.ThroughBallResolution.Formula.PrimaryAction.Claims(
+				Preview.Interaction.PrimaryAction)
+			&& Preview.Interaction.bCanContinue
 			&& !Preview.InlineFormula.bVisible);
 
 	const FFMCodexUMGMatchScreenViewModel AttackComplete = Build(
@@ -625,7 +636,9 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 			&& AttackComplete.Interaction.CrossRollOwnerSide
 				== EInitialTurnOrderPlayer::PlayerB
 			&& AttackComplete.ThroughBallResolution.Formula.RouteResultLabel
-				== TEXT("路线掷点 2 → 判定为脚下球"));
+				== TEXT("路线掷点 2 → 判定为脚下球")
+			&& AttackComplete.ThroughBallResolution.Formula.PrimaryAction.Claims(
+				AttackComplete.Interaction.PrimaryAction));
 
 	UFMCodexLocalMatchScreenWidget* Screen =
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
@@ -679,7 +692,9 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 			&& !Screen->IsInlineFormulaRevealInputBlocked()
 			&& FormulaSurface->GetPresentation().bCanContinue
 			&& FormulaSurface->GetPresentation().ContinueActionLabel
-				== TEXT("防守方掷点"));
+				== TEXT("防守方掷点")
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
 
 	UFMCodexLocalMatchScreenWidget* AttackReconstructed =
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
@@ -696,6 +711,12 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 
 	const FFMCodexUMGMatchScreenViewModel Terminal = Build(
 		MakeFeetView(true, true, true));
+	TestTrue(TEXT("Feet terminal slot claims the unchanged typed NextRound"),
+		Terminal.ThroughBallResolution.Formula.PrimaryAction.Claims(
+			Terminal.Interaction.PrimaryAction)
+			&& Terminal.Interaction.PrimaryAction.bAvailable
+			&& Terminal.Interaction.PrimaryAction.Category
+				== EFMCodexUMGInteractionCategory::AdvanceAfterTerminal);
 	Screen->RefreshFromPresentation(Terminal);
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	TestTrue(TEXT("Accepted defense roll gates terminal result and NextRound"),

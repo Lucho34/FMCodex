@@ -192,7 +192,9 @@ UFMCodexInlineResolutionFormulaSurfaceWidget::GetRollReelWidget() const
 
 void UFMCodexInlineResolutionFormulaSurfaceWidget::RequestContinue()
 {
-	if (Presentation.bVisible && Presentation.bCanContinue)
+	if (Presentation.bVisible
+		&& Presentation.PrimaryAction.bVisible
+		&& Presentation.PrimaryAction.Action.bAvailable)
 	{
 		OnContinueRequested.Broadcast();
 	}
@@ -429,12 +431,15 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 	RenderedDefenseTermCount = Presentation.DefenseRow.Terms.Num();
 
 	ContinueButton->GetParent()->SetVisibility(
-		Presentation.bVisible && Presentation.bCanContinue
+		Presentation.bVisible && Presentation.PrimaryAction.bVisible
+			&& Presentation.PrimaryAction.Action.bAvailable
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	ContinueButton->SetIsEnabled(Presentation.bCanContinue);
+	ContinueButton->SetIsEnabled(
+		Presentation.PrimaryAction.Action.bAvailable);
 	if (UTextBlock* Label = Cast<UTextBlock>(ContinueButton->GetChildAt(0)))
 	{
-		Label->SetText(FText::FromString(Presentation.ContinueActionLabel));
+		Label->SetText(FText::FromString(
+			Presentation.PrimaryAction.Action.Label));
 	}
 }
 

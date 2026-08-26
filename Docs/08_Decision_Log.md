@@ -721,6 +721,15 @@
 - Feet 结果：terminal headline 只读取 authoritative Winner 与 Participant Facts。进攻方胜且 Carrier/Runner 齐全时显示 `{Carrier}直塞，{Runner}破门！`；防守方胜按 Marker、Helper、Goalkeeper 的固定事实优先级选择已有姓名并显示 `{Carrier}直塞被{Defender}破坏`；事实不足时使用简短 Feet 成功/防守成功 fallback。该选择不使用 gameplay RNG、本地 RNG、hash winner 推断或 Widget arithmetic。
 - 冻结：本决定只修改 Presentation DTO、shared UMG renderer 与自动化/文档。Feet/Cross 公式、D6、路线概率、Authority、Session/Host/Controller command、terminal persistence、handoff 与 reveal timing 全部不变；Fresh USER PIE 仍是视觉接受 Gate。
 
+### CD-072 - Production Resolution Surfaces Claim One Shared Typed Primary Action
+
+- 日期：2026-08-26
+- 决策：Resolution-local primary CTA 使用统一 Presentation ownership contract。`FFMCodexUMGInteractionViewModel::PrimaryAction` 是唯一 typed source；`FFMCodexUMGResolutionPrimaryActionSlotViewModel` 只声明某个 production surface 是否精确 claim 同一 category，并控制 reveal 后的按钮可见性。
+- 当前 ownership：ThroughBall route、Feet Attack/Defense/NextRound、Cross route、Cross High/Low Attack/Defense/NextRound 由中央 production surface claim。OneOnOne 与尚无完整 production surface 的 BehindDefense、AntiOffside、LongShot、CutInside、PassControl 保持既有 InteractionPanel，属于后续 migration candidate。
+- 去重：Screen 只在 `SurfaceSlot.Claims(Interaction.PrimaryAction)` 成立时抑制 lower duplicate，不以 tactic、ThroughBall 可见性或 Formula 可见性进行粗粒度隐藏。action 不匹配、surface 无 CTA 或 rejection 时 lower recovery 保留；Deployment、角色选择和 SelectSkill 永不因中央 Resolution 可见而被隐藏。
+- reveal/dispatch：reveal gate 暂时隐藏 slot button 但保留 exact claim，防止下一步 action 从左下提前泄漏。central CTA 继续通过既有 Screen switch 调用一个 typed Controller request；Feet child -> ThroughBall parent -> Screen 仍是单 delegate 链。
+- 冻结：不修改 CoreRules、Authority/Session/Host、Controller command semantics、RNG、Formula、legality、terminal persistence、advance lifecycle、stable reveal identity、contributor names 或 `.3A` Narrative。USER PIE 仍是最终视觉接受 Gate。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

@@ -90,7 +90,10 @@ UFMCodexThroughBallResolutionSurfaceWidget::GetFormulaSurface() const
 void UFMCodexThroughBallResolutionSurfaceWidget::RequestContinue()
 {
 	if (Presentation.bVisible
-		&& (Presentation.bCanContinue || Presentation.Formula.bCanContinue))
+		&& ((Presentation.PrimaryAction.bVisible
+				&& Presentation.PrimaryAction.Action.bAvailable)
+			|| (Presentation.Formula.PrimaryAction.bVisible
+				&& Presentation.Formula.PrimaryAction.Action.bAvailable)))
 	{
 		OnContinueRequested.Broadcast();
 	}
@@ -252,11 +255,14 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals()
 	RollReel->RefreshFromPresentation(Presentation.RollReel);
 	FormulaSurface->RefreshFromPresentation(Presentation.Formula);
 	ContinueButton->GetParent()->SetVisibility(
-		Presentation.bVisible && Presentation.bCanContinue
+		Presentation.bVisible && Presentation.PrimaryAction.bVisible
+			&& Presentation.PrimaryAction.Action.bAvailable
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	ContinueButton->SetIsEnabled(Presentation.bCanContinue);
+	ContinueButton->SetIsEnabled(
+		Presentation.PrimaryAction.Action.bAvailable);
 	if (UTextBlock* Label = Cast<UTextBlock>(ContinueButton->GetChildAt(0)))
 	{
-		Label->SetText(FText::FromString(Presentation.ContinueActionLabel));
+		Label->SetText(FText::FromString(
+			Presentation.PrimaryAction.Action.Label));
 	}
 }

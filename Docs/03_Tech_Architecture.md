@@ -106,3 +106,11 @@
 - Feet 已解析 route 的 `路线掷点 N → 判定为脚下球` 进入 Formula header，因此 Preview、Attack pending、Defense pending 与 terminal/resync 都保留同一权威上下文；pre-route 没有 resolved Formula DTO，不显示结果。
 - Cross pre-route 继续使用 `ContinueResolution` typed category 与 `Cross.Route/0/owner` reveal identity，但唯一 CTA 由中央 Inline Formula surface 所有；底部 InteractionPanel 只因 presentation ownership 折叠。点击仍经 `OnContinueRequested -> Screen::RequestContinueResolution -> Controller::ContinueResolution`，不增加命令或掷点。
 - Feet terminal headline 由 Formula winner 与 Participant Facts 有界映射；攻击成功使用 Carrier/Runner，防守成功固定优先 Marker、Helper、Goalkeeper，缺少事实时回退到简短结果。该映射不调用 RNG、不改变 reveal/result/hold gate，也不改变 terminal/advance lifecycle。
+
+## Resolution Local Primary Action Ownership（Stage 6.13.1.4.10.3B）
+
+- `FFMCodexUMGInteractionViewModel::PrimaryAction` 是 UMG 层唯一 typed primary-action source，保存 authoritative interaction category、可用性与玩家标签。中央 surface 与底部 InteractionPanel 不再分别创建 command semantics；兼容字段只镜像该 DTO，不参与 ownership 决策。
+- `FFMCodexUMGResolutionPrimaryActionSlotViewModel` 表达 production Resolution surface 对同一个 action 的精确 claim。Cross route、High/Low Attack/Defense、Cross terminal、ThroughBall route、Feet Attack/Defense 与 Feet terminal 都复制同一 action DTO；OneOnOne、BehindDefense、AntiOffside 及未 productionized tactics 不被提前接管。
+- Screen 仅在中央 slot 的 `Claims()` 与当前 Interaction `PrimaryAction` category 精确匹配时折叠底部重复面板。中央 surface 可见但没有 claim、claim 不匹配或 authority rejection 时，底部 recovery/fallback 保持可见；Deployment、角色选择与 SelectSkill 不受 Resolution 可见性影响。
+- reveal 只把 slot 的 `bVisible` 暂时关闭，`bClaimsAction` 与 typed action 保留，因此 Authority 已进入 Defense/NextRound 时不会提前从左下泄漏 CTA。stable settled key、cached authority DTO、fresh reconstruction 与 rejection cancellation 继续使用原实现。
+- central click 仍沿既有单一路径进入 `UFMCodexLocalMatchScreenWidget::RequestContinueResolution()` 并按 interaction category 调用一个 Controller wrapper。Formula child -> ThroughBall parent -> Screen 的单 delegate 链保持；没有新增 command、event bus、legality、Formula、RNG 或 lifecycle 分支。

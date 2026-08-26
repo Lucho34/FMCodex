@@ -150,6 +150,10 @@ public:
 	void PauseInlineFormulaRevealTimerForTesting();
 	void BeginPendingCrossRollRevealForTesting();
 	void BeginPendingTacticalPointRevealForTesting();
+	void ResetPrimaryActionDispatchForTesting();
+	int32 GetPrimaryActionDispatchCountForTesting() const;
+	EFMCodexUMGInteractionCategory
+		GetLastPrimaryActionDispatchForTesting() const;
 #endif
 	UFMCodexSelectionFeedbackToastWidget* GetSelectionFeedbackToast() const;
 	UFMCodexTacticalDetailPanelWidget* GetTacticalDetailPanel() const;
@@ -472,4 +476,10 @@ private:
 	FName ActiveTacticalDetailSkillId = NAME_None;
 	bool bTacticalCardHoverOrFocus = false;
 	bool bTacticalDetailPointerInside = false;
+
+#if WITH_DEV_AUTOMATION_TESTS
+	int32 PrimaryActionDispatchCountForTesting = 0;
+	EFMCodexUMGInteractionCategory LastPrimaryActionDispatchForTesting =
+		EFMCodexUMGInteractionCategory::None;
+#endif
 };

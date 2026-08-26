@@ -6,6 +6,7 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexHandMicroDiagnostics.h"
 #include "FMCodexInteractionOptionWidget.h"
@@ -5392,7 +5393,9 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	FFMCodexUMGInteractionViewModel Start = BasePresentation(
 		EFMCodexUMGInteractionCategory::StartMatch, TEXT("START LOCAL MATCH"));
 	Start.bCanStartNewMatch = true;
-	Start.PrimaryActionLabel = TEXT("START LOCAL MATCH");
+	Start.PrimaryAction = {
+		true, EFMCodexUMGInteractionCategory::StartMatch,
+		TEXT("START LOCAL MATCH") };
 	Panel->RefreshFromPresentation(Start);
 	TestTrue(TEXT("StartMatch exposes one readable primary action"),
 		IsVisible(Panel->GetWidgetFromName(TEXT("InteractionStartMatchButton")))
@@ -5402,7 +5405,9 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		EFMCodexUMGInteractionCategory::TacticalPointRoll, TEXT("ROLL TACTICAL POINTS"));
 	Begin.ExpectedActorLabel = TEXT("PLAYER A TO ACT");
 	Begin.bCanRollTacticalPoints = true;
-	Begin.PrimaryActionLabel = TEXT("ROLL TACTICAL POINTS");
+	Begin.PrimaryAction = {
+		true, EFMCodexUMGInteractionCategory::TacticalPointRoll,
+		TEXT("ROLL TACTICAL POINTS") };
 	Begin.ActionPointLabel = TEXT("Action Point: 6");
 	Panel->RefreshFromPresentation(Begin);
 	const UTextBlock* BeginContext = Cast<UTextBlock>(
@@ -5447,7 +5452,9 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	FFMCodexUMGInteractionViewModel Deploy = BasePresentation(
 		EFMCodexUMGInteractionCategory::Deploy, TEXT("DEPLOYMENT"));
 	Deploy.bCanFinishDeployment = true;
-	Deploy.PrimaryActionLabel = TEXT("FINISH DEPLOYMENT");
+	Deploy.PrimaryAction = {
+		true, EFMCodexUMGInteractionCategory::Deploy,
+		TEXT("FINISH DEPLOYMENT") };
 	FFMCodexUMGDeploymentChoiceViewModel Ordinary;
 	Ordinary.CardId = Card.CardId;
 	Ordinary.Card = Card;
@@ -5612,8 +5619,9 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 		TEXT("Resolve Route"));
 	Continue.KickerLabel = TEXT("SYSTEM RESOLUTION");
 	Continue.bSystemResolution = true;
-	Continue.bCanContinue = true;
-	Continue.PrimaryActionLabel = TEXT("CONTINUE");
+	Continue.PrimaryAction = {
+		true, EFMCodexUMGInteractionCategory::ContinueResolution,
+		TEXT("CONTINUE") };
 	Panel->RefreshFromPresentation(Continue);
 	TestTrue(TEXT("System resolution presents advancing rather than choosing"),
 		Panel->GetPresentation().bSystemResolution
@@ -7621,10 +7629,11 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 	Action.KickerLabel = TEXT("PLAYER ACTION");
 	Action.ExpectedActorLabel = TEXT("PLAYER A TO ACT");
 	Action.TitleLabel = TEXT("CHOOSE NEXT ACTION");
-	Action.bCanContinue = true;
 	Action.bCanDecline = true;
 	Action.bCanResolveNoLegal = true;
-	Action.PrimaryActionLabel = TEXT("CONTINUE");
+	Action.PrimaryAction = {
+		true, EFMCodexUMGInteractionCategory::ContinueResolution,
+		TEXT("CONTINUE") };
 	Action.DeclineActionLabel = TEXT("DECLINE");
 	Action.NoLegalActionLabel = TEXT("NO LEGAL CHOICE");
 	Interaction->RefreshFromPresentation(Action);
@@ -7644,7 +7653,7 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 			&& !ButtonTint(PrimaryButton).Equals(ButtonTint(SecondaryButton))
 			&& !ButtonTint(PrimaryButton).Equals(ButtonTint(DeclineButton)));
 	Action.Category = EFMCodexUMGInteractionCategory::SelectOneOnOneShot;
-	Action.bCanContinue = false;
+	Action.PrimaryAction = {};
 	Action.bCanDecline = false;
 	Action.bCanResolveNoLegal = false;
 	Action.OneOnOneChoices = {
@@ -8870,8 +8879,10 @@ bool FFMCodexGoldenLayoutPrototypeTest::RunTest(const FString& Parameters)
 	LongAction.TitleLabel = TEXT("\u8BF7\u9009\u62E9\u5F53\u524D\u8FDB\u653B\u9636\u6BB5\u4E2D\u7684\u5408\u6CD5\u64CD\u4F5C\u5E76\u786E\u8BA4\u7ED3\u679C");
 	LongAction.CategoryLabel = TEXT("\u6B63\u5728\u8FDB\u884C\u957F\u4E0A\u4E0B\u6587\u5B89\u5168\u533A\u68C0\u67E5");
 	LongAction.ActionPointLabel = TEXT("TACTICAL POINTS  99");
-	LongAction.PrimaryActionLabel = TEXT("START LOCAL MATCH");
 	LongAction.bCanStartNewMatch = true;
+	LongAction.PrimaryAction = {
+		true, EFMCodexUMGInteractionCategory::StartMatch,
+		TEXT("START LOCAL MATCH") };
 	TextSafeDock->RefreshFromPresentation(LongAction);
 	TextSafeDock->TakeWidget();
 	const UTextBlock* LongActionTitle = Cast<UTextBlock>(
@@ -13579,6 +13590,189 @@ bool FFMCodexTacticalAbandonProductionRoutingTest::RunTest(
 				&& AfterView.PlayerATacticalPlayerCount == 0
 				&& AfterView.PlayerBTacticalPlayerCount == 0);
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexResolutionPrimaryActionOwnershipTest,
+	"FMCodex.LocalPlay.ControlSurface.52.ResolutionPrimaryActionOwnership",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	(void)Parameters;
+
+	FScopedPlayableWorld Playable;
+	AFMCodexLocalMatchPlayerController* Controller = Playable.GetController();
+	UFMCodexLocalMatchScreenWidget* Screen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	TestNotNull(TEXT("Dispatch fixture has a PlayerController"), Controller);
+	TestNotNull(TEXT("Dispatch fixture has a Match Screen"), Screen);
+	if (Controller == nullptr || Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	Screen->SetMatchController(Controller);
+
+	auto MakeAction = [](
+		const EFMCodexUMGInteractionCategory Category,
+		const FString& Label)
+	{
+		FFMCodexUMGPrimaryActionViewModel Action;
+		Action.bAvailable = true;
+		Action.Category = Category;
+		Action.Label = Label;
+		return Action;
+	};
+	auto Claim = [](const FFMCodexUMGPrimaryActionViewModel& Action)
+	{
+		FFMCodexUMGResolutionPrimaryActionSlotViewModel Slot;
+		Slot.bClaimsAction = true;
+		Slot.bVisible = true;
+		Slot.Action = Action;
+		return Slot;
+	};
+
+	enum class ESurfaceKind : uint8
+	{
+		CrossFormula,
+		ThroughBallRoute,
+		ThroughBallFormula
+	};
+	auto MakeCentralPresentation = [&](
+		const EFMCodexUMGInteractionCategory Category,
+		const FString& Label,
+		const ESurfaceKind SurfaceKind)
+	{
+		FFMCodexUMGMatchScreenViewModel Result;
+		Result.Interaction.Category = Category;
+		Result.Interaction.PrimaryAction = MakeAction(Category, Label);
+		Result.Interaction.bCanContinue = true;
+		Result.Interaction.PrimaryActionLabel = Label;
+		const FFMCodexUMGResolutionPrimaryActionSlotViewModel Slot =
+			Claim(Result.Interaction.PrimaryAction);
+		if (SurfaceKind == ESurfaceKind::CrossFormula)
+		{
+			Result.InlineFormula.bVisible = true;
+			Result.InlineFormula.PrimaryAction = Slot;
+		}
+		else
+		{
+			Result.ThroughBallResolution.bVisible = true;
+			if (SurfaceKind == ESurfaceKind::ThroughBallRoute)
+			{
+				Result.ThroughBallResolution.PrimaryAction = Slot;
+			}
+			else
+			{
+				Result.ThroughBallResolution.Formula.bVisible = true;
+				Result.ThroughBallResolution.Formula.PrimaryAction = Slot;
+			}
+		}
+		return Result;
+	};
+	auto DispatchOnce = [&](
+		const TCHAR* Context,
+		const EFMCodexUMGInteractionCategory Category,
+		const TCHAR* Label,
+		const ESurfaceKind SurfaceKind)
+	{
+		const FFMCodexUMGMatchScreenViewModel Presentation =
+			MakeCentralPresentation(Category, Label, SurfaceKind);
+		Screen->RefreshFromPresentation(Presentation);
+		TestTrue(FString::Printf(TEXT("%s suppresses only its lower duplicate"),
+			Context),
+			Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed
+				&& (SurfaceKind == ESurfaceKind::CrossFormula
+					? Presentation.InlineFormula.PrimaryAction.Claims(
+						Presentation.Interaction.PrimaryAction)
+					: SurfaceKind == ESurfaceKind::ThroughBallRoute
+						? Presentation.ThroughBallResolution.PrimaryAction.Claims(
+							Presentation.Interaction.PrimaryAction)
+						: Presentation.ThroughBallResolution.Formula
+							.PrimaryAction.Claims(
+								Presentation.Interaction.PrimaryAction)));
+		Screen->ResetPrimaryActionDispatchForTesting();
+		if (SurfaceKind == ESurfaceKind::CrossFormula)
+		{
+			Screen->GetInlineFormulaSurface()->RequestContinue();
+		}
+		else if (SurfaceKind == ESurfaceKind::ThroughBallRoute)
+		{
+			Screen->GetThroughBallResolutionSurface()->RequestContinue();
+		}
+		else
+		{
+			Screen->GetThroughBallResolutionSurface()
+				->GetFormulaSurface()->RequestContinue();
+		}
+		TestEqual(FString::Printf(
+			TEXT("%s central activation routes one PlayerController request"),
+			Context),
+			Screen->GetPrimaryActionDispatchCountForTesting(), 1);
+		TestEqual(FString::Printf(
+			TEXT("%s preserves the exact typed request"), Context),
+			Screen->GetLastPrimaryActionDispatchForTesting(), Category);
+	};
+
+	DispatchOnce(TEXT("ThroughBall route"),
+		EFMCodexUMGInteractionCategory::ContinueResolution,
+		TEXT("掷点判定路线"), ESurfaceKind::ThroughBallRoute);
+	DispatchOnce(TEXT("Feet attack"),
+		EFMCodexUMGInteractionCategory::RollThroughBallFeetAttack,
+		TEXT("进攻方掷点"), ESurfaceKind::ThroughBallFormula);
+	DispatchOnce(TEXT("Feet defense"),
+		EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense,
+		TEXT("防守方掷点"), ESurfaceKind::ThroughBallFormula);
+	DispatchOnce(TEXT("Cross route"),
+		EFMCodexUMGInteractionCategory::ContinueResolution,
+		TEXT("判定传中路线"), ESurfaceKind::CrossFormula);
+	DispatchOnce(TEXT("Cross attack"),
+		EFMCodexUMGInteractionCategory::RollCrossAttack,
+		TEXT("进攻方掷点"), ESurfaceKind::CrossFormula);
+	DispatchOnce(TEXT("Cross defense"),
+		EFMCodexUMGInteractionCategory::RollCrossDefense,
+		TEXT("防守方掷点"), ESurfaceKind::CrossFormula);
+	DispatchOnce(TEXT("NextRound"),
+		EFMCodexUMGInteractionCategory::AdvanceAfterTerminal,
+		TEXT("下一回合"), ESurfaceKind::CrossFormula);
+
+	FFMCodexUMGMatchScreenViewModel Mismatched = MakeCentralPresentation(
+		EFMCodexUMGInteractionCategory::RollCrossDefense,
+		TEXT("防守方掷点"), ESurfaceKind::CrossFormula);
+	Mismatched.InlineFormula.PrimaryAction = Claim(MakeAction(
+		EFMCodexUMGInteractionCategory::RollCrossAttack,
+		TEXT("进攻方掷点")));
+	Screen->RefreshFromPresentation(Mismatched);
+	TestTrue(TEXT("A different central action cannot suppress the lower fallback"),
+		Screen->GetInteractionPanel()->GetVisibility()
+			== ESlateVisibility::Visible);
+
+	for (const EFMCodexUMGInteractionCategory Category : {
+		EFMCodexUMGInteractionCategory::Deploy,
+		EFMCodexUMGInteractionCategory::SelectRunner,
+		EFMCodexUMGInteractionCategory::SelectSkill})
+	{
+		FFMCodexUMGMatchScreenViewModel NonResolution;
+		NonResolution.Interaction.Category = Category;
+		if (Category == EFMCodexUMGInteractionCategory::Deploy)
+		{
+			NonResolution.Interaction.bCanFinishDeployment = true;
+			NonResolution.Interaction.PrimaryAction = MakeAction(
+				Category, TEXT("FINISH DEPLOYMENT"));
+		}
+		Screen->RefreshFromPresentation(NonResolution);
+		TestTrue(FString::Printf(
+			TEXT("Non-resolution category %d preserves the lower interaction UI"),
+			static_cast<int32>(Category)),
+			Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Visible);
+	}
+
 	return true;
 }
 

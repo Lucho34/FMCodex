@@ -407,7 +407,12 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 	TestTrue(TEXT("Cross High arithmetic surface activates and suppresses legacy"),
 		PendingSurface.bVisible
 			&& PendingSurface.bSuppressLegacyResolution
-			&& Pending.Resolution.bVisible);
+			&& Pending.Resolution.bVisible
+			&& PendingSurface.PrimaryAction.Claims(
+				Pending.Interaction.PrimaryAction)
+			&& Pending.Interaction.PrimaryAction.bAvailable
+			&& Pending.Interaction.PrimaryAction.Category
+				== EFMCodexUMGInteractionCategory::RollCrossAttack);
 	TestTrue(TEXT("Context and row labels are Chinese-first"),
 		PendingSurface.ContestLabel == TEXT("高球传中")
 			&& PendingSurface.AttackRow.SideLabel == TEXT("进攻")
@@ -475,8 +480,9 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			&& PendingSurface.DefenseRow.DisplayedResult == 9.0f
 			&& PendingSurface.DefenseRow.DisplayedResultLabel == TEXT("9"));
 
-	const auto OneRoll = BuildPresentation(
-		MakeCrossHighFacts(true, true, true, false)).InlineFormula;
+	const FFMCodexUMGMatchScreenViewModel OneRollPresentation =
+		BuildPresentation(MakeCrossHighFacts(true, true, true, false));
+	const auto& OneRoll = OneRollPresentation.InlineFormula;
 	const auto* ResolvedAttackD6 = FindTerm(
 		OneRoll.AttackRow, EFMCodexUMGInlineFormulaTermKind::RawRoll, 1);
 	const auto* StillPendingDefenseD6 = FindTerm(
@@ -497,6 +503,8 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			&& OneRoll.DefenseRow.DisplayedResultLabel == TEXT("9")
 			&& OneRoll.StatusLabel == TEXT("等待防守方掷点")
 			&& OneRoll.ContinueActionLabel == TEXT("防守方掷点")
+			&& OneRoll.PrimaryAction.Claims(
+				OneRollPresentation.Interaction.PrimaryAction)
 			&& !OneRoll.bAttackRowActive
 			&& OneRoll.bDefenseRowActive);
 
@@ -521,7 +529,10 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			&& Resolved.DefenseRow.bDisplayedResultIsFinalValue
 			&& Resolved.DefenseRow.DisplayedResultLabel == TEXT("12")
 			&& Resolved.StatusLabel == TEXT("双方掷点已完成")
-			&& Resolved.ContinueActionLabel == TEXT("下一回合"));
+			&& Resolved.ContinueActionLabel == TEXT("下一回合")
+			&& Resolved.PrimaryAction.Claims(
+				BuildPresentation(MakeCrossHighFacts(
+					true, true, true, true)).Interaction.PrimaryAction));
 
 	const auto OptionalAbsent = BuildPresentation(
 		MakeCrossHighFacts(false, false, false, false)).InlineFormula;
@@ -556,7 +567,22 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 				== TEXT("路线掷点 5 → 判定为低球传中")
 			&& UnsupportedPresentation.InlineFormula.AttackRow.Terms[0]
 				.ContributorDisplayName == TEXT("萨卡")
+			&& UnsupportedPresentation.InlineFormula.PrimaryAction.Claims(
+				UnsupportedPresentation.Interaction.PrimaryAction)
+			&& UnsupportedPresentation.Interaction.PrimaryAction.Category
+				== EFMCodexUMGInteractionCategory::RollCrossAttack
 			&& UnsupportedPresentation.Resolution.bVisible);
+	const FFMCodexUMGMatchScreenViewModel LowDefensePending =
+		BuildPresentation(MakeCrossHighFacts(
+			true, true, true, false, EFormulaWinner::None,
+			EMatchPlayCrossActualBranch::Low));
+	TestTrue(TEXT("Cross Low defense uses the same exact central claim"),
+		LowDefensePending.InlineFormula.PrimaryAction.Claims(
+			LowDefensePending.Interaction.PrimaryAction)
+			&& LowDefensePending.Interaction.PrimaryAction.Category
+				== EFMCodexUMGInteractionCategory::RollCrossDefense
+			&& LowDefensePending.Interaction.PrimaryAction.Label
+				== TEXT("防守方掷点"));
 	FMatchPlayCurrentAttackResolutionFactProjection SettledLow = Unsupported;
 	for (FMatchPlayResolutionRollFact& Roll : SettledLow.Rolls)
 	{
@@ -673,14 +699,26 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			Screen->GetWidgetFromName(TEXT("PitchPresentationLayers")) != nullptr
 				&& Screen->GetInlineFormulaSurface() != nullptr
 				&& Screen->GetInlineFormulaSurface()->GetPresentation().bVisible
+				&& Screen->GetInteractionPanel()->GetVisibility()
+					== ESlateVisibility::Collapsed
 				&& !Screen->IsLegacyResolutionOverlayVisible());
 		Screen->RefreshFromPresentation(UnsupportedPresentation);
-		TestTrue(TEXT("Cross Low pending formula also replaces the legacy overlay"),
+		TestTrue(TEXT("Cross Low pending formula owns the only rendered CTA"),
 			Screen->GetInlineFormulaSurface() != nullptr
 				&& Screen->GetInlineFormulaSurface()->GetPresentation().bVisible
 				&& Screen->GetInlineFormulaSurface()->GetPresentation()
 					.bShowFormulaRows
+				&& Screen->GetInteractionPanel()->GetVisibility()
+					== ESlateVisibility::Collapsed
 				&& !Screen->IsLegacyResolutionOverlayVisible());
+		Screen->RefreshFromPresentation(OneRollPresentation);
+		TestTrue(TEXT("Cross High defense has no lower duplicate"),
+			Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
+		Screen->RefreshFromPresentation(LowDefensePending);
+		TestTrue(TEXT("Cross Low defense also has no lower duplicate"),
+			Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
 	}
 
 	FString WidgetSource;
@@ -737,9 +775,10 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 	TestTrue(TEXT("Completed Cross CTA has one presentation owner"),
 		AttackWin.InlineFormula.bCanContinue
 			&& AttackWin.InlineFormula.ContinueActionLabel == TEXT("下一回合")
-			&& AttackWin.Interaction.bPrimaryActionOwnedByInlineFormula
-			&& !AttackWin.Interaction.bCanContinue
-			&& AttackWin.Interaction.PrimaryActionLabel.IsEmpty());
+			&& AttackWin.InlineFormula.PrimaryAction.Claims(
+				AttackWin.Interaction.PrimaryAction)
+			&& AttackWin.Interaction.bCanContinue
+			&& AttackWin.Interaction.PrimaryActionLabel == TEXT("下一回合"));
 
 	const FFMCodexUMGMatchScreenViewModel MarkerDefense = BuildPresentation(
 		MakeCrossHighFacts(false, false, true, true,
@@ -1237,10 +1276,11 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			&& PreRoutePresentation.InlineFormula.bCanContinue
 			&& PreRoutePresentation.InlineFormula.ContinueActionLabel
 				== TEXT("判定传中路线")
-			&& PreRoutePresentation.Interaction
-				.bPrimaryActionOwnedByInlineFormula
-			&& !PreRoutePresentation.Interaction.bCanContinue
-			&& PreRoutePresentation.Interaction.PrimaryActionLabel.IsEmpty()
+			&& PreRoutePresentation.InlineFormula.PrimaryAction.Claims(
+				PreRoutePresentation.Interaction.PrimaryAction)
+			&& PreRoutePresentation.Interaction.bCanContinue
+			&& PreRoutePresentation.Interaction.PrimaryActionLabel
+				== TEXT("判定传中路线")
 			&& PreRoutePresentation.Interaction.CrossRollRevealKind
 				== EFMCodexUMGCrossRollRevealKind::InitialRoute
 			&& PreRoutePresentation.Interaction.CrossRollContestId

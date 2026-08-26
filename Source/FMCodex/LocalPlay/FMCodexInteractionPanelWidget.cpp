@@ -515,9 +515,9 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		}
 	};
 	SetButton(StartButton, Presentation.bCanStartNewMatch,
-		Presentation.PrimaryActionLabel);
+		Presentation.PrimaryAction.Label);
 	SetButton(TacticalPointRollButton, Presentation.bCanRollTacticalPoints,
-		Presentation.PrimaryActionLabel);
+		Presentation.PrimaryAction.Label);
 	if (UWidget* RollBounds = TacticalPointRollButton->GetParent())
 	{
 		RollBounds->SetVisibility(Presentation.bCanRollTacticalPoints
@@ -535,9 +535,13 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 			PanelBase, Presentation.ActingSidePrimaryColor, 0.30f));
 	}
 	SetButton(FinishButton, Presentation.bCanFinishDeployment,
-		Presentation.PrimaryActionLabel);
-	SetButton(ContinueButton, Presentation.bCanContinue,
-		Presentation.PrimaryActionLabel);
+		Presentation.PrimaryAction.Label);
+	const bool bUseContinueButton = Presentation.PrimaryAction.bAvailable
+		&& !Presentation.bCanStartNewMatch
+		&& !Presentation.bCanRollTacticalPoints
+		&& !Presentation.bCanFinishDeployment;
+	SetButton(ContinueButton, bUseContinueButton,
+		Presentation.PrimaryAction.Label);
 	SetButton(DeclineButton, Presentation.bCanDecline,
 		Presentation.DeclineActionLabel);
 	SetButton(NoLegalButton, Presentation.bCanResolveNoLegal,
@@ -547,10 +551,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		TEXT("TACTICAL REFERENCE"));
 
 	const bool bHasDynamicChoices = !RenderedOptionWidgets.IsEmpty();
-	const bool bHasPrimaryAction = Presentation.bCanStartNewMatch
-		|| Presentation.bCanRollTacticalPoints
-		|| Presentation.bCanFinishDeployment
-		|| Presentation.bCanContinue
+	const bool bHasPrimaryAction = Presentation.PrimaryAction.bAvailable
 		|| Presentation.bCanDecline
 		|| Presentation.bCanResolveNoLegal;
 	const FString Fallback = !Presentation.EmptyStateLabel.IsEmpty()

@@ -38,6 +38,62 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	AdvanceAfterTerminal
 };
 
+/**
+ * The one typed primary action projected from the authoritative interaction.
+ * Ownership changes where it is rendered; it never changes availability.
+ */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGPrimaryActionViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Primary Action")
+	bool bAvailable = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Primary Action")
+	EFMCodexUMGInteractionCategory Category =
+		EFMCodexUMGInteractionCategory::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Primary Action")
+	FString Label;
+
+	bool IsSameActionAs(const FFMCodexUMGPrimaryActionViewModel& Other) const
+	{
+		return bAvailable && Other.bAvailable
+			&& Category != EFMCodexUMGInteractionCategory::None
+			&& Category == Other.Category;
+	}
+};
+
+/** A production Resolution surface's exact claim on the shared primary action. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGResolutionPrimaryActionSlotViewModel
+{
+	GENERATED_BODY()
+
+	/** The surface owns this action even while a reveal temporarily hides it. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Primary Action")
+	bool bClaimsAction = false;
+
+	/** Presentation reveal gate; this never supplies gameplay availability. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Primary Action")
+	bool bVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Primary Action")
+	FFMCodexUMGPrimaryActionViewModel Action;
+
+	bool Claims(const FFMCodexUMGPrimaryActionViewModel& Candidate) const
+	{
+		return bClaimsAction && Action.IsSameActionAs(Candidate);
+	}
+};
+
 /** Typed covered-roll intent consumed by the unified reel reveal state. */
 UENUM(BlueprintType)
 enum class EFMCodexUMGCrossRollRevealKind : uint8
@@ -876,21 +932,23 @@ struct FMCODEX_API FFMCodexUMGInteractionViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bCanResolveNoLegal = false;
 
+	/** Shared source consumed by either the lower panel or one central surface. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FFMCodexUMGPrimaryActionViewModel PrimaryAction;
+
+	/** Compatibility projection. New ownership code consumes PrimaryAction. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bCanContinue = false;
 
-	/** The Cross terminal action remains typed, but its only button is inline. */
+	/** Compatibility projection of PrimaryAction.Label. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
-	bool bPrimaryActionOwnedByInlineFormula = false;
+	FString PrimaryActionLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bSystemResolution = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	bool bMatchEnded = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
-	FString PrimaryActionLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	FString DeclineActionLabel;
@@ -1366,8 +1424,14 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
+	FFMCodexUMGResolutionPrimaryActionSlotViewModel PrimaryAction;
+
+	/** Compatibility projection. Rendering consumes PrimaryAction. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
 	bool bCanContinue = false;
 
+	/** Compatibility projection of PrimaryAction.Action.Label. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString ContinueActionLabel;
@@ -1462,15 +1526,17 @@ struct FMCODEX_API FFMCodexUMGThroughBallResolutionViewModel
 		Category = "Local Match|Through Ball")
 	FString ActionPromptLabel;
 
-	/** This resolution-local action is rendered by the central surface only. */
+	/** Initial-route claim; Feet uses the nested Formula slot. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Through Ball")
-	bool bPrimaryActionOwnedBySurface = false;
+	FFMCodexUMGResolutionPrimaryActionSlotViewModel PrimaryAction;
 
+	/** Compatibility projection. Rendering consumes PrimaryAction. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Through Ball")
 	bool bCanContinue = false;
 
+	/** Compatibility projection of PrimaryAction.Action.Label. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Through Ball")
 	FString ContinueActionLabel;

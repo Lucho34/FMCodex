@@ -622,3 +622,12 @@
 - Feet 与 Cross High/Low 的 Attribute/GoalkeeperContribution operand 必须分别携带并渲染球员短名；RawRoll、FixedModifier、TacticalPlayerAdvantage 不带姓名。role chip 继续存在，shared Widget 重复 refresh 不增加 term children；`姓名 + attribute` 作为单一 Wrap item、内部 TextBlock 关闭 AutoWrap，防止公式对齐被拆散。
 - 必须继续运行 InlineFormula、RollReel、ControlSurface、ThroughBallProductionPresentation、Feet/terminal Authority、Cross CoreRules/PIE、ThroughBall CoreRules、相关及全量 LocalPlay、AuthoritativeSession、全量 CoreRules、Build/UHT/link 与 `git diff --check`。Fresh USER PIE 逐项验收 Feet route context、Cross 中央 route CTA、Feet result narrative、High/Low/Feet 带姓名公式与 1920×1080 layout。
 
+## Resolution Local Primary CTA Unification（Stage 6.13.1.4.10.3B）
+
+- ownership matrix 必须覆盖 ThroughBall route、Feet Attack/Defense/NextRound、Cross route、Cross High/Low Attack/Defense/NextRound；每个状态的 production surface slot 必须 `Claims()` 当前唯一 `Interaction.PrimaryAction`，且 Screen 中底部 InteractionPanel 不渲染重复 CTA。
+- typed action 在中央 ownership 后仍必须保持 `bAvailable=true`、原 category 与原 label；ownership 只改变渲染位置。一个不同 category 的中央 claim 不得隐藏 lower fallback，authority rejection 后中央 claim 必须清除并恢复底部 action/diagnostic。
+- 单一 dispatch 测试必须分别从 ThroughBall outer route、Feet nested Formula、Cross Inline Formula 的真实 widget delegate 路径触发 Route、Attack、Defense 与 NextRound，并断言每次中央 activation 在 Screen -> PlayerController 边界恰好记录一个同 category request。
+- reveal 回归必须继续证明 Attack reel 期间 Defense CTA、Defense reel 期间 NextRound、Route reel 期间后续 CTA 都不可见；中央 slot 保留 claim，底部 CTA 也不得提前泄漏。settled refresh 与 fresh terminal reconstruction 不重播已完成 roll。
+- Deployment、SelectRunner 代表角色选择与 SelectSkill 必须保持底部 UI 可见；OneOnOne 继续使用现有 InteractionPanel，记录为 future centralization candidate。LongShot、CutInside、PassControl 未拥有 production central surface 时继续保留 lower primary action。
+- 回归运行 ownership 专项、ThroughBallProductionPresentation、InlineFormula、RollReel、ControlSurface、LocalMatchHost、AuthoritativeSession、Cross/ThroughBall CoreRules、全量 LocalPlay/CoreRules、Cross PIE、Build/UHT/link/no-op 与 `git diff --check`；最终按钮位置、单击手感及 High/Low/Feet 实际流程仍需 USER PIE。
+
