@@ -398,6 +398,28 @@ struct FMCODEX_API
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1AttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DefenseRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchResolveSingleCardFinishingFormulaResult
 {
 	bool bSuccess = false;
@@ -671,6 +693,18 @@ public:
 
 	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult
 	ResolveThroughBallBehindDefenseP1DecisionOrPlan();
+
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1AttackRollResult
+	ResolveThroughBallBehindDefenseP1AttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest&
+				Request);
+
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DefenseRollResult
+	ResolveThroughBallBehindDefenseP1DefenseRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest&
+				Request);
 
 	FFMCodexLocalMatchResolveSingleCardFinishingFormulaResult
 	ResolveSingleCardFinishingFormula();

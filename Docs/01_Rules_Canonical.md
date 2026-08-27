@@ -178,6 +178,8 @@
 - 多出至少 3 名战术球员：点数 +2。
 - 人数优势加成最高 +2。
 
+`终结公式` 是适用边界，不是“所有属性对抗”的别名。直塞分支中，脚下球与单刀直接射门属于终结公式，使用上述权威修正；身后球第一阶段属于 Transition，反越位与挑射属于纯点数 Outcome Decision，三者都不使用该修正。实时 Formula 只在非零贡献真实存在于 authoritative FormulaFacts 时显示 `战术球员 +N`；棋盘/Header 的 `战术球员 ×N` 只表示当前部署人数，不能由 UMG 用双方人数差反算公式修正。
+
 ### 4.5 攻防球员
 
 参与当前公式结算的球员称为攻防球员。常见角色包括：
@@ -825,6 +827,15 @@ B. 挑射：判定公式。
 - 双方完成后，中文成功/失败只映射既有 `FormulaContest.ResolvedResult.Winner`，不得比较 UI 中的数字自行推断。完整直塞 Narrative 仍不在本阶段范围内。
 - `TerminalPendingAdvance` 期间继续显示双方 FinalValue、结果与唯一中央 `下一回合`。该按钮发送 `AdvanceAfterTerminal`；只有 Authority 接受后才清理 CurrentAttack、场地/角色并换攻或结束比赛。
 - 新 Screen 首次观察 preview、attack-complete 或 terminal snapshot 时直接显示当前权威事实，不重播历史路线或比较点数。active reel 的刷新继续沿用同一 stable reveal identity 与 disclosure gate。
+
+### 17.2 身后球第一阶段顺序权威事件（Stage 6.14.1A）
+
+- 身后球路线确定后，第一阶段的进攻方 D6 与条件性防守方 D6 是两个独立、按阵营归属的 Authority 事件。`ResolveThroughBallBehindDefenseP1AttackRoll` 只允许当前进攻方提交，并且 accepted command 恰好消费一枚 `PrimaryAttack` D6。
+- Attack D6 为 `1–2` 时，权威状态只持久化该 Attack record并得到 `OutOfPlay`；不得创建 Defense action、调用 Defense provider 或进入 Formula。现有零 RNG terminal application随后把结果持久化为 `TerminalPendingAdvance`。
+- Attack D6 为 `3–6` 时，Authority 必须提交一个仍为 Active 的 attack-only snapshot。该 snapshot保留同一 RawD6，Progress Query唯一地指出下一步为 `PrimaryDefense`；刷新、重建或未来重连不得自动掷 Defense。
+- `ResolveThroughBallBehindDefenseP1DefenseRoll` 只允许当前防守方在上述 attack-only snapshot提交，并且 accepted command恰好消费一枚 `PrimaryDefense` D6。双记录完成后继续使用既有 P1 Plan、Assembler、Formula Resolver、平局和 outcome规则。
+- 错误阵营、错误 AttackSequence、Defense-before-Attack、Defense-after-OutOfPlay、重复 Attack/Defense 都必须在 provider前拒绝，保持状态不变且 RNG delta为 0。generic `ContinueResolution` 不再代表身后球 P1 的任何掷点。
+- 本变更不修改身后球属性、固定修正、Helper/Tactical Player、GK边界、winner或结果：Defender win仍为 terminal `DefenderStoppedAttack`；Attacker win仍直接进入 non-terminal `OneOnOneRequired`，没有 P2或隐藏 RNG。
 
 
 ### 14.2 补射

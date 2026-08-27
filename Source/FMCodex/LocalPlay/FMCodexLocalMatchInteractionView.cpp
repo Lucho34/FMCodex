@@ -792,6 +792,15 @@ namespace FMCodexLocalMatchInteractionView
 			{
 				if (!Candidate.LegalityResult.bIsLegal)
 				{
+					if (Candidate.LegalityResult.ErrorCode
+							== EMatchPlayCurrentAttackSkillSelectionErrorCode::
+								PreparedRunnerIncompatibleWithSkill
+						&& Candidate.LegalityResult.ResolvedActionType
+							== ESkillRuleType::ThroughBall)
+					{
+						View.SelectionNotice =
+							TEXT("RunnerNotInAttackingForwardArea");
+					}
 					continue;
 				}
 				FSkillRuleSnapshotQueryInput QueryInput;
@@ -878,10 +887,14 @@ namespace FMCodexLocalMatchInteractionView
 			View.InteractionCategory =
 				EFMCodexLocalMatchInteractionCategory::SelectHelper;
 			View.ExpectedActingPlayer = Defender;
-			View.bCanDecline = true;
 			const auto Availability =
 				FMatchPlayCurrentAttackHelperSelectionAvailability::Query(
 					State, Sequence, Defender);
+			// Decline is a voluntary choice and therefore exists only when the
+			// defender actually has a legal Helper. Formal absence uses the
+			// distinct ResolveNoLegalHelper authority command.
+			View.bCanDecline = Availability.bQuerySucceeded
+				&& Availability.bCanSelectAnyHelper;
 			for (const auto& Candidate : Availability.Candidates)
 			{
 				if (Candidate.LegalityResult.bSuccess)
@@ -1312,6 +1325,51 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 				return Result;
 			}
 		}
+		if (Session.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& Session.bHasActualBranch
+			&& Session.ActualBranch.ActionType == ESkillRuleType::ThroughBall
+			&& Session.ActualBranch.ThroughBall
+				== EMatchPlayThroughBallActualBranch::BehindDefense)
+		{
+			const auto Progress =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+					Session);
+			if (Progress.bIsCanonical && !Progress.bContractComplete)
+			{
+				const bool bAttackRoll =
+					Session.PostRouteRollProgress.Phase
+						== EMatchPlayCurrentAttackPostRouteRollPhase::None
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::PrimaryAttack;
+				Result.InteractionCategory = bAttackRoll
+					? EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallBehindDefenseAttack
+					: EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallBehindDefenseDefense;
+				Result.bThroughBallBehindDefenseAttackRollPending = bAttackRoll;
+				Result.bThroughBallBehindDefenseDefenseRollPending = !bAttackRoll;
+				Result.ExpectedActingPlayer = bAttackRoll
+					? Session.Bundle.CurrentAttackingPlayer
+					: Session.Bundle.CurrentDefendingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = bAttackRoll
+					? TEXT("进攻方掷点")
+					: TEXT("防守方掷点");
+				return Result;
+			}
+			if (Progress.bIsCanonical && Progress.bContractComplete)
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("确认结算结果");
+				return Result;
+			}
+		}
 		Result.InteractionCategory =
 			EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 		if (Session.Stage
@@ -1481,6 +1539,14 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 		Result.InteractionTitle = TEXT("掷防守方点数");
 		break;
 	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallBehindDefenseAttack:
+		Result.InteractionTitle = TEXT("进攻方掷点");
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallBehindDefenseDefense:
+		Result.InteractionTitle = TEXT("防守方掷点");
+		break;
+	case EFMCodexLocalMatchInteractionCategory
 		::CompleteThroughBallFeetAndAdvance:
 		Result.InteractionTitle = TEXT("下一回合");
 		break;
@@ -1530,6 +1596,8 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance: return TEXT("下一回合");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack: return TEXT("掷进攻方点数");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense: return TEXT("掷防守方点数");
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallBehindDefenseAttack: return TEXT("进攻方掷点");
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallBehindDefenseDefense: return TEXT("防守方掷点");
 	case EFMCodexLocalMatchInteractionCategory::CompleteThroughBallFeetAndAdvance: return TEXT("下一回合");
 	case EFMCodexLocalMatchInteractionCategory::ApplyCrossTerminalResolution: return TEXT("确认传中结算");
 	case EFMCodexLocalMatchInteractionCategory::ApplyThroughBallFeetTerminalResolution: return TEXT("确认直塞结算");

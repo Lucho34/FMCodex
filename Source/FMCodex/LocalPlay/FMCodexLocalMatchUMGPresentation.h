@@ -29,6 +29,8 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	CompleteCrossAndAdvance,
 	RollThroughBallFeetAttack,
 	RollThroughBallFeetDefense,
+	RollThroughBallBehindDefenseAttack,
+	RollThroughBallBehindDefenseDefense,
 	CompleteThroughBallFeetAndAdvance,
 	ContinueResolution,
 	AttackComplete,

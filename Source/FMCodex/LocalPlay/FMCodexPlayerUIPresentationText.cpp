@@ -265,7 +265,7 @@ FText FFMCodexPlayerUIPresentationText::SelectionFeedback(
 	if (CanonicalReason == TEXT("RunnerNotInAttackingForwardArea"))
 	{
 		return LOCTEXT("RunnerNotInAttackingForwardArea",
-			"\u8DD1\u4F4D\u7403\u5458\u5FC5\u987B\u4F4D\u4E8E\u8FDB\u653B\u524D\u573A");
+			"\u76F4\u585E\u8981\u6C42\u8DD1\u4F4D\u7403\u5458\u4F4D\u4E8E\u524D\u573A");
 	}
 	if (CanonicalReason == TEXT("HelperIsGoalkeeper"))
 	{
@@ -626,6 +626,11 @@ FText FFMCodexPlayerUIPresentationText::ResolutionContest(
 	if (ContestId == TEXT("Cross.Low"))
 	{
 		return LOCTEXT("ResolutionCrossLow", "\u4F4E\u7403\u4F20\u4E2D");
+	}
+	if (ContestId == TEXT("ThroughBall.BehindDefense.P1"))
+	{
+		return LOCTEXT(
+			"ResolutionThroughBallBehind", "\u8EAB\u540E\u7403\u5BF9\u6297");
 	}
 	return FText::GetEmpty();
 }

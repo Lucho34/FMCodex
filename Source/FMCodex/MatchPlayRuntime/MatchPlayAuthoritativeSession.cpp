@@ -1510,6 +1510,98 @@ FMatchPlayAuthoritativeSession::ResolveThroughBallBehindDefenseP1DecisionOrPlan(
 		});
 }
 
+FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollResult
+FMatchPlayAuthoritativeSession::ResolveThroughBallBehindDefenseP1AttackRoll(
+	const
+		FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest&
+			Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallBehindDefenseP1AttackRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollResult&
+				Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest
+					::EMode::ResolveAttackRoll;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet
+							? &AuthoritativeSkillRuleSet
+							: nullptr,
+						PostRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollResult
+FMatchPlayAuthoritativeSession::ResolveThroughBallBehindDefenseP1DefenseRoll(
+	const
+		FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest&
+			Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallBehindDefenseP1DefenseRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollResult&
+				Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest
+					::EMode::ResolveDefenseRoll;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet
+							? &AuthoritativeSkillRuleSet
+							: nullptr,
+						PostRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeResolveSingleCardFinishingFormulaResult
 FMatchPlayAuthoritativeSession::ResolveSingleCardFinishingFormula()
 {

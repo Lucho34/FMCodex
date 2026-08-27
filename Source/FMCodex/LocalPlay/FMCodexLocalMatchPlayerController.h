@@ -74,6 +74,8 @@ public:
 	void CompleteCrossAndAdvance();
 	void RollThroughBallFeetAttack();
 	void RollThroughBallFeetDefense();
+	void RollThroughBallBehindDefenseAttack();
+	void RollThroughBallBehindDefenseDefense();
 	void ApplyThroughBallFeetTerminalResolution();
 	/** Legacy compatibility wrapper; production does not expose AndAdvance. */
 	void CompleteThroughBallFeetAndAdvance();
@@ -103,6 +105,7 @@ private:
 	void RebuildControlSurface();
 	TSharedRef<SWidget> BuildControlSurface();
 	void RecordLocalFailure(const FString& CommandName, const FString& Message);
+	void ResolveAutomaticNoLegalHelperIfNeeded();
 
 	template <typename TResult>
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
@@ -160,6 +163,7 @@ private:
 	bool bCrossRouteCommandInFlight = false;
 	bool bCrossRollCommandInFlight = false;
 	bool bThroughBallFeetRollCommandInFlight = false;
+	bool bThroughBallBehindDefenseRollCommandInFlight = false;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	int32 NextDemoMatchSeedForTesting = INDEX_NONE;

@@ -824,6 +824,64 @@ bool FSkillAvailabilityReadOnlyDeterminismTest::RunTest(
 	return true;
 }
 
+SKILL_AVAILABILITY_TEST(
+	FSkillAvailabilityParticipantFirstThroughBallProjectionTest,
+	"ParticipantFirstRunnerFiltersOnlyIncompatibleTactic")
+
+bool FSkillAvailabilityParticipantFirstThroughBallProjectionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
+
+	const auto Midfield =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			MakeParticipantFirstRunnerState(
+				EMatchPlayNeutralSlotSide::NearPlayerA),
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	const auto* MidfieldThroughBall = Midfield.Candidates.FindByPredicate(
+		[](const FMatchPlayCurrentAttackSkillSelectionCandidateAvailability& Candidate)
+		{
+			return Candidate.SkillId == ThroughBallSkillId;
+		});
+	const auto* MidfieldPassControl = Midfield.Candidates.FindByPredicate(
+		[](const FMatchPlayCurrentAttackSkillSelectionCandidateAvailability& Candidate)
+		{
+			return Candidate.SkillId == PassControlSkillId;
+		});
+	TestTrue(TEXT("Midfield candidate query remains valid"),
+		Midfield.bQuerySucceeded && Midfield.bCanSelectAnySkill);
+	TestTrue(TEXT("ThroughBall remains represented with exact incompatibility"),
+		MidfieldThroughBall != nullptr
+			&& !MidfieldThroughBall->LegalityResult.bIsLegal
+			&& MidfieldThroughBall->LegalityResult.ErrorCode
+				== EMatchPlayCurrentAttackSkillSelectionErrorCode::
+					PreparedRunnerIncompatibleWithSkill);
+	TestTrue(TEXT("Other legal tactic remains selectable for midfield Runner"),
+		MidfieldPassControl != nullptr
+			&& MidfieldPassControl->LegalityResult.bIsLegal);
+
+	const auto Forward =
+		FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			MakeParticipantFirstRunnerState(
+				EMatchPlayNeutralSlotSide::NearPlayerB),
+			ValidAttackSequence,
+			EInitialTurnOrderPlayer::PlayerA,
+			Rules);
+	const auto* ForwardThroughBall = Forward.Candidates.FindByPredicate(
+		[](const FMatchPlayCurrentAttackSkillSelectionCandidateAvailability& Candidate)
+		{
+			return Candidate.SkillId == ThroughBallSkillId;
+		});
+	TestTrue(TEXT("Relative-forward Runner exposes legal ThroughBall"),
+		Forward.bQuerySucceeded && ForwardThroughBall != nullptr
+			&& ForwardThroughBall->LegalityResult.bIsLegal);
+	return true;
+}
+
 #undef SKILL_AVAILABILITY_TEST
 
 #endif

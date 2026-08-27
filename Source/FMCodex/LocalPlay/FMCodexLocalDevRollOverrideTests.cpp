@@ -313,4 +313,41 @@ bool FFMCodexLocalDevRollOverrideBoundaryAuditTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalDevRollOverridePresentationContractTest,
+	"FMCodex.LocalPlay.DevRollOverride.05.RightEdgePlacementAndContrast",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalDevRollOverridePresentationContractTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalDevRollOverrideTests;
+	(void)Parameters;
+	FString ControllerSource;
+	FString WidgetSource;
+	TestTrue(TEXT("Controller source loads for DEV placement contract"), Load(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+		ControllerSource));
+	TestTrue(TEXT("DEV widget source loads for local contrast contract"), Load(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalDevRollOverrideWidget.cpp"),
+		WidgetSource));
+	TestTrue(TEXT("DEV flyout is centered on the right edge, outside the Header band"),
+		ControllerSource.Contains(TEXT(".HAlign(HAlign_Right)"))
+			&& ControllerSource.Contains(TEXT(".VAlign(VAlign_Center)"))
+			&& ControllerSource.Contains(
+				TEXT(".Padding(FMargin(0.0f, 0.0f, 12.0f, 0.0f))"))
+			&& !ControllerSource.Contains(
+				TEXT(".Padding(FMargin(0.0f, 74.0f, 12.0f, 0.0f))")));
+	TestTrue(TEXT("DEV labels, pending status, value and command use high-contrast colors"),
+		WidgetSource.Contains(
+			TEXT("FLinearColor(0.96f, 0.96f, 0.92f, 1.0f)"))
+			&& WidgetSource.Contains(
+				TEXT("FLinearColor(0.96f, 0.94f, 0.78f, 1.0f)"))
+			&& WidgetSource.Contains(
+				TEXT("FLinearColor(1.0f, 0.78f, 0.34f, 1.0f)"))
+			&& WidgetSource.Contains(
+				TEXT("FLinearColor(0.84f, 0.90f, 0.96f, 1.0f)")));
+	return true;
+}
+
 #endif

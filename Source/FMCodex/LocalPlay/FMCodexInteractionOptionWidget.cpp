@@ -169,11 +169,12 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	OptionLabelText->SetText(FText::FromString(
 		Label.IsEmpty() ? TEXT("OPTION UNAVAILABLE") : Label));
 	const bool bTacticalCard = BindingMode == EBindingMode::TacticalCard;
+	const bool bOneOnOneChoice = BindingMode == EBindingMode::OneOnOne;
 	OptionSecondaryText->SetText(FText::FromString(SecondaryLabel));
 	OptionSecondaryText->SetVisibility(
 		bTacticalCard && !SecondaryLabel.IsEmpty()
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	OptionLabelText->SetAutoWrapText(!bTacticalCard);
+	OptionLabelText->SetAutoWrapText(!bTacticalCard && !bOneOnOneChoice);
 	OptionLabelText->SetTextOverflowPolicy(
 		bTacticalCard ? ETextOverflowPolicy::Ellipsis : ETextOverflowPolicy::Clip);
 	FFMCodexPlayerUIStyle::Get().ApplyText(*OptionLabelText,
@@ -181,13 +182,24 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 			: EFMCodexPlayerUITextRole::Body);
 	if (bTacticalCard)
 	{
+		OptionBounds->ClearMinDesiredWidth();
+		OptionBounds->ClearMinDesiredHeight();
 		OptionBounds->SetWidthOverride(156.0f);
 		OptionBounds->SetHeightOverride(58.0f);
+	}
+	else if (bOneOnOneChoice)
+	{
+		OptionBounds->ClearWidthOverride();
+		OptionBounds->ClearHeightOverride();
+		OptionBounds->SetMinDesiredWidth(120.0f);
+		OptionBounds->SetMinDesiredHeight(42.0f);
 	}
 	else
 	{
 		OptionBounds->ClearWidthOverride();
 		OptionBounds->ClearHeightOverride();
+		OptionBounds->ClearMinDesiredWidth();
+		OptionBounds->ClearMinDesiredHeight();
 	}
 	const bool bConfigured = BindingMode != EBindingMode::None
 		&& !Label.IsEmpty();

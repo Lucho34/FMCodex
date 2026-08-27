@@ -62,6 +62,7 @@ namespace SkillSelectionLegalityTests
 			AreRuleSetsEqual(Rules, OriginalRules));
 		return true;
 	}
+
 }
 
 #define SKILL_LEGALITY_TEST(TestClass, TestName) \
@@ -378,6 +379,48 @@ bool FSkillSelectionFrozenAuthorityTest::RunTest(
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
 				::DuplicateCarrierSkillId);
 	}
+	return true;
+}
+
+SKILL_LEGALITY_TEST(
+	FSkillSelectionParticipantFirstThroughBallRunnerZoneTest,
+	"ParticipantFirstThroughBallUsesRelativeForwardEligibility")
+
+bool FSkillSelectionParticipantFirstThroughBallRunnerZoneTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	using SkillSelectionLegalityTests::ExpectError;
+	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
+
+	const FMatchPlayState Midfield =
+		MakeParticipantFirstRunnerState(
+			EMatchPlayNeutralSlotSide::NearPlayerA);
+	ExpectError(
+		*this,
+		TEXT("Midfield Runner blocks ThroughBall only at Skill eligibility"),
+		Midfield,
+		Rules,
+		MakeRequest(ThroughBallSkillId),
+		EMatchPlayCurrentAttackSkillSelectionErrorCode::
+			PreparedRunnerIncompatibleWithSkill);
+	const auto PassControl =
+		FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator::Evaluate(
+			Midfield, Rules, MakeRequest(PassControlSkillId));
+	TestTrue(TEXT("Same midfield Runner remains legal for PassControl"),
+		PassControl.bIsLegal);
+
+	const FMatchPlayState Forward =
+		MakeParticipantFirstRunnerState(
+			EMatchPlayNeutralSlotSide::NearPlayerB);
+	const auto ThroughBall =
+		FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator::Evaluate(
+			Forward, Rules, MakeRequest(ThroughBallSkillId));
+	TestTrue(TEXT("Relative-forward Runner keeps ThroughBall selectable"),
+		ThroughBall.bIsLegal);
+	TestEqual(TEXT("ThroughBall action type remains canonical"),
+		ThroughBall.ResolvedActionType, ESkillRuleType::ThroughBall);
 	return true;
 }
 

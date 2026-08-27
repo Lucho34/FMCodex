@@ -749,6 +749,34 @@
 - 迁移：Cross 与 ThroughBall Feet production terminal narrative 政策改由 `FFMCodexTacticalResolutionNarrativePresentationBuilder` 统一生成；Cross 保留 goal template并把 Marker/Helper 改为 `抢断/拦截`，Feet 移除旧 GK 第三顺位并采用共享稳定选择。其他战术的完整 v1 mapping 已可供未来 surface 直接消费，不在本阶段推出其 production UI。详见 `Docs/UI/Tactical_Resolution_Narrative_v1.md`。
 - 冻结边界：Authority outcome、winner、score、Formula、route、RNG、State schema、terminal persistence/advance lifecycle 与 reveal gate 不变。Historical BehindDefense P2 不进入 v1 mapping。
 
+### CD-075 - BehindDefense P1 Uses Side-owned Conditional Authority Rolls
+
+- 日期：2026-08-27
+- 决策：BehindDefense P1 的 RNG acquisition从 production atomic command拆为 `ResolveThroughBallBehindDefenseP1AttackRoll` 与 `ResolveThroughBallBehindDefenseP1DefenseRoll`。两个 request都带 `AttackSequence + RequestingSide`，并经过同一个 serialized Session gate；旧 atomic API只保留 compatibility/reference，不再由 production Controller调用。
+- Attack：仅当前进攻方可提交，accepted恰好消费一个 `PrimaryAttack`。`1–2` 只持久化 Attack并形成 OutOfPlay complete contract，Defense永不调用；`3–6` 提交真实 attack-only Active snapshot，Progress Query返回 `PrimaryDefense`。
+- Defense：仅当前防守方可在 Attack `3–6` prefix提交，accepted恰好消费一个 `PrimaryDefense`。Defense-before-Attack、Defense-after-OutOfPlay、错误阵营、stale sequence与重复请求均零 RNG、State不变。
+- 复用：双记录后继续使用既有 Behind P1 Plan/Assembler/Executor/Formula/terminal/OneOnOne contracts；公式属性、fixed modifier、Tactical Player、Helper、GK、tie、winner、no-P2与结果语义全部不变。Formula/terminal/refresh为零 RNG。
+- 投影：InteractionView仅从 authoritative snapshot与 Progress Query投影 Attack/Defense typed action及 expected side。Host/Controller保持薄转发，UMG不掷骰、不保存 prefix、不判断阈值或winner。当前 DEV `身后球 P1` target继续只覆盖 Attack，production不依赖该工具。
+- 影响：`6.14.1` 的 Attack settle -> Defense action -> Formula Golden Path现在具备真实可提交、可同步、可重建的 Authority前缀；完整 Reel/Narrative/disclosure仍由恢复后的 Presentation Stage完成。
+
+### CD-076 - Runner Frontfield Is a ThroughBall-specific Eligibility Contract
+
+- 日期：2026-08-27
+- 分类：采用 Case A。`Runner` 是 participant-first 的通用准备角色；“当前实际部署于进攻方相对前场”只属于 ThroughBall 的参与者契约，不是全局 Runner structural legality。依据为 `Rules Canonical 12.4` 的 ThroughBall 条款与 CD-018；Cross 仍检查进攻位置类型，PassControl 仍检查中场位置类型。
+- 分层：Runner 阶段在 `ActionType=None` 时只冻结结构合法角色，不猜测稍后的战术。SelectSkill 的 candidate legality 使用 Slot Catalog、当前进攻方和 relative-zone resolver 过滤 ThroughBall；Authority Writer 对绕过 Presentation 的同类请求执行相同最终验证并保持失败原子性。
+- 表现：不兼容 ThroughBall 不进入可提交 tactical options；已知战术上下文中的位置反馈统一使用 `直塞要求跑位球员位于前场`。UMG 不读取 slot index、像素位置或画面上下方向推断资格。
+- Helper：零合法候选是 formal absence，不是 voluntary decline。InteractionView 将 `DeclineHelper` 与 `ResolveNoLegalHelper` 投影为互斥能力；Runner 提交后的零候选 production path 自动调用既有 No-Legal authority command并进入 SelectSkill。有至少一名合法候选时选择与主动 Decline 均保持。
+- 冻结边界：不修改 Helper structural rules、RNG、Formula、ThroughBall Resolution、BehindDefense state machine、terminal lifecycle、部署规则或网络边界。
+
+### CD-077 - ThroughBall Tactical Player Applicability Follows Formula Type
+
+- 日期：2026-08-27
+- 审计结论：采用 Authority-correct Case A，无 authoritative Formula gap。Rules 4.4 与 FormulaResolver 只在 `Finishing` 消费 Tactical Player modifier；ThroughBall Feet 与 OneOnOne Direct 适用，BehindDefense P1 是 `Transition`、AntiOffside/Chip 是 `OutcomeDecision`，均不适用。Tactical description、Feet/Direct orchestrator 与 Resolution Fact Projection 对此一致。
+- 表现：shared Formula 继续只映射 facts 中真实、非零的 `TacticalPlayerAdvantage` term为 `战术球员 +N`；+0隐藏。Header/Rack 的 `战术球员 ×N` 仍为部署人数，不进入公式 term，UMG 不读取双方 count或顶层 modifier反算。6.14.1 Behind PIE 中没有该 term是正确行为，不得为满足截图期待伪造。
+- DEV：非 Shipping `DEV 掷点` 从右上 Header 邻近位置移到视口右侧垂直居中，默认折叠，避免覆盖顶部 Tactical Player count；只提高该工具内部 pending、purpose、value、command与按钮文字对比度。provider、RNG、Authority与 Shipping移除边界不变。
+- OneOnOne：现有 shared HorizontalBox继续承载 choice；仅为 OneOnOne option冻结 120×42 最小点击尺寸并关闭主标签换行，保持 `直接射门 -> 挑射` 顺序及 typed delegate。Cross/SelectSkill 等其他 option mode不继承该尺寸，不建立专用按钮系统。
+- 验证边界：新增 Feet +0/+1/+2 authority与 ThroughBall Formula term projection、Direct modifier、branch applicability、UMG no-math、DEV placement/contrast及 OneOnOne geometry合同。Runner/Helper与 Behind production只做代表性回归，最终布局仍需1920×1080 USER PIE。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

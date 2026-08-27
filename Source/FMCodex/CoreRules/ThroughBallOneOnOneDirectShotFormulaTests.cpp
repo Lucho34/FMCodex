@@ -61,6 +61,25 @@ bool FThroughBallOneOnOneDirectShotFormulaContractTest::RunTest(
 			&& Inactive.FormulaResolutionResult.bAttackEnded
 			&& !Inactive.FormulaResolutionResult.bContinueResolution);
 
+	const auto Tactical = FThroughBallOneOnOneDirectShotFormula::Resolve(
+		MakePlan(false, 3, 3), 1.0f, 2.0f);
+	TestTrue(TEXT("DirectShot consumes authoritative Tactical Player modifiers"),
+		Tactical.bSuccess
+			&& FMath::IsNearlyEqual(
+				Tactical.ResolverInput.Attacker.TacticalPlayerModifier, 1.0f)
+			&& FMath::IsNearlyEqual(
+				Tactical.ResolverInput.Defender.TacticalPlayerModifier, 2.0f)
+			&& FMath::IsNearlyEqual(
+				Tactical.FormulaResolutionResult
+					.AttackerTacticalPlayerModifier, 1.0f)
+			&& FMath::IsNearlyEqual(
+				Tactical.FormulaResolutionResult
+					.DefenderTacticalPlayerModifier, 2.0f)
+			&& FMath::IsNearlyEqual(
+				Tactical.FormulaResolutionResult.AttackerFinalValue, 11.0f)
+			&& FMath::IsNearlyEqual(
+				Tactical.FormulaResolutionResult.DefenderFinalValue, 9.0f));
+
 	const auto ActiveTie = FThroughBallOneOnOneDirectShotFormula::Resolve(
 		MakePlan(true, 1, 2));
 	TestTrue(TEXT("Active DirectShot resolves"), ActiveTie.bSuccess);

@@ -25,6 +25,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "../CoreRules/MatchPlayCurrentAttackHelperSelectionTestFixtures.h"
+#include "../CoreRules/MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
 #include "../CoreRules/MatchPlaySkillNoSelectionNoGoalTestFixtures.h"
 #include "Engine/Engine.h"
 #include "Engine/Texture2D.h"
@@ -511,16 +513,21 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				}
 				else
 				{
-					if (!HelperView.SelectionOptions.IsEmpty()
-						|| !HelperView.bCanResolveNoLegalChoice)
+					if (HelperView.InteractionCategory
+							!= EFMCodexLocalMatchInteractionCategory::SelectSkill
+						|| Controller.GetLastDiagnostic().CommandName
+							!= TEXT("ResolveNoLegalHelper")
+						|| !Controller.GetLastDiagnostic().bHostSuccess
+						|| Controller.GetResolutionFeedback().bRejected
+						|| Controller.GetResolutionFeedback().ErrorMessage.Contains(
+							TEXT("Helper decline requires")))
 					{
 						Test.AddError(FString::Printf(
-							TEXT("%s: no-legal Helper state was not explicit."),
+							TEXT("%s: zero-legal Helper did not auto-progress through ResolveNoLegalHelper."),
 							Label));
 						return false;
 					}
-					Controller.ResolveNoLegalCurrentSelection();
-					bSubmitted = Controller.GetLastDiagnostic().bHostSuccess;
+					bSubmitted = true;
 				}
 			}
 			else
@@ -545,7 +552,9 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				Category == EFMCodexLocalMatchInteractionCategory::SelectMarker
 					? EFMCodexLocalMatchInteractionCategory::SelectRunner
 					: Category == EFMCodexLocalMatchInteractionCategory::SelectRunner
-						? EFMCodexLocalMatchInteractionCategory::SelectHelper
+						? HelperMode == ECrossE2EHelperMode::NoLegal
+							? EFMCodexLocalMatchInteractionCategory::SelectSkill
+							: EFMCodexLocalMatchInteractionCategory::SelectHelper
 						: Category == EFMCodexLocalMatchInteractionCategory::SelectHelper
 							? EFMCodexLocalMatchInteractionCategory::SelectSkill
 							: Controller.GetInteractionView().InteractionCategory;
@@ -566,7 +575,9 @@ namespace FMCodexLocalMatchControlSurfaceTests
 					: Category == EFMCodexLocalMatchInteractionCategory::SelectMarker
 						? EMatchPlayCurrentAttackSelectionStage::AwaitingRunner
 						: Category == EFMCodexLocalMatchInteractionCategory::SelectRunner
-							? EMatchPlayCurrentAttackSelectionStage::AwaitingHelper
+							? HelperMode == ECrossE2EHelperMode::NoLegal
+								? EMatchPlayCurrentAttackSelectionStage::AwaitingSkill
+								: EMatchPlayCurrentAttackSelectionStage::AwaitingHelper
 							: Category == EFMCodexLocalMatchInteractionCategory::SelectHelper
 								? EMatchPlayCurrentAttackSelectionStage::AwaitingSkill
 								: EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent;
@@ -1215,7 +1226,7 @@ bool FFMCodexCrossStateMachineVariantE2ETest::RunTest(
 		RunScenario(TEXT("High.HelperDeclined"),
 			ECrossE2EHelperMode::Declined,
 			EMatchPlayElectiveBranchIntent::CrossHigh));
-	TestTrue(TEXT("Cross High completes through explicit no-legal Helper"),
+	TestTrue(TEXT("Cross High auto-progresses through typed no-legal Helper"),
 		RunScenario(TEXT("High.NoLegalHelper"),
 			ECrossE2EHelperMode::NoLegal,
 			EMatchPlayElectiveBranchIntent::CrossHigh));
@@ -2714,6 +2725,18 @@ namespace FMCodexLocalMatchFullFamilyTests
 				== EFMCodexLocalMatchInteractionCategory::RollCrossDefense)
 			{
 				Controller.RollCrossDefense();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallBehindDefenseAttack)
+			{
+				Controller.RollThroughBallBehindDefenseAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallBehindDefenseDefense)
+			{
+				Controller.RollThroughBallBehindDefenseDefense();
 			}
 			else if (View.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
@@ -6608,6 +6631,15 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			}
 		}
 		else if (Category
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallBehindDefenseAttack
+			|| Category
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallBehindDefenseDefense)
+		{
+			OneOnOneResolution->RequestContinue();
+		}
+		else if (Category
 			== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
 		{
 			bSawOneOnOneTerminalPendingAdvance =
@@ -9374,8 +9406,8 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authoritative Session exposes explicit Cross and ThroughBall Feet roll entrypoints"),
-		SerializedEntrypointCount, 49);
+	TestEqual(TEXT("Authoritative Session exposes explicit Cross, ThroughBall Feet, and BehindDefense roll entrypoints"),
+		SerializedEntrypointCount, 51);
 
 	return true;
 }
@@ -9738,8 +9770,8 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderTransform"))
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
-	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross and ThroughBall Feet rolls"),
-		SerializedEntrypointCount, 49);
+	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross and both ThroughBall roll families"),
+		SerializedEntrypointCount, 51);
 
 	return true;
 }
@@ -10163,8 +10195,8 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross and ThroughBall Feet rolls"),
-		SerializedEntrypointCount, 49);
+	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross and both ThroughBall roll families"),
+		SerializedEntrypointCount, 51);
 
 	return true;
 }
@@ -13788,6 +13820,89 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 				== ESlateVisibility::Visible);
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexRunnerTacticAndHelperNoLegalProjectionTest,
+	"FMCodex.LocalPlay.ControlSurface.53.RunnerTacticAndHelperNoLegalProjection",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexRunnerTacticAndHelperNoLegalProjectionTest::RunTest(
+	const FString& Parameters)
+{
+	namespace SkillFixtures =
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	namespace HelperFixtures =
+		FMCodex::Tests::MatchPlayCurrentAttackHelperSelection;
+	(void)Parameters;
+
+	const FSkillRuleSnapshotSet SkillRules = SkillFixtures::MakeRuleSet();
+	const FFMCodexLocalMatchInteractionView MidfieldSkillView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			SkillFixtures::MakeParticipantFirstRunnerState(
+				EMatchPlayNeutralSlotSide::NearPlayerA),
+			SkillRules);
+	TestTrue(TEXT("Midfield Runner keeps another compatible tactic available"),
+		MidfieldSkillView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectSkill
+			&& MidfieldSkillView.SelectionOptions.ContainsByPredicate(
+				[](const FFMCodexLocalMatchSelectionOption& Option)
+				{
+					return Option.Id == SkillFixtures::PassControlSkillId;
+				}));
+	TestFalse(TEXT("Midfield Runner does not project ThroughBall as submit-capable"),
+		MidfieldSkillView.SelectionOptions.ContainsByPredicate(
+			[](const FFMCodexLocalMatchSelectionOption& Option)
+			{
+				return Option.Id == SkillFixtures::ThroughBallSkillId;
+			}));
+	const FFMCodexUMGMatchScreenViewModel MidfieldSkillPresentation =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			MidfieldSkillView,
+			FFMCodexLocalMatchResolutionFeedback(),
+			FString());
+	TestEqual(TEXT("Filtered ThroughBall explains its requirement in normal UI"),
+		MidfieldSkillPresentation.Interaction.OnPitchSelectionHintLabel,
+		FString(TEXT("\u76F4\u585E\u8981\u6C42\u8DD1\u4F4D\u7403\u5458\u4F4D\u4E8E\u524D\u573A")));
+
+	const FFMCodexLocalMatchInteractionView ForwardSkillView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			SkillFixtures::MakeParticipantFirstRunnerState(
+				EMatchPlayNeutralSlotSide::NearPlayerB),
+			SkillRules);
+	TestTrue(TEXT("Relative-forward Runner projects legal ThroughBall"),
+		ForwardSkillView.SelectionOptions.ContainsByPredicate(
+			[](const FFMCodexLocalMatchSelectionOption& Option)
+			{
+				return Option.Id == SkillFixtures::ThroughBallSkillId;
+			}));
+	TestEqual(TEXT("ThroughBall Runner position copy is specific Chinese UI text"),
+		FFMCodexPlayerUIPresentationText::SelectionFeedback(
+			TEXT("RunnerNotInAttackingForwardArea")).ToString(),
+		FString(TEXT("\u76F4\u585E\u8981\u6C42\u8DD1\u4F4D\u7403\u5458\u4F4D\u4E8E\u524D\u573A")));
+
+	FSkillRuleSnapshot HelperRule;
+	HelperRule.SkillId = HelperFixtures::PassControlSkillId;
+	HelperRule.SkillType = ESkillRuleType::PassControl;
+	HelperRule.MinTriggerActionPoint = 2;
+	HelperRule.MaxTriggerActionPoint = 8;
+	FSkillRuleSnapshotSet HelperRules;
+	HelperRules.SkillRules = {HelperRule};
+	const FFMCodexLocalMatchInteractionView LegalHelperView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			HelperFixtures::MakeState(), HelperRules);
+	const FFMCodexLocalMatchInteractionView ZeroHelperView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			HelperFixtures::MakeZeroLegalState(), HelperRules);
+	TestTrue(TEXT("One-plus Helper candidates preserve voluntary Decline only"),
+		!LegalHelperView.SelectionOptions.IsEmpty()
+			&& LegalHelperView.bCanDecline
+			&& !LegalHelperView.bCanResolveNoLegalChoice);
+	TestTrue(TEXT("Zero Helper candidates expose only typed NoLegal capability"),
+		ZeroHelperView.SelectionOptions.IsEmpty()
+			&& !ZeroHelperView.bCanDecline
+			&& ZeroHelperView.bCanResolveNoLegalChoice);
 	return true;
 }
 

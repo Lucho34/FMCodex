@@ -1,49 +1,427 @@
 #include "MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator.h"
+
 #include "MatchPlayCardSnapshotAuthority.h"
 
 namespace MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlan
 {
-	using EError = EMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanErrorCode;
+	using EError =
+		EMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanErrorCode;
+	using EMode =
+		FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest
+			::EMode;
 	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
 	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
-	using FResult = FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanResult;
-	void Fail(FResult& R, EError C, const FString& M) { R.ErrorCode = C; R.ErrorMessage = M; }
-	FName Owner(EInitialTurnOrderPlayer S)
+	using FResult =
+		FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanResult;
+
+	void SetFailure(
+		FResult& Result,
+		const EError ErrorCode,
+		const FString& ErrorMessage)
 	{
-		if (S == EInitialTurnOrderPlayer::PlayerA) return TEXT("PlayerA");
-		if (S == EInitialTurnOrderPlayer::PlayerB) return TEXT("PlayerB");
+		Result.ErrorCode = ErrorCode;
+		Result.ErrorMessage = ErrorMessage;
+	}
+
+	FName MakeOwnerId(const EInitialTurnOrderPlayer Side)
+	{
+		if (Side == EInitialTurnOrderPlayer::PlayerA)
+		{
+			return TEXT("PlayerA");
+		}
+		if (Side == EInitialTurnOrderPlayer::PlayerB)
+		{
+			return TEXT("PlayerB");
+		}
 		return NAME_None;
 	}
-	FPlayerAttributes Attributes(const FMatchPlayBoundActionNormalizedParticipantValues& V)
+
+	FPlayerAttributes CopyAttributes(
+		const FMatchPlayBoundActionNormalizedParticipantValues& Values)
 	{
-		FPlayerAttributes A; A.Shooting=V.Shooting; A.Dribbling=V.Dribbling; A.Passing=V.Passing; A.OffBall=V.OffBall; A.Marking=V.Marking; A.Tackling=V.Tackling; A.Speed=V.Speed; A.Strength=V.Strength; A.Stamina=V.Stamina; A.LongShot=V.LongShot; return A;
+		FPlayerAttributes Result;
+		Result.Shooting = Values.Shooting;
+		Result.Dribbling = Values.Dribbling;
+		Result.Passing = Values.Passing;
+		Result.OffBall = Values.OffBall;
+		Result.Marking = Values.Marking;
+		Result.Tackling = Values.Tackling;
+		Result.Speed = Values.Speed;
+		Result.Strength = Values.Strength;
+		Result.Stamina = Values.Stamina;
+		Result.LongShot = Values.LongShot;
+		return Result;
 	}
-	bool Snapshot(const FMatchPlayState& S, const FMatchPlayCurrentAttackResolutionSessionParticipant& P, FPlayerCardRuleSnapshot& O, FString& M)
+
+	bool QueryBoundSnapshot(
+		const FMatchPlayState& State,
+		const FMatchPlayCurrentAttackResolutionSessionParticipant& Participant,
+		FPlayerCardRuleSnapshot& OutSnapshot,
+		FString& OutErrorMessage)
 	{
-		const auto Q=FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(S.CardSnapshotAuthority,P.Side,P.CardId);
-		if(!Q.bSuccess){M=Q.ErrorMessage;return false;} O=Q.Snapshot; O.Attributes=Attributes(P.Values); return true;
+		const FMatchPlayCardSnapshotAuthorityQueryResult QueryResult =
+			FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+				State.CardSnapshotAuthority,
+				Participant.Side,
+				Participant.CardId);
+		if (!QueryResult.bSuccess)
+		{
+			OutErrorMessage = QueryResult.ErrorMessage;
+			return false;
+		}
+		OutSnapshot = QueryResult.Snapshot;
+		OutSnapshot.Attributes = CopyAttributes(Participant.Values);
+		return true;
 	}
-	bool Input(const FMatchPlayState& S,const FSkillRuleSnapshotSet& Rules,FResult& R)
+
+	bool BuildQueryInput(
+		const FMatchPlayState& State,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		FResult& Result)
 	{
-		const auto& A=S.CurrentAttack; const auto& Session=A.ResolutionSession; const auto& B=Session.Bundle; const auto& Rolls=Session.PostRouteRollProgress.RollRecords;
-		if(Session.PostRouteRollProgress.Phase!=EPhase::PrimaryBranch || (Rolls.Num()!=1 && Rolls.Num()!=2)){Fail(R,EError::InputAdaptationFailed,TEXT("BehindDefense P1 requires a completed conditional primary-roll contract."));return false;}
-		FThroughBallParticipantEligibilityQueryInput I; I.SelectedSkillId=B.Binding.SkillId; I.CurrentActionPoint=A.ActionPoint; I.AttackingOwnerId=Owner(B.CurrentAttackingPlayer); I.DefendingOwnerId=Owner(B.CurrentDefendingPlayer); I.bHasHelper=B.bHasHelper; I.bIsRunnerInAttackingForwardArea=true;
-		FString M;
-		if(!Snapshot(S,B.Carrier,I.CarrierSnapshot,M)||!Snapshot(S,B.Runner,I.RunnerSnapshot,M)||!Snapshot(S,B.Marker,I.MarkerSnapshot,M)||(B.bHasHelper&&!Snapshot(S,B.Helper,I.HelperSnapshot,M))){Fail(R,EError::ParticipantSnapshotUnavailable,M);return false;}
-		R.ParticipantEligibilityResult=FThroughBallParticipantEligibilityQuery::Evaluate(Rules,I);
-		if(!R.ParticipantEligibilityResult.bSuccess){Fail(R,EError::ParticipantEligibilityFailed,R.ParticipantEligibilityResult.ErrorMessage);return false;}
-		R.QueryInput.ParticipantEligibilityResult=R.ParticipantEligibilityResult; R.QueryInput.SelectedBranch=EThroughBallSelectedBranch::BehindDefense; R.QueryInput.bHasAttackD6=true; R.QueryInput.AttackD6=Rolls[0].RawD6; R.QueryInput.bHasDefenseD6=Rolls.Num()==2; if(R.QueryInput.bHasDefenseD6)R.QueryInput.DefenseD6=Rolls[1].RawD6;
-		const uint64 Seq=static_cast<uint64>(Session.AttackSequence); R.QueryInput.LogId=FGuid(0x42445031,static_cast<uint32>(Seq>>32),static_cast<uint32>(Seq),0x504C414E); R.QueryInput.TurnIndex=static_cast<int32>(Session.AttackSequence-1); return true;
+		const FMatchPlayCurrentAttackState& CurrentAttack = State.CurrentAttack;
+		const FMatchPlayCurrentAttackResolutionSession& Session =
+			CurrentAttack.ResolutionSession;
+		const FMatchPlayCurrentAttackResolutionSessionBundle& Bundle =
+			Session.Bundle;
+		const TArray<FMatchPlayCurrentAttackPostRouteRollRecord>& Rolls =
+			Session.PostRouteRollProgress.RollRecords;
+		if (Session.PostRouteRollProgress.Phase != EPhase::PrimaryBranch
+			|| (Rolls.Num() != 1 && Rolls.Num() != 2))
+		{
+			SetFailure(
+				Result,
+				EError::InputAdaptationFailed,
+				TEXT("BehindDefense P1 requires a completed conditional primary-roll contract."));
+			return false;
+		}
+
+		FThroughBallParticipantEligibilityQueryInput EligibilityInput;
+		EligibilityInput.SelectedSkillId = Bundle.Binding.SkillId;
+		EligibilityInput.CurrentActionPoint = CurrentAttack.ActionPoint;
+		EligibilityInput.AttackingOwnerId =
+			MakeOwnerId(Bundle.CurrentAttackingPlayer);
+		EligibilityInput.DefendingOwnerId =
+			MakeOwnerId(Bundle.CurrentDefendingPlayer);
+		EligibilityInput.bHasHelper = Bundle.bHasHelper;
+		EligibilityInput.bIsRunnerInAttackingForwardArea = true;
+
+		FString SnapshotError;
+		if (!QueryBoundSnapshot(
+				State,
+				Bundle.Carrier,
+				EligibilityInput.CarrierSnapshot,
+				SnapshotError)
+			|| !QueryBoundSnapshot(
+				State,
+				Bundle.Runner,
+				EligibilityInput.RunnerSnapshot,
+				SnapshotError)
+			|| !QueryBoundSnapshot(
+				State,
+				Bundle.Marker,
+				EligibilityInput.MarkerSnapshot,
+				SnapshotError)
+			|| (Bundle.bHasHelper
+				&& !QueryBoundSnapshot(
+					State,
+					Bundle.Helper,
+					EligibilityInput.HelperSnapshot,
+					SnapshotError)))
+		{
+			SetFailure(
+				Result,
+				EError::ParticipantSnapshotUnavailable,
+				SnapshotError);
+			return false;
+		}
+
+		Result.ParticipantEligibilityResult =
+			FThroughBallParticipantEligibilityQuery::Evaluate(
+				SkillRuleSet,
+				EligibilityInput);
+		if (!Result.ParticipantEligibilityResult.bSuccess)
+		{
+			SetFailure(
+				Result,
+				EError::ParticipantEligibilityFailed,
+				Result.ParticipantEligibilityResult.ErrorMessage);
+			return false;
+		}
+
+		FThroughBallBehindDefenseP1PlanQueryInput& Input = Result.QueryInput;
+		Input.ParticipantEligibilityResult = Result.ParticipantEligibilityResult;
+		Input.SelectedBranch = EThroughBallSelectedBranch::BehindDefense;
+		Input.bHasAttackD6 = true;
+		Input.AttackD6 = Rolls[0].RawD6;
+		Input.bHasDefenseD6 = Rolls.Num() == 2;
+		if (Input.bHasDefenseD6)
+		{
+			Input.DefenseD6 = Rolls[1].RawD6;
+		}
+
+		const uint64 Sequence = static_cast<uint64>(Session.AttackSequence);
+		Input.LogId = FGuid(
+			0x42445031,
+			static_cast<uint32>(Sequence >> 32),
+			static_cast<uint32>(Sequence),
+			0x504C414E);
+		Input.TurnIndex = static_cast<int32>(Session.AttackSequence - 1);
+		return true;
 	}
-	EError ProviderError(EMatchPlayPostRouteRollProviderResultValidationErrorCode C){return C==EMatchPlayPostRouteRollProviderResultValidationErrorCode::ProviderFailure?EError::PostRouteRollProviderFailed:EError::MalformedPostRouteRollProviderResult;}
+
+	EError MapProviderValidationError(
+		const EMatchPlayPostRouteRollProviderResultValidationErrorCode ErrorCode)
+	{
+		return ErrorCode
+			== EMatchPlayPostRouteRollProviderResultValidationErrorCode
+				::ProviderFailure
+			? EError::PostRouteRollProviderFailed
+			: EError::MalformedPostRouteRollProviderResult;
+	}
 }
 
-FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanResult FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator::Resolve(const FMatchPlayState& BeforeState,const FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest& Request,const FSkillRuleSnapshotSet* SkillRuleSet,IMatchPlayPostRouteRollProvider* RollProvider)
+FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanResult
+FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator
+	::Resolve(
+		const FMatchPlayState& BeforeState,
+		const
+			FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest&
+				Request,
+		const FSkillRuleSnapshotSet* SkillRuleSet,
+		IMatchPlayPostRouteRollProvider* RollProvider)
 {
-	using namespace MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlan; FResult R; R.Request=Request;R.BeforeState=BeforeState;R.AfterState=BeforeState;
-	if(!BeforeState.RuntimeState.bIsInitialized){Fail(R,EError::MatchPlayStateNotInitialized,TEXT("BehindDefense P1 requires initialized MatchPlay State."));return R;} if(!BeforeState.bHasCurrentAttack){Fail(R,EError::NoCurrentAttack,TEXT("BehindDefense P1 requires an active CurrentAttack."));return R;} if(BeforeState.CurrentAttack.AttackSequence<=0){Fail(R,EError::InvalidCurrentAttackSequence,TEXT("CurrentAttack AttackSequence must be positive."));return R;} if(Request.AttackSequence<=0){Fail(R,EError::InvalidRequestedAttackSequence,TEXT("Requested AttackSequence must be positive."));return R;} if(Request.AttackSequence!=BeforeState.CurrentAttack.AttackSequence){Fail(R,EError::AttackSequenceMismatch,TEXT("Requested AttackSequence does not match CurrentAttack."));return R;} if(!BeforeState.CurrentAttack.bHasResolutionSession){Fail(R,EError::MissingResolutionSession,TEXT("BehindDefense P1 requires a Resolution Session."));return R;}
-	R.SessionStateValidationResult=FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(BeforeState);if(!R.SessionStateValidationResult.bIsCanonical){Fail(R,EError::InvalidResolutionSessionState,R.SessionStateValidationResult.ErrorMessage);return R;} const auto& BeforeSession=BeforeState.CurrentAttack.ResolutionSession; if(BeforeSession.Stage!=EMatchPlayCurrentAttackResolutionStage::RouteResolved){Fail(R,EError::RouteNotResolved,TEXT("BehindDefense P1 requires RouteResolved."));return R;} if(!BeforeSession.bHasActualBranch||BeforeSession.ActualBranch.ActionType!=ESkillRuleType::ThroughBall||BeforeSession.ActualBranch.ThroughBall!=EMatchPlayThroughBallActualBranch::BehindDefense){Fail(R,EError::NotThroughBallBehindDefenseBranch,TEXT("This operation supports only ThroughBall BehindDefense."));return R;}
-	FMatchPlayState Candidate=BeforeState;auto& Session=Candidate.CurrentAttack.ResolutionSession;if(Session.PostRouteRollProgress.Phase==EPhase::None)Session.PostRouteRollProgress.Phase=EPhase::PrimaryBranch;else if(Session.PostRouteRollProgress.Phase!=EPhase::PrimaryBranch){Fail(R,EError::InvalidPostRouteProgress,TEXT("BehindDefense P1 requires primary-branch roll progress."));return R;} R.ProgressResult=FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(Session);if(!R.ProgressResult.bIsCanonical){Fail(R,EError::InvalidPostRouteProgress,R.ProgressResult.ErrorMessage);return R;}if(!R.ProgressResult.bContractComplete&&RollProvider==nullptr){Fail(R,EError::PostRouteRollProviderUnavailable,TEXT("BehindDefense P1 post-route roll provider is unavailable."));return R;}if(SkillRuleSet==nullptr){Fail(R,EError::SkillRuleSetUnavailable,TEXT("BehindDefense P1 requires authoritative SkillRuleSet."));return R;}
-	while(!R.ProgressResult.bContractComplete){const EPurpose P=R.ProgressResult.NextPurpose;const auto V=RollProvider->RollD6(P);++R.ProviderCallCount;R.ProviderResults.Add(V);const auto Check=FMatchPlayPostRouteRollProviderResultValidator::Validate(P,V);R.ProviderValidationResults.Add(Check);if(!Check.bIsCanonical){Fail(R,ProviderError(Check.ErrorCode),Check.ErrorMessage);return R;}FMatchPlayCurrentAttackPostRouteRollRecord Record;Record.Purpose=P;Record.RawD6=V.RawD6;Session.PostRouteRollProgress.RollRecords.Add(Record);R.ProgressResult=FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(Session);if(!R.ProgressResult.bIsCanonical){Fail(R,EError::InvalidPostRouteProgress,R.ProgressResult.ErrorMessage);return R;}}
-	R.SessionStateValidationResult=FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(Candidate);if(!R.SessionStateValidationResult.bIsCanonical){Fail(R,EError::InvalidPostRouteProgress,R.SessionStateValidationResult.ErrorMessage);return R;}if(!Input(Candidate,*SkillRuleSet,R))return R;R.P1PlanResult=FThroughBallBehindDefenseP1PlanQuery::Evaluate(R.QueryInput);if(!R.P1PlanResult.bSuccess){Fail(R,EError::P1PlanQueryFailed,R.P1PlanResult.ErrorMessage);return R;}R.AfterState=MoveTemp(Candidate);R.bResolvedNewRolls=R.ProviderCallCount>0;R.bReplayedCompleteRolls=R.ProviderCallCount==0;R.bSuccess=true;return R;
+	using namespace
+		MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlan;
+
+	FResult Result;
+	Result.Request = Request;
+	Result.BeforeState = BeforeState;
+	Result.AfterState = BeforeState;
+	if (!BeforeState.RuntimeState.bIsInitialized)
+	{
+		SetFailure(Result, EError::MatchPlayStateNotInitialized,
+			TEXT("BehindDefense P1 requires initialized MatchPlay State."));
+		return Result;
+	}
+	if (!BeforeState.bHasCurrentAttack)
+	{
+		SetFailure(Result, EError::NoCurrentAttack,
+			TEXT("BehindDefense P1 requires an active CurrentAttack."));
+		return Result;
+	}
+	if (BeforeState.CurrentAttack.AttackSequence <= 0)
+	{
+		SetFailure(Result, EError::InvalidCurrentAttackSequence,
+			TEXT("CurrentAttack AttackSequence must be positive."));
+		return Result;
+	}
+	if (Request.AttackSequence <= 0)
+	{
+		SetFailure(Result, EError::InvalidRequestedAttackSequence,
+			TEXT("Requested AttackSequence must be positive."));
+		return Result;
+	}
+	if (Request.AttackSequence != BeforeState.CurrentAttack.AttackSequence)
+	{
+		SetFailure(Result, EError::AttackSequenceMismatch,
+			TEXT("Requested AttackSequence does not match CurrentAttack."));
+		return Result;
+	}
+	if (!BeforeState.CurrentAttack.bHasResolutionSession)
+	{
+		SetFailure(Result, EError::MissingResolutionSession,
+			TEXT("BehindDefense P1 requires a Resolution Session."));
+		return Result;
+	}
+
+	Result.SessionStateValidationResult =
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			BeforeState);
+	if (!Result.SessionStateValidationResult.bIsCanonical)
+	{
+		SetFailure(Result, EError::InvalidResolutionSessionState,
+			Result.SessionStateValidationResult.ErrorMessage);
+		return Result;
+	}
+
+	const FMatchPlayCurrentAttackResolutionSession& BeforeSession =
+		BeforeState.CurrentAttack.ResolutionSession;
+	if (BeforeSession.Stage
+		!= EMatchPlayCurrentAttackResolutionStage::RouteResolved)
+	{
+		SetFailure(Result, EError::RouteNotResolved,
+			TEXT("BehindDefense P1 requires RouteResolved."));
+		return Result;
+	}
+	if (!BeforeSession.bHasActualBranch
+		|| BeforeSession.ActualBranch.ActionType != ESkillRuleType::ThroughBall
+		|| BeforeSession.ActualBranch.ThroughBall
+			!= EMatchPlayThroughBallActualBranch::BehindDefense)
+	{
+		SetFailure(Result, EError::NotThroughBallBehindDefenseBranch,
+			TEXT("This operation supports only ThroughBall BehindDefense."));
+		return Result;
+	}
+
+	const bool bExplicitRollStep = Request.Mode == EMode::ResolveAttackRoll
+		|| Request.Mode == EMode::ResolveDefenseRoll;
+	const bool bCompletedPlanRegeneration =
+		Request.Mode == EMode::RegenerateCompletedPlan;
+
+	FMatchPlayState CandidateState = BeforeState;
+	FMatchPlayCurrentAttackResolutionSession& CandidateSession =
+		CandidateState.CurrentAttack.ResolutionSession;
+	if (CandidateSession.PostRouteRollProgress.Phase == EPhase::None)
+	{
+		CandidateSession.PostRouteRollProgress.Phase = EPhase::PrimaryBranch;
+	}
+	else if (CandidateSession.PostRouteRollProgress.Phase
+		!= EPhase::PrimaryBranch)
+	{
+		SetFailure(Result, EError::InvalidPostRouteProgress,
+			TEXT("BehindDefense P1 requires primary-branch roll progress."));
+		return Result;
+	}
+
+	Result.ProgressResult =
+		FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+			CandidateSession);
+	if (!Result.ProgressResult.bIsCanonical)
+	{
+		SetFailure(Result, EError::InvalidPostRouteProgress,
+			Result.ProgressResult.ErrorMessage);
+		return Result;
+	}
+	if (bCompletedPlanRegeneration && !Result.ProgressResult.bContractComplete)
+	{
+		SetFailure(Result, EError::CompletedPlanRequired,
+			TEXT("BehindDefense P1 regeneration requires an already-complete roll contract."));
+		return Result;
+	}
+	if (bExplicitRollStep)
+	{
+		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			SetFailure(Result, EError::InvalidRequestingSide,
+				TEXT("BehindDefense P1 roll commands require PlayerA or PlayerB as RequestingSide."));
+			return Result;
+		}
+		const EPurpose RequestedPurpose = Request.Mode == EMode::ResolveAttackRoll
+			? EPurpose::PrimaryAttack
+			: EPurpose::PrimaryDefense;
+		if (Result.ProgressResult.bContractComplete
+			|| Result.ProgressResult.NextPurpose != RequestedPurpose)
+		{
+			SetFailure(Result, EError::WrongBehindDefenseRollStep,
+				TEXT("The requested BehindDefense P1 roll is not the current authoritative step."));
+			return Result;
+		}
+		const EInitialTurnOrderPlayer ExpectedSide = RequestedPurpose
+			== EPurpose::PrimaryAttack
+				? BeforeSession.Bundle.CurrentAttackingPlayer
+				: BeforeSession.Bundle.CurrentDefendingPlayer;
+		if (Request.RequestingSide != ExpectedSide)
+		{
+			SetFailure(Result, EError::WrongRequestingSide,
+				TEXT("The requesting side does not own the current BehindDefense P1 roll."));
+			return Result;
+		}
+	}
+	if (!Result.ProgressResult.bContractComplete && RollProvider == nullptr)
+	{
+		SetFailure(Result, EError::PostRouteRollProviderUnavailable,
+			TEXT("BehindDefense P1 post-route roll provider is unavailable."));
+		return Result;
+	}
+	if (SkillRuleSet == nullptr)
+	{
+		SetFailure(Result, EError::SkillRuleSetUnavailable,
+			TEXT("BehindDefense P1 requires authoritative SkillRuleSet."));
+		return Result;
+	}
+
+	const int32 MaximumRollsThisCommand = bExplicitRollStep ? 1 : MAX_int32;
+	while (!Result.ProgressResult.bContractComplete
+		&& Result.ProviderCallCount < MaximumRollsThisCommand)
+	{
+		const EPurpose Purpose = Result.ProgressResult.NextPurpose;
+		const FMatchPlayPostRouteRollProviderResult ProviderResult =
+			RollProvider->RollD6(Purpose);
+		++Result.ProviderCallCount;
+		Result.ProviderResults.Add(ProviderResult);
+		const FMatchPlayPostRouteRollProviderResultValidationResult Validation =
+			FMatchPlayPostRouteRollProviderResultValidator::Validate(
+				Purpose, ProviderResult);
+		Result.ProviderValidationResults.Add(Validation);
+		if (!Validation.bIsCanonical)
+		{
+			SetFailure(Result,
+				MapProviderValidationError(Validation.ErrorCode),
+				Validation.ErrorMessage);
+			return Result;
+		}
+
+		FMatchPlayCurrentAttackPostRouteRollRecord Record;
+		Record.Purpose = Purpose;
+		Record.RawD6 = ProviderResult.RawD6;
+		CandidateSession.PostRouteRollProgress.RollRecords.Add(Record);
+		Result.ProgressResult =
+			FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+				CandidateSession);
+		if (!Result.ProgressResult.bIsCanonical)
+		{
+			SetFailure(Result, EError::InvalidPostRouteProgress,
+				Result.ProgressResult.ErrorMessage);
+			return Result;
+		}
+	}
+
+	if (bExplicitRollStep && !Result.ProgressResult.bContractComplete)
+	{
+		Result.SessionStateValidationResult =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				CandidateState);
+		if (!Result.SessionStateValidationResult.bIsCanonical)
+		{
+			SetFailure(Result, EError::InvalidPostRouteProgress,
+				Result.SessionStateValidationResult.ErrorMessage);
+			return Result;
+		}
+		Result.AfterState = MoveTemp(CandidateState);
+		Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
+		Result.bSuccess = true;
+		return Result;
+	}
+
+	Result.SessionStateValidationResult =
+		FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+			CandidateState);
+	if (!Result.SessionStateValidationResult.bIsCanonical)
+	{
+		SetFailure(Result, EError::InvalidPostRouteProgress,
+			Result.SessionStateValidationResult.ErrorMessage);
+		return Result;
+	}
+	if (!BuildQueryInput(CandidateState, *SkillRuleSet, Result))
+	{
+		return Result;
+	}
+
+	Result.P1PlanResult =
+		FThroughBallBehindDefenseP1PlanQuery::Evaluate(Result.QueryInput);
+	if (!Result.P1PlanResult.bSuccess)
+	{
+		SetFailure(Result, EError::P1PlanQueryFailed,
+			Result.P1PlanResult.ErrorMessage);
+		return Result;
+	}
+
+	Result.AfterState = MoveTemp(CandidateState);
+	Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
+	Result.bReplayedCompleteRolls = !bExplicitRollStep
+		&& Result.ProviderCallCount == 0;
+	Result.bSuccess = true;
+	return Result;
 }

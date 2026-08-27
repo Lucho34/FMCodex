@@ -34,6 +34,8 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	CompleteCrossAndAdvance,
 	RollThroughBallFeetAttack,
 	RollThroughBallFeetDefense,
+	RollThroughBallBehindDefenseAttack,
+	RollThroughBallBehindDefenseDefense,
 	CompleteThroughBallFeetAndAdvance,
 	ContinueResolution,
 	AttackComplete,
@@ -257,6 +259,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCanDecline = false;
 	bool bCanResolveNoLegalChoice = false;
 	FString Diagnostic;
+	/** Bounded canonical reason key for a normal, non-rejection selection notice. */
+	FString SelectionNotice;
 	/** Typed presentation identity; player-facing code must not parse ActionLabel. */
 	ESkillRuleType PresentedActionType = ESkillRuleType::None;
 	FString ActionLabel;
@@ -288,6 +292,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCrossTerminalActionAvailable = false;
 	bool bThroughBallFeetAttackRollPending = false;
 	bool bThroughBallFeetDefenseRollPending = false;
+	bool bThroughBallBehindDefenseAttackRollPending = false;
+	bool bThroughBallBehindDefenseDefenseRollPending = false;
 	bool bThroughBallFeetFormulaComplete = false;
 	bool bThroughBallFeetTerminalActionAvailable = false;
 	bool bTerminalPendingAdvance = false;

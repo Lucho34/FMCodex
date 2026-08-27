@@ -67,7 +67,9 @@ namespace FMCodexLocalDevRollOverrideWidget
 			.ContentPadding(FMargin(7.0f, 3.0f))
 			.OnClicked(OnClicked)
 			[
-				SNew(STextBlock).Text(Text)
+				SNew(STextBlock)
+				.Text(Text)
+				.ColorAndOpacity(FLinearColor(0.96f, 0.96f, 0.92f, 1.0f))
 			];
 	}
 }
@@ -100,7 +102,7 @@ void SFMCodexLocalDevRollOverrideWidget::Construct(
 					SNew(STextBlock)
 					.Text(this, &SFMCodexLocalDevRollOverrideWidget::PendingOverridesText)
 					.AutoWrapText(true)
-					.ColorAndOpacity(FLinearColor(0.9f, 0.9f, 0.78f))
+					.ColorAndOpacity(FLinearColor(0.96f, 0.94f, 0.78f, 1.0f))
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(2.0f)
 				[
@@ -110,7 +112,8 @@ void SFMCodexLocalDevRollOverrideWidget::Construct(
 							this, &SFMCodexLocalDevRollOverrideWidget::SelectPreviousTarget))]
 					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(5.0f, 0.0f)[
 						SNew(STextBlock).Text(this,
-							&SFMCodexLocalDevRollOverrideWidget::SelectedTargetText)]
+							&SFMCodexLocalDevRollOverrideWidget::SelectedTargetText)
+						.ColorAndOpacity(FLinearColor(0.96f, 0.96f, 0.92f, 1.0f))]
 					+ SHorizontalBox::Slot().AutoWidth()[
 						Button(FText::FromString(TEXT(">")), FOnClicked::CreateSP(
 							this, &SFMCodexLocalDevRollOverrideWidget::SelectNextTarget))]
@@ -123,7 +126,8 @@ void SFMCodexLocalDevRollOverrideWidget::Construct(
 							this, &SFMCodexLocalDevRollOverrideWidget::SelectPreviousValue))]
 					+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Center)[
 						SNew(STextBlock).Text(this,
-							&SFMCodexLocalDevRollOverrideWidget::SelectedValueText)]
+							&SFMCodexLocalDevRollOverrideWidget::SelectedValueText)
+						.ColorAndOpacity(FLinearColor(1.0f, 0.78f, 0.34f, 1.0f))]
 					+ SHorizontalBox::Slot().AutoWidth()[
 						Button(FText::FromString(TEXT("+")), FOnClicked::CreateSP(
 							this, &SFMCodexLocalDevRollOverrideWidget::SelectNextValue))]
@@ -145,7 +149,7 @@ void SFMCodexLocalDevRollOverrideWidget::Construct(
 				[
 					SNew(STextBlock)
 					.Text(this, &SFMCodexLocalDevRollOverrideWidget::LastCommandText)
-					.ColorAndOpacity(FLinearColor(0.65f, 0.75f, 0.82f))
+					.ColorAndOpacity(FLinearColor(0.84f, 0.90f, 0.96f, 1.0f))
 				]
 			]
 		]

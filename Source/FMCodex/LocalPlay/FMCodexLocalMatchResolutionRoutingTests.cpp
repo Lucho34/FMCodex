@@ -1099,6 +1099,148 @@ bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchThroughBallBehindDefenseManualResolutionTest,
+	"FMCodex.LocalPlay.LocalMatchHost.07B.ThroughBallBehindDefenseManualResolution",
+	EAutomationTestFlags::EditorContext
+		| EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchThroughBallBehindDefenseManualResolutionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchResolutionRoutingTests;
+	(void)Parameters;
+	const int32 Seed = FindSeedForRolls({ 4, 3, 6 });
+	TestTrue(TEXT("A deterministic Behind manual seed exists"),
+		Seed != INDEX_NONE);
+	if (Seed == INDEX_NONE)
+	{
+		return false;
+	}
+
+	const FName SkillId(TEXT("Skill.Host.ThroughBall.BehindManual"));
+	const auto Rules = MakeRules(SkillId, ESkillRuleType::ThroughBall);
+	const auto Input = MakeInput(TEXT("HostThroughBallBehindManual"), SkillId);
+	FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+	FMatchPlayAuthoritativeSession Direct(
+		DirectProvider, DirectProvider, Rules);
+	FScopedWorld World;
+	auto* Host = World.GetHost();
+	auto* Controller = World.GetController();
+	TestNotNull(TEXT("Behind manual Host exists"), Host);
+	TestNotNull(TEXT("Behind manual Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	FReadyTrace Trace;
+	TestTrue(TEXT("Behind manual Host/direct reach ReadyForResolution"),
+		BuildReadyForResolution(
+			*Host, Direct, Input, Rules, Seed,
+			ESkillRuleType::ThroughBall, false, Trace));
+	TestTrue(TEXT("Behind manual Direct begins resolution"),
+		Direct.BeginResolutionSession().BeginResult.bSuccess);
+	TestTrue(TEXT("Behind manual Host begins resolution"),
+		Host->BeginResolutionSession().bSuccess);
+	TestTrue(TEXT("Behind manual Direct resolves route"),
+		Direct.ResolveInitialRoute().OrchestrationResult.bSuccess);
+	TestTrue(TEXT("Behind manual Host resolves route"),
+		Host->ResolveInitialRoute().bSuccess);
+	const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
+	TestEqual(TEXT("Deterministic route is BehindDefense"),
+		RouteState.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
+		EMatchPlayThroughBallActualBranch::BehindDefense);
+	TestTrue(TEXT("Behind route snapshot equals direct Session"),
+		AreStatesEqual(RouteState, Direct.GetStateSnapshot()));
+
+	Controller->RefreshPresentation();
+	const auto AttackView = Controller->GetInteractionView();
+	TestTrue(TEXT("Behind route projects attacker-owned typed roll"),
+		AttackView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallBehindDefenseAttack
+			&& AttackView.ExpectedActingPlayer == Trace.Attacker
+			&& AttackView.bThroughBallBehindDefenseAttackRollPending
+			&& !AttackView.bThroughBallBehindDefenseDefenseRollPending);
+	Controller->ContinueResolution();
+	TestTrue(TEXT("Generic Continue is retired from Behind P1 rolls"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ContinueResolution")
+			&& AreStatesEqual(RouteState, Host->GetMatchSnapshot().Snapshot));
+
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest
+		AttackRequest;
+	AttackRequest.AttackSequence = RouteState.CurrentAttack.AttackSequence;
+	AttackRequest.RequestingSide = Trace.Attacker;
+	TestTrue(TEXT("Direct accepts typed Behind Attack"),
+		Direct.ResolveThroughBallBehindDefenseP1AttackRoll(AttackRequest)
+			.OrchestrationResult.bSuccess);
+	Controller->RollThroughBallBehindDefenseAttack();
+	TestTrue(TEXT("Controller routes typed Behind Attack through Host"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolveThroughBallBehindDefenseP1AttackRoll"));
+	const FMatchPlayState AttackState = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Behind Attack Host State equals direct Session"),
+		AreStatesEqual(AttackState, Direct.GetStateSnapshot()));
+	const auto DefenseView = Controller->GetInteractionView();
+	TestTrue(TEXT("Behind Attack refresh projects defender-owned typed roll"),
+		DefenseView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallBehindDefenseDefense
+			&& DefenseView.ExpectedActingPlayer == Trace.Defender
+			&& !DefenseView.bThroughBallBehindDefenseAttackRollPending
+			&& DefenseView.bThroughBallBehindDefenseDefenseRollPending
+			&& DefenseView.AcceptedRolls.Last().RawD6 == 3);
+
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest
+		DefenseRequest;
+	DefenseRequest.AttackSequence = AttackState.CurrentAttack.AttackSequence;
+	DefenseRequest.RequestingSide = Trace.Defender;
+	const auto DirectDefense =
+		Direct.ResolveThroughBallBehindDefenseP1DefenseRoll(DefenseRequest);
+	TestTrue(TEXT("Direct accepts typed Behind Defense"),
+		DirectDefense.OrchestrationResult.bSuccess);
+	const auto DirectFormula = Direct.ResolveThroughBallBehindDefenseP1Formula();
+	TestTrue(TEXT("Direct resolves Behind Formula with zero new roll"),
+		DirectFormula.OrchestrationResult.bSuccess
+			&& DirectFormula.OrchestrationResult
+				.PlanRegenerationProviderCallCount == 0);
+	const bool bAttackerWin = DirectFormula.OrchestrationResult
+		.FormulaResolutionResult.bContinueResolution;
+	if (!bAttackerWin)
+	{
+		TestTrue(TEXT("Direct applies defender-win terminal"),
+			Direct.ApplyThroughBallTerminalResolution()
+				.OrchestrationResult.bSuccess);
+	}
+
+	Controller->RollThroughBallBehindDefenseDefense();
+	const FMatchPlayState CompleteState = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Controller typed Defense reaches same canonical State"),
+		AreStatesEqual(CompleteState, Direct.GetStateSnapshot()));
+	if (bAttackerWin)
+	{
+		const auto ChoiceView = Controller->GetInteractionView();
+		TestTrue(TEXT("Attacker win rebuilds existing OneOnOne typed choices"),
+			ChoiceView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot
+				&& ChoiceView.ExpectedActingPlayer == Trace.Attacker
+				&& ChoiceView.OneOnOneOptions.Num() == 2);
+	}
+	else
+	{
+		const auto TerminalView = Controller->GetInteractionView();
+		TestTrue(TEXT("Defender win auto-applies zero-RNG terminal"),
+			TerminalView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+				&& TerminalView.bTerminalPendingAdvance);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FFMCodexLocalMatchThroughBallResolutionTest,
 	"FMCodex.LocalPlay.LocalMatchHost.08.ThroughBallDeepResolutionAndIsolation",
 	EAutomationTestFlags::EditorContext

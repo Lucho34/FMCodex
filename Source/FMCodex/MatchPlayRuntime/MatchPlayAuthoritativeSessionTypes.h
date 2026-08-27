@@ -100,7 +100,9 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveCrossLowDefenseRoll,
 	ResolveThroughBallFeetAttackRoll,
 	ResolveThroughBallFeetDefenseRoll,
-	AdvanceAfterTerminal
+	AdvanceAfterTerminal,
+	ResolveThroughBallBehindDefenseP1AttackRoll,
+	ResolveThroughBallBehindDefenseP1DefenseRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -487,6 +489,36 @@ struct FMCODEX_API
 
 struct FMCODEX_API
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DecisionOrPlanResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanResult

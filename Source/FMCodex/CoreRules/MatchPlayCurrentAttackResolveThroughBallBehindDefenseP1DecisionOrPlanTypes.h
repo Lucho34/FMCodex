@@ -10,6 +10,18 @@
 struct FMCODEX_API FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest
 {
 	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		/** Legacy/reference compatibility; production must use explicit rolls. */
+		CompleteP1Plan,
+		RegenerateCompletedPlan,
+		ResolveAttackRoll,
+		ResolveDefenseRoll
+	};
+
+	EMode Mode = EMode::CompleteP1Plan;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 enum class EMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanErrorCode : uint8
@@ -17,6 +29,8 @@ enum class EMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPla
 	None, MatchPlayStateNotInitialized, NoCurrentAttack, InvalidCurrentAttackSequence,
 	InvalidRequestedAttackSequence, AttackSequenceMismatch, MissingResolutionSession,
 	InvalidResolutionSessionState, RouteNotResolved, NotThroughBallBehindDefenseBranch,
+	InvalidRequestingSide, WrongRequestingSide, WrongBehindDefenseRollStep,
+	CompletedPlanRequired,
 	InvalidPostRouteProgress, PostRouteRollProviderUnavailable, PostRouteRollProviderFailed,
 	MalformedPostRouteRollProviderResult, SkillRuleSetUnavailable, ParticipantSnapshotUnavailable,
 	ParticipantEligibilityFailed, InputAdaptationFailed, P1PlanQueryFailed

@@ -160,6 +160,43 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackSkillSelection
 		return Request;
 	}
 
+	inline FMatchPlayState MakeParticipantFirstRunnerState(
+		const EMatchPlayNeutralSlotSide RunnerNeutralSide)
+	{
+		const FName RunnerId(TEXT("PlayerA.PreparedMidfieldRunner"));
+		FMatchPlayState State = MakeState(
+			{ThroughBallSkillId, PassControlSkillId});
+		FPlayerCardRuleSnapshot Runner = MakeCard(RunnerId);
+		Runner.PositionTypes = {EPlayerPositionType::Midfield};
+		State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.Add(Runner);
+		State.CurrentAttack.DeploymentPlacements.Add(MakePlacement(
+			EInitialTurnOrderPlayer::PlayerA,
+			RunnerId,
+			TEXT("Slot.PreparedRunner")));
+		auto MakeSlot = [](const TCHAR* SlotId,
+			const EMatchPlayNeutralSlotSide NeutralSide)
+		{
+			FMatchPlayDeploymentSlotDefinition Slot;
+			Slot.SlotId = FName(SlotId);
+			Slot.NeutralSide = NeutralSide;
+			return Slot;
+		};
+		State.DeploymentSlotCatalog.Slots = {
+			MakeSlot(TEXT("Slot.Attacker"),
+				EMatchPlayNeutralSlotSide::NearPlayerA),
+			MakeSlot(TEXT("Slot.Defender"),
+				EMatchPlayNeutralSlotSide::NearPlayerB),
+			MakeSlot(TEXT("Slot.PreparedRunner"), RunnerNeutralSide)
+		};
+		State.CurrentAttack.ActionPreparation.RunnerCardId = RunnerId;
+		State.CurrentAttack.ActionPreparation.bSkillSelectionDeferred = true;
+		State.CurrentAttack.ActionPreparation.SkillId = NAME_None;
+		State.CurrentAttack.ActionPreparation.ActionType = ESkillRuleType::None;
+		State.CurrentAttack.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+		return State;
+	}
+
 	inline bool AreStatesEqual(
 		const FMatchPlayState& Left,
 		const FMatchPlayState& Right)

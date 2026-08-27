@@ -114,3 +114,12 @@
 - Screen 仅在中央 slot 的 `Claims()` 与当前 Interaction `PrimaryAction` category 精确匹配时折叠底部重复面板。中央 surface 可见但没有 claim、claim 不匹配或 authority rejection 时，底部 recovery/fallback 保持可见；Deployment、角色选择与 SelectSkill 不受 Resolution 可见性影响。
 - reveal 只把 slot 的 `bVisible` 暂时关闭，`bClaimsAction` 与 typed action 保留，因此 Authority 已进入 Defense/NextRound 时不会提前从左下泄漏 CTA。stable settled key、cached authority DTO、fresh reconstruction 与 rejection cancellation 继续使用原实现。
 - central click 仍沿既有单一路径进入 `UFMCodexLocalMatchScreenWidget::RequestContinueResolution()` 并按 interaction category 调用一个 Controller wrapper。Formula child -> ThroughBall parent -> Screen 的单 delegate 链保持；没有新增 command、event bus、legality、Formula、RNG 或 lifecycle 分支。
+
+## ThroughBall BehindDefense Side-owned Conditional Roll Authority（Stage 6.14.1A）
+
+- BehindDefense P1 复用 Feet 已验证的 explicit-roll mode：CoreRules Orchestrator仍保留旧 `CompleteP1Plan` 供 compatibility/reference，但 production Session分别调用 `ResolveAttackRoll` 与 `ResolveDefenseRoll`，每个 accepted command的 provider call上限为 1。`RegenerateCompletedPlan` 专用于 Formula/terminal的零 RNG重建。
+- 两个 public Session request都携带 `AttackSequence + RequestingSide`。Attack ownership来自 Resolution Session冻结的 `CurrentAttackingPlayer`；Defense ownership来自 `CurrentDefendingPlayer`。sequence、route、progress/purpose、ownership和重复校验全部发生在 provider调用前，失败使用 `DoNotAdopt`。
+- canonical persisted prefixes为：`None/empty`、`PrimaryAttack(3–6)`、`PrimaryAttack(1–2 complete OutOfPlay)`、`PrimaryAttack+PrimaryDefense complete Formula`。next-purpose只由 `FMatchPlayCurrentAttackPostRouteRollProgressQuery`决定；Controller、Host和Widget不复制阈值逻辑。
+- InteractionView从 snapshot投影 `RollThroughBallBehindDefenseAttack / RollThroughBallBehindDefenseDefense` 与 expected side。PlayerController薄转发到 Host typed wrapper，Host只负责 provider decoration与 Session调用。generic `ContinueResolution`拒绝尚未完成的 Behind roll progress；旧 atomic Host/Session API不再从 production Controller调用。
+- Attack `1–2` 或 completed Formula defender win后，LocalPlay可以紧接现有 zero-RNG terminal command以隐藏技术确认步骤；若在两命令之间重建，complete progress仍可通过既有 recovery continuation完成。Attacker win由既有 Formula事实重建为 `SelectOneOnOneShot`，不写 terminal、不换攻。
+- 当前非 Shipping `身后球 P1` DEV override继续只装饰 `PrimaryAttack`；Defense command使用正常 provider。production authority不依赖 DEV类型，optional Defense override继续 deferred到 presentation/testing确有需要时。

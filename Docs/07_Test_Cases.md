@@ -639,3 +639,29 @@
 - Behind/AntiOffside progression 必须包含 `形成单刀` 且不含 `破门/进球`。ImmediateMiss 与 Formula Miss 的 Result/Narrative 必须不同。缺名 fallback 不得含 PlayerKey、ContentId、CardId、ContestId、raw enum 或未替换 placeholder；production mapping 不接受 historical BehindDefense P2。
 - Cross/Feet production migration 回归继续覆盖 authority winner、High/Low route context、Formula/Reel、Defense reveal 前 Narrative 隐藏、fresh terminal deterministic rebuild、唯一 NextRound CTA。Cross goal 保持，Marker/Helper 更新为 `抢断/拦截`；Feet defense 使用同一 stable selection并删除 GK 第三顺位。自动化后仍需 USER PIE 验收文案自然度与 reveal/CTA 节奏。
 
+## ThroughBall BehindDefense 顺序掷点权威基础（Stage 6.14.1A）
+
+- Route resolved为 BehindDefense时，InteractionView必须先投影进攻方 owned `RollThroughBallBehindDefenseAttack`。正确 Attack request恰好调用 provider一次并持久化 `PrimaryAttack`；wrong-side、stale、duplicate必须零 RNG且 State byte-equivalent。
+- Attack `1` 与 `2` 分别覆盖：progress complete、Plan=`OutOfPlay`、records恰好一条、Defense provider call count为 0、Defense request被拒绝；随后 terminal apply为零 RNG并进入 `TerminalPendingAdvance`。
+- Attack `3–6` 至少覆盖一个代表值：提交后 State保持 Active、records只有 Attack、Progress next=`PrimaryDefense`。重复 build InteractionView/ResolutionFacts必须保留同一 RawD6并投影防守方 typed action，provider delta为 0。
+- Defense-before-Attack、wrong-side、stale、after-OutOfPlay和duplicate Defense都在 provider前拒绝。合法 Defense恰好消费一枚 `PrimaryDefense`，完成双记录并复用既有 P1 Plan/Assembler/Formula；Formula、terminal和refresh额外 RNG均为 0。
+- 使用相同 State、Attack D6与Defense D6比较 sequential路径和保留的 atomic reference：Plan inputs、Formula FinalValues、winner、win reason与 `DefenderStoppedAttack/OneOnOneRequired`必须一致。现有 P1 Executor tie suite、Helper present/absent与Tactical Player tests继续作为数学回归，禁止在新 command重复公式。
+- Host/Controller专项必须证明 Attack/Defense typed chain、expected side与最终 Session State parity；Controller source不得调用旧 atomic Behind P1作为正常路径，generic Continue不得取得未完成 P1 roll。旧 compatibility API可以继续用于reference tests。
+- 回归运行 Behind manual专项、ThroughBall、AuthoritativeSession、LocalMatchHost、ControlSurface、Feet/Cross manual authority、Cross PIE、LocalPlay/CoreRules full、Build/UHT/link与 `git diff --check`。本 Authority Stage不要求 USER PIE；通过后恢复 `6.14.1` Production Golden Path。
+
+## ThroughBall Runner 战术资格与 Helper 无候选推进（Stage 6.14.1B）
+
+- 规则分类固定为 Case A：participant-first 的 Runner 选择只检查通用结构合法性。位于进攻方相对中场的非门将、非 Carrier 球员可以被选为 Runner，并保持 `SkillId=None / ActionType=None`；不得在 Runner 阶段预猜玩家稍后会选的战术。
+- 到 SelectSkill 时逐候选执行战术参与者契约：相对中场 Runner 使 ThroughBall 返回 `PreparedRunnerIncompatibleWithSkill` 且不投影为可提交选项，同一 Runner 对合法 PassControl 仍可用；相对前场 Runner 使 ThroughBall 保持合法。区域必须由 Slot Catalog + 当前进攻方解析，不能使用屏幕坐标或卡牌静态位置类型代替。
+- 绕过 UI 直接提交“中场 Runner + ThroughBall”必须在 Authority Writer 拒绝，Before/After State byte-equivalent、无 ResolutionSession、无 RNG；合法前场组合继续进入既有 ThroughBall resolution。相关玩家提示集中为 `直塞要求跑位球员位于前场`，不泄漏内部 ID 或 enum。
+- AwaitingHelper 的能力必须互斥：有至少一名合法 Helper 时仅允许 SubmitHelper 或 DeclineHelper；零合法 Helper 时 `bCanDecline=false / bCanResolveNoLegalChoice=true`。Controller 在 Runner 提交后发现正式 No-Legal 投影时自动调用既有 `ResolveNoLegalHelper`，不得发送 `DeclineHelper`。
+- 零 Helper 自动推进后必须直接到 AwaitingSkill，Helper 保持 unset，正常 ResolutionFeedback 不得进入 rejected，也不得出现 `Helper decline requires...`；有候选时 Helper 选择和主动 Decline 两条原路径继续通过。Cross zero-helper E2E、普通 Helper 选择/Decline 与合法 ThroughBall Behind route smoke共同作为回归边界。
+
+## ThroughBall 战术球员公式审计与本地表现修复（Stage 6.14.1C）
+
+- canonical metadata 必须冻结分支适用性：Feet 与 OneOnOne Direct 使用 Tactical Player advantage；BehindDefense P1、AntiOffside 与 OneOnOne Chip 不使用。Feet authority execution 至少覆盖 +0/+1/+2 并断言 FinalValue 精确增加对应权威值；OneOnOne Direct 必须证明两侧 modifier 进入 Resolver Input 与 resolved result。
+- ThroughBall production Formula fixture 必须把 `TacticalPlayerAdvantage` 作为 authoritative Formula term 传入 shared builder：+0 按现有规则隐藏，+1/+2 分别显示 `战术球员 +1/+2`，不带球员名、不显示 `×N`、不重复人数 summary。Behind Transition 即使棋盘存在人数优势也不得伪造该 term。
+- UMG 边界测试只审计 Formula term mapping 所在 source：不得调用人数优势 tier helper，也不得读取 projection 顶层 attacker/defender modifier 自行补项。Header/Rack 的 `战术球员 ×N` 与 Formula `+N` 必须继续由不同 DTO 字段表达。
+- DEV Roll surface 的布局合同必须证明不再使用右上 Header offset，而改为右侧垂直居中、默认折叠；pending、purpose、value、command 与按钮文字使用局部高对比色。`#if !UE_BUILD_SHIPPING`、provider decorator 与 production 零依赖边界继续回归。
+- OneOnOne choice 必须投影 exactly two、顺序 `直接射门 -> 挑射`，并在同一个 HorizontalBox 中渲染；两项都拥有至少 120×42 的最小点击区域，label 关闭 AutoWrap、完整可点击。Cross route、SelectSkill、Runner/Helper 与 Behind Golden Path 运行代表性回归。
+

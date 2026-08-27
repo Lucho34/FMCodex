@@ -50,7 +50,7 @@ The Host invocation identity is required because the canonical CoreRules purpose
 
 ## UI
 
-The small `DEV 掷点` entry is created in non-Shipping LocalPlay only, at the top-right below the header. It is collapsed by default and sits above the production screen without relaying or replacing its CTA. Expanding it provides previous/next purpose selection, bounded value selection, `设置`, `清除此项`, `全部清除`, and a live `待消费` list.
+The small `DEV 掷点` entry is created in non-Shipping LocalPlay only, centered vertically on the right viewport edge so it does not cover the Header Tactical Player count. It is collapsed by default and sits above the production screen without relaying or replacing its CTA. Expanding it provides previous/next purpose selection, bounded value selection, `设置`, `清除此项`, `全部清除`, and a live `待消费` list. Its labels and status use local high-contrast colors; no production style token is changed.
 
 ## Example: BehindDefense
 

@@ -190,8 +190,12 @@ bool FTacticalRuleDescriptionCanonicalSemanticsTest::RunTest(
 			&& AntiOffside != nullptr && Direct != nullptr && Chip != nullptr
 			&& ThroughBall->Branches.Num() == 5
 			&& Feet->RollSemantics == ESemantics::ArithmeticContest
+			&& Feet->bUsesTacticalPlayerAdvantage
 			&& BehindP1->RollSemantics == ESemantics::ArithmeticContest
 			&& BehindP1->bConditional && !BehindP1->bUsesTacticalPlayerAdvantage
+			&& !AntiOffside->bUsesTacticalPlayerAdvantage
+			&& Direct->bUsesTacticalPlayerAdvantage
+			&& !Chip->bUsesTacticalPlayerAdvantage
 			&& HasOutcome(*AntiOffside, 6, 6, TEXT("OneOnOne"))
 			&& HasTerm(Direct->DefenseTerms, EKind::GoalkeeperContribution,
 				ERole::Goalkeeper, EAttribute::GoalkeeperOneOnOne, 1.0f)

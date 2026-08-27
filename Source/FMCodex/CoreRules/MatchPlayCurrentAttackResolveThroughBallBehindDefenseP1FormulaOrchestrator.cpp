@@ -133,6 +133,9 @@ FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator
 	FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest
 		Request;
 	Request.AttackSequence = BeforeState.CurrentAttack.AttackSequence;
+	Request.Mode =
+		FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanRequest
+			::EMode::RegenerateCompletedPlan;
 	Result.PlanRegenerationResult =
 		FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1DecisionOrPlanOrchestrator
 			::Resolve(BeforeState, Request, SkillRuleSet, nullptr);

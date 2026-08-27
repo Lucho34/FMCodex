@@ -396,6 +396,54 @@ bool FSkillWriterFailureAndRepeatAtomicityTest::RunTest(
 	return true;
 }
 
+SKILL_WRITER_TEST(
+	FSkillWriterRejectsParticipantFirstMidfieldThroughBallTest,
+	"RejectsDirectMidfieldThroughBallAtomically")
+
+bool FSkillWriterRejectsParticipantFirstMidfieldThroughBallTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	const FMatchPlayState Before = MakeParticipantFirstRunnerState(
+		EMatchPlayNeutralSlotSide::NearPlayerA);
+	const auto Result = FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+		Before,
+		MakeRuleSet(),
+		MakeRequest(ThroughBallSkillId));
+
+	TestFalse(TEXT("Direct invalid ThroughBall selection is rejected"),
+		Result.bSuccess);
+	TestEqual(TEXT("Direct rejection keeps the specific tactical error"),
+		Result.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackSkillSelectionErrorCode::
+			PreparedRunnerIncompatibleWithSkill);
+	TestTrue(TEXT("Direct rejection leaves authority state byte-equivalent"),
+		AreStatesEqual(Result.BeforeState, Result.AfterState)
+			&& AreStatesEqual(Before, Result.AfterState));
+	TestFalse(TEXT("Direct rejection creates no resolution session or RNG facts"),
+		Result.AfterState.CurrentAttack.bHasResolutionSession);
+
+	const FMatchPlayState ForwardBefore = MakeParticipantFirstRunnerState(
+		EMatchPlayNeutralSlotSide::NearPlayerB);
+	const auto ForwardResult =
+		FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			ForwardBefore,
+			MakeRuleSet(),
+			MakeRequest(ThroughBallSkillId));
+	TestTrue(TEXT("Relative-forward ThroughBall selection succeeds"),
+		ForwardResult.bSuccess);
+	TestTrue(TEXT("Valid ThroughBall freezes participants and becomes ready"),
+		ForwardResult.AfterState.CurrentAttack.bHasSelectedAction
+			&& ForwardResult.AfterState.CurrentAttack.SelectionStage
+				== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+			&& !ForwardResult.AfterState.CurrentAttack.SelectedAction
+				.RunnerCardId.IsNone());
+	TestFalse(TEXT("Skill selection itself still consumes no resolution RNG"),
+		ForwardResult.AfterState.CurrentAttack.bHasResolutionSession);
+	return true;
+}
+
 #undef SKILL_WRITER_TEST
 
 #endif

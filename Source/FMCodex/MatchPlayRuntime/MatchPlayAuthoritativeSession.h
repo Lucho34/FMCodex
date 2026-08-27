@@ -134,6 +134,18 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DecisionOrPlanResult
 	ResolveThroughBallBehindDefenseP1DecisionOrPlan();
 
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollResult
+	ResolveThroughBallBehindDefenseP1AttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest&
+				Request);
+
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollResult
+	ResolveThroughBallBehindDefenseP1DefenseRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest&
+				Request);
+
 	FMatchPlayAuthoritativeResolveSingleCardFinishingFormulaResult
 	ResolveSingleCardFinishingFormula();
 

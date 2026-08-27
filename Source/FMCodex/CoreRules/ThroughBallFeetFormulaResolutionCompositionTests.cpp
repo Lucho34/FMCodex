@@ -727,6 +727,58 @@ THROUGH_BALL_FEET_COMPOSITION_TEST(FThroughBallFeetComposition21, "21DependencyB
 
 #undef THROUGH_BALL_FEET_COMPOSITION_TEST
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FThroughBallFeetComposition22TacticalPlayerModifiers,
+	"FMCodex.CoreRules.ThroughBall.FeetFormulaResolutionComposition.22TacticalPlayerModifiers",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FThroughBallFeetComposition22TacticalPlayerModifiers::RunTest(
+	const FString& Parameters)
+{
+	(void)Parameters;
+	const FThroughBallFeetPlanQueryResult Plan =
+		FThroughBallFeetPlanQuery::Evaluate(MakePlanInput());
+	FThroughBallFeetFormulaResolverInputAssemblyInput AssemblyInput;
+	AssemblyInput.FormulaPlan = Plan.FormulaPlan;
+	const FThroughBallFeetFormulaResolverInputAssemblyResult Assembly =
+		FThroughBallFeetFormulaResolverInputAssembler::Assemble(AssemblyInput);
+	TestTrue(TEXT("Feet Tactical Player fixture assembles"),
+		Plan.bSuccess && Assembly.bSuccess && Assembly.bHasResolverInput);
+	if (!Plan.bSuccess || !Assembly.bSuccess || !Assembly.bHasResolverInput)
+	{
+		return false;
+	}
+
+	auto ExecuteWithAttackerModifier = [&Assembly](const float Modifier)
+	{
+		FThroughBallFeetFormulaResolutionExecutionInput Input;
+		Input.ResolverInputAssemblyResult = Assembly;
+		Input.ResolverInputAssemblyResult.ResolverInput.Attacker
+			.TacticalPlayerModifier = Modifier;
+		return FThroughBallFeetFormulaResolutionExecutor::Execute(Input);
+	};
+	const auto Zero = ExecuteWithAttackerModifier(0.0f);
+	const auto PlusOne = ExecuteWithAttackerModifier(1.0f);
+	const auto PlusTwo = ExecuteWithAttackerModifier(2.0f);
+	TestTrue(TEXT("Feet authority exposes exact +0/+1/+2 Formula truth"),
+		Zero.bSuccess && PlusOne.bSuccess && PlusTwo.bSuccess
+			&& FMath::IsNearlyZero(
+				Zero.FormulaResolutionResult.AttackerTacticalPlayerModifier)
+			&& FMath::IsNearlyEqual(
+				PlusOne.FormulaResolutionResult
+					.AttackerTacticalPlayerModifier, 1.0f)
+			&& FMath::IsNearlyEqual(
+				PlusTwo.FormulaResolutionResult
+					.AttackerTacticalPlayerModifier, 2.0f)
+			&& FMath::IsNearlyEqual(
+				PlusOne.FormulaResolutionResult.AttackerFinalValue,
+				Zero.FormulaResolutionResult.AttackerFinalValue + 1.0f)
+			&& FMath::IsNearlyEqual(
+				PlusTwo.FormulaResolutionResult.AttackerFinalValue,
+				Zero.FormulaResolutionResult.AttackerFinalValue + 2.0f));
+	return true;
+}
+
 }
 
 #endif

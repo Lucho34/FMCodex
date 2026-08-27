@@ -534,6 +534,40 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 FFMCodexLocalMatchResolutionFeedback
 FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallBehindDefenseP1AttackRollResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	Feedback.StepSummary = TEXT("进攻方权威点数已记录");
+	if (AfterView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallBehindDefenseDefense)
+	{
+		Feedback.ContinuationSummary = TEXT("等待防守方掷点");
+	}
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DefenseRollResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	Feedback.StepSummary = TEXT("防守方权威点数已记录");
+	Feedback.DecisionSummary = AfterView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot
+			? TEXT("One-on-One choice required")
+			: TEXT("Defender stopped attack");
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
 	const FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult& Result,
 	const FFMCodexLocalMatchInteractionView& BeforeView,
 	const FFMCodexLocalMatchInteractionView& AfterView)
@@ -634,6 +668,11 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 	Feedback.StepTitle = TEXT("Through Ball - Behind Defense P1");
 	Feedback.StepSummary = TEXT("Behind Defense P1 contest resolved");
 	AddBehindDefenseP1FormulaEvidence(Feedback, Formula);
+	if (AfterView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
+	{
+		Feedback.DecisionSummary = TEXT("One-on-One choice required");
+	}
 	return Feedback;
 }
 

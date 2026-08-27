@@ -8,7 +8,7 @@
 
 class AFMCodexLocalMatchPlayerController;
 
-/** Small, collapsed-by-default LocalPlay developer control in the top-right. */
+/** Small, collapsed-by-default LocalPlay developer control on the right edge. */
 class SFMCodexLocalDevRollOverrideWidget final : public SCompoundWidget
 {
 public:

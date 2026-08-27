@@ -27,6 +27,8 @@ Raw Roll 没有在 Authority 中丢失：Initial Route 保存于 `InitialRouteRo
 | 单刀/Chip Shot | 无算术行 | 无算术行 | OneOnOneChipShotAttack，A 方；4–6 Goal，1–3 Miss | OutcomeDecision |
 | 单刀/Direct Shot | Runner Shooting + A D6 +1 | 唯一 GK OneOnOne×1.0 + D D6；active 时同一 GK 再加 OneOnOne×0.5 | OneOnOneDirectShotAttack、OneOnOneDirectShotDefense | Finishing；GK 总是 participated；Goal/Miss |
 
+矩阵没有重复列出的通用项：只有 `Finishing` contest 会消费权威 Tactical Player 优势修正；非零修正作为攻/防对应行的 `TacticalPlayerAdvantage` 事实项投影为 `战术球员 +N`，`+0` 省略。直塞 Feet 与单刀 Direct Shot 适用；BehindDefense P1（`Transition`）、Anti-Offside 与 Chip Shot（`OutcomeDecision`）不适用。Header 中的 `战术球员 ×N` 只表示当前数量，不得被 UMG 当作公式修正或用于重新计算优势档位。
+
 Initial Route D6 只存在于 Cross、Pass Control、Through Ball，用于选择实际 route；Long Shot 与 Cut Inside 直接采用已冻结 elective intent，不消费 Initial Route D6。Initial Route、Dead Corner、Anti-Offside 与 Chip Shot 均不得显示为公式 `+D6` 项。BehindDefense P2 已从 canonical production flow 移除。
 
 ## Existing Overlay State Audit

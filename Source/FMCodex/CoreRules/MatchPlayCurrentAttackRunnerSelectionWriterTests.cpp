@@ -157,6 +157,42 @@ bool FRunnerWriterRepeatTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+RUNNER_WRITER_TEST(
+	FRunnerWriterParticipantFirstMidfieldStructuralTest,
+	"ParticipantFirstMidfieldRunnerRemainsStructurallyLegal")
+
+bool FRunnerWriterParticipantFirstMidfieldStructuralTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayState Before = RunnerWriterFixtures::MakeState();
+	Before.CurrentAttack.ActionPreparation.SkillId = NAME_None;
+	Before.CurrentAttack.ActionPreparation.ActionType = ESkillRuleType::None;
+	Before.CurrentAttack.ActionPreparation.bSkillSelectionDeferred = true;
+
+	const auto Result =
+		FMatchPlayCurrentAttackRunnerSelectionWriter::Select(
+			Before,
+			RunnerWriterFixtures::MakeRequest(
+				RunnerWriterFixtures::MidfieldRunnerId));
+
+	TestTrue(TEXT("Participant-first midfield Runner is structurally accepted"),
+		Result.bSuccess && Result.LegalityResult.bIsLegal);
+	TestEqual(TEXT("Accepted midfield Runner is persisted"),
+		Result.AfterState.CurrentAttack.ActionPreparation.RunnerCardId,
+		RunnerWriterFixtures::MidfieldRunnerId);
+	TestEqual(TEXT("Participant-first flow continues to Helper"),
+		Result.AfterState.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingHelper);
+	TestTrue(TEXT("Tactic remains deferred after structural Runner selection"),
+		Result.AfterState.CurrentAttack.ActionPreparation.bSkillSelectionDeferred
+			&& Result.AfterState.CurrentAttack.ActionPreparation.SkillId.IsNone()
+			&& Result.AfterState.CurrentAttack.ActionPreparation.ActionType
+				== ESkillRuleType::None);
+	TestTrue(TEXT("Runner writer does not mutate input"),
+		RunnerWriterFixtures::AreStatesEqual(Result.BeforeState, Before));
+	return true;
+}
+
 #undef RUNNER_WRITER_TEST
 
 #endif

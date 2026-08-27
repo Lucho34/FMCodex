@@ -571,8 +571,8 @@ void AFMCodexLocalMatchPlayerController::InitializeLocalDevRollOverrideSurface()
 		SNew(SOverlay)
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Right)
-		.VAlign(VAlign_Top)
-		.Padding(FMargin(0.0f, 74.0f, 12.0f, 0.0f))
+		.VAlign(VAlign_Center)
+		.Padding(FMargin(0.0f, 0.0f, 12.0f, 0.0f))
 		[
 			SNew(SFMCodexLocalDevRollOverrideWidget)
 			.Controller(this)
@@ -717,6 +717,28 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 				::BuildFromTerminalSnapshot(InteractionView);
 	}
 	RebuildControlSurface();
+}
+
+void AFMCodexLocalMatchPlayerController::ResolveAutomaticNoLegalHelperIfNeeded()
+{
+	if (InteractionView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectHelper
+		|| InteractionView.bCanDecline
+		|| !InteractionView.bCanResolveNoLegalChoice)
+	{
+		return;
+	}
+
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveNoLegalHelper"), TEXT("Host unavailable."));
+		return;
+	}
+
+	RecordCommandResult(
+		TEXT("ResolveNoLegalHelper"), Host->ResolveNoLegalHelper());
 }
 
 void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
@@ -891,6 +913,10 @@ void AFMCodexLocalMatchPlayerController::SubmitRunner(const FName CardId)
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.RunnerCardId = CardId;
 	RecordCommandResult(TEXT("SubmitRunner"), Host->SubmitRunner(Request));
+	if (LastDiagnostic.bHostSuccess)
+	{
+		ResolveAutomaticNoLegalHelperIfNeeded();
+	}
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitHelper(const FName CardId)
@@ -1273,6 +1299,90 @@ void AFMCodexLocalMatchPlayerController::RollThroughBallFeetDefense()
 }
 
 void AFMCodexLocalMatchPlayerController
+	::RollThroughBallBehindDefenseAttack()
+{
+	if (bThroughBallBehindDefenseRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallBehindDefenseAttack)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallBehindDefenseP1AttackRoll"),
+			TEXT("BehindDefense attack roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallBehindDefenseP1AttackRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest
+		Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallBehindDefenseRollCommandInFlight = true;
+	const auto Result =
+		Host->ResolveThroughBallBehindDefenseP1AttackRoll(Request);
+	bThroughBallBehindDefenseRollCommandInFlight = false;
+	RecordCommandResult(
+		TEXT("ResolveThroughBallBehindDefenseP1AttackRoll"), Result);
+	if (Result.bSuccess
+		&& InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		ContinueResolution();
+	}
+}
+
+void AFMCodexLocalMatchPlayerController
+	::RollThroughBallBehindDefenseDefense()
+{
+	if (bThroughBallBehindDefenseRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallBehindDefenseDefense)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallBehindDefenseP1DefenseRoll"),
+			TEXT("BehindDefense defense roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallBehindDefenseP1DefenseRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest
+		Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallBehindDefenseRollCommandInFlight = true;
+	const auto Result =
+		Host->ResolveThroughBallBehindDefenseP1DefenseRoll(Request);
+	bThroughBallBehindDefenseRollCommandInFlight = false;
+	RecordCommandResult(
+		TEXT("ResolveThroughBallBehindDefenseP1DefenseRoll"), Result);
+	if (Result.bSuccess
+		&& InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		ContinueResolution();
+	}
+}
+
+void AFMCodexLocalMatchPlayerController
 	::ApplyThroughBallFeetTerminalResolution()
 {
 	if (InteractionView.InteractionCategory
@@ -1343,6 +1453,12 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallBehindDefenseAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallBehindDefenseDefense
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
 				::ApplyThroughBallFeetTerminalResolution
@@ -1586,9 +1702,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	{
 		if (!Progress.bContractComplete)
 		{
-			RecordCommandResult(
-				TEXT("ResolveThroughBallBehindDefenseP1DecisionOrPlan"),
-				Host->ResolveThroughBallBehindDefenseP1DecisionOrPlan());
+			RecordLocalFailure(
+				TEXT("ContinueResolution"),
+				TEXT("BehindDefense P1 rolls require their explicit side-owned commands."));
 			return;
 		}
 
@@ -2147,6 +2263,20 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
 		{
 			RollThroughBallFeetDefense();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallBehindDefenseAttack:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollThroughBallBehindDefenseAttack();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallBehindDefenseDefense:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollThroughBallBehindDefenseDefense();
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory

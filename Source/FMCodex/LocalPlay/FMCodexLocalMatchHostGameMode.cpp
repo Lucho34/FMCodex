@@ -1492,6 +1492,90 @@ AFMCodexLocalMatchHostGameMode
 	return Result;
 }
 
+FFMCodexLocalMatchResolveThroughBallBehindDefenseP1AttackRollResult
+AFMCodexLocalMatchHostGameMode
+	::ResolveThroughBallBehindDefenseP1AttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest&
+				Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1AttackRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::ThroughBallBehindDefenseP1;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveThroughBallBehindDefenseP1AttackRoll(Request);
+		});
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			Result.AuthoritativeResult.OrchestrationResult.ErrorMessage);
+	}
+	return Result;
+}
+
+FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DefenseRollResult
+AFMCodexLocalMatchHostGameMode
+	::ResolveThroughBallBehindDefenseP1DefenseRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest&
+				Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DefenseRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::ThroughBallBehindDefenseP1;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveThroughBallBehindDefenseP1DefenseRoll(Request);
+		});
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			Result.AuthoritativeResult.OrchestrationResult.ErrorMessage);
+	}
+	return Result;
+}
+
 FFMCodexLocalMatchResolveSingleCardFinishingFormulaResult
 AFMCodexLocalMatchHostGameMode::ResolveSingleCardFinishingFormula()
 {

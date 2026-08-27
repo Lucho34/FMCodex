@@ -956,6 +956,12 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	case EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense:
 		MatchController->RollThroughBallFeetDefense();
 		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallBehindDefenseAttack:
+		MatchController->RollThroughBallBehindDefenseAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallBehindDefenseDefense:
+		MatchController->RollThroughBallBehindDefenseDefense();
+		break;
 	case EFMCodexUMGInteractionCategory::CompleteThroughBallFeetAndAdvance:
 		MatchController->CompleteThroughBallFeetAndAdvance();
 		break;
@@ -2614,9 +2620,15 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	Result.ContinueActionLabel.Empty();
 	const bool bFormulaDisclosed = bHolding
 		&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay;
-	const bool bNarrativeDisclosed =
+	const bool bBehindAttackTerminalNarrative =
 		ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::Attack
+		&& Result.ContestId == FName(TEXT("ThroughBall.BehindDefense.P1"))
+		&& Result.bNarrativeAvailable;
+	const bool bNarrativeDisclosed =
+		(ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::Defense
+			|| bBehindAttackTerminalNarrative)
 		&& bHolding
 		&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
 	if (!bNarrativeDisclosed)
@@ -2651,7 +2663,12 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		return Result;
 	}
 
-	Result.bShowFormulaRows = true;
+	if (!Result.bShowFormulaRows)
+	{
+		Result.bAttackRowActive = false;
+		Result.bDefenseRowActive = false;
+		return Result;
+	}
 	const bool bAttack = ActiveCrossRollReveal.Kind
 		== EFMCodexUMGCrossRollRevealKind::Attack;
 	Result.bAttackRowActive = bAttack;
@@ -3318,8 +3335,16 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		DisplayedInlineFormula.PrimaryAction.Claims(PrimaryAction)
 		|| DisplayedThroughBall.PrimaryAction.Claims(PrimaryAction)
 		|| DisplayedThroughBall.Formula.PrimaryAction.Claims(PrimaryAction);
+	const bool bBehindOneOnOneDisclosureGate =
+		IsInlineFormulaRevealInputBlocked()
+		&& Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectOneOnOneShot
+		&& ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::Defense
+		&& ActiveCrossRollReveal.ContestId
+			== FName(TEXT("ThroughBall.BehindDefense.P1"));
 	InteractionPanel->SetVisibility(
-		bCentralSurfaceClaimsPrimaryAction
+		bCentralSurfaceClaimsPrimaryAction || bBehindOneOnOneDisclosureGate
 			? ESlateVisibility::Collapsed
 			: ESlateVisibility::Visible);
 	InteractionPanel->SetInteractionBlocked(
