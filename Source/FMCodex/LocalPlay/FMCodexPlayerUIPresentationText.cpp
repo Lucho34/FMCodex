@@ -224,7 +224,7 @@ FText FFMCodexPlayerUIPresentationText::ThroughBallRouteResult(
 	const EMatchPlayThroughBallActualBranch Route)
 {
 	return FText::Format(
-		LOCTEXT("ThroughBallRouteResult", "掷点 {0} → {1}"),
+		LOCTEXT("ThroughBallRouteResult", "路线掷点 {0} → 判定为{1}"),
 		FText::AsNumber(RawD6),
 		ThroughBallRoute(Route));
 }
@@ -632,6 +632,11 @@ FText FFMCodexPlayerUIPresentationText::ResolutionContest(
 		return LOCTEXT(
 			"ResolutionThroughBallBehind", "\u8EAB\u540E\u7403\u5BF9\u6297");
 	}
+	if (ContestId == TEXT("ThroughBall.OneOnOne.DirectShot"))
+	{
+		return LOCTEXT(
+			"ResolutionThroughBallOneOnOneDirect", "\u76F4\u63A5\u5C04\u95E8");
+	}
 	return FText::GetEmpty();
 }
 
@@ -653,6 +658,58 @@ FText FFMCodexPlayerUIPresentationText::ResolutionParticipantRole(
 	default:
 		return FText::GetEmpty();
 	}
+}
+
+FText FFMCodexPlayerUIPresentationText::TacticalDetailParticipantRole(
+	const EMatchPlayResolutionParticipantRole Role)
+{
+	if (Role == EMatchPlayResolutionParticipantRole::Runner)
+	{
+		return LOCTEXT("TacticalDetailRoleRunner", "\u8DD1\u4F4D\u7403\u5458");
+	}
+	return ResolutionParticipantRole(Role);
+}
+
+FText FFMCodexPlayerUIPresentationText::TacticalOutcome(
+	const FName BranchId, const FName OutcomeId)
+{
+	if (BranchId == TEXT("ThroughBall.AntiOffside"))
+	{
+		if (OutcomeId == TEXT("Offside"))
+		{
+			return LOCTEXT("ThroughBallAntiOffsideOutcomeOffside", "\u8D8A\u4F4D");
+		}
+		if (OutcomeId == TEXT("OneOnOne"))
+		{
+			return LOCTEXT("ThroughBallAntiOffsideOutcomeSuccess", "\u53CD\u8D8A\u4F4D\u6210\u529F");
+		}
+	}
+	if (BranchId == TEXT("ThroughBall.OneOnOneChip"))
+	{
+		if (OutcomeId == TEXT("Miss"))
+		{
+			return LOCTEXT("ThroughBallChipOutcomeMiss", "\u6311\u5C04\u672A\u8FDB");
+		}
+		if (OutcomeId == TEXT("Goal"))
+		{
+			return LOCTEXT("ThroughBallChipOutcomeGoal", "\u8FDB\u7403");
+		}
+	}
+	return FText::GetEmpty();
+}
+
+FText FFMCodexPlayerUIPresentationText::TacticalOutcomeRange(
+	const int32 Minimum, const int32 Maximum, const FText& OutcomeLabel)
+{
+	if (Minimum == Maximum)
+	{
+		return FText::Format(
+			LOCTEXT("TacticalSingleOutcomeRange", "{0}\uFF1A{1}"),
+			FText::AsNumber(Minimum), OutcomeLabel);
+	}
+	return FText::Format(
+		LOCTEXT("TacticalOutcomeRange", "{0}\u2013{1}\uFF1A{2}"),
+		FText::AsNumber(Minimum), FText::AsNumber(Maximum), OutcomeLabel);
 }
 
 FText FFMCodexPlayerUIPresentationText::ResolutionAttribute(

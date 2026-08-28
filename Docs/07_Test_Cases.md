@@ -665,3 +665,30 @@
 - DEV Roll surface 的布局合同必须证明不再使用右上 Header offset，而改为右侧垂直居中、默认折叠；pending、purpose、value、command 与按钮文字使用局部高对比色。`#if !UE_BUILD_SHIPPING`、provider decorator 与 production 零依赖边界继续回归。
 - OneOnOne choice 必须投影 exactly two、顺序 `直接射门 -> 挑射`，并在同一个 HorizontalBox 中渲染；两项都拥有至少 120×42 的最小点击区域，label 关闭 AutoWrap、完整可点击。Cross route、SelectSkill、Runner/Helper 与 Behind Golden Path 运行代表性回归。
 
+## AntiOffside + OneOnOne 顺序掷点权威基础（Stage 6.14.2A）
+
+- AntiOffside route必须先投影进攻方 owned `RollThroughBallAntiOffsideAttack`。accepted request恰好调用 provider一次并持久化一枚`PrimaryAttack`；至少覆盖D6 `1/6`与既有`Offside/OneOnOneRequired`边界。wrong-side、stale、duplicate与terminal后重试必须零 RNG、State byte-equivalent，且不得消费DEV override。
+- 选择Chip后只投影进攻方 owned `RollThroughBallOneOnOneChipShotAttack`。accepted request恰好持久化一枚`OneOnOneChipShotAttack`；至少覆盖D6 `1/6`与既有`Miss/Goal`边界，并断言没有Defense record、Formula/GK query或额外provider call。refresh/facts/terminal persistence均零 RNG。
+- 选择Direct后先投影进攻方 owned `RollThroughBallOneOnOneDirectShotAttack`。accepted Attack恰好持久化一枚Attack record并留下Active attack-only snapshot；fresh InteractionView必须从该snapshot投影防守方 owned `RollThroughBallOneOnOneDirectShotDefense`，重建Facts不得补掷。
+- Direct的Defense-before-Attack、wrong-side、stale与duplicate请求都在provider前拒绝。accepted Defense恰好追加一枚`OneOnOneDirectShotDefense`并保持Attack-first记录顺序；使用相同State和两枚D6与保留的atomic reference逐字段比较Plan input、Resolver input、Formula result、Tactical Player modifier、GK/tie与Goal/Miss结果。
+- Host/Controller专项必须证明四个typed Session/Host/Interaction/Controller入口、expected side与最终State parity；Controller source不得调用AntiOffside、Chip或Direct旧atomic Host API，generic Continue不得取得任何未完成roll。DEV专项必须证明rejected request保留对应one-shot，accepted request只消费匹配purpose。
+- 回归运行本专项、ThroughBall/OneOnOne、AuthoritativeSession、LocalMatchHost、DEV override、相关及全量CoreRules、Build/UHT/link与`git diff --check`。本Authority Foundation不实现production UMG、RollReel、中央CTA、hover、Narrative或新布局，也不以USER PIE为完成Gate；通过后恢复Stage 6.14.2 Production Golden Path。
+
+## AntiOffside + OneOnOne Production Golden Paths（Stage 6.14.2）
+
+- Anti pending必须显示中央`掷点判定越位`与持久路线结果；D6 1代表性覆盖`越位`终结，D6 6覆盖非终结`形成单刀`。live reel期间隐藏结果、Narrative、choices与NextRound；settle后先披露结果/Narrative，再经过readable hold开放对应NextRound或两项choice。
+- BehindDefense attacker win与AntiOffside success都必须进入同一个中央`选择单刀方式`表面，按钮恰好为水平排列的`直接射门 / 挑射`，底部不得重复。Direct/Chip hover必须消费canonical catalog与shared Tactical Detail panel，unhover关闭详情，hover不得触发choice dispatch。
+- Direct必须覆盖Formula Preview、Attack reveal、fresh attack-only reconstruction、Defense reveal、Goal与底层Miss的GK Save表现。所有term、RawD6、FinalValue、Tactical Player `+N`与winner均来自authoritative Formula Facts；fresh terminal不重播，NextRound等待result/narrative hold。
+- Chip必须覆盖pending、D6 1代表性Miss与D6 6代表性Goal，且没有Formula、GK或扑救文本。fresh completed snapshot直接恢复RawD6、Result、Narrative与NextRound。
+- rejected Anti/Chip/Direct typed request不得启动假reel或消费settled identity；中央primary-action claim必须释放，底部typed action与diagnostic overlay恢复。正常production路径仍抑制generic debug overlay。
+- affected regression至少覆盖既有Tactical Selection hover与Deployment reference、Feet与Cross shared Formula代表、Cross High/Low或SelectSkill choice ownership代表、shared Reel代表consumer，并完成UHT/build与`git diff --check`。视觉层级、hover可读性、按钮宽度和实际节奏仍须USER PIE。
+
+## ThroughBall Outcome 可读性与结算 UX 收口（Stage 6.14.2B）
+
+- pending Anti必须从canonical catalog投影`1–5：越位　｜　6：反越位成功`，pending Chip必须投影`1–3：挑射未进　｜　4–6：进球`；resolved页面隐藏提示。Feet、Behind、Direct和Cross Formula roll的DTO不得出现该阈值提示，Widget source不得包含branch范围规则。
+- Controller/Host真实流程分别覆盖Anti=1、Anti=6、Chip final与Direct Defense final。Anti=1、Chip和Direct最终必须自动到`TerminalPendingAdvance / AdvanceAfterTerminal`；Anti=6必须直接到`SelectOneOnOneShot`。所有最终view都不得要求generic`ContinueResolution`或显示`继续直塞结算`。
+- 自动收口不得增加gameplay RNG：Anti post-route records仍为1，Chip总post-route records仍为Anti+Chip两枚，Direct仍为Anti+Attack+Defense三枚；terminal apply不新增record，不消费进攻机会。显式`下一回合`继续作为唯一advance入口。
+- normal Anti surface必须隐藏legacy Resolution overlay；rejection继续显示diagnostic并恢复typed action。terminal outer ActionPrompt必须为空，中央`下一回合`按钮保持唯一。Direct nested Formula必须声明parent拥有contest heading与route context，并在非Narrative阶段实际折叠两处重复内容。
+- OneOnOne Direct hover必须投影`跑位球员：射门`与门将属性；Tactical/Deployment shared detail回归同步更新。Formula与场上compact role继续断言`跑位`，不得被解释性文案改写。
+- focused回归至少运行ThroughBall Production suite、决定性roll Controller/Host flow、Tactical Information suite、Cross shared Inline Formula、Unified Roll Reel与Resolution Primary Action Ownership；因为不修改CoreRules gameplay/math，不机械升级full CoreRules。USTRUCT变化要求UHT与Editor build。
+

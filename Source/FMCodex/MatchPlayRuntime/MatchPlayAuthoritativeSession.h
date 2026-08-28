@@ -128,6 +128,12 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionResult
 	ResolveThroughBallAntiOffsideDecision();
 
+	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollResult
+	ResolveThroughBallAntiOffsideAttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest&
+				Request);
+
 	FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
 	ResolveDirectShotPostRouteDecisionOrPlan();
 
@@ -167,8 +173,26 @@ public:
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotDecisionResult
 	ResolveThroughBallOneOnOneChipShotDecision();
 
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollResult
+	ResolveThroughBallOneOnOneChipShotAttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest&
+				Request);
+
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
 	ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
+
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollResult
+	ResolveThroughBallOneOnOneDirectShotAttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest&
+				Request);
+
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollResult
+	ResolveThroughBallOneOnOneDirectShotDefenseRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest&
+				Request);
 
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotFormulaResult
 	ResolveThroughBallOneOnOneDirectShotFormula();

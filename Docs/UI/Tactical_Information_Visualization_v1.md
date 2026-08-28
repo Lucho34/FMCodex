@@ -68,6 +68,12 @@ The rich catalog still retains Tactical Player applicability, multipliers, fixed
 - The reference never filters by current eligibility, Tactical Points, deployed cards, roles or player attributes. It is a five-family catalog, not a recommendation surface.
 - The Through Ball compact hint is `脚下球 · 身后球 · 反越位`, so the SelectSkill tactical card and Deployment Reference communicate the same three peer routes before and after opening the shared detail.
 
+## OneOnOne explanatory participant wording
+
+Tactical Detail is an explanatory surface, so its Runner participant label is `跑位球员`; OneOnOne Direct therefore reads as the semantic pair `跑位球员 -> 射门`. Compact in-match role chips and Formula participant chips keep the established short label `跑位`. This is a presentation-context distinction, not a new participant role or attribute.
+
+The same catalog outcome metadata may be projected into a separate resolution-local Outcome Roll Hint DTO for pending AntiOffside and Chip rolls. That does not broaden hover density: tactical hover continues to say `只看掷点，不看属性` for outcome-only branches and does not show range tables.
+
 ## Deferred
 
 - Attribute-linked highlighting between descriptions and current cards.

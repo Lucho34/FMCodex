@@ -777,6 +777,25 @@
 - OneOnOne：现有 shared HorizontalBox继续承载 choice；仅为 OneOnOne option冻结 120×42 最小点击尺寸并关闭主标签换行，保持 `直接射门 -> 挑射` 顺序及 typed delegate。Cross/SelectSkill 等其他 option mode不继承该尺寸，不建立专用按钮系统。
 - 验证边界：新增 Feet +0/+1/+2 authority与 ThroughBall Formula term projection、Direct modifier、branch applicability、UMG no-math、DEV placement/contrast及 OneOnOne geometry合同。Runner/Helper与 Behind production只做代表性回归，最终布局仍需1920×1080 USER PIE。
 
+### CD-078 - AntiOffside and OneOnOne Use Side-owned Sequential Authority Rolls
+
+- 日期：2026-08-28
+- 决策：AntiOffside与OneOnOne Chip分别改为进攻方拥有的单次typed roll command；OneOnOne Direct改为进攻方Attack、随后防守方Defense的两个typed command。四个request均携带`AttackSequence + RequestingSide`并通过同一个serialized AuthoritativeSession gate；旧atomic API只保留compatibility/reference，不再由normal Controller调用。
+- 持久化：AntiOffside与Chip各提交一个完成record；Direct Attack提交真实Active attack-only snapshot，Direct Defense才追加第二条record并完成既有Formula。刷新、Facts query、terminal persistence和completed regeneration不调用provider，不允许Session/Host/Controller临时缓存未提交roll。
+- 失败原子性：错误阵营、stale sequence、Defense-before-Attack、重复请求、错误route/phase/purpose都必须在provider前拒绝，State byte-equivalent且RNG delta为0。DEV one-shot只有匹配的accepted provider call才能消费，rejected request或另一purpose不得清除。
+- 规则复用：AntiOffside继续`1–5 Offside / 6 OneOnOneRequired`；Chip继续`1–3 Miss / 4–6 Goal`且没有GK/Formula；Direct继续使用原Plan、Assembler、Formula Resolver、Tactical Player、GK与tie/outcome合同。sequential与atomic reference必须逐字段parity，不复制公式。
+- 投影边界：InteractionView从authoritative CurrentAttack与Progress Query投影四个category和expected side；Host/Controller只做typed forwarding，generic Continue不代表这些roll。Stage 6.14.2A明确不接production UMG、RollReel、中央CTA、hover、Narrative或布局，USER PIE不是Authority Foundation完成Gate。
+- 影响：Stage 6.14.2后续Presentation可以直接消费可同步、可重建的AntiOffside、Chip与Direct顺序前缀，而不依赖单机原子调用或UI侧掷骰。
+
+### CD-079 - Outcome-only Rolls Explain Ranges and Decisive Rolls Auto-complete Zero-RNG Work
+
+- 日期：2026-08-28
+- 决策：玩家提交分支最后一枚决定性gameplay roll后，如果刷新后的剩余工作只有既有deterministic/zero-RNG Formula、outcome或terminal apply，Controller自动完成该工作；不再要求额外`继续直塞结算`。Anti success不是terminal，直接停在`SelectOneOnOneShot`。
+- lifecycle：auto-completion只进入`TerminalPendingAdvance`。`下一回合`仍是中央唯一显式advance CTA；只有`AdvanceAfterTerminal`清理CurrentAttack、消费进攻机会并handoff。completed snapshot的recovery continuation保留，但不属于normal player flow。
+- Outcome提示：单骰、非aggregate的`OutcomeDecision`可以从`FTacticalRuleDescriptionCatalog`投影轻量范围DTO。首批仅接AntiOffside `1–5越位 / 6反越位成功`与Chip `1–3挑射未进 / 4–6进球`；Formula roll不得伪装成独立阈值判定。Widget不保存第二套规则map，也不根据提示计算结果。
+- semantic ownership：ThroughBall parent负责战术、单刀方式与source route context，Direct child Formula不重复标题和route；terminal Narrative不受抑制。正常production surface抑制legacy overlay，rejection继续恢复诊断。terminal只保留`下一回合`按钮，不显示同名standalone prompt。
+- 文案：解释性Tactical Detail用`跑位球员`消除属性歧义；场上与Formula compact role继续使用`跑位`。该区别不改变participant identity或canonical attribute。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

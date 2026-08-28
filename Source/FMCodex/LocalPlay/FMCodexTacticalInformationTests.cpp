@@ -287,7 +287,7 @@ bool FFMCodexTacticalInformationHoverLifecycleTest::RunTest(
 			&& Detail->GetPresentation().SkillType == ESkillRuleType::Cross
 			&& CrossPlayerText.Contains(TEXT("高球传中"))
 			&& CrossPlayerText.Contains(TEXT("持球：传球"))
-			&& CrossPlayerText.Contains(TEXT("跑位：力量"))
+			&& CrossPlayerText.Contains(TEXT("跑位球员：力量"))
 			&& CrossPlayerText.Contains(TEXT("协防：力量"))
 			&& !CrossPlayerText.Contains(TEXT("（可选）"))
 			&& CrossPlayerText.Contains(TEXT("门将：制空")));

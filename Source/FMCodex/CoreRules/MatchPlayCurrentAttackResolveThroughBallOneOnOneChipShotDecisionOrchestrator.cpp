@@ -121,6 +121,9 @@ namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecision
 				Request;
 			Request.AttackSequence =
 				Result.SourceProvenanceState.CurrentAttack.AttackSequence;
+			Request.Mode =
+				FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionRequest
+					::EMode::RegenerateCompletedDecision;
 			Result.AntiOffsideRegenerationResult =
 				FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator
 					::Resolve(
@@ -198,6 +201,9 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
 FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
 	::Resolve(
 		const FMatchPlayState& BeforeState,
+		const
+			FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionRequest&
+				Request,
 		const FSkillRuleSnapshotSet* SkillRuleSet,
 		IMatchPlayPostRouteRollProvider* RollProvider)
 {
@@ -205,6 +211,7 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
 		MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecision;
 
 	FResult Result;
+	Result.Request = Request;
 	Result.BeforeState = BeforeState;
 	Result.AfterState = BeforeState;
 	if (!BeforeState.RuntimeState.bIsInitialized)
@@ -221,6 +228,30 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
 			Result,
 			EError::NoCurrentAttack,
 			TEXT("OneOnOne ChipShot requires an active CurrentAttack."));
+		return Result;
+	}
+	if (BeforeState.CurrentAttack.AttackSequence <= 0)
+	{
+		SetFailure(
+			Result,
+			EError::InvalidCurrentAttackSequence,
+			TEXT("CurrentAttack AttackSequence must be positive."));
+		return Result;
+	}
+	if (Request.AttackSequence <= 0)
+	{
+		SetFailure(
+			Result,
+			EError::InvalidRequestedAttackSequence,
+			TEXT("Requested AttackSequence must be positive."));
+		return Result;
+	}
+	if (Request.AttackSequence != BeforeState.CurrentAttack.AttackSequence)
+	{
+		SetFailure(
+			Result,
+			EError::AttackSequenceMismatch,
+			TEXT("Requested AttackSequence does not match CurrentAttack."));
 		return Result;
 	}
 	if (!BeforeState.CurrentAttack.bHasResolutionSession)
@@ -350,6 +381,51 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
 			Result.AfterProgressResult.ErrorMessage);
 		return Result;
 	}
+
+	using EMode =
+		FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionRequest
+			::EMode;
+	const bool bExplicitRollStep = Request.Mode == EMode::ResolveAttackRoll;
+	if (Request.Mode == EMode::RegenerateCompletedDecision
+		&& !Result.AfterProgressResult.bContractComplete)
+	{
+		SetFailure(
+			Result,
+			EError::CompletedDecisionRequired,
+			TEXT("OneOnOne ChipShot regeneration requires an already-complete roll contract."));
+		return Result;
+	}
+	if (bExplicitRollStep)
+	{
+		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			SetFailure(
+				Result,
+				EError::InvalidRequestingSide,
+				TEXT("OneOnOne ChipShot roll commands require PlayerA or PlayerB as RequestingSide."));
+			return Result;
+		}
+		if (Result.AfterProgressResult.bContractComplete
+			|| Result.AfterProgressResult.NextPurpose
+				!= EPurpose::OneOnOneChipShotAttack)
+		{
+			SetFailure(
+				Result,
+				EError::WrongChipShotRollStep,
+				TEXT("The requested OneOnOne ChipShot roll is not the current authoritative step."));
+			return Result;
+		}
+		if (Request.RequestingSide
+			!= BeforeSession.Bundle.CurrentAttackingPlayer)
+		{
+			SetFailure(
+				Result,
+				EError::WrongRequestingSide,
+				TEXT("The requesting side does not own the OneOnOne ChipShot roll."));
+			return Result;
+		}
+	}
 	if (!Result.AfterProgressResult.bContractComplete)
 	{
 		if (Result.AfterProgressResult.NextPurpose
@@ -462,4 +538,22 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
 	Result.ErrorMessage.Empty();
 	Result.InvalidField = NAME_None;
 	return Result;
+}
+
+FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
+FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionOrchestrator
+	::Resolve(
+		const FMatchPlayState& BeforeState,
+		const FSkillRuleSnapshotSet* SkillRuleSet,
+		IMatchPlayPostRouteRollProvider* RollProvider)
+{
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionRequest
+		Request;
+	Request.AttackSequence = BeforeState.bHasCurrentAttack
+		? BeforeState.CurrentAttack.AttackSequence
+		: 0;
+	Request.Mode =
+		FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionRequest
+			::EMode::CompleteDecision;
+	return Resolve(BeforeState, Request, SkillRuleSet, RollProvider);
 }

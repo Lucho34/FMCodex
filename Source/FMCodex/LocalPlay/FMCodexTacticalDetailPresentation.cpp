@@ -92,7 +92,7 @@ namespace FMCodexTacticalDetailPresentation
 
 	FString RoleLabel(const EMatchPlayResolutionParticipantRole Role)
 	{
-		return FFMCodexPlayerUIPresentationText::ResolutionParticipantRole(Role)
+		return FFMCodexPlayerUIPresentationText::TacticalDetailParticipantRole(Role)
 			.ToString();
 	}
 
@@ -157,6 +157,64 @@ namespace FMCodexTacticalDetailPresentation
 				return Row.RoleLabel.IsEmpty() || Row.AttributeLabel.IsEmpty();
 			});
 	}
+
+	FFMCodexUMGTacticalDetailViewModel BuildDetail(
+		const ESkillRuleType SkillType,
+		const FName OnlyBranchId = NAME_None)
+	{
+		FFMCodexUMGTacticalDetailViewModel Result;
+		const FTacticalRuleDescription* Description =
+			FTacticalRuleDescriptionCatalog::FindBySkillType(SkillType);
+		if (Description == nullptr)
+		{
+			return Result;
+		}
+
+		Result.bValid = true;
+		Result.SkillType = SkillType;
+		Result.DisplayName = OnlyBranchId.IsNone()
+			? SkillName(SkillType) : BranchLabel(OnlyBranchId);
+		Result.CardHint = OnlyBranchId.IsNone()
+			? CardHint(SkillType) : TEXT("选择前快速了解参与角色与属性");
+
+		for (const FTacticalRuleDescriptionBranch& Branch : Description->Branches)
+		{
+			if (!OnlyBranchId.IsNone() && Branch.BranchId != OnlyBranchId)
+			{
+				continue;
+			}
+			TArray<FString> RouteLabels = OnlyBranchId.IsNone()
+				? PrimaryRouteLabels(Branch.BranchId) : TArray<FString>{ FString() };
+			if (RouteLabels.IsEmpty())
+			{
+				RouteLabels.Add(FString());
+			}
+			for (const FString& RouteLabel : RouteLabels)
+			{
+				FFMCodexUMGTacticalBranchViewModel& View =
+					Result.Branches.AddDefaulted_GetRef();
+				View.Label = BranchLabel(Branch.BranchId);
+				View.PrimaryRouteLabel = RouteLabel;
+				View.RouteStepLabel = OnlyBranchId.IsNone()
+					? RouteStepLabel(Branch.BranchId) : FString();
+				View.RouteStageLabel = OnlyBranchId.IsNone()
+					? RouteStageLabel(Branch.BranchId) : FString();
+				View.bRollOnly = Branch.RollSemantics
+					!= EMatchPlayResolutionRollSemantics::ArithmeticContest;
+				for (const FTacticalRuleDescriptionTerm& TermValue : Branch.AttackTerms)
+				{
+					AddRoleAttribute(View, *Description, TermValue);
+				}
+				for (const FTacticalRuleDescriptionTerm& TermValue : Branch.DefenseTerms)
+				{
+					AddRoleAttribute(View, *Description, TermValue);
+				}
+				FinalizeAttributeLabels(View);
+			}
+		}
+		Result.bValid = Result.bValid && !Result.Branches.IsEmpty();
+		return Result;
+	}
 }
 
 FFMCodexUMGTacticalDetailViewModel
@@ -164,46 +222,71 @@ FFMCodexTacticalDetailPresentationBuilder::Build(
 	const ESkillRuleType SkillType)
 {
 	using namespace FMCodexTacticalDetailPresentation;
-	FFMCodexUMGTacticalDetailViewModel Result;
+	return BuildDetail(SkillType);
+}
+
+FFMCodexUMGTacticalDetailViewModel
+FFMCodexTacticalDetailPresentationBuilder::BuildOneOnOneChoice(
+	const EFMCodexUMGOneOnOneChoice Choice)
+{
+	using namespace FMCodexTacticalDetailPresentation;
+	const FName BranchId = Choice == EFMCodexUMGOneOnOneChoice::DirectShot
+		? FName(TEXT("ThroughBall.OneOnOneDirect"))
+		: Choice == EFMCodexUMGOneOnOneChoice::ChipShot
+			? FName(TEXT("ThroughBall.OneOnOneChip")) : NAME_None;
+	return BranchId.IsNone()
+		? FFMCodexUMGTacticalDetailViewModel()
+		: BuildDetail(ESkillRuleType::ThroughBall, BranchId);
+}
+
+FFMCodexUMGOutcomeRollHintViewModel
+FFMCodexTacticalDetailPresentationBuilder::BuildOutcomeRollHint(
+	const ESkillRuleType SkillType, const FName BranchId)
+{
+	FFMCodexUMGOutcomeRollHintViewModel Result;
 	const FTacticalRuleDescription* Description =
 		FTacticalRuleDescriptionCatalog::FindBySkillType(SkillType);
 	if (Description == nullptr)
 	{
 		return Result;
 	}
-
-	Result.bValid = true;
-	Result.SkillType = SkillType;
-	Result.DisplayName = SkillName(SkillType);
-	Result.CardHint = CardHint(SkillType);
-
-	for (const FTacticalRuleDescriptionBranch& Branch : Description->Branches)
+	const FTacticalRuleDescriptionBranch* Branch =
+		Description->Branches.FindByPredicate(
+			[BranchId](const FTacticalRuleDescriptionBranch& Candidate)
+			{
+				return Candidate.BranchId == BranchId;
+			});
+	if (Branch == nullptr
+		|| Branch->RollSemantics
+			!= EMatchPlayResolutionRollSemantics::OutcomeDecision
+		|| Branch->OutcomeRollCount != 1 || Branch->bOutcomeUsesRollTotal
+		|| Branch->Outcomes.IsEmpty())
 	{
-		TArray<FString> RouteLabels = PrimaryRouteLabels(Branch.BranchId);
-		if (RouteLabels.IsEmpty())
-		{
-			RouteLabels.Add(FString());
-		}
-		for (const FString& RouteLabel : RouteLabels)
-		{
-			FFMCodexUMGTacticalBranchViewModel& View =
-				Result.Branches.AddDefaulted_GetRef();
-			View.Label = BranchLabel(Branch.BranchId);
-			View.PrimaryRouteLabel = RouteLabel;
-			View.RouteStepLabel = RouteStepLabel(Branch.BranchId);
-			View.RouteStageLabel = RouteStageLabel(Branch.BranchId);
-			View.bRollOnly = Branch.RollSemantics
-				!= EMatchPlayResolutionRollSemantics::ArithmeticContest;
-			for (const FTacticalRuleDescriptionTerm& TermValue : Branch.AttackTerms)
-			{
-				AddRoleAttribute(View, *Description, TermValue);
-			}
-			for (const FTacticalRuleDescriptionTerm& TermValue : Branch.DefenseTerms)
-			{
-				AddRoleAttribute(View, *Description, TermValue);
-			}
-			FinalizeAttributeLabels(View);
-		}
+		return Result;
 	}
+
+	TArray<FString> RangeLabels;
+	for (const FTacticalRuleDescriptionOutcome& Outcome : Branch->Outcomes)
+	{
+		const FText OutcomeLabel = FFMCodexPlayerUIPresentationText::
+			TacticalOutcome(BranchId, Outcome.OutcomeId);
+		if (Outcome.Minimum <= 0 || Outcome.Maximum < Outcome.Minimum
+			|| OutcomeLabel.IsEmpty())
+		{
+			return FFMCodexUMGOutcomeRollHintViewModel();
+		}
+		FFMCodexUMGOutcomeRollHintEntryViewModel& Entry =
+			Result.Entries.AddDefaulted_GetRef();
+		Entry.Minimum = Outcome.Minimum;
+		Entry.Maximum = Outcome.Maximum;
+		Entry.OutcomeId = Outcome.OutcomeId;
+		Entry.DisplayLabel = FFMCodexPlayerUIPresentationText::
+			TacticalOutcomeRange(
+				Outcome.Minimum, Outcome.Maximum, OutcomeLabel).ToString();
+		RangeLabels.Add(Entry.DisplayLabel);
+	}
+	Result.bVisible = !RangeLabels.IsEmpty();
+	Result.BranchId = BranchId;
+	Result.DisplayLabel = FString::Join(RangeLabels, TEXT("\u3000\uFF5C\u3000"));
 	return Result;
 }

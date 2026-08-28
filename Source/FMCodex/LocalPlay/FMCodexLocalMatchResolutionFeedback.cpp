@@ -520,6 +520,23 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 FFMCodexLocalMatchResolutionFeedback
 FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotAttackRollResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	const auto Decision = Result.AuthoritativeResult.OrchestrationResult
+		.QueryResult.Decision;
+	Feedback.StepSummary = TEXT("Chip Shot attacker roll recorded");
+	Feedback.DecisionSummary = Decision
+		== EThroughBallOneOnOneChipShotOutcomeDecision::Goal
+			? TEXT("Goal") : TEXT("Miss");
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
 	const FFMCodexLocalMatchResolveThroughBallFeetDefenseRollResult& Result,
 	const FFMCodexLocalMatchInteractionView& BeforeView,
 	const FFMCodexLocalMatchInteractionView& AfterView)
@@ -528,6 +545,33 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 	Feedback.StepSummary = TEXT("防守方权威点数已记录");
 	Feedback.DecisionSummary = TEXT("属性对抗已完成");
 	Feedback.ContinuationSummary = TEXT("等待权威终结应用");
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotAttackRollResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	Feedback.StepSummary = TEXT("Direct Shot attacker roll recorded");
+	Feedback.ContinuationSummary = TEXT("Waiting for defender roll");
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotDefenseRollResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	Feedback.StepSummary = TEXT("Direct Shot defender roll recorded");
+	Feedback.DecisionSummary = TEXT("Formula operands complete");
+	Feedback.ContinuationSummary = TEXT("Waiting for terminal application");
 	return Feedback;
 }
 
@@ -601,6 +645,23 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 		== EThroughBallAntiOffsideOutcomeDecision::Offside
 			? TEXT("Offside")
 			: TEXT("One-on-One required");
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+	const FString& CommandName,
+	const FFMCodexLocalMatchResolveThroughBallAntiOffsideAttackRollResult& Result,
+	const FFMCodexLocalMatchInteractionView& BeforeView,
+	const FFMCodexLocalMatchInteractionView& AfterView)
+{
+	auto Feedback = BuildGenericAccepted(CommandName, BeforeView, AfterView);
+	const auto Decision = Result.AuthoritativeResult.OrchestrationResult
+		.OutcomeResult.Decision;
+	Feedback.StepSummary = TEXT("Anti-Offside attacker roll recorded");
+	Feedback.DecisionSummary = Decision
+		== EThroughBallAntiOffsideOutcomeDecision::Offside
+			? TEXT("Offside") : TEXT("One-on-One required");
 	return Feedback;
 }
 

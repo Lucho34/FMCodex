@@ -11,6 +11,15 @@ class FMCODEX_API FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPos
 public:
 	static FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult Resolve(
 		const FMatchPlayState& BeforeState,
+		const
+			FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanRequest&
+				Request,
+		const FSkillRuleSnapshotSet* SkillRuleSet,
+		IMatchPlayPostRouteRollProvider* RollProvider);
+
+	/** Legacy/reference overload. */
+	static FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult Resolve(
+		const FMatchPlayState& BeforeState,
 		const FSkillRuleSnapshotSet* SkillRuleSet,
 		IMatchPlayPostRouteRollProvider* RollProvider);
 };

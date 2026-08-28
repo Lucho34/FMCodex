@@ -2,11 +2,14 @@
 
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
+#include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexRollReelWidget.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
@@ -87,6 +90,12 @@ UFMCodexThroughBallResolutionSurfaceWidget::GetFormulaSurface() const
 	return FormulaSurface;
 }
 
+const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>&
+UFMCodexThroughBallResolutionSurfaceWidget::GetOneOnOneChoiceWidgets() const
+{
+	return OneOnOneChoiceWidgets;
+}
+
 void UFMCodexThroughBallResolutionSurfaceWidget::RequestContinue()
 {
 	if (Presentation.bVisible
@@ -102,6 +111,33 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RequestContinue()
 void UFMCodexThroughBallResolutionSurfaceWidget::HandleContinueClicked()
 {
 	RequestContinue();
+}
+
+void UFMCodexThroughBallResolutionSurfaceWidget::HandleOneOnOneClicked(
+	const EFMCodexUMGOneOnOneChoice Choice)
+{
+	if (Presentation.bVisible
+		&& Presentation.Stage == EFMCodexUMGThroughBallStage::OneOnOneChoice
+		&& Presentation.OneOnOneChoices.ContainsByPredicate(
+			[Choice](const FFMCodexUMGOneOnOneChoiceViewModel& Candidate)
+			{
+				return Candidate.Choice == Choice;
+			}))
+	{
+		OnOneOnOneRequested.Broadcast(Choice);
+	}
+}
+
+void UFMCodexThroughBallResolutionSurfaceWidget
+	::HandleOneOnOneDetailRequested(const EFMCodexUMGOneOnOneChoice Choice)
+{
+	OnOneOnOneDetailRequested.Broadcast(Choice);
+}
+
+void UFMCodexThroughBallResolutionSurfaceWidget
+	::HandleOneOnOneDetailDismissed(const EFMCodexUMGOneOnOneChoice Choice)
+{
+	OnOneOnOneDetailDismissed.Broadcast(Choice);
 }
 
 void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
@@ -135,7 +171,7 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 	Frame->AddChild(Body);
 
 	TitleText = MakeText(*WidgetTree, TEXT("ThroughBallProductionTitle"));
-	Style.ApplyText(*TitleText, EFMCodexPlayerUITextRole::ActionTitle);
+	Style.ApplyText(*TitleText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToVerticalBox(TitleText);
 
 	RouteText = MakeText(*WidgetTree, TEXT("ThroughBallProductionRoute"));
@@ -146,7 +182,7 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 	}
 
 	StageText = MakeText(*WidgetTree, TEXT("ThroughBallProductionStage"));
-	Style.ApplyText(*StageText, EFMCodexPlayerUITextRole::Status);
+	Style.ApplyText(*StageText, EFMCodexPlayerUITextRole::ActionTitle);
 	if (UVerticalBoxSlot* StageBoxSlot = Body->AddChildToVerticalBox(StageText))
 	{
 		StageBoxSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 8.0f));
@@ -178,6 +214,31 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 	DiceRevealRegion->AddChild(RevealBody);
 	Body->AddChildToVerticalBox(DiceRevealRegion);
 
+	OutcomeHintText = MakeText(
+		*WidgetTree, TEXT("ThroughBallOutcomeRollHint"));
+	Style.ApplyText(*OutcomeHintText, EFMCodexPlayerUITextRole::Secondary);
+	if (UVerticalBoxSlot* HintSlot =
+		Body->AddChildToVerticalBox(OutcomeHintText))
+	{
+		HintSlot->SetPadding(FMargin(0.0f, 7.0f, 0.0f, 0.0f));
+	}
+
+	ResultTitleText = MakeText(*WidgetTree, TEXT("ThroughBallOutcomeTitle"));
+	Style.ApplyText(*ResultTitleText, EFMCodexPlayerUITextRole::ActionTitle);
+	if (UVerticalBoxSlot* ResultTitleSlot =
+		Body->AddChildToVerticalBox(ResultTitleText))
+	{
+		ResultTitleSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
+	}
+	NarrativeText = MakeText(*WidgetTree, TEXT("ThroughBallOutcomeNarrative"));
+	NarrativeText->SetAutoWrapText(true);
+	Style.ApplyText(*NarrativeText, EFMCodexPlayerUITextRole::Body);
+	if (UVerticalBoxSlot* NarrativeSlot =
+		Body->AddChildToVerticalBox(NarrativeText))
+	{
+		NarrativeSlot->SetPadding(FMargin(0.0f, 3.0f, 0.0f, 0.0f));
+	}
+
 	FormulaSurface = WidgetTree->ConstructWidget<
 		UFMCodexInlineResolutionFormulaSurfaceWidget>(
 		UFMCodexInlineResolutionFormulaSurfaceWidget::StaticClass(),
@@ -189,6 +250,15 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 		Body->AddChildToVerticalBox(FormulaSurface))
 	{
 		FormulaSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
+	}
+
+	OneOnOneChoiceRow = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(), TEXT("ThroughBallOneOnOneChoiceRow"));
+	if (UVerticalBoxSlot* ChoiceRowSlot =
+		Body->AddChildToVerticalBox(OneOnOneChoiceRow))
+	{
+		ChoiceRowSlot->SetHorizontalAlignment(HAlign_Center);
+		ChoiceRowSlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
 	}
 
 	StatusText = MakeText(*WidgetTree, TEXT("ThroughBallProductionStatus"));
@@ -248,12 +318,56 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals()
 	SetOptionalText(StatusText, Presentation.StatusLabel);
 	SetOptionalText(ActionPromptText, Presentation.ActionPromptLabel);
 	DiceRevealRegion->SetVisibility(
-		Presentation.bVisible && Presentation.bDiceRevealVisible
+		Presentation.bVisible && (Presentation.bDiceRevealVisible
+			|| !Presentation.RouteResultLabel.IsEmpty())
 			? ESlateVisibility::SelfHitTestInvisible
 			: ESlateVisibility::Collapsed);
 	SetOptionalText(RouteResultText, Presentation.RouteResultLabel);
+	SetOptionalText(OutcomeHintText,
+		Presentation.OutcomeRollHint.bVisible
+			? Presentation.OutcomeRollHint.DisplayLabel : FString());
 	RollReel->RefreshFromPresentation(Presentation.RollReel);
+	SetOptionalText(ResultTitleText,
+		Presentation.bNarrativeAvailable ? Presentation.ResultTitle : FString());
+	SetOptionalText(NarrativeText,
+		Presentation.bNarrativeAvailable
+			? Presentation.NarrativeHeadline : FString());
 	FormulaSurface->RefreshFromPresentation(Presentation.Formula);
+	OneOnOneChoiceRow->ClearChildren();
+	OneOnOneChoiceWidgets.Reset();
+	for (int32 Index = 0; Index < Presentation.OneOnOneChoices.Num(); ++Index)
+	{
+		const FFMCodexUMGOneOnOneChoiceViewModel& Choice =
+			Presentation.OneOnOneChoices[Index];
+		if (Choice.Choice == EFMCodexUMGOneOnOneChoice::None
+			|| Choice.Label.IsEmpty())
+		{
+			continue;
+		}
+		UFMCodexInteractionOptionWidget* Option =
+			WidgetTree->ConstructWidget<UFMCodexInteractionOptionWidget>(
+				UFMCodexInteractionOptionWidget::StaticClass(),
+				FName(*FString::Printf(TEXT("ThroughBallOneOnOneChoice%d"), Index)));
+		Option->ConfigureOneOnOne(Choice.Label, Choice.Choice);
+		Option->OnOneOnOneRequested.AddDynamic(
+			this, &UFMCodexThroughBallResolutionSurfaceWidget::HandleOneOnOneClicked);
+		Option->OnOneOnOneDetailRequested.AddDynamic(
+			this, &UFMCodexThroughBallResolutionSurfaceWidget
+				::HandleOneOnOneDetailRequested);
+		Option->OnOneOnOneDetailDismissed.AddDynamic(
+			this, &UFMCodexThroughBallResolutionSurfaceWidget
+				::HandleOneOnOneDetailDismissed);
+		if (UHorizontalBoxSlot* OptionSlot =
+			OneOnOneChoiceRow->AddChildToHorizontalBox(Option))
+		{
+			OptionSlot->SetPadding(FMargin(Index == 0 ? 0.0f : 10.0f,
+				0.0f, 0.0f, 0.0f));
+			OptionSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		OneOnOneChoiceWidgets.Add(Option);
+	}
+	OneOnOneChoiceRow->SetVisibility(OneOnOneChoiceWidgets.IsEmpty()
+		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	ContinueButton->GetParent()->SetVisibility(
 		Presentation.bVisible && Presentation.PrimaryAction.bVisible
 			&& Presentation.PrimaryAction.Action.bAvailable

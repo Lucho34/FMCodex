@@ -6342,11 +6342,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All fifty-one mutations use the gate"),
+	TestEqual(TEXT("All fifty-five mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		51);
+		55);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7731,8 +7731,8 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
 		CompletionSource));
-	TestEqual(TEXT("All fifty-one commands use one serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 51);
+	TestEqual(TEXT("All fifty-five commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 55);
 	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
@@ -10383,9 +10383,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			1);
 	}
-	TestEqual(TEXT("All fifty-one mutations share serialized gate"),
+	TestEqual(TEXT("All fifty-five mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		51);
+		55);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -15114,11 +15114,11 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallAntiOffsideDecisionTest
 		Header.Contains(TEXT("ResolveThroughBallAntiOffsideDecision();")));
 	TestFalse(TEXT("Session does not call provider directly"),
 		Implementation.Contains(TEXT("RollD6(")));
-	TestEqual(TEXT("One canonical AntiOffside orchestration call"),
+	TestEqual(TEXT("Compatibility plus typed AntiOffside orchestration calls"),
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator")),
-		1);
+		2);
 
 	auto MakeThroughBallSkillId = [](const FString& Prefix)
 	{
@@ -16527,6 +16527,590 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP1ManualRollTe
 	TestTrue(TEXT("Production Controller routes typed Behind Defense"),
 		ControllerSource.Contains(
 			TEXT("Host->ResolveThroughBallBehindDefenseP1DefenseRoll(Request)")));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionThroughBallSideOwnedRollAuthorityTest,
+	"49B.ThroughBallAntiOffsideAndOneOnOneSideOwnedRollAuthority")
+
+bool FMatchPlayAuthoritativeSessionThroughBallSideOwnedRollAuthorityTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EChoice = EMatchPlayThroughBallOneOnOneShotChoice;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using EAntiError =
+		EMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionErrorCode;
+	using EChipError =
+		EMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionErrorCode;
+	using EDirectError =
+		EMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanErrorCode;
+	(void)Parameters;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveThroughBallAntiOffsideAttackRoll),
+		FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollResult
+		(FMatchPlayAuthoritativeSession::*)(const
+			FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveThroughBallOneOnOneChipShotAttackRoll),
+		FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollResult
+		(FMatchPlayAuthoritativeSession::*)(const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveThroughBallOneOnOneDirectShotAttackRoll),
+		FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollResult
+		(FMatchPlayAuthoritativeSession::*)(const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveThroughBallOneOnOneDirectShotDefenseRoll),
+		FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollResult
+		(FMatchPlayAuthoritativeSession::*)(const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest&)>);
+
+	TestEqual(TEXT("AntiOffside owned command follows Behind Defense"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallAntiOffsideAttackRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallBehindDefenseP1DefenseRoll) + 1);
+	TestEqual(TEXT("Chip owned command follows AntiOffside"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneChipShotAttackRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallAntiOffsideAttackRoll) + 1);
+	TestEqual(TEXT("Direct Attack owned command follows Chip"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneDirectShotAttackRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneChipShotAttackRoll) + 1);
+	TestEqual(TEXT("Direct Defense owned command follows Direct Attack"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneDirectShotDefenseRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneDirectShotAttackRoll) + 1);
+
+	auto SkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(TEXT("Skill.%s.%d"), *Prefix,
+			static_cast<int32>(ESkillRuleType::ThroughBall)));
+	};
+	auto ReachAntiOffside = [](
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix)
+	{
+		FReachabilityTrace Trace;
+		return BuildStage7166ToAwaitingRoute(
+				Session, Prefix, ESkillRuleType::ThroughBall,
+				EMatchPlayElectiveBranchIntent::None, Trace)
+			&& Session.ResolveInitialRoute().OrchestrationResult.bSuccess
+			&& Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.ActualBranch.ThroughBall
+					== EMatchPlayThroughBallActualBranch::AntiOffside;
+	};
+	auto ResolveOwnedAntiOffside = [](
+		FMatchPlayAuthoritativeSession& Session)
+	{
+		const FMatchPlayState State = Session.GetStateSnapshot();
+		FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest
+			Request;
+		Request.AttackSequence = State.CurrentAttack.AttackSequence;
+		Request.RequestingSide = State.CurrentAttack.ResolutionSession.Bundle
+			.CurrentAttackingPlayer;
+		return Session.ResolveThroughBallAntiOffsideAttackRoll(Request);
+	};
+	auto ReachSelectedOneOnOne = [
+		&ReachAntiOffside,
+		&ResolveOwnedAntiOffside](
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const EChoice Choice)
+	{
+		return ReachAntiOffside(Session, Prefix)
+			&& ResolveOwnedAntiOffside(Session).OrchestrationResult
+				.OutcomeResult.Decision
+					== EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired
+			&& SubmitOneOnOneShotChoice(Session, Choice).ChoiceResult.bSuccess;
+	};
+
+	for (const int32 AntiD6 : {1, 6})
+	{
+		const FString Prefix = FString::Printf(
+			TEXT("OwnedAnti%d"), AntiD6);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(AntiD6));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("Anti %d reaches route"), AntiD6),
+			ReachAntiOffside(Session, Prefix));
+		const FMatchPlayState RouteState = Session.GetStateSnapshot();
+		const auto& Resolution = RouteState.CurrentAttack.ResolutionSession;
+		const EInitialTurnOrderPlayer Attacker =
+			Resolution.Bundle.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender =
+			Resolution.Bundle.CurrentDefendingPlayer;
+		const auto PendingView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(RouteState, Rules);
+		TestTrue(*FString::Printf(TEXT("Anti %d projects attacker action"), AntiD6),
+			PendingView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallAntiOffsideAttack
+				&& PendingView.ExpectedActingPlayer == Attacker
+				&& PendingView.bThroughBallAntiOffsideAttackRollPending);
+
+		FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest
+			Request;
+		Request.AttackSequence = RouteState.CurrentAttack.AttackSequence;
+		Request.RequestingSide = Defender;
+		const auto WrongSide =
+			Session.ResolveThroughBallAntiOffsideAttackRoll(Request);
+		TestEqual(TEXT("Anti wrong side rejects before RNG"),
+			WrongSide.OrchestrationResult.ErrorCode,
+			EAntiError::WrongRequestingSide);
+		TestEqual(TEXT("Anti wrong side RNG delta"), Post.GetCallCount(), 0);
+		TestTrue(TEXT("Anti wrong side preserves State"),
+			AreStatesEqual(RouteState, Session.GetStateSnapshot()));
+
+		Request.RequestingSide = Attacker;
+		Request.AttackSequence = RouteState.CurrentAttack.AttackSequence + 1;
+		const auto Stale =
+			Session.ResolveThroughBallAntiOffsideAttackRoll(Request);
+		TestEqual(TEXT("Anti stale rejects before RNG"),
+			Stale.OrchestrationResult.ErrorCode,
+			EAntiError::AttackSequenceMismatch);
+		TestEqual(TEXT("Anti stale RNG delta"), Post.GetCallCount(), 0);
+
+		Request.AttackSequence = RouteState.CurrentAttack.AttackSequence;
+		const auto Accepted =
+			Session.ResolveThroughBallAntiOffsideAttackRoll(Request);
+		const FMatchPlayState Completed = Session.GetStateSnapshot();
+		const auto& Records = Completed.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(*FString::Printf(TEXT("Anti %d accepts exactly one D6"), AntiD6),
+			Accepted.OrchestrationResult.bSuccess
+				&& Accepted.OrchestrationResult.ProviderCallCount == 1
+				&& Post.GetCallCount() == 1);
+		TestTrue(*FString::Printf(TEXT("Anti %d persists canonical record"), AntiD6),
+			Records.Num() == 1
+				&& Records[0].Purpose == EPurpose::PrimaryAttack
+				&& Records[0].RawD6 == AntiD6);
+		TestEqual(*FString::Printf(TEXT("Anti %d decision"), AntiD6),
+			Accepted.OrchestrationResult.OutcomeResult.Decision,
+			AntiD6 == 6
+				? EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired
+				: EThroughBallAntiOffsideOutcomeDecision::Offside);
+		const auto Duplicate =
+			Session.ResolveThroughBallAntiOffsideAttackRoll(Request);
+		TestEqual(TEXT("Anti duplicate rejects"),
+			Duplicate.OrchestrationResult.ErrorCode,
+			EAntiError::WrongAntiOffsideRollStep);
+		TestEqual(TEXT("Anti duplicate consumes zero RNG"),
+			Post.GetCallCount(), 1);
+		TestTrue(TEXT("Anti duplicate preserves State"),
+			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+		if (AntiD6 == 1)
+		{
+			const int32 CallsBeforeTerminal = Post.GetCallCount();
+			const auto Terminal = Session.ApplyThroughBallTerminalResolution();
+			const FMatchPlayState TerminalState = Session.GetStateSnapshot();
+			TestTrue(TEXT("Anti terminal remains pending explicit advance"),
+				Terminal.OrchestrationResult.bSuccess
+					&& TerminalState.CurrentAttack.LifecycleState
+						== EMatchPlayCurrentAttackLifecycleState
+							::TerminalPendingAdvance);
+			TestEqual(TEXT("Anti terminal apply RNG delta"),
+				Post.GetCallCount() - CallsBeforeTerminal, 0);
+			const auto AfterTerminal =
+				Session.ResolveThroughBallAntiOffsideAttackRoll(Request);
+			TestFalse(TEXT("Anti command after terminal rejected by Session"),
+				AfterTerminal.RuntimeEnvelope.bAccepted);
+			TestEqual(TEXT("Anti command after terminal RNG delta"),
+				Post.GetCallCount() - CallsBeforeTerminal, 0);
+			TestTrue(TEXT("Anti command after terminal preserves State"),
+				AreStatesEqual(TerminalState, Session.GetStateSnapshot()));
+		}
+	}
+
+	for (const int32 ChipD6 : {1, 6})
+	{
+		const FString Prefix = FString::Printf(
+			TEXT("OwnedChip%d"), ChipD6);
+		const FSkillRuleSnapshotSet Rules = MakeSkillRuleSet(
+			SkillId(Prefix), ESkillRuleType::ThroughBall);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(MakePostRouteSuccess(ChipD6));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		TestTrue(*FString::Printf(TEXT("Chip %d reaches selected shot"), ChipD6),
+			ReachSelectedOneOnOne(Session, Prefix, EChoice::ChipShot));
+		const FMatchPlayState Selected = Session.GetStateSnapshot();
+		const auto& Bundle = Selected.CurrentAttack.ResolutionSession.Bundle;
+		const auto PendingView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(Selected, Rules);
+		TestTrue(*FString::Printf(TEXT("Chip %d projects attacker action"), ChipD6),
+			PendingView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneChipShotAttack
+				&& PendingView.ExpectedActingPlayer
+					== Bundle.CurrentAttackingPlayer);
+
+		FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest
+			Request;
+		Request.AttackSequence = Selected.CurrentAttack.AttackSequence;
+		Request.RequestingSide = Bundle.CurrentDefendingPlayer;
+		const auto WrongSide =
+			Session.ResolveThroughBallOneOnOneChipShotAttackRoll(Request);
+		TestEqual(TEXT("Chip wrong side rejects"),
+			WrongSide.OrchestrationResult.ErrorCode,
+			EChipError::WrongRequestingSide);
+		TestEqual(TEXT("Chip wrong side consumes zero RNG"),
+			Post.GetCallCount(), 1);
+		TestTrue(TEXT("Chip wrong side preserves State"),
+			AreStatesEqual(Selected, Session.GetStateSnapshot()));
+
+		Request.RequestingSide = Bundle.CurrentAttackingPlayer;
+		Request.AttackSequence = Selected.CurrentAttack.AttackSequence + 1;
+		const auto Stale =
+			Session.ResolveThroughBallOneOnOneChipShotAttackRoll(Request);
+		TestEqual(TEXT("Chip stale rejects"),
+			Stale.OrchestrationResult.ErrorCode,
+			EChipError::AttackSequenceMismatch);
+		TestEqual(TEXT("Chip stale consumes zero RNG"),
+			Post.GetCallCount(), 1);
+
+		Request.AttackSequence = Selected.CurrentAttack.AttackSequence;
+		const auto Accepted =
+			Session.ResolveThroughBallOneOnOneChipShotAttackRoll(Request);
+		const FMatchPlayState Completed = Session.GetStateSnapshot();
+		const auto& Records = Completed.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(*FString::Printf(TEXT("Chip %d accepts exactly one D6"), ChipD6),
+			Accepted.OrchestrationResult.bSuccess
+				&& Accepted.OrchestrationResult.ProviderCallCount == 1
+				&& Post.GetCallCount() == 2);
+		TestTrue(*FString::Printf(TEXT("Chip %d persists canonical record"), ChipD6),
+			Records.Num() == 2
+				&& Records.Last().Purpose
+					== EPurpose::OneOnOneChipShotAttack
+				&& Records.Last().RawD6 == ChipD6);
+		TestEqual(*FString::Printf(TEXT("Chip %d decision"), ChipD6),
+			Accepted.OrchestrationResult.QueryResult.Decision,
+			ChipD6 == 6
+				? EThroughBallOneOnOneChipShotOutcomeDecision::Goal
+				: EThroughBallOneOnOneChipShotOutcomeDecision::Miss);
+		TestEqual(TEXT("Chip uses outcome query once and no Formula"),
+			Accepted.OrchestrationResult.ChipShotQueryExecutionCount, 1);
+		const auto Duplicate =
+			Session.ResolveThroughBallOneOnOneChipShotAttackRoll(Request);
+		TestEqual(TEXT("Chip duplicate rejects"),
+			Duplicate.OrchestrationResult.ErrorCode,
+			EChipError::WrongChipShotRollStep);
+		TestEqual(TEXT("Chip duplicate consumes zero RNG"),
+			Post.GetCallCount(), 2);
+		TestTrue(TEXT("Chip duplicate preserves State"),
+			AreStatesEqual(Completed, Session.GetStateSnapshot()));
+	}
+
+	const FString DirectPrefix(TEXT("OwnedDirectSequential"));
+	const FSkillRuleSnapshotSet DirectRules = MakeSkillRuleSet(
+		SkillId(DirectPrefix), ESkillRuleType::ThroughBall);
+	InitialRouteFixtures::FQueueRollProvider DirectInitial;
+	DirectInitial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider DirectPost;
+	DirectPost.Enqueue(MakePostRouteSuccess(6));
+	DirectPost.Enqueue(MakePostRouteSuccess(3));
+	DirectPost.Enqueue(MakePostRouteSuccess(4));
+	FMatchPlayAuthoritativeSession DirectSession(
+		DirectInitial, DirectPost, DirectRules);
+	TestTrue(TEXT("Direct sequential reaches selected shot"),
+		ReachSelectedOneOnOne(
+			DirectSession, DirectPrefix, EChoice::DirectShot));
+	const FMatchPlayState DirectSelected = DirectSession.GetStateSnapshot();
+	const auto& DirectBundle =
+		DirectSelected.CurrentAttack.ResolutionSession.Bundle;
+	const EInitialTurnOrderPlayer DirectAttacker =
+		DirectBundle.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer DirectDefender =
+		DirectBundle.CurrentDefendingPlayer;
+	const auto DirectAttackView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			DirectSelected, DirectRules);
+	TestTrue(TEXT("Direct no-roll snapshot projects attacker"),
+		DirectAttackView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotAttack
+			&& DirectAttackView.ExpectedActingPlayer == DirectAttacker);
+
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest
+		DefenseRequest;
+	DefenseRequest.AttackSequence =
+		DirectSelected.CurrentAttack.AttackSequence;
+	DefenseRequest.RequestingSide = DirectDefender;
+	const auto EarlyDefense = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotDefenseRoll(DefenseRequest);
+	TestEqual(TEXT("Direct Defense before Attack rejects"),
+		EarlyDefense.OrchestrationResult.ErrorCode,
+		EDirectError::WrongDirectShotRollStep);
+	TestEqual(TEXT("Direct early Defense consumes zero RNG"),
+		DirectPost.GetCallCount(), 1);
+	TestTrue(TEXT("Direct early Defense preserves State"),
+		AreStatesEqual(DirectSelected, DirectSession.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest
+		AttackRequest;
+	AttackRequest.AttackSequence =
+		DirectSelected.CurrentAttack.AttackSequence;
+	AttackRequest.RequestingSide = DirectDefender;
+	const auto WrongAttack = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotAttackRoll(AttackRequest);
+	TestEqual(TEXT("Direct defender cannot roll Attack"),
+		WrongAttack.OrchestrationResult.ErrorCode,
+		EDirectError::WrongRequestingSide);
+	TestEqual(TEXT("Direct wrong-side Attack consumes zero RNG"),
+		DirectPost.GetCallCount(), 1);
+
+	AttackRequest.RequestingSide = DirectAttacker;
+	AttackRequest.AttackSequence =
+		DirectSelected.CurrentAttack.AttackSequence + 1;
+	const auto StaleAttack = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotAttackRoll(AttackRequest);
+	TestEqual(TEXT("Direct stale Attack rejects"),
+		StaleAttack.OrchestrationResult.ErrorCode,
+		EDirectError::AttackSequenceMismatch);
+	TestEqual(TEXT("Direct stale Attack consumes zero RNG"),
+		DirectPost.GetCallCount(), 1);
+
+	AttackRequest.AttackSequence =
+		DirectSelected.CurrentAttack.AttackSequence;
+	const auto DirectAttack = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotAttackRoll(AttackRequest);
+	const FMatchPlayState AttackOnly = DirectSession.GetStateSnapshot();
+	const auto& AttackOnlySession = AttackOnly.CurrentAttack.ResolutionSession;
+	const auto& AttackOnlyRecords =
+		AttackOnlySession.PostRouteRollProgress.RollRecords;
+	const auto AttackOnlyProgress =
+		FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+			AttackOnlySession);
+	TestTrue(TEXT("Direct Attack consumes exactly one Attack D6"),
+		DirectAttack.OrchestrationResult.bSuccess
+			&& DirectAttack.OrchestrationResult.ProviderCallCount == 1
+			&& DirectPost.GetCallCount() == 2
+			&& DirectPost.GetPurposes().Last()
+				== EPurpose::OneOnOneDirectShotAttack);
+	TestTrue(TEXT("Direct Attack-only snapshot is real and active"),
+		AttackOnly.CurrentAttack.LifecycleState
+			== EMatchPlayCurrentAttackLifecycleState::Active
+			&& AttackOnlySession.PostRouteRollProgress.Phase
+				== EMatchPlayCurrentAttackPostRouteRollPhase
+					::OneOnOneDirectShot
+			&& AttackOnlyRecords.Num() == 2
+			&& AttackOnlyRecords.Last().Purpose
+				== EPurpose::OneOnOneDirectShotAttack
+			&& AttackOnlyRecords.Last().RawD6 == 3
+			&& AttackOnlyProgress.bIsCanonical
+			&& !AttackOnlyProgress.bContractComplete
+			&& AttackOnlyProgress.NextPurpose
+				== EPurpose::OneOnOneDirectShotDefense);
+	const auto AttackOnlyView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			AttackOnly, DirectRules);
+	TestTrue(TEXT("Direct Attack-only refresh projects defender"),
+		AttackOnlyView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotDefense
+			&& AttackOnlyView.ExpectedActingPlayer == DirectDefender
+			&& AttackOnlyView.bThroughBallOneOnOneDirectShotDefenseRollPending);
+	TestTrue(TEXT("Direct Attack-only facts preserve Attack and pending Defense"),
+		AttackOnlyView.ResolutionFacts.bSuccess
+			&& AttackOnlyView.ResolutionFacts.bHasPendingRoll);
+	TestEqual(TEXT("Direct Attack-only queries consume zero RNG"),
+		DirectPost.GetCallCount(), 2);
+
+	const auto DuplicateAttack = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotAttackRoll(AttackRequest);
+	TestEqual(TEXT("Direct duplicate Attack rejects"),
+		DuplicateAttack.OrchestrationResult.ErrorCode,
+		EDirectError::WrongDirectShotRollStep);
+	TestEqual(TEXT("Direct duplicate Attack consumes zero RNG"),
+		DirectPost.GetCallCount(), 2);
+	TestTrue(TEXT("Direct duplicate Attack preserves State"),
+		AreStatesEqual(AttackOnly, DirectSession.GetStateSnapshot()));
+
+	DefenseRequest.AttackSequence = AttackOnly.CurrentAttack.AttackSequence;
+	DefenseRequest.RequestingSide = DirectAttacker;
+	const auto WrongDefense = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotDefenseRoll(DefenseRequest);
+	TestEqual(TEXT("Direct attacker cannot roll Defense"),
+		WrongDefense.OrchestrationResult.ErrorCode,
+		EDirectError::WrongRequestingSide);
+	TestEqual(TEXT("Direct wrong-side Defense consumes zero RNG"),
+		DirectPost.GetCallCount(), 2);
+
+	DefenseRequest.RequestingSide = DirectDefender;
+	DefenseRequest.AttackSequence = AttackOnly.CurrentAttack.AttackSequence + 1;
+	const auto StaleDefense = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotDefenseRoll(DefenseRequest);
+	TestEqual(TEXT("Direct stale Defense rejects"),
+		StaleDefense.OrchestrationResult.ErrorCode,
+		EDirectError::AttackSequenceMismatch);
+	TestEqual(TEXT("Direct stale Defense consumes zero RNG"),
+		DirectPost.GetCallCount(), 2);
+
+	DefenseRequest.AttackSequence = AttackOnly.CurrentAttack.AttackSequence;
+	const auto DirectDefense = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotDefenseRoll(DefenseRequest);
+	const FMatchPlayState DirectComplete = DirectSession.GetStateSnapshot();
+	const auto& CompleteRecords = DirectComplete.CurrentAttack.ResolutionSession
+		.PostRouteRollProgress.RollRecords;
+	TestTrue(TEXT("Direct Defense consumes exactly one Defense D6"),
+		DirectDefense.OrchestrationResult.bSuccess
+			&& DirectDefense.OrchestrationResult.ProviderCallCount == 1
+			&& DirectDefense.OrchestrationResult.bHasFormulaPlan
+			&& DirectPost.GetCallCount() == 3
+			&& DirectPost.GetPurposes().Last()
+				== EPurpose::OneOnOneDirectShotDefense);
+	TestTrue(TEXT("Direct completed snapshot preserves ordered rolls"),
+		CompleteRecords.Num() == 3
+			&& CompleteRecords[1].Purpose
+				== EPurpose::OneOnOneDirectShotAttack
+			&& CompleteRecords[1].RawD6 == 3
+			&& CompleteRecords[2].Purpose
+				== EPurpose::OneOnOneDirectShotDefense
+			&& CompleteRecords[2].RawD6 == 4);
+
+	const auto DuplicateDefense = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotDefenseRoll(DefenseRequest);
+	TestEqual(TEXT("Direct duplicate Defense rejects"),
+		DuplicateDefense.OrchestrationResult.ErrorCode,
+		EDirectError::WrongDirectShotRollStep);
+	TestEqual(TEXT("Direct duplicate Defense consumes zero RNG"),
+		DirectPost.GetCallCount(), 3);
+	TestTrue(TEXT("Direct duplicate Defense preserves State"),
+		AreStatesEqual(DirectComplete, DirectSession.GetStateSnapshot()));
+
+	const int32 CallsBeforeFormula = DirectPost.GetCallCount();
+	const auto SequentialFormula =
+		DirectSession.ResolveThroughBallOneOnOneDirectShotFormula();
+	TestTrue(TEXT("Direct sequential Formula succeeds without RNG"),
+		SequentialFormula.OrchestrationResult.bSuccess
+			&& SequentialFormula.OrchestrationResult
+				.PlanRegenerationProviderCallCount == 0);
+	TestEqual(TEXT("Direct sequential Formula RNG delta"),
+		DirectPost.GetCallCount() - CallsBeforeFormula, 0);
+	TestTrue(TEXT("Direct Formula query preserves State"),
+		AreStatesEqual(DirectComplete, DirectSession.GetStateSnapshot()));
+
+	InitialRouteFixtures::FQueueRollProvider ReferenceInitial;
+	ReferenceInitial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider ReferencePost;
+	ReferencePost.Enqueue(MakePostRouteSuccess(6));
+	ReferencePost.Enqueue(MakePostRouteSuccess(3));
+	ReferencePost.Enqueue(MakePostRouteSuccess(4));
+	FMatchPlayAuthoritativeSession ReferenceSession(
+		ReferenceInitial, ReferencePost, DirectRules);
+	TestTrue(TEXT("Direct atomic reference reaches selected shot"),
+		ReachAntiOffside(ReferenceSession, DirectPrefix)
+			&& ReferenceSession.ResolveThroughBallAntiOffsideDecision()
+				.OrchestrationResult.OutcomeResult.Decision
+					== EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired
+			&& SubmitOneOnOneShotChoice(
+				ReferenceSession, EChoice::DirectShot).ChoiceResult.bSuccess);
+	const auto AtomicPlan = ReferenceSession
+		.ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
+	const auto AtomicFormula =
+		ReferenceSession.ResolveThroughBallOneOnOneDirectShotFormula();
+	const auto& SequentialPlan = DirectDefense.OrchestrationResult.FormulaPlan;
+	const auto& ReferencePlan = AtomicPlan.OrchestrationResult.FormulaPlan;
+	TestTrue(TEXT("Direct sequential plan preserves atomic math inputs"),
+		AtomicPlan.OrchestrationResult.bSuccess
+			&& SequentialPlan.ShooterShooting == ReferencePlan.ShooterShooting
+			&& SequentialPlan.GoalkeeperOneOnOne
+				== ReferencePlan.GoalkeeperOneOnOne
+			&& SequentialPlan.bGoalkeeperActivated
+				== ReferencePlan.bGoalkeeperActivated
+			&& SequentialPlan.AttackD6 == ReferencePlan.AttackD6
+			&& SequentialPlan.DefenseD6 == ReferencePlan.DefenseD6
+			&& SequentialPlan.GoalkeeperCardId
+				== ReferencePlan.GoalkeeperCardId
+			&& SequentialPlan.InvolvedCardIds
+				== ReferencePlan.InvolvedCardIds);
+	TestTrue(TEXT("Direct sequential Formula preserves atomic parity"),
+		AtomicFormula.OrchestrationResult.bSuccess
+			&& SequentialFormula.OrchestrationResult.Decision
+				== AtomicFormula.OrchestrationResult.Decision
+			&& AreReflectedValuesEqual(
+				SequentialFormula.OrchestrationResult.DirectShotFormulaResult
+					.ResolverInput,
+				AtomicFormula.OrchestrationResult.DirectShotFormulaResult
+					.ResolverInput)
+			&& AreReflectedValuesEqual(
+				SequentialFormula.OrchestrationResult.DirectShotFormulaResult
+					.FormulaResolutionResult,
+				AtomicFormula.OrchestrationResult.DirectShotFormulaResult
+					.FormulaResolutionResult)
+			&& SequentialFormula.OrchestrationResult.TacticalPlayerAdvantageResult
+				.AttackerFinishingModifier
+				== AtomicFormula.OrchestrationResult.TacticalPlayerAdvantageResult
+					.AttackerFinishingModifier
+			&& SequentialFormula.OrchestrationResult.TacticalPlayerAdvantageResult
+				.DefenderFinishingModifier
+				== AtomicFormula.OrchestrationResult.TacticalPlayerAdvantageResult
+					.DefenderFinishingModifier);
+
+	const int32 CallsBeforeTerminal = DirectPost.GetCallCount();
+	const auto DirectTerminal =
+		DirectSession.ApplyThroughBallTerminalResolution();
+	const FMatchPlayState DirectTerminalState = DirectSession.GetStateSnapshot();
+	TestTrue(TEXT("Direct terminal persists pending advance"),
+		DirectTerminal.OrchestrationResult.bSuccess
+			&& DirectTerminalState.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	TestEqual(TEXT("Direct terminal apply RNG delta"),
+		DirectPost.GetCallCount() - CallsBeforeTerminal, 0);
+	const auto AttackAfterTerminal = DirectSession
+		.ResolveThroughBallOneOnOneDirectShotAttackRoll(AttackRequest);
+	TestFalse(TEXT("Direct Attack after terminal rejected"),
+		AttackAfterTerminal.RuntimeEnvelope.bAccepted);
+	TestEqual(TEXT("Direct Attack after terminal consumes zero RNG"),
+		DirectPost.GetCallCount() - CallsBeforeTerminal, 0);
+	TestTrue(TEXT("Direct Attack after terminal preserves State"),
+		AreStatesEqual(DirectTerminalState, DirectSession.GetStateSnapshot()));
+
+	FString ControllerSource;
+	TestTrue(TEXT("Controller source loads for typed boundary"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+			ControllerSource));
+	TestTrue(TEXT("Controller forwards typed AntiOffside"),
+		ControllerSource.Contains(TEXT(
+			"Host->ResolveThroughBallAntiOffsideAttackRoll(Request)")));
+	TestTrue(TEXT("Controller forwards typed Chip"),
+		ControllerSource.Contains(TEXT(
+			"Host->ResolveThroughBallOneOnOneChipShotAttackRoll(Request)")));
+	TestTrue(TEXT("Controller forwards typed Direct Attack"),
+		ControllerSource.Contains(TEXT(
+			"Host->ResolveThroughBallOneOnOneDirectShotAttackRoll(Request)")));
+	TestTrue(TEXT("Controller forwards typed Direct Defense"),
+		ControllerSource.Contains(TEXT(
+			"Host->ResolveThroughBallOneOnOneDirectShotDefenseRoll(Request)")));
+	TestFalse(TEXT("Controller no longer invokes atomic AntiOffside"),
+		ControllerSource.Contains(TEXT(
+			"Host->ResolveThroughBallAntiOffsideDecision()")));
+	TestFalse(TEXT("Controller no longer invokes atomic Chip"),
+		ControllerSource.Contains(TEXT(
+			"Host->ResolveThroughBallOneOnOneChipShotDecision()")));
+	TestFalse(TEXT("Controller no longer invokes atomic Direct plan"),
+		ControllerSource.Contains(TEXT(
+			"Host->ResolveThroughBallOneOnOneDirectShotPostRoutePlan()")));
 	return true;
 }
 
@@ -21486,8 +22070,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 51 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 51);
+	TestEqual(TEXT("E2E preserves 55 serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 55);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -21561,8 +22145,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-one commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 51);
+	TestEqual(TEXT("All fifty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 55);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -22053,8 +22637,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-one commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 51);
+	TestEqual(TEXT("All fifty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 55);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -22580,8 +23164,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-one commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 51);
+	TestEqual(TEXT("All fifty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 55);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -23155,8 +23739,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All fifty-one commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 51);
+	TestEqual(TEXT("All fifty-five commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 55);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);

@@ -377,6 +377,17 @@ struct FMCODEX_API
 };
 
 struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallAntiOffsideAttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
 	FFMCodexLocalMatchResolveDirectShotPostRouteDecisionOrPlanResult
 {
 	bool bSuccess = false;
@@ -474,10 +485,43 @@ struct FMCODEX_API
 };
 
 struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotAttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
 	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
 {
 	bool bSuccess = false;
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotAttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotDefenseRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollResult
 		AuthoritativeResult;
 	EFMCodexLocalMatchHostErrorCode ErrorCode =
 		EFMCodexLocalMatchHostErrorCode::None;
@@ -688,6 +732,12 @@ public:
 	FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult
 	ResolveThroughBallAntiOffsideDecision();
 
+	FFMCodexLocalMatchResolveThroughBallAntiOffsideAttackRollResult
+	ResolveThroughBallAntiOffsideAttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest&
+				Request);
+
 	FFMCodexLocalMatchResolveDirectShotPostRouteDecisionOrPlanResult
 	ResolveDirectShotPostRouteDecisionOrPlan();
 
@@ -721,8 +771,26 @@ public:
 	FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotDecisionResult
 	ResolveThroughBallOneOnOneChipShotDecision();
 
+	FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotAttackRollResult
+	ResolveThroughBallOneOnOneChipShotAttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest&
+				Request);
+
 	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
 	ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
+
+	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotAttackRollResult
+	ResolveThroughBallOneOnOneDirectShotAttackRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest&
+				Request);
+
+	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotDefenseRollResult
+	ResolveThroughBallOneOnOneDirectShotDefenseRoll(
+		const
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest&
+				Request);
 
 	FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotFormulaResult
 	ResolveThroughBallOneOnOneDirectShotFormula();

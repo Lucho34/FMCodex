@@ -5,11 +5,36 @@
 #include "MatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionTypes.h"
 #include "ThroughBallOneOnOneDirectShotFormula.h"
 
+struct FMCODEX_API
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanRequest
+{
+	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		/** Legacy/reference compatibility; production uses explicit rolls. */
+		CompletePlan,
+		RegenerateCompletedPlan,
+		ResolveAttackRoll,
+		ResolveDefenseRoll
+	};
+
+	EMode Mode = EMode::CompletePlan;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
 enum class EMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanErrorCode : uint8
 {
 	None,
 	MatchPlayStateNotInitialized,
 	NoCurrentAttack,
+	InvalidCurrentAttackSequence,
+	InvalidRequestedAttackSequence,
+	AttackSequenceMismatch,
+	InvalidRequestingSide,
+	WrongRequestingSide,
+	WrongDirectShotRollStep,
+	CompletedPlanRequired,
 	MissingResolutionSession,
 	InvalidResolutionSessionState,
 	RouteNotResolved,
@@ -41,6 +66,8 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPo
 	bool bSuccess = false;
 	bool bResolvedNewRolls = false;
 	bool bReplayedCompleteRolls = false;
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanRequest
+		Request;
 	FMatchPlayState BeforeState;
 	FMatchPlayState AfterState;
 	EMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanErrorCode ErrorCode =

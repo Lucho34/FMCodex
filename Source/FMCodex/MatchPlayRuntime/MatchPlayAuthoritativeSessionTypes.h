@@ -102,7 +102,11 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveThroughBallFeetDefenseRoll,
 	AdvanceAfterTerminal,
 	ResolveThroughBallBehindDefenseP1AttackRoll,
-	ResolveThroughBallBehindDefenseP1DefenseRoll
+	ResolveThroughBallBehindDefenseP1DefenseRoll,
+	ResolveThroughBallAntiOffsideAttackRoll,
+	ResolveThroughBallOneOnOneChipShotAttackRoll,
+	ResolveThroughBallOneOnOneDirectShotAttackRoll,
+	ResolveThroughBallOneOnOneDirectShotDefenseRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -480,6 +484,21 @@ struct FMCODEX_API
 };
 
 struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API
 	FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
@@ -574,7 +593,52 @@ struct FMCODEX_API
 };
 
 struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult

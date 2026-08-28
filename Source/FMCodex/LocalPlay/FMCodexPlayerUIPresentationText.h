@@ -47,6 +47,12 @@ public:
 	static FText ResolutionContest(FName ContestId);
 	static FText ResolutionParticipantRole(
 		EMatchPlayResolutionParticipantRole Role);
+	static FText TacticalDetailParticipantRole(
+		EMatchPlayResolutionParticipantRole Role);
+	static FText TacticalOutcome(
+		FName BranchId, FName OutcomeId);
+	static FText TacticalOutcomeRange(
+		int32 Minimum, int32 Maximum, const FText& OutcomeLabel);
 	static FText ResolutionAttribute(
 		EMatchPlayResolutionFormulaAttribute Attribute);
 	static FText ResolutionAttackRow();

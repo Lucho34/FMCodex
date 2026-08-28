@@ -17,6 +17,23 @@ enum class EMatchPlayThroughBallOneOnOneSource : uint8
 	BehindDefenseP2 = BehindDefense
 };
 
+struct FMCODEX_API
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionRequest
+{
+	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		/** Legacy/reference compatibility; production uses ResolveAttackRoll. */
+		CompleteDecision,
+		RegenerateCompletedDecision,
+		ResolveAttackRoll
+	};
+
+	EMode Mode = EMode::CompleteDecision;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
 enum class
 	EMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionErrorCode
 	: uint8
@@ -24,6 +41,13 @@ enum class
 	None,
 	MatchPlayStateNotInitialized,
 	NoCurrentAttack,
+	InvalidCurrentAttackSequence,
+	InvalidRequestedAttackSequence,
+	AttackSequenceMismatch,
+	InvalidRequestingSide,
+	WrongRequestingSide,
+	WrongChipShotRollStep,
+	CompletedDecisionRequired,
 	MissingResolutionSession,
 	InvalidResolutionSessionState,
 	RouteNotResolved,
@@ -52,6 +76,8 @@ struct FMCODEX_API
 	bool bSuccess = false;
 	bool bResolvedNewRoll = false;
 	bool bReplayedAcceptedRoll = false;
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionRequest
+		Request;
 	FMatchPlayState BeforeState;
 	FMatchPlayState AfterState;
 	EMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionErrorCode

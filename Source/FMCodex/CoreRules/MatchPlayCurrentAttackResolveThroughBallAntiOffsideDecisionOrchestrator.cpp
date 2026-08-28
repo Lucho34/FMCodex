@@ -6,6 +6,9 @@ namespace MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecision
 {
 	using EError =
 		EMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionErrorCode;
+	using EMode =
+		FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionRequest
+			::EMode;
 	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
 	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
 	using FResult =
@@ -254,6 +257,38 @@ FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator::Resolv
 			Result.ProgressResult.ErrorMessage);
 		return Result;
 	}
+	const bool bExplicitAttackRoll = Request.Mode == EMode::ResolveAttackRoll;
+	if (Request.Mode == EMode::RegenerateCompletedDecision
+		&& !Result.ProgressResult.bContractComplete)
+	{
+		SetFailure(Result, EError::CompletedDecisionRequired,
+			TEXT("AntiOffside regeneration requires an already-complete roll contract."));
+		return Result;
+	}
+	if (bExplicitAttackRoll)
+	{
+		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			SetFailure(Result, EError::InvalidRequestingSide,
+				TEXT("AntiOffside roll requires PlayerA or PlayerB as RequestingSide."));
+			return Result;
+		}
+		if (Result.ProgressResult.bContractComplete
+			|| Result.ProgressResult.NextPurpose != EPurpose::PrimaryAttack)
+		{
+			SetFailure(Result, EError::WrongAntiOffsideRollStep,
+				TEXT("The AntiOffside attack roll is not the current authoritative step."));
+			return Result;
+		}
+		if (Request.RequestingSide
+			!= BeforeSession.Bundle.CurrentAttackingPlayer)
+		{
+			SetFailure(Result, EError::WrongRequestingSide,
+				TEXT("Only the current attacking side owns the AntiOffside roll."));
+			return Result;
+		}
+	}
 	if (!Result.ProgressResult.bContractComplete && RollProvider == nullptr)
 	{
 		SetFailure(Result, EError::PostRouteRollProviderUnavailable,
@@ -266,7 +301,9 @@ FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator::Resolv
 			TEXT("AntiOffside decision requires authoritative SkillRuleSet."));
 		return Result;
 	}
-	while (!Result.ProgressResult.bContractComplete)
+	const int32 MaximumRollsThisCommand = bExplicitAttackRoll ? 1 : MAX_int32;
+	while (!Result.ProgressResult.bContractComplete
+		&& Result.ProviderCallCount < MaximumRollsThisCommand)
 	{
 		const EPurpose Purpose = Result.ProgressResult.NextPurpose;
 		const FMatchPlayPostRouteRollProviderResult ProviderResult =

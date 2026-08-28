@@ -372,9 +372,16 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		? ESlateVisibility::SelfHitTestInvisible
 		: ESlateVisibility::Collapsed);
 	ContestText->SetText(FText::FromString(Presentation.ContestLabel));
+	ContestText->SetVisibility(
+		!Presentation.ContestLabel.IsEmpty()
+			&& (!Presentation.bParentOwnsContestHeading
+				|| Presentation.bNarrativeAvailable)
+			? ESlateVisibility::SelfHitTestInvisible
+			: ESlateVisibility::Collapsed);
 	StatusText->SetText(FText::FromString(Presentation.StatusLabel));
 	RouteResultText->SetText(FText::FromString(Presentation.RouteResultLabel));
 	RouteResultText->SetVisibility(Presentation.RouteResultLabel.IsEmpty()
+			|| Presentation.bParentOwnsRouteContext
 		? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	TacticalPlayerText->SetText(
 		FText::FromString(Presentation.TacticalPlayerSummaryLabel));

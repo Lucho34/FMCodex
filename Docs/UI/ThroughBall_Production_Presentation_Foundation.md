@@ -77,3 +77,25 @@ Feet 路线现在在 ThroughBall Surface 内组合既有 shared Inline Formula W
 Attack/Defense 沿用 Screen 的同一 stable identity 结构，分别以 sequence `1/2` 和各自 owner 区分；共享 settle/disclosure/result-hold gate 保证下一 CTA 不提前。formula child 是中央唯一 CTA owner，InteractionPanel 折叠；child event 经 ThroughBall Surface 广播到 Screen 的原 typed handler。fresh attack-complete/terminal Screen 直接显示历史真相，不重播旧 Reel。正常成功路径仍抑制 generic debug overlay，拒绝路径保留诊断。
 
 本阶段未增加 Formula math、winner comparison、route mapping、legality、RNG、DEV override 或完整 ThroughBall Narrative。自动化已覆盖 preview、两次 reveal、refresh/resync、terminal gate、fresh terminal、debug isolation 与 Cross regression；最终视觉和手动点击节奏仍标记 `USER PIE REQUIRED`。
+
+## Stage 6.14.2 AntiOffside 与 OneOnOne Production Golden Paths
+
+反越位、直接射门与挑射现在消费 6.14.2A 已持久化的 typed roll progression。反越位中央表面持续显示路线结果，并以 shared Reel 披露越位或形成单刀；终结的越位进入 Narrative hold 后才开放 `下一回合`，非终结的成功则先显示结果与 Narrative，再开放同一组单刀选择。
+
+`SelectOneOnOneShot` 由 ThroughBall 中央表面所有，两个 typed choice 在同一个水平布局中显示，底部 InteractionPanel 不重复。身后球与反越位只改变进入来源，不创建不同的单刀 Widget。Direct/Chip hover 均通过既有 Tactical Rule Description Catalog、shared detail builder 与 shared panel 投影；hover 不提交 intent，click 才转发现有 typed choice。
+
+直接射门复用 shared Formula Surface 与 shared Reel：Preview、Attack-only、Defense 与 terminal 都只读取 authoritative Formula Facts。UI 不求和或比较 winner；底层 `Miss` 仅通过 Narrative v1 的 OneOnOne Direct 分支表现为 `扑救成功`。挑射保持 outcome-only，不创建 Formula 或 GK 表现，并复用 shared Reel 与 Narrative builder。
+
+Anti、Direct Attack/Defense 与 Chip 使用各自稳定的 `contest / sequence / owner` reveal identity。live transition 遮蔽尚未披露的结果、Narrative、后续 CTA 与 choice；fresh snapshot 直接重建已经完成的 RawD6、Formula、结果和可用 action，不重播历史 Reel。Authority rejection 会取消 reveal、释放中央 primary-action claim，并恢复底部 typed action 与诊断层。
+
+## Stage 6.14.2B Outcome 可读性与结算 UX 收口
+
+Outcome-only roll 在等待玩家掷点时可以显示一个轻量结果范围提示。提示只能从 `FTacticalRuleDescriptionCatalog` 中 branch 的 `OutcomeDecision / Outcomes / OutcomeRollCount` 元数据投影；当前只接入单骰、非合计的 `ThroughBall.AntiOffside` 与 `ThroughBall.OneOnOneChip`。对应文案为 `1–5：越位　｜　6：反越位成功` 和 `1–3：挑射未进　｜　4–6：进球`。Feet、Behind、Direct 与 Cross 的 arithmetic Formula roll 不显示独立阈值提示。Widget 只渲染已本地化 DTO，不用范围或 RawD6 判断真实 outcome。
+
+Anti Offside、Chip 与 Direct Defense 的 accepted 决定性 roll 后，如果刷新出的唯一下一步是既有 `ContinueResolution` compatibility continuation，Controller 立即转发现有零 RNG `ApplyThroughBallTerminalResolution`。Anti D6=6 刷新为 `SelectOneOnOneShot`，因此不会误入 terminal。normal production flow 不再暴露 `继续直塞结算`；完成态仍停在 `TerminalPendingAdvance`，并且只有玩家显式点击中央 `下一回合` 才调用 `AdvanceAfterTerminal`。
+
+ThroughBall parent 负责 `直塞 / 单刀 / 直接射门` 与 source route context；Direct 的 nested Formula 通过显式 parent-ownership 标记隐藏重复 contest heading 与 route context，但 terminal Narrative 仍可在披露门后显示。正常 ThroughBall production surface 对 legacy Resolution overlay 具有明确所有权，diagnostic/rejection 例外仍恢复旧诊断层。terminal 的 standalone action prompt 为空，只保留中央按钮；reveal、result、Narrative、hold 与 fresh reconstruction 的既有顺序不变。
+
+## Stage 6.14.2C Production Surface 排他所有权
+
+当 InteractionView-derived ThroughBall Production Surface 正常声明当前 Resolution 所有权时，Screen 同步折叠 Pitch 层的 standalone Inline Formula root 与 generic Resolution overlay root；该判定不依赖 Reel、披露阶段或上一帧 suppression，因此 route、Formula、outcome-only Reel、choice、terminal 与 fresh reconstruction 都只保留一套中央表面。权威 rejection 会释放 production ownership、折叠 ThroughBall root，并恢复 generic diagnostic overlay 与底部 typed recovery action；三个 root 不叠加。

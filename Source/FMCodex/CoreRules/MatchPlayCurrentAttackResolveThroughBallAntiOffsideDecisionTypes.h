@@ -11,6 +11,17 @@ struct FMCODEX_API
 	FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionRequest
 {
 	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		/** Legacy/reference compatibility; production uses ResolveAttackRoll. */
+		CompleteDecision,
+		RegenerateCompletedDecision,
+		ResolveAttackRoll
+	};
+
+	EMode Mode = EMode::CompleteDecision;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 enum class EMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionErrorCode
@@ -22,6 +33,10 @@ enum class EMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionErrorCode
 	InvalidCurrentAttackSequence,
 	InvalidRequestedAttackSequence,
 	AttackSequenceMismatch,
+	InvalidRequestingSide,
+	WrongRequestingSide,
+	WrongAntiOffsideRollStep,
+	CompletedDecisionRequired,
 	MissingResolutionSession,
 	InvalidResolutionSessionState,
 	RouteNotResolved,

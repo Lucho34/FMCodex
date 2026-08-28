@@ -123,3 +123,26 @@
 - InteractionView从 snapshot投影 `RollThroughBallBehindDefenseAttack / RollThroughBallBehindDefenseDefense` 与 expected side。PlayerController薄转发到 Host typed wrapper，Host只负责 provider decoration与 Session调用。generic `ContinueResolution`拒绝尚未完成的 Behind roll progress；旧 atomic Host/Session API不再从 production Controller调用。
 - Attack `1–2` 或 completed Formula defender win后，LocalPlay可以紧接现有 zero-RNG terminal command以隐藏技术确认步骤；若在两命令之间重建，complete progress仍可通过既有 recovery continuation完成。Attacker win由既有 Formula事实重建为 `SelectOneOnOneShot`，不写 terminal、不换攻。
 - 当前非 Shipping `身后球 P1` DEV override继续只装饰 `PrimaryAttack`；Defense command使用正常 provider。production authority不依赖 DEV类型，optional Defense override继续 deferred到 presentation/testing确有需要时。
+
+## AntiOffside + OneOnOne Side-owned Roll Authority（Stage 6.14.2A）
+
+- AntiOffside 与 Chip 各复用一个 explicit `ResolveAttackRoll` orchestration mode。对应 Session request 都携带 `AttackSequence + RequestingSide`，并在 route/phase/progress、sequence 与进攻方 ownership 全部通过后才允许 provider 调用；每个 accepted command 恰好持久化一枚既有 purpose 的 D6。完成态重建使用独立 `RegenerateCompletedDecision` 零 RNG mode，旧原子 overload 只保留 compatibility/reference。
+- Direct 使用 `ResolveAttackRoll / ResolveDefenseRoll` 两个 mode。Attack command 只提交 `OneOnOneDirectShotAttack` record与真实 Active attack-only snapshot；Progress Query随后唯一指向 `OneOnOneDirectShotDefense`。Defense command只追加自己的 record，再把原有 Plan、Assembler、Formula Resolver与 outcome原样应用；保留的 atomic path用于逐字段 parity测试。
+- AuthoritativeSession 新增四个 serialized typed command，延续唯一 `ExecuteSerialized -> Domain -> Adopt/DoNotAdopt` 提交点。InteractionView只从 CurrentAttack与 Progress Query投影四个 typed category及 expected side；PlayerController与Host薄转发，normal Controller不再调用AntiOffside、Chip或Direct旧 atomic Host API，generic Continue也不得代替未完成掷点。
+- canonical persisted prefixes为：AntiOffside空/单Attack完成；Chip空/单Attack完成；Direct空/Attack-only/Attack+Defense完成。错误阵营、stale sequence、Defense-before-Attack与重复请求都在 provider前失败，因此 State与DEV one-shot override均保持不变。已完成 outcome继续通过既有零 RNG terminal persistence进入`TerminalPendingAdvance`。
+- 非 Shipping DEV decorator继续使用既有 `ThroughBallAntiOffside`、`OneOnOneChipShot`与`OneOnOneDirectShot` invocation identity；Direct Attack/Defense分别按其既有 purpose命中和消费。该 seam不进入State、Session request或Shipping。Stage 6.14.2A不接 production UMG/Reel、中央CTA、Narrative或新布局，仅建立后续 Presentation可消费的真实 Authority前缀。
+
+## AntiOffside + OneOnOne Production Presentation（Stage 6.14.2）
+
+- 数据链保持 `Authoritative State -> Resolution Facts / InteractionView -> UMG Presentation Builder -> ThroughBall Surface`。Anti/Chip outer outcome 与 Direct Formula 都来自 authority facts；Widget 不读取 State、不计算阈值/Formula、不比较 winner，也不把 Direct 的 `Miss` 改写为 gameplay `Save`。
+- Anti、Chip 与 Direct Attack/Defense 都复用 Screen 的 stable reveal identity、settled-key memory 和 `UFMCodexRollReelWidget`。outer outcome DTO 与 nested Formula DTO 使用同一 reveal state machine；active reveal 只遮蔽尚未披露的表现信息，fresh reconstruction 不合成 pending identity，因此不会重播历史掷点。
+- `SelectOneOnOneShot` 由一个 source-independent ThroughBall central choice surface 投影。按钮继续携带既有 typed choice，Screen 只转发 click；hover 通过 `FTacticalRuleDescriptionCatalog -> FTacticalDetailPresentationBuilder -> shared Tactical Detail panel` 展示 branch metadata，不产生 command 或状态变化。
+- Direct 复用 shared Inline Formula DTO/Widget，Attack-only snapshot直接公开已完成 Attack row并保留 Defense typed CTA；terminal结果由 authoritative outcome和 shared Narrative branch映射。Chip/Anti 使用同一 shared Narrative builder但不创建 Formula。
+- central primary action只在非拒绝状态精确 claim当前 typed action。Authority rejection取消 active reveal、保留 diagnostic overlay并恢复 lower InteractionPanel；正常 production路径继续抑制 generic debug surface。
+
+## ThroughBall 决定性掷点后的零 RNG 收口（Stage 6.14.2B）
+
+- AntiOffside、Chip 与 Direct Defense 的 Controller wrapper先提交各自既有 typed roll request，再由 `RecordCommandResult` 同步刷新 InteractionView。只有 roll result成功且刷新后的 category仍精确为 `ContinueResolution` 时，Controller才调用既有 continuation；该 continuation只执行已建立的 completed regeneration/Formula/terminal apply，不调用 provider。Anti success刷新为`SelectOneOnOneShot`，因此自然停在choice而不是terminal。
+- compatibility `ContinueResolution` mapping继续存在，供重建/恢复在 completed progress 与 terminal apply之间的状态；normal successful player path不会把它投影为额外 CTA。terminal apply仍只写`TerminalPendingAdvance`，显式`AdvanceAfterTerminal`继续负责清理、进攻机会消费与handoff。
+- `FFMCodexUMGOutcomeRollHintViewModel`是read-only presentation contract。Builder只接受catalog中单骰、非aggregate的`OutcomeDecision` branch，并通过集中式FText映射构造范围文案。ThroughBall本阶段只在pending Anti/Chip接入；Widget不读取catalog、不比较RawD6、不推断outcome。
+- nested Formula通过`bParentOwnsContestHeading / bParentOwnsRouteContext`表达semantic ownership。该标记只影响重复标题/route context的显示，不删除authoritative facts，也不改变terminal Narrative disclosure。Screen在正常ThroughBall production state显式抑制legacy overlay；rejection仍保留diagnostic recovery。

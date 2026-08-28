@@ -1298,6 +1298,166 @@ void AFMCodexLocalMatchPlayerController::RollThroughBallFeetDefense()
 	}
 }
 
+void AFMCodexLocalMatchPlayerController::RollThroughBallAntiOffsideAttack()
+{
+	if (bThroughBallAntiOffsideRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallAntiOffsideAttack)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallAntiOffsideAttackRoll"),
+			TEXT("AntiOffside attack roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallAntiOffsideAttackRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest
+		Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallAntiOffsideRollCommandInFlight = true;
+	const auto Result = Host->ResolveThroughBallAntiOffsideAttackRoll(Request);
+	bThroughBallAntiOffsideRollCommandInFlight = false;
+	RecordCommandResult(
+		TEXT("ResolveThroughBallAntiOffsideAttackRoll"), Result);
+	if (Result.bSuccess
+		&& InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		ContinueResolution();
+	}
+}
+
+void AFMCodexLocalMatchPlayerController
+	::RollThroughBallOneOnOneChipShotAttack()
+{
+	if (bThroughBallOneOnOneRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallOneOnOneChipShotAttack)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallOneOnOneChipShotAttackRoll"),
+			TEXT("OneOnOne ChipShot attack roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallOneOnOneChipShotAttackRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest
+		Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallOneOnOneRollCommandInFlight = true;
+	const auto Result =
+		Host->ResolveThroughBallOneOnOneChipShotAttackRoll(Request);
+	bThroughBallOneOnOneRollCommandInFlight = false;
+	RecordCommandResult(
+		TEXT("ResolveThroughBallOneOnOneChipShotAttackRoll"), Result);
+	if (Result.bSuccess
+		&& InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		ContinueResolution();
+	}
+}
+
+void AFMCodexLocalMatchPlayerController
+	::RollThroughBallOneOnOneDirectShotAttack()
+{
+	if (bThroughBallOneOnOneRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallOneOnOneDirectShotAttack)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallOneOnOneDirectShotAttackRoll"),
+			TEXT("OneOnOne DirectShot attack roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallOneOnOneDirectShotAttackRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest
+		Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallOneOnOneRollCommandInFlight = true;
+	const auto Result =
+		Host->ResolveThroughBallOneOnOneDirectShotAttackRoll(Request);
+	bThroughBallOneOnOneRollCommandInFlight = false;
+	RecordCommandResult(
+		TEXT("ResolveThroughBallOneOnOneDirectShotAttackRoll"), Result);
+}
+
+void AFMCodexLocalMatchPlayerController
+	::RollThroughBallOneOnOneDirectShotDefense()
+{
+	if (bThroughBallOneOnOneRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallOneOnOneDirectShotDefense)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallOneOnOneDirectShotDefenseRoll"),
+			TEXT("OneOnOne DirectShot defense roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallOneOnOneDirectShotDefenseRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest
+		Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallOneOnOneRollCommandInFlight = true;
+	const auto Result =
+		Host->ResolveThroughBallOneOnOneDirectShotDefenseRoll(Request);
+	bThroughBallOneOnOneRollCommandInFlight = false;
+	RecordCommandResult(
+		TEXT("ResolveThroughBallOneOnOneDirectShotDefenseRoll"), Result);
+	if (Result.bSuccess
+		&& InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		ContinueResolution();
+	}
+}
+
 void AFMCodexLocalMatchPlayerController
 	::RollThroughBallBehindDefenseAttack()
 {
@@ -1453,6 +1613,18 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallAntiOffsideAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneChipShotAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotDefense
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
 				::RollThroughBallBehindDefenseAttack
@@ -1648,9 +1820,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 				!= EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneChipShot
 			|| !Progress.bContractComplete)
 		{
-			RecordCommandResult(
-				TEXT("ResolveThroughBallOneOnOneChipShotDecision"),
-				Host->ResolveThroughBallOneOnOneChipShotDecision());
+			RecordLocalFailure(
+				TEXT("ContinueResolution"),
+				TEXT("OneOnOne ChipShot requires its explicit attacker-owned roll command."));
 		}
 		else
 		{
@@ -1666,9 +1838,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 				!= EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneDirectShot
 			|| !Progress.bContractComplete)
 		{
-			RecordCommandResult(
-				TEXT("ResolveThroughBallOneOnOneDirectShotPostRoutePlan"),
-				Host->ResolveThroughBallOneOnOneDirectShotPostRoutePlan());
+			RecordLocalFailure(
+				TEXT("ContinueResolution"),
+				TEXT("OneOnOne DirectShot requires explicit attacker and defender roll commands."));
 		}
 		else
 		{
@@ -1684,9 +1856,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	{
 		if (!Progress.bContractComplete)
 		{
-			RecordCommandResult(
-				TEXT("ResolveThroughBallAntiOffsideDecision"),
-				Host->ResolveThroughBallAntiOffsideDecision());
+			RecordLocalFailure(
+				TEXT("ContinueResolution"),
+				TEXT("AntiOffside requires its explicit attacker-owned roll command."));
 		}
 		else
 		{
@@ -2263,6 +2435,34 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
 		{
 			RollThroughBallFeetDefense();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallAntiOffsideAttack:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollThroughBallAntiOffsideAttack();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneChipShotAttack:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollThroughBallOneOnOneChipShotAttack();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneDirectShotAttack:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollThroughBallOneOnOneDirectShotAttack();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneDirectShotDefense:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollThroughBallOneOnOneDirectShotDefense();
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory

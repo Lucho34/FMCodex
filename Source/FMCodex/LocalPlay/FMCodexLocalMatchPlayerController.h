@@ -74,6 +74,10 @@ public:
 	void CompleteCrossAndAdvance();
 	void RollThroughBallFeetAttack();
 	void RollThroughBallFeetDefense();
+	void RollThroughBallAntiOffsideAttack();
+	void RollThroughBallOneOnOneChipShotAttack();
+	void RollThroughBallOneOnOneDirectShotAttack();
+	void RollThroughBallOneOnOneDirectShotDefense();
 	void RollThroughBallBehindDefenseAttack();
 	void RollThroughBallBehindDefenseDefense();
 	void ApplyThroughBallFeetTerminalResolution();
@@ -163,6 +167,8 @@ private:
 	bool bCrossRouteCommandInFlight = false;
 	bool bCrossRollCommandInFlight = false;
 	bool bThroughBallFeetRollCommandInFlight = false;
+	bool bThroughBallAntiOffsideRollCommandInFlight = false;
+	bool bThroughBallOneOnOneRollCommandInFlight = false;
 	bool bThroughBallBehindDefenseRollCommandInFlight = false;
 
 #if WITH_DEV_AUTOMATION_TESTS

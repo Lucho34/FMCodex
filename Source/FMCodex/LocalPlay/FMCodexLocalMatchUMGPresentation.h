@@ -29,6 +29,10 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	CompleteCrossAndAdvance,
 	RollThroughBallFeetAttack,
 	RollThroughBallFeetDefense,
+	RollThroughBallAntiOffsideAttack,
+	RollThroughBallOneOnOneChipShotAttack,
+	RollThroughBallOneOnOneDirectShotAttack,
+	RollThroughBallOneOnOneDirectShotDefense,
 	RollThroughBallBehindDefenseAttack,
 	RollThroughBallBehindDefenseDefense,
 	CompleteThroughBallFeetAndAdvance,
@@ -1335,6 +1339,16 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 		Category = "Local Match|Inline Formula")
 	FString StatusLabel;
 
+	/** The containing semantic surface already renders the contest heading. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bParentOwnsContestHeading = false;
+
+	/** The containing semantic surface already renders route context. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bParentOwnsRouteContext = false;
+
 	/** Structured terminal narrative derived from authoritative winner facts. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
@@ -1444,6 +1458,53 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	FString ContinueActionLabel;
 };
 
+/** One localized display row projected from a canonical outcome range. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGOutcomeRollHintEntryViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Outcome Roll Hint")
+	int32 Minimum = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Outcome Roll Hint")
+	int32 Maximum = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Outcome Roll Hint")
+	FName OutcomeId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Outcome Roll Hint")
+	FString DisplayLabel;
+};
+
+/** Compact, read-only hint for a single-roll canonical outcome decision. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGOutcomeRollHintViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Outcome Roll Hint")
+	bool bVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Outcome Roll Hint")
+	FName BranchId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Outcome Roll Hint")
+	TArray<FFMCodexUMGOutcomeRollHintEntryViewModel> Entries;
+
+	/** Presentation-formatted range summary; Widget performs no rule mapping. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Outcome Roll Hint")
+	FString DisplayLabel;
+};
+
 /**
  * Production ThroughBall shell. Gameplay legality and route mapping are already
  * resolved before this DTO reaches UMG. Feet composes the shared formula DTO.
@@ -1517,6 +1578,24 @@ struct FMCODEX_API FFMCodexUMGThroughBallResolutionViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Through Ball")
 	FFMCodexUMGRollReelViewModel RollReel;
+
+	/** Canonical outcome ranges shown only while an outcome roll awaits input. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FFMCodexUMGOutcomeRollHintViewModel OutcomeRollHint;
+
+	/** Authority-built non-formula outcome presentation for AntiOffside/Chip. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	bool bNarrativeAvailable = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString ResultTitle;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Through Ball")
+	FString NarrativeHeadline;
 
 	/** Shared authoritative contest presentation used by the Feet route only. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,

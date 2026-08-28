@@ -701,6 +701,13 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	TestNoActive(TEXT("ResolvePassControlPostRoutePlan"), EmptyHost->ResolvePassControlPostRoutePlan());
 	TestNoActive(TEXT("ResolveDeadCornerPostRouteDecision"), EmptyHost->ResolveDeadCornerPostRouteDecision());
 	TestNoActive(TEXT("ResolveThroughBallAntiOffsideDecision"), EmptyHost->ResolveThroughBallAntiOffsideDecision());
+	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest
+		AntiOffsideAttackRequest;
+	AntiOffsideAttackRequest.AttackSequence = 1;
+	AntiOffsideAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolveThroughBallAntiOffsideAttackRoll"),
+		EmptyHost->ResolveThroughBallAntiOffsideAttackRoll(
+			AntiOffsideAttackRequest));
 	TestNoActive(TEXT("ResolveDirectShotPostRouteDecisionOrPlan"), EmptyHost->ResolveDirectShotPostRouteDecisionOrPlan());
 	TestNoActive(TEXT("ResolveThroughBallBehindDefenseP1DecisionOrPlan"), EmptyHost->ResolveThroughBallBehindDefenseP1DecisionOrPlan());
 	TestNoActive(TEXT("ResolveSingleCardFinishingFormula"), EmptyHost->ResolveSingleCardFinishingFormula());
@@ -708,7 +715,28 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	TestNoActive(TEXT("ResolveThroughBallBehindDefenseP1Formula"), EmptyHost->ResolveThroughBallBehindDefenseP1Formula());
 	TestNoActive(TEXT("ResolveThroughBallBehindDefenseP2Decision"), EmptyHost->ResolveThroughBallBehindDefenseP2Decision());
 	TestNoActive(TEXT("ResolveThroughBallOneOnOneChipShotDecision"), EmptyHost->ResolveThroughBallOneOnOneChipShotDecision());
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest
+		ChipShotAttackRequest;
+	ChipShotAttackRequest.AttackSequence = 1;
+	ChipShotAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolveThroughBallOneOnOneChipShotAttackRoll"),
+		EmptyHost->ResolveThroughBallOneOnOneChipShotAttackRoll(
+			ChipShotAttackRequest));
 	TestNoActive(TEXT("ResolveThroughBallOneOnOneDirectShotPostRoutePlan"), EmptyHost->ResolveThroughBallOneOnOneDirectShotPostRoutePlan());
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest
+		DirectShotAttackRequest;
+	DirectShotAttackRequest.AttackSequence = 1;
+	DirectShotAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolveThroughBallOneOnOneDirectShotAttackRoll"),
+		EmptyHost->ResolveThroughBallOneOnOneDirectShotAttackRoll(
+			DirectShotAttackRequest));
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest
+		DirectShotDefenseRequest;
+	DirectShotDefenseRequest.AttackSequence = 1;
+	DirectShotDefenseRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerB;
+	TestNoActive(TEXT("ResolveThroughBallOneOnOneDirectShotDefenseRoll"),
+		EmptyHost->ResolveThroughBallOneOnOneDirectShotDefenseRoll(
+			DirectShotDefenseRequest));
 	TestNoActive(TEXT("ResolveThroughBallOneOnOneDirectShotFormula"), EmptyHost->ResolveThroughBallOneOnOneDirectShotFormula());
 	TestNoActive(TEXT("ApplyThroughBallTerminalResolution"), EmptyHost->ApplyThroughBallTerminalResolution());
 	TestNoActive(TEXT("ApplyCrossTerminalResolution"), EmptyHost->ApplyCrossTerminalResolution());
@@ -1369,12 +1397,43 @@ bool FFMCodexLocalMatchThroughBallResolutionTest::RunTest(
 			.ThroughBallOneOnOneShotChoice,
 		EMatchPlayThroughBallOneOnOneShotChoice::DirectShot);
 
-	TestTrue(TEXT("Direct resolves DirectShot plan"),
-		Direct.ResolveThroughBallOneOnOneDirectShotPostRoutePlan()
-			.OrchestrationResult.bSuccess);
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest
+		DirectAttackRequest;
+	DirectAttackRequest.AttackSequence = HostA->GetMatchSnapshot().Snapshot
+		.CurrentAttack.AttackSequence;
+	DirectAttackRequest.RequestingSide = TraceA.Attacker;
+	TestTrue(TEXT("Direct resolves owned DirectShot Attack"),
+		Direct.ResolveThroughBallOneOnOneDirectShotAttackRoll(
+			DirectAttackRequest).OrchestrationResult.bSuccess);
+	const auto HostDirectAttack =
+		HostA->ResolveThroughBallOneOnOneDirectShotAttackRoll(
+			DirectAttackRequest);
+	TestTrue(TEXT("Host routes owned DirectShot Attack"),
+		HostDirectAttack.bSuccess);
+	const FMatchPlayState AfterDirectAttack =
+		HostA->GetMatchSnapshot().Snapshot;
+	TestEqual(TEXT("Deep path persists attack-only third record"),
+		AfterDirectAttack.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords.Num(),
+		3);
+	TestTrue(TEXT("DirectShot attack-only State equals direct Session"),
+		AreStatesEqual(AfterDirectAttack, Direct.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest
+		DirectDefenseRequest;
+	DirectDefenseRequest.AttackSequence =
+		DirectAttackRequest.AttackSequence;
+	DirectDefenseRequest.RequestingSide = OtherPlayer(TraceA.Attacker);
+	TestTrue(TEXT("Direct resolves owned DirectShot Defense"),
+		Direct.ResolveThroughBallOneOnOneDirectShotDefenseRoll(
+			DirectDefenseRequest).OrchestrationResult.bSuccess);
 	const auto DirectShotPlan =
-		HostA->ResolveThroughBallOneOnOneDirectShotPostRoutePlan();
-	TestTrue(TEXT("Host resolves DirectShot plan"), DirectShotPlan.bSuccess);
+		HostA->ResolveThroughBallOneOnOneDirectShotDefenseRoll(
+			DirectDefenseRequest);
+	TestTrue(TEXT("Host routes owned DirectShot Defense"),
+		DirectShotPlan.bSuccess
+			&& DirectShotPlan.AuthoritativeResult.OrchestrationResult
+				.bHasFormulaPlan);
 	const FMatchPlayState AfterDirectPlan =
 		HostA->GetMatchSnapshot().Snapshot;
 	TestEqual(TEXT("Deep path records four post-route rolls"),
@@ -1462,6 +1521,176 @@ bool FFMCodexLocalMatchThroughBallResolutionTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchThroughBallDecisiveRollAutoProgressionTest,
+	"FMCodex.LocalPlay.LocalMatchHost.08B.ThroughBallDecisiveRollAutoProgression",
+	EAutomationTestFlags::EditorContext
+		| EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchThroughBallDecisiveRollAutoProgressionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchResolutionRoutingTests;
+	using EChoice = EMatchPlayThroughBallOneOnOneShotChoice;
+	using ETarget = EFMCodexLocalDevRollTarget;
+	(void)Parameters;
+
+	auto RunScenario = [this](
+		const FString& Suffix,
+		const int32 AntiRoll,
+		const EChoice Choice)
+	{
+		const int32 Seed = 61420 + Suffix.Len();
+		const FName SkillId(*FString::Printf(
+			TEXT("Skill.AutoProgress.%s"), *Suffix));
+		const auto Rules = MakeRules(SkillId, ESkillRuleType::ThroughBall);
+		const auto Input = MakeInput(
+			FString::Printf(TEXT("AutoProgress%s"), *Suffix), SkillId);
+		FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+		FMatchPlayAuthoritativeSession Direct(
+			DirectProvider, DirectProvider, Rules);
+		FScopedWorld World;
+		auto* Host = World.GetHost();
+		auto* Controller = World.GetController();
+		if (Host == nullptr || Controller == nullptr)
+		{
+			AddError(FString::Printf(
+				TEXT("%s Host/Controller allocation failed"), *Suffix));
+			return false;
+		}
+		FReadyTrace Trace;
+		if (!BuildReadyForResolution(
+			*Host, Direct, Input, Rules, Seed,
+			ESkillRuleType::ThroughBall, false, Trace))
+		{
+			AddError(FString::Printf(
+				TEXT("%s did not reach ReadyForResolution"), *Suffix));
+			return false;
+		}
+		auto SetOverride = [this, Host, &Suffix](
+			const ETarget Target, const int32 Value)
+		{
+			FFMCodexLocalDevRollOverrideRequest Request;
+			Request.Target = Target;
+			Request.Value = Value;
+			const bool bSuccess =
+				Host->SetLocalDevRollOverride(Request).bSuccess;
+			TestTrue(FString::Printf(
+				TEXT("%s accepts deterministic roll override"), *Suffix),
+				bSuccess);
+			return bSuccess;
+		};
+		if (!SetOverride(ETarget::ThroughBallRoute, 5)
+			|| !SetOverride(ETarget::ThroughBallAntiOffside, AntiRoll)
+			|| (Choice == EChoice::ChipShot
+				&& !SetOverride(ETarget::OneOnOneChipShotAttack, 6))
+			|| (Choice == EChoice::DirectShot
+				&& (!SetOverride(ETarget::OneOnOneDirectShotAttack, 6)
+					|| !SetOverride(
+						ETarget::OneOnOneDirectShotDefense, 1))))
+		{
+			return false;
+		}
+
+		const int32 UsedBefore = UsedAttacksFor(
+			Host->GetMatchSnapshot().Snapshot, Trace.Attacker);
+		Controller->RefreshPresentation();
+		Controller->ContinueResolution();
+		Controller->ContinueResolution();
+		TestEqual(FString::Printf(
+			TEXT("%s route reaches typed Anti roll"), *Suffix),
+			Controller->GetInteractionView().InteractionCategory,
+			EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallAntiOffsideAttack);
+		Controller->RollThroughBallAntiOffsideAttack();
+
+		if (AntiRoll != 6)
+		{
+			const FMatchPlayState State = Host->GetMatchSnapshot().Snapshot;
+			const auto& View = Controller->GetInteractionView();
+			TestTrue(FString::Printf(
+				TEXT("%s decisive Anti roll auto-applies terminal"), *Suffix),
+				State.CurrentAttack.LifecycleState
+					== EMatchPlayCurrentAttackLifecycleState
+						::TerminalPendingAdvance
+					&& View.InteractionCategory
+						== EFMCodexLocalMatchInteractionCategory
+							::AdvanceAfterTerminal
+					&& View.ContinueActionLabel == TEXT("下一回合")
+					&& !View.ContinueActionLabel.Contains(
+						TEXT("继续直塞结算"))
+					&& State.CurrentAttack.ResolutionSession
+						.PostRouteRollProgress.RollRecords.Num() == 1
+					&& UsedAttacksFor(State, Trace.Attacker) == UsedBefore);
+			return true;
+		}
+
+		TestTrue(FString::Printf(
+			TEXT("%s Anti success stops directly at shot choice"), *Suffix),
+			Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot
+				&& Host->GetMatchSnapshot().Snapshot.CurrentAttack.LifecycleState
+					== EMatchPlayCurrentAttackLifecycleState::Active
+				&& Host->GetMatchSnapshot().Snapshot.CurrentAttack
+					.ResolutionSession.PostRouteRollProgress.RollRecords.Num()
+						== 1);
+		if (Choice == EChoice::None)
+		{
+			return true;
+		}
+
+		Controller->SubmitOneOnOneShotChoice(Choice);
+		if (Choice == EChoice::ChipShot)
+		{
+			TestEqual(FString::Printf(
+				TEXT("%s choice reaches typed Chip roll"), *Suffix),
+				Controller->GetInteractionView().InteractionCategory,
+				EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneChipShotAttack);
+			Controller->RollThroughBallOneOnOneChipShotAttack();
+		}
+		else
+		{
+			TestEqual(FString::Printf(
+				TEXT("%s choice reaches typed Direct attack roll"), *Suffix),
+				Controller->GetInteractionView().InteractionCategory,
+				EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneDirectShotAttack);
+			Controller->RollThroughBallOneOnOneDirectShotAttack();
+			TestEqual(FString::Printf(
+				TEXT("%s attack roll stops at typed Direct defense"), *Suffix),
+				Controller->GetInteractionView().InteractionCategory,
+				EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneDirectShotDefense);
+			Controller->RollThroughBallOneOnOneDirectShotDefense();
+		}
+
+		const FMatchPlayState State = Host->GetMatchSnapshot().Snapshot;
+		const auto& View = Controller->GetInteractionView();
+		const int32 ExpectedPostRouteRolls =
+			Choice == EChoice::ChipShot ? 2 : 3;
+		TestTrue(FString::Printf(
+			TEXT("%s final roll auto-applies zero-RNG terminal"), *Suffix),
+			State.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+				&& View.InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+				&& View.ContinueActionLabel == TEXT("下一回合")
+				&& !View.ContinueActionLabel.Contains(TEXT("继续直塞结算"))
+				&& State.CurrentAttack.ResolutionSession.PostRouteRollProgress
+					.RollRecords.Num() == ExpectedPostRouteRolls
+				&& UsedAttacksFor(State, Trace.Attacker) == UsedBefore
+				&& Host->GetLocalDevPendingRollOverrides().IsEmpty());
+		return true;
+	};
+
+	const bool bOffside = RunScenario(TEXT("Offside"), 1, EChoice::None);
+	const bool bChoice = RunScenario(TEXT("Choice"), 6, EChoice::None);
+	const bool bChip = RunScenario(TEXT("Chip"), 6, EChoice::ChipShot);
+	const bool bDirect = RunScenario(TEXT("Direct"), 6, EChoice::DirectShot);
+	return bOffside && bChoice && bChip && bDirect;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FFMCodexLocalDevRollOverrideAuthorityFlowTest,
 	"FMCodex.LocalPlay.DevRollOverride.05.RealAuthorityFlows",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1535,6 +1764,135 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 			P1State.CurrentAttack.ResolutionSession.PostRouteRollProgress
 				.RollRecords[0].RawD6, 3);
 		TestTrue(TEXT("Route/P1 overrides independently auto-clear"),
+			Host->GetLocalDevPendingRollOverrides().IsEmpty());
+	}
+
+	{
+		const int32 Seed = 20613;
+		const FName SkillId(TEXT("Skill.DevOverride.OneOnOneOwned"));
+		const auto Rules = MakeRules(SkillId, ESkillRuleType::ThroughBall);
+		const auto Input = MakeInput(TEXT("DevOverrideOwnedOneOnOne"), SkillId);
+		FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+		FMatchPlayAuthoritativeSession Direct(
+			DirectProvider, DirectProvider, Rules);
+		FScopedWorld World;
+		auto* Host = World.GetHost();
+		TestNotNull(TEXT("Owned OneOnOne override Host exists"), Host);
+		if (Host == nullptr)
+		{
+			return false;
+		}
+		FReadyTrace Trace;
+		TestTrue(TEXT("Owned OneOnOne override reaches ready state"),
+			BuildReadyForResolution(
+				*Host, Direct, Input, Rules, Seed,
+				ESkillRuleType::ThroughBall, false, Trace));
+		TestTrue(TEXT("Owned OneOnOne semantic overrides set"),
+			Set(*Host, ETarget::ThroughBallRoute, 5)
+				&& Set(*Host, ETarget::ThroughBallAntiOffside, 6)
+				&& Set(*Host, ETarget::OneOnOneDirectShotAttack, 5)
+				&& Set(*Host, ETarget::OneOnOneDirectShotDefense, 1));
+		TestTrue(TEXT("Owned OneOnOne authority reaches AntiOffside"),
+			Host->BeginResolutionSession().bSuccess
+				&& Host->ResolveInitialRoute().bSuccess);
+		const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
+		TestEqual(TEXT("Override route selects AntiOffside"),
+			RouteState.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
+			EMatchPlayThroughBallActualBranch::AntiOffside);
+
+		FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest
+			AntiRequest;
+		AntiRequest.AttackSequence = RouteState.CurrentAttack.AttackSequence;
+		AntiRequest.RequestingSide = Trace.Defender;
+		const auto WrongAnti =
+			Host->ResolveThroughBallAntiOffsideAttackRoll(AntiRequest);
+		TestFalse(TEXT("Wrong-side Anti override command rejects"),
+			WrongAnti.bSuccess);
+		TestTrue(TEXT("Rejected Anti request retains pending override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::ThroughBallAntiOffside;
+				}));
+		AntiRequest.RequestingSide = Trace.Attacker;
+		TestTrue(TEXT("Accepted Anti command consumes override"),
+			Host->ResolveThroughBallAntiOffsideAttackRoll(AntiRequest).bSuccess);
+		TestEqual(TEXT("Accepted Anti stores overridden 6"),
+			Host->GetMatchSnapshot().Snapshot.CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Last().RawD6,
+			6);
+
+		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Choice;
+		Choice.RequestingSide = Trace.Attacker;
+		Choice.Choice =
+			EMatchPlayThroughBallOneOnOneShotChoice::DirectShot;
+		TestTrue(TEXT("Owned override flow selects DirectShot"),
+			Host->SubmitThroughBallOneOnOneShotChoice(Choice).bSuccess);
+
+		FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest
+			Defense;
+		Defense.AttackSequence = AntiRequest.AttackSequence;
+		Defense.RequestingSide = Trace.Defender;
+		const auto EarlyDefense = Host
+			->ResolveThroughBallOneOnOneDirectShotDefenseRoll(Defense);
+		TestFalse(TEXT("Defense-before-Attack override command rejects"),
+			EarlyDefense.bSuccess);
+		TestTrue(TEXT("Rejected early Defense retains pending override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::OneOnOneDirectShotDefense;
+				}));
+
+		FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest
+			Attack;
+		Attack.AttackSequence = AntiRequest.AttackSequence;
+		Attack.RequestingSide = Trace.Defender;
+		const auto WrongAttack = Host
+			->ResolveThroughBallOneOnOneDirectShotAttackRoll(Attack);
+		TestFalse(TEXT("Wrong-side Direct Attack override command rejects"),
+			WrongAttack.bSuccess);
+		TestTrue(TEXT("Rejected Direct Attack retains pending override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::OneOnOneDirectShotAttack;
+				}));
+		Attack.RequestingSide = Trace.Attacker;
+		TestTrue(TEXT("Accepted Direct Attack consumes only Attack override"),
+			Host->ResolveThroughBallOneOnOneDirectShotAttackRoll(Attack).bSuccess);
+		TestFalse(TEXT("Direct Attack override auto-clears"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::OneOnOneDirectShotAttack;
+				}));
+		TestTrue(TEXT("Direct Defense override remains after Attack"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::OneOnOneDirectShotDefense;
+				}));
+		TestTrue(TEXT("Accepted Direct Defense consumes Defense override"),
+			Host->ResolveThroughBallOneOnOneDirectShotDefenseRoll(Defense).bSuccess);
+		const auto& Records = Host->GetMatchSnapshot().Snapshot.CurrentAttack
+			.ResolutionSession.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("Owned Direct overrides persist exact ordered values"),
+			Records.Num() == 3
+				&& Records[1].Purpose
+					== EMatchPlayCurrentAttackPostRouteRollPurpose
+						::OneOnOneDirectShotAttack
+				&& Records[1].RawD6 == 5
+				&& Records[2].Purpose
+					== EMatchPlayCurrentAttackPostRouteRollPurpose
+						::OneOnOneDirectShotDefense
+				&& Records[2].RawD6 == 1);
+		TestTrue(TEXT("Owned OneOnOne pending overrides fully consumed"),
 			Host->GetLocalDevPendingRollOverrides().IsEmpty());
 	}
 

@@ -837,6 +837,14 @@ B. 挑射：判定公式。
 - 错误阵营、错误 AttackSequence、Defense-before-Attack、Defense-after-OutOfPlay、重复 Attack/Defense 都必须在 provider前拒绝，保持状态不变且 RNG delta为 0。generic `ContinueResolution` 不再代表身后球 P1 的任何掷点。
 - 本变更不修改身后球属性、固定修正、Helper/Tactical Player、GK边界、winner或结果：Defender win仍为 terminal `DefenderStoppedAttack`；Attacker win仍直接进入 non-terminal `OneOnOneRequired`，没有 P2或隐藏 RNG。
 
+### 17.3 反越位与单刀顺序权威事件（Stage 6.14.2A）
+
+- 反越位判定是当前进攻方拥有的单个 Authority 事件。`ResolveThroughBallAntiOffsideAttackRoll` 只允许当前进攻方提交，accepted command 恰好消费并持久化一枚 `PrimaryAttack` D6；`1–5` 仍为 `Offside`，`6` 仍为 `OneOnOneRequired`。
+- 选择挑射后，`ResolveThroughBallOneOnOneChipShotAttackRoll` 只允许当前进攻方提交，accepted command 恰好消费并持久化一枚 `OneOnOneChipShotAttack` D6；`1–3` 仍为 `Miss`，`4–6` 仍为 `Goal`，不创建防守 D6、GK 公式或比较公式。
+- 选择直接射门后，比较点数拆为两个阵营归属事件：进攻方先提交 `ResolveThroughBallOneOnOneDirectShotAttackRoll`，权威状态持久化真实 attack-only snapshot；只有随后当前防守方提交 `ResolveThroughBallOneOnOneDirectShotDefenseRoll`，才追加 Defense record并使用既有 Direct Shot 公式完成结算。
+- 错误阵营、错误 AttackSequence、Defense-before-Attack、重复 Attack/Defense、错误分支或阶段都必须在 provider 前拒绝，保持状态不变且 RNG delta 为 0。generic `ContinueResolution` 不代表上述任何掷点；刷新、重建或未来重连只从已持久化记录恢复下一步，不自动补掷。
+- 本 Stage 不修改反越位、挑射或直接射门的概率、属性、固定修正、Tactical Player、GK、平局、Goal/Miss、比分与 terminal lifecycle；旧 atomic 路径只保留 compatibility/reference，不属于正常 Controller 入口。
+
 
 ### 14.2 补射
 

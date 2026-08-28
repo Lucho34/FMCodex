@@ -34,6 +34,10 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	CompleteCrossAndAdvance,
 	RollThroughBallFeetAttack,
 	RollThroughBallFeetDefense,
+	RollThroughBallAntiOffsideAttack,
+	RollThroughBallOneOnOneChipShotAttack,
+	RollThroughBallOneOnOneDirectShotAttack,
+	RollThroughBallOneOnOneDirectShotDefense,
 	RollThroughBallBehindDefenseAttack,
 	RollThroughBallBehindDefenseDefense,
 	CompleteThroughBallFeetAndAdvance,
@@ -292,6 +296,10 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCrossTerminalActionAvailable = false;
 	bool bThroughBallFeetAttackRollPending = false;
 	bool bThroughBallFeetDefenseRollPending = false;
+	bool bThroughBallAntiOffsideAttackRollPending = false;
+	bool bThroughBallOneOnOneChipShotAttackRollPending = false;
+	bool bThroughBallOneOnOneDirectShotAttackRollPending = false;
+	bool bThroughBallOneOnOneDirectShotDefenseRollPending = false;
 	bool bThroughBallBehindDefenseAttackRollPending = false;
 	bool bThroughBallBehindDefenseDefenseRollPending = false;
 	bool bThroughBallFeetFormulaComplete = false;

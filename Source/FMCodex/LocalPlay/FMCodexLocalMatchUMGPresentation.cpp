@@ -380,6 +380,22 @@ namespace FMCodexLocalMatchUMGPresentation
 		case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense:
 			return EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense;
 		case EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallAntiOffsideAttack:
+			return EFMCodexUMGInteractionCategory
+				::RollThroughBallAntiOffsideAttack;
+		case EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallOneOnOneChipShotAttack:
+			return EFMCodexUMGInteractionCategory
+				::RollThroughBallOneOnOneChipShotAttack;
+		case EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallOneOnOneDirectShotAttack:
+			return EFMCodexUMGInteractionCategory
+				::RollThroughBallOneOnOneDirectShotAttack;
+		case EFMCodexLocalMatchInteractionCategory
+			::RollThroughBallOneOnOneDirectShotDefense:
+			return EFMCodexUMGInteractionCategory
+				::RollThroughBallOneOnOneDirectShotDefense;
+		case EFMCodexLocalMatchInteractionCategory
 			::RollThroughBallBehindDefenseAttack:
 			return EFMCodexUMGInteractionCategory
 				::RollThroughBallBehindDefenseAttack;
@@ -719,6 +735,8 @@ namespace FMCodexLocalMatchUMGPresentation
 		case EFMCodexUMGInteractionCategory::RollCrossDefense:
 		case EFMCodexUMGInteractionCategory::RollThroughBallFeetAttack:
 		case EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense:
+		case EFMCodexUMGInteractionCategory::RollThroughBallOneOnOneDirectShotAttack:
+		case EFMCodexUMGInteractionCategory::RollThroughBallOneOnOneDirectShotDefense:
 		case EFMCodexUMGInteractionCategory
 			::RollThroughBallBehindDefenseAttack:
 		case EFMCodexUMGInteractionCategory
@@ -765,15 +783,25 @@ namespace FMCodexLocalMatchUMGPresentation
 			&& Facts.ActualBranch.ActionType == ESkillRuleType::ThroughBall
 			&& Facts.ActualBranch.ThroughBall
 				== EMatchPlayThroughBallActualBranch::Feet;
+		const bool bResolvedThroughBallDirect = bAcceptedResolutionState
+			&& Facts.bSuccess && Facts.bHasFacts
+			&& Facts.ActionType == ESkillRuleType::ThroughBall
+			&& Facts.FormulaContests.ContainsByPredicate(
+				[](const FMatchPlayResolutionFormulaContestFact& Contest)
+				{
+					return Contest.ContestId
+						== FName(TEXT("ThroughBall.OneOnOne.DirectShot"));
+				});
 		const bool bResolvedThroughBallBehind = bAcceptedResolutionState
 			&& Facts.bSuccess && Facts.bHasFacts
 			&& Facts.ActionType == ESkillRuleType::ThroughBall
 			&& Facts.bHasActualBranch
 			&& Facts.ActualBranch.ActionType == ESkillRuleType::ThroughBall
 			&& Facts.ActualBranch.ThroughBall
-				== EMatchPlayThroughBallActualBranch::BehindDefense;
+				== EMatchPlayThroughBallActualBranch::BehindDefense
+			&& !bResolvedThroughBallDirect;
 		if (!bResolvedCross && !bResolvedThroughBallFeet
-			&& !bResolvedThroughBallBehind)
+			&& !bResolvedThroughBallBehind && !bResolvedThroughBallDirect)
 		{
 			return Result;
 		}
@@ -798,11 +826,15 @@ namespace FMCodexLocalMatchUMGPresentation
 			bResolvedCross
 				? (bCrossHigh ? TEXT("高球传中") : TEXT("低球传中"))
 				: bResolvedThroughBallFeet ? TEXT("脚下球")
-					: TEXT("身后球"));
+					: Facts.ActualBranch.ThroughBall
+						== EMatchPlayThroughBallActualBranch::AntiOffside
+							? TEXT("反越位") : TEXT("身后球"));
 
 		const FName ContestId = bResolvedCross
 			? (bCrossHigh ? FName(TEXT("Cross.High"))
 				: FName(TEXT("Cross.Low")))
+			: bResolvedThroughBallDirect
+				? FName(TEXT("ThroughBall.OneOnOne.DirectShot"))
 			: bResolvedThroughBallFeet
 				? FName(TEXT("ThroughBall.Feet"))
 				: FName(TEXT("ThroughBall.BehindDefense.P1"));
@@ -879,13 +911,30 @@ namespace FMCodexLocalMatchUMGPresentation
 		const bool bBehindOutOfPlay = bBehindOutcomeResolved
 			&& BehindDecision->Outcome
 				== EMatchPlayResolutionDecisionOutcome::OutOfPlay;
+		const FMatchPlayResolutionDecisionFact* DirectDecision =
+			bResolvedThroughBallDirect
+				? Facts.Decisions.FindByPredicate(
+					[](const FMatchPlayResolutionDecisionFact& Decision)
+					{
+						return Decision.DecisionId == FName(TEXT(
+							"ThroughBall.OneOnOne.DirectShot.Outcome"));
+					})
+				: nullptr;
+		const bool bDirectOutcomeResolved = DirectDecision != nullptr
+			&& DirectDecision->bResolved
+			&& DirectDecision->Outcome
+				!= EMatchPlayResolutionDecisionOutcome::None;
 		Result.bShowFormulaRows = !bBehindOutOfPlay;
 		Result.StatusLabel = !bAttackResolved
 			? TEXT("等待进攻方掷点")
 			: !bDefenseResolved
 				? TEXT("等待防守方掷点")
 				: TEXT("双方掷点已完成");
-		const bool bTerminalPresentationReady = bResolvedCross
+		const bool bTerminalPresentationReady = bResolvedThroughBallDirect
+			? bDirectOutcomeResolved
+				&& InteractionView.bTerminalPendingAdvance
+				&& PrimaryAction.bAvailable
+			: bResolvedCross
 			? InteractionView.bCrossFormulaComplete
 				&& (InteractionView.bCrossTerminalActionAvailable
 					|| InteractionView.bTerminalPendingAdvance)
@@ -910,26 +959,35 @@ namespace FMCodexLocalMatchUMGPresentation
 			? bBehindNarrativeReady
 			: bAttackResolved && bDefenseResolved
 				&& Contest->bHasResolvedFormula
-				&& Contest->ResolvedResult.Winner != EFormulaWinner::None
+				&& (bResolvedThroughBallDirect
+					? bDirectOutcomeResolved
+					: Contest->ResolvedResult.Winner != EFormulaWinner::None)
 				&& Contest->ResolvedResult.bAttackEnded
 				&& !Contest->ResolvedResult.bContinueResolution
 				&& bTerminalPresentationReady
 				&& PrimaryAction.bAvailable;
 		if (bNarrativeReady)
 		{
-			Result.bNarrativeAttackSuccess = bResolvedThroughBallBehind
+			Result.bNarrativeAttackSuccess = bResolvedThroughBallDirect
+				? DirectDecision->Outcome
+					== EMatchPlayResolutionDecisionOutcome::Goal
+				: bResolvedThroughBallBehind
 				? BehindDecision->Outcome
 					== EMatchPlayResolutionDecisionOutcome::OneOnOneRequired
 				: Contest->ResolvedResult.Winner == EFormulaWinner::Attacker;
 			FFMCodexTacticalNarrativePresentationInput NarrativeInput;
-			NarrativeInput.Branch = bResolvedThroughBallBehind
+			NarrativeInput.Branch = bResolvedThroughBallDirect
+				? EFMCodexTacticalNarrativeBranch::ThroughBallOneOnOneDirect
+				: bResolvedThroughBallBehind
 				? EFMCodexTacticalNarrativeBranch::ThroughBallBehindDefense
 				: !bResolvedCross
 					? EFMCodexTacticalNarrativeBranch::ThroughBallFeet
 				: bCrossHigh
 					? EFMCodexTacticalNarrativeBranch::CrossHigh
 					: EFMCodexTacticalNarrativeBranch::CrossLow;
-			NarrativeInput.AuthorityOutcome = bResolvedThroughBallBehind
+			NarrativeInput.AuthorityOutcome = bResolvedThroughBallDirect
+				? DirectDecision->Outcome
+				: bResolvedThroughBallBehind
 				? BehindDecision->Outcome
 				: Result.bNarrativeAttackSuccess
 					? EMatchPlayResolutionDecisionOutcome::Goal
@@ -955,7 +1013,9 @@ namespace FMCodexLocalMatchUMGPresentation
 				Result.bNarrativeAvailable = Narrative.bNarrativeAvailable;
 				Result.ResultTitle = Narrative.ResultTitle.ToString();
 				Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
-				const FString RouteLabel = bResolvedThroughBallBehind
+				const FString RouteLabel = bResolvedThroughBallDirect
+					? TEXT("单刀")
+					: bResolvedThroughBallBehind
 					? TEXT("身后球")
 					: !bResolvedCross ? TEXT("脚下球")
 					: bCrossHigh ? TEXT("高球传中") : TEXT("低球传中");
@@ -1077,26 +1137,117 @@ namespace FMCodexLocalMatchUMGPresentation
 					InitialRouteRoll->RawD6, CanonicalRoute).ToString();
 		}
 
+		auto FindDecision = [&Facts](const FName DecisionId)
+		{
+			return Facts.Decisions.FindByPredicate(
+				[DecisionId](const FMatchPlayResolutionDecisionFact& Decision)
+				{
+					return Decision.DecisionId == DecisionId;
+				});
+		};
+		auto ProjectNarrative = [&Result, &Facts, &InteractionView](
+			const EFMCodexTacticalNarrativeBranch Branch,
+			const FMatchPlayResolutionDecisionFact* Decision)
+		{
+			if (Decision == nullptr || !Decision->bResolved
+				|| Decision->Outcome
+					== EMatchPlayResolutionDecisionOutcome::None)
+			{
+				return;
+			}
+			FFMCodexTacticalNarrativePresentationInput Input;
+			Input.Branch = Branch;
+			Input.AuthorityOutcome = Decision->Outcome;
+			Input.AttackSequence = Facts.AttackSequence;
+			Input.StableEventId = Decision->DecisionId;
+			Input.Carrier = NarrativeActor(Facts, InteractionView,
+				EMatchPlayResolutionParticipantRole::Carrier);
+			Input.Runner = NarrativeActor(Facts, InteractionView,
+				EMatchPlayResolutionParticipantRole::Runner);
+			Input.Goalkeeper = NarrativeActor(Facts, InteractionView,
+				EMatchPlayResolutionParticipantRole::Goalkeeper);
+			const FFMCodexTacticalNarrativePresentation Narrative =
+				FFMCodexTacticalResolutionNarrativePresentationBuilder::Build(Input);
+			if (Narrative.bSuccess && Narrative.bNarrativeAvailable)
+			{
+				Result.bNarrativeAvailable = true;
+				Result.ResultTitle = Narrative.ResultTitle.ToString();
+				Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
+			}
+		};
+		const FMatchPlayResolutionDecisionFact* AntiDecision = FindDecision(
+			TEXT("ThroughBall.AntiOffside.Outcome"));
+		const FMatchPlayResolutionDecisionFact* ChipDecision = FindDecision(
+			TEXT("ThroughBall.OneOnOne.ChipShot.Outcome"));
+		const bool bDirectShot = Formula.bVisible
+			&& Formula.ContestId
+				== FName(TEXT("ThroughBall.OneOnOne.DirectShot"));
+
 		if (Interaction.Category
-				== EFMCodexUMGInteractionCategory::SelectOneOnOneShot
-			&& !(CanonicalRoute
-					== EMatchPlayThroughBallActualBranch::BehindDefense
-				&& Formula.bVisible))
+			== EFMCodexUMGInteractionCategory::SelectOneOnOneShot)
 		{
 			Result.Stage = EFMCodexUMGThroughBallStage::OneOnOneChoice;
-			Result.StageLabel = FFMCodexPlayerUIPresentationText
-				::ThroughBallOneOnOneStage().ToString();
-			Result.StatusLabel = FFMCodexPlayerUIPresentationText
-				::ThroughBallOneOnOnePrompt().ToString();
-			Result.ActionPromptLabel = Result.StatusLabel;
+			Result.StageLabel = TEXT("选择单刀方式");
+			Result.StatusLabel.Empty();
+			Result.ActionPromptLabel.Empty();
+			Result.Formula = Formula;
+			if (AntiDecision != nullptr && AntiDecision->bResolved
+				&& AntiDecision->Outcome
+					== EMatchPlayResolutionDecisionOutcome::OneOnOneRequired)
+			{
+				ProjectNarrative(
+					EFMCodexTacticalNarrativeBranch::ThroughBallAntiOffside,
+					AntiDecision);
+			}
 			return Result;
 		}
-		if (!InteractionView.OneOnOneChoiceLabel.IsEmpty())
+		if (bDirectShot)
 		{
 			Result.Stage = EFMCodexUMGThroughBallStage::OneOnOneResolution;
-			Result.StageLabel = FFMCodexPlayerUIPresentationText
-				::ThroughBallOneOnOneStage().ToString();
-			Result.StatusLabel = Result.ActionPromptLabel;
+			Result.RouteLabel = TEXT("单刀");
+			Result.StageLabel = TEXT("直接射门");
+			Result.StatusLabel.Empty();
+			Result.ActionPromptLabel.Empty();
+			Result.Formula = Formula;
+			Result.Formula.bParentOwnsContestHeading = true;
+			Result.Formula.bParentOwnsRouteContext = true;
+			return Result;
+		}
+		if (ChipDecision != nullptr)
+		{
+			Result.Stage = EFMCodexUMGThroughBallStage::OneOnOneResolution;
+			Result.RouteLabel = TEXT("单刀");
+			Result.StageLabel = TEXT("挑射");
+			Result.StatusLabel.Empty();
+			Result.ActionPromptLabel.Empty();
+			if (Interaction.Category
+				== EFMCodexUMGInteractionCategory
+					::RollThroughBallOneOnOneChipShotAttack)
+			{
+				Result.OutcomeRollHint =
+					FFMCodexTacticalDetailPresentationBuilder::
+						BuildOutcomeRollHint(
+							ESkillRuleType::ThroughBall,
+							TEXT("ThroughBall.OneOnOneChip"));
+			}
+			if (ChipDecision->bResolved
+				&& InteractionView.bTerminalPendingAdvance)
+			{
+				ProjectNarrative(
+					EFMCodexTacticalNarrativeBranch::ThroughBallOneOnOneChip,
+					ChipDecision);
+			}
+			if (!bRejected && (Interaction.Category
+					== EFMCodexUMGInteractionCategory
+						::RollThroughBallOneOnOneChipShotAttack
+				|| Interaction.Category
+					== EFMCodexUMGInteractionCategory::AdvanceAfterTerminal))
+			{
+				ClaimPrimaryAction(Result.PrimaryAction,
+					Interaction.PrimaryAction);
+			}
+			Result.bCanContinue = Result.PrimaryAction.bVisible;
+			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
 			return Result;
 		}
 
@@ -1123,13 +1274,46 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.Stage = EFMCodexUMGThroughBallStage::AntiOffsideCheck;
 			Result.StageLabel = FFMCodexPlayerUIPresentationText
 				::ThroughBallAntiOffsideStage().ToString();
+			Result.ActionPromptLabel.Empty();
+			if (Interaction.Category
+				== EFMCodexUMGInteractionCategory
+					::RollThroughBallAntiOffsideAttack)
+			{
+				Result.OutcomeRollHint =
+					FFMCodexTacticalDetailPresentationBuilder::
+						BuildOutcomeRollHint(
+							ESkillRuleType::ThroughBall,
+							TEXT("ThroughBall.AntiOffside"));
+			}
+			if (AntiDecision != nullptr && AntiDecision->bResolved
+				&& (InteractionView.bTerminalPendingAdvance
+					|| AntiDecision->Outcome
+						== EMatchPlayResolutionDecisionOutcome::OneOnOneRequired))
+			{
+				ProjectNarrative(
+					EFMCodexTacticalNarrativeBranch::ThroughBallAntiOffside,
+					AntiDecision);
+			}
+			if (!bRejected && (Interaction.Category
+					== EFMCodexUMGInteractionCategory
+						::RollThroughBallAntiOffsideAttack
+				|| Interaction.Category
+					== EFMCodexUMGInteractionCategory::AdvanceAfterTerminal))
+			{
+				ClaimPrimaryAction(Result.PrimaryAction,
+					Interaction.PrimaryAction);
+			}
+			Result.bCanContinue = Result.PrimaryAction.bVisible;
+			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
 			break;
 		default:
 			break;
 		}
 		if (CanonicalRoute != EMatchPlayThroughBallActualBranch::Feet
 			&& CanonicalRoute
-				!= EMatchPlayThroughBallActualBranch::BehindDefense)
+				!= EMatchPlayThroughBallActualBranch::BehindDefense
+			&& CanonicalRoute
+				!= EMatchPlayThroughBallActualBranch::AntiOffside)
 		{
 			Result.StatusLabel = Result.ActionPromptLabel;
 		}
@@ -1579,6 +1763,18 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallAntiOffsideAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneChipShotAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
 				::RollThroughBallBehindDefenseAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
@@ -1590,7 +1786,16 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
 			|| InteractionView.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
-					::RollThroughBallBehindDefenseAttack;
+					::RollThroughBallBehindDefenseAttack
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallAntiOffsideAttack
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneChipShotAttack
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneDirectShotAttack;
 		const bool bThroughBallFeet = InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
 			|| InteractionView.InteractionCategory
@@ -1602,10 +1807,26 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			|| InteractionView.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
 					::RollThroughBallBehindDefenseDefense;
+		const bool bAntiOffside = InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallAntiOffsideAttack;
+		const bool bChipShot = InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneChipShotAttack;
+		const bool bDirectShot = InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotAttack
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneDirectShotDefense;
 		Result.Interaction.CrossRollRevealKind = bAttackRoll
 			? EFMCodexUMGCrossRollRevealKind::Attack
 			: EFMCodexUMGCrossRollRevealKind::Defense;
-		Result.Interaction.CrossRollContestId = bThroughBallBehind
+		Result.Interaction.CrossRollContestId = bAntiOffside
+			? FName(TEXT("ThroughBall.AntiOffside"))
+			: bChipShot ? FName(TEXT("ThroughBall.OneOnOne.ChipShot"))
+			: bDirectShot ? FName(TEXT("ThroughBall.OneOnOne.DirectShot"))
+			: bThroughBallBehind
 			? FName(TEXT("ThroughBall.BehindDefense.P1"))
 			: bThroughBallFeet ? FName(TEXT("ThroughBall.Feet"))
 			: InteractionView.ResolutionFacts.ActualBranch.Cross
@@ -1652,6 +1873,18 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallAntiOffsideAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneChipShotAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
 				::RollThroughBallBehindDefenseAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
@@ -1691,15 +1924,31 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 						== EFMCodexLocalMatchInteractionCategory
 							::RollThroughBallFeetDefense
 							? FString(TEXT("防守方掷点"))
-						: InteractionView.InteractionCategory
-							== EFMCodexLocalMatchInteractionCategory
-								::RollThroughBallBehindDefenseAttack
+					: InteractionView.InteractionCategory
+						== EFMCodexLocalMatchInteractionCategory
+							::RollThroughBallBehindDefenseAttack
 								? FString(TEXT("进攻方掷点"))
 						: InteractionView.InteractionCategory
 							== EFMCodexLocalMatchInteractionCategory
 								::RollThroughBallBehindDefenseDefense
 								? FString(TEXT("防守方掷点"))
-								: (InteractionView.ContinueActionLabel.IsEmpty()
+								: InteractionView.InteractionCategory
+									== EFMCodexLocalMatchInteractionCategory
+										::RollThroughBallAntiOffsideAttack
+										? FString(TEXT("掷点判定越位"))
+								: InteractionView.InteractionCategory
+									== EFMCodexLocalMatchInteractionCategory
+										::RollThroughBallOneOnOneChipShotAttack
+										? FString(TEXT("挑射掷点"))
+								: InteractionView.InteractionCategory
+									== EFMCodexLocalMatchInteractionCategory
+										::RollThroughBallOneOnOneDirectShotAttack
+										? FString(TEXT("进攻方掷点"))
+								: InteractionView.InteractionCategory
+									== EFMCodexLocalMatchInteractionCategory
+										::RollThroughBallOneOnOneDirectShotDefense
+										? FString(TEXT("防守方掷点"))
+										: (InteractionView.ContinueActionLabel.IsEmpty()
 									? FString(TEXT("CONTINUE"))
 									: InteractionView.ContinueActionLabel)
 			: FString();

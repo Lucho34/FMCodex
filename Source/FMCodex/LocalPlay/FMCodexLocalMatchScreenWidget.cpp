@@ -905,6 +905,7 @@ void UFMCodexLocalMatchScreenWidget::RequestSubmitBranchIntent(
 void UFMCodexLocalMatchScreenWidget::RequestSubmitOneOnOneChoice(
 	const EFMCodexUMGOneOnOneChoice Choice)
 {
+	HideTacticalDetail();
 	if (MatchController == nullptr)
 	{
 		return;
@@ -955,6 +956,21 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 		break;
 	case EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense:
 		MatchController->RollThroughBallFeetDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallAntiOffsideAttack:
+		MatchController->RollThroughBallAntiOffsideAttack();
+		break;
+	case EFMCodexUMGInteractionCategory
+		::RollThroughBallOneOnOneChipShotAttack:
+		MatchController->RollThroughBallOneOnOneChipShotAttack();
+		break;
+	case EFMCodexUMGInteractionCategory
+		::RollThroughBallOneOnOneDirectShotAttack:
+		MatchController->RollThroughBallOneOnOneDirectShotAttack();
+		break;
+	case EFMCodexUMGInteractionCategory
+		::RollThroughBallOneOnOneDirectShotDefense:
+		MatchController->RollThroughBallOneOnOneDirectShotDefense();
 		break;
 	case EFMCodexUMGInteractionCategory::RollThroughBallBehindDefenseAttack:
 		MatchController->RollThroughBallBehindDefenseAttack();
@@ -1276,6 +1292,7 @@ void UFMCodexLocalMatchScreenWidget::HideTacticalDetail()
 {
 	CancelTacticalDetailDismiss();
 	ActiveTacticalDetailSkillId = NAME_None;
+	ActiveOneOnOneDetailChoice = EFMCodexUMGOneOnOneChoice::None;
 	bTacticalCardHoverOrFocus = false;
 	bTacticalDetailPointerInside = false;
 	if (TacticalDetailPanel != nullptr)
@@ -1315,6 +1332,43 @@ void UFMCodexLocalMatchScreenWidget::HandleOneOnOneRequested(
 	const EFMCodexUMGOneOnOneChoice Choice)
 {
 	RequestSubmitOneOnOneChoice(Choice);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleOneOnOneDetailRequested(
+	const EFMCodexUMGOneOnOneChoice Choice)
+{
+	if (TacticalDetailPanel == nullptr
+		|| Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectOneOnOneShot
+		|| !Presentation.Interaction.OneOnOneChoices.ContainsByPredicate(
+			[Choice](const FFMCodexUMGOneOnOneChoiceViewModel& Candidate)
+			{
+				return Candidate.Choice == Choice;
+			}))
+	{
+		return;
+	}
+	const FFMCodexUMGTacticalDetailViewModel Detail =
+		FFMCodexTacticalDetailPresentationBuilder::BuildOneOnOneChoice(Choice);
+	if (!Detail.bValid)
+	{
+		return;
+	}
+	CancelTacticalDetailDismiss();
+	bTacticalCardHoverOrFocus = true;
+	ActiveOneOnOneDetailChoice = Choice;
+	TacticalDetailPanel->RefreshFromPresentation(Detail);
+	TacticalDetailPanel->SetVisibility(ESlateVisibility::Visible);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleOneOnOneDetailDismissed(
+	const EFMCodexUMGOneOnOneChoice Choice)
+{
+	if (Choice == ActiveOneOnOneDetailChoice)
+	{
+		bTacticalCardHoverOrFocus = false;
+		ScheduleTacticalDetailDismiss();
+	}
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleContinueRequested()
@@ -1628,6 +1682,12 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 			TEXT("ThroughBallProductionResolutionSurface"));
 	ThroughBallResolutionSurface->OnContinueRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleContinueRequested);
+	ThroughBallResolutionSurface->OnOneOnOneRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneRequested);
+	ThroughBallResolutionSurface->OnOneOnOneDetailRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneDetailRequested);
+	ThroughBallResolutionSurface->OnOneOnOneDetailDismissed.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneDetailDismissed);
 	if (UOverlaySlot* ThroughBallLayerSlot =
 		PitchPresentationLayers->AddChildToOverlay(
 			ThroughBallResolutionSurface))
@@ -2473,6 +2533,7 @@ void UFMCodexLocalMatchScreenWidget::UpdateInlineFormulaRevealState(
 			// Cache only the exact authority-built presentation. No arithmetic is
 			// reconstructed in this widget.
 			CachedResolvedInlineFormula = ActiveFormula(InPresentation);
+			CachedResolvedThroughBall = InPresentation.ThroughBallResolution;
 			bInlineFormulaAuthorityResultAvailable = true;
 			RollRevealAuthoritativeRawValue = RawValue;
 			RollRevealDomainMinimum = DomainMinimum;
@@ -2520,6 +2581,7 @@ void UFMCodexLocalMatchScreenWidget::UpdateInlineFormulaRevealState(
 					ObservedPendingCrossRoll;
 				BeginInlineFormulaReveal(ResolvedIdentity, false);
 				CachedResolvedInlineFormula = ActiveFormula(InPresentation);
+				CachedResolvedThroughBall = InPresentation.ThroughBallResolution;
 				bInlineFormulaAuthorityResultAvailable = true;
 				RollRevealAuthoritativeRawValue = RawValue;
 				RollRevealDomainMinimum = DomainMinimum;
@@ -2694,10 +2756,66 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 	{
 		Result.Formula = BuildDisplayedInlineFormula();
 	}
-	if (ActiveCrossRollReveal.Kind
-		!= EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute
-		|| !IsInlineFormulaRevealInputBlocked())
+	const bool bRevealBlocked = IsInlineFormulaRevealInputBlocked()
+		&& ActiveCrossRollReveal.IsValid();
+	if (bRevealBlocked
+		&& Presentation.Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectOneOnOneShot)
 	{
+		Result.OneOnOneChoices.Reset();
+	}
+	const bool bRouteReveal = ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute;
+	const bool bOuterOutcomeReveal = ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::Attack
+		&& (ActiveCrossRollReveal.ContestId
+				== FName(TEXT("ThroughBall.AntiOffside"))
+			|| ActiveCrossRollReveal.ContestId
+				== FName(TEXT("ThroughBall.OneOnOne.ChipShot")));
+	if (!bRevealBlocked || (!bRouteReveal && !bOuterOutcomeReveal))
+	{
+		return Result;
+	}
+	if (bOuterOutcomeReveal)
+	{
+		Result = bInlineFormulaAuthorityResultAvailable
+			? CachedResolvedThroughBall : Presentation.ThroughBallResolution;
+		Result.bVisible = true;
+		Result.bSuppressLegacyResolution = true;
+		Result.RevealPhase = InlineFormulaRevealPhase;
+		Result.bDiceRevealVisible = true;
+		Result.RollReel = BuildActiveRollReelPresentation();
+		Result.OneOnOneChoices.Reset();
+		Result.PrimaryAction.bVisible = false;
+		Result.bCanContinue = false;
+		Result.ContinueActionLabel.Empty();
+		Result.ActionPromptLabel.Empty();
+		const bool bHolding = InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
+		const bool bSettling = InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling;
+		const bool bNarrativeDisclosed = bHolding
+			&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
+		if (ActiveCrossRollReveal.ContestId
+			== FName(TEXT("ThroughBall.AntiOffside")))
+		{
+			Result.Stage = EFMCodexUMGThroughBallStage::AntiOffsideCheck;
+			Result.StageLabel = FFMCodexPlayerUIPresentationText
+				::ThroughBallAntiOffsideStage().ToString();
+		}
+		if (!bNarrativeDisclosed)
+		{
+			Result.bNarrativeAvailable = false;
+			Result.ResultTitle.Empty();
+			Result.NarrativeHeadline.Empty();
+			Result.StatusLabel = bHolding
+				? TEXT("权威结果已落定")
+				: bSettling ? TEXT("掷点落定中") : TEXT("号码滚动中");
+		}
+		else
+		{
+			Result.StatusLabel.Empty();
+		}
 		return Result;
 	}
 
@@ -2858,6 +2976,7 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 			ActiveCrossRollReveal = {};
 			ObservedPendingCrossRoll = {};
 			CachedResolvedInlineFormula = {};
+			CachedResolvedThroughBall = {};
 			CachedPreRollHeader = {};
 			bInlineFormulaAuthorityResultAvailable = false;
 			RollRevealAuthoritativeRawValue = 0;
@@ -2958,6 +3077,18 @@ void UFMCodexLocalMatchScreenWidget::RefreshActiveRollReelVisuals()
 		ThroughBallResolutionSurface->GetRollReelWidget()
 			->RefreshFromPresentation(Reel);
 	}
+	else if (ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::Attack
+		&& (ActiveCrossRollReveal.ContestId
+				== FName(TEXT("ThroughBall.AntiOffside"))
+			|| ActiveCrossRollReveal.ContestId
+				== FName(TEXT("ThroughBall.OneOnOne.ChipShot")))
+		&& ThroughBallResolutionSurface != nullptr
+		&& ThroughBallResolutionSurface->GetRollReelWidget() != nullptr)
+	{
+		ThroughBallResolutionSurface->GetRollReelWidget()
+			->RefreshFromPresentation(Reel);
+	}
 	else if (Presentation.ThroughBallResolution.Formula.bVisible
 		&& ThroughBallResolutionSurface != nullptr
 		&& ThroughBallResolutionSurface->GetFormulaSurface() != nullptr
@@ -3035,6 +3166,7 @@ void UFMCodexLocalMatchScreenWidget::ResetInlineFormulaRevealState()
 	StopInlineFormulaRevealTimer();
 	CachedResolvedInlineFormula = {};
 	LastDisclosedInlineFormula = {};
+	CachedResolvedThroughBall = {};
 	InlineFormulaRevealPhase = EFMCodexUMGInlineFormulaRevealPhase::None;
 	InlineFormulaRevealPhaseElapsed = 0.0f;
 	RollRevealCaptureStartPositionCells = 0.0f;
@@ -3102,6 +3234,7 @@ void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaReveal(
 	ActiveCrossRollReveal = Identity;
 	ObservedPendingCrossRoll = {};
 	CachedResolvedInlineFormula = {};
+	CachedResolvedThroughBall = {};
 	CachedPreRollHeader = Presentation.Header;
 	bInlineFormulaAuthorityResultAvailable = false;
 	RollRevealAuthoritativeRawValue = 0;
@@ -3126,6 +3259,7 @@ void UFMCodexLocalMatchScreenWidget::CancelInlineFormulaReveal()
 	StopInlineFormulaRevealTimer();
 	ActiveCrossRollReveal = {};
 	CachedResolvedInlineFormula = {};
+	CachedResolvedThroughBall = {};
 	CachedPreRollHeader = {};
 	bInlineFormulaAuthorityResultAvailable = false;
 	RollRevealAuthoritativeRawValue = 0;
@@ -3177,9 +3311,14 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 		return false;
 	}
 
+	const bool bOutcomeOnlyContest = Identity.ContestId
+		== FName(TEXT("ThroughBall.AntiOffside"))
+		|| Identity.ContestId
+			== FName(TEXT("ThroughBall.OneOnOne.ChipShot"));
 	if (Identity.Kind != EFMCodexUMGCrossRollRevealKind::InitialRoute
 		&& Identity.Kind
 			!= EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute
+		&& !bOutcomeOnlyContest
 		&& !Facts.FormulaContests.ContainsByPredicate(
 			[&Identity](
 				const FMatchPlayResolutionFormulaContestFact& Contest)
@@ -3207,11 +3346,43 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 					&& Candidate.Semantics
 						== ERollSemantics::BranchSelection;
 			case EFMCodexUMGCrossRollRevealKind::Attack:
+				if (Identity.ContestId
+					== FName(TEXT("ThroughBall.AntiOffside")))
+				{
+					return Candidate.Semantics
+							== ERollSemantics::OutcomeDecision
+						&& Candidate.PostRoutePurpose
+							== ERollPurpose::PrimaryAttack;
+				}
+				if (Identity.ContestId
+					== FName(TEXT("ThroughBall.OneOnOne.ChipShot")))
+				{
+					return Candidate.Semantics
+							== ERollSemantics::OutcomeDecision
+						&& Candidate.PostRoutePurpose
+							== ERollPurpose::OneOnOneChipShotAttack;
+				}
+				if (Identity.ContestId
+					== FName(TEXT("ThroughBall.OneOnOne.DirectShot")))
+				{
+					return Candidate.Semantics
+							== ERollSemantics::ArithmeticContest
+						&& Candidate.PostRoutePurpose
+							== ERollPurpose::OneOnOneDirectShotAttack;
+				}
 				return Candidate.Semantics
 						== ERollSemantics::ArithmeticContest
 					&& Candidate.PostRoutePurpose
 						== ERollPurpose::PrimaryAttack;
 			case EFMCodexUMGCrossRollRevealKind::Defense:
+				if (Identity.ContestId
+					== FName(TEXT("ThroughBall.OneOnOne.DirectShot")))
+				{
+					return Candidate.Semantics
+							== ERollSemantics::ArithmeticContest
+						&& Candidate.PostRoutePurpose
+							== ERollPurpose::OneOnOneDirectShotDefense;
+				}
 				return Candidate.Semantics
 						== ERollSemantics::ArithmeticContest
 					&& Candidate.PostRoutePurpose
@@ -3274,11 +3445,28 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
 	const FFMCodexUMGInlineFormulaSurfaceViewModel DisplayedInlineFormula =
 		BuildDisplayedInlineFormula();
-	InlineFormulaSurface->RefreshFromPresentation(
-		Presentation.ThroughBallResolution.Formula.bVisible
-			? Presentation.InlineFormula : DisplayedInlineFormula);
-	const FFMCodexUMGThroughBallResolutionViewModel DisplayedThroughBall =
+	FFMCodexUMGThroughBallResolutionViewModel DisplayedThroughBall =
 		BuildDisplayedThroughBallResolution();
+	// Ownership follows the current InteractionView-derived production surface,
+	// not a transient reveal phase or the previous frame's suppression state.
+	const bool bThroughBallProductionOwnsResolution =
+		Presentation.ThroughBallResolution.bVisible
+		&& !Presentation.Resolution.bRejected;
+	const bool bThroughBallDiagnosticOwnsResolution =
+		Presentation.ThroughBallResolution.bVisible
+		&& Presentation.Resolution.bRejected;
+	const FFMCodexUMGInlineFormulaSurfaceViewModel StandaloneInlineFormula =
+		bThroughBallProductionOwnsResolution
+			|| bThroughBallDiagnosticOwnsResolution
+			? FFMCodexUMGInlineFormulaSurfaceViewModel()
+			: DisplayedInlineFormula;
+	InlineFormulaSurface->RefreshFromPresentation(StandaloneInlineFormula);
+	if (bThroughBallDiagnosticOwnsResolution)
+	{
+		// Rejection transfers ownership to the generic diagnostic overlay. Collapse
+		// the complete production root so the two resolution surfaces never stack.
+		DisplayedThroughBall.bVisible = false;
+	}
 	ThroughBallResolutionSurface->RefreshFromPresentation(DisplayedThroughBall);
 	const bool bTacticalPointRevealVisible =
 		ActiveCrossRollReveal.Kind
@@ -3325,34 +3513,42 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	else if (Presentation.Interaction.Category
 			!= EFMCodexUMGInteractionCategory::SelectSkill
-		&& !bDeploymentTacticalReferenceOpen)
+		&& Presentation.Interaction.Category
+			!= EFMCodexUMGInteractionCategory::SelectOneOnOneShot
+			&& !bDeploymentTacticalReferenceOpen)
 	{
 		HideTacticalDetail();
 	}
 	const FFMCodexUMGPrimaryActionViewModel& PrimaryAction =
 		Presentation.Interaction.PrimaryAction;
 	const bool bCentralSurfaceClaimsPrimaryAction =
-		DisplayedInlineFormula.PrimaryAction.Claims(PrimaryAction)
-		|| DisplayedThroughBall.PrimaryAction.Claims(PrimaryAction)
-		|| DisplayedThroughBall.Formula.PrimaryAction.Claims(PrimaryAction);
-	const bool bBehindOneOnOneDisclosureGate =
+		(StandaloneInlineFormula.bVisible
+			&& StandaloneInlineFormula.PrimaryAction.Claims(PrimaryAction))
+		|| (DisplayedThroughBall.bVisible
+			&& (DisplayedThroughBall.PrimaryAction.Claims(PrimaryAction)
+				|| DisplayedThroughBall.Formula.PrimaryAction.Claims(
+					PrimaryAction)));
+	const bool bOneOnOneDisclosureGate =
 		IsInlineFormulaRevealInputBlocked()
 		&& Presentation.Interaction.Category
-			== EFMCodexUMGInteractionCategory::SelectOneOnOneShot
-		&& ActiveCrossRollReveal.Kind
-			== EFMCodexUMGCrossRollRevealKind::Defense
-		&& ActiveCrossRollReveal.ContestId
-			== FName(TEXT("ThroughBall.BehindDefense.P1"));
+			== EFMCodexUMGInteractionCategory::SelectOneOnOneShot;
+	const bool bCentralOneOnOneChoiceOwner =
+		bThroughBallProductionOwnsResolution
+		&& DisplayedThroughBall.Stage
+			== EFMCodexUMGThroughBallStage::OneOnOneChoice
+		&& !DisplayedThroughBall.OneOnOneChoices.IsEmpty();
 	InteractionPanel->SetVisibility(
-		bCentralSurfaceClaimsPrimaryAction || bBehindOneOnOneDisclosureGate
+		bCentralSurfaceClaimsPrimaryAction || bOneOnOneDisclosureGate
+			|| bCentralOneOnOneChoiceOwner
 			? ESlateVisibility::Collapsed
 			: ESlateVisibility::Visible);
 	InteractionPanel->SetInteractionBlocked(
 		IsInlineFormulaRevealInputBlocked());
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);
 	ResolutionOverlay->SetVisibility(Presentation.Resolution.bVisible
-		&& !DisplayedInlineFormula.bSuppressLegacyResolution
+		&& !StandaloneInlineFormula.bSuppressLegacyResolution
 		&& !DisplayedThroughBall.bSuppressLegacyResolution
+		&& !bThroughBallProductionOwnsResolution
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 
 }

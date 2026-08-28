@@ -311,6 +311,12 @@ private:
 	void HandleOneOnOneRequested(EFMCodexUMGOneOnOneChoice Choice);
 
 	UFUNCTION()
+	void HandleOneOnOneDetailRequested(EFMCodexUMGOneOnOneChoice Choice);
+
+	UFUNCTION()
+	void HandleOneOnOneDetailDismissed(EFMCodexUMGOneOnOneChoice Choice);
+
+	UFUNCTION()
 	void HandleContinueRequested();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
@@ -322,6 +328,8 @@ private:
 	FFMCodexUMGInlineFormulaSurfaceViewModel CachedResolvedInlineFormula;
 	/** Last disclosed authority surface used to ignore stale pending rebuilds. */
 	FFMCodexUMGInlineFormulaSurfaceViewModel LastDisclosedInlineFormula;
+	/** Exact authority-built ThroughBall shell retained through an outer reel. */
+	FFMCodexUMGThroughBallResolutionViewModel CachedResolvedThroughBall;
 	/** Header before a live Tactical Point roll, retained until disclosure. */
 	FFMCodexUMGMatchHeaderViewModel CachedPreRollHeader;
 
@@ -341,6 +349,8 @@ private:
 	int32 RollRevealDomainMinimum = 1;
 	int32 RollRevealDomainMaximum = 6;
 	int32 CachedTacticalPointFinalValue = 0;
+	EFMCodexUMGOneOnOneChoice ActiveOneOnOneDetailChoice =
+		EFMCodexUMGOneOnOneChoice::None;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AFMCodexLocalMatchPlayerController> MatchController;

@@ -111,6 +111,7 @@ void UFMCodexInteractionOptionWidget::NativeOnAddedToFocusPath(
 {
 	Super::NativeOnAddedToFocusPath(InFocusEvent);
 	HandleTacticalHovered();
+	HandleOneOnOneHovered();
 }
 
 void UFMCodexInteractionOptionWidget::NativeOnRemovedFromFocusPath(
@@ -118,6 +119,7 @@ void UFMCodexInteractionOptionWidget::NativeOnRemovedFromFocusPath(
 {
 	Super::NativeOnRemovedFromFocusPath(InFocusEvent);
 	HandleTacticalUnhovered();
+	HandleOneOnOneUnhovered();
 }
 
 void UFMCodexInteractionOptionWidget::BuildWidgetTree()
@@ -248,6 +250,10 @@ void UFMCodexInteractionOptionWidget::BindConfiguredHandler()
 	case EBindingMode::OneOnOne:
 		OptionButton->OnClicked.AddDynamic(
 			this, &UFMCodexInteractionOptionWidget::HandleOneOnOneClicked);
+		OptionButton->OnHovered.AddDynamic(
+			this, &UFMCodexInteractionOptionWidget::HandleOneOnOneHovered);
+		OptionButton->OnUnhovered.AddDynamic(
+			this, &UFMCodexInteractionOptionWidget::HandleOneOnOneUnhovered);
 		break;
 	default:
 		break;
@@ -293,4 +299,22 @@ void UFMCodexInteractionOptionWidget::HandleBranchClicked()
 void UFMCodexInteractionOptionWidget::HandleOneOnOneClicked()
 {
 	OnOneOnOneRequested.Broadcast(OneOnOneChoice);
+}
+
+void UFMCodexInteractionOptionWidget::HandleOneOnOneHovered()
+{
+	if (BindingMode == EBindingMode::OneOnOne
+		&& OneOnOneChoice != EFMCodexUMGOneOnOneChoice::None)
+	{
+		OnOneOnOneDetailRequested.Broadcast(OneOnOneChoice);
+	}
+}
+
+void UFMCodexInteractionOptionWidget::HandleOneOnOneUnhovered()
+{
+	if (BindingMode == EBindingMode::OneOnOne
+		&& OneOnOneChoice != EFMCodexUMGOneOnOneChoice::None)
+	{
+		OnOneOnOneDetailDismissed.Broadcast(OneOnOneChoice);
+	}
 }

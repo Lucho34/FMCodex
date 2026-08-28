@@ -15,12 +15,16 @@ struct FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DefenseRollResult;
 struct FFMCodexLocalMatchResolvePassControlPostRoutePlanResult;
 struct FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult;
 struct FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult;
+struct FFMCodexLocalMatchResolveThroughBallAntiOffsideAttackRollResult;
 struct FFMCodexLocalMatchResolveDirectShotPostRouteDecisionOrPlanResult;
 struct FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult;
 struct FFMCodexLocalMatchResolveThroughBallBehindDefenseP1FormulaResult;
 struct FFMCodexLocalMatchResolveThroughBallBehindDefenseP2DecisionResult;
 struct FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotDecisionResult;
+struct FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotAttackRollResult;
 struct FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotPostRoutePlanResult;
+struct FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotAttackRollResult;
+struct FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotDefenseRollResult;
 struct FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotFormulaResult;
 struct FFMCodexLocalMatchApplyThroughBallTerminalResolutionResult;
 struct FFMCodexLocalMatchApplyCrossTerminalResolutionResult;
@@ -113,6 +117,11 @@ public:
 		const FFMCodexLocalMatchInteractionView& AfterView);
 	static FFMCodexLocalMatchResolutionFeedback Build(
 		const FString& CommandName,
+		const FFMCodexLocalMatchResolveThroughBallAntiOffsideAttackRollResult& Result,
+		const FFMCodexLocalMatchInteractionView& BeforeView,
+		const FFMCodexLocalMatchInteractionView& AfterView);
+	static FFMCodexLocalMatchResolutionFeedback Build(
+		const FString& CommandName,
 		const FFMCodexLocalMatchResolveDirectShotPostRouteDecisionOrPlanResult& Result,
 		const FFMCodexLocalMatchInteractionView& BeforeView,
 		const FFMCodexLocalMatchInteractionView& AfterView);
@@ -138,7 +147,22 @@ public:
 		const FFMCodexLocalMatchInteractionView& AfterView);
 	static FFMCodexLocalMatchResolutionFeedback Build(
 		const FString& CommandName,
+		const FFMCodexLocalMatchResolveThroughBallOneOnOneChipShotAttackRollResult& Result,
+		const FFMCodexLocalMatchInteractionView& BeforeView,
+		const FFMCodexLocalMatchInteractionView& AfterView);
+	static FFMCodexLocalMatchResolutionFeedback Build(
+		const FString& CommandName,
 		const FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotPostRoutePlanResult& Result,
+		const FFMCodexLocalMatchInteractionView& BeforeView,
+		const FFMCodexLocalMatchInteractionView& AfterView);
+	static FFMCodexLocalMatchResolutionFeedback Build(
+		const FString& CommandName,
+		const FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotAttackRollResult& Result,
+		const FFMCodexLocalMatchInteractionView& BeforeView,
+		const FFMCodexLocalMatchInteractionView& AfterView);
+	static FFMCodexLocalMatchResolutionFeedback Build(
+		const FString& CommandName,
+		const FFMCodexLocalMatchResolveThroughBallOneOnOneDirectShotDefenseRollResult& Result,
 		const FFMCodexLocalMatchInteractionView& BeforeView,
 		const FFMCodexLocalMatchInteractionView& AfterView);
 	static FFMCodexLocalMatchResolutionFeedback Build(

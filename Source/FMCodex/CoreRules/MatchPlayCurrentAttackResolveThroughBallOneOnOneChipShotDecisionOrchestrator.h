@@ -14,6 +14,17 @@ public:
 		FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
 	Resolve(
 		const FMatchPlayState& BeforeState,
+		const
+			FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionRequest&
+				Request,
+		const FSkillRuleSnapshotSet* SkillRuleSet,
+		IMatchPlayPostRouteRollProvider* RollProvider);
+
+	/** Legacy/reference overload. */
+	static
+		FMatchPlayCurrentAttackResolveThroughBallOneOnOneChipShotDecisionResult
+	Resolve(
+		const FMatchPlayState& BeforeState,
 		const FSkillRuleSnapshotSet* SkillRuleSet,
 		IMatchPlayPostRouteRollProvider* RollProvider);
 };

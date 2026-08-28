@@ -8,6 +8,7 @@
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexRollReelWidget.h"
+#include "FMCodexTacticalDetailPanelWidget.h"
 #include "FMCodexThroughBallResolutionSurfaceWidget.h"
 
 #include "Components/Button.h"
@@ -526,6 +527,297 @@ namespace FMCodexThroughBallProductionPresentationTests
 		return View;
 	}
 
+	void AddOneOnOneRoster(FFMCodexLocalMatchInteractionView& View)
+	{
+		auto Add = [&View](const EInitialTurnOrderPlayer Side,
+			const FName CardId, const FString& Name)
+		{
+			FFMCodexLocalMatchCardView Card;
+			Card.Side = Side;
+			Card.CardId = CardId;
+			Card.DisplayLabel = Name;
+			(Side == EInitialTurnOrderPlayer::PlayerA
+				? View.PlayerACardRoster : View.PlayerBCardRoster).Add(Card);
+		};
+		Add(EInitialTurnOrderPlayer::PlayerA,
+			TEXT("Fixture.OneOnOne.Carrier"), TEXT("厄德高"));
+		Add(EInitialTurnOrderPlayer::PlayerA,
+			TEXT("Fixture.OneOnOne.Runner"), TEXT("哈兰德"));
+		Add(EInitialTurnOrderPlayer::PlayerB,
+			TEXT("Fixture.OneOnOne.Goalkeeper"), TEXT("阿利松"));
+	}
+
+	void AddOneOnOneParticipants(
+		FMatchPlayCurrentAttackResolutionFactProjection& Facts)
+	{
+		Facts.Participants.Add({ EMatchPlayResolutionParticipantRole::Carrier,
+			EInitialTurnOrderPlayer::PlayerA,
+			FName(TEXT("Fixture.OneOnOne.Carrier")) });
+		Facts.Participants.Add({ EMatchPlayResolutionParticipantRole::Runner,
+			EInitialTurnOrderPlayer::PlayerA,
+			FName(TEXT("Fixture.OneOnOne.Runner")) });
+		Facts.Participants.Add({ EMatchPlayResolutionParticipantRole::Goalkeeper,
+			EInitialTurnOrderPlayer::PlayerB,
+			FName(TEXT("Fixture.OneOnOne.Goalkeeper")) });
+	}
+
+	FFMCodexLocalMatchInteractionView MakeAntiView(
+		const bool bResolved,
+		const EMatchPlayResolutionDecisionOutcome Outcome =
+			EMatchPlayResolutionDecisionOutcome::None,
+		const int32 RawD6 = 0)
+	{
+		FFMCodexLocalMatchInteractionView View = MakeView();
+		View.ResolutionFacts = MakeFacts(
+			EMatchPlayThroughBallActualBranch::AntiOffside, 6);
+		AddOneOnOneParticipants(View.ResolutionFacts);
+		FMatchPlayResolutionRollFact Roll;
+		Roll.SequenceIndex = 1;
+		Roll.OperandId = TEXT("AntiOffsideD6");
+		Roll.PostRoutePurpose =
+			EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack;
+		Roll.Semantics = EMatchPlayResolutionRollSemantics::OutcomeDecision;
+		Roll.OwningSide = EInitialTurnOrderPlayer::PlayerA;
+		Roll.bResolved = bResolved;
+		Roll.RawD6 = bResolved ? RawD6 : 0;
+		View.ResolutionFacts.Rolls.Add(Roll);
+		View.ResolutionFacts.bHasPendingRoll = !bResolved;
+		View.ResolutionFacts.NextPendingRollSequenceIndex =
+			bResolved ? INDEX_NONE : 1;
+		FMatchPlayResolutionDecisionFact Decision;
+		Decision.DecisionId = TEXT("ThroughBall.AntiOffside.Outcome");
+		Decision.Semantics = EMatchPlayResolutionRollSemantics::OutcomeDecision;
+		Decision.RollSequenceIndices = { 1 };
+		Decision.bResolved = bResolved;
+		Decision.Outcome = bResolved
+			? Outcome : EMatchPlayResolutionDecisionOutcome::None;
+		View.ResolutionFacts.Decisions.Add(Decision);
+		AddOneOnOneRoster(View);
+		if (!bResolved)
+		{
+			View.InteractionCategory = EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallAntiOffsideAttack;
+			View.bThroughBallAntiOffsideAttackRollPending = true;
+			View.ContinueActionLabel = TEXT("进攻方掷点");
+		}
+		else if (Outcome
+			== EMatchPlayResolutionDecisionOutcome::OneOnOneRequired)
+		{
+			View.InteractionCategory = EFMCodexLocalMatchInteractionCategory
+				::SelectOneOnOneShot;
+			View.OneOnOneOptions = {
+				EMatchPlayThroughBallOneOnOneShotChoice::DirectShot,
+				EMatchPlayThroughBallOneOnOneShotChoice::ChipShot };
+		}
+		else
+		{
+			View.InteractionCategory = EFMCodexLocalMatchInteractionCategory
+				::AdvanceAfterTerminal;
+			View.bTerminalPendingAdvance = true;
+			View.ContinueActionLabel = TEXT("下一回合");
+		}
+		return View;
+	}
+
+	FFMCodexLocalMatchInteractionView MakeChipView(
+		const bool bResolved,
+		const EMatchPlayResolutionDecisionOutcome Outcome =
+			EMatchPlayResolutionDecisionOutcome::None,
+		const int32 RawD6 = 0)
+	{
+		FFMCodexLocalMatchInteractionView View = MakeAntiView(true,
+			EMatchPlayResolutionDecisionOutcome::OneOnOneRequired, 6);
+		View.OneOnOneOptions.Reset();
+		View.OneOnOneChoiceLabel = TEXT("Chip Shot");
+		FMatchPlayResolutionRollFact Roll;
+		Roll.SequenceIndex = 2;
+		Roll.OperandId = TEXT("OneOnOneChipShotD6");
+		Roll.PostRoutePurpose = EMatchPlayCurrentAttackPostRouteRollPurpose
+			::OneOnOneChipShotAttack;
+		Roll.Semantics = EMatchPlayResolutionRollSemantics::OutcomeDecision;
+		Roll.OwningSide = EInitialTurnOrderPlayer::PlayerA;
+		Roll.bResolved = bResolved;
+		Roll.RawD6 = bResolved ? RawD6 : 0;
+		View.ResolutionFacts.Rolls.Add(Roll);
+		View.ResolutionFacts.bHasPendingRoll = !bResolved;
+		View.ResolutionFacts.NextPendingRollSequenceIndex =
+			bResolved ? INDEX_NONE : 2;
+		FMatchPlayResolutionDecisionFact Decision;
+		Decision.DecisionId = TEXT("ThroughBall.OneOnOne.ChipShot.Outcome");
+		Decision.Semantics = EMatchPlayResolutionRollSemantics::OutcomeDecision;
+		Decision.RollSequenceIndices = { 2 };
+		Decision.bResolved = bResolved;
+		Decision.Outcome = bResolved
+			? Outcome : EMatchPlayResolutionDecisionOutcome::None;
+		View.ResolutionFacts.Decisions.Add(Decision);
+		View.InteractionCategory = bResolved
+			? EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+			: EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneChipShotAttack;
+		View.bThroughBallOneOnOneChipShotAttackRollPending = !bResolved;
+		View.bTerminalPendingAdvance = bResolved;
+		View.ContinueActionLabel = bResolved ? TEXT("下一回合")
+			: TEXT("进攻方掷挑射点数");
+		return View;
+	}
+
+	FFMCodexLocalMatchInteractionView MakeDirectView(
+		const bool bAttackResolved,
+		const bool bDefenseResolved,
+		const EMatchPlayResolutionDecisionOutcome Outcome =
+			EMatchPlayResolutionDecisionOutcome::None)
+	{
+		using ETermKind = EMatchPlayResolutionFormulaTermKind;
+		using ERollPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+		FFMCodexLocalMatchInteractionView View = MakeView();
+		View.ResolutionFacts = MakeFacts(
+			EMatchPlayThroughBallActualBranch::BehindDefense, 4);
+		AddOneOnOneParticipants(View.ResolutionFacts);
+		View.OneOnOneChoiceLabel = TEXT("Direct Shot");
+		const bool bDefenderWins = Outcome
+			== EMatchPlayResolutionDecisionOutcome::Miss;
+		const int32 AttackRawD6 = bDefenderWins ? 1 : 6;
+		const int32 DefenseRawD6 = bDefenderWins ? 6 : 2;
+		auto AddRoll = [&View](const int32 Index, const ERollPurpose Purpose,
+			const EInitialTurnOrderPlayer Side, const bool bResolved,
+			const int32 RawD6)
+		{
+			FMatchPlayResolutionRollFact Roll;
+			Roll.SequenceIndex = Index;
+			Roll.PostRoutePurpose = Purpose;
+			Roll.Semantics = EMatchPlayResolutionRollSemantics::ArithmeticContest;
+			Roll.OwningSide = Side;
+			Roll.bResolved = bResolved;
+			Roll.RawD6 = bResolved ? RawD6 : 0;
+			View.ResolutionFacts.Rolls.Add(Roll);
+		};
+		AddRoll(3, ERollPurpose::OneOnOneDirectShotAttack,
+			EInitialTurnOrderPlayer::PlayerA, bAttackResolved, AttackRawD6);
+		AddRoll(4, ERollPurpose::OneOnOneDirectShotDefense,
+			EInitialTurnOrderPlayer::PlayerB, bDefenseResolved, DefenseRawD6);
+		View.ResolutionFacts.bHasPendingRoll =
+			!bAttackResolved || !bDefenseResolved;
+		View.ResolutionFacts.NextPendingRollSequenceIndex = !bAttackResolved
+			? 3 : !bDefenseResolved ? 4 : INDEX_NONE;
+		auto Attribute = [](const FName Id,
+			const EMatchPlayResolutionParticipantRole Role,
+			const EInitialTurnOrderPlayer Side, const FName CardId,
+			const EMatchPlayResolutionFormulaAttribute AttributeId,
+			const float Value)
+		{
+			FMatchPlayResolutionFormulaTermFact Term;
+			Term.TermId = Id;
+			Term.Kind = ETermKind::Attribute;
+			Term.ParticipantRole = Role;
+			Term.Side = Side;
+			Term.CardId = CardId;
+			Term.Attribute = AttributeId;
+			Term.SourceValue = Value;
+			Term.Contribution = Value;
+			Term.bResolved = true;
+			return Term;
+		};
+		auto RollTerm = [](const int32 Index, const bool bResolved,
+			const int32 RawD6)
+		{
+			FMatchPlayResolutionFormulaTermFact Term;
+			Term.Kind = ETermKind::RawRoll;
+			Term.RollSequenceIndex = Index;
+			Term.bResolved = bResolved;
+			Term.SourceValue = bResolved ? RawD6 : 0;
+			Term.Contribution = Term.SourceValue;
+			return Term;
+		};
+		FMatchPlayResolutionFormulaContestFact Contest;
+		Contest.ContestId = TEXT("ThroughBall.OneOnOne.DirectShot");
+		Contest.FormulaType = EFormulaType::Finishing;
+		Contest.Application = bAttackResolved && bDefenseResolved
+			? EMatchPlayResolutionFormulaApplication::Applied
+			: EMatchPlayResolutionFormulaApplication::Pending;
+		Contest.AttackRow.Side = EInitialTurnOrderPlayer::PlayerA;
+		Contest.AttackRow.Terms.Add(Attribute(TEXT("Runner.Shooting"),
+			EMatchPlayResolutionParticipantRole::Runner,
+			EInitialTurnOrderPlayer::PlayerA,
+			TEXT("Fixture.OneOnOne.Runner"),
+			EMatchPlayResolutionFormulaAttribute::Shooting, 8.0f));
+		FMatchPlayResolutionFormulaTermFact Fixed;
+		Fixed.TermId = TEXT("Attack.FixedBonus");
+		Fixed.Kind = ETermKind::FixedModifier;
+		Fixed.SourceValue = 1.0f;
+		Fixed.Contribution = 1.0f;
+		Fixed.bResolved = true;
+		Contest.AttackRow.Terms.Add(Fixed);
+		FMatchPlayResolutionFormulaTermFact Tactical;
+		Tactical.TermId = TEXT("TacticalPlayer.Advantage.Attack");
+		Tactical.Kind = ETermKind::TacticalPlayerAdvantage;
+		Tactical.Side = EInitialTurnOrderPlayer::PlayerA;
+		Tactical.SourceValue = 1.0f;
+		Tactical.Contribution = 1.0f;
+		Tactical.bResolved = true;
+		Contest.AttackRow.Terms.Add(Tactical);
+		View.ResolutionFacts.AttackerTacticalPlayerModifier = 1.0f;
+		Contest.AttackRow.Terms.Add(RollTerm(3, bAttackResolved, AttackRawD6));
+		Contest.AttackRow.bKnownNonRollSubtotalResolved = true;
+		Contest.AttackRow.KnownNonRollSubtotal = 10.0f;
+		Contest.AttackRow.bFinalValueResolved = bAttackResolved;
+		Contest.AttackRow.FinalValue = bAttackResolved
+			? 10.0f + AttackRawD6 : 0.0f;
+		Contest.DefenseRow.Side = EInitialTurnOrderPlayer::PlayerB;
+		Contest.DefenseRow.Terms.Add(Attribute(TEXT("Goalkeeper.OneOnOneBase"),
+			EMatchPlayResolutionParticipantRole::Goalkeeper,
+			EInitialTurnOrderPlayer::PlayerB,
+			TEXT("Fixture.OneOnOne.Goalkeeper"),
+			EMatchPlayResolutionFormulaAttribute::GoalkeeperOneOnOne, 7.0f));
+		Contest.DefenseRow.Terms.Add(RollTerm(4, bDefenseResolved, DefenseRawD6));
+		Contest.DefenseRow.bKnownNonRollSubtotalResolved = true;
+		Contest.DefenseRow.KnownNonRollSubtotal = 7.0f;
+		Contest.DefenseRow.bFinalValueResolved = bDefenseResolved;
+		Contest.DefenseRow.FinalValue = bDefenseResolved
+			? 7.0f + DefenseRawD6 : 0.0f;
+		Contest.bHasResolvedFormula = bAttackResolved && bDefenseResolved;
+		if (Contest.bHasResolvedFormula)
+		{
+			Contest.ResolvedResult.Winner = Outcome
+				== EMatchPlayResolutionDecisionOutcome::Goal
+					? EFormulaWinner::Attacker : EFormulaWinner::Defender;
+			Contest.ResolvedResult.bAttackEnded = true;
+		}
+		View.ResolutionFacts.FormulaContests.Add(Contest);
+		FMatchPlayResolutionDecisionFact Decision;
+		Decision.DecisionId = TEXT(
+			"ThroughBall.OneOnOne.DirectShot.Outcome");
+		Decision.Semantics = EMatchPlayResolutionRollSemantics::ArithmeticContest;
+		Decision.RollSequenceIndices = { 3, 4 };
+		Decision.bResolved = Outcome
+			!= EMatchPlayResolutionDecisionOutcome::None;
+		Decision.Outcome = Outcome;
+		View.ResolutionFacts.Decisions.Add(Decision);
+		AddOneOnOneRoster(View);
+		if (!bAttackResolved)
+		{
+			View.InteractionCategory = EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotAttack;
+			View.bThroughBallOneOnOneDirectShotAttackRollPending = true;
+			View.ContinueActionLabel = TEXT("进攻方掷单刀射门点数");
+		}
+		else if (!bDefenseResolved)
+		{
+			View.InteractionCategory = EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallOneOnOneDirectShotDefense;
+			View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerB;
+			View.bThroughBallOneOnOneDirectShotDefenseRollPending = true;
+			View.ContinueActionLabel = TEXT("防守方掷单刀防守点数");
+		}
+		else
+		{
+			View.InteractionCategory = EFMCodexLocalMatchInteractionCategory
+				::AdvanceAfterTerminal;
+			View.bTerminalPendingAdvance = true;
+			View.ContinueActionLabel = TEXT("下一回合");
+		}
+		return View;
+	}
+
 	FFMCodexLocalMatchInteractionView MakeView()
 	{
 		FFMCodexLocalMatchInteractionView View;
@@ -691,8 +983,9 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 		OneOnOne.ThroughBallResolution.Stage
 			== EFMCodexUMGThroughBallStage::OneOnOneChoice
 			&& OneOnOne.ThroughBallResolution.OneOnOneChoices.Num() == 2
-			&& OneOnOne.ThroughBallResolution.ActionPromptLabel
-				== TEXT("直接射门或挑射")
+			&& OneOnOne.ThroughBallResolution.StageLabel
+				== TEXT("选择单刀方式")
+			&& OneOnOne.ThroughBallResolution.ActionPromptLabel.IsEmpty()
 			&& OneOnOne.Interaction.Category
 				== EFMCodexUMGInteractionCategory::SelectOneOnOneShot);
 	TestTrue(TEXT("Production surface does not leak engineering diagnostics"),
@@ -717,52 +1010,64 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 					TEXT("ThroughBallPrimaryActionButton")) != nullptr
 				&& Screen->GetInteractionPanel()->GetVisibility()
 					== ESlateVisibility::Collapsed);
+		// This semantic/layout check starts from the already-settled snapshot;
+		// the dedicated reveal tests cover route-to-choice disclosure timing.
+		Screen = NewObject<UFMCodexLocalMatchScreenWidget>(
+			GetTransientPackage());
+		Screen->TakeWidget();
 		Screen->RefreshFromPresentation(OneOnOne);
 		TestTrue(TEXT("Normal ThroughBall hides generic resolution debug surface"),
 			Screen->GetThroughBallResolutionSurface() != nullptr
 				&& Screen->GetThroughBallResolutionSurface()
 					->GetPresentation().bVisible
 				&& Screen->GetInteractionPanel()->GetVisibility()
-					== ESlateVisibility::Visible
+					== ESlateVisibility::Collapsed
 				&& !Screen->IsLegacyResolutionOverlayVisible());
-		const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>& ShotOptions =
-			Screen->GetInteractionPanel()->GetRenderedOptionWidgets();
-		if (ShotOptions.IsValidIndex(0))
-		{
-			ShotOptions[0]->TakeWidget();
-		}
-		if (ShotOptions.IsValidIndex(1))
-		{
-			ShotOptions[1]->TakeWidget();
-		}
+		UFMCodexThroughBallResolutionSurfaceWidget* ThroughBallSurface =
+			Screen->GetThroughBallResolutionSurface();
+		const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>& CentralChoices =
+			ThroughBallSurface->GetOneOnOneChoiceWidgets();
+		UFMCodexInteractionOptionWidget* DirectOption =
+			CentralChoices.IsValidIndex(0) ? CentralChoices[0] : nullptr;
+		UFMCodexInteractionOptionWidget* ChipOption =
+			CentralChoices.IsValidIndex(1) ? CentralChoices[1] : nullptr;
+		if (DirectOption != nullptr) DirectOption->TakeWidget();
+		if (ChipOption != nullptr) ChipOption->TakeWidget();
 		UHorizontalBox* ShotRow = Cast<UHorizontalBox>(
-			Screen->GetInteractionPanel()->GetWidgetFromName(
-				TEXT("InteractionChoiceOptions")));
-		USizeBox* DirectBounds = ShotOptions.IsValidIndex(0)
-			? Cast<USizeBox>(ShotOptions[0]->GetWidgetFromName(
+			ThroughBallSurface->GetWidgetFromName(
+				TEXT("ThroughBallOneOnOneChoiceRow")));
+		USizeBox* DirectBounds = DirectOption != nullptr
+			? Cast<USizeBox>(DirectOption->GetWidgetFromName(
 				TEXT("InteractionOptionBounds"))) : nullptr;
-		USizeBox* ChipBounds = ShotOptions.IsValidIndex(1)
-			? Cast<USizeBox>(ShotOptions[1]->GetWidgetFromName(
+		USizeBox* ChipBounds = ChipOption != nullptr
+			? Cast<USizeBox>(ChipOption->GetWidgetFromName(
 				TEXT("InteractionOptionBounds"))) : nullptr;
-		UTextBlock* DirectLabel = ShotOptions.IsValidIndex(0)
-			? Cast<UTextBlock>(ShotOptions[0]->GetWidgetFromName(
+		UTextBlock* DirectLabel = DirectOption != nullptr
+			? Cast<UTextBlock>(DirectOption->GetWidgetFromName(
 				TEXT("InteractionOptionLabel"))) : nullptr;
-		UTextBlock* ChipLabel = ShotOptions.IsValidIndex(1)
-			? Cast<UTextBlock>(ShotOptions[1]->GetWidgetFromName(
+		UTextBlock* ChipLabel = ChipOption != nullptr
+			? Cast<UTextBlock>(ChipOption->GetWidgetFromName(
 				TEXT("InteractionOptionLabel"))) : nullptr;
-		UButton* DirectButton = ShotOptions.IsValidIndex(0)
-			? Cast<UButton>(ShotOptions[0]->GetWidgetFromName(
+		UButton* DirectButton = DirectOption != nullptr
+			? Cast<UButton>(DirectOption->GetWidgetFromName(
 				TEXT("InteractionOptionButton"))) : nullptr;
-		UButton* ChipButton = ShotOptions.IsValidIndex(1)
-			? Cast<UButton>(ShotOptions[1]->GetWidgetFromName(
+		UButton* ChipButton = ChipOption != nullptr
+			? Cast<UButton>(ChipOption->GetWidgetFromName(
 				TEXT("InteractionOptionButton"))) : nullptr;
+		TestEqual(TEXT("Central OneOnOne renders exactly two choices"),
+			CentralChoices.Num(), 2);
+		TestNotNull(TEXT("Central Direct choice exists"), DirectOption);
+		TestNotNull(TEXT("Central Chip choice exists"), ChipOption);
+		TestNotNull(TEXT("Central OneOnOne horizontal row exists"), ShotRow);
 		TestTrue(TEXT("OneOnOne choices are ordered on one horizontal row"),
-			ShotOptions.Num() == 2 && ShotRow != nullptr
+			DirectOption != nullptr && ChipOption != nullptr && ShotRow != nullptr
 				&& ShotRow->GetChildrenCount() == 2
-				&& ShotRow->GetChildAt(0) == ShotOptions[0]
-				&& ShotRow->GetChildAt(1) == ShotOptions[1]
-				&& ShotOptions[0]->GetLabel() == TEXT("直接射门")
-				&& ShotOptions[1]->GetLabel() == TEXT("挑射"));
+				&& ShotRow->GetChildAt(0) == DirectOption
+				&& ShotRow->GetChildAt(1) == ChipOption);
+		TestTrue(TEXT("Central OneOnOne labels are complete"),
+			DirectOption != nullptr && ChipOption != nullptr
+				&& DirectOption->GetLabel() == TEXT("直接射门")
+				&& ChipOption->GetLabel() == TEXT("挑射"));
 		TestTrue(TEXT("Both OneOnOne choices have stable clickable geometry"),
 			DirectBounds != nullptr && ChipBounds != nullptr
 				&& DirectBounds->GetMinDesiredWidth() >= 120.0f
@@ -778,6 +1083,34 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 				&& ChipLabel != nullptr && !ChipLabel->GetAutoWrapText()
 				&& ChipLabel->GetTextOverflowPolicy()
 					== ETextOverflowPolicy::Clip);
+		if (DirectButton != nullptr)
+		{
+			DirectButton->OnHovered.Broadcast();
+		}
+		const FString DirectDetail = Screen->GetTacticalDetailPanel()
+			? Screen->GetTacticalDetailPanel()->CollectPlayerFacingText()
+			: FString();
+		TestTrue(TEXT("Direct hover reuses the shared minimal role detail"),
+			Screen->GetTacticalDetailPanel() != nullptr
+				&& Screen->GetTacticalDetailPanel()->GetVisibility()
+					== ESlateVisibility::Visible
+				&& DirectDetail.Contains(TEXT("直接射门"))
+				&& DirectDetail.Contains(TEXT("跑位球员：射门"))
+				&& DirectDetail.Contains(TEXT("门将"))
+				&& DirectDetail.Contains(TEXT("单刀"))
+				&& !DirectDetail.Contains(TEXT("公式"))
+				&& Screen->GetThroughBallResolutionSurface()
+					->GetPresentation().OneOnOneChoices.Num() == 2);
+		if (DirectButton != nullptr) DirectButton->OnUnhovered.Broadcast();
+		if (ChipButton != nullptr) ChipButton->OnHovered.Broadcast();
+		const FString ChipDetail = Screen->GetTacticalDetailPanel()
+			? Screen->GetTacticalDetailPanel()->CollectPlayerFacingText()
+			: FString();
+		TestTrue(TEXT("Chip hover is catalog-backed roll-only guidance"),
+			ChipDetail.Contains(TEXT("挑射"))
+				&& ChipDetail.Contains(TEXT("只看掷点，不看属性"))
+				&& !ChipDetail.Contains(TEXT("门将"))
+				&& !ChipDetail.Contains(TEXT("射门属性")));
 		const FFMCodexUMGMatchScreenViewModel RejectedRoute =
 			Build(PreRouteView, true);
 		Screen->RefreshFromPresentation(RejectedRoute);
@@ -858,6 +1191,8 @@ bool FFMCodexThroughBallProductionSharedRevealTest::RunTest(
 			&& Reel->GetPresentation().DomainMaximum == 6
 			&& Surface->GetPresentation().RouteLabel.IsEmpty()
 			&& !Screen->GetInlineFormulaSurface()->GetPresentation().bVisible
+			&& Screen->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
 			&& !Screen->IsLegacyResolutionOverlayVisible());
 
 	Screen->AdvanceInlineFormulaRevealForTesting(1.30f);
@@ -873,7 +1208,7 @@ bool FFMCodexThroughBallProductionSharedRevealTest::RunTest(
 			&& Reel->GetPresentation().bStaticResult
 			&& Surface->GetPresentation().RouteLabel == TEXT("身后球")
 			&& Surface->GetPresentation().RouteResultLabel
-				== TEXT("掷点 4 → 身后球")
+				== TEXT("路线掷点 4 → 判定为身后球")
 			&& Screen->IsInlineFormulaRevealInputBlocked());
 	Screen->RefreshFromPresentation(Resolved);
 	Screen->PauseInlineFormulaRevealTimerForTesting();
@@ -1006,6 +1341,8 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 		Surface != nullptr && FormulaSurface != nullptr
 			&& FormulaSurface->GetPresentation().bVisible
 			&& FormulaSurface->GetPresentation().bCanContinue
+			&& Screen->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
 			&& Screen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed
 			&& !Screen->IsLegacyResolutionOverlayVisible());
@@ -1366,6 +1703,10 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 	RejectedScreen->RefreshFromPresentation(RejectedPreview);
 	TestTrue(TEXT("Behind rejection restores diagnostic and lower typed recovery"),
 		RejectedScreen->IsLegacyResolutionOverlayVisible()
+			&& RejectedScreen->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& RejectedScreen->GetThroughBallResolutionSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
 			&& RejectedScreen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Visible
 			&& !RejectedPreview.ThroughBallResolution
@@ -1588,7 +1929,9 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 	TestTrue(TEXT("Shot choices appear only after the narrative hold"),
 		!OneOnOneScreen->IsInlineFormulaRevealInputBlocked()
 			&& OneOnOneScreen->GetInteractionPanel()->GetVisibility()
-				== ESlateVisibility::Visible
+				== ESlateVisibility::Collapsed
+			&& OneOnOneScreen->GetThroughBallResolutionSurface()
+				->GetPresentation().OneOnOneChoices.Num() == 2
 			&& OneOnOne.Interaction.Category
 				== EFMCodexUMGInteractionCategory::SelectOneOnOneShot
 			&& OneOnOne.Interaction.OneOnOneChoices.Num() == 2
@@ -1608,7 +1951,11 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 				->GetFormulaSurface()->GetPresentation().ResultTitle
 					== TEXT("形成单刀")
 			&& OneOnOneReconstructed->GetInteractionPanel()->GetVisibility()
-				== ESlateVisibility::Visible
+				== ESlateVisibility::Collapsed
+			&& OneOnOneReconstructed->GetThroughBallResolutionSurface()
+				->GetPresentation().OneOnOneChoices.Num() == 2
+			&& OneOnOneReconstructed->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
 			&& !OneOnOneReconstructed->IsLegacyResolutionOverlayVisible());
 
 	UFMCodexLocalMatchScreenWidget* TerminalReconstructed =
@@ -1623,6 +1970,8 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 					== TEXT("传球出界")
 			&& TerminalReconstructed->GetThroughBallResolutionSurface()
 				->GetFormulaSurface()->GetPresentation().bCanContinue
+			&& TerminalReconstructed->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
 			&& !TerminalReconstructed->IsLegacyResolutionOverlayVisible());
 
 	const FString ProductText = Preview.ThroughBallResolution.TitleLabel
@@ -1636,6 +1985,313 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 			&& !ProductText.Contains(TEXT("PrimaryAttack"))
 			&& !ProductText.Contains(TEXT("STEP"))
 			&& !ProductText.Contains(TEXT("POST-ROUTE")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest,
+	"FMCodex.LocalPlay.ThroughBallProductionPresentation.AntiAndChipGoldenPaths",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
+	const FString& Parameters)
+{
+	(void)Parameters;
+	using namespace FMCodexThroughBallProductionPresentationTests;
+	const FFMCodexUMGMatchScreenViewModel Pending = Build(MakeAntiView(false));
+	TestEqual(TEXT("Anti pending UMG category"), Pending.Interaction.Category,
+		EFMCodexUMGInteractionCategory::RollThroughBallAntiOffsideAttack);
+	TestEqual(TEXT("Anti pending player CTA"),
+		Pending.Interaction.PrimaryAction.Label, FString(TEXT("掷点判定越位")));
+	TestEqual(TEXT("Anti pending reveal contest"),
+		Pending.Interaction.CrossRollContestId,
+		FName(TEXT("ThroughBall.AntiOffside")));
+	TestEqual(TEXT("Anti pending reveal sequence"),
+		Pending.Interaction.CrossRollSequenceIndex, 1);
+	TestTrue(TEXT("Anti pending central surface owns CTA"),
+		Pending.ThroughBallResolution.PrimaryAction.Claims(
+			Pending.Interaction.PrimaryAction));
+	TestTrue(TEXT("Anti pending shows canonical outcome ranges only"),
+		Pending.ThroughBallResolution.OutcomeRollHint.bVisible
+			&& Pending.ThroughBallResolution.OutcomeRollHint.BranchId
+				== TEXT("ThroughBall.AntiOffside")
+			&& Pending.ThroughBallResolution.OutcomeRollHint.Entries.Num() == 2
+			&& Pending.ThroughBallResolution.OutcomeRollHint.DisplayLabel
+				== TEXT("1–5：越位　｜　6：反越位成功")
+			&& !Pending.ThroughBallResolution.Formula.bVisible);
+	TestEqual(TEXT("Anti route result remains persistent"),
+		Pending.ThroughBallResolution.RouteResultLabel,
+		FString(TEXT("路线掷点 6 → 判定为反越位")));
+	const FFMCodexUMGMatchScreenViewModel RejectedPending = Build(
+		MakeAntiView(false), true);
+	TestTrue(TEXT("Rejected Anti request keeps diagnostics and releases central claim"),
+		RejectedPending.Resolution.bVisible
+			&& RejectedPending.Resolution.bRejected
+			&& !RejectedPending.ThroughBallResolution.PrimaryAction.bClaimsAction);
+	UFMCodexLocalMatchScreenWidget* RejectedScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	RejectedScreen->TakeWidget();
+	RejectedScreen->RefreshFromPresentation(RejectedPending);
+	TestTrue(TEXT("Rejected Anti request has no fake reel and restores lower action"),
+		!RejectedScreen->IsInlineFormulaRevealInputBlocked()
+			&& RejectedScreen->IsLegacyResolutionOverlayVisible()
+			&& RejectedScreen->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& RejectedScreen->GetThroughBallResolutionSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& RejectedScreen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Visible);
+
+	const FFMCodexUMGMatchScreenViewModel Offside = Build(MakeAntiView(true,
+		EMatchPlayResolutionDecisionOutcome::Offside, 1));
+	TestTrue(TEXT("Anti 1 is terminal Offside without formula or shot choices"),
+		Offside.ThroughBallResolution.bNarrativeAvailable
+			&& Offside.ThroughBallResolution.ResultTitle == TEXT("越位")
+			&& Offside.ThroughBallResolution.NarrativeHeadline
+				== TEXT("厄德高送出直塞，哈兰德越位。")
+			&& !Offside.ThroughBallResolution.Formula.bVisible
+			&& Offside.ThroughBallResolution.OneOnOneChoices.IsEmpty()
+			&& Offside.ThroughBallResolution.PrimaryAction.Claims(
+				Offside.Interaction.PrimaryAction)
+			&& Offside.Interaction.PrimaryAction.Label == TEXT("下一回合")
+			&& Offside.ThroughBallResolution.ActionPromptLabel.IsEmpty()
+			&& !Offside.ThroughBallResolution.OutcomeRollHint.bVisible);
+
+	const FFMCodexUMGMatchScreenViewModel Success = Build(MakeAntiView(true,
+		EMatchPlayResolutionDecisionOutcome::OneOnOneRequired, 6));
+	TestTrue(TEXT("Anti 6 is non-terminal and enters the shared central choice"),
+		Success.ThroughBallResolution.ResultTitle == TEXT("形成单刀")
+			&& Success.ThroughBallResolution.NarrativeHeadline
+				== TEXT("厄德高送出直塞，哈兰德反越位成功，形成单刀！")
+			&& Success.ThroughBallResolution.Stage
+				== EFMCodexUMGThroughBallStage::OneOnOneChoice
+			&& Success.ThroughBallResolution.OneOnOneChoices.Num() == 2
+			&& !Success.Interaction.PrimaryAction.bAvailable
+			&& !Success.ThroughBallResolution.ResultTitle.Contains(TEXT("进球")));
+
+	UFMCodexLocalMatchScreenWidget* Screen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	Screen->TakeWidget();
+	Screen->RefreshFromPresentation(Pending);
+	TestTrue(TEXT("Normal Anti surface exclusively owns both legacy roots"),
+		Screen->GetThroughBallResolutionSurface()->GetVisibility()
+			== ESlateVisibility::SelfHitTestInvisible
+			&& Screen->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& !Screen->IsLegacyResolutionOverlayVisible());
+	Screen->RefreshFromPresentation(Success);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	TestTrue(TEXT("Anti reel gates result narrative choice and lower duplicate"),
+		Screen->IsInlineFormulaRevealInputBlocked()
+			&& Screen->GetThroughBallResolutionSurface()->GetPresentation()
+				.ResultTitle.IsEmpty()
+			&& Screen->GetThroughBallResolutionSurface()->GetPresentation()
+				.OneOnOneChoices.IsEmpty()
+			&& Screen->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
+	Screen->AdvanceInlineFormulaRevealForTesting(1.30f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.38f);
+	TestTrue(TEXT("Anti formation narrative discloses before choices"),
+		Screen->GetThroughBallResolutionSurface()->GetPresentation().ResultTitle
+			== TEXT("形成单刀")
+			&& Screen->GetThroughBallResolutionSurface()->GetPresentation()
+				.OneOnOneChoices.IsEmpty());
+	Screen->AdvanceInlineFormulaRevealForTesting(2.22f);
+	TestTrue(TEXT("Anti hold releases the same central two-choice owner"),
+		!Screen->IsInlineFormulaRevealInputBlocked()
+			&& Screen->GetThroughBallResolutionSurface()->GetPresentation()
+				.OneOnOneChoices.Num() == 2
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
+
+	UFMCodexLocalMatchScreenWidget* Reconstructed =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	Reconstructed->TakeWidget();
+	Reconstructed->RefreshFromPresentation(Offside);
+	TestTrue(TEXT("Fresh Anti terminal reconstruction does not replay"),
+		!Reconstructed->IsInlineFormulaRevealInputBlocked()
+			&& Reconstructed->GetThroughBallResolutionSurface()->GetPresentation()
+				.ResultTitle == TEXT("越位")
+			&& Reconstructed->GetThroughBallResolutionSurface()->GetPresentation()
+				.PrimaryAction.bVisible
+			&& Reconstructed->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& !Reconstructed->IsLegacyResolutionOverlayVisible());
+
+	const FFMCodexUMGMatchScreenViewModel ChipPending = Build(
+		MakeChipView(false));
+	const FFMCodexUMGMatchScreenViewModel ChipMiss = Build(MakeChipView(true,
+		EMatchPlayResolutionDecisionOutcome::Miss, 1));
+	const FFMCodexUMGMatchScreenViewModel ChipGoal = Build(MakeChipView(true,
+		EMatchPlayResolutionDecisionOutcome::Goal, 6));
+	TestTrue(TEXT("Chip pending is one shared outcome-only reel"),
+		ChipPending.Interaction.Category
+			== EFMCodexUMGInteractionCategory
+				::RollThroughBallOneOnOneChipShotAttack
+			&& ChipPending.Interaction.PrimaryAction.Label == TEXT("挑射掷点")
+			&& ChipPending.Interaction.CrossRollContestId
+				== TEXT("ThroughBall.OneOnOne.ChipShot")
+			&& ChipPending.ThroughBallResolution.StageLabel == TEXT("挑射")
+			&& ChipPending.ThroughBallResolution.OutcomeRollHint.bVisible
+			&& ChipPending.ThroughBallResolution.OutcomeRollHint.BranchId
+				== TEXT("ThroughBall.OneOnOneChip")
+			&& ChipPending.ThroughBallResolution.OutcomeRollHint.DisplayLabel
+				== TEXT("1–3：挑射未进　｜　4–6：进球")
+			&& !ChipPending.ThroughBallResolution.Formula.bVisible);
+	TestTrue(TEXT("Chip miss and goal use shared narrative without goalkeeper"),
+		ChipMiss.ThroughBallResolution.ResultTitle == TEXT("挑射未进")
+			&& ChipMiss.ThroughBallResolution.NarrativeHeadline
+				== TEXT("哈兰德挑射未能得分。")
+			&& ChipGoal.ThroughBallResolution.ResultTitle == TEXT("进球")
+			&& ChipGoal.ThroughBallResolution.NarrativeHeadline
+				== TEXT("哈兰德挑射破门！")
+			&& !ChipMiss.ThroughBallResolution.NarrativeHeadline.Contains(
+				TEXT("门将"))
+			&& !ChipGoal.ThroughBallResolution.Formula.bVisible
+			&& ChipGoal.ThroughBallResolution.PrimaryAction.Claims(
+				ChipGoal.Interaction.PrimaryAction)
+			&& ChipGoal.ThroughBallResolution.ActionPromptLabel.IsEmpty()
+			&& !ChipGoal.ThroughBallResolution.OutcomeRollHint.bVisible);
+	UFMCodexLocalMatchScreenWidget* ChipReconstructed =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	ChipReconstructed->TakeWidget();
+	ChipReconstructed->RefreshFromPresentation(ChipGoal);
+	TestTrue(TEXT("Fresh Chip terminal has one exclusive production root"),
+		ChipReconstructed->GetThroughBallResolutionSurface()->GetVisibility()
+			== ESlateVisibility::SelfHitTestInvisible
+			&& ChipReconstructed->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& !ChipReconstructed->IsLegacyResolutionOverlayVisible());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexThroughBallProductionDirectGoldenPathTest,
+	"FMCodex.LocalPlay.ThroughBallProductionPresentation.DirectGoldenPath",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexThroughBallProductionDirectGoldenPathTest::RunTest(
+	const FString& Parameters)
+{
+	(void)Parameters;
+	using namespace FMCodexThroughBallProductionPresentationTests;
+	const FFMCodexUMGMatchScreenViewModel Preview = Build(
+		MakeDirectView(false, false));
+	const FFMCodexUMGInlineFormulaSurfaceViewModel& PreviewFormula =
+		Preview.ThroughBallResolution.Formula;
+	TestTrue(TEXT("Direct preview is the authoritative shared formula"),
+		Preview.ThroughBallResolution.RouteLabel == TEXT("单刀")
+			&& Preview.ThroughBallResolution.StageLabel == TEXT("直接射门")
+			&& PreviewFormula.bVisible
+			&& PreviewFormula.ContestId
+				== TEXT("ThroughBall.OneOnOne.DirectShot")
+			&& PreviewFormula.ContestLabel == TEXT("直接射门")
+			&& PreviewFormula.bParentOwnsContestHeading
+			&& PreviewFormula.bParentOwnsRouteContext
+			&& !Preview.ThroughBallResolution.OutcomeRollHint.bVisible
+			&& PreviewFormula.PrimaryAction.Claims(
+				Preview.Interaction.PrimaryAction)
+			&& PreviewFormula.ContinueActionLabel == TEXT("进攻方掷点")
+			&& PreviewFormula.AttackRow.Terms.ContainsByPredicate(
+				[](const FFMCodexUMGInlineFormulaTermViewModel& Term)
+				{
+					return Term.DisplayLabel == TEXT("战术球员 +1");
+				})
+			&& Preview.Interaction.CrossRollSequenceIndex == 3
+			&& Preview.Interaction.CrossRollOwnerSide
+				== EInitialTurnOrderPlayer::PlayerA);
+	UFMCodexThroughBallResolutionSurfaceWidget* PreviewSurface =
+		NewObject<UFMCodexThroughBallResolutionSurfaceWidget>(
+			GetTransientPackage());
+	PreviewSurface->TakeWidget();
+	PreviewSurface->RefreshFromPresentation(Preview.ThroughBallResolution);
+	UTextBlock* NestedContest = Cast<UTextBlock>(
+		PreviewSurface->GetFormulaSurface()->GetWidgetFromName(
+			TEXT("InlineFormulaContestHeading")));
+	UTextBlock* NestedRoute = Cast<UTextBlock>(
+		PreviewSurface->GetFormulaSurface()->GetWidgetFromName(
+			TEXT("InlineFormulaRouteResult")));
+	TestTrue(TEXT("Direct parent owns one main title and one route context"),
+		NestedContest != nullptr
+			&& NestedContest->GetVisibility() == ESlateVisibility::Collapsed
+			&& NestedRoute != nullptr
+			&& NestedRoute->GetVisibility() == ESlateVisibility::Collapsed);
+
+	const FFMCodexUMGMatchScreenViewModel AttackOnly = Build(
+		MakeDirectView(true, false));
+	TestTrue(TEXT("Direct attack-only exposes no winner and only defense roll"),
+		AttackOnly.ThroughBallResolution.Formula.AttackRow.bFinalValueResolved
+			&& !AttackOnly.ThroughBallResolution.Formula
+				.DefenseRow.bFinalValueResolved
+			&& AttackOnly.ThroughBallResolution.Formula.ResultTitle.IsEmpty()
+			&& AttackOnly.ThroughBallResolution.Formula.ContinueActionLabel
+				== TEXT("防守方掷点")
+			&& AttackOnly.Interaction.CrossRollSequenceIndex == 4
+			&& AttackOnly.Interaction.CrossRollOwnerSide
+				== EInitialTurnOrderPlayer::PlayerB);
+	UFMCodexLocalMatchScreenWidget* Reconstructed =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	Reconstructed->TakeWidget();
+	Reconstructed->RefreshFromPresentation(AttackOnly);
+	TestTrue(TEXT("Fresh Direct attack-only reconstruction never replays attack"),
+		!Reconstructed->IsInlineFormulaRevealInputBlocked()
+			&& Reconstructed->GetInlineFormulaRevealPhase()
+				== EFMCodexUMGInlineFormulaRevealPhase::IdlePending
+			&& Reconstructed->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& !Reconstructed->IsLegacyResolutionOverlayVisible()
+			&& Reconstructed->GetThroughBallResolutionSurface()
+				->GetFormulaSurface()->GetPresentation()
+					.AttackRow.bFinalValueResolved);
+
+	const FFMCodexUMGMatchScreenViewModel Goal = Build(MakeDirectView(
+		true, true, EMatchPlayResolutionDecisionOutcome::Goal));
+	const FFMCodexUMGMatchScreenViewModel Save = Build(MakeDirectView(
+		true, true, EMatchPlayResolutionDecisionOutcome::Miss));
+	TestTrue(TEXT("Direct final uses Goal and explicit goalkeeper-save presentation"),
+		Goal.ThroughBallResolution.Formula.ResultTitle == TEXT("进球")
+			&& Goal.ThroughBallResolution.Formula.NarrativeHeadline
+				== TEXT("哈兰德单刀破门！")
+			&& Save.ThroughBallResolution.Formula.ResultTitle == TEXT("扑救成功")
+			&& Save.ThroughBallResolution.Formula.NarrativeHeadline
+				== TEXT("哈兰德单刀射门被阿利松扑出！")
+			&& Save.ThroughBallResolution.Formula.PrimaryAction.Claims(
+				Save.Interaction.PrimaryAction));
+
+	UFMCodexLocalMatchScreenWidget* DefenseReveal =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	DefenseReveal->TakeWidget();
+	DefenseReveal->RefreshFromPresentation(AttackOnly);
+	DefenseReveal->RefreshFromPresentation(Save);
+	DefenseReveal->PauseInlineFormulaRevealTimerForTesting();
+	TestTrue(TEXT("Direct defense reel gates save narrative and NextRound"),
+		DefenseReveal->IsInlineFormulaRevealInputBlocked()
+			&& DefenseReveal->GetInlineFormulaSurface()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& !DefenseReveal->IsLegacyResolutionOverlayVisible()
+			&& DefenseReveal->GetThroughBallResolutionSurface()
+				->GetFormulaSurface()->GetPresentation().ResultTitle.IsEmpty()
+			&& DefenseReveal->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
+	DefenseReveal->AdvanceInlineFormulaRevealForTesting(1.30f);
+	DefenseReveal->AdvanceInlineFormulaRevealForTesting(0.16f);
+	DefenseReveal->AdvanceInlineFormulaRevealForTesting(0.38f);
+	TestTrue(TEXT("Direct save narrative discloses only after final formula"),
+		DefenseReveal->GetThroughBallResolutionSurface()
+			->GetFormulaSurface()->GetPresentation().ResultTitle
+				== TEXT("扑救成功")
+			&& !DefenseReveal->GetThroughBallResolutionSurface()
+				->GetFormulaSurface()->GetPresentation().bCanContinue);
+	DefenseReveal->AdvanceInlineFormulaRevealForTesting(2.22f);
+	TestTrue(TEXT("Direct terminal hold releases central NextRound"),
+		DefenseReveal->GetThroughBallResolutionSurface()
+			->GetFormulaSurface()->GetPresentation().bCanContinue
+			&& DefenseReveal->GetThroughBallResolutionSurface()
+				->GetFormulaSurface()->GetPresentation().ContinueActionLabel
+					== TEXT("下一回合"));
 	return true;
 }
 

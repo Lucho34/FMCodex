@@ -84,6 +84,9 @@ namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePla
 		{
 			FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionRequest Request;
 			Request.AttackSequence = Result.SourceProvenanceState.CurrentAttack.AttackSequence;
+			Request.Mode =
+				FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionRequest
+					::EMode::RegenerateCompletedDecision;
 			Result.AntiOffsideRegenerationResult =
 				FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator::Resolve(
 					Result.SourceProvenanceState, Request, Rules, nullptr);
@@ -215,15 +218,20 @@ namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePla
 FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
 FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanOrchestrator::Resolve(
 	const FMatchPlayState& BeforeState,
+	const FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanRequest& Request,
 	const FSkillRuleSnapshotSet* SkillRuleSet,
 	IMatchPlayPostRouteRollProvider* RollProvider)
 {
 	using namespace MatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlan;
 	FResult Result;
+	Result.Request = Request;
 	Result.BeforeState = BeforeState;
 	Result.AfterState = BeforeState;
 	if (!BeforeState.RuntimeState.bIsInitialized) { Fail(Result, EError::MatchPlayStateNotInitialized, TEXT("DirectShot requires initialized MatchPlay State.")); return Result; }
 	if (!BeforeState.bHasCurrentAttack) { Fail(Result, EError::NoCurrentAttack, TEXT("DirectShot requires a CurrentAttack.")); return Result; }
+	if (BeforeState.CurrentAttack.AttackSequence <= 0) { Fail(Result, EError::InvalidCurrentAttackSequence, TEXT("CurrentAttack AttackSequence must be positive.")); return Result; }
+	if (Request.AttackSequence <= 0) { Fail(Result, EError::InvalidRequestedAttackSequence, TEXT("Requested AttackSequence must be positive.")); return Result; }
+	if (Request.AttackSequence != BeforeState.CurrentAttack.AttackSequence) { Fail(Result, EError::AttackSequenceMismatch, TEXT("Requested AttackSequence does not match CurrentAttack.")); return Result; }
 	if (!BeforeState.CurrentAttack.bHasResolutionSession) { Fail(Result, EError::MissingResolutionSession, TEXT("DirectShot requires a Resolution Session.")); return Result; }
 	Result.SessionStateValidationResult = FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(BeforeState);
 	if (!Result.SessionStateValidationResult.bIsCanonical) { Fail(Result, EError::InvalidResolutionSessionState, Result.SessionStateValidationResult.ErrorMessage); return Result; }
@@ -247,7 +255,45 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanOrchestr
 	else if (Progress.Phase != EPhase::OneOnOneDirectShot) { Fail(Result, EError::UnsupportedSourcePhase, TEXT("DirectShot source phase is unsupported.")); return Result; }
 	Result.AfterProgressResult = FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(CandidateSession);
 	if (!Result.AfterProgressResult.bIsCanonical) { Fail(Result, EError::InvalidPostRouteProgress, Result.AfterProgressResult.ErrorMessage); return Result; }
-	while (!Result.AfterProgressResult.bContractComplete)
+	using EMode = FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanRequest::EMode;
+	const bool bExplicitRollStep = Request.Mode == EMode::ResolveAttackRoll
+		|| Request.Mode == EMode::ResolveDefenseRoll;
+	if (Request.Mode == EMode::RegenerateCompletedPlan
+		&& !Result.AfterProgressResult.bContractComplete)
+	{
+		Fail(Result, EError::CompletedPlanRequired, TEXT("OneOnOne DirectShot regeneration requires an already-complete roll contract."));
+		return Result;
+	}
+	if (bExplicitRollStep)
+	{
+		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			Fail(Result, EError::InvalidRequestingSide, TEXT("OneOnOne DirectShot roll commands require PlayerA or PlayerB as RequestingSide."));
+			return Result;
+		}
+		const EPurpose RequestedPurpose = Request.Mode == EMode::ResolveAttackRoll
+			? EPurpose::OneOnOneDirectShotAttack
+			: EPurpose::OneOnOneDirectShotDefense;
+		if (Result.AfterProgressResult.bContractComplete
+			|| Result.AfterProgressResult.NextPurpose != RequestedPurpose)
+		{
+			Fail(Result, EError::WrongDirectShotRollStep, TEXT("The requested OneOnOne DirectShot roll is not the current authoritative step."));
+			return Result;
+		}
+		const EInitialTurnOrderPlayer ExpectedSide = RequestedPurpose
+			== EPurpose::OneOnOneDirectShotAttack
+				? BeforeSession.Bundle.CurrentAttackingPlayer
+				: BeforeSession.Bundle.CurrentDefendingPlayer;
+		if (Request.RequestingSide != ExpectedSide)
+		{
+			Fail(Result, EError::WrongRequestingSide, TEXT("The requesting side does not own the current OneOnOne DirectShot roll."));
+			return Result;
+		}
+	}
+	const int32 MaximumRollsThisCommand = bExplicitRollStep ? 1 : MAX_int32;
+	while (!Result.AfterProgressResult.bContractComplete
+		&& Result.ProviderCallCount < MaximumRollsThisCommand)
 	{
 		const EPurpose Purpose = Result.AfterProgressResult.NextPurpose;
 		if (Purpose != EPurpose::OneOnOneDirectShotAttack && Purpose != EPurpose::OneOnOneDirectShotDefense) { Fail(Result, EError::UnexpectedDirectShotRollPurpose, TEXT("DirectShot progress requested an unexpected purpose.")); return Result; }
@@ -265,6 +311,15 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanOrchestr
 		Result.AfterProgressResult = FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(CandidateSession);
 		if (!Result.AfterProgressResult.bIsCanonical) { Fail(Result, EError::InvalidPostRouteProgress, Result.AfterProgressResult.ErrorMessage); return Result; }
 	}
+	if (bExplicitRollStep && !Result.AfterProgressResult.bContractComplete)
+	{
+		Result.SessionStateValidationResult = FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(Candidate);
+		if (!Result.SessionStateValidationResult.bIsCanonical) { Fail(Result, EError::InvalidCandidateState, Result.SessionStateValidationResult.ErrorMessage); return Result; }
+		Result.AfterState = MoveTemp(Candidate);
+		Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
+		Result.bSuccess = true;
+		return Result;
+	}
 	Result.SessionStateValidationResult = FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(Candidate);
 	if (!Result.SessionStateValidationResult.bIsCanonical) { Fail(Result, EError::InvalidCandidateState, Result.SessionStateValidationResult.ErrorMessage); return Result; }
 	if (!BuildPlan(Result, Candidate)) return Result;
@@ -273,4 +328,20 @@ FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanOrchestr
 	Result.bReplayedCompleteRolls = Result.ProviderCallCount == 0;
 	Result.bSuccess = true;
 	return Result;
+}
+
+FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanResult
+FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanOrchestrator::Resolve(
+	const FMatchPlayState& BeforeState,
+	const FSkillRuleSnapshotSet* SkillRuleSet,
+	IMatchPlayPostRouteRollProvider* RollProvider)
+{
+	FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanRequest Request;
+	Request.AttackSequence = BeforeState.bHasCurrentAttack
+		? BeforeState.CurrentAttack.AttackSequence
+		: 0;
+	Request.Mode =
+		FMatchPlayCurrentAttackResolveThroughBallOneOnOneDirectShotPostRoutePlanRequest
+			::EMode::CompletePlan;
+	return Resolve(BeforeState, Request, SkillRuleSet, RollProvider);
 }

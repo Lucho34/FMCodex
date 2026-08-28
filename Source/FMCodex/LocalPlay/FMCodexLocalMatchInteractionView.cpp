@@ -1330,6 +1330,101 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 			&& Session.bHasActualBranch
 			&& Session.ActualBranch.ActionType == ESkillRuleType::ThroughBall
 			&& Session.ActualBranch.ThroughBall
+				== EMatchPlayThroughBallActualBranch::AntiOffside
+			&& Session.ThroughBallOneOnOneShotChoice
+				== EMatchPlayThroughBallOneOnOneShotChoice::None)
+		{
+			const auto Progress =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+					Session);
+			const bool bAttackRollPending = Progress.bIsCanonical
+				&& !Progress.bContractComplete
+				&& (Session.PostRouteRollProgress.Phase
+						== EMatchPlayCurrentAttackPostRouteRollPhase::None
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::PrimaryAttack);
+			if (bAttackRollPending)
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallAntiOffsideAttack;
+				Result.bThroughBallAntiOffsideAttackRollPending = true;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("进攻方掷点");
+				return Result;
+			}
+		}
+		if (Session.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& Session.bHasActualBranch
+			&& Session.ActualBranch.ActionType == ESkillRuleType::ThroughBall
+			&& Session.ThroughBallOneOnOneShotChoice
+				!= EMatchPlayThroughBallOneOnOneShotChoice::None)
+		{
+			const auto Progress =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+					Session);
+			const auto Phase = Session.PostRouteRollProgress.Phase;
+			if (Session.ThroughBallOneOnOneShotChoice
+					== EMatchPlayThroughBallOneOnOneShotChoice::ChipShot
+				&& Progress.bIsCanonical
+				&& (Phase == EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch
+					|| (Phase
+							== EMatchPlayCurrentAttackPostRouteRollPhase
+								::OneOnOneChipShot
+						&& !Progress.bContractComplete)))
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallOneOnOneChipShotAttack;
+				Result.bThroughBallOneOnOneChipShotAttackRollPending = true;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("进攻方掷挑射点数");
+				return Result;
+			}
+			if (Session.ThroughBallOneOnOneShotChoice
+					== EMatchPlayThroughBallOneOnOneShotChoice::DirectShot
+				&& Progress.bIsCanonical
+				&& (Phase == EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch
+					|| (Phase
+							== EMatchPlayCurrentAttackPostRouteRollPhase
+								::OneOnOneDirectShot
+						&& !Progress.bContractComplete)))
+			{
+				const bool bAttackRoll = Phase
+					== EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::OneOnOneDirectShotAttack;
+				Result.InteractionCategory = bAttackRoll
+					? EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallOneOnOneDirectShotAttack
+					: EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallOneOnOneDirectShotDefense;
+				Result.bThroughBallOneOnOneDirectShotAttackRollPending =
+					bAttackRoll;
+				Result.bThroughBallOneOnOneDirectShotDefenseRollPending =
+					!bAttackRoll;
+				Result.ExpectedActingPlayer = bAttackRoll
+					? Session.Bundle.CurrentAttackingPlayer
+					: Session.Bundle.CurrentDefendingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = bAttackRoll
+					? TEXT("进攻方掷单刀射门点数")
+					: TEXT("防守方掷单刀防守点数");
+				return Result;
+			}
+		}
+		if (Session.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& Session.bHasActualBranch
+			&& Session.ActualBranch.ActionType == ESkillRuleType::ThroughBall
+			&& Session.ActualBranch.ThroughBall
 				== EMatchPlayThroughBallActualBranch::BehindDefense)
 		{
 			const auto Progress =
@@ -1539,6 +1634,22 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 		Result.InteractionTitle = TEXT("掷防守方点数");
 		break;
 	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallAntiOffsideAttack:
+		Result.InteractionTitle = TEXT("进攻方掷反越位点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneChipShotAttack:
+		Result.InteractionTitle = TEXT("进攻方掷挑射点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneDirectShotAttack:
+		Result.InteractionTitle = TEXT("进攻方掷单刀射门点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneDirectShotDefense:
+		Result.InteractionTitle = TEXT("防守方掷单刀防守点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory
 		::RollThroughBallBehindDefenseAttack:
 		Result.InteractionTitle = TEXT("进攻方掷点");
 		break;
@@ -1596,6 +1707,10 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance: return TEXT("下一回合");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack: return TEXT("掷进攻方点数");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense: return TEXT("掷防守方点数");
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallAntiOffsideAttack: return TEXT("进攻方掷反越位点数");
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallOneOnOneChipShotAttack: return TEXT("进攻方掷挑射点数");
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallOneOnOneDirectShotAttack: return TEXT("进攻方掷单刀射门点数");
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallOneOnOneDirectShotDefense: return TEXT("防守方掷单刀防守点数");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallBehindDefenseAttack: return TEXT("进攻方掷点");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallBehindDefenseDefense: return TEXT("防守方掷点");
 	case EFMCodexLocalMatchInteractionCategory::CompleteThroughBallFeetAndAdvance: return TEXT("下一回合");
