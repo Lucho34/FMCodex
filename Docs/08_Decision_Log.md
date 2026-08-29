@@ -1043,3 +1043,10 @@
 - successful command feedback不得覆盖刷新后的authoritative terminal snapshot。terminal结果、Formula/Narrative与唯一`下一回合`继续由`TerminalPendingAdvance`拥有；显式advance成功后completed feedback清空，下一进攻恢复normal interaction。不存在Authority auto-advance或第二次机会消费。
 - compact branch helper统一省略条件性GK contribution，只摘要基础对抗属性；完整Tactical Rule Description和live Formula facts仍保留GK。此决定以新helper矩阵取代此前LongShot choice记录中的旧helper文本，不改变任何GK gameplay、Formula或战术平衡。
 - CutInside中央CTA使用`进攻方掷点 / 防守方掷点 / 掷两枚骰 / 下一回合`，resolved shot branch只显示一次主标题。修改限于Controller deterministic progression、feedback ownership和presentation；Session/Host request、RNG provider、formula resolver与terminal authority不变。
+
+## 2026-08-29 — PassControl Production Golden Path（Stage 6.15.4）
+
+- PassControl路线是Authority D6结果，不是玩家branch choice。中央Production Surface依次拥有`判定推进方式 / 进攻方掷点 / 防守方掷点 / 下一回合`，normal path不显示三张route choice card、generic gameplay Continue、lower重复CTA或工程acknowledgement。
+- 三次显式action只提交6.15.4A既有typed request；route、attack、defense各消费一枚D6。最后Defense成功后允许既有零RNG Formula/outcome/terminal收口，但不得自动`AdvanceAfterTerminal`。
+- Pass/Dribble/Run Formula、tie、Tactical Player、optional Helper和active GK只消费Resolution Facts；共享Widget不计算subtotal、FinalValue或winner。三条route Narrative继续使用中央Narrative catalog，得分者语义保持Runner。
+- 复用LongShot/CutInside已验证的中央resolution shell、Inline Formula、Reel、terminal ownership和diagnostic suppression。保留历史LongShot命名债，不在本Stage进行class/file rename、MatchHeader修复或systemic comprehension redesign。

@@ -95,6 +95,32 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		}
 	}
 
+	FText PassControlAttackContext(
+		const FInput& Input,
+		const FText& Route)
+	{
+		if (Input.Carrier.HasPlayerFacingName()
+			&& Input.Runner.HasPlayerFacingName())
+		{
+			return FText::Format(
+				LOCTEXT("PassControlAttackContext", "{0}与{1}的{2}"),
+				Input.Carrier.DisplayName, Input.Runner.DisplayName, Route);
+		}
+		if (Input.Carrier.HasPlayerFacingName())
+		{
+			return FormatTwo(
+				LOCTEXT("PassControlCarrierContext", "{0}的{1}"),
+				Input.Carrier.DisplayName, Route);
+		}
+		if (Input.Runner.HasPlayerFacingName())
+		{
+			return FormatTwo(
+				LOCTEXT("PassControlRunnerContext", "{0}的{1}"),
+				Input.Runner.DisplayName, Route);
+		}
+		return Route;
+	}
+
 	ERole SharedDefender(const FInput& Input)
 	{
 		const FName EventId = Input.StableEventId.IsNone()
@@ -253,19 +279,21 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		if (Input.AuthorityOutcome == EOutcome::Miss)
 		{
 			const ERole Performer = SharedDefender(Input);
+			const FText AttackContext = PassControlAttackContext(Input, Route);
 			FText Narrative = FormatOne(
-				LOCTEXT("PassControlDefenseFallback", "{0}被防守方化解。"), Route);
+				LOCTEXT("PassControlDefenseFallback", "{0}被防守方化解。"),
+				AttackContext);
 			if (Performer == ERole::Marker)
 			{
 				Narrative = FormatTwo(
 					LOCTEXT("PassControlMarker", "{0}被{1}抢断。"),
-					Route, Input.Marker.DisplayName);
+					AttackContext, Input.Marker.DisplayName);
 			}
 			else if (Performer == ERole::Helper)
 			{
 				Narrative = FormatTwo(
 					LOCTEXT("PassControlHelper", "{0}被{1}拦截。"),
-					Route, Input.Helper.DisplayName);
+					AttackContext, Input.Helper.DisplayName);
 			}
 			SetPerformer(Result, Performer, Input);
 			Complete(Result, ECategory::DefensiveSuccess,

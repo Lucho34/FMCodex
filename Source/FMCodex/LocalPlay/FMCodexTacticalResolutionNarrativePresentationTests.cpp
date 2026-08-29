@@ -107,19 +107,19 @@ bool FFMCodexTacticalNarrativeMatrixTest::RunTest(const FString& Parameters)
 			TEXT("进球"), TEXT("厄德高与哈兰德完成传球推进，哈兰德破门！") },
 		{ TEXT("Pass advance defense"), EBranch::PassControlPassAdvance,
 			EOutcome::Miss, ECategory::DefensiveSuccess,
-			TEXT("防守成功"), TEXT("传球推进被萨利巴抢断。") },
+			TEXT("防守成功"), TEXT("厄德高与哈兰德的传球推进被萨利巴抢断。") },
 		{ TEXT("Dribble advance goal"), EBranch::PassControlDribbleAdvance,
 			EOutcome::Goal, ECategory::Goal,
 			TEXT("进球"), TEXT("厄德高与哈兰德完成盘带推进，哈兰德破门！") },
 		{ TEXT("Dribble advance defense"), EBranch::PassControlDribbleAdvance,
 			EOutcome::Miss, ECategory::DefensiveSuccess,
-			TEXT("防守成功"), TEXT("盘带推进被萨利巴抢断。") },
+			TEXT("防守成功"), TEXT("厄德高与哈兰德的盘带推进被萨利巴抢断。") },
 		{ TEXT("Run advance goal"), EBranch::PassControlRunAdvance,
 			EOutcome::Goal, ECategory::Goal,
 			TEXT("进球"), TEXT("厄德高与哈兰德完成跑动推进，哈兰德破门！") },
 		{ TEXT("Run advance defense"), EBranch::PassControlRunAdvance,
 			EOutcome::Miss, ECategory::DefensiveSuccess,
-			TEXT("防守成功"), TEXT("跑动推进被萨利巴抢断。") },
+			TEXT("防守成功"), TEXT("厄德高与哈兰德的跑动推进被萨利巴抢断。") },
 		{ TEXT("Cross high goal"), EBranch::CrossHigh,
 			EOutcome::Goal, ECategory::Goal,
 			TEXT("进球"), TEXT("厄德高传中，哈兰德破门！") },
@@ -324,14 +324,29 @@ bool FFMCodexTacticalNarrativeFallbackAndGoalkeeperTest::RunTest(
 	TestTrue(TEXT("PassControl Helper path uses interception vocabulary"),
 		PassHelperDefense.DefensivePerformerRole == ERole::Helper
 			&& PassHelperDefense.NarrativeText.ToString()
-				== TEXT("传球推进被赖斯拦截。"));
+				== TEXT("厄德高与哈兰德的传球推进被赖斯拦截。"));
 	PassHelper.Helper = {};
 	const FResult PassGeneric =
 		FFMCodexTacticalResolutionNarrativePresentationBuilder::Build(
 			PassHelper);
 	TestEqual(TEXT("PassControl missing defenders uses route-aware fallback"),
 		PassGeneric.NarrativeText.ToString(),
-		FString(TEXT("传球推进被防守方化解。")));
+		FString(TEXT("厄德高与哈兰德的传球推进被防守方化解。")));
+	PassHelper.Carrier = {};
+	const FResult RunnerContextFallback =
+		FFMCodexTacticalResolutionNarrativePresentationBuilder::Build(
+			PassHelper);
+	TestEqual(TEXT("PassControl fallback safely keeps the available Runner"),
+		RunnerContextFallback.NarrativeText.ToString(),
+		FString(TEXT("哈兰德的传球推进被防守方化解。")));
+	PassHelper.Runner = {};
+	const FResult RouteOnlyFallback =
+		FFMCodexTacticalResolutionNarrativePresentationBuilder::Build(
+			PassHelper);
+	TestTrue(TEXT("PassControl unnamed fallback keeps route and no raw IDs"),
+		RouteOnlyFallback.NarrativeText.ToString()
+			== TEXT("传球推进被防守方化解。")
+			&& !RouteOnlyFallback.NarrativeText.ToString().Contains(TEXT("Fixture.")));
 
 	FInput BehindHelper = NamedInput(
 		EBranch::ThroughBallBehindDefense,

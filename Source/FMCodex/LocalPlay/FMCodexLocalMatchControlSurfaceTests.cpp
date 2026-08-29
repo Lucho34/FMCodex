@@ -2677,6 +2677,9 @@ namespace FMCodexLocalMatchFullFamilyTests
 					|| ReadyCategory
 						== EFMCodexLocalMatchInteractionCategory
 							::RollCutInsideShotDeadCorner
+			: Family.SkillType == ESkillRuleType::PassControl
+				? ReadyCategory
+					== EFMCodexLocalMatchInteractionCategory::RollPassControlRoute
 				: ReadyCategory
 					== EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 		if (!bExpectedReadyAction)
@@ -14323,6 +14326,229 @@ bool FFMCodexCutInsideScreenTerminalBranchesTest::RunTest(
 			EMatchPlayElectiveBranchIntent::DeadCorner, { 6, 5 },
 			EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner,
 			TEXT("掷两枚骰"), 2, false));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexPassControlScreenGoldenPathTest,
+	"FMCodex.LocalPlay.ControlSurface.55.PassControlScreenGoldenPath",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexPassControlScreenGoldenPathTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+	(void)Parameters;
+
+	FScopedPlayableWorld Playable;
+	AFMCodexLocalMatchHostGameMode* Host = Playable.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller = Playable.GetController();
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen = Controller->GetPlayerMatchScreen();
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	const int32 Seed = FindSeedForTacticalPointAndRolls(6, { 2, 1, 6 });
+	TestTrue(TEXT("PassControl deterministic screen seed exists"), Seed != INDEX_NONE);
+	if (Seed == INDEX_NONE)
+	{
+		return false;
+	}
+	Controller->SetNextDemoMatchSeedForTesting(Seed);
+	Screen->RequestStartNewMatch();
+	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const FFamilyExpectation Family = FamilyExpectations()[3];
+	if (!DeployParticipants(*this, *Controller, Family, Attacker)
+		|| !SubmitRequiredSelections(*this, *Controller, Family, Attacker))
+	{
+		return false;
+	}
+
+	UFMCodexLongShotResolutionSurfaceWidget* Surface =
+		Screen->GetLongShotResolutionSurface();
+	if (Surface == nullptr)
+	{
+		return false;
+	}
+	UButton* OuterAction = Cast<UButton>(Surface->GetWidgetFromName(
+		TEXT("LongShotPrimaryActionButton")));
+	if (OuterAction == nullptr)
+	{
+		return false;
+	}
+	const auto& RoutePending = Surface->GetPresentation();
+	TestTrue(TEXT("Real screen starts at one central PassControl Route action"),
+		Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollPassControlRoute
+			&& Controller->GetInteractionView().AcceptedRolls.IsEmpty()
+			&& RoutePending.bVisible
+			&& RoutePending.SkillType == ESkillRuleType::PassControl
+			&& RoutePending.PrimaryAction.bVisible
+			&& RoutePending.ContinueActionLabel == TEXT("判定推进方式")
+			&& RoutePending.BranchChoices.IsEmpty()
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+				->GetVisibility() == ESlateVisibility::Collapsed);
+
+	OuterAction->OnClicked.Broadcast();
+	TestTrue(TEXT("Route click consumes exactly one authoritative gameplay D6"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolvePassControlInitialRouteRoll")
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 1
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollPassControlAttack);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const auto& RouteSettled = Surface->GetPresentation();
+	TestTrue(TEXT("Route settlement reveals D6 2 as Pass Advance and attack CTA"),
+		RouteSettled.BranchLabel.Contains(TEXT("路线掷点 2"))
+			&& RouteSettled.BranchLabel.Contains(TEXT("传球推进"))
+			&& RouteSettled.Formula.bVisible
+			&& RouteSettled.Formula.ContinueActionLabel == TEXT("进攻方掷点")
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
+
+	Surface->GetFormulaSurface()->RequestContinue();
+	TestTrue(TEXT("Attack click consumes exactly one additional gameplay D6"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolvePassControlAttackRoll")
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 2
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollPassControlDefense);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const auto& AttackOnly = Surface->GetPresentation().Formula;
+	TestTrue(TEXT("Real attack-only snapshot exposes Attack and central Defense"),
+		AttackOnly.AttackRow.bFinalValueResolved
+			&& !AttackOnly.DefenseRow.bFinalValueResolved
+			&& !AttackOnly.bNarrativeAvailable
+			&& AttackOnly.ResultTitle.IsEmpty()
+			&& AttackOnly.ContinueActionLabel == TEXT("防守方掷点")
+			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+				->GetVisibility() == ESlateVisibility::Collapsed);
+
+	const FMatchPlayState BeforeDefense = Host->GetMatchSnapshot().Snapshot;
+	Surface->GetFormulaSurface()->RequestContinue();
+	TestTrue(TEXT("Defense click consumes exactly one additional gameplay D6"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolvePassControlDefenseRoll")
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 3
+			&& Controller->GetInteractionView().bTerminalPendingAdvance);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const FMatchPlayState Terminal = Host->GetMatchSnapshot().Snapshot;
+	const auto& TerminalFormula = Surface->GetPresentation().Formula;
+	const int32 UsedBefore = BeforeDefense.RuntimeState.PlayerAState.UsedAttackCount
+		+ BeforeDefense.RuntimeState.PlayerBState.UsedAttackCount;
+	const int32 UsedTerminal = Terminal.RuntimeState.PlayerAState.UsedAttackCount
+		+ Terminal.RuntimeState.PlayerBState.UsedAttackCount;
+	TestTrue(TEXT("Defense automatically completes formula Narrative and terminal"),
+		Terminal.bHasCurrentAttack
+			&& Terminal.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+			&& UsedTerminal == UsedBefore
+			&& TerminalFormula.AttackRow.bFinalValueResolved
+			&& TerminalFormula.DefenseRow.bFinalValueResolved
+			&& TerminalFormula.bNarrativeAvailable
+			&& !TerminalFormula.ResultTitle.IsEmpty()
+			&& TerminalFormula.ContinueActionLabel == TEXT("下一回合")
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+				->GetVisibility() == ESlateVisibility::Collapsed);
+	bool bNarrativeContainsAllAttackers =
+		TerminalFormula.AttackRow.Participants.Num() >= 2;
+	for (const FFMCodexUMGInlineFormulaParticipantViewModel& Participant
+		: TerminalFormula.AttackRow.Participants)
+	{
+		bNarrativeContainsAllAttackers = bNarrativeContainsAllAttackers
+			&& !Participant.PlayerName.IsEmpty()
+			&& TerminalFormula.NarrativeHeadline.Contains(
+				Participant.PlayerName);
+	}
+	TestTrue(TEXT("Real screen terminal fixture is the defender-win PIE defect class"),
+		TerminalFormula.ResultTitle == TEXT("防守成功")
+			&& TerminalFormula.NarrativeHeadline.Contains(TEXT("传球推进"))
+			&& (TerminalFormula.NarrativeHeadline.Contains(TEXT("抢断"))
+				|| TerminalFormula.NarrativeHeadline.Contains(TEXT("拦截")))
+			&& bNarrativeContainsAllAttackers);
+	const UTextBlock* OuterStage = Cast<UTextBlock>(
+		Surface->GetWidgetFromName(TEXT("LongShotProductionStage")));
+	const UTextBlock* OuterResult = Cast<UTextBlock>(
+		Surface->GetWidgetFromName(TEXT("LongShotResultTitle")));
+	const UTextBlock* OuterNarrative = Cast<UTextBlock>(
+		Surface->GetWidgetFromName(TEXT("LongShotNarrative")));
+	const UTextBlock* FormulaNarrative = Cast<UTextBlock>(
+		Surface->GetFormulaSurface()->GetWidgetFromName(
+			TEXT("InlineFormulaContestHeading")));
+	const UTextBlock* FormulaStatus = Cast<UTextBlock>(
+		Surface->GetFormulaSurface()->GetWidgetFromName(
+			TEXT("InlineFormulaStatus")));
+	auto IsVisibleFullNarrative = [&TerminalFormula](const UTextBlock* Text)
+	{
+		return Text != nullptr
+			&& Text->GetVisibility() != ESlateVisibility::Collapsed
+			&& Text->GetVisibility() != ESlateVisibility::Hidden
+			&& Text->GetText().ToString()
+				== TerminalFormula.NarrativeHeadline;
+	};
+	int32 VisibleFullNarrativeCount = 0;
+	for (const UTextBlock* Text : {
+		OuterStage, OuterResult, OuterNarrative, FormulaNarrative, FormulaStatus })
+	{
+		VisibleFullNarrativeCount += IsVisibleFullNarrative(Text) ? 1 : 0;
+	}
+	TestEqual(TEXT("Real shared terminal screen renders full Narrative once"),
+		VisibleFullNarrativeCount, 1);
+	TestTrue(TEXT("Screen keeps semantic route and compact result distinct"),
+		OuterStage != nullptr && OuterStage->GetText().ToString() == TEXT("传球推进")
+			&& FormulaNarrative != nullptr
+			&& FormulaNarrative->GetText().ToString()
+				== TerminalFormula.NarrativeHeadline
+			&& FormulaStatus != nullptr
+			&& FormulaStatus->GetText().ToString()
+				== TEXT("传球推进 · 防守成功")
+			&& FormulaStatus->GetText().ToString()
+				!= TerminalFormula.NarrativeHeadline);
+
+	Screen->ResetPrimaryActionDispatchForTesting();
+	Surface->GetFormulaSurface()->RequestContinue();
+	const FMatchPlayState Advanced = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("NextRound dispatches once with zero new gameplay roll"),
+		Screen->GetPrimaryActionDispatchCountForTesting() == 1
+			&& Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("AdvanceAfterTerminal")
+			&& !Controller->GetInteractionView().bCurrentAttackActive
+			&& Controller->GetInteractionView().bTacticalPointRollReady
+			&& !Controller->GetResolutionFeedback().bVisible
+			&& Advanced.RuntimeState.PlayerAState.UsedAttackCount
+				+ Advanced.RuntimeState.PlayerBState.UsedAttackCount
+				== UsedTerminal + 1
+			&& !Surface->GetPresentation().bVisible
+			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+				->GetVisibility() == ESlateVisibility::Collapsed);
+
+	const TArray<uint8> AdvancedBytes = SerializeState(Advanced);
+	Surface->GetFormulaSurface()->RequestContinue();
+	TestTrue(TEXT("Stale second central activation cannot advance again"),
+		Screen->GetPrimaryActionDispatchCountForTesting() == 1
+			&& AdvancedBytes == SerializeState(Host->GetMatchSnapshot().Snapshot));
 	return true;
 }
 

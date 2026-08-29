@@ -328,6 +328,11 @@ FText FFMCodexPlayerUIPresentationText::CutInsideDirectOutcomeHint()
 		"1–2：射门偏出｜3–6：进入攻防结算");
 }
 
+FText FFMCodexPlayerUIPresentationText::PassControlTitle()
+{
+	return LOCTEXT("PassControlProductionTitle", "控球推进");
+}
+
 FText FFMCodexPlayerUIPresentationText::CrossTitle()
 {
 	return LOCTEXT("CrossProductionTitle", "传中");
@@ -753,6 +758,18 @@ FText FFMCodexPlayerUIPresentationText::ResolutionContest(
 	if (ContestId == TEXT("CutInsideShot.DirectShot"))
 	{
 		return LOCTEXT("ResolutionCutInsideDirect", "内切直接射门");
+	}
+	if (ContestId == TEXT("PassControl.PassAdvance"))
+	{
+		return LOCTEXT("ResolutionPassControlPass", "传球推进");
+	}
+	if (ContestId == TEXT("PassControl.DribbleAdvance"))
+	{
+		return LOCTEXT("ResolutionPassControlDribble", "盘带推进");
+	}
+	if (ContestId == TEXT("PassControl.RunAdvance"))
+	{
+		return LOCTEXT("ResolutionPassControlRun", "跑动推进");
 	}
 	return FText::GetEmpty();
 }

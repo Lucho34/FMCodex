@@ -94,6 +94,7 @@ public:
 	static FText CutInsideDirectStage();
 	static FText CutInsideDeadCornerStage();
 	static FText CutInsideDirectOutcomeHint();
+	static FText PassControlTitle();
 	static FText CrossTitle();
 	static FText CrossBranchChoiceStage();
 	static FText BroadcastStatus(bool bMatchEnded, bool bAttackActive,

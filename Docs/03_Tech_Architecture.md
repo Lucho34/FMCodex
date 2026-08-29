@@ -202,3 +202,11 @@
 - 上述修复不自动调用`AdvanceAfterTerminal`。terminal snapshot仍冻结CurrentAttack、已接受roll、Formula/Outcome与机会计数，只有中央`下一回合`一次显式activation可以清理并handoff；stale第二次activation不产生第二次advance。
 - compact branch helper只投影普通`Attribute` term，省略条件性`GoalkeeperContribution`；live Formula、Tactical Rule Description与authority facts继续保留GK term。当前矩阵为LongShot Direct`（看远射、抢断）`、CutInside Direct`（射门 / 盘带 vs 抢断）`、Cross High`（传球 / 力量 vs 抢断 / 力量）`、Cross Low`（传球 / 射门 vs 抢断 / 盯防）`；两项DeadCorner helper不变。
 - shared shot renderer在Branch与Stage文案相同时只显示一个主标题。CutInside玩家action统一为`进攻方掷点 / 防守方掷点 / 掷两枚骰 / 下一回合`；typed category、owner、AttackSequence、RNG、Formula和terminal lifecycle均不变。
+
+## PassControl Production Golden Path（Stage 6.15.4，待 USER PIE）
+
+- PassControl normal production flow固定为中央`判定推进方式 -> 进攻方掷点 -> 防守方掷点 -> terminal -> 下一回合`。三个玩家动作分别转发6.15.4A既有的side-owned、`AttackSequence`相关typed request；route、attack、defense各只消费一枚Authority D6，UMG不提供Pass/Dribble/Run选择卡，也不使用generic gameplay Continue。
+- route的`1–2 / 3–4 / 5–6`映射、actual branch、两行Formula Facts、winner、tie、Tactical Player、optional Helper、active GK与terminal lifecycle都来自Authoritative State / Resolution Facts。Presentation Builder只把三条contest投影成中文路线、参与者、属性与Narrative；Widget不求和、不比较、不推断分支或胜者。
+- PassControl复用现有中央shared resolution shell、Inline Formula DTO/Widget、stable reveal identity、RollReel、Narrative builder与primary-action claim。Route使用独立`PassControl.Route` reveal identity；三条实际路线使用各自contest id，因此attack/defense disclosure与reconstruction不会互相串线。
+- route-only、attack-only与terminal snapshot都可直接重建Production Surface。Attack-only只公开已完成Attack row并保留防守方typed CTA，不伪造Defense、FinalValue、Result或Narrative；fresh terminal直接显示权威完成事实和`下一回合`，不重播历史roll。
+- normal PassControl折叠lower InteractionPanel与generic Resolution diagnostic layer；authority rejection仍可交回diagnostic/recovery。最后一枚Defense roll之后只自动执行既有零RNG Formula/outcome/terminal收口，显式`AdvanceAfterTerminal`继续是唯一回合推进动作。

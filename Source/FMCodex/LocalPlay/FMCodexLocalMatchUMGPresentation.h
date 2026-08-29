@@ -49,7 +49,10 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	RollLongShotDeadCorner,
 	RollCutInsideShotDirectAttack,
 	RollCutInsideShotDirectDefense,
-	RollCutInsideShotDeadCorner
+	RollCutInsideShotDeadCorner,
+	RollPassControlRoute,
+	RollPassControlAttack,
+	RollPassControlDefense
 };
 
 /**
@@ -116,6 +119,7 @@ enum class EFMCodexUMGCrossRollRevealKind : uint8
 	TacticalPoint,
 	InitialRoute,
 	ThroughBallInitialRoute,
+	PassControlInitialRoute,
 	Attack,
 	Defense,
 	LongShotDeadCornerA,
@@ -1656,13 +1660,14 @@ enum class EFMCodexUMGLongShotStage : uint8
 	None,
 	BranchChoice,
 	DirectShot,
-	DeadCorner
+	DeadCorner,
+	PassControl
 };
 
 /**
- * Authority-derived production shell shared by LongShot, CutInsideShot, and
- * Cross branch choice. UMG renders these facts and typed actions; it never
- * calculates outcomes.
+ * Authority-derived production shell shared by LongShot, CutInsideShot,
+ * PassControl, and Cross branch choice. UMG renders these facts and typed
+ * actions; it never calculates outcomes.
  */
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGLongShotResolutionViewModel

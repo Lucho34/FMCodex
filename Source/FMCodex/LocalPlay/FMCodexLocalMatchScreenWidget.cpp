@@ -978,6 +978,15 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	case EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner:
 		MatchController->RollCutInsideShotDeadCorner();
 		break;
+	case EFMCodexUMGInteractionCategory::RollPassControlRoute:
+		MatchController->RollPassControlRoute();
+		break;
+	case EFMCodexUMGInteractionCategory::RollPassControlAttack:
+		MatchController->RollPassControlAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollPassControlDefense:
+		MatchController->RollPassControlDefense();
+		break;
 	case EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance:
 		MatchController->CompleteCrossAndAdvance();
 		break;
@@ -2988,6 +2997,41 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 	{
 		Result.Formula = BuildDisplayedInlineFormula();
 	}
+	const bool bPassControlRouteReveal =
+		ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::PassControlInitialRoute
+		&& ActiveCrossRollReveal.ContestId == FName(TEXT("PassControl.Route"));
+	if (IsInlineFormulaRevealInputBlocked() && bPassControlRouteReveal)
+	{
+		Result = bInlineFormulaAuthorityResultAvailable
+			? CachedResolvedLongShot : Presentation.LongShotResolution;
+		Result.bVisible = true;
+		Result.bSuppressLegacyResolution = true;
+		Result.Stage = EFMCodexUMGLongShotStage::PassControl;
+		Result.StageLabel = TEXT("判定推进方式");
+		Result.RevealPhase = InlineFormulaRevealPhase;
+		Result.bDiceRevealVisible = true;
+		Result.RollReel = BuildActiveRollReelPresentation();
+		Result.Formula = {};
+		Result.PrimaryAction.bVisible = false;
+		Result.bCanContinue = false;
+		Result.ContinueActionLabel.Empty();
+		const bool bHolding = InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
+		const bool bSettling = InlineFormulaRevealPhase
+			== EFMCodexUMGInlineFormulaRevealPhase::Settling;
+		if (!bHolding)
+		{
+			Result.BranchLabel.Empty();
+			Result.StatusLabel = bSettling
+				? TEXT("路线掷点落定中") : TEXT("号码滚动中");
+		}
+		else
+		{
+			Result.StatusLabel = TEXT("推进方式判定完成");
+		}
+		return Result;
+	}
 	const bool bLongShotDeadReveal =
 		ActiveCrossRollReveal.ContestId == FName(TEXT("LongShot.DeadCorner"))
 		&& (ActiveCrossRollReveal.Kind
@@ -3128,6 +3172,9 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 				|| ActiveCrossRollReveal.Kind
 					== EFMCodexUMGCrossRollRevealKind
 						::ThroughBallInitialRoute
+				|| ActiveCrossRollReveal.Kind
+					== EFMCodexUMGCrossRollRevealKind
+						::PassControlInitialRoute
 					? RouteResultHoldDuration
 					: ActiveCrossRollReveal.Kind
 						== EFMCodexUMGCrossRollRevealKind::TacticalPoint
@@ -3288,6 +3335,14 @@ void UFMCodexLocalMatchScreenWidget::RefreshActiveRollReelVisuals()
 		&& ThroughBallResolutionSurface->GetRollReelWidget() != nullptr)
 	{
 		ThroughBallResolutionSurface->GetRollReelWidget()
+			->RefreshFromPresentation(Reel);
+	}
+	else if (ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::PassControlInitialRoute
+		&& LongShotResolutionSurface != nullptr
+		&& LongShotResolutionSurface->GetRollReelWidget() != nullptr)
+	{
+		LongShotResolutionSurface->GetRollReelWidget()
 			->RefreshFromPresentation(Reel);
 	}
 	else if (ActiveCrossRollReveal.Kind
@@ -3555,6 +3610,8 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 	if (Identity.Kind != EFMCodexUMGCrossRollRevealKind::InitialRoute
 		&& Identity.Kind
 			!= EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute
+		&& Identity.Kind
+			!= EFMCodexUMGCrossRollRevealKind::PassControlInitialRoute
 		&& !bOutcomeOnlyContest
 		&& !Facts.FormulaContests.ContainsByPredicate(
 			[&Identity](
@@ -3579,6 +3636,7 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 			{
 			case EFMCodexUMGCrossRollRevealKind::InitialRoute:
 			case EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute:
+			case EFMCodexUMGCrossRollRevealKind::PassControlInitialRoute:
 				return Candidate.bInitialRoute
 					&& Candidate.Semantics
 						== ERollSemantics::BranchSelection;

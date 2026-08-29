@@ -61,7 +61,7 @@ Names come only from the existing player-facing PreferredDisplayName/DisplayName
 | CutInside DeadCorner | Goal | 进球 | `{Carrier}内切直射死角破门！` / generic equivalent |
 | CutInside DeadCorner | Miss | 射门未进 | `{Carrier}内切直射死角未能得分。` / generic equivalent |
 | PassControl Pass/Dribble/Run | Goal | 进球 | `{Carrier}与{Runner}完成{传球推进/盘带推进/跑动推进}，{Runner}破门！`; missing Carrier uses Runner-only; missing Runner uses route-only fallback |
-| PassControl Pass/Dribble/Run | Miss | 防守成功 | route + selected Marker `抢断`, selected Helper `拦截`, or `被防守方化解。` |
+| PassControl Pass/Dribble/Run | Miss | 防守成功 | `{Carrier}与{Runner}的{传球推进/盘带推进/跑动推进}被{Marker}抢断。` / `...被{Helper}拦截。`; partial attacking names preserve the available name; unnamed defender uses `...被防守方化解。` |
 | Cross High/Low | Goal | 进球 | `{Carrier}传中，{Runner}破门！` / `传中形成进球！` |
 | Cross High/Low | Miss | 防守成功 | `{Carrier}传中被{Marker}抢断。` / `{Runner}抢点被{Helper}拦截。` / `传中被防守方化解。` |
 | ThroughBall Feet | Goal | 进球 | `{Carrier}直塞，{Runner}破门！` / `直塞形成进球！` |
