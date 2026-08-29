@@ -13,7 +13,7 @@ namespace FMCodexLocalDevRollOverride
 	{
 		return Target > EFMCodexLocalDevRollTarget::None
 			&& Target <= EFMCodexLocalDevRollTarget
-				::CutInsideShotDeadCornerB;
+				::PassControlDefense;
 	}
 }
 
@@ -161,6 +161,8 @@ FFMCodexLocalDevRollOverride::ResolveInitialRouteTarget(
 		return EFMCodexLocalDevRollTarget::ThroughBallRoute;
 	case EFMCodexLocalDevRollInvocation::CrossInitialRoute:
 		return EFMCodexLocalDevRollTarget::CrossRoute;
+	case EFMCodexLocalDevRollInvocation::PassControlInitialRoute:
+		return EFMCodexLocalDevRollTarget::PassControlRoute;
 	default:
 		return EFMCodexLocalDevRollTarget::None;
 	}
@@ -249,6 +251,14 @@ FFMCodexLocalDevRollOverride::ResolvePostRouteTarget(
 		}
 		return Purpose == EPostPurpose::PairedAttackB
 			? EFMCodexLocalDevRollTarget::CutInsideShotDeadCornerB
+			: EFMCodexLocalDevRollTarget::None;
+	case EInvocation::PassControlAttack:
+		return Purpose == EPostPurpose::PrimaryAttack
+			? EFMCodexLocalDevRollTarget::PassControlAttack
+			: EFMCodexLocalDevRollTarget::None;
+	case EInvocation::PassControlDefense:
+		return Purpose == EPostPurpose::PrimaryDefense
+			? EFMCodexLocalDevRollTarget::PassControlDefense
 			: EFMCodexLocalDevRollTarget::None;
 	default:
 		return EFMCodexLocalDevRollTarget::None;

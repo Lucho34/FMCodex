@@ -971,13 +971,21 @@ namespace FMCodexLocalMatchInteractionView
 					: Attack.ActionPreparation.ActionType;
 			if (Attack.SelectionStage
 					== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
-				&& PreparedActionType == ESkillRuleType::ThroughBall)
+				&& (PreparedActionType == ESkillRuleType::ThroughBall
+					|| PreparedActionType == ESkillRuleType::PassControl))
 			{
-				View.InteractionCategory = EFMCodexLocalMatchInteractionCategory
-					::RollThroughBallInitialRoute;
+				View.InteractionCategory = PreparedActionType
+					== ESkillRuleType::ThroughBall
+						? EFMCodexLocalMatchInteractionCategory
+							::RollThroughBallInitialRoute
+						: EFMCodexLocalMatchInteractionCategory
+							::RollPassControlRoute;
 				View.ExpectedActingPlayer = Attacker;
 				View.bHumanInteraction = true;
-				View.ContinueActionLabel = TEXT("判定直塞路线");
+				View.ContinueActionLabel = PreparedActionType
+					== ESkillRuleType::ThroughBall
+						? TEXT("判定直塞路线")
+						: TEXT("判定控球推进路线");
 			}
 			else
 			{
@@ -1231,6 +1239,49 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 				EMatchPlayThroughBallOneOnOneShotChoice::DirectShot
 			};
 			return Result;
+		}
+		if (Session.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& Session.bHasActualBranch
+			&& Session.ActualBranch.ActionType == ESkillRuleType::PassControl)
+		{
+			const auto Progress =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+					Session);
+			if (Progress.bIsCanonical && !Progress.bContractComplete)
+			{
+				const bool bAttackRoll =
+					Session.PostRouteRollProgress.Phase
+						== EMatchPlayCurrentAttackPostRouteRollPhase::None
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::PrimaryAttack;
+				Result.InteractionCategory = bAttackRoll
+					? EFMCodexLocalMatchInteractionCategory
+						::RollPassControlAttack
+					: EFMCodexLocalMatchInteractionCategory
+						::RollPassControlDefense;
+				Result.ExpectedActingPlayer = bAttackRoll
+					? Session.Bundle.CurrentAttackingPlayer
+					: Session.Bundle.CurrentDefendingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = bAttackRoll
+					? TEXT("进攻方掷点")
+					: TEXT("防守方掷点");
+				return Result;
+			}
+			if (Progress.bIsCanonical && Progress.bContractComplete)
+			{
+				// Reconstruction-only recovery for legacy completed-roll snapshots.
+				// Normal typed Defense completion advances atomically to terminal.
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("确认结算结果");
+				return Result;
+			}
 		}
 		if (Session.Stage
 				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
@@ -1630,6 +1681,17 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 				Result.ContinueActionLabel = TEXT("判定直塞路线");
 				return Result;
 			}
+			if (Session.Bundle.Binding.ActionType
+				== ESkillRuleType::PassControl)
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::RollPassControlRoute;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("判定控球推进路线");
+				return Result;
+			}
 			Result.InteractionCategory =
 				EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 			Result.ContinueActionLabel =
@@ -1809,6 +1871,15 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
 		Result.InteractionTitle = TEXT("判定直塞路线");
 		break;
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlRoute:
+		Result.InteractionTitle = TEXT("判定控球推进路线");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlAttack:
+		Result.InteractionTitle = TEXT("进攻方掷点");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlDefense:
+		Result.InteractionTitle = TEXT("防守方掷点");
+		break;
 	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance:
 		Result.InteractionTitle = TEXT("下一回合");
 		break;
@@ -1897,6 +1968,9 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectDefense: return TEXT("防守方掷防守点数");
 	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner: return TEXT("进攻方掷内切死角双骰");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute: return TEXT("判定直塞路线");
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlRoute: return TEXT("判定控球推进路线");
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlAttack: return TEXT("进攻方掷点");
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlDefense: return TEXT("防守方掷点");
 	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance: return TEXT("下一回合");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack: return TEXT("掷进攻方点数");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense: return TEXT("掷防守方点数");

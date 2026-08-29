@@ -607,7 +607,18 @@ bool FSkillSelectionFormalRunnerAbsenceTest::RunTest(
 	TestFalse(TEXT("CutInside requires no Runner"),
 		CutInside.ParticipantRequirementResult.bRequiresRunner);
 
-	return SkillSelectionLegalityTests::ExpectError(
+	FMatchPlayState PassControlState = MakeState({PassControlSkillId});
+	PassControlState.CurrentAttack.ActionPreparation.bSkillSelectionDeferred =
+		true;
+	bool bValid = SkillSelectionLegalityTests::ExpectError(
+		*this,
+		TEXT("PassControl still requires a prepared Runner"),
+		PassControlState,
+		Rules,
+		MakeRequest(PassControlSkillId),
+		EMatchPlayCurrentAttackSkillSelectionErrorCode
+			::PreparedRunnerIncompatibleWithSkill);
+	bValid &= SkillSelectionLegalityTests::ExpectError(
 		*this,
 		TEXT("Cross still requires a prepared Runner"),
 		State,
@@ -615,6 +626,7 @@ bool FSkillSelectionFormalRunnerAbsenceTest::RunTest(
 		MakeRequest(CrossSkillId),
 		EMatchPlayCurrentAttackSkillSelectionErrorCode
 			::PreparedRunnerIncompatibleWithSkill);
+	return bValid;
 }
 
 #undef SKILL_LEGALITY_TEST

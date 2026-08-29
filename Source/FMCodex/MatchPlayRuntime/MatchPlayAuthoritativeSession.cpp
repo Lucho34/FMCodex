@@ -1069,6 +1069,112 @@ FMatchPlayAuthoritativeSession::ResolveThroughBallInitialRouteRoll(
 		});
 }
 
+FMatchPlayAuthoritativeResolvePassControlInitialRouteRollResult
+FMatchPlayAuthoritativeSession::ResolvePassControlInitialRouteRoll(
+	const FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest&
+		Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolvePassControlInitialRouteRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolvePassControlInitialRouteRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FDomainExecution Execution;
+			Execution.CandidateAfterState = BeforeState;
+			Execution.StateDisposition =
+				EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+
+			using ERouteError =
+				EMatchPlayAuthoritativePassControlInitialRouteRollErrorCode;
+			auto Reject = [&Result, &Execution](
+				const ERouteError ErrorCode,
+				const TCHAR* ErrorMessage)
+			{
+				Result.ErrorCode = ErrorCode;
+				Result.ErrorMessage = ErrorMessage;
+				Result.OrchestrationResult.ErrorMessage = ErrorMessage;
+				return Execution;
+			};
+
+			if (!BeforeState.bHasCurrentAttack)
+			{
+				return Reject(ERouteError::NoCurrentAttack,
+					TEXT("PassControl Initial Route requires a current attack."));
+			}
+			if (Request.AttackSequence <= 0)
+			{
+				return Reject(ERouteError::InvalidAttackSequence,
+					TEXT("PassControl Initial Route requires a positive AttackSequence."));
+			}
+			if (Request.AttackSequence
+				!= BeforeState.CurrentAttack.AttackSequence)
+			{
+				return Reject(ERouteError::AttackSequenceMismatch,
+					TEXT("PassControl Initial Route request is stale."));
+			}
+			if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+				&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+			{
+				return Reject(ERouteError::InvalidRequestingSide,
+					TEXT("PassControl Initial Route requires PlayerA or PlayerB as RequestingSide."));
+			}
+			if (Request.RequestingSide
+				!= BeforeState.RuntimeState.CurrentAttackingPlayer)
+			{
+				return Reject(ERouteError::RequestingSideNotCurrentAttacker,
+					TEXT("Only the current attacker may roll the PassControl Initial Route."));
+			}
+
+			const FMatchPlayCurrentAttackState& Attack =
+				BeforeState.CurrentAttack;
+			const ESkillRuleType ActionType = Attack.bHasResolutionSession
+				? Attack.ResolutionSession.Bundle.Binding.ActionType
+				: Attack.bHasSelectedAction
+					? Attack.SelectedAction.ActionType
+					: Attack.ActionPreparation.ActionType;
+			if (ActionType != ESkillRuleType::PassControl)
+			{
+				return Reject(ERouteError::WrongResolutionFamily,
+					TEXT("Typed PassControl Initial Route requires a PassControl attack."));
+			}
+			const bool bReadyWithoutSession = !Attack.bHasResolutionSession
+				&& Attack.SelectionStage
+					== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution;
+			const bool bAwaitingUnresolvedRoute = Attack.bHasResolutionSession
+				&& Attack.ResolutionSession.Stage
+					== EMatchPlayCurrentAttackResolutionStage::AwaitingRoute
+				&& !Attack.ResolutionSession.bHasActualBranch
+				&& Attack.ResolutionSession.InitialRouteRollRecords.IsEmpty();
+			if (!bReadyWithoutSession && !bAwaitingUnresolvedRoute)
+			{
+				return Reject(ERouteError::RouteRollNotPending,
+					TEXT("PassControl Initial Route roll is not pending."));
+			}
+
+			FMatchPlayCurrentAttackResolveInitialRouteOrchestrationRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+					BeforeState,
+					DomainRequest,
+					InitialRouteRollProvider);
+
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 FMatchPlayAuthoritativeSession::ResolveCrossPostRoutePlan()
 {
@@ -1448,6 +1554,105 @@ FMatchPlayAuthoritativeSession::ResolvePassControlPostRoutePlan()
 					? EMatchPlayAuthoritativeStateDisposition::Adopt
 					: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
 			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolvePassControlAttackRollResult
+FMatchPlayAuthoritativeSession::ResolvePassControlAttackRoll(
+	const FMatchPlayAuthoritativeResolvePassControlAttackRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolvePassControlAttackRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolvePassControlAttackRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest::EMode
+					::ResolveAttackRoll;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet ? &AuthoritativeSkillRuleSet : nullptr,
+						PostRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolvePassControlDefenseRollResult
+FMatchPlayAuthoritativeSession::ResolvePassControlDefenseRoll(
+	const FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolvePassControlDefenseRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolvePassControlDefenseRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest::EMode
+					::ResolveDefenseRoll;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet ? &AuthoritativeSkillRuleSet : nullptr,
+						PostRouteRollProvider);
+
+			bool bSuccess = Result.OrchestrationResult.bSuccess;
+			FMatchPlayState CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			if (bSuccess)
+			{
+				Result.bTerminalCompletionAttempted = true;
+				Result.TerminalResult =
+					FMatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator
+						::Resolve(
+							CandidateAfterState,
+							bHasSkillRuleSet
+								? &AuthoritativeSkillRuleSet
+								: nullptr);
+				bSuccess = Result.TerminalResult.bSuccess;
+				if (bSuccess)
+				{
+					CandidateAfterState = Result.TerminalResult.AfterState;
+				}
+			}
+
+			FDomainExecution Execution;
+			Execution.bSuccess = bSuccess;
+			Execution.CandidateAfterState = CandidateAfterState;
+			Execution.StateDisposition = bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }

@@ -1452,6 +1452,99 @@ void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
 	ApplyCrossTerminalResolution();
 }
 
+void AFMCodexLocalMatchPlayerController::RollPassControlRoute()
+{
+	if (bPassControlRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollPassControlRoute)
+	{
+		RecordLocalFailure(
+			TEXT("ResolvePassControlInitialRouteRoll"),
+			TEXT("PassControl Initial Route roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolvePassControlInitialRouteRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bPassControlRollCommandInFlight = true;
+	const auto Result = Host->ResolvePassControlInitialRouteRoll(Request);
+	bPassControlRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolvePassControlInitialRouteRoll"), Result);
+}
+
+void AFMCodexLocalMatchPlayerController::RollPassControlAttack()
+{
+	if (bPassControlRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollPassControlAttack)
+	{
+		RecordLocalFailure(
+			TEXT("ResolvePassControlAttackRoll"),
+			TEXT("PassControl attack roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolvePassControlAttackRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolvePassControlAttackRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bPassControlRollCommandInFlight = true;
+	const auto Result = Host->ResolvePassControlAttackRoll(Request);
+	bPassControlRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolvePassControlAttackRoll"), Result);
+}
+
+void AFMCodexLocalMatchPlayerController::RollPassControlDefense()
+{
+	if (bPassControlRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollPassControlDefense)
+	{
+		RecordLocalFailure(
+			TEXT("ResolvePassControlDefenseRoll"),
+			TEXT("PassControl defense roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolvePassControlDefenseRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bPassControlRollCommandInFlight = true;
+	const auto Result = Host->ResolvePassControlDefenseRoll(Request);
+	bPassControlRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolvePassControlDefenseRoll"), Result);
+}
+
 void AFMCodexLocalMatchPlayerController::RollThroughBallInitialRoute()
 {
 	if (bThroughBallRouteCommandInFlight)
@@ -1859,6 +1952,12 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	if (InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute
 		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollPassControlRoute
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollPassControlAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollPassControlDefense
+		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense
@@ -2019,9 +2118,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	case ESkillRuleType::PassControl:
 		if (!Progress.bContractComplete)
 		{
-			RecordCommandResult(
-				TEXT("ResolvePassControlPostRoutePlan"),
-				Host->ResolvePassControlPostRoutePlan());
+			RecordLocalFailure(
+				TEXT("ContinueResolution"),
+				TEXT("PassControl player-owned rolls require their explicit typed commands."));
 		}
 		else
 		{

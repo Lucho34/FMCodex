@@ -1089,6 +1089,46 @@ AFMCodexLocalMatchHostGameMode::ResolveThroughBallInitialRouteRoll(
 	return Result;
 }
 
+FFMCodexLocalMatchResolvePassControlInitialRouteRollResult
+AFMCodexLocalMatchHostGameMode::ResolvePassControlInitialRouteRoll(
+	const FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest&
+		Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolvePassControlInitialRouteRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		EFMCodexLocalDevRollInvocation::PassControlInitialRoute,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolvePassControlInitialRouteRoll(Request);
+		});
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		const FString DomainMessage =
+			!Result.AuthoritativeResult.ErrorMessage.IsEmpty()
+				? Result.AuthoritativeResult.ErrorMessage
+				: Result.AuthoritativeResult.OrchestrationResult.ErrorMessage;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			DomainMessage);
+	}
+	return Result;
+}
+
 FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 AFMCodexLocalMatchHostGameMode::ResolveCrossPostRoutePlan()
 {
@@ -1396,6 +1436,82 @@ AFMCodexLocalMatchHostGameMode::ResolvePassControlPostRoutePlan()
 		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
 			Result.AuthoritativeResult.RuntimeEnvelope,
 			Result.AuthoritativeResult.OrchestrationResult.ErrorMessage);
+	}
+	return Result;
+}
+
+FFMCodexLocalMatchResolvePassControlAttackRollResult
+AFMCodexLocalMatchHostGameMode::ResolvePassControlAttackRoll(
+	const FMatchPlayAuthoritativeResolvePassControlAttackRollRequest& Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolvePassControlAttackRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		EFMCodexLocalDevRollInvocation::PassControlAttack,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolvePassControlAttackRoll(Request);
+		});
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			Result.AuthoritativeResult.OrchestrationResult.ErrorMessage);
+	}
+	return Result;
+}
+
+FFMCodexLocalMatchResolvePassControlDefenseRollResult
+AFMCodexLocalMatchHostGameMode::ResolvePassControlDefenseRoll(
+	const FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest& Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolvePassControlDefenseRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		EFMCodexLocalDevRollInvocation::PassControlDefense,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolvePassControlDefenseRoll(Request);
+		});
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess
+		&& Result.AuthoritativeResult.bTerminalCompletionAttempted
+		&& Result.AuthoritativeResult.TerminalResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		const FString DomainMessage =
+			!Result.AuthoritativeResult.OrchestrationResult.ErrorMessage.IsEmpty()
+				? Result.AuthoritativeResult.OrchestrationResult.ErrorMessage
+				: Result.AuthoritativeResult.TerminalResult.ErrorMessage;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			DomainMessage);
 	}
 	return Result;
 }

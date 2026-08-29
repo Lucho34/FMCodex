@@ -206,7 +206,11 @@ bool FFMCodexLocalDevRollOverrideDomainAndMatrixTest::RunTest(
 		{ ETarget::CutInsideShotDeadCornerA,
 			EInvocation::CutInsideShotDeadCorner, EPost::PairedAttackA, 5 },
 		{ ETarget::CutInsideShotDeadCornerB,
-			EInvocation::CutInsideShotDeadCorner, EPost::PairedAttackB, 6 }
+			EInvocation::CutInsideShotDeadCorner, EPost::PairedAttackB, 6 },
+		{ ETarget::PassControlAttack,
+			EInvocation::PassControlAttack, EPost::PrimaryAttack, 4 },
+		{ ETarget::PassControlDefense,
+			EInvocation::PassControlDefense, EPost::PrimaryDefense, 3 }
 	};
 	for (const FPostCase& Case : Cases)
 	{
@@ -220,6 +224,10 @@ bool FFMCodexLocalDevRollOverrideDomainAndMatrixTest::RunTest(
 	TestTrue(TEXT("Cross route accepted"), Set(Dev, ETarget::CrossRoute, 1));
 	TestEqual(TEXT("Cross route invocation distinct"),
 		Initial(Dev, EInvocation::CrossInitialRoute), 1);
+	TestTrue(TEXT("PassControl route accepted"),
+		Set(Dev, ETarget::PassControlRoute, 2));
+	TestEqual(TEXT("PassControl route invocation distinct"),
+		Initial(Dev, EInvocation::PassControlInitialRoute), 2);
 	TestTrue(TEXT("Tactical Point accepts upper domain"),
 		Set(Dev, ETarget::TacticalPoint, 8));
 	TestEqual(TEXT("Tactical Point override is authoritative provider output"),

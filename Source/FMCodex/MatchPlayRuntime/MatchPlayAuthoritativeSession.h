@@ -92,6 +92,11 @@ public:
 		const FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest&
 			Request);
 
+	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollResult
+	ResolvePassControlInitialRouteRoll(
+		const FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest&
+			Request);
+
 	FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();
 
@@ -126,6 +131,14 @@ public:
 
 	FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
 	ResolvePassControlPostRoutePlan();
+
+	FMatchPlayAuthoritativeResolvePassControlAttackRollResult
+	ResolvePassControlAttackRoll(
+		const FMatchPlayAuthoritativeResolvePassControlAttackRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolvePassControlDefenseRollResult
+	ResolvePassControlDefenseRoll(
+		const FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest& Request);
 
 	FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionResult
 	ResolveDeadCornerPostRouteDecision();

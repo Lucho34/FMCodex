@@ -6505,11 +6505,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All sixty-two mutations use the gate"),
+	TestEqual(TEXT("All sixty-five mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		62);
+		65);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7894,8 +7894,8 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
 		CompletionSource));
-	TestEqual(TEXT("All sixty-two commands use one serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
+	TestEqual(TEXT("All sixty-five commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
 	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
@@ -10543,14 +10543,14 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			TEXT("FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(")) })
 	{
 		const int32 ExpectedCallCount = FCString::Strcmp(
-			Operation.Key, TEXT("Initial Route orchestrator")) == 0 ? 2 : 1;
+			Operation.Key, TEXT("Initial Route orchestrator")) == 0 ? 3 : 1;
 		TestEqual(*FString::Printf(TEXT("%s has bounded production calls"), Operation.Key),
 			CountOccurrences(Implementation, Operation.Value),
 			ExpectedCallCount);
 	}
-	TestEqual(TEXT("All sixty-two mutations share serialized gate"),
+	TestEqual(TEXT("All sixty-five mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		62);
+		65);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -12448,7 +12448,7 @@ bool FMatchPlayAuthoritativeSessionResolveInitialRouteTest::RunTest(
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(")),
-		2);
+		3);
 
 	InitialRouteFixtures::FQueueRollProvider UninitializedProvider;
 	UninitializedProvider.Enqueue(InitialRouteFixtures::MakeSuccess(4));
@@ -14531,6 +14531,22 @@ bool FMatchPlayAuthoritativeSessionResolvePassControlPostRoutePlanTest
 			::ResolvePassControlPostRoutePlan),
 		FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
 		(FMatchPlayAuthoritativeSession::*)()>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolvePassControlInitialRouteRoll),
+		FMatchPlayAuthoritativeResolvePassControlInitialRouteRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolvePassControlAttackRoll),
+		FMatchPlayAuthoritativeResolvePassControlAttackRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolvePassControlAttackRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolvePassControlDefenseRoll),
+		FMatchPlayAuthoritativeResolvePassControlDefenseRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest&)>);
 	TestEqual(TEXT("PassControl command appended"),
 		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
 			::ResolvePassControlPostRoutePlan),
@@ -14550,18 +14566,22 @@ bool FMatchPlayAuthoritativeSessionResolvePassControlPostRoutePlanTest
 		LoadProductionSource(
 			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 			Implementation));
-	TestFalse(TEXT("No public PassControl gameplay request exists"),
+	TestTrue(TEXT("PassControl exposes three correlated player-owned requests"),
 		Types.Contains(TEXT(
-			"FMatchPlayAuthoritativeResolvePassControlPostRoutePlanRequest")));
-	TestTrue(TEXT("PassControl command has no gameplay arguments"),
+			"FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest"))
+			&& Types.Contains(TEXT(
+				"FMatchPlayAuthoritativeResolvePassControlAttackRollRequest"))
+			&& Types.Contains(TEXT(
+				"FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest")));
+	TestTrue(TEXT("Legacy PassControl completion remains internal compatibility"),
 		Header.Contains(TEXT("ResolvePassControlPostRoutePlan();")));
 	TestFalse(TEXT("Session does not call provider directly"),
 		Implementation.Contains(TEXT("RollD6(")));
-	TestEqual(TEXT("One canonical PassControl orchestration call"),
+	TestEqual(TEXT("Legacy and typed PassControl commands share one orchestrator"),
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator")),
-		1);
+		3);
 
 	auto MakePassControlSkillId = [](const FString& Prefix)
 	{
@@ -15089,6 +15109,405 @@ bool FMatchPlayAuthoritativeSessionResolvePassControlPostRoutePlanTest
 		AreStatesEqual(
 			DeterministicA.GetStateSnapshot(),
 			DeterministicB.GetStateSnapshot()));
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionPassControlSequentialRollFoundationTest,
+	"45A.PassControlSequentialRollFoundation")
+
+bool FMatchPlayAuthoritativeSessionPassControlSequentialRollFoundationTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using ERouteError =
+		EMatchPlayAuthoritativePassControlInitialRouteRollErrorCode;
+	using EPlanError =
+		EMatchPlayCurrentAttackResolvePassControlPostRoutePlanErrorCode;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	(void)Parameters;
+
+	struct FRouteCase
+	{
+		const TCHAR* Label;
+		int32 RouteD6;
+		EMatchPlayPassControlActualBranch ExpectedBranch;
+	};
+	const FRouteCase Cases[] = {
+		{ TEXT("PassAdvance"), 2,
+			EMatchPlayPassControlActualBranch::PassAdvance },
+		{ TEXT("DribbleAdvance"), 4,
+			EMatchPlayPassControlActualBranch::DribbleAdvance },
+		{ TEXT("RunAdvance"), 6,
+			EMatchPlayPassControlActualBranch::RunAdvance }
+	};
+
+	for (const FRouteCase& Case : Cases)
+	{
+		const FString Prefix = FString(TEXT("PassControlSequential")) + Case.Label;
+		const FName SkillId(*FString::Printf(
+			TEXT("Skill.%s.%d"), *Prefix,
+			static_cast<int32>(ESkillRuleType::PassControl)));
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::PassControl);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		Initial.Enqueue(InitialRouteFixtures::MakeSuccess(Case.RouteD6));
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteFailure());
+		Post.Enqueue(MakePostRouteSuccess(4));
+		Post.Enqueue(MakePostRouteFailure());
+		Post.Enqueue(MakePostRouteSuccess(3));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(*FString::Printf(TEXT("%s reaches ReadyForResolution"), Case.Label),
+			BuildStage7164ToReadyForResolution(
+				Session, Prefix, Trace, ESkillRuleType::PassControl));
+		const FMatchPlayState Ready = Session.GetStateSnapshot();
+		const int64 AttackSequence = Ready.CurrentAttack.AttackSequence;
+		const EInitialTurnOrderPlayer Attacker =
+			Ready.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
+
+		FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest
+			RouteRequest;
+		RouteRequest.AttackSequence = AttackSequence;
+		RouteRequest.RequestingSide = Attacker;
+		FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest
+			StaleRoute = RouteRequest;
+		StaleRoute.AttackSequence = AttackSequence + 1;
+		const auto StaleRouteResult =
+			Session.ResolvePassControlInitialRouteRoll(StaleRoute);
+		TestEqual(*FString::Printf(TEXT("%s stale route error"), Case.Label),
+			StaleRouteResult.ErrorCode, ERouteError::AttackSequenceMismatch);
+		FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest
+			WrongRoute = RouteRequest;
+		WrongRoute.RequestingSide = Defender;
+		const auto WrongRouteResult =
+			Session.ResolvePassControlInitialRouteRoll(WrongRoute);
+		TestEqual(*FString::Printf(TEXT("%s wrong-side route error"), Case.Label),
+			WrongRouteResult.ErrorCode,
+			ERouteError::RequestingSideNotCurrentAttacker);
+		TestEqual(*FString::Printf(TEXT("%s rejected routes consume zero RNG"), Case.Label),
+			Initial.GetCallCount(), 0);
+		TestTrue(*FString::Printf(TEXT("%s rejected routes preserve Ready"), Case.Label),
+			AreStatesEqual(Ready, Session.GetStateSnapshot()));
+
+		const auto Route =
+			Session.ResolvePassControlInitialRouteRoll(RouteRequest);
+		const FMatchPlayState RouteOnly = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s typed Route succeeds"), Case.Label),
+			Route.RuntimeEnvelope.bDomainSuccess
+				&& Route.OrchestrationResult.bSuccess
+				&& Route.OrchestrationResult.bResolvedNewRoute);
+		TestEqual(*FString::Printf(TEXT("%s Route exact RNG"), Case.Label),
+			Initial.GetCallCount(), 1);
+		TestTrue(*FString::Printf(TEXT("%s Route-only snapshot"), Case.Label),
+			RouteOnly.CurrentAttack.bHasResolutionSession
+				&& RouteOnly.CurrentAttack.ResolutionSession.Stage
+					== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+				&& RouteOnly.CurrentAttack.ResolutionSession
+					.InitialRouteRollRecords.Num() == 1
+				&& RouteOnly.CurrentAttack.ResolutionSession.ActualBranch.PassControl
+					== Case.ExpectedBranch
+				&& RouteOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+					.RollRecords.IsEmpty());
+
+		const auto DuplicateRoute =
+			Session.ResolvePassControlInitialRouteRoll(RouteRequest);
+		TestEqual(*FString::Printf(TEXT("%s duplicate Route error"), Case.Label),
+			DuplicateRoute.ErrorCode, ERouteError::RouteRollNotPending);
+		TestEqual(*FString::Printf(TEXT("%s duplicate Route zero RNG"), Case.Label),
+			Initial.GetCallCount(), 1);
+
+		FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest
+			PrematureDefense;
+		PrematureDefense.AttackSequence = AttackSequence;
+		PrematureDefense.RequestingSide = Defender;
+		const auto Premature =
+			Session.ResolvePassControlDefenseRoll(PrematureDefense);
+		TestEqual(*FString::Printf(TEXT("%s premature Defense error"), Case.Label),
+			Premature.OrchestrationResult.ErrorCode,
+			EPlanError::WrongPassControlRollStep);
+		TestEqual(*FString::Printf(TEXT("%s premature Defense zero RNG"), Case.Label),
+			Post.GetCallCount(), 0);
+
+		FMatchPlayAuthoritativeResolvePassControlAttackRollRequest AttackRequest;
+		AttackRequest.AttackSequence = AttackSequence;
+		AttackRequest.RequestingSide = Attacker;
+		auto StaleAttack = AttackRequest;
+		StaleAttack.AttackSequence = AttackSequence + 1;
+		const auto StaleAttackResult =
+			Session.ResolvePassControlAttackRoll(StaleAttack);
+		TestEqual(*FString::Printf(TEXT("%s stale Attack zero RNG"), Case.Label),
+			StaleAttackResult.OrchestrationResult.ProviderCallCount, 0);
+		auto WrongAttack = AttackRequest;
+		WrongAttack.RequestingSide = Defender;
+		const auto WrongAttackResult =
+			Session.ResolvePassControlAttackRoll(WrongAttack);
+		TestEqual(*FString::Printf(TEXT("%s wrong Attack owner"), Case.Label),
+			WrongAttackResult.OrchestrationResult.ErrorCode,
+			EPlanError::WrongRequestingSide);
+		TestEqual(*FString::Printf(TEXT("%s rejected Attack zero RNG"), Case.Label),
+			Post.GetCallCount(), 0);
+
+		FQueuePostRouteRollProvider ReconstructedAttackProvider;
+		ReconstructedAttackProvider.Enqueue(MakePostRouteSuccess(4));
+		FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest
+			ReconstructedAttackRequest;
+		ReconstructedAttackRequest.AttackSequence = AttackSequence;
+		ReconstructedAttackRequest.Mode =
+			FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest::EMode
+				::ResolveAttackRoll;
+		ReconstructedAttackRequest.RequestingSide = Attacker;
+		const auto ReconstructedAttack =
+			FMatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator
+				::Resolve(RouteOnly, ReconstructedAttackRequest, &Rules,
+					&ReconstructedAttackProvider);
+		TestTrue(*FString::Printf(TEXT("%s Route reconstruction"), Case.Label),
+			ReconstructedAttack.bSuccess
+				&& ReconstructedAttack.ProviderCallCount == 1
+				&& ReconstructedAttack.AfterState.CurrentAttack.ResolutionSession
+					.PostRouteRollProgress.RollRecords.Num() == 1);
+
+		const auto FailedAttack =
+			Session.ResolvePassControlAttackRoll(AttackRequest);
+		TestEqual(*FString::Printf(TEXT("%s Attack provider failure exact"), Case.Label),
+			FailedAttack.OrchestrationResult.ErrorCode,
+			EPlanError::PostRouteRollProviderFailed);
+		TestEqual(*FString::Printf(TEXT("%s failed Attack one RNG"), Case.Label),
+			FailedAttack.OrchestrationResult.ProviderCallCount, 1);
+		TestTrue(*FString::Printf(TEXT("%s failed Attack preserves Route"), Case.Label),
+			AreStatesEqual(RouteOnly, Session.GetStateSnapshot()));
+
+		const auto Attack = Session.ResolvePassControlAttackRoll(AttackRequest);
+		const FMatchPlayState AttackOnly = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s typed Attack succeeds"), Case.Label),
+			Attack.RuntimeEnvelope.bDomainSuccess
+				&& Attack.OrchestrationResult.bSuccess
+				&& Attack.OrchestrationResult.ProviderCallCount == 1);
+		TestTrue(*FString::Printf(TEXT("%s Attack-only snapshot"), Case.Label),
+			AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.Num() == 1
+				&& AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+					.RollRecords[0].Purpose == EPurpose::PrimaryAttack
+				&& AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+					.RollRecords[0].RawD6 == 4
+				&& AttackOnly.CurrentAttack.LifecycleState
+					== EMatchPlayCurrentAttackLifecycleState::Active);
+
+		const auto DuplicateAttack =
+			Session.ResolvePassControlAttackRoll(AttackRequest);
+		TestEqual(*FString::Printf(TEXT("%s duplicate Attack error"), Case.Label),
+			DuplicateAttack.OrchestrationResult.ErrorCode,
+			EPlanError::WrongPassControlRollStep);
+		TestEqual(*FString::Printf(TEXT("%s duplicate Attack zero RNG"), Case.Label),
+			Post.GetCallCount(), 2);
+
+		auto StaleDefense = PrematureDefense;
+		StaleDefense.AttackSequence = AttackSequence + 1;
+		const auto StaleDefenseResult =
+			Session.ResolvePassControlDefenseRoll(StaleDefense);
+		TestEqual(*FString::Printf(TEXT("%s stale Defense zero RNG"), Case.Label),
+			StaleDefenseResult.OrchestrationResult.ProviderCallCount, 0);
+		auto WrongDefense = PrematureDefense;
+		WrongDefense.RequestingSide = Attacker;
+		const auto WrongDefenseResult =
+			Session.ResolvePassControlDefenseRoll(WrongDefense);
+		TestEqual(*FString::Printf(TEXT("%s wrong Defense owner"), Case.Label),
+			WrongDefenseResult.OrchestrationResult.ErrorCode,
+			EPlanError::WrongRequestingSide);
+		TestEqual(*FString::Printf(TEXT("%s rejected Defense zero RNG"), Case.Label),
+			Post.GetCallCount(), 2);
+
+		FQueuePostRouteRollProvider ReconstructedDefenseProvider;
+		ReconstructedDefenseProvider.Enqueue(MakePostRouteSuccess(3));
+		FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest
+			ReconstructedDefenseRequest;
+		ReconstructedDefenseRequest.AttackSequence = AttackSequence;
+		ReconstructedDefenseRequest.Mode =
+			FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest::EMode
+				::ResolveDefenseRoll;
+		ReconstructedDefenseRequest.RequestingSide = Defender;
+		const auto ReconstructedDefense =
+			FMatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator
+				::Resolve(AttackOnly, ReconstructedDefenseRequest, &Rules,
+					&ReconstructedDefenseProvider);
+		const auto ReconstructedTerminal =
+			FMatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator
+				::Resolve(ReconstructedDefense.AfterState, &Rules);
+		TestTrue(*FString::Printf(TEXT("%s Attack-only reconstruction"), Case.Label),
+			ReconstructedDefense.bSuccess
+				&& ReconstructedDefense.ProviderCallCount == 1
+				&& ReconstructedTerminal.bSuccess
+				&& ReconstructedTerminal.AfterState.CurrentAttack.LifecycleState
+					== EMatchPlayCurrentAttackLifecycleState
+						::TerminalPendingAdvance);
+
+		const auto FailedDefense =
+			Session.ResolvePassControlDefenseRoll(PrematureDefense);
+		TestEqual(*FString::Printf(TEXT("%s provider failure exact"), Case.Label),
+			FailedDefense.OrchestrationResult.ErrorCode,
+			EPlanError::PostRouteRollProviderFailed);
+		TestEqual(*FString::Printf(TEXT("%s failed Defense one RNG"), Case.Label),
+			FailedDefense.OrchestrationResult.ProviderCallCount, 1);
+		TestTrue(*FString::Printf(TEXT("%s failed Defense preserves Attack"), Case.Label),
+			AreStatesEqual(AttackOnly, Session.GetStateSnapshot()));
+
+		const auto Defense =
+			Session.ResolvePassControlDefenseRoll(PrematureDefense);
+		const FMatchPlayState Terminal = Session.GetStateSnapshot();
+		TestTrue(*FString::Printf(TEXT("%s typed Defense completes terminal"), Case.Label),
+			Defense.RuntimeEnvelope.bDomainSuccess
+				&& Defense.OrchestrationResult.bSuccess
+				&& Defense.OrchestrationResult.ProviderCallCount == 1
+				&& Defense.bTerminalCompletionAttempted
+				&& Defense.TerminalResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s total accepted/retry post RNG"), Case.Label),
+			Post.GetCallCount(), 4);
+		TestTrue(*FString::Printf(TEXT("%s persistent terminal"), Case.Label),
+			Terminal.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+				&& Terminal.CurrentAttack.ResolutionSession.PostRouteRollProgress
+					.RollRecords.Num() == 2
+				&& Terminal.CurrentAttack.ResolutionSession.PostRouteRollProgress
+					.RollRecords[1].Purpose == EPurpose::PrimaryDefense
+				&& Terminal.CurrentAttack.ResolutionSession.PostRouteRollProgress
+					.RollRecords[1].RawD6 == 3);
+
+		const auto Facts =
+			FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+				Terminal, &Rules);
+		TestTrue(*FString::Printf(TEXT("%s terminal FormulaFacts"), Case.Label),
+			Facts.bSuccess && Facts.bHasFacts
+				&& Facts.bHasActualBranch
+				&& Facts.ActualBranch.PassControl == Case.ExpectedBranch
+				&& Facts.Rolls.Num() == 3
+				&& Facts.FormulaContests.Num() == 1
+				&& Facts.FormulaContests[0].bHasResolvedFormula
+				&& Facts.FormulaContests[0].AttackRow.ParticipatingStamina.Num()
+					== 2
+				&& Facts.FormulaContests[0].DefenseRow.ParticipatingStamina.Num()
+					== 2);
+
+		const int32 CallsBeforeTerminalReplay = Post.GetCallCount();
+		const auto TerminalReplay =
+			Session.ResolvePassControlDefenseRoll(PrematureDefense);
+		TestEqual(*FString::Printf(TEXT("%s terminal replay runtime guard"), Case.Label),
+			TerminalReplay.RuntimeEnvelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
+		TestEqual(*FString::Printf(TEXT("%s terminal replay zero RNG"), Case.Label),
+			Post.GetCallCount() - CallsBeforeTerminalReplay, 0);
+		TestTrue(*FString::Printf(TEXT("%s terminal replay preserves State"), Case.Label),
+			AreStatesEqual(Terminal, Session.GetStateSnapshot()));
+
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+		Advance.AttackSequence = AttackSequence;
+		Advance.RequestingSide = Attacker;
+		const auto Advanced = Session.AdvanceAfterTerminal(Advance);
+		TestTrue(*FString::Printf(TEXT("%s explicit NextRound remains"), Case.Label),
+			Advanced.CompletionResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s advance consumes zero RNG"), Case.Label),
+			Post.GetCallCount(), 4);
+	}
+
+	const FString RetryPrefix(TEXT("PassControlRouteRetry"));
+	const FName RetrySkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"), *RetryPrefix,
+		static_cast<int32>(ESkillRuleType::PassControl)));
+	const FSkillRuleSnapshotSet RetryRules =
+		MakeSkillRuleSet(RetrySkillId, ESkillRuleType::PassControl);
+	InitialRouteFixtures::FQueueRollProvider RetryInitial;
+	RetryInitial.Enqueue(InitialRouteFixtures::MakeFailure());
+	RetryInitial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FQueuePostRouteRollProvider RetryPost;
+	FMatchPlayAuthoritativeSession RetrySession(
+		RetryInitial, RetryPost, RetryRules);
+	FReachabilityTrace RetryTrace;
+	TestTrue(TEXT("Route retry fixture reaches ReadyForResolution"),
+		BuildStage7164ToReadyForResolution(
+			RetrySession, RetryPrefix, RetryTrace, ESkillRuleType::PassControl));
+	const FMatchPlayState RetryReady = RetrySession.GetStateSnapshot();
+	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest RetryRequest;
+	RetryRequest.AttackSequence = RetryReady.CurrentAttack.AttackSequence;
+	RetryRequest.RequestingSide = RetryReady.RuntimeState.CurrentAttackingPlayer;
+	const auto RouteFailure =
+		RetrySession.ResolvePassControlInitialRouteRoll(RetryRequest);
+	TestTrue(TEXT("Route provider failure does not adopt begun session"),
+		!RouteFailure.OrchestrationResult.bSuccess
+			&& AreStatesEqual(RetryReady, RetrySession.GetStateSnapshot()));
+	const auto RouteRetry =
+		RetrySession.ResolvePassControlInitialRouteRoll(RetryRequest);
+	TestTrue(TEXT("Route provider retry succeeds safely"),
+		RouteRetry.OrchestrationResult.bSuccess
+			&& RetryInitial.GetCallCount() == 2);
+
+	const FString NoHelperPrefix(TEXT("PassControlSequentialNoHelper"));
+	const FName NoHelperSkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"), *NoHelperPrefix,
+		static_cast<int32>(ESkillRuleType::PassControl)));
+	const FSkillRuleSnapshotSet NoHelperRules =
+		MakeSkillRuleSet(NoHelperSkillId, ESkillRuleType::PassControl);
+	InitialRouteFixtures::FQueueRollProvider NoHelperInitial;
+	NoHelperInitial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FQueuePostRouteRollProvider NoHelperPost;
+	NoHelperPost.Enqueue(MakePostRouteSuccess(4));
+	NoHelperPost.Enqueue(MakePostRouteSuccess(3));
+	FMatchPlayAuthoritativeSession NoHelperSession(
+		NoHelperInitial, NoHelperPost, NoHelperRules);
+	FReachabilityTrace NoHelperTrace;
+	FName LegalHelper;
+	TestTrue(TEXT("No-Helper fixture reaches optional Helper step"),
+		BuildStage7163ToAwaitingHelper(
+			NoHelperSession,
+			NoHelperPrefix,
+			true,
+			NoHelperTrace,
+			LegalHelper,
+			ESkillRuleType::PassControl));
+	FMatchPlayAuthoritativeDeclineHelperRequest Decline;
+	Decline.RequestingSide = NoHelperTrace.DefendingSide;
+	TestTrue(TEXT("PassControl Helper can be declined"),
+		NoHelperSession.DeclineHelper(Decline).DeclineResult.bSuccess);
+	FMatchPlayAuthoritativeSubmitSkillRequest NoHelperSkill;
+	NoHelperSkill.RequestingSide = NoHelperTrace.AttackingSide;
+	NoHelperSkill.SkillId = NoHelperSkillId;
+	TestTrue(TEXT("No-Helper PassControl still reaches ReadyForResolution"),
+		NoHelperSession.SubmitSkill(NoHelperRules, NoHelperSkill)
+			.SkillResult.bSuccess);
+	const FMatchPlayState NoHelperReady = NoHelperSession.GetStateSnapshot();
+	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest
+		NoHelperRoute;
+	NoHelperRoute.AttackSequence = NoHelperReady.CurrentAttack.AttackSequence;
+	NoHelperRoute.RequestingSide = NoHelperTrace.AttackingSide;
+	TestTrue(TEXT("No-Helper typed Route succeeds"),
+		NoHelperSession.ResolvePassControlInitialRouteRoll(NoHelperRoute)
+			.OrchestrationResult.bSuccess);
+	FMatchPlayAuthoritativeResolvePassControlAttackRollRequest NoHelperAttack;
+	NoHelperAttack.AttackSequence = NoHelperRoute.AttackSequence;
+	NoHelperAttack.RequestingSide = NoHelperTrace.AttackingSide;
+	TestTrue(TEXT("No-Helper typed Attack succeeds"),
+		NoHelperSession.ResolvePassControlAttackRoll(NoHelperAttack)
+			.OrchestrationResult.bSuccess);
+	FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest NoHelperDefense;
+	NoHelperDefense.AttackSequence = NoHelperRoute.AttackSequence;
+	NoHelperDefense.RequestingSide = NoHelperTrace.DefendingSide;
+	const auto NoHelperCompleted =
+		NoHelperSession.ResolvePassControlDefenseRoll(NoHelperDefense);
+	const FMatchPlayState NoHelperTerminal =
+		NoHelperSession.GetStateSnapshot();
+	const auto NoHelperFacts =
+		FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+			NoHelperTerminal, &NoHelperRules);
+	TestTrue(TEXT("No-Helper typed flow reaches terminal"),
+		NoHelperCompleted.RuntimeEnvelope.bDomainSuccess
+			&& NoHelperCompleted.TerminalResult.bSuccess
+			&& NoHelperTerminal.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	TestTrue(TEXT("Absent Helper has no identity or Stamina participant"),
+		!NoHelperTerminal.CurrentAttack.ResolutionSession.Bundle.bHasHelper
+			&& NoHelperFacts.FormulaContests.Num() == 1
+			&& NoHelperFacts.FormulaContests[0].DefenseRow
+				.ParticipatingStamina.Num() == 1);
 	return true;
 }
 
@@ -17741,6 +18160,9 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 	FMatchPlayState CrossSemanticState;
 	FSkillRuleSnapshotSet CrossSemanticRules;
 	bool bHasCrossSemanticState = false;
+	FMatchPlayState PassControlSemanticState;
+	FSkillRuleSnapshotSet PassControlSemanticRules;
+	bool bHasPassControlSemanticState = false;
 	for (const FSuccessCase& Case : Cases)
 	{
 		const FString Prefix = FString(TEXT("Formula")) + Case.Label;
@@ -17921,6 +18343,15 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 				DirectAssemblyInput);
 		DirectAssembly.ResolverInput.bGoalkeeperParticipated =
 			bDirectGoalkeeperParticipated;
+		if (Case.ActionType == ESkillRuleType::PassControl)
+		{
+			DirectAssembly.ResolverInput.Attacker.ParticipatingStamina =
+				Domain.ResolverInputAssemblyResult.ResolverInput.Attacker
+					.ParticipatingStamina;
+			DirectAssembly.ResolverInput.Defender.ParticipatingStamina =
+				Domain.ResolverInputAssemblyResult.ResolverInput.Defender
+					.ParticipatingStamina;
+		}
 		const auto DirectExecution =
 			FSingleCardFormulaResolutionExecutor::Execute(
 				DirectAssembly.ResolverInput);
@@ -17951,6 +18382,13 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 			CrossSemanticState = Before;
 			CrossSemanticRules = Rules;
 			bHasCrossSemanticState = true;
+		}
+		if (Case.ExpectedFamily == EFamily::PassAdvance
+			&& !bHasPassControlSemanticState)
+		{
+			PassControlSemanticState = Before;
+			PassControlSemanticRules = Rules;
+			bHasPassControlSemanticState = true;
 		}
 	}
 
@@ -18013,6 +18451,119 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 		TestEqual(TEXT("Stamina tie reason canonical"),
 			StaminaTie.FormulaResolutionResult.WinReason,
 			EFormulaWinReason::StaminaTieBreaker);
+	}
+
+	TestTrue(TEXT("PassControl semantic fixture captured"),
+		bHasPassControlSemanticState);
+	if (bHasPassControlSemanticState)
+	{
+		auto MakeTieState = [&PassControlSemanticState](
+			const int32 AttackD6,
+			const int32 DefenseD6)
+		{
+			FMatchPlayState State = PassControlSemanticState;
+			auto& Records = State.CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords;
+			Records[0].RawD6 = AttackD6;
+			Records[1].RawD6 = DefenseD6;
+			auto& Bundle = State.CurrentAttack.ResolutionSession.Bundle;
+			Bundle.Carrier.Values.Stamina = 2;
+			Bundle.Runner.Values.Stamina = 2;
+			Bundle.Marker.Values.Stamina = 2;
+			Bundle.Helper.Values.Stamina = 2;
+			return State;
+		};
+
+		int32 TieAttackD6 = 0;
+		int32 TieDefenseD6 = 0;
+		for (int32 AttackD6 = 1;
+			AttackD6 <= 6 && TieAttackD6 == 0;
+			++AttackD6)
+		{
+			for (int32 DefenseD6 = 1; DefenseD6 <= 6; ++DefenseD6)
+			{
+				const FMatchPlayState ProbeState =
+					MakeTieState(AttackD6, DefenseD6);
+				const auto Probe =
+					FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+						::Resolve(ProbeState, &PassControlSemanticRules);
+				if (Probe.bSuccess
+					&& FMath::IsNearlyEqual(
+						Probe.FormulaResolutionResult.AttackerFinalValue,
+						Probe.FormulaResolutionResult.DefenderFinalValue)
+					&& Probe.FormulaResolutionResult.WinReason
+						== EFormulaWinReason::DefenderWinsEqualStamina)
+				{
+					TieAttackD6 = AttackD6;
+					TieDefenseD6 = DefenseD6;
+					break;
+				}
+			}
+		}
+		TestTrue(TEXT("PassControl has a legal no-GK numerical tie pair"),
+			TieAttackD6 >= 1 && TieDefenseD6 >= 1);
+		if (TieAttackD6 >= 1 && TieDefenseD6 >= 1)
+		{
+			FMatchPlayState AttackStaminaState =
+				MakeTieState(TieAttackD6, TieDefenseD6);
+			auto& AttackBundle = AttackStaminaState.CurrentAttack
+				.ResolutionSession.Bundle;
+			AttackBundle.Carrier.Values.Stamina = 4;
+			AttackBundle.Runner.Values.Stamina = 4;
+			AttackBundle.Marker.Values.Stamina = 1;
+			AttackBundle.Helper.Values.Stamina = 1;
+			const auto AttackStamina =
+				FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+					::Resolve(AttackStaminaState, &PassControlSemanticRules);
+			TestTrue(TEXT("PassControl attacker-sum tie resolves canonically"),
+				AttackStamina.bSuccess
+					&& AttackStamina.FormulaResolutionResult.Winner
+						== EFormulaWinner::Attacker
+					&& AttackStamina.FormulaResolutionResult.WinReason
+						== EFormulaWinReason::StaminaTieBreaker
+					&& AttackStamina.ResolverInputAssemblyResult.ResolverInput
+						.Attacker.ParticipatingStamina == TArray<int32>{4, 4}
+					&& AttackStamina.ResolverInputAssemblyResult.ResolverInput
+						.Defender.ParticipatingStamina == TArray<int32>{1, 1});
+
+			FMatchPlayState DefenseStaminaState =
+				MakeTieState(TieAttackD6, TieDefenseD6);
+			auto& DefenseBundle = DefenseStaminaState.CurrentAttack
+				.ResolutionSession.Bundle;
+			DefenseBundle.Carrier.Values.Stamina = 1;
+			DefenseBundle.Runner.Values.Stamina = 1;
+			DefenseBundle.Marker.Values.Stamina = 4;
+			DefenseBundle.Helper.Values.Stamina = 4;
+			const auto DefenseStamina =
+				FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+					::Resolve(DefenseStaminaState, &PassControlSemanticRules);
+			TestTrue(TEXT("PassControl defender-sum tie resolves canonically"),
+				DefenseStamina.bSuccess
+					&& DefenseStamina.FormulaResolutionResult.Winner
+						== EFormulaWinner::Defender
+					&& DefenseStamina.FormulaResolutionResult.WinReason
+						== EFormulaWinReason::StaminaTieBreaker
+					&& DefenseStamina.ResolverInputAssemblyResult.ResolverInput
+						.Attacker.ParticipatingStamina == TArray<int32>{1, 1}
+					&& DefenseStamina.ResolverInputAssemblyResult.ResolverInput
+						.Defender.ParticipatingStamina == TArray<int32>{4, 4});
+
+			const FMatchPlayState EqualStaminaState =
+				MakeTieState(TieAttackD6, TieDefenseD6);
+			const auto EqualStamina =
+				FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
+					::Resolve(EqualStaminaState, &PassControlSemanticRules);
+			TestTrue(TEXT("PassControl equal stamina falls back to defender"),
+				EqualStamina.bSuccess
+					&& EqualStamina.FormulaResolutionResult.Winner
+						== EFormulaWinner::Defender
+					&& EqualStamina.FormulaResolutionResult.WinReason
+						== EFormulaWinReason::DefenderWinsEqualStamina
+					&& EqualStamina.ResolverInputAssemblyResult.ResolverInput
+						.Attacker.ParticipatingStamina.Num() == 2
+					&& EqualStamina.ResolverInputAssemblyResult.ResolverInput
+						.Defender.ParticipatingStamina.Num() == 2);
+		}
 	}
 
 	struct FActiveGoalkeeperCase
@@ -22564,8 +23115,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves sixty-two serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
+	TestEqual(TEXT("E2E preserves sixty-five serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -22639,8 +23190,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All sixty-two commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
+	TestEqual(TEXT("All sixty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -23131,8 +23682,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All sixty-two commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
+	TestEqual(TEXT("All sixty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -23658,8 +24209,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All sixty-two commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
+	TestEqual(TEXT("All sixty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -24233,8 +24784,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All sixty-two commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
+	TestEqual(TEXT("All sixty-five commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);

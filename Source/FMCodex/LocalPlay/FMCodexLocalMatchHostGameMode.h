@@ -280,6 +280,16 @@ struct FMCODEX_API FFMCodexLocalMatchResolveThroughBallInitialRouteRollResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchResolvePassControlInitialRouteRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 {
 	bool bSuccess = false;
@@ -359,6 +369,26 @@ struct FMCODEX_API FFMCodexLocalMatchResolvePassControlPostRoutePlanResult
 {
 	bool bSuccess = false;
 	FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolvePassControlAttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolvePassControlAttackRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolvePassControlDefenseRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolvePassControlDefenseRollResult
 		AuthoritativeResult;
 	EFMCodexLocalMatchHostErrorCode ErrorCode =
 		EFMCodexLocalMatchHostErrorCode::None;
@@ -769,6 +799,11 @@ public:
 		const FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest&
 			Request);
 
+	FFMCodexLocalMatchResolvePassControlInitialRouteRollResult
+	ResolvePassControlInitialRouteRoll(
+		const FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest&
+			Request);
+
 	FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();
 
@@ -803,6 +838,14 @@ public:
 
 	FFMCodexLocalMatchResolvePassControlPostRoutePlanResult
 	ResolvePassControlPostRoutePlan();
+
+	FFMCodexLocalMatchResolvePassControlAttackRollResult
+	ResolvePassControlAttackRoll(
+		const FMatchPlayAuthoritativeResolvePassControlAttackRollRequest& Request);
+
+	FFMCodexLocalMatchResolvePassControlDefenseRollResult
+	ResolvePassControlDefenseRoll(
+		const FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest& Request);
 
 	FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult
 	ResolveDeadCornerPostRouteDecision();

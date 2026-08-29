@@ -202,7 +202,9 @@ namespace MatchPlayCurrentAttackResolveSingleCardFinishingFormula
 		const FName AttackerPlayerId,
 		const FName DefenderPlayerId,
 		const float AdditionalGoalkeeperContribution,
-		const bool bGoalkeeperParticipated)
+		const bool bGoalkeeperParticipated,
+		const TArray<int32>* AttackerParticipatingStaminaOverride = nullptr,
+		const TArray<int32>* DefenderParticipatingStaminaOverride = nullptr)
 	{
 		Result.AttackerQueryResult =
 			FSingleCardFormulaInputAssemblyQuery::Assemble(
@@ -262,6 +264,16 @@ namespace MatchPlayCurrentAttackResolveSingleCardFinishingFormula
 			.DefenderFinishingModifier;
 		Result.ResolverInputAssemblyResult.ResolverInput
 			.bGoalkeeperParticipated = bGoalkeeperParticipated;
+		if (AttackerParticipatingStaminaOverride != nullptr)
+		{
+			Result.ResolverInputAssemblyResult.ResolverInput.Attacker
+				.ParticipatingStamina = *AttackerParticipatingStaminaOverride;
+		}
+		if (DefenderParticipatingStaminaOverride != nullptr)
+		{
+			Result.ResolverInputAssemblyResult.ResolverInput.Defender
+				.ParticipatingStamina = *DefenderParticipatingStaminaOverride;
+		}
 
 		++Result.FormulaExecutionCount;
 		Result.FormulaExecutionResult =
@@ -483,6 +495,9 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 	{
 		FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest Request;
 		Request.AttackSequence = AttackSequence;
+		Request.Mode =
+			FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest::EMode
+				::RegenerateCompletedPlan;
 		Result.PassControlRegenerationResult =
 			FMatchPlayCurrentAttackResolvePassControlPostRoutePlanOrchestrator
 				::Resolve(BeforeState, Request, SkillRuleSet, nullptr);
@@ -497,6 +512,17 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 		}
 		Result.PlayerCardSnapshots =
 			Result.PassControlRegenerationResult.PlayerCardSnapshots;
+		const FMatchPlayCurrentAttackResolutionSessionBundle& Bundle =
+			BeforeState.CurrentAttack.ResolutionSession.Bundle;
+		const TArray<int32> AttackerParticipatingStamina = {
+			Bundle.Carrier.Values.Stamina,
+			Bundle.Runner.Values.Stamina };
+		TArray<int32> DefenderParticipatingStamina = {
+			Bundle.Marker.Values.Stamina };
+		if (Bundle.bHasHelper)
+		{
+			DefenderParticipatingStamina.Add(Bundle.Helper.Values.Stamina);
+		}
 		if (Result.Family == EFamily::PassAdvance)
 		{
 			const FPassControlPassAdvancePlanQueryResult& PlanResult =
@@ -512,7 +538,9 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 			if (!ExecutePlan(Result, Plan.AttackerQueryInput,
 				Plan.DefenderQueryInput, Plan.CarrierPlayerId,
 				Plan.MarkerPlayerId, AdditionalGoalkeeperContribution,
-				bAdditionalGoalkeeperParticipated))
+				bAdditionalGoalkeeperParticipated,
+				&AttackerParticipatingStamina,
+				&DefenderParticipatingStamina))
 			{
 				return Result;
 			}
@@ -532,7 +560,9 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 			if (!ExecutePlan(Result, Plan.AttackerQueryInput,
 				Plan.DefenderQueryInput, Plan.CarrierPlayerId,
 				Plan.MarkerPlayerId, AdditionalGoalkeeperContribution,
-				bAdditionalGoalkeeperParticipated))
+				bAdditionalGoalkeeperParticipated,
+				&AttackerParticipatingStamina,
+				&DefenderParticipatingStamina))
 			{
 				return Result;
 			}
@@ -552,7 +582,9 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 			if (!ExecutePlan(Result, Plan.AttackerQueryInput,
 				Plan.DefenderQueryInput, Plan.CarrierPlayerId,
 				Plan.MarkerPlayerId, AdditionalGoalkeeperContribution,
-				bAdditionalGoalkeeperParticipated))
+				bAdditionalGoalkeeperParticipated,
+				&AttackerParticipatingStamina,
+				&DefenderParticipatingStamina))
 			{
 				return Result;
 			}

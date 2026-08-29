@@ -58,11 +58,11 @@ namespace SingleCardFormulaResolutionExecutor
 			return false;
 		}
 
-		if (SideInput.ParticipatingStamina.Num() != 1)
+		if (SideInput.ParticipatingStamina.IsEmpty())
 		{
 			OutInvalidField = TEXT("ParticipatingStamina");
 			OutErrorMessage =
-				TEXT("Single-card execution requires exactly one participating Stamina value per side.");
+				TEXT("Formula execution requires at least one participating Stamina value per side.");
 			return false;
 		}
 

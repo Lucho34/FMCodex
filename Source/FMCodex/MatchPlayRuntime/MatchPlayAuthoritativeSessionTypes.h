@@ -113,7 +113,10 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveLongShotDeadCornerRoll,
 	ResolveCutInsideShotDirectAttackRoll,
 	ResolveCutInsideShotDirectDefenseRoll,
-	ResolveCutInsideShotDeadCornerRoll
+	ResolveCutInsideShotDeadCornerRoll,
+	ResolvePassControlInitialRouteRoll,
+	ResolvePassControlAttackRoll,
+	ResolvePassControlDefenseRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -410,6 +413,34 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollResu
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+enum class EMatchPlayAuthoritativePassControlInitialRouteRollErrorCode : uint8
+{
+	None,
+	NoCurrentAttack,
+	InvalidAttackSequence,
+	AttackSequenceMismatch,
+	InvalidRequestingSide,
+	RequestingSideNotCurrentAttacker,
+	WrongResolutionFamily,
+	RouteRollNotPending
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlInitialRouteRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveInitialRouteOrchestrationResult
+		OrchestrationResult;
+	EMatchPlayAuthoritativePassControlInitialRouteRollErrorCode ErrorCode =
+		EMatchPlayAuthoritativePassControlInitialRouteRollErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
@@ -504,6 +535,34 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlPostRoutePlanResult
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolvePassControlPostRoutePlanResult
 		OrchestrationResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlAttackRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolvePassControlPostRoutePlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlDefenseRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolvePassControlPostRoutePlanResult
+		OrchestrationResult;
+	bool bTerminalCompletionAttempted = false;
+	FMatchPlayCurrentAttackApplyPassControlTerminalResolutionResult TerminalResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionResult

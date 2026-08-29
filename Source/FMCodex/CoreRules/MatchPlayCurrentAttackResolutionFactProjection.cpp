@@ -625,6 +625,7 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		}
 		else if (Branch.ActionType == ESkillRuleType::PassControl)
 		{
+			bCompositeStamina = true;
 			RunnerAttackAttribute = Branch.PassControl
 				== EMatchPlayPassControlActualBranch::RunAdvance
 					? EAttribute::Dribbling : EAttribute::Passing;
@@ -722,8 +723,8 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		}
 		else
 		{
-			// Existing SingleCard assembly intentionally uses only its primary
-			// Carrier/Marker snapshots for the no-GK stamina tie-break.
+			// Single-participant families use their primary Carrier/Marker
+			// snapshots for the no-GK stamina tie-break.
 			Contest.AttackRow.ParticipatingStamina = {
 				Bundle.Carrier.Values.Stamina };
 			Contest.DefenseRow.ParticipatingStamina = {

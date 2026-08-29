@@ -583,11 +583,14 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		{ TEXT("ResolveIntentDeterminedRoute"), TEXT("ResolveIntentDeterminedRoute(") },
 		{ TEXT("ResolveInitialRoute"), TEXT("ResolveInitialRoute(") },
 		{ TEXT("ResolveThroughBallInitialRouteRoll"), TEXT("ResolveThroughBallInitialRouteRoll(") },
+		{ TEXT("ResolvePassControlInitialRouteRoll"), TEXT("ResolvePassControlInitialRouteRoll(") },
 		{ TEXT("ResolveCrossPostRoutePlan"), TEXT("ResolveCrossPostRoutePlan(") },
 		{ TEXT("ResolveThroughBallFeetPostRoutePlan"), TEXT("ResolveThroughBallFeetPostRoutePlan(") },
 		{ TEXT("ResolveThroughBallFeetAttackRoll"), TEXT("ResolveThroughBallFeetAttackRoll(") },
 		{ TEXT("ResolveThroughBallFeetDefenseRoll"), TEXT("ResolveThroughBallFeetDefenseRoll(") },
 		{ TEXT("ResolvePassControlPostRoutePlan"), TEXT("ResolvePassControlPostRoutePlan(") },
+		{ TEXT("ResolvePassControlAttackRoll"), TEXT("ResolvePassControlAttackRoll(") },
+		{ TEXT("ResolvePassControlDefenseRoll"), TEXT("ResolvePassControlDefenseRoll(") },
 		{ TEXT("ResolveDeadCornerPostRouteDecision"), TEXT("ResolveDeadCornerPostRouteDecision(") },
 		{ TEXT("ResolveThroughBallAntiOffsideDecision"), TEXT("ResolveThroughBallAntiOffsideDecision(") },
 		{ TEXT("ResolveDirectShotPostRouteDecisionOrPlan"), TEXT("ResolveDirectShotPostRouteDecisionOrPlan(") },
@@ -607,8 +610,8 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		{ TEXT("DeployGoalkeeper"), TEXT("DeployGoalkeeper(") },
 		{ TEXT("ResolveNoLegalCarrier"), TEXT("ResolveNoLegalCarrier(") }
 	};
-	TestEqual(TEXT("Session mutation inventory remains 45"),
-		static_cast<int32>(UE_ARRAY_COUNT(Commands)), 45);
+	TestEqual(TEXT("Session mutation inventory includes PassControl typed rolls"),
+		static_cast<int32>(UE_ARRAY_COUNT(Commands)), 48);
 	for (const FReachability& Command : Commands)
 	{
 		TestTrue(*FString::Printf(
@@ -623,11 +626,14 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		TEXT(".ResolveIntentDeterminedRoute("),
 		TEXT(".ResolveInitialRoute("),
 		TEXT(".ResolveThroughBallInitialRouteRoll("),
+		TEXT(".ResolvePassControlInitialRouteRoll("),
 		TEXT(".ResolveCrossPostRoutePlan("),
 		TEXT(".ResolveThroughBallFeetPostRoutePlan("),
 		TEXT(".ResolveThroughBallFeetAttackRoll("),
 		TEXT(".ResolveThroughBallFeetDefenseRoll("),
 		TEXT(".ResolvePassControlPostRoutePlan("),
+		TEXT(".ResolvePassControlAttackRoll("),
+		TEXT(".ResolvePassControlDefenseRoll("),
 		TEXT(".ResolveDeadCornerPostRouteDecision("),
 		TEXT(".ResolveThroughBallAntiOffsideDecision("),
 		TEXT(".ResolveDirectShotPostRouteDecisionOrPlan("),
@@ -694,6 +700,12 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	ThroughBallRouteRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
 	TestNoActive(TEXT("ResolveThroughBallInitialRouteRoll"),
 		EmptyHost->ResolveThroughBallInitialRouteRoll(ThroughBallRouteRequest));
+	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest
+		PassControlRouteRequest;
+	PassControlRouteRequest.AttackSequence = 1;
+	PassControlRouteRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolvePassControlInitialRouteRoll"),
+		EmptyHost->ResolvePassControlInitialRouteRoll(PassControlRouteRequest));
 	TestNoActive(TEXT("ResolveCrossPostRoutePlan"), EmptyHost->ResolveCrossPostRoutePlan());
 	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest LowAttackRequest;
 	LowAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
@@ -715,6 +727,18 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	TestNoActive(TEXT("ResolveThroughBallFeetDefenseRoll"),
 		EmptyHost->ResolveThroughBallFeetDefenseRoll(FeetDefenseRequest));
 	TestNoActive(TEXT("ResolvePassControlPostRoutePlan"), EmptyHost->ResolvePassControlPostRoutePlan());
+	FMatchPlayAuthoritativeResolvePassControlAttackRollRequest
+		PassControlAttackRequest;
+	PassControlAttackRequest.AttackSequence = 1;
+	PassControlAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolvePassControlAttackRoll"),
+		EmptyHost->ResolvePassControlAttackRoll(PassControlAttackRequest));
+	FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest
+		PassControlDefenseRequest;
+	PassControlDefenseRequest.AttackSequence = 1;
+	PassControlDefenseRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerB;
+	TestNoActive(TEXT("ResolvePassControlDefenseRoll"),
+		EmptyHost->ResolvePassControlDefenseRoll(PassControlDefenseRequest));
 	TestNoActive(TEXT("ResolveDeadCornerPostRouteDecision"), EmptyHost->ResolveDeadCornerPostRouteDecision());
 	TestNoActive(TEXT("ResolveThroughBallAntiOffsideDecision"), EmptyHost->ResolveThroughBallAntiOffsideDecision());
 	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest
@@ -1193,6 +1217,213 @@ bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
 			&& AdvancedView.PlayerATacticalPlayerCount == 0
 			&& AdvancedView.PlayerBTacticalPlayerCount == 0
 			&& AdvancedView.bTacticalPointRollReady);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexLocalMatchPassControlSequentialResolutionTest,
+	"FMCodex.LocalPlay.LocalMatchHost.07C.PassControlSequentialResolution",
+	EAutomationTestFlags::EditorContext
+		| EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexLocalMatchPassControlSequentialResolutionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchResolutionRoutingTests;
+	using ETarget = EFMCodexLocalDevRollTarget;
+	(void)Parameters;
+	const int32 Seed = FindSeedForRolls({ 2, 4, 3 });
+	TestTrue(TEXT("A deterministic PassControl sequential seed exists"),
+		Seed != INDEX_NONE);
+	if (Seed == INDEX_NONE)
+	{
+		return false;
+	}
+
+	const FName SkillId(TEXT("Skill.Host.PassControl.Sequential"));
+	const auto Rules = MakeRules(SkillId, ESkillRuleType::PassControl);
+	const auto Input = MakeInput(
+		TEXT("HostPassControlSequential"), SkillId);
+	FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+	FMatchPlayAuthoritativeSession Direct(
+		DirectProvider, DirectProvider, Rules);
+	FScopedWorld World;
+	auto* Host = World.GetHost();
+	auto* Controller = World.GetController();
+	TestNotNull(TEXT("PassControl Host exists"), Host);
+	TestNotNull(TEXT("PassControl Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+
+	FReadyTrace Trace;
+	TestTrue(TEXT("PassControl Host/direct reach ReadyForResolution"),
+		BuildReadyForResolution(
+			*Host, Direct, Input, Rules, Seed,
+			ESkillRuleType::PassControl, false, Trace));
+	auto SetOverride = [this, Host](
+		const ETarget Target,
+		const int32 Value)
+	{
+		FFMCodexLocalDevRollOverrideRequest Request;
+		Request.Target = Target;
+		Request.Value = Value;
+		return Host->SetLocalDevRollOverride(Request).bSuccess;
+	};
+	TestTrue(TEXT("PassControl DEV Route override accepted"),
+		SetOverride(ETarget::PassControlRoute, 2));
+	TestTrue(TEXT("PassControl DEV Attack override accepted"),
+		SetOverride(ETarget::PassControlAttack, 4));
+	TestTrue(TEXT("PassControl DEV Defense override accepted"),
+		SetOverride(ETarget::PassControlDefense, 3));
+	auto HasPendingOverride = [Host](const ETarget Target)
+	{
+		return Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+			[Target](const FFMCodexLocalDevPendingRollOverride& Item)
+			{
+				return Item.Target == Target;
+			});
+	};
+
+	const FMatchPlayState Ready = Host->GetMatchSnapshot().Snapshot;
+	Controller->RefreshPresentation();
+	TestTrue(TEXT("Ready snapshot projects typed PassControl Route"),
+		Controller->GetInteractionView().InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollPassControlRoute
+			&& Controller->GetInteractionView().ExpectedActingPlayer
+				== Trace.Attacker
+			&& !Ready.CurrentAttack.bHasResolutionSession);
+	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest
+		WrongRouteOwner;
+	WrongRouteOwner.AttackSequence = Ready.CurrentAttack.AttackSequence;
+	WrongRouteOwner.RequestingSide = Trace.Defender;
+	TestTrue(TEXT("Wrong Route owner preserves prepared DEV override"),
+		!Host->ResolvePassControlInitialRouteRoll(WrongRouteOwner).bSuccess
+			&& HasPendingOverride(ETarget::PassControlRoute)
+			&& AreStatesEqual(Ready, Host->GetMatchSnapshot().Snapshot));
+	Controller->ContinueResolution();
+	TestTrue(TEXT("Generic Continue cannot consume PassControl Route RNG"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& HasPendingOverride(ETarget::PassControlRoute)
+			&& AreStatesEqual(Ready, Host->GetMatchSnapshot().Snapshot));
+
+	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest
+		DirectRoute;
+	DirectRoute.AttackSequence = Ready.CurrentAttack.AttackSequence;
+	DirectRoute.RequestingSide = Trace.Attacker;
+	TestTrue(TEXT("Direct typed PassControl Route succeeds"),
+		Direct.ResolvePassControlInitialRouteRoll(DirectRoute)
+			.OrchestrationResult.bSuccess);
+	Controller->RollPassControlRoute();
+	const FMatchPlayState RouteOnly = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Controller routes exact one PassControl Route D6"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolvePassControlInitialRouteRoll")
+			&& RouteOnly.CurrentAttack.ResolutionSession
+				.InitialRouteRollRecords.Num() == 1
+			&& RouteOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.IsEmpty()
+			&& AreStatesEqual(RouteOnly, Direct.GetStateSnapshot()));
+	TestTrue(TEXT("Route-only reconstruction projects typed Attack owner"),
+		Controller->GetInteractionView().InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollPassControlAttack
+			&& Controller->GetInteractionView().ExpectedActingPlayer
+				== Trace.Attacker
+			&& !HasPendingOverride(ETarget::PassControlRoute)
+			&& HasPendingOverride(ETarget::PassControlAttack));
+
+	FMatchPlayAuthoritativeResolvePassControlAttackRollRequest DirectAttack;
+	DirectAttack.AttackSequence = Ready.CurrentAttack.AttackSequence;
+	DirectAttack.RequestingSide = Trace.Attacker;
+	TestTrue(TEXT("Direct typed PassControl Attack succeeds"),
+		Direct.ResolvePassControlAttackRoll(DirectAttack)
+			.OrchestrationResult.bSuccess);
+	FMatchPlayAuthoritativeResolvePassControlAttackRollRequest WrongAttackOwner =
+		DirectAttack;
+	WrongAttackOwner.RequestingSide = Trace.Defender;
+	TestTrue(TEXT("Wrong Attack owner preserves prepared DEV override"),
+		!Host->ResolvePassControlAttackRoll(WrongAttackOwner).bSuccess
+			&& HasPendingOverride(ETarget::PassControlAttack)
+			&& AreStatesEqual(RouteOnly, Host->GetMatchSnapshot().Snapshot));
+	Controller->ContinueResolution();
+	TestTrue(TEXT("Generic Continue cannot consume PassControl Attack RNG"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& HasPendingOverride(ETarget::PassControlAttack)
+			&& AreStatesEqual(RouteOnly, Host->GetMatchSnapshot().Snapshot));
+	Controller->RollPassControlAttack();
+	const FMatchPlayState AttackOnly = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Controller routes exact one PassControl Attack D6"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolvePassControlAttackRoll")
+			&& AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.Num() == 1
+			&& AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords[0].RawD6 == 4
+			&& AreStatesEqual(AttackOnly, Direct.GetStateSnapshot()));
+	TestTrue(TEXT("Attack-only reconstruction projects typed Defense owner"),
+		Controller->GetInteractionView().InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollPassControlDefense
+			&& Controller->GetInteractionView().ExpectedActingPlayer
+				== Trace.Defender
+			&& !HasPendingOverride(ETarget::PassControlAttack)
+			&& HasPendingOverride(ETarget::PassControlDefense));
+
+	FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest DirectDefense;
+	DirectDefense.AttackSequence = Ready.CurrentAttack.AttackSequence;
+	DirectDefense.RequestingSide = Trace.Defender;
+	TestTrue(TEXT("Direct typed PassControl Defense auto-completes terminal"),
+		Direct.ResolvePassControlDefenseRoll(DirectDefense)
+			.TerminalResult.bSuccess);
+	FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest WrongDefenseOwner =
+		DirectDefense;
+	WrongDefenseOwner.RequestingSide = Trace.Attacker;
+	TestTrue(TEXT("Wrong Defense owner preserves prepared DEV override"),
+		!Host->ResolvePassControlDefenseRoll(WrongDefenseOwner).bSuccess
+			&& HasPendingOverride(ETarget::PassControlDefense)
+			&& AreStatesEqual(AttackOnly, Host->GetMatchSnapshot().Snapshot));
+	Controller->ContinueResolution();
+	TestTrue(TEXT("Generic Continue cannot consume PassControl Defense RNG"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& HasPendingOverride(ETarget::PassControlDefense)
+			&& AreStatesEqual(AttackOnly, Host->GetMatchSnapshot().Snapshot));
+	Controller->RollPassControlDefense();
+	const FMatchPlayState Terminal = Host->GetMatchSnapshot().Snapshot;
+	const auto& TerminalView = Controller->GetInteractionView();
+	TestTrue(TEXT("Defense click performs zero-RNG Formula/outcome/terminal"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolvePassControlDefenseRoll")
+			&& Terminal.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+			&& Terminal.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.Num() == 2
+			&& Terminal.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords[1].RawD6 == 3
+			&& TerminalView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+			&& TerminalView.ContinueActionLabel == TEXT("下一回合")
+			&& TerminalView.ResolutionFacts.FormulaContests.Num() == 1
+			&& TerminalView.ResolutionFacts.FormulaContests[0]
+				.bHasResolvedFormula
+			&& !HasPendingOverride(ETarget::PassControlDefense)
+			&& AreStatesEqual(Terminal, Direct.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest DirectAdvance;
+	DirectAdvance.AttackSequence = TerminalView.AttackSequence;
+	DirectAdvance.RequestingSide = TerminalView.ExpectedActingPlayer;
+	TestTrue(TEXT("Direct explicit PassControl advance succeeds"),
+		Direct.AdvanceAfterTerminal(DirectAdvance).CompletionResult.bSuccess);
+	Controller->AdvanceAfterTerminal();
+	TestTrue(TEXT("PassControl explicit NextRound remains unchanged"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("AdvanceAfterTerminal")
+			&& AreStatesEqual(
+				Host->GetMatchSnapshot().Snapshot,
+				Direct.GetStateSnapshot()));
 	return true;
 }
 

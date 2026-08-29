@@ -12,6 +12,18 @@
 struct FMCODEX_API FMatchPlayCurrentAttackResolvePassControlPostRoutePlanRequest
 {
 	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		/** Legacy/reference compatibility; normal play uses explicit rolls. */
+		CompletePassControlPlan,
+		RegenerateCompletedPlan,
+		ResolveAttackRoll,
+		ResolveDefenseRoll
+	};
+
+	EMode Mode = EMode::CompletePassControlPlan;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 enum class EMatchPlayCurrentAttackResolvePassControlPostRoutePlanErrorCode
@@ -27,6 +39,10 @@ enum class EMatchPlayCurrentAttackResolvePassControlPostRoutePlanErrorCode
 	InvalidResolutionSessionState,
 	RouteNotResolved,
 	NotPassControlBranch,
+	InvalidRequestingSide,
+	WrongRequestingSide,
+	WrongPassControlRollStep,
+	CompletedPlanRequired,
 	InvalidPostRouteProgress,
 	PostRouteRollProviderUnavailable,
 	PostRouteRollProviderFailed,

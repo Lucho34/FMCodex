@@ -56,7 +56,10 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	RollLongShotDeadCorner,
 	RollCutInsideShotDirectAttack,
 	RollCutInsideShotDirectDefense,
-	RollCutInsideShotDeadCorner
+	RollCutInsideShotDeadCorner,
+	RollPassControlRoute,
+	RollPassControlAttack,
+	RollPassControlDefense
 };
 
 struct FMCODEX_API FFMCodexLocalMatchDeploymentOption

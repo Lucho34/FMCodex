@@ -40,7 +40,10 @@ namespace FMCodexLocalDevRollOverrideWidget
 			ETarget::CutInsideShotDirectAttack,
 			ETarget::CutInsideShotDirectDefense,
 			ETarget::CutInsideShotDeadCornerA,
-			ETarget::CutInsideShotDeadCornerB
+			ETarget::CutInsideShotDeadCornerB,
+			ETarget::PassControlRoute,
+			ETarget::PassControlAttack,
+			ETarget::PassControlDefense
 		};
 		return Values;
 	}
@@ -71,6 +74,9 @@ namespace FMCodexLocalDevRollOverrideWidget
 		case ETarget::CutInsideShotDirectDefense: return TEXT("内切·直接射门防守");
 		case ETarget::CutInsideShotDeadCornerA: return TEXT("内切·死角第一枚");
 		case ETarget::CutInsideShotDeadCornerB: return TEXT("内切·死角第二枚");
+		case ETarget::PassControlRoute: return TEXT("控球推进·路线");
+		case ETarget::PassControlAttack: return TEXT("控球推进·进攻");
+		case ETarget::PassControlDefense: return TEXT("控球推进·防守");
 		default: return TEXT("未选择");
 		}
 	}

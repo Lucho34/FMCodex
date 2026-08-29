@@ -241,10 +241,10 @@ bool FSingleCardFormulaResolutionExecutorSideValidationTest::RunTest(
 
 	FFormulaResolverInput StaminaInput =
 		SingleCardFormulaResolutionExecutorTests::MakeValidInput();
-	StaminaInput.Attacker.ParticipatingStamina.Add(3);
+	StaminaInput.Attacker.ParticipatingStamina.Reset();
 	SingleCardFormulaResolutionExecutorTests::TestRejected(
 		*this,
-		TEXT("Multiple attacker Stamina values"),
+		TEXT("Missing attacker Stamina values"),
 		StaminaInput,
 		TEXT("Attacker"),
 		TEXT("ParticipatingStamina"));
