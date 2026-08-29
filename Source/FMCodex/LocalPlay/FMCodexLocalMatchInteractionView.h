@@ -31,6 +31,7 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	SelectOneOnOneShot,
 	RollCrossAttack,
 	RollCrossDefense,
+	/** Legacy compatibility only; production uses ApplyCrossTerminalResolution. */
 	CompleteCrossAndAdvance,
 	RollThroughBallFeetAttack,
 	RollThroughBallFeetDefense,
@@ -40,13 +41,12 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	RollThroughBallOneOnOneDirectShotDefense,
 	RollThroughBallBehindDefenseAttack,
 	RollThroughBallBehindDefenseDefense,
+	/** Legacy compatibility only; production uses ApplyThroughBallFeetTerminalResolution. */
 	CompleteThroughBallFeetAndAdvance,
 	ContinueResolution,
 	AttackComplete,
 	MatchEnded,
-	/** Legacy compatibility only; production uses ApplyCrossTerminalResolution. */
 	ApplyCrossTerminalResolution,
-	/** Legacy compatibility only; production uses ApplyThroughBallFeetTerminalResolution. */
 	ApplyThroughBallFeetTerminalResolution,
 	AdvanceAfterTerminal,
 	RollThroughBallInitialRoute,

@@ -1,6 +1,6 @@
 ﻿# 03 Tech Architecture
 
-本文档描述技术架构草案。当前只整理方向，不实现玩法代码。
+本文档描述 FMCodex 当前技术架构、已落地的生产边界与明确延期的技术债。
 
 ## 项目类型
 
@@ -179,23 +179,23 @@
 - InteractionView只从authoritative CurrentAttack投影`RollCutInsideShotDirectAttack / RollCutInsideShotDirectDefense / RollCutInsideShotDeadCorner`、expected side与AttackSequence；Controller和Host只做typed forwarding。非Shipping DEV decorator为CutInside Direct Attack/Defense和DeadCorner A/B提供独立target，rejected request不会消费待用override。
 - 本Stage只建立CutInside Authority/LocalPlay forwarding foundation，不实现CutInside Production UMG、central surface、Reel、Formula布局、Narrative或Result presentation。既有LongShot、ThroughBall和terminal lifecycle不变。
 
-## CutInside Production Golden Path（Stage 6.15.3，待 USER PIE）
+## CutInside Production Golden Path（Stage 6.15.3，CLOSED）
 
 - CutInside复用已验证的中央射门Production shell、shared Formula surface、Roll Reel、Narrative builder与terminal CTA；view model保留明确`SkillType`，因此同一renderer可按权威family选择CutInside文案和Narrative branch，不从本地按钮历史推断战术。
 - branch pending从`PresentedActionType + SelectLongShotBranch`重建，显示`直接射门 / 直射死角`。helper copy由canonical `TacticalRuleDescription`的attribute/roll semantics投影；branch选择只提交typed intent且消费0 RNG。
 - Direct Attack/Defense分别映射到CutInside-specific UMG category并由中央nested Formula action slot独占。Attack `1–2`只揭示权威Attack D6、ImmediateMiss Narrative与`AdvanceAfterTerminal`；Attack `3–6`显示已解析Attack row、未解析Defense row和防守方typed CTA；Defense后只消费权威FormulaFacts/Narrative，不在Widget计算Formula、GK、Tactical Player、winner或outcome。
 - DeadCorner由一个中央typed CTA启动一次权威pair request。Presentation使用CutInside-specific A/B reveal identity依次展示两枚已提交Raw D6；终局显示CutInside Narrative与`下一回合`，不创建Formula、Defense、GK或Tactical Player行。
 - fresh reconstruction直接从CurrentAttack facts恢复branch、partial Direct、ImmediateMiss、completed Direct和DeadCorner terminal。live reveal只保留presentation cache；stable identity仍包含AttackSequence、contest、roll index、owner与kind，settled/historical roll不自动重播。
-- 现有`FFMCodexUMGLongShotResolutionViewModel`与`UFMCodexLongShotResolutionSurfaceWidget`名称属于共享renderer形成前的legacy命名；本Stage只扩展其family contract，不进行高风险rename。实现/build通过后仍需USER PIE验证布局、节奏、hot-seat side ownership与视觉去重，不能据此标记Production CLOSED。
+- 现有`FFMCodexUMGLongShotResolutionViewModel`与`UFMCodexLongShotResolutionSurfaceWidget`名称属于共享renderer形成前的legacy命名；本Stage只扩展其family contract，不进行高风险rename。该阶段当时以USER PIE作为最终视觉Gate；当前已随后续6.15.3.1/6.15.3.2修复与已提交验收基线完成Production收口。
 
-## 中央战术分支选择对齐（Stage 6.15.3.1，待 USER PIE）
+## 中央战术分支选择对齐（Stage 6.15.3.1，CLOSED）
 
 - 战术入口可以不同，但进入内部branch/method选择后，默认由中央Resolution Surface显示权威可选项、短helper与后续resolution action；同一primary choice/action不在lower InteractionPanel重复。LongShot保持golden reference，CutInside与Cross只扩展这一presentation contract。
 - CutInside真实branch pending继续使用既有`SelectBranchIntent + PresentedActionType=CutInsideShot`投影；中央builder必须识别该组合，不得要求LongShot-only category，也不得以Widget click history补写family或branch。Direct/DeadCorner后续typed roll、Formula、Narrative与terminal合同不变。
 - Cross的`CrossHigh / CrossLow`选择由进攻方以0 RNG提交，中央surface显示`高球传中 / 低球传中`。helper只从`FTacticalRuleDescriptionCatalog`的High/Low attack/defense attribute terms生成；UMG不读取或重算公式。
 - Cross method提交后，权威`ElectiveBranchIntent`重建中央`判定传中路线`；route D6、actual High/Low、双方manual roll、Formula、Narrative与terminal继续使用既有Inline Formula/Reel路径。历史LongShot命名renderer继续作为窄shared shell，不在本 Stage 重命名。
 
-## CutInside Production Flow 与 Terminal Ownership Repair（Stage 6.15.3.2，待 USER PIE）
+## CutInside Production Flow 与 Terminal Ownership Repair（Stage 6.15.3.2，CLOSED）
 
 - CutInside branch intent成功后，Controller只自动执行既有的`BeginResolutionSession`与intent-determined route两个确定性步骤；二者都不调用gameplay provider。normal branch click因此直接到达typed Direct Attack或DeadCorner action，不向玩家暴露generic Continue或`Resolution Started`诊断层。
 - `RecordCommandResult`刷新后以当前authoritative lifecycle为presentation truth：处于`TerminalPendingAdvance`时总是从terminal snapshot重建结果反馈，普通command acknowledgement不得覆盖它；`AdvanceAfterTerminal`成功后清空completed-attack feedback，下一进攻的normal interaction不得被`AdvanceAfterTerminal Accepted`占据。
@@ -203,7 +203,7 @@
 - compact branch helper只投影普通`Attribute` term，省略条件性`GoalkeeperContribution`；live Formula、Tactical Rule Description与authority facts继续保留GK term。当前矩阵为LongShot Direct`（看远射、抢断）`、CutInside Direct`（射门 / 盘带 vs 抢断）`、Cross High`（传球 / 力量 vs 抢断 / 力量）`、Cross Low`（传球 / 射门 vs 抢断 / 盯防）`；两项DeadCorner helper不变。
 - shared shot renderer在Branch与Stage文案相同时只显示一个主标题。CutInside玩家action统一为`进攻方掷点 / 防守方掷点 / 掷两枚骰 / 下一回合`；typed category、owner、AttackSequence、RNG、Formula和terminal lifecycle均不变。
 
-## PassControl Production Golden Path（Stage 6.15.4，待 USER PIE）
+## PassControl Production Golden Path（Stage 6.15.4，CLOSED）
 
 - PassControl normal production flow固定为中央`判定推进方式 -> 进攻方掷点 -> 防守方掷点 -> terminal -> 下一回合`。三个玩家动作分别转发6.15.4A既有的side-owned、`AttackSequence`相关typed request；route、attack、defense各只消费一枚Authority D6，UMG不提供Pass/Dribble/Run选择卡，也不使用generic gameplay Continue。
 - route的`1–2 / 3–4 / 5–6`映射、actual branch、两行Formula Facts、winner、tie、Tactical Player、optional Helper、active GK与terminal lifecycle都来自Authoritative State / Resolution Facts。Presentation Builder只把三条contest投影成中文路线、参与者、属性与Narrative；Widget不求和、不比较、不推断分支或胜者。

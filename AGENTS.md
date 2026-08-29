@@ -158,6 +158,7 @@ Narrative v1 高层合同：
 
 Stage Report 至少包含：Stage Result、baseline、audit findings、implementation、architecture/safety、实际 tests、runtime/PIE gap、Git safety、最终 working tree 和 verdict。
 
+- Codex 默认在最终回复中提交 Stage Report，不在仓库中创建独立报告文件；只有用户明确要求归档时才创建。需长期保留的架构、规则与测试决策应写入 canonical docs 或 Decision Log。
 - UI、Presentation、animation、layout 或 interaction feel 的技术 PASS 不等于视觉 PASS；必须明确写 `USER PIE REQUIRED`。
 - USER PIE 由用户完成；Codex 不得把未进行的 PIE 报告为 PASS。
 - 报告不得记录为长期合同的内容，包括当前 HEAD、dirty count、临时 bug、单次 test count 或某一 Stage checklist。
