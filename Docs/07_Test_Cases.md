@@ -722,3 +722,30 @@
 - E2E closeout矩阵覆盖Feet、Behind OutOfPlay、Behind DefenderStopped、Behind→OneOnOne、Anti Offside、Anti→OneOnOne、Direct Goal、Direct Save presentation、Chip Miss与Chip Goal；每条都必须可从权威snapshot重建，历史roll不重播，terminal停在显式`下一回合`。
 - 当前OneOnOne合同为稳定水平双行choice：`直接射门 / （看射门、门将单刀）`与`挑射 / （只看掷点）`。不得恢复Hover Detail consumer或固定reserve；shared Tactical catalog/builder、SelectSkill Hover与Deployment Reference继续保留。
 
+## LongShot Side-owned Request 与 Conditional Roll 权威基础（Stage 6.15.2A）
+
+- LongShot branch request必须携带caller snapshot的`AttackSequence + RequestingSide`，只允许当前进攻方在正确branch-pending phase提交。wrong-side、stale、wrong-family/phase与duplicate均在provider前拒绝，State byte-equivalent且RNG delta为0；成功只持久化branch，不消费D6。
+- Direct Attack `1–2`必须恰好消费一枚Attack D6、完成既有ImmediateMiss、没有Defense provider call；Attack `3–6`必须恰好持久化一条Attack record，CurrentAttack保持Active，Defense record、完整Formula FinalValue与Outcome均缺失，fresh InteractionView投影防守方typed action且查询消费0 RNG。
+- Defense-before-Attack、wrong-side、stale与duplicate Direct Defense均在provider前拒绝。合法Defense恰好追加一枚Defense record；用相同State和固定Attack/Defense D6与旧atomic reference逐字段比较Plan、Formula inputs、Tactical Player modifier、GK、tie、FinalValue与outcome。
+- Direct stale相关性至少覆盖同owner、同pending phase的跨进攻重试。由于当前全局进攻按A/B交替，可在Attack N完成并经过一次中间进攻后构造Attack N+2由同一side拥有且回到相同Direct Attack/Defense pending phase；N request必须0 RNG拒绝，N+2 fresh request随后成功。
+- DeadCorner合法request由当前进攻方一次提交并按A/B purpose顺序恰好消费2D6；至少覆盖`5+6=Goal`与`5+5=Miss`。wrong-side、stale、duplicate均0 RNG拒绝；第二枚provider失败时不得adopt第一枚记录，Before/After State保持一致。
+- branch pending/selected、Direct no-roll/attack-only/completed、DeadCorner completed与terminal snapshot都必须由权威State重建。rebuild、Formula Facts、completed regeneration和terminal persistence均不得调用gameplay provider。
+- Host/Controller专项必须证明`InteractionView -> Controller -> Host -> AuthoritativeSession`四类typed chain、expected side与AttackSequence forwarding；normal Controller source不得调用旧atomic Direct/Dead入口，generic Continue不得取得未完成LongShot roll。旧atomic APIs只保留compatibility/parity tests。
+- 回归至少覆盖新增LongShot authority专项、完整AuthoritativeSession、LongShot family、LocalMatchHost与normal-demo Controller链；因修改public USTRUCT/Session surface执行UHT与Editor build，并运行`git diff --check`。本Authority Stage不实现Production UMG且不以USER PIE为完成Gate；通过后恢复Stage 6.15.2 Production Golden Path。
+
+## LongShot Production Golden Path（Stage 6.15.2 resumed）
+
+- Branch pending必须由中央LongShot surface显示`直接射门 / 射向死角`，选择本身0 RNG；正常production路径折叠generic resolution root和lower duplicate，rejection恢复generic diagnostic与当前typed action。
+- Direct pending显示`1–2：射门偏出 ｜ 3–6：进入攻防结算`。Attack 1–2只揭示Attack并进入ImmediateMiss/Narrative/NextRound，不显示Defense或完整Formula；Attack 3–6保留attack-only snapshot，fresh reconstruction显示权威Attack row并等待typed Defense。Defense后shared Formula/Narrative/NextRound必须完整且不再出现generic Continue。
+- DeadCorner pending显示pair-sum范围；一次typed click恰好产生并持久化PairedAttackA/B两枚权威D6。shared reel按A后B顺序表现，不需要第二次gameplay click；终局只显示权威Outcome/Narrative/NextRound，不显示Formula、Defense或GK。
+- reveal identity继续包含AttackSequence、contest、roll index、owner与kind。live command动画不得double-dispatch；fresh completed snapshot直接重建dice/result/narrative/CTA且不得重播历史roll。refresh、builder和widget均0 RNG。
+- focused gate至少覆盖LongShot Production DTO/ownership、ImmediateMiss、DeadCorner pair reconstruction、representative side-owned Authority chain、normal-demo full-family Controller route、UHT/build与`git diff --check`。视觉层级、reel节奏和实际点击手感必须由USER PIE验收。
+
+## LongShot 无 Runner 入口、分支微文案与 Direct CTA（Stage 6.15.2B）
+
+- Runner 主动放弃与零合法候选都必须保留当前进攻、Attacker、AttackSequence、进攻次数、资源与部署，写入 `AwaitingSkill + bSkillSelectionDeferred + Runner/Helper formal absence`；不得 terminal、换攻或消费 RNG。两条 InteractionView 能力互斥且玩家文案都为 `不选择跑位球员`。
+- 从该 snapshot 选择 LongShot 合法并进入 branch；CutInside 同样保持 no-Runner-compatible。Cross/PassControl/ThroughBall 等 Runner-required 战术仍返回 `PreparedRunnerIncompatibleWithSkill`。正常已选 Runner 的 Helper selected/declined/no-legal 流程保持。
+- 分支选择精确显示 `直接射门 / （看远射、抢断、门将站位）` 与 `射向死角 / （只看两枚掷点）`；两项等宽双行、NoWrap、全 tile 可点击，Hover 不创建 Detail、不派发 gameplay、不改变 Surface 几何。每次点击只提交一次对应 typed branch intent。
+- Direct Attack/Defense 的当前 action 可由 nested shared Formula primary action 拥有。点击必须通过 LongShot widget、Screen current-owner guard、Controller/Host 到 Session 恰好派发一次；过期 lower action 仍拒绝。Attack 1 保持 ImmediateMiss，Attack 6 后只进入 Defense pending，Defense CTA 可继续完成既有 Formula/Outcome。
+- focused 回归覆盖 Runner completion/state validation/skill legality、完整受影响 AuthoritativeSession、LongShot Production、ControlSurface role/CTA/localization、正常 Helper 与 ThroughBall 代表流。已隔离 `ControlSurface.33` MatchHeader debt 不属于本 Stage。
+

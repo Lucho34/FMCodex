@@ -3,6 +3,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "MatchPlayRunnerNoSelectionNoGoalTestFixtures.h"
+#include "MatchPlayCurrentAttackSkillSelectionWriter.h"
 #include "MatchPlaySkillNoSelectionNoGoalTestFixtures.h"
 #include "Misc/AutomationTest.h"
 
@@ -50,6 +51,56 @@ namespace RunnerNoSelectionNoGoalTests
 				.AvailableCardIds.Contains(CardId)
 			: State.CardUsageState.PlayerBCardUsageState
 				.AvailableCardIds.Contains(CardId);
+	}
+
+	void TestFormalRunnerAbsenceProgression(
+		FAutomationTestBase& Test,
+		const TCHAR* Context,
+		const FMatchPlayState& Before,
+		const FMatchPlayCurrentAttackCompletionResult& Completion,
+		const FMatchPlayState& After)
+	{
+		FMatchPlayState Expected = Before;
+		FMatchPlayCurrentAttackState& Attack = Expected.CurrentAttack;
+		Attack.ActionPreparation.bSkillSelectionDeferred = true;
+		Attack.ActionPreparation.SkillId = NAME_None;
+		Attack.ActionPreparation.ActionType = ESkillRuleType::None;
+		Attack.ActionPreparation.RunnerCardId = NAME_None;
+		Attack.ActionPreparation.bHasHelper = false;
+		Attack.ActionPreparation.HelperCardId = NAME_None;
+		Attack.SelectionStage =
+			EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s exact non-terminal mutation"), Context),
+			AreStatesEqual(Expected, After));
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s attack remains active"), Context),
+			After.bHasCurrentAttack
+				&& After.CurrentAttack.LifecycleState
+					== EMatchPlayCurrentAttackLifecycleState::Active);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s attack sequence preserved"), Context),
+			After.CurrentAttack.AttackSequence,
+			Before.CurrentAttack.AttackSequence);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s attacker preserved"), Context),
+			After.RuntimeState.CurrentAttackingPlayer,
+			Before.RuntimeState.CurrentAttackingPlayer);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s no terminal handoff"), Context),
+			Completion.bMatchEnded);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s no next attacker"), Context),
+			Completion.NextAttackingPlayer,
+			EInitialTurnOrderPlayer::None);
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s consumes no ordinary cards"), Context),
+			Completion.OrdinaryCardUsageResults.Num(),
+			0);
+		Test.TestFalse(
+			*FString::Printf(TEXT("%s consumes no opportunity"), Context),
+			Completion.OpportunityResolveResult.bSuccess);
 	}
 }
 
@@ -395,131 +446,51 @@ bool FRunnerNoGoalRequestValidationTest::RunTest(
 
 RUNNER_NO_SELECTION_NO_GOAL_TEST(
 	FRunnerNoGoalLifecycleTest,
-	"Completion.ScoreCardUsageGoalkeeperClearAndOpportunity")
+	"Progression.FormalAbsencePreservesAttackAndResources")
 
 bool FRunnerNoGoalLifecycleTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace RunnerNoSelectionNoGoalTests;
-	FMatchPlayState State = MakeState();
-	AddLegalRunner(State);
-	const EInitialTurnOrderPlayer Attacker =
-		State.RuntimeState.CurrentAttackingPlayer;
-	const EInitialTurnOrderPlayer Defender =
-		GetDefender(Attacker);
-	AddOrdinaryDeployment(
-		State,
-		Attacker,
-		ExtraAttackerCardId,
-		{EPlayerPositionType::Defense},
-		GetNearSide(Attacker));
-	AddOrdinaryDeployment(
-		State,
-		Defender,
-		ExtraDefenderCardId,
-		{EPlayerPositionType::Defense},
-		GetNearSide(Defender));
-	AddActiveGoalkeeper(State);
-	const FMatchPlayState Before = State;
+	for (const EInitialTurnOrderPlayer Attacker :
+		{EInitialTurnOrderPlayer::PlayerA,
+			EInitialTurnOrderPlayer::PlayerB})
+	{
+		FMatchPlayState DeclineState = MakeState(Attacker);
+		AddLegalRunner(DeclineState);
+		AddActiveGoalkeeper(DeclineState);
+		const FMatchPlayRunnerDeclineResult Declined =
+			FMatchPlayRunnerDecline::Decline(
+				DeclineState,
+				MakeDeclineRequest(Attacker));
+		TestTrue(TEXT("Runner decline succeeds"), Declined.bSuccess);
+		TestFormalRunnerAbsenceProgression(
+			*this,
+			TEXT("Runner decline"),
+			DeclineState,
+			Declined.CompletionResult,
+			Declined.AfterState);
 
-	const FMatchPlayRunnerDeclineResult Result =
-		FMatchPlayRunnerDecline::Decline(
-			State,
-			MakeDeclineRequest(Attacker));
-	TestTrue(TEXT("Lifecycle completion succeeds"),
-		Result.bSuccess);
-	TestEqual(TEXT("PlayerA score unchanged"),
-		Result.AfterState.RuntimeState.PlayerAState.Score,
-		Before.RuntimeState.PlayerAState.Score);
-	TestEqual(TEXT("PlayerB score unchanged"),
-		Result.AfterState.RuntimeState.PlayerBState.Score,
-		Before.RuntimeState.PlayerBState.Score);
-	TestFalse(TEXT("Runner NoGoal has no GoalResolver result"),
-		Result.CompletionResult.GoalResolveResult.bSuccess);
-	TestEqual(TEXT("Five ordinary cards consumed"),
-		Result.CompletionResult.OrdinaryCardUsageResults.Num(),
-		5);
-	const TArray<FName> ExpectedOrder = {
-		RunnerFixtures::CarrierId,
-		RunnerFixtures::MarkerId,
-		LegalRunnerOneId,
-		ExtraAttackerCardId,
-		ExtraDefenderCardId
-	};
-	for (int32 Index = 0;
-		Index < ExpectedOrder.Num()
-			&& Index
-				< Result.CompletionResult
-					.OrdinaryCardUsageResults.Num();
-		++Index)
-	{
-		TestEqual(TEXT("Ordinary cards preserve placement order"),
-			Result.CompletionResult
-				.OrdinaryCardUsageResults[Index].CardId,
-			ExpectedOrder[Index]);
+		const FMatchPlayState NoLegalState = MakeState(Attacker);
+		const FMatchPlayResolveNoLegalRunnerResult Resolved =
+			FMatchPlayResolveNoLegalRunner::Resolve(
+				NoLegalState,
+				MakeResolveRequest());
+		TestTrue(TEXT("No-legal Runner resolution succeeds"),
+			Resolved.bSuccess);
+		TestFormalRunnerAbsenceProgression(
+			*this,
+			TEXT("No-legal Runner"),
+			NoLegalState,
+			Resolved.CompletionResult,
+			Resolved.AfterState);
 	}
-	for (const TPair<EInitialTurnOrderPlayer, FName>& ExpectedUsed :
-		{TPair<EInitialTurnOrderPlayer, FName>(
-				Attacker,
-				RunnerFixtures::CarrierId),
-			TPair<EInitialTurnOrderPlayer, FName>(
-				Defender,
-				RunnerFixtures::MarkerId),
-			TPair<EInitialTurnOrderPlayer, FName>(
-				Attacker,
-				LegalRunnerOneId),
-			TPair<EInitialTurnOrderPlayer, FName>(
-				Attacker,
-				ExtraAttackerCardId),
-			TPair<EInitialTurnOrderPlayer, FName>(
-				Defender,
-				ExtraDefenderCardId)})
-	{
-		TestTrue(TEXT("Every ordinary deployment is Used"),
-			IsCardUsed(
-				Result.AfterState,
-				ExpectedUsed.Key,
-				ExpectedUsed.Value));
-	}
-	TestTrue(TEXT("Goalkeeper remains Available"),
-		IsCardAvailable(
-			Result.AfterState,
-			Defender,
-			GoalkeeperCardId));
-	TestFalse(TEXT("Goalkeeper is not ordinary Used"),
-		IsCardUsed(
-			Result.AfterState,
-			Defender,
-			GoalkeeperCardId));
-	TestTrue(TEXT("Persistent goalkeeper usage preserved"),
-		Defender == EInitialTurnOrderPlayer::PlayerA
-			? Result.AfterState.GoalkeeperUsageState
-				.bPlayerAGoalkeeperCardUsed
-			: Result.AfterState.GoalkeeperUsageState
-				.bPlayerBGoalkeeperCardUsed);
-	TestFalse(TEXT("Current attack flag cleared"),
-		Result.AfterState.bHasCurrentAttack);
-	const FMatchPlayCurrentAttackState EmptyAttack;
-	TestTrue(TEXT("Current attack payload fully cleared"),
-		FMatchPlayCurrentAttackState::StaticStruct()
-			->CompareScriptStruct(
-				&Result.AfterState.CurrentAttack,
-				&EmptyAttack,
-				0));
-	TestEqual(TEXT("Attacker opportunity consumed once"),
-		Result.AfterState.RuntimeState.PlayerAState.UsedAttackCount,
-		Before.RuntimeState.PlayerAState.UsedAttackCount + 1);
-	TestEqual(TEXT("Defender opportunity unchanged"),
-		Result.AfterState.RuntimeState.PlayerBState.UsedAttackCount,
-		Before.RuntimeState.PlayerBState.UsedAttackCount);
-	TestFalse(TEXT("No automatic Begin"),
-		Result.AfterState.bHasCurrentAttack);
 	return true;
 }
 
 RUNNER_NO_SELECTION_NO_GOAL_TEST(
 	FRunnerNoGoalPlacementAtomicityTest,
-	"Completion.PlacementCardUsageScoreAndOpportunityFailuresAreAtomic")
+	"Progression.InputValidationAndScoreFailureAreAtomic")
 
 bool FRunnerNoGoalPlacementAtomicityTest::RunTest(
 	const FString& Parameters)
@@ -565,88 +536,6 @@ bool FRunnerNoGoalPlacementAtomicityTest::RunTest(
 
 	State = MakeState();
 	AddLegalRunner(State);
-	AddOrdinaryDeployment(
-		State,
-		EInitialTurnOrderPlayer::PlayerB,
-		ExtraDefenderCardId,
-		{EPlayerPositionType::Defense},
-		GetNearSide(EInitialTurnOrderPlayer::PlayerB));
-	State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.RemoveAll(
-		[](const FPlayerCardRuleSnapshot& Snapshot)
-		{
-			return Snapshot.CardId == ExtraDefenderCardId;
-		});
-	Result = FMatchPlayRunnerDecline::Decline(
-		State,
-		MakeDeclineRequest());
-	TestEqual(TEXT("Missing defender Snapshot reaches shared core"),
-		Result.CompletionResult.ErrorCode,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::DeploymentSnapshotQueryFailed);
-	TestStateUnchanged(
-		*this,
-		TEXT("Missing defender Snapshot"),
-		State,
-		Result.AfterState);
-
-	State = MakeState();
-	AddLegalRunner(State);
-	AddOrdinaryDeployment(
-		State,
-		EInitialTurnOrderPlayer::PlayerB,
-		ExtraDefenderCardId,
-		{EPlayerPositionType::Defense},
-		GetNearSide(EInitialTurnOrderPlayer::PlayerB));
-	State.CardUsageState.PlayerBCardUsageState.AvailableCardIds
-		.Remove(ExtraDefenderCardId);
-	Result = FMatchPlayRunnerDecline::Decline(
-		State,
-		MakeDeclineRequest());
-	TestEqual(TEXT("Mid-loop CardUsage failure exact error"),
-		Result.CompletionResult.ErrorCode,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::OrdinaryCardUsageConsumptionFailed);
-	TestStateUnchanged(
-		*this,
-		TEXT("Mid-loop CardUsage failure"),
-		State,
-		Result.AfterState);
-
-	State = MakeState();
-	AddLegalRunner(State);
-	State.RuntimeState.PlayerAState.UsedAttackCount =
-		State.RuntimeState.PlayerAState.TotalAttackCount;
-	Result = FMatchPlayRunnerDecline::Decline(
-		State,
-		MakeDeclineRequest());
-	TestEqual(TEXT("Exhausted opportunity exact error"),
-		Result.CompletionResult.ErrorCode,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidOpportunityState);
-	TestStateUnchanged(
-		*this,
-		TEXT("Exhausted opportunity"),
-		State,
-		Result.AfterState);
-
-	State = MakeState();
-	AddLegalRunner(State);
-	State.RuntimeState.PlayerBState.TotalAttackCount = -1;
-	Result = FMatchPlayRunnerDecline::Decline(
-		State,
-		MakeDeclineRequest());
-	TestEqual(TEXT("Corrupt opportunity exact error"),
-		Result.CompletionResult.ErrorCode,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidOpportunityState);
-	TestStateUnchanged(
-		*this,
-		TEXT("Corrupt opportunity"),
-		State,
-		Result.AfterState);
-
-	State = MakeState();
-	AddLegalRunner(State);
 	State.RuntimeState.PlayerBState.Score = -1;
 	Result = FMatchPlayRunnerDecline::Decline(
 		State,
@@ -665,7 +554,7 @@ bool FRunnerNoGoalPlacementAtomicityTest::RunTest(
 
 RUNNER_NO_SELECTION_NO_GOAL_TEST(
 	FRunnerNoGoalAttackerGoalkeeperAtomicFailureTest,
-	"Completion.AttackerSideGoalkeeperAtomicFailure")
+	"Progression.AttackerGoalkeeperIsPreserved")
 
 bool FRunnerNoGoalAttackerGoalkeeperAtomicFailureTest::RunTest(
 	const FString& Parameters)
@@ -677,25 +566,22 @@ bool FRunnerNoGoalAttackerGoalkeeperAtomicFailureTest::RunTest(
 		FMatchPlayResolveNoLegalRunner::Resolve(
 			State,
 			MakeResolveRequest());
-	TestFalse(TEXT("Attacker-side GK never completes"),
+	TestTrue(TEXT("Attacker-side GK does not block progression"),
 		Result.bSuccess);
 	TestFalse(TEXT("Attacker-side GK is not a legal Runner"),
 		Result.RunnerAvailabilityResult.bCanSelectAnyRunner);
-	TestEqual(TEXT("Attacker-side GK exact Completion error"),
-		Result.CompletionResult.ErrorCode,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidGoalkeeperCompletionState);
-	TestStateUnchanged(
+	TestFormalRunnerAbsenceProgression(
 		*this,
 		TEXT("Attacker-side GK"),
 		State,
+		Result.CompletionResult,
 		Result.AfterState);
 	return true;
 }
 
 RUNNER_NO_SELECTION_NO_GOAL_TEST(
 	FRunnerNoGoalPersistentGoalkeeperAtomicFailureTest,
-	"Completion.ActiveGoalkeeperRequiresPersistentUsage")
+	"Progression.ActiveGoalkeeperStateIsPreserved")
 
 bool FRunnerNoGoalPersistentGoalkeeperAtomicFailureTest::RunTest(
 	const FString& Parameters)
@@ -704,56 +590,24 @@ bool FRunnerNoGoalPersistentGoalkeeperAtomicFailureTest::RunTest(
 	FMatchPlayState State = MakeState();
 	AddLegalRunner(State);
 	AddActiveGoalkeeper(State);
-	State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = false;
 	const FMatchPlayRunnerDeclineResult Result =
 		FMatchPlayRunnerDecline::Decline(
 			State,
 			MakeDeclineRequest());
-	TestFalse(TEXT("Active GK without persistent usage rejects"),
+	TestTrue(TEXT("Active goalkeeper progression succeeds"),
 		Result.bSuccess);
-	TestEqual(TEXT("Persistent usage exact Completion error"),
-		Result.CompletionResult.ErrorCode,
-		EMatchPlayCurrentAttackCompletionErrorCode
-			::InvalidGoalkeeperCompletionState);
-	TestStateUnchanged(
+	TestFormalRunnerAbsenceProgression(
 		*this,
-		TEXT("Active GK without persistent usage"),
+		TEXT("Active goalkeeper"),
 		State,
+		Result.CompletionResult,
 		Result.AfterState);
-
-	State = MakeState();
-	AddLegalRunner(State);
-	AddActiveGoalkeeper(State);
-	State.CurrentAttack.bCurrentDefenseGoalkeeperActivated = false;
-	const FMatchPlayRunnerDeclineResult Mismatch =
-		FMatchPlayRunnerDecline::Decline(
-			State,
-			MakeDeclineRequest());
-	TestFalse(TEXT("GK placement/activation mismatch rejects"),
-		Mismatch.bSuccess);
-	TestStateUnchanged(
-		*this,
-		TEXT("GK activation mismatch"),
-		State,
-		Mismatch.AfterState);
-
-	State = MakeState();
-	State.GoalkeeperUsageState.bPlayerBGoalkeeperCardUsed = true;
-	const FMatchPlayResolveNoLegalRunnerResult Inactive =
-		FMatchPlayResolveNoLegalRunner::Resolve(
-			State,
-			MakeResolveRequest());
-	TestTrue(TEXT("Persistent but inactive GK state is legal"),
-		Inactive.bSuccess);
-	TestTrue(TEXT("Inactive persistent GK usage is preserved"),
-		Inactive.AfterState.GoalkeeperUsageState
-			.bPlayerBGoalkeeperCardUsed);
 	return true;
 }
 
 RUNNER_NO_SELECTION_NO_GOAL_TEST(
 	FRunnerNoGoalSameCardAcrossSidesTest,
-	"Completion.SameCardIdAcrossSidesAllowed")
+	"Progression.SameCardIdAcrossSidesRemainsAvailable")
 
 bool FRunnerNoGoalSameCardAcrossSidesTest::RunTest(
 	const FString& Parameters)
@@ -788,22 +642,28 @@ bool FRunnerNoGoalSameCardAcrossSidesTest::RunTest(
 			MakeDeclineRequest());
 	TestTrue(TEXT("Same CardId across sides succeeds"),
 		Result.bSuccess);
-	TestTrue(TEXT("PlayerA shared card Used"),
-		IsCardUsed(
+	TestTrue(TEXT("PlayerA shared card remains Available"),
+		IsCardAvailable(
 			Result.AfterState,
 			EInitialTurnOrderPlayer::PlayerA,
 			SharedCardId));
-	TestTrue(TEXT("PlayerB shared card Used"),
-		IsCardUsed(
+	TestTrue(TEXT("PlayerB shared card remains Available"),
+		IsCardAvailable(
 			Result.AfterState,
 			EInitialTurnOrderPlayer::PlayerB,
 			SharedCardId));
+	TestFalse(TEXT("PlayerA shared card is not consumed"),
+		IsCardUsed(Result.AfterState,
+			EInitialTurnOrderPlayer::PlayerA, SharedCardId));
+	TestFalse(TEXT("PlayerB shared card is not consumed"),
+		IsCardUsed(Result.AfterState,
+			EInitialTurnOrderPlayer::PlayerB, SharedCardId));
 	return true;
 }
 
 RUNNER_NO_SELECTION_NO_GOAL_TEST(
 	FRunnerNoGoalNextAttackerAndMatchResultTest,
-	"Completion.NextAttackerAndTerminalResults")
+	"Progression.NeverHandsOffOrCreatesTerminalResult")
 
 bool FRunnerNoGoalNextAttackerAndMatchResultTest::RunTest(
 	const FString& Parameters)
@@ -815,9 +675,12 @@ bool FRunnerNoGoalNextAttackerAndMatchResultTest::RunTest(
 		FMatchPlayRunnerDecline::Decline(
 			State,
 			MakeDeclineRequest());
-	TestEqual(TEXT("Opponent attacks next"),
+	TestEqual(TEXT("No opponent handoff"),
 		Result.CompletionResult.NextAttackingPlayer,
-		EInitialTurnOrderPlayer::PlayerB);
+		EInitialTurnOrderPlayer::None);
+	TestEqual(TEXT("Current attacker remains authoritative"),
+		Result.AfterState.RuntimeState.CurrentAttackingPlayer,
+		EInitialTurnOrderPlayer::PlayerA);
 
 	State = MakeState();
 	AddLegalRunner(State);
@@ -826,9 +689,9 @@ bool FRunnerNoGoalNextAttackerAndMatchResultTest::RunTest(
 	Result = FMatchPlayRunnerDecline::Decline(
 		State,
 		MakeDeclineRequest());
-	TestEqual(TEXT("Current attacker continues"),
+	TestEqual(TEXT("No handoff when defender has no opportunities"),
 		Result.CompletionResult.NextAttackingPlayer,
-		EInitialTurnOrderPlayer::PlayerA);
+		EInitialTurnOrderPlayer::None);
 
 	for (const TTuple<int32, int32, EMatchResultType>& Case :
 		{MakeTuple(2, 1, EMatchResultType::HomeWin),
@@ -846,15 +709,13 @@ bool FRunnerNoGoalNextAttackerAndMatchResultTest::RunTest(
 		Result = FMatchPlayRunnerDecline::Decline(
 			State,
 			MakeDeclineRequest());
-		TestTrue(TEXT("Terminal Runner NoGoal succeeds"),
+		TestTrue(TEXT("Runner absence still succeeds at last opportunity"),
 			Result.bSuccess);
-		TestTrue(TEXT("Match ended"),
+		TestFalse(TEXT("Runner absence does not end match"),
 			Result.CompletionResult.bMatchEnded);
-		TestEqual(TEXT("Terminal result uses unchanged Score"),
-			Result.CompletionResult.MatchResultResolveResult
-				.ResultType,
-			Case.Get<2>());
-		TestEqual(TEXT("No next attacker at Match End"),
+		TestFalse(TEXT("No match result is resolved"),
+			Result.CompletionResult.MatchResultResolveResult.bSuccess);
+		TestEqual(TEXT("No next attacker before shot resolves"),
 			Result.CompletionResult.NextAttackingPlayer,
 			EInitialTurnOrderPlayer::None);
 	}
@@ -863,7 +724,7 @@ bool FRunnerNoGoalNextAttackerAndMatchResultTest::RunTest(
 
 RUNNER_NO_SELECTION_NO_GOAL_TEST(
 	FRunnerNoGoalRepeatedCallTest,
-	"Completion.SameAndCrossEntryRepeatsAreSafe")
+	"Progression.RepeatedRunnerCommandsAreStaleSafe")
 
 bool FRunnerNoGoalRepeatedCallTest::RunTest(
 	const FString& Parameters)
@@ -879,10 +740,10 @@ bool FRunnerNoGoalRepeatedCallTest::RunTest(
 		FMatchPlayResolveNoLegalRunner::Resolve(
 			Resolved.AfterState,
 			MakeResolveRequest());
-	TestEqual(TEXT("Resolve then Resolve has no CurrentAttack"),
+	TestEqual(TEXT("Resolve then Resolve has wrong stage"),
 		RepeatedResolve.ErrorCode,
 		EMatchPlayRunnerNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
+			::WrongSelectionStage);
 	TestStateUnchanged(
 		*this,
 		TEXT("Resolve then Resolve"),
@@ -892,10 +753,10 @@ bool FRunnerNoGoalRepeatedCallTest::RunTest(
 		FMatchPlayRunnerDecline::Decline(
 			Resolved.AfterState,
 			MakeDeclineRequest());
-	TestEqual(TEXT("Resolve then Decline has no CurrentAttack"),
+	TestEqual(TEXT("Resolve then Decline has wrong stage"),
 		ResolveThenDecline.ErrorCode,
 		EMatchPlayRunnerNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
+			::WrongSelectionStage);
 	TestStateUnchanged(
 		*this,
 		TEXT("Resolve then Decline"),
@@ -914,10 +775,10 @@ bool FRunnerNoGoalRepeatedCallTest::RunTest(
 		FMatchPlayRunnerDecline::Decline(
 			Declined.AfterState,
 			MakeDeclineRequest());
-	TestEqual(TEXT("Decline then Decline has no CurrentAttack"),
+	TestEqual(TEXT("Decline then Decline has wrong stage"),
 		RepeatedDecline.ErrorCode,
 		EMatchPlayRunnerNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
+			::WrongSelectionStage);
 	TestStateUnchanged(
 		*this,
 		TEXT("Decline then Decline"),
@@ -927,10 +788,10 @@ bool FRunnerNoGoalRepeatedCallTest::RunTest(
 		FMatchPlayResolveNoLegalRunner::Resolve(
 			Declined.AfterState,
 			MakeResolveRequest());
-	TestEqual(TEXT("Decline then Resolve has no CurrentAttack"),
+	TestEqual(TEXT("Decline then Resolve has wrong stage"),
 		DeclineThenResolve.ErrorCode,
 		EMatchPlayRunnerNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
+			::WrongSelectionStage);
 	TestStateUnchanged(
 		*this,
 		TEXT("Decline then Resolve"),
@@ -941,7 +802,7 @@ bool FRunnerNoGoalRepeatedCallTest::RunTest(
 
 RUNNER_NO_SELECTION_NO_GOAL_TEST(
 	FRunnerNoGoalCrossFamilyRepeatedCallTest,
-	"Completion.MarkerSkillRunnerCrossFamilyRepeatsAreSafe")
+	"Progression.LongShotAllowedAndRunnerTacticsRejected")
 
 bool FRunnerNoGoalCrossFamilyRepeatedCallTest::RunTest(
 	const FString& Parameters)
@@ -969,34 +830,62 @@ bool FRunnerNoGoalCrossFamilyRepeatedCallTest::RunTest(
 		{&RunnerResolved.AfterState,
 			&RunnerDeclined.AfterState})
 	{
-		const FMatchPlayResolveNoLegalSkillResult SkillResolve =
-			FMatchPlayResolveNoLegalSkill::Resolve(
-				*RunnerCompleted,
+		FMatchPlayState NoRunnerState = *RunnerCompleted;
+		FPlayerCardRuleSnapshot* Carrier = GetSnapshots(
+			NoRunnerState,
+			EInitialTurnOrderPlayer::PlayerA).Cards.FindByPredicate(
+			[](const FPlayerCardRuleSnapshot& Snapshot)
+			{
+				return Snapshot.CardId == RunnerFixtures::CarrierId;
+			});
+		if (Carrier == nullptr)
+		{
+			AddError(TEXT("No-runner state lost the carrier snapshot."));
+			continue;
+		}
+		Carrier->SkillIds.AddUnique(SkillFixtures::LongShotSkillId);
+		Carrier->SkillIds.AddUnique(SkillFixtures::CrossSkillId);
+		FMatchPlayCurrentAttackSkillSelectionRequest LongShotRequest =
+			SkillFixtures::MakeRequest(SkillFixtures::LongShotSkillId);
+		LongShotRequest.AttackSequence = RunnerFixtures::ValidAttackSequence;
+
+		const FMatchPlayCurrentAttackSkillSelectionWriterResult LongShot =
+			FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+				NoRunnerState,
 				SkillRules,
-				SkillNoGoalFixtures::MakeResolveRequest());
-		const FMatchPlaySkillDeclineResult SkillDecline =
-			FMatchPlaySkillDecline::Decline(
-				*RunnerCompleted,
+				LongShotRequest);
+		TestTrue(TEXT("LongShot is legal after formal Runner absence"),
+			LongShot.bSuccess);
+		TestEqual(TEXT("LongShot reaches branch choice"),
+			LongShot.AfterState.CurrentAttack.SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent);
+		TestTrue(TEXT("LongShot keeps the current attack active"),
+			LongShot.AfterState.bHasCurrentAttack);
+		TestTrue(TEXT("LongShot keeps Runner absent"),
+			LongShot.AfterState.CurrentAttack.ActionPreparation
+				.RunnerCardId.IsNone());
+		TestFalse(TEXT("LongShot keeps Helper not applicable"),
+			LongShot.AfterState.CurrentAttack.ActionPreparation.bHasHelper);
+
+		FMatchPlayCurrentAttackSkillSelectionRequest CrossRequest =
+			SkillFixtures::MakeRequest(SkillFixtures::CrossSkillId);
+		CrossRequest.AttackSequence = RunnerFixtures::ValidAttackSequence;
+		const FMatchPlayCurrentAttackSkillSelectionWriterResult Cross =
+			FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+				NoRunnerState,
 				SkillRules,
-				SkillNoGoalFixtures::MakeDeclineRequest());
-		TestEqual(TEXT("Runner then Skill Resolve has no attack"),
-			SkillResolve.ErrorCode,
-			EMatchPlaySkillNoSelectionNoGoalErrorCode
-				::NoCurrentAttack);
-		TestEqual(TEXT("Runner then Skill Decline has no attack"),
-			SkillDecline.ErrorCode,
-			EMatchPlaySkillNoSelectionNoGoalErrorCode
-				::NoCurrentAttack);
+				CrossRequest);
+		TestFalse(TEXT("Runner-required Cross remains illegal"),
+			Cross.bSuccess);
+		TestEqual(TEXT("Cross reports missing prepared Runner"),
+			Cross.LegalityResult.ErrorCode,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::PreparedRunnerIncompatibleWithSkill);
 		TestStateUnchanged(
 			*this,
-			TEXT("Runner then Skill Resolve"),
-			*RunnerCompleted,
-			SkillResolve.AfterState);
-		TestStateUnchanged(
-			*this,
-			TEXT("Runner then Skill Decline"),
-			*RunnerCompleted,
-			SkillDecline.AfterState);
+			TEXT("Rejected Cross"),
+			NoRunnerState,
+			Cross.AfterState);
 
 		const FMatchPlayResolveNoLegalMarkerResult MarkerResolve =
 			FMatchPlayResolveNoLegalMarker::Resolve(
@@ -1021,86 +910,6 @@ bool FRunnerNoGoalCrossFamilyRepeatedCallTest::RunTest(
 			*RunnerCompleted,
 			MarkerDecline.AfterState);
 	}
-
-	FMatchPlayState SkillState =
-		SkillNoGoalFixtures::MakeState(
-			EInitialTurnOrderPlayer::PlayerA,
-			{});
-	const FMatchPlayResolveNoLegalSkillResult SkillCompleted =
-		FMatchPlayResolveNoLegalSkill::Resolve(
-			SkillState,
-			SkillRules,
-			SkillNoGoalFixtures::MakeResolveRequest());
-	TestTrue(TEXT("Skill NoGoal seed succeeds"),
-		SkillCompleted.bSuccess);
-	const FMatchPlayResolveNoLegalRunnerResult SkillThenRunnerResolve =
-		FMatchPlayResolveNoLegalRunner::Resolve(
-			SkillCompleted.AfterState,
-			MakeResolveRequest());
-	const FMatchPlayRunnerDeclineResult SkillThenRunnerDecline =
-		FMatchPlayRunnerDecline::Decline(
-			SkillCompleted.AfterState,
-			MakeDeclineRequest());
-	TestEqual(TEXT("Skill then Runner Resolve has no attack"),
-		SkillThenRunnerResolve.ErrorCode,
-		EMatchPlayRunnerNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
-	TestEqual(TEXT("Skill then Runner Decline has no attack"),
-		SkillThenRunnerDecline.ErrorCode,
-		EMatchPlayRunnerNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
-
-	FMatchPlayState MarkerState = MarkerFixtures::MakeState();
-	MarkerFixtures::RemoveDefenderPlacements(MarkerState);
-	const FMatchPlayResolveNoLegalMarkerResult MarkerCompleted =
-		FMatchPlayResolveNoLegalMarker::Resolve(
-			MarkerState,
-			MarkerFixtures::MakeNoLegalRequest());
-	TestTrue(TEXT("Marker Goal seed succeeds"),
-		MarkerCompleted.bSuccess);
-	const FMatchPlayResolveNoLegalRunnerResult MarkerThenRunnerResolve =
-		FMatchPlayResolveNoLegalRunner::Resolve(
-			MarkerCompleted.AfterState,
-			MakeResolveRequest());
-	const FMatchPlayRunnerDeclineResult MarkerThenRunnerDecline =
-		FMatchPlayRunnerDecline::Decline(
-			MarkerCompleted.AfterState,
-			MakeDeclineRequest());
-	TestEqual(TEXT("Marker then Runner Resolve has no attack"),
-		MarkerThenRunnerResolve.ErrorCode,
-		EMatchPlayRunnerNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
-	TestEqual(TEXT("Marker then Runner Decline has no attack"),
-		MarkerThenRunnerDecline.ErrorCode,
-		EMatchPlayRunnerNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
-
-	const FMatchPlayResolveNoLegalMarkerResult SkillThenMarker =
-		FMatchPlayResolveNoLegalMarker::Resolve(
-			SkillCompleted.AfterState,
-			MarkerFixtures::MakeNoLegalRequest());
-	TestFalse(TEXT("Skill then Marker rejects"),
-		SkillThenMarker.bSuccess);
-	TestStateUnchanged(
-		*this,
-		TEXT("Skill then Marker"),
-		SkillCompleted.AfterState,
-		SkillThenMarker.AfterState);
-
-	const FMatchPlayResolveNoLegalSkillResult MarkerThenSkill =
-		FMatchPlayResolveNoLegalSkill::Resolve(
-			MarkerCompleted.AfterState,
-			SkillRules,
-			SkillNoGoalFixtures::MakeResolveRequest());
-	TestEqual(TEXT("Marker then Skill has no attack"),
-		MarkerThenSkill.ErrorCode,
-		EMatchPlaySkillNoSelectionNoGoalErrorCode
-			::NoCurrentAttack);
-	TestStateUnchanged(
-		*this,
-		TEXT("Marker then Skill"),
-		MarkerCompleted.AfterState,
-		MarkerThenSkill.AfterState);
 	return true;
 }
 

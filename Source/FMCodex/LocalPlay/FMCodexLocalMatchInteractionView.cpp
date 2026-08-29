@@ -829,10 +829,11 @@ namespace FMCodexLocalMatchInteractionView
 			View.InteractionCategory =
 				EFMCodexLocalMatchInteractionCategory::SelectRunner;
 			View.ExpectedActingPlayer = Attacker;
-			View.bCanDecline = true;
 			const auto Availability =
 				FMatchPlayCurrentAttackRunnerSelectionAvailability::Query(
 					State, Sequence, Attacker);
+			View.bCanDecline = Availability.bQuerySucceeded
+				&& Availability.bCanSelectAnyRunner;
 			for (const auto& Candidate : Availability.Candidates)
 			{
 				if (Candidate.LegalityResult.bIsLegal)
@@ -939,7 +940,11 @@ namespace FMCodexLocalMatchInteractionView
 		}
 		case EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent:
 			View.InteractionCategory =
-				EFMCodexLocalMatchInteractionCategory::SelectBranchIntent;
+				Attack.ActionPreparation.ActionType == ESkillRuleType::LongShot
+					? EFMCodexLocalMatchInteractionCategory
+						::SelectLongShotBranch
+					: EFMCodexLocalMatchInteractionCategory
+						::SelectBranchIntent;
 			View.ExpectedActingPlayer = Attacker;
 			if (Attack.ActionPreparation.ActionType == ESkillRuleType::Cross)
 			{
@@ -1226,6 +1231,70 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 				EMatchPlayThroughBallOneOnOneShotChoice::DirectShot
 			};
 			return Result;
+		}
+		if (Session.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& Session.bHasActualBranch
+			&& Session.ActualBranch.ActionType == ESkillRuleType::LongShot)
+		{
+			const auto Progress =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+					Session);
+			if (Progress.bIsCanonical && !Progress.bContractComplete
+				&& Session.ActualBranch.LongShot
+					== EMatchPlayLongShotActualBranch::DirectShot)
+			{
+				const bool bAttackRoll =
+					Session.PostRouteRollProgress.Phase
+						== EMatchPlayCurrentAttackPostRouteRollPhase::None
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::PrimaryAttack;
+				Result.InteractionCategory = bAttackRoll
+					? EFMCodexLocalMatchInteractionCategory
+						::RollLongShotDirectAttack
+					: EFMCodexLocalMatchInteractionCategory
+						::RollLongShotDirectDefense;
+				Result.bLongShotDirectAttackRollPending = bAttackRoll;
+				Result.bLongShotDirectDefenseRollPending = !bAttackRoll;
+				Result.ExpectedActingPlayer = bAttackRoll
+					? Session.Bundle.CurrentAttackingPlayer
+					: Session.Bundle.CurrentDefendingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = bAttackRoll
+					? TEXT("进攻方掷远射点数")
+					: TEXT("防守方掷防守点数");
+				return Result;
+			}
+			if (Progress.bIsCanonical && !Progress.bContractComplete
+				&& Session.ActualBranch.LongShot
+					== EMatchPlayLongShotActualBranch::DeadCorner
+				&& (Session.PostRouteRollProgress.Phase
+						== EMatchPlayCurrentAttackPostRouteRollPhase::None
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::PairedAttackA))
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory
+						::RollLongShotDeadCorner;
+				Result.bLongShotDeadCornerRollPending = true;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("进攻方掷远射双骰");
+				return Result;
+			}
+			if (Progress.bIsCanonical && Progress.bContractComplete)
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("确认结算结果");
+				return Result;
+			}
 		}
 		if (Session.Stage
 				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
@@ -1642,6 +1711,9 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 		Result.InteractionTitle = View.ActionLabel == TEXT("Cross")
 			? TEXT("Choose Cross Type") : TEXT("Choose Shot Type");
 		break;
+	case EFMCodexLocalMatchInteractionCategory::SelectLongShotBranch:
+		Result.InteractionTitle = TEXT("选择远射方式");
+		break;
 	case EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot:
 		Result.InteractionTitle = TEXT("Choose One-on-One Shot");
 		break;
@@ -1650,6 +1722,15 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 		break;
 	case EFMCodexLocalMatchInteractionCategory::RollCrossDefense:
 		Result.InteractionTitle = TEXT("防守方掷点");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack:
+		Result.InteractionTitle = TEXT("进攻方掷远射点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense:
+		Result.InteractionTitle = TEXT("防守方掷防守点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner:
+		Result.InteractionTitle = TEXT("进攻方掷远射双骰");
 		break;
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
 		Result.InteractionTitle = TEXT("判定直塞路线");
@@ -1731,9 +1812,13 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EFMCodexLocalMatchInteractionCategory::SelectRunner: return TEXT("Select Runner");
 	case EFMCodexLocalMatchInteractionCategory::SelectHelper: return TEXT("Select Helper");
 	case EFMCodexLocalMatchInteractionCategory::SelectBranchIntent: return TEXT("Select Branch Intent");
+	case EFMCodexLocalMatchInteractionCategory::SelectLongShotBranch: return TEXT("选择远射方式");
 	case EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot: return TEXT("Select One-on-One Shot");
 	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack: return TEXT("进攻方掷点");
 	case EFMCodexLocalMatchInteractionCategory::RollCrossDefense: return TEXT("防守方掷点");
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack: return TEXT("进攻方掷远射点数");
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense: return TEXT("防守方掷防守点数");
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner: return TEXT("进攻方掷远射双骰");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute: return TEXT("判定直塞路线");
 	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance: return TEXT("下一回合");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack: return TEXT("掷进攻方点数");

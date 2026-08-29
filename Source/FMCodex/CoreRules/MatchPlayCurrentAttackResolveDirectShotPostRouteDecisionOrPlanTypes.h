@@ -12,6 +12,18 @@ struct FMCODEX_API
 	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
 {
 	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		/** Legacy/reference compatibility; production must use explicit rolls. */
+		CompleteDirectShotPlan,
+		RegenerateCompletedPlan,
+		ResolveLongShotAttackRoll,
+		ResolveLongShotDefenseRoll
+	};
+
+	EMode Mode = EMode::CompleteDirectShotPlan;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 enum class
@@ -28,6 +40,11 @@ enum class
 	InvalidResolutionSessionState,
 	RouteNotResolved,
 	NotDirectShotBranch,
+	NotLongShotDirectShotBranch,
+	InvalidRequestingSide,
+	WrongRequestingSide,
+	WrongLongShotDirectRollStep,
+	CompletedPlanRequired,
 	InvalidPostRouteProgress,
 	PostRouteRollProviderUnavailable,
 	PostRouteRollProviderFailed,

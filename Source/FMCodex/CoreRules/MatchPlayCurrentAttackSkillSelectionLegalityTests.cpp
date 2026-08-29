@@ -577,6 +577,46 @@ bool FSkillSelectionRuleAndActionPointTest::RunTest(
 	return true;
 }
 
+SKILL_LEGALITY_TEST(
+	FSkillSelectionFormalRunnerAbsenceTest,
+	"FormalRunnerAbsenceAllowsNoRunnerSkillsOnly")
+
+bool FSkillSelectionFormalRunnerAbsenceTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace
+		FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	const FSkillRuleSnapshotSet Rules = MakeRuleSet();
+	FMatchPlayState State = MakeState(
+		{LongShotSkillId, CutInsideSkillId, CrossSkillId});
+	State.CurrentAttack.ActionPreparation.bSkillSelectionDeferred = true;
+
+	const auto LongShot =
+		FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator::Evaluate(
+			State, Rules, MakeRequest(LongShotSkillId));
+	TestTrue(TEXT("LongShot is legal without a prepared Runner"),
+		LongShot.bIsLegal);
+	TestFalse(TEXT("LongShot requires no Runner"),
+		LongShot.ParticipantRequirementResult.bRequiresRunner);
+
+	const auto CutInside =
+		FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator::Evaluate(
+			State, Rules, MakeRequest(CutInsideSkillId));
+	TestTrue(TEXT("CutInside remains legal without a prepared Runner"),
+		CutInside.bIsLegal);
+	TestFalse(TEXT("CutInside requires no Runner"),
+		CutInside.ParticipantRequirementResult.bRequiresRunner);
+
+	return SkillSelectionLegalityTests::ExpectError(
+		*this,
+		TEXT("Cross still requires a prepared Runner"),
+		State,
+		Rules,
+		MakeRequest(CrossSkillId),
+		EMatchPlayCurrentAttackSkillSelectionErrorCode
+			::PreparedRunnerIncompatibleWithSkill);
+}
+
 #undef SKILL_LEGALITY_TEST
 
 #endif

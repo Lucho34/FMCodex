@@ -2454,6 +2454,8 @@ namespace MatchPlayAuthoritativeSessionTests
 			}
 
 			FMatchPlayAuthoritativeSubmitBranchIntentRequest IntentRequest;
+			IntentRequest.AttackSequence =
+				Session.GetStateSnapshot().CurrentAttack.AttackSequence;
 			IntentRequest.RequestingSide = OutTrace.AttackingSide;
 			IntentRequest.Intent = Intent;
 			if (!Session.SubmitBranchIntent(IntentRequest).IntentResult.bSuccess)
@@ -2492,7 +2494,8 @@ namespace MatchPlayAuthoritativeSessionTests
 		FMatchPlayAuthoritativeSession& Session,
 		const FSkillRuleSnapshotSet& Rules,
 		const FName SkillId,
-		FReachabilityTrace& OutTrace)
+		FReachabilityTrace& OutTrace,
+		const ESkillRuleType SkillType = ESkillRuleType::ThroughBall)
 	{
 		if (!Session.BeginOrdinaryAttack(6).BeginResult.bSuccess)
 		{
@@ -2628,12 +2631,22 @@ namespace MatchPlayAuthoritativeSessionTests
 			return false;
 		}
 		State = Session.GetStateSnapshot();
-		return State.CurrentAttack.AttackSequence == OutTrace.AttackSequence
+		if (State.CurrentAttack.AttackSequence != OutTrace.AttackSequence)
+		{
+			return false;
+		}
+		if (SkillType == ESkillRuleType::ThroughBall)
+		{
+			return State.CurrentAttack.SelectionStage
+					== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+				&& State.CurrentAttack.bHasSelectedAction
+				&& State.CurrentAttack.SelectedAction.ActionType == SkillType;
+		}
+		return SkillType == ESkillRuleType::LongShot
 			&& State.CurrentAttack.SelectionStage
-				== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
-			&& State.CurrentAttack.bHasSelectedAction
-			&& State.CurrentAttack.SelectedAction.ActionType
-				== ESkillRuleType::ThroughBall;
+				== EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent
+			&& !State.CurrentAttack.bHasSelectedAction
+			&& State.CurrentAttack.ActionPreparation.ActionType == SkillType;
 	}
 
 	void TestAwaitingMarkerEndpoint(
@@ -6491,11 +6504,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All fifty-six mutations use the gate"),
+	TestEqual(TEXT("All fifty-nine mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		56);
+		59);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7880,8 +7893,8 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
 		CompletionSource));
-	TestEqual(TEXT("All fifty-six commands use one serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 56);
+	TestEqual(TEXT("All fifty-nine commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
 	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
@@ -10534,9 +10547,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			ExpectedCallCount);
 	}
-	TestEqual(TEXT("All fifty-six mutations share serialized gate"),
+	TestEqual(TEXT("All fifty-nine mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		56);
+		59);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -10750,6 +10763,41 @@ bool FMatchPlayAuthoritativeSessionRunnerCompletionPathsTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace MatchPlayAuthoritativeSessionTests;
+	auto TestRunnerAbsenceProgression = [this](
+		const TCHAR* Context,
+		const FMatchPlayState& Before,
+		const FMatchPlayCurrentAttackCompletionResult& Completion,
+		const FMatchPlayState& After)
+	{
+		TestTrue(*FString::Printf(TEXT("%s keeps attack active"), Context),
+			After.bHasCurrentAttack
+				&& After.CurrentAttack.LifecycleState
+					== EMatchPlayCurrentAttackLifecycleState::Active);
+		TestEqual(*FString::Printf(TEXT("%s reaches SelectSkill"), Context),
+			After.CurrentAttack.SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage::AwaitingSkill);
+		TestTrue(*FString::Printf(TEXT("%s freezes formal absence"), Context),
+			After.CurrentAttack.ActionPreparation.bSkillSelectionDeferred
+				&& After.CurrentAttack.ActionPreparation.RunnerCardId.IsNone()
+				&& !After.CurrentAttack.ActionPreparation.bHasHelper
+				&& After.CurrentAttack.ActionPreparation.HelperCardId.IsNone());
+		TestEqual(*FString::Printf(TEXT("%s keeps sequence"), Context),
+			After.CurrentAttack.AttackSequence,
+			Before.CurrentAttack.AttackSequence);
+		TestEqual(*FString::Printf(TEXT("%s keeps attacker"), Context),
+			After.RuntimeState.CurrentAttackingPlayer,
+			Before.RuntimeState.CurrentAttackingPlayer);
+		TestEqual(*FString::Printf(TEXT("%s keeps PlayerA attacks"), Context),
+			After.RuntimeState.PlayerAState.UsedAttackCount,
+			Before.RuntimeState.PlayerAState.UsedAttackCount);
+		TestEqual(*FString::Printf(TEXT("%s keeps PlayerB attacks"), Context),
+			After.RuntimeState.PlayerBState.UsedAttackCount,
+			Before.RuntimeState.PlayerBState.UsedAttackCount);
+		TestFalse(*FString::Printf(TEXT("%s is not terminal"), Context),
+			Completion.bMatchEnded);
+		TestFalse(*FString::Printf(TEXT("%s consumes no opportunity"), Context),
+			Completion.OpportunityResolveResult.bSuccess);
+	};
 	FMatchPlayAuthoritativeSession NoLegalSession;
 	FReachabilityTrace NoLegalTrace;
 	FName NoLegalRunner;
@@ -10759,7 +10807,8 @@ bool FMatchPlayAuthoritativeSessionRunnerCompletionPathsTest::RunTest(
 			TEXT("RunnerNoLegal"),
 			false,
 			NoLegalTrace,
-			NoLegalRunner));
+			NoLegalRunner,
+			ESkillRuleType::LongShot));
 	const FMatchPlayState NoLegalBefore = NoLegalSession.GetStateSnapshot();
 	const auto Resolved = NoLegalSession.ResolveNoLegalRunner();
 	TestTrue(TEXT("No-legal runner resolves"),
@@ -10782,20 +10831,26 @@ bool FMatchPlayAuthoritativeSessionRunnerCompletionPathsTest::RunTest(
 		NoLegalBefore,
 		Resolved.ResolutionResult.AfterState,
 		NoLegalSession.GetStateSnapshot());
-	TestCompletedAttackEndpoint(
-		*this,
-		TEXT("ResolveNoLegalRunner"),
-		Resolved.ResolutionResult.CompletionResult,
-		NoLegalSession.GetStateSnapshot());
-	TestCompletionScoringContract(
-		*this,
+	TestRunnerAbsenceProgression(
 		TEXT("ResolveNoLegalRunner"),
 		NoLegalBefore,
 		Resolved.ResolutionResult.CompletionResult,
-		NoLegalSession.GetStateSnapshot(),
-		ECompletionScoringExpectation::NoGoal,
-		NoLegalTrace.AttackingSide,
-		true);
+		NoLegalSession.GetStateSnapshot());
+	const FName LongShotSkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"),
+		TEXT("RunnerNoLegal"),
+		static_cast<int32>(ESkillRuleType::LongShot)));
+	FMatchPlayAuthoritativeSubmitSkillRequest LongShotRequest;
+	LongShotRequest.RequestingSide = NoLegalTrace.AttackingSide;
+	LongShotRequest.SkillId = LongShotSkillId;
+	const auto LongShot = NoLegalSession.SubmitSkill(
+		MakeSkillRuleSet(LongShotSkillId, ESkillRuleType::LongShot),
+		LongShotRequest);
+	TestTrue(TEXT("Session accepts LongShot after Runner absence"),
+		LongShot.SkillResult.bSuccess);
+	TestEqual(TEXT("LongShot reaches authoritative branch choice"),
+		NoLegalSession.GetStateSnapshot().CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent);
 
 	FMatchPlayAuthoritativeSession NoLegalDeclineSession;
 	FReachabilityTrace NoLegalDeclineTrace;
@@ -10878,6 +10933,11 @@ bool FMatchPlayAuthoritativeSessionRunnerCompletionPathsTest::RunTest(
 		Declined.RuntimeEnvelope,
 		LegalBefore,
 		Declined.DeclineResult.AfterState,
+		LegalSession.GetStateSnapshot());
+	TestRunnerAbsenceProgression(
+		TEXT("DeclineRunner"),
+		LegalBefore,
+		Declined.DeclineResult.CompletionResult,
 		LegalSession.GetStateSnapshot());
 	TestFalse(TEXT("NoLegal and Decline sources remain distinct"),
 		Resolved.ResolutionResult.Source == Declined.DeclineResult.Source);
@@ -11760,7 +11820,7 @@ bool FMatchPlayAuthoritativeSessionSubmitBranchIntentTest::RunTest(
 		RequestBegin != INDEX_NONE && RequestEnd != INDEX_NONE);
 	TestFalse(TEXT("Public Branch Intent request has no State"),
 		RequestSurface.Contains(TEXT("FMatchPlayState")));
-	TestFalse(TEXT("Public Branch Intent request has no AttackSequence"),
+	TestTrue(TEXT("Public Branch Intent request carries caller AttackSequence"),
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("No Branch Intent Availability abstraction added"),
 		Types.Contains(TEXT("BranchIntentAvailability")));
@@ -11807,6 +11867,7 @@ bool FMatchPlayAuthoritativeSessionSubmitBranchIntentTest::RunTest(
 				Trace));
 		const FMatchPlayState Before = Session.GetStateSnapshot();
 		FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
+		Request.AttackSequence = Before.CurrentAttack.AttackSequence;
 		Request.RequestingSide = Trace.AttackingSide;
 		Request.Intent = Case.Intent;
 		const auto Success = Session.SubmitBranchIntent(Request);
@@ -11872,6 +11933,7 @@ bool FMatchPlayAuthoritativeSessionSubmitBranchIntentTest::RunTest(
 			FailureTrace));
 	const FMatchPlayState FailureBefore = FailureSession.GetStateSnapshot();
 	FMatchPlayAuthoritativeSubmitBranchIntentRequest FailureRequest;
+	FailureRequest.AttackSequence = FailureBefore.CurrentAttack.AttackSequence;
 	FailureRequest.RequestingSide = FailureTrace.DefendingSide;
 	FailureRequest.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
 	const auto WrongSide = FailureSession.SubmitBranchIntent(FailureRequest);
@@ -11949,6 +12011,8 @@ bool FMatchPlayAuthoritativeSessionSubmitBranchIntentTest::RunTest(
 	const FMatchPlayState PassControlBefore =
 		PassControlSession.GetStateSnapshot();
 	FMatchPlayAuthoritativeSubmitBranchIntentRequest PassControlRequest;
+	PassControlRequest.AttackSequence =
+		PassControlBefore.CurrentAttack.AttackSequence;
 	PassControlRequest.RequestingSide = PassControlTrace.AttackingSide;
 	PassControlRequest.Intent =
 		EMatchPlayElectiveBranchIntent::DirectShot;
@@ -11979,6 +12043,8 @@ bool FMatchPlayAuthoritativeSessionSubmitBranchIntentTest::RunTest(
 				ESkillRuleType::LongShot,
 				DeterministicTrace));
 		FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
+		Request.AttackSequence = DeterministicSession.GetStateSnapshot()
+			.CurrentAttack.AttackSequence;
 		Request.RequestingSide = DeterministicTrace.AttackingSide;
 		Request.Intent = EMatchPlayElectiveBranchIntent::DeadCorner;
 		Results.Add(DeterministicSession.SubmitBranchIntent(Request));
@@ -12010,6 +12076,8 @@ bool FMatchPlayAuthoritativeSessionSubmitBranchIntentTest::RunTest(
 			ESkillRuleType::CutInsideShot,
 			TraceB));
 	FMatchPlayAuthoritativeSubmitBranchIntentRequest IsolationRequest;
+	IsolationRequest.AttackSequence =
+		SessionA.GetStateSnapshot().CurrentAttack.AttackSequence;
 	IsolationRequest.RequestingSide = TraceA.AttackingSide;
 	IsolationRequest.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
 	const FMatchPlayState SessionBBefore = SessionB.GetStateSnapshot();
@@ -15066,11 +15134,11 @@ bool FMatchPlayAuthoritativeSessionResolveDeadCornerPostRouteDecisionTest
 		Header.Contains(TEXT("ResolveDeadCornerPostRouteDecision();")));
 	TestFalse(TEXT("Session does not call provider directly"),
 		Implementation.Contains(TEXT("RollD6(")));
-	TestEqual(TEXT("One canonical DeadCorner orchestration call"),
+	TestEqual(TEXT("Legacy and typed DeadCorner commands share one orchestrator"),
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator")),
-		1);
+		2);
 
 	auto MakeSkillId = [](const FString& Prefix, const ESkillRuleType Action)
 	{
@@ -15942,11 +16010,11 @@ bool FMatchPlayAuthoritativeSessionResolveDirectShotPostRouteDecisionOrPlanTest
 		Header.Contains(TEXT("ResolveDirectShotPostRouteDecisionOrPlan();")));
 	TestFalse(TEXT("Session does not call provider directly"),
 		Implementation.Contains(TEXT("RollD6(")));
-	TestEqual(TEXT("One canonical DirectShot orchestration call"),
+	TestEqual(TEXT("Legacy and typed DirectShot commands share one orchestrator"),
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator")),
-		1);
+		3);
 	TestFalse(TEXT("DirectShot integration does not duplicate miss threshold"),
 		Orchestrator.Contains(TEXT("ImmediateMissMaxD6"))
 			|| Orchestrator.Contains(TEXT("ConditionalContinuationMinD6")));
@@ -22496,7 +22564,7 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
 	TestEqual(TEXT("E2E preserves 56 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 56);
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -22570,8 +22638,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-six commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 56);
+	TestEqual(TEXT("All fifty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -23062,8 +23130,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-six commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 56);
+	TestEqual(TEXT("All fifty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -23589,8 +23657,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-six commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 56);
+	TestEqual(TEXT("All fifty-nine commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -24164,8 +24232,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All fifty-six commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 56);
+	TestEqual(TEXT("All fifty-nine commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);
@@ -24391,6 +24459,667 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		TEXT("Post-deployment goalkeeper command"),
 		WrongStage.RuntimeEnvelope,
 		AfterFinished);
+	return true;
+}
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionLongShotSideOwnedAuthorityFoundationTest,
+	"68.LongShotSideOwnedAuthorityFoundation")
+
+bool FMatchPlayAuthoritativeSessionLongShotSideOwnedAuthorityFoundationTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EDirectError =
+		EMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanErrorCode;
+	using EDeadError =
+		EMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionErrorCode;
+	using ECategory = EFMCodexLocalMatchInteractionCategory;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	(void)Parameters;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolveLongShotDirectAttackRoll),
+		FMatchPlayAuthoritativeResolveLongShotDirectAttackRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolveLongShotDirectDefenseRoll),
+		FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolveLongShotDeadCornerRoll),
+		FMatchPlayAuthoritativeResolveLongShotDeadCornerRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest&)>);
+	TestEqual(TEXT("LongShot Direct Attack command appended"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveLongShotDirectAttackRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallInitialRouteRoll) + 1);
+	TestEqual(TEXT("LongShot Direct Defense command follows Attack"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveLongShotDirectDefenseRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveLongShotDirectAttackRoll) + 1);
+	TestEqual(TEXT("LongShot DeadCorner command follows Direct Defense"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveLongShotDeadCornerRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveLongShotDirectDefenseRoll) + 1);
+
+	auto MakeLongShotSkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::LongShot)));
+	};
+	auto ReachBranch = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		FReachabilityTrace& Trace)
+	{
+		return BuildStage7165ToAwaitingBranchIntent(
+			Session, Prefix, ESkillRuleType::LongShot, Trace);
+	};
+	auto ReachResolvedBranch = [&ReachBranch](
+		FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const EMatchPlayElectiveBranchIntent Intent,
+		FReachabilityTrace& Trace)
+	{
+		if (!ReachBranch(Session, Prefix, Trace))
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest Branch;
+		Branch.AttackSequence = Trace.AttackSequence;
+		Branch.RequestingSide = Trace.AttackingSide;
+		Branch.Intent = Intent;
+		return Session.SubmitBranchIntent(Branch).IntentResult.bSuccess
+			&& Session.BeginResolutionSession().BeginResult.bSuccess
+			&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess;
+	};
+	auto AdvanceTerminal = [](FMatchPlayAuthoritativeSession& Session,
+		const int64 Sequence,
+		const EInitialTurnOrderPlayer Attacker)
+	{
+		if (!Session.ApplyShotTerminalResolution()
+			.OrchestrationResult.bSuccess)
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+		Advance.AttackSequence = Sequence;
+		Advance.RequestingSide = Attacker;
+		return Session.AdvanceAfterTerminal(Advance)
+			.CompletionResult.bSuccess;
+	};
+
+	// Direct 1-2 is one persisted Attack roll, with no hidden Defense call.
+	{
+		const FString Prefix(TEXT("LongShotTypedImmediateMiss"));
+		const FName SkillId = MakeLongShotSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(2));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("ImmediateMiss reaches LongShot Direct"),
+			ReachResolvedBranch(
+				Session,
+				Prefix,
+				EMatchPlayElectiveBranchIntent::DirectShot,
+				Trace));
+		FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest Attack;
+		Attack.AttackSequence = Trace.AttackSequence;
+		Attack.RequestingSide = Trace.AttackingSide;
+		const auto Result = Session.ResolveLongShotDirectAttackRoll(Attack);
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		const auto& Rolls = After.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("ImmediateMiss typed Attack succeeds"),
+			Result.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("ImmediateMiss consumes exactly one provider operation"),
+			Post.GetCallCount(), 1);
+		TestEqual(TEXT("ImmediateMiss persists exactly one roll"), Rolls.Num(), 1);
+		if (Rolls.Num() == 1 && Post.GetPurposes().Num() == 1)
+		{
+			TestEqual(TEXT("ImmediateMiss provider purpose is PrimaryAttack"),
+				Post.GetPurposes()[0], EPurpose::PrimaryAttack);
+			TestEqual(TEXT("ImmediateMiss record purpose is PrimaryAttack"),
+				Rolls[0].Purpose, EPurpose::PrimaryAttack);
+			TestEqual(TEXT("ImmediateMiss raw roll persists"), Rolls[0].RawD6, 2);
+		}
+		TestEqual(TEXT("ImmediateMiss uses canonical decision"),
+			Result.OrchestrationResult.LongShotResult.Decision,
+			ELongShotDirectShotDecision::ImmediateMiss);
+		const auto Progress =
+			FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+				After.CurrentAttack.ResolutionSession);
+		TestTrue(TEXT("ImmediateMiss conditional contract is complete"),
+			Progress.bIsCanonical && Progress.bContractComplete);
+		const auto View = FFMCodexLocalMatchInteractionViewBuilder::Build(
+			After, Rules);
+		TestEqual(TEXT("ImmediateMiss has only zero-RNG completion remaining"),
+			View.InteractionCategory, ECategory::ContinueResolution);
+		const int32 CallsBeforeTerminal = Post.GetCallCount();
+		const auto Terminal = Session.ApplyShotTerminalResolution();
+		TestTrue(TEXT("ImmediateMiss terminal application succeeds"),
+			Terminal.OrchestrationResult.bSuccess
+				&& !Terminal.OrchestrationResult.bIsGoal);
+		TestEqual(TEXT("ImmediateMiss terminal regeneration consumes zero RNG"),
+			Post.GetCallCount(), CallsBeforeTerminal);
+	}
+
+	// Attack=3 commits a reconstructable prefix; Defense is separately owned.
+	{
+		const FString Prefix(TEXT("LongShotTypedDirectOwnership"));
+		const FName SkillId = MakeLongShotSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(3));
+		Post.Enqueue(MakePostRouteSuccess(4));
+		Post.Enqueue(MakePostRouteSuccess(2));
+		Post.Enqueue(MakePostRouteSuccess(3));
+		Post.Enqueue(MakePostRouteSuccess(4));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace First;
+		TestTrue(TEXT("Attack N reaches LongShot branch choice"),
+			ReachBranch(Session, Prefix, First));
+		const FMatchPlayState FirstBranchState = Session.GetStateSnapshot();
+		const auto FirstBranchView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(
+				FirstBranchState, Rules);
+		TestEqual(TEXT("LongShot branch has typed category"),
+			FirstBranchView.InteractionCategory, ECategory::SelectLongShotBranch);
+		TestEqual(TEXT("LongShot branch belongs to attacker"),
+			FirstBranchView.ExpectedActingPlayer, First.AttackingSide);
+		TestEqual(TEXT("LongShot branch projects sequence"),
+			FirstBranchView.AttackSequence, First.AttackSequence);
+
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest SavedBranch;
+		SavedBranch.AttackSequence = First.AttackSequence;
+		SavedBranch.RequestingSide = First.AttackingSide;
+		SavedBranch.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+		TestTrue(TEXT("Attack N caller-correlated Branch succeeds"),
+			Session.SubmitBranchIntent(SavedBranch).IntentResult.bSuccess);
+		TestTrue(TEXT("Attack N begins and resolves Direct route"),
+			Session.BeginResolutionSession().BeginResult.bSuccess
+				&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess);
+		const FMatchPlayState DirectPending = Session.GetStateSnapshot();
+		const auto DirectPendingView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(DirectPending, Rules);
+		TestEqual(TEXT("Direct no-roll snapshot projects Attack command"),
+			DirectPendingView.InteractionCategory,
+			ECategory::RollLongShotDirectAttack);
+		TestEqual(TEXT("Direct Attack belongs to attacker"),
+			DirectPendingView.ExpectedActingPlayer, First.AttackingSide);
+
+		FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest
+			DefenseBeforeAttack;
+		DefenseBeforeAttack.AttackSequence = First.AttackSequence;
+		DefenseBeforeAttack.RequestingSide = First.DefendingSide;
+		const auto EarlyDefense =
+			Session.ResolveLongShotDirectDefenseRoll(DefenseBeforeAttack);
+		TestEqual(TEXT("Defense before Attack rejects at authoritative step"),
+			EarlyDefense.OrchestrationResult.ErrorCode,
+			EDirectError::WrongLongShotDirectRollStep);
+		TestEqual(TEXT("Early Defense consumes zero RNG"),
+			Post.GetCallCount(), 0);
+		TestTrue(TEXT("Early Defense preserves State"),
+			AreStatesEqual(DirectPending, Session.GetStateSnapshot()));
+
+		FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest SavedAttack;
+		SavedAttack.AttackSequence = First.AttackSequence;
+		SavedAttack.RequestingSide = First.AttackingSide;
+		const auto FirstAttack = Session.ResolveLongShotDirectAttackRoll(SavedAttack);
+		const FMatchPlayState AttackOnly = Session.GetStateSnapshot();
+		TestTrue(TEXT("Attack N typed Attack succeeds"),
+			FirstAttack.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Attack N consumes exactly one D6"),
+			Post.GetCallCount(), 1);
+		TestEqual(TEXT("Attack-only snapshot has one record"),
+			AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.Num(), 1);
+		TestTrue(TEXT("Attack-only snapshot remains canonical"),
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				AttackOnly).bIsCanonical);
+		const auto AttackOnlyView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(AttackOnly, Rules);
+		const auto RebuiltAttackOnlyView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(AttackOnly, Rules);
+		TestEqual(TEXT("Attack-only snapshot projects Defense command"),
+			AttackOnlyView.InteractionCategory,
+			ECategory::RollLongShotDirectDefense);
+		TestEqual(TEXT("Direct Defense belongs to defender"),
+			AttackOnlyView.ExpectedActingPlayer, First.DefendingSide);
+		TestEqual(TEXT("Rebuilt view preserves Defense category"),
+			RebuiltAttackOnlyView.InteractionCategory,
+			AttackOnlyView.InteractionCategory);
+		TestEqual(TEXT("Rebuilt view preserves sequence"),
+			RebuiltAttackOnlyView.AttackSequence, First.AttackSequence);
+		TestEqual(TEXT("View rebuild consumes zero RNG"),
+			Post.GetCallCount(), 1);
+		const auto* AttackFact = AttackOnlyView.ResolutionFacts.Rolls
+			.FindByPredicate([](const FMatchPlayResolutionRollFact& Roll)
+			{
+				return Roll.PostRoutePurpose == EPurpose::PrimaryAttack;
+			});
+		const auto* DefenseFact = AttackOnlyView.ResolutionFacts.Rolls
+			.FindByPredicate([](const FMatchPlayResolutionRollFact& Roll)
+			{
+				return Roll.PostRoutePurpose == EPurpose::PrimaryDefense;
+			});
+		const auto* Contest = AttackOnlyView.ResolutionFacts.FormulaContests
+			.FindByPredicate([](
+				const FMatchPlayResolutionFormulaContestFact& Candidate)
+			{
+				return Candidate.ContestId == TEXT("LongShot.DirectShot");
+			});
+		TestTrue(TEXT("Attack-only FormulaFacts project persisted Attack"),
+			AttackOnlyView.ResolutionFacts.bSuccess
+				&& AttackFact != nullptr && AttackFact->bResolved
+				&& AttackFact->RawD6 == 3);
+		TestTrue(TEXT("Attack-only FormulaFacts project pending Defense"),
+			DefenseFact != nullptr && !DefenseFact->bResolved
+				&& DefenseFact->bConditionallyRequired
+				&& DefenseFact->OwningSide == First.DefendingSide);
+		TestTrue(TEXT("Attack-only FormulaFacts resolve known Attack row only"),
+			Contest != nullptr && Contest->AttackRow.bFinalValueResolved
+				&& !Contest->DefenseRow.bFinalValueResolved
+				&& !Contest->bHasResolvedFormula);
+
+		FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest SavedDefense;
+		SavedDefense.AttackSequence = First.AttackSequence;
+		SavedDefense.RequestingSide = First.DefendingSide;
+		const auto WrongSideDefense = [&]()
+		{
+			auto Request = SavedDefense;
+			Request.RequestingSide = First.AttackingSide;
+			return Session.ResolveLongShotDirectDefenseRoll(Request);
+		}();
+		TestEqual(TEXT("Attacker cannot own Direct Defense"),
+			WrongSideDefense.OrchestrationResult.ErrorCode,
+			EDirectError::WrongRequestingSide);
+		TestEqual(TEXT("Wrong-side Defense consumes zero RNG"),
+			Post.GetCallCount(), 1);
+		TestTrue(TEXT("Wrong-side Defense preserves prefix"),
+			AreStatesEqual(AttackOnly, Session.GetStateSnapshot()));
+		const auto FirstDefense =
+			Session.ResolveLongShotDirectDefenseRoll(SavedDefense);
+		TestTrue(TEXT("Attack N defender-owned Defense succeeds"),
+			FirstDefense.OrchestrationResult.bSuccess
+				&& FirstDefense.OrchestrationResult.LongShotResult.bHasFormulaPlan);
+		TestEqual(TEXT("Attack N Defense consumes one additional D6"),
+			Post.GetCallCount(), 2);
+		TestEqual(TEXT("Attack N persisted purposes are Attack then Defense"),
+			Session.GetStateSnapshot().CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Num(), 2);
+		TestTrue(TEXT("Attack N Direct terminal and advance succeed"),
+			AdvanceTerminal(Session, First.AttackSequence, First.AttackingSide));
+
+		FReachabilityTrace Intervening;
+		TestTrue(TEXT("Intervening opposite-side attack reaches LongShot branch"),
+			BuildNextThroughBallToReadyForResolution(
+				Session, Rules, SkillId, Intervening, ESkillRuleType::LongShot));
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest InterveningBranch;
+		InterveningBranch.AttackSequence = Intervening.AttackSequence;
+		InterveningBranch.RequestingSide = Intervening.AttackingSide;
+		InterveningBranch.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+		TestTrue(TEXT("Intervening Branch succeeds"),
+			Session.SubmitBranchIntent(InterveningBranch).IntentResult.bSuccess);
+		TestTrue(TEXT("Intervening Direct route resolves"),
+			Session.BeginResolutionSession().BeginResult.bSuccess
+				&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess);
+		FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest
+			InterveningAttack;
+		InterveningAttack.AttackSequence = Intervening.AttackSequence;
+		InterveningAttack.RequestingSide = Intervening.AttackingSide;
+		TestTrue(TEXT("Intervening ImmediateMiss consumes one Attack roll"),
+			Session.ResolveLongShotDirectAttackRoll(InterveningAttack)
+				.OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Intervening terminal and advance succeed"),
+			AdvanceTerminal(
+				Session,
+				Intervening.AttackSequence,
+				Intervening.AttackingSide));
+
+		FReachabilityTrace Next;
+		TestTrue(TEXT("Attack N+2 reaches same-owner LongShot branch phase"),
+			BuildNextThroughBallToReadyForResolution(
+				Session, Rules, SkillId, Next, ESkillRuleType::LongShot));
+		TestEqual(TEXT("Same-owner recurrence increments sequence twice"),
+			Next.AttackSequence, First.AttackSequence + 2);
+		TestEqual(TEXT("Cross-attack fixture returns to same attacker side"),
+			Next.AttackingSide, First.AttackingSide);
+		const FMatchPlayState NextBranch = Session.GetStateSnapshot();
+		const int32 CallsBeforeStaleBranch = Post.GetCallCount();
+		const auto StaleBranch = Session.SubmitBranchIntent(SavedBranch);
+		TestEqual(TEXT("Old Branch request rejects by sequence"),
+			StaleBranch.IntentResult.LegalityResult.GlobalContextResult.ErrorCode,
+			EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
+				::AttackSequenceMismatch);
+		TestEqual(TEXT("Stale Branch consumes zero RNG"),
+			Post.GetCallCount(), CallsBeforeStaleBranch);
+		TestTrue(TEXT("Stale Branch preserves same-owner pending State"),
+			AreStatesEqual(NextBranch, Session.GetStateSnapshot()));
+		auto FreshBranch = SavedBranch;
+		FreshBranch.AttackSequence = Next.AttackSequence;
+		FreshBranch.RequestingSide = Next.AttackingSide;
+		TestTrue(TEXT("Fresh same-owner Branch succeeds after stale rejection"),
+			Session.SubmitBranchIntent(FreshBranch).IntentResult.bSuccess);
+		TestTrue(TEXT("Same-owner attack resolves the same Direct branch"),
+			Session.BeginResolutionSession().BeginResult.bSuccess
+				&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess);
+		const FMatchPlayState NextDirectPending = Session.GetStateSnapshot();
+		const auto StaleAttack = Session.ResolveLongShotDirectAttackRoll(SavedAttack);
+		TestEqual(TEXT("Old Direct Attack rejects in same pending phase"),
+			StaleAttack.OrchestrationResult.ErrorCode,
+			EDirectError::AttackSequenceMismatch);
+		TestEqual(TEXT("Stale Direct Attack consumes zero RNG"),
+			Post.GetCallCount(), 3);
+		TestTrue(TEXT("Stale Direct Attack preserves same-owner State"),
+			AreStatesEqual(NextDirectPending, Session.GetStateSnapshot()));
+		auto FreshAttack = SavedAttack;
+		FreshAttack.AttackSequence = Next.AttackSequence;
+		FreshAttack.RequestingSide = Next.AttackingSide;
+		TestTrue(TEXT("Fresh same-owner Direct Attack succeeds"),
+			Session.ResolveLongShotDirectAttackRoll(FreshAttack)
+				.OrchestrationResult.bSuccess);
+		const FMatchPlayState NextAttackOnly = Session.GetStateSnapshot();
+		const auto StaleDefense =
+			Session.ResolveLongShotDirectDefenseRoll(SavedDefense);
+		TestEqual(TEXT("Old Direct Defense rejects in same pending phase"),
+			StaleDefense.OrchestrationResult.ErrorCode,
+			EDirectError::AttackSequenceMismatch);
+		TestEqual(TEXT("Stale Direct Defense consumes zero RNG"),
+			Post.GetCallCount(), 4);
+		TestTrue(TEXT("Stale Direct Defense preserves same-owner prefix"),
+			AreStatesEqual(NextAttackOnly, Session.GetStateSnapshot()));
+		auto FreshDefense = SavedDefense;
+		FreshDefense.AttackSequence = Next.AttackSequence;
+		FreshDefense.RequestingSide = Next.DefendingSide;
+		TestTrue(TEXT("Fresh same-owner Direct Defense succeeds"),
+			Session.ResolveLongShotDirectDefenseRoll(FreshDefense)
+				.OrchestrationResult.bSuccess);
+		TestEqual(TEXT("Two contests plus intervening miss consume five D6"),
+			Post.GetCallCount(), 5);
+	}
+
+	// DeadCorner remains one attacker action with atomic two-roll adoption.
+	{
+		const FString Prefix(TEXT("LongShotTypedDeadCorner"));
+		const FName SkillId = MakeLongShotSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(5));
+		Post.Enqueue(MakePostRouteSuccess(6));
+		Post.Enqueue(MakePostRouteSuccess(2));
+		Post.Enqueue(MakePostRouteSuccess(5));
+		Post.Enqueue(MakePostRouteSuccess(5));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace First;
+		TestTrue(TEXT("DeadCorner Attack N route resolves"),
+			ReachResolvedBranch(
+				Session,
+				Prefix,
+				EMatchPlayElectiveBranchIntent::DeadCorner,
+				First));
+		const FMatchPlayState DeadPending = Session.GetStateSnapshot();
+		const auto DeadView = FFMCodexLocalMatchInteractionViewBuilder::Build(
+			DeadPending, Rules);
+		TestEqual(TEXT("DeadCorner pending snapshot has typed category"),
+			DeadView.InteractionCategory, ECategory::RollLongShotDeadCorner);
+		TestEqual(TEXT("DeadCorner command belongs to attacker"),
+			DeadView.ExpectedActingPlayer, First.AttackingSide);
+		FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest SavedDead;
+		SavedDead.AttackSequence = First.AttackSequence;
+		SavedDead.RequestingSide = First.AttackingSide;
+		auto WrongSideDead = SavedDead;
+		WrongSideDead.RequestingSide = First.DefendingSide;
+		const auto WrongSide =
+			Session.ResolveLongShotDeadCornerRoll(WrongSideDead);
+		TestEqual(TEXT("Defender cannot own DeadCorner"),
+			WrongSide.OrchestrationResult.ErrorCode,
+			EDeadError::WrongRequestingSide);
+		TestEqual(TEXT("Wrong-side DeadCorner consumes zero RNG"),
+			Post.GetCallCount(), 0);
+		TestTrue(TEXT("Wrong-side DeadCorner preserves State"),
+			AreStatesEqual(DeadPending, Session.GetStateSnapshot()));
+		const auto Goal = Session.ResolveLongShotDeadCornerRoll(SavedDead);
+		TestTrue(TEXT("DeadCorner 5+6 succeeds as Goal"),
+			Goal.OrchestrationResult.bSuccess
+				&& Goal.OrchestrationResult.LongShotResult.Decision
+					== ELongShotDeadCornerDecision::Goal);
+		TestEqual(TEXT("DeadCorner one action consumes exactly two D6"),
+			Post.GetCallCount(), 2);
+		const auto& GoalRolls = Session.GetStateSnapshot().CurrentAttack
+			.ResolutionSession.PostRouteRollProgress.RollRecords;
+		TestEqual(TEXT("DeadCorner persists both paired rolls"),
+			GoalRolls.Num(), 2);
+		if (GoalRolls.Num() == 2 && Post.GetPurposes().Num() >= 2)
+		{
+			TestEqual(TEXT("DeadCorner first purpose is PairedAttackA"),
+				Post.GetPurposes()[0], EPurpose::PairedAttackA);
+			TestEqual(TEXT("DeadCorner second purpose is PairedAttackB"),
+				Post.GetPurposes()[1], EPurpose::PairedAttackB);
+		}
+		const FMatchPlayState CompletedDead = Session.GetStateSnapshot();
+		const auto Duplicate = Session.ResolveLongShotDeadCornerRoll(SavedDead);
+		TestEqual(TEXT("Duplicate DeadCorner rejects before provider"),
+			Duplicate.OrchestrationResult.ErrorCode,
+			EDeadError::WrongLongShotDeadCornerRollStep);
+		TestEqual(TEXT("Duplicate DeadCorner consumes zero RNG"),
+			Post.GetCallCount(), 2);
+		TestTrue(TEXT("Duplicate DeadCorner preserves completed State"),
+			AreStatesEqual(CompletedDead, Session.GetStateSnapshot()));
+		TestTrue(TEXT("DeadCorner Attack N terminal and advance succeed"),
+			AdvanceTerminal(Session, First.AttackSequence, First.AttackingSide));
+
+		FReachabilityTrace Intervening;
+		TestTrue(TEXT("Intervening attack reaches LongShot branch phase"),
+			BuildNextThroughBallToReadyForResolution(
+				Session, Rules, SkillId, Intervening, ESkillRuleType::LongShot));
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest InterveningBranch;
+		InterveningBranch.AttackSequence = Intervening.AttackSequence;
+		InterveningBranch.RequestingSide = Intervening.AttackingSide;
+		InterveningBranch.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+		TestTrue(TEXT("Intervening DeadCorner fixture Branch succeeds"),
+			Session.SubmitBranchIntent(InterveningBranch).IntentResult.bSuccess);
+		TestTrue(TEXT("Intervening DeadCorner fixture Direct route resolves"),
+			Session.BeginResolutionSession().BeginResult.bSuccess
+				&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess);
+		FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest
+			InterveningAttack;
+		InterveningAttack.AttackSequence = Intervening.AttackSequence;
+		InterveningAttack.RequestingSide = Intervening.AttackingSide;
+		TestTrue(TEXT("Intervening DeadCorner fixture ImmediateMiss succeeds"),
+			Session.ResolveLongShotDirectAttackRoll(InterveningAttack)
+				.OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Intervening DeadCorner fixture advances"),
+			AdvanceTerminal(
+				Session,
+				Intervening.AttackSequence,
+				Intervening.AttackingSide));
+
+		FReachabilityTrace Next;
+		TestTrue(TEXT("Attack N+2 reaches same-owner DeadCorner branch phase"),
+			BuildNextThroughBallToReadyForResolution(
+				Session, Rules, SkillId, Next, ESkillRuleType::LongShot));
+		TestEqual(TEXT("DeadCorner same-owner recurrence increments twice"),
+			Next.AttackSequence, First.AttackSequence + 2);
+		TestEqual(TEXT("DeadCorner recurrence returns to original attacker"),
+			Next.AttackingSide, First.AttackingSide);
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest Branch;
+		Branch.AttackSequence = Next.AttackSequence;
+		Branch.RequestingSide = Next.AttackingSide;
+		Branch.Intent = EMatchPlayElectiveBranchIntent::DeadCorner;
+		TestTrue(TEXT("Attack N+1 selects DeadCorner"),
+			Session.SubmitBranchIntent(Branch).IntentResult.bSuccess);
+		TestTrue(TEXT("Attack N+1 DeadCorner route resolves"),
+			Session.BeginResolutionSession().BeginResult.bSuccess
+				&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess);
+		const FMatchPlayState NextDeadPending = Session.GetStateSnapshot();
+		const auto StaleDead = Session.ResolveLongShotDeadCornerRoll(SavedDead);
+		TestEqual(TEXT("Old DeadCorner request rejects in same pending phase"),
+			StaleDead.OrchestrationResult.ErrorCode,
+			EDeadError::AttackSequenceMismatch);
+		TestEqual(TEXT("Stale DeadCorner consumes zero RNG"),
+			Post.GetCallCount(), 3);
+		TestTrue(TEXT("Stale DeadCorner preserves same-owner State"),
+			AreStatesEqual(NextDeadPending, Session.GetStateSnapshot()));
+		auto FreshDead = SavedDead;
+		FreshDead.AttackSequence = Next.AttackSequence;
+		FreshDead.RequestingSide = Next.AttackingSide;
+		const auto Miss = Session.ResolveLongShotDeadCornerRoll(FreshDead);
+		TestTrue(TEXT("Fresh same-owner DeadCorner 5+5 succeeds as Miss"),
+			Miss.OrchestrationResult.bSuccess
+				&& Miss.OrchestrationResult.LongShotResult.Decision
+					== ELongShotDeadCornerDecision::Miss);
+		TestEqual(TEXT("Fresh DeadCorner consumes exactly two additional D6"),
+			Post.GetCallCount(), 5);
+	}
+
+	// Failed paired and conditional commands never leak candidate prefixes.
+	{
+		const FString Prefix(TEXT("LongShotTypedAtomicFailures"));
+		const FName SkillId = MakeLongShotSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(5));
+		Post.Enqueue(MakePostRouteFailure());
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Failure fixture reaches DeadCorner"),
+			ReachResolvedBranch(
+				Session,
+				Prefix,
+				EMatchPlayElectiveBranchIntent::DeadCorner,
+				Trace));
+		const FMatchPlayState Before = Session.GetStateSnapshot();
+		FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest Request;
+		Request.AttackSequence = Trace.AttackSequence;
+		Request.RequestingSide = Trace.AttackingSide;
+		const auto Failure = Session.ResolveLongShotDeadCornerRoll(Request);
+		TestEqual(TEXT("DeadCorner second-provider failure is explicit"),
+			Failure.OrchestrationResult.ErrorCode,
+			EDeadError::PostRouteRollProviderFailed);
+		TestEqual(TEXT("Failed DeadCorner attempted canonical two operations"),
+			Post.GetCallCount(), 2);
+		TestTrue(TEXT("Failed DeadCorner adopts no partial paired roll"),
+			AreStatesEqual(Before, Session.GetStateSnapshot()));
+	}
+
+	// Split Direct produces the same completed State and Formula plan as legacy.
+	{
+		const FString Prefix(TEXT("LongShotTypedFormulaParity"));
+		const FName SkillId = MakeLongShotSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
+		InitialRouteFixtures::FQueueRollProvider LegacyInitial;
+		InitialRouteFixtures::FQueueRollProvider TypedInitial;
+		FQueuePostRouteRollProvider LegacyPost;
+		FQueuePostRouteRollProvider TypedPost;
+		for (FQueuePostRouteRollProvider* Provider : { &LegacyPost, &TypedPost })
+		{
+			Provider->Enqueue(MakePostRouteSuccess(3));
+			Provider->Enqueue(MakePostRouteSuccess(4));
+		}
+		FMatchPlayAuthoritativeSession Legacy(
+			LegacyInitial, LegacyPost, Rules);
+		FMatchPlayAuthoritativeSession Typed(
+			TypedInitial, TypedPost, Rules);
+		FReachabilityTrace LegacyTrace;
+		FReachabilityTrace TypedTrace;
+		TestTrue(TEXT("Legacy parity route resolves"),
+			ReachResolvedBranch(
+				Legacy,
+				Prefix,
+				EMatchPlayElectiveBranchIntent::DirectShot,
+				LegacyTrace));
+		TestTrue(TEXT("Typed parity route resolves"),
+			ReachResolvedBranch(
+				Typed,
+				Prefix,
+				EMatchPlayElectiveBranchIntent::DirectShot,
+				TypedTrace));
+		const auto LegacyResult =
+			Legacy.ResolveDirectShotPostRouteDecisionOrPlan();
+		FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest Attack;
+		Attack.AttackSequence = TypedTrace.AttackSequence;
+		Attack.RequestingSide = TypedTrace.AttackingSide;
+		FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest Defense;
+		Defense.AttackSequence = TypedTrace.AttackSequence;
+		Defense.RequestingSide = TypedTrace.DefendingSide;
+		const auto TypedAttack = Typed.ResolveLongShotDirectAttackRoll(Attack);
+		const auto TypedDefense = Typed.ResolveLongShotDirectDefenseRoll(Defense);
+		TestTrue(TEXT("Typed parity commands both succeed"),
+			TypedAttack.OrchestrationResult.bSuccess
+				&& TypedDefense.OrchestrationResult.bSuccess);
+		TestTrue(TEXT("Legacy and typed completed States are identical"),
+			AreStatesEqual(
+				Legacy.GetStateSnapshot(), Typed.GetStateSnapshot()));
+		TestTrue(TEXT("Legacy and typed Formula plans are present"),
+			LegacyResult.OrchestrationResult.LongShotResult.bHasFormulaPlan
+				&& TypedDefense.OrchestrationResult.LongShotResult.bHasFormulaPlan);
+		TestTrue(TEXT("Legacy and typed attacker Formula input parity"),
+			AreFormulaQueryInputsEqual(
+				LegacyResult.OrchestrationResult.LongShotResult.FormulaPlan
+					.AttackerQueryInput,
+				TypedDefense.OrchestrationResult.LongShotResult.FormulaPlan
+					.AttackerQueryInput));
+		TestTrue(TEXT("Legacy and typed defender Formula input parity"),
+			AreFormulaQueryInputsEqual(
+				LegacyResult.OrchestrationResult.LongShotResult.FormulaPlan
+					.DefenderQueryInput,
+				TypedDefense.OrchestrationResult.LongShotResult.FormulaPlan
+					.DefenderQueryInput));
+		TestEqual(TEXT("Legacy and typed each consume exactly two D6"),
+			LegacyPost.GetCallCount(), TypedPost.GetCallCount());
+		TestEqual(TEXT("Typed split total RNG is two"),
+			TypedPost.GetCallCount(), 2);
+	}
+
+	FString ControllerSource;
+	TestTrue(TEXT("Controller source loads for production boundary"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+			ControllerSource));
+	const int32 LongShotCase = ControllerSource.Find(
+		TEXT("case ESkillRuleType::LongShot:"));
+	const int32 ThroughBallCase = LongShotCase == INDEX_NONE
+		? INDEX_NONE
+		: ControllerSource.Find(
+			TEXT("case ESkillRuleType::ThroughBall:"),
+			ESearchCase::CaseSensitive,
+			ESearchDir::FromStart,
+			LongShotCase);
+	const FString LongShotControllerBranch = LongShotCase == INDEX_NONE
+		|| ThroughBallCase == INDEX_NONE
+		? FString()
+		: ControllerSource.Mid(
+			LongShotCase, ThroughBallCase - LongShotCase);
+	TestTrue(TEXT("Controller has an explicit LongShot continuation boundary"),
+		!LongShotControllerBranch.IsEmpty());
+	TestFalse(TEXT("LongShot continuation never invokes legacy atomic Direct"),
+		LongShotControllerBranch.Contains(
+			TEXT("ResolveDirectShotPostRouteDecisionOrPlan")));
+	TestFalse(TEXT("LongShot continuation never invokes legacy atomic DeadCorner"),
+		LongShotControllerBranch.Contains(
+			TEXT("ResolveDeadCornerPostRouteDecision")));
+	TestTrue(TEXT("Controller forwards caller-projected AttackSequence"),
+		CountOccurrences(
+			ControllerSource,
+			TEXT("Request.AttackSequence = InteractionView.AttackSequence;")) >= 4);
 	return true;
 }
 

@@ -32,7 +32,11 @@ namespace FMCodexLocalDevRollOverrideWidget
 			ETarget::CrossLowDefense,
 			ETarget::OneOnOneChipShotAttack,
 			ETarget::OneOnOneDirectShotAttack,
-			ETarget::OneOnOneDirectShotDefense
+			ETarget::OneOnOneDirectShotDefense,
+			ETarget::LongShotDirectAttack,
+			ETarget::LongShotDirectDefense,
+			ETarget::LongShotDeadCornerA,
+			ETarget::LongShotDeadCornerB
 		};
 		return Values;
 	}
@@ -55,6 +59,10 @@ namespace FMCodexLocalDevRollOverrideWidget
 		case ETarget::OneOnOneChipShotAttack: return TEXT("单刀·挑射");
 		case ETarget::OneOnOneDirectShotAttack: return TEXT("单刀·直接射门进攻");
 		case ETarget::OneOnOneDirectShotDefense: return TEXT("单刀·直接射门防守");
+		case ETarget::LongShotDirectAttack: return TEXT("远射·直接射门进攻");
+		case ETarget::LongShotDirectDefense: return TEXT("远射·直接射门防守");
+		case ETarget::LongShotDeadCornerA: return TEXT("远射·死角第一枚");
+		case ETarget::LongShotDeadCornerB: return TEXT("远射·死角第二枚");
 		default: return TEXT("未选择");
 		}
 	}

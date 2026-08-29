@@ -650,7 +650,8 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 			Presentation.BranchChoices[Index];
 		UFMCodexInteractionOptionWidget* Option = MakeOptionWidget(
 			FName(*FString::Printf(TEXT("BranchIntentOption%d"), Index)));
-		Option->ConfigureBranch(Choice.Label, Choice.Intent);
+		Option->ConfigureBranch(
+			Choice.Label, Choice.SecondaryLabel, Choice.Intent);
 		Option->OnBranchRequested.AddDynamic(
 			this, &UFMCodexInteractionPanelWidget::HandleBranchOption);
 		if (UHorizontalBoxSlot* ChoiceSlot =

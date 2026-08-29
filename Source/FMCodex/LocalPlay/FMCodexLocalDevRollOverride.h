@@ -23,7 +23,11 @@ enum class EFMCodexLocalDevRollTarget : uint8
 	CrossLowDefense,
 	OneOnOneChipShotAttack,
 	OneOnOneDirectShotAttack,
-	OneOnOneDirectShotDefense
+	OneOnOneDirectShotDefense,
+	LongShotDirectAttack,
+	LongShotDirectDefense,
+	LongShotDeadCornerA,
+	LongShotDeadCornerB
 };
 
 /** Host-only call-site identity used to disambiguate shared CoreRules purposes. */
@@ -41,7 +45,9 @@ enum class EFMCodexLocalDevRollInvocation : uint8
 	CrossLowAttack,
 	CrossLowDefense,
 	OneOnOneChipShot,
-	OneOnOneDirectShot
+	OneOnOneDirectShot,
+	LongShotDirectShot,
+	LongShotDeadCorner
 };
 
 struct FMCODEX_API FFMCodexLocalDevRollOverrideRequest final

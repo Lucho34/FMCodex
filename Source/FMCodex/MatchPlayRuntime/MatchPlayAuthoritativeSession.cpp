@@ -858,21 +858,18 @@ FMatchPlayAuthoritativeSubmitBranchIntentResult
 FMatchPlayAuthoritativeSession::SubmitBranchIntent(
 	const FMatchPlayAuthoritativeSubmitBranchIntentRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeSubmitBranchIntentResult>(
 		EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent,
 		true,
-		AttackSequence,
-		[Request, AttackSequence](
+		Request.AttackSequence,
+		[Request](
 			FMatchPlayAuthoritativeSubmitBranchIntentResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
 			FMatchPlayCurrentAttackBranchIntentSelectionRequest
 				DomainRequest;
-			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.AttackSequence = Request.AttackSequence;
 			DomainRequest.RequestingSide = Request.RequestingSide;
 			DomainRequest.Intent = Request.Intent;
 			Result.IntentResult =
@@ -886,7 +883,7 @@ FMatchPlayAuthoritativeSession::SubmitBranchIntent(
 			Execution.StateDisposition = Result.IntentResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
-			Execution.AttackSequence = AttackSequence;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }
@@ -1498,6 +1495,45 @@ FMatchPlayAuthoritativeSession::ResolveDeadCornerPostRouteDecision()
 		});
 }
 
+FMatchPlayAuthoritativeResolveLongShotDeadCornerRollResult
+FMatchPlayAuthoritativeSession::ResolveLongShotDeadCornerRoll(
+	const FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveLongShotDeadCornerRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveLongShotDeadCornerRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolveLongShotDeadCornerRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionRequest
+					::EMode::ResolveLongShotPairedRolls;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet ? &AuthoritativeSkillRuleSet : nullptr,
+						PostRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState = Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionResult
 FMatchPlayAuthoritativeSession::ResolveThroughBallAntiOffsideDecision()
 {
@@ -1625,6 +1661,84 @@ FMatchPlayAuthoritativeSession::ResolveDirectShotPostRouteDecisionOrPlan()
 					? EMatchPlayAuthoritativeStateDisposition::Adopt
 					: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
 			Execution.AttackSequence = AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveLongShotDirectAttackRollResult
+FMatchPlayAuthoritativeSession::ResolveLongShotDirectAttackRoll(
+	const FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveLongShotDirectAttackRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectAttackRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolveLongShotDirectAttackRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+					::EMode::ResolveLongShotAttackRoll;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet ? &AuthoritativeSkillRuleSet : nullptr,
+						PostRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState = Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollResult
+FMatchPlayAuthoritativeSession::ResolveLongShotDirectDefenseRoll(
+	const FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectDefenseRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			DomainRequest.Mode =
+				FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+					::EMode::ResolveLongShotDefenseRoll;
+			DomainRequest.RequestingSide = Request.RequestingSide;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
+					::Resolve(
+						BeforeState,
+						DomainRequest,
+						bHasSkillRuleSet ? &AuthoritativeSkillRuleSet : nullptr,
+						PostRouteRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState = Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }

@@ -63,8 +63,8 @@
 
 ## Cross 生产交互的权威与投影边界
 
-- 选择阶段真相属于 CoreRules/AuthoritativeSession。正常生产流中 Marker Writer 不查询战术候选来决定顺序；它统一写入历史命名的 `bSkillSelectionDeferred` 参与者优先标志，保持 `ActionType=None / SkillId=None` 并进入 `AwaitingRunner`。Runner 后进入 `AwaitingHelper`，Helper 选择、Decline 或 No-Legal 完成后才进入 `AwaitingSkill`。UMG 只按权威 `SelectionStage` 投影玩家操作，不根据候选文案、卡牌名称或画面状态决定顺序。
-- `bSkillSelectionDeferred` 是“参与者先于战术完成”的显式状态证据，不是 Cross-only 标志。最终 Skill Legality 才验证已准备 Runner 与所选战术的 canonical 合同性；Writer 对不消费 Runner/Helper 的战术清除这些无关角色，避免它们进入最终 SelectedAction 或公式。参与者准备顺序与公式角色消费不在 Widget/Presentation 中计算。
+- 选择阶段真相属于 CoreRules/AuthoritativeSession。正常生产流中 Marker Writer 不查询战术候选来决定顺序；它统一写入历史命名的 `bSkillSelectionDeferred` 参与者优先标志，保持 `ActionType=None / SkillId=None` 并进入 `AwaitingRunner`。选定 Runner 后进入 `AwaitingHelper`，Helper 选择、Decline 或 No-Legal 完成后进入 `AwaitingSkill`；Runner 主动放弃或零合法候选则把 Runner/Helper 都持久化为正式缺席并直接进入 `AwaitingSkill`，不结束攻击。UMG 只按权威 `SelectionStage` 投影玩家操作，不根据候选文案、卡牌名称或画面状态决定顺序。
+- `bSkillSelectionDeferred` 是“参与者先于战术完成”的显式状态证据，不是 Cross-only 标志。最终 Skill Legality 才验证已准备或正式缺席的 Runner 与所选战术的 canonical 合同性；LongShot/CutInside 接受无 Runner，Cross/PassControl/ThroughBall 仍要求 Runner。Writer 对不消费 Runner/Helper 的战术清除这些无关角色，避免它们进入最终 SelectedAction 或公式。参与者准备顺序与公式角色消费不在 Widget/Presentation 中计算。
 - Cross 路线入口在 Controller 层合并为一个玩家 intent。内部仍严格串行调用 `BeginResolutionSession`，成功后再调用 `ResolveInitialRoute`；后者是唯一消费 Initial Route D6 的步骤。任一步失败都停止链路，in-flight guard 阻止重复点击。规则概率、provider 与 Session 校验不移入 UI。
 - `MatchPlayTacticalPlayerAdvantageQuery` 从权威部署记录、相对区域解析和 Card Snapshot `PositionTypes` 生成双方身份、人数与 Rules 4.4 终结公式加成。Formula Resolver 只在 `Finishing` 消费该显式修正；Resolution Fact Projection 复用同一查询并生成非零 `TacticalPlayerAdvantage` term。Presentation/Widget 不扫描 Pitch、不计数、不重算加成。
 - 正常棋盘状态使用同一 Query 的 `EvaluateBoardStatus`只读入口：它从 Runtime 当前进攻方与权威 placements 重建原始人数，不要求 Resolution Session。InteractionView 将 attacker/defender 结果先映射回稳定 Player A/B，Presentation 再按 Local/Opponent 映射。无 CurrentAttack 时显式投影 0；Widget 不从 Pitch Mini 计数。该原始人数与 Formula Fact 的 `战术球员 +N` 修正保持独立。
@@ -87,7 +87,7 @@
 - `FMatchPlayCurrentAttackState::LifecycleState` 是 action-scoped 的唯一 lifecycle marker；正常 Resolution 为 `Active`，正式 resolved tactic outcome 写入后为 `TerminalPendingAdvance`。不增加 match-level Outcome framework，也不建立第二个顶层 State owner。
 - 共用 `FMatchPlayCurrentAttackCompletion` 将原完成职责拆为两段。`PersistCurrentAttackTerminal` 先在副本上完整验证未来 clear/card/opportunity/handoff/match-end mutation，验证通过后只提交分数/outcome 与 terminal CurrentAttack；`ApplyCurrentAttackAdvanceMutation` 仅由显式 advance 或既有 pre-resolution closure 调用。这样 terminal 不会留下一个未来无法原子完成的坏 snapshot。
 - `FMatchPlayAuthoritativeSession::AdvanceAfterTerminal` 是第 49 个 serialized typed command，请求只包含 `AttackSequence` 与 `RequestingSide`。Session 在 terminal pending 时中央拒绝所有其他 command，错误为 `TerminalAdvanceRequired`；advance 再验证 lifecycle、sequence 与当前攻击方 ownership，domain success 时仍通过唯一 State adoption site 提交。
-- ThroughBall、Cross、PassControl、Shot 的 resolved terminal orchestration 全部汇入同一 persistence helper。Carrier/Marker/Skill/Runner 的 pre-resolution no-selection/decline closures没有正式 Formula/Outcome snapshot，继续进入既有 atomic advance helper；此边界避免无关阶段扩张。
+- ThroughBall、Cross、PassControl、Shot 的 resolved terminal orchestration 全部汇入同一 persistence helper。Carrier/Marker/Skill 的 pre-resolution no-selection/decline closures没有正式 Formula/Outcome snapshot，继续进入既有 atomic advance helper；Runner no-selection/decline 是明确例外，只持久化参与者缺席并进入 `AwaitingSkill`。此边界避免把无 Runner 错当 terminal，也避免无关阶段扩张。
 - InteractionView 从 authoritative snapshot 重建 terminal facts，并只投影 `AdvanceAfterTerminal`、当前攻击方 expected side 与 `下一回合`。Feedback 可直接从 immutable Resolution Facts 重建，因此新 Controller、snapshot refresh 或未来网络 resync 不依赖旧进程内 command result，也不调用 provider。
 - 正常 Cross/Feet presentation 在 defense roll 后立即调用零 RNG terminal-persist command，避免玩家看到额外“确认终结”按钮；若恰好在两命令之间恢复，typed recovery action仍可补做 terminal persist。Cross Inline Formula 继续拥有完成态中央 CTA；其他既有表面通过同一 Screen dispatch 进入 explicit advance。
 
@@ -160,3 +160,12 @@
 - Route pending、各分支的空/attack-only/completed prefix、OneOnOne progression与terminal snapshot都由权威 State恢复。最后一个决定性roll之后只允许零 RNG Formula/outcome/terminal continuation自动完成，真正回合推进仍停在`TerminalPendingAdvance`并要求显式`AdvanceAfterTerminal`。
 - 正常ThroughBall由中央Production Surface独占Resolution和当前CTA；legacy Formula/debug roots折叠，真实rejection才恢复diagnostic/recovery。OneOnOne当前使用`直接射门 / （看射门、门将单刀）`与`挑射 / （只看掷点）`，Contextual Tactical Detail延期到Post-Rule-Freeze Player Comprehension Pass。
 - CLOSED只表示ThroughBall当前production合同与ThroughBall-specific Stage 7 request slice通过；不表示network transport、reconnect UX、教程、最终动画/音效、平衡或商业美术已经完成。
+
+## LongShot Side-owned Conditional Roll Authority（Stage 6.15.2A）
+
+- LongShot branch intent、Direct Attack、Direct Defense 与 DeadCorner 都使用 caller-supplied `AttackSequence + RequestingSide` 的 serialized typed request。Session 在 provider 前验证当前进攻、sequence、LongShot family、branch/phase、canonical next roll purpose 与 side ownership；stale、wrong-side、越序和 duplicate 均 `DoNotAdopt`，消费 0 RNG。
+- Direct normal authority flow固定为 `SelectBranch -> ResolveLongShotDirectAttackRoll -> [ImmediateMiss 或 attack-only prefix] -> ResolveLongShotDirectDefenseRoll -> Formula/outcome`。Attack `1–2` 只消费一枚进攻 D6 并立即完成既有 `ImmediateMiss`；Attack `3–6` 只持久化进攻记录，CurrentAttack 保持 Active，防守记录与 FinalValue/Outcome 不存在。fresh InteractionView 与 Formula Facts 只从该 snapshot 重建防守方 next action，不补掷。
+- 合法 Direct Defense request 只追加一枚防守 D6，再复用既有 Direct Plan、Assembler、Formula Resolver、Tactical Player、GK、tie 与 outcome 合同。旧 atomic Direct mode只保留 compatibility/reference；completed regeneration使用显式 zero-RNG mode，Formula projection与terminal persistence不得调用 provider。
+- DeadCorner canonical 仍是进攻方一次操作掷两枚 D6。`ResolveLongShotDeadCornerRoll` 在一个 attacker-owned command内按既有 A/B purpose顺序恰好调用 provider两次；只有两枚都成功且 outcome完整时才 adoption。第二次provider失败不得泄漏第一枚记录或部分 State。
+- InteractionView从权威 CurrentAttack投影 `SelectLongShotBranch / RollLongShotDirectAttack / RollLongShotDirectDefense / RollLongShotDeadCorner`、expected side和AttackSequence。Controller只从该 DTO构造typed request，Host薄转发到同一个Session/provider seam；generic `ContinueResolution`不替代任何未完成LongShot gameplay roll，normal Controller也不调用旧atomic Direct/Dead入口。
+- 本Stage只建立Authority/LocalPlay request foundation，不实现LongShot Production UMG、Reel、Formula布局、Narrative或Result surface。既有terminal persistence与显式`AdvanceAfterTerminal`生命周期不变。

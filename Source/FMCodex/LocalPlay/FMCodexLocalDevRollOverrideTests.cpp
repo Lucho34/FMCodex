@@ -190,7 +190,15 @@ bool FFMCodexLocalDevRollOverrideDomainAndMatrixTest::RunTest(
 			EPost::OneOnOneDirectShotAttack, 5 },
 		{ ETarget::OneOnOneDirectShotDefense,
 			EInvocation::OneOnOneDirectShot,
-			EPost::OneOnOneDirectShotDefense, 1 }
+			EPost::OneOnOneDirectShotDefense, 1 },
+		{ ETarget::LongShotDirectAttack,
+			EInvocation::LongShotDirectShot, EPost::PrimaryAttack, 2 },
+		{ ETarget::LongShotDirectDefense,
+			EInvocation::LongShotDirectShot, EPost::PrimaryDefense, 6 },
+		{ ETarget::LongShotDeadCornerA,
+			EInvocation::LongShotDeadCorner, EPost::PairedAttackA, 5 },
+		{ ETarget::LongShotDeadCornerB,
+			EInvocation::LongShotDeadCorner, EPost::PairedAttackB, 6 }
 	};
 	for (const FPostCase& Case : Cases)
 	{

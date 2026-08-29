@@ -171,14 +171,24 @@ FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator::Evaluate(
 		return Result;
 	}
 	if (bParticipantFirstPreparation
-		&& (!Preparation.SkillId.IsNone()
-			|| Preparation.RunnerCardId.IsNone()))
+		&& !Preparation.SkillId.IsNone())
 	{
 		SetError(
 			Result,
 			EMatchPlayCurrentAttackSkillSelectionErrorCode
 				::DeferredActionTypeMismatch,
-			TEXT("Participant-first Skill selection requires an unfrozen tactic and a prepared Runner."));
+			TEXT("Participant-first Skill selection requires an unfrozen tactic."));
+		return Result;
+	}
+	if (bParticipantFirstPreparation
+		&& Result.ParticipantRequirementResult.bRequiresRunner
+		&& Preparation.RunnerCardId.IsNone())
+	{
+		SetError(
+			Result,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode
+				::PreparedRunnerIncompatibleWithSkill,
+			TEXT("The selected tactic requires a prepared Runner."));
 		return Result;
 	}
 

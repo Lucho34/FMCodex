@@ -6,6 +6,8 @@ namespace MatchPlayCurrentAttackResolveDeadCornerPostRouteDecision
 {
 	using EError =
 		EMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionErrorCode;
+	using EMode =
+		FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionRequest::EMode;
 	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
 	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
 	using FResult =
@@ -179,6 +181,19 @@ FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator::Resolve(
 		return Result;
 	}
 	Result.ActionType = BeforeSession.ActualBranch.ActionType;
+	const bool bExplicitLongShotPairedRolls =
+		Request.Mode == EMode::ResolveLongShotPairedRolls;
+	const bool bCompletedDecisionRegeneration =
+		Request.Mode == EMode::RegenerateCompletedDecision;
+	if (bExplicitLongShotPairedRolls
+		&& (BeforeSession.ActualBranch.ActionType != ESkillRuleType::LongShot
+			|| BeforeSession.ActualBranch.LongShot
+				!= EMatchPlayLongShotActualBranch::DeadCorner))
+	{
+		SetFailure(Result, EError::NotLongShotDeadCornerBranch,
+			TEXT("Explicit LongShot paired rolls require the LongShot DeadCorner branch."));
+		return Result;
+	}
 
 	FMatchPlayState CandidateState = BeforeState;
 	FMatchPlayCurrentAttackResolutionSession& CandidateSession =
@@ -202,6 +217,37 @@ FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator::Resolve(
 		SetFailure(Result, EError::InvalidPostRouteProgress,
 			Result.ProgressResult.ErrorMessage);
 		return Result;
+	}
+	if (bCompletedDecisionRegeneration
+		&& !Result.ProgressResult.bContractComplete)
+	{
+		SetFailure(Result, EError::CompletedDecisionRequired,
+			TEXT("DeadCorner regeneration requires an already-complete roll contract."));
+		return Result;
+	}
+	if (bExplicitLongShotPairedRolls)
+	{
+		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			SetFailure(Result, EError::InvalidRequestingSide,
+				TEXT("LongShot DeadCorner commands require PlayerA or PlayerB as RequestingSide."));
+			return Result;
+		}
+		if (Result.ProgressResult.bContractComplete
+			|| Result.ProgressResult.NextPurpose != EPurpose::PairedAttackA)
+		{
+			SetFailure(Result, EError::WrongLongShotDeadCornerRollStep,
+				TEXT("LongShot DeadCorner paired rolls require a fresh authoritative paired-roll step."));
+			return Result;
+		}
+		if (Request.RequestingSide
+			!= BeforeSession.Bundle.CurrentAttackingPlayer)
+		{
+			SetFailure(Result, EError::WrongRequestingSide,
+				TEXT("The requesting side does not own the current LongShot DeadCorner roll."));
+			return Result;
+		}
 	}
 	if (!Result.ProgressResult.bContractComplete && RollProvider == nullptr)
 	{
@@ -309,7 +355,8 @@ FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator::Resolve(
 
 	Result.AfterState = MoveTemp(CandidateState);
 	Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
-	Result.bReplayedCompleteRolls = Result.ProviderCallCount == 0;
+	Result.bReplayedCompleteRolls = !bExplicitLongShotPairedRolls
+		&& Result.ProviderCallCount == 0;
 	Result.bSuccess = true;
 	return Result;
 }

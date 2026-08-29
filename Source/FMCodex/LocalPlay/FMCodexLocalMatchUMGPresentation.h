@@ -42,7 +42,11 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	ApplyCrossTerminalResolution,
 	ApplyThroughBallFeetTerminalResolution,
 	AdvanceAfterTerminal,
-	RollThroughBallInitialRoute
+	RollThroughBallInitialRoute,
+	SelectLongShotBranch,
+	RollLongShotDirectAttack,
+	RollLongShotDirectDefense,
+	RollLongShotDeadCorner
 };
 
 /**
@@ -110,7 +114,9 @@ enum class EFMCodexUMGCrossRollRevealKind : uint8
 	InitialRoute,
 	ThroughBallInitialRoute,
 	Attack,
-	Defense
+	Defense,
+	LongShotDeadCornerA,
+	LongShotDeadCornerB
 };
 
 UENUM(BlueprintType)
@@ -837,6 +843,9 @@ struct FMCODEX_API FFMCodexUMGBranchChoiceViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	FString Label;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString SecondaryLabel;
 };
 
 USTRUCT(BlueprintType)
@@ -1636,6 +1645,99 @@ struct FMCODEX_API FFMCodexUMGThroughBallResolutionViewModel
 	TArray<FFMCodexUMGOneOnOneChoiceViewModel> OneOnOneChoices;
 };
 
+UENUM(BlueprintType)
+enum class EFMCodexUMGLongShotStage : uint8
+{
+	None,
+	BranchChoice,
+	DirectShot,
+	DeadCorner
+};
+
+/**
+ * Authority-derived production shell for the complete LongShot resolution.
+ * UMG renders these facts and typed actions; it never calculates outcomes.
+ */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexUMGLongShotResolutionViewModel
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	bool bVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	bool bSuppressLegacyResolution = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	EFMCodexUMGLongShotStage Stage = EFMCodexUMGLongShotStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString TitleLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString BranchLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString StageLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString StatusLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString OutcomeHintLabel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	TArray<FFMCodexUMGBranchChoiceViewModel> BranchChoices;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FFMCodexUMGInlineFormulaSurfaceViewModel Formula;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	EFMCodexUMGInlineFormulaRevealPhase RevealPhase =
+		EFMCodexUMGInlineFormulaRevealPhase::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	bool bDiceRevealVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FFMCodexUMGRollReelViewModel RollReel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	bool bDeadCornerAVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	int32 DeadCornerA = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	bool bDeadCornerBVisible = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	int32 DeadCornerB = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	bool bNarrativeAvailable = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString ResultTitle;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString NarrativeHeadline;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	EFMCodexUMGInteractionCategory InteractionCategory =
+		EFMCodexUMGInteractionCategory::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FFMCodexUMGResolutionPrimaryActionSlotViewModel PrimaryAction;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	bool bCanContinue = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString ContinueActionLabel;
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 {
@@ -1664,6 +1766,9 @@ struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FFMCodexUMGThroughBallResolutionViewModel ThroughBallResolution;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
+	FFMCodexUMGLongShotResolutionViewModel LongShotResolution;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FFMCodexUMGInlineFormulaSurfaceViewModel InlineFormula;

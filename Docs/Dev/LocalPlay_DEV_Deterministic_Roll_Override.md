@@ -45,6 +45,8 @@ The panel never owns a provider pointer and never writes RawD6, CurrentAttack, F
 | 低球传中·进攻 / 防守 | 1–6 | explicit Low attack / defense roll | `PrimaryAttack` / `PrimaryDefense` |
 | 单刀·挑射 | 1–6 | ChipShot decision | `OneOnOneChipShotAttack` |
 | 单刀·直接射门进攻 / 防守 | 1–6 | DirectShot plan | `OneOnOneDirectShotAttack` / `OneOnOneDirectShotDefense` |
+| 远射·直接射门进攻 / 防守 | 1–6 | typed LongShot Direct attack / defense request | `PrimaryAttack` / `PrimaryDefense` |
+| 远射·死角第一枚 / 第二枚 | 1–6 | one typed LongShot DeadCorner pair request | `PairedAttackA` / `PairedAttackB` |
 
 The Host invocation identity is required because the canonical CoreRules purpose enum intentionally reuses `PrimaryAttack` and `PrimaryDefense` across multiple tactics. The identity is transient call context inside the DEV decorator and is never stored in canonical state.
 
@@ -72,6 +74,12 @@ The small `DEV 掷点` entry is created in non-Shipping LocalPlay only, centered
 2. Set `脚下球·进攻 → 6`.
 3. Set `脚下球·防守 → 1`.
 4. Use the normal route, attack-roll, and defense-roll actions. Formula Facts, winner, roll reel, result, and terminal lifecycle all consume the authoritative values through production code.
+
+## Example: LongShot Production
+
+- Direct ImmediateMiss: set `远射·直接射门进攻 → 1`, choose `直接射门`, then click the central attack action. No defense override is needed.
+- Direct Formula: set `远射·直接射门进攻 → 6` and `远射·直接射门防守 → 1`, choose `直接射门`, then use the two central side-owned actions.
+- DeadCorner Miss: set the two dead-corner targets to `5 / 5`; Goal: set them to `5 / 6`. Choose `射向死角` and click once. Authority consumes both targets in A/B order while presentation reveals both dice sequentially.
 
 ## Release removal plan
 

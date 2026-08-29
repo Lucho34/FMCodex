@@ -375,6 +375,16 @@ struct FMCODEX_API FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchResolveLongShotDeadCornerRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveLongShotDeadCornerRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API
 	FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult
 {
@@ -402,6 +412,26 @@ struct FMCODEX_API
 {
 	bool bSuccess = false;
 	FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveLongShotDirectAttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveLongShotDirectAttackRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API FFMCodexLocalMatchResolveLongShotDirectDefenseRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollResult
 		AuthoritativeResult;
 	EFMCodexLocalMatchHostErrorCode ErrorCode =
 		EFMCodexLocalMatchHostErrorCode::None;
@@ -744,6 +774,10 @@ public:
 	FFMCodexLocalMatchResolveDeadCornerPostRouteDecisionResult
 	ResolveDeadCornerPostRouteDecision();
 
+	FFMCodexLocalMatchResolveLongShotDeadCornerRollResult
+	ResolveLongShotDeadCornerRoll(
+		const FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest& Request);
+
 	FFMCodexLocalMatchResolveThroughBallAntiOffsideDecisionResult
 	ResolveThroughBallAntiOffsideDecision();
 
@@ -755,6 +789,16 @@ public:
 
 	FFMCodexLocalMatchResolveDirectShotPostRouteDecisionOrPlanResult
 	ResolveDirectShotPostRouteDecisionOrPlan();
+
+	FFMCodexLocalMatchResolveLongShotDirectAttackRollResult
+	ResolveLongShotDirectAttackRoll(
+		const FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest&
+			Request);
+
+	FFMCodexLocalMatchResolveLongShotDirectDefenseRollResult
+	ResolveLongShotDirectDefenseRoll(
+		const FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest&
+			Request);
 
 	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult
 	ResolveThroughBallBehindDefenseP1DecisionOrPlan();

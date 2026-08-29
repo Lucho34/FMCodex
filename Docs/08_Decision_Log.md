@@ -838,6 +838,15 @@
 - readiness范围：ThroughBall-specific Stage 7 request slice为PASS，但不表示整个项目Stage 7-ready，也不包含network transport、reconnect UX、教程、systematic comprehension、最终动画/音效、平衡或商业美术。后续优先进入remaining tactic Production Golden Paths。
 - 冻结边界：不修改CoreRules、Formula、RNG、route mapping、RequestingSide、AttackSequence、Session/Host authority、zero-RNG progression或terminal lifecycle。6.14.3R仍需USER PIE通过后才进入最终短closeout。
 
+### CD-085 - LongShot Uses Side-owned Correlated Requests and a Real Direct Attack-only Prefix
+
+- 日期：2026-08-29
+- request boundary：LongShot branch、Direct Attack、Direct Defense与DeadCorner都必须携带caller-supplied `AttackSequence + RequestingSide`。Session在provider前验证sequence、owner、LongShot family、branch/phase与canonical next purpose；stale、wrong-side、越序与duplicate失败均不adopt State、不消费RNG。
+- Direct conditional flow：进攻骰`1–2`以一枚骰完成既有ImmediateMiss；`3–6`只持久化Attack record并留下Active attack-only snapshot，随后由防守方独立请求Defense D6。Defense完成后继续复用既有Direct Plan/Formula、Tactical Player、GK、tie与outcome规则。旧atomic Direct只保留compatibility/parity reference，不属于normal production Controller路径。
+- DeadCorner pair：canonical仍是一名进攻方一次点击掷两枚D6，不拆为两个玩家动作。typed command按既有A/B purpose顺序恰好消费两次provider，完整pair成功才adopt；第二枚失败时不得提交partial prefix。
+- reconstruction与生命周期：branch选择、Direct空/attack-only/completed、DeadCorner completed和terminal都由Authoritative State重建；Formula/terminal regeneration为0 RNG。InteractionView投影typed category、expected side与AttackSequence，Controller/Host保持薄转发，generic Continue不拥有未完成LongShot roll。terminal persistence与显式`AdvanceAfterTerminal`不变。
+- 范围：本决定只解除Stage 6.15.2发现的Authority capability blocker，不实现LongShot Production UMG、Reel、Formula布局、Narrative或Result。它建立LongShot-specific Stage 7 request slice，不等于network transport、reconnect或整个项目Stage 7 ready。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
@@ -989,6 +998,20 @@
 - MVP 是否必须解决：否。
 - 建议处理方案：MVP 只显示 `BirthDate`；需要球员年龄展示时再定义计算和显示规则。
 - 当前状态：Open。
+
+## 2026-08-29 — LongShot Production Resolution Ownership（Stage 6.15.2 resumed）
+
+- LongShot从branch choice到terminal由单一中央Production Surface拥有；正常路径折叠generic resolution root与重复lower action，真实rejection把ownership交回generic diagnostic。
+- Direct与DeadCorner只消费6.15.2A既有typed、side-owned、AttackSequence-correlated command。所有player-owned gameplay RNG都要求显式click；决定性roll后剩余zero-RNG route/formula/outcome/terminal步骤自动完成，不暴露无意义的generic Continue。
+- Direct复用shared Formula/Reel/Narrative/primary-action contract；Attack 1–2由权威ImmediateMiss gate跳过Defense与full Formula。DeadCorner一次command持久化A/B两枚D6，presentation可顺序揭示但不得引入第二次gameplay command、Formula、Defense或GK。
+- completed snapshot直接重建权威dice/result/narrative/NextRound，不重播历史reel。Presentation层不得按pair sum、阈值或Formula自行推导outcome。
+
+## 2026-08-29 — No-Runner Progression and LongShot Choice/CTA Contract（Stage 6.15.2B）
+
+- Runner 主动放弃或零合法候选不再作为 pre-resolution attack closure。Authority保留当前进攻并持久化 `AwaitingSkill + bSkillSelectionDeferred`，Runner/Helper均为空；不消耗机会、资源或RNG，不产生terminal或换攻。InteractionView两种能力互斥，玩家统一看到`不选择跑位球员`。
+- 最终Skill legality依据canonical participant requirement处理正式缺席：LongShot/CutInside允许，Cross/PassControl/ThroughBall仍要求Runner。正常已选Runner后的Helper阶段与既有角色消费合同不变。
+- LongShot branch采用稳定双行微文案：`直接射门 / （看远射、抢断、门将站位）`与`射向死角 / （只看两枚掷点）`。不启用Hover Detail；选择只提交typed intent且消费0 RNG。
+- LongShot中央Surface必须接受当前nested Formula primary action作为自己的精确CTA owner，并恰好派发一次Direct Attack/Defense typed action。Screen stale-owner guard继续拒绝过期或lower重复动作；不改变LongShot公式、阈值、GK、Tactical Player、request correlation或terminal生命周期。
 
 ### UQ-041 - 行动点 1 是否消耗本次进攻次数
 

@@ -78,6 +78,16 @@ Stage 6.14.3 FINAL 已完成该 slice 的最终 closeout：九项玩家拥有的
 
 这一结论仅适用于 ThroughBall-specific slice。它不表示整个游戏已完成 Stage 7，也不实现 network transport、RPC retry protocol、reconnect UX 或隐藏信息同步。
 
+## LongShot-specific Stage 7 Request Readiness
+
+LongShot branch、Direct Attack、Direct Defense 与 DeadCorner 都由独立 typed request表达，并要求客户端提交当前 snapshot中的 `AttackSequence + RequestingSide`。服务端在调用D6 provider前验证sequence、阵营、LongShot branch、phase与next roll purpose；因此旧进攻的延迟/重试请求即使落到相同pending phase，也会在RNG前拒绝，当前请求仍可随后正常执行。
+
+Direct Attack `3–6` 后的 attack-only prefix是真实可同步状态，不是客户端动画暂存：已完成的进攻骰持久化，防守骰与最终公式仍不存在，下一请求所有者为当前防守方。Attack `1–2` 则以同一枚骰完成 ImmediateMiss。客户端重连或snapshot refresh只需读取CurrentAttack records/Formula Facts即可恢复当前步骤，不应重新派发或推测骰点。
+
+DeadCorner保留canonical one-click 2D6语义：一个进攻方命令在服务端事务边界内按A/B顺序生成两枚骰，只有完整pair成功才提交。provider在第二枚失败时整个candidate State不adopt，避免向客户端同步不可恢复的partial pair。
+
+该request slice已具备side ownership、caller correlation、stale/duplicate safety与snapshot reconstruction基础，但不代表LongShot Production UI已完成，也不实现实际network transport、RPC idempotency key、reconnect UX或隐藏信息同步。
+
 ## 掉线和重连
 
 掉线和重连相关开放问题统一记录在 `Docs/08_Decision_Log.md`。

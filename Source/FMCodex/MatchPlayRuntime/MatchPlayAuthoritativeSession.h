@@ -130,6 +130,10 @@ public:
 	FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionResult
 	ResolveDeadCornerPostRouteDecision();
 
+	FMatchPlayAuthoritativeResolveLongShotDeadCornerRollResult
+	ResolveLongShotDeadCornerRoll(
+		const FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest& Request);
+
 	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionResult
 	ResolveThroughBallAntiOffsideDecision();
 
@@ -141,6 +145,16 @@ public:
 
 	FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
 	ResolveDirectShotPostRouteDecisionOrPlan();
+
+	FMatchPlayAuthoritativeResolveLongShotDirectAttackRollResult
+	ResolveLongShotDirectAttackRoll(
+		const FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest&
+			Request);
+
+	FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollResult
+	ResolveLongShotDirectDefenseRoll(
+		const FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest&
+			Request);
 
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DecisionOrPlanResult
 	ResolveThroughBallBehindDefenseP1DecisionOrPlan();

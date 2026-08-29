@@ -12,6 +12,17 @@ struct FMCODEX_API
 	FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionRequest
 {
 	int64 AttackSequence = 0;
+
+	enum class EMode : uint8
+	{
+		/** Legacy/reference compatibility; production must use explicit rolls. */
+		CompleteDecision,
+		RegenerateCompletedDecision,
+		ResolveLongShotPairedRolls
+	};
+
+	EMode Mode = EMode::CompleteDecision;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 enum class EMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionErrorCode
@@ -27,6 +38,11 @@ enum class EMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionErrorCode
 	InvalidResolutionSessionState,
 	RouteNotResolved,
 	NotDeadCornerBranch,
+	NotLongShotDeadCornerBranch,
+	InvalidRequestingSide,
+	WrongRequestingSide,
+	WrongLongShotDeadCornerRollStep,
+	CompletedDecisionRequired,
 	InvalidPostRouteProgress,
 	PostRouteRollProviderUnavailable,
 	PostRouteRollProviderFailed,

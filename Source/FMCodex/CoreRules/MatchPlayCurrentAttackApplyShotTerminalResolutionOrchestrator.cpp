@@ -239,6 +239,9 @@ FMatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator::Resolve(
 		FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
 			Request;
 		Request.AttackSequence = BeforeState.CurrentAttack.AttackSequence;
+		Request.Mode =
+			FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+				::EMode::RegenerateCompletedPlan;
 		++Result.SourceRegenerationCount;
 		Result.DirectShotRegenerationResult =
 			FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
@@ -325,6 +328,9 @@ FMatchPlayCurrentAttackApplyShotTerminalResolutionOrchestrator::Resolve(
 	{
 		FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionRequest Request;
 		Request.AttackSequence = BeforeState.CurrentAttack.AttackSequence;
+		Request.Mode =
+			FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionRequest::EMode
+				::RegenerateCompletedDecision;
 		++Result.SourceRegenerationCount;
 		Result.DeadCornerRegenerationResult =
 			FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator

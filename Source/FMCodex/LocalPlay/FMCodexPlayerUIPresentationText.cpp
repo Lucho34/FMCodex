@@ -118,7 +118,7 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("Choose Skill") || CanonicalLabel == TEXT("Select Skill")) return LOCTEXT("ChooseTactical", "\u9009\u62E9\u6218\u672F");
 	if (CanonicalLabel == TEXT("DECLINE SKILL") || CanonicalLabel == TEXT("Decline Skill")) return LOCTEXT("DeclineTactical", "\u4E0D\u4F7F\u7528\u6218\u672F");
 	if (CanonicalLabel == TEXT("Select Runner")) return LOCTEXT("SelectRunner", "\u9009\u62E9\u8DD1\u4F4D\u7403\u5458");
-	if (CanonicalLabel == TEXT("DECLINE RUNNER") || CanonicalLabel == TEXT("Decline Runner")) return LOCTEXT("DeclineRunner", "\u653E\u5F03\u8DD1\u4F4D");
+	if (CanonicalLabel == TEXT("DECLINE RUNNER") || CanonicalLabel == TEXT("Decline Runner")) return LOCTEXT("DeclineRunner", "\u4E0D\u9009\u62E9\u8DD1\u4F4D\u7403\u5458");
 	if (CanonicalLabel == TEXT("Select Helper")) return LOCTEXT("SelectHelper", "\u9009\u62E9\u534F\u9632\u7403\u5458");
 	if (CanonicalLabel == TEXT("DECLINE HELPER") || CanonicalLabel == TEXT("Decline Helper")) return LOCTEXT("DeclineHelper", "\u653E\u5F03\u534F\u9632");
 	if (CanonicalLabel == TEXT("Choose Cross Type")) return LOCTEXT("ChooseCrossType", "\u9009\u62E9\u4F20\u4E2D\u65B9\u5F0F");
@@ -141,7 +141,7 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL CARRIER")) return LOCTEXT("NoLegalCarrier", "\u65E0\u53EF\u7528\u6301\u7403\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
 	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL MARKER")) return LOCTEXT("NoLegalMarker", "\u65E0\u53EF\u7528\u76EF\u4EBA\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
 	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL SKILL")) return LOCTEXT("NoLegalTactical", "\u65E0\u53EF\u7528\u6218\u672F\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
-	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL RUNNER")) return LOCTEXT("NoLegalRunner", "\u65E0\u53EF\u7528\u8DD1\u4F4D\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
+	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL RUNNER")) return LOCTEXT("NoLegalRunner", "\u4E0D\u9009\u62E9\u8DD1\u4F4D\u7403\u5458");
 	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL HELPER")) return LOCTEXT("NoLegalHelper", "\u65E0\u53EF\u7528\u534F\u9632\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
 	if (CanonicalLabel == TEXT("MATCH COMPLETE | No gameplay progression is available.")) return LOCTEXT("MatchCompleteNoAction", "\u6BD4\u8D5B\u7ED3\u675F\uFF5C\u5F53\u524D\u65E0\u53EF\u7EE7\u7EED\u7684\u6BD4\u8D5B\u64CD\u4F5C");
 	if (CanonicalLabel == TEXT("ATTACK COMPLETE | Waiting for the next match state.")) return LOCTEXT("AttackCompleteWaiting", "\u8FDB\u653B\u7ED3\u675F\uFF5C\u7B49\u5F85\u4E0B\u4E00\u6BD4\u8D5B\u72B6\u6001");
@@ -238,6 +238,52 @@ FText FFMCodexPlayerUIPresentationText::ThroughBallRouteResult(
 		LOCTEXT("ThroughBallRouteResult", "路线掷点 {0} → 判定为{1}"),
 		FText::AsNumber(RawD6),
 		ThroughBallRoute(Route));
+}
+
+FText FFMCodexPlayerUIPresentationText::LongShotTitle()
+{
+	return LOCTEXT("LongShotProductionTitle", "远射");
+}
+
+FText FFMCodexPlayerUIPresentationText::LongShotBranchChoiceStage()
+{
+	return LOCTEXT("LongShotBranchChoiceStage", "选择远射方式");
+}
+
+FText FFMCodexPlayerUIPresentationText::LongShotDirectChoiceHint()
+{
+	return LOCTEXT(
+		"LongShotDirectChoiceHint", "（看远射、抢断、门将站位）");
+}
+
+FText FFMCodexPlayerUIPresentationText::LongShotDeadCornerChoiceHint()
+{
+	return LOCTEXT(
+		"LongShotDeadCornerChoiceHint", "（只看两枚掷点）");
+}
+
+FText FFMCodexPlayerUIPresentationText::LongShotDirectStage()
+{
+	return LOCTEXT("LongShotDirectStage", "直接射门");
+}
+
+FText FFMCodexPlayerUIPresentationText::LongShotDeadCornerStage()
+{
+	return LOCTEXT("LongShotDeadCornerStage", "射向死角");
+}
+
+FText FFMCodexPlayerUIPresentationText::LongShotDirectOutcomeHint()
+{
+	return LOCTEXT(
+		"LongShotDirectOutcomeHint",
+		"1–2：射门偏出 ｜ 3–6：进入攻防结算");
+}
+
+FText FFMCodexPlayerUIPresentationText::LongShotDeadCornerOutcomeHint()
+{
+	return LOCTEXT(
+		"LongShotDeadCornerOutcomeHint",
+		"合计 11–12：进球 ｜ 2–10：未进");
 }
 
 FText FFMCodexPlayerUIPresentationText::SelectedRoleTag(
@@ -647,6 +693,10 @@ FText FFMCodexPlayerUIPresentationText::ResolutionContest(
 	{
 		return LOCTEXT(
 			"ResolutionThroughBallOneOnOneDirect", "\u76F4\u63A5\u5C04\u95E8");
+	}
+	if (ContestId == TEXT("LongShot.DirectShot"))
+	{
+		return LOCTEXT("ResolutionLongShotDirect", "直接射门");
 	}
 	return FText::GetEmpty();
 }

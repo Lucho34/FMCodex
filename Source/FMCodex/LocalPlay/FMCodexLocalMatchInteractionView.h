@@ -49,7 +49,11 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	/** Legacy compatibility only; production uses ApplyThroughBallFeetTerminalResolution. */
 	ApplyThroughBallFeetTerminalResolution,
 	AdvanceAfterTerminal,
-	RollThroughBallInitialRoute
+	RollThroughBallInitialRoute,
+	SelectLongShotBranch,
+	RollLongShotDirectAttack,
+	RollLongShotDirectDefense,
+	RollLongShotDeadCorner
 };
 
 struct FMCODEX_API FFMCodexLocalMatchDeploymentOption
@@ -295,6 +299,9 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCrossDefenseRollPending = false;
 	bool bCrossFormulaComplete = false;
 	bool bCrossTerminalActionAvailable = false;
+	bool bLongShotDirectAttackRollPending = false;
+	bool bLongShotDirectDefenseRollPending = false;
+	bool bLongShotDeadCornerRollPending = false;
 	bool bThroughBallFeetAttackRollPending = false;
 	bool bThroughBallFeetDefenseRollPending = false;
 	bool bThroughBallAntiOffsideAttackRollPending = false;

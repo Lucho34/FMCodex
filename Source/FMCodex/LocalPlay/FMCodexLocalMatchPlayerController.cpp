@@ -1076,10 +1076,27 @@ void AFMCodexLocalMatchPlayerController::SubmitBranchIntent(
 		return;
 	}
 	FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.Intent = Intent;
-	RecordCommandResult(
-		TEXT("SubmitBranchIntent"), Host->SubmitBranchIntent(Request));
+	const auto Result = Host->SubmitBranchIntent(Request);
+	RecordCommandResult(TEXT("SubmitBranchIntent"), Result);
+	if (Result.bSuccess
+		&& InteractionView.PresentedActionType == ESkillRuleType::LongShot)
+	{
+		// LongShot's session creation and intent-determined route consume no RNG
+		// and have no player choice. Keep them behind the selected branch click.
+		if (InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+		{
+			ContinueResolution();
+		}
+		if (InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+		{
+			ContinueResolution();
+		}
+	}
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitOneOnOneShotChoice(
@@ -1224,6 +1241,111 @@ void AFMCodexLocalMatchPlayerController::ApplyCrossTerminalResolution()
 	RecordCommandResult(
 		TEXT("ApplyCrossTerminalResolution"),
 		Host->ApplyCrossTerminalResolution());
+}
+
+void AFMCodexLocalMatchPlayerController::RollLongShotDirectAttack()
+{
+	if (bLongShotRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveLongShotDirectAttackRoll"),
+			TEXT("LongShot Direct attack roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveLongShotDirectAttackRoll"), TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bLongShotRollCommandInFlight = true;
+	const auto Result = Host->ResolveLongShotDirectAttackRoll(Request);
+	bLongShotRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveLongShotDirectAttackRoll"), Result);
+	if (Result.bSuccess && InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		ContinueResolution();
+	}
+}
+
+void AFMCodexLocalMatchPlayerController::RollLongShotDirectDefense()
+{
+	if (bLongShotRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveLongShotDirectDefenseRoll"),
+			TEXT("LongShot Direct defense roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveLongShotDirectDefenseRoll"), TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bLongShotRollCommandInFlight = true;
+	const auto Result = Host->ResolveLongShotDirectDefenseRoll(Request);
+	bLongShotRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveLongShotDirectDefenseRoll"), Result);
+	if (Result.bSuccess && InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		ContinueResolution();
+	}
+}
+
+void AFMCodexLocalMatchPlayerController::RollLongShotDeadCorner()
+{
+	if (bLongShotRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveLongShotDeadCornerRoll"),
+			TEXT("LongShot DeadCorner roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveLongShotDeadCornerRoll"), TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bLongShotRollCommandInFlight = true;
+	const auto Result = Host->ResolveLongShotDeadCornerRoll(Request);
+	bLongShotRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveLongShotDeadCornerRoll"), Result);
+	if (Result.bSuccess && InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+	{
+		ContinueResolution();
+	}
 }
 
 void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
@@ -1638,6 +1760,12 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	if (InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute
 		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner
+		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
@@ -1795,7 +1923,6 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 		}
 		return;
 
-	case ESkillRuleType::LongShot:
 	case ESkillRuleType::CutInsideShot:
 		if (!Progress.bContractComplete)
 		{
@@ -1819,6 +1946,21 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 					TEXT("ResolveDirectShotPostRouteDecisionOrPlan"),
 					Host->ResolveDirectShotPostRouteDecisionOrPlan());
 			}
+		}
+		else
+		{
+			RecordCommandResult(
+				TEXT("ApplyShotTerminalResolution"),
+				Host->ApplyShotTerminalResolution());
+		}
+		return;
+
+	case ESkillRuleType::LongShot:
+		if (!Progress.bContractComplete)
+		{
+			RecordLocalFailure(
+				TEXT("ContinueResolution"),
+				TEXT("LongShot player-owned rolls require their explicit typed commands."));
 		}
 		else
 		{
@@ -2421,6 +2563,7 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		}
 		break;
 	case EFMCodexLocalMatchInteractionCategory::SelectBranchIntent:
+	case EFMCodexLocalMatchInteractionCategory::SelectLongShotBranch:
 		AddText(TEXT("Branch / Shot Type"));
 		for (const EMatchPlayElectiveBranchIntent Intent
 			: InteractionView.BranchIntentOptions)
@@ -2452,6 +2595,24 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
 		{
 			RollCrossDefense();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollLongShotDirectAttack();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollLongShotDirectDefense();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollLongShotDeadCorner();
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory::ApplyCrossTerminalResolution:

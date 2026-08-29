@@ -566,6 +566,9 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 		FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
 			Request;
 		Request.AttackSequence = AttackSequence;
+		Request.Mode =
+			FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+				::EMode::RegenerateCompletedPlan;
 		Result.DirectShotRegenerationResult =
 			FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 				::Resolve(BeforeState, Request, SkillRuleSet, nullptr);

@@ -58,6 +58,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Presentation")
 	void ConfigureBranch(
 		const FString& InLabel,
+		const FString& InSecondaryLabel,
 		EFMCodexUMGBranchIntent InIntent);
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Presentation")

@@ -6,6 +6,7 @@
 #include "FMCodexFullCardDiagnostics.h"
 #include "FMCodexHandMicroDiagnostics.h"
 #include "FMCodexLocalMatchPlayerController.h"
+#include "FMCodexLongShotResolutionSurfaceWidget.h"
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexPitchWidget.h"
 #include "FMCodexPitchSlotWidget.h"
@@ -97,9 +98,11 @@ namespace FMCodexLocalMatchScreenWidget
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& ActiveFormula(
 		const FFMCodexUMGMatchScreenViewModel& Presentation)
 	{
-		return Presentation.ThroughBallResolution.Formula.bVisible
-			? Presentation.ThroughBallResolution.Formula
-			: Presentation.InlineFormula;
+		return Presentation.LongShotResolution.Formula.bVisible
+			? Presentation.LongShotResolution.Formula
+			: Presentation.ThroughBallResolution.Formula.bVisible
+				? Presentation.ThroughBallResolution.Formula
+				: Presentation.InlineFormula;
 	}
 
 	float CosmeticReelPosition(const float Elapsed)
@@ -546,6 +549,12 @@ UFMCodexLocalMatchScreenWidget::GetThroughBallResolutionSurface() const
 	return ThroughBallResolutionSurface;
 }
 
+UFMCodexLongShotResolutionSurfaceWidget*
+UFMCodexLocalMatchScreenWidget::GetLongShotResolutionSurface() const
+{
+	return LongShotResolutionSurface;
+}
+
 bool UFMCodexLocalMatchScreenWidget::IsLegacyResolutionOverlayVisible() const
 {
 	return ResolutionOverlay != nullptr
@@ -951,6 +960,15 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	case EFMCodexUMGInteractionCategory::RollCrossDefense:
 		MatchController->RollCrossDefense();
 		break;
+	case EFMCodexUMGInteractionCategory::RollLongShotDirectAttack:
+		MatchController->RollLongShotDirectAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollLongShotDirectDefense:
+		MatchController->RollLongShotDirectDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::RollLongShotDeadCorner:
+		MatchController->RollLongShotDeadCorner();
+		break;
 	case EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance:
 		MatchController->CompleteCrossAndAdvance();
 		break;
@@ -1342,7 +1360,8 @@ void UFMCodexLocalMatchScreenWidget::HandleContinueRequested()
 	// authoritative refresh has transferred the action to a central surface.
 	// Never reinterpret that stale event using the newly projected typed action.
 	if (DoesInlineFormulaOwnCurrentPrimaryAction()
-		|| DoesThroughBallOwnCurrentPrimaryAction())
+		|| DoesThroughBallOwnCurrentPrimaryAction()
+		|| DoesLongShotOwnCurrentPrimaryAction())
 	{
 		return;
 	}
@@ -1367,6 +1386,28 @@ void UFMCodexLocalMatchScreenWidget::HandleThroughBallContinueRequested()
 	RequestContinueResolution();
 }
 
+void UFMCodexLocalMatchScreenWidget::HandleLongShotContinueRequested()
+{
+	if (!DoesLongShotOwnCurrentPrimaryAction())
+	{
+		return;
+	}
+	RequestContinueResolution();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleLongShotBranchRequested(
+	const EFMCodexUMGBranchIntent Intent)
+{
+	if (LongShotResolutionSurface == nullptr
+		|| !LongShotResolutionSurface->GetPresentation().bVisible
+		|| LongShotResolutionSurface->GetPresentation().Stage
+			!= EFMCodexUMGLongShotStage::BranchChoice)
+	{
+		return;
+	}
+	RequestSubmitBranchIntent(Intent);
+}
+
 bool UFMCodexLocalMatchScreenWidget
 	::DoesInlineFormulaOwnCurrentPrimaryAction() const
 {
@@ -1389,6 +1430,21 @@ bool UFMCodexLocalMatchScreenWidget
 	}
 	const FFMCodexUMGThroughBallResolutionViewModel& Surface =
 		ThroughBallResolutionSurface->GetPresentation();
+	return Surface.bVisible
+		&& (Surface.PrimaryAction.Claims(Presentation.Interaction.PrimaryAction)
+			|| Surface.Formula.PrimaryAction.Claims(
+				Presentation.Interaction.PrimaryAction));
+}
+
+bool UFMCodexLocalMatchScreenWidget
+	::DoesLongShotOwnCurrentPrimaryAction() const
+{
+	if (LongShotResolutionSurface == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexUMGLongShotResolutionViewModel& Surface =
+		LongShotResolutionSurface->GetPresentation();
 	return Surface.bVisible
 		&& (Surface.PrimaryAction.Claims(Presentation.Interaction.PrimaryAction)
 			|| Surface.Formula.PrimaryAction.Claims(
@@ -1712,6 +1768,24 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		ThroughBallLayerSlot->SetHorizontalAlignment(HAlign_Center);
 		ThroughBallLayerSlot->SetVerticalAlignment(VAlign_Center);
 		ThroughBallLayerSlot->SetPadding(FMargin(28.0f));
+	}
+	UClass* ResolvedLongShotClass =
+		LongShotResolutionSurfaceWidgetClass != nullptr
+			? LongShotResolutionSurfaceWidgetClass.Get()
+			: UFMCodexLongShotResolutionSurfaceWidget::StaticClass();
+	LongShotResolutionSurface = WidgetTree->ConstructWidget<
+		UFMCodexLongShotResolutionSurfaceWidget>(
+		ResolvedLongShotClass, TEXT("LongShotProductionResolutionSurface"));
+	LongShotResolutionSurface->OnContinueRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleLongShotContinueRequested);
+	LongShotResolutionSurface->OnBranchRequested.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleLongShotBranchRequested);
+	if (UOverlaySlot* LongShotLayerSlot =
+		PitchPresentationLayers->AddChildToOverlay(LongShotResolutionSurface))
+	{
+		LongShotLayerSlot->SetHorizontalAlignment(HAlign_Center);
+		LongShotLayerSlot->SetVerticalAlignment(VAlign_Center);
+		LongShotLayerSlot->SetPadding(FMargin(28.0f));
 	}
 
 	TacticalPointRevealSurface = MakeRegion(
@@ -2551,6 +2625,7 @@ void UFMCodexLocalMatchScreenWidget::UpdateInlineFormulaRevealState(
 			// reconstructed in this widget.
 			CachedResolvedInlineFormula = ActiveFormula(InPresentation);
 			CachedResolvedThroughBall = InPresentation.ThroughBallResolution;
+			CachedResolvedLongShot = InPresentation.LongShotResolution;
 			bInlineFormulaAuthorityResultAvailable = true;
 			RollRevealAuthoritativeRawValue = RawValue;
 			RollRevealDomainMinimum = DomainMinimum;
@@ -2599,6 +2674,7 @@ void UFMCodexLocalMatchScreenWidget::UpdateInlineFormulaRevealState(
 				BeginInlineFormulaReveal(ResolvedIdentity, false);
 				CachedResolvedInlineFormula = ActiveFormula(InPresentation);
 				CachedResolvedThroughBall = InPresentation.ThroughBallResolution;
+				CachedResolvedLongShot = InPresentation.LongShotResolution;
 				bInlineFormulaAuthorityResultAvailable = true;
 				RollRevealAuthoritativeRawValue = RawValue;
 				RollRevealDomainMinimum = DomainMinimum;
@@ -2704,10 +2780,16 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::Attack
 		&& Result.ContestId == FName(TEXT("ThroughBall.BehindDefense.P1"))
 		&& Result.bNarrativeAvailable;
+	const bool bLongShotAttackTerminalNarrative =
+		ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::Attack
+		&& Result.ContestId == FName(TEXT("LongShot.DirectShot"))
+		&& Result.bNarrativeAvailable;
 	const bool bNarrativeDisclosed =
 		(ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::Defense
-			|| bBehindAttackTerminalNarrative)
+			|| bBehindAttackTerminalNarrative
+			|| bLongShotAttackTerminalNarrative)
 		&& bHolding
 		&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
 	if (!bNarrativeDisclosed)
@@ -2885,6 +2967,57 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedHeader() const
 	return bResourceDisclosed ? Presentation.Header : CachedPreRollHeader;
 }
 
+FFMCodexUMGLongShotResolutionViewModel
+UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
+{
+	using namespace FMCodexLocalMatchScreenWidget;
+	FFMCodexUMGLongShotResolutionViewModel Result =
+		Presentation.LongShotResolution;
+	if (Result.Formula.bVisible)
+	{
+		Result.Formula = BuildDisplayedInlineFormula();
+	}
+	const bool bDeadReveal = IsInlineFormulaRevealInputBlocked()
+		&& ActiveCrossRollReveal.ContestId == FName(TEXT("LongShot.DeadCorner"))
+		&& (ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA
+			|| ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB);
+	if (!bDeadReveal)
+	{
+		return Result;
+	}
+
+	Result = bInlineFormulaAuthorityResultAvailable
+		? CachedResolvedLongShot : Presentation.LongShotResolution;
+	Result.bVisible = true;
+	Result.bSuppressLegacyResolution = true;
+	Result.RevealPhase = InlineFormulaRevealPhase;
+	Result.bDiceRevealVisible = true;
+	Result.RollReel = BuildActiveRollReelPresentation();
+	Result.PrimaryAction.bVisible = false;
+	Result.bCanContinue = false;
+	Result.ContinueActionLabel.Empty();
+	const bool bHolding = InlineFormulaRevealPhase
+		== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
+	const bool bSecond = ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB;
+	Result.bDeadCornerAVisible = bSecond || bHolding;
+	Result.bDeadCornerBVisible = bSecond && bHolding;
+	const bool bNarrativeDisclosed = bSecond && bHolding
+		&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
+	if (!bNarrativeDisclosed)
+	{
+		Result.bNarrativeAvailable = false;
+		Result.ResultTitle.Empty();
+		Result.NarrativeHeadline.Empty();
+	}
+	Result.StatusLabel = bHolding
+		? (bSecond ? TEXT("双骰结果已落定") : TEXT("第一枚骰子已落定"))
+		: TEXT("号码滚动中");
+	return Result;
+}
+
 FFMCodexUMGRollReelViewModel
 UFMCodexLocalMatchScreenWidget::BuildActiveRollReelPresentation() const
 {
@@ -2987,13 +3120,15 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 			{
 				break;
 			}
-			SettledCrossRollRevealKeys.Add(
-				ActiveCrossRollReveal.StableKey());
+			const FFMCodexCrossRollRevealIdentity CompletedIdentity =
+				ActiveCrossRollReveal;
+			SettledCrossRollRevealKeys.Add(CompletedIdentity.StableKey());
 			LastDisclosedInlineFormula = ActiveFormula(Presentation);
 			ActiveCrossRollReveal = {};
 			ObservedPendingCrossRoll = {};
 			CachedResolvedInlineFormula = {};
 			CachedResolvedThroughBall = {};
+			CachedResolvedLongShot = {};
 			CachedPreRollHeader = {};
 			bInlineFormulaAuthorityResultAvailable = false;
 			RollRevealAuthoritativeRawValue = 0;
@@ -3007,6 +3142,38 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 				EFMCodexUMGInlineFormulaRevealPhase::Settled;
 			InlineFormulaRevealPhaseElapsed = 0.0f;
 			StopInlineFormulaRevealTimer();
+			if (CompletedIdentity.Kind
+				== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA)
+			{
+				const FMatchPlayResolutionRollFact* RollB =
+					Presentation.Resolution.FormulaFacts.Rolls.FindByPredicate(
+						[](const FMatchPlayResolutionRollFact& Roll)
+						{
+							return Roll.bResolved
+								&& Roll.PostRoutePurpose
+									== EMatchPlayCurrentAttackPostRouteRollPurpose
+										::PairedAttackB;
+						});
+				if (RollB != nullptr)
+				{
+					FFMCodexCrossRollRevealIdentity Second;
+					Second.Kind = EFMCodexUMGCrossRollRevealKind
+						::LongShotDeadCornerB;
+					Second.AttackSequence = CompletedIdentity.AttackSequence;
+					Second.ContestId = CompletedIdentity.ContestId;
+					Second.RollSequenceIndex = RollB->SequenceIndex;
+					Second.OwnerSide = RollB->OwningSide;
+					BeginInlineFormulaReveal(Second, false);
+					CachedResolvedLongShot = Presentation.LongShotResolution;
+					bInlineFormulaAuthorityResultAvailable = true;
+					RollRevealAuthoritativeRawValue = RollB->RawD6;
+					RollRevealDomainMinimum = 1;
+					RollRevealDomainMaximum = 6;
+					RollRevealSequenceOffsetCells = PlannedSequenceOffset(
+						RollB->RawD6, 1, 6);
+					continue;
+				}
+			}
 			ObservePendingCrossRoll(Presentation);
 		}
 	}
@@ -3106,6 +3273,23 @@ void UFMCodexLocalMatchScreenWidget::RefreshActiveRollReelVisuals()
 		ThroughBallResolutionSurface->GetRollReelWidget()
 			->RefreshFromPresentation(Reel);
 	}
+	else if (ActiveCrossRollReveal.ContestId
+			== FName(TEXT("LongShot.DeadCorner"))
+		&& LongShotResolutionSurface != nullptr
+		&& LongShotResolutionSurface->GetRollReelWidget() != nullptr)
+	{
+		LongShotResolutionSurface->GetRollReelWidget()
+			->RefreshFromPresentation(Reel);
+	}
+	else if (Presentation.LongShotResolution.Formula.bVisible
+		&& LongShotResolutionSurface != nullptr
+		&& LongShotResolutionSurface->GetFormulaSurface() != nullptr
+		&& LongShotResolutionSurface->GetFormulaSurface()
+			->GetRollReelWidget() != nullptr)
+	{
+		LongShotResolutionSurface->GetFormulaSurface()->GetRollReelWidget()
+			->RefreshFromPresentation(Reel);
+	}
 	else if (Presentation.ThroughBallResolution.Formula.bVisible
 		&& ThroughBallResolutionSurface != nullptr
 		&& ThroughBallResolutionSurface->GetFormulaSurface() != nullptr
@@ -3184,6 +3368,7 @@ void UFMCodexLocalMatchScreenWidget::ResetInlineFormulaRevealState()
 	CachedResolvedInlineFormula = {};
 	LastDisclosedInlineFormula = {};
 	CachedResolvedThroughBall = {};
+	CachedResolvedLongShot = {};
 	InlineFormulaRevealPhase = EFMCodexUMGInlineFormulaRevealPhase::None;
 	InlineFormulaRevealPhaseElapsed = 0.0f;
 	RollRevealCaptureStartPositionCells = 0.0f;
@@ -3252,6 +3437,7 @@ void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaReveal(
 	ObservedPendingCrossRoll = {};
 	CachedResolvedInlineFormula = {};
 	CachedResolvedThroughBall = {};
+	CachedResolvedLongShot = {};
 	CachedPreRollHeader = Presentation.Header;
 	bInlineFormulaAuthorityResultAvailable = false;
 	RollRevealAuthoritativeRawValue = 0;
@@ -3277,6 +3463,7 @@ void UFMCodexLocalMatchScreenWidget::CancelInlineFormulaReveal()
 	ActiveCrossRollReveal = {};
 	CachedResolvedInlineFormula = {};
 	CachedResolvedThroughBall = {};
+	CachedResolvedLongShot = {};
 	CachedPreRollHeader = {};
 	bInlineFormulaAuthorityResultAvailable = false;
 	RollRevealAuthoritativeRawValue = 0;
@@ -3331,7 +3518,8 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 	const bool bOutcomeOnlyContest = Identity.ContestId
 		== FName(TEXT("ThroughBall.AntiOffside"))
 		|| Identity.ContestId
-			== FName(TEXT("ThroughBall.OneOnOne.ChipShot"));
+			== FName(TEXT("ThroughBall.OneOnOne.ChipShot"))
+		|| Identity.ContestId == FName(TEXT("LongShot.DeadCorner"));
 	if (Identity.Kind != EFMCodexUMGCrossRollRevealKind::InitialRoute
 		&& Identity.Kind
 			!= EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute
@@ -3404,6 +3592,12 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 						== ERollSemantics::ArithmeticContest
 					&& Candidate.PostRoutePurpose
 						== ERollPurpose::PrimaryDefense;
+			case EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA:
+				return Candidate.Semantics == ERollSemantics::OutcomeDecision
+					&& Candidate.PostRoutePurpose == ERollPurpose::PairedAttackA;
+			case EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB:
+				return Candidate.Semantics == ERollSemantics::OutcomeDecision
+					&& Candidate.PostRoutePurpose == ERollPurpose::PairedAttackB;
 			default:
 				return false;
 			}
@@ -3464,6 +3658,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		BuildDisplayedInlineFormula();
 	FFMCodexUMGThroughBallResolutionViewModel DisplayedThroughBall =
 		BuildDisplayedThroughBallResolution();
+	FFMCodexUMGLongShotResolutionViewModel DisplayedLongShot =
+		BuildDisplayedLongShotResolution();
 	// Ownership follows the current InteractionView-derived production surface,
 	// not a transient reveal phase or the previous frame's suppression state.
 	const bool bThroughBallProductionOwnsResolution =
@@ -3472,9 +3668,17 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	const bool bThroughBallDiagnosticOwnsResolution =
 		Presentation.ThroughBallResolution.bVisible
 		&& Presentation.Resolution.bRejected;
+	const bool bLongShotProductionOwnsResolution =
+		Presentation.LongShotResolution.bVisible
+		&& !Presentation.Resolution.bRejected;
+	const bool bLongShotDiagnosticOwnsResolution =
+		Presentation.LongShotResolution.bVisible
+		&& Presentation.Resolution.bRejected;
 	const FFMCodexUMGInlineFormulaSurfaceViewModel StandaloneInlineFormula =
 		bThroughBallProductionOwnsResolution
 			|| bThroughBallDiagnosticOwnsResolution
+			|| bLongShotProductionOwnsResolution
+			|| bLongShotDiagnosticOwnsResolution
 			? FFMCodexUMGInlineFormulaSurfaceViewModel()
 			: DisplayedInlineFormula;
 	InlineFormulaSurface->RefreshFromPresentation(StandaloneInlineFormula);
@@ -3485,6 +3689,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		DisplayedThroughBall.bVisible = false;
 	}
 	ThroughBallResolutionSurface->RefreshFromPresentation(DisplayedThroughBall);
+	if (bLongShotDiagnosticOwnsResolution)
+	{
+		DisplayedLongShot.bVisible = false;
+	}
+	LongShotResolutionSurface->RefreshFromPresentation(DisplayedLongShot);
 	const bool bTacticalPointRevealVisible =
 		ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::TacticalPoint
@@ -3538,7 +3747,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	const bool bCentralSurfaceClaimsPrimaryAction =
 		DoesInlineFormulaOwnCurrentPrimaryAction()
-		|| DoesThroughBallOwnCurrentPrimaryAction();
+		|| DoesThroughBallOwnCurrentPrimaryAction()
+		|| DoesLongShotOwnCurrentPrimaryAction();
 	const bool bOneOnOneDisclosureGate =
 		IsInlineFormulaRevealInputBlocked()
 		&& Presentation.Interaction.Category
@@ -3548,9 +3758,13 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		&& DisplayedThroughBall.Stage
 			== EFMCodexUMGThroughBallStage::OneOnOneChoice
 		&& !DisplayedThroughBall.OneOnOneChoices.IsEmpty();
+	const bool bCentralLongShotChoiceOwner =
+		bLongShotProductionOwnsResolution
+		&& DisplayedLongShot.Stage == EFMCodexUMGLongShotStage::BranchChoice
+		&& !DisplayedLongShot.BranchChoices.IsEmpty();
 	InteractionPanel->SetVisibility(
 		bCentralSurfaceClaimsPrimaryAction || bOneOnOneDisclosureGate
-			|| bCentralOneOnOneChoiceOwner
+			|| bCentralOneOnOneChoiceOwner || bCentralLongShotChoiceOwner
 			? ESlateVisibility::Collapsed
 			: ESlateVisibility::Visible);
 	InteractionPanel->SetInteractionBlocked(
@@ -3559,7 +3773,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	ResolutionOverlay->SetVisibility(Presentation.Resolution.bVisible
 		&& !StandaloneInlineFormula.bSuppressLegacyResolution
 		&& !DisplayedThroughBall.bSuppressLegacyResolution
+		&& !DisplayedLongShot.bSuppressLegacyResolution
 		&& !bThroughBallProductionOwnsResolution
+		&& !bLongShotProductionOwnsResolution
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 
 }

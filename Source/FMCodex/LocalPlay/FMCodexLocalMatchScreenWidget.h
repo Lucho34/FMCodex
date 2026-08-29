@@ -14,6 +14,7 @@ class UCanvasPanel;
 class UFMCodexCardRackWidget;
 class UFMCodexInteractionPanelWidget;
 class UFMCodexInlineResolutionFormulaSurfaceWidget;
+class UFMCodexLongShotResolutionSurfaceWidget;
 class UFMCodexMatchHeaderWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
@@ -140,6 +141,8 @@ public:
 		GetInlineFormulaSurface() const;
 	UFMCodexThroughBallResolutionSurfaceWidget*
 		GetThroughBallResolutionSurface() const;
+	UFMCodexLongShotResolutionSurfaceWidget*
+		GetLongShotResolutionSurface() const;
 	UFMCodexResolutionPanelWidget* GetResolutionPanel() const;
 	bool IsLegacyResolutionOverlayVisible() const;
 	EFMCodexUMGInlineFormulaRevealPhase GetInlineFormulaRevealPhase() const;
@@ -197,6 +200,8 @@ private:
 		BuildDisplayedInlineFormula() const;
 	FFMCodexUMGThroughBallResolutionViewModel
 		BuildDisplayedThroughBallResolution() const;
+	FFMCodexUMGLongShotResolutionViewModel
+		BuildDisplayedLongShotResolution() const;
 	FFMCodexUMGMatchHeaderViewModel BuildDisplayedHeader() const;
 	FFMCodexUMGRollReelViewModel BuildActiveRollReelPresentation() const;
 	void AdvanceInlineFormulaReveal(float DeltaSeconds, bool bForceFullRefresh);
@@ -319,8 +324,15 @@ private:
 	UFUNCTION()
 	void HandleThroughBallContinueRequested();
 
+	UFUNCTION()
+	void HandleLongShotContinueRequested();
+
+	UFUNCTION()
+	void HandleLongShotBranchRequested(EFMCodexUMGBranchIntent Intent);
+
 	bool DoesInlineFormulaOwnCurrentPrimaryAction() const;
 	bool DoesThroughBallOwnCurrentPrimaryAction() const;
+	bool DoesLongShotOwnCurrentPrimaryAction() const;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Presentation",
@@ -333,6 +345,8 @@ private:
 	FFMCodexUMGInlineFormulaSurfaceViewModel LastDisclosedInlineFormula;
 	/** Exact authority-built ThroughBall shell retained through an outer reel. */
 	FFMCodexUMGThroughBallResolutionViewModel CachedResolvedThroughBall;
+	/** Exact authority-built LongShot shell retained through a reel. */
+	FFMCodexUMGLongShotResolutionViewModel CachedResolvedLongShot;
 	/** Header before a live Tactical Point roll, retained until disclosure. */
 	FFMCodexUMGMatchHeaderViewModel CachedPreRollHeader;
 
@@ -427,6 +441,14 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexThroughBallResolutionSurfaceWidget>
 		ThroughBallResolutionSurface;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Resolution Presentation")
+	TSubclassOf<UFMCodexLongShotResolutionSurfaceWidget>
+		LongShotResolutionSurfaceWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexLongShotResolutionSurfaceWidget>
+		LongShotResolutionSurface;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> TacticalPointRevealSurface;

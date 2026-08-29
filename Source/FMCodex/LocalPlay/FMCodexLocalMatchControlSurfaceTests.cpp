@@ -21,6 +21,7 @@
 #include "FMCodexPitchWidget.h"
 #include "FMCodexResolutionPanelWidget.h"
 #include "FMCodexSelectionFeedbackToastWidget.h"
+#include "FMCodexLongShotResolutionSurfaceWidget.h"
 #include "FMCodexThroughBallResolutionSurfaceWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -2213,6 +2214,8 @@ namespace FMCodexLocalMatchFullFamilyTests
 		const TCHAR* PlayerACardId = TEXT("");
 		const TCHAR* PlayerBCardId = TEXT("");
 		int32 ActionPoint = 0;
+		EMatchPlayElectiveBranchIntent PreferredShotBranch =
+			EMatchPlayElectiveBranchIntent::DirectShot;
 	};
 
 	TArray<FFamilyExpectation> FamilyExpectations()
@@ -2605,8 +2608,13 @@ namespace FMCodexLocalMatchFullFamilyTests
 		if (Family.SkillType == ESkillRuleType::LongShot
 			|| Family.SkillType == ESkillRuleType::CutInsideShot)
 		{
-			if (ChoiceView.InteractionCategory
-					!= EFMCodexLocalMatchInteractionCategory::SelectBranchIntent
+			const auto ExpectedCategory = Family.SkillType
+				== ESkillRuleType::LongShot
+					? EFMCodexLocalMatchInteractionCategory
+						::SelectLongShotBranch
+					: EFMCodexLocalMatchInteractionCategory
+						::SelectBranchIntent;
+			if (ChoiceView.InteractionCategory != ExpectedCategory
 				|| !ChoiceView.BranchIntentOptions.Contains(
 					EMatchPlayElectiveBranchIntent::DirectShot)
 				|| !ChoiceView.BranchIntentOptions.Contains(
@@ -2616,7 +2624,7 @@ namespace FMCodexLocalMatchFullFamilyTests
 					TEXT("DirectShot/DeadCorner choices were incomplete"));
 			}
 			Controller.SubmitBranchIntent(
-				EMatchPlayElectiveBranchIntent::DirectShot);
+				Family.PreferredShotBranch);
 		}
 		else if (Family.SkillType == ESkillRuleType::Cross)
 		{
@@ -2650,6 +2658,13 @@ namespace FMCodexLocalMatchFullFamilyTests
 			== ESkillRuleType::ThroughBall
 			? ReadyCategory == EFMCodexLocalMatchInteractionCategory
 				::RollThroughBallInitialRoute
+			: Family.SkillType == ESkillRuleType::LongShot
+				? ReadyCategory
+					== EFMCodexLocalMatchInteractionCategory
+						::RollLongShotDirectAttack
+					|| ReadyCategory
+						== EFMCodexLocalMatchInteractionCategory
+							::RollLongShotDeadCorner
 			: ReadyCategory
 				== EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 		if (!bExpectedReadyAction)
@@ -2732,6 +2747,72 @@ namespace FMCodexLocalMatchFullFamilyTests
 				== EFMCodexLocalMatchInteractionCategory::RollCrossDefense)
 			{
 				Controller.RollCrossDefense();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollLongShotDirectAttack)
+			{
+				Controller.RollLongShotDirectAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollLongShotDirectDefense)
+			{
+				Controller.RollLongShotDirectDefense();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollLongShotDeadCorner)
+			{
+				Controller.RollLongShotDeadCorner();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallInitialRoute)
+			{
+				Controller.RollThroughBallInitialRoute();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallFeetAttack)
+			{
+				Controller.RollThroughBallFeetAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallFeetDefense)
+			{
+				Controller.RollThroughBallFeetDefense();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::ApplyThroughBallFeetTerminalResolution)
+			{
+				Controller.ApplyThroughBallFeetTerminalResolution();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallAntiOffsideAttack)
+			{
+				Controller.RollThroughBallAntiOffsideAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneChipShotAttack)
+			{
+				Controller.RollThroughBallOneOnOneChipShotAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneDirectShotAttack)
+			{
+				Controller.RollThroughBallOneOnOneDirectShotAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneDirectShotDefense)
+			{
+				Controller.RollThroughBallOneOnOneDirectShotDefense();
 			}
 			else if (View.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
@@ -2935,6 +3016,12 @@ bool FFMCodexLocalMatchNormalDemoFullFamilyReachabilityTest::RunTest(
 			CompleteNormalDemoFamilyAttack(
 				*this, *Host, *Controller, Demo, Family, Seed));
 	}
+	FFamilyExpectation DeadCorner = FamilyExpectations()[1];
+	DeadCorner.PreferredShotBranch =
+		EMatchPlayElectiveBranchIntent::DeadCorner;
+	TestTrue(TEXT("Normal production demo routes typed LongShot DeadCorner"),
+		CompleteNormalDemoFamilyAttack(
+			*this, *Host, *Controller, Demo, DeadCorner, 2001));
 	return true;
 }
 
@@ -9424,7 +9511,7 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
 	TestEqual(TEXT("Authoritative Session exposes explicit Cross, ThroughBall Feet, and BehindDefense roll entrypoints"),
-		SerializedEntrypointCount, 51);
+		SerializedEntrypointCount, 59);
 
 	return true;
 }
@@ -9788,7 +9875,7 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
 	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 51);
+		SerializedEntrypointCount, 59);
 
 	return true;
 }
@@ -10213,7 +10300,7 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
 	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 51);
+		SerializedEntrypointCount, 59);
 
 	return true;
 }
@@ -12286,7 +12373,7 @@ bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
 				&& DeclineButton->GetVisibility() == ESlateVisibility::Visible
 				&& DeclineLabel != nullptr
 				&& DeclineLabel->GetText().ToString()
-					== TEXT("\u653E\u5F03\u8DD1\u4F4D"));
+					== TEXT("\u4E0D\u9009\u62E9\u8DD1\u4F4D\u7403\u5458"));
 
 		LegalNoTacticalMatchCard->TakeWidget();
 		CarrierCard->TakeWidget();
@@ -12432,7 +12519,12 @@ bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
 				&& Controller->GetLastDiagnostic().CommandName
 					== TEXT("DeclineRunner")
 				&& Controller->GetInteractionView().InteractionCategory
-					!= EFMCodexLocalMatchInteractionCategory::SelectRunner);
+					== EFMCodexLocalMatchInteractionCategory::SelectSkill
+				&& Controller->GetInteractionView().SelectionStage
+					== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill
+				&& Controller->GetInteractionView().bCurrentAttackActive
+				&& Controller->GetInteractionView().SelectedRunnerCardId.IsNone()
+				&& Controller->GetInteractionView().SelectedHelperCardId.IsNone());
 	}
 
 	return true;
@@ -12963,6 +13055,29 @@ bool FFMCodexProductionMatchFlowLocalizationTest::RunTest(
 			&& NoLegalLabel->GetText().ToString()
 				== TEXT("\u65E0\u53EF\u7528\u76EF\u4EBA\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97"));
 
+	FFMCodexUMGInteractionViewModel RunnerFallback;
+	RunnerFallback.Category = EFMCodexUMGInteractionCategory::SelectRunner;
+	RunnerFallback.ExpectedActorLabel = TEXT("PLAYER A TO ACT");
+	RunnerFallback.TitleLabel = TEXT("Select Runner");
+	RunnerFallback.bCanResolveNoLegal = true;
+	RunnerFallback.NoLegalActionLabel = TEXT("RESOLVE NO LEGAL RUNNER");
+	Panel->RefreshFromPresentation(RunnerFallback);
+	const UButton* RunnerNoLegalButton = Cast<UButton>(
+		Panel->GetWidgetFromName(TEXT("InteractionNoLegalButton")));
+	const UTextBlock* RunnerNoLegalLabel = RunnerNoLegalButton != nullptr
+		? Cast<UTextBlock>(RunnerNoLegalButton->GetChildAt(0)) : nullptr;
+	const UButton* RunnerDeclineButton = Cast<UButton>(
+		Panel->GetWidgetFromName(TEXT("InteractionDeclineButton")));
+	TestTrue(TEXT("No-runner fallback uses one exact non-terminal action"),
+		RunnerNoLegalButton != nullptr
+			&& RunnerNoLegalButton->GetVisibility() == ESlateVisibility::Visible
+			&& RunnerNoLegalLabel != nullptr
+			&& RunnerNoLegalLabel->GetText().ToString()
+				== TEXT("\u4E0D\u9009\u62E9\u8DD1\u4F4D\u7403\u5458")
+			&& RunnerDeclineButton != nullptr
+			&& RunnerDeclineButton->GetVisibility()
+				== ESlateVisibility::Collapsed);
+
 	const TArray<FString> PlayerFacingLeaks = {
 		TEXT("DECLINE SKILL"),
 		TEXT("DECLINE HELPER"),
@@ -13175,6 +13290,7 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 		const FFMCodexLocalMatchInteractionView BranchView =
 			ViewFor(*Host, Demo.SkillRuleSet);
 		FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
+		Request.AttackSequence = BranchView.AttackSequence;
 		Request.RequestingSide = BranchView.ExpectedActingPlayer;
 		Request.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
 		TestTrue(TEXT("Formula fixture submits Cross High intent"),
@@ -13704,7 +13820,8 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 	{
 		CrossFormula,
 		ThroughBallRoute,
-		ThroughBallFormula
+		ThroughBallFormula,
+		LongShotFormula
 	};
 	auto MakeCentralPresentation = [&](
 		const EFMCodexUMGInteractionCategory Category,
@@ -13723,7 +13840,8 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 			Result.InlineFormula.bVisible = true;
 			Result.InlineFormula.PrimaryAction = Slot;
 		}
-		else
+		else if (SurfaceKind == ESurfaceKind::ThroughBallRoute
+			|| SurfaceKind == ESurfaceKind::ThroughBallFormula)
 		{
 			Result.ThroughBallResolution.bVisible = true;
 			if (SurfaceKind == ESurfaceKind::ThroughBallRoute)
@@ -13735,6 +13853,14 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 				Result.ThroughBallResolution.Formula.bVisible = true;
 				Result.ThroughBallResolution.Formula.PrimaryAction = Slot;
 			}
+		}
+		else
+		{
+			Result.LongShotResolution.bVisible = true;
+			Result.LongShotResolution.Stage =
+				EFMCodexUMGLongShotStage::DirectShot;
+			Result.LongShotResolution.Formula.bVisible = true;
+			Result.LongShotResolution.Formula.PrimaryAction = Slot;
 		}
 		return Result;
 	};
@@ -13757,7 +13883,11 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 					: SurfaceKind == ESurfaceKind::ThroughBallRoute
 						? Presentation.ThroughBallResolution.PrimaryAction.Claims(
 							Presentation.Interaction.PrimaryAction)
-						: Presentation.ThroughBallResolution.Formula
+						: SurfaceKind == ESurfaceKind::ThroughBallFormula
+						? Presentation.ThroughBallResolution.Formula
+							.PrimaryAction.Claims(
+								Presentation.Interaction.PrimaryAction)
+						: Presentation.LongShotResolution.Formula
 							.PrimaryAction.Claims(
 								Presentation.Interaction.PrimaryAction)));
 		Screen->ResetPrimaryActionDispatchForTesting();
@@ -13776,9 +13906,14 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 		{
 			Screen->GetThroughBallResolutionSurface()->RequestContinue();
 		}
-		else
+		else if (SurfaceKind == ESurfaceKind::ThroughBallFormula)
 		{
 			Screen->GetThroughBallResolutionSurface()
+				->GetFormulaSurface()->RequestContinue();
+		}
+		else
+		{
+			Screen->GetLongShotResolutionSurface()
 				->GetFormulaSurface()->RequestContinue();
 		}
 		TestEqual(FString::Printf(
@@ -13808,6 +13943,12 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 	DispatchOnce(TEXT("Cross defense"),
 		EFMCodexUMGInteractionCategory::RollCrossDefense,
 		TEXT("防守方掷点"), ESurfaceKind::CrossFormula);
+	DispatchOnce(TEXT("LongShot direct attack"),
+		EFMCodexUMGInteractionCategory::RollLongShotDirectAttack,
+		TEXT("进攻方掷远射点数"), ESurfaceKind::LongShotFormula);
+	DispatchOnce(TEXT("LongShot direct defense"),
+		EFMCodexUMGInteractionCategory::RollLongShotDirectDefense,
+		TEXT("防守方掷点"), ESurfaceKind::LongShotFormula);
 	DispatchOnce(TEXT("NextRound"),
 		EFMCodexUMGInteractionCategory::AdvanceAfterTerminal,
 		TEXT("下一回合"), ESurfaceKind::CrossFormula);

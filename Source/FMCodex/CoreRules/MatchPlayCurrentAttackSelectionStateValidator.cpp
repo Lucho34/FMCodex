@@ -345,13 +345,16 @@ FMatchPlayCurrentAttackSelectionStateValidator::Validate(
 						TEXT("Deferred AwaitingSkill supports generic participant-first authority or legacy Cross only."));
 					return Result;
 				}
-				if (!bPreparationHasRunner)
+				if (!bPreparationHasRunner
+					&& (bPreparationHasActionType
+						|| bPreparationHasHelper
+						|| bPreparationHasHelperCardId))
 				{
 					SetError(
 						Result,
 						EMatchPlayCurrentAttackSelectionStateValidationErrorCode
 							::MissingPreparationRunner,
-						TEXT("Deferred AwaitingSkill requires a frozen preparation runner."));
+						TEXT("Deferred AwaitingSkill without a runner requires generic action authority and no helper."));
 					return Result;
 				}
 				if (bPreparationHasHelper != bPreparationHasHelperCardId)

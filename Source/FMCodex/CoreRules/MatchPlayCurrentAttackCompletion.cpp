@@ -1511,12 +1511,22 @@ FMatchPlayCurrentAttackCompletion::CompleteRunnerNoGoal(
 		return Result;
 	}
 
-	return ApplyCurrentAttackAdvanceMutation(
-		BeforeState,
-		BeforeState,
-		Attacker,
-		Defender,
-		MoveTemp(Result));
+	FMatchPlayState WorkingState = BeforeState;
+	FMatchPlayCurrentAttackState& CurrentAttack =
+		WorkingState.CurrentAttack;
+	CurrentAttack.ActionPreparation.bSkillSelectionDeferred = true;
+	CurrentAttack.ActionPreparation.SkillId = NAME_None;
+	CurrentAttack.ActionPreparation.ActionType = ESkillRuleType::None;
+	CurrentAttack.ActionPreparation.RunnerCardId = NAME_None;
+	CurrentAttack.ActionPreparation.bHasHelper = false;
+	CurrentAttack.ActionPreparation.HelperCardId = NAME_None;
+	CurrentAttack.SelectionStage =
+		EMatchPlayCurrentAttackSelectionStage::AwaitingSkill;
+
+	Result.AfterState = MoveTemp(WorkingState);
+	Result.bSuccess = true;
+	Result.ErrorCode = EMatchPlayCurrentAttackCompletionErrorCode::None;
+	return Result;
 }
 
 FMatchPlayCurrentAttackCompletionResult

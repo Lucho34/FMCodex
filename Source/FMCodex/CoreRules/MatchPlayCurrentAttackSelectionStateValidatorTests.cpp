@@ -851,6 +851,43 @@ bool FSelectionStateReadyPhaseMismatchTest::RunTest(
 			::SelectionStageDoesNotMatchPhase);
 }
 
+SELECTION_STATE_TEST(
+	FSelectionStateFormalRunnerAbsenceTest,
+	"AwaitingSkillAcceptsFormalRunnerAndHelperAbsence")
+
+bool FSelectionStateFormalRunnerAbsenceTest::RunTest(
+	const FString& Parameters)
+{
+	FMatchPlayCurrentAttackState State =
+		SelectionStateValidatorTests::MakeAwaitingSkill();
+	State.ActionPreparation.bSkillSelectionDeferred = true;
+	const auto Canonical =
+		FMatchPlayCurrentAttackSelectionStateValidator::Validate(State);
+	TestTrue(TEXT("Formal Runner absence is canonical at AwaitingSkill"),
+		Canonical.bIsCanonical);
+
+	FMatchPlayCurrentAttackState HelperWithoutRunner = State;
+	HelperWithoutRunner.ActionPreparation.bHasHelper = true;
+	HelperWithoutRunner.ActionPreparation.HelperCardId =
+		TEXT("Helper.WithoutRunner");
+	SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Helper without Runner"),
+		HelperWithoutRunner,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::MissingPreparationRunner);
+
+	FMatchPlayCurrentAttackState FixedCrossWithoutRunner = State;
+	FixedCrossWithoutRunner.ActionPreparation.ActionType =
+		ESkillRuleType::Cross;
+	return SelectionStateValidatorTests::ExpectFailure(
+		*this,
+		TEXT("Fixed Cross without Runner"),
+		FixedCrossWithoutRunner,
+		EMatchPlayCurrentAttackSelectionStateValidationErrorCode
+			::MissingPreparationRunner);
+}
+
 #undef SELECTION_STATE_TEST
 
 #endif

@@ -107,7 +107,10 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveThroughBallOneOnOneChipShotAttackRoll,
 	ResolveThroughBallOneOnOneDirectShotAttackRoll,
 	ResolveThroughBallOneOnOneDirectShotDefenseRoll,
-	ResolveThroughBallInitialRouteRoll
+	ResolveThroughBallInitialRouteRoll,
+	ResolveLongShotDirectAttackRoll,
+	ResolveLongShotDirectDefenseRoll,
+	ResolveLongShotDeadCornerRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -239,6 +242,7 @@ struct FMCODEX_API FMatchPlayAuthoritativeDeclineHelperRequest
 
 struct FMCODEX_API FMatchPlayAuthoritativeSubmitBranchIntentRequest
 {
+	int64 AttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 	EMatchPlayElectiveBranchIntent Intent =
@@ -506,6 +510,19 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveDeadCornerPostRouteDecisionResu
 		OrchestrationResult;
 };
 
+struct FMCODEX_API FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveLongShotDeadCornerRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionResult
+		OrchestrationResult;
+};
+
 struct FMCODEX_API
 	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideDecisionResult
 {
@@ -531,6 +548,32 @@ struct FMCODEX_API
 
 struct FMCODEX_API
 	FMatchPlayAuthoritativeResolveDirectShotPostRouteDecisionOrPlanResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveLongShotDirectAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanResult
+		OrchestrationResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanResult

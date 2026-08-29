@@ -6,6 +6,9 @@ namespace MatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlan
 {
 	using EError =
 		EMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanErrorCode;
+	using EMode =
+		FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanRequest
+			::EMode;
 	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
 	using EPhase = EMatchPlayCurrentAttackPostRouteRollPhase;
 	using FResult =
@@ -229,6 +232,21 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 	}
 	Result.ActionType = BeforeSession.ActualBranch.ActionType;
 
+	const bool bExplicitLongShotRoll =
+		Request.Mode == EMode::ResolveLongShotAttackRoll
+		|| Request.Mode == EMode::ResolveLongShotDefenseRoll;
+	const bool bCompletedPlanRegeneration =
+		Request.Mode == EMode::RegenerateCompletedPlan;
+	if (bExplicitLongShotRoll
+		&& (BeforeSession.ActualBranch.ActionType != ESkillRuleType::LongShot
+			|| BeforeSession.ActualBranch.LongShot
+				!= EMatchPlayLongShotActualBranch::DirectShot))
+	{
+		SetFailure(Result, EError::NotLongShotDirectShotBranch,
+			TEXT("Explicit LongShot Direct rolls require the LongShot DirectShot branch."));
+		return Result;
+	}
+
 	FMatchPlayState CandidateState = BeforeState;
 	FMatchPlayCurrentAttackResolutionSession& CandidateSession =
 		CandidateState.CurrentAttack.ResolutionSession;
@@ -252,6 +270,43 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 			Result.ProgressResult.ErrorMessage);
 		return Result;
 	}
+	if (bCompletedPlanRegeneration && !Result.ProgressResult.bContractComplete)
+	{
+		SetFailure(Result, EError::CompletedPlanRequired,
+			TEXT("DirectShot regeneration requires an already-complete roll contract."));
+		return Result;
+	}
+	if (bExplicitLongShotRoll)
+	{
+		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+		{
+			SetFailure(Result, EError::InvalidRequestingSide,
+				TEXT("LongShot Direct roll commands require PlayerA or PlayerB as RequestingSide."));
+			return Result;
+		}
+		const EPurpose RequestedPurpose =
+			Request.Mode == EMode::ResolveLongShotAttackRoll
+				? EPurpose::PrimaryAttack
+				: EPurpose::PrimaryDefense;
+		if (Result.ProgressResult.bContractComplete
+			|| Result.ProgressResult.NextPurpose != RequestedPurpose)
+		{
+			SetFailure(Result, EError::WrongLongShotDirectRollStep,
+				TEXT("The requested LongShot Direct roll is not the current authoritative step."));
+			return Result;
+		}
+		const EInitialTurnOrderPlayer ExpectedSide =
+			RequestedPurpose == EPurpose::PrimaryAttack
+				? BeforeSession.Bundle.CurrentAttackingPlayer
+				: BeforeSession.Bundle.CurrentDefendingPlayer;
+		if (Request.RequestingSide != ExpectedSide)
+		{
+			SetFailure(Result, EError::WrongRequestingSide,
+				TEXT("The requesting side does not own the current LongShot Direct roll."));
+			return Result;
+		}
+	}
 	if (!Result.ProgressResult.bContractComplete && RollProvider == nullptr)
 	{
 		SetFailure(Result, EError::PostRouteRollProviderUnavailable,
@@ -265,7 +320,9 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 		return Result;
 	}
 
-	while (!Result.ProgressResult.bContractComplete)
+	const int32 MaximumRollsThisCommand = bExplicitLongShotRoll ? 1 : MAX_int32;
+	while (!Result.ProgressResult.bContractComplete
+		&& Result.ProviderCallCount < MaximumRollsThisCommand)
 	{
 		const EPurpose Purpose = Result.ProgressResult.NextPurpose;
 		const FMatchPlayPostRouteRollProviderResult ProviderResult =
@@ -296,6 +353,23 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 				Result.ProgressResult.ErrorMessage);
 			return Result;
 		}
+	}
+
+	if (bExplicitLongShotRoll && !Result.ProgressResult.bContractComplete)
+	{
+		Result.SessionStateValidationResult =
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				CandidateState);
+		if (!Result.SessionStateValidationResult.bIsCanonical)
+		{
+			SetFailure(Result, EError::InvalidPostRouteProgress,
+				Result.SessionStateValidationResult.ErrorMessage);
+			return Result;
+		}
+		Result.AfterState = MoveTemp(CandidateState);
+		Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
+		Result.bSuccess = true;
+		return Result;
 	}
 
 	Result.SessionStateValidationResult =
@@ -355,7 +429,8 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 
 	Result.AfterState = MoveTemp(CandidateState);
 	Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
-	Result.bReplayedCompleteRolls = Result.ProviderCallCount == 0;
+	Result.bReplayedCompleteRolls = !bExplicitLongShotRoll
+		&& Result.ProviderCallCount == 0;
 	Result.bSuccess = true;
 	return Result;
 }

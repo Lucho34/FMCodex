@@ -375,6 +375,14 @@ namespace FMCodexLocalMatchUMGPresentation
 			return EFMCodexUMGInteractionCategory::RollCrossDefense;
 		case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
 			return EFMCodexUMGInteractionCategory::RollThroughBallInitialRoute;
+		case EFMCodexLocalMatchInteractionCategory::SelectLongShotBranch:
+			return EFMCodexUMGInteractionCategory::SelectLongShotBranch;
+		case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack:
+			return EFMCodexUMGInteractionCategory::RollLongShotDirectAttack;
+		case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense:
+			return EFMCodexUMGInteractionCategory::RollLongShotDirectDefense;
+		case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner:
+			return EFMCodexUMGInteractionCategory::RollLongShotDeadCorner;
 		case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance:
 			return EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance;
 		case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack:
@@ -743,6 +751,8 @@ namespace FMCodexLocalMatchUMGPresentation
 			::RollThroughBallBehindDefenseAttack:
 		case EFMCodexUMGInteractionCategory
 			::RollThroughBallBehindDefenseDefense:
+		case EFMCodexUMGInteractionCategory::RollLongShotDirectAttack:
+		case EFMCodexUMGInteractionCategory::RollLongShotDirectDefense:
 		case EFMCodexUMGInteractionCategory::ApplyCrossTerminalResolution:
 		case EFMCodexUMGInteractionCategory
 			::ApplyThroughBallFeetTerminalResolution:
@@ -802,8 +812,16 @@ namespace FMCodexLocalMatchUMGPresentation
 			&& Facts.ActualBranch.ThroughBall
 				== EMatchPlayThroughBallActualBranch::BehindDefense
 			&& !bResolvedThroughBallDirect;
+		const bool bResolvedLongShotDirect = bAcceptedResolutionState
+			&& Facts.bSuccess && Facts.bHasFacts
+			&& Facts.ActionType == ESkillRuleType::LongShot
+			&& Facts.bHasActualBranch
+			&& Facts.ActualBranch.ActionType == ESkillRuleType::LongShot
+			&& Facts.ActualBranch.LongShot
+				== EMatchPlayLongShotActualBranch::DirectShot;
 		if (!bResolvedCross && !bResolvedThroughBallFeet
-			&& !bResolvedThroughBallBehind && !bResolvedThroughBallDirect)
+			&& !bResolvedThroughBallBehind && !bResolvedThroughBallDirect
+			&& !bResolvedLongShotDirect)
 		{
 			return Result;
 		}
@@ -816,27 +834,32 @@ namespace FMCodexLocalMatchUMGPresentation
 						&& Roll.Semantics
 							== EMatchPlayResolutionRollSemantics::BranchSelection;
 				});
-		if (RouteRoll == nullptr)
+		if (RouteRoll == nullptr && !bResolvedLongShotDirect)
 		{
 			return Result;
 		}
 		const bool bCrossHigh = bResolvedCross
 			&& Facts.ActualBranch.Cross == EMatchPlayCrossActualBranch::High;
-		Result.RouteResultLabel = FString::Printf(
-			TEXT("路线掷点 %d \u2192 判定为%s"),
-			RouteRoll->RawD6,
-			bResolvedCross
-				? (bCrossHigh ? TEXT("高球传中") : TEXT("低球传中"))
-				: bResolvedThroughBallFeet ? TEXT("脚下球")
-					: Facts.ActualBranch.ThroughBall
-						== EMatchPlayThroughBallActualBranch::AntiOffside
-							? TEXT("反越位") : TEXT("身后球"));
+		if (RouteRoll != nullptr)
+		{
+			Result.RouteResultLabel = FString::Printf(
+				TEXT("路线掷点 %d \u2192 判定为%s"),
+				RouteRoll->RawD6,
+				bResolvedCross
+					? (bCrossHigh ? TEXT("高球传中") : TEXT("低球传中"))
+					: bResolvedThroughBallFeet ? TEXT("脚下球")
+						: Facts.ActualBranch.ThroughBall
+							== EMatchPlayThroughBallActualBranch::AntiOffside
+								? TEXT("反越位") : TEXT("身后球"));
+		}
 
 		const FName ContestId = bResolvedCross
 			? (bCrossHigh ? FName(TEXT("Cross.High"))
 				: FName(TEXT("Cross.Low")))
 			: bResolvedThroughBallDirect
 				? FName(TEXT("ThroughBall.OneOnOne.DirectShot"))
+			: bResolvedLongShotDirect
+				? FName(TEXT("LongShot.DirectShot"))
 			: bResolvedThroughBallFeet
 				? FName(TEXT("ThroughBall.Feet"))
 				: FName(TEXT("ThroughBall.BehindDefense.P1"));
@@ -926,13 +949,33 @@ namespace FMCodexLocalMatchUMGPresentation
 			&& DirectDecision->bResolved
 			&& DirectDecision->Outcome
 				!= EMatchPlayResolutionDecisionOutcome::None;
-		Result.bShowFormulaRows = !bBehindOutOfPlay;
+		const FMatchPlayResolutionDecisionFact* LongShotDecision =
+			bResolvedLongShotDirect
+				? Facts.Decisions.FindByPredicate(
+					[](const FMatchPlayResolutionDecisionFact& Decision)
+					{
+						return Decision.DecisionId
+							== FName(TEXT("LongShot.DirectShot.Outcome"));
+					})
+				: nullptr;
+		const bool bLongShotOutcomeResolved = LongShotDecision != nullptr
+			&& LongShotDecision->bResolved
+			&& LongShotDecision->Outcome
+				!= EMatchPlayResolutionDecisionOutcome::None;
+		const bool bLongShotImmediateMiss = bLongShotOutcomeResolved
+			&& LongShotDecision->Outcome
+				== EMatchPlayResolutionDecisionOutcome::ImmediateMiss;
+		Result.bShowFormulaRows = !bBehindOutOfPlay && !bLongShotImmediateMiss;
 		Result.StatusLabel = !bAttackResolved
 			? TEXT("等待进攻方掷点")
 			: !bDefenseResolved
 				? TEXT("等待防守方掷点")
 				: TEXT("双方掷点已完成");
-		const bool bTerminalPresentationReady = bResolvedThroughBallDirect
+		const bool bTerminalPresentationReady = bResolvedLongShotDirect
+			? bLongShotOutcomeResolved
+				&& InteractionView.bTerminalPendingAdvance
+				&& PrimaryAction.bAvailable
+			: bResolvedThroughBallDirect
 			? bDirectOutcomeResolved
 				&& InteractionView.bTerminalPendingAdvance
 				&& PrimaryAction.bAvailable
@@ -957,11 +1000,17 @@ namespace FMCodexLocalMatchUMGPresentation
 									::DefenderStoppedAttack
 							&& InteractionView.bTerminalPendingAdvance
 							&& PrimaryAction.bAvailable)));
-		const bool bNarrativeReady = bResolvedThroughBallBehind
+		const bool bNarrativeReady = bResolvedLongShotDirect
+			&& bLongShotImmediateMiss
+			? bAttackResolved && bTerminalPresentationReady
+				&& PrimaryAction.bAvailable
+			: bResolvedThroughBallBehind
 			? bBehindNarrativeReady
 			: bAttackResolved && bDefenseResolved
 				&& Contest->bHasResolvedFormula
-				&& (bResolvedThroughBallDirect
+				&& (bResolvedLongShotDirect
+					? bLongShotOutcomeResolved
+					: bResolvedThroughBallDirect
 					? bDirectOutcomeResolved
 					: Contest->ResolvedResult.Winner != EFormulaWinner::None)
 				&& Contest->ResolvedResult.bAttackEnded
@@ -970,7 +1019,10 @@ namespace FMCodexLocalMatchUMGPresentation
 				&& PrimaryAction.bAvailable;
 		if (bNarrativeReady)
 		{
-			Result.bNarrativeAttackSuccess = bResolvedThroughBallDirect
+			Result.bNarrativeAttackSuccess = bResolvedLongShotDirect
+				? LongShotDecision->Outcome
+					== EMatchPlayResolutionDecisionOutcome::Goal
+				: bResolvedThroughBallDirect
 				? DirectDecision->Outcome
 					== EMatchPlayResolutionDecisionOutcome::Goal
 				: bResolvedThroughBallBehind
@@ -978,7 +1030,9 @@ namespace FMCodexLocalMatchUMGPresentation
 					== EMatchPlayResolutionDecisionOutcome::OneOnOneRequired
 				: Contest->ResolvedResult.Winner == EFormulaWinner::Attacker;
 			FFMCodexTacticalNarrativePresentationInput NarrativeInput;
-			NarrativeInput.Branch = bResolvedThroughBallDirect
+			NarrativeInput.Branch = bResolvedLongShotDirect
+				? EFMCodexTacticalNarrativeBranch::LongShotDirect
+				: bResolvedThroughBallDirect
 				? EFMCodexTacticalNarrativeBranch::ThroughBallOneOnOneDirect
 				: bResolvedThroughBallBehind
 				? EFMCodexTacticalNarrativeBranch::ThroughBallBehindDefense
@@ -987,7 +1041,9 @@ namespace FMCodexLocalMatchUMGPresentation
 				: bCrossHigh
 					? EFMCodexTacticalNarrativeBranch::CrossHigh
 					: EFMCodexTacticalNarrativeBranch::CrossLow;
-			NarrativeInput.AuthorityOutcome = bResolvedThroughBallDirect
+			NarrativeInput.AuthorityOutcome = bResolvedLongShotDirect
+				? LongShotDecision->Outcome
+				: bResolvedThroughBallDirect
 				? DirectDecision->Outcome
 				: bResolvedThroughBallBehind
 				? BehindDecision->Outcome
@@ -1015,7 +1071,9 @@ namespace FMCodexLocalMatchUMGPresentation
 				Result.bNarrativeAvailable = Narrative.bNarrativeAvailable;
 				Result.ResultTitle = Narrative.ResultTitle.ToString();
 				Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
-				const FString RouteLabel = bResolvedThroughBallDirect
+				const FString RouteLabel = bResolvedLongShotDirect
+					? TEXT("直接射门")
+					: bResolvedThroughBallDirect
 					? TEXT("单刀")
 					: bResolvedThroughBallBehind
 					? TEXT("身后球")
@@ -1330,6 +1388,123 @@ namespace FMCodexLocalMatchUMGPresentation
 		{
 			Result.StatusLabel = Result.ActionPromptLabel;
 		}
+		return Result;
+	}
+
+	FFMCodexUMGLongShotResolutionViewModel BuildLongShotSurface(
+		const FFMCodexLocalMatchInteractionView& InteractionView,
+		const FFMCodexUMGInteractionViewModel& Interaction,
+		const FFMCodexUMGInlineFormulaSurfaceViewModel& Formula,
+		const bool bRejected)
+	{
+		FFMCodexUMGLongShotResolutionViewModel Result;
+		if (!InteractionView.bCurrentAttackActive
+			|| InteractionView.PresentedActionType != ESkillRuleType::LongShot)
+		{
+			return Result;
+		}
+
+		const bool bChoosingBranch = Interaction.Category
+			== EFMCodexUMGInteractionCategory::SelectLongShotBranch;
+		const FMatchPlayCurrentAttackResolutionFactProjection& Facts =
+			InteractionView.ResolutionFacts;
+		const bool bHasLongShotBranch = Facts.bSuccess && Facts.bHasFacts
+			&& Facts.bHasActualBranch
+			&& Facts.ActualBranch.ActionType == ESkillRuleType::LongShot;
+		if (!bChoosingBranch && !bHasLongShotBranch)
+		{
+			return Result;
+		}
+
+		Result.bVisible = true;
+		Result.bSuppressLegacyResolution = !bRejected;
+		Result.TitleLabel = FFMCodexPlayerUIPresentationText
+			::LongShotTitle().ToString();
+		Result.InteractionCategory = Interaction.Category;
+		if (bChoosingBranch)
+		{
+			Result.Stage = EFMCodexUMGLongShotStage::BranchChoice;
+			Result.StageLabel = FFMCodexPlayerUIPresentationText
+				::LongShotBranchChoiceStage().ToString();
+			Result.BranchChoices = Interaction.BranchChoices;
+			return Result;
+		}
+
+		const bool bDirect = Facts.ActualBranch.LongShot
+			== EMatchPlayLongShotActualBranch::DirectShot;
+		Result.Stage = bDirect ? EFMCodexUMGLongShotStage::DirectShot
+			: EFMCodexUMGLongShotStage::DeadCorner;
+		Result.BranchLabel = bDirect
+			? FFMCodexPlayerUIPresentationText::LongShotDirectStage().ToString()
+			: FFMCodexPlayerUIPresentationText::LongShotDeadCornerStage().ToString();
+		Result.StageLabel = Result.BranchLabel;
+		Result.OutcomeHintLabel = bDirect
+			? FFMCodexPlayerUIPresentationText::LongShotDirectOutcomeHint().ToString()
+			: FFMCodexPlayerUIPresentationText
+				::LongShotDeadCornerOutcomeHint().ToString();
+
+		if (bDirect)
+		{
+			Result.Formula = Formula;
+			Result.Formula.bParentOwnsContestHeading = true;
+			Result.Formula.bParentOwnsRouteContext = true;
+			Result.StatusLabel = Formula.bVisible ? FString() : TEXT("等待进攻方掷点");
+		}
+		else
+		{
+			auto FindRoll = [&Facts](
+				const EMatchPlayCurrentAttackPostRouteRollPurpose Purpose)
+			{
+				return Facts.Rolls.FindByPredicate(
+					[Purpose](const FMatchPlayResolutionRollFact& Roll)
+					{
+						return Roll.PostRoutePurpose == Purpose;
+					});
+			};
+			const FMatchPlayResolutionRollFact* A = FindRoll(
+				EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackA);
+			const FMatchPlayResolutionRollFact* B = FindRoll(
+				EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackB);
+			Result.bDeadCornerAVisible = A != nullptr && A->bResolved;
+			Result.DeadCornerA = Result.bDeadCornerAVisible ? A->RawD6 : 0;
+			Result.bDeadCornerBVisible = B != nullptr && B->bResolved;
+			Result.DeadCornerB = Result.bDeadCornerBVisible ? B->RawD6 : 0;
+			const FMatchPlayResolutionDecisionFact* Decision =
+				Facts.Decisions.FindByPredicate(
+					[](const FMatchPlayResolutionDecisionFact& Candidate)
+					{
+						return Candidate.DecisionId == TEXT("DeadCorner.Outcome");
+					});
+			if (Decision != nullptr && Decision->bResolved
+				&& InteractionView.bTerminalPendingAdvance)
+			{
+				FFMCodexTacticalNarrativePresentationInput Input;
+				Input.Branch = EFMCodexTacticalNarrativeBranch::LongShotDeadCorner;
+				Input.AuthorityOutcome = Decision->Outcome;
+				Input.AttackSequence = Facts.AttackSequence;
+				Input.StableEventId = Decision->DecisionId;
+				Input.Carrier = NarrativeActor(Facts, InteractionView,
+					EMatchPlayResolutionParticipantRole::Carrier);
+				const FFMCodexTacticalNarrativePresentation Narrative =
+					FFMCodexTacticalResolutionNarrativePresentationBuilder::Build(Input);
+				if (Narrative.bSuccess)
+				{
+					Result.bNarrativeAvailable = Narrative.bNarrativeAvailable;
+					Result.ResultTitle = Narrative.ResultTitle.ToString();
+					Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
+				}
+			}
+		}
+
+		if (!bRejected && !bDirect && (Interaction.Category
+				== EFMCodexUMGInteractionCategory::RollLongShotDeadCorner
+			|| Interaction.Category
+				== EFMCodexUMGInteractionCategory::AdvanceAfterTerminal))
+		{
+			ClaimPrimaryAction(Result.PrimaryAction, Interaction.PrimaryAction);
+		}
+		Result.bCanContinue = Result.PrimaryAction.bVisible;
+		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
 		return Result;
 	}
 }
@@ -1713,6 +1888,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			|| InteractionView.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory::SelectBranchIntent
 			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectLongShotBranch
+			|| InteractionView.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
 				? FString()
 				: FFMCodexLocalMatchInteractionViewBuilder::ToString(
@@ -1795,7 +1972,13 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				::RollThroughBallBehindDefenseAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
-				::RollThroughBallBehindDefenseDefense)
+				::RollThroughBallBehindDefenseDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner)
 	{
 		const bool bAttackRoll = InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
@@ -1812,7 +1995,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 					::RollThroughBallOneOnOneChipShotAttack
 			|| InteractionView.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
-					::RollThroughBallOneOnOneDirectShotAttack;
+					::RollThroughBallOneOnOneDirectShotAttack
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack;
 		const bool bThroughBallFeet = InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
 			|| InteractionView.InteractionCategory
@@ -1836,13 +2021,23 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			|| InteractionView.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
 					::RollThroughBallOneOnOneDirectShotDefense;
-		Result.Interaction.CrossRollRevealKind = bAttackRoll
+		const bool bLongShotDirect = InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense;
+		const bool bLongShotDead = InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner;
+		Result.Interaction.CrossRollRevealKind = bLongShotDead
+			? EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA
+			: bAttackRoll
 			? EFMCodexUMGCrossRollRevealKind::Attack
 			: EFMCodexUMGCrossRollRevealKind::Defense;
 		Result.Interaction.CrossRollContestId = bAntiOffside
 			? FName(TEXT("ThroughBall.AntiOffside"))
 			: bChipShot ? FName(TEXT("ThroughBall.OneOnOne.ChipShot"))
 			: bDirectShot ? FName(TEXT("ThroughBall.OneOnOne.DirectShot"))
+			: bLongShotDirect ? FName(TEXT("LongShot.DirectShot"))
+			: bLongShotDead ? FName(TEXT("LongShot.DeadCorner"))
 			: bThroughBallBehind
 			? FName(TEXT("ThroughBall.BehindDefense.P1"))
 			: bThroughBallFeet ? FName(TEXT("ThroughBall.Feet"))
@@ -1909,6 +2104,12 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
 				::RollThroughBallBehindDefenseDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
 				::ApplyCrossTerminalResolution
@@ -1983,6 +2184,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Interaction.BranchSectionLabel =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::SelectBranchIntent
+			|| InteractionView.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::SelectLongShotBranch
 				? (InteractionView.ActionLabel == TEXT("Cross")
 					? FString(TEXT("CROSS TYPE")) : FString(TEXT("SHOT TYPE")))
 				: InteractionView.InteractionCategory
@@ -2052,9 +2255,23 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	for (const EMatchPlayElectiveBranchIntent Intent
 		: InteractionView.BranchIntentOptions)
 	{
-		Result.Interaction.LegalActionLabels.Add(BranchIntentLabel(Intent));
+		const FString Label = BranchIntentLabel(Intent);
+		FString SecondaryLabel;
+		if (InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectLongShotBranch)
+		{
+			SecondaryLabel = Intent
+					== EMatchPlayElectiveBranchIntent::DirectShot
+				? FFMCodexPlayerUIPresentationText::LongShotDirectChoiceHint()
+					.ToString()
+				: Intent == EMatchPlayElectiveBranchIntent::DeadCorner
+					? FFMCodexPlayerUIPresentationText
+						::LongShotDeadCornerChoiceHint().ToString()
+					: FString();
+		}
+		Result.Interaction.LegalActionLabels.Add(Label);
 		Result.Interaction.BranchChoices.Add({
-			BranchIntent(Intent), BranchIntentLabel(Intent) });
+			BranchIntent(Intent), Label, SecondaryLabel });
 	}
 	for (const EMatchPlayThroughBallOneOnOneShotChoice Choice
 		: InteractionView.OneOnOneOptions)
@@ -2126,7 +2343,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		Result.Interaction.PrimaryAction,
 		!Result.Resolution.bRejected
 			&& InteractionView.bCurrentAttackActive);
-	if (InteractionView.PresentedActionType != ESkillRuleType::ThroughBall)
+	if (InteractionView.PresentedActionType != ESkillRuleType::ThroughBall
+		&& InteractionView.PresentedActionType != ESkillRuleType::LongShot)
 	{
 		Result.InlineFormula = ProjectedFormula;
 	}
@@ -2167,6 +2385,18 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		// The shared CTA dock remains authoritative, but ThroughBall production
 		// presentation does not expose engineering classification/state labels.
 		Result.Interaction.KickerLabel = TEXT("直塞");
+		Result.Interaction.ClassificationLabel.Empty();
+		Result.Interaction.CategoryLabel.Empty();
+	}
+	Result.LongShotResolution = BuildLongShotSurface(
+		InteractionView,
+		Result.Interaction,
+		ProjectedFormula,
+		Result.Resolution.bRejected);
+	if (Result.LongShotResolution.bVisible)
+	{
+		Result.Interaction.KickerLabel =
+			FFMCodexPlayerUIPresentationText::LongShotTitle().ToString();
 		Result.Interaction.ClassificationLabel.Empty();
 		Result.Interaction.CategoryLabel.Empty();
 	}

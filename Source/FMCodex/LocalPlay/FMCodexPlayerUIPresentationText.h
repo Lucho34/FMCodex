@@ -78,6 +78,14 @@ public:
 	static FText ThroughBallChipChoiceHint();
 	static FText ThroughBallRouteResult(
 		int32 RawD6, EMatchPlayThroughBallActualBranch Route);
+	static FText LongShotTitle();
+	static FText LongShotBranchChoiceStage();
+	static FText LongShotDirectChoiceHint();
+	static FText LongShotDeadCornerChoiceHint();
+	static FText LongShotDirectStage();
+	static FText LongShotDeadCornerStage();
+	static FText LongShotDirectOutcomeHint();
+	static FText LongShotDeadCornerOutcomeHint();
 	static FText BroadcastStatus(bool bMatchEnded, bool bAttackActive,
 		const FString& MatchResultLabel);
 

@@ -1010,6 +1010,7 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 		EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent);
 
 	FMatchPlayAuthoritativeSubmitBranchIntentRequest IntentRequest;
+	IntentRequest.AttackSequence = State.CurrentAttack.AttackSequence;
 	IntentRequest.RequestingSide = AttackingSide;
 	IntentRequest.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
 	TestTrue(TEXT("Direct BranchIntent succeeds"),

@@ -69,6 +69,9 @@ public:
 		EMatchPlayThroughBallOneOnOneShotChoice Choice);
 	void RollCrossAttack();
 	void RollCrossDefense();
+	void RollLongShotDirectAttack();
+	void RollLongShotDirectDefense();
+	void RollLongShotDeadCorner();
 	void ApplyCrossTerminalResolution();
 	/** Legacy compatibility wrapper; production does not expose AndAdvance. */
 	void CompleteCrossAndAdvance();
@@ -167,6 +170,7 @@ private:
 	FFMCodexLocalMatchResolutionFeedback ResolutionFeedback;
 	bool bCrossRouteCommandInFlight = false;
 	bool bCrossRollCommandInFlight = false;
+	bool bLongShotRollCommandInFlight = false;
 	bool bThroughBallRouteCommandInFlight = false;
 	bool bThroughBallFeetRollCommandInFlight = false;
 	bool bThroughBallAntiOffsideRollCommandInFlight = false;

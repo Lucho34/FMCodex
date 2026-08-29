@@ -458,6 +458,8 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 		if (SkillType == ESkillRuleType::Cross)
 		{
 			FMatchPlayAuthoritativeSubmitBranchIntentRequest IntentRequest;
+			IntentRequest.AttackSequence =
+				Direct.GetStateSnapshot().CurrentAttack.AttackSequence;
 			IntentRequest.RequestingSide = OutTrace.Attacker;
 			IntentRequest.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
 			if (!Direct.SubmitBranchIntent(IntentRequest).IntentResult.bSuccess
