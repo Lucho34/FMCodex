@@ -1348,6 +1348,102 @@ void AFMCodexLocalMatchPlayerController::RollLongShotDeadCorner()
 	}
 }
 
+void AFMCodexLocalMatchPlayerController::RollCutInsideShotDirectAttack()
+{
+	if (bCutInsideShotRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollCutInsideShotDirectAttack)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveCutInsideShotDirectAttackRoll"),
+			TEXT("CutInsideShot Direct attack roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveCutInsideShotDirectAttackRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bCutInsideShotRollCommandInFlight = true;
+	const auto Result = Host->ResolveCutInsideShotDirectAttackRoll(Request);
+	bCutInsideShotRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveCutInsideShotDirectAttackRoll"), Result);
+}
+
+void AFMCodexLocalMatchPlayerController::RollCutInsideShotDirectDefense()
+{
+	if (bCutInsideShotRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollCutInsideShotDirectDefense)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveCutInsideShotDirectDefenseRoll"),
+			TEXT("CutInsideShot Direct defense roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveCutInsideShotDirectDefenseRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bCutInsideShotRollCommandInFlight = true;
+	const auto Result = Host->ResolveCutInsideShotDirectDefenseRoll(Request);
+	bCutInsideShotRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveCutInsideShotDirectDefenseRoll"), Result);
+}
+
+void AFMCodexLocalMatchPlayerController::RollCutInsideShotDeadCorner()
+{
+	if (bCutInsideShotRollCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory
+			::RollCutInsideShotDeadCorner)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveCutInsideShotDeadCornerRoll"),
+			TEXT("CutInsideShot DeadCorner roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveCutInsideShotDeadCornerRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bCutInsideShotRollCommandInFlight = true;
+	const auto Result = Host->ResolveCutInsideShotDeadCornerRoll(Request);
+	bCutInsideShotRollCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveCutInsideShotDeadCornerRoll"), Result);
+}
+
 void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
 {
 	ApplyCrossTerminalResolution();
@@ -1766,6 +1862,15 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner
 		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollCutInsideShotDirectAttack
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollCutInsideShotDirectDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollCutInsideShotDeadCorner
+		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
@@ -1926,26 +2031,9 @@ void AFMCodexLocalMatchPlayerController::ContinueResolution()
 	case ESkillRuleType::CutInsideShot:
 		if (!Progress.bContractComplete)
 		{
-			const bool bDeadCorner =
-				(Session.ActualBranch.ActionType == ESkillRuleType::LongShot
-					&& Session.ActualBranch.LongShot
-						== EMatchPlayLongShotActualBranch::DeadCorner)
-				|| (Session.ActualBranch.ActionType
-						== ESkillRuleType::CutInsideShot
-					&& Session.ActualBranch.CutInsideShot
-						== EMatchPlayCutInsideShotActualBranch::DeadCorner);
-			if (bDeadCorner)
-			{
-				RecordCommandResult(
-					TEXT("ResolveDeadCornerPostRouteDecision"),
-					Host->ResolveDeadCornerPostRouteDecision());
-			}
-			else
-			{
-				RecordCommandResult(
-					TEXT("ResolveDirectShotPostRouteDecisionOrPlan"),
-					Host->ResolveDirectShotPostRouteDecisionOrPlan());
-			}
+			RecordLocalFailure(
+				TEXT("ContinueResolution"),
+				TEXT("CutInsideShot player-owned rolls require their explicit typed commands."));
 		}
 		else
 		{
@@ -2613,6 +2701,24 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
 		{
 			RollLongShotDeadCorner();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectAttack:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollCutInsideShotDirectAttack();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectDefense:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollCutInsideShotDirectDefense();
+		}));
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollCutInsideShotDeadCorner();
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory::ApplyCrossTerminalResolution:

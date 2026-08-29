@@ -156,6 +156,21 @@ public:
 		const FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest&
 			Request);
 
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollResult
+	ResolveCutInsideShotDirectAttackRoll(
+		const FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest&
+			Request);
+
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollResult
+	ResolveCutInsideShotDirectDefenseRoll(
+		const FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest&
+			Request);
+
+	FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollResult
+	ResolveCutInsideShotDeadCornerRoll(
+		const FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest&
+			Request);
+
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DecisionOrPlanResult
 	ResolveThroughBallBehindDefenseP1DecisionOrPlan();
 

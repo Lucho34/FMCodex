@@ -13,7 +13,7 @@ namespace FMCodexLocalDevRollOverride
 	{
 		return Target > EFMCodexLocalDevRollTarget::None
 			&& Target <= EFMCodexLocalDevRollTarget
-				::LongShotDeadCornerB;
+				::CutInsideShotDeadCornerB;
 	}
 }
 
@@ -233,6 +233,22 @@ FFMCodexLocalDevRollOverride::ResolvePostRouteTarget(
 		}
 		return Purpose == EPostPurpose::PairedAttackB
 			? EFMCodexLocalDevRollTarget::LongShotDeadCornerB
+			: EFMCodexLocalDevRollTarget::None;
+	case EInvocation::CutInsideShotDirectShot:
+		if (Purpose == EPostPurpose::PrimaryAttack)
+		{
+			return EFMCodexLocalDevRollTarget::CutInsideShotDirectAttack;
+		}
+		return Purpose == EPostPurpose::PrimaryDefense
+			? EFMCodexLocalDevRollTarget::CutInsideShotDirectDefense
+			: EFMCodexLocalDevRollTarget::None;
+	case EInvocation::CutInsideShotDeadCorner:
+		if (Purpose == EPostPurpose::PairedAttackA)
+		{
+			return EFMCodexLocalDevRollTarget::CutInsideShotDeadCornerA;
+		}
+		return Purpose == EPostPurpose::PairedAttackB
+			? EFMCodexLocalDevRollTarget::CutInsideShotDeadCornerB
 			: EFMCodexLocalDevRollTarget::None;
 	default:
 		return EFMCodexLocalDevRollTarget::None;

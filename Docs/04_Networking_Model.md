@@ -88,6 +88,16 @@ DeadCorner保留canonical one-click 2D6语义：一个进攻方命令在服务�
 
 该request slice已具备side ownership、caller correlation、stale/duplicate safety与snapshot reconstruction基础，但不代表LongShot Production UI已完成，也不实现实际network transport、RPC idempotency key、reconnect UX或隐藏信息同步。
 
+## CutInside-specific Stage 7 Request Foundation
+
+CutInside Direct Attack、Direct Defense与DeadCorner各有独立typed request，并要求客户端提交当前snapshot中的`AttackSequence + RequestingSide`。服务端在D6 provider前验证current attack、sequence、请求阵营、CutInside family、已选branch与canonical next purpose；延迟、wrong-side、越序、duplicate和terminal replay均在RNG前拒绝。
+
+Direct Attack `3–6`产生可同步的真实attack-only prefix：Attack D6已持久化、Defense D6与最终Formula/Outcome尚不存在，下一动作owner由权威Resolution Session确定为防守方。`1–2`只用Attack D6形成ImmediateMiss terminal。Direct Defense完成后其余Formula/outcome/terminal工作是零RNG continuation，并仍停在显式`AdvanceAfterTerminal`。
+
+DeadCorner保留一次attacker request产生完整2D6 pair的语义。只有两枚provider draw都成功才adopt candidate State；第二枚失败不向客户端暴露partial pair。snapshot refresh或未来reconnect可从CurrentAttack、roll records与Formula/Outcome facts重建全部pending/completed状态，不依赖Controller或Widget缓存。
+
+该Foundation说明CutInside的三个玩家RNG边界具备side ownership、caller correlation、stale/retry safety与reconstruction基础；不表示CutInside Production UI已经完成，也不实现network transport、RPC idempotency key、reconnect UX或隐藏信息同步。
+
 ## 掉线和重连
 
 掉线和重连相关开放问题统一记录在 `Docs/08_Decision_Log.md`。

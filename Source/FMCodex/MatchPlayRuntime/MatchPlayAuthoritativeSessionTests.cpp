@@ -2642,7 +2642,8 @@ namespace MatchPlayAuthoritativeSessionTests
 				&& State.CurrentAttack.bHasSelectedAction
 				&& State.CurrentAttack.SelectedAction.ActionType == SkillType;
 		}
-		return SkillType == ESkillRuleType::LongShot
+		return (SkillType == ESkillRuleType::LongShot
+			|| SkillType == ESkillRuleType::CutInsideShot)
 			&& State.CurrentAttack.SelectionStage
 				== EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent
 			&& !State.CurrentAttack.bHasSelectedAction
@@ -6504,11 +6505,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All fifty-nine mutations use the gate"),
+	TestEqual(TEXT("All sixty-two mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		59);
+		62);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7893,8 +7894,8 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
 		CompletionSource));
-	TestEqual(TEXT("All fifty-nine commands use one serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
+	TestEqual(TEXT("All sixty-two commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
 	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
@@ -10547,9 +10548,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			ExpectedCallCount);
 	}
-	TestEqual(TEXT("All fifty-nine mutations share serialized gate"),
+	TestEqual(TEXT("All sixty-two mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		59);
+		62);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -15138,7 +15139,7 @@ bool FMatchPlayAuthoritativeSessionResolveDeadCornerPostRouteDecisionTest
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionOrchestrator")),
-		2);
+		3);
 
 	auto MakeSkillId = [](const FString& Prefix, const ESkillRuleType Action)
 	{
@@ -16014,7 +16015,7 @@ bool FMatchPlayAuthoritativeSessionResolveDirectShotPostRouteDecisionOrPlanTest
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator")),
-		3);
+		5);
 	TestFalse(TEXT("DirectShot integration does not duplicate miss threshold"),
 		Orchestrator.Contains(TEXT("ImmediateMissMaxD6"))
 			|| Orchestrator.Contains(TEXT("ConditionalContinuationMinD6")));
@@ -22563,8 +22564,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves 56 serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
+	TestEqual(TEXT("E2E preserves sixty-two serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -22638,8 +22639,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-nine commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
+	TestEqual(TEXT("All sixty-two commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -23130,8 +23131,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-nine commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
+	TestEqual(TEXT("All sixty-two commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -23657,8 +23658,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All fifty-nine commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
+	TestEqual(TEXT("All sixty-two commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -24232,8 +24233,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All fifty-nine commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 59);
+	TestEqual(TEXT("All sixty-two commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 62);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);
@@ -25120,6 +25121,790 @@ bool FMatchPlayAuthoritativeSessionLongShotSideOwnedAuthorityFoundationTest
 		CountOccurrences(
 			ControllerSource,
 			TEXT("Request.AttackSequence = InteractionView.AttackSequence;")) >= 4);
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionCutInsideShotDirectAuthorityFoundationTest,
+	"69.CutInsideShotAuthorityFoundation.Direct")
+
+bool FMatchPlayAuthoritativeSessionCutInsideShotDirectAuthorityFoundationTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using ECategory = EFMCodexLocalMatchInteractionCategory;
+	using EDirectError =
+		EMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanErrorCode;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	(void)Parameters;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveCutInsideShotDirectAttackRoll),
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const
+				FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest&)>);
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveCutInsideShotDirectDefenseRoll),
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const
+				FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest&)>);
+	TestEqual(TEXT("CutInside Direct Attack command follows LongShot foundation"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveCutInsideShotDirectAttackRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveLongShotDeadCornerRoll) + 1);
+	TestEqual(TEXT("CutInside Direct Defense command follows Attack"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveCutInsideShotDirectDefenseRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveCutInsideShotDirectAttackRoll) + 1);
+
+	auto MakeSkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::CutInsideShot)));
+	};
+	auto ReachResolvedBranch = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		const EMatchPlayElectiveBranchIntent Intent,
+		FReachabilityTrace& Trace)
+	{
+		if (!BuildStage7165ToAwaitingBranchIntent(
+				Session,
+				Prefix,
+				ESkillRuleType::CutInsideShot,
+				Trace))
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest Branch;
+		Branch.AttackSequence = Trace.AttackSequence;
+		Branch.RequestingSide = Trace.AttackingSide;
+		Branch.Intent = Intent;
+		return Session.SubmitBranchIntent(Branch).IntentResult.bSuccess
+			&& Session.BeginResolutionSession().BeginResult.bSuccess
+			&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess;
+	};
+
+	// Both canonical ImmediateMiss values terminate after exactly one Attack D6.
+	for (const int32 ImmediateMissRoll : { 1, 2 })
+	{
+		const FString Prefix = FString::Printf(
+			TEXT("CutInsideTypedImmediateMiss%d"), ImmediateMissRoll);
+		const FName SkillId = MakeSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::CutInsideShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(ImmediateMissRoll));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("ImmediateMiss fixture reaches CutInside DirectShot"),
+			ReachResolvedBranch(
+				Session,
+				Prefix,
+				EMatchPlayElectiveBranchIntent::DirectShot,
+				Trace));
+
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest
+			Request;
+		Request.AttackSequence = Trace.AttackSequence;
+		Request.RequestingSide = Trace.AttackingSide;
+		const auto Result =
+			Session.ResolveCutInsideShotDirectAttackRoll(Request);
+		const FMatchPlayState After = Session.GetStateSnapshot();
+		const auto& Rolls = After.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("ImmediateMiss typed request and terminal succeed"),
+			Result.RuntimeEnvelope.bDomainSuccess
+				&& Result.OrchestrationResult.bSuccess
+				&& Result.bTerminalCompletionAttempted
+				&& Result.TerminalResult.bSuccess
+				&& !Result.TerminalResult.bIsGoal);
+		TestEqual(TEXT("ImmediateMiss consumes exactly one D6"),
+			Post.GetCallCount(), 1);
+		TestEqual(TEXT("ImmediateMiss persists exactly one roll"),
+			Rolls.Num(), 1);
+		if (Rolls.Num() == 1)
+		{
+			TestEqual(TEXT("ImmediateMiss roll purpose is PrimaryAttack"),
+				Rolls[0].Purpose, EPurpose::PrimaryAttack);
+			TestEqual(TEXT("ImmediateMiss raw D6 persists"),
+				Rolls[0].RawD6, ImmediateMissRoll);
+		}
+		TestEqual(TEXT("ImmediateMiss uses canonical CutInside decision"),
+			Result.OrchestrationResult.CutInsideShotResult.Decision,
+			ECutInsideShotDirectShotDecision::ImmediateMiss);
+		TestEqual(TEXT("ImmediateMiss remains pending explicit NextRound"),
+			After.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestEqual(TEXT("ImmediateMiss preserves AttackSequence"),
+			After.CurrentAttack.AttackSequence, Trace.AttackSequence);
+		TestEqual(TEXT("ImmediateMiss view exposes only NextRound"),
+			FFMCodexLocalMatchInteractionViewBuilder::Build(After, Rules)
+				.InteractionCategory,
+			ECategory::AdvanceAfterTerminal);
+
+		const FMatchPlayState BeforeReplay = After;
+		const auto Replay =
+			Session.ResolveCutInsideShotDirectAttackRoll(Request);
+		TestEqual(TEXT("Terminal replay rejects at runtime boundary"),
+			Replay.RuntimeEnvelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
+		TestEqual(TEXT("Terminal replay consumes zero additional RNG"),
+			Post.GetCallCount(), 1);
+		TestTrue(TEXT("Terminal replay preserves authoritative State"),
+			AreStatesEqual(BeforeReplay, Session.GetStateSnapshot()));
+	}
+
+	// Attack=3 commits a durable prefix; Defense is a separate side-owned D6.
+	{
+		const FString Prefix(TEXT("CutInsideTypedDirectOwnership"));
+		const FName SkillId = MakeSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::CutInsideShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(3));
+		Post.Enqueue(MakePostRouteSuccess(4));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Direct ownership fixture reaches CutInside DirectShot"),
+			ReachResolvedBranch(
+				Session,
+				Prefix,
+				EMatchPlayElectiveBranchIntent::DirectShot,
+				Trace));
+		const FMatchPlayState AttackPending = Session.GetStateSnapshot();
+		const auto PendingView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(
+				AttackPending, Rules);
+		TestEqual(TEXT("Fresh Direct snapshot exposes typed Attack request"),
+			PendingView.InteractionCategory,
+			ECategory::RollCutInsideShotDirectAttack);
+		TestEqual(TEXT("Direct Attack belongs to attacker"),
+			PendingView.ExpectedActingPlayer, Trace.AttackingSide);
+
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest
+			DefenseRequest;
+		DefenseRequest.AttackSequence = Trace.AttackSequence;
+		DefenseRequest.RequestingSide = Trace.DefendingSide;
+		const auto PrematureDefense =
+			Session.ResolveCutInsideShotDirectDefenseRoll(DefenseRequest);
+		TestEqual(TEXT("Premature Defense rejects at authoritative step"),
+			PrematureDefense.OrchestrationResult.ErrorCode,
+			EDirectError::WrongCutInsideShotDirectRollStep);
+		TestEqual(TEXT("Premature Defense consumes zero RNG"),
+			Post.GetCallCount(), 0);
+		TestTrue(TEXT("Premature Defense preserves State"),
+			AreStatesEqual(AttackPending, Session.GetStateSnapshot()));
+
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest
+			AttackRequest;
+		AttackRequest.AttackSequence = Trace.AttackSequence;
+		AttackRequest.RequestingSide = Trace.AttackingSide;
+		auto WrongSideAttack = AttackRequest;
+		WrongSideAttack.RequestingSide = Trace.DefendingSide;
+		const auto WrongSide =
+			Session.ResolveCutInsideShotDirectAttackRoll(WrongSideAttack);
+		TestEqual(TEXT("Defender cannot own Direct Attack"),
+			WrongSide.OrchestrationResult.ErrorCode,
+			EDirectError::WrongRequestingSide);
+		TestEqual(TEXT("Wrong-side Attack consumes zero RNG"),
+			Post.GetCallCount(), 0);
+
+		auto StaleAttack = AttackRequest;
+		StaleAttack.AttackSequence += 99;
+		const auto Stale =
+			Session.ResolveCutInsideShotDirectAttackRoll(StaleAttack);
+		TestEqual(TEXT("Mismatched Direct Attack sequence rejects"),
+			Stale.OrchestrationResult.ErrorCode,
+			EDirectError::AttackSequenceMismatch);
+		TestEqual(TEXT("Stale Direct Attack consumes zero RNG"),
+			Post.GetCallCount(), 0);
+
+		const auto Attack =
+			Session.ResolveCutInsideShotDirectAttackRoll(AttackRequest);
+		const FMatchPlayState AttackOnly = Session.GetStateSnapshot();
+		const auto& AttackOnlyRolls = AttackOnly.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("Valid Direct Attack succeeds without terminal completion"),
+			Attack.RuntimeEnvelope.bDomainSuccess
+				&& Attack.OrchestrationResult.bSuccess
+				&& !Attack.bTerminalCompletionAttempted);
+		TestEqual(TEXT("Valid Direct Attack consumes exactly one D6"),
+			Post.GetCallCount(), 1);
+		TestEqual(TEXT("Attack-only snapshot persists one record"),
+			AttackOnlyRolls.Num(), 1);
+		if (AttackOnlyRolls.Num() == 1)
+		{
+			TestEqual(TEXT("Attack-only record is PrimaryAttack"),
+				AttackOnlyRolls[0].Purpose, EPurpose::PrimaryAttack);
+			TestEqual(TEXT("Attack-only raw D6 is preserved"),
+				AttackOnlyRolls[0].RawD6, 3);
+		}
+		TestEqual(TEXT("Attack-only snapshot preserves sequence"),
+			AttackOnly.CurrentAttack.AttackSequence, Trace.AttackSequence);
+		TestEqual(TEXT("Attack-only snapshot remains Active"),
+			AttackOnly.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::Active);
+		TestTrue(TEXT("Attack-only snapshot remains canonical"),
+			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
+				AttackOnly).bIsCanonical);
+
+		const auto Reconstructed =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(AttackOnly, Rules);
+		const auto ReconstructedAgain =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(AttackOnly, Rules);
+		TestEqual(TEXT("Reconstruction exposes typed Defense request"),
+			Reconstructed.InteractionCategory,
+			ECategory::RollCutInsideShotDirectDefense);
+		TestTrue(TEXT("Reconstruction marks only CutInside Defense pending"),
+			!Reconstructed.bCutInsideShotDirectAttackRollPending
+				&& Reconstructed.bCutInsideShotDirectDefenseRollPending);
+		TestEqual(TEXT("Reconstructed Defense belongs to defender"),
+			Reconstructed.ExpectedActingPlayer, Trace.DefendingSide);
+		TestEqual(TEXT("Repeated reconstruction preserves category"),
+			ReconstructedAgain.InteractionCategory,
+			Reconstructed.InteractionCategory);
+		TestEqual(TEXT("Reconstruction consumes zero RNG"),
+			Post.GetCallCount(), 1);
+		const auto* AttackFact = Reconstructed.ResolutionFacts.Rolls
+			.FindByPredicate([](const FMatchPlayResolutionRollFact& Roll)
+			{
+				return Roll.PostRoutePurpose == EPurpose::PrimaryAttack;
+			});
+		const auto* DefenseFact = Reconstructed.ResolutionFacts.Rolls
+			.FindByPredicate([](const FMatchPlayResolutionRollFact& Roll)
+			{
+				return Roll.PostRoutePurpose == EPurpose::PrimaryDefense;
+			});
+		const auto* PartialContest =
+			Reconstructed.ResolutionFacts.FormulaContests.FindByPredicate(
+				[](const FMatchPlayResolutionFormulaContestFact& Contest)
+				{
+					return Contest.ContestId
+						== FName(TEXT("CutInsideShot.DirectShot"));
+				});
+		TestTrue(TEXT("Reconstruction projects resolved Attack fact"),
+			AttackFact != nullptr && AttackFact->bResolved
+				&& AttackFact->RawD6 == 3);
+		TestTrue(TEXT("Reconstruction projects unresolved Defense fact"),
+			DefenseFact != nullptr && !DefenseFact->bResolved
+				&& DefenseFact->bConditionallyRequired
+				&& DefenseFact->OwningSide == Trace.DefendingSide);
+		TestTrue(TEXT("Partial Formula resolves Attack row only"),
+			PartialContest != nullptr
+				&& PartialContest->AttackRow.bFinalValueResolved
+				&& !PartialContest->DefenseRow.bFinalValueResolved
+				&& !PartialContest->bHasResolvedFormula);
+
+		const auto DuplicateAttack =
+			Session.ResolveCutInsideShotDirectAttackRoll(AttackRequest);
+		TestEqual(TEXT("Duplicate Attack rejects before provider"),
+			DuplicateAttack.OrchestrationResult.ErrorCode,
+			EDirectError::WrongCutInsideShotDirectRollStep);
+		TestEqual(TEXT("Duplicate Attack consumes zero additional RNG"),
+			Post.GetCallCount(), 1);
+		TestTrue(TEXT("Duplicate Attack preserves prefix"),
+			AreStatesEqual(AttackOnly, Session.GetStateSnapshot()));
+
+		auto WrongSideDefense = DefenseRequest;
+		WrongSideDefense.RequestingSide = Trace.AttackingSide;
+		const auto WrongDefense =
+			Session.ResolveCutInsideShotDirectDefenseRoll(WrongSideDefense);
+		TestEqual(TEXT("Attacker cannot own Direct Defense"),
+			WrongDefense.OrchestrationResult.ErrorCode,
+			EDirectError::WrongRequestingSide);
+		TestEqual(TEXT("Wrong-side Defense consumes zero RNG"),
+			Post.GetCallCount(), 1);
+
+		auto StaleDefense = DefenseRequest;
+		StaleDefense.AttackSequence += 99;
+		const auto StaleDefenseResult =
+			Session.ResolveCutInsideShotDirectDefenseRoll(StaleDefense);
+		TestEqual(TEXT("Stale Defense rejects by AttackSequence"),
+			StaleDefenseResult.OrchestrationResult.ErrorCode,
+			EDirectError::AttackSequenceMismatch);
+		TestEqual(TEXT("Stale Defense consumes zero RNG"),
+			Post.GetCallCount(), 1);
+
+		const auto Defense =
+			Session.ResolveCutInsideShotDirectDefenseRoll(DefenseRequest);
+		const FMatchPlayState Terminal = Session.GetStateSnapshot();
+		TestTrue(TEXT("Valid Defense and deterministic terminal complete"),
+			Defense.RuntimeEnvelope.bDomainSuccess
+				&& Defense.OrchestrationResult.bSuccess
+				&& Defense.bTerminalCompletionAttempted
+				&& Defense.TerminalResult.bSuccess
+				&& Defense.TerminalResult.bUsedFormula);
+		TestEqual(TEXT("Valid Defense consumes one additional D6"),
+			Post.GetCallCount(), 2);
+		TestEqual(TEXT("Completed Direct persists both raw rolls"),
+			Terminal.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.Num(), 2);
+		TestEqual(TEXT("Formula completion preserves explicit NextRound"),
+			Terminal.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestEqual(TEXT("Terminal reconstruction exposes NextRound"),
+			FFMCodexLocalMatchInteractionViewBuilder::Build(Terminal, Rules)
+				.InteractionCategory,
+			ECategory::AdvanceAfterTerminal);
+		const auto TerminalFacts =
+			FMatchPlayCurrentAttackResolutionFactProjectionQuery::Project(
+				Terminal, &Rules);
+		const auto* CompletedContest =
+			TerminalFacts.FormulaContests.FindByPredicate(
+				[](const FMatchPlayResolutionFormulaContestFact& Contest)
+				{
+					return Contest.ContestId
+						== FName(TEXT("CutInsideShot.DirectShot"));
+				});
+		const bool bHasDefensePlusTwo = CompletedContest != nullptr
+			&& CompletedContest->DefenseRow.Terms.ContainsByPredicate(
+				[](const FMatchPlayResolutionFormulaTermFact& Term)
+				{
+					return Term.Kind
+						== EMatchPlayResolutionFormulaTermKind::FixedModifier
+						&& FMath::IsNearlyEqual(Term.Contribution, 2.0f);
+				});
+		TestTrue(TEXT("Completed FormulaFacts are authoritative and resolved"),
+			TerminalFacts.bSuccess && CompletedContest != nullptr
+				&& CompletedContest->bHasResolvedFormula);
+		TestTrue(TEXT("Completed FormulaFacts preserve defense plus two"),
+			bHasDefensePlusTwo);
+
+		const FMatchPlayState BeforeDefenseReplay = Terminal;
+		const auto DefenseReplay =
+			Session.ResolveCutInsideShotDirectDefenseRoll(DefenseRequest);
+		TestEqual(TEXT("Terminal Defense replay rejects before provider"),
+			DefenseReplay.RuntimeEnvelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
+		TestEqual(TEXT("Terminal Defense replay consumes zero RNG"),
+			Post.GetCallCount(), 2);
+		TestTrue(TEXT("Terminal Defense replay preserves State"),
+			AreStatesEqual(BeforeDefenseReplay, Session.GetStateSnapshot()));
+
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+		Advance.AttackSequence = Trace.AttackSequence;
+		Advance.RequestingSide = Trace.AttackingSide;
+		TestTrue(TEXT("Explicit NextRound advances after terminal"),
+			Session.AdvanceAfterTerminal(Advance).CompletionResult.bSuccess);
+		FReachabilityTrace Next;
+		TestTrue(TEXT("A later attack reaches the same CutInside branch phase"),
+			BuildNextThroughBallToReadyForResolution(
+				Session,
+				Rules,
+				SkillId,
+				Next,
+				ESkillRuleType::CutInsideShot));
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest NextBranch;
+		NextBranch.AttackSequence = Next.AttackSequence;
+		NextBranch.RequestingSide = Next.AttackingSide;
+		NextBranch.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+		TestTrue(TEXT("Later attack resolves matching Direct branch"),
+			Session.SubmitBranchIntent(NextBranch).IntentResult.bSuccess
+				&& Session.BeginResolutionSession().BeginResult.bSuccess
+				&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess);
+		const FMatchPlayState LaterPending = Session.GetStateSnapshot();
+		const int32 CallsBeforeCrossAttackReplay = Post.GetCallCount();
+		const auto CrossAttackReplay =
+			Session.ResolveCutInsideShotDirectAttackRoll(AttackRequest);
+		TestEqual(TEXT("Old request rejects against later similar phase"),
+			CrossAttackReplay.OrchestrationResult.ErrorCode,
+			EDirectError::AttackSequenceMismatch);
+		TestEqual(TEXT("Cross-attack stale request consumes zero RNG"),
+			Post.GetCallCount(), CallsBeforeCrossAttackReplay);
+		TestTrue(TEXT("Cross-attack stale request preserves later State"),
+			AreStatesEqual(LaterPending, Session.GetStateSnapshot()));
+	}
+
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionCutInsideShotDirectProviderFailureTest,
+	"69.CutInsideShotAuthorityFoundation.DirectProviderFailure")
+
+bool FMatchPlayAuthoritativeSessionCutInsideShotDirectProviderFailureTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EDirectError =
+		EMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanErrorCode;
+	(void)Parameters;
+
+	const FString Prefix(TEXT("CutInsideTypedDirectProviderFailure"));
+	const FName SkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"),
+		*Prefix,
+		static_cast<int32>(ESkillRuleType::CutInsideShot)));
+	const FSkillRuleSnapshotSet Rules =
+		MakeSkillRuleSet(SkillId, ESkillRuleType::CutInsideShot);
+	InitialRouteFixtures::FQueueRollProvider Initial;
+	FQueuePostRouteRollProvider Post;
+	FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+	FReachabilityTrace Trace;
+	TestTrue(TEXT("Provider failure fixture reaches CutInside branch"),
+		BuildStage7165ToAwaitingBranchIntent(
+			Session, Prefix, ESkillRuleType::CutInsideShot, Trace));
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest Branch;
+	Branch.AttackSequence = Trace.AttackSequence;
+	Branch.RequestingSide = Trace.AttackingSide;
+	Branch.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	TestTrue(TEXT("Provider failure fixture resolves Direct branch"),
+		Session.SubmitBranchIntent(Branch).IntentResult.bSuccess
+			&& Session.BeginResolutionSession().BeginResult.bSuccess
+			&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess);
+
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest Attack;
+	Attack.AttackSequence = Trace.AttackSequence;
+	Attack.RequestingSide = Trace.AttackingSide;
+	const FMatchPlayState AttackPending = Session.GetStateSnapshot();
+	const auto AttackFailure =
+		Session.ResolveCutInsideShotDirectAttackRoll(Attack);
+	TestEqual(TEXT("Direct Attack provider failure is explicit"),
+		AttackFailure.OrchestrationResult.ErrorCode,
+		EDirectError::PostRouteRollProviderFailed);
+	TestEqual(TEXT("Failed Direct Attack attempts one provider operation"),
+		Post.GetCallCount(), 1);
+	TestTrue(TEXT("Failed Direct Attack commits no partial state"),
+		AreStatesEqual(AttackPending, Session.GetStateSnapshot()));
+	TestFalse(TEXT("Failed Direct Attack does not attempt terminal"),
+		AttackFailure.bTerminalCompletionAttempted);
+
+	Post.Enqueue(MakePostRouteSuccess(3));
+	const auto AttackRetry =
+		Session.ResolveCutInsideShotDirectAttackRoll(Attack);
+	const FMatchPlayState AttackOnly = Session.GetStateSnapshot();
+	TestTrue(TEXT("Direct Attack is safely retryable"),
+		AttackRetry.OrchestrationResult.bSuccess
+			&& !AttackRetry.bTerminalCompletionAttempted);
+	TestEqual(TEXT("Successful retry adds one provider operation"),
+		Post.GetCallCount(), 2);
+	TestEqual(TEXT("Successful retry commits only Attack D6"),
+		AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+			.RollRecords.Num(), 1);
+
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest Defense;
+	Defense.AttackSequence = Trace.AttackSequence;
+	Defense.RequestingSide = Trace.DefendingSide;
+	const auto DefenseFailure =
+		Session.ResolveCutInsideShotDirectDefenseRoll(Defense);
+	TestEqual(TEXT("Direct Defense provider failure is explicit"),
+		DefenseFailure.OrchestrationResult.ErrorCode,
+		EDirectError::PostRouteRollProviderFailed);
+	TestEqual(TEXT("Failed Direct Defense attempts one provider operation"),
+		Post.GetCallCount(), 3);
+	TestTrue(TEXT("Failed Direct Defense preserves Attack-only prefix"),
+		AreStatesEqual(AttackOnly, Session.GetStateSnapshot()));
+	TestFalse(TEXT("Failed Direct Defense does not attempt Formula terminal"),
+		DefenseFailure.bTerminalCompletionAttempted);
+
+	Post.Enqueue(MakePostRouteSuccess(4));
+	const auto DefenseRetry =
+		Session.ResolveCutInsideShotDirectDefenseRoll(Defense);
+	const FMatchPlayState Terminal = Session.GetStateSnapshot();
+	TestTrue(TEXT("Direct Defense is safely retryable"),
+		DefenseRetry.OrchestrationResult.bSuccess
+			&& DefenseRetry.bTerminalCompletionAttempted
+			&& DefenseRetry.TerminalResult.bSuccess
+			&& DefenseRetry.TerminalResult.bUsedFormula);
+	TestEqual(TEXT("Successful Defense retry adds one provider operation"),
+		Post.GetCallCount(), 4);
+	TestEqual(TEXT("Defense retry commits both raw rolls"),
+		Terminal.CurrentAttack.ResolutionSession.PostRouteRollProgress
+			.RollRecords.Num(), 2);
+	TestEqual(TEXT("Defense retry finishes at pending NextRound"),
+		Terminal.CurrentAttack.LifecycleState,
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionCutInsideShotDeadCornerAuthorityFoundationTest,
+	"69.CutInsideShotAuthorityFoundation.DeadCorner")
+
+bool FMatchPlayAuthoritativeSessionCutInsideShotDeadCornerAuthorityFoundationTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using ECategory = EFMCodexLocalMatchInteractionCategory;
+	using EDeadError =
+		EMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionErrorCode;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	(void)Parameters;
+
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession
+			::ResolveCutInsideShotDeadCornerRoll),
+		FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const
+				FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest&)>);
+	TestEqual(TEXT("CutInside DeadCorner command follows Direct Defense"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveCutInsideShotDeadCornerRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveCutInsideShotDirectDefenseRoll) + 1);
+
+	auto MakeSkillId = [](const FString& Prefix)
+	{
+		return FName(*FString::Printf(
+			TEXT("Skill.%s.%d"),
+			*Prefix,
+			static_cast<int32>(ESkillRuleType::CutInsideShot)));
+	};
+	auto ReachDeadCorner = [](FMatchPlayAuthoritativeSession& Session,
+		const FString& Prefix,
+		FReachabilityTrace& Trace)
+	{
+		if (!BuildStage7165ToAwaitingBranchIntent(
+				Session,
+				Prefix,
+				ESkillRuleType::CutInsideShot,
+				Trace))
+		{
+			return false;
+		}
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest Branch;
+		Branch.AttackSequence = Trace.AttackSequence;
+		Branch.RequestingSide = Trace.AttackingSide;
+		Branch.Intent = EMatchPlayElectiveBranchIntent::DeadCorner;
+		return Session.SubmitBranchIntent(Branch).IntentResult.bSuccess
+			&& Session.BeginResolutionSession().BeginResult.bSuccess
+			&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess;
+	};
+
+	// Goal and Miss both use one typed attacker request consuming exactly 2 D6.
+	struct FOutcomeCase
+	{
+		int32 First;
+		int32 Second;
+		bool bGoal;
+	};
+	const FOutcomeCase Cases[] = {
+		{ 5, 6, true },
+		{ 5, 5, false }
+	};
+	for (const FOutcomeCase& Case : Cases)
+	{
+		const FString Prefix = Case.bGoal
+			? TEXT("CutInsideTypedDeadCornerGoal")
+			: TEXT("CutInsideTypedDeadCornerMiss");
+		const FName SkillId = MakeSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::CutInsideShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(Case.First));
+		Post.Enqueue(MakePostRouteSuccess(Case.Second));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Outcome fixture reaches CutInside DeadCorner"),
+			ReachDeadCorner(Session, Prefix, Trace));
+		const FMatchPlayState Pending = Session.GetStateSnapshot();
+		const auto PendingView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(Pending, Rules);
+		TestEqual(TEXT("DeadCorner reconstruction exposes typed pair request"),
+			PendingView.InteractionCategory,
+			ECategory::RollCutInsideShotDeadCorner);
+		TestTrue(TEXT("DeadCorner reconstruction marks pair pending"),
+			PendingView.bCutInsideShotDeadCornerRollPending);
+		TestEqual(TEXT("DeadCorner action belongs to attacker"),
+			PendingView.ExpectedActingPlayer, Trace.AttackingSide);
+
+		FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest Request;
+		Request.AttackSequence = Trace.AttackSequence;
+		Request.RequestingSide = Trace.AttackingSide;
+		auto WrongSideRequest = Request;
+		WrongSideRequest.RequestingSide = Trace.DefendingSide;
+		const auto WrongSide =
+			Session.ResolveCutInsideShotDeadCornerRoll(WrongSideRequest);
+		TestEqual(TEXT("Defender cannot own DeadCorner pair"),
+			WrongSide.OrchestrationResult.ErrorCode,
+			EDeadError::WrongRequestingSide);
+		TestEqual(TEXT("Wrong-side DeadCorner consumes zero RNG"),
+			Post.GetCallCount(), 0);
+		TestTrue(TEXT("Wrong-side DeadCorner preserves State"),
+			AreStatesEqual(Pending, Session.GetStateSnapshot()));
+
+		auto StaleRequest = Request;
+		StaleRequest.AttackSequence += 99;
+		const auto Stale =
+			Session.ResolveCutInsideShotDeadCornerRoll(StaleRequest);
+		TestEqual(TEXT("Stale DeadCorner rejects by AttackSequence"),
+			Stale.OrchestrationResult.ErrorCode,
+			EDeadError::AttackSequenceMismatch);
+		TestEqual(TEXT("Stale DeadCorner consumes zero RNG"),
+			Post.GetCallCount(), 0);
+
+		const auto Outcome =
+			Session.ResolveCutInsideShotDeadCornerRoll(Request);
+		const FMatchPlayState Terminal = Session.GetStateSnapshot();
+		const auto& Rolls = Terminal.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("DeadCorner pair and deterministic terminal succeed"),
+			Outcome.RuntimeEnvelope.bDomainSuccess
+				&& Outcome.OrchestrationResult.bSuccess
+				&& Outcome.bTerminalCompletionAttempted
+				&& Outcome.TerminalResult.bSuccess
+				&& Outcome.TerminalResult.bIsGoal == Case.bGoal
+				&& !Outcome.TerminalResult.bUsedFormula);
+		TestEqual(TEXT("DeadCorner one request consumes exactly two D6"),
+			Post.GetCallCount(), 2);
+		TestEqual(TEXT("DeadCorner persists both raw rolls"), Rolls.Num(), 2);
+		if (Rolls.Num() == 2)
+		{
+			TestEqual(TEXT("DeadCorner first purpose is PairedAttackA"),
+				Rolls[0].Purpose, EPurpose::PairedAttackA);
+			TestEqual(TEXT("DeadCorner second purpose is PairedAttackB"),
+				Rolls[1].Purpose, EPurpose::PairedAttackB);
+			TestEqual(TEXT("DeadCorner first raw D6 persists"),
+				Rolls[0].RawD6, Case.First);
+			TestEqual(TEXT("DeadCorner second raw D6 persists"),
+				Rolls[1].RawD6, Case.Second);
+		}
+		TestEqual(TEXT("DeadCorner uses canonical outcome"),
+			Outcome.OrchestrationResult.CutInsideShotResult.Decision,
+			Case.bGoal
+				? ECutInsideShotDeadCornerDecision::Goal
+				: ECutInsideShotDeadCornerDecision::Miss);
+		TestEqual(TEXT("DeadCorner remains pending explicit NextRound"),
+			Terminal.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestEqual(TEXT("DeadCorner terminal reconstructs NextRound"),
+			FFMCodexLocalMatchInteractionViewBuilder::Build(Terminal, Rules)
+				.InteractionCategory,
+			ECategory::AdvanceAfterTerminal);
+
+		const FMatchPlayState BeforeReplay = Terminal;
+		const auto Replay =
+			Session.ResolveCutInsideShotDeadCornerRoll(Request);
+		TestEqual(TEXT("DeadCorner terminal replay rejects before provider"),
+			Replay.RuntimeEnvelope.RuntimeFailureCode,
+			EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
+		TestEqual(TEXT("DeadCorner terminal replay consumes zero RNG"),
+			Post.GetCallCount(), 2);
+		TestTrue(TEXT("DeadCorner terminal replay preserves State"),
+			AreStatesEqual(BeforeReplay, Session.GetStateSnapshot()));
+	}
+
+	// Failure before the first value commits no pair and remains retryable.
+	{
+		const FString Prefix(TEXT("CutInsideDeadCornerFirstFailure"));
+		const FName SkillId = MakeSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::CutInsideShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("First-failure fixture reaches DeadCorner"),
+			ReachDeadCorner(Session, Prefix, Trace));
+		const FMatchPlayState Pending = Session.GetStateSnapshot();
+		FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest Request;
+		Request.AttackSequence = Trace.AttackSequence;
+		Request.RequestingSide = Trace.AttackingSide;
+		const auto Failure =
+			Session.ResolveCutInsideShotDeadCornerRoll(Request);
+		TestEqual(TEXT("First-provider failure is explicit"),
+			Failure.OrchestrationResult.ErrorCode,
+			EDeadError::PostRouteRollProviderFailed);
+		TestEqual(TEXT("First-provider failure makes one call"),
+			Post.GetCallCount(), 1);
+		TestTrue(TEXT("First-provider failure commits no partial pair"),
+			AreStatesEqual(Pending, Session.GetStateSnapshot()));
+		Post.Enqueue(MakePostRouteSuccess(5));
+		Post.Enqueue(MakePostRouteSuccess(6));
+		const auto Retry =
+			Session.ResolveCutInsideShotDeadCornerRoll(Request);
+		TestTrue(TEXT("First-provider failure is safely retryable"),
+			Retry.RuntimeEnvelope.bDomainSuccess
+				&& Retry.TerminalResult.bSuccess);
+		TestEqual(TEXT("Retry consumes exactly two additional calls"),
+			Post.GetCallCount(), 3);
+	}
+
+	// Failure obtaining the second value adopts neither half of the pair.
+	{
+		const FString Prefix(TEXT("CutInsideDeadCornerSecondFailure"));
+		const FName SkillId = MakeSkillId(Prefix);
+		const FSkillRuleSnapshotSet Rules =
+			MakeSkillRuleSet(SkillId, ESkillRuleType::CutInsideShot);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(5));
+		Post.Enqueue(MakePostRouteFailure());
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		TestTrue(TEXT("Second-failure fixture reaches DeadCorner"),
+			ReachDeadCorner(Session, Prefix, Trace));
+		const FMatchPlayState Pending = Session.GetStateSnapshot();
+		FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest Request;
+		Request.AttackSequence = Trace.AttackSequence;
+		Request.RequestingSide = Trace.AttackingSide;
+		const auto Failure =
+			Session.ResolveCutInsideShotDeadCornerRoll(Request);
+		TestEqual(TEXT("Second-provider failure is explicit"),
+			Failure.OrchestrationResult.ErrorCode,
+			EDeadError::PostRouteRollProviderFailed);
+		TestEqual(TEXT("Second-provider failure attempts both operations"),
+			Post.GetCallCount(), 2);
+		TestTrue(TEXT("Second-provider failure commits no half-pair"),
+			AreStatesEqual(Pending, Session.GetStateSnapshot()));
+		Post.Enqueue(MakePostRouteSuccess(5));
+		Post.Enqueue(MakePostRouteSuccess(6));
+		const auto Retry =
+			Session.ResolveCutInsideShotDeadCornerRoll(Request);
+		TestTrue(TEXT("Second-provider failure is safely retryable"),
+			Retry.RuntimeEnvelope.bDomainSuccess
+				&& Retry.TerminalResult.bSuccess);
+		TestEqual(TEXT("Second-failure retry consumes one fresh pair"),
+			Post.GetCallCount(), 4);
+	}
+
+	FString ControllerSource;
+	TestTrue(TEXT("Controller source loads for CutInside request boundary"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+			ControllerSource));
+	const int32 CutInsideCase = ControllerSource.Find(
+		TEXT("case ESkillRuleType::CutInsideShot:"));
+	const int32 LongShotCase = CutInsideCase == INDEX_NONE
+		? INDEX_NONE
+		: ControllerSource.Find(
+			TEXT("case ESkillRuleType::LongShot:"),
+			ESearchCase::CaseSensitive,
+			ESearchDir::FromStart,
+			CutInsideCase);
+	const FString CutInsideContinuation = CutInsideCase == INDEX_NONE
+		|| LongShotCase == INDEX_NONE
+		? FString()
+		: ControllerSource.Mid(
+			CutInsideCase, LongShotCase - CutInsideCase);
+	TestTrue(TEXT("Controller has explicit CutInside continuation boundary"),
+		!CutInsideContinuation.IsEmpty());
+	TestFalse(TEXT("CutInside no longer invokes legacy atomic Direct"),
+		CutInsideContinuation.Contains(
+			TEXT("ResolveDirectShotPostRouteDecisionOrPlan")));
+	TestFalse(TEXT("CutInside no longer invokes legacy atomic DeadCorner"),
+		CutInsideContinuation.Contains(
+			TEXT("ResolveDeadCornerPostRouteDecision")));
+	TestTrue(TEXT("Controller exposes all three typed CutInside forwards"),
+		ControllerSource.Contains(
+			TEXT("ResolveCutInsideShotDirectAttackRoll"))
+			&& ControllerSource.Contains(
+				TEXT("ResolveCutInsideShotDirectDefenseRoll"))
+			&& ControllerSource.Contains(
+				TEXT("ResolveCutInsideShotDeadCornerRoll")));
+
 	return true;
 }
 

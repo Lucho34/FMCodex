@@ -235,6 +235,11 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 	const bool bExplicitLongShotRoll =
 		Request.Mode == EMode::ResolveLongShotAttackRoll
 		|| Request.Mode == EMode::ResolveLongShotDefenseRoll;
+	const bool bExplicitCutInsideShotRoll =
+		Request.Mode == EMode::ResolveCutInsideShotAttackRoll
+		|| Request.Mode == EMode::ResolveCutInsideShotDefenseRoll;
+	const bool bExplicitPlayerOwnedRoll =
+		bExplicitLongShotRoll || bExplicitCutInsideShotRoll;
 	const bool bCompletedPlanRegeneration =
 		Request.Mode == EMode::RegenerateCompletedPlan;
 	if (bExplicitLongShotRoll
@@ -244,6 +249,16 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 	{
 		SetFailure(Result, EError::NotLongShotDirectShotBranch,
 			TEXT("Explicit LongShot Direct rolls require the LongShot DirectShot branch."));
+		return Result;
+	}
+	if (bExplicitCutInsideShotRoll
+		&& (BeforeSession.ActualBranch.ActionType
+				!= ESkillRuleType::CutInsideShot
+			|| BeforeSession.ActualBranch.CutInsideShot
+				!= EMatchPlayCutInsideShotActualBranch::DirectShot))
+	{
+		SetFailure(Result, EError::NotCutInsideShotDirectShotBranch,
+			TEXT("Explicit CutInsideShot Direct rolls require the CutInsideShot DirectShot branch."));
 		return Result;
 	}
 
@@ -276,24 +291,28 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 			TEXT("DirectShot regeneration requires an already-complete roll contract."));
 		return Result;
 	}
-	if (bExplicitLongShotRoll)
+	if (bExplicitPlayerOwnedRoll)
 	{
 		if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
 			&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
 		{
 			SetFailure(Result, EError::InvalidRequestingSide,
-				TEXT("LongShot Direct roll commands require PlayerA or PlayerB as RequestingSide."));
+				TEXT("Explicit DirectShot roll commands require PlayerA or PlayerB as RequestingSide."));
 			return Result;
 		}
 		const EPurpose RequestedPurpose =
 			Request.Mode == EMode::ResolveLongShotAttackRoll
+				|| Request.Mode == EMode::ResolveCutInsideShotAttackRoll
 				? EPurpose::PrimaryAttack
 				: EPurpose::PrimaryDefense;
 		if (Result.ProgressResult.bContractComplete
 			|| Result.ProgressResult.NextPurpose != RequestedPurpose)
 		{
-			SetFailure(Result, EError::WrongLongShotDirectRollStep,
-				TEXT("The requested LongShot Direct roll is not the current authoritative step."));
+			SetFailure(Result,
+				bExplicitLongShotRoll
+					? EError::WrongLongShotDirectRollStep
+					: EError::WrongCutInsideShotDirectRollStep,
+				TEXT("The requested explicit DirectShot roll is not the current authoritative step."));
 			return Result;
 		}
 		const EInitialTurnOrderPlayer ExpectedSide =
@@ -303,7 +322,7 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 		if (Request.RequestingSide != ExpectedSide)
 		{
 			SetFailure(Result, EError::WrongRequestingSide,
-				TEXT("The requesting side does not own the current LongShot Direct roll."));
+				TEXT("The requesting side does not own the current explicit DirectShot roll."));
 			return Result;
 		}
 	}
@@ -320,7 +339,8 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 		return Result;
 	}
 
-	const int32 MaximumRollsThisCommand = bExplicitLongShotRoll ? 1 : MAX_int32;
+	const int32 MaximumRollsThisCommand =
+		bExplicitPlayerOwnedRoll ? 1 : MAX_int32;
 	while (!Result.ProgressResult.bContractComplete
 		&& Result.ProviderCallCount < MaximumRollsThisCommand)
 	{
@@ -355,7 +375,7 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 		}
 	}
 
-	if (bExplicitLongShotRoll && !Result.ProgressResult.bContractComplete)
+	if (bExplicitPlayerOwnedRoll && !Result.ProgressResult.bContractComplete)
 	{
 		Result.SessionStateValidationResult =
 			FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
@@ -429,7 +449,7 @@ FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanOrchestrator
 
 	Result.AfterState = MoveTemp(CandidateState);
 	Result.bResolvedNewRolls = Result.ProviderCallCount > 0;
-	Result.bReplayedCompleteRolls = !bExplicitLongShotRoll
+	Result.bReplayedCompleteRolls = !bExplicitPlayerOwnedRoll
 		&& Result.ProviderCallCount == 0;
 	Result.bSuccess = true;
 	return Result;

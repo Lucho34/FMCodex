@@ -1646,6 +1646,147 @@ AFMCodexLocalMatchHostGameMode::ResolveLongShotDirectDefenseRoll(
 	return Result;
 }
 
+FFMCodexLocalMatchResolveCutInsideShotDirectAttackRollResult
+AFMCodexLocalMatchHostGameMode::ResolveCutInsideShotDirectAttackRoll(
+	const FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest&
+		Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolveCutInsideShotDirectAttackRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::CutInsideShotDirectShot;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveCutInsideShotDirectAttackRoll(Request);
+		});
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess
+		&& (!Result.AuthoritativeResult.bTerminalCompletionAttempted
+			|| Result.AuthoritativeResult.TerminalResult.bSuccess);
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		const FString DomainErrorMessage =
+			Result.AuthoritativeResult.bTerminalCompletionAttempted
+				&& !Result.AuthoritativeResult.TerminalResult.bSuccess
+			? Result.AuthoritativeResult.TerminalResult.ErrorMessage
+			: Result.AuthoritativeResult.OrchestrationResult.ErrorMessage;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			DomainErrorMessage);
+	}
+	return Result;
+}
+
+FFMCodexLocalMatchResolveCutInsideShotDirectDefenseRollResult
+AFMCodexLocalMatchHostGameMode::ResolveCutInsideShotDirectDefenseRoll(
+	const FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest&
+		Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolveCutInsideShotDirectDefenseRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::CutInsideShotDirectShot;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveCutInsideShotDirectDefenseRoll(Request);
+		});
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess
+		&& Result.AuthoritativeResult.bTerminalCompletionAttempted
+		&& Result.AuthoritativeResult.TerminalResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		const FString DomainErrorMessage =
+			Result.AuthoritativeResult.bTerminalCompletionAttempted
+				&& !Result.AuthoritativeResult.TerminalResult.bSuccess
+			? Result.AuthoritativeResult.TerminalResult.ErrorMessage
+			: Result.AuthoritativeResult.OrchestrationResult.ErrorMessage;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			DomainErrorMessage);
+	}
+	return Result;
+}
+
+FFMCodexLocalMatchResolveCutInsideShotDeadCornerRollResult
+AFMCodexLocalMatchHostGameMode::ResolveCutInsideShotDeadCornerRoll(
+	const FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest&
+		Request)
+{
+	using namespace FMCodexLocalMatchHost;
+	FFMCodexLocalMatchResolveCutInsideShotDeadCornerRollResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+		Result.ErrorMessage = NoActiveMatchMessage;
+		return Result;
+	}
+#if !UE_BUILD_SHIPPING
+	const auto DevInvocation =
+		EFMCodexLocalDevRollInvocation::CutInsideShotDeadCorner;
+#endif
+	Result.AuthoritativeResult = ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+		DevInvocation,
+#endif
+		[this, &Request]()
+		{
+			return ActiveMatchRuntime->AuthoritativeSession
+				.ResolveCutInsideShotDeadCornerRoll(Request);
+		});
+	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
+		&& Result.AuthoritativeResult.OrchestrationResult.bSuccess
+		&& Result.AuthoritativeResult.bTerminalCompletionAttempted
+		&& Result.AuthoritativeResult.TerminalResult.bSuccess;
+	if (!Result.bSuccess)
+	{
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+		const FString DomainErrorMessage =
+			Result.AuthoritativeResult.bTerminalCompletionAttempted
+				&& !Result.AuthoritativeResult.TerminalResult.bSuccess
+			? Result.AuthoritativeResult.TerminalResult.ErrorMessage
+			: Result.AuthoritativeResult.OrchestrationResult.ErrorMessage;
+		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
+			Result.AuthoritativeResult.RuntimeEnvelope,
+			DomainErrorMessage);
+	}
+	return Result;
+}
+
 FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult
 AFMCodexLocalMatchHostGameMode
 	::ResolveThroughBallBehindDefenseP1DecisionOrPlan()

@@ -847,6 +847,15 @@
 - reconstruction与生命周期：branch选择、Direct空/attack-only/completed、DeadCorner completed和terminal都由Authoritative State重建；Formula/terminal regeneration为0 RNG。InteractionView投影typed category、expected side与AttackSequence，Controller/Host保持薄转发，generic Continue不拥有未完成LongShot roll。terminal persistence与显式`AdvanceAfterTerminal`不变。
 - 范围：本决定只解除Stage 6.15.2发现的Authority capability blocker，不实现LongShot Production UMG、Reel、Formula布局、Narrative或Result。它建立LongShot-specific Stage 7 request slice，不等于network transport、reconnect或整个项目Stage 7 ready。
 
+### CD-086 - CutInside Uses Side-owned Correlated Requests and Conditional Direct Persistence
+
+- 日期：2026-08-29
+- request boundary：CutInside Direct Attack、Direct Defense与DeadCorner分别使用typed command，均携带caller-supplied`AttackSequence + RequestingSide`。Session在provider前验证sequence、owner、CutInside family、selected branch、phase与canonical next purpose；stale、wrong-side、premature、duplicate和terminal replay均不adopt State、不消费RNG或DEV one-shot。
+- Direct conditional flow：Attack `1–2`只消费一枚D6并完成既有ImmediateMiss terminal；`3–6`只持久化Attack record与真实Active attack-only snapshot。随后仅防守方可提交Defense D6；成功后继续复用既有CutInside Direct Plan、Formula、Tactical Player、GK Handling×0.5、tie、outcome与terminal contract。`AdvanceAfterTerminal`仍必须显式提交。
+- DeadCorner pair：canonical仍是进攻方一次操作消费两枚D6，sum `11–12` Goal、`2–10` Miss，不使用Formula、defender roll、GK或Tactical Player。typed command只有在A/B两枚都成功时才adopt；第二枚provider失败不得提交partial prefix。
+- reconstruction与forwarding：branch pending、Direct空/attack-only/completed、ImmediateMiss、DeadCorner completed与terminal都由Authoritative State重建。InteractionView投影typed category、expected side与AttackSequence，Controller/Host保持薄转发；generic Continue不拥有未完成CutInside gameplay RNG。非Shipping DEV为三个玩家动作提供独立semantic targets。
+- 范围：本决定只解除Stage 6.15.3审计发现的Authority capability blocker，不实现CutInside Production UMG、central surface、Reel、Formula布局、Narrative或Result。它建立CutInside-specific request foundation，不等于network transport、reconnect或整个项目Stage 7 ready。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

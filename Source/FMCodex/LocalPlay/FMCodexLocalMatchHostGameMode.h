@@ -439,6 +439,39 @@ struct FMCODEX_API FFMCodexLocalMatchResolveLongShotDirectDefenseRollResult
 };
 
 struct FMCODEX_API
+	FFMCodexLocalMatchResolveCutInsideShotDirectAttackRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveCutInsideShotDirectDefenseRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
+	FFMCodexLocalMatchResolveCutInsideShotDeadCornerRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+struct FMCODEX_API
 	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult
 {
 	bool bSuccess = false;
@@ -798,6 +831,21 @@ public:
 	FFMCodexLocalMatchResolveLongShotDirectDefenseRollResult
 	ResolveLongShotDirectDefenseRoll(
 		const FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest&
+			Request);
+
+	FFMCodexLocalMatchResolveCutInsideShotDirectAttackRollResult
+	ResolveCutInsideShotDirectAttackRoll(
+		const FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest&
+			Request);
+
+	FFMCodexLocalMatchResolveCutInsideShotDirectDefenseRollResult
+	ResolveCutInsideShotDirectDefenseRoll(
+		const FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest&
+			Request);
+
+	FFMCodexLocalMatchResolveCutInsideShotDeadCornerRollResult
+	ResolveCutInsideShotDeadCornerRoll(
+		const FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest&
 			Request);
 
 	FFMCodexLocalMatchResolveThroughBallBehindDefenseP1DecisionOrPlanResult

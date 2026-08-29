@@ -53,7 +53,10 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	SelectLongShotBranch,
 	RollLongShotDirectAttack,
 	RollLongShotDirectDefense,
-	RollLongShotDeadCorner
+	RollLongShotDeadCorner,
+	RollCutInsideShotDirectAttack,
+	RollCutInsideShotDirectDefense,
+	RollCutInsideShotDeadCorner
 };
 
 struct FMCODEX_API FFMCodexLocalMatchDeploymentOption
@@ -302,6 +305,9 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bLongShotDirectAttackRollPending = false;
 	bool bLongShotDirectDefenseRollPending = false;
 	bool bLongShotDeadCornerRollPending = false;
+	bool bCutInsideShotDirectAttackRollPending = false;
+	bool bCutInsideShotDirectDefenseRollPending = false;
+	bool bCutInsideShotDeadCornerRollPending = false;
 	bool bThroughBallFeetAttackRollPending = false;
 	bool bThroughBallFeetDefenseRollPending = false;
 	bool bThroughBallAntiOffsideAttackRollPending = false;

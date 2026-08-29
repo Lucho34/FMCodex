@@ -258,7 +258,9 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 		const int32 Seed,
 		const ESkillRuleType SkillType,
 		const bool bDeployGoalkeeper,
-		FReadyTrace& OutTrace)
+		FReadyTrace& OutTrace,
+		const EMatchPlayElectiveBranchIntent ShotIntent =
+			EMatchPlayElectiveBranchIntent::DirectShot)
 	{
 		if (!Direct.InitializeMatch(Input).OpeningResult.bSuccess
 			|| !Host.StartNewLocalMatch(Input, Rules, Seed).bSuccess
@@ -455,13 +457,17 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 			return false;
 		}
 
-		if (SkillType == ESkillRuleType::Cross)
+		if (SkillType == ESkillRuleType::Cross
+			|| SkillType == ESkillRuleType::LongShot
+			|| SkillType == ESkillRuleType::CutInsideShot)
 		{
 			FMatchPlayAuthoritativeSubmitBranchIntentRequest IntentRequest;
 			IntentRequest.AttackSequence =
 				Direct.GetStateSnapshot().CurrentAttack.AttackSequence;
 			IntentRequest.RequestingSide = OutTrace.Attacker;
-			IntentRequest.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
+			IntentRequest.Intent = SkillType == ESkillRuleType::Cross
+				? EMatchPlayElectiveBranchIntent::CrossHigh
+				: ShotIntent;
 			if (!Direct.SubmitBranchIntent(IntentRequest).IntentResult.bSuccess
 				|| !Host.SubmitBranchIntent(IntentRequest).bSuccess)
 			{
@@ -2153,6 +2159,191 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 					&& Roll.RawD6 == 6;
 			}));
 		TestTrue(TEXT("Cross pending map fully consumed"),
+			Host->GetLocalDevPendingRollOverrides().IsEmpty());
+	}
+
+	{
+		const int32 Seed = 35613;
+		const FName SkillId(TEXT("Skill.DevOverride.CutInsideDirect"));
+		const auto Rules = MakeRules(SkillId, ESkillRuleType::CutInsideShot);
+		const auto Input = MakeInput(TEXT("DevOverrideCutInsideDirect"), SkillId);
+		FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+		FMatchPlayAuthoritativeSession Direct(
+			DirectProvider, DirectProvider, Rules);
+		FScopedWorld World;
+		auto* Host = World.GetHost();
+		TestNotNull(TEXT("CutInside Direct override Host exists"), Host);
+		if (Host == nullptr)
+		{
+			return false;
+		}
+		FReadyTrace Trace;
+		TestTrue(TEXT("CutInside Direct override reaches ready state"),
+			BuildReadyForResolution(
+				*Host, Direct, Input, Rules, Seed,
+				ESkillRuleType::CutInsideShot, false, Trace));
+		TestTrue(TEXT("CutInside Direct route resolves without gameplay RNG"),
+			Host->BeginResolutionSession().bSuccess
+				&& Host->ResolveIntentDeterminedRoute().bSuccess);
+		TestTrue(TEXT("CutInside Direct semantic overrides set"),
+			Set(*Host, ETarget::CutInsideShotDirectAttack, 3)
+				&& Set(*Host, ETarget::CutInsideShotDirectDefense, 4));
+
+		const FMatchPlayState ReadyState = Host->GetMatchSnapshot().Snapshot;
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest Attack;
+		Attack.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		Attack.RequestingSide = Trace.Defender;
+		TestFalse(TEXT("Wrong-side CutInside Attack override command rejects"),
+			Host->ResolveCutInsideShotDirectAttackRoll(Attack).bSuccess);
+		TestTrue(TEXT("Wrong-side CutInside Attack retains override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::CutInsideShotDirectAttack;
+				}));
+		Attack.RequestingSide = Trace.Attacker;
+		++Attack.AttackSequence;
+		TestFalse(TEXT("Stale CutInside Attack override command rejects"),
+			Host->ResolveCutInsideShotDirectAttackRoll(Attack).bSuccess);
+		TestTrue(TEXT("Stale CutInside Attack retains override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::CutInsideShotDirectAttack;
+				}));
+
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest Defense;
+		Defense.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		Defense.RequestingSide = Trace.Defender;
+		TestFalse(TEXT("Premature CutInside Defense override command rejects"),
+			Host->ResolveCutInsideShotDirectDefenseRoll(Defense).bSuccess);
+		TestTrue(TEXT("Premature CutInside Defense retains override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::CutInsideShotDirectDefense;
+				}));
+
+		Attack.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		TestTrue(TEXT("Accepted CutInside Attack consumes Attack override"),
+			Host->ResolveCutInsideShotDirectAttackRoll(Attack).bSuccess);
+		const FMatchPlayState AttackState = Host->GetMatchSnapshot().Snapshot;
+		const auto& AttackRecords = AttackState.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("CutInside Attack override commits only raw 3"),
+			AttackRecords.Num() == 1 && AttackRecords[0].RawD6 == 3);
+		TestEqual(TEXT("CutInside Attack override remains non-terminal"),
+			AttackState.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::Active);
+		TestFalse(TEXT("Accepted CutInside Attack clears Attack override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::CutInsideShotDirectAttack;
+				}));
+		TestTrue(TEXT("CutInside Defense override remains pending"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::CutInsideShotDirectDefense;
+				}));
+
+		Defense.RequestingSide = Trace.Attacker;
+		TestFalse(TEXT("Wrong-side CutInside Defense override command rejects"),
+			Host->ResolveCutInsideShotDirectDefenseRoll(Defense).bSuccess);
+		Defense.RequestingSide = Trace.Defender;
+		++Defense.AttackSequence;
+		TestFalse(TEXT("Stale CutInside Defense override command rejects"),
+			Host->ResolveCutInsideShotDirectDefenseRoll(Defense).bSuccess);
+		TestTrue(TEXT("Rejected CutInside Defense commands retain override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target
+						== ETarget::CutInsideShotDirectDefense;
+				}));
+		Defense.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		const auto DefenseResult =
+			Host->ResolveCutInsideShotDirectDefenseRoll(Defense);
+		const FMatchPlayState TerminalState = Host->GetMatchSnapshot().Snapshot;
+		const auto& TerminalRecords = TerminalState.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("Accepted CutInside Defense consumes Defense override"),
+			DefenseResult.bSuccess);
+		TestTrue(TEXT("CutInside Direct override values persist in order"),
+			TerminalRecords.Num() == 2
+				&& TerminalRecords[0].RawD6 == 3
+				&& TerminalRecords[1].RawD6 == 4);
+		TestEqual(TEXT("CutInside Direct override stops at explicit NextRound"),
+			TerminalState.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestTrue(TEXT("CutInside Direct pending overrides fully consumed"),
+			Host->GetLocalDevPendingRollOverrides().IsEmpty());
+	}
+
+	{
+		const int32 Seed = 36613;
+		const FName SkillId(TEXT("Skill.DevOverride.CutInsideDeadCorner"));
+		const auto Rules = MakeRules(SkillId, ESkillRuleType::CutInsideShot);
+		const auto Input = MakeInput(
+			TEXT("DevOverrideCutInsideDeadCorner"), SkillId);
+		FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+		FMatchPlayAuthoritativeSession Direct(
+			DirectProvider, DirectProvider, Rules);
+		FScopedWorld World;
+		auto* Host = World.GetHost();
+		TestNotNull(TEXT("CutInside DeadCorner override Host exists"), Host);
+		if (Host == nullptr)
+		{
+			return false;
+		}
+		FReadyTrace Trace;
+		TestTrue(TEXT("CutInside DeadCorner override reaches ready state"),
+			BuildReadyForResolution(
+				*Host, Direct, Input, Rules, Seed,
+				ESkillRuleType::CutInsideShot, false, Trace,
+				EMatchPlayElectiveBranchIntent::DeadCorner));
+		TestTrue(TEXT("CutInside DeadCorner route resolves without gameplay RNG"),
+			Host->BeginResolutionSession().bSuccess
+				&& Host->ResolveIntentDeterminedRoute().bSuccess);
+		TestTrue(TEXT("CutInside DeadCorner paired overrides set"),
+			Set(*Host, ETarget::CutInsideShotDeadCornerA, 6)
+				&& Set(*Host, ETarget::CutInsideShotDeadCornerB, 5));
+
+		const FMatchPlayState ReadyState = Host->GetMatchSnapshot().Snapshot;
+		FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest Request;
+		Request.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		Request.RequestingSide = Trace.Defender;
+		TestFalse(TEXT("Wrong-side CutInside DeadCorner override rejects"),
+			Host->ResolveCutInsideShotDeadCornerRoll(Request).bSuccess);
+		Request.RequestingSide = Trace.Attacker;
+		++Request.AttackSequence;
+		TestFalse(TEXT("Stale CutInside DeadCorner override rejects"),
+			Host->ResolveCutInsideShotDeadCornerRoll(Request).bSuccess);
+		TestEqual(TEXT("Rejected DeadCorner requests retain both overrides"),
+			Host->GetLocalDevPendingRollOverrides().Num(), 2);
+
+		Request.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		const auto Outcome = Host->ResolveCutInsideShotDeadCornerRoll(Request);
+		const FMatchPlayState TerminalState = Host->GetMatchSnapshot().Snapshot;
+		const auto& Records = TerminalState.CurrentAttack.ResolutionSession
+			.PostRouteRollProgress.RollRecords;
+		TestTrue(TEXT("Accepted CutInside DeadCorner consumes paired overrides"),
+			Outcome.bSuccess
+				&& Outcome.AuthoritativeResult.TerminalResult.bIsGoal);
+		TestTrue(TEXT("CutInside DeadCorner override pair persists atomically"),
+			Records.Num() == 2
+				&& Records[0].RawD6 == 6
+				&& Records[1].RawD6 == 5);
+		TestEqual(TEXT("CutInside DeadCorner override stops at NextRound"),
+			TerminalState.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestTrue(TEXT("CutInside DeadCorner overrides fully consumed"),
 			Host->GetLocalDevPendingRollOverrides().IsEmpty());
 	}
 

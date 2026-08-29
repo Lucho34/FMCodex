@@ -27,7 +27,11 @@ enum class EFMCodexLocalDevRollTarget : uint8
 	LongShotDirectAttack,
 	LongShotDirectDefense,
 	LongShotDeadCornerA,
-	LongShotDeadCornerB
+	LongShotDeadCornerB,
+	CutInsideShotDirectAttack,
+	CutInsideShotDirectDefense,
+	CutInsideShotDeadCornerA,
+	CutInsideShotDeadCornerB
 };
 
 /** Host-only call-site identity used to disambiguate shared CoreRules purposes. */
@@ -47,7 +51,9 @@ enum class EFMCodexLocalDevRollInvocation : uint8
 	OneOnOneChipShot,
 	OneOnOneDirectShot,
 	LongShotDirectShot,
-	LongShotDeadCorner
+	LongShotDeadCorner,
+	CutInsideShotDirectShot,
+	CutInsideShotDeadCorner
 };
 
 struct FMCODEX_API FFMCodexLocalDevRollOverrideRequest final

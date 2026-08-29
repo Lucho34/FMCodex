@@ -19,7 +19,9 @@ struct FMCODEX_API
 		CompleteDirectShotPlan,
 		RegenerateCompletedPlan,
 		ResolveLongShotAttackRoll,
-		ResolveLongShotDefenseRoll
+		ResolveLongShotDefenseRoll,
+		ResolveCutInsideShotAttackRoll,
+		ResolveCutInsideShotDefenseRoll
 	};
 
 	EMode Mode = EMode::CompleteDirectShotPlan;
@@ -41,9 +43,11 @@ enum class
 	RouteNotResolved,
 	NotDirectShotBranch,
 	NotLongShotDirectShotBranch,
+	NotCutInsideShotDirectShotBranch,
 	InvalidRequestingSide,
 	WrongRequestingSide,
 	WrongLongShotDirectRollStep,
+	WrongCutInsideShotDirectRollStep,
 	CompletedPlanRequired,
 	InvalidPostRouteProgress,
 	PostRouteRollProviderUnavailable,

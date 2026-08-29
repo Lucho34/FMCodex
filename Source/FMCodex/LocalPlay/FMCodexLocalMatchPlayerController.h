@@ -72,6 +72,9 @@ public:
 	void RollLongShotDirectAttack();
 	void RollLongShotDirectDefense();
 	void RollLongShotDeadCorner();
+	void RollCutInsideShotDirectAttack();
+	void RollCutInsideShotDirectDefense();
+	void RollCutInsideShotDeadCorner();
 	void ApplyCrossTerminalResolution();
 	/** Legacy compatibility wrapper; production does not expose AndAdvance. */
 	void CompleteCrossAndAdvance();
@@ -171,6 +174,7 @@ private:
 	bool bCrossRouteCommandInFlight = false;
 	bool bCrossRollCommandInFlight = false;
 	bool bLongShotRollCommandInFlight = false;
+	bool bCutInsideShotRollCommandInFlight = false;
 	bool bThroughBallRouteCommandInFlight = false;
 	bool bThroughBallFeetRollCommandInFlight = false;
 	bool bThroughBallAntiOffsideRollCommandInFlight = false;

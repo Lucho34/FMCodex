@@ -749,3 +749,13 @@
 - Direct Attack/Defense 的当前 action 可由 nested shared Formula primary action 拥有。点击必须通过 LongShot widget、Screen current-owner guard、Controller/Host 到 Session 恰好派发一次；过期 lower action 仍拒绝。Attack 1 保持 ImmediateMiss，Attack 6 后只进入 Defense pending，Defense CTA 可继续完成既有 Formula/Outcome。
 - focused 回归覆盖 Runner completion/state validation/skill legality、完整受影响 AuthoritativeSession、LongShot Production、ControlSurface role/CTA/localization、正常 Helper 与 ThroughBall 代表流。已隔离 `ControlSurface.33` MatchHeader debt 不属于本 Stage。
 
+## CutInside Side-owned Request 与 Conditional Roll 权威基础（Stage 6.15.3A）
+
+- Direct Attack typed request必须携带`AttackSequence + RequestingSide`。wrong-side、stale、duplicate与terminal replay在provider前拒绝且RNG delta为0。D6 `1/2`都必须只消费一枚Attack D6、没有Defense record或Formula，并形成ImmediateMiss `TerminalPendingAdvance`；代表性`3–6`必须只持久化Attack record并保持Active。
+- attack-only snapshot重建必须保留CutInside、DirectShot、AttackSequence与raw Attack D6，明确缺少Defense D6和final outcome，并只投影防守方owned Direct Defense action。重复重建与Formula Facts query不得调用provider；重建后的typed Defense request必须可成功提交。
+- Direct Defense的premature、wrong-side、stale与duplicate请求均为0 RNG且State不变。合法request恰好追加一枚Defense D6，并通过既有CutInside Formula验证Attack row、Marker Tackling、Defense `+2`、active GK Handling×0.5、Tactical Player/tie/winner语义和terminal persistence；不得自动advance。
+- DeadCorner typed request必须由进攻方一次提交并恰好消费`PairedAttackA/B`两枚D6；覆盖sum `11–12` Goal和`2–10` Miss。wrong-side、stale、duplicate均0 RNG；第一枚或第二枚provider失败都不得adoptpartial pair，retry仍安全。
+- 跨进攻stale测试必须让后续attack回到相同CutInside Direct pending phase，并证明旧sequence request在provider前拒绝且当前State不变。normal CutInside generic `ContinueResolution`不得拥有任何未完成roll。
+- DEV override测试必须覆盖CutInside Direct Attack/Defense与DeadCorner A/B target；prepared override遇到wrong-side、stale或premature请求时保持待消费，只有matching accepted typed request才清除并写入authoritative raw roll。
+- focused gate覆盖CutInside Foundation专项、完整AuthoritativeSession（含shared Direct/DeadCorner、Formula、terminal与LongShot回归）、Skill Selection/Runner formal absence、DEV override、UHT/Editor build和`git diff --check`。本Foundation不实现Production UMG且不以USER PIE为完成Gate；通过后才恢复Stage 6.15.3 Production Golden Path。
+

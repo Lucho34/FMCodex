@@ -36,7 +36,11 @@ namespace FMCodexLocalDevRollOverrideWidget
 			ETarget::LongShotDirectAttack,
 			ETarget::LongShotDirectDefense,
 			ETarget::LongShotDeadCornerA,
-			ETarget::LongShotDeadCornerB
+			ETarget::LongShotDeadCornerB,
+			ETarget::CutInsideShotDirectAttack,
+			ETarget::CutInsideShotDirectDefense,
+			ETarget::CutInsideShotDeadCornerA,
+			ETarget::CutInsideShotDeadCornerB
 		};
 		return Values;
 	}
@@ -63,6 +67,10 @@ namespace FMCodexLocalDevRollOverrideWidget
 		case ETarget::LongShotDirectDefense: return TEXT("远射·直接射门防守");
 		case ETarget::LongShotDeadCornerA: return TEXT("远射·死角第一枚");
 		case ETarget::LongShotDeadCornerB: return TEXT("远射·死角第二枚");
+		case ETarget::CutInsideShotDirectAttack: return TEXT("内切·直接射门进攻");
+		case ETarget::CutInsideShotDirectDefense: return TEXT("内切·直接射门防守");
+		case ETarget::CutInsideShotDeadCornerA: return TEXT("内切·死角第一枚");
+		case ETarget::CutInsideShotDeadCornerB: return TEXT("内切·死角第二枚");
 		default: return TEXT("未选择");
 		}
 	}

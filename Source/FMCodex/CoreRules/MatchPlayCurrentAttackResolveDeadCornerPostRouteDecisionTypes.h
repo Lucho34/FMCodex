@@ -18,7 +18,8 @@ struct FMCODEX_API
 		/** Legacy/reference compatibility; production must use explicit rolls. */
 		CompleteDecision,
 		RegenerateCompletedDecision,
-		ResolveLongShotPairedRolls
+		ResolveLongShotPairedRolls,
+		ResolveCutInsideShotPairedRolls
 	};
 
 	EMode Mode = EMode::CompleteDecision;
@@ -39,9 +40,11 @@ enum class EMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionErrorCode
 	RouteNotResolved,
 	NotDeadCornerBranch,
 	NotLongShotDeadCornerBranch,
+	NotCutInsideShotDeadCornerBranch,
 	InvalidRequestingSide,
 	WrongRequestingSide,
 	WrongLongShotDeadCornerRollStep,
+	WrongCutInsideShotDeadCornerRollStep,
 	CompletedDecisionRequired,
 	InvalidPostRouteProgress,
 	PostRouteRollProviderUnavailable,

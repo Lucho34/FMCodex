@@ -47,6 +47,8 @@ The panel never owns a provider pointer and never writes RawD6, CurrentAttack, F
 | 单刀·直接射门进攻 / 防守 | 1–6 | DirectShot plan | `OneOnOneDirectShotAttack` / `OneOnOneDirectShotDefense` |
 | 远射·直接射门进攻 / 防守 | 1–6 | typed LongShot Direct attack / defense request | `PrimaryAttack` / `PrimaryDefense` |
 | 远射·死角第一枚 / 第二枚 | 1–6 | one typed LongShot DeadCorner pair request | `PairedAttackA` / `PairedAttackB` |
+| 内切·直接射门进攻 / 防守 | 1–6 | typed CutInside Direct attack / defense request | `PrimaryAttack` / `PrimaryDefense` |
+| 内切·死角第一枚 / 第二枚 | 1–6 | one typed CutInside DeadCorner pair request | `PairedAttackA` / `PairedAttackB` |
 
 The Host invocation identity is required because the canonical CoreRules purpose enum intentionally reuses `PrimaryAttack` and `PrimaryDefense` across multiple tactics. The identity is transient call context inside the DEV decorator and is never stored in canonical state.
 
@@ -80,6 +82,13 @@ The small `DEV 掷点` entry is created in non-Shipping LocalPlay only, centered
 - Direct ImmediateMiss: set `远射·直接射门进攻 → 1`, choose `直接射门`, then click the central attack action. No defense override is needed.
 - Direct Formula: set `远射·直接射门进攻 → 6` and `远射·直接射门防守 → 1`, choose `直接射门`, then use the two central side-owned actions.
 - DeadCorner Miss: set the two dead-corner targets to `5 / 5`; Goal: set them to `5 / 6`. Choose `射向死角` and click once. Authority consumes both targets in A/B order while presentation reveals both dice sequentially.
+
+## Example: CutInside Authority Foundation
+
+- Direct ImmediateMiss: set `内切·直接射门进攻 → 1`, choose `直接射门`, then use the typed attack action. Authority consumes no defense override.
+- Direct Formula: set `内切·直接射门进攻 → 3` and `内切·直接射门防守 → 4`, choose `直接射门`, then use the two side-owned typed actions. The first action persists an Active attack-only snapshot; the second completes Formula/outcome and stops at explicit NextRound.
+- DeadCorner Goal: set the two dead-corner targets to `6 / 5`, choose `直射死角`, then use the single typed paired-roll action. Authority consumes both targets in A/B order and commits only the complete pair.
+- Wrong-side, stale, premature, or duplicate typed requests do not call the provider decorator, so prepared CutInside overrides remain pending.
 
 ## Release removal plan
 

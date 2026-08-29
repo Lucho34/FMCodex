@@ -110,7 +110,10 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveThroughBallInitialRouteRoll,
 	ResolveLongShotDirectAttackRoll,
 	ResolveLongShotDirectDefenseRoll,
-	ResolveLongShotDeadCornerRoll
+	ResolveLongShotDeadCornerRoll,
+	ResolveCutInsideShotDirectAttackRoll,
+	ResolveCutInsideShotDirectDefenseRoll,
+	ResolveCutInsideShotDeadCornerRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -578,6 +581,55 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollResult
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanResult
 		OrchestrationResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanResult
+		OrchestrationResult;
+	bool bTerminalCompletionAttempted = false;
+	FMatchPlayCurrentAttackApplyShotTerminalResolutionResult TerminalResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveDirectShotPostRouteDecisionOrPlanResult
+		OrchestrationResult;
+	bool bTerminalCompletionAttempted = false;
+	FMatchPlayCurrentAttackApplyShotTerminalResolutionResult TerminalResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveDeadCornerPostRouteDecisionResult
+		OrchestrationResult;
+	bool bTerminalCompletionAttempted = false;
+	FMatchPlayCurrentAttackApplyShotTerminalResolutionResult TerminalResult;
 };
 
 struct FMCODEX_API

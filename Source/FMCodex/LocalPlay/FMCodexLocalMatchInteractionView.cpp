@@ -1299,6 +1299,71 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 		if (Session.Stage
 				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
 			&& Session.bHasActualBranch
+			&& Session.ActualBranch.ActionType
+				== ESkillRuleType::CutInsideShot)
+		{
+			const auto Progress =
+				FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
+					Session);
+			if (Progress.bIsCanonical && !Progress.bContractComplete
+				&& Session.ActualBranch.CutInsideShot
+					== EMatchPlayCutInsideShotActualBranch::DirectShot)
+			{
+				const bool bAttackRoll =
+					Session.PostRouteRollProgress.Phase
+						== EMatchPlayCurrentAttackPostRouteRollPhase::None
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::PrimaryAttack;
+				Result.InteractionCategory = bAttackRoll
+					? EFMCodexLocalMatchInteractionCategory
+						::RollCutInsideShotDirectAttack
+					: EFMCodexLocalMatchInteractionCategory
+						::RollCutInsideShotDirectDefense;
+				Result.bCutInsideShotDirectAttackRollPending = bAttackRoll;
+				Result.bCutInsideShotDirectDefenseRollPending = !bAttackRoll;
+				Result.ExpectedActingPlayer = bAttackRoll
+					? Session.Bundle.CurrentAttackingPlayer
+					: Session.Bundle.CurrentDefendingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = bAttackRoll
+					? TEXT("进攻方掷内切射门点数")
+					: TEXT("防守方掷防守点数");
+				return Result;
+			}
+			if (Progress.bIsCanonical && !Progress.bContractComplete
+				&& Session.ActualBranch.CutInsideShot
+					== EMatchPlayCutInsideShotActualBranch::DeadCorner
+				&& (Session.PostRouteRollProgress.Phase
+						== EMatchPlayCurrentAttackPostRouteRollPhase::None
+					|| Progress.NextPurpose
+						== EMatchPlayCurrentAttackPostRouteRollPurpose
+							::PairedAttackA))
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory
+						::RollCutInsideShotDeadCorner;
+				Result.bCutInsideShotDeadCornerRollPending = true;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("进攻方掷内切死角双骰");
+				return Result;
+			}
+			if (Progress.bIsCanonical && Progress.bContractComplete)
+			{
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+				Result.ExpectedActingPlayer =
+					Session.Bundle.CurrentAttackingPlayer;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("确认结算结果");
+				return Result;
+			}
+		}
+		if (Session.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& Session.bHasActualBranch
 			&& Session.ActualBranch.ActionType == ESkillRuleType::Cross
 			&& (Session.ActualBranch.Cross
 					== EMatchPlayCrossActualBranch::High
@@ -1732,6 +1797,15 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 	case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner:
 		Result.InteractionTitle = TEXT("进攻方掷远射双骰");
 		break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectAttack:
+		Result.InteractionTitle = TEXT("进攻方掷内切射门点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectDefense:
+		Result.InteractionTitle = TEXT("防守方掷防守点数");
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner:
+		Result.InteractionTitle = TEXT("进攻方掷内切死角双骰");
+		break;
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
 		Result.InteractionTitle = TEXT("判定直塞路线");
 		break;
@@ -1819,6 +1893,9 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack: return TEXT("进攻方掷远射点数");
 	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense: return TEXT("防守方掷防守点数");
 	case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner: return TEXT("进攻方掷远射双骰");
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectAttack: return TEXT("进攻方掷内切射门点数");
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectDefense: return TEXT("防守方掷防守点数");
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner: return TEXT("进攻方掷内切死角双骰");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute: return TEXT("判定直塞路线");
 	case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance: return TEXT("下一回合");
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack: return TEXT("掷进攻方点数");

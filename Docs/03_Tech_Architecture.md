@@ -169,3 +169,12 @@
 - DeadCorner canonical 仍是进攻方一次操作掷两枚 D6。`ResolveLongShotDeadCornerRoll` 在一个 attacker-owned command内按既有 A/B purpose顺序恰好调用 provider两次；只有两枚都成功且 outcome完整时才 adoption。第二次provider失败不得泄漏第一枚记录或部分 State。
 - InteractionView从权威 CurrentAttack投影 `SelectLongShotBranch / RollLongShotDirectAttack / RollLongShotDirectDefense / RollLongShotDeadCorner`、expected side和AttackSequence。Controller只从该 DTO构造typed request，Host薄转发到同一个Session/provider seam；generic `ContinueResolution`不替代任何未完成LongShot gameplay roll，normal Controller也不调用旧atomic Direct/Dead入口。
 - 本Stage只建立Authority/LocalPlay request foundation，不实现LongShot Production UMG、Reel、Formula布局、Narrative或Result surface。既有terminal persistence与显式`AdvanceAfterTerminal`生命周期不变。
+
+## CutInside Side-owned Conditional Roll Authority（Stage 6.15.3A）
+
+- CutInside Direct Attack、Direct Defense 与 DeadCorner 使用三个独立 serialized typed request，均携带 caller snapshot 的 `AttackSequence + RequestingSide`。Session 复用 shared DirectShot/DeadCorner orchestrator 的 CutInside-specific explicit mode，在 provider 前验证 current attack、sequence、CutInside family、selected branch、canonical next purpose 与 side ownership；stale、wrong-side、premature、duplicate 与 terminal replay均不消费 RNG、不 adoption State。
+- Direct Attack `1–2`只提交一枚`PrimaryAttack`并通过既有 CutInside ImmediateMiss terminal contract停在`TerminalPendingAdvance`；`3–6`只提交 Attack record，CurrentAttack保持Active，同一AttackSequence下Defense record、完整Formula与Outcome仍不存在。InteractionView和Resolution Facts从该持久化prefix重建防守方next action，不需要Controller临时状态。
+- Direct Defense只允许当前防守方在attack-only prefix提交一枚`PrimaryDefense`。成功后同一request继续执行零RNG的既有CutInside Direct Plan、Formula Resolver、Tactical Player、GK Handling×0.5、tie、outcome与terminal persistence；不自动执行`AdvanceAfterTerminal`。generic `ContinueResolution`不拥有未完成CutInside roll，只保留completed recovery用途。
+- DeadCorner仍是进攻方一次操作掷两枚D6。`ResolveCutInsideShotDeadCornerRoll`在一个command内按`PairedAttackA/B`顺序调用provider，完整pair成功后才提交并零RNG完成Goal/Miss terminal；第二枚失败不得提交half-pair。
+- InteractionView只从authoritative CurrentAttack投影`RollCutInsideShotDirectAttack / RollCutInsideShotDirectDefense / RollCutInsideShotDeadCorner`、expected side与AttackSequence；Controller和Host只做typed forwarding。非Shipping DEV decorator为CutInside Direct Attack/Defense和DeadCorner A/B提供独立target，rejected request不会消费待用override。
+- 本Stage只建立CutInside Authority/LocalPlay forwarding foundation，不实现CutInside Production UMG、central surface、Reel、Formula布局、Narrative或Result presentation。既有LongShot、ThroughBall和terminal lifecycle不变。
