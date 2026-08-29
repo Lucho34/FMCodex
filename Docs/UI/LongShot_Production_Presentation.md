@@ -12,7 +12,7 @@ LongShot uses one central production resolution surface from branch selection th
 
 ## Branch Choice
 
-The central surface shows exactly two equal-size, two-line authority-projected choices with no wrapping: `直接射门 / （看远射、抢断、门将站位）` and `射向死角 / （只看两枚掷点）`. The full choice tile is clickable; hover has only the normal visual response and opens no Tactical Detail consumer. Selecting a branch consumes zero gameplay RNG. Reconstructing the same branch-pending or branch-selected snapshot does not select a branch or roll dice.
+The central surface shows exactly two equal-size, two-line authority-projected choices with no wrapping: `直接射门 / （看远射、抢断）` and `射向死角 / （只看两枚掷点）`. The compact helper intentionally omits conditional goalkeeper contribution; Tactical Rule Description and live Formula facts retain the authoritative goalkeeper term. The full choice tile is clickable; hover has only the normal visual response and opens no Tactical Detail consumer. Selecting a branch consumes zero gameplay RNG. Reconstructing the same branch-pending or branch-selected snapshot does not select a branch or roll dice.
 
 ## No-Runner Entry
 

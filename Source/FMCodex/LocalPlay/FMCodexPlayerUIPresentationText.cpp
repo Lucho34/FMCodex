@@ -136,7 +136,7 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("Direct Shot")) return LOCTEXT("DirectShot", "\u76F4\u63A5\u5C04\u95E8");
 	if (CanonicalLabel == TEXT("Dead Corner")) return LOCTEXT("DeadCorner", "\u5C04\u5411\u6B7B\u89D2");
 	if (CanonicalLabel == TEXT("Cross High")) return LOCTEXT("CrossHigh", "\u9AD8\u7403\u4F20\u4E2D");
-	if (CanonicalLabel == TEXT("Cross Low")) return LOCTEXT("CrossLow", "\u4F4E\u5E73\u7403\u4F20\u4E2D");
+	if (CanonicalLabel == TEXT("Cross Low")) return LOCTEXT("CrossLow", "\u4F4E\u7403\u4F20\u4E2D");
 	if (CanonicalLabel == TEXT("Chip Shot")) return LOCTEXT("ChipShot", "\u6311\u5C04");
 	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL CARRIER")) return LOCTEXT("NoLegalCarrier", "\u65E0\u53EF\u7528\u6301\u7403\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
 	if (CanonicalLabel == TEXT("RESOLVE NO LEGAL MARKER")) return LOCTEXT("NoLegalMarker", "\u65E0\u53EF\u7528\u76EF\u4EBA\u7403\u5458\uFF0C\u7EE7\u7EED\u7ED3\u7B97");
@@ -253,7 +253,7 @@ FText FFMCodexPlayerUIPresentationText::LongShotBranchChoiceStage()
 FText FFMCodexPlayerUIPresentationText::LongShotDirectChoiceHint()
 {
 	return LOCTEXT(
-		"LongShotDirectChoiceHint", "（看远射、抢断、门将站位）");
+		"LongShotDirectChoiceHint", "（看远射、抢断）");
 }
 
 FText FFMCodexPlayerUIPresentationText::LongShotDeadCornerChoiceHint()
@@ -284,6 +284,58 @@ FText FFMCodexPlayerUIPresentationText::LongShotDeadCornerOutcomeHint()
 	return LOCTEXT(
 		"LongShotDeadCornerOutcomeHint",
 		"合计 11–12：进球 ｜ 2–10：未进");
+}
+
+FText FFMCodexPlayerUIPresentationText::ShotAttackRollAction()
+{
+	return LOCTEXT("ShotAttackRollAction", "进攻方掷点");
+}
+
+FText FFMCodexPlayerUIPresentationText::ShotDefenseRollAction()
+{
+	return LOCTEXT("ShotDefenseRollAction", "防守方掷点");
+}
+
+FText FFMCodexPlayerUIPresentationText::ShotPairedRollAction()
+{
+	return LOCTEXT("ShotPairedRollAction", "掷两枚骰");
+}
+
+FText FFMCodexPlayerUIPresentationText::CutInsideTitle()
+{
+	return LOCTEXT("CutInsideProductionTitle", "内切");
+}
+
+FText FFMCodexPlayerUIPresentationText::CutInsideBranchChoiceStage()
+{
+	return LOCTEXT("CutInsideBranchChoiceStage", "选择内切方式");
+}
+
+FText FFMCodexPlayerUIPresentationText::CutInsideDirectStage()
+{
+	return LOCTEXT("CutInsideDirectStage", "直接射门");
+}
+
+FText FFMCodexPlayerUIPresentationText::CutInsideDeadCornerStage()
+{
+	return LOCTEXT("CutInsideDeadCornerStage", "直射死角");
+}
+
+FText FFMCodexPlayerUIPresentationText::CutInsideDirectOutcomeHint()
+{
+	return LOCTEXT(
+		"CutInsideDirectOutcomeHint",
+		"1–2：射门偏出｜3–6：进入攻防结算");
+}
+
+FText FFMCodexPlayerUIPresentationText::CrossTitle()
+{
+	return LOCTEXT("CrossProductionTitle", "传中");
+}
+
+FText FFMCodexPlayerUIPresentationText::CrossBranchChoiceStage()
+{
+	return LOCTEXT("CrossBranchChoiceStage", "选择传中方式");
 }
 
 FText FFMCodexPlayerUIPresentationText::SelectedRoleTag(
@@ -697,6 +749,10 @@ FText FFMCodexPlayerUIPresentationText::ResolutionContest(
 	if (ContestId == TEXT("LongShot.DirectShot"))
 	{
 		return LOCTEXT("ResolutionLongShotDirect", "直接射门");
+	}
+	if (ContestId == TEXT("CutInsideShot.DirectShot"))
+	{
+		return LOCTEXT("ResolutionCutInsideDirect", "内切直接射门");
 	}
 	return FText::GetEmpty();
 }

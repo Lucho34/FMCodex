@@ -2452,7 +2452,8 @@ namespace FMCodexLocalMatchFullFamilyTests
 		FAutomationTestBase& Test,
 		AFMCodexLocalMatchPlayerController& Controller,
 		const FFamilyExpectation& Family,
-		const EInitialTurnOrderPlayer Attacker)
+		const EInitialTurnOrderPlayer Attacker,
+		const bool bSubmitShotBranch = true)
 	{
 		using namespace FMCodexLocalMatchControlSurfaceTests;
 		const FString FamilyLabel(Family.ReadableLabel);
@@ -2623,6 +2624,10 @@ namespace FMCodexLocalMatchFullFamilyTests
 				return Fail(Test, FamilyLabel,
 					TEXT("DirectShot/DeadCorner choices were incomplete"));
 			}
+			if (!bSubmitShotBranch)
+			{
+				return true;
+			}
 			Controller.SubmitBranchIntent(
 				Family.PreferredShotBranch);
 		}
@@ -2665,8 +2670,15 @@ namespace FMCodexLocalMatchFullFamilyTests
 					|| ReadyCategory
 						== EFMCodexLocalMatchInteractionCategory
 							::RollLongShotDeadCorner
-			: ReadyCategory
-				== EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+			: Family.SkillType == ESkillRuleType::CutInsideShot
+				? ReadyCategory
+					== EFMCodexLocalMatchInteractionCategory
+						::RollCutInsideShotDirectAttack
+					|| ReadyCategory
+						== EFMCodexLocalMatchInteractionCategory
+							::RollCutInsideShotDeadCorner
+				: ReadyCategory
+					== EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 		if (!bExpectedReadyAction)
 		{
 			return Fail(Test, FamilyLabel,
@@ -2709,6 +2721,9 @@ namespace FMCodexLocalMatchFullFamilyTests
 
 		bool bSawResolvedRoute = false;
 		bool bSawOneOnOne = false;
+		bool bSawActiveGoalkeeperFact = false;
+		bool bSawTerminal = false;
+		FFMCodexLocalMatchResolutionFeedback TerminalFeedback;
 		for (int32 Guard = 0;
 			Guard < 12 && Controller.GetInteractionView().bCurrentAttackActive;
 			++Guard)
@@ -2716,6 +2731,19 @@ namespace FMCodexLocalMatchFullFamilyTests
 			const auto& View = Controller.GetInteractionView();
 			bSawResolvedRoute = bSawResolvedRoute
 				|| !View.ActualBranchLabel.IsEmpty();
+			for (const FMatchPlayResolutionFormulaContestFact& Contest
+				: View.ResolutionFacts.FormulaContests)
+			{
+				bSawActiveGoalkeeperFact = bSawActiveGoalkeeperFact
+					|| Contest.DefenseRow.Terms.ContainsByPredicate(
+						[](const FMatchPlayResolutionFormulaTermFact& Term)
+						{
+							return Term.Kind
+								== EMatchPlayResolutionFormulaTermKind
+									::GoalkeeperContribution
+								&& !FMath::IsNearlyZero(Term.Contribution);
+						});
+			}
 			if (View.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
 			{
@@ -2765,6 +2793,24 @@ namespace FMCodexLocalMatchFullFamilyTests
 					::RollLongShotDeadCorner)
 			{
 				Controller.RollLongShotDeadCorner();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollCutInsideShotDirectAttack)
+			{
+				Controller.RollCutInsideShotDirectAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollCutInsideShotDirectDefense)
+			{
+				Controller.RollCutInsideShotDirectDefense();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollCutInsideShotDeadCorner)
+			{
+				Controller.RollCutInsideShotDeadCorner();
 			}
 			else if (View.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
@@ -2835,6 +2881,8 @@ namespace FMCodexLocalMatchFullFamilyTests
 			else if (View.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
 			{
+				TerminalFeedback = Controller.GetResolutionFeedback();
+				bSawTerminal = TerminalFeedback.bTerminal;
 				Controller.AdvanceAfterTerminal();
 			}
 			else
@@ -2856,25 +2904,16 @@ namespace FMCodexLocalMatchFullFamilyTests
 			return Fail(Test, FamilyLabel,
 				TEXT("attack did not reach terminal Completion within the guard"));
 		}
-		const auto& Feedback = Controller.GetResolutionFeedback();
-		if (!bSawResolvedRoute
-			|| !Feedback.bTerminal
-			|| !Feedback.TerminalSummary.StartsWith(TEXT("RESULT: "))
-			|| !Feedback.RouteSummary.Contains(Family.ReadableLabel))
+		if (!bSawResolvedRoute || !bSawTerminal
+			|| !TerminalFeedback.TerminalSummary.StartsWith(TEXT("RESULT: "))
+			|| Controller.GetResolutionFeedback().bVisible)
 		{
 			return Fail(Test, FamilyLabel,
-				TEXT("route/feedback/terminal evidence was incomplete"));
+				TEXT("authoritative route/terminal or post-advance cleanup was incomplete"));
 		}
 		if (Family.SkillType == ESkillRuleType::ThroughBall)
 		{
-			bool bHasActiveGoalkeeperEvidence = false;
-			for (const FString& Entry : Feedback.ComparisonEntries)
-			{
-				bHasActiveGoalkeeperEvidence = bHasActiveGoalkeeperEvidence
-					|| (Entry.Contains(TEXT("Goalkeeper"))
-						&& Entry.Contains(TEXT("activation active")));
-			}
-			if (!bSawOneOnOne || !bHasActiveGoalkeeperEvidence)
+			if (!bSawOneOnOne || !bSawActiveGoalkeeperFact)
 			{
 				return Fail(Test, FamilyLabel,
 					TEXT("normal-demo OneOnOne or active GK Formula evidence was absent"));
@@ -6524,77 +6563,82 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 	{
 		return false;
 	}
-	bool bSawCutInsideRoute = false;
-	bool bSawCutInsideComparison = false;
-	bool bSawResolutionStarted = false;
-	bool bAdvancedPastResolutionStarted = false;
-	bool bSawTerminalPendingAdvance = false;
-	for (int32 Guard = 0;
-		Guard < 12 && Controller->GetInteractionView().bCurrentAttackActive;
-		++Guard)
+	UFMCodexLongShotResolutionSurfaceWidget* CutSurface =
+		Screen->GetLongShotResolutionSurface();
+	TestNotNull(TEXT("Cut Inside owns the central production surface"), CutSurface);
+	if (CutSurface == nullptr || CutSurface->GetFormulaSurface() == nullptr)
 	{
-		const EFMCodexLocalMatchInteractionCategory Category =
-			Controller->GetInteractionView().InteractionCategory;
-		if (Category
-			!= EFMCodexLocalMatchInteractionCategory::ContinueResolution
-			&& Category
-				!= EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
-		{
-			AddError(TEXT("Cut Inside resolution reached an unexpected interaction"));
-			return false;
-		}
-		if (Category
-			== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
-		{
-			bSawTerminalPendingAdvance =
-				Controller->GetInteractionView().bTerminalPendingAdvance
-				&& RootResolution->GetPresentation().bTerminal
-				&& RootResolution->GetPresentation().TerminalLabel.StartsWith(
-					TEXT("RESULT: "))
-				&& RootResolution->GetPresentation().ContinuationLabel.Contains(
-					TEXT("Opportunity pending explicit"));
-		}
-		TestTrue(TEXT("Resolution overlay keeps its DTO-routed Continue reachable"),
-			RootResolution->GetPresentation().bCanContinue
-				&& IsVisible(RootResolution->GetWidgetFromName(
-					TEXT("ResolutionContinueButton"))));
-		RootResolution->RequestContinue();
-		if (!Controller->GetLastDiagnostic().bHostSuccess)
-		{
-			AddError(TEXT("Cut Inside UMG Continue was rejected"));
-			return false;
-		}
-		const FFMCodexUMGResolutionViewModel& Resolution =
-			RootResolution->GetPresentation();
-		if (Controller->GetLastDiagnostic().CommandName
-			== TEXT("BeginResolutionSession"))
-		{
-			bSawResolutionStarted = Resolution.StepLabel
-				== TEXT("Resolution Started")
-				&& Controller->GetInteractionView().InteractionCategory
-					== EFMCodexLocalMatchInteractionCategory::ContinueResolution
-				&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
-					->GetVisibility() == ESlateVisibility::SelfHitTestInvisible;
-		}
-		else if (bSawResolutionStarted
-			&& (Controller->GetLastDiagnostic().CommandName
-					== TEXT("ResolveInitialRoute")
-				|| Controller->GetLastDiagnostic().CommandName
-					== TEXT("ResolveIntentDeterminedRoute")))
-		{
-			bAdvancedPastResolutionStarted = true;
-		}
-		bSawCutInsideRoute = bSawCutInsideRoute
-			|| Resolution.RouteLabel.Contains(TEXT("Cut Inside"));
-		bSawCutInsideComparison = bSawCutInsideComparison
-			|| (Resolution.ComparisonEvidence.Num() >= 2
-				&& Resolution.DecisionLabel.Contains(TEXT("Winner:")));
+		return false;
 	}
-	TestTrue(TEXT("Cut Inside overlay progresses past Resolution Started"),
-		bSawResolutionStarted && bAdvancedPastResolutionStarted
-			&& bSawCutInsideRoute && bSawCutInsideComparison);
-	TestTrue(TEXT("Cut Inside terminal persists before explicit advance"),
-		bSawTerminalPendingAdvance);
+	TestTrue(TEXT("Branch click synchronously reaches typed Direct Attack"),
+		Controller->GetInteractionView().InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollCutInsideShotDirectAttack
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolveIntentDeterminedRoute")
+			&& Controller->GetInteractionView().AcceptedRolls.IsEmpty());
+	TestTrue(TEXT("Direct Attack is central and diagnostic/lower surfaces are hidden"),
+		CutSurface->GetFormulaSurface()->GetPresentation()
+			.ContinueActionLabel == TEXT("进攻方掷点")
+			&& Interaction->GetVisibility() == ESlateVisibility::Collapsed
+			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+				->GetVisibility() == ESlateVisibility::Collapsed);
+	TestTrue(TEXT("Resolved CutInside shows one Direct heading"),
+		CutSurface->GetWidgetFromName(TEXT("LongShotProductionBranch"))
+			->GetVisibility() == ESlateVisibility::Collapsed
+			&& Cast<UTextBlock>(CutSurface->GetWidgetFromName(
+				TEXT("LongShotProductionStage")))->GetText().ToString()
+				== TEXT("直接射门"));
+
+	CutSurface->GetFormulaSurface()->RequestContinue();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	TestTrue(TEXT("Attack roll commits exactly once and exposes Defense CTA"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory
+					::RollCutInsideShotDirectDefense
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 1
+			&& !Controller->GetInteractionView().bTerminalPendingAdvance
+			&& CutSurface->GetFormulaSurface()->GetPresentation()
+				.ContinueActionLabel == TEXT("防守方掷点")
+			&& Interaction->GetVisibility() == ESlateVisibility::Collapsed);
+
+	CutSurface->GetFormulaSurface()->RequestContinue();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const FMatchPlayState TerminalState = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Defense roll freezes an authoritative terminal snapshot"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				!= TEXT("AdvanceAfterTerminal")
+			&& Controller->GetInteractionView().bTerminalPendingAdvance
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 2
+			&& Controller->GetResolutionFeedback().bTerminal
+			&& CutSurface->GetFormulaSurface()->GetPresentation()
+				.ContinueActionLabel == TEXT("下一回合")
+			&& CutSurface->GetFormulaSurface()->GetPresentation()
+				.bNarrativeAvailable
+			&& Interaction->GetVisibility() == ESlateVisibility::Collapsed
+			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+				->GetVisibility() == ESlateVisibility::Collapsed);
+
+	CutSurface->GetFormulaSurface()->RequestContinue();
+	const FMatchPlayState AdvancedState = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("One explicit NextRound advances exactly once"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("AdvanceAfterTerminal")
+			&& !Controller->GetInteractionView().bCurrentAttackActive
+			&& AdvancedState.RuntimeState.PlayerAState.UsedAttackCount
+				+ AdvancedState.RuntimeState.PlayerBState.UsedAttackCount
+				== TerminalState.RuntimeState.PlayerAState.UsedAttackCount
+					+ TerminalState.RuntimeState.PlayerBState.UsedAttackCount + 1
+			&& !Controller->GetResolutionFeedback().bVisible);
+	const TArray<uint8> OnceAdvanced = SerializeState(AdvancedState);
+	CutSurface->GetFormulaSurface()->RequestContinue();
+	TestTrue(TEXT("A stale second central activation cannot advance again"),
+		OnceAdvanced == SerializeState(Host->GetMatchSnapshot().Snapshot));
 	TestTrue(TEXT("Completed attack enters next-player roll readiness"),
 		Controller->GetInteractionView().bTacticalPointRollReady
 			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
@@ -6681,6 +6725,21 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 		}
 		const EFMCodexLocalMatchInteractionCategory Category =
 			OneOnOneController->GetInteractionView().InteractionCategory;
+		const FFMCodexUMGInlineFormulaSurfaceViewModel& DirectFormula =
+			OneOnOneScreen->GetThroughBallResolutionSurface()
+				->GetPresentation().Formula;
+		if (DirectFormula.bVisible
+			&& DirectFormula.ContestId
+				== FName(TEXT("ThroughBall.OneOnOne.DirectShot")))
+		{
+			bSawShooterGoalkeeperPlan = bSawShooterGoalkeeperPlan
+				|| (!DirectFormula.AttackRow.Participants.IsEmpty()
+					&& !DirectFormula.DefenseRow.Participants.IsEmpty());
+			bSawAuthoritativeDirectFormula = bSawAuthoritativeDirectFormula
+				|| (DirectFormula.AttackRow.bFinalValueResolved
+					&& DirectFormula.DefenseRow.bFinalValueResolved
+					&& DirectFormula.bNarrativeAvailable);
+		}
 		if (Category
 			== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
 		{
@@ -6764,33 +6823,6 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 		if (!OneOnOneController->GetLastDiagnostic().bHostSuccess)
 		{
 			return false;
-		}
-		const FFMCodexUMGResolutionViewModel& Resolution =
-			OneOnOneResolution->GetPresentation();
-		if (Resolution.ComparisonEvidence.Num() >= 2
-			&& Resolution.ComparisonEvidence[0].EvidenceLabel.Contains(
-				TEXT("Shooter"))
-			&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
-				TEXT("Goalkeeper")))
-		{
-			bSawShooterGoalkeeperPlan = bSawShooterGoalkeeperPlan
-				|| (Resolution.ComparisonEvidence[0].EvidenceLabel.Contains(
-					TEXT("Shooter"))
-					&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
-						TEXT("Goalkeeper")));
-			bSawAuthoritativeDirectFormula = bSawAuthoritativeDirectFormula
-				|| (Resolution.DecisionLabel.Contains(TEXT("Winner:"))
-					&& Resolution.DecisionLabel.Contains(TEXT("Reason:"))
-					&& Resolution.ComparisonEvidence[0].EvidenceLabel.Contains(
-						TEXT("D6"))
-					&& Resolution.ComparisonEvidence[0].EvidenceLabel.Contains(
-						TEXT("final"))
-					&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
-						TEXT("D6"))
-					&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
-						TEXT("authoritative modifier"))
-					&& Resolution.ComparisonEvidence[1].EvidenceLabel.Contains(
-						TEXT("final")));
 		}
 	}
 	TestTrue(TEXT("Normal demo reaches OneOnOne and shooter/GK plan"),
@@ -13821,7 +13853,8 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 		CrossFormula,
 		ThroughBallRoute,
 		ThroughBallFormula,
-		LongShotFormula
+		LongShotFormula,
+		ShotOuter
 	};
 	auto MakeCentralPresentation = [&](
 		const EFMCodexUMGInteractionCategory Category,
@@ -13854,13 +13887,20 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 				Result.ThroughBallResolution.Formula.PrimaryAction = Slot;
 			}
 		}
-		else
+		else if (SurfaceKind == ESurfaceKind::LongShotFormula)
 		{
 			Result.LongShotResolution.bVisible = true;
 			Result.LongShotResolution.Stage =
 				EFMCodexUMGLongShotStage::DirectShot;
 			Result.LongShotResolution.Formula.bVisible = true;
 			Result.LongShotResolution.Formula.PrimaryAction = Slot;
+		}
+		else
+		{
+			Result.LongShotResolution.bVisible = true;
+			Result.LongShotResolution.Stage =
+				EFMCodexUMGLongShotStage::DeadCorner;
+			Result.LongShotResolution.PrimaryAction = Slot;
 		}
 		return Result;
 	};
@@ -13873,23 +13913,24 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 		const FFMCodexUMGMatchScreenViewModel Presentation =
 			MakeCentralPresentation(Category, Label, SurfaceKind);
 		Screen->RefreshFromPresentation(Presentation);
+		const bool bCentralClaims = SurfaceKind == ESurfaceKind::CrossFormula
+			? Presentation.InlineFormula.PrimaryAction.Claims(
+				Presentation.Interaction.PrimaryAction)
+			: SurfaceKind == ESurfaceKind::ThroughBallRoute
+				? Presentation.ThroughBallResolution.PrimaryAction.Claims(
+					Presentation.Interaction.PrimaryAction)
+			: SurfaceKind == ESurfaceKind::ThroughBallFormula
+				? Presentation.ThroughBallResolution.Formula.PrimaryAction.Claims(
+					Presentation.Interaction.PrimaryAction)
+			: SurfaceKind == ESurfaceKind::LongShotFormula
+				? Presentation.LongShotResolution.Formula.PrimaryAction.Claims(
+					Presentation.Interaction.PrimaryAction)
+				: Presentation.LongShotResolution.PrimaryAction.Claims(
+					Presentation.Interaction.PrimaryAction);
 		TestTrue(FString::Printf(TEXT("%s suppresses only its lower duplicate"),
 			Context),
 			Screen->GetInteractionPanel()->GetVisibility()
-				== ESlateVisibility::Collapsed
-				&& (SurfaceKind == ESurfaceKind::CrossFormula
-					? Presentation.InlineFormula.PrimaryAction.Claims(
-						Presentation.Interaction.PrimaryAction)
-					: SurfaceKind == ESurfaceKind::ThroughBallRoute
-						? Presentation.ThroughBallResolution.PrimaryAction.Claims(
-							Presentation.Interaction.PrimaryAction)
-						: SurfaceKind == ESurfaceKind::ThroughBallFormula
-						? Presentation.ThroughBallResolution.Formula
-							.PrimaryAction.Claims(
-								Presentation.Interaction.PrimaryAction)
-						: Presentation.LongShotResolution.Formula
-							.PrimaryAction.Claims(
-								Presentation.Interaction.PrimaryAction)));
+				== ESlateVisibility::Collapsed && bCentralClaims);
 		Screen->ResetPrimaryActionDispatchForTesting();
 		// A lower-surface input event can arrive after the synchronous refresh that
 		// transferred ownership to the central surface. It must not be reinterpreted
@@ -13911,10 +13952,16 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 			Screen->GetThroughBallResolutionSurface()
 				->GetFormulaSurface()->RequestContinue();
 		}
-		else
+		else if (SurfaceKind == ESurfaceKind::LongShotFormula)
 		{
 			Screen->GetLongShotResolutionSurface()
 				->GetFormulaSurface()->RequestContinue();
+		}
+		else
+		{
+			Cast<UButton>(Screen->GetLongShotResolutionSurface()
+				->GetWidgetFromName(TEXT("LongShotPrimaryActionButton")))
+				->OnClicked.Broadcast();
 		}
 		TestEqual(FString::Printf(
 			TEXT("%s central activation routes one PlayerController request"),
@@ -13949,6 +13996,18 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 	DispatchOnce(TEXT("LongShot direct defense"),
 		EFMCodexUMGInteractionCategory::RollLongShotDirectDefense,
 		TEXT("防守方掷点"), ESurfaceKind::LongShotFormula);
+	DispatchOnce(TEXT("CutInside direct attack"),
+		EFMCodexUMGInteractionCategory::RollCutInsideShotDirectAttack,
+		TEXT("进攻方掷点"), ESurfaceKind::LongShotFormula);
+	DispatchOnce(TEXT("CutInside direct defense"),
+		EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense,
+		TEXT("防守方掷点"), ESurfaceKind::LongShotFormula);
+	DispatchOnce(TEXT("CutInside DeadCorner"),
+		EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner,
+		TEXT("掷两枚骰"), ESurfaceKind::ShotOuter);
+	DispatchOnce(TEXT("CutInside terminal"),
+		EFMCodexUMGInteractionCategory::AdvanceAfterTerminal,
+		TEXT("下一回合"), ESurfaceKind::LongShotFormula);
 	DispatchOnce(TEXT("NextRound"),
 		EFMCodexUMGInteractionCategory::AdvanceAfterTerminal,
 		TEXT("下一回合"), ESurfaceKind::CrossFormula);
@@ -14068,6 +14127,202 @@ bool FFMCodexRunnerTacticAndHelperNoLegalProjectionTest::RunTest(
 		ZeroHelperView.SelectionOptions.IsEmpty()
 			&& !ZeroHelperView.bCanDecline
 			&& ZeroHelperView.bCanResolveNoLegalChoice);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexCutInsideScreenTerminalBranchesTest,
+	"FMCodex.LocalPlay.ControlSurface.54.CutInsideScreenTerminalBranches",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexCutInsideScreenTerminalBranchesTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+	(void)Parameters;
+
+	auto RunBranch = [this](
+		const TCHAR* Context,
+		const EMatchPlayElectiveBranchIntent BranchIntent,
+		const TArray<int32>& Rolls,
+		const EFMCodexLocalMatchInteractionCategory ExpectedRollCategory,
+		const TCHAR* ExpectedActionLabel,
+		const int32 ExpectedAcceptedRollCount,
+		const bool bDirect)
+	{
+		FScopedPlayableWorld Playable;
+		AFMCodexLocalMatchHostGameMode* Host = Playable.GetHost();
+		AFMCodexLocalMatchPlayerController* Controller =
+			Playable.GetController();
+		if (Host == nullptr || Controller == nullptr)
+		{
+			return false;
+		}
+		Controller->InitializePlayerFacingUI();
+		UFMCodexLocalMatchScreenWidget* Screen =
+			Controller->GetPlayerMatchScreen();
+		if (Screen == nullptr)
+		{
+			return false;
+		}
+		Screen->TakeWidget();
+		const int32 Seed = FindSeedForTacticalPointAndRolls(4, Rolls);
+		if (Seed == INDEX_NONE)
+		{
+			return false;
+		}
+		Controller->SetNextDemoMatchSeedForTesting(Seed);
+		Screen->RequestStartNewMatch();
+		Screen->RequestRollTacticalPoints();
+		Screen->PauseInlineFormulaRevealTimerForTesting();
+		Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+		const EInitialTurnOrderPlayer Attacker =
+			Controller->GetInteractionView().CurrentAttackingPlayer;
+		const FFamilyExpectation Family = FamilyExpectations()[2];
+		if (!DeployParticipants(*this, *Controller, Family, Attacker)
+			|| !SubmitRequiredSelections(
+				*this, *Controller, Family, Attacker, false))
+		{
+			return false;
+		}
+
+		UFMCodexLongShotResolutionSurfaceWidget* Surface =
+			Screen->GetLongShotResolutionSurface();
+		if (Surface == nullptr)
+		{
+			return false;
+		}
+		const FString ChoiceLabel = BranchIntent
+			== EMatchPlayElectiveBranchIntent::DirectShot
+				? TEXT("直接射门") : TEXT("直射死角");
+		UFMCodexInteractionOptionWidget* SelectedChoice = nullptr;
+		for (UFMCodexInteractionOptionWidget* Choice
+			: Surface->GetBranchChoiceWidgets())
+		{
+			if (Choice != nullptr && Choice->GetLabel() == ChoiceLabel)
+			{
+				SelectedChoice = Choice;
+				break;
+			}
+		}
+		TestTrue(FString::Printf(TEXT("%s begins with central branch ownership"),
+			Context),
+			SelectedChoice != nullptr
+				&& Controller->GetInteractionView().AcceptedRolls.IsEmpty()
+				&& Screen->GetInteractionPanel()->GetVisibility()
+					== ESlateVisibility::Collapsed);
+		if (SelectedChoice == nullptr)
+		{
+			return false;
+		}
+		SelectedChoice->TakeWidget();
+		UButton* ChoiceButton = Cast<UButton>(SelectedChoice->GetWidgetFromName(
+			TEXT("InteractionOptionButton")));
+		if (ChoiceButton == nullptr)
+		{
+			return false;
+		}
+		ChoiceButton->OnClicked.Broadcast();
+		const FFMCodexUMGLongShotResolutionViewModel& Pending =
+			Surface->GetPresentation();
+		const FString ActualActionLabel = bDirect
+			? Pending.Formula.ContinueActionLabel
+			: Pending.ContinueActionLabel;
+		TestTrue(FString::Printf(TEXT("%s branch click performs only zero-RNG setup"),
+			Context),
+			Controller->GetLastDiagnostic().bHostSuccess
+				&& Controller->GetLastDiagnostic().CommandName
+					== TEXT("ResolveIntentDeterminedRoute")
+				&& Controller->GetInteractionView().InteractionCategory
+					== ExpectedRollCategory
+				&& Controller->GetInteractionView().AcceptedRolls.IsEmpty()
+				&& ActualActionLabel == ExpectedActionLabel
+				&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+					->GetVisibility() == ESlateVisibility::Collapsed);
+
+		if (bDirect)
+		{
+			Surface->GetFormulaSurface()->RequestContinue();
+		}
+		else
+		{
+			UButton* ActionButton = Cast<UButton>(Surface->GetWidgetFromName(
+				TEXT("LongShotPrimaryActionButton")));
+			if (ActionButton == nullptr)
+			{
+				return false;
+			}
+			ActionButton->OnClicked.Broadcast();
+		}
+		Screen->PauseInlineFormulaRevealTimerForTesting();
+		if (bDirect)
+		{
+			Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+		}
+		else
+		{
+			Screen->AdvanceInlineFormulaRevealForTesting(1.8f);
+			Screen->AdvanceInlineFormulaRevealForTesting(3.0f);
+			Screen->AdvanceInlineFormulaRevealForTesting(1.8f);
+			Screen->AdvanceInlineFormulaRevealForTesting(3.0f);
+		}
+
+		const FMatchPlayState Terminal = Host->GetMatchSnapshot().Snapshot;
+		const FFMCodexUMGLongShotResolutionViewModel& Settled =
+			Surface->GetPresentation();
+		TestTrue(FString::Printf(TEXT("%s freezes before explicit NextRound"),
+			Context),
+			Controller->GetLastDiagnostic().bHostSuccess
+				&& Controller->GetLastDiagnostic().CommandName
+					!= TEXT("AdvanceAfterTerminal")
+				&& Controller->GetInteractionView().bTerminalPendingAdvance
+				&& Controller->GetInteractionView().AcceptedRolls.Num()
+					== ExpectedAcceptedRollCount
+				&& Controller->GetResolutionFeedback().bTerminal
+				&& (bDirect ? Settled.Formula.bNarrativeAvailable
+					: Settled.bNarrativeAvailable)
+				&& Screen->GetInteractionPanel()->GetVisibility()
+					== ESlateVisibility::Collapsed
+				&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+					->GetVisibility() == ESlateVisibility::Collapsed);
+
+		if (bDirect)
+		{
+			Surface->GetFormulaSurface()->RequestContinue();
+		}
+		else
+		{
+			Cast<UButton>(Surface->GetWidgetFromName(
+				TEXT("LongShotPrimaryActionButton")))->OnClicked.Broadcast();
+		}
+		const FMatchPlayState Advanced = Host->GetMatchSnapshot().Snapshot;
+		TestTrue(FString::Printf(TEXT("%s advances once into normal play"), Context),
+			Controller->GetLastDiagnostic().bHostSuccess
+				&& Controller->GetLastDiagnostic().CommandName
+					== TEXT("AdvanceAfterTerminal")
+				&& !Controller->GetInteractionView().bCurrentAttackActive
+				&& Controller->GetInteractionView().bTacticalPointRollReady
+				&& !Controller->GetResolutionFeedback().bVisible
+				&& Advanced.RuntimeState.PlayerAState.UsedAttackCount
+					+ Advanced.RuntimeState.PlayerBState.UsedAttackCount
+					== Terminal.RuntimeState.PlayerAState.UsedAttackCount
+						+ Terminal.RuntimeState.PlayerBState.UsedAttackCount + 1
+				&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
+					->GetVisibility() == ESlateVisibility::Collapsed);
+		return true;
+	};
+
+	TestTrue(TEXT("Direct immediate-miss screen path is complete"),
+		RunBranch(TEXT("CutInside ImmediateMiss"),
+			EMatchPlayElectiveBranchIntent::DirectShot, { 1 },
+			EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectAttack,
+			TEXT("进攻方掷点"), 1, true));
+	TestTrue(TEXT("DeadCorner goal screen path is complete"),
+		RunBranch(TEXT("CutInside DeadCorner"),
+			EMatchPlayElectiveBranchIntent::DeadCorner, { 6, 5 },
+			EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner,
+			TEXT("掷两枚骰"), 2, false));
 	return true;
 }
 

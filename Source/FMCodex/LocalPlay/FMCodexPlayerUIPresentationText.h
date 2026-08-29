@@ -86,6 +86,16 @@ public:
 	static FText LongShotDeadCornerStage();
 	static FText LongShotDirectOutcomeHint();
 	static FText LongShotDeadCornerOutcomeHint();
+	static FText ShotAttackRollAction();
+	static FText ShotDefenseRollAction();
+	static FText ShotPairedRollAction();
+	static FText CutInsideTitle();
+	static FText CutInsideBranchChoiceStage();
+	static FText CutInsideDirectStage();
+	static FText CutInsideDeadCornerStage();
+	static FText CutInsideDirectOutcomeHint();
+	static FText CrossTitle();
+	static FText CrossBranchChoiceStage();
 	static FText BroadcastStatus(bool bMatchEnded, bool bAttackActive,
 		const FString& MatchResultLabel);
 

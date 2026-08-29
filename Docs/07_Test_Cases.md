@@ -745,7 +745,7 @@
 
 - Runner 主动放弃与零合法候选都必须保留当前进攻、Attacker、AttackSequence、进攻次数、资源与部署，写入 `AwaitingSkill + bSkillSelectionDeferred + Runner/Helper formal absence`；不得 terminal、换攻或消费 RNG。两条 InteractionView 能力互斥且玩家文案都为 `不选择跑位球员`。
 - 从该 snapshot 选择 LongShot 合法并进入 branch；CutInside 同样保持 no-Runner-compatible。Cross/PassControl/ThroughBall 等 Runner-required 战术仍返回 `PreparedRunnerIncompatibleWithSkill`。正常已选 Runner 的 Helper selected/declined/no-legal 流程保持。
-- 分支选择精确显示 `直接射门 / （看远射、抢断、门将站位）` 与 `射向死角 / （只看两枚掷点）`；两项等宽双行、NoWrap、全 tile 可点击，Hover 不创建 Detail、不派发 gameplay、不改变 Surface 几何。每次点击只提交一次对应 typed branch intent。
+- 分支选择精确显示 `直接射门 / （看远射、抢断）` 与 `射向死角 / （只看两枚掷点）`；两项等宽双行、NoWrap、全 tile 可点击，Hover 不创建 Detail、不派发 gameplay、不改变 Surface 几何。每次点击只提交一次对应 typed branch intent。省略的条件门将项必须继续存在于Tactical Rule Description和live Formula facts。
 - Direct Attack/Defense 的当前 action 可由 nested shared Formula primary action 拥有。点击必须通过 LongShot widget、Screen current-owner guard、Controller/Host 到 Session 恰好派发一次；过期 lower action 仍拒绝。Attack 1 保持 ImmediateMiss，Attack 6 后只进入 Defense pending，Defense CTA 可继续完成既有 Formula/Outcome。
 - focused 回归覆盖 Runner completion/state validation/skill legality、完整受影响 AuthoritativeSession、LongShot Production、ControlSurface role/CTA/localization、正常 Helper 与 ThroughBall 代表流。已隔离 `ControlSurface.33` MatchHeader debt 不属于本 Stage。
 
@@ -758,4 +758,27 @@
 - 跨进攻stale测试必须让后续attack回到相同CutInside Direct pending phase，并证明旧sequence request在provider前拒绝且当前State不变。normal CutInside generic `ContinueResolution`不得拥有任何未完成roll。
 - DEV override测试必须覆盖CutInside Direct Attack/Defense与DeadCorner A/B target；prepared override遇到wrong-side、stale或premature请求时保持待消费，只有matching accepted typed request才清除并写入authoritative raw roll。
 - focused gate覆盖CutInside Foundation专项、完整AuthoritativeSession（含shared Direct/DeadCorner、Formula、terminal与LongShot回归）、Skill Selection/Runner formal absence、DEV override、UHT/Editor build和`git diff --check`。本Foundation不实现Production UMG且不以USER PIE为完成Gate；通过后才恢复Stage 6.15.3 Production Golden Path。
+
+## CutInside Production Golden Path（Stage 6.15.3，待 USER PIE）
+
+- Branch Surface覆盖两项权威choice、精确`直接射门 / 直射死角`文案、canonical tactical description派生的compact helper、CutInside family identity、0 RNG与无roll CTA。
+- Direct矩阵覆盖Attack pending、Attack `3–6` attack-only重建、ImmediateMiss terminal和Defense-completed terminal。必须断言typed UMG category/owner/contest identity、raw Attack保留、Defense未伪造、FormulaFacts row pending、participant DisplayName、固定`+2`、条件GK贡献、集中Narrative和显式`下一回合`。
+- DeadCorner矩阵覆盖single typed paired CTA、CutInside-specific A/B reveal identity、两枚权威D6顺序揭示、Goal/Miss Narrative、terminal reconstruction与`下一回合`；任何pending/terminal state都不得显示Formula、Defense、GK或Tactical Player行。
+- Screen routing contract必须证明三项CutInside gameplay RNG category分别调用typed Controller方法；中央Surface claim后lower InteractionPanel折叠，normal CutInside RNG不落入generic `ContinueResolution` default。
+- reconstruction至少重复构造attack-only snapshot并验证Attack row/Defense pending/defender CTA稳定；completed DeadCorner在reveal settled后直接恢复pair、Narrative和terminal，历史roll不重播。
+- focused回归包括CutInside Production、6.15.3A Foundation、`FMCodex.CoreRules.CutInsideShot`、formal no-Runner skill legality、DEV real authority flow、LongShot Production、ThroughBall Production与shared primary-action ownership。修改public USTRUCT时执行UHT `-WarningsAsErrors`和`FMCodexEditor Win64 Development` build；视觉验收仍为USER PIE gate。
+
+## 中央战术分支选择对齐（Stage 6.15.3.1，待 USER PIE）
+
+- CutInside branch test必须使用真实`SelectBranchIntent + PresentedActionType=CutInsideShot`组合，断言中央双项、canonical helper、0 RNG、lower panel折叠，并保留Direct 3–6 attack-only reconstruction、DeadCorner pair与typed routing覆盖。
+- Cross method pending必须从Authority-derived `BranchIntentOptions`投影中央`高球传中 / 低球传中`，两项helper分别来自canonical `Cross.High / Cross.Low` terms；shared branch tile保持双行、NoWrap、无Hover Detail，lower choice不重复。
+- 已选择High或Low的fresh reconstruction不得返回method choice。`ElectiveBranchIntent + ContinueResolution`必须恢复中央`判定传中路线`，route之后继续走现有High/Low Attack、Defense、Formula、Narrative与terminal surface；选择和rebuild都不消费RNG。
+- focused gate覆盖TacticalBranchAlignment、CutInside Production/Foundation/CoreRules、Cross Inline Formula/CoreRules与E2E代表、LongShot Production、Resolution Primary Action Ownership、formal no-Runner；shared screen/renderer风险存在时补ThroughBall Production，并执行UHT/build与`git diff --check`。视觉层级、helper fit与实际连续感仍由USER PIE验收。
+
+## CutInside Production Flow 与 Terminal Repair（Stage 6.15.3.2，待 USER PIE）
+
+- real ScreenWidget Direct路径必须从中央branch tile点击开始，断言选择后直接进入`RollCutInsideShotDirectAttack`、accepted roll仍为0、last accepted deterministic command为intent route、lower panel与generic diagnostic layer均折叠。Attack 3–6后只出现一枚accepted roll与`防守方掷点`；Defense后冻结terminal、保留两枚roll、Formula/Narrative和中央`下一回合`。
+- Direct ImmediateMiss真实路径只接受一枚Attack D6，不创建Defense或完整Formula row；DeadCorner真实路径一次`掷两枚骰`接受A/B两枚D6并保持outcome-only。两条路径都必须在terminal click前证明最后命令不是`AdvanceAfterTerminal`，click后机会总计恰好增加1且resolution feedback清空。
+- branch helper精确矩阵为LongShot Direct`（看远射、抢断）`、LongShot Dead`（只看两枚掷点）`、CutInside Direct`（射门 / 盘带 vs 抢断）`、CutInside Dead`（只看两枚掷点）`、Cross High`（传球 / 力量 vs 抢断 / 力量）`、Cross Low`（传球 / 射门 vs 抢断 / 盯防）`。另行断言CutInside Direct live Formula仍包含active GK Handling×0.5。
+- Screen ownership测试必须覆盖CutInside Direct Attack/Defense、DeadCorner与terminal CTA的精确claim，过期lower activation为0 dispatch，中央activation恰好1 dispatch。LongShot、Cross、ThroughBall与no-Runner代表回归必须保持原typed routing与Formula/GK合同。
 

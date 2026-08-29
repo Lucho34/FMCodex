@@ -5,9 +5,9 @@
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexLocalMatchScreenWidget.h"
+#include "FMCodexLongShotResolutionSurfaceWidget.h"
 
 #include "Editor.h"
-#include "Components/HorizontalBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -506,12 +506,11 @@ bool FAdvanceCrossToRouteEntryPIECommand::Update()
 		Controller->GetPlayerMatchScreen();
 	UFMCodexInteractionPanelWidget* Panel =
 		Screen == nullptr ? nullptr : Screen->GetInteractionPanel();
-	const UHorizontalBox* ChoiceRow = Panel == nullptr
-		? nullptr
-		: Cast<UHorizontalBox>(
-			Panel->GetWidgetFromName(TEXT("InteractionChoiceOptions")));
+	UFMCodexLongShotResolutionSurfaceWidget* BranchSurface =
+		Screen == nullptr ? nullptr : Screen->GetLongShotResolutionSurface();
 	const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>* Options =
-		Panel == nullptr ? nullptr : &Panel->GetRenderedOptionWidgets();
+		BranchSurface == nullptr
+			? nullptr : &BranchSurface->GetBranchChoiceWidgets();
 	if (Controller->GetInteractionView().InteractionCategory
 			!= EFMCodexLocalMatchInteractionCategory::SelectBranchIntent
 		|| Screen == nullptr
@@ -522,7 +521,11 @@ bool FAdvanceCrossToRouteEntryPIECommand::Update()
 			!= EFMCodexUMGBranchIntent::CrossHigh
 		|| Screen->GetPresentation().Interaction.BranchChoices[1].Intent
 			!= EFMCodexUMGBranchIntent::CrossLow
-		|| ChoiceRow == nullptr || ChoiceRow->GetChildrenCount() != 2
+		|| !Screen->GetPresentation().LongShotResolution.bVisible
+		|| Screen->GetPresentation().LongShotResolution.SkillType
+			!= ESkillRuleType::Cross
+		|| Panel == nullptr
+		|| Panel->GetVisibility() != ESlateVisibility::Collapsed
 		|| Options == nullptr || Options->Num() != 2
 		|| (*Options)[0] == nullptr || (*Options)[1] == nullptr
 		|| (*Options)[0]->GetVisibility() == ESlateVisibility::Collapsed
@@ -530,10 +533,14 @@ bool FAdvanceCrossToRouteEntryPIECommand::Update()
 		|| (*Options)[1]->GetVisibility() == ESlateVisibility::Collapsed
 		|| (*Options)[1]->GetVisibility() == ESlateVisibility::Hidden
 		|| (*Options)[0]->GetLabel() != TEXT("高球传中")
-		|| (*Options)[1]->GetLabel() != TEXT("低平球传中"))
+		|| (*Options)[0]->GetSecondaryLabel()
+			!= TEXT("（传球 / 力量 vs 抢断 / 力量）")
+		|| (*Options)[1]->GetLabel() != TEXT("低球传中")
+		|| (*Options)[1]->GetSecondaryLabel()
+			!= TEXT("（传球 / 射门 vs 抢断 / 盯防）"))
 	{
 		Test->AddError(TEXT(
-			"PIE Cross route choice did not render High/Low on one visible row."));
+			"PIE Cross route choice did not render centrally with canonical helpers."));
 		return true;
 	}
 	Controller->SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh);

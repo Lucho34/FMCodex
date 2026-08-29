@@ -276,3 +276,74 @@ FFMCodexTacticalDetailPresentationBuilder::BuildOutcomeRollHint(
 	Result.DisplayLabel = FString::Join(RangeLabels, TEXT("\u3000\uFF5C\u3000"));
 	return Result;
 }
+
+FText FFMCodexTacticalDetailPresentationBuilder::BuildBranchChoiceHint(
+	const ESkillRuleType SkillType, const FName BranchId)
+{
+	const FTacticalRuleDescription* Description =
+		FTacticalRuleDescriptionCatalog::FindBySkillType(SkillType);
+	if (Description == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+	const FTacticalRuleDescriptionBranch* Branch =
+		Description->Branches.FindByPredicate(
+			[BranchId](const FTacticalRuleDescriptionBranch& Candidate)
+			{
+				return Candidate.BranchId == BranchId;
+			});
+	if (Branch == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+	if (Branch->RollSemantics
+		== EMatchPlayResolutionRollSemantics::OutcomeDecision
+		&& Branch->OutcomeRollCount == 2 && Branch->bOutcomeUsesRollTotal)
+	{
+		return NSLOCTEXT(
+			"FMCodexTacticalDetailPresentation",
+			"PairedRollOnlyChoiceHint",
+			"（只看两枚掷点）");
+	}
+	if (Branch->RollSemantics
+		!= EMatchPlayResolutionRollSemantics::ArithmeticContest)
+	{
+		return FText::GetEmpty();
+	}
+
+	TArray<FString> AttackAttributeLabels;
+	TArray<FString> DefenseAttributeLabels;
+	auto AddAttributes = [](
+		const TArray<FTacticalRuleDescriptionTerm>& Terms,
+		TArray<FString>& AttributeLabels)
+	{
+		for (const FTacticalRuleDescriptionTerm& Term : Terms)
+		{
+			if (Term.Kind != EMatchPlayResolutionFormulaTermKind::Attribute
+				|| Term.Attribute
+					== EMatchPlayResolutionFormulaAttribute::None)
+			{
+				continue;
+			}
+			const FText Label = FFMCodexPlayerUIPresentationText::
+				ResolutionAttribute(Term.Attribute);
+			if (!Label.IsEmpty())
+			{
+				AttributeLabels.AddUnique(Label.ToString());
+			}
+		}
+	};
+	AddAttributes(Branch->AttackTerms, AttackAttributeLabels);
+	AddAttributes(Branch->DefenseTerms, DefenseAttributeLabels);
+	return AttackAttributeLabels.IsEmpty() || DefenseAttributeLabels.IsEmpty()
+		? FText::GetEmpty()
+		: FText::Format(
+			NSLOCTEXT(
+				"FMCodexTacticalDetailPresentation",
+				"AttributeContestChoiceHint",
+				"（{0} vs {1}）"),
+			FText::FromString(FString::Join(
+				AttackAttributeLabels, TEXT(" / "))),
+			FText::FromString(FString::Join(
+				DefenseAttributeLabels, TEXT(" / "))));
+}

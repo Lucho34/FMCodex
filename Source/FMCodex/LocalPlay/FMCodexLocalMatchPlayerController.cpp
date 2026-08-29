@@ -1082,16 +1082,19 @@ void AFMCodexLocalMatchPlayerController::SubmitBranchIntent(
 	const auto Result = Host->SubmitBranchIntent(Request);
 	RecordCommandResult(TEXT("SubmitBranchIntent"), Result);
 	if (Result.bSuccess
-		&& InteractionView.PresentedActionType == ESkillRuleType::LongShot)
+		&& (InteractionView.PresentedActionType == ESkillRuleType::LongShot
+			|| InteractionView.PresentedActionType
+				== ESkillRuleType::CutInsideShot))
 	{
-		// LongShot's session creation and intent-determined route consume no RNG
-		// and have no player choice. Keep them behind the selected branch click.
+		// Shot session creation and intent-determined route consume no RNG and
+		// have no player choice. Keep both behind the selected branch click.
 		if (InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
 		{
 			ContinueResolution();
 		}
-		if (InteractionView.InteractionCategory
+		if (LastDiagnostic.bHostSuccess
+			&& InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
 		{
 			ContinueResolution();

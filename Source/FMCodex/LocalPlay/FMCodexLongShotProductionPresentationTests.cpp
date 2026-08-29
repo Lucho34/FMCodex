@@ -177,7 +177,7 @@ bool FFMCodexLongShotProductionBranchOwnershipTest::RunTest(
 			FString(TEXT("直接射门")));
 		TestEqual(TEXT("Direct secondary copy is exact"),
 			Screen.LongShotResolution.BranchChoices[0].SecondaryLabel,
-			FString(TEXT("（看远射、抢断、门将站位）")));
+			FString(TEXT("（看远射、抢断）")));
 		TestEqual(TEXT("Dead-corner primary copy is exact"),
 			Screen.LongShotResolution.BranchChoices[1].Label,
 			FString(TEXT("射向死角")));
@@ -374,6 +374,18 @@ bool FFMCodexLongShotProductionDirectFormulaAndGateTest::RunTest(
 			PendingScreen.Interaction.PrimaryAction));
 	TestTrue(TEXT("Direct hint exposes its authority gate"),
 		PendingScreen.LongShotResolution.OutcomeHintLabel.Contains(TEXT("1–2")));
+	UFMCodexLongShotResolutionSurfaceWidget* DirectSurface =
+		NewObject<UFMCodexLongShotResolutionSurfaceWidget>(
+			GetTransientPackage());
+	DirectSurface->TakeWidget();
+	DirectSurface->RefreshFromPresentation(
+		PendingScreen.LongShotResolution);
+	TestTrue(TEXT("Resolved Direct renders one semantic branch heading"),
+		DirectSurface->GetWidgetFromName(TEXT("LongShotProductionBranch"))
+			->GetVisibility() == ESlateVisibility::Collapsed
+			&& Cast<UTextBlock>(DirectSurface->GetWidgetFromName(
+				TEXT("LongShotProductionStage")))->GetText().ToString()
+				== TEXT("直接射门"));
 
 	FFMCodexLocalMatchInteractionView Miss = Pending;
 	Miss.InteractionCategory =

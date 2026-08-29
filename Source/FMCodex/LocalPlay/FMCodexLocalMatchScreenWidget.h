@@ -345,7 +345,7 @@ private:
 	FFMCodexUMGInlineFormulaSurfaceViewModel LastDisclosedInlineFormula;
 	/** Exact authority-built ThroughBall shell retained through an outer reel. */
 	FFMCodexUMGThroughBallResolutionViewModel CachedResolvedThroughBall;
-	/** Exact authority-built LongShot shell retained through a reel. */
+	/** Exact authority-built LongShot/CutInside shell retained through a reel. */
 	FFMCodexUMGLongShotResolutionViewModel CachedResolvedLongShot;
 	/** Header before a live Tactical Point roll, retained until disclosure. */
 	FFMCodexUMGMatchHeaderViewModel CachedPreRollHeader;

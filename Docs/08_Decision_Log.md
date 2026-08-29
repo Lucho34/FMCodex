@@ -1029,3 +1029,17 @@
 - MVP 是否必须解决：是。
 - 建议处理方案：确认行动点 1 是否视为已执行一次进攻；若是，写入进攻次数消耗规则。
 - 当前状态：Open。
+
+## 2026-08-29 — Central Tactical Branch Selection Alignment（Stage 6.15.3.1）
+
+- 内部战术branch/method选择默认进入中央Resolution Surface，并由同一中央区域继续承载route/gameplay roll、Formula/outcome、Narrative与显式`下一回合`；lower InteractionPanel不得重复同一primary choice/action。LongShot是当前interaction grammar参考，CutInside与Cross按此对齐。
+- branch helper只提供一行canonical comparison摘要。CutInside与Cross从`FTacticalRuleDescriptionCatalog`的branch semantics/attribute terms投影；Widget不计算规则、Formula或conditional contributor。LongShot已接受文案保持不变，Hover Detail与systemic comprehension继续延期。
+- Cross method仍是进攻方0 RNG的`CrossHigh / CrossLow` intent；提交后继续使用现有单次`判定传中路线`、authoritative route D6、actual High/Low双方manual roll与terminal lifecycle。此决定只改变选择位置、短文案和dedup，不改变RNG ownership、Formula、outcome或reconstruction truth。
+- 现有LongShot-named shared model/widget继续服务LongShot/CutInside resolution与Cross branch choice；为避免高风险class/file rename，本Stage记录命名债但不清理。
+
+## 2026-08-29 — CutInside Production Flow and Terminal Presentation Ownership（Stage 6.15.3.2）
+
+- CutInside与LongShot共享branch click后的两步确定性continuation：创建Resolution Session并应用intent-determined route。该continuation消费0 gameplay RNG且不代表额外玩家决定；normal UI直接到typed roll，不显示`Resolution Started`。
+- successful command feedback不得覆盖刷新后的authoritative terminal snapshot。terminal结果、Formula/Narrative与唯一`下一回合`继续由`TerminalPendingAdvance`拥有；显式advance成功后completed feedback清空，下一进攻恢复normal interaction。不存在Authority auto-advance或第二次机会消费。
+- compact branch helper统一省略条件性GK contribution，只摘要基础对抗属性；完整Tactical Rule Description和live Formula facts仍保留GK。此决定以新helper矩阵取代此前LongShot choice记录中的旧helper文本，不改变任何GK gameplay、Formula或战术平衡。
+- CutInside中央CTA使用`进攻方掷点 / 防守方掷点 / 掷两枚骰 / 下一回合`，resolved shot branch只显示一次主标题。修改限于Controller deterministic progression、feedback ownership和presentation；Session/Host request、RNG provider、formula resolver与terminal authority不变。

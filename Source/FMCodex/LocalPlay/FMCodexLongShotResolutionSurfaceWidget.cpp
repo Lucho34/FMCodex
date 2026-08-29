@@ -304,7 +304,11 @@ void UFMCodexLongShotResolutionSurfaceWidget::RefreshVisuals(
 	SetVisibility(Presentation.bVisible
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	TitleText->SetText(FText::FromString(Presentation.TitleLabel));
-	SetOptionalText(BranchText, Presentation.BranchLabel);
+	// Branch and stage are currently the same semantic heading for resolved shot
+	// branches. Keep the stronger stage heading and suppress the duplicate line.
+	SetOptionalText(BranchText,
+		Presentation.BranchLabel == Presentation.StageLabel
+			? FString() : Presentation.BranchLabel);
 	SetOptionalText(StageText, Presentation.StageLabel);
 	SetOptionalText(StatusText, Presentation.StatusLabel);
 	SetOptionalText(HintText, Presentation.OutcomeHintLabel);

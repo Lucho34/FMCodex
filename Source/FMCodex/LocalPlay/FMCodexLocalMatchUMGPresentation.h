@@ -46,7 +46,10 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	SelectLongShotBranch,
 	RollLongShotDirectAttack,
 	RollLongShotDirectDefense,
-	RollLongShotDeadCorner
+	RollLongShotDeadCorner,
+	RollCutInsideShotDirectAttack,
+	RollCutInsideShotDirectDefense,
+	RollCutInsideShotDeadCorner
 };
 
 /**
@@ -116,7 +119,9 @@ enum class EFMCodexUMGCrossRollRevealKind : uint8
 	Attack,
 	Defense,
 	LongShotDeadCornerA,
-	LongShotDeadCornerB
+	LongShotDeadCornerB,
+	CutInsideShotDeadCornerA,
+	CutInsideShotDeadCornerB
 };
 
 UENUM(BlueprintType)
@@ -1655,8 +1660,9 @@ enum class EFMCodexUMGLongShotStage : uint8
 };
 
 /**
- * Authority-derived production shell for the complete LongShot resolution.
- * UMG renders these facts and typed actions; it never calculates outcomes.
+ * Authority-derived production shell shared by LongShot, CutInsideShot, and
+ * Cross branch choice. UMG renders these facts and typed actions; it never
+ * calculates outcomes.
  */
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGLongShotResolutionViewModel
@@ -1668,6 +1674,9 @@ struct FMCODEX_API FFMCodexUMGLongShotResolutionViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
 	bool bSuppressLegacyResolution = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	ESkillRuleType SkillType = ESkillRuleType::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
 	EFMCodexUMGLongShotStage Stage = EFMCodexUMGLongShotStage::None;

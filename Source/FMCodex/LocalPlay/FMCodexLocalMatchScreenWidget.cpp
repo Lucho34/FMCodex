@@ -969,6 +969,15 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	case EFMCodexUMGInteractionCategory::RollLongShotDeadCorner:
 		MatchController->RollLongShotDeadCorner();
 		break;
+	case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectAttack:
+		MatchController->RollCutInsideShotDirectAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense:
+		MatchController->RollCutInsideShotDirectDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner:
+		MatchController->RollCutInsideShotDeadCorner();
+		break;
 	case EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance:
 		MatchController->CompleteCrossAndAdvance();
 		break;
@@ -2780,16 +2789,18 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::Attack
 		&& Result.ContestId == FName(TEXT("ThroughBall.BehindDefense.P1"))
 		&& Result.bNarrativeAvailable;
-	const bool bLongShotAttackTerminalNarrative =
+	const bool bElectiveDirectAttackTerminalNarrative =
 		ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::Attack
-		&& Result.ContestId == FName(TEXT("LongShot.DirectShot"))
+		&& (Result.ContestId == FName(TEXT("LongShot.DirectShot"))
+			|| Result.ContestId
+				== FName(TEXT("CutInsideShot.DirectShot")))
 		&& Result.bNarrativeAvailable;
 	const bool bNarrativeDisclosed =
 		(ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::Defense
 			|| bBehindAttackTerminalNarrative
-			|| bLongShotAttackTerminalNarrative)
+			|| bElectiveDirectAttackTerminalNarrative)
 		&& bHolding
 		&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
 	if (!bNarrativeDisclosed)
@@ -2977,12 +2988,21 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 	{
 		Result.Formula = BuildDisplayedInlineFormula();
 	}
-	const bool bDeadReveal = IsInlineFormulaRevealInputBlocked()
-		&& ActiveCrossRollReveal.ContestId == FName(TEXT("LongShot.DeadCorner"))
+	const bool bLongShotDeadReveal =
+		ActiveCrossRollReveal.ContestId == FName(TEXT("LongShot.DeadCorner"))
 		&& (ActiveCrossRollReveal.Kind
 				== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA
 			|| ActiveCrossRollReveal.Kind
 				== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB);
+	const bool bCutInsideDeadReveal =
+		ActiveCrossRollReveal.ContestId
+			== FName(TEXT("CutInsideShot.DeadCorner"))
+		&& (ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerA
+			|| ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerB);
+	const bool bDeadReveal = IsInlineFormulaRevealInputBlocked()
+		&& (bLongShotDeadReveal || bCutInsideDeadReveal);
 	if (!bDeadReveal)
 	{
 		return Result;
@@ -3001,7 +3021,9 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 	const bool bHolding = InlineFormulaRevealPhase
 		== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
 	const bool bSecond = ActiveCrossRollReveal.Kind
-		== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB;
+			== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB
+		|| ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerB;
 	Result.bDeadCornerAVisible = bSecond || bHolding;
 	Result.bDeadCornerBVisible = bSecond && bHolding;
 	const bool bNarrativeDisclosed = bSecond && bHolding
@@ -3143,7 +3165,10 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 			InlineFormulaRevealPhaseElapsed = 0.0f;
 			StopInlineFormulaRevealTimer();
 			if (CompletedIdentity.Kind
-				== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA)
+					== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA
+				|| CompletedIdentity.Kind
+					== EFMCodexUMGCrossRollRevealKind
+						::CutInsideShotDeadCornerA)
 			{
 				const FMatchPlayResolutionRollFact* RollB =
 					Presentation.Resolution.FormulaFacts.Rolls.FindByPredicate(
@@ -3157,8 +3182,12 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 				if (RollB != nullptr)
 				{
 					FFMCodexCrossRollRevealIdentity Second;
-					Second.Kind = EFMCodexUMGCrossRollRevealKind
-						::LongShotDeadCornerB;
+					Second.Kind = CompletedIdentity.Kind
+						== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA
+							? EFMCodexUMGCrossRollRevealKind
+								::LongShotDeadCornerB
+							: EFMCodexUMGCrossRollRevealKind
+								::CutInsideShotDeadCornerB;
 					Second.AttackSequence = CompletedIdentity.AttackSequence;
 					Second.ContestId = CompletedIdentity.ContestId;
 					Second.RollSequenceIndex = RollB->SequenceIndex;
@@ -3273,8 +3302,10 @@ void UFMCodexLocalMatchScreenWidget::RefreshActiveRollReelVisuals()
 		ThroughBallResolutionSurface->GetRollReelWidget()
 			->RefreshFromPresentation(Reel);
 	}
-	else if (ActiveCrossRollReveal.ContestId
+	else if ((ActiveCrossRollReveal.ContestId
 			== FName(TEXT("LongShot.DeadCorner"))
+			|| ActiveCrossRollReveal.ContestId
+				== FName(TEXT("CutInsideShot.DeadCorner")))
 		&& LongShotResolutionSurface != nullptr
 		&& LongShotResolutionSurface->GetRollReelWidget() != nullptr)
 	{
@@ -3519,7 +3550,8 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 		== FName(TEXT("ThroughBall.AntiOffside"))
 		|| Identity.ContestId
 			== FName(TEXT("ThroughBall.OneOnOne.ChipShot"))
-		|| Identity.ContestId == FName(TEXT("LongShot.DeadCorner"));
+		|| Identity.ContestId == FName(TEXT("LongShot.DeadCorner"))
+		|| Identity.ContestId == FName(TEXT("CutInsideShot.DeadCorner"));
 	if (Identity.Kind != EFMCodexUMGCrossRollRevealKind::InitialRoute
 		&& Identity.Kind
 			!= EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute
@@ -3593,9 +3625,11 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 					&& Candidate.PostRoutePurpose
 						== ERollPurpose::PrimaryDefense;
 			case EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA:
+			case EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerA:
 				return Candidate.Semantics == ERollSemantics::OutcomeDecision
 					&& Candidate.PostRoutePurpose == ERollPurpose::PairedAttackA;
 			case EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB:
+			case EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerB:
 				return Candidate.Semantics == ERollSemantics::OutcomeDecision
 					&& Candidate.PostRoutePurpose == ERollPurpose::PairedAttackB;
 			default:

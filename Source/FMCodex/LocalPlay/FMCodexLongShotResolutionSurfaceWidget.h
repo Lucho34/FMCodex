@@ -21,7 +21,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexLongShotBranchRequested,
 	EFMCodexUMGBranchIntent, Intent);
 
-/** Production renderer for the authority-derived LongShot shell. */
+/** Shared LongShot/CutInside resolution and Cross branch-choice renderer. */
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexLongShotResolutionSurfaceWidget final
 	: public UUserWidget

@@ -122,8 +122,6 @@ private:
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
 	{
 		const FFMCodexLocalMatchInteractionView PreviousView = InteractionView;
-		const FFMCodexLocalMatchResolutionFeedback PreviousFeedback =
-			ResolutionFeedback;
 		LastDiagnostic.CommandName = CommandName;
 		LastDiagnostic.bHostSuccess = Result.bSuccess;
 		LastDiagnostic.bAuthoritativeAccepted =
@@ -147,11 +145,26 @@ private:
 		}
 		else
 		{
-			ResolutionFeedback = CommandName == TEXT("AdvanceAfterTerminal")
-				&& PreviousFeedback.bTerminal
-					? PreviousFeedback
-					: FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
+			if (CommandName == TEXT("AdvanceAfterTerminal"))
+			{
+				// The accepted advance has left the completed attack. Do not let its
+				// command acknowledgement become the next attack's resolution surface.
+				ResolutionFeedback = {};
+			}
+			else if (InteractionView.bTerminalPendingAdvance)
+			{
+				// The refreshed authoritative terminal snapshot owns presentation.
+				// A generic command acknowledgement must never replace its result.
+				ResolutionFeedback =
+					FFMCodexLocalMatchResolutionFeedbackBuilder
+						::BuildFromTerminalSnapshot(InteractionView);
+			}
+			else
+			{
+				ResolutionFeedback =
+					FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 						CommandName, Result, PreviousView, InteractionView);
+			}
 			if (ResolutionFeedback.bTerminal)
 			{
 				LastDiagnostic.PresentationSummary =
