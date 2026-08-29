@@ -87,6 +87,11 @@ public:
 
 	FMatchPlayAuthoritativeResolveInitialRouteResult ResolveInitialRoute();
 
+	FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollResult
+	ResolveThroughBallInitialRouteRoll(
+		const FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest&
+			Request);
+
 	FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();
 

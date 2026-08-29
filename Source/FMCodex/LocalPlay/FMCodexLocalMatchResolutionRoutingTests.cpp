@@ -574,6 +574,7 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		{ TEXT("SubmitBranchIntent"), TEXT("SubmitBranchIntent(") },
 		{ TEXT("ResolveIntentDeterminedRoute"), TEXT("ResolveIntentDeterminedRoute(") },
 		{ TEXT("ResolveInitialRoute"), TEXT("ResolveInitialRoute(") },
+		{ TEXT("ResolveThroughBallInitialRouteRoll"), TEXT("ResolveThroughBallInitialRouteRoll(") },
 		{ TEXT("ResolveCrossPostRoutePlan"), TEXT("ResolveCrossPostRoutePlan(") },
 		{ TEXT("ResolveThroughBallFeetPostRoutePlan"), TEXT("ResolveThroughBallFeetPostRoutePlan(") },
 		{ TEXT("ResolveThroughBallFeetAttackRoll"), TEXT("ResolveThroughBallFeetAttackRoll(") },
@@ -598,8 +599,8 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		{ TEXT("DeployGoalkeeper"), TEXT("DeployGoalkeeper(") },
 		{ TEXT("ResolveNoLegalCarrier"), TEXT("ResolveNoLegalCarrier(") }
 	};
-	TestEqual(TEXT("Session mutation inventory remains 44"),
-		static_cast<int32>(UE_ARRAY_COUNT(Commands)), 44);
+	TestEqual(TEXT("Session mutation inventory remains 45"),
+		static_cast<int32>(UE_ARRAY_COUNT(Commands)), 45);
 	for (const FReachability& Command : Commands)
 	{
 		TestTrue(*FString::Printf(
@@ -613,6 +614,7 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		TEXT(".BeginResolutionSession("),
 		TEXT(".ResolveIntentDeterminedRoute("),
 		TEXT(".ResolveInitialRoute("),
+		TEXT(".ResolveThroughBallInitialRouteRoll("),
 		TEXT(".ResolveCrossPostRoutePlan("),
 		TEXT(".ResolveThroughBallFeetPostRoutePlan("),
 		TEXT(".ResolveThroughBallFeetAttackRoll("),
@@ -650,7 +652,7 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 			Header.Contains(Forbidden) || Source.Contains(Forbidden));
 	}
 	for (const TCHAR* Cache : {
-		TEXT("LastRoll"), TEXT("CurrentDice"), TEXT("RouteRoll"),
+		TEXT("LastRoll"), TEXT("CurrentDice"), TEXT("CachedRouteRoll"),
 		TEXT("AllRolls"), TEXT("CachedResolution"), TEXT("CachedOutcome") })
 	{
 		TestFalse(*FString::Printf(TEXT("No duplicate cache: %s"), Cache),
@@ -678,6 +680,12 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	TestNoActive(TEXT("BeginResolutionSession"), EmptyHost->BeginResolutionSession());
 	TestNoActive(TEXT("ResolveIntentDeterminedRoute"), EmptyHost->ResolveIntentDeterminedRoute());
 	TestNoActive(TEXT("ResolveInitialRoute"), EmptyHost->ResolveInitialRoute());
+	FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest
+		ThroughBallRouteRequest;
+	ThroughBallRouteRequest.AttackSequence = 1;
+	ThroughBallRouteRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolveThroughBallInitialRouteRoll"),
+		EmptyHost->ResolveThroughBallInitialRouteRoll(ThroughBallRouteRequest));
 	TestNoActive(TEXT("ResolveCrossPostRoutePlan"), EmptyHost->ResolveCrossPostRoutePlan());
 	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest LowAttackRequest;
 	LowAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
@@ -968,15 +976,67 @@ bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
 		BuildReadyForResolution(
 			*Host, Direct, Input, Rules, Seed,
 			ESkillRuleType::ThroughBall, false, Trace));
-	TestTrue(TEXT("Feet manual Direct begins resolution"),
-		Direct.BeginResolutionSession().BeginResult.bSuccess);
-	TestTrue(TEXT("Feet manual Host begins resolution"),
-		Host->BeginResolutionSession().bSuccess);
-	TestTrue(TEXT("Feet manual Direct resolves route"),
-		Direct.ResolveInitialRoute().OrchestrationResult.bSuccess);
-	TestTrue(TEXT("Feet manual Host resolves route"),
-		Host->ResolveInitialRoute().bSuccess);
+	const FMatchPlayState ReadyState = Host->GetMatchSnapshot().Snapshot;
+	const FFMCodexLocalMatchInteractionView RouteView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(ReadyState, Rules);
+	TestTrue(TEXT("ThroughBall ready state projects attacker-owned typed route"),
+		RouteView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallInitialRoute
+			&& RouteView.ExpectedActingPlayer == Trace.Attacker
+			&& RouteView.AttackSequence
+				== ReadyState.CurrentAttack.AttackSequence);
+	for (int32 RefreshIndex = 0; RefreshIndex < 4; ++RefreshIndex)
+	{
+		Controller->RefreshPresentation();
+		const FMatchPlayState RefreshedState = Host->GetMatchSnapshot().Snapshot;
+		const FFMCodexLocalMatchInteractionView RebuiltView =
+			FFMCodexLocalMatchInteractionViewBuilder::Build(
+				RefreshedState, Rules);
+		TestTrue(*FString::Printf(
+			TEXT("Refresh/reconstruction %d remains manual Route Pending"),
+			RefreshIndex + 1),
+			AreStatesEqual(ReadyState, RefreshedState)
+				&& !RefreshedState.CurrentAttack.bHasResolutionSession
+				&& RebuiltView.InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory
+						::RollThroughBallInitialRoute
+				&& RebuiltView.AttackSequence
+					== ReadyState.CurrentAttack.AttackSequence);
+	}
+	FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest
+		DirectRouteRequest;
+	DirectRouteRequest.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+	DirectRouteRequest.RequestingSide = Trace.Attacker;
+	TestTrue(TEXT("Feet manual Direct accepts typed route"),
+		Direct.ResolveThroughBallInitialRouteRoll(DirectRouteRequest)
+			.OrchestrationResult.bSuccess);
+	Controller->RefreshPresentation();
+	Controller->ContinueResolution();
+	TestTrue(TEXT("Generic Continue cannot own the ThroughBall route roll"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ContinueResolution")
+			&& AreStatesEqual(
+				ReadyState,
+				Host->GetMatchSnapshot().Snapshot));
+	Controller->RollThroughBallInitialRoute();
+	TestTrue(TEXT("Controller routes typed ThroughBall route through Host"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolveThroughBallInitialRouteRoll"));
 	const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
+	TestEqual(TEXT("One accepted click persists exactly one Route D6"),
+		RouteState.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Num(),
+		1);
+	for (int32 RefreshIndex = 0; RefreshIndex < 3; ++RefreshIndex)
+	{
+		Controller->RefreshPresentation();
+	}
+	TestEqual(TEXT("Post-click refresh/reveal setup cannot double-dispatch Route"),
+		Host->GetMatchSnapshot().Snapshot.CurrentAttack.ResolutionSession
+			.InitialRouteRollRecords.Num(),
+		1);
 	TestTrue(TEXT("Feet route snapshot equals direct Session"),
 		AreStatesEqual(RouteState, Direct.GetStateSnapshot()));
 	TestEqual(TEXT("Deterministic route is Feet"),
@@ -1016,6 +1076,7 @@ bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
 				Host->GetMatchSnapshot().Snapshot));
 
 	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest AttackRequest;
+	AttackRequest.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	AttackRequest.RequestingSide = Trace.Attacker;
 	TestTrue(TEXT("Direct accepts typed Feet attack roll"),
 		Direct.ResolveThroughBallFeetAttackRoll(AttackRequest)
@@ -1043,6 +1104,7 @@ bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
 
 	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
 		DefenseRequest;
+	DefenseRequest.AttackSequence = AttackState.CurrentAttack.AttackSequence;
 	DefenseRequest.RequestingSide = Trace.Defender;
 	TestTrue(TEXT("Direct accepts typed Feet defense roll"),
 		Direct.ResolveThroughBallFeetDefenseRoll(DefenseRequest)
@@ -1579,7 +1641,7 @@ bool FFMCodexLocalMatchThroughBallDecisiveRollAutoProgressionTest::RunTest(
 				bSuccess);
 			return bSuccess;
 		};
-		if (!SetOverride(ETarget::ThroughBallRoute, 5)
+		if (!SetOverride(ETarget::ThroughBallRoute, 6)
 			|| !SetOverride(ETarget::ThroughBallAntiOffside, AntiRoll)
 			|| (Choice == EChoice::ChipShot
 				&& !SetOverride(ETarget::OneOnOneChipShotAttack, 6))
@@ -1593,9 +1655,26 @@ bool FFMCodexLocalMatchThroughBallDecisiveRollAutoProgressionTest::RunTest(
 
 		const int32 UsedBefore = UsedAttacksFor(
 			Host->GetMatchSnapshot().Snapshot, Trace.Attacker);
-		Controller->RefreshPresentation();
-		Controller->ContinueResolution();
-		Controller->ContinueResolution();
+		for (int32 RefreshIndex = 0; RefreshIndex < 4; ++RefreshIndex)
+		{
+			Controller->RefreshPresentation();
+			const FMatchPlayState Pending = Host->GetMatchSnapshot().Snapshot;
+			TestTrue(FString::Printf(
+				TEXT("%s refresh %d preserves manual route and DEV one-shot"),
+				*Suffix, RefreshIndex + 1),
+				!Pending.CurrentAttack.bHasResolutionSession
+					&& Controller->GetInteractionView().InteractionCategory
+						== EFMCodexLocalMatchInteractionCategory
+							::RollThroughBallInitialRoute
+					&& Host->GetLocalDevPendingRollOverrides()
+						.ContainsByPredicate(
+							[](const FFMCodexLocalDevPendingRollOverride& Item)
+							{
+								return Item.Target
+									== ETarget::ThroughBallRoute;
+							}));
+		}
+		Controller->RollThroughBallInitialRoute();
 		TestEqual(FString::Printf(
 			TEXT("%s route reaches typed Anti roll"), *Suffix),
 			Controller->GetInteractionView().InteractionCategory,
@@ -1739,9 +1818,23 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 				&& Set(*Host, ETarget::ThroughBallBehindDefenseP1, 3));
 		TestEqual(TEXT("Two semantic entries are pending"),
 			Host->GetLocalDevPendingRollOverrides().Num(), 2);
-		TestTrue(TEXT("Authority begins resolution"),
-			Host->BeginResolutionSession().bSuccess);
-		const auto Route = Host->ResolveInitialRoute();
+		const FMatchPlayState ReadyState = Host->GetMatchSnapshot().Snapshot;
+		FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest
+			RouteRequest;
+		RouteRequest.AttackSequence =
+			ReadyState.CurrentAttack.AttackSequence + 1;
+		RouteRequest.RequestingSide = Trace.Attacker;
+		TestFalse(TEXT("Stale typed route request rejects"),
+			Host->ResolveThroughBallInitialRouteRoll(RouteRequest).bSuccess);
+		TestTrue(TEXT("Stale typed route retains pending override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target == ETarget::ThroughBallRoute;
+				}));
+		RouteRequest.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		const auto Route =
+			Host->ResolveThroughBallInitialRouteRoll(RouteRequest);
 		const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
 		TestTrue(TEXT("Real Host route command succeeds"), Route.bSuccess);
 		TestEqual(TEXT("Authority stored overridden route RawD6"),
@@ -1792,9 +1885,13 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 				&& Set(*Host, ETarget::ThroughBallAntiOffside, 6)
 				&& Set(*Host, ETarget::OneOnOneDirectShotAttack, 5)
 				&& Set(*Host, ETarget::OneOnOneDirectShotDefense, 1));
+		const FMatchPlayState ReadyState = Host->GetMatchSnapshot().Snapshot;
+		FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest
+			RouteRequest;
+		RouteRequest.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		RouteRequest.RequestingSide = Trace.Attacker;
 		TestTrue(TEXT("Owned OneOnOne authority reaches AntiOffside"),
-			Host->BeginResolutionSession().bSuccess
-				&& Host->ResolveInitialRoute().bSuccess);
+			Host->ResolveThroughBallInitialRouteRoll(RouteRequest).bSuccess);
 		const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
 		TestEqual(TEXT("Override route selects AntiOffside"),
 			RouteState.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
@@ -1920,20 +2017,49 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 			Set(*Host, ETarget::ThroughBallRoute, 1)
 				&& Set(*Host, ETarget::ThroughBallFeetAttack, 6)
 				&& Set(*Host, ETarget::ThroughBallFeetDefense, 1));
-		TestTrue(TEXT("Feet authority begins and resolves overridden route"),
-			Host->BeginResolutionSession().bSuccess
-				&& Host->ResolveInitialRoute().bSuccess);
+		const FMatchPlayState ReadyState = Host->GetMatchSnapshot().Snapshot;
+		FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest
+			RouteRequest;
+		RouteRequest.AttackSequence = ReadyState.CurrentAttack.AttackSequence;
+		RouteRequest.RequestingSide = Trace.Attacker;
+		TestTrue(TEXT("Feet authority resolves overridden typed route"),
+			Host->ResolveThroughBallInitialRouteRoll(RouteRequest).bSuccess);
 		const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
 		TestEqual(TEXT("Canonical route 1 is Feet"),
 			RouteState.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall,
 			EMatchPlayThroughBallActualBranch::Feet);
 		FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest Attack;
+		Attack.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 		Attack.RequestingSide = Trace.Attacker;
 		FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest Defense;
+		Defense.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 		Defense.RequestingSide = Trace.Defender;
-		TestTrue(TEXT("Feet typed authority rolls succeed"),
-			Host->ResolveThroughBallFeetAttackRoll(Attack).bSuccess
-				&& Host->ResolveThroughBallFeetDefenseRoll(Defense).bSuccess);
+		FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest StaleAttack =
+			Attack;
+		++StaleAttack.AttackSequence;
+		TestFalse(TEXT("Stale Feet Attack override command rejects"),
+			Host->ResolveThroughBallFeetAttackRoll(StaleAttack).bSuccess);
+		TestTrue(TEXT("Stale Feet Attack retains pending override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target == ETarget::ThroughBallFeetAttack;
+				}));
+		TestTrue(TEXT("Feet typed Attack authority roll succeeds"),
+			Host->ResolveThroughBallFeetAttackRoll(Attack).bSuccess);
+		FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
+			StaleDefense = Defense;
+		++StaleDefense.AttackSequence;
+		TestFalse(TEXT("Stale Feet Defense override command rejects"),
+			Host->ResolveThroughBallFeetDefenseRoll(StaleDefense).bSuccess);
+		TestTrue(TEXT("Stale Feet Defense retains pending override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target == ETarget::ThroughBallFeetDefense;
+				}));
+		TestTrue(TEXT("Feet typed Defense authority roll succeeds"),
+			Host->ResolveThroughBallFeetDefenseRoll(Defense).bSuccess);
 		const FMatchPlayState RollState = Host->GetMatchSnapshot().Snapshot;
 		const auto& Records = RollState.CurrentAttack.ResolutionSession
 			.PostRouteRollProgress.RollRecords;

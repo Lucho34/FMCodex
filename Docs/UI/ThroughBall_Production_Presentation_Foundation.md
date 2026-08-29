@@ -82,7 +82,7 @@ Attack/Defense 沿用 Screen 的同一 stable identity 结构，分别以 sequen
 
 反越位、直接射门与挑射现在消费 6.14.2A 已持久化的 typed roll progression。反越位中央表面持续显示路线结果，并以 shared Reel 披露越位或形成单刀；终结的越位进入 Narrative hold 后才开放 `下一回合`，非终结的成功则先显示结果与 Narrative，再开放同一组单刀选择。
 
-`SelectOneOnOneShot` 由 ThroughBall 中央表面所有，两个 typed choice 在同一个水平布局中显示，底部 InteractionPanel 不重复。身后球与反越位只改变进入来源，不创建不同的单刀 Widget。Direct/Chip hover 均通过既有 Tactical Rule Description Catalog、shared detail builder 与 shared panel 投影；hover 不提交 intent，click 才转发现有 typed choice。
+`SelectOneOnOneShot` 由 ThroughBall 中央表面所有，两个 typed choice 在同一个水平布局中显示，底部 InteractionPanel 不重复。身后球与反越位只改变进入来源，不创建不同的单刀 Widget。当前 choice 通过常驻的主副两行文案解释核心差异；Hover 只保留普通按钮视觉，click 才转发现有 typed choice。
 
 直接射门复用 shared Formula Surface 与 shared Reel：Preview、Attack-only、Defense 与 terminal 都只读取 authoritative Formula Facts。UI 不求和或比较 winner；底层 `Miss` 仅通过 Narrative v1 的 OneOnOne Direct 分支表现为 `扑救成功`。挑射保持 outcome-only，不创建 Formula 或 GK 表现，并复用 shared Reel 与 Narrative builder。
 
@@ -99,3 +99,37 @@ ThroughBall parent 负责 `直塞 / 单刀 / 直接射门` 与 source route cont
 ## Stage 6.14.2C Production Surface 排他所有权
 
 当 InteractionView-derived ThroughBall Production Surface 正常声明当前 Resolution 所有权时，Screen 同步折叠 Pitch 层的 standalone Inline Formula root 与 generic Resolution overlay root；该判定不依赖 Reel、披露阶段或上一帧 suppression，因此 route、Formula、outcome-only Reel、choice、terminal 与 fresh reconstruction 都只保留一套中央表面。权威 rejection 会释放 production ownership、折叠 ThroughBall root，并恢复 generic diagnostic overlay 与底部 typed recovery action；三个 root 不叠加。
+
+## ThroughBall Production — CLOSED（Stage 6.14.3 FINAL）
+
+ThroughBall 的当前 production scope 已完成技术收口：Feet、BehindDefense 和 AntiOffside 三条 route 都有完整的 Authority、Production Surface、Narrative、terminal 与 reconstruction 路径；BehindDefense/AntiOffside 成功汇入同一 OneOnOne choice，Direct 和 Chip 也都完成 productionized。Historical BehindDefense P2 与 generic debug shell 不属于 normal production reachability。
+
+所有玩家拥有的 ThroughBall gameplay roll 都使用 typed command，显式携带 `RequestingSide + AttackSequence`，并在 provider 调用前拒绝 wrong-side、stale、duplicate 和 wrong-phase request。Initial Route 不再由 normal generic `ContinueResolution` 执行；该 compatibility continuation 只可在已完成 gameplay roll 后执行既有 zero-RNG deterministic progression/recovery，不能代替玩家 roll intent。
+
+Route、Feet/Behind/Direct attack-only prefixes、全部 terminal outcomes 与 OneOnOne progression 均由 persisted authoritative snapshot 重建，刷新和 fresh Screen 不消费 gameplay RNG，也不重播历史 Reel。真正 terminal 继续停在 `TerminalPendingAdvance`，只有中央 `下一回合` 才提交 `AdvanceAfterTerminal`。Production root 独占正常 Resolution，真实 rejection 才释放所有权给 diagnostic/recovery surface。
+
+Stage 6.14.3B 已修复并验证 Initial Route 的 owning-surface manual activation，Stage 6.14.3R 已将不稳定的 OneOnOne Hover consumer替换为常驻双行microcopy。随后USER PIE确认Route与全部玩家掷点保持手动、Behind/Anti共享choice稳定可点、无Hover闪烁和空白reserve；FINAL representative automation也覆盖request correlation、manual RNG、zero-RNG continuation、reconstruction、Narrative、Formula、CTA与Surface ownership。ThroughBall当前production合同与ThroughBall-specific Stage 7 request slice因此正式CLOSED。
+
+CLOSED不包含network transport、reconnect UX、final audio/animation、tutorial、balance、systematic player comprehension或commercial polish。这些属于后续roadmap，不重新打开当前ThroughBall production scope；`OneOnOne Contextual Tactical Detail`继续保持Deferred。
+
+## Stage 6.14.3B Initial Route 手动 action ownership
+
+ReadyForResolution 与已建立 AwaitingRoute 的 ThroughBall 都稳定投影同一个 attacker-owned `RollThroughBallInitialRoute`。中央 Production Surface 从首次 Route Pending snapshot 起 claim CTA；selection、refresh、Tick、hover/focus、InteractionView/UMG rebuild 与 fresh reconstruction 只展示该 action，不调用 provider、不产生 RawD6 或 route result。
+
+Screen 的中央 Inline Formula、ThroughBall Production 与 lower/generic Surface 使用 owner-aware dispatch。同步 authority refresh 已将 action 转移到中央 Surface 后，旧 lower/generic Surface 的迟到 Continue event 必须丢弃，不能按最新 category 重解释成 Route roll。只有当前 ThroughBall owner 的 CTA activation 才提交 correlated typed request；一次 accepted activation 恰好一枚 Initial Route D6，Reel 只展示该权威值。
+
+这个手动边界不改变决定性 roll 后的零 RNG收口：Anti、Direct Defense 与 Chip 的玩家 D6 仍须显式点击，accepted 后既有 deterministic Formula/outcome/terminal continuation 仍可自动完成；真正回合推进仍只由中央 `下一回合` 执行。
+
+## Stage 6.14.3C–E OneOnOne Hover 尝试（已由 6.14.3R supersede）
+
+6.14.3C、D、E 曾依次尝试 resolution-local Tactical Detail、固定 detail reserve 与局部 hover identity。Automation 合同分别成立，但 USER PIE 仍出现不稳定交互，因此这些 OneOnOne 专属 runtime consumer、reserve、callback、local state 与 instrumentation 已在 6.14.3R 删除，不再属于当前 Production contract。
+
+这些尝试中仍具有独立生产价值的修复继续保留：ThroughBall parent 是唯一 source-route context owner；BehindDefense 与 AntiOffside 都只显示一次权威 `路线掷点 N → 判定为…`；Direct/Chip 保持中央水平布局、NoWrap、完整点击区域与相同 presentation 下的稳定 widget identity；Production exclusivity、manual roll 与 terminal contracts 不变。
+
+## Stage 6.14.3R OneOnOne choice simplification
+
+当前 OneOnOne 页面只显示两个稳定的双行 choice：`直接射门 / （看射门、门将单刀）` 与 `挑射 / （只看掷点）`。secondary copy 来自集中式本地化 Presentation mapping，是选择前的 compact decision aid，不计算 legality、Formula、modifier、概率或 outcome threshold。Direct 后续仍由 authoritative Formula 解释；Chip 的 `1–3 / 4–6` 仍只在进入对应 roll 后由 outcome hint 显示。
+
+OneOnOne option 不再绑定 Hover/Unhover detail callback，也不创建 Tactical Detail child 或固定 `780×148` reserve，因此 choice 下方没有空白 placeholder。相同 OneOnOne context 与 typed choice list 的重复 presentation application仍复用现有 button widgets；这是普通按钮稳定性合同，不再包含 hover-detail local state。
+
+`OneOnOne Contextual Tactical Detail` 状态为 Deferred，目标是 Post-Rule-Freeze Player Comprehension Pass。待实际 gameplay testing、MVP rule simplification 与 rule freeze 后，再在 Hover Detail、fixed inline detail、click-to-expand、first-use tooltip 或不增加解释之间重新评估；canonical Direct/Chip metadata 与 shared Tactical Information infrastructure继续保留。

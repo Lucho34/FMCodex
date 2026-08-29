@@ -48,7 +48,8 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	ApplyCrossTerminalResolution,
 	/** Legacy compatibility only; production uses ApplyThroughBallFeetTerminalResolution. */
 	ApplyThroughBallFeetTerminalResolution,
-	AdvanceAfterTerminal
+	AdvanceAfterTerminal,
+	RollThroughBallInitialRoute
 };
 
 struct FMCODEX_API FFMCodexLocalMatchDeploymentOption

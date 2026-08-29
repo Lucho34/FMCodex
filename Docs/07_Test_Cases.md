@@ -677,7 +677,7 @@
 ## AntiOffside + OneOnOne Production Golden Paths（Stage 6.14.2）
 
 - Anti pending必须显示中央`掷点判定越位`与持久路线结果；D6 1代表性覆盖`越位`终结，D6 6覆盖非终结`形成单刀`。live reel期间隐藏结果、Narrative、choices与NextRound；settle后先披露结果/Narrative，再经过readable hold开放对应NextRound或两项choice。
-- BehindDefense attacker win与AntiOffside success都必须进入同一个中央`选择单刀方式`表面，按钮恰好为水平排列的`直接射门 / 挑射`，底部不得重复。Direct/Chip hover必须消费canonical catalog与shared Tactical Detail panel，unhover关闭详情，hover不得触发choice dispatch。
+- BehindDefense attacker win与AntiOffside success都必须进入同一个中央`选择单刀方式`表面，按钮恰好为水平排列的`直接射门 / 挑射`，底部不得重复。两个 choice 必须常驻显示各自 compact secondary copy；Hover 不打开 OneOnOne Tactical Detail，也不得触发 choice dispatch。
 - Direct必须覆盖Formula Preview、Attack reveal、fresh attack-only reconstruction、Defense reveal、Goal与底层Miss的GK Save表现。所有term、RawD6、FinalValue、Tactical Player `+N`与winner均来自authoritative Formula Facts；fresh terminal不重播，NextRound等待result/narrative hold。
 - Chip必须覆盖pending、D6 1代表性Miss与D6 6代表性Goal，且没有Formula、GK或扑救文本。fresh completed snapshot直接恢复RawD6、Result、Narrative与NextRound。
 - rejected Anti/Chip/Direct typed request不得启动假reel或消费settled identity；中央primary-action claim必须释放，底部typed action与diagnostic overlay恢复。正常production路径仍抑制generic debug overlay。
@@ -689,6 +689,36 @@
 - Controller/Host真实流程分别覆盖Anti=1、Anti=6、Chip final与Direct Defense final。Anti=1、Chip和Direct最终必须自动到`TerminalPendingAdvance / AdvanceAfterTerminal`；Anti=6必须直接到`SelectOneOnOneShot`。所有最终view都不得要求generic`ContinueResolution`或显示`继续直塞结算`。
 - 自动收口不得增加gameplay RNG：Anti post-route records仍为1，Chip总post-route records仍为Anti+Chip两枚，Direct仍为Anti+Attack+Defense三枚；terminal apply不新增record，不消费进攻机会。显式`下一回合`继续作为唯一advance入口。
 - normal Anti surface必须隐藏legacy Resolution overlay；rejection继续显示diagnostic并恢复typed action。terminal outer ActionPrompt必须为空，中央`下一回合`按钮保持唯一。Direct nested Formula必须声明parent拥有contest heading与route context，并在非Narrative阶段实际折叠两处重复内容。
-- OneOnOne Direct hover必须投影`跑位球员：射门`与门将属性；Tactical/Deployment shared detail回归同步更新。Formula与场上compact role继续断言`跑位`，不得被解释性文案改写。
+- OneOnOne Direct 的 canonical metadata仍保留`跑位球员：射门`与门将属性，供 shared tactical reference及未来理解优化使用；当前 choice只显示 compact microcopy。Formula与场上compact role继续断言`跑位`，不得被解释性文案改写。
 - focused回归至少运行ThroughBall Production suite、决定性roll Controller/Host flow、Tactical Information suite、Cross shared Inline Formula、Unified Roll Reel与Resolution Primary Action Ownership；因为不修改CoreRules gameplay/math，不机械升级full CoreRules。USTRUCT变化要求UHT与Editor build。
+
+## ThroughBall Route + Feet Request Correlation Authority（Stage 6.14.3A）
+
+- ReadyForResolution 的 ThroughBall 必须投影进攻方 owned `RollThroughBallInitialRoute`，request 携带 snapshot 的 `AttackSequence + ExpectedActingPlayer`。accepted request 恰好消费一枚 InitialRoute D6 并持久化 canonical route；wrong-side、stale、wrong-tactic/phase 与 duplicate 在 provider 前拒绝，State byte-equivalent 且 RNG delta 为 0。
+- normal ThroughBall route 的 generic `ContinueResolution` 必须失败且不改状态；Controller 只能从 typed InteractionView 组装 route request。Host wrapper、Screen dispatch、UMG primary-action claim 与 production route reveal 都必须保留同一 category；Cross route 继续使用其现有 generic continuation。
+- Feet Attack/Defense request 必须显式携带 `AttackSequence`。same-phase stale 代表测试分别在 Attack 和 Defense pending 中使用错误 sequence，断言拒绝、零 provider call、状态不变，随后 fresh request 成功，证明失败没有污染当前 prefix。
+- 跨进攻测试必须完成 Attack N 并推进到 Attack N+1，再使 N+1 进入相同 ThroughBall route/Feet pending phases。使用 N 的 route、Feet Attack 与 Feet Defense request 都必须原子拒绝；每次拒绝后的 N+1 fresh request 仍必须成功。
+- DEV override 专项必须证明 stale route/Feet request 保留待消费 one-shot，只有当前 sequence 且 ownership/phase 正确的 accepted request 才消费。refresh、InteractionView/Formula facts 重建和 rejection 都不能调用 gameplay provider。
+- 回归至少覆盖新增 Session correlation 专项、完整 AuthoritativeSession、LocalMatchHost/Controller、DEV override、ThroughBall production projection、Resolution Primary Action Ownership、完整 ThroughBall CoreRules、Cross 代表 family、UHT/build/link 与 `git diff --check`。本 Authority Stage 不改变可见流程，不以独立 USER PIE 为完成 Gate；通过后恢复 Stage 6.14.3 closeout。
+
+## ThroughBall Initial Route 手动掷点回归（Stage 6.14.3B）
+
+- ThroughBall selection 完成后必须真实停在 attacker-owned `RollThroughBallInitialRoute`：没有 Resolution Session/route record/RawD6/actual branch，重复 Controller refresh、InteractionView/UMG reconstruction 与 presentation update 均保持同一 `AttackSequence`，gameplay RNG delta 为 0。
+- ReadyForResolution 的 Route Pending 由中央 ThroughBall Production Surface claim；lower/generic Surface 即使在同步 refresh 后送达迟到的 Continue event，也不得按最新 typed category 重解释或 dispatch。只有当前 owning Surface 的显式 CTA activation 可以调用 `ResolveThroughBallInitialRouteRoll`。
+- 一次 accepted Route CTA 恰好持久化一枚 Initial Route D6；随后 refresh/reel settle 不得 double-dispatch。DEV Route 1/4/6 必须在 click 前保持 pending，click 后分别映射 Feet/BehindDefense/AntiOffside；stale、wrong-side 与 duplicate 继续在 provider 前拒绝并保留 one-shot。
+- Feet Attack/Defense、Behind Attack/Defense、Anti、Direct Attack/Defense 与 Chip 全部仍是显式玩家 roll。Anti、Direct Defense、Chip 等决定性 roll accepted 后，既有 deterministic zero-RNG Formula/outcome/terminal continuation 继续自动完成，并停在显式 `下一回合`。
+
+## OneOnOne Choice 简化与 Hover 延期（Stage 6.14.3R）
+
+- BehindDefense attacker win 与 AntiOffside success 的 OneOnOne 页面必须共享同一中央水平 Choice Row：Direct primary=`直接射门`、secondary=`（看射门、门将单刀）`；Chip primary=`挑射`、secondary=`（只看掷点）`。两项等宽、双行、Primary/Secondary 层级清楚、NoWrap、无遮挡并拥有完整点击区域。
+- OneOnOne Surface 不得创建专属 Tactical Detail child或固定 detail reserve。Direct/Chip Hover后 shared Tactical Detail保持关闭、choice dispatch为0、按钮identity稳定；Direct与Chip各一次click恰好各派发一次typed choice。
+- ThroughBall parent继续单独拥有 source-route context：Behind显示一次`路线掷点 4 → 判定为身后球`，Anti显示一次`路线掷点 6 → 判定为反越位`。Production exclusivity、Route pending repeated refresh零掷点、manual player rolls、zero-RNG decisive continuation、terminal`下一回合`与diagnostic takeover不变。
+- SelectSkill Hover与Deployment Tactical Reference继续使用shared catalog/builder/detail widget并保持各自既有lifecycle；canonical Direct/Chip metadata不因当前consumer延期而删除。
+
+## ThroughBall Production Final Closeout（Stage 6.14.3 FINAL）
+
+- Final gate必须保持九项玩家拥有roll全部为side-owned、`AttackSequence`-correlated、stale/duplicate-safe并由owning Surface显式点击；Initial Route、Feet Attack/Defense、Behind Attack/Defense、Anti、Direct Attack/Defense与Chip任一项失败都不得标记CLOSED。
+- representative closeout覆盖完整ThroughBall Production presentation、Route/Feet跨进攻stale correlation、Feet/Behind/Anti/Direct/Chip manual authority、Route repeated-refresh零RNG、决定性roll零RNG continuation、Narrative v1、Formula fact boundary、CTA ownership以及shared Tactical Information consumers。近期已通过的大型6.14.3A baseline可引用但不得冒充本次实际执行。
+- E2E closeout矩阵覆盖Feet、Behind OutOfPlay、Behind DefenderStopped、Behind→OneOnOne、Anti Offside、Anti→OneOnOne、Direct Goal、Direct Save presentation、Chip Miss与Chip Goal；每条都必须可从权威snapshot重建，历史roll不重播，terminal停在显式`下一回合`。
+- 当前OneOnOne合同为稳定水平双行choice：`直接射门 / （看射门、门将单刀）`与`挑射 / （只看掷点）`。不得恢复Hover Detail consumer或固定reserve；shared Tactical catalog/builder、SelectSkill Hover与Deployment Reference继续保留。
 

@@ -796,6 +796,48 @@
 - semantic ownership：ThroughBall parent负责战术、单刀方式与source route context，Direct child Formula不重复标题和route；terminal Narrative不受抑制。正常production surface抑制legacy overlay，rejection继续恢复诊断。terminal只保留`下一回合`按钮，不显示同名standalone prompt。
 - 文案：解释性Tactical Detail用`跑位球员`消除属性歧义；场上与Formula compact role继续使用`跑位`。该区别不改变participant identity或canonical attribute。
 
+### CD-080 - ThroughBall Route and Feet Commands Are AttackSequence-correlated
+
+- 日期：2026-08-29
+- 决策：ThroughBall initial route 使用独立的进攻方 owned typed command；Route、Feet Attack 与 Feet Defense 的 production request 全部携带 `AttackSequence + RequestingSide`。Cross route 保留原有 generic continuation，不与 ThroughBall 共用玩家 command identity。
+- 验证顺序：AuthoritativeSession 先验证 current attack、sequence、side ownership、tactic/route 与 canonical pending purpose，然后才调用 provider。Session 不从当前 State 为 Feet request 代填 sequence；拒绝路径不提交状态、不消费 RNG 或 DEV one-shot。
+- 重建：InteractionView 从 authoritative CurrentAttack 投影 typed category、AttackSequence 与 expected side，Controller/Host 只做 typed forwarding。ReadyForResolution、AwaitingRoute 与 Feet persisted prefixes 都可从 snapshot 恢复，不依赖 Controller 进程内缓存。
+- stale/retry-safe：即使 Attack N+1 处于与 Attack N 完全相同的 pending phase，N 的 route/Feet request 仍会原子拒绝；N+1 fresh request 不受影响。因此三个玩家拥有的早期 ThroughBall roll boundary 可直接迁移到延迟、重试和重连网络环境。
+- 不变项：route 概率、Feet Formula/Resolver、terminal lifecycle、reel/narrative/layout 与玩家可见文案不变。本决策只建立 request correlation authority，ThroughBall 是否 CLOSED 留给恢复后的 Stage 6.14.3 closeout。
+
+### CD-081 - ThroughBall Production Technical Closeout
+
+- 日期：2026-08-29
+- 决策：ThroughBall 当前 production scope 技术收口。Feet、BehindDefense、AntiOffside、共享 OneOnOne entry、Direct 与 Chip 都具备 authority-backed production surface、Narrative、reconstruction 与 explicit terminal lifecycle；BehindDefense P2 与 legacy debug shell 不在 normal production reachability 中。
+- request/readiness：九项玩家拥有 roll command 都具备 explicit side、caller `AttackSequence`、provider-before stale/duplicate rejection 与 persisted partial state。该结论仅标记 ThroughBall-specific Stage 7 request slice ready，不代表全项目 Stage 7-ready。
+- production boundary：normal gameplay roll 全部走 typed command；generic `ContinueResolution` 只保留 completed zero-RNG progression/recovery 与 compatibility 用途。Production root 独占正常 Resolution，rejection 才恢复 diagnostic/recovery surface。
+- lifecycle：决定性 final roll 后自动完成剩余 zero-RNG terminal persistence，但停在 `TerminalPendingAdvance`；只有玩家显式 `下一回合` 才清理 action scope、消费进攻机会与 handoff。
+- gate：Automation technical closeout 通过后仍需 representative USER PIE 验证 Feet、Behind、Anti→Direct 与 Chip 的可见 wiring。PIE PASS 后才推荐合并提交 `6.14.3A + resumed 6.14.3` 并进入 6.15.1。
+
+### CD-082 - Player-owned Gameplay RNG Requires an Owning-Surface Activation
+
+- 日期：2026-08-29
+- 决策：所有 player-owned gameplay RNG typed action 都只能由当前 owning Surface 的显式 activation dispatch。Screen 不得让 lower/generic Surface 的迟到或重入 Continue event 在同步 refresh 后按新的 Interaction category 重解释；ReadyForResolution 的 ThroughBall Initial Route 直接由中央 Production Surface claim。
+- manual boundary：ThroughBall selection、refresh、Tick、InteractionView/UMG rebuild、hover/focus 与 fresh reconstruction 都保持 Route Pending 且消费 0 RNG。只有中央 Route CTA click 才提交携带 `AttackSequence + RequestingSide` 的 request，并恰好消费一枚 D6；拒绝、重复与 stale event 消费 0。
+- zero-RNG boundary：本决策不取消 CD-079。玩家提交 Anti、Direct Defense、Chip 或其他既定 decisive roll 后，Controller 仍可自动执行显式分类的 deterministic Formula/outcome/terminal continuation；`AdvanceAfterTerminal` 继续要求玩家点击 `下一回合`。
+- gate：Stage 6.14.3 的 Automation closeout 因 USER PIE 发现该 dispatch regression 而重新打开。6.14.3B technical PASS 后仍须短 USER PIE，再恢复一次精简 6.14.3 closeout；在此之前不标记 ThroughBall FINAL CLOSED。
+
+### CD-083 - OneOnOne Uses Inline Choice Microcopy; Contextual Detail Is Deferred
+
+- 日期：2026-08-29
+- 当前产品决策：OneOnOne Direct/Chip 不再消费 Hover Tactical Detail。两个中央 choice 改为常驻双行文案：`直接射门 / （看射门、门将单刀）` 与 `挑射 / （只看掷点）`；Hover 只保留普通按钮视觉，click继续提交原typed choice。
+- cleanup：删除OneOnOne专属detail child、固定reserve、hover callback/local state与测试instrumentation；保留水平Choice Row、NoWrap、完整点击区域、相同presentation下的稳定widget identity、route context dedup与Production exclusivity。shared Tactical Information catalog、builder、detail widget、SelectSkill Hover和Deployment Reference不变。
+- deferred：`OneOnOne Contextual Tactical Detail`延后到Post-Rule-Freeze Player Comprehension Pass。待实际gameplay testing、MVP规则简化与freeze后，再评估Hover Detail、fixed inline detail、click-to-expand、first-use tooltip或不增加解释；canonical Direct/Chip metadata继续保留。
+
+### CD-084 - ThroughBall Production Final Closeout
+
+- 日期：2026-08-29
+- closure：Initial Route、Feet、BehindDefense、AntiOffside、共享OneOnOne entry、Direct与Chip的当前production flow全部CLOSED。三条route、Formula/outcome、Narrative、reconstruction、Production Surface/CTA ownership与explicit terminal lifecycle均通过final gate；historical BehindDefense P2和legacy generic shell不属于normal reachability。
+- request boundary：九项玩家拥有的gameplay roll全部side-owned、caller-`AttackSequence` correlated、stale/duplicate-safe并要求owning Surface显式activation。normal path不使用generic Continue代替掷点，也不依赖Controller-local truth或隐藏atomic multi-roll；决定性roll后的自动工作严格为零RNG continuation，回合推进仍要求`AdvanceAfterTerminal`。
+- OneOnOne：当前choice为`直接射门 / （看射门、门将单刀）`与`挑射 / （只看掷点）`。OneOnOne Hover Detail consumer及其reserve/state/instrumentation不属于Production；`OneOnOne Contextual Tactical Detail`继续Deferred到Post-Rule-Freeze Player Comprehension Pass，canonical metadata与shared Tactical Information保留。
+- readiness范围：ThroughBall-specific Stage 7 request slice为PASS，但不表示整个项目Stage 7-ready，也不包含network transport、reconnect UX、教程、systematic comprehension、最终动画/音效、平衡或商业美术。后续优先进入remaining tactic Production Golden Paths。
+- 冻结边界：不修改CoreRules、Formula、RNG、route mapping、RequestingSide、AttackSequence、Session/Host authority、zero-RNG progression或terminal lifecycle。6.14.3R仍需USER PIE通过后才进入最终短closeout。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：

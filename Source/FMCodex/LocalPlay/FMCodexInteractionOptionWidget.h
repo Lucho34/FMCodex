@@ -28,9 +28,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexInteractionOneOnOneOptionRequested,
 	EFMCodexUMGOneOnOneChoice, Choice);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
-	FFMCodexInteractionOneOnOneDetailRequested,
-	EFMCodexUMGOneOnOneChoice, Choice);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexInteractionTacticalDetailRequested, FName, SkillId);
 
 UCLASS(Blueprintable)
@@ -66,6 +63,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Presentation")
 	void ConfigureOneOnOne(
 		const FString& InLabel,
+		const FString& InSecondaryLabel,
 		EFMCodexUMGOneOnOneChoice InChoice);
 
 	const FString& GetLabel() const;
@@ -86,12 +84,6 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionOneOnOneOptionRequested OnOneOnOneRequested;
-
-	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
-	FFMCodexInteractionOneOnOneDetailRequested OnOneOnOneDetailRequested;
-
-	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
-	FFMCodexInteractionOneOnOneDetailRequested OnOneOnOneDetailDismissed;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
 	FFMCodexInteractionTacticalDetailRequested OnTacticalDetailRequested;
@@ -141,12 +133,6 @@ private:
 
 	UFUNCTION()
 	void HandleOneOnOneClicked();
-
-	UFUNCTION()
-	void HandleOneOnOneHovered();
-
-	UFUNCTION()
-	void HandleOneOnOneUnhovered();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Interaction Presentation",

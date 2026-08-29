@@ -72,6 +72,7 @@ public:
 	void ApplyCrossTerminalResolution();
 	/** Legacy compatibility wrapper; production does not expose AndAdvance. */
 	void CompleteCrossAndAdvance();
+	void RollThroughBallInitialRoute();
 	void RollThroughBallFeetAttack();
 	void RollThroughBallFeetDefense();
 	void RollThroughBallAntiOffsideAttack();
@@ -166,6 +167,7 @@ private:
 	FFMCodexLocalMatchResolutionFeedback ResolutionFeedback;
 	bool bCrossRouteCommandInFlight = false;
 	bool bCrossRollCommandInFlight = false;
+	bool bThroughBallRouteCommandInFlight = false;
 	bool bThroughBallFeetRollCommandInFlight = false;
 	bool bThroughBallAntiOffsideRollCommandInFlight = false;
 	bool bThroughBallOneOnOneRollCommandInFlight = false;

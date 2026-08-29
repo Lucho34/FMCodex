@@ -136,7 +136,7 @@
 
 - 数据链保持 `Authoritative State -> Resolution Facts / InteractionView -> UMG Presentation Builder -> ThroughBall Surface`。Anti/Chip outer outcome 与 Direct Formula 都来自 authority facts；Widget 不读取 State、不计算阈值/Formula、不比较 winner，也不把 Direct 的 `Miss` 改写为 gameplay `Save`。
 - Anti、Chip 与 Direct Attack/Defense 都复用 Screen 的 stable reveal identity、settled-key memory 和 `UFMCodexRollReelWidget`。outer outcome DTO 与 nested Formula DTO 使用同一 reveal state machine；active reveal 只遮蔽尚未披露的表现信息，fresh reconstruction 不合成 pending identity，因此不会重播历史掷点。
-- `SelectOneOnOneShot` 由一个 source-independent ThroughBall central choice surface 投影。按钮继续携带既有 typed choice，Screen 只转发 click；hover 通过 `FTacticalRuleDescriptionCatalog -> FTacticalDetailPresentationBuilder -> shared Tactical Detail panel` 展示 branch metadata，不产生 command 或状态变化。
+- `SelectOneOnOneShot` 由一个 source-independent ThroughBall central choice surface 投影。按钮继续携带既有 typed choice，Screen 只转发 click；当前 Direct/Chip 以常驻的双行主副文案解释差异，Hover 只保留普通按钮视觉，不创建 OneOnOne Tactical Detail consumer、detail reserve 或 presentation state。canonical branch metadata 与 shared Tactical Detail infrastructure继续服务 SelectSkill Hover、Deployment Reference及未来复审。
 - Direct 复用 shared Inline Formula DTO/Widget，Attack-only snapshot直接公开已完成 Attack row并保留 Defense typed CTA；terminal结果由 authoritative outcome和 shared Narrative branch映射。Chip/Anti 使用同一 shared Narrative builder但不创建 Formula。
 - central primary action只在非拒绝状态精确 claim当前 typed action。Authority rejection取消 active reveal、保留 diagnostic overlay并恢复 lower InteractionPanel；正常 production路径继续抑制 generic debug surface。
 
@@ -146,3 +146,17 @@
 - compatibility `ContinueResolution` mapping继续存在，供重建/恢复在 completed progress 与 terminal apply之间的状态；normal successful player path不会把它投影为额外 CTA。terminal apply仍只写`TerminalPendingAdvance`，显式`AdvanceAfterTerminal`继续负责清理、进攻机会消费与handoff。
 - `FFMCodexUMGOutcomeRollHintViewModel`是read-only presentation contract。Builder只接受catalog中单骰、非aggregate的`OutcomeDecision` branch，并通过集中式FText映射构造范围文案。ThroughBall本阶段只在pending Anti/Chip接入；Widget不读取catalog、不比较RawD6、不推断outcome。
 - nested Formula通过`bParentOwnsContestHeading / bParentOwnsRouteContext`表达semantic ownership。该标记只影响重复标题/route context的显示，不删除authoritative facts，也不改变terminal Narrative disclosure。Screen在正常ThroughBall production state显式抑制legacy overlay；rejection仍保留diagnostic recovery。
+
+## ThroughBall Route + Feet Request Correlation Authority（Stage 6.14.3A）
+
+- ThroughBall initial route 的 normal production intent 使用独立 `ResolveThroughBallInitialRouteRoll` typed command；request 同时携带 `AttackSequence + RequestingSide`。Session 在 provider 之前验证 current attack、sequence、当前进攻方、ThroughBall family 与 route-pending state，再复用原 initial-route orchestrator 生成且持久化唯一 D6。Cross 仍使用原有 generic route continuation，两者不共享玩家 command identity。
+- Feet Attack/Defense typed request 补齐 `AttackSequence`，Session serialized envelope 不再从当前 State 代填请求 sequence。Route、Feet Attack 与 Feet Defense 都必须在 provider/DEV decorator 之前拒绝 stale、wrong-side、wrong-phase 和 duplicate；失败路径 `DoNotAdopt`、RNG delta 为 0，且不消费 one-shot override。
+- InteractionView 从 authoritative snapshot 投影 `RollThroughBallInitialRoute`、当前 `AttackSequence` 和 expected attacker。Controller 只从该 DTO 组装 request，Host 只装饰 provider 并转发 Session；normal ThroughBall route 不再经 generic `ContinueResolution`。从 ReadyForResolution 或已建立的 AwaitingRoute snapshot 重建后，同一 typed action 仍可由 State 唯一恢复，不依赖 Controller 暂存。
+- 跨进攻相关性以 `AttackSequence` 为边界：当 Attack N+1 恢复到与 Attack N 相同的 route/Feet pending phase 时，N 的 command 仍必须原子拒绝；当前 N+1 command 在该拒绝后仍可正常执行。这是未来网络 stale/retry-safe 的 request boundary，不改变 route 概率、Feet Formula 或 terminal lifecycle。
+
+## ThroughBall Production Final Closeout（Stage 6.14.3 FINAL）
+
+- ThroughBall 的 Initial Route、Feet、BehindDefense、AntiOffside、OneOnOne Direct 与 Chip normal production flow 已关闭建设范围。九项玩家拥有的 gameplay roll全部由当前 owning Surface显式激活，经 `InteractionView -> Controller -> Host -> AuthoritativeSession` 的 typed request提交，并携带 `AttackSequence + RequestingSide`；refresh、rebuild、hover、Tick与reconstruction不自动派发。
+- Route pending、各分支的空/attack-only/completed prefix、OneOnOne progression与terminal snapshot都由权威 State恢复。最后一个决定性roll之后只允许零 RNG Formula/outcome/terminal continuation自动完成，真正回合推进仍停在`TerminalPendingAdvance`并要求显式`AdvanceAfterTerminal`。
+- 正常ThroughBall由中央Production Surface独占Resolution和当前CTA；legacy Formula/debug roots折叠，真实rejection才恢复diagnostic/recovery。OneOnOne当前使用`直接射门 / （看射门、门将单刀）`与`挑射 / （只看掷点）`，Contextual Tactical Detail延期到Post-Rule-Freeze Player Comprehension Pass。
+- CLOSED只表示ThroughBall当前production合同与ThroughBall-specific Stage 7 request slice通过；不表示network transport、reconnect UX、教程、最终动画/音效、平衡或商业美术已经完成。

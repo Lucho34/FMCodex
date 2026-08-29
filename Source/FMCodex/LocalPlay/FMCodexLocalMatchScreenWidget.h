@@ -311,13 +311,16 @@ private:
 	void HandleOneOnOneRequested(EFMCodexUMGOneOnOneChoice Choice);
 
 	UFUNCTION()
-	void HandleOneOnOneDetailRequested(EFMCodexUMGOneOnOneChoice Choice);
-
-	UFUNCTION()
-	void HandleOneOnOneDetailDismissed(EFMCodexUMGOneOnOneChoice Choice);
-
-	UFUNCTION()
 	void HandleContinueRequested();
+
+	UFUNCTION()
+	void HandleInlineFormulaContinueRequested();
+
+	UFUNCTION()
+	void HandleThroughBallContinueRequested();
+
+	bool DoesInlineFormulaOwnCurrentPrimaryAction() const;
+	bool DoesThroughBallOwnCurrentPrimaryAction() const;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Presentation",
@@ -349,9 +352,6 @@ private:
 	int32 RollRevealDomainMinimum = 1;
 	int32 RollRevealDomainMaximum = 6;
 	int32 CachedTacticalPointFinalValue = 0;
-	EFMCodexUMGOneOnOneChoice ActiveOneOnOneDetailChoice =
-		EFMCodexUMGOneOnOneChoice::None;
-
 	UPROPERTY(Transient)
 	TObjectPtr<AFMCodexLocalMatchPlayerController> MatchController;
 

@@ -669,7 +669,8 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 			Presentation.OneOnOneChoices[Index];
 		UFMCodexInteractionOptionWidget* Option = MakeOptionWidget(
 			FName(*FString::Printf(TEXT("OneOnOneOption%d"), Index)));
-		Option->ConfigureOneOnOne(Choice.Label, Choice.Choice);
+		Option->ConfigureOneOnOne(
+			Choice.Label, Choice.SecondaryLabel, Choice.Choice);
 		Option->OnOneOnOneRequested.AddDynamic(
 			this, &UFMCodexInteractionPanelWidget::HandleOneOnOneOption);
 		if (UHorizontalBoxSlot* ChoiceSlot =

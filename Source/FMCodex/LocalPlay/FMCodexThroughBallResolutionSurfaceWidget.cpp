@@ -37,6 +37,35 @@ namespace FMCodexThroughBallResolutionSurfaceWidget
 			? ESlateVisibility::Collapsed
 			: ESlateVisibility::SelfHitTestInvisible);
 	}
+
+	bool HasSameOneOnOneChoiceIdentity(
+		const FFMCodexUMGThroughBallResolutionViewModel& Left,
+		const FFMCodexUMGThroughBallResolutionViewModel& Right)
+	{
+		if (!Left.bVisible || !Right.bVisible
+			|| Left.Stage != EFMCodexUMGThroughBallStage::OneOnOneChoice
+			|| Right.Stage != EFMCodexUMGThroughBallStage::OneOnOneChoice
+			|| Left.RouteLabel != Right.RouteLabel
+			|| Left.RouteResultLabel != Right.RouteResultLabel
+			|| Left.OneOnOneChoices.Num() != Right.OneOnOneChoices.Num())
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < Left.OneOnOneChoices.Num(); ++Index)
+		{
+			const FFMCodexUMGOneOnOneChoiceViewModel& LeftChoice =
+				Left.OneOnOneChoices[Index];
+			const FFMCodexUMGOneOnOneChoiceViewModel& RightChoice =
+				Right.OneOnOneChoices[Index];
+			if (LeftChoice.Choice != RightChoice.Choice
+				|| LeftChoice.Label != RightChoice.Label
+				|| LeftChoice.SecondaryLabel != RightChoice.SecondaryLabel)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
 }
 
 UFMCodexThroughBallResolutionSurfaceWidget
@@ -68,8 +97,11 @@ UFMCodexThroughBallResolutionSurfaceWidget::RebuildWidget()
 void UFMCodexThroughBallResolutionSurfaceWidget::RefreshFromPresentation(
 	const FFMCodexUMGThroughBallResolutionViewModel& InPresentation)
 {
+	const bool bPreserveOneOnOneChoices =
+		FMCodexThroughBallResolutionSurfaceWidget
+			::HasSameOneOnOneChoiceIdentity(Presentation, InPresentation);
 	Presentation = InPresentation;
-	RefreshVisuals();
+	RefreshVisuals(bPreserveOneOnOneChoices);
 }
 
 const FFMCodexUMGThroughBallResolutionViewModel&
@@ -95,6 +127,28 @@ UFMCodexThroughBallResolutionSurfaceWidget::GetOneOnOneChoiceWidgets() const
 {
 	return OneOnOneChoiceWidgets;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+void UFMCodexThroughBallResolutionSurfaceWidget
+	::ResetOneOnOneDispatchForTesting()
+{
+	OneOnOneDispatchCountForTesting = 0;
+	LastOneOnOneDispatchForTesting = EFMCodexUMGOneOnOneChoice::None;
+}
+
+int32 UFMCodexThroughBallResolutionSurfaceWidget
+	::GetOneOnOneDispatchCountForTesting() const
+{
+	return OneOnOneDispatchCountForTesting;
+}
+
+EFMCodexUMGOneOnOneChoice UFMCodexThroughBallResolutionSurfaceWidget
+	::GetLastOneOnOneDispatchForTesting() const
+{
+	return LastOneOnOneDispatchForTesting;
+}
+
+#endif
 
 void UFMCodexThroughBallResolutionSurfaceWidget::RequestContinue()
 {
@@ -124,20 +178,12 @@ void UFMCodexThroughBallResolutionSurfaceWidget::HandleOneOnOneClicked(
 				return Candidate.Choice == Choice;
 			}))
 	{
+#if WITH_DEV_AUTOMATION_TESTS
+		++OneOnOneDispatchCountForTesting;
+		LastOneOnOneDispatchForTesting = Choice;
+#endif
 		OnOneOnOneRequested.Broadcast(Choice);
 	}
-}
-
-void UFMCodexThroughBallResolutionSurfaceWidget
-	::HandleOneOnOneDetailRequested(const EFMCodexUMGOneOnOneChoice Choice)
-{
-	OnOneOnOneDetailRequested.Broadcast(Choice);
-}
-
-void UFMCodexThroughBallResolutionSurfaceWidget
-	::HandleOneOnOneDetailDismissed(const EFMCodexUMGOneOnOneChoice Choice)
-{
-	OnOneOnOneDetailDismissed.Broadcast(Choice);
 }
 
 void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
@@ -152,7 +198,7 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 	USizeBox* Bounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("ThroughBallProductionSurfaceBounds"));
 	Bounds->SetMinDesiredWidth(520.0f);
-	Bounds->SetMaxDesiredWidth(720.0f);
+	Bounds->SetMaxDesiredWidth(840.0f);
 	WidgetTree->RootWidget = Bounds;
 
 	UBorder* Frame = WidgetTree->ConstructWidget<UBorder>(
@@ -301,7 +347,8 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 	}
 }
 
-void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals()
+void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
+	const bool bPreserveOneOnOneChoices)
 {
 	using namespace FMCodexThroughBallResolutionSurfaceWidget;
 	if (TitleText == nullptr)
@@ -333,38 +380,9 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals()
 		Presentation.bNarrativeAvailable
 			? Presentation.NarrativeHeadline : FString());
 	FormulaSurface->RefreshFromPresentation(Presentation.Formula);
-	OneOnOneChoiceRow->ClearChildren();
-	OneOnOneChoiceWidgets.Reset();
-	for (int32 Index = 0; Index < Presentation.OneOnOneChoices.Num(); ++Index)
+	if (!bPreserveOneOnOneChoices)
 	{
-		const FFMCodexUMGOneOnOneChoiceViewModel& Choice =
-			Presentation.OneOnOneChoices[Index];
-		if (Choice.Choice == EFMCodexUMGOneOnOneChoice::None
-			|| Choice.Label.IsEmpty())
-		{
-			continue;
-		}
-		UFMCodexInteractionOptionWidget* Option =
-			WidgetTree->ConstructWidget<UFMCodexInteractionOptionWidget>(
-				UFMCodexInteractionOptionWidget::StaticClass(),
-				FName(*FString::Printf(TEXT("ThroughBallOneOnOneChoice%d"), Index)));
-		Option->ConfigureOneOnOne(Choice.Label, Choice.Choice);
-		Option->OnOneOnOneRequested.AddDynamic(
-			this, &UFMCodexThroughBallResolutionSurfaceWidget::HandleOneOnOneClicked);
-		Option->OnOneOnOneDetailRequested.AddDynamic(
-			this, &UFMCodexThroughBallResolutionSurfaceWidget
-				::HandleOneOnOneDetailRequested);
-		Option->OnOneOnOneDetailDismissed.AddDynamic(
-			this, &UFMCodexThroughBallResolutionSurfaceWidget
-				::HandleOneOnOneDetailDismissed);
-		if (UHorizontalBoxSlot* OptionSlot =
-			OneOnOneChoiceRow->AddChildToHorizontalBox(Option))
-		{
-			OptionSlot->SetPadding(FMargin(Index == 0 ? 0.0f : 10.0f,
-				0.0f, 0.0f, 0.0f));
-			OptionSlot->SetVerticalAlignment(VAlign_Center);
-		}
-		OneOnOneChoiceWidgets.Add(Option);
+		RebuildOneOnOneChoices();
 	}
 	OneOnOneChoiceRow->SetVisibility(OneOnOneChoiceWidgets.IsEmpty()
 		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
@@ -378,5 +396,43 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals()
 	{
 		Label->SetText(FText::FromString(
 			Presentation.PrimaryAction.Action.Label));
+	}
+}
+
+void UFMCodexThroughBallResolutionSurfaceWidget::RebuildOneOnOneChoices()
+{
+	OneOnOneChoiceRow->ClearChildren();
+	OneOnOneChoiceWidgets.Reset();
+	if (Presentation.bVisible
+		&& Presentation.Stage == EFMCodexUMGThroughBallStage::OneOnOneChoice)
+	{
+		for (int32 Index = 0; Index < Presentation.OneOnOneChoices.Num(); ++Index)
+		{
+			const FFMCodexUMGOneOnOneChoiceViewModel& Choice =
+				Presentation.OneOnOneChoices[Index];
+			if (Choice.Choice == EFMCodexUMGOneOnOneChoice::None
+				|| Choice.Label.IsEmpty())
+			{
+				continue;
+			}
+			UFMCodexInteractionOptionWidget* Option =
+				WidgetTree->ConstructWidget<UFMCodexInteractionOptionWidget>(
+					UFMCodexInteractionOptionWidget::StaticClass(),
+					FName(*FString::Printf(
+						TEXT("ThroughBallOneOnOneChoice%d"), Index)));
+			Option->ConfigureOneOnOne(
+				Choice.Label, Choice.SecondaryLabel, Choice.Choice);
+			Option->OnOneOnOneRequested.AddDynamic(
+				this,
+				&UFMCodexThroughBallResolutionSurfaceWidget::HandleOneOnOneClicked);
+			if (UHorizontalBoxSlot* OptionSlot =
+				OneOnOneChoiceRow->AddChildToHorizontalBox(Option))
+			{
+				OptionSlot->SetPadding(FMargin(Index == 0 ? 0.0f : 10.0f,
+					0.0f, 0.0f, 0.0f));
+				OptionSlot->SetVerticalAlignment(VAlign_Center);
+			}
+			OneOnOneChoiceWidgets.Add(Option);
+		}
 	}
 }

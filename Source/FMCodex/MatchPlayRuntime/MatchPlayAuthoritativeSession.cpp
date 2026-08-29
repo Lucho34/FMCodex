@@ -960,6 +960,118 @@ FMatchPlayAuthoritativeSession::ResolveInitialRoute()
 		});
 }
 
+FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollResult
+FMatchPlayAuthoritativeSession::ResolveThroughBallInitialRouteRoll(
+	const FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest&
+		Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FDomainExecution Execution;
+			Execution.CandidateAfterState = BeforeState;
+			Execution.StateDisposition =
+				EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+
+			using ERouteError =
+				EMatchPlayAuthoritativeThroughBallInitialRouteRollErrorCode;
+			auto Reject = [&Result, &Execution](
+				const ERouteError ErrorCode,
+				const TCHAR* ErrorMessage)
+			{
+				Result.ErrorCode = ErrorCode;
+				Result.ErrorMessage = ErrorMessage;
+				Result.OrchestrationResult.ErrorMessage = ErrorMessage;
+				return Execution;
+			};
+
+			if (!BeforeState.bHasCurrentAttack)
+			{
+				return Reject(
+					ERouteError::NoCurrentAttack,
+					TEXT("ThroughBall Initial Route requires a current attack."));
+			}
+			if (Request.AttackSequence <= 0)
+			{
+				return Reject(
+					ERouteError::InvalidAttackSequence,
+					TEXT("ThroughBall Initial Route requires a positive AttackSequence."));
+			}
+			if (Request.AttackSequence
+				!= BeforeState.CurrentAttack.AttackSequence)
+			{
+				return Reject(
+					ERouteError::AttackSequenceMismatch,
+					TEXT("ThroughBall Initial Route request is stale."));
+			}
+			if (Request.RequestingSide == EInitialTurnOrderPlayer::None)
+			{
+				return Reject(
+					ERouteError::InvalidRequestingSide,
+					TEXT("ThroughBall Initial Route requires a requesting side."));
+			}
+			if (Request.RequestingSide
+				!= BeforeState.RuntimeState.CurrentAttackingPlayer)
+			{
+				return Reject(
+					ERouteError::RequestingSideNotCurrentAttacker,
+					TEXT("Only the current attacker may roll the ThroughBall Initial Route."));
+			}
+
+			const FMatchPlayCurrentAttackState& Attack =
+				BeforeState.CurrentAttack;
+			const ESkillRuleType ActionType = Attack.bHasResolutionSession
+				? Attack.ResolutionSession.Bundle.Binding.ActionType
+				: Attack.bHasSelectedAction
+					? Attack.SelectedAction.ActionType
+					: Attack.ActionPreparation.ActionType;
+			if (ActionType != ESkillRuleType::ThroughBall)
+			{
+				return Reject(
+					ERouteError::WrongResolutionFamily,
+					TEXT("Typed ThroughBall Initial Route requires a ThroughBall attack."));
+			}
+			const bool bReadyWithoutSession = !Attack.bHasResolutionSession
+				&& Attack.SelectionStage
+					== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution;
+			const bool bAwaitingUnresolvedRoute = Attack.bHasResolutionSession
+				&& Attack.ResolutionSession.Stage
+					== EMatchPlayCurrentAttackResolutionStage::AwaitingRoute
+				&& !Attack.ResolutionSession.bHasActualBranch
+				&& Attack.ResolutionSession.InitialRouteRollRecords.IsEmpty();
+			if (!bReadyWithoutSession && !bAwaitingUnresolvedRoute)
+			{
+				return Reject(
+					ERouteError::RouteRollNotPending,
+					TEXT("ThroughBall Initial Route roll is not pending."));
+			}
+
+			FMatchPlayCurrentAttackResolveInitialRouteOrchestrationRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+					BeforeState,
+					DomainRequest,
+					InitialRouteRollProvider);
+
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 FMatchPlayAuthoritativeSession::ResolveCrossPostRoutePlan()
 {
@@ -1222,21 +1334,18 @@ FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult
 FMatchPlayAuthoritativeSession::ResolveThroughBallFeetAttackRoll(
 	const FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult>(
 		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll,
 		true,
-		AttackSequence,
-		[this, AttackSequence, Request](
+		Request.AttackSequence,
+		[this, Request](
 			FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
 			FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
 				DomainRequest;
-			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.AttackSequence = Request.AttackSequence;
 			DomainRequest.Mode =
 				FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
 					::EMode::ResolveAttackRoll;
@@ -1258,7 +1367,7 @@ FMatchPlayAuthoritativeSession::ResolveThroughBallFeetAttackRoll(
 			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
-			Execution.AttackSequence = AttackSequence;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }
@@ -1267,21 +1376,18 @@ FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult
 FMatchPlayAuthoritativeSession::ResolveThroughBallFeetDefenseRoll(
 	const FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult>(
 		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll,
 		true,
-		AttackSequence,
-		[this, AttackSequence, Request](
+		Request.AttackSequence,
+		[this, Request](
 			FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
 			FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
 				DomainRequest;
-			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.AttackSequence = Request.AttackSequence;
 			DomainRequest.Mode =
 				FMatchPlayCurrentAttackResolveThroughBallFeetPostRoutePlanRequest
 					::EMode::ResolveDefenseRoll;
@@ -1303,7 +1409,7 @@ FMatchPlayAuthoritativeSession::ResolveThroughBallFeetDefenseRoll(
 			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
-			Execution.AttackSequence = AttackSequence;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }

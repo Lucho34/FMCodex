@@ -167,6 +167,17 @@ FText FFMCodexPlayerUIPresentationText::ThroughBallTitle()
 	return LOCTEXT("ThroughBallProductionTitle", "直塞");
 }
 
+FText FFMCodexPlayerUIPresentationText::ThroughBallDirectChoiceHint()
+{
+	return LOCTEXT(
+		"ThroughBallDirectChoiceHint", "（看射门、门将单刀）");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallChipChoiceHint()
+{
+	return LOCTEXT("ThroughBallChipChoiceHint", "（只看掷点）");
+}
+
 FText FFMCodexPlayerUIPresentationText::ThroughBallInitialRouteStage()
 {
 	return LOCTEXT("ThroughBallInitialRouteStage", "判定直塞路线");

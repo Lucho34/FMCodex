@@ -21,10 +21,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexThroughBallOneOnOneRequested,
 	EFMCodexUMGOneOnOneChoice, Choice);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
-	FFMCodexThroughBallOneOnOneDetailRequested,
-	EFMCodexUMGOneOnOneChoice, Choice);
-
 /**
  * Production renderer for the read-only ThroughBall semantic shell.
  * It does not read Match State, map D6 ranges, calculate legality, or mutate play.
@@ -48,6 +44,11 @@ public:
 	UFMCodexInlineResolutionFormulaSurfaceWidget* GetFormulaSurface() const;
 	const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>&
 		GetOneOnOneChoiceWidgets() const;
+#if WITH_DEV_AUTOMATION_TESTS
+	void ResetOneOnOneDispatchForTesting();
+	int32 GetOneOnOneDispatchCountForTesting() const;
+	EFMCodexUMGOneOnOneChoice GetLastOneOnOneDispatchForTesting() const;
+#endif
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Through Ball")
 	void RequestContinue();
@@ -58,31 +59,20 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Through Ball")
 	FFMCodexThroughBallOneOnOneRequested OnOneOnOneRequested;
 
-	UPROPERTY(BlueprintAssignable, Category = "Local Match|Through Ball")
-	FFMCodexThroughBallOneOnOneDetailRequested OnOneOnOneDetailRequested;
-
-	UPROPERTY(BlueprintAssignable, Category = "Local Match|Through Ball")
-	FFMCodexThroughBallOneOnOneDetailRequested OnOneOnOneDetailDismissed;
-
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 private:
 	void BuildWidgetTree();
-	void RefreshVisuals();
+	void RefreshVisuals(bool bPreserveOneOnOneChoices = false);
+	void RebuildOneOnOneChoices();
 
 	UFUNCTION()
 	void HandleContinueClicked();
 
 	UFUNCTION()
 	void HandleOneOnOneClicked(EFMCodexUMGOneOnOneChoice Choice);
-
-	UFUNCTION()
-	void HandleOneOnOneDetailRequested(EFMCodexUMGOneOnOneChoice Choice);
-
-	UFUNCTION()
-	void HandleOneOnOneDetailDismissed(EFMCodexUMGOneOnOneChoice Choice);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Through Ball",
@@ -133,4 +123,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> ContinueButton;
+
+#if WITH_DEV_AUTOMATION_TESTS
+	int32 OneOnOneDispatchCountForTesting = 0;
+	EFMCodexUMGOneOnOneChoice LastOneOnOneDispatchForTesting =
+		EFMCodexUMGOneOnOneChoice::None;
+#endif
 };

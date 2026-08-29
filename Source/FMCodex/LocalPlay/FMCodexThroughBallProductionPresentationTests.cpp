@@ -4,6 +4,7 @@
 #include "FMCodexLocalMatchResolutionFeedback.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexInteractionPanelWidget.h"
@@ -830,7 +831,7 @@ namespace FMCodexThroughBallProductionPresentationTests
 		View.PresentedActionType = ESkillRuleType::ThroughBall;
 		View.ActionLabel = TEXT("Through Ball");
 		View.InteractionCategory =
-			EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+			EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute;
 		View.ContinueActionLabel = TEXT("判定直塞路线");
 		return View;
 	}
@@ -924,6 +925,16 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 		CountOccurrences(
 			Flatten(PreRoute.ThroughBallResolution), TEXT("判定直塞路线")),
 		1);
+	FFMCodexLocalMatchInteractionView ReadySelectionRoute = PreRouteView;
+	ReadySelectionRoute.MajorPhase = EFMCodexLocalMatchMajorPhase::Selection;
+	const FFMCodexUMGMatchScreenViewModel ReadySelectionPresentation =
+		Build(ReadySelectionRoute);
+	TestTrue(TEXT("ReadyForResolution route pending is already central-owned"),
+		ReadySelectionPresentation.ThroughBallResolution.bVisible
+			&& ReadySelectionPresentation.ThroughBallResolution.PrimaryAction.Claims(
+				ReadySelectionPresentation.Interaction.PrimaryAction)
+			&& ReadySelectionPresentation.Interaction.CrossRollRevealKind
+				== EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute);
 
 	struct FRouteExpectation
 	{
@@ -968,16 +979,9 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 					FString::FromInt(Expected.RawD6)));
 	}
 
-	FFMCodexLocalMatchInteractionView OneOnOneView = MakeView();
-	OneOnOneView.ResolutionFacts = MakeFacts(
-		EMatchPlayThroughBallActualBranch::BehindDefense, 3);
-	OneOnOneView.InteractionCategory =
-		EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot;
-	OneOnOneView.OneOnOneOptions =
-	{
-		EMatchPlayThroughBallOneOnOneShotChoice::DirectShot,
-		EMatchPlayThroughBallOneOnOneShotChoice::ChipShot
-	};
+	const FFMCodexLocalMatchInteractionView OneOnOneView = MakeBehindView(
+		true, true, EMatchPlayResolutionDecisionOutcome::OneOnOneRequired,
+		false, 41, 6, 1);
 	const FFMCodexUMGMatchScreenViewModel OneOnOne = Build(OneOnOneView);
 	TestTrue(TEXT("BehindDefense success exposes exactly two typed shot choices"),
 		OneOnOne.ThroughBallResolution.Stage
@@ -988,6 +992,32 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 			&& OneOnOne.ThroughBallResolution.ActionPromptLabel.IsEmpty()
 			&& OneOnOne.Interaction.Category
 				== EFMCodexUMGInteractionCategory::SelectOneOnOneShot);
+	TestTrue(TEXT("OneOnOne compact choice help comes from localized presentation copy"),
+		OneOnOne.Interaction.OneOnOneChoices.Num() == 2
+			&& OneOnOne.Interaction.OneOnOneChoices[0].SecondaryLabel
+				== FFMCodexPlayerUIPresentationText
+					::ThroughBallDirectChoiceHint().ToString()
+			&& OneOnOne.Interaction.OneOnOneChoices[1].SecondaryLabel
+				== FFMCodexPlayerUIPresentationText
+					::ThroughBallChipChoiceHint().ToString()
+			&& OneOnOne.ThroughBallResolution.OneOnOneChoices[0]
+				.SecondaryLabel == TEXT("（看射门、门将单刀）")
+			&& OneOnOne.ThroughBallResolution.OneOnOneChoices[1]
+				.SecondaryLabel == TEXT("（只看掷点）"));
+	TestTrue(TEXT("Behind OneOnOne parent exclusively owns route context"),
+		OneOnOne.ThroughBallResolution.RouteResultLabel
+			== TEXT("路线掷点 4 → 判定为身后球")
+			&& OneOnOne.ThroughBallResolution.Formula.bParentOwnsRouteContext);
+	const FFMCodexUMGMatchScreenViewModel AntiOneOnOne = Build(MakeAntiView(
+		true, EMatchPlayResolutionDecisionOutcome::OneOnOneRequired, 6));
+	TestTrue(TEXT("Anti success shares OneOnOne layout and parent route ownership"),
+		AntiOneOnOne.ThroughBallResolution.Stage
+			== EFMCodexUMGThroughBallStage::OneOnOneChoice
+			&& AntiOneOnOne.ThroughBallResolution.OneOnOneChoices.Num() == 2
+			&& AntiOneOnOne.ThroughBallResolution.RouteResultLabel
+				== TEXT("路线掷点 6 → 判定为反越位")
+			&& AntiOneOnOne.ThroughBallResolution.Formula
+				.bParentOwnsRouteContext);
 	TestTrue(TEXT("Production surface does not leak engineering diagnostics"),
 		!Flatten(OneOnOne.ThroughBallResolution).Contains(TEXT("POST-ROUTE"))
 			&& !Flatten(OneOnOne.ThroughBallResolution).Contains(
@@ -1048,12 +1078,25 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 		UTextBlock* ChipLabel = ChipOption != nullptr
 			? Cast<UTextBlock>(ChipOption->GetWidgetFromName(
 				TEXT("InteractionOptionLabel"))) : nullptr;
+		UTextBlock* DirectSecondary = DirectOption != nullptr
+			? Cast<UTextBlock>(DirectOption->GetWidgetFromName(
+				TEXT("InteractionOptionSecondaryLabel"))) : nullptr;
+		UTextBlock* ChipSecondary = ChipOption != nullptr
+			? Cast<UTextBlock>(ChipOption->GetWidgetFromName(
+				TEXT("InteractionOptionSecondaryLabel"))) : nullptr;
 		UButton* DirectButton = DirectOption != nullptr
 			? Cast<UButton>(DirectOption->GetWidgetFromName(
 				TEXT("InteractionOptionButton"))) : nullptr;
 		UButton* ChipButton = ChipOption != nullptr
 			? Cast<UButton>(ChipOption->GetWidgetFromName(
 				TEXT("InteractionOptionButton"))) : nullptr;
+		UTextBlock* ParentRouteContext = Cast<UTextBlock>(
+			ThroughBallSurface->GetWidgetFromName(
+				TEXT("ThroughBallInitialRouteResult")));
+		UTextBlock* NestedRouteContext = Cast<UTextBlock>(
+			ThroughBallSurface->GetFormulaSurface()->GetWidgetFromName(
+				TEXT("InlineFormulaRouteResult")));
+		Screen->ForceLayoutPrepass();
 		TestEqual(TEXT("Central OneOnOne renders exactly two choices"),
 			CentralChoices.Num(), 2);
 		TestNotNull(TEXT("Central Direct choice exists"), DirectOption);
@@ -1067,50 +1110,137 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 		TestTrue(TEXT("Central OneOnOne labels are complete"),
 			DirectOption != nullptr && ChipOption != nullptr
 				&& DirectOption->GetLabel() == TEXT("直接射门")
-				&& ChipOption->GetLabel() == TEXT("挑射"));
+				&& DirectOption->GetSecondaryLabel()
+					== TEXT("（看射门、门将单刀）")
+				&& ChipOption->GetLabel() == TEXT("挑射")
+				&& ChipOption->GetSecondaryLabel() == TEXT("（只看掷点）"));
 		TestTrue(TEXT("Both OneOnOne choices have stable clickable geometry"),
 			DirectBounds != nullptr && ChipBounds != nullptr
-				&& DirectBounds->GetMinDesiredWidth() >= 120.0f
-				&& ChipBounds->GetMinDesiredWidth() >= 120.0f
-				&& DirectBounds->GetMinDesiredHeight() >= 42.0f
-				&& ChipBounds->GetMinDesiredHeight() >= 42.0f
+				&& DirectBounds->GetWidthOverride() >= 200.0f
+				&& ChipBounds->GetWidthOverride()
+					== DirectBounds->GetWidthOverride()
+				&& DirectBounds->GetHeightOverride() >= 60.0f
+				&& ChipBounds->GetHeightOverride()
+					== DirectBounds->GetHeightOverride()
 				&& DirectButton != nullptr && DirectButton->GetIsEnabled()
 				&& ChipButton != nullptr && ChipButton->GetIsEnabled());
-		TestTrue(TEXT("OneOnOne labels never wrap into vertical text"),
-			DirectLabel != nullptr && !DirectLabel->GetAutoWrapText()
+		TestTrue(TEXT("OneOnOne primary and secondary labels are readable two-line copy"),
+			DirectBounds != nullptr && DirectLabel != nullptr
+				&& !DirectLabel->GetAutoWrapText()
 				&& DirectLabel->GetTextOverflowPolicy()
 					== ETextOverflowPolicy::Clip
-				&& ChipLabel != nullptr && !ChipLabel->GetAutoWrapText()
+				&& DirectSecondary != nullptr
+				&& DirectSecondary->GetVisibility()
+					== ESlateVisibility::HitTestInvisible
+				&& !DirectSecondary->GetAutoWrapText()
+				&& DirectSecondary->GetText().ToString()
+					== TEXT("（看射门、门将单刀）")
+				&& DirectSecondary->GetDesiredSize().X
+					< DirectBounds->GetWidthOverride()
+				&& DirectSecondary->GetFont().Size < DirectLabel->GetFont().Size
+				&& ChipBounds != nullptr && ChipLabel != nullptr
+				&& !ChipLabel->GetAutoWrapText()
 				&& ChipLabel->GetTextOverflowPolicy()
-					== ETextOverflowPolicy::Clip);
-		if (DirectButton != nullptr)
-		{
-			DirectButton->OnHovered.Broadcast();
-		}
-		const FString DirectDetail = Screen->GetTacticalDetailPanel()
-			? Screen->GetTacticalDetailPanel()->CollectPlayerFacingText()
-			: FString();
-		TestTrue(TEXT("Direct hover reuses the shared minimal role detail"),
-			Screen->GetTacticalDetailPanel() != nullptr
+					== ETextOverflowPolicy::Clip
+				&& ChipSecondary != nullptr
+				&& ChipSecondary->GetVisibility()
+					== ESlateVisibility::HitTestInvisible
+				&& !ChipSecondary->GetAutoWrapText()
+				&& ChipSecondary->GetText().ToString() == TEXT("（只看掷点）")
+				&& ChipSecondary->GetDesiredSize().X
+					< ChipBounds->GetWidthOverride()
+				&& ChipSecondary->GetFont().Size < ChipLabel->GetFont().Size);
+		TestTrue(TEXT("Deprecated OneOnOne detail reserve is absent"),
+			ThroughBallSurface->GetWidgetFromName(
+				TEXT("ThroughBallOneOnOneDetailBounds")) == nullptr
+				&& ThroughBallSurface->GetWidgetFromName(
+					TEXT("ThroughBallOneOnOneDetailPanel")) == nullptr);
+		TestTrue(TEXT("Parent route context renders once and nested copy collapses"),
+			ParentRouteContext != nullptr
+				&& ParentRouteContext->GetVisibility()
+					== ESlateVisibility::SelfHitTestInvisible
+				&& NestedRouteContext != nullptr
+				&& NestedRouteContext->GetVisibility()
+					== ESlateVisibility::Collapsed);
+		ThroughBallSurface->ResetOneOnOneDispatchForTesting();
+		if (DirectButton != nullptr) DirectButton->OnHovered.Broadcast();
+		Screen->RefreshFromPresentation(OneOnOne);
+		const auto& DirectRefreshChoices =
+			ThroughBallSurface->GetOneOnOneChoiceWidgets();
+		TestTrue(TEXT("Direct hover has no detail consumer or gameplay dispatch"),
+			DirectRefreshChoices.IsValidIndex(1)
+				&& DirectRefreshChoices[0] == DirectOption
+				&& DirectRefreshChoices[1] == ChipOption
 				&& Screen->GetTacticalDetailPanel()->GetVisibility()
-					== ESlateVisibility::Visible
-				&& DirectDetail.Contains(TEXT("直接射门"))
-				&& DirectDetail.Contains(TEXT("跑位球员：射门"))
-				&& DirectDetail.Contains(TEXT("门将"))
-				&& DirectDetail.Contains(TEXT("单刀"))
-				&& !DirectDetail.Contains(TEXT("公式"))
-				&& Screen->GetThroughBallResolutionSurface()
-					->GetPresentation().OneOnOneChoices.Num() == 2);
-		if (DirectButton != nullptr) DirectButton->OnUnhovered.Broadcast();
+					== ESlateVisibility::Collapsed
+				&& ThroughBallSurface->GetOneOnOneDispatchCountForTesting() == 0);
 		if (ChipButton != nullptr) ChipButton->OnHovered.Broadcast();
-		const FString ChipDetail = Screen->GetTacticalDetailPanel()
-			? Screen->GetTacticalDetailPanel()->CollectPlayerFacingText()
-			: FString();
-		TestTrue(TEXT("Chip hover is catalog-backed roll-only guidance"),
-			ChipDetail.Contains(TEXT("挑射"))
-				&& ChipDetail.Contains(TEXT("只看掷点，不看属性"))
-				&& !ChipDetail.Contains(TEXT("门将"))
-				&& !ChipDetail.Contains(TEXT("射门属性")));
+		Screen->RefreshFromPresentation(OneOnOne);
+		const auto& ChipRefreshChoices =
+			ThroughBallSurface->GetOneOnOneChoiceWidgets();
+		TestTrue(TEXT("Chip hover has no detail consumer or gameplay dispatch"),
+			ChipRefreshChoices.IsValidIndex(1)
+				&& ChipRefreshChoices[0] == DirectOption
+				&& ChipRefreshChoices[1] == ChipOption
+				&& Screen->GetTacticalDetailPanel()->GetVisibility()
+					== ESlateVisibility::Collapsed
+				&& ThroughBallSurface->GetOneOnOneDispatchCountForTesting() == 0);
+
+		ThroughBallSurface->ResetOneOnOneDispatchForTesting();
+		if (DirectButton != nullptr) DirectButton->OnHovered.Broadcast();
+		if (DirectButton != nullptr) DirectButton->OnClicked.Broadcast();
+		TestTrue(TEXT("Direct remains clickable after hover and dispatches once"),
+			ThroughBallSurface->GetOneOnOneDispatchCountForTesting() == 1
+				&& ThroughBallSurface->GetLastOneOnOneDispatchForTesting()
+					== EFMCodexUMGOneOnOneChoice::DirectShot);
+		if (DirectButton != nullptr) DirectButton->OnUnhovered.Broadcast();
+		ThroughBallSurface->ResetOneOnOneDispatchForTesting();
+		if (ChipButton != nullptr) ChipButton->OnHovered.Broadcast();
+		if (ChipButton != nullptr) ChipButton->OnClicked.Broadcast();
+		TestTrue(TEXT("Chip remains clickable after hover and dispatches once"),
+			ThroughBallSurface->GetOneOnOneDispatchCountForTesting() == 1
+				&& ThroughBallSurface->GetLastOneOnOneDispatchForTesting()
+					== EFMCodexUMGOneOnOneChoice::ChipShot);
+
+		Screen->RefreshFromPresentation(AntiOneOnOne);
+		ThroughBallSurface = Screen->GetThroughBallResolutionSurface();
+		const auto& AntiChoices = ThroughBallSurface->GetOneOnOneChoiceWidgets();
+		UFMCodexInteractionOptionWidget* AntiDirect =
+			AntiChoices.IsValidIndex(0) ? AntiChoices[0] : nullptr;
+		UFMCodexInteractionOptionWidget* AntiChip =
+			AntiChoices.IsValidIndex(1) ? AntiChoices[1] : nullptr;
+		if (AntiDirect != nullptr) AntiDirect->TakeWidget();
+		if (AntiChip != nullptr) AntiChip->TakeWidget();
+		UButton* AntiDirectButton = AntiDirect != nullptr
+			? Cast<UButton>(AntiDirect->GetWidgetFromName(
+				TEXT("InteractionOptionButton"))) : nullptr;
+		UButton* AntiChipButton = AntiChip != nullptr
+			? Cast<UButton>(AntiChip->GetWidgetFromName(
+				TEXT("InteractionOptionButton"))) : nullptr;
+		ThroughBallSurface->ResetOneOnOneDispatchForTesting();
+		if (AntiDirectButton != nullptr) AntiDirectButton->OnHovered.Broadcast();
+		if (AntiChipButton != nullptr) AntiChipButton->OnHovered.Broadcast();
+		Screen->RefreshFromPresentation(AntiOneOnOne);
+		TestTrue(TEXT("Anti source shares stable microcopy choices with no hover consumer"),
+			AntiDirect != nullptr && AntiChip != nullptr
+				&& ThroughBallSurface->GetOneOnOneChoiceWidgets().Num() == 2
+				&& ThroughBallSurface->GetOneOnOneDispatchCountForTesting() == 0
+				&& ThroughBallSurface->GetOneOnOneChoiceWidgets()[0] == AntiDirect
+				&& ThroughBallSurface->GetOneOnOneChoiceWidgets()[1] == AntiChip
+				&& AntiDirect->GetSecondaryLabel()
+					== TEXT("（看射门、门将单刀）")
+				&& AntiChip->GetSecondaryLabel() == TEXT("（只看掷点）")
+				&& Screen->GetTacticalDetailPanel()->GetVisibility()
+					== ESlateVisibility::Collapsed);
+		if (AntiDirectButton != nullptr) AntiDirectButton->OnHovered.Broadcast();
+		if (AntiDirectButton != nullptr) AntiDirectButton->OnClicked.Broadcast();
+		if (AntiChipButton != nullptr) AntiChipButton->OnHovered.Broadcast();
+		if (AntiChipButton != nullptr) AntiChipButton->OnClicked.Broadcast();
+		TestTrue(TEXT("Anti source shares both typed clicks"),
+			AntiDirectButton != nullptr && AntiChipButton != nullptr
+				&& ThroughBallSurface->GetOneOnOneDispatchCountForTesting() == 2
+				&& ThroughBallSurface->GetLastOneOnOneDispatchForTesting()
+					== EFMCodexUMGOneOnOneChoice::ChipShot);
 		const FFMCodexUMGMatchScreenViewModel RejectedRoute =
 			Build(PreRouteView, true);
 		Screen->RefreshFromPresentation(RejectedRoute);
@@ -1120,7 +1250,9 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 					== ESlateVisibility::Visible
 				&& RejectedRoute.Interaction.PrimaryAction.bAvailable
 				&& !RejectedRoute.ThroughBallResolution.PrimaryAction.Claims(
-					RejectedRoute.Interaction.PrimaryAction));
+					RejectedRoute.Interaction.PrimaryAction)
+				&& Screen->GetThroughBallResolutionSurface()
+					->GetOneOnOneChoiceWidgets().IsEmpty());
 	}
 
 	FFMCodexLocalMatchInteractionView CrossView = MakeView();

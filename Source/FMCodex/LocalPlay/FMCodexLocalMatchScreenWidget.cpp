@@ -942,6 +942,9 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	}
 	switch (Presentation.Interaction.Category)
 	{
+	case EFMCodexUMGInteractionCategory::RollThroughBallInitialRoute:
+		MatchController->RollThroughBallInitialRoute();
+		break;
 	case EFMCodexUMGInteractionCategory::RollCrossAttack:
 		MatchController->RollCrossAttack();
 		break;
@@ -1292,7 +1295,6 @@ void UFMCodexLocalMatchScreenWidget::HideTacticalDetail()
 {
 	CancelTacticalDetailDismiss();
 	ActiveTacticalDetailSkillId = NAME_None;
-	ActiveOneOnOneDetailChoice = EFMCodexUMGOneOnOneChoice::None;
 	bTacticalCardHoverOrFocus = false;
 	bTacticalDetailPointerInside = false;
 	if (TacticalDetailPanel != nullptr)
@@ -1334,46 +1336,63 @@ void UFMCodexLocalMatchScreenWidget::HandleOneOnOneRequested(
 	RequestSubmitOneOnOneChoice(Choice);
 }
 
-void UFMCodexLocalMatchScreenWidget::HandleOneOnOneDetailRequested(
-	const EFMCodexUMGOneOnOneChoice Choice)
-{
-	if (TacticalDetailPanel == nullptr
-		|| Presentation.Interaction.Category
-			!= EFMCodexUMGInteractionCategory::SelectOneOnOneShot
-		|| !Presentation.Interaction.OneOnOneChoices.ContainsByPredicate(
-			[Choice](const FFMCodexUMGOneOnOneChoiceViewModel& Candidate)
-			{
-				return Candidate.Choice == Choice;
-			}))
-	{
-		return;
-	}
-	const FFMCodexUMGTacticalDetailViewModel Detail =
-		FFMCodexTacticalDetailPresentationBuilder::BuildOneOnOneChoice(Choice);
-	if (!Detail.bValid)
-	{
-		return;
-	}
-	CancelTacticalDetailDismiss();
-	bTacticalCardHoverOrFocus = true;
-	ActiveOneOnOneDetailChoice = Choice;
-	TacticalDetailPanel->RefreshFromPresentation(Detail);
-	TacticalDetailPanel->SetVisibility(ESlateVisibility::Visible);
-}
-
-void UFMCodexLocalMatchScreenWidget::HandleOneOnOneDetailDismissed(
-	const EFMCodexUMGOneOnOneChoice Choice)
-{
-	if (Choice == ActiveOneOnOneDetailChoice)
-	{
-		bTacticalCardHoverOrFocus = false;
-		ScheduleTacticalDetailDismiss();
-	}
-}
-
 void UFMCodexLocalMatchScreenWidget::HandleContinueRequested()
 {
+	// Lower/generic surfaces may finish an input event after a synchronous
+	// authoritative refresh has transferred the action to a central surface.
+	// Never reinterpret that stale event using the newly projected typed action.
+	if (DoesInlineFormulaOwnCurrentPrimaryAction()
+		|| DoesThroughBallOwnCurrentPrimaryAction())
+	{
+		return;
+	}
 	RequestContinueResolution();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested()
+{
+	if (!DoesInlineFormulaOwnCurrentPrimaryAction())
+	{
+		return;
+	}
+	RequestContinueResolution();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleThroughBallContinueRequested()
+{
+	if (!DoesThroughBallOwnCurrentPrimaryAction())
+	{
+		return;
+	}
+	RequestContinueResolution();
+}
+
+bool UFMCodexLocalMatchScreenWidget
+	::DoesInlineFormulaOwnCurrentPrimaryAction() const
+{
+	if (InlineFormulaSurface == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexUMGInlineFormulaSurfaceViewModel& Surface =
+		InlineFormulaSurface->GetPresentation();
+	return Surface.bVisible
+		&& Surface.PrimaryAction.Claims(Presentation.Interaction.PrimaryAction);
+}
+
+bool UFMCodexLocalMatchScreenWidget
+	::DoesThroughBallOwnCurrentPrimaryAction() const
+{
+	if (ThroughBallResolutionSurface == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexUMGThroughBallResolutionViewModel& Surface =
+		ThroughBallResolutionSurface->GetPresentation();
+	return Surface.bVisible
+		&& (Surface.PrimaryAction.Claims(Presentation.Interaction.PrimaryAction)
+			|| Surface.Formula.PrimaryAction.Claims(
+				Presentation.Interaction.PrimaryAction));
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragStarted(
@@ -1664,7 +1683,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		UFMCodexInlineResolutionFormulaSurfaceWidget>(
 			ResolvedInlineFormulaClass, TEXT("InlineResolutionFormulaSurface"));
 	InlineFormulaSurface->OnContinueRequested.AddDynamic(
-		this, &UFMCodexLocalMatchScreenWidget::HandleContinueRequested);
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested);
 	if (UOverlaySlot* FormulaLayerSlot =
 		PitchPresentationLayers->AddChildToOverlay(InlineFormulaSurface))
 	{
@@ -1681,13 +1701,10 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 			ResolvedThroughBallClass,
 			TEXT("ThroughBallProductionResolutionSurface"));
 	ThroughBallResolutionSurface->OnContinueRequested.AddDynamic(
-		this, &UFMCodexLocalMatchScreenWidget::HandleContinueRequested);
+		this,
+		&UFMCodexLocalMatchScreenWidget::HandleThroughBallContinueRequested);
 	ThroughBallResolutionSurface->OnOneOnOneRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneRequested);
-	ThroughBallResolutionSurface->OnOneOnOneDetailRequested.AddDynamic(
-		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneDetailRequested);
-	ThroughBallResolutionSurface->OnOneOnOneDetailDismissed.AddDynamic(
-		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneDetailDismissed);
 	if (UOverlaySlot* ThroughBallLayerSlot =
 		PitchPresentationLayers->AddChildToOverlay(
 			ThroughBallResolutionSurface))
@@ -3519,15 +3536,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	{
 		HideTacticalDetail();
 	}
-	const FFMCodexUMGPrimaryActionViewModel& PrimaryAction =
-		Presentation.Interaction.PrimaryAction;
 	const bool bCentralSurfaceClaimsPrimaryAction =
-		(StandaloneInlineFormula.bVisible
-			&& StandaloneInlineFormula.PrimaryAction.Claims(PrimaryAction))
-		|| (DisplayedThroughBall.bVisible
-			&& (DisplayedThroughBall.PrimaryAction.Claims(PrimaryAction)
-				|| DisplayedThroughBall.Formula.PrimaryAction.Claims(
-					PrimaryAction)));
+		DoesInlineFormulaOwnCurrentPrimaryAction()
+		|| DoesThroughBallOwnCurrentPrimaryAction();
 	const bool bOneOnOneDisclosureGate =
 		IsInlineFormulaRevealInputBlocked()
 		&& Presentation.Interaction.Category

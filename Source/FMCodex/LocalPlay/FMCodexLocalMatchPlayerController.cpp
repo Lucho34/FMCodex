@@ -1231,6 +1231,37 @@ void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
 	ApplyCrossTerminalResolution();
 }
 
+void AFMCodexLocalMatchPlayerController::RollThroughBallInitialRoute()
+{
+	if (bThroughBallRouteCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallInitialRouteRoll"),
+			TEXT("ThroughBall Initial Route roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveThroughBallInitialRouteRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bThroughBallRouteCommandInFlight = true;
+	const auto Result = Host->ResolveThroughBallInitialRouteRoll(Request);
+	bThroughBallRouteCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveThroughBallInitialRouteRoll"), Result);
+}
+
 void AFMCodexLocalMatchPlayerController::RollThroughBallFeetAttack()
 {
 	if (bThroughBallFeetRollCommandInFlight)
@@ -1254,6 +1285,7 @@ void AFMCodexLocalMatchPlayerController::RollThroughBallFeetAttack()
 		return;
 	}
 	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallFeetRollCommandInFlight = true;
 	const auto Result = Host->ResolveThroughBallFeetAttackRoll(Request);
@@ -1284,6 +1316,7 @@ void AFMCodexLocalMatchPlayerController::RollThroughBallFeetDefense()
 		return;
 	}
 	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallFeetRollCommandInFlight = true;
 	const auto Result = Host->ResolveThroughBallFeetDefenseRoll(Request);
@@ -1603,6 +1636,8 @@ void AFMCodexLocalMatchPlayerController::AdvanceAfterTerminal()
 void AFMCodexLocalMatchPlayerController::ContinueResolution()
 {
 	if (InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute
+		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense

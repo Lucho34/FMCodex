@@ -74,6 +74,8 @@ public:
 	static FText ThroughBallAntiOffsideStage();
 	static FText ThroughBallOneOnOneStage();
 	static FText ThroughBallOneOnOnePrompt();
+	static FText ThroughBallDirectChoiceHint();
+	static FText ThroughBallChipChoiceHint();
 	static FText ThroughBallRouteResult(
 		int32 RawD6, EMatchPlayThroughBallActualBranch Route);
 	static FText BroadcastStatus(bool bMatchEnded, bool bAttackActive,

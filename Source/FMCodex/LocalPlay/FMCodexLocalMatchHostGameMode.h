@@ -270,6 +270,16 @@ struct FMCODEX_API FFMCodexLocalMatchResolveInitialRouteResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchResolveThroughBallInitialRouteRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 {
 	bool bSuccess = false;
@@ -690,6 +700,11 @@ public:
 	ResolveIntentDeterminedRoute();
 
 	FFMCodexLocalMatchResolveInitialRouteResult ResolveInitialRoute();
+
+	FFMCodexLocalMatchResolveThroughBallInitialRouteRollResult
+	ResolveThroughBallInitialRouteRoll(
+		const FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest&
+			Request);
 
 	FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();

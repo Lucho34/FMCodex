@@ -2644,8 +2644,15 @@ namespace FMCodexLocalMatchFullFamilyTests
 			return Fail(Test, FamilyLabel, TEXT("Branch choice was rejected"));
 		}
 
-		if (Controller.GetInteractionView().InteractionCategory
-			!= EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+		const EFMCodexLocalMatchInteractionCategory ReadyCategory =
+			Controller.GetInteractionView().InteractionCategory;
+		const bool bExpectedReadyAction = Family.SkillType
+			== ESkillRuleType::ThroughBall
+			? ReadyCategory == EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallInitialRoute
+			: ReadyCategory
+				== EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+		if (!bExpectedReadyAction)
 		{
 			return Fail(Test, FamilyLabel,
 				TEXT("normal selections did not reach Begin Resolution"));
@@ -6602,7 +6609,8 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 				EFMCodexUMGOneOnOneChoice::DirectShot);
 		}
 		else if (Category
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallInitialRoute)
 		{
 			UFMCodexThroughBallResolutionSurfaceWidget* ThroughBallSurface =
 				OneOnOneScreen->GetThroughBallResolutionSurface();
@@ -6618,7 +6626,7 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 				const auto AfterRoute = OneOnOneHost->GetMatchSnapshot();
 				bCentralRouteActionDispatchedExactlyOnce =
 					OneOnOneController->GetLastDiagnostic().CommandName
-						== TEXT("ResolveInitialRoute")
+						== TEXT("ResolveThroughBallInitialRouteRoll")
 					&& AfterRoute.bSuccess
 					&& AfterRoute.Snapshot.bHasCurrentAttack
 					&& AfterRoute.Snapshot.CurrentAttack.bHasResolutionSession
@@ -6627,7 +6635,8 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			}
 			else
 			{
-				OneOnOneResolution->RequestContinue();
+				AddError(TEXT("Typed ThroughBall route was not owned centrally"));
+				return false;
 			}
 		}
 		else if (Category
@@ -6635,9 +6644,16 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 					::RollThroughBallBehindDefenseAttack
 			|| Category
 				== EFMCodexLocalMatchInteractionCategory
-					::RollThroughBallBehindDefenseDefense)
+					::RollThroughBallBehindDefenseDefense
+			|| Category
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneDirectShotAttack
+			|| Category
+				== EFMCodexLocalMatchInteractionCategory
+					::RollThroughBallOneOnOneDirectShotDefense)
 		{
-			OneOnOneResolution->RequestContinue();
+			OneOnOneScreen->GetThroughBallResolutionSurface()
+				->RequestContinue();
 		}
 		else if (Category
 			== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
@@ -6650,7 +6666,8 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 					TEXT("RESULT: "))
 				&& OneOnOneResolution->GetPresentation().ContinuationLabel.Contains(
 					TEXT("Opportunity pending explicit"));
-			OneOnOneResolution->RequestContinue();
+			OneOnOneScreen->GetThroughBallResolutionSurface()
+				->RequestContinue();
 		}
 		else
 		{
@@ -13744,6 +13761,13 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 							.PrimaryAction.Claims(
 								Presentation.Interaction.PrimaryAction)));
 		Screen->ResetPrimaryActionDispatchForTesting();
+		// A lower-surface input event can arrive after the synchronous refresh that
+		// transferred ownership to the central surface. It must not be reinterpreted
+		// as the newly current typed action.
+		Screen->GetInteractionPanel()->RequestContinue();
+		TestEqual(FString::Printf(
+			TEXT("%s ignores a stale lower-surface activation"), Context),
+			Screen->GetPrimaryActionDispatchCountForTesting(), 0);
 		if (SurfaceKind == ESurfaceKind::CrossFormula)
 		{
 			Screen->GetInlineFormulaSurface()->RequestContinue();
@@ -13767,7 +13791,7 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 	};
 
 	DispatchOnce(TEXT("ThroughBall route"),
-		EFMCodexUMGInteractionCategory::ContinueResolution,
+		EFMCodexUMGInteractionCategory::RollThroughBallInitialRoute,
 		TEXT("掷点判定路线"), ESurfaceKind::ThroughBallRoute);
 	DispatchOnce(TEXT("Feet attack"),
 		EFMCodexUMGInteractionCategory::RollThroughBallFeetAttack,

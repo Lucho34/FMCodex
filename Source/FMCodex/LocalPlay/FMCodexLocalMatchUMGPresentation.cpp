@@ -373,6 +373,8 @@ namespace FMCodexLocalMatchUMGPresentation
 			return EFMCodexUMGInteractionCategory::RollCrossAttack;
 		case EFMCodexLocalMatchInteractionCategory::RollCrossDefense:
 			return EFMCodexUMGInteractionCategory::RollCrossDefense;
+		case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
+			return EFMCodexUMGInteractionCategory::RollThroughBallInitialRoute;
 		case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance:
 			return EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance;
 		case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack:
@@ -1072,9 +1074,15 @@ namespace FMCodexLocalMatchUMGPresentation
 		const bool bRejected)
 	{
 		FFMCodexUMGThroughBallResolutionViewModel Result;
+		const bool bInitialRoutePending =
+			InteractionView.bCurrentAttackActive
+			&& InteractionView.PresentedActionType == ESkillRuleType::ThroughBall
+			&& Interaction.Category
+				== EFMCodexUMGInteractionCategory::RollThroughBallInitialRoute;
 		if (InteractionView.PresentedActionType != ESkillRuleType::ThroughBall
-			|| InteractionView.MajorPhase
-				!= EFMCodexLocalMatchMajorPhase::Resolution
+			|| (InteractionView.MajorPhase
+					!= EFMCodexLocalMatchMajorPhase::Resolution
+				&& !bInitialRoutePending)
 			|| !InteractionView.bCurrentAttackActive)
 		{
 			return Result;
@@ -1104,7 +1112,8 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.ActionPromptLabel.Empty();
 			Result.bInitialRouteRollAwaitingInput =
 				Interaction.Category
-					== EFMCodexUMGInteractionCategory::ContinueResolution;
+					== EFMCodexUMGInteractionCategory
+						::RollThroughBallInitialRoute;
 			if (!bRejected && Result.bInitialRouteRollAwaitingInput)
 			{
 				ClaimPrimaryAction(Result.PrimaryAction, Interaction.PrimaryAction);
@@ -1191,6 +1200,10 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.StatusLabel.Empty();
 			Result.ActionPromptLabel.Empty();
 			Result.Formula = Formula;
+			// The ThroughBall parent is the sole owner of source-route context on
+			// the shared OneOnOne choice page, regardless of whether the source was
+			// BehindDefense or AntiOffside.
+			Result.Formula.bParentOwnsRouteContext = true;
 			if (AntiDecision != nullptr && AntiDecision->bResolved
 				&& AntiDecision->Outcome
 					== EMatchPlayResolutionDecisionOutcome::OneOnOneRequired)
@@ -1722,9 +1735,10 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				== EMatchPlayElectiveBranchIntent::CrossLow)
 		&& !InteractionView.ResolutionFacts.bHasActualBranch;
 	const bool bThroughBallRoutePending =
-		InteractionView.PresentedActionType == ESkillRuleType::ThroughBall
-		&& InteractionView.MajorPhase
-			== EFMCodexLocalMatchMajorPhase::Resolution
+		InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallInitialRoute
+		&& InteractionView.PresentedActionType == ESkillRuleType::ThroughBall
 		&& !InteractionView.ResolutionFacts.bHasActualBranch;
 	if (bTacticalPointPending)
 	{
@@ -1757,6 +1771,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallInitialRoute
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
 		|| InteractionView.InteractionCategory
@@ -1863,6 +1880,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	const bool bCanContinue =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::ContinueResolution
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory
+				::RollThroughBallInitialRoute
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
 		|| InteractionView.InteractionCategory
@@ -2039,13 +2059,22 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	for (const EMatchPlayThroughBallOneOnOneShotChoice Choice
 		: InteractionView.OneOnOneOptions)
 	{
+		const EFMCodexUMGOneOnOneChoice PlayerChoice = OneOnOneChoice(Choice);
 		const FString PlayerFacingChoiceLabel =
 			FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 				FFMCodexLocalMatchInteractionViewBuilder::ToString(Choice))
 				.ToString();
+		const FString SecondaryLabel = PlayerChoice
+				== EFMCodexUMGOneOnOneChoice::DirectShot
+			? FFMCodexPlayerUIPresentationText::ThroughBallDirectChoiceHint()
+				.ToString()
+			: PlayerChoice == EFMCodexUMGOneOnOneChoice::ChipShot
+				? FFMCodexPlayerUIPresentationText::ThroughBallChipChoiceHint()
+					.ToString()
+				: FString();
 		Result.Interaction.LegalActionLabels.Add(PlayerFacingChoiceLabel);
 		Result.Interaction.OneOnOneChoices.Add({
-			OneOnOneChoice(Choice), PlayerFacingChoiceLabel });
+			PlayerChoice, PlayerFacingChoiceLabel, SecondaryLabel });
 	}
 
 	// Terminal feedback remains available for diagnostics, but attack completion

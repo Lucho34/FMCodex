@@ -225,20 +225,6 @@ FFMCodexTacticalDetailPresentationBuilder::Build(
 	return BuildDetail(SkillType);
 }
 
-FFMCodexUMGTacticalDetailViewModel
-FFMCodexTacticalDetailPresentationBuilder::BuildOneOnOneChoice(
-	const EFMCodexUMGOneOnOneChoice Choice)
-{
-	using namespace FMCodexTacticalDetailPresentation;
-	const FName BranchId = Choice == EFMCodexUMGOneOnOneChoice::DirectShot
-		? FName(TEXT("ThroughBall.OneOnOneDirect"))
-		: Choice == EFMCodexUMGOneOnOneChoice::ChipShot
-			? FName(TEXT("ThroughBall.OneOnOneChip")) : NAME_None;
-	return BranchId.IsNone()
-		? FFMCodexUMGTacticalDetailViewModel()
-		: BuildDetail(ESkillRuleType::ThroughBall, BranchId);
-}
-
 FFMCodexUMGOutcomeRollHintViewModel
 FFMCodexTacticalDetailPresentationBuilder::BuildOutcomeRollHint(
 	const ESkillRuleType SkillType, const FName BranchId)

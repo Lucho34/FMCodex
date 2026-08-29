@@ -83,9 +83,11 @@ void UFMCodexInteractionOptionWidget::ConfigureBranch(
 
 void UFMCodexInteractionOptionWidget::ConfigureOneOnOne(
 	const FString& InLabel,
+	const FString& InSecondaryLabel,
 	const EFMCodexUMGOneOnOneChoice InChoice)
 {
 	Label = InLabel;
+	SecondaryLabel = InSecondaryLabel;
 	OneOnOneChoice = InChoice;
 	BindingMode = EBindingMode::OneOnOne;
 	RefreshVisuals();
@@ -111,7 +113,6 @@ void UFMCodexInteractionOptionWidget::NativeOnAddedToFocusPath(
 {
 	Super::NativeOnAddedToFocusPath(InFocusEvent);
 	HandleTacticalHovered();
-	HandleOneOnOneHovered();
 }
 
 void UFMCodexInteractionOptionWidget::NativeOnRemovedFromFocusPath(
@@ -119,7 +120,6 @@ void UFMCodexInteractionOptionWidget::NativeOnRemovedFromFocusPath(
 {
 	Super::NativeOnRemovedFromFocusPath(InFocusEvent);
 	HandleTacticalUnhovered();
-	HandleOneOnOneUnhovered();
 }
 
 void UFMCodexInteractionOptionWidget::BuildWidgetTree()
@@ -174,7 +174,7 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	const bool bOneOnOneChoice = BindingMode == EBindingMode::OneOnOne;
 	OptionSecondaryText->SetText(FText::FromString(SecondaryLabel));
 	OptionSecondaryText->SetVisibility(
-		bTacticalCard && !SecondaryLabel.IsEmpty()
+		(bTacticalCard || bOneOnOneChoice) && !SecondaryLabel.IsEmpty()
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	OptionLabelText->SetAutoWrapText(!bTacticalCard && !bOneOnOneChoice);
 	OptionLabelText->SetTextOverflowPolicy(
@@ -191,10 +191,10 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	}
 	else if (bOneOnOneChoice)
 	{
-		OptionBounds->ClearWidthOverride();
-		OptionBounds->ClearHeightOverride();
-		OptionBounds->SetMinDesiredWidth(120.0f);
-		OptionBounds->SetMinDesiredHeight(42.0f);
+		OptionBounds->ClearMinDesiredWidth();
+		OptionBounds->ClearMinDesiredHeight();
+		OptionBounds->SetWidthOverride(228.0f);
+		OptionBounds->SetHeightOverride(66.0f);
 	}
 	else
 	{
@@ -250,10 +250,6 @@ void UFMCodexInteractionOptionWidget::BindConfiguredHandler()
 	case EBindingMode::OneOnOne:
 		OptionButton->OnClicked.AddDynamic(
 			this, &UFMCodexInteractionOptionWidget::HandleOneOnOneClicked);
-		OptionButton->OnHovered.AddDynamic(
-			this, &UFMCodexInteractionOptionWidget::HandleOneOnOneHovered);
-		OptionButton->OnUnhovered.AddDynamic(
-			this, &UFMCodexInteractionOptionWidget::HandleOneOnOneUnhovered);
 		break;
 	default:
 		break;
@@ -299,22 +295,4 @@ void UFMCodexInteractionOptionWidget::HandleBranchClicked()
 void UFMCodexInteractionOptionWidget::HandleOneOnOneClicked()
 {
 	OnOneOnOneRequested.Broadcast(OneOnOneChoice);
-}
-
-void UFMCodexInteractionOptionWidget::HandleOneOnOneHovered()
-{
-	if (BindingMode == EBindingMode::OneOnOne
-		&& OneOnOneChoice != EFMCodexUMGOneOnOneChoice::None)
-	{
-		OnOneOnOneDetailRequested.Broadcast(OneOnOneChoice);
-	}
-}
-
-void UFMCodexInteractionOptionWidget::HandleOneOnOneUnhovered()
-{
-	if (BindingMode == EBindingMode::OneOnOne
-		&& OneOnOneChoice != EFMCodexUMGOneOnOneChoice::None)
-	{
-		OnOneOnOneDetailDismissed.Broadcast(OneOnOneChoice);
-	}
 }

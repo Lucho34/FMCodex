@@ -106,7 +106,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveThroughBallAntiOffsideAttackRoll,
 	ResolveThroughBallOneOnOneChipShotAttackRoll,
 	ResolveThroughBallOneOnOneDirectShotAttackRoll,
-	ResolveThroughBallOneOnOneDirectShotDefenseRoll
+	ResolveThroughBallOneOnOneDirectShotDefenseRoll,
+	ResolveThroughBallInitialRouteRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -374,6 +375,34 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveInitialRouteResult
 		OrchestrationResult;
 };
 
+struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+enum class EMatchPlayAuthoritativeThroughBallInitialRouteRollErrorCode : uint8
+{
+	None,
+	NoCurrentAttack,
+	InvalidAttackSequence,
+	AttackSequenceMismatch,
+	InvalidRequestingSide,
+	RequestingSideNotCurrentAttacker,
+	WrongResolutionFamily,
+	RouteRollNotPending
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveInitialRouteOrchestrationResult
+		OrchestrationResult;
+	EMatchPlayAuthoritativeThroughBallInitialRouteRollErrorCode ErrorCode =
+		EMatchPlayAuthoritativeThroughBallInitialRouteRollErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
@@ -439,11 +468,13 @@ struct FMCODEX_API
 
 struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest
 {
+	int64 AttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest
 {
+	int64 AttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 

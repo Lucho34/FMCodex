@@ -41,7 +41,8 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	MatchEnded,
 	ApplyCrossTerminalResolution,
 	ApplyThroughBallFeetTerminalResolution,
-	AdvanceAfterTerminal
+	AdvanceAfterTerminal,
+	RollThroughBallInitialRoute
 };
 
 /**
@@ -848,6 +849,9 @@ struct FMCODEX_API FFMCodexUMGOneOnOneChoiceViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	FString Label;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	FString SecondaryLabel;
 };
 
 USTRUCT(BlueprintType)

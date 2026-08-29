@@ -20,6 +20,7 @@ This contract covers the read-only in-match explanation for the five canonical t
 - Clicking a card still sends the existing typed tactical-selection intent once; it does not add an inspect/confirm step.
 - Selecting or declining a tactic, leaving the selection state, refreshing authoritative presentation, or destroying the screen clears transient detail.
 - `不使用战术` remains a separate action and does not masquerade as a tactical-description card.
+- OneOnOne Direct/Chip is not a current Hover-detail consumer. Its production choices use always-visible compact secondary copy: `（看射门、门将单刀）` and `（只看掷点）`. Hover retains only normal button feedback.
 
 ## Detail Content
 
@@ -78,3 +79,4 @@ The same catalog outcome metadata may be projected into a separate resolution-lo
 
 - Attribute-linked highlighting between descriptions and current cards.
 - Detailed rulebook mode, live current-player/value augmentation, tactical-family resolution rollout, audiovisual polish and global Match UI redesign.
+- `OneOnOne Contextual Tactical Detail` is deferred to the Post-Rule-Freeze Player Comprehension Pass. After gameplay testing, MVP rule simplification and rule freeze, reconsider Hover Detail, fixed inline detail, click-to-expand, first-use tooltip, or no additional explanation. Canonical Direct/Chip metadata remains available.
