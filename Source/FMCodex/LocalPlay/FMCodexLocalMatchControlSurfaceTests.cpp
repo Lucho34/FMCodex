@@ -9705,7 +9705,7 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
 	TestEqual(TEXT("Authoritative Session exposes explicit Cross, ThroughBall Feet, and BehindDefense roll entrypoints"),
-		SerializedEntrypointCount, 68);
+		SerializedEntrypointCount, 69);
 
 	return true;
 }
@@ -10069,7 +10069,7 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
 	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 68);
+		SerializedEntrypointCount, 69);
 
 	return true;
 }
@@ -10628,7 +10628,7 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
 	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 68);
+		SerializedEntrypointCount, 69);
 
 	return true;
 }

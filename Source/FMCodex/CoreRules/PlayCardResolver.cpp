@@ -17,8 +17,13 @@ namespace PlayCardResolver
 		return ErrorCode == ECardUsageResolveErrorCode::InvalidCardUsageState
 			|| ErrorCode == ECardUsageResolveErrorCode::DuplicateCardInAvailable
 			|| ErrorCode == ECardUsageResolveErrorCode::DuplicateCardInUsed
+			|| ErrorCode == ECardUsageResolveErrorCode::DuplicateCardInEjected
 			|| ErrorCode
-				== ECardUsageResolveErrorCode::CardExistsInBothAvailableAndUsed;
+				== ECardUsageResolveErrorCode::CardExistsInBothAvailableAndUsed
+			|| ErrorCode
+				== ECardUsageResolveErrorCode::CardExistsInBothAvailableAndEjected
+			|| ErrorCode
+				== ECardUsageResolveErrorCode::CardExistsInBothUsedAndEjected;
 	}
 
 	EPlayCardResolveErrorCode MapCardUsageError(
@@ -37,6 +42,8 @@ namespace PlayCardResolver
 			return EPlayCardResolveErrorCode::CardNotAvailable;
 		case ECardUsageResolveErrorCode::CardAlreadyUsed:
 			return EPlayCardResolveErrorCode::CardAlreadyUsed;
+		case ECardUsageResolveErrorCode::CardAlreadyEjected:
+			return EPlayCardResolveErrorCode::CardAlreadyEjected;
 		default:
 			return EPlayCardResolveErrorCode::CardUsageResolveFailed;
 		}

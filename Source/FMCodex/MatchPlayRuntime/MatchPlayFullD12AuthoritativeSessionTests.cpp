@@ -25,6 +25,25 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 		return Result;
 	}
 
+	FMatchPlayAttackEntrySelectionProviderResult MakeSelectionFailure()
+	{
+		FMatchPlayAttackEntrySelectionProviderResult Result;
+		Result.ErrorCode =
+			EMatchPlayAttackEntryRollProviderErrorCode::ProviderFailure;
+		Result.ErrorMessage =
+			TEXT("Deterministic Sending-Off selection provider failure.");
+		return Result;
+	}
+
+	FMatchPlayAttackEntrySelectionProviderResult MakeSelectionSuccess(
+		const int32 SelectedIndex)
+	{
+		FMatchPlayAttackEntrySelectionProviderResult Result;
+		Result.bSuccess = true;
+		Result.SelectedIndex = SelectedIndex;
+		return Result;
+	}
+
 	class FQueueAttackEntryRollProvider final
 		: public IMatchPlayAttackEntryRollProvider
 	{
@@ -39,6 +58,12 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 			const FMatchPlayAttackEntryRollProviderResult& Result)
 		{
 			D6Results.Add(Result);
+		}
+
+		void EnqueueSelection(
+			const FMatchPlayAttackEntrySelectionProviderResult& Result)
+		{
+			SelectionResults.Add(Result);
 		}
 
 		virtual FMatchPlayAttackEntryRollProviderResult RollD12(
@@ -63,6 +88,20 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 			return D6Results[NextD6Index++];
 		}
 
+		virtual FMatchPlayAttackEntrySelectionProviderResult
+		SelectUniformIndex(
+			const EMatchPlayAttackEntryRollPurpose Purpose,
+			const int32 CandidateCount) override
+		{
+			SelectionPurposes.Add(Purpose);
+			SelectionCandidateCounts.Add(CandidateCount);
+			if (!SelectionResults.IsValidIndex(NextSelectionIndex))
+			{
+				return MakeSelectionFailure();
+			}
+			return SelectionResults[NextSelectionIndex++];
+		}
+
 		int32 GetD12CallCount() const
 		{
 			return D12Purposes.Num();
@@ -73,14 +112,23 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 			return D6Purposes.Num();
 		}
 
+		int32 GetSelectionCallCount() const
+		{
+			return SelectionPurposes.Num();
+		}
+
 		TArray<EMatchPlayAttackEntryRollPurpose> D12Purposes;
 		TArray<EMatchPlayAttackEntryRollPurpose> D6Purposes;
+		TArray<EMatchPlayAttackEntryRollPurpose> SelectionPurposes;
+		TArray<int32> SelectionCandidateCounts;
 
 	private:
 		TArray<FMatchPlayAttackEntryRollProviderResult> D12Results;
 		TArray<FMatchPlayAttackEntryRollProviderResult> D6Results;
+		TArray<FMatchPlayAttackEntrySelectionProviderResult> SelectionResults;
 		int32 NextD12Index = 0;
 		int32 NextD6Index = 0;
+		int32 NextSelectionIndex = 0;
 	};
 
 	FPlayerCardData MakeDeckCard(
@@ -214,6 +262,53 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 		Test.TestTrue(TEXT("Session initialization succeeds"),
 			Result.OpeningResult.bSuccess);
 		return Result.OpeningResult.bSuccess;
+	}
+
+	FMatchPlayState MakeReconstructedPoolState(
+		FAutomationTestBase& Test,
+		FQueueAttackEntryRollProvider& Provider,
+		const TCHAR* Prefix,
+		const int32 AvailableOutfieldCount)
+	{
+		FMatchPlayAuthoritativeSession SeedSession(Provider);
+		if (!Initialize(Test, SeedSession, Prefix))
+		{
+			return FMatchPlayState();
+		}
+		FMatchPlayState State = SeedSession.GetStateSnapshot();
+		FCardUsageState& AttackerUsage =
+			State.RuntimeState.CurrentAttackingPlayer
+				== EInitialTurnOrderPlayer::PlayerA
+				? State.CardUsageState.PlayerACardUsageState
+				: State.CardUsageState.PlayerBCardUsageState;
+		TArray<FName> Outfield;
+		FName Goalkeeper = NAME_None;
+		for (const FPlayerCardRuleSnapshot& Snapshot :
+			(State.RuntimeState.CurrentAttackingPlayer
+				== EInitialTurnOrderPlayer::PlayerA
+					? State.CardSnapshotAuthority.PlayerACardSnapshots.Cards
+					: State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards))
+		{
+			if (Snapshot.bIsGoalkeeper)
+			{
+				Goalkeeper = Snapshot.CardId;
+			}
+			else
+			{
+				Outfield.Add(Snapshot.CardId);
+			}
+		}
+		AttackerUsage.AvailableCardIds.Reset();
+		AttackerUsage.UsedCardIds.Reset();
+		AttackerUsage.EjectedCardIds.Reset();
+		for (int32 Index = 0; Index < Outfield.Num(); ++Index)
+		{
+			(Index < AvailableOutfieldCount
+				? AttackerUsage.AvailableCardIds
+				: AttackerUsage.UsedCardIds).Add(Outfield[Index]);
+		}
+		AttackerUsage.AvailableCardIds.Add(Goalkeeper);
+		return State;
 	}
 
 	FMatchPlayState MakeMinimalState(
@@ -754,6 +849,226 @@ bool FMatchPlayAuthoritativeSetPieceTypeRejectionTest::RunTest(
 		EMatchPlaySetPieceTypeRollErrorCode::MalformedProviderResult);
 	TestTrue(TEXT("Malformed D6 preserves AwaitingTypeRoll"),
 		AreStatesEqual(MalformedSession.GetStateSnapshot(), MalformedBefore));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayAuthoritativeSendingOffLifecycleTest,
+	"FMCodex.MatchPlayRuntime.AuthoritativeSession.SendingOffLifecycleAndRetry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayAuthoritativeSendingOffLifecycleTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayFullD12AuthoritativeSessionTests;
+
+	for (const int32 PoolSize : { 0, 1 })
+	{
+		FQueueAttackEntryRollProvider Provider;
+		Provider.EnqueueD12(MakeSuccess(1));
+		FMatchPlayState Reconstructed = MakeReconstructedPoolState(
+			*this,
+			Provider,
+			*FString::Printf(TEXT("SendingOffPool%d"), PoolSize),
+			PoolSize);
+		FMatchPlayAuthoritativeSession Session(Reconstructed, Provider);
+		const EInitialTurnOrderPlayer Attacker =
+			Reconstructed.RuntimeState.CurrentAttackingPlayer;
+		const FMatchPlayFullD12EntryRequest EntryRequest =
+			MakeInitialRequest(Session.GetStateSnapshot());
+		const auto Entry = Session.RequestInitialActionPointRoll(EntryRequest);
+		TestTrue(TEXT("Pool0/1 D12=1 entry succeeds"),
+			Entry.EntryResult.bSuccess);
+		const int64 Sequence =
+			Session.GetStateSnapshot().CurrentAttack.AttackSequence;
+		FMatchPlaySendingOffResolutionRequest ResolveRequest;
+		ResolveRequest.AttackSequence = Sequence;
+		const auto Resolved = Session.ResolveSendingOff(ResolveRequest);
+		const FMatchPlayState Terminal = Session.GetStateSnapshot();
+		TestTrue(TEXT("Pool0/1 AP1 resolves through real Session"),
+			Resolved.ResolutionResult.bSuccess);
+		TestEqual(TEXT("Pool0/1 D12 is consumed exactly once"),
+			Provider.GetD12CallCount(), 1);
+		TestEqual(TEXT("Pool0/1 selection RNG is not called"),
+			Provider.GetSelectionCallCount(), 0);
+		TestEqual(TEXT("Pool0/1 terminal lifecycle is persisted"),
+			Terminal.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		TestEqual(TEXT("Pool0/1 raw D12 reconstructs"),
+			Terminal.CurrentAttack.RawInitialD12, 1);
+		TestEqual(TEXT("Pool0/1 same sequence reconstructs"),
+			Terminal.CurrentAttack.AttackSequence, Sequence);
+		TestEqual(TEXT("Pool0/1 explicit selection fact"),
+			Terminal.CurrentAttack.SendingOffRoute.SelectionOutcome,
+			PoolSize == 0
+				? EMatchPlaySendingOffSelectionOutcome::NoEligibleCandidate
+				: EMatchPlaySendingOffSelectionOutcome::CardEjected);
+		if (PoolSize == 1)
+		{
+			const FName Ejected =
+				Terminal.CurrentAttack.SendingOffRoute.EjectedCardId;
+			const FCardUsageState& TerminalAttackerUsage =
+				Attacker == EInitialTurnOrderPlayer::PlayerA
+					? Terminal.CardUsageState.PlayerACardUsageState
+					: Terminal.CardUsageState.PlayerBCardUsageState;
+			TestTrue(TEXT("Pool1 terminal snapshot contains Ejected identity"),
+				TerminalAttackerUsage
+					.EjectedCardIds.Contains(Ejected));
+			TestFalse(TEXT("Pool1 Ejected identity is not Used"),
+				TerminalAttackerUsage
+					.UsedCardIds.Contains(Ejected));
+		}
+
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+		AdvanceRequest.AttackSequence = Sequence;
+		AdvanceRequest.RequestingSide =
+			Terminal.RuntimeState.CurrentAttackingPlayer;
+		const auto Advanced = Session.AdvanceAfterTerminal(AdvanceRequest);
+		TestTrue(TEXT("Pool0/1 shared advance succeeds"),
+			Advanced.CompletionResult.bSuccess);
+		const FMatchPlayState AdvancedState = Session.GetStateSnapshot();
+		TestEqual(TEXT("Pool0/1 shared advance consumes one opportunity"),
+			Attacker == EInitialTurnOrderPlayer::PlayerA
+				? AdvancedState.RuntimeState.PlayerAState.UsedAttackCount
+				: AdvancedState.RuntimeState.PlayerBState.UsedAttackCount,
+			1);
+	}
+
+	FQueueAttackEntryRollProvider RetryProvider;
+	RetryProvider.EnqueueD12(MakeSuccess(1));
+	RetryProvider.EnqueueSelection(MakeSelectionFailure());
+	RetryProvider.EnqueueSelection(MakeSelectionSuccess(1));
+	FMatchPlayState RetryState = MakeReconstructedPoolState(
+		*this,
+		RetryProvider,
+		TEXT("SendingOffRetry"),
+		3);
+	FMatchPlayAuthoritativeSession RetrySession(RetryState, RetryProvider);
+	const EInitialTurnOrderPlayer RetryAttacker =
+		RetryState.RuntimeState.CurrentAttackingPlayer;
+	const auto Entry = RetrySession.RequestInitialActionPointRoll(
+		MakeInitialRequest(RetrySession.GetStateSnapshot()));
+	TestTrue(TEXT("Retry fixture accepts D12=1"), Entry.EntryResult.bSuccess);
+	const FMatchPlayState Awaiting = RetrySession.GetStateSnapshot();
+	FMatchPlaySendingOffResolutionRequest ResolveRequest;
+	ResolveRequest.AttackSequence = Awaiting.CurrentAttack.AttackSequence;
+	const auto Failed = RetrySession.ResolveSendingOff(ResolveRequest);
+	TestEqual(TEXT("AP1 provider failure is retryable domain failure"),
+		Failed.ResolutionResult.ErrorCode,
+		EMatchPlaySendingOffResolutionErrorCode::SelectionProviderFailure);
+	TestEqual(TEXT("Failure consumed initial D12 once"),
+		RetryProvider.GetD12CallCount(), 1);
+	TestEqual(TEXT("Failure consumed AP1 selection once"),
+		RetryProvider.GetSelectionCallCount(), 1);
+	TestTrue(TEXT("Failure preserves accepted D12 pending state"),
+		AreStatesEqual(RetrySession.GetStateSnapshot(), Awaiting));
+
+	const auto Retry = RetrySession.ResolveSendingOff(ResolveRequest);
+	const FMatchPlayState Terminal = RetrySession.GetStateSnapshot();
+	TestTrue(TEXT("AP1-only retry succeeds"),
+		Retry.ResolutionResult.bSuccess);
+	TestEqual(TEXT("Retry D12 provider delta is zero"),
+		RetryProvider.GetD12CallCount(), 1);
+	TestEqual(TEXT("Retry calls AP1 selection exactly once more"),
+		RetryProvider.GetSelectionCallCount(), 2);
+	TestEqual(TEXT("Retry keeps accepted RawInitialD12"),
+		Terminal.CurrentAttack.RawInitialD12, 1);
+	TestEqual(TEXT("Retry keeps accepted AttackSequence"),
+		Terminal.CurrentAttack.AttackSequence,
+		ResolveRequest.AttackSequence);
+	TestEqual(TEXT("Retry result is NoGoal"),
+		Terminal.CurrentAttack.SendingOffRoute.GameplayOutcome,
+		EMatchPlaySendingOffGameplayOutcome::NoGoal);
+	TestEqual(TEXT("Retry does not change score"),
+		Terminal.RuntimeState.PlayerAState.Score,
+		Awaiting.RuntimeState.PlayerAState.Score);
+	TestEqual(TEXT("Retry does not consume opportunity before advance"),
+		RetryAttacker == EInitialTurnOrderPlayer::PlayerA
+			? Terminal.RuntimeState.PlayerAState.UsedAttackCount
+			: Terminal.RuntimeState.PlayerBState.UsedAttackCount,
+		RetryAttacker == EInitialTurnOrderPlayer::PlayerA
+			? Awaiting.RuntimeState.PlayerAState.UsedAttackCount
+			: Awaiting.RuntimeState.PlayerBState.UsedAttackCount);
+
+	const auto Duplicate = RetrySession.ResolveSendingOff(ResolveRequest);
+	TestEqual(TEXT("Duplicate AP1 is terminal-gated"),
+		Duplicate.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
+	TestEqual(TEXT("Duplicate AP1 consumes no further selection RNG"),
+		RetryProvider.GetSelectionCallCount(), 2);
+	TestTrue(TEXT("Duplicate AP1 preserves terminal snapshot"),
+		AreStatesEqual(RetrySession.GetStateSnapshot(), Terminal));
+
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
+	AdvanceRequest.AttackSequence = ResolveRequest.AttackSequence;
+	AdvanceRequest.RequestingSide = RetryAttacker;
+	const auto Advanced = RetrySession.AdvanceAfterTerminal(AdvanceRequest);
+	const FMatchPlayState PostAdvance = RetrySession.GetStateSnapshot();
+	TestTrue(TEXT("Session AP1 advance succeeds"),
+		Advanced.CompletionResult.bSuccess);
+	TestFalse(TEXT("Session AP1 advance clears CurrentAttack"),
+		PostAdvance.bHasCurrentAttack);
+	TestEqual(TEXT("Session AP1 advance consumes one opportunity"),
+		RetryAttacker == EInitialTurnOrderPlayer::PlayerA
+			? PostAdvance.RuntimeState.PlayerAState.UsedAttackCount
+			: PostAdvance.RuntimeState.PlayerBState.UsedAttackCount,
+		1);
+	const FCardUsageState& PostAdvanceAttackerUsage =
+		RetryAttacker == EInitialTurnOrderPlayer::PlayerA
+			? PostAdvance.CardUsageState.PlayerACardUsageState
+			: PostAdvance.CardUsageState.PlayerBCardUsageState;
+	TestTrue(TEXT("Post-advance reconstruction preserves Ejected identity"),
+		PostAdvanceAttackerUsage.EjectedCardIds.Contains(
+			Terminal.CurrentAttack.SendingOffRoute.EjectedCardId));
+
+	const auto DuplicateAdvance = RetrySession.AdvanceAfterTerminal(
+		AdvanceRequest);
+	TestFalse(TEXT("Duplicate Session advance is rejected"),
+		DuplicateAdvance.CompletionResult.bSuccess);
+	const FMatchPlayState AfterDuplicateAdvance =
+		RetrySession.GetStateSnapshot();
+	TestEqual(TEXT("Duplicate Session advance does not consume twice"),
+		RetryAttacker == EInitialTurnOrderPlayer::PlayerA
+			? AfterDuplicateAdvance.RuntimeState.PlayerAState.UsedAttackCount
+			: AfterDuplicateAdvance.RuntimeState.PlayerBState.UsedAttackCount,
+		1);
+
+	FQueueAttackEntryRollProvider FinalProvider;
+	FinalProvider.EnqueueD12(MakeSuccess(1));
+	FinalProvider.EnqueueSelection(MakeSelectionSuccess(0));
+	FMatchPlayState FinalState = MakeReconstructedPoolState(
+		*this,
+		FinalProvider,
+		TEXT("SendingOffFinal"),
+		2);
+	const EInitialTurnOrderPlayer FinalAttacker =
+		FinalState.RuntimeState.CurrentAttackingPlayer;
+	FinalState.RuntimeState.PlayerAState.TotalAttackCount =
+		FinalAttacker == EInitialTurnOrderPlayer::PlayerA ? 1 : 0;
+	FinalState.RuntimeState.PlayerBState.TotalAttackCount =
+		FinalAttacker == EInitialTurnOrderPlayer::PlayerB ? 1 : 0;
+	FinalState.RuntimeState.PlayerAState.Score = 2;
+	FinalState.RuntimeState.PlayerBState.Score = 1;
+	FMatchPlayAuthoritativeSession FinalSession(FinalState, FinalProvider);
+	FinalSession.RequestInitialActionPointRoll(
+		MakeInitialRequest(FinalSession.GetStateSnapshot()));
+	FMatchPlaySendingOffResolutionRequest FinalResolve;
+	FinalResolve.AttackSequence =
+		FinalSession.GetStateSnapshot().CurrentAttack.AttackSequence;
+	FinalSession.ResolveSendingOff(FinalResolve);
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest FinalAdvanceRequest;
+	FinalAdvanceRequest.AttackSequence = FinalResolve.AttackSequence;
+	FinalAdvanceRequest.RequestingSide = FinalAttacker;
+	const auto FinalAdvance =
+		FinalSession.AdvanceAfterTerminal(FinalAdvanceRequest);
+	TestTrue(TEXT("Final Session AP1 advance succeeds"),
+		FinalAdvance.CompletionResult.bSuccess);
+	TestTrue(TEXT("Final Session AP1 ends match"),
+		FinalAdvance.CompletionResult.bMatchEnded);
+	TestTrue(TEXT("Final Session MatchResult succeeds"),
+		FinalAdvance.CompletionResult.MatchResultResolveResult.bSuccess);
+	TestEqual(TEXT("Final AP1 score remains authoritative"),
+		FinalSession.GetStateSnapshot().RuntimeState.PlayerAState.Score, 2);
 	return true;
 }
 

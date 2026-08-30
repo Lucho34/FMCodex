@@ -23,6 +23,12 @@ public:
 		const FSkillRuleSnapshotSet& InSkillRuleSet);
 	~FMatchPlayAuthoritativeSession();
 
+#if WITH_DEV_AUTOMATION_TESTS
+	FMatchPlayAuthoritativeSession(
+		FMatchPlayState InReconstructedState,
+		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider);
+#endif
+
 	FMatchPlayAuthoritativeInitializeMatchResult InitializeMatch(
 		const FMatchPlayOpeningInitializeInput& Input);
 
@@ -36,6 +42,9 @@ public:
 	FMatchPlayAuthoritativeRequestSetPieceTypeRollResult
 	RequestSetPieceTypeRoll(
 		const FMatchPlaySetPieceTypeRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveSendingOffResult ResolveSendingOff(
+		const FMatchPlaySendingOffResolutionRequest& Request);
 
 	FMatchPlayAuthoritativeFinishDeploymentResult FinishDeployment(
 		int64 AttackSequence,

@@ -49,7 +49,7 @@ namespace CardUsageResolver
 		return true;
 	}
 
-	bool ValidateState(
+	bool ValidateStateInternal(
 		FCardUsageResolveResult& Result,
 		const FCardUsageState& CardUsageState)
 	{
@@ -89,8 +89,58 @@ namespace CardUsageResolver
 			}
 		}
 
+		TSet<FName> EjectedCardIds;
+		if (!ValidateCardList(
+			Result,
+			CardUsageState.EjectedCardIds,
+			ECardUsageResolveErrorCode::DuplicateCardInEjected,
+			TEXT("EjectedCardIds"),
+			EjectedCardIds))
+		{
+			return false;
+		}
+
+		for (const FName CardId : AvailableCardIds)
+		{
+			if (EjectedCardIds.Contains(CardId))
+			{
+				SetError(
+					Result,
+					ECardUsageResolveErrorCode::CardExistsInBothAvailableAndEjected,
+					FString::Printf(
+						TEXT("CardId '%s' exists in both AvailableCardIds and EjectedCardIds."),
+						*CardId.ToString()));
+				return false;
+			}
+		}
+
+		for (const FName CardId : UsedCardIds)
+		{
+			if (EjectedCardIds.Contains(CardId))
+			{
+				SetError(
+					Result,
+					ECardUsageResolveErrorCode::CardExistsInBothUsedAndEjected,
+					FString::Printf(
+						TEXT("CardId '%s' exists in both UsedCardIds and EjectedCardIds."),
+						*CardId.ToString()));
+				return false;
+			}
+		}
+
 		return true;
 	}
+}
+
+FCardUsageResolveResult FCardUsageResolver::ValidateState(
+	const FCardUsageState& CardUsageState)
+{
+	FCardUsageResolveResult Result;
+	Result.UpdatedCardUsageState = CardUsageState;
+	Result.bSuccess = CardUsageResolver::ValidateStateInternal(
+		Result,
+		CardUsageState);
+	return Result;
 }
 
 FCardUsageResolveResult FCardUsageResolver::UseCard(
@@ -110,7 +160,7 @@ FCardUsageResolveResult FCardUsageResolver::UseCard(
 		return Result;
 	}
 
-	if (!CardUsageResolver::ValidateState(Result, CardUsageState))
+	if (!CardUsageResolver::ValidateStateInternal(Result, CardUsageState))
 	{
 		return Result;
 	}
@@ -122,6 +172,17 @@ FCardUsageResolveResult FCardUsageResolver::UseCard(
 			ECardUsageResolveErrorCode::CardAlreadyUsed,
 			FString::Printf(
 				TEXT("CardId '%s' has already been used."),
+				*CardId.ToString()));
+		return Result;
+	}
+
+	if (CardUsageState.EjectedCardIds.Contains(CardId))
+	{
+		CardUsageResolver::SetError(
+			Result,
+			ECardUsageResolveErrorCode::CardAlreadyEjected,
+			FString::Printf(
+				TEXT("CardId '%s' has already been ejected."),
 				*CardId.ToString()));
 		return Result;
 	}

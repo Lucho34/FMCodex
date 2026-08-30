@@ -27,6 +27,64 @@ namespace MatchPlayAttackEntryRollProvider
 	}
 }
 
+FMatchPlayAttackEntrySelectionProviderResultValidationResult
+FMatchPlayAttackEntrySelectionProviderResultValidator::Validate(
+	const EMatchPlayAttackEntryRollPurpose RequestedPurpose,
+	const int32 CandidateCount,
+	const FMatchPlayAttackEntrySelectionProviderResult& ProviderResult)
+{
+	FMatchPlayAttackEntrySelectionProviderResultValidationResult Result;
+	if (RequestedPurpose
+			!= EMatchPlayAttackEntryRollPurpose::SendingOffSelection
+		|| CandidateCount < 2)
+	{
+		Result.ErrorCode =
+			EMatchPlayAttackEntryRollProviderResultValidationErrorCode
+				::InvalidPurpose;
+		Result.ErrorMessage =
+			TEXT("Sending-Off selection requires its semantic purpose and at least two candidates.");
+		return Result;
+	}
+
+	if (ProviderResult.bSuccess)
+	{
+		if (ProviderResult.ErrorCode
+				!= EMatchPlayAttackEntryRollProviderErrorCode::None
+			|| !ProviderResult.ErrorMessage.IsEmpty()
+			|| ProviderResult.SelectedIndex < 0
+			|| ProviderResult.SelectedIndex >= CandidateCount)
+		{
+			Result.ErrorCode =
+				EMatchPlayAttackEntryRollProviderResultValidationErrorCode
+					::MalformedProviderResult;
+			Result.ErrorMessage =
+				TEXT("A successful Sending-Off selection must contain only an in-range candidate index.");
+			return Result;
+		}
+		Result.bIsCanonical = true;
+		return Result;
+	}
+
+	if (ProviderResult.SelectedIndex == INDEX_NONE
+		&& ProviderResult.ErrorCode
+			== EMatchPlayAttackEntryRollProviderErrorCode::ProviderFailure
+		&& !ProviderResult.ErrorMessage.IsEmpty())
+	{
+		Result.ErrorCode =
+			EMatchPlayAttackEntryRollProviderResultValidationErrorCode
+				::ProviderFailure;
+		Result.ErrorMessage = ProviderResult.ErrorMessage;
+		return Result;
+	}
+
+	Result.ErrorCode =
+		EMatchPlayAttackEntryRollProviderResultValidationErrorCode
+			::MalformedProviderResult;
+	Result.ErrorMessage =
+		TEXT("A failed Sending-Off selection provider result is not canonical.");
+	return Result;
+}
+
 FMatchPlayAttackEntryRollProviderResultValidationResult
 FMatchPlayAttackEntryRollProviderResultValidator::Validate(
 	const EMatchPlayAttackEntryRollPurpose RequestedPurpose,

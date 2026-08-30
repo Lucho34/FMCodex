@@ -37,7 +37,23 @@ UENUM(BlueprintType)
 enum class EMatchPlaySendingOffRouteStage : uint8
 {
 	None = 0 UMETA(DisplayName = "None"),
-	AwaitingResolution = 1 UMETA(DisplayName = "Awaiting Resolution")
+	AwaitingResolution = 1 UMETA(DisplayName = "Awaiting Resolution"),
+	Resolved = 2 UMETA(DisplayName = "Resolved")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlaySendingOffSelectionOutcome : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	NoEligibleCandidate = 1 UMETA(DisplayName = "No Eligible Candidate"),
+	CardEjected = 2 UMETA(DisplayName = "Card Ejected")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlaySendingOffGameplayOutcome : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	NoGoal = 1 UMETA(DisplayName = "No Goal")
 };
 
 UENUM(BlueprintType)
@@ -305,6 +321,17 @@ struct FMCODEX_API FMatchPlaySendingOffRouteState
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Sending Off")
 	EMatchPlaySendingOffRouteStage Stage =
 		EMatchPlaySendingOffRouteStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Sending Off")
+	EMatchPlaySendingOffSelectionOutcome SelectionOutcome =
+		EMatchPlaySendingOffSelectionOutcome::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Sending Off")
+	FName EjectedCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Sending Off")
+	EMatchPlaySendingOffGameplayOutcome GameplayOutcome =
+		EMatchPlaySendingOffGameplayOutcome::None;
 };
 
 USTRUCT(BlueprintType)

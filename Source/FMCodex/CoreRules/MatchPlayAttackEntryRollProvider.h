@@ -6,7 +6,8 @@ enum class EMatchPlayAttackEntryRollPurpose : uint8
 {
 	None,
 	InitialActionPoint,
-	SetPieceType
+	SetPieceType,
+	SendingOffSelection
 };
 
 enum class EMatchPlayAttackEntryRollProviderErrorCode : uint8
@@ -25,6 +26,15 @@ struct FMCODEX_API FMatchPlayAttackEntryRollProviderResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FMatchPlayAttackEntrySelectionProviderResult
+{
+	bool bSuccess = false;
+	int32 SelectedIndex = INDEX_NONE;
+	EMatchPlayAttackEntryRollProviderErrorCode ErrorCode =
+		EMatchPlayAttackEntryRollProviderErrorCode::None;
+	FString ErrorMessage;
+};
+
 class FMCODEX_API IMatchPlayAttackEntryRollProvider
 {
 public:
@@ -35,6 +45,10 @@ public:
 
 	virtual FMatchPlayAttackEntryRollProviderResult RollD6(
 		EMatchPlayAttackEntryRollPurpose Purpose) = 0;
+
+	virtual FMatchPlayAttackEntrySelectionProviderResult SelectUniformIndex(
+		EMatchPlayAttackEntryRollPurpose Purpose,
+		int32 CandidateCount) = 0;
 };
 
 enum class EMatchPlayAttackEntryRollProviderResultValidationErrorCode : uint8
@@ -43,6 +57,23 @@ enum class EMatchPlayAttackEntryRollProviderResultValidationErrorCode : uint8
 	InvalidPurpose,
 	ProviderFailure,
 	MalformedProviderResult
+};
+
+struct FMCODEX_API FMatchPlayAttackEntrySelectionProviderResultValidationResult
+{
+	bool bIsCanonical = false;
+	EMatchPlayAttackEntryRollProviderResultValidationErrorCode ErrorCode =
+		EMatchPlayAttackEntryRollProviderResultValidationErrorCode::None;
+	FString ErrorMessage;
+};
+
+class FMCODEX_API FMatchPlayAttackEntrySelectionProviderResultValidator final
+{
+public:
+	static FMatchPlayAttackEntrySelectionProviderResultValidationResult Validate(
+		EMatchPlayAttackEntryRollPurpose RequestedPurpose,
+		int32 CandidateCount,
+		const FMatchPlayAttackEntrySelectionProviderResult& ProviderResult);
 };
 
 struct FMCODEX_API FMatchPlayAttackEntryRollProviderResultValidationResult

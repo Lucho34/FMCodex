@@ -14,4 +14,7 @@ struct FMCODEX_API FCardUsageState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Card Usage")
 	TArray<FName> UsedCardIds;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Card Usage")
+	TArray<FName> EjectedCardIds;
 };

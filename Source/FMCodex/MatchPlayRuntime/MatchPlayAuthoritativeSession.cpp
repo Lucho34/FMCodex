@@ -85,6 +85,16 @@ FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
 
 FMatchPlayAuthoritativeSession::~FMatchPlayAuthoritativeSession() = default;
 
+#if WITH_DEV_AUTOMATION_TESTS
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	FMatchPlayState InReconstructedState,
+	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider)
+	: AuthoritativeState(MoveTemp(InReconstructedState))
+	, AttackEntryRollProvider(&InAttackEntryRollProvider)
+{
+}
+#endif
+
 template <typename TTypedResult, typename TExecuteDomain>
 TTypedResult FMatchPlayAuthoritativeSession::ExecuteSerialized(
 	const EMatchPlayAuthoritativeCommandKind CommandKind,
@@ -283,6 +293,35 @@ FMatchPlayAuthoritativeSession::RequestSetPieceTypeRoll(
 			Execution.CandidateAfterState =
 				Result.TypeRollResult.AfterState;
 			Execution.StateDisposition = Result.TypeRollResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveSendingOffResult
+FMatchPlayAuthoritativeSession::ResolveSendingOff(
+	const FMatchPlaySendingOffResolutionRequest& Request)
+{
+	return ExecuteSerialized<FMatchPlayAuthoritativeResolveSendingOffResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveSendingOff,
+		true,
+		Request.AttackSequence,
+		[this, &Request](
+			FMatchPlayAuthoritativeResolveSendingOffResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult = FMatchPlaySendingOffResolution::Resolve(
+				BeforeState,
+				Request,
+				AttackEntryRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
 			Execution.AttackSequence = Request.AttackSequence;

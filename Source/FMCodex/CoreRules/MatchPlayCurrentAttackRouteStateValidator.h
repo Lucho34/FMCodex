@@ -22,6 +22,8 @@ enum class EMatchPlayCurrentAttackRouteStateValidationErrorCode : uint8
 	WrongRoutePhase UMETA(DisplayName = "Wrong Route Phase"),
 	WrongRouteLifecycle UMETA(DisplayName = "Wrong Route Lifecycle"),
 	InvalidSendingOffStage UMETA(DisplayName = "Invalid Sending Off Stage"),
+	InvalidSendingOffPayload UMETA(DisplayName = "Invalid Sending Off Payload"),
+	SendingOffEjectionMismatch UMETA(DisplayName = "Sending Off Ejection Mismatch"),
 	InvalidSetPieceStage UMETA(DisplayName = "Invalid Set Piece Stage"),
 	UnexpectedSendingOffPayload UMETA(DisplayName = "Unexpected Sending Off Payload"),
 	UnexpectedSetPiecePayload UMETA(DisplayName = "Unexpected Set Piece Payload"),

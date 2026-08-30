@@ -28,7 +28,8 @@ enum class EPlayCardResolveErrorCode : uint8
 	InvalidCardId UMETA(DisplayName = "Invalid Card ID"),
 	CardUsageResolveFailed UMETA(DisplayName = "Card Usage Resolve Failed"),
 	CardNotAvailable UMETA(DisplayName = "Card Not Available"),
-	CardAlreadyUsed UMETA(DisplayName = "Card Already Used")
+	CardAlreadyUsed UMETA(DisplayName = "Card Already Used"),
+	CardAlreadyEjected UMETA(DisplayName = "Card Already Ejected")
 };
 
 USTRUCT(BlueprintType)

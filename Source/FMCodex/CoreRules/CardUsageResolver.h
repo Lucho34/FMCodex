@@ -13,10 +13,16 @@ enum class ECardUsageResolveErrorCode : uint8
 	InvalidCardId UMETA(DisplayName = "Invalid Card ID"),
 	CardNotAvailable UMETA(DisplayName = "Card Not Available"),
 	CardAlreadyUsed UMETA(DisplayName = "Card Already Used"),
+	CardAlreadyEjected UMETA(DisplayName = "Card Already Ejected"),
 	DuplicateCardInAvailable UMETA(DisplayName = "Duplicate Card In Available"),
 	DuplicateCardInUsed UMETA(DisplayName = "Duplicate Card In Used"),
+	DuplicateCardInEjected UMETA(DisplayName = "Duplicate Card In Ejected"),
 	CardExistsInBothAvailableAndUsed
-		UMETA(DisplayName = "Card Exists In Both Available And Used")
+		UMETA(DisplayName = "Card Exists In Both Available And Used"),
+	CardExistsInBothAvailableAndEjected
+		UMETA(DisplayName = "Card Exists In Both Available And Ejected"),
+	CardExistsInBothUsedAndEjected
+		UMETA(DisplayName = "Card Exists In Both Used And Ejected")
 };
 
 USTRUCT(BlueprintType)
@@ -44,6 +50,9 @@ struct FMCODEX_API FCardUsageResolveResult
 class FMCODEX_API FCardUsageResolver final
 {
 public:
+	static FCardUsageResolveResult ValidateState(
+		const FCardUsageState& CardUsageState);
+
 	static FCardUsageResolveResult UseCard(
 		const FCardUsageState& CardUsageState,
 		FName CardId);

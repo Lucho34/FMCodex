@@ -70,9 +70,11 @@ FMatchCardUsageInitializer::InitializeMatchCardUsageState(
 	Result.InitializedCardUsageState.PlayerACardUsageState.AvailableCardIds =
 		PlayerACardIds;
 	Result.InitializedCardUsageState.PlayerACardUsageState.UsedCardIds.Reset();
+	Result.InitializedCardUsageState.PlayerACardUsageState.EjectedCardIds.Reset();
 	Result.InitializedCardUsageState.PlayerBCardUsageState.AvailableCardIds =
 		PlayerBCardIds;
 	Result.InitializedCardUsageState.PlayerBCardUsageState.UsedCardIds.Reset();
+	Result.InitializedCardUsageState.PlayerBCardUsageState.EjectedCardIds.Reset();
 	Result.bSuccess = true;
 	return Result;
 }

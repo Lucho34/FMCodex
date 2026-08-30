@@ -186,15 +186,6 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 				TEXT("Sending-Off route requires an initial D12 of 1."));
 			return Result;
 		}
-		if (Attack.LifecycleState
-			!= EMatchPlayCurrentAttackLifecycleState::Active)
-		{
-			SetFailure(Result,
-				EMatchPlayCurrentAttackRouteStateValidationErrorCode
-					::WrongRouteLifecycle,
-				TEXT("Sending-Off route foundation must remain active while awaiting resolution."));
-			return Result;
-		}
 		if (Attack.Phase != EMatchPlayCurrentAttackPhase::RoutePending)
 		{
 			SetFailure(Result,
@@ -204,12 +195,109 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 			return Result;
 		}
 		if (Attack.SendingOffRoute.Stage
-			!= EMatchPlaySendingOffRouteStage::AwaitingResolution)
+			== EMatchPlaySendingOffRouteStage::AwaitingResolution)
+		{
+			if (Attack.LifecycleState
+				!= EMatchPlayCurrentAttackLifecycleState::Active)
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::WrongRouteLifecycle,
+					TEXT("Awaiting Sending-Off resolution must remain active."));
+				return Result;
+			}
+			if (Attack.SendingOffRoute.SelectionOutcome
+					!= EMatchPlaySendingOffSelectionOutcome::None
+				|| !Attack.SendingOffRoute.EjectedCardId.IsNone()
+				|| Attack.SendingOffRoute.GameplayOutcome
+					!= EMatchPlaySendingOffGameplayOutcome::None)
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::InvalidSendingOffPayload,
+					TEXT("Awaiting Sending-Off resolution cannot carry terminal result payload."));
+				return Result;
+			}
+		}
+		else if (Attack.SendingOffRoute.Stage
+			== EMatchPlaySendingOffRouteStage::Resolved)
+		{
+			if (State.RuntimeState.CurrentAttackingPlayer
+					!= EInitialTurnOrderPlayer::PlayerA
+				&& State.RuntimeState.CurrentAttackingPlayer
+					!= EInitialTurnOrderPlayer::PlayerB)
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::InvalidSendingOffPayload,
+					TEXT("Resolved Sending-Off requires a valid current attacking side."));
+				return Result;
+			}
+			if (Attack.LifecycleState
+					!= EMatchPlayCurrentAttackLifecycleState
+						::TerminalPendingAdvance
+				|| Attack.SendingOffRoute.GameplayOutcome
+					!= EMatchPlaySendingOffGameplayOutcome::NoGoal)
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::InvalidSendingOffPayload,
+					TEXT("Resolved Sending-Off must persist NoGoal and await explicit advance."));
+				return Result;
+			}
+
+			const EMatchPlaySendingOffSelectionOutcome SelectionOutcome =
+				Attack.SendingOffRoute.SelectionOutcome;
+			if (SelectionOutcome
+					== EMatchPlaySendingOffSelectionOutcome
+						::NoEligibleCandidate)
+			{
+				if (!Attack.SendingOffRoute.EjectedCardId.IsNone())
+				{
+					SetFailure(Result,
+						EMatchPlayCurrentAttackRouteStateValidationErrorCode
+							::InvalidSendingOffPayload,
+						TEXT("NoEligibleCandidate cannot carry an ejected CardId."));
+					return Result;
+				}
+			}
+			else if (SelectionOutcome
+				== EMatchPlaySendingOffSelectionOutcome::CardEjected)
+			{
+				const FName EjectedCardId =
+					Attack.SendingOffRoute.EjectedCardId;
+				const FCardUsageState& AttackerUsage =
+					State.RuntimeState.CurrentAttackingPlayer
+						== EInitialTurnOrderPlayer::PlayerA
+						? State.CardUsageState.PlayerACardUsageState
+						: State.CardUsageState.PlayerBCardUsageState;
+				if (EjectedCardId.IsNone()
+					|| !AttackerUsage.EjectedCardIds.Contains(EjectedCardId)
+					|| AttackerUsage.AvailableCardIds.Contains(EjectedCardId)
+					|| AttackerUsage.UsedCardIds.Contains(EjectedCardId))
+				{
+					SetFailure(Result,
+						EMatchPlayCurrentAttackRouteStateValidationErrorCode
+							::SendingOffEjectionMismatch,
+						TEXT("Resolved Sending-Off card must exist only in the attacker's Ejected zone."));
+					return Result;
+				}
+			}
+			else
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::InvalidSendingOffPayload,
+					TEXT("Resolved Sending-Off requires an explicit selection outcome."));
+				return Result;
+			}
+		}
+		else
 		{
 			SetFailure(Result,
 				EMatchPlayCurrentAttackRouteStateValidationErrorCode
 					::InvalidSendingOffStage,
-				TEXT("Sending-Off route must await its future resolution."));
+				TEXT("Sending-Off route stage is invalid."));
 			return Result;
 		}
 		if (!IsDefaultSetPieceState(Attack.SetPieceRoute))

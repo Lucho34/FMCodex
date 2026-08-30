@@ -154,6 +154,7 @@ private:
 	friend class FMatchPlayResolveNoLegalRunner;
 	friend class FMatchPlayRunnerDecline;
 	friend class FMatchPlaySkillDecline;
+	friend class FMatchPlaySendingOffResolution;
 	friend class
 		FMatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator;
 	friend class

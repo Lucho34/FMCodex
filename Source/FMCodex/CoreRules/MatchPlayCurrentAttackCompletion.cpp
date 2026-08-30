@@ -1,6 +1,7 @@
 #include "MatchPlayCurrentAttackCompletion.h"
 
 #include "MatchEndResolver.h"
+#include "MatchPlayCurrentAttackRouteStateValidator.h"
 #include "MatchPlayCurrentAttackResolutionSessionStateValidator.h"
 
 namespace MatchPlayCurrentAttackCompletionImplementation
@@ -51,6 +52,39 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			TEXT("%d:%s"),
 			static_cast<int32>(PlayerSide),
 			*CardId.ToString());
+	}
+
+	bool ValidateActiveOpportunityState(
+		const FMatchPlayState& BeforeState,
+		const EInitialTurnOrderPlayer Attacker,
+		FMatchPlayCurrentAttackCompletionResult& Result)
+	{
+		const FMatchEndResolveResult MatchEnd =
+			FMatchEndResolver::ResolveMatchEnd(BeforeState.RuntimeState);
+		if (!MatchEnd.bSuccess || MatchEnd.bIsMatchEnded)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidOpportunityState,
+				MatchEnd.bSuccess
+					? TEXT("An active current attack cannot complete after the match has ended.")
+					: MatchEnd.ErrorMessage);
+			return false;
+		}
+
+		const FPlayerRuntimeState& AttackerState =
+			Attacker == EInitialTurnOrderPlayer::PlayerA
+				? BeforeState.RuntimeState.PlayerAState
+				: BeforeState.RuntimeState.PlayerBState;
+		if (AttackerState.UsedAttackCount >= AttackerState.TotalAttackCount)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidOpportunityState,
+				TEXT("Current attacker must have a remaining attack opportunity."));
+			return false;
+		}
+		return true;
 	}
 
 	bool ValidateCommonOuter(
@@ -185,36 +219,10 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			return false;
 		}
 
-		const FMatchEndResolveResult PreCompletionMatchEndResult =
-			FMatchEndResolver::ResolveMatchEnd(
-				BeforeState.RuntimeState);
-		if (!PreCompletionMatchEndResult.bSuccess
-			|| PreCompletionMatchEndResult.bIsMatchEnded)
-		{
-			SetError(
-				Result,
-				EMatchPlayCurrentAttackCompletionErrorCode
-					::InvalidOpportunityState,
-				PreCompletionMatchEndResult.bSuccess
-					? TEXT("An active current attack cannot be completed after the match has ended.")
-					: PreCompletionMatchEndResult.ErrorMessage);
-			return false;
-		}
-		const FPlayerRuntimeState& AttackerRuntimeState =
-			OutAttacker == EInitialTurnOrderPlayer::PlayerA
-				? BeforeState.RuntimeState.PlayerAState
-				: BeforeState.RuntimeState.PlayerBState;
-		if (AttackerRuntimeState.UsedAttackCount
-			>= AttackerRuntimeState.TotalAttackCount)
-		{
-			SetError(
-				Result,
-				EMatchPlayCurrentAttackCompletionErrorCode
-					::InvalidOpportunityState,
-				TEXT("Current attacker must have a remaining attack opportunity."));
-			return false;
-		}
-		return true;
+		return ValidateActiveOpportunityState(
+			BeforeState,
+			OutAttacker,
+			Result);
 	}
 
 	bool ValidateScoreState(
@@ -232,6 +240,80 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			return false;
 		}
 		return true;
+	}
+
+	bool ValidateSendingOffOuter(
+		const FMatchPlayState& BeforeState,
+		const int64 AttackSequence,
+		FMatchPlayCurrentAttackCompletionResult& Result,
+		EInitialTurnOrderPlayer& OutAttacker,
+		EInitialTurnOrderPlayer& OutDefender)
+	{
+		if (!BeforeState.RuntimeState.bIsInitialized)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::MatchPlayStateNotInitialized,
+				TEXT("Match play state must be initialized before advancing Sending-Off."));
+			return false;
+		}
+		if (!BeforeState.bHasCurrentAttack)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode::NoCurrentAttack,
+				TEXT("Sending-Off advance requires a current attack."));
+			return false;
+		}
+		if (AttackSequence <= 0)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidCurrentAttackSequence,
+				TEXT("Sending-Off advance requires a positive AttackSequence."));
+			return false;
+		}
+		if (AttackSequence != BeforeState.CurrentAttack.AttackSequence)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::CapabilitySequenceMismatch,
+				TEXT("Sending-Off advance sequence does not match the current attack."));
+			return false;
+		}
+
+		const FMatchPlayCurrentAttackRouteStateValidationResult RouteValidation =
+			FMatchPlayCurrentAttackRouteStateValidator::Validate(BeforeState);
+		if (!RouteValidation.bIsCanonical
+			|| BeforeState.CurrentAttack.RouteKind
+				!= EMatchPlayCurrentAttackRouteKind::SendingOff
+			|| BeforeState.CurrentAttack.SendingOffRoute.Stage
+				!= EMatchPlaySendingOffRouteStage::Resolved)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::CurrentAttackNotInResolution,
+				RouteValidation.bIsCanonical
+					? TEXT("Advance requires a resolved Sending-Off route.")
+					: RouteValidation.ErrorMessage);
+			return false;
+		}
+
+		OutAttacker = BeforeState.RuntimeState.CurrentAttackingPlayer;
+		OutDefender = GetCompletionDefender(OutAttacker);
+		if (!IsCompletionPlayer(OutAttacker)
+			|| !IsCompletionPlayer(OutDefender))
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidCurrentAttackingPlayer,
+				TEXT("Sending-Off requires a valid current attacker and defender."));
+			return false;
+		}
+
+		return ValidateActiveOpportunityState(
+			BeforeState,
+			OutAttacker,
+			Result);
 	}
 
 	bool ValidateCarrierAvailabilityProvenance(
@@ -1599,13 +1681,23 @@ FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
 		BeforeState.bHasCurrentAttack
 			? BeforeState.CurrentAttack.SelectionStage
 			: EMatchPlayCurrentAttackSelectionStage::None;
-	if (!ValidateCommonOuter(
-		BeforeState,
-		AttackSequence,
-		CurrentStage,
-		Result,
-		Attacker,
-		Defender))
+	const bool bSendingOffRoute = BeforeState.bHasCurrentAttack
+		&& BeforeState.CurrentAttack.RouteKind
+			== EMatchPlayCurrentAttackRouteKind::SendingOff;
+	if (!(bSendingOffRoute
+			? ValidateSendingOffOuter(
+				BeforeState,
+				AttackSequence,
+				Result,
+				Attacker,
+				Defender)
+			: ValidateCommonOuter(
+				BeforeState,
+				AttackSequence,
+				CurrentStage,
+				Result,
+				Attacker,
+				Defender)))
 	{
 		return Result;
 	}
