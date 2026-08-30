@@ -782,3 +782,14 @@
 - branch helper精确矩阵为LongShot Direct`（看远射、抢断）`、LongShot Dead`（只看两枚掷点）`、CutInside Direct`（射门 / 盘带 vs 抢断）`、CutInside Dead`（只看两枚掷点）`、Cross High`（传球 / 力量 vs 抢断 / 力量）`、Cross Low`（传球 / 射门 vs 抢断 / 盯防）`。另行断言CutInside Direct live Formula仍包含active GK Handling×0.5。
 - Screen ownership测试必须覆盖CutInside Direct Attack/Defense、DeadCorner与terminal CTA的精确claim，过期lower activation为0 dispatch，中央activation恰好1 dispatch。LongShot、Cross、ThroughBall与no-Runner代表回归必须保持原typed routing与Formula/GK合同。
 
+## Cross Typed/Correlated Authority Foundation（Stage 6.15.6）
+
+- `ResolveCrossInitialRouteRoll` request必须显式携带`AttackSequence + RequestingSide`。Ready/no-session与AwaitingRoute/empty两种route-pending snapshot都可成功；premature、stale、wrong-side、wrong-family/phase、duplicate及完成后重放必须在provider前失败，State byte-equivalent且RNG delta为0。
+- route request成功恰好消费一枚InitialRoute D6并持久化actual High/Low。High intent的D6 `5–6`必须翻转为Low，Low intent的D6 `5–6`必须翻转为High；错误实际branch的Attack request不得调用post-route provider。
+- High/Low Attack与Defense request都必须携带caller sequence。premature Defense、wrong-side、stale、duplicate与terminal replay必须0 RNG拒绝；合法Attack/Defense各消费恰好一枚D6，并保持现有Formula、winner、Narrative与terminal结果。
+- provider失败不adopt candidate State：route、Attack与Defense每一步都必须可对相同fresh request安全retry。route-only与attack-only snapshot必须分别重建actual branch、已公开Raw D6、pending row与正确next owner，不调用provider。
+- 跨进攻测试必须让Attack N+1回到相同Cross route、Attack与Defense pending phase，逐项证明N的request原子拒绝，N+1 fresh request随后成功。另一family的typed Cross route request也必须0 RNG拒绝。
+- normal Production Screen必须从中央`RollCrossRoute -> RollCrossAttack -> RollCrossDefense -> AdvanceAfterTerminal`连续派发三次side-owned request；route/attack/defense共三枚accepted roll，最后Defense后的Formula/outcome/terminal收口零RNG且不自动advance。normal Cross player RNG不得落入generic`ContinueResolution`。
+- DEV `CrossInitialRoute` invocation和Cross High/Low Attack/Defense targets必须保持原名称与one-shot语义；rejected request不消费prepared override。legacy generic/atomic APIs只保留明确compatibility、reference或recovery测试。
+- 回归至少覆盖Cross Foundation专项、完整AuthoritativeSession、Cross family、LocalMatchHost、DEV override、真实Screen黄金路径、shared Inline Formula/primary-action ownership以及受共享dispatch影响的ThroughBall、PassControl、LongShot/CutInside代表路径。public USTRUCT/enum变化执行UHT、Editor build和`git diff --check`。
+

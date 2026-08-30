@@ -1149,6 +1149,7 @@ void AFMCodexLocalMatchPlayerController::RollCrossAttack()
 	if (bHigh)
 	{
 		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Request;
+		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		const auto Result = Host->ResolveCrossHighAttackRoll(Request);
 		bCrossRollCommandInFlight = false;
@@ -1157,6 +1158,7 @@ void AFMCodexLocalMatchPlayerController::RollCrossAttack()
 	else
 	{
 		FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest Request;
+		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		const auto Result = Host->ResolveCrossLowAttackRoll(Request);
 		bCrossRollCommandInFlight = false;
@@ -1192,6 +1194,7 @@ void AFMCodexLocalMatchPlayerController::RollCrossDefense()
 	if (bHigh)
 	{
 		FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Request;
+		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		const auto Result = Host->ResolveCrossHighDefenseRoll(Request);
 		bCrossRollCommandInFlight = false;
@@ -1207,6 +1210,7 @@ void AFMCodexLocalMatchPlayerController::RollCrossDefense()
 	else
 	{
 		FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest Request;
+		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		const auto Result = Host->ResolveCrossLowDefenseRoll(Request);
 		bCrossRollCommandInFlight = false;
@@ -1450,6 +1454,37 @@ void AFMCodexLocalMatchPlayerController::RollCutInsideShotDeadCorner()
 void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
 {
 	ApplyCrossTerminalResolution();
+}
+
+void AFMCodexLocalMatchPlayerController::RollCrossRoute()
+{
+	if (bCrossRouteCommandInFlight)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		!= EFMCodexLocalMatchInteractionCategory::RollCrossRoute)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveCrossInitialRouteRoll"),
+			TEXT("Cross Initial Route roll is not the current interaction."));
+		return;
+	}
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(
+			TEXT("ResolveCrossInitialRouteRoll"),
+			TEXT("Host unavailable."));
+		return;
+	}
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	bCrossRouteCommandInFlight = true;
+	const auto Result = Host->ResolveCrossInitialRouteRoll(Request);
+	bCrossRouteCommandInFlight = false;
+	RecordCommandResult(TEXT("ResolveCrossInitialRouteRoll"), Result);
 }
 
 void AFMCodexLocalMatchPlayerController::RollPassControlRoute()
@@ -1950,6 +1985,8 @@ void AFMCodexLocalMatchPlayerController::AdvanceAfterTerminal()
 void AFMCodexLocalMatchPlayerController::ContinueResolution()
 {
 	if (InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
+		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollPassControlRoute
@@ -2774,6 +2811,12 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 				SubmitOneOnOneShotChoice(Choice);
 			}));
 		}
+		break;
+	case EFMCodexLocalMatchInteractionCategory::RollCrossRoute:
+		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
+		{
+			RollCrossRoute();
+		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack:
 		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()

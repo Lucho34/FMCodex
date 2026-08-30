@@ -67,6 +67,7 @@ public:
 	void SubmitBranchIntent(EMatchPlayElectiveBranchIntent Intent);
 	void SubmitOneOnOneShotChoice(
 		EMatchPlayThroughBallOneOnOneShotChoice Choice);
+	void RollCrossRoute();
 	void RollCrossAttack();
 	void RollCrossDefense();
 	void RollLongShotDirectAttack();

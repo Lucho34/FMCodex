@@ -259,7 +259,7 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 		View.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerA;
 		View.ElectiveBranchIntent = EMatchPlayElectiveBranchIntent::CrossHigh;
 		View.InteractionCategory =
-			EFMCodexLocalMatchInteractionCategory::ContinueResolution;
+			EFMCodexLocalMatchInteractionCategory::RollCrossRoute;
 		View.ContinueActionLabel = TEXT("Continue - Resolve Cross Plan");
 		AddRosterCard(View, EInitialTurnOrderPlayer::PlayerA,
 			TEXT("Fixture.Carrier"), TEXT("萨卡"));

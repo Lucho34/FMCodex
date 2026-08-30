@@ -104,7 +104,7 @@
 
 - shared Formula DTO 的 attribute operand 可携带只读 `ContributorDisplayName`，由 Presentation Builder 经既有 roster/card 显示名投影产生；shared Widget 负责组合显示，role chip 继续独立存在。RawRoll、FixedModifier 与 TacticalPlayerAdvantage 不附加姓名，Widget 仍不求和、不比较 winner。
 - Feet 已解析 route 的 `路线掷点 N → 判定为脚下球` 进入 Formula header，因此 Preview、Attack pending、Defense pending 与 terminal/resync 都保留同一权威上下文；pre-route 没有 resolved Formula DTO，不显示结果。
-- Cross pre-route 继续使用 `ContinueResolution` typed category 与 `Cross.Route/0/owner` reveal identity，但唯一 CTA 由中央 Inline Formula surface 所有；底部 InteractionPanel 只因 presentation ownership 折叠。点击仍经 `OnContinueRequested -> Screen::RequestContinueResolution -> Controller::ContinueResolution`，不增加命令或掷点。
+- Cross pre-route 使用独立 `RollCrossRoute` typed category 与 `Cross.Route/0/owner` reveal identity，唯一 CTA 由中央 Inline Formula surface 所有；底部 InteractionPanel 只因 presentation ownership 折叠。点击经 `OnContinueRequested -> Screen::RequestContinueResolution -> Controller::RollCrossRoute`，提交当前 snapshot 的相关 request，不增加额外命令或掷点。
 - Feet terminal headline 由 Formula winner 与 Participant Facts 有界映射；攻击成功使用 Carrier/Runner，防守成功固定优先 Marker、Helper、Goalkeeper，缺少事实时回退到简短结果。该映射不调用 RNG、不改变 reveal/result/hold gate，也不改变 terminal/advance lifecycle。
 
 ## Resolution Local Primary Action Ownership（Stage 6.13.1.4.10.3B）
@@ -149,7 +149,7 @@
 
 ## ThroughBall Route + Feet Request Correlation Authority（Stage 6.14.3A）
 
-- ThroughBall initial route 的 normal production intent 使用独立 `ResolveThroughBallInitialRouteRoll` typed command；request 同时携带 `AttackSequence + RequestingSide`。Session 在 provider 之前验证 current attack、sequence、当前进攻方、ThroughBall family 与 route-pending state，再复用原 initial-route orchestrator 生成且持久化唯一 D6。Cross 仍使用原有 generic route continuation，两者不共享玩家 command identity。
+- ThroughBall initial route 的 normal production intent 使用独立 `ResolveThroughBallInitialRouteRoll` typed command；request 同时携带 `AttackSequence + RequestingSide`。Session 在 provider 之前验证 current attack、sequence、当前进攻方、ThroughBall family 与 route-pending state，再复用原 initial-route orchestrator 生成且持久化唯一 D6。Cross 在 Stage 6.15.6 取得自己的独立 typed route command；两个 family 不共享玩家 command identity。
 - Feet Attack/Defense typed request 补齐 `AttackSequence`，Session serialized envelope 不再从当前 State 代填请求 sequence。Route、Feet Attack 与 Feet Defense 都必须在 provider/DEV decorator 之前拒绝 stale、wrong-side、wrong-phase 和 duplicate；失败路径 `DoNotAdopt`、RNG delta 为 0，且不消费 one-shot override。
 - InteractionView 从 authoritative snapshot 投影 `RollThroughBallInitialRoute`、当前 `AttackSequence` 和 expected attacker。Controller 只从该 DTO 组装 request，Host 只装饰 provider 并转发 Session；normal ThroughBall route 不再经 generic `ContinueResolution`。从 ReadyForResolution 或已建立的 AwaitingRoute snapshot 重建后，同一 typed action 仍可由 State 唯一恢复，不依赖 Controller 暂存。
 - 跨进攻相关性以 `AttackSequence` 为边界：当 Attack N+1 恢复到与 Attack N 相同的 route/Feet pending phase 时，N 的 command 仍必须原子拒绝；当前 N+1 command 在该拒绝后仍可正常执行。这是未来网络 stale/retry-safe 的 request boundary，不改变 route 概率、Feet Formula 或 terminal lifecycle。
@@ -210,3 +210,11 @@
 - PassControl复用现有中央shared resolution shell、Inline Formula DTO/Widget、stable reveal identity、RollReel、Narrative builder与primary-action claim。Route使用独立`PassControl.Route` reveal identity；三条实际路线使用各自contest id，因此attack/defense disclosure与reconstruction不会互相串线。
 - route-only、attack-only与terminal snapshot都可直接重建Production Surface。Attack-only只公开已完成Attack row并保留防守方typed CTA，不伪造Defense、FinalValue、Result或Narrative；fresh terminal直接显示权威完成事实和`下一回合`，不重播历史roll。
 - normal PassControl折叠lower InteractionPanel与generic Resolution diagnostic layer；authority rejection仍可交回diagnostic/recovery。最后一枚Defense roll之后只自动执行既有零RNG Formula/outcome/terminal收口，显式`AdvanceAfterTerminal`继续是唯一回合推进动作。
+
+## Cross Typed/Correlated Authority Foundation（Stage 6.15.6）
+
+- Cross initial route 使用独立 serialized `ResolveCrossInitialRouteRoll` command。request 携带 caller snapshot 的 `AttackSequence + RequestingSide`；Session 在 provider 前验证 current attack、正数且匹配的 sequence、当前进攻方、Cross family 以及 Ready/no-session 或 AwaitingRoute/empty 的唯一 route-pending 状态。
+- Cross High/Low Attack 与 Defense 的四个现有 typed request 同样由 caller 显式提交 `AttackSequence`，serialized envelope 不从当前 State 代填。实际 High/Low branch、canonical next purpose、ownership、premature、duplicate 与 terminal replay 都必须在 provider 前拒绝；失败 candidate 不 adoption，RNG delta 为 0。
+- 可持久化前缀为 route-only、route + `PrimaryAttack`、route + `PrimaryAttack + PrimaryDefense`。InteractionView、Resolution Facts、Formula与terminal recovery只从 CurrentAttack及roll records重建；Controller或Widget不得缓存 gameplay truth、补掷或重放历史 RNG。
+- normal Cross production route投影`RollCrossRoute`，再按实际分支投影 attacker-owned Attack与defender-owned Defense。Controller只从 InteractionView组装request，Host只包裹既有DEV invocation并转发Session；normal玩家RNG不经generic `ContinueResolution`，legacy API仅保留compatibility/recovery消费者。
+- 该Foundation不改变High/Low intent、route概率、Formula、Narrative、Reel或显式`AdvanceAfterTerminal`生命周期，也不实现network transport。它建立未来RPC可消费的side ownership、request correlation、stale/retry safety与snapshot reconstruction边界。

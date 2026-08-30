@@ -661,7 +661,14 @@ namespace FMCodexLocalMatchControlSurfaceTests
 			return false;
 		}
 
-		Controller.ContinueResolution();
+		if (Controller.GetInteractionView().InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::RollCrossRoute)
+		{
+			Test.AddError(FString::Printf(
+				TEXT("%s: Cross Route did not expose its typed action."), Label));
+			return false;
+		}
+		Controller.RollCrossRoute();
 		if (!Controller.GetLastDiagnostic().bHostSuccess)
 		{
 			Test.AddError(FString::Printf(
@@ -763,12 +770,29 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		}
 
 		const auto& TerminalFeedback = Controller.GetResolutionFeedback();
+		const FName ExpectedContestId = bHigh
+			? FName(TEXT("Cross.High"))
+			: FName(TEXT("Cross.Low"));
+		const FMatchPlayResolutionFormulaContestFact* TerminalContest =
+			TerminalFeedback.ResolutionFacts.FormulaContests.FindByPredicate(
+				[ExpectedContestId](
+					const FMatchPlayResolutionFormulaContestFact& Contest)
+				{
+					return Contest.ContestId == ExpectedContestId;
+				});
 		if (!TerminalFeedback.bTerminal
 			|| !TerminalFeedback.TerminalSummary.StartsWith(TEXT("RESULT: "))
-			|| TerminalFeedback.ComparisonEntries.Num() < 2
-			|| !TerminalFeedback.DecisionSummary.Contains(TEXT("Winner:"))
-			|| !TerminalFeedback.ContinuationSummary.Contains(
-				TEXT("Opportunity pending explicit")))
+			|| !TerminalFeedback.ResolutionFacts.bSuccess
+			|| !TerminalFeedback.ResolutionFacts.bHasFacts
+			|| TerminalContest == nullptr
+			|| !TerminalContest->bHasResolvedFormula
+			|| !TerminalContest->AttackRow.bFinalValueResolved
+			|| !TerminalContest->DefenseRow.bFinalValueResolved
+			|| !TerminalFeedback.ResolutionFacts.Decisions.ContainsByPredicate(
+				[](const FMatchPlayResolutionDecisionFact& Decision)
+				{
+					return Decision.bResolved;
+				}))
 		{
 			Test.AddError(FString::Printf(
 				TEXT("%s: terminal feedback did not expose authoritative Formula/Completion evidence."),
@@ -1126,10 +1150,11 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 	TestEqual(TEXT("Rendered score B matches snapshot"),
 		Controller->GetInteractionView().PlayerBScore,
 		Host->GetMatchSnapshot().Snapshot.RuntimeState.PlayerBState.Score);
-	TestTrue(TEXT("Terminal command exposes safe readable result summary"),
-		Controller->GetLastDiagnostic().PresentationSummary == TEXT("GOAL")
-			|| Controller->GetLastDiagnostic().PresentationSummary
-				== TEXT("Attack complete - no goal"));
+	TestTrue(TEXT("Explicit terminal advance remains the last accepted command"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("AdvanceAfterTerminal")
+			&& !Controller->GetResolutionFeedback().bVisible);
 
 	FMatchPlayState EndedSnapshot = Host->GetMatchSnapshot().Snapshot;
 	EndedSnapshot.RuntimeState.PlayerAState.UsedAttackCount =
@@ -1654,9 +1679,13 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 	TestEqual(TEXT("Cross exposes one Chinese route action"),
 		Controller->GetInteractionView().ContinueActionLabel,
 		FString(TEXT("判定传中路线")));
-	Controller->ContinueResolution();
+	TestEqual(TEXT("Cross route action has a typed semantic category"),
+		Controller->GetInteractionView().InteractionCategory,
+		EFMCodexLocalMatchInteractionCategory::RollCrossRoute);
+	Controller->RollCrossRoute();
 	TestTrue(TEXT("One action creates the session and resolves exactly one route D6"),
-		Controller->GetLastDiagnostic().CommandName == TEXT("ResolveCrossRoute")
+		Controller->GetLastDiagnostic().CommandName
+			== TEXT("ResolveCrossInitialRouteRoll")
 			&& Controller->GetInteractionView().AcceptedRolls.Num() == 1
 			&& Controller->GetInteractionView().ResolutionFacts.Rolls[0].RawD6 == 2);
 	const auto RoutePresentation =
@@ -2680,6 +2709,9 @@ namespace FMCodexLocalMatchFullFamilyTests
 			: Family.SkillType == ESkillRuleType::PassControl
 				? ReadyCategory
 					== EFMCodexLocalMatchInteractionCategory::RollPassControlRoute
+			: Family.SkillType == ESkillRuleType::Cross
+				? ReadyCategory
+					== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
 				: ReadyCategory
 					== EFMCodexLocalMatchInteractionCategory::ContinueResolution;
 		if (!bExpectedReadyAction)
@@ -2770,6 +2802,11 @@ namespace FMCodexLocalMatchFullFamilyTests
 				Controller.ContinueResolution();
 			}
 			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossRoute)
+			{
+				Controller.RollCrossRoute();
+			}
+			else if (View.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory::RollCrossAttack)
 			{
 				Controller.RollCrossAttack();
@@ -2778,6 +2815,21 @@ namespace FMCodexLocalMatchFullFamilyTests
 				== EFMCodexLocalMatchInteractionCategory::RollCrossDefense)
 			{
 				Controller.RollCrossDefense();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollPassControlRoute)
+			{
+				Controller.RollPassControlRoute();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollPassControlAttack)
+			{
+				Controller.RollPassControlAttack();
+			}
+			else if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollPassControlDefense)
+			{
+				Controller.RollPassControlDefense();
 			}
 			else if (View.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
@@ -9546,7 +9598,7 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
 	TestEqual(TEXT("Authoritative Session exposes explicit Cross, ThroughBall Feet, and BehindDefense roll entrypoints"),
-		SerializedEntrypointCount, 59);
+		SerializedEntrypointCount, 66);
 
 	return true;
 }
@@ -9910,7 +9962,7 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
 	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 59);
+		SerializedEntrypointCount, 66);
 
 	return true;
 }
@@ -10335,7 +10387,7 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
 	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 59);
+		SerializedEntrypointCount, 66);
 
 	return true;
 }
@@ -13142,7 +13194,7 @@ bool FFMCodexProductionMatchFlowLocalizationTest::RunTest(
 			&& FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 				TEXT("Cross High")).ToString() == TEXT("\u9AD8\u7403\u4F20\u4E2D")
 			&& FFMCodexPlayerUIPresentationText::MatchScreenLabel(
-				TEXT("Cross Low")).ToString() == TEXT("\u4F4E\u5E73\u7403\u4F20\u4E2D")
+				TEXT("Cross Low")).ToString() == TEXT("\u4F4E\u7403\u4F20\u4E2D")
 			&& FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 				TEXT("Chip Shot")).ToString() == TEXT("\u6311\u5C04"));
 
@@ -13553,6 +13605,8 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			&& BeforeAttackRollView.ExpectedActingPlayer == Attacker
 			&& BeforeAttackRollView.ContinueActionLabel == TEXT("进攻方掷点"));
 	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest AttackRequest;
+	AttackRequest.AttackSequence =
+		Host->GetMatchSnapshot().Snapshot.CurrentAttack.AttackSequence;
 	AttackRequest.RequestingSide = Attacker;
 	const auto AttackRollResult = Host->ResolveCrossHighAttackRoll(AttackRequest);
 	TestTrue(TEXT("Authoritative attacker roll consumes exactly one D6"),
@@ -13583,6 +13637,7 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 				== Session.Bundle.CurrentDefendingPlayer
 			&& AttackSettledView.ContinueActionLabel == TEXT("防守方掷点"));
 	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest DefenseRequest;
+	DefenseRequest.AttackSequence = AttackRequest.AttackSequence;
 	DefenseRequest.RequestingSide = Session.Bundle.CurrentDefendingPlayer;
 	const auto Plan = Host->ResolveCrossHighDefenseRoll(DefenseRequest);
 	TestTrue(TEXT("Authoritative defender roll consumes exactly one D6"),
@@ -13985,7 +14040,7 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 		EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense,
 		TEXT("防守方掷点"), ESurfaceKind::ThroughBallFormula);
 	DispatchOnce(TEXT("Cross route"),
-		EFMCodexUMGInteractionCategory::ContinueResolution,
+		EFMCodexUMGInteractionCategory::RollCrossRoute,
 		TEXT("判定传中路线"), ESurfaceKind::CrossFormula);
 	DispatchOnce(TEXT("Cross attack"),
 		EFMCodexUMGInteractionCategory::RollCrossAttack,
@@ -14549,6 +14604,160 @@ bool FFMCodexPassControlScreenGoldenPathTest::RunTest(
 	TestTrue(TEXT("Stale second central activation cannot advance again"),
 		Screen->GetPrimaryActionDispatchCountForTesting() == 1
 			&& AdvancedBytes == SerializeState(Host->GetMatchSnapshot().Snapshot));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexCrossTypedCorrelatedScreenGoldenPathTest,
+	"FMCodex.LocalPlay.ControlSurface.56.CrossTypedCorrelatedScreenGoldenPath",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	using namespace FMCodexLocalMatchFullFamilyTests;
+	(void)Parameters;
+
+	FScopedPlayableWorld Playable;
+	AFMCodexLocalMatchHostGameMode* Host = Playable.GetHost();
+	AFMCodexLocalMatchPlayerController* Controller = Playable.GetController();
+	if (Host == nullptr || Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen = Controller->GetPlayerMatchScreen();
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	const int32 Seed = FindSeedForTacticalPointAndRolls(6, { 2, 4, 3 });
+	TestTrue(TEXT("Cross deterministic screen seed exists"), Seed != INDEX_NONE);
+	if (Seed == INDEX_NONE)
+	{
+		return false;
+	}
+	Controller->SetNextDemoMatchSeedForTesting(Seed);
+	Screen->RequestStartNewMatch();
+	Screen->RequestRollTacticalPoints();
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const EInitialTurnOrderPlayer Attacker =
+		Controller->GetInteractionView().CurrentAttackingPlayer;
+	const FFamilyExpectation Family = FamilyExpectations()[0];
+	if (!DeployParticipants(*this, *Controller, Family, Attacker)
+		|| !SubmitRequiredSelections(*this, *Controller, Family, Attacker))
+	{
+		return false;
+	}
+
+	UFMCodexInlineResolutionFormulaSurfaceWidget* Surface =
+		Screen->GetInlineFormulaSurface();
+	if (Surface == nullptr)
+	{
+		return false;
+	}
+	const FMatchPlayState Ready = Host->GetMatchSnapshot().Snapshot;
+	const auto& RoutePending = Surface->GetPresentation();
+	TestTrue(TEXT("Real screen starts at one typed Cross Route action"),
+		Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
+			&& Controller->GetInteractionView().AttackSequence
+				== Ready.CurrentAttack.AttackSequence
+			&& Controller->GetInteractionView().ExpectedActingPlayer == Attacker
+			&& Controller->GetInteractionView().AcceptedRolls.IsEmpty()
+			&& RoutePending.bVisible
+			&& RoutePending.ContestId == TEXT("Cross.Route")
+			&& RoutePending.bCanContinue
+			&& RoutePending.ContinueActionLabel == TEXT("判定传中路线")
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
+
+	Screen->ResetPrimaryActionDispatchForTesting();
+	Surface->RequestContinue();
+	TestTrue(TEXT("Cross Route click dispatches one correlated command and one D6"),
+		Screen->GetPrimaryActionDispatchCountForTesting() == 1
+			&& Screen->GetLastPrimaryActionDispatchForTesting()
+				== EFMCodexUMGInteractionCategory::RollCrossRoute
+			&& Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolveCrossInitialRouteRoll")
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 1
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossAttack);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const auto& RouteSettled = Surface->GetPresentation();
+	TestTrue(TEXT("Route settlement preserves Cross production presentation"),
+		RouteSettled.RouteResultLabel == TEXT("路线掷点 2 → 判定为高球传中")
+			&& RouteSettled.bShowFormulaRows
+			&& RouteSettled.ContinueActionLabel == TEXT("进攻方掷点")
+			&& !RouteSettled.bNarrativeAvailable);
+
+	Surface->RequestContinue();
+	TestTrue(TEXT("Cross Attack click dispatches one correlated command and one D6"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolveCrossHighAttackRoll")
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 2
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossDefense);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const auto& AttackOnly = Surface->GetPresentation();
+	TestTrue(TEXT("Real Cross Attack-only snapshot exposes central Defense"),
+		AttackOnly.AttackRow.bFinalValueResolved
+			&& !AttackOnly.DefenseRow.bFinalValueResolved
+			&& !AttackOnly.bNarrativeAvailable
+			&& AttackOnly.ResultTitle.IsEmpty()
+			&& AttackOnly.ContinueActionLabel == TEXT("防守方掷点"));
+
+	const FMatchPlayState BeforeDefense = Host->GetMatchSnapshot().Snapshot;
+	Surface->RequestContinue();
+	const FMatchPlayState Terminal = Host->GetMatchSnapshot().Snapshot;
+	const int32 UsedBefore = BeforeDefense.RuntimeState.PlayerAState.UsedAttackCount
+		+ BeforeDefense.RuntimeState.PlayerBState.UsedAttackCount;
+	const int32 UsedTerminal = Terminal.RuntimeState.PlayerAState.UsedAttackCount
+		+ Terminal.RuntimeState.PlayerBState.UsedAttackCount;
+	TestEqual(TEXT("Cross Defense automatically applies existing terminal command"),
+		Controller->GetLastDiagnostic().CommandName,
+		FString(TEXT("ApplyCrossTerminalResolution")));
+	TestTrue(TEXT("Cross Defense completes authoritative terminal without Continue"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().AcceptedRolls.Num() == 3
+			&& Controller->GetInteractionView().bTerminalPendingAdvance
+			&& Terminal.bHasCurrentAttack
+			&& Terminal.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+			&& UsedTerminal == UsedBefore);
+
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+	const auto& TerminalFormula = Surface->GetPresentation();
+	TestTrue(TEXT("Cross terminal preserves Formula Narrative and central NextRound"),
+		TerminalFormula.AttackRow.bFinalValueResolved
+			&& TerminalFormula.DefenseRow.bFinalValueResolved
+			&& TerminalFormula.bNarrativeAvailable
+			&& !TerminalFormula.ResultTitle.IsEmpty()
+			&& TerminalFormula.ContinueActionLabel == TEXT("下一回合")
+			&& Screen->GetInteractionPanel()->GetVisibility()
+				== ESlateVisibility::Collapsed);
+
+	Screen->ResetPrimaryActionDispatchForTesting();
+	Surface->RequestContinue();
+	const FMatchPlayState Advanced = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("Cross NextRound remains explicit and consumes no fourth D6"),
+		Screen->GetPrimaryActionDispatchCountForTesting() == 1
+			&& Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("AdvanceAfterTerminal")
+			&& !Controller->GetInteractionView().bCurrentAttackActive
+			&& Controller->GetInteractionView().bTacticalPointRollReady
+			&& Advanced.RuntimeState.PlayerAState.UsedAttackCount
+				+ Advanced.RuntimeState.PlayerBState.UsedAttackCount
+				== UsedTerminal + 1);
 	return true;
 }
 

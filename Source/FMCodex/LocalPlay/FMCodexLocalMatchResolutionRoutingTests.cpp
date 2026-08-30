@@ -584,6 +584,7 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		{ TEXT("ResolveInitialRoute"), TEXT("ResolveInitialRoute(") },
 		{ TEXT("ResolveThroughBallInitialRouteRoll"), TEXT("ResolveThroughBallInitialRouteRoll(") },
 		{ TEXT("ResolvePassControlInitialRouteRoll"), TEXT("ResolvePassControlInitialRouteRoll(") },
+		{ TEXT("ResolveCrossInitialRouteRoll"), TEXT("ResolveCrossInitialRouteRoll(") },
 		{ TEXT("ResolveCrossPostRoutePlan"), TEXT("ResolveCrossPostRoutePlan(") },
 		{ TEXT("ResolveThroughBallFeetPostRoutePlan"), TEXT("ResolveThroughBallFeetPostRoutePlan(") },
 		{ TEXT("ResolveThroughBallFeetAttackRoll"), TEXT("ResolveThroughBallFeetAttackRoll(") },
@@ -610,8 +611,8 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		{ TEXT("DeployGoalkeeper"), TEXT("DeployGoalkeeper(") },
 		{ TEXT("ResolveNoLegalCarrier"), TEXT("ResolveNoLegalCarrier(") }
 	};
-	TestEqual(TEXT("Session mutation inventory includes PassControl typed rolls"),
-		static_cast<int32>(UE_ARRAY_COUNT(Commands)), 48);
+	TestEqual(TEXT("Session mutation inventory includes correlated Cross rolls"),
+		static_cast<int32>(UE_ARRAY_COUNT(Commands)), 49);
 	for (const FReachability& Command : Commands)
 	{
 		TestTrue(*FString::Printf(
@@ -627,6 +628,7 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 		TEXT(".ResolveInitialRoute("),
 		TEXT(".ResolveThroughBallInitialRouteRoll("),
 		TEXT(".ResolvePassControlInitialRouteRoll("),
+		TEXT(".ResolveCrossInitialRouteRoll("),
 		TEXT(".ResolveCrossPostRoutePlan("),
 		TEXT(".ResolveThroughBallFeetPostRoutePlan("),
 		TEXT(".ResolveThroughBallFeetAttackRoll("),
@@ -706,12 +708,19 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	PassControlRouteRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
 	TestNoActive(TEXT("ResolvePassControlInitialRouteRoll"),
 		EmptyHost->ResolvePassControlInitialRouteRoll(PassControlRouteRequest));
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest CrossRouteRequest;
+	CrossRouteRequest.AttackSequence = 1;
+	CrossRouteRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+	TestNoActive(TEXT("ResolveCrossInitialRouteRoll"),
+		EmptyHost->ResolveCrossInitialRouteRoll(CrossRouteRequest));
 	TestNoActive(TEXT("ResolveCrossPostRoutePlan"), EmptyHost->ResolveCrossPostRoutePlan());
 	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest LowAttackRequest;
+	LowAttackRequest.AttackSequence = 1;
 	LowAttackRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
 	TestNoActive(TEXT("ResolveCrossLowAttackRoll"),
 		EmptyHost->ResolveCrossLowAttackRoll(LowAttackRequest));
 	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest LowDefenseRequest;
+	LowDefenseRequest.AttackSequence = 1;
 	LowDefenseRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerB;
 	TestNoActive(TEXT("ResolveCrossLowDefenseRoll"),
 		EmptyHost->ResolveCrossLowDefenseRoll(LowDefenseRequest));
@@ -853,8 +862,10 @@ bool FFMCodexLocalMatchCrossResolutionTest::RunTest(
 	FMatchPlayAuthoritativeSession Direct(DirectProvider, DirectProvider, Rules);
 	FScopedWorld World;
 	auto* Host = World.GetHost();
+	auto* Controller = World.GetController();
 	TestNotNull(TEXT("Cross Host exists"), Host);
-	if (Host == nullptr)
+	TestNotNull(TEXT("Cross Controller exists"), Controller);
+	if (Host == nullptr || Controller == nullptr)
 	{
 		return false;
 	}
@@ -866,17 +877,30 @@ bool FFMCodexLocalMatchCrossResolutionTest::RunTest(
 	const FMatchPlayState Ready = Host->GetMatchSnapshot().Snapshot;
 	TestFalse(TEXT("Ready snapshot has no resolution cache/session"),
 		Ready.CurrentAttack.bHasResolutionSession);
-
-	TestTrue(TEXT("Direct begins resolution"),
-		Direct.BeginResolutionSession().BeginResult.bSuccess);
-	TestTrue(TEXT("Host begins resolution"),
-		Host->BeginResolutionSession().bSuccess);
-	TestTrue(TEXT("Begin snapshot is fresh/equivalent"), AreStatesEqual(
-		Host->GetMatchSnapshot().Snapshot, Direct.GetStateSnapshot()));
+	Controller->RefreshPresentation();
+	TestTrue(TEXT("Ready snapshot projects correlated Cross Route owner"),
+		Controller->GetInteractionView().InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
+			&& Controller->GetInteractionView().AttackSequence
+				== Ready.CurrentAttack.AttackSequence
+			&& Controller->GetInteractionView().ExpectedActingPlayer
+				== Trace.Attacker);
+	Controller->ContinueResolution();
+	TestTrue(TEXT("Generic Continue cannot consume Cross Route RNG"),
+		!Controller->GetLastDiagnostic().bHostSuccess
+			&& AreStatesEqual(Ready, Host->GetMatchSnapshot().Snapshot));
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest RouteRequest;
+	RouteRequest.AttackSequence =
+		Host->GetMatchSnapshot().Snapshot.CurrentAttack.AttackSequence;
+	RouteRequest.RequestingSide = Trace.Attacker;
 	TestTrue(TEXT("Direct resolves Cross route"),
-		Direct.ResolveInitialRoute().OrchestrationResult.bSuccess);
-	const auto HostRoute = Host->ResolveInitialRoute();
-	TestTrue(TEXT("Host resolves Cross route"), HostRoute.bSuccess);
+		Direct.ResolveCrossInitialRouteRoll(RouteRequest)
+			.OrchestrationResult.bSuccess);
+	Controller->RollCrossRoute();
+	TestTrue(TEXT("Controller forwards typed Cross route through Host"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("ResolveCrossInitialRouteRoll"));
 	TestTrue(TEXT("Route snapshot equals direct Session"), AreStatesEqual(
 		Host->GetMatchSnapshot().Snapshot, Direct.GetStateSnapshot()));
 
@@ -891,6 +915,8 @@ bool FFMCodexLocalMatchCrossResolutionTest::RunTest(
 		Host->GetMatchSnapshot().Snapshot, BeforeWrongFamily));
 
 	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest AttackRollRequest;
+	AttackRollRequest.AttackSequence =
+		Host->GetMatchSnapshot().Snapshot.CurrentAttack.AttackSequence;
 	AttackRollRequest.RequestingSide = Trace.Attacker;
 	TestTrue(TEXT("Direct accepts the explicit Cross High attack roll"),
 		Direct.ResolveCrossHighAttackRoll(AttackRollRequest)
@@ -903,6 +929,7 @@ bool FFMCodexLocalMatchCrossResolutionTest::RunTest(
 		Host->GetMatchSnapshot().Snapshot, Direct.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest DefenseRollRequest;
+	DefenseRollRequest.AttackSequence = AttackRollRequest.AttackSequence;
 	DefenseRollRequest.RequestingSide = Trace.Defender;
 	TestTrue(TEXT("Direct accepts the explicit Cross High defense roll"),
 		Direct.ResolveCrossHighDefenseRoll(DefenseRollRequest)
@@ -2337,8 +2364,10 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 			DirectProvider, DirectProvider, Rules);
 		FScopedWorld World;
 		auto* Host = World.GetHost();
+		auto* Controller = World.GetController();
 		TestNotNull(TEXT("Cross override Host exists"), Host);
-		if (Host == nullptr)
+		TestNotNull(TEXT("Cross override Controller exists"), Controller);
+		if (Host == nullptr || Controller == nullptr)
 		{
 			return false;
 		}
@@ -2351,9 +2380,31 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 			Set(*Host, ETarget::CrossRoute, 1)
 				&& Set(*Host, ETarget::CrossHighAttack, 6)
 				&& Set(*Host, ETarget::CrossHighDefense, 1));
+		FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest RouteRequest;
+		RouteRequest.AttackSequence =
+			Host->GetMatchSnapshot().Snapshot.CurrentAttack.AttackSequence;
+		RouteRequest.RequestingSide = Trace.Attacker;
+		FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest StaleRoute =
+			RouteRequest;
+		++StaleRoute.AttackSequence;
+		TestFalse(TEXT("Stale Cross Route override command rejects"),
+			Host->ResolveCrossInitialRouteRoll(StaleRoute).bSuccess);
+		FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest WrongRouteSide =
+			RouteRequest;
+		WrongRouteSide.RequestingSide = Trace.Defender;
+		TestFalse(TEXT("Wrong-side Cross Route override command rejects"),
+			Host->ResolveCrossInitialRouteRoll(WrongRouteSide).bSuccess);
+		Controller->RefreshPresentation();
+		Controller->ContinueResolution();
+		TestTrue(TEXT("Rejected Cross Route requests retain the route override"),
+			!Controller->GetLastDiagnostic().bHostSuccess
+				&& Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+					[](const FFMCodexLocalDevPendingRollOverride& Item)
+					{
+						return Item.Target == ETarget::CrossRoute;
+					}));
 		TestTrue(TEXT("Cross authority route succeeds"),
-			Host->BeginResolutionSession().bSuccess
-				&& Host->ResolveInitialRoute().bSuccess);
+			Host->ResolveCrossInitialRouteRoll(RouteRequest).bSuccess);
 		const FMatchPlayState RouteState = Host->GetMatchSnapshot().Snapshot;
 		TestEqual(TEXT("Cross authority route RawD6 is 1"),
 			RouteState.CurrentAttack.ResolutionSession
@@ -2362,12 +2413,54 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 			RouteState.CurrentAttack.ResolutionSession.ActualBranch.Cross,
 			EMatchPlayCrossActualBranch::High);
 		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Attack;
+		Attack.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 		Attack.RequestingSide = Trace.Attacker;
 		FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Defense;
+		Defense.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 		Defense.RequestingSide = Trace.Defender;
+		FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest WrongBranch;
+		WrongBranch.AttackSequence = RouteState.CurrentAttack.AttackSequence;
+		WrongBranch.RequestingSide = Trace.Attacker;
+		TestFalse(TEXT("Wrong actual-branch Cross override command rejects"),
+			Host->ResolveCrossLowAttackRoll(WrongBranch).bSuccess);
+		TestFalse(TEXT("Premature Cross Defense override command rejects"),
+			Host->ResolveCrossHighDefenseRoll(Defense).bSuccess);
+		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest StaleAttack =
+			Attack;
+		++StaleAttack.AttackSequence;
+		TestFalse(TEXT("Stale Cross Attack override command rejects"),
+			Host->ResolveCrossHighAttackRoll(StaleAttack).bSuccess);
+		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest WrongAttackSide =
+			Attack;
+		WrongAttackSide.RequestingSide = Trace.Defender;
+		TestFalse(TEXT("Wrong-side Cross Attack override command rejects"),
+			Host->ResolveCrossHighAttackRoll(WrongAttackSide).bSuccess);
+		TestTrue(TEXT("Rejected Cross requests retain both arithmetic overrides"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target == ETarget::CrossHighAttack;
+				})
+				&& Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+					[](const FFMCodexLocalDevPendingRollOverride& Item)
+					{
+						return Item.Target == ETarget::CrossHighDefense;
+					}));
+		TestTrue(TEXT("Cross typed Attack consumes its matching override"),
+			Host->ResolveCrossHighAttackRoll(Attack).bSuccess);
+		FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest StaleDefense =
+			Defense;
+		++StaleDefense.AttackSequence;
+		TestFalse(TEXT("Stale Cross Defense override command rejects"),
+			Host->ResolveCrossHighDefenseRoll(StaleDefense).bSuccess);
+		TestTrue(TEXT("Rejected stale Defense retains its override"),
+			Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
+				[](const FFMCodexLocalDevPendingRollOverride& Item)
+				{
+					return Item.Target == ETarget::CrossHighDefense;
+				}));
 		TestTrue(TEXT("Cross typed authority rolls succeed"),
-			Host->ResolveCrossHighAttackRoll(Attack).bSuccess
-				&& Host->ResolveCrossHighDefenseRoll(Defense).bSuccess);
+			Host->ResolveCrossHighDefenseRoll(Defense).bSuccess);
 		const auto& Records = Host->GetMatchSnapshot().Snapshot.CurrentAttack
 			.ResolutionSession.PostRouteRollProgress.RollRecords;
 		TestEqual(TEXT("Cross attack authority RawD6 is 6"),

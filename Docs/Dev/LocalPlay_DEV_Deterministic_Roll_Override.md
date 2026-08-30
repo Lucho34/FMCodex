@@ -40,7 +40,7 @@ The panel never owns a provider pointer and never writes RawD6, CurrentAttack, F
 | 反越位 | 1–6 | AntiOffside decision | `PrimaryAttack` |
 | 脚下球·进攻 | 1–6 | Feet attack roll | `PrimaryAttack` |
 | 脚下球·防守 | 1–6 | Feet defense roll | `PrimaryDefense` |
-| 传中路线 | 1–6 | `ResolveInitialRoute` for Cross | `InitialRoute` |
+| 传中路线 | 1–6 | typed `ResolveCrossInitialRouteRoll` | `InitialRoute` |
 | 高球传中·进攻 / 防守 | 1–6 | explicit High attack / defense roll | `PrimaryAttack` / `PrimaryDefense` |
 | 低球传中·进攻 / 防守 | 1–6 | explicit Low attack / defense roll | `PrimaryAttack` / `PrimaryDefense` |
 | 单刀·挑射 | 1–6 | ChipShot decision | `OneOnOneChipShotAttack` |
@@ -97,6 +97,11 @@ The small `DEV 掷点` entry is created in non-Shipping LocalPlay only, centered
 - PassAdvance: set `控球推进·路线 → 2`, `控球推进·进攻 → 4`, and `控球推进·防守 → 3`, then use the three central actions in order. The route reel displays 2 and Authority selects PassAdvance before the two Formula rolls.
 - DribbleAdvance: set route to `4`; RunAdvance: set route to `6`. Attack and Defense remain independent one-shot targets for either route.
 - Wrong-side, stale, premature, or duplicate typed requests do not call the provider decorator, so prepared PassControl overrides remain pending. Formula, winner, Narrative, reel and terminal still come through the production authority path.
+
+## Example: Cross Correlated Route
+
+- Set `传中路线` plus the matching High/Low Attack and Defense targets, then use the three normal central actions. Route, Attack and Defense each consume only their matching one-shot after Session accepts the current `AttackSequence + RequestingSide` request.
+- A stale, wrong-side, premature, duplicate, wrong-family or wrong-actual-branch request is rejected before the decorator/provider call, so the prepared target remains pending for a subsequent fresh request.
 
 ## Release removal plan
 

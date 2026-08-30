@@ -951,6 +951,9 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	}
 	switch (Presentation.Interaction.Category)
 	{
+	case EFMCodexUMGInteractionCategory::RollCrossRoute:
+		MatchController->RollCrossRoute();
+		break;
 	case EFMCodexUMGInteractionCategory::RollThroughBallInitialRoute:
 		MatchController->RollThroughBallInitialRoute();
 		break;

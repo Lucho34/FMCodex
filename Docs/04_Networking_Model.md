@@ -60,7 +60,7 @@
 
 ## ThroughBall Route 与 Feet 分步权威命令
 
-ThroughBall initial route 是进攻方拥有的 `ResolveThroughBallInitialRouteRoll` typed intent。它与 Feet Attack/Defense 一样显式携带 `AttackSequence + RequestingSide`；服务端在调用 provider 前验证当前进攻、序列、阵营、ThroughBall family 和 route-pending phase。Cross route 保留自己的现有 continuation contract，不接受 ThroughBall route command。
+ThroughBall initial route 是进攻方拥有的 `ResolveThroughBallInitialRouteRoll` typed intent。它与 Feet Attack/Defense 一样显式携带 `AttackSequence + RequestingSide`；服务端在调用 provider 前验证当前进攻、序列、阵营、ThroughBall family 和 route-pending phase。Cross route 使用自己的 `ResolveCrossInitialRouteRoll` command；两个 family 不接受彼此的 route request。
 
 脚下球比较不再由一次生产请求原子消费两枚 D6。当前进攻方调用 `ResolveThroughBallFeetAttackRoll`，该记录落地后当前防守方才可调用 `ResolveThroughBallFeetDefenseRoll`。两个 request 都必须携带客户端当前看到的 `AttackSequence + RequestingSide`；AuthoritativeSession 不代填 sequence，而在同一 serialized command boundary 内验证当前 AttackSequence、实际 Feet 分支、请求阵营与 canonical next purpose。验证通过后才允许 Host-owned provider 恰好生成一枚 D6。
 
@@ -97,6 +97,16 @@ Direct Attack `3–6`产生可同步的真实attack-only prefix：Attack D6已�
 DeadCorner保留一次attacker request产生完整2D6 pair的语义。只有两枚provider draw都成功才adopt candidate State；第二枚失败不向客户端暴露partial pair。snapshot refresh或未来reconnect可从CurrentAttack、roll records与Formula/Outcome facts重建全部pending/completed状态，不依赖Controller或Widget缓存。
 
 该Foundation说明CutInside的三个玩家RNG边界具备side ownership、caller correlation、stale/retry safety与reconstruction基础；不表示CutInside Production UI已经完成，也不实现network transport、RPC idempotency key、reconnect UX或隐藏信息同步。
+
+## Cross-specific Stage 7 Request Foundation
+
+Cross route、High/Low Attack与High/Low Defense都由独立typed request表达，并携带客户端当前snapshot的`AttackSequence + RequestingSide`。服务端在调用provider前验证current attack、sequence、当前攻防ownership、Cross family、实际High/Low branch与canonical pending purpose；wrong-family、wrong-route、wrong-side、stale、premature、duplicate和terminal replay都不消费RNG或DEV one-shot。
+
+route-only与attack-only是可同步的真实中间状态。route D6、actual branch和Attack D6均已持久化；尚未发生的Defense D6、FinalValue和Outcome不得由客户端推断。snapshot refresh、重连或重复UI construction只读取CurrentAttack records与Resolution Facts恢复下一owner和已公开事实。
+
+跨进攻相关性以`AttackSequence`为边界：旧Attack N request即使延迟到Attack N+1相同pending phase，也必须在provider前拒绝，随后N+1 fresh request仍可成功。最后一枚Defense后Formula/outcome/terminal continuation保持零RNG，只有显式`AdvanceAfterTerminal`推进回合。
+
+该Foundation不改变Cross规则或可见production流程，也不实现network transport、RPC idempotency key、重连UX或隐藏信息同步；它只定义未来Server/RPC必须保留的typed、side-owned、stale/retry-safe request seam。
 
 ## 掉线和重连
 

@@ -60,6 +60,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			== EMatchPlayCrossActualBranch::High)
 		{
 			FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Attack;
+			Attack.AttackSequence = State.CurrentAttack.AttackSequence;
 			Attack.RequestingSide = Resolution.Bundle.CurrentAttackingPlayer;
 			if (!Session.ResolveCrossHighAttackRoll(Attack)
 				.OrchestrationResult.bSuccess)
@@ -67,6 +68,7 @@ namespace MatchPlayAuthoritativeSessionTests
 				return false;
 			}
 			FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Defense;
+			Defense.AttackSequence = State.CurrentAttack.AttackSequence;
 			Defense.RequestingSide = Resolution.Bundle.CurrentDefendingPlayer;
 			return Session.ResolveCrossHighDefenseRoll(Defense)
 				.OrchestrationResult.bSuccess;
@@ -75,6 +77,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			== EMatchPlayCrossActualBranch::Low)
 		{
 			FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest Attack;
+			Attack.AttackSequence = State.CurrentAttack.AttackSequence;
 			Attack.RequestingSide = Resolution.Bundle.CurrentAttackingPlayer;
 			if (!Session.ResolveCrossLowAttackRoll(Attack)
 				.OrchestrationResult.bSuccess)
@@ -82,6 +85,7 @@ namespace MatchPlayAuthoritativeSessionTests
 				return false;
 			}
 			FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest Defense;
+			Defense.AttackSequence = State.CurrentAttack.AttackSequence;
 			Defense.RequestingSide = Resolution.Bundle.CurrentDefendingPlayer;
 			return Session.ResolveCrossLowDefenseRoll(Defense)
 				.OrchestrationResult.bSuccess;
@@ -2643,7 +2647,8 @@ namespace MatchPlayAuthoritativeSessionTests
 				&& State.CurrentAttack.SelectedAction.ActionType == SkillType;
 		}
 		return (SkillType == ESkillRuleType::LongShot
-			|| SkillType == ESkillRuleType::CutInsideShot)
+			|| SkillType == ESkillRuleType::CutInsideShot
+			|| SkillType == ESkillRuleType::Cross)
 			&& State.CurrentAttack.SelectionStage
 				== EMatchPlayCurrentAttackSelectionStage::AwaitingBranchIntent
 			&& !State.CurrentAttack.bHasSelectedAction
@@ -6505,11 +6510,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All sixty-five mutations use the gate"),
+	TestEqual(TEXT("All sixty-six mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		65);
+		66);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7894,8 +7899,8 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
 		CompletionSource));
-	TestEqual(TEXT("All sixty-five commands use one serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
+	TestEqual(TEXT("All sixty-six commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 66);
 	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
@@ -10543,14 +10548,14 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			TEXT("FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(")) })
 	{
 		const int32 ExpectedCallCount = FCString::Strcmp(
-			Operation.Key, TEXT("Initial Route orchestrator")) == 0 ? 3 : 1;
+			Operation.Key, TEXT("Initial Route orchestrator")) == 0 ? 4 : 1;
 		TestEqual(*FString::Printf(TEXT("%s has bounded production calls"), Operation.Key),
 			CountOccurrences(Implementation, Operation.Value),
 			ExpectedCallCount);
 	}
-	TestEqual(TEXT("All sixty-five mutations share serialized gate"),
+	TestEqual(TEXT("All sixty-six mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		65);
+		66);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -12448,7 +12453,7 @@ bool FMatchPlayAuthoritativeSessionResolveInitialRouteTest::RunTest(
 		CountOccurrences(
 			Implementation,
 			TEXT("FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(")),
-		3);
+		4);
 
 	InitialRouteFixtures::FQueueRollProvider UninitializedProvider;
 	UninitializedProvider.Enqueue(InitialRouteFixtures::MakeSuccess(4));
@@ -13055,6 +13060,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 	TestTrue(TEXT("Legacy rejection preserves State"),
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest WrongBranchLow;
+	WrongBranchLow.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	WrongBranchLow.RequestingSide = Attacker;
 	const auto WrongBranchLowResult =
 		Session.ResolveCrossLowAttackRoll(WrongBranchLow);
@@ -13067,6 +13073,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest EarlyDefense;
+	EarlyDefense.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	EarlyDefense.RequestingSide = Defender;
 	const auto Early = Session.ResolveCrossHighDefenseRoll(EarlyDefense);
 	TestEqual(TEXT("Defense cannot roll before attack"),
@@ -13076,6 +13083,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest WrongAttack;
+	WrongAttack.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	WrongAttack.RequestingSide = Defender;
 	const auto WrongAttackResult =
 		Session.ResolveCrossHighAttackRoll(WrongAttack);
@@ -13087,6 +13095,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest AttackRequest;
+	AttackRequest.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	AttackRequest.RequestingSide = Attacker;
 	const auto AttackResult = Session.ResolveCrossHighAttackRoll(AttackRequest);
 	const FMatchPlayState AttackState = Session.GetStateSnapshot();
@@ -13137,6 +13146,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest WrongDefense;
+	WrongDefense.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	WrongDefense.RequestingSide = Attacker;
 	const auto WrongDefenseResult =
 		Session.ResolveCrossHighDefenseRoll(WrongDefense);
@@ -13148,6 +13158,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossHighManualRollTest::RunTest(
 		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest DefenseRequest;
+	DefenseRequest.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	DefenseRequest.RequestingSide = Defender;
 	const auto DefenseResult =
 		Session.ResolveCrossHighDefenseRoll(DefenseRequest);
@@ -13261,6 +13272,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest WrongBranchHigh;
+	WrongBranchHigh.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	WrongBranchHigh.RequestingSide = Attacker;
 	const auto WrongBranchHighResult =
 		Session.ResolveCrossHighAttackRoll(WrongBranchHigh);
@@ -13272,6 +13284,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest EarlyDefense;
+	EarlyDefense.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	EarlyDefense.RequestingSide = Defender;
 	const auto Early = Session.ResolveCrossLowDefenseRoll(EarlyDefense);
 	TestEqual(TEXT("Low defense cannot roll before attack"),
@@ -13282,6 +13295,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest WrongAttack;
+	WrongAttack.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	WrongAttack.RequestingSide = Defender;
 	const auto WrongAttackResult =
 		Session.ResolveCrossLowAttackRoll(WrongAttack);
@@ -13294,6 +13308,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
 		AreStatesEqual(RouteState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest AttackRequest;
+	AttackRequest.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	AttackRequest.RequestingSide = Attacker;
 	const auto AttackResult = Session.ResolveCrossLowAttackRoll(AttackRequest);
 	const FMatchPlayState AttackState = Session.GetStateSnapshot();
@@ -13339,6 +13354,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
 		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest WrongDefense;
+	WrongDefense.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	WrongDefense.RequestingSide = Attacker;
 	const auto WrongDefenseResult =
 		Session.ResolveCrossLowDefenseRoll(WrongDefense);
@@ -13351,6 +13367,7 @@ bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
 		AreStatesEqual(AttackState, Session.GetStateSnapshot()));
 
 	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest DefenseRequest;
+	DefenseRequest.AttackSequence = RouteState.CurrentAttack.AttackSequence;
 	DefenseRequest.RequestingSide = Defender;
 	const auto DefenseResult =
 		Session.ResolveCrossLowDefenseRoll(DefenseRequest);
@@ -13449,6 +13466,392 @@ bool FMatchPlayAuthoritativeSessionResolveCrossLowManualRollTest::RunTest(
 		AfterAdvance.RuntimeState.CurrentAttackingPlayer != Attacker
 			&& AfterAdvance.RuntimeState.CurrentAttackingPlayer
 				!= EInitialTurnOrderPlayer::None);
+	return true;
+}
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayAuthoritativeSessionCrossTypedCorrelatedAuthorityFoundationTest,
+	"43C.CrossTypedCorrelatedAuthorityFoundation")
+
+bool FMatchPlayAuthoritativeSessionCrossTypedCorrelatedAuthorityFoundationTest
+	::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using ERouteError =
+		EMatchPlayAuthoritativeCrossInitialRouteRollErrorCode;
+	using EPlanError =
+		EMatchPlayCurrentAttackResolveCrossPostRoutePlanErrorCode;
+	using EMode =
+		FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest::EMode;
+	(void)Parameters;
+	static_assert(std::is_same_v<
+		decltype(&FMatchPlayAuthoritativeSession::ResolveCrossInitialRouteRoll),
+		FMatchPlayAuthoritativeResolveCrossInitialRouteRollResult
+		(FMatchPlayAuthoritativeSession::*)(
+			const FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest&)>);
+	TestEqual(TEXT("Cross typed Route command is append-only"),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolveCrossInitialRouteRoll),
+		static_cast<uint8>(EMatchPlayAuthoritativeCommandKind
+			::ResolvePassControlDefenseRoll) + 1);
+
+	const FString Prefix(TEXT("CrossTypedCorrelated"));
+	const FName SkillId(*FString::Printf(TEXT("Skill.%s.%d"), *Prefix,
+		static_cast<int32>(ESkillRuleType::Cross)));
+	const FSkillRuleSnapshotSet Rules =
+		MakeSkillRuleSet(SkillId, ESkillRuleType::Cross);
+	InitialRouteFixtures::FQueueRollProvider Initial;
+	Initial.Enqueue(InitialRouteFixtures::MakeFailure());
+	Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider Post;
+	Post.Enqueue(MakePostRouteFailure());
+	Post.Enqueue(MakePostRouteSuccess(4));
+	Post.Enqueue(MakePostRouteFailure());
+	Post.Enqueue(MakePostRouteSuccess(3));
+	Post.Enqueue(MakePostRouteSuccess(5));
+	Post.Enqueue(MakePostRouteSuccess(2));
+	FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+
+	FReachabilityTrace Trace;
+	TestTrue(TEXT("Cross reaches authoritative branch intent"),
+		BuildStage7165ToAwaitingBranchIntent(
+			Session, Prefix, ESkillRuleType::Cross, Trace));
+	const FMatchPlayState BeforeIntent = Session.GetStateSnapshot();
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest RouteRequest;
+	RouteRequest.AttackSequence = BeforeIntent.CurrentAttack.AttackSequence;
+	RouteRequest.RequestingSide = Trace.AttackingSide;
+	const auto PrematureRoute =
+		Session.ResolveCrossInitialRouteRoll(RouteRequest);
+	TestEqual(TEXT("Cross Route cannot precede High/Low intent"),
+		PrematureRoute.ErrorCode, ERouteError::RouteRollNotPending);
+	TestEqual(TEXT("Premature Cross Route consumes zero RNG"),
+		Initial.GetCallCount(), 0);
+	TestTrue(TEXT("Premature Cross Route preserves State"),
+		AreStatesEqual(BeforeIntent, Session.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest Intent;
+	Intent.AttackSequence = RouteRequest.AttackSequence;
+	Intent.RequestingSide = Trace.AttackingSide;
+	Intent.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
+	TestTrue(TEXT("Cross High intent commits without RNG"),
+		Session.SubmitBranchIntent(Intent).IntentResult.bSuccess);
+	const FMatchPlayState Ready = Session.GetStateSnapshot();
+	TestTrue(TEXT("Intent-only Route pending snapshot is persistent"),
+		Ready.CurrentAttack.SelectionStage
+			== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution
+			&& !Ready.CurrentAttack.bHasResolutionSession
+			&& Ready.CurrentAttack.SelectedAction.ElectiveBranchIntent
+				== EMatchPlayElectiveBranchIntent::CrossHigh);
+
+	auto InvalidSequence = RouteRequest;
+	InvalidSequence.AttackSequence = 0;
+	TestEqual(TEXT("Cross Route requires positive correlation"),
+		Session.ResolveCrossInitialRouteRoll(InvalidSequence).ErrorCode,
+		ERouteError::InvalidAttackSequence);
+	auto StaleRoute = RouteRequest;
+	StaleRoute.AttackSequence += 1;
+	TestEqual(TEXT("Same-phase stale Cross Route rejects"),
+		Session.ResolveCrossInitialRouteRoll(StaleRoute).ErrorCode,
+		ERouteError::AttackSequenceMismatch);
+	auto InvalidSide = RouteRequest;
+	InvalidSide.RequestingSide = EInitialTurnOrderPlayer::None;
+	TestEqual(TEXT("Cross Route requires a concrete side"),
+		Session.ResolveCrossInitialRouteRoll(InvalidSide).ErrorCode,
+		ERouteError::InvalidRequestingSide);
+	auto WrongRouteSide = RouteRequest;
+	WrongRouteSide.RequestingSide = Trace.DefendingSide;
+	TestEqual(TEXT("Defender cannot own Cross Route"),
+		Session.ResolveCrossInitialRouteRoll(WrongRouteSide).ErrorCode,
+		ERouteError::RequestingSideNotCurrentAttacker);
+	TestEqual(TEXT("Rejected correlated Routes consume zero RNG"),
+		Initial.GetCallCount(), 0);
+	TestTrue(TEXT("Rejected correlated Routes preserve Ready State"),
+		AreStatesEqual(Ready, Session.GetStateSnapshot()));
+
+	const auto FailedRoute = Session.ResolveCrossInitialRouteRoll(RouteRequest);
+	TestTrue(TEXT("Route provider failure is reported exactly once"),
+		!FailedRoute.OrchestrationResult.bSuccess
+			&& FailedRoute.OrchestrationResult.bProviderCalled
+			&& Initial.GetCallCount() == 1);
+	TestTrue(TEXT("Route provider failure does not adopt begun session"),
+		AreStatesEqual(Ready, Session.GetStateSnapshot()));
+	const auto Route = Session.ResolveCrossInitialRouteRoll(RouteRequest);
+	const FMatchPlayState RouteOnly = Session.GetStateSnapshot();
+	TestTrue(TEXT("Typed Cross Route succeeds after safe retry"),
+		Route.RuntimeEnvelope.bDomainSuccess
+			&& Route.OrchestrationResult.bSuccess
+			&& Route.OrchestrationResult.bProviderCalled
+			&& Route.RuntimeEnvelope.CommandKind
+				== EMatchPlayAuthoritativeCommandKind
+					::ResolveCrossInitialRouteRoll);
+	TestTrue(TEXT("High intent flips to authoritative Low on 5"),
+		RouteOnly.CurrentAttack.bHasResolutionSession
+			&& RouteOnly.CurrentAttack.ResolutionSession.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& RouteOnly.CurrentAttack.ResolutionSession.InitialRouteRollRecords
+				.Num() == 1
+			&& RouteOnly.CurrentAttack.ResolutionSession.InitialRouteRollRecords[0]
+				.RawD6 == 5
+			&& RouteOnly.CurrentAttack.ResolutionSession.ActualBranch.Cross
+				== EMatchPlayCrossActualBranch::Low
+			&& RouteOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.IsEmpty());
+	const auto DuplicateRoute =
+		Session.ResolveCrossInitialRouteRoll(RouteRequest);
+	TestEqual(TEXT("Duplicate Cross Route rejects before provider"),
+		DuplicateRoute.ErrorCode, ERouteError::RouteRollNotPending);
+	TestEqual(TEXT("Duplicate Cross Route consumes zero additional RNG"),
+		Initial.GetCallCount(), 2);
+
+	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest WrongBranch;
+	WrongBranch.AttackSequence = RouteRequest.AttackSequence;
+	WrongBranch.RequestingSide = Trace.AttackingSide;
+	TestEqual(TEXT("High request cannot consume an actual Low route"),
+		Session.ResolveCrossHighAttackRoll(WrongBranch)
+			.OrchestrationResult.ErrorCode,
+		EPlanError::ExplicitRollStepWrongCrossBranch);
+	FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest DefenseRequest;
+	DefenseRequest.AttackSequence = RouteRequest.AttackSequence;
+	DefenseRequest.RequestingSide = Trace.DefendingSide;
+	TestEqual(TEXT("Cross Defense cannot precede Attack"),
+		Session.ResolveCrossLowDefenseRoll(DefenseRequest)
+			.OrchestrationResult.ErrorCode,
+		EPlanError::WrongCrossRollStep);
+	FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest AttackRequest;
+	AttackRequest.AttackSequence = RouteRequest.AttackSequence;
+	AttackRequest.RequestingSide = Trace.AttackingSide;
+	auto StaleAttack = AttackRequest;
+	StaleAttack.AttackSequence += 1;
+	TestEqual(TEXT("Same-phase stale Low Attack rejects"),
+		Session.ResolveCrossLowAttackRoll(StaleAttack)
+			.OrchestrationResult.ErrorCode,
+		EPlanError::AttackSequenceMismatch);
+	auto WrongAttackSide = AttackRequest;
+	WrongAttackSide.RequestingSide = Trace.DefendingSide;
+	TestEqual(TEXT("Defender cannot own Cross Attack"),
+		Session.ResolveCrossLowAttackRoll(WrongAttackSide)
+			.OrchestrationResult.ErrorCode,
+		EPlanError::WrongRequestingSide);
+	TestEqual(TEXT("Wrong branch/stale/side/premature consume zero post RNG"),
+		Post.GetCallCount(), 0);
+	TestTrue(TEXT("Rejected comparison commands preserve Route-only State"),
+		AreStatesEqual(RouteOnly, Session.GetStateSnapshot()));
+
+	FQueuePostRouteRollProvider RouteReconstructionProvider;
+	RouteReconstructionProvider.Enqueue(MakePostRouteSuccess(6));
+	FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
+		ReconstructedAttackRequest;
+	ReconstructedAttackRequest.AttackSequence = RouteRequest.AttackSequence;
+	ReconstructedAttackRequest.Mode = EMode::ResolveCrossLowAttackRoll;
+	ReconstructedAttackRequest.RequestingSide = Trace.AttackingSide;
+	const auto ReconstructedAttack =
+		FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
+			RouteOnly, ReconstructedAttackRequest, &Rules,
+			&RouteReconstructionProvider);
+	TestTrue(TEXT("Route-only snapshot reconstructs the Low Attack step"),
+		ReconstructedAttack.bSuccess
+			&& ReconstructedAttack.ProviderCallCount == 1
+			&& ReconstructedAttack.AfterState.CurrentAttack.ResolutionSession
+				.PostRouteRollProgress.RollRecords.Num() == 1);
+
+	const auto FailedAttack = Session.ResolveCrossLowAttackRoll(AttackRequest);
+	TestTrue(TEXT("Attack provider failure preserves Route-only State"),
+		!FailedAttack.OrchestrationResult.bSuccess
+			&& FailedAttack.OrchestrationResult.ProviderCallCount == 1
+			&& FailedAttack.OrchestrationResult.ErrorCode
+				== EPlanError::PostRouteRollProviderFailed
+			&& AreStatesEqual(RouteOnly, Session.GetStateSnapshot()));
+	const auto Attack = Session.ResolveCrossLowAttackRoll(AttackRequest);
+	const FMatchPlayState AttackOnly = Session.GetStateSnapshot();
+	TestTrue(TEXT("Correlated Low Attack persists exactly one D6"),
+		Attack.RuntimeEnvelope.bDomainSuccess
+			&& Attack.OrchestrationResult.bSuccess
+			&& Attack.OrchestrationResult.ProviderCallCount == 1
+			&& AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.Num() == 1
+			&& AttackOnly.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords[0].RawD6 == 4
+			&& AttackOnly.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::Active);
+	const auto DuplicateAttack =
+		Session.ResolveCrossLowAttackRoll(AttackRequest);
+	TestEqual(TEXT("Duplicate Low Attack rejects"),
+		DuplicateAttack.OrchestrationResult.ErrorCode,
+		EPlanError::WrongCrossRollStep);
+	TestEqual(TEXT("Duplicate Low Attack consumes zero additional RNG"),
+		Post.GetCallCount(), 2);
+
+	FQueuePostRouteRollProvider AttackReconstructionProvider;
+	AttackReconstructionProvider.Enqueue(MakePostRouteSuccess(1));
+	FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
+		ReconstructedDefenseRequest;
+	ReconstructedDefenseRequest.AttackSequence = RouteRequest.AttackSequence;
+	ReconstructedDefenseRequest.Mode = EMode::ResolveCrossLowDefenseRoll;
+	ReconstructedDefenseRequest.RequestingSide = Trace.DefendingSide;
+	const auto ReconstructedDefense =
+		FMatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator::Resolve(
+			AttackOnly, ReconstructedDefenseRequest, &Rules,
+			&AttackReconstructionProvider);
+	const auto ReconstructedTerminal =
+		FMatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator::Resolve(
+			ReconstructedDefense.AfterState, &Rules);
+	TestTrue(TEXT("Attack-only snapshot reconstructs Defense and terminal"),
+		ReconstructedDefense.bSuccess
+			&& ReconstructedDefense.ProviderCallCount == 1
+			&& ReconstructedTerminal.bSuccess
+			&& ReconstructedTerminal.AfterState.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState
+					::TerminalPendingAdvance);
+
+	auto StaleDefense = DefenseRequest;
+	StaleDefense.AttackSequence += 1;
+	TestEqual(TEXT("Same-phase stale Low Defense rejects"),
+		Session.ResolveCrossLowDefenseRoll(StaleDefense)
+			.OrchestrationResult.ErrorCode,
+		EPlanError::AttackSequenceMismatch);
+	auto WrongDefenseSide = DefenseRequest;
+	WrongDefenseSide.RequestingSide = Trace.AttackingSide;
+	TestEqual(TEXT("Attacker cannot own Cross Defense"),
+		Session.ResolveCrossLowDefenseRoll(WrongDefenseSide)
+			.OrchestrationResult.ErrorCode,
+		EPlanError::WrongRequestingSide);
+	TestEqual(TEXT("Rejected Defense requests consume zero RNG"),
+		Post.GetCallCount(), 2);
+	const auto FailedDefense =
+		Session.ResolveCrossLowDefenseRoll(DefenseRequest);
+	TestTrue(TEXT("Defense provider failure preserves Attack-only State"),
+		!FailedDefense.OrchestrationResult.bSuccess
+			&& FailedDefense.OrchestrationResult.ProviderCallCount == 1
+			&& FailedDefense.OrchestrationResult.ErrorCode
+				== EPlanError::PostRouteRollProviderFailed
+			&& AreStatesEqual(AttackOnly, Session.GetStateSnapshot()));
+	const auto Defense = Session.ResolveCrossLowDefenseRoll(DefenseRequest);
+	const FMatchPlayState Complete = Session.GetStateSnapshot();
+	TestTrue(TEXT("Correlated Low Defense completes unchanged Formula"),
+		Defense.RuntimeEnvelope.bDomainSuccess
+			&& Defense.OrchestrationResult.bSuccess
+			&& Defense.OrchestrationResult.ProviderCallCount == 1
+			&& Defense.OrchestrationResult.PlanResult.bSuccess
+			&& Complete.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.Num() == 2
+			&& Complete.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords[1].RawD6 == 3);
+	TestTrue(TEXT("Existing zero-RNG Cross terminal command succeeds"),
+		Session.ApplyCrossTerminalResolution().OrchestrationResult.bSuccess);
+	const FMatchPlayState Terminal = Session.GetStateSnapshot();
+	TestEqual(TEXT("Cross terminal remains pending explicit NextRound"),
+		Terminal.CurrentAttack.LifecycleState,
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	const int32 CallsBeforeTerminalReplay = Post.GetCallCount();
+	const auto TerminalReplay =
+		Session.ResolveCrossLowDefenseRoll(DefenseRequest);
+	TestEqual(TEXT("Terminal replay is stopped by serialized runtime"),
+		TerminalReplay.RuntimeEnvelope.RuntimeFailureCode,
+		EMatchPlayAuthoritativeRuntimeFailureCode::TerminalAdvanceRequired);
+	TestEqual(TEXT("Terminal replay consumes zero RNG"),
+		Post.GetCallCount() - CallsBeforeTerminalReplay, 0);
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+	Advance.AttackSequence = RouteRequest.AttackSequence;
+	Advance.RequestingSide = Trace.AttackingSide;
+	TestTrue(TEXT("Existing explicit Cross NextRound succeeds"),
+		Session.AdvanceAfterTerminal(Advance).CompletionResult.bSuccess);
+
+	FReachabilityTrace NextTrace;
+	TestTrue(TEXT("Attack N+1 reaches Cross intent independently"),
+		BuildNextThroughBallToReadyForResolution(
+			Session, Rules, SkillId, NextTrace, ESkillRuleType::Cross));
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest NextIntent;
+	NextIntent.AttackSequence = NextTrace.AttackSequence;
+	NextIntent.RequestingSide = NextTrace.AttackingSide;
+	NextIntent.Intent = EMatchPlayElectiveBranchIntent::CrossLow;
+	TestTrue(TEXT("Attack N+1 Low intent commits"),
+		Session.SubmitBranchIntent(NextIntent).IntentResult.bSuccess);
+	const FMatchPlayState NextReady = Session.GetStateSnapshot();
+	auto CrossAttackStaleRoute = RouteRequest;
+	CrossAttackStaleRoute.RequestingSide = NextTrace.AttackingSide;
+	TestEqual(TEXT("Attack N Route cannot target attack N+1"),
+		Session.ResolveCrossInitialRouteRoll(CrossAttackStaleRoute).ErrorCode,
+		ERouteError::AttackSequenceMismatch);
+	TestTrue(TEXT("Cross-attack stale Route preserves N+1 State"),
+		AreStatesEqual(NextReady, Session.GetStateSnapshot()));
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest NextRoute;
+	NextRoute.AttackSequence = NextTrace.AttackSequence;
+	NextRoute.RequestingSide = NextTrace.AttackingSide;
+	TestTrue(TEXT("Fresh attack N+1 Route succeeds"),
+		Session.ResolveCrossInitialRouteRoll(NextRoute)
+			.OrchestrationResult.bSuccess);
+	const FMatchPlayState NextRouteOnly = Session.GetStateSnapshot();
+	TestTrue(TEXT("Low intent flips to authoritative High on 5"),
+		NextRouteOnly.CurrentAttack.ResolutionSession.ActualBranch.Cross
+			== EMatchPlayCrossActualBranch::High
+			&& NextRouteOnly.CurrentAttack.ResolutionSession.InitialRouteRollRecords
+				.Num() == 1);
+
+	FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest NextAttack;
+	NextAttack.AttackSequence = NextTrace.AttackSequence;
+	NextAttack.RequestingSide = NextTrace.AttackingSide;
+	auto CrossAttackStaleAttack = NextAttack;
+	CrossAttackStaleAttack.AttackSequence = RouteRequest.AttackSequence;
+	TestEqual(TEXT("Attack N comparison cannot target attack N+1"),
+		Session.ResolveCrossHighAttackRoll(CrossAttackStaleAttack)
+			.OrchestrationResult.ErrorCode,
+		EPlanError::AttackSequenceMismatch);
+	TestTrue(TEXT("Fresh attack N+1 Attack succeeds after stale rejection"),
+		Session.ResolveCrossHighAttackRoll(NextAttack)
+			.OrchestrationResult.bSuccess);
+	const FMatchPlayState NextAttackOnly = Session.GetStateSnapshot();
+	FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest NextDefense;
+	NextDefense.AttackSequence = NextTrace.AttackSequence;
+	NextDefense.RequestingSide = NextTrace.DefendingSide;
+	auto CrossAttackStaleDefense = NextDefense;
+	CrossAttackStaleDefense.AttackSequence = RouteRequest.AttackSequence;
+	TestEqual(TEXT("Attack N Defense cannot target attack N+1"),
+		Session.ResolveCrossHighDefenseRoll(CrossAttackStaleDefense)
+			.OrchestrationResult.ErrorCode,
+		EPlanError::AttackSequenceMismatch);
+	TestTrue(TEXT("Cross-attack stale Defense preserves Attack-only State"),
+		AreStatesEqual(NextAttackOnly, Session.GetStateSnapshot()));
+	TestTrue(TEXT("Fresh attack N+1 Defense succeeds after stale rejection"),
+		Session.ResolveCrossHighDefenseRoll(NextDefense)
+			.OrchestrationResult.bSuccess);
+	TestTrue(TEXT("Attack N+1 terminal reconstructs without Controller history"),
+		Session.ApplyCrossTerminalResolution().OrchestrationResult.bSuccess
+			&& Session.GetStateSnapshot().CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState
+					::TerminalPendingAdvance);
+	TestEqual(TEXT("Two accepted Routes persist one D6 each"),
+		Initial.GetCallCount(), 3);
+	TestEqual(TEXT("Two accepted Attack/Defense pairs plus two safe failures"),
+		Post.GetCallCount(), 6);
+
+	const FString WrongFamilyPrefix(TEXT("CrossTypedWrongFamily"));
+	const FName WrongFamilySkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"), *WrongFamilyPrefix,
+		static_cast<int32>(ESkillRuleType::PassControl)));
+	const FSkillRuleSnapshotSet WrongFamilyRules =
+		MakeSkillRuleSet(WrongFamilySkillId, ESkillRuleType::PassControl);
+	InitialRouteFixtures::FQueueRollProvider WrongFamilyInitial;
+	WrongFamilyInitial.Enqueue(InitialRouteFixtures::MakeSuccess(2));
+	FQueuePostRouteRollProvider WrongFamilyPost;
+	FMatchPlayAuthoritativeSession WrongFamilySession(
+		WrongFamilyInitial, WrongFamilyPost, WrongFamilyRules);
+	FReachabilityTrace WrongFamilyTrace;
+	TestTrue(TEXT("Wrong-family fixture reaches Route pending"),
+		BuildStage7164ToReadyForResolution(
+			WrongFamilySession, WrongFamilyPrefix, WrongFamilyTrace,
+			ESkillRuleType::PassControl));
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest
+		WrongFamilyRequest;
+	WrongFamilyRequest.AttackSequence =
+		WrongFamilySession.GetStateSnapshot().CurrentAttack.AttackSequence;
+	WrongFamilyRequest.RequestingSide = WrongFamilyTrace.AttackingSide;
+	TestEqual(TEXT("Cross Route request rejects a PassControl family"),
+		WrongFamilySession.ResolveCrossInitialRouteRoll(WrongFamilyRequest)
+			.ErrorCode,
+		ERouteError::WrongResolutionFamily);
+	TestEqual(TEXT("Wrong-family Cross Route consumes zero RNG"),
+		WrongFamilyInitial.GetCallCount(), 0);
 	return true;
 }
 
@@ -23115,8 +23518,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves sixty-five serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
+	TestEqual(TEXT("E2E preserves sixty-six serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 66);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -23190,8 +23593,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All sixty-five commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
+	TestEqual(TEXT("All sixty-six commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 66);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -23682,8 +24085,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All sixty-five commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
+	TestEqual(TEXT("All sixty-six commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 66);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -24209,8 +24612,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All sixty-five commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
+	TestEqual(TEXT("All sixty-six commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 66);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -24784,8 +25187,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All sixty-five commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 65);
+	TestEqual(TEXT("All sixty-six commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 66);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);

@@ -1175,6 +1175,111 @@ FMatchPlayAuthoritativeSession::ResolvePassControlInitialRouteRoll(
 		});
 }
 
+FMatchPlayAuthoritativeResolveCrossInitialRouteRollResult
+FMatchPlayAuthoritativeSession::ResolveCrossInitialRouteRoll(
+	const FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveCrossInitialRouteRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveCrossInitialRouteRoll,
+		true,
+		Request.AttackSequence,
+		[this, Request](
+			FMatchPlayAuthoritativeResolveCrossInitialRouteRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			FDomainExecution Execution;
+			Execution.CandidateAfterState = BeforeState;
+			Execution.StateDisposition =
+				EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+
+			using ERouteError =
+				EMatchPlayAuthoritativeCrossInitialRouteRollErrorCode;
+			auto Reject = [&Result, &Execution](
+				const ERouteError ErrorCode,
+				const TCHAR* ErrorMessage)
+			{
+				Result.ErrorCode = ErrorCode;
+				Result.ErrorMessage = ErrorMessage;
+				Result.OrchestrationResult.ErrorMessage = ErrorMessage;
+				return Execution;
+			};
+
+			if (!BeforeState.bHasCurrentAttack)
+			{
+				return Reject(ERouteError::NoCurrentAttack,
+					TEXT("Cross Initial Route requires a current attack."));
+			}
+			if (Request.AttackSequence <= 0)
+			{
+				return Reject(ERouteError::InvalidAttackSequence,
+					TEXT("Cross Initial Route requires a positive AttackSequence."));
+			}
+			if (Request.AttackSequence
+				!= BeforeState.CurrentAttack.AttackSequence)
+			{
+				return Reject(ERouteError::AttackSequenceMismatch,
+					TEXT("Cross Initial Route request is stale."));
+			}
+			if (Request.RequestingSide != EInitialTurnOrderPlayer::PlayerA
+				&& Request.RequestingSide != EInitialTurnOrderPlayer::PlayerB)
+			{
+				return Reject(ERouteError::InvalidRequestingSide,
+					TEXT("Cross Initial Route requires PlayerA or PlayerB as RequestingSide."));
+			}
+			if (Request.RequestingSide
+				!= BeforeState.RuntimeState.CurrentAttackingPlayer)
+			{
+				return Reject(ERouteError::RequestingSideNotCurrentAttacker,
+					TEXT("Only the current attacker may roll the Cross Initial Route."));
+			}
+
+			const FMatchPlayCurrentAttackState& Attack =
+				BeforeState.CurrentAttack;
+			const ESkillRuleType ActionType = Attack.bHasResolutionSession
+				? Attack.ResolutionSession.Bundle.Binding.ActionType
+				: Attack.bHasSelectedAction
+					? Attack.SelectedAction.ActionType
+					: Attack.ActionPreparation.ActionType;
+			if (ActionType != ESkillRuleType::Cross)
+			{
+				return Reject(ERouteError::WrongResolutionFamily,
+					TEXT("Typed Cross Initial Route requires a Cross attack."));
+			}
+			const bool bReadyWithoutSession = !Attack.bHasResolutionSession
+				&& Attack.SelectionStage
+					== EMatchPlayCurrentAttackSelectionStage::ReadyForResolution;
+			const bool bAwaitingUnresolvedRoute = Attack.bHasResolutionSession
+				&& Attack.ResolutionSession.Stage
+					== EMatchPlayCurrentAttackResolutionStage::AwaitingRoute
+				&& !Attack.ResolutionSession.bHasActualBranch
+				&& Attack.ResolutionSession.InitialRouteRollRecords.IsEmpty();
+			if (!bReadyWithoutSession && !bAwaitingUnresolvedRoute)
+			{
+				return Reject(ERouteError::RouteRollNotPending,
+					TEXT("Cross Initial Route roll is not pending."));
+			}
+
+			FMatchPlayCurrentAttackResolveInitialRouteOrchestrationRequest
+				DomainRequest;
+			DomainRequest.AttackSequence = Request.AttackSequence;
+			Result.OrchestrationResult =
+				FMatchPlayCurrentAttackResolveInitialRouteOrchestrator::Resolve(
+					BeforeState,
+					DomainRequest,
+					InitialRouteRollProvider);
+
+			Execution.bSuccess = Result.OrchestrationResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.OrchestrationResult.AfterState;
+			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 FMatchPlayAuthoritativeSession::ResolveCrossPostRoutePlan()
 {
@@ -1220,21 +1325,18 @@ FMatchPlayAuthoritativeResolveCrossHighAttackRollResult
 FMatchPlayAuthoritativeSession::ResolveCrossHighAttackRoll(
 	const FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeResolveCrossHighAttackRollResult>(
 		EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll,
 		true,
-		AttackSequence,
-		[this, AttackSequence, Request](
+		Request.AttackSequence,
+		[this, Request](
 			FMatchPlayAuthoritativeResolveCrossHighAttackRollResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
 			FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 				DomainRequest;
-			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.AttackSequence = Request.AttackSequence;
 			DomainRequest.Mode = FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 				::EMode::ResolveCrossHighAttackRoll;
 			DomainRequest.RequestingSide = Request.RequestingSide;
@@ -1255,7 +1357,7 @@ FMatchPlayAuthoritativeSession::ResolveCrossHighAttackRoll(
 			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
-			Execution.AttackSequence = AttackSequence;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }
@@ -1264,21 +1366,18 @@ FMatchPlayAuthoritativeResolveCrossHighDefenseRollResult
 FMatchPlayAuthoritativeSession::ResolveCrossHighDefenseRoll(
 	const FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeResolveCrossHighDefenseRollResult>(
 		EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll,
 		true,
-		AttackSequence,
-		[this, AttackSequence, Request](
+		Request.AttackSequence,
+		[this, Request](
 			FMatchPlayAuthoritativeResolveCrossHighDefenseRollResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
 			FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 				DomainRequest;
-			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.AttackSequence = Request.AttackSequence;
 			DomainRequest.Mode = FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 				::EMode::ResolveCrossHighDefenseRoll;
 			DomainRequest.RequestingSide = Request.RequestingSide;
@@ -1299,7 +1398,7 @@ FMatchPlayAuthoritativeSession::ResolveCrossHighDefenseRoll(
 			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
-			Execution.AttackSequence = AttackSequence;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }
@@ -1308,21 +1407,18 @@ FMatchPlayAuthoritativeResolveCrossLowAttackRollResult
 FMatchPlayAuthoritativeSession::ResolveCrossLowAttackRoll(
 	const FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeResolveCrossLowAttackRollResult>(
 		EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll,
 		true,
-		AttackSequence,
-		[this, AttackSequence, Request](
+		Request.AttackSequence,
+		[this, Request](
 			FMatchPlayAuthoritativeResolveCrossLowAttackRollResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
 			FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 				DomainRequest;
-			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.AttackSequence = Request.AttackSequence;
 			DomainRequest.Mode = FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 				::EMode::ResolveCrossLowAttackRoll;
 			DomainRequest.RequestingSide = Request.RequestingSide;
@@ -1342,7 +1438,7 @@ FMatchPlayAuthoritativeSession::ResolveCrossLowAttackRoll(
 			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
-			Execution.AttackSequence = AttackSequence;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }
@@ -1351,21 +1447,18 @@ FMatchPlayAuthoritativeResolveCrossLowDefenseRollResult
 FMatchPlayAuthoritativeSession::ResolveCrossLowDefenseRoll(
 	const FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeResolveCrossLowDefenseRollResult>(
 		EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll,
 		true,
-		AttackSequence,
-		[this, AttackSequence, Request](
+		Request.AttackSequence,
+		[this, Request](
 			FMatchPlayAuthoritativeResolveCrossLowDefenseRollResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
 			FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 				DomainRequest;
-			DomainRequest.AttackSequence = AttackSequence;
+			DomainRequest.AttackSequence = Request.AttackSequence;
 			DomainRequest.Mode = FMatchPlayCurrentAttackResolveCrossPostRoutePlanRequest
 				::EMode::ResolveCrossLowDefenseRoll;
 			DomainRequest.RequestingSide = Request.RequestingSide;
@@ -1385,7 +1478,7 @@ FMatchPlayAuthoritativeSession::ResolveCrossLowDefenseRoll(
 			Execution.StateDisposition = Result.OrchestrationResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
-			Execution.AttackSequence = AttackSequence;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }

@@ -52,7 +52,8 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	RollCutInsideShotDeadCorner,
 	RollPassControlRoute,
 	RollPassControlAttack,
-	RollPassControlDefense
+	RollPassControlDefense,
+	RollCrossRoute
 };
 
 /**

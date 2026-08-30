@@ -116,7 +116,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveCutInsideShotDeadCornerRoll,
 	ResolvePassControlInitialRouteRoll,
 	ResolvePassControlAttackRoll,
-	ResolvePassControlDefenseRoll
+	ResolvePassControlDefenseRoll,
+	ResolveCrossInitialRouteRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -441,6 +442,34 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolvePassControlInitialRouteRollResu
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest
+{
+	int64 AttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
+};
+
+enum class EMatchPlayAuthoritativeCrossInitialRouteRollErrorCode : uint8
+{
+	None,
+	NoCurrentAttack,
+	InvalidAttackSequence,
+	AttackSequenceMismatch,
+	InvalidRequestingSide,
+	RequestingSideNotCurrentAttacker,
+	WrongResolutionFamily,
+	RouteRollNotPending
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossInitialRouteRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCurrentAttackResolveInitialRouteOrchestrationResult
+		OrchestrationResult;
+	EMatchPlayAuthoritativeCrossInitialRouteRollErrorCode ErrorCode =
+		EMatchPlayAuthoritativeCrossInitialRouteRollErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
@@ -450,11 +479,13 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 
 struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest
 {
+	int64 AttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest
 {
+	int64 AttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
@@ -474,11 +505,13 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossHighDefenseRollResult
 
 struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest
 {
+	int64 AttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest
 {
+	int64 AttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 };
 

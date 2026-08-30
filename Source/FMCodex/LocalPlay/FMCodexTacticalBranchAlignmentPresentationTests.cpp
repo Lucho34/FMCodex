@@ -165,7 +165,7 @@ bool FFMCodexCrossSelectedMethodReconstructionAlignmentTest::RunTest(
 		EMatchPlayElectiveBranchIntent::CrossLow })
 	{
 		FFMCodexLocalMatchInteractionView View = MakeCrossView(
-			EFMCodexLocalMatchInteractionCategory::ContinueResolution);
+			EFMCodexLocalMatchInteractionCategory::RollCrossRoute);
 		View.ElectiveBranchIntent = Intent;
 		View.ContinueActionLabel = TEXT("判定传中路线");
 

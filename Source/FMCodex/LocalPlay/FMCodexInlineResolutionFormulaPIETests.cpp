@@ -549,7 +549,7 @@ bool FAdvanceCrossToRouteEntryPIECommand::Update()
 		Controller->GetInteractionView();
 	if (!Controller->GetLastDiagnostic().bHostSuccess
 		|| RouteEntryView.InteractionCategory
-			!= EFMCodexLocalMatchInteractionCategory::ContinueResolution
+			!= EFMCodexLocalMatchInteractionCategory::RollCrossRoute
 		|| RouteEntryView.ContinueActionLabel != TEXT("判定传中路线")
 		|| !RouteEntryView.AcceptedRolls.IsEmpty())
 	{
@@ -586,7 +586,7 @@ bool FResolveMergedCrossRoutePIECommand::Update()
 	// The latent command drives the Controller directly, so mirror the
 	// player-facing Screen's pre-command RequestInFlight transition first.
 	Screen->BeginPendingCrossRollRevealForTesting();
-	Controller->ContinueResolution();
+	Controller->RollCrossRoute();
 	const bool bInitialRouteIsTwo = Controller->GetInteractionView()
 		.ResolutionFacts.Rolls.ContainsByPredicate(
 			[](const FMatchPlayResolutionRollFact& Roll)
@@ -597,7 +597,7 @@ bool FResolveMergedCrossRoutePIECommand::Update()
 			});
 	if (!Controller->GetLastDiagnostic().bHostSuccess
 		|| Controller->GetLastDiagnostic().CommandName
-			!= TEXT("ResolveCrossRoute")
+			!= TEXT("ResolveCrossInitialRouteRoll")
 		|| Controller->GetInteractionView().AcceptedRolls.Num() != 1
 		|| !bInitialRouteIsTwo)
 	{

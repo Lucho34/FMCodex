@@ -395,6 +395,8 @@ namespace FMCodexLocalMatchUMGPresentation
 			return EFMCodexUMGInteractionCategory::RollPassControlAttack;
 		case EFMCodexLocalMatchInteractionCategory::RollPassControlDefense:
 			return EFMCodexUMGInteractionCategory::RollPassControlDefense;
+		case EFMCodexLocalMatchInteractionCategory::RollCrossRoute:
+			return EFMCodexUMGInteractionCategory::RollCrossRoute;
 		case EFMCodexLocalMatchInteractionCategory::CompleteCrossAndAdvance:
 			return EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance;
 		case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack:
@@ -2094,7 +2096,7 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			== EFMCodexLocalMatchInteractionCategory::TacticalPointRoll;
 	const bool bCrossRoutePending =
 		InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution
+			== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
 		&& (InteractionView.ElectiveBranchIntent
 				== EMatchPlayElectiveBranchIntent::CrossHigh
 			|| InteractionView.ElectiveBranchIntent
@@ -2321,6 +2323,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	const bool bCanContinue =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::ContinueResolution
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
 		|| InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
 				::RollThroughBallInitialRoute

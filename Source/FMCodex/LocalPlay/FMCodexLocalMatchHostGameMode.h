@@ -290,6 +290,16 @@ struct FMCODEX_API FFMCodexLocalMatchResolvePassControlInitialRouteRollResult
 	FString ErrorMessage;
 };
 
+struct FMCODEX_API FFMCodexLocalMatchResolveCrossInitialRouteRollResult
+{
+	bool bSuccess = false;
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollResult
+		AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
 struct FMCODEX_API FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 {
 	bool bSuccess = false;
@@ -803,6 +813,10 @@ public:
 	ResolvePassControlInitialRouteRoll(
 		const FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest&
 			Request);
+
+	FFMCodexLocalMatchResolveCrossInitialRouteRollResult
+	ResolveCrossInitialRouteRoll(
+		const FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest& Request);
 
 	FFMCodexLocalMatchResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();

@@ -97,6 +97,10 @@ public:
 		const FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest&
 			Request);
 
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollResult
+	ResolveCrossInitialRouteRoll(
+		const FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest& Request);
+
 	FMatchPlayAuthoritativeResolveCrossPostRoutePlanResult
 	ResolveCrossPostRoutePlan();
 

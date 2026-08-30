@@ -1050,3 +1050,11 @@
 - 三次显式action只提交6.15.4A既有typed request；route、attack、defense各消费一枚D6。最后Defense成功后允许既有零RNG Formula/outcome/terminal收口，但不得自动`AdvanceAfterTerminal`。
 - Pass/Dribble/Run Formula、tie、Tactical Player、optional Helper和active GK只消费Resolution Facts；共享Widget不计算subtotal、FinalValue或winner。三条route Narrative继续使用中央Narrative catalog，得分者语义保持Runner。
 - 复用LongShot/CutInside已验证的中央resolution shell、Inline Formula、Reel、terminal ownership和diagnostic suppression。保留历史LongShot命名债，不在本Stage进行class/file rename、MatchHeader修复或systemic comprehension redesign。
+
+## 2026-08-29 — Cross Typed/Correlated Authority Foundation（Stage 6.15.6）
+
+- Cross Initial Route成为独立attacker-owned `ResolveCrossInitialRouteRoll` serialized command；High/Low Attack与Defense request也必须携带caller snapshot的`AttackSequence + RequestingSide`。command enum只在末尾追加，不重编号既有identity。
+- current attack、sequence、side、Cross family、route/actual branch、canonical next purpose、premature与duplicate验证全部发生在provider/DEV decorator之前。失败不adopt candidate State、不消费RNG或one-shot；provider失败同样保留原State并允许fresh retry。
+- route-only与attack-only是正式持久化前缀，可从CurrentAttack、route record与post-route records重建next owner、Raw D6和Formula pending行。跨进攻同阶段的旧sequence请求必须拒绝，当前sequence请求随后仍可成功。
+- normal Cross中央CTA只派发typed Route、Attack、Defense；generic `ContinueResolution`不再拥有Cross玩家RNG。既有High/Low intent、route概率、Formula、Narrative、Reel、terminal与显式`AdvanceAfterTerminal`保持不变；legacy API仅保留compatibility/reference/recovery用途。
+- 本Stage建立Stage 7迁移所需的request seam，但不实现网络transport、RPC retry protocol或重连UX；生产可见表现未改变，真实Screen自动化作为无独立USER PIE gate的证据。
