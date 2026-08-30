@@ -203,6 +203,9 @@ private:
 	FFMCodexUMGLongShotResolutionViewModel
 		BuildDisplayedLongShotResolution() const;
 	FFMCodexUMGMatchHeaderViewModel BuildDisplayedHeader() const;
+	bool CanRevealTacticalPointDependentPresentation() const;
+	FFMCodexUMGCardRackViewModel BuildDisplayedHandRack(
+		const FFMCodexUMGCardRackViewModel& Source) const;
 	FFMCodexUMGRollReelViewModel BuildActiveRollReelPresentation() const;
 	void AdvanceInlineFormulaReveal(float DeltaSeconds, bool bForceFullRefresh);
 	void BeginInlineFormulaFinalCapture();

@@ -374,6 +374,18 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FFMCodexUMGSkillViewModel> EligibleTacticalSkills;
 
+	/** Resolved by InteractionView: empty before TP and for the defending hand. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	TArray<FFMCodexUMGSkillViewModel> HandMicroVisibleTacticalSkills;
+
+	/** Already resolved outside UMG; legal values are 0..2. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	int32 HandMicroTacticalMatchCount = 0;
+
+	/** Already resolved outside UMG; the Widget only renders this state. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	bool bHasHandMicroTacticalMatch = false;
+
 	/** Resolved by InteractionView: empty for the current defending side. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FFMCodexUMGSkillViewModel> PitchMiniVisibleTacticalSkills;

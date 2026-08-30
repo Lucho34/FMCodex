@@ -8,6 +8,7 @@
 #include "FMCodexLocalMatchResolutionFeedback.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexMatchHeaderWidget.h"
+#include "FMCodexPlayerCardWidget.h"
 #include "FMCodexRollReelWidget.h"
 
 #include "Components/TextBlock.h"
@@ -1325,6 +1326,13 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 	TacticalResolvedView.MajorPhase = EFMCodexLocalMatchMajorPhase::Deployment;
 	TacticalResolvedView.InteractionCategory =
 		EFMCodexLocalMatchInteractionCategory::Deploy;
+	TacticalResolvedView.PlayerACardRoster[0].bAvailable = true;
+	TacticalResolvedView.PlayerACardRoster[0]
+		.HandMicroVisibleTacticalSkills.SetNum(2);
+	TacticalResolvedView.PlayerACardRoster[0]
+		.HandMicroTacticalMatchCount = 2;
+	TacticalResolvedView.PlayerACardRoster[0]
+		.bHasHandMicroTacticalMatch = true;
 	const FFMCodexLocalMatchResolutionFeedback EmptyFeedback;
 	const auto TacticalPending =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
@@ -1342,6 +1350,29 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 	TacticalScreen->PauseInlineFormulaRevealTimerForTesting();
 	TacticalScreen->RefreshFromPresentation(TacticalResolved);
 	TacticalScreen->PauseInlineFormulaRevealTimerForTesting();
+	const auto FindRenderedHandCard = [](UFMCodexCardRackWidget* Rack,
+		const FName CardId) -> UFMCodexPlayerCardWidget*
+	{
+		if (Rack == nullptr)
+		{
+			return nullptr;
+		}
+		for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets())
+		{
+			if (Card != nullptr && Card->GetPresentation().CardId == CardId)
+			{
+				Card->TakeWidget();
+				return Card;
+			}
+		}
+		return nullptr;
+	};
+	const FName TwoPipCardId(TEXT("Fixture.Carrier"));
+	UFMCodexPlayerCardWidget* HiddenLiveHandCard = FindRenderedHandCard(
+		TacticalScreen->GetLocalRackWidget(), TwoPipCardId);
+	const UWidget* HiddenLivePipGroup = HiddenLiveHandCard != nullptr
+		? HiddenLiveHandCard->GetWidgetFromName(
+			TEXT("PitchMiniTacticalMatchPipGroupBounds")) : nullptr;
 	UFMCodexRollReelWidget* TacticalReel =
 		TacticalScreen->GetTacticalPointRollReel();
 	TestTrue(TEXT("Tactical Point reveal uses one clipped 2..8 reel"),
@@ -1354,9 +1385,25 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			&& TacticalReel->HasClippedWindow()
 			&& TacticalReel->GetRenderedChildCount() == 3
 			&& !TacticalScreen->GetMatchHeader()->GetPresentation()
-				.bShowLeftTacticalPointChip);
+				.bShowLeftTacticalPointChip
+			&& TacticalScreen->GetPresentation().LocalRack.Cells
+				.ContainsByPredicate(
+					[TwoPipCardId](
+						const FFMCodexUMGCardRackCellViewModel& Cell)
+					{
+						return Cell.Card.CardId == TwoPipCardId
+							&& Cell.Card.HandMicroTacticalMatchCount == 2;
+					})
+			&& HiddenLiveHandCard != nullptr
+			&& HiddenLiveHandCard->GetPresentation()
+				.HandMicroTacticalMatchCount == 0
+			&& HiddenLivePipGroup != nullptr
+			&& HiddenLivePipGroup->GetVisibility()
+				== ESlateVisibility::Collapsed);
 	TacticalScreen->AdvanceInlineFormulaRevealForTesting(1.30f);
 	TacticalScreen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	UFMCodexPlayerCardWidget* HeldHiddenHandCard = FindRenderedHandCard(
+		TacticalScreen->GetLocalRackWidget(), TwoPipCardId);
 	TestTrue(TEXT("Tactical raw result equals authoritative final resource"),
 		TacticalScreen->GetInlineFormulaRevealPhase()
 			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
@@ -1366,14 +1413,34 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			&& TacticalReel->GetVisibleNeighborDigitCount() == 0
 			&& TacticalReel->IsStaticResultTileVisible()
 			&& !TacticalScreen->GetMatchHeader()->GetPresentation()
-				.bShowLeftTacticalPointChip);
+				.bShowLeftTacticalPointChip
+			&& HeldHiddenHandCard != nullptr
+			&& HeldHiddenHandCard->GetPresentation()
+				.HandMicroTacticalMatchCount == 0);
 	TacticalScreen->AdvanceInlineFormulaRevealForTesting(0.21f);
+	UFMCodexPlayerCardWidget* RevealedLiveHandCard = FindRenderedHandCard(
+		TacticalScreen->GetLocalRackWidget(), TwoPipCardId);
+	const UWidget* RevealedLivePipTop = RevealedLiveHandCard != nullptr
+		? RevealedLiveHandCard->GetWidgetFromName(
+			TEXT("PitchMiniTacticalMatchPipTop")) : nullptr;
+	const UWidget* RevealedLivePipBottom = RevealedLiveHandCard != nullptr
+		? RevealedLiveHandCard->GetWidgetFromName(
+			TEXT("PitchMiniTacticalMatchPipBottom")) : nullptr;
 	TestTrue(TEXT("Tactical resource discloses after settle but remains gated"),
 		TacticalScreen->GetMatchHeader()->GetPresentation()
 			.bShowLeftTacticalPointChip
 			&& TacticalScreen->GetMatchHeader()->GetPresentation()
 				.CurrentAttackerTacticalPoints == 6
-			&& TacticalScreen->IsInlineFormulaRevealInputBlocked());
+			&& TacticalScreen->IsInlineFormulaRevealInputBlocked()
+			&& RevealedLiveHandCard != nullptr
+			&& RevealedLiveHandCard->GetPresentation()
+				.HandMicroTacticalMatchCount == 2
+			&& RevealedLivePipTop != nullptr
+			&& RevealedLivePipBottom != nullptr
+			&& RevealedLivePipTop->GetVisibility()
+				== ESlateVisibility::HitTestInvisible
+			&& RevealedLivePipBottom->GetVisibility()
+				== ESlateVisibility::HitTestInvisible);
 	TacticalScreen->AdvanceInlineFormulaRevealForTesting(2.35f);
 	TestTrue(TEXT("Deployment remains blocked through readable resource hold"),
 		TacticalScreen->IsInlineFormulaRevealInputBlocked());
@@ -1382,6 +1449,87 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 		!TacticalScreen->IsInlineFormulaRevealInputBlocked()
 			&& TacticalScreen->GetPresentation().Interaction.Category
 				== EFMCodexUMGInteractionCategory::Deploy);
+
+	UFMCodexLocalMatchScreenWidget* TacticalReconstructed =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	TacticalReconstructed->TakeWidget();
+	TacticalReconstructed->RefreshFromPresentation(TacticalResolved);
+	UFMCodexPlayerCardWidget* ReconstructedHandCard = FindRenderedHandCard(
+		TacticalReconstructed->GetLocalRackWidget(), TwoPipCardId);
+	TestTrue(TEXT("Historical Tactical Point reconstruction reveals Hand pips immediately"),
+		TacticalReconstructed->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::None
+			&& !TacticalReconstructed->IsInlineFormulaRevealInputBlocked()
+			&& ReconstructedHandCard != nullptr
+			&& ReconstructedHandCard->GetPresentation()
+				.HandMicroTacticalMatchCount == 2);
+
+	FFMCodexLocalMatchInteractionView PlayerBPendingView = TacticalPendingView;
+	PlayerBPendingView.AttackSequence = 2;
+	PlayerBPendingView.CurrentAttackingPlayer = EInitialTurnOrderPlayer::PlayerB;
+	PlayerBPendingView.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerB;
+	FFMCodexLocalMatchInteractionView PlayerBResolvedView = PlayerBPendingView;
+	PlayerBResolvedView.bCurrentAttackActive = true;
+	PlayerBResolvedView.bTacticalPointRollReady = false;
+	PlayerBResolvedView.ActionPoint = 6;
+	PlayerBResolvedView.MajorPhase = EFMCodexLocalMatchMajorPhase::Deployment;
+	PlayerBResolvedView.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::Deploy;
+	PlayerBResolvedView.PlayerBCardRoster[0].bAvailable = true;
+	PlayerBResolvedView.PlayerBCardRoster[0]
+		.HandMicroVisibleTacticalSkills.SetNum(2);
+	PlayerBResolvedView.PlayerBCardRoster[0]
+		.HandMicroTacticalMatchCount = 2;
+	PlayerBResolvedView.PlayerBCardRoster[0]
+		.bHasHandMicroTacticalMatch = true;
+	const auto PlayerBPending =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			PlayerBPendingView, EmptyFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerB);
+	const auto PlayerBResolved =
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			PlayerBResolvedView, EmptyFeedback, FString(),
+			EInitialTurnOrderPlayer::PlayerB);
+	UFMCodexLocalMatchScreenWidget* PlayerBScreen =
+		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	PlayerBScreen->TakeWidget();
+	PlayerBScreen->RefreshFromPresentation(PlayerBPending);
+	PlayerBScreen->BeginPendingTacticalPointRevealForTesting();
+	PlayerBScreen->PauseInlineFormulaRevealTimerForTesting();
+	PlayerBScreen->RefreshFromPresentation(PlayerBResolved);
+	PlayerBScreen->PauseInlineFormulaRevealTimerForTesting();
+	const FName PlayerBTwoPipCardId(TEXT("Fixture.Marker"));
+	UFMCodexPlayerCardWidget* PlayerBHiddenCard = FindRenderedHandCard(
+		PlayerBScreen->GetLocalRackWidget(), PlayerBTwoPipCardId);
+	TestTrue(TEXT("New attacker live TP also withholds its canonical Hand count"),
+		PlayerBHiddenCard != nullptr
+			&& PlayerBHiddenCard->GetPresentation()
+				.HandMicroTacticalMatchCount == 0
+			&& PlayerBScreen->GetPresentation().LocalRack.Cells
+				.ContainsByPredicate(
+					[PlayerBTwoPipCardId](
+						const FFMCodexUMGCardRackCellViewModel& Cell)
+					{
+						return Cell.Card.CardId == PlayerBTwoPipCardId
+							&& Cell.Card.HandMicroTacticalMatchCount == 2;
+					}));
+	PlayerBScreen->AdvanceInlineFormulaRevealForTesting(1.30f);
+	PlayerBScreen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	PlayerBScreen->AdvanceInlineFormulaRevealForTesting(0.21f);
+	UFMCodexPlayerCardWidget* PlayerBRevealedCard = FindRenderedHandCard(
+		PlayerBScreen->GetLocalRackWidget(), PlayerBTwoPipCardId);
+	bool bOldAttackerRemainsHidden = true;
+	for (const UFMCodexPlayerCardWidget* Card : PlayerBScreen
+		->GetOpponentRackWidget()->GetRenderedCardWidgets())
+	{
+		bOldAttackerRemainsHidden &= Card == nullptr
+			|| Card->GetPresentation().HandMicroTacticalMatchCount == 0;
+	}
+	TestTrue(TEXT("New attacker Hand pips reveal while old attacker remains clear"),
+		PlayerBRevealedCard != nullptr
+			&& PlayerBRevealedCard->GetPresentation()
+				.HandMicroTacticalMatchCount == 2
+			&& bOldAttackerRemainsHidden);
 
 	// Cross Low is covered by the same state machine and exact RawD6 facts.
 	const auto LowPending = BuildPresentation(MakeCrossHighFacts(

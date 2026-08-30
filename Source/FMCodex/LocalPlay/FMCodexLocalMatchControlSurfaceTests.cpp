@@ -1155,6 +1155,50 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 			&& Controller->GetLastDiagnostic().CommandName
 				== TEXT("AdvanceAfterTerminal")
 			&& !Controller->GetResolutionFeedback().bVisible);
+	const auto RosterHasNoHandPips = [](const TArray<FFMCodexLocalMatchCardView>& Roster)
+	{
+		return !Roster.ContainsByPredicate(
+			[](const FFMCodexLocalMatchCardView& Card)
+			{
+				return Card.HandMicroTacticalMatchCount != 0
+					|| Card.bHasHandMicroTacticalMatch
+					|| !Card.HandMicroVisibleTacticalSkills.IsEmpty();
+			});
+	};
+	TestTrue(TEXT("NextRound handoff clears old and new attacker hand pips before TP"),
+		RosterHasNoHandPips(AfterCompletionView.PlayerACardRoster)
+			&& RosterHasNoHandPips(AfterCompletionView.PlayerBCardRoster));
+
+	const EInitialTurnOrderPlayer NewAttacker =
+		AfterCompletionView.CurrentAttackingPlayer;
+	Controller->RollDemoTacticalPoints();
+	TestTrue(TEXT("New attacker explicitly rolls its own authoritative TP"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().bCurrentAttackActive);
+	const FFMCodexLocalMatchInteractionView& AfterNewAttackerRoll =
+		Controller->GetInteractionView();
+	const TArray<FFMCodexLocalMatchCardView>& NewAttackerRoster =
+		NewAttacker == EInitialTurnOrderPlayer::PlayerA
+			? AfterNewAttackerRoll.PlayerACardRoster
+			: AfterNewAttackerRoll.PlayerBCardRoster;
+	const TArray<FFMCodexLocalMatchCardView>& OldAttackerRoster =
+		NewAttacker == EInitialTurnOrderPlayer::PlayerA
+			? AfterNewAttackerRoll.PlayerBCardRoster
+			: AfterNewAttackerRoll.PlayerACardRoster;
+	bool bNewAttackerHasVisibleHandPip = false;
+	bool bNewAttackerCountsMatchCanonicalEligibility = true;
+	for (const FFMCodexLocalMatchCardView& Card : NewAttackerRoster)
+	{
+		const int32 ExpectedCount = Card.bAvailable && !Card.bDeployed
+			? Card.EligibleTacticalSkills.Num() : 0;
+		bNewAttackerCountsMatchCanonicalEligibility &=
+			Card.HandMicroTacticalMatchCount == ExpectedCount;
+		bNewAttackerHasVisibleHandPip |= ExpectedCount > 0;
+	}
+	TestTrue(TEXT("After new TP only new attacker hand receives canonical counts"),
+		bNewAttackerCountsMatchCanonicalEligibility
+			&& bNewAttackerHasVisibleHandPip
+			&& RosterHasNoHandPips(OldAttackerRoster));
 
 	FMatchPlayState EndedSnapshot = Host->GetMatchSnapshot().Snapshot;
 	EndedSnapshot.RuntimeState.PlayerAState.UsedAttackCount =
@@ -10026,8 +10070,6 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	AcknowledgeIfPending(*Controller);
 	Screen->RequestRollTacticalPoints();
 	Screen->PauseInlineFormulaRevealTimerForTesting();
-	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
-	AcknowledgeIfPending(*Controller);
 
 	UFMCodexCardRackWidget* LocalRack = Screen->GetLocalRackWidget();
 	UFMCodexCardRackWidget* OpponentRack = Screen->GetOpponentRackWidget();
@@ -10041,6 +10083,137 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	{
 		return false;
 	}
+	const auto AuditRenderedHandPips = [](
+		const UFMCodexCardRackWidget& Rack,
+		const FFMCodexUMGCardRackViewModel& RackModel,
+		bool& bOutSawVisiblePip)
+	{
+		bOutSawVisiblePip = false;
+		for (const UFMCodexPlayerCardWidget* CardWidget
+			: Rack.GetRenderedCardWidgets())
+		{
+			if (CardWidget == nullptr)
+			{
+				return false;
+			}
+			const_cast<UFMCodexPlayerCardWidget*>(CardWidget)->TakeWidget();
+			const FFMCodexUMGCardRackCellViewModel* Cell =
+				RackModel.Cells.FindByPredicate(
+					[CardWidget](const FFMCodexUMGCardRackCellViewModel& Candidate)
+					{
+						return Candidate.Card.CardId
+							== CardWidget->GetPresentation().CardId;
+					});
+			const UWidget* PipGroup = CardWidget->GetWidgetFromName(
+				TEXT("PitchMiniTacticalMatchPipGroupBounds"));
+			const UWidget* PipTop = CardWidget->GetWidgetFromName(
+				TEXT("PitchMiniTacticalMatchPipTop"));
+			const UWidget* PipBottom = CardWidget->GetWidgetFromName(
+				TEXT("PitchMiniTacticalMatchPipBottom"));
+			if (Cell == nullptr || PipGroup == nullptr || PipTop == nullptr
+				|| PipBottom == nullptr
+				|| CardWidget->GetPresentation().HandMicroTacticalMatchCount
+					!= Cell->Card.HandMicroTacticalMatchCount)
+			{
+				return false;
+			}
+			const int32 Count = Cell->Card.HandMicroTacticalMatchCount;
+			bOutSawVisiblePip |= Count > 0;
+			if ((Count > 0) != (PipGroup->GetVisibility()
+					== ESlateVisibility::HitTestInvisible)
+				|| (Count >= 1) != (PipTop->GetVisibility()
+					== ESlateVisibility::HitTestInvisible)
+				|| (Count == 2) != (PipBottom->GetVisibility()
+					== ESlateVisibility::HitTestInvisible))
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+	const auto RenderedRackHasNoHandPips = [](
+		const UFMCodexCardRackWidget& Rack)
+	{
+		for (const UFMCodexPlayerCardWidget* CardWidget
+			: Rack.GetRenderedCardWidgets())
+		{
+			if (CardWidget == nullptr)
+			{
+				return false;
+			}
+			const_cast<UFMCodexPlayerCardWidget*>(CardWidget)->TakeWidget();
+			const UWidget* PipGroup = CardWidget->GetWidgetFromName(
+				TEXT("PitchMiniTacticalMatchPipGroupBounds"));
+			if (CardWidget->GetPresentation().HandMicroTacticalMatchCount != 0
+				|| PipGroup == nullptr
+				|| PipGroup->GetVisibility() != ESlateVisibility::Collapsed)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+	bool bSawLocalHandPip = false;
+	bool bSawOpponentHandPip = false;
+	int32 LocalProjectedPipCards = 0;
+	for (const FFMCodexUMGCardRackCellViewModel& Cell
+		: Screen->GetPresentation().LocalRack.Cells)
+	{
+		LocalProjectedPipCards +=
+			Cell.Card.HandMicroTacticalMatchCount > 0 ? 1 : 0;
+	}
+	int32 OpponentProjectedPipCards = 0;
+	for (const FFMCodexUMGCardRackCellViewModel& Cell
+		: Screen->GetPresentation().OpponentRack.Cells)
+	{
+		OpponentProjectedPipCards +=
+			Cell.Card.HandMicroTacticalMatchCount > 0 ? 1 : 0;
+	}
+	TestTrue(TEXT("Real MatchScreen ViewModel projects pips to exactly one rack"),
+		(LocalProjectedPipCards > 0) != (OpponentProjectedPipCards > 0));
+	TestTrue(TEXT("Live authoritative TP remains hidden from both Hand racks while Reel cycles"),
+		Screen->GetPresentation().Header.CurrentAttackerTacticalPoints >= 2
+			&& Screen->GetInlineFormulaRevealPhase()
+				== EFMCodexUMGInlineFormulaRevealPhase::Cycling
+			&& Screen->IsInlineFormulaRevealInputBlocked()
+			&& RenderedRackHasNoHandPips(*LocalRack)
+			&& RenderedRackHasNoHandPips(*OpponentRack));
+	Screen->AdvanceInlineFormulaRevealForTesting(1.30f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	TestTrue(TEXT("Settled TP still withholds Hand pips until resource disclosure"),
+		Screen->GetInlineFormulaRevealPhase()
+			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& !Screen->GetMatchHeader()->GetPresentation()
+				.bShowLeftTacticalPointChip
+			&& !Screen->GetMatchHeader()->GetPresentation()
+				.bShowRightTacticalPointChip
+			&& RenderedRackHasNoHandPips(*LocalRack)
+			&& RenderedRackHasNoHandPips(*OpponentRack));
+	Screen->AdvanceInlineFormulaRevealForTesting(0.21f);
+	TestTrue(TEXT("Real MatchScreen renders exactly one authority-owned Hand pip side"),
+		AuditRenderedHandPips(*LocalRack,
+			Screen->GetPresentation().LocalRack, bSawLocalHandPip)
+			&& AuditRenderedHandPips(*OpponentRack,
+				Screen->GetPresentation().OpponentRack, bSawOpponentHandPip)
+			&& bSawLocalHandPip != bSawOpponentHandPip);
+
+	Screen->RefreshFromPresentation(Screen->GetPresentation());
+	LocalRack = Screen->GetLocalRackWidget();
+	OpponentRack = Screen->GetOpponentRackWidget();
+	Pitch = Screen->GetPitchWidget();
+	bool bSawRebuiltLocalHandPip = false;
+	bool bSawRebuiltOpponentHandPip = false;
+	TestTrue(TEXT("Live Screen rebuild preserves disclosed Hand pips from presentation state"),
+		LocalRack != nullptr && OpponentRack != nullptr && Pitch != nullptr
+			&& AuditRenderedHandPips(*LocalRack,
+				Screen->GetPresentation().LocalRack, bSawRebuiltLocalHandPip)
+			&& AuditRenderedHandPips(*OpponentRack,
+				Screen->GetPresentation().OpponentRack,
+				bSawRebuiltOpponentHandPip)
+			&& bSawRebuiltLocalHandPip != bSawRebuiltOpponentHandPip);
+	Screen->AdvanceInlineFormulaRevealForTesting(2.35f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.03f);
+	AcknowledgeIfPending(*Controller);
 
 	UFMCodexPlayerCardWidget* LocalHoverCard =
 		LocalRack->GetRenderedCardWidgets()[0];
@@ -10158,6 +10331,7 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 			{
 				return Cell.Card.CardId == SelectedDeployment.CardId;
 			});
+	DragSource->TakeWidget();
 	DragSource->OnDetailHoverRequested.Broadcast(DragSource);
 	UFMCodexDeploymentDragDropOperation* CancelledOperation =
 		DragSource->BeginDeploymentDrag();
@@ -10168,6 +10342,10 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	}
 	UFMCodexPlayerCardWidget* HandMicroDragProxy =
 		Cast<UFMCodexPlayerCardWidget>(CancelledOperation->DefaultDragVisual);
+	if (HandMicroDragProxy != nullptr)
+	{
+		HandMicroDragProxy->TakeWidget();
+	}
 	TestTrue(TEXT("Drag suppresses hover and reserves the exact source slot"),
 		!Screen->IsDetailOverlayVisible()
 			&& Screen->GetInteractionState()

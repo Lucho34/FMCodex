@@ -1290,18 +1290,19 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 		PitchMiniTacticalMatchStrokeThickness,
 		PitchMiniTacticalMatchStrokeSegments);
 
-	USizeBox* PitchTacticalPipGroupBounds =
+	TacticalMatchPipGroupBounds =
 		WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),
 			TEXT("PitchMiniTacticalMatchPipGroupBounds"));
-	PitchTacticalPipGroupBounds->SetWidthOverride(
+	TacticalMatchPipGroupBounds->SetWidthOverride(
 		PitchMiniTacticalMatchPipDiameter);
-	PitchTacticalPipGroupBounds->SetHeightOverride(
+	TacticalMatchPipGroupBounds->SetHeightOverride(
 		PitchMiniTacticalMatchPipDiameter * 2.0f
 			+ PitchMiniTacticalMatchPipGap);
+	TacticalMatchPipGroupBounds->SetVisibility(ESlateVisibility::Collapsed);
 	UOverlay* PitchTacticalPipGroup =
 		WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(),
 			TEXT("PitchMiniTacticalMatchPipGroup"));
-	PitchTacticalPipGroupBounds->AddChild(PitchTacticalPipGroup);
+	TacticalMatchPipGroupBounds->AddChild(PitchTacticalPipGroup);
 	const auto AddPitchMiniTacticalMatchPip =
 		[this, PitchTacticalPipGroup](const TCHAR* PipName,
 			const TCHAR* BoundsName,
@@ -1335,7 +1336,7 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 		TEXT("PitchMiniTacticalMatchPipBottomBounds"), VAlign_Bottom,
 		PitchMiniTacticalMatchPipBottom);
 	if (UOverlaySlot* PipGroupSlot =
-		FrameAssetHook->AddChildToOverlay(PitchTacticalPipGroupBounds))
+		FrameAssetHook->AddChildToOverlay(TacticalMatchPipGroupBounds))
 	{
 		PipGroupSlot->SetPadding(
 			FMargin(PitchMiniTacticalMatchPipLeftInset,
@@ -1866,6 +1867,22 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		? Presentation.PitchMiniTacticalMatchCount : 0;
 	const bool bShowPitchMiniTacticalMatch =
 		PitchMiniTacticalMatchCount > 0;
+	const bool bHandMicroTacticalMatchCountValid = ensureAlwaysMsgf(
+		Presentation.HandMicroTacticalMatchCount >= 0
+			&& Presentation.HandMicroTacticalMatchCount <= 2,
+		TEXT("Hand Micro tactical-match presentation count must be 0..2, got %d"),
+		Presentation.HandMicroTacticalMatchCount);
+	const bool bHandMicroTacticalMatchStateConsistent = ensureAlwaysMsgf(
+		!bHandMicroTacticalMatchCountValid
+			|| Presentation.bHasHandMicroTacticalMatch
+				== (Presentation.HandMicroTacticalMatchCount > 0),
+		TEXT("Hand Micro tactical-match count and visibility state disagree"));
+	const int32 HandMicroTacticalMatchCount = bHandMicro
+		&& bHandMicroTacticalMatchCountValid
+		&& bHandMicroTacticalMatchStateConsistent
+		? Presentation.HandMicroTacticalMatchCount : 0;
+	const int32 VisibleTacticalMatchPipCount = bPitchMini
+		? PitchMiniTacticalMatchCount : HandMicroTacticalMatchCount;
 	FLinearColor TacticalMatchAccent =
 		FLinearColor::FromSRGBColor(FColor(0x8F, 0xE6, 0xC2));
 	TacticalMatchAccent.A = 0.88f;
@@ -1897,11 +1914,15 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		TacticalMatchPipAccent);
 	PitchMiniTacticalMatchPipBottom->SetBrushColor(
 		TacticalMatchPipAccent);
+	TacticalMatchPipGroupBounds->SetVisibility(
+		VisibleTacticalMatchPipCount > 0
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
 	PitchMiniTacticalMatchPipTop->SetVisibility(
-		PitchMiniTacticalMatchCount >= 1
+		VisibleTacticalMatchPipCount >= 1
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	PitchMiniTacticalMatchPipBottom->SetVisibility(
-		PitchMiniTacticalMatchCount == 2
+		VisibleTacticalMatchPipCount == 2
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 
 	const FLinearColor PitchMiniPortraitBase =

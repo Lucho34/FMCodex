@@ -406,6 +406,21 @@ namespace FMCodexLocalMatchInteractionView
 			View.PitchMiniVisibleTacticalSkills =
 				View.EligibleTacticalSkills;
 		}
+		if (State.bHasCurrentAttack
+			&& View.bAvailable
+			&& !View.bDeployed
+			&& Side == State.RuntimeState.CurrentAttackingPlayer)
+		{
+			View.HandMicroVisibleTacticalSkills =
+				View.EligibleTacticalSkills;
+		}
+		View.HandMicroTacticalMatchCount =
+			View.HandMicroVisibleTacticalSkills.Num();
+		ensureAlwaysMsgf(View.HandMicroTacticalMatchCount <= 2,
+			TEXT("Hand Micro tactical-match count invariant exceeded for %s: %d"),
+			*View.CardId.ToString(), View.HandMicroTacticalMatchCount);
+		View.bHasHandMicroTacticalMatch =
+			View.HandMicroTacticalMatchCount > 0;
 		View.PitchMiniTacticalMatchCount =
 			View.PitchMiniVisibleTacticalSkills.Num();
 		ensureAlwaysMsgf(View.PitchMiniTacticalMatchCount <= 2,

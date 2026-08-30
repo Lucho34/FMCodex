@@ -2978,16 +2978,43 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 FFMCodexUMGMatchHeaderViewModel
 UFMCodexLocalMatchScreenWidget::BuildDisplayedHeader() const
 {
+	return CanRevealTacticalPointDependentPresentation()
+		? Presentation.Header : CachedPreRollHeader;
+}
+
+bool UFMCodexLocalMatchScreenWidget
+	::CanRevealTacticalPointDependentPresentation() const
+{
 	if (ActiveCrossRollReveal.Kind
 		!= EFMCodexUMGCrossRollRevealKind::TacticalPoint)
 	{
-		return Presentation.Header;
+		return true;
 	}
-	const bool bResourceDisclosed = InlineFormulaRevealPhase
+	return InlineFormulaRevealPhase
 		== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
 		&& InlineFormulaRevealPhaseElapsed
 			>= FMCodexLocalMatchScreenWidget::FormulaDisclosureDelay;
-	return bResourceDisclosed ? Presentation.Header : CachedPreRollHeader;
+}
+
+FFMCodexUMGCardRackViewModel
+UFMCodexLocalMatchScreenWidget::BuildDisplayedHandRack(
+	const FFMCodexUMGCardRackViewModel& Source) const
+{
+	FFMCodexUMGCardRackViewModel Result = Source;
+	if (CanRevealTacticalPointDependentPresentation())
+	{
+		return Result;
+	}
+	for (FFMCodexUMGCardRackCellViewModel& Cell : Result.Cells)
+	{
+		// Canonical values stay intact in Presentation. This display-only copy
+		// prevents Hand Micro from disclosing a live TP result before the same
+		// semantic boundary already used by the Header.
+		Cell.Card.HandMicroVisibleTacticalSkills.Reset();
+		Cell.Card.HandMicroTacticalMatchCount = 0;
+		Cell.Card.bHasHandMicroTacticalMatch = false;
+	}
+	return Result;
 }
 
 FFMCodexUMGLongShotResolutionViewModel
@@ -3746,8 +3773,10 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	RefreshFullCardProductionReviewSurface();
 #endif
 	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader());
-	LocalRackWidget->RefreshFromPresentation(Presentation.LocalRack);
-	OpponentRackWidget->RefreshFromPresentation(Presentation.OpponentRack);
+	LocalRackWidget->RefreshFromPresentation(
+		BuildDisplayedHandRack(Presentation.LocalRack));
+	OpponentRackWidget->RefreshFromPresentation(
+		BuildDisplayedHandRack(Presentation.OpponentRack));
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
 	const FFMCodexUMGInlineFormulaSurfaceViewModel DisplayedInlineFormula =
 		BuildDisplayedInlineFormula();

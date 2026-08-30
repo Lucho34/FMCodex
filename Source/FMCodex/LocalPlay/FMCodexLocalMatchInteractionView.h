@@ -112,6 +112,15 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	TArray<FSkill> Skills;
 	TArray<FSkill> EligibleTacticalSkills;
 	/**
+	 * Already-resolved Hand Micro visibility. Empty unless this available card
+	 * belongs to the current attacking side and a CurrentAttack owns TP truth.
+	 */
+	TArray<FSkill> HandMicroVisibleTacticalSkills;
+	/** Resolved Hand Micro count cue. Legal values are 0..2. */
+	int32 HandMicroTacticalMatchCount = 0;
+	/** True exactly when Hand Micro should render one or two tactical pips. */
+	bool bHasHandMicroTacticalMatch = false;
+	/**
 	 * Already-resolved Pitch Mini visibility. InteractionView owns the
 	 * attacking-side gate; presentation widgets must not infer ownership.
 	 */

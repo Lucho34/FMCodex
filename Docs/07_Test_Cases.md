@@ -353,6 +353,7 @@
 - 目标状态的底部 Interaction Panel 保留中文优先的操作方、`选择持球球员` 与 `点击场上球员选择`，但玩家可见区域不渲染旧 PlayerKey 选项按钮，也不显示 raw canonical ID。
 - Selectable 不创建 cyan outline、glow、lift、scale 或专属 hover。正常 Pitch Mini Full Card hover 必须继续工作，且 selectable + Tactical Match 与 selectable + no Tactical Match 都能打开同一 Full Card。
 - Tactical Match mint perimeter 与 1/2 pips 保持原投影和视觉，不参与点击合法性判断。
+- 当前攻击方权威掷出 Tactical Points 后，其仍在手牌中的 Hand Micro 按同一 `EligibleTacticalSkills` truth 显示 0/1/2 个左上 mint pip；0 隐藏整组。live 掷点期间 canonical count 可先存在，但 Hand pips 必须等到与 Header 相同的 Reel result disclosure seam 才显示；fresh reconstruction 的历史 TP 直接视为 settled，不重播门禁。防守方、掷点前及 NextRound 后新攻击尚未掷点时均不显示，Widget 不读取 TP 或技能范围重算。
 - 单击合法候选必须通过 `Slot -> Pitch -> Screen -> Controller::SubmitCarrier -> Host/Session` 立即提交同一个投影 OptionId，并直接进入下一权威步骤；不增加二次确认或 cancel/back-out 路径。
 - 单击本方无 Tactical Match 的结构合法球员同样必须提交；单击对方球员不得广播本方 Carrier intent，空槽位与未部署 Rack 卡不提供场上提交路径，拒绝时权威 State byte-identical。
 - 其他 SelectMarker、SelectRunner、SelectHelper 等选人阶段在本 Stage 不迁移；其既有路径不得被此代表性 rollout 意外改变。

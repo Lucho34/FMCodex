@@ -11,6 +11,7 @@
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/Image.h"
+#include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/Engine.h"
@@ -371,7 +372,18 @@ bool FFMCodexPitchMiniSkillStateIsolationTest::RunTest(
 	const UBorder* HandMicroTacticalStroke = HandMicro != nullptr
 		? Cast<UBorder>(HandMicro->GetWidgetFromName(
 			TEXT("PitchMiniTacticalMatchStrokeTop"))) : nullptr;
-	TestTrue(TEXT("Full Card keeps all static Skills while Hand Micro stays unchanged"),
+	USizeBox* HandMicroPipGroup = HandMicro != nullptr
+		? Cast<USizeBox>(HandMicro->GetWidgetFromName(
+			TEXT("PitchMiniTacticalMatchPipGroupBounds"))) : nullptr;
+	UBorder* HandMicroPipTop = HandMicro != nullptr
+		? Cast<UBorder>(HandMicro->GetWidgetFromName(
+			TEXT("PitchMiniTacticalMatchPipTop"))) : nullptr;
+	UBorder* HandMicroPipBottom = HandMicro != nullptr
+		? Cast<UBorder>(HandMicro->GetWidgetFromName(
+			TEXT("PitchMiniTacticalMatchPipBottom"))) : nullptr;
+	const UOverlaySlot* HandMicroPipGroupSlot = HandMicroPipGroup != nullptr
+		? Cast<UOverlaySlot>(HandMicroPipGroup->Slot) : nullptr;
+	TestTrue(TEXT("Full Card keeps all static Skills while Hand Micro starts pip-free"),
 		FullCard != nullptr && FullCard->GetRenderedSkillCount() == 2
 			&& FullCard->GetPresentation().Skills.Num() == 2
 			&& FullCardTacticalStroke != nullptr
@@ -381,7 +393,56 @@ bool FFMCodexPitchMiniSkillStateIsolationTest::RunTest(
 			&& HandMicro->GetConfiguredDimensions() == FVector2D(220.0f, 68.0f)
 			&& HandMicroTacticalStroke != nullptr
 			&& HandMicroTacticalStroke->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& HandMicroPipGroup != nullptr
+			&& HandMicroPipGroup->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& HandMicroPipTop != nullptr && HandMicroPipBottom != nullptr
+			&& HandMicroPipTop->GetVisibility() == ESlateVisibility::Collapsed
+			&& HandMicroPipBottom->GetVisibility() == ESlateVisibility::Collapsed);
+
+	Card.HandMicroVisibleTacticalSkills = { Card.EligibleTacticalSkills[0] };
+	Card.HandMicroTacticalMatchCount = 1;
+	Card.bHasHandMicroTacticalMatch = true;
+	HandMicro->RefreshFromPresentation(
+		Card, EFMCodexPlayerCardPresentationMode::HandMicro);
+	TestTrue(TEXT("Hand Micro one-match state uses one non-interactive shared-style pip"),
+		HandMicroPipGroup->GetVisibility()
+			== ESlateVisibility::HitTestInvisible
+			&& HandMicroPipGroup->GetWidthOverride() == 4.0f
+			&& HandMicroPipGroup->GetHeightOverride() == 11.0f
+			&& HandMicroPipGroupSlot != nullptr
+			&& HandMicroPipGroupSlot->GetPadding()
+				== FMargin(9.0f, 8.0f, 0.0f, 0.0f)
+			&& HandMicroPipTop->GetVisibility()
+				== ESlateVisibility::HitTestInvisible
+			&& HandMicroPipTop->GetBrushColor().Equals(PipTop->GetBrushColor())
+			&& HandMicroPipBottom->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& HandMicroTacticalStroke->GetVisibility()
+				== ESlateVisibility::Collapsed
+			&& HandMicro->GetConfiguredDimensions() == FVector2D(220.0f, 68.0f));
+
+	Card.HandMicroVisibleTacticalSkills = Card.EligibleTacticalSkills;
+	Card.HandMicroTacticalMatchCount = 2;
+	HandMicro->RefreshFromPresentation(
+		Card, EFMCodexPlayerCardPresentationMode::HandMicro);
+	TestTrue(TEXT("Hand Micro two-match state reveals exactly the second shared-style pip"),
+		HandMicroPipTop->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& HandMicroPipBottom->GetVisibility()
+				== ESlateVisibility::HitTestInvisible
+			&& HandMicroTacticalStroke->GetVisibility()
 				== ESlateVisibility::Collapsed);
+
+	Card.HandMicroVisibleTacticalSkills.Reset();
+	Card.HandMicroTacticalMatchCount = 0;
+	Card.bHasHandMicroTacticalMatch = false;
+	HandMicro->RefreshFromPresentation(
+		Card, EFMCodexPlayerCardPresentationMode::HandMicro);
+	TestTrue(TEXT("Hand Micro zero-match state hides the entire pip group"),
+		HandMicroPipGroup->GetVisibility() == ESlateVisibility::Collapsed
+			&& HandMicroPipTop->GetVisibility() == ESlateVisibility::Collapsed
+			&& HandMicroPipBottom->GetVisibility() == ESlateVisibility::Collapsed);
 	return true;
 }
 

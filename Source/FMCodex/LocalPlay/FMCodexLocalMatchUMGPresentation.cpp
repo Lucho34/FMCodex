@@ -60,6 +60,19 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.EligibleTacticalSkills.Add(MakeSkill(Skill));
 		}
 		for (const FFMCodexLocalMatchCardView::FSkill& Skill
+			: Card.HandMicroVisibleTacticalSkills)
+		{
+			Result.HandMicroVisibleTacticalSkills.Add(MakeSkill(Skill));
+		}
+		Result.HandMicroTacticalMatchCount =
+			Card.HandMicroTacticalMatchCount;
+		ensureAlwaysMsgf(Result.HandMicroTacticalMatchCount >= 0
+				&& Result.HandMicroTacticalMatchCount <= 2,
+			TEXT("Invalid Hand Micro tactical-match count for %s: %d"),
+			*Card.CardId.ToString(), Result.HandMicroTacticalMatchCount);
+		Result.bHasHandMicroTacticalMatch =
+			Card.bHasHandMicroTacticalMatch;
+		for (const FFMCodexLocalMatchCardView::FSkill& Skill
 			: Card.PitchMiniVisibleTacticalSkills)
 		{
 			Result.PitchMiniVisibleTacticalSkills.Add(MakeSkill(Skill));

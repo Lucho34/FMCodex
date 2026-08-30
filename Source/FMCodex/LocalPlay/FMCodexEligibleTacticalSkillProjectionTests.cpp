@@ -459,6 +459,19 @@ bool FFMCodexEligibleTacticalSkillCanonicalInvariantTest::RunTest(
 			TestEqual(TEXT("Tactical count equals resolved visible collection size"),
 				Card.PitchMiniTacticalMatchCount,
 				Card.PitchMiniVisibleTacticalSkills.Num());
+			TestTrue(TEXT("Hand Micro visible Skill count never exceeds two"),
+				Card.HandMicroVisibleTacticalSkills.Num() <= 2);
+			TestEqual(TEXT("Only available current-attacker hand cards receive Hand Micro Skills"),
+				Card.HandMicroVisibleTacticalSkills.Num(),
+				Card.bAvailable && !Card.bDeployed
+					&& Card.Side == State.RuntimeState.CurrentAttackingPlayer
+					? Card.EligibleTacticalSkills.Num() : 0);
+			TestEqual(TEXT("Hand Micro tactical match follows its resolved collection"),
+				Card.bHasHandMicroTacticalMatch,
+				!Card.HandMicroVisibleTacticalSkills.IsEmpty());
+			TestEqual(TEXT("Hand Micro count equals resolved visible collection size"),
+				Card.HandMicroTacticalMatchCount,
+				Card.HandMicroVisibleTacticalSkills.Num());
 			for (const FFMCodexLocalMatchCardView::FSkill& Eligible
 				: Card.EligibleTacticalSkills)
 			{
@@ -495,6 +508,7 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 	FString UMGSource;
 	FString CardWidgetSource;
 	FString PitchSlotSource;
+	FString ScreenSource;
 	TestTrue(TEXT("InteractionView source is readable"),
 		LoadProjectSource(
 			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchInteractionView.cpp"),
@@ -511,6 +525,10 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 		LoadProjectSource(
 			TEXT("Source/FMCodex/LocalPlay/FMCodexPitchSlotWidget.cpp"),
 			PitchSlotSource));
+	TestTrue(TEXT("Match Screen source is readable"),
+		LoadProjectSource(
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
+			ScreenSource));
 
 	TestTrue(TEXT("Eligibility is evaluated in InteractionView from current attack authority"),
 		InteractionSource.Contains(TEXT("State.CurrentAttack.ActionPoint"))
@@ -533,6 +551,11 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 				TEXT("Result.bHasPitchMiniTacticalMatch"))
 			&& UMGSource.Contains(
 				TEXT("Result.PitchMiniTacticalMatchCount"))
+			&& UMGSource.Contains(TEXT("Card.HandMicroVisibleTacticalSkills"))
+			&& UMGSource.Contains(
+				TEXT("Result.HandMicroVisibleTacticalSkills.Add(MakeSkill(Skill))"))
+			&& UMGSource.Contains(TEXT("Result.bHasHandMicroTacticalMatch"))
+			&& UMGSource.Contains(TEXT("Result.HandMicroTacticalMatchCount"))
 			&& !UMGSource.Contains(TEXT("CurrentTacticalPoint")));
 	TestTrue(TEXT("InteractionView resolves Pitch Mini attacking-side visibility"),
 		InteractionSource.Contains(
@@ -543,11 +566,25 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 				TEXT("View.bHasPitchMiniTacticalMatch"))
 			&& InteractionSource.Contains(
 				TEXT("View.PitchMiniTacticalMatchCount")));
+	TestTrue(TEXT("InteractionView resolves Hand Micro from attack truth and stable side identity"),
+		InteractionSource.Contains(TEXT("State.bHasCurrentAttack"))
+			&& InteractionSource.Contains(
+				TEXT("Side == State.RuntimeState.CurrentAttackingPlayer"))
+			&& InteractionSource.Contains(
+				TEXT("View.HandMicroVisibleTacticalSkills"))
+			&& InteractionSource.Contains(
+				TEXT("View.bHasHandMicroTacticalMatch"))
+			&& InteractionSource.Contains(
+				TEXT("View.HandMicroTacticalMatchCount")));
 	TestTrue(TEXT("Pitch Mini consumes resolved match state without TP or ownership calculation"),
 		CardWidgetSource.Contains(
 			TEXT("Presentation.PitchMiniTacticalMatchCount"))
+			&& CardWidgetSource.Contains(
+				TEXT("Presentation.HandMicroTacticalMatchCount"))
 			&& !CardWidgetSource.Contains(
 				TEXT("Presentation.PitchMiniVisibleTacticalSkills"))
+			&& !CardWidgetSource.Contains(
+				TEXT("Presentation.HandMicroVisibleTacticalSkills"))
 			&& !CardWidgetSource.Contains(
 				TEXT("Presentation.EligibleTacticalSkills"))
 			&& !CardWidgetSource.Contains(TEXT("CurrentTacticalPoint"))
@@ -557,11 +594,160 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 			&& !PitchSlotSource.Contains(TEXT("PitchMiniVisibleTacticalSkills"))
 			&& !PitchSlotSource.Contains(TEXT("bHasPitchMiniTacticalMatch"))
 			&& !PitchSlotSource.Contains(TEXT("PitchMiniTacticalMatchCount")));
+	TestTrue(TEXT("Screen gates only Hand display at the shared TP disclosure seam"),
+		ScreenSource.Contains(
+			TEXT("CanRevealTacticalPointDependentPresentation"))
+			&& ScreenSource.Contains(TEXT("BuildDisplayedHandRack"))
+			&& ScreenSource.Contains(TEXT("FormulaDisclosureDelay"))
+			&& ScreenSource.Contains(
+				TEXT("Cell.Card.HandMicroTacticalMatchCount = 0"))
+			&& !ScreenSource.Contains(TEXT("ProjectEligibleTacticalSkills")));
 	TestTrue(TEXT("Full Card remains bound to the complete static Skills collection"),
 		CardWidgetSource.Contains(
 			TEXT("TArray<FFMCodexUMGSkillViewModel> Skills = Presentation.Skills"))
 			&& CardWidgetSource.Contains(
 				TEXT("PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexHandMicroTacticalSkillProjectionLifecycleTest,
+	"FMCodex.LocalPlay.TacticalSkillProjection.05.HandMicroLifecycleAndParity",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexHandMicroTacticalSkillProjectionLifecycleTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexEligibleTacticalSkillProjectionTests;
+	const FFMCodexLocalMatchDemoConfiguration Demo =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	const FName SakaId(TEXT("Prototype.Arsenal.BukayoSaka"));
+	const FName GabrielId(TEXT("Prototype.Arsenal.GabrielMagalhaes"));
+	const FName SavinhoId(TEXT("Prototype.ManchesterCity.Savinho"));
+
+	FMatchPlayAuthoritativeSession BeforeRollSession;
+	if (!TestTrue(TEXT("Pre-TP authority state initializes"),
+		BeforeRollSession.InitializeMatch(Demo.OpeningInput)
+			.OpeningResult.bSuccess))
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchInteractionView BeforeRollView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			BeforeRollSession.GetStateSnapshot(), Demo.SkillRuleSet);
+	for (const TArray<FFMCodexLocalMatchCardView>* Roster : {
+		&BeforeRollView.PlayerACardRoster, &BeforeRollView.PlayerBCardRoster })
+	{
+		for (const FFMCodexLocalMatchCardView& Card : *Roster)
+		{
+			TestTrue(TEXT("Every pre-TP Hand Micro projection is hidden"),
+				Card.HandMicroVisibleTacticalSkills.IsEmpty()
+					&& Card.HandMicroTacticalMatchCount == 0
+					&& !Card.bHasHandMicroTacticalMatch);
+		}
+	}
+
+	FMatchPlayState HandState;
+	FFMCodexLocalMatchInteractionView IgnoredView;
+	if (!TestTrue(TEXT("Authority accepts canonical Hand Micro TP 4 fixture"),
+		BuildAtTacticalPoint(Demo, 4, HandState, IgnoredView)))
+	{
+		return false;
+	}
+	HandState.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerA;
+	const FFMCodexLocalMatchInteractionView HandView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			HandState, Demo.SkillRuleSet);
+	const FFMCodexLocalMatchCardView* SakaInHand = FindCard(HandView, SakaId);
+	const FFMCodexLocalMatchCardView* GabrielInHand = FindCard(
+		HandView, GabrielId);
+	const FFMCodexLocalMatchCardView* SavinhoDefending = FindCard(
+		HandView, SavinhoId);
+	TestTrue(TEXT("Canonical attacker hand covers zero and two matching pips"),
+		SakaInHand != nullptr && GabrielInHand != nullptr
+			&& SakaInHand->EligibleTacticalSkills.Num() == 2
+			&& SakaInHand->HandMicroTacticalMatchCount == 2
+			&& SakaInHand->bHasHandMicroTacticalMatch
+			&& GabrielInHand->EligibleTacticalSkills.IsEmpty()
+			&& GabrielInHand->HandMicroTacticalMatchCount == 0
+			&& !GabrielInHand->bHasHandMicroTacticalMatch);
+	if (SakaInHand != nullptr)
+	{
+		const FFMCodexUMGCardViewModel SakaHandUMG =
+			FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(*SakaInHand);
+		TestTrue(TEXT("UMG copies the resolved canonical Hand Micro state"),
+			SakaHandUMG.HandMicroVisibleTacticalSkills.Num() == 2
+				&& SakaHandUMG.HandMicroTacticalMatchCount == 2
+				&& SakaHandUMG.bHasHandMicroTacticalMatch);
+	}
+	const FFMCodexLocalMatchCardView* OneMatchCard =
+		HandView.PlayerACardRoster.FindByPredicate(
+			[](const FFMCodexLocalMatchCardView& Card)
+			{
+				return Card.EligibleTacticalSkills.Num() == 1;
+			});
+	TestTrue(TEXT("Canonical attacker hand contains a one-match fixture"),
+		OneMatchCard != nullptr
+			&& OneMatchCard->HandMicroTacticalMatchCount == 1
+			&& OneMatchCard->bHasHandMicroTacticalMatch);
+	TestTrue(TEXT("Numerically eligible defending hand remains suppressed"),
+		SavinhoDefending != nullptr
+			&& SavinhoDefending->EligibleTacticalSkills.Num() == 2
+			&& SavinhoDefending->HandMicroVisibleTacticalSkills.IsEmpty()
+			&& SavinhoDefending->HandMicroTacticalMatchCount == 0
+			&& !SavinhoDefending->bHasHandMicroTacticalMatch);
+
+	const FFMCodexLocalMatchInteractionView RebuiltHandView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			HandState, Demo.SkillRuleSet);
+	const FFMCodexLocalMatchCardView* RebuiltSaka = FindCard(
+		RebuiltHandView, SakaId);
+	TestTrue(TEXT("Fresh projection reconstructs the same Hand Micro count"),
+		RebuiltSaka != nullptr && SakaInHand != nullptr
+			&& RebuiltSaka->HandMicroTacticalMatchCount
+				== SakaInHand->HandMicroTacticalMatchCount);
+
+	FMatchPlayState DeployedState = HandState;
+	if (!TestTrue(TEXT("Parity fixture deploys the same canonical player"),
+		AddDeployedCard(DeployedState, EInitialTurnOrderPlayer::PlayerA,
+			SakaId)))
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchInteractionView DeployedView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			DeployedState, Demo.SkillRuleSet);
+	const FFMCodexLocalMatchCardView* SakaDeployed = FindCard(
+		DeployedView, SakaId);
+	TestTrue(TEXT("Hand and Pitch use the same two-skill canonical eligibility truth"),
+		SakaInHand != nullptr && SakaDeployed != nullptr
+			&& SakaInHand->EligibleTacticalSkills.Num() == 2
+			&& SakaDeployed->EligibleTacticalSkills.Num() == 2
+			&& SakaInHand->HandMicroTacticalMatchCount == 2
+			&& SakaDeployed->PitchMiniTacticalMatchCount == 2
+			&& SakaDeployed->HandMicroTacticalMatchCount == 0);
+
+	FMatchPlayState HandoffBeforeRoll = BeforeRollSession.GetStateSnapshot();
+	HandoffBeforeRoll.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerB;
+	const FFMCodexLocalMatchInteractionView HandoffBeforeRollView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			HandoffBeforeRoll, Demo.SkillRuleSet);
+	TestTrue(TEXT("Handoff before the new TP clears both hands"),
+		FindCard(HandoffBeforeRollView, SakaId)->HandMicroTacticalMatchCount == 0
+			&& FindCard(HandoffBeforeRollView, SavinhoId)->
+				HandMicroTacticalMatchCount == 0);
+	FMatchPlayState PlayerBHasTP = HandState;
+	PlayerBHasTP.RuntimeState.CurrentAttackingPlayer =
+		EInitialTurnOrderPlayer::PlayerB;
+	const FFMCodexLocalMatchInteractionView PlayerBTPView =
+		FFMCodexLocalMatchInteractionViewBuilder::Build(
+			PlayerBHasTP, Demo.SkillRuleSet);
+	TestTrue(TEXT("After its own TP only the new attacker hand receives pips"),
+		FindCard(PlayerBTPView, SakaId)->HandMicroTacticalMatchCount == 0
+			&& FindCard(PlayerBTPView, SavinhoId)->
+				HandMicroTacticalMatchCount == 2);
 	return true;
 }
 

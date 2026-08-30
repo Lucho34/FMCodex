@@ -227,6 +227,10 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UBorder>> PitchMiniTacticalMatchStrokeSegments;
 
+	/** Shared upper-left 0/1/2 pip group for Pitch Mini and Hand Micro. */
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> TacticalMatchPipGroupBounds;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> PitchMiniTacticalMatchPipTop;
 
