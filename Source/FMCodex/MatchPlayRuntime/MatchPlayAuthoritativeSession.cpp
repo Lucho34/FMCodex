@@ -367,6 +367,36 @@ FMatchPlayAuthoritativeSession::ResolveSendingOff(
 		});
 }
 
+FMatchPlayAuthoritativeSubmitSetPieceCarrierResult
+FMatchPlayAuthoritativeSession::SubmitSetPieceCarrier(
+	const FMatchPlaySetPieceCarrierSelectionRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitSetPieceCarrierResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier,
+		true,
+		Request.AttackSequence,
+		[&Request](
+			FMatchPlayAuthoritativeSubmitSetPieceCarrierResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.CarrierResult =
+				FMatchPlaySetPieceCarrierSelection::Submit(
+					BeforeState,
+					Request);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.CarrierResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.CarrierResult.AfterState;
+			Execution.StateDisposition = Result.CarrierResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeFinishDeploymentResult
 FMatchPlayAuthoritativeSession::FinishDeployment(
 	const int64 AttackSequence,

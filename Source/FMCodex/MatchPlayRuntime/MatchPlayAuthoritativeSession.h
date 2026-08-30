@@ -86,6 +86,9 @@ public:
 	FMatchPlayAuthoritativeResolveSendingOffResult ResolveSendingOff(
 		const FMatchPlaySendingOffResolutionRequest& Request);
 
+	FMatchPlayAuthoritativeSubmitSetPieceCarrierResult SubmitSetPieceCarrier(
+		const FMatchPlaySetPieceCarrierSelectionRequest& Request);
+
 	FMatchPlayAuthoritativeFinishDeploymentResult FinishDeployment(
 		int64 AttackSequence,
 		EInitialTurnOrderPlayer RequestingSide);

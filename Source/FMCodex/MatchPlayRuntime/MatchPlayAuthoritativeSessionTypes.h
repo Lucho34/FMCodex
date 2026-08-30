@@ -6,6 +6,7 @@
 #include "../CoreRules/MatchPlayFullD12Entry.h"
 #include "../CoreRules/MatchPlaySendingOffResolution.h"
 #include "../CoreRules/MatchPlaySetPieceTypeRoll.h"
+#include "../CoreRules/MatchPlaySetPieceCarrierSelection.h"
 #include "../CoreRules/MatchPlayCarrierNoSelectionNoGoal.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator.h"
@@ -123,7 +124,8 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveCrossInitialRouteRoll,
 	RequestInitialActionPointRoll,
 	RequestSetPieceTypeRoll,
-	ResolveSendingOff
+	ResolveSendingOff,
+	SubmitSetPieceCarrier
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -191,6 +193,12 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveSendingOffResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlaySendingOffResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitSetPieceCarrierResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlaySetPieceCarrierSelectionResult CarrierResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeFinishDeploymentResult

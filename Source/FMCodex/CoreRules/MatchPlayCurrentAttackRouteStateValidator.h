@@ -29,10 +29,19 @@ enum class EMatchPlayCurrentAttackRouteStateValidationErrorCode : uint8
 	UnexpectedSetPiecePayload UMETA(DisplayName = "Unexpected Set Piece Payload"),
 	UnexpectedOrdinaryPayload UMETA(DisplayName = "Unexpected Ordinary Payload"),
 	AwaitingTypeHasResolvedPayload UMETA(DisplayName = "Awaiting Type Has Resolved Payload"),
+	AwaitingTypeHasConcretePayload UMETA(DisplayName = "Awaiting Type Has Concrete Payload"),
 	TypeResolvedMissingRoll UMETA(DisplayName = "Type Resolved Missing Roll"),
 	InvalidSetPieceTypeRoll UMETA(DisplayName = "Invalid Set Piece Type Roll"),
 	InvalidSetPieceType UMETA(DisplayName = "Invalid Set Piece Type"),
-	SetPieceTypeMappingMismatch UMETA(DisplayName = "Set Piece Type Mapping Mismatch")
+	SetPieceTypeMappingMismatch UMETA(DisplayName = "Set Piece Type Mapping Mismatch"),
+	ConcretePayloadCountMismatch UMETA(DisplayName = "Concrete Payload Count Mismatch"),
+	ConcretePayloadTypeMismatch UMETA(DisplayName = "Concrete Payload Type Mismatch"),
+	InvalidConcreteSetPieceStage UMETA(DisplayName = "Invalid Concrete Set Piece Stage"),
+	AwaitingCarrierHasBoundCarrier UMETA(DisplayName = "Awaiting Carrier Has Bound Carrier"),
+	AwaitingMethodMissingCarrier UMETA(DisplayName = "Awaiting Method Missing Carrier"),
+	CarrierOwnerSideMismatch UMETA(DisplayName = "Carrier Owner Side Mismatch"),
+	CarrierEligibilityFailed UMETA(DisplayName = "Carrier Eligibility Failed"),
+	CarrierSnapshotBindingMismatch UMETA(DisplayName = "Carrier Snapshot Binding Mismatch")
 };
 
 USTRUCT(BlueprintType)

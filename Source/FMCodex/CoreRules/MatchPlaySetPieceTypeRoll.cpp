@@ -98,6 +98,16 @@ FMatchPlaySetPieceTypeRollResult FMatchPlaySetPieceTypeRoll::Resolve(
 			TEXT("Only the current attacking player may request the Set Piece type roll."));
 		return Result;
 	}
+
+	Result.RouteValidationResult =
+		FMatchPlayCurrentAttackRouteStateValidator::Validate(BeforeState);
+	if (!Result.RouteValidationResult.bIsCanonical)
+	{
+		SetFailure(Result,
+			EMatchPlaySetPieceTypeRollErrorCode::InvalidRouteState,
+			Result.RouteValidationResult.ErrorMessage);
+		return Result;
+	}
 	if (RollProvider == nullptr)
 	{
 		SetFailure(Result,
@@ -147,6 +157,33 @@ FMatchPlaySetPieceTypeRollResult FMatchPlaySetPieceTypeRoll::Resolve(
 		Result.ProviderResult.RawRoll;
 	Result.AfterState.CurrentAttack.SetPieceRoute.SelectedType =
 		Result.SelectionResult.SelectedSetPieceType;
+	switch (Result.SelectionResult.SelectedSetPieceType)
+	{
+	case ESetPieceSelectedType::ShortFreeKick:
+		Result.AfterState.CurrentAttack.SetPieceRoute.ShortFreeKick.Stage =
+			EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier;
+		break;
+	case ESetPieceSelectedType::LongFreeKick:
+		Result.AfterState.CurrentAttack.SetPieceRoute.LongFreeKick.Stage =
+			EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier;
+		break;
+	case ESetPieceSelectedType::Penalty:
+		Result.AfterState.CurrentAttack.SetPieceRoute.Penalty.Stage =
+			EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier;
+		break;
+	case ESetPieceSelectedType::Corner:
+		Result.AfterState.CurrentAttack.SetPieceRoute.Corner.Stage =
+			EMatchPlaySetPieceCornerRouteStage
+				::AwaitingAttackerNominations;
+		break;
+	case ESetPieceSelectedType::None:
+	default:
+		Result.AfterState = BeforeState;
+		SetFailure(Result,
+			EMatchPlaySetPieceTypeRollErrorCode::TypeSelectionFailed,
+			TEXT("Canonical Set Piece type selection did not produce a concrete type."));
+		return Result;
+	}
 	Result.RouteValidationResult =
 		FMatchPlayCurrentAttackRouteStateValidator::Validate(
 			Result.AfterState);

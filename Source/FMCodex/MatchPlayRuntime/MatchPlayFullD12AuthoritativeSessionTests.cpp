@@ -755,6 +755,52 @@ bool FMatchPlayAuthoritativeSetPieceTypeMappingTest::RunTest(
 		TestEqual(TEXT("AttackSequence does not change"),
 			AfterType.CurrentAttack.AttackSequence,
 			BeforeType.CurrentAttack.AttackSequence);
+		TestEqual(TEXT("Raw initial D12 is preserved"),
+			AfterType.CurrentAttack.RawInitialD12,
+			BeforeType.CurrentAttack.RawInitialD12);
+		const int32 ActiveConcretePayloadCount =
+			(AfterType.CurrentAttack.SetPieceRoute.ShortFreeKick.Stage
+				!= EMatchPlaySetPieceCarrierRouteStage::None)
+			+ (AfterType.CurrentAttack.SetPieceRoute.LongFreeKick.Stage
+				!= EMatchPlaySetPieceCarrierRouteStage::None)
+			+ (AfterType.CurrentAttack.SetPieceRoute.Penalty.Stage
+				!= EMatchPlaySetPieceCarrierRouteStage::None)
+			+ (AfterType.CurrentAttack.SetPieceRoute.Corner.Stage
+				!= EMatchPlaySetPieceCornerRouteStage::None);
+		TestEqual(TEXT("Exactly one concrete payload is initialized atomically"),
+			ActiveConcretePayloadCount, 1);
+		switch (ExpectedTypes[RawD6 - 1])
+		{
+		case ESetPieceSelectedType::ShortFreeKick:
+			TestEqual(TEXT("Short FK awaits Carrier"),
+				AfterType.CurrentAttack.SetPieceRoute.ShortFreeKick.Stage,
+				EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier);
+			break;
+		case ESetPieceSelectedType::LongFreeKick:
+			TestEqual(TEXT("Long FK awaits Carrier"),
+				AfterType.CurrentAttack.SetPieceRoute.LongFreeKick.Stage,
+				EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier);
+			break;
+		case ESetPieceSelectedType::Penalty:
+			TestEqual(TEXT("Penalty awaits Carrier"),
+				AfterType.CurrentAttack.SetPieceRoute.Penalty.Stage,
+				EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier);
+			break;
+		case ESetPieceSelectedType::Corner:
+			TestEqual(TEXT("Corner awaits attacker nominations"),
+				AfterType.CurrentAttack.SetPieceRoute.Corner.Stage,
+				EMatchPlaySetPieceCornerRouteStage
+					::AwaitingAttackerNominations);
+			break;
+		default:
+			AddError(TEXT("Unexpected Set Piece type in concrete-entry test."));
+			break;
+		}
+		TestEqual(TEXT("Concrete entry has no ordinary deployment"),
+			AfterType.CurrentAttack.DeploymentPlacements.Num(), 0);
+		TestEqual(TEXT("Concrete entry remains non-terminal"),
+			AfterType.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::Active);
 		TestTrue(TEXT("Type roll preserves non-current authority"),
 			AreNonCurrentAttackFactsEqual(BeforeType, AfterType));
 		TestTrue(TEXT("Resolved type state validates"),
@@ -1095,6 +1141,215 @@ bool FMatchPlayAuthoritativeSendingOffLifecycleTest::RunTest(
 		FinalAdvance.CompletionResult.MatchResultResolveResult.bSuccess);
 	TestEqual(TEXT("Final AP1 score remains authoritative"),
 		FinalSession.GetStateSnapshot().RuntimeState.PlayerAState.Score, 2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayAuthoritativeSetPieceCarrierFoundationTest,
+	"FMCodex.MatchPlayRuntime.AuthoritativeSession.SetPieceCarrierFoundation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayAuthoritativeSetPieceCarrierFoundationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayFullD12AuthoritativeSessionTests;
+	TestEqual(TEXT("Set Piece Carrier command is append-only"),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier),
+		static_cast<uint8>(
+			EMatchPlayAuthoritativeCommandKind::ResolveSendingOff) + 1);
+
+	struct FCarrierCase
+	{
+		int32 RawTypeD6 = 0;
+		ESetPieceSelectedType Type = ESetPieceSelectedType::None;
+		const TCHAR* Label = TEXT("");
+	};
+	const FCarrierCase Cases[] = {
+		{ 5, ESetPieceSelectedType::ShortFreeKick, TEXT("Short") },
+		{ 3, ESetPieceSelectedType::LongFreeKick, TEXT("Long") },
+		{ 6, ESetPieceSelectedType::Penalty, TEXT("Penalty") }
+	};
+
+	for (const FCarrierCase& Case : Cases)
+	{
+		FQueueAttackEntryRollProvider Provider;
+		Provider.EnqueueD12(MakeSuccess(9));
+		Provider.EnqueueD6(MakeSuccess(Case.RawTypeD6));
+		FMatchPlayAuthoritativeSession Session(Provider);
+		if (!Initialize(*this, Session,
+			*FString::Printf(TEXT("SetPieceCarrier_%s"), Case.Label)))
+		{
+			continue;
+		}
+		Session.RequestInitialActionPointRoll(
+			MakeInitialRequest(Session.GetStateSnapshot()));
+		Session.RequestSetPieceTypeRoll(
+			MakeTypeRequest(Session.GetStateSnapshot()));
+		const FMatchPlayState Awaiting = Session.GetStateSnapshot();
+		TestEqual(TEXT("Session derives expected concrete type"),
+			Awaiting.CurrentAttack.SetPieceRoute.SelectedType,
+			Case.Type);
+		const EInitialTurnOrderPlayer Attacker =
+			Awaiting.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = GetOtherSide(Attacker);
+		const FPlayerCardRuleSnapshotSet& AttackerSnapshots =
+			Attacker == EInitialTurnOrderPlayer::PlayerA
+				? Awaiting.CardSnapshotAuthority.PlayerACardSnapshots
+				: Awaiting.CardSnapshotAuthority.PlayerBCardSnapshots;
+		FName CarrierCardId = NAME_None;
+		for (const FPlayerCardRuleSnapshot& Snapshot : AttackerSnapshots.Cards)
+		{
+			if (!Snapshot.bIsGoalkeeper)
+			{
+				CarrierCardId = Snapshot.CardId;
+				break;
+			}
+		}
+
+		FMatchPlaySetPieceCarrierSelectionRequest Request;
+		Request.RequestingSide = Attacker;
+		Request.AttackSequence = Awaiting.CurrentAttack.AttackSequence;
+		Request.CardId = CarrierCardId;
+		FMatchPlaySetPieceCarrierSelectionRequest WrongSide = Request;
+		WrongSide.RequestingSide = Defender;
+		const auto WrongSideResult = Session.SubmitSetPieceCarrier(WrongSide);
+		TestEqual(TEXT("Session wrong-side Carrier fails at domain boundary"),
+			WrongSideResult.CarrierResult.ErrorCode,
+			EMatchPlaySetPieceCarrierSelectionErrorCode
+				::RequestingSideNotCurrentAttacker);
+		TestFalse(TEXT("Wrong-side Carrier is not adopted"),
+			WrongSideResult.RuntimeEnvelope.bStateAdvanced);
+		TestTrue(TEXT("Wrong-side Carrier preserves snapshot"),
+			AreStatesEqual(Session.GetStateSnapshot(), Awaiting));
+
+		FMatchPlaySetPieceCarrierSelectionRequest Stale = Request;
+		++Stale.AttackSequence;
+		const auto StaleResult = Session.SubmitSetPieceCarrier(Stale);
+		TestEqual(TEXT("Session stale Carrier is rejected"),
+			StaleResult.CarrierResult.ErrorCode,
+			EMatchPlaySetPieceCarrierSelectionErrorCode
+				::AttackSequenceMismatch);
+		TestTrue(TEXT("Stale Carrier preserves snapshot"),
+			AreStatesEqual(Session.GetStateSnapshot(), Awaiting));
+
+		const int32 D12BeforeCarrier = Provider.GetD12CallCount();
+		const int32 D6BeforeCarrier = Provider.GetD6CallCount();
+		const int32 SelectionBeforeCarrier = Provider.GetSelectionCallCount();
+		const auto Success = Session.SubmitSetPieceCarrier(Request);
+		const FMatchPlayState Selected = Session.GetStateSnapshot();
+		TestTrue(TEXT("Session Carrier succeeds"),
+			Success.RuntimeEnvelope.bAccepted
+				&& Success.RuntimeEnvelope.bDomainSuccess
+				&& Success.RuntimeEnvelope.bStateAdvanced
+				&& Success.CarrierResult.bSuccess);
+		TestEqual(TEXT("Session Carrier command kind is typed"),
+			Success.RuntimeEnvelope.CommandKind,
+			EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier);
+		TestEqual(TEXT("Carrier command consumes no D12"),
+			Provider.GetD12CallCount(), D12BeforeCarrier);
+		TestEqual(TEXT("Carrier command consumes no D6"),
+			Provider.GetD6CallCount(), D6BeforeCarrier);
+		TestEqual(TEXT("Carrier command consumes no selection RNG"),
+			Provider.GetSelectionCallCount(), SelectionBeforeCarrier);
+		TestTrue(TEXT("Carrier selection preserves score, opportunity, usage, and authority"),
+			AreNonCurrentAttackFactsEqual(Awaiting, Selected));
+		const FMatchPlaySetPieceParticipantBinding* Binding = nullptr;
+		switch (Case.Type)
+		{
+		case ESetPieceSelectedType::ShortFreeKick:
+			TestEqual(TEXT("Short Session advances to AwaitingMethod"),
+				Selected.CurrentAttack.SetPieceRoute.ShortFreeKick.Stage,
+				EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod);
+			Binding = &Selected.CurrentAttack.SetPieceRoute.ShortFreeKick.Carrier;
+			break;
+		case ESetPieceSelectedType::LongFreeKick:
+			TestEqual(TEXT("Long Session advances to AwaitingMethod"),
+				Selected.CurrentAttack.SetPieceRoute.LongFreeKick.Stage,
+				EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod);
+			Binding = &Selected.CurrentAttack.SetPieceRoute.LongFreeKick.Carrier;
+			break;
+		case ESetPieceSelectedType::Penalty:
+			TestEqual(TEXT("Penalty Session advances to AwaitingMethod"),
+				Selected.CurrentAttack.SetPieceRoute.Penalty.Stage,
+				EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod);
+			Binding = &Selected.CurrentAttack.SetPieceRoute.Penalty.Carrier;
+			break;
+		default:
+			break;
+		}
+		TestTrue(TEXT("Reconstructable Carrier binding is complete"),
+			Binding != nullptr
+				&& Binding->bIsBound
+				&& Binding->OwnerSide == Attacker
+				&& Binding->CardId == CarrierCardId
+				&& Binding->Snapshot.CardId == CarrierCardId);
+
+		const auto Duplicate = Session.SubmitSetPieceCarrier(Request);
+		TestEqual(TEXT("Duplicate Session Carrier is wrong-stage rejected"),
+			Duplicate.CarrierResult.ErrorCode,
+			EMatchPlaySetPieceCarrierSelectionErrorCode::WrongStage);
+		TestFalse(TEXT("Duplicate Session Carrier is not adopted"),
+			Duplicate.RuntimeEnvelope.bStateAdvanced);
+		TestTrue(TEXT("Duplicate Session Carrier preserves accepted snapshot"),
+			AreStatesEqual(Session.GetStateSnapshot(), Selected));
+
+		FMatchPlayAuthoritativeSession Reconstructed(Selected, Provider);
+		TestTrue(TEXT("Fresh Session reconstructs exact AwaitingMethod snapshot"),
+			AreStatesEqual(Reconstructed.GetStateSnapshot(), Selected));
+		const auto ReconstructedDuplicate =
+			Reconstructed.SubmitSetPieceCarrier(Request);
+		TestEqual(TEXT("Reconstructed Session keeps Carrier gate closed"),
+			ReconstructedDuplicate.CarrierResult.ErrorCode,
+			EMatchPlaySetPieceCarrierSelectionErrorCode::WrongStage);
+	}
+
+	FQueueAttackEntryRollProvider CornerProvider;
+	CornerProvider.EnqueueD12(MakeSuccess(12));
+	CornerProvider.EnqueueD6(MakeSuccess(1));
+	FMatchPlayAuthoritativeSession CornerSession(CornerProvider);
+	if (!Initialize(*this, CornerSession, TEXT("SetPieceCarrier_Corner")))
+	{
+		return false;
+	}
+	CornerSession.RequestInitialActionPointRoll(
+		MakeInitialRequest(CornerSession.GetStateSnapshot()));
+	CornerSession.RequestSetPieceTypeRoll(
+		MakeTypeRequest(CornerSession.GetStateSnapshot()));
+	const FMatchPlayState Corner = CornerSession.GetStateSnapshot();
+	TestEqual(TEXT("Corner reconstructs AwaitingAttackerNominations"),
+		Corner.CurrentAttack.SetPieceRoute.Corner.Stage,
+		EMatchPlaySetPieceCornerRouteStage::AwaitingAttackerNominations);
+	const EInitialTurnOrderPlayer CornerAttacker =
+		Corner.RuntimeState.CurrentAttackingPlayer;
+	const FPlayerCardRuleSnapshotSet& CornerSnapshots =
+		CornerAttacker == EInitialTurnOrderPlayer::PlayerA
+			? Corner.CardSnapshotAuthority.PlayerACardSnapshots
+			: Corner.CardSnapshotAuthority.PlayerBCardSnapshots;
+	FName CornerCard = NAME_None;
+	for (const FPlayerCardRuleSnapshot& Snapshot : CornerSnapshots.Cards)
+	{
+		if (!Snapshot.bIsGoalkeeper)
+		{
+			CornerCard = Snapshot.CardId;
+			break;
+		}
+	}
+	FMatchPlaySetPieceCarrierSelectionRequest CornerRequest;
+	CornerRequest.RequestingSide = CornerAttacker;
+	CornerRequest.AttackSequence = Corner.CurrentAttack.AttackSequence;
+	CornerRequest.CardId = CornerCard;
+	const int32 CornerD6Before = CornerProvider.GetD6CallCount();
+	const auto CornerReject =
+		CornerSession.SubmitSetPieceCarrier(CornerRequest);
+	TestEqual(TEXT("Corner rejects Carrier at Session boundary"),
+		CornerReject.CarrierResult.ErrorCode,
+		EMatchPlaySetPieceCarrierSelectionErrorCode
+			::UnsupportedSetPieceType);
+	TestEqual(TEXT("Corner rejection consumes zero RNG"),
+		CornerProvider.GetD6CallCount(), CornerD6Before);
+	TestTrue(TEXT("Corner rejection preserves exact pending snapshot"),
+		AreStatesEqual(CornerSession.GetStateSnapshot(), Corner));
 	return true;
 }
 

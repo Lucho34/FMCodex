@@ -1,5 +1,6 @@
 #include "MatchPlayCurrentAttackRouteStateValidator.h"
 
+#include "MatchPlaySetPieceParticipantEligibility.h"
 #include "SetPieceTypeSelectionQuery.h"
 
 namespace MatchPlayCurrentAttackRouteStateValidator
@@ -37,6 +38,124 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 			&State,
 			&DefaultState,
 			0);
+	}
+
+	bool HasDefaultConcreteSetPiecePayloads(
+		const FMatchPlaySetPieceRouteState& State)
+	{
+		return IsDefaultStruct(State.ShortFreeKick)
+			&& IsDefaultStruct(State.LongFreeKick)
+			&& IsDefaultStruct(State.Penalty)
+			&& IsDefaultStruct(State.Corner);
+	}
+
+	int32 CountActiveConcreteSetPiecePayloads(
+		const FMatchPlaySetPieceRouteState& State)
+	{
+		int32 Count = 0;
+		Count += State.ShortFreeKick.Stage
+			!= EMatchPlaySetPieceCarrierRouteStage::None;
+		Count += State.LongFreeKick.Stage
+			!= EMatchPlaySetPieceCarrierRouteStage::None;
+		Count += State.Penalty.Stage
+			!= EMatchPlaySetPieceCarrierRouteStage::None;
+		Count += State.Corner.Stage
+			!= EMatchPlaySetPieceCornerRouteStage::None;
+		return Count;
+	}
+
+	bool HasMatchingActiveConcretePayload(
+		const FMatchPlaySetPieceRouteState& State)
+	{
+		switch (State.SelectedType)
+		{
+		case ESetPieceSelectedType::ShortFreeKick:
+			return State.ShortFreeKick.Stage
+				!= EMatchPlaySetPieceCarrierRouteStage::None;
+		case ESetPieceSelectedType::LongFreeKick:
+			return State.LongFreeKick.Stage
+				!= EMatchPlaySetPieceCarrierRouteStage::None;
+		case ESetPieceSelectedType::Penalty:
+			return State.Penalty.Stage
+				!= EMatchPlaySetPieceCarrierRouteStage::None;
+		case ESetPieceSelectedType::Corner:
+			return State.Corner.Stage
+				!= EMatchPlaySetPieceCornerRouteStage::None;
+		default:
+			return false;
+		}
+	}
+
+	bool ValidateCarrierPayload(
+		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
+		const FMatchPlayState& State,
+		const EMatchPlaySetPieceCarrierRouteStage Stage,
+		const FMatchPlaySetPieceParticipantBinding& Carrier)
+	{
+		if (Stage == EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier)
+		{
+			if (!IsDefaultStruct(Carrier))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::AwaitingCarrierHasBoundCarrier,
+					TEXT("AwaitingCarrier cannot carry a selected Carrier binding."));
+				return false;
+			}
+			return true;
+		}
+		if (Stage != EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::InvalidConcreteSetPieceStage,
+				TEXT("Carrier-based Set Piece requires AwaitingCarrier or AwaitingMethod stage."));
+			return false;
+		}
+		if (!Carrier.bIsBound || Carrier.CardId.IsNone())
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::AwaitingMethodMissingCarrier,
+				TEXT("AwaitingMethod requires a bound Carrier."));
+			return false;
+		}
+		if (Carrier.OwnerSide
+			!= State.RuntimeState.CurrentAttackingPlayer)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::CarrierOwnerSideMismatch,
+				TEXT("Set Piece Carrier must belong to CurrentAttackingPlayer."));
+			return false;
+		}
+
+		FMatchPlaySetPieceParticipantEligibilityRequest Request;
+		Request.ExpectedOwnerSide = Carrier.OwnerSide;
+		Request.CardId = Carrier.CardId;
+		Request.Role = EMatchPlaySetPieceParticipantRole::Carrier;
+		const FMatchPlaySetPieceParticipantEligibilityResult Eligibility =
+			FMatchPlaySetPieceParticipantEligibility::Evaluate(State, Request);
+		if (!Eligibility.bIsEligible)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::CarrierEligibilityFailed,
+				Eligibility.ErrorMessage);
+			return false;
+		}
+		if (!FPlayerCardRuleSnapshot::StaticStruct()->CompareScriptStruct(
+				&Carrier.Snapshot,
+				&Eligibility.Binding.Snapshot,
+				0))
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::CarrierSnapshotBindingMismatch,
+				TEXT("Persisted Carrier snapshot must match canonical side-owned snapshot authority."));
+			return false;
+		}
+		return true;
 	}
 
 	bool HasDefaultOrdinaryPayload(
@@ -374,6 +493,14 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 					TEXT("AwaitingTypeRoll cannot carry a resolved Set Piece type."));
 				return Result;
 			}
+			if (!HasDefaultConcreteSetPiecePayloads(Attack.SetPieceRoute))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::AwaitingTypeHasConcretePayload,
+					TEXT("AwaitingTypeRoll cannot carry concrete Set Piece payload."));
+				return Result;
+			}
 		}
 		else if (Attack.SetPieceRoute.Stage
 			== EMatchPlaySetPieceRouteStage::TypeResolved)
@@ -420,6 +547,66 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 						::SetPieceTypeMappingMismatch,
 					TEXT("Stored Set Piece type must match the canonical type-roll mapping."));
 				return Result;
+			}
+
+			if (CountActiveConcreteSetPiecePayloads(
+					Attack.SetPieceRoute) != 1)
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::ConcretePayloadCountMismatch,
+					TEXT("TypeResolved Set Piece requires exactly one active concrete payload."));
+				return Result;
+			}
+			if (!HasMatchingActiveConcretePayload(Attack.SetPieceRoute))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::ConcretePayloadTypeMismatch,
+					TEXT("Active concrete Set Piece payload must match SelectedType."));
+				return Result;
+			}
+
+			switch (Attack.SetPieceRoute.SelectedType)
+			{
+			case ESetPieceSelectedType::ShortFreeKick:
+				if (!ValidateCarrierPayload(Result, State,
+					Attack.SetPieceRoute.ShortFreeKick.Stage,
+					Attack.SetPieceRoute.ShortFreeKick.Carrier))
+				{
+					return Result;
+				}
+				break;
+			case ESetPieceSelectedType::LongFreeKick:
+				if (!ValidateCarrierPayload(Result, State,
+					Attack.SetPieceRoute.LongFreeKick.Stage,
+					Attack.SetPieceRoute.LongFreeKick.Carrier))
+				{
+					return Result;
+				}
+				break;
+			case ESetPieceSelectedType::Penalty:
+				if (!ValidateCarrierPayload(Result, State,
+					Attack.SetPieceRoute.Penalty.Stage,
+					Attack.SetPieceRoute.Penalty.Carrier))
+				{
+					return Result;
+				}
+				break;
+			case ESetPieceSelectedType::Corner:
+				if (Attack.SetPieceRoute.Corner.Stage
+					!= EMatchPlaySetPieceCornerRouteStage
+						::AwaitingAttackerNominations)
+				{
+					SetFailure(Result,
+						EMatchPlayCurrentAttackRouteStateValidationErrorCode
+							::InvalidConcreteSetPieceStage,
+						TEXT("Corner concrete entry must await attacker nominations."));
+					return Result;
+				}
+				break;
+			default:
+				break;
 			}
 		}
 		else

@@ -66,6 +66,22 @@ enum class EMatchPlaySetPieceRouteStage : uint8
 };
 
 UENUM(BlueprintType)
+enum class EMatchPlaySetPieceCarrierRouteStage : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	AwaitingCarrier = 1 UMETA(DisplayName = "Awaiting Carrier"),
+	AwaitingMethod = 2 UMETA(DisplayName = "Awaiting Method")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlaySetPieceCornerRouteStage : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	AwaitingAttackerNominations = 1
+		UMETA(DisplayName = "Awaiting Attacker Nominations")
+};
+
+UENUM(BlueprintType)
 enum class EMatchPlayCurrentAttackLifecycleState : uint8
 {
 	Active = 0 UMETA(DisplayName = "Active"),
@@ -336,6 +352,74 @@ struct FMCODEX_API FMatchPlaySendingOffRouteState
 };
 
 USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlaySetPieceParticipantBinding
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	bool bIsBound = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	EInitialTurnOrderPlayer OwnerSide = EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	FName CardId = NAME_None;
+
+	/** Frozen match-authoritative snapshot accepted with the participant identity. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	FPlayerCardRuleSnapshot Snapshot;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayShortFreeKickRouteState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	EMatchPlaySetPieceCarrierRouteStage Stage =
+		EMatchPlaySetPieceCarrierRouteStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	FMatchPlaySetPieceParticipantBinding Carrier;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayLongFreeKickRouteState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Long Free Kick")
+	EMatchPlaySetPieceCarrierRouteStage Stage =
+		EMatchPlaySetPieceCarrierRouteStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Long Free Kick")
+	FMatchPlaySetPieceParticipantBinding Carrier;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayPenaltyRouteState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	EMatchPlaySetPieceCarrierRouteStage Stage =
+		EMatchPlaySetPieceCarrierRouteStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	FMatchPlaySetPieceParticipantBinding Carrier;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayCornerRouteState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	EMatchPlaySetPieceCornerRouteStage Stage =
+		EMatchPlaySetPieceCornerRouteStage::None;
+};
+
+USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchPlaySetPieceRouteState
 {
 	GENERATED_BODY()
@@ -352,6 +436,18 @@ struct FMCODEX_API FMatchPlaySetPieceRouteState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
 	ESetPieceSelectedType SelectedType = ESetPieceSelectedType::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	FMatchPlayShortFreeKickRouteState ShortFreeKick;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	FMatchPlayLongFreeKickRouteState LongFreeKick;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	FMatchPlayPenaltyRouteState Penalty;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	FMatchPlayCornerRouteState Corner;
 };
 
 USTRUCT(BlueprintType)
