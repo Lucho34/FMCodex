@@ -131,6 +131,28 @@ FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
 	, RecoveryProvider(&InRecoveryProvider)
 {
 }
+
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	FMatchPlayState InReconstructedState,
+	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+	IMatchPlayPostRouteRollProvider& InPostRouteRollProvider)
+	: AuthoritativeState(MoveTemp(InReconstructedState))
+	, AttackEntryRollProvider(&InAttackEntryRollProvider)
+	, PostRouteRollProvider(&InPostRouteRollProvider)
+{
+}
+
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	FMatchPlayState InReconstructedState,
+	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+	IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+	IMatchPlayRecoveryProvider& InRecoveryProvider)
+	: AuthoritativeState(MoveTemp(InReconstructedState))
+	, AttackEntryRollProvider(&InAttackEntryRollProvider)
+	, PostRouteRollProvider(&InPostRouteRollProvider)
+	, RecoveryProvider(&InRecoveryProvider)
+{
+}
 #endif
 
 template <typename TTypedResult, typename TExecuteDomain>
@@ -390,6 +412,143 @@ FMatchPlayAuthoritativeSession::SubmitSetPieceCarrier(
 			Execution.CandidateAfterState =
 				Result.CarrierResult.AfterState;
 			Execution.StateDisposition = Result.CarrierResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeSubmitShortFreeKickMethodResult
+FMatchPlayAuthoritativeSession::SubmitShortFreeKickMethod(
+	const FMatchPlayShortFreeKickMethodRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitShortFreeKickMethodResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitShortFreeKickMethod,
+		true,
+		Request.AttackSequence,
+		[&Request](
+			FMatchPlayAuthoritativeSubmitShortFreeKickMethodResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayShortFreeKickResolution::SubmitMethod(
+					BeforeState,
+					Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveShortFreeKickDirectAttackRollResult
+FMatchPlayAuthoritativeSession::ResolveShortFreeKickDirectAttackRoll(
+	const FMatchPlayShortFreeKickRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveShortFreeKickDirectAttackRollResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveShortFreeKickDirectAttackRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayShortFreeKickResolution::ResolveDirectAttackRoll(
+					BeforeState,
+					Request,
+					PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveShortFreeKickDirectDefenseRollResult
+FMatchPlayAuthoritativeSession::ResolveShortFreeKickDirectDefenseRoll(
+	const FMatchPlayShortFreeKickRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveShortFreeKickDirectDefenseRollResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveShortFreeKickDirectDefenseRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayShortFreeKickResolution::ResolveDirectDefenseRoll(
+					BeforeState,
+					Request,
+					PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveShortFreeKickAngledRollResult
+FMatchPlayAuthoritativeSession::ResolveShortFreeKickAngledRoll(
+	const FMatchPlayShortFreeKickRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveShortFreeKickAngledRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickAngledRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayShortFreeKickResolution::ResolveAngledRoll(
+					BeforeState,
+					Request,
+					PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveNoLegalSetPieceCarrierResult
+FMatchPlayAuthoritativeSession::ResolveNoLegalSetPieceCarrier(
+	const FMatchPlayShortFreeKickNoLegalCarrierRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveNoLegalSetPieceCarrierResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalSetPieceCarrier,
+		true,
+		Request.AttackSequence,
+		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayShortFreeKickResolution::ResolveNoLegalCarrier(
+					BeforeState,
+					Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
 				? EMatchPlayAuthoritativeStateDisposition::Adopt
 				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
 			Execution.AttackSequence = Request.AttackSequence;

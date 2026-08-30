@@ -12,6 +12,7 @@
 #include "MatchPlayRecovery.h"
 #include "MatchRuntimeStateTypes.h"
 #include "PlayCardResolver.h"
+#include "FormulaResolver.h"
 #include "SetPieceTypeSelectionQuery.h"
 #include "SkillRuleSnapshot.h"
 
@@ -70,7 +71,29 @@ enum class EMatchPlaySetPieceCarrierRouteStage : uint8
 {
 	None = 0 UMETA(DisplayName = "None"),
 	AwaitingCarrier = 1 UMETA(DisplayName = "Awaiting Carrier"),
-	AwaitingMethod = 2 UMETA(DisplayName = "Awaiting Method")
+	AwaitingMethod = 2 UMETA(DisplayName = "Awaiting Method"),
+	DirectAwaitingAttackRoll = 3
+		UMETA(DisplayName = "Direct Awaiting Attack Roll"),
+	DirectAwaitingDefenseRoll = 4
+		UMETA(DisplayName = "Direct Awaiting Defense Roll"),
+	AngledAwaitingRoll = 5 UMETA(DisplayName = "Angled Awaiting Roll"),
+	Terminal = 6 UMETA(DisplayName = "Terminal")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayShortFreeKickMethod : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	Direct = 1 UMETA(DisplayName = "Direct"),
+	Angled = 2 UMETA(DisplayName = "Angled")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayShortFreeKickGameplayOutcome : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	Goal = 1 UMETA(DisplayName = "Goal"),
+	NoGoal = 2 UMETA(DisplayName = "No Goal")
 };
 
 UENUM(BlueprintType)
@@ -381,6 +404,50 @@ struct FMCODEX_API FMatchPlayShortFreeKickRouteState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
 	FMatchPlaySetPieceParticipantBinding Carrier;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	EMatchPlayShortFreeKickMethod Method =
+		EMatchPlayShortFreeKickMethod::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	bool bHasAttackD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	int32 AttackD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	bool bHasDefenseD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	int32 DefenseD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	bool bHasAngledD6Pair = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	int32 AngledD6A = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	int32 AngledD6B = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	bool bHasFormulaResolution = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	FFormulaResolutionResult FormulaResolution;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	EMatchPlayShortFreeKickGameplayOutcome GameplayOutcome =
+		EMatchPlayShortFreeKickGameplayOutcome::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	bool bHasGoalScorer = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	FName GoalScorerCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Short Free Kick")
+	bool bNoLegalCarrier = false;
 };
 
 USTRUCT(BlueprintType)

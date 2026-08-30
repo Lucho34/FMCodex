@@ -365,10 +365,15 @@ bool FSkillNoSelectionNoGoalStaticAuthorityTest::RunTest(
 		5);
 	TestFalse(TEXT("Skill entry never calls GoalResolver"),
 		EntrySource.Contains(TEXT("GoalResolver")));
-	TestEqual(TEXT("Shared ordinary CardUsage loop has one PlayCard call"),
+	TestEqual(TEXT("Ordinary and Set Piece consumption each use PlayCard"),
 		CountOccurrences(
 			CompletionSource,
 			TEXT("FPlayCardResolver::PlayCard")),
+		2);
+	TestEqual(TEXT("Set Piece participant extraction seam remains unique"),
+		CountOccurrences(
+			CompletionSource,
+			TEXT("FMatchPlaySetPieceParticipantConsumption::Extract")),
 		1);
 	TestEqual(TEXT("Duplicate SlotId has one shared authority check"),
 		CountOccurrences(

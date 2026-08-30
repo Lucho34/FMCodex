@@ -13,7 +13,7 @@ namespace FMCodexLocalDevRollOverride
 	{
 		return Target > EFMCodexLocalDevRollTarget::None
 			&& Target <= EFMCodexLocalDevRollTarget
-				::PassControlDefense;
+				::ShortFreeKickAngledB;
 	}
 }
 
@@ -226,6 +226,21 @@ FFMCodexLocalDevRollOverride::ResolvePostRouteTarget(
 {
 	using EInvocation = EFMCodexLocalDevRollInvocation;
 	using EPostPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	// Short Free Kick purposes are already tactic-specific, so unlike the
+	// shared ordinary purposes they need no call-site disambiguation.
+	switch (Purpose)
+	{
+	case EPostPurpose::ShortFreeKickDirectAttack:
+		return EFMCodexLocalDevRollTarget::ShortFreeKickDirectAttack;
+	case EPostPurpose::ShortFreeKickDirectDefense:
+		return EFMCodexLocalDevRollTarget::ShortFreeKickDirectDefense;
+	case EPostPurpose::ShortFreeKickAngledA:
+		return EFMCodexLocalDevRollTarget::ShortFreeKickAngledA;
+	case EPostPurpose::ShortFreeKickAngledB:
+		return EFMCodexLocalDevRollTarget::ShortFreeKickAngledB;
+	default:
+		break;
+	}
 	switch (ActiveInvocation)
 	{
 	case EInvocation::ThroughBallBehindDefenseP1:

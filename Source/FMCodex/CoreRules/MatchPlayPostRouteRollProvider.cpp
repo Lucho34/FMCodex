@@ -19,6 +19,14 @@ namespace MatchPlayPostRouteRollProvider
 			::OneOnOneDirectShotAttack:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose
 			::OneOnOneDirectShotDefense:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::ShortFreeKickDirectAttack:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::ShortFreeKickDirectDefense:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::ShortFreeKickAngledA:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::ShortFreeKickAngledB:
 			return true;
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::None:
 		default:

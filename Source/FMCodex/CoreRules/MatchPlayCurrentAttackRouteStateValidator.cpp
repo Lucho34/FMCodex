@@ -1,7 +1,9 @@
 #include "MatchPlayCurrentAttackRouteStateValidator.h"
 
 #include "MatchPlaySetPieceParticipantEligibility.h"
+#include "MatchPlayDefendingGoalkeeperQuery.h"
 #include "SetPieceTypeSelectionQuery.h"
+#include "SingleCardFormulaResolutionExecutor.h"
 
 namespace MatchPlayCurrentAttackRouteStateValidator
 {
@@ -86,32 +88,11 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 		}
 	}
 
-	bool ValidateCarrierPayload(
+	bool ValidateBoundCarrier(
 		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
 		const FMatchPlayState& State,
-		const EMatchPlaySetPieceCarrierRouteStage Stage,
 		const FMatchPlaySetPieceParticipantBinding& Carrier)
 	{
-		if (Stage == EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier)
-		{
-			if (!IsDefaultStruct(Carrier))
-			{
-				SetFailure(Result,
-					EMatchPlayCurrentAttackRouteStateValidationErrorCode
-						::AwaitingCarrierHasBoundCarrier,
-					TEXT("AwaitingCarrier cannot carry a selected Carrier binding."));
-				return false;
-			}
-			return true;
-		}
-		if (Stage != EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod)
-		{
-			SetFailure(Result,
-				EMatchPlayCurrentAttackRouteStateValidationErrorCode
-					::InvalidConcreteSetPieceStage,
-				TEXT("Carrier-based Set Piece requires AwaitingCarrier or AwaitingMethod stage."));
-			return false;
-		}
 		if (!Carrier.bIsBound || Carrier.CardId.IsNone())
 		{
 			SetFailure(Result,
@@ -156,6 +137,285 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 			return false;
 		}
 		return true;
+	}
+
+	bool ValidateCarrierPayload(
+		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
+		const FMatchPlayState& State,
+		const EMatchPlaySetPieceCarrierRouteStage Stage,
+		const FMatchPlaySetPieceParticipantBinding& Carrier)
+	{
+		if (Stage == EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier)
+		{
+			if (!IsDefaultStruct(Carrier))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::AwaitingCarrierHasBoundCarrier,
+					TEXT("AwaitingCarrier cannot carry a selected Carrier binding."));
+				return false;
+			}
+			return true;
+		}
+		if (Stage != EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::InvalidConcreteSetPieceStage,
+				TEXT("Carrier-based Set Piece requires AwaitingCarrier or AwaitingMethod stage."));
+			return false;
+		}
+		return ValidateBoundCarrier(Result, State, Carrier);
+	}
+
+	bool HasDefaultShortResolutionFacts(
+		const FMatchPlayShortFreeKickRouteState& Short)
+	{
+		return Short.Method == EMatchPlayShortFreeKickMethod::None
+			&& !Short.bHasAttackD6 && Short.AttackD6 == 0
+			&& !Short.bHasDefenseD6 && Short.DefenseD6 == 0
+			&& !Short.bHasAngledD6Pair
+			&& Short.AngledD6A == 0 && Short.AngledD6B == 0
+			&& !Short.bHasFormulaResolution
+			&& IsDefaultStruct(Short.FormulaResolution)
+			&& Short.GameplayOutcome
+				== EMatchPlayShortFreeKickGameplayOutcome::None
+			&& !Short.bHasGoalScorer
+			&& Short.GoalScorerCardId.IsNone()
+			&& !Short.bNoLegalCarrier;
+	}
+
+	bool ValidateShortFreeKickPayload(
+		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
+		const FMatchPlayState& State,
+		const FMatchPlayShortFreeKickRouteState& Short)
+	{
+		const bool bTerminalLifecycle =
+			State.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState
+					::TerminalPendingAdvance;
+		if (Short.Stage == EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier)
+		{
+			if (bTerminalLifecycle || !IsDefaultStruct(Short.Carrier)
+				|| !HasDefaultShortResolutionFacts(Short))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::AwaitingCarrierHasBoundCarrier,
+					TEXT("Short Free Kick AwaitingCarrier requires no participant, method, roll, outcome, or terminal payload."));
+				return false;
+			}
+			return true;
+		}
+
+		if (Short.Stage == EMatchPlaySetPieceCarrierRouteStage::Terminal
+			&& Short.bNoLegalCarrier)
+		{
+			if (!bTerminalLifecycle || !IsDefaultStruct(Short.Carrier)
+				|| Short.Method != EMatchPlayShortFreeKickMethod::None
+				|| Short.bHasAttackD6 || Short.AttackD6 != 0
+				|| Short.bHasDefenseD6 || Short.DefenseD6 != 0
+				|| Short.bHasAngledD6Pair || Short.AngledD6A != 0
+				|| Short.AngledD6B != 0 || Short.bHasFormulaResolution
+				|| !IsDefaultStruct(Short.FormulaResolution)
+				|| Short.GameplayOutcome
+					!= EMatchPlayShortFreeKickGameplayOutcome::NoGoal
+				|| Short.bHasGoalScorer
+				|| !Short.GoalScorerCardId.IsNone())
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::InvalidConcreteSetPieceStage,
+					TEXT("No-legal-Carrier Short Free Kick terminal payload is incoherent."));
+				return false;
+			}
+			return true;
+		}
+
+		if (!ValidateBoundCarrier(Result, State, Short.Carrier))
+		{
+			return false;
+		}
+		if (Short.bNoLegalCarrier)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::InvalidConcreteSetPieceStage,
+				TEXT("A bound Short Free Kick Carrier cannot be marked absent."));
+			return false;
+		}
+
+		const bool bNoOutcome = Short.GameplayOutcome
+			== EMatchPlayShortFreeKickGameplayOutcome::None
+			&& !Short.bHasGoalScorer
+			&& Short.GoalScorerCardId.IsNone();
+		switch (Short.Stage)
+		{
+		case EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod:
+			if (!bTerminalLifecycle && HasDefaultShortResolutionFacts(Short))
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingAttackRoll:
+			if (!bTerminalLifecycle
+				&& Short.Method == EMatchPlayShortFreeKickMethod::Direct
+				&& !Short.bHasAttackD6 && Short.AttackD6 == 0
+				&& !Short.bHasDefenseD6 && Short.DefenseD6 == 0
+				&& !Short.bHasAngledD6Pair
+				&& Short.AngledD6A == 0 && Short.AngledD6B == 0
+				&& !Short.bHasFormulaResolution
+				&& IsDefaultStruct(Short.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingDefenseRoll:
+			if (!bTerminalLifecycle
+				&& Short.Method == EMatchPlayShortFreeKickMethod::Direct
+				&& Short.bHasAttackD6 && Short.AttackD6 >= 1
+				&& Short.AttackD6 <= 6
+				&& !Short.bHasDefenseD6 && Short.DefenseD6 == 0
+				&& !Short.bHasAngledD6Pair
+				&& Short.AngledD6A == 0 && Short.AngledD6B == 0
+				&& !Short.bHasFormulaResolution
+				&& IsDefaultStruct(Short.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::AngledAwaitingRoll:
+			if (!bTerminalLifecycle
+				&& Short.Method == EMatchPlayShortFreeKickMethod::Angled
+				&& Short.Carrier.Snapshot.Attributes.Shooting
+					+ Short.Carrier.Snapshot.Attributes.Passing >= 8
+				&& !Short.bHasAttackD6 && Short.AttackD6 == 0
+				&& !Short.bHasDefenseD6 && Short.DefenseD6 == 0
+				&& !Short.bHasAngledD6Pair
+				&& Short.AngledD6A == 0 && Short.AngledD6B == 0
+				&& !Short.bHasFormulaResolution
+				&& IsDefaultStruct(Short.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::Terminal:
+		{
+			const bool bGoal = Short.GameplayOutcome
+				== EMatchPlayShortFreeKickGameplayOutcome::Goal;
+			const bool bScorerCoherent = bGoal
+				? Short.bHasGoalScorer
+					&& Short.GoalScorerCardId == Short.Carrier.CardId
+				: !Short.bHasGoalScorer
+					&& Short.GoalScorerCardId.IsNone();
+			if (!bTerminalLifecycle
+				|| (Short.GameplayOutcome
+					!= EMatchPlayShortFreeKickGameplayOutcome::Goal
+					&& Short.GameplayOutcome
+						!= EMatchPlayShortFreeKickGameplayOutcome::NoGoal)
+				|| !bScorerCoherent)
+			{
+				break;
+			}
+			if (Short.Method == EMatchPlayShortFreeKickMethod::Direct)
+			{
+				const bool bFormulaGoal = Short.FormulaResolution.bIsGoal;
+				if (Short.bHasAttackD6 && Short.AttackD6 >= 1
+					&& Short.AttackD6 <= 6 && Short.bHasDefenseD6
+					&& Short.DefenseD6 >= 1 && Short.DefenseD6 <= 6
+					&& !Short.bHasAngledD6Pair
+					&& Short.AngledD6A == 0 && Short.AngledD6B == 0
+					&& Short.bHasFormulaResolution
+					&& Short.FormulaResolution.FormulaType
+						== EFormulaType::Finishing
+					&& Short.FormulaResolution.bAttackEnded
+					&& !Short.FormulaResolution.bContinueResolution
+					&& bFormulaGoal == bGoal)
+				{
+					const EInitialTurnOrderPlayer Attacker =
+						State.RuntimeState.CurrentAttackingPlayer;
+					const EInitialTurnOrderPlayer Defender =
+						Attacker == EInitialTurnOrderPlayer::PlayerA
+							? EInitialTurnOrderPlayer::PlayerB
+							: EInitialTurnOrderPlayer::PlayerA;
+					const FMatchPlayDefendingGoalkeeperQueryResult Gk =
+						FMatchPlayDefendingGoalkeeperQuery::Query(
+							State, Defender);
+					if (Gk.bSuccess)
+					{
+						FFormulaResolverInput Input;
+						Input.FormulaType = EFormulaType::Finishing;
+						Input.Attacker.BaseValue = FMath::Max(
+							Short.Carrier.Snapshot.Attributes.Shooting,
+							Short.Carrier.Snapshot.Attributes.Passing);
+						Input.Attacker.ComparePoint = Short.AttackD6;
+						Input.Attacker.bComparePointWasRolledOnD6 = true;
+						Input.Attacker.ParticipatingStamina.Add(
+							Short.Carrier.Snapshot.Attributes.Stamina);
+						Input.Defender.BaseValue =
+							Gk.Snapshot.GoalkeeperAttributes.Handling;
+						Input.Defender.Modifier = 1.0f;
+						Input.Defender.ComparePoint = Short.DefenseD6;
+						Input.Defender.bComparePointWasRolledOnD6 = true;
+						Input.Defender.ParticipatingStamina.Add(
+							Gk.Snapshot.Attributes.Stamina);
+						Input.bGoalkeeperParticipated = true;
+						Input.TurnIndex = static_cast<int32>(
+							State.CurrentAttack.AttackSequence);
+						Input.AttackerPlayerId = Attacker
+							== EInitialTurnOrderPlayer::PlayerA
+								? FName(TEXT("PlayerA"))
+								: FName(TEXT("PlayerB"));
+						Input.DefenderPlayerId = Defender
+							== EInitialTurnOrderPlayer::PlayerA
+								? FName(TEXT("PlayerA"))
+								: FName(TEXT("PlayerB"));
+						Input.InvolvedCardIds = {
+							Short.Carrier.CardId, Gk.CardId };
+						const auto Execution =
+							FSingleCardFormulaResolutionExecutor::Execute(Input);
+						if (Execution.bSuccess
+							&& FFormulaResolutionResult::StaticStruct()
+								->CompareScriptStruct(
+									&Short.FormulaResolution,
+									&Execution.FormulaResolutionResult,
+									0))
+						{
+							return true;
+						}
+					}
+				}
+			}
+			else if (Short.Method
+				== EMatchPlayShortFreeKickMethod::Angled)
+			{
+				const int32 PairSum = Short.AngledD6A + Short.AngledD6B;
+				if (!Short.bHasAttackD6 && Short.AttackD6 == 0
+					&& !Short.bHasDefenseD6 && Short.DefenseD6 == 0
+					&& Short.bHasAngledD6Pair
+					&& Short.AngledD6A >= 1 && Short.AngledD6A <= 6
+					&& Short.AngledD6B >= 1 && Short.AngledD6B <= 6
+					&& !Short.bHasFormulaResolution
+					&& IsDefaultStruct(Short.FormulaResolution)
+					&& (PairSum >= 9) == bGoal)
+				{
+					return true;
+				}
+			}
+			break;
+		}
+		default:
+			break;
+		}
+
+		SetFailure(Result,
+			EMatchPlayCurrentAttackRouteStateValidationErrorCode
+				::InvalidConcreteSetPieceStage,
+			TEXT("Short Free Kick stage, method, rolls, outcome, scorer, and lifecycle are incoherent."));
+		return false;
 	}
 
 	bool HasDefaultOrdinaryPayload(
@@ -447,7 +707,10 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 			return Result;
 		}
 		if (Attack.LifecycleState
-			!= EMatchPlayCurrentAttackLifecycleState::Active)
+				!= EMatchPlayCurrentAttackLifecycleState::Active
+			&& Attack.LifecycleState
+				!= EMatchPlayCurrentAttackLifecycleState
+					::TerminalPendingAdvance)
 		{
 			SetFailure(Result,
 				EMatchPlayCurrentAttackRouteStateValidationErrorCode
@@ -482,6 +745,15 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 		if (Attack.SetPieceRoute.Stage
 			== EMatchPlaySetPieceRouteStage::AwaitingTypeRoll)
 		{
+			if (Attack.LifecycleState
+				!= EMatchPlayCurrentAttackLifecycleState::Active)
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::WrongRouteLifecycle,
+					TEXT("Awaiting Set Piece type roll must remain active."));
+				return Result;
+			}
 			if (Attack.SetPieceRoute.bHasTypeRoll
 				|| Attack.SetPieceRoute.RawTypeD6 != 0
 				|| Attack.SetPieceRoute.SelectedType
@@ -570,14 +842,22 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 			switch (Attack.SetPieceRoute.SelectedType)
 			{
 			case ESetPieceSelectedType::ShortFreeKick:
-				if (!ValidateCarrierPayload(Result, State,
-					Attack.SetPieceRoute.ShortFreeKick.Stage,
-					Attack.SetPieceRoute.ShortFreeKick.Carrier))
+				if (!ValidateShortFreeKickPayload(Result, State,
+					Attack.SetPieceRoute.ShortFreeKick))
 				{
 					return Result;
 				}
 				break;
 			case ESetPieceSelectedType::LongFreeKick:
+				if (Attack.LifecycleState
+					!= EMatchPlayCurrentAttackLifecycleState::Active)
+				{
+					SetFailure(Result,
+						EMatchPlayCurrentAttackRouteStateValidationErrorCode
+							::WrongRouteLifecycle,
+						TEXT("Unfinished Long Free Kick foundation must remain active."));
+					return Result;
+				}
 				if (!ValidateCarrierPayload(Result, State,
 					Attack.SetPieceRoute.LongFreeKick.Stage,
 					Attack.SetPieceRoute.LongFreeKick.Carrier))
@@ -586,6 +866,15 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 				}
 				break;
 			case ESetPieceSelectedType::Penalty:
+				if (Attack.LifecycleState
+					!= EMatchPlayCurrentAttackLifecycleState::Active)
+				{
+					SetFailure(Result,
+						EMatchPlayCurrentAttackRouteStateValidationErrorCode
+							::WrongRouteLifecycle,
+						TEXT("Unfinished Penalty foundation must remain active."));
+					return Result;
+				}
 				if (!ValidateCarrierPayload(Result, State,
 					Attack.SetPieceRoute.Penalty.Stage,
 					Attack.SetPieceRoute.Penalty.Carrier))
@@ -594,6 +883,15 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 				}
 				break;
 			case ESetPieceSelectedType::Corner:
+				if (Attack.LifecycleState
+					!= EMatchPlayCurrentAttackLifecycleState::Active)
+				{
+					SetFailure(Result,
+						EMatchPlayCurrentAttackRouteStateValidationErrorCode
+							::WrongRouteLifecycle,
+						TEXT("Unfinished Corner foundation must remain active."));
+					return Result;
+				}
 				if (Attack.SetPieceRoute.Corner.Stage
 					!= EMatchPlaySetPieceCornerRouteStage
 						::AwaitingAttackerNominations)

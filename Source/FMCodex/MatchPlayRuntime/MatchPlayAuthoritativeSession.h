@@ -67,6 +67,15 @@ public:
 		FMatchPlayState InReconstructedState,
 		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
 		IMatchPlayRecoveryProvider& InRecoveryProvider);
+	FMatchPlayAuthoritativeSession(
+		FMatchPlayState InReconstructedState,
+		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider);
+	FMatchPlayAuthoritativeSession(
+		FMatchPlayState InReconstructedState,
+		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+		IMatchPlayRecoveryProvider& InRecoveryProvider);
 #endif
 
 	FMatchPlayAuthoritativeInitializeMatchResult InitializeMatch(
@@ -88,6 +97,26 @@ public:
 
 	FMatchPlayAuthoritativeSubmitSetPieceCarrierResult SubmitSetPieceCarrier(
 		const FMatchPlaySetPieceCarrierSelectionRequest& Request);
+
+	FMatchPlayAuthoritativeSubmitShortFreeKickMethodResult
+	SubmitShortFreeKickMethod(
+		const FMatchPlayShortFreeKickMethodRequest& Request);
+
+	FMatchPlayAuthoritativeResolveShortFreeKickDirectAttackRollResult
+	ResolveShortFreeKickDirectAttackRoll(
+		const FMatchPlayShortFreeKickRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveShortFreeKickDirectDefenseRollResult
+	ResolveShortFreeKickDirectDefenseRoll(
+		const FMatchPlayShortFreeKickRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveShortFreeKickAngledRollResult
+	ResolveShortFreeKickAngledRoll(
+		const FMatchPlayShortFreeKickRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveNoLegalSetPieceCarrierResult
+	ResolveNoLegalSetPieceCarrier(
+		const FMatchPlayShortFreeKickNoLegalCarrierRequest& Request);
 
 	FMatchPlayAuthoritativeFinishDeploymentResult FinishDeployment(
 		int64 AttackSequence,

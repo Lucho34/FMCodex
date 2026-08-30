@@ -19,7 +19,15 @@ enum class EMatchPlayCurrentAttackPostRouteRollPurpose : uint8
 	OneOnOneDirectShotAttack = 7
 		UMETA(DisplayName = "One-on-One Direct Shot Attack"),
 	OneOnOneDirectShotDefense = 8
-		UMETA(DisplayName = "One-on-One Direct Shot Defense")
+		UMETA(DisplayName = "One-on-One Direct Shot Defense"),
+	ShortFreeKickDirectAttack = 9
+		UMETA(DisplayName = "Short Free Kick Direct Attack"),
+	ShortFreeKickDirectDefense = 10
+		UMETA(DisplayName = "Short Free Kick Direct Defense"),
+	ShortFreeKickAngledA = 11
+		UMETA(DisplayName = "Short Free Kick Angled A"),
+	ShortFreeKickAngledB = 12
+		UMETA(DisplayName = "Short Free Kick Angled B")
 };
 
 USTRUCT(BlueprintType)

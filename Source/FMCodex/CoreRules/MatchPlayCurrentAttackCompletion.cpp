@@ -316,6 +316,72 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 			Result);
 	}
 
+	bool ValidateSetPieceOuter(
+		const FMatchPlayState& BeforeState,
+		const int64 AttackSequence,
+		FMatchPlayCurrentAttackCompletionResult& Result,
+		EInitialTurnOrderPlayer& OutAttacker,
+		EInitialTurnOrderPlayer& OutDefender)
+	{
+		if (!BeforeState.RuntimeState.bIsInitialized)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::MatchPlayStateNotInitialized,
+				TEXT("Match play state must be initialized before advancing a Set Piece."));
+			return false;
+		}
+		if (!BeforeState.bHasCurrentAttack)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode::NoCurrentAttack,
+				TEXT("Set Piece advance requires a current attack."));
+			return false;
+		}
+		if (AttackSequence <= 0
+			|| AttackSequence != BeforeState.CurrentAttack.AttackSequence)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::CapabilitySequenceMismatch,
+				TEXT("Set Piece advance sequence does not match the current attack."));
+			return false;
+		}
+		const FMatchPlayCurrentAttackRouteStateValidationResult Validation =
+			FMatchPlayCurrentAttackRouteStateValidator::Validate(BeforeState);
+		if (!Validation.bIsCanonical
+			|| BeforeState.CurrentAttack.RouteKind
+				!= EMatchPlayCurrentAttackRouteKind::SetPiece
+			|| BeforeState.CurrentAttack.SetPieceRoute.SelectedType
+				!= ESetPieceSelectedType::ShortFreeKick
+			|| BeforeState.CurrentAttack.SetPieceRoute.ShortFreeKick.Stage
+				!= EMatchPlaySetPieceCarrierRouteStage::Terminal)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::CurrentAttackNotInResolution,
+				Validation.bIsCanonical
+					? TEXT("Advance requires a terminal production Short Free Kick route.")
+					: Validation.ErrorMessage);
+			return false;
+		}
+		OutAttacker = BeforeState.RuntimeState.CurrentAttackingPlayer;
+		OutDefender = GetCompletionDefender(OutAttacker);
+		if (!IsCompletionPlayer(OutAttacker)
+			|| !IsCompletionPlayer(OutDefender))
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::InvalidCurrentAttackingPlayer,
+				TEXT("Set Piece advance requires valid attacker and defender ownership."));
+			return false;
+		}
+		return ValidateActiveOpportunityState(
+			BeforeState,
+			OutAttacker,
+			Result);
+	}
+
 	bool ValidateCarrierAvailabilityProvenance(
 		const FMatchPlayState& BeforeState,
 		const FMatchPlayNoLegalCarrierCompletionCapability& Capability,
@@ -1643,6 +1709,8 @@ FMatchPlayCurrentAttackCompletion
 	// adopt any of it. Terminal application is an authoritative persistence
 	// transition: score/result effects are final, while pitch, roles, card
 	// usage, opportunity count, and attacker ownership remain unchanged.
+	WorkingState.CurrentAttack.LifecycleState =
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance;
 	FMatchPlayState TerminalState = WorkingState;
 	FMatchPlayCurrentAttackCompletionResult ValidatedAdvance =
 		ApplyCurrentAttackAdvanceMutation(
@@ -1662,6 +1730,9 @@ FMatchPlayCurrentAttackCompletion
 		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance;
 	ValidatedAdvance.AfterState = MoveTemp(TerminalState);
 	ValidatedAdvance.OrdinaryCardUsageResults.Reset();
+	ValidatedAdvance.SetPieceParticipantConsumptionResult =
+		FMatchPlaySetPieceParticipantConsumptionResult();
+	ValidatedAdvance.SetPieceCardUsageResults.Reset();
 	ValidatedAdvance.OpportunityResolveResult =
 		FAttackOpportunityResolveResult();
 	ValidatedAdvance.MatchEndResolveResult = FMatchEndResolveResult();
@@ -1694,6 +1765,9 @@ FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
 	const bool bSendingOffRoute = BeforeState.bHasCurrentAttack
 		&& BeforeState.CurrentAttack.RouteKind
 			== EMatchPlayCurrentAttackRouteKind::SendingOff;
+	const bool bSetPieceRoute = BeforeState.bHasCurrentAttack
+		&& BeforeState.CurrentAttack.RouteKind
+			== EMatchPlayCurrentAttackRouteKind::SetPiece;
 	if (!(bSendingOffRoute
 			? ValidateSendingOffOuter(
 				BeforeState,
@@ -1701,7 +1775,14 @@ FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
 				Result,
 				Attacker,
 				Defender)
-			: ValidateCommonOuter(
+			: bSetPieceRoute
+				? ValidateSetPieceOuter(
+					BeforeState,
+					AttackSequence,
+					Result,
+					Attacker,
+					Defender)
+				: ValidateCommonOuter(
 				BeforeState,
 				AttackSequence,
 				CurrentStage,
@@ -1919,6 +2000,41 @@ FMatchPlayCurrentAttackCompletion
 		}
 		WorkingState.CardUsageState =
 			CardUsageResult.UpdatedMatchCardUsageState;
+	}
+
+	if (CurrentAttack.RouteKind
+		== EMatchPlayCurrentAttackRouteKind::SetPiece)
+	{
+		Result.SetPieceParticipantConsumptionResult =
+			FMatchPlaySetPieceParticipantConsumption::Extract(WorkingState);
+		if (!Result.SetPieceParticipantConsumptionResult.bSuccess)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::SetPieceParticipantExtractionFailed,
+				Result.SetPieceParticipantConsumptionResult.ErrorMessage);
+			return Result;
+		}
+		for (const FMatchPlaySetPieceParticipantToConsume& Participant :
+			Result.SetPieceParticipantConsumptionResult.Participants)
+		{
+			const FPlayCardResolveResult CardUsageResult =
+				FPlayCardResolver::PlayCard(
+					WorkingState.CardUsageState,
+					Participant.OwnerSide,
+					Participant.CardId);
+			Result.SetPieceCardUsageResults.Add(CardUsageResult);
+			if (!CardUsageResult.bSuccess)
+			{
+				SetError(Result,
+					EMatchPlayCurrentAttackCompletionErrorCode
+						::SetPieceParticipantConsumptionFailed,
+					CardUsageResult.ErrorMessage);
+				return Result;
+			}
+			WorkingState.CardUsageState =
+				CardUsageResult.UpdatedMatchCardUsageState;
+		}
 	}
 
 	Result.OpportunityResolveResult =

@@ -391,10 +391,15 @@ bool FRunnerNoSelectionNoGoalStaticAuthorityTest::RunTest(
 	TestFalse(TEXT("Runner outer never writes Score"),
 		RunnerOuterBody.Contains(TEXT(".Score ="))
 			|| RunnerOuterBody.Contains(TEXT(".Score +=")));
-	TestEqual(TEXT("Shared ordinary CardUsage loop remains unique"),
+	TestEqual(TEXT("Ordinary and Set Piece consumption each use PlayCard"),
 		CountOccurrences(
 			CompletionSource,
 			TEXT("FPlayCardResolver::PlayCard")),
+		2);
+	TestEqual(TEXT("Set Piece participant extraction seam remains unique"),
+		CountOccurrences(
+			CompletionSource,
+			TEXT("FMatchPlaySetPieceParticipantConsumption::Extract")),
 		1);
 	TestEqual(TEXT("Opportunity resolver remains unique"),
 		CountOccurrences(

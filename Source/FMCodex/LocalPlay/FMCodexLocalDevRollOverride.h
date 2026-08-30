@@ -34,7 +34,11 @@ enum class EFMCodexLocalDevRollTarget : uint8
 	CutInsideShotDeadCornerB,
 	PassControlRoute,
 	PassControlAttack,
-	PassControlDefense
+	PassControlDefense,
+	ShortFreeKickDirectAttack,
+	ShortFreeKickDirectDefense,
+	ShortFreeKickAngledA,
+	ShortFreeKickAngledB
 };
 
 /** Host-only call-site identity used to disambiguate shared CoreRules purposes. */

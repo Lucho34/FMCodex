@@ -133,6 +133,19 @@ bool FFMCodexLocalMatchD6ProviderContractTest::RunTest(
 				ResultA.RawD6, ResultB.RawD6);
 		}
 	}
+	for (const EMatchPlayCurrentAttackPostRouteRollPurpose Purpose : {
+		EMatchPlayCurrentAttackPostRouteRollPurpose
+			::ShortFreeKickDirectAttack,
+		EMatchPlayCurrentAttackPostRouteRollPurpose
+			::ShortFreeKickDirectDefense,
+		EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickAngledA,
+		EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickAngledB })
+	{
+		const auto Result = ProviderA.RollD6(Purpose);
+		TestTrue(TEXT("Production provider accepts Short Free Kick semantic purpose"),
+			FMatchPlayPostRouteRollProviderResultValidator::Validate(
+				Purpose, Result).bIsCanonical);
+	}
 
 	FFMCodexLocalMatchD6Provider InvalidInitialProvider(Seed);
 	FFMCodexLocalMatchD6Provider FreshInitialProvider(Seed);

@@ -12,6 +12,7 @@
 #include "MatchPlayMarkerNoSelectionGoalCapability.h"
 #include "MatchPlayNoLegalCarrierCompletionCapability.h"
 #include "MatchPlayRecovery.h"
+#include "MatchPlaySetPieceParticipantConsumption.h"
 #include "MatchPlayRunnerNoSelectionNoGoalCapability.h"
 #include "MatchPlaySkillNoSelectionNoGoalCapability.h"
 #include "MatchResultResolver.h"
@@ -66,6 +67,10 @@ enum class EMatchPlayCurrentAttackCompletionErrorCode : uint8
 	GoalResolutionFailed UMETA(DisplayName = "Goal Resolution Failed"),
 	OrdinaryCardUsageConsumptionFailed
 		UMETA(DisplayName = "Ordinary Card Usage Consumption Failed"),
+	SetPieceParticipantExtractionFailed
+		UMETA(DisplayName = "Set Piece Participant Extraction Failed"),
+	SetPieceParticipantConsumptionFailed
+		UMETA(DisplayName = "Set Piece Participant Consumption Failed"),
 	OpportunityConsumptionFailed
 		UMETA(DisplayName = "Opportunity Consumption Failed"),
 	NextAttackerResolutionFailed
@@ -122,6 +127,12 @@ struct FMCODEX_API FMatchPlayCurrentAttackCompletionResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Completion")
 	TArray<FPlayCardResolveResult> OrdinaryCardUsageResults;
 
+	FMatchPlaySetPieceParticipantConsumptionResult
+		SetPieceParticipantConsumptionResult;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Completion")
+	TArray<FPlayCardResolveResult> SetPieceCardUsageResults;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Completion")
 	FGoalResolveResult GoalResolveResult;
 
@@ -169,6 +180,7 @@ private:
 	friend class FMatchPlayRunnerDecline;
 	friend class FMatchPlaySkillDecline;
 	friend class FMatchPlaySendingOffResolution;
+	friend class FMatchPlayShortFreeKickResolution;
 	friend class
 		FMatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator;
 	friend class

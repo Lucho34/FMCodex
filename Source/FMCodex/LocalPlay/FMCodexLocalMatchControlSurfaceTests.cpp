@@ -9729,8 +9729,8 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authoritative Session exposes explicit Cross, ThroughBall Feet, and BehindDefense roll entrypoints"),
-		SerializedEntrypointCount, 70);
+	TestEqual(TEXT("Authoritative Session exposes 75 typed serialized entrypoints including Short Free Kick"),
+		SerializedEntrypointCount, 75);
 
 	return true;
 }
@@ -10093,8 +10093,8 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderTransform"))
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
-	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 70);
+	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Short Free Kick"),
+		SerializedEntrypointCount, 75);
 
 	return true;
 }
@@ -10652,8 +10652,8 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 70);
+	TestEqual(TEXT("Authority typed serialized entrypoint includes Short Free Kick"),
+		SerializedEntrypointCount, 75);
 
 	return true;
 }
