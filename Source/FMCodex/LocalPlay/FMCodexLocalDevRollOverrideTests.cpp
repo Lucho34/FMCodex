@@ -118,6 +118,27 @@ bool FFMCodexLocalDevRollOverrideBehaviorTest::RunTest(
 			&& Set(Dev, ETarget::CrossHighDefense, 1));
 	Dev.ClearAllOverrides();
 	TestTrue(TEXT("Clear all empties map"), Dev.GetPendingOverrides().IsEmpty());
+
+	TArray<FMatchPlayRecoveryCandidate> Candidates;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FMatchPlayRecoveryCandidate Candidate;
+		Candidate.OwnerSide = EInitialTurnOrderPlayer::PlayerA;
+		Candidate.CardId = FName(*FString::Printf(TEXT("Recovery.%d"), Index));
+		Candidate.StaminaWeight = Index + 1;
+		Candidates.Add(Candidate);
+	}
+	TestTrue(TEXT("Set atomic Recovery pair override"),
+		Dev.SetRecoveryOverride({ 2, 0 }).bSuccess);
+	TestTrue(TEXT("Recovery override pending"),
+		Dev.HasPendingRecoveryOverride());
+	const auto Recovery = Dev.DrawWeightedWithoutReplacement(
+		EMatchPlayRecoveryPurpose::ConsumedRecovery, Candidates, 2);
+	TestTrue(TEXT("Recovery override succeeds"), Recovery.bSuccess);
+	TestTrue(TEXT("Recovery override preserves complete ordered pair"),
+		Recovery.SelectedCandidateIndices == TArray<int32>({ 2, 0 }));
+	TestFalse(TEXT("Recovery pair override is one-shot"),
+		Dev.HasPendingRecoveryOverride());
 	return true;
 }
 

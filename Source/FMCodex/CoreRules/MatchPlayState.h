@@ -9,6 +9,7 @@
 #include "MatchPlayCurrentAttackResolutionRollTypes.h"
 #include "MatchPlayDeploymentSlotCatalog.h"
 #include "MatchPlayGoalkeeperUsageState.h"
+#include "MatchPlayRecovery.h"
 #include "MatchRuntimeStateTypes.h"
 #include "PlayCardResolver.h"
 #include "SetPieceTypeSelectionQuery.h"
@@ -440,6 +441,10 @@ struct FMCODEX_API FMatchPlayState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	FMatchPlayGoalkeeperUsageState GoalkeeperUsageState;
+
+	/** Latest successful non-final advance event; never consulted for legality. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
+	FMatchPlayLastRecoveryFact LastRecoveryFact;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	bool bHasCurrentAttack = false;

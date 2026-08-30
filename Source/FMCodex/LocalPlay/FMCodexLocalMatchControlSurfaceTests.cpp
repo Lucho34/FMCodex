@@ -1154,7 +1154,10 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetLastDiagnostic().CommandName
 				== TEXT("AdvanceAfterTerminal")
-			&& !Controller->GetResolutionFeedback().bVisible);
+			&& Controller->GetResolutionFeedback().bVisible
+			&& !Controller->GetResolutionFeedback().bTerminal
+			&& Controller->GetResolutionFeedback().StepTitle
+				== TEXT("球员返回手牌"));
 	const auto RosterHasNoHandPips = [](const TArray<FFMCodexLocalMatchCardView>& Roster)
 	{
 		return !Roster.ContainsByPredicate(
@@ -3005,7 +3008,10 @@ namespace FMCodexLocalMatchFullFamilyTests
 		}
 		if (!bSawResolvedRoute || !bSawTerminal
 			|| !TerminalFeedback.TerminalSummary.StartsWith(TEXT("RESULT: "))
-			|| Controller.GetResolutionFeedback().bVisible)
+			|| !Controller.GetResolutionFeedback().bVisible
+			|| Controller.GetResolutionFeedback().bTerminal
+			|| Controller.GetResolutionFeedback().StepTitle
+				!= TEXT("球员返回手牌"))
 		{
 			return Fail(Test, FamilyLabel,
 				TEXT("authoritative route/terminal or post-advance cleanup was incomplete"));
@@ -6733,7 +6739,8 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 				+ AdvancedState.RuntimeState.PlayerBState.UsedAttackCount
 				== TerminalState.RuntimeState.PlayerAState.UsedAttackCount
 					+ TerminalState.RuntimeState.PlayerBState.UsedAttackCount + 1
-			&& !Controller->GetResolutionFeedback().bVisible);
+			&& Controller->GetResolutionFeedback().bVisible
+			&& !Controller->GetResolutionFeedback().bTerminal);
 	const TArray<uint8> OnceAdvanced = SerializeState(AdvancedState);
 	CutSurface->GetFormulaSurface()->RequestContinue();
 	TestTrue(TEXT("A stale second central activation cannot advance again"),
@@ -6743,10 +6750,21 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
 	const FFMCodexUMGMatchHeaderViewModel& SwitchedHeader =
 		Screen->GetPresentation().Header;
-	TestTrue(TEXT("Terminal feedback no longer masks the next attacker"),
-		!Screen->GetPresentation().Resolution.bVisible
-			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
-				->GetVisibility() == ESlateVisibility::Collapsed);
+	UBorder* RecoveryPresentationLayer = Cast<UBorder>(
+		Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer")));
+	UWidget* RecoveryStepHeading = RootResolution->GetWidgetFromName(
+		TEXT("ResolutionStepHeading"));
+	TestTrue(TEXT("Non-blocking Recovery feedback coexists with next attacker"),
+		Screen->GetPresentation().Resolution.bVisible
+			&& Screen->GetPresentation().Resolution.bNonBlockingNotification
+			&& RecoveryPresentationLayer != nullptr
+			&& RecoveryPresentationLayer->GetVisibility()
+				== ESlateVisibility::HitTestInvisible
+			&& RecoveryPresentationLayer->GetBrushColor().A == 0.0f
+			&& RecoveryStepHeading != nullptr
+			&& RecoveryStepHeading->GetVisibility() == ESlateVisibility::Collapsed
+			&& Controller->IsRecoveryNotificationDismissScheduledForTesting()
+			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
 	TestTrue(TEXT("Completed attack projects Used then next-side Current"),
 		SwitchedHeader.LeftAttackTurnTracker.Steps.Num() == 3
 			&& SwitchedHeader.RightAttackTurnTracker.Steps.Num() == 3
@@ -6755,6 +6773,13 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			&& SwitchedHeader.RightAttackTurnTracker.Steps[0].State
 				== EFMCodexUMGAttackTurnStepState::Used
 			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
+	Interaction->RequestTacticalPointRoll();
+	TestTrue(TEXT("Next tactical-point action succeeds before Recovery dismissal"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetLastDiagnostic().CommandName
+				== TEXT("RollTacticalPoints")
+			&& Controller->GetInteractionView().bCurrentAttackActive
+			&& !Controller->IsRecoveryNotificationDismissScheduledForTesting());
 
 	// Normal-demo deterministic ThroughBall: no test-only rules or deck mutation.
 	FScopedPlayableWorld OneOnOneWorld;
@@ -14602,13 +14627,24 @@ bool FFMCodexCutInsideScreenTerminalBranchesTest::RunTest(
 					== TEXT("AdvanceAfterTerminal")
 				&& !Controller->GetInteractionView().bCurrentAttackActive
 				&& Controller->GetInteractionView().bTacticalPointRollReady
-				&& !Controller->GetResolutionFeedback().bVisible
+				&& Controller->GetResolutionFeedback().bVisible
+				&& !Controller->GetResolutionFeedback().bTerminal
 				&& Advanced.RuntimeState.PlayerAState.UsedAttackCount
 					+ Advanced.RuntimeState.PlayerBState.UsedAttackCount
 					== Terminal.RuntimeState.PlayerAState.UsedAttackCount
-						+ Terminal.RuntimeState.PlayerBState.UsedAttackCount + 1
+					+ Terminal.RuntimeState.PlayerBState.UsedAttackCount + 1
 				&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
-					->GetVisibility() == ESlateVisibility::Collapsed);
+					->GetVisibility()
+						== ESlateVisibility::HitTestInvisible
+				&& Controller->IsRecoveryNotificationDismissScheduledForTesting());
+		Controller->ExpireRecoveryNotificationForTesting();
+		TestTrue(FString::Printf(
+			TEXT("%s Recovery notification dismisses without gameplay input"), Context),
+			!Controller->GetResolutionFeedback().bVisible
+				&& !Controller->IsRecoveryNotificationDismissScheduledForTesting()
+				&& Screen->GetWidgetFromName(
+					TEXT("ResolutionPresentationLayer"))->GetVisibility()
+						== ESlateVisibility::Collapsed);
 		return true;
 	};
 
@@ -14832,13 +14868,15 @@ bool FFMCodexPassControlScreenGoldenPathTest::RunTest(
 				== TEXT("AdvanceAfterTerminal")
 			&& !Controller->GetInteractionView().bCurrentAttackActive
 			&& Controller->GetInteractionView().bTacticalPointRollReady
-			&& !Controller->GetResolutionFeedback().bVisible
+			&& Controller->GetResolutionFeedback().bVisible
+			&& !Controller->GetResolutionFeedback().bTerminal
 			&& Advanced.RuntimeState.PlayerAState.UsedAttackCount
 				+ Advanced.RuntimeState.PlayerBState.UsedAttackCount
 				== UsedTerminal + 1
 			&& !Surface->GetPresentation().bVisible
 			&& Screen->GetWidgetFromName(TEXT("ResolutionPresentationLayer"))
-				->GetVisibility() == ESlateVisibility::Collapsed);
+				->GetVisibility()
+					== ESlateVisibility::HitTestInvisible);
 
 	const TArray<uint8> AdvancedBytes = SerializeState(Advanced);
 	Surface->GetFormulaSurface()->RequestContinue();

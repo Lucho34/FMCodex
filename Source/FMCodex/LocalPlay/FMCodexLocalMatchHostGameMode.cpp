@@ -90,7 +90,9 @@ AFMCodexLocalMatchHostGameMode::FLocalMatchRuntime::FLocalMatchRuntime(
 #if !UE_BUILD_SHIPPING
 		DevRollOverride,
 		DevRollOverride,
+		DevRollOverride,
 #else
+		D6Provider,
 		D6Provider,
 		D6Provider,
 #endif
@@ -110,6 +112,26 @@ AFMCodexLocalMatchHostGameMode::SetLocalDevRollOverride(
 		return Result;
 	}
 	return ActiveMatchRuntime->DevRollOverride.SetOverride(Request);
+}
+
+FFMCodexLocalDevRollOverrideCommandResult
+AFMCodexLocalMatchHostGameMode::SetLocalDevRecoveryOverride(
+	const TArray<int32>& OrderedCandidateIndices)
+{
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		FFMCodexLocalDevRollOverrideCommandResult Result;
+		Result.ErrorMessage = FMCodexLocalMatchHost::NoActiveMatchMessage;
+		return Result;
+	}
+	return ActiveMatchRuntime->DevRollOverride.SetRecoveryOverride(
+		OrderedCandidateIndices);
+}
+
+bool AFMCodexLocalMatchHostGameMode::ClearLocalDevRecoveryOverride()
+{
+	return ActiveMatchRuntime.IsValid()
+		&& ActiveMatchRuntime->DevRollOverride.ClearRecoveryOverride();
 }
 
 bool AFMCodexLocalMatchHostGameMode::ClearLocalDevRollOverride(

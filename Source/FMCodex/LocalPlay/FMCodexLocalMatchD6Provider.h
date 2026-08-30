@@ -4,10 +4,12 @@
 
 #include "../CoreRules/MatchPlayInitialRouteRollProvider.h"
 #include "../CoreRules/MatchPlayPostRouteRollProvider.h"
+#include "../CoreRules/MatchPlayRecovery.h"
 
 class FMCODEX_API FFMCodexLocalMatchD6Provider final
 	: public IMatchPlayInitialRouteRollProvider
 	, public IMatchPlayPostRouteRollProvider
+	, public IMatchPlayRecoveryProvider
 {
 public:
 	FFMCodexLocalMatchD6Provider() = delete;
@@ -18,6 +20,11 @@ public:
 
 	virtual FMatchPlayPostRouteRollProviderResult RollD6(
 		EMatchPlayCurrentAttackPostRouteRollPurpose Purpose) override;
+
+	virtual FMatchPlayRecoveryProviderResult DrawWeightedWithoutReplacement(
+		EMatchPlayRecoveryPurpose Purpose,
+		const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
+		int32 ReturnCount) override;
 
 	/**
 	 * Host-owned roll for the currently implemented ordinary-attack Tactical

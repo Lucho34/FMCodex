@@ -64,6 +64,10 @@ bool FFMCodexLocalMatchD6ProviderContractTest::RunTest(
 		(std::is_base_of_v<
 			IMatchPlayPostRouteRollProvider,
 			FFMCodexLocalMatchD6Provider>));
+	TestTrue(TEXT("Provider implements Recovery interface"),
+		(std::is_base_of_v<
+			IMatchPlayRecoveryProvider,
+			FFMCodexLocalMatchD6Provider>));
 	TestFalse(TEXT("Provider requires an explicit match seed"),
 		std::is_default_constructible_v<FFMCodexLocalMatchD6Provider>);
 	TestFalse(TEXT("Provider cannot be copied"),
@@ -159,6 +163,37 @@ bool FFMCodexLocalMatchD6ProviderContractTest::RunTest(
 			EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack).RawD6,
 		FreshPostProvider.RollD6(
 			EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack).RawD6);
+
+	TArray<FMatchPlayRecoveryCandidate> RecoveryCandidates;
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		FMatchPlayRecoveryCandidate Candidate;
+		Candidate.OwnerSide = Index < 2
+			? EInitialTurnOrderPlayer::PlayerA
+			: EInitialTurnOrderPlayer::PlayerB;
+		Candidate.CardId = FName(*FString::Printf(TEXT("Recovery.%d"), Index));
+		Candidate.StaminaWeight = Index + 1;
+		RecoveryCandidates.Add(Candidate);
+	}
+	FFMCodexLocalMatchD6Provider RecoveryA(Seed);
+	FFMCodexLocalMatchD6Provider RecoveryB(Seed);
+	const auto PairA = RecoveryA.DrawWeightedWithoutReplacement(
+		EMatchPlayRecoveryPurpose::ConsumedRecovery,
+		RecoveryCandidates,
+		2);
+	const auto PairB = RecoveryB.DrawWeightedWithoutReplacement(
+		EMatchPlayRecoveryPurpose::ConsumedRecovery,
+		RecoveryCandidates,
+		2);
+	TestTrue(TEXT("Recovery pair succeeds"), PairA.bSuccess);
+	TestEqual(TEXT("Recovery pair returns exactly two"),
+		PairA.SelectedCandidateIndices.Num(), 2);
+	TestTrue(TEXT("Recovery pair is without replacement"),
+		PairA.SelectedCandidateIndices.Num() == 2
+			&& PairA.SelectedCandidateIndices[0]
+				!= PairA.SelectedCandidateIndices[1]);
+	TestTrue(TEXT("Same seed Recovery pair is deterministic"),
+		PairA.SelectedCandidateIndices == PairB.SelectedCandidateIndices);
 	return true;
 }
 
@@ -234,8 +269,7 @@ bool FFMCodexLocalMatchD6ProviderChronologyAndAuthorityTest::RunTest(
 	TestFalse(TEXT("Provider stores no duplicate accepted-roll history"),
 		ProviderHeader.Contains(TEXT("AllRolls"))
 			|| ProviderHeader.Contains(TEXT("AcceptedRolls"))
-			|| ProviderHeader.Contains(TEXT("GameplayRollHistory"))
-			|| ProviderHeader.Contains(TEXT("TArray")));
+			|| ProviderHeader.Contains(TEXT("GameplayRollHistory")));
 	TestFalse(TEXT("Host exposes no provider or stream getter"),
 		HostHeader.Contains(TEXT("GetD6Provider"))
 			|| HostHeader.Contains(TEXT("GetRandomStream"))
@@ -256,10 +290,10 @@ bool FFMCodexLocalMatchD6ProviderChronologyAndAuthorityTest::RunTest(
 		HostHeader.Find(TEXT("FFMCodexLocalMatchD6Provider D6Provider;"))
 			< HostHeader.Find(
 				TEXT("FMatchPlayAuthoritativeSession AuthoritativeSession;")));
-	TestEqual(TEXT("Session borrows the same provider for both interfaces"),
+	TestEqual(TEXT("Session borrows the same provider for all three interfaces"),
 		CountOccurrences(HostSource,
 			TEXT("\t\tD6Provider,")),
-		2);
+		3);
 	TestEqual(TEXT("Candidate runtime is atomically adopted once"),
 		CountOccurrences(HostSource,
 			TEXT("ActiveMatchRuntime = MoveTemp(CandidateRuntime);")),

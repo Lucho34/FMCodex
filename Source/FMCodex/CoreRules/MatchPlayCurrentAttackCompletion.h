@@ -11,6 +11,7 @@
 #include "MatchPlayThroughBallResolutionTerminalCapability.h"
 #include "MatchPlayMarkerNoSelectionGoalCapability.h"
 #include "MatchPlayNoLegalCarrierCompletionCapability.h"
+#include "MatchPlayRecovery.h"
 #include "MatchPlayRunnerNoSelectionNoGoalCapability.h"
 #include "MatchPlaySkillNoSelectionNoGoalCapability.h"
 #include "MatchResultResolver.h"
@@ -72,7 +73,17 @@ enum class EMatchPlayCurrentAttackCompletionErrorCode : uint8
 	MatchEndResolutionFailed
 		UMETA(DisplayName = "Match End Resolution Failed"),
 	MatchResultResolutionFailed
-		UMETA(DisplayName = "Match Result Resolution Failed")
+		UMETA(DisplayName = "Match Result Resolution Failed"),
+	RecoveryCandidateQueryFailed
+		UMETA(DisplayName = "Recovery Candidate Query Failed"),
+	MissingRecoveryProvider
+		UMETA(DisplayName = "Missing Recovery Provider"),
+	RecoveryProviderFailure
+		UMETA(DisplayName = "Recovery Provider Failure"),
+	MalformedRecoveryProviderResult
+		UMETA(DisplayName = "Malformed Recovery Provider Result"),
+	RecoveryMutationFailed
+		UMETA(DisplayName = "Recovery Mutation Failed")
 };
 
 USTRUCT(BlueprintType)
@@ -123,6 +134,8 @@ struct FMCODEX_API FMatchPlayCurrentAttackCompletionResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Completion")
 	FMatchResultResolveResult MatchResultResolveResult;
 
+	FMatchPlayRecoveryResolveResult RecoveryResolveResult;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack Completion")
 	EInitialTurnOrderPlayer ScoringSide =
 		EInitialTurnOrderPlayer::None;
@@ -144,7 +157,8 @@ public:
 	static FMatchPlayCurrentAttackCompletionResult AdvanceAfterTerminal(
 		const FMatchPlayState& BeforeState,
 		int64 AttackSequence,
-		EInitialTurnOrderPlayer RequestingSide);
+		EInitialTurnOrderPlayer RequestingSide,
+		IMatchPlayRecoveryProvider* RecoveryProvider = nullptr);
 
 private:
 	friend class FMatchPlayMarkerDecline;
@@ -196,7 +210,9 @@ private:
 		FMatchPlayState WorkingState,
 		EInitialTurnOrderPlayer Attacker,
 		EInitialTurnOrderPlayer Defender,
-		FMatchPlayCurrentAttackCompletionResult Result);
+		FMatchPlayCurrentAttackCompletionResult Result,
+		IMatchPlayRecoveryProvider* RecoveryProvider,
+		bool bApplyRecovery);
 
 	static FMatchPlayCurrentAttackCompletionResult
 	CompleteCrossResolution(

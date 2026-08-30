@@ -665,6 +665,35 @@ FText FFMCodexPlayerUIPresentationText::Owner(const FString& CanonicalLabel)
 		? LOCTEXT("OwnerUnavailable", "玩家未知") : FText::FromString(CanonicalLabel);
 }
 
+FText FFMCodexPlayerUIPresentationText::RecoveryNotificationTitle()
+{
+	return LOCTEXT("RecoveryNotificationTitle", "球员返回手牌");
+}
+
+FText FFMCodexPlayerUIPresentationText::RecoveryOwner(
+	const EInitialTurnOrderPlayer OwnerSide)
+{
+	switch (OwnerSide)
+	{
+	case EInitialTurnOrderPlayer::PlayerA:
+		return LOCTEXT("RecoveryOwnerPlayerA", "玩家A");
+	case EInitialTurnOrderPlayer::PlayerB:
+		return LOCTEXT("RecoveryOwnerPlayerB", "玩家B");
+	default:
+		return LOCTEXT("RecoveryOwnerFallback", "玩家");
+	}
+}
+
+FText FFMCodexPlayerUIPresentationText::RecoveryEntry(
+	const EInitialTurnOrderPlayer OwnerSide,
+	const FString& PlayerDisplayName)
+{
+	return FText::Format(
+		LOCTEXT("RecoveryEntryFormat", "{0} · {1}"),
+		RecoveryOwner(OwnerSide),
+		FText::FromString(PlayerDisplayName));
+}
+
 FText FFMCodexPlayerUIPresentationText::RackHeading(
 	const FString& SideLabel,
 	const bool bLocalRack)

@@ -20,6 +20,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/GameModeBase.h"
 #include "Styling/CoreStyle.h"
+#include "TimerManager.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -585,6 +586,7 @@ void AFMCodexLocalMatchPlayerController::InitializeLocalDevRollOverrideSurface()
 void AFMCodexLocalMatchPlayerController::EndPlay(
 	const EEndPlayReason::Type EndPlayReason)
 {
+	CancelRecoveryNotificationDismiss();
 	if (PlayerMatchScreen != nullptr)
 	{
 		PlayerMatchScreen->ClearMatchController();
@@ -745,6 +747,7 @@ void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
 	const FString& CommandName,
 	const FString& Message)
 {
+	CancelRecoveryNotificationDismiss();
 	LastDiagnostic.CommandName = CommandName;
 	LastDiagnostic.bHostSuccess = false;
 	LastDiagnostic.bAuthoritativeAccepted = false;
@@ -756,6 +759,57 @@ void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
 			CommandName, Message, false);
 	RefreshPresentation();
 }
+
+void AFMCodexLocalMatchPlayerController::ScheduleRecoveryNotificationDismiss()
+{
+	CancelRecoveryNotificationDismiss();
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			RecoveryNotificationDismissTimerHandle,
+			this,
+			&AFMCodexLocalMatchPlayerController::DismissRecoveryNotification,
+			RecoveryNotificationDurationSeconds,
+			false);
+	}
+}
+
+void AFMCodexLocalMatchPlayerController::CancelRecoveryNotificationDismiss()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(
+			RecoveryNotificationDismissTimerHandle);
+	}
+}
+
+void AFMCodexLocalMatchPlayerController::DismissRecoveryNotification()
+{
+	CancelRecoveryNotificationDismiss();
+	if (!ResolutionFeedback.bNonBlockingNotification)
+	{
+		return;
+	}
+	ResolutionFeedback = FFMCodexLocalMatchResolutionFeedback();
+	RebuildControlSurface();
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+bool AFMCodexLocalMatchPlayerController::
+IsRecoveryNotificationDismissScheduledForTesting() const
+{
+	UWorld* World = GetWorld();
+	return World != nullptr
+		&& World->GetTimerManager().IsTimerActive(
+			RecoveryNotificationDismissTimerHandle);
+}
+
+void AFMCodexLocalMatchPlayerController::
+ExpireRecoveryNotificationForTesting()
+{
+	DismissRecoveryNotification();
+}
+#endif
 
 void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 {

@@ -115,6 +115,25 @@ namespace MatchPlaySendingOffResolutionTests
 			EMatchPlayAttackEntryRollPurpose::None;
 		FMatchPlayAttackEntrySelectionProviderResult NextResult;
 	};
+
+	class FRecoveryProvider final : public IMatchPlayRecoveryProvider
+	{
+	public:
+		virtual FMatchPlayRecoveryProviderResult
+		DrawWeightedWithoutReplacement(
+			const EMatchPlayRecoveryPurpose Purpose,
+			const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
+			const int32 ReturnCount) override
+		{
+			++CallCount;
+			LastCandidates = OrderedCandidates;
+			return NextResult;
+		}
+
+		int32 CallCount = 0;
+		TArray<FMatchPlayRecoveryCandidate> LastCandidates;
+		FMatchPlayRecoveryProviderResult NextResult;
+	};
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -407,11 +426,16 @@ bool FMatchPlaySendingOffResolutionLifecycleTest::RunTest(
 		MakePendingState({ A1, A2 }, {}, {}, 1, 0);
 	const auto FinalTerminal = FMatchPlaySendingOffResolution::Resolve(
 		FinalBefore, Request, &FinalProvider);
+	FMatchPlayState FinalTerminalState = FinalTerminal.AfterState;
+	FinalTerminalState.LastRecoveryFact.bHasRecoveryFact = true;
+	FinalTerminalState.LastRecoveryFact.SourceAttackSequence = 99;
+	FRecoveryProvider FinalRecoveryProvider;
 	const auto FinalAdvance =
 		FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
-			FinalTerminal.AfterState,
+			FinalTerminalState,
 			1,
-			EInitialTurnOrderPlayer::PlayerA);
+			EInitialTurnOrderPlayer::PlayerA,
+			&FinalRecoveryProvider);
 	TestTrue(TEXT("Final AP1 advance succeeds"), FinalAdvance.bSuccess);
 	TestTrue(TEXT("Final AP1 ends match"), FinalAdvance.bMatchEnded);
 	TestTrue(TEXT("Final match result derives successfully"),
@@ -419,6 +443,101 @@ bool FMatchPlaySendingOffResolutionLifecycleTest::RunTest(
 	TestEqual(TEXT("Final winner derives only from existing score"),
 		FinalAdvance.MatchResultResolveResult.ResultType,
 		EMatchResultType::Draw);
+	TestEqual(TEXT("Final advance consumes zero Recovery provider"),
+		FinalRecoveryProvider.CallCount, 0);
+	TestFalse(TEXT("Final advance clears bounded Recovery fact"),
+		FinalAdvance.AfterState.LastRecoveryFact.bHasRecoveryFact);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlaySendingOffSharedRecoveryAdvanceTest,
+	"FMCodex.CoreRules.MatchPlaySendingOff.SharedRecoveryAdvanceAtomicity",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlaySendingOffSharedRecoveryAdvanceTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlaySendingOffResolutionTests;
+	FSelectionProvider EjectionProvider;
+	EjectionProvider.NextResult.bSuccess = true;
+	EjectionProvider.NextResult.SelectedIndex = 1;
+	FMatchPlaySendingOffResolutionRequest ResolveRequest;
+	ResolveRequest.AttackSequence = 1;
+	const auto Resolution = FMatchPlaySendingOffResolution::Resolve(
+		MakePendingState({ A1, A2, A3, AGK }),
+		ResolveRequest,
+		&EjectionProvider);
+	TestTrue(TEXT("AP1 terminal fixture resolves"), Resolution.bSuccess);
+
+	FMatchPlayState Terminal = Resolution.AfterState;
+	Terminal.CardUsageState.PlayerACardUsageState.AvailableCardIds.Remove(A1);
+	Terminal.CardUsageState.PlayerACardUsageState.AvailableCardIds.Remove(A3);
+	Terminal.CardUsageState.PlayerACardUsageState.UsedCardIds = { A1, A3 };
+	Terminal.CardUsageState.PlayerBCardUsageState.AvailableCardIds.Remove(B1);
+	Terminal.CardUsageState.PlayerBCardUsageState.UsedCardIds = { B1 };
+	TestTrue(TEXT("Terminal old-Used fixture is canonical"),
+		FMatchPlayCardUsageStateValidator::Validate(
+			Terminal.CardUsageState,
+			Terminal.CardSnapshotAuthority).bIsCanonical);
+
+	FRecoveryProvider Failure;
+	Failure.NextResult.ErrorCode =
+		EMatchPlayRecoveryProviderErrorCode::ProviderFailure;
+	Failure.NextResult.ErrorMessage = TEXT("retry Recovery only");
+	const auto Failed = FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
+		Terminal, 1, EInitialTurnOrderPlayer::PlayerA, &Failure);
+	TestEqual(TEXT("Recovery provider failure is explicit"), Failed.ErrorCode,
+		EMatchPlayCurrentAttackCompletionErrorCode::RecoveryProviderFailure);
+	TestTrue(TEXT("Failed shared advance preserves exact terminal snapshot"),
+		AreStatesEqual(Failed.AfterState, Terminal));
+	TestTrue(TEXT("Failed shared advance remains retryable terminal"),
+		Failed.AfterState.bHasCurrentAttack
+			&& Failed.AfterState.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	TestEqual(TEXT("Failed shared advance does not consume opportunity"),
+		Failed.AfterState.RuntimeState.PlayerAState.UsedAttackCount, 0);
+
+	FRecoveryProvider Success;
+	Success.NextResult.bSuccess = true;
+	Success.NextResult.SelectedCandidateIndices = { 2, 0 };
+	const auto Advanced = FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
+		Terminal, 1, EInitialTurnOrderPlayer::PlayerA, &Success);
+	TestTrue(TEXT("Retry shared advance succeeds"), Advanced.bSuccess);
+	TestEqual(TEXT("Retry calls one semantic Recovery operation"),
+		Success.CallCount, 1);
+	TestEqual(TEXT("Combined pool contains old Used across both sides"),
+		Success.LastCandidates.Num(), 3);
+	TestTrue(TEXT("AP1 Ejected card is excluded"),
+		!Success.LastCandidates.ContainsByPredicate(
+			[](const FMatchPlayRecoveryCandidate& Candidate)
+			{
+				return Candidate.CardId == A2;
+			}));
+	TestEqual(TEXT("Recovery fact preserves source sequence"),
+		Advanced.AfterState.LastRecoveryFact.SourceAttackSequence, int64(1));
+	TestEqual(TEXT("Recovery fact returns two"),
+		Advanced.AfterState.LastRecoveryFact.ReturnedCards.Num(), 2);
+	if (Advanced.AfterState.LastRecoveryFact.ReturnedCards.Num() == 2)
+	{
+		TestEqual(TEXT("Recovery order entry 0 is PlayerB"),
+			Advanced.AfterState.LastRecoveryFact.ReturnedCards[0].CardId, B1);
+		TestEqual(TEXT("Recovery order entry 1 is PlayerA"),
+			Advanced.AfterState.LastRecoveryFact.ReturnedCards[1].CardId, A1);
+	}
+	TestTrue(TEXT("Ejected identity remains disjoint and persistent"),
+		Advanced.AfterState.CardUsageState.PlayerACardUsageState
+			.EjectedCardIds.Contains(A2));
+
+	FRecoveryProvider Rejected;
+	const auto Wrong = FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
+		Terminal, 1, EInitialTurnOrderPlayer::PlayerB, &Rejected);
+	const auto Stale = FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
+		Terminal, 2, EInitialTurnOrderPlayer::PlayerA, &Rejected);
+	TestFalse(TEXT("Wrong owner rejects"), Wrong.bSuccess);
+	TestFalse(TEXT("Stale sequence rejects"), Stale.bSuccess);
+	TestEqual(TEXT("Rejected advances consume zero Recovery provider"),
+		Rejected.CallCount, 0);
 	return true;
 }
 

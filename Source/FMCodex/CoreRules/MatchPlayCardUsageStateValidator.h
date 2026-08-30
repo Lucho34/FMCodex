@@ -2,7 +2,8 @@
 
 #include "CoreMinimal.h"
 
-#include "MatchPlayState.h"
+#include "MatchPlayCardSnapshotAuthority.h"
+#include "PlayCardResolver.h"
 
 enum class EMatchPlayCardUsageStateValidationErrorCode : uint8
 {

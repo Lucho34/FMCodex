@@ -1045,6 +1045,10 @@ struct FMCODEX_API FFMCodexUMGResolutionViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	bool bTerminal = false;
 
+	/** Compact Recovery mode: transparent root and no descendant hit testing. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
+	bool bNonBlockingNotification = false;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Resolution")
 	bool bCanContinue = false;
 

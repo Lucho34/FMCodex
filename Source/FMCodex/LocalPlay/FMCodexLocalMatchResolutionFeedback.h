@@ -36,6 +36,8 @@ struct FMCODEX_API FFMCodexLocalMatchResolutionFeedback
 	bool bVisible = false;
 	bool bRejected = false;
 	bool bTerminal = false;
+	/** Presentation-only Recovery notification; never a gameplay phase. */
+	bool bNonBlockingNotification = false;
 	FString CommandName;
 	FString StepTitle;
 	FString StepSummary;
@@ -59,6 +61,9 @@ public:
 
 	static FFMCodexLocalMatchResolutionFeedback BuildFromTerminalSnapshot(
 		const FFMCodexLocalMatchInteractionView& TerminalView);
+
+	static FFMCodexLocalMatchResolutionFeedback BuildRecovery(
+		const FFMCodexLocalMatchInteractionView& AdvancedView);
 
 	static FFMCodexLocalMatchResolutionFeedback Build(
 		const FString& CommandName,

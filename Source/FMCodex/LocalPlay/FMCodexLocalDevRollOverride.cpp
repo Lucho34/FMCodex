@@ -59,6 +59,38 @@ bool FFMCodexLocalDevRollOverride::ClearOverride(
 void FFMCodexLocalDevRollOverride::ClearAllOverrides()
 {
 	PendingOverrides.Reset();
+	PendingRecoveryOverride.Reset();
+}
+
+FFMCodexLocalDevRollOverrideCommandResult
+FFMCodexLocalDevRollOverride::SetRecoveryOverride(
+	const TArray<int32>& OrderedCandidateIndices)
+{
+	FFMCodexLocalDevRollOverrideCommandResult Result;
+	if (OrderedCandidateIndices.Num() != 2
+		|| OrderedCandidateIndices[0] < 0
+		|| OrderedCandidateIndices[1] < 0
+		|| OrderedCandidateIndices[0] == OrderedCandidateIndices[1])
+	{
+		Result.ErrorMessage =
+			TEXT("DEV Recovery override requires two distinct non-negative candidate indices.");
+		return Result;
+	}
+	PendingRecoveryOverride = OrderedCandidateIndices;
+	Result.bSuccess = true;
+	return Result;
+}
+
+bool FFMCodexLocalDevRollOverride::ClearRecoveryOverride()
+{
+	const bool bWasPending = PendingRecoveryOverride.IsSet();
+	PendingRecoveryOverride.Reset();
+	return bWasPending;
+}
+
+bool FFMCodexLocalDevRollOverride::HasPendingRecoveryOverride() const
+{
+	return PendingRecoveryOverride.IsSet();
 }
 
 bool FFMCodexLocalDevRollOverride::HasPendingOverride(
@@ -118,6 +150,26 @@ FFMCodexLocalDevRollOverride::RollD6(
 		return Result;
 	}
 	return ProductionProvider.RollD6(Purpose);
+}
+
+FMatchPlayRecoveryProviderResult
+FFMCodexLocalDevRollOverride::DrawWeightedWithoutReplacement(
+	const EMatchPlayRecoveryPurpose Purpose,
+	const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
+	const int32 ReturnCount)
+{
+	if (PendingRecoveryOverride.IsSet())
+	{
+		FMatchPlayRecoveryProviderResult Result;
+		Result.bSuccess = true;
+		Result.SelectedCandidateIndices = PendingRecoveryOverride.GetValue();
+		PendingRecoveryOverride.Reset();
+		return Result;
+	}
+	return ProductionProvider.DrawWeightedWithoutReplacement(
+		Purpose,
+		OrderedCandidates,
+		ReturnCount);
 }
 
 int32 FFMCodexLocalDevRollOverride::RollOrdinaryTacticalPoint()

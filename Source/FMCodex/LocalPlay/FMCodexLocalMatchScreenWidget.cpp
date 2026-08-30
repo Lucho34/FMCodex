@@ -2338,7 +2338,7 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 #endif
 	ResolutionOverlay = MakeRegion(
 		*WidgetTree, TEXT("ResolutionPresentationLayer"));
-	USizeBox* ResolutionBounds = WidgetTree->ConstructWidget<USizeBox>(
+	ResolutionBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("ResolutionResultRegion"));
 	ResolutionBounds->SetWidthOverride(720.0f);
 	ResolutionBounds->SetMaxDesiredHeight(640.0f);
@@ -3894,12 +3894,35 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	InteractionPanel->SetInteractionBlocked(
 		IsInlineFormulaRevealInputBlocked());
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);
-	ResolutionOverlay->SetVisibility(Presentation.Resolution.bVisible
+	const bool bShowLegacyResolution = Presentation.Resolution.bVisible
 		&& !StandaloneInlineFormula.bSuppressLegacyResolution
 		&& !DisplayedThroughBall.bSuppressLegacyResolution
 		&& !DisplayedLongShot.bSuppressLegacyResolution
 		&& !bThroughBallProductionOwnsResolution
-		&& !bLongShotProductionOwnsResolution
-		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		&& !bLongShotProductionOwnsResolution;
+	const bool bNonBlockingNotification = bShowLegacyResolution
+		&& Presentation.Resolution.bNonBlockingNotification;
+	ResolutionOverlay->SetBrushColor(bNonBlockingNotification
+		? FLinearColor::Transparent
+		: FFMCodexPlayerUIStyle::Get().GetColor(
+			EFMCodexPlayerUIColorRole::PanelBackground));
+	ResolutionOverlay->SetPadding(bNonBlockingNotification
+		? FMargin(0.0f)
+		: FFMCodexPlayerUIStyle::Get().GetOuterPadding());
+	ResolutionBounds->SetWidthOverride(
+		bNonBlockingNotification ? 520.0f : 720.0f);
+	if (UBorderSlot* ResolutionSlot = Cast<UBorderSlot>(
+		ResolutionBounds->Slot))
+	{
+		ResolutionSlot->SetVerticalAlignment(bNonBlockingNotification
+			? VAlign_Top : VAlign_Center);
+		ResolutionSlot->SetPadding(bNonBlockingNotification
+			? FMargin(0.0f, 92.0f, 0.0f, 0.0f) : FMargin(0.0f));
+	}
+	ResolutionOverlay->SetVisibility(!bShowLegacyResolution
+		? ESlateVisibility::Collapsed
+		: bNonBlockingNotification
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::SelfHitTestInvisible);
 
 }

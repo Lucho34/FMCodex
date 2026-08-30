@@ -977,6 +977,9 @@ public:
 #if !UE_BUILD_SHIPPING
 	FFMCodexLocalDevRollOverrideCommandResult SetLocalDevRollOverride(
 		const FFMCodexLocalDevRollOverrideRequest& Request);
+	FFMCodexLocalDevRollOverrideCommandResult SetLocalDevRecoveryOverride(
+		const TArray<int32>& OrderedCandidateIndices);
+	bool ClearLocalDevRecoveryOverride();
 	bool ClearLocalDevRollOverride(EFMCodexLocalDevRollTarget Target);
 	void ClearAllLocalDevRollOverrides();
 	TArray<FFMCodexLocalDevPendingRollOverride>

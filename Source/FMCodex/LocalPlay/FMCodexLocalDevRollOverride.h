@@ -88,6 +88,7 @@ struct FMCODEX_API FFMCodexLocalDevPendingRollOverride final
 class FMCODEX_API FFMCodexLocalDevRollOverride final
 	: public IMatchPlayInitialRouteRollProvider
 	, public IMatchPlayPostRouteRollProvider
+	, public IMatchPlayRecoveryProvider
 {
 public:
 	explicit FFMCodexLocalDevRollOverride(
@@ -99,6 +100,10 @@ public:
 	void ClearAllOverrides();
 	bool HasPendingOverride(EFMCodexLocalDevRollTarget Target) const;
 	TArray<FFMCodexLocalDevPendingRollOverride> GetPendingOverrides() const;
+	FFMCodexLocalDevRollOverrideCommandResult SetRecoveryOverride(
+		const TArray<int32>& OrderedCandidateIndices);
+	bool ClearRecoveryOverride();
+	bool HasPendingRecoveryOverride() const;
 
 	template <typename TCallable>
 	decltype(auto) InvokeAs(
@@ -115,6 +120,10 @@ public:
 		EMatchPlayCurrentAttackResolutionRollPurpose Purpose) override;
 	virtual FMatchPlayPostRouteRollProviderResult RollD6(
 		EMatchPlayCurrentAttackPostRouteRollPurpose Purpose) override;
+	virtual FMatchPlayRecoveryProviderResult DrawWeightedWithoutReplacement(
+		EMatchPlayRecoveryPurpose Purpose,
+		const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
+		int32 ReturnCount) override;
 
 	int32 RollOrdinaryTacticalPoint();
 
@@ -127,6 +136,7 @@ private:
 
 	FFMCodexLocalMatchD6Provider& ProductionProvider;
 	TMap<EFMCodexLocalDevRollTarget, int32> PendingOverrides;
+	TOptional<TArray<int32>> PendingRecoveryOverride;
 	EFMCodexLocalDevRollInvocation ActiveInvocation =
 		EFMCodexLocalDevRollInvocation::None;
 };

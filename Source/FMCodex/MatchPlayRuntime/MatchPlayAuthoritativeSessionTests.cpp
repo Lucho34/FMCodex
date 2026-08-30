@@ -95,6 +95,7 @@ namespace MatchPlayAuthoritativeSessionTests
 
 	class FQueuePostRouteRollProvider final
 		: public IMatchPlayPostRouteRollProvider
+		, public IMatchPlayRecoveryProvider
 	{
 	public:
 		void Enqueue(const FMatchPlayPostRouteRollProviderResult& Result)
@@ -114,6 +115,54 @@ namespace MatchPlayAuthoritativeSessionTests
 			return Results[NextResultIndex++];
 		}
 
+		virtual FMatchPlayRecoveryProviderResult
+		DrawWeightedWithoutReplacement(
+			const EMatchPlayRecoveryPurpose Purpose,
+			const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
+			const int32 ReturnCount) override
+		{
+			++RecoveryCallCount;
+			LastRecoveryCandidates = OrderedCandidates;
+			if (bFailNextRecovery)
+			{
+				bFailNextRecovery = false;
+				FMatchPlayRecoveryProviderResult Result;
+				Result.ErrorCode =
+					EMatchPlayRecoveryProviderErrorCode::ProviderFailure;
+				Result.ErrorMessage = TEXT("Retryable Recovery test failure.");
+				return Result;
+			}
+			FMatchPlayRecoveryProviderResult Result;
+			if (Purpose != EMatchPlayRecoveryPurpose::ConsumedRecovery
+				|| ReturnCount != 2
+				|| OrderedCandidates.Num() < ReturnCount)
+			{
+				Result.ErrorCode =
+					EMatchPlayRecoveryProviderErrorCode::ProviderFailure;
+				Result.ErrorMessage = TEXT("Invalid Recovery test request.");
+				return Result;
+			}
+			Result.bSuccess = true;
+			Result.SelectedCandidateIndices = { 0, 1 };
+			return Result;
+		}
+
+		void FailNextRecovery()
+		{
+			bFailNextRecovery = true;
+		}
+
+		int32 GetRecoveryCallCount() const
+		{
+			return RecoveryCallCount;
+		}
+
+		const TArray<FMatchPlayRecoveryCandidate>&
+		GetLastRecoveryCandidates() const
+		{
+			return LastRecoveryCandidates;
+		}
+
 		int32 GetCallCount() const
 		{
 			return Purposes.Num();
@@ -128,7 +177,10 @@ namespace MatchPlayAuthoritativeSessionTests
 	private:
 		TArray<FMatchPlayPostRouteRollProviderResult> Results;
 		TArray<EMatchPlayCurrentAttackPostRouteRollPurpose> Purposes;
+		TArray<FMatchPlayRecoveryCandidate> LastRecoveryCandidates;
 		int32 NextResultIndex = 0;
+		int32 RecoveryCallCount = 0;
+		bool bFailNextRecovery = false;
 	};
 
 	FPlayerCardData MakeDeckCard(
@@ -19539,6 +19591,8 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallFeetFormulaTest
 		const FMatchPlayState Before = Session.GetStateSnapshot();
 		const int32 InitialCallsBefore = Initial.GetCallCount();
 		const int32 PostCallsBefore = Post.GetCallCount();
+		const int32 RecoveryCallsBeforeTerminal =
+			Post.GetRecoveryCallCount();
 		const int32 InitialRecordsBefore = Before.CurrentAttack
 			.ResolutionSession.InitialRouteRollRecords.Num();
 		const int32 PostRecordsBefore = Before.CurrentAttack
@@ -19567,6 +19621,9 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallFeetFormulaTest
 			Initial.GetCallCount() - InitialCallsBefore, 0);
 		TestEqual(*FString::Printf(TEXT("%s post provider delta"), Case.Label),
 			Post.GetCallCount() - PostCallsBefore, 0);
+		TestEqual(*FString::Printf(TEXT("%s terminal Recovery delta"),
+			Case.Label),
+			Post.GetRecoveryCallCount() - RecoveryCallsBeforeTerminal, 0);
 		TestEqual(*FString::Printf(TEXT("%s initial record delta"), Case.Label),
 			After.CurrentAttack.ResolutionSession.InitialRouteRollRecords.Num()
 				- InitialRecordsBefore,
@@ -22731,8 +22788,42 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest AdvanceRequest;
 		AdvanceRequest.AttackSequence = Before.CurrentAttack.AttackSequence;
 		AdvanceRequest.RequestingSide = Attacker;
+		if (Case.Scenario == EScenario::Feet && Case.bGoal)
+		{
+			const int32 RejectedCallsBefore = Post.GetRecoveryCallCount();
+			FMatchPlayAuthoritativeAdvanceAfterTerminalRequest WrongSide =
+				AdvanceRequest;
+			WrongSide.RequestingSide = Defender;
+			const auto WrongSideResult =
+				Session.AdvanceAfterTerminal(WrongSide);
+			FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Stale =
+				AdvanceRequest;
+			++Stale.AttackSequence;
+			const auto StaleResult = Session.AdvanceAfterTerminal(Stale);
+			TestFalse(TEXT("Ordinary wrong-side advance rejects"),
+				WrongSideResult.CompletionResult.bSuccess);
+			TestFalse(TEXT("Ordinary stale advance rejects"),
+				StaleResult.CompletionResult.bSuccess);
+			TestEqual(TEXT("Ordinary rejected advances consume zero Recovery"),
+				Post.GetRecoveryCallCount() - RejectedCallsBefore, 0);
+			TestTrue(TEXT("Ordinary rejected advances preserve terminal state"),
+				AreStatesEqual(After, Session.GetStateSnapshot()));
+
+			Post.FailNextRecovery();
+			const int32 FailureCallsBefore = Post.GetRecoveryCallCount();
+			const auto FailedAdvance =
+				Session.AdvanceAfterTerminal(AdvanceRequest);
+			TestFalse(TEXT("Ordinary Recovery provider failure rejects advance"),
+				FailedAdvance.CompletionResult.bSuccess);
+			TestEqual(TEXT("Ordinary failed advance performs one Recovery operation"),
+				Post.GetRecoveryCallCount() - FailureCallsBefore, 1);
+			TestTrue(TEXT("Ordinary failed advance preserves exact terminal state"),
+				AreStatesEqual(After, Session.GetStateSnapshot()));
+		}
 		const int32 CallsBeforeAdvance =
 			Initial.GetCallCount() + Post.GetCallCount();
+		const int32 RecoveryCallsBeforeAdvance =
+			Post.GetRecoveryCallCount();
 		const auto Advance = Session.AdvanceAfterTerminal(AdvanceRequest);
 		const FMatchPlayState Advanced = Session.GetStateSnapshot();
 		TestTrue(*FString::Printf(TEXT("%s explicit advance succeeds"), Case.Label),
@@ -22759,6 +22850,34 @@ FMatchPlayAuthoritativeSessionApplyThroughBallTerminalResolutionTest
 			Advance.CompletionResult.MatchEndResolveResult.bSuccess);
 		TestEqual(*FString::Printf(TEXT("%s advance RNG delta"), Case.Label),
 			Initial.GetCallCount() + Post.GetCallCount() - CallsBeforeAdvance, 0);
+		TestEqual(*FString::Printf(TEXT("%s advance Recovery delta"), Case.Label),
+			Post.GetRecoveryCallCount() - RecoveryCallsBeforeAdvance, 1);
+		TestTrue(*FString::Printf(TEXT("%s publishes Recovery fact"), Case.Label),
+			Advanced.LastRecoveryFact.bHasRecoveryFact);
+		TestEqual(*FString::Printf(TEXT("%s Recovery source sequence"), Case.Label),
+			Advanced.LastRecoveryFact.SourceAttackSequence,
+			AdvanceRequest.AttackSequence);
+		for (const FPlayCardResolveResult& Consumed :
+			Advance.CompletionResult.OrdinaryCardUsageResults)
+		{
+			TestTrue(*FString::Printf(
+				TEXT("%s newly consumed %s enters Recovery pool"),
+				Case.Label,
+				*Consumed.CardId.ToString()),
+				Post.GetLastRecoveryCandidates().ContainsByPredicate(
+					[&Consumed](const FMatchPlayRecoveryCandidate& Candidate)
+					{
+						return Candidate.OwnerSide == Consumed.PlayerSide
+							&& Candidate.CardId == Consumed.CardId;
+					}));
+		}
+		const int32 CallsBeforeDuplicate = Post.GetRecoveryCallCount();
+		const auto Duplicate = Session.AdvanceAfterTerminal(AdvanceRequest);
+		TestFalse(*FString::Printf(TEXT("%s duplicate advance rejects"),
+			Case.Label), Duplicate.CompletionResult.bSuccess);
+		TestEqual(*FString::Printf(TEXT("%s duplicate Recovery delta"),
+			Case.Label),
+			Post.GetRecoveryCallCount() - CallsBeforeDuplicate, 0);
 	}
 
 	{

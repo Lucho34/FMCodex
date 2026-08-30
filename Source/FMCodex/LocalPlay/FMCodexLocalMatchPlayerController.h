@@ -46,6 +46,8 @@ public:
 	void StartNewDemoMatch();
 #if WITH_DEV_AUTOMATION_TESTS
 	void SetNextDemoMatchSeedForTesting(int32 Seed);
+	bool IsRecoveryNotificationDismissScheduledForTesting() const;
+	void ExpireRecoveryNotificationForTesting();
 #endif
 	void RollDemoTacticalPoints();
 	void DeployOrdinary(FName CardId, FName SlotId);
@@ -121,10 +123,14 @@ private:
 	TSharedRef<SWidget> BuildControlSurface();
 	void RecordLocalFailure(const FString& CommandName, const FString& Message);
 	void ResolveAutomaticNoLegalHelperIfNeeded();
+	void ScheduleRecoveryNotificationDismiss();
+	void CancelRecoveryNotificationDismiss();
+	void DismissRecoveryNotification();
 
 	template <typename TResult>
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
 	{
+		CancelRecoveryNotificationDismiss();
 		const FFMCodexLocalMatchInteractionView PreviousView = InteractionView;
 		LastDiagnostic.CommandName = CommandName;
 		LastDiagnostic.bHostSuccess = Result.bSuccess;
@@ -151,9 +157,11 @@ private:
 		{
 			if (CommandName == TEXT("AdvanceAfterTerminal"))
 			{
-				// The accepted advance has left the completed attack. Do not let its
-				// command acknowledgement become the next attack's resolution surface.
-				ResolutionFeedback = {};
+				// The completed attack no longer owns the surface. A bounded Recovery
+				// fact may supply a non-blocking transition message for the next state.
+				ResolutionFeedback =
+					FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRecovery(
+						InteractionView);
 			}
 			else if (InteractionView.bTerminalPendingAdvance)
 			{
@@ -183,6 +191,10 @@ private:
 			}
 		}
 		RebuildControlSurface();
+		if (ResolutionFeedback.bNonBlockingNotification)
+		{
+			ScheduleRecoveryNotificationDismiss();
+		}
 	}
 
 	FFMCodexLocalMatchInteractionView InteractionView;
@@ -198,6 +210,8 @@ private:
 	bool bThroughBallAntiOffsideRollCommandInFlight = false;
 	bool bThroughBallOneOnOneRollCommandInFlight = false;
 	bool bThroughBallBehindDefenseRollCommandInFlight = false;
+	FTimerHandle RecoveryNotificationDismissTimerHandle;
+	static constexpr float RecoveryNotificationDurationSeconds = 2.0f;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	int32 NextDemoMatchSeedForTesting = INDEX_NONE;

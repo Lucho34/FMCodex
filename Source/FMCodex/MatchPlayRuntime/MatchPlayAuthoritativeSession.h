@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 
+#include <type_traits>
+
 #include "MatchPlayAuthoritativeSessionTypes.h"
 
 class FMCODEX_API FMatchPlayAuthoritativeSession final
@@ -16,10 +18,44 @@ public:
 		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
 		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
 		const FSkillRuleSnapshotSet& InSkillRuleSet);
+	template<
+		typename TPostRouteProvider,
+		std::enable_if_t<
+			std::is_base_of_v<
+				IMatchPlayPostRouteRollProvider,
+				TPostRouteProvider>
+			&& std::is_base_of_v<
+				IMatchPlayRecoveryProvider,
+				TPostRouteProvider>,
+			int> = 0>
+	FMatchPlayAuthoritativeSession(
+		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
+		TPostRouteProvider& InSharedPostRouteAndRecoveryProvider,
+		const FSkillRuleSnapshotSet& InSkillRuleSet)
+		: FMatchPlayAuthoritativeSession(
+			InInitialRouteRollProvider,
+			static_cast<IMatchPlayPostRouteRollProvider&>(
+				InSharedPostRouteAndRecoveryProvider),
+			static_cast<IMatchPlayRecoveryProvider&>(
+				InSharedPostRouteAndRecoveryProvider),
+			InSkillRuleSet)
+	{
+	}
+	FMatchPlayAuthoritativeSession(
+		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
+		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+		IMatchPlayRecoveryProvider& InRecoveryProvider,
+		const FSkillRuleSnapshotSet& InSkillRuleSet);
 	FMatchPlayAuthoritativeSession(
 		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
 		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
 		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+		const FSkillRuleSnapshotSet& InSkillRuleSet);
+	FMatchPlayAuthoritativeSession(
+		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
+		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+		IMatchPlayRecoveryProvider& InRecoveryProvider,
 		const FSkillRuleSnapshotSet& InSkillRuleSet);
 	~FMatchPlayAuthoritativeSession();
 
@@ -27,6 +63,10 @@ public:
 	FMatchPlayAuthoritativeSession(
 		FMatchPlayState InReconstructedState,
 		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider);
+	FMatchPlayAuthoritativeSession(
+		FMatchPlayState InReconstructedState,
+		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+		IMatchPlayRecoveryProvider& InRecoveryProvider);
 #endif
 
 	FMatchPlayAuthoritativeInitializeMatchResult InitializeMatch(
@@ -319,6 +359,7 @@ private:
 	IMatchPlayAttackEntryRollProvider* AttackEntryRollProvider = nullptr;
 	IMatchPlayInitialRouteRollProvider* InitialRouteRollProvider = nullptr;
 	IMatchPlayPostRouteRollProvider* PostRouteRollProvider = nullptr;
+	IMatchPlayRecoveryProvider* RecoveryProvider = nullptr;
 	FSkillRuleSnapshotSet AuthoritativeSkillRuleSet;
 	bool bHasSkillRuleSet = false;
 	bool bExecutingCommand = false;

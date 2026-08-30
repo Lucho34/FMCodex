@@ -1,6 +1,7 @@
 #include "FMCodexLocalMatchResolutionFeedback.h"
 
 #include "FMCodexLocalMatchHostGameMode.h"
+#include "FMCodexPlayerUIPresentationText.h"
 
 namespace FMCodexLocalMatchResolutionFeedback
 {
@@ -457,6 +458,33 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::BuildFromTerminalSnapshot(
 			Contest.ResolvedResult.AttackerFinalValue,
 			Contest.ResolvedResult.DefenderFinalValue));
 	}
+	return Feedback;
+}
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRecovery(
+	const FFMCodexLocalMatchInteractionView& AdvancedView)
+{
+	FFMCodexLocalMatchResolutionFeedback Feedback;
+	if (!AdvancedView.bHasRecoveryFact
+		|| AdvancedView.RecoveryPresentationEntries.IsEmpty())
+	{
+		return Feedback;
+	}
+
+	Feedback.bVisible = true;
+	Feedback.bNonBlockingNotification = true;
+	Feedback.CommandName = TEXT("ConsumedRecovery");
+	Feedback.StepTitle =
+		FFMCodexPlayerUIPresentationText::RecoveryNotificationTitle().ToString();
+	TArray<FString> Lines;
+	Lines.Reserve(AdvancedView.RecoveryPresentationEntries.Num());
+	for (const FFMCodexLocalMatchRecoveryPresentationEntry& Entry :
+		AdvancedView.RecoveryPresentationEntries)
+	{
+		Lines.Add(Entry.PresentationLine);
+	}
+	Feedback.StepSummary = FString::Join(Lines, TEXT("\n"));
 	return Feedback;
 }
 

@@ -1272,8 +1272,9 @@ bool FFMCodexLocalMatchPassControlSequentialResolutionTest::RunTest(
 	const auto Input = MakeInput(
 		TEXT("HostPassControlSequential"), SkillId);
 	FFMCodexLocalMatchD6Provider DirectProvider(Seed);
+	FFMCodexLocalDevRollOverride DirectOverride(DirectProvider);
 	FMatchPlayAuthoritativeSession Direct(
-		DirectProvider, DirectProvider, Rules);
+		DirectOverride, DirectOverride, DirectOverride, Rules);
 	FScopedWorld World;
 	auto* Host = World.GetHost();
 	auto* Controller = World.GetController();
@@ -1441,6 +1442,10 @@ bool FFMCodexLocalMatchPassControlSequentialResolutionTest::RunTest(
 	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest DirectAdvance;
 	DirectAdvance.AttackSequence = TerminalView.AttackSequence;
 	DirectAdvance.RequestingSide = TerminalView.ExpectedActingPlayer;
+	TestTrue(TEXT("Host deterministic Recovery pair accepted"),
+		Host->SetLocalDevRecoveryOverride({ 0, 1 }).bSuccess);
+	TestTrue(TEXT("Direct deterministic Recovery pair accepted"),
+		DirectOverride.SetRecoveryOverride({ 0, 1 }).bSuccess);
 	TestTrue(TEXT("Direct explicit PassControl advance succeeds"),
 		Direct.AdvanceAfterTerminal(DirectAdvance).CompletionResult.bSuccess);
 	Controller->AdvanceAfterTerminal();

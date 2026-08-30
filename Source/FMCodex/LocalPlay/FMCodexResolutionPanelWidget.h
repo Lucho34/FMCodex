@@ -85,6 +85,9 @@ private:
 	TObjectPtr<UTextBlock> StepTitleText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> StepHeadingText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> StepSummaryText;
 
 	UPROPERTY(Transient)

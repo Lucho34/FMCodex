@@ -230,6 +230,16 @@ struct FMCODEX_API FFMCodexLocalMatchPitchRegionView
 	TArray<FFMCodexLocalMatchPitchSlotView> Slots;
 };
 
+/** Data-driven projection of one authoritative returned-card fact entry. */
+struct FMCODEX_API FFMCodexLocalMatchRecoveryPresentationEntry
+{
+	EInitialTurnOrderPlayer OwnerSide = EInitialTurnOrderPlayer::None;
+	FName CardId = NAME_None;
+	FText OwnerDisplayName;
+	FString PlayerDisplayName;
+	FString PresentationLine;
+};
+
 enum class EFMCodexLocalMatchRollGroup : uint8
 {
 	InitialRoute,
@@ -307,6 +317,10 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	TArray<FFMCodexLocalMatchPitchRegionView> PitchRegions;
 	TArray<FFMCodexLocalMatchCardView> PlayerACardRoster;
 	TArray<FFMCodexLocalMatchCardView> PlayerBCardRoster;
+	bool bHasRecoveryFact = false;
+	int64 RecoverySourceAttackSequence = 0;
+	TArray<FFMCodexLocalMatchRecoveryPresentationEntry>
+		RecoveryPresentationEntries;
 	TArray<EMatchPlayElectiveBranchIntent> BranchIntentOptions;
 	TArray<EMatchPlayThroughBallOneOnOneShotChoice> OneOnOneOptions;
 	TArray<FFMCodexLocalMatchRollView> AcceptedRolls;

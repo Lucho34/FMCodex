@@ -71,6 +71,19 @@ FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
 }
 
 FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
+	IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+	IMatchPlayRecoveryProvider& InRecoveryProvider,
+	const FSkillRuleSnapshotSet& InSkillRuleSet)
+	: InitialRouteRollProvider(&InInitialRouteRollProvider)
+	, PostRouteRollProvider(&InPostRouteRollProvider)
+	, RecoveryProvider(&InRecoveryProvider)
+	, AuthoritativeSkillRuleSet(InSkillRuleSet)
+	, bHasSkillRuleSet(true)
+{
+}
+
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
 	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
 	IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
 	IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
@@ -78,6 +91,21 @@ FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
 	: AttackEntryRollProvider(&InAttackEntryRollProvider)
 	, InitialRouteRollProvider(&InInitialRouteRollProvider)
 	, PostRouteRollProvider(&InPostRouteRollProvider)
+	, AuthoritativeSkillRuleSet(InSkillRuleSet)
+	, bHasSkillRuleSet(true)
+{
+}
+
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+	IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
+	IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+	IMatchPlayRecoveryProvider& InRecoveryProvider,
+	const FSkillRuleSnapshotSet& InSkillRuleSet)
+	: AttackEntryRollProvider(&InAttackEntryRollProvider)
+	, InitialRouteRollProvider(&InInitialRouteRollProvider)
+	, PostRouteRollProvider(&InPostRouteRollProvider)
+	, RecoveryProvider(&InRecoveryProvider)
 	, AuthoritativeSkillRuleSet(InSkillRuleSet)
 	, bHasSkillRuleSet(true)
 {
@@ -91,6 +119,16 @@ FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
 	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider)
 	: AuthoritativeState(MoveTemp(InReconstructedState))
 	, AttackEntryRollProvider(&InAttackEntryRollProvider)
+{
+}
+
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	FMatchPlayState InReconstructedState,
+	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+	IMatchPlayRecoveryProvider& InRecoveryProvider)
+	: AuthoritativeState(MoveTemp(InReconstructedState))
+	, AttackEntryRollProvider(&InAttackEntryRollProvider)
+	, RecoveryProvider(&InRecoveryProvider)
 {
 }
 #endif
@@ -3043,7 +3081,7 @@ FMatchPlayAuthoritativeSession::AdvanceAfterTerminal(
 		EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal,
 		true,
 		Request.AttackSequence,
-		[Request](
+		[this, Request](
 			FMatchPlayAuthoritativeAdvanceAfterTerminalResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
@@ -3051,7 +3089,8 @@ FMatchPlayAuthoritativeSession::AdvanceAfterTerminal(
 				FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
 					BeforeState,
 					Request.AttackSequence,
-					Request.RequestingSide);
+					Request.RequestingSide,
+					RecoveryProvider);
 
 			FDomainExecution Execution;
 			Execution.bSuccess = Result.CompletionResult.bSuccess;

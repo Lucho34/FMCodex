@@ -1321,7 +1321,9 @@ FMatchPlayCurrentAttackCompletion::CompleteCarrierNoGoal(
 		BeforeState,
 		Attacker,
 		Defender,
-		MoveTemp(Result));
+		MoveTemp(Result),
+		nullptr,
+		false);
 }
 
 FMatchPlayCurrentAttackCompletionResult
@@ -1422,7 +1424,9 @@ FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 		MoveTemp(WorkingState),
 		Attacker,
 		Defender,
-		MoveTemp(Result));
+		MoveTemp(Result),
+		nullptr,
+		false);
 }
 
 FMatchPlayCurrentAttackCompletionResult
@@ -1510,7 +1514,9 @@ FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(
 		BeforeState,
 		Attacker,
 		Defender,
-		MoveTemp(Result));
+		MoveTemp(Result),
+		nullptr,
+		false);
 }
 
 FMatchPlayCurrentAttackCompletionResult
@@ -1644,7 +1650,9 @@ FMatchPlayCurrentAttackCompletion
 			MoveTemp(WorkingState),
 			Attacker,
 			Defender,
-			MoveTemp(Result));
+			MoveTemp(Result),
+			nullptr,
+			false);
 	if (!ValidatedAdvance.bSuccess)
 	{
 		return ValidatedAdvance;
@@ -1658,6 +1666,7 @@ FMatchPlayCurrentAttackCompletion
 		FAttackOpportunityResolveResult();
 	ValidatedAdvance.MatchEndResolveResult = FMatchEndResolveResult();
 	ValidatedAdvance.MatchResultResolveResult = FMatchResultResolveResult();
+	ValidatedAdvance.RecoveryResolveResult = FMatchPlayRecoveryResolveResult();
 	ValidatedAdvance.NextAttackingPlayer = EInitialTurnOrderPlayer::None;
 	ValidatedAdvance.bMatchEnded = false;
 	return ValidatedAdvance;
@@ -1667,7 +1676,8 @@ FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
 	const FMatchPlayState& BeforeState,
 	const int64 AttackSequence,
-	const EInitialTurnOrderPlayer RequestingSide)
+	const EInitialTurnOrderPlayer RequestingSide,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlayCurrentAttackCompletionImplementation;
 
@@ -1730,7 +1740,9 @@ FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(
 		BeforeState,
 		Attacker,
 		Defender,
-		MoveTemp(Result));
+		MoveTemp(Result),
+		RecoveryProvider,
+		true);
 }
 
 FMatchPlayCurrentAttackCompletionResult
@@ -1740,7 +1752,9 @@ FMatchPlayCurrentAttackCompletion
 		FMatchPlayState WorkingState,
 		const EInitialTurnOrderPlayer Attacker,
 		const EInitialTurnOrderPlayer Defender,
-		FMatchPlayCurrentAttackCompletionResult Result)
+		FMatchPlayCurrentAttackCompletionResult Result,
+		IMatchPlayRecoveryProvider* RecoveryProvider,
+		const bool bApplyRecovery)
 {
 	using namespace MatchPlayCurrentAttackCompletionImplementation;
 
@@ -1907,9 +1921,6 @@ FMatchPlayCurrentAttackCompletion
 			CardUsageResult.UpdatedMatchCardUsageState;
 	}
 
-	WorkingState.bHasCurrentAttack = false;
-	WorkingState.CurrentAttack = FMatchPlayCurrentAttackState();
-
 	Result.OpportunityResolveResult =
 		FAttackOpportunityResolver::ConsumeCurrentAttackOpportunity(
 			WorkingState.RuntimeState);
@@ -1975,7 +1986,79 @@ FMatchPlayCurrentAttackCompletion
 				Result.MatchResultResolveResult.ErrorMessage);
 			return Result;
 		}
+		// A final match publishes no new Recovery event and spends no Recovery RNG.
+		WorkingState.LastRecoveryFact = FMatchPlayLastRecoveryFact();
 	}
+	else if (bApplyRecovery)
+	{
+		Result.RecoveryResolveResult = FMatchPlayRecoveryResolver::Resolve(
+			WorkingState.CardUsageState,
+			WorkingState.CardSnapshotAuthority,
+			CurrentAttack.AttackSequence,
+			RecoveryProvider);
+		if (!Result.RecoveryResolveResult.bSuccess)
+		{
+			switch (Result.RecoveryResolveResult.ErrorCode)
+			{
+			case EMatchPlayRecoveryResolveErrorCode::CandidateQueryFailed:
+				SetError(Result,
+					EMatchPlayCurrentAttackCompletionErrorCode
+						::RecoveryCandidateQueryFailed,
+					Result.RecoveryResolveResult.ErrorMessage);
+				break;
+			case EMatchPlayRecoveryResolveErrorCode::MissingProvider:
+				SetError(Result,
+					EMatchPlayCurrentAttackCompletionErrorCode
+						::MissingRecoveryProvider,
+					Result.RecoveryResolveResult.ErrorMessage);
+				break;
+			case EMatchPlayRecoveryResolveErrorCode::ProviderFailure:
+				SetError(Result,
+					EMatchPlayCurrentAttackCompletionErrorCode
+						::RecoveryProviderFailure,
+					Result.RecoveryResolveResult.ErrorMessage);
+				break;
+			case EMatchPlayRecoveryResolveErrorCode::MalformedProviderResult:
+				SetError(Result,
+					EMatchPlayCurrentAttackCompletionErrorCode
+						::MalformedRecoveryProviderResult,
+					Result.RecoveryResolveResult.ErrorMessage);
+				break;
+			default:
+				SetError(Result,
+					EMatchPlayCurrentAttackCompletionErrorCode
+						::RecoveryMutationFailed,
+					Result.RecoveryResolveResult.ErrorMessage);
+				break;
+			}
+			return Result;
+		}
+		WorkingState.CardUsageState =
+			Result.RecoveryResolveResult.UpdatedCardUsageState;
+		WorkingState.LastRecoveryFact =
+			Result.RecoveryResolveResult.RecoveryFact;
+	}
+	else
+	{
+		// Terminal persistence preflights deterministic consumption and candidate
+		// validity without calling or adopting the Recovery provider operation.
+		Result.RecoveryResolveResult.CandidateQueryResult =
+			FMatchPlayRecoveryCandidateQuery::Build(
+				WorkingState.CardUsageState,
+				WorkingState.CardSnapshotAuthority);
+		if (!Result.RecoveryResolveResult.CandidateQueryResult.bSuccess)
+		{
+			SetError(Result,
+				EMatchPlayCurrentAttackCompletionErrorCode
+					::RecoveryCandidateQueryFailed,
+				Result.RecoveryResolveResult.CandidateQueryResult.ErrorMessage);
+			return Result;
+		}
+	}
+
+	// CurrentAttack is cleared only in the successful working transaction.
+	WorkingState.bHasCurrentAttack = false;
+	WorkingState.CurrentAttack = FMatchPlayCurrentAttackState();
 
 	Result.AfterState = MoveTemp(WorkingState);
 	Result.bSuccess = true;

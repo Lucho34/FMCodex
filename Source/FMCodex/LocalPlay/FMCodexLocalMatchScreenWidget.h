@@ -475,6 +475,9 @@ private:
 	TObjectPtr<UBorder> ResolutionOverlay;
 
 	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> ResolutionBounds;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UBorder> HandMicroProductionReviewSurface;
 
 	UPROPERTY(Transient)

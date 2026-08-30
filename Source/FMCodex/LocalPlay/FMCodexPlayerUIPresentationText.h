@@ -33,6 +33,10 @@ public:
 	static FText Rarity(const FString& CanonicalLabel);
 	static FText CompactRarity(const FString& CanonicalLabel);
 	static FText Owner(const FString& CanonicalLabel);
+	static FText RecoveryNotificationTitle();
+	static FText RecoveryOwner(EInitialTurnOrderPlayer OwnerSide);
+	static FText RecoveryEntry(
+		EInitialTurnOrderPlayer OwnerSide, const FString& PlayerDisplayName);
 	static FText RackHeading(const FString& SideLabel, bool bLocalRack);
 	static FText TacticalRegion(const FString& CanonicalLabel);
 	static FText TacticalLaneHeading(

@@ -14,6 +14,7 @@
 #include "../CoreRules/MatchPlayTacticalPlayerAdvantageQuery.h"
 #include "../CoreRules/SkillRuleSnapshotQuery.h"
 #include "FMCodexPlayerOverall.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPrototypeTeamContent.h"
 
 namespace FMCodexLocalMatchInteractionView
@@ -454,6 +455,55 @@ namespace FMCodexLocalMatchInteractionView
 				Roster.Add(MakeCardView(
 					State, SkillRuleSet, Side, Card.CardId));
 			}
+		}
+	}
+
+	void BuildRecoveryPresentation(
+		const FMatchPlayState& State,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		const FMatchPlayLastRecoveryFact& Fact = State.LastRecoveryFact;
+		if (!Fact.bHasRecoveryFact)
+		{
+			return;
+		}
+		View.bHasRecoveryFact = true;
+		View.RecoverySourceAttackSequence = Fact.SourceAttackSequence;
+		if (Fact.SourceAttackSequence <= 0 || Fact.ReturnedCards.Num() > 2)
+		{
+			View.Diagnostic =
+				TEXT("Latest Recovery fact is malformed and was not presented.");
+			return;
+		}
+
+		for (const FMatchPlayRecoveredCardFactEntry& Entry :
+			Fact.ReturnedCards)
+		{
+			const TArray<FFMCodexLocalMatchCardView>* Roster =
+				Entry.OwnerSide == EInitialTurnOrderPlayer::PlayerA
+					? &View.PlayerACardRoster
+					: Entry.OwnerSide == EInitialTurnOrderPlayer::PlayerB
+						? &View.PlayerBCardRoster : nullptr;
+			const FFMCodexLocalMatchCardView* Card = Roster == nullptr
+				? nullptr
+				: Roster->FindByPredicate(
+					[&Entry](const FFMCodexLocalMatchCardView& Candidate)
+					{
+						return Candidate.CardId == Entry.CardId;
+					});
+
+			FFMCodexLocalMatchRecoveryPresentationEntry Presented;
+			Presented.OwnerSide = Entry.OwnerSide;
+			Presented.CardId = Entry.CardId;
+			Presented.OwnerDisplayName =
+				FFMCodexPlayerUIPresentationText::RecoveryOwner(Entry.OwnerSide);
+			Presented.PlayerDisplayName = Card != nullptr
+				&& !Card->DisplayLabel.IsEmpty()
+					? Card->DisplayLabel : TEXT("球员");
+			Presented.PresentationLine =
+				FFMCodexPlayerUIPresentationText::RecoveryEntry(
+					Entry.OwnerSide, Presented.PlayerDisplayName).ToString();
+			View.RecoveryPresentationEntries.Add(MoveTemp(Presented));
 		}
 	}
 
@@ -1100,6 +1150,7 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 					: TacticalBoardStatus.DefenderTacticalPlayerCount;
 	}
 	BuildCardRosters(Snapshot, SkillRuleSet, Result);
+	BuildRecoveryPresentation(Snapshot, Result);
 	BuildPitchRegions(Snapshot, SkillRuleSet, Result);
 
 	const FMatchEndResolveResult MatchEnd =

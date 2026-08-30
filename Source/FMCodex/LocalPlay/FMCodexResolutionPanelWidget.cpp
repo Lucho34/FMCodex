@@ -185,10 +185,11 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 		Style.GetSectionPadding());
 	UVerticalBox* StepBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("ResolutionStepHierarchy"));
-	UTextBlock* StepHeading = MakeText(
+	StepHeadingText = MakeText(
 		*WidgetTree, TEXT("ResolutionStepHeading"), TEXT("STEP"));
-	Style.ApplyText(*StepHeading, EFMCodexPlayerUITextRole::SectionHeading);
-	StepBody->AddChildToVerticalBox(StepHeading);
+	Style.ApplyText(
+		*StepHeadingText, EFMCodexPlayerUITextRole::SectionHeading);
+	StepBody->AddChildToVerticalBox(StepHeadingText);
 	StepTitleText = MakeText(*WidgetTree, TEXT("ResolutionStepTitle"));
 	StepSummaryText = MakeText(*WidgetTree, TEXT("ResolutionStepSummary"));
 	RouteText = MakeText(*WidgetTree, TEXT("ResolutionRouteSummary"));
@@ -339,6 +340,8 @@ void UFMCodexResolutionPanelWidget::RefreshVisuals()
 			? TEXT("The command could not be completed.")
 			: Presentation.ErrorLabel));
 	StepTitleText->SetText(FText::FromString(Presentation.StepLabel));
+	StepHeadingText->SetVisibility(Presentation.bNonBlockingNotification
+		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	StepSummaryText->SetText(FText::FromString(Presentation.StepSummaryLabel));
 	StepSummaryText->SetVisibility(Presentation.StepSummaryLabel.IsEmpty()
 		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);

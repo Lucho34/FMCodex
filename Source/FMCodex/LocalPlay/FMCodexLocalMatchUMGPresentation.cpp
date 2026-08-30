@@ -2604,6 +2604,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			&& !InteractionView.bCurrentAttackActive);
 	Result.Resolution.bRejected = ResolutionFeedback.bRejected;
 	Result.Resolution.bTerminal = ResolutionFeedback.bTerminal;
+	Result.Resolution.bNonBlockingNotification =
+		ResolutionFeedback.bNonBlockingNotification;
 	Result.Resolution.bCanContinue = bCanContinue;
 	Result.Resolution.ContinueActionLabel =
 		bCanContinue ? Result.Interaction.PrimaryAction.Label : FString();

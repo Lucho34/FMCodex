@@ -46,6 +46,7 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 
 	class FQueueAttackEntryRollProvider final
 		: public IMatchPlayAttackEntryRollProvider
+		, public IMatchPlayRecoveryProvider
 	{
 	public:
 		void EnqueueD12(
@@ -102,6 +103,19 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 			return SelectionResults[NextSelectionIndex++];
 		}
 
+		virtual FMatchPlayRecoveryProviderResult
+		DrawWeightedWithoutReplacement(
+			const EMatchPlayRecoveryPurpose Purpose,
+			const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
+			const int32 ReturnCount) override
+		{
+			++RecoveryCallCount;
+			FMatchPlayRecoveryProviderResult Result;
+			Result.bSuccess = true;
+			Result.SelectedCandidateIndices = { 0, 1 };
+			return Result;
+		}
+
 		int32 GetD12CallCount() const
 		{
 			return D12Purposes.Num();
@@ -117,6 +131,11 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 			return SelectionPurposes.Num();
 		}
 
+		int32 GetRecoveryCallCount() const
+		{
+			return RecoveryCallCount;
+		}
+
 		TArray<EMatchPlayAttackEntryRollPurpose> D12Purposes;
 		TArray<EMatchPlayAttackEntryRollPurpose> D6Purposes;
 		TArray<EMatchPlayAttackEntryRollPurpose> SelectionPurposes;
@@ -129,6 +148,7 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 		int32 NextD12Index = 0;
 		int32 NextD6Index = 0;
 		int32 NextSelectionIndex = 0;
+		int32 RecoveryCallCount = 0;
 	};
 
 	FPlayerCardData MakeDeckCard(
@@ -214,7 +234,10 @@ namespace MatchPlayFullD12AuthoritativeSessionTests
 				Right.CardSnapshotAuthority)
 			&& AreStructsEqual(
 				Left.GoalkeeperUsageState,
-				Right.GoalkeeperUsageState);
+				Right.GoalkeeperUsageState)
+			&& AreStructsEqual(
+				Left.LastRecoveryFact,
+				Right.LastRecoveryFact);
 	}
 
 	int64 GetExpectedSequence(const FMatchPlayState& State)
@@ -871,7 +894,8 @@ bool FMatchPlayAuthoritativeSendingOffLifecycleTest::RunTest(
 			Provider,
 			*FString::Printf(TEXT("SendingOffPool%d"), PoolSize),
 			PoolSize);
-		FMatchPlayAuthoritativeSession Session(Reconstructed, Provider);
+		FMatchPlayAuthoritativeSession Session(
+			Reconstructed, Provider, Provider);
 		const EInitialTurnOrderPlayer Attacker =
 			Reconstructed.RuntimeState.CurrentAttackingPlayer;
 		const FMatchPlayFullD12EntryRequest EntryRequest =
@@ -943,7 +967,8 @@ bool FMatchPlayAuthoritativeSendingOffLifecycleTest::RunTest(
 		RetryProvider,
 		TEXT("SendingOffRetry"),
 		3);
-	FMatchPlayAuthoritativeSession RetrySession(RetryState, RetryProvider);
+	FMatchPlayAuthoritativeSession RetrySession(
+		RetryState, RetryProvider, RetryProvider);
 	const EInitialTurnOrderPlayer RetryAttacker =
 		RetryState.RuntimeState.CurrentAttackingPlayer;
 	const auto Entry = RetrySession.RequestInitialActionPointRoll(
@@ -1049,7 +1074,8 @@ bool FMatchPlayAuthoritativeSendingOffLifecycleTest::RunTest(
 		FinalAttacker == EInitialTurnOrderPlayer::PlayerB ? 1 : 0;
 	FinalState.RuntimeState.PlayerAState.Score = 2;
 	FinalState.RuntimeState.PlayerBState.Score = 1;
-	FMatchPlayAuthoritativeSession FinalSession(FinalState, FinalProvider);
+	FMatchPlayAuthoritativeSession FinalSession(
+		FinalState, FinalProvider, FinalProvider);
 	FinalSession.RequestInitialActionPointRoll(
 		MakeInitialRequest(FinalSession.GetStateSnapshot()));
 	FMatchPlaySendingOffResolutionRequest FinalResolve;
