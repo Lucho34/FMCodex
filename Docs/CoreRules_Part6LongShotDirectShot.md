@@ -1265,7 +1265,7 @@ Informational 继续包括 AssetRegistry `/Temp/__ExternalActors__/Untitled_1` w
 | 7.68 Capability Review | BLOCKED | played-GK 临时状态缺少 action scope 与统一 cleanup。 |
 | 7.69 State Contract Review | BLOCKED | 永久产品事实可确定，但 Deployment writer、CurrentAttack owner 与 completion / abort 缺失。 |
 | 7.69.1 Product Lifecycle Docs Sync | PASS | 冻结整场一次、Deployment 使用、卡牌留手和双事实生命周期。 |
-| 7.70 Lifecycle Contract Review | PASS WITH NON-BLOCKING FINDINGS | 冻结 `FMatchPlayState` authority、CurrentAttack、Deployment 轮转、retry、completion 与防重；UQ-041、derived Match End、Shooter Snapshot 和 Formal Abort 保持非阻断开放。 |
+| 7.70 Lifecycle Contract Review | PASS WITH NON-BLOCKING FINDINGS | 冻结 `FMatchPlayState` authority、CurrentAttack、Deployment 轮转、retry、completion 与防重；UQ-041当时保持非阻断开放，现已由Stage 6.16.2/CD-087解决为AP1恰好消费一次机会（implementation pending）；derived Match End、Shooter Snapshot和Formal Abort状态不由本次同步改变。 |
 | 7.70.1 Contract Docs Sync | CLOSED ON COMPLETION | 只同步架构 Contract；没有源码、测试或生产行为变化。 |
 
 当前唯一 MatchPlay authority 继续是 `FMatchPlayState`。未来持久 CurrentAttack 必须嵌套在该 authority 下，不能复活 legacy `FMatchState` 或让两个顶层分别持有攻击身份。CurrentAttack presence 表示一场未完成攻击；持久阶段只需要 Deployment / Resolution，Attack Created 与 Completed 是原子事件，Formal Abort 当前 Deferred。
@@ -1276,7 +1276,7 @@ CurrentAttack 最小职责包括 AttackSequence、ActionPoint、当前合法部�
 
 未来统一 completion 必须由分支 adapter 提供小型正式 terminal projection，并在 WorkingState 中依次完成：验证当前攻击与 sequence；Goal 加分；普通部署牌提交 Used、门将不移动；清除 CurrentAttack；消费机会；判断 Match End；终局设当前攻击方 None，非终局才选择下一攻击方；最后一次提交。Pure `bAttackEnded` 不等于这些 MatchPlay mutation，现有 Through Ball terminal 仍无 production consumer。
 
-7.66-B-002、7.68-B-002 与 7.69-B-001 至 B-004 更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 Shooter Snapshot authority 继续 OPEN。新增 7.70-M-001（UQ-041 行动点 1 消耗问题仍开放）和 7.70-M-002（Match End / Winner 保持 derived，未来不得新增漂移 authority）。本阶段不冻结具体 C++ 类型、字段名、Error / API、network / save，不实现 Deployment、Completion、Formal Abort、Direct Shot 或 Outcome Framework。
+7.66-B-002、7.68-B-002 与 7.69-B-001 至 B-004 更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 Shooter Snapshot authority 继续 OPEN。7.70当时新增7.70-M-001（UQ-041）和7.70-M-002（Match End / Winner保持derived，未来不得新增漂移authority）；UQ-041现已由Stage 6.16.2/CD-087解决，implementation pending。本阶段不冻结具体 C++ 类型、字段名、Error / API、network / save，不实现 Deployment、Completion、Formal Abort、Direct Shot 或 Outcome Framework。
 
 7.70.1 为 Docs-only，不运行 Build、UHT、自动化测试或 CoreRules full regression。下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High）；该阶段必须在状态表示、初始化、Begin Attack、Deployment turn / Finish、played-GK 状态 / writer、terminal projection、CompleteCurrentAttack、进一步 Review 与 Explicit Deferral 中只选择一个最小切片。
 
@@ -1297,7 +1297,7 @@ Turn Guard 新增 `CurrentAttackInProgress` 并在初始化检查之后、旧 re
 
 7.73 验证为 Begin 16/16、新增 21/21；State 5/5、Initializer 12/12、Opening 17/17、Turn Guard 17/17、Submission Gate 17/17、Availability 16/16、Attack Flow 17/17；Build / UHT PASS，CoreRules 1552/1552。`7.73-M-001` 记录 AlreadyActive 非默认 payload 覆盖仍可加强；`7.73-M-002` 记录 active + invalid count、no opportunity + invalid AP 的组合优先级测试缺口。源码验证顺序和行为均已确认，两项不阻断关闭。
 
-7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 更新为 `Infrastructure partially implemented / Further implementation pending`。仍未实现普通部署 writer / 轮转 / Finish / 双方完成转 Resolution、永久门将事实与门将激活 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 与 Shooter Snapshot。7.70-M-001 / UQ-041 和 7.70-M-002 继续开放。
+7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 更新为 `Infrastructure partially implemented / Further implementation pending`。仍未实现普通部署 writer / 轮转 / Finish / 双方完成转 Resolution、永久门将事实与门将激活 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 与 Shooter Snapshot。7.70-M-002继续开放；7.70-M-001 / UQ-041产品规则现已由Stage 6.16.2/CD-087解决，implementation pending。
 
 7.74 因 docs-only 跳过 Build、UHT、自动化测试和 CoreRules full regression。下一唯一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；必须重新比较候选并只选择一个最小切片。
 

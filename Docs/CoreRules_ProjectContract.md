@@ -965,7 +965,7 @@ Pure Query 的 `bAttackEnded=true` 只证明规则决定为 terminal，不证明
 
 禁止移动门将牌或用 UsedCardIds 表示门将使用；禁止 legacy 双 authority、顶层无 scope 临时 bool、从永久事实推断当前 `×1.5`、invalid request 后清理、攻击开始即增加 UsedAttackCount、重复 completion、终局后切换、虚构 ActionId / CorrelationId、从裸 CardId 重查 Shooter Snapshot，以及把本 Contract 描述成已实现。
 
-7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 保持 OPEN。7.70-M-001 记录 UQ-041 行动点 1 消耗问题；7.70-M-002 记录 Match End / Winner 继续为 derived facts。本文不冻结具体 C++ 类型、字段名、Error、API、network / save，不授权 Deployment、played-GK writer、Completion、Abort、Direct Shot 或 Outcome Framework 实现。
+7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 保持 OPEN。7.70-M-001当时记录UQ-041；该产品规则现已由Stage 6.16.2/CD-087解决为AP1恰好消费一次机会，implementation pending。7.70-M-002 记录 Match End / Winner 继续为 derived facts。本文不冻结具体 C++ 类型、字段名、Error、API、network / save，不授权 Deployment、played-GK writer、Completion、Abort、Direct Shot 或 Outcome Framework 实现。
 
 下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High）。7.71 必须比较并只选择一个最小实现切片；不得一次实现整个 MatchPlay 生命周期。
 
@@ -998,7 +998,7 @@ Turn Guard 追加 `CurrentAttackInProgress`，在 runtime 初始化之后、旧 
 
 7.70.1 的完整生命周期 Contract 不因本切片缩减。普通部署牌 writer / 轮转 / Finish / 双方 finished 后进入 Resolution、整场永久门将使用事实、门将激活 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 和 Shooter Snapshot 仍未实现。CurrentAttack placements 为空不代表部署已完成；pure terminal Result 仍不等于 MatchPlay mutation。
 
-7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 状态为 `Infrastructure partially implemented / Further implementation pending`。7.66-B-003 Shooter Snapshot、7.70-M-001 / UQ-041 与 7.70-M-002 derived Match End 继续开放。
+7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 状态为 `Infrastructure partially implemented / Further implementation pending`。7.66-B-003 Shooter Snapshot与7.70-M-002 derived Match End继续开放；7.70-M-001 / UQ-041产品规则已由Stage 6.16.2/CD-087解决，implementation pending。
 
 7.74 为 docs-only closure，跳过 Build、UHT、自动化测试与 CoreRules full regression。下一唯一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`（GPT-5.6 Sol High）；该阶段必须重新比较候选并只选择一个最小切片。
 

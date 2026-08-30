@@ -449,3 +449,10 @@ This log records approved player-facing UI decisions separately from gameplay ca
 - Normal Match Flow uses `战术` rather than `技能`: `选择战术`, `不使用战术`, and centralized tactical option names `控球推进 / 传中 / 直塞 / 内切 / 远射`. Stable SkillId and gameplay naming remain unchanged.
 - Production decline/no-legal, branch/one-on-one options, bounded empty states and final Header results use centralized Chinese display mapping. The no-legal Marker action remains the same typed operation and displays `无可用盯人球员，继续结算`.
 - Position abbreviations and developer-only identifiers/logs are explicitly excluded. No formula, narrative, Header layout, Pitch geometry, card surface, Role Tag visual or artwork redesign is authorized.
+
+## 2026-08-30 — Automatic Recovery result identity and naming contract
+
+- Authority自动完成Recovery；双方客户端只消费有界`LastRecoveryFact`，按每个ordered returned entry显示`<TeamDisplayName> · <PlayerDisplayName> 返回手牌`。`阿森纳 · 赖斯 返回手牌`只是一条格式示例，不是固定球队或玩法映射。
+- Recovery fact只保存稳定`OwnerSide + CardId`。Presentation先把OwnerSide解析到本场该玩家的实际Team identity与TeamDisplayName，再把CardId解析到既有PreferredDisplayName/DisplayName；不得把localized FText、球队中文名或球员显示名写入gameplay state。
+- 显示不得假定PlayerA=Arsenal、PlayerB=Manchester City、host=PlayerA、local player=attacker或固定left/right球队。PlayerA/PlayerB球队映射互换、host/guest变化或观察视角变化时，同一fact仍必须显示实际owner球队和球员。
+- 本决定只冻结未来Recovery短结果文本与identity resolution；不实现Recovery UI、动画、队徽、音效、队列或network transport，也不改变现有球员显示名合同。

@@ -87,6 +87,8 @@
 - 双方都获取比较点数时，防守方后掷 D6。
 - 双方比较点数彼此独立。
 - 掷点顺序写入 MatchLog。
+- 完整D12入口分别覆盖1、2、8、9、12，并在同一AttackSequence下进入AP1、Ordinary或SetPiece route。
+- D12请求携带RequestingSide与expected AttackSequence；stale、wrong-side与duplicate请求在provider前失败，已成功保存的raw D12不被重掷。
 
 ## 公式小数
 
@@ -249,18 +251,46 @@
 - 定位球类型通过额外 D6 判定：1-2 角球，3-4 远距离任意球，5 近距离任意球，6 点球。
 - 定位球中的门将属性按结算表参与，不需要发动门将。
 - 定位球战术中被耗费的球员进入已消耗区。
+- AP9–12的玩家只请求独立类型D6，不提交SetPieceType；1–2/3–4/5/6映射保持Corner/Long/Short/Penalty，raw D12、raw D6、type与stage可重建。
+- Short Direct覆盖attack→defense Formula，Angled覆盖资格阈值与2D6 Goal/Miss；Long Direct覆盖attack 1–2 immediate miss、3–6 continuation与Defense，Power覆盖原子2D6；Penalty Direct/Panenka均覆盖Goal/Miss。
+- Short/Long/Penalty Carrier与Corner Runner/Helper只允许对应阵营Available non-GK；Used、Ejected与GK均拒绝。防守方唯一GK自动进入适用Formula但不作为普通参与者、不被消耗。
+- 每种定位球在TerminalPendingAdvance前保留参与者和CardUsage；只有成功AdvanceAfterTerminal消耗实际Carrier/Runner/Helper，非参与候选保持Available。
 
-## 三抽一
+## Corner 有序提名与共享参与者 D6
 
 应验证：
 
-- 三抽一时，双方最多各提供 3 张候选球员。
-- 候选球员不足 3 张时，按实际可提供数量参与。
-- 少 1 张的一方比较点数 -2。
-- 少 2 张的一方比较点数 -4。
-- 少 3 张视为手牌不足。
-- 一方候选球员 0 张时视为该方手牌不足。
-- 双方候选球员都是 0 张时视为进攻方手牌不足。
+- 双方各可提交0–3个保序、合法且不重复的Available non-GK候选；数组顺序在snapshot重建后保持。
+- 进攻方先lock；防守方lock前只能看到对方已锁定，不能看到IDs或顺序；双方lock后列表才共同公开。
+- 双方均非零时只调用一次shared participant D6，并同时映射两表：3人时1–2/3–4/5–6，2人时1–3/4–6，1人时1–6。
+- 进攻方0直接NoGoal；进攻方大于0且防守方0直接SystemGoal；双方0使用进攻方0的NoGoal优先级。以上路径都不调用shared D6、route或Formula，不消耗参与者，也不伪造scorer。
+- 双方均非零时人数差0无修正、差1对较多方+2、差2对较多方+3；不存在旧的较少方-2/-4。
+- shared D6选出的实际Runner/Helper、raw D6与双方ordered lists可重建；不允许两次独立participant RNG。
+- High/Low intended route、1–4保留/5–6切换、raw route D6与actual route可重建；High/Low Formula使用canonical属性和较多方modifier。
+- 只有实际Runner/Helper在成功advance中进入Used；所有未选中nominees保持Available。
+
+## AP1 Sending-Off（Future Required Coverage）
+
+应验证：
+
+- pool0记录NoEligibleCandidate、零selection RNG、NoGoal并在advance时消费一次机会。
+- pool1确定性选择唯一Available non-GK且零selection RNG；pool2+通过authority provider均匀选择恰好一张。
+- GK、Used与已Ejected卡不进入候选；selected card进入永久side-owned Ejected而不是Used，之后不能部署、参加SetPiece或Recovery。
+- selected CardId或NoEligibleCandidate在TerminalPendingAdvance前权威可重建；比分不改变，重复advance不重复机会消费。
+- AP1在最后一次机会合法；成功final advance结束比赛并跳过Recovery。
+
+## Consumed Recovery（Future Required Coverage）
+
+应验证：
+
+- 合并PlayerA+PlayerB Used池：pool0返回0且零RNG，pool1返回唯一卡且零RNG，pool2返回两张，pool>2返回恰好两张。
+- pool>=2使用线性Stamina权重且without replacement；第二次抽取删除第一张并重新计算总权重，同一卡不能返回两次。
+- 允许两张都属于同一side；不使用per-side quota。
+- 本次advance新进入Used与较早Used都立即进入同一个候选池；GK、Ejected与非Used卡排除。
+- Recovery只在成功非终局AdvanceAfterTerminal事务内自动运行；terminal等待期间不运行，final advance跳过，stale/wrong-side/wrong-sequence/duplicate advance不访问provider或重抽。
+- 两张结果原子提交，不出现partial return；最终CardUsage与下一攻击方在同一snapshot发布。
+- `LastRecoveryFact`精确重建SourceAttackSequence与ordered returned `{OwnerSide, CardId}` 0–2项。
+- Presentation逐项生成`<TeamDisplayName> · <PlayerDisplayName> 返回手牌`；球队和球员名均数据驱动，不硬编码Arsenal/Manchester City，PlayerA/PlayerB球队映射互换后仍显示实际owner名称。
 
 ## 平局判定
 
@@ -601,7 +631,7 @@
 - ThroughBall 的 Feet Goal/Miss、Behind Defense OutOfPlay/DefenderStoppedAttack、AntiOffside Offside、DirectShot Goal/Miss 与 ChipShot Goal/Miss 均需断言 terminal success 后 CurrentAttack 仍存在、Lifecycle 为 `TerminalPendingAdvance`、Resolution Facts/rolls/roles/placements 保持、分数只按 outcome 变化、UsedAttackCount 不变且 RNG delta 为 0。
 - Cross High/Low、PassControl 与 Shot 的 Goal/Miss terminal variants 必须经过同一合同。重复 terminal 与 terminal pending 时任意 stale gameplay command 返回 typed failure，State byte-equivalent、score/used counts 不变且 provider delta 为 0。
 - `AdvanceAfterTerminal` 在 Active、attack-only、formula-complete-but-not-terminal 等错误状态必须失败；错误 AttackSequence 与防守方请求必须失败。正确请求方固定为 pending snapshot 中的当前攻击方。
-- accepted advance 必须零 RNG，恰好清除一次 CurrentAttack、提交普通部署牌、增加一次攻击方 UsedAttackCount，并产生 canonical next attacker。重复 advance 不得重复消费、换攻或改分。
+- accepted advance必须恰好清除一次CurrentAttack、提交适用参与者、增加一次攻击方UsedAttackCount，并产生canonical next attacker。终局与Recovery池0/1为零RNG；非终局池至少2时只允许Recovery语义provider抽取两张。重复advance不得再次抽取、消费、换攻或改分。
 - 最后一攻的 terminal snapshot 仍不宣布比赛结束；accepted advance 才执行 MatchEnd，清除 CurrentAttack、把 CurrentAttackingPlayer 设为 None，并保留 terminal 已写入的最终比分。
 - Host、Controller、Screen 与 UMG E2E 必须先观察 terminal pending 的唯一 `下一回合`，再通过真实 typed wrapper advance。重建 InteractionView/Feedback 必须得到相同 Formula Facts、终结文案、角色、Pitch 与战术人数，且不产生任何 RNG；advance 后这些 action-scoped projections 清空并进入下一方战术点准备。
 - Cross Inline Formula Golden Path 必须保持同一中央 `下一回合` CTA ownership，无重复底部按钮；Feet 与其他 tactics 可复用既有 resolution continue dispatch。正常 defense command 可紧接零 RNG terminal persist 以隐藏技术确认步骤，但恢复在 formula-complete 前缀时必须仍有 typed recovery action。
@@ -613,7 +643,7 @@
 - Attack accepted fixture 必须进入 shared D6 reel、屏蔽 Defense CTA 与未公开数据；settle/disclosure 后显示 authority RawD6/Attack FinalValue，完整 hold 后才显示 `防守方掷点`。重复 refresh 不重启 Attack，fresh attack-complete Screen 直接显示相同值与 Defense CTA。
 - Defense accepted/terminal fixture 必须在 reel 中隐藏 result 与 `下一回合`；0.18 秒 formula gate 后双方 FinalValue 可见，0.38 秒 result gate 后显示由 authority winner 映射的中文结果，完整 readable hold 后才显示中央 `下一回合`。
 - fresh `TerminalPendingAdvance` Screen 必须直接显示双方 FinalValue、中文结果与 `下一回合`，不重播 Route/Attack/Defense reel。Interaction category 必须为 `AdvanceAfterTerminal`，底部 Panel 折叠，generic debug overlay 隐藏。
-- dispatch/source boundary 必须保持 formula child -> ThroughBall Surface -> Screen 单一 delegate 链；Screen 的 `AdvanceAfterTerminal` category 只调用 Controller typed wrapper。Authority专项继续验证 accepted advance 后才清场、消费机会、换攻/结束且零 RNG。
+- dispatch/source boundary 必须保持 formula child -> ThroughBall Surface -> Screen 单一 delegate 链；Screen 的 `AdvanceAfterTerminal` category 只调用 Controller typed wrapper。Authority专项继续验证accepted advance后才清场、消费机会、执行适用Recovery并换攻/结束；UI不得新增RequestRecovery。
 - 回归至少运行 `ThroughBallProductionPresentation`、`InlineFormula`、`RollReel`、`ControlSurface`、`LocalMatchHost`、全量 LocalPlay、ThroughBall/CoreRules、Cross/CoreRules、Cross PIE gate、AuthoritativeSession、全量 CoreRules、Build/UHT/link 与 `git diff --check`。最终玩家视觉与点击节奏仍需 Fresh USER PIE。
 
 ## ThroughBall / Cross Formula Presentation Consistency（Stage 6.13.1.4.10.3A）

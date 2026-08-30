@@ -108,6 +108,18 @@ route-only与attack-only是可同步的真实中间状态。route D6、actual br
 
 该Foundation不改变Cross规则或可见production流程，也不实现network transport、RPC idempotency key、重连UX或隐藏信息同步；它只定义未来Server/RPC必须保留的typed、side-owned、stale/retry-safe request seam。
 
+## Full D12 / Set Piece / Recovery 的 Stage 7 扩展边界
+
+Stage 7 transport不能永久假设所有攻击都是 D12 2–8 的普通战术攻击。未来 typed intent与authoritative snapshot必须在同一个 `AttackSequence` 下表达完整 raw D12、AP1/Ordinary/SetPiece route、raw SetPiece type D6、type与lifecycle；不新增 SetPieceSequence、SendingOffSequence 或 RecoverySequence。
+
+AP1 snapshot必须可重建选中的 side-owned CardId或NoEligibleCandidate、永久Ejected状态、NoGoal与TerminalPendingAdvance。SetPiece snapshot必须可扩展到参与者、method/route/raw rolls、Formula/Outcome/scorer与terminal。客户端只提交带`RequestingSide + expected AttackSequence`的typed intent；服务端在provider前验证并保存成功结果，transport不实现任何定位球公式或从客户端输入接受authoritative type/outcome。
+
+Corner的ordered nominations与lock state需要viewer-aware projection。攻击方锁定后，防守方只能收到lock acknowledgement，不得收到对方IDs或顺序；双方锁定后才向双方投影公开列表、shared participant D6、Runner与Helper。服务端保存完整truth并执行redaction，不能依赖客户端善意隐藏或Widget本地缓存。
+
+成功的非终局`AdvanceAfterTerminal`在服务端原子完成CardUsage消费、机会消费、下一攻击方计算、自动Recovery、CurrentAttack清除与snapshot发布。客户端没有`RequestRecovery`；duplicate/stale/wrong-side/wrong-sequence advance不能再次抽取。同步最终CardUsage和有界`LastRecoveryFact(SourceAttackSequence, ordered OwnerSide+CardId[0..2])`即可重建最近回收表现；候选池、weights和weighted tickets不是必需的玩法复制载荷。
+
+Recovery与球员展示都按稳定身份传输。State保存OwnerSide+CardId，Presentation再通过当前对局的OwnerSide→实际Team identity→TeamDisplayName，以及CardId→PreferredDisplayName/DisplayName映射；不得假定PlayerA、host、攻击方或画面左侧对应固定球队。
+
 ## 掉线和重连
 
 掉线和重连相关开放问题统一记录在 `Docs/08_Decision_Log.md`。

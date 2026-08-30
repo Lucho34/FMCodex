@@ -205,7 +205,7 @@
 
 运动战中打到攻防区并结算后的球员进入已消耗区。定位球战术中被耗费的球员也进入已消耗区。门将牌的主动打出 / 使用是明确例外：该唯一门将牌仍保留在手牌中，不进入攻防区、已消耗区或其他部署区域。
 
-基础回收原则：已消耗区球员按照体力相关规则返回手牌。具体概率公式仍记录在 `Docs/08_Decision_Log.md` 的未解决问题中。
+已消耗区球员按照 19 节的已确认规则，在成功完成非终局进攻的显式推进事务中按体力权重返回手牌。弃牌区中的 `Ejected / Discarded` 球员永久离开本场比赛循环，不属于回收候选。
 
 ## 5. 进攻次数与先后手
 
@@ -266,18 +266,18 @@
 
 ### 5.4 攻击完成与下一次进攻
 
-一次攻击完成后，权威状态先为旧攻击方的 `UsedAttackCount` 增加 1，再按既有进攻顺序选择下一攻击方。非终局时，`CurrentAttackingPlayer` 立即切换到下一攻击方，并进入该玩家可手动掷战术点的等待状态；不需要 Ready、Next Player 或其他玩家确认步骤，也不会自动掷战术点。
+一次攻击产生正式结算结果后，先进入 17 节的 `TerminalPendingAdvance`；在当前攻击方显式提交成功的 `AdvanceAfterTerminal` 前，不增加 `UsedAttackCount`，不清除 `CurrentAttack`，不执行回收，也不让下一攻击方变为可操作。没有正式结算快照的 pre-resolution closure 仍可复用同一原子完成事务，但不能伪造 terminal presentation。
 
-攻击完成同时清除上一攻击的临时状态和战术点。只有下一攻击方能请求新的战术点；防守方请求必须失败且不能改变状态。双方都没有剩余进攻机会时比赛结束，`CurrentAttackingPlayer=None`，不得再建立额外攻击。
+成功推进时，Authority 在一个不可部分发布的事务内提交参与者消耗、恰好一次机会消费、终局判断、非终局回收、`CurrentAttack` 清理和下一攻击方。非终局的新攻击方随后进入可手动请求完整 D12 的等待状态；不会自动掷 D12。双方都没有剩余机会时比赛结束，`CurrentAttackingPlayer=None`，不得执行回收或建立额外攻击。
 
 ## 6. 掷点与公式通用规则
 
 ### 6.1 掷点类型
 
 - 普通掷点：D6。
-- 行动点：D12。
+- 行动点：D12，正式范围为 1–12。
 
-当前 LocalPlay 已接通的生产流程只覆盖行动点 2-8 的运动战子集。其“掷战术点”入口由 Host 生成受支持范围内的值并立即交给既有普通运动战 Begin；行动点 1 与 9-12 的完整状态消费仍未接入，因此这不是正式 D12 全流程的替代规则。后续接入罚下与定位球时必须恢复完整 D12 分流，不能在 UMG 内补算或重掷。
+每次攻击机会都从完整 D12 开始。当前攻击方显式请求初始 D12，请求必须携带 `RequestingSide + expected AttackSequence`。Authority 必须在访问随机 provider 前验证当前攻击、序列、请求方与阶段；成功后保存原始 D12，再在同一 `CurrentAttack / AttackSequence` 下分流。请求重放、刷新或重建不得重掷已经成功保存的 D12。当前 LocalPlay 只接通 2–8 是暂时的生产子集，不是最终玩法合同；D12=1 与 9–12 的实现仍待后续阶段接入。
 
 ### 6.2 比较点数
 
@@ -371,13 +371,17 @@
 
 ## 8. 行动点状态机
 
-每次进攻回合开始时掷 D12，得到行动点。
+每次攻击机会开始时按 6.1 的权威入口取得并保存 D12：
 
-- 行动点 1：本方进攻结束，并执行球员罚下判定。
-- 行动点 2-8：运动战，进入部署阶段和技能结算。
-- 行动点 9-12：定位球，跳过常规部署，进入同一套定位球结算表。行动点 9、10、11、12 本身没有差异。
+- D12=1：Sending-Off / AP1。
+- D12=2–8：既有运动战，进入部署和战术结算。
+- D12=9–12：定位球，跳过常规部署并进入 13 节；9、10、11、12 本身不改变定位球类型概率。
 
-行动点 1 的罚下随机范围是手牌。被罚下球员进入弃牌区。
+三条路线都沿用同一 `AttackSequence`；不得新增 `SendingOffSequence` 或 `SetPieceSequence`。
+
+AP1 影响当前进攻方，并恰好消费该方一次攻击机会。它发生在本次普通部署之前。候选池只包含当前进攻方 `Available` 手牌中的非 GK：`Used / Consumed`、`Ejected / Discarded` 与 GK 都不合法。Authority 按候选数量选择：0 张时不访问选择 RNG并记录 `NoEligibleCandidate`；1 张时确定性选中唯一候选且不访问选择 RNG；2 张及以上时通过权威 provider 在稳定候选池中均匀随机选一张。玩家不选择被罚下球员，原始 D12 永远不重掷。
+
+选中球员立即进入本场永久、按阵营拥有且可重建的 `Ejected / Discarded` 状态，不进入 `Used / Consumed`；此后不能部署、参加运动战或定位球，也不能被回收。候选为 0 时无人被罚下。两种情况都产生无进球、无比分变化的正式 AP1 terminal：选中 `CardId` 或 `NoEligibleCandidate` 必须先成为权威事实，再进入 `TerminalPendingAdvance`。只有当前进攻方显式 `AdvanceAfterTerminal` 成功后才消费这一次机会并按正常顺序换攻或结束比赛；AP1 在最后一次机会同样合法，且终局推进跳过 Recovery。
 
 ## 9. 部署阶段与技能选择
 
@@ -497,27 +501,21 @@ Marker 候选若由权威合法性结果以 `MarkerNotInCarrierPhysicalArea` 拒
 
 ### 10.3 定位球中的门将
 
-定位球不使用“发动门将”概念。定位球结算中按定位球表直接引用门将属性。
+定位球不使用“发动门将”概念。防守方唯一 GK 自动作为定位球公式输入，按 13 节直接引用其权威属性快照。该 GK 不是普通 `Carrier / Runner / Helper`，不占用这些角色，也不进入已消耗区；定位球不能把 GK 作为候选参与者，且不读取运动战的可选门将激活生命周期。
 
-## 11. 手牌不足与三抽一
+## 11. 手牌不足与参与者缺失
 
-### 11.1 三抽一候选球员不足
+参与者缺失规则优先于任何尚未执行的路线、候选选择 RNG 或 Formula：
 
-三抽一时，双方最多各提供 3 张候选球员。
+- 需要进攻参与者但进攻方没有合法球员时，本次攻击立即 `NoGoal`。
+- 需要防守参与者但防守方没有合法球员时，进攻方直接获得 `SystemGoal`；没有实际进攻球员负责该系统进球时不得伪造 scorer。
+- 进攻方没有任何合法战术时，本次攻击立即 `NoGoal`。
+- 规则要求 Marker 而防守方未选择 Marker 时，进攻方直接得分。
+- 规则要求 Runner 而进攻方未选择 Runner 时，本次攻击立即 `NoGoal`。
+- Helper 明确为可选时，缺少 Helper 不创建虚构 `CardId`；所有相关 Helper 属性和体力按 0。
+- 双方同时缺少必需参与者时，优先应用进攻方缺失，结果为 `NoGoal`。
 
-如果一方实际可提供的候选球员少于 3 张，仍按实际可提供数量参与。
-
-比较双方实际提供的候选卡数量差：
-
-- 少 1 张：少的一方本次比较点数 -2。
-- 少 2 张：少的一方本次比较点数 -4。
-- 少 3 张：视为手牌不足。
-
-### 11.2 候选球员 0 张处理
-
-只要一方实际可提供候选球员数量为 0 张，即视为该方手牌不足。
-
-如果双方候选球员数量都是 0 张，则视为进攻方手牌不足。
+Corner 的 0–3 人有序提名、零人专用优先级与人数差修正只适用 13.1；旧的“少一张 -2、少两张 -4、任一方为 0 即统一手牌不足”不再是当前规则。
 
 ## 12. 通用技能结算表
 
@@ -623,7 +621,7 @@ B. 直射死角：判定公式。
 - 随后仅当前防守方可通过 `ResolveThroughBallFeetDefenseRoll` 显式取得并持久化一枚独立 D6。该步骤恰好消费一个 D6；双方比较点数齐全后，必须复用上述既有脚下球终结公式完成比较。
 - 固定权威顺序为：直塞路线 D6、脚下球进攻方比较 D6、脚下球防守方比较 D6。错误阵营、错误阶段、越序或重复请求均被拒绝，不消费 D6，也不改变权威状态。
 - 双方比较 D6 完成后才允许 `ApplyThroughBallTerminalResolution`。该命令只从已持久化点数零 RNG 重建同一公式结果并持久化 Goal / Miss 终结事实；它不得补掷或重掷，也不得在同一命令中清除 CurrentAttack、消费进攻机会或切换进攻方。
-- 终结事实持久化后，仅当前进攻方可提交匹配当前 `AttackSequence` 的显式 `AdvanceAfterTerminal`。该命令零 RNG 清除 CurrentAttack、提交普通部署牌、消费一次进攻机会，并按既有顺序规则切换进攻方或结束比赛。旧的原子 `ResolveThroughBallFeetPostRoutePlan` 只保留兼容/参考边界，不属于正常生产交互入口。
+- 终结事实持久化后，仅当前进攻方可提交匹配当前 `AttackSequence` 的显式 `AdvanceAfterTerminal`。该命令按17节原子清除CurrentAttack、提交普通部署牌、消费一次进攻机会，并按既有顺序规则切换进攻方或结束比赛；只有非终局Recovery池至少2张时才消费Recovery RNG。旧的原子 `ResolveThroughBallFeetPostRoutePlan` 只保留兼容/参考边界，不属于正常生产交互入口。
 
 身后球：
 
@@ -672,81 +670,87 @@ B. 直射死角：判定公式。
 
 ## 13. 定位球结算表
 
-行动点 9-12 时进入定位球。行动点本身没有差异，进入定位球后额外掷 D6 判定定位球类型：
+原始 D12 为 9–12 时，在同一 `CurrentAttack / AttackSequence` 下进入定位球。当前进攻方显式请求一次独立的权威类型 D6；玩家只请求掷点，不选择或提交 `SetPieceType`。Authority 在 provider 前验证请求，并持久化原始 D12、原始类型 D6、映射出的类型和 lifecycle stage：
 
-- 1-2：角球。
-- 3-4：远距离任意球。
+- 1–2：角球。
+- 3–4：远距离任意球。
 - 5：近距离任意球。
 - 6：点球。
 
+现有 `FSetPieceTypeSelectionQuery` 只实现上述纯映射与输入校验，不生成 D12/D6，也不是完整生产 lifecycle。所有定位球手牌参与者都必须来自对应阵营的 `Available` 非 GK 手牌；`Used / Consumed`、`Ejected / Discarded` 与 GK 均不可作为 Carrier、Runner 或 Helper。参与者属性只来自权威卡牌快照。近距离任意球、远距离任意球和普通比赛点球的 Carrier 属于进攻方；Corner Runner 属于进攻方，Corner Helper 属于防守方。防守方唯一 GK 按 10.3 自动参与适用公式。
+
 ### 13.1 角球
 
-双方最多各准备 3 名手牌球员进行三抽一，得出跑位球员和协防球员。
+双方各提交一个保序、长度 0–3 的合法候选数组；数组顺序具有规则意义。进攻方先锁定，防守方在锁定前只能知道“对方已锁定”，不能看到对方身份或顺序；防守方锁定后，双方列表才共同公开。锁定和 viewer-specific redaction 都属于 Authority/Projection，不属于 Widget 本地状态。
 
-进攻方选择传球方式为高球或低球：
+公开后先执行零人优先级：
 
-- 选择高球：进攻方掷 D6，1-4 为高球，5-6 为低球。
-- 选择低球：进攻方掷 D6，1-4 为低球，5-6 为高球。
+1. 进攻方候选为 0：立即 `NoGoal`，无 Runner/Helper、无共享参与者 D6、无路线/Formula、无人消耗。双方都为 0 时仍优先本条。
+2. 进攻方大于 0 且防守方为 0：立即 `SystemGoal`，不得伪造 scorer；无共享参与者 D6、无路线/Formula、无人消耗。
+3. 只有双方都至少 1 人时，才计算人数差修正并取得恰好一枚共享参与者 D6。
+
+同一枚共享 D6 同时映射双方各自列表：
+
+- 3 人：1–2 选第 1 名，3–4 选第 2 名，5–6 选第 3 名。
+- 2 人：1–3 选第 1 名，4–6 选第 2 名。
+- 1 人：1–6 都选第 1 名。
+
+所选进攻球员为 Runner，所选防守球员为 Helper；不得为双方分别掷参与者 D6。Authority 持久化双方有序列表、锁定状态、原始共享 D6、Runner 与 Helper。双方均非零时按候选数量差应用唯一人数修正：差 0 无修正；差 1 时人数较多方 `+2`；差 2 时人数较多方 `+3`。不再使用较少方 `-2 / -4`。
+
+进攻方选择 intended route 为高球或低球。Authority 随后取得一枚 route D6：1–4 保留 intended route，5–6 切换到另一条路线；持久化 intended route、原始 route D6 与 actual route。再按进攻方、防守方顺序各取得一枚比较 D6。
 
 高球：终结公式。
 
-- 跑位球员强壮 + 进攻方比较点数 VS (协防球员强壮 + 门将高空球) / 2 + 防守方比较点数 + 2。
+- Runner 强壮 + 进攻方比较 D6 VS (Helper 强壮 + 门将高空球) / 2 + 防守方比较 D6 + 2。
 
 低球：终结公式。
 
-- 跑位球员射门 + 进攻方比较点数 VS (协防球员盯人 + 门将反应) / 2 + 防守方比较点数 + 2。
+- Runner 射门 + 进攻方比较 D6 VS (Helper 盯人 + 门将反应) / 2 + 防守方比较 D6 + 2。
 
-球员耗费：跑位球员及协防球员进入已消耗区。
+人数差 `+2 / +3` 加到候选较多一方的最终比较侧。公式完成后 scorer 为实际 Runner。只有实际 Runner 与实际 Helper 在成功 `AdvanceAfterTerminal` 中进入已消耗区；未选中的提名球员保持 `Available`，terminal snapshot 冻结期间所有人仍保持推进前状态。
 
 ### 13.2 远距离任意球
 
-进攻方任选一名手牌球员作为持球球员。
+进攻方选择一名合法 Carrier，再选择 Direct 或 Power。
 
-进攻方可选择：
+Direct：终结公式。
 
-A. 直接射门：终结公式。
+- Carrier 远射 + 进攻方比较 D6 VS 门将站位 + 防守方比较 D6 + 2。
+- 进攻方比较 D6 为 1–2 时立即射偏并结束，不请求防守方 D6；3–6 时持久化 attack-only 前缀，再由防守方取得 D6并完成公式。
 
-- 持球球员远射 + 进攻方比较点数 VS 门将站位 + 防守方比较点数 + 2。
-- 进攻方比较点数为 1-2 时，直接射偏并结束当前进攻回合。
+Power：判定公式。
 
-B. 重炮轰门：判定公式。
+- 进攻方一次取得原子的 2D6；总和至少 11 时进球，否则 `NoGoal`。
 
-- 进攻方掷 D6 两次，两次总和大于等于 11 即进球，否则当前进攻回合结束。
-
-球员耗费：持球球员进入已消耗区。
+进球队员为 Carrier。Authority 持久化参与者、方法、原始掷点、公式/结果、scorer 与 terminal facts。Carrier 只在成功 `AdvanceAfterTerminal` 中进入已消耗区；terminal snapshot 中仍为 `Available`。
 
 ### 13.3 近距离任意球
 
-进攻方任选一名手牌球员作为持球球员。
+进攻方选择一名合法 Carrier，再选择 Direct 或 Angled。
 
-进攻方可选择：
+Direct：终结公式，进攻方先取得 D6，防守方后取得 D6。
 
-A. 直接射门：终结公式。
+- max(Carrier 射门, Carrier 传球) + 进攻方比较 D6 VS 门将手控球 + 防守方比较 D6 + 1。
 
-- max(持球球员射门, 持球球员传球) + 进攻方比较点数 VS 门将手控球 + 防守方比较点数 + 1。
+Angled：仅当 `Carrier 射门 + Carrier 传球 >= 8` 时合法。
 
-B. 角度射门：判定公式。
+- 进攻方一次取得原子的 2D6；总和至少 9 时进球，否则 `NoGoal`。
 
-- 持球球员射门与传球属性值和达到 8 时才可选择此项。
-- 进攻方掷 D6 两次，两次总和大于等于 9 即进球，否则当前进攻回合结束。
-
-球员耗费：持球球员进入已消耗区。
+进球队员为 Carrier。Authority 持久化参与者、方法、原始掷点、公式/结果、scorer 与 terminal facts。Carrier 只在成功 `AdvanceAfterTerminal` 中进入已消耗区；terminal snapshot 中仍为 `Available`。
 
 ### 13.4 点球
 
-进攻方任选一名手牌球员作为持球球员。
+本节只定义普通比赛中的点球；点球大战延期。进攻方选择一名合法 Carrier，再选择 Direct 或 Panenka。
 
-进攻方可选择：
+Direct：终结公式，进攻方先取得 D6，防守方后取得 D6。
 
-A. 直接射门：终结公式。
+- max(Carrier 射门, Carrier 传球) + 进攻方比较 D6 VS 门将预判 + 防守方比较 D6 - 3。
 
-- max(持球球员射门, 持球球员传球) + 进攻方比较点数 VS 门将预判 + 防守方比较点数 - 3。
+Panenka：判定公式。
 
-B. 勺子点球：判定公式。
+- 进攻方掷一枚 D6；1 为射失，2–6 为进球。
 
-- 进攻方掷 D6，2-6 进球，1 射失并结束当前进攻回合。
-
-球员耗费：持球球员进入已消耗区。
+进球队员为 Carrier。Authority 持久化参与者、方法、原始掷点、公式/结果、scorer 与 terminal facts。Carrier 只在成功 `AdvanceAfterTerminal` 中进入已消耗区；terminal snapshot 中仍为 `Available`。
 
 ## 14. 其他结算
 
@@ -812,13 +816,13 @@ B. 挑射：判定公式。
 
 ## 17. Resolution 终结持久化与显式下一回合（Stage 6.13.1.4.10.3.1）
 
-- 已完成公式或结果判定的 ThroughBall、Cross、PassControl 与 Shot 使用同一个两步生命周期：`Resolution Complete -> TerminalPendingAdvance -> AdvanceAfterTerminal`。第一步只持久化结果真相；第二步才执行攻击清理、机会消费、换攻或比赛结束。
-- `TerminalPendingAdvance` 期间必须保留 CurrentAttack、AttackSequence、当前进攻方、参与角色、部署/场地区域、已接受点数、Formula Facts、最终 Outcome、比分变化以及战术球员人数。普通部署牌仍未提交到 Used，当前攻击方的 `UsedAttackCount` 不增加，下一进攻方尚未产生。
-- 终结持久化和显式下一回合都不消费 RNG。错误阶段、错误 AttackSequence、错误请求方、重复终结、重复下一回合以及终结 pending 时提交其他 gameplay command 都必须失败并保持权威状态不变。
-- `AdvanceAfterTerminal` 只归当前进攻方所有。成功时恰好消费一次当前进攻机会；非终局按既有 canonical 顺序选择下一进攻方，终局设置 `CurrentAttackingPlayer=None` 并保留既有比分胜负规则。
+- 已完成公式或结果判定的运动战、定位球与AP1使用同一个两步生命周期：`Resolution Complete -> TerminalPendingAdvance -> AdvanceAfterTerminal`。第一步持久化结果真相；第二步才执行除AP1 Ejected例外之外的卡牌消耗、机会消费、Recovery、攻击清理、换攻或比赛结束。
+- `TerminalPendingAdvance` 期间必须保留 CurrentAttack、AttackSequence、当前进攻方、参与角色、部署/场地区域、已接受点数、Formula Facts、最终 Outcome、比分变化以及战术球员人数。普通部署牌与定位球参与者仍未提交到 Used，当前攻击方的 `UsedAttackCount` 不增加，Recovery尚未发生，下一进攻方尚未产生。
+- 终结持久化本身不消费 RNG。显式推进仅可在非终局Recovery池至少有2张时调用Recovery provider；其他推进步骤为零RNG。错误阶段、错误AttackSequence、错误请求方、重复终结、重复推进以及terminal pending时提交其他gameplay command都必须在provider前失败并保持权威状态不变。
+- `AdvanceAfterTerminal` 只归当前进攻方所有。成功时在一个原子事务中依次：验证推进；把适用的普通非 GK 与实际定位球 Carrier/Runner/Helper 移入 Used；消费恰好一次当前进攻机会；在工作副本中判断比赛结束或下一进攻方；终局跳过 Recovery，非终局按 19 节完成 Recovery；清除 CurrentAttack；一次发布最终 CardUsage 与下一进攻方。不得发布“已换攻但尚未回收”的中间快照。
 - 重建 Presentation、刷新 snapshot 或重连观察同一 terminal snapshot 时，必须重新显示相同结果、事实和唯一 `下一回合` 操作，不能重掷、重算或自动换攻。客户端可隐藏重复按钮，但不能代替 Authority 执行 advance。
 - 本合同覆盖已经进入 Resolution 并产生正式 tactic terminal result 的完成路径。Carrier / Marker / Skill / Runner 阶段因无合法选择或主动放弃而提前关闭的 pre-resolution closure 继续沿用既有原子 completion；它们没有可展示的 resolved tactic terminal snapshot，不纳入本次两步生命周期。
-- 本 Stage 不修改任何公式、分支概率、点数范围、平局规则、比分规则或战术平衡。
+- AP1 的 `Ejected / Discarded` mutation 是该 terminal outcome 本身，必须在 acknowledgement 前权威生效；除此之外，普通/定位球参与者、机会消费与 Recovery 都必须等到成功推进。
 
 ### 17.1 直塞脚下球生产披露顺序（Stage 6.13.1.4.10.3）
 
@@ -864,3 +868,17 @@ B. 挑射：判定公式。
 - Terminal 与 progression 必须分离。BehindDefense/AntiOffside 的 `OneOnOneRequired` 只映射 `形成单刀`，不得使用进球/破门；route selection 继续只显示 route context。LongShot/CutInside `ImmediateMiss` 的 `射门偏出` 与正常 Formula Defender Win 的 `防守成功` 是不同玩家语义。
 - Authority 未给出唯一 causal defender 的 aggregate defense 可在 Marker/Helper 中以稳定 immutable identity 做 presentation-only dramatization：Marker=`抢断`、Helper=`拦截`。同 snapshot 重建必须一致，不消耗任何 gameplay RNG。普通 aggregate GK 不进入候选池；OneOnOne Direct `Miss` 可按明确产品例外展示 GK `扑救成功`，Chip 禁止 GK 文案。
 - 具名角色只能来自现有 player-facing DisplayName mapping；事实或名称不足时使用语义正确的 generic fallback，不泄漏 raw ID。Historical BehindDefense P2 不属于 Narrative v1。完整冻结矩阵与未来接入方式见 `Docs/UI/Tactical_Resolution_Narrative_v1.md`。
+
+## 19. 已消耗区自动回收
+
+Recovery 在每次成功完成的**非终局**攻击推进中自动发生，由 Authority 拥有；没有玩家 `RequestRecovery` 命令。玩家先看到冻结的 `TerminalPendingAdvance`，Recovery 只在 `AdvanceAfterTerminal` 通过全部验证并已把本次实际参与者加入 Used 的工作状态中执行。终局推进直接跳过 Recovery；错误请求、stale/wrong-side/wrong-sequence 或重复推进必须在随机 provider 前失败，且不能再次回收。
+
+候选池是双方合并的一个全局 Used 池：`PlayerA Used + PlayerB Used`。它同时包含更早仍为 Used 的合法球员，以及本次推进中新进入 Used 的普通非 GK、Short/Long/Penalty Carrier、Corner 实际 Runner/Helper。GK、`Ejected / Discarded` 和任何不在最终权威 Used 状态中的卡都排除；不按阵营拆池，也没有每方返回配额。
+
+返回数量：池为 0 时返回 0 且零 Recovery RNG；池为 1 时确定性返回唯一卡且零 Recovery RNG；池至少为 2 时恰好返回两张不同卡。返回卡按实际 OwnerSide 从 Used 移回 Available，因此允许两张都来自 PlayerA、两张都来自 PlayerB，或各一张。
+
+池至少为 2 时使用线性体力权重、不放回抽样。每张候选权重等于其 Stamina（当前范围 1–6）；第一张概率为自己的 Stamina 除以全部剩余权重，移除后重新计算总权重，再抽第二张。不得采用独立 `D6 <= Stamina`、NoRecovery ticket、Stamina 平方、固定取最高体力或按阵营分别抽取。概念上的语义操作是对稳定有序候选与权重执行一次原子的 `DrawWeightedWithoutReplacement(count up to 2)`；精确 API 名由实现阶段决定。
+
+两张返回结果必须整体成功后才发布，不得先公开第一张再让第二张失败。成功结果与最终 CardUsage 在命令响应前持久化；非 Shipping DEV deterministic provider 未来必须把 Recovery 作为独立语义用途，但生产规则不能依赖该工具。
+
+玩法合法性真相仍是最终 `CardUsageState`。为了刷新或重建双方一致的最近一次回收表现，权威状态还保存一个有界 `LastRecoveryFact`：`SourceAttackSequence` 与按抽取顺序排列的 0–2 个 `{OwnerSide, CardId}`。不要求永久比赛级 Recovery ledger，也不要求把完整候选池、权重或原始 weighted ticket 保存为玩法真相；这些只可作为 DEV/server diagnostics。

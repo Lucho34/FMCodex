@@ -87,6 +87,7 @@
 - 决策：一方实际可提供候选球员数量为 0 张，即视为该方手牌不足；双方候选球员数量都是 0 张，则视为进攻方手牌不足。
 - 影响：定位球角球、手牌不足、测试用例。
 - Resolved UQ：UQ-014。
+- 修订说明（2026-08-30）：本条的 Corner `-2 / -4` 与“任一方0张统一手牌不足”处理已由 CD-089 取代。历史记录保留，但不再是当前 Corner 规则。
 
 ### CD-011 - 平局判定和无协防球员
 
@@ -125,6 +126,7 @@
 - 决策：行动点 9、10、11、12 本身没有差异，均进入同一套定位球结算表。
 - 影响：行动点状态机、定位球测试。
 - Resolved UQ：UQ-027。
+- 扩展说明（2026-08-30）：CD-087继续确认9–12共用定位球入口，并补充完整D12、同一AttackSequence与独立类型D6的生产合同。
 
 ### CD-016 - 体力返回阵营限制
 
@@ -132,6 +134,7 @@
 - 决策：已消耗区回收不限制同一阵营返回数量。
 - 影响：已消耗区回收、测试用例。
 - Resolved UQ：UQ-020。
+- 扩展说明（2026-08-30）：CD-090冻结双方合并Used池、最多两张、线性Stamina加权且不放回；“不限制同一阵营返回数量”继续有效。
 
 ### CD-017 - 行动点 1 罚下范围
 
@@ -139,6 +142,7 @@
 - 决策：行动点 1 的罚下随机范围是手牌。被罚下球员进入弃牌区。
 - 影响：行动点状态机、弃牌区、测试用例。
 - Resolved UQ：UQ-004。
+- 修订说明（2026-08-30）：本条“手牌”现精确为当前攻击方Available non-GK；GK、Used与Ejected排除，永久Ejected与机会消费由CD-087取代旧的未限定表述。
 
 ### CD-018 - Through Ball Runtime Participant Eligibility and Defensive-Round Goalkeeper Semantics
 
@@ -213,7 +217,7 @@
 - 实现状态（7.71–7.74）：提交 `cf99f0255274aeb4dbad2243caa05aed2c835b69` 已实现 CurrentAttack 最小表示、默认 / initializer inactive 链、普通运动战 `Begin` 和旧 formal `SubmitAttack` 的 active-attack Guard。`bHasCurrentAttack=false` 是唯一 inactive authority；inactive reader 必须忽略 `CurrentAttack` payload。`Begin` 只接受 ActionPoint 2–8，成功原子建立 Deployment 状态，不消费机会、不移动卡牌、不加分、不切换攻击方。
 - 验证与关闭（7.72–7.74）：实现审查与独立复验结论为 `PASS WITH NON-BLOCKING FINDINGS`；16 项 Begin 专项和本切片共 21 项新增测试全部通过。直接回归为 State 5/5、State Initializer 12/12、Opening 17/17、Turn Guard 17/17、Submission Gate 17/17、Availability 16/16、Attack Flow 17/17；标准 Build / UHT 通过，CoreRules 1552/1552。7.74 只同步最终 closure 文档，不改变生产行为。
 - 实现边界：目前 placements 只是值表示，Begin 总是创建空列表；提交 `d3e84067a50305d1f050d0284364dd18d79cf85a` 已实现手动 Deployment Finish、finished flag writer、合法方轮转及双方 Finish 后的 Deployment → Resolution 转换。尚未实现普通部署牌 writer、自动 Finish、整场永久门将事实与门将 writer、terminal projection、`CompleteCurrentAttack`、Through Ball completion consumer、Formal Abort、Direct Shot 或 Shooter Snapshot。旧 formal `SubmitAttack` 已拒绝 active CurrentAttack，但更低层 flow 仍可直接调用，尚未迁移为 CurrentAttack consumer。
-- 范围与非目标：7.70.1 的完整生命周期 Contract 仍有效；7.74 只确认第一最小实现切片，不把未实现职责描述为已完成。7.66-B-003 Shooter Snapshot authority、7.70-M-001 / UQ-041 与 7.70-M-002 derived Match End 继续开放。
+- 范围与非目标：7.70.1 的完整生命周期 Contract 仍有效；7.74 只确认第一最小实现切片，不把未实现职责描述为已完成。7.66-B-003 Shooter Snapshot authority与7.70-M-002 derived Match End继续开放；历史`7.70-M-001 / UQ-041`已由CD-087解决，但实现仍pending。
 - Deployment Finish 实现与关闭（7.75–7.78）：`FMatchPlayFinishDeployment::Finish(const FMatchPlayState&, int64, EInitialTurnOrderPlayer)` 只允许当前合法部署方不可撤销地完成本次 Deployment。finished flag 按 `RuntimeState.CurrentAttackingPlayer` 动态映射为 attacker / defender 角色；第一方 Finish 后保持 Deployment 并轮转到另一方，第二方 Finish 后保留 CurrentAttack、进入 Resolution 并把 `CurrentLegalDeploymentSide` 清为 `None`。失败采用 copy-on-success，完整保留输入状态；成功不修改 Runtime、CardUsage、ActionPoint、AttackSequence、placements 或当前防守门将激活。
 - Deployment Finish 验证与关闭（7.77–7.78）：独立审查结论为 `PASS WITH NON-BLOCKING FINDINGS`，确认 Deployment Finish 与 Resolution transition，允许提交。专项测试 21/21；直接回归全部通过；Development Editor Build 与 UHT `-WarningsAsErrors` 通过；CoreRules 为 1573/1573，Failed 0、NotRun 0。7.78 只同步已验证事实，不改变产品规则或生产行为。
 - 债务：7.66-B-002、7.68-B-002 与 7.69-B-001 至 7.69-B-004 保持 `Infrastructure partially implemented / Further implementation pending`；7.68-B-001 与 7.69-B-005 保持已解决。`7.73-M-001`、`7.73-M-002` 继续开放。新增 `7.77-M-001`：Deployment Finish 缺少三组 mixed-invalid validation-priority 直接组合测试；生产顺序已独立确认正确，现有 21 项覆盖单项错误和其他组合，因此属于非阻断测试证据增强，而非生产行为缺陷。
@@ -323,7 +327,7 @@
 - Lifecycle：Begin 创建 canonical empty；ordinary/GK deployment 和双方 Finish 不写 SelectedAction；Second Finish 进入 Resolution 后仍为空；只有 Writer 成功后成为 selected。Complete/Abort 仍未实现。
 - Independent closure evidence：Legality 31/31、Availability 12/12、Writer 15/15、Binding 13/13、Action Selection 71/71、MatchPlay 657/657、CoreRules 1879/1879；clean-tree Unity Rebuild、UHT、compile、LIB/DLL link PASS，warnings 0、generated files 0、adaptive exclusions 0、collision None；Findings 0/0/0/0。
 - Current breakpoint：当前已经冻结 AttackSequence/Carrier/Skill/ActionType；首个未实现断点是 Resolution Consumer 尚未按 ActionType 路由。Participant Selection、具体 Skill 执行、Formula/D6/Outcome、Score/Opportunity/CardUsage 消费、Completion 与下一次 Attack 继续 Deferred，本决定不预选其中任何实现。
-- Existing debt：`7.66-B-003`、`7.70-M-001 / UQ-041`、`7.70-M-002`、`7.73-M-001`、`7.73-M-002`、`7.77-M-001`、Feet、P1、P2、Anti-Offside 与 AP1 歧义全部 unchanged。
+- Existing debt：`7.66-B-003`、`7.70-M-002`、`7.73-M-001`、`7.73-M-002`、`7.77-M-001`、Feet、P1、P2与Anti-Offside在当时保持unchanged；历史`7.70-M-001 / UQ-041`及AP1产品歧义现由CD-087解决，具体实现仍pending。
 
 ### CD-029 - Active Goalkeeper Contribution for LongShot, CutInsideShot and PassControl
 
@@ -698,7 +702,7 @@
 - 审计结论：当前为 **Case B**。ThroughBall、Cross、PassControl 与 Shot 的 resolved terminal 都汇入共用 `FMatchPlayCurrentAttackCompletion`，因此生命周期修复必须在 shared authority seam 完成，不能只在 ThroughBall UI 延迟清理。Cross 既有“完成态”主要是 presentation-held formula result，不是可重连的 persisted terminal authority state。
 - 决策：正式 resolved tactic completion 拆为两个 serialized authoritative transition。terminal persist 写入 score/outcome 并把 CurrentAttack 标记为 `TerminalPendingAdvance`；显式 `AdvanceAfterTerminal(AttackSequence, RequestingSide)` 才清除 action scope、提交普通牌、消费一次机会、换攻或结束比赛。本条取代 CD-068 中把 terminal apply 与 handoff 视为同一时刻的部分，不改变其 Feet roll/Formula/RNG 决定。
 - 保留事实：terminal pending 必须保留 CurrentAttack、当前攻击方、AttackSequence、Resolution Session、roles、placements、accepted rolls、Formula Facts 与 tactical counts。普通牌、UsedAttackCount 与 next attacker 仍 pending。Goal 的分数在 terminal persist 时写入一次；advance 不重复加分。
-- Ownership/RNG：只有当前攻击方可 advance；stale sequence、错误方、错误 lifecycle、重复 terminal、重复 advance 及 pending 时其他 command 全部零 mutation、零 RNG。terminal persist 与 advance 本身都不调用 D6 provider。
+- Ownership/RNG：只有当前攻击方可 advance；stale sequence、错误方、错误 lifecycle、重复 terminal、重复 advance 及 pending 时其他 command 全部零 mutation、零 RNG。terminal persist不调用provider；CD-091随后扩展accepted non-final advance，使其可在Recovery池至少2张时调用独立语义provider，但仍不调用战术D6 provider。
 - 终局：最后一次 resolved outcome 先形成可观察 terminal snapshot；只有 accepted advance 才运行既有 MatchEnd authority。终局不切换到另一方，`CurrentAttackingPlayer=None`。
 - Resync：terminal snapshot 自足，InteractionView 与 feedback 从 State/Resolution Facts 重建同一结果和唯一 `下一回合`；不得依赖旧 Controller 的瞬时 command result，刷新/重连不得重掷或自动 advance。
 - 范围例外：Carrier、Marker、Skill、Runner 阶段的 no-legal/decline 属于 pre-resolution closure，没有正式 resolved tactic result，继续沿用既有 atomic completion。本决定不扩张它们，也不修改任何公式、概率、平局、比分或卡牌平衡。
@@ -856,6 +860,48 @@
 - reconstruction与forwarding：branch pending、Direct空/attack-only/completed、ImmediateMiss、DeadCorner completed与terminal都由Authoritative State重建。InteractionView投影typed category、expected side与AttackSequence，Controller/Host保持薄转发；generic Continue不拥有未完成CutInside gameplay RNG。非Shipping DEV为三个玩家动作提供独立semantic targets。
 - 范围：本决定只解除Stage 6.15.3审计发现的Authority capability blocker，不实现CutInside Production UMG、central surface、Reel、Formula布局、Narrative或Result。它建立CutInside-specific request foundation，不等于network transport、reconnect或整个项目Stage 7 ready。
 
+### CD-087 - Full D12 Routing and AP1 Permanent Ejection
+
+- 日期：2026-08-30
+- 决策：每次攻击机会都由当前攻击方以`RequestingSide + expected AttackSequence`显式请求完整D12。Authority在provider前验证并持久化raw D12；同一AttackSequence内按1→AP1、2–8→Ordinary、9–12→SetPiece分流，成功结果不得因replay重掷，也不新增SendingOffSequence或SetPieceSequence。
+- AP1：只从当前攻击方Available non-GK池选择；0/1候选零selection RNG，2+由provider均匀选择。0候选记录NoEligibleCandidate；选中卡进入永久side-owned Ejected/Discarded而不是Used。两条路径都NoGoal、无比分变化，并在显式advance时恰好消费一次机会；final opportunity合法。
+- 影响：解决UQ-041；未来CardUsage、CurrentAttack、RNG provider、terminal与测试必须支持该合同。当前C++的full D12与永久Ejected实现仍待后续Stage。
+
+### CD-088 - Set Piece Type, Participant and Resolution Contract
+
+- 日期：2026-08-30
+- 决策：AP9–12在同一CurrentAttack下由独立权威D6映射Corner/Long/Short/Penalty。玩家只请求roll，不提交type；现有SetPieceTypeSelectionQuery只是pure mapping slice，不是production lifecycle。
+- 参与者：Short/Long/Penalty Carrier、Corner Runner/Helper均只能是对应side的Available non-GK；Used/Ejected/GK排除。防守方唯一GK自动作为适用Formula输入，不走ordinary optional activation且不被消耗。Short、Long与普通比赛Penalty的方法、条件D6/2D6、Formula与scorer按Rules 13冻结；shootout延期。
+- 生命周期：raw rolls、participant/method/route、Formula/Outcome/scorer与terminal必须可重建。实际SetPiece参与者只在成功AdvanceAfterTerminal中进入Used。
+
+### CD-089 - Corner Sealed Ordered Nominations and Shared Participant D6
+
+- 日期：2026-08-30
+- 决策：双方各提交0–3个ordered合法候选；进攻方先lock，防守方lock前只能看到lock acknowledgement，双方lock后才公开lists。双方非零时只取得一枚shared D6，并按各自3/2/1人表同时映射Runner/Helper；不得独立抽两次。
+- shortage precedence：attacker=0立即NoGoal；attacker>0且defender=0立即SystemGoal且无scorer；both0使用attacker-zero NoGoal。三条路径都不取得shared/route/formula RNG，也不消耗参与者。
+- modifier：仅双方非零时适用；人数差0无修正、差1给较多方+2、差2给较多方+3。该规则取代CD-010的较少方-2/-4与任一0统一不足。High/Low继续使用intended route、1–4保留/5–6切换；只有actual Runner/Helper在advance中消耗。
+
+### CD-090 - Combined Used Recovery Uses Two-card Linear Stamina Draw
+
+- 日期：2026-08-30
+- 决策：Recovery候选是PlayerA Used+PlayerB Used的一个合并池，包含新旧Used，排除GK/Ejected/非Used。池0返回0、池1返回唯一卡且均零RNG；池至少2时恰好返回两张不同卡，不设side quota。
+- 算法：provider对稳定候选执行线性Stamina加权、不放回抽样；抽第一张后移除并重算第二张权重。拒绝独立D6<=Stamina、NoRecovery ticket、平方权重、固定最高与per-side draw。
+- 事实：CardUsage是玩法真相；有界LastRecoveryFact只保存SourceAttackSequence与ordered OwnerSide+CardId[0..2]。完整pool/weights/tickets不属于MVP gameplay state，可留DEV/server diagnostics。本条解决UQ-019与UQ-021，并扩展CD-016。
+
+### CD-091 - Recovery Is Atomic Non-final Advance Continuation
+
+- 日期：2026-08-30
+- 决策：Recovery没有玩家命令，只在成功非终局AdvanceAfterTerminal事务内自动执行。事务顺序为validate、参与者Used mutation、机会消费、终局/下一攻击方推导、非终局Recovery、CurrentAttack clear、最终CardUsage+attacker一次发布；不得暴露handoff已发生但Recovery未完成的半状态。
+- safety：final advance跳过Recovery；stale/wrong-side/wrong-sequence/duplicate advance在provider前拒绝。两张return必须原子提交，不发布partial first result；AP1 Ejected是terminal outcome自身，其他消耗仍等待advance。
+- 网络：AttackSequence足以相关，不新增RecoverySequence。snapshot刷新通过最终CardUsage与LastRecoveryFact重建，不依赖Controller缓存。
+
+### CD-092 - Recovery Presentation Uses Data-driven Owner and Player Identity
+
+- 日期：2026-08-30
+- 决策：每张返回卡显示`<TeamDisplayName> · <PlayerDisplayName> 返回手牌`。Authority只保存OwnerSide+CardId；Presentation将OwnerSide解析到本场实际Team identity/TeamDisplayName，将CardId解析到PreferredDisplayName/DisplayName。
+- 禁止假定PlayerA=Arsenal、PlayerB=Manchester City、host=PlayerA、local=attacker或固定left/right；示例球队不得成为hardcoded gameplay truth。localized FText不写入玩法state。
+- 影响：未来双客户端snapshot重建、Recovery通知与球队/球员展示测试。
+
 ## Resolved UQ Summary
 
 已从 `Unresolved Questions` 移入已确认决策的 UQ：
@@ -877,7 +923,9 @@
 - UQ-016：直塞脚下球公式笔误。
 - UQ-017：传控中的突破死角对应关系。
 - UQ-018：比赛结束平局处理。
+- UQ-019：已消耗区回收概率、候选池、数量、时机与不足池处理。
 - UQ-020：体力返回阵营限制。
+- UQ-021：Recovery玩法/表现事实与可选DEV完整权重诊断的边界。
 - UQ-022：技能触发范围归属。
 - UQ-026：部署阶段无合法球员处理。
 - UQ-027：行动点 9-12 是否有差异。
@@ -885,31 +933,16 @@
 - UQ-029：多人公式平局时体力比较方式。
 - UQ-030：掷点类型。
 - UQ-031：比较点数定义。
+- UQ-041：行动点1恰好消费当前进攻方一次机会。
 
 ## Unresolved Questions
 
 ### UQ-005 - 红牌事件记录粒度
 
-- 问题描述：红牌下场进入弃牌区后，是否需要记录红牌球员身份、触发来源和随机结果？
+- 问题描述：AP1玩法真相已经要求selected CardId或NoEligibleCandidate及永久Ejected状态；是否还需要永久记录完整候选池、raw selection细节、触发来源和完整审计事件？
 - 影响范围：MatchLogEntry、回放、联网同步、调试。
 - MVP 是否必须解决：否。
-- 建议处理方案：MVP 可先记录球员身份和随机结果；完整来源可在回放需求明确后扩展。
-- 当前状态：Open。
-
-### UQ-019 - 已消耗区回收概率公式
-
-- 问题描述：已消耗区按体力返回手牌的具体概率公式仍需最终确认。
-- 影响范围：已消耗区、体力、回收概率、平衡性、测试用例。
-- MVP 是否必须解决：是。
-- 建议处理方案：在 `Docs/01_Rules_Canonical.md` 中明确候选池、返回数量、权重算法、是否不放回、已消耗区不足时如何处理。
-- 当前状态：Open。
-
-### UQ-021 - 体力返回日志记录粒度
-
-- 问题描述：是否需要在日志中记录每次体力返回的完整权重池？
-- 影响范围：MatchLogEntry、回放、调试、联网同步。
-- MVP 是否必须解决：否。
-- 建议处理方案：MVP 至少记录候选卡、随机结果和返回卡；完整权重池可作为调试开关。
+- 建议处理方案：MVP先以CurrentAttack terminal fact与side-owned Ejected状态满足玩法/重建；完整审计日志等回放或运营需求明确后再定。
 - 当前状态：Open。
 
 ### UQ-023 - 主客场是否影响规则
@@ -1021,14 +1054,6 @@
 - 最终Skill legality依据canonical participant requirement处理正式缺席：LongShot/CutInside允许，Cross/PassControl/ThroughBall仍要求Runner。正常已选Runner后的Helper阶段与既有角色消费合同不变。
 - LongShot branch采用稳定双行微文案：`直接射门 / （看远射、抢断、门将站位）`与`射向死角 / （只看两枚掷点）`。不启用Hover Detail；选择只提交typed intent且消费0 RNG。
 - LongShot中央Surface必须接受当前nested Formula primary action作为自己的精确CTA owner，并恰好派发一次Direct Attack/Defense typed action。Screen stale-owner guard继续拒绝过期或lower重复动作；不改变LongShot公式、阈值、GK、Tactical Player、request correlation或terminal生命周期。
-
-### UQ-041 - 行动点 1 是否消耗本次进攻次数
-
-- 问题描述：行动点 1 会使本方进攻结束并执行罚下判定；是否明确消耗本次进攻次数仍需确认。
-- 影响范围：行动点状态机、进攻顺序队列、测试用例。
-- MVP 是否必须解决：是。
-- 建议处理方案：确认行动点 1 是否视为已执行一次进攻；若是，写入进攻次数消耗规则。
-- 当前状态：Open。
 
 ## 2026-08-29 — Central Tactical Branch Selection Alignment（Stage 6.15.3.1）
 

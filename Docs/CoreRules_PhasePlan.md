@@ -750,7 +750,7 @@
 - Completion 只消费 capability adapter 生成的小型正式 terminal projection。原子 WorkingState 顺序为验证 → Goal 加分 → 普通部署牌提交 Used / 门将不移动 → 清除 CurrentAttack → 消费机会 → Match End → 仅非终局选择下一攻击方 → 一次提交。presence + Resolution + AttackSequence 提供最小防重；任何失败返回 BeforeState。
 - Pure Through Ball terminal flag 仍不等于生产 completion。Feet、P1、P2 Offside、Anti-Offside、Chip Shot 与未来 Direct Shot 均未接入统一 MatchPlay consumer。
 - 7.70.1 为当前 Docs-only 节点，只正式化上述 Contract，不修改 Canonical、Source、Tests 或 Build，不运行 Build、UHT、自动化测试或 CoreRules full regression。
-- 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 状态更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 保持 OPEN。新增 7.70-M-001（UQ-041）和 7.70-M-002（Match End / Winner derived authority）。
+- 7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 状态更新为 `Contract-level resolved / Implementation pending`；7.68-B-001、7.69-B-005 保持已解决；7.66-B-003 保持 OPEN。7.70当时新增7.70-M-001（UQ-041）和7.70-M-002（Match End / Winner derived authority）；其中UQ-041现已由Stage 6.16.2/CD-087解决为AP1恰好消费一次机会，implementation pending。
 - 下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High）。7.71 必须比较 CurrentAttack state representation、初始化变更、Begin Attack、Deployment turn-state、Deployment Finish、played-GK 永久状态、played-GK writer、terminal projection、CompleteCurrentAttack、further review 与 Explicit Deferral，并只选择一个最小切片；7.70.1 不预选实现。
 
 ## 7.71–7.74 CurrentAttack Representation + Begin Ordinary Attack Closure
@@ -937,7 +937,7 @@ CoreRules 1879/1879
 
 能力关闭：当前攻击方可以在双方 Finish 后选择已部署的非 GK Carrier 及其合法 Skill；权威 State 冻结 CarrierCardId、SkillId、ActionType，Resolution Binding 可以只读取得该动作。仍未实现 Resolution Consumer、Participant Selection、具体 Skill 执行、Formula、D6、Outcome、Score/Opportunity/CardUsage 消费、Completion 与下一次 Attack。
 
-既有债务 `7.66-B-003`、`7.70-M-001 / UQ-041`、`7.70-M-002`、`7.73-M-001`、`7.73-M-002`、`7.77-M-001`、Feet、P1、P2、Anti-Offside 与 AP1 歧义全部 unchanged。
+该历史节点当时记录的债务包括`7.66-B-003`、`7.70-M-001 / UQ-041`、`7.70-M-002`、`7.73-M-001`、`7.73-M-002`、`7.77-M-001`、Feet、P1、P2、Anti-Offside与AP1歧义；其中UQ-041/AP1产品歧义现已由Stage 6.16.2/CD-087解决，implementation pending，其余状态不由本次文档同步改变。
 
 ### Current playable flow breakpoint
 

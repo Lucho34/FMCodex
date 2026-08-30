@@ -167,9 +167,9 @@
 
 - `PlayerId`：玩家标识。
 - `TeamSide`：主场或客场。
-- `HandCards`：手牌中的球员卡实例。整副牌组就等于手牌，没有牌库、抽卡、洗牌概念。
-- `ConsumedZoneCards`：已消耗区中的球员卡实例。
-- `DiscardPileCards`：弃牌区中的球员卡实例。
+- `HandCards`：`Available` 手牌中的球员卡实例。整副牌组开局都在手牌，没有牌库、抽卡、洗牌概念。
+- `ConsumedZoneCards`：`Used / Consumed` 球员卡实例，可按 Recovery规则返回。
+- `DiscardPileCards`：`Ejected / Discarded` 球员卡实例，本场永久离场。当前 C++ 尚未完整实现该第三种 side-owned availability，后续实现不得用 Used 代替。
 - `UsedGoalkeeperActivation`：是否已经发动过门将。
 - `RemainingAttackCount`：剩余进攻次数。
 - `HasFinishedDeployment`：本回合是否部署完毕。
@@ -497,16 +497,27 @@ ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份�
 
 ## ConsumedReturnRule
 
-表示已消耗区球员回手牌的基础规则。
+表示未来 Authority 对双方合并 Used 池执行的已确认 Recovery语义；当前 C++ 尚未实现。
 
-建议字段：
+- `SourcePool`：PlayerA Used + PlayerB Used，一个全局池。
+- `TargetUsage`：Available，按每张卡真实 OwnerSide写回。
+- `DesiredReturnCount`：最多 2；池0返回0，池1返回1，池至少2返回恰好2。
+- `Weight`：线性 Stamina（1–6）。
+- `SelectionMode`：provider-owned weighted sampling without replacement。
+- `ExcludedUsage`：GK、Ejected/Discarded与任何非Used卡。
+- `Timing`：成功非终局AdvanceAfterTerminal事务内部；终局、无效或重复推进不执行。
+- `Atomicity`：两张结果整体提交，不发布partial first return。
 
-- `SourceZone`：已消耗区。
-- `TargetZone`：手牌。
-- `ReturnCount`：每回合返回数量。
-- `FormulaId`：回收公式标识，用于引用已确认的已消耗区回收规则。
-- `RelevantAttribute`：体力。
-- `IfNotEnoughCards`：已消耗区不足返回数量时的处理方式。
+## Full D12 / AP1 / Set Piece / Recovery Future Authoritative State（Approved, Not Implemented）
+
+本节是后续实现必须支持的schema要求，不表示现有USTRUCT已经拥有这些字段。
+
+- `CurrentAttack`保留一个AttackSequence下的raw InitialD12、route kind（AP1/Ordinary/SetPiece）与lifecycle stage。AP1 payload保存selected `{OwnerSide, CardId}`或显式`NoEligibleCandidate`；match-long side state保存Ejected/Discarded identities。
+- SetPiece payload保存raw type D6、SetPieceType、参与者选择stage、method/route、raw rolls、Formula/Outcome/scorer与TerminalPendingAdvance事实。现有pure `SetPieceTypeSelectionQuery` Result不是该完整payload的替代品。
+- Corner payload保存双方0–3个ordered nomination identities、各自lock状态、viewer redaction所需阶段、raw shared participant D6、可选Runner/Helper identities、intended route、raw route D6与actual route。零人结果允许Runner/Helper及shared D6都为空；optional participant不使用fake CardId。
+- CardUsage至少区分side-owned `Available / Used / Ejected`。普通/定位球参与者在terminal snapshot中仍保持推进前usage；AP1 selected card是唯一在acknowledgement前进入Ejected的例外。
+- `LastRecoveryFact`为有界latest fact：`SourceAttackSequence`加ordered `ReturnedCards[0..2]`，每项保存`OwnerSide + CardId`。它不保存localized FText，也不要求永久ledger、candidate pool、weights或raw weighted tickets。
+- 对局/玩家展示映射必须能把OwnerSide解析到该玩家实际Team identity及`TeamDisplayName`。球员名继续按CardId解析到`PreferredDisplayName / DisplayName`；schema不得编码PlayerA=某支固定球队。
 
 ## MatchLogEntry
 

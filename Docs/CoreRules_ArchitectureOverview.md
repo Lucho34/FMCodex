@@ -541,7 +541,7 @@ terminal projection 至少需要 AttackSequence、正式 terminal 成功证明�
 
 普通错误阶段、错误 actor、非法卡牌 / Slot、已 Finish、门将不合法、无效 D6 / 日志或 stale sequence 都是 retryable failure，不得清理、消费或轮转。Formal attack abort 当前不是 gameplay capability，保持 Deferred；不得为了清理临时字段新增 Abort API。Match End / Winner 继续由 Runtime counts 与 Score 推导，不保存第二套可能漂移的终局 authority。
 
-7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 在本 Contract 完成后为 `Contract-level resolved / Implementation pending`。7.66-B-003 Shooter Snapshot authority 保持 OPEN。7.70-M-001 记录 UQ-041 仍开放；7.70-M-002 记录终局事实继续按需推导。下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High），不得预选或一次实现整个生命周期。
+7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 在本 Contract 完成后为 `Contract-level resolved / Implementation pending`。7.66-B-003 Shooter Snapshot authority 保持 OPEN。7.70-M-001当时记录UQ-041；该产品问题现已由Stage 6.16.2/CD-087解决为AP1恰好消费一次机会，implementation pending。7.70-M-002 记录终局事实继续按需推导。下一唯一入口为 `7.71 MatchPlay Lifecycle Implementation Slice Selection + Minimum Contract Review`（GPT-5.6 Sol High），不得预选或一次实现整个生命周期。
 
 ## CurrentAttack Representation + Begin Ordinary Attack 实现闭环（7.71–7.74）
 
@@ -566,7 +566,7 @@ Begin(BeforeState, ActionPoint)
 
 7.73 独立复验确认 Begin 16/16、本切片新增 21/21，相关直接回归全部通过，标准 Build / UHT 通过且 CoreRules 1552/1552。非阻断债务为 `7.73-M-001` 与 `7.73-M-002`，只要求增强 payload 与组合优先级测试证据。
 
-7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 现为 `Infrastructure partially implemented / Further implementation pending`：CurrentAttack owner 与 Begin writer 已存在，但 Deployment、门将状态 writer、Resolution 转换、completion / cleanup 仍待实现。Shooter Snapshot、UQ-041 与 derived Match End 债务继续开放。下一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`，不得从本切片推断下一个实现选择。
+7.66-B-002、7.68-B-002、7.69-B-001 至 B-004 现为 `Infrastructure partially implemented / Further implementation pending`：CurrentAttack owner 与 Begin writer 已存在，但 Deployment、门将状态 writer、Resolution 转换、completion / cleanup 仍待实现。Shooter Snapshot与derived Match End债务继续开放；UQ-041产品规则现已由Stage 6.16.2/CD-087解决，implementation pending。下一入口为 `7.75 MatchPlay Lifecycle Next Capability Selection + Minimum Contract Review`，不得从本切片推断下一个实现选择。
 
 ## Deployment Finish Capability 实现闭环（7.75–7.78）
 

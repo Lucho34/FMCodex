@@ -218,3 +218,16 @@
 - 可持久化前缀为 route-only、route + `PrimaryAttack`、route + `PrimaryAttack + PrimaryDefense`。InteractionView、Resolution Facts、Formula与terminal recovery只从 CurrentAttack及roll records重建；Controller或Widget不得缓存 gameplay truth、补掷或重放历史 RNG。
 - normal Cross production route投影`RollCrossRoute`，再按实际分支投影 attacker-owned Attack与defender-owned Defense。Controller只从 InteractionView组装request，Host只包裹既有DEV invocation并转发Session；normal玩家RNG不经generic `ContinueResolution`，legacy API仅保留compatibility/recovery消费者。
 - 该Foundation不改变High/Low intent、route概率、Formula、Narrative、Reel或显式`AdvanceAfterTerminal`生命周期，也不实现network transport。它建立未来RPC可消费的side ownership、request correlation、stale/retry safety与snapshot reconstruction边界。
+
+## Full D12、定位球与回收的未来 Authority 合同（Stage 6.16.2 Docs Sync）
+
+本节冻结后续实现必须满足的架构边界，不表示这些字段或 command 已存在于 C++。
+
+- 每次攻击只使用一个单调 `AttackSequence`。当前攻击方以 `RequestingSide + expected AttackSequence` 请求完整 D12；Session 在 provider 前验证，成功后持久化 raw D12 并在同一 CurrentAttack 内分流 AP1、Ordinary 或 SetPiece。不得增加 SetPieceSequence、SendingOffSequence 或 RecoverySequence，重试不得重新消费已成功的随机结果。
+- AP1 的合法候选由 side-owned CardUsage 与 Snapshot authority构建：仅攻击方 Available non-GK。0/1 候选零 RNG，2+ 才调用均匀选择 provider。选中 CardId 或 NoEligibleCandidate、Ejected mutation、NoGoal 与 terminal 必须原子写入；当前实现尚未具备永久 Ejected side-owned state，属于 Stage 6.16.3 之后的实现债，而不是 UI 可补的状态。
+- AP9–12 的类型 D6 是同一 CurrentAttack 下的第二个权威随机事件。现有 `FSetPieceTypeSelectionQuery` 仍只是 pure mapping slice；未来 Session/State owner负责 request correlation、provider、raw D6、SetPieceType 和 lifecycle persistence。client只提交 roll intent，不能提交 type。
+- SetPiece 参与者只从 side-owned Available non-GK Snapshot truth读取；防守方唯一 GK 自动作为公式输入但不成为普通参与者或 Used。所有 route、method、roll、Formula、Outcome、scorer 与 participant consumption 都由 Authority产生，UMG不得推导。
+- Corner ordered nominations 与 lock state 是可持久化 gameplay truth。Projection 必须按 viewer在双方锁定前隐藏对方 IDs/order，只公开 lock acknowledgement；双方锁定后才公开列表。零候选 precedence 在 shared D6/provider前终结；双方非零时一次 shared participant D6 同时映射两表。Widget不保存 nomination truth、不自行 redaction，也不分别抽 Runner/Helper。
+- `TerminalPendingAdvance` 继续冻结 outcome、score/scorer、CurrentAttack、Formula/roll/narrative facts与推进前 CardUsage。AP1 Ejected 是 outcome 本身，可在 terminal前写入；其他 ordinary/set-piece Used mutation、机会消费与 Recovery只属于成功 advance transaction。
+- advance transaction 在 candidate State 中完成 validation → participant consumption → opportunity consumption → match-end/next-attacker derivation → non-final Recovery → CurrentAttack clear，再一次 adoption。Recovery从双方合并 Used池执行 provider-owned、Stamina线性加权、不放回、最多两张的原子 draw；final、invalid或duplicate advance不得访问 Recovery provider，不能发布 handoff-without-recovery 半状态。
+- reconstructable gameplay truth为最终 CardUsage加有界 `LastRecoveryFact(SourceAttackSequence, ordered OwnerSide+CardId[0..2])`。完整候选池、weights与raw weighted tickets只可进入DEV/server diagnostics；生产展示由稳定identity映射名称，不能把localized FText写入State。
