@@ -1795,9 +1795,6 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 			InteractionView);
 
-	Result.Header.ScoreLabel = FString::Printf(
-		TEXT("%d - %d"), InteractionView.PlayerAScore,
-		InteractionView.PlayerBScore);
 	Result.Header.PlayerAScoreLabel = FString::FromInt(
 		InteractionView.PlayerAScore);
 	Result.Header.PlayerBScoreLabel = FString::FromInt(
@@ -1814,6 +1811,10 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	Result.Header.RightScoreLabel = FString::FromInt(
 		OpponentSide == EInitialTurnOrderPlayer::PlayerA
 			? InteractionView.PlayerAScore : InteractionView.PlayerBScore);
+	Result.Header.ScoreLabel = FString::Printf(
+		TEXT("%s - %s"),
+		*Result.Header.LeftScoreLabel,
+		*Result.Header.RightScoreLabel);
 	auto TrackerForSide = [&](const EInitialTurnOrderPlayer Side)
 	{
 		return MakeAttackTurnTracker(

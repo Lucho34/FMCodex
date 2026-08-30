@@ -329,6 +329,7 @@
 - 掷点后中央第三层显示 DTO 投影的当前 phase/status，不再重复 `战术点 X`；比分和当前第 x/y 次进攻仍为更高层级。
 - 一次攻击完成且下一方尚未掷点时，上一攻击的战术点不保留在任一侧；旧攻击方第一节点为 `Used`，新攻击方第一节点为 `Current`。
 - LocalPlay 可按当前合法操作方重新映射本方/对方左右面板；测试必须按玩家身份确认 Chip 随新攻击方移动，不得假设某个玩家永久位于固定屏幕侧。
+- Header 中央比分必须按当前左右槽位显示的玩家身份映射权威分数：`LeftScore = ScoreOf(LeftDisplayedPlayer)`、`RightScore = ScoreOf(RightDisplayedPlayer)`。当前攻击角色只控制攻击提示、Tracker 与 TP 归属，不得控制比分归属或排序。
 - 两侧身份组采用相同的“玩家名（可选 TP Chip）/ 进攻回合 1 2 3”结构并整体居中。三个节点均保持 `24 x 24` circular RoundedBox。
 - `Remaining` 使用近乎空心的低填充、弱轮廓和低数字对比；`Used` 使用明显实心填充和高对比数字；`Current` 使用最强轮廓及不同内层对比。状态不得只依赖 Arsenal/Manchester City 的固定色相。
 

@@ -7477,6 +7477,32 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			== FString::FromInt(CompletedRuntime.PlayerAState.Score)
 			&& Header->GetPresentation().PlayerBScoreLabel
 				== FString::FromInt(CompletedRuntime.PlayerBState.Score));
+	const FFMCodexUMGMatchHeaderViewModel& CompletionHeader =
+		Header->GetPresentation();
+	const EInitialTurnOrderPlayer CompletionLeftSide =
+		CompletedRuntime.CurrentAttackingPlayer;
+	const FString ExpectedCompletionLeftScore = FString::FromInt(
+		CompletionLeftSide == EInitialTurnOrderPlayer::PlayerA
+			? CompletedRuntime.PlayerAState.Score
+			: CompletedRuntime.PlayerBState.Score);
+	const FString ExpectedCompletionRightScore = FString::FromInt(
+		CompletionLeftSide == EInitialTurnOrderPlayer::PlayerA
+			? CompletedRuntime.PlayerBState.Score
+			: CompletedRuntime.PlayerAState.Score);
+	TestTrue(TEXT("Completion Header slots follow the next authoritative actor"),
+		CompletionHeader.LeftPlayerLabel
+			== FFMCodexLocalMatchInteractionViewBuilder::ToString(
+				CompletionLeftSide)
+			&& CompletionHeader.RightPlayerLabel
+				== FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					OtherSide(CompletionLeftSide)));
+	TestTrue(TEXT("Completion central score follows displayed slot identities"),
+		CompletionHeader.LeftScoreLabel == ExpectedCompletionLeftScore
+			&& CompletionHeader.RightScoreLabel == ExpectedCompletionRightScore
+			&& CompletionHeader.ScoreLabel == FString::Printf(
+				TEXT("%s - %s"),
+				*ExpectedCompletionLeftScore,
+				*ExpectedCompletionRightScore));
 	TestTrue(TEXT("Between attacks identifies next attacker without active claim"),
 		!Header->GetPresentation().bAttackActive
 			&& Header->GetDisplayedAttackerLabel().StartsWith(
@@ -14633,7 +14659,7 @@ bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
 		return false;
 	}
 	Screen->TakeWidget();
-	const int32 Seed = FindSeedForTacticalPointAndRolls(6, { 2, 4, 3 });
+	const int32 Seed = FindSeedForTacticalPointAndRolls(6, { 2, 6, 1 });
 	TestTrue(TEXT("Cross deterministic screen seed exists"), Seed != INDEX_NONE);
 	if (Seed == INDEX_NONE)
 	{
@@ -14744,6 +14770,33 @@ bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
 			&& TerminalFormula.ContinueActionLabel == TEXT("下一回合")
 			&& Screen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);
+	const FFMCodexUMGMatchHeaderViewModel TerminalHeader =
+		Screen->GetMatchHeader()->GetPresentation();
+	const int32 TerminalPlayerAScore =
+		Terminal.RuntimeState.PlayerAState.Score;
+	const int32 TerminalPlayerBScore =
+		Terminal.RuntimeState.PlayerBState.Score;
+	const int32 TerminalTotalScore =
+		TerminalPlayerAScore + TerminalPlayerBScore;
+	const int32 ScoreBeforeTotal =
+		BeforeDefense.RuntimeState.PlayerAState.Score
+		+ BeforeDefense.RuntimeState.PlayerBState.Score;
+	const FString ExpectedTerminalLeftScore = FString::FromInt(
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? TerminalPlayerAScore : TerminalPlayerBScore);
+	const FString ExpectedTerminalRightScore = FString::FromInt(
+		Attacker == EInitialTurnOrderPlayer::PlayerA
+			? TerminalPlayerBScore : TerminalPlayerAScore);
+	TestTrue(TEXT("Deterministic Cross terminal records and presents one goal"),
+		TerminalTotalScore == ScoreBeforeTotal + 1
+			&& TerminalHeader.LeftPlayerLabel
+				== FFMCodexLocalMatchInteractionViewBuilder::ToString(Attacker)
+			&& TerminalHeader.LeftScoreLabel == ExpectedTerminalLeftScore
+			&& TerminalHeader.RightScoreLabel == ExpectedTerminalRightScore
+			&& TerminalHeader.ScoreLabel == FString::Printf(
+				TEXT("%s - %s"),
+				*ExpectedTerminalLeftScore,
+				*ExpectedTerminalRightScore));
 
 	Screen->ResetPrimaryActionDispatchForTesting();
 	Surface->RequestContinue();
@@ -14758,6 +14811,218 @@ bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
 			&& Advanced.RuntimeState.PlayerAState.UsedAttackCount
 				+ Advanced.RuntimeState.PlayerBState.UsedAttackCount
 				== UsedTerminal + 1);
+	const FFMCodexUMGMatchHeaderViewModel& AdvancedHeader =
+		Screen->GetMatchHeader()->GetPresentation();
+	const EInitialTurnOrderPlayer AdvancedLeftSide =
+		Advanced.RuntimeState.CurrentAttackingPlayer;
+	auto ScoreLabelForSide = [&](const EInitialTurnOrderPlayer Side)
+	{
+		return FString::FromInt(Side == EInitialTurnOrderPlayer::PlayerA
+			? Advanced.RuntimeState.PlayerAState.Score
+			: Advanced.RuntimeState.PlayerBState.Score);
+	};
+	const FString ExpectedAdvancedLeftScore =
+		ScoreLabelForSide(AdvancedLeftSide);
+	const FString ExpectedAdvancedRightScore =
+		ScoreLabelForSide(OtherSide(AdvancedLeftSide));
+	TestTrue(TEXT("Real goal handoff keeps score attached to displayed identity"),
+		Advanced.RuntimeState.PlayerAState.Score == TerminalPlayerAScore
+			&& Advanced.RuntimeState.PlayerBState.Score == TerminalPlayerBScore
+			&& AdvancedHeader.LeftScoreLabel == ExpectedAdvancedLeftScore
+			&& AdvancedHeader.RightScoreLabel == ExpectedAdvancedRightScore
+			&& AdvancedHeader.ScoreLabel == FString::Printf(
+				TEXT("%s - %s"),
+				*ExpectedAdvancedLeftScore,
+				*ExpectedAdvancedRightScore)
+			&& Screen->GetMatchHeader()->GetDisplayedScoreLabel()
+				== AdvancedHeader.ScoreLabel
+			&& AdvancedHeader.bCurrentAttackerOnLeft
+			&& AdvancedHeader.LeftPlayerLabel
+				== FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					AdvancedLeftSide)
+			&& AdvancedHeader.RightPlayerLabel
+				== FFMCodexLocalMatchInteractionViewBuilder::ToString(
+					OtherSide(AdvancedLeftSide))
+			&& Advanced.RuntimeState.CurrentAttackingPlayer
+				!= Attacker);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexMatchHeaderScoreIdentityMappingTest,
+	"FMCodex.LocalPlay.ControlSurface.57.MatchHeaderScoreIdentityMapping",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexMatchHeaderScoreIdentityMappingTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchControlSurfaceTests;
+	(void)Parameters;
+
+	auto MakeView = [](const int32 PlayerAScore,
+		const int32 PlayerBScore,
+		const EInitialTurnOrderPlayer Attacker)
+	{
+		FFMCodexLocalMatchInteractionView View;
+		View.bMatchActive = true;
+		View.bCurrentAttackActive = true;
+		View.PlayerAScore = PlayerAScore;
+		View.PlayerBScore = PlayerBScore;
+		View.CurrentAttackingPlayer = Attacker;
+		View.ExpectedActingPlayer = Attacker;
+		View.bHumanInteraction = true;
+		View.InteractionCategory =
+			EFMCodexLocalMatchInteractionCategory::SelectMarker;
+		View.PlayerAMaxAttackTurns = 3;
+		View.PlayerBMaxAttackTurns = 3;
+		View.PlayerACurrentAttackIndex = 1;
+		View.PlayerBCurrentAttackIndex = 1;
+		View.bPlayerACurrentAttackTurn =
+			Attacker == EInitialTurnOrderPlayer::PlayerA;
+		View.bPlayerBCurrentAttackTurn =
+			Attacker == EInitialTurnOrderPlayer::PlayerB;
+		View.ActionPoint = 6;
+		return View;
+	};
+	auto BuildFor = [](const FFMCodexLocalMatchInteractionView& View,
+		const EInitialTurnOrderPlayer ViewerSide)
+	{
+		return FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			View,
+			FFMCodexLocalMatchResolutionFeedback(),
+			FString(),
+			ViewerSide);
+	};
+	auto TestMapping = [this](const FString& Label,
+		const FFMCodexUMGMatchHeaderViewModel& Header,
+		const FString& LeftPlayer,
+		const FString& RightPlayer,
+		const FString& LeftScore,
+		const FString& RightScore)
+	{
+		TestEqual(Label + TEXT(" left identity"),
+			Header.LeftPlayerLabel, LeftPlayer);
+		TestEqual(Label + TEXT(" right identity"),
+			Header.RightPlayerLabel, RightPlayer);
+		TestEqual(Label + TEXT(" left score"),
+			Header.LeftScoreLabel, LeftScore);
+		TestEqual(Label + TEXT(" right score"),
+			Header.RightScoreLabel, RightScore);
+		TestEqual(Label + TEXT(" central score"), Header.ScoreLabel,
+			LeftScore + TEXT(" - ") + RightScore);
+	};
+
+	const FFMCodexLocalMatchInteractionView PlayerAGoal =
+		MakeView(1, 0, EInitialTurnOrderPlayer::PlayerA);
+	const FFMCodexUMGMatchScreenViewModel PlayerALeft = BuildFor(
+		PlayerAGoal, EInitialTurnOrderPlayer::PlayerA);
+	TestMapping(TEXT("Player A left / Player B right"), PlayerALeft.Header,
+		TEXT("Player A"), TEXT("Player B"), TEXT("1"), TEXT("0"));
+	const FFMCodexUMGMatchScreenViewModel PlayerBLeft = BuildFor(
+		PlayerAGoal, EInitialTurnOrderPlayer::PlayerB);
+	TestMapping(TEXT("Player B left / Player A right"), PlayerBLeft.Header,
+		TEXT("Player B"), TEXT("Player A"), TEXT("0"), TEXT("1"));
+	TestTrue(TEXT("Attacker role remains independent from score ownership"),
+		PlayerALeft.Header.bCurrentAttackerOnLeft
+			&& !PlayerBLeft.Header.bCurrentAttackerOnLeft);
+
+	const FFMCodexLocalMatchInteractionView AsymmetricA =
+		MakeView(2, 1, EInitialTurnOrderPlayer::PlayerA);
+	FFMCodexLocalMatchInteractionView AsymmetricB = AsymmetricA;
+	AsymmetricB.CurrentAttackingPlayer = EInitialTurnOrderPlayer::PlayerB;
+	AsymmetricB.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerB;
+	AsymmetricB.bPlayerACurrentAttackTurn = false;
+	AsymmetricB.bPlayerBCurrentAttackTurn = true;
+	const FFMCodexUMGMatchScreenViewModel AsymmetricALeft = BuildFor(
+		AsymmetricA, EInitialTurnOrderPlayer::PlayerA);
+	const FFMCodexUMGMatchScreenViewModel SameSlotsDifferentAttacker = BuildFor(
+		AsymmetricB, EInitialTurnOrderPlayer::PlayerA);
+	const FFMCodexUMGMatchScreenViewModel AsymmetricBLeft = BuildFor(
+		AsymmetricB, EInitialTurnOrderPlayer::PlayerB);
+	TestMapping(TEXT("Asymmetric A-left reconstruction"),
+		AsymmetricALeft.Header,
+		TEXT("Player A"), TEXT("Player B"), TEXT("2"), TEXT("1"));
+	TestMapping(TEXT("Same slots with Player B attacking"),
+		SameSlotsDifferentAttacker.Header,
+		TEXT("Player A"), TEXT("Player B"), TEXT("2"), TEXT("1"));
+	TestMapping(TEXT("Asymmetric B-left reconstruction"),
+		AsymmetricBLeft.Header,
+		TEXT("Player B"), TEXT("Player A"), TEXT("1"), TEXT("2"));
+	TestTrue(TEXT("Only attacker indicator changes when slot identities stay fixed"),
+		AsymmetricALeft.Header.ScoreLabel
+			== SameSlotsDifferentAttacker.Header.ScoreLabel
+			&& AsymmetricALeft.Header.bCurrentAttackerOnLeft
+			&& !SameSlotsDifferentAttacker.Header.bCurrentAttackerOnLeft
+			&& AsymmetricALeft.Header.LeftAttackTurnTracker.Steps[0].State
+				== EFMCodexUMGAttackTurnStepState::Current
+			&& SameSlotsDifferentAttacker.Header.RightAttackTurnTracker.Steps[0].State
+				== EFMCodexUMGAttackTurnStepState::Current
+			&& AsymmetricALeft.Header.bShowLeftTacticalPointChip
+			&& SameSlotsDifferentAttacker.Header.bShowRightTacticalPointChip);
+
+	const FFMCodexLocalMatchInteractionView PlayerBGoal =
+		MakeView(0, 1, EInitialTurnOrderPlayer::PlayerB);
+	const FFMCodexUMGMatchScreenViewModel PlayerBGoalALeft = BuildFor(
+		PlayerBGoal, EInitialTurnOrderPlayer::PlayerA);
+	const FFMCodexUMGMatchScreenViewModel PlayerBGoalBLeft = BuildFor(
+		PlayerBGoal, EInitialTurnOrderPlayer::PlayerB);
+	TestMapping(TEXT("Player B goal A-left"), PlayerBGoalALeft.Header,
+		TEXT("Player A"), TEXT("Player B"), TEXT("0"), TEXT("1"));
+	TestMapping(TEXT("Player B goal B-left"), PlayerBGoalBLeft.Header,
+		TEXT("Player B"), TEXT("Player A"), TEXT("1"), TEXT("0"));
+
+	FFMCodexLocalMatchInteractionView NonGoalHandoff = AsymmetricA;
+	NonGoalHandoff.bCurrentAttackActive = false;
+	NonGoalHandoff.CurrentAttackingPlayer = EInitialTurnOrderPlayer::PlayerB;
+	NonGoalHandoff.ExpectedActingPlayer = EInitialTurnOrderPlayer::PlayerB;
+	NonGoalHandoff.ActionPoint = 0;
+	const FFMCodexUMGMatchScreenViewModel NonGoalAfterHandoff = BuildFor(
+		NonGoalHandoff, EInitialTurnOrderPlayer::PlayerB);
+	TestMapping(TEXT("Non-goal handoff preserves asymmetric score"),
+		NonGoalAfterHandoff.Header,
+		TEXT("Player B"), TEXT("Player A"), TEXT("1"), TEXT("2"));
+	TestTrue(TEXT("Non-goal handoff has no stale tactical-point ownership"),
+		NonGoalAfterHandoff.Header.bCurrentAttackerOnLeft
+			&& !NonGoalAfterHandoff.Header.bShowLeftTacticalPointChip
+			&& !NonGoalAfterHandoff.Header.bShowRightTacticalPointChip);
+
+	FScopedPlayableWorld Playable;
+	AFMCodexLocalMatchPlayerController* Controller = Playable.GetController();
+	if (Controller == nullptr)
+	{
+		return false;
+	}
+	Controller->InitializePlayerFacingUI();
+	UFMCodexLocalMatchScreenWidget* Screen = Controller->GetPlayerMatchScreen();
+	if (Screen == nullptr)
+	{
+		return false;
+	}
+	Screen->TakeWidget();
+	Screen->RefreshFromPresentation(AsymmetricBLeft);
+	UFMCodexMatchHeaderWidget* RenderedHeader = Screen->GetMatchHeader();
+	TestNotNull(TEXT("Actual MatchScreen composes MatchHeader"), RenderedHeader);
+	if (RenderedHeader == nullptr)
+	{
+		return false;
+	}
+	TestTrue(TEXT("Actual MatchHeader renders reconstructed identity score"),
+		RenderedHeader->GetPresentation().LeftPlayerLabel == TEXT("Player B")
+			&& RenderedHeader->GetPresentation().RightPlayerLabel
+				== TEXT("Player A")
+			&& RenderedHeader->GetDisplayedScoreLabel() == TEXT("1 - 2")
+			&& RenderedHeader->GetPresentation().bCurrentAttackerOnLeft
+			&& RenderedHeader->GetPresentation().bShowLeftTacticalPointChip
+			&& !RenderedHeader->GetPresentation().bShowRightTacticalPointChip);
+
+	FFMCodexLocalMatchInteractionView FinalView = AsymmetricB;
+	FinalView.bCurrentAttackActive = false;
+	FinalView.bMatchEnded = true;
+	FinalView.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+	const FFMCodexUMGMatchScreenViewModel FinalHeader = BuildFor(
+		FinalView, EInitialTurnOrderPlayer::PlayerB);
+	TestMapping(TEXT("Final attack mapping"), FinalHeader.Header,
+		TEXT("Player B"), TEXT("Player A"), TEXT("1"), TEXT("2"));
 	return true;
 }
 
