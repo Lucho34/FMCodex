@@ -2,13 +2,16 @@
 
 #include "CoreMinimal.h"
 
+#include "SetPieceTypeSelectionQuery.generated.h"
+
+UENUM(BlueprintType)
 enum class ESetPieceSelectedType : uint8
 {
-	None,
-	Corner,
-	LongFreeKick,
-	ShortFreeKick,
-	Penalty
+	None = 0 UMETA(DisplayName = "None"),
+	Corner = 1 UMETA(DisplayName = "Corner"),
+	LongFreeKick = 2 UMETA(DisplayName = "Long Free Kick"),
+	ShortFreeKick = 3 UMETA(DisplayName = "Short Free Kick"),
+	Penalty = 4 UMETA(DisplayName = "Penalty")
 };
 
 enum class ESetPieceTypeSelectionQueryErrorCode : uint8

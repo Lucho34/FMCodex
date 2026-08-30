@@ -11,6 +11,7 @@
 #include "MatchPlayGoalkeeperUsageState.h"
 #include "MatchRuntimeStateTypes.h"
 #include "PlayCardResolver.h"
+#include "SetPieceTypeSelectionQuery.h"
 #include "SkillRuleSnapshot.h"
 
 #include "MatchPlayState.generated.h"
@@ -19,7 +20,32 @@ UENUM(BlueprintType)
 enum class EMatchPlayCurrentAttackPhase : uint8
 {
 	Deployment UMETA(DisplayName = "Deployment"),
-	Resolution UMETA(DisplayName = "Resolution")
+	Resolution UMETA(DisplayName = "Resolution"),
+	RoutePending UMETA(DisplayName = "Route Pending")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayCurrentAttackRouteKind : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	Ordinary = 1 UMETA(DisplayName = "Ordinary"),
+	SendingOff = 2 UMETA(DisplayName = "Sending Off"),
+	SetPiece = 3 UMETA(DisplayName = "Set Piece")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlaySendingOffRouteStage : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	AwaitingResolution = 1 UMETA(DisplayName = "Awaiting Resolution")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlaySetPieceRouteStage : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	AwaitingTypeRoll = 1 UMETA(DisplayName = "Awaiting Type Roll"),
+	TypeResolved = 2 UMETA(DisplayName = "Type Resolved")
 };
 
 UENUM(BlueprintType)
@@ -272,6 +298,35 @@ struct FMCODEX_API FMatchPlayCurrentAttackResolutionSession
 };
 
 USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlaySendingOffRouteState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Sending Off")
+	EMatchPlaySendingOffRouteStage Stage =
+		EMatchPlaySendingOffRouteStage::None;
+};
+
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlaySetPieceRouteState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	EMatchPlaySetPieceRouteStage Stage =
+		EMatchPlaySetPieceRouteStage::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	bool bHasTypeRoll = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	int32 RawTypeD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece")
+	ESetPieceSelectedType SelectedType = ESetPieceSelectedType::None;
+};
+
+USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchPlayCurrentAttackState
 {
 	GENERATED_BODY()
@@ -289,6 +344,19 @@ struct FMCODEX_API FMatchPlayCurrentAttackState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	int32 ActionPoint = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	int32 RawInitialD12 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	EMatchPlayCurrentAttackRouteKind RouteKind =
+		EMatchPlayCurrentAttackRouteKind::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FMatchPlaySendingOffRouteState SendingOffRoute;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
+	FMatchPlaySetPieceRouteState SetPieceRoute;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Current Attack")
 	EMatchPlayCurrentAttackSelectionStage SelectionStage =

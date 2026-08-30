@@ -7191,12 +7191,22 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 	}
 
 	// Real normal-demo Cross flow proves refresh, attacker/defender distinction,
-	// system resolution, rejection atomicity and completion/next-attack state.
+	// typed roll ownership, rejection atomicity and completion/next-attack state.
 	UFMCodexInteractionPanelWidget* Interaction = Screen->GetInteractionPanel();
-	if (Interaction == nullptr)
+	UFMCodexInlineResolutionFormulaSurfaceWidget* ResolutionSurface =
+		Screen->GetInlineFormulaSurface();
+	if (Interaction == nullptr || ResolutionSurface == nullptr)
 	{
 		return false;
 	}
+	const int32 CrossSeed = FindSeedForTacticalPointAndRolls(6, { 2, 6, 1 });
+	TestTrue(TEXT("Header Cross deterministic seed exists"),
+		CrossSeed != INDEX_NONE);
+	if (CrossSeed == INDEX_NONE)
+	{
+		return false;
+	}
+	Controller->SetNextDemoMatchSeedForTesting(CrossSeed);
 	Controller->RefreshPresentation();
 	Interaction->RequestStartMatch();
 	TestTrue(TEXT("Real Header refreshes active match without handoff"),
@@ -7470,15 +7480,6 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			return false;
 		}
 	}
-	Interaction->RequestBranch(EFMCodexUMGBranchIntent::CrossHigh);
-	TestTrue(TEXT("System resolution is explicit and attacker is retained"),
-		Controller->GetLastDiagnostic().bHostSuccess
-			&& Header->GetPresentation().bSystemResolution
-			&& Header->GetDisplayedActorLabel() == TEXT("SYSTEM RESOLUTION")
-			&& Header->GetDisplayedAttackerLabel().Contains(
-				Attacker == EInitialTurnOrderPlayer::PlayerA
-					? TEXT("PLAYER A") : TEXT("PLAYER B")));
-
 	const FFMCodexUMGMatchHeaderViewModel BeforeRejected =
 		Header->GetPresentation();
 	const TArray<uint8> StateBeforeRejected =
@@ -7498,21 +7499,57 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			&& Header->GetPresentation().MatchStatusLabel
 				== BeforeRejected.MatchStatusLabel);
 
-	for (int32 Guard = 0;
-		Guard < 12 && Controller->GetInteractionView().bCurrentAttackActive;
-		++Guard)
+	Interaction->RequestBranch(EFMCodexUMGBranchIntent::CrossHigh);
+	TestTrue(TEXT("Cross Route keeps its typed attacker ownership explicit"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
+			&& Controller->GetInteractionView().ExpectedActingPlayer == Attacker
+			&& !Header->GetPresentation().bSystemResolution
+			&& Header->GetDisplayedAttackerLabel().Contains(
+				Attacker == EInitialTurnOrderPlayer::PlayerA
+					? TEXT("PLAYER A") : TEXT("PLAYER B"))
+			&& Header->GetDisplayedActorLabel().Contains(
+				Attacker == EInitialTurnOrderPlayer::PlayerA
+					? TEXT("PLAYER A") : TEXT("PLAYER B"))
+			&& ResolutionSurface->GetPresentation().bVisible
+			&& ResolutionSurface->GetPresentation().bCanContinue);
+
+	ResolutionSurface->RequestContinue();
+	TestTrue(TEXT("Cross Route advances through the central Resolution Surface"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
+			&& Header->GetDisplayedActorLabel().Contains(
+				Attacker == EInitialTurnOrderPlayer::PlayerA
+					? TEXT("PLAYER A") : TEXT("PLAYER B")));
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+
+	ResolutionSurface->RequestContinue();
+	TestTrue(TEXT("Cross Attack hands the typed Defense roll to the defender"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
+			&& Header->GetDisplayedActorLabel().Contains(
+				Defender == EInitialTurnOrderPlayer::PlayerA
+					? TEXT("PLAYER A") : TEXT("PLAYER B")));
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+
+	ResolutionSurface->RequestContinue();
+	TestTrue(TEXT("Cross Defense reaches authoritative terminal presentation"),
+		Controller->GetLastDiagnostic().bHostSuccess
+			&& Controller->GetInteractionView().bTerminalPendingAdvance
+			&& Controller->GetInteractionView().bCurrentAttackActive);
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
+
+	ResolutionSurface->RequestContinue();
+	if (!Controller->GetLastDiagnostic().bHostSuccess
+		|| Controller->GetInteractionView().bCurrentAttackActive)
 	{
-		if (Screen->IsInlineFormulaRevealInputBlocked())
-		{
-			// This synchronous fixture has no world timer; settle the local-only
-			// Cross High reveal before requesting the next authoritative command.
-			Screen->AdvanceInlineFormulaRevealForTesting(2.0f);
-		}
-		Interaction->RequestContinue();
-		if (!Controller->GetLastDiagnostic().bHostSuccess)
-		{
-			return false;
-		}
+		return false;
 	}
 	const FMatchPlayState& CompletedState = Host->GetMatchSnapshot().Snapshot;
 	const FMatchRuntimeState& CompletedRuntime = CompletedState.RuntimeState;
@@ -9668,7 +9705,7 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
 	TestEqual(TEXT("Authoritative Session exposes explicit Cross, ThroughBall Feet, and BehindDefense roll entrypoints"),
-		SerializedEntrypointCount, 66);
+		SerializedEntrypointCount, 68);
 
 	return true;
 }
@@ -10032,7 +10069,7 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
 	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 66);
+		SerializedEntrypointCount, 68);
 
 	return true;
 }
@@ -10591,7 +10628,7 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
 	TestEqual(TEXT("Authority typed serialized entrypoint includes Cross and both ThroughBall roll families"),
-		SerializedEntrypointCount, 66);
+		SerializedEntrypointCount, 68);
 
 	return true;
 }

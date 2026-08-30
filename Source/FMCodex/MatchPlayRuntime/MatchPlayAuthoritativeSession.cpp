@@ -54,10 +54,29 @@ FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
 }
 
 FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider)
+	: AttackEntryRollProvider(&InAttackEntryRollProvider)
+{
+}
+
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
 	IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
 	IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
 	const FSkillRuleSnapshotSet& InSkillRuleSet)
 	: InitialRouteRollProvider(&InInitialRouteRollProvider)
+	, PostRouteRollProvider(&InPostRouteRollProvider)
+	, AuthoritativeSkillRuleSet(InSkillRuleSet)
+	, bHasSkillRuleSet(true)
+{
+}
+
+FMatchPlayAuthoritativeSession::FMatchPlayAuthoritativeSession(
+	IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
+	IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
+	IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+	const FSkillRuleSnapshotSet& InSkillRuleSet)
+	: AttackEntryRollProvider(&InAttackEntryRollProvider)
+	, InitialRouteRollProvider(&InInitialRouteRollProvider)
 	, PostRouteRollProvider(&InPostRouteRollProvider)
 	, AuthoritativeSkillRuleSet(InSkillRuleSet)
 	, bHasSkillRuleSet(true)
@@ -207,6 +226,66 @@ FMatchPlayAuthoritativeSession::BeginOrdinaryAttack(
 					? Result.BeginResult.AfterState.CurrentAttack
 						.AttackSequence
 					: 0;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeRequestInitialActionPointRollResult
+FMatchPlayAuthoritativeSession::RequestInitialActionPointRoll(
+	const FMatchPlayFullD12EntryRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeRequestInitialActionPointRollResult>(
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		true,
+		Request.ExpectedAttackSequence,
+		[this, &Request](
+			FMatchPlayAuthoritativeRequestInitialActionPointRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.EntryResult = FMatchPlayFullD12Entry::Enter(
+				BeforeState,
+				Request,
+				AttackEntryRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.EntryResult.bSuccess;
+			Execution.CandidateAfterState = Result.EntryResult.AfterState;
+			Execution.StateDisposition = Result.EntryResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence =
+				Result.EntryResult.AuthoritativeAttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeRequestSetPieceTypeRollResult
+FMatchPlayAuthoritativeSession::RequestSetPieceTypeRoll(
+	const FMatchPlaySetPieceTypeRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeRequestSetPieceTypeRollResult>(
+		EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](
+			FMatchPlayAuthoritativeRequestSetPieceTypeRollResult& Result,
+			const FMatchPlayState& BeforeState)
+		{
+			Result.TypeRollResult = FMatchPlaySetPieceTypeRoll::Resolve(
+				BeforeState,
+				Request,
+				AttackEntryRollProvider);
+
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.TypeRollResult.bSuccess;
+			Execution.CandidateAfterState =
+				Result.TypeRollResult.AfterState;
+			Execution.StateDisposition = Result.TypeRollResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
 			return Execution;
 		});
 }

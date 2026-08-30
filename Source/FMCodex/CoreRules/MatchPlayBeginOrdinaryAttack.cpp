@@ -137,6 +137,8 @@ FMatchPlayBeginOrdinaryAttack::Begin(
 	CurrentAttack.Phase = EMatchPlayCurrentAttackPhase::Deployment;
 	CurrentAttack.AttackSequence = AttackSequence;
 	CurrentAttack.ActionPoint = ActionPoint;
+	CurrentAttack.RawInitialD12 = ActionPoint;
+	CurrentAttack.RouteKind = EMatchPlayCurrentAttackRouteKind::Ordinary;
 	CurrentAttack.SelectionStage =
 		EMatchPlayCurrentAttackSelectionStage::None;
 	CurrentAttack.ActionPreparation =

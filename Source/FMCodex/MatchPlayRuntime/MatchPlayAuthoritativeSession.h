@@ -10,7 +10,14 @@ public:
 	FMatchPlayAuthoritativeSession();
 	explicit FMatchPlayAuthoritativeSession(
 		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider);
+	explicit FMatchPlayAuthoritativeSession(
+		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider);
 	FMatchPlayAuthoritativeSession(
+		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
+		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
+		const FSkillRuleSnapshotSet& InSkillRuleSet);
+	FMatchPlayAuthoritativeSession(
+		IMatchPlayAttackEntryRollProvider& InAttackEntryRollProvider,
 		IMatchPlayInitialRouteRollProvider& InInitialRouteRollProvider,
 		IMatchPlayPostRouteRollProvider& InPostRouteRollProvider,
 		const FSkillRuleSnapshotSet& InSkillRuleSet);
@@ -21,6 +28,14 @@ public:
 
 	FMatchPlayAuthoritativeBeginOrdinaryAttackResult BeginOrdinaryAttack(
 		int32 ActionPoint);
+
+	FMatchPlayAuthoritativeRequestInitialActionPointRollResult
+	RequestInitialActionPointRoll(
+		const FMatchPlayFullD12EntryRequest& Request);
+
+	FMatchPlayAuthoritativeRequestSetPieceTypeRollResult
+	RequestSetPieceTypeRoll(
+		const FMatchPlaySetPieceTypeRollRequest& Request);
 
 	FMatchPlayAuthoritativeFinishDeploymentResult FinishDeployment(
 		int64 AttackSequence,
@@ -292,6 +307,7 @@ private:
 		TExecuteDomain&& ExecuteDomain);
 
 	FMatchPlayState AuthoritativeState;
+	IMatchPlayAttackEntryRollProvider* AttackEntryRollProvider = nullptr;
 	IMatchPlayInitialRouteRollProvider* InitialRouteRollProvider = nullptr;
 	IMatchPlayPostRouteRollProvider* PostRouteRollProvider = nullptr;
 	FSkillRuleSnapshotSet AuthoritativeSkillRuleSet;
