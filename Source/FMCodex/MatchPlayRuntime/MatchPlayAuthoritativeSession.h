@@ -118,6 +118,26 @@ public:
 	ResolveNoLegalSetPieceCarrier(
 		const FMatchPlayShortFreeKickNoLegalCarrierRequest& Request);
 
+	FMatchPlayAuthoritativeSubmitLongFreeKickMethodResult
+	SubmitLongFreeKickMethod(
+		const FMatchPlayLongFreeKickMethodRequest& Request);
+
+	FMatchPlayAuthoritativeResolveLongFreeKickDirectAttackRollResult
+	ResolveLongFreeKickDirectAttackRoll(
+		const FMatchPlayLongFreeKickRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveLongFreeKickDirectDefenseRollResult
+	ResolveLongFreeKickDirectDefenseRoll(
+		const FMatchPlayLongFreeKickRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveLongFreeKickPowerRollResult
+	ResolveLongFreeKickPowerRoll(
+		const FMatchPlayLongFreeKickRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveNoLegalLongFreeKickCarrierResult
+	ResolveNoLegalSetPieceCarrier(
+		const FMatchPlayLongFreeKickNoLegalCarrierRequest& Request);
+
 	FMatchPlayAuthoritativeFinishDeploymentResult FinishDeployment(
 		int64 AttackSequence,
 		EInitialTurnOrderPlayer RequestingSide);

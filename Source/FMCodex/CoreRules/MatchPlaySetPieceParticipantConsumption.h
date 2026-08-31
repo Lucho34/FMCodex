@@ -17,7 +17,8 @@ enum class EMatchPlaySetPieceParticipantConsumptionErrorCode : uint8
 	WrongRoute,
 	InvalidRouteState,
 	UnsupportedSetPieceType,
-	InvalidShortFreeKickTerminal
+	InvalidShortFreeKickTerminal,
+	InvalidLongFreeKickTerminal
 };
 
 struct FMCODEX_API FMatchPlaySetPieceParticipantConsumptionResult

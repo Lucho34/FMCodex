@@ -8,6 +8,7 @@
 #include "../CoreRules/MatchPlaySetPieceTypeRoll.h"
 #include "../CoreRules/MatchPlaySetPieceCarrierSelection.h"
 #include "../CoreRules/MatchPlayShortFreeKickResolution.h"
+#include "../CoreRules/MatchPlayLongFreeKickResolution.h"
 #include "../CoreRules/MatchPlayCarrierNoSelectionNoGoal.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator.h"
@@ -131,7 +132,11 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	ResolveShortFreeKickDirectAttackRoll,
 	ResolveShortFreeKickDirectDefenseRoll,
 	ResolveShortFreeKickAngledRoll,
-	ResolveNoLegalSetPieceCarrier
+	ResolveNoLegalSetPieceCarrier,
+	SubmitLongFreeKickMethod,
+	ResolveLongFreeKickDirectAttackRoll,
+	ResolveLongFreeKickDirectDefenseRoll,
+	ResolveLongFreeKickPowerRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -237,6 +242,39 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveNoLegalSetPieceCarrierResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayShortFreeKickResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitLongFreeKickMethodResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayLongFreeKickResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveLongFreeKickDirectAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayLongFreeKickResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveLongFreeKickDirectDefenseRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayLongFreeKickResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveLongFreeKickPowerRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayLongFreeKickResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API
+	FMatchPlayAuthoritativeResolveNoLegalLongFreeKickCarrierResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayLongFreeKickResolutionResult ResolutionResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeFinishDeploymentResult

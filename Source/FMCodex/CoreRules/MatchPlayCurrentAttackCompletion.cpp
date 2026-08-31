@@ -349,19 +349,25 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 		}
 		const FMatchPlayCurrentAttackRouteStateValidationResult Validation =
 			FMatchPlayCurrentAttackRouteStateValidator::Validate(BeforeState);
+		const ESetPieceSelectedType SelectedType =
+			BeforeState.CurrentAttack.SetPieceRoute.SelectedType;
+		const bool bProductionTerminal =
+			(SelectedType == ESetPieceSelectedType::ShortFreeKick
+				&& BeforeState.CurrentAttack.SetPieceRoute.ShortFreeKick.Stage
+					== EMatchPlaySetPieceCarrierRouteStage::Terminal)
+			|| (SelectedType == ESetPieceSelectedType::LongFreeKick
+				&& BeforeState.CurrentAttack.SetPieceRoute.LongFreeKick.Stage
+					== EMatchPlaySetPieceCarrierRouteStage::Terminal);
 		if (!Validation.bIsCanonical
 			|| BeforeState.CurrentAttack.RouteKind
 				!= EMatchPlayCurrentAttackRouteKind::SetPiece
-			|| BeforeState.CurrentAttack.SetPieceRoute.SelectedType
-				!= ESetPieceSelectedType::ShortFreeKick
-			|| BeforeState.CurrentAttack.SetPieceRoute.ShortFreeKick.Stage
-				!= EMatchPlaySetPieceCarrierRouteStage::Terminal)
+			|| !bProductionTerminal)
 		{
 			SetError(Result,
 				EMatchPlayCurrentAttackCompletionErrorCode
 					::CurrentAttackNotInResolution,
 				Validation.bIsCanonical
-					? TEXT("Advance requires a terminal production Short Free Kick route.")
+					? TEXT("Advance requires a terminal production Set Piece route.")
 					: Validation.ErrorMessage);
 			return false;
 		}

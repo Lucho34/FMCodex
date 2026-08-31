@@ -181,6 +181,7 @@ private:
 	friend class FMatchPlaySkillDecline;
 	friend class FMatchPlaySendingOffResolution;
 	friend class FMatchPlayShortFreeKickResolution;
+	friend class FMatchPlayLongFreeKickResolution;
 	friend class
 		FMatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator;
 	friend class

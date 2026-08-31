@@ -45,31 +45,55 @@ FMatchPlaySetPieceParticipantConsumption::Extract(
 			Result.RouteValidationResult.ErrorMessage);
 		return Result;
 	}
-	if (State.CurrentAttack.SetPieceRoute.SelectedType
-		!= ESetPieceSelectedType::ShortFreeKick)
+	const ESetPieceSelectedType SelectedType =
+		State.CurrentAttack.SetPieceRoute.SelectedType;
+	if (SelectedType != ESetPieceSelectedType::ShortFreeKick
+		&& SelectedType != ESetPieceSelectedType::LongFreeKick)
 	{
 		Fail(Result,
 			EMatchPlaySetPieceParticipantConsumptionErrorCode
 				::UnsupportedSetPieceType,
-			TEXT("Only the production Short Free Kick route currently exposes consumable Set Piece participants."));
+			TEXT("Only production carrier-based Set Piece routes expose consumable participants."));
 		return Result;
 	}
 
-	const FMatchPlayShortFreeKickRouteState& Short =
-		State.CurrentAttack.SetPieceRoute.ShortFreeKick;
-	if (Short.Stage != EMatchPlaySetPieceCarrierRouteStage::Terminal)
+	FMatchPlaySetPieceParticipantBinding Carrier;
+	bool bNoLegalCarrier = false;
+	if (SelectedType == ESetPieceSelectedType::ShortFreeKick)
 	{
-		Fail(Result,
-			EMatchPlaySetPieceParticipantConsumptionErrorCode
-				::InvalidShortFreeKickTerminal,
-			TEXT("Short Free Kick participants may be consumed only from a canonical terminal route."));
-		return Result;
+		const FMatchPlayShortFreeKickRouteState& Short =
+			State.CurrentAttack.SetPieceRoute.ShortFreeKick;
+		if (Short.Stage != EMatchPlaySetPieceCarrierRouteStage::Terminal)
+		{
+			Fail(Result,
+				EMatchPlaySetPieceParticipantConsumptionErrorCode
+					::InvalidShortFreeKickTerminal,
+				TEXT("Short Free Kick participants may be consumed only from a canonical terminal route."));
+			return Result;
+		}
+		Carrier = Short.Carrier;
+		bNoLegalCarrier = Short.bNoLegalCarrier;
 	}
-	if (!Short.bNoLegalCarrier)
+	else
+	{
+		const FMatchPlayLongFreeKickRouteState& Long =
+			State.CurrentAttack.SetPieceRoute.LongFreeKick;
+		if (Long.Stage != EMatchPlaySetPieceCarrierRouteStage::Terminal)
+		{
+			Fail(Result,
+				EMatchPlaySetPieceParticipantConsumptionErrorCode
+					::InvalidLongFreeKickTerminal,
+				TEXT("Long Free Kick participants may be consumed only from a canonical terminal route."));
+			return Result;
+		}
+		Carrier = Long.Carrier;
+		bNoLegalCarrier = Long.bNoLegalCarrier;
+	}
+	if (!bNoLegalCarrier)
 	{
 		FMatchPlaySetPieceParticipantToConsume Participant;
-		Participant.OwnerSide = Short.Carrier.OwnerSide;
-		Participant.CardId = Short.Carrier.CardId;
+		Participant.OwnerSide = Carrier.OwnerSide;
+		Participant.CardId = Carrier.CardId;
 		Result.Participants.Add(Participant);
 	}
 

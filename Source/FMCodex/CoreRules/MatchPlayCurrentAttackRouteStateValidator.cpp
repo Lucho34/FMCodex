@@ -418,6 +418,265 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 		return false;
 	}
 
+	bool HasDefaultLongResolutionFacts(
+		const FMatchPlayLongFreeKickRouteState& Long)
+	{
+		return Long.Method == EMatchPlayLongFreeKickMethod::None
+			&& !Long.bHasAttackD6 && Long.AttackD6 == 0
+			&& !Long.bHasDefenseD6 && Long.DefenseD6 == 0
+			&& !Long.bHasPowerD6Pair
+			&& Long.PowerD6A == 0 && Long.PowerD6B == 0
+			&& !Long.bHasFormulaResolution
+			&& IsDefaultStruct(Long.FormulaResolution)
+			&& Long.GameplayOutcome
+				== EMatchPlayLongFreeKickGameplayOutcome::None
+			&& !Long.bHasGoalScorer
+			&& Long.GoalScorerCardId.IsNone()
+			&& !Long.bNoLegalCarrier;
+	}
+
+	bool ValidateLongFreeKickPayload(
+		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
+		const FMatchPlayState& State,
+		const FMatchPlayLongFreeKickRouteState& Long)
+	{
+		const bool bTerminalLifecycle =
+			State.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState
+					::TerminalPendingAdvance;
+		if (Long.Stage == EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier)
+		{
+			if (bTerminalLifecycle || !IsDefaultStruct(Long.Carrier)
+				|| !HasDefaultLongResolutionFacts(Long))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::AwaitingCarrierHasBoundCarrier,
+					TEXT("Long Free Kick AwaitingCarrier requires no participant, method, roll, outcome, or terminal payload."));
+				return false;
+			}
+			return true;
+		}
+
+		if (Long.Stage == EMatchPlaySetPieceCarrierRouteStage::Terminal
+			&& Long.bNoLegalCarrier)
+		{
+			if (!bTerminalLifecycle || !IsDefaultStruct(Long.Carrier)
+				|| Long.Method != EMatchPlayLongFreeKickMethod::None
+				|| Long.bHasAttackD6 || Long.AttackD6 != 0
+				|| Long.bHasDefenseD6 || Long.DefenseD6 != 0
+				|| Long.bHasPowerD6Pair || Long.PowerD6A != 0
+				|| Long.PowerD6B != 0 || Long.bHasFormulaResolution
+				|| !IsDefaultStruct(Long.FormulaResolution)
+				|| Long.GameplayOutcome
+					!= EMatchPlayLongFreeKickGameplayOutcome::NoGoal
+				|| Long.bHasGoalScorer
+				|| !Long.GoalScorerCardId.IsNone())
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::InvalidConcreteSetPieceStage,
+					TEXT("No-legal-Carrier Long Free Kick terminal payload is incoherent."));
+				return false;
+			}
+			return true;
+		}
+
+		if (!ValidateBoundCarrier(Result, State, Long.Carrier))
+		{
+			return false;
+		}
+		if (Long.bNoLegalCarrier)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::InvalidConcreteSetPieceStage,
+				TEXT("A bound Long Free Kick Carrier cannot be marked absent."));
+			return false;
+		}
+
+		const bool bNoOutcome = Long.GameplayOutcome
+			== EMatchPlayLongFreeKickGameplayOutcome::None
+			&& !Long.bHasGoalScorer
+			&& Long.GoalScorerCardId.IsNone();
+		switch (Long.Stage)
+		{
+		case EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod:
+			if (!bTerminalLifecycle && HasDefaultLongResolutionFacts(Long))
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingAttackRoll:
+			if (!bTerminalLifecycle
+				&& Long.Method == EMatchPlayLongFreeKickMethod::Direct
+				&& !Long.bHasAttackD6 && Long.AttackD6 == 0
+				&& !Long.bHasDefenseD6 && Long.DefenseD6 == 0
+				&& !Long.bHasPowerD6Pair
+				&& Long.PowerD6A == 0 && Long.PowerD6B == 0
+				&& !Long.bHasFormulaResolution
+				&& IsDefaultStruct(Long.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingDefenseRoll:
+			if (!bTerminalLifecycle
+				&& Long.Method == EMatchPlayLongFreeKickMethod::Direct
+				&& Long.bHasAttackD6 && Long.AttackD6 >= 3
+				&& Long.AttackD6 <= 6
+				&& !Long.bHasDefenseD6 && Long.DefenseD6 == 0
+				&& !Long.bHasPowerD6Pair
+				&& Long.PowerD6A == 0 && Long.PowerD6B == 0
+				&& !Long.bHasFormulaResolution
+				&& IsDefaultStruct(Long.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::PowerAwaitingRoll:
+			if (!bTerminalLifecycle
+				&& Long.Method == EMatchPlayLongFreeKickMethod::Power
+				&& !Long.bHasAttackD6 && Long.AttackD6 == 0
+				&& !Long.bHasDefenseD6 && Long.DefenseD6 == 0
+				&& !Long.bHasPowerD6Pair
+				&& Long.PowerD6A == 0 && Long.PowerD6B == 0
+				&& !Long.bHasFormulaResolution
+				&& IsDefaultStruct(Long.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::Terminal:
+		{
+			const bool bGoal = Long.GameplayOutcome
+				== EMatchPlayLongFreeKickGameplayOutcome::Goal;
+			const bool bScorerCoherent = bGoal
+				? Long.bHasGoalScorer
+					&& Long.GoalScorerCardId == Long.Carrier.CardId
+				: !Long.bHasGoalScorer
+					&& Long.GoalScorerCardId.IsNone();
+			if (!bTerminalLifecycle
+				|| (Long.GameplayOutcome
+					!= EMatchPlayLongFreeKickGameplayOutcome::Goal
+					&& Long.GameplayOutcome
+						!= EMatchPlayLongFreeKickGameplayOutcome::NoGoal)
+				|| !bScorerCoherent)
+			{
+				break;
+			}
+
+			if (Long.Method == EMatchPlayLongFreeKickMethod::Direct)
+			{
+				const bool bImmediateMiss = Long.bHasAttackD6
+					&& Long.AttackD6 >= 1 && Long.AttackD6 <= 2
+					&& !Long.bHasDefenseD6 && Long.DefenseD6 == 0
+					&& !Long.bHasPowerD6Pair
+					&& Long.PowerD6A == 0 && Long.PowerD6B == 0
+					&& !Long.bHasFormulaResolution
+					&& IsDefaultStruct(Long.FormulaResolution)
+					&& !bGoal;
+				if (bImmediateMiss)
+				{
+					return true;
+				}
+
+				if (Long.bHasAttackD6 && Long.AttackD6 >= 3
+					&& Long.AttackD6 <= 6 && Long.bHasDefenseD6
+					&& Long.DefenseD6 >= 1 && Long.DefenseD6 <= 6
+					&& !Long.bHasPowerD6Pair
+					&& Long.PowerD6A == 0 && Long.PowerD6B == 0
+					&& Long.bHasFormulaResolution
+					&& Long.FormulaResolution.FormulaType
+						== EFormulaType::Finishing
+					&& Long.FormulaResolution.bAttackEnded
+					&& !Long.FormulaResolution.bContinueResolution
+					&& Long.FormulaResolution.bIsGoal == bGoal)
+				{
+					const EInitialTurnOrderPlayer Attacker =
+						State.RuntimeState.CurrentAttackingPlayer;
+					const EInitialTurnOrderPlayer Defender =
+						Attacker == EInitialTurnOrderPlayer::PlayerA
+							? EInitialTurnOrderPlayer::PlayerB
+							: EInitialTurnOrderPlayer::PlayerA;
+					const FMatchPlayDefendingGoalkeeperQueryResult Gk =
+						FMatchPlayDefendingGoalkeeperQuery::Query(
+							State, Defender);
+					if (Gk.bSuccess)
+					{
+						FFormulaResolverInput Input;
+						Input.FormulaType = EFormulaType::Finishing;
+						Input.Attacker.BaseValue =
+							Long.Carrier.Snapshot.Attributes.LongShot;
+						Input.Attacker.ComparePoint = Long.AttackD6;
+						Input.Attacker.bComparePointWasRolledOnD6 = true;
+						Input.Attacker.ParticipatingStamina.Add(
+							Long.Carrier.Snapshot.Attributes.Stamina);
+						Input.Defender.BaseValue =
+							Gk.Snapshot.GoalkeeperAttributes.Positioning;
+						Input.Defender.Modifier = 2.0f;
+						Input.Defender.ComparePoint = Long.DefenseD6;
+						Input.Defender.bComparePointWasRolledOnD6 = true;
+						Input.Defender.ParticipatingStamina.Add(
+							Gk.Snapshot.Attributes.Stamina);
+						Input.bGoalkeeperParticipated = true;
+						Input.TurnIndex = static_cast<int32>(
+							State.CurrentAttack.AttackSequence);
+						Input.AttackerPlayerId = Attacker
+							== EInitialTurnOrderPlayer::PlayerA
+								? FName(TEXT("PlayerA"))
+								: FName(TEXT("PlayerB"));
+						Input.DefenderPlayerId = Defender
+							== EInitialTurnOrderPlayer::PlayerA
+								? FName(TEXT("PlayerA"))
+								: FName(TEXT("PlayerB"));
+						Input.InvolvedCardIds = {
+							Long.Carrier.CardId, Gk.CardId };
+						const auto Execution =
+							FSingleCardFormulaResolutionExecutor::Execute(Input);
+						if (Execution.bSuccess
+							&& FFormulaResolutionResult::StaticStruct()
+								->CompareScriptStruct(
+									&Long.FormulaResolution,
+									&Execution.FormulaResolutionResult,
+									0))
+						{
+							return true;
+						}
+					}
+				}
+			}
+			else if (Long.Method == EMatchPlayLongFreeKickMethod::Power)
+			{
+				const int32 PairSum = Long.PowerD6A + Long.PowerD6B;
+				if (!Long.bHasAttackD6 && Long.AttackD6 == 0
+					&& !Long.bHasDefenseD6 && Long.DefenseD6 == 0
+					&& Long.bHasPowerD6Pair
+					&& Long.PowerD6A >= 1 && Long.PowerD6A <= 6
+					&& Long.PowerD6B >= 1 && Long.PowerD6B <= 6
+					&& !Long.bHasFormulaResolution
+					&& IsDefaultStruct(Long.FormulaResolution)
+					&& (PairSum >= 11) == bGoal)
+				{
+					return true;
+				}
+			}
+			break;
+		}
+		default:
+			break;
+		}
+
+		SetFailure(Result,
+			EMatchPlayCurrentAttackRouteStateValidationErrorCode
+				::InvalidConcreteSetPieceStage,
+			TEXT("Long Free Kick stage, method, rolls, outcome, scorer, and lifecycle are incoherent."));
+		return false;
+	}
+
 	bool HasDefaultOrdinaryPayload(
 		const FMatchPlayCurrentAttackState& Attack)
 	{
@@ -849,18 +1108,8 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 				}
 				break;
 			case ESetPieceSelectedType::LongFreeKick:
-				if (Attack.LifecycleState
-					!= EMatchPlayCurrentAttackLifecycleState::Active)
-				{
-					SetFailure(Result,
-						EMatchPlayCurrentAttackRouteStateValidationErrorCode
-							::WrongRouteLifecycle,
-						TEXT("Unfinished Long Free Kick foundation must remain active."));
-					return Result;
-				}
-				if (!ValidateCarrierPayload(Result, State,
-					Attack.SetPieceRoute.LongFreeKick.Stage,
-					Attack.SetPieceRoute.LongFreeKick.Carrier))
+				if (!ValidateLongFreeKickPayload(Result, State,
+					Attack.SetPieceRoute.LongFreeKick))
 				{
 					return Result;
 				}

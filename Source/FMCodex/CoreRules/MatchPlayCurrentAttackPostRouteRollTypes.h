@@ -27,7 +27,15 @@ enum class EMatchPlayCurrentAttackPostRouteRollPurpose : uint8
 	ShortFreeKickAngledA = 11
 		UMETA(DisplayName = "Short Free Kick Angled A"),
 	ShortFreeKickAngledB = 12
-		UMETA(DisplayName = "Short Free Kick Angled B")
+		UMETA(DisplayName = "Short Free Kick Angled B"),
+	LongFreeKickDirectAttack = 13
+		UMETA(DisplayName = "Long Free Kick Direct Attack"),
+	LongFreeKickDirectDefense = 14
+		UMETA(DisplayName = "Long Free Kick Direct Defense"),
+	LongFreeKickPowerA = 15
+		UMETA(DisplayName = "Long Free Kick Power A"),
+	LongFreeKickPowerB = 16
+		UMETA(DisplayName = "Long Free Kick Power B")
 };
 
 USTRUCT(BlueprintType)

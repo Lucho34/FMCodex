@@ -556,6 +556,133 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalSetPieceCarrier(
 		});
 }
 
+FMatchPlayAuthoritativeSubmitLongFreeKickMethodResult
+FMatchPlayAuthoritativeSession::SubmitLongFreeKickMethod(
+	const FMatchPlayLongFreeKickMethodRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitLongFreeKickMethodResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitLongFreeKickMethod,
+		true,
+		Request.AttackSequence,
+		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayLongFreeKickResolution::SubmitMethod(
+					BeforeState, Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveLongFreeKickDirectAttackRollResult
+FMatchPlayAuthoritativeSession::ResolveLongFreeKickDirectAttackRoll(
+	const FMatchPlayLongFreeKickRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveLongFreeKickDirectAttackRollResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveLongFreeKickDirectAttackRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayLongFreeKickResolution::ResolveDirectAttackRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveLongFreeKickDirectDefenseRollResult
+FMatchPlayAuthoritativeSession::ResolveLongFreeKickDirectDefenseRoll(
+	const FMatchPlayLongFreeKickRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveLongFreeKickDirectDefenseRollResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveLongFreeKickDirectDefenseRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayLongFreeKickResolution::ResolveDirectDefenseRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveLongFreeKickPowerRollResult
+FMatchPlayAuthoritativeSession::ResolveLongFreeKickPowerRoll(
+	const FMatchPlayLongFreeKickRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveLongFreeKickPowerRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickPowerRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayLongFreeKickResolution::ResolvePowerRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveNoLegalLongFreeKickCarrierResult
+FMatchPlayAuthoritativeSession::ResolveNoLegalSetPieceCarrier(
+	const FMatchPlayLongFreeKickNoLegalCarrierRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveNoLegalLongFreeKickCarrierResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalSetPieceCarrier,
+		true,
+		Request.AttackSequence,
+		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayLongFreeKickResolution::ResolveNoLegalCarrier(
+					BeforeState, Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeFinishDeploymentResult
 FMatchPlayAuthoritativeSession::FinishDeployment(
 	const int64 AttackSequence,

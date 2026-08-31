@@ -139,10 +139,16 @@ bool FFMCodexLocalMatchD6ProviderContractTest::RunTest(
 		EMatchPlayCurrentAttackPostRouteRollPurpose
 			::ShortFreeKickDirectDefense,
 		EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickAngledA,
-		EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickAngledB })
+		EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickAngledB,
+		EMatchPlayCurrentAttackPostRouteRollPurpose
+			::LongFreeKickDirectAttack,
+		EMatchPlayCurrentAttackPostRouteRollPurpose
+			::LongFreeKickDirectDefense,
+		EMatchPlayCurrentAttackPostRouteRollPurpose::LongFreeKickPowerA,
+		EMatchPlayCurrentAttackPostRouteRollPurpose::LongFreeKickPowerB })
 	{
 		const auto Result = ProviderA.RollD6(Purpose);
-		TestTrue(TEXT("Production provider accepts Short Free Kick semantic purpose"),
+		TestTrue(TEXT("Production provider accepts Set Piece semantic purpose"),
 			FMatchPlayPostRouteRollProviderResultValidator::Validate(
 				Purpose, Result).bIsCanonical);
 	}

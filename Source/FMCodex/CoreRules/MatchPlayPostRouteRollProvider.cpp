@@ -27,6 +27,14 @@ namespace MatchPlayPostRouteRollProvider
 			::ShortFreeKickAngledA:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose
 			::ShortFreeKickAngledB:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::LongFreeKickDirectAttack:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::LongFreeKickDirectDefense:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::LongFreeKickPowerA:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::LongFreeKickPowerB:
 			return true;
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::None:
 		default:

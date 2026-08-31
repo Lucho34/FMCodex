@@ -13,7 +13,7 @@ namespace FMCodexLocalDevRollOverride
 	{
 		return Target > EFMCodexLocalDevRollTarget::None
 			&& Target <= EFMCodexLocalDevRollTarget
-				::ShortFreeKickAngledB;
+				::LongFreeKickPowerB;
 	}
 }
 
@@ -238,6 +238,14 @@ FFMCodexLocalDevRollOverride::ResolvePostRouteTarget(
 		return EFMCodexLocalDevRollTarget::ShortFreeKickAngledA;
 	case EPostPurpose::ShortFreeKickAngledB:
 		return EFMCodexLocalDevRollTarget::ShortFreeKickAngledB;
+	case EPostPurpose::LongFreeKickDirectAttack:
+		return EFMCodexLocalDevRollTarget::LongFreeKickDirectAttack;
+	case EPostPurpose::LongFreeKickDirectDefense:
+		return EFMCodexLocalDevRollTarget::LongFreeKickDirectDefense;
+	case EPostPurpose::LongFreeKickPowerA:
+		return EFMCodexLocalDevRollTarget::LongFreeKickPowerA;
+	case EPostPurpose::LongFreeKickPowerB:
+		return EFMCodexLocalDevRollTarget::LongFreeKickPowerB;
 	default:
 		break;
 	}
