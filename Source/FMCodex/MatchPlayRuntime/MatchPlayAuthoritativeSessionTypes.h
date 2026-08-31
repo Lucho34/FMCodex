@@ -9,6 +9,7 @@
 #include "../CoreRules/MatchPlaySetPieceCarrierSelection.h"
 #include "../CoreRules/MatchPlayShortFreeKickResolution.h"
 #include "../CoreRules/MatchPlayLongFreeKickResolution.h"
+#include "../CoreRules/MatchPlayPenaltyResolution.h"
 #include "../CoreRules/MatchPlayCarrierNoSelectionNoGoal.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator.h"
@@ -136,7 +137,11 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	SubmitLongFreeKickMethod,
 	ResolveLongFreeKickDirectAttackRoll,
 	ResolveLongFreeKickDirectDefenseRoll,
-	ResolveLongFreeKickPowerRoll
+	ResolveLongFreeKickPowerRoll,
+	SubmitPenaltyMethod,
+	ResolvePenaltyDirectAttackRoll,
+	ResolvePenaltyDirectDefenseRoll,
+	ResolvePenaltyPanenkaRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -275,6 +280,36 @@ struct FMCODEX_API
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayLongFreeKickResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitPenaltyMethodResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayPenaltyResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePenaltyDirectAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayPenaltyResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePenaltyDirectDefenseRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayPenaltyResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolvePenaltyPanenkaRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayPenaltyResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeResolveNoLegalPenaltyCarrierResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayPenaltyResolutionResult ResolutionResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeFinishDeploymentResult

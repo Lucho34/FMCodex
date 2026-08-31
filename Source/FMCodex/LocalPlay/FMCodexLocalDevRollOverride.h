@@ -42,7 +42,10 @@ enum class EFMCodexLocalDevRollTarget : uint8
 	LongFreeKickDirectAttack,
 	LongFreeKickDirectDefense,
 	LongFreeKickPowerA,
-	LongFreeKickPowerB
+	LongFreeKickPowerB,
+	PenaltyDirectAttack,
+	PenaltyDirectDefense,
+	PenaltyPanenka
 };
 
 /** Host-only call-site identity used to disambiguate shared CoreRules purposes. */

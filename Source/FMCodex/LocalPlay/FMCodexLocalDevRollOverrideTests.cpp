@@ -247,7 +247,13 @@ bool FFMCodexLocalDevRollOverrideDomainAndMatrixTest::RunTest(
 		{ ETarget::LongFreeKickPowerA,
 			EInvocation::None, EPost::LongFreeKickPowerA, 6 },
 		{ ETarget::LongFreeKickPowerB,
-			EInvocation::None, EPost::LongFreeKickPowerB, 5 }
+			EInvocation::None, EPost::LongFreeKickPowerB, 5 },
+		{ ETarget::PenaltyDirectAttack,
+			EInvocation::None, EPost::PenaltyDirectAttack, 4 },
+		{ ETarget::PenaltyDirectDefense,
+			EInvocation::None, EPost::PenaltyDirectDefense, 2 },
+		{ ETarget::PenaltyPanenka,
+			EInvocation::None, EPost::PenaltyPanenka, 6 }
 	};
 	for (const FPostCase& Case : Cases)
 	{

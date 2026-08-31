@@ -35,6 +35,11 @@ namespace MatchPlayPostRouteRollProvider
 			::LongFreeKickPowerA:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose
 			::LongFreeKickPowerB:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::PenaltyDirectAttack:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::PenaltyDirectDefense:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::PenaltyPanenka:
 			return true;
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::None:
 		default:

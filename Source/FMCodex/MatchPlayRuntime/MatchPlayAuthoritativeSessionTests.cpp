@@ -6568,11 +6568,11 @@ bool FMatchPlayAuthoritativeSessionTypesAndSurfaceTest::RunTest(
 			Header,
 			TEXT("ExecuteSerialized(")),
 		1);
-	TestEqual(TEXT("All eighty mutations use the gate"),
+	TestEqual(TEXT("All eighty-five mutations use the gate"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Implementation,
 			TEXT("ExecuteSerialized<")),
-		80);
+		85);
 	TestEqual(TEXT("Instance execution guard fields"),
 		MatchPlayAuthoritativeSessionTests::CountOccurrences(
 			Header,
@@ -7957,8 +7957,8 @@ bool FMatchPlayAuthoritativeSessionNoLegalCarrierCompletionClosureTest::RunTest(
 	TestTrue(TEXT("CurrentAttack Completion source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/CoreRules/MatchPlayCurrentAttackCompletion.cpp"),
 		CompletionSource));
-	TestEqual(TEXT("All eighty commands use one serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 80);
+	TestEqual(TEXT("All eighty-five commands use one serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 85);
 	TestEqual(TEXT("No-legal Carrier has one Session command implementation"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()")), 1);
@@ -10611,9 +10611,9 @@ bool FMatchPlayAuthoritativeSessionFoundationBProductionBoundaryTest::RunTest(
 			CountOccurrences(Implementation, Operation.Value),
 			ExpectedCallCount);
 	}
-	TestEqual(TEXT("All eighty mutations share serialized gate"),
+	TestEqual(TEXT("All eighty-five mutations share serialized gate"),
 		CountOccurrences(Implementation, TEXT("ExecuteSerialized<")),
-		80);
+		85);
 	TestEqual(TEXT("Session retains one state replacement"),
 		CountOccurrences(
 			Implementation,
@@ -23643,8 +23643,8 @@ bool FMatchPlayAuthoritativeSessionThroughBallEndToEndPublicFlowTest::RunTest(
 	TestTrue(TEXT("E2E authority Session source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 		SessionSource));
-	TestEqual(TEXT("E2E preserves eighty serialized commands"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 80);
+	TestEqual(TEXT("E2E preserves eighty-five serialized commands"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 85);
 	TestEqual(TEXT("E2E preserves one serialized gate"),
 		CountOccurrences(SessionSource, TEXT("if (bExecutingCommand)")), 1);
 	TestEqual(TEXT("E2E preserves one execution guard"),
@@ -23718,8 +23718,8 @@ bool FMatchPlayAuthoritativeSessionApplyCrossTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Cross issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All eighty commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 80);
+	TestEqual(TEXT("All eighty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 85);
 	TestEqual(TEXT("Cross Completion delegates once to common mutation"),
 		CountOccurrences(CompletionSource, TEXT("CompleteCrossResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -24210,8 +24210,8 @@ bool FMatchPlayAuthoritativeSessionApplyPassControlTerminalResolutionTest
 	TestTrue(TEXT("PassControl issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All eighty commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 80);
+	TestEqual(TEXT("All eighty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 85);
 	TestEqual(TEXT("PassControl Completion delegates once to common mutation"),
 		CountOccurrences(
 			CompletionSource, TEXT("CompletePassControlResolution(")), 1);
@@ -24737,8 +24737,8 @@ bool FMatchPlayAuthoritativeSessionApplyShotTerminalResolutionTest::RunTest(
 	TestTrue(TEXT("Shot issuer tag is private"),
 		CapabilityHeader.Contains(TEXT("FAuthoritativeTerminalIssuerTag"))
 			&& CapabilityHeader.Contains(TEXT("private:")));
-	TestEqual(TEXT("All eighty commands remain serialized"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 80);
+	TestEqual(TEXT("All eighty-five commands remain serialized"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 85);
 	TestEqual(TEXT("Shot Completion has one bounded definition"),
 		CountOccurrences(CompletionSource, TEXT("CompleteShotResolution(")), 1);
 	TestEqual(TEXT("Common terminal mutation definition remains one"),
@@ -25312,8 +25312,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("AttackSequence")));
 	TestFalse(TEXT("RequestingSide is authority-derived"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
-	TestEqual(TEXT("All eighty commands use the serialized gate"),
-		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 80);
+	TestEqual(TEXT("All eighty-five commands use the serialized gate"),
+		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 85);
 	TestEqual(TEXT("Goalkeeper availability has one Session callsite"),
 		CountOccurrences(SessionSource,
 			TEXT("FMatchPlayGoalkeeperDeploymentAvailability::Query(")), 1);

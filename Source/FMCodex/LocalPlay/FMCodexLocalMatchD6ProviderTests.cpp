@@ -145,7 +145,10 @@ bool FFMCodexLocalMatchD6ProviderContractTest::RunTest(
 		EMatchPlayCurrentAttackPostRouteRollPurpose
 			::LongFreeKickDirectDefense,
 		EMatchPlayCurrentAttackPostRouteRollPurpose::LongFreeKickPowerA,
-		EMatchPlayCurrentAttackPostRouteRollPurpose::LongFreeKickPowerB })
+		EMatchPlayCurrentAttackPostRouteRollPurpose::LongFreeKickPowerB,
+		EMatchPlayCurrentAttackPostRouteRollPurpose::PenaltyDirectAttack,
+		EMatchPlayCurrentAttackPostRouteRollPurpose::PenaltyDirectDefense,
+		EMatchPlayCurrentAttackPostRouteRollPurpose::PenaltyPanenka })
 	{
 		const auto Result = ProviderA.RollD6(Purpose);
 		TestTrue(TEXT("Production provider accepts Set Piece semantic purpose"),

@@ -138,6 +138,25 @@ public:
 	ResolveNoLegalSetPieceCarrier(
 		const FMatchPlayLongFreeKickNoLegalCarrierRequest& Request);
 
+	FMatchPlayAuthoritativeSubmitPenaltyMethodResult SubmitPenaltyMethod(
+		const FMatchPlayPenaltyMethodRequest& Request);
+
+	FMatchPlayAuthoritativeResolvePenaltyDirectAttackRollResult
+	ResolvePenaltyDirectAttackRoll(
+		const FMatchPlayPenaltyRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolvePenaltyDirectDefenseRollResult
+	ResolvePenaltyDirectDefenseRoll(
+		const FMatchPlayPenaltyRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolvePenaltyPanenkaRollResult
+	ResolvePenaltyPanenkaRoll(
+		const FMatchPlayPenaltyRollRequest& Request);
+
+	FMatchPlayAuthoritativeResolveNoLegalPenaltyCarrierResult
+	ResolveNoLegalSetPieceCarrier(
+		const FMatchPlayPenaltyNoLegalCarrierRequest& Request);
+
 	FMatchPlayAuthoritativeFinishDeploymentResult FinishDeployment(
 		int64 AttackSequence,
 		EInitialTurnOrderPlayer RequestingSide);

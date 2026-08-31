@@ -48,7 +48,8 @@ FMatchPlaySetPieceParticipantConsumption::Extract(
 	const ESetPieceSelectedType SelectedType =
 		State.CurrentAttack.SetPieceRoute.SelectedType;
 	if (SelectedType != ESetPieceSelectedType::ShortFreeKick
-		&& SelectedType != ESetPieceSelectedType::LongFreeKick)
+		&& SelectedType != ESetPieceSelectedType::LongFreeKick
+		&& SelectedType != ESetPieceSelectedType::Penalty)
 	{
 		Fail(Result,
 			EMatchPlaySetPieceParticipantConsumptionErrorCode
@@ -74,7 +75,7 @@ FMatchPlaySetPieceParticipantConsumption::Extract(
 		Carrier = Short.Carrier;
 		bNoLegalCarrier = Short.bNoLegalCarrier;
 	}
-	else
+	else if (SelectedType == ESetPieceSelectedType::LongFreeKick)
 	{
 		const FMatchPlayLongFreeKickRouteState& Long =
 			State.CurrentAttack.SetPieceRoute.LongFreeKick;
@@ -88,6 +89,21 @@ FMatchPlaySetPieceParticipantConsumption::Extract(
 		}
 		Carrier = Long.Carrier;
 		bNoLegalCarrier = Long.bNoLegalCarrier;
+	}
+	else
+	{
+		const FMatchPlayPenaltyRouteState& Penalty =
+			State.CurrentAttack.SetPieceRoute.Penalty;
+		if (Penalty.Stage != EMatchPlaySetPieceCarrierRouteStage::Terminal)
+		{
+			Fail(Result,
+				EMatchPlaySetPieceParticipantConsumptionErrorCode
+					::InvalidPenaltyTerminal,
+				TEXT("Penalty participants may be consumed only from a canonical terminal route."));
+			return Result;
+		}
+		Carrier = Penalty.Carrier;
+		bNoLegalCarrier = Penalty.bNoLegalCarrier;
 	}
 	if (!bNoLegalCarrier)
 	{

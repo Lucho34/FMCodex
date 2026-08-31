@@ -357,6 +357,9 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 					== EMatchPlaySetPieceCarrierRouteStage::Terminal)
 			|| (SelectedType == ESetPieceSelectedType::LongFreeKick
 				&& BeforeState.CurrentAttack.SetPieceRoute.LongFreeKick.Stage
+					== EMatchPlaySetPieceCarrierRouteStage::Terminal)
+			|| (SelectedType == ESetPieceSelectedType::Penalty
+				&& BeforeState.CurrentAttack.SetPieceRoute.Penalty.Stage
 					== EMatchPlaySetPieceCarrierRouteStage::Terminal);
 		if (!Validation.bIsCanonical
 			|| BeforeState.CurrentAttack.RouteKind

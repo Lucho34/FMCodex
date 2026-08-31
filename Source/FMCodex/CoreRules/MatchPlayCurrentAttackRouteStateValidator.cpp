@@ -677,6 +677,243 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 		return false;
 	}
 
+	bool HasDefaultPenaltyResolutionFacts(
+		const FMatchPlayPenaltyRouteState& Penalty)
+	{
+		return Penalty.Method == EMatchPlayPenaltyMethod::None
+			&& !Penalty.bHasAttackD6 && Penalty.AttackD6 == 0
+			&& !Penalty.bHasDefenseD6 && Penalty.DefenseD6 == 0
+			&& !Penalty.bHasPanenkaD6 && Penalty.PanenkaD6 == 0
+			&& !Penalty.bHasFormulaResolution
+			&& IsDefaultStruct(Penalty.FormulaResolution)
+			&& Penalty.GameplayOutcome
+				== EMatchPlayPenaltyGameplayOutcome::None
+			&& !Penalty.bHasGoalScorer
+			&& Penalty.GoalScorerCardId.IsNone()
+			&& !Penalty.bNoLegalCarrier;
+	}
+
+	bool ValidatePenaltyPayload(
+		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
+		const FMatchPlayState& State,
+		const FMatchPlayPenaltyRouteState& Penalty)
+	{
+		const bool bTerminalLifecycle =
+			State.CurrentAttack.LifecycleState
+				== EMatchPlayCurrentAttackLifecycleState
+					::TerminalPendingAdvance;
+		if (Penalty.Stage
+			== EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier)
+		{
+			if (bTerminalLifecycle || !IsDefaultStruct(Penalty.Carrier)
+				|| !HasDefaultPenaltyResolutionFacts(Penalty))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::AwaitingCarrierHasBoundCarrier,
+					TEXT("Penalty AwaitingCarrier requires no participant, method, roll, outcome, or terminal payload."));
+				return false;
+			}
+			return true;
+		}
+
+		if (Penalty.Stage == EMatchPlaySetPieceCarrierRouteStage::Terminal
+			&& Penalty.bNoLegalCarrier)
+		{
+			if (!bTerminalLifecycle || !IsDefaultStruct(Penalty.Carrier)
+				|| Penalty.Method != EMatchPlayPenaltyMethod::None
+				|| Penalty.bHasAttackD6 || Penalty.AttackD6 != 0
+				|| Penalty.bHasDefenseD6 || Penalty.DefenseD6 != 0
+				|| Penalty.bHasPanenkaD6 || Penalty.PanenkaD6 != 0
+				|| Penalty.bHasFormulaResolution
+				|| !IsDefaultStruct(Penalty.FormulaResolution)
+				|| Penalty.GameplayOutcome
+					!= EMatchPlayPenaltyGameplayOutcome::NoGoal
+				|| Penalty.bHasGoalScorer
+				|| !Penalty.GoalScorerCardId.IsNone())
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::InvalidConcreteSetPieceStage,
+					TEXT("No-legal-Carrier Penalty terminal payload is incoherent."));
+				return false;
+			}
+			return true;
+		}
+
+		if (!ValidateBoundCarrier(Result, State, Penalty.Carrier))
+		{
+			return false;
+		}
+		if (Penalty.bNoLegalCarrier)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::InvalidConcreteSetPieceStage,
+				TEXT("A bound Penalty Carrier cannot be marked absent."));
+			return false;
+		}
+
+		const bool bNoOutcome = Penalty.GameplayOutcome
+			== EMatchPlayPenaltyGameplayOutcome::None
+			&& !Penalty.bHasGoalScorer
+			&& Penalty.GoalScorerCardId.IsNone();
+		switch (Penalty.Stage)
+		{
+		case EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod:
+			if (!bTerminalLifecycle
+				&& HasDefaultPenaltyResolutionFacts(Penalty))
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingAttackRoll:
+			if (!bTerminalLifecycle
+				&& Penalty.Method == EMatchPlayPenaltyMethod::Direct
+				&& !Penalty.bHasAttackD6 && Penalty.AttackD6 == 0
+				&& !Penalty.bHasDefenseD6 && Penalty.DefenseD6 == 0
+				&& !Penalty.bHasPanenkaD6 && Penalty.PanenkaD6 == 0
+				&& !Penalty.bHasFormulaResolution
+				&& IsDefaultStruct(Penalty.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingDefenseRoll:
+			if (!bTerminalLifecycle
+				&& Penalty.Method == EMatchPlayPenaltyMethod::Direct
+				&& Penalty.bHasAttackD6 && Penalty.AttackD6 >= 1
+				&& Penalty.AttackD6 <= 6
+				&& !Penalty.bHasDefenseD6 && Penalty.DefenseD6 == 0
+				&& !Penalty.bHasPanenkaD6 && Penalty.PanenkaD6 == 0
+				&& !Penalty.bHasFormulaResolution
+				&& IsDefaultStruct(Penalty.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::PanenkaAwaitingRoll:
+			if (!bTerminalLifecycle
+				&& Penalty.Method == EMatchPlayPenaltyMethod::Panenka
+				&& !Penalty.bHasAttackD6 && Penalty.AttackD6 == 0
+				&& !Penalty.bHasDefenseD6 && Penalty.DefenseD6 == 0
+				&& !Penalty.bHasPanenkaD6 && Penalty.PanenkaD6 == 0
+				&& !Penalty.bHasFormulaResolution
+				&& IsDefaultStruct(Penalty.FormulaResolution)
+				&& bNoOutcome)
+			{
+				return true;
+			}
+			break;
+		case EMatchPlaySetPieceCarrierRouteStage::Terminal:
+		{
+			const bool bGoal = Penalty.GameplayOutcome
+				== EMatchPlayPenaltyGameplayOutcome::Goal;
+			const bool bScorerCoherent = bGoal
+				? Penalty.bHasGoalScorer
+					&& Penalty.GoalScorerCardId == Penalty.Carrier.CardId
+				: !Penalty.bHasGoalScorer
+					&& Penalty.GoalScorerCardId.IsNone();
+			if (!bTerminalLifecycle
+				|| (Penalty.GameplayOutcome
+						!= EMatchPlayPenaltyGameplayOutcome::Goal
+					&& Penalty.GameplayOutcome
+						!= EMatchPlayPenaltyGameplayOutcome::NoGoal)
+				|| !bScorerCoherent)
+			{
+				break;
+			}
+
+			if (Penalty.Method == EMatchPlayPenaltyMethod::Direct
+				&& Penalty.bHasAttackD6 && Penalty.AttackD6 >= 1
+				&& Penalty.AttackD6 <= 6 && Penalty.bHasDefenseD6
+				&& Penalty.DefenseD6 >= 1 && Penalty.DefenseD6 <= 6
+				&& !Penalty.bHasPanenkaD6 && Penalty.PanenkaD6 == 0
+				&& Penalty.bHasFormulaResolution
+				&& Penalty.FormulaResolution.FormulaType
+					== EFormulaType::Finishing
+				&& Penalty.FormulaResolution.bAttackEnded
+				&& !Penalty.FormulaResolution.bContinueResolution
+				&& Penalty.FormulaResolution.bIsGoal == bGoal)
+			{
+				const EInitialTurnOrderPlayer Attacker =
+					State.RuntimeState.CurrentAttackingPlayer;
+				const EInitialTurnOrderPlayer Defender =
+					Attacker == EInitialTurnOrderPlayer::PlayerA
+						? EInitialTurnOrderPlayer::PlayerB
+						: EInitialTurnOrderPlayer::PlayerA;
+				const FMatchPlayDefendingGoalkeeperQueryResult Gk =
+					FMatchPlayDefendingGoalkeeperQuery::Query(
+						State, Defender);
+				if (Gk.bSuccess)
+				{
+					FFormulaResolverInput Input;
+					Input.FormulaType = EFormulaType::Finishing;
+					Input.Attacker.BaseValue = FMath::Max(
+						Penalty.Carrier.Snapshot.Attributes.Shooting,
+						Penalty.Carrier.Snapshot.Attributes.Passing);
+					Input.Attacker.ComparePoint = Penalty.AttackD6;
+					Input.Attacker.bComparePointWasRolledOnD6 = true;
+					Input.Attacker.ParticipatingStamina.Add(
+						Penalty.Carrier.Snapshot.Attributes.Stamina);
+					Input.Defender.BaseValue =
+						Gk.Snapshot.GoalkeeperAttributes.Anticipation;
+					Input.Defender.Modifier = -3.0f;
+					Input.Defender.ComparePoint = Penalty.DefenseD6;
+					Input.Defender.bComparePointWasRolledOnD6 = true;
+					Input.Defender.ParticipatingStamina.Add(
+						Gk.Snapshot.Attributes.Stamina);
+					Input.bGoalkeeperParticipated = true;
+					Input.TurnIndex = static_cast<int32>(
+						State.CurrentAttack.AttackSequence);
+					Input.AttackerPlayerId = Attacker
+						== EInitialTurnOrderPlayer::PlayerA
+							? FName(TEXT("PlayerA"))
+							: FName(TEXT("PlayerB"));
+					Input.DefenderPlayerId = Defender
+						== EInitialTurnOrderPlayer::PlayerA
+							? FName(TEXT("PlayerA"))
+							: FName(TEXT("PlayerB"));
+					Input.InvolvedCardIds = {
+						Penalty.Carrier.CardId, Gk.CardId };
+					const auto Execution =
+						FSingleCardFormulaResolutionExecutor::Execute(Input);
+					if (Execution.bSuccess
+						&& FFormulaResolutionResult::StaticStruct()
+							->CompareScriptStruct(
+								&Penalty.FormulaResolution,
+								&Execution.FormulaResolutionResult, 0))
+					{
+						return true;
+					}
+				}
+			}
+			else if (Penalty.Method == EMatchPlayPenaltyMethod::Panenka
+				&& !Penalty.bHasAttackD6 && Penalty.AttackD6 == 0
+				&& !Penalty.bHasDefenseD6 && Penalty.DefenseD6 == 0
+				&& Penalty.bHasPanenkaD6 && Penalty.PanenkaD6 >= 1
+				&& Penalty.PanenkaD6 <= 6
+				&& !Penalty.bHasFormulaResolution
+				&& IsDefaultStruct(Penalty.FormulaResolution)
+				&& (Penalty.PanenkaD6 >= 2) == bGoal)
+			{
+				return true;
+			}
+			break;
+		}
+		default:
+			break;
+		}
+
+		SetFailure(Result,
+			EMatchPlayCurrentAttackRouteStateValidationErrorCode
+				::InvalidConcreteSetPieceStage,
+			TEXT("Penalty stage, method, rolls, outcome, scorer, and lifecycle are incoherent."));
+		return false;
+	}
+
 	bool HasDefaultOrdinaryPayload(
 		const FMatchPlayCurrentAttackState& Attack)
 	{
@@ -1115,18 +1352,8 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 				}
 				break;
 			case ESetPieceSelectedType::Penalty:
-				if (Attack.LifecycleState
-					!= EMatchPlayCurrentAttackLifecycleState::Active)
-				{
-					SetFailure(Result,
-						EMatchPlayCurrentAttackRouteStateValidationErrorCode
-							::WrongRouteLifecycle,
-						TEXT("Unfinished Penalty foundation must remain active."));
-					return Result;
-				}
-				if (!ValidateCarrierPayload(Result, State,
-					Attack.SetPieceRoute.Penalty.Stage,
-					Attack.SetPieceRoute.Penalty.Carrier))
+				if (!ValidatePenaltyPayload(Result, State,
+					Attack.SetPieceRoute.Penalty))
 				{
 					return Result;
 				}

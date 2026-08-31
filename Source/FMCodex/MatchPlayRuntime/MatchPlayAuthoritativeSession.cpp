@@ -683,6 +683,129 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalSetPieceCarrier(
 		});
 }
 
+FMatchPlayAuthoritativeSubmitPenaltyMethodResult
+FMatchPlayAuthoritativeSession::SubmitPenaltyMethod(
+	const FMatchPlayPenaltyMethodRequest& Request)
+{
+	return ExecuteSerialized<FMatchPlayAuthoritativeSubmitPenaltyMethodResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitPenaltyMethod,
+		true,
+		Request.AttackSequence,
+		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult = FMatchPlayPenaltyResolution::SubmitMethod(
+				BeforeState, Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolvePenaltyDirectAttackRollResult
+FMatchPlayAuthoritativeSession::ResolvePenaltyDirectAttackRoll(
+	const FMatchPlayPenaltyRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolvePenaltyDirectAttackRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolvePenaltyDirectAttackRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayPenaltyResolution::ResolveDirectAttackRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolvePenaltyDirectDefenseRollResult
+FMatchPlayAuthoritativeSession::ResolvePenaltyDirectDefenseRoll(
+	const FMatchPlayPenaltyRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolvePenaltyDirectDefenseRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolvePenaltyDirectDefenseRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayPenaltyResolution::ResolveDirectDefenseRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolvePenaltyPanenkaRollResult
+FMatchPlayAuthoritativeSession::ResolvePenaltyPanenkaRoll(
+	const FMatchPlayPenaltyRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolvePenaltyPanenkaRollResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolvePenaltyPanenkaRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayPenaltyResolution::ResolvePanenkaRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeResolveNoLegalPenaltyCarrierResult
+FMatchPlayAuthoritativeSession::ResolveNoLegalSetPieceCarrier(
+	const FMatchPlayPenaltyNoLegalCarrierRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeResolveNoLegalPenaltyCarrierResult>(
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalSetPieceCarrier,
+		true,
+		Request.AttackSequence,
+		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayPenaltyResolution::ResolveNoLegalCarrier(
+					BeforeState, Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeFinishDeploymentResult
 FMatchPlayAuthoritativeSession::FinishDeployment(
 	const int64 AttackSequence,

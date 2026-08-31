@@ -78,7 +78,8 @@ enum class EMatchPlaySetPieceCarrierRouteStage : uint8
 		UMETA(DisplayName = "Direct Awaiting Defense Roll"),
 	AngledAwaitingRoll = 5 UMETA(DisplayName = "Angled Awaiting Roll"),
 	Terminal = 6 UMETA(DisplayName = "Terminal"),
-	PowerAwaitingRoll = 7 UMETA(DisplayName = "Power Awaiting Roll")
+	PowerAwaitingRoll = 7 UMETA(DisplayName = "Power Awaiting Roll"),
+	PanenkaAwaitingRoll = 8 UMETA(DisplayName = "Panenka Awaiting Roll")
 };
 
 UENUM(BlueprintType)
@@ -107,6 +108,22 @@ enum class EMatchPlayLongFreeKickMethod : uint8
 
 UENUM(BlueprintType)
 enum class EMatchPlayLongFreeKickGameplayOutcome : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	Goal = 1 UMETA(DisplayName = "Goal"),
+	NoGoal = 2 UMETA(DisplayName = "No Goal")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayPenaltyMethod : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	Direct = 1 UMETA(DisplayName = "Direct"),
+	Panenka = 2 UMETA(DisplayName = "Panenka")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayPenaltyGameplayOutcome : uint8
 {
 	None = 0 UMETA(DisplayName = "None"),
 	Goal = 1 UMETA(DisplayName = "Goal"),
@@ -535,6 +552,46 @@ struct FMCODEX_API FMatchPlayPenaltyRouteState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
 	FMatchPlaySetPieceParticipantBinding Carrier;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	EMatchPlayPenaltyMethod Method = EMatchPlayPenaltyMethod::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	bool bHasAttackD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	int32 AttackD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	bool bHasDefenseD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	int32 DefenseD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	bool bHasPanenkaD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	int32 PanenkaD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	bool bHasFormulaResolution = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	FFormulaResolutionResult FormulaResolution;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	EMatchPlayPenaltyGameplayOutcome GameplayOutcome =
+		EMatchPlayPenaltyGameplayOutcome::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	bool bHasGoalScorer = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	FName GoalScorerCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Penalty")
+	bool bNoLegalCarrier = false;
 };
 
 USTRUCT(BlueprintType)
