@@ -10,6 +10,7 @@
 #include "../CoreRules/MatchPlayShortFreeKickResolution.h"
 #include "../CoreRules/MatchPlayLongFreeKickResolution.h"
 #include "../CoreRules/MatchPlayPenaltyResolution.h"
+#include "../CoreRules/MatchPlayCornerResolution.h"
 #include "../CoreRules/MatchPlayCarrierNoSelectionNoGoal.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyCrossTerminalResolutionOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackApplyPassControlTerminalResolutionOrchestrator.h"
@@ -141,7 +142,14 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	SubmitPenaltyMethod,
 	ResolvePenaltyDirectAttackRoll,
 	ResolvePenaltyDirectDefenseRoll,
-	ResolvePenaltyPanenkaRoll
+	ResolvePenaltyPanenkaRoll,
+	SubmitCornerAttackerNominations,
+	SubmitCornerDefenderNominations,
+	RequestCornerParticipantSelectionRoll,
+	SubmitCornerIntent,
+	RequestCornerRouteRoll,
+	RequestCornerAttackRoll,
+	RequestCornerDefenseRoll
 };
 
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
@@ -310,6 +318,48 @@ struct FMCODEX_API FMatchPlayAuthoritativeResolveNoLegalPenaltyCarrierResult
 {
 	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
 	FMatchPlayPenaltyResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitCornerAttackerNominationsResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCornerResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitCornerDefenderNominationsResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCornerResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeRequestCornerParticipantSelectionRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCornerResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeSubmitCornerIntentResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCornerResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeRequestCornerRouteRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCornerResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeRequestCornerAttackRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCornerResolutionResult ResolutionResult;
+};
+
+struct FMCODEX_API FMatchPlayAuthoritativeRequestCornerDefenseRollResult
+{
+	FMatchPlayAuthoritativeRuntimeEnvelope RuntimeEnvelope;
+	FMatchPlayCornerResolutionResult ResolutionResult;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeFinishDeploymentResult

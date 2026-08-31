@@ -135,7 +135,33 @@ enum class EMatchPlaySetPieceCornerRouteStage : uint8
 {
 	None = 0 UMETA(DisplayName = "None"),
 	AwaitingAttackerNominations = 1
-		UMETA(DisplayName = "Awaiting Attacker Nominations")
+		UMETA(DisplayName = "Awaiting Attacker Nominations"),
+	AwaitingDefenderNominations = 2
+		UMETA(DisplayName = "Awaiting Defender Nominations"),
+	AwaitingParticipantSelectionRoll = 3
+		UMETA(DisplayName = "Awaiting Participant Selection Roll"),
+	AwaitingIntent = 4 UMETA(DisplayName = "Awaiting Intent"),
+	AwaitingRouteRoll = 5 UMETA(DisplayName = "Awaiting Route Roll"),
+	AwaitingAttackRoll = 6 UMETA(DisplayName = "Awaiting Attack Roll"),
+	AwaitingDefenseRoll = 7 UMETA(DisplayName = "Awaiting Defense Roll"),
+	Terminal = 8 UMETA(DisplayName = "Terminal")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayCornerRouteIntent : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	High = 1 UMETA(DisplayName = "High"),
+	Low = 2 UMETA(DisplayName = "Low")
+};
+
+UENUM(BlueprintType)
+enum class EMatchPlayCornerGameplayOutcome : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	Goal = 1 UMETA(DisplayName = "Goal"),
+	NoGoal = 2 UMETA(DisplayName = "No Goal"),
+	SystemGoal = 3 UMETA(DisplayName = "System Goal")
 };
 
 UENUM(BlueprintType)
@@ -602,6 +628,81 @@ struct FMCODEX_API FMatchPlayCornerRouteState
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
 	EMatchPlaySetPieceCornerRouteStage Stage =
 		EMatchPlaySetPieceCornerRouteStage::None;
+
+	/** Lock acknowledgement is separate from contents for future viewer-redacted projection. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	bool bAttackerNominationsLocked = false;
+
+	/** Authority truth. A future public DTO must redact this from the defender until both sides lock. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	TArray<FMatchPlaySetPieceParticipantBinding> AttackerNominees;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	bool bDefenderNominationsLocked = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	TArray<FMatchPlaySetPieceParticipantBinding> DefenderNominees;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	bool bHasSharedParticipantD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	int32 SharedParticipantD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	FMatchPlaySetPieceParticipantBinding Runner;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	FMatchPlaySetPieceParticipantBinding Helper;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	EInitialTurnOrderPlayer CandidateBonusSide =
+		EInitialTurnOrderPlayer::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	int32 CandidateBonus = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	EMatchPlayCornerRouteIntent IntendedRoute =
+		EMatchPlayCornerRouteIntent::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	bool bHasRouteD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	int32 RawRouteD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	EMatchPlayCornerRouteIntent ActualRoute =
+		EMatchPlayCornerRouteIntent::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	bool bHasAttackD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	int32 AttackD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	bool bHasDefenseD6 = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	int32 DefenseD6 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	bool bHasFormulaResolution = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	FFormulaResolutionResult FormulaResolution;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	EMatchPlayCornerGameplayOutcome GameplayOutcome =
+		EMatchPlayCornerGameplayOutcome::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	bool bHasGoalScorer = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	FName GoalScorerCardId = NAME_None;
 };
 
 USTRUCT(BlueprintType)

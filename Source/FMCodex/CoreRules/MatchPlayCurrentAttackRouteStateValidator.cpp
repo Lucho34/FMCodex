@@ -914,6 +914,434 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 		return false;
 	}
 
+	bool HasDefaultCornerSelectionFacts(
+		const FMatchPlayCornerRouteState& Corner)
+	{
+		return !Corner.bHasSharedParticipantD6
+			&& Corner.SharedParticipantD6 == 0
+			&& IsDefaultStruct(Corner.Runner)
+			&& IsDefaultStruct(Corner.Helper)
+			&& Corner.CandidateBonusSide == EInitialTurnOrderPlayer::None
+			&& Corner.CandidateBonus == 0;
+	}
+
+	bool HasDefaultCornerRouteFacts(
+		const FMatchPlayCornerRouteState& Corner)
+	{
+		return Corner.IntendedRoute == EMatchPlayCornerRouteIntent::None
+			&& !Corner.bHasRouteD6 && Corner.RawRouteD6 == 0
+			&& Corner.ActualRoute == EMatchPlayCornerRouteIntent::None
+			&& !Corner.bHasAttackD6 && Corner.AttackD6 == 0
+			&& !Corner.bHasDefenseD6 && Corner.DefenseD6 == 0
+			&& !Corner.bHasFormulaResolution
+			&& IsDefaultStruct(Corner.FormulaResolution)
+			&& Corner.GameplayOutcome
+				== EMatchPlayCornerGameplayOutcome::None
+			&& !Corner.bHasGoalScorer
+			&& Corner.GoalScorerCardId.IsNone();
+	}
+
+	bool ValidateCornerNomineeList(
+		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
+		const FMatchPlayState& State,
+		const TArray<FMatchPlaySetPieceParticipantBinding>& Nominees,
+		const EInitialTurnOrderPlayer OwnerSide,
+		const EMatchPlaySetPieceParticipantRole Role)
+	{
+		if (Nominees.Num() > 3)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::InvalidCornerNominationState,
+				TEXT("Corner nomination lists may contain at most three cards."));
+			return false;
+		}
+
+		TSet<FName> SeenCardIds;
+		for (const FMatchPlaySetPieceParticipantBinding& Nominee : Nominees)
+		{
+			if (!Nominee.bIsBound || Nominee.CardId.IsNone()
+				|| Nominee.OwnerSide != OwnerSide
+				|| SeenCardIds.Contains(Nominee.CardId))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::InvalidCornerNominationState,
+					TEXT("Corner nominees must be unique bound cards owned by the expected side."));
+				return false;
+			}
+			SeenCardIds.Add(Nominee.CardId);
+
+			FMatchPlaySetPieceParticipantEligibilityRequest Request;
+			Request.ExpectedOwnerSide = OwnerSide;
+			Request.CardId = Nominee.CardId;
+			Request.Role = Role;
+			const FMatchPlaySetPieceParticipantEligibilityResult Eligibility =
+				FMatchPlaySetPieceParticipantEligibility::Evaluate(State, Request);
+			if (!Eligibility.bIsEligible
+				|| !FMatchPlaySetPieceParticipantBinding::StaticStruct()
+					->CompareScriptStruct(
+						&Nominee, &Eligibility.Binding, 0))
+			{
+				SetFailure(Result,
+					EMatchPlayCurrentAttackRouteStateValidationErrorCode
+						::CornerNomineeEligibilityFailed,
+					Eligibility.bIsEligible
+						? TEXT("Corner nominee binding must match canonical side-owned snapshot authority.")
+						: Eligibility.ErrorMessage);
+				return false;
+			}
+		}
+		return true;
+	}
+
+	int32 GetCornerParticipantIndex(
+		const int32 CandidateCount,
+		const int32 RawD6)
+	{
+		if (CandidateCount == 3)
+		{
+			return (RawD6 - 1) / 2;
+		}
+		if (CandidateCount == 2)
+		{
+			return RawD6 <= 3 ? 0 : 1;
+		}
+		return CandidateCount == 1 ? 0 : INDEX_NONE;
+	}
+
+	bool ValidateCornerSelection(
+		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
+		const FMatchPlayCornerRouteState& Corner,
+		const EInitialTurnOrderPlayer Attacker,
+		const EInitialTurnOrderPlayer Defender)
+	{
+		const int32 RunnerIndex = GetCornerParticipantIndex(
+			Corner.AttackerNominees.Num(), Corner.SharedParticipantD6);
+		const int32 HelperIndex = GetCornerParticipantIndex(
+			Corner.DefenderNominees.Num(), Corner.SharedParticipantD6);
+		const int32 Difference = FMath::Abs(
+			Corner.AttackerNominees.Num() - Corner.DefenderNominees.Num());
+		const int32 ExpectedBonus = Difference == 1 ? 2
+			: Difference == 2 ? 3 : 0;
+		const EInitialTurnOrderPlayer ExpectedBonusSide = ExpectedBonus == 0
+			? EInitialTurnOrderPlayer::None
+			: Corner.AttackerNominees.Num() > Corner.DefenderNominees.Num()
+				? Attacker : Defender;
+
+		if (!Corner.bHasSharedParticipantD6
+			|| Corner.SharedParticipantD6 < 1
+			|| Corner.SharedParticipantD6 > 6
+			|| !Corner.AttackerNominees.IsValidIndex(RunnerIndex)
+			|| !Corner.DefenderNominees.IsValidIndex(HelperIndex)
+			|| !FMatchPlaySetPieceParticipantBinding::StaticStruct()
+				->CompareScriptStruct(&Corner.Runner,
+					&Corner.AttackerNominees[RunnerIndex], 0)
+			|| !FMatchPlaySetPieceParticipantBinding::StaticStruct()
+				->CompareScriptStruct(&Corner.Helper,
+					&Corner.DefenderNominees[HelperIndex], 0)
+			|| Corner.CandidateBonus != ExpectedBonus
+			|| Corner.CandidateBonusSide != ExpectedBonusSide)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::CornerParticipantMappingMismatch,
+				TEXT("Corner shared D6 participants and candidate-count bonus must match canonical mapping."));
+			return false;
+		}
+		return true;
+	}
+
+	EMatchPlayCornerRouteIntent GetActualCornerRoute(
+		const EMatchPlayCornerRouteIntent IntendedRoute,
+		const int32 RawD6)
+	{
+		if (RawD6 <= 4)
+		{
+			return IntendedRoute;
+		}
+		return IntendedRoute == EMatchPlayCornerRouteIntent::High
+			? EMatchPlayCornerRouteIntent::Low
+			: EMatchPlayCornerRouteIntent::High;
+	}
+
+	FFormulaResolverInput BuildCornerFormulaInput(
+		const FMatchPlayState& State,
+		const FMatchPlayCornerRouteState& Corner,
+		const FMatchPlayDefendingGoalkeeperQueryResult& Goalkeeper,
+		const EInitialTurnOrderPlayer Attacker,
+		const EInitialTurnOrderPlayer Defender)
+	{
+		FFormulaResolverInput Input;
+		Input.FormulaType = EFormulaType::Finishing;
+		Input.Attacker.BaseValue = Corner.ActualRoute
+			== EMatchPlayCornerRouteIntent::High
+				? Corner.Runner.Snapshot.Attributes.Strength
+				: Corner.Runner.Snapshot.Attributes.Shooting;
+		Input.Attacker.Modifier = Corner.CandidateBonusSide == Attacker
+			? static_cast<float>(Corner.CandidateBonus) : 0.0f;
+		Input.Attacker.ComparePoint = Corner.AttackD6;
+		Input.Attacker.bComparePointWasRolledOnD6 = true;
+		Input.Attacker.ParticipatingStamina.Add(
+			Corner.Runner.Snapshot.Attributes.Stamina);
+
+		const float HelperAttribute = Corner.ActualRoute
+			== EMatchPlayCornerRouteIntent::High
+				? Corner.Helper.Snapshot.Attributes.Strength
+				: Corner.Helper.Snapshot.Attributes.Marking;
+		const float GoalkeeperAttribute = Corner.ActualRoute
+			== EMatchPlayCornerRouteIntent::High
+				? Goalkeeper.Snapshot.GoalkeeperAttributes.Aerial
+				: Goalkeeper.Snapshot.GoalkeeperAttributes.Reflex;
+		Input.Defender.BaseValue = UFormulaResolver::Average(
+			HelperAttribute, GoalkeeperAttribute);
+		Input.Defender.Modifier = 2.0f
+			+ (Corner.CandidateBonusSide == Defender
+				? static_cast<float>(Corner.CandidateBonus) : 0.0f);
+		Input.Defender.ComparePoint = Corner.DefenseD6;
+		Input.Defender.bComparePointWasRolledOnD6 = true;
+		Input.Defender.ParticipatingStamina = {
+			Corner.Helper.Snapshot.Attributes.Stamina,
+			Goalkeeper.Snapshot.Attributes.Stamina };
+		Input.bGoalkeeperParticipated = true;
+		Input.TurnIndex = static_cast<int32>(
+			State.CurrentAttack.AttackSequence);
+		Input.AttackerPlayerId = Attacker
+			== EInitialTurnOrderPlayer::PlayerA
+				? FName(TEXT("PlayerA")) : FName(TEXT("PlayerB"));
+		Input.DefenderPlayerId = Defender
+			== EInitialTurnOrderPlayer::PlayerA
+				? FName(TEXT("PlayerA")) : FName(TEXT("PlayerB"));
+		Input.InvolvedCardIds = {
+			Corner.Runner.CardId, Corner.Helper.CardId, Goalkeeper.CardId };
+		return Input;
+	}
+
+	bool ValidateCornerPayload(
+		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
+		const FMatchPlayState& State,
+		const FMatchPlayCornerRouteState& Corner)
+	{
+		const EInitialTurnOrderPlayer Attacker =
+			State.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = Attacker
+			== EInitialTurnOrderPlayer::PlayerA
+				? EInitialTurnOrderPlayer::PlayerB
+				: EInitialTurnOrderPlayer::PlayerA;
+		const bool bTerminalLifecycle = State.CurrentAttack.LifecycleState
+			== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance;
+		const bool bActiveLifecycle = State.CurrentAttack.LifecycleState
+			== EMatchPlayCurrentAttackLifecycleState::Active;
+
+		if (Corner.Stage
+			== EMatchPlaySetPieceCornerRouteStage::AwaitingAttackerNominations)
+		{
+			if (bActiveLifecycle && !Corner.bAttackerNominationsLocked
+				&& Corner.AttackerNominees.IsEmpty()
+				&& !Corner.bDefenderNominationsLocked
+				&& Corner.DefenderNominees.IsEmpty()
+				&& HasDefaultCornerSelectionFacts(Corner)
+				&& HasDefaultCornerRouteFacts(Corner))
+			{
+				return true;
+			}
+		}
+		else if (Corner.Stage
+			== EMatchPlaySetPieceCornerRouteStage::AwaitingDefenderNominations)
+		{
+			if (bActiveLifecycle && Corner.bAttackerNominationsLocked
+				&& !Corner.bDefenderNominationsLocked
+				&& Corner.DefenderNominees.IsEmpty()
+				&& ValidateCornerNomineeList(Result, State,
+					Corner.AttackerNominees, Attacker,
+					EMatchPlaySetPieceParticipantRole::CornerRunner)
+				&& HasDefaultCornerSelectionFacts(Corner)
+				&& HasDefaultCornerRouteFacts(Corner))
+			{
+				return true;
+			}
+		}
+		else
+		{
+			if (!Corner.bAttackerNominationsLocked
+				|| !Corner.bDefenderNominationsLocked
+				|| !ValidateCornerNomineeList(Result, State,
+					Corner.AttackerNominees, Attacker,
+					EMatchPlaySetPieceParticipantRole::CornerRunner)
+				|| !ValidateCornerNomineeList(Result, State,
+					Corner.DefenderNominees, Defender,
+					EMatchPlaySetPieceParticipantRole::CornerHelper))
+			{
+				if (Result.ErrorCode
+					== EMatchPlayCurrentAttackRouteStateValidationErrorCode::None)
+				{
+					SetFailure(Result,
+						EMatchPlayCurrentAttackRouteStateValidationErrorCode
+							::InvalidCornerNominationState,
+						TEXT("Corner stages after nomination require both ordered lists to be locked and canonical."));
+				}
+				return false;
+			}
+
+			const bool bBothHaveCandidates = !Corner.AttackerNominees.IsEmpty()
+				&& !Corner.DefenderNominees.IsEmpty();
+			if (Corner.Stage
+				== EMatchPlaySetPieceCornerRouteStage
+					::AwaitingParticipantSelectionRoll)
+			{
+				if (bActiveLifecycle && bBothHaveCandidates
+					&& HasDefaultCornerSelectionFacts(Corner)
+					&& HasDefaultCornerRouteFacts(Corner))
+				{
+					return true;
+				}
+			}
+			else if (Corner.Stage
+				== EMatchPlaySetPieceCornerRouteStage::Terminal
+				&& !bBothHaveCandidates)
+			{
+				const bool bAttackerShortage =
+					Corner.AttackerNominees.IsEmpty();
+				const EMatchPlayCornerGameplayOutcome ExpectedOutcome =
+					bAttackerShortage
+						? EMatchPlayCornerGameplayOutcome::NoGoal
+						: EMatchPlayCornerGameplayOutcome::SystemGoal;
+				if (bTerminalLifecycle
+					&& HasDefaultCornerSelectionFacts(Corner)
+					&& Corner.IntendedRoute
+						== EMatchPlayCornerRouteIntent::None
+					&& !Corner.bHasRouteD6 && Corner.RawRouteD6 == 0
+					&& Corner.ActualRoute
+						== EMatchPlayCornerRouteIntent::None
+					&& !Corner.bHasAttackD6 && Corner.AttackD6 == 0
+					&& !Corner.bHasDefenseD6 && Corner.DefenseD6 == 0
+					&& !Corner.bHasFormulaResolution
+					&& IsDefaultStruct(Corner.FormulaResolution)
+					&& Corner.GameplayOutcome == ExpectedOutcome
+					&& !Corner.bHasGoalScorer
+					&& Corner.GoalScorerCardId.IsNone())
+				{
+					return true;
+				}
+			}
+			else if (bBothHaveCandidates
+				&& ValidateCornerSelection(Result, Corner,
+					Attacker, Defender))
+			{
+				const bool bNoIntent = Corner.IntendedRoute
+					== EMatchPlayCornerRouteIntent::None;
+				const bool bNoRoute = !Corner.bHasRouteD6
+					&& Corner.RawRouteD6 == 0
+					&& Corner.ActualRoute
+						== EMatchPlayCornerRouteIntent::None;
+				const bool bNoAttack = !Corner.bHasAttackD6
+					&& Corner.AttackD6 == 0;
+				const bool bNoDefense = !Corner.bHasDefenseD6
+					&& Corner.DefenseD6 == 0;
+				const bool bNoFormulaOrOutcome =
+					!Corner.bHasFormulaResolution
+					&& IsDefaultStruct(Corner.FormulaResolution)
+					&& Corner.GameplayOutcome
+						== EMatchPlayCornerGameplayOutcome::None
+					&& !Corner.bHasGoalScorer
+					&& Corner.GoalScorerCardId.IsNone();
+
+				if (Corner.Stage
+					== EMatchPlaySetPieceCornerRouteStage::AwaitingIntent
+					&& bActiveLifecycle && bNoIntent && bNoRoute
+					&& bNoAttack && bNoDefense && bNoFormulaOrOutcome)
+				{
+					return true;
+				}
+
+				const bool bValidIntent = Corner.IntendedRoute
+					== EMatchPlayCornerRouteIntent::High
+					|| Corner.IntendedRoute
+						== EMatchPlayCornerRouteIntent::Low;
+				if (Corner.Stage
+					== EMatchPlaySetPieceCornerRouteStage::AwaitingRouteRoll
+					&& bActiveLifecycle && bValidIntent && bNoRoute
+					&& bNoAttack && bNoDefense && bNoFormulaOrOutcome)
+				{
+					return true;
+				}
+
+				const bool bValidRoute = bValidIntent && Corner.bHasRouteD6
+					&& Corner.RawRouteD6 >= 1 && Corner.RawRouteD6 <= 6
+					&& Corner.ActualRoute == GetActualCornerRoute(
+						Corner.IntendedRoute, Corner.RawRouteD6);
+				if (Corner.Stage
+					== EMatchPlaySetPieceCornerRouteStage::AwaitingAttackRoll
+					&& bActiveLifecycle && bValidRoute && bNoAttack
+					&& bNoDefense && bNoFormulaOrOutcome)
+				{
+					return true;
+				}
+
+				const bool bValidAttack = Corner.bHasAttackD6
+					&& Corner.AttackD6 >= 1 && Corner.AttackD6 <= 6;
+				if (Corner.Stage
+					== EMatchPlaySetPieceCornerRouteStage::AwaitingDefenseRoll
+					&& bActiveLifecycle && bValidRoute && bValidAttack
+					&& bNoDefense && bNoFormulaOrOutcome)
+				{
+					return true;
+				}
+
+				const bool bValidDefense = Corner.bHasDefenseD6
+					&& Corner.DefenseD6 >= 1 && Corner.DefenseD6 <= 6;
+				if (Corner.Stage
+					== EMatchPlaySetPieceCornerRouteStage::Terminal
+					&& bTerminalLifecycle && bValidRoute && bValidAttack
+					&& bValidDefense && Corner.bHasFormulaResolution)
+				{
+					const FMatchPlayDefendingGoalkeeperQueryResult Goalkeeper =
+						FMatchPlayDefendingGoalkeeperQuery::Query(State, Defender);
+					if (Goalkeeper.bSuccess)
+					{
+						const FFormulaResolverInput FormulaInput =
+							BuildCornerFormulaInput(State, Corner,
+								Goalkeeper, Attacker, Defender);
+						const FFormulaResolutionResult ExpectedFormula =
+							UFormulaResolver::ResolveFormula(FormulaInput);
+						const bool bGoal = ExpectedFormula.bIsGoal;
+						const bool bOutcomeCoherent = Corner.GameplayOutcome
+							== (bGoal
+								? EMatchPlayCornerGameplayOutcome::Goal
+								: EMatchPlayCornerGameplayOutcome::NoGoal);
+						const bool bScorerCoherent = bGoal
+							? Corner.bHasGoalScorer
+								&& Corner.GoalScorerCardId == Corner.Runner.CardId
+							: !Corner.bHasGoalScorer
+								&& Corner.GoalScorerCardId.IsNone();
+						if (bOutcomeCoherent && bScorerCoherent
+							&& FFormulaResolutionResult::StaticStruct()
+								->CompareScriptStruct(&Corner.FormulaResolution,
+									&ExpectedFormula, 0))
+						{
+							return true;
+						}
+					}
+					SetFailure(Result,
+						EMatchPlayCurrentAttackRouteStateValidationErrorCode
+							::CornerFormulaMismatch,
+						TEXT("Corner terminal Formula, outcome, scorer, and goalkeeper facts must match canonical authority."));
+					return false;
+				}
+			}
+		}
+
+		if (Result.ErrorCode
+			== EMatchPlayCurrentAttackRouteStateValidationErrorCode::None)
+		{
+			SetFailure(Result,
+				EMatchPlayCurrentAttackRouteStateValidationErrorCode
+					::InvalidConcreteSetPieceStage,
+				TEXT("Corner stage, locks, nominations, rolls, Formula, outcome, scorer, and lifecycle are incoherent."));
+		}
+		return false;
+	}
+
 	bool HasDefaultOrdinaryPayload(
 		const FMatchPlayCurrentAttackState& Attack)
 	{
@@ -1359,23 +1787,9 @@ FMatchPlayCurrentAttackRouteStateValidator::Validate(
 				}
 				break;
 			case ESetPieceSelectedType::Corner:
-				if (Attack.LifecycleState
-					!= EMatchPlayCurrentAttackLifecycleState::Active)
+				if (!ValidateCornerPayload(Result, State,
+					Attack.SetPieceRoute.Corner))
 				{
-					SetFailure(Result,
-						EMatchPlayCurrentAttackRouteStateValidationErrorCode
-							::WrongRouteLifecycle,
-						TEXT("Unfinished Corner foundation must remain active."));
-					return Result;
-				}
-				if (Attack.SetPieceRoute.Corner.Stage
-					!= EMatchPlaySetPieceCornerRouteStage
-						::AwaitingAttackerNominations)
-				{
-					SetFailure(Result,
-						EMatchPlayCurrentAttackRouteStateValidationErrorCode
-							::InvalidConcreteSetPieceStage,
-						TEXT("Corner concrete entry must await attacker nominations."));
 					return Result;
 				}
 				break;

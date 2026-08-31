@@ -19,7 +19,8 @@ enum class EMatchPlaySetPieceParticipantConsumptionErrorCode : uint8
 	UnsupportedSetPieceType,
 	InvalidShortFreeKickTerminal,
 	InvalidLongFreeKickTerminal,
-	InvalidPenaltyTerminal
+	InvalidPenaltyTerminal,
+	InvalidCornerTerminal
 };
 
 struct FMCODEX_API FMatchPlaySetPieceParticipantConsumptionResult

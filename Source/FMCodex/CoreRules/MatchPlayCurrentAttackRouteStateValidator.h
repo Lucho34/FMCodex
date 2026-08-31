@@ -41,7 +41,11 @@ enum class EMatchPlayCurrentAttackRouteStateValidationErrorCode : uint8
 	AwaitingMethodMissingCarrier UMETA(DisplayName = "Awaiting Method Missing Carrier"),
 	CarrierOwnerSideMismatch UMETA(DisplayName = "Carrier Owner Side Mismatch"),
 	CarrierEligibilityFailed UMETA(DisplayName = "Carrier Eligibility Failed"),
-	CarrierSnapshotBindingMismatch UMETA(DisplayName = "Carrier Snapshot Binding Mismatch")
+	CarrierSnapshotBindingMismatch UMETA(DisplayName = "Carrier Snapshot Binding Mismatch"),
+	InvalidCornerNominationState UMETA(DisplayName = "Invalid Corner Nomination State"),
+	CornerNomineeEligibilityFailed UMETA(DisplayName = "Corner Nominee Eligibility Failed"),
+	CornerParticipantMappingMismatch UMETA(DisplayName = "Corner Participant Mapping Mismatch"),
+	CornerFormulaMismatch UMETA(DisplayName = "Corner Formula Mismatch")
 };
 
 USTRUCT(BlueprintType)

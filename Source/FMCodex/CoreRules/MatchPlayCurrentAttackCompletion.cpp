@@ -360,7 +360,10 @@ namespace MatchPlayCurrentAttackCompletionImplementation
 					== EMatchPlaySetPieceCarrierRouteStage::Terminal)
 			|| (SelectedType == ESetPieceSelectedType::Penalty
 				&& BeforeState.CurrentAttack.SetPieceRoute.Penalty.Stage
-					== EMatchPlaySetPieceCarrierRouteStage::Terminal);
+					== EMatchPlaySetPieceCarrierRouteStage::Terminal)
+			|| (SelectedType == ESetPieceSelectedType::Corner
+				&& BeforeState.CurrentAttack.SetPieceRoute.Corner.Stage
+					== EMatchPlaySetPieceCornerRouteStage::Terminal);
 		if (!Validation.bIsCanonical
 			|| BeforeState.CurrentAttack.RouteKind
 				!= EMatchPlayCurrentAttackRouteKind::SetPiece

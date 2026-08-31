@@ -806,6 +806,183 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalSetPieceCarrier(
 		});
 }
 
+FMatchPlayAuthoritativeSubmitCornerAttackerNominationsResult
+FMatchPlayAuthoritativeSession::SubmitCornerAttackerNominations(
+	const FMatchPlayCornerNominationRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitCornerAttackerNominationsResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::SubmitCornerAttackerNominations,
+		true,
+		Request.AttackSequence,
+		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayCornerResolution::SubmitAttackerNominations(
+					BeforeState, Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeSubmitCornerDefenderNominationsResult
+FMatchPlayAuthoritativeSession::SubmitCornerDefenderNominations(
+	const FMatchPlayCornerNominationRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitCornerDefenderNominationsResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::SubmitCornerDefenderNominations,
+		true,
+		Request.AttackSequence,
+		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayCornerResolution::SubmitDefenderNominations(
+					BeforeState, Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeRequestCornerParticipantSelectionRollResult
+FMatchPlayAuthoritativeSession::RequestCornerParticipantSelectionRoll(
+	const FMatchPlayCornerRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeRequestCornerParticipantSelectionRollResult>(
+		EMatchPlayAuthoritativeCommandKind
+			::RequestCornerParticipantSelectionRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayCornerResolution::RequestParticipantSelectionRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeSubmitCornerIntentResult
+FMatchPlayAuthoritativeSession::SubmitCornerIntent(
+	const FMatchPlayCornerIntentRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeSubmitCornerIntentResult>(
+		EMatchPlayAuthoritativeCommandKind::SubmitCornerIntent,
+		true,
+		Request.AttackSequence,
+		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult = FMatchPlayCornerResolution::SubmitIntent(
+				BeforeState, Request);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeRequestCornerRouteRollResult
+FMatchPlayAuthoritativeSession::RequestCornerRouteRoll(
+	const FMatchPlayCornerRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeRequestCornerRouteRollResult>(
+		EMatchPlayAuthoritativeCommandKind::RequestCornerRouteRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayCornerResolution::RequestRouteRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeRequestCornerAttackRollResult
+FMatchPlayAuthoritativeSession::RequestCornerAttackRoll(
+	const FMatchPlayCornerRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeRequestCornerAttackRollResult>(
+		EMatchPlayAuthoritativeCommandKind::RequestCornerAttackRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayCornerResolution::RequestAttackRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
+FMatchPlayAuthoritativeRequestCornerDefenseRollResult
+FMatchPlayAuthoritativeSession::RequestCornerDefenseRoll(
+	const FMatchPlayCornerRollRequest& Request)
+{
+	return ExecuteSerialized<
+		FMatchPlayAuthoritativeRequestCornerDefenseRollResult>(
+		EMatchPlayAuthoritativeCommandKind::RequestCornerDefenseRoll,
+		true,
+		Request.AttackSequence,
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
+		{
+			Result.ResolutionResult =
+				FMatchPlayCornerResolution::RequestDefenseRoll(
+					BeforeState, Request, PostRouteRollProvider);
+			FDomainExecution Execution;
+			Execution.bSuccess = Result.ResolutionResult.bSuccess;
+			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;
+			Execution.StateDisposition = Result.ResolutionResult.bSuccess
+				? EMatchPlayAuthoritativeStateDisposition::Adopt
+				: EMatchPlayAuthoritativeStateDisposition::DoNotAdopt;
+			Execution.AttackSequence = Request.AttackSequence;
+			return Execution;
+		});
+}
+
 FMatchPlayAuthoritativeFinishDeploymentResult
 FMatchPlayAuthoritativeSession::FinishDeployment(
 	const int64 AttackSequence,

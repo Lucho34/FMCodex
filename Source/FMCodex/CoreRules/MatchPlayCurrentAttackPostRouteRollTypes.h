@@ -40,7 +40,12 @@ enum class EMatchPlayCurrentAttackPostRouteRollPurpose : uint8
 		UMETA(DisplayName = "Penalty Direct Attack"),
 	PenaltyDirectDefense = 18
 		UMETA(DisplayName = "Penalty Direct Defense"),
-	PenaltyPanenka = 19 UMETA(DisplayName = "Penalty Panenka")
+	PenaltyPanenka = 19 UMETA(DisplayName = "Penalty Panenka"),
+	CornerParticipantSelection = 20
+		UMETA(DisplayName = "Corner Participant Selection"),
+	CornerRoute = 21 UMETA(DisplayName = "Corner Route"),
+	CornerAttack = 22 UMETA(DisplayName = "Corner Attack"),
+	CornerDefense = 23 UMETA(DisplayName = "Corner Defense")
 };
 
 USTRUCT(BlueprintType)

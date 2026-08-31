@@ -40,6 +40,11 @@ namespace MatchPlayPostRouteRollProvider
 		case EMatchPlayCurrentAttackPostRouteRollPurpose
 			::PenaltyDirectDefense:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::PenaltyPanenka:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose
+			::CornerParticipantSelection:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerRoute:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerAttack:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerDefense:
 			return true;
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::None:
 		default:

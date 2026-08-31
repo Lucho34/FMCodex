@@ -49,12 +49,44 @@ FMatchPlaySetPieceParticipantConsumption::Extract(
 		State.CurrentAttack.SetPieceRoute.SelectedType;
 	if (SelectedType != ESetPieceSelectedType::ShortFreeKick
 		&& SelectedType != ESetPieceSelectedType::LongFreeKick
-		&& SelectedType != ESetPieceSelectedType::Penalty)
+		&& SelectedType != ESetPieceSelectedType::Penalty
+		&& SelectedType != ESetPieceSelectedType::Corner)
 	{
 		Fail(Result,
 			EMatchPlaySetPieceParticipantConsumptionErrorCode
 				::UnsupportedSetPieceType,
-			TEXT("Only production carrier-based Set Piece routes expose consumable participants."));
+			TEXT("Only production Set Piece routes expose consumable participants."));
+		return Result;
+	}
+	if (SelectedType == ESetPieceSelectedType::Corner)
+	{
+		const FMatchPlayCornerRouteState& Corner =
+			State.CurrentAttack.SetPieceRoute.Corner;
+		if (Corner.Stage != EMatchPlaySetPieceCornerRouteStage::Terminal)
+		{
+			Fail(Result,
+				EMatchPlaySetPieceParticipantConsumptionErrorCode
+					::InvalidCornerTerminal,
+				TEXT("Corner participants may be consumed only from a canonical terminal route."));
+			return Result;
+		}
+
+		// Shortage terminals consume nobody. Normal terminals consume only the
+		// shared-D6 selected Runner and Helper; non-selected nominees and GK stay Available.
+		if (!Corner.AttackerNominees.IsEmpty()
+			&& !Corner.DefenderNominees.IsEmpty())
+		{
+			FMatchPlaySetPieceParticipantToConsume Runner;
+			Runner.OwnerSide = Corner.Runner.OwnerSide;
+			Runner.CardId = Corner.Runner.CardId;
+			Result.Participants.Add(Runner);
+
+			FMatchPlaySetPieceParticipantToConsume Helper;
+			Helper.OwnerSide = Corner.Helper.OwnerSide;
+			Helper.CardId = Corner.Helper.CardId;
+			Result.Participants.Add(Helper);
+		}
+		Result.bSuccess = true;
 		return Result;
 	}
 

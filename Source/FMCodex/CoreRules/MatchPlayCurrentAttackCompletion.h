@@ -180,6 +180,7 @@ private:
 	friend class FMatchPlayRunnerDecline;
 	friend class FMatchPlaySkillDecline;
 	friend class FMatchPlaySendingOffResolution;
+	friend class FMatchPlayCornerResolution;
 	friend class FMatchPlayShortFreeKickResolution;
 	friend class FMatchPlayLongFreeKickResolution;
 	friend class FMatchPlayPenaltyResolution;

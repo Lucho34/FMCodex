@@ -9729,8 +9729,8 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authoritative Session exposes 85 typed serialized entrypoints including Penalty"),
-		SerializedEntrypointCount, 85);
+	TestEqual(TEXT("Authoritative Session exposes 92 typed serialized entrypoints including Corner"),
+		SerializedEntrypointCount, 92);
 
 	return true;
 }
@@ -10093,8 +10093,8 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& !RackSource.Contains(TEXT("SetRenderTransform"))
 			&& !RackSource.Contains(TEXT("SetRenderScale"))
 			&& !CardSource.Contains(TEXT("HandMicroNameFont.Size = 11")));
-	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Penalty"),
-		SerializedEntrypointCount, 85);
+	TestEqual(TEXT("Authority typed serialized entrypoint contract includes Corner"),
+		SerializedEntrypointCount, 92);
 
 	return true;
 }
@@ -10652,8 +10652,8 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 	FString SessionCountSource = SessionSource;
 	const int32 SerializedEntrypointCount = SessionCountSource.ReplaceInline(
 		TEXT("ExecuteSerialized<"), TEXT(""), ESearchCase::CaseSensitive);
-	TestEqual(TEXT("Authority typed serialized entrypoint includes Penalty"),
-		SerializedEntrypointCount, 85);
+	TestEqual(TEXT("Authority typed serialized entrypoint includes Corner"),
+		SerializedEntrypointCount, 92);
 
 	return true;
 }

@@ -253,7 +253,15 @@ bool FFMCodexLocalDevRollOverrideDomainAndMatrixTest::RunTest(
 		{ ETarget::PenaltyDirectDefense,
 			EInvocation::None, EPost::PenaltyDirectDefense, 2 },
 		{ ETarget::PenaltyPanenka,
-			EInvocation::None, EPost::PenaltyPanenka, 6 }
+			EInvocation::None, EPost::PenaltyPanenka, 6 },
+		{ ETarget::CornerParticipantSelection,
+			EInvocation::None, EPost::CornerParticipantSelection, 2 },
+		{ ETarget::CornerRoute,
+			EInvocation::None, EPost::CornerRoute, 5 },
+		{ ETarget::CornerAttack,
+			EInvocation::None, EPost::CornerAttack, 6 },
+		{ ETarget::CornerDefense,
+			EInvocation::None, EPost::CornerDefense, 1 }
 	};
 	for (const FPostCase& Case : Cases)
 	{

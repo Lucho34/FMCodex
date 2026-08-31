@@ -157,6 +157,30 @@ public:
 	ResolveNoLegalSetPieceCarrier(
 		const FMatchPlayPenaltyNoLegalCarrierRequest& Request);
 
+	FMatchPlayAuthoritativeSubmitCornerAttackerNominationsResult
+	SubmitCornerAttackerNominations(
+		const FMatchPlayCornerNominationRequest& Request);
+
+	FMatchPlayAuthoritativeSubmitCornerDefenderNominationsResult
+	SubmitCornerDefenderNominations(
+		const FMatchPlayCornerNominationRequest& Request);
+
+	FMatchPlayAuthoritativeRequestCornerParticipantSelectionRollResult
+	RequestCornerParticipantSelectionRoll(
+		const FMatchPlayCornerRollRequest& Request);
+
+	FMatchPlayAuthoritativeSubmitCornerIntentResult SubmitCornerIntent(
+		const FMatchPlayCornerIntentRequest& Request);
+
+	FMatchPlayAuthoritativeRequestCornerRouteRollResult
+	RequestCornerRouteRoll(const FMatchPlayCornerRollRequest& Request);
+
+	FMatchPlayAuthoritativeRequestCornerAttackRollResult
+	RequestCornerAttackRoll(const FMatchPlayCornerRollRequest& Request);
+
+	FMatchPlayAuthoritativeRequestCornerDefenseRollResult
+	RequestCornerDefenseRoll(const FMatchPlayCornerRollRequest& Request);
+
 	FMatchPlayAuthoritativeFinishDeploymentResult FinishDeployment(
 		int64 AttackSequence,
 		EInitialTurnOrderPlayer RequestingSide);

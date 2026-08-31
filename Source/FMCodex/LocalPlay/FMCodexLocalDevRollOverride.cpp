@@ -13,7 +13,7 @@ namespace FMCodexLocalDevRollOverride
 	{
 		return Target > EFMCodexLocalDevRollTarget::None
 			&& Target <= EFMCodexLocalDevRollTarget
-				::PenaltyPanenka;
+				::CornerDefense;
 	}
 }
 
@@ -252,6 +252,14 @@ FFMCodexLocalDevRollOverride::ResolvePostRouteTarget(
 		return EFMCodexLocalDevRollTarget::PenaltyDirectDefense;
 	case EPostPurpose::PenaltyPanenka:
 		return EFMCodexLocalDevRollTarget::PenaltyPanenka;
+	case EPostPurpose::CornerParticipantSelection:
+		return EFMCodexLocalDevRollTarget::CornerParticipantSelection;
+	case EPostPurpose::CornerRoute:
+		return EFMCodexLocalDevRollTarget::CornerRoute;
+	case EPostPurpose::CornerAttack:
+		return EFMCodexLocalDevRollTarget::CornerAttack;
+	case EPostPurpose::CornerDefense:
+		return EFMCodexLocalDevRollTarget::CornerDefense;
 	default:
 		break;
 	}
