@@ -244,6 +244,12 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 		StatusSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 7.0f));
 	}
 
+	RollHelperText = MakeText(*WidgetTree, TEXT("InlineFormulaRollHelper"));
+	RollHelperText->SetJustification(ETextJustify::Center);
+	RollHelperText->SetAutoWrapText(true);
+	Style.ApplyText(*RollHelperText, EFMCodexPlayerUITextRole::Secondary);
+	RootBody->AddChildToVerticalBox(RollHelperText);
+
 	RouteResultText = MakeText(*WidgetTree, TEXT("InlineFormulaRouteResult"));
 	RouteResultText->SetJustification(ETextJustify::Center);
 	Style.ApplyText(*RouteResultText, EFMCodexPlayerUITextRole::SectionHeading);
@@ -379,6 +385,9 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 			? ESlateVisibility::SelfHitTestInvisible
 			: ESlateVisibility::Collapsed);
 	StatusText->SetText(FText::FromString(Presentation.StatusLabel));
+	RollHelperText->SetText(FText::FromString(Presentation.RollHelperLabel));
+	RollHelperText->SetVisibility(Presentation.RollHelperLabel.IsEmpty()
+		? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	RouteResultText->SetText(FText::FromString(Presentation.RouteResultLabel));
 	RouteResultText->SetVisibility(Presentation.RouteResultLabel.IsEmpty()
 			|| Presentation.bParentOwnsRouteContext
@@ -402,6 +411,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 			: EFMCodexPlayerUIColorRole::PanelRaised,
 		FMargin(12.0f, 9.0f));
 	AttackRegion->SetVisibility(Presentation.bShowFormulaRows
+		&& Presentation.bShowAttackRow
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	Style.ApplyBorder(*DefenseRegion,
 		Presentation.bDefenseRowActive
@@ -409,6 +419,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 			: EFMCodexPlayerUIColorRole::PanelRaised,
 		FMargin(12.0f, 9.0f));
 	DefenseRegion->SetVisibility(Presentation.bShowFormulaRows
+		&& Presentation.bShowDefenseRow
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	if (Presentation.bAttackRowActive)
 	{

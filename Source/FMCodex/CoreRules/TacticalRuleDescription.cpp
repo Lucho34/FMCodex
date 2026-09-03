@@ -261,6 +261,33 @@ namespace TacticalRuleDescription
 	}
 }
 
+const TArray<FTacticalRuleDescriptionOutcome>& FTacticalRuleDescriptionCatalog::GetCornerInitialRouteOutcomes()
+{
+	// Rules 13.1 / MatchPlayCornerResolution::SwitchRoute. Not a gameplay input.
+	static const TArray<FTacticalRuleDescriptionOutcome> Outcomes = {
+		TacticalRuleDescription::Outcome(1, 4, TEXT("Corner.PreferredRoute")),
+		TacticalRuleDescription::Outcome(5, 6, TEXT("Corner.AlternateRoute")) };
+	return Outcomes;
+}
+
+const FTacticalRuleDescriptionBranch* FTacticalRuleDescriptionCatalog::FindCornerRoute(
+	const EMatchPlayCornerRouteIntent Route)
+{
+	using namespace TacticalRuleDescription;
+	static const auto High = Arithmetic(TEXT("Corner.High"),
+		{ Attribute(ERole::Runner, EAttribute::Strength), Roll() },
+		{ Attribute(ERole::Helper, EAttribute::Strength, 0.5f),
+			Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperAerial, 0.5f), Fixed(2), Roll() },
+		false, TEXT("CornerCandidateCountAdvantage"));
+	static const auto Low = Arithmetic(TEXT("Corner.Low"),
+		{ Attribute(ERole::Runner, EAttribute::Shooting), Roll() },
+		{ Attribute(ERole::Helper, EAttribute::Marking, 0.5f),
+			Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperReflex, 0.5f), Fixed(2), Roll() },
+		false, TEXT("CornerCandidateCountAdvantage"));
+	return Route == EMatchPlayCornerRouteIntent::High ? &High
+		: Route == EMatchPlayCornerRouteIntent::Low ? &Low : nullptr;
+}
+
 const TArray<FTacticalRuleDescription>&
 FTacticalRuleDescriptionCatalog::GetAll()
 {

@@ -109,6 +109,12 @@ void UFMCodexCardRackWidget::HandleCardDragFinished()
 	OnCardDragFinished.Broadcast();
 }
 
+void UFMCodexCardRackWidget::HandleCardSelectionRequested(
+	const FName CardId)
+{
+	OnCardSelectionRequested.Broadcast(CardId);
+}
+
 void UFMCodexCardRackWidget::BuildWidgetTree()
 {
 	if (WidgetTree == nullptr || WidgetTree->RootWidget != nullptr)
@@ -330,6 +336,12 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 						TEXT("StableRackCard%d"), Cell.StableIndex)));
 			Card->RefreshFromPresentation(
 				Cell.Card, EFMCodexPlayerCardPresentationMode::HandMicro);
+			if (Cell.bSetPieceSelectable)
+			{
+				Card->ConfigureOnPitchSelection(Cell.Card.CardId, true);
+				Card->OnOnPitchSelectionRequested.AddUObject(
+					this, &UFMCodexCardRackWidget::HandleCardSelectionRequested);
+			}
 			if (Presentation.bLocalRack && Cell.bDeploymentDraggable)
 			{
 				Card->ConfigureDeploymentDrag(Cell.Card.CardId, Cell.bGoalkeeper);
@@ -343,7 +355,44 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 				Card->ClearDeploymentDrag();
 			}
 			RenderedCardWidgets.Add(Card);
-			CellWidget = Card;
+			if (Cell.bSetPieceSelectable || Cell.bSetPieceSelected)
+			{
+				UOverlay* SelectionLayers = WidgetTree->ConstructWidget<UOverlay>(
+					UOverlay::StaticClass(), FName(*FString::Printf(
+						TEXT("SetPieceHandSelectionLayers%d"), Cell.StableIndex)));
+				SelectionLayers->AddChildToOverlay(Card);
+				UBorder* SelectionFrame = WidgetTree->ConstructWidget<UBorder>(
+					UBorder::StaticClass(), FName(*FString::Printf(
+						TEXT("SetPieceHandSelectionFrame%d"), Cell.StableIndex)));
+				SelectionFrame->SetBrushColor(Cell.bSetPieceSelected
+					? FLinearColor(0.95f, 0.72f, 0.18f, 0.42f)
+					: FLinearColor(0.20f, 0.72f, 0.90f, 0.18f));
+				SelectionFrame->SetPadding(FMargin(2.0f));
+				SelectionFrame->SetVisibility(ESlateVisibility::HitTestInvisible);
+				SelectionLayers->AddChildToOverlay(SelectionFrame);
+				if (Cell.bSetPieceSelected)
+				{
+					UTextBlock* Badge = WidgetTree->ConstructWidget<UTextBlock>(
+						UTextBlock::StaticClass(), FName(*FString::Printf(
+							TEXT("SetPieceHandSelectionBadge%d"), Cell.StableIndex)));
+					Badge->SetText(FText::FromString(Cell.SetPieceSelectionOrder > 0
+						? FString::Printf(TEXT("%d"), Cell.SetPieceSelectionOrder)
+						: FString(TEXT("✓"))));
+					Badge->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.82f, 0.25f)));
+					Badge->SetVisibility(ESlateVisibility::HitTestInvisible);
+					if (UOverlaySlot* BadgeSlot = SelectionLayers->AddChildToOverlay(Badge))
+					{
+						BadgeSlot->SetHorizontalAlignment(HAlign_Right);
+						BadgeSlot->SetVerticalAlignment(VAlign_Top);
+						BadgeSlot->SetPadding(FMargin(4.0f));
+					}
+				}
+				CellWidget = SelectionLayers;
+			}
+			else
+			{
+				CellWidget = Card;
+			}
 		}
 
 		UUniformGridSlot* GridSlot = RackGrid->AddChildToUniformGrid(

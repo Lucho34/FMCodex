@@ -26,7 +26,7 @@ The panel never owns a provider pointer and never writes RawD6, CurrentAttack, F
 - Only the matching Host invocation plus matching low-level provider purpose consumes an entry.
 - A consumed entry is removed immediately and disappears from the panel status.
 - `清除此项` removes the selected entry; `全部清除` removes every entry. Clearing never rolls and never changes gameplay state.
-- A D6 target accepts `1..6`; Tactical Point accepts `2..8`. The Host-owned provider decorator validates these domains even if a caller bypasses the UI controls.
+- A D6 target accepts `1..6`; Full D12 accepts `1..12`; Sending-Off selection accepts a zero-based candidate index; the legacy ordinary-only Tactical Point seam accepts `2..8`. The Host-owned provider decorator validates these domains even if a caller bypasses the UI controls.
 - An override hit does not call the wrapped production provider, so it does not advance the seeded `FRandomStream`. The next normal request receives the value it would have received before the override.
 - With no pending override, every call delegates directly to the production provider and preserves the pre-stage sequence and distribution.
 
@@ -34,6 +34,9 @@ The panel never owns a provider pointer and never writes RawD6, CurrentAttack, F
 
 | DEV label | Domain | Host authority invocation | Existing provider purpose |
 |---|---:|---|---|
+| 完整 D12 | 1–12 | typed `RequestInitialActionPointRoll` | `InitialActionPoint` |
+| 定位球类型 | 1–6 | typed `RequestSetPieceTypeRoll` | `SetPieceType` |
+| 罚下候选序号 | 0–N | automatic typed `ResolveSendingOff` after reveal | `SendingOffSelection` |
 | 战术点 | 2–8 | `RollTacticalPoints` | direct `RollOrdinaryTacticalPoint` seam |
 | 直塞路线 | 1–6 | `ResolveInitialRoute` for ThroughBall | `InitialRoute` |
 | 身后球 P1 | 1–6 | BehindDefense P1 decision/plan | `PrimaryAttack` |
@@ -51,6 +54,13 @@ The panel never owns a provider pointer and never writes RawD6, CurrentAttack, F
 | 内切·死角第一枚 / 第二枚 | 1–6 | one typed CutInside DeadCorner pair request | `PairedAttackA` / `PairedAttackB` |
 | 控球推进·路线 | 1–6 | typed PassControl initial-route request | `InitialRoute` |
 | 控球推进·进攻 / 防守 | 1–6 | typed PassControl attack / defense request | `PrimaryAttack` / `PrimaryDefense` |
+| 短任意球·直接进攻 / 防守 | 1–6 | typed Short Free Kick Direct rolls | `ShortFreeKickDirectAttack` / `ShortFreeKickDirectDefense` |
+| 短任意球·配合第一枚 / 第二枚 | 1–6 | one typed Short Free Kick Angled pair request | `ShortFreeKickAngledA` / `ShortFreeKickAngledB` |
+| 长任意球·直接进攻 / 防守 | 1–6 | typed Long Free Kick Direct rolls | `LongFreeKickDirectAttack` / `LongFreeKickDirectDefense` |
+| 长任意球·大力第一枚 / 第二枚 | 1–6 | one typed Long Free Kick Power pair request | `LongFreeKickPowerA` / `LongFreeKickPowerB` |
+| 点球·直接进攻 / 防守 | 1–6 | typed Penalty Direct rolls | `PenaltyDirectAttack` / `PenaltyDirectDefense` |
+| 点球·勺子 | 1–6 | one typed Penalty Panenka request | `PenaltyPanenka` |
+| 角球·对位 / 路线 / 进攻 / 防守 | 1–6 | typed Corner requests | matching explicit Corner purpose |
 
 The Host invocation identity is required because the canonical CoreRules purpose enum intentionally reuses `PrimaryAttack` and `PrimaryDefense` across multiple tactics. The identity is transient call context inside the DEV decorator and is never stored in canonical state.
 
@@ -102,6 +112,13 @@ The small `DEV 掷点` entry is created in non-Shipping LocalPlay only, centered
 
 - Set `传中路线` plus the matching High/Low Attack and Defense targets, then use the three normal central actions. Route, Attack and Defense each consume only their matching one-shot after Session accepts the current `AttackSequence + RequestingSide` request.
 - A stale, wrong-side, premature, duplicate, wrong-family or wrong-actual-branch request is rejected before the decorator/provider call, so the prepared target remains pending for a subsequent fresh request.
+
+## Example: Full D12 and Set Piece production
+
+- Ordinary regression: set `完整 D12 → 2..8`, then use the existing five-tactic production flow. No Set Piece target is consumed.
+- AP1: set `完整 D12 → 1` and optionally set `罚下候选序号`. Authority resolves the ejection only after the D12 ResultHold is disclosed; the index is validated against the current candidate list.
+- Short / Long / Penalty: set `完整 D12 → 9..12`, set the desired `定位球类型`, select and confirm a legal hand Carrier, then prepare the method-specific roll targets.
+- Corner: set type to `1` or `2`, lock both ordered nomination drafts, then prepare `角球·对位`, `角球·路线`, `角球·进攻`, and `角球·防守`. Every target remains one-shot and is consumed only by its accepted typed request.
 
 ## Release removal plan
 

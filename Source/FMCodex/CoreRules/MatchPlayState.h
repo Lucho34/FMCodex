@@ -649,6 +649,10 @@ struct FMCODEX_API FMatchPlayCornerRouteState
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
 	int32 SharedParticipantD6 = 0;
 
+	/** Backend-only scorer draw. Never a shared/player roll; 0 for a sole nominee. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
+	int32 AutomaticScorerD6 = 0;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Set Piece|Corner")
 	FMatchPlaySetPieceParticipantBinding Runner;
 

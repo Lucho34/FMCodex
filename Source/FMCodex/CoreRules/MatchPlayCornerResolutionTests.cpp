@@ -1,6 +1,7 @@
 #include "MatchPlayCornerResolution.h"
 #include "MatchPlayOpeningInitializer.h"
 #include "MatchPlaySetPieceParticipantConsumption.h"
+#include "TacticalRuleDescription.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -264,8 +265,10 @@ namespace MatchPlayCornerResolutionTests
 			State.RuntimeState.CurrentAttackingPlayer;
 		State = FMatchPlayCornerResolution::SubmitAttackerNominations(
 			State, Nomination(State, Attacker, AttackerCount)).AfterState;
+		FQueueRollProvider Provider;
+		Provider.Results = { RollSuccess(1) };
 		return FMatchPlayCornerResolution::SubmitDefenderNominations(
-			State, Nomination(State, Other(Attacker), DefenderCount)).AfterState;
+			State, Nomination(State, Other(Attacker), DefenderCount), &Provider).AfterState;
 	}
 
 	FMatchPlayState SelectParticipants(
@@ -494,7 +497,7 @@ bool FMatchPlayCornerNominationsTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMatchPlayCornerZeroPrecedenceTest,
-	"FMCodex.CoreRules.MatchPlayCorner.ZeroPrecedenceSystemGoalAndConsumption",
+	"FMCodex.CoreRules.MatchPlayCorner.ZeroPrecedenceAutomaticGoalAndConsumption",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FMatchPlayCornerZeroPrecedenceTest::RunTest(const FString& Parameters)
@@ -506,7 +509,13 @@ bool FMatchPlayCornerZeroPrecedenceTest::RunTest(const FString& Parameters)
 			FString::Printf(TEXT("CornerA0D%d"), DefenderCount));
 		const int32 ScoreBefore = State.RuntimeState.PlayerAState.Score
 			+ State.RuntimeState.PlayerBState.Score;
-		const FMatchPlayState Terminal = LockBoth(State, 0, DefenderCount);
+		const auto Attacker = State.RuntimeState.CurrentAttackingPlayer;
+		State = FMatchPlayCornerResolution::SubmitAttackerNominations(
+			State, Nomination(State, Attacker, 0)).AfterState;
+		FQueueRollProvider ZeroProvider;
+		const FMatchPlayState Terminal = FMatchPlayCornerResolution::SubmitDefenderNominations(
+			State, Nomination(State, Other(Attacker), DefenderCount), &ZeroProvider).AfterState;
+		TestTrue(TEXT("Attacker-zero branch never requests backend RNG"), ZeroProvider.Purposes.IsEmpty());
 		const FMatchPlayCornerRouteState& Corner =
 			Terminal.CurrentAttack.SetPieceRoute.Corner;
 		const auto Consumption =
@@ -541,15 +550,15 @@ bool FMatchPlayCornerZeroPrecedenceTest::RunTest(const FString& Parameters)
 			: Terminal.RuntimeState.PlayerBState.Score;
 		const auto Consumption =
 			FMatchPlaySetPieceParticipantConsumption::Extract(Terminal);
-		TestTrue(TEXT("D=0 creates one SystemGoal without scorer/RNG/participants"),
+		TestTrue(TEXT("D=0 creates one Goal with an actual scorer and no player rolls"),
 			Corner.GameplayOutcome
-				== EMatchPlayCornerGameplayOutcome::SystemGoal
+				== EMatchPlayCornerGameplayOutcome::Goal
 				&& ScoreAfter == ScoreBefore + 1
-				&& !Corner.bHasGoalScorer && Corner.GoalScorerCardId.IsNone()
+				&& Corner.bHasGoalScorer && Corner.GoalScorerCardId == Corner.Runner.CardId
 				&& !Corner.bHasSharedParticipantD6
 				&& !Corner.bHasRouteD6 && !Corner.bHasAttackD6
 				&& !Corner.bHasDefenseD6 && !Corner.bHasFormulaResolution
-				&& Consumption.bSuccess && Consumption.Participants.IsEmpty());
+				&& Consumption.bSuccess && Consumption.Participants.Num() == 1);
 		const auto Duplicate =
 			FMatchPlayCornerResolution::SubmitDefenderNominations(
 				Terminal, Nomination(Terminal, Other(Attacker), 0));
@@ -567,17 +576,18 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FMatchPlayCornerSharedD6MappingTest::RunTest(const FString& Parameters)
 {
 	using namespace MatchPlayCornerResolutionTests;
+	for (const auto Owner : { EInitialTurnOrderPlayer::PlayerA, EInitialTurnOrderPlayer::PlayerB })
 	for (int32 AttackerCount = 1; AttackerCount <= 3; ++AttackerCount)
 	{
 		for (int32 DefenderCount = 1; DefenderCount <= 3; ++DefenderCount)
 		{
 			for (int32 RawD6 = 1; RawD6 <= 6; ++RawD6)
 			{
-				FMatchPlayState State = LockBoth(
-					MakeAwaitingAttacker(FString::Printf(
+				FMatchPlayState Seed = MakeAwaitingAttacker(FString::Printf(
 						TEXT("CornerMap%d%d%d"), AttackerCount,
-						DefenderCount, RawD6)),
-					AttackerCount, DefenderCount);
+						DefenderCount, RawD6));
+				Seed.RuntimeState.CurrentAttackingPlayer = Owner;
+				FMatchPlayState State = LockBoth(Seed, AttackerCount, DefenderCount);
 				FQueueRollProvider Provider;
 				Provider.Results = { RollSuccess(RawD6) };
 				const auto Result =
@@ -603,7 +613,8 @@ bool FMatchPlayCornerSharedD6MappingTest::RunTest(const FString& Parameters)
 						&& Corner.Runner.CardId == Corner.AttackerNominees[
 							ExpectedIndex(AttackerCount, RawD6)].CardId
 						&& Corner.Helper.CardId == Corner.DefenderNominees[
-							ExpectedIndex(DefenderCount, RawD6)].CardId);
+							ExpectedIndex(DefenderCount, RawD6)].CardId
+						&& Corner.Runner.OwnerSide == Owner && Corner.Helper.OwnerSide == Other(Owner));
 				TestTrue(TEXT("Canonical +2/+3 bonus belongs only to larger list"),
 					Corner.CandidateBonus == ExpectedBonus
 						&& Corner.CandidateBonusSide == ExpectedSide
@@ -625,7 +636,7 @@ bool FMatchPlayCornerIntentFormulaTest::RunTest(const FString& Parameters)
 	for (const EMatchPlayCornerRouteIntent Intent : {
 		EMatchPlayCornerRouteIntent::High, EMatchPlayCornerRouteIntent::Low })
 	{
-		for (const int32 RawD6 : { 1, 4, 5, 6 })
+		for (const int32 RawD6 : { 1, 2, 3, 4, 5, 6 })
 		{
 			FMatchPlayState State = SelectParticipants(
 				MakeAwaitingAttacker(FString::Printf(TEXT("CornerRoute%d%d"),
@@ -654,6 +665,12 @@ bool FMatchPlayCornerIntentFormulaTest::RunTest(const FString& Parameters)
 				Route.bSuccess && Provider.Purposes.Num() == 1
 					&& Route.AfterState.CurrentAttack.SetPieceRoute.Corner
 						.ActualRoute == Expected);
+			const auto* Description = FTacticalRuleDescriptionCatalog::GetCornerInitialRouteOutcomes()
+				.FindByPredicate([RawD6](const FTacticalRuleDescriptionOutcome& Outcome)
+					{ return RawD6 >= Outcome.Minimum && RawD6 <= Outcome.Maximum; });
+			TestTrue(TEXT("Every educational Corner route range agrees with the authoritative resolver"),
+				Description && (Description->OutcomeId == TEXT("Corner.PreferredRoute"))
+					== (Route.AfterState.CurrentAttack.SetPieceRoute.Corner.ActualRoute == Intent));
 		}
 	}
 
@@ -897,7 +914,7 @@ bool FMatchPlayCornerAdvanceRecoveryReconstructionTest::RunTest(
 		MakeAwaitingAttacker(TEXT("CornerRebuildA0")), 0, 2);
 	const FMatchPlayState DZero = LockBoth(
 		MakeAwaitingAttacker(TEXT("CornerRebuildD0")), 2, 0);
-	TestTrue(TEXT("NoGoal and SystemGoal shortage terminals reconstruct"),
+	TestTrue(TEXT("NoGoal and automatic scorer Goal terminals reconstruct"),
 		FMatchPlayCurrentAttackRouteStateValidator::Validate(AZero).bIsCanonical
 			&& FMatchPlayCurrentAttackRouteStateValidator::Validate(DZero)
 				.bIsCanonical);
@@ -922,6 +939,131 @@ bool FMatchPlayCornerAdvanceRecoveryReconstructionTest::RunTest(
 	TestFalse(TEXT("Reconstruction rejects corrupt shared-D6 mapping"),
 		FMatchPlayCurrentAttackRouteStateValidator::Validate(Corrupt)
 			.bIsCanonical);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayCornerAutomaticScorerMatrixTest,
+	"FMCodex.CoreRules.MatchPlayCorner.AutomaticScorerMappingRetryAndLifecycle",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayCornerAutomaticScorerMatrixTest::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayCornerResolutionTests;
+	const int32 Expected[3][6] = { { 0,0,0,0,0,0 }, { 0,0,0,1,1,1 }, { 0,0,1,1,2,2 } };
+	TestEqual(TEXT("Empty nominations have no mapping"), FMatchPlayCornerResolution::MapParticipantIndex(0, 1), INDEX_NONE);
+	TestEqual(TEXT("Invalid D6 has no mapping"), FMatchPlayCornerResolution::MapParticipantIndex(3, 7), INDEX_NONE);
+	for (const auto Attacker : { EInitialTurnOrderPlayer::PlayerA, EInitialTurnOrderPlayer::PlayerB })
+	for (int32 Count = 1; Count <= 3; ++Count)
+	for (int32 D6 = 1; D6 <= 6; ++D6)
+	{
+		TestEqual(TEXT("Uniform canonical mapping table"),
+			FMatchPlayCornerResolution::MapParticipantIndex(Count, D6), Expected[Count - 1][D6 - 1]);
+		FMatchPlayState State = MakeAwaitingAttacker(TEXT("AutoScorer"));
+		State.RuntimeState.CurrentAttackingPlayer = Attacker;
+		State = FMatchPlayCornerResolution::SubmitAttackerNominations(
+			State, Nomination(State, Attacker, Count)).AfterState;
+		const auto Request = Nomination(State, Other(Attacker), 0);
+		FQueueRollProvider Provider;
+		Provider.Results = { RollSuccess(D6) };
+		auto Stale = Request;
+		Stale.AttackSequence += 1;
+		const auto Rejected = FMatchPlayCornerResolution::SubmitDefenderNominations(State, Stale, &Provider);
+		TestTrue(TEXT("Stale lock neither adopts nor consumes scorer RNG"),
+			!Rejected.bSuccess && Equal(State, Rejected.AfterState) && Provider.Purposes.IsEmpty());
+		auto WrongSide = Request;
+		WrongSide.RequestingSide = Attacker;
+		TestFalse(TEXT("Wrong owner cannot trigger scorer selection"),
+			FMatchPlayCornerResolution::SubmitDefenderNominations(State, WrongSide, &Provider).bSuccess);
+		TestTrue(TEXT("Wrong owner consumes zero RNG"), Provider.Purposes.IsEmpty());
+		if (Count > 1)
+		{
+			FQueueRollProvider Failure;
+			Failure.Results = { RollSuccess(7) };
+			const auto Failed = FMatchPlayCornerResolution::SubmitDefenderNominations(State, Request, &Failure);
+			TestTrue(TEXT("Malformed backend D6 rolls back lock, scorer and score"),
+				!Failed.bSuccess && Equal(State, Failed.AfterState));
+		}
+		const auto Resolved = FMatchPlayCornerResolution::SubmitDefenderNominations(State, Request, &Provider);
+		if (!TestTrue(TEXT("Automatic scorer resolves atomically"), Resolved.bSuccess)) return false;
+		const auto& Terminal = Resolved.AfterState;
+		const auto& Corner = Terminal.CurrentAttack.SetPieceRoute.Corner;
+		const FName Scorer = Corner.AttackerNominees[Expected[Count - 1][D6 - 1]].CardId;
+		TestTrue(TEXT("Actual scorer is the mapped ordered nominee; backend draw is typed"),
+			Corner.GameplayOutcome == EMatchPlayCornerGameplayOutcome::Goal
+				&& Corner.bHasGoalScorer && Corner.GoalScorerCardId == Scorer
+				&& Corner.Runner.OwnerSide == Attacker && !Corner.Helper.bIsBound
+				&& Corner.AutomaticScorerD6 == (Count == 1 ? 0 : D6)
+				&& Provider.Purposes.Num() == (Count == 1 ? 0 : 1)
+				&& (Count == 1 || Provider.Purposes[0] == EMatchPlayCurrentAttackPostRouteRollPurpose::CornerAutomaticScorer));
+		TestTrue(TEXT("Automatic goal has no player roll/route/formula and awaits Advance"),
+			!Corner.bHasSharedParticipantD6 && !Corner.bHasRouteD6
+				&& !Corner.bHasAttackD6 && !Corner.bHasDefenseD6 && !Corner.bHasFormulaResolution
+				&& Corner.IntendedRoute == EMatchPlayCornerRouteIntent::None
+				&& Terminal.CurrentAttack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+				&& Usage(Terminal, Attacker).AvailableCardIds.Contains(Scorer));
+		const int32 DrawCount = Provider.Purposes.Num();
+		TestFalse(TEXT("Duplicate lock cannot score or draw again"),
+			FMatchPlayCornerResolution::SubmitDefenderNominations(Terminal, Request, &Provider).bSuccess);
+		TestEqual(TEXT("Duplicate has zero extra draws"), Provider.Purposes.Num(), DrawCount);
+		FCapturingRecoveryProvider Recovery;
+		const auto Advanced = FMatchPlayCurrentAttackCompletion::AdvanceAfterTerminal(Terminal, 1, Attacker, &Recovery);
+		TestTrue(TEXT("Advance consumes exactly the actual scorer and completes shared Recovery"),
+			Advanced.bSuccess && Advanced.SetPieceCardUsageResults.Num() == 1);
+		for (const auto& Nominee : Corner.AttackerNominees)
+			if (Nominee.CardId != Scorer)
+				TestTrue(TEXT("Unselected nominee remains Available after Advance"),
+					Usage(Advanced.AfterState, Attacker).AvailableCardIds.Contains(Nominee.CardId));
+		FMatchPlayState Corrupt = Terminal;
+		Corrupt.CurrentAttack.SetPieceRoute.Corner.AutomaticScorerD6 = Count == 1 ? 1 : 7;
+		TestFalse(TEXT("Reconstruction rejects corrupt hidden draw"),
+			FMatchPlayCurrentAttackRouteStateValidator::Validate(Corrupt).bIsCanonical);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayCornerPreviewTest,
+	"FMCodex.CoreRules.MatchPlayCorner.ProgressiveFormulaReadOnly",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayCornerPreviewTest::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayCornerResolutionTests;
+	for (const auto Intent : { EMatchPlayCornerRouteIntent::High, EMatchPlayCornerRouteIntent::Low })
+	for (const auto Attacker : { EInitialTurnOrderPlayer::PlayerA, EInitialTurnOrderPlayer::PlayerB })
+	{
+		FMatchPlayState Seed = MakeAwaitingAttacker(TEXT("CornerPreview"));
+		Seed.RuntimeState.CurrentAttackingPlayer = Attacker;
+		FMatchPlayState State = SelectParticipants(Seed, 3, 2, 5);
+		TestTrue(TEXT("Unequal side-owned selection uses its own count"),
+			State.CurrentAttack.SetPieceRoute.Corner.Runner.CardId == FirstOutfield(Seed, Attacker, 3)[2]
+				&& State.CurrentAttack.SetPieceRoute.Corner.Helper.CardId == FirstOutfield(Seed, Other(Attacker), 2)[1]);
+		FMatchPlayCornerIntentRequest IntentRequest;
+		IntentRequest.AttackSequence = 1;
+		IntentRequest.RequestingSide = Attacker;
+		IntentRequest.IntendedRoute = Intent;
+		State = FMatchPlayCornerResolution::SubmitIntent(State, IntentRequest).AfterState;
+		FQueueRollProvider Provider;
+		Provider.Results = { RollSuccess(1), RollSuccess(3), RollSuccess(4) };
+		State = FMatchPlayCornerResolution::RequestRouteRoll(State, RollRequest(State, false), &Provider).AfterState;
+		const auto Before = State;
+		const auto Base = FMatchPlayCornerResolution::QueryFormulaPreview(State);
+		TestTrue(TEXT("Preview publishes known numeric totals without mutation or RNG"),
+			Base.bAvailable && Base.AttackKnownSubtotal == Base.AttackCurrentTotal
+				&& Base.DefenseKnownSubtotal == Base.DefenseCurrentTotal
+				&& Equal(Before, State) && Provider.Purposes.Num() == 1);
+		State = FMatchPlayCornerResolution::RequestAttackRoll(State, RollRequest(State, false), &Provider).AfterState;
+		const auto AttackOnly = FMatchPlayCornerResolution::QueryFormulaPreview(State);
+		TestTrue(TEXT("Attack prefix updates without resolving defense"),
+			AttackOnly.bAvailable && AttackOnly.AttackCurrentTotal == Base.AttackKnownSubtotal + 3
+				&& AttackOnly.DefenseCurrentTotal == Base.DefenseKnownSubtotal);
+		State = FMatchPlayCornerResolution::RequestDefenseRoll(State, RollRequest(State, true), &Provider).AfterState;
+		const auto Final = FMatchPlayCornerResolution::QueryFormulaPreview(State);
+		TestTrue(TEXT("Read-only projection equals canonical final Formula"),
+			Final.bAvailable && Final.AttackCurrentTotal == State.CurrentAttack.SetPieceRoute.Corner.FormulaResolution.AttackerFinalValue
+				&& Final.DefenseCurrentTotal == State.CurrentAttack.SetPieceRoute.Corner.FormulaResolution.DefenderFinalValue);
+	}
 	return true;
 }
 

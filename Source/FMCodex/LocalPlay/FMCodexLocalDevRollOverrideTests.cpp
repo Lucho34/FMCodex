@@ -166,6 +166,10 @@ bool FFMCodexLocalDevRollOverrideDomainAndMatrixTest::RunTest(
 	};
 	Reject(ETarget::ThroughBallRoute, 0);
 	Reject(ETarget::ThroughBallRoute, 7);
+	Reject(ETarget::FullD12, 0);
+	Reject(ETarget::FullD12, 13);
+	Reject(ETarget::SetPieceType, 7);
+	Reject(ETarget::SendingOffSelection, -1);
 	Reject(ETarget::TacticalPoint, 1);
 	Reject(ETarget::TacticalPoint, 9);
 	Reject(ETarget::None, 4);
@@ -283,6 +287,26 @@ bool FFMCodexLocalDevRollOverrideDomainAndMatrixTest::RunTest(
 		Set(Dev, ETarget::TacticalPoint, 8));
 	TestEqual(TEXT("Tactical Point override is authoritative provider output"),
 		Dev.RollOrdinaryTacticalPoint(), 8);
+	TestTrue(TEXT("Full D12 accepts upper domain"),
+		Set(Dev, ETarget::FullD12, 12));
+	TestEqual(TEXT("Full D12 override reaches attack-entry provider"),
+		Dev.RollD12(
+			EMatchPlayAttackEntryRollPurpose::InitialActionPoint).RawRoll,
+		12);
+	TestFalse(TEXT("Full D12 override is one-shot"),
+		Dev.HasPendingOverride(ETarget::FullD12));
+	TestTrue(TEXT("Set Piece type override is accepted"),
+		Set(Dev, ETarget::SetPieceType, 5));
+	TestEqual(TEXT("Set Piece type override reaches attack-entry provider"),
+		Dev.RollD6(EMatchPlayAttackEntryRollPurpose::SetPieceType).RawRoll,
+		5);
+	TestTrue(TEXT("Sending-off index override is accepted"),
+		Set(Dev, ETarget::SendingOffSelection, 3));
+	TestEqual(TEXT("Sending-off override reaches uniform selection"),
+		Dev.SelectUniformIndex(
+			EMatchPlayAttackEntryRollPurpose::SendingOffSelection,
+			5).SelectedIndex,
+		3);
 	return true;
 }
 

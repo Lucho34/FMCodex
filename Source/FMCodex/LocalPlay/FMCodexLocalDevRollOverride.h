@@ -10,6 +10,9 @@
 enum class EFMCodexLocalDevRollTarget : uint8
 {
 	None = 0,
+	FullD12,
+	SetPieceType,
+	SendingOffSelection,
 	TacticalPoint,
 	ThroughBallRoute,
 	ThroughBallBehindDefenseP1,
@@ -49,7 +52,8 @@ enum class EFMCodexLocalDevRollTarget : uint8
 	CornerParticipantSelection,
 	CornerRoute,
 	CornerAttack,
-	CornerDefense
+	CornerDefense,
+	CornerAutomaticScorer
 };
 
 /** Host-only call-site identity used to disambiguate shared CoreRules purposes. */
@@ -101,7 +105,8 @@ struct FMCODEX_API FFMCodexLocalDevPendingRollOverride final
  * seeded stream cursor is not advanced. No canonical state owns this object.
  */
 class FMCODEX_API FFMCodexLocalDevRollOverride final
-	: public IMatchPlayInitialRouteRollProvider
+	: public IMatchPlayAttackEntryRollProvider
+	, public IMatchPlayInitialRouteRollProvider
 	, public IMatchPlayPostRouteRollProvider
 	, public IMatchPlayRecoveryProvider
 {
@@ -139,6 +144,13 @@ public:
 		EMatchPlayRecoveryPurpose Purpose,
 		const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
 		int32 ReturnCount) override;
+	virtual FMatchPlayAttackEntryRollProviderResult RollD12(
+		EMatchPlayAttackEntryRollPurpose Purpose) override;
+	virtual FMatchPlayAttackEntryRollProviderResult RollD6(
+		EMatchPlayAttackEntryRollPurpose Purpose) override;
+	virtual FMatchPlayAttackEntrySelectionProviderResult SelectUniformIndex(
+		EMatchPlayAttackEntryRollPurpose Purpose,
+		int32 CandidateCount) override;
 
 	int32 RollOrdinaryTacticalPoint();
 

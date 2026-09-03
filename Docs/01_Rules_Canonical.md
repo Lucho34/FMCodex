@@ -686,7 +686,7 @@ B. 直射死角：判定公式。
 公开后先执行零人优先级：
 
 1. 进攻方候选为 0：立即 `NoGoal`，无 Runner/Helper、无共享参与者 D6、无路线/Formula、无人消耗。双方都为 0 时仍优先本条。
-2. 进攻方大于 0 且防守方为 0：立即 `SystemGoal`，不得伪造 scorer；无共享参与者 D6、无路线/Formula、无人消耗。
+2. 进攻方大于 0 且防守方为 0：Authority 从有序进攻提名中均匀选出实际 scorer，立即 `Goal`。1 人直接选中、零 RNG；2–3 人通过独立 purpose 的内部 D6，使用下述相同人数映射。原始内部点数与所选 Runner/scorer 保存于权威状态，但不显示给玩家。无玩家共享 D6、Reel、High/Low、路线或攻防 Formula；scorer 只在成功 `AdvanceAfterTerminal` 时进入 Used，并按既有共享 Recovery 处理，其余提名保持 Available，无防守参与者。此规则取代旧的无 scorer `SystemGoal`。
 3. 只有双方都至少 1 人时，才计算人数差修正并取得恰好一枚共享参与者 D6。
 
 同一枚共享 D6 同时映射双方各自列表：

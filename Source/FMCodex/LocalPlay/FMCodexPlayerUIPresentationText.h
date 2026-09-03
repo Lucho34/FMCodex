@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
+#include "../CoreRules/SetPieceTypeSelectionQuery.h"
 
 /**
  * Bounded, presentation-only zh-CN terminology for player-card UMG.
@@ -83,6 +84,20 @@ public:
 	static FText ThroughBallRouteResult(
 		int32 RawD6, EMatchPlayThroughBallActualBranch Route);
 	static FText LongShotTitle();
+	static FText SetPieceName(ESetPieceSelectedType Type);
+	static FText CornerCandidateCount(int32 Count);
+	static FText CornerCandidateInstruction();
+	static FText CornerLockCandidates(bool bAttacking);
+	static FText CornerLockConfirmation(int32 Count);
+	static FText CornerCandidateBonus(int32 Bonus);
+	static FText SetPieceTypeRollHint();
+	static FText LongFreeKickDirectOutcomeHint();
+	static FText LongFreeKickPowerStage();
+	static FText ThroughBallBehindDefenseOutcomeHint();
+	static FText SetPieceCompactOutcomeHint(ESetPieceSelectedType Type);
+	static FText PairedGoalOutcomeHint(int32 RequiredTotal);
+	static FText FirstPairedRollResult(int32 FirstD6);
+	static FText PairedRollResult(int32 FirstD6, int32 SecondD6);
 	static FText LongShotBranchChoiceStage();
 	static FText LongShotDirectChoiceHint();
 	static FText LongShotDeadCornerChoiceHint();

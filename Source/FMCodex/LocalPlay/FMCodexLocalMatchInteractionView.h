@@ -60,7 +60,28 @@ enum class EFMCodexLocalMatchInteractionCategory : uint8
 	RollPassControlRoute,
 	RollPassControlAttack,
 	RollPassControlDefense,
-	RollCrossRoute
+	RollCrossRoute,
+	ResolveSendingOff,
+	RollSetPieceType,
+	SelectSetPieceCarrier,
+	ConfirmSetPieceCarrier,
+	SelectSetPieceMethod,
+	RollShortFreeKickDirectAttack,
+	RollShortFreeKickDirectDefense,
+	RollShortFreeKickAngled,
+	RollLongFreeKickDirectAttack,
+	RollLongFreeKickDirectDefense,
+	RollLongFreeKickPower,
+	RollPenaltyDirectAttack,
+	RollPenaltyDirectDefense,
+	RollPenaltyPanenka,
+	DraftCornerAttacker,
+	DraftCornerDefender,
+	RollCornerParticipantSelection,
+	SelectCornerIntent,
+	RollCornerRoute,
+	RollCornerAttack,
+	RollCornerDefense
 };
 
 struct FMCODEX_API FFMCodexLocalMatchDeploymentOption
@@ -149,6 +170,7 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	bool bGoalkeeper = false;
 	bool bAvailable = false;
 	bool bUsed = false;
+	bool bEjected = false;
 	bool bDeployed = false;
 	bool bGoalkeeperUsedThisMatch = false;
 	bool bGoalkeeperActivatedThisAttack = false;
@@ -282,6 +304,72 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bCurrentAttackActive = false;
 	int64 AttackSequence = 0;
 	int32 ActionPoint = 0;
+	int32 RawInitialD12 = 0;
+	EMatchPlayCurrentAttackRouteKind RouteKind =
+		EMatchPlayCurrentAttackRouteKind::None;
+	EMatchPlaySetPieceRouteStage SetPieceStage =
+		EMatchPlaySetPieceRouteStage::None;
+	ESetPieceSelectedType SetPieceType = ESetPieceSelectedType::None;
+	bool bHasSetPieceTypeRoll = false;
+	int32 RawSetPieceTypeD6 = 0;
+	EMatchPlaySetPieceCarrierRouteStage SetPieceCarrierStage =
+		EMatchPlaySetPieceCarrierRouteStage::None;
+	EMatchPlaySetPieceCornerRouteStage CornerStage =
+		EMatchPlaySetPieceCornerRouteStage::None;
+	TArray<FName> LegalSetPieceCardIds;
+	FName DraftSetPieceCarrierCardId = NAME_None;
+	TArray<FName> DraftCornerNomineeCardIds;
+	bool bCornerLockConfirmationPending = false;
+	TArray<FString> CornerAttackerNomineeRollLabels;
+	TArray<FString> CornerDefenderNomineeRollLabels;
+	bool bShortAngledEligible = false;
+	FMatchPlaySetPieceParticipantBinding SetPieceCarrier;
+	TArray<FMatchPlaySetPieceParticipantBinding> CornerAttackerNominees;
+	TArray<FMatchPlaySetPieceParticipantBinding> CornerDefenderNominees;
+	bool bCornerAttackerNominationsLocked = false;
+	bool bCornerDefenderNominationsLocked = false;
+	bool bHideCornerAttackerNomineeDetails = false;
+	bool bHasCornerSharedParticipantD6 = false;
+	int32 CornerSharedParticipantD6 = 0;
+	FMatchPlaySetPieceParticipantBinding CornerRunner;
+	FMatchPlaySetPieceParticipantBinding CornerHelper;
+	EInitialTurnOrderPlayer CornerCandidateBonusSide =
+		EInitialTurnOrderPlayer::None;
+	int32 CornerCandidateBonus = 0;
+	EMatchPlayCornerRouteIntent CornerIntendedRoute =
+		EMatchPlayCornerRouteIntent::None;
+	bool bHasCornerRouteD6 = false;
+	int32 CornerRouteD6 = 0;
+	EMatchPlayCornerRouteIntent CornerActualRoute =
+		EMatchPlayCornerRouteIntent::None;
+	bool bHasSetPieceAttackD6 = false;
+	int32 SetPieceAttackD6 = 0;
+	bool bHasSetPieceDefenseD6 = false;
+	int32 SetPieceDefenseD6 = 0;
+	/** Read-only formula inputs/totals projected from frozen authority state. */
+	bool bHasSetPieceAttackKnownSubtotal = false;
+	float SetPieceAttackKnownSubtotal = 0.0f;
+	bool bHasSetPieceDefenseKnownSubtotal = false;
+	float SetPieceDefenseKnownSubtotal = 0.0f;
+	bool bHasSetPieceAttackCurrentTotal = false;
+	float SetPieceAttackCurrentTotal = 0.0f;
+	bool bHasSetPieceDefenseCurrentTotal = false;
+	float SetPieceDefenseCurrentTotal = 0.0f;
+	bool bHasSetPiecePairedD6 = false;
+	int32 SetPiecePairedD6A = 0;
+	int32 SetPiecePairedD6B = 0;
+	/** Read-only projection of the canonical stored pair; never drives gameplay. */
+	int32 SetPiecePairedD6Total = 0;
+	bool bHasSetPieceFormula = false;
+	FFormulaResolutionResult SetPieceFormula;
+	bool bHasSetPieceOutcome = false;
+	bool bSetPieceGoal = false;
+	bool bSetPieceSystemGoal = false;
+	bool bSetPieceNoLegalCarrier = false;
+	FName SetPieceGoalScorerCardId = NAME_None;
+	FName SendingOffEjectedCardId = NAME_None;
+	EInitialTurnOrderPlayer SendingOffEjectedOwnerSide =
+		EInitialTurnOrderPlayer::None;
 	EFMCodexLocalMatchMajorPhase MajorPhase =
 		EFMCodexLocalMatchMajorPhase::NoActiveMatch;
 	EMatchPlayCurrentAttackSelectionStage SelectionStage =
@@ -346,7 +434,7 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bThroughBallFeetFormulaComplete = false;
 	bool bThroughBallFeetTerminalActionAvailable = false;
 	bool bTerminalPendingAdvance = false;
-	FString ContinueActionLabel = TEXT("Continue Resolution");
+	FString ContinueActionLabel = TEXT("继续结算");
 };
 
 struct FMCODEX_API FFMCodexLocalMatchScreenPresentation

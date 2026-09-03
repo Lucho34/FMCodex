@@ -342,7 +342,8 @@ void UFMCodexPlayerCardWidget::RefreshFromPresentation(
 {
 	Presentation = InPresentation;
 	PresentationMode = InMode;
-	if (PresentationMode != EFMCodexPlayerCardPresentationMode::PitchMini)
+	if (PresentationMode != EFMCodexPlayerCardPresentationMode::PitchMini
+		&& PresentationMode != EFMCodexPlayerCardPresentationMode::HandMicro)
 	{
 		OnPitchSelectionOptionId = NAME_None;
 		bSelectableForCurrentPrompt = false;
@@ -443,7 +444,8 @@ void UFMCodexPlayerCardWidget::ConfigureOnPitchSelection(
 	const bool bSelectable)
 {
 	bSelectableForCurrentPrompt = bSelectable
-		&& PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini
+		&& (PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini
+			|| PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro)
 		&& !OptionId.IsNone();
 	OnPitchSelectionOptionId = bSelectableForCurrentPrompt
 		? OptionId : NAME_None;

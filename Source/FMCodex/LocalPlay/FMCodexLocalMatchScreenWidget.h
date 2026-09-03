@@ -24,6 +24,7 @@ class UFMCodexSelectionFeedbackToastWidget;
 class UFMCodexTacticalDetailPanelWidget;
 class UFMCodexThroughBallResolutionSurfaceWidget;
 class UImage;
+class UHorizontalBox;
 class USizeBox;
 class UTextBlock;
 class UTexture2D;
@@ -32,7 +33,7 @@ class UWidget;
 class UVerticalBox;
 class SWidget;
 
-/** Stable presentation identity for one covered Cross D6. */
+/** Stable presentation identity for one covered authoritative roll reveal. */
 struct FFMCodexCrossRollRevealIdentity
 {
 	EFMCodexUMGCrossRollRevealKind Kind =
@@ -202,7 +203,7 @@ private:
 		BuildDisplayedThroughBallResolution() const;
 	FFMCodexUMGLongShotResolutionViewModel
 		BuildDisplayedLongShotResolution() const;
-	FFMCodexUMGMatchHeaderViewModel BuildDisplayedHeader() const;
+	FFMCodexUMGMatchHeaderViewModel BuildDisplayedHeader(bool bOutcomeDisclosed) const;
 	bool CanRevealTacticalPointDependentPresentation() const;
 	FFMCodexUMGCardRackViewModel BuildDisplayedHandRack(
 		const FFMCodexUMGCardRackViewModel& Source) const;
@@ -329,6 +330,30 @@ private:
 
 	UFUNCTION()
 	void HandleLongShotContinueRequested();
+	void RefreshSetPieceResolutionSurface();
+	bool DoesSetPieceOwnCurrentPrimaryAction() const;
+	void HandleSetPieceHandCardRequested(FName CardId);
+
+	UFUNCTION()
+	void HandleSetPiecePrimaryRequested();
+	UFUNCTION()
+	void HandleCornerReturnRequested();
+	UFUNCTION()
+	void HandleShortDirectRequested();
+	UFUNCTION()
+	void HandleShortAngledRequested();
+	UFUNCTION()
+	void HandleLongDirectRequested();
+	UFUNCTION()
+	void HandleLongPowerRequested();
+	UFUNCTION()
+	void HandlePenaltyDirectRequested();
+	UFUNCTION()
+	void HandlePenaltyPanenkaRequested();
+	UFUNCTION()
+	void HandleCornerHighRequested();
+	UFUNCTION()
+	void HandleCornerLowRequested();
 
 	UFUNCTION()
 	void HandleLongShotBranchRequested(EFMCodexUMGBranchIntent Intent);
@@ -352,6 +377,8 @@ private:
 	FFMCodexUMGLongShotResolutionViewModel CachedResolvedLongShot;
 	/** Header before a live Tactical Point roll, retained until disclosure. */
 	FFMCodexUMGMatchHeaderViewModel CachedPreRollHeader;
+	/** Exact pending route helper, retained only for the active Corner/Cross reveal. */
+	FString CachedRouteRollHelperLabel;
 
 	EFMCodexUMGInlineFormulaRevealPhase InlineFormulaRevealPhase =
 		EFMCodexUMGInlineFormulaRevealPhase::None;
@@ -452,6 +479,63 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexLongShotResolutionSurfaceWidget>
 		LongShotResolutionSurface;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> SetPieceResolutionSurface;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> SetPieceTitleText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> SetPieceStatusText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> SetPieceDetailText;
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> CornerDraftCandidateList;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> CornerDraftCandidateLabels;
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> SetPieceMethodChoiceRow;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> CornerConfrontationBoard;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> CornerAttackerNomineeCards;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> CornerAttackerNomineeLabels;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> CornerDefenderNomineeCards;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> CornerDefenderNomineeLabels;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> CornerSharedD6Frame;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CornerSharedD6Value;
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexRollReelWidget> CornerParticipantRollReel;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CornerCandidateBonusText;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> SetPiecePrimaryButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CornerReturnButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> SetPieceActionRow;
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> CornerReturnBounds;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ShortDirectButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ShortAngledButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> LongDirectButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> LongPowerButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> PenaltyDirectButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> PenaltyPanenkaButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CornerHighButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CornerLowButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> TacticalPointRevealSurface;

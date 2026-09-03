@@ -71,16 +71,17 @@ FMatchPlaySetPieceParticipantConsumption::Extract(
 			return Result;
 		}
 
-		// Shortage terminals consume nobody. Normal terminals consume only the
-		// shared-D6 selected Runner and Helper; non-selected nominees and GK stay Available.
-		if (!Corner.AttackerNominees.IsEmpty()
-			&& !Corner.DefenderNominees.IsEmpty())
+		// Consume actual participants only, including a backend-selected scorer.
+		// Nomination alone never consumes a card; absent defenders remain absent.
+		if (Corner.Runner.bIsBound)
 		{
 			FMatchPlaySetPieceParticipantToConsume Runner;
 			Runner.OwnerSide = Corner.Runner.OwnerSide;
 			Runner.CardId = Corner.Runner.CardId;
 			Result.Participants.Add(Runner);
-
+		}
+		if (Corner.Helper.bIsBound)
+		{
 			FMatchPlaySetPieceParticipantToConsume Helper;
 			Helper.OwnerSide = Corner.Helper.OwnerSide;
 			Helper.CardId = Corner.Helper.CardId;

@@ -102,7 +102,7 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 	const auto LongShot = FFMCodexTacticalDetailPresentationBuilder::Build(
 		ESkillRuleType::LongShot);
 	const auto* LongDirect = FindBranch(LongShot, TEXT("直接射门"));
-	const auto* LongDead = FindBranch(LongShot, TEXT("直射死角"));
+	const auto* LongDead = FindBranch(LongShot, TEXT("射向死角"));
 	TestTrue(TEXT("Long Shot direct compact attributes and roll-only dead corner"),
 		HasRoleAttribute(LongDirect, ERole::Carrier, EAttribute::LongShot)
 			&& HasRoleAttribute(LongDirect, ERole::Marker, EAttribute::Tackling)
@@ -114,7 +114,7 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 	const auto CutInside = FFMCodexTacticalDetailPresentationBuilder::Build(
 		ESkillRuleType::CutInsideShot);
 	const auto* CutDirect = FindBranch(CutInside, TEXT("直接射门"));
-	const auto* CutDead = FindBranch(CutInside, TEXT("直射死角"));
+	const auto* CutDead = FindBranch(CutInside, TEXT("射向死角"));
 	TestTrue(TEXT("Cut Inside direct compact attributes and roll-only dead corner"),
 		HasRoleAttribute(CutDirect, ERole::Carrier, EAttribute::Shooting)
 			&& HasRoleAttribute(CutDirect, ERole::Carrier, EAttribute::Dribbling)

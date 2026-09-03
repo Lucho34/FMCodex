@@ -3,8 +3,33 @@
 #include "FMCodexPlayerUIPresentationText.h"
 #include "../CoreRules/TacticalRuleDescription.h"
 
+FText FFMCodexTacticalDetailPresentationBuilder::BuildCornerChoiceHint(
+	const EMatchPlayCornerRouteIntent Route)
+{
+	const auto* Rule = FTacticalRuleDescriptionCatalog::FindCornerRoute(Route);
+	if (Rule == nullptr) return FText::GetEmpty();
+	return FText::Format(NSLOCTEXT("FMCodexTacticalDetail", "CornerChoiceHint",
+		"进攻球员：{0}\n防守球员：{1} / 门将：{2}（取平均）"),
+		FFMCodexPlayerUIPresentationText::ResolutionAttribute(Rule->AttackTerms[0].Attribute),
+		FFMCodexPlayerUIPresentationText::ResolutionAttribute(Rule->DefenseTerms[0].Attribute),
+		FFMCodexPlayerUIPresentationText::ResolutionAttribute(Rule->DefenseTerms[1].Attribute));
+}
+
 namespace FMCodexTacticalDetailPresentation
 {
+	FText BuildRouteRangeHint(const TArray<FTacticalRuleDescriptionOutcome>& Outcomes,
+		const FName PreferredId, const FText& PreferredLabel, const FText& AlternateLabel)
+	{
+		TArray<FString> Parts;
+		for (const auto& Outcome : Outcomes)
+		{
+			Parts.Add(FFMCodexPlayerUIPresentationText::TacticalOutcomeRange(
+				Outcome.Minimum, Outcome.Maximum,
+				Outcome.OutcomeId == PreferredId ? PreferredLabel : AlternateLabel).ToString());
+		}
+		return FText::FromString(FString::Join(Parts, TEXT("｜")));
+	}
+
 	FString SkillName(const ESkillRuleType SkillType)
 	{
 		switch (SkillType)
@@ -37,7 +62,7 @@ namespace FMCodexTacticalDetailPresentation
 		if (Id == TEXT("LongShot.Direct") || Id == TEXT("CutInside.Direct"))
 			return TEXT("直接射门");
 		if (Id == TEXT("LongShot.DeadCorner") || Id == TEXT("CutInside.DeadCorner"))
-			return TEXT("直射死角");
+			return FFMCodexPlayerUIPresentationText::LongShotDeadCornerStage().ToString();
 		if (Id == TEXT("PassControl.Pass")) return TEXT("传球推进");
 		if (Id == TEXT("PassControl.Dribble")) return TEXT("盘带推进");
 		if (Id == TEXT("PassControl.Run")) return TEXT("跑动推进");
@@ -215,6 +240,31 @@ namespace FMCodexTacticalDetailPresentation
 		Result.bValid = Result.bValid && !Result.Branches.IsEmpty();
 		return Result;
 	}
+}
+
+FText FFMCodexTacticalDetailPresentationBuilder::BuildCornerRouteHint(const EMatchPlayCornerRouteIntent Intent)
+{
+	if (Intent != EMatchPlayCornerRouteIntent::High && Intent != EMatchPlayCornerRouteIntent::Low)
+		return FText::GetEmpty();
+	const auto High = NSLOCTEXT("FMCodexCorner", "RouteHigh", "高球");
+	const auto Low = NSLOCTEXT("FMCodexCorner", "RouteLow", "低平球");
+	return FMCodexTacticalDetailPresentation::BuildRouteRangeHint(
+		FTacticalRuleDescriptionCatalog::GetCornerInitialRouteOutcomes(), TEXT("Corner.PreferredRoute"),
+		Intent == EMatchPlayCornerRouteIntent::High ? High : Low,
+		Intent == EMatchPlayCornerRouteIntent::High ? Low : High);
+}
+
+FText FFMCodexTacticalDetailPresentationBuilder::BuildCrossRouteHint(const EMatchPlayElectiveBranchIntent Intent)
+{
+	if (Intent != EMatchPlayElectiveBranchIntent::CrossHigh && Intent != EMatchPlayElectiveBranchIntent::CrossLow)
+		return FText::GetEmpty();
+	const auto* Description = FTacticalRuleDescriptionCatalog::FindBySkillType(ESkillRuleType::Cross);
+	if (Description == nullptr) return FText::GetEmpty();
+	const auto High = NSLOCTEXT("FMCodexCross", "RouteHigh", "高球传中");
+	const auto Low = NSLOCTEXT("FMCodexCross", "RouteLow", "低球传中");
+	return FMCodexTacticalDetailPresentation::BuildRouteRangeHint(Description->InitialRouteOutcomes,
+		TEXT("Cross.PreferredRoute"), Intent == EMatchPlayElectiveBranchIntent::CrossHigh ? High : Low,
+		Intent == EMatchPlayElectiveBranchIntent::CrossHigh ? Low : High);
 }
 
 FFMCodexUMGTacticalDetailViewModel

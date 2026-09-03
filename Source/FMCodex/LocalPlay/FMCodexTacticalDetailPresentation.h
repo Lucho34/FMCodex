@@ -8,6 +8,9 @@
 class FMCODEX_API FFMCodexTacticalDetailPresentationBuilder final
 {
 public:
+	static FText BuildCornerChoiceHint(EMatchPlayCornerRouteIntent Route);
+	static FText BuildCornerRouteHint(EMatchPlayCornerRouteIntent Intent);
+	static FText BuildCrossRouteHint(EMatchPlayElectiveBranchIntent Intent);
 	static FFMCodexUMGTacticalDetailViewModel Build(
 		ESkillRuleType SkillType);
 

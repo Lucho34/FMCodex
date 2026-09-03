@@ -81,6 +81,9 @@ private:
 	TObjectPtr<UTextBlock> StatusText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RollHelperText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RouteResultText;
 
 	UPROPERTY(Transient)

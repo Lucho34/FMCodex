@@ -4,6 +4,7 @@
 
 #include "FMCodexLocalDevRollOverride.h"
 #include "FMCodexLocalMatchPlayerController.h"
+#include "FMCodexPlayerUIPresentationText.h"
 
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SButton.h"
@@ -19,6 +20,9 @@ namespace FMCodexLocalDevRollOverrideWidget
 	const TArray<ETarget>& Targets()
 	{
 		static const TArray<ETarget> Values = {
+			ETarget::FullD12,
+			ETarget::SetPieceType,
+			ETarget::SendingOffSelection,
 			ETarget::TacticalPoint,
 			ETarget::ThroughBallRoute,
 			ETarget::ThroughBallBehindDefenseP1,
@@ -43,7 +47,22 @@ namespace FMCodexLocalDevRollOverrideWidget
 			ETarget::CutInsideShotDeadCornerB,
 			ETarget::PassControlRoute,
 			ETarget::PassControlAttack,
-			ETarget::PassControlDefense
+			ETarget::PassControlDefense,
+			ETarget::ShortFreeKickDirectAttack,
+			ETarget::ShortFreeKickDirectDefense,
+			ETarget::ShortFreeKickAngledA,
+			ETarget::ShortFreeKickAngledB,
+			ETarget::LongFreeKickDirectAttack,
+			ETarget::LongFreeKickDirectDefense,
+			ETarget::LongFreeKickPowerA,
+			ETarget::LongFreeKickPowerB,
+			ETarget::PenaltyDirectAttack,
+			ETarget::PenaltyDirectDefense,
+			ETarget::PenaltyPanenka,
+			ETarget::CornerParticipantSelection,
+			ETarget::CornerRoute,
+			ETarget::CornerAttack,
+			ETarget::CornerDefense
 		};
 		return Values;
 	}
@@ -52,6 +71,9 @@ namespace FMCodexLocalDevRollOverrideWidget
 	{
 		switch (Target)
 		{
+		case ETarget::FullD12: return TEXT("行动点 D12");
+		case ETarget::SetPieceType: return TEXT("定位球类型 D6");
+		case ETarget::SendingOffSelection: return TEXT("红牌候选序号（从0开始）");
 		case ETarget::TacticalPoint: return TEXT("战术点");
 		case ETarget::ThroughBallRoute: return TEXT("直塞路线");
 		case ETarget::ThroughBallBehindDefenseP1: return TEXT("身后球 P1");
@@ -77,6 +99,25 @@ namespace FMCodexLocalDevRollOverrideWidget
 		case ETarget::PassControlRoute: return TEXT("控球推进·路线");
 		case ETarget::PassControlAttack: return TEXT("控球推进·进攻");
 		case ETarget::PassControlDefense: return TEXT("控球推进·防守");
+		case ETarget::ShortFreeKickDirectAttack: return TEXT("近距离任意球·直接进攻");
+		case ETarget::ShortFreeKickDirectDefense: return TEXT("近距离任意球·直接防守");
+		case ETarget::ShortFreeKickAngledA: return TEXT("近距离任意球·配合第一枚");
+		case ETarget::ShortFreeKickAngledB: return TEXT("近距离任意球·配合第二枚");
+		case ETarget::LongFreeKickDirectAttack: return FFMCodexPlayerUIPresentationText::SetPieceName(ESetPieceSelectedType::LongFreeKick).ToString() + TEXT("·直接进攻");
+		case ETarget::LongFreeKickDirectDefense: return FFMCodexPlayerUIPresentationText::SetPieceName(ESetPieceSelectedType::LongFreeKick).ToString() + TEXT("·直接防守");
+		case ETarget::LongFreeKickPowerA: return FText::Format(NSLOCTEXT("FMCodexDevRoll", "LongPowerA", "{0}·{1}第一枚"),
+			FFMCodexPlayerUIPresentationText::SetPieceName(ESetPieceSelectedType::LongFreeKick),
+			FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage()).ToString();
+		case ETarget::LongFreeKickPowerB: return FText::Format(NSLOCTEXT("FMCodexDevRoll", "LongPowerB", "{0}·{1}第二枚"),
+			FFMCodexPlayerUIPresentationText::SetPieceName(ESetPieceSelectedType::LongFreeKick),
+			FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage()).ToString();
+		case ETarget::PenaltyDirectAttack: return TEXT("点球·常规进攻");
+		case ETarget::PenaltyDirectDefense: return TEXT("点球·常规防守");
+		case ETarget::PenaltyPanenka: return TEXT("点球·勺子");
+		case ETarget::CornerParticipantSelection: return TEXT("角球·共同对位");
+		case ETarget::CornerRoute: return TEXT("角球·路线");
+		case ETarget::CornerAttack: return TEXT("角球·进攻");
+		case ETarget::CornerDefense: return TEXT("角球·防守");
 		default: return TEXT("未选择");
 		}
 	}
@@ -285,14 +326,19 @@ FText SFMCodexLocalDevRollOverrideWidget::LastCommandText() const
 
 int32 SFMCodexLocalDevRollOverrideWidget::SelectedMinimum() const
 {
-	return FMCodexLocalDevRollOverrideWidget::Targets()[SelectedTargetIndex]
-		== EFMCodexLocalDevRollTarget::TacticalPoint ? 2 : 1;
+	const EFMCodexLocalDevRollTarget Target =
+		FMCodexLocalDevRollOverrideWidget::Targets()[SelectedTargetIndex];
+	return Target == EFMCodexLocalDevRollTarget::SendingOffSelection ? 0
+		: Target == EFMCodexLocalDevRollTarget::TacticalPoint ? 2 : 1;
 }
 
 int32 SFMCodexLocalDevRollOverrideWidget::SelectedMaximum() const
 {
-	return FMCodexLocalDevRollOverrideWidget::Targets()[SelectedTargetIndex]
-		== EFMCodexLocalDevRollTarget::TacticalPoint ? 8 : 6;
+	const EFMCodexLocalDevRollTarget Target =
+		FMCodexLocalDevRollOverrideWidget::Targets()[SelectedTargetIndex];
+	return Target == EFMCodexLocalDevRollTarget::FullD12 ? 12
+		: Target == EFMCodexLocalDevRollTarget::SendingOffSelection ? 19
+		: Target == EFMCodexLocalDevRollTarget::TacticalPoint ? 8 : 6;
 }
 
 void SFMCodexLocalDevRollOverrideWidget::ClampSelectedValue()

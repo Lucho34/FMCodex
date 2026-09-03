@@ -2,18 +2,28 @@
 
 #include "CoreMinimal.h"
 
+#include "../CoreRules/MatchPlayAttackEntryRollProvider.h"
 #include "../CoreRules/MatchPlayInitialRouteRollProvider.h"
 #include "../CoreRules/MatchPlayPostRouteRollProvider.h"
 #include "../CoreRules/MatchPlayRecovery.h"
 
 class FMCODEX_API FFMCodexLocalMatchD6Provider final
-	: public IMatchPlayInitialRouteRollProvider
+	: public IMatchPlayAttackEntryRollProvider
+	, public IMatchPlayInitialRouteRollProvider
 	, public IMatchPlayPostRouteRollProvider
 	, public IMatchPlayRecoveryProvider
 {
 public:
 	FFMCodexLocalMatchD6Provider() = delete;
 	explicit FFMCodexLocalMatchD6Provider(int32 Seed);
+
+	virtual FMatchPlayAttackEntryRollProviderResult RollD12(
+		EMatchPlayAttackEntryRollPurpose Purpose) override;
+	virtual FMatchPlayAttackEntryRollProviderResult RollD6(
+		EMatchPlayAttackEntryRollPurpose Purpose) override;
+	virtual FMatchPlayAttackEntrySelectionProviderResult SelectUniformIndex(
+		EMatchPlayAttackEntryRollPurpose Purpose,
+		int32 CandidateCount) override;
 
 	virtual FMatchPlayInitialRouteRollProviderResult RollD6(
 		EMatchPlayCurrentAttackResolutionRollPurpose Purpose) override;
@@ -26,10 +36,7 @@ public:
 		const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
 		int32 ReturnCount) override;
 
-	/**
-	 * Host-owned roll for the currently implemented ordinary-attack Tactical
-	 * Point slice. Values outside 2..8 belong to deferred AP1/set-piece flows.
-	 */
+	/** Legacy focused-test seam. Production entry uses RollD12. */
 	int32 RollOrdinaryTacticalPoint();
 
 private:

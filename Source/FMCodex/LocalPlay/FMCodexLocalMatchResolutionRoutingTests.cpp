@@ -1274,7 +1274,10 @@ bool FFMCodexLocalMatchPassControlSequentialResolutionTest::RunTest(
 	FFMCodexLocalMatchD6Provider DirectProvider(Seed);
 	FFMCodexLocalDevRollOverride DirectOverride(DirectProvider);
 	FMatchPlayAuthoritativeSession Direct(
-		DirectOverride, DirectOverride, DirectOverride, Rules);
+		static_cast<IMatchPlayInitialRouteRollProvider&>(DirectOverride),
+		static_cast<IMatchPlayPostRouteRollProvider&>(DirectOverride),
+		static_cast<IMatchPlayRecoveryProvider&>(DirectOverride),
+		Rules);
 	FScopedWorld World;
 	auto* Host = World.GetHost();
 	auto* Controller = World.GetController();

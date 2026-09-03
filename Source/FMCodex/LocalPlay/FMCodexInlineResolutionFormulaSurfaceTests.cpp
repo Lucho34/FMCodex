@@ -1310,7 +1310,7 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			&& Rejected->GetInlineFormulaSurface()->GetPresentation()
 				.ContinueActionLabel == TEXT("进攻方掷点"));
 
-	// Tactical Points use their production 2..8 random object, not a D6 skin.
+	// Attack entry uses its production Full D12 random object, not a D6 skin.
 	FFMCodexLocalMatchInteractionView TacticalPendingView = MakeInteraction();
 	TacticalPendingView.bCurrentAttackActive = false;
 	TacticalPendingView.bTacticalPointRollReady = true;
@@ -1323,6 +1323,9 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 	TacticalResolvedView.bCurrentAttackActive = true;
 	TacticalResolvedView.bTacticalPointRollReady = false;
 	TacticalResolvedView.ActionPoint = 6;
+	TacticalResolvedView.RawInitialD12 = 6;
+	TacticalResolvedView.RouteKind =
+		EMatchPlayCurrentAttackRouteKind::Ordinary;
 	TacticalResolvedView.MajorPhase = EFMCodexLocalMatchMajorPhase::Deployment;
 	TacticalResolvedView.InteractionCategory =
 		EFMCodexLocalMatchInteractionCategory::Deploy;
@@ -1375,13 +1378,13 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			TEXT("PitchMiniTacticalMatchPipGroupBounds")) : nullptr;
 	UFMCodexRollReelWidget* TacticalReel =
 		TacticalScreen->GetTacticalPointRollReel();
-	TestTrue(TEXT("Tactical Point reveal uses one clipped 2..8 reel"),
+	TestTrue(TEXT("Full D12 entry reveal uses one clipped 1..12 reel"),
 		TacticalScreen->GetInlineFormulaRevealPhase()
 			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
 			&& TacticalScreen->IsInlineFormulaRevealInputBlocked()
 			&& TacticalReel != nullptr
-			&& TacticalReel->GetPresentation().DomainMinimum == 2
-			&& TacticalReel->GetPresentation().DomainMaximum == 8
+			&& TacticalReel->GetPresentation().DomainMinimum == 1
+			&& TacticalReel->GetPresentation().DomainMaximum == 12
 			&& TacticalReel->HasClippedWindow()
 			&& TacticalReel->GetRenderedChildCount() == 3
 			&& !TacticalScreen->GetMatchHeader()->GetPresentation()
@@ -1472,6 +1475,9 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 	PlayerBResolvedView.bCurrentAttackActive = true;
 	PlayerBResolvedView.bTacticalPointRollReady = false;
 	PlayerBResolvedView.ActionPoint = 6;
+	PlayerBResolvedView.RawInitialD12 = 6;
+	PlayerBResolvedView.RouteKind =
+		EMatchPlayCurrentAttackRouteKind::Ordinary;
 	PlayerBResolvedView.MajorPhase = EFMCodexLocalMatchMajorPhase::Deployment;
 	PlayerBResolvedView.InteractionCategory =
 		EFMCodexLocalMatchInteractionCategory::Deploy;
@@ -1525,11 +1531,17 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 		bOldAttackerRemainsHidden &= Card == nullptr
 			|| Card->GetPresentation().HandMicroTacticalMatchCount == 0;
 	}
-	TestTrue(TEXT("New attacker Hand pips reveal while old attacker remains clear"),
-		PlayerBRevealedCard != nullptr
-			&& PlayerBRevealedCard->GetPresentation()
-				.HandMicroTacticalMatchCount == 2
-			&& bOldAttackerRemainsHidden);
+	TestNotNull(TEXT("New attacker Hand card remains rendered after reveal"),
+		PlayerBRevealedCard);
+	if (PlayerBRevealedCard != nullptr)
+	{
+		TestEqual(TEXT("New attacker Hand pips reveal after Full D12 disclosure"),
+			PlayerBRevealedCard->GetPresentation()
+				.HandMicroTacticalMatchCount,
+			2);
+	}
+	TestTrue(TEXT("Old attacker remains clear after new Full D12 disclosure"),
+		bOldAttackerRemainsHidden);
 
 	// Cross Low is covered by the same state machine and exact RawD6 facts.
 	const auto LowPending = BuildPresentation(MakeCrossHighFacts(
@@ -1601,10 +1613,9 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			&& ScreenSource.Contains(TEXT("RequestContinueResolution();"))
 			&& ScreenSource.Contains(
 				TEXT("MatchController->ContinueResolution();")));
-	TestTrue(TEXT("Tactical production authority remains one direct 2..8 roll"),
-		TacticalProviderSource.Contains(TEXT("RandomStream.RandRange(2, 8)"))
-			&& HostSource.Contains(TEXT("RollOrdinaryTacticalPoint()"))
-			&& HostSource.Contains(TEXT("BeginOrdinaryAttack(")));
+	TestTrue(TEXT("Production attack entry remains one authoritative Full D12 roll"),
+		TacticalProviderSource.Contains(TEXT("RandomStream.RandRange(1, 12)"))
+			&& HostSource.Contains(TEXT("RequestInitialActionPointRoll(")));
 	return true;
 }
 

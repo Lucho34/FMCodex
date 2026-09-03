@@ -263,7 +263,14 @@
 - 双方各可提交0–3个保序、合法且不重复的Available non-GK候选；数组顺序在snapshot重建后保持。
 - 进攻方先lock；防守方lock前只能看到对方已锁定，不能看到IDs或顺序；双方lock后列表才共同公开。
 - 双方均非零时只调用一次shared participant D6，并同时映射两表：3人时1–2/3–4/5–6，2人时1–3/4–6，1人时1–6。
-- 进攻方0直接NoGoal；进攻方大于0且防守方0直接SystemGoal；双方0使用进攻方0的NoGoal优先级。以上路径都不调用shared D6、route或Formula，不消耗参与者，也不伪造scorer。
+- 进攻方0（含双方0）直接NoGoal，零RNG、零参与者消耗。进攻方大于0且防守方0自动确定真实提名射手并Goal：1人零RNG；2/3人按各自D6等概率表抽样。后台purpose为CornerAutomaticScorer，不创建shared/route/attack/defense玩家roll、High/Low或Formula；terminal保留射手Available，Advance只消耗射手，再执行不变的shared Recovery，未选中提名者保持Available。
+- 映射穷举双方1–3人数组合、D6=1–6及相反攻守ownership，3人表为1–2/3–4/5–6，2人为1–3/4–6，1人覆盖1–6；人数差1/2仍只给较多方+2/+3。自动射手同样穷举，wrong-side/stale/duplicate不消费RNG，provider失败或非法D6不得adopt锁定、射手、比分或terminal；snapshot重建与normal/final Advance不得重抽。
+- Corner High/Low只读Formula preview覆盖pre-roll、attack-only和final，current total与同一canonical Formula输入一致，保留半点精度、固定+2与人数优势，零RNG且不改变state。LocalPlay验证数值投影及共享揭示门控，不以UMG自算补齐缺失事实。
+- Corner生产UI验证0/1/2提名首次锁定仅确认、返回保留顺序、继续恰好提交一次；3人直接提交。共享D6在对位板逐帧Reel后ResultHold披露高亮，稳定High/Low移除候选表与raw D6，路线使用中央共享揭示；自动Goal直接显示真实射手及下一回合。长名收缩和实际节奏仍须USER PIE。
+- 编辑态玩家文案为`候选 / 已选：X/3`，显示当前有序姓名；移除后序号紧凑，重选追加末尾，切到防守方编辑后不得残留已封存进攻名单。确认动作保持同一横向结构、单行标签；返回后恢复正常锁定文案与原尺寸合同。
+- Corner 和 Cross 的 High/Low 路线掷点 helper 必须显示完整 D6 范围，与各自 authoritative resolver 的六个输入逐项一致；在 Waiting、RequestInFlight、Cycling、Settling 保留同一提示，按各自既有 route result disclosure 隐藏，不带入后续 Formula/terminal。使用可控 reveal advance 验证 DTO、实际 helper widget 与重复 refresh，不用真实 sleep；比分和其他骰子提示门控不变。候选优势 term 为`候选人数占优加成 2/3`，与`防守加成 2`区分且值不变。
+- 远距离任意球 Power 的方法按钮、待掷点标题/CTA、Goal/NoGoal 与 DEV 方法名使用集中`重炮轰门`，正常表现不残留旧方法名；Direct 和近距离任意球名称不变。Power 仍是单次请求的原子双骰，阈值提示仍为`两枚点数总和达到 11 或以上：进球`，无防守骰或攻防 Formula。
+- Corner Goal 命名真实 Runner/scorer；NoGoal 命名进攻球员并使用 actual route，不伪造扑救、射偏、头球或凌空。进攻方0（包括0v0）显示`进攻方无人抢到点`及`角球 · 未进球`，不产生玩家 roll 或 Formula。
 - 双方均非零时人数差0无修正、差1对较多方+2、差2对较多方+3；不存在旧的较少方-2/-4。
 - shared D6选出的实际Runner/Helper、raw D6与双方ordered lists可重建；不允许两次独立participant RNG。
 - High/Low intended route、1–4保留/5–6切换、raw route D6与actual route可重建；High/Low Formula使用canonical属性和较多方modifier。
@@ -360,6 +367,7 @@
 - 一次攻击完成且下一方尚未掷点时，上一攻击的战术点不保留在任一侧；旧攻击方第一节点为 `Used`，新攻击方第一节点为 `Current`。
 - LocalPlay 可按当前合法操作方重新映射本方/对方左右面板；测试必须按玩家身份确认 Chip 随新攻击方移动，不得假设某个玩家永久位于固定屏幕侧。
 - Header 中央比分必须按当前左右槽位显示的玩家身份映射权威分数：`LeftScore = ScoreOf(LeftDisplayedPlayer)`、`RightScore = ScoreOf(RightDisplayedPlayer)`。当前攻击角色只控制攻击提示、Tracker 与 TP 归属，不得控制比分归属或排序。
+- 比分 disclosure 必须在真实 Corner、Penalty 与普通战术 Goal 链采样 Cycling、Settling、早期 ResultHold、Formula 已披露但 Narrative 未披露、Narrative 首次出现：Authority 可以已计分，玩家比分只能与进球叙事同次刷新。双骰需额外采样第一枚 hold、A→B handoff 与第二枚 settling，防止重新缓存最新 Authority 分数。无可见 roll 的自动 Goal、NoGoal、重复 snapshot、fresh terminal reconstruction、Advance、新比赛与左右视角映射都不得造成提前披露或旧分数残留。测试不得将 Formula 披露误当成 Goal 叙事披露；USER PIE 仍验证实际视觉同步。
 - 两侧身份组采用相同的“玩家名（可选 TP Chip）/ 进攻回合 1 2 3”结构并整体居中。三个节点均保持 `24 x 24` circular RoundedBox。
 - `Remaining` 使用近乎空心的低填充、弱轮廓和低数字对比；`Used` 使用明显实心填充和高对比数字；`Current` 使用最强轮廓及不同内层对比。状态不得只依赖 Arsenal/Manchester City 的固定色相。
 

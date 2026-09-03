@@ -701,6 +701,96 @@ struct FMCODEX_API FFMCodexLocalMatchAdvanceAfterTerminalResult
 	FString ErrorMessage;
 };
 
+/** Bounded LocalPlay transport wrapper for the already-typed Session APIs. */
+template <typename TAuthoritativeResult>
+struct TFMCodexLocalMatchTypedCommandResult
+{
+	bool bSuccess = false;
+	TAuthoritativeResult AuthoritativeResult;
+	EFMCodexLocalMatchHostErrorCode ErrorCode =
+		EFMCodexLocalMatchHostErrorCode::None;
+	FString ErrorMessage;
+};
+
+using FFMCodexLocalMatchRequestInitialActionPointRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeRequestInitialActionPointRollResult>;
+using FFMCodexLocalMatchRequestSetPieceTypeRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeRequestSetPieceTypeRollResult>;
+using FFMCodexLocalMatchResolveSendingOffResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveSendingOffResult>;
+using FFMCodexLocalMatchSubmitSetPieceCarrierResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeSubmitSetPieceCarrierResult>;
+using FFMCodexLocalMatchSubmitShortFreeKickMethodResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeSubmitShortFreeKickMethodResult>;
+using FFMCodexLocalMatchResolveShortFreeKickDirectAttackRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveShortFreeKickDirectAttackRollResult>;
+using FFMCodexLocalMatchResolveShortFreeKickDirectDefenseRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveShortFreeKickDirectDefenseRollResult>;
+using FFMCodexLocalMatchResolveShortFreeKickAngledRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveShortFreeKickAngledRollResult>;
+using FFMCodexLocalMatchSubmitLongFreeKickMethodResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeSubmitLongFreeKickMethodResult>;
+using FFMCodexLocalMatchResolveLongFreeKickDirectAttackRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveLongFreeKickDirectAttackRollResult>;
+using FFMCodexLocalMatchResolveLongFreeKickDirectDefenseRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveLongFreeKickDirectDefenseRollResult>;
+using FFMCodexLocalMatchResolveLongFreeKickPowerRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveLongFreeKickPowerRollResult>;
+using FFMCodexLocalMatchSubmitPenaltyMethodResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeSubmitPenaltyMethodResult>;
+using FFMCodexLocalMatchResolvePenaltyDirectAttackRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolvePenaltyDirectAttackRollResult>;
+using FFMCodexLocalMatchResolvePenaltyDirectDefenseRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolvePenaltyDirectDefenseRollResult>;
+using FFMCodexLocalMatchResolvePenaltyPanenkaRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolvePenaltyPanenkaRollResult>;
+using FFMCodexLocalMatchResolveNoLegalShortFreeKickCarrierResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveNoLegalSetPieceCarrierResult>;
+using FFMCodexLocalMatchResolveNoLegalLongFreeKickCarrierResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveNoLegalLongFreeKickCarrierResult>;
+using FFMCodexLocalMatchResolveNoLegalPenaltyCarrierResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeResolveNoLegalPenaltyCarrierResult>;
+using FFMCodexLocalMatchSubmitCornerAttackerNominationsResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeSubmitCornerAttackerNominationsResult>;
+using FFMCodexLocalMatchSubmitCornerDefenderNominationsResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeSubmitCornerDefenderNominationsResult>;
+using FFMCodexLocalMatchRequestCornerParticipantSelectionRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeRequestCornerParticipantSelectionRollResult>;
+using FFMCodexLocalMatchSubmitCornerIntentResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeSubmitCornerIntentResult>;
+using FFMCodexLocalMatchRequestCornerRouteRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeRequestCornerRouteRollResult>;
+using FFMCodexLocalMatchRequestCornerAttackRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeRequestCornerAttackRollResult>;
+using FFMCodexLocalMatchRequestCornerDefenseRollResult =
+	TFMCodexLocalMatchTypedCommandResult<
+		FMatchPlayAuthoritativeRequestCornerDefenseRollResult>;
+
 UCLASS()
 class FMCODEX_API AFMCodexLocalMatchHostGameMode final
 	: public AGameModeBase
@@ -733,6 +823,67 @@ public:
 
 	FFMCodexLocalMatchRollTacticalPointsResult RollTacticalPoints(
 		EInitialTurnOrderPlayer RequestingSide);
+
+	FFMCodexLocalMatchRequestInitialActionPointRollResult
+	RequestInitialActionPointRoll(const FMatchPlayFullD12EntryRequest& Request);
+	FFMCodexLocalMatchRequestSetPieceTypeRollResult RequestSetPieceTypeRoll(
+		const FMatchPlaySetPieceTypeRollRequest& Request);
+	FFMCodexLocalMatchResolveSendingOffResult ResolveSendingOff(
+		const FMatchPlaySendingOffResolutionRequest& Request);
+	FFMCodexLocalMatchSubmitSetPieceCarrierResult SubmitSetPieceCarrier(
+		const FMatchPlaySetPieceCarrierSelectionRequest& Request);
+	FFMCodexLocalMatchSubmitShortFreeKickMethodResult SubmitShortFreeKickMethod(
+		const FMatchPlayShortFreeKickMethodRequest& Request);
+	FFMCodexLocalMatchResolveShortFreeKickDirectAttackRollResult
+	ResolveShortFreeKickDirectAttackRoll(
+		const FMatchPlayShortFreeKickRollRequest& Request);
+	FFMCodexLocalMatchResolveShortFreeKickDirectDefenseRollResult
+	ResolveShortFreeKickDirectDefenseRoll(
+		const FMatchPlayShortFreeKickRollRequest& Request);
+	FFMCodexLocalMatchResolveShortFreeKickAngledRollResult
+	ResolveShortFreeKickAngledRoll(
+		const FMatchPlayShortFreeKickRollRequest& Request);
+	FFMCodexLocalMatchSubmitLongFreeKickMethodResult SubmitLongFreeKickMethod(
+		const FMatchPlayLongFreeKickMethodRequest& Request);
+	FFMCodexLocalMatchResolveLongFreeKickDirectAttackRollResult
+	ResolveLongFreeKickDirectAttackRoll(
+		const FMatchPlayLongFreeKickRollRequest& Request);
+	FFMCodexLocalMatchResolveLongFreeKickDirectDefenseRollResult
+	ResolveLongFreeKickDirectDefenseRoll(
+		const FMatchPlayLongFreeKickRollRequest& Request);
+	FFMCodexLocalMatchResolveLongFreeKickPowerRollResult ResolveLongFreeKickPowerRoll(
+		const FMatchPlayLongFreeKickRollRequest& Request);
+	FFMCodexLocalMatchSubmitPenaltyMethodResult SubmitPenaltyMethod(
+		const FMatchPlayPenaltyMethodRequest& Request);
+	FFMCodexLocalMatchResolvePenaltyDirectAttackRollResult
+	ResolvePenaltyDirectAttackRoll(const FMatchPlayPenaltyRollRequest& Request);
+	FFMCodexLocalMatchResolvePenaltyDirectDefenseRollResult
+	ResolvePenaltyDirectDefenseRoll(const FMatchPlayPenaltyRollRequest& Request);
+	FFMCodexLocalMatchResolvePenaltyPanenkaRollResult ResolvePenaltyPanenkaRoll(
+		const FMatchPlayPenaltyRollRequest& Request);
+	FFMCodexLocalMatchResolveNoLegalShortFreeKickCarrierResult
+	ResolveNoLegalShortFreeKickCarrier(
+		const FMatchPlayShortFreeKickNoLegalCarrierRequest& Request);
+	FFMCodexLocalMatchResolveNoLegalLongFreeKickCarrierResult
+	ResolveNoLegalLongFreeKickCarrier(
+		const FMatchPlayLongFreeKickNoLegalCarrierRequest& Request);
+	FFMCodexLocalMatchResolveNoLegalPenaltyCarrierResult
+	ResolveNoLegalPenaltyCarrier(
+		const FMatchPlayPenaltyNoLegalCarrierRequest& Request);
+	FFMCodexLocalMatchSubmitCornerAttackerNominationsResult
+	SubmitCornerAttackerNominations(const FMatchPlayCornerNominationRequest& Request);
+	FFMCodexLocalMatchSubmitCornerDefenderNominationsResult
+	SubmitCornerDefenderNominations(const FMatchPlayCornerNominationRequest& Request);
+	FFMCodexLocalMatchRequestCornerParticipantSelectionRollResult
+	RequestCornerParticipantSelectionRoll(const FMatchPlayCornerRollRequest& Request);
+	FFMCodexLocalMatchSubmitCornerIntentResult SubmitCornerIntent(
+		const FMatchPlayCornerIntentRequest& Request);
+	FFMCodexLocalMatchRequestCornerRouteRollResult RequestCornerRouteRoll(
+		const FMatchPlayCornerRollRequest& Request);
+	FFMCodexLocalMatchRequestCornerAttackRollResult RequestCornerAttackRoll(
+		const FMatchPlayCornerRollRequest& Request);
+	FFMCodexLocalMatchRequestCornerDefenseRollResult RequestCornerDefenseRoll(
+		const FMatchPlayCornerRollRequest& Request);
 
 #if WITH_DEV_AUTOMATION_TESTS
 	FFMCodexLocalMatchBeginOrdinaryAttackResult BeginOrdinaryAttack(
@@ -1021,6 +1172,29 @@ private:
 		const FSkillRuleSnapshotSet SkillRuleSet;
 		FMatchPlayAuthoritativeSession AuthoritativeSession;
 	};
+
+	template <typename TLocalResult, typename TCallable>
+	TLocalResult ExecuteTypedCommand(TCallable&& Callable)
+	{
+		TLocalResult Result;
+		if (!ActiveMatchRuntime.IsValid())
+		{
+			Result.ErrorCode = EFMCodexLocalMatchHostErrorCode::NoActiveMatch;
+			Result.ErrorMessage = TEXT("No local match is active.");
+			return Result;
+		}
+		Result.AuthoritativeResult = Callable(*ActiveMatchRuntime);
+		const FMatchPlayAuthoritativeRuntimeEnvelope& Envelope =
+			Result.AuthoritativeResult.RuntimeEnvelope;
+		Result.bSuccess = Envelope.bAccepted && Envelope.bDomainSuccess;
+		if (!Result.bSuccess)
+		{
+			Result.ErrorCode =
+				EFMCodexLocalMatchHostErrorCode::AuthoritativeCommandFailed;
+			Result.ErrorMessage = Envelope.ErrorMessage;
+		}
+		return Result;
+	}
 
 	TUniquePtr<FLocalMatchRuntime> ActiveMatchRuntime;
 };

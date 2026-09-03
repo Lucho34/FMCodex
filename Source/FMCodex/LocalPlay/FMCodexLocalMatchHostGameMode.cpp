@@ -91,7 +91,9 @@ AFMCodexLocalMatchHostGameMode::FLocalMatchRuntime::FLocalMatchRuntime(
 		DevRollOverride,
 		DevRollOverride,
 		DevRollOverride,
+		DevRollOverride,
 #else
+		D6Provider,
 		D6Provider,
 		D6Provider,
 		D6Provider,
@@ -374,6 +376,133 @@ AFMCodexLocalMatchHostGameMode::RollTacticalPoints(
 	}
 	return Result;
 }
+
+FFMCodexLocalMatchRequestInitialActionPointRollResult
+AFMCodexLocalMatchHostGameMode::RequestInitialActionPointRoll(
+	const FMatchPlayFullD12EntryRequest& Request)
+{
+	return ExecuteTypedCommand<
+		FFMCodexLocalMatchRequestInitialActionPointRollResult>(
+		[&Request](FLocalMatchRuntime& Runtime)
+		{
+			return Runtime.AuthoritativeSession.RequestInitialActionPointRoll(
+				Request);
+		});
+}
+
+FFMCodexLocalMatchRequestSetPieceTypeRollResult
+AFMCodexLocalMatchHostGameMode::RequestSetPieceTypeRoll(
+	const FMatchPlaySetPieceTypeRollRequest& Request)
+{
+	return ExecuteTypedCommand<
+		FFMCodexLocalMatchRequestSetPieceTypeRollResult>(
+		[&Request](FLocalMatchRuntime& Runtime)
+		{
+			return Runtime.AuthoritativeSession.RequestSetPieceTypeRoll(Request);
+		});
+}
+
+FFMCodexLocalMatchResolveSendingOffResult
+AFMCodexLocalMatchHostGameMode::ResolveSendingOff(
+	const FMatchPlaySendingOffResolutionRequest& Request)
+{
+	return ExecuteTypedCommand<FFMCodexLocalMatchResolveSendingOffResult>(
+		[&Request](FLocalMatchRuntime& Runtime)
+		{
+			return Runtime.AuthoritativeSession.ResolveSendingOff(Request);
+		});
+}
+
+FFMCodexLocalMatchSubmitSetPieceCarrierResult
+AFMCodexLocalMatchHostGameMode::SubmitSetPieceCarrier(
+	const FMatchPlaySetPieceCarrierSelectionRequest& Request)
+{
+	return ExecuteTypedCommand<FFMCodexLocalMatchSubmitSetPieceCarrierResult>(
+		[&Request](FLocalMatchRuntime& Runtime)
+		{
+			return Runtime.AuthoritativeSession.SubmitSetPieceCarrier(Request);
+		});
+}
+
+#define FMCODEX_IMPLEMENT_SET_PIECE_HOST(MethodName, LocalResult, SessionMethod, RequestType) \
+LocalResult AFMCodexLocalMatchHostGameMode::MethodName( \
+	const RequestType& Request) \
+{ \
+	return ExecuteTypedCommand<LocalResult>( \
+		[&Request](FLocalMatchRuntime& Runtime) \
+		{ \
+			return Runtime.AuthoritativeSession.SessionMethod(Request); \
+		}); \
+}
+
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(SubmitShortFreeKickMethod,
+	FFMCodexLocalMatchSubmitShortFreeKickMethodResult,
+	SubmitShortFreeKickMethod, FMatchPlayShortFreeKickMethodRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveShortFreeKickDirectAttackRoll,
+	FFMCodexLocalMatchResolveShortFreeKickDirectAttackRollResult,
+	ResolveShortFreeKickDirectAttackRoll, FMatchPlayShortFreeKickRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveShortFreeKickDirectDefenseRoll,
+	FFMCodexLocalMatchResolveShortFreeKickDirectDefenseRollResult,
+	ResolveShortFreeKickDirectDefenseRoll, FMatchPlayShortFreeKickRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveShortFreeKickAngledRoll,
+	FFMCodexLocalMatchResolveShortFreeKickAngledRollResult,
+	ResolveShortFreeKickAngledRoll, FMatchPlayShortFreeKickRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveNoLegalShortFreeKickCarrier,
+	FFMCodexLocalMatchResolveNoLegalShortFreeKickCarrierResult,
+	ResolveNoLegalSetPieceCarrier, FMatchPlayShortFreeKickNoLegalCarrierRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(SubmitLongFreeKickMethod,
+	FFMCodexLocalMatchSubmitLongFreeKickMethodResult,
+	SubmitLongFreeKickMethod, FMatchPlayLongFreeKickMethodRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveLongFreeKickDirectAttackRoll,
+	FFMCodexLocalMatchResolveLongFreeKickDirectAttackRollResult,
+	ResolveLongFreeKickDirectAttackRoll, FMatchPlayLongFreeKickRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveLongFreeKickDirectDefenseRoll,
+	FFMCodexLocalMatchResolveLongFreeKickDirectDefenseRollResult,
+	ResolveLongFreeKickDirectDefenseRoll, FMatchPlayLongFreeKickRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveLongFreeKickPowerRoll,
+	FFMCodexLocalMatchResolveLongFreeKickPowerRollResult,
+	ResolveLongFreeKickPowerRoll, FMatchPlayLongFreeKickRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveNoLegalLongFreeKickCarrier,
+	FFMCodexLocalMatchResolveNoLegalLongFreeKickCarrierResult,
+	ResolveNoLegalSetPieceCarrier, FMatchPlayLongFreeKickNoLegalCarrierRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(SubmitPenaltyMethod,
+	FFMCodexLocalMatchSubmitPenaltyMethodResult,
+	SubmitPenaltyMethod, FMatchPlayPenaltyMethodRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolvePenaltyDirectAttackRoll,
+	FFMCodexLocalMatchResolvePenaltyDirectAttackRollResult,
+	ResolvePenaltyDirectAttackRoll, FMatchPlayPenaltyRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolvePenaltyDirectDefenseRoll,
+	FFMCodexLocalMatchResolvePenaltyDirectDefenseRollResult,
+	ResolvePenaltyDirectDefenseRoll, FMatchPlayPenaltyRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolvePenaltyPanenkaRoll,
+	FFMCodexLocalMatchResolvePenaltyPanenkaRollResult,
+	ResolvePenaltyPanenkaRoll, FMatchPlayPenaltyRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(ResolveNoLegalPenaltyCarrier,
+	FFMCodexLocalMatchResolveNoLegalPenaltyCarrierResult,
+	ResolveNoLegalSetPieceCarrier, FMatchPlayPenaltyNoLegalCarrierRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(SubmitCornerAttackerNominations,
+	FFMCodexLocalMatchSubmitCornerAttackerNominationsResult,
+	SubmitCornerAttackerNominations, FMatchPlayCornerNominationRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(SubmitCornerDefenderNominations,
+	FFMCodexLocalMatchSubmitCornerDefenderNominationsResult,
+	SubmitCornerDefenderNominations, FMatchPlayCornerNominationRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(RequestCornerParticipantSelectionRoll,
+	FFMCodexLocalMatchRequestCornerParticipantSelectionRollResult,
+	RequestCornerParticipantSelectionRoll, FMatchPlayCornerRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(SubmitCornerIntent,
+	FFMCodexLocalMatchSubmitCornerIntentResult,
+	SubmitCornerIntent, FMatchPlayCornerIntentRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(RequestCornerRouteRoll,
+	FFMCodexLocalMatchRequestCornerRouteRollResult,
+	RequestCornerRouteRoll, FMatchPlayCornerRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(RequestCornerAttackRoll,
+	FFMCodexLocalMatchRequestCornerAttackRollResult,
+	RequestCornerAttackRoll, FMatchPlayCornerRollRequest)
+FMCODEX_IMPLEMENT_SET_PIECE_HOST(RequestCornerDefenseRoll,
+	FFMCodexLocalMatchRequestCornerDefenseRollResult,
+	RequestCornerDefenseRoll, FMatchPlayCornerRollRequest)
+
+#undef FMCODEX_IMPLEMENT_SET_PIECE_HOST
 
 FFMCodexLocalMatchDeployOrdinaryResult
 AFMCodexLocalMatchHostGameMode::DeployOrdinary(

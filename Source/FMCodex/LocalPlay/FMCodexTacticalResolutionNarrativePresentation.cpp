@@ -176,15 +176,15 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 			{
 				Complete(Result, ECategory::Goal, LOCTEXT("GoalTitle2", "进球"),
 					bCarrier
-						? FormatOne(LOCTEXT("LongDeadGoal", "{0}直射死角破门！"), Input.Carrier.DisplayName)
-						: LOCTEXT("LongDeadGoalFallback", "直射死角破门！"));
+						? FormatOne(LOCTEXT("LongDeadGoal", "{0}射向死角破门！"), Input.Carrier.DisplayName)
+						: LOCTEXT("LongDeadGoalFallback", "射向死角破门！"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Miss)
 			{
 				Complete(Result, ECategory::Miss, LOCTEXT("ShotMissTitle", "射门未进"),
 					bCarrier
-						? FormatOne(LOCTEXT("LongDeadMiss", "{0}直射死角未能得分。"), Input.Carrier.DisplayName)
-						: LOCTEXT("LongDeadMissFallback", "直射死角未能得分。"));
+						? FormatOne(LOCTEXT("LongDeadMiss", "{0}射向死角未能得分。"), Input.Carrier.DisplayName)
+						: LOCTEXT("LongDeadMissFallback", "射向死角未能得分。"));
 			}
 		}
 	}
@@ -231,15 +231,15 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 			{
 				Complete(Result, ECategory::Goal, LOCTEXT("CutDeadGoalTitle", "进球"),
 					bCarrier
-						? FormatOne(LOCTEXT("CutDeadGoal", "{0}内切直射死角破门！"), Input.Carrier.DisplayName)
-						: LOCTEXT("CutDeadGoalFallback", "内切直射死角破门！"));
+						? FormatOne(LOCTEXT("CutDeadGoal", "{0}内切射向死角破门！"), Input.Carrier.DisplayName)
+						: LOCTEXT("CutDeadGoalFallback", "内切射向死角破门！"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Miss)
 			{
 				Complete(Result, ECategory::Miss, LOCTEXT("CutDeadMissTitle", "射门未进"),
 					bCarrier
-						? FormatOne(LOCTEXT("CutDeadMiss", "{0}内切直射死角未能得分。"), Input.Carrier.DisplayName)
-						: LOCTEXT("CutDeadMissFallback", "内切直射死角未能得分。"));
+						? FormatOne(LOCTEXT("CutDeadMiss", "{0}内切射向死角未能得分。"), Input.Carrier.DisplayName)
+						: LOCTEXT("CutDeadMissFallback", "内切射向死角未能得分。"));
 			}
 		}
 	}

@@ -53,7 +53,28 @@ enum class EFMCodexUMGInteractionCategory : uint8
 	RollPassControlRoute,
 	RollPassControlAttack,
 	RollPassControlDefense,
-	RollCrossRoute
+	RollCrossRoute,
+	ResolveSendingOff,
+	RollSetPieceType,
+	SelectSetPieceCarrier,
+	ConfirmSetPieceCarrier,
+	SelectSetPieceMethod,
+	RollShortFreeKickDirectAttack,
+	RollShortFreeKickDirectDefense,
+	RollShortFreeKickAngled,
+	RollLongFreeKickDirectAttack,
+	RollLongFreeKickDirectDefense,
+	RollLongFreeKickPower,
+	RollPenaltyDirectAttack,
+	RollPenaltyDirectDefense,
+	RollPenaltyPanenka,
+	DraftCornerAttacker,
+	DraftCornerDefender,
+	RollCornerParticipantSelection,
+	SelectCornerIntent,
+	RollCornerRoute,
+	RollCornerAttack,
+	RollCornerDefense
 };
 
 /**
@@ -126,7 +147,14 @@ enum class EFMCodexUMGCrossRollRevealKind : uint8
 	LongShotDeadCornerA,
 	LongShotDeadCornerB,
 	CutInsideShotDeadCornerA,
-	CutInsideShotDeadCornerB
+	CutInsideShotDeadCornerB,
+	SetPieceType,
+	SetPieceAttack,
+	SetPieceDefense,
+	SetPiecePairedA,
+	SetPiecePairedB,
+	CornerParticipantSelection,
+	CornerRoute
 };
 
 UENUM(BlueprintType)
@@ -472,6 +500,15 @@ struct FMCODEX_API FFMCodexUMGCardRackCellViewModel
 	bool bDeploymentDraggable = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	bool bSetPieceSelectable = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	bool bSetPieceSelected = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
+	int32 SetPieceSelectionOrder = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
 	bool bGoalkeeper = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Rack")
@@ -614,6 +651,10 @@ struct FMCODEX_API FFMCodexUMGMatchHeaderViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FString LeftPlayerLabel = TEXT("Player A");
 
+	/** Typed orientation for remapping already-disclosed scores; never parse labels. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	EInitialTurnOrderPlayer LeftPlayerSide = EInitialTurnOrderPlayer::PlayerA;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	FString RightPlayerLabel = TEXT("Player B");
 
@@ -666,6 +707,13 @@ struct FMCODEX_API FFMCodexUMGMatchHeaderViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	int32 CurrentAttackerTacticalPoints = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	int32 RawInitialD12 = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
+	EMatchPlayCurrentAttackRouteKind RouteKind =
+		EMatchPlayCurrentAttackRouteKind::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Header")
 	bool bHasCurrentAttacker = false;
@@ -1378,6 +1426,11 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 		Category = "Local Match|Inline Formula")
 	FString StatusLabel;
 
+	/** Optional pending-roll instruction; the display gate owns its lifetime. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	FString RollHelperLabel;
+
 	/** The containing semantic surface already renders the contest heading. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
@@ -1428,6 +1481,15 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	bool bShowFormulaRows = true;
+
+	/** Shared row-level collapse controls. Ordinary formula consumers keep both. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bShowAttackRow = true;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
+		Category = "Local Match|Inline Formula")
+	bool bShowDefenseRow = true;
 
 	/** Presentation-only Cross dice reveal phase; never an authority state. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
@@ -1745,6 +1807,9 @@ struct FMCODEX_API FFMCodexUMGLongShotResolutionViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
 	int32 DeadCornerB = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
+	FString PairedRollResultLabel;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
 	bool bNarrativeAvailable = false;

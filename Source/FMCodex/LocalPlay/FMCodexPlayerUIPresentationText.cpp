@@ -14,7 +14,7 @@ namespace FMCodexPlayerUIPresentationText
 		if (Label == TEXT("Cross")) return LOCTEXT("SkillCross", "传中");
 		if (Label == TEXT("Through Ball")) return LOCTEXT("SkillThroughBall", "直塞");
 		if (Label == TEXT("Direct Shot")) return LOCTEXT("ChoiceDirectShot", "直接射门");
-		if (Label == TEXT("Dead Corner")) return LOCTEXT("ChoiceDeadCorner", "直射死角");
+		if (Label == TEXT("Dead Corner")) return FFMCodexPlayerUIPresentationText::LongShotDeadCornerStage();
 		if (Label == TEXT("Chip Shot")) return LOCTEXT("ChoiceChipShot", "挑射");
 		if (Label == TEXT("Goal")) return LOCTEXT("TerminalGoal", "进球");
 		if (Label == TEXT("Miss") || Label == TEXT("No Goal")) return LOCTEXT("TerminalNoGoal", "未进球");
@@ -134,7 +134,7 @@ FText FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 	if (CanonicalLabel == TEXT("SHOT TYPE")) return LOCTEXT("ShotType", "\u5C04\u95E8\u65B9\u5F0F");
 	if (CanonicalLabel == TEXT("ONE-ON-ONE | CHOOSE SHOT")) return LOCTEXT("OneOnOneChooseShot", "\u5355\u5200\uFF5C\u9009\u62E9\u5C04\u95E8");
 	if (CanonicalLabel == TEXT("Direct Shot")) return LOCTEXT("DirectShot", "\u76F4\u63A5\u5C04\u95E8");
-	if (CanonicalLabel == TEXT("Dead Corner")) return LOCTEXT("DeadCorner", "\u5C04\u5411\u6B7B\u89D2");
+	if (CanonicalLabel == TEXT("Dead Corner")) return LongShotDeadCornerStage();
 	if (CanonicalLabel == TEXT("Cross High")) return LOCTEXT("CrossHigh", "\u9AD8\u7403\u4F20\u4E2D");
 	if (CanonicalLabel == TEXT("Cross Low")) return LOCTEXT("CrossLow", "\u4F4E\u7403\u4F20\u4E2D");
 	if (CanonicalLabel == TEXT("Chip Shot")) return LOCTEXT("ChipShot", "\u6311\u5C04");
@@ -245,6 +245,73 @@ FText FFMCodexPlayerUIPresentationText::LongShotTitle()
 	return LOCTEXT("LongShotProductionTitle", "远射");
 }
 
+FText FFMCodexPlayerUIPresentationText::SetPieceName(
+	const ESetPieceSelectedType Type)
+{
+	switch (Type)
+	{
+	case ESetPieceSelectedType::Corner: return LOCTEXT("SetPieceCorner", "角球");
+	case ESetPieceSelectedType::LongFreeKick: return LOCTEXT("SetPieceLong", "远距离任意球");
+	case ESetPieceSelectedType::ShortFreeKick: return LOCTEXT("SetPieceShort", "近距离任意球");
+	case ESetPieceSelectedType::Penalty: return LOCTEXT("SetPiecePenalty", "点球");
+	default: return LOCTEXT("SetPieceUnselected", "定位球");
+	}
+}
+
+FText FFMCodexPlayerUIPresentationText::SetPieceTypeRollHint()
+{
+	return FText::Format(LOCTEXT("SetPieceTypeRollHint",
+		"1–2：{0}  3–4：{1}  5：{2}  6：{3}"),
+		SetPieceName(ESetPieceSelectedType::Corner),
+		SetPieceName(ESetPieceSelectedType::LongFreeKick),
+		SetPieceName(ESetPieceSelectedType::ShortFreeKick),
+		SetPieceName(ESetPieceSelectedType::Penalty));
+}
+
+FText FFMCodexPlayerUIPresentationText::LongFreeKickDirectOutcomeHint()
+{
+	return LOCTEXT("LongFreeKickDirectOutcomeHint", "1–2：直接射偏");
+}
+
+FText FFMCodexPlayerUIPresentationText::ThroughBallBehindDefenseOutcomeHint()
+{
+	return LOCTEXT("ThroughBallBehindDefenseOutcomeHint", "1–2：传球出界");
+}
+
+FText FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(
+	const ESetPieceSelectedType Type)
+{
+	// Read-only presentation descriptors for the frozen Rules 13 methods.
+	switch (Type)
+	{
+	case ESetPieceSelectedType::ShortFreeKick: return PairedGoalOutcomeHint(9);
+	case ESetPieceSelectedType::LongFreeKick: return PairedGoalOutcomeHint(11);
+	case ESetPieceSelectedType::Penalty: return LOCTEXT("PanenkaOutcomeHint", "1：射失｜2–6：进球");
+	default: return FText::GetEmpty();
+	}
+}
+
+FText FFMCodexPlayerUIPresentationText::PairedGoalOutcomeHint(const int32 RequiredTotal)
+{
+	return FText::Format(LOCTEXT("PairedGoalOutcomeHint",
+		"两枚点数总和达到 {0} 或以上：进球"), FText::AsNumber(RequiredTotal));
+}
+
+FText FFMCodexPlayerUIPresentationText::FirstPairedRollResult(const int32 FirstD6)
+{
+	return FText::Format(LOCTEXT("FirstPairedRollResult", "第一枚 D6：{0}"),
+		FText::AsNumber(FirstD6));
+}
+
+FText FFMCodexPlayerUIPresentationText::PairedRollResult(
+	const int32 FirstD6, const int32 SecondD6)
+{
+	// Display arithmetic over accepted dice only; never a Formula or goal decision.
+	return FText::Format(LOCTEXT("PairedRollResult", "D6 {0} + D6 {1} = {2}"),
+		FText::AsNumber(FirstD6), FText::AsNumber(SecondD6),
+		FText::AsNumber(FirstD6 + SecondD6));
+}
+
 FText FFMCodexPlayerUIPresentationText::LongShotBranchChoiceStage()
 {
 	return LOCTEXT("LongShotBranchChoiceStage", "选择远射方式");
@@ -276,14 +343,12 @@ FText FFMCodexPlayerUIPresentationText::LongShotDirectOutcomeHint()
 {
 	return LOCTEXT(
 		"LongShotDirectOutcomeHint",
-		"1–2：射门偏出 ｜ 3–6：进入攻防结算");
+		"1–2：射门偏出");
 }
 
 FText FFMCodexPlayerUIPresentationText::LongShotDeadCornerOutcomeHint()
 {
-	return LOCTEXT(
-		"LongShotDeadCornerOutcomeHint",
-		"合计 11–12：进球 ｜ 2–10：未进");
+	return PairedGoalOutcomeHint(11);
 }
 
 FText FFMCodexPlayerUIPresentationText::ShotAttackRollAction()
@@ -318,14 +383,12 @@ FText FFMCodexPlayerUIPresentationText::CutInsideDirectStage()
 
 FText FFMCodexPlayerUIPresentationText::CutInsideDeadCornerStage()
 {
-	return LOCTEXT("CutInsideDeadCornerStage", "直射死角");
+	return LongShotDeadCornerStage();
 }
 
 FText FFMCodexPlayerUIPresentationText::CutInsideDirectOutcomeHint()
 {
-	return LOCTEXT(
-		"CutInsideDirectOutcomeHint",
-		"1–2：射门偏出｜3–6：进入攻防结算");
+	return LongShotDirectOutcomeHint();
 }
 
 FText FFMCodexPlayerUIPresentationText::PassControlTitle()
@@ -1036,6 +1099,38 @@ FText FFMCodexPlayerUIPresentationText::UnavailableDeploymentTarget()
 {
 	return LOCTEXT("UnavailableDeploymentTarget",
 		"\u4F4D\u7F6E\u4E0D\u53EF\u7528");
+}
+
+FText FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage()
+{
+	return LOCTEXT("LongFreeKickPowerStage", "重炮轰门");
+}
+
+FText FFMCodexPlayerUIPresentationText::CornerCandidateCount(const int32 Count)
+{
+	return FText::Format(LOCTEXT("CornerCandidateCount", "已选：{0}/3"), FText::AsNumber(Count));
+}
+
+FText FFMCodexPlayerUIPresentationText::CornerCandidateInstruction()
+{
+	return LOCTEXT("CornerCandidateInstruction", "从手牌按顺序选择 0–3 名候选球员；再次单击可撤销。");
+}
+
+FText FFMCodexPlayerUIPresentationText::CornerLockCandidates(const bool bAttacking)
+{
+	return bAttacking ? LOCTEXT("CornerLockAttackCandidates", "锁定进攻候选")
+		: LOCTEXT("CornerLockDefenseCandidates", "锁定防守候选");
+}
+
+FText FFMCodexPlayerUIPresentationText::CornerLockConfirmation(const int32 Count)
+{
+	return Count == 0 ? LOCTEXT("CornerLockEmptyCandidates", "当前尚未选择候选球员，确定现在锁定吗？")
+		: FText::Format(LOCTEXT("CornerLockUnderfilledCandidates", "当前仅选择了 {0}/3 名候选球员，确定现在锁定吗？"), FText::AsNumber(Count));
+}
+
+FText FFMCodexPlayerUIPresentationText::CornerCandidateBonus(const int32 Bonus)
+{
+	return FText::Format(LOCTEXT("CornerCandidateBonus", "候选人数占优加成 {0}"), FText::AsNumber(Bonus));
 }
 
 #undef LOCTEXT_NAMESPACE

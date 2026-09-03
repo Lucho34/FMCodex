@@ -75,12 +75,17 @@ Names come only from the existing player-facing PreferredDisplayName/DisplayName
 | OneOnOne Direct | Miss | 扑救成功 | `{Runner}单刀射门被{GK}扑出！`; missing Runner/GK uses the approved generic form |
 | OneOnOne Chip | Goal | 进球 | `{Runner}挑射破门！` / `挑射破门！` |
 | OneOnOne Chip | Miss | 挑射未进 | `{Runner}挑射未能得分。` / `挑射未能得分。`; never GK wording |
+| Corner normal / automatic scorer | Goal | 进球 | `{Runner/scorer}角球破门！` / `角球破门！`; actual scorer identity only |
+| Corner actual High / Low | NoGoal | 未进球 | `{Runner}的高球攻门未能得分。` / `{Runner}的低平球攻门未能得分。`; missing name uses generic equivalent |
+| Corner attacker 0, including 0 vs 0 | NoGoal | 未进球 | `进攻方无人抢到点`; support `角球 · 未进球` |
 
 Historical `BehindDefense P2` has no Narrative v1 branch. Its compatibility feedback belongs to a future Legacy Resolution Feedback Cleanup.
 
 ## Architecture boundary
 
 The builder reads values and returns values. It does not accept Match State or Session references, recompute Formula, inspect DEV controls, own reveal timing, or issue commands. Production Screen/reveal code remains responsible for when the already-buildable Narrative becomes visible.
+
+Corner's set-piece adapter reads its existing ordered candidates, bound Runner/scorer, actual route and Goal/NoGoal facts. It does not infer a save from goalkeeper participation, or invent a wide shot, header or volley from aggregate NoGoal. Marker/Helper variation is not applied to this aggregate Corner outcome. The player's displayed score uses the same owning-surface narrative disclosure gate; Authority score timing is unchanged.
 
 ## Future integration flow
 

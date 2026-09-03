@@ -69,5 +69,8 @@ public:
 	static const FTacticalRuleDescription* FindBySkillType(
 		ESkillRuleType SkillType);
 	static const TArray<FTacticalRuleDescription>& GetAll();
+	/** Corner keeps its own setup; this is static role/attribute education only. */
+	static const FTacticalRuleDescriptionBranch* FindCornerRoute(EMatchPlayCornerRouteIntent Route);
+	/** Corner route selection, separate from its later arithmetic contest. */
+	static const TArray<FTacticalRuleDescriptionOutcome>& GetCornerInitialRouteOutcomes();
 };
-

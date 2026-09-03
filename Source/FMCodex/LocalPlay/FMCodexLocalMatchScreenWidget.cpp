@@ -22,6 +22,7 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/ScaleBox.h"
 #include "Components/BorderSlot.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
@@ -1429,6 +1430,434 @@ void UFMCodexLocalMatchScreenWidget::HandleLongShotBranchRequested(
 	RequestSubmitBranchIntent(Intent);
 }
 
+void UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested(
+	const FName CardId)
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+	{
+		MatchController->ToggleSetPieceDraftCard(CardId);
+	}
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleSetPiecePrimaryRequested()
+{
+	RequestContinueResolution();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleCornerReturnRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->CancelCornerLockConfirmation();
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleShortDirectRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->SubmitShortFreeKickMethod(EMatchPlayShortFreeKickMethod::Direct);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleShortAngledRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->SubmitShortFreeKickMethod(EMatchPlayShortFreeKickMethod::Angled);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleLongDirectRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->SubmitLongFreeKickMethod(EMatchPlayLongFreeKickMethod::Direct);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleLongPowerRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->SubmitLongFreeKickMethod(EMatchPlayLongFreeKickMethod::Power);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandlePenaltyDirectRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->SubmitPenaltyMethod(EMatchPlayPenaltyMethod::Direct);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandlePenaltyPanenkaRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->SubmitPenaltyMethod(EMatchPlayPenaltyMethod::Panenka);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleCornerHighRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->SubmitCornerIntent(EMatchPlayCornerRouteIntent::High);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleCornerLowRequested()
+{
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+		MatchController->SubmitCornerIntent(EMatchPlayCornerRouteIntent::Low);
+}
+
+bool UFMCodexLocalMatchScreenWidget::DoesSetPieceOwnCurrentPrimaryAction() const
+{
+	if (MatchController == nullptr)
+	{
+		return false;
+	}
+	const FFMCodexLocalMatchInteractionView& View =
+		MatchController->GetInteractionView();
+	return View.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff
+		|| View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece;
+}
+
+void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
+{
+	if (SetPieceResolutionSurface == nullptr || MatchController == nullptr)
+	{
+		return;
+	}
+	const FFMCodexLocalMatchInteractionView& View =
+		MatchController->GetInteractionView();
+	const bool bOrdinaryFormulaSurfaceOwnsSetPiece =
+		View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
+		&& Presentation.InlineFormula.bVisible;
+	const bool bParticipantReveal = IsInlineFormulaRevealInputBlocked()
+		&& ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection;
+	const bool bVisible = (!IsInlineFormulaRevealInputBlocked() || bParticipantReveal)
+		&& (View.RouteKind
+				== EMatchPlayCurrentAttackRouteKind::SendingOff
+			|| (View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
+				&& !bOrdinaryFormulaSurfaceOwnsSetPiece));
+	SetPieceResolutionSurface->SetVisibility(bVisible
+		? ESlateVisibility::SelfHitTestInvisible
+		: ESlateVisibility::Collapsed);
+	if (!bVisible)
+	{
+		return;
+	}
+	auto PlayerName = [](const FFMCodexLocalMatchInteractionView& Source,
+		const EInitialTurnOrderPlayer Side, const FName CardId)
+	{
+		const TArray<FFMCodexLocalMatchCardView>& Roster =
+			Side == EInitialTurnOrderPlayer::PlayerA
+				? Source.PlayerACardRoster : Source.PlayerBCardRoster;
+		const FFMCodexLocalMatchCardView* Card = Roster.FindByPredicate(
+			[CardId](const FFMCodexLocalMatchCardView& Candidate)
+			{
+				return Candidate.CardId == CardId;
+			});
+		return Card != nullptr && !Card->DisplayLabel.IsEmpty()
+			? Card->DisplayLabel : FString(TEXT("未知球员"));
+	};
+	auto SideName = [&View](const EInitialTurnOrderPlayer Side)
+	{
+		return Side == View.CurrentAttackingPlayer
+			? FString(TEXT("进攻方"))
+			: Side == EInitialTurnOrderPlayer::PlayerA
+				|| Side == EInitialTurnOrderPlayer::PlayerB
+					? FString(TEXT("防守方")) : FString(TEXT("系统"));
+	};
+	auto PlayerSideName = [](const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			? FString(TEXT("玩家A"))
+			: Side == EInitialTurnOrderPlayer::PlayerB
+				? FString(TEXT("玩家B")) : FString(TEXT("系统"));
+	};
+	auto MethodHints = [&View]()
+	{
+		switch (View.SetPieceType)
+		{
+		case ESetPieceSelectedType::ShortFreeKick:
+			return FString(TEXT(
+				"直接射门：使用较高的射门/传球\n"
+				"战术配合：需射门+传球≥8"));
+		case ESetPieceSelectedType::LongFreeKick:
+			return FText::Format(NSLOCTEXT("FMCodexSetPiece", "LongMethodHints",
+				"直接射门：使用远射，对抗门将站位\n"
+				"{0}：只看两次掷点"), FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage()).ToString();
+		case ESetPieceSelectedType::Penalty:
+			return FString(TEXT(
+				"常规点球：使用较高的射门/传球\n"
+				"勺子点球：只看一次掷点"));
+		default:
+			return FString();
+		}
+	};
+
+	FString Title = View.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff
+		? View.bTerminalPendingAdvance ? TEXT("红牌") : TEXT("罚下一人")
+		: View.ActionLabel;
+	FString Status = View.RouteKind
+		== EMatchPlayCurrentAttackRouteKind::SendingOff
+			? FString::Printf(TEXT("D12：%d  ·  当前操作：%s"),
+				View.RawInitialD12, *PlayerSideName(View.ExpectedActingPlayer))
+			: !View.DraftSetPieceCarrierCardId.IsNone()
+				? FString::Printf(TEXT("主罚球员（待确认）：%s"),
+					*PlayerName(View, View.ExpectedActingPlayer,
+						View.DraftSetPieceCarrierCardId))
+				: View.SetPieceCarrier.bIsBound
+					? FString::Printf(TEXT("主罚球员：%s"),
+						*PlayerName(View, View.SetPieceCarrier.OwnerSide,
+							View.SetPieceCarrier.CardId))
+					: FString::Printf(TEXT("当前操作：%s"),
+						*PlayerSideName(View.ExpectedActingPlayer));
+	FString Detail;
+	if (View.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff)
+	{
+		Detail = View.bTerminalPendingAdvance
+			? View.SendingOffEjectedCardId.IsNone()
+				? TEXT("无人可被罚下，本次进攻结束")
+				: FString::Printf(TEXT("%s · %s 被罚下"),
+					*PlayerSideName(View.SendingOffEjectedOwnerSide),
+					*PlayerName(View, View.SendingOffEjectedOwnerSide,
+						View.SendingOffEjectedCardId))
+			: TEXT("D12 揭示完成后处理红牌结果。");
+	}
+	else if (View.SetPieceStage == EMatchPlaySetPieceRouteStage::AwaitingTypeRoll)
+	{
+		Title = TEXT("定位球");
+		Detail = FFMCodexPlayerUIPresentationText::SetPieceTypeRollHint().ToString();
+	}
+	else if (View.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier
+		|| View.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier)
+	{
+		Detail = View.DraftSetPieceCarrierCardId.IsNone()
+			? FString(TEXT(
+				"请选择主罚球员\n"
+				"单击本方手牌只会选中球员，点击“确认主罚球员”后才会锁定。"))
+			: FString(TEXT("点击“确认主罚球员”后继续。"));
+		const FString Hints = MethodHints();
+		if (!Hints.IsEmpty())
+		{
+			Detail += TEXT("\n\n") + Hints;
+		}
+	}
+	else if (View.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::SelectSetPieceMethod)
+	{
+		// The method buttons already carry their route-specific rule summaries.
+		// Keep this page focused on the decision instead of repeating the same
+		// copy above the choices. Carrier selection retains MethodHints because
+		// those buttons do not exist yet on that earlier page.
+		Detail = TEXT("请选择结算方式");
+		if (View.SetPieceType == ESetPieceSelectedType::ShortFreeKick
+			&& !View.bShortAngledEligible)
+		{
+			Detail += TEXT("\n当前主罚球员不满足战术配合条件。");
+		}
+	}
+	else if (View.SetPieceType == ESetPieceSelectedType::Corner)
+	{
+		auto NomineeLine = [&PlayerName, &View](
+			const TArray<FMatchPlaySetPieceParticipantBinding>& Nominees,
+			const TCHAR* EmptyLabel)
+		{
+			if (Nominees.IsEmpty()) return FString(EmptyLabel);
+			TArray<FString> Labels;
+			for (int32 Index = 0; Index < Nominees.Num(); ++Index)
+			{
+				const auto& Binding = Nominees[Index];
+				Labels.Add(FString::Printf(TEXT("%d. %s"), Index + 1,
+					*PlayerName(View, Binding.OwnerSide, Binding.CardId)));
+			}
+			return FString::Join(Labels, TEXT("  |  "));
+		};
+		if (View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker
+			|| View.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::DraftCornerDefender)
+		{
+			Detail = View.bCornerLockConfirmationPending
+				? FFMCodexPlayerUIPresentationText::CornerLockConfirmation(View.DraftCornerNomineeCardIds.Num()).ToString()
+				: FFMCodexPlayerUIPresentationText::CornerCandidateCount(View.DraftCornerNomineeCardIds.Num()).ToString()
+					+ TEXT("\n") + FFMCodexPlayerUIPresentationText::CornerCandidateInstruction().ToString();
+			if (View.bHideCornerAttackerNomineeDetails)
+				Detail += TEXT("\n进攻候选已封存，防守方锁定前不显示名单。");
+		}
+		else if (View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectCornerIntent
+			&& !bParticipantReveal)
+		{
+			Detail = FString::Printf(TEXT("进攻人选：%s\n防守人选：%s"),
+				*PlayerName(View, View.CornerRunner.OwnerSide, View.CornerRunner.CardId),
+				*PlayerName(View, View.CornerHelper.OwnerSide, View.CornerHelper.CardId));
+		}
+		else
+		{
+			const FString Attackers = NomineeLine(View.CornerAttackerNominees,
+				TEXT("进攻方未选候选球员"));
+			const FString Defenders = NomineeLine(View.CornerDefenderNominees,
+				TEXT("防守方未选候选球员"));
+			Detail = FString::Printf(TEXT("进攻：%s\n防守：%s"),
+				*Attackers, *Defenders);
+			if (View.bHasCornerSharedParticipantD6)
+			{
+				Detail += FString::Printf(TEXT("\n共同 D6：%d  ·  进攻人选：%s  ·  防守人选：%s"),
+					View.CornerSharedParticipantD6,
+					*PlayerName(View, View.CornerRunner.OwnerSide, View.CornerRunner.CardId),
+					*PlayerName(View, View.CornerHelper.OwnerSide, View.CornerHelper.CardId));
+			}
+			if (View.CornerCandidateBonus > 0)
+				Detail += FString::Printf(TEXT("\n候选人数优势：%s +%d"),
+					*SideName(View.CornerCandidateBonusSide), View.CornerCandidateBonus);
+		}
+	}
+	SetPieceTitleText->SetText(FText::FromString(Title));
+	SetPieceStatusText->SetText(FText::FromString(Status));
+	SetPieceDetailText->SetText(FText::FromString(Detail));
+	SetPieceDetailText->SetVisibility(Detail.IsEmpty()
+		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	const bool bEditingCorner = View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker
+		|| View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::DraftCornerDefender;
+	CornerDraftCandidateList->SetVisibility(bEditingCorner && !View.DraftCornerNomineeCardIds.IsEmpty()
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	for (int32 Index = 0; Index < CornerDraftCandidateLabels.Num(); ++Index)
+	{
+		const bool bSelected = bEditingCorner && View.DraftCornerNomineeCardIds.IsValidIndex(Index);
+		UTextBlock* Label = CornerDraftCandidateLabels[Index];
+		Label->SetText(bSelected ? FText::Format(NSLOCTEXT("FMCodexCorner", "OrderedCandidate", "{0}. {1}"),
+			FText::AsNumber(Index + 1), FText::FromString(PlayerName(View, View.ExpectedActingPlayer,
+				View.DraftCornerNomineeCardIds[Index]))) : FText::GetEmpty());
+		Label->GetParent()->SetVisibility(bSelected ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	const bool bShowCornerConfrontation =
+		View.SetPieceType == ESetPieceSelectedType::Corner
+		&& View.bCornerAttackerNominationsLocked
+		&& View.bCornerDefenderNominationsLocked
+		&& !View.CornerAttackerNominees.IsEmpty()
+		&& !View.CornerDefenderNominees.IsEmpty()
+		&& (bParticipantReveal || View.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::RollCornerParticipantSelection);
+	// The board owns candidate identities while rolling; do not duplicate or leak them in prose.
+	if (bShowCornerConfrontation)
+	{
+		SetPieceDetailText->SetVisibility(ESlateVisibility::Collapsed);
+		SetPieceTitleText->SetText(NSLOCTEXT("FMCodexCorner", "ParticipantTitle", "角球对位"));
+	}
+	CornerConfrontationBoard->SetVisibility(bShowCornerConfrontation
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (bShowCornerConfrontation)
+	{
+		const bool bParticipantsResolved =
+			View.bHasCornerSharedParticipantD6 && (!bParticipantReveal
+				|| (InlineFormulaRevealPhase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+					&& InlineFormulaRevealPhaseElapsed >= FMCodexLocalMatchScreenWidget::FormulaDisclosureDelay));
+		auto RefreshNomineeCards = [&PlayerName, &View, bParticipantsResolved](
+			const TArray<FMatchPlaySetPieceParticipantBinding>& Nominees,
+			const TArray<FString>& RollLabels,
+			const FMatchPlaySetPieceParticipantBinding& Selected,
+			TArray<TObjectPtr<UBorder>>& Cards,
+			TArray<TObjectPtr<UTextBlock>>& Labels,
+			const bool bAttackingSide)
+		{
+			for (int32 Index = 0; Index < Cards.Num(); ++Index)
+			{
+				const bool bHasNominee = Nominees.IsValidIndex(Index);
+				Cards[Index]->SetVisibility(bHasNominee
+					? ESlateVisibility::HitTestInvisible
+					: ESlateVisibility::Collapsed);
+				if (!bHasNominee)
+				{
+					continue;
+				}
+				const FMatchPlaySetPieceParticipantBinding& Nominee =
+					Nominees[Index];
+				const bool bSelected = bParticipantsResolved
+					&& Selected.bIsBound
+					&& Selected.OwnerSide == Nominee.OwnerSide
+					&& Selected.CardId == Nominee.CardId;
+				const FString Name = PlayerName(
+					View, Nominee.OwnerSide, Nominee.CardId);
+				// Each side has its own canonical count-dependent D6 ranges.
+				const FString Range = RollLabels.IsValidIndex(Index) ? RollLabels[Index] : FString();
+				Labels[Index]->SetText(FText::FromString(bAttackingSide
+					? FString::Printf(TEXT("%s  %s  →"), *Range, *Name)
+					: FString::Printf(TEXT("←  %s  %s"), *Name, *Range)));
+				Cards[Index]->SetBrushColor(bSelected
+					? FLinearColor(0.18f, 0.52f, 0.28f, 0.98f)
+					: FLinearColor(0.10f, 0.14f, 0.20f, 0.94f));
+				Cards[Index]->SetRenderOpacity(
+					bParticipantsResolved && !bSelected ? 0.38f : 1.0f);
+			}
+		};
+		RefreshNomineeCards(View.CornerAttackerNominees, View.CornerAttackerNomineeRollLabels, View.CornerRunner,
+			CornerAttackerNomineeCards, CornerAttackerNomineeLabels, true);
+		RefreshNomineeCards(View.CornerDefenderNominees, View.CornerDefenderNomineeRollLabels, View.CornerHelper,
+			CornerDefenderNomineeCards, CornerDefenderNomineeLabels, false);
+		CornerParticipantRollReel->SetVisibility(bParticipantReveal
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (bParticipantReveal) CornerParticipantRollReel->RefreshFromPresentation(BuildActiveRollReelPresentation());
+		CornerSharedD6Value->SetVisibility(bParticipantReveal
+			? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		CornerSharedD6Value->SetText(FText::FromString(
+			bParticipantsResolved
+				? FString::FromInt(View.CornerSharedParticipantD6)
+				: FString(TEXT("待掷"))));
+		CornerSharedD6Frame->SetBrushColor(bParticipantsResolved
+			? FLinearColor(0.52f, 0.37f, 0.10f, 0.98f)
+			: FLinearColor(0.18f, 0.22f, 0.30f, 0.96f));
+		const bool bHasCandidateBonus = View.CornerCandidateBonus > 0;
+		CornerCandidateBonusText->SetVisibility(bHasCandidateBonus
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (bHasCandidateBonus)
+		{
+			CornerCandidateBonusText->SetText(FText::FromString(FString::Printf(
+				TEXT("候选人数优势：%s +%d"),
+				*SideName(View.CornerCandidateBonusSide),
+				View.CornerCandidateBonus)));
+		}
+	}
+
+	const bool bMethod = View.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::SelectSetPieceMethod;
+	const bool bChoiceInputEnabled = !IsInlineFormulaRevealInputBlocked();
+	ShortDirectButton->SetVisibility(bMethod && View.SetPieceType == ESetPieceSelectedType::ShortFreeKick ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	ShortAngledButton->SetVisibility(bMethod && View.SetPieceType == ESetPieceSelectedType::ShortFreeKick ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	ShortDirectButton->SetIsEnabled(bChoiceInputEnabled);
+	ShortAngledButton->SetIsEnabled(
+		bChoiceInputEnabled && View.bShortAngledEligible);
+	LongDirectButton->SetVisibility(bMethod && View.SetPieceType == ESetPieceSelectedType::LongFreeKick ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	LongPowerButton->SetVisibility(bMethod && View.SetPieceType == ESetPieceSelectedType::LongFreeKick ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	PenaltyDirectButton->SetVisibility(bMethod && View.SetPieceType == ESetPieceSelectedType::Penalty ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	PenaltyPanenkaButton->SetVisibility(bMethod && View.SetPieceType == ESetPieceSelectedType::Penalty ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	LongDirectButton->SetIsEnabled(bChoiceInputEnabled);
+	LongPowerButton->SetIsEnabled(bChoiceInputEnabled);
+	PenaltyDirectButton->SetIsEnabled(bChoiceInputEnabled);
+	PenaltyPanenkaButton->SetIsEnabled(bChoiceInputEnabled);
+	const bool bCornerIntent = View.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::SelectCornerIntent && !bParticipantReveal;
+	SetPieceMethodChoiceRow->SetVisibility(bMethod || bCornerIntent
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	CornerHighButton->SetVisibility(bCornerIntent ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	CornerLowButton->SetVisibility(bCornerIntent ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	CornerHighButton->SetIsEnabled(bChoiceInputEnabled);
+	CornerLowButton->SetIsEnabled(bChoiceInputEnabled);
+	const bool bHasPrimary = Presentation.Interaction.PrimaryAction.bAvailable
+		&& !bMethod && !bCornerIntent && !bParticipantReveal
+		&& View.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier
+		&& View.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::ResolveSendingOff;
+	SetPiecePrimaryButton->SetVisibility(bHasPrimary
+		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	SetPiecePrimaryButton->SetIsEnabled(!IsInlineFormulaRevealInputBlocked());
+	CornerReturnButton->SetVisibility(View.bCornerLockConfirmationPending
+		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	CornerReturnBounds->SetVisibility(View.bCornerLockConfirmationPending
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	SetPieceActionRow->SetVisibility(bHasPrimary
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	if (UTextBlock* Label = Cast<UTextBlock>(SetPiecePrimaryButton->GetChildAt(0)))
+	{
+		Label->SetText(View.bCornerLockConfirmationPending
+			? NSLOCTEXT("FMCodexCorner", "ConfirmLock", "继续锁定")
+			: FText::FromString(Presentation.Interaction.PrimaryAction.Label));
+	}
+}
+
 bool UFMCodexLocalMatchScreenWidget
 	::DoesInlineFormulaOwnCurrentPrimaryAction() const
 {
@@ -1722,6 +2151,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this, &UFMCodexLocalMatchScreenWidget::HandleDeploymentDragStarted);
 	LocalRackWidget->OnCardDragFinished.AddUObject(
 		this, &UFMCodexLocalMatchScreenWidget::HandleDeploymentDragFinished);
+	LocalRackWidget->OnCardSelectionRequested.AddUObject(
+		this, &UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested);
 	LocalRackBounds->AddChild(LocalRackWidget);
 	MainArea->AddChildToHorizontalBox(LocalRackBounds);
 
@@ -1809,6 +2240,282 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		LongShotLayerSlot->SetPadding(FMargin(28.0f));
 	}
 
+	SetPieceResolutionSurface = MakeRegion(
+		*WidgetTree, TEXT("SetPieceProductionResolutionSurface"));
+	SetPieceResolutionSurface->SetPadding(FMargin(18.0f, 14.0f));
+	SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
+	UVerticalBox* SetPieceBody = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("SetPieceProductionHierarchy"));
+	SetPieceTitleText = MakeText(*WidgetTree, TEXT("SetPieceProductionTitle"));
+	SetPieceTitleText->SetJustification(ETextJustify::Center);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*SetPieceTitleText, EFMCodexPlayerUITextRole::ActionTitle);
+	SetPieceBody->AddChildToVerticalBox(SetPieceTitleText);
+	SetPieceStatusText = MakeText(*WidgetTree, TEXT("SetPieceProductionStatus"));
+	SetPieceStatusText->SetJustification(ETextJustify::Center);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*SetPieceStatusText, EFMCodexPlayerUITextRole::SectionHeading);
+	SetPieceBody->AddChildToVerticalBox(SetPieceStatusText);
+	SetPieceDetailText = MakeText(*WidgetTree, TEXT("SetPieceProductionDetail"));
+	SetPieceDetailText->SetJustification(ETextJustify::Center);
+	SetPieceDetailText->SetAutoWrapText(true);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*SetPieceDetailText, EFMCodexPlayerUITextRole::Secondary);
+	if (UVerticalBoxSlot* DetailSlot =
+		SetPieceBody->AddChildToVerticalBox(SetPieceDetailText))
+	{
+		DetailSlot->SetPadding(FMargin(0.0f, 8.0f));
+	}
+	CornerDraftCandidateList = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("CornerDraftCandidateList"));
+	CornerDraftCandidateList->SetVisibility(ESlateVisibility::Collapsed);
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		const FString Base = FString::Printf(TEXT("CornerDraftCandidate%d"), Index + 1);
+		auto* Fit = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), FName(*(Base + TEXT("Fit"))));
+		Fit->SetStretch(EStretch::ScaleToFit);
+		Fit->SetStretchDirection(EStretchDirection::DownOnly);
+		auto* Label = MakeText(*WidgetTree, FName(*Base));
+		Label->SetAutoWrapText(false);
+		FFMCodexPlayerUIStyle::Get().ApplyText(*Label, EFMCodexPlayerUITextRole::Status);
+		Fit->AddChild(Label);
+		CornerDraftCandidateList->AddChildToVerticalBox(Fit)->SetPadding(FMargin(0.0f, 2.0f));
+		CornerDraftCandidateLabels.Add(Label);
+	}
+	SetPieceBody->AddChildToVerticalBox(CornerDraftCandidateList)->SetPadding(FMargin(14.0f, 5.0f));
+	CornerConfrontationBoard = MakeRegion(
+		*WidgetTree, TEXT("CornerConfrontationBoard"));
+	CornerConfrontationBoard->SetPadding(FMargin(12.0f, 10.0f));
+	CornerConfrontationBoard->SetVisibility(ESlateVisibility::Collapsed);
+	UVerticalBox* CornerConfrontationBody =
+		WidgetTree->ConstructWidget<UVerticalBox>(
+			UVerticalBox::StaticClass(), TEXT("CornerConfrontationHierarchy"));
+	UHorizontalBox* CornerConfrontationRow =
+		WidgetTree->ConstructWidget<UHorizontalBox>(
+			UHorizontalBox::StaticClass(), TEXT("CornerConfrontationRow"));
+	UVerticalBox* CornerAttackerColumn =
+		WidgetTree->ConstructWidget<UVerticalBox>(
+			UVerticalBox::StaticClass(), TEXT("CornerAttackerNomineeColumn"));
+	UVerticalBox* CornerDefenderColumn =
+		WidgetTree->ConstructWidget<UVerticalBox>(
+			UVerticalBox::StaticClass(), TEXT("CornerDefenderNomineeColumn"));
+	CornerAttackerNomineeCards.Reset();
+	CornerAttackerNomineeLabels.Reset();
+	CornerDefenderNomineeCards.Reset();
+	CornerDefenderNomineeLabels.Reset();
+	auto AddNomineeCard = [this](UVerticalBox& Column,
+		const TCHAR* SidePrefix, const int32 Index,
+		TArray<TObjectPtr<UBorder>>& Cards,
+		TArray<TObjectPtr<UTextBlock>>& Labels)
+	{
+		const FString BaseName = FString::Printf(
+			TEXT("Corner%sNomineeCard%d"), SidePrefix, Index + 1);
+		USizeBox* Bounds = WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(), FName(*(BaseName + TEXT("Bounds"))));
+		Bounds->SetWidthOverride(172.0f);
+		Bounds->SetHeightOverride(42.0f);
+		UBorder* Card = MakeRegion(*WidgetTree, FName(*BaseName));
+		Card->SetPadding(FMargin(8.0f, 5.0f));
+		UTextBlock* Label = MakeText(
+			*WidgetTree, FName(*(BaseName + TEXT("Label"))));
+		Label->SetJustification(ETextJustify::Center);
+		FFMCodexPlayerUIStyle::Get().ApplyText(
+			*Label, EFMCodexPlayerUITextRole::Status);
+		Label->SetAutoWrapText(false);
+		UScaleBox* Fit = WidgetTree->ConstructWidget<UScaleBox>(
+			UScaleBox::StaticClass(), FName(*(BaseName + TEXT("NameFit"))));
+		Fit->SetStretch(EStretch::ScaleToFit);
+		Fit->SetStretchDirection(EStretchDirection::DownOnly);
+		Fit->AddChild(Label);
+		Card->AddChild(Fit);
+		Bounds->AddChild(Card);
+		if (UVerticalBoxSlot* CardColumnSlot =
+			Column.AddChildToVerticalBox(Bounds))
+		{
+			CardColumnSlot->SetPadding(FMargin(3.0f));
+		}
+		Cards.Add(Card);
+		Labels.Add(Label);
+	};
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		AddNomineeCard(*CornerAttackerColumn, TEXT("Attacker"), Index,
+			CornerAttackerNomineeCards, CornerAttackerNomineeLabels);
+		AddNomineeCard(*CornerDefenderColumn, TEXT("Defender"), Index,
+			CornerDefenderNomineeCards, CornerDefenderNomineeLabels);
+	}
+	if (UHorizontalBoxSlot* AttackerColumnSlot =
+		CornerConfrontationRow->AddChildToHorizontalBox(CornerAttackerColumn))
+	{
+		AttackerColumnSlot->SetVerticalAlignment(VAlign_Center);
+		AttackerColumnSlot->SetPadding(FMargin(4.0f));
+	}
+	CornerSharedD6Frame = MakeRegion(*WidgetTree, TEXT("CornerSharedD6Frame"));
+	CornerSharedD6Frame->SetPadding(FMargin(14.0f, 10.0f));
+	UVerticalBox* CornerSharedD6Body =
+		WidgetTree->ConstructWidget<UVerticalBox>(
+			UVerticalBox::StaticClass(), TEXT("CornerSharedD6Body"));
+	UTextBlock* CornerSharedD6Heading = MakeText(
+		*WidgetTree, TEXT("CornerSharedD6Heading"), TEXT("共同 D6"));
+	CornerSharedD6Heading->SetJustification(ETextJustify::Center);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*CornerSharedD6Heading, EFMCodexPlayerUITextRole::SectionHeading);
+	CornerSharedD6Body->AddChildToVerticalBox(CornerSharedD6Heading);
+	CornerSharedD6Value = MakeText(
+		*WidgetTree, TEXT("CornerSharedD6Value"), TEXT("待掷"));
+	CornerSharedD6Value->SetJustification(ETextJustify::Center);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*CornerSharedD6Value, EFMCodexPlayerUITextRole::ActionTitle);
+	CornerSharedD6Body->AddChildToVerticalBox(CornerSharedD6Value);
+	CornerParticipantRollReel = WidgetTree->ConstructWidget<UFMCodexRollReelWidget>(
+		UFMCodexRollReelWidget::StaticClass(), TEXT("CornerParticipantRollReel"));
+	CornerSharedD6Body->AddChildToVerticalBox(CornerParticipantRollReel);
+	CornerSharedD6Frame->AddChild(CornerSharedD6Body);
+	if (UHorizontalBoxSlot* SharedD6Slot =
+		CornerConfrontationRow->AddChildToHorizontalBox(CornerSharedD6Frame))
+	{
+		SharedD6Slot->SetVerticalAlignment(VAlign_Center);
+		SharedD6Slot->SetPadding(FMargin(10.0f, 4.0f));
+	}
+	if (UHorizontalBoxSlot* DefenderColumnSlot =
+		CornerConfrontationRow->AddChildToHorizontalBox(CornerDefenderColumn))
+	{
+		DefenderColumnSlot->SetVerticalAlignment(VAlign_Center);
+		DefenderColumnSlot->SetPadding(FMargin(4.0f));
+	}
+	CornerConfrontationBody->AddChildToVerticalBox(CornerConfrontationRow);
+	CornerCandidateBonusText = MakeText(
+		*WidgetTree, TEXT("CornerCandidateBonusText"));
+	CornerCandidateBonusText->SetJustification(ETextJustify::Center);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*CornerCandidateBonusText, EFMCodexPlayerUITextRole::Status);
+	if (UVerticalBoxSlot* BonusSlot = CornerConfrontationBody
+		->AddChildToVerticalBox(CornerCandidateBonusText))
+	{
+		BonusSlot->SetPadding(FMargin(0.0f, 7.0f, 0.0f, 0.0f));
+	}
+	CornerConfrontationBoard->AddChild(CornerConfrontationBody);
+	if (UVerticalBoxSlot* BoardSlot =
+		SetPieceBody->AddChildToVerticalBox(CornerConfrontationBoard))
+	{
+		BoardSlot->SetPadding(FMargin(0.0f, 8.0f));
+		BoardSlot->SetHorizontalAlignment(HAlign_Center);
+	}
+	SetPieceMethodChoiceRow =
+		WidgetTree->ConstructWidget<UHorizontalBox>(
+			UHorizontalBox::StaticClass(), TEXT("SetPieceMethodChoiceRow"));
+	auto AddSetPieceChoice = [this](
+		TObjectPtr<UButton>& Button, const FName Name, const FString& Label,
+		const FString& Helper)
+	{
+		Button = MakeButton(*WidgetTree, Name, Label);
+		FFMCodexPlayerUIStyle::Get().ApplyButton(
+			*Button, EFMCodexPlayerUIActionRole::Secondary);
+		if (!Helper.IsEmpty())
+		{
+			UTextBlock* LabelText = Cast<UTextBlock>(Button->GetChildAt(0));
+			Button->RemoveChildAt(0);
+			UVerticalBox* ButtonBody = WidgetTree->ConstructWidget<UVerticalBox>(
+				UVerticalBox::StaticClass(),
+				FName(*(Name.ToString() + TEXT("Body"))));
+			if (LabelText != nullptr)
+			{
+				ButtonBody->AddChildToVerticalBox(LabelText);
+			}
+			UTextBlock* HelperText = MakeText(
+				*WidgetTree,
+				FName(*(Name.ToString() + TEXT("Helper"))),
+				Helper);
+			HelperText->SetJustification(ETextJustify::Center);
+			FFMCodexPlayerUIStyle::Get().ApplyText(
+				*HelperText, EFMCodexPlayerUITextRole::Secondary);
+			if (UVerticalBoxSlot* HelperSlot =
+				ButtonBody->AddChildToVerticalBox(HelperText))
+			{
+				HelperSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 0.0f));
+			}
+			Button->AddChild(ButtonBody);
+		}
+		if (UHorizontalBoxSlot* Slot =
+			SetPieceMethodChoiceRow->AddChildToHorizontalBox(Button))
+		{
+			Slot->SetPadding(FMargin(4.0f));
+		}
+	};
+	AddSetPieceChoice(ShortDirectButton, TEXT("ShortDirectMethod"),
+		TEXT("直接射门"), TEXT("看较高射门/传球"));
+	AddSetPieceChoice(ShortAngledButton, TEXT("ShortAngledMethod"),
+		TEXT("战术配合"), TEXT("需射门+传球≥8"));
+	AddSetPieceChoice(LongDirectButton, TEXT("LongDirectMethod"),
+		TEXT("直接射门"), TEXT("看远射 / 门将站位"));
+	AddSetPieceChoice(LongPowerButton, TEXT("LongPowerMethod"),
+		FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage().ToString(), TEXT("只看两枚掷点"));
+	AddSetPieceChoice(PenaltyDirectButton, TEXT("PenaltyDirectMethod"),
+		TEXT("常规点球"), TEXT("看较高射门/传球"));
+	AddSetPieceChoice(PenaltyPanenkaButton, TEXT("PenaltyPanenkaMethod"),
+		TEXT("勺子点球"), TEXT("只看一枚掷点"));
+	AddSetPieceChoice(CornerHighButton, TEXT("CornerHighIntent"),
+		TEXT("高球"), FFMCodexTacticalDetailPresentationBuilder
+			::BuildCornerChoiceHint(EMatchPlayCornerRouteIntent::High).ToString());
+	AddSetPieceChoice(CornerLowButton, TEXT("CornerLowIntent"),
+		TEXT("低平球"), FFMCodexTacticalDetailPresentationBuilder
+			::BuildCornerChoiceHint(EMatchPlayCornerRouteIntent::Low).ToString());
+	ShortDirectButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleShortDirectRequested);
+	ShortAngledButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleShortAngledRequested);
+	LongDirectButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleLongDirectRequested);
+	LongPowerButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleLongPowerRequested);
+	PenaltyDirectButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandlePenaltyDirectRequested);
+	PenaltyPanenkaButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandlePenaltyPanenkaRequested);
+	CornerHighButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleCornerHighRequested);
+	CornerLowButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleCornerLowRequested);
+	if (UVerticalBoxSlot* MethodChoiceSlot =
+		SetPieceBody->AddChildToVerticalBox(SetPieceMethodChoiceRow))
+	{
+		// Reuse the centered branch-choice rhythm from mature ordinary tactics.
+		MethodChoiceSlot->SetHorizontalAlignment(HAlign_Center);
+		MethodChoiceSlot->SetPadding(FMargin(0.0f, 10.0f));
+	}
+	SetPiecePrimaryButton = MakeButton(
+		*WidgetTree, TEXT("SetPieceProductionPrimaryAction"), TEXT("继续"));
+	FFMCodexPlayerUIStyle::Get().ApplyButton(
+		*SetPiecePrimaryButton, EFMCodexPlayerUIActionRole::Primary);
+	SetPiecePrimaryButton->OnClicked.AddDynamic(
+		this, &UFMCodexLocalMatchScreenWidget::HandleSetPiecePrimaryRequested);
+	CornerReturnButton = MakeButton(*WidgetTree, TEXT("CornerReturnToNominations"), TEXT("返回补充"));
+	CornerReturnButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleCornerReturnRequested);
+	CornerReturnButton->SetVisibility(ESlateVisibility::Collapsed);
+	// A stable tree in both modes: no reparenting, state-dependent width overrides
+	// or auto-wrap desired-size feedback from the previous label.
+	SetPieceActionRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("SetPieceActionRow"));
+	auto AddBoundedAction = [&](UButton* Button, const FName Name)
+	{
+		CastChecked<UTextBlock>(Button->GetChildAt(0))->SetAutoWrapText(false);
+		auto* Bounds = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), Name);
+		Bounds->SetMinDesiredWidth(200.0f);
+		Bounds->AddChild(Button);
+		SetPieceActionRow->AddChildToHorizontalBox(Bounds)->SetPadding(FMargin(5.0f, 0.0f));
+		return Bounds;
+	};
+	AddBoundedAction(SetPiecePrimaryButton, TEXT("SetPiecePrimaryActionBounds"));
+	CornerReturnBounds = AddBoundedAction(CornerReturnButton, TEXT("CornerReturnActionBounds"));
+	CornerReturnBounds->SetVisibility(ESlateVisibility::Collapsed);
+	auto* ActionSlot = SetPieceBody->AddChildToVerticalBox(SetPieceActionRow);
+	ActionSlot->SetHorizontalAlignment(HAlign_Center);
+	ActionSlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
+	SetPieceResolutionSurface->AddChild(SetPieceBody);
+	USizeBox* SetPieceBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("SetPieceProductionResolutionBounds"));
+	SetPieceBounds->SetMinDesiredWidth(660.0f);
+	SetPieceBounds->SetMaxDesiredWidth(820.0f);
+	SetPieceBounds->AddChild(SetPieceResolutionSurface);
+	if (UOverlaySlot* SetPieceLayerSlot =
+		PitchPresentationLayers->AddChildToOverlay(SetPieceBounds))
+	{
+		SetPieceLayerSlot->SetHorizontalAlignment(HAlign_Center);
+		SetPieceLayerSlot->SetVerticalAlignment(VAlign_Center);
+		SetPieceLayerSlot->SetPadding(FMargin(28.0f));
+	}
+
 	TacticalPointRevealSurface = MakeRegion(
 		*WidgetTree, TEXT("TacticalPointRollRevealSurface"));
 	TacticalPointRevealSurface->SetPadding(FMargin(22.0f, 16.0f));
@@ -1857,6 +2564,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	OpponentRackBounds->SetWidthOverride(422.0f);
 	OpponentRackWidget = WidgetTree->ConstructWidget<UFMCodexCardRackWidget>(
 		UFMCodexCardRackWidget::StaticClass(), TEXT("PersistentOpponentCardRack"));
+	OpponentRackWidget->OnCardSelectionRequested.AddUObject(
+		this, &UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested);
 	OpponentRackBounds->AddChild(OpponentRackWidget);
 	MainArea->AddChildToHorizontalBox(OpponentRackBounds);
 	MainScreen->AddChildToVerticalBox(MainAreaBounds);
@@ -2735,12 +3444,47 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	if (ActiveCrossRollReveal.Kind
 		== EFMCodexUMGCrossRollRevealKind::TacticalPoint)
 	{
-		return Presentation.InlineFormula;
+		// Full D12 owns the entry reveal. Authority may already have advanced to
+		// SetPiece Type, but that next panel must wait until this reveal settles.
+		return FFMCodexUMGInlineFormulaSurfaceViewModel();
 	}
 	if (ActiveCrossRollReveal.Kind
 		== EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute)
 	{
 		return Presentation.InlineFormula;
+	}
+	if (ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
+		&& IsInlineFormulaRevealInputBlocked())
+	{
+		return {}; // The confrontation board owns this single shared reel.
+	}
+	if (ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerRoute
+		&& IsInlineFormulaRevealInputBlocked())
+	{
+		FFMCodexUMGInlineFormulaSurfaceViewModel Route;
+		Route.bVisible = true;
+		Route.bSuppressLegacyResolution = true;
+		Route.ContestId = TEXT("Corner.Route");
+		Route.ContestLabel = TEXT("角球路线判定");
+		Route.bShowFormulaRows = false;
+		Route.bShowAttackRow = false;
+		Route.bShowDefenseRow = false;
+		Route.bDiceRevealVisible = true;
+		Route.RevealPhase = InlineFormulaRevealPhase;
+		Route.RollReel = BuildActiveRollReelPresentation();
+		Route.DiceOwnerLabel = TEXT("路线掷点");
+		const bool bDisclosed = InlineFormulaRevealPhase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay;
+		Route.StatusLabel = bDisclosed ? TEXT("路线已确认") : TEXT("判定角球路线");
+		Route.RollHelperLabel = bDisclosed ? FString() : CachedRouteRollHelperLabel;
+		if (bDisclosed && MatchController != nullptr)
+		{
+			const auto& View = MatchController->GetInteractionView();
+			Route.RouteResultLabel = FString::Printf(TEXT("掷点 %d → %s"), View.CornerRouteD6,
+				View.CornerActualRoute == EMatchPlayCornerRouteIntent::High ? TEXT("高球") : TEXT("低平球"));
+		}
+		return Route;
 	}
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& Source =
 		ActiveFormula(Presentation);
@@ -2785,9 +3529,13 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		? RollRevealAuthoritativeRawValue
 		: Result.RollReel.CenterValue;
 	Result.DiceFaceLabel = FString::FromInt(VisibleD6);
-	Result.DiceOwnerLabel =
-		ActiveCrossRollReveal.Kind
-			== EFMCodexUMGCrossRollRevealKind::Defense
+	Result.DiceOwnerLabel = ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::SetPieceType
+			? TEXT("定位球类型 D6")
+			: ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::Defense
+			|| ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::SetPieceDefense
 				? TEXT("防守方掷点") : TEXT("进攻方掷点");
 	// Retain the exact claim while the reveal gate hides its button. This keeps
 	// the lower panel from leaking the next authoritative action early.
@@ -2808,13 +3556,28 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			|| Result.ContestId
 				== FName(TEXT("CutInsideShot.DirectShot")))
 		&& Result.bNarrativeAvailable;
+	const bool bSetPieceMethodReveal =
+		ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::SetPieceAttack
+		|| ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::SetPieceDefense
+		|| ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
+		|| ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
+	const bool bSetPieceTerminalNarrative = bSetPieceMethodReveal
+		&& ActiveCrossRollReveal.Kind
+			!= EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
+		&& Result.bNarrativeAvailable;
 	const bool bNarrativeDisclosed =
 		(ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::Defense
 			|| bBehindAttackTerminalNarrative
-			|| bElectiveDirectAttackTerminalNarrative)
+			|| bElectiveDirectAttackTerminalNarrative
+			|| bSetPieceTerminalNarrative)
 		&& bHolding
 		&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
+	const FString NeutralSetPieceContestLabel = Result.ResultSubtitle;
 	if (!bNarrativeDisclosed)
 	{
 		Result.bNarrativeAvailable = false;
@@ -2824,11 +3587,67 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		// Authority aliases a terminal Narrative into these two visible labels.
 		// Restore the neutral contest hierarchy until Presentation has disclosed
 		// the Defense formula and completed the short Narrative transition.
-		Result.ContestLabel = FFMCodexPlayerUIPresentationText
-			::ResolutionContest(Result.ContestId).ToString();
+		if (bSetPieceMethodReveal
+			&& !NeutralSetPieceContestLabel.IsEmpty())
+		{
+			Result.ContestLabel = NeutralSetPieceContestLabel;
+		}
+		else if (!bSetPieceMethodReveal)
+		{
+			Result.ContestLabel = FFMCodexPlayerUIPresentationText
+				::ResolutionContest(Result.ContestId).ToString();
+		}
 		Result.StatusLabel = bHolding
-			? TEXT("权威结果已落定")
-			: bSettling ? TEXT("权威掷点落定中") : TEXT("号码滚动中");
+			? TEXT("掷点结果已落定")
+			: bSettling ? TEXT("掷点落定中") : TEXT("号码滚动中");
+	}
+
+	if (ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::SetPieceType)
+	{
+		Result.ContestId = TEXT("SetPiece.Type");
+		Result.ContestLabel = TEXT("定位球类型");
+		Result.StatusLabel = bHolding
+			? TEXT("定位球类型已确认")
+			: bSettling ? TEXT("掷点落定中") : TEXT("号码滚动中");
+		if (!bFormulaDisclosed)
+		{
+			Result.RouteResultLabel.Empty();
+		}
+		Result.TacticalPlayerSummaryLabel.Empty();
+		Result.bShowFormulaRows = false;
+		Result.bShowAttackRow = false;
+		Result.bShowDefenseRow = false;
+		Result.bAttackRowActive = false;
+		Result.bDefenseRowActive = false;
+		return Result;
+	}
+	if (bSetPieceMethodReveal
+		&& (!bFormulaDisclosed
+			|| ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA))
+	{
+		// Never disclose the accepted Formula/outcome before ResultHold, and
+		// never reveal the second value while the first paired reel is holding.
+		Result.RouteResultLabel.Empty();
+	}
+	const bool bSetPiecePairFirst = ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA;
+	const bool bSetPiecePairSecond = ActiveCrossRollReveal.Kind
+		== EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
+	if ((bSetPiecePairFirst || bSetPiecePairSecond) && MatchController != nullptr)
+	{
+		const FFMCodexLocalMatchInteractionView& View = MatchController->GetInteractionView();
+		const bool bPairDisclosed = bSetPiecePairSecond && bFormulaDisclosed;
+		Result.DiceOwnerLabel = bSetPiecePairFirst ? TEXT("第一枚掷点") : TEXT("第二枚掷点");
+		Result.RollHelperLabel = bPairDisclosed ? FString()
+			: FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(View.SetPieceType).ToString();
+		if (!bPairDisclosed && View.bHasSetPiecePairedD6
+			&& (bSetPiecePairSecond || bFormulaDisclosed))
+		{
+			Result.RouteResultLabel = FFMCodexPlayerUIPresentationText
+				::FirstPairedRollResult(View.SetPiecePairedD6A).ToString();
+		}
 	}
 
 	if (ActiveCrossRollReveal.Kind
@@ -2836,6 +3655,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	{
 		Result.ContestId = TEXT("Cross.Route");
 		Result.ContestLabel = TEXT("传中路线判定");
+		Result.RollHelperLabel = bHolding ? FString() : CachedRouteRollHelperLabel;
 		if (!bHolding)
 		{
 			Result.RouteResultLabel.Empty();
@@ -2854,7 +3674,9 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		return Result;
 	}
 	const bool bAttack = ActiveCrossRollReveal.Kind
-		== EFMCodexUMGCrossRollRevealKind::Attack;
+			== EFMCodexUMGCrossRollRevealKind::Attack
+		|| ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::SetPieceAttack;
 	Result.bAttackRowActive = bAttack;
 	Result.bDefenseRowActive = !bAttack;
 	if (!bFormulaDisclosed)
@@ -2931,7 +3753,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 			Result.ResultTitle.Empty();
 			Result.NarrativeHeadline.Empty();
 			Result.StatusLabel = bHolding
-				? TEXT("权威结果已落定")
+				? TEXT("掷点结果已落定")
 				: bSettling ? TEXT("掷点落定中") : TEXT("号码滚动中");
 		}
 		else
@@ -2976,10 +3798,26 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 }
 
 FFMCodexUMGMatchHeaderViewModel
-UFMCodexLocalMatchScreenWidget::BuildDisplayedHeader() const
+UFMCodexLocalMatchScreenWidget::BuildDisplayedHeader(const bool bOutcomeDisclosed) const
 {
-	return CanRevealTacticalPointDependentPresentation()
+	FFMCodexUMGMatchHeaderViewModel Result = CanRevealTacticalPointDependentPresentation()
 		? Presentation.Header : CachedPreRollHeader;
+	if (IsInlineFormulaRevealInputBlocked() && !bOutcomeDisclosed && MatchHeader != nullptr)
+	{
+		// Retain only the score that was actually painted. Capturing the latest
+		// authority Header at paired reel B would leak the already-resolved Goal.
+		// All other header/participant/formula facts keep their existing gates.
+		const auto& Disclosed = MatchHeader->GetPresentation();
+		Result.PlayerAScoreLabel = Disclosed.PlayerAScoreLabel;
+		Result.PlayerBScoreLabel = Disclosed.PlayerBScoreLabel;
+		const bool bLeftIsA = Result.LeftPlayerSide == EInitialTurnOrderPlayer::PlayerA;
+		Result.LeftScoreLabel = bLeftIsA ? Disclosed.PlayerAScoreLabel : Disclosed.PlayerBScoreLabel;
+		Result.RightScoreLabel = bLeftIsA ? Disclosed.PlayerBScoreLabel : Disclosed.PlayerAScoreLabel;
+		Result.ScoreLabel = FString::Printf(TEXT("%s - %s"), *Result.LeftScoreLabel, *Result.RightScoreLabel);
+	}
+	// No independent timer or persistent score truth. Settled/reconstructed/no-roll
+	// terminals, Advance and new matches converge to the incoming authority DTO.
+	return Result;
 }
 
 bool UFMCodexLocalMatchScreenWidget
@@ -3100,6 +3938,16 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 			== EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerB;
 	Result.bDeadCornerAVisible = bSecond || bHolding;
 	Result.bDeadCornerBVisible = bSecond && bHolding;
+	const bool bPairDisclosed = bSecond && bHolding
+		&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay;
+	Result.OutcomeHintLabel = bPairDisclosed ? FString()
+		: FFMCodexPlayerUIPresentationText::LongShotDeadCornerOutcomeHint().ToString();
+	Result.PairedRollResultLabel = bPairDisclosed
+		? FFMCodexPlayerUIPresentationText::PairedRollResult(
+			Result.DeadCornerA, Result.DeadCornerB).ToString()
+		: Result.bDeadCornerAVisible
+			? FFMCodexPlayerUIPresentationText::FirstPairedRollResult(Result.DeadCornerA).ToString()
+			: FString();
 	const bool bNarrativeDisclosed = bSecond && bHolding
 		&& InlineFormulaRevealPhaseElapsed >= NarrativeDisclosureDelay;
 	if (!bNarrativeDisclosed)
@@ -3110,7 +3958,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 	}
 	Result.StatusLabel = bHolding
 		? (bSecond ? TEXT("双骰结果已落定") : TEXT("第一枚骰子已落定"))
-		: TEXT("号码滚动中");
+		: bSecond ? TEXT("第二枚掷点中") : TEXT("第一枚掷点中");
 	return Result;
 }
 
@@ -3205,6 +4053,8 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 				|| ActiveCrossRollReveal.Kind
 					== EFMCodexUMGCrossRollRevealKind
 						::PassControlInitialRoute
+				|| ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerRoute
+				|| ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
 					? RouteResultHoldDuration
 					: ActiveCrossRollReveal.Kind
 						== EFMCodexUMGCrossRollRevealKind::TacticalPoint
@@ -3229,6 +4079,7 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 			CachedResolvedThroughBall = {};
 			CachedResolvedLongShot = {};
 			CachedPreRollHeader = {};
+			CachedRouteRollHelperLabel.Empty();
 			bInlineFormulaAuthorityResultAvailable = false;
 			RollRevealAuthoritativeRawValue = 0;
 			RollRevealDomainMinimum = 1;
@@ -3241,6 +4092,29 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 				EFMCodexUMGInlineFormulaRevealPhase::Settled;
 			InlineFormulaRevealPhaseElapsed = 0.0f;
 			StopInlineFormulaRevealTimer();
+			if (CompletedIdentity.Kind
+				== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
+				&& MatchController != nullptr)
+			{
+				const FFMCodexLocalMatchInteractionView& View =
+					MatchController->GetInteractionView();
+				if (View.AttackSequence == CompletedIdentity.AttackSequence
+					&& View.bHasSetPiecePairedD6)
+				{
+					FFMCodexCrossRollRevealIdentity Second = CompletedIdentity;
+					Second.Kind = EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
+					Second.RollSequenceIndex = 1;
+					BeginInlineFormulaReveal(Second, false);
+					CachedResolvedInlineFormula = ActiveFormula(Presentation);
+					bInlineFormulaAuthorityResultAvailable = true;
+					RollRevealAuthoritativeRawValue = View.SetPiecePairedD6B;
+					RollRevealDomainMinimum = 1;
+					RollRevealDomainMaximum = 6;
+					RollRevealSequenceOffsetCells = PlannedSequenceOffset(
+						View.SetPiecePairedD6B, 1, 6);
+					continue;
+				}
+			}
 			if (CompletedIdentity.Kind
 					== EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA
 				|| CompletedIdentity.Kind
@@ -3281,6 +4155,14 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 				}
 			}
 			ObservePendingCrossRoll(Presentation);
+			if (MatchController != nullptr
+				&& (CompletedIdentity.Kind
+						== EFMCodexUMGCrossRollRevealKind::TacticalPoint
+					|| CompletedIdentity.Kind
+						== EFMCodexUMGCrossRollRevealKind::SetPieceType))
+			{
+				MatchController->NotifyEntryRevealComplete();
+			}
 		}
 	}
 	const bool bPhaseChanged = PreviousPhase != InlineFormulaRevealPhase;
@@ -3358,6 +4240,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshActiveRollReelVisuals()
 		{
 			TacticalPointRollReel->RefreshFromPresentation(Reel);
 		}
+	}
+	else if (ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
+		&& CornerParticipantRollReel != nullptr)
+	{
+		CornerParticipantRollReel->RefreshFromPresentation(Reel);
 	}
 	else if (ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute
@@ -3493,6 +4380,7 @@ void UFMCodexLocalMatchScreenWidget::ResetInlineFormulaRevealState()
 	ObservedPendingCrossRoll = {};
 	ActiveCrossRollReveal = {};
 	SettledCrossRollRevealKeys.Reset();
+	CachedRouteRollHelperLabel.Empty();
 	bInlineFormulaAuthorityResultAvailable = false;
 	RollRevealAuthoritativeRawValue = 0;
 	RollRevealDomainMinimum = 1;
@@ -3555,12 +4443,15 @@ void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaReveal(
 	CachedResolvedThroughBall = {};
 	CachedResolvedLongShot = {};
 	CachedPreRollHeader = Presentation.Header;
+	// Copy already-built presentation data, never infer intent or ranges here.
+	CachedRouteRollHelperLabel = Identity.Kind == EFMCodexUMGCrossRollRevealKind::CornerRoute
+		|| Identity.Kind == EFMCodexUMGCrossRollRevealKind::InitialRoute
+			? FMCodexLocalMatchScreenWidget::ActiveFormula(Presentation).RollHelperLabel : FString();
 	bInlineFormulaAuthorityResultAvailable = false;
 	RollRevealAuthoritativeRawValue = 0;
-	RollRevealDomainMinimum = Identity.Kind
-		== EFMCodexUMGCrossRollRevealKind::TacticalPoint ? 2 : 1;
+	RollRevealDomainMinimum = 1;
 	RollRevealDomainMaximum = Identity.Kind
-		== EFMCodexUMGCrossRollRevealKind::TacticalPoint ? 8 : 6;
+		== EFMCodexUMGCrossRollRevealKind::TacticalPoint ? 12 : 6;
 	CachedTacticalPointFinalValue = 0;
 	InlineFormulaRevealPhase = bRequestInFlight
 		? EFMCodexUMGInlineFormulaRevealPhase::RequestInFlight
@@ -3576,6 +4467,7 @@ void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaReveal(
 void UFMCodexLocalMatchScreenWidget::CancelInlineFormulaReveal()
 {
 	StopInlineFormulaRevealTimer();
+	CachedRouteRollHelperLabel.Empty();
 	ActiveCrossRollReveal = {};
 	CachedResolvedInlineFormula = {};
 	CachedResolvedThroughBall = {};
@@ -3608,20 +4500,66 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 	}
 	if (Identity.Kind == EFMCodexUMGCrossRollRevealKind::TacticalPoint)
 	{
-		const int32 TacticalPoints =
-			InPresentation.Header.CurrentAttackerTacticalPoints;
+		const int32 RawD12 = InPresentation.Header.RawInitialD12;
 		if (InPresentation.Header.AttackSequence != Identity.AttackSequence
 			|| InPresentation.Interaction.bCanRollTacticalPoints
-			|| TacticalPoints < 2 || TacticalPoints > 8)
+			|| RawD12 < 1 || RawD12 > 12)
 		{
 			return false;
 		}
-		// Current production's authoritative random object is directly 2..8;
-		// BeginOrdinaryAttack stores that same value as the Tactical Point resource.
-		OutRawValue = TacticalPoints;
-		OutDomainMinimum = 2;
-		OutDomainMaximum = 8;
+		OutRawValue = RawD12;
+		OutDomainMinimum = 1;
+		OutDomainMaximum = 12;
 		return true;
+	}
+	if (Identity.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceType
+		|| Identity.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack
+		|| Identity.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceDefense
+		|| Identity.Kind == EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
+		|| Identity.Kind == EFMCodexUMGCrossRollRevealKind::SetPiecePairedB
+		|| Identity.Kind == EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
+		|| Identity.Kind == EFMCodexUMGCrossRollRevealKind::CornerRoute)
+	{
+		if (MatchController == nullptr)
+		{
+			return false;
+		}
+		const FFMCodexLocalMatchInteractionView& View =
+			MatchController->GetInteractionView();
+		if (View.AttackSequence != Identity.AttackSequence)
+		{
+			return false;
+		}
+		bool bResolved = false;
+		switch (Identity.Kind)
+		{
+		case EFMCodexUMGCrossRollRevealKind::SetPieceType:
+			bResolved = View.bHasSetPieceTypeRoll;
+			OutRawValue = View.RawSetPieceTypeD6; break;
+		case EFMCodexUMGCrossRollRevealKind::SetPieceAttack:
+			bResolved = View.bHasSetPieceAttackD6 || View.bHasSetPiecePairedD6;
+			OutRawValue = View.bHasSetPieceAttackD6
+				? View.SetPieceAttackD6 : View.SetPiecePairedD6A; break;
+		case EFMCodexUMGCrossRollRevealKind::SetPieceDefense:
+			bResolved = View.bHasSetPieceDefenseD6;
+			OutRawValue = View.SetPieceDefenseD6; break;
+		case EFMCodexUMGCrossRollRevealKind::SetPiecePairedA:
+			bResolved = View.bHasSetPiecePairedD6;
+			OutRawValue = View.SetPiecePairedD6A; break;
+		case EFMCodexUMGCrossRollRevealKind::SetPiecePairedB:
+			bResolved = View.bHasSetPiecePairedD6;
+			OutRawValue = View.SetPiecePairedD6B; break;
+		case EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection:
+			bResolved = View.bHasCornerSharedParticipantD6;
+			OutRawValue = View.CornerSharedParticipantD6; break;
+		case EFMCodexUMGCrossRollRevealKind::CornerRoute:
+			bResolved = View.bHasCornerRouteD6;
+			OutRawValue = View.CornerRouteD6; break;
+		default: break;
+		}
+		OutDomainMinimum = 1;
+		OutDomainMaximum = 6;
+		return bResolved && OutRawValue >= 1 && OutRawValue <= 6;
 	}
 	const FMatchPlayCurrentAttackResolutionFactProjection& Facts =
 		InPresentation.Resolution.FormulaFacts;
@@ -3772,7 +4710,6 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	RefreshFullCardProductionReviewSurface();
 #endif
-	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader());
 	LocalRackWidget->RefreshFromPresentation(
 		BuildDisplayedHandRack(Presentation.LocalRack));
 	OpponentRackWidget->RefreshFromPresentation(
@@ -3818,9 +4755,21 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		DisplayedLongShot.bVisible = false;
 	}
 	LongShotResolutionSurface->RefreshFromPresentation(DisplayedLongShot);
-	const bool bTacticalPointRevealVisible =
+	RefreshSetPieceResolutionSurface();
+	// Use the actual owning surface's disclosed narrative, not raw terminal truth
+	// or a tactic-specific delay. This also covers outer Chip and paired outcomes.
+	const bool bOutcomeDisclosed = bLongShotProductionOwnsResolution
+		? (DisplayedLongShot.Formula.bVisible ? DisplayedLongShot.Formula.bNarrativeAvailable
+			: DisplayedLongShot.bNarrativeAvailable)
+		: bThroughBallProductionOwnsResolution
+			? (DisplayedThroughBall.Formula.bVisible ? DisplayedThroughBall.Formula.bNarrativeAvailable
+				: DisplayedThroughBall.bNarrativeAvailable)
+			: StandaloneInlineFormula.bVisible && StandaloneInlineFormula.bNarrativeAvailable;
+	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader(bOutcomeDisclosed));
+	const bool bEntryOrUniqueSetPieceReveal =
 		ActiveCrossRollReveal.Kind
-			== EFMCodexUMGCrossRollRevealKind::TacticalPoint
+			== EFMCodexUMGCrossRollRevealKind::TacticalPoint;
+	const bool bTacticalPointRevealVisible = bEntryOrUniqueSetPieceReveal
 		&& IsInlineFormulaRevealInputBlocked();
 	TacticalPointRevealSurface->SetVisibility(bTacticalPointRevealVisible
 		? ESlateVisibility::SelfHitTestInvisible
@@ -3834,24 +4783,47 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
 		const bool bSettling = InlineFormulaRevealPhase
 			== EFMCodexUMGInlineFormulaRevealPhase::Settling;
+		const bool bFullD12 = ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::TacticalPoint;
+		const bool bTypeD6 = ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::SetPieceType;
 		TacticalPointRevealTitle->SetText(FText::FromString(
-			bHolding ? TEXT("战术点结果")
-				: bSettling ? TEXT("战术点掷点落定")
-					: TEXT("战术点号码滚动中")));
+			bHolding
+				? bFullD12 ? TEXT("行动点结果")
+					: bTypeD6 ? TEXT("定位球类型结果") : TEXT("掷点结果")
+				: bSettling ? TEXT("掷点落定") : TEXT("号码滚动中")));
 		const bool bResourceDisclosed = bHolding
 			&& InlineFormulaRevealPhaseElapsed
 				>= FMCodexLocalMatchScreenWidget::FormulaDisclosureDelay;
+		FString DisclosedResult = FString::Printf(TEXT("掷点 %d"),
+			RollRevealAuthoritativeRawValue);
+		if (bResourceDisclosed && MatchController != nullptr)
+		{
+			const FFMCodexLocalMatchInteractionView& View =
+				MatchController->GetInteractionView();
+			if (bFullD12)
+			{
+				DisclosedResult += View.RouteKind
+					== EMatchPlayCurrentAttackRouteKind::Ordinary
+						? FString::Printf(TEXT("  →  战术点 %d"), View.ActionPoint)
+					: View.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff
+						? FString(TEXT("  →  罚下一人"))
+						: FString(TEXT("  →  定位球"));
+			}
+			else if (bTypeD6)
+			{
+				DisclosedResult += TEXT("  →  ") + View.ActionLabel;
+			}
+		}
 		TacticalPointRevealResult->SetText(FText::FromString(
 			bResourceDisclosed
-				? FString::Printf(TEXT("掷点 %d  →  战术点 %d"),
-					RollRevealAuthoritativeRawValue,
-					CachedTacticalPointFinalValue)
+				? DisclosedResult
 				: bHolding
 					? FString::Printf(TEXT("掷点 %d"),
 						RollRevealAuthoritativeRawValue)
 					: bSettling
 						? FString(TEXT("掷点落定中"))
-						: FString(TEXT("等待权威结果"))));
+						: FString(TEXT("等待掷点结果"))));
 	}
 	BindDetailHoverSources();
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
@@ -3872,7 +4844,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	const bool bCentralSurfaceClaimsPrimaryAction =
 		DoesInlineFormulaOwnCurrentPrimaryAction()
 		|| DoesThroughBallOwnCurrentPrimaryAction()
-		|| DoesLongShotOwnCurrentPrimaryAction();
+		|| DoesLongShotOwnCurrentPrimaryAction()
+		|| DoesSetPieceOwnCurrentPrimaryAction();
 	const bool bOneOnOneDisclosureGate =
 		IsInlineFormulaRevealInputBlocked()
 		&& Presentation.Interaction.Category
@@ -3899,7 +4872,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		&& !DisplayedThroughBall.bSuppressLegacyResolution
 		&& !DisplayedLongShot.bSuppressLegacyResolution
 		&& !bThroughBallProductionOwnsResolution
-		&& !bLongShotProductionOwnsResolution;
+		&& !bLongShotProductionOwnsResolution
+		&& !DoesSetPieceOwnCurrentPrimaryAction();
 	const bool bNonBlockingNotification = bShowLegacyResolution
 		&& Presentation.Resolution.bNonBlockingNotification;
 	ResolutionOverlay->SetBrushColor(bNonBlockingNotification

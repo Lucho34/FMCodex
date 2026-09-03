@@ -270,7 +270,7 @@ bool FFMCodexCutInsideProductionBranchSurfaceTest::RunTest(
 		TestEqual(TEXT("Direct branch copy"), Direct.Label,
 			FString(TEXT("直接射门")));
 		TestEqual(TEXT("DeadCorner branch copy"), Dead.Label,
-			FString(TEXT("直射死角")));
+			FString(TEXT("射向死角")));
 		TestEqual(TEXT("Direct helper is the canonical compact comparison"),
 			Direct.SecondaryLabel,
 			FString(TEXT("（射门 / 盘带 vs 抢断）")));
@@ -325,7 +325,7 @@ bool FFMCodexCutInsideProductionDirectStatesTest::RunTest(
 		FString(TEXT("进攻方掷点")));
 	TestEqual(TEXT("CutInside gate hint uses the exact compact copy"),
 		PendingScreen.LongShotResolution.OutcomeHintLabel,
-		FString(TEXT("1–2：射门偏出｜3–6：进入攻防结算")));
+		FString(TEXT("1–2：射门偏出")));
 	TestEqual(TEXT("Attack reveal identity is authoritative"),
 		PendingScreen.Interaction.CrossRollContestId,
 		FName(TEXT("CutInsideShot.DirectShot")));
@@ -341,6 +341,8 @@ bool FFMCodexCutInsideProductionDirectStatesTest::RunTest(
 	AddDirectFacts(AttackOnly, true, 4, false, 0);
 	const FFMCodexUMGMatchScreenViewModel AttackOnlyScreen = Build(AttackOnly);
 	const FFMCodexUMGMatchScreenViewModel RebuiltAttackOnly = Build(AttackOnly);
+	TestTrue(TEXT("Defense pending no longer displays the attack helper"),
+		AttackOnlyScreen.LongShotResolution.OutcomeHintLabel.IsEmpty());
 	TestEqual(TEXT("Direct Defense uses the compact player CTA"),
 		AttackOnlyScreen.Interaction.PrimaryAction.Label,
 		FString(TEXT("防守方掷点")));
@@ -389,6 +391,8 @@ bool FFMCodexCutInsideProductionDirectStatesTest::RunTest(
 		EMatchPlayResolutionRollSemantics::ArithmeticContest,
 		EMatchPlayResolutionDecisionOutcome::ImmediateMiss);
 	const FFMCodexUMGMatchScreenViewModel ImmediateScreen = Build(Immediate);
+	TestTrue(TEXT("Immediate miss no longer displays the attack helper"),
+		ImmediateScreen.LongShotResolution.OutcomeHintLabel.IsEmpty());
 	TestFalse(TEXT("ImmediateMiss shows no fabricated Formula rows"),
 		ImmediateScreen.LongShotResolution.Formula.bShowFormulaRows);
 	TestEqual(TEXT("ImmediateMiss uses centralized CutInside Narrative"),
@@ -511,7 +515,7 @@ bool FFMCodexCutInsideProductionDeadCornerStatesTest::RunTest(
 			&& TerminalScreen.LongShotResolution.DeadCornerB == 5);
 	TestEqual(TEXT("DeadCorner uses centralized CutInside Narrative"),
 		TerminalScreen.LongShotResolution.NarrativeHeadline,
-		FString(TEXT("萨卡内切直射死角破门！")));
+		FString(TEXT("萨卡内切射向死角破门！")));
 	TestTrue(TEXT("DeadCorner terminal owns NextRound"),
 		TerminalScreen.LongShotResolution.PrimaryAction.Claims(
 			TerminalScreen.Interaction.PrimaryAction));
@@ -622,12 +626,20 @@ bool FFMCodexCutInsideProductionPairedRevealTest::RunTest(
 		SecondRolling.bDeadCornerAVisible);
 	TestFalse(TEXT("Second CutInside reveal does not leak pair B"),
 		SecondRolling.bDeadCornerBVisible);
+	TestTrue(TEXT("CutInside second roll retains first die and target only"),
+		SecondRolling.PairedRollResultLabel == TEXT("第一枚 D6：6")
+			&& SecondRolling.OutcomeHintLabel
+				== TEXT("两枚点数总和达到 11 或以上：进球")
+			&& !SecondRolling.PrimaryAction.bVisible);
 	Screen->AdvanceInlineFormulaRevealForTesting(1.8f);
 	const auto& SecondHeld =
 		Screen->GetLongShotResolutionSurface()->GetPresentation();
 	TestTrue(TEXT("Second CutInside hold discloses pair B"),
 		SecondHeld.bDeadCornerBVisible
 			&& SecondHeld.RollReel.bAuthoritativeValue);
+	TestTrue(TEXT("CutInside second hold shows arithmetic and clears target"),
+		SecondHeld.PairedRollResultLabel == TEXT("D6 6 + D6 5 = 11")
+			&& SecondHeld.OutcomeHintLabel.IsEmpty());
 
 	Screen->AdvanceInlineFormulaRevealForTesting(3.0f);
 	const auto& Settled =

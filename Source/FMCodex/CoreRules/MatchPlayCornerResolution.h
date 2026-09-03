@@ -75,16 +75,36 @@ struct FMCODEX_API FMatchPlayCornerResolutionResult
 	FString ErrorMessage;
 };
 
+/** Read-only values from the same input assembler used by final Corner resolution. */
+struct FMCODEX_API FMatchPlayCornerFormulaPreview
+{
+	bool bAvailable = false;
+	float AttackKnownSubtotal = 0.0f;
+	float DefenseKnownSubtotal = 0.0f;
+	float AttackCurrentTotal = 0.0f;
+	float DefenseCurrentTotal = 0.0f;
+};
+
 class FMCODEX_API FMatchPlayCornerResolution final
 {
 public:
+	/** Independent mapping for each ordered side; invalid count/roll returns INDEX_NONE. */
+	static int32 MapParticipantIndex(int32 CandidateCount, int32 RawD6);
+	static FFormulaResolverInput BuildFormulaInput(
+		const FMatchPlayCornerRouteState& Corner,
+		const FMatchPlayDefendingGoalkeeperQueryResult& Goalkeeper,
+		EInitialTurnOrderPlayer Attacker, EInitialTurnOrderPlayer Defender,
+		int64 AttackSequence);
+	static FMatchPlayCornerFormulaPreview QueryFormulaPreview(const FMatchPlayState& State);
+
 	static FMatchPlayCornerResolutionResult SubmitAttackerNominations(
 		const FMatchPlayState& BeforeState,
 		const FMatchPlayCornerNominationRequest& Request);
 
 	static FMatchPlayCornerResolutionResult SubmitDefenderNominations(
 		const FMatchPlayState& BeforeState,
-		const FMatchPlayCornerNominationRequest& Request);
+		const FMatchPlayCornerNominationRequest& Request,
+		IMatchPlayPostRouteRollProvider* RollProvider = nullptr);
 
 	static FMatchPlayCornerResolutionResult RequestParticipantSelectionRoll(
 		const FMatchPlayState& BeforeState,

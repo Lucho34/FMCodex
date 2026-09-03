@@ -1,4 +1,5 @@
 #include "FMCodexLocalMatchInteractionView.h"
+#include "../CoreRules/MatchPlayCornerResolution.h"
 
 #include "../CoreRules/MatchEndResolver.h"
 #include "../CoreRules/MatchPlayCurrentAttackCarrierSelectionAvailability.h"
@@ -9,8 +10,11 @@
 #include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
 #include "../CoreRules/MatchPlayCurrentAttackRunnerSelectionAvailability.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
+#include "../CoreRules/MatchPlayDefendingGoalkeeperQuery.h"
 #include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
+#include "../CoreRules/MatchPlaySetPieceCarrierAvailability.h"
+#include "../CoreRules/MatchPlaySetPieceParticipantEligibility.h"
 #include "../CoreRules/MatchPlayTacticalPlayerAdvantageQuery.h"
 #include "../CoreRules/SkillRuleSnapshotQuery.h"
 #include "FMCodexPlayerOverall.h"
@@ -359,7 +363,9 @@ namespace FMCodexLocalMatchInteractionView
 				View.SkillLabels.Add(Skill.CanonicalLabel);
 			}
 		}
-		if (State.bHasCurrentAttack)
+		if (State.bHasCurrentAttack
+			&& State.CurrentAttack.RouteKind
+				== EMatchPlayCurrentAttackRouteKind::Ordinary)
 		{
 			View.EligibleTacticalSkills =
 				FFMCodexLocalMatchInteractionViewBuilder::
@@ -375,6 +381,7 @@ namespace FMCodexLocalMatchInteractionView
 		const FCardUsageState& Usage = CardUsage(State, Side);
 		View.bAvailable = Usage.AvailableCardIds.Contains(CardId);
 		View.bUsed = Usage.UsedCardIds.Contains(CardId);
+		View.bEjected = Usage.EjectedCardIds.Contains(CardId);
 		View.bGoalkeeperUsedThisMatch = View.bGoalkeeper
 			&& (Side == EInitialTurnOrderPlayer::PlayerA
 				? State.GoalkeeperUsageState.bPlayerAGoalkeeperCardUsed
@@ -401,13 +408,17 @@ namespace FMCodexLocalMatchInteractionView
 				&& State.CurrentAttack.bCurrentDefenseGoalkeeperActivated
 				&& Side != State.RuntimeState.CurrentAttackingPlayer;
 		}
-		if (View.bDeployed
+		if (State.CurrentAttack.RouteKind
+				== EMatchPlayCurrentAttackRouteKind::Ordinary
+			&& View.bDeployed
 			&& Side == State.RuntimeState.CurrentAttackingPlayer)
 		{
 			View.PitchMiniVisibleTacticalSkills =
 				View.EligibleTacticalSkills;
 		}
 		if (State.bHasCurrentAttack
+			&& State.CurrentAttack.RouteKind
+				== EMatchPlayCurrentAttackRouteKind::Ordinary
 			&& View.bAvailable
 			&& !View.bDeployed
 			&& Side == State.RuntimeState.CurrentAttackingPlayer)
@@ -1084,6 +1095,391 @@ namespace FMCodexLocalMatchInteractionView
 			Option.bHasCard = !Option.Card.CardId.IsNone();
 		}
 	}
+
+	void BuildSetPieceLegalCards(
+		const FMatchPlayState& State,
+		const EInitialTurnOrderPlayer Side,
+		const EMatchPlaySetPieceParticipantRole Role,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		for (const FName CardId : AvailableCards(State, Side))
+		{
+			FMatchPlaySetPieceParticipantEligibilityRequest Request;
+			Request.ExpectedOwnerSide = Side;
+			Request.CardId = CardId;
+			Request.Role = Role;
+			if (FMatchPlaySetPieceParticipantEligibility::Evaluate(State, Request)
+				.bIsEligible)
+			{
+				View.LegalSetPieceCardIds.Add(CardId);
+			}
+		}
+	}
+
+	void CopyCarrierRoute(
+		const FMatchPlaySetPieceParticipantBinding& Carrier,
+		const EMatchPlaySetPieceCarrierRouteStage Stage,
+		const bool bHasAttackD6,
+		const int32 AttackD6,
+		const bool bHasDefenseD6,
+		const int32 DefenseD6,
+		const bool bHasPair,
+		const int32 PairA,
+		const int32 PairB,
+		const bool bHasFormula,
+		const FFormulaResolutionResult& Formula,
+		const FName GoalScorer,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		View.SetPieceCarrier = Carrier;
+		View.SetPieceCarrierStage = Stage;
+		View.bHasSetPieceAttackD6 = bHasAttackD6;
+		View.SetPieceAttackD6 = AttackD6;
+		View.bHasSetPieceDefenseD6 = bHasDefenseD6;
+		View.SetPieceDefenseD6 = DefenseD6;
+		View.bHasSetPiecePairedD6 = bHasPair;
+		View.SetPiecePairedD6A = PairA;
+		View.SetPiecePairedD6B = PairB;
+		View.SetPiecePairedD6Total = bHasPair ? PairA + PairB : 0;
+		View.bHasSetPieceFormula = bHasFormula;
+		View.SetPieceFormula = Formula;
+		View.SetPieceGoalScorerCardId = GoalScorer;
+	}
+
+	void BuildSetPieceView(
+		const FMatchPlayState& Snapshot,
+		FFMCodexLocalMatchInteractionView& Result)
+	{
+		const FMatchPlayCurrentAttackState& Attack = Snapshot.CurrentAttack;
+		const FMatchPlaySetPieceRouteState& Route = Attack.SetPieceRoute;
+		const EInitialTurnOrderPlayer Attacker =
+			Snapshot.RuntimeState.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
+		Result.MajorPhase = EFMCodexLocalMatchMajorPhase::Resolution;
+		Result.SetPieceStage = Route.Stage;
+		Result.SetPieceType = Route.SelectedType;
+		Result.bHasSetPieceTypeRoll = Route.bHasTypeRoll;
+		Result.RawSetPieceTypeD6 = Route.RawTypeD6;
+		Result.ActionLabel = TEXT("定位球");
+
+		auto ProjectDirectCurrentTotals = [&Snapshot, Defender, &Result](
+			const float AttackBase,
+			const TFunction<float(const FPlayerCardRuleSnapshot&)>& DefenseBase,
+			const float DefenseModifier)
+		{
+			if (!Result.SetPieceCarrier.bIsBound)
+			{
+				return;
+			}
+			const FMatchPlayDefendingGoalkeeperQueryResult Goalkeeper =
+				FMatchPlayDefendingGoalkeeperQuery::Query(Snapshot, Defender);
+			if (!Goalkeeper.bSuccess)
+			{
+				return;
+			}
+			Result.bHasSetPieceAttackKnownSubtotal = true;
+			Result.SetPieceAttackKnownSubtotal = AttackBase;
+			Result.bHasSetPieceAttackCurrentTotal = true;
+			Result.SetPieceAttackCurrentTotal = AttackBase
+				+ (Result.bHasSetPieceAttackD6
+					? Result.SetPieceAttackD6 : 0);
+			Result.bHasSetPieceDefenseKnownSubtotal = true;
+			Result.SetPieceDefenseKnownSubtotal =
+				DefenseBase(Goalkeeper.Snapshot) + DefenseModifier;
+			Result.bHasSetPieceDefenseCurrentTotal = true;
+			Result.SetPieceDefenseCurrentTotal =
+				Result.SetPieceDefenseKnownSubtotal
+				+ (Result.bHasSetPieceDefenseD6
+					? Result.SetPieceDefenseD6 : 0);
+		};
+
+		if (Route.Stage == EMatchPlaySetPieceRouteStage::AwaitingTypeRoll)
+		{
+			Result.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::RollSetPieceType;
+			Result.ExpectedActingPlayer = Attacker;
+			Result.bHumanInteraction = true;
+			Result.ContinueActionLabel = TEXT("掷定位球类型");
+			return;
+		}
+
+		auto ConfigureCarrierStage = [&](const EMatchPlaySetPieceCarrierRouteStage Stage)
+		{
+			switch (Stage)
+			{
+			case EMatchPlaySetPieceCarrierRouteStage::AwaitingCarrier:
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier;
+				Result.ExpectedActingPlayer = Attacker;
+				Result.bHumanInteraction = true;
+				BuildSetPieceLegalCards(Snapshot, Attacker,
+					EMatchPlaySetPieceParticipantRole::Carrier, Result);
+				Result.ContinueActionLabel = TEXT("确认主罚球员");
+				break;
+			case EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod:
+				Result.InteractionCategory =
+					EFMCodexLocalMatchInteractionCategory::SelectSetPieceMethod;
+				Result.ExpectedActingPlayer = Attacker;
+				Result.bHumanInteraction = true;
+				break;
+			case EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingAttackRoll:
+				Result.ExpectedActingPlayer = Attacker;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("进攻方掷点");
+				break;
+			case EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingDefenseRoll:
+				Result.ExpectedActingPlayer = Defender;
+				Result.bHumanInteraction = true;
+				Result.ContinueActionLabel = TEXT("防守方掷点");
+				break;
+			case EMatchPlaySetPieceCarrierRouteStage::AngledAwaitingRoll:
+			case EMatchPlaySetPieceCarrierRouteStage::PowerAwaitingRoll:
+			case EMatchPlaySetPieceCarrierRouteStage::PanenkaAwaitingRoll:
+				Result.ExpectedActingPlayer = Attacker;
+				Result.bHumanInteraction = true;
+				break;
+			default:
+				break;
+			}
+		};
+
+		switch (Route.SelectedType)
+		{
+		case ESetPieceSelectedType::ShortFreeKick:
+		{
+			const auto& Short = Route.ShortFreeKick;
+			Result.ActionLabel = TEXT("近距离任意球");
+			CopyCarrierRoute(Short.Carrier, Short.Stage,
+				Short.bHasAttackD6, Short.AttackD6,
+				Short.bHasDefenseD6, Short.DefenseD6,
+				Short.bHasAngledD6Pair, Short.AngledD6A, Short.AngledD6B,
+				Short.bHasFormulaResolution, Short.FormulaResolution,
+				Short.GoalScorerCardId, Result);
+			Result.bShortAngledEligible = Short.Carrier.bIsBound
+				&& Short.Carrier.Snapshot.Attributes.Shooting
+					+ Short.Carrier.Snapshot.Attributes.Passing >= 8;
+			Result.bHasSetPieceOutcome = Short.GameplayOutcome
+				!= EMatchPlayShortFreeKickGameplayOutcome::None;
+			Result.bSetPieceGoal = Short.GameplayOutcome
+				== EMatchPlayShortFreeKickGameplayOutcome::Goal;
+			Result.bSetPieceNoLegalCarrier = Short.bNoLegalCarrier;
+			if (Short.Method == EMatchPlayShortFreeKickMethod::Direct)
+			{
+				ProjectDirectCurrentTotals(
+					FMath::Max(Short.Carrier.Snapshot.Attributes.Shooting,
+						Short.Carrier.Snapshot.Attributes.Passing),
+					[](const FPlayerCardRuleSnapshot& Goalkeeper)
+					{
+						return Goalkeeper.GoalkeeperAttributes.Handling;
+					},
+					1.0f);
+			}
+			ConfigureCarrierStage(Short.Stage);
+			if (Short.Stage == EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingAttackRoll)
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectAttack;
+			else if (Short.Stage == EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingDefenseRoll)
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectDefense;
+			else if (Short.Stage == EMatchPlaySetPieceCarrierRouteStage::AngledAwaitingRoll)
+			{
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollShortFreeKickAngled;
+				Result.ContinueActionLabel = TEXT("掷战术配合双骰");
+			}
+			break;
+		}
+		case ESetPieceSelectedType::LongFreeKick:
+		{
+			const auto& Long = Route.LongFreeKick;
+			Result.ActionLabel = FFMCodexPlayerUIPresentationText
+				::SetPieceName(ESetPieceSelectedType::LongFreeKick).ToString();
+			CopyCarrierRoute(Long.Carrier, Long.Stage,
+				Long.bHasAttackD6, Long.AttackD6,
+				Long.bHasDefenseD6, Long.DefenseD6,
+				Long.bHasPowerD6Pair, Long.PowerD6A, Long.PowerD6B,
+				Long.bHasFormulaResolution, Long.FormulaResolution,
+				Long.GoalScorerCardId, Result);
+			Result.bHasSetPieceOutcome = Long.GameplayOutcome
+				!= EMatchPlayLongFreeKickGameplayOutcome::None;
+			Result.bSetPieceGoal = Long.GameplayOutcome
+				== EMatchPlayLongFreeKickGameplayOutcome::Goal;
+			Result.bSetPieceNoLegalCarrier = Long.bNoLegalCarrier;
+			if (Long.Method == EMatchPlayLongFreeKickMethod::Direct)
+			{
+				ProjectDirectCurrentTotals(
+					Long.Carrier.Snapshot.Attributes.LongShot,
+					[](const FPlayerCardRuleSnapshot& Goalkeeper)
+					{
+						return Goalkeeper.GoalkeeperAttributes.Positioning;
+					},
+					2.0f);
+			}
+			ConfigureCarrierStage(Long.Stage);
+			if (Long.Stage == EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingAttackRoll)
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectAttack;
+			else if (Long.Stage == EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingDefenseRoll)
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectDefense;
+			else if (Long.Stage == EMatchPlaySetPieceCarrierRouteStage::PowerAwaitingRoll)
+			{
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollLongFreeKickPower;
+				Result.ContinueActionLabel = FText::Format(NSLOCTEXT("FMCodexSetPiece", "LongPowerRoll", "掷{0}双骰"),
+					FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage()).ToString();
+			}
+			break;
+		}
+		case ESetPieceSelectedType::Penalty:
+		{
+			const auto& Penalty = Route.Penalty;
+			Result.ActionLabel = TEXT("点球");
+			CopyCarrierRoute(Penalty.Carrier, Penalty.Stage,
+				Penalty.bHasAttackD6, Penalty.AttackD6,
+				Penalty.bHasDefenseD6, Penalty.DefenseD6,
+				Penalty.bHasPanenkaD6, Penalty.PanenkaD6, 0,
+				Penalty.bHasFormulaResolution, Penalty.FormulaResolution,
+				Penalty.GoalScorerCardId, Result);
+			Result.bHasSetPieceOutcome = Penalty.GameplayOutcome
+				!= EMatchPlayPenaltyGameplayOutcome::None;
+			Result.bSetPieceGoal = Penalty.GameplayOutcome
+				== EMatchPlayPenaltyGameplayOutcome::Goal;
+			Result.bSetPieceNoLegalCarrier = Penalty.bNoLegalCarrier;
+			if (Penalty.Method == EMatchPlayPenaltyMethod::Direct)
+			{
+				ProjectDirectCurrentTotals(
+					FMath::Max(Penalty.Carrier.Snapshot.Attributes.Shooting,
+						Penalty.Carrier.Snapshot.Attributes.Passing),
+					[](const FPlayerCardRuleSnapshot& Goalkeeper)
+					{
+						return Goalkeeper.GoalkeeperAttributes.Anticipation;
+					},
+					-3.0f);
+			}
+			ConfigureCarrierStage(Penalty.Stage);
+			if (Penalty.Stage == EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingAttackRoll)
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectAttack;
+			else if (Penalty.Stage == EMatchPlaySetPieceCarrierRouteStage::DirectAwaitingDefenseRoll)
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectDefense;
+			else if (Penalty.Stage == EMatchPlaySetPieceCarrierRouteStage::PanenkaAwaitingRoll)
+			{
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollPenaltyPanenka;
+				Result.ContinueActionLabel = TEXT("掷勺子点球");
+			}
+			break;
+		}
+		case ESetPieceSelectedType::Corner:
+		{
+			const FMatchPlayCornerRouteState& Corner = Route.Corner;
+			Result.ActionLabel = TEXT("角球");
+			Result.CornerStage = Corner.Stage;
+			Result.bCornerAttackerNominationsLocked = Corner.bAttackerNominationsLocked;
+			Result.bCornerDefenderNominationsLocked = Corner.bDefenderNominationsLocked;
+			Result.CornerAttackerNominees = Corner.AttackerNominees;
+			Result.CornerDefenderNominees = Corner.DefenderNominees;
+			Result.bHideCornerAttackerNomineeDetails =
+				Corner.Stage == EMatchPlaySetPieceCornerRouteStage::AwaitingDefenderNominations;
+			if (Result.bHideCornerAttackerNomineeDetails)
+				Result.CornerAttackerNominees.Reset();
+			Result.bHasCornerSharedParticipantD6 = Corner.bHasSharedParticipantD6;
+			Result.CornerSharedParticipantD6 = Corner.SharedParticipantD6;
+			Result.CornerRunner = Corner.Runner;
+			Result.CornerHelper = Corner.Helper;
+			Result.CornerCandidateBonusSide = Corner.CandidateBonusSide;
+			Result.CornerCandidateBonus = Corner.CandidateBonus;
+			Result.CornerIntendedRoute = Corner.IntendedRoute;
+			Result.bHasCornerRouteD6 = Corner.bHasRouteD6;
+			Result.CornerRouteD6 = Corner.RawRouteD6;
+			Result.CornerActualRoute = Corner.ActualRoute;
+			Result.bHasSetPieceAttackD6 = Corner.bHasAttackD6;
+			Result.SetPieceAttackD6 = Corner.AttackD6;
+			Result.bHasSetPieceDefenseD6 = Corner.bHasDefenseD6;
+			Result.SetPieceDefenseD6 = Corner.DefenseD6;
+			Result.bHasSetPieceFormula = Corner.bHasFormulaResolution;
+			Result.SetPieceFormula = Corner.FormulaResolution;
+			Result.bHasSetPieceOutcome = Corner.GameplayOutcome
+				!= EMatchPlayCornerGameplayOutcome::None;
+			Result.bSetPieceGoal = Corner.GameplayOutcome
+				== EMatchPlayCornerGameplayOutcome::Goal;
+			Result.bSetPieceSystemGoal = Corner.GameplayOutcome
+				== EMatchPlayCornerGameplayOutcome::SystemGoal;
+			Result.SetPieceGoalScorerCardId = Corner.GoalScorerCardId;
+			const auto Preview = FMatchPlayCornerResolution::QueryFormulaPreview(Snapshot);
+			if (Preview.bAvailable)
+			{
+				Result.bHasSetPieceAttackKnownSubtotal = true;
+				Result.bHasSetPieceDefenseKnownSubtotal = true;
+				Result.bHasSetPieceAttackCurrentTotal = true;
+				Result.bHasSetPieceDefenseCurrentTotal = true;
+				Result.SetPieceAttackKnownSubtotal = Preview.AttackKnownSubtotal;
+				Result.SetPieceDefenseKnownSubtotal = Preview.DefenseKnownSubtotal;
+				Result.SetPieceAttackCurrentTotal = Preview.AttackCurrentTotal;
+				Result.SetPieceDefenseCurrentTotal = Preview.DefenseCurrentTotal;
+			}
+			auto RollLabels = [](const int32 Count)
+			{
+				TArray<FString> Labels;
+				for (int32 Index = 0; Index < Count; ++Index)
+				{
+					int32 First = 0, Last = 0;
+					for (int32 D6 = 1; D6 <= 6; ++D6)
+						if (FMatchPlayCornerResolution::MapParticipantIndex(Count, D6) == Index)
+						{
+							if (First == 0) First = D6;
+							Last = D6;
+						}
+					Labels.Add(FString::Printf(TEXT("%d–%d"), First, Last));
+				}
+				return Labels;
+			};
+			Result.CornerAttackerNomineeRollLabels = RollLabels(Result.CornerAttackerNominees.Num());
+			Result.CornerDefenderNomineeRollLabels = RollLabels(Result.CornerDefenderNominees.Num());
+			switch (Corner.Stage)
+			{
+			case EMatchPlaySetPieceCornerRouteStage::AwaitingAttackerNominations:
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker;
+				Result.ExpectedActingPlayer = Attacker;
+				BuildSetPieceLegalCards(Snapshot, Attacker, EMatchPlaySetPieceParticipantRole::CornerRunner, Result);
+				Result.ContinueActionLabel = FFMCodexPlayerUIPresentationText::CornerLockCandidates(true).ToString(); break;
+			case EMatchPlaySetPieceCornerRouteStage::AwaitingDefenderNominations:
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::DraftCornerDefender;
+				Result.ExpectedActingPlayer = Defender;
+				BuildSetPieceLegalCards(Snapshot, Defender, EMatchPlaySetPieceParticipantRole::CornerHelper, Result);
+				Result.ContinueActionLabel = FFMCodexPlayerUIPresentationText::CornerLockCandidates(false).ToString(); break;
+			case EMatchPlaySetPieceCornerRouteStage::AwaitingParticipantSelectionRoll:
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollCornerParticipantSelection;
+				Result.ExpectedActingPlayer = Attacker;
+				Result.ContinueActionLabel = TEXT("掷对位球员"); break;
+			case EMatchPlaySetPieceCornerRouteStage::AwaitingIntent:
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::SelectCornerIntent;
+				Result.ExpectedActingPlayer = Attacker; break;
+			case EMatchPlaySetPieceCornerRouteStage::AwaitingRouteRoll:
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollCornerRoute;
+				Result.ExpectedActingPlayer = Attacker;
+				Result.ContinueActionLabel = TEXT("掷角球路线"); break;
+			case EMatchPlaySetPieceCornerRouteStage::AwaitingAttackRoll:
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollCornerAttack;
+				Result.ExpectedActingPlayer = Attacker;
+				Result.ContinueActionLabel = TEXT("进攻方掷点"); break;
+			case EMatchPlaySetPieceCornerRouteStage::AwaitingDefenseRoll:
+				Result.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollCornerDefense;
+				Result.ExpectedActingPlayer = Defender;
+				Result.ContinueActionLabel = TEXT("防守方掷点"); break;
+			default: break;
+			}
+			Result.bHumanInteraction = Result.ExpectedActingPlayer
+				!= EInitialTurnOrderPlayer::None;
+			break;
+		}
+		default:
+			break;
+		}
+		if (Attack.LifecycleState
+			== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
+		{
+			Result.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal;
+			Result.ExpectedActingPlayer = Attacker;
+			Result.bHumanInteraction = true;
+			Result.bTerminalPendingAdvance = true;
+			Result.ContinueActionLabel = TEXT("下一回合");
+		}
+	}
 }
 
 FFMCodexLocalMatchInteractionView
@@ -1182,9 +1578,43 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	const FMatchPlayCurrentAttackState& Attack = Snapshot.CurrentAttack;
 	Result.AttackSequence = Attack.AttackSequence;
 	Result.ActionPoint = Attack.ActionPoint;
+	Result.RawInitialD12 = Attack.RawInitialD12;
+	Result.RouteKind = Attack.RouteKind;
 	Result.SelectionStage = Attack.SelectionStage;
 	Result.CurrentLegalDeploymentSide = Attack.CurrentLegalDeploymentSide;
 	Result.DeploymentPlacements = Attack.DeploymentPlacements;
+	if (Attack.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff)
+	{
+		Result.MajorPhase = EFMCodexLocalMatchMajorPhase::Resolution;
+		Result.ActionLabel = TEXT("罚下一人");
+		Result.SendingOffEjectedCardId = Attack.SendingOffRoute.EjectedCardId;
+		Result.SendingOffEjectedOwnerSide =
+			Attack.SendingOffRoute.EjectedCardId.IsNone()
+				? EInitialTurnOrderPlayer::None
+				: Result.CurrentAttackingPlayer;
+		if (Attack.LifecycleState
+			== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
+		{
+			Result.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal;
+			Result.ExpectedActingPlayer = Result.CurrentAttackingPlayer;
+			Result.bHumanInteraction = true;
+			Result.bTerminalPendingAdvance = true;
+			Result.ContinueActionLabel = TEXT("下一回合");
+		}
+		else
+		{
+			Result.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::ResolveSendingOff;
+			Result.bHumanInteraction = false;
+		}
+		return Result;
+	}
+	if (Attack.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece)
+	{
+		BuildSetPieceView(Snapshot, Result);
+		return Result;
+	}
 	if (Attack.bHasSelectedAction)
 	{
 		Result.SelectedCarrierCardId = Attack.SelectedAction.CarrierCardId;
@@ -2009,7 +2439,7 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildScreenPresentation(
 		break;
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution:
 		Result.InteractionTitle = View.ContinueActionLabel.IsEmpty()
-			? TEXT("Continue Resolution") : View.ContinueActionLabel;
+			? TEXT("继续结算") : View.ContinueActionLabel;
 		break;
 	case EFMCodexLocalMatchInteractionCategory::AttackComplete:
 		Result.InteractionTitle = TEXT("Attack Complete");
@@ -2067,7 +2497,7 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	case EFMCodexLocalMatchInteractionCategory::ApplyCrossTerminalResolution: return TEXT("确认传中结算");
 	case EFMCodexLocalMatchInteractionCategory::ApplyThroughBallFeetTerminalResolution: return TEXT("确认直塞结算");
 	case EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal: return TEXT("下一回合");
-	case EFMCodexLocalMatchInteractionCategory::ContinueResolution: return TEXT("Continue Resolution");
+	case EFMCodexLocalMatchInteractionCategory::ContinueResolution: return TEXT("继续结算");
 	case EFMCodexLocalMatchInteractionCategory::AttackComplete: return TEXT("Attack Complete");
 	case EFMCodexLocalMatchInteractionCategory::MatchEnded: return TEXT("Match Ended");
 	default: return TEXT("Unknown");

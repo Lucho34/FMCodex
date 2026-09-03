@@ -45,6 +45,7 @@ namespace FMCodexLocalMatchD6Provider
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerRoute:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerAttack:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerDefense:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerAutomaticScorer:
 			return true;
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::None:
 		default:
@@ -57,6 +58,62 @@ FFMCodexLocalMatchD6Provider::FFMCodexLocalMatchD6Provider(
 	const int32 Seed)
 	: RandomStream(Seed)
 {
+}
+
+FMatchPlayAttackEntryRollProviderResult
+FFMCodexLocalMatchD6Provider::RollD12(
+	const EMatchPlayAttackEntryRollPurpose Purpose)
+{
+	FMatchPlayAttackEntryRollProviderResult Result;
+	if (Purpose != EMatchPlayAttackEntryRollPurpose::InitialActionPoint)
+	{
+		Result.ErrorCode =
+			EMatchPlayAttackEntryRollProviderErrorCode::InvalidPurpose;
+		Result.ErrorMessage =
+			TEXT("Local D12 entry roll requires InitialActionPoint purpose.");
+		return Result;
+	}
+	Result.bSuccess = true;
+	Result.RawRoll = RandomStream.RandRange(1, 12);
+	return Result;
+}
+
+FMatchPlayAttackEntryRollProviderResult
+FFMCodexLocalMatchD6Provider::RollD6(
+	const EMatchPlayAttackEntryRollPurpose Purpose)
+{
+	FMatchPlayAttackEntryRollProviderResult Result;
+	if (Purpose != EMatchPlayAttackEntryRollPurpose::SetPieceType)
+	{
+		Result.ErrorCode =
+			EMatchPlayAttackEntryRollProviderErrorCode::InvalidPurpose;
+		Result.ErrorMessage =
+			TEXT("Local attack-entry D6 requires SetPieceType purpose.");
+		return Result;
+	}
+	Result.bSuccess = true;
+	Result.RawRoll = RollCanonicalD6();
+	return Result;
+}
+
+FMatchPlayAttackEntrySelectionProviderResult
+FFMCodexLocalMatchD6Provider::SelectUniformIndex(
+	const EMatchPlayAttackEntryRollPurpose Purpose,
+	const int32 CandidateCount)
+{
+	FMatchPlayAttackEntrySelectionProviderResult Result;
+	if (Purpose != EMatchPlayAttackEntryRollPurpose::SendingOffSelection
+		|| CandidateCount <= 0)
+	{
+		Result.ErrorCode =
+			EMatchPlayAttackEntryRollProviderErrorCode::InvalidPurpose;
+		Result.ErrorMessage =
+			TEXT("Local uniform selection requires SendingOffSelection and candidates.");
+		return Result;
+	}
+	Result.bSuccess = true;
+	Result.SelectedIndex = RandomStream.RandRange(0, CandidateCount - 1);
+	return Result;
 }
 
 FMatchPlayInitialRouteRollProviderResult

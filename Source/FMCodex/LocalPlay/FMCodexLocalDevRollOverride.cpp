@@ -9,11 +9,21 @@ namespace FMCodexLocalDevRollOverride
 		return Target == EFMCodexLocalDevRollTarget::TacticalPoint;
 	}
 
+	bool IsFullD12Target(const EFMCodexLocalDevRollTarget Target)
+	{
+		return Target == EFMCodexLocalDevRollTarget::FullD12;
+	}
+
+	bool IsSelectionTarget(const EFMCodexLocalDevRollTarget Target)
+	{
+		return Target == EFMCodexLocalDevRollTarget::SendingOffSelection;
+	}
+
 	bool IsValidTarget(const EFMCodexLocalDevRollTarget Target)
 	{
 		return Target > EFMCodexLocalDevRollTarget::None
 			&& Target <= EFMCodexLocalDevRollTarget
-				::CornerDefense;
+				::CornerAutomaticScorer;
 	}
 }
 
@@ -34,8 +44,11 @@ FFMCodexLocalDevRollOverride::SetOverride(
 		Result.ErrorMessage = TEXT("A valid DEV roll target is required.");
 		return Result;
 	}
-	const int32 Minimum = IsTacticalPointTarget(Request.Target) ? 2 : 1;
-	const int32 Maximum = IsTacticalPointTarget(Request.Target) ? 8 : 6;
+	const int32 Minimum = IsSelectionTarget(Request.Target) ? 0
+		: IsTacticalPointTarget(Request.Target) ? 2 : 1;
+	const int32 Maximum = IsFullD12Target(Request.Target) ? 12
+		: IsTacticalPointTarget(Request.Target) ? 8
+		: IsSelectionTarget(Request.Target) ? MAX_int32 : 6;
 	if (Request.Value < Minimum || Request.Value > Maximum)
 	{
 		Result.ErrorMessage = FString::Printf(
@@ -48,6 +61,71 @@ FFMCodexLocalDevRollOverride::SetOverride(
 	PendingOverrides.Add(Request.Target, Request.Value);
 	Result.bSuccess = true;
 	return Result;
+}
+
+FMatchPlayAttackEntryRollProviderResult
+FFMCodexLocalDevRollOverride::RollD12(
+	const EMatchPlayAttackEntryRollPurpose Purpose)
+{
+	if (Purpose == EMatchPlayAttackEntryRollPurpose::InitialActionPoint)
+	{
+		if (const TOptional<int32> Override = Consume(
+			EFMCodexLocalDevRollTarget::FullD12); Override.IsSet())
+		{
+			FMatchPlayAttackEntryRollProviderResult Result;
+			Result.bSuccess = true;
+			Result.RawRoll = Override.GetValue();
+			return Result;
+		}
+	}
+	return ProductionProvider.RollD12(Purpose);
+}
+
+FMatchPlayAttackEntryRollProviderResult
+FFMCodexLocalDevRollOverride::RollD6(
+	const EMatchPlayAttackEntryRollPurpose Purpose)
+{
+	if (Purpose == EMatchPlayAttackEntryRollPurpose::SetPieceType)
+	{
+		if (const TOptional<int32> Override = Consume(
+			EFMCodexLocalDevRollTarget::SetPieceType); Override.IsSet())
+		{
+			FMatchPlayAttackEntryRollProviderResult Result;
+			Result.bSuccess = true;
+			Result.RawRoll = Override.GetValue();
+			return Result;
+		}
+	}
+	return ProductionProvider.RollD6(Purpose);
+}
+
+FMatchPlayAttackEntrySelectionProviderResult
+FFMCodexLocalDevRollOverride::SelectUniformIndex(
+	const EMatchPlayAttackEntryRollPurpose Purpose,
+	const int32 CandidateCount)
+{
+	if (Purpose == EMatchPlayAttackEntryRollPurpose::SendingOffSelection)
+	{
+		if (const TOptional<int32> Override = Consume(
+			EFMCodexLocalDevRollTarget::SendingOffSelection); Override.IsSet())
+		{
+			FMatchPlayAttackEntrySelectionProviderResult Result;
+			if (Override.GetValue() >= 0
+				&& Override.GetValue() < CandidateCount)
+			{
+				Result.bSuccess = true;
+				Result.SelectedIndex = Override.GetValue();
+			}
+			else
+			{
+				Result.ErrorCode =
+					EMatchPlayAttackEntryRollProviderErrorCode::ProviderFailure;
+				Result.ErrorMessage = TEXT("DEV sending-off index is outside the current candidate range.");
+			}
+			return Result;
+		}
+	}
+	return ProductionProvider.SelectUniformIndex(Purpose, CandidateCount);
 }
 
 bool FFMCodexLocalDevRollOverride::ClearOverride(
@@ -260,6 +338,8 @@ FFMCodexLocalDevRollOverride::ResolvePostRouteTarget(
 		return EFMCodexLocalDevRollTarget::CornerAttack;
 	case EPostPurpose::CornerDefense:
 		return EFMCodexLocalDevRollTarget::CornerDefense;
+	case EPostPurpose::CornerAutomaticScorer:
+		return EFMCodexLocalDevRollTarget::CornerAutomaticScorer;
 	default:
 		break;
 	}

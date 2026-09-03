@@ -188,19 +188,6 @@ namespace MatchPlayCornerResolution
 		return true;
 	}
 
-	int32 MapParticipantIndex(const int32 CandidateCount, const int32 RawD6)
-	{
-		if (CandidateCount == 3)
-		{
-			return (RawD6 - 1) / 2;
-		}
-		if (CandidateCount == 2)
-		{
-			return RawD6 <= 3 ? 0 : 1;
-		}
-		return CandidateCount == 1 ? 0 : INDEX_NONE;
-	}
-
 	void ApplyCandidateBonus(
 		FMatchPlayCornerRouteState& Corner,
 		const EInitialTurnOrderPlayer Attacker,
@@ -227,53 +214,6 @@ namespace MatchPlayCornerResolution
 		return IntendedRoute == EMatchPlayCornerRouteIntent::High
 			? EMatchPlayCornerRouteIntent::Low
 			: EMatchPlayCornerRouteIntent::High;
-	}
-
-	FFormulaResolverInput BuildFormulaInput(
-		const FMatchPlayCornerRouteState& Corner,
-		const FMatchPlayDefendingGoalkeeperQueryResult& Goalkeeper,
-		const EInitialTurnOrderPlayer Attacker,
-		const EInitialTurnOrderPlayer Defender,
-		const int64 AttackSequence)
-	{
-		FFormulaResolverInput Input;
-		Input.FormulaType = EFormulaType::Finishing;
-		Input.Attacker.BaseValue = Corner.ActualRoute
-			== EMatchPlayCornerRouteIntent::High
-				? Corner.Runner.Snapshot.Attributes.Strength
-				: Corner.Runner.Snapshot.Attributes.Shooting;
-		Input.Attacker.Modifier = Corner.CandidateBonusSide == Attacker
-			? static_cast<float>(Corner.CandidateBonus) : 0.0f;
-		Input.Attacker.ComparePoint = Corner.AttackD6;
-		Input.Attacker.bComparePointWasRolledOnD6 = true;
-		Input.Attacker.ParticipatingStamina.Add(
-			Corner.Runner.Snapshot.Attributes.Stamina);
-
-		const float HelperAttribute = Corner.ActualRoute
-			== EMatchPlayCornerRouteIntent::High
-				? Corner.Helper.Snapshot.Attributes.Strength
-				: Corner.Helper.Snapshot.Attributes.Marking;
-		const float GoalkeeperAttribute = Corner.ActualRoute
-			== EMatchPlayCornerRouteIntent::High
-				? Goalkeeper.Snapshot.GoalkeeperAttributes.Aerial
-				: Goalkeeper.Snapshot.GoalkeeperAttributes.Reflex;
-		Input.Defender.BaseValue = UFormulaResolver::Average(
-			HelperAttribute, GoalkeeperAttribute);
-		Input.Defender.Modifier = 2.0f
-			+ (Corner.CandidateBonusSide == Defender
-				? static_cast<float>(Corner.CandidateBonus) : 0.0f);
-		Input.Defender.ComparePoint = Corner.DefenseD6;
-		Input.Defender.bComparePointWasRolledOnD6 = true;
-		Input.Defender.ParticipatingStamina = {
-			Corner.Helper.Snapshot.Attributes.Stamina,
-			Goalkeeper.Snapshot.Attributes.Stamina };
-		Input.bGoalkeeperParticipated = true;
-		Input.TurnIndex = static_cast<int32>(AttackSequence);
-		Input.AttackerPlayerId = GetSideId(Attacker);
-		Input.DefenderPlayerId = GetSideId(Defender);
-		Input.InvolvedCardIds = {
-			Corner.Runner.CardId, Corner.Helper.CardId, Goalkeeper.CardId };
-		return Input;
 	}
 
 	bool ValidateFormulaResult(const FFormulaResolutionResult& Formula)
@@ -316,6 +256,95 @@ namespace MatchPlayCornerResolution
 	}
 }
 
+int32 FMatchPlayCornerResolution::MapParticipantIndex(const int32 CandidateCount, const int32 RawD6)
+{
+	if (RawD6 < 1 || RawD6 > 6) return INDEX_NONE;
+	if (CandidateCount == 3)
+	{
+		return (RawD6 - 1) / 2;
+	}
+	if (CandidateCount == 2)
+	{
+		return RawD6 <= 3 ? 0 : 1;
+	}
+	return CandidateCount == 1 ? 0 : INDEX_NONE;
+}
+
+FFormulaResolverInput FMatchPlayCornerResolution::BuildFormulaInput(
+	const FMatchPlayCornerRouteState& Corner,
+	const FMatchPlayDefendingGoalkeeperQueryResult& Goalkeeper,
+	const EInitialTurnOrderPlayer Attacker,
+	const EInitialTurnOrderPlayer Defender,
+	const int64 AttackSequence)
+{
+	using namespace MatchPlayCornerResolution;
+	FFormulaResolverInput Input;
+	Input.FormulaType = EFormulaType::Finishing;
+	Input.Attacker.BaseValue = Corner.ActualRoute
+		== EMatchPlayCornerRouteIntent::High
+			? Corner.Runner.Snapshot.Attributes.Strength
+			: Corner.Runner.Snapshot.Attributes.Shooting;
+	Input.Attacker.Modifier = Corner.CandidateBonusSide == Attacker
+		? static_cast<float>(Corner.CandidateBonus) : 0.0f;
+	Input.Attacker.ComparePoint = Corner.AttackD6;
+	Input.Attacker.bComparePointWasRolledOnD6 = Corner.bHasAttackD6;
+	Input.Attacker.ParticipatingStamina.Add(
+		Corner.Runner.Snapshot.Attributes.Stamina);
+
+	const float HelperAttribute = Corner.ActualRoute
+		== EMatchPlayCornerRouteIntent::High
+			? Corner.Helper.Snapshot.Attributes.Strength
+			: Corner.Helper.Snapshot.Attributes.Marking;
+	const float GoalkeeperAttribute = Corner.ActualRoute
+		== EMatchPlayCornerRouteIntent::High
+			? Goalkeeper.Snapshot.GoalkeeperAttributes.Aerial
+			: Goalkeeper.Snapshot.GoalkeeperAttributes.Reflex;
+	Input.Defender.BaseValue = UFormulaResolver::Average(
+		HelperAttribute, GoalkeeperAttribute);
+	Input.Defender.Modifier = 2.0f
+		+ (Corner.CandidateBonusSide == Defender
+			? static_cast<float>(Corner.CandidateBonus) : 0.0f);
+	Input.Defender.ComparePoint = Corner.DefenseD6;
+	Input.Defender.bComparePointWasRolledOnD6 = Corner.bHasDefenseD6;
+	Input.Defender.ParticipatingStamina = {
+		Corner.Helper.Snapshot.Attributes.Stamina,
+		Goalkeeper.Snapshot.Attributes.Stamina };
+	Input.bGoalkeeperParticipated = true;
+	Input.TurnIndex = static_cast<int32>(AttackSequence);
+	Input.AttackerPlayerId = GetSideId(Attacker);
+	Input.DefenderPlayerId = GetSideId(Defender);
+	Input.InvolvedCardIds = {
+		Corner.Runner.CardId, Corner.Helper.CardId, Goalkeeper.CardId };
+	return Input;
+}
+
+FMatchPlayCornerFormulaPreview FMatchPlayCornerResolution::QueryFormulaPreview(
+	const FMatchPlayState& State)
+{
+	FMatchPlayCornerFormulaPreview Result;
+	if (!State.bHasCurrentAttack
+		|| State.CurrentAttack.RouteKind != EMatchPlayCurrentAttackRouteKind::SetPiece
+		|| State.CurrentAttack.SetPieceRoute.SelectedType != ESetPieceSelectedType::Corner
+		|| !FMatchPlayCurrentAttackRouteStateValidator::Validate(State).bIsCanonical)
+		return Result;
+	const auto& Corner = State.CurrentAttack.SetPieceRoute.Corner;
+	if (Corner.ActualRoute == EMatchPlayCornerRouteIntent::None) return Result;
+	const auto Attacker = State.RuntimeState.CurrentAttackingPlayer;
+	const auto Defender = MatchPlayCornerResolution::GetDefender(Attacker);
+	const auto Goalkeeper = FMatchPlayDefendingGoalkeeperQuery::Query(State, Defender);
+	if (!Goalkeeper.bSuccess) return Result;
+	const auto Input = BuildFormulaInput(Corner, Goalkeeper, Attacker, Defender,
+		State.CurrentAttack.AttackSequence);
+	Result.bAvailable = true;
+	Result.AttackKnownSubtotal = Input.Attacker.BaseValue + Input.Attacker.Modifier;
+	Result.DefenseKnownSubtotal = Input.Defender.BaseValue + Input.Defender.Modifier;
+	Result.AttackCurrentTotal = Result.AttackKnownSubtotal
+		+ (Corner.bHasAttackD6 ? Input.Attacker.ComparePoint : 0);
+	Result.DefenseCurrentTotal = Result.DefenseKnownSubtotal
+		+ (Corner.bHasDefenseD6 ? Input.Defender.ComparePoint : 0);
+	return Result;
+}
+
 FMatchPlayCornerResolutionResult
 FMatchPlayCornerResolution::SubmitAttackerNominations(
 	const FMatchPlayState& BeforeState,
@@ -356,7 +385,8 @@ FMatchPlayCornerResolution::SubmitAttackerNominations(
 FMatchPlayCornerResolutionResult
 FMatchPlayCornerResolution::SubmitDefenderNominations(
 	const FMatchPlayState& BeforeState,
-	const FMatchPlayCornerNominationRequest& Request)
+	const FMatchPlayCornerNominationRequest& Request,
+	IMatchPlayPostRouteRollProvider* RollProvider)
 {
 	using namespace MatchPlayCornerResolution;
 	FMatchPlayCornerResolutionResult Result;
@@ -392,8 +422,21 @@ FMatchPlayCornerResolution::SubmitDefenderNominations(
 	}
 	if (Corner.DefenderNominees.IsEmpty())
 	{
+		// Same serialized defender-lock transaction; no extra player command.
+		// ValidateBase and both ordered lists were checked before touching RNG.
+		int32 ScorerIndex = 0;
+		if (Corner.AttackerNominees.Num() > 1)
+		{
+			if (!ObtainRoll(Result, RollProvider,
+				EMatchPlayCurrentAttackPostRouteRollPurpose::CornerAutomaticScorer))
+				return Result;
+			Corner.AutomaticScorerD6 = Result.ProviderResult.RawD6;
+			ScorerIndex = MapParticipantIndex(
+				Corner.AttackerNominees.Num(), Corner.AutomaticScorerD6);
+		}
+		Corner.Runner = Corner.AttackerNominees[ScorerIndex];
 		PersistTerminal(Result, BeforeState, MoveTemp(Candidate), Attacker,
-			EMatchPlayCornerGameplayOutcome::SystemGoal);
+			EMatchPlayCornerGameplayOutcome::Goal);
 		return Result;
 	}
 

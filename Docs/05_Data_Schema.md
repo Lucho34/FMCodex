@@ -510,11 +510,11 @@ ActionType 直接复用 `ESkillRuleType`，不建立平行枚举。当前身份�
 
 ## Full D12 / AP1 / Set Piece / Recovery Future Authoritative State（Approved, Not Implemented）
 
-本节是后续实现必须支持的schema要求，不表示现有USTRUCT已经拥有这些字段。
+本节保留获批的schema要求，不自动表示每项都已实现；其中Corner段落已同步当前USTRUCT的自动射手合同。
 
 - `CurrentAttack`保留一个AttackSequence下的raw InitialD12、route kind（AP1/Ordinary/SetPiece）与lifecycle stage。AP1 payload保存selected `{OwnerSide, CardId}`或显式`NoEligibleCandidate`；match-long side state保存Ejected/Discarded identities。
 - SetPiece payload保存raw type D6、SetPieceType、参与者选择stage、method/route、raw rolls、Formula/Outcome/scorer与TerminalPendingAdvance事实。现有pure `SetPieceTypeSelectionQuery` Result不是该完整payload的替代品。
-- Corner payload保存双方0–3个ordered nomination identities、各自lock状态、viewer redaction所需阶段、raw shared participant D6、可选Runner/Helper identities、intended route、raw route D6与actual route。零人结果允许Runner/Helper及shared D6都为空；optional participant不使用fake CardId。
+- Corner payload保存双方0–3个ordered nomination identities、各自lock状态、viewer redaction所需阶段、raw shared participant D6、可选Runner/Helper identities、intended route、raw route D6与actual route。attacker=0时Runner/Helper均空；attacker>0、defender=0时`Runner`保存真实射手的OwnerSide/CardId/Snapshot，`GoalScorerCardId`引用该射手，Helper为空。`AutomaticScorerD6`只保存2–3候选时的后台权威抽样；唯一候选及普通双边流程为0。该字段不是玩家roll fact，不投影为Reel/Formula。整个事实随CurrentAttack持久化，重建不重抽，Advance后按既有生命周期清除；optional participant不使用fake CardId。
 - CardUsage至少区分side-owned `Available / Used / Ejected`。普通/定位球参与者在terminal snapshot中仍保持推进前usage；AP1 selected card是唯一在acknowledgement前进入Ejected的例外。
 - `LastRecoveryFact`为有界latest fact：`SourceAttackSequence`加ordered `ReturnedCards[0..2]`，每项保存`OwnerSide + CardId`。它不保存localized FText，也不要求永久ledger、candidate pool、weights或raw weighted tickets。
 - 对局/玩家展示映射必须能把OwnerSide解析到该玩家实际Team identity及`TeamDisplayName`。球员名继续按CardId解析到`PreferredDisplayName / DisplayName`；schema不得编码PlayerA=某支固定球队。

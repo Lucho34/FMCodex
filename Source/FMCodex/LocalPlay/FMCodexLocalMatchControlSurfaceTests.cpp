@@ -88,7 +88,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				for (int32 Seed = 0; Seed < 1000; ++Seed)
 				{
 					FRandomStream Stream(Seed);
-					if (Stream.RandRange(2, 8) == 6)
+					if (Stream.RandRange(1, 12) == 6)
 					{
 						Controller->SetNextDemoMatchSeedForTesting(Seed);
 						break;
@@ -271,7 +271,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		for (int32 Seed = 0; Seed < 4000000; ++Seed)
 		{
 			FRandomStream Stream(Seed);
-			if (Stream.RandRange(2, 8) != TacticalPoint)
+			if (Stream.RandRange(1, 12) != TacticalPoint)
 			{
 				continue;
 			}
@@ -1174,6 +1174,13 @@ bool FFMCodexLocalMatchControlSurfaceFlowTest::RunTest(
 
 	const EInitialTurnOrderPlayer NewAttacker =
 		AfterCompletionView.CurrentAttackingPlayer;
+#if !UE_BUILD_SHIPPING
+	FFMCodexLocalDevRollOverrideRequest OrdinaryEntryOverride;
+	OrdinaryEntryOverride.Target = EFMCodexLocalDevRollTarget::FullD12;
+	OrdinaryEntryOverride.Value = 6;
+	TestTrue(TEXT("New attacker ordinary Full D12 override is accepted"),
+		Controller->SetLocalDevRollOverride(OrdinaryEntryOverride).bSuccess);
+#endif
 	Controller->RollDemoTacticalPoints();
 	TestTrue(TEXT("New attacker explicitly rolls its own authoritative TP"),
 		Controller->GetLastDiagnostic().bHostSuccess
@@ -1729,6 +1736,13 @@ bool FFMCodexLocalMatchHotSeatTwoSideFlowTest::RunTest(
 	TestEqual(TEXT("Cross route action has a typed semantic category"),
 		Controller->GetInteractionView().InteractionCategory,
 		EFMCodexLocalMatchInteractionCategory::RollCrossRoute);
+#if !UE_BUILD_SHIPPING
+	FFMCodexLocalDevRollOverrideRequest RouteOverride;
+	RouteOverride.Target = EFMCodexLocalDevRollTarget::CrossRoute;
+	RouteOverride.Value = 2;
+	TestTrue(TEXT("Cross route override is accepted"),
+		Controller->SetLocalDevRollOverride(RouteOverride).bSuccess);
+#endif
 	Controller->RollCrossRoute();
 	TestTrue(TEXT("One action creates the session and resolves exactly one route D6"),
 		Controller->GetLastDiagnostic().CommandName
@@ -6773,11 +6787,18 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 			&& SwitchedHeader.RightAttackTurnTracker.Steps[0].State
 				== EFMCodexUMGAttackTurnStepState::Used
 			&& Screen->GetPresentation().Interaction.bCanRollTacticalPoints);
+#if !UE_BUILD_SHIPPING
+	FFMCodexLocalDevRollOverrideRequest NextOrdinaryEntryOverride;
+	NextOrdinaryEntryOverride.Target = EFMCodexLocalDevRollTarget::FullD12;
+	NextOrdinaryEntryOverride.Value = 6;
+	TestTrue(TEXT("Recovery coexistence fixture selects an ordinary Full D12 entry"),
+		Controller->SetLocalDevRollOverride(NextOrdinaryEntryOverride).bSuccess);
+#endif
 	Interaction->RequestTacticalPointRoll();
 	TestTrue(TEXT("Next tactical-point action succeeds before Recovery dismissal"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetLastDiagnostic().CommandName
-				== TEXT("RollTacticalPoints")
+				== TEXT("RequestInitialActionPointRoll")
 			&& Controller->GetInteractionView().bCurrentAttackActive
 			&& !Controller->IsRecoveryNotificationDismissScheduledForTesting());
 
@@ -7639,6 +7660,13 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 				TEXT("LeftTacticalPointChip")))
 			&& !IsVisible(Header->GetWidgetFromName(
 				TEXT("RightTacticalPointChip"))));
+#if !UE_BUILD_SHIPPING
+	FFMCodexLocalDevRollOverrideRequest NextOrdinaryEntryOverride;
+	NextOrdinaryEntryOverride.Target = EFMCodexLocalDevRollTarget::FullD12;
+	NextOrdinaryEntryOverride.Value = 6;
+	TestTrue(TEXT("Header handoff fixture selects an ordinary Full D12 entry"),
+		Controller->SetLocalDevRollOverride(NextOrdinaryEntryOverride).bSuccess);
+#endif
 	Interaction->RequestTacticalPointRoll();
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
@@ -14519,7 +14547,7 @@ bool FFMCodexCutInsideScreenTerminalBranchesTest::RunTest(
 		}
 		const FString ChoiceLabel = BranchIntent
 			== EMatchPlayElectiveBranchIntent::DirectShot
-				? TEXT("直接射门") : TEXT("直射死角");
+				? TEXT("直接射门") : TEXT("射向死角");
 		UFMCodexInteractionOptionWidget* SelectedChoice = nullptr;
 		for (UFMCodexInteractionOptionWidget* Choice
 			: Surface->GetBranchChoiceWidgets())
@@ -14949,12 +14977,14 @@ bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
 			&& Controller->GetInteractionView().AcceptedRolls.IsEmpty()
 			&& RoutePending.bVisible
 			&& RoutePending.ContestId == TEXT("Cross.Route")
+			&& RoutePending.RollHelperLabel == TEXT("1–4：高球传中｜5–6：低球传中")
 			&& RoutePending.bCanContinue
 			&& RoutePending.ContinueActionLabel == TEXT("判定传中路线")
 			&& Screen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);
 
 	Screen->ResetPrimaryActionDispatchForTesting();
+	const FString CrossRouteHelper = RoutePending.RollHelperLabel;
 	Surface->RequestContinue();
 	TestTrue(TEXT("Cross Route click dispatches one correlated command and one D6"),
 		Screen->GetPrimaryActionDispatchCountForTesting() == 1
@@ -14967,10 +14997,29 @@ bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
 			&& Controller->GetInteractionView().InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory::RollCrossAttack);
 	Screen->PauseInlineFormulaRevealTimerForTesting();
+	auto CheckCrossRouteHelper = [&]()
+	{
+		const auto* Helper = Cast<UTextBlock>(Surface->GetWidgetFromName(TEXT("InlineFormulaRollHelper")));
+		TestTrue(TEXT("Cross route range helper survives accepted request and active reel refresh"),
+			Surface->GetPresentation().RollHelperLabel == CrossRouteHelper
+				&& Helper && Helper->GetText().ToString() == CrossRouteHelper
+				&& Helper->GetVisibility() != ESlateVisibility::Collapsed);
+	};
+	CheckCrossRouteHelper();
+	Screen->AdvanceInlineFormulaRevealForTesting(1.35f);
+	TestEqual(TEXT("Cross helper is sampled during actual Settling"), Screen->GetInlineFormulaRevealPhase(),
+		EFMCodexUMGInlineFormulaRevealPhase::Settling);
+	CheckCrossRouteHelper();
+	Screen->AdvanceInlineFormulaRevealForTesting(0.12f);
+	TestTrue(TEXT("Cross revealed route replaces the range helper at ResultHold"),
+		Screen->GetInlineFormulaRevealPhase() == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& !Surface->GetPresentation().RouteResultLabel.IsEmpty()
+			&& Surface->GetPresentation().RollHelperLabel.IsEmpty());
 	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const auto& RouteSettled = Surface->GetPresentation();
 	TestTrue(TEXT("Route settlement preserves Cross production presentation"),
 		RouteSettled.RouteResultLabel == TEXT("路线掷点 2 → 判定为高球传中")
+			&& RouteSettled.RollHelperLabel.IsEmpty()
 			&& RouteSettled.bShowFormulaRows
 			&& RouteSettled.ContinueActionLabel == TEXT("进攻方掷点")
 			&& !RouteSettled.bNarrativeAvailable);
@@ -14994,6 +15043,7 @@ bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
 			&& AttackOnly.ContinueActionLabel == TEXT("防守方掷点"));
 
 	const FMatchPlayState BeforeDefense = Host->GetMatchSnapshot().Snapshot;
+	const auto BeforeGoalHeader = Screen->GetMatchHeader()->GetPresentation();
 	Surface->RequestContinue();
 	const FMatchPlayState Terminal = Host->GetMatchSnapshot().Snapshot;
 	const int32 UsedBefore = BeforeDefense.RuntimeState.PlayerAState.UsedAttackCount
@@ -15013,6 +15063,27 @@ bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
 			&& UsedTerminal == UsedBefore);
 
 	Screen->PauseInlineFormulaRevealTimerForTesting();
+	auto CheckCrossScoreHidden = [&]()
+	{
+		TestTrue(TEXT("Cross decisive reveal conceals score and narrative together"),
+			Screen->GetMatchHeader()->GetPresentation().PlayerAScoreLabel == BeforeGoalHeader.PlayerAScoreLabel
+				&& Screen->GetMatchHeader()->GetPresentation().PlayerBScoreLabel == BeforeGoalHeader.PlayerBScoreLabel
+				&& !Surface->GetPresentation().bNarrativeAvailable);
+	};
+	CheckCrossScoreHidden();
+	Screen->AdvanceInlineFormulaRevealForTesting(1.35f);
+	TestEqual(TEXT("Cross decisive settling is exercised"), Screen->GetInlineFormulaRevealPhase(),
+		EFMCodexUMGInlineFormulaRevealPhase::Settling);
+	CheckCrossScoreHidden();
+	Screen->AdvanceInlineFormulaRevealForTesting(0.35f);
+	CheckCrossScoreHidden();
+	Screen->AdvanceInlineFormulaRevealForTesting(0.15f);
+	TestTrue(TEXT("Cross Goal headline discloses the already-authoritative score"),
+		Surface->GetPresentation().bNarrativeAvailable
+			&& Screen->GetMatchHeader()->GetPresentation().PlayerAScoreLabel
+				== FString::FromInt(Terminal.RuntimeState.PlayerAState.Score)
+			&& Screen->GetMatchHeader()->GetPresentation().PlayerBScoreLabel
+				== FString::FromInt(Terminal.RuntimeState.PlayerBState.Score));
 	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const auto& TerminalFormula = Surface->GetPresentation();
 	TestTrue(TEXT("Cross terminal preserves Formula Narrative and central NextRound"),
@@ -15134,6 +15205,8 @@ bool FFMCodexMatchHeaderScoreIdentityMappingTest::RunTest(
 			Attacker == EInitialTurnOrderPlayer::PlayerA;
 		View.bPlayerBCurrentAttackTurn =
 			Attacker == EInitialTurnOrderPlayer::PlayerB;
+		View.RawInitialD12 = 6;
+		View.RouteKind = EMatchPlayCurrentAttackRouteKind::Ordinary;
 		View.ActionPoint = 6;
 		return View;
 	};

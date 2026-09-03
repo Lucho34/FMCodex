@@ -45,7 +45,8 @@ enum class EMatchPlayCurrentAttackPostRouteRollPurpose : uint8
 		UMETA(DisplayName = "Corner Participant Selection"),
 	CornerRoute = 21 UMETA(DisplayName = "Corner Route"),
 	CornerAttack = 22 UMETA(DisplayName = "Corner Attack"),
-	CornerDefense = 23 UMETA(DisplayName = "Corner Defense")
+	CornerDefense = 23 UMETA(DisplayName = "Corner Defense"),
+	CornerAutomaticScorer = 24 UMETA(DisplayName = "Corner Automatic Scorer")
 };
 
 USTRUCT(BlueprintType)

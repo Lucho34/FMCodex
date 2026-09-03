@@ -1788,6 +1788,11 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 		MakeBehindView(false, false));
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& PreviewFormula =
 		Preview.ThroughBallResolution.Formula;
+	TestEqual(TEXT("Behind P1 attack exposes only the early-out helper"),
+		PreviewFormula.RollHelperLabel, FString(TEXT("1–2：传球出界")));
+	TestTrue(TEXT("Behind P1 defense clears the early-out helper"),
+		Build(MakeBehindView(true, false))
+			.ThroughBallResolution.Formula.RollHelperLabel.IsEmpty());
 	TestTrue(TEXT("Behind route hands off to the production first-stage owner"),
 		Preview.ThroughBallResolution.bVisible
 			&& Preview.ThroughBallResolution.bSuppressLegacyResolution
@@ -1850,6 +1855,8 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 	const FFMCodexUMGMatchScreenViewModel OutOfPlay = Build(MakeBehindView(
 		true, false, EMatchPlayResolutionDecisionOutcome::OutOfPlay,
 		true, 41, 1));
+	TestTrue(TEXT("Behind P1 terminal clears the early-out helper"),
+		OutOfPlay.ThroughBallResolution.Formula.RollHelperLabel.IsEmpty());
 	TestTrue(TEXT("Authority OutOfPlay maps without a defense formula path"),
 		OutOfPlay.ThroughBallResolution.Formula.bNarrativeAvailable
 			&& !OutOfPlay.ThroughBallResolution.Formula.bShowFormulaRows

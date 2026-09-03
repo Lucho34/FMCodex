@@ -322,16 +322,7 @@ void UFMCodexLongShotResolutionSurfaceWidget::RefreshVisuals(
 		|| Presentation.bDeadCornerAVisible || Presentation.bDeadCornerBVisible
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	RollReel->RefreshFromPresentation(Presentation.RollReel);
-	FString PairLabel;
-	if (Presentation.bDeadCornerAVisible)
-	{
-		PairLabel = FString::Printf(TEXT("第一枚 %d"), Presentation.DeadCornerA);
-	}
-	if (Presentation.bDeadCornerBVisible)
-	{
-		PairLabel += FString::Printf(TEXT("  ｜  第二枚 %d"), Presentation.DeadCornerB);
-	}
-	SetOptionalText(PairedRollText, PairLabel);
+	SetOptionalText(PairedRollText, Presentation.PairedRollResultLabel);
 	FormulaSurface->RefreshFromPresentation(Presentation.Formula);
 	SetOptionalText(ResultTitleText,
 		Presentation.bNarrativeAvailable ? Presentation.ResultTitle : FString());

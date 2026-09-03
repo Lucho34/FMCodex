@@ -456,3 +456,47 @@ This log records approved player-facing UI decisions separately from gameplay ca
 - Recovery fact只保存稳定`OwnerSide + CardId`。Presentation先把OwnerSide解析到本场该玩家的实际Team identity与TeamDisplayName，再把CardId解析到既有PreferredDisplayName/DisplayName；不得把localized FText、球队中文名或球员显示名写入gameplay state。
 - 显示不得假定PlayerA=Arsenal、PlayerB=Manchester City、host=PlayerA、local player=attacker或固定left/right球队。PlayerA/PlayerB球队映射互换、host/guest变化或观察视角变化时，同一fact仍必须显示实际owner球队和球员。
 - 本决定只冻结未来Recovery短结果文本与identity resolution；不实现Recovery UI、动画、队徽、音效、队列或network transport，也不改变现有球员显示名合同。
+
+## 2026-09-01 — Full D12 and Set Piece LocalPlay production integration
+
+- LocalPlay 的默认开局动作继续显示既有“掷战术点”文案，但实际提交完整 D12 权威请求。D12 的 `1 / 2–8 / 9–12` 路线只能由 Authority snapshot 决定；UI 不映射路线。
+- D12 与定位球类型沿用 `request → Reel → ResultHold → semantic disclosure`。揭示完成前隐藏路线专属 Surface、主罚方法、草稿交互及普通路线 Tactical Pips，避免抢点与语义泄漏。
+- D12=1 在正式揭示后由 LocalPlay Controller 最多一次提交 typed Sending-Off continuation；Authority 选择被罚球员。终局明确显示“红牌”、玩家归属、data-driven 球员名和“下一回合”。
+- 近距离任意球、长任意球、点球共享“手牌单击建立本地草稿 → 中央确认 CTA 提交 Authority”的主罚选择合同。角球共享 ordered 0–3 本地草稿；进攻方锁定后，防守方锁定前只显示封存确认，不显示名单内容。
+- 所有定位球掷点与终局动作由中央 Resolution Surface 独占，lower InteractionPanel 不重复。Surface 只消费 InteractionView 投影的权威 D6、参与者、Formula 与 outcome，不计算 winner、route 或 RNG。
+- 本地草稿只以 `AttackSequence + expected side + SetPiece type + Corner stage` 关联，阶段、路线、回合、终局或新比赛变化时清空；它不进入 CoreRules、存档或未来网络协议。
+- 当前 Hot-seat 封存由 viewer-local InteractionView 完成。Stage 7 双客户端传输必须在 Host/public DTO 层按 viewer redaction，不能把完整 Authority snapshot 直接发送给防守客户端。
+
+## 2026-09-02 — Near Free Kick player-facing terminology and progressive presentation
+
+- `ShortFreeKick` 保留为内部 gameplay identifier；所有玩家可见中文统一为“近距离任意球”，不得与旧称“短任意球”混用。
+- 定位球类型 D6 的映射只在类型选择与揭示阶段显示；进入具体路线后不重复显示。初始完整 D12 的揭示结束前，下一阶段的类型面板不得在背景提前出现。
+- 近距离任意球直接射门沿用普通战术的渐进公式语言：InteractionView 从冻结权威快照与已接受 D6 投影当前总值，UMG 只显示，不自行求和或推断终局。
+
+## 2026-09-02 — Tactical presentation terminology and roll helpers
+
+- `LongFreeKick` 玩家可见名称为“远距离任意球”；定位球类型名称由 `FFMCodexPlayerUIPresentationText::SetPieceName` 集中提供。`DeadCorner` 显示为“射向死角”；HAN 属性继续使用集中映射“手控球”，叙事中的“扑救 / 扑出”不变。
+- Early-out 提示只在对应进攻掷点待处理时显示：远射与内切直接射门为“1–2：射门偏出”，远距离任意球直接射门为“1–2：直接射偏”，身后球第一阶段为“1–2：传球出界”。接受掷点后不继续显示，也不补充普通成功路径说明。
+- 近距离任意球战术配合的双骰目标文案为“两枚点数总和达到 9 或以上：进球”；远距离任意球大力轰门、远射与内切射向死角使用相同句式的 11。双骰仍为一次 Authority 请求；顺序揭示时保留第一枚与目标，第二枚披露后改为 `D6 A + D6 B = total` 并隐藏目标。加总仅用于展示已接受点数，不生成 Formula、winner 或 outcome。
+- 勺子点球待掷点时显示“1：射失｜2–6：进球”，保持单骰、无 Formula。正常等待与结果文案不使用“权威”措辞；技术诊断与日志不受此限制。
+- 这些提示是冻结规则的只读中文说明，不是判定入口；既有 Reel、ResultHold、Formula 披露时序和中央动作归属不变。
+
+## 2026-09-02 — Corner focused production presentation
+
+- 提名文案为`已提名：X/3`；0/1/2人锁定先显示local confirmation，`返回补充`保留有序草稿，`继续锁定`才提交typed命令；3人直接锁定。确认状态只随当前seq/side/type/stage草稿存在，不新增Authority state。
+- 文案修订：玩家用语由下方 Corner final presentation 合同取代为`候选 / 已选：X/3`；本地确认与 Authority 提交合同不变。
+- 对位板按各自canonical人数映射显示D6范围，球员名称来自既有display source；保持单行，仅超宽时向下缩放，不改写名称或全局字体。
+- 共享D6使用板内shared Reel逐帧更新，ResultHold语义披露前不高亮选中者；hold完成后High/Low只留最终进攻/防守人选及canonical属性helper，不重复候选表或raw D6。路线使用普通中央Formula Surface的route-only揭示，之后再显示渐进公式。
+- 零防守自动Goal只显示权威真实射手与显式`下一回合`，后台选择不伪装为玩家掷点。点球固定-3的中文标签为`点球防守调整 -3`，数值和规则不变。
+
+## 2026-09-03 — Corner final presentation and shared score disclosure
+
+- Corner 编辑使用`已选：X/3`、有序 display-name 列表与`锁定进攻候选 / 锁定防守候选`。移除紧凑重排、重选追加；封存信息在另一方编辑期间不泄漏。确认使用稳定横向动作行`继续锁定 / 返回补充`，两态单行标签、同一尺寸合同，不随短文案或返回操作重建布局。
+- Corner 与 Cross 的待路线掷点 helper 从 canonical Tactical Rule Description range metadata 生成完整 High/Low D6 映射。只在 pending 显示，不进入后续 Formula 或 terminal；Widget 不持有概率表。
+- Corner 人数优势 term 使用`候选人数占优加成 2/3`，固定防守 term 使用`防守加成 2`。Goal/NoGoal 使用真实 Runner/scorer 与 actual route，遵循 Narrative v1 的非虚构因果边界；进攻方0（含0v0）为`进攻方无人抢到点`、`角球 · 未进球`。
+- 所有已接入共享揭示流程的比分仅在拥有该结果的 Surface 披露 Narrative 时更新；Authority 仍立即记分。决定性 Cycling/Settling、第一枚双骰与最终 Narrative 前保持旧比分，无 roll 的自动 Goal 同帧显示结果与新比分。只冻结 score labels，不冻结整屏，也不添加 tactic-specific timer。
+
+## 2026-09-03 — Route helper persistence and Long Free Kick method naming
+
+- 修订此前 route helper 的 pending-only 合同：仅 Corner/Cross 当前路线 D6 的完整范围提示在 Waiting、RequestInFlight、Cycling、Settling 持续显示，直到各自既有 route result disclosure 才隐藏；不进入后续 Formula、攻防掷点或终局。Screen 只保留掷点前 DTO 的既有提示，不解析 intent、不维护概率表、不增加计时器；其他 early-out、双骰阈值与比分披露合同不变。
+- `LongFreeKick.Power` 玩家方法名称统一为`重炮轰门`，由集中 presentation FText 提供，覆盖选择、待掷点、终局和 DEV 目标标签；内部 Power enum、命令、序列化与玩法不改。Direct 仍为`直接射门`，近距离任意球仍为`战术配合`；Power 提示仍为`两枚点数总和达到 11 或以上：进球`。

@@ -1,4 +1,5 @@
 #include "MatchPlayCurrentAttackRouteStateValidator.h"
+#include "MatchPlayCornerResolution.h"
 
 #include "MatchPlaySetPieceParticipantEligibility.h"
 #include "MatchPlayDefendingGoalkeeperQuery.h"
@@ -919,6 +920,7 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 	{
 		return !Corner.bHasSharedParticipantD6
 			&& Corner.SharedParticipantD6 == 0
+			&& Corner.AutomaticScorerD6 == 0
 			&& IsDefaultStruct(Corner.Runner)
 			&& IsDefaultStruct(Corner.Helper)
 			&& Corner.CandidateBonusSide == EInitialTurnOrderPlayer::None
@@ -995,30 +997,15 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 		return true;
 	}
 
-	int32 GetCornerParticipantIndex(
-		const int32 CandidateCount,
-		const int32 RawD6)
-	{
-		if (CandidateCount == 3)
-		{
-			return (RawD6 - 1) / 2;
-		}
-		if (CandidateCount == 2)
-		{
-			return RawD6 <= 3 ? 0 : 1;
-		}
-		return CandidateCount == 1 ? 0 : INDEX_NONE;
-	}
-
 	bool ValidateCornerSelection(
 		FMatchPlayCurrentAttackRouteStateValidationResult& Result,
 		const FMatchPlayCornerRouteState& Corner,
 		const EInitialTurnOrderPlayer Attacker,
 		const EInitialTurnOrderPlayer Defender)
 	{
-		const int32 RunnerIndex = GetCornerParticipantIndex(
+		const int32 RunnerIndex = FMatchPlayCornerResolution::MapParticipantIndex(
 			Corner.AttackerNominees.Num(), Corner.SharedParticipantD6);
-		const int32 HelperIndex = GetCornerParticipantIndex(
+		const int32 HelperIndex = FMatchPlayCornerResolution::MapParticipantIndex(
 			Corner.DefenderNominees.Num(), Corner.SharedParticipantD6);
 		const int32 Difference = FMath::Abs(
 			Corner.AttackerNominees.Num() - Corner.DefenderNominees.Num());
@@ -1030,6 +1017,7 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 				? Attacker : Defender;
 
 		if (!Corner.bHasSharedParticipantD6
+			|| Corner.AutomaticScorerD6 != 0
 			|| Corner.SharedParticipantD6 < 1
 			|| Corner.SharedParticipantD6 > 6
 			|| !Corner.AttackerNominees.IsValidIndex(RunnerIndex)
@@ -1072,49 +1060,8 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 		const EInitialTurnOrderPlayer Attacker,
 		const EInitialTurnOrderPlayer Defender)
 	{
-		FFormulaResolverInput Input;
-		Input.FormulaType = EFormulaType::Finishing;
-		Input.Attacker.BaseValue = Corner.ActualRoute
-			== EMatchPlayCornerRouteIntent::High
-				? Corner.Runner.Snapshot.Attributes.Strength
-				: Corner.Runner.Snapshot.Attributes.Shooting;
-		Input.Attacker.Modifier = Corner.CandidateBonusSide == Attacker
-			? static_cast<float>(Corner.CandidateBonus) : 0.0f;
-		Input.Attacker.ComparePoint = Corner.AttackD6;
-		Input.Attacker.bComparePointWasRolledOnD6 = true;
-		Input.Attacker.ParticipatingStamina.Add(
-			Corner.Runner.Snapshot.Attributes.Stamina);
-
-		const float HelperAttribute = Corner.ActualRoute
-			== EMatchPlayCornerRouteIntent::High
-				? Corner.Helper.Snapshot.Attributes.Strength
-				: Corner.Helper.Snapshot.Attributes.Marking;
-		const float GoalkeeperAttribute = Corner.ActualRoute
-			== EMatchPlayCornerRouteIntent::High
-				? Goalkeeper.Snapshot.GoalkeeperAttributes.Aerial
-				: Goalkeeper.Snapshot.GoalkeeperAttributes.Reflex;
-		Input.Defender.BaseValue = UFormulaResolver::Average(
-			HelperAttribute, GoalkeeperAttribute);
-		Input.Defender.Modifier = 2.0f
-			+ (Corner.CandidateBonusSide == Defender
-				? static_cast<float>(Corner.CandidateBonus) : 0.0f);
-		Input.Defender.ComparePoint = Corner.DefenseD6;
-		Input.Defender.bComparePointWasRolledOnD6 = true;
-		Input.Defender.ParticipatingStamina = {
-			Corner.Helper.Snapshot.Attributes.Stamina,
-			Goalkeeper.Snapshot.Attributes.Stamina };
-		Input.bGoalkeeperParticipated = true;
-		Input.TurnIndex = static_cast<int32>(
-			State.CurrentAttack.AttackSequence);
-		Input.AttackerPlayerId = Attacker
-			== EInitialTurnOrderPlayer::PlayerA
-				? FName(TEXT("PlayerA")) : FName(TEXT("PlayerB"));
-		Input.DefenderPlayerId = Defender
-			== EInitialTurnOrderPlayer::PlayerA
-				? FName(TEXT("PlayerA")) : FName(TEXT("PlayerB"));
-		Input.InvolvedCardIds = {
-			Corner.Runner.CardId, Corner.Helper.CardId, Goalkeeper.CardId };
-		return Input;
+		return FMatchPlayCornerResolution::BuildFormulaInput(Corner, Goalkeeper,
+			Attacker, Defender, State.CurrentAttack.AttackSequence);
 	}
 
 	bool ValidateCornerPayload(
@@ -1205,9 +1152,25 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 				const EMatchPlayCornerGameplayOutcome ExpectedOutcome =
 					bAttackerShortage
 						? EMatchPlayCornerGameplayOutcome::NoGoal
-						: EMatchPlayCornerGameplayOutcome::SystemGoal;
+						: EMatchPlayCornerGameplayOutcome::Goal;
+				const int32 ScorerIndex = Corner.AttackerNominees.Num() == 1
+					? (Corner.AutomaticScorerD6 == 0 ? 0 : INDEX_NONE)
+					: FMatchPlayCornerResolution::MapParticipantIndex(
+						Corner.AttackerNominees.Num(), Corner.AutomaticScorerD6);
+				const bool bAutomaticScorerValid = !bAttackerShortage
+					&& Corner.AttackerNominees.IsValidIndex(ScorerIndex)
+					&& !Corner.bHasSharedParticipantD6 && Corner.SharedParticipantD6 == 0
+					&& IsDefaultStruct(Corner.Helper)
+					&& Corner.CandidateBonus == 0
+					&& Corner.CandidateBonusSide == EInitialTurnOrderPlayer::None
+					&& FMatchPlaySetPieceParticipantBinding::StaticStruct()->CompareScriptStruct(
+						&Corner.Runner, &Corner.AttackerNominees[ScorerIndex], 0)
+					&& Corner.bHasGoalScorer && Corner.GoalScorerCardId == Corner.Runner.CardId;
 				if (bTerminalLifecycle
-					&& HasDefaultCornerSelectionFacts(Corner)
+					&& (bAttackerShortage
+						? HasDefaultCornerSelectionFacts(Corner)
+							&& !Corner.bHasGoalScorer && Corner.GoalScorerCardId.IsNone()
+						: bAutomaticScorerValid)
 					&& Corner.IntendedRoute
 						== EMatchPlayCornerRouteIntent::None
 					&& !Corner.bHasRouteD6 && Corner.RawRouteD6 == 0
@@ -1217,9 +1180,7 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 					&& !Corner.bHasDefenseD6 && Corner.DefenseD6 == 0
 					&& !Corner.bHasFormulaResolution
 					&& IsDefaultStruct(Corner.FormulaResolution)
-					&& Corner.GameplayOutcome == ExpectedOutcome
-					&& !Corner.bHasGoalScorer
-					&& Corner.GoalScorerCardId.IsNone())
+					&& Corner.GameplayOutcome == ExpectedOutcome)
 				{
 					return true;
 				}

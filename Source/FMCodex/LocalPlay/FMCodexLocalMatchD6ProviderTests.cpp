@@ -60,6 +60,10 @@ bool FFMCodexLocalMatchD6ProviderContractTest::RunTest(
 		(std::is_base_of_v<
 			IMatchPlayInitialRouteRollProvider,
 			FFMCodexLocalMatchD6Provider>));
+	TestTrue(TEXT("Provider implements Full D12 attack-entry interface"),
+		(std::is_base_of_v<
+			IMatchPlayAttackEntryRollProvider,
+			FFMCodexLocalMatchD6Provider>));
 	TestTrue(TEXT("Provider implements post-route interface"),
 		(std::is_base_of_v<
 			IMatchPlayPostRouteRollProvider,
@@ -80,6 +84,37 @@ bool FFMCodexLocalMatchD6ProviderContractTest::RunTest(
 	FFMCodexLocalMatchD6Provider ProviderB(Seed);
 	FFMCodexLocalMatchD6Provider TacticalProviderA(Seed);
 	FFMCodexLocalMatchD6Provider TacticalProviderB(Seed);
+	FFMCodexLocalMatchD6Provider EntryProviderA(Seed);
+	FFMCodexLocalMatchD6Provider EntryProviderB(Seed);
+	for (int32 Index = 0; Index < 128; ++Index)
+	{
+		const auto D12A = EntryProviderA.RollD12(
+			EMatchPlayAttackEntryRollPurpose::InitialActionPoint);
+		const auto D12B = EntryProviderB.RollD12(
+			EMatchPlayAttackEntryRollPurpose::InitialActionPoint);
+		TestTrue(TEXT("Full entry D12 stays canonical"),
+			D12A.bSuccess && D12A.RawRoll >= 1 && D12A.RawRoll <= 12);
+		TestEqual(TEXT("Same seed Full D12 sequence is deterministic"),
+			D12A.RawRoll, D12B.RawRoll);
+	}
+	const auto SetPieceTypeA = EntryProviderA.RollD6(
+		EMatchPlayAttackEntryRollPurpose::SetPieceType);
+	const auto SetPieceTypeB = EntryProviderB.RollD6(
+		EMatchPlayAttackEntryRollPurpose::SetPieceType);
+	TestTrue(TEXT("Set Piece type entry roll stays canonical"),
+		SetPieceTypeA.bSuccess && IsD6(SetPieceTypeA.RawRoll));
+	TestEqual(TEXT("Same seed Set Piece type roll is deterministic"),
+		SetPieceTypeA.RawRoll, SetPieceTypeB.RawRoll);
+	const auto SendingOffA = EntryProviderA.SelectUniformIndex(
+		EMatchPlayAttackEntryRollPurpose::SendingOffSelection, 5);
+	const auto SendingOffB = EntryProviderB.SelectUniformIndex(
+		EMatchPlayAttackEntryRollPurpose::SendingOffSelection, 5);
+	TestTrue(TEXT("AP1 sending-off selection stays in candidate range"),
+		SendingOffA.bSuccess
+			&& SendingOffA.SelectedIndex >= 0
+			&& SendingOffA.SelectedIndex < 5);
+	TestEqual(TEXT("Same seed sending-off selection is deterministic"),
+		SendingOffA.SelectedIndex, SendingOffB.SelectedIndex);
 	for (int32 Index = 0; Index < 128; ++Index)
 	{
 		const int32 TacticalPointA =
@@ -289,6 +324,10 @@ bool FFMCodexLocalMatchD6ProviderChronologyAndAuthorityTest::RunTest(
 		CountOccurrences(ProviderSource,
 			TEXT("RandomStream.RandRange(2, 8)")),
 		1);
+	TestEqual(TEXT("Full entry D12 uses one canonical-range callsite"),
+		CountOccurrences(ProviderSource,
+			TEXT("RandomStream.RandRange(1, 12)")),
+		1);
 	TestFalse(TEXT("No global gameplay RNG is used"),
 		ProviderSource.Contains(TEXT("FMath::Rand"))
 			|| ProviderSource.Contains(TEXT("FMath::RandRange"))
@@ -317,10 +356,10 @@ bool FFMCodexLocalMatchD6ProviderChronologyAndAuthorityTest::RunTest(
 		HostHeader.Find(TEXT("FFMCodexLocalMatchD6Provider D6Provider;"))
 			< HostHeader.Find(
 				TEXT("FMatchPlayAuthoritativeSession AuthoritativeSession;")));
-	TestEqual(TEXT("Session borrows the same provider for all three interfaces"),
+	TestEqual(TEXT("Session borrows the same provider for all four interfaces"),
 		CountOccurrences(HostSource,
 			TEXT("\t\tD6Provider,")),
-		3);
+		4);
 	TestEqual(TEXT("Candidate runtime is atomically adopted once"),
 		CountOccurrences(HostSource,
 			TEXT("ActiveMatchRuntime = MoveTemp(CandidateRuntime);")),

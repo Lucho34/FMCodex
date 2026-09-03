@@ -711,6 +711,7 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 	auto NewView = FFMCodexLocalMatchInteractionViewBuilder::Build(
 		State.Snapshot, Rules.Snapshot);
 	InteractionView = MoveTemp(NewView);
+	ReconcileSetPieceDraft();
 	if (InteractionView.bTerminalPendingAdvance
 		&& !ResolutionFeedback.bTerminal)
 	{
@@ -813,6 +814,9 @@ ExpireRecoveryNotificationForTesting()
 
 void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 {
+	ResetSetPieceDraft();
+	AutomaticallyResolvedSendingOffSequences.Reset();
+	AutomaticallyResolvedNoCarrierSequences.Reset();
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -855,9 +859,295 @@ void AFMCodexLocalMatchPlayerController::RollDemoTacticalPoints()
 		RecordLocalFailure(TEXT("RollTacticalPoints"), TEXT("Host unavailable."));
 		return;
 	}
-	RecordCommandResult(
-		TEXT("RollTacticalPoints"),
-		Host->RollTacticalPoints(InteractionView.ExpectedActingPlayer));
+	FMatchPlayFullD12EntryRequest Request;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
+	RecordCommandResult(TEXT("RequestInitialActionPointRoll"),
+		Host->RequestInitialActionPointRoll(Request));
+}
+
+void AFMCodexLocalMatchPlayerController::ResetSetPieceDraft()
+{
+	SetPieceDraft = FSetPieceLocalDraft();
+}
+
+void AFMCodexLocalMatchPlayerController::ReconcileSetPieceDraft()
+{
+	const bool bCarrierDraft = InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier;
+	const bool bCornerDraft = InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::DraftCornerDefender;
+	if (!bCarrierDraft && !bCornerDraft)
+	{
+		ResetSetPieceDraft();
+		return;
+	}
+	if (SetPieceDraft.AttackSequence != InteractionView.AttackSequence
+		|| SetPieceDraft.Side != InteractionView.ExpectedActingPlayer
+		|| SetPieceDraft.Type != InteractionView.SetPieceType
+		|| (bCornerDraft
+			&& SetPieceDraft.CornerStage != InteractionView.CornerStage))
+	{
+		ResetSetPieceDraft();
+		SetPieceDraft.AttackSequence = InteractionView.AttackSequence;
+		SetPieceDraft.Side = InteractionView.ExpectedActingPlayer;
+		SetPieceDraft.Type = InteractionView.SetPieceType;
+		SetPieceDraft.CornerStage = InteractionView.CornerStage;
+	}
+	if (bCarrierDraft)
+	{
+		if (!InteractionView.LegalSetPieceCardIds.Contains(
+			SetPieceDraft.CarrierCardId))
+		{
+			SetPieceDraft.CarrierCardId = NAME_None;
+		}
+		InteractionView.DraftSetPieceCarrierCardId =
+			SetPieceDraft.CarrierCardId;
+		if (!SetPieceDraft.CarrierCardId.IsNone())
+		{
+			InteractionView.InteractionCategory =
+				EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier;
+		}
+		return;
+	}
+	SetPieceDraft.CornerCardIds.RemoveAll(
+		[this](const FName CardId)
+		{
+			return !InteractionView.LegalSetPieceCardIds.Contains(CardId);
+		});
+	if (SetPieceDraft.CornerCardIds.Num() > 3)
+	{
+		SetPieceDraft.CornerCardIds.SetNum(3);
+	}
+	InteractionView.DraftCornerNomineeCardIds =
+		SetPieceDraft.CornerCardIds;
+	InteractionView.bCornerLockConfirmationPending = SetPieceDraft.bLockConfirmationPending;
+}
+
+void AFMCodexLocalMatchPlayerController::ToggleSetPieceDraftCard(
+	const FName CardId)
+{
+	if (SetPieceDraft.bLockConfirmationPending) return;
+	if (!InteractionView.LegalSetPieceCardIds.Contains(CardId))
+	{
+		RecordLocalFailure(TEXT("SetPieceDraft"),
+			TEXT("该球员不在当前权威合法候选中。"));
+		return;
+	}
+	const bool bCarrierDraft = InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier;
+	if (bCarrierDraft)
+	{
+		SetPieceDraft.CarrierCardId =
+			SetPieceDraft.CarrierCardId == CardId ? NAME_None : CardId;
+	}
+	else if (InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker
+		|| InteractionView.InteractionCategory
+			== EFMCodexLocalMatchInteractionCategory::DraftCornerDefender)
+	{
+		const int32 Existing = SetPieceDraft.CornerCardIds.IndexOfByKey(CardId);
+		if (Existing != INDEX_NONE)
+		{
+			SetPieceDraft.CornerCardIds.RemoveAt(Existing);
+		}
+		else if (SetPieceDraft.CornerCardIds.Num() < 3)
+		{
+			SetPieceDraft.CornerCardIds.Add(CardId);
+		}
+	}
+	else
+	{
+		RecordLocalFailure(TEXT("SetPieceDraft"),
+			TEXT("当前阶段不接受手牌定位球选择。"));
+		return;
+	}
+	RefreshPresentation();
+}
+
+void AFMCodexLocalMatchPlayerController::ConfirmSetPieceDraft()
+{
+	const bool bCornerDraft = InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker
+		|| InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::DraftCornerDefender;
+	if (bCornerDraft && SetPieceDraft.CornerCardIds.Num() < 3
+		&& !SetPieceDraft.bLockConfirmationPending)
+	{
+		SetPieceDraft.bLockConfirmationPending = true;
+		RefreshPresentation();
+		return;
+	}
+	SetPieceDraft.bLockConfirmationPending = false;
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		RecordLocalFailure(TEXT("ConfirmSetPieceDraft"), TEXT("Host unavailable."));
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier)
+	{
+		FMatchPlaySetPieceCarrierSelectionRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		Request.CardId = SetPieceDraft.CarrierCardId;
+		RecordCommandResult(TEXT("SubmitSetPieceCarrier"),
+			Host->SubmitSetPieceCarrier(Request));
+		return;
+	}
+	FMatchPlayCornerNominationRequest Request;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.OrderedCardIds = SetPieceDraft.CornerCardIds;
+	if (InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker)
+	{
+		RecordCommandResult(TEXT("SubmitCornerAttackerNominations"),
+			Host->SubmitCornerAttackerNominations(Request));
+	}
+	else if (InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::DraftCornerDefender)
+	{
+		RecordCommandResult(TEXT("SubmitCornerDefenderNominations"),
+			Host->SubmitCornerDefenderNominations(Request));
+	}
+	else
+	{
+		RecordLocalFailure(TEXT("ConfirmSetPieceDraft"),
+			TEXT("当前没有可确认的定位球草稿。"));
+	}
+}
+
+void AFMCodexLocalMatchPlayerController::CancelCornerLockConfirmation()
+{
+	SetPieceDraft.bLockConfirmationPending = false;
+	RefreshPresentation();
+}
+
+void AFMCodexLocalMatchPlayerController::NotifyEntryRevealComplete()
+{
+	ResolveAutomaticSetPieceEntryIfNeeded();
+}
+
+void AFMCodexLocalMatchPlayerController::ResolveAutomaticSetPieceEntryIfNeeded()
+{
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr)
+	{
+		return;
+	}
+	if (InteractionView.InteractionCategory
+		== EFMCodexLocalMatchInteractionCategory::ResolveSendingOff
+		&& !AutomaticallyResolvedSendingOffSequences.Contains(
+			InteractionView.AttackSequence))
+	{
+		AutomaticallyResolvedSendingOffSequences.Add(
+			InteractionView.AttackSequence);
+		FMatchPlaySendingOffResolutionRequest Request;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		RecordCommandResult(TEXT("ResolveSendingOff"),
+			Host->ResolveSendingOff(Request));
+		return;
+	}
+	if (InteractionView.InteractionCategory
+			!= EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier
+		|| !InteractionView.LegalSetPieceCardIds.IsEmpty()
+		|| AutomaticallyResolvedNoCarrierSequences.Contains(
+			InteractionView.AttackSequence))
+	{
+		return;
+	}
+	AutomaticallyResolvedNoCarrierSequences.Add(InteractionView.AttackSequence);
+	switch (InteractionView.SetPieceType)
+	{
+	case ESetPieceSelectedType::ShortFreeKick:
+	{
+		FMatchPlayShortFreeKickNoLegalCarrierRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		RecordCommandResult(TEXT("ResolveNoLegalShortFreeKickCarrier"),
+			Host->ResolveNoLegalShortFreeKickCarrier(Request));
+		break;
+	}
+	case ESetPieceSelectedType::LongFreeKick:
+	{
+		FMatchPlayLongFreeKickNoLegalCarrierRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		RecordCommandResult(TEXT("ResolveNoLegalLongFreeKickCarrier"),
+			Host->ResolveNoLegalLongFreeKickCarrier(Request));
+		break;
+	}
+	case ESetPieceSelectedType::Penalty:
+	{
+		FMatchPlayPenaltyNoLegalCarrierRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		RecordCommandResult(TEXT("ResolveNoLegalPenaltyCarrier"),
+			Host->ResolveNoLegalPenaltyCarrier(Request));
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+void AFMCodexLocalMatchPlayerController::SubmitShortFreeKickMethod(
+	const EMatchPlayShortFreeKickMethod Method)
+{
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr) return;
+	FMatchPlayShortFreeKickMethodRequest Request;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.Method = Method;
+	RecordCommandResult(TEXT("SubmitShortFreeKickMethod"),
+		Host->SubmitShortFreeKickMethod(Request));
+}
+
+void AFMCodexLocalMatchPlayerController::SubmitLongFreeKickMethod(
+	const EMatchPlayLongFreeKickMethod Method)
+{
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr) return;
+	FMatchPlayLongFreeKickMethodRequest Request;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.Method = Method;
+	RecordCommandResult(TEXT("SubmitLongFreeKickMethod"),
+		Host->SubmitLongFreeKickMethod(Request));
+}
+
+void AFMCodexLocalMatchPlayerController::SubmitPenaltyMethod(
+	const EMatchPlayPenaltyMethod Method)
+{
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr) return;
+	FMatchPlayPenaltyMethodRequest Request;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.Method = Method;
+	RecordCommandResult(TEXT("SubmitPenaltyMethod"),
+		Host->SubmitPenaltyMethod(Request));
+}
+
+void AFMCodexLocalMatchPlayerController::SubmitCornerIntent(
+	const EMatchPlayCornerRouteIntent Intent)
+{
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (Host == nullptr) return;
+	FMatchPlayCornerIntentRequest Request;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.IntendedRoute = Intent;
+	RecordCommandResult(TEXT("SubmitCornerIntent"),
+		Host->SubmitCornerIntent(Request));
 }
 
 void AFMCodexLocalMatchPlayerController::DeployOrdinary(
@@ -2038,6 +2328,88 @@ void AFMCodexLocalMatchPlayerController::AdvanceAfterTerminal()
 
 void AFMCodexLocalMatchPlayerController::ContinueResolution()
 {
+	AFMCodexLocalMatchHostGameMode* SetPieceHost = FindLocalMatchHost();
+	if (SetPieceHost != nullptr)
+	{
+		auto MakeRollRequest = [this]()
+		{
+			FMatchPlayCornerRollRequest Request;
+			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+			Request.AttackSequence = InteractionView.AttackSequence;
+			return Request;
+		};
+		switch (InteractionView.InteractionCategory)
+		{
+		case EFMCodexLocalMatchInteractionCategory::RollSetPieceType:
+		{
+			FMatchPlaySetPieceTypeRollRequest Request;
+			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+			Request.AttackSequence = InteractionView.AttackSequence;
+			RecordCommandResult(TEXT("RequestSetPieceTypeRoll"),
+				SetPieceHost->RequestSetPieceTypeRoll(Request));
+			return;
+		}
+		case EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier:
+		case EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker:
+		case EFMCodexLocalMatchInteractionCategory::DraftCornerDefender:
+			ConfirmSetPieceDraft(); return;
+		case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectAttack:
+		case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectDefense:
+		case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickAngled:
+		{
+			FMatchPlayShortFreeKickRollRequest Request;
+			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+			Request.AttackSequence = InteractionView.AttackSequence;
+			if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectAttack)
+				RecordCommandResult(TEXT("ResolveShortFreeKickDirectAttackRoll"), SetPieceHost->ResolveShortFreeKickDirectAttackRoll(Request));
+			else if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectDefense)
+				RecordCommandResult(TEXT("ResolveShortFreeKickDirectDefenseRoll"), SetPieceHost->ResolveShortFreeKickDirectDefenseRoll(Request));
+			else
+				RecordCommandResult(TEXT("ResolveShortFreeKickAngledRoll"), SetPieceHost->ResolveShortFreeKickAngledRoll(Request));
+			return;
+		}
+		case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectAttack:
+		case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectDefense:
+		case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickPower:
+		{
+			FMatchPlayLongFreeKickRollRequest Request;
+			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+			Request.AttackSequence = InteractionView.AttackSequence;
+			if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectAttack)
+				RecordCommandResult(TEXT("ResolveLongFreeKickDirectAttackRoll"), SetPieceHost->ResolveLongFreeKickDirectAttackRoll(Request));
+			else if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectDefense)
+				RecordCommandResult(TEXT("ResolveLongFreeKickDirectDefenseRoll"), SetPieceHost->ResolveLongFreeKickDirectDefenseRoll(Request));
+			else
+				RecordCommandResult(TEXT("ResolveLongFreeKickPowerRoll"), SetPieceHost->ResolveLongFreeKickPowerRoll(Request));
+			return;
+		}
+		case EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectAttack:
+		case EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectDefense:
+		case EFMCodexLocalMatchInteractionCategory::RollPenaltyPanenka:
+		{
+			FMatchPlayPenaltyRollRequest Request;
+			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+			Request.AttackSequence = InteractionView.AttackSequence;
+			if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectAttack)
+				RecordCommandResult(TEXT("ResolvePenaltyDirectAttackRoll"), SetPieceHost->ResolvePenaltyDirectAttackRoll(Request));
+			else if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectDefense)
+				RecordCommandResult(TEXT("ResolvePenaltyDirectDefenseRoll"), SetPieceHost->ResolvePenaltyDirectDefenseRoll(Request));
+			else
+				RecordCommandResult(TEXT("ResolvePenaltyPanenkaRoll"), SetPieceHost->ResolvePenaltyPanenkaRoll(Request));
+			return;
+		}
+		case EFMCodexLocalMatchInteractionCategory::RollCornerParticipantSelection:
+			RecordCommandResult(TEXT("RequestCornerParticipantSelectionRoll"), SetPieceHost->RequestCornerParticipantSelectionRoll(MakeRollRequest())); return;
+		case EFMCodexLocalMatchInteractionCategory::RollCornerRoute:
+			RecordCommandResult(TEXT("RequestCornerRouteRoll"), SetPieceHost->RequestCornerRouteRoll(MakeRollRequest())); return;
+		case EFMCodexLocalMatchInteractionCategory::RollCornerAttack:
+			RecordCommandResult(TEXT("RequestCornerAttackRoll"), SetPieceHost->RequestCornerAttackRoll(MakeRollRequest())); return;
+		case EFMCodexLocalMatchInteractionCategory::RollCornerDefense:
+			RecordCommandResult(TEXT("RequestCornerDefenseRoll"), SetPieceHost->RequestCornerDefenseRoll(MakeRollRequest())); return;
+		default:
+			break;
+		}
+	}
 	if (InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
 		|| InteractionView.InteractionCategory

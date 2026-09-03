@@ -50,6 +50,14 @@ public:
 	void ExpireRecoveryNotificationForTesting();
 #endif
 	void RollDemoTacticalPoints();
+	void NotifyEntryRevealComplete();
+	void ToggleSetPieceDraftCard(FName CardId);
+	void ConfirmSetPieceDraft();
+	void CancelCornerLockConfirmation();
+	void SubmitShortFreeKickMethod(EMatchPlayShortFreeKickMethod Method);
+	void SubmitLongFreeKickMethod(EMatchPlayLongFreeKickMethod Method);
+	void SubmitPenaltyMethod(EMatchPlayPenaltyMethod Method);
+	void SubmitCornerIntent(EMatchPlayCornerRouteIntent Intent);
 	void DeployOrdinary(FName CardId, FName SlotId);
 	void DeployGoalkeeper(FName SlotId);
 	void FinishDeployment();
@@ -123,6 +131,9 @@ private:
 	TSharedRef<SWidget> BuildControlSurface();
 	void RecordLocalFailure(const FString& CommandName, const FString& Message);
 	void ResolveAutomaticNoLegalHelperIfNeeded();
+	void ReconcileSetPieceDraft();
+	void ResolveAutomaticSetPieceEntryIfNeeded();
+	void ResetSetPieceDraft();
 	void ScheduleRecoveryNotificationDismiss();
 	void CancelRecoveryNotificationDismiss();
 	void DismissRecoveryNotification();
@@ -210,6 +221,20 @@ private:
 	bool bThroughBallAntiOffsideRollCommandInFlight = false;
 	bool bThroughBallOneOnOneRollCommandInFlight = false;
 	bool bThroughBallBehindDefenseRollCommandInFlight = false;
+	struct FSetPieceLocalDraft
+	{
+		int64 AttackSequence = 0;
+		EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
+		ESetPieceSelectedType Type = ESetPieceSelectedType::None;
+		EMatchPlaySetPieceCornerRouteStage CornerStage =
+			EMatchPlaySetPieceCornerRouteStage::None;
+		FName CarrierCardId = NAME_None;
+		TArray<FName> CornerCardIds;
+		bool bLockConfirmationPending = false;
+	};
+	FSetPieceLocalDraft SetPieceDraft;
+	TSet<int64> AutomaticallyResolvedSendingOffSequences;
+	TSet<int64> AutomaticallyResolvedNoCarrierSequences;
 	FTimerHandle RecoveryNotificationDismissTimerHandle;
 	static constexpr float RecoveryNotificationDurationSeconds = 2.0f;
 

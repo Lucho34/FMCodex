@@ -879,6 +879,7 @@
 - 日期：2026-08-30
 - 决策：双方各提交0–3个ordered合法候选；进攻方先lock，防守方lock前只能看到lock acknowledgement，双方lock后才公开lists。双方非零时只取得一枚shared D6，并按各自3/2/1人表同时映射Runner/Helper；不得独立抽两次。
 - shortage precedence：attacker=0立即NoGoal；attacker>0且defender=0立即SystemGoal且无scorer；both0使用attacker-zero NoGoal。三条路径都不取得shared/route/formula RNG，也不消耗参与者。
+- 修订说明（2026-09-02）：上项defender=0的SystemGoal/无射手/不消耗合同由CD-093取代；其余封存、双边shared D6与人数优势规则不变。
 - modifier：仅双方非零时适用；人数差0无修正、差1给较多方+2、差2给较多方+3。该规则取代CD-010的较少方-2/-4与任一0统一不足。High/Low继续使用intended route、1–4保留/5–6切换；只有actual Runner/Helper在advance中消耗。
 
 ### CD-090 - Combined Used Recovery Uses Two-card Linear Stamina Draw
@@ -901,6 +902,14 @@
 - 决策：每张返回卡显示`<TeamDisplayName> · <PlayerDisplayName> 返回手牌`。Authority只保存OwnerSide+CardId；Presentation将OwnerSide解析到本场实际Team identity/TeamDisplayName，将CardId解析到PreferredDisplayName/DisplayName。
 - 禁止假定PlayerA=Arsenal、PlayerB=Manchester City、host=PlayerA、local=attacker或固定left/right；示例球队不得成为hardcoded gameplay truth。localized FText不写入玩法state。
 - 影响：未来双客户端snapshot重建、Recovery通知与球队/球员展示测试。
+
+### CD-093 - Corner Automatic Scorer and Read-only Progressive Formula
+
+- 日期：2026-09-02
+- 决策：attacker>0、defender=0不再SystemGoal。defender lock成功事务自动从进攻方有序提名中等概率选择真实射手并记录Goal；1人不抽样，2/3人使用独立`CornerAutomaticScorer` D6与现有2/3人映射。attacker=0（含both0）仍优先NoGoal且零RNG。
+- authority：hidden draw、Runner的OwnerSide/CardId/Snapshot、GoalScorerCardId、score和terminal原子提交，side/AttackSequence先校验。失败允许retry但不提交partial fact；成功后重建/duplicate均不重抽。自动选择没有玩家roll CTA、High/Low、Reel或Formula。
+- lifecycle：射手在terminal仍Available，只在成功Advance进入Used；其他提名者不消耗。normal Advance继续既有合并池Recovery，final跳过Recovery，不改变Recovery算法。
+- Formula：Corner最终输入和只读渐进query共用canonical构建，投影已知项与已接受roll后的current total；UMG不自算、补假dice或推断winner。High/Low、固定+2、人数优势+2/+3、tie与GK属性规则不变。
 
 ## Resolved UQ Summary
 

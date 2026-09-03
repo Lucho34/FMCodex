@@ -842,11 +842,11 @@ FMatchPlayAuthoritativeSession::SubmitCornerDefenderNominations(
 			::SubmitCornerDefenderNominations,
 		true,
 		Request.AttackSequence,
-		[&Request](auto& Result, const FMatchPlayState& BeforeState)
+		[this, &Request](auto& Result, const FMatchPlayState& BeforeState)
 		{
 			Result.ResolutionResult =
 				FMatchPlayCornerResolution::SubmitDefenderNominations(
-					BeforeState, Request);
+					BeforeState, Request, PostRouteRollProvider);
 			FDomainExecution Execution;
 			Execution.bSuccess = Result.ResolutionResult.bSuccess;
 			Execution.CandidateAfterState = Result.ResolutionResult.AfterState;

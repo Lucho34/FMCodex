@@ -538,6 +538,7 @@ bool FMatchPlayCornerAuthoritativeSessionAlternatePathsTest::RunTest(
 			ShortageBase.RuntimeState.CurrentAttackingPlayer;
 		const EInitialTurnOrderPlayer Defender = Other(Attacker);
 		FAllProvider ShortageProvider;
+		ShortageProvider.PostResults = { PostSuccess(4) };
 		FMatchPlayAuthoritativeSession Session(
 			ShortageBase, ShortageProvider, ShortageProvider,
 			ShortageProvider);
@@ -547,13 +548,13 @@ bool FMatchPlayCornerAuthoritativeSessionAlternatePathsTest::RunTest(
 		Session.SubmitCornerDefenderNominations(Nomination(
 			State, Defender, bAttackerZero ? 2 : 0));
 		State = Session.GetStateSnapshot();
-		TestTrue(TEXT("Real Session shortage is zero-RNG terminal with no scorer"),
-			ShortageProvider.PostPurposes.IsEmpty()
+		TestTrue(TEXT("Real Session applies zero-attacker precedence or automatic scorer Goal"),
+			ShortageProvider.PostPurposes.Num() == (bAttackerZero ? 0 : 1)
 				&& State.CurrentAttack.SetPieceRoute.Corner.GameplayOutcome
 					== (bAttackerZero
 						? EMatchPlayCornerGameplayOutcome::NoGoal
-						: EMatchPlayCornerGameplayOutcome::SystemGoal)
-				&& !State.CurrentAttack.SetPieceRoute.Corner.bHasGoalScorer);
+						: EMatchPlayCornerGameplayOutcome::Goal)
+				&& State.CurrentAttack.SetPieceRoute.Corner.bHasGoalScorer == !bAttackerZero);
 		FAllProvider RebuildShortageProvider;
 		FMatchPlayAuthoritativeSession RebuiltShortage(
 			State, RebuildShortageProvider, RebuildShortageProvider,
@@ -561,16 +562,16 @@ bool FMatchPlayCornerAuthoritativeSessionAlternatePathsTest::RunTest(
 		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest RebuildAdvance;
 		RebuildAdvance.RequestingSide = Attacker;
 		RebuildAdvance.AttackSequence = 1;
-		TestTrue(TEXT("Fresh Session resumes attacker-zero/SystemGoal terminal"),
+		TestTrue(TEXT("Fresh Session resumes zero-attacker/automatic Goal terminal"),
 			RebuiltShortage.AdvanceAfterTerminal(RebuildAdvance)
 				.CompletionResult.bSuccess);
 		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
 		Advance.RequestingSide = Attacker;
 		Advance.AttackSequence = 1;
 		const auto Advanced = Session.AdvanceAfterTerminal(Advance);
-		TestTrue(TEXT("Shortage Session Advance consumes zero Corner cards"),
+		TestTrue(TEXT("Zero-attacker consumes none; automatic Goal consumes its scorer"),
 			Advanced.CompletionResult.bSuccess
-				&& Advanced.CompletionResult.SetPieceCardUsageResults.IsEmpty());
+				&& Advanced.CompletionResult.SetPieceCardUsageResults.Num() == (bAttackerZero ? 0 : 1));
 	}
 
 	FMatchPlayState FinalBase = Bootstrap(TEXT("CornerSessionFinal"));
@@ -605,6 +606,86 @@ bool FMatchPlayCornerAuthoritativeSessionAlternatePathsTest::RunTest(
 			&& Final.CompletionResult.SetPieceCardUsageResults.Num() == 2
 			&& Final.CompletionResult.MatchResultResolveResult.bSuccess
 			&& FinalProvider.RecoveryCalls == 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayCornerAutomaticScorerSessionTest,
+	"FMCodex.MatchPlayRuntime.AuthoritativeSession.CornerAutomaticScorerCorrelationAndReplay",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayCornerAutomaticScorerSessionTest::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayCornerAuthoritativeSessionTests;
+	for (const bool bFinal : { false, true })
+	{
+		FAllProvider Bootstrap;
+		FMatchPlayState Seed = BootstrapAwaitingAttacker(Bootstrap, TEXT("AutomaticSession"));
+		const auto Attacker = Seed.RuntimeState.CurrentAttackingPlayer;
+		// Include one old Used card so the non-final two-card Recovery really calls its provider.
+		const auto Defender = Other(Attacker);
+		const FName OldUsed = FirstOutfield(Seed, Defender, 1)[0];
+		auto& DefenderUsage = Defender == EInitialTurnOrderPlayer::PlayerA
+			? Seed.CardUsageState.PlayerACardUsageState : Seed.CardUsageState.PlayerBCardUsageState;
+		DefenderUsage.AvailableCardIds.Remove(OldUsed);
+		DefenderUsage.UsedCardIds.Add(OldUsed);
+		if (bFinal)
+		{
+			auto& A = Attacker == EInitialTurnOrderPlayer::PlayerA ? Seed.RuntimeState.PlayerAState : Seed.RuntimeState.PlayerBState;
+			auto& D = Attacker == EInitialTurnOrderPlayer::PlayerA ? Seed.RuntimeState.PlayerBState : Seed.RuntimeState.PlayerAState;
+			A.TotalAttackCount = 1; A.UsedAttackCount = 0;
+			D.TotalAttackCount = 1; D.UsedAttackCount = 1;
+			Seed.CurrentAttack.AttackSequence = 2;
+		}
+		FAllProvider Provider;
+		Provider.PostResults = { PostFailure(), PostSuccess(7), PostSuccess(5) };
+		FMatchPlayAuthoritativeSession Session(Seed, Provider, Provider, Provider);
+		TestTrue(TEXT("Attacker nominates three"), Session.SubmitCornerAttackerNominations(
+			Nomination(Seed, Attacker, 3)).ResolutionResult.bSuccess);
+		const auto Locked = Session.GetStateSnapshot();
+		const auto Request = Nomination(Locked, Other(Attacker), 0);
+		auto Wrong = Request;
+		Wrong.RequestingSide = Attacker;
+		TestFalse(TEXT("Wrong-side lock rejected before hidden RNG"), Session.SubmitCornerDefenderNominations(Wrong).ResolutionResult.bSuccess);
+		Wrong = Request;
+		++Wrong.AttackSequence;
+		TestFalse(TEXT("Stale lock rejected before hidden RNG"), Session.SubmitCornerDefenderNominations(Wrong).ResolutionResult.bSuccess);
+		TestTrue(TEXT("Rejected correlation consumes zero RNG and preserves state"), Provider.PostPurposes.IsEmpty() && Equal(Locked, Session.GetStateSnapshot()));
+		for (int32 Failure = 0; Failure < 2; ++Failure)
+			TestTrue(TEXT("Backend failure/malformed D6 adopts no lock, scorer, score or terminal"),
+				!Session.SubmitCornerDefenderNominations(Request).ResolutionResult.bSuccess && Equal(Locked, Session.GetStateSnapshot()));
+		TestTrue(TEXT("Retry accepts one atomic automatic Goal"), Session.SubmitCornerDefenderNominations(Request).ResolutionResult.bSuccess);
+		const auto Terminal = Session.GetStateSnapshot();
+		const auto& Corner = Terminal.CurrentAttack.SetPieceRoute.Corner;
+		TestTrue(TEXT("Snapshot persists typed hidden draw and third actual scorer"),
+			Corner.AutomaticScorerD6 == 5 && Corner.GoalScorerCardId == Corner.AttackerNominees[2].CardId
+				&& Provider.PostPurposes.Num() == 3 && Provider.PostPurposes.Last() == EMatchPlayCurrentAttackPostRouteRollPurpose::CornerAutomaticScorer);
+		TestTrue(TEXT("Duplicate terminal command never redraws or rescores"),
+			!Session.SubmitCornerDefenderNominations(Request).ResolutionResult.bSuccess
+				&& Provider.PostPurposes.Num() == 3 && Equal(Terminal, Session.GetStateSnapshot()));
+		FAllProvider RebuiltProvider;
+		FMatchPlayAuthoritativeSession Rebuilt(Terminal, RebuiltProvider, RebuiltProvider, RebuiltProvider);
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+		Advance.RequestingSide = Attacker;
+		Advance.AttackSequence = Terminal.CurrentAttack.AttackSequence;
+		if (!bFinal)
+		{
+			RebuiltProvider.bFailRecovery = true;
+			TestTrue(TEXT("Automatic scorer Recovery failure rolls back Advance"),
+				!Rebuilt.AdvanceAfterTerminal(Advance).CompletionResult.bSuccess && Equal(Terminal, Rebuilt.GetStateSnapshot()));
+			RebuiltProvider.bFailRecovery = false;
+		}
+		const auto Completed = Rebuilt.AdvanceAfterTerminal(Advance).CompletionResult;
+		TestTrue(TEXT("Reconstructed terminal consumes exactly scorer without replaying selection"),
+			Completed.bSuccess && Completed.SetPieceCardUsageResults.Num() == 1
+				&& Completed.bMatchEnded == bFinal && RebuiltProvider.PostPurposes.IsEmpty());
+		TestTrue(TEXT("Final skips Recovery; normal Advance offers scorer to shared Recovery"), bFinal
+			? RebuiltProvider.RecoveryCalls == 0
+			: RebuiltProvider.RecoveryCandidates.ContainsByPredicate([&](const auto& C) { return C.CardId == Corner.GoalScorerCardId; }));
+		if (bFinal) TestTrue(TEXT("Final Advance leaves actual scorer Used, other nominees Available"),
+			Usage(Rebuilt.GetStateSnapshot(), Attacker).UsedCardIds.Contains(Corner.GoalScorerCardId)
+				&& Usage(Rebuilt.GetStateSnapshot(), Attacker).AvailableCardIds.Contains(Corner.AttackerNominees[0].CardId));
+	}
 	return true;
 }
 

@@ -15,6 +15,7 @@ class SWidget;
 DECLARE_MULTICAST_DELEGATE_TwoParams(
 	FFMCodexRackCardDragStarted, FName, bool);
 DECLARE_MULTICAST_DELEGATE(FFMCodexRackCardDragFinished);
+DECLARE_MULTICAST_DELEGATE_OneParam(FFMCodexRackCardSelectionRequested, FName);
 
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexCardRackWidget : public UUserWidget
@@ -36,6 +37,7 @@ public:
 
 	FFMCodexRackCardDragStarted OnCardDragStarted;
 	FFMCodexRackCardDragFinished OnCardDragFinished;
+	FFMCodexRackCardSelectionRequested OnCardSelectionRequested;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -46,6 +48,7 @@ private:
 	void RefreshVisuals();
 	void HandleCardDragStarted(FName CardId, bool bGoalkeeper);
 	void HandleCardDragFinished();
+	void HandleCardSelectionRequested(FName CardId);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Rack Presentation",

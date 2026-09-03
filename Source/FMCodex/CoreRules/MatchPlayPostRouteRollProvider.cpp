@@ -45,6 +45,7 @@ namespace MatchPlayPostRouteRollProvider
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerRoute:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerAttack:
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerDefense:
+		case EMatchPlayCurrentAttackPostRouteRollPurpose::CornerAutomaticScorer:
 			return true;
 		case EMatchPlayCurrentAttackPostRouteRollPurpose::None:
 		default:

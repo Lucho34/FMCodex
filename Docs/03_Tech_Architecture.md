@@ -91,6 +91,12 @@
 - InteractionView 从 authoritative snapshot 重建 terminal facts，并只投影 `AdvanceAfterTerminal`、当前攻击方 expected side 与 `下一回合`。Feedback 可直接从 immutable Resolution Facts 重建，因此新 Controller、snapshot refresh 或未来网络 resync 不依赖旧进程内 command result，也不调用 provider。
 - 正常 Cross/Feet presentation 在 defense roll 后立即调用零 RNG terminal-persist command，避免玩家看到额外“确认终结”按钮；若恰好在两命令之间恢复，typed recovery action仍可补做 terminal persist。Cross Inline Formula 继续拥有完成态中央 CTA；其他既有表面通过同一 Screen dispatch 进入 explicit advance。
 
+### Player-visible score disclosure
+
+- Authority 按既有 terminal transaction 立即记分；Header 的原始 DTO 继续如实投影 Player A/B 分数。Screen 显示层复用当前 Resolution Surface 的 narrative disclosure：决定性 Reel 的 Cycling、Settling 和 narrative 前的 ResultHold 保留最后实际显示的比分；进球标题获准显示的同一次 refresh 才使用最新权威比分。不得延迟 gameplay 或另建计分真相。
+- 门控只复制 Header 中已经显示的 Player A/B score labels；其他 Header、Formula、参与者事实沿用各自门控。左右映射使用 typed `LeftPlayerSide`，不解析玩家名称、不假定 attacking side 等于左侧。
+- 单骰、攻防骰、双骰 A→B 和 ThroughBall 外层 outcome 共用该门控；B 开始时不得把已经更新的 authority Header 当作旧比分。无可见掷点的自动 Goal 与首次重建 completed snapshot，在同一次 refresh 显示已公开的结果和比分，不制造额外延时。Advance、下一进攻和新比赛沿用既有 reveal cancellation，无独立 persistent score cache。
+
 ## ThroughBall Feet Production Formula Presentation（Stage 6.13.1.4.10.3）
 
 - 数据链固定为 `Authority State -> ResolutionFactProjection -> InteractionView -> UMG Presentation Builder -> shared Inline Formula DTO -> ThroughBall Surface -> shared Inline Formula Widget -> shared RollReel`。ThroughBall Surface 只组合 child widget，不复制公式 renderer、term DTO 或 reel。
@@ -227,7 +233,8 @@
 - AP1 的合法候选由 side-owned CardUsage 与 Snapshot authority构建：仅攻击方 Available non-GK。0/1 候选零 RNG，2+ 才调用均匀选择 provider。选中 CardId 或 NoEligibleCandidate、Ejected mutation、NoGoal 与 terminal 必须原子写入；当前实现尚未具备永久 Ejected side-owned state，属于 Stage 6.16.3 之后的实现债，而不是 UI 可补的状态。
 - AP9–12 的类型 D6 是同一 CurrentAttack 下的第二个权威随机事件。现有 `FSetPieceTypeSelectionQuery` 仍只是 pure mapping slice；未来 Session/State owner负责 request correlation、provider、raw D6、SetPieceType 和 lifecycle persistence。client只提交 roll intent，不能提交 type。
 - SetPiece 参与者只从 side-owned Available non-GK Snapshot truth读取；防守方唯一 GK 自动作为公式输入但不成为普通参与者或 Used。所有 route、method、roll、Formula、Outcome、scorer 与 participant consumption 都由 Authority产生，UMG不得推导。
-- Corner ordered nominations 与 lock state 是可持久化 gameplay truth。Projection 必须按 viewer在双方锁定前隐藏对方 IDs/order，只公开 lock acknowledgement；双方锁定后才公开列表。零候选 precedence 在 shared D6/provider前终结；双方非零时一次 shared participant D6 同时映射两表。Widget不保存 nomination truth、不自行 redaction，也不分别抽 Runner/Helper。
+- Corner ordered nominations 与 lock state 是可持久化 gameplay truth。Projection 必须按 viewer在双方锁定前隐藏对方 IDs/order，只公开 lock acknowledgement；双方锁定后才公开列表。attacker=0 在 provider 前 NoGoal；attacker>0、defender=0 在 defender lock 事务内自动确定真实射手并 Goal：唯一候选零 RNG，2–3 人使用独立 typed `CornerAutomaticScorer` D6 按既有等概率表选择。请求的 side/AttackSequence/阶段先校验，失败不 adoption，重复成功命令不重抽。双方非零仍一次 shared participant D6 同时按各自人数映射两表，Widget不得抽样或推导参与者。
+- Corner `BuildFormulaInput` 是最终 Formula 与 `QueryFormulaPreview` 的共同输入来源；后者只读校验后的 actual route、参与者快照、GK、人数优势和已接受 D6，输出 known subtotal / current total，不调用 RNG 或用假 D6 判定 winner。InteractionView投影数值，UMG不计算公式。underfilled lock确认只属于 correlated local draft，不新增Authority阶段。
 - `TerminalPendingAdvance` 继续冻结 outcome、score/scorer、CurrentAttack、Formula/roll/narrative facts与推进前 CardUsage。AP1 Ejected 是 outcome 本身，可在 terminal前写入；其他 ordinary/set-piece Used mutation、机会消费与 Recovery只属于成功 advance transaction。
 - advance transaction 在 candidate State 中完成 validation → participant consumption → opportunity consumption → match-end/next-attacker derivation → non-final Recovery → CurrentAttack clear，再一次 adoption。Recovery从双方合并 Used池执行 provider-owned、Stamina线性加权、不放回、最多两张的原子 draw；final、invalid或duplicate advance不得访问 Recovery provider，不能发布 handoff-without-recovery 半状态。
 - reconstructable gameplay truth为最终 CardUsage加有界 `LastRecoveryFact(SourceAttackSequence, ordered OwnerSide+CardId[0..2])`。完整候选池、weights与raw weighted tickets只可进入DEV/server diagnostics；生产展示由稳定identity映射名称，不能把localized FText写入State。

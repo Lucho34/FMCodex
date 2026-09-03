@@ -653,6 +653,11 @@ bool FFMCodexPrototypeTeamPublicFlowTest::RunTest(const FString& Parameters)
 	}
 	Screen->TakeWidget();
 	Screen->RequestStartNewMatch();
+	FFMCodexLocalDevRollOverrideRequest OrdinaryEntryOverride;
+	OrdinaryEntryOverride.Target = EFMCodexLocalDevRollTarget::FullD12;
+	OrdinaryEntryOverride.Value = 6;
+	TestTrue(TEXT("Canonical deployment fixture selects an ordinary Full D12 entry"),
+		Controller->SetLocalDevRollOverride(OrdinaryEntryOverride).bSuccess);
 	Screen->RequestRollTacticalPoints();
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);

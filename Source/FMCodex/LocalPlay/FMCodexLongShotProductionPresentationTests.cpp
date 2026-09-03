@@ -306,7 +306,7 @@ bool FFMCodexLongShotProductionDeadCornerFactsTest::RunTest(
 			PendingScreen.Interaction.PrimaryAction));
 	TestEqual(TEXT("DeadCorner hint uses canonical compact wording"),
 		PendingScreen.LongShotResolution.OutcomeHintLabel,
-		FString(TEXT("合计 11–12：进球 ｜ 2–10：未进")));
+		FString(TEXT("两枚点数总和达到 11 或以上：进球")));
 	TestEqual(TEXT("DeadCorner reveal begins with pair A"),
 		PendingScreen.Interaction.CrossRollRevealKind,
 		EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA);
@@ -372,8 +372,17 @@ bool FFMCodexLongShotProductionDirectFormulaAndGateTest::RunTest(
 	TestTrue(TEXT("Direct formula claims its typed attack roll"),
 		PendingScreen.LongShotResolution.Formula.PrimaryAction.Claims(
 			PendingScreen.Interaction.PrimaryAction));
-	TestTrue(TEXT("Direct hint exposes its authority gate"),
-		PendingScreen.LongShotResolution.OutcomeHintLabel.Contains(TEXT("1–2")));
+	TestEqual(TEXT("Direct hint states only the early out"),
+		PendingScreen.LongShotResolution.OutcomeHintLabel,
+		FString(TEXT("1–2：射门偏出")));
+	FFMCodexLocalMatchInteractionView Defense = Pending;
+	Defense.InteractionCategory =
+		EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense;
+	AddDirectContest(Defense, true, 4, false, 0);
+	TestTrue(TEXT("Direct helper clears when defense becomes pending"),
+		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+			Defense, FFMCodexLocalMatchResolutionFeedback(), FString())
+			.LongShotResolution.OutcomeHintLabel.IsEmpty());
 	UFMCodexLongShotResolutionSurfaceWidget* DirectSurface =
 		NewObject<UFMCodexLongShotResolutionSurfaceWidget>(
 			GetTransientPackage());
@@ -415,6 +424,8 @@ bool FFMCodexLongShotProductionDirectFormulaAndGateTest::RunTest(
 	TestEqual(TEXT("Immediate miss title is player-facing"),
 		MissScreen.LongShotResolution.Formula.ResultTitle,
 		FString(TEXT("射门偏出")));
+	TestTrue(TEXT("Immediate miss clears the early-out helper"),
+		MissScreen.LongShotResolution.OutcomeHintLabel.IsEmpty());
 	TestTrue(TEXT("Fresh terminal snapshot owns Next Round"),
 		MissScreen.LongShotResolution.Formula.PrimaryAction.Claims(
 			MissScreen.Interaction.PrimaryAction));
@@ -536,11 +547,19 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 		SecondRolling.bDeadCornerAVisible);
 	TestFalse(TEXT("Second roll stays covered before hold"),
 		SecondRolling.bDeadCornerBVisible);
+	TestTrue(TEXT("Second roll keeps first die and target, not the total"),
+		SecondRolling.PairedRollResultLabel == TEXT("第一枚 D6：5")
+			&& SecondRolling.OutcomeHintLabel
+				== TEXT("两枚点数总和达到 11 或以上：进球")
+			&& !SecondRolling.PrimaryAction.bVisible);
 	Screen->AdvanceInlineFormulaRevealForTesting(1.8f);
 	const auto& SecondHeld =
 		Screen->GetLongShotResolutionSurface()->GetPresentation();
 	TestTrue(TEXT("Second hold discloses pair B"),
 		SecondHeld.bDeadCornerBVisible);
+	TestTrue(TEXT("Second hold replaces target with accepted arithmetic"),
+		SecondHeld.PairedRollResultLabel == TEXT("D6 5 + D6 6 = 11")
+			&& SecondHeld.OutcomeHintLabel.IsEmpty());
 	TestTrue(TEXT("Second hold exposes authoritative reel result"),
 		SecondHeld.RollReel.bAuthoritativeValue
 			&& SecondHeld.RollReel.bResultHold);
