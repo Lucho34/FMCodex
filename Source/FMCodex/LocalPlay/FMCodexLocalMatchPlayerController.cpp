@@ -812,6 +812,21 @@ ExpireRecoveryNotificationForTesting()
 }
 #endif
 
+#if !UE_BUILD_SHIPPING
+void AFMCodexLocalMatchPlayerController::StartNewDevShortMatch()
+{
+	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
+	if (!Host) return;
+	ResetSetPieceDraft();
+	AutomaticallyResolvedSendingOffSequences.Reset();
+	AutomaticallyResolvedNoCarrierSequences.Reset();
+	auto Demo = FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	Demo.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = true;
+	RecordCommandResult(TEXT("StartNewLocalMatch"),
+		Host->StartNewLocalMatch(Demo.OpeningInput, Demo.SkillRuleSet));
+}
+#endif
+
 void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 {
 	ResetSetPieceDraft();

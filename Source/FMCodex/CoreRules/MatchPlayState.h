@@ -808,6 +808,26 @@ struct FMCODEX_API FMatchPlayCurrentAttackState
 	FMatchPlayCurrentAttackResolutionSession ResolutionSession;
 };
 
+/** One committed goal, retained after CurrentAttack is cleared. Not used for legality. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FMatchPlayGoalFact
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|History")
+	int64 AttackSequence = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|History")
+	EInitialTurnOrderPlayer ScoringSide = EInitialTurnOrderPlayer::None;
+
+	/** None is valid for a rule-awarded goal without a canonical individual scorer. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|History")
+	FName ScorerCardId = NAME_None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|History")
+	bool bSystemAward = false;
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FMatchPlayState
 {
@@ -831,6 +851,9 @@ struct FMCODEX_API FMatchPlayState
 	/** Latest successful non-final advance event; never consulted for legality. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	FMatchPlayLastRecoveryFact LastRecoveryFact;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|History")
+	TArray<FMatchPlayGoalFact> GoalHistory;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play")
 	bool bHasCurrentAttack = false;

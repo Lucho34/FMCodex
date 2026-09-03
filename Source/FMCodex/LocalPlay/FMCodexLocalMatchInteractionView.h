@@ -5,6 +5,7 @@
 #include "../CoreRules/MatchPlayState.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
 #include "../CoreRules/MatchResultResolver.h"
+#include "FMCodexFullTimePresentation.h"
 
 enum class EFMCodexLocalMatchMajorPhase : uint8
 {
@@ -279,6 +280,7 @@ struct FMCODEX_API FFMCodexLocalMatchRollView
 
 struct FMCODEX_API FFMCodexLocalMatchInteractionView
 {
+	FFMCodexFullTimePresentation FullTime;
 	bool bMatchActive = false;
 	bool bMatchEnded = false;
 	EMatchResultType MatchResult = EMatchResultType::NotEnded;

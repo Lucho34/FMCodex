@@ -16,6 +16,7 @@ class UFMCodexInteractionPanelWidget;
 class UFMCodexInlineResolutionFormulaSurfaceWidget;
 class UFMCodexLongShotResolutionSurfaceWidget;
 class UFMCodexMatchHeaderWidget;
+class UFMCodexFullTimePanelWidget;
 class UFMCodexPitchWidget;
 class UFMCodexPlayerCardWidget;
 class UFMCodexResolutionPanelWidget;
@@ -138,6 +139,7 @@ public:
 	UFMCodexMatchHeaderWidget* GetMatchHeader() const;
 	UFMCodexPitchWidget* GetPitchWidget() const;
 	UFMCodexInteractionPanelWidget* GetInteractionPanel() const;
+	UFMCodexFullTimePanelWidget* GetFullTimePanel() const { return FullTimePanel; }
 	UFMCodexInlineResolutionFormulaSurfaceWidget*
 		GetInlineFormulaSurface() const;
 	UFMCodexThroughBallResolutionSurfaceWidget*
@@ -401,6 +403,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> MainScreen;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexFullTimePanelWidget> FullTimePanel;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> DetailOverlayCanvas;

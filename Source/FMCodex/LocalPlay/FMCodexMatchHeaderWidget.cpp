@@ -305,6 +305,9 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	Center->AddChild(CenterBody);
 	FinalResultRegion = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("MatchHeaderFinalResultRegion"));
+	// This legacy end-only border used the default opaque white brush and
+	// overflowed the fixed-height header. FullTime now owns the result.
+	FinalResultRegion->SetBrushColor(FLinearColor::Transparent);
 	FinalResultText = MakeText(*WidgetTree, TEXT("MatchHeaderFinalResultLabel"));
 	FinalResultRegion->AddChild(FinalResultText);
 	FinalResultRegion->SetVisibility(ESlateVisibility::Collapsed);
@@ -454,6 +457,5 @@ void UFMCodexMatchHeaderWidget::RefreshVisuals()
 	FinalResultText->SetText(
 		FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 			Presentation.MatchResultLabel));
-	FinalResultRegion->SetVisibility(Presentation.bMatchEnded
-		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	FinalResultRegion->SetVisibility(ESlateVisibility::Collapsed);
 }

@@ -14,6 +14,8 @@ public class FMCodex : ModuleRules
 		if (Target.bBuildEditor)
 		{
 			PrivateDependencyModuleNames.Add("UnrealEd");
+			// Non-PIE, offscreen widget rendering in development visual audits.
+			PrivateDependencyModuleNames.Add("RenderCore");
 		}
 		
 		// Uncomment if you are using online features

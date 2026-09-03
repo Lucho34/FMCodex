@@ -1,6 +1,7 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexFullTimePanelWidget.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexFullCardDiagnostics.h"
@@ -418,7 +419,15 @@ void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 				== EFMCodexUMGInteractionCategory::SelectRunner
 			|| Presentation.Interaction.Category
 				== EFMCodexUMGInteractionCategory::SelectHelper);
-	UpdateInlineFormulaRevealState(InPresentation);
+	if (InPresentation.FullTime.bVisible)
+	{
+		ResetInlineFormulaRevealState();
+		if (SelectionFeedbackToast) SelectionFeedbackToast->DismissFeedback();
+	}
+	else
+	{
+		UpdateInlineFormulaRevealState(InPresentation);
+	}
 	Presentation = InPresentation;
 	if (bLeavingFeedbackSelection && SelectionFeedbackToast != nullptr)
 	{
@@ -570,7 +579,7 @@ UFMCodexLocalMatchScreenWidget::GetInlineFormulaRevealPhase() const
 
 bool UFMCodexLocalMatchScreenWidget::IsInlineFormulaRevealInputBlocked() const
 {
-	return InlineFormulaRevealPhase
+	return Presentation.FullTime.bVisible || InlineFormulaRevealPhase
 			== EFMCodexUMGInlineFormulaRevealPhase::RequestInFlight
 		|| InlineFormulaRevealPhase
 			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
@@ -3093,6 +3102,11 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		}
 	}
 #endif
+	FullTimePanel = WidgetTree->ConstructWidget<UFMCodexFullTimePanelWidget>(
+		UFMCodexFullTimePanelWidget::StaticClass(), TEXT("FullTimeResultPanel"));
+	UOverlaySlot* FullTimeSlot = Root->AddChildToOverlay(FullTimePanel);
+	FullTimeSlot->SetHorizontalAlignment(HAlign_Fill);
+	FullTimeSlot->SetVerticalAlignment(VAlign_Fill);
 }
 
 void UFMCodexLocalMatchScreenWidget::RefreshFullCardProductionReviewSurface()
@@ -4860,14 +4874,14 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		&& DisplayedLongShot.Stage == EFMCodexUMGLongShotStage::BranchChoice
 		&& !DisplayedLongShot.BranchChoices.IsEmpty();
 	InteractionPanel->SetVisibility(
-		bCentralSurfaceClaimsPrimaryAction || bOneOnOneDisclosureGate
+		Presentation.FullTime.bVisible || bCentralSurfaceClaimsPrimaryAction || bOneOnOneDisclosureGate
 			|| bCentralOneOnOneChoiceOwner || bCentralLongShotChoiceOwner
 			? ESlateVisibility::Collapsed
 			: ESlateVisibility::Visible);
 	InteractionPanel->SetInteractionBlocked(
 		IsInlineFormulaRevealInputBlocked());
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);
-	const bool bShowLegacyResolution = Presentation.Resolution.bVisible
+	const bool bShowLegacyResolution = !Presentation.FullTime.bVisible && Presentation.Resolution.bVisible
 		&& !StandaloneInlineFormula.bSuppressLegacyResolution
 		&& !DisplayedThroughBall.bSuppressLegacyResolution
 		&& !DisplayedLongShot.bSuppressLegacyResolution
@@ -4898,5 +4912,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		: bNonBlockingNotification
 			? ESlateVisibility::HitTestInvisible
 			: ESlateVisibility::SelfHitTestInvisible);
+	MainScreen->SetIsEnabled(!Presentation.FullTime.bVisible);
+	FullTimePanel->RefreshFromPresentation(Presentation.FullTime);
 
 }

@@ -7,6 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 class AFMCodexLocalMatchPlayerController;
+class SExpandableArea;
 
 /** Small, collapsed-by-default LocalPlay developer control on the right edge. */
 class SFMCodexLocalDevRollOverrideWidget final : public SCompoundWidget
@@ -17,8 +18,11 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual void Tick(const FGeometry& Geometry, double CurrentTime, float DeltaTime) override;
 
 private:
+	bool IsResultAwaitingAcknowledgement() const;
+	TSharedPtr<SExpandableArea> Controls;
 	FReply SelectPreviousTarget();
 	FReply SelectNextTarget();
 	FReply SelectPreviousValue();

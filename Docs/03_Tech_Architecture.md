@@ -82,6 +82,16 @@
 - Helper 合法性在 Participant Authority 的部署/快照/GK/Marker-conflict 校验之后，使用 `FMatchPlayDeploymentPhysicalAreaMatchQuery` 比较冻结 Runner placement 与候选 Helper placement。Availability 复用同一 Legality，保留 `HelperNotInRunnerPhysicalArea` 诊断供 InteractionView 投影；Widget 不读取画面坐标或相对区标签。既有错误优先级保持 Marker conflict 先于 physical-half mismatch。
 - `不使用战术` 是一个 production player intent，不是新的 Authority command。InteractionView 根据 `SkillSelectionAvailability` 只投影 Decline 或 No-Legal 其中一个能力，Screen 统一交给 Controller；Controller 再调用既有互斥的 `DeclineSkill` 或 `ResolveNoLegalSkill`。两条命令仍由 AuthoritativeSession/CoreRules 验证并进入同一个 attack completion lifecycle，UMG 不清 State、不换攻，也不吞掉权威错误。
 
+## Full-time result presentation and retained goals
+
+- Full-time visibility comes from `MatchEndResolver` over the authoritative snapshot, not a widget flag or an individual attack outcome. The final terminal still requires the existing explicit advance. That accepted transaction exhausts opportunities, clears CurrentAttack and leaves no current attacker; the modal never performs another advance or recovery.
+- `FMatchPlayState::GoalHistory` retains the smallest match-long goal fact at the existing score transaction: attack sequence, scoring side, canonical scorer ID where available, and an explicit team-award marker. History is not consulted for legality, score calculation or winner resolution. Failed candidates publish neither score nor history; advancing a persisted terminal does not append again.
+- Shot goals retain Carrier; Cross, PassControl and ThroughBall goals retain Runner; set pieces retain their existing authoritative GoalScorerCardId. Marker no-selection is a rule-awarded team goal without an invented individual scorer. There is no match-minute field.
+- InteractionView resolves team identity from the side-owned content roster and player names from the preferred-name catalog, then passes a read-only full-time DTO through the presentation builder to UMG. Older score-only snapshots disclose unavailable history, not synthetic player rows.
+- The native full-time panel owns the result. Legacy header result Border and lower interaction block are collapsed; post-match pitch projection contains no attack-relative zones. The gameplay surface is disabled beneath the modal. Confirmation is idempotent local presentation only: without a menu destination, the summary stays visible in a stable acknowledged state.
+- Full-time participant identity is the primary label, mapped from the same presentation identity as the Header and carried separately from the roster-backed secondary team name. Widget layout never derives identity from score, scorer names or local viewer position. Fixed identity/score columns use bounded single-line name fitting; both goal lists share a left-aligned name start, including empty rows.
+- The non-Shipping DEV expansion is compact and unavailable while the result awaits acknowledgement. Confirmation or a new match restores access to the existing controls; this presentation gate never changes match length, RNG or authoritative state.
+
 ## Resolution Terminal Persistence Architecture（Stage 6.13.1.4.10.3.1）
 
 - `FMatchPlayCurrentAttackState::LifecycleState` 是 action-scoped 的唯一 lifecycle marker；正常 Resolution 为 `Active`，正式 resolved tactic outcome 写入后为 `TerminalPendingAdvance`。不增加 match-level Outcome framework，也不建立第二个顶层 State owner。

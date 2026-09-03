@@ -3601,5 +3601,20 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	}
 
 	Result.DiagnosticLabel = DiagnosticMessage;
+	Result.FullTime = InteractionView.FullTime;
+	// Reuse header identity, mapped by authoritative side rather than viewer position.
+	// A future runtime participant name can supply this DTO without touching match rules.
+	Result.FullTime.PlayerA.PlayerDisplayName = FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+		LocalViewerSide == EInitialTurnOrderPlayer::PlayerA ? Result.Header.LeftPlayerLabel : Result.Header.RightPlayerLabel);
+	Result.FullTime.PlayerB.PlayerDisplayName = FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+		LocalViewerSide == EInitialTurnOrderPlayer::PlayerB ? Result.Header.LeftPlayerLabel : Result.Header.RightPlayerLabel);
+	if (Result.FullTime.bVisible)
+	{
+		Result.PitchRegions.Reset();
+		Result.Resolution = FFMCodexUMGResolutionViewModel();
+		Result.ThroughBallResolution = FFMCodexUMGThroughBallResolutionViewModel();
+		Result.LongShotResolution = FFMCodexUMGLongShotResolutionViewModel();
+		Result.InlineFormula = FFMCodexUMGInlineFormulaSurfaceViewModel();
+	}
 	return Result;
 }

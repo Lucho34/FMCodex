@@ -44,6 +44,11 @@ public:
 	void InitializePlayerFacingUI();
 	void RefreshPresentation();
 	void StartNewDemoMatch();
+
+#if !UE_BUILD_SHIPPING
+	/** Explicit DEV restart; the regular start entry always keeps three per side. */
+	void StartNewDevShortMatch();
+#endif
 #if WITH_DEV_AUTOMATION_TESTS
 	void SetNextDemoMatchSeedForTesting(int32 Seed);
 	bool IsRecoveryNotificationDismissScheduledForTesting() const;

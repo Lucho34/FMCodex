@@ -68,6 +68,15 @@ FMatchOpeningResolveResult FMatchOpeningResolver::ResolveMatchOpening(
 		return Result;
 	}
 
+#if !UE_BUILD_SHIPPING
+	if (Input.bUseFixedPrototypeAttackTurnContract && Input.bUseDevOneAttackPerSide)
+	{
+		Result.AttackCountResult.PlayerAAttackCount = 1;
+		Result.AttackCountResult.PlayerBAttackCount = 1;
+		Result.AttackCountResult.PlayerABaseAttackCount = 1;
+		Result.AttackCountResult.PlayerBBaseAttackCount = 1;
+	}
+#endif
 	Result.InitialTurnOrderResult = FInitialTurnOrderResolver::ResolveInitialTurnOrder(
 		Result.AttackCountResult.PlayerAAttackCount,
 		Result.AttackCountResult.PlayerBAttackCount,

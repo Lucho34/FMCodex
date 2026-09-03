@@ -7886,10 +7886,10 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 	HeaderDTO.MatchStatusLabel = TEXT("MATCH ENDED");
 	HeaderDTO.MatchResultLabel = TEXT("Player A Win");
 	Header->RefreshFromPresentation(HeaderDTO);
-	TestTrue(TEXT("Match-ended style preserves canonical result priority"),
+	TestTrue(TEXT("Match-ended header retains facts without the legacy white result block"),
 		Header->GetPresentation().MatchResultLabel == TEXT("Player A Win")
 			&& Header->GetWidgetFromName(TEXT("MatchHeaderFinalResultRegion"))
-				->GetVisibility() == ESlateVisibility::Visible
+				->GetVisibility() == ESlateVisibility::Collapsed
 			&& Header->GetWidgetFromName(
 				TEXT("RightPlayerBroadcastRegion"))->GetVisibility()
 					!= ESlateVisibility::Collapsed);

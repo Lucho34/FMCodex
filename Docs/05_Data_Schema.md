@@ -283,6 +283,19 @@ SlotId 对应的 NeutralSide
 
 Catalog 纯模块专项仍为 28/28（8 value/validation、5 query、8 mapping、5 resolver failure-order、2 determinism/immutability）。Ownership / Opening binding 另新增 22 项测试；7.87 独立确认 State 7/7、State Initializer 20/20、Opening Initializer 25/25、AttackFlow 18/18、Begin 17/17、Finish 23/23、MatchPlay 401/401 和 CoreRules 1623/1623。clean-tree UE Unity Build 与 UHT `-WarningsAsErrors` 通过，28 个本切片变更 `.cpp` 全部进入真实 Unity translation unit且无 collision。下一入口为 `7.89 MatchPlay Per-Side Card Snapshot Authority + Opening Binding Capability Selection + Minimum Contract Review`；ordinary writer 仍不得接收 request-local Catalog，也不能在 Snapshot authority 建立前实施。
 
+## Match-long goal facts
+
+`FMatchPlayState::GoalHistory` is a reflected array of `FMatchPlayGoalFact`, retained across CurrentAttack cleanup and copied/serialized with the authoritative state.
+
+| Field | Meaning |
+| --- | --- |
+| `AttackSequence` | Identity of the accepted scoring attack; one goal fact per scoring attack. |
+| `ScoringSide` | Authoritative PlayerA/PlayerB ownership, independent of viewer orientation. |
+| `ScorerCardId` | Existing canonical scorer identity; None when no individual is attributed. |
+| `bSystemAward` | A rule-awarded team goal without an individual scorer. |
+
+The existing score transaction writes the fact; no UI, RNG or presentation name is persisted here. History never becomes an alternative scoring source. Old snapshots may have a nonzero score and an empty history; presentation must disclose unavailable records rather than fabricate them. No minutes, clock, assists or extra statistics are implied by this structure.
+
 ## MatchPlay Per-Side Card Snapshot Authority（Closed in 7.89–7.92）
 
 实现提交 `3ddf3de33f8902b7e77eb0d95ee33dde6a6c4916 feat: bind per-side card snapshots during opening` 已把双方实际 Deck 投影为 match-long、按方隔离的规则快照 authority，并接入 Opening / State 初始化链。

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "../CoreRules/InitialTurnOrderResolver.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
+#include "FMCodexFullTimePresentation.h"
 
 #include "FMCodexLocalMatchUMGPresentation.generated.h"
 
@@ -1838,6 +1839,8 @@ USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 {
 	GENERATED_BODY()
+
+	UPROPERTY() FFMCodexFullTimePresentation FullTime;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FFMCodexUMGMatchHeaderViewModel Header;

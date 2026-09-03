@@ -523,6 +523,12 @@ namespace FMCodexLocalMatchInteractionView
 		const FSkillRuleSnapshotSet& SkillRuleSet,
 		FFMCodexLocalMatchInteractionView& View)
 	{
+		// Relative attack zones have no meaning after the final advance. In
+		// particular, never send None through the debug "Unknown Zone" mapping.
+		if (State.RuntimeState.CurrentAttackingPlayer == EInitialTurnOrderPlayer::None)
+		{
+			return;
+		}
 		for (const EMatchPlayNeutralSlotSide Side : {
 			EMatchPlayNeutralSlotSide::NearPlayerB,
 			EMatchPlayNeutralSlotSide::NearPlayerA })
@@ -1554,6 +1560,61 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	Result.bMatchEnded = MatchEnd.bSuccess && MatchEnd.bIsMatchEnded;
 	if (Result.bMatchEnded)
 	{
+		Result.FullTime.bVisible = true;
+		auto BuildTeam = [&](const EInitialTurnOrderPlayer Side,
+			const TArray<FFMCodexLocalMatchCardView>& Roster,
+			const int32 Score, FFMCodexFullTimeTeamPresentation& Team)
+		{
+			const bool bA = Side == EInitialTurnOrderPlayer::PlayerA;
+			Team.Name = NSLOCTEXT("FMCodexFullTime", "UnknownTeam", "球队");
+			Team.BadgeMark = FText::FromString(bA ? TEXT("A") : TEXT("B"));
+			Team.Score = FText::AsNumber(Score);
+			FName TeamId;
+			bool bSingleTeam = !Roster.IsEmpty();
+			for (const auto& Card : Roster)
+			{
+				const auto* Definition = FFMCodexPrototypeTeamContent::Find(Card.CardId);
+				if (!Definition || (!TeamId.IsNone() && TeamId != Definition->TeamId))
+				{
+					bSingleTeam = false;
+					break;
+				}
+				TeamId = Definition->TeamId;
+			}
+			if (bSingleTeam && !TeamId.IsNone())
+			{
+				Team.Name = FFMCodexPrototypeTeamContent::TeamDisplayName(Roster[0].CardId);
+				if (TeamId == FFMCodexPrototypeTeamContent::ArsenalTeamId())
+				{
+					Team.BadgeMark = FText::FromString(TEXT("A"));
+					Team.Color = FLinearColor(0.50f, 0.035f, 0.055f);
+				}
+				else if (TeamId == FFMCodexPrototypeTeamContent::ManchesterCityTeamId())
+				{
+					Team.BadgeMark = FText::FromString(TEXT("MC"));
+					Team.Color = FLinearColor(0.19f, 0.43f, 0.61f);
+				}
+			}
+			for (const auto& Goal : Snapshot.GoalHistory)
+			{
+				if (Goal.ScoringSide != Side) continue;
+				const auto* Definition = FFMCodexPrototypeTeamContent::Find(Goal.ScorerCardId);
+				Team.Goals.Add(Goal.bSystemAward
+					? NSLOCTEXT("FMCodexFullTime", "AwardedGoal", "规则判定进球")
+					: Definition && !Definition->PreferredDisplayName.IsEmpty()
+						? Definition->PreferredDisplayName
+						: NSLOCTEXT("FMCodexFullTime", "UnnamedScorer", "进球球员"));
+			}
+			if (Team.Goals.Num() < Score)
+			{
+				// Old snapshots may predate history; do not fabricate scorer entries.
+				Team.Goals.Add(NSLOCTEXT("FMCodexFullTime", "HistoryUnavailable", "部分进球记录不可用"));
+			}
+		};
+		BuildTeam(EInitialTurnOrderPlayer::PlayerA, Result.PlayerACardRoster,
+			Result.PlayerAScore, Result.FullTime.PlayerA);
+		BuildTeam(EInitialTurnOrderPlayer::PlayerB, Result.PlayerBCardRoster,
+			Result.PlayerBScore, Result.FullTime.PlayerB);
 		const FMatchResultResolveResult MatchResult =
 			FMatchResultResolver::ResolveMatchResult(Snapshot.RuntimeState);
 		Result.MatchResult = MatchResult.ResultType;

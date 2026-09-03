@@ -6,6 +6,58 @@
 
 namespace MatchPlayCurrentAttackCompletionImplementation
 {
+	// Called only inside the existing candidate-state transaction. A failed
+	// completion publishes neither the score nor its history entry.
+	void RetainCommittedGoal(const FMatchPlayState& Before, FMatchPlayState& After)
+	{
+		const auto Side = Before.RuntimeState.CurrentAttackingPlayer;
+		const int32 OldScore = Side == EInitialTurnOrderPlayer::PlayerA
+			? Before.RuntimeState.PlayerAState.Score : Before.RuntimeState.PlayerBState.Score;
+		const int32 NewScore = Side == EInitialTurnOrderPlayer::PlayerA
+			? After.RuntimeState.PlayerAState.Score : After.RuntimeState.PlayerBState.Score;
+		const auto& Attack = After.CurrentAttack;
+		if (NewScore != OldScore + 1 || After.GoalHistory.ContainsByPredicate(
+			[&](const FMatchPlayGoalFact& Goal) { return Goal.AttackSequence == Attack.AttackSequence; }))
+		{
+			return;
+		}
+		FMatchPlayGoalFact Goal;
+		Goal.AttackSequence = Attack.AttackSequence;
+		Goal.ScoringSide = Side;
+		if (Attack.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece)
+		{
+			const auto& SetPiece = Attack.SetPieceRoute;
+			switch (SetPiece.SelectedType)
+			{
+			case ESetPieceSelectedType::ShortFreeKick: Goal.ScorerCardId = SetPiece.ShortFreeKick.GoalScorerCardId; break;
+			case ESetPieceSelectedType::LongFreeKick: Goal.ScorerCardId = SetPiece.LongFreeKick.GoalScorerCardId; break;
+			case ESetPieceSelectedType::Penalty: Goal.ScorerCardId = SetPiece.Penalty.GoalScorerCardId; break;
+			case ESetPieceSelectedType::Corner: Goal.ScorerCardId = SetPiece.Corner.GoalScorerCardId; break;
+			default: break;
+			}
+		}
+		else if (Attack.bHasSelectedAction)
+		{
+			// Canonical scorer roles: shots use Carrier; combination tactics use Runner.
+			const auto& Action = Attack.SelectedAction;
+			switch (Action.ActionType)
+			{
+			case ESkillRuleType::LongShot:
+			case ESkillRuleType::CutInsideShot: Goal.ScorerCardId = Action.CarrierCardId; break;
+			case ESkillRuleType::Cross:
+			case ESkillRuleType::PassControl:
+			case ESkillRuleType::ThroughBall: Goal.ScorerCardId = Action.RunnerCardId; break;
+			default: break;
+			}
+		}
+		else
+		{
+			// Marker no-selection awards a team goal, not an invented Carrier goal.
+			Goal.bSystemAward = true;
+		}
+		After.GoalHistory.Add(Goal);
+	}
+
 	void SetError(
 		FMatchPlayCurrentAttackCompletionResult& Result,
 		const EMatchPlayCurrentAttackCompletionErrorCode ErrorCode,
@@ -1723,6 +1775,7 @@ FMatchPlayCurrentAttackCompletion
 	// usage, opportunity count, and attacker ownership remain unchanged.
 	WorkingState.CurrentAttack.LifecycleState =
 		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance;
+	RetainCommittedGoal(BeforeState, WorkingState);
 	FMatchPlayState TerminalState = WorkingState;
 	FMatchPlayCurrentAttackCompletionResult ValidatedAdvance =
 		ApplyCurrentAttackAdvanceMutation(
@@ -1850,6 +1903,7 @@ FMatchPlayCurrentAttackCompletion
 		const bool bApplyRecovery)
 {
 	using namespace MatchPlayCurrentAttackCompletionImplementation;
+	RetainCommittedGoal(BeforeState, WorkingState);
 
 	const FMatchPlayCurrentAttackState& CurrentAttack =
 		BeforeState.CurrentAttack;

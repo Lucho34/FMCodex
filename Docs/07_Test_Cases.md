@@ -323,6 +323,18 @@
 
 ## 比赛结束
 
+### Full-time production presentation
+
+- Real scoring/non-scoring attacks must cover A win, B win, scoring draw and 0–0. The final terminal keeps the result modal closed; the last accepted advance alone activates it.
+- Default LocalPlay exhausts three attacks per side. The guarded developer short-match entry starts a new match with one per side; a subsequent normal start restores three without carrying the preset or history forward.
+- Goal facts persist with the real score, preserve sequence/side/scorer, survive snapshot serialization and CurrentAttack cleanup, and are not duplicated on advance or retry. Failed rule-awarded goals must not publish history.
+- The real Screen collapses the unstyled legacy header result Border and old lower end block, clears attack-relative pitch regions and stale resolution overlays, and disables gameplay input. Confirmation/duplicate confirmation and stale gameplay requests leave authoritative state byte-equivalent.
+- Team identity and preferred scorer names come from content; absent names use generic text, empty goal lists use `—`, system-awarded goals name no invented scorer, and older aggregate-only snapshots explicitly disclose missing records. Long lists remain scrollable; no fake minute is introduced.
+- Optional non-PIE offscreen widget rendering checks the production layout at 1920×1080 and 1280×720. It does not replace USER PIE for lifecycle feel, input focus or visual acceptance.
+- Full-time player identity agrees with the Header for either viewer orientation and remains distinct from secondary team metadata. Score placement is independent of name length; player/team/scorer names remain single-line, shrink only within readable bounds, and truncate only beyond that limit.
+- Both scorer columns use the same filled row construction and left-aligned name start for empty, one-goal and repeated-goal rows. Offscreen geometry checks cover real scoreless/scoring draws, constrained viewport margins, no scrollbar for ordinary counts, and long-name stress fixtures without altering production facts.
+- An expanded DEV control collapses while the result is unacknowledged, cannot expand over it, and is usable after acknowledgement/reset. The existing short-match restart remains reachable and restores one attack per side.
+
 应验证：
 
 - 比赛结束时进球数更多的一方获胜。

@@ -4,6 +4,8 @@
 
 #include "FMCodexLocalDevRollOverride.h"
 #include "FMCodexLocalMatchPlayerController.h"
+#include "FMCodexLocalMatchScreenWidget.h"
+#include "FMCodexFullTimePanelWidget.h"
 #include "FMCodexPlayerUIPresentationText.h"
 
 #include "Styling/CoreStyle.h"
@@ -137,6 +139,21 @@ namespace FMCodexLocalDevRollOverrideWidget
 	}
 }
 
+bool SFMCodexLocalDevRollOverrideWidget::IsResultAwaitingAcknowledgement() const
+{
+	const auto* Screen = Controller.IsValid() ? Controller->GetPlayerMatchScreen() : nullptr;
+	const auto* Panel = Screen ? Screen->GetFullTimePanel() : nullptr;
+	return Panel && Panel->GetPresentation().bVisible && !Panel->IsAcknowledged();
+}
+
+void SFMCodexLocalDevRollOverrideWidget::Tick(const FGeometry& Geometry, double CurrentTime, float DeltaTime)
+{
+	SCompoundWidget::Tick(Geometry, CurrentTime, DeltaTime);
+	// Presentation-only: compact while the result owns attention, usable again after
+	// acknowledgement/reset. Never invoke a match command or restore expansion over it.
+	if (Controls.IsValid() && IsResultAwaitingAcknowledgement()) Controls->SetExpanded(false);
+}
+
 void SFMCodexLocalDevRollOverrideWidget::Construct(
 	const FArguments& InArgs)
 {
@@ -148,8 +165,9 @@ void SFMCodexLocalDevRollOverrideWidget::Construct(
 		.Padding(6.0f)
 		.BorderBackgroundColor(FLinearColor(0.04f, 0.025f, 0.02f, 0.94f))
 		[
-			SNew(SExpandableArea)
+			SAssignNew(Controls, SExpandableArea)
 			.InitiallyCollapsed(true)
+			.IsEnabled_Lambda([this]() { return !IsResultAwaitingAcknowledgement(); })
 			.HeaderContent()
 			[
 				SNew(STextBlock)
@@ -160,6 +178,17 @@ void SFMCodexLocalDevRollOverrideWidget::Construct(
 			.BodyContent()
 			[
 				SNew(SVerticalBox)
+				.Visibility_Lambda([this]() { return IsResultAwaitingAcknowledgement()
+					? EVisibility::Collapsed : EVisibility::Visible; })
+				+ SVerticalBox::Slot().AutoHeight().Padding(2.0f)
+				[
+					Button(NSLOCTEXT("FMCodexDev", "ShortMatch", "重开：双方各 1 次进攻回合"),
+						FOnClicked::CreateLambda([this]()
+						{
+							if (Controller.IsValid()) Controller->StartNewDevShortMatch();
+							return FReply::Handled();
+						}))
+				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(2.0f)
 				[
 					SNew(STextBlock)

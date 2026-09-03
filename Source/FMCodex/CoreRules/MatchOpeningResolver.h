@@ -42,6 +42,11 @@ struct FMCODEX_API FMatchOpeningResolveInput
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Opening")
 	bool bUseFixedPrototypeAttackTurnContract = false;
 
+#if !UE_BUILD_SHIPPING
+	/** Developer-only new-match preset; never a normal player setting. */
+	bool bUseDevOneAttackPerSide = false;
+#endif
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Match Opening")
 	int32 PlayerATieBreakerRoll = 0;
 

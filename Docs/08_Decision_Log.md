@@ -4,6 +4,14 @@
 
 ## Confirmed Decisions
 
+### Full-time result ownership and minimum goal history
+
+- The full-time modal activates only from the authoritative match-end projection after final advance. It replaces the old header/lower result presentation, not the match lifecycle.
+- Retain one compact goal fact in the existing authoritative score transaction so the summary can survive CurrentAttack cleanup and snapshot reconstruction. Use canonical scorer roles/IDs; rule-awarded team goals do not acquire an invented individual. No match clock or scorer minutes are added.
+- With no menu destination yet, confirming the result keeps the summary visible in a stable acknowledged state and does not invoke any gameplay command.
+- Use native UMG/Slate layout and decoration, real team/score/scorer data, and clean team-color monogram badges where no reusable crest exists. No screenshot background, external logo download or global UI redesign is introduced.
+- A non-Shipping developer restart preset provides one attack per side; ordinary LocalPlay starts remain three per side. Removing its guarded input, resolver branch, Controller method and DEV button leaves the normal opening path intact.
+
 ### CD-001 - 先整理文档和目录
 
 - 日期：2026-06-24
