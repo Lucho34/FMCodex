@@ -82,7 +82,7 @@ namespace FMCodexFullTimeTests
 		if (!Override(C, ETarget::FullD12, 9)) return false;
 		C.RollDemoTacticalPoints();
 		if (!Override(C, ETarget::SetPieceType, 6)) return false;
-		C.ContinueResolution();
+		C.SubmitProjectedPrimaryPlayerIntent();
 		if (C.GetInteractionView().LegalSetPieceCardIds.IsEmpty()) return false;
 		Scorer = C.GetInteractionView().LegalSetPieceCardIds[0];
 		if (!PreferredScorer.IsNone())
@@ -95,7 +95,7 @@ namespace FMCodexFullTimeTests
 		C.ConfirmSetPieceDraft();
 		C.SubmitPenaltyMethod(EMatchPlayPenaltyMethod::Panenka);
 		if (!Override(C, ETarget::PenaltyPanenka, bGoal ? 6 : 1)) return false;
-		C.ContinueResolution();
+		C.SubmitProjectedPrimaryPlayerIntent();
 		return Test.TestTrue(TEXT("Real penalty reaches terminal, not full time"),
 			C.GetLastDiagnostic().bHostSuccess && C.GetInteractionView().bTerminalPendingAdvance
 				&& !C.GetInteractionView().FullTime.bVisible);

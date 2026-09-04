@@ -144,6 +144,7 @@ namespace FMCodexLocalMatchResolutionFeedback
 		if (AfterView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot)
 		{
+			Feedback.DecisionSummary = TEXT("One-on-One choice required");
 			Feedback.ContinuationSummary =
 				TEXT("Continue: One-on-One shot choice required");
 		}

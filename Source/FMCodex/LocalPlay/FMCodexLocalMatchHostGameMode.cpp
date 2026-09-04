@@ -99,6 +99,7 @@ AFMCodexLocalMatchHostGameMode::FLocalMatchRuntime::FLocalMatchRuntime(
 		D6Provider,
 #endif
 		SkillRuleSet)
+	, ServerCoordinator(AuthoritativeSession, SkillRuleSet)
 {
 }
 
@@ -165,6 +166,393 @@ bool AFMCodexLocalMatchHostGameMode::HasActiveLocalMatch() const
 	return ActiveMatchRuntime.IsValid();
 }
 
+FFMCodexMatchClientViewResult
+AFMCodexLocalMatchHostGameMode::GetViewForViewer(
+	const FFMCodexMatchClientViewRequest& Request) const
+{
+	FFMCodexMatchClientViewResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorMessage = FMCodexLocalMatchHost::NoActiveMatchMessage;
+		return Result;
+	}
+	if (Request.ViewerSide != EInitialTurnOrderPlayer::PlayerA
+		&& Request.ViewerSide != EInitialTurnOrderPlayer::PlayerB)
+	{
+		Result.ErrorMessage = TEXT("ViewerSide must be PlayerA or PlayerB.");
+		return Result;
+	}
+
+	Result.View = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+		ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot(),
+		ActiveMatchRuntime->SkillRuleSet,
+		Request.ViewerSide,
+		Request.Disclosure);
+	Result.bSuccess = true;
+	return Result;
+}
+
+FMatchPlayServerCoordinatorResult
+AFMCodexLocalMatchHostGameMode::AdvanceServerCoordinator()
+{
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		FMatchPlayServerCoordinatorResult Result;
+		Result.StopReason =
+			EMatchPlayServerCoordinatorStopReason::NotInitialized;
+		Result.ErrorMessage = FMCodexLocalMatchHost::NoActiveMatchMessage;
+		return Result;
+	}
+	return ActiveMatchRuntime->ServerCoordinator.AdvanceToStableState();
+}
+
+FMatchPlayPlayerIntentSubmissionResult
+AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
+	const FMatchPlayPlayerIntent& Intent)
+{
+	FMatchPlayPlayerIntentSubmissionResult Result;
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NoActiveMatch;
+		Result.ErrorMessage = FMCodexLocalMatchHost::NoActiveMatchMessage;
+		return Result;
+	}
+	if (!FMatchPlayAuthoritativeCommandClassification::IsPlayerIntent(
+		Intent.CommandKind))
+	{
+		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
+		Result.ErrorMessage =
+			TEXT("The player intent port rejects ServerInternalAction commands.");
+		return Result;
+	}
+
+	auto PayloadMismatch = [&Result]()
+	{
+		Result.ErrorCode =
+			EMatchPlayPlayerIntentPortErrorCode::PayloadTypeMismatch;
+		Result.ErrorMessage =
+			TEXT("PlayerIntent payload does not match its command kind.");
+		return Result;
+	};
+	auto Finalize = [this, &Result](const auto& LocalResult)
+	{
+		Result.AuthoritativeResult.RuntimeEnvelope =
+			LocalResult.AuthoritativeResult.RuntimeEnvelope;
+		Result.bPlayerIntentAccepted =
+			Result.AuthoritativeResult.RuntimeEnvelope.bAccepted;
+		if (!LocalResult.bSuccess)
+		{
+			Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode
+				::AuthoritativeCommandRejected;
+			Result.ErrorMessage = LocalResult.ErrorMessage;
+			return Result;
+		}
+
+		Result.CoordinatorResult =
+			ActiveMatchRuntime->ServerCoordinator.AdvanceToStableState();
+		if (!Result.CoordinatorResult.bSuccess)
+		{
+			Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode
+				::ServerCoordinatorFailed;
+			Result.ErrorMessage = Result.CoordinatorResult.ErrorMessage;
+			return Result;
+		}
+		Result.bSuccess = true;
+		return Result;
+	};
+
+#define FMCODEX_DISPATCH_PLAYER_INTENT(RequestType, Expression) \
+	if (!Intent.Payload.IsType<RequestType>()) \
+	{ \
+		return PayloadMismatch(); \
+	} \
+	return Finalize(Expression)
+
+	switch (Intent.CommandKind)
+	{
+	case EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayFullD12EntryRequest,
+			RequestInitialActionPointRoll(
+				Intent.Payload.Get<FMatchPlayFullD12EntryRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlaySetPieceTypeRollRequest,
+			RequestSetPieceTypeRoll(
+				Intent.Payload.Get<FMatchPlaySetPieceTypeRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlaySetPieceCarrierSelectionRequest,
+			SubmitSetPieceCarrier(
+				Intent.Payload.Get<FMatchPlaySetPieceCarrierSelectionRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitShortFreeKickMethod:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayShortFreeKickMethodRequest,
+			SubmitShortFreeKickMethod(
+				Intent.Payload.Get<FMatchPlayShortFreeKickMethodRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickDirectAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayShortFreeKickRollRequest,
+			ResolveShortFreeKickDirectAttackRoll(
+				Intent.Payload.Get<FMatchPlayShortFreeKickRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickDirectDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayShortFreeKickRollRequest,
+			ResolveShortFreeKickDirectDefenseRoll(
+				Intent.Payload.Get<FMatchPlayShortFreeKickRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickAngledRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayShortFreeKickRollRequest,
+			ResolveShortFreeKickAngledRoll(
+				Intent.Payload.Get<FMatchPlayShortFreeKickRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitLongFreeKickMethod:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayLongFreeKickMethodRequest,
+			SubmitLongFreeKickMethod(
+				Intent.Payload.Get<FMatchPlayLongFreeKickMethodRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickDirectAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayLongFreeKickRollRequest,
+			ResolveLongFreeKickDirectAttackRoll(
+				Intent.Payload.Get<FMatchPlayLongFreeKickRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickDirectDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayLongFreeKickRollRequest,
+			ResolveLongFreeKickDirectDefenseRoll(
+				Intent.Payload.Get<FMatchPlayLongFreeKickRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickPowerRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayLongFreeKickRollRequest,
+			ResolveLongFreeKickPowerRoll(
+				Intent.Payload.Get<FMatchPlayLongFreeKickRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitPenaltyMethod:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayPenaltyMethodRequest,
+			SubmitPenaltyMethod(
+				Intent.Payload.Get<FMatchPlayPenaltyMethodRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyDirectAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayPenaltyRollRequest,
+			ResolvePenaltyDirectAttackRoll(
+				Intent.Payload.Get<FMatchPlayPenaltyRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyDirectDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayPenaltyRollRequest,
+			ResolvePenaltyDirectDefenseRoll(
+				Intent.Payload.Get<FMatchPlayPenaltyRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyPanenkaRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayPenaltyRollRequest,
+			ResolvePenaltyPanenkaRoll(
+				Intent.Payload.Get<FMatchPlayPenaltyRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerAttackerNominations:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayCornerNominationRequest,
+			SubmitCornerAttackerNominations(
+				Intent.Payload.Get<FMatchPlayCornerNominationRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerDefenderNominations:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayCornerNominationRequest,
+			SubmitCornerDefenderNominations(
+				Intent.Payload.Get<FMatchPlayCornerNominationRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerParticipantSelectionRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayCornerRollRequest,
+			RequestCornerParticipantSelectionRoll(
+				Intent.Payload.Get<FMatchPlayCornerRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerIntent:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayCornerIntentRequest,
+			SubmitCornerIntent(
+				Intent.Payload.Get<FMatchPlayCornerIntentRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerRouteRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayCornerRollRequest,
+			RequestCornerRouteRoll(
+				Intent.Payload.Get<FMatchPlayCornerRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayCornerRollRequest,
+			RequestCornerAttackRoll(
+				Intent.Payload.Get<FMatchPlayCornerRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayCornerRollRequest,
+			RequestCornerDefenseRoll(
+				Intent.Payload.Get<FMatchPlayCornerRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeployOrdinaryRequest,
+			DeployOrdinary(Intent.Payload.Get<
+				FMatchPlayAuthoritativeDeployOrdinaryRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeployGoalkeeperRequest,
+			DeployGoalkeeper(Intent.Payload.Get<
+				FMatchPlayAuthoritativeDeployGoalkeeperRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::FinishDeployment:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayFinishDeploymentIntent>())
+		{
+			return PayloadMismatch();
+		}
+		const FMatchPlayFinishDeploymentIntent& Request =
+			Intent.Payload.Get<FMatchPlayFinishDeploymentIntent>();
+		return Finalize(FinishDeployment(
+			Request.AttackSequence, Request.RequestingSide));
+	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitCarrier:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitCarrierRequest,
+			SubmitCarrier(Intent.Payload.Get<
+				FMatchPlayAuthoritativeSubmitCarrierRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitMarker:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitMarkerRequest,
+			SubmitMarker(Intent.Payload.Get<
+				FMatchPlayAuthoritativeSubmitMarkerRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::DeclineMarker:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeclineMarkerRequest,
+			DeclineMarker(Intent.Payload.Get<
+				FMatchPlayAuthoritativeDeclineMarkerRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitSkill:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitSkillRequest,
+			SubmitSkill(Intent.Payload.Get<
+				FMatchPlayAuthoritativeSubmitSkillRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::DeclineSkill:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeclineSkillRequest,
+			DeclineSkill(Intent.Payload.Get<
+				FMatchPlayAuthoritativeDeclineSkillRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitRunner:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitRunnerRequest,
+			SubmitRunner(Intent.Payload.Get<
+				FMatchPlayAuthoritativeSubmitRunnerRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::DeclineRunner:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeclineRunnerRequest,
+			DeclineRunner(Intent.Payload.Get<
+				FMatchPlayAuthoritativeDeclineRunnerRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitHelper:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitHelperRequest,
+			SubmitHelper(Intent.Payload.Get<
+				FMatchPlayAuthoritativeSubmitHelperRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::DeclineHelper:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeclineHelperRequest,
+			DeclineHelper(Intent.Payload.Get<
+				FMatchPlayAuthoritativeDeclineHelperRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent:
+		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitBranchIntentRequest,
+			SubmitBranchIntent(Intent.Payload.Get<
+				FMatchPlayAuthoritativeSubmitBranchIntentRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::SubmitThroughBallOneOnOneShotChoice:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest,
+			SubmitThroughBallOneOnOneShotChoice(Intent.Payload.Get<
+				FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest,
+			ResolveThroughBallInitialRouteRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest,
+			ResolvePassControlInitialRouteRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossInitialRouteRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest,
+			ResolveCrossInitialRouteRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest,
+			ResolveCrossHighAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest,
+			ResolveCrossHighDefenseRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest,
+			ResolveCrossLowAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest,
+			ResolveCrossLowDefenseRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest,
+			ResolveThroughBallFeetAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest,
+			ResolveThroughBallFeetDefenseRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolvePassControlAttackRollRequest,
+			ResolvePassControlAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolvePassControlAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest,
+			ResolvePassControlDefenseRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDeadCornerRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest,
+			ResolveLongShotDeadCornerRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallAntiOffsideAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest,
+			ResolveThroughBallAntiOffsideAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest,
+			ResolveLongShotDirectAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest,
+			ResolveLongShotDirectDefenseRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDirectAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest,
+			ResolveCutInsideShotDirectAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDirectDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest,
+			ResolveCutInsideShotDirectDefenseRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDeadCornerRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest,
+			ResolveCutInsideShotDeadCornerRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallBehindDefenseP1AttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest,
+			ResolveThroughBallBehindDefenseP1AttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallBehindDefenseP1DefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest,
+			ResolveThroughBallBehindDefenseP1DefenseRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneChipShotAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest,
+			ResolveThroughBallOneOnOneChipShotAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotAttackRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest,
+			ResolveThroughBallOneOnOneDirectShotAttackRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotDefenseRoll:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest,
+			ResolveThroughBallOneOnOneDirectShotDefenseRoll(Intent.Payload.Get<
+				FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest>()));
+	case EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal:
+		FMCODEX_DISPATCH_PLAYER_INTENT(
+			FMatchPlayAuthoritativeAdvanceAfterTerminalRequest,
+			AdvanceAfterTerminal(Intent.Payload.Get<
+				FMatchPlayAuthoritativeAdvanceAfterTerminalRequest>()));
+	default:
+		break;
+	}
+
+#undef FMCODEX_DISPATCH_PLAYER_INTENT
+
+	Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
+	Result.ErrorMessage = TEXT("Unsupported player intent command kind.");
+	return Result;
+}
+
 FFMCodexStartNewLocalMatchResult
 AFMCodexLocalMatchHostGameMode::StartNewLocalMatch(
 	const FMatchPlayOpeningInitializeInput& Input)
@@ -223,6 +611,16 @@ AFMCodexLocalMatchHostGameMode::StartNewLocalMatchWithSeed(
 		Result.ErrorMessage = SelectAuthoritativeErrorMessage(
 			Result.AuthoritativeResult.RuntimeEnvelope,
 			Result.AuthoritativeResult.OpeningResult.ErrorMessage);
+		return Result;
+	}
+	const FMatchPlayServerCoordinatorResult CoordinatorResult =
+		CandidateRuntime->ServerCoordinator.AdvanceToStableState();
+	if (!CoordinatorResult.bSuccess)
+	{
+		Result.bSuccess = false;
+		Result.ErrorCode = EFMCodexLocalMatchHostErrorCode
+			::AuthoritativeCommandFailed;
+		Result.ErrorMessage = CoordinatorResult.ErrorMessage;
 		return Result;
 	}
 

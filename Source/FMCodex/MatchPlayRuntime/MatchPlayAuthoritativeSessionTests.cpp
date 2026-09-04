@@ -1,4 +1,5 @@
 #include "MatchPlayAuthoritativeSession.h"
+#include "MatchPlayServerCoordinator.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -181,6 +182,55 @@ namespace MatchPlayAuthoritativeSessionTests
 		int32 NextResultIndex = 0;
 		int32 RecoveryCallCount = 0;
 		bool bFailNextRecovery = false;
+	};
+
+	class FCoordinatorAttackEntryProvider final
+		: public IMatchPlayAttackEntryRollProvider
+	{
+	public:
+		virtual FMatchPlayAttackEntryRollProviderResult RollD12(
+			EMatchPlayAttackEntryRollPurpose Purpose) override
+		{
+			++D12CallCount;
+			FMatchPlayAttackEntryRollProviderResult Result;
+			Result.bSuccess = true;
+			Result.RawRoll = 1;
+			return Result;
+		}
+
+		virtual FMatchPlayAttackEntryRollProviderResult RollD6(
+			EMatchPlayAttackEntryRollPurpose Purpose) override
+		{
+			FMatchPlayAttackEntryRollProviderResult Result;
+			Result.ErrorCode =
+				EMatchPlayAttackEntryRollProviderErrorCode::ProviderFailure;
+			Result.ErrorMessage = TEXT("Unexpected coordinator D6 request.");
+			return Result;
+		}
+
+		virtual FMatchPlayAttackEntrySelectionProviderResult SelectUniformIndex(
+			EMatchPlayAttackEntryRollPurpose Purpose,
+			int32 CandidateCount) override
+		{
+			++SelectionCallCount;
+			FMatchPlayAttackEntrySelectionProviderResult Result;
+			if (bFailNextSelection)
+			{
+				bFailNextSelection = false;
+				Result.ErrorCode =
+					EMatchPlayAttackEntryRollProviderErrorCode::ProviderFailure;
+				Result.ErrorMessage =
+					TEXT("Deterministic coordinator provider failure.");
+				return Result;
+			}
+			Result.bSuccess = CandidateCount > 0;
+			Result.SelectedIndex = 0;
+			return Result;
+		}
+
+		bool bFailNextSelection = true;
+		int32 D12CallCount = 0;
+		int32 SelectionCallCount = 0;
 	};
 
 	FPlayerCardData MakeDeckCard(
@@ -17974,12 +18024,19 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP1ManualRollTe
 	TestFalse(TEXT("Production Controller no longer calls atomic Behind P1"),
 		ControllerSource.Contains(
 			TEXT("Host->ResolveThroughBallBehindDefenseP1DecisionOrPlan()")));
-	TestTrue(TEXT("Production Controller routes typed Behind Attack"),
-		ControllerSource.Contains(
-			TEXT("Host->ResolveThroughBallBehindDefenseP1AttackRoll(Request)")));
-	TestTrue(TEXT("Production Controller routes typed Behind Defense"),
-		ControllerSource.Contains(
-			TEXT("Host->ResolveThroughBallBehindDefenseP1DefenseRoll(Request)")));
+	TestTrue(TEXT("Production Controller routes typed Behind Attack through HostPort"),
+		ControllerSource.Contains(TEXT(
+			"::ResolveThroughBallBehindDefenseP1AttackRoll,"))
+			&& ControllerSource.Contains(TEXT("SubmitPlayerIntent(")));
+	TestTrue(TEXT("Production Controller routes typed Behind Defense through HostPort"),
+		ControllerSource.Contains(TEXT(
+			"::ResolveThroughBallBehindDefenseP1DefenseRoll,"))
+			&& ControllerSource.Contains(TEXT("SubmitPlayerIntent(")));
+	TestFalse(TEXT("Production Controller does not bypass HostPort for Behind rolls"),
+		ControllerSource.Contains(TEXT(
+			"Host->ResolveThroughBallBehindDefenseP1AttackRoll"))
+			|| ControllerSource.Contains(TEXT(
+				"Host->ResolveThroughBallBehindDefenseP1DefenseRoll")));
 	return true;
 }
 
@@ -18543,18 +18600,20 @@ bool FMatchPlayAuthoritativeSessionThroughBallSideOwnedRollAuthorityTest
 		LoadProductionSource(
 			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
 			ControllerSource));
-	TestTrue(TEXT("Controller forwards typed AntiOffside"),
+	TestTrue(TEXT("Controller forwards typed AntiOffside through HostPort"),
 		ControllerSource.Contains(TEXT(
-			"Host->ResolveThroughBallAntiOffsideAttackRoll(Request)")));
-	TestTrue(TEXT("Controller forwards typed Chip"),
+			"::ResolveThroughBallAntiOffsideAttackRoll,")));
+	TestTrue(TEXT("Controller forwards typed Chip through HostPort"),
 		ControllerSource.Contains(TEXT(
-			"Host->ResolveThroughBallOneOnOneChipShotAttackRoll(Request)")));
-	TestTrue(TEXT("Controller forwards typed Direct Attack"),
+			"::ResolveThroughBallOneOnOneChipShotAttackRoll,")));
+	TestTrue(TEXT("Controller forwards typed Direct Attack through HostPort"),
 		ControllerSource.Contains(TEXT(
-			"Host->ResolveThroughBallOneOnOneDirectShotAttackRoll(Request)")));
-	TestTrue(TEXT("Controller forwards typed Direct Defense"),
+			"::ResolveThroughBallOneOnOneDirectShotAttackRoll,")));
+	TestTrue(TEXT("Controller forwards typed Direct Defense through HostPort"),
 		ControllerSource.Contains(TEXT(
-			"Host->ResolveThroughBallOneOnOneDirectShotDefenseRoll(Request)")));
+			"::ResolveThroughBallOneOnOneDirectShotDefenseRoll,")));
+	TestTrue(TEXT("Typed ThroughBall rolls share the player intent boundary"),
+		ControllerSource.Contains(TEXT("SubmitPlayerIntent(")));
 	TestFalse(TEXT("Controller no longer invokes atomic AntiOffside"),
 		ControllerSource.Contains(TEXT(
 			"Host->ResolveThroughBallAntiOffsideDecision()")));
@@ -26261,28 +26320,26 @@ bool FMatchPlayAuthoritativeSessionLongShotSideOwnedAuthorityFoundationTest
 		LoadProductionSource(
 			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
 			ControllerSource));
-	const int32 LongShotCase = ControllerSource.Find(
-		TEXT("case ESkillRuleType::LongShot:"));
-	const int32 ThroughBallCase = LongShotCase == INDEX_NONE
-		? INDEX_NONE
-		: ControllerSource.Find(
-			TEXT("case ESkillRuleType::ThroughBall:"),
-			ESearchCase::CaseSensitive,
-			ESearchDir::FromStart,
-			LongShotCase);
-	const FString LongShotControllerBranch = LongShotCase == INDEX_NONE
-		|| ThroughBallCase == INDEX_NONE
-		? FString()
-		: ControllerSource.Mid(
-			LongShotCase, ThroughBallCase - LongShotCase);
-	TestTrue(TEXT("Controller has an explicit LongShot continuation boundary"),
-		!LongShotControllerBranch.IsEmpty());
+	FString CoordinatorSource;
+	TestTrue(TEXT("Coordinator source loads for LongShot continuation boundary"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayServerCoordinator.cpp"),
+			CoordinatorSource));
+	TestTrue(TEXT("Server Coordinator owns LongShot deterministic continuation"),
+		CoordinatorSource.Contains(TEXT("ESkillRuleType::LongShot"))
+			&& CoordinatorSource.Contains(TEXT("ResolveIntentDeterminedRoute"))
+			&& CoordinatorSource.Contains(TEXT("ApplyShotTerminalResolution")));
 	TestFalse(TEXT("LongShot continuation never invokes legacy atomic Direct"),
-		LongShotControllerBranch.Contains(
+		ControllerSource.Contains(
 			TEXT("ResolveDirectShotPostRouteDecisionOrPlan")));
 	TestFalse(TEXT("LongShot continuation never invokes legacy atomic DeadCorner"),
-		LongShotControllerBranch.Contains(
+		ControllerSource.Contains(
 			TEXT("ResolveDeadCornerPostRouteDecision")));
+	TestTrue(TEXT("Controller exposes all LongShot player rolls through HostPort"),
+		ControllerSource.Contains(TEXT("::ResolveLongShotDirectAttackRoll,"))
+			&& ControllerSource.Contains(TEXT("::ResolveLongShotDirectDefenseRoll,"))
+			&& ControllerSource.Contains(TEXT("::ResolveLongShotDeadCornerRoll,"))
+			&& ControllerSource.Contains(TEXT("SubmitPlayerIntent(")));
 	TestTrue(TEXT("Controller forwards caller-projected AttackSequence"),
 		CountOccurrences(
 			ControllerSource,
@@ -27041,35 +27098,29 @@ bool FMatchPlayAuthoritativeSessionCutInsideShotDeadCornerAuthorityFoundationTes
 		LoadProductionSource(
 			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
 			ControllerSource));
-	const int32 CutInsideCase = ControllerSource.Find(
-		TEXT("case ESkillRuleType::CutInsideShot:"));
-	const int32 LongShotCase = CutInsideCase == INDEX_NONE
-		? INDEX_NONE
-		: ControllerSource.Find(
-			TEXT("case ESkillRuleType::LongShot:"),
-			ESearchCase::CaseSensitive,
-			ESearchDir::FromStart,
-			CutInsideCase);
-	const FString CutInsideContinuation = CutInsideCase == INDEX_NONE
-		|| LongShotCase == INDEX_NONE
-		? FString()
-		: ControllerSource.Mid(
-			CutInsideCase, LongShotCase - CutInsideCase);
-	TestTrue(TEXT("Controller has explicit CutInside continuation boundary"),
-		!CutInsideContinuation.IsEmpty());
+	FString CoordinatorSource;
+	TestTrue(TEXT("Coordinator source loads for CutInside continuation boundary"),
+		LoadProductionSource(
+			TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayServerCoordinator.cpp"),
+			CoordinatorSource));
+	TestTrue(TEXT("Server Coordinator owns CutInside deterministic continuation"),
+		CoordinatorSource.Contains(TEXT("ESkillRuleType::CutInsideShot"))
+			&& CoordinatorSource.Contains(TEXT("ResolveIntentDeterminedRoute"))
+			&& CoordinatorSource.Contains(TEXT("ApplyShotTerminalResolution")));
 	TestFalse(TEXT("CutInside no longer invokes legacy atomic Direct"),
-		CutInsideContinuation.Contains(
+		ControllerSource.Contains(
 			TEXT("ResolveDirectShotPostRouteDecisionOrPlan")));
 	TestFalse(TEXT("CutInside no longer invokes legacy atomic DeadCorner"),
-		CutInsideContinuation.Contains(
+		ControllerSource.Contains(
 			TEXT("ResolveDeadCornerPostRouteDecision")));
 	TestTrue(TEXT("Controller exposes all three typed CutInside forwards"),
-		ControllerSource.Contains(
-			TEXT("ResolveCutInsideShotDirectAttackRoll"))
-			&& ControllerSource.Contains(
-				TEXT("ResolveCutInsideShotDirectDefenseRoll"))
-			&& ControllerSource.Contains(
-				TEXT("ResolveCutInsideShotDeadCornerRoll")));
+		ControllerSource.Contains(TEXT(
+			"::ResolveCutInsideShotDirectAttackRoll,"))
+			&& ControllerSource.Contains(TEXT(
+				"::ResolveCutInsideShotDirectDefenseRoll,"))
+			&& ControllerSource.Contains(TEXT(
+				"::ResolveCutInsideShotDeadCornerRoll,"))
+			&& ControllerSource.Contains(TEXT("SubmitPlayerIntent(")));
 
 	return true;
 }
@@ -27115,31 +27166,43 @@ bool FMatchPlayNetworkBoundaryClassificationLegacyAndSkillTrustTest::RunTest(
 	}
 
 	FString ControllerSource;
+	FString ControllerHeader;
 	FString HostHeader;
+	FString HostSource;
 	FString SessionHeader;
 	TestTrue(TEXT("Controller source loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
 		ControllerSource));
+	TestTrue(TEXT("Controller header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.h"),
+		ControllerHeader));
 	TestTrue(TEXT("Host header loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.h"),
 		HostHeader));
+	TestTrue(TEXT("Host source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.cpp"),
+		HostSource));
 	TestTrue(TEXT("Session header loads"), LoadProductionSource(
 		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
 		SessionHeader));
-	TestTrue(TEXT("Production Controller enters attacks through Full D12"),
-		ControllerSource.Contains(TEXT("Host->RequestInitialActionPointRoll(Request)")));
+	TestTrue(TEXT("Production Controller submits Full D12 through PlayerIntent"),
+		ControllerSource.Contains(TEXT("RequestInitialActionPointRoll"))
+			&& ControllerHeader.Contains(TEXT("Port->SubmitPlayerIntent(")));
 	TestFalse(TEXT("Production Controller never calls legacy RollTacticalPoints"),
 		ControllerSource.Contains(TEXT("Host->RollTacticalPoints(")));
 	TestFalse(TEXT("Production Controller never calls legacy BeginOrdinaryAttack"),
 		ControllerSource.Contains(TEXT("Host->BeginOrdinaryAttack(")));
-	TestEqual(TEXT("LocalPlay builds both viewer-safe projections"),
+	TestEqual(TEXT("Host adapter owns the viewer-safe projection call"),
 		CountOccurrences(
-			ControllerSource,
+			HostSource,
 			TEXT("FMCodexLocalMatchInteractionViewBuilder::BuildForViewer(")),
-		2);
-	TestFalse(TEXT("LocalPlay has no unrestricted production View build"),
+		1);
+	TestFalse(TEXT("Controller has no unrestricted production View build"),
 		ControllerSource.Contains(
 			TEXT("FMCodexLocalMatchInteractionViewBuilder::Build(")));
+	TestFalse(TEXT("Controller has no direct viewer projection build"),
+		ControllerSource.Contains(
+			TEXT("FMCodexLocalMatchInteractionViewBuilder::BuildForViewer(")));
 	const int32 HostLegacyGuard = HostHeader.Find(
 		TEXT("#if WITH_DEV_AUTOMATION_TESTS"));
 	const int32 HostLegacyBegin = HostHeader.Find(
@@ -27543,6 +27606,197 @@ bool FMatchPlayNetworkBoundaryGoalkeeperAndOneOnOneCorrelationTest::RunTest(
 		Post.GetCallCount(), CallsBeforeStaleChoice);
 	TestTrue(TEXT("Stale OneOnOne choice preserves N+1 State"),
 		AreStatesEqual(NextOneOnOne, OneOnOneSession.GetStateSnapshot()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayServerCoordinatorAutomaticProgressionTest,
+	"FMCodex.MatchPlayRuntime.ServerCoordinator.AutomaticProgressionAndFailure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayServerCoordinatorAutomaticProgressionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	(void)Parameters;
+
+	// Server-internal provider failure is surfaced once and leaves the accepted
+	// AP1 entry state retryable. A later server retry uses no new D12.
+	FCoordinatorAttackEntryProvider EntryProvider;
+	FMatchPlayAuthoritativeSession EntrySession(EntryProvider);
+	TestTrue(TEXT("AP1 coordinator fixture initializes"),
+		EntrySession.InitializeMatch(MakeValidInput(TEXT("CoordinatorAP1")))
+			.OpeningResult.bSuccess);
+	const FMatchPlayState BeforeEntry = EntrySession.GetStateSnapshot();
+	FMatchPlayFullD12EntryRequest EntryRequest;
+	EntryRequest.RequestingSide =
+		BeforeEntry.RuntimeState.CurrentAttackingPlayer;
+	EntryRequest.ExpectedAttackSequence = 1;
+	TestTrue(TEXT("Player AP1 entry intent succeeds"),
+		EntrySession.RequestInitialActionPointRoll(EntryRequest)
+			.EntryResult.bSuccess);
+	const FMatchPlayState AwaitingSendingOff =
+		EntrySession.GetStateSnapshot();
+	const FSkillRuleSnapshotSet EmptyRules;
+	FMatchPlayServerCoordinator EntryCoordinator(EntrySession, EmptyRules);
+	const auto ProviderFailure = EntryCoordinator.AdvanceToStableState();
+	TestFalse(TEXT("Coordinator exposes provider failure"),
+		ProviderFailure.bSuccess);
+	TestEqual(TEXT("Provider failure stop reason is internal-action failure"),
+		ProviderFailure.StopReason,
+		EMatchPlayServerCoordinatorStopReason::InternalActionFailed);
+	TestEqual(TEXT("Failure records exactly one internal command"),
+		ProviderFailure.Steps.Num(), 1);
+	if (ProviderFailure.Steps.Num() == 1)
+	{
+		TestEqual(TEXT("Failure command is ResolveSendingOff"),
+			ProviderFailure.Steps[0].CommandKind,
+			EMatchPlayAuthoritativeCommandKind::ResolveSendingOff);
+	}
+	TestEqual(TEXT("AP1 failure calls selection provider once"),
+		EntryProvider.SelectionCallCount, 1);
+	TestTrue(TEXT("AP1 failure preserves accepted pending State"),
+		AreStatesEqual(
+			AwaitingSendingOff, EntrySession.GetStateSnapshot()));
+
+	const auto ProviderRetry = EntryCoordinator.AdvanceToStableState();
+	TestTrue(TEXT("Server retry reaches stable terminal"),
+		ProviderRetry.bSuccess);
+	TestEqual(TEXT("Retry uses no additional Full D12"),
+		EntryProvider.D12CallCount, 1);
+	TestEqual(TEXT("Retry calls selection exactly once more"),
+		EntryProvider.SelectionCallCount, 2);
+	const FMatchPlayState AP1Terminal = EntrySession.GetStateSnapshot();
+	TestEqual(TEXT("AP1 retry stops before player advance"),
+		AP1Terminal.CurrentAttack.LifecycleState,
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	const auto TerminalNoOp = EntryCoordinator.AdvanceToStableState();
+	TestTrue(TEXT("Terminal coordinator call is a stable no-op"),
+		TerminalNoOp.bSuccess && !TerminalNoOp.bStateAdvanced);
+	TestEqual(TEXT("Terminal no-op consumes no provider call"),
+		EntryProvider.SelectionCallCount, 2);
+	TestTrue(TEXT("Terminal no-op preserves exact State"),
+		AreStatesEqual(AP1Terminal, EntrySession.GetStateSnapshot()));
+
+	// Empty selection stages are server-derived, not fake player decisions.
+	FMatchPlayAuthoritativeSession NoLegalSession;
+	TestTrue(TEXT("No-legal fixture initializes"),
+		NoLegalSession.InitializeMatch(MakeValidInput(TEXT("CoordinatorNoLegal")))
+			.OpeningResult.bSuccess);
+	TestTrue(TEXT("No-legal fixture begins ordinary attack"),
+		NoLegalSession.BeginOrdinaryAttack(6).BeginResult.bSuccess);
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const FMatchPlayState State = NoLegalSession.GetStateSnapshot();
+		TestTrue(TEXT("Empty deployment side finishes"),
+			NoLegalSession.FinishDeployment(
+				State.CurrentAttack.AttackSequence,
+				State.CurrentAttack.CurrentLegalDeploymentSide)
+				.FinishResult.bSuccess);
+	}
+	const FMatchPlayState AwaitingCarrier = NoLegalSession.GetStateSnapshot();
+	TestEqual(TEXT("Fixture reaches AwaitingCarrier"),
+		AwaitingCarrier.CurrentAttack.SelectionStage,
+		EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier);
+	FMatchPlayServerCoordinator NoLegalCoordinator(NoLegalSession, EmptyRules);
+	const auto NoLegal = NoLegalCoordinator.AdvanceToStableState();
+	TestTrue(TEXT("Coordinator resolves no-legal chain"), NoLegal.bSuccess);
+	TestTrue(TEXT("No-legal chain records authoritative internal action"),
+		NoLegal.Steps.ContainsByPredicate(
+			[](const FMatchPlayServerCoordinatorStep& Step)
+			{
+				return Step.CommandKind
+					== EMatchPlayAuthoritativeCommandKind::ResolveNoLegalCarrier;
+			}));
+	TestFalse(TEXT("No-legal carrier completes attack without fake intent"),
+		NoLegalSession.GetStateSnapshot().bHasCurrentAttack);
+
+	// LongShot begins its session and resolves its intent-determined route, but
+	// the server never supplies the player's post-route roll.
+	const FString LongPrefix(TEXT("CoordinatorLongShot"));
+	const FName LongSkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"), *LongPrefix,
+		static_cast<int32>(ESkillRuleType::LongShot)));
+	const FSkillRuleSnapshotSet LongRules =
+		MakeSkillRuleSet(LongSkillId, ESkillRuleType::LongShot);
+	FMatchPlayAuthoritativeSession LongSession;
+	FReachabilityTrace LongTrace;
+	TestTrue(TEXT("LongShot fixture reaches branch choice"),
+		BuildStage7165ToAwaitingBranchIntent(
+			LongSession, LongPrefix, ESkillRuleType::LongShot, LongTrace));
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest LongIntent;
+	LongIntent.AttackSequence = LongTrace.AttackSequence;
+	LongIntent.RequestingSide = LongTrace.AttackingSide;
+	LongIntent.Intent = EMatchPlayElectiveBranchIntent::DirectShot;
+	TestTrue(TEXT("LongShot player branch intent succeeds"),
+		LongSession.SubmitBranchIntent(LongIntent).IntentResult.bSuccess);
+	FMatchPlayServerCoordinator LongCoordinator(LongSession, LongRules);
+	const auto LongAdvance = LongCoordinator.AdvanceToStableState();
+	TestTrue(TEXT("LongShot automatic session and route succeed"),
+		LongAdvance.bSuccess);
+	TestEqual(TEXT("LongShot coordinator performs exactly two internal steps"),
+		LongAdvance.Steps.Num(), 2);
+	const FMatchPlayState LongRoute = LongSession.GetStateSnapshot();
+	TestTrue(TEXT("LongShot stops at unresolved player roll"),
+		LongRoute.CurrentAttack.bHasResolutionSession
+			&& LongRoute.CurrentAttack.ResolutionSession.Stage
+				== EMatchPlayCurrentAttackResolutionStage::RouteResolved
+			&& LongRoute.CurrentAttack.ResolutionSession.PostRouteRollProgress
+				.RollRecords.IsEmpty());
+	TestEqual(TEXT("LongShot stops for PlayerIntent"),
+		LongAdvance.StopReason,
+		EMatchPlayServerCoordinatorStopReason::WaitingForPlayerIntent);
+
+	// A completed Cross formula is terminalized by the coordinator. Route and
+	// contest rolls remain explicit player commands.
+	const FString CrossPrefix(TEXT("CoordinatorCross"));
+	const FName CrossSkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"), *CrossPrefix,
+		static_cast<int32>(ESkillRuleType::Cross)));
+	const FSkillRuleSnapshotSet CrossRules =
+		MakeSkillRuleSet(CrossSkillId, ESkillRuleType::Cross);
+	InitialRouteFixtures::FQueueRollProvider InitialRoute;
+	InitialRoute.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider PostRoute;
+	PostRoute.Enqueue(MakePostRouteSuccess(6));
+	PostRoute.Enqueue(MakePostRouteSuccess(2));
+	FMatchPlayAuthoritativeSession CrossSession(
+		InitialRoute, PostRoute, CrossRules);
+	FReachabilityTrace CrossTrace;
+	TestTrue(TEXT("Cross fixture reaches awaiting route"),
+		BuildStage7166ToAwaitingRoute(
+			CrossSession, CrossPrefix, ESkillRuleType::Cross,
+			EMatchPlayElectiveBranchIntent::CrossHigh, CrossTrace));
+	FMatchPlayServerCoordinator CrossCoordinator(CrossSession, CrossRules);
+	const FMatchPlayState BeforePlayerRoute = CrossSession.GetStateSnapshot();
+	const auto RouteWait = CrossCoordinator.AdvanceToStableState();
+	TestTrue(TEXT("Coordinator waits before player route roll"),
+		RouteWait.bSuccess && !RouteWait.bStateAdvanced);
+	TestTrue(TEXT("Route wait preserves State"),
+		AreStatesEqual(BeforePlayerRoute, CrossSession.GetStateSnapshot()));
+	TestTrue(TEXT("Player route roll succeeds"),
+		CrossSession.ResolveInitialRoute().OrchestrationResult.bSuccess);
+	const FMatchPlayState AfterRoute = CrossSession.GetStateSnapshot();
+	const auto ContestWait = CrossCoordinator.AdvanceToStableState();
+	TestTrue(TEXT("Coordinator waits before player contest rolls"),
+		ContestWait.bSuccess && !ContestWait.bStateAdvanced);
+	TestTrue(TEXT("Contest wait preserves route State"),
+		AreStatesEqual(AfterRoute, CrossSession.GetStateSnapshot()));
+	TestTrue(TEXT("Player-owned Cross rolls complete formula"),
+		ResolveCrossPlanForCurrentBranch(CrossSession));
+	const auto CrossTerminal = CrossCoordinator.AdvanceToStableState();
+	TestTrue(TEXT("Coordinator applies completed Cross terminal"),
+		CrossTerminal.bSuccess
+			&& CrossTerminal.Steps.ContainsByPredicate(
+				[](const FMatchPlayServerCoordinatorStep& Step)
+				{
+					return Step.CommandKind
+						== EMatchPlayAuthoritativeCommandKind
+							::ApplyCrossTerminalResolution;
+				}));
+	TestEqual(TEXT("Cross stops at explicit terminal advance"),
+		CrossSession.GetStateSnapshot().CurrentAttack.LifecycleState,
+		EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
 	return true;
 }
 

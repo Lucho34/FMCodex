@@ -4,7 +4,9 @@
 #include "GameFramework/PlayerController.h"
 
 #include "FMCodexLocalMatchInteractionView.h"
+#include "FMCodexMatchClientViewPort.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
+#include "../MatchPlayRuntime/MatchPlayHostPort.h"
 #if !UE_BUILD_SHIPPING
 #include "FMCodexLocalDevRollOverride.h"
 #endif
@@ -110,6 +112,7 @@ public:
 	/** Legacy compatibility wrapper; production does not expose AndAdvance. */
 	void CompleteThroughBallFeetAndAdvance();
 	void AdvanceAfterTerminal();
+	void SubmitProjectedPrimaryPlayerIntent();
 	void ContinueResolution();
 
 #if !UE_BUILD_SHIPPING
@@ -127,6 +130,8 @@ protected:
 
 private:
 	AFMCodexLocalMatchHostGameMode* FindLocalMatchHost() const;
+	IMatchPlayPlayerIntentPort* FindPlayerIntentPort() const;
+	const IFMCodexMatchClientViewPort* FindClientViewPort() const;
 	void InitializeDeveloperSlateSurface();
 #if !UE_BUILD_SHIPPING
 	void InitializeLocalDevRollOverrideSurface();
@@ -142,6 +147,25 @@ private:
 	void ScheduleRecoveryNotificationDismiss();
 	void CancelRecoveryNotificationDismiss();
 	void DismissRecoveryNotification();
+
+	template <typename TRequest>
+	FMatchPlayPlayerIntentSubmissionResult SubmitPlayerIntent(
+		const FString& CommandName,
+		const EMatchPlayAuthoritativeCommandKind CommandKind,
+		const TRequest& Request)
+	{
+		IMatchPlayPlayerIntentPort* Port = FindPlayerIntentPort();
+		if (Port == nullptr)
+		{
+			RecordLocalFailure(CommandName, TEXT("Host port unavailable."));
+			return {};
+		}
+		const FMatchPlayPlayerIntentSubmissionResult Result =
+			Port->SubmitPlayerIntent(
+				FMatchPlayPlayerIntent::Create(CommandKind, Request));
+		RecordCommandResult(CommandName, Result);
+		return Result;
+	}
 
 	template <typename TResult>
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
@@ -238,8 +262,6 @@ private:
 		bool bLockConfirmationPending = false;
 	};
 	FSetPieceLocalDraft SetPieceDraft;
-	TSet<int64> AutomaticallyResolvedSendingOffSequences;
-	TSet<int64> AutomaticallyResolvedNoCarrierSequences;
 	FTimerHandle RecoveryNotificationDismissTimerHandle;
 	static constexpr float RecoveryNotificationDurationSeconds = 2.0f;
 

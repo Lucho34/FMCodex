@@ -522,8 +522,6 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				{
 					if (HelperView.InteractionCategory
 							!= EFMCodexLocalMatchInteractionCategory::SelectSkill
-						|| Controller.GetLastDiagnostic().CommandName
-							!= TEXT("ResolveNoLegalHelper")
 						|| !Controller.GetLastDiagnostic().bHostSuccess
 						|| Controller.GetResolutionFeedback().bRejected
 						|| Controller.GetResolutionFeedback().ErrorMessage.Contains(
@@ -6696,12 +6694,12 @@ bool FFMCodexUMGResolutionVisualFoundationTest::RunTest(
 	{
 		return false;
 	}
-	TestTrue(TEXT("Branch click synchronously reaches typed Direct Attack"),
+	TestTrue(TEXT("Branch intent synchronously reaches typed Direct Attack"),
 		Controller->GetInteractionView().InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory
 				::RollCutInsideShotDirectAttack
 			&& Controller->GetLastDiagnostic().CommandName
-				== TEXT("ResolveIntentDeterminedRoute")
+				== TEXT("SubmitBranchIntent")
 			&& Controller->GetInteractionView().AcceptedRolls.IsEmpty());
 	TestTrue(TEXT("Direct Attack is central and diagnostic/lower surfaces are hidden"),
 		CutSurface->GetFormulaSurface()->GetPresentation()
@@ -9757,8 +9755,11 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 		ScreenSource.Contains(TEXT("RequestDeployOrdinary(CardId, SlotId)"))
 			&& ScreenSource.Contains(TEXT("RequestDeployGoalkeeper(SlotId)"))
 			&& !ScreenSource.Contains(TEXT("RequestDeployGoalkeeper(CardId"))
-			&& ControllerSource.Contains(TEXT("Host->DeployOrdinary(Request)"))
-			&& ControllerSource.Contains(TEXT("Host->DeployGoalkeeper(Request)"))
+			&& ControllerSource.Contains(
+				TEXT("EMatchPlayAuthoritativeCommandKind::DeployOrdinary"))
+			&& ControllerSource.Contains(
+				TEXT("EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper"))
+			&& ControllerSource.Contains(TEXT("SubmitPlayerIntent("))
 			&& HostSource.Contains(
 				TEXT("AuthoritativeSession.DeployGoalkeeper(Request)")));
 	FString SessionCountSource = SessionSource;
@@ -12902,16 +12903,18 @@ bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
 			return false;
 		}
 		Screen->RequestDeclineSelection();
-		TestTrue(TEXT("Localized Runner decline preserves the typed authority route"),
-			Controller->GetLastDiagnostic().bHostSuccess
-				&& Controller->GetLastDiagnostic().CommandName
-					== TEXT("DeclineRunner")
-				&& Controller->GetInteractionView().InteractionCategory
-					== EFMCodexLocalMatchInteractionCategory::SelectSkill
-				&& Controller->GetInteractionView().SelectionStage
-					== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill
-				&& Controller->GetInteractionView().bCurrentAttackActive
-				&& Controller->GetInteractionView().SelectedRunnerCardId.IsNone()
+		TestTrue(TEXT("Localized Runner decline succeeds through HostPort"),
+			Controller->GetLastDiagnostic().bHostSuccess);
+		TestEqual(TEXT("Localized Runner decline preserves command identity"),
+			Controller->GetLastDiagnostic().CommandName,
+			FString(TEXT("DeclineRunner")));
+		TestFalse(TEXT("No remaining legal Skill is resolved server-side"),
+			Controller->GetInteractionView().bCurrentAttackActive);
+		TestEqual(TEXT("Completed decline chain clears selection stage"),
+			Controller->GetInteractionView().SelectionStage,
+			EMatchPlayCurrentAttackSelectionStage::None);
+		TestTrue(TEXT("Localized Runner decline clears optional participants"),
+			Controller->GetInteractionView().SelectedRunnerCardId.IsNone()
 				&& Controller->GetInteractionView().SelectedHelperCardId.IsNone());
 	}
 
@@ -14596,7 +14599,7 @@ bool FFMCodexCutInsideScreenTerminalBranchesTest::RunTest(
 			Context),
 			Controller->GetLastDiagnostic().bHostSuccess
 				&& Controller->GetLastDiagnostic().CommandName
-					== TEXT("ResolveIntentDeterminedRoute")
+					== TEXT("SubmitBranchIntent")
 				&& Controller->GetInteractionView().InteractionCategory
 					== ExpectedRollCategory
 				&& Controller->GetInteractionView().AcceptedRolls.IsEmpty()
@@ -15063,7 +15066,7 @@ bool FFMCodexCrossTypedCorrelatedScreenGoldenPathTest::RunTest(
 		+ Terminal.RuntimeState.PlayerBState.UsedAttackCount;
 	TestEqual(TEXT("Cross Defense automatically applies existing terminal command"),
 		Controller->GetLastDiagnostic().CommandName,
-		FString(TEXT("ApplyCrossTerminalResolution")));
+		FString(TEXT("ResolveCrossHighDefenseRoll")));
 	TestTrue(TEXT("Cross Defense completes authoritative terminal without Continue"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().AcceptedRolls.Num() == 3

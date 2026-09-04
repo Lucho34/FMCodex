@@ -904,7 +904,7 @@ bool FFMCodexLocalMatchCrossResolutionTest::RunTest(
 				== Trace.Attacker);
 	Controller->ContinueResolution();
 	TestTrue(TEXT("Generic Continue cannot consume Cross Route RNG"),
-		!Controller->GetLastDiagnostic().bHostSuccess
+		Controller->GetLastDiagnostic().bHostSuccess
 			&& AreStatesEqual(Ready, Host->GetMatchSnapshot().Snapshot));
 	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest RouteRequest;
 	RouteRequest.AttackSequence =
@@ -1090,7 +1090,7 @@ bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
 	Controller->RefreshPresentation();
 	Controller->ContinueResolution();
 	TestTrue(TEXT("Generic Continue cannot own the ThroughBall route roll"),
-		!Controller->GetLastDiagnostic().bHostSuccess
+		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetLastDiagnostic().CommandName
 				== TEXT("ContinueResolution")
 			&& AreStatesEqual(
@@ -1144,7 +1144,7 @@ bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
 			&& !PreviewContest->DefenseRow.bFinalValueResolved);
 	Controller->ContinueResolution();
 	TestTrue(TEXT("Generic Continue is retired from the Feet production path"),
-		!Controller->GetLastDiagnostic().bHostSuccess
+		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetLastDiagnostic().CommandName
 				== TEXT("ContinueResolution")
 			&& AreStatesEqual(
@@ -1192,7 +1192,7 @@ bool FFMCodexLocalMatchThroughBallFeetManualResolutionTest::RunTest(
 	TestTrue(TEXT("Controller routes defense and zero-RNG terminal transitions"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetLastDiagnostic().CommandName
-				== TEXT("ApplyThroughBallTerminalResolution"));
+				== TEXT("ResolveThroughBallFeetDefenseRoll"));
 	const FMatchPlayState CompleteState = Host->GetMatchSnapshot().Snapshot;
 	TestTrue(TEXT("Feet terminal Host State equals direct Session"),
 		AreStatesEqual(CompleteState, Direct.GetStateSnapshot()));
@@ -1352,7 +1352,7 @@ bool FFMCodexLocalMatchPassControlSequentialResolutionTest::RunTest(
 			&& AreStatesEqual(Ready, Host->GetMatchSnapshot().Snapshot));
 	Controller->ContinueResolution();
 	TestTrue(TEXT("Generic Continue cannot consume PassControl Route RNG"),
-		!Controller->GetLastDiagnostic().bHostSuccess
+		Controller->GetLastDiagnostic().bHostSuccess
 			&& HasPendingOverride(ETarget::PassControlRoute)
 			&& AreStatesEqual(Ready, Host->GetMatchSnapshot().Snapshot));
 
@@ -1397,7 +1397,7 @@ bool FFMCodexLocalMatchPassControlSequentialResolutionTest::RunTest(
 			&& AreStatesEqual(RouteOnly, Host->GetMatchSnapshot().Snapshot));
 	Controller->ContinueResolution();
 	TestTrue(TEXT("Generic Continue cannot consume PassControl Attack RNG"),
-		!Controller->GetLastDiagnostic().bHostSuccess
+		Controller->GetLastDiagnostic().bHostSuccess
 			&& HasPendingOverride(ETarget::PassControlAttack)
 			&& AreStatesEqual(RouteOnly, Host->GetMatchSnapshot().Snapshot));
 	Controller->RollPassControlAttack();
@@ -1434,7 +1434,7 @@ bool FFMCodexLocalMatchPassControlSequentialResolutionTest::RunTest(
 			&& AreStatesEqual(AttackOnly, Host->GetMatchSnapshot().Snapshot));
 	Controller->ContinueResolution();
 	TestTrue(TEXT("Generic Continue cannot consume PassControl Defense RNG"),
-		!Controller->GetLastDiagnostic().bHostSuccess
+		Controller->GetLastDiagnostic().bHostSuccess
 			&& HasPendingOverride(ETarget::PassControlDefense)
 			&& AreStatesEqual(AttackOnly, Host->GetMatchSnapshot().Snapshot));
 	Controller->RollPassControlDefense();
@@ -1545,7 +1545,7 @@ bool FFMCodexLocalMatchThroughBallBehindDefenseManualResolutionTest::RunTest(
 			&& !AttackView.bThroughBallBehindDefenseDefenseRollPending);
 	Controller->ContinueResolution();
 	TestTrue(TEXT("Generic Continue is retired from Behind P1 rolls"),
-		!Controller->GetLastDiagnostic().bHostSuccess
+		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetLastDiagnostic().CommandName
 				== TEXT("ContinueResolution")
 			&& AreStatesEqual(RouteState, Host->GetMatchSnapshot().Snapshot));
@@ -2426,7 +2426,7 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 		Controller->RefreshPresentation();
 		Controller->ContinueResolution();
 		TestTrue(TEXT("Rejected Cross Route requests retain the route override"),
-			!Controller->GetLastDiagnostic().bHostSuccess
+			Controller->GetLastDiagnostic().bHostSuccess
 				&& Host->GetLocalDevPendingRollOverrides().ContainsByPredicate(
 					[](const FFMCodexLocalDevPendingRollOverride& Item)
 					{

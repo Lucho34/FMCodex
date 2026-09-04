@@ -1043,6 +1043,25 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 	case EFMCodexUMGInteractionCategory::AdvanceAfterTerminal:
 		MatchController->AdvanceAfterTerminal();
 		break;
+	case EFMCodexUMGInteractionCategory::RollSetPieceType:
+	case EFMCodexUMGInteractionCategory::ConfirmSetPieceCarrier:
+	case EFMCodexUMGInteractionCategory::RollShortFreeKickDirectAttack:
+	case EFMCodexUMGInteractionCategory::RollShortFreeKickDirectDefense:
+	case EFMCodexUMGInteractionCategory::RollShortFreeKickAngled:
+	case EFMCodexUMGInteractionCategory::RollLongFreeKickDirectAttack:
+	case EFMCodexUMGInteractionCategory::RollLongFreeKickDirectDefense:
+	case EFMCodexUMGInteractionCategory::RollLongFreeKickPower:
+	case EFMCodexUMGInteractionCategory::RollPenaltyDirectAttack:
+	case EFMCodexUMGInteractionCategory::RollPenaltyDirectDefense:
+	case EFMCodexUMGInteractionCategory::RollPenaltyPanenka:
+	case EFMCodexUMGInteractionCategory::DraftCornerAttacker:
+	case EFMCodexUMGInteractionCategory::DraftCornerDefender:
+	case EFMCodexUMGInteractionCategory::RollCornerParticipantSelection:
+	case EFMCodexUMGInteractionCategory::RollCornerRoute:
+	case EFMCodexUMGInteractionCategory::RollCornerAttack:
+	case EFMCodexUMGInteractionCategory::RollCornerDefense:
+		MatchController->SubmitProjectedPrimaryPlayerIntent();
+		break;
 	default:
 		MatchController->ContinueResolution();
 		break;
@@ -1450,7 +1469,10 @@ void UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested(
 
 void UFMCodexLocalMatchScreenWidget::HandleSetPiecePrimaryRequested()
 {
-	RequestContinueResolution();
+	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
+	{
+		MatchController->SubmitProjectedPrimaryPlayerIntent();
+	}
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleCornerReturnRequested()

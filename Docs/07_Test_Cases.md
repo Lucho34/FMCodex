@@ -857,3 +857,13 @@
 - Terminal secrecy 必须覆盖 scorer、outcome、当前进球的 score 与 GoalHistory 同步 withheld；公开后 A/B DTO 一致。Match ended / FullTime production result必须完整公开。
 - Stage gate 为 focused `FMCodex.MatchPlayRuntime.NetworkBoundary`、完整 `FMCodex.MatchPlayRuntime.AuthoritativeSession`、完整 `FMCodex.MatchPlayRuntime`、完整 `FMCodex.LocalPlay`、完整 `FMCodex.CoreRules`、Editor Development build 与 `git diff --check`。
 
+## Shared Match Host Port 与 Server Coordinator（Stage 7.1）
+
+- HostPort boundary 必须在 Session/provider 前拒绝无 active match、`ServerInternalAction`、未知/错误 payload type；通过新 port 重跑 wrong-side、stale 与 duplicate，拒绝时 State/RNG 不变。生产 Controller source 不得直接调用 Session 或从 raw snapshot 决定 internal command。
+- stable-state 矩阵必须证明 waiting Full D12、deployment、participant/method choice、玩家 roll、`TerminalPendingAdvance` 与 `MatchEnded` 上 Coordinator no-op且不消费 RNG。Terminal 不得自动 advance，MatchEnded 不得创建 Recovery 或新攻击。
+- equivalence 覆盖相同 initial State/provider 下 `Local HostPort + Coordinator` 与 canonical direct Session/internal command sequence的最终权威 State；代表流程至少包含 Full D12 ordinary、AP1 sending-off、no-legal participant、ordinary Formula→terminal、set piece、Corner 与完整比赛。
+- AP1 provider failure 必须无 partial mutation、停止且可安全 retry；有界 loop必须防止 malformed State 无限推进。Coordinator 只能经 Session mutation，并在真正 PlayerIntent wait、terminal、match end或明确失败停止。
+- 遗留 generic `ContinueResolution` 在玩家 typed roll 等稳定等待点只允许触发 coordinator no-op：成功返回但 State/RNG 不变，且绝不代替该玩家意图。此断言取代旧章节中的本地 rejection 细节，不改变 typed action ownership。
+- ViewPort 测试必须从 Host 端分别构建 A/B viewer-safe DTO，并继续验证 Corner sealed nomination、automatic scorer raw D6、unrevealed rolls、score与GoalHistory不泄漏；生产 Controller refresh不得调用 raw `GetMatchSnapshot()`。
+- Stage gate 运行 focused HostPort/Coordinator、`FMCodex.MatchPlayRuntime.NetworkBoundary`、完整 AuthoritativeSession/MatchPlayRuntime/LocalPlay/CoreRules、Editor Development build 与 `git diff --check`。本 Stage 无意改变可见 UI，不要求独立 USER PIE。
+

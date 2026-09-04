@@ -258,4 +258,14 @@
 - 客户端读模型通过 `FFMCodexLocalMatchInteractionView::BuildForViewer(State, Rules, ViewerSide, Disclosure)` 生成。默认 disclosure 全部关闭；未公开的 D12、定位球类型、参与者/路线/contest rolls、route-derived action、terminal outcome、score 与当前进球历史必须物理缺席，而不只是 UI 隐藏。
 - Corner 在双方锁定前只向各自 viewer 投影己方 ordered nominations，对手只看到 lock acknowledgement；双方锁定后两份 viewer DTO 才能同时公开列表。`AutomaticScorerD6` 永不进入 InteractionView。
 - LocalPlay 每次刷新分别生成 Player A 与 Player B 的 viewer-safe DTO，再选择当前 hot-seat viewer。现阶段传入 full disclosure 以保留既有本地 reveal/timer 体验；该参数是 server-owned presentation policy seam，不授予 UMG authority。
-- PlayerController 的普通 presentation refresh 仍需读取 Host snapshot 作为本地 server-side projector 输入，`ContinueResolution` 仍有 legacy raw-state dispatch。两者明确延期到 Stage 7.1 的 HostPort / ClientViewPort 拆分；本 Stage 没有实现 transport、RPC、replication、retry protocol 或 reconnect。
+- Stage 7.1 已移除 PlayerController 的普通 raw snapshot 投影与内部动作 dispatch。生产 Controller 只通过 `IMatchPlayPlayerIntentPort` 提交 typed `PlayerIntent`，并通过 `IFMCodexMatchClientViewPort` 获取 Host 端 `BuildForViewer` 结果；测试/DEV 可保留 Local Host 的 server-side snapshot utility，但不进入普通 UI 路径。
+
+## Shared Match Host Port 与 Server Coordinator（Stage 7.1）
+
+- `IMatchPlayPlayerIntentPort` 是 transport-neutral 的玩家写边界。`FMatchPlayPlayerIntent` 只组合明确 `CommandKind` 与既有 correlated request DTO，不接受 provider、raw roll、Formula result、Skill rules、Recovery choice 或 UObject identity。Host 必须先用 command classification 拒绝 `ServerInternalAction` 与未知 command，再做 payload type dispatch。
+- `FMatchPlayServerCoordinator` 位于 MatchPlayRuntime，只引用 `FMatchPlayAuthoritativeSession` 与该 Session 固定的 Skill rules，不拥有 State、provider、Viewer 或 UI。它在成功玩家意图和 bootstrap 后检查权威 State，通过 Session 的 serialized command 执行 AP1、no-legal、deterministic route/formula/terminal 等内部 continuation，直到真正的玩家输入、`TerminalPendingAdvance`、`MatchEnded`、错误或有界 safety limit。
+- Session 仍是唯一 State mutation/adoption owner；Coordinator 不复制 legality、Formula、战术规则、RNG mapping、Recovery 或 terminal transition。D6/Recovery/DEV override 等 provider 仍由 Local Host/server runtime 持有并由 Session command消费。
+- `IFMCodexMatchClientViewPort` 是独立只读边界。Local Host 在服务端持有 raw State 与 rules，按 `ViewerSide + Disclosure` 调用 `BuildForViewer` 并只返回 `InteractionView`；Controller/UMG 不获得 projector input 或 unrestricted State。
+- Local GameMode 当前拥有 providers、Session 与 Coordinator，并同时实现本地同步 command/read adapter。Controller 仍负责本地输入组装、presentation timing、诊断与新比赛/DEV 本地控制，但不再选择 `ServerInternalAction`。遗留 `ContinueResolution()` 仅请求 Host 把服务器 runtime 推进到稳定状态，不读取 State，也不映射内部 command；正常玩家主操作由投影出的 typed intent 路由。
+- 本节取代旧战术章节中“generic Continue 在 typed player-roll pending 上本地拒绝”的实现细节：Stage 7.1 后它是 coordinator stable-state no-op，不会代替玩家 roll、不消费 RNG也不改变 State；所有 production CTA 仍必须派发对应 typed PlayerIntent。
+- 未来 Listen Server 的 host player 与 remote RPC adapter 必须调用同一个 PlayerIntent Host boundary 和 Coordinator；不得让 host Controller 直达 Session。Stage 7.1 不定义 RPC envelope、connection identity、ACK/revision、replication、reconnect 或 server launch flow。

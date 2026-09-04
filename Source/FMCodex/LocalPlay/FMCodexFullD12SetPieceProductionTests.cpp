@@ -120,7 +120,7 @@ namespace FMCodexFullD12SetPieceProductionTests
 			Test.AddError(TEXT("Full D12 did not project the Set Piece type CTA."));
 			return false;
 		}
-		World.Controller->ContinueResolution();
+		World.Controller->SubmitProjectedPrimaryPlayerIntent();
 		if (!World.Controller->GetLastDiagnostic().bHostSuccess
 			|| World.Controller->GetInteractionView().SetPieceType
 				!= ExpectedType
@@ -361,7 +361,7 @@ namespace FMCodexFullD12SetPieceProductionTests
 			Test.AddError(TEXT("Set Piece method roll overrides were rejected."));
 			return false;
 		}
-		World.Controller->ContinueResolution();
+		World.Controller->SubmitProjectedPrimaryPlayerIntent();
 		if (!World.Controller->GetLastDiagnostic().bHostSuccess)
 		{
 			Test.AddError(TEXT("First Set Piece method roll failed."));
@@ -376,7 +376,7 @@ namespace FMCodexFullD12SetPieceProductionTests
 				Test.AddError(TEXT("High direct attack roll skipped the defense roll."));
 				return false;
 			}
-			World.Controller->ContinueResolution();
+			World.Controller->SubmitProjectedPrimaryPlayerIntent();
 		}
 		const auto& Terminal = World.Controller->GetInteractionView();
 		if (!World.Controller->GetLastDiagnostic().bHostSuccess
@@ -464,7 +464,7 @@ namespace FMCodexFullD12SetPieceProductionTests
 			Test.AddError(TEXT("Presentation fixture could not configure method rolls."));
 			return false;
 		}
-		World.Controller->ContinueResolution();
+		World.Controller->SubmitProjectedPrimaryPlayerIntent();
 		if (!World.Controller->GetLastDiagnostic().bHostSuccess)
 		{
 			Test.AddError(TEXT("Presentation fixture first roll failed."));
@@ -478,7 +478,7 @@ namespace FMCodexFullD12SetPieceProductionTests
 				Test.AddError(TEXT("Opposed presentation fixture omitted defense D6."));
 				return false;
 			}
-			World.Controller->ContinueResolution();
+			World.Controller->SubmitProjectedPrimaryPlayerIntent();
 		}
 		if (!World.Controller->GetLastDiagnostic().bHostSuccess
 			|| !World.Controller->GetInteractionView().bTerminalPendingAdvance)
@@ -532,30 +532,29 @@ bool FFMCodexFullD12EntryAndAP1ProductionTest::RunTest(
 			&& SetOverride(*AP1World.Controller,
 				ETarget::SendingOffSelection, 0));
 	AP1World.Controller->RollDemoTacticalPoints();
-	TestTrue(TEXT("D12 1 waits for reveal before automatic AP1 continuation"),
+	TestTrue(TEXT("D12 1 automatically resolves AP1 before presentation reveal"),
 		AP1World.Controller->GetInteractionView().RawInitialD12 == 1
 			&& AP1World.Controller->GetInteractionView().RouteKind
 				== EMatchPlayCurrentAttackRouteKind::SendingOff
-			&& AP1World.Controller->GetInteractionView().InteractionCategory
-				== ECategory::ResolveSendingOff);
+			&& AP1World.Controller->GetInteractionView().bTerminalPendingAdvance);
 	const int32 AP1ScoreA = AP1World.Controller->GetInteractionView().PlayerAScore;
 	const int32 AP1ScoreB = AP1World.Controller->GetInteractionView().PlayerBScore;
-	AP1World.Controller->NotifyEntryRevealComplete();
 	const FMatchPlayState TerminalSnapshot =
 		AP1World.Host->GetMatchSnapshot().Snapshot;
-	TestTrue(TEXT("AP1 reveal dispatches one authoritative terminal resolution"),
+	TestTrue(TEXT("Player entry owns the command while coordinator owns AP1"),
 		AP1World.Controller->GetLastDiagnostic().bHostSuccess
 			&& AP1World.Controller->GetLastDiagnostic().CommandName
-				== TEXT("ResolveSendingOff")
+				== TEXT("RequestInitialActionPointRoll")
 			&& AP1World.Controller->GetInteractionView().bTerminalPendingAdvance
 			&& AP1World.Controller->GetInteractionView().PlayerAScore == AP1ScoreA
 			&& AP1World.Controller->GetInteractionView().PlayerBScore == AP1ScoreB
 			&& !AP1World.Controller->GetInteractionView()
 				.SendingOffEjectedCardId.IsNone());
 	AP1World.Controller->NotifyEntryRevealComplete();
-	TestTrue(TEXT("Duplicate reveal notification does not dispatch AP1 again"),
+	AP1World.Controller->NotifyEntryRevealComplete();
+	TestTrue(TEXT("Reveal notifications are presentation-only and do not dispatch AP1"),
 		AP1World.Controller->GetLastDiagnostic().CommandName
-			== TEXT("ResolveSendingOff")
+			== TEXT("RequestInitialActionPointRoll")
 			&& AP1World.Host->GetMatchSnapshot().Snapshot
 				.CurrentAttack.SendingOffRoute.EjectedCardId
 				== TerminalSnapshot.CurrentAttack.SendingOffRoute.EjectedCardId);
@@ -755,7 +754,7 @@ bool FFMCodexCornerDraftAndResolutionProductionTest::RunTest(
 
 	TestTrue(TEXT("Corner shared participant override accepted"),
 		SetOverride(*Controller, ETarget::CornerParticipantSelection, 3));
-	Controller->ContinueResolution();
+	Controller->SubmitProjectedPrimaryPlayerIntent();
 	TestTrue(TEXT("Shared D6 binds both participants and reaches intent"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().bHasCornerSharedParticipantD6
@@ -841,7 +840,7 @@ bool FFMCodexCornerDraftAndResolutionProductionTest::RunTest(
 		FString(TEXT("1–4：高球｜5–6：低平球")));
 	TestTrue(TEXT("Corner route override accepted"),
 		SetOverride(*Controller, ETarget::CornerRoute, 5));
-	Controller->ContinueResolution();
+	Controller->SubmitProjectedPrimaryPlayerIntent();
 	TestTrue(TEXT("Corner route roll persists intended and actual route"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().bHasCornerRouteD6
@@ -893,7 +892,7 @@ bool FFMCodexCornerDraftAndResolutionProductionTest::RunTest(
 	TestTrue(TEXT("Corner attack/defense overrides accepted"),
 		SetOverride(*Controller, ETarget::CornerAttack, 6)
 			&& SetOverride(*Controller, ETarget::CornerDefense, 1));
-	Controller->ContinueResolution();
+	Controller->SubmitProjectedPrimaryPlayerIntent();
 	TestTrue(TEXT("Corner attack roll hands off to defending side"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().bHasSetPieceAttackD6
@@ -907,7 +906,7 @@ bool FFMCodexCornerDraftAndResolutionProductionTest::RunTest(
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
 	const auto BeforeDecisiveHeader = Screen->GetMatchHeader()->GetPresentation();
-	Controller->ContinueResolution();
+	Controller->SubmitProjectedPrimaryPlayerIntent();
 	TestTrue(TEXT("Corner defense roll reaches Formula and explicit terminal"),
 		Controller->GetLastDiagnostic().bHostSuccess
 			&& Controller->GetInteractionView().bHasSetPieceDefenseD6
@@ -1376,7 +1375,7 @@ bool FFMCodexShortSetPieceOrdinarySurfaceRepairTest::RunTest(
 			&& DefensePending.InlineFormula.bDefenseRowActive
 			&& DefensePending.InlineFormula.PrimaryAction.Action.Label
 				== TEXT("防守方掷点"));
-	DirectWorld.Controller->ContinueResolution();
+	DirectWorld.Controller->SubmitProjectedPrimaryPlayerIntent();
 	const auto DirectTerminal = ProjectDirect();
 	const auto& DirectTerminalView = DirectWorld.Controller->GetInteractionView();
 	const FString DirectTakerName = CardDisplayName(
@@ -1447,8 +1446,8 @@ bool FFMCodexShortSetPieceOrdinarySurfaceRepairTest::RunTest(
 			ETarget::ShortFreeKickDirectAttack, 1)
 			&& SetOverride(*MissWorld.Controller,
 				ETarget::ShortFreeKickDirectDefense, 6));
-	MissWorld.Controller->ContinueResolution();
-	MissWorld.Controller->ContinueResolution();
+	MissWorld.Controller->SubmitProjectedPrimaryPlayerIntent();
+	MissWorld.Controller->SubmitProjectedPrimaryPlayerIntent();
 	const auto MissTerminal = FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		MissWorld.Controller->GetInteractionView(),
 		MissWorld.Controller->GetResolutionFeedback(), FString());
@@ -1504,7 +1503,7 @@ bool FFMCodexShortSetPieceOrdinarySurfaceRepairTest::RunTest(
 		SetOverride(*AngledWorld.Controller, ETarget::ShortFreeKickAngledA, 4)
 			&& SetOverride(*AngledWorld.Controller,
 				ETarget::ShortFreeKickAngledB, 5));
-	AngledWorld.Controller->ContinueResolution();
+	AngledWorld.Controller->SubmitProjectedPrimaryPlayerIntent();
 	const auto AngledTerminal = ProjectAngled();
 	const auto& AngledView = AngledWorld.Controller->GetInteractionView();
 	const FString AngledTakerName = CardDisplayName(
@@ -1840,7 +1839,7 @@ bool FFMCodexSetPieceP0HelpersAndPairDisclosureTest::RunTest(
 				&& Project().InlineFormula.RollHelperLabel == TEXT("1–2：直接射偏"));
 		TestTrue(TEXT("Long attack override accepted"),
 			SetOverride(*World.Controller, ETarget::LongFreeKickDirectAttack, AttackD6));
-		World.Controller->ContinueResolution();
+		World.Controller->SubmitProjectedPrimaryPlayerIntent();
 		TestTrue(TEXT("Accepted Long attack clears helper for defense or immediate terminal"),
 			Project().InlineFormula.RollHelperLabel.IsEmpty()
 				&& World.Controller->GetInteractionView().InteractionCategory
@@ -1867,7 +1866,7 @@ bool FFMCodexSetPieceP0HelpersAndPairDisclosureTest::RunTest(
 				&& !Project().InlineFormula.bShowFormulaRows);
 		TestTrue(TEXT("Panenka override accepted"),
 			SetOverride(*World.Controller, ETarget::PenaltyPanenka, PanenkaD6));
-		World.Controller->ContinueResolution();
+		World.Controller->SubmitProjectedPrimaryPlayerIntent();
 		TestTrue(TEXT("Panenka terminal clears helper without fabricating a pair or formula"),
 			Project().InlineFormula.RollHelperLabel.IsEmpty()
 				&& !Project().InlineFormula.bShowFormulaRows
@@ -2079,7 +2078,7 @@ bool FFMCodexCornerRouteCopyAndNarrativeTest::RunTest(const FString& Parameters)
 				if (Count < 3) Controller->ConfirmSetPieceDraft();
 			}
 			SetOverride(*Controller, ETarget::CornerParticipantSelection, 1);
-			Controller->ContinueResolution();
+			Controller->SubmitProjectedPrimaryPlayerIntent();
 			Controller->SubmitCornerIntent(Intent);
 			auto Project = [&]() { return FFMCodexLocalMatchUMGPresentationBuilder::Build(
 				Controller->GetInteractionView(), Controller->GetResolutionFeedback(), FString()); };
@@ -2087,7 +2086,7 @@ bool FFMCodexCornerRouteCopyAndNarrativeTest::RunTest(const FString& Parameters)
 				Project().InlineFormula.RollHelperLabel,
 				FFMCodexTacticalDetailPresentationBuilder::BuildCornerRouteHint(Intent).ToString());
 			SetOverride(*Controller, ETarget::CornerRoute, 5);
-			Controller->ContinueResolution();
+			Controller->SubmitProjectedPrimaryPlayerIntent();
 			const auto Formula = Project().InlineFormula;
 			const int32 Bonus = Controller->GetInteractionView().CornerCandidateBonus;
 			const auto& LargerRow = Counts.Key > Counts.Value ? Formula.AttackRow : Formula.DefenseRow;
@@ -2101,8 +2100,8 @@ bool FFMCodexCornerRouteCopyAndNarrativeTest::RunTest(const FString& Parameters)
 			const bool bGoal = Counts.Key > Counts.Value;
 			SetOverride(*Controller, ETarget::CornerAttack, bGoal ? 6 : 1);
 			SetOverride(*Controller, ETarget::CornerDefense, bGoal ? 1 : 6);
-			Controller->ContinueResolution();
-			Controller->ContinueResolution();
+			Controller->SubmitProjectedPrimaryPlayerIntent();
+			Controller->SubmitProjectedPrimaryPlayerIntent();
 			const auto& View = Controller->GetInteractionView();
 			const auto Terminal = Project().InlineFormula;
 			TestTrue(TEXT("Corner narrative uses actual Runner and Goal/NoGoal without invented save or miss cause"),
@@ -2156,7 +2155,7 @@ bool FFMCodexPenaltyScoreDisclosureTest::RunTest(const FString& Parameters)
 		Controller->SubmitPenaltyMethod(EMatchPlayPenaltyMethod::Direct);
 		SetOverride(*Controller, ETarget::PenaltyDirectAttack, bGoal ? 6 : 1);
 		SetOverride(*Controller, ETarget::PenaltyDirectDefense, bGoal ? 1 : 6);
-		Controller->ContinueResolution();
+		Controller->SubmitProjectedPrimaryPlayerIntent();
 		auto Project = [&]() { return FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			Controller->GetInteractionView(), Controller->GetResolutionFeedback(), FString(), EInitialTurnOrderPlayer::PlayerB); };
 		auto* Screen = NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
@@ -2164,7 +2163,7 @@ bool FFMCodexPenaltyScoreDisclosureTest::RunTest(const FString& Parameters)
 		Screen->SetMatchController(Controller);
 		Screen->RefreshFromPresentation(Project());
 		const auto Before = Screen->GetMatchHeader()->GetPresentation();
-		Controller->ContinueResolution();
+		Controller->SubmitProjectedPrimaryPlayerIntent();
 		const auto Terminal = Project();
 		TestEqual(TEXT("Penalty fixture proves both authoritative Goal and NoGoal"), Controller->GetInteractionView().bSetPieceGoal, bGoal);
 		if (!bGoal) TestEqual(TEXT("NoGoal does not replay a prior score delta"), Terminal.Header.ScoreLabel, Before.ScoreLabel);
@@ -2185,7 +2184,7 @@ bool FFMCodexPenaltyScoreDisclosureTest::RunTest(const FString& Parameters)
 			!Reconstructed->IsInlineFormulaRevealInputBlocked()
 				&& Reconstructed->GetInlineFormulaSurface()->GetPresentation().bNarrativeAvailable
 				&& Reconstructed->GetMatchHeader()->GetDisplayedScoreLabel() == Terminal.Header.ScoreLabel);
-		Controller->ContinueResolution();
+		Controller->SubmitProjectedPrimaryPlayerIntent();
 		Screen->RefreshFromPresentation(Project());
 		TestTrue(TEXT("Advance releases presentation without dropping the disclosed goal"),
 			!Screen->IsInlineFormulaRevealInputBlocked()
@@ -2203,7 +2202,7 @@ bool FFMCodexPenaltyScoreDisclosureTest::RunTest(const FString& Parameters)
 			Controller->SubmitPenaltyMethod(EMatchPlayPenaltyMethod::Panenka);
 			Screen->RefreshFromPresentation(Project());
 			SetOverride(*Controller, ETarget::PenaltyPanenka, 6);
-			Controller->ContinueResolution();
+			Controller->SubmitProjectedPrimaryPlayerIntent();
 			Screen->RefreshFromPresentation(Project());
 			Screen->PauseInlineFormulaRevealTimerForTesting();
 			TestTrue(TEXT("New scoring branch is active with score concealed before reset"),

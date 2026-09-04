@@ -239,6 +239,48 @@ namespace FMCodexLocalMatchHostTests
 		return false;
 	}
 
+	class FSingleD12Provider final : public IMatchPlayAttackEntryRollProvider
+	{
+	public:
+		explicit FSingleD12Provider(const int32 InRawD12)
+			: RawD12(InRawD12)
+		{
+		}
+
+		virtual FMatchPlayAttackEntryRollProviderResult RollD12(
+			EMatchPlayAttackEntryRollPurpose Purpose) override
+		{
+			FMatchPlayAttackEntryRollProviderResult Result;
+			Result.bSuccess = true;
+			Result.RawRoll = RawD12;
+			return Result;
+		}
+
+		virtual FMatchPlayAttackEntryRollProviderResult RollD6(
+			EMatchPlayAttackEntryRollPurpose Purpose) override
+		{
+			FMatchPlayAttackEntryRollProviderResult Result;
+			Result.ErrorCode =
+				EMatchPlayAttackEntryRollProviderErrorCode::ProviderFailure;
+			Result.ErrorMessage = TEXT("Unexpected D6 request.");
+			return Result;
+		}
+
+		virtual FMatchPlayAttackEntrySelectionProviderResult SelectUniformIndex(
+			EMatchPlayAttackEntryRollPurpose Purpose,
+			int32 CandidateCount) override
+		{
+			FMatchPlayAttackEntrySelectionProviderResult Result;
+			Result.ErrorCode =
+				EMatchPlayAttackEntryRollProviderErrorCode::ProviderFailure;
+			Result.ErrorMessage = TEXT("Unexpected selection request.");
+			return Result;
+		}
+
+	private:
+		int32 RawD12 = 0;
+	};
+
 	bool AreStatesEqual(
 		const FMatchPlayState& Left,
 		const FMatchPlayState& Right)
@@ -248,6 +290,41 @@ namespace FMCodexLocalMatchHostTests
 			&Right,
 			0);
 	}
+
+	FMatchPlayFullD12EntryRequest MakeFullD12Request(
+		const FMatchPlayState& State)
+	{
+		FMatchPlayFullD12EntryRequest Request;
+		Request.RequestingSide = State.RuntimeState.CurrentAttackingPlayer;
+		Request.ExpectedAttackSequence =
+			static_cast<int64>(State.RuntimeState.PlayerAState.UsedAttackCount)
+			+ static_cast<int64>(State.RuntimeState.PlayerBState.UsedAttackCount)
+			+ 1;
+		return Request;
+	}
+
+	template <typename TRequest>
+	FMatchPlayPlayerIntentSubmissionResult SubmitIntent(
+		AFMCodexLocalMatchHostGameMode& Host,
+		const EMatchPlayAuthoritativeCommandKind CommandKind,
+		const TRequest& Request)
+	{
+		return Host.SubmitPlayerIntent(
+			FMatchPlayPlayerIntent::Create(CommandKind, Request));
+	}
+
+#if !UE_BUILD_SHIPPING
+	bool SetRollOverride(
+		AFMCodexLocalMatchHostGameMode& Host,
+		const EFMCodexLocalDevRollTarget Target,
+		const int32 Value)
+	{
+		FFMCodexLocalDevRollOverrideRequest Request;
+		Request.Target = Target;
+		Request.Value = Value;
+		return Host.SetLocalDevRollOverride(Request).bSuccess;
+	}
+#endif
 
 	bool LoadProductionSource(
 		const TCHAR* RelativePath,
@@ -407,10 +484,10 @@ bool FFMCodexLocalMatchHostSurfaceAndFailureTest::RunTest(
 		CountOccurrences(Source,
 			TEXT("ActiveMatchRuntime->AuthoritativeSession.BeginOrdinaryAttack(")),
 		2);
-	TestEqual(TEXT("Public snapshot, tactical preflight, and DEV route identity have three reads"),
+	TestEqual(TEXT("Snapshot, view port, tactical preflight, and DEV route identity have four reads"),
 		CountOccurrences(Source,
 			TEXT("ActiveMatchRuntime->AuthoritativeSession.GetStateSnapshot()")),
-		3);
+		4);
 	for (const TCHAR* Delegation : {
 		TEXT(".DeployOrdinary("),
 		TEXT(".DeployGoalkeeper("),
@@ -1198,6 +1275,315 @@ bool FFMCodexLocalMatchHostExceptionalRoutingTest::RunTest(
 		Decline.bSuccess);
 	TestFalse(TEXT("Marker decline canonically completes attack"),
 		DeclineHost->GetMatchSnapshot().Snapshot.bHasCurrentAttack);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayHostPortBoundaryTest,
+	"FMCodex.MatchPlayRuntime.HostPort.BoundaryValidationAndViewerProjection",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayHostPortBoundaryTest::RunTest(const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchHostTests;
+	(void)Parameters;
+
+	FScopedLocalMatchTestWorld TestWorld;
+	AFMCodexLocalMatchHostGameMode* Host = TestWorld.GetHost();
+	TestNotNull(TEXT("Host port fixture exists"), Host);
+	if (Host == nullptr)
+	{
+		return false;
+	}
+
+	const auto PreStart = Host->SubmitPlayerIntent({});
+	TestFalse(TEXT("Port rejects before match start"), PreStart.bSuccess);
+	TestEqual(TEXT("Pre-start rejection is explicit"), PreStart.ErrorCode,
+		EMatchPlayPlayerIntentPortErrorCode::NoActiveMatch);
+	const FMatchPlayOpeningInitializeInput Input =
+		MakeInteractionInput(TEXT("HostPortBoundary"));
+	TestTrue(TEXT("Host port match starts"),
+		Host->StartNewLocalMatch(Input, {}, 71101).bSuccess);
+	FSingleD12Provider DirectProvider(6);
+	FMatchPlayAuthoritativeSession DirectSession(DirectProvider);
+	TestTrue(TEXT("Direct reference Session starts"),
+		DirectSession.InitializeMatch(Input).OpeningResult.bSuccess);
+
+	const FMatchPlayState Initial = Host->GetMatchSnapshot().Snapshot;
+	FMatchPlayPlayerIntent Internal;
+	Internal.CommandKind =
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalCarrier;
+	const auto InternalRejected = Host->SubmitPlayerIntent(Internal);
+	TestFalse(TEXT("ServerInternalAction cannot enter player port"),
+		InternalRejected.bSuccess);
+	TestEqual(TEXT("Internal rejection has exact port code"),
+		InternalRejected.ErrorCode,
+		EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent);
+	TestTrue(TEXT("Internal rejection occurs before Session mutation"),
+		AreStatesEqual(Initial, Host->GetMatchSnapshot().Snapshot));
+
+	FMatchPlayPlayerIntent WrongPayload;
+	WrongPayload.CommandKind =
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll;
+	WrongPayload.Payload.Set<FMatchPlayCornerRollRequest>({});
+	const auto PayloadRejected = Host->SubmitPlayerIntent(WrongPayload);
+	TestEqual(TEXT("Mismatched DTO is rejected at transport boundary"),
+		PayloadRejected.ErrorCode,
+		EMatchPlayPlayerIntentPortErrorCode::PayloadTypeMismatch);
+	TestTrue(TEXT("Payload mismatch preserves State"),
+		AreStatesEqual(Initial, Host->GetMatchSnapshot().Snapshot));
+
+	for (const EInitialTurnOrderPlayer Viewer : {
+		EInitialTurnOrderPlayer::PlayerA,
+		EInitialTurnOrderPlayer::PlayerB })
+	{
+		FFMCodexMatchClientViewRequest ViewRequest;
+		ViewRequest.ViewerSide = Viewer;
+		ViewRequest.Disclosure =
+			FFMCodexLocalMatchViewerDisclosure::FullyDisclosed();
+		const auto View = Host->GetViewForViewer(ViewRequest);
+		TestTrue(TEXT("Viewer-safe read port succeeds"), View.bSuccess);
+		TestTrue(TEXT("Read port returns active match presentation"),
+			View.View.bMatchActive);
+	}
+
+	const auto Stable = Host->AdvanceServerCoordinator();
+	TestTrue(TEXT("Coordinator stable-state no-op succeeds"), Stable.bSuccess);
+	TestFalse(TEXT("Stable-state no-op does not claim mutation"),
+		Stable.bStateAdvanced);
+	TestEqual(TEXT("Stable state waits for player entry intent"),
+		Stable.StopReason,
+		EMatchPlayServerCoordinatorStopReason::WaitingForPlayerIntent);
+	TestTrue(TEXT("Stable no-op preserves exact State"),
+		AreStatesEqual(Initial, Host->GetMatchSnapshot().Snapshot));
+
+	FMatchPlayFullD12EntryRequest WrongSide = MakeFullD12Request(Initial);
+	WrongSide.RequestingSide = OtherPlayer(WrongSide.RequestingSide);
+	const auto WrongSideResult = SubmitIntent(*Host,
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		WrongSide);
+	TestFalse(TEXT("Wrong-side request is rejected through new port"),
+		WrongSideResult.bSuccess);
+	TestTrue(TEXT("Wrong-side rejection is Session-authored"),
+		WrongSideResult.bPlayerIntentAccepted
+			&& !WrongSideResult.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess);
+	TestTrue(TEXT("Wrong-side rejection preserves State"),
+		AreStatesEqual(Initial, Host->GetMatchSnapshot().Snapshot));
+
+	FMatchPlayFullD12EntryRequest Stale = MakeFullD12Request(Initial);
+	Stale.ExpectedAttackSequence += 7;
+	const auto StaleResult = SubmitIntent(*Host,
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		Stale);
+	TestFalse(TEXT("Stale request is rejected through new port"),
+		StaleResult.bSuccess);
+	TestTrue(TEXT("Stale rejection preserves State"),
+		AreStatesEqual(Initial, Host->GetMatchSnapshot().Snapshot));
+
+#if !UE_BUILD_SHIPPING
+	TestTrue(TEXT("Deterministic ordinary entry override installs"),
+		SetRollOverride(*Host, EFMCodexLocalDevRollTarget::FullD12, 6));
+#endif
+	const FMatchPlayFullD12EntryRequest Valid = MakeFullD12Request(Initial);
+	const auto Accepted = SubmitIntent(*Host,
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		Valid);
+	TestTrue(TEXT("Valid player intent is accepted through new port"),
+		Accepted.bSuccess && Accepted.bPlayerIntentAccepted);
+	TestTrue(TEXT("Direct reference entry succeeds"),
+		DirectSession.RequestInitialActionPointRoll(Valid)
+			.EntryResult.bSuccess);
+	const FMatchPlayState AfterAccepted = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("HostPort plus coordinator equals direct Session entry"),
+		AreStatesEqual(AfterAccepted, DirectSession.GetStateSnapshot()));
+	TestTrue(TEXT("Valid entry reaches player-owned deployment boundary"),
+		AfterAccepted.bHasCurrentAttack
+			&& AfterAccepted.CurrentAttack.Phase
+				== EMatchPlayCurrentAttackPhase::Deployment);
+	const auto Duplicate = SubmitIntent(*Host,
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		Valid);
+	TestFalse(TEXT("Duplicate request is rejected through new port"),
+		Duplicate.bSuccess);
+	TestTrue(TEXT("Duplicate rejection preserves accepted State"),
+		AreStatesEqual(AfterAccepted, Host->GetMatchSnapshot().Snapshot));
+
+	for (int32 FinishIndex = 0; FinishIndex < 2; ++FinishIndex)
+	{
+		const FMatchPlayState HostState = Host->GetMatchSnapshot().Snapshot;
+		FMatchPlayFinishDeploymentIntent Finish;
+		Finish.AttackSequence = HostState.CurrentAttack.AttackSequence;
+		Finish.RequestingSide =
+			HostState.CurrentAttack.CurrentLegalDeploymentSide;
+		const auto HostFinish = SubmitIntent(*Host,
+			EMatchPlayAuthoritativeCommandKind::FinishDeployment,
+			Finish);
+		TestTrue(TEXT("HostPort FinishDeployment succeeds"),
+			HostFinish.bSuccess);
+		const FMatchPlayState DirectState = DirectSession.GetStateSnapshot();
+		TestTrue(TEXT("Direct reference FinishDeployment succeeds"),
+			DirectSession.FinishDeployment(
+				DirectState.CurrentAttack.AttackSequence,
+				DirectState.CurrentAttack.CurrentLegalDeploymentSide)
+				.FinishResult.bSuccess);
+		if (FinishIndex == 0)
+		{
+			TestTrue(TEXT("First deployment finish is state-equivalent"),
+				AreStatesEqual(
+					Host->GetMatchSnapshot().Snapshot,
+					DirectSession.GetStateSnapshot()));
+		}
+	}
+	TestTrue(TEXT("Direct reference no-legal carrier succeeds"),
+		DirectSession.ResolveNoLegalCarrier().ResolutionResult.bSuccess);
+	TestTrue(TEXT("HostPort coordinator equals canonical no-legal sequence"),
+		AreStatesEqual(
+			Host->GetMatchSnapshot().Snapshot,
+			DirectSession.GetStateSnapshot()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayServerCoordinatorHostIntegrationTest,
+	"FMCodex.MatchPlayRuntime.ServerCoordinator.HostIntegrationAndCompleteMatch",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayServerCoordinatorHostIntegrationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace FMCodexLocalMatchHostTests;
+	(void)Parameters;
+
+	FScopedLocalMatchTestWorld TestWorld;
+	AFMCodexLocalMatchHostGameMode* Host = TestWorld.GetHost();
+	TestNotNull(TEXT("Coordinator Host fixture exists"), Host);
+	if (Host == nullptr)
+	{
+		return false;
+	}
+	TestTrue(TEXT("Complete-match fixture starts"), Host->StartNewLocalMatch(
+		MakeInteractionInput(TEXT("CoordinatorCompleteMatch")), {}, 71102)
+		.bSuccess);
+
+	const FMatchPlayState MatchStart = Host->GetMatchSnapshot().Snapshot;
+	const int32 TotalAttackCount =
+		MatchStart.RuntimeState.PlayerAState.TotalAttackCount
+		+ MatchStart.RuntimeState.PlayerBState.TotalAttackCount;
+	for (int32 AttackIndex = 0; AttackIndex < TotalAttackCount; ++AttackIndex)
+	{
+		const FMatchPlayState BeforeEntry = Host->GetMatchSnapshot().Snapshot;
+#if !UE_BUILD_SHIPPING
+		TestTrue(TEXT("AP1 entry override installs"), SetRollOverride(
+			*Host, EFMCodexLocalDevRollTarget::FullD12, 1));
+#endif
+		const auto Entry = SubmitIntent(*Host,
+			EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+			MakeFullD12Request(BeforeEntry));
+		TestTrue(TEXT("Full D12 player intent and AP1 coordinator succeed"),
+			Entry.bSuccess);
+		TestTrue(TEXT("Coordinator records automatic SendingOff action"),
+			Entry.CoordinatorResult.Steps.ContainsByPredicate(
+				[](const FMatchPlayServerCoordinatorStep& Step)
+				{
+					return Step.CommandKind
+						== EMatchPlayAuthoritativeCommandKind::ResolveSendingOff;
+				}));
+		const FMatchPlayState Terminal = Host->GetMatchSnapshot().Snapshot;
+		TestTrue(TEXT("Coordinator stops at explicit terminal boundary"),
+			Terminal.bHasCurrentAttack
+				&& Terminal.CurrentAttack.LifecycleState
+					== EMatchPlayCurrentAttackLifecycleState
+						::TerminalPendingAdvance);
+		TestEqual(TEXT("Coordinator never auto-advances terminal"),
+			Entry.CoordinatorResult.StopReason,
+			EMatchPlayServerCoordinatorStopReason::TerminalPendingAdvance);
+
+		const int32 UsedBeforeAdvance =
+			Terminal.RuntimeState.PlayerAState.UsedAttackCount
+			+ Terminal.RuntimeState.PlayerBState.UsedAttackCount;
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+		Advance.AttackSequence = Terminal.CurrentAttack.AttackSequence;
+		Advance.RequestingSide =
+			Terminal.RuntimeState.CurrentAttackingPlayer;
+		const auto Advanced = SubmitIntent(*Host,
+			EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal,
+			Advance);
+		TestTrue(TEXT("Player-owned terminal advance succeeds through port"),
+			Advanced.bSuccess);
+		const FMatchPlayState AfterAdvance = Host->GetMatchSnapshot().Snapshot;
+		TestEqual(TEXT("Exactly one opportunity advances"),
+			AfterAdvance.RuntimeState.PlayerAState.UsedAttackCount
+				+ AfterAdvance.RuntimeState.PlayerBState.UsedAttackCount,
+			UsedBeforeAdvance + 1);
+	}
+
+	const FMatchPlayState Ended = Host->GetMatchSnapshot().Snapshot;
+	TestTrue(TEXT("AP1 attacks complete the configured match"),
+		Ended.RuntimeState.PlayerAState.UsedAttackCount
+				== Ended.RuntimeState.PlayerAState.TotalAttackCount
+			&& Ended.RuntimeState.PlayerBState.UsedAttackCount
+				== Ended.RuntimeState.PlayerBState.TotalAttackCount
+			&& !Ended.bHasCurrentAttack);
+	const auto EndedCoordinator = Host->AdvanceServerCoordinator();
+	TestTrue(TEXT("Match-ended coordinator call is a stable success"),
+		EndedCoordinator.bSuccess && !EndedCoordinator.bStateAdvanced);
+	TestEqual(TEXT("Match-ended stop reason is explicit"),
+		EndedCoordinator.StopReason,
+		EMatchPlayServerCoordinatorStopReason::MatchEnded);
+	TestTrue(TEXT("Match-ended no-op preserves exact State"),
+		AreStatesEqual(Ended, Host->GetMatchSnapshot().Snapshot));
+	FFMCodexMatchClientViewRequest EndedViewRequest;
+	EndedViewRequest.ViewerSide = EInitialTurnOrderPlayer::PlayerA;
+	EndedViewRequest.Disclosure =
+		FFMCodexLocalMatchViewerDisclosure::FullyDisclosed();
+	const auto EndedView = Host->GetViewForViewer(EndedViewRequest);
+	TestTrue(TEXT("Full-Time facts remain available through safe read port"),
+		EndedView.bSuccess
+			&& EndedView.View.bMatchEnded
+			&& EndedView.View.FullTime.bVisible);
+	const auto EndedIntent = SubmitIntent(*Host,
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		MakeFullD12Request(Ended));
+	TestFalse(TEXT("Gameplay PlayerIntent rejects after MatchEnd"),
+		EndedIntent.bSuccess);
+	TestTrue(TEXT("Rejected post-match intent preserves Full-Time State"),
+		AreStatesEqual(Ended, Host->GetMatchSnapshot().Snapshot));
+
+	// A set-piece route remains at a player choice; the coordinator must not
+	// choose Corner nominations or roll on the player's behalf.
+	TestTrue(TEXT("Corner fixture replaces match"), Host->StartNewLocalMatch(
+		MakeInteractionInput(TEXT("CoordinatorCorner")), {}, 71103).bSuccess);
+#if !UE_BUILD_SHIPPING
+	TestTrue(TEXT("Set-piece Full D12 override installs"), SetRollOverride(
+		*Host, EFMCodexLocalDevRollTarget::FullD12, 12));
+#endif
+	const auto SetPieceEntry = SubmitIntent(*Host,
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		MakeFullD12Request(Host->GetMatchSnapshot().Snapshot));
+	TestTrue(TEXT("Set-piece entry succeeds"), SetPieceEntry.bSuccess);
+	FMatchPlayState SetPiece = Host->GetMatchSnapshot().Snapshot;
+	TestEqual(TEXT("Set-piece stops for player type roll"),
+		SetPiece.CurrentAttack.SetPieceRoute.Stage,
+		EMatchPlaySetPieceRouteStage::AwaitingTypeRoll);
+#if !UE_BUILD_SHIPPING
+	TestTrue(TEXT("Corner type override installs"), SetRollOverride(
+		*Host, EFMCodexLocalDevRollTarget::SetPieceType, 1));
+#endif
+	FMatchPlaySetPieceTypeRollRequest TypeRoll;
+	TypeRoll.AttackSequence = SetPiece.CurrentAttack.AttackSequence;
+	TypeRoll.RequestingSide = SetPiece.RuntimeState.CurrentAttackingPlayer;
+	const auto CornerType = SubmitIntent(*Host,
+		EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll,
+		TypeRoll);
+	TestTrue(TEXT("Corner type roll succeeds through player port"),
+		CornerType.bSuccess);
+	SetPiece = Host->GetMatchSnapshot().Snapshot;
+	TestEqual(TEXT("Coordinator does not nominate Corner players"),
+		SetPiece.CurrentAttack.SetPieceRoute.Corner.Stage,
+		EMatchPlaySetPieceCornerRouteStage::AwaitingAttackerNominations);
+	TestEqual(TEXT("Corner stop returns player-intent boundary"),
+		CornerType.CoordinatorResult.StopReason,
+		EMatchPlayServerCoordinatorStopReason::WaitingForPlayerIntent);
 	return true;
 }
 

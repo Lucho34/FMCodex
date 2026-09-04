@@ -4,10 +4,13 @@
 #include "GameFramework/GameModeBase.h"
 
 #include "FMCodexLocalMatchD6Provider.h"
+#include "FMCodexMatchClientViewPort.h"
 #if !UE_BUILD_SHIPPING
 #include "FMCodexLocalDevRollOverride.h"
 #endif
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
+#include "../MatchPlayRuntime/MatchPlayHostPort.h"
+#include "../MatchPlayRuntime/MatchPlayServerCoordinator.h"
 
 #include "FMCodexLocalMatchHostGameMode.generated.h"
 
@@ -794,6 +797,8 @@ using FFMCodexLocalMatchRequestCornerDefenseRollResult =
 UCLASS()
 class FMCODEX_API AFMCodexLocalMatchHostGameMode final
 	: public AGameModeBase
+	, public IMatchPlayPlayerIntentPort
+	, public IFMCodexMatchClientViewPort
 {
 	GENERATED_BODY()
 
@@ -801,6 +806,15 @@ public:
 	AFMCodexLocalMatchHostGameMode();
 
 	bool HasActiveLocalMatch() const;
+
+	virtual FMatchPlayPlayerIntentSubmissionResult SubmitPlayerIntent(
+		const FMatchPlayPlayerIntent& Intent) override;
+
+	virtual FFMCodexMatchClientViewResult GetViewForViewer(
+		const FFMCodexMatchClientViewRequest& Request) const override;
+
+	/** Server/local-owner retry seam; never part of the player command port. */
+	FMatchPlayServerCoordinatorResult AdvanceServerCoordinator();
 
 	FFMCodexStartNewLocalMatchResult StartNewLocalMatch(
 		const FMatchPlayOpeningInitializeInput& Input);
@@ -1183,6 +1197,7 @@ private:
 #endif
 		const FSkillRuleSnapshotSet SkillRuleSet;
 		FMatchPlayAuthoritativeSession AuthoritativeSession;
+		FMatchPlayServerCoordinator ServerCoordinator;
 	};
 
 	template <typename TLocalResult, typename TCallable>

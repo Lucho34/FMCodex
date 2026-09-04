@@ -124,6 +124,16 @@ Recovery与球员展示都按稳定身份传输。State保存OwnerSide+CardId，
 
 掉线和重连相关开放问题统一记录在 `Docs/08_Decision_Log.md`。
 
+## Shared Host / Coordinator Boundary（Stage 7.1）
+
+实际 transport 之前，生产命令路径已固定为：`PlayerController → IMatchPlayPlayerIntentPort → AuthoritativeSession → ServerCoordinator → stable authoritative state`。玩家端只能提交 classified `PlayerIntent`；`ServerInternalAction` 在 HostPort 入口 fail closed，不能成为未来 RPC 方法或客户端“继续结算”指令。
+
+Coordinator 是共享 server runtime，而不是 LocalPlay 规则副本。它只通过唯一 AuthoritativeSession 推进 AP1、no-legal、deterministic continuation、Formula/terminal 等自动步骤，并在 deployment、选择、玩家触发 roll、`TerminalPendingAdvance` 与 `MatchEnded` 等稳定边界停止。显式 `AdvanceAfterTerminal` 仍是当前攻击方拥有的 PlayerIntent。
+
+读路径独立为：`Authoritative State → Host-owned BuildForViewer → IFMCodexMatchClientViewPort → InteractionView → Controller/UMG`。客户端不接收 full State 作为 projector input；ViewerSide 与 disclosure 是服务器读策略。LocalPlay 目前用同一进程同步 adapter 和 full-disclosure presentation policy，未来 RPC/replication adapter 必须复用同一 Host/Coordinator，而不是创建 NetworkSession 或绕过 host player validation。
+
+仍未定义且不得从当前同步 API 猜测的 transport 合同包括：connection→Side authentication、RequestId/revision/ACK、MatchInstanceId、两客户端 bootstrap、replication/disclosure release、timeout、reconnect 与 Listen/Dedicated launch flow。
+
 ## 当前不做
 
 - Steam 联机

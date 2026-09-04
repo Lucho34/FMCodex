@@ -8,9 +8,6 @@
 #include "FMCodexLocalDevRollOverrideWidget.h"
 #endif
 
-#include "../CoreRules/MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
-#include "../CoreRules/MatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator.h"
-
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #if WITH_DEV_AUTOMATION_TESTS
@@ -678,32 +675,26 @@ AFMCodexLocalMatchPlayerController::FindLocalMatchHost() const
 	return nullptr;
 }
 
+IMatchPlayPlayerIntentPort*
+AFMCodexLocalMatchPlayerController::FindPlayerIntentPort() const
+{
+	return FindLocalMatchHost();
+}
+
+const IFMCodexMatchClientViewPort*
+AFMCodexLocalMatchPlayerController::FindClientViewPort() const
+{
+	return FindLocalMatchHost();
+}
+
 void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr || !Host->HasActiveLocalMatch())
+	const IFMCodexMatchClientViewPort* ViewPort = FindClientViewPort();
+	if (ViewPort == nullptr)
 	{
 		const auto NewView =
 			FFMCodexLocalMatchInteractionViewBuilder::BuildNoActiveMatch();
 		InteractionView = NewView;
-		RebuildControlSurface();
-		return;
-	}
-
-	const FFMCodexLocalMatchSnapshotResult State = Host->GetMatchSnapshot();
-	const FFMCodexLocalMatchSkillRuleSnapshotResult Rules =
-		Host->GetSkillRuleSnapshot();
-	if (!State.bSuccess || !Rules.bSuccess)
-	{
-		auto NewView =
-			FFMCodexLocalMatchInteractionViewBuilder::BuildNoActiveMatch();
-		NewView.bMatchActive = true;
-		NewView.InteractionCategory =
-			EFMCodexLocalMatchInteractionCategory::None;
-		NewView.Diagnostic = !State.bSuccess
-			? State.ErrorMessage
-			: Rules.ErrorMessage;
-		InteractionView = MoveTemp(NewView);
 		RebuildControlSurface();
 		return;
 	}
@@ -713,18 +704,28 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 	// published facts are animated on screen.
 	const FFMCodexLocalMatchViewerDisclosure Disclosure =
 		FFMCodexLocalMatchViewerDisclosure::FullyDisclosed();
-	auto ViewForPlayerA =
-		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
-		State.Snapshot,
-		Rules.Snapshot,
-		EInitialTurnOrderPlayer::PlayerA,
-		Disclosure);
-	auto ViewForPlayerB =
-		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
-		State.Snapshot,
-		Rules.Snapshot,
-		EInitialTurnOrderPlayer::PlayerB,
-		Disclosure);
+	FFMCodexMatchClientViewRequest PlayerARequest;
+	PlayerARequest.ViewerSide = EInitialTurnOrderPlayer::PlayerA;
+	PlayerARequest.Disclosure = Disclosure;
+	FFMCodexMatchClientViewRequest PlayerBRequest = PlayerARequest;
+	PlayerBRequest.ViewerSide = EInitialTurnOrderPlayer::PlayerB;
+	FFMCodexMatchClientViewResult ViewForPlayerAResult =
+		ViewPort->GetViewForViewer(PlayerARequest);
+	FFMCodexMatchClientViewResult ViewForPlayerBResult =
+		ViewPort->GetViewForViewer(PlayerBRequest);
+	if (!ViewForPlayerAResult.bSuccess || !ViewForPlayerBResult.bSuccess)
+	{
+		auto NewView =
+			FFMCodexLocalMatchInteractionViewBuilder::BuildNoActiveMatch();
+		NewView.Diagnostic = !ViewForPlayerAResult.bSuccess
+			? ViewForPlayerAResult.ErrorMessage
+			: ViewForPlayerBResult.ErrorMessage;
+		InteractionView = MoveTemp(NewView);
+		RebuildControlSurface();
+		return;
+	}
+	auto& ViewForPlayerA = ViewForPlayerAResult.View;
+	auto& ViewForPlayerB = ViewForPlayerBResult.View;
 	const EInitialTurnOrderPlayer LocalViewerSide =
 		ViewForPlayerA.ExpectedActingPlayer == EInitialTurnOrderPlayer::PlayerB
 			? EInitialTurnOrderPlayer::PlayerB
@@ -749,24 +750,8 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 
 void AFMCodexLocalMatchPlayerController::ResolveAutomaticNoLegalHelperIfNeeded()
 {
-	if (InteractionView.InteractionCategory
-			!= EFMCodexLocalMatchInteractionCategory::SelectHelper
-		|| InteractionView.bCanDecline
-		|| !InteractionView.bCanResolveNoLegalChoice)
-	{
-		return;
-	}
-
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveNoLegalHelper"), TEXT("Host unavailable."));
-		return;
-	}
-
-	RecordCommandResult(
-		TEXT("ResolveNoLegalHelper"), Host->ResolveNoLegalHelper());
+	// Compatibility hook only; no-legal Helper progression is server-owned.
+	RefreshPresentation();
 }
 
 void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
@@ -843,8 +828,6 @@ void AFMCodexLocalMatchPlayerController::StartNewDevShortMatch()
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (!Host) return;
 	ResetSetPieceDraft();
-	AutomaticallyResolvedSendingOffSequences.Reset();
-	AutomaticallyResolvedNoCarrierSequences.Reset();
 	auto Demo = FFMCodexLocalMatchDemoConfigurationFactory::Create();
 	Demo.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = true;
 	RecordCommandResult(TEXT("StartNewLocalMatch"),
@@ -855,8 +838,6 @@ void AFMCodexLocalMatchPlayerController::StartNewDevShortMatch()
 void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 {
 	ResetSetPieceDraft();
-	AutomaticallyResolvedSendingOffSequences.Reset();
-	AutomaticallyResolvedNoCarrierSequences.Reset();
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
 	{
@@ -893,17 +874,12 @@ void AFMCodexLocalMatchPlayerController::SetNextDemoMatchSeedForTesting(
 
 void AFMCodexLocalMatchPlayerController::RollDemoTacticalPoints()
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("RollTacticalPoints"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayFullD12EntryRequest Request;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
-	RecordCommandResult(TEXT("RequestInitialActionPointRoll"),
-		Host->RequestInitialActionPointRoll(Request));
+	SubmitPlayerIntent(TEXT("RequestInitialActionPointRoll"),
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		Request);
 }
 
 void AFMCodexLocalMatchPlayerController::ResetSetPieceDraft()
@@ -1024,12 +1000,6 @@ void AFMCodexLocalMatchPlayerController::ConfirmSetPieceDraft()
 		return;
 	}
 	SetPieceDraft.bLockConfirmationPending = false;
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("ConfirmSetPieceDraft"), TEXT("Host unavailable."));
-		return;
-	}
 	if (InteractionView.InteractionCategory
 		== EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier)
 	{
@@ -1037,8 +1007,9 @@ void AFMCodexLocalMatchPlayerController::ConfirmSetPieceDraft()
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.CardId = SetPieceDraft.CarrierCardId;
-		RecordCommandResult(TEXT("SubmitSetPieceCarrier"),
-			Host->SubmitSetPieceCarrier(Request));
+		SubmitPlayerIntent(TEXT("SubmitSetPieceCarrier"),
+			EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier,
+			Request);
 		return;
 	}
 	FMatchPlayCornerNominationRequest Request;
@@ -1048,14 +1019,16 @@ void AFMCodexLocalMatchPlayerController::ConfirmSetPieceDraft()
 	if (InteractionView.InteractionCategory
 		== EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker)
 	{
-		RecordCommandResult(TEXT("SubmitCornerAttackerNominations"),
-			Host->SubmitCornerAttackerNominations(Request));
+		SubmitPlayerIntent(TEXT("SubmitCornerAttackerNominations"),
+			EMatchPlayAuthoritativeCommandKind::SubmitCornerAttackerNominations,
+			Request);
 	}
 	else if (InteractionView.InteractionCategory
 		== EFMCodexLocalMatchInteractionCategory::DraftCornerDefender)
 	{
-		RecordCommandResult(TEXT("SubmitCornerDefenderNominations"),
-			Host->SubmitCornerDefenderNominations(Request));
+		SubmitPlayerIntent(TEXT("SubmitCornerDefenderNominations"),
+			EMatchPlayAuthoritativeCommandKind::SubmitCornerDefenderNominations,
+			Request);
 	}
 	else
 	{
@@ -1072,251 +1045,145 @@ void AFMCodexLocalMatchPlayerController::CancelCornerLockConfirmation()
 
 void AFMCodexLocalMatchPlayerController::NotifyEntryRevealComplete()
 {
-	ResolveAutomaticSetPieceEntryIfNeeded();
+	// Authority is already at a stable state. Reveal completion is presentation-only.
+	RefreshPresentation();
 }
 
 void AFMCodexLocalMatchPlayerController::ResolveAutomaticSetPieceEntryIfNeeded()
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		return;
-	}
-	if (InteractionView.InteractionCategory
-		== EFMCodexLocalMatchInteractionCategory::ResolveSendingOff
-		&& !AutomaticallyResolvedSendingOffSequences.Contains(
-			InteractionView.AttackSequence))
-	{
-		AutomaticallyResolvedSendingOffSequences.Add(
-			InteractionView.AttackSequence);
-		FMatchPlaySendingOffResolutionRequest Request;
-		Request.AttackSequence = InteractionView.AttackSequence;
-		RecordCommandResult(TEXT("ResolveSendingOff"),
-			Host->ResolveSendingOff(Request));
-		return;
-	}
-	if (InteractionView.InteractionCategory
-			!= EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier
-		|| !InteractionView.LegalSetPieceCardIds.IsEmpty()
-		|| AutomaticallyResolvedNoCarrierSequences.Contains(
-			InteractionView.AttackSequence))
-	{
-		return;
-	}
-	AutomaticallyResolvedNoCarrierSequences.Add(InteractionView.AttackSequence);
-	switch (InteractionView.SetPieceType)
-	{
-	case ESetPieceSelectedType::ShortFreeKick:
-	{
-		FMatchPlayShortFreeKickNoLegalCarrierRequest Request;
-		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		Request.AttackSequence = InteractionView.AttackSequence;
-		RecordCommandResult(TEXT("ResolveNoLegalShortFreeKickCarrier"),
-			Host->ResolveNoLegalShortFreeKickCarrier(Request));
-		break;
-	}
-	case ESetPieceSelectedType::LongFreeKick:
-	{
-		FMatchPlayLongFreeKickNoLegalCarrierRequest Request;
-		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		Request.AttackSequence = InteractionView.AttackSequence;
-		RecordCommandResult(TEXT("ResolveNoLegalLongFreeKickCarrier"),
-			Host->ResolveNoLegalLongFreeKickCarrier(Request));
-		break;
-	}
-	case ESetPieceSelectedType::Penalty:
-	{
-		FMatchPlayPenaltyNoLegalCarrierRequest Request;
-		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		Request.AttackSequence = InteractionView.AttackSequence;
-		RecordCommandResult(TEXT("ResolveNoLegalPenaltyCarrier"),
-			Host->ResolveNoLegalPenaltyCarrier(Request));
-		break;
-	}
-	default:
-		break;
-	}
+	// Retained as a presentation compatibility hook. The server coordinator now
+	// owns AP1 and no-legal set-piece continuation.
+	RefreshPresentation();
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitShortFreeKickMethod(
 	const EMatchPlayShortFreeKickMethod Method)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr) return;
 	FMatchPlayShortFreeKickMethodRequest Request;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.Method = Method;
-	RecordCommandResult(TEXT("SubmitShortFreeKickMethod"),
-		Host->SubmitShortFreeKickMethod(Request));
+	SubmitPlayerIntent(TEXT("SubmitShortFreeKickMethod"),
+		EMatchPlayAuthoritativeCommandKind::SubmitShortFreeKickMethod,
+		Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitLongFreeKickMethod(
 	const EMatchPlayLongFreeKickMethod Method)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr) return;
 	FMatchPlayLongFreeKickMethodRequest Request;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.Method = Method;
-	RecordCommandResult(TEXT("SubmitLongFreeKickMethod"),
-		Host->SubmitLongFreeKickMethod(Request));
+	SubmitPlayerIntent(TEXT("SubmitLongFreeKickMethod"),
+		EMatchPlayAuthoritativeCommandKind::SubmitLongFreeKickMethod,
+		Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitPenaltyMethod(
 	const EMatchPlayPenaltyMethod Method)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr) return;
 	FMatchPlayPenaltyMethodRequest Request;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.Method = Method;
-	RecordCommandResult(TEXT("SubmitPenaltyMethod"),
-		Host->SubmitPenaltyMethod(Request));
+	SubmitPlayerIntent(TEXT("SubmitPenaltyMethod"),
+		EMatchPlayAuthoritativeCommandKind::SubmitPenaltyMethod,
+		Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitCornerIntent(
 	const EMatchPlayCornerRouteIntent Intent)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr) return;
 	FMatchPlayCornerIntentRequest Request;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.IntendedRoute = Intent;
-	RecordCommandResult(TEXT("SubmitCornerIntent"),
-		Host->SubmitCornerIntent(Request));
+	SubmitPlayerIntent(TEXT("SubmitCornerIntent"),
+		EMatchPlayAuthoritativeCommandKind::SubmitCornerIntent,
+		Request);
 }
 
 void AFMCodexLocalMatchPlayerController::DeployOrdinary(
 	const FName CardId,
 	const FName SlotId)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("DeployOrdinary"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.CardId = CardId;
 	Request.SlotId = SlotId;
-	RecordCommandResult(TEXT("DeployOrdinary"), Host->DeployOrdinary(Request));
+	SubmitPlayerIntent(TEXT("DeployOrdinary"),
+		EMatchPlayAuthoritativeCommandKind::DeployOrdinary, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::DeployGoalkeeper(const FName SlotId)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("DeployGoalkeeper"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.SlotId = SlotId;
-	RecordCommandResult(
-		TEXT("DeployGoalkeeper"), Host->DeployGoalkeeper(Request));
+	SubmitPlayerIntent(TEXT("DeployGoalkeeper"),
+		EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::FinishDeployment()
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("FinishDeployment"), TEXT("Host unavailable."));
-		return;
-	}
-	RecordCommandResult(
-		TEXT("FinishDeployment"),
-		Host->FinishDeployment(
-			InteractionView.AttackSequence,
-			InteractionView.ExpectedActingPlayer));
+	FMatchPlayFinishDeploymentIntent Request;
+	Request.AttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+	SubmitPlayerIntent(TEXT("FinishDeployment"),
+		EMatchPlayAuthoritativeCommandKind::FinishDeployment, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitCarrier(const FName CardId)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("SubmitCarrier"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeSubmitCarrierRequest Request;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.CarrierCardId = CardId;
-	RecordCommandResult(TEXT("SubmitCarrier"), Host->SubmitCarrier(Request));
+	SubmitPlayerIntent(TEXT("SubmitCarrier"),
+		EMatchPlayAuthoritativeCommandKind::SubmitCarrier, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitMarker(const FName CardId)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("SubmitMarker"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeSubmitMarkerRequest Request;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.MarkerCardId = CardId;
-	RecordCommandResult(TEXT("SubmitMarker"), Host->SubmitMarker(Request));
+	SubmitPlayerIntent(TEXT("SubmitMarker"),
+		EMatchPlayAuthoritativeCommandKind::SubmitMarker, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitSkill(const FName SkillId)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("SubmitSkill"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeSubmitSkillRequest Request;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.SkillId = SkillId;
-	RecordCommandResult(
-		TEXT("SubmitSkill"), Host->SubmitSkill(Request));
+	SubmitPlayerIntent(TEXT("SubmitSkill"),
+		EMatchPlayAuthoritativeCommandKind::SubmitSkill, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitRunner(const FName CardId)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("SubmitRunner"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeSubmitRunnerRequest Request;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.RunnerCardId = CardId;
-	RecordCommandResult(TEXT("SubmitRunner"), Host->SubmitRunner(Request));
-	if (LastDiagnostic.bHostSuccess)
-	{
-		ResolveAutomaticNoLegalHelperIfNeeded();
-	}
+	SubmitPlayerIntent(TEXT("SubmitRunner"),
+		EMatchPlayAuthoritativeCommandKind::SubmitRunner, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitHelper(const FName CardId)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("SubmitHelper"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeSubmitHelperRequest Request;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.HelperCardId = CardId;
-	RecordCommandResult(TEXT("SubmitHelper"), Host->SubmitHelper(Request));
+	SubmitPlayerIntent(TEXT("SubmitHelper"),
+		EMatchPlayAuthoritativeCommandKind::SubmitHelper, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::AbandonCurrentTacticalSelection()
@@ -1351,13 +1218,6 @@ void AFMCodexLocalMatchPlayerController::AbandonCurrentTacticalSelection()
 
 void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("DeclineSelection"), TEXT("Host unavailable."));
-		return;
-	}
-
 	switch (InteractionView.InteractionCategory)
 	{
 	case EFMCodexLocalMatchInteractionCategory::SelectMarker:
@@ -1365,7 +1225,8 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 		FMatchPlayAuthoritativeDeclineMarkerRequest Request;
 		Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		RecordCommandResult(TEXT("DeclineMarker"), Host->DeclineMarker(Request));
+		SubmitPlayerIntent(TEXT("DeclineMarker"),
+			EMatchPlayAuthoritativeCommandKind::DeclineMarker, Request);
 		break;
 	}
 	case EFMCodexLocalMatchInteractionCategory::SelectSkill:
@@ -1373,9 +1234,8 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 		FMatchPlayAuthoritativeDeclineSkillRequest Request;
 		Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		RecordCommandResult(
-			TEXT("DeclineSkill"),
-			Host->DeclineSkill(Request));
+		SubmitPlayerIntent(TEXT("DeclineSkill"),
+			EMatchPlayAuthoritativeCommandKind::DeclineSkill, Request);
 		break;
 	}
 	case EFMCodexLocalMatchInteractionCategory::SelectRunner:
@@ -1383,7 +1243,8 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 		FMatchPlayAuthoritativeDeclineRunnerRequest Request;
 		Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		RecordCommandResult(TEXT("DeclineRunner"), Host->DeclineRunner(Request));
+		SubmitPlayerIntent(TEXT("DeclineRunner"),
+			EMatchPlayAuthoritativeCommandKind::DeclineRunner, Request);
 		break;
 	}
 	case EFMCodexLocalMatchInteractionCategory::SelectHelper:
@@ -1391,7 +1252,8 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 		FMatchPlayAuthoritativeDeclineHelperRequest Request;
 		Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		RecordCommandResult(TEXT("DeclineHelper"), Host->DeclineHelper(Request));
+		SubmitPlayerIntent(TEXT("DeclineHelper"),
+			EMatchPlayAuthoritativeCommandKind::DeclineHelper, Request);
 		break;
 	}
 	default:
@@ -1404,100 +1266,33 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 
 void AFMCodexLocalMatchPlayerController::ResolveNoLegalCurrentSelection()
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("ResolveNoLegalSelection"), TEXT("Host unavailable."));
-		return;
-	}
-
-	switch (InteractionView.InteractionCategory)
-	{
-	case EFMCodexLocalMatchInteractionCategory::SelectCarrier:
-		RecordCommandResult(
-			TEXT("ResolveNoLegalCarrier"), Host->ResolveNoLegalCarrier());
-		break;
-	case EFMCodexLocalMatchInteractionCategory::SelectMarker:
-		RecordCommandResult(
-			TEXT("ResolveNoLegalMarker"), Host->ResolveNoLegalMarker());
-		break;
-	case EFMCodexLocalMatchInteractionCategory::SelectSkill:
-	{
-		RecordCommandResult(
-			TEXT("ResolveNoLegalSkill"),
-			Host->ResolveNoLegalSkill());
-		break;
-	}
-	case EFMCodexLocalMatchInteractionCategory::SelectRunner:
-		RecordCommandResult(
-			TEXT("ResolveNoLegalRunner"), Host->ResolveNoLegalRunner());
-		break;
-	case EFMCodexLocalMatchInteractionCategory::SelectHelper:
-		RecordCommandResult(
-			TEXT("ResolveNoLegalHelper"), Host->ResolveNoLegalHelper());
-		break;
-	default:
-		RecordLocalFailure(
-			TEXT("ResolveNoLegalSelection"),
-			TEXT("No authoritative no-legal operation is available now."));
-		break;
-	}
+	// Compatibility/recovery only. Normal player-intent submission already runs
+	// the authoritative coordinator past every no-legal participant state.
+	ContinueResolution();
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitBranchIntent(
 	const EMatchPlayElectiveBranchIntent Intent)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(TEXT("SubmitBranchIntent"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.Intent = Intent;
-	const auto Result = Host->SubmitBranchIntent(Request);
-	RecordCommandResult(TEXT("SubmitBranchIntent"), Result);
-	if (Result.bSuccess
-		&& (InteractionView.PresentedActionType == ESkillRuleType::LongShot
-			|| InteractionView.PresentedActionType
-				== ESkillRuleType::CutInsideShot))
-	{
-		// Shot session creation and intent-determined route consume no RNG and
-		// have no player choice. Keep both behind the selected branch click.
-		if (InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-		{
-			ContinueResolution();
-		}
-		if (LastDiagnostic.bHostSuccess
-			&& InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-		{
-			ContinueResolution();
-		}
-	}
+	SubmitPlayerIntent(TEXT("SubmitBranchIntent"),
+		EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent, Request);
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitOneOnOneShotChoice(
 	const EMatchPlayThroughBallOneOnOneShotChoice Choice)
 {
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("SubmitThroughBallOneOnOneShotChoice"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Request;
 	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.Choice = Choice;
-	RecordCommandResult(
-		TEXT("SubmitThroughBallOneOnOneShotChoice"),
-		Host->SubmitThroughBallOneOnOneShotChoice(Request));
+	SubmitPlayerIntent(TEXT("SubmitThroughBallOneOnOneShotChoice"),
+		EMatchPlayAuthoritativeCommandKind
+			::SubmitThroughBallOneOnOneShotChoice,
+		Request);
 }
 
 void AFMCodexLocalMatchPlayerController::RollCrossAttack()
@@ -1514,13 +1309,6 @@ void AFMCodexLocalMatchPlayerController::RollCrossAttack()
 			TEXT("Cross attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveCrossAttackRoll"), TEXT("Host unavailable."));
-		return;
-	}
 	const bool bHigh = InteractionView.ResolutionFacts.bHasActualBranch
 		&& InteractionView.ResolutionFacts.ActualBranch.Cross
 			== EMatchPlayCrossActualBranch::High;
@@ -1530,18 +1318,24 @@ void AFMCodexLocalMatchPlayerController::RollCrossAttack()
 		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Request;
 		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		const auto Result = Host->ResolveCrossHighAttackRoll(Request);
+		SubmitPlayerIntent(
+			TEXT("ResolveCrossHighAttackRoll"),
+			EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll,
+			Request);
 		bCrossRollCommandInFlight = false;
-		RecordCommandResult(TEXT("ResolveCrossHighAttackRoll"), Result);
+		RebuildControlSurface();
 	}
 	else
 	{
 		FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest Request;
 		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		const auto Result = Host->ResolveCrossLowAttackRoll(Request);
+		SubmitPlayerIntent(
+			TEXT("ResolveCrossLowAttackRoll"),
+			EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll,
+			Request);
 		bCrossRollCommandInFlight = false;
-		RecordCommandResult(TEXT("ResolveCrossLowAttackRoll"), Result);
+		RebuildControlSurface();
 	}
 }
 
@@ -1559,13 +1353,6 @@ void AFMCodexLocalMatchPlayerController::RollCrossDefense()
 			TEXT("Cross defense roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveCrossDefenseRoll"), TEXT("Host unavailable."));
-		return;
-	}
 	const bool bHigh = InteractionView.ResolutionFacts.bHasActualBranch
 		&& InteractionView.ResolutionFacts.ActualBranch.Cross
 			== EMatchPlayCrossActualBranch::High;
@@ -1575,32 +1362,24 @@ void AFMCodexLocalMatchPlayerController::RollCrossDefense()
 		FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Request;
 		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		const auto Result = Host->ResolveCrossHighDefenseRoll(Request);
+		SubmitPlayerIntent(
+			TEXT("ResolveCrossHighDefenseRoll"),
+			EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll,
+			Request);
 		bCrossRollCommandInFlight = false;
-		RecordCommandResult(TEXT("ResolveCrossHighDefenseRoll"), Result);
-		if (Result.bSuccess
-			&& InteractionView.InteractionCategory
-				== EFMCodexLocalMatchInteractionCategory
-					::ApplyCrossTerminalResolution)
-		{
-			ApplyCrossTerminalResolution();
-		}
+		RebuildControlSurface();
 	}
 	else
 	{
 		FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest Request;
 		Request.AttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-		const auto Result = Host->ResolveCrossLowDefenseRoll(Request);
+		SubmitPlayerIntent(
+			TEXT("ResolveCrossLowDefenseRoll"),
+			EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll,
+			Request);
 		bCrossRollCommandInFlight = false;
-		RecordCommandResult(TEXT("ResolveCrossLowDefenseRoll"), Result);
-		if (Result.bSuccess
-			&& InteractionView.InteractionCategory
-				== EFMCodexLocalMatchInteractionCategory
-					::ApplyCrossTerminalResolution)
-		{
-			ApplyCrossTerminalResolution();
-		}
+		RebuildControlSurface();
 	}
 }
 
@@ -1617,16 +1396,7 @@ void AFMCodexLocalMatchPlayerController::ApplyCrossTerminalResolution()
 			TEXT("The completed Cross terminal action is not available."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ApplyCrossTerminalResolution"), TEXT("Host unavailable."));
-		return;
-	}
-	RecordCommandResult(
-		TEXT("ApplyCrossTerminalResolution"),
-		Host->ApplyCrossTerminalResolution());
+	ContinueResolution();
 }
 
 void AFMCodexLocalMatchPlayerController::RollLongShotDirectAttack()
@@ -1643,25 +1413,16 @@ void AFMCodexLocalMatchPlayerController::RollLongShotDirectAttack()
 			TEXT("LongShot Direct attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveLongShotDirectAttackRoll"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bLongShotRollCommandInFlight = true;
-	const auto Result = Host->ResolveLongShotDirectAttackRoll(Request);
+	SubmitPlayerIntent(
+		TEXT("ResolveLongShotDirectAttackRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectAttackRoll,
+		Request);
 	bLongShotRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveLongShotDirectAttackRoll"), Result);
-	if (Result.bSuccess && InteractionView.InteractionCategory
-		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-	{
-		ContinueResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollLongShotDirectDefense()
@@ -1678,25 +1439,16 @@ void AFMCodexLocalMatchPlayerController::RollLongShotDirectDefense()
 			TEXT("LongShot Direct defense roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveLongShotDirectDefenseRoll"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bLongShotRollCommandInFlight = true;
-	const auto Result = Host->ResolveLongShotDirectDefenseRoll(Request);
+	SubmitPlayerIntent(
+		TEXT("ResolveLongShotDirectDefenseRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectDefenseRoll,
+		Request);
 	bLongShotRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveLongShotDirectDefenseRoll"), Result);
-	if (Result.bSuccess && InteractionView.InteractionCategory
-		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-	{
-		ContinueResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollLongShotDeadCorner()
@@ -1713,25 +1465,16 @@ void AFMCodexLocalMatchPlayerController::RollLongShotDeadCorner()
 			TEXT("LongShot DeadCorner roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveLongShotDeadCornerRoll"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bLongShotRollCommandInFlight = true;
-	const auto Result = Host->ResolveLongShotDeadCornerRoll(Request);
+	SubmitPlayerIntent(
+		TEXT("ResolveLongShotDeadCornerRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolveLongShotDeadCornerRoll,
+		Request);
 	bLongShotRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveLongShotDeadCornerRoll"), Result);
-	if (Result.bSuccess && InteractionView.InteractionCategory
-		== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-	{
-		ContinueResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollCutInsideShotDirectAttack()
@@ -1749,21 +1492,16 @@ void AFMCodexLocalMatchPlayerController::RollCutInsideShotDirectAttack()
 			TEXT("CutInsideShot Direct attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveCutInsideShotDirectAttackRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bCutInsideShotRollCommandInFlight = true;
-	const auto Result = Host->ResolveCutInsideShotDirectAttackRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveCutInsideShotDirectAttackRoll"),
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveCutInsideShotDirectAttackRoll,
+		Request);
 	bCutInsideShotRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveCutInsideShotDirectAttackRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollCutInsideShotDirectDefense()
@@ -1781,21 +1519,16 @@ void AFMCodexLocalMatchPlayerController::RollCutInsideShotDirectDefense()
 			TEXT("CutInsideShot Direct defense roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveCutInsideShotDirectDefenseRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bCutInsideShotRollCommandInFlight = true;
-	const auto Result = Host->ResolveCutInsideShotDirectDefenseRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveCutInsideShotDirectDefenseRoll"),
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveCutInsideShotDirectDefenseRoll,
+		Request);
 	bCutInsideShotRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveCutInsideShotDirectDefenseRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollCutInsideShotDeadCorner()
@@ -1813,21 +1546,15 @@ void AFMCodexLocalMatchPlayerController::RollCutInsideShotDeadCorner()
 			TEXT("CutInsideShot DeadCorner roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveCutInsideShotDeadCornerRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bCutInsideShotRollCommandInFlight = true;
-	const auto Result = Host->ResolveCutInsideShotDeadCornerRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveCutInsideShotDeadCornerRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDeadCornerRoll,
+		Request);
 	bCutInsideShotRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveCutInsideShotDeadCornerRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::CompleteCrossAndAdvance()
@@ -1849,21 +1576,15 @@ void AFMCodexLocalMatchPlayerController::RollCrossRoute()
 			TEXT("Cross Initial Route roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveCrossInitialRouteRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bCrossRouteCommandInFlight = true;
-	const auto Result = Host->ResolveCrossInitialRouteRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveCrossInitialRouteRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolveCrossInitialRouteRoll,
+		Request);
 	bCrossRouteCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveCrossInitialRouteRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollPassControlRoute()
@@ -1880,21 +1601,15 @@ void AFMCodexLocalMatchPlayerController::RollPassControlRoute()
 			TEXT("PassControl Initial Route roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolvePassControlInitialRouteRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bPassControlRollCommandInFlight = true;
-	const auto Result = Host->ResolvePassControlInitialRouteRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolvePassControlInitialRouteRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll,
+		Request);
 	bPassControlRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolvePassControlInitialRouteRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollPassControlAttack()
@@ -1911,21 +1626,15 @@ void AFMCodexLocalMatchPlayerController::RollPassControlAttack()
 			TEXT("PassControl attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolvePassControlAttackRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolvePassControlAttackRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bPassControlRollCommandInFlight = true;
-	const auto Result = Host->ResolvePassControlAttackRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolvePassControlAttackRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll,
+		Request);
 	bPassControlRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolvePassControlAttackRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollPassControlDefense()
@@ -1942,21 +1651,15 @@ void AFMCodexLocalMatchPlayerController::RollPassControlDefense()
 			TEXT("PassControl defense roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolvePassControlDefenseRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bPassControlRollCommandInFlight = true;
-	const auto Result = Host->ResolvePassControlDefenseRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolvePassControlDefenseRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll,
+		Request);
 	bPassControlRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolvePassControlDefenseRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollThroughBallInitialRoute()
@@ -1973,21 +1676,15 @@ void AFMCodexLocalMatchPlayerController::RollThroughBallInitialRoute()
 			TEXT("ThroughBall Initial Route roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallInitialRouteRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallRouteCommandInFlight = true;
-	const auto Result = Host->ResolveThroughBallInitialRouteRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallInitialRouteRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll,
+		Request);
 	bThroughBallRouteCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveThroughBallInitialRouteRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollThroughBallFeetAttack()
@@ -2004,21 +1701,15 @@ void AFMCodexLocalMatchPlayerController::RollThroughBallFeetAttack()
 			TEXT("ThroughBall Feet attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallFeetAttackRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallFeetRollCommandInFlight = true;
-	const auto Result = Host->ResolveThroughBallFeetAttackRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallFeetAttackRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll,
+		Request);
 	bThroughBallFeetRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveThroughBallFeetAttackRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollThroughBallFeetDefense()
@@ -2035,28 +1726,15 @@ void AFMCodexLocalMatchPlayerController::RollThroughBallFeetDefense()
 			TEXT("ThroughBall Feet defense roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallFeetDefenseRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallFeetRollCommandInFlight = true;
-	const auto Result = Host->ResolveThroughBallFeetDefenseRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallFeetDefenseRoll"),
+		EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll,
+		Request);
 	bThroughBallFeetRollCommandInFlight = false;
-	RecordCommandResult(TEXT("ResolveThroughBallFeetDefenseRoll"), Result);
-	if (Result.bSuccess
-		&& InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::ApplyThroughBallFeetTerminalResolution)
-	{
-		ApplyThroughBallFeetTerminalResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController::RollThroughBallAntiOffsideAttack()
@@ -2074,29 +1752,17 @@ void AFMCodexLocalMatchPlayerController::RollThroughBallAntiOffsideAttack()
 			TEXT("AntiOffside attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallAntiOffsideAttackRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest
 		Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallAntiOffsideRollCommandInFlight = true;
-	const auto Result = Host->ResolveThroughBallAntiOffsideAttackRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallAntiOffsideAttackRoll"),
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallAntiOffsideAttackRoll,
+		Request);
 	bThroughBallAntiOffsideRollCommandInFlight = false;
-	RecordCommandResult(
-		TEXT("ResolveThroughBallAntiOffsideAttackRoll"), Result);
-	if (Result.bSuccess
-		&& InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-	{
-		ContinueResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController
@@ -2115,30 +1781,17 @@ void AFMCodexLocalMatchPlayerController
 			TEXT("OneOnOne ChipShot attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallOneOnOneChipShotAttackRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest
 		Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallOneOnOneRollCommandInFlight = true;
-	const auto Result =
-		Host->ResolveThroughBallOneOnOneChipShotAttackRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallOneOnOneChipShotAttackRoll"),
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneChipShotAttackRoll,
+		Request);
 	bThroughBallOneOnOneRollCommandInFlight = false;
-	RecordCommandResult(
-		TEXT("ResolveThroughBallOneOnOneChipShotAttackRoll"), Result);
-	if (Result.bSuccess
-		&& InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-	{
-		ContinueResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController
@@ -2157,24 +1810,17 @@ void AFMCodexLocalMatchPlayerController
 			TEXT("OneOnOne DirectShot attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallOneOnOneDirectShotAttackRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest
 		Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallOneOnOneRollCommandInFlight = true;
-	const auto Result =
-		Host->ResolveThroughBallOneOnOneDirectShotAttackRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallOneOnOneDirectShotAttackRoll"),
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneDirectShotAttackRoll,
+		Request);
 	bThroughBallOneOnOneRollCommandInFlight = false;
-	RecordCommandResult(
-		TEXT("ResolveThroughBallOneOnOneDirectShotAttackRoll"), Result);
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController
@@ -2193,30 +1839,17 @@ void AFMCodexLocalMatchPlayerController
 			TEXT("OneOnOne DirectShot defense roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallOneOnOneDirectShotDefenseRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest
 		Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallOneOnOneRollCommandInFlight = true;
-	const auto Result =
-		Host->ResolveThroughBallOneOnOneDirectShotDefenseRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallOneOnOneDirectShotDefenseRoll"),
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallOneOnOneDirectShotDefenseRoll,
+		Request);
 	bThroughBallOneOnOneRollCommandInFlight = false;
-	RecordCommandResult(
-		TEXT("ResolveThroughBallOneOnOneDirectShotDefenseRoll"), Result);
-	if (Result.bSuccess
-		&& InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-	{
-		ContinueResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController
@@ -2235,30 +1868,17 @@ void AFMCodexLocalMatchPlayerController
 			TEXT("BehindDefense attack roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallBehindDefenseP1AttackRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest
 		Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallBehindDefenseRollCommandInFlight = true;
-	const auto Result =
-		Host->ResolveThroughBallBehindDefenseP1AttackRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallBehindDefenseP1AttackRoll"),
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallBehindDefenseP1AttackRoll,
+		Request);
 	bThroughBallBehindDefenseRollCommandInFlight = false;
-	RecordCommandResult(
-		TEXT("ResolveThroughBallBehindDefenseP1AttackRoll"), Result);
-	if (Result.bSuccess
-		&& InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-	{
-		ContinueResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController
@@ -2277,30 +1897,17 @@ void AFMCodexLocalMatchPlayerController
 			TEXT("BehindDefense defense roll is not the current interaction."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ResolveThroughBallBehindDefenseP1DefenseRoll"),
-			TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest
 		Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	bThroughBallBehindDefenseRollCommandInFlight = true;
-	const auto Result =
-		Host->ResolveThroughBallBehindDefenseP1DefenseRoll(Request);
+	SubmitPlayerIntent(TEXT("ResolveThroughBallBehindDefenseP1DefenseRoll"),
+		EMatchPlayAuthoritativeCommandKind
+			::ResolveThroughBallBehindDefenseP1DefenseRoll,
+		Request);
 	bThroughBallBehindDefenseRollCommandInFlight = false;
-	RecordCommandResult(
-		TEXT("ResolveThroughBallBehindDefenseP1DefenseRoll"), Result);
-	if (Result.bSuccess
-		&& InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::ContinueResolution)
-	{
-		ContinueResolution();
-	}
+	RebuildControlSurface();
 }
 
 void AFMCodexLocalMatchPlayerController
@@ -2317,17 +1924,7 @@ void AFMCodexLocalMatchPlayerController
 			TEXT("The completed ThroughBall Feet terminal action is not available."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("ApplyThroughBallTerminalResolution"),
-			TEXT("Host unavailable."));
-		return;
-	}
-	RecordCommandResult(
-		TEXT("ApplyThroughBallTerminalResolution"),
-		Host->ApplyThroughBallTerminalResolution());
+	ContinueResolution();
 }
 
 void AFMCodexLocalMatchPlayerController::CompleteThroughBallFeetAndAdvance()
@@ -2346,438 +1943,262 @@ void AFMCodexLocalMatchPlayerController::AdvanceAfterTerminal()
 			TEXT("The authoritative terminal next-round action is not available."));
 		return;
 	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
-	{
-		RecordLocalFailure(
-			TEXT("AdvanceAfterTerminal"), TEXT("Host unavailable."));
-		return;
-	}
 	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Request;
 	Request.AttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-	RecordCommandResult(
+	SubmitPlayerIntent(
 		TEXT("AdvanceAfterTerminal"),
-		Host->AdvanceAfterTerminal(Request));
+		EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal,
+		Request);
+}
+
+void AFMCodexLocalMatchPlayerController::SubmitProjectedPrimaryPlayerIntent()
+{
+	auto SubmitSetPieceRoll = [this](
+		const EMatchPlayAuthoritativeCommandKind CommandKind,
+		const FString& CommandName)
+	{
+		FMatchPlaySetPieceTypeRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		SubmitPlayerIntent(CommandName, CommandKind, Request);
+	};
+	auto SubmitCornerRoll = [this](
+		const EMatchPlayAuthoritativeCommandKind CommandKind,
+		const FString& CommandName)
+	{
+		FMatchPlayCornerRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		SubmitPlayerIntent(CommandName, CommandKind, Request);
+	};
+
+	switch (InteractionView.InteractionCategory)
+	{
+	case EFMCodexLocalMatchInteractionCategory::RollSetPieceType:
+		SubmitSetPieceRoll(
+			EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll,
+			TEXT("RequestSetPieceTypeRoll"));
+		return;
+	case EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier:
+	case EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker:
+	case EFMCodexLocalMatchInteractionCategory::DraftCornerDefender:
+		ConfirmSetPieceDraft();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectAttack:
+	case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectDefense:
+	case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickAngled:
+	{
+		FMatchPlayShortFreeKickRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		const auto Category = InteractionView.InteractionCategory;
+		SubmitPlayerIntent(
+			Category == EFMCodexLocalMatchInteractionCategory
+				::RollShortFreeKickDirectAttack
+				? TEXT("ResolveShortFreeKickDirectAttackRoll")
+				: Category == EFMCodexLocalMatchInteractionCategory
+					::RollShortFreeKickDirectDefense
+					? TEXT("ResolveShortFreeKickDirectDefenseRoll")
+					: TEXT("ResolveShortFreeKickAngledRoll"),
+			Category == EFMCodexLocalMatchInteractionCategory
+				::RollShortFreeKickDirectAttack
+				? EMatchPlayAuthoritativeCommandKind
+					::ResolveShortFreeKickDirectAttackRoll
+				: Category == EFMCodexLocalMatchInteractionCategory
+					::RollShortFreeKickDirectDefense
+					? EMatchPlayAuthoritativeCommandKind
+						::ResolveShortFreeKickDirectDefenseRoll
+					: EMatchPlayAuthoritativeCommandKind
+						::ResolveShortFreeKickAngledRoll,
+			Request);
+		return;
+	}
+	case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectAttack:
+	case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectDefense:
+	case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickPower:
+	{
+		FMatchPlayLongFreeKickRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		const auto Category = InteractionView.InteractionCategory;
+		SubmitPlayerIntent(
+			Category == EFMCodexLocalMatchInteractionCategory
+				::RollLongFreeKickDirectAttack
+				? TEXT("ResolveLongFreeKickDirectAttackRoll")
+				: Category == EFMCodexLocalMatchInteractionCategory
+					::RollLongFreeKickDirectDefense
+					? TEXT("ResolveLongFreeKickDirectDefenseRoll")
+					: TEXT("ResolveLongFreeKickPowerRoll"),
+			Category == EFMCodexLocalMatchInteractionCategory
+				::RollLongFreeKickDirectAttack
+				? EMatchPlayAuthoritativeCommandKind
+					::ResolveLongFreeKickDirectAttackRoll
+				: Category == EFMCodexLocalMatchInteractionCategory
+					::RollLongFreeKickDirectDefense
+					? EMatchPlayAuthoritativeCommandKind
+						::ResolveLongFreeKickDirectDefenseRoll
+					: EMatchPlayAuthoritativeCommandKind
+						::ResolveLongFreeKickPowerRoll,
+			Request);
+		return;
+	}
+	case EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectAttack:
+	case EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectDefense:
+	case EFMCodexLocalMatchInteractionCategory::RollPenaltyPanenka:
+	{
+		FMatchPlayPenaltyRollRequest Request;
+		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
+		Request.AttackSequence = InteractionView.AttackSequence;
+		const auto Category = InteractionView.InteractionCategory;
+		SubmitPlayerIntent(
+			Category == EFMCodexLocalMatchInteractionCategory
+				::RollPenaltyDirectAttack
+				? TEXT("ResolvePenaltyDirectAttackRoll")
+				: Category == EFMCodexLocalMatchInteractionCategory
+					::RollPenaltyDirectDefense
+					? TEXT("ResolvePenaltyDirectDefenseRoll")
+					: TEXT("ResolvePenaltyPanenkaRoll"),
+			Category == EFMCodexLocalMatchInteractionCategory
+				::RollPenaltyDirectAttack
+				? EMatchPlayAuthoritativeCommandKind
+					::ResolvePenaltyDirectAttackRoll
+				: Category == EFMCodexLocalMatchInteractionCategory
+					::RollPenaltyDirectDefense
+					? EMatchPlayAuthoritativeCommandKind
+						::ResolvePenaltyDirectDefenseRoll
+					: EMatchPlayAuthoritativeCommandKind
+						::ResolvePenaltyPanenkaRoll,
+			Request);
+		return;
+	}
+	case EFMCodexLocalMatchInteractionCategory::RollCornerParticipantSelection:
+		SubmitCornerRoll(
+			EMatchPlayAuthoritativeCommandKind
+				::RequestCornerParticipantSelectionRoll,
+			TEXT("RequestCornerParticipantSelectionRoll"));
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCornerRoute:
+		SubmitCornerRoll(
+			EMatchPlayAuthoritativeCommandKind::RequestCornerRouteRoll,
+			TEXT("RequestCornerRouteRoll"));
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCornerAttack:
+		SubmitCornerRoll(
+			EMatchPlayAuthoritativeCommandKind::RequestCornerAttackRoll,
+			TEXT("RequestCornerAttackRoll"));
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCornerDefense:
+		SubmitCornerRoll(
+			EMatchPlayAuthoritativeCommandKind::RequestCornerDefenseRoll,
+			TEXT("RequestCornerDefenseRoll"));
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCrossRoute:
+		RollCrossRoute();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack:
+		RollCrossAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCrossDefense:
+		RollCrossDefense();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack:
+		RollLongShotDirectAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense:
+		RollLongShotDirectDefense();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner:
+		RollLongShotDeadCorner();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectAttack:
+		RollCutInsideShotDirectAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectDefense:
+		RollCutInsideShotDirectDefense();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner:
+		RollCutInsideShotDeadCorner();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlRoute:
+		RollPassControlRoute();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlAttack:
+		RollPassControlAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlDefense:
+		RollPassControlDefense();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
+		RollThroughBallInitialRoute();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack:
+		RollThroughBallFeetAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense:
+		RollThroughBallFeetDefense();
+		return;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallAntiOffsideAttack:
+		RollThroughBallAntiOffsideAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneChipShotAttack:
+		RollThroughBallOneOnOneChipShotAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneDirectShotAttack:
+		RollThroughBallOneOnOneDirectShotAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallOneOnOneDirectShotDefense:
+		RollThroughBallOneOnOneDirectShotDefense();
+		return;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallBehindDefenseAttack:
+		RollThroughBallBehindDefenseAttack();
+		return;
+	case EFMCodexLocalMatchInteractionCategory
+		::RollThroughBallBehindDefenseDefense:
+		RollThroughBallBehindDefenseDefense();
+		return;
+	case EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal:
+		AdvanceAfterTerminal();
+		return;
+	default:
+		break;
+	}
+
+	RecordLocalFailure(
+		TEXT("SubmitProjectedPrimaryPlayerIntent"),
+		TEXT("No player intent is available for the projected interaction."));
 }
 
 void AFMCodexLocalMatchPlayerController::ContinueResolution()
 {
-	AFMCodexLocalMatchHostGameMode* SetPieceHost = FindLocalMatchHost();
-	if (SetPieceHost != nullptr)
-	{
-		auto MakeRollRequest = [this]()
-		{
-			FMatchPlayCornerRollRequest Request;
-			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-			Request.AttackSequence = InteractionView.AttackSequence;
-			return Request;
-		};
-		switch (InteractionView.InteractionCategory)
-		{
-		case EFMCodexLocalMatchInteractionCategory::RollSetPieceType:
-		{
-			FMatchPlaySetPieceTypeRollRequest Request;
-			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-			Request.AttackSequence = InteractionView.AttackSequence;
-			RecordCommandResult(TEXT("RequestSetPieceTypeRoll"),
-				SetPieceHost->RequestSetPieceTypeRoll(Request));
-			return;
-		}
-		case EFMCodexLocalMatchInteractionCategory::ConfirmSetPieceCarrier:
-		case EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker:
-		case EFMCodexLocalMatchInteractionCategory::DraftCornerDefender:
-			ConfirmSetPieceDraft(); return;
-		case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectAttack:
-		case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectDefense:
-		case EFMCodexLocalMatchInteractionCategory::RollShortFreeKickAngled:
-		{
-			FMatchPlayShortFreeKickRollRequest Request;
-			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-			Request.AttackSequence = InteractionView.AttackSequence;
-			if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectAttack)
-				RecordCommandResult(TEXT("ResolveShortFreeKickDirectAttackRoll"), SetPieceHost->ResolveShortFreeKickDirectAttackRoll(Request));
-			else if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollShortFreeKickDirectDefense)
-				RecordCommandResult(TEXT("ResolveShortFreeKickDirectDefenseRoll"), SetPieceHost->ResolveShortFreeKickDirectDefenseRoll(Request));
-			else
-				RecordCommandResult(TEXT("ResolveShortFreeKickAngledRoll"), SetPieceHost->ResolveShortFreeKickAngledRoll(Request));
-			return;
-		}
-		case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectAttack:
-		case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectDefense:
-		case EFMCodexLocalMatchInteractionCategory::RollLongFreeKickPower:
-		{
-			FMatchPlayLongFreeKickRollRequest Request;
-			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-			Request.AttackSequence = InteractionView.AttackSequence;
-			if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectAttack)
-				RecordCommandResult(TEXT("ResolveLongFreeKickDirectAttackRoll"), SetPieceHost->ResolveLongFreeKickDirectAttackRoll(Request));
-			else if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollLongFreeKickDirectDefense)
-				RecordCommandResult(TEXT("ResolveLongFreeKickDirectDefenseRoll"), SetPieceHost->ResolveLongFreeKickDirectDefenseRoll(Request));
-			else
-				RecordCommandResult(TEXT("ResolveLongFreeKickPowerRoll"), SetPieceHost->ResolveLongFreeKickPowerRoll(Request));
-			return;
-		}
-		case EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectAttack:
-		case EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectDefense:
-		case EFMCodexLocalMatchInteractionCategory::RollPenaltyPanenka:
-		{
-			FMatchPlayPenaltyRollRequest Request;
-			Request.RequestingSide = InteractionView.ExpectedActingPlayer;
-			Request.AttackSequence = InteractionView.AttackSequence;
-			if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectAttack)
-				RecordCommandResult(TEXT("ResolvePenaltyDirectAttackRoll"), SetPieceHost->ResolvePenaltyDirectAttackRoll(Request));
-			else if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollPenaltyDirectDefense)
-				RecordCommandResult(TEXT("ResolvePenaltyDirectDefenseRoll"), SetPieceHost->ResolvePenaltyDirectDefenseRoll(Request));
-			else
-				RecordCommandResult(TEXT("ResolvePenaltyPanenkaRoll"), SetPieceHost->ResolvePenaltyPanenkaRoll(Request));
-			return;
-		}
-		case EFMCodexLocalMatchInteractionCategory::RollCornerParticipantSelection:
-			RecordCommandResult(TEXT("RequestCornerParticipantSelectionRoll"), SetPieceHost->RequestCornerParticipantSelectionRoll(MakeRollRequest())); return;
-		case EFMCodexLocalMatchInteractionCategory::RollCornerRoute:
-			RecordCommandResult(TEXT("RequestCornerRouteRoll"), SetPieceHost->RequestCornerRouteRoll(MakeRollRequest())); return;
-		case EFMCodexLocalMatchInteractionCategory::RollCornerAttack:
-			RecordCommandResult(TEXT("RequestCornerAttackRoll"), SetPieceHost->RequestCornerAttackRoll(MakeRollRequest())); return;
-		case EFMCodexLocalMatchInteractionCategory::RollCornerDefense:
-			RecordCommandResult(TEXT("RequestCornerDefenseRoll"), SetPieceHost->RequestCornerDefenseRoll(MakeRollRequest())); return;
-		default:
-			break;
-		}
-	}
-	if (InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollCrossRoute
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollPassControlRoute
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollPassControlAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollPassControlDefense
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollCutInsideShotDirectAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollCutInsideShotDirectDefense
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollCutInsideShotDeadCorner
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollCrossAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollCrossDefense
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::ApplyCrossTerminalResolution
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollThroughBallAntiOffsideAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollThroughBallOneOnOneChipShotAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollThroughBallOneOnOneDirectShotAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollThroughBallOneOnOneDirectShotDefense
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollThroughBallBehindDefenseAttack
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::RollThroughBallBehindDefenseDefense
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory
-				::ApplyThroughBallFeetTerminalResolution
-		|| InteractionView.InteractionCategory
-			== EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal)
-	{
-		RecordLocalFailure(
-			TEXT("ContinueResolution"),
-			TEXT("Side-owned arithmetic rolls and terminal completion require their explicit commands."));
-		return;
-	}
-	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
-	if (Host == nullptr)
+	AFMCodexLocalMatchHostGameMode* LocalHost = FindLocalMatchHost();
+	if (LocalHost == nullptr)
 	{
 		RecordLocalFailure(TEXT("ContinueResolution"), TEXT("Host unavailable."));
 		return;
 	}
-	const auto Snapshot = Host->GetMatchSnapshot();
-	const auto Rules = Host->GetSkillRuleSnapshot();
-	if (!Snapshot.bSuccess || !Rules.bSuccess
-		|| !Snapshot.Snapshot.bHasCurrentAttack)
+	const FMatchPlayServerCoordinatorResult Result =
+		LocalHost->AdvanceServerCoordinator();
+	if (!Result.bSuccess)
 	{
-		RecordLocalFailure(
-			TEXT("ContinueResolution"),
-			!Snapshot.bSuccess ? Snapshot.ErrorMessage
-				: !Rules.bSuccess ? Rules.ErrorMessage
-					: TEXT("No current attack is available to continue."));
+		RecordLocalFailure(TEXT("ContinueResolution"), Result.ErrorMessage);
 		return;
 	}
-
-	const FMatchPlayCurrentAttackState& Attack =
-		Snapshot.Snapshot.CurrentAttack;
-	if (!Attack.bHasResolutionSession)
-	{
-		if (Attack.bHasSelectedAction
-			&& Attack.SelectedAction.ActionType == ESkillRuleType::Cross)
-		{
-			if (bCrossRouteCommandInFlight)
-			{
-				return;
-			}
-			bCrossRouteCommandInFlight = true;
-			const auto BeginResult = Host->BeginResolutionSession();
-			if (!BeginResult.bSuccess)
-			{
-				bCrossRouteCommandInFlight = false;
-				RecordCommandResult(
-					TEXT("BeginResolutionSession"), BeginResult);
-				return;
-			}
-			const auto RouteResult = Host->ResolveInitialRoute();
-			bCrossRouteCommandInFlight = false;
-			RecordCommandResult(TEXT("ResolveCrossRoute"), RouteResult);
-			return;
-		}
-		RecordCommandResult(
-			TEXT("BeginResolutionSession"), Host->BeginResolutionSession());
-		return;
-	}
-
-	const FMatchPlayCurrentAttackResolutionSession& Session =
-		Attack.ResolutionSession;
-	if (Session.Stage == EMatchPlayCurrentAttackResolutionStage::AwaitingRoute)
-	{
-		if (Session.Bundle.Binding.ActionType == ESkillRuleType::LongShot
-			|| Session.Bundle.Binding.ActionType
-				== ESkillRuleType::CutInsideShot)
-		{
-			RecordCommandResult(
-				TEXT("ResolveIntentDeterminedRoute"),
-				Host->ResolveIntentDeterminedRoute());
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ResolveInitialRoute"), Host->ResolveInitialRoute());
-		}
-		return;
-	}
-
-	if (Session.Stage != EMatchPlayCurrentAttackResolutionStage::RouteResolved
-		|| !Session.bHasActualBranch)
-	{
-		RecordLocalFailure(
-			TEXT("ContinueResolution"),
-			TEXT("The snapshot does not identify one canonical resolution continuation."));
-		return;
-	}
-
-	const auto Progress =
-		FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(Session);
-	if (!Progress.bIsCanonical)
-	{
-		RecordLocalFailure(TEXT("ContinueResolution"), Progress.ErrorMessage);
-		return;
-	}
-
-	switch (Session.ActualBranch.ActionType)
-	{
-	case ESkillRuleType::Cross:
-		if (!Progress.bContractComplete)
-		{
-			RecordLocalFailure(
-				TEXT("ContinueResolution"),
-				TEXT("Cross High and Low require explicit side-owned arithmetic roll commands."));
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ApplyCrossTerminalResolution"),
-				Host->ApplyCrossTerminalResolution());
-		}
-		return;
-
-	case ESkillRuleType::PassControl:
-		if (!Progress.bContractComplete)
-		{
-			RecordLocalFailure(
-				TEXT("ContinueResolution"),
-				TEXT("PassControl player-owned rolls require their explicit typed commands."));
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ApplyPassControlTerminalResolution"),
-				Host->ApplyPassControlTerminalResolution());
-		}
-		return;
-
-	case ESkillRuleType::CutInsideShot:
-		if (!Progress.bContractComplete)
-		{
-			RecordLocalFailure(
-				TEXT("ContinueResolution"),
-				TEXT("CutInsideShot player-owned rolls require their explicit typed commands."));
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ApplyShotTerminalResolution"),
-				Host->ApplyShotTerminalResolution());
-		}
-		return;
-
-	case ESkillRuleType::LongShot:
-		if (!Progress.bContractComplete)
-		{
-			RecordLocalFailure(
-				TEXT("ContinueResolution"),
-				TEXT("LongShot player-owned rolls require their explicit typed commands."));
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ApplyShotTerminalResolution"),
-				Host->ApplyShotTerminalResolution());
-		}
-		return;
-
-	case ESkillRuleType::ThroughBall:
-		break;
-
-	default:
-		RecordLocalFailure(
-			TEXT("ContinueResolution"),
-			TEXT("The resolved action family has no LocalPlay continuation mapping."));
-		return;
-	}
-
-	if (Session.ActualBranch.ThroughBall
-		== EMatchPlayThroughBallActualBranch::Feet)
-	{
-		RecordLocalFailure(
-			TEXT("ContinueResolution"),
-			TEXT("ThroughBall Feet requires explicit attacker roll, defender roll, and terminal commands."));
-		return;
-	}
-
-	const EMatchPlayThroughBallOneOnOneShotChoice Choice =
-		Session.ThroughBallOneOnOneShotChoice;
-	if (Choice == EMatchPlayThroughBallOneOnOneShotChoice::ChipShot)
-	{
-		if (Session.PostRouteRollProgress.Phase
-				!= EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneChipShot
-			|| !Progress.bContractComplete)
-		{
-			RecordLocalFailure(
-				TEXT("ContinueResolution"),
-				TEXT("OneOnOne ChipShot requires its explicit attacker-owned roll command."));
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ApplyThroughBallTerminalResolution"),
-				Host->ApplyThroughBallTerminalResolution());
-		}
-		return;
-	}
-	if (Choice == EMatchPlayThroughBallOneOnOneShotChoice::DirectShot)
-	{
-		if (Session.PostRouteRollProgress.Phase
-				!= EMatchPlayCurrentAttackPostRouteRollPhase::OneOnOneDirectShot
-			|| !Progress.bContractComplete)
-		{
-			RecordLocalFailure(
-				TEXT("ContinueResolution"),
-				TEXT("OneOnOne DirectShot requires explicit attacker and defender roll commands."));
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ApplyThroughBallTerminalResolution"),
-				Host->ApplyThroughBallTerminalResolution());
-		}
-		return;
-	}
-
-	if (Session.ActualBranch.ThroughBall
-		== EMatchPlayThroughBallActualBranch::AntiOffside)
-	{
-		if (!Progress.bContractComplete)
-		{
-			RecordLocalFailure(
-				TEXT("ContinueResolution"),
-				TEXT("AntiOffside requires its explicit attacker-owned roll command."));
-		}
-		else
-		{
-			RecordCommandResult(
-				TEXT("ApplyThroughBallTerminalResolution"),
-				Host->ApplyThroughBallTerminalResolution());
-		}
-		return;
-	}
-
-	if (Session.ActualBranch.ThroughBall
-		== EMatchPlayThroughBallActualBranch::BehindDefense)
-	{
-		if (!Progress.bContractComplete)
-		{
-			RecordLocalFailure(
-				TEXT("ContinueResolution"),
-				TEXT("BehindDefense P1 rolls require their explicit side-owned commands."));
-			return;
-		}
-
-		if (Session.PostRouteRollProgress.Phase
-			== EMatchPlayCurrentAttackPostRouteRollPhase::PrimaryBranch)
-		{
-			const auto Formula =
-				FMatchPlayCurrentAttackResolveThroughBallBehindDefenseP1FormulaOrchestrator
-					::Resolve(Snapshot.Snapshot, &Rules.Snapshot);
-			if (Formula.bSuccess
-				&& Formula.FormulaResolutionResult.bContinueResolution)
-			{
-				RecordCommandResult(
-					TEXT("ResolveThroughBallBehindDefenseP1Formula"),
-					Host->ResolveThroughBallBehindDefenseP1Formula());
-			}
-			else
-			{
-				RecordCommandResult(
-					TEXT("ApplyThroughBallTerminalResolution"),
-					Host->ApplyThroughBallTerminalResolution());
-			}
-			return;
-		}
-
-		RecordCommandResult(
-			TEXT("ApplyThroughBallTerminalResolution"),
-			Host->ApplyThroughBallTerminalResolution());
-		return;
-	}
-
-	RecordLocalFailure(
-		TEXT("ContinueResolution"),
-		TEXT("The ThroughBall snapshot does not identify a supported branch."));
+	LastDiagnostic.CommandName = TEXT("ContinueResolution");
+	LastDiagnostic.bHostSuccess = true;
+	LastDiagnostic.bAuthoritativeAccepted = false;
+	LastDiagnostic.bAuthoritativeSuccess = true;
+	LastDiagnostic.Message = Result.bStateAdvanced
+		? TEXT("Server coordinator reached a stable authoritative state.")
+		: TEXT("Server coordinator was already at a stable state.");
+	RefreshPresentation();
+	RebuildControlSurface();
 }
-
 void AFMCodexLocalMatchPlayerController::RebuildControlSurface()
 {
 	RefreshPlayerMatchScreen();
@@ -3401,11 +2822,7 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 		}));
 		break;
 	case EFMCodexLocalMatchInteractionCategory::ContinueResolution:
-		AddText(TEXT("System-controlled resolution step"));
-		AddButton(MakeButton(InteractionView.ContinueActionLabel, [this]()
-		{
-			ContinueResolution();
-		}));
+		AddText(TEXT("正在同步比赛进程…"));
 		break;
 	default:
 		break;

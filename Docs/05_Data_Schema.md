@@ -586,3 +586,11 @@ Feet typed command DTO 为 `FMatchPlayAuthoritativeResolveThroughBallFeetAttackR
 - 缺席语义必须结构化：未公开整数为 0，枚举为 `None`，数组/文本为空，对应 `bHas*`/`bIsResolved` 为 false。未公开 initial D12 时，依赖该 D12 的 route、set-piece stage、participants、formula/result、terminal 与 action payload也缺席；未公开 paired 2D6 不允许 half-pair。
 - Terminal outcome 未公开时，投影从 authority score 中扣除当前攻击新增进球，并移除当前 `AttackSequence` 的 GoalHistory/scorer/outcome；历史已公开进球保留。比赛正式结束时 FullTime 结果作为公共事实完整投影。
 - Corner 双方 lock acknowledgement 是公共 lifecycle 状态；ordered nominations 只有 owner 在单边已锁定时可见，双方 lock 后才公开。自动射手 D6 始终为 server-only authority fact，即使 terminal 已公开也不进入 DTO。
+
+## Shared Host Port DTO（Stage 7.1）
+
+- `FMatchPlayPlayerIntent` 由 `EMatchPlayAuthoritativeCommandKind CommandKind` 与 `FMatchPlayPlayerIntentPayload` 组成。Payload 是已存在 correlated player request DTO 的封闭 variant；deployment completion 使用补充的 `FMatchPlayFinishDeploymentIntent(AttackSequence, RequestingSide)`。CommandKind 与 variant type 必须精确匹配，否则 HostPort 在 Session/provider 前拒绝。
+- `FMatchPlayPlayerIntentSubmissionResult` 分离 intent accepted、authoritative envelope、coordinator result 与 host-boundary error。它是当前同步 Local adapter 的返回模型，不是未来 ACK、network revision 或 packet envelope；不得把其内存布局当 wire format。
+- `FMatchPlayServerCoordinatorResult` 只报告本次 server-internal progression 的 stop reason、是否推进、内部 step classification 与 bounded diagnostics。它不是客户端 gameplay command，也不授予调用方选择下一内部动作的能力。
+- `FFMCodexMatchClientViewRequest` 只包含 `ViewerSide + server-owned Disclosure`；`FFMCodexMatchClientViewResult` 只返回 viewer-safe `FFMCodexLocalMatchInteractionView` 或错误，不返回 raw `FMatchPlayState`、Session、rules 或 providers。
+- 这些边界 DTO 只使用 Side、AttackSequence、CardId、enum/value 类型；不保存 Controller、GameMode、Widget 或 Actor identity。

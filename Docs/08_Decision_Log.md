@@ -1109,3 +1109,12 @@
 - 客户端只消费按 viewer 构建的 InteractionView。Disclosure 默认全关闭，未公开事实从 DTO 中删除；Corner 双方锁定前隔离 ordered nominations，自动射手 D6 永不投影，terminal 未公开时 score/GoalHistory/scorer/outcome 一并 withheld。FullTime 是公共最终事实。
 - LocalPlay 已同时构建 Player A/B viewer-safe DTO，并在 hot-seat 上选择当前 viewer；现阶段 full disclosure 保持原有本地 presentation timing。Controller 的 snapshot-to-projector 输入与 legacy `ContinueResolution` raw-state dispatch 延期到 Stage 7.1 HostPort / ClientViewPort 拆分。
 - 本决定不授权或实现 UE networking、RPC、replication、connection identity、retry protocol、reconnect、timeout/forfeit 或 matchmaking；这些属于 Stage 7.1+。
+
+## 2026-09-04 — Shared Match Host Port and Server Coordinator（Stage 7.1）
+
+- 生产玩家命令统一经过 transport-neutral `IMatchPlayPlayerIntentPort`。HostPort 对 command origin fail closed，只接受匹配既有 correlated request DTO 的 `PlayerIntent`；provider、roll、Formula、rules、Recovery 或 UObject identity 不进入 caller payload。Local host player未来也不得直达Session。
+- server-internal orchestration归 `FMatchPlayServerCoordinator`。它位于MatchPlayRuntime，只经唯一AuthoritativeSession执行AP1、no-legal、deterministic continuation与Formula/terminal收口，直到玩家输入、terminal、match end、失败或safety limit；显式terminal advance继续属于玩家。
+- Local GameMode拥有provider、Session与Coordinator并实现同步Local adapter；Coordinator不拥有State或Host，不形成循环。LocalPlay、DEV deterministic provider、short match和既有UMG继续使用同一玩法实现。
+- 普通Controller刷新改走独立`IFMCodexMatchClientViewPort`，Host端执行`BuildForViewer`并只返回InteractionView。Controller不再读取raw State来投影或选择内部动作；遗留`ContinueResolution`只是无状态的Coordinator推进请求，不是player-internal command映射。
+- 旧文档/测试中generic Continue在typed roll pending时返回本地rejection的细节由本决定取代：它现在返回coordinator stable no-op，State与RNG不变；Production CTA继续只能发送对应typed PlayerIntent。
+- 本决定完成transport前的共享server runtime边界，不实现RPC、replication、connection→Side、ACK/revision、MatchInstanceId、双客户端bootstrap、reconnect或Listen Server启动；后续网络adapter必须复用该Host/Coordinator，不得创建第二套规则或Session。
