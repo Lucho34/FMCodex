@@ -233,6 +233,8 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 					&& Slot.LegalityResult.ResolvedRelativeZone
 						== PreferredZone)
 				{
+					OutRequest.ExpectedAttackSequence =
+						State.CurrentAttack.AttackSequence;
 					OutRequest.RequestingSide = Side;
 					OutRequest.CardId = CardId;
 					OutRequest.SlotId = Slot.SlotId;
@@ -310,6 +312,9 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 					return false;
 				}
 				FMatchPlayAuthoritativeDeployGoalkeeperRequest GoalkeeperRequest;
+				GoalkeeperRequest.ExpectedAttackSequence =
+					State.CurrentAttack.AttackSequence;
+				GoalkeeperRequest.RequestingSide = OutTrace.Defender;
 				GoalkeeperRequest.SlotId = Availability.LegalSlotIds.Last();
 				if (!Direct.DeployGoalkeeper(GoalkeeperRequest)
 						.DeploymentResult.bSucceeded
@@ -348,6 +353,8 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 			}
 		}
 		FMatchPlayAuthoritativeSubmitCarrierRequest CarrierRequest;
+		CarrierRequest.ExpectedAttackSequence =
+			State.CurrentAttack.AttackSequence;
 		CarrierRequest.RequestingSide = OutTrace.Attacker;
 		CarrierRequest.CarrierCardId = CarrierId;
 		if (CarrierId.IsNone()
@@ -373,6 +380,8 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 			}
 		}
 		FMatchPlayAuthoritativeSubmitMarkerRequest MarkerRequest;
+		MarkerRequest.ExpectedAttackSequence =
+			State.CurrentAttack.AttackSequence;
 		MarkerRequest.RequestingSide = OutTrace.Defender;
 		MarkerRequest.MarkerCardId = MarkerId;
 		if (MarkerId.IsNone()
@@ -383,6 +392,8 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 		}
 
 		FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+		SkillRequest.ExpectedAttackSequence =
+			State.CurrentAttack.AttackSequence;
 		SkillRequest.RequestingSide = OutTrace.Attacker;
 		SkillRequest.SkillId = OutTrace.SkillId;
 		auto SubmitSkillToBoth = [&]()
@@ -407,6 +418,8 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 			}
 		}
 		FMatchPlayAuthoritativeSubmitRunnerRequest RunnerRequest;
+		RunnerRequest.ExpectedAttackSequence =
+			State.CurrentAttack.AttackSequence;
 		RunnerRequest.RequestingSide = OutTrace.Attacker;
 		RunnerRequest.RunnerCardId = RunnerId;
 		if (RunnerId.IsNone()
@@ -442,6 +455,8 @@ namespace FMCodexLocalMatchResolutionRoutingTests
 				}
 			}
 			FMatchPlayAuthoritativeSubmitHelperRequest HelperRequest;
+			HelperRequest.ExpectedAttackSequence =
+				State.CurrentAttack.AttackSequence;
 			HelperRequest.RequestingSide = OutTrace.Defender;
 			HelperRequest.HelperCardId = HelperId;
 			if (HelperId.IsNone()
@@ -807,6 +822,8 @@ bool FFMCodexLocalMatchResolutionSurfaceTest::RunTest(
 	auto MismatchedRules = Rules;
 	MismatchedRules.SkillRules[0].MaxTriggerActionPoint = 7;
 	FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+	SkillRequest.ExpectedAttackSequence = ConfigBefore.bHasCurrentAttack
+		? ConfigBefore.CurrentAttack.AttackSequence : 0;
 	SkillRequest.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
 	SkillRequest.SkillId = SkillId;
 	const auto Mismatch = ConfigHost->SubmitSkill(MismatchedRules, SkillRequest);
@@ -1721,6 +1738,8 @@ bool FFMCodexLocalMatchThroughBallResolutionTest::RunTest(
 			HostA->GetMatchSnapshot().Snapshot));
 
 	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Choice;
+	Choice.ExpectedAttackSequence = HostA->GetMatchSnapshot().Snapshot
+		.CurrentAttack.AttackSequence;
 	Choice.RequestingSide = TraceA.Attacker;
 	Choice.Choice = EMatchPlayThroughBallOneOnOneShotChoice::DirectShot;
 	TestTrue(TEXT("Direct accepts DirectShot choice"),
@@ -2195,6 +2214,8 @@ bool FFMCodexLocalDevRollOverrideAuthorityFlowTest::RunTest(
 			6);
 
 		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Choice;
+		Choice.ExpectedAttackSequence = Host->GetMatchSnapshot().Snapshot
+			.CurrentAttack.AttackSequence;
 		Choice.RequestingSide = Trace.Attacker;
 		Choice.Choice =
 			EMatchPlayThroughBallOneOnOneShotChoice::DirectShot;

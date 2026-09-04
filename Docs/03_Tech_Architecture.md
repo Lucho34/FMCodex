@@ -248,3 +248,14 @@
 - `TerminalPendingAdvance` 继续冻结 outcome、score/scorer、CurrentAttack、Formula/roll/narrative facts与推进前 CardUsage。AP1 Ejected 是 outcome 本身，可在 terminal前写入；其他 ordinary/set-piece Used mutation、机会消费与 Recovery只属于成功 advance transaction。
 - advance transaction 在 candidate State 中完成 validation → participant consumption → opportunity consumption → match-end/next-attacker derivation → non-final Recovery → CurrentAttack clear，再一次 adoption。Recovery从双方合并 Used池执行 provider-owned、Stamina线性加权、不放回、最多两张的原子 draw；final、invalid或duplicate advance不得访问 Recovery provider，不能发布 handoff-without-recovery 半状态。
 - reconstructable gameplay truth为最终 CardUsage加有界 `LastRecoveryFact(SourceAttackSequence, ordered OwnerSide+CardId[0..2])`。完整候选池、weights与raw weighted tickets只可进入DEV/server diagnostics；生产展示由稳定identity映射名称，不能把localized FText写入State。
+
+## Pre-Network Command / Read Boundary（Stage 7.0.1）
+
+- 所有仍作用于当前攻击的玩家意图都必须由调用方携带 `RequestingSide + ExpectedAttackSequence`；Session 在任何状态写入或 RNG/provider 调用前校验。`RequestingSide` 当前用于相关性与归属验证，不是身份认证；未来网络层必须从已认证连接导出 side，不能信任客户端自报身份。
+- `FMatchPlayAuthoritativeCommandClassification` 将 deployment、participant/skill/branch choice、玩家触发的 gameplay roll、Full D12 与 terminal advance 标为 `PlayerIntent`；确定性 continuation、no-legal resolution、formula/outcome、terminal persistence、recovery 与 administration 属于 `ServerInternalAction`。新命令必须显式归类，未知值 fail closed 为 internal。
+- Production 攻击入口统一为 correlated Full D12 request。Host/Session 的 `RollTacticalPoints`、`BeginOrdinaryAttack` compatibility facade 仅在 `WITH_DEV_AUTOMATION_TESTS` 编译；CoreRules 内部 ordinary initializer 仍是 Full D12 authority flow 的实现细节，不是 player-facing command。
+- Skill rule set 由 Session/Host 在比赛创建时固定。生产 `SubmitSkill` 只接收 `SkillId` 等玩家选择，不接收 caller-supplied rule set；测试专用 overload 仅用于旧 fixture，并验证/临时固定 fixture rules。
+- 客户端读模型通过 `FFMCodexLocalMatchInteractionView::BuildForViewer(State, Rules, ViewerSide, Disclosure)` 生成。默认 disclosure 全部关闭；未公开的 D12、定位球类型、参与者/路线/contest rolls、route-derived action、terminal outcome、score 与当前进球历史必须物理缺席，而不只是 UI 隐藏。
+- Corner 在双方锁定前只向各自 viewer 投影己方 ordered nominations，对手只看到 lock acknowledgement；双方锁定后两份 viewer DTO 才能同时公开列表。`AutomaticScorerD6` 永不进入 InteractionView。
+- LocalPlay 每次刷新分别生成 Player A 与 Player B 的 viewer-safe DTO，再选择当前 hot-seat viewer。现阶段传入 full disclosure 以保留既有本地 reveal/timer 体验；该参数是 server-owned presentation policy seam，不授予 UMG authority。
+- PlayerController 的普通 presentation refresh 仍需读取 Host snapshot 作为本地 server-side projector 输入，`ContinueResolution` 仍有 legacy raw-state dispatch。两者明确延期到 Stage 7.1 的 HostPort / ClientViewPort 拆分；本 Stage 没有实现 transport、RPC、replication、retry protocol 或 reconnect。

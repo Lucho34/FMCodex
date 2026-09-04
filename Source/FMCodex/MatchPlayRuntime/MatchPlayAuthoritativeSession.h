@@ -81,8 +81,11 @@ public:
 	FMatchPlayAuthoritativeInitializeMatchResult InitializeMatch(
 		const FMatchPlayOpeningInitializeInput& Input);
 
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Legacy fixture entry only. Production attack entry is Full D12. */
 	FMatchPlayAuthoritativeBeginOrdinaryAttackResult BeginOrdinaryAttack(
 		int32 ActionPoint);
+#endif
 
 	FMatchPlayAuthoritativeRequestInitialActionPointRollResult
 	RequestInitialActionPointRoll(
@@ -207,15 +210,24 @@ public:
 		const FMatchPlayAuthoritativeDeclineMarkerRequest& Request);
 
 	FMatchPlayAuthoritativeSubmitSkillResult SubmitSkill(
-		const FSkillRuleSnapshotSet& SkillRuleSet,
 		const FMatchPlayAuthoritativeSubmitSkillRequest& Request);
 
-	FMatchPlayAuthoritativeResolveNoLegalSkillResult ResolveNoLegalSkill(
-		const FSkillRuleSnapshotSet& SkillRuleSet);
+	FMatchPlayAuthoritativeResolveNoLegalSkillResult ResolveNoLegalSkill();
 
 	FMatchPlayAuthoritativeDeclineSkillResult DeclineSkill(
-		const FSkillRuleSnapshotSet& SkillRuleSet,
 		const FMatchPlayAuthoritativeDeclineSkillRequest& Request);
+
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Test-fixture compatibility only; never a production transport surface. */
+	FMatchPlayAuthoritativeSubmitSkillResult SubmitSkill(
+		const FSkillRuleSnapshotSet& FixtureSkillRuleSet,
+		const FMatchPlayAuthoritativeSubmitSkillRequest& Request);
+	FMatchPlayAuthoritativeResolveNoLegalSkillResult ResolveNoLegalSkill(
+		const FSkillRuleSnapshotSet& FixtureSkillRuleSet);
+	FMatchPlayAuthoritativeDeclineSkillResult DeclineSkill(
+		const FSkillRuleSnapshotSet& FixtureSkillRuleSet,
+		const FMatchPlayAuthoritativeDeclineSkillRequest& Request);
+#endif
 
 	FMatchPlayAuthoritativeSubmitRunnerResult SubmitRunner(
 		const FMatchPlayAuthoritativeSubmitRunnerRequest& Request);

@@ -315,6 +315,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 				continue;
 			}
 			FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
+			Request.ExpectedAttackSequence = View.AttackSequence;
 			Request.RequestingSide = Option.Side;
 			Request.CardId = Option.CardId;
 			Request.SlotId = Option.SlotId;
@@ -340,6 +341,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		case EFMCodexLocalMatchInteractionCategory::SelectCarrier:
 		{
 			FMatchPlayAuthoritativeSubmitCarrierRequest Request;
+			Request.ExpectedAttackSequence = View.AttackSequence;
 			Request.RequestingSide = View.ExpectedActingPlayer;
 			Request.CarrierCardId = Id;
 			return Host.SubmitCarrier(Request).bSuccess;
@@ -347,6 +349,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		case EFMCodexLocalMatchInteractionCategory::SelectMarker:
 		{
 			FMatchPlayAuthoritativeSubmitMarkerRequest Request;
+			Request.ExpectedAttackSequence = View.AttackSequence;
 			Request.RequestingSide = View.ExpectedActingPlayer;
 			Request.MarkerCardId = Id;
 			return Host.SubmitMarker(Request).bSuccess;
@@ -354,6 +357,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		case EFMCodexLocalMatchInteractionCategory::SelectSkill:
 		{
 			FMatchPlayAuthoritativeSubmitSkillRequest Request;
+			Request.ExpectedAttackSequence = View.AttackSequence;
 			Request.RequestingSide = View.ExpectedActingPlayer;
 			Request.SkillId = Id;
 			return Host.SubmitSkill(Rules, Request).bSuccess;
@@ -361,6 +365,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		case EFMCodexLocalMatchInteractionCategory::SelectRunner:
 		{
 			FMatchPlayAuthoritativeSubmitRunnerRequest Request;
+			Request.ExpectedAttackSequence = View.AttackSequence;
 			Request.RequestingSide = View.ExpectedActingPlayer;
 			Request.RunnerCardId = Id;
 			return Host.SubmitRunner(Request).bSuccess;
@@ -368,6 +373,7 @@ namespace FMCodexLocalMatchControlSurfaceTests
 		case EFMCodexLocalMatchInteractionCategory::SelectHelper:
 		{
 			FMatchPlayAuthoritativeSubmitHelperRequest Request;
+			Request.ExpectedAttackSequence = View.AttackSequence;
 			Request.RequestingSide = View.ExpectedActingPlayer;
 			Request.HelperCardId = Id;
 			return Host.SubmitHelper(Request).bSuccess;
@@ -1439,6 +1445,7 @@ bool FFMCodexLocalMatchOneOnOnePresentationTest::RunTest(
 		P1Feedback.ComparisonEntries.Num() >= 2);
 
 	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Choice;
+	Choice.ExpectedAttackSequence = View.AttackSequence;
 	Choice.RequestingSide = Attacker;
 	Choice.Choice = EMatchPlayThroughBallOneOnOneShotChoice::DirectShot;
 	TestTrue(TEXT("DirectShot choice succeeds"),
@@ -13575,6 +13582,7 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			return false;
 		}
 		FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
+		Request.ExpectedAttackSequence = View.AttackSequence;
 		Request.RequestingSide = Option->Side;
 		Request.CardId = Option->CardId;
 		Request.SlotId = Option->SlotId;
@@ -13598,6 +13606,8 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 			return false;
 		}
 		FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+		Request.ExpectedAttackSequence = GoalkeeperView.AttackSequence;
+		Request.RequestingSide = Goalkeeper->Side;
 		Request.SlotId = Goalkeeper->SlotId;
 		TestTrue(TEXT("Formula fixture activates the defending goalkeeper"),
 			Host->DeployGoalkeeper(Request).bSuccess);
@@ -13651,6 +13661,7 @@ bool FFMCodexResolutionFormulaFactProjectionFoundationTest::RunTest(
 		else if (HelperView.bCanDecline)
 		{
 			FMatchPlayAuthoritativeDeclineHelperRequest Request;
+			Request.ExpectedAttackSequence = HelperView.AttackSequence;
 			Request.RequestingSide = HelperView.ExpectedActingPlayer;
 			bHelperStageResolved = Host->DeclineHelper(Request).bSuccess;
 		}

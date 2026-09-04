@@ -152,6 +152,31 @@ enum class EMatchPlayAuthoritativeCommandKind : uint8
 	RequestCornerDefenseRoll
 };
 
+/**
+ * Transport-boundary classification. PlayerIntent commands must carry the
+ * issuing side and, once an attack exists, its expected attack sequence.
+ * ServerInternalAction commands are driven only by authoritative state.
+ */
+enum class EMatchPlayAuthoritativeCommandOrigin : uint8
+{
+	ServerInternalAction,
+	PlayerIntent
+};
+
+class FMCODEX_API FMatchPlayAuthoritativeCommandClassification final
+{
+public:
+	static EMatchPlayAuthoritativeCommandOrigin OriginOf(
+		EMatchPlayAuthoritativeCommandKind CommandKind);
+
+	static bool IsPlayerIntent(
+		const EMatchPlayAuthoritativeCommandKind CommandKind)
+	{
+		return OriginOf(CommandKind)
+			== EMatchPlayAuthoritativeCommandOrigin::PlayerIntent;
+	}
+};
+
 enum class EMatchPlayAuthoritativeRuntimeFailureCode : uint8
 {
 	None,
@@ -370,6 +395,7 @@ struct FMCODEX_API FMatchPlayAuthoritativeFinishDeploymentResult
 
 struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 	FName CardId = NAME_None;
@@ -378,11 +404,15 @@ struct FMCODEX_API FMatchPlayAuthoritativeDeployOrdinaryRequest
 
 struct FMCODEX_API FMatchPlayAuthoritativeDeployGoalkeeperRequest
 {
+	int64 ExpectedAttackSequence = 0;
+	EInitialTurnOrderPlayer RequestingSide =
+		EInitialTurnOrderPlayer::None;
 	FName SlotId = NAME_None;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 	FName CarrierCardId = NAME_None;
@@ -390,6 +420,7 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitCarrierRequest
 
 struct FMCODEX_API FMatchPlayAuthoritativeSubmitMarkerRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 	FName MarkerCardId = NAME_None;
@@ -397,12 +428,14 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitMarkerRequest
 
 struct FMCODEX_API FMatchPlayAuthoritativeDeclineMarkerRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeSubmitSkillRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 	FName SkillId = NAME_None;
@@ -410,12 +443,14 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitSkillRequest
 
 struct FMCODEX_API FMatchPlayAuthoritativeDeclineSkillRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeSubmitRunnerRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 	FName RunnerCardId = NAME_None;
@@ -423,12 +458,14 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitRunnerRequest
 
 struct FMCODEX_API FMatchPlayAuthoritativeDeclineRunnerRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 };
 
 struct FMCODEX_API FMatchPlayAuthoritativeSubmitHelperRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 	FName HelperCardId = NAME_None;
@@ -436,6 +473,7 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitHelperRequest
 
 struct FMCODEX_API FMatchPlayAuthoritativeDeclineHelperRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide =
 		EInitialTurnOrderPlayer::None;
 };
@@ -452,6 +490,7 @@ struct FMCODEX_API FMatchPlayAuthoritativeSubmitBranchIntentRequest
 struct FMCODEX_API
 	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
 {
+	int64 ExpectedAttackSequence = 0;
 	EInitialTurnOrderPlayer RequestingSide = EInitialTurnOrderPlayer::None;
 	EMatchPlayThroughBallOneOnOneShotChoice Choice =
 		EMatchPlayThroughBallOneOnOneShotChoice::None;

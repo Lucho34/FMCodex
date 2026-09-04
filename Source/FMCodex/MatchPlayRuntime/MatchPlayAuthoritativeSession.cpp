@@ -30,6 +30,92 @@ namespace MatchPlayAuthoritativeSession
 	};
 }
 
+EMatchPlayAuthoritativeCommandOrigin
+FMatchPlayAuthoritativeCommandClassification::OriginOf(
+	const EMatchPlayAuthoritativeCommandKind CommandKind)
+{
+	switch (CommandKind)
+	{
+	case EMatchPlayAuthoritativeCommandKind::FinishDeployment:
+	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
+	case EMatchPlayAuthoritativeCommandKind::SubmitCarrier:
+	case EMatchPlayAuthoritativeCommandKind::SubmitMarker:
+	case EMatchPlayAuthoritativeCommandKind::DeclineMarker:
+	case EMatchPlayAuthoritativeCommandKind::SubmitSkill:
+	case EMatchPlayAuthoritativeCommandKind::DeclineSkill:
+	case EMatchPlayAuthoritativeCommandKind::SubmitRunner:
+	case EMatchPlayAuthoritativeCommandKind::DeclineRunner:
+	case EMatchPlayAuthoritativeCommandKind::SubmitHelper:
+	case EMatchPlayAuthoritativeCommandKind::DeclineHelper:
+	case EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent:
+	case EMatchPlayAuthoritativeCommandKind
+		::SubmitThroughBallOneOnOneShotChoice:
+	case EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper:
+	case EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal:
+	case EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll:
+	case EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll:
+	case EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier:
+	case EMatchPlayAuthoritativeCommandKind::SubmitShortFreeKickMethod:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveShortFreeKickDirectAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveShortFreeKickDirectDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickAngledRoll:
+	case EMatchPlayAuthoritativeCommandKind::SubmitLongFreeKickMethod:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveLongFreeKickDirectAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveLongFreeKickDirectDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickPowerRoll:
+	case EMatchPlayAuthoritativeCommandKind::SubmitPenaltyMethod:
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyDirectAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyDirectDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyPanenkaRoll:
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerAttackerNominations:
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerDefenderNominations:
+	case EMatchPlayAuthoritativeCommandKind
+		::RequestCornerParticipantSelectionRoll:
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerIntent:
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerRouteRoll:
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossInitialRouteRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDeadCornerRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveThroughBallAntiOffsideAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveCutInsideShotDirectAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveCutInsideShotDirectDefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDeadCornerRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveThroughBallBehindDefenseP1AttackRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveThroughBallBehindDefenseP1DefenseRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveThroughBallOneOnOneChipShotAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveThroughBallOneOnOneDirectShotAttackRoll:
+	case EMatchPlayAuthoritativeCommandKind
+		::ResolveThroughBallOneOnOneDirectShotDefenseRoll:
+		return EMatchPlayAuthoritativeCommandOrigin::PlayerIntent;
+	default:
+		return EMatchPlayAuthoritativeCommandOrigin::ServerInternalAction;
+	}
+}
+
 FMatchPlayAuthoritativeStateAdoptionResult
 FMatchPlayAuthoritativeStateAdoptionPolicy::Apply(
 	const FMatchPlayState& CurrentAuthoritativeState,
@@ -268,6 +354,7 @@ FMatchPlayAuthoritativeSession::InitializeMatch(
 		});
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
 FMatchPlayAuthoritativeBeginOrdinaryAttackResult
 FMatchPlayAuthoritativeSession::BeginOrdinaryAttack(
 	const int32 ActionPoint)
@@ -299,6 +386,7 @@ FMatchPlayAuthoritativeSession::BeginOrdinaryAttack(
 			return Execution;
 		});
 }
+#endif
 
 FMatchPlayAuthoritativeRequestInitialActionPointRollResult
 FMatchPlayAuthoritativeSession::RequestInitialActionPointRoll(
@@ -1018,9 +1106,7 @@ FMatchPlayAuthoritativeDeployOrdinaryResult
 FMatchPlayAuthoritativeSession::DeployOrdinary(
 	const FMatchPlayAuthoritativeDeployOrdinaryRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeDeployOrdinaryResult>(
 		EMatchPlayAuthoritativeCommandKind::DeployOrdinary,
@@ -1057,13 +1143,8 @@ FMatchPlayAuthoritativeDeployGoalkeeperResult
 FMatchPlayAuthoritativeSession::DeployGoalkeeper(
 	const FMatchPlayAuthoritativeDeployGoalkeeperRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
-	const EInitialTurnOrderPlayer RequestingSide =
-		AuthoritativeState.bHasCurrentAttack
-			? AuthoritativeState.CurrentAttack.CurrentLegalDeploymentSide
-			: EInitialTurnOrderPlayer::None;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
+	const EInitialTurnOrderPlayer RequestingSide = Request.RequestingSide;
 	const FName GoalkeeperCardId = RequestingSide
 		== EInitialTurnOrderPlayer::PlayerA
 			? FName(*AuthoritativeState.RuntimeState.PlayerAState.GoalkeeperCardId)
@@ -1112,9 +1193,7 @@ FMatchPlayAuthoritativeSubmitCarrierResult
 FMatchPlayAuthoritativeSession::SubmitCarrier(
 	const FMatchPlayAuthoritativeSubmitCarrierRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeSubmitCarrierResult>(
 		EMatchPlayAuthoritativeCommandKind::SubmitCarrier,
@@ -1178,9 +1257,7 @@ FMatchPlayAuthoritativeSubmitMarkerResult
 FMatchPlayAuthoritativeSession::SubmitMarker(
 	const FMatchPlayAuthoritativeSubmitMarkerRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<FMatchPlayAuthoritativeSubmitMarkerResult>(
 		EMatchPlayAuthoritativeCommandKind::SubmitMarker,
 		true,
@@ -1252,9 +1329,7 @@ FMatchPlayAuthoritativeDeclineMarkerResult
 FMatchPlayAuthoritativeSession::DeclineMarker(
 	const FMatchPlayAuthoritativeDeclineMarkerRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<FMatchPlayAuthoritativeDeclineMarkerResult>(
 		EMatchPlayAuthoritativeCommandKind::DeclineMarker,
 		true,
@@ -1283,17 +1358,14 @@ FMatchPlayAuthoritativeSession::DeclineMarker(
 
 FMatchPlayAuthoritativeSubmitSkillResult
 FMatchPlayAuthoritativeSession::SubmitSkill(
-	const FSkillRuleSnapshotSet& SkillRuleSet,
 	const FMatchPlayAuthoritativeSubmitSkillRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<FMatchPlayAuthoritativeSubmitSkillResult>(
 		EMatchPlayAuthoritativeCommandKind::SubmitSkill,
 		true,
 		AttackSequence,
-		[&SkillRuleSet, Request, AttackSequence](
+		[this, Request, AttackSequence](
 			FMatchPlayAuthoritativeSubmitSkillResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
@@ -1304,7 +1376,7 @@ FMatchPlayAuthoritativeSession::SubmitSkill(
 			Result.SkillResult =
 				FMatchPlayCurrentAttackSkillSelectionWriter::Select(
 					BeforeState,
-					SkillRuleSet,
+					AuthoritativeSkillRuleSet,
 					DomainRequest);
 
 			FDomainExecution Execution;
@@ -1319,8 +1391,7 @@ FMatchPlayAuthoritativeSession::SubmitSkill(
 }
 
 FMatchPlayAuthoritativeResolveNoLegalSkillResult
-FMatchPlayAuthoritativeSession::ResolveNoLegalSkill(
-	const FSkillRuleSnapshotSet& SkillRuleSet)
+FMatchPlayAuthoritativeSession::ResolveNoLegalSkill()
 {
 	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
 		? AuthoritativeState.CurrentAttack.AttackSequence
@@ -1330,7 +1401,7 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalSkill(
 		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalSkill,
 		true,
 		AttackSequence,
-		[&SkillRuleSet, AttackSequence](
+		[this, AttackSequence](
 			FMatchPlayAuthoritativeResolveNoLegalSkillResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
@@ -1338,7 +1409,7 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalSkill(
 			DomainRequest.AttackSequence = AttackSequence;
 			Result.ResolutionResult = FMatchPlayResolveNoLegalSkill::Resolve(
 				BeforeState,
-				SkillRuleSet,
+				AuthoritativeSkillRuleSet,
 				DomainRequest);
 
 			FDomainExecution Execution;
@@ -1355,17 +1426,14 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalSkill(
 
 FMatchPlayAuthoritativeDeclineSkillResult
 FMatchPlayAuthoritativeSession::DeclineSkill(
-	const FSkillRuleSnapshotSet& SkillRuleSet,
 	const FMatchPlayAuthoritativeDeclineSkillRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<FMatchPlayAuthoritativeDeclineSkillResult>(
 		EMatchPlayAuthoritativeCommandKind::DeclineSkill,
 		true,
 		AttackSequence,
-		[&SkillRuleSet, Request, AttackSequence](
+		[this, Request, AttackSequence](
 			FMatchPlayAuthoritativeDeclineSkillResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
@@ -1374,7 +1442,7 @@ FMatchPlayAuthoritativeSession::DeclineSkill(
 			DomainRequest.RequestingSide = Request.RequestingSide;
 			Result.DeclineResult = FMatchPlaySkillDecline::Decline(
 				BeforeState,
-				SkillRuleSet,
+				AuthoritativeSkillRuleSet,
 				DomainRequest);
 
 			FDomainExecution Execution;
@@ -1388,13 +1456,58 @@ FMatchPlayAuthoritativeSession::DeclineSkill(
 		});
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
+FMatchPlayAuthoritativeSubmitSkillResult
+FMatchPlayAuthoritativeSession::SubmitSkill(
+	const FSkillRuleSnapshotSet& FixtureSkillRuleSet,
+	const FMatchPlayAuthoritativeSubmitSkillRequest& Request)
+{
+	const FSkillRuleSnapshotSet PreviousRules = AuthoritativeSkillRuleSet;
+	const bool bPreviouslyHadRules = bHasSkillRuleSet;
+	AuthoritativeSkillRuleSet = FixtureSkillRuleSet;
+	bHasSkillRuleSet = true;
+	const FMatchPlayAuthoritativeSubmitSkillResult Result = SubmitSkill(Request);
+	AuthoritativeSkillRuleSet = PreviousRules;
+	bHasSkillRuleSet = bPreviouslyHadRules;
+	return Result;
+}
+
+FMatchPlayAuthoritativeResolveNoLegalSkillResult
+FMatchPlayAuthoritativeSession::ResolveNoLegalSkill(
+	const FSkillRuleSnapshotSet& FixtureSkillRuleSet)
+{
+	const FSkillRuleSnapshotSet PreviousRules = AuthoritativeSkillRuleSet;
+	const bool bPreviouslyHadRules = bHasSkillRuleSet;
+	AuthoritativeSkillRuleSet = FixtureSkillRuleSet;
+	bHasSkillRuleSet = true;
+	const FMatchPlayAuthoritativeResolveNoLegalSkillResult Result =
+		ResolveNoLegalSkill();
+	AuthoritativeSkillRuleSet = PreviousRules;
+	bHasSkillRuleSet = bPreviouslyHadRules;
+	return Result;
+}
+
+FMatchPlayAuthoritativeDeclineSkillResult
+FMatchPlayAuthoritativeSession::DeclineSkill(
+	const FSkillRuleSnapshotSet& FixtureSkillRuleSet,
+	const FMatchPlayAuthoritativeDeclineSkillRequest& Request)
+{
+	const FSkillRuleSnapshotSet PreviousRules = AuthoritativeSkillRuleSet;
+	const bool bPreviouslyHadRules = bHasSkillRuleSet;
+	AuthoritativeSkillRuleSet = FixtureSkillRuleSet;
+	bHasSkillRuleSet = true;
+	const FMatchPlayAuthoritativeDeclineSkillResult Result = DeclineSkill(Request);
+	AuthoritativeSkillRuleSet = PreviousRules;
+	bHasSkillRuleSet = bPreviouslyHadRules;
+	return Result;
+}
+#endif
+
 FMatchPlayAuthoritativeSubmitRunnerResult
 FMatchPlayAuthoritativeSession::SubmitRunner(
 	const FMatchPlayAuthoritativeSubmitRunnerRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<FMatchPlayAuthoritativeSubmitRunnerResult>(
 		EMatchPlayAuthoritativeCommandKind::SubmitRunner,
 		true,
@@ -1461,9 +1574,7 @@ FMatchPlayAuthoritativeDeclineRunnerResult
 FMatchPlayAuthoritativeSession::DeclineRunner(
 	const FMatchPlayAuthoritativeDeclineRunnerRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<FMatchPlayAuthoritativeDeclineRunnerResult>(
 		EMatchPlayAuthoritativeCommandKind::DeclineRunner,
 		true,
@@ -1494,9 +1605,7 @@ FMatchPlayAuthoritativeSubmitHelperResult
 FMatchPlayAuthoritativeSession::SubmitHelper(
 	const FMatchPlayAuthoritativeSubmitHelperRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<FMatchPlayAuthoritativeSubmitHelperResult>(
 		EMatchPlayAuthoritativeCommandKind::SubmitHelper,
 		true,
@@ -1563,9 +1672,7 @@ FMatchPlayAuthoritativeDeclineHelperResult
 FMatchPlayAuthoritativeSession::DeclineHelper(
 	const FMatchPlayAuthoritativeDeclineHelperRequest& Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<FMatchPlayAuthoritativeDeclineHelperResult>(
 		EMatchPlayAuthoritativeCommandKind::DeclineHelper,
 		true,
@@ -3272,9 +3379,7 @@ FMatchPlayAuthoritativeSession::SubmitThroughBallOneOnOneShotChoice(
 	const FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest&
 		Request)
 {
-	const int64 AttackSequence = AuthoritativeState.bHasCurrentAttack
-		? AuthoritativeState.CurrentAttack.AttackSequence
-		: 0;
+	const int64 AttackSequence = Request.ExpectedAttackSequence;
 	return ExecuteSerialized<
 		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceResult>(
 		EMatchPlayAuthoritativeCommandKind

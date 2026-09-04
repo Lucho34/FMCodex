@@ -278,6 +278,23 @@ struct FMCODEX_API FFMCodexLocalMatchRollView
 	int32 RawD6 = 0;
 };
 
+/**
+ * Semantic publication state supplied by the authoritative presentation
+ * coordinator. Defaults are deliberately fail-closed. Timers remain local UI
+ * state and must never be encoded here.
+ */
+struct FMCODEX_API FFMCodexLocalMatchViewerDisclosure
+{
+	bool bRevealInitialActionPointRoll = false;
+	bool bRevealSetPieceTypeRoll = false;
+	bool bRevealParticipantSelectionRoll = false;
+	bool bRevealRouteRoll = false;
+	int32 RevealedContestD6Count = 0;
+	bool bRevealTerminalOutcome = false;
+
+	static FFMCodexLocalMatchViewerDisclosure FullyDisclosed();
+};
+
 struct FMCODEX_API FFMCodexLocalMatchInteractionView
 {
 	FFMCodexFullTimePresentation FullTime;
@@ -414,6 +431,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	TArray<EMatchPlayElectiveBranchIntent> BranchIntentOptions;
 	TArray<EMatchPlayThroughBallOneOnOneShotChoice> OneOnOneOptions;
 	TArray<FFMCodexLocalMatchRollView> AcceptedRolls;
+	/** Public goal events after disclosure filtering; never a full State clone. */
+	TArray<FMatchPlayGoalFact> GoalHistory;
 	FMatchPlayCurrentAttackResolutionFactProjection ResolutionFacts;
 	bool bCrossAttackRollPending = false;
 	bool bCrossDefenseRollPending = false;
@@ -453,9 +472,18 @@ class FMCODEX_API FFMCodexLocalMatchInteractionViewBuilder final
 public:
 	static FFMCodexLocalMatchInteractionView BuildNoActiveMatch();
 
+	static FFMCodexLocalMatchInteractionView BuildForViewer(
+		const FMatchPlayState& Snapshot,
+		const FSkillRuleSnapshotSet& SkillRuleSet,
+		EInitialTurnOrderPlayer ViewerSide,
+		const FFMCodexLocalMatchViewerDisclosure& Disclosure = {});
+
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Authority-complete fixture projection; never a client transport DTO. */
 	static FFMCodexLocalMatchInteractionView Build(
 		const FMatchPlayState& Snapshot,
 		const FSkillRuleSnapshotSet& SkillRuleSet);
+#endif
 
 	static FFMCodexLocalMatchScreenPresentation BuildScreenPresentation(
 		const FFMCodexLocalMatchInteractionView& View);
@@ -477,4 +505,9 @@ public:
 		const FMatchPlayCurrentAttackActualBranch& ActualBranch);
 	static FString ToString(
 		EMatchPlayThroughBallOneOnOneShotChoice Choice);
+
+private:
+	static FFMCodexLocalMatchInteractionView BuildAuthorityInternal(
+		const FMatchPlayState& Snapshot,
+		const FSkillRuleSnapshotSet& SkillRuleSet);
 };

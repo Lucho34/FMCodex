@@ -2,7 +2,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
+
 #include "Misc/AutomationTest.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 
 namespace MatchPlayCornerAuthoritativeSessionTests
 {
@@ -686,6 +690,254 @@ bool FMatchPlayCornerAutomaticScorerSessionTest::RunTest(const FString& Paramete
 			Usage(Rebuilt.GetStateSnapshot(), Attacker).UsedCardIds.Contains(Corner.GoalScorerCardId)
 				&& Usage(Rebuilt.GetStateSnapshot(), Attacker).AvailableCardIds.Contains(Corner.AttackerNominees[0].CardId));
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayNetworkBoundaryCornerViewerProjectionTest,
+	"FMCodex.MatchPlayRuntime.NetworkBoundary.ViewerProjection.CornerSecrecyAndRollDisclosure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayNetworkBoundaryCornerViewerProjectionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayCornerAuthoritativeSessionTests;
+	(void)Parameters;
+	FSkillRuleSnapshotSet Skills;
+	FAllProvider Bootstrap;
+	const FMatchPlayState AwaitingAttacker =
+		BootstrapAwaitingAttacker(Bootstrap, TEXT("BoundaryCornerView"));
+	const EInitialTurnOrderPlayer Attacker =
+		AwaitingAttacker.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = Other(Attacker);
+	FAllProvider LockProvider;
+	FMatchPlayAuthoritativeSession LockSession(
+		AwaitingAttacker,
+		LockProvider,
+		LockProvider,
+		LockProvider);
+	TestTrue(TEXT("Attacker locks ordered Corner candidates"),
+		LockSession.SubmitCornerAttackerNominations(
+			Nomination(AwaitingAttacker, Attacker, 3))
+			.ResolutionResult.bSuccess);
+	const FMatchPlayState AttackerLocked = LockSession.GetStateSnapshot();
+	const FFMCodexLocalMatchViewerDisclosure PublicSetup =
+		[]
+		{
+			FFMCodexLocalMatchViewerDisclosure Disclosure;
+			Disclosure.bRevealInitialActionPointRoll = true;
+			Disclosure.bRevealSetPieceTypeRoll = true;
+			return Disclosure;
+		}();
+	const auto AttackerView =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			AttackerLocked, Skills, Attacker, PublicSetup);
+	const auto DefenderView =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			AttackerLocked, Skills, Defender, PublicSetup);
+	TestEqual(TEXT("Attacker sees own locked ordered candidates"),
+		AttackerView.CornerAttackerNominees.Num(), 3);
+	TestTrue(TEXT("Defender receives no sealed attacker candidate bindings"),
+		DefenderView.CornerAttackerNominees.IsEmpty());
+	TestTrue(TEXT("Defender receives no sealed attacker roll labels"),
+		DefenderView.CornerAttackerNomineeRollLabels.IsEmpty());
+	TestTrue(TEXT("Defender receives no attacker draft identities"),
+		DefenderView.DraftCornerNomineeCardIds.IsEmpty());
+	TestTrue(TEXT("Defender may receive safe attacker-lock acknowledgement"),
+		DefenderView.bCornerAttackerNominationsLocked);
+	TestTrue(TEXT("No participant is projected before shared draw"),
+		DefenderView.CornerRunner.CardId.IsNone()
+			&& DefenderView.CornerHelper.CardId.IsNone());
+
+	TestTrue(TEXT("Defender locks its candidates"),
+		LockSession.SubmitCornerDefenderNominations(
+			Nomination(AttackerLocked, Defender, 2))
+			.ResolutionResult.bSuccess);
+	const FMatchPlayState BothLocked = LockSession.GetStateSnapshot();
+	const auto BothForAttacker =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			BothLocked, Skills, Attacker, PublicSetup);
+	const auto BothForDefender =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			BothLocked, Skills, Defender, PublicSetup);
+	TestTrue(TEXT("Both-locked reveal gives both lists to attacker"),
+		BothForAttacker.CornerAttackerNominees.Num() == 3
+			&& BothForAttacker.CornerDefenderNominees.Num() == 2);
+	TestTrue(TEXT("Both-locked reveal gives both lists to defender"),
+		BothForDefender.CornerAttackerNominees.Num() == 3
+			&& BothForDefender.CornerDefenderNominees.Num() == 2);
+
+	const auto FailClosedA =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			AwaitingAttacker, Skills, Attacker, {});
+	const auto FailClosedB =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			AwaitingAttacker, Skills, Defender, {});
+	TestTrue(TEXT("Default projection hides accepted Full D12 from both"),
+		FailClosedA.RawInitialD12 == 0 && FailClosedB.RawInitialD12 == 0
+			&& FailClosedA.ActionPoint == 0 && FailClosedB.ActionPoint == 0);
+	TestTrue(TEXT("Default projection hides accepted set-piece type from both"),
+		!FailClosedA.bHasSetPieceTypeRoll
+			&& !FailClosedB.bHasSetPieceTypeRoll
+			&& FailClosedA.RawSetPieceTypeD6 == 0
+			&& FailClosedB.RawSetPieceTypeD6 == 0);
+	TestTrue(TEXT("Default projection exposes no downstream route or intent"),
+		FailClosedA.RouteKind == EMatchPlayCurrentAttackRouteKind::None
+			&& FailClosedB.RouteKind == EMatchPlayCurrentAttackRouteKind::None
+			&& FailClosedA.SetPieceType == ESetPieceSelectedType::None
+			&& FailClosedB.SetPieceType == ESetPieceSelectedType::None
+			&& FailClosedA.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::None
+			&& FailClosedB.InteractionCategory
+				== EFMCodexLocalMatchInteractionCategory::None
+			&& FailClosedA.DeploymentOptions.IsEmpty()
+			&& FailClosedB.DeploymentOptions.IsEmpty()
+			&& FailClosedA.SelectionOptions.IsEmpty()
+			&& FailClosedB.SelectionOptions.IsEmpty());
+	const auto FullyPublished =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			AwaitingAttacker,
+			Skills,
+			Attacker,
+			FFMCodexLocalMatchViewerDisclosure::FullyDisclosed());
+	TestTrue(TEXT("Explicit disclosure releases Full D12 and type D6"),
+		FullyPublished.RawInitialD12 == 9
+			&& FullyPublished.bHasSetPieceTypeRoll
+			&& FullyPublished.RawSetPieceTypeD6 == 1);
+
+	FAllProvider RollProvider;
+	RollProvider.PostResults = {
+		PostSuccess(1), PostSuccess(2), PostSuccess(5), PostSuccess(4) };
+	const FMatchPlayState Rolled = CompleteCorner(
+		AwaitingAttacker,
+		RollProvider,
+		2,
+		2,
+		EMatchPlayCornerRouteIntent::High);
+	FFMCodexLocalMatchViewerDisclosure NoContest = PublicSetup;
+	NoContest.bRevealParticipantSelectionRoll = true;
+	NoContest.bRevealRouteRoll = true;
+	const auto NoContestView =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Rolled, Skills, Attacker, NoContest);
+	TestTrue(TEXT("Published participant and route facts are present"),
+		NoContestView.bHasCornerSharedParticipantD6
+			&& NoContestView.CornerSharedParticipantD6 == 1
+			&& NoContestView.bHasCornerRouteD6
+			&& NoContestView.CornerRouteD6 == 2);
+	TestTrue(TEXT("Unpublished contest rolls are absent"),
+		!NoContestView.bHasSetPieceAttackD6
+			&& NoContestView.SetPieceAttackD6 == 0
+			&& !NoContestView.bHasSetPieceDefenseD6
+			&& NoContestView.SetPieceDefenseD6 == 0);
+	NoContest.RevealedContestD6Count = 1;
+	const auto OneContestView =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Rolled, Skills, Attacker, NoContest);
+	TestTrue(TEXT("First contest release exposes only attack D6"),
+		OneContestView.bHasSetPieceAttackD6
+			&& OneContestView.SetPieceAttackD6 == 5
+			&& !OneContestView.bHasSetPieceDefenseD6
+			&& OneContestView.SetPieceDefenseD6 == 0);
+	NoContest.RevealedContestD6Count = 2;
+	const auto TwoContestView =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Rolled, Skills, Defender, NoContest);
+	TestTrue(TEXT("Second contest release exposes defense D6 to either viewer"),
+		TwoContestView.bHasSetPieceAttackD6
+			&& TwoContestView.SetPieceAttackD6 == 5
+			&& TwoContestView.bHasSetPieceDefenseD6
+			&& TwoContestView.SetPieceDefenseD6 == 4);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayNetworkBoundaryCornerTerminalDisclosureTest,
+	"FMCodex.MatchPlayRuntime.NetworkBoundary.ViewerProjection.CornerTerminalDisclosure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayNetworkBoundaryCornerTerminalDisclosureTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayCornerAuthoritativeSessionTests;
+	(void)Parameters;
+	FSkillRuleSnapshotSet Skills;
+	FAllProvider Bootstrap;
+	const FMatchPlayState Seed =
+		BootstrapAwaitingAttacker(Bootstrap, TEXT("BoundaryCornerTerminal"));
+	const EInitialTurnOrderPlayer Attacker =
+		Seed.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = Other(Attacker);
+	const int32 PublicAScore = Seed.RuntimeState.PlayerAState.Score;
+	const int32 PublicBScore = Seed.RuntimeState.PlayerBState.Score;
+	FAllProvider Provider;
+	Provider.PostResults = { PostSuccess(5) };
+	FMatchPlayAuthoritativeSession Session(
+		Seed, Provider, Provider, Provider);
+	TestTrue(TEXT("Automatic scorer fixture locks attacker three"),
+		Session.SubmitCornerAttackerNominations(
+			Nomination(Seed, Attacker, 3)).ResolutionResult.bSuccess);
+	const FMatchPlayState Locked = Session.GetStateSnapshot();
+	TestTrue(TEXT("Zero defender candidates resolves automatic scorer Goal"),
+		Session.SubmitCornerDefenderNominations(
+			Nomination(Locked, Defender, 0)).ResolutionResult.bSuccess);
+	const FMatchPlayState Terminal = Session.GetStateSnapshot();
+	const FName ActualScorer =
+		Terminal.CurrentAttack.SetPieceRoute.Corner.GoalScorerCardId;
+	TestTrue(TEXT("Authority contains a real terminal Goal and scorer"),
+		!ActualScorer.IsNone()
+			&& Terminal.GoalHistory.Num() == Seed.GoalHistory.Num() + 1);
+
+	FFMCodexLocalMatchViewerDisclosure BeforeHeadline;
+	BeforeHeadline.bRevealInitialActionPointRoll = true;
+	BeforeHeadline.bRevealSetPieceTypeRoll = true;
+	const auto HiddenA =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Terminal, Skills, Attacker, BeforeHeadline);
+	const auto HiddenB =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Terminal, Skills, Defender, BeforeHeadline);
+	for (const auto* View : { &HiddenA, &HiddenB })
+	{
+		TestTrue(TEXT("Pre-headline score stays at prior public value"),
+			View->PlayerAScore == PublicAScore
+				&& View->PlayerBScore == PublicBScore);
+		TestEqual(TEXT("Pre-headline GoalHistory omits current Goal"),
+			View->GoalHistory.Num(), Seed.GoalHistory.Num());
+		TestTrue(TEXT("Pre-headline scorer identity is absent"),
+			View->SetPieceGoalScorerCardId.IsNone());
+		TestFalse(TEXT("Pre-headline terminal outcome is absent"),
+			View->bHasSetPieceOutcome);
+	}
+	const auto PublicA =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Terminal,
+			Skills,
+			Attacker,
+			FFMCodexLocalMatchViewerDisclosure::FullyDisclosed());
+	const auto PublicB =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Terminal,
+			Skills,
+			Defender,
+			FFMCodexLocalMatchViewerDisclosure::FullyDisclosed());
+	TestTrue(TEXT("Disclosed Goal score/history agree for both viewers"),
+		PublicA.PlayerAScore == PublicB.PlayerAScore
+			&& PublicA.PlayerBScore == PublicB.PlayerBScore
+			&& PublicA.GoalHistory.Num() == Terminal.GoalHistory.Num()
+			&& PublicB.GoalHistory.Num() == Terminal.GoalHistory.Num());
+	TestTrue(TEXT("Disclosed actual scorer agrees for both viewers"),
+		PublicA.SetPieceGoalScorerCardId == ActualScorer
+			&& PublicB.SetPieceGoalScorerCardId == ActualScorer);
+
+	FString ViewHeader;
+	const FString ViewHeaderPath = FPaths::Combine(
+		FPaths::ProjectDir(),
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchInteractionView.h"));
+	TestTrue(TEXT("Viewer DTO header loads"),
+		FFileHelper::LoadFileToString(ViewHeader, *ViewHeaderPath));
+	TestFalse(TEXT("Viewer DTO has no automatic-scorer raw RNG field"),
+		ViewHeader.Contains(TEXT("AutomaticScorerD6")));
 	return true;
 }
 

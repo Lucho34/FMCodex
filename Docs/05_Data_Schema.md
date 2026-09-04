@@ -575,3 +575,14 @@ Feet typed command DTO 为 `FMatchPlayAuthoritativeResolveThroughBallFeetAttackR
 - `FFMCodexUMGInlineFormulaSurfaceViewModel` 的 Cross 完成投影包含 Narrative available、权威进攻/防守结果、选定的 Marker/Helper 表现角色、中文 headline 与路线 subtitle。`FFMCodexUMGInteractionViewModel.PrimaryAction` 保存唯一 typed action source；中央 Formula/ThroughBall surface 的 `FFMCodexUMGResolutionPrimaryActionSlotViewModel` 只对同一 category 建立 presentation claim，不是新命令、legality 或换攻状态。
 - `FMatchPlayCurrentAttackHelperSelectionLegalityResult.PhysicalAreaMatchResult` 保存 Runner↔Helper canonical shared-half 查询事实；失败分类为 `PhysicalAreaQueryFailed` 或 `HelperNotInRunnerPhysicalArea`。Availability candidate 保留该结果，InteractionView 只将后者有界映射为 `HelperWrongPhysicalArea`，UMG 再映射固定中文 Toast，不从 Slot 的显示位置重建规则。
 - 战术选择投影中的 `bCanDecline` 与 `bCanResolveNoLegalChoice` 在 `SelectSkill` 时必须互斥。二者可以共享玩家文案 `不使用战术`，但仍分别代表 `DeclineSkill` 与 `ResolveNoLegalSkill` typed authority 路由；文案相同不表示合并或放宽 Authority 请求结构。
+
+## Correlated Player Intent 与 Viewer-safe Read DTO（Stage 7.0.1）
+
+- 下列仍作用于活动攻击的 request DTO 必须保存调用方看到的 `ExpectedAttackSequence`：`DeployOrdinary`、`DeployGoalkeeper`、`SubmitCarrier`、`SubmitMarker`、`DeclineMarker`、`SubmitSkill`、`DeclineSkill`、`SubmitRunner`、`DeclineRunner`、`SubmitHelper`、`DeclineHelper`、`SubmitThroughBallOneOnOneShotChoice`。它们同时保存 `RequestingSide`；Session 不得从当前 State 代填 sequence。
+- Goalkeeper deployment request 不携带 `CardId`。Authority 用已校验的 `RequestingSide` 从该 side 的 authoritative runtime/snapshot 派生唯一 GK，避免客户端选择或伪造对方门将。
+- `EMatchPlayAuthoritativeCommandOrigin` 的稳定语义是 `PlayerIntent` 与 `ServerInternalAction`；`FMatchPlayAuthoritativeCommandClassification` 是 transport/routing audit metadata，不替代各 command 自身 legality/state validation。
+- `FFMCodexLocalMatchViewerDisclosure` 是 server-owned projection policy，分别控制 initial action-point D12、set-piece type、participant selection、route、已公开 contest D6 数量与 terminal outcome。默认构造全部为 false；只有显式 `FullyDisclosed()` 才公开全部已存在事实。
+- `FFMCodexLocalMatchInteractionView` 是 client-safe read DTO，不是 authoritative State clone。它只保存当前 viewer 可见的标量、枚举、稳定 CardId、文本/选项与已裁剪的 `GoalHistory`，不保存 State 指针、Rule provider、RNG provider、完整隐藏候选池或 `AutomaticScorerD6`。
+- 缺席语义必须结构化：未公开整数为 0，枚举为 `None`，数组/文本为空，对应 `bHas*`/`bIsResolved` 为 false。未公开 initial D12 时，依赖该 D12 的 route、set-piece stage、participants、formula/result、terminal 与 action payload也缺席；未公开 paired 2D6 不允许 half-pair。
+- Terminal outcome 未公开时，投影从 authority score 中扣除当前攻击新增进球，并移除当前 `AttackSequence` 的 GoalHistory/scorer/outcome；历史已公开进球保留。比赛正式结束时 FullTime 结果作为公共事实完整投影。
+- Corner 双方 lock acknowledgement 是公共 lifecycle 状态；ordered nominations 只有 owner 在单边已锁定时可见，双方 lock 后才公开。自动射手 D6 始终为 server-only authority fact，即使 terminal 已公开也不进入 DTO。

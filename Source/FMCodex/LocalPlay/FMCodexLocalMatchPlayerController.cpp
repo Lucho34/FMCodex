@@ -708,8 +708,33 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 		return;
 	}
 
-	auto NewView = FFMCodexLocalMatchInteractionViewBuilder::Build(
-		State.Snapshot, Rules.Snapshot);
+	// Local hot-seat uses the same viewer-safe DTO boundary as a future remote
+	// client. Its existing presentation timers still control when already
+	// published facts are animated on screen.
+	const FFMCodexLocalMatchViewerDisclosure Disclosure =
+		FFMCodexLocalMatchViewerDisclosure::FullyDisclosed();
+	auto ViewForPlayerA =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+		State.Snapshot,
+		Rules.Snapshot,
+		EInitialTurnOrderPlayer::PlayerA,
+		Disclosure);
+	auto ViewForPlayerB =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+		State.Snapshot,
+		Rules.Snapshot,
+		EInitialTurnOrderPlayer::PlayerB,
+		Disclosure);
+	const EInitialTurnOrderPlayer LocalViewerSide =
+		ViewForPlayerA.ExpectedActingPlayer == EInitialTurnOrderPlayer::PlayerB
+			? EInitialTurnOrderPlayer::PlayerB
+			: ViewForPlayerA.ExpectedActingPlayer
+				== EInitialTurnOrderPlayer::PlayerA
+				? EInitialTurnOrderPlayer::PlayerA
+				: ViewForPlayerA.CurrentAttackingPlayer;
+	auto NewView = LocalViewerSide == EInitialTurnOrderPlayer::PlayerB
+		? MoveTemp(ViewForPlayerB)
+		: MoveTemp(ViewForPlayerA);
 	InteractionView = MoveTemp(NewView);
 	ReconcileSetPieceDraft();
 	if (InteractionView.bTerminalPendingAdvance
@@ -1176,6 +1201,7 @@ void AFMCodexLocalMatchPlayerController::DeployOrdinary(
 		return;
 	}
 	FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.CardId = CardId;
 	Request.SlotId = SlotId;
@@ -1191,6 +1217,8 @@ void AFMCodexLocalMatchPlayerController::DeployGoalkeeper(const FName SlotId)
 		return;
 	}
 	FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
+	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.SlotId = SlotId;
 	RecordCommandResult(
 		TEXT("DeployGoalkeeper"), Host->DeployGoalkeeper(Request));
@@ -1220,6 +1248,7 @@ void AFMCodexLocalMatchPlayerController::SubmitCarrier(const FName CardId)
 		return;
 	}
 	FMatchPlayAuthoritativeSubmitCarrierRequest Request;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.CarrierCardId = CardId;
 	RecordCommandResult(TEXT("SubmitCarrier"), Host->SubmitCarrier(Request));
@@ -1234,6 +1263,7 @@ void AFMCodexLocalMatchPlayerController::SubmitMarker(const FName CardId)
 		return;
 	}
 	FMatchPlayAuthoritativeSubmitMarkerRequest Request;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.MarkerCardId = CardId;
 	RecordCommandResult(TEXT("SubmitMarker"), Host->SubmitMarker(Request));
@@ -1247,17 +1277,12 @@ void AFMCodexLocalMatchPlayerController::SubmitSkill(const FName SkillId)
 		RecordLocalFailure(TEXT("SubmitSkill"), TEXT("Host unavailable."));
 		return;
 	}
-	const auto Rules = Host->GetSkillRuleSnapshot();
-	if (!Rules.bSuccess)
-	{
-		RecordLocalFailure(TEXT("SubmitSkill"), Rules.ErrorMessage);
-		return;
-	}
 	FMatchPlayAuthoritativeSubmitSkillRequest Request;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.SkillId = SkillId;
 	RecordCommandResult(
-		TEXT("SubmitSkill"), Host->SubmitSkill(Rules.Snapshot, Request));
+		TEXT("SubmitSkill"), Host->SubmitSkill(Request));
 }
 
 void AFMCodexLocalMatchPlayerController::SubmitRunner(const FName CardId)
@@ -1269,6 +1294,7 @@ void AFMCodexLocalMatchPlayerController::SubmitRunner(const FName CardId)
 		return;
 	}
 	FMatchPlayAuthoritativeSubmitRunnerRequest Request;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.RunnerCardId = CardId;
 	RecordCommandResult(TEXT("SubmitRunner"), Host->SubmitRunner(Request));
@@ -1287,6 +1313,7 @@ void AFMCodexLocalMatchPlayerController::SubmitHelper(const FName CardId)
 		return;
 	}
 	FMatchPlayAuthoritativeSubmitHelperRequest Request;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.HelperCardId = CardId;
 	RecordCommandResult(TEXT("SubmitHelper"), Host->SubmitHelper(Request));
@@ -1336,28 +1363,25 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 	case EFMCodexLocalMatchInteractionCategory::SelectMarker:
 	{
 		FMatchPlayAuthoritativeDeclineMarkerRequest Request;
+		Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		RecordCommandResult(TEXT("DeclineMarker"), Host->DeclineMarker(Request));
 		break;
 	}
 	case EFMCodexLocalMatchInteractionCategory::SelectSkill:
 	{
-		const auto Rules = Host->GetSkillRuleSnapshot();
-		if (!Rules.bSuccess)
-		{
-			RecordLocalFailure(TEXT("DeclineSkill"), Rules.ErrorMessage);
-			return;
-		}
 		FMatchPlayAuthoritativeDeclineSkillRequest Request;
+		Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		RecordCommandResult(
 			TEXT("DeclineSkill"),
-			Host->DeclineSkill(Rules.Snapshot, Request));
+			Host->DeclineSkill(Request));
 		break;
 	}
 	case EFMCodexLocalMatchInteractionCategory::SelectRunner:
 	{
 		FMatchPlayAuthoritativeDeclineRunnerRequest Request;
+		Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		RecordCommandResult(TEXT("DeclineRunner"), Host->DeclineRunner(Request));
 		break;
@@ -1365,6 +1389,7 @@ void AFMCodexLocalMatchPlayerController::DeclineCurrentSelection()
 	case EFMCodexLocalMatchInteractionCategory::SelectHelper:
 	{
 		FMatchPlayAuthoritativeDeclineHelperRequest Request;
+		Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 		Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 		RecordCommandResult(TEXT("DeclineHelper"), Host->DeclineHelper(Request));
 		break;
@@ -1398,15 +1423,9 @@ void AFMCodexLocalMatchPlayerController::ResolveNoLegalCurrentSelection()
 		break;
 	case EFMCodexLocalMatchInteractionCategory::SelectSkill:
 	{
-		const auto Rules = Host->GetSkillRuleSnapshot();
-		if (!Rules.bSuccess)
-		{
-			RecordLocalFailure(TEXT("ResolveNoLegalSkill"), Rules.ErrorMessage);
-			return;
-		}
 		RecordCommandResult(
 			TEXT("ResolveNoLegalSkill"),
-			Host->ResolveNoLegalSkill(Rules.Snapshot));
+			Host->ResolveNoLegalSkill());
 		break;
 	}
 	case EFMCodexLocalMatchInteractionCategory::SelectRunner:
@@ -1473,6 +1492,7 @@ void AFMCodexLocalMatchPlayerController::SubmitOneOnOneShotChoice(
 		return;
 	}
 	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest Request;
+	Request.ExpectedAttackSequence = InteractionView.AttackSequence;
 	Request.RequestingSide = InteractionView.ExpectedActingPlayer;
 	Request.Choice = Choice;
 	RecordCommandResult(

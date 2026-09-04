@@ -821,8 +821,11 @@ public:
 	FFMCodexLocalMatchSkillRuleSnapshotResult
 		GetSkillRuleSnapshot() const;
 
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Legacy fixture entry only. Production uses RequestInitialActionPointRoll. */
 	FFMCodexLocalMatchRollTacticalPointsResult RollTacticalPoints(
 		EInitialTurnOrderPlayer RequestingSide);
+#endif
 
 	FFMCodexLocalMatchRequestInitialActionPointRollResult
 	RequestInitialActionPointRoll(const FMatchPlayFullD12EntryRequest& Request);
@@ -914,15 +917,24 @@ public:
 		const FMatchPlayAuthoritativeDeclineMarkerRequest& Request);
 
 	FFMCodexLocalMatchSubmitSkillResult SubmitSkill(
-		const FSkillRuleSnapshotSet& SkillRuleSet,
 		const FMatchPlayAuthoritativeSubmitSkillRequest& Request);
 
-	FFMCodexLocalMatchResolveNoLegalSkillResult ResolveNoLegalSkill(
-		const FSkillRuleSnapshotSet& SkillRuleSet);
+	FFMCodexLocalMatchResolveNoLegalSkillResult ResolveNoLegalSkill();
 
 	FFMCodexLocalMatchDeclineSkillResult DeclineSkill(
-		const FSkillRuleSnapshotSet& SkillRuleSet,
 		const FMatchPlayAuthoritativeDeclineSkillRequest& Request);
+
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Test-fixture compatibility only; rules here are not player intent. */
+	FFMCodexLocalMatchSubmitSkillResult SubmitSkill(
+		const FSkillRuleSnapshotSet& FixtureSkillRuleSet,
+		const FMatchPlayAuthoritativeSubmitSkillRequest& Request);
+	FFMCodexLocalMatchResolveNoLegalSkillResult ResolveNoLegalSkill(
+		const FSkillRuleSnapshotSet& FixtureSkillRuleSet);
+	FFMCodexLocalMatchDeclineSkillResult DeclineSkill(
+		const FSkillRuleSnapshotSet& FixtureSkillRuleSet,
+		const FMatchPlayAuthoritativeDeclineSkillRequest& Request);
+#endif
 
 	FFMCodexLocalMatchSubmitRunnerResult SubmitRunner(
 		const FMatchPlayAuthoritativeSubmitRunnerRequest& Request);

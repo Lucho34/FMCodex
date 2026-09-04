@@ -1100,3 +1100,12 @@
 - route-only与attack-only是正式持久化前缀，可从CurrentAttack、route record与post-route records重建next owner、Raw D6和Formula pending行。跨进攻同阶段的旧sequence请求必须拒绝，当前sequence请求随后仍可成功。
 - normal Cross中央CTA只派发typed Route、Attack、Defense；generic `ContinueResolution`不再拥有Cross玩家RNG。既有High/Low intent、route概率、Formula、Narrative、Reel、terminal与显式`AdvanceAfterTerminal`保持不变；legacy API仅保留compatibility/reference/recovery用途。
 - 本Stage建立Stage 7迁移所需的request seam，但不实现网络transport、RPC retry protocol或重连UX；生产可见表现未改变，真实Screen自动化作为无独立USER PIE gate的证据。
+
+## 2026-09-04 — Pre-Network Command and Viewer Projection Boundary（Stage 7.0.1）
+
+- 活动攻击上的玩家意图统一携带 caller-observed `RequestingSide + ExpectedAttackSequence`；Session 不再从当前 State 代填 sequence。side 是当前 ownership/correlation 字段，不是未来网络 authentication，联网 transport 必须从连接身份导出并覆盖/验证。
+- 新增明确的 `PlayerIntent / ServerInternalAction` command 分类。玩家点击引发的 deployment、selection、gameplay roll、Full D12 与 advance 属于 intent；确定性 continuation、no-legal、formula/outcome、terminal/recovery 属于内部动作。此分类冻结 transport exposure audit，但不替代 legality。
+- Production 攻击入口只保留 Full D12 correlated request；旧 `RollTacticalPoints`/`BeginOrdinaryAttack` facade 仅供 automation fixture。Skill rules 固定在 Session/Host，生产 `SubmitSkill` 不接受客户端 rule set。
+- 客户端只消费按 viewer 构建的 InteractionView。Disclosure 默认全关闭，未公开事实从 DTO 中删除；Corner 双方锁定前隔离 ordered nominations，自动射手 D6 永不投影，terminal 未公开时 score/GoalHistory/scorer/outcome 一并 withheld。FullTime 是公共最终事实。
+- LocalPlay 已同时构建 Player A/B viewer-safe DTO，并在 hot-seat 上选择当前 viewer；现阶段 full disclosure 保持原有本地 presentation timing。Controller 的 snapshot-to-projector 输入与 legacy `ContinueResolution` raw-state dispatch 延期到 Stage 7.1 HostPort / ClientViewPort 拆分。
+- 本决定不授权或实现 UE networking、RPC、replication、connection identity、retry protocol、reconnect、timeout/forfeit 或 matchmaking；这些属于 Stage 7.1+。

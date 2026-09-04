@@ -185,6 +185,8 @@ namespace FMCodexLocalMatchHostTests
 					&& Slot.LegalityResult.ResolvedRelativeZone
 						== PreferredZone)
 				{
+					OutRequest.ExpectedAttackSequence =
+						State.CurrentAttack.AttackSequence;
 					OutRequest.RequestingSide = Side;
 					OutRequest.CardId = CardId;
 					OutRequest.SlotId = Slot.SlotId;
@@ -787,6 +789,9 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 			return false;
 		}
 		FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+		Request.ExpectedAttackSequence =
+			GoalkeeperState.CurrentAttack.AttackSequence;
+		Request.RequestingSide = Defender;
 		Request.SlotId = Availability.LegalSlotIds[0];
 		TestTrue(TEXT("Direct goalkeeper deployment succeeds"),
 			GoalkeeperDirect.DeployGoalkeeper(Request)
@@ -924,6 +929,7 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 	TestTrue(TEXT("A legal Carrier exists"),
 		FindLegalCarrier(State, AttackingSide, CarrierCardId));
 	FMatchPlayAuthoritativeSubmitCarrierRequest CarrierRequest;
+	CarrierRequest.ExpectedAttackSequence = State.CurrentAttack.AttackSequence;
 	CarrierRequest.RequestingSide = AttackingSide;
 	CarrierRequest.CarrierCardId = CarrierCardId;
 	TestTrue(TEXT("Direct Carrier succeeds"),
@@ -937,6 +943,7 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 	TestTrue(TEXT("A legal Marker exists"),
 		FindLegalMarker(State, DefendingSide, MarkerCardId));
 	FMatchPlayAuthoritativeSubmitMarkerRequest MarkerRequest;
+	MarkerRequest.ExpectedAttackSequence = State.CurrentAttack.AttackSequence;
 	MarkerRequest.RequestingSide = DefendingSide;
 	MarkerRequest.MarkerCardId = MarkerCardId;
 	TestTrue(TEXT("Direct Marker succeeds"),
@@ -960,6 +967,7 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 		return false;
 	}
 	FMatchPlayAuthoritativeSubmitRunnerRequest RunnerRequest;
+	RunnerRequest.ExpectedAttackSequence = State.CurrentAttack.AttackSequence;
 	RunnerRequest.RequestingSide = AttackingSide;
 	RunnerRequest.RunnerCardId = Runner->RunnerCardId;
 	TestTrue(TEXT("Direct Runner succeeds"),
@@ -980,6 +988,8 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 	if (Helper != nullptr)
 	{
 		FMatchPlayAuthoritativeSubmitHelperRequest HelperRequest;
+		HelperRequest.ExpectedAttackSequence =
+			State.CurrentAttack.AttackSequence;
 		HelperRequest.RequestingSide = DefendingSide;
 		HelperRequest.HelperCardId = Helper->HelperCardId;
 		TestTrue(TEXT("Direct Helper succeeds"),
@@ -997,6 +1007,8 @@ bool FFMCodexLocalMatchHostInteractionEquivalenceTest::RunTest(
 	TestEquivalent(TEXT("Helper"));
 
 	FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+	SkillRequest.ExpectedAttackSequence =
+		Host->GetMatchSnapshot().Snapshot.CurrentAttack.AttackSequence;
 	SkillRequest.RequestingSide = AttackingSide;
 	SkillRequest.SkillId = SkillId;
 	TestTrue(TEXT("Direct Skill succeeds"),
@@ -1132,6 +1144,8 @@ bool FFMCodexLocalMatchHostExceptionalRoutingTest::RunTest(
 			return false;
 		}
 		FMatchPlayAuthoritativeSubmitCarrierRequest CarrierRequest;
+		CarrierRequest.ExpectedAttackSequence =
+			State.CurrentAttack.AttackSequence;
 		CarrierRequest.RequestingSide = AttackingSide;
 		CarrierRequest.CarrierCardId = CarrierCardId;
 		return Host.SubmitCarrier(CarrierRequest).bSuccess
@@ -1176,6 +1190,8 @@ bool FFMCodexLocalMatchHostExceptionalRoutingTest::RunTest(
 			EMatchPlayRelativeDeploymentZone::Backfield,
 			DeclineDefender));
 	FMatchPlayAuthoritativeDeclineMarkerRequest DeclineRequest;
+	DeclineRequest.ExpectedAttackSequence = DeclineHost->GetMatchSnapshot()
+		.Snapshot.CurrentAttack.AttackSequence;
 	DeclineRequest.RequestingSide = DeclineDefender;
 	const auto Decline = DeclineHost->DeclineMarker(DeclineRequest);
 	TestTrue(TEXT("Player DeclineMarker is Host-reachable"),

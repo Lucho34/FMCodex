@@ -2,6 +2,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
+
 #include "Misc/AutomationTest.h"
 
 namespace MatchPlayLongFreeKickAuthoritativeSessionTests
@@ -520,6 +522,71 @@ bool FMatchPlayLongFreeKickAuthoritativeSessionNoCarrierTest::RunTest(
 		Advanced.CompletionResult.bSuccess);
 	TestEqual(TEXT("No-Carrier Advance consumes no participant"),
 		Advanced.CompletionResult.SetPieceCardUsageResults.Num(), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayNetworkBoundaryPairedRollProjectionTest,
+	"FMCodex.MatchPlayRuntime.NetworkBoundary.ViewerProjection.PairedRollDisclosure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayNetworkBoundaryPairedRollProjectionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayLongFreeKickAuthoritativeSessionTests;
+	(void)Parameters;
+	const FMatchPlayState AwaitingMethod =
+		BootstrapLong(TEXT("BoundaryPairedRoll"), true);
+	const EInitialTurnOrderPlayer Attacker =
+		AwaitingMethod.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = Other(Attacker);
+	FAllProvider Provider;
+	Provider.PostResults = { PostSuccess(6), PostSuccess(5) };
+	FMatchPlayAuthoritativeSession Session(
+		AwaitingMethod, Provider, Provider, Provider);
+	FMatchPlayLongFreeKickMethodRequest Method;
+	Method.RequestingSide = Attacker;
+	Method.AttackSequence = AwaitingMethod.CurrentAttack.AttackSequence;
+	Method.Method = EMatchPlayLongFreeKickMethod::Power;
+	TestTrue(TEXT("Power method is accepted"),
+		Session.SubmitLongFreeKickMethod(Method).ResolutionResult.bSuccess);
+	FMatchPlayLongFreeKickRollRequest Roll;
+	Roll.RequestingSide = Attacker;
+	Roll.AttackSequence = Method.AttackSequence;
+	TestTrue(TEXT("Authority resolves a real paired D6"),
+		Session.ResolveLongFreeKickPowerRoll(Roll).ResolutionResult.bSuccess);
+	const FMatchPlayState Terminal = Session.GetStateSnapshot();
+	FSkillRuleSnapshotSet Skills;
+	FFMCodexLocalMatchViewerDisclosure Disclosure;
+	Disclosure.bRevealInitialActionPointRoll = true;
+	Disclosure.bRevealSetPieceTypeRoll = true;
+	Disclosure.bRevealRouteRoll = true;
+	Disclosure.RevealedContestD6Count = 1;
+	const auto Partial =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Terminal, Skills, Defender, Disclosure);
+	TestTrue(TEXT("Partial paired disclosure contains no half-pair"),
+		!Partial.bHasSetPiecePairedD6
+			&& Partial.SetPiecePairedD6A == 0
+			&& Partial.SetPiecePairedD6B == 0
+			&& Partial.SetPiecePairedD6Total == 0);
+	Disclosure.RevealedContestD6Count = 2;
+	const auto PublishedA =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Terminal, Skills, Attacker, Disclosure);
+	const auto PublishedB =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Terminal, Skills, Defender, Disclosure);
+	TestTrue(TEXT("Complete paired disclosure releases both values to A"),
+		PublishedA.bHasSetPiecePairedD6
+			&& PublishedA.SetPiecePairedD6A == 6
+			&& PublishedA.SetPiecePairedD6B == 5
+			&& PublishedA.SetPiecePairedD6Total == 11);
+	TestTrue(TEXT("Complete paired disclosure releases both values to B"),
+		PublishedB.bHasSetPiecePairedD6
+			&& PublishedB.SetPiecePairedD6A == 6
+			&& PublishedB.SetPiecePairedD6B == 5
+			&& PublishedB.SetPiecePairedD6Total == 11);
 	return true;
 }
 

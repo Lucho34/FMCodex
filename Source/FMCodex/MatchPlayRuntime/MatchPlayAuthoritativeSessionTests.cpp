@@ -1573,6 +1573,8 @@ namespace MatchPlayAuthoritativeSessionTests
 		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
 			Request;
 		const FMatchPlayState State = Session.GetStateSnapshot();
+		Request.ExpectedAttackSequence = State.bHasCurrentAttack
+			? State.CurrentAttack.AttackSequence : 0;
 		Request.RequestingSide = State.bHasCurrentAttack
 			&& State.CurrentAttack.bHasResolutionSession
 			? State.CurrentAttack.ResolutionSession.Bundle.CurrentAttackingPlayer
@@ -1592,6 +1594,7 @@ namespace MatchPlayAuthoritativeSessionTests
 
 	struct FDeploymentChoice
 	{
+		int64 AttackSequence = 0;
 		EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
 		FName CardId = NAME_None;
 		FName SlotId = NAME_None;
@@ -1625,6 +1628,8 @@ namespace MatchPlayAuthoritativeSessionTests
 				if (Slot.LegalityResult.bIsLegal
 					&& Slot.LegalityResult.ResolvedRelativeZone == PreferredZone)
 				{
+					OutChoice.AttackSequence =
+						State.CurrentAttack.AttackSequence;
 					OutChoice.Side = Side;
 					OutChoice.CardId = CardId;
 					OutChoice.SlotId = Slot.SlotId;
@@ -1641,6 +1646,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		const FDeploymentChoice& Choice)
 	{
 		FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
+		Request.ExpectedAttackSequence = Choice.AttackSequence;
 		Request.RequestingSide = Choice.Side;
 		Request.CardId = Choice.CardId;
 		Request.SlotId = Choice.SlotId;
@@ -1765,6 +1771,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		const FReachabilityTrace& Trace)
 	{
 		FMatchPlayAuthoritativeSubmitCarrierRequest Request;
+		Request.ExpectedAttackSequence = Trace.AttackSequence;
 		Request.RequestingSide = Trace.AttackingSide;
 		Request.CarrierCardId = Trace.CarrierCardId;
 		return Request;
@@ -1949,6 +1956,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		const FName MarkerCardId)
 	{
 		FMatchPlayAuthoritativeSubmitMarkerRequest Request;
+		Request.ExpectedAttackSequence = Trace.AttackSequence;
 		Request.RequestingSide = Trace.DefendingSide;
 		Request.MarkerCardId = MarkerCardId;
 		return Request;
@@ -2004,6 +2012,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			return false;
 		}
 		FMatchPlayAuthoritativeSubmitRunnerRequest RunnerRequest;
+		RunnerRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 		RunnerRequest.RequestingSide = OutTrace.AttackingSide;
 		RunnerRequest.RunnerCardId = RunnerCandidate->RunnerCardId;
 		const auto RunnerSubmit = Session.SubmitRunner(RunnerRequest);
@@ -2026,6 +2035,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		if (HelperCandidate != nullptr)
 		{
 			FMatchPlayAuthoritativeSubmitHelperRequest HelperRequest;
+			HelperRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 			HelperRequest.RequestingSide = OutTrace.DefendingSide;
 			HelperRequest.HelperCardId = HelperCandidate->HelperCardId;
 			const auto HelperSubmit = Session.SubmitHelper(HelperRequest);
@@ -2153,6 +2163,9 @@ namespace MatchPlayAuthoritativeSessionTests
 						State, State.CurrentAttack.AttackSequence, Defender, GoalkeeperCardId);
 					if (Availability.LegalSlotIds.IsEmpty()) return false;
 					FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+					Request.ExpectedAttackSequence =
+						State.CurrentAttack.AttackSequence;
+					Request.RequestingSide = Defender;
 					Request.SlotId = Availability.LegalSlotIds.Last();
 					if (!Session.DeployGoalkeeper(Request).DeploymentResult.bSucceeded) return false;
 				}
@@ -2177,6 +2190,9 @@ namespace MatchPlayAuthoritativeSessionTests
 					return false;
 				}
 				FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+				Request.ExpectedAttackSequence =
+					State.CurrentAttack.AttackSequence;
+				Request.RequestingSide = Defender;
 				Request.SlotId = Availability.LegalSlotIds[0];
 				if (!Session.DeployGoalkeeper(Request).DeploymentResult.bSucceeded)
 				{
@@ -2239,6 +2255,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			== EMatchPlayCurrentAttackSelectionStage::AwaitingSkill)
 		{
 			FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+			SkillRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 			SkillRequest.RequestingSide = OutTrace.AttackingSide;
 			SkillRequest.SkillId = SkillId;
 			const auto SkillResult = Session.SubmitSkill(
@@ -2310,6 +2327,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		}
 
 		FMatchPlayAuthoritativeSubmitRunnerRequest RunnerRequest;
+		RunnerRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 		RunnerRequest.RequestingSide = OutTrace.AttackingSide;
 		RunnerRequest.RunnerCardId = RunnerCardId;
 		const auto RunnerResult = Session.SubmitRunner(RunnerRequest);
@@ -2369,6 +2387,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		else
 		{
 			FMatchPlayAuthoritativeSubmitHelperRequest Request;
+			Request.ExpectedAttackSequence = OutTrace.AttackSequence;
 			Request.RequestingSide = OutTrace.DefendingSide;
 			Request.HelperCardId = HelperCardId;
 			if (!Session.SubmitHelper(Request).HelperResult.bSuccess)
@@ -2382,6 +2401,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			*Prefix,
 			static_cast<int32>(SkillType)));
 		FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+		SkillRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 		SkillRequest.RequestingSide = OutTrace.AttackingSide;
 		SkillRequest.SkillId = SkillId;
 		if (!Session.SubmitSkill(
@@ -2418,6 +2438,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			}
 
 			FMatchPlayAuthoritativeSubmitHelperRequest HelperRequest;
+			HelperRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 			HelperRequest.RequestingSide = OutTrace.DefendingSide;
 			HelperRequest.HelperCardId = HelperCardId;
 			if (!Session.SubmitHelper(HelperRequest).HelperResult.bSuccess)
@@ -2434,6 +2455,7 @@ namespace MatchPlayAuthoritativeSessionTests
 					*Prefix,
 					static_cast<int32>(SkillType)));
 				FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+				SkillRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 				SkillRequest.RequestingSide = OutTrace.AttackingSide;
 				SkillRequest.SkillId = SkillId;
 				if (!Session.SubmitSkill(
@@ -2467,6 +2489,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			}
 
 			FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+			SkillRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 			SkillRequest.RequestingSide = OutTrace.AttackingSide;
 			SkillRequest.SkillId = SkillId;
 			if (!Session.SubmitSkill(
@@ -2609,6 +2632,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			return false;
 		}
 		FMatchPlayAuthoritativeSubmitCarrierRequest CarrierRequest;
+		CarrierRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 		CarrierRequest.RequestingSide = OutTrace.AttackingSide;
 		CarrierRequest.CarrierCardId = Carrier->CarrierCardId;
 		if (!Session.SubmitCarrier(CarrierRequest).CarrierResult.bSuccess)
@@ -2623,6 +2647,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			return false;
 		}
 		FMatchPlayAuthoritativeSubmitMarkerRequest MarkerRequest;
+		MarkerRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 		MarkerRequest.RequestingSide = OutTrace.DefendingSide;
 		MarkerRequest.MarkerCardId = MarkerCardId;
 		if (!Session.SubmitMarker(MarkerRequest).MarkerResult.bSuccess)
@@ -2646,6 +2671,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			return false;
 		}
 		FMatchPlayAuthoritativeSubmitRunnerRequest RunnerRequest;
+		RunnerRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 		RunnerRequest.RequestingSide = OutTrace.AttackingSide;
 		RunnerRequest.RunnerCardId = Runner->RunnerCardId;
 		if (!Session.SubmitRunner(RunnerRequest).RunnerResult.bSuccess)
@@ -2667,6 +2693,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		if (Helper != nullptr)
 		{
 			FMatchPlayAuthoritativeSubmitHelperRequest HelperRequest;
+			HelperRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 			HelperRequest.RequestingSide = OutTrace.DefendingSide;
 			HelperRequest.HelperCardId = Helper->HelperCardId;
 			if (!Session.SubmitHelper(HelperRequest).HelperResult.bSuccess)
@@ -2680,6 +2707,7 @@ namespace MatchPlayAuthoritativeSessionTests
 		}
 
 		FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+		SkillRequest.ExpectedAttackSequence = OutTrace.AttackSequence;
 		SkillRequest.RequestingSide = OutTrace.AttackingSide;
 		SkillRequest.SkillId = SkillId;
 		if (!Session.SubmitSkill(Rules, SkillRequest).SkillResult.bSuccess)
@@ -7577,6 +7605,7 @@ bool FMatchPlayAuthoritativeSessionCarrierFailureMatrixTest::RunTest(
 	EarlySession.BeginOrdinaryAttack(6);
 	const FMatchPlayState EarlyState = EarlySession.GetStateSnapshot();
 	FMatchPlayAuthoritativeSubmitCarrierRequest EarlyRequest;
+	EarlyRequest.ExpectedAttackSequence = EarlyState.CurrentAttack.AttackSequence;
 	EarlyRequest.RequestingSide = EarlyState.RuntimeState.CurrentAttackingPlayer;
 	EarlyRequest.CarrierCardId = TEXT("Not.Deployed");
 	const FMatchPlayAuthoritativeSubmitCarrierResult Early =
@@ -8384,21 +8413,26 @@ bool FMatchPlayAuthoritativeSessionFoundationBTypesAndSurfaceTest::RunTest(
 		(FMatchPlayAuthoritativeSession::*)(
 			const FMatchPlayAuthoritativeDeclineMarkerRequest&)>);
 	static_assert(std::is_same_v<
-		decltype(&FMatchPlayAuthoritativeSession::SubmitSkill),
+		decltype(static_cast<FMatchPlayAuthoritativeSubmitSkillResult
+			(FMatchPlayAuthoritativeSession::*)(
+				const FMatchPlayAuthoritativeSubmitSkillRequest&)>(
+			&FMatchPlayAuthoritativeSession::SubmitSkill)),
 		FMatchPlayAuthoritativeSubmitSkillResult
 		(FMatchPlayAuthoritativeSession::*)(
-			const FSkillRuleSnapshotSet&,
 			const FMatchPlayAuthoritativeSubmitSkillRequest&)>);
 	static_assert(std::is_same_v<
-		decltype(&FMatchPlayAuthoritativeSession::ResolveNoLegalSkill),
+		decltype(static_cast<FMatchPlayAuthoritativeResolveNoLegalSkillResult
+			(FMatchPlayAuthoritativeSession::*)()>(
+			&FMatchPlayAuthoritativeSession::ResolveNoLegalSkill)),
 		FMatchPlayAuthoritativeResolveNoLegalSkillResult
-		(FMatchPlayAuthoritativeSession::*)(
-			const FSkillRuleSnapshotSet&)>);
+		(FMatchPlayAuthoritativeSession::*)()>);
 	static_assert(std::is_same_v<
-		decltype(&FMatchPlayAuthoritativeSession::DeclineSkill),
+		decltype(static_cast<FMatchPlayAuthoritativeDeclineSkillResult
+			(FMatchPlayAuthoritativeSession::*)(
+				const FMatchPlayAuthoritativeDeclineSkillRequest&)>(
+			&FMatchPlayAuthoritativeSession::DeclineSkill)),
 		FMatchPlayAuthoritativeDeclineSkillResult
 		(FMatchPlayAuthoritativeSession::*)(
-			const FSkillRuleSnapshotSet&,
 			const FMatchPlayAuthoritativeDeclineSkillRequest&)>);
 	static_assert(std::is_same_v<
 		decltype(FMatchPlayAuthoritativeSubmitMarkerResult::MarkerResult),
@@ -8449,7 +8483,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBTypesAndSurfaceTest::RunTest(
 		TEXT("FMatchPlayAuthoritativeSubmitSkillRequest"),
 		TEXT("FMatchPlayAuthoritativeDeclineSkillRequest") })
 	{
-		TestFalse(*FString::Printf(TEXT("%s has no public AttackSequence"), RequestType),
+		TestTrue(*FString::Printf(TEXT("%s carries attack correlation"), RequestType),
 			RequestContainsAttackSequence(RequestType));
 	}
 	return true;
@@ -8478,6 +8512,8 @@ bool FMatchPlayAuthoritativeSessionSubmitMarkerTest::RunTest(
 	EarlySession.InitializeMatch(MakeFoundationBInput(TEXT("MarkerEarly")));
 	EarlySession.BeginOrdinaryAttack(6);
 	const FMatchPlayState EarlyState = EarlySession.GetStateSnapshot();
+	EmptyRequest.ExpectedAttackSequence =
+		EarlyState.CurrentAttack.AttackSequence;
 	const FMatchPlayAuthoritativeSubmitMarkerResult Early =
 		EarlySession.SubmitMarker(EmptyRequest);
 	TestTrue(TEXT("Early marker reaches domain"),
@@ -8814,6 +8850,7 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 		BuildFoundationBToAwaitingMarker(
 			Session, TEXT("MarkerDecline"), true, {}, Trace));
 	FMatchPlayAuthoritativeDeclineMarkerRequest WrongRequest;
+	WrongRequest.ExpectedAttackSequence = Trace.AttackSequence;
 	WrongRequest.RequestingSide = Trace.AttackingSide;
 	const FMatchPlayState Before = Session.GetStateSnapshot();
 	const auto Wrong = Session.DeclineMarker(WrongRequest);
@@ -8829,6 +8866,7 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 		Session.GetStateSnapshot());
 
 	FMatchPlayAuthoritativeDeclineMarkerRequest Request;
+	Request.ExpectedAttackSequence = Trace.AttackSequence;
 	Request.RequestingSide = Trace.DefendingSide;
 	const auto Success = Session.DeclineMarker(Request);
 	TestTrue(TEXT("Legal marker decline succeeds"),
@@ -8871,6 +8909,7 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 	BuildFoundationBToAwaitingMarker(
 		NoLegalSession, TEXT("MarkerDeclineNone"), false, {}, NoLegalTrace);
 	FMatchPlayAuthoritativeDeclineMarkerRequest NoLegalRequest;
+	NoLegalRequest.ExpectedAttackSequence = NoLegalTrace.AttackSequence;
 	NoLegalRequest.RequestingSide = NoLegalTrace.DefendingSide;
 	const auto NoLegal = NoLegalSession.DeclineMarker(NoLegalRequest);
 	TestEqual(TEXT("No-legal marker cannot decline exactly"),
@@ -8893,6 +8932,7 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 		WrongStageTrace,
 		WrongStageMarker);
 	FMatchPlayAuthoritativeDeclineMarkerRequest WrongStageRequest;
+	WrongStageRequest.ExpectedAttackSequence = WrongStageTrace.AttackSequence;
 	WrongStageRequest.RequestingSide = WrongStageTrace.DefendingSide;
 	const FMatchPlayState WrongStageBefore =
 		WrongStageSession.GetStateSnapshot();
@@ -8945,6 +8985,7 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 		BuildFoundationBToAwaitingMarker(
 			DeclineSession, TEXT("MarkerCompleteDecline"), true, {}, DeclineTrace);
 		FMatchPlayAuthoritativeDeclineMarkerRequest Request;
+		Request.ExpectedAttackSequence = DeclineTrace.AttackSequence;
 		Request.RequestingSide = DeclineTrace.DefendingSide;
 		const FMatchPlayState DeclineBefore = DeclineSession.GetStateSnapshot();
 		Declines.Add(DeclineSession.DeclineMarker(Request));
@@ -9031,8 +9072,10 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 	BuildFoundationBToAwaitingMarker(
 		DeclineB, TEXT("MarkerDeclineIsoB"), true, {}, DeclineTraceB);
 	FMatchPlayAuthoritativeDeclineMarkerRequest DeclineRequestA;
+	DeclineRequestA.ExpectedAttackSequence = DeclineTraceA.AttackSequence;
 	DeclineRequestA.RequestingSide = DeclineTraceA.DefendingSide;
 	FMatchPlayAuthoritativeDeclineMarkerRequest DeclineRequestB;
+	DeclineRequestB.ExpectedAttackSequence = DeclineTraceB.AttackSequence;
 	DeclineRequestB.RequestingSide = DeclineTraceB.DefendingSide;
 	const FMatchPlayState DeclineBBefore = DeclineB.GetStateSnapshot();
 	DeclineA.DeclineMarker(DeclineRequestA);
@@ -9096,6 +9139,7 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFiveActionTest::RunTest(
 					Trace,
 					Marker));
 			FMatchPlayAuthoritativeSubmitSkillRequest Request;
+			Request.ExpectedAttackSequence = Trace.AttackSequence;
 			Request.RequestingSide = Trace.AttackingSide;
 			Request.SkillId = Case.SkillId;
 			const FSkillRuleSnapshotSet Rules =
@@ -9158,9 +9202,11 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFiveActionTest::RunTest(
 	BuildFoundationBToAwaitingSkill(
 		SessionB, TEXT("SkillIsolationB"), {RunnerSkillId}, TraceB, MarkerB);
 	FMatchPlayAuthoritativeSubmitSkillRequest RequestA;
+	RequestA.ExpectedAttackSequence = TraceA.AttackSequence;
 	RequestA.RequestingSide = TraceA.AttackingSide;
 	RequestA.SkillId = BranchSkillId;
 	FMatchPlayAuthoritativeSubmitSkillRequest RequestB;
+	RequestB.ExpectedAttackSequence = TraceB.AttackSequence;
 	RequestB.RequestingSide = TraceB.AttackingSide;
 	RequestB.SkillId = RunnerSkillId;
 	const FMatchPlayState BBefore = SessionB.GetStateSnapshot();
@@ -9203,6 +9249,7 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFailuresTest::RunTest(
 	FReachabilityTrace EarlyTrace;
 	BuildFoundationBToAwaitingMarker(
 		EarlySession, TEXT("SkillEarly"), true, {SkillId}, EarlyTrace);
+	Request.ExpectedAttackSequence = EarlyTrace.AttackSequence;
 	Request.RequestingSide = EarlyTrace.AttackingSide;
 	const FMatchPlayState EarlyBefore = EarlySession.GetStateSnapshot();
 	const auto Early = EarlySession.SubmitSkill(Rules, Request);
@@ -9226,6 +9273,7 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFailuresTest::RunTest(
 			{SkillId},
 			Trace,
 			Marker));
+	Request.ExpectedAttackSequence = Trace.AttackSequence;
 	Request.RequestingSide = Trace.DefendingSide;
 	const FMatchPlayState Before = Session.GetStateSnapshot();
 	const auto WrongSide = Session.SubmitSkill(Rules, Request);
@@ -9346,6 +9394,8 @@ bool FMatchPlayAuthoritativeSessionSubmitSkillFailuresTest::RunTest(
 			DeterministicTrace,
 			DeterministicMarker);
 		FMatchPlayAuthoritativeSubmitSkillRequest DeterministicRequest;
+		DeterministicRequest.ExpectedAttackSequence =
+			DeterministicTrace.AttackSequence;
 		DeterministicRequest.RequestingSide = DeterministicTrace.DefendingSide;
 		DeterministicRequest.SkillId = SkillId;
 		WrongSideResults.Add(
@@ -9506,6 +9556,7 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		BuildFoundationBToAwaitingSkill(
 			Session, TEXT("SkillDecline"), {SkillId}, Trace, Marker));
 	FMatchPlayAuthoritativeDeclineSkillRequest Request;
+	Request.ExpectedAttackSequence = Trace.AttackSequence;
 	Request.RequestingSide = Trace.DefendingSide;
 	const FMatchPlayState Before = Session.GetStateSnapshot();
 	const auto Wrong = Session.DeclineSkill(Rules, Request);
@@ -9567,6 +9618,7 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		NoLegalTrace,
 		NoLegalMarker);
 	FMatchPlayAuthoritativeDeclineSkillRequest NoLegalRequest;
+	NoLegalRequest.ExpectedAttackSequence = NoLegalTrace.AttackSequence;
 	NoLegalRequest.RequestingSide = NoLegalTrace.AttackingSide;
 	const FMatchPlayState NoLegalBefore = NoLegalSession.GetStateSnapshot();
 	const auto NoLegal = NoLegalSession.DeclineSkill(
@@ -9591,6 +9643,7 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		{SkillId},
 		WrongStageTrace);
 	FMatchPlayAuthoritativeDeclineSkillRequest WrongStageRequest;
+	WrongStageRequest.ExpectedAttackSequence = WrongStageTrace.AttackSequence;
 	WrongStageRequest.RequestingSide = WrongStageTrace.AttackingSide;
 	const FMatchPlayState WrongStageBefore =
 		WrongStageSession.GetStateSnapshot();
@@ -9658,6 +9711,7 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 			DeclineTrace,
 			DeclineMarkerResult);
 		FMatchPlayAuthoritativeDeclineSkillRequest Request;
+		Request.ExpectedAttackSequence = DeclineTrace.AttackSequence;
 		Request.RequestingSide = DeclineTrace.AttackingSide;
 		const FMatchPlayState DeclineBefore = DeclineSession.GetStateSnapshot();
 		Declines.Add(DeclineSession.DeclineSkill(Rules, Request));
@@ -9752,8 +9806,10 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 		DeclineTraceB,
 		DeclineMarkerB);
 	FMatchPlayAuthoritativeDeclineSkillRequest DeclineRequestA;
+	DeclineRequestA.ExpectedAttackSequence = DeclineTraceA.AttackSequence;
 	DeclineRequestA.RequestingSide = DeclineTraceA.AttackingSide;
 	FMatchPlayAuthoritativeDeclineSkillRequest DeclineRequestB;
+	DeclineRequestB.ExpectedAttackSequence = DeclineTraceB.AttackSequence;
 	DeclineRequestB.RequestingSide = DeclineTraceB.AttackingSide;
 	const FMatchPlayState DeclineBBefore = DeclineB.GetStateSnapshot();
 	DeclineA.DeclineSkill(Rules, DeclineRequestA);
@@ -9870,6 +9926,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		{},
 		MarkerDeclineTrace);
 	FMatchPlayAuthoritativeDeclineMarkerRequest MarkerDeclineRequest;
+	MarkerDeclineRequest.ExpectedAttackSequence =
+		MarkerDeclineTrace.AttackSequence;
 	MarkerDeclineRequest.RequestingSide = MarkerDeclineTrace.DefendingSide;
 	auto MarkerDecline =
 		MarkerDeclineSession.DeclineMarker(MarkerDeclineRequest);
@@ -9916,6 +9974,7 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		SkillTrace,
 		SkillMarker);
 	FMatchPlayAuthoritativeSubmitSkillRequest SkillRequest;
+	SkillRequest.ExpectedAttackSequence = SkillTrace.AttackSequence;
 	SkillRequest.RequestingSide = SkillTrace.AttackingSide;
 	SkillRequest.SkillId = SkillId;
 	auto Skill = SkillSession.SubmitSkill(Rules, SkillRequest);
@@ -10002,6 +10061,8 @@ bool FMatchPlayAuthoritativeSessionFoundationBComparatorCoverageTest::RunTest(
 		SkillDeclineTrace,
 		SkillDeclineMarker);
 	FMatchPlayAuthoritativeDeclineSkillRequest SkillDeclineRequest;
+	SkillDeclineRequest.ExpectedAttackSequence =
+		SkillDeclineTrace.AttackSequence;
 	SkillDeclineRequest.RequestingSide = SkillDeclineTrace.AttackingSide;
 	auto SkillDecline =
 		SkillDeclineSession.DeclineSkill(Rules, SkillDeclineRequest);
@@ -10720,7 +10781,7 @@ bool FMatchPlayAuthoritativeSessionRunnerSurfaceAndSubmitTest::RunTest(
 		TEXT("FMatchPlayAuthoritativeSubmitRunnerRequest"),
 		TEXT("FMatchPlayAuthoritativeDeclineRunnerRequest") })
 	{
-		TestFalse(*FString::Printf(TEXT("%s has no public AttackSequence"), RequestType),
+		TestTrue(*FString::Printf(TEXT("%s carries attack correlation"), RequestType),
 			RequestContainsAttackSequence(RequestType));
 	}
 
@@ -10749,6 +10810,7 @@ bool FMatchPlayAuthoritativeSessionRunnerSurfaceAndSubmitTest::RunTest(
 		EMatchPlayCurrentAttackSelectionStage::AwaitingRunner);
 
 	FMatchPlayAuthoritativeSubmitRunnerRequest Request;
+	Request.ExpectedAttackSequence = Trace.AttackSequence;
 	Request.RequestingSide = Trace.DefendingSide;
 	Request.RunnerCardId = RunnerCardId;
 	const auto WrongSide = Session.SubmitRunner(Request);
@@ -10905,6 +10967,7 @@ bool FMatchPlayAuthoritativeSessionRunnerCompletionPathsTest::RunTest(
 		TEXT("RunnerNoLegal"),
 		static_cast<int32>(ESkillRuleType::LongShot)));
 	FMatchPlayAuthoritativeSubmitSkillRequest LongShotRequest;
+	LongShotRequest.ExpectedAttackSequence = NoLegalTrace.AttackSequence;
 	LongShotRequest.RequestingSide = NoLegalTrace.AttackingSide;
 	LongShotRequest.SkillId = LongShotSkillId;
 	const auto LongShot = NoLegalSession.SubmitSkill(
@@ -10926,6 +10989,7 @@ bool FMatchPlayAuthoritativeSessionRunnerCompletionPathsTest::RunTest(
 		NoLegalDeclineTrace,
 		NoLegalDeclineRunner);
 	FMatchPlayAuthoritativeDeclineRunnerRequest DeclineRequest;
+	DeclineRequest.ExpectedAttackSequence = NoLegalDeclineTrace.AttackSequence;
 	DeclineRequest.RequestingSide = NoLegalDeclineTrace.AttackingSide;
 	const FMatchPlayState NoLegalDeclineBefore =
 		NoLegalDeclineSession.GetStateSnapshot();
@@ -10963,6 +11027,7 @@ bool FMatchPlayAuthoritativeSessionRunnerCompletionPathsTest::RunTest(
 		LegalBefore,
 		LegalSession.GetStateSnapshot());
 
+	DeclineRequest.ExpectedAttackSequence = LegalTrace.AttackSequence;
 	DeclineRequest.RequestingSide = LegalTrace.DefendingSide;
 	const auto WrongSide = LegalSession.DeclineRunner(DeclineRequest);
 	TestEqual(TEXT("Wrong-side runner decline exact error"),
@@ -11037,6 +11102,7 @@ bool FMatchPlayAuthoritativeSessionRunnerDeterminismIsolationTest::RunTest(
 			SubmitTrace,
 			RunnerCardId));
 		FMatchPlayAuthoritativeSubmitRunnerRequest SubmitRequest;
+		SubmitRequest.ExpectedAttackSequence = SubmitTrace.AttackSequence;
 		SubmitRequest.RequestingSide = SubmitTrace.AttackingSide;
 		SubmitRequest.RunnerCardId = RunnerCardId;
 		Submits.Add(SubmitSession.SubmitRunner(SubmitRequest));
@@ -11066,6 +11132,7 @@ bool FMatchPlayAuthoritativeSessionRunnerDeterminismIsolationTest::RunTest(
 			DeclineTrace,
 			DeclineRunnerId));
 		FMatchPlayAuthoritativeDeclineRunnerRequest DeclineRequest;
+		DeclineRequest.ExpectedAttackSequence = DeclineTrace.AttackSequence;
 		DeclineRequest.RequestingSide = DeclineTrace.AttackingSide;
 		Declines.Add(DeclineSession.DeclineRunner(DeclineRequest));
 		DeclineFinals.Add(DeclineSession.GetStateSnapshot());
@@ -11101,6 +11168,7 @@ bool FMatchPlayAuthoritativeSessionRunnerDeterminismIsolationTest::RunTest(
 		BuildStage7162ToAwaitingRunner(
 			SessionB, TEXT("RunnerIsolationB"), true, TraceB, RunnerB));
 	FMatchPlayAuthoritativeSubmitRunnerRequest RequestA;
+	RequestA.ExpectedAttackSequence = TraceA.AttackSequence;
 	RequestA.RequestingSide = TraceA.AttackingSide;
 	RequestA.RunnerCardId = RunnerA;
 	const FMatchPlayState BBefore = SessionB.GetStateSnapshot();
@@ -11109,6 +11177,7 @@ bool FMatchPlayAuthoritativeSessionRunnerDeterminismIsolationTest::RunTest(
 		AreStatesEqual(BBefore, SessionB.GetStateSnapshot()));
 	const FMatchPlayState AAfter = SessionA.GetStateSnapshot();
 	FMatchPlayAuthoritativeDeclineRunnerRequest RequestB;
+	RequestB.ExpectedAttackSequence = TraceB.AttackSequence;
 	RequestB.RequestingSide = TraceB.AttackingSide;
 	SessionB.DeclineRunner(RequestB);
 	TestTrue(TEXT("Runner command on B cannot mutate A"),
@@ -11175,7 +11244,7 @@ bool FMatchPlayAuthoritativeSessionSubmitHelperTest::RunTest(
 		TEXT("FMatchPlayAuthoritativeSubmitHelperRequest"),
 		TEXT("FMatchPlayAuthoritativeDeclineHelperRequest") })
 	{
-		TestFalse(*FString::Printf(TEXT("%s has no public AttackSequence"), RequestType),
+		TestTrue(*FString::Printf(TEXT("%s carries attack correlation"), RequestType),
 			RequestContainsAttackSequence(RequestType));
 	}
 
@@ -11204,6 +11273,7 @@ bool FMatchPlayAuthoritativeSessionSubmitHelperTest::RunTest(
 		EMatchPlayCurrentAttackSelectionStage::AwaitingHelper);
 
 	FMatchPlayAuthoritativeSubmitHelperRequest Request;
+	Request.ExpectedAttackSequence = Trace.AttackSequence;
 	Request.RequestingSide = Trace.AttackingSide;
 	Request.HelperCardId = HelperCardId;
 	const auto WrongSide = Session.SubmitHelper(Request);
@@ -11303,6 +11373,8 @@ bool FMatchPlayAuthoritativeSessionSubmitHelperTest::RunTest(
 				DeterministicTrace,
 				DeterministicHelper));
 		FMatchPlayAuthoritativeSubmitHelperRequest DeterministicRequest;
+		DeterministicRequest.ExpectedAttackSequence =
+			DeterministicTrace.AttackSequence;
 		DeterministicRequest.RequestingSide =
 			DeterministicTrace.DefendingSide;
 		DeterministicRequest.HelperCardId = DeterministicHelper;
@@ -11330,6 +11402,7 @@ bool FMatchPlayAuthoritativeSessionSubmitHelperTest::RunTest(
 		BuildStage7163ToAwaitingHelper(
 			SessionB, TEXT("HelperSubmitIsolationB"), true, TraceB, HelperB));
 	FMatchPlayAuthoritativeSubmitHelperRequest RequestA;
+	RequestA.ExpectedAttackSequence = TraceA.AttackSequence;
 	RequestA.RequestingSide = TraceA.DefendingSide;
 	RequestA.HelperCardId = HelperA;
 	const FMatchPlayState BBefore = SessionB.GetStateSnapshot();
@@ -11496,6 +11569,7 @@ bool FMatchPlayAuthoritativeSessionDeclineHelperTest::RunTest(
 			NoLegalTrace,
 			NoLegalHelper));
 	FMatchPlayAuthoritativeDeclineHelperRequest Request;
+	Request.ExpectedAttackSequence = NoLegalTrace.AttackSequence;
 	Request.RequestingSide = NoLegalTrace.DefendingSide;
 	const FMatchPlayState NoLegalBefore = NoLegalSession.GetStateSnapshot();
 	const auto NoLegalDecline = NoLegalSession.DeclineHelper(Request);
@@ -11524,6 +11598,7 @@ bool FMatchPlayAuthoritativeSessionDeclineHelperTest::RunTest(
 			Trace,
 			HelperCardId));
 	const FMatchPlayState Before = Session.GetStateSnapshot();
+	Request.ExpectedAttackSequence = Trace.AttackSequence;
 	Request.RequestingSide = Trace.AttackingSide;
 	const auto WrongSide = Session.DeclineHelper(Request);
 	TestEqual(TEXT("Wrong-side decline outer error"),
@@ -11596,6 +11671,8 @@ bool FMatchPlayAuthoritativeSessionDeclineHelperTest::RunTest(
 				DeterministicTrace,
 				DeterministicHelper));
 		FMatchPlayAuthoritativeDeclineHelperRequest DeterministicRequest;
+		DeterministicRequest.ExpectedAttackSequence =
+			DeterministicTrace.AttackSequence;
 		DeterministicRequest.RequestingSide =
 			DeterministicTrace.DefendingSide;
 		Results.Add(DeterministicSession.DeclineHelper(DeterministicRequest));
@@ -15926,10 +16003,12 @@ bool FMatchPlayAuthoritativeSessionPassControlSequentialRollFoundationTest
 			LegalHelper,
 			ESkillRuleType::PassControl));
 	FMatchPlayAuthoritativeDeclineHelperRequest Decline;
+	Decline.ExpectedAttackSequence = NoHelperTrace.AttackSequence;
 	Decline.RequestingSide = NoHelperTrace.DefendingSide;
 	TestTrue(TEXT("PassControl Helper can be declined"),
 		NoHelperSession.DeclineHelper(Decline).DeclineResult.bSuccess);
 	FMatchPlayAuthoritativeSubmitSkillRequest NoHelperSkill;
+	NoHelperSkill.ExpectedAttackSequence = NoHelperTrace.AttackSequence;
 	NoHelperSkill.RequestingSide = NoHelperTrace.AttackingSide;
 	NoHelperSkill.SkillId = NoHelperSkillId;
 	TestTrue(TEXT("No-Helper PassControl still reaches ReadyForResolution"),
@@ -21280,7 +21359,10 @@ FMatchPlayAuthoritativeSessionSubmitThroughBallOneOnOneShotChoiceTest
 
 		FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
 			Request;
-		Request.RequestingSide = Session.GetStateSnapshot().CurrentAttack
+		const FMatchPlayState ChoiceState = Session.GetStateSnapshot();
+		Request.ExpectedAttackSequence =
+			ChoiceState.CurrentAttack.AttackSequence;
+		Request.RequestingSide = ChoiceState.CurrentAttack
 			.ResolutionSession.Bundle.CurrentAttackingPlayer;
 		Request.Choice = EChoice::ChipShot;
 		auto WrongSide = Request;
@@ -25308,9 +25390,9 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		RequestSurface.Contains(TEXT("FName SlotId")));
 	TestFalse(TEXT("Goalkeeper CardId is authority-derived"),
 		RequestSurface.Contains(TEXT("CardId")));
-	TestFalse(TEXT("AttackSequence is authority-derived"),
+	TestTrue(TEXT("AttackSequence is explicit caller correlation"),
 		RequestSurface.Contains(TEXT("AttackSequence")));
-	TestFalse(TEXT("RequestingSide is authority-derived"),
+	TestTrue(TEXT("RequestingSide is explicit caller identity"),
 		RequestSurface.Contains(TEXT("RequestingSide")));
 	TestEqual(TEXT("All ninety-two commands use the serialized gate"),
 		CountOccurrences(SessionSource, TEXT("ExecuteSerialized<")), 92);
@@ -25389,6 +25471,9 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		InitialAttack.RuntimeState.CurrentAttackingPlayer;
 	const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
 	FMatchPlayAuthoritativeDeployGoalkeeperRequest AttackerRequest;
+	AttackerRequest.ExpectedAttackSequence =
+		InitialAttack.CurrentAttack.AttackSequence;
+	AttackerRequest.RequestingSide = Attacker;
 	AttackerRequest.SlotId =
 		InitialAttack.DeploymentSlotCatalog.Slots[0].SlotId;
 	const auto AttackerRejected = Session.DeployGoalkeeper(AttackerRequest);
@@ -25428,6 +25513,8 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 		return false;
 	}
 	FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+	Request.ExpectedAttackSequence = Before.CurrentAttack.AttackSequence;
+	Request.RequestingSide = Defender;
 	Request.SlotId = Availability.LegalSlotIds[0];
 	const int32 InitialCallsBefore = Initial.GetCallCount();
 	const int32 PostCallsBefore = Post.GetCallCount();
@@ -25443,10 +25530,10 @@ bool FMatchPlayAuthoritativeSessionDeployGoalkeeperTest::RunTest(
 	TestEqual(TEXT("Goalkeeper command kind is exact"),
 		Deployment.RuntimeEnvelope.CommandKind,
 		EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper);
-	TestEqual(TEXT("AttackSequence is derived from State"),
+	TestEqual(TEXT("AttackSequence matches caller correlation"),
 		Deployment.DeploymentResult.Request.AttackSequence,
 		Before.CurrentAttack.AttackSequence);
-	TestEqual(TEXT("RequestingSide is derived from deployment turn"),
+	TestEqual(TEXT("RequestingSide matches explicit caller identity"),
 		Deployment.DeploymentResult.Request.RequestingSide, Defender);
 	TestEqual(TEXT("Goalkeeper CardId is derived from authoritative runtime"),
 		Deployment.DeploymentResult.Request.CardId, DefenderGoalkeeperId);
@@ -26984,6 +27071,478 @@ bool FMatchPlayAuthoritativeSessionCutInsideShotDeadCornerAuthorityFoundationTes
 			&& ControllerSource.Contains(
 				TEXT("ResolveCutInsideShotDeadCornerRoll")));
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayNetworkBoundaryClassificationLegacyAndSkillTrustTest,
+	"FMCodex.MatchPlayRuntime.NetworkBoundary.CommandClassificationLegacyAndSkillTrust",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayNetworkBoundaryClassificationLegacyAndSkillTrustTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	(void)Parameters;
+
+	for (const EMatchPlayAuthoritativeCommandKind Command : {
+		EMatchPlayAuthoritativeCommandKind::FinishDeployment,
+		EMatchPlayAuthoritativeCommandKind::DeployOrdinary,
+		EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper,
+		EMatchPlayAuthoritativeCommandKind::SubmitCarrier,
+		EMatchPlayAuthoritativeCommandKind::SubmitSkill,
+		EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent,
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll,
+		EMatchPlayAuthoritativeCommandKind::RequestCornerAttackRoll,
+		EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal })
+	{
+		TestTrue(TEXT("Player-chosen command is classified PlayerIntent"),
+			FMatchPlayAuthoritativeCommandClassification::IsPlayerIntent(
+				Command));
+	}
+	for (const EMatchPlayAuthoritativeCommandKind Command : {
+		EMatchPlayAuthoritativeCommandKind::InitializeMatch,
+		EMatchPlayAuthoritativeCommandKind::BeginOrdinaryAttack,
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalCarrier,
+		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalSkill,
+		EMatchPlayAuthoritativeCommandKind::BeginResolutionSession,
+		EMatchPlayAuthoritativeCommandKind::ResolveSendingOff,
+		EMatchPlayAuthoritativeCommandKind::ApplyShotTerminalResolution })
+	{
+		TestFalse(TEXT("State-driven command is not a PlayerIntent"),
+			FMatchPlayAuthoritativeCommandClassification::IsPlayerIntent(
+				Command));
+	}
+
+	FString ControllerSource;
+	FString HostHeader;
+	FString SessionHeader;
+	TestTrue(TEXT("Controller source loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"),
+		ControllerSource));
+	TestTrue(TEXT("Host header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchHostGameMode.h"),
+		HostHeader));
+	TestTrue(TEXT("Session header loads"), LoadProductionSource(
+		TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.h"),
+		SessionHeader));
+	TestTrue(TEXT("Production Controller enters attacks through Full D12"),
+		ControllerSource.Contains(TEXT("Host->RequestInitialActionPointRoll(Request)")));
+	TestFalse(TEXT("Production Controller never calls legacy RollTacticalPoints"),
+		ControllerSource.Contains(TEXT("Host->RollTacticalPoints(")));
+	TestFalse(TEXT("Production Controller never calls legacy BeginOrdinaryAttack"),
+		ControllerSource.Contains(TEXT("Host->BeginOrdinaryAttack(")));
+	TestEqual(TEXT("LocalPlay builds both viewer-safe projections"),
+		CountOccurrences(
+			ControllerSource,
+			TEXT("FMCodexLocalMatchInteractionViewBuilder::BuildForViewer(")),
+		2);
+	TestFalse(TEXT("LocalPlay has no unrestricted production View build"),
+		ControllerSource.Contains(
+			TEXT("FMCodexLocalMatchInteractionViewBuilder::Build(")));
+	const int32 HostLegacyGuard = HostHeader.Find(
+		TEXT("#if WITH_DEV_AUTOMATION_TESTS"));
+	const int32 HostLegacyBegin = HostHeader.Find(
+		TEXT("BeginOrdinaryAttack("));
+	const int32 SessionLegacyGuard = SessionHeader.Find(
+		TEXT("#if WITH_DEV_AUTOMATION_TESTS"));
+	const int32 SessionLegacyBegin = SessionHeader.Find(
+		TEXT("BeginOrdinaryAttack("));
+	TestTrue(TEXT("Host legacy attack facade is test-only"),
+		HostLegacyGuard != INDEX_NONE && HostLegacyBegin > HostLegacyGuard);
+	TestTrue(TEXT("Session legacy attack facade is test-only"),
+		SessionLegacyGuard != INDEX_NONE
+			&& SessionLegacyBegin > SessionLegacyGuard);
+
+	const FString Prefix(TEXT("NetworkBoundaryPinnedSkill"));
+	const FName SkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"), *Prefix,
+		static_cast<int32>(ESkillRuleType::LongShot)));
+	const FSkillRuleSnapshotSet Rules =
+		MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
+	InitialRouteFixtures::FQueueRollProvider Initial;
+	FQueuePostRouteRollProvider Post;
+	FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+	FReachabilityTrace Trace;
+	FMatchPlayAuthoritativeSubmitMarkerResult Marker;
+	TestTrue(TEXT("Pinned-rule fixture reaches Skill selection"),
+		BuildFoundationBToAwaitingSkill(
+			Session, Prefix, { SkillId }, Trace, Marker));
+	FMatchPlayAuthoritativeSubmitSkillRequest Request;
+	Request.ExpectedAttackSequence = Trace.AttackSequence;
+	Request.RequestingSide = Trace.AttackingSide;
+	Request.SkillId = SkillId;
+	TestTrue(TEXT("Production one-payload Skill intent uses pinned rules"),
+		Session.SubmitSkill(Request).SkillResult.bSuccess);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayNetworkBoundaryOrdinaryViewerProjectionTest,
+	"FMCodex.MatchPlayRuntime.NetworkBoundary.ViewerProjection.OrdinaryPublicState",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayNetworkBoundaryOrdinaryViewerProjectionTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	(void)Parameters;
+	FMatchPlayAuthoritativeSession Session;
+	FReachabilityTrace Trace;
+	TestTrue(TEXT("Ordinary public fixture reaches Carrier"),
+		BuildToAwaitingCarrier(
+			Session, TEXT("BoundaryOrdinaryView"), Trace));
+	const FMatchPlayState State = Session.GetStateSnapshot();
+	const FSkillRuleSnapshotSet Rules;
+	const auto Disclosure =
+		FFMCodexLocalMatchViewerDisclosure::FullyDisclosed();
+	const auto ViewForA =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			State, Rules, EInitialTurnOrderPlayer::PlayerA, Disclosure);
+	const auto ViewForB =
+		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			State, Rules, EInitialTurnOrderPlayer::PlayerB, Disclosure);
+	TestTrue(TEXT("Both views retain the same public match facts"),
+		ViewForA.AttackSequence == ViewForB.AttackSequence
+			&& ViewForA.ActionPoint == ViewForB.ActionPoint
+			&& ViewForA.RouteKind == ViewForB.RouteKind
+			&& ViewForA.PlayerAScore == ViewForB.PlayerAScore
+			&& ViewForA.PlayerBScore == ViewForB.PlayerBScore
+			&& ViewForA.DeploymentPlacements.Num()
+				== ViewForB.DeploymentPlacements.Num()
+			&& ViewForA.PlayerACardRoster.Num()
+				== ViewForB.PlayerACardRoster.Num()
+			&& ViewForA.PlayerBCardRoster.Num()
+				== ViewForB.PlayerBCardRoster.Num());
+	const auto& ActingView = Trace.AttackingSide
+		== EInitialTurnOrderPlayer::PlayerA ? ViewForA : ViewForB;
+	const auto& WaitingView = Trace.AttackingSide
+		== EInitialTurnOrderPlayer::PlayerA ? ViewForB : ViewForA;
+	TestTrue(TEXT("Acting viewer receives its legal Carrier intents"),
+		ActingView.ExpectedActingPlayer == Trace.AttackingSide
+			&& ActingView.bHumanInteraction
+			&& !ActingView.SelectionOptions.IsEmpty());
+	TestTrue(TEXT("Waiting viewer receives no opponent action payload"),
+		WaitingView.ExpectedActingPlayer == Trace.AttackingSide
+			&& !WaitingView.bHumanInteraction
+			&& WaitingView.SelectionOptions.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayNetworkBoundaryLegacyIntentCorrelationTest,
+	"FMCodex.MatchPlayRuntime.NetworkBoundary.LegacyIntentCorrelation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayNetworkBoundaryLegacyIntentCorrelationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	(void)Parameters;
+
+	// A real Attack N request must not mutate the matching deployment phase of N+1.
+	FMatchPlayAuthoritativeSession DeploySession;
+	FReachabilityTrace DeployTrace;
+	TestTrue(TEXT("Attack N reaches a legal Marker decline"),
+		BuildFoundationBToAwaitingMarker(
+			DeploySession, TEXT("BoundaryDeployN"), true, {}, DeployTrace));
+	const int64 OldSequence = DeployTrace.AttackSequence;
+	FMatchPlayAuthoritativeDeclineMarkerRequest CompleteAttack;
+	CompleteAttack.ExpectedAttackSequence = OldSequence;
+	CompleteAttack.RequestingSide = DeployTrace.DefendingSide;
+	TestTrue(TEXT("Attack N completes"),
+		DeploySession.DeclineMarker(CompleteAttack).DeclineResult.bSuccess);
+	TestTrue(TEXT("Attack N+1 begins in a compatible deployment phase"),
+		DeploySession.BeginOrdinaryAttack(6).BeginResult.bSuccess);
+	const FMatchPlayState NextDeployment = DeploySession.GetStateSnapshot();
+	TestEqual(TEXT("Deployment fixture advances exactly one sequence"),
+		NextDeployment.CurrentAttack.AttackSequence, OldSequence + 1);
+	FDeploymentChoice NextChoice;
+	TestTrue(TEXT("Attack N+1 has a legal deployment"),
+		FindLegalDeployment(
+			NextDeployment,
+			EMatchPlayRelativeDeploymentZone::Forward,
+			NextChoice));
+	auto StaleDeploy = MakeDeployRequest(NextChoice);
+	StaleDeploy.ExpectedAttackSequence = OldSequence;
+	const auto StaleDeployResult =
+		DeploySession.DeployOrdinary(StaleDeploy);
+	TestEqual(TEXT("Attack N deployment rejects at N+1"),
+		StaleDeployResult.DeploymentResult.LegalityResult.ErrorCode,
+		EMatchPlayOrdinaryDeploymentErrorCode::AttackSequenceMismatch);
+	TestTrue(TEXT("Stale deployment preserves N+1 State"),
+		AreStatesEqual(NextDeployment, DeploySession.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeSession CarrierSession;
+	FReachabilityTrace CarrierTrace;
+	TestTrue(TEXT("Carrier stale fixture reaches selection"),
+		BuildToAwaitingCarrier(
+			CarrierSession, TEXT("BoundaryCarrier"), CarrierTrace));
+	const FMatchPlayState CarrierBefore = CarrierSession.GetStateSnapshot();
+	auto Carrier = MakeCarrierRequest(CarrierTrace);
+	--Carrier.ExpectedAttackSequence;
+	TestFalse(TEXT("Stale Carrier rejects"),
+		CarrierSession.SubmitCarrier(Carrier).CarrierResult.bSuccess);
+	TestTrue(TEXT("Stale Carrier preserves State"),
+		AreStatesEqual(CarrierBefore, CarrierSession.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeSession MarkerSession;
+	FReachabilityTrace MarkerTrace;
+	TestTrue(TEXT("Marker stale fixture reaches selection"),
+		BuildFoundationBToAwaitingMarker(
+			MarkerSession, TEXT("BoundaryMarker"), true, {}, MarkerTrace));
+	FName MarkerId;
+	TestTrue(TEXT("Marker stale fixture has a legal Marker"),
+		FindLegalMarker(
+			MarkerSession.GetStateSnapshot(),
+			MarkerTrace.DefendingSide,
+			MarkerId));
+	const FMatchPlayState MarkerBefore = MarkerSession.GetStateSnapshot();
+	auto Marker = MakeMarkerRequest(MarkerTrace, MarkerId);
+	--Marker.ExpectedAttackSequence;
+	TestFalse(TEXT("Stale Marker rejects"),
+		MarkerSession.SubmitMarker(Marker).MarkerResult.bSuccess);
+	TestTrue(TEXT("Stale Marker preserves State"),
+		AreStatesEqual(MarkerBefore, MarkerSession.GetStateSnapshot()));
+	FMatchPlayAuthoritativeDeclineMarkerRequest Decline;
+	Decline.ExpectedAttackSequence = MarkerTrace.AttackSequence - 1;
+	Decline.RequestingSide = MarkerTrace.DefendingSide;
+	TestFalse(TEXT("Stale decline rejects"),
+		MarkerSession.DeclineMarker(Decline).DeclineResult.bSuccess);
+	TestTrue(TEXT("Stale decline preserves State"),
+		AreStatesEqual(MarkerBefore, MarkerSession.GetStateSnapshot()));
+
+	const FString SkillPrefix(TEXT("BoundarySkill"));
+	const FName SkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"), *SkillPrefix,
+		static_cast<int32>(ESkillRuleType::LongShot)));
+	const FSkillRuleSnapshotSet SkillRules =
+		MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
+	InitialRouteFixtures::FQueueRollProvider SkillInitial;
+	FQueuePostRouteRollProvider SkillPost;
+	FMatchPlayAuthoritativeSession SkillSession(
+		SkillInitial, SkillPost, SkillRules);
+	FReachabilityTrace SkillTrace;
+	FMatchPlayAuthoritativeSubmitMarkerResult SkillMarker;
+	TestTrue(TEXT("Skill stale fixture reaches selection"),
+		BuildFoundationBToAwaitingSkill(
+			SkillSession,
+			SkillPrefix,
+			{ SkillId },
+			SkillTrace,
+			SkillMarker));
+	const FMatchPlayState SkillBefore = SkillSession.GetStateSnapshot();
+	FMatchPlayAuthoritativeSubmitSkillRequest Skill;
+	Skill.ExpectedAttackSequence = SkillTrace.AttackSequence - 1;
+	Skill.RequestingSide = SkillTrace.AttackingSide;
+	Skill.SkillId = SkillId;
+	TestFalse(TEXT("Stale Skill rejects"),
+		SkillSession.SubmitSkill(Skill).SkillResult.bSuccess);
+	TestTrue(TEXT("Stale Skill preserves State"),
+		AreStatesEqual(SkillBefore, SkillSession.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeSession RunnerSession;
+	FReachabilityTrace RunnerTrace;
+	FName RunnerId;
+	TestTrue(TEXT("Runner stale fixture reaches selection"),
+		BuildStage7162ToAwaitingRunner(
+			RunnerSession,
+			TEXT("BoundaryRunner"),
+			true,
+			RunnerTrace,
+			RunnerId));
+	const FMatchPlayState RunnerBefore = RunnerSession.GetStateSnapshot();
+	FMatchPlayAuthoritativeSubmitRunnerRequest Runner;
+	Runner.ExpectedAttackSequence = RunnerTrace.AttackSequence - 1;
+	Runner.RequestingSide = RunnerTrace.AttackingSide;
+	Runner.RunnerCardId = RunnerId;
+	TestFalse(TEXT("Stale Runner rejects"),
+		RunnerSession.SubmitRunner(Runner).RunnerResult.bSuccess);
+	TestTrue(TEXT("Stale Runner preserves State"),
+		AreStatesEqual(RunnerBefore, RunnerSession.GetStateSnapshot()));
+
+	FMatchPlayAuthoritativeSession HelperSession;
+	FReachabilityTrace HelperTrace;
+	FName HelperId;
+	TestTrue(TEXT("Helper stale fixture reaches selection"),
+		BuildStage7163ToAwaitingHelper(
+			HelperSession,
+			TEXT("BoundaryHelper"),
+			true,
+			HelperTrace,
+			HelperId));
+	const FMatchPlayState HelperBefore = HelperSession.GetStateSnapshot();
+	FMatchPlayAuthoritativeSubmitHelperRequest Helper;
+	Helper.ExpectedAttackSequence = HelperTrace.AttackSequence - 1;
+	Helper.RequestingSide = HelperTrace.DefendingSide;
+	Helper.HelperCardId = HelperId;
+	TestFalse(TEXT("Stale Helper rejects"),
+		HelperSession.SubmitHelper(Helper).HelperResult.bSuccess);
+	TestTrue(TEXT("Stale Helper preserves State"),
+		AreStatesEqual(HelperBefore, HelperSession.GetStateSnapshot()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMatchPlayNetworkBoundaryGoalkeeperAndOneOnOneCorrelationTest,
+	"FMCodex.MatchPlayRuntime.NetworkBoundary.GoalkeeperAndOneOnOneCorrelation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMatchPlayNetworkBoundaryGoalkeeperAndOneOnOneCorrelationTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EChoice = EMatchPlayThroughBallOneOnOneShotChoice;
+	(void)Parameters;
+
+	FMatchPlayAuthoritativeSession GoalkeeperSession;
+	TestTrue(TEXT("Goalkeeper fixture initializes"),
+		GoalkeeperSession.InitializeMatch(
+			MakeFoundationBInput(TEXT("BoundaryGoalkeeper")))
+			.OpeningResult.bSuccess);
+	TestTrue(TEXT("Goalkeeper fixture begins"),
+		GoalkeeperSession.BeginOrdinaryAttack(6).BeginResult.bSuccess);
+	FDeploymentChoice AttackerChoice;
+	TestTrue(TEXT("Goalkeeper fixture has attacker deployment"),
+		FindLegalDeployment(
+			GoalkeeperSession.GetStateSnapshot(),
+			EMatchPlayRelativeDeploymentZone::Forward,
+			AttackerChoice));
+	TestTrue(TEXT("Attacker deploys before goalkeeper"),
+		GoalkeeperSession.DeployOrdinary(MakeDeployRequest(AttackerChoice))
+			.DeploymentResult.bSuccess);
+	const FMatchPlayState GoalkeeperPending =
+		GoalkeeperSession.GetStateSnapshot();
+	const EInitialTurnOrderPlayer Attacker =
+		GoalkeeperPending.RuntimeState.CurrentAttackingPlayer;
+	const EInitialTurnOrderPlayer Defender = OtherPlayer(Attacker);
+	const FName GoalkeeperId = FName(*(
+		Defender == EInitialTurnOrderPlayer::PlayerA
+			? GoalkeeperPending.RuntimeState.PlayerAState.GoalkeeperCardId
+			: GoalkeeperPending.RuntimeState.PlayerBState.GoalkeeperCardId));
+	const auto Availability = FMatchPlayGoalkeeperDeploymentAvailability::Query(
+		GoalkeeperPending,
+		GoalkeeperPending.CurrentAttack.AttackSequence,
+		Defender,
+		GoalkeeperId);
+	TestTrue(TEXT("Goalkeeper fixture has legal slot"),
+		!Availability.LegalSlotIds.IsEmpty());
+	if (Availability.LegalSlotIds.IsEmpty())
+	{
+		return false;
+	}
+	FMatchPlayAuthoritativeDeployGoalkeeperRequest Goalkeeper;
+	Goalkeeper.ExpectedAttackSequence =
+		GoalkeeperPending.CurrentAttack.AttackSequence;
+	Goalkeeper.RequestingSide = Attacker;
+	Goalkeeper.SlotId = Availability.LegalSlotIds[0];
+	TestFalse(TEXT("Wrong-side goalkeeper rejects"),
+		GoalkeeperSession.DeployGoalkeeper(Goalkeeper)
+			.DeploymentResult.bSucceeded);
+	TestTrue(TEXT("Wrong-side goalkeeper preserves State"),
+		AreStatesEqual(
+			GoalkeeperPending, GoalkeeperSession.GetStateSnapshot()));
+	Goalkeeper.RequestingSide = Defender;
+	--Goalkeeper.ExpectedAttackSequence;
+	TestFalse(TEXT("Stale goalkeeper rejects"),
+		GoalkeeperSession.DeployGoalkeeper(Goalkeeper)
+			.DeploymentResult.bSucceeded);
+	TestTrue(TEXT("Stale goalkeeper preserves State"),
+		AreStatesEqual(
+			GoalkeeperPending, GoalkeeperSession.GetStateSnapshot()));
+	Goalkeeper.ExpectedAttackSequence =
+		GoalkeeperPending.CurrentAttack.AttackSequence;
+	TestTrue(TEXT("Fresh goalkeeper succeeds"),
+		GoalkeeperSession.DeployGoalkeeper(Goalkeeper)
+			.DeploymentResult.bSucceeded);
+	const FMatchPlayState GoalkeeperAfter =
+		GoalkeeperSession.GetStateSnapshot();
+	TestFalse(TEXT("Duplicate goalkeeper rejects"),
+		GoalkeeperSession.DeployGoalkeeper(Goalkeeper)
+			.DeploymentResult.bSucceeded);
+	TestTrue(TEXT("Duplicate goalkeeper preserves State"),
+		AreStatesEqual(
+			GoalkeeperAfter, GoalkeeperSession.GetStateSnapshot()));
+
+	const FString Prefix(TEXT("BoundaryOneOnOne"));
+	const FName SkillId(*FString::Printf(
+		TEXT("Skill.%s.%d"), *Prefix,
+		static_cast<int32>(ESkillRuleType::ThroughBall)));
+	const FSkillRuleSnapshotSet Rules =
+		MakeSkillRuleSet(SkillId, ESkillRuleType::ThroughBall);
+	InitialRouteFixtures::FQueueRollProvider Initial;
+	Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	Initial.Enqueue(InitialRouteFixtures::MakeSuccess(5));
+	FQueuePostRouteRollProvider Post;
+	Post.Enqueue(MakePostRouteSuccess(6));
+	Post.Enqueue(MakePostRouteSuccess(1));
+	Post.Enqueue(MakePostRouteSuccess(6));
+	FMatchPlayAuthoritativeSession OneOnOneSession(Initial, Post, Rules);
+	FReachabilityTrace FirstTrace;
+	TestTrue(TEXT("Attack N reaches ThroughBall route"),
+		BuildStage7166ToAwaitingRoute(
+			OneOnOneSession,
+			Prefix,
+			ESkillRuleType::ThroughBall,
+			EMatchPlayElectiveBranchIntent::None,
+			FirstTrace));
+	TestTrue(TEXT("Attack N resolves AntiOffside route"),
+		OneOnOneSession.ResolveInitialRoute().OrchestrationResult.bSuccess);
+	TestTrue(TEXT("Attack N reaches OneOnOne"),
+		OneOnOneSession.ResolveThroughBallAntiOffsideDecision()
+			.OrchestrationResult.OutcomeResult.Decision
+				== EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired);
+	const int64 OneOnOneOldSequence = FirstTrace.AttackSequence;
+	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
+		FirstChoice;
+	FirstChoice.ExpectedAttackSequence = OneOnOneOldSequence;
+	FirstChoice.RequestingSide = FirstTrace.AttackingSide;
+	FirstChoice.Choice = EChoice::ChipShot;
+	TestTrue(TEXT("Attack N choice succeeds"),
+		OneOnOneSession.SubmitThroughBallOneOnOneShotChoice(FirstChoice)
+			.ChoiceResult.bSuccess);
+	TestTrue(TEXT("Attack N chip decision resolves"),
+		OneOnOneSession.ResolveThroughBallOneOnOneChipShotDecision()
+			.OrchestrationResult.bSuccess);
+	TestTrue(TEXT("Attack N persists terminal"),
+		OneOnOneSession.ApplyThroughBallTerminalResolution()
+			.OrchestrationResult.bSuccess);
+	FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+	Advance.AttackSequence = OneOnOneOldSequence;
+	Advance.RequestingSide = FirstTrace.AttackingSide;
+	TestTrue(TEXT("Attack N advances"),
+		OneOnOneSession.AdvanceAfterTerminal(Advance)
+			.CompletionResult.bSuccess);
+	FReachabilityTrace NextTrace;
+	TestTrue(TEXT("Attack N+1 reaches ThroughBall route"),
+		BuildNextThroughBallToReadyForResolution(
+			OneOnOneSession, Rules, SkillId, NextTrace));
+	TestTrue(TEXT("Attack N+1 resolves AntiOffside route"),
+		OneOnOneSession.ResolveInitialRoute().OrchestrationResult.bSuccess);
+	TestTrue(TEXT("Attack N+1 reaches OneOnOne"),
+		OneOnOneSession.ResolveThroughBallAntiOffsideDecision()
+			.OrchestrationResult.OutcomeResult.Decision
+				== EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired);
+	const FMatchPlayState NextOneOnOne = OneOnOneSession.GetStateSnapshot();
+	TestEqual(TEXT("OneOnOne fixture advances exactly one sequence"),
+		NextOneOnOne.CurrentAttack.AttackSequence,
+		OneOnOneOldSequence + 1);
+	FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest
+		StaleChoice;
+	StaleChoice.ExpectedAttackSequence = OneOnOneOldSequence;
+	StaleChoice.RequestingSide = NextTrace.AttackingSide;
+	StaleChoice.Choice = EChoice::DirectShot;
+	const int32 CallsBeforeStaleChoice = Post.GetCallCount();
+	const auto StaleChoiceResult =
+		OneOnOneSession.SubmitThroughBallOneOnOneShotChoice(StaleChoice);
+	TestEqual(TEXT("Attack N choice rejects at Attack N+1"),
+		StaleChoiceResult.ChoiceResult.LegalityResult.ErrorCode,
+		EMatchPlayCurrentAttackThroughBallOneOnOneShotChoiceSelectionErrorCode
+			::AttackSequenceMismatch);
+	TestEqual(TEXT("Stale OneOnOne choice consumes zero RNG"),
+		Post.GetCallCount(), CallsBeforeStaleChoice);
+	TestTrue(TEXT("Stale OneOnOne choice preserves N+1 State"),
+		AreStatesEqual(NextOneOnOne, OneOnOneSession.GetStateSnapshot()));
 	return true;
 }
 

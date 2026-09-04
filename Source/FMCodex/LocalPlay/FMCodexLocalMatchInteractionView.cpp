@@ -1378,10 +1378,7 @@ namespace FMCodexLocalMatchInteractionView
 			Result.bCornerDefenderNominationsLocked = Corner.bDefenderNominationsLocked;
 			Result.CornerAttackerNominees = Corner.AttackerNominees;
 			Result.CornerDefenderNominees = Corner.DefenderNominees;
-			Result.bHideCornerAttackerNomineeDetails =
-				Corner.Stage == EMatchPlaySetPieceCornerRouteStage::AwaitingDefenderNominations;
-			if (Result.bHideCornerAttackerNomineeDetails)
-				Result.CornerAttackerNominees.Reset();
+			Result.bHideCornerAttackerNomineeDetails = false;
 			Result.bHasCornerSharedParticipantD6 = Corner.bHasSharedParticipantD6;
 			Result.CornerSharedParticipantD6 = Corner.SharedParticipantD6;
 			Result.CornerRunner = Corner.Runner;
@@ -1486,6 +1483,360 @@ namespace FMCodexLocalMatchInteractionView
 			Result.ContinueActionLabel = TEXT("下一回合");
 		}
 	}
+
+	bool IsPlayerSide(const EInitialTurnOrderPlayer Side)
+	{
+		return Side == EInitialTurnOrderPlayer::PlayerA
+			|| Side == EInitialTurnOrderPlayer::PlayerB;
+	}
+
+	void ClearSetPieceTypeDependentProjection(
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		View.SetPieceStage = EMatchPlaySetPieceRouteStage::None;
+		View.SetPieceType = ESetPieceSelectedType::None;
+		View.ActionLabel = TEXT("定位球");
+		View.bShortAngledEligible = false;
+		View.SetPieceCarrierStage = EMatchPlaySetPieceCarrierRouteStage::None;
+		View.CornerStage = EMatchPlaySetPieceCornerRouteStage::None;
+		View.LegalSetPieceCardIds.Reset();
+		View.DraftSetPieceCarrierCardId = NAME_None;
+		View.DraftCornerNomineeCardIds.Reset();
+		View.bCornerLockConfirmationPending = false;
+		View.SetPieceCarrier = {};
+		View.CornerAttackerNominees.Reset();
+		View.CornerDefenderNominees.Reset();
+		View.bCornerAttackerNominationsLocked = false;
+		View.bCornerDefenderNominationsLocked = false;
+		View.bHideCornerAttackerNomineeDetails = false;
+		View.CornerAttackerNomineeRollLabels.Reset();
+		View.CornerDefenderNomineeRollLabels.Reset();
+		View.CornerRunner = {};
+		View.CornerHelper = {};
+		View.CornerCandidateBonusSide = EInitialTurnOrderPlayer::None;
+		View.CornerCandidateBonus = 0;
+		View.CornerIntendedRoute = EMatchPlayCornerRouteIntent::None;
+		View.CornerActualRoute = EMatchPlayCornerRouteIntent::None;
+		View.bHasCornerSharedParticipantD6 = false;
+		View.CornerSharedParticipantD6 = 0;
+		View.bHasCornerRouteD6 = false;
+		View.CornerRouteD6 = 0;
+		View.bHasSetPieceAttackD6 = false;
+		View.SetPieceAttackD6 = 0;
+		View.bHasSetPieceDefenseD6 = false;
+		View.SetPieceDefenseD6 = 0;
+		View.bHasSetPiecePairedD6 = false;
+		View.SetPiecePairedD6A = 0;
+		View.SetPiecePairedD6B = 0;
+		View.SetPiecePairedD6Total = 0;
+		View.bHasSetPieceFormula = false;
+		View.SetPieceFormula = {};
+		View.bHasSetPieceOutcome = false;
+		View.bSetPieceGoal = false;
+		View.bSetPieceSystemGoal = false;
+		View.bSetPieceNoLegalCarrier = false;
+		View.SetPieceGoalScorerCardId = NAME_None;
+		View.InteractionCategory = EFMCodexLocalMatchInteractionCategory::None;
+		View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+		View.bHumanInteraction = false;
+	}
+
+	void ClearUndisclosedAttackRouteProjection(
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		ClearSetPieceTypeDependentProjection(View);
+		View.RouteKind = EMatchPlayCurrentAttackRouteKind::None;
+		View.MajorPhase = EFMCodexLocalMatchMajorPhase::Selection;
+		View.SelectionStage = EMatchPlayCurrentAttackSelectionStage::None;
+		View.CurrentLegalDeploymentSide = EInitialTurnOrderPlayer::None;
+		View.InteractionCategory = EFMCodexLocalMatchInteractionCategory::None;
+		View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+		View.bHumanInteraction = false;
+		View.bCanDecline = false;
+		View.bCanResolveNoLegalChoice = false;
+		View.bTacticalPointRollReady = false;
+		View.bHasTacticalPlayerCounts = false;
+		View.PlayerATacticalPlayerCount = 0;
+		View.PlayerBTacticalPlayerCount = 0;
+		View.PresentedActionType = ESkillRuleType::None;
+		View.ActionLabel.Reset();
+		View.ElectiveBranchIntent = EMatchPlayElectiveBranchIntent::None;
+		View.ActualBranchLabel.Reset();
+		View.OneOnOneChoiceLabel.Reset();
+		View.DeploymentPlacements.Reset();
+		View.DeploymentOptions.Reset();
+		View.DeploymentGroups.Reset();
+		View.SelectionOptions.Reset();
+		View.SelectionFeedbackCandidates.Reset();
+		View.SelectedCarrierCardId = NAME_None;
+		View.SelectedRunnerCardId = NAME_None;
+		View.SelectedMarkerCardId = NAME_None;
+		View.SelectedHelperCardId = NAME_None;
+		View.PitchRegions.Reset();
+		View.BranchIntentOptions.Reset();
+		View.OneOnOneOptions.Reset();
+		View.AcceptedRolls.Reset();
+		View.ResolutionFacts = {};
+		View.bCrossAttackRollPending = false;
+		View.bCrossDefenseRollPending = false;
+		View.bCrossFormulaComplete = false;
+		View.bCrossTerminalActionAvailable = false;
+		View.bLongShotDirectAttackRollPending = false;
+		View.bLongShotDirectDefenseRollPending = false;
+		View.bLongShotDeadCornerRollPending = false;
+		View.bCutInsideShotDirectAttackRollPending = false;
+		View.bCutInsideShotDirectDefenseRollPending = false;
+		View.bCutInsideShotDeadCornerRollPending = false;
+		View.bThroughBallFeetAttackRollPending = false;
+		View.bThroughBallFeetDefenseRollPending = false;
+		View.bThroughBallAntiOffsideAttackRollPending = false;
+		View.bThroughBallOneOnOneChipShotAttackRollPending = false;
+		View.bThroughBallOneOnOneDirectShotAttackRollPending = false;
+		View.bThroughBallOneOnOneDirectShotDefenseRollPending = false;
+		View.bThroughBallBehindDefenseAttackRollPending = false;
+		View.bThroughBallBehindDefenseDefenseRollPending = false;
+		View.bThroughBallFeetFormulaComplete = false;
+		View.bThroughBallFeetTerminalActionAvailable = false;
+		View.bTerminalPendingAdvance = false;
+	}
+
+	void RedactResolutionRolls(
+		const FFMCodexLocalMatchViewerDisclosure& Disclosure,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		TArray<FFMCodexLocalMatchRollView> DisclosedRolls;
+		int32 SeenContestRolls = 0;
+		for (const FFMCodexLocalMatchRollView& Roll : View.AcceptedRolls)
+		{
+			const bool bDisclosed = Roll.Group
+				== EFMCodexLocalMatchRollGroup::InitialRoute
+					? Disclosure.bRevealRouteRoll
+					: SeenContestRolls++
+						< FMath::Max(0, Disclosure.RevealedContestD6Count);
+			if (bDisclosed)
+			{
+				DisclosedRolls.Add(Roll);
+			}
+		}
+		View.AcceptedRolls = MoveTemp(DisclosedRolls);
+
+		TArray<FMatchPlayResolutionRollFact> DisclosedFacts;
+		int32 SeenContestFacts = 0;
+		bool bRemovedAnyFact = false;
+		for (const FMatchPlayResolutionRollFact& Roll : View.ResolutionFacts.Rolls)
+		{
+			const bool bDisclosed = Roll.bInitialRoute
+				? Disclosure.bRevealRouteRoll
+				: SeenContestFacts++
+					< FMath::Max(0, Disclosure.RevealedContestD6Count);
+			if (bDisclosed)
+			{
+				DisclosedFacts.Add(Roll);
+			}
+			else
+			{
+				bRemovedAnyFact = true;
+			}
+		}
+		View.ResolutionFacts.Rolls = MoveTemp(DisclosedFacts);
+		if (bRemovedAnyFact)
+		{
+			// Derived formula/decision payloads can encode a hidden raw roll.
+			View.ResolutionFacts.FormulaContests.Reset();
+			View.ResolutionFacts.Decisions.Reset();
+		}
+	}
+
+	void RedactTerminalOutcome(
+		const FMatchPlayState& Snapshot,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		if (Snapshot.bHasCurrentAttack)
+		{
+			const int64 CurrentSequence = Snapshot.CurrentAttack.AttackSequence;
+			for (int32 Index = View.GoalHistory.Num() - 1; Index >= 0; --Index)
+			{
+				const FMatchPlayGoalFact& Goal = View.GoalHistory[Index];
+				if (Goal.AttackSequence != CurrentSequence)
+				{
+					continue;
+				}
+				if (Goal.ScoringSide == EInitialTurnOrderPlayer::PlayerA)
+				{
+					View.PlayerAScore = FMath::Max(0, View.PlayerAScore - 1);
+				}
+				else if (Goal.ScoringSide == EInitialTurnOrderPlayer::PlayerB)
+				{
+					View.PlayerBScore = FMath::Max(0, View.PlayerBScore - 1);
+				}
+				View.GoalHistory.RemoveAt(Index);
+			}
+		}
+
+		View.bHasSetPieceOutcome = false;
+		View.bSetPieceGoal = false;
+		View.bSetPieceSystemGoal = false;
+		View.SetPieceGoalScorerCardId = NAME_None;
+		for (FMatchPlayResolutionDecisionFact& Decision
+			: View.ResolutionFacts.Decisions)
+		{
+			switch (Decision.Outcome)
+			{
+			case EMatchPlayResolutionDecisionOutcome::Goal:
+			case EMatchPlayResolutionDecisionOutcome::Miss:
+			case EMatchPlayResolutionDecisionOutcome::ImmediateMiss:
+			case EMatchPlayResolutionDecisionOutcome::OutOfPlay:
+			case EMatchPlayResolutionDecisionOutcome::DefenderStoppedAttack:
+			case EMatchPlayResolutionDecisionOutcome::Offside:
+				Decision.bResolved = false;
+				Decision.Outcome = EMatchPlayResolutionDecisionOutcome::None;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	void ApplyViewerSafety(
+		const FMatchPlayState& Snapshot,
+		const EInitialTurnOrderPlayer ViewerSide,
+		const FFMCodexLocalMatchViewerDisclosure& Disclosure,
+		FFMCodexLocalMatchInteractionView& View)
+	{
+		const bool bValidViewer = IsPlayerSide(ViewerSide);
+		if (!Disclosure.bRevealInitialActionPointRoll)
+		{
+			View.ActionPoint = 0;
+			View.RawInitialD12 = 0;
+			View.RouteKind = EMatchPlayCurrentAttackRouteKind::None;
+			View.SendingOffEjectedCardId = NAME_None;
+			View.SendingOffEjectedOwnerSide = EInitialTurnOrderPlayer::None;
+			if (Snapshot.bHasCurrentAttack)
+			{
+				ClearUndisclosedAttackRouteProjection(View);
+			}
+		}
+
+		if (!Disclosure.bRevealSetPieceTypeRoll)
+		{
+			const bool bWasResolved = View.bHasSetPieceTypeRoll;
+			View.bHasSetPieceTypeRoll = false;
+			View.RawSetPieceTypeD6 = 0;
+			if (bWasResolved)
+			{
+				ClearSetPieceTypeDependentProjection(View);
+			}
+		}
+
+		if (!Disclosure.bRevealParticipantSelectionRoll)
+		{
+			View.bHasCornerSharedParticipantD6 = false;
+			View.CornerSharedParticipantD6 = 0;
+			View.CornerRunner = {};
+			View.CornerHelper = {};
+			View.CornerCandidateBonusSide = EInitialTurnOrderPlayer::None;
+			View.CornerCandidateBonus = 0;
+		}
+		if (!Disclosure.bRevealRouteRoll)
+		{
+			View.bHasCornerRouteD6 = false;
+			View.CornerRouteD6 = 0;
+			View.CornerActualRoute = EMatchPlayCornerRouteIntent::None;
+			View.ActualBranchLabel.Reset();
+			View.ResolutionFacts.bHasActualBranch = false;
+			View.ResolutionFacts.ActualBranch = {};
+		}
+
+		const int32 ContestCount =
+			FMath::Max(0, Disclosure.RevealedContestD6Count);
+		if (ContestCount < 1)
+		{
+			View.bHasSetPieceAttackD6 = false;
+			View.SetPieceAttackD6 = 0;
+			View.bHasSetPieceAttackCurrentTotal = false;
+			View.SetPieceAttackCurrentTotal = 0.0f;
+		}
+		if (ContestCount < 2)
+		{
+			View.bHasSetPieceDefenseD6 = false;
+			View.SetPieceDefenseD6 = 0;
+			View.bHasSetPieceDefenseCurrentTotal = false;
+			View.SetPieceDefenseCurrentTotal = 0.0f;
+		}
+		const int32 RequiredPairedCount =
+			View.SetPieceType == ESetPieceSelectedType::Penalty ? 1 : 2;
+		if (ContestCount < RequiredPairedCount)
+		{
+			View.bHasSetPiecePairedD6 = false;
+			View.SetPiecePairedD6A = 0;
+			View.SetPiecePairedD6B = 0;
+			View.SetPiecePairedD6Total = 0;
+		}
+		if ((!View.bHasSetPieceAttackD6 && !View.bHasSetPiecePairedD6)
+			|| (View.SetPieceCarrierStage
+					== EMatchPlaySetPieceCarrierRouteStage
+						::DirectAwaitingDefenseRoll
+				&& !View.bHasSetPieceDefenseD6))
+		{
+			View.bHasSetPieceFormula = false;
+			View.SetPieceFormula = {};
+		}
+
+		RedactResolutionRolls(Disclosure, View);
+
+		const bool bBothCornerSidesLocked =
+			View.bCornerAttackerNominationsLocked
+			&& View.bCornerDefenderNominationsLocked;
+		const EInitialTurnOrderPlayer Attacker = View.CurrentAttackingPlayer;
+		const EInitialTurnOrderPlayer Defender = OtherSide(Attacker);
+		if (!bBothCornerSidesLocked)
+		{
+			if (!bValidViewer || ViewerSide != Attacker)
+			{
+				View.CornerAttackerNominees.Reset();
+				View.CornerAttackerNomineeRollLabels.Reset();
+				View.bHideCornerAttackerNomineeDetails = true;
+			}
+			else
+			{
+				View.bHideCornerAttackerNomineeDetails = false;
+			}
+			if (!bValidViewer || ViewerSide != Defender)
+			{
+				View.CornerDefenderNominees.Reset();
+				View.CornerDefenderNomineeRollLabels.Reset();
+			}
+		}
+
+		if (!bValidViewer || View.ExpectedActingPlayer != ViewerSide)
+		{
+			View.DeploymentOptions.Reset();
+			View.DeploymentGroups.Reset();
+			View.SelectionOptions.Reset();
+			View.LegalSetPieceCardIds.Reset();
+			View.BranchIntentOptions.Reset();
+			View.OneOnOneOptions.Reset();
+			View.bHumanInteraction = false;
+		}
+
+		if (!Disclosure.bRevealTerminalOutcome)
+		{
+			RedactTerminalOutcome(Snapshot, View);
+		}
+	}
+}
+
+FFMCodexLocalMatchViewerDisclosure
+FFMCodexLocalMatchViewerDisclosure::FullyDisclosed()
+{
+	FFMCodexLocalMatchViewerDisclosure Result;
+	Result.bRevealInitialActionPointRoll = true;
+	Result.bRevealSetPieceTypeRoll = true;
+	Result.bRevealParticipantSelectionRoll = true;
+	Result.bRevealRouteRoll = true;
+	Result.RevealedContestD6Count = MAX_int32;
+	Result.bRevealTerminalOutcome = true;
+	return Result;
 }
 
 FFMCodexLocalMatchInteractionView
@@ -1498,7 +1849,7 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildNoActiveMatch()
 }
 
 FFMCodexLocalMatchInteractionView
-FFMCodexLocalMatchInteractionViewBuilder::Build(
+FFMCodexLocalMatchInteractionViewBuilder::BuildAuthorityInternal(
 	const FMatchPlayState& Snapshot,
 	const FSkillRuleSnapshotSet& SkillRuleSet)
 {
@@ -1511,6 +1862,7 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 
 	FFMCodexLocalMatchInteractionView Result;
 	Result.bMatchActive = true;
+	Result.GoalHistory = Snapshot.GoalHistory;
 	Result.PlayerAScore = Snapshot.RuntimeState.PlayerAState.Score;
 	Result.PlayerBScore = Snapshot.RuntimeState.PlayerBState.Score;
 	Result.CurrentAttackingPlayer =
@@ -1595,7 +1947,7 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 					Team.Color = FLinearColor(0.19f, 0.43f, 0.61f);
 				}
 			}
-			for (const auto& Goal : Snapshot.GoalHistory)
+			for (const auto& Goal : Result.GoalHistory)
 			{
 				if (Goal.ScoringSide != Side) continue;
 				const auto* Definition = FFMCodexPrototypeTeamContent::Find(Goal.ScorerCardId);
@@ -2316,6 +2668,42 @@ FFMCodexLocalMatchInteractionViewBuilder::Build(
 	}
 	return Result;
 }
+
+FFMCodexLocalMatchInteractionView
+FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+	const FMatchPlayState& Snapshot,
+	const FSkillRuleSnapshotSet& SkillRuleSet,
+	const EInitialTurnOrderPlayer ViewerSide,
+	const FFMCodexLocalMatchViewerDisclosure& Disclosure)
+{
+	FFMCodexLocalMatchInteractionView Result =
+		BuildAuthorityInternal(Snapshot, SkillRuleSet);
+	if (!Result.bMatchActive)
+	{
+		return Result;
+	}
+
+	const FFMCodexLocalMatchViewerDisclosure EffectiveDisclosure =
+		Result.bMatchEnded
+			? FFMCodexLocalMatchViewerDisclosure::FullyDisclosed()
+			: Disclosure;
+	FMCodexLocalMatchInteractionView::ApplyViewerSafety(
+		Snapshot,
+		ViewerSide,
+		EffectiveDisclosure,
+		Result);
+	return Result;
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+FFMCodexLocalMatchInteractionView
+FFMCodexLocalMatchInteractionViewBuilder::Build(
+	const FMatchPlayState& Snapshot,
+	const FSkillRuleSnapshotSet& SkillRuleSet)
+{
+	return BuildAuthorityInternal(Snapshot, SkillRuleSet);
+}
+#endif
 
 TArray<FFMCodexLocalMatchCardView::FSkill>
 FFMCodexLocalMatchInteractionViewBuilder::ProjectEligibleTacticalSkills(

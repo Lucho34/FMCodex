@@ -304,6 +304,7 @@ AFMCodexLocalMatchHostGameMode::BeginOrdinaryAttack(
 }
 #endif
 
+#if WITH_DEV_AUTOMATION_TESTS
 FFMCodexLocalMatchRollTacticalPointsResult
 AFMCodexLocalMatchHostGameMode::RollTacticalPoints(
 	const EInitialTurnOrderPlayer RequestingSide)
@@ -376,6 +377,7 @@ AFMCodexLocalMatchHostGameMode::RollTacticalPoints(
 	}
 	return Result;
 }
+#endif
 
 FFMCodexLocalMatchRequestInitialActionPointRollResult
 AFMCodexLocalMatchHostGameMode::RequestInitialActionPointRoll(
@@ -747,7 +749,6 @@ AFMCodexLocalMatchHostGameMode::DeclineMarker(
 
 FFMCodexLocalMatchSubmitSkillResult
 AFMCodexLocalMatchHostGameMode::SubmitSkill(
-	const FSkillRuleSnapshotSet& SkillRuleSet,
 	const FMatchPlayAuthoritativeSubmitSkillRequest& Request)
 {
 	using namespace FMCodexLocalMatchHost;
@@ -759,20 +760,8 @@ AFMCodexLocalMatchHostGameMode::SubmitSkill(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	if (!AreSkillRuleSetsEqual(
-		SkillRuleSet,
-		ActiveMatchRuntime->SkillRuleSet))
-	{
-		Result.ErrorCode =
-			EFMCodexLocalMatchHostErrorCode::RuleConfigurationMismatch;
-		Result.ErrorMessage = RuleConfigurationMismatchMessage;
-		return Result;
-	}
-
 	Result.AuthoritativeResult =
-		ActiveMatchRuntime->AuthoritativeSession.SubmitSkill(
-			ActiveMatchRuntime->SkillRuleSet,
-			Request);
+		ActiveMatchRuntime->AuthoritativeSession.SubmitSkill(Request);
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.SkillResult.bSuccess;
@@ -788,8 +777,7 @@ AFMCodexLocalMatchHostGameMode::SubmitSkill(
 }
 
 FFMCodexLocalMatchResolveNoLegalSkillResult
-AFMCodexLocalMatchHostGameMode::ResolveNoLegalSkill(
-	const FSkillRuleSnapshotSet& SkillRuleSet)
+AFMCodexLocalMatchHostGameMode::ResolveNoLegalSkill()
 {
 	using namespace FMCodexLocalMatchHost;
 
@@ -800,19 +788,8 @@ AFMCodexLocalMatchHostGameMode::ResolveNoLegalSkill(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	if (!AreSkillRuleSetsEqual(
-		SkillRuleSet,
-		ActiveMatchRuntime->SkillRuleSet))
-	{
-		Result.ErrorCode =
-			EFMCodexLocalMatchHostErrorCode::RuleConfigurationMismatch;
-		Result.ErrorMessage = RuleConfigurationMismatchMessage;
-		return Result;
-	}
-
 	Result.AuthoritativeResult =
-		ActiveMatchRuntime->AuthoritativeSession.ResolveNoLegalSkill(
-			ActiveMatchRuntime->SkillRuleSet);
+		ActiveMatchRuntime->AuthoritativeSession.ResolveNoLegalSkill();
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.ResolutionResult.bSuccess;
@@ -829,7 +806,6 @@ AFMCodexLocalMatchHostGameMode::ResolveNoLegalSkill(
 
 FFMCodexLocalMatchDeclineSkillResult
 AFMCodexLocalMatchHostGameMode::DeclineSkill(
-	const FSkillRuleSnapshotSet& SkillRuleSet,
 	const FMatchPlayAuthoritativeDeclineSkillRequest& Request)
 {
 	using namespace FMCodexLocalMatchHost;
@@ -841,20 +817,8 @@ AFMCodexLocalMatchHostGameMode::DeclineSkill(
 		Result.ErrorMessage = NoActiveMatchMessage;
 		return Result;
 	}
-	if (!AreSkillRuleSetsEqual(
-		SkillRuleSet,
-		ActiveMatchRuntime->SkillRuleSet))
-	{
-		Result.ErrorCode =
-			EFMCodexLocalMatchHostErrorCode::RuleConfigurationMismatch;
-		Result.ErrorMessage = RuleConfigurationMismatchMessage;
-		return Result;
-	}
-
 	Result.AuthoritativeResult =
-		ActiveMatchRuntime->AuthoritativeSession.DeclineSkill(
-			ActiveMatchRuntime->SkillRuleSet,
-			Request);
+		ActiveMatchRuntime->AuthoritativeSession.DeclineSkill(Request);
 	Result.bSuccess = Result.AuthoritativeResult.RuntimeEnvelope.bAccepted
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess
 		&& Result.AuthoritativeResult.DeclineResult.bSuccess;
@@ -868,6 +832,76 @@ AFMCodexLocalMatchHostGameMode::DeclineSkill(
 	}
 	return Result;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+FFMCodexLocalMatchSubmitSkillResult
+AFMCodexLocalMatchHostGameMode::SubmitSkill(
+	const FSkillRuleSnapshotSet& FixtureSkillRuleSet,
+	const FMatchPlayAuthoritativeSubmitSkillRequest& Request)
+{
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		return SubmitSkill(Request);
+	}
+	if (!FMCodexLocalMatchHost::AreSkillRuleSetsEqual(
+		FixtureSkillRuleSet,
+		ActiveMatchRuntime->SkillRuleSet))
+	{
+		FFMCodexLocalMatchSubmitSkillResult Result;
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::RuleConfigurationMismatch;
+		Result.ErrorMessage =
+			FMCodexLocalMatchHost::RuleConfigurationMismatchMessage;
+		return Result;
+	}
+	return SubmitSkill(Request);
+}
+
+FFMCodexLocalMatchResolveNoLegalSkillResult
+AFMCodexLocalMatchHostGameMode::ResolveNoLegalSkill(
+	const FSkillRuleSnapshotSet& FixtureSkillRuleSet)
+{
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		return ResolveNoLegalSkill();
+	}
+	if (!FMCodexLocalMatchHost::AreSkillRuleSetsEqual(
+		FixtureSkillRuleSet,
+		ActiveMatchRuntime->SkillRuleSet))
+	{
+		FFMCodexLocalMatchResolveNoLegalSkillResult Result;
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::RuleConfigurationMismatch;
+		Result.ErrorMessage =
+			FMCodexLocalMatchHost::RuleConfigurationMismatchMessage;
+		return Result;
+	}
+	return ResolveNoLegalSkill();
+}
+
+FFMCodexLocalMatchDeclineSkillResult
+AFMCodexLocalMatchHostGameMode::DeclineSkill(
+	const FSkillRuleSnapshotSet& FixtureSkillRuleSet,
+	const FMatchPlayAuthoritativeDeclineSkillRequest& Request)
+{
+	if (!ActiveMatchRuntime.IsValid())
+	{
+		return DeclineSkill(Request);
+	}
+	if (!FMCodexLocalMatchHost::AreSkillRuleSetsEqual(
+		FixtureSkillRuleSet,
+		ActiveMatchRuntime->SkillRuleSet))
+	{
+		FFMCodexLocalMatchDeclineSkillResult Result;
+		Result.ErrorCode =
+			EFMCodexLocalMatchHostErrorCode::RuleConfigurationMismatch;
+		Result.ErrorMessage =
+			FMCodexLocalMatchHost::RuleConfigurationMismatchMessage;
+		return Result;
+	}
+	return DeclineSkill(Request);
+}
+#endif
 
 FFMCodexLocalMatchSubmitRunnerResult
 AFMCodexLocalMatchHostGameMode::SubmitRunner(

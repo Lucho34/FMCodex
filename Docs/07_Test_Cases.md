@@ -845,3 +845,15 @@
 - DEV `CrossInitialRoute` invocation和Cross High/Low Attack/Defense targets必须保持原名称与one-shot语义；rejected request不消费prepared override。legacy generic/atomic APIs只保留明确compatibility、reference或recovery测试。
 - 回归至少覆盖Cross Foundation专项、完整AuthoritativeSession、Cross family、LocalMatchHost、DEV override、真实Screen黄金路径、shared Inline Formula/primary-action ownership以及受共享dispatch影响的ThroughBall、PassControl、LongShot/CutInside代表路径。public USTRUCT/enum变化执行UHT、Editor build和`git diff --check`。
 
+## Pre-Network Boundary Closure（Stage 7.0.1）
+
+- Correlation 测试必须用真实 Attack N 完成/推进到 Attack N+1，并让 N+1 回到可比 phase；旧 `DeployOrdinary`、Carrier、Marker、Skill、Runner、Helper、Decline 与 One-on-One request 必须在 mutation/provider 前拒绝，当前 State 不变且 RNG delta 为 0。不能只用伪造 `CurrentSequence + 1`。
+- Goalkeeper deployment 必须覆盖 wrong-side、stale、fresh 与 duplicate。GK identity 必须从 authority side ownership 派生；所有 rejected request 保持 State 不变且不消费 RNG。
+- Command audit 必须验证 player-triggered deployment/selection/roll/advance 为 `PlayerIntent`，确定性/no-legal/formula/terminal/recovery 为 `ServerInternalAction`；未知 command 不能默认升级为 player intent。
+- Production source boundary 必须证明 Controller 走 Full D12 correlated request，不调用 Host legacy `RollTacticalPoints`/`BeginOrdinaryAttack`；legacy facade 只在 automation-test guard 中。Production `SubmitSkill` 只接受玩家选择并使用 Session pinned rules。
+- Ordinary A/B projection 必须从同一 State 构建两份 viewer DTO，公共权威事实一致；只有 expected acting viewer 获得对应 action option/interaction payload。
+- Corner projection 必须覆盖单边锁定时对手 DTO 不含对方 CardId/order、只含 lock acknowledgement；双方锁定后两侧列表公开。`AutomaticScorerD6` 不得出现在 InteractionView schema 或投影。
+- Disclosure 默认 fail closed：未公开 Full D12、set-piece type、participant/route/contest/terminal facts必须为结构化 absent，且相关 action/route不得通过派生字段泄漏。2D6 paired contest 在 disclosure count 不足 2 时两枚都不可见。
+- Terminal secrecy 必须覆盖 scorer、outcome、当前进球的 score 与 GoalHistory 同步 withheld；公开后 A/B DTO 一致。Match ended / FullTime production result必须完整公开。
+- Stage gate 为 focused `FMCodex.MatchPlayRuntime.NetworkBoundary`、完整 `FMCodex.MatchPlayRuntime.AuthoritativeSession`、完整 `FMCodex.MatchPlayRuntime`、完整 `FMCodex.LocalPlay`、完整 `FMCodex.CoreRules`、Editor Development build 与 `git diff --check`。
+
