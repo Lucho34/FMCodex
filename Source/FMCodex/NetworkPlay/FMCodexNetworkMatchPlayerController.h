@@ -76,6 +76,12 @@ public:
 	void DevProbeInvalidBranch();
 	bool CanSubmitBranch() const;
 	bool CanRequestInitialRoute() const;
+	bool CanRequestCrossContest() const;
+	UFUNCTION(Exec)
+	void DevRequestCrossContest();
+	UFUNCTION(Exec)
+	void DevProbeWrongCrossContestRoute();
+	void SubmitCrossContest(EFMCodexNetworkPlayerIntentKind Kind);
 	UFUNCTION(Exec)
 	void DevRequestInitialRoute();
 	UFUNCTION(Exec)

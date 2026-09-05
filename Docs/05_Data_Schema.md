@@ -773,3 +773,24 @@ Canonical FMatchPlayAuthoritativeSubmitBranchIntentRequest uses AttackSequence, 
 The thirteen tags retain eight closed choice members; a route request has zero additional gameplay payload bytes beyond the existing envelope representation. The Branch member's inactive None continues to use its established one-byte codec. Host and Remote must use the same schema build.
 
 D6, family and actual route in InitialRoute are server-to-client disclosed facts, never fields in the route request. They do not expose any seed, entropy, provider, future roll, full resolution session, Formula, winner or terminal result. Labels reuse canonical Chinese presentation mappings; the Network layer does not derive routes from D6 or localized text.
+
+## Empty Cross contest requests and disclosed prefix
+
+| Type / field | Contract |
+|---|---|
+| Exact canonical requests | FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest; FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest; FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest; FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest |
+| Canonical fields | int64 AttackSequence; EInitialTurnOrderPlayer RequestingSide |
+| Wire kinds | CrossHighAttackRoll, CrossHighDefenseRoll, CrossLowAttackRoll, CrossLowDefenseRoll, appended after the initial-route family |
+| Gameplay payload | None; Deployment/Goalkeeper/Carrier/Marker/Runner/Helper/Skill/Branch all empty |
+| Common request and ACK | Unchanged correlation, freshness and revision fields; no dice, seed, route, Formula, outcome, Side or provider data added |
+| EFMCodexNetworkCrossContestAction | None plus the four exact Cross roll actions; safe interaction owns availability, safe ActualBranch owns High/Low |
+| FFMCodexNetworkCrossContestFact | AttackD6, DefenseD6, bFormulaResolved only |
+| D6 representation | 0 means undisclosed/absent; disclosed values are 1..6 |
+| Safe source | Ordered resolved ResolutionFacts.Rolls PrimaryAttack then PrimaryDefense from BuildForViewer; existing InitialRoute.Cross carries actual route |
+| Completion flag | Two valid disclosed contest rolls and the unique matching Cross.High/Cross.Low safe Formula contest's bHasResolvedFormula |
+| Invalid projection | Missing attack prefix, duplicate/extra record, unsupported purpose or invalid/unresolved die fails the whole contest projection |
+| CrossDefenseRoll EntryWait | Status projection for the defender handoff; existing TerminalPendingAdvance represents the stable post-defense wait |
+
+The snapshot remains bounded: no full Formula/session, term arrays, raw winner, Goal/scorer, terminal result object, seed or entropy. Existing PlayerAScore/PlayerBScore continue to copy the safe view; the current attack's committed goal remains subtracted while terminal reveal is withheld. ACK never supplies gameplay results.
+
+Seventeen request kinds share each connection's continuous ledger. Host and Remote have independent connection counters, not independent counters per roll or phase. Cross completion does not reset either counter or create an automatic resend/reconnect policy.

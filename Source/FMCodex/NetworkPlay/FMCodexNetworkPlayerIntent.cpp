@@ -10,6 +10,10 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	case EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll:
 	case EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll:
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll:
+	case EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll:
+	case EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll:
 		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
 		return Deployment.IsValidShape() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
@@ -142,6 +146,15 @@ bool FFMCodexNetworkIntentClientState::BeginInitialRoute(const FFMCodexNetworkCl
 		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll) { return false; }
 	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
 }
+bool FFMCodexNetworkIntentClientState::BeginCrossContest(const FFMCodexNetworkClientViewSnapshot& View,
+	EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	if (Kind != EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll) { return false; }
+	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
+}
 bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
 	EFMCodexNetworkPlayerIntentKind Kind, const FFMCodexNetworkDeployOrdinaryPayload& Choice,
 	const FFMCodexNetworkDeployGoalkeeperPayload& GoalkeeperChoice,
@@ -202,6 +215,18 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 		break;
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll:
 		bActionable = View.InitialRouteAction == EFMCodexNetworkInitialRouteAction::ThroughBall;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll:
+		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossHighAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll:
+		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossHighDefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll:
+		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossLowAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll:
+		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll;
 		break;
 	default: break;
 	}

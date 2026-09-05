@@ -205,6 +205,14 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	FString Milestone;
 	const bool bMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkRouteMilestone="), Milestone);
 	const bool bSkillSlice = bMilestone || FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkSkillSlice"));
+	int32 AutomationAttackD6 = 0, AutomationDefenseD6 = 0;
+	if (HasAuthority()
+		&& FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkContestAttackD6="), AutomationAttackD6)
+		&& FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkContestDefenseD6="), AutomationDefenseD6)
+		&& AutomationAttackD6 >= 1 && AutomationAttackD6 <= 6 && AutomationDefenseD6 >= 1 && AutomationDefenseD6 <= 6)
+	{
+		MatchRuntime->EnablePostRouteAutomation(AutomationAttackD6, AutomationDefenseD6);
+	}
 	int32 AutomationRouteD6 = 0;
 	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkInitialRouteD6="), AutomationRouteD6)
 		&& AutomationRouteD6 >= 1 && AutomationRouteD6 <= 6)
@@ -519,6 +527,38 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.RequestingSide = Side;
 		Request.AttackSequence = Envelope.ExpectedAttackSequence;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll:
+	{
+		FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll:
+	{
+		FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll:
+	{
+		FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll:
+	{
+		FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll, Request);
 		break;
 	}
 	default: return Finish(AckCode::NotPlayerIntent);

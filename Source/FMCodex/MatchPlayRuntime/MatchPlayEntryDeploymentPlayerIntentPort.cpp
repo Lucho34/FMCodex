@@ -127,11 +127,39 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveCrossHighAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveCrossHighDefenseRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveCrossLowAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveCrossLowDefenseRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	default:
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
 		return Result;
 	}
-	// Exactly one pass after any successful deployment, participant, Skill, branch or initial-route command; never on rejection.
+	// Exactly one pass after any successful deployment, participant, Skill, branch, initial-route or Cross contest command; never on rejection.
 	Result.CoordinatorResult = Coordinator.AdvanceToStableState();
 	Result.bSuccess = Result.CoordinatorResult.bSuccess;
 	if (!Result.bSuccess)

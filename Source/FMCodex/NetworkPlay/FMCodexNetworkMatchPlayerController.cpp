@@ -294,6 +294,17 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 				.OnClicked_Lambda([this]() { DevRequestInitialRoute(); return FReply::Handled(); })
 			];
 		}
+		if (OwnerView.CrossContestAction != EFMCodexNetworkCrossContestAction::None)
+		{
+			const bool Attack = OwnerView.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossHighAttackRoll
+				|| OwnerView.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossLowAttackRoll;
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton).Text(Attack ? LOCTEXT("CrossAttackRoll", "掷传中进攻点数") : LOCTEXT("CrossDefenseRoll", "掷传中防守点数"))
+				.IsEnabled_Lambda([this]() { return CanRequestCrossContest(); })
+				.OnClicked_Lambda([this]() { DevRequestCrossContest(); return FReply::Handled(); })
+			];
+		}
 		for (const auto& Option : OwnerView.CarrierOptions)
 		{
 			const FName Id = Option.Choice.CarrierCardId;
@@ -400,7 +411,7 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("运动战") : OwnerView.EntryBranch == EFMCodexNetworkEntryBranch::SetPiece
 			? TEXT("定位球") : TEXT("等待服务器");
 		const TCHAR* Wait = OwnerView.EntryWait == EFMCodexNetworkEntryWait::TerminalPendingAdvance
-			? TEXT("已结算，等待下一回合") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
+			? TEXT("已结算，等待下一回合（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
 			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
 			? TEXT("部署已完成，等待选择持球球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
 			? TEXT("等待选择盯人球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
@@ -417,7 +428,8 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("等待进攻方掷远射双骰（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDirectAttackRoll
 			? TEXT("等待进攻方掷内切射门点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll
 			? TEXT("等待进攻方掷内切死角双骰（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossAttackRoll
-			? TEXT("等待进攻方掷传中点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlAttackRoll
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待掷传中进攻点数") : TEXT("等待对手掷传中进攻点数")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossDefenseRoll
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待掷传中防守点数") : TEXT("等待对手掷传中防守点数")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlAttackRoll
 			? TEXT("等待进攻方掷控球推进点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallFeetAttackRoll
 			? TEXT("等待进攻方掷直塞脚下球点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallBehindDefenseAttackRoll
 			? TEXT("等待进攻方掷直塞身后球点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallAntiOffsideAttackRoll
@@ -456,6 +468,8 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDirectAttackRoll
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossAttackRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossDefenseRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::TerminalPendingAdvance
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlAttackRoll
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallFeetAttackRoll
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallBehindDefenseAttackRoll
@@ -508,6 +522,20 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 	{
 		EntryText += FText::Format(LOCTEXT("InitialRouteFact", "\n路线骰：{0} · 实际路线：{1}"),
 			FText::AsNumber(OwnerView.InitialRoute.D6), OwnerView.InitialRoute.RouteLabel).ToString();
+	}
+	if (OwnerView.CrossContest.AttackD6 != 0)
+	{
+		EntryText += FText::Format(LOCTEXT("CrossAttackFact", "\n传中进攻点数：{0}"),
+			FText::AsNumber(OwnerView.CrossContest.AttackD6)).ToString();
+	}
+	if (OwnerView.CrossContest.DefenseD6 != 0)
+	{
+		EntryText += FText::Format(LOCTEXT("CrossDefenseFact", "\n传中防守点数：{0}"),
+			FText::AsNumber(OwnerView.CrossContest.DefenseD6)).ToString();
+	}
+	if (OwnerView.CrossContest.bFormulaResolved)
+	{
+		EntryText += LOCTEXT("CrossContestComplete", "\n传中比较已完成；终局结果与比分尚未公开").ToString();
 	}
 	if (!OwnerView.SelectedBranch.Choice.IsEmpty())
 	{
@@ -1033,6 +1061,66 @@ void AFMCodexNetworkMatchPlayerController::DevProbeWrongRouteFamily()
 	if (!IntentClientState.BeginInitialRoute(OwnerView, Kind, Envelope)) { return; }
 	Envelope.IntentKind = Kind == EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll
 		? EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll : EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll;
+	RefreshNetworkBootstrapUI();
+	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+
+bool AFMCodexNetworkMatchPlayerController::CanRequestCrossContest() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.CrossContestAction != EFMCodexNetworkCrossContestAction::None
+		&& OwnerView.ViewerSide != EInitialTurnOrderPlayer::None
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide;
+}
+void AFMCodexNetworkMatchPlayerController::DevRequestCrossContest()
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanRequestCrossContest()) { return; }
+	switch (OwnerView.CrossContestAction)
+	{
+	case EFMCodexNetworkCrossContestAction::CrossHighAttackRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll); break;
+	case EFMCodexNetworkCrossContestAction::CrossHighDefenseRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll); break;
+	case EFMCodexNetworkCrossContestAction::CrossLowAttackRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll); break;
+	case EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll); break;
+	default: break;
+	}
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitCrossContest(EFMCodexNetworkPlayerIntentKind Kind)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginCrossContest(OwnerView, Kind, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("CrossContest owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Kind=%d"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, static_cast<int32>(Kind));
+	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeWrongCrossContestRoute()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanRequestCrossContest()) { return; }
+	EFMCodexNetworkPlayerIntentKind Offered, Wrong;
+	switch (OwnerView.CrossContestAction)
+	{
+	case EFMCodexNetworkCrossContestAction::CrossHighAttackRoll:
+		Offered = EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll; Wrong = EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll; break;
+	case EFMCodexNetworkCrossContestAction::CrossHighDefenseRoll:
+		Offered = EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll; Wrong = EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll; break;
+	case EFMCodexNetworkCrossContestAction::CrossLowAttackRoll:
+		Offered = EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll; Wrong = EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll; break;
+	case EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll:
+		Offered = EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll; Wrong = EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll; break;
+	default: return;
+	}
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginCrossContest(OwnerView, Offered, Envelope)) { return; }
+	Envelope.IntentKind = Wrong;
 	RefreshNetworkBootstrapUI();
 	ServerSubmitPlayerIntent(Envelope);
 #endif

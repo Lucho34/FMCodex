@@ -447,25 +447,49 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 					ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 			});
 	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll:
-		FMCODEX_DISPATCH_PLAYER_INTENT(
-			FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest,
-			ResolveCrossHighAttackRoll(Intent.Payload.Get<
-				FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest>()));
+		return ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+			EFMCodexLocalDevRollInvocation::CrossHighAttack,
+#endif
+			[this, &Intent]()
+			{
+				return FMatchPlayEntryDeploymentPlayerIntentPort(
+					ActiveMatchRuntime->AuthoritativeSession,
+					ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
+			});
 	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll:
-		FMCODEX_DISPATCH_PLAYER_INTENT(
-			FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest,
-			ResolveCrossHighDefenseRoll(Intent.Payload.Get<
-				FMatchPlayAuthoritativeResolveCrossHighDefenseRollRequest>()));
+		return ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+			EFMCodexLocalDevRollInvocation::CrossHighDefense,
+#endif
+			[this, &Intent]()
+			{
+				return FMatchPlayEntryDeploymentPlayerIntentPort(
+					ActiveMatchRuntime->AuthoritativeSession,
+					ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
+			});
 	case EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll:
-		FMCODEX_DISPATCH_PLAYER_INTENT(
-			FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest,
-			ResolveCrossLowAttackRoll(Intent.Payload.Get<
-				FMatchPlayAuthoritativeResolveCrossLowAttackRollRequest>()));
+		return ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+			EFMCodexLocalDevRollInvocation::CrossLowAttack,
+#endif
+			[this, &Intent]()
+			{
+				return FMatchPlayEntryDeploymentPlayerIntentPort(
+					ActiveMatchRuntime->AuthoritativeSession,
+					ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
+			});
 	case EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll:
-		FMCODEX_DISPATCH_PLAYER_INTENT(
-			FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest,
-			ResolveCrossLowDefenseRoll(Intent.Payload.Get<
-				FMatchPlayAuthoritativeResolveCrossLowDefenseRollRequest>()));
+		return ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+			EFMCodexLocalDevRollInvocation::CrossLowDefense,
+#endif
+			[this, &Intent]()
+			{
+				return FMatchPlayEntryDeploymentPlayerIntentPort(
+					ActiveMatchRuntime->AuthoritativeSession,
+					ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
+			});
 	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll:
 		FMCODEX_DISPATCH_PLAYER_INTENT(
 			FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest,

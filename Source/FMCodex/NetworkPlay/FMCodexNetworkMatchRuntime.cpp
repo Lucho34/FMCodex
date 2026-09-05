@@ -44,6 +44,43 @@ public:
 	int32 InvocationCount = 0;
 	int32 D12Count = 0;
 };
+/** Counts the canonical post-route boundary; production uses the existing secure provider. */
+class FFMCodexNetworkPostRouteRollProvider final : public IMatchPlayPostRouteRollProvider
+{
+public:
+	explicit FFMCodexNetworkPostRouteRollProvider(IMatchPlayPostRouteRollProvider& InInner) : Inner(InInner) {}
+	virtual FMatchPlayPostRouteRollProviderResult RollD6(EMatchPlayCurrentAttackPostRouteRollPurpose Purpose) override
+	{
+		++InvocationCount;
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+		const int32 D6 = Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack ? AutomationAttackD6
+			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryDefense ? AutomationDefenseD6 : 0;
+		if (D6 != 0)
+		{
+			FMatchPlayPostRouteRollProviderResult Result; Result.bSuccess = true; Result.RawD6 = D6; return Result;
+		}
+#endif
+		return Inner.RollD6(Purpose);
+	}
+	int32 InvocationCount = 0;
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	int32 AutomationAttackD6 = 0, AutomationDefenseD6 = 0;
+#endif
+private:
+	IMatchPlayPostRouteRollProvider& Inner;
+};
+int32 FFMCodexNetworkMatchRuntime::GetPostRouteProviderInvocationCount() const
+{
+	return PostRouteProvider.IsValid() ? PostRouteProvider->InvocationCount : 0;
+}
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+void FFMCodexNetworkMatchRuntime::EnablePostRouteAutomation(int32 AttackD6, int32 DefenseD6)
+{
+	check(!bInitialized && AttackD6 >= 1 && AttackD6 <= 6 && DefenseD6 >= 1 && DefenseD6 <= 6);
+	PostRouteProvider->AutomationAttackD6 = AttackD6; PostRouteProvider->AutomationDefenseD6 = DefenseD6;
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation post-route provider enabled; default secure provider unchanged."));
+}
+#endif
 /** Counts the canonical provider boundary; production draws delegate to the existing secure provider. */
 class FFMCodexNetworkInitialRouteRollProvider final : public IMatchPlayInitialRouteRollProvider
 {
@@ -189,6 +226,7 @@ FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(
 	, RollProvider(MoveTemp(InRollProvider))
 	, EntryProvider(MakeUnique<FFMCodexNetworkEntryRollProvider>(*RollProvider))
 	, InitialRouteProvider(MakeUnique<FFMCodexNetworkInitialRouteRollProvider>(*RollProvider))
+	, PostRouteProvider(MakeUnique<FFMCodexNetworkPostRouteRollProvider>(*RollProvider))
 {
 }
 
@@ -216,7 +254,7 @@ FFMCodexNetworkMatchRuntime::InitializeOnce(
 	AuthoritativeSession = MakeUnique<FMatchPlayAuthoritativeSession>(
 		*EntryProvider,
 		*InitialRouteProvider,
-		*RollProvider,
+		*PostRouteProvider,
 		*RollProvider,
 		SkillRuleSet);
 	ServerCoordinator = MakeUnique<FMatchPlayServerCoordinator>(
@@ -273,6 +311,10 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 		&& DisclosedInitialAttackSequence == Snapshot.CurrentAttack.AttackSequence;
 	Disclosure.bRevealRouteRoll = Disclosure.bRevealInitialActionPointRoll
 		&& DisclosedRouteAttackSequence == Snapshot.CurrentAttack.AttackSequence;
+	Disclosure.RevealedContestD6Count = Disclosure.bRevealRouteRoll
+		&& DisclosedCrossContestAttackSequence == Snapshot.CurrentAttack.AttackSequence
+		? DisclosedCrossContestRollCount : 0;
+	// Terminal/score reveal retains its separate existing gate; contest completion does not grant it.
 	const FFMCodexLocalMatchInteractionView SafeViewerView =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot,
@@ -460,6 +502,36 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			static_cast<int32>(Result.CoordinatorResult.StopReason));
 	}
 
+#endif
+	const bool bCrossAttack = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll;
+	const bool bCrossDefense = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll;
+	if ((bCrossAttack || bCrossDefense) && Result.bSuccess)
+	{
+		DisclosedCrossContestAttackSequence = AuthoritativeSession->GetStateSnapshot().CurrentAttack.AttackSequence;
+		DisclosedCrossContestRollCount = bCrossDefense ? 2 : 1;
+	}
+#if WITH_DEV_AUTOMATION_TESTS
+	if (bCrossAttack || bCrossDefense)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		const auto& Attack = State.CurrentAttack;
+		const auto Safe = BuildClientView(State.RuntimeState.CurrentAttackingPlayer, 0, EFMCodexNetworkBootstrapState::MatchReady);
+		UE_LOG(LogFMCodexNetworkPlay, Log,
+			TEXT("DEV CrossContest authority: Success=%d Command=%d Skill=%s Branch=%d ActualCross=%d AttackD6=%d DefenseD6=%d FormulaComplete=%d ProviderCalls=%d Phase=%s SelectionStage=%s RouteStage=%s RollProgress=%d RollRecords=%d Terminal=%d AuthorityScoreA=%d AuthorityScoreB=%d PublicScoreA=%d PublicScoreB=%d GoalHistory=%d ExpectedSide=%d Wait=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d"),
+			Result.bSuccess, static_cast<int32>(Intent.CommandKind), *Attack.SelectedAction.SkillId.ToString(),
+			static_cast<int32>(Attack.SelectedAction.ElectiveBranchIntent), static_cast<int32>(Safe.InitialRoute.Cross),
+			Safe.CrossContest.AttackD6, Safe.CrossContest.DefenseD6, Safe.CrossContest.bFormulaResolved, GetPostRouteProviderInvocationCount(),
+			*StaticEnum<EMatchPlayCurrentAttackPhase>()->GetNameStringByValue(static_cast<int64>(Attack.Phase)),
+			*StaticEnum<EMatchPlayCurrentAttackSelectionStage>()->GetNameStringByValue(static_cast<int64>(Attack.SelectionStage)),
+			*StaticEnum<EMatchPlayCurrentAttackResolutionStage>()->GetNameStringByValue(static_cast<int64>(Attack.ResolutionSession.Stage)),
+			static_cast<int32>(Attack.ResolutionSession.PostRouteRollProgress.Phase), Attack.ResolutionSession.PostRouteRollProgress.RollRecords.Num(),
+			Attack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance,
+			State.RuntimeState.PlayerAState.Score, State.RuntimeState.PlayerBState.Score, Safe.PlayerAScore, Safe.PlayerBScore, State.GoalHistory.Num(),
+			static_cast<int32>(Safe.ExpectedActingSide), static_cast<int32>(Safe.EntryWait), GetCoordinatorInvocationCountForTests(),
+			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
+	}
 #endif
 	const bool bInitialRoute = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossInitialRouteRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll

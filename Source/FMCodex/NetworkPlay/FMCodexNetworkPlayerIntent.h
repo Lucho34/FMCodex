@@ -19,7 +19,11 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	SubmitBranchIntent,
 	CrossInitialRouteRoll,
 	PassControlInitialRouteRoll,
-	ThroughBallInitialRouteRoll
+	ThroughBallInitialRouteRoll,
+	CrossHighAttackRoll,
+	CrossHighDefenseRoll,
+	CrossLowAttackRoll,
+	CrossLowDefenseRoll
 };
 
 UENUM()
@@ -126,6 +130,8 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 		const FFMCodexNetworkSubmitBranchIntentPayload& Choice,
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginInitialRoute(const FFMCodexNetworkClientViewSnapshot& View,
+		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginCrossContest(const FFMCodexNetworkClientViewSnapshot& View,
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }

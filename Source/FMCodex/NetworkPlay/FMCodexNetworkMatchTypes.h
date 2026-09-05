@@ -41,7 +41,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll
 };
 
 
@@ -69,6 +69,26 @@ struct FMCODEX_API FFMCodexNetworkInitialRouteFact
 	EMatchPlayThroughBallActualBranch ThroughBall = EMatchPlayThroughBallActualBranch::None;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FText RouteLabel;
+};
+
+/** Current safe Cross action. Its route comes from canonical ActualBranch, not selected intent. */
+UENUM(BlueprintType)
+enum class EFMCodexNetworkCrossContestAction : uint8
+{
+	None, CrossHighAttackRoll, CrossHighDefenseRoll, CrossLowAttackRoll, CrossLowDefenseRoll
+};
+
+/** Disclosed contest prefix only; no Formula totals, winner, Goal or private provider state. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkCrossContestFact
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	int32 AttackD6 = 0;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	int32 DefenseD6 = 0;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bFormulaResolved = false;
 };
 
 /** Team/content identity is deliberately separate from the connected player. */
@@ -344,6 +364,10 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	EFMCodexNetworkInitialRouteAction InitialRouteAction = EFMCodexNetworkInitialRouteAction::None;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkInitialRouteFact InitialRoute;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EFMCodexNetworkCrossContestAction CrossContestAction = EFMCodexNetworkCrossContestAction::None;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkCrossContestFact CrossContest;
 };
 
 struct FFMCodexLocalMatchInteractionView;

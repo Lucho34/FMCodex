@@ -402,3 +402,33 @@ The non-Shipping server fixture uses canonical Full D12=6, deployment and partic
 InitialRouteMilestone PassControl or ThroughBall selects a B-first no-branch fixture for Remote validation. The launcher sends these fixture flags only to the server and rejects combining them with DeploymentSlice. Default launch remains unchanged. The short manual fixture still uses secure route RNG; the separate server-only FMCodexNetworkInitialRouteD6 flag exists only in non-Shipping automation to cover deterministic rendered evidence.
 
 This continuous Skill -> Branch -> initial route/RNG milestone requires one manual USER PIE after code-side automation and real Host/Remote validation. Automated screenshots are technical evidence, not user acceptance. Subsequent stage sizing should remain medium-granularity; a natural next block is the four Cross High/Low Attack/Defense commands, whose sequential independent D6, side ownership and one final contest contract align.
+
+## Cross High/Low contest transport
+
+The four appended empty-payload kinds are CrossHighAttackRoll, CrossHighDefenseRoll, CrossLowAttackRoll and CrossLowDefenseRoll. All seventeen kinds share the existing per-connection/match ledger, 0 < RequestId - HighWater <= 1024, generic ACK/View pending and generated owning RPC. Every eight-choice member must be empty for a Cross roll. Both Host and Remote use the same generated RPC; Side comes only from ParticipantRegistry.
+
+ActualBranch.Cross supplies High/Low legality. A selected High flipped to actual Low accepts only Low contest requests; the inverse accepts only High. The current attacker owns PrimaryAttack, then the current defender owns PrimaryDefense. Wrong-route/family/Side, early defense, stale sequence, duplicates and fresh-ID rerolls reject before RNG. Provider failure makes one failed attempt without adoption, fallback, Coordinator or publication; only a later explicit request can retry.
+
+| Actual route | Accepted attack D6 | New public fact | Next actor / command | Internal steps | Additional RNG |
+|---|---|---|---|---|---|
+| High | 1, 2, 3, 4, 5, 6 | Attack D6 only; Defense absent | Defender / ResolveCrossHighDefenseRoll | 0 | 0 |
+| Low | 1, 2, 3, 4, 5, 6 | Attack D6 only; Defense absent | Defender / ResolveCrossLowDefenseRoll | 0 | 0 |
+
+Both rows remain Resolution / ReadyForResolution / RouteResolved, PrimaryBranch with one roll and Active lifecycle. The initial route and selected intent remain unchanged.
+
+| Actual route / pair class | Canonical continuation after defense | Authoritative effect | Network public state | Next PlayerIntent |
+|---|---|---|---|---|
+| High / attacker wins finishing Formula | ApplyCrossTerminalResolution, one Coordinator internal step | Goal, score +1, Runner scorer, one GoalHistory record | Both D6, Formula-complete flag, TerminalPendingAdvance; current Goal/result/score still withheld | AdvanceAfterTerminal, current attacker |
+| High / defender wins finishing Formula | Same, zero extra RNG | NoGoal, no score/history increment | Same disclosed shape and wait | Same |
+| Low / attacker wins finishing Formula | Same, zero extra RNG | Goal, score +1, Runner scorer, one GoalHistory record | Same disclosed shape and wait | Same |
+| Low / defender wins finishing Formula | Same, zero extra RNG | NoGoal, no score/history increment | Same disclosed shape and wait | Same |
+
+Winner classification comes from the existing finishing Formula, including its canonical tie rule; Network does not compare totals or dice. Initial-route intent flips change neither contest arithmetic nor its ownership. Terminal persistence does not consume an opportunity, clear the pitch, hand off attack, run Recovery or end the match.
+
+BuildForViewer receives accepted contest prefix lengths 1/2 for the exact Cross attack, while bRevealTerminalOutcome remains false. The network scoreboard copies that safe view, which removes the current goal's score/history until terminal reveal is permitted. This stage does not define a public winner/Goal/scorer or result-reveal transaction. DEV text explicitly says the comparison is complete and terminal result/score are not yet disclosed; there is no next-turn button.
+
+The existing Cross InitialRouteMilestone launcher can continue through Skill -> Branch -> Route -> Attack -> Defense. No new launcher mode or production default is required. Separate authority-only automation command-line values may script the two contest provider returns; normal launches retain secure randomness.
+
+A transport increment may close without another manual PIE when both role directions, both actual routes, natural ACK/replication and clear before/after viewport evidence pass. Uncertain handoff or result/score reveal requires USER PIE. The next meaningful manual milestone should cover the complete Cross public result/score/scorer disclosure and explicit advance.
+
+The next bounded network contract is safe terminal outcome publication together with AdvanceAfterTerminal, based on persisted state. PassControl/ThroughBall Feet can be audited as a sequential two-sided single-D6 comparison family; ThroughBall BehindDefense/AntiOffside and LongShot/CutInside conditional, direct or paired rolls need their own bounded lifecycle audits.
