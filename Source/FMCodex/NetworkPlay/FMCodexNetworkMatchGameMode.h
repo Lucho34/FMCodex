@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 
 #include "FMCodexNetworkMatchRuntime.h"
+#include "FMCodexNetworkPlayerIntent.h"
 #include "FMCodexNetworkParticipantRegistry.h"
 
 #include "FMCodexNetworkMatchGameMode.generated.h"
@@ -29,6 +30,9 @@ public:
 		const AController* Controller) const;
 	const FGuid& GetMatchInstanceId() const;
 	bool IsNetworkMatchInitialized() const;
+	FFMCodexNetworkPlayerIntentAck SubmitConnectionPlayerIntent(
+		AFMCodexNetworkMatchPlayerController* Controller,
+		const FFMCodexNetworkPlayerIntentEnvelope& Envelope);
 
 protected:
 	virtual void BeginPlay() override;
@@ -36,6 +40,7 @@ protected:
 private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FFMCodexNetworkPlayerDisplayNameFallbackTest;
+	friend struct FFMCodexNetworkIntentTestAccess;
 #endif
 
 	void EnsureMatchInstanceId();
@@ -59,4 +64,6 @@ private:
 	FFMCodexNetworkParticipantPublicIdentity PlayerBIdentity;
 	int32 ViewRevision = 0;
 	bool bBootstrapAttempted = false;
+	bool bTransportFault = false;
+	TMap<TWeakObjectPtr<AFMCodexNetworkMatchPlayerController>, FFMCodexNetworkIntentLedger> IntentLedgers;
 };

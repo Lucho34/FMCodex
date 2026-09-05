@@ -77,6 +77,37 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 		SafeViewerView.PlayerAMaxAttackTurns;
 	Result.PlayerBMaxAttackOpportunities =
 		SafeViewerView.PlayerBMaxAttackTurns;
+	Result.DisclosedInitialD12 = SafeViewerView.RawInitialD12;
+	switch (SafeViewerView.RouteKind)
+	{
+	case EMatchPlayCurrentAttackRouteKind::SendingOff:
+		Result.EntryBranch = EFMCodexNetworkEntryBranch::SendingOff;
+		break;
+	case EMatchPlayCurrentAttackRouteKind::Ordinary:
+		Result.EntryBranch = EFMCodexNetworkEntryBranch::Ordinary;
+		break;
+	case EMatchPlayCurrentAttackRouteKind::SetPiece:
+		Result.EntryBranch = EFMCodexNetworkEntryBranch::SetPiece;
+		break;
+	default: break;
+	}
+	if (SafeViewerView.bTacticalPointRollReady)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::InitialD12;
+	}
+	else if (SafeViewerView.bTerminalPendingAdvance)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::TerminalPendingAdvance;
+	}
+	else if (SafeViewerView.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
+		&& SafeViewerView.SetPieceStage == EMatchPlaySetPieceRouteStage::AwaitingTypeRoll)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::SetPieceTypeRoll;
+	}
+	else if (SafeViewerView.MajorPhase == EFMCodexLocalMatchMajorPhase::Deployment)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::Deployment;
+	}
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,

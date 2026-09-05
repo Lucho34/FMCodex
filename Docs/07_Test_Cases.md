@@ -889,3 +889,14 @@
 - 脚本静态断言同时检查没有地图保存/写入指令、全局执行策略修改或任意进程终止命令；`-ValidateOnly` 不创建运行目录、不启动 UE。双击 wrapper 必须通过自身路径调用同一 PowerShell 脚本。
 - 集成验证必须调用实际 launcher，不能绕过它直接启动旧手写命令；确认 Host ready 先于 Client launch、两端 Network 类和相反 Side、相同 MatchInstanceId、MatchReady、owner-safe view 与真实窗口截图。就绪后再观察约 5–10 秒验证身份稳定，不能手动重放刷新回调。
 - 人工验收关注双击能启动两个可见窗口、没有 Engine 地图保存提示、没有旧 LocalPlay 启动 UI、没有手工刷新步骤。正常 Editor LocalPlay 的默认配置与流程保持不变。
+
+## Full D12 PlayerIntentTransport（Stage 7.3）
+
+- FMCodex.NetworkPlay.PlayerIntentTransport 检查真实 GameMode 连接映射验证入口：非 participant、wrong match、wrong side、非正标识、未知/内部 command、stale attack 与 duplicate 拒绝；反射比较整个 authoritative State，核对 entry provider 调用数和 publication revision 均无额外变化。
+- server-only 注入 D12=1/4/10，核对 AP1 自动选择后 terminal wait、普通部署 wait、定位球类型 roll wait；A/B 同 revision、同公开骰子/branch，无类型 D6 或机会提前消费。旧 attack 请求在 canonical server fixture 推进到 N+1 后仍被拒绝，下一攻击方经同一连接验证/HostPort 可以提交。
+- 客户端测试同时覆盖 ACK→view、view→ACK、重复点击、rejected ACK、wrong/stale ACK、new-match reset 与单调 ID；accepted 未同时具备对应 ACK/view 前保持 pending，不能根据 ACK 修改游戏事实。
+- DTO 测试使用反射字段完整 allowlist，防止 request、ACK 或 snapshot 意外扩张；检查 reliable server RPC / owner Client ACK、无 multicast，Local/Network 使用同一 Full D12 HostPort。此前 bootstrap 的“无 RPC”断言更新为此窄 typed 入口，其他秘密检查保留。
+- provider failure 不 adopt State、不额外发布；已提交 entry 后 Coordinator failure 发布只读失败 view、InternalFailure 并停止后续 transport。两种情况均不能重放同 ID 消耗更多 RNG。
+- 实际集成必须运行原有双进程 launcher，经 owning Controller 的 DEV 按钮/同一 Exec 命令提交；记录两端 Match、Request、连接导出的 Side、AttackSequence、ACK、D12、branch、revision 与 provider 调用数，保存真实 Host/Client 前后窗口截图。不得直接调用 server test helper 冒充客户端写入。
+- 本阶段是 networking readiness gate：运行 focused transport、bootstrap、完整 MatchPlayRuntime（含 HostPort/Coordinator/NetworkBoundary/Session）、完整 LocalPlay/CoreRules、UHT/Editor build 与 diff check。自动化和实际进程证据仍不能替代 USER 对按钮、等待状态与窗口操作的最终验收。
+- 真实远端负向探测可在全新连接使用无界面入口 DevProbeWrongSideInitialD12（仅 automation、non-Shipping 构建生效）；它刻意绕过本地按钮 eligibility，服务器仍必须回 WrongSide。探测使用独立测试请求，不属于正常 pending UI 流程。UE 5.3 Python 回调会通过 GAllowActorScriptExecutionInEditor 强制 Actor callspace 为 Local；脚本必须使用引擎 defer 命令退出该作用域后触发同一 owning Controller 命令，不能把 Python 内的本地函数调用算作远端 RPC 证据。

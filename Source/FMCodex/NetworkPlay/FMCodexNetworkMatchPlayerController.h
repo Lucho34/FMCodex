@@ -4,6 +4,7 @@
 #include "GameFramework/PlayerController.h"
 
 #include "FMCodexNetworkMatchTypes.h"
+#include "FMCodexNetworkPlayerIntent.h"
 
 #include "FMCodexNetworkMatchPlayerController.generated.h"
 
@@ -23,6 +24,13 @@ public:
 		const FFMCodexNetworkClientViewSnapshot& InOwnerView);
 	const FFMCodexNetworkClientViewSnapshot& GetOwnerView() const;
 	void RefreshNetworkBootstrapUI();
+	/** Same owner command used by the DEV button and runtime validation. Inert in Shipping. */
+	UFUNCTION(Exec)
+	void DevRequestInitialActionPointRoll();
+	bool CanRequestInitialActionPointRoll() const;
+	/** Fresh-run negative wire probe; no UI consumer, inert outside automation builds. */
+	UFUNCTION(Exec)
+	void DevProbeWrongSideInitialD12();
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -35,10 +43,17 @@ protected:
 private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend struct FFMCodexNetworkBootstrapUIRefreshTestAccess;
+	friend struct FFMCodexNetworkIntentTestAccess;
 #endif
 
+	UFUNCTION(Server, Reliable)
+	void ServerSubmitPlayerIntent(const FFMCodexNetworkPlayerIntentEnvelope& Envelope);
+	UFUNCTION(Client, Reliable)
+	void ClientReceivePlayerIntentAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	UFUNCTION()
 	void OnRep_OwnerView();
+
+	FFMCodexNetworkIntentClientState IntentClientState;
 
 	void InitializeDeveloperStatusUI();
 	FText BuildStatusText() const;

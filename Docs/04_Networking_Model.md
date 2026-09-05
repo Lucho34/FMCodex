@@ -212,3 +212,16 @@ DEV 面板只有一个格式化入口 `BuildStatusText` 和一个幂等刷新入
 - 排行榜
 - 账号登录
 - 反作弊系统
+
+## Full D12 写入、去重与公开策略（Stage 7.3）
+
+此前 Stage 7.2 的“无 gameplay RPC”仅描述 bootstrap 历史边界；当前只有 RequestInitialActionPointRoll 联网，完整比赛仍不可联网游玩。
+
+- reliable owning Controller RPC 传 MatchInstanceId / RequestId / ExpectedAttackSequence / IntentKind。Side 由服务器连接映射导出；host 不享有额外身份或直达 Session 权限。
+- 每个 Controller 的客户端请求 ID 在其生命周期严格递增，最多一个 pending；包括拒绝后 retry 也使用新 ID。服务器每个已加入 Controller 仅保留 match + highest-seen ID，旧/重复/乱序 ID 均明确拒绝，不缓存无限 ACK 列表。两名 participant 至多两个记录；错误比赛包和非 participant 不能重置/分配记录，只有服务器选定新比赛可重置去重范围。
+- ACK 仅是匹配请求的 typed receipt 与 publication revision，不携带骰子、路线、胜者、Formula 或 raw State。accepted ACK 先到则继续只读等待对应 view；view 先到则显示真实 view 但保留 pending 直到 ACK。错误/重复/上一请求 ACK 无副作用，新比赛 view 清除旧 pending。无自动 resend、timeout、reconnect 或断线重入。
+- Full D12 成功进入并完成 Coordinator 后，服务器按该 AttackSequence 对双方公开已保存的原始 D12 与高层分支；仅开启 initial-roll disclosure。未公开结果在服务器投影时即被删除，不发送后交给客户端隐藏，不调用 FullyDisclosed。AP1 仅公开高层已结算等待，不发送罚下 CardId；不扩展其他骰子或秘密字段。
+- AP1 自动推进到 TerminalPendingAdvance；2–8 停在部署；9–12 停在独立类型 D6 请求前。三者后续意图均未联网，DEV UI 只有 Full D12 按钮。双方结果直接显示，不承诺同步 Reel。
+- 日常验证继续关闭 Editor 后双击项目启动器。提交方应显示“服务器已接受”，双方看到相同已公开 D12/分支与新 revision，非行动方不显示可点击入口；身份刷新仍使用既有 OnRep/BeginPlay 幂等入口。
+
+USER 两窗口验收通过并由用户手动 commit 后，下一步必须是 **Stage 7.3.A — GPT-6 Astra Network Architecture Second-Opinion Audit（REPORT-ONLY）**，不是 Stage 7.4。该独立审计关注连接/HostPort/Session/Coordinator 边界、幂等与异步顺序、披露与后续迁移风险；本实现阶段不提前执行该审计。

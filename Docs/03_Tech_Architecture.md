@@ -278,3 +278,12 @@
 - `AFMCodexNetworkMatchGameState` 只复制公共 match id、bootstrap state与双方公开 player/team identity；`AFMCodexNetworkMatchPlayerState` 复制 assigned side、player display name与明确 team identity。Player identity来自标准 PlayerState name，无有效PIE名称时由服务器按已分配Side回退为`玩家 A/B`；Team identity不由roster在客户端反推。
 - 每次 publication 都先在服务器按 registry Side 调用 fail-closed `BuildForViewer`，再缩减为 `FFMCodexNetworkClientViewSnapshot`，并通过对应 `AFMCodexNetworkMatchPlayerController` 的 `COND_OwnerOnly` property发送。该 DTO只有match/revision/viewer、ready/end、score、AttackSequence、当前进攻/行动side、3+3上限与高层等待状态，没有CardId、Corner nomination、GoalHistory、raw State、Session、provider或mutation逻辑。
 - GameState、PlayerState identity、owner snapshot与Controller `OnRep_PlayerState`均刷新同一DEV状态UI；关联回调先调用Super，再读当前复制事实，补齐先于关联到达的身份通知。BeginPlay补齐先于面板创建的数据；只替换已有文本，不用Tick或延时定时器。属性到达次序不构成缓存合同。Stage 7.2没有任何 gameplay Server RPC，后续accepted intent可复用`PublishOwnerViews`结构，但必须在Stage 7.3补connection-side validation、MatchInstanceId/RequestId与ACK/revision协议。
+
+## Full D12 PlayerIntent RPC 与异步回执（Stage 7.3）
+
+- Network Controller 的 owning-client ServerSubmitPlayerIntent 是唯一网络玩家写入口；Listen Host 也调用同一 generated RPC wrapper。RPC handler 仅交给 Network GameMode 的连接验证入口，不能直接访问 Session，也不接受客户端声称的 Side。
+- GameMode 从 ParticipantRegistry 的 Controller 映射取得 Side，验证比赛实例、正数请求标识、严格递增去重、Full D12 allowlist、当前序列、当前攻击方与阶段，再通过 IMatchPlayPlayerIntentPort 提交。Session 保留最终 legality 与 provider 前检查。
+- FMatchPlayFullD12PlayerIntentPort 是 Local Host 与 Network Runtime 共用的窄分发：typed request → Session → ServerCoordinator → stable wait。仅提取真实第二消费者需要的 Full D12，不复制 Local Host 的完整 switch；LocalPlay 不依赖网络类型或异步 ACK。
+- 成功后 GameMode 一次 PublishOwnerViews 向 A/B 发布同一 revision 的 viewer-safe DTO，再给提交者发送 reliable Client ACK。ACK 和属性复制的到达顺序不保证；客户端必须同时收到对应 ACK 和至少该 revision 的 view 才解除 accepted pending。
+- 正常拒绝不发布、不改变 gameplay State。若 entry 已提交但 Coordinator 失败，服务器发布 BootstrapFailed 的只读 view 并返回 InternalFailure，阻止继续请求；不能把失败伪装成成功或留下可操作旧视图。
+- DEV 按钮与 Exec 入口 non-Shipping；production transport 与权威 runtime 不依赖 DEV UI、脚本或测试 provider。测试 provider 只在 WITH_DEV_AUTOMATION_TESTS 构造入口注入，客户端 wire 上无 RNG 输入。

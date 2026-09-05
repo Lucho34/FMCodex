@@ -330,9 +330,9 @@ bool FFMCodexNetworkBootstrapArchitectureTest::RunTest(
 			|| RegistrySource.Contains(TEXT("HasAuthority")));
 	TestTrue(TEXT("Client view is owner-only replicated"),
 		ControllerHeader.Contains(TEXT("ReplicatedUsing = OnRep_OwnerView")));
-	TestFalse(TEXT("Stage 7.2 exposes no gameplay Server RPC"),
-		ControllerHeader.Contains(TEXT("UFUNCTION(Server"))
-			|| ControllerHeader.Contains(TEXT("ServerSubmit")));
+	TestTrue(TEXT("Stage 7.3 has a typed reliable owner intent RPC"),
+		ControllerHeader.Contains(TEXT("UFUNCTION(Server, Reliable)"))
+			&& ControllerHeader.Contains(TEXT("FFMCodexNetworkPlayerIntentEnvelope")));
 	TestFalse(TEXT("GameState carries no raw authoritative State"),
 		GameStateHeader.Contains(TEXT("FMatchPlayState")));
 	TestFalse(TEXT("PlayerState carries no raw authoritative State"),

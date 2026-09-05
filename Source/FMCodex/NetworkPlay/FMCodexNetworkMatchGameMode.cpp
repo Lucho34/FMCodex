@@ -287,3 +287,97 @@ int32 AFMCodexNetworkMatchGameMode::GenerateServerSeed(
 	return static_cast<int32>(
 		MatchId.A ^ MatchId.B ^ MatchId.C ^ MatchId.D);
 }
+
+FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPlayerIntent(
+	AFMCodexNetworkMatchPlayerController* Controller,
+	const FFMCodexNetworkPlayerIntentEnvelope& Envelope)
+{
+	using AckCode = EFMCodexNetworkIntentAckCode;
+	FFMCodexNetworkPlayerIntentAck Ack;
+	// Echo the submitted correlation even for MatchMismatch so that owner can clear pending.
+	Ack.MatchInstanceId = Envelope.MatchInstanceId;
+	Ack.RequestId = Envelope.RequestId;
+	const int32 PreviousRevision = ViewRevision;
+	const EInitialTurnOrderPlayer Side = ResolveSideForController(Controller);
+	auto Finish = [&](AckCode Code)
+	{
+		Ack.Code = Code;
+		Ack.ViewRevision = ViewRevision;
+		UE_LOG(LogFMCodexNetworkPlay, Log,
+			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
+			*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower),
+			Envelope.RequestId, *GetNameSafe(Controller), static_cast<int32>(Side),
+			Envelope.ExpectedAttackSequence,
+			*StaticEnum<EFMCodexNetworkIntentAckCode>()->GetNameStringByValue(static_cast<int64>(Code)),
+			PreviousRevision, ViewRevision,
+			MatchRuntime ? MatchRuntime->GetEntryProviderInvocationCount() : 0,
+			MatchRuntime ? MatchRuntime->GetD12ProviderInvocationCount() : 0);
+		return Ack;
+	};
+	if (!HasAuthority() || Side == EInitialTurnOrderPlayer::None || Controller == nullptr)
+	{
+		return Finish(AckCode::NotParticipant);
+	}
+	if (!MatchInstanceId.IsValid() || Envelope.MatchInstanceId != MatchInstanceId)
+	{
+		return Finish(AckCode::MatchMismatch);
+	}
+	if (Envelope.RequestId <= 0 || Envelope.ExpectedAttackSequence <= 0)
+	{
+		return Finish(AckCode::InvalidPayload);
+	}
+	// At most two records: nonparticipants never allocate a ledger.
+	if (!IntentLedgers.FindOrAdd(Controller).Consume(MatchInstanceId, Envelope))
+	{
+		return Finish(AckCode::DuplicateOrAlreadyResolved);
+	}
+	if (Envelope.IntentKind != EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll)
+	{
+		return Finish(AckCode::NotPlayerIntent);
+	}
+	if (bTransportFault || !IsNetworkMatchInitialized() || !ParticipantRegistry.HasBothParticipants())
+	{
+		return Finish(AckCode::InvalidPhase);
+	}
+	const auto Before = MatchRuntime->BuildClientView(
+		Side, ViewRevision, EFMCodexNetworkBootstrapState::MatchReady);
+	if (Envelope.ExpectedAttackSequence != Before.AttackSequence)
+	{
+		return Finish(AckCode::StaleAttackSequence);
+	}
+	if (Side != Before.CurrentAttackingSide)
+	{
+		return Finish(AckCode::WrongSide);
+	}
+	if (Before.InteractionState != EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint)
+	{
+		return Finish(AckCode::InvalidPhase);
+	}
+	FMatchPlayFullD12EntryRequest Request;
+	Request.RequestingSide = Side; // Exclusively the server registry, never a client claim.
+	Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+	IMatchPlayPlayerIntentPort& HostPort = *MatchRuntime;
+	const auto Result = HostPort.SubmitPlayerIntent(FMatchPlayPlayerIntent::Create(
+		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll, Request));
+	if (!Result.bSuccess)
+	{
+		if (Result.ErrorCode == EMatchPlayPlayerIntentPortErrorCode::ServerCoordinatorFailed)
+		{
+			// Entry may already be committed. Do not leave clients on a stale actionable view.
+			bTransportFault = true;
+			PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
+			PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed);
+			return Finish(AckCode::InternalFailure);
+		}
+		return Finish(AckCode::AuthorityRejected);
+	}
+	PublishOwnerViews(EFMCodexNetworkBootstrapState::MatchReady);
+	const auto After = MatchRuntime->BuildClientView(
+		Side, ViewRevision, EFMCodexNetworkBootstrapState::MatchReady);
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Intent disclosed: Match=%s Request=%lld D12=%d Branch=%d Wait=%d Revision=%d"),
+		*MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		After.DisclosedInitialD12, static_cast<int32>(After.EntryBranch),
+		static_cast<int32>(After.EntryWait), ViewRevision);
+	return Finish(AckCode::Accepted);
+}

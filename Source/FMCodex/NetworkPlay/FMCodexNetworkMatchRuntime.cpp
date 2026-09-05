@@ -5,7 +5,45 @@
 #include "../LocalPlay/FMCodexPrototypeTeamContent.h"
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
 #include "../MatchPlayRuntime/MatchPlayServerCoordinator.h"
+#include "../MatchPlayRuntime/MatchPlayFullD12PlayerIntentPort.h"
 
+/** Server-only decorator; delegates randomness unchanged. */
+class FFMCodexNetworkEntryRollProvider final : public IMatchPlayAttackEntryRollProvider
+{
+public:
+	explicit FFMCodexNetworkEntryRollProvider(IMatchPlayAttackEntryRollProvider& InInner)
+		: Inner(&InInner) {}
+	virtual FMatchPlayAttackEntryRollProviderResult RollD12(
+		EMatchPlayAttackEntryRollPurpose Purpose) override
+	{
+		++InvocationCount;
+		++D12Count;
+		return Inner->RollD12(Purpose);
+	}
+	virtual FMatchPlayAttackEntryRollProviderResult RollD6(
+		EMatchPlayAttackEntryRollPurpose Purpose) override
+	{
+		++InvocationCount;
+		return Inner->RollD6(Purpose);
+	}
+	virtual FMatchPlayAttackEntrySelectionProviderResult SelectUniformIndex(
+		EMatchPlayAttackEntryRollPurpose Purpose, int32 CandidateCount) override
+	{
+		++InvocationCount;
+		return Inner->SelectUniformIndex(Purpose, CandidateCount);
+	}
+#if WITH_DEV_AUTOMATION_TESTS
+	void Inject(TUniquePtr<IMatchPlayAttackEntryRollProvider> Provider)
+	{
+		TestProvider = MoveTemp(Provider);
+		Inner = TestProvider.Get();
+	}
+	TUniquePtr<IMatchPlayAttackEntryRollProvider> TestProvider;
+#endif
+	IMatchPlayAttackEntryRollProvider* Inner;
+	int32 InvocationCount = 0;
+	int32 D12Count = 0;
+};
 namespace FMCodexNetworkMatchRuntime
 {
 	FFMCodexNetworkTeamIdentity MakeTeamIdentity(const FName TeamId)
@@ -45,6 +83,7 @@ FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(
 	const int32 Seed)
 	: MatchInstanceId(InMatchInstanceId)
 	, RollProvider(MakeUnique<FFMCodexLocalMatchD6Provider>(Seed))
+	, EntryProvider(MakeUnique<FFMCodexNetworkEntryRollProvider>(*RollProvider))
 {
 }
 
@@ -70,7 +109,7 @@ FFMCodexNetworkMatchRuntime::InitializeOnce(
 
 	SkillRuleSet = Configuration.MatchConfiguration.SkillRuleSet;
 	AuthoritativeSession = MakeUnique<FMatchPlayAuthoritativeSession>(
-		*RollProvider,
+		*EntryProvider,
 		*RollProvider,
 		*RollProvider,
 		*RollProvider,
@@ -122,11 +161,17 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 			ViewerSide,
 			BootstrapState);
 	}
+	// Only the accepted entry of this exact attack is disclosed.
+	const FMatchPlayState Snapshot = AuthoritativeSession->GetStateSnapshot();
+	FFMCodexLocalMatchViewerDisclosure Disclosure;
+	Disclosure.bRevealInitialActionPointRoll = Snapshot.bHasCurrentAttack
+		&& DisclosedInitialAttackSequence == Snapshot.CurrentAttack.AttackSequence;
 	const FFMCodexLocalMatchInteractionView SafeViewerView =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			AuthoritativeSession->GetStateSnapshot(),
 			SkillRuleSet,
-			ViewerSide);
+			ViewerSide,
+			Disclosure);
 	return FFMCodexNetworkClientViewSnapshotFactory::Build(
 		SafeViewerView,
 		MatchInstanceId,
@@ -153,4 +198,43 @@ int32 FFMCodexNetworkMatchRuntime::GetInitializationCount() const
 const FGuid& FFMCodexNetworkMatchRuntime::GetMatchInstanceId() const
 {
 	return MatchInstanceId;
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(
+	const FGuid& InMatchInstanceId, int32 Seed,
+	TUniquePtr<IMatchPlayAttackEntryRollProvider> TestEntryProvider)
+	: FFMCodexNetworkMatchRuntime(InMatchInstanceId, Seed)
+{
+	check(TestEntryProvider.IsValid());
+	EntryProvider->Inject(MoveTemp(TestEntryProvider));
+}
+#endif
+
+FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayerIntent(
+	const FMatchPlayPlayerIntent& Intent)
+{
+	if (!bInitialized || !AuthoritativeSession || !ServerCoordinator)
+	{
+		FMatchPlayPlayerIntentSubmissionResult Result;
+		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NoActiveMatch;
+		return Result;
+	}
+	FMatchPlayFullD12PlayerIntentPort Port(*AuthoritativeSession, *ServerCoordinator);
+	auto Result = Port.SubmitPlayerIntent(Intent);
+	if (Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)
+	{
+		DisclosedInitialAttackSequence = Result.AuthoritativeResult.RuntimeEnvelope.AttackSequence;
+	}
+	return Result;
+}
+
+int32 FFMCodexNetworkMatchRuntime::GetEntryProviderInvocationCount() const
+{
+	return EntryProvider->InvocationCount;
+}
+
+int32 FFMCodexNetworkMatchRuntime::GetD12ProviderInvocationCount() const
+{
+	return EntryProvider->D12Count;
 }

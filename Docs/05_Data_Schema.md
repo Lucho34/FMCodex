@@ -602,3 +602,17 @@ Feet typed command DTO 为 `FMatchPlayAuthoritativeResolveThroughBallFeetAttackR
 - `EFMCodexNetworkBootstrapState`：仅表达`WaitingForPlayers / MatchReady / ParticipantDisconnected / MatchEnded / BootstrapFailed`。它不是完整match lifecycle，不驱动CoreRules transition。
 - `FFMCodexNetworkClientViewSnapshot`：从已执行`BuildForViewer`的InteractionView二次缩减的owner-only replaceable read projection。字段限定为`MatchInstanceId`、`ViewRevision`、`ViewerSide`、bootstrap/interaction高层状态、initialized/ended、`AttackSequence`、当前进攻/expected side、公开比分与双方最大进攻机会。schema不得增加raw State、Session、rule/provider、CardId数组、Corner nomination或mutation方法。
 - `ViewRevision`是服务器publication序号，只帮助确认较新的完整snapshot覆盖较旧snapshot；Stage 7.2未定义request id、ACK或client retry语义。`MatchInstanceId`由server GameMode一次生成，同时存在于公共GameState与owner snapshot，未来command envelope接入延至Stage 7.3。
+
+## Network PlayerIntent / ACK / Full D12 视图（Stage 7.3）
+
+| DTO | 字段 | 边界 |
+|---|---|---|
+| PlayerIntentEnvelope | MatchInstanceId: FGuid；RequestId: int64；ExpectedAttackSequence: int64；IntentKind: 独立 network enum | 唯一允许 Full D12；无 Side、roll、seed、provider、card 或 UObject |
+| PlayerIntentAck | MatchInstanceId: FGuid；RequestId: int64；Code: typed enum；ViewRevision: int32 | 仅提交者；不承载玩法结果；MatchMismatch 也回显所提交 correlation |
+| ClientViewSnapshot 增量 | DisclosedInitialD12: int32；EntryBranch: None/SendingOff/Ordinary/SetPiece；EntryWait: None/InitialD12/Deployment/SetPieceTypeRoll/TerminalPendingAdvance | 只能映射已做 viewer/disclosure 过滤的 InteractionView；未公开骰子为 0，branch 为 None |
+
+ACK Code 为 None、Accepted、MatchMismatch、NotParticipant、WrongSide、StaleAttackSequence、NotPlayerIntent、InvalidPayload、InvalidPhase、DuplicateOrAlreadyResolved、AuthorityRejected、InternalFailure。它们是 transport 结果类别，不是 gameplay outcome；normal rejection 的 revision 为当前 publication，accepted 为本次发布结果。
+
+初始攻击前 AttackSequence 指服务器派生的下一次攻击序列；攻击存在时指当前攻击。RequestId 只关联传输，不能替代 AttackSequence。客户端最多保留一个 pending 与一个 last ACK；服务器每个连接仅保留最高请求 ID，严格递增可靠请求的低 ID 都视为已处理/过期。
+
+Owner snapshot 仍无 MatchPlayState、full InteractionView、手牌/牌堆数组、CardId、Corner nominations、FormulaFacts、GoalHistory 或其他 raw RNG。GameState/PlayerState 的公共身份与 owner-only snapshot 复制方式保持原合同。

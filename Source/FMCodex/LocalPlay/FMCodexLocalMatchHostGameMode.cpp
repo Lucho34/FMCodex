@@ -1,4 +1,5 @@
 #include "FMCodexLocalMatchHostGameMode.h"
+#include "../MatchPlayRuntime/MatchPlayFullD12PlayerIntentPort.h"
 
 #include "FMCodexLocalMatchPlayerController.h"
 
@@ -271,9 +272,9 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 	switch (Intent.CommandKind)
 	{
 	case EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll:
-		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayFullD12EntryRequest,
-			RequestInitialActionPointRoll(
-				Intent.Payload.Get<FMatchPlayFullD12EntryRequest>()));
+		return FMatchPlayFullD12PlayerIntentPort(
+			ActiveMatchRuntime->AuthoritativeSession,
+			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 	case EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll:
 		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlaySetPieceTypeRollRequest,
 			RequestSetPieceTypeRoll(

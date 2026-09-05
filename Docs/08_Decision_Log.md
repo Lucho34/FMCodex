@@ -1138,3 +1138,11 @@
 - 日常两进程 NetworkPlay 验证改为关闭 Editor 后双击 `Scripts/NetworkPlay/LaunchNetworkPlayDev.cmd`。该入口以显式 Network Host URL 启动可见 Listen Server，确认本次日志的 Network GameMode、UDP监听与Host A admission后才创建同端口Client；超时有界，端口冲突失败且不杀已有进程。
 - 此决定取代前述临时 World Settings Override 作为日常入口的建议：Engine模板地图变脏时，多进程Editor启动可能要求保存地图。新入口不写Engine内容、地图或项目默认配置；普通LocalPlay无需还原设置。显式手工URL保留为排查备用方法。
 - 启动器属于独立DEV工具，运行日志与进程记录只写Saved，执行策略覆盖只限单个PowerShell进程，游戏不依赖该工具。它不改变身份、bootstrap、snapshot、7.2.1关联刷新、规则、RPC或ACK合同。
+
+## 2026-09-05 — Full D12 RPC、连接身份与异步 ACK Foundation
+
+- Network write surface 仅开放 Full D12，使用独立网络 intent enum。Request envelope 不接受 claimed Side 或随机数；服务器仅信任 ParticipantRegistry 的 Controller→Side，再经共享窄 Full D12 HostPort、Session、Coordinator。Host 与 Remote 使用相同 RPC wrapper 与验证入口。
+- 严格递增 RequestId、reliable 单 pending 请求配合每连接常量空间 high-water 去重。重复/低 ID 明确拒绝，不重放 RNG；不同 match 只有服务器选定新比赛才可重置 ledger，客户端错误 match 包无此能力。该协议不承诺自动重试、超时或重连恢复。
+- ACK 不带 gameplay truth。accepted pending 必须同时具备匹配 ACK 与其 publication revision 的 authoritative view；属性复制与 RPC 的任意先后都合法。成功只发布一次 A/B view，正常拒绝不发布；Coordinator 在已提交 entry 后失败必须发布只读故障并拒绝后续动作。
+- Full D12 在服务器成功处理后按当前攻击向双方即时公开，仅开启 initial-roll disclosure；保留其他 roll、terminal detail 与秘密数据过滤。AP1 进入 canonical terminal wait，ordinary 等部署，set piece 等类型 D6，所有后续玩家意图继续未联网。默认 LocalPlay、规则、概率与 DEV deterministic 工具不变。
+- 技术交付后仍需 USER 两窗口验收与用户手动 commit。**NEXT AFTER COMMIT: Stage 7.3.A — GPT-6 Astra Network Architecture Second-Opinion Audit，REPORT-ONLY；不是 Stage 7.4。** 本阶段不执行独立审计。

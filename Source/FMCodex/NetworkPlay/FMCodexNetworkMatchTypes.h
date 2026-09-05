@@ -31,6 +31,18 @@ enum class EFMCodexNetworkClientInteractionState : uint8
 	MatchEnded UMETA(DisplayName = "Match Ended")
 };
 
+/** Already disclosed entry facts only, never full route state. */
+UENUM(BlueprintType)
+enum class EFMCodexNetworkEntryBranch : uint8
+{
+	None, SendingOff, Ordinary, SetPiece
+};
+UENUM(BlueprintType)
+enum class EFMCodexNetworkEntryWait : uint8
+{
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance
+};
+
 /** Team/content identity is deliberately separate from the connected player. */
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexNetworkTeamIdentity
@@ -120,6 +132,13 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	int32 PlayerBMaxAttackOpportunities = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	int32 DisclosedInitialD12 = 0;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EFMCodexNetworkEntryBranch EntryBranch = EFMCodexNetworkEntryBranch::None;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EFMCodexNetworkEntryWait EntryWait = EFMCodexNetworkEntryWait::None;
 };
 
 struct FFMCodexLocalMatchInteractionView;
