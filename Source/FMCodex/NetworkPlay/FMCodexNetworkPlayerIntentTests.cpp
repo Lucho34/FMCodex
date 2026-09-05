@@ -401,8 +401,10 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment")});
+		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper")});
 	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});
+	ExactFields(FFMCodexNetworkDeployGoalkeeperPayload::StaticStruct(), {TEXT("SlotId")});
+	ExactFields(FFMCodexNetworkGoalkeeperOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel"), TEXT("SlotLabel")});
 	ExactFields(FFMCodexNetworkDeploymentOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel"), TEXT("SlotLabel")});
 	ExactFields(FFMCodexNetworkDeploymentSummary::StaticStruct(), {TEXT("Side"), TEXT("Placement")});
 	ExactFields(FFMCodexNetworkPlayerIntentAck::StaticStruct(),
@@ -413,7 +415,9 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("CurrentAttackingSide"), TEXT("ExpectedActingSide"), TEXT("PlayerAScore"), TEXT("PlayerBScore"),
 		TEXT("PlayerAMaxAttackOpportunities"), TEXT("PlayerBMaxAttackOpportunities"),
 		TEXT("DisclosedInitialD12"), TEXT("EntryBranch"), TEXT("EntryWait"), TEXT("DeploymentOptions"),
-		TEXT("DeploymentCount"), TEXT("LastDeployment")});
+		TEXT("DeploymentCount"), TEXT("LastDeployment"), TEXT("bCanDeployGoalkeeper"), TEXT("GoalkeeperOption"),
+		TEXT("GoalkeeperDeployment"), TEXT("bCanFinishDeployment"), TEXT("bPlayerADeploymentFinished"),
+		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete")});
 	const auto* Class = AFMCodexNetworkMatchPlayerController::StaticClass();
 	const auto* Server = Class->FindFunctionByName(TEXT("ServerSubmitPlayerIntent"));
 	const auto* Client = Class->FindFunctionByName(TEXT("ClientReceivePlayerIntentAck"));

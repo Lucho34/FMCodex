@@ -52,6 +52,8 @@ public:
 		TUniquePtr<IMatchPlayAttackEntryRollProvider> TestEntryProvider = nullptr);
 	friend struct FFMCodexNetworkIntentTestAccess;
 	friend struct FFMCodexNetworkDeploymentTestAccess;
+	friend struct FFMCodexNetworkDeploymentCompletionTestAccess;
+	int32 GetCoordinatorInvocationCountForTests() const;
 #if !UE_BUILD_SHIPPING
 	void EnableDeploymentAutomationEntry();
 #endif

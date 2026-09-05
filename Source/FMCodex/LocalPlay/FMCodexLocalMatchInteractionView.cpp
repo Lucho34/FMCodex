@@ -12,6 +12,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
 #include "../CoreRules/MatchPlayDefendingGoalkeeperQuery.h"
 #include "../CoreRules/MatchPlayGoalkeeperDeploymentAvailability.h"
+#include "../CoreRules/MatchPlayFinishDeployment.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
 #include "../CoreRules/MatchPlaySetPieceCarrierAvailability.h"
 #include "../CoreRules/MatchPlaySetPieceParticipantEligibility.h"
@@ -1545,6 +1546,10 @@ namespace FMCodexLocalMatchInteractionView
 		FFMCodexLocalMatchInteractionView& View)
 	{
 		ClearSetPieceTypeDependentProjection(View);
+		View.bCanFinishDeployment = false;
+		View.bPlayerADeploymentFinished = false;
+		View.bPlayerBDeploymentFinished = false;
+		View.bDeploymentComplete = false;
 		View.RouteKind = EMatchPlayCurrentAttackRouteKind::None;
 		View.MajorPhase = EFMCodexLocalMatchMajorPhase::Selection;
 		View.SelectionStage = EMatchPlayCurrentAttackSelectionStage::None;
@@ -1708,7 +1713,11 @@ namespace FMCodexLocalMatchInteractionView
 		{
 			View.ActionPoint = 0;
 			View.RawInitialD12 = 0;
-			View.RouteKind = EMatchPlayCurrentAttackRouteKind::None;
+			View.bCanFinishDeployment = false;
+		View.bPlayerADeploymentFinished = false;
+		View.bPlayerBDeploymentFinished = false;
+		View.bDeploymentComplete = false;
+		View.RouteKind = EMatchPlayCurrentAttackRouteKind::None;
 			View.SendingOffEjectedCardId = NAME_None;
 			View.SendingOffEjectedOwnerSide = EInitialTurnOrderPlayer::None;
 			if (Snapshot.bHasCurrentAttack)
@@ -1810,6 +1819,7 @@ namespace FMCodexLocalMatchInteractionView
 
 		if (!bValidViewer || View.ExpectedActingPlayer != ViewerSide)
 		{
+			View.bCanFinishDeployment = false;
 			View.DeploymentOptions.Reset();
 			View.DeploymentGroups.Reset();
 			View.SelectionOptions.Reset();
@@ -1996,6 +2006,15 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildAuthorityInternal(
 	Result.SelectionStage = Attack.SelectionStage;
 	Result.CurrentLegalDeploymentSide = Attack.CurrentLegalDeploymentSide;
 	Result.DeploymentPlacements = Attack.DeploymentPlacements;
+	if (Attack.RouteKind == EMatchPlayCurrentAttackRouteKind::Ordinary)
+	{
+		const bool bAIsAttacker = Result.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA;
+		Result.bPlayerADeploymentFinished = bAIsAttacker
+			? Attack.bAttackerDeploymentFinished : Attack.bDefenderDeploymentFinished;
+		Result.bPlayerBDeploymentFinished = bAIsAttacker
+			? Attack.bDefenderDeploymentFinished : Attack.bAttackerDeploymentFinished;
+		Result.bDeploymentComplete = Attack.bAttackerDeploymentFinished && Attack.bDefenderDeploymentFinished;
+	}
 	if (Attack.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff)
 	{
 		Result.MajorPhase = EFMCodexLocalMatchMajorPhase::Resolution;
@@ -2082,6 +2101,9 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildAuthorityInternal(
 		Result.ExpectedActingPlayer = Attack.CurrentLegalDeploymentSide;
 		Result.bHumanInteraction = true;
 		BuildDeploymentOptions(Snapshot, SkillRuleSet, Result);
+		// The pure canonical function returns a candidate copy; this read does not commit State.
+		Result.bCanFinishDeployment = FMatchPlayFinishDeployment::Finish(
+			Snapshot, Attack.AttackSequence, Attack.CurrentLegalDeploymentSide).bSuccess;
 		return Result;
 	}
 

@@ -34,10 +34,31 @@ namespace FMCodexNetworkMatchTypes
 		FFMCodexNetworkClientViewSnapshot& Result)
 	{
 		if (Result.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary) { return; }
+		Result.bPlayerADeploymentFinished = View.bPlayerADeploymentFinished;
+		Result.bPlayerBDeploymentFinished = View.bPlayerBDeploymentFinished;
+		Result.bDeploymentComplete = View.bDeploymentComplete;
 		if (Result.EntryWait == EFMCodexNetworkEntryWait::Deployment
 			&& View.bHumanInteraction && View.CurrentLegalDeploymentSide == Result.ViewerSide
 			&& Result.ViewerSide != EInitialTurnOrderPlayer::None)
 		{
+			Result.bCanFinishDeployment = View.bCanFinishDeployment;
+			// Unique goalkeeper, one bounded offered slot; all canonical legal slots remain accepted.
+			for (const auto& Group : View.DeploymentGroups)
+			{
+				if (!Group.bGoalkeeper || Group.Side != Result.ViewerSide) { continue; }
+				for (const FName SlotId : Group.LegalSlotIds)
+				{
+					FFMCodexNetworkDeployGoalkeeperPayload Choice;
+					Choice.SlotId = SlotId;
+					if (!Choice.IsValidShape()) { continue; }
+					Result.GoalkeeperOption.Choice = Choice;
+					Result.GoalkeeperOption.CardLabel = CardLabel(Group.Card);
+					Result.GoalkeeperOption.SlotLabel = SlotLabel(View, SlotId);
+					Result.bCanDeployGoalkeeper = true;
+					break;
+				}
+				if (Result.bCanDeployGoalkeeper) { break; }
+			}
 			for (const auto& Group : View.DeploymentGroups)
 			{
 				if (Group.bGoalkeeper || Group.Side != Result.ViewerSide) { continue; }
@@ -53,6 +74,22 @@ namespace FMCodexNetworkMatchTypes
 					Result.DeploymentOptions.Add(MoveTemp(Option));
 				}
 				if (Result.DeploymentOptions.Num() == FFMCodexNetworkClientViewSnapshot::MaxDeploymentOptions) { break; }
+			}
+		}
+		for (const auto& Placed : View.DeploymentPlacements)
+		{
+			const auto& PublicRoster = Placed.PlayerSide == EInitialTurnOrderPlayer::PlayerA
+				? View.PlayerACardRoster : View.PlayerBCardRoster;
+			const auto* Card = PublicRoster.FindByPredicate([&](const auto& C) { return C.CardId == Placed.CardId; });
+			if (Card && Card->bGoalkeeper && Card->bGoalkeeperActivatedThisAttack)
+			{
+				Result.GoalkeeperDeployment.Side = Placed.PlayerSide;
+				auto& Public = Result.GoalkeeperDeployment.Placement;
+				Public.Choice.CardId = Placed.CardId;
+				Public.Choice.SlotId = Placed.SlotId;
+				Public.CardLabel = CardLabel(*Card);
+				Public.SlotLabel = SlotLabel(View, Placed.SlotId);
+				break;
 			}
 		}
 		Result.DeploymentCount = View.DeploymentPlacements.Num();
@@ -172,6 +209,10 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	else if (SafeViewerView.MajorPhase == EFMCodexLocalMatchMajorPhase::Deployment)
 	{
 		Result.EntryWait = EFMCodexNetworkEntryWait::Deployment;
+	}
+	if (SafeViewerView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectCarrier)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::CarrierSelection;
 	}
 	FMCodexNetworkMatchTypes::ProjectDeployment(SafeViewerView, Result);
 	Result.InteractionState =

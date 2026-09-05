@@ -364,20 +364,10 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 			ActiveMatchRuntime->AuthoritativeSession,
 			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 	case EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper:
-		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeployGoalkeeperRequest,
-			DeployGoalkeeper(Intent.Payload.Get<
-				FMatchPlayAuthoritativeDeployGoalkeeperRequest>()));
 	case EMatchPlayAuthoritativeCommandKind::FinishDeployment:
-	{
-		if (!Intent.Payload.IsType<FMatchPlayFinishDeploymentIntent>())
-		{
-			return PayloadMismatch();
-		}
-		const FMatchPlayFinishDeploymentIntent& Request =
-			Intent.Payload.Get<FMatchPlayFinishDeploymentIntent>();
-		return Finalize(FinishDeployment(
-			Request.AttackSequence, Request.RequestingSide));
-	}
+		return FMatchPlayEntryDeploymentPlayerIntentPort(
+			ActiveMatchRuntime->AuthoritativeSession,
+			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 	case EMatchPlayAuthoritativeCommandKind::SubmitCarrier:
 		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitCarrierRequest,
 			SubmitCarrier(Intent.Payload.Get<

@@ -398,6 +398,12 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	EFMCodexLocalMatchInteractionCategory InteractionCategory =
 		EFMCodexLocalMatchInteractionCategory::StartMatch;
 	bool bHumanInteraction = false;
+	/** Canonical Finish query, then filtered to the acting viewer. */
+	bool bCanFinishDeployment = false;
+	/** Public ordinary-deployment flags; initial-route disclosure still gates these. */
+	bool bPlayerADeploymentFinished = false;
+	bool bPlayerBDeploymentFinished = false;
+	bool bDeploymentComplete = false;
 	bool bCanDecline = false;
 	bool bCanResolveNoLegalChoice = false;
 	FString Diagnostic;

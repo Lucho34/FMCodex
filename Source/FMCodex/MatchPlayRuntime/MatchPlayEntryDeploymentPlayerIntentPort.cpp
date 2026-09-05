@@ -11,28 +11,55 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		return FMatchPlayFullD12PlayerIntentPort(Session, Coordinator).SubmitPlayerIntent(Intent);
 	}
 	FMatchPlayPlayerIntentSubmissionResult Result;
-	if (Intent.CommandKind != EMatchPlayAuthoritativeCommandKind::DeployOrdinary)
-	{
-		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
-		return Result;
-	}
-	if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeployOrdinaryRequest>())
+	auto Mismatch = [&]()
 	{
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::PayloadTypeMismatch;
 		Result.ErrorMessage = TEXT("PlayerIntent payload does not match its command kind.");
 		return Result;
-	}
-	const auto AuthorityResult = Session.DeployOrdinary(Intent.Payload.Get<FMatchPlayAuthoritativeDeployOrdinaryRequest>());
-	Result.AuthoritativeResult.RuntimeEnvelope = AuthorityResult.RuntimeEnvelope;
-	Result.bPlayerIntentAccepted = AuthorityResult.RuntimeEnvelope.bAccepted;
-	if (!AuthorityResult.RuntimeEnvelope.bAccepted || !AuthorityResult.RuntimeEnvelope.bDomainSuccess
-		|| !AuthorityResult.DeploymentResult.bSuccess)
+	};
+	auto Record = [&](const FMatchPlayAuthoritativeRuntimeEnvelope& Envelope,
+		bool bDomainSuccess, const FString& DomainError)
 	{
-		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::AuthoritativeCommandRejected;
-		Result.ErrorMessage = !AuthorityResult.RuntimeEnvelope.ErrorMessage.IsEmpty()
-			? AuthorityResult.RuntimeEnvelope.ErrorMessage : AuthorityResult.DeploymentResult.ErrorMessage;
+		Result.AuthoritativeResult.RuntimeEnvelope = Envelope;
+		Result.bPlayerIntentAccepted = Envelope.bAccepted;
+		if (!Envelope.bAccepted || !Envelope.bDomainSuccess || !bDomainSuccess)
+		{
+			Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::AuthoritativeCommandRejected;
+			// Preserve the existing LocalPlay domain rejection text.
+			Result.ErrorMessage = !Envelope.ErrorMessage.IsEmpty() ? Envelope.ErrorMessage : DomainError;
+			return false;
+		}
+		return true;
+	};
+	switch (Intent.CommandKind)
+	{
+	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeployOrdinaryRequest>()) { return Mismatch(); }
+		const auto Authority = Session.DeployOrdinary(Intent.Payload.Get<FMatchPlayAuthoritativeDeployOrdinaryRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.DeploymentResult.bSuccess, Authority.DeploymentResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeployGoalkeeperRequest>()) { return Mismatch(); }
+		const auto Authority = Session.DeployGoalkeeper(Intent.Payload.Get<FMatchPlayAuthoritativeDeployGoalkeeperRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.DeploymentResult.bSucceeded, Authority.DeploymentResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::FinishDeployment:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayFinishDeploymentIntent>()) { return Mismatch(); }
+		const auto& Request = Intent.Payload.Get<FMatchPlayFinishDeploymentIntent>();
+		const auto Authority = Session.FinishDeployment(Request.AttackSequence, Request.RequestingSide);
+		if (!Record(Authority.RuntimeEnvelope, Authority.FinishResult.bSuccess, Authority.FinishResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	default:
+		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
 		return Result;
 	}
+	// Exactly one pass after any accepted deployment command; never on rejection.
 	Result.CoordinatorResult = Coordinator.AdvanceToStableState();
 	Result.bSuccess = Result.CoordinatorResult.bSuccess;
 	if (!Result.bSuccess)

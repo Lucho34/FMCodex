@@ -85,6 +85,9 @@ FMatchPlayServerCoordinator::FMatchPlayServerCoordinator(
 FMatchPlayServerCoordinatorResult
 FMatchPlayServerCoordinator::AdvanceToStableState()
 {
+#if WITH_DEV_AUTOMATION_TESTS
+	++InvocationCountForTests;
+#endif
 	using namespace MatchPlayServerCoordinator;
 
 	FMatchPlayServerCoordinatorResult Result;

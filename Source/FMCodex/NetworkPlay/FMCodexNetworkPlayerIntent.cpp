@@ -6,9 +6,12 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	switch (IntentKind)
 	{
 	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
-		return Deployment.IsEmpty() ? Code::None : Code::InvalidPayload;
+	case EFMCodexNetworkPlayerIntentKind::FinishDeployment:
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
-		return Deployment.IsValidShape() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsValidShape() && Goalkeeper.IsEmpty() ? Code::None : Code::InvalidPayload;
+	case EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper:
+		return Deployment.IsEmpty() && Goalkeeper.IsValidShape() ? Code::None : Code::InvalidPayload;
 	default:
 		return Code::NotPlayerIntent;
 	}
@@ -67,28 +70,53 @@ void FFMCodexNetworkIntentClientState::ObserveView(const FFMCodexNetworkClientVi
 bool FFMCodexNetworkIntentClientState::Begin(const FFMCodexNetworkClientViewSnapshot& View,
 	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
-	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll, {}, OutEnvelope);
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll, {}, {}, OutEnvelope);
 }
 
 bool FFMCodexNetworkIntentClientState::BeginDeployment(const FFMCodexNetworkClientViewSnapshot& View,
 	const FFMCodexNetworkDeployOrdinaryPayload& Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
-	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::DeployOrdinary, Choice, OutEnvelope);
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::DeployOrdinary, Choice, {}, OutEnvelope);
 }
 
+bool FFMCodexNetworkIntentClientState::BeginGoalkeeper(const FFMCodexNetworkClientViewSnapshot& View,
+	const FFMCodexNetworkDeployGoalkeeperPayload& Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper, {}, Choice, OutEnvelope);
+}
+bool FFMCodexNetworkIntentClientState::BeginFinishDeployment(const FFMCodexNetworkClientViewSnapshot& View,
+	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::FinishDeployment, {}, {}, OutEnvelope);
+}
 bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
 	EFMCodexNetworkPlayerIntentKind Kind, const FFMCodexNetworkDeployOrdinaryPayload& Choice,
+	const FFMCodexNetworkDeployGoalkeeperPayload& GoalkeeperChoice,
 	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
 	ObserveView(View);
-	const bool bActionable = Kind == EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll
-		? View.InteractionState == EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint
-		: Kind == EFMCodexNetworkPlayerIntentKind::DeployOrdinary
-			&& View.EntryBranch == EFMCodexNetworkEntryBranch::Ordinary
+	bool bActionable = false;
+	switch (Kind)
+	{
+	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
+		bActionable = View.InteractionState == EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
+		bActionable = View.EntryBranch == EFMCodexNetworkEntryBranch::Ordinary
 			&& View.EntryWait == EFMCodexNetworkEntryWait::Deployment && !View.DeploymentOptions.IsEmpty();
+		break;
+	case EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper:
+		bActionable = View.bCanDeployGoalkeeper;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::FinishDeployment:
+		bActionable = View.bCanFinishDeployment;
+		break;
+	default: break;
+	}
 	FFMCodexNetworkPlayerIntentEnvelope Candidate;
 	Candidate.IntentKind = Kind;
 	Candidate.Deployment = Choice;
+	Candidate.Goalkeeper = GoalkeeperChoice;
 	if (IsPending() || !Match.IsValid() || NextRequestId == MAX_int64
 		|| View.ViewRevision < SeenViewRevision || !View.bMatchInitialized
 		|| View.BootstrapState != EFMCodexNetworkBootstrapState::MatchReady

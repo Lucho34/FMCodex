@@ -19,6 +19,22 @@ struct FMCODEX_API FFMCodexNetworkDeployOrdinaryPayload
 	bool IsValidShape() const;
 	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
 };
+/** The player's only goalkeeper choice is a slot. Session derives the unique GK card. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkDeployGoalkeeperPayload
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FName SlotId = NAME_None;
+	bool IsEmpty() const { return SlotId.IsNone(); }
+	bool IsValidShape() const;
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+};
+template<> struct TStructOpsTypeTraits<FFMCodexNetworkDeployGoalkeeperPayload>
+	: TStructOpsTypeTraitsBase2<FFMCodexNetworkDeployGoalkeeperPayload>
+{
+	enum { WithNetSerializer = true };
+};
 template<> struct TStructOpsTypeTraits<FFMCodexNetworkDeployOrdinaryPayload>
 	: TStructOpsTypeTraitsBase2<FFMCodexNetworkDeployOrdinaryPayload>
 {

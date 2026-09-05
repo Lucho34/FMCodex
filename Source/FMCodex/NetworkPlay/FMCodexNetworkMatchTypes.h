@@ -41,7 +41,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection
 };
 
 /** Team/content identity is deliberately separate from the connected player. */
@@ -85,6 +85,19 @@ struct FMCODEX_API FFMCodexNetworkDeploymentOption
 	GENERATED_BODY()
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkDeployOrdinaryPayload Choice;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText CardLabel;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText SlotLabel;
+};
+
+/** At most one offered goalkeeper slot. The card identity is chosen by Session. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkGoalkeeperOption
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkDeployGoalkeeperPayload Choice;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FText CardLabel;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
@@ -168,6 +181,20 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	int32 DeploymentCount = 0;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkDeploymentSummary LastDeployment;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bCanDeployGoalkeeper = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkGoalkeeperOption GoalkeeperOption;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkDeploymentSummary GoalkeeperDeployment;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bCanFinishDeployment = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bPlayerADeploymentFinished = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bPlayerBDeploymentFinished = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bDeploymentComplete = false;
 };
 
 struct FFMCodexLocalMatchInteractionView;

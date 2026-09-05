@@ -607,7 +607,7 @@ Feet typed command DTO 为 `FMatchPlayAuthoritativeResolveThroughBallFeetAttackR
 
 | DTO | 字段 | 边界 |
 |---|---|---|
-| PlayerIntentEnvelope | MatchInstanceId: FGuid；RequestId: int64；ExpectedAttackSequence: int64；IntentKind: 独立 network enum | 唯一允许 Full D12；无 Side、roll、seed、provider、card 或 UObject |
+| PlayerIntentEnvelope | MatchInstanceId: FGuid；RequestId: int64；ExpectedAttackSequence: int64；IntentKind: 独立 network enum | Full D12 foundation 的 correlation 字段；当前四意图及 typed choice 扩展见下文。无 Side、roll、seed、provider 或 UObject |
 | PlayerIntentAck | MatchInstanceId: FGuid；RequestId: int64；Code: typed enum；ViewRevision: int32 | 仅提交者；不承载玩法结果；MatchMismatch 也回显所提交 correlation |
 | ClientViewSnapshot 增量 | DisclosedInitialD12: int32；EntryBranch: None/SendingOff/Ordinary/SetPiece；EntryWait: None/InitialD12/Deployment/SetPieceTypeRoll/TerminalPendingAdvance | 只能映射已做 viewer/disclosure 过滤的 InteractionView；未公开骰子为 0，branch 为 None |
 
@@ -625,22 +625,32 @@ Owner snapshot 不发送 MatchPlayState、full InteractionView、手牌/牌堆�
 
 ## Bounded deployment wire and safe snapshot
 
-The earlier payload-free envelope is extended by one closed member:
+The correlation envelope has two closed typed members; the tag determines the only allowed nonempty member:
 
 | Field/type | Contract |
 |---|---|
-| IntentKind | None (invalid), RequestInitialActionPointRoll, DeployOrdinary; no internal actions |
+| IntentKind | None (invalid), RequestInitialActionPointRoll, DeployOrdinary, DeployGoalkeeper, FinishDeployment; no internal actions |
 | Deployment: FFMCodexNetworkDeployOrdinaryPayload | CardId: FName + SlotId: FName; stable canonical identities |
-| Full D12 payload | Both names must be NAME_None; nonempty deployment data is InvalidPayload |
-| DeployOrdinary payload | Both names must be nonempty, each at most 128 UTF-8 bytes; final existence/ownership/slot legality belongs to Session |
+| Goalkeeper: FFMCodexNetworkDeployGoalkeeperPayload | SlotId: FName only; Session derives the unique goalkeeper from the server-resolved Side |
+| Full D12 / FinishDeployment payload | Both typed members must be empty; any ordinary or goalkeeper choice is InvalidPayload |
+| DeployOrdinary payload | CardId and SlotId nonempty, each at most 128 UTF-8 bytes; Goalkeeper member empty; final legality belongs to Session |
+| DeployGoalkeeper payload | SlotId nonempty and at most 128 UTF-8 bytes; Deployment member empty; final legality belongs to Session |
 
-Deployment has a custom NetSerialize: each name is a uint8 byte length followed by at most 128 UTF-8 bytes (maximum payload 258 bytes). It checks the length before allocation/name construction, rejects truncated data, embedded NUL and non-roundtripping UTF-8. Malformed wire fails network deserialization before the RPC handler; decoded but invalid kind/shape receives the typed rejection. There is no arbitrary string/blob/container, UObject reference, Side claim, rule data or random input.
+Both choice structs use the same bounded name codec. Goalkeeper contains one encoded name (maximum 129 bytes); ordinary Deployment has a custom NetSerialize: each name is a uint8 byte length followed by at most 128 UTF-8 bytes (maximum payload 258 bytes). It checks the length before allocation/name construction, rejects truncated data, embedded NUL and non-roundtripping UTF-8. Malformed wire fails network deserialization before the RPC handler; decoded but invalid kind/shape receives the typed rejection. There is no arbitrary string/blob/container, UObject reference, Side claim, rule data or random input.
 
 The four correlation/kind fields remain unchanged; ACK stays MatchInstanceId + RequestId + Code + ViewRevision, with no gameplay payload. ExpectedAttackSequence still denotes current/next authoritative attack, independent of RequestId.
 
 Owner snapshot additions:
 - DeploymentOptions: at most 3 FFMCodexNetworkDeploymentOption values, each with Choice (the canonical pair), CardLabel and SlotLabel (FText). The source is the acting viewer's already-filtered ordinary DeploymentGroups.
-- DeploymentCount: current public placement count.
+- GoalkeeperOption: at most one FFMCodexNetworkGoalkeeperOption (SlotId-only Choice, CardLabel, SlotLabel), actionable only with bCanDeployGoalkeeper. Its source is a safe goalkeeper DeploymentGroup; a different legal slot is still accepted.
+- bCanFinishDeployment: acting viewer's read-only projection of the pure canonical Finish check. It does not imply a minimum placement count or mandatory goalkeeper.
+- bPlayerADeploymentFinished, bPlayerBDeploymentFinished, bDeploymentComplete: public ordinary-deployment completion facts from the canonical attacker/defender finish flags.
+- GoalkeeperDeployment: one public placement summary for the current activated defender goalkeeper; sourced from safe placements and roster activation facts.
+- DeploymentCount: current public placement count, including a goalkeeper placement record. Goalkeeper CardUsage remains Available; no ordinary card-zone consumption is inferred.
 - LastDeployment: canonical placement Side plus one option-shaped public card/slot/label record; Side=None when absent.
 
 The public summary comes from safe DeploymentPlacements and roster/catalog presentation, not an echo of the command. No full hand, cross-product, State, Corner nominations, Formula, provider or private RNG state is transmitted. The protocol is a coordinated-build schema; no compatibility with clients using the old payload-free build is claimed.
+
+EntryWait adds CarrierSelection as a public high-level wait only. No Carrier identity, candidate set or submitted choice is added. At deployment closure the authoritative expected side remains visible, all deployment actions clear, and the public finish/GK summary remains available.
+
+The four shared InteractionView finish booleans are read-only projections. BuildForViewer clears bCanFinishDeployment for nonacting/invalid viewers and clears all four with an undisclosed ordinary route. GK availability continues to come from existing safe DeploymentGroups; no Widget derives legality.

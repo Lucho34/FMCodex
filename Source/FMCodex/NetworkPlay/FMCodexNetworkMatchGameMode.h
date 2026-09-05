@@ -42,6 +42,7 @@ private:
 	friend class FFMCodexNetworkPlayerDisplayNameFallbackTest;
 	friend struct FFMCodexNetworkIntentTestAccess;
 	friend struct FFMCodexNetworkDeploymentTestAccess;
+	friend struct FFMCodexNetworkDeploymentCompletionTestAccess;
 #endif
 
 	void EnsureMatchInstanceId();

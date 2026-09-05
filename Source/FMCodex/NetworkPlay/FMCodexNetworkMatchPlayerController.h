@@ -36,6 +36,14 @@ public:
 	UFUNCTION(Exec)
 	void DevProbeInvalidDeploymentCard();
 	bool CanDeployOrdinary() const;
+	UFUNCTION(Exec)
+	void DevDeployGoalkeeper();
+	UFUNCTION(Exec)
+	void DevFinishDeployment();
+	UFUNCTION(Exec)
+	void DevProbeInvalidGoalkeeperSlot();
+	bool CanDeployGoalkeeper() const;
+	bool CanFinishDeployment() const;
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -50,6 +58,7 @@ private:
 	friend struct FFMCodexNetworkBootstrapUIRefreshTestAccess;
 	friend struct FFMCodexNetworkIntentTestAccess;
 	friend struct FFMCodexNetworkDeploymentTestAccess;
+	friend struct FFMCodexNetworkDeploymentCompletionTestAccess;
 #endif
 
 	UFUNCTION(Server, Reliable)
@@ -62,6 +71,7 @@ private:
 	FFMCodexNetworkIntentClientState IntentClientState;
 
 	void SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice);
+	void SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind Kind);
 	void InitializeDeveloperStatusUI();
 	FText BuildStatusText() const;
 

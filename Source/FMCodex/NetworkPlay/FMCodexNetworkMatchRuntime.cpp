@@ -255,6 +255,10 @@ const FGuid& FFMCodexNetworkMatchRuntime::GetMatchInstanceId() const
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
+int32 FFMCodexNetworkMatchRuntime::GetCoordinatorInvocationCountForTests() const
+{
+	return ServerCoordinator ? ServerCoordinator->GetInvocationCountForTests() : 0;
+}
 FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(
 	const FGuid& InMatchInstanceId, TUniquePtr<IFMCodexNetworkEntropySource> TestEntropy,
 	TUniquePtr<IMatchPlayAttackEntryRollProvider> TestEntryProvider)

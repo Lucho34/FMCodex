@@ -8,7 +8,9 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 {
 	None,
 	RequestInitialActionPointRoll,
-	DeployOrdinary
+	DeployOrdinary,
+	DeployGoalkeeper,
+	FinishDeployment
 };
 
 UENUM()
@@ -19,7 +21,7 @@ enum class EFMCodexNetworkIntentAckCode : uint8
 	DuplicateOrAlreadyResolved, AuthorityRejected, InternalFailure
 };
 
-/** Closed kind-tagged payload: Full D12 must be empty; DeployOrdinary carries canonical names only. */
+/** Closed kind-tagged members. Each intent requires exactly its own payload shape. */
 USTRUCT()
 struct FMCODEX_API FFMCodexNetworkPlayerIntentEnvelope
 {
@@ -34,6 +36,8 @@ struct FMCODEX_API FFMCodexNetworkPlayerIntentEnvelope
 	EFMCodexNetworkPlayerIntentKind IntentKind = EFMCodexNetworkPlayerIntentKind::None;
 	UPROPERTY()
 	FFMCodexNetworkDeployOrdinaryPayload Deployment;
+	UPROPERTY()
+	FFMCodexNetworkDeployGoalkeeperPayload Goalkeeper;
 	EFMCodexNetworkIntentAckCode ValidatePayloadShape() const;
 };
 
@@ -77,6 +81,11 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 	bool BeginDeployment(const FFMCodexNetworkClientViewSnapshot& View,
 		const FFMCodexNetworkDeployOrdinaryPayload& Choice,
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginGoalkeeper(const FFMCodexNetworkClientViewSnapshot& View,
+		const FFMCodexNetworkDeployGoalkeeperPayload& Choice,
+		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginFinishDeployment(const FFMCodexNetworkClientViewSnapshot& View,
+		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }
 	int64 GetPendingRequestId() const { return PendingRequestId; }
@@ -84,6 +93,7 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 private:
 	bool BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
 		EFMCodexNetworkPlayerIntentKind Kind, const FFMCodexNetworkDeployOrdinaryPayload& Choice,
+		const FFMCodexNetworkDeployGoalkeeperPayload& GoalkeeperChoice,
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	void CompleteIfReady();
 	FGuid Match;

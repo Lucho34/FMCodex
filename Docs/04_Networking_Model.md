@@ -215,7 +215,7 @@ DEV 面板只有一个格式化入口 `BuildStatusText` 和一个幂等刷新入
 
 ## Full D12 写入、去重与公开策略（Stage 7.3）
 
-此前 Stage 7.2 的“无 gameplay RPC”仅描述 bootstrap 历史边界。本节记录 Full D12 foundation；当前另开放下文的 DeployOrdinary，完整比赛仍不可联网游玩。
+此前 Stage 7.2 的“无 gameplay RPC”仅描述 bootstrap 历史边界。本节记录 Full D12 foundation；当前另开放下文的普通部署、门将部署与完成部署，完整比赛仍不可联网游玩。
 
 - reliable owning Controller RPC 传 MatchInstanceId / RequestId / ExpectedAttackSequence / IntentKind。Side 由服务器连接映射导出；host 不享有额外身份或直达 Session 权限。
 - 每个 Controller 的客户端请求 ID 在其生命周期严格递增，最多一个 pending；包括拒绝后 retry 也使用新 ID。服务器每个已加入 Controller 仅保留 match + highest-seen ID，旧/重复/乱序 ID 均明确拒绝，不缓存无限 ACK 列表。两名 participant 至多两个记录；错误比赛包和非 participant 不能重置/分配记录，只有服务器选定新比赛可重置去重范围。
@@ -236,9 +236,9 @@ Full D12 foundation 后的独立架构审计与 RNG privacy 修复是当前部�
 - `-FMCodexNetworkTestBFirst` 仅在 automation、non-Shipping 的服务器 GameMode 生效：仅测试牌组的稀有度统一为 Common、tie-break 输入设 A=6/B=2，由 canonical opening resolver 选择 B 先攻；不接受客户端选择先攻，不改生产随机来源。普通启动器无该参数，默认开局保持不变。
 - Full D12 的“当前进攻方”检查属于 intent-specific ownership，不是未来防守/选择请求的公共规则。RequestId huge-jump 现按下文 bounded admission 处理；请求预算/日志限频仍延期。
 
-## Typed ordinary deployment and bounded request admission
+## Typed deployment and bounded request admission
 
-The current network write allowlist is Full D12 + DeployOrdinary. DeployGoalkeeper, FinishDeployment and all tactical/advance/recovery actions remain unavailable on this transport.
+The current network write allowlist is Full D12 + DeployOrdinary + DeployGoalkeeper + FinishDeployment. Participant selection, tactical, advance and recovery actions remain unavailable on this transport.
 
 - The deployment payload contains only canonical CardId and SlotId. RequestingSide comes exclusively from the admitted Controller registry; another side's CardId grants no ownership. CurrentLegalDeploymentSide can be the defender while CurrentAttackingSide remains unchanged, so the Full D12 attacker gate is intent-specific.
 - RequestId shares one namespace across intent kinds per connection. A new ID must be positive, greater than the accepted high-water mark and at most **1024** above it (first high-water is zero). A larger jump returns InvalidPayload without changing the ledger; a subsequent normal ID remains valid. Valid-shaped requests admitted within the window consume their ID even if later rejected for stale sequence/side/legality. Wrong-match, malformed and unknown-kind requests do not consume it. Low/duplicate IDs return DuplicateOrAlreadyResolved. Storage remains one match/ID pair, not a growing receipt cache.
@@ -246,7 +246,7 @@ The current network write allowlist is Full D12 + DeployOrdinary. DeployGoalkeep
 - The owner snapshot sends at most **3** already-legal ordinary card/slot options to the currently legal deployment side. The DEV button submits the first current projected option. These options are a bounded sample, not the whole legal set or a new legality restriction; other canonical legal choices are accepted by Session. Other viewers receive no actionable options.
 - Both viewers receive public deployment count and the last accepted placement, using the same State revision and preferred Chinese card/slot labels. No optimistic placement or ACK-derived gameplay truth is allowed. ACK-first retains pending until the corresponding view; view-first retains pending until the matching ACK. Rejection clears pending without publishing another view.
 
-### Deterministic ordinary deployment DEV launch
+### Deterministic deployment-completion DEV launch
 
 After an Editor Development build, close the Editor and old test windows. From the project directory run:
 
@@ -256,6 +256,14 @@ After an Editor Development build, close the Editor and old test windows. From t
 
 The existing .cmd wrapper also forwards `-DeploymentSlice`. This optional parameter adds **host-only** `-FMCodexNetworkTestBFirst -FMCodexNetworkDeploymentSlice`. In automation/non-Shipping server builds the canonical opening fixture selects B first and an authority entry-provider injection supplies initial D12=4. Other random purposes retain secure providers. It cannot be selected by an RPC or a normal client input and is inert in Shipping.
 
-Remote B clicks Full D12, then the projected `部署 球员 → 场地槽位` button. Host A waits during B's action. Both should show the same accepted card/slot, count and revision; B's pending clears. A then becomes the legal deployment side through canonical turn rotation. This validates only ordinary deployment; FinishDeployment and tactics are not available.
+Remote B clicks Full D12, then the projected ordinary deployment button. Host A deploys one ordinary player. B clicks `完成部署`; A can now click `部署门将`, then `完成部署`. A is the defender in this fixture, so B must not expect a goalkeeper button. Each accepted action must clear pending and converge on the same public revision. Both clients finally display `部署已完成，等待选择持球球员（尚未联网）`, with B as the expected actor. Stop there: SubmitCarrier and tactical actions are not networked. This sequence retains an ordinary attacker placement, so the canonical Coordinator stops at a real Carrier choice instead of taking the existing no-legal-Carrier continuation.
 
 Default double-click launch has no fixture arguments and continues using production secure randomness for every draw. The deterministic path does not require Saved scripts, Engine map saves, World Settings edits or changes to the default LocalPlay mode.
+
+### Goalkeeper deployment and phase closure
+
+- DeployGoalkeeper carries SlotId only, bounded by the same name codec as ordinary deployment. The admitted Controller determines Side; Session determines that side's unique GK CardId. Other-GK/non-GK card spoofing is not a representable GK wire choice. An ordinary CardId hidden in the other typed member is a payload mismatch.
+- FinishDeployment carries no choice in either typed member. Existing canonical Finish legality determines whether it is allowed; neither a minimum deployed-card count nor mandatory GK activation is added. The safe action comes from that same pure check.
+- The owner receives at most one already-legal GK slot/name option. Both viewers receive public current GK activation/placement and each side's finished status. No full hand, State or new resolution/participant choices are disclosed.
+- These two intents retain the shared ACK/view pending state and the same per-connection RequestId window. Wrong-side/phase/used-GK/already-finished gameplay rejections come from Session as AuthorityRejected; common malformed/match/stale/duplicate admission retains its existing typed errors. Rejection does not coordinate, publish or consume RNG.
+- One successful shared HostPort dispatch performs one Coordinator pass, then publishes one stable A/B revision. Deployment closure does not imply the next player choice was submitted. The current network view can name CarrierSelection, but SubmitCarrier remains the next unnetworked action.

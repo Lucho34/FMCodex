@@ -111,6 +111,11 @@ void AFMCodexNetworkMatchPlayerController::SetOwnerViewOnServer(
 	check(HasAuthority());
 	OwnerView = InOwnerView;
 	IntentClientState.ObserveView(OwnerView);
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Stable deployment view: Side=%d Revision=%d GkSide=%d FinishedA=%d FinishedB=%d Complete=%d Wait=%d ExpectedSide=%d"),
+		static_cast<int32>(OwnerView.ViewerSide), OwnerView.ViewRevision, static_cast<int32>(OwnerView.GoalkeeperDeployment.Side),
+		OwnerView.bPlayerADeploymentFinished, OwnerView.bPlayerBDeploymentFinished, OwnerView.bDeploymentComplete,
+		static_cast<int32>(OwnerView.EntryWait), static_cast<int32>(OwnerView.ExpectedActingSide));
 	ForceNetUpdate();
 	if (IsLocalController())
 	{
@@ -229,6 +234,23 @@ void AFMCodexNetworkMatchPlayerController::InitializeDeveloperStatusUI()
 							return FReply::Handled();
 						})
 					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0, 8, 0, 0)
+					[
+						SNew(SButton)
+						.Visibility_Lambda([this]() { return OwnerView.bCanDeployGoalkeeper ? EVisibility::Visible : EVisibility::Collapsed; })
+						.IsEnabled_Lambda([this]() { return CanDeployGoalkeeper(); })
+						.Text_Lambda([this]() { return FText::Format(LOCTEXT("DeployGK", "部署门将 {0} → {1}"),
+							OwnerView.GoalkeeperOption.CardLabel, OwnerView.GoalkeeperOption.SlotLabel); })
+						.OnClicked_Lambda([this]() { DevDeployGoalkeeper(); return FReply::Handled(); })
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0, 8, 0, 0)
+					[
+						SNew(SButton)
+						.Visibility_Lambda([this]() { return OwnerView.bCanFinishDeployment ? EVisibility::Visible : EVisibility::Collapsed; })
+						.IsEnabled_Lambda([this]() { return CanFinishDeployment(); })
+						.Text(LOCTEXT("FinishDeployment", "完成部署"))
+						.OnClicked_Lambda([this]() { DevFinishDeployment(); return FReply::Handled(); })
+					]
 				]
 			]
 		];
@@ -283,9 +305,10 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("定位球") : TEXT("等待服务器");
 		const TCHAR* Wait = OwnerView.EntryWait == EFMCodexNetworkEntryWait::TerminalPendingAdvance
 			? TEXT("已结算，等待下一回合") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
-			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
+			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
+			? TEXT("部署已完成，等待选择持球球员（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
-		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s（完成部署与战术尚未联网）"),
+		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s"),
 			OwnerView.DisclosedInitialD12, Branch, Wait);
 	}
 	if (OwnerView.DeploymentCount > 0)
@@ -294,6 +317,20 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 		EntryText += FString::Printf(TEXT("\n已部署 %d 张 · 最近：玩家 %s · %s → %s"),
 			OwnerView.DeploymentCount, *SideLabel(Last.Side),
 			*Last.Placement.CardLabel.ToString(), *Last.Placement.SlotLabel.ToString());
+	}
+	if (OwnerView.EntryBranch == EFMCodexNetworkEntryBranch::Ordinary)
+	{
+		EntryText += FString::Printf(TEXT("\n部署状态：A %s · B %s"),
+			OwnerView.bPlayerADeploymentFinished ? TEXT("已完成") : TEXT("未完成"),
+			OwnerView.bPlayerBDeploymentFinished ? TEXT("已完成") : TEXT("未完成"));
+		const auto& GK = OwnerView.GoalkeeperDeployment;
+		EntryText += GK.Side == EInitialTurnOrderPlayer::None ? TEXT("\n门将尚未主动部署")
+			: FString::Printf(TEXT("\n门将已部署：玩家 %s · %s → %s"),
+				*SideLabel(GK.Side), *GK.Placement.CardLabel.ToString(), *GK.Placement.SlotLabel.ToString());
+		if (OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection)
+		{
+			EntryText += FString::Printf(TEXT("\n下一操作方：玩家 %s"), *SideLabel(OwnerView.ExpectedActingSide));
+		}
 	}
 	const auto& Ack = IntentClientState.GetLastAck();
 	FString AckText = TEXT("暂无请求回执");
@@ -397,6 +434,62 @@ void AFMCodexNetworkMatchPlayerController::SubmitDeploymentChoice(const FFMCodex
 		Envelope.RequestId, static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence,
 		*Envelope.Deployment.CardId.ToString(), *Envelope.Deployment.SlotId.ToString());
 	// Same generated reliable owning RPC on host and remote; no direct implementation call.
+	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+bool AFMCodexNetworkMatchPlayerController::CanDeployGoalkeeper() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady && OwnerView.bCanDeployGoalkeeper;
+}
+bool AFMCodexNetworkMatchPlayerController::CanFinishDeployment() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady && OwnerView.bCanFinishDeployment;
+}
+void AFMCodexNetworkMatchPlayerController::DevDeployGoalkeeper()
+{
+#if !UE_BUILD_SHIPPING
+	if (CanDeployGoalkeeper()) { SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevFinishDeployment()
+{
+#if !UE_BUILD_SHIPPING
+	if (CanFinishDeployment()) { SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind::FinishDeployment); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind Kind)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	const bool bBegan = Kind == EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper
+		? IntentClientState.BeginGoalkeeper(OwnerView, OwnerView.GoalkeeperOption.Choice, Envelope)
+		: Kind == EFMCodexNetworkPlayerIntentKind::FinishDeployment
+			&& IntentClientState.BeginFinishDeployment(OwnerView, Envelope);
+	if (!bBegan) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Deployment completion owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Kind=%d GKSlot=%s"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, static_cast<int32>(Kind),
+		*Envelope.Goalkeeper.SlotId.ToString());
+	// Both new intents use the same generated owning RPC on Remote and Listen Host.
+	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeInvalidGoalkeeperSlot()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanDeployGoalkeeper()) { return; }
+	auto Choice = OwnerView.GoalkeeperOption.Choice;
+	Choice.SlotId = TEXT("DEV.NonexistentGoalkeeperSlot");
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginGoalkeeper(OwnerView, Choice, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("DEV negative goalkeeper slot: Request=%lld GKSlot=%s"),
+		Envelope.RequestId, *Envelope.Goalkeeper.SlotId.ToString());
 	ServerSubmitPlayerIntent(Envelope);
 #endif
 }

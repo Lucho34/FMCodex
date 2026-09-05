@@ -312,15 +312,19 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Ack.Code = Code;
 		Ack.ViewRevision = ViewRevision;
 		UE_LOG(LogFMCodexNetworkPlay, Log,
-			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
+			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s GKSlot=%s ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
 			*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower),
 			Envelope.RequestId, *GetNameSafe(Controller), static_cast<int32>(Side),
 			Envelope.ExpectedAttackSequence, static_cast<int32>(Envelope.IntentKind),
-			*Envelope.Deployment.CardId.ToString(), *Envelope.Deployment.SlotId.ToString(),
+			*Envelope.Deployment.CardId.ToString(), *Envelope.Deployment.SlotId.ToString(), *Envelope.Goalkeeper.SlotId.ToString(),
 			*StaticEnum<EFMCodexNetworkIntentAckCode>()->GetNameStringByValue(static_cast<int64>(Code)),
 			PreviousRevision, ViewRevision,
 			MatchRuntime ? MatchRuntime->GetEntryProviderInvocationCount() : 0,
 			MatchRuntime ? MatchRuntime->GetD12ProviderInvocationCount() : 0);
+#if WITH_DEV_AUTOMATION_TESTS
+		UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("DEV coordinator accounting: Request=%lld Calls=%d"),
+			Envelope.RequestId, MatchRuntime ? MatchRuntime->GetCoordinatorInvocationCountForTests() : 0);
+#endif
 		return Ack;
 	};
 	if (!HasAuthority() || Side == EInitialTurnOrderPlayer::None || Controller == nullptr)
@@ -382,6 +386,25 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.CardId = Envelope.Deployment.CardId;
 		Request.SlotId = Envelope.Deployment.SlotId;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::DeployOrdinary, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper:
+	{
+		// Session owns defender/turn/phase/usage/slot legality and derives the unique GK card.
+		FMatchPlayAuthoritativeDeployGoalkeeperRequest Request;
+		Request.RequestingSide = Side;
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Request.SlotId = Envelope.Goalkeeper.SlotId;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::FinishDeployment:
+	{
+		// No guessed count or GK prerequisite: canonical Finish performs every gameplay check.
+		FMatchPlayFinishDeploymentIntent Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::FinishDeployment, Request);
 		break;
 	}
 	default: return Finish(AckCode::NotPlayerIntent);
