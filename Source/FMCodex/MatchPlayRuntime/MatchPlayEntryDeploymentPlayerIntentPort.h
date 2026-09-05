@@ -3,7 +3,7 @@
 class FMatchPlayAuthoritativeSession;
 class FMatchPlayServerCoordinator;
 
-/** Bounded shared entry/deployment slice, used by both LocalPlay and NetworkPlay. */
+/** Bounded shared entry/deployment/Carrier slice for LocalPlay and NetworkPlay; no later participant dispatch. */
 class FMCODEX_API FMatchPlayEntryDeploymentPlayerIntentPort final : public IMatchPlayPlayerIntentPort
 {
 public:

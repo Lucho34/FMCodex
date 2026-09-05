@@ -401,9 +401,11 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper")});
+		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier")});
 	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkDeployGoalkeeperPayload::StaticStruct(), {TEXT("SlotId")});
+	ExactFields(FFMCodexNetworkSubmitCarrierPayload::StaticStruct(), {TEXT("CarrierCardId")});
+	ExactFields(FFMCodexNetworkCarrierOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
 	ExactFields(FFMCodexNetworkGoalkeeperOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel"), TEXT("SlotLabel")});
 	ExactFields(FFMCodexNetworkDeploymentOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel"), TEXT("SlotLabel")});
 	ExactFields(FFMCodexNetworkDeploymentSummary::StaticStruct(), {TEXT("Side"), TEXT("Placement")});
@@ -417,7 +419,8 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("DisclosedInitialD12"), TEXT("EntryBranch"), TEXT("EntryWait"), TEXT("DeploymentOptions"),
 		TEXT("DeploymentCount"), TEXT("LastDeployment"), TEXT("bCanDeployGoalkeeper"), TEXT("GoalkeeperOption"),
 		TEXT("GoalkeeperDeployment"), TEXT("bCanFinishDeployment"), TEXT("bPlayerADeploymentFinished"),
-		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete")});
+		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete"), TEXT("CarrierOptions"),
+		TEXT("bCarrierOptionsUnavailable"), TEXT("SelectedCarrier")});
 	const auto* Class = AFMCodexNetworkMatchPlayerController::StaticClass();
 	const auto* Server = Class->FindFunctionByName(TEXT("ServerSubmitPlayerIntent"));
 	const auto* Client = Class->FindFunctionByName(TEXT("ClientReceivePlayerIntentAck"));

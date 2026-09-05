@@ -43,6 +43,7 @@ private:
 	friend struct FFMCodexNetworkIntentTestAccess;
 	friend struct FFMCodexNetworkDeploymentTestAccess;
 	friend struct FFMCodexNetworkDeploymentCompletionTestAccess;
+	friend struct FFMCodexNetworkCarrierTestAccess;
 #endif
 
 	void EnsureMatchInstanceId();

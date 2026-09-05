@@ -10,6 +10,7 @@
 
 class STextBlock;
 class SWidget;
+class SVerticalBox;
 
 UCLASS()
 class FMCODEX_API AFMCodexNetworkMatchPlayerController final
@@ -44,6 +45,11 @@ public:
 	void DevProbeInvalidGoalkeeperSlot();
 	bool CanDeployGoalkeeper() const;
 	bool CanFinishDeployment() const;
+	UFUNCTION(Exec)
+	void DevSubmitCarrier(FName CarrierCardId);
+	UFUNCTION(Exec)
+	void DevProbeInvalidCarrier();
+	bool CanSubmitCarrier() const;
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -70,6 +76,7 @@ private:
 
 	FFMCodexNetworkIntentClientState IntentClientState;
 
+	void SubmitCarrierChoice(const FFMCodexNetworkSubmitCarrierPayload& Choice);
 	void SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice);
 	void SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind Kind);
 	void InitializeDeveloperStatusUI();
@@ -81,5 +88,6 @@ private:
 #if !UE_BUILD_SHIPPING
 	TSharedPtr<SWidget> StatusViewportWidget;
 	TSharedPtr<STextBlock> StatusText;
+	TSharedPtr<SVerticalBox> CarrierChoices;
 #endif
 };

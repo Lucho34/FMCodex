@@ -108,6 +108,49 @@ namespace FMCodexNetworkMatchTypes
 			if (Card.CardId == Last.CardId) { Placement.CardLabel = CardLabel(Card); break; }
 		}
 	}
+	void ProjectCarrier(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		if (Result.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary) { return; }
+		if (!View.SelectedCarrierCardId.IsNone())
+		{
+			FFMCodexNetworkSubmitCarrierPayload Choice;
+			Choice.CarrierCardId = View.SelectedCarrierCardId;
+			if (Choice.IsValidShape())
+			{
+				Result.SelectedCarrier.Choice = Choice;
+				const auto& Roster = View.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA
+					? View.PlayerACardRoster : View.PlayerBCardRoster;
+				const auto* Card = Roster.FindByPredicate([&](const auto& C) { return C.CardId == Choice.CarrierCardId; });
+				Result.SelectedCarrier.CardLabel = Card ? CardLabel(*Card) : LOCTEXT("PlayerFallback", "球员");
+			}
+		}
+		if (View.InteractionCategory != EFMCodexLocalMatchInteractionCategory::SelectCarrier
+			|| !View.bHumanInteraction || Result.ViewerSide == EInitialTurnOrderPlayer::None
+			|| View.ExpectedActingPlayer != Result.ViewerSide) { return; }
+		// This is a complete legal set, never the first N candidates. Fail the projection atomically.
+		if (View.SelectionOptions.Num() > FFMCodexNetworkClientViewSnapshot::MaxCarrierOptions)
+		{
+			Result.bCarrierOptionsUnavailable = true;
+			return;
+		}
+		TSet<FName> Seen;
+		for (const auto& Source : View.SelectionOptions)
+		{
+			FFMCodexNetworkCarrierOption Option;
+			Option.Choice.CarrierCardId = Source.RelatedCardId;
+			if (Source.Side != Result.ViewerSide || !Option.Choice.IsValidShape()
+				|| Seen.Contains(Option.Choice.CarrierCardId))
+			{
+				Result.CarrierOptions.Reset();
+				Result.bCarrierOptionsUnavailable = true;
+				return;
+			}
+			Seen.Add(Option.Choice.CarrierCardId);
+			Option.CardLabel = Source.bHasCard ? CardLabel(Source.Card) : LOCTEXT("PlayerFallback", "球员");
+			Result.CarrierOptions.Add(MoveTemp(Option)); // Preserve canonical safe-view order.
+		}
+	}
 	EFMCodexNetworkClientInteractionState SelectInteractionState(
 		const FFMCodexLocalMatchInteractionView& View,
 		const EInitialTurnOrderPlayer ViewerSide)
@@ -214,7 +257,12 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	{
 		Result.EntryWait = EFMCodexNetworkEntryWait::CarrierSelection;
 	}
+	if (SafeViewerView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectMarker)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::MarkerSelection;
+	}
 	FMCodexNetworkMatchTypes::ProjectDeployment(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectCarrier(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,

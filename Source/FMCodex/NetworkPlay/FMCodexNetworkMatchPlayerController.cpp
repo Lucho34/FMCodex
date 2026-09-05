@@ -11,6 +11,7 @@
 #include "Styling/CoreStyle.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Input/SButton.h"
@@ -99,6 +100,7 @@ void AFMCodexNetworkMatchPlayerController::EndPlay(
 		GEngine->GameViewport->RemoveViewportWidgetContent(
 			StatusViewportWidget.ToSharedRef());
 	}
+	CarrierChoices.Reset();
 	StatusText.Reset();
 	StatusViewportWidget.Reset();
 #endif
@@ -178,6 +180,7 @@ void AFMCodexNetworkMatchPlayerController::InitializeDeveloperStatusUI()
 		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 15))
 		.ColorAndOpacity(FLinearColor(0.91f, 0.95f, 1.0f))
 		.AutoWrapText(true);
+	SAssignNew(CarrierChoices, SVerticalBox);
 	StatusViewportWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
@@ -251,6 +254,14 @@ void AFMCodexNetworkMatchPlayerController::InitializeDeveloperStatusUI()
 						.Text(LOCTEXT("FinishDeployment", "完成部署"))
 						.OnClicked_Lambda([this]() { DevFinishDeployment(); return FReply::Handled(); })
 					]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(SBox).MaxDesiredHeight(220.0f)
+						[
+							SNew(SScrollBox)
+							+ SScrollBox::Slot()[CarrierChoices.ToSharedRef()]
+						]
+					]
 				]
 			]
 		];
@@ -265,6 +276,21 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 	if (StatusText.IsValid())
 	{
 		StatusText->SetText(BuildStatusText());
+	}
+	if (CarrierChoices.IsValid())
+	{
+		CarrierChoices->ClearChildren();
+		for (const auto& Option : OwnerView.CarrierOptions)
+		{
+			const FName Id = Option.Choice.CarrierCardId;
+			CarrierChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton)
+				.Text(FText::Format(LOCTEXT("CarrierChoice", "持球：{0}"), Option.CardLabel))
+				.IsEnabled_Lambda([this]() { return CanSubmitCarrier(); })
+				.OnClicked_Lambda([this, Id]() { DevSubmitCarrier(Id); return FReply::Handled(); })
+			];
+		}
 	}
 #endif
 }
@@ -306,7 +332,8 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 		const TCHAR* Wait = OwnerView.EntryWait == EFMCodexNetworkEntryWait::TerminalPendingAdvance
 			? TEXT("已结算，等待下一回合") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
 			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
-			? TEXT("部署已完成，等待选择持球球员（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
+			? TEXT("部署已完成，等待选择持球球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
+			? TEXT("等待选择盯人球员（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
 		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s"),
 			OwnerView.DisclosedInitialD12, Branch, Wait);
@@ -327,10 +354,19 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 		EntryText += GK.Side == EInitialTurnOrderPlayer::None ? TEXT("\n门将尚未主动部署")
 			: FString::Printf(TEXT("\n门将已部署：玩家 %s · %s → %s"),
 				*SideLabel(GK.Side), *GK.Placement.CardLabel.ToString(), *GK.Placement.SlotLabel.ToString());
-		if (OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection)
+		if (OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection)
 		{
 			EntryText += FString::Printf(TEXT("\n下一操作方：玩家 %s"), *SideLabel(OwnerView.ExpectedActingSide));
 		}
+	}
+	if (!OwnerView.SelectedCarrier.Choice.IsEmpty())
+	{
+		EntryText += FText::Format(LOCTEXT("SelectedCarrier", "\n已选持球球员：{0}"), OwnerView.SelectedCarrier.CardLabel).ToString();
+	}
+	if (OwnerView.bCarrierOptionsUnavailable)
+	{
+		EntryText += LOCTEXT("CarrierProjectionUnavailable", "\n持球候选视图不可用，请检查服务器配置").ToString();
 	}
 	const auto& Ack = IntentClientState.GetLastAck();
 	FString AckText = TEXT("暂无请求回执");
@@ -435,6 +471,46 @@ void AFMCodexNetworkMatchPlayerController::SubmitDeploymentChoice(const FFMCodex
 		*Envelope.Deployment.CardId.ToString(), *Envelope.Deployment.SlotId.ToString());
 	// Same generated reliable owning RPC on host and remote; no direct implementation call.
 	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+bool AFMCodexNetworkMatchPlayerController::CanSubmitCarrier() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+		&& !OwnerView.bCarrierOptionsUnavailable && !OwnerView.CarrierOptions.IsEmpty();
+}
+void AFMCodexNetworkMatchPlayerController::DevSubmitCarrier(FName CarrierCardId)
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanSubmitCarrier()) { return; }
+	const auto* Option = OwnerView.CarrierOptions.FindByPredicate(
+		[&](const auto& C) { return C.Choice.CarrierCardId == CarrierCardId; });
+	if (Option) { SubmitCarrierChoice(Option->Choice); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitCarrierChoice(const FFMCodexNetworkSubmitCarrierPayload& Choice)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginCarrier(OwnerView, Choice, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Carrier owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Carrier=%s"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, *Choice.CarrierCardId.ToString());
+	ServerSubmitPlayerIntent(Envelope); // Generated owning RPC for both Host and Remote.
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeInvalidCarrier()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanSubmitCarrier()) { return; }
+	FFMCodexNetworkSubmitCarrierPayload Choice;
+	Choice.CarrierCardId = TEXT("DEV.NonexistentCarrier");
+	SubmitCarrierChoice(Choice);
 #endif
 }
 bool AFMCodexNetworkMatchPlayerController::CanDeployGoalkeeper() const

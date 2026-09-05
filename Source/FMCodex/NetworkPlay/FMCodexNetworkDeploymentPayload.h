@@ -30,6 +30,22 @@ struct FMCODEX_API FFMCodexNetworkDeployGoalkeeperPayload
 	bool IsValidShape() const;
 	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
 };
+/** Carrier choice reuses the bounded identity codec; no Side, slot or display text. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkSubmitCarrierPayload
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FName CarrierCardId = NAME_None;
+	bool IsEmpty() const { return CarrierCardId.IsNone(); }
+	bool IsValidShape() const;
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+};
+template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitCarrierPayload>
+	: TStructOpsTypeTraitsBase2<FFMCodexNetworkSubmitCarrierPayload>
+{
+	enum { WithNetSerializer = true };
+};
 template<> struct TStructOpsTypeTraits<FFMCodexNetworkDeployGoalkeeperPayload>
 	: TStructOpsTypeTraitsBase2<FFMCodexNetworkDeployGoalkeeperPayload>
 {

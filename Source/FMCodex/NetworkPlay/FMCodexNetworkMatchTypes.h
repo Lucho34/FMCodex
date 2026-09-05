@@ -41,7 +41,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection
 };
 
 /** Team/content identity is deliberately separate from the connected player. */
@@ -102,6 +102,17 @@ struct FMCODEX_API FFMCodexNetworkGoalkeeperOption
 	FText CardLabel;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FText SlotLabel;
+};
+
+/** One canonical Carrier identity and its existing player-facing name. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkCarrierOption
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkSubmitCarrierPayload Choice;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText CardLabel;
 };
 
 /** Public accepted placement, projected from State via the safe viewer view. */
@@ -195,6 +206,15 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	bool bPlayerBDeploymentFinished = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	bool bDeploymentComplete = false;
+
+	// Canonical deck: 20 cards, exactly one GK; at most 19 distinct legal Carriers.
+	static constexpr int32 MaxCarrierOptions = 19;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	TArray<FFMCodexNetworkCarrierOption> CarrierOptions;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bCarrierOptionsUnavailable = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkCarrierOption SelectedCarrier;
 };
 
 struct FFMCodexLocalMatchInteractionView;

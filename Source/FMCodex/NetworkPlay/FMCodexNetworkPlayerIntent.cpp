@@ -7,11 +7,13 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	{
 	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
 	case EFMCodexNetworkPlayerIntentKind::FinishDeployment:
-		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
-		return Deployment.IsValidShape() && Goalkeeper.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsValidShape() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper:
-		return Deployment.IsEmpty() && Goalkeeper.IsValidShape() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsValidShape() && Carrier.IsEmpty() ? Code::None : Code::InvalidPayload;
+	case EFMCodexNetworkPlayerIntentKind::SubmitCarrier:
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsValidShape() ? Code::None : Code::InvalidPayload;
 	default:
 		return Code::NotPlayerIntent;
 	}
@@ -70,28 +72,34 @@ void FFMCodexNetworkIntentClientState::ObserveView(const FFMCodexNetworkClientVi
 bool FFMCodexNetworkIntentClientState::Begin(const FFMCodexNetworkClientViewSnapshot& View,
 	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
-	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll, {}, {}, OutEnvelope);
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll, {}, {}, {}, OutEnvelope);
 }
 
 bool FFMCodexNetworkIntentClientState::BeginDeployment(const FFMCodexNetworkClientViewSnapshot& View,
 	const FFMCodexNetworkDeployOrdinaryPayload& Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
-	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::DeployOrdinary, Choice, {}, OutEnvelope);
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::DeployOrdinary, Choice, {}, {}, OutEnvelope);
 }
 
 bool FFMCodexNetworkIntentClientState::BeginGoalkeeper(const FFMCodexNetworkClientViewSnapshot& View,
 	const FFMCodexNetworkDeployGoalkeeperPayload& Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
-	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper, {}, Choice, OutEnvelope);
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper, {}, Choice, {}, OutEnvelope);
 }
 bool FFMCodexNetworkIntentClientState::BeginFinishDeployment(const FFMCodexNetworkClientViewSnapshot& View,
 	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
-	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::FinishDeployment, {}, {}, OutEnvelope);
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::FinishDeployment, {}, {}, {}, OutEnvelope);
+}
+bool FFMCodexNetworkIntentClientState::BeginCarrier(const FFMCodexNetworkClientViewSnapshot& View,
+	const FFMCodexNetworkSubmitCarrierPayload& Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::SubmitCarrier, {}, {}, Choice, OutEnvelope);
 }
 bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
 	EFMCodexNetworkPlayerIntentKind Kind, const FFMCodexNetworkDeployOrdinaryPayload& Choice,
 	const FFMCodexNetworkDeployGoalkeeperPayload& GoalkeeperChoice,
+	const FFMCodexNetworkSubmitCarrierPayload& CarrierChoice,
 	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
 	ObserveView(View);
@@ -111,12 +119,17 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	case EFMCodexNetworkPlayerIntentKind::FinishDeployment:
 		bActionable = View.bCanFinishDeployment;
 		break;
+	case EFMCodexNetworkPlayerIntentKind::SubmitCarrier:
+		bActionable = View.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
+			&& !View.bCarrierOptionsUnavailable && !View.CarrierOptions.IsEmpty();
+		break;
 	default: break;
 	}
 	FFMCodexNetworkPlayerIntentEnvelope Candidate;
 	Candidate.IntentKind = Kind;
 	Candidate.Deployment = Choice;
 	Candidate.Goalkeeper = GoalkeeperChoice;
+	Candidate.Carrier = CarrierChoice;
 	if (IsPending() || !Match.IsValid() || NextRequestId == MAX_int64
 		|| View.ViewRevision < SeenViewRevision || !View.bMatchInitialized
 		|| View.BootstrapState != EFMCodexNetworkBootstrapState::MatchReady

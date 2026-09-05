@@ -283,6 +283,19 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 	}
 	FMatchPlayEntryDeploymentPlayerIntentPort Port(*AuthoritativeSession, *ServerCoordinator);
 	auto Result = Port.SubmitPlayerIntent(Intent);
+#if WITH_DEV_AUTOMATION_TESTS
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitCarrier)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		UE_LOG(LogFMCodexNetworkPlay, Log,
+			TEXT("DEV Carrier authority: Success=%d Phase=%s SelectionStage=%s Carrier=%s Marker=%s Attacker=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d"),
+			Result.bSuccess, *StaticEnum<EMatchPlayCurrentAttackPhase>()->GetNameStringByValue(static_cast<int64>(State.CurrentAttack.Phase)),
+			*StaticEnum<EMatchPlayCurrentAttackSelectionStage>()->GetNameStringByValue(static_cast<int64>(State.CurrentAttack.SelectionStage)),
+			*State.CurrentAttack.ActionPreparation.CarrierCardId.ToString(), *State.CurrentAttack.ActionPreparation.MarkerCardId.ToString(),
+			static_cast<int32>(State.RuntimeState.CurrentAttackingPlayer), GetCoordinatorInvocationCountForTests(),
+			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
+	}
+#endif
 	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)
 	{

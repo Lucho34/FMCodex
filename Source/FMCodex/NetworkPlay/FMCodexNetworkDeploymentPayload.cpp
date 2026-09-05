@@ -44,6 +44,15 @@ namespace FMCodexNetworkDeploymentPayload
 		return true;
 	}
 }
+bool FFMCodexNetworkSubmitCarrierPayload::IsValidShape() const
+{
+	return FMCodexNetworkDeploymentPayload::BoundedName(CarrierCardId);
+}
+bool FFMCodexNetworkSubmitCarrierPayload::NetSerialize(FArchive& Ar, UPackageMap*, bool& bOutSuccess)
+{
+	bOutSuccess = FMCodexNetworkDeploymentPayload::SerializeName(Ar, CarrierCardId);
+	return true;
+}
 bool FFMCodexNetworkDeployGoalkeeperPayload::IsValidShape() const
 {
 	return FMCodexNetworkDeploymentPayload::BoundedName(SlotId);
