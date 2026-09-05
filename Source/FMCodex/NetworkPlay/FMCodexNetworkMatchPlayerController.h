@@ -54,7 +54,12 @@ public:
 	void DevSubmitMarker(FName MarkerCardId);
 	UFUNCTION(Exec)
 	void DevProbeInvalidMarker();
+	UFUNCTION(Exec)
+	void DevSubmitRunner(FName RunnerCardId);
+	UFUNCTION(Exec)
+	void DevProbeInvalidRunner();
 	bool CanSubmitMarker() const;
+	bool CanSubmitRunner() const;
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -82,6 +87,7 @@ private:
 	FFMCodexNetworkIntentClientState IntentClientState;
 
 	void SubmitMarkerChoice(const FFMCodexNetworkSubmitMarkerPayload& Choice);
+	void SubmitRunnerChoice(const FFMCodexNetworkSubmitRunnerPayload& Choice);
 	void SubmitCarrierChoice(const FFMCodexNetworkSubmitCarrierPayload& Choice);
 	void SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice);
 	void SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind Kind);

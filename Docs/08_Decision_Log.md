@@ -1184,3 +1184,11 @@
 - Marker ownership and candidate legality stay in Session/CoreRules: defending side, unique deployed non-GK, frozen Carrier context and same physical area. The shared HostPort dispatches both Local and Network Marker and coordinates once after success.
 - Carrier/Marker share only bounded safe-option copying and existing transport infrastructure. Every legitimate acting-viewer option is preserved; the independently justified Marker deck bound is 19, with all-or-none diagnostic failure. Selected Marker follows existing safe disclosure.
 - The canonical participant-first writer enters AwaitingRunner with Carrier/Marker frozen and Skill/ActionType empty. With legal Runner availability, this is the next stable wait and SubmitRunner remains unnetworked. Existing no-legal continuations stay server-owned; no DeclineMarker, Runner, Helper, Skill or roll transport is added.
+
+## 2026-09-05 — SubmitRunner only over shared player-intent transport
+
+- Add only SubmitRunner. Bounded RunnerCardId is the sole player choice; registry Side and validated sequence reconstruct the existing request. Seven intents share generated RPC, <=1024 RequestId window, pending, ACK and publication.
+- Local and Network share typed HostPort, Session.SubmitRunner and one Coordinator pass after success. Eligibility, participant order, physical/position restrictions and lifecycle remain unchanged; no generic participant gameplay command.
+- Copy complete safe Runner options in order. Independent deck bound 18 excludes GK and Carrier; current ten-slot board permits eight. Invalid representations fail the whole projection. Selected Runner follows existing public ordinary disclosure; no Helper/Skill options, raw State or RNG.
+- With a legal Helper, accepted Runner stops at Resolution/AwaitingHelper expecting the defender, with Carrier/Marker/Runner frozen and Skill/ActionType/resolution unselected. SubmitHelper is the next narrow transport recommendation for this route. DeclineRunner and DeclineHelper remain separate unnetworked choices.
+- Preserve server-only no-Runner/no-Helper absence transitions toward Skill. No legal Skill may trigger existing automatic completion and new Full D12 wait. Transport must preserve those outcomes and never hide candidates to force a test route.

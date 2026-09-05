@@ -625,18 +625,18 @@ Owner snapshot 不发送 MatchPlayState、full InteractionView、手牌/牌堆�
 
 ## Bounded deployment wire and safe snapshot
 
-The correlation envelope has four closed typed members; the tag determines the only allowed nonempty member:
+The correlation envelope has five closed typed members; the tag determines the only allowed nonempty member:
 
 | Field/type | Contract |
 |---|---|
-| IntentKind | None (invalid), RequestInitialActionPointRoll, DeployOrdinary, DeployGoalkeeper, FinishDeployment, SubmitCarrier, SubmitMarker; no internal actions |
+| IntentKind | None (invalid), RequestInitialActionPointRoll, DeployOrdinary, DeployGoalkeeper, FinishDeployment, SubmitCarrier, SubmitMarker, SubmitRunner; no internal actions |
 | Deployment: FFMCodexNetworkDeployOrdinaryPayload | CardId: FName + SlotId: FName; stable canonical identities |
 | Goalkeeper: FFMCodexNetworkDeployGoalkeeperPayload | SlotId: FName only; Session derives the unique goalkeeper from the server-resolved Side |
-| Full D12 / FinishDeployment payload | All four typed members must be empty; any deployment or participant choice is InvalidPayload |
-| DeployOrdinary payload | CardId and SlotId nonempty, each at most 128 UTF-8 bytes; Goalkeeper, Carrier and Marker members empty; final legality belongs to Session |
-| DeployGoalkeeper payload | SlotId nonempty and at most 128 UTF-8 bytes; Deployment, Carrier and Marker members empty; final legality belongs to Session |
+| Full D12 / FinishDeployment payload | All five typed members must be empty; any deployment or participant choice is InvalidPayload |
+| DeployOrdinary payload | CardId and SlotId nonempty, each at most 128 UTF-8 bytes; Goalkeeper, Carrier, Marker and Runner members empty; final legality belongs to Session |
+| DeployGoalkeeper payload | SlotId nonempty and at most 128 UTF-8 bytes; Deployment, Carrier, Marker and Runner members empty; final legality belongs to Session |
 
-All four choice structs use the same bounded name codec. Goalkeeper, Carrier and Marker each contain one encoded name (maximum 129 bytes); ordinary Deployment has a custom NetSerialize: each name is a uint8 byte length followed by at most 128 UTF-8 bytes (maximum payload 258 bytes). It checks the length before allocation/name construction, rejects truncated data, embedded NUL and non-roundtripping UTF-8. Malformed wire fails network deserialization before the RPC handler; decoded but invalid kind/shape receives the typed rejection. There is no arbitrary string/blob/container, UObject reference, Side claim, rule data or random input.
+All five choice structs use the same bounded name codec. Goalkeeper, Carrier, Marker and Runner each contain one encoded name (maximum 129 bytes); ordinary Deployment has a custom NetSerialize: each name is a uint8 byte length followed by at most 128 UTF-8 bytes (maximum payload 258 bytes). It checks the length before allocation/name construction, rejects truncated data, embedded NUL and non-roundtripping UTF-8. Malformed wire fails network deserialization before the RPC handler; decoded but invalid kind/shape receives the typed rejection. There is no arbitrary string/blob/container, UObject reference, Side claim, rule data or random input.
 
 The four correlation/kind fields remain unchanged; ACK stays MatchInstanceId + RequestId + Code + ViewRevision, with no gameplay payload. ExpectedAttackSequence still denotes current/next authoritative attack, independent of RequestId.
 
@@ -651,7 +651,7 @@ Owner snapshot additions:
 
 The public summary comes from safe DeploymentPlacements and roster/catalog presentation, not an echo of the command. No full hand, cross-product, State, Corner nominations, Formula, provider or private RNG state is transmitted. The protocol is a coordinated-build schema; no compatibility with clients using the old payload-free build is claimed.
 
-EntryWait includes CarrierSelection and MarkerSelection with their complete bounded candidate projections below. RunnerSelection and SkillSelection are high-level status only; neither exposes choices or enables submission. At deployment closure the authoritative expected side remains visible, all deployment actions clear, and the public finish/GK summary remains available.
+EntryWait includes CarrierSelection, MarkerSelection and RunnerSelection with complete bounded projections below. HelperSelection and SkillSelection remain high-level status only, without choices or submission. At deployment closure the authoritative expected side remains visible, all deployment actions clear, and the public finish/GK summary remains available.
 
 The four shared InteractionView finish booleans are read-only projections. BuildForViewer clears bCanFinishDeployment for nonacting/invalid viewers and clears all four with an undisclosed ordinary route. GK availability continues to come from existing safe DeploymentGroups; no Widget derives legality.
 
@@ -660,7 +660,7 @@ The four shared InteractionView finish booleans are read-only projections. Build
 | Field/type | Contract |
 |---|---|
 | Carrier: FFMCodexNetworkSubmitCarrierPayload | CarrierCardId: FName only; nonempty and at most 128 UTF-8 bytes |
-| SubmitCarrier shape | Carrier valid; Deployment, Goalkeeper and Marker empty |
+| SubmitCarrier shape | Carrier valid; Deployment, Goalkeeper, Marker and Runner empty |
 | FFMCodexNetworkCarrierOption | Choice (CarrierCardId-only payload) + CardLabel (FText) |
 | CarrierOptions | Complete legal acting-viewer list, canonical order, maximum 19; no arbitrary three-option sampling |
 | bCarrierOptionsUnavailable | Diagnostic for a candidate projection that cannot be represented completely; its list is empty |
@@ -676,11 +676,25 @@ The request reuses ExpectedAttackSequence and server-derived RequestingSide to b
 | Field/type | Contract |
 |---|---|
 | Marker: FFMCodexNetworkSubmitMarkerPayload | MarkerCardId: FName only; nonempty, at most 128 UTF-8 bytes; existing codec, at most 129 encoded bytes |
-| SubmitMarker shape | Marker valid; Deployment, Goalkeeper and Carrier empty |
+| SubmitMarker shape | Marker valid; Deployment, Goalkeeper, Carrier and Runner empty |
 | FFMCodexNetworkMarkerOption | Choice (MarkerCardId-only payload) + CardLabel (FText) |
 | MarkerOptions | Complete acting-defender safe set, canonical order, maximum 19 |
 | bMarkerOptionsUnavailable | Whole-list representational failure; no partial options |
 | SelectedMarker | Existing safe selected identity and defender display name; empty when undisclosed/unselected |
-| EntryWait.RunnerSelection / SkillSelection | High-level status only; no future participant/tactical payload or candidate set |
+| EntryWait.RunnerSelection | Attacking Runner choice using the bounded projection below |
 
 The bound follows unique own deployed non-GK eligibility and the canonical 20-card/one-GK deck. Physical-half eligibility further limits candidates; the current five-slot half has room for at most four Markers alongside the frozen Carrier. Identity remains separate from localized text. Match/sequence/correlation and ACK fields are unchanged. Host and Client require coordinated schema builds.
+
+## Bounded Runner identity and projection
+
+| Field/type | Contract |
+|---|---|
+| Runner: FFMCodexNetworkSubmitRunnerPayload | RunnerCardId: FName only; nonempty, <=128 UTF-8 bytes; shared codec, <=129 encoded bytes |
+| SubmitRunner shape | Runner valid; Deployment, Goalkeeper, Carrier and Marker empty |
+| FFMCodexNetworkRunnerOption | Choice (RunnerCardId-only payload) + CardLabel (FText) |
+| RunnerOptions | Entire acting-attacker safe set in canonical order; bound 18, current ten-slot board maximum eight |
+| bRunnerOptionsUnavailable | Whole-list failure for overflow, duplicate/invalid identity or wrong source Side; no partial choices |
+| SelectedRunner | Safe SelectedRunnerCardId and attacker display name; empty if unselected or undisclosed |
+| EntryWait.HelperSelection / SkillSelection | Next wait only; no future choice DTO or options |
+
+Seven tags share the original four correlation/kind fields, constant-memory ledger and ACK schema. Full D12/Finish require all five choice members empty. No Side, names, attributes, slot, candidate array, authority flags, State or RNG enter Runner submission. ExpectedAttackSequence remains the observed common freshness token. Host and Client require the same schema build.

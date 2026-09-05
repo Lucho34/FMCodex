@@ -41,7 +41,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection
 };
 
 /** Team/content identity is deliberately separate from the connected player. */
@@ -122,6 +122,17 @@ struct FMCODEX_API FFMCodexNetworkMarkerOption
 	GENERATED_BODY()
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkSubmitMarkerPayload Choice;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText CardLabel;
+};
+
+/** One canonical Runner identity and its existing player-facing name. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkRunnerOption
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkSubmitRunnerPayload Choice;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FText CardLabel;
 };
@@ -236,6 +247,15 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	bool bMarkerOptionsUnavailable = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkMarkerOption SelectedMarker;
+	// Runner excludes the unique GK and frozen Carrier: <=18 per valid deck.
+	// The ten shared prototype slots further bound legal Runner choices to eight.
+	static constexpr int32 MaxRunnerOptions = 18;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	TArray<FFMCodexNetworkRunnerOption> RunnerOptions;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bRunnerOptionsUnavailable = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkRunnerOption SelectedRunner;
 };
 
 struct FFMCodexLocalMatchInteractionView;

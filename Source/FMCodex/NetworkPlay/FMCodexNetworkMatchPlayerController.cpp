@@ -302,6 +302,17 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 				.OnClicked_Lambda([this, Id]() { DevSubmitMarker(Id); return FReply::Handled(); })
 			];
 		}
+		for (const auto& Option : OwnerView.RunnerOptions)
+		{
+			const FName Id = Option.Choice.RunnerCardId;
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton)
+				.Text(FText::Format(LOCTEXT("RunnerChoice", "跑位：{0}"), Option.CardLabel))
+				.IsEnabled_Lambda([this]() { return CanSubmitRunner(); })
+				.OnClicked_Lambda([this, Id]() { DevSubmitRunner(Id); return FReply::Handled(); })
+			];
+		}
 	}
 #endif
 }
@@ -345,7 +356,9 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
 			? TEXT("部署已完成，等待选择持球球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
 			? TEXT("等待选择盯人球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
-			? TEXT("等待选择跑位球员（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+				? TEXT("等待选择跑位球员") : TEXT("等待对手选择跑位球员")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::HelperSelection
+			? TEXT("等待选择协防球员（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
 			? TEXT("等待选择战术（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
 		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s"),
@@ -370,6 +383,7 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 		if (OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::HelperSelection
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection)
 		{
 			EntryText += FString::Printf(TEXT("\n下一操作方：玩家 %s"), *SideLabel(OwnerView.ExpectedActingSide));
@@ -390,6 +404,14 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 	if (OwnerView.bMarkerOptionsUnavailable)
 	{
 		EntryText += LOCTEXT("MarkerProjectionUnavailable", "\n盯人候选视图不可用，请检查服务器配置").ToString();
+	}
+	if (!OwnerView.SelectedRunner.Choice.IsEmpty())
+	{
+		EntryText += FText::Format(LOCTEXT("SelectedRunner", "\n已选跑位球员：{0}"), OwnerView.SelectedRunner.CardLabel).ToString();
+	}
+	if (OwnerView.bRunnerOptionsUnavailable)
+	{
+		EntryText += LOCTEXT("RunnerProjectionUnavailable", "\n跑位候选视图不可用，请检查服务器配置").ToString();
 	}
 	const auto& Ack = IntentClientState.GetLastAck();
 	FString AckText = TEXT("暂无请求回执");
@@ -574,6 +596,46 @@ void AFMCodexNetworkMatchPlayerController::DevProbeInvalidMarker()
 	FFMCodexNetworkSubmitMarkerPayload Choice;
 	Choice.MarkerCardId = TEXT("DEV.NonexistentMarker");
 	SubmitMarkerChoice(Choice);
+#endif
+}
+bool AFMCodexNetworkMatchPlayerController::CanSubmitRunner() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+		&& !OwnerView.bRunnerOptionsUnavailable && !OwnerView.RunnerOptions.IsEmpty();
+}
+void AFMCodexNetworkMatchPlayerController::DevSubmitRunner(FName RunnerCardId)
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanSubmitRunner()) { return; }
+	const auto* Option = OwnerView.RunnerOptions.FindByPredicate(
+		[&](const auto& C) { return C.Choice.RunnerCardId == RunnerCardId; });
+	if (Option) { SubmitRunnerChoice(Option->Choice); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitRunnerChoice(const FFMCodexNetworkSubmitRunnerPayload& Choice)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginRunner(OwnerView, Choice, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Runner owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Runner=%s"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, *Choice.RunnerCardId.ToString());
+	ServerSubmitPlayerIntent(Envelope); // Generated owning RPC for both Host and Remote.
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeInvalidRunner()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanSubmitRunner()) { return; }
+	FFMCodexNetworkSubmitRunnerPayload Choice;
+	Choice.RunnerCardId = TEXT("DEV.NonexistentRunner");
+	SubmitRunnerChoice(Choice);
 #endif
 }
 bool AFMCodexNetworkMatchPlayerController::CanDeployGoalkeeper() const

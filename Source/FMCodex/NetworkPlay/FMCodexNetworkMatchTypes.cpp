@@ -108,7 +108,7 @@ namespace FMCodexNetworkMatchTypes
 			if (Card.CardId == Last.CardId) { Placement.CardLabel = CardLabel(Card); break; }
 		}
 	}
-	// Transport representation only: both participant consumers already receive canonical legality.
+	// Transport representation only: participant consumers already receive canonical legality.
 	template<typename TOption, typename TAssignIdentity>
 	void CopyCompleteSelectionOptions(const FFMCodexLocalMatchInteractionView& View,
 		EInitialTurnOrderPlayer Viewer, int32 Bound, TArray<TOption>& Options,
@@ -149,6 +149,27 @@ namespace FMCodexNetworkMatchTypes
 		CopyCompleteSelectionOptions(View, Result.ViewerSide,
 			FFMCodexNetworkClientViewSnapshot::MaxMarkerOptions, Result.MarkerOptions,
 			Result.bMarkerOptionsUnavailable, [](auto& Payload, FName Id) { Payload.MarkerCardId = Id; });
+	}
+	void ProjectRunner(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		if (Result.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary) { return; }
+		FFMCodexNetworkSubmitRunnerPayload Choice;
+		Choice.RunnerCardId = View.SelectedRunnerCardId;
+		if (Choice.IsValidShape())
+		{
+			Result.SelectedRunner.Choice = Choice;
+			const auto& Roster = View.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA
+				? View.PlayerACardRoster : View.PlayerBCardRoster;
+			const auto* Card = Roster.FindByPredicate([&](const auto& C) { return C.CardId == Choice.RunnerCardId; });
+			Result.SelectedRunner.CardLabel = Card ? CardLabel(*Card) : LOCTEXT("PlayerFallback", "球员");
+		}
+		if (View.InteractionCategory != EFMCodexLocalMatchInteractionCategory::SelectRunner
+			|| !View.bHumanInteraction || Result.ViewerSide == EInitialTurnOrderPlayer::None
+			|| View.ExpectedActingPlayer != Result.ViewerSide) { return; }
+		CopyCompleteSelectionOptions(View, Result.ViewerSide,
+			FFMCodexNetworkClientViewSnapshot::MaxRunnerOptions, Result.RunnerOptions,
+			Result.bRunnerOptionsUnavailable, [](auto& Payload, FName Id) { Payload.RunnerCardId = Id; });
 	}
 	void ProjectCarrier(const FFMCodexLocalMatchInteractionView& View,
 		FFMCodexNetworkClientViewSnapshot& Result)
@@ -292,9 +313,14 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	{
 		Result.EntryWait = EFMCodexNetworkEntryWait::SkillSelection;
 	}
+	if (SafeViewerView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectHelper)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::HelperSelection;
+	}
 	FMCodexNetworkMatchTypes::ProjectDeployment(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectCarrier(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectMarker(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectRunner(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,

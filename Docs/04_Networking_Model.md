@@ -238,7 +238,7 @@ Full D12 foundation 后的独立架构审计与 RNG privacy 修复是当前部�
 
 ## Typed deployment and bounded request admission
 
-The current network write allowlist is Full D12 + DeployOrdinary + DeployGoalkeeper + FinishDeployment + SubmitCarrier + SubmitMarker. Other participant selection, tactical, advance and recovery actions remain unavailable on this transport.
+The current network write allowlist is Full D12 + DeployOrdinary + DeployGoalkeeper + FinishDeployment + SubmitCarrier + SubmitMarker + SubmitRunner. Other participant selection, tactical, advance and recovery actions remain unavailable on this transport.
 
 - The deployment payload contains only canonical CardId and SlotId. RequestingSide comes exclusively from the admitted Controller registry; another side's CardId grants no ownership. CurrentLegalDeploymentSide can be the defender while CurrentAttackingSide remains unchanged, so the Full D12 attacker gate is intent-specific.
 - RequestId shares one namespace across intent kinds per connection. A new ID must be positive, greater than the accepted high-water mark and at most **1024** above it (first high-water is zero). A larger jump returns InvalidPayload without changing the ledger; a subsequent normal ID remains valid. Valid-shaped requests admitted within the window consume their ID even if later rejected for stale sequence/side/legality. Wrong-match, malformed and unknown-kind requests do not consume it. Low/duplicate IDs return DuplicateOrAlreadyResolved. Storage remains one match/ID pair, not a growing receipt cache.
@@ -256,7 +256,18 @@ After an Editor Development build, close the Editor and old test windows. From t
 
 The existing .cmd wrapper also forwards `-DeploymentSlice`. This optional parameter adds **host-only** `-FMCodexNetworkTestBFirst -FMCodexNetworkDeploymentSlice`. In automation/non-Shipping server builds the canonical opening fixture selects B first and an authority entry-provider injection supplies initial D12=4. Other random purposes retain secure providers. It cannot be selected by an RPC or a normal client input and is inert in Shipping.
 
-For a real Carrier → Marker wait using the existing B-first fixture, alternate these displayed actions: B Full D12 and ordinary; A ordinary; B ordinary; A goalkeeper; B ordinary; A finish; B three more ordinary placements and finish. B now has six legal Carrier choices. Select the last offered Carrier, whose ordinary placement crossed into the opposite physical half after the five home-half slots filled. Both clients disclose the selected Carrier and display `等待选择盯人球员`, with A as the expected actor. A selects the offered `盯人：加布里埃尔`. Both clients then disclose Carrier and Marker and display `等待选择跑位球员（尚未联网）`, with B as the expected actor; stop there. Each accepted action must clear pending and converge on the same public revision. A is the defender, so B must not expect a goalkeeper button. Choosing a Carrier with no legal opposing Marker instead takes the existing canonical ResolveNoLegalMarker continuation and may reach the next Full D12 wait; the transport must preserve that branch, never filter legitimate Carrier choices to force a Marker wait.
+For a deterministic Carrier → Marker → Runner → Helper wait, use normal displayed actions in this order:
+
+1. B Full D12; B ordinary deployment.
+2. A ordinary; B ordinary; A goalkeeper; B ordinary.
+3. A ordinary again; B ordinary; A finish deployment.
+4. B ordinary three more times, then B finish. There are ten placements: seven B ordinary, two A ordinary and one A goalkeeper.
+5. B selects Carrier 罗德里 from all seven offered candidates.
+6. A selects Marker 加布里埃尔.
+7. B selects Runner 迪亚斯 from the complete six-candidate list.
+8. Both views converge on the selected Carrier/Marker/Runner, accepted receipt and pending 0. The next wait is 等待选择协防球员（尚未联网）, expecting A. Stop; do not select Helper, Skill or decline.
+
+The offers and slots above come from canonical displayed deployment choices. Other legal Runner choices may produce no-Helper/no-Skill and the next Full D12 wait; all remain available. The opposite A-first automation path supports Host Runner parity without a HostPort shortcut.
 
 Default double-click launch has no fixture arguments and continues using production secure randomness for every draw. The deterministic path does not require Saved scripts, Engine map saves, World Settings edits or changes to the default LocalPlay mode.
 
@@ -266,20 +277,27 @@ Default double-click launch has no fixture arguments and continues using product
 - FinishDeployment carries no choice in either typed member. Existing canonical Finish legality determines whether it is allowed; neither a minimum deployed-card count nor mandatory GK activation is added. The safe action comes from that same pure check.
 - The owner receives at most one already-legal GK slot/name option. Both viewers receive public current GK activation/placement and each side's finished status. No full hand, State or new resolution/participant choices are disclosed.
 - These two intents retain the shared ACK/view pending state and the same per-connection RequestId window. Wrong-side/phase/used-GK/already-finished gameplay rejections come from Session as AuthorityRejected; common malformed/match/stale/duplicate admission retains its existing typed errors. Rejection does not coordinate, publish or consume RNG.
-- One successful shared HostPort dispatch performs one Coordinator pass, then publishes one stable A/B revision. Deployment closure does not imply the next player choice was submitted. CarrierSelection and MarkerSelection have the narrow typed transports described below; no subsequent participant command is included.
+- One successful shared HostPort dispatch performs one Coordinator pass, then publishes one stable A/B revision. Deployment closure does not imply the next player choice was submitted. CarrierSelection, MarkerSelection and RunnerSelection have the narrow transports below; later participant commands remain unavailable.
 
 ### SubmitCarrier and the next participant wait
 
-- SubmitCarrier adds one closed Carrier member containing bounded FName CarrierCardId only. Other members must be empty. Full D12/Finish require all four members empty; each other typed action excludes Carrier data. No Side, display name, slot, role, attribute or candidate-set claim enters the request.
-- All six intents share generated owning ServerSubmitPlayerIntent, positive match/sequence correlation, the per-connection 1024 forward window, one pending state and existing owner ACK. Session remains final owner of current-attacker, selection-stage, deployment and candidate legality. Fresh-ID rewrites reach canonical rejection; transport duplicates never dispatch.
+- SubmitCarrier adds one closed Carrier member containing bounded FName CarrierCardId only. Other members must be empty. Full D12/Finish require all five members empty; each other typed action excludes Carrier data. No Side, display name, slot, role, attribute or candidate-set claim enters the request.
+- All seven intents share generated owning ServerSubmitPlayerIntent, positive match/sequence correlation, the per-connection 1024 forward window, one pending state and existing owner ACK. Session remains final owner of current-attacker, selection-stage, deployment and candidate legality. Fresh-ID rewrites reach canonical rejection; transport duplicates never dispatch.
 - Only the acting viewer receives the entire safe CarrierOptions set (maximum 19), preserving authoritative order and names. The DEV panel offers one button per candidate with bounded scrolling. Invalid/oversized projections expose no partial action set and show a diagnostic; they do not modify gameplay.
 - A selected Carrier becomes visible only through the stable safe snapshot, never ACK contents. Accepted pending needs both matching ACK and its view revision in either order; rejection releases pending without a new publication.
-- Carrier with a legal Marker stops at AwaitingMarker / SubmitMarker. The public wait and expected defender are displayed, but no next-stage button/RPC is introduced. A choice with no legal Marker preserves the existing internal completion and next Full D12 wait; it must not be presented as an illegal Carrier.
+- Carrier with a legal Marker stops at AwaitingMarker / SubmitMarker. The public wait and expected defender are displayed; the narrow Marker transport below owns that next choice. A choice with no legal Marker preserves the existing internal completion and next Full D12 wait; it must not be presented as an illegal Carrier.
 
 ### SubmitMarker and the next player wait
 
-- SubmitMarker adds one mutually exclusive Marker member, with bounded FName MarkerCardId only. It shares the existing generated ServerSubmitPlayerIntent, ledger, <=1024 forward window, pending, owner ACK and stable publication path with the other five intents.
+- SubmitMarker adds one mutually exclusive Marker member, with bounded FName MarkerCardId only. It shares the existing generated ServerSubmitPlayerIntent, ledger, <=1024 forward window, pending, owner ACK and stable publication path with the other six intents.
 - The connection retains its registry Side regardless of the submitted identity. Session owns defender authority, frozen Carrier context, same-physical-area and non-GK eligibility; common transport never imposes an attacker/defender gate on all kinds.
 - The acting defender receives every safe Marker option (bound 19), preserving RelatedCardId and existing display names. Nonacting viewers get no Marker buttons. Selected Marker is shown only from the safe view, never predicted or adopted from ACK.
 - Accepted Marker coordinates once and publishes once; duplicate/fresh-ID rewrite/stale/malformed requests do not coordinate, publish gameplay changes or consume RNG. ACK-first and View-first both require their matching counterpart.
-- With an available Runner the canonical next wait is Resolution/AwaitingRunner, expecting the attacker, with Carrier and Marker frozen and tactic/resolution state still empty. SubmitRunner is not networked. No-legal Marker remains an automatic server-internal continuation, never a client command.
+- With an available Runner the canonical next wait is Resolution/AwaitingRunner, expecting the attacker, with Carrier and Marker frozen and tactic/resolution state still empty. SubmitRunner uses the narrow transport below. No-legal Marker remains an automatic server-internal continuation, never a client command.
+
+### SubmitRunner and the next player wait
+
+- SubmitRunner carries only bounded RunnerCardId in its closed member. Seven intents share generated owning RPC, registry Side, stale/match/shape/window admission and owner ACK. Session/CoreRules own Runner gameplay legality.
+- The attacker receives the entire safe ordered list: deck bound 18, current-board maximum eight. The scrollable DEV panel offers 跑位：<safe display name>; the opponent gets no Runner controls. Invalid projections fail as a whole.
+- Selected Runner comes only from stable View. Accepted pending needs matching ACK and sufficient ViewRevision in either order. Rejection releases pending without publication; duplicate, stale and fresh-ID frozen rewrites cannot mutate gameplay or consume RNG.
+- With a legal Helper, Runner stops at Resolution/AwaitingHelper expecting the defender. No Helper/Skill candidates or transport are added. Server-only absence continuations may instead reach Skill or automatically close a no-legal-Skill attack. DeclineRunner remains a separate unnetworked alternative.

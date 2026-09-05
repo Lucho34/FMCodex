@@ -53,6 +53,15 @@ bool FFMCodexNetworkSubmitMarkerPayload::NetSerialize(FArchive& Ar, UPackageMap*
 	bOutSuccess = FMCodexNetworkDeploymentPayload::SerializeName(Ar, MarkerCardId);
 	return true;
 }
+bool FFMCodexNetworkSubmitRunnerPayload::IsValidShape() const
+{
+	return FMCodexNetworkDeploymentPayload::BoundedName(RunnerCardId);
+}
+bool FFMCodexNetworkSubmitRunnerPayload::NetSerialize(FArchive& Ar, UPackageMap*, bool& bOutSuccess)
+{
+	bOutSuccess = FMCodexNetworkDeploymentPayload::SerializeName(Ar, RunnerCardId);
+	return true;
+}
 bool FFMCodexNetworkSubmitCarrierPayload::IsValidShape() const
 {
 	return FMCodexNetworkDeploymentPayload::BoundedName(CarrierCardId);

@@ -12,7 +12,8 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	DeployGoalkeeper,
 	FinishDeployment,
 	SubmitCarrier,
-	SubmitMarker
+	SubmitMarker,
+	SubmitRunner
 };
 
 UENUM()
@@ -44,6 +45,8 @@ struct FMCODEX_API FFMCodexNetworkPlayerIntentEnvelope
 	FFMCodexNetworkSubmitCarrierPayload Carrier;
 	UPROPERTY()
 	FFMCodexNetworkSubmitMarkerPayload Marker;
+	UPROPERTY()
+	FFMCodexNetworkSubmitRunnerPayload Runner;
 	EFMCodexNetworkIntentAckCode ValidatePayloadShape() const;
 };
 
@@ -98,6 +101,9 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 	bool BeginMarker(const FFMCodexNetworkClientViewSnapshot& View,
 		const FFMCodexNetworkSubmitMarkerPayload& Choice,
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginRunner(const FFMCodexNetworkClientViewSnapshot& View,
+		const FFMCodexNetworkSubmitRunnerPayload& Choice,
+		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }
 	int64 GetPendingRequestId() const { return PendingRequestId; }
@@ -108,6 +114,7 @@ private:
 		const FFMCodexNetworkDeployGoalkeeperPayload& GoalkeeperChoice,
 		const FFMCodexNetworkSubmitCarrierPayload& CarrierChoice,
 		const FFMCodexNetworkSubmitMarkerPayload& MarkerChoice,
+		const FFMCodexNetworkSubmitRunnerPayload& RunnerChoice,
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	void CompleteIfReady();
 	FGuid Match;

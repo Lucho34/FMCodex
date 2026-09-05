@@ -57,6 +57,22 @@ template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitMarkerPayload>
 {
 	enum { WithNetSerializer = true };
 };
+/** Runner choice uses the same bounded identity codec; legality stays in Session. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkSubmitRunnerPayload
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FName RunnerCardId = NAME_None;
+	bool IsEmpty() const { return RunnerCardId.IsNone(); }
+	bool IsValidShape() const;
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+};
+template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitRunnerPayload>
+	: TStructOpsTypeTraitsBase2<FFMCodexNetworkSubmitRunnerPayload>
+{
+	enum { WithNetSerializer = true };
+};
 template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitCarrierPayload>
 	: TStructOpsTypeTraitsBase2<FFMCodexNetworkSubmitCarrierPayload>
 {
