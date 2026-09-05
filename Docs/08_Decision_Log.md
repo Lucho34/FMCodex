@@ -1118,3 +1118,23 @@
 - 普通Controller刷新改走独立`IFMCodexMatchClientViewPort`，Host端执行`BuildForViewer`并只返回InteractionView。Controller不再读取raw State来投影或选择内部动作；遗留`ContinueResolution`只是无状态的Coordinator推进请求，不是player-internal command映射。
 - 旧文档/测试中generic Continue在typed roll pending时返回本地rejection的细节由本决定取代：它现在返回coordinator stable no-op，State与RNG不变；Production CTA继续只能发送对应typed PlayerIntent。
 - 本决定完成transport前的共享server runtime边界，不实现RPC、replication、connection→Side、ACK/revision、MatchInstanceId、双客户端bootstrap、reconnect或Listen Server启动；后续网络adapter必须复用该Host/Coordinator，不得创建第二套规则或Session。
+
+## 2026-09-04 — Listen Server Two-Client Bootstrap and Identity（Stage 7.2）
+
+- 新增同module的opt-in `NetworkPlay` adapter。server GameMode通过同一registry admission path给Listen host与remote前两名participant分配A/B；不接受client side claim。第三连接和断线后replacement均`MatchFull`，断线Side在该match不释放；spectator、reconnect、timeout/forfeit继续deferred。
+- server一次生成`FGuid MatchInstanceId`，在两Side均connected后以guard恰好初始化一个prototype runtime：A Arsenal、B Manchester City、3+3、server-owned opening config/rules/provider、一个Session和一个Coordinator。BeginPlay/PostLogin ordering通过idempotent ensure收敛，client不能调用InitializeMatch。
+- GameState复制公共match/bootstrap与双方player/team identity；PlayerState保存assigned side与分离的player/team presentation identity。标准PlayerState name不可用时server按assigned side回退`玩家 A/B`，未来Steam display name可进入同一seam而不进入CoreRules。
+- 私有initial read必须走`BuildForViewer`默认fail-closed policy，再缩成不含CardId/Corner秘密/raw State的network snapshot，经PlayerController owner-only复制。每侧只收到自身viewer identity；OnRep顺序独立刷新DEV状态UI。
+- Stage 7.2不新增gameplay RPC、client provider、ACK/retry、command MatchInstanceId、disclosure release或full InteractionView replication。LocalPlay默认GameMode、DEV deterministic rolls与short match均保持原路径；真实两窗口连接与UI仍需USER PIE确认后才能称为network runtime PASS。
+
+## 2026-09-05 — Network DEV Launch and Replicated Identity Convergence
+
+- Editor Listen Server PIE 的 NetworkPlay 入口使用临时 World Settings Network GameMode Override；Additional Server Game Options 不作为首个 Editor Host 的 GameMode 选择机制。备用双进程入口使用显式地图 URL `?listen?game=/Script/FMCodex.FMCodexNetworkMatchGameMode`。Engine 模板地图不持久化修改，LocalPlay 继续为项目默认模式。
+- Network DEV 身份刷新同时覆盖 PlayerState identity 通知与 Controller PlayerState 关联通知；后者先执行 Super，再从当前 PlayerState / GameState / owner view 重建已有文本。BeginPlay与各既有OnRep共用幂等入口，顺序不影响最终显示，不引入轮询、定时器、第二份身份格式化或权威缓存。
+- 正确 Network GameMode 自然 bootstrap，不使用 LocalPlay 的“开始本地对战”。纯C++回调顺序测试与真实双窗口自然启动证据分开验证；不得以手动回调刷新后的画面冒充自然收敛。该决定不扩展 gameplay RPC、ACK 或其他 transport 协议。
+
+## 2026-09-05 — Project-Local DEV NetworkPlay Launcher
+
+- 日常两进程 NetworkPlay 验证改为关闭 Editor 后双击 `Scripts/NetworkPlay/LaunchNetworkPlayDev.cmd`。该入口以显式 Network Host URL 启动可见 Listen Server，确认本次日志的 Network GameMode、UDP监听与Host A admission后才创建同端口Client；超时有界，端口冲突失败且不杀已有进程。
+- 此决定取代前述临时 World Settings Override 作为日常入口的建议：Engine模板地图变脏时，多进程Editor启动可能要求保存地图。新入口不写Engine内容、地图或项目默认配置；普通LocalPlay无需还原设置。显式手工URL保留为排查备用方法。
+- 启动器属于独立DEV工具，运行日志与进程记录只写Saved，执行策略覆盖只限单个PowerShell进程，游戏不依赖该工具。它不改变身份、bootstrap、snapshot、7.2.1关联刷新、规则、RPC或ACK合同。

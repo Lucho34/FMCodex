@@ -1,4 +1,4 @@
-﻿# 03 Tech Architecture
+# 03 Tech Architecture
 
 本文档描述 FMCodex 当前技术架构、已落地的生产边界与明确延期的技术债。
 
@@ -269,3 +269,12 @@
 - Local GameMode 当前拥有 providers、Session 与 Coordinator，并同时实现本地同步 command/read adapter。Controller 仍负责本地输入组装、presentation timing、诊断与新比赛/DEV 本地控制，但不再选择 `ServerInternalAction`。遗留 `ContinueResolution()` 仅请求 Host 把服务器 runtime 推进到稳定状态，不读取 State，也不映射内部 command；正常玩家主操作由投影出的 typed intent 路由。
 - 本节取代旧战术章节中“generic Continue 在 typed player-roll pending 上本地拒绝”的实现细节：Stage 7.1 后它是 coordinator stable-state no-op，不会代替玩家 roll、不消费 RNG也不改变 State；所有 production CTA 仍必须派发对应 typed PlayerIntent。
 - 未来 Listen Server 的 host player 与 remote RPC adapter 必须调用同一个 PlayerIntent Host boundary 和 Coordinator；不得让 host Controller 直达 Session。Stage 7.1 不定义 RPC envelope、connection identity、ACK/revision、replication、reconnect 或 server launch flow。
+
+## Two-Client Bootstrap 与身份边界（Stage 7.2）
+
+- `NetworkPlay` 是同一 `FMCodex` module 内的 opt-in adapter，不替换 LocalPlay。`AFMCodexNetworkMatchGameMode` 只存在于服务器，并拥有 participant registry、prototype bootstrap config、一次性 `FFMCodexNetworkMatchRuntime`、provider、唯一 AuthoritativeSession 与唯一 ServerCoordinator；该 runtime 不要求服务器存在本地人类玩家，因此保持 dedicated-compatible。
+- Listen host 与 remote participant 都经同一个 `PostLogin -> FFMCodexNetworkParticipantRegistry::Admit` 路径。前两个 accepted participant 依次占用 A/B；客户端没有 requested-side handshake。第三连接被 `MatchFull` 拒绝，断线只移除 active Controller mapping并永久保留该场 Side reservation，本阶段不实现 spectator、补位、重连、timeout 或 forfeit。
+- GameMode 在首次需要时生成一次 `FGuid MatchInstanceId`，并在两侧均连接后以幂等 guard 初始化服务器拥有的 Arsenal vs Manchester City、每侧三次进攻 prototype match。登录与 BeginPlay 均通过 idempotent ensure处理，避免依赖具体 actor/PlayerState replication顺序。
+- `AFMCodexNetworkMatchGameState` 只复制公共 match id、bootstrap state与双方公开 player/team identity；`AFMCodexNetworkMatchPlayerState` 复制 assigned side、player display name与明确 team identity。Player identity来自标准 PlayerState name，无有效PIE名称时由服务器按已分配Side回退为`玩家 A/B`；Team identity不由roster在客户端反推。
+- 每次 publication 都先在服务器按 registry Side 调用 fail-closed `BuildForViewer`，再缩减为 `FFMCodexNetworkClientViewSnapshot`，并通过对应 `AFMCodexNetworkMatchPlayerController` 的 `COND_OwnerOnly` property发送。该 DTO只有match/revision/viewer、ready/end、score、AttackSequence、当前进攻/行动side、3+3上限与高层等待状态，没有CardId、Corner nomination、GoalHistory、raw State、Session、provider或mutation逻辑。
+- GameState、PlayerState identity、owner snapshot与Controller `OnRep_PlayerState`均刷新同一DEV状态UI；关联回调先调用Super，再读当前复制事实，补齐先于关联到达的身份通知。BeginPlay补齐先于面板创建的数据；只替换已有文本，不用Tick或延时定时器。属性到达次序不构成缓存合同。Stage 7.2没有任何 gameplay Server RPC，后续accepted intent可复用`PublishOwnerViews`结构，但必须在Stage 7.3补connection-side validation、MatchInstanceId/RequestId与ACK/revision协议。

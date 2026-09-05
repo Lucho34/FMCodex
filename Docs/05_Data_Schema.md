@@ -594,3 +594,11 @@ Feet typed command DTO 为 `FMatchPlayAuthoritativeResolveThroughBallFeetAttackR
 - `FMatchPlayServerCoordinatorResult` 只报告本次 server-internal progression 的 stop reason、是否推进、内部 step classification 与 bounded diagnostics。它不是客户端 gameplay command，也不授予调用方选择下一内部动作的能力。
 - `FFMCodexMatchClientViewRequest` 只包含 `ViewerSide + server-owned Disclosure`；`FFMCodexMatchClientViewResult` 只返回 viewer-safe `FFMCodexLocalMatchInteractionView` 或错误，不返回 raw `FMatchPlayState`、Session、rules 或 providers。
 - 这些边界 DTO 只使用 Side、AttackSequence、CardId、enum/value 类型；不保存 Controller、GameMode、Widget 或 Actor identity。
+
+## Network Bootstrap DTO（Stage 7.2）
+
+- `FFMCodexNetworkTeamIdentity`：服务器bootstrap中明确的`TeamId + TeamDisplayName`，与控制该side的player identity分离；不是CoreRules player key，也不由client roster猜测。
+- `FFMCodexNetworkParticipantPublicIdentity`：`bAssigned/bConnected + GameplaySide + PlayerDisplayName + TeamIdentity`，由GameState作为双方可见的bootstrap摘要复制；不包含card/deck/account credential。
+- `EFMCodexNetworkBootstrapState`：仅表达`WaitingForPlayers / MatchReady / ParticipantDisconnected / MatchEnded / BootstrapFailed`。它不是完整match lifecycle，不驱动CoreRules transition。
+- `FFMCodexNetworkClientViewSnapshot`：从已执行`BuildForViewer`的InteractionView二次缩减的owner-only replaceable read projection。字段限定为`MatchInstanceId`、`ViewRevision`、`ViewerSide`、bootstrap/interaction高层状态、initialized/ended、`AttackSequence`、当前进攻/expected side、公开比分与双方最大进攻机会。schema不得增加raw State、Session、rule/provider、CardId数组、Corner nomination或mutation方法。
+- `ViewRevision`是服务器publication序号，只帮助确认较新的完整snapshot覆盖较旧snapshot；Stage 7.2未定义request id、ACK或client retry语义。`MatchInstanceId`由server GameMode一次生成，同时存在于公共GameState与owner snapshot，未来command envelope接入延至Stage 7.3。

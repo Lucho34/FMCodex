@@ -1,4 +1,4 @@
-﻿# 04 Networking Model
+# 04 Networking Model
 
 本文档记录联网模型草案。当前不接入任何线上服务。
 
@@ -133,6 +133,76 @@ Coordinator 是共享 server runtime，而不是 LocalPlay 规则副本。它只
 读路径独立为：`Authoritative State → Host-owned BuildForViewer → IFMCodexMatchClientViewPort → InteractionView → Controller/UMG`。客户端不接收 full State 作为 projector input；ViewerSide 与 disclosure 是服务器读策略。LocalPlay 目前用同一进程同步 adapter 和 full-disclosure presentation policy，未来 RPC/replication adapter 必须复用同一 Host/Coordinator，而不是创建 NetworkSession 或绕过 host player validation。
 
 仍未定义且不得从当前同步 API 猜测的 transport 合同包括：connection→Side authentication、RequestId/revision/ACK、MatchInstanceId、两客户端 bootstrap、replication/disclosure release、timeout、reconnect 与 Listen/Dedicated launch flow。
+
+## Listen Server Bootstrap（Stage 7.2）
+
+当前首个实际UE网络模式是显式选择的Listen Server：服务器GameMode按连接accept顺序把前两名participant记录为Side A/B，host与remote不分叉。Side来自服务器registry与PlayerState，client既不提交Side也不能把request中的`RequestingSide`当认证。两席一旦被占用即在该场永久reserved；第三连接及断线后的replacement均fail closed。
+
+服务器为每个NetworkPlay GameMode实例生成一个不可变`FGuid MatchInstanceId`，创建并持有prototype配置、provider、rules、AuthoritativeSession与Coordinator。只有A/B同时connected时才执行一次Initialize+stable-state coordination。当前server-owned配置是A Arsenal、B Manchester City、每侧三次进攻；clients只收公开identity和read projection，不提供opening rolls、rules、deck或match count。
+
+公共复制为`GameState(MatchInstanceId, BootstrapState, ParticipantPublicIdentity A/B)`和`PlayerState(AssignedSide, PlayerDisplayName, TeamIdentity)`。私有读路径为`State -> BuildForViewer(Side, fail-closed disclosure) -> small NetworkClientViewSnapshot -> owning PlayerController only`。A snapshot只发送A controller，B snapshot只发送B controller；full `FMatchPlayState`、Session、Coordinator、provider、Corner秘密与automatic scorer RNG不进入replicated schema。
+
+Stage 7.2只证明连接、身份、bootstrap与initial safe read。它没有`ServerSubmitPlayerIntent`、ACK、command envelope、disclosure release、gameplay vertical slice或reconnect。`ViewRevision`当前只用于server publication排序/诊断，不是Stage 7.3的request ACK协议。
+
+## NetworkPlay DEV 启动与身份刷新
+
+LocalPlay 继续默认使用 `/Script/FMCodex.FMCodexLocalMatchHostGameMode`。NetworkPlay 必须显式选择 `/Script/FMCodex.FMCodexNetworkMatchGameMode`，它只创建 Network PlayerController、GameState 和 PlayerState；NetMode 为 Server 本身不能证明选中了 Network GameMode。
+
+### 日常双窗口验证：项目内 DEV 启动器（推荐）
+
+1. 停止 PIE 并关闭 Unreal Editor，以及之前打开的 NetworkPlay 游戏窗口。
+2. 在资源管理器双击项目内的 `Scripts\NetworkPlay\LaunchNetworkPlayDev.cmd`。本机完整路径为 `D:\Unreal Projects\FMCodex\Scripts\NetworkPlay\LaunchNetworkPlayDev.cmd`。
+3. 等待控制台显示 `Host ready`，随后第二个游戏窗口自动出现。无需修改 World Settings、Play Advanced Settings，也无需输入命令或保存地图。
+4. 左侧 Host 应显示 `监听主机玩家 / Side A / 玩家 A（或有效名称）/ 阿森纳`；右侧 Client 应自然显示 `远端客户端玩家 / Side B / 玩家 B（或有效名称）/ 曼彻斯特城`。双方均为 `比赛已由服务器初始化`（MatchReady）、相同比赛实例 ID、Revision、0–0、Attack #1 和各自的 Full D12 等待文案。无需刷新或执行 gameplay 操作。
+5. 测试结束先关闭 Client，再关闭 Host。启动器控制台可按任意键关闭；关闭控制台不会自动关闭游戏窗口。
+
+**NetworkPlay 不要按“开始本地对战”。** 若出现该按钮或旧 LocalPlay 的“等待开始”界面，说明进入了 Local GameMode，不能用该按钮 bootstrap NetworkPlay。
+
+恢复 LocalPlay 只需正常打开 Unreal Editor，使用原来的本地对战流程。新启动器不修改地图、默认 GameMode 或 Editor Play 设置，因而不需要设置还原步骤。
+
+启动器沿用仓库 `Scripts` 约定，PowerShell 从自身位置向上两级定位 `FMCodex.uproject`。引擎默认路径只在启动器参数中声明为 `E:\UE_5.3\Engine\Binaries\Win64\UnrealEditor.exe`，不存在时明确失败；不扫描其他磁盘，也不自动编译项目。首次使用或 C++ 更新后应先完成 Editor Development build。
+
+默认端口为 **7777**，窗口为 **900×700**。Host 使用显式 Network 地图 URL，Client 只连接服务器地址。启动前检测 UDP/TCP 端口占用，冲突时失败且不终止占用者。UE IpNetDriver 使用 UDP；启动器最多等待 **60 秒**，同时确认本次独立日志中的 Network GameMode、指定端口监听、Host Side A admission 及实际 UDP endpoint，才启动 Client。超时或 Host 提前退出时不启动 Client，并显示 Host PID 与日志路径。
+
+每次启动的日志位于 `Saved\Logs\NetworkPlayDev\<本次运行目录>\Host.log` 和 `Client.log`，控制台会打印完整路径和两个 PID。`Launch.json` / `Processes.json` 只记录本次启动参数及进程号；全部位于忽略的 Saved 目录，独立目录避免旧日志误触发 ready。工具没有杀进程或停止其他 UE 项目的功能。
+
+`.cmd` 仅对自己启动的 PowerShell 进程使用 ExecutionPolicy Bypass，不改变系统执行策略。`-game -windowed` 启动真实可见窗口；`-unattended` 避免 UE 5.3 Live Coding 自动启动，`-NoAutoSave -NoSaveConfig` 避免持久化本次设置。日常运行没有取证脚本、回调重放或对 Saved 中测试文件的依赖。
+
+高级参数只在需要时使用，例如：
+
+```powershell
+& '.\Scripts\NetworkPlay\LaunchNetworkPlayDev.ps1' -Port 7788 -UnrealEditorPath 'E:\UE_5.3\Engine\Binaries\Win64\UnrealEditor.exe' -ResX 1000 -ResY 720
+```
+
+还支持 `-ReadyTimeoutSeconds` 与 `-ValidateOnly`（只验证路径并返回命令计划，不启动 UE）。默认双击无需参数；端口冲突时优先关闭旧测试窗口，再重新双击。
+
+### 旧 Editor World Settings 方法：不再推荐日常多进程测试
+
+临时修改 Engine OpenWorld 的 GameMode Override 会让地图变脏；关闭 Run Under One Process 后，Editor 可能要求先保存地图以启动第二个进程。**不要为此保存 Engine 模板地图；日常使用上面的项目内启动器。** 如果先前留下了未保存的临时 Override，关闭地图时不保存该修改。
+
+此前 Additional Server Game Options 中填写 `?game=...` 的方法也不适用于首个 Editor Listen Host：UE 5.3 只在新进程服务器路径追加 `AdditionalServerGameOptions`，首个 Editor Host 的 URL 构造不同。NetMode 为 Server 不代表已选择 Network GameMode。新启动器直接使用显式 URL，绕开这两种 Editor 启动歧义。
+
+### 显式 URL 的双进程备用启动
+
+关闭会占用 7777 端口的测试实例，在两个 PowerShell 窗口依次执行。Host 地图 URL 显式携带 `listen` 和 Network GameMode；Client 连接 Host 后由服务器选择其 Network Controller。
+
+Host：
+
+```powershell
+& 'E:\UE_5.3\Engine\Binaries\Win64\UnrealEditor.exe' 'D:\Unreal Projects\FMCodex\FMCodex.uproject' '/Engine/Maps/Templates/OpenWorld?listen?game=/Script/FMCodex.FMCodexNetworkMatchGameMode' -game -windowed -ResX=1100 -ResY=720 -port=7777 -unattended -NoLiveCoding -NoAutoSave -NoSaveConfig
+```
+
+待 Host 窗口出现后启动 Client：
+
+```powershell
+& 'E:\UE_5.3\Engine\Binaries\Win64\UnrealEditor.exe' 'D:\Unreal Projects\FMCodex\FMCodex.uproject' '127.0.0.1:7777' -game -windowed -ResX=1100 -ResY=720 -unattended -NoLiveCoding -NoAutoSave -NoSaveConfig
+```
+
+验证内容与上面相同。结束时关闭这两个测试窗口；此路径不需要修改或保存任何地图资产。
+
+### Replication 到达顺序合同
+
+DEV 面板只有一个格式化入口 `BuildStatusText` 和一个幂等刷新入口 `RefreshNetworkBootstrapUI`。BeginPlay 创建面板后刷新；Controller `OnRep_PlayerState` 必须先调用 Super，再读取当前 PlayerState、GameState 和 owner snapshot 刷新已有面板。OwnerView、PlayerState identity、GameState public bootstrap 的现有通知继续调用同一入口。身份通知先于 Controller 关联时，稍后的关联通知补齐显示；数据先于面板创建时，由 BeginPlay 读取当前事实。刷新只替换显示文本，不缓存权威身份、不创建额外面板、不使用 Tick、轮询或延时定时器，也不改变快照或 gameplay。
 
 ## 当前不做
 

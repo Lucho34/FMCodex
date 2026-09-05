@@ -1,4 +1,4 @@
-﻿# 07 Test Cases
+# 07 Test Cases
 
 本文档只保留测试用例。未解决规则问题统一记录在 `Docs/08_Decision_Log.md`。
 
@@ -867,3 +867,25 @@
 - ViewPort 测试必须从 Host 端分别构建 A/B viewer-safe DTO，并继续验证 Corner sealed nomination、automatic scorer raw D6、unrevealed rolls、score与GoalHistory不泄漏；生产 Controller refresh不得调用 raw `GetMatchSnapshot()`。
 - Stage gate 运行 focused HostPort/Coordinator、`FMCodex.MatchPlayRuntime.NetworkBoundary`、完整 AuthoritativeSession/MatchPlayRuntime/LocalPlay/CoreRules、Editor Development build 与 `git diff --check`。本 Stage 无意改变可见 UI，不要求独立 USER PIE。
 
+## Two-Client Bootstrap 与 Identity（Stage 7.2）
+
+- `FMCodex.NetworkPlay.NetworkBootstrap`必须覆盖：first/second admission固定A/B、duplicate幂等、host/remote无分叉、第三人`MatchFull`、disconnect后Side不重分配、两人后runtime一次初始化、prototype 3+3、明确且分离的player/team identity、stable MatchInstanceId及A/B owner view identity。
+- owner snapshot schema测试必须用带Corner nominee secret的fixture证明没有draft/legal/attacker/defender CardId字段，也没有raw State；production结构测试必须证明runtime调用`BuildForViewer`且不调用`FullyDisclosed`，Controller使用owner-only复制并且没有gameplay Server RPC。
+- NetworkPlay启动和replication需要真实两窗口USER PIE：host/client显示相反Side、各自player/team、相同MatchInstanceId、MatchReady与一致0-0公开状态，并停在各自正确的Full D12等待文案。纯C++ automation不能替代该验证。
+- Stage gate为focused NetworkBootstrap、HostPort、ServerCoordinator、NetworkBoundary、完整AuthoritativeSession、完整MatchPlayRuntime、完整LocalPlay、完整CoreRules、Editor Development build及`git diff --check`。Stage 7.2没有gameplay RPC测试，也不要求用网络完成战术或整场比赛。
+
+
+## Network Bootstrap UI 到达顺序与启动验证
+
+- `FMCodex.NetworkPlay.NetworkBootstrap` 的结构断言必须读取 Network GameMode CDO，确认 Controller / GameState / PlayerState 均为 Network 类，且项目默认仍为 Local Match Host。
+- `05.ReplicationOrder` 检查实际 Slate 文本：identity → association → OwnerView；OwnerView → identity → association；GameState → OwnerView → PlayerState；PlayerState → OwnerView → GameState。必须覆盖身份通知在关联前丢失后，最后单独由 `OnRep_PlayerState` 恢复身份的情形；不同顺序完整到达后文本一致，且不改变 MatchInstanceId / ViewRevision。
+- `06.HostAndIdempotentRefresh` 覆盖数据早于 BeginPlay、Host A 身份、重复初始化/OnRep/刷新不替换面板对象也不追加文本。`07.PlayerDisplayNameFallback` 检查空白、generic Player、当前机器生成的 PIE 名称仍按 Side 回退，并保留有效显示名。
+- 真实双进程验证必须从全新 Listen Host + Remote Client 自然启动，读取运行中类/身份/安全视图，并对真实窗口截图；不得重放刷新回调或用 fixture 图片代替。MatchReady 后再观察数秒，确认 Client 的 B 身份不退回未分配。自动化里的回调模拟只用于聚焦回归，不能作为自然网络启动证据。
+- 日常双窗口 USER 验证以 [Networking 启动步骤](04_Networking_Model.md#networkplay-dev-启动与身份刷新) 为准：关闭 Editor，双击 `Scripts/NetworkPlay/LaunchNetworkPlayDev.cmd`。不再推荐修改 Engine 地图 World Settings 的多进程流程，因为它可能触发保存提示。不得保存 Engine 模板地图；NetworkPlay 出现“开始本地对战”时不能点击它来 bootstrap。
+
+## DEV NetworkPlay 启动器验证
+
+- `Scripts/NetworkPlay/Test-NetworkPlayDev.ps1` 在 Windows PowerShell 5.1 下运行轻量校验：脚本相对路径、缺失项目/引擎、正确可见 Editor executable、带空格参数、Network Host URL、同端口 Client URL、独立 Saved 日志、UDP/TCP 占用保护、错误模式/端口/缺少 admission 的日志拒绝、Host 提前退出与有界超时。不得终止真实占用者或改动 LocalPlay 配置。
+- 脚本静态断言同时检查没有地图保存/写入指令、全局执行策略修改或任意进程终止命令；`-ValidateOnly` 不创建运行目录、不启动 UE。双击 wrapper 必须通过自身路径调用同一 PowerShell 脚本。
+- 集成验证必须调用实际 launcher，不能绕过它直接启动旧手写命令；确认 Host ready 先于 Client launch、两端 Network 类和相反 Side、相同 MatchInstanceId、MatchReady、owner-safe view 与真实窗口截图。就绪后再观察约 5–10 秒验证身份稳定，不能手动重放刷新回调。
+- 人工验收关注双击能启动两个可见窗口、没有 Engine 地图保存提示、没有旧 LocalPlay 启动 UI、没有手工刷新步骤。正常 Editor LocalPlay 的默认配置与流程保持不变。
