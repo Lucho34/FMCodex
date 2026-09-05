@@ -1577,6 +1577,7 @@ namespace FMCodexLocalMatchInteractionView
 		View.SelectedRunnerCardId = NAME_None;
 		View.SelectedMarkerCardId = NAME_None;
 		View.SelectedHelperCardId = NAME_None;
+		View.SelectedSkillId = NAME_None;
 		View.PitchRegions.Reset();
 		View.BranchIntentOptions.Reset();
 		View.OneOnOneOptions.Reset();
@@ -2049,6 +2050,7 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildAuthorityInternal(
 	}
 	if (Attack.bHasSelectedAction)
 	{
+		Result.SelectedSkillId = Attack.SelectedAction.SkillId;
 		Result.SelectedCarrierCardId = Attack.SelectedAction.CarrierCardId;
 		Result.SelectedRunnerCardId = Attack.SelectedAction.RunnerCardId;
 		Result.SelectedMarkerCardId = Attack.SelectedAction.MarkerCardId;
@@ -2057,6 +2059,7 @@ FFMCodexLocalMatchInteractionViewBuilder::BuildAuthorityInternal(
 	}
 	else
 	{
+		Result.SelectedSkillId = Attack.ActionPreparation.SkillId;
 		Result.SelectedCarrierCardId = Attack.ActionPreparation.CarrierCardId;
 		Result.SelectedRunnerCardId = Attack.ActionPreparation.RunnerCardId;
 		Result.SelectedMarkerCardId = Attack.ActionPreparation.MarkerCardId;

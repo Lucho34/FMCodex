@@ -47,6 +47,7 @@ private:
 	friend struct FFMCodexNetworkMarkerTestAccess;
 	friend struct FFMCodexNetworkRunnerTestAccess;
 	friend struct FFMCodexNetworkHelperTestAccess;
+	friend struct FFMCodexNetworkSkillTestAccess;
 #endif
 
 	void EnsureMatchInstanceId();

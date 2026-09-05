@@ -324,6 +324,17 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 				.OnClicked_Lambda([this, Id]() { DevSubmitHelper(Id); return FReply::Handled(); })
 			];
 		}
+		for (const auto& Option : OwnerView.SkillOptions)
+		{
+			const FName Id = Option.Choice.SkillId;
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton)
+				.Text(FText::Format(LOCTEXT("SkillChoice", "战术：{0}"), Option.SkillLabel))
+				.IsEnabled_Lambda([this]() { return CanSubmitSkill(); })
+				.OnClicked_Lambda([this, Id]() { DevSubmitSkill(Id); return FReply::Handled(); })
+			];
+		}
 	}
 #endif
 }
@@ -371,7 +382,10 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 				? TEXT("等待选择跑位球员") : TEXT("等待对手选择跑位球员")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::HelperSelection
 			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide
 				? TEXT("等待选择协防球员") : TEXT("等待对手选择协防球员")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
-			? TEXT("等待选择战术（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待选择战术") : TEXT("等待对手选择战术")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::BranchIntentSelection
+			? TEXT("等待选择战术分支（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlRouteRoll
+			? TEXT("等待判定控球推进路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallRouteRoll
+			? TEXT("等待判定直塞路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
 		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s"),
 			OwnerView.DisclosedInitialD12, Branch, Wait);
@@ -396,7 +410,10 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::HelperSelection
-			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection)
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::BranchIntentSelection
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlRouteRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallRouteRoll)
 		{
 			EntryText += FString::Printf(TEXT("\n下一操作方：玩家 %s"), *SideLabel(OwnerView.ExpectedActingSide));
 		}
@@ -432,6 +449,14 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 	if (OwnerView.bHelperOptionsUnavailable)
 	{
 		EntryText += LOCTEXT("HelperProjectionUnavailable", "\n协防候选视图不可用，请检查服务器配置").ToString();
+	}
+	if (!OwnerView.SelectedSkill.Choice.IsEmpty())
+	{
+		EntryText += FText::Format(LOCTEXT("SelectedSkill", "\n已选战术：{0}"), OwnerView.SelectedSkill.SkillLabel).ToString();
+	}
+	if (OwnerView.bSkillOptionsUnavailable)
+	{
+		EntryText += LOCTEXT("SkillProjectionUnavailable", "\n战术候选视图不可用，请检查服务器配置").ToString();
 	}
 	const auto& Ack = IntentClientState.GetLastAck();
 	FString AckText = TEXT("暂无请求回执");
@@ -696,6 +721,46 @@ void AFMCodexNetworkMatchPlayerController::DevProbeInvalidHelper()
 	FFMCodexNetworkSubmitHelperPayload Choice;
 	Choice.HelperCardId = TEXT("DEV.NonexistentHelper");
 	SubmitHelperChoice(Choice);
+#endif
+}
+bool AFMCodexNetworkMatchPlayerController::CanSubmitSkill() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+		&& !OwnerView.bSkillOptionsUnavailable && !OwnerView.SkillOptions.IsEmpty();
+}
+void AFMCodexNetworkMatchPlayerController::DevSubmitSkill(FName SkillId)
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanSubmitSkill()) { return; }
+	const auto* Option = OwnerView.SkillOptions.FindByPredicate(
+		[&](const auto& C) { return C.Choice.SkillId == SkillId; });
+	if (Option) { SubmitSkillChoice(Option->Choice); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitSkillChoice(const FFMCodexNetworkSubmitSkillPayload& Choice)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginSkill(OwnerView, Choice, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Skill owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Skill=%s"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, *Choice.SkillId.ToString());
+	ServerSubmitPlayerIntent(Envelope); // Generated owning RPC for both Host and Remote.
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeInvalidSkill()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanSubmitSkill()) { return; }
+	FFMCodexNetworkSubmitSkillPayload Choice;
+	Choice.SkillId = TEXT("DEV.NonexistentSkill");
+	SubmitSkillChoice(Choice);
 #endif
 }
 bool AFMCodexNetworkMatchPlayerController::CanDeployGoalkeeper() const

@@ -41,7 +41,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll
 };
 
 /** Team/content identity is deliberately separate from the connected player. */
@@ -146,6 +146,17 @@ struct FMCODEX_API FFMCodexNetworkHelperOption
 	FFMCodexNetworkSubmitHelperPayload Choice;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FText CardLabel;
+};
+
+/** One canonical Skill identity and its existing player-facing name. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkSkillOption
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkSubmitSkillPayload Choice;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText SkillLabel;
 };
 
 /** Public accepted placement, projected from State via the safe viewer view. */
@@ -276,6 +287,14 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	bool bHelperOptionsUnavailable = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkHelperOption SelectedHelper;
+	// Canonical validated Carrier has <=3 SkillIds; current prototype has <=2 simultaneously legal.
+	static constexpr int32 MaxSkillOptions = 3;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	TArray<FFMCodexNetworkSkillOption> SkillOptions;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bSkillOptionsUnavailable = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkSkillOption SelectedSkill;
 };
 
 struct FFMCodexLocalMatchInteractionView;

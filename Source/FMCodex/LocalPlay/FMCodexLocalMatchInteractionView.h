@@ -427,6 +427,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	FName SelectedRunnerCardId = NAME_None;
 	FName SelectedMarkerCardId = NAME_None;
 	FName SelectedHelperCardId = NAME_None;
+	/** Public selected tactic identity; cleared with undisclosed ordinary route facts. */
+	FName SelectedSkillId = NAME_None;
 	TArray<FFMCodexLocalMatchPitchRegionView> PitchRegions;
 	TArray<FFMCodexLocalMatchCardView> PlayerACardRoster;
 	TArray<FFMCodexLocalMatchCardView> PlayerBCardRoster;

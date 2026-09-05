@@ -297,20 +297,20 @@ Default double-click launch has no fixture arguments and continues using product
 
 ### SubmitRunner and the next player wait
 
-- SubmitRunner carries only bounded RunnerCardId in its closed member. Eight intents share generated owning RPC, registry Side, stale/match/shape/window admission and owner ACK. Session/CoreRules own Runner gameplay legality.
+- SubmitRunner carries only bounded RunnerCardId in its closed member. Nine intents share generated owning RPC, registry Side, stale/match/shape/window admission and owner ACK. Session/CoreRules own Runner gameplay legality.
 - The attacker receives the entire safe ordered list: deck bound 18, current-board maximum eight. The scrollable DEV panel offers 跑位：<safe display name>; the opponent gets no Runner controls. Invalid projections fail as a whole.
 - Selected Runner comes only from stable View. Accepted pending needs matching ACK and sufficient ViewRevision in either order. Rejection releases pending without publication; duplicate, stale and fresh-ID frozen rewrites cannot mutate gameplay or consume RNG.
-- With a legal Helper, Runner stops at Resolution/AwaitingHelper expecting the defender. Helper uses the narrow transport below; no Skill candidates or transport are added. Server-only absence continuations may instead reach Skill or automatically close a no-legal-Skill attack. DeclineRunner remains a separate unnetworked alternative.
+- With a legal Helper, Runner stops at Resolution/AwaitingHelper expecting the defender. Helper uses the narrow transport below; Skill uses the narrow transport below. Server-only absence continuations may instead reach Skill or automatically close a no-legal-Skill attack. DeclineRunner remains a separate unnetworked alternative.
 
 
 ### SubmitHelper and the actual next player wait
 
-- Eight network kinds share one generated owning ServerSubmitPlayerIntent, registry Side, common match/sequence/window validation, pending, owner ACK and publication model. Helper adds only bounded HelperCardId in its closed member. Full D12/Finish have no choice; all six mutually exclusive choice members must match their tag exactly.
+- Nine network kinds share one generated owning ServerSubmitPlayerIntent, registry Side, common match/sequence/window validation, pending, owner ACK and publication model. Helper adds only bounded HelperCardId in its closed member. Full D12/Finish have no choice; all seven mutually exclusive choice members must match their tag exactly.
 - The defending viewer receives all safe Helper candidates, in order, with 协防：<safe display name> buttons. The other viewer sees 等待对手选择协防球员 and no controls. Selected Helper comes only from safe View. ACK-first and View-first require their matching counterpart; rejected requests release pending without gameplay publication.
 - Session/CoreRules owns Helper semantics. Accepted Helper invokes Coordinator once and publishes once; rejection/duplicate/frozen rewrite does neither and consumes no RNG. A legal Skill yields AwaitingSkill expecting the attacker; no-legal-Skill continuation may instead close the attack. Never fabricate a Skill wait or preserve cleared participant facts.
 - The B-first DeploymentSlice sequence above can submit Helper 萨利巴 after Runner 迪亚斯. Its Carrier 罗德里 has no legal Skill at D12=4, so the server executes ResolveNoLegalSkill and both clients wait for A's next Full D12. Stop without rolling again.
 
-For a reproducible Remote Helper followed by a genuine unnetworked Skill wait, use the same launcher with its existing deterministic flag and default A-first identity (PowerShell, project root):
+For a reproducible Remote Helper followed by a genuine Skill wait, use the same launcher with its existing deterministic flag and default A-first identity (PowerShell, project root):
 
 ```powershell
 cmd /c 'set "UE-CmdLineArgs=-FMCodexNetworkDeploymentSlice" && Scripts\NetworkPlay\LaunchNetworkPlayDev.cmd'
@@ -319,6 +319,25 @@ cmd /c 'set "UE-CmdLineArgs=-FMCodexNetworkDeploymentSlice" && Scripts\NetworkPl
 1. A Full D12; A ordinary; B ordinary; A ordinary; B ordinary; A ordinary; B finish deployment.
 2. A ordinary five more times, then A finish. This gives eight A ordinary cards and two B ordinary cards; no GK activation is required by canonical deployment.
 3. A chooses Carrier 厄德高; B chooses Marker 格伊; A chooses Runner 廷贝尔; B chooses Helper 迪亚斯. All choices come from the complete current lists.
-4. Accepted receipt plus synchronized View clears pending. Both views show the four selected participants and 等待选择战术（尚未联网）, expecting A. Stop; do not select Skill or decline.
+4. A chooses 战术：远射. Accepted ACK plus synchronized View clears pending. Both show selected 战术：远射 and 等待选择战术分支（尚未联网）, expecting A. Canonical LongShot clears unused Runner/Helper. Stop immediately; do not submit branch, decline or roll.
 
 This fixture does not modify maps, Config, content or gameplay rules. Default launch still uses secure production randomness. Normal DEV actions never hardcode these player choices.
+
+## SubmitSkill and the actual next player wait
+
+- SubmitSkill is the ninth closed intent. Its only choice is the exact canonical runtime SkillId; the server resolves Side from the connection and looks up its private Session rule copy. Every earlier intent retains the same generic RequestId, <=1024 window, ACK/View pending and generated owning RPC.
+- Only the acting attacker receives the full safe Skill list, with 战术：<canonical Chinese name> buttons. The other viewer sees 等待对手选择战术. Options preserve canonical identity/order and fail atomically on representation errors. The theoretical bound is three; current content permits at most two simultaneous TP-compatible choices. Public selected Skill appears only from stable disclosed View.
+- Accepted SubmitSkill coordinates once and publishes once. Rejections/replays/frozen rewrites have zero Coordinator, RNG and publication delta. Pending clears only after correlated ACK and sufficient View; rejection needs no new View.
+- The A-first command and exact successful click sequence above now end after Skill, at the first unnetworked branch wait. No production UI, branch controls or player-roll commands are added.
+
+| Selected tactic | Actual canonical stop | Next attacker PlayerIntent |
+|---|---|---|
+| 远射 / 内切 / 传中 | Resolution / AwaitingBranchIntent; SelectedAction=false | SubmitBranchIntent |
+| 控球推进 | Resolution / ReadyForResolution; SelectedAction=true | ResolvePassControlInitialRouteRoll |
+| 直塞 | Resolution / ReadyForResolution; SelectedAction=true | ResolveThroughBallInitialRouteRoll |
+
+All five have deferred Skill=false and no resolution session or route outcome yet. LongShot/CutInside clear unused Runner/Helper; other families preserve their canonical selected participants. Do not label all post-Skill states AwaitingBranchIntent or start a roll automatically.
+
+For automated Remote parity, FMCodexNetworkSkillSlice is a non-Shipping automation-only server launch flag using the existing initial-entry injection seam at D12=6. Combined with the existing B-first deployment fixture, canonical deployed Rodri and forward-half midfield Ait-Nouri admit PassControl/ThroughBall. No legal Helper remains in that fixture, so the server records canonical absence before Skill. The existing DeploymentSlice retains D12=4 and default launches retain private secure RNG. No client or production input can supply rules or fixture values.
+
+ResolveNoLegalSkill remains server-internal; DeclineSkill, DeclineRunner and DeclineHelper remain unnetworked player alternatives. Branches, player-triggered rolls, Formula/result disclosure, set pieces, terminal advance, reconnect/request epochs, rate budgets, timeout/forfeit and Dedicated target remain separate networking work.

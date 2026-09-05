@@ -49,13 +49,14 @@ public:
 class FFMCodexDeploymentAutomationEntry final : public IMatchPlayAttackEntryRollProvider
 {
 public:
-	explicit FFMCodexDeploymentAutomationEntry(IMatchPlayAttackEntryRollProvider& InSecure) : Secure(InSecure) {}
+	explicit FFMCodexDeploymentAutomationEntry(IMatchPlayAttackEntryRollProvider& InSecure, int32 InInitialD12)
+		: Secure(InSecure), InitialD12(InInitialD12) {}
 	virtual FMatchPlayAttackEntryRollProviderResult RollD12(EMatchPlayAttackEntryRollPurpose Purpose) override
 	{
 		if (Purpose != EMatchPlayAttackEntryRollPurpose::InitialActionPoint) { return Secure.RollD12(Purpose); }
 		FMatchPlayAttackEntryRollProviderResult Result;
 		Result.bSuccess = true;
-		Result.RawRoll = 4;
+		Result.RawRoll = InitialD12;
 		return Result;
 	}
 	virtual FMatchPlayAttackEntryRollProviderResult RollD6(EMatchPlayAttackEntryRollPurpose Purpose) override
@@ -69,12 +70,14 @@ public:
 	}
 private:
 	IMatchPlayAttackEntryRollProvider& Secure;
+	int32 InitialD12;
 };
-void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry()
+void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry(int32 InitialD12)
 {
 	check(!bInitialized);
-	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider));
-	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation deployment fixture: initial D12=4; other providers remain secure."));
+	check(InitialD12 == 4 || InitialD12 == 6);
+	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider, InitialD12));
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation deployment fixture: initial D12=%d; other providers remain secure."), InitialD12);
 }
 #endif
 namespace FMCodexNetworkMatchRuntime
@@ -342,6 +345,36 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			State.CurrentAttack.ActionPreparation.bSkillSelectionDeferred,
 			State.CurrentAttack.bHasSelectedAction, State.CurrentAttack.bHasResolutionSession);
 	}
+
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitSkill)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		const auto& Attack = State.CurrentAttack;
+		const auto& P = Attack.ActionPreparation;
+		const auto& A = Attack.SelectedAction;
+		FFMCodexLocalMatchViewerDisclosure Disclosure;
+		Disclosure.bRevealInitialActionPointRoll = State.bHasCurrentAttack
+			&& DisclosedInitialAttackSequence == Attack.AttackSequence;
+		const auto Safe = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			State, SkillRuleSet, State.RuntimeState.CurrentAttackingPlayer, Disclosure);
+		UE_LOG(LogFMCodexNetworkPlay, Log,
+			TEXT("DEV Skill authority: Success=%d Phase=%s SelectionStage=%s ExpectedSide=%d Carrier=%s Marker=%s Runner=%s Helper=%s Skill=%s ActionType=%s BranchIntent=%s RouteResolved=%d SkillDeferred=%d SelectedAction=%d ResolutionSession=%d Terminal=%d Interaction=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d"),
+			Result.bSuccess, *StaticEnum<EMatchPlayCurrentAttackPhase>()->GetNameStringByValue(static_cast<int64>(Attack.Phase)),
+			*StaticEnum<EMatchPlayCurrentAttackSelectionStage>()->GetNameStringByValue(static_cast<int64>(Attack.SelectionStage)),
+			static_cast<int32>(Safe.ExpectedActingPlayer),
+			*(Attack.bHasSelectedAction ? A.CarrierCardId : P.CarrierCardId).ToString(),
+			*(Attack.bHasSelectedAction ? A.MarkerCardId : P.MarkerCardId).ToString(),
+			*(Attack.bHasSelectedAction ? A.RunnerCardId : P.RunnerCardId).ToString(),
+			*(Attack.bHasSelectedAction ? A.HelperCardId : P.HelperCardId).ToString(),
+			*(Attack.bHasSelectedAction ? A.SkillId : P.SkillId).ToString(),
+			*StaticEnum<ESkillRuleType>()->GetNameStringByValue(static_cast<int64>(Attack.bHasSelectedAction ? A.ActionType : P.ActionType)),
+			*StaticEnum<EMatchPlayElectiveBranchIntent>()->GetNameStringByValue(static_cast<int64>(A.ElectiveBranchIntent)),
+			Attack.ResolutionSession.bHasActualBranch, P.bSkillSelectionDeferred,
+			Attack.bHasSelectedAction, Attack.bHasResolutionSession, Safe.bTerminalPendingAdvance,
+			static_cast<int32>(Safe.InteractionCategory), GetCoordinatorInvocationCountForTests(),
+			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
+	}
+
 #endif
 	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)

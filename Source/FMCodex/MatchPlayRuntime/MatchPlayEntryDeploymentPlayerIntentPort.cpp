@@ -83,11 +83,27 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.HelperResult.bSuccess, Authority.HelperResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitSkill:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeSubmitSkillRequest>()) { return Mismatch(); }
+		const auto Authority = Session.SubmitSkill(Intent.Payload.Get<FMatchPlayAuthoritativeSubmitSkillRequest>());
+#if WITH_DEV_AUTOMATION_TESTS
+		const auto& Legality = Authority.SkillResult.LegalityResult;
+		UE_LOG(LogTemp, Log, TEXT("DEV pinned Skill lookup: Skill=%s LookupSuccess=%d ActionType=%s MinTP=%d MaxTP=%d"),
+			*Intent.Payload.Get<FMatchPlayAuthoritativeSubmitSkillRequest>().SkillId.ToString(),
+			Legality.SkillRuleQueryResult.bSuccess,
+			*StaticEnum<ESkillRuleType>()->GetNameStringByValue(static_cast<int64>(Legality.ResolvedActionType)),
+			Legality.ResolvedSkillRule.MinTriggerActionPoint, Legality.ResolvedSkillRule.MaxTriggerActionPoint);
+#endif
+
+		if (!Record(Authority.RuntimeEnvelope, Authority.SkillResult.bSuccess, Authority.SkillResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	default:
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
 		return Result;
 	}
-	// Exactly one pass after any successful deployment or participant command; never on rejection.
+	// Exactly one pass after any successful deployment, participant or Skill command; never on rejection.
 	Result.CoordinatorResult = Coordinator.AdvanceToStableState();
 	Result.bSuccess = Result.CoordinatorResult.bSuccess;
 	if (!Result.bSuccess)

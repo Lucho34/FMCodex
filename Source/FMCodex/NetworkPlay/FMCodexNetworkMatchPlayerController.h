@@ -62,9 +62,14 @@ public:
 	void DevSubmitHelper(FName HelperCardId);
 	UFUNCTION(Exec)
 	void DevProbeInvalidHelper();
+	UFUNCTION(Exec)
+	void DevSubmitSkill(FName SkillId);
+	UFUNCTION(Exec)
+	void DevProbeInvalidSkill();
 	bool CanSubmitMarker() const;
 	bool CanSubmitRunner() const;
 	bool CanSubmitHelper() const;
+	bool CanSubmitSkill() const;
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -94,6 +99,7 @@ private:
 	void SubmitMarkerChoice(const FFMCodexNetworkSubmitMarkerPayload& Choice);
 	void SubmitRunnerChoice(const FFMCodexNetworkSubmitRunnerPayload& Choice);
 	void SubmitHelperChoice(const FFMCodexNetworkSubmitHelperPayload& Choice);
+	void SubmitSkillChoice(const FFMCodexNetworkSubmitSkillPayload& Choice);
 	void SubmitCarrierChoice(const FFMCodexNetworkSubmitCarrierPayload& Choice);
 	void SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice);
 	void SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind Kind);

@@ -695,9 +695,9 @@ The bound follows unique own deployed non-GK eligibility and the canonical 20-ca
 | RunnerOptions | Entire acting-attacker safe set in canonical order; bound 18, current ten-slot board maximum eight |
 | bRunnerOptionsUnavailable | Whole-list failure for overflow, duplicate/invalid identity or wrong source Side; no partial choices |
 | SelectedRunner | Safe SelectedRunnerCardId and attacker display name; empty if unselected or undisclosed |
-| EntryWait.HelperSelection / SkillSelection | Helper uses the typed projection below; Skill remains a high-level wait without options |
+| EntryWait.HelperSelection / SkillSelection | Helper uses the typed projection below; Skill uses the typed projection below |
 
-Eight tags share the original four correlation/kind fields, constant-memory ledger and ACK schema. Full D12/Finish require all six choice members empty. No Side, names, attributes, slot, candidate array, authority flags, State or RNG enter Runner submission. ExpectedAttackSequence remains the observed common freshness token. Host and Client require the same schema build.
+Nine tags share the original four correlation/kind fields, constant-memory ledger and ACK schema. Full D12/Finish require all seven choice members empty. No Side, names, attributes, slot, candidate array, authority flags, State or RNG enter Runner submission. ExpectedAttackSequence remains the observed common freshness token. Host and Client require the same schema build.
 
 
 ## Bounded Helper identity and projection
@@ -710,6 +710,24 @@ Eight tags share the original four correlation/kind fields, constant-memory ledg
 | HelperOptions | Complete ordered acting-defender safe set; independent deck bound 18, current board maximum four |
 | bHelperOptionsUnavailable | Whole-list diagnostic failure for overflow, duplicate/invalid identity or wrong source Side |
 | SelectedHelper | Safe selected identity and defender display name, empty when unselected, withheld or cleared by canonical closure |
-| EntryWait.SkillSelection | High-level next wait only; no Skill payload/options |
+| EntryWait.SkillSelection | Typed Skill projection and transport below |
 
-All eight tags share four common envelope fields and six closed choice members. Full D12/Finish require all six empty; each other tag accepts exactly its own member. Match/sequence/RequestId, <=1024 forward window, ACK and generic pending are unchanged. No Side, slot, names, participant role, attributes, raw State, future Skill/Formula or RNG crosses the Helper request. Host/Client require coordinated schema builds.
+All nine tags share four common envelope fields and seven closed choice members. Full D12/Finish require all seven empty; each other tag accepts exactly its own member. Match/sequence/RequestId, <=1024 forward window, ACK and generic pending are unchanged. No Side, slot, names, participant role, attributes, raw State, future Skill/Formula or RNG crosses the Helper request. Host/Client require coordinated schema builds.
+
+## Bounded Skill identity and viewer-safe projection
+
+| Field/type | Contract |
+|---|---|
+| Skill: FFMCodexNetworkSubmitSkillPayload | SkillId: FName only; nonempty, <=128 UTF-8 bytes, existing bounded codec <=129 bytes |
+| SubmitSkill shape | Skill valid; Deployment, Goalkeeper, Carrier, Marker, Runner and Helper empty |
+| FFMCodexNetworkSkillOption | Choice (SkillId-only payload) and SkillLabel (FText from existing canonical Chinese mapping) |
+| SkillOptions | Entire acting-attacker safe SelectionOptions in order; identity = source Id, never RelatedCardId |
+| MaxSkillOptions | 3 from FPlayerCardRuleSnapshotValidator::MaxSkillIdCount; current catalog simultaneous TP-compatible maximum is 2 |
+| bSkillOptionsUnavailable | Whole-list failure for overflow, duplicates, invalid identity or wrong source Side; no truncation |
+| SelectedSkill | Safe SelectedSkillId plus PresentedActionType label; empty when unselected, withheld or canonically cleared |
+| EntryWait.BranchIntentSelection | Safe SelectLongShotBranch / SelectBranchIntent wait; no branch choices transported |
+| EntryWait.PassControlRouteRoll / ThroughBallRouteRoll | Safe initial route-roll wait; no roll value, outcome or command transported |
+
+All nine tags share four common correlation/kind fields and seven mutually exclusive choice members. Full D12/Finish require all seven empty; each other tag accepts only its own. Common ledger, <=1024 forward window, ACK and pending schema remain unchanged. No Side, rule object, type, TP, range, modifier, threshold, participant list, Formula, route or RNG is a Skill submission field.
+
+Runtime SkillId identifies the exact canonical family + MinTP + MaxTP tuple (for example Canonical.Skill.PassControl.6.8), not the workbook family-only SkillId. Server Session resolves it in its pinned rule copy. Network labels reuse the typed safe source's existing central mapping; IDs remain protocol/debug identities, never player-visible labels. Host and Client must use the same schema build.

@@ -89,6 +89,22 @@ template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitHelperPayload>
 {
 	enum { WithNetSerializer = true };
 };
+/** Skill choice uses the same bounded identity codec; legality stays in Session. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkSubmitSkillPayload
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FName SkillId = NAME_None;
+	bool IsEmpty() const { return SkillId.IsNone(); }
+	bool IsValidShape() const;
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+};
+template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitSkillPayload>
+	: TStructOpsTypeTraitsBase2<FFMCodexNetworkSubmitSkillPayload>
+{
+	enum { WithNetSerializer = true };
+};
 template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitCarrierPayload>
 	: TStructOpsTypeTraitsBase2<FFMCodexNetworkSubmitCarrierPayload>
 {

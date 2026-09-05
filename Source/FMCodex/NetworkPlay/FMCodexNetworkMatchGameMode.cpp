@@ -201,9 +201,10 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	MatchRuntime = MakeUnique<FFMCodexNetworkMatchRuntime>(
 		MatchInstanceId);
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
-	if (HasAuthority() && FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkDeploymentSlice")))
+	const bool bSkillSlice = FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkSkillSlice"));
+	if (HasAuthority() && (bSkillSlice || FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkDeploymentSlice"))))
 	{
-		MatchRuntime->EnableDeploymentAutomationEntry();
+		MatchRuntime->EnableDeploymentAutomationEntry(bSkillSlice ? 6 : 4);
 	}
 #endif
 	const FFMCodexNetworkRuntimeInitializeResult Result =
@@ -312,7 +313,7 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Ack.Code = Code;
 		Ack.ViewRevision = ViewRevision;
 		UE_LOG(LogFMCodexNetworkPlay, Log,
-			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s GKSlot=%s Carrier=%s Marker=%s Runner=%s Helper=%s ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
+			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s GKSlot=%s Carrier=%s Marker=%s Runner=%s Helper=%s Skill=%s ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
 			*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower),
 			Envelope.RequestId, *GetNameSafe(Controller), static_cast<int32>(Side),
 			Envelope.ExpectedAttackSequence, static_cast<int32>(Envelope.IntentKind),
@@ -321,6 +322,7 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 			*Envelope.Marker.MarkerCardId.ToString(),
 			*Envelope.Runner.RunnerCardId.ToString(),
 			*Envelope.Helper.HelperCardId.ToString(),
+			*Envelope.Skill.SkillId.ToString(),
 			*StaticEnum<EFMCodexNetworkIntentAckCode>()->GetNameStringByValue(static_cast<int64>(Code)),
 			PreviousRevision, ViewRevision,
 			MatchRuntime ? MatchRuntime->GetEntryProviderInvocationCount() : 0,
@@ -449,6 +451,16 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
 		Request.HelperCardId = Envelope.Helper.HelperCardId;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitHelper, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::SubmitSkill:
+	{
+		// Session resolves this SkillId using its private pinned rule set. No rule data enters the adapter.
+		FMatchPlayAuthoritativeSubmitSkillRequest Request;
+		Request.RequestingSide = Side;
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Request.SkillId = Envelope.Skill.SkillId;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitSkill, Request);
 		break;
 	}
 	default: return Finish(AckCode::NotPlayerIntent);
