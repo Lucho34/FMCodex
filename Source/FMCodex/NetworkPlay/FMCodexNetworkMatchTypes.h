@@ -137,6 +137,17 @@ struct FMCODEX_API FFMCodexNetworkRunnerOption
 	FText CardLabel;
 };
 
+/** One canonical Helper identity and its existing player-facing name. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkHelperOption
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkSubmitHelperPayload Choice;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText CardLabel;
+};
+
 /** Public accepted placement, projected from State via the safe viewer view. */
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexNetworkDeploymentSummary
@@ -256,6 +267,15 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	bool bRunnerOptionsUnavailable = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkRunnerOption SelectedRunner;
+	// Helper excludes the unique GK and frozen Marker: <=18 per valid defending deck.
+	// Same Runner half has five shared slots: at most four Helpers when Carrier/Marker are elsewhere.
+	static constexpr int32 MaxHelperOptions = 18;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	TArray<FFMCodexNetworkHelperOption> HelperOptions;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bHelperOptionsUnavailable = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkHelperOption SelectedHelper;
 };
 
 struct FFMCodexLocalMatchInteractionView;

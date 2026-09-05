@@ -1192,3 +1192,12 @@
 - Copy complete safe Runner options in order. Independent deck bound 18 excludes GK and Carrier; current ten-slot board permits eight. Invalid representations fail the whole projection. Selected Runner follows existing public ordinary disclosure; no Helper/Skill options, raw State or RNG.
 - With a legal Helper, accepted Runner stops at Resolution/AwaitingHelper expecting the defender, with Carrier/Marker/Runner frozen and Skill/ActionType/resolution unselected. SubmitHelper is the next narrow transport recommendation for this route. DeclineRunner and DeclineHelper remain separate unnetworked choices.
 - Preserve server-only no-Runner/no-Helper absence transitions toward Skill. No legal Skill may trigger existing automatic completion and new Full D12 wait. Transport must preserve those outcomes and never hide candidates to force a test route.
+
+
+## 2026-09-05 — SubmitHelper only over shared player-intent transport
+
+- Add only SubmitHelper with bounded HelperCardId. Registry Side and validated common sequence reconstruct the canonical request. All eight intents share generated RPC, the <=1024 request window, pending, ACK and publication; six choice members stay mutually exclusive.
+- Both Local typed dispatch and Network consume the existing shared port, Session.SubmitHelper and one Coordinator pass after success. Defending-side, deployment/snapshot, non-GK, Marker exclusion and same-Runner-physical-half legality remain exclusively canonical.
+- Project the complete ordered safe Helper set, with an independently justified 18-card deck bound and attainable current-board maximum four. Invalid representations fail as a whole. Selected Helper follows existing disclosure and is not retained after canonical attack closure.
+- A participant-first Helper completion enters Skill availability. With a legal Skill, stop at AwaitingSkill expecting the attacker; SubmitSkill is the next narrow unnetworked choice for that route. With none, preserve ResolveNoLegalSkill and the next Full D12 wait. No player choice or random draw is fabricated to force a desired route.
+- ResolveNoLegalHelper stays server-internal. DeclineHelper requires a genuine legal choice and remains unnetworked, as does DeclineRunner. No Skill, branch, roll, set-piece or terminal transport is bundled here.

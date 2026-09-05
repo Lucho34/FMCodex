@@ -76,6 +76,13 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.RunnerResult.bSuccess, Authority.RunnerResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitHelper:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeSubmitHelperRequest>()) { return Mismatch(); }
+		const auto Authority = Session.SubmitHelper(Intent.Payload.Get<FMatchPlayAuthoritativeSubmitHelperRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.HelperResult.bSuccess, Authority.HelperResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	default:
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
 		return Result;

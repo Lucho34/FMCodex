@@ -265,7 +265,7 @@ For a deterministic Carrier → Marker → Runner → Helper wait, use normal di
 5. B selects Carrier 罗德里 from all seven offered candidates.
 6. A selects Marker 加布里埃尔.
 7. B selects Runner 迪亚斯 from the complete six-candidate list.
-8. Both views converge on the selected Carrier/Marker/Runner, accepted receipt and pending 0. The next wait is 等待选择协防球员（尚未联网）, expecting A. Stop; do not select Helper, Skill or decline.
+8. Both views converge on the selected Carrier/Marker/Runner, accepted receipt and pending 0. The next wait is 等待选择协防球员, expecting A. Helper can now be submitted as described below; Skill and decline remain unnetworked.
 
 The offers and slots above come from canonical displayed deployment choices. Other legal Runner choices may produce no-Helper/no-Skill and the next Full D12 wait; all remain available. The opposite A-first automation path supports Host Runner parity without a HostPort shortcut.
 
@@ -281,8 +281,8 @@ Default double-click launch has no fixture arguments and continues using product
 
 ### SubmitCarrier and the next participant wait
 
-- SubmitCarrier adds one closed Carrier member containing bounded FName CarrierCardId only. Other members must be empty. Full D12/Finish require all five members empty; each other typed action excludes Carrier data. No Side, display name, slot, role, attribute or candidate-set claim enters the request.
-- All seven intents share generated owning ServerSubmitPlayerIntent, positive match/sequence correlation, the per-connection 1024 forward window, one pending state and existing owner ACK. Session remains final owner of current-attacker, selection-stage, deployment and candidate legality. Fresh-ID rewrites reach canonical rejection; transport duplicates never dispatch.
+- SubmitCarrier adds one closed Carrier member containing bounded FName CarrierCardId only. Other members must be empty. Full D12/Finish require all six members empty; each other typed action excludes Carrier data. No Side, display name, slot, role, attribute or candidate-set claim enters the request.
+- All eight intents share generated owning ServerSubmitPlayerIntent, positive match/sequence correlation, the per-connection 1024 forward window, one pending state and existing owner ACK. Session remains final owner of current-attacker, selection-stage, deployment and candidate legality. Fresh-ID rewrites reach canonical rejection; transport duplicates never dispatch.
 - Only the acting viewer receives the entire safe CarrierOptions set (maximum 19), preserving authoritative order and names. The DEV panel offers one button per candidate with bounded scrolling. Invalid/oversized projections expose no partial action set and show a diagnostic; they do not modify gameplay.
 - A selected Carrier becomes visible only through the stable safe snapshot, never ACK contents. Accepted pending needs both matching ACK and its view revision in either order; rejection releases pending without a new publication.
 - Carrier with a legal Marker stops at AwaitingMarker / SubmitMarker. The public wait and expected defender are displayed; the narrow Marker transport below owns that next choice. A choice with no legal Marker preserves the existing internal completion and next Full D12 wait; it must not be presented as an illegal Carrier.
@@ -297,7 +297,28 @@ Default double-click launch has no fixture arguments and continues using product
 
 ### SubmitRunner and the next player wait
 
-- SubmitRunner carries only bounded RunnerCardId in its closed member. Seven intents share generated owning RPC, registry Side, stale/match/shape/window admission and owner ACK. Session/CoreRules own Runner gameplay legality.
+- SubmitRunner carries only bounded RunnerCardId in its closed member. Eight intents share generated owning RPC, registry Side, stale/match/shape/window admission and owner ACK. Session/CoreRules own Runner gameplay legality.
 - The attacker receives the entire safe ordered list: deck bound 18, current-board maximum eight. The scrollable DEV panel offers 跑位：<safe display name>; the opponent gets no Runner controls. Invalid projections fail as a whole.
 - Selected Runner comes only from stable View. Accepted pending needs matching ACK and sufficient ViewRevision in either order. Rejection releases pending without publication; duplicate, stale and fresh-ID frozen rewrites cannot mutate gameplay or consume RNG.
-- With a legal Helper, Runner stops at Resolution/AwaitingHelper expecting the defender. No Helper/Skill candidates or transport are added. Server-only absence continuations may instead reach Skill or automatically close a no-legal-Skill attack. DeclineRunner remains a separate unnetworked alternative.
+- With a legal Helper, Runner stops at Resolution/AwaitingHelper expecting the defender. Helper uses the narrow transport below; no Skill candidates or transport are added. Server-only absence continuations may instead reach Skill or automatically close a no-legal-Skill attack. DeclineRunner remains a separate unnetworked alternative.
+
+
+### SubmitHelper and the actual next player wait
+
+- Eight network kinds share one generated owning ServerSubmitPlayerIntent, registry Side, common match/sequence/window validation, pending, owner ACK and publication model. Helper adds only bounded HelperCardId in its closed member. Full D12/Finish have no choice; all six mutually exclusive choice members must match their tag exactly.
+- The defending viewer receives all safe Helper candidates, in order, with 协防：<safe display name> buttons. The other viewer sees 等待对手选择协防球员 and no controls. Selected Helper comes only from safe View. ACK-first and View-first require their matching counterpart; rejected requests release pending without gameplay publication.
+- Session/CoreRules owns Helper semantics. Accepted Helper invokes Coordinator once and publishes once; rejection/duplicate/frozen rewrite does neither and consumes no RNG. A legal Skill yields AwaitingSkill expecting the attacker; no-legal-Skill continuation may instead close the attack. Never fabricate a Skill wait or preserve cleared participant facts.
+- The B-first DeploymentSlice sequence above can submit Helper 萨利巴 after Runner 迪亚斯. Its Carrier 罗德里 has no legal Skill at D12=4, so the server executes ResolveNoLegalSkill and both clients wait for A's next Full D12. Stop without rolling again.
+
+For a reproducible Remote Helper followed by a genuine unnetworked Skill wait, use the same launcher with its existing deterministic flag and default A-first identity (PowerShell, project root):
+
+```powershell
+cmd /c 'set "UE-CmdLineArgs=-FMCodexNetworkDeploymentSlice" && Scripts\NetworkPlay\LaunchNetworkPlayDev.cmd'
+```
+
+1. A Full D12; A ordinary; B ordinary; A ordinary; B ordinary; A ordinary; B finish deployment.
+2. A ordinary five more times, then A finish. This gives eight A ordinary cards and two B ordinary cards; no GK activation is required by canonical deployment.
+3. A chooses Carrier 厄德高; B chooses Marker 格伊; A chooses Runner 廷贝尔; B chooses Helper 迪亚斯. All choices come from the complete current lists.
+4. Accepted receipt plus synchronized View clears pending. Both views show the four selected participants and 等待选择战术（尚未联网）, expecting A. Stop; do not select Skill or decline.
+
+This fixture does not modify maps, Config, content or gameplay rules. Default launch still uses secure production randomness. Normal DEV actions never hardcode these player choices.

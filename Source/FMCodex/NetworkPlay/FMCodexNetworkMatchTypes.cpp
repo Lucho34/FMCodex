@@ -150,6 +150,27 @@ namespace FMCodexNetworkMatchTypes
 			FFMCodexNetworkClientViewSnapshot::MaxMarkerOptions, Result.MarkerOptions,
 			Result.bMarkerOptionsUnavailable, [](auto& Payload, FName Id) { Payload.MarkerCardId = Id; });
 	}
+	void ProjectHelper(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		if (Result.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary) { return; }
+		FFMCodexNetworkSubmitHelperPayload Choice;
+		Choice.HelperCardId = View.SelectedHelperCardId;
+		if (Choice.IsValidShape())
+		{
+			Result.SelectedHelper.Choice = Choice;
+			const auto& Roster = View.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA
+				? View.PlayerBCardRoster : View.PlayerACardRoster;
+			const auto* Card = Roster.FindByPredicate([&](const auto& C) { return C.CardId == Choice.HelperCardId; });
+			Result.SelectedHelper.CardLabel = Card ? CardLabel(*Card) : LOCTEXT("PlayerFallback", "球员");
+		}
+		if (View.InteractionCategory != EFMCodexLocalMatchInteractionCategory::SelectHelper
+			|| !View.bHumanInteraction || Result.ViewerSide == EInitialTurnOrderPlayer::None
+			|| View.ExpectedActingPlayer != Result.ViewerSide) { return; }
+		CopyCompleteSelectionOptions(View, Result.ViewerSide,
+			FFMCodexNetworkClientViewSnapshot::MaxHelperOptions, Result.HelperOptions,
+			Result.bHelperOptionsUnavailable, [](auto& Payload, FName Id) { Payload.HelperCardId = Id; });
+	}
 	void ProjectRunner(const FFMCodexLocalMatchInteractionView& View,
 		FFMCodexNetworkClientViewSnapshot& Result)
 	{
@@ -321,6 +342,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	FMCodexNetworkMatchTypes::ProjectCarrier(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectMarker(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectRunner(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectHelper(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,

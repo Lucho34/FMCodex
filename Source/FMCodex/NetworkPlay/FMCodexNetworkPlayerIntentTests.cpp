@@ -401,13 +401,15 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner")});
+		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner"), TEXT("Helper")});
 	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkDeployGoalkeeperPayload::StaticStruct(), {TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkSubmitCarrierPayload::StaticStruct(), {TEXT("CarrierCardId")});
 	ExactFields(FFMCodexNetworkSubmitMarkerPayload::StaticStruct(), {TEXT("MarkerCardId")});
 	ExactFields(FFMCodexNetworkSubmitRunnerPayload::StaticStruct(), {TEXT("RunnerCardId")});
 	ExactFields(FFMCodexNetworkRunnerOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
+	ExactFields(FFMCodexNetworkSubmitHelperPayload::StaticStruct(), {TEXT("HelperCardId")});
+	ExactFields(FFMCodexNetworkHelperOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
 	ExactFields(FFMCodexNetworkMarkerOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
 	ExactFields(FFMCodexNetworkCarrierOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
 	ExactFields(FFMCodexNetworkGoalkeeperOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel"), TEXT("SlotLabel")});
@@ -425,7 +427,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("GoalkeeperDeployment"), TEXT("bCanFinishDeployment"), TEXT("bPlayerADeploymentFinished"),
 		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete"), TEXT("CarrierOptions"),
 		TEXT("bCarrierOptionsUnavailable"), TEXT("SelectedCarrier"), TEXT("MarkerOptions"),
-		TEXT("bMarkerOptionsUnavailable"), TEXT("SelectedMarker"), TEXT("RunnerOptions"), TEXT("bRunnerOptionsUnavailable"), TEXT("SelectedRunner")});
+		TEXT("bMarkerOptionsUnavailable"), TEXT("SelectedMarker"), TEXT("RunnerOptions"), TEXT("bRunnerOptionsUnavailable"), TEXT("SelectedRunner"), TEXT("HelperOptions"), TEXT("bHelperOptionsUnavailable"), TEXT("SelectedHelper")});
 	const auto* Class = AFMCodexNetworkMatchPlayerController::StaticClass();
 	const auto* Server = Class->FindFunctionByName(TEXT("ServerSubmitPlayerIntent"));
 	const auto* Client = Class->FindFunctionByName(TEXT("ClientReceivePlayerIntentAck"));

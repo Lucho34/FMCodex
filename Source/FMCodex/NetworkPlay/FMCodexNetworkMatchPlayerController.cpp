@@ -313,6 +313,17 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 				.OnClicked_Lambda([this, Id]() { DevSubmitRunner(Id); return FReply::Handled(); })
 			];
 		}
+		for (const auto& Option : OwnerView.HelperOptions)
+		{
+			const FName Id = Option.Choice.HelperCardId;
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton)
+				.Text(FText::Format(LOCTEXT("HelperChoice", "协防：{0}"), Option.CardLabel))
+				.IsEnabled_Lambda([this]() { return CanSubmitHelper(); })
+				.OnClicked_Lambda([this, Id]() { DevSubmitHelper(Id); return FReply::Handled(); })
+			];
+		}
 	}
 #endif
 }
@@ -358,7 +369,8 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("等待选择盯人球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
 			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide
 				? TEXT("等待选择跑位球员") : TEXT("等待对手选择跑位球员")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::HelperSelection
-			? TEXT("等待选择协防球员（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+				? TEXT("等待选择协防球员") : TEXT("等待对手选择协防球员")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
 			? TEXT("等待选择战术（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
 		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s"),
@@ -412,6 +424,14 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 	if (OwnerView.bRunnerOptionsUnavailable)
 	{
 		EntryText += LOCTEXT("RunnerProjectionUnavailable", "\n跑位候选视图不可用，请检查服务器配置").ToString();
+	}
+	if (!OwnerView.SelectedHelper.Choice.IsEmpty())
+	{
+		EntryText += FText::Format(LOCTEXT("SelectedHelper", "\n已选协防球员：{0}"), OwnerView.SelectedHelper.CardLabel).ToString();
+	}
+	if (OwnerView.bHelperOptionsUnavailable)
+	{
+		EntryText += LOCTEXT("HelperProjectionUnavailable", "\n协防候选视图不可用，请检查服务器配置").ToString();
 	}
 	const auto& Ack = IntentClientState.GetLastAck();
 	FString AckText = TEXT("暂无请求回执");
@@ -636,6 +656,46 @@ void AFMCodexNetworkMatchPlayerController::DevProbeInvalidRunner()
 	FFMCodexNetworkSubmitRunnerPayload Choice;
 	Choice.RunnerCardId = TEXT("DEV.NonexistentRunner");
 	SubmitRunnerChoice(Choice);
+#endif
+}
+bool AFMCodexNetworkMatchPlayerController::CanSubmitHelper() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.EntryWait == EFMCodexNetworkEntryWait::HelperSelection
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+		&& !OwnerView.bHelperOptionsUnavailable && !OwnerView.HelperOptions.IsEmpty();
+}
+void AFMCodexNetworkMatchPlayerController::DevSubmitHelper(FName HelperCardId)
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanSubmitHelper()) { return; }
+	const auto* Option = OwnerView.HelperOptions.FindByPredicate(
+		[&](const auto& C) { return C.Choice.HelperCardId == HelperCardId; });
+	if (Option) { SubmitHelperChoice(Option->Choice); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitHelperChoice(const FFMCodexNetworkSubmitHelperPayload& Choice)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginHelper(OwnerView, Choice, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Helper owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Helper=%s"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, *Choice.HelperCardId.ToString());
+	ServerSubmitPlayerIntent(Envelope); // Generated owning RPC for both Host and Remote.
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeInvalidHelper()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanSubmitHelper()) { return; }
+	FFMCodexNetworkSubmitHelperPayload Choice;
+	Choice.HelperCardId = TEXT("DEV.NonexistentHelper");
+	SubmitHelperChoice(Choice);
 #endif
 }
 bool AFMCodexNetworkMatchPlayerController::CanDeployGoalkeeper() const

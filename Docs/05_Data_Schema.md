@@ -676,7 +676,7 @@ The request reuses ExpectedAttackSequence and server-derived RequestingSide to b
 | Field/type | Contract |
 |---|---|
 | Marker: FFMCodexNetworkSubmitMarkerPayload | MarkerCardId: FName only; nonempty, at most 128 UTF-8 bytes; existing codec, at most 129 encoded bytes |
-| SubmitMarker shape | Marker valid; Deployment, Goalkeeper, Carrier and Runner empty |
+| SubmitMarker shape | Marker valid; Deployment, Goalkeeper, Carrier, Runner and Helper empty |
 | FFMCodexNetworkMarkerOption | Choice (MarkerCardId-only payload) + CardLabel (FText) |
 | MarkerOptions | Complete acting-defender safe set, canonical order, maximum 19 |
 | bMarkerOptionsUnavailable | Whole-list representational failure; no partial options |
@@ -690,11 +690,26 @@ The bound follows unique own deployed non-GK eligibility and the canonical 20-ca
 | Field/type | Contract |
 |---|---|
 | Runner: FFMCodexNetworkSubmitRunnerPayload | RunnerCardId: FName only; nonempty, <=128 UTF-8 bytes; shared codec, <=129 encoded bytes |
-| SubmitRunner shape | Runner valid; Deployment, Goalkeeper, Carrier and Marker empty |
+| SubmitRunner shape | Runner valid; Deployment, Goalkeeper, Carrier, Marker and Helper empty |
 | FFMCodexNetworkRunnerOption | Choice (RunnerCardId-only payload) + CardLabel (FText) |
 | RunnerOptions | Entire acting-attacker safe set in canonical order; bound 18, current ten-slot board maximum eight |
 | bRunnerOptionsUnavailable | Whole-list failure for overflow, duplicate/invalid identity or wrong source Side; no partial choices |
 | SelectedRunner | Safe SelectedRunnerCardId and attacker display name; empty if unselected or undisclosed |
-| EntryWait.HelperSelection / SkillSelection | Next wait only; no future choice DTO or options |
+| EntryWait.HelperSelection / SkillSelection | Helper uses the typed projection below; Skill remains a high-level wait without options |
 
-Seven tags share the original four correlation/kind fields, constant-memory ledger and ACK schema. Full D12/Finish require all five choice members empty. No Side, names, attributes, slot, candidate array, authority flags, State or RNG enter Runner submission. ExpectedAttackSequence remains the observed common freshness token. Host and Client require the same schema build.
+Eight tags share the original four correlation/kind fields, constant-memory ledger and ACK schema. Full D12/Finish require all six choice members empty. No Side, names, attributes, slot, candidate array, authority flags, State or RNG enter Runner submission. ExpectedAttackSequence remains the observed common freshness token. Host and Client require the same schema build.
+
+
+## Bounded Helper identity and projection
+
+| Field/type | Contract |
+|---|---|
+| Helper: FFMCodexNetworkSubmitHelperPayload | HelperCardId: FName only, nonempty, <=128 UTF-8 bytes; existing codec <=129 encoded bytes |
+| SubmitHelper shape | Helper valid; Deployment, Goalkeeper, Carrier, Marker and Runner empty |
+| FFMCodexNetworkHelperOption | Choice (HelperCardId-only payload) and CardLabel (FText) |
+| HelperOptions | Complete ordered acting-defender safe set; independent deck bound 18, current board maximum four |
+| bHelperOptionsUnavailable | Whole-list diagnostic failure for overflow, duplicate/invalid identity or wrong source Side |
+| SelectedHelper | Safe selected identity and defender display name, empty when unselected, withheld or cleared by canonical closure |
+| EntryWait.SkillSelection | High-level next wait only; no Skill payload/options |
+
+All eight tags share four common envelope fields and six closed choice members. Full D12/Finish require all six empty; each other tag accepts exactly its own member. Match/sequence/RequestId, <=1024 forward window, ACK and generic pending are unchanged. No Side, slot, names, participant role, attributes, raw State, future Skill/Formula or RNG crosses the Helper request. Host/Client require coordinated schema builds.

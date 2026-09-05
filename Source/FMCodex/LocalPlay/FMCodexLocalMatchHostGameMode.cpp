@@ -397,9 +397,9 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 			DeclineRunner(Intent.Payload.Get<
 				FMatchPlayAuthoritativeDeclineRunnerRequest>()));
 	case EMatchPlayAuthoritativeCommandKind::SubmitHelper:
-		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitHelperRequest,
-			SubmitHelper(Intent.Payload.Get<
-				FMatchPlayAuthoritativeSubmitHelperRequest>()));
+		return FMatchPlayEntryDeploymentPlayerIntentPort(
+			ActiveMatchRuntime->AuthoritativeSession,
+			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 	case EMatchPlayAuthoritativeCommandKind::DeclineHelper:
 		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeclineHelperRequest,
 			DeclineHelper(Intent.Payload.Get<

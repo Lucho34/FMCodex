@@ -58,8 +58,13 @@ public:
 	void DevSubmitRunner(FName RunnerCardId);
 	UFUNCTION(Exec)
 	void DevProbeInvalidRunner();
+	UFUNCTION(Exec)
+	void DevSubmitHelper(FName HelperCardId);
+	UFUNCTION(Exec)
+	void DevProbeInvalidHelper();
 	bool CanSubmitMarker() const;
 	bool CanSubmitRunner() const;
+	bool CanSubmitHelper() const;
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -88,6 +93,7 @@ private:
 
 	void SubmitMarkerChoice(const FFMCodexNetworkSubmitMarkerPayload& Choice);
 	void SubmitRunnerChoice(const FFMCodexNetworkSubmitRunnerPayload& Choice);
+	void SubmitHelperChoice(const FFMCodexNetworkSubmitHelperPayload& Choice);
 	void SubmitCarrierChoice(const FFMCodexNetworkSubmitCarrierPayload& Choice);
 	void SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice);
 	void SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind Kind);
