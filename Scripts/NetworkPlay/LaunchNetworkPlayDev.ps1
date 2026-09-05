@@ -6,7 +6,8 @@ param(
     [ValidateRange(640, 3840)][int]$ResX = 900,
     [ValidateRange(480, 2160)][int]$ResY = 700,
     [ValidateRange(5, 120)][int]$ReadyTimeoutSeconds = 60,
-    [switch]$ValidateOnly
+    [switch]$ValidateOnly,
+    [switch]$DeploymentSlice
 )
 
 Set-StrictMode -Version Latest
@@ -46,6 +47,11 @@ function Get-NetworkPlayLaunchPlan {
         # Prevent UE 5.3 Live Coding auto-start; these remain visible game windows.
         '-unattended', ('-ResX={0}' -f $Width), ('-ResY={0}' -f $Height)
     )
+    # Explicit host-only automation fixture. Default launch keeps production secure RNG.
+    $fixtureArguments = @()
+    if ($DeploymentSlice) {
+        $fixtureArguments = @('-FMCodexNetworkTestBFirst', '-FMCodexNetworkDeploymentSlice')
+    }
     [pscustomobject]@{
         ProjectRoot = $projectRoot
         ProjectPath = $projectPath
@@ -58,7 +64,7 @@ function Get-NetworkPlayLaunchPlan {
         ClientLog = $clientLog
         HostArguments = @($commonArguments[0], ('"{0}"' -f $hostUrl)) +
             @($commonArguments | Select-Object -Skip 1) +
-            @('-WinX=20', '-WinY=40', ('-port={0}' -f $ListenPort), ('-abslog="{0}"' -f $hostLog))
+            @('-WinX=20', '-WinY=40', ('-port={0}' -f $ListenPort), ('-abslog="{0}"' -f $hostLog)) + $fixtureArguments
         ClientArguments = @($commonArguments[0], $clientUrl) +
             @($commonArguments | Select-Object -Skip 1) +
             @(('-WinX={0}' -f ($Width + 40)), '-WinY=40', ('-abslog="{0}"' -f $clientLog))

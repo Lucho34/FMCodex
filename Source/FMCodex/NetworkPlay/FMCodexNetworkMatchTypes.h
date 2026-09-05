@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "FMCodexNetworkDeploymentPayload.h"
 
 #include "../CoreRules/InitialTurnOrderResolver.h"
 
@@ -77,11 +78,31 @@ struct FMCODEX_API FFMCodexNetworkParticipantPublicIdentity
 	FFMCodexNetworkTeamIdentity Team;
 };
 
-/**
- * Small owner-only transport DTO. It is projected from an already filtered
- * InteractionView and intentionally has no card, nomination, deck or raw-state
- * fields.
- */
+/** One offered legal choice; labels are presentation only, never command identity. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkDeploymentOption
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkDeployOrdinaryPayload Choice;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText CardLabel;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText SlotLabel;
+};
+
+/** Public accepted placement, projected from State via the safe viewer view. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkDeploymentSummary
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EInitialTurnOrderPlayer Side = EInitialTurnOrderPlayer::None;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkDeploymentOption Placement;
+};
+
+/** Owner-safe bounded choices plus public facts; no raw State, hand or deck. */
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 {
@@ -139,6 +160,14 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	EFMCodexNetworkEntryBranch EntryBranch = EFMCodexNetworkEntryBranch::None;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	EFMCodexNetworkEntryWait EntryWait = EFMCodexNetworkEntryWait::None;
+
+	static constexpr int32 MaxDeploymentOptions = 3;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	TArray<FFMCodexNetworkDeploymentOption> DeploymentOptions;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	int32 DeploymentCount = 0;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkDeploymentSummary LastDeployment;
 };
 
 struct FFMCodexLocalMatchInteractionView;

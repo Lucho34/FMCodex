@@ -7,7 +7,8 @@ UENUM()
 enum class EFMCodexNetworkPlayerIntentKind : uint8
 {
 	None,
-	RequestInitialActionPointRoll
+	RequestInitialActionPointRoll,
+	DeployOrdinary
 };
 
 UENUM()
@@ -18,7 +19,7 @@ enum class EFMCodexNetworkIntentAckCode : uint8
 	DuplicateOrAlreadyResolved, AuthorityRejected, InternalFailure
 };
 
-/** No claimed Side, roll, seed, provider, result, card or UObject identity. */
+/** Closed kind-tagged payload: Full D12 must be empty; DeployOrdinary carries canonical names only. */
 USTRUCT()
 struct FMCODEX_API FFMCodexNetworkPlayerIntentEnvelope
 {
@@ -31,6 +32,9 @@ struct FMCODEX_API FFMCodexNetworkPlayerIntentEnvelope
 	int64 ExpectedAttackSequence = 0;
 	UPROPERTY()
 	EFMCodexNetworkPlayerIntentKind IntentKind = EFMCodexNetworkPlayerIntentKind::None;
+	UPROPERTY()
+	FFMCodexNetworkDeployOrdinaryPayload Deployment;
+	EFMCodexNetworkIntentAckCode ValidatePayloadShape() const;
 };
 
 /** Owner-targeted receipt. Gameplay facts travel exclusively in OwnerView. */
@@ -55,6 +59,9 @@ struct FMCODEX_API FFMCodexNetworkPlayerIntentAck
  */
 struct FMCODEX_API FFMCodexNetworkIntentLedger
 {
+	static constexpr int64 MaxForwardDelta = 1024;
+	EFMCodexNetworkIntentAckCode Check(const FGuid& ServerMatch,
+		const FFMCodexNetworkPlayerIntentEnvelope& Envelope) const;
 	bool Consume(const FGuid& ServerMatch, const FFMCodexNetworkPlayerIntentEnvelope& Envelope);
 private:
 	FGuid Match;
@@ -67,11 +74,17 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 	void ObserveView(const FFMCodexNetworkClientViewSnapshot& View);
 	bool Begin(const FFMCodexNetworkClientViewSnapshot& View,
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginDeployment(const FFMCodexNetworkClientViewSnapshot& View,
+		const FFMCodexNetworkDeployOrdinaryPayload& Choice,
+		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }
 	int64 GetPendingRequestId() const { return PendingRequestId; }
 	const FFMCodexNetworkPlayerIntentAck& GetLastAck() const { return LastAck; }
 private:
+	bool BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
+		EFMCodexNetworkPlayerIntentKind Kind, const FFMCodexNetworkDeployOrdinaryPayload& Choice,
+		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	void CompleteIfReady();
 	FGuid Match;
 	int64 NextRequestId = 1;

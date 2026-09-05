@@ -1154,3 +1154,11 @@
 - 熵源失败或有界 sampler 耗尽走既有 provider failure/State adoption 路径，禁止可预测 fallback。secret entropy/生成器状态不复制、不持久化到公开 State、不写日志；未承诺跨进程恢复未来随机流。
 - LocalPlay seeded RNG、DEV override 与 automation deterministic injection 保留。B-first 网络验证参数只控制服务器测试开局，仍使用生产安全 provider，正常客户端无先攻或随机输入权限。
 - Listen host 对其 authority process 的固有控制不变；Remote 不得从公开元数据及已披露骰子预测未来生产随机性。RequestId huge-jump、请求预算及 payload generalization 不随此 RNG 修复扩展。
+
+## 2026-09-05 — Bounded ordinary deployment and shared intent transport
+
+- Add only DeployOrdinary after Full D12. The closed payload is canonical FName CardId + SlotId with 128-byte UTF-8 limits enforced by network serialization. Full D12 requires an empty member; neither accepts Side, provider, rules, roll or object references.
+- Common transport admission covers correlation/shape/sequence and a per-connection constant-memory 1024 forward RequestId window. An absurd jump returns InvalidPayload without consuming the ledger. The two kinds share IDs; request epochs/reconnect and rate budgets remain separate work.
+- Full D12 keeps attacker ownership; deployment uses canonical CurrentLegalDeploymentSide. Local/Network share a bounded entry/deployment HostPort, the existing Session writer and one Coordinator pass, preserving local domain-error reporting and all gameplay rules.
+- Owner views project at most three legal ordinary choices from BuildForViewer plus a public last-placement/count summary. Labels never replace canonical command identity. Accepted ACK/view convergence is shared; rejected deployment cannot mutate State, consume RNG or publish a revision.
+- The optional project launcher DeploymentSlice parameter selects B-first/initial D12=4 exclusively in automation non-Shipping authority. Default Network production continues using server-private crypto randomness, independent of all public metadata. No client wire fixture controls are added.

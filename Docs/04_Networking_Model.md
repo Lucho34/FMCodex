@@ -215,16 +215,16 @@ DEV 面板只有一个格式化入口 `BuildStatusText` 和一个幂等刷新入
 
 ## Full D12 写入、去重与公开策略（Stage 7.3）
 
-此前 Stage 7.2 的“无 gameplay RPC”仅描述 bootstrap 历史边界；当前只有 RequestInitialActionPointRoll 联网，完整比赛仍不可联网游玩。
+此前 Stage 7.2 的“无 gameplay RPC”仅描述 bootstrap 历史边界。本节记录 Full D12 foundation；当前另开放下文的 DeployOrdinary，完整比赛仍不可联网游玩。
 
 - reliable owning Controller RPC 传 MatchInstanceId / RequestId / ExpectedAttackSequence / IntentKind。Side 由服务器连接映射导出；host 不享有额外身份或直达 Session 权限。
 - 每个 Controller 的客户端请求 ID 在其生命周期严格递增，最多一个 pending；包括拒绝后 retry 也使用新 ID。服务器每个已加入 Controller 仅保留 match + highest-seen ID，旧/重复/乱序 ID 均明确拒绝，不缓存无限 ACK 列表。两名 participant 至多两个记录；错误比赛包和非 participant 不能重置/分配记录，只有服务器选定新比赛可重置去重范围。
 - ACK 仅是匹配请求的 typed receipt 与 publication revision，不携带骰子、路线、胜者、Formula 或 raw State。accepted ACK 先到则继续只读等待对应 view；view 先到则显示真实 view 但保留 pending 直到 ACK。错误/重复/上一请求 ACK 无副作用，新比赛 view 清除旧 pending。无自动 resend、timeout、reconnect 或断线重入。
 - Full D12 成功进入并完成 Coordinator 后，服务器按该 AttackSequence 对双方公开已保存的原始 D12 与高层分支；仅开启 initial-roll disclosure。未公开结果在服务器投影时即被删除，不发送后交给客户端隐藏，不调用 FullyDisclosed。AP1 仅公开高层已结算等待，不发送罚下 CardId；不扩展其他骰子或秘密字段。
-- AP1 自动推进到 TerminalPendingAdvance；2–8 停在部署；9–12 停在独立类型 D6 请求前。三者后续意图均未联网，DEV UI 只有 Full D12 按钮。双方结果直接显示，不承诺同步 Reel。
+- AP1 自动推进到 TerminalPendingAdvance；2–8 停在部署；9–12 停在独立类型 D6 请求前。当前 ordinary 部署另有下文的 DEV 按钮，其余后续意图尚未联网。双方结果直接显示，不承诺同步 Reel。
 - 日常验证继续关闭 Editor 后双击项目启动器。提交方应显示“服务器已接受”，双方看到相同已公开 D12/分支与新 revision，非行动方不显示可点击入口；身份刷新仍使用既有 OnRep/BeginPlay 幂等入口。
 
-USER 两窗口验收通过并由用户手动 commit 后，下一步必须是 **Stage 7.3.A — GPT-6 Astra Network Architecture Second-Opinion Audit（REPORT-ONLY）**，不是 Stage 7.4。该独立审计关注连接/HostPort/Session/Coordinator 边界、幂等与异步顺序、披露与后续迁移风险；本实现阶段不提前执行该审计。
+Full D12 foundation 后的独立架构审计与 RNG privacy 修复是当前部署扩展的前置工作；当前有效 transport 合同见下文。
 
 ## Network 随机性保密与测试开局
 
@@ -234,4 +234,28 @@ USER 两窗口验收通过并由用户手动 commit 后，下一步必须是 **S
 - LocalPlay 与 automation 的 deterministic provider 保持独立且可注入。生产安全源失败时返回 provider failure，不降级到可预测来源。
 - Listen host 仍可篡改其持有的 authority process；服务器私有随机性不构成对恶意 host 的保证，也不要求当前改用 Dedicated Server。
 - `-FMCodexNetworkTestBFirst` 仅在 automation、non-Shipping 的服务器 GameMode 生效：仅测试牌组的稀有度统一为 Common、tie-break 输入设 A=6/B=2，由 canonical opening resolver 选择 B 先攻；不接受客户端选择先攻，不改生产随机来源。普通启动器无该参数，默认开局保持不变。
-- Full D12 的“当前进攻方”检查属于 intent-specific ownership，不是未来防守/选择请求的公共规则。巨大 RequestId 导致自身 high-water 锁定的策略，以及请求预算/日志限频，留给 transport generalization；当前协议不变。
+- Full D12 的“当前进攻方”检查属于 intent-specific ownership，不是未来防守/选择请求的公共规则。RequestId huge-jump 现按下文 bounded admission 处理；请求预算/日志限频仍延期。
+
+## Typed ordinary deployment and bounded request admission
+
+The current network write allowlist is Full D12 + DeployOrdinary. DeployGoalkeeper, FinishDeployment and all tactical/advance/recovery actions remain unavailable on this transport.
+
+- The deployment payload contains only canonical CardId and SlotId. RequestingSide comes exclusively from the admitted Controller registry; another side's CardId grants no ownership. CurrentLegalDeploymentSide can be the defender while CurrentAttackingSide remains unchanged, so the Full D12 attacker gate is intent-specific.
+- RequestId shares one namespace across intent kinds per connection. A new ID must be positive, greater than the accepted high-water mark and at most **1024** above it (first high-water is zero). A larger jump returns InvalidPayload without changing the ledger; a subsequent normal ID remains valid. Valid-shaped requests admitted within the window consume their ID even if later rejected for stale sequence/side/legality. Wrong-match, malformed and unknown-kind requests do not consume it. Low/duplicate IDs return DuplicateOrAlreadyResolved. Storage remains one match/ID pair, not a growing receipt cache.
+- This window is a conservative transport sanity bound for reliable, single-pending requests, not a reconnect protocol or spam budget. New matches/reconnection need a separately designed request epoch; no automatic resend, timeout or re-entry is promised.
+- The owner snapshot sends at most **3** already-legal ordinary card/slot options to the currently legal deployment side. The DEV button submits the first current projected option. These options are a bounded sample, not the whole legal set or a new legality restriction; other canonical legal choices are accepted by Session. Other viewers receive no actionable options.
+- Both viewers receive public deployment count and the last accepted placement, using the same State revision and preferred Chinese card/slot labels. No optimistic placement or ACK-derived gameplay truth is allowed. ACK-first retains pending until the corresponding view; view-first retains pending until the matching ACK. Rejection clears pending without publishing another view.
+
+### Deterministic ordinary deployment DEV launch
+
+After an Editor Development build, close the Editor and old test windows. From the project directory run:
+
+```powershell
+& '.\Scripts\NetworkPlay\LaunchNetworkPlayDev.ps1' -DeploymentSlice
+```
+
+The existing .cmd wrapper also forwards `-DeploymentSlice`. This optional parameter adds **host-only** `-FMCodexNetworkTestBFirst -FMCodexNetworkDeploymentSlice`. In automation/non-Shipping server builds the canonical opening fixture selects B first and an authority entry-provider injection supplies initial D12=4. Other random purposes retain secure providers. It cannot be selected by an RPC or a normal client input and is inert in Shipping.
+
+Remote B clicks Full D12, then the projected `部署 球员 → 场地槽位` button. Host A waits during B's action. Both should show the same accepted card/slot, count and revision; B's pending clears. A then becomes the legal deployment side through canonical turn rotation. This validates only ordinary deployment; FinishDeployment and tactics are not available.
+
+Default double-click launch has no fixture arguments and continues using production secure randomness for every draw. The deterministic path does not require Saved scripts, Engine map saves, World Settings edits or changes to the default LocalPlay mode.

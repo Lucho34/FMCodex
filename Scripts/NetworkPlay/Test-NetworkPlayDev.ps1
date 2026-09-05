@@ -47,6 +47,14 @@ Assert-True ($plan.HostLog.StartsWith((Join-Path $repoRoot 'Saved\Logs\NetworkPl
 Assert-True ($plan.HostLog -ne $plan.ClientLog) 'Host and Client logs are distinct'
 Assert-True ($plan.LogDirectory -ne (Get-NetworkPlayLaunchPlan).LogDirectory) 'Every launch gets fresh logs; stale readiness cannot be reused'
 
+Assert-True (-not (($plan.HostArguments -join ' ').Contains('FMCodexNetworkDeploymentSlice'))) 'Default launch has no deterministic deployment override'
+$DeploymentSlice = $true
+$deploymentPlan = Get-NetworkPlayLaunchPlan
+$DeploymentSlice = $false
+Assert-True (($deploymentPlan.HostArguments -contains '-FMCodexNetworkDeploymentSlice') -and ($deploymentPlan.HostArguments -contains '-FMCodexNetworkTestBFirst')) 'Optional deployment fixture reaches only the Host command'
+Assert-True (-not (($deploymentPlan.ClientArguments -join ' ').Contains('FMCodexNetwork'))) 'Remote has no fixture or deterministic authority argument'
+Assert-True ($deploymentPlan.HostUrl -eq $plan.HostUrl) 'Fixture preserves normal Network GameMode launch path'
+
 $readyLog = "Game class is 'FMCodexNetworkMatchGameMode'`nIpNetDriver listening on port 7777`nAdmitted participant as Side A (same path for host/remote)."
 Assert-True (Test-NetworkPlayHostLog $readyLog 7777) 'Correct Network listen/admission markers are accepted'
 Assert-True (-not (Test-NetworkPlayHostLog 'IpNetDriver listening on port 7777' 7777)) 'Socket line alone cannot start Client before Host admission'

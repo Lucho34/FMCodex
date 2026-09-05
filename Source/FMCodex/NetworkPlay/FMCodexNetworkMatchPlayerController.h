@@ -31,6 +31,11 @@ public:
 	/** Fresh-run negative wire probe; no UI consumer, inert outside automation builds. */
 	UFUNCTION(Exec)
 	void DevProbeWrongSideInitialD12();
+	UFUNCTION(Exec)
+	void DevDeployOrdinary();
+	UFUNCTION(Exec)
+	void DevProbeInvalidDeploymentCard();
+	bool CanDeployOrdinary() const;
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -44,6 +49,7 @@ private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend struct FFMCodexNetworkBootstrapUIRefreshTestAccess;
 	friend struct FFMCodexNetworkIntentTestAccess;
+	friend struct FFMCodexNetworkDeploymentTestAccess;
 #endif
 
 	UFUNCTION(Server, Reliable)
@@ -55,6 +61,7 @@ private:
 
 	FFMCodexNetworkIntentClientState IntentClientState;
 
+	void SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice);
 	void InitializeDeveloperStatusUI();
 	FText BuildStatusText() const;
 

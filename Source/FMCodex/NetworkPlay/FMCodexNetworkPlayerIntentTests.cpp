@@ -401,7 +401,10 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind")});
+		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment")});
+	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});
+	ExactFields(FFMCodexNetworkDeploymentOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel"), TEXT("SlotLabel")});
+	ExactFields(FFMCodexNetworkDeploymentSummary::StaticStruct(), {TEXT("Side"), TEXT("Placement")});
 	ExactFields(FFMCodexNetworkPlayerIntentAck::StaticStruct(),
 		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("Code"), TEXT("ViewRevision")});
 	ExactFields(FFMCodexNetworkClientViewSnapshot::StaticStruct(),
@@ -409,7 +412,8 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("InteractionState"), TEXT("bMatchInitialized"), TEXT("bMatchEnded"), TEXT("AttackSequence"),
 		TEXT("CurrentAttackingSide"), TEXT("ExpectedActingSide"), TEXT("PlayerAScore"), TEXT("PlayerBScore"),
 		TEXT("PlayerAMaxAttackOpportunities"), TEXT("PlayerBMaxAttackOpportunities"),
-		TEXT("DisclosedInitialD12"), TEXT("EntryBranch"), TEXT("EntryWait")});
+		TEXT("DisclosedInitialD12"), TEXT("EntryBranch"), TEXT("EntryWait"), TEXT("DeploymentOptions"),
+		TEXT("DeploymentCount"), TEXT("LastDeployment")});
 	const auto* Class = AFMCodexNetworkMatchPlayerController::StaticClass();
 	const auto* Server = Class->FindFunctionByName(TEXT("ServerSubmitPlayerIntent"));
 	const auto* Client = Class->FindFunctionByName(TEXT("ClientReceivePlayerIntentAck"));
@@ -421,8 +425,8 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 	{
 		FString Source;
 		TestTrue(TEXT("Shared port consumer loads"), FFileHelper::LoadFileToString(Source, *(FPaths::ProjectDir() / Path)));
-		TestTrue(TEXT("Both hosts use same Full D12 port"), Source.Contains(TEXT("FMatchPlayFullD12PlayerIntentPort("))
-			|| Source.Contains(TEXT("FMatchPlayFullD12PlayerIntentPort Port(")));
+		TestTrue(TEXT("Both hosts use same entry/deployment port"), Source.Contains(TEXT("FMatchPlayEntryDeploymentPlayerIntentPort("))
+			|| Source.Contains(TEXT("FMatchPlayEntryDeploymentPlayerIntentPort Port(")));
 	}
 	FFixture F;
 	auto& Runtime = Access::Runtime(*F.Mode);

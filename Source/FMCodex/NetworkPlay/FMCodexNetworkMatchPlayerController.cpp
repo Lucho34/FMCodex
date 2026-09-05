@@ -59,7 +59,7 @@ namespace FMCodexNetworkMatchPlayerController
 			::WaitingForOpponentInitialActionPoint:
 			return TEXT("等待对手掷本回合 Full D12");
 		case EFMCodexNetworkClientInteractionState::WaitingForOwnIntent:
-			return TEXT("等待后续玩家操作（本阶段尚未联网）");
+			return TEXT("等待你的操作");
 		case EFMCodexNetworkClientInteractionState::WaitingForOpponentIntent:
 			return TEXT("等待对手操作");
 		case EFMCodexNetworkClientInteractionState::MatchEnded:
@@ -152,6 +152,12 @@ void AFMCodexNetworkMatchPlayerController::OnRep_OwnerView()
 		OwnerView.ViewRevision,
 		OwnerView.bMatchInitialized ? 1 : 0);
 	IntentClientState.ObserveView(OwnerView);
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Owner view applied: Revision=%d Pending=%lld DeploymentCount=%d LastSide=%d Card=%s Slot=%s"),
+		OwnerView.ViewRevision, IntentClientState.GetPendingRequestId(), OwnerView.DeploymentCount,
+		static_cast<int32>(OwnerView.LastDeployment.Side),
+		*OwnerView.LastDeployment.Placement.Choice.CardId.ToString(),
+		*OwnerView.LastDeployment.Placement.Choice.SlotId.ToString());
 	RefreshNetworkBootstrapUI();
 }
 
@@ -201,6 +207,25 @@ void AFMCodexNetworkMatchPlayerController::InitializeDeveloperStatusUI()
 						.OnClicked_Lambda([this]()
 						{
 							DevRequestInitialActionPointRoll();
+							return FReply::Handled();
+						})
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0, 12, 0, 0)
+					[
+						SNew(SButton)
+						.Visibility_Lambda([this]() { return OwnerView.DeploymentOptions.IsEmpty()
+							? EVisibility::Collapsed : EVisibility::Visible; })
+						.IsEnabled_Lambda([this]() { return CanDeployOrdinary(); })
+						.Text_Lambda([this]()
+						{
+							if (OwnerView.DeploymentOptions.IsEmpty()) { return LOCTEXT("Deploy", "部署球员"); }
+							const auto& Option = OwnerView.DeploymentOptions[0];
+							return FText::Format(LOCTEXT("DeployChoice", "部署 {0} → {1}"),
+								Option.CardLabel, Option.SlotLabel);
+						})
+						.OnClicked_Lambda([this]()
+						{
+							DevDeployOrdinary();
 							return FReply::Handled();
 						})
 					]
@@ -260,8 +285,15 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("已结算，等待下一回合") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
 			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
-		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s（后续操作尚未联网）"),
+		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s（完成部署与战术尚未联网）"),
 			OwnerView.DisclosedInitialD12, Branch, Wait);
+	}
+	if (OwnerView.DeploymentCount > 0)
+	{
+		const auto& Last = OwnerView.LastDeployment;
+		EntryText += FString::Printf(TEXT("\n已部署 %d 张 · 最近：玩家 %s · %s → %s"),
+			OwnerView.DeploymentCount, *SideLabel(Last.Side),
+			*Last.Placement.CardLabel.ToString(), *Last.Placement.SlotLabel.ToString());
 	}
 	const auto& Ack = IntentClientState.GetLastAck();
 	FString AckText = TEXT("暂无请求回执");
@@ -338,6 +370,45 @@ void AFMCodexNetworkMatchPlayerController::DevRequestInitialActionPointRoll()
 #endif
 }
 
+bool AFMCodexNetworkMatchPlayerController::CanDeployOrdinary() const
+{
+	return IsLocalController() && !IntentClientState.IsPending()
+		&& OwnerView.bMatchInitialized && OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+		&& OwnerView.EntryBranch == EFMCodexNetworkEntryBranch::Ordinary
+		&& OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
+		&& !OwnerView.DeploymentOptions.IsEmpty();
+}
+void AFMCodexNetworkMatchPlayerController::DevDeployOrdinary()
+{
+#if !UE_BUILD_SHIPPING
+	if (CanDeployOrdinary()) { SubmitDeploymentChoice(OwnerView.DeploymentOptions[0].Choice); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice)
+{
+#if !UE_BUILD_SHIPPING
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IsLocalController() || !IntentClientState.BeginDeployment(OwnerView, Choice, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Deployment owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Card=%s Slot=%s"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower),
+		Envelope.RequestId, static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence,
+		*Envelope.Deployment.CardId.ToString(), *Envelope.Deployment.SlotId.ToString());
+	// Same generated reliable owning RPC on host and remote; no direct implementation call.
+	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeInvalidDeploymentCard()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanDeployOrdinary()) { return; }
+	auto Choice = OwnerView.DeploymentOptions[0].Choice;
+	Choice.CardId = TEXT("DEV.NonexistentCard");
+	SubmitDeploymentChoice(Choice);
+#endif
+}
 void AFMCodexNetworkMatchPlayerController::DevProbeWrongSideInitialD12()
 {
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING

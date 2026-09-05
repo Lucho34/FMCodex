@@ -1,5 +1,5 @@
 #include "FMCodexLocalMatchHostGameMode.h"
-#include "../MatchPlayRuntime/MatchPlayFullD12PlayerIntentPort.h"
+#include "../MatchPlayRuntime/MatchPlayEntryDeploymentPlayerIntentPort.h"
 
 #include "FMCodexLocalMatchPlayerController.h"
 
@@ -272,7 +272,7 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 	switch (Intent.CommandKind)
 	{
 	case EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll:
-		return FMatchPlayFullD12PlayerIntentPort(
+		return FMatchPlayEntryDeploymentPlayerIntentPort(
 			ActiveMatchRuntime->AuthoritativeSession,
 			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 	case EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll:
@@ -360,9 +360,9 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 			RequestCornerDefenseRoll(
 				Intent.Payload.Get<FMatchPlayCornerRollRequest>()));
 	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
-		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeployOrdinaryRequest,
-			DeployOrdinary(Intent.Payload.Get<
-				FMatchPlayAuthoritativeDeployOrdinaryRequest>()));
+		return FMatchPlayEntryDeploymentPlayerIntentPort(
+			ActiveMatchRuntime->AuthoritativeSession,
+			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 	case EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper:
 		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeDeployGoalkeeperRequest,
 			DeployGoalkeeper(Intent.Payload.Get<

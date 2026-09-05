@@ -5,7 +5,7 @@
 #include "../LocalPlay/FMCodexPrototypeTeamContent.h"
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
 #include "../MatchPlayRuntime/MatchPlayServerCoordinator.h"
-#include "../MatchPlayRuntime/MatchPlayFullD12PlayerIntentPort.h"
+#include "../MatchPlayRuntime/MatchPlayEntryDeploymentPlayerIntentPort.h"
 
 /** Server-only decorator; delegates randomness unchanged. */
 class FFMCodexNetworkEntryRollProvider final : public IMatchPlayAttackEntryRollProvider
@@ -44,6 +44,39 @@ public:
 	int32 InvocationCount = 0;
 	int32 D12Count = 0;
 };
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+/** Fixture changes only the initial entry draw; all other entry draws still use secure RNG. */
+class FFMCodexDeploymentAutomationEntry final : public IMatchPlayAttackEntryRollProvider
+{
+public:
+	explicit FFMCodexDeploymentAutomationEntry(IMatchPlayAttackEntryRollProvider& InSecure) : Secure(InSecure) {}
+	virtual FMatchPlayAttackEntryRollProviderResult RollD12(EMatchPlayAttackEntryRollPurpose Purpose) override
+	{
+		if (Purpose != EMatchPlayAttackEntryRollPurpose::InitialActionPoint) { return Secure.RollD12(Purpose); }
+		FMatchPlayAttackEntryRollProviderResult Result;
+		Result.bSuccess = true;
+		Result.RawRoll = 4;
+		return Result;
+	}
+	virtual FMatchPlayAttackEntryRollProviderResult RollD6(EMatchPlayAttackEntryRollPurpose Purpose) override
+	{
+		return Secure.RollD6(Purpose);
+	}
+	virtual FMatchPlayAttackEntrySelectionProviderResult SelectUniformIndex(
+		EMatchPlayAttackEntryRollPurpose Purpose, int32 Count) override
+	{
+		return Secure.SelectUniformIndex(Purpose, Count);
+	}
+private:
+	IMatchPlayAttackEntryRollProvider& Secure;
+};
+void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry()
+{
+	check(!bInitialized);
+	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider));
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation deployment fixture: initial D12=4; other providers remain secure."));
+}
+#endif
 namespace FMCodexNetworkMatchRuntime
 {
 	FFMCodexNetworkTeamIdentity MakeTeamIdentity(const FName TeamId)
@@ -189,7 +222,7 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 		&& DisclosedInitialAttackSequence == Snapshot.CurrentAttack.AttackSequence;
 	const FFMCodexLocalMatchInteractionView SafeViewerView =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
-			AuthoritativeSession->GetStateSnapshot(),
+			Snapshot,
 			SkillRuleSet,
 			ViewerSide,
 			Disclosure);
@@ -244,9 +277,10 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NoActiveMatch;
 		return Result;
 	}
-	FMatchPlayFullD12PlayerIntentPort Port(*AuthoritativeSession, *ServerCoordinator);
+	FMatchPlayEntryDeploymentPlayerIntentPort Port(*AuthoritativeSession, *ServerCoordinator);
 	auto Result = Port.SubmitPlayerIntent(Intent);
-	if (Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)
 	{
 		DisclosedInitialAttackSequence = Result.AuthoritativeResult.RuntimeEnvelope.AttackSequence;
 	}

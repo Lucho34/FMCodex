@@ -3,9 +3,74 @@
 #include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
 
 DEFINE_LOG_CATEGORY(LogFMCodexNetworkPlay);
+#define LOCTEXT_NAMESPACE "FMCodexNetworkDeploymentProjection"
 
 namespace FMCodexNetworkMatchTypes
 {
+	FText CardLabel(const FFMCodexLocalMatchCardView& Card)
+	{
+		return Card.DisplayLabel.IsEmpty() || Card.DisplayLabel.StartsWith(TEXT("Card "))
+			|| Card.DisplayLabel == TEXT("UNKNOWN CARD")
+			? LOCTEXT("PlayerFallback", "球员") : FText::FromString(Card.DisplayLabel);
+	}
+	FText SlotLabel(const FFMCodexLocalMatchInteractionView& View, FName SlotId)
+	{
+		int32 Index = 0;
+		for (const auto& Region : View.PitchRegions)
+		{
+			for (const auto& Slot : Region.Slots)
+			{
+				++Index;
+				if (Slot.SlotId == SlotId)
+				{
+					// Stable catalog order is a display label only. Never parse IDs or infer legality.
+					return FText::Format(LOCTEXT("Slot", "场地槽位 {0}"), FText::AsNumber(Index));
+				}
+			}
+		}
+		return LOCTEXT("SlotFallback", "场地槽位");
+	}
+	void ProjectDeployment(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		if (Result.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary) { return; }
+		if (Result.EntryWait == EFMCodexNetworkEntryWait::Deployment
+			&& View.bHumanInteraction && View.CurrentLegalDeploymentSide == Result.ViewerSide
+			&& Result.ViewerSide != EInitialTurnOrderPlayer::None)
+		{
+			for (const auto& Group : View.DeploymentGroups)
+			{
+				if (Group.bGoalkeeper || Group.Side != Result.ViewerSide) { continue; }
+				for (const FName SlotId : Group.LegalSlotIds)
+				{
+					if (Result.DeploymentOptions.Num() == FFMCodexNetworkClientViewSnapshot::MaxDeploymentOptions) { break; }
+					FFMCodexNetworkDeploymentOption Option;
+					Option.Choice.CardId = Group.CardId;
+					Option.Choice.SlotId = SlotId;
+					if (!Option.Choice.IsValidShape()) { continue; }
+					Option.CardLabel = CardLabel(Group.Card);
+					Option.SlotLabel = SlotLabel(View, SlotId);
+					Result.DeploymentOptions.Add(MoveTemp(Option));
+				}
+				if (Result.DeploymentOptions.Num() == FFMCodexNetworkClientViewSnapshot::MaxDeploymentOptions) { break; }
+			}
+		}
+		Result.DeploymentCount = View.DeploymentPlacements.Num();
+		if (Result.DeploymentCount == 0) { return; }
+		const auto& Last = View.DeploymentPlacements.Last();
+		Result.LastDeployment.Side = Last.PlayerSide;
+		auto& Placement = Result.LastDeployment.Placement;
+		Placement.Choice.CardId = Last.CardId;
+		Placement.Choice.SlotId = Last.SlotId;
+		Placement.CardLabel = LOCTEXT("PlayerFallback", "球员");
+		Placement.SlotLabel = SlotLabel(View, Last.SlotId);
+		const auto& Roster = Last.PlayerSide == EInitialTurnOrderPlayer::PlayerA
+			? View.PlayerACardRoster : View.PlayerBCardRoster;
+		for (const auto& Card : Roster)
+		{
+			if (Card.CardId == Last.CardId) { Placement.CardLabel = CardLabel(Card); break; }
+		}
+	}
 	EFMCodexNetworkClientInteractionState SelectInteractionState(
 		const FFMCodexLocalMatchInteractionView& View,
 		const EInitialTurnOrderPlayer ViewerSide)
@@ -108,9 +173,11 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	{
 		Result.EntryWait = EFMCodexNetworkEntryWait::Deployment;
 	}
+	FMCodexNetworkMatchTypes::ProjectDeployment(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,
 			ViewerSide);
 	return Result;
 }
+#undef LOCTEXT_NAMESPACE

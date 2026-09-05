@@ -296,3 +296,11 @@
 - Source/module failure or bounded sampler exhaustion returns provider failure through existing Session adoption/error handling. No predictable fallback or automatic command retry is permitted.
 - LocalPlay retains its seeded provider and DEV deterministic override. Automation injects scripted entropy/provider objects through test-only constructors; exhaustion fails instead of reaching OS RNG.
 - A malicious Listen host still owns authoritative process memory. This repair protects future randomness from Remote prediction using public metadata and disclosed results; it does not change that host trust model.
+
+## Typed ordinary deployment transport
+
+- Network writes now admit exactly Full D12 and DeployOrdinary. The common boundary validates participant, match, positive correlation, closed kind/payload shape, bounded increasing RequestId and current attack sequence. It does not assume the acting player is the attacker.
+- Full D12 keeps its attacker/initial-wait preflight. DeployOrdinary uses the safe view's ExpectedActingSide, sourced from canonical CurrentLegalDeploymentSide, and ordinary-deployment wait; Session/CoreRules remain final owners of card ownership, availability, slot occupancy and placement legality.
+- Both Local Host and Network Runtime consume FMatchPlayEntryDeploymentPlayerIntentPort. Its Full D12 branch delegates the existing narrow port; deployment calls Session.DeployOrdinary and advances the same Coordinator exactly once after domain success. Domain error details are preserved for LocalPlay. The legacy synchronous local deployment facade remains for its existing consumers.
+- One accepted intent publishes one stable A/B revision after the Coordinator. Safe deployment choices and the last accepted public placement come from BuildForViewer, never the submitted payload or an alternate network State. Only successful Full D12 opens initial-roll disclosure for that attack.
+- The owner Controller uses the same generated RPC for listen host and remote. Client correlation/pending/ACK handling is shared across both kinds, separate from intent-specific DEV display. No network gameplay resolver, generic workflow engine or second command registry is introduced.

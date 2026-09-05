@@ -615,10 +615,32 @@ ACK Code 为 None、Accepted、MatchMismatch、NotParticipant、WrongSide、Stal
 
 初始攻击前 AttackSequence 指服务器派生的下一次攻击序列；攻击存在时指当前攻击。RequestId 只关联传输，不能替代 AttackSequence。客户端最多保留一个 pending 与一个 last ACK；服务器每个连接仅保留最高请求 ID，严格递增可靠请求的低 ID 都视为已处理/过期。
 
-Owner snapshot 仍无 MatchPlayState、full InteractionView、手牌/牌堆数组、CardId、Corner nominations、FormulaFacts、GoalHistory 或其他 raw RNG。GameState/PlayerState 的公共身份与 owner-only snapshot 复制方式保持原合同。
+Owner snapshot 不发送 MatchPlayState、full InteractionView、手牌/牌堆数组、Corner nominations、FormulaFacts、GoalHistory 或其他 raw RNG。CardId 仅在下文 bounded deployment option/public placement 中显式开放。GameState/PlayerState 的公共身份与 owner-only snapshot 复制方式保持原合同。
 
 ## Network RNG private boundary
 
 - Production Network RNG 不保存 public match seed；MatchInstanceId 不参与随机性生成。安全 entropy/context 仅为 server provider 私有对象，不是 canonical State 或任何 replicated DTO 字段。
 - Provider inputs 保持 canonical purpose、候选数量或已校验 Recovery candidates；随机输出仍为既有 D12/D6/index/Recovery result，不改变 wire schema、ACK、RequestId、AttackSequence 或 ViewRevision。
 - 单次 entropy failure 不返回部分成功输出；Recovery 第二次抽样失败时丢弃本次 provider 已选 indices，Session 保留该 command 的 BeforeState。此前已成功提交的其他 command 不因此回滚。
+
+## Bounded deployment wire and safe snapshot
+
+The earlier payload-free envelope is extended by one closed member:
+
+| Field/type | Contract |
+|---|---|
+| IntentKind | None (invalid), RequestInitialActionPointRoll, DeployOrdinary; no internal actions |
+| Deployment: FFMCodexNetworkDeployOrdinaryPayload | CardId: FName + SlotId: FName; stable canonical identities |
+| Full D12 payload | Both names must be NAME_None; nonempty deployment data is InvalidPayload |
+| DeployOrdinary payload | Both names must be nonempty, each at most 128 UTF-8 bytes; final existence/ownership/slot legality belongs to Session |
+
+Deployment has a custom NetSerialize: each name is a uint8 byte length followed by at most 128 UTF-8 bytes (maximum payload 258 bytes). It checks the length before allocation/name construction, rejects truncated data, embedded NUL and non-roundtripping UTF-8. Malformed wire fails network deserialization before the RPC handler; decoded but invalid kind/shape receives the typed rejection. There is no arbitrary string/blob/container, UObject reference, Side claim, rule data or random input.
+
+The four correlation/kind fields remain unchanged; ACK stays MatchInstanceId + RequestId + Code + ViewRevision, with no gameplay payload. ExpectedAttackSequence still denotes current/next authoritative attack, independent of RequestId.
+
+Owner snapshot additions:
+- DeploymentOptions: at most 3 FFMCodexNetworkDeploymentOption values, each with Choice (the canonical pair), CardLabel and SlotLabel (FText). The source is the acting viewer's already-filtered ordinary DeploymentGroups.
+- DeploymentCount: current public placement count.
+- LastDeployment: canonical placement Side plus one option-shaped public card/slot/label record; Side=None when absent.
+
+The public summary comes from safe DeploymentPlacements and roster/catalog presentation, not an echo of the command. No full hand, cross-product, State, Corner nominations, Formula, provider or private RNG state is transmitted. The protocol is a coordinated-build schema; no compatibility with clients using the old payload-free build is claimed.

@@ -200,6 +200,12 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	EnsureBootstrapConfiguration();
 	MatchRuntime = MakeUnique<FFMCodexNetworkMatchRuntime>(
 		MatchInstanceId);
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (HasAuthority() && FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkDeploymentSlice")))
+	{
+		MatchRuntime->EnableDeploymentAutomationEntry();
+	}
+#endif
 	const FFMCodexNetworkRuntimeInitializeResult Result =
 		MatchRuntime->InitializeOnce(BootstrapConfiguration);
 	if (!Result.bSuccess)
@@ -306,10 +312,11 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Ack.Code = Code;
 		Ack.ViewRevision = ViewRevision;
 		UE_LOG(LogFMCodexNetworkPlay, Log,
-			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
+			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
 			*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower),
 			Envelope.RequestId, *GetNameSafe(Controller), static_cast<int32>(Side),
-			Envelope.ExpectedAttackSequence,
+			Envelope.ExpectedAttackSequence, static_cast<int32>(Envelope.IntentKind),
+			*Envelope.Deployment.CardId.ToString(), *Envelope.Deployment.SlotId.ToString(),
 			*StaticEnum<EFMCodexNetworkIntentAckCode>()->GetNameStringByValue(static_cast<int64>(Code)),
 			PreviousRevision, ViewRevision,
 			MatchRuntime ? MatchRuntime->GetEntryProviderInvocationCount() : 0,
@@ -328,15 +335,14 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 	{
 		return Finish(AckCode::InvalidPayload);
 	}
-	// At most two records: nonparticipants never allocate a ledger.
-	if (!IntentLedgers.FindOrAdd(Controller).Consume(MatchInstanceId, Envelope))
-	{
-		return Finish(AckCode::DuplicateOrAlreadyResolved);
-	}
-	if (Envelope.IntentKind != EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll)
-	{
-		return Finish(AckCode::NotPlayerIntent);
-	}
+	// Common transport validation has no attacker or deployment-side assumption.
+	const AckCode Shape = Envelope.ValidatePayloadShape();
+	if (Shape != AckCode::None) { return Finish(Shape); }
+	// At most two records; malformed/wrong-match/nonparticipant requests never allocate one.
+	auto& Ledger = IntentLedgers.FindOrAdd(Controller);
+	const AckCode Admission = Ledger.Check(MatchInstanceId, Envelope);
+	if (Admission != AckCode::None) { return Finish(Admission); }
+	Ledger.Consume(MatchInstanceId, Envelope);
 	if (bTransportFault || !IsNetworkMatchInitialized() || !ParticipantRegistry.HasBothParticipants())
 	{
 		return Finish(AckCode::InvalidPhase);
@@ -347,20 +353,41 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 	{
 		return Finish(AckCode::StaleAttackSequence);
 	}
-	if (Side != Before.CurrentAttackingSide)
+	FMatchPlayPlayerIntent Intent;
+	switch (Envelope.IntentKind)
 	{
-		return Finish(AckCode::WrongSide);
-	}
-	if (Before.InteractionState != EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint)
+	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
 	{
-		return Finish(AckCode::InvalidPhase);
+		if (Side != Before.CurrentAttackingSide) { return Finish(AckCode::WrongSide); }
+		if (Before.InteractionState != EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint)
+		{
+			return Finish(AckCode::InvalidPhase);
+		}
+		FMatchPlayFullD12EntryRequest Request;
+		Request.RequestingSide = Side;
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll, Request);
+		break;
 	}
-	FMatchPlayFullD12EntryRequest Request;
-	Request.RequestingSide = Side; // Exclusively the server registry, never a client claim.
-	Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::Deployment) { return Finish(AckCode::InvalidPhase); }
+		// ExpectedActingSide is projected from canonical CurrentLegalDeploymentSide.
+		// Session still owns card/slot/phase/sequence/ownership legality.
+		if (Side != Before.ExpectedActingSide) { return Finish(AckCode::WrongSide); }
+		FMatchPlayAuthoritativeDeployOrdinaryRequest Request;
+		Request.RequestingSide = Side; // Exclusively server registry; never a claimed payload field.
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Request.CardId = Envelope.Deployment.CardId;
+		Request.SlotId = Envelope.Deployment.SlotId;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::DeployOrdinary, Request);
+		break;
+	}
+	default: return Finish(AckCode::NotPlayerIntent);
+	}
 	IMatchPlayPlayerIntentPort& HostPort = *MatchRuntime;
-	const auto Result = HostPort.SubmitPlayerIntent(FMatchPlayPlayerIntent::Create(
-		EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll, Request));
+	const auto Result = HostPort.SubmitPlayerIntent(Intent);
 	if (!Result.bSuccess)
 	{
 		if (Result.ErrorCode == EMatchPlayPlayerIntentPortErrorCode::ServerCoordinatorFailed)

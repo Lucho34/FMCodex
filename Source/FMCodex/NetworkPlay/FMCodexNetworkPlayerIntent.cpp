@@ -1,9 +1,35 @@
 #include "FMCodexNetworkPlayerIntent.h"
 
+EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloadShape() const
+{
+	using Code = EFMCodexNetworkIntentAckCode;
+	switch (IntentKind)
+	{
+	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
+		return Deployment.IsEmpty() ? Code::None : Code::InvalidPayload;
+	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
+		return Deployment.IsValidShape() ? Code::None : Code::InvalidPayload;
+	default:
+		return Code::NotPlayerIntent;
+	}
+}
+EFMCodexNetworkIntentAckCode FFMCodexNetworkIntentLedger::Check(
+	const FGuid& ServerMatch, const FFMCodexNetworkPlayerIntentEnvelope& Envelope) const
+{
+	using Code = EFMCodexNetworkIntentAckCode;
+	if (!ServerMatch.IsValid() || Envelope.MatchInstanceId != ServerMatch) { return Code::MatchMismatch; }
+	if (Envelope.RequestId <= 0) { return Code::InvalidPayload; }
+	const int64 HighWater = Match == ServerMatch ? HighestRequestId : 0;
+	if (Envelope.RequestId <= HighWater) { return Code::DuplicateOrAlreadyResolved; }
+	// Both operands are nonnegative and RequestId > HighWater: subtraction cannot overflow.
+	if (Envelope.RequestId - HighWater > MaxForwardDelta) { return Code::InvalidPayload; }
+	return Code::None;
+}
+
 bool FFMCodexNetworkIntentLedger::Consume(const FGuid& ServerMatch,
 	const FFMCodexNetworkPlayerIntentEnvelope& Envelope)
 {
-	if (!ServerMatch.IsValid() || Envelope.MatchInstanceId != ServerMatch || Envelope.RequestId <= 0)
+	if (Check(ServerMatch, Envelope) != EFMCodexNetworkIntentAckCode::None)
 	{
 		return false;
 	}
@@ -41,20 +67,41 @@ void FFMCodexNetworkIntentClientState::ObserveView(const FFMCodexNetworkClientVi
 bool FFMCodexNetworkIntentClientState::Begin(const FFMCodexNetworkClientViewSnapshot& View,
 	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll, {}, OutEnvelope);
+}
+
+bool FFMCodexNetworkIntentClientState::BeginDeployment(const FFMCodexNetworkClientViewSnapshot& View,
+	const FFMCodexNetworkDeployOrdinaryPayload& Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::DeployOrdinary, Choice, OutEnvelope);
+}
+
+bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
+	EFMCodexNetworkPlayerIntentKind Kind, const FFMCodexNetworkDeployOrdinaryPayload& Choice,
+	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
 	ObserveView(View);
+	const bool bActionable = Kind == EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll
+		? View.InteractionState == EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint
+		: Kind == EFMCodexNetworkPlayerIntentKind::DeployOrdinary
+			&& View.EntryBranch == EFMCodexNetworkEntryBranch::Ordinary
+			&& View.EntryWait == EFMCodexNetworkEntryWait::Deployment && !View.DeploymentOptions.IsEmpty();
+	FFMCodexNetworkPlayerIntentEnvelope Candidate;
+	Candidate.IntentKind = Kind;
+	Candidate.Deployment = Choice;
 	if (IsPending() || !Match.IsValid() || NextRequestId == MAX_int64
 		|| View.ViewRevision < SeenViewRevision || !View.bMatchInitialized
 		|| View.BootstrapState != EFMCodexNetworkBootstrapState::MatchReady
-		|| View.InteractionState != EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint
+		|| !bActionable || Candidate.ValidatePayloadShape() != EFMCodexNetworkIntentAckCode::None
 		|| View.ViewerSide == EInitialTurnOrderPlayer::None
 		|| View.ExpectedActingSide != View.ViewerSide || View.AttackSequence <= 0)
 	{
 		return false;
 	}
+	OutEnvelope = Candidate;
 	OutEnvelope.MatchInstanceId = Match;
 	OutEnvelope.RequestId = NextRequestId++;
 	OutEnvelope.ExpectedAttackSequence = View.AttackSequence;
-	OutEnvelope.IntentKind = EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll;
 	PendingRequestId = OutEnvelope.RequestId;
 	return true;
 }

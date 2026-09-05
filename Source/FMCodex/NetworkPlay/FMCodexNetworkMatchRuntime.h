@@ -51,6 +51,10 @@ public:
 		TUniquePtr<IFMCodexNetworkEntropySource> TestEntropy,
 		TUniquePtr<IMatchPlayAttackEntryRollProvider> TestEntryProvider = nullptr);
 	friend struct FFMCodexNetworkIntentTestAccess;
+	friend struct FFMCodexNetworkDeploymentTestAccess;
+#if !UE_BUILD_SHIPPING
+	void EnableDeploymentAutomationEntry();
+#endif
 #endif
 
 	FFMCodexNetworkRuntimeInitializeResult InitializeOnce(
