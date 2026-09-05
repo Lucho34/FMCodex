@@ -12,6 +12,10 @@
 	],
 	"Plugins": [
 		{
+			"Name": "PlatformCrypto",
+			"Enabled": true
+		},
+		{
 			"Name": "ModelingToolsEditorMode",
 			"Enabled": true,
 			"TargetAllowList": [

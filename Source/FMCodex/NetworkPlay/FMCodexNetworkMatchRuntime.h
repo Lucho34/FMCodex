@@ -6,7 +6,8 @@
 #include "../MatchPlayRuntime/MatchPlayHostPort.h"
 #include "../LocalPlay/FMCodexLocalMatchDemoConfiguration.h"
 
-class FFMCodexLocalMatchD6Provider;
+class FFMCodexNetworkRandomProvider;
+class IFMCodexNetworkEntropySource;
 class FFMCodexNetworkEntryRollProvider;
 class FMatchPlayAuthoritativeSession;
 class FMatchPlayServerCoordinator;
@@ -23,6 +24,9 @@ class FMCODEX_API FFMCodexNetworkBootstrapConfigurationFactory final
 {
 public:
 	static FFMCodexNetworkBootstrapConfiguration CreatePrototypeMatch();
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	static FFMCodexNetworkBootstrapConfiguration CreateBFirstAutomationMatch();
+#endif
 };
 
 struct FMCODEX_API FFMCodexNetworkRuntimeInitializeResult
@@ -36,15 +40,16 @@ struct FMCODEX_API FFMCodexNetworkRuntimeInitializeResult
 class FMCODEX_API FFMCodexNetworkMatchRuntime final : public IMatchPlayPlayerIntentPort
 {
 public:
-	FFMCodexNetworkMatchRuntime(const FGuid& InMatchInstanceId, int32 Seed);
+	explicit FFMCodexNetworkMatchRuntime(const FGuid& InMatchInstanceId);
 	~FFMCodexNetworkMatchRuntime();
 	virtual FMatchPlayPlayerIntentSubmissionResult SubmitPlayerIntent(
 		const FMatchPlayPlayerIntent& Intent) override;
 	int32 GetEntryProviderInvocationCount() const;
 	int32 GetD12ProviderInvocationCount() const;
 #if WITH_DEV_AUTOMATION_TESTS
-	FFMCodexNetworkMatchRuntime(const FGuid& InMatchInstanceId, int32 Seed,
-		TUniquePtr<IMatchPlayAttackEntryRollProvider> TestEntryProvider);
+	FFMCodexNetworkMatchRuntime(const FGuid& InMatchInstanceId,
+		TUniquePtr<IFMCodexNetworkEntropySource> TestEntropy,
+		TUniquePtr<IMatchPlayAttackEntryRollProvider> TestEntryProvider = nullptr);
 	friend struct FFMCodexNetworkIntentTestAccess;
 #endif
 
@@ -62,11 +67,13 @@ public:
 	const FGuid& GetMatchInstanceId() const;
 
 private:
+	FFMCodexNetworkMatchRuntime(const FGuid& InMatchInstanceId,
+		TUniquePtr<FFMCodexNetworkRandomProvider> InRollProvider);
 	FGuid MatchInstanceId;
 	int32 InitializationAttemptCount = 0;
 	int32 InitializationCount = 0;
 	bool bInitialized = false;
-	TUniquePtr<FFMCodexLocalMatchD6Provider> RollProvider;
+	TUniquePtr<FFMCodexNetworkRandomProvider> RollProvider;
 	TUniquePtr<FFMCodexNetworkEntryRollProvider> EntryProvider;
 	int64 DisclosedInitialAttackSequence = 0;
 	FSkillRuleSnapshotSet SkillRuleSet;

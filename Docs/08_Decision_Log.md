@@ -1146,3 +1146,11 @@
 - ACK 不带 gameplay truth。accepted pending 必须同时具备匹配 ACK 与其 publication revision 的 authoritative view；属性复制与 RPC 的任意先后都合法。成功只发布一次 A/B view，正常拒绝不发布；Coordinator 在已提交 entry 后失败必须发布只读故障并拒绝后续动作。
 - Full D12 在服务器成功处理后按当前攻击向双方即时公开，仅开启 initial-roll disclosure；保留其他 roll、terminal detail 与秘密数据过滤。AP1 进入 canonical terminal wait，ordinary 等部署，set piece 等类型 D6，所有后续玩家意图继续未联网。默认 LocalPlay、规则、概率与 DEV deterministic 工具不变。
 - 技术交付后仍需 USER 两窗口验收与用户手动 commit。**NEXT AFTER COMMIT: Stage 7.3.A — GPT-6 Astra Network Architecture Second-Opinion Audit，REPORT-ONLY；不是 Stage 7.4。** 本阶段不执行独立审计。
+
+## 2026-09-05 — Server-private Network production randomness
+
+- Network production 不再从公开 MatchInstanceId 构造 seeded Local provider，改由独立 Network provider 经 UE PlatformCrypto 获取每次抽样所需的安全随机字节。MatchId 的公开 epoch/correlation 语义不变。
+- Uniform 范围用 rejection sampling；Recovery 维持 Stamina 权重、两张、无放回语义。入口、路线、全部 post-route dice、AP1 selection 与 Recovery 统一经过该安全来源，规则与 Session/Coordinator 不承担 entropy generation。
+- 熵源失败或有界 sampler 耗尽走既有 provider failure/State adoption 路径，禁止可预测 fallback。secret entropy/生成器状态不复制、不持久化到公开 State、不写日志；未承诺跨进程恢复未来随机流。
+- LocalPlay seeded RNG、DEV override 与 automation deterministic injection 保留。B-first 网络验证参数只控制服务器测试开局，仍使用生产安全 provider，正常客户端无先攻或随机输入权限。
+- Listen host 对其 authority process 的固有控制不变；Remote 不得从公开元数据及已披露骰子预测未来生产随机性。RequestId huge-jump、请求预算及 payload generalization 不随此 RNG 修复扩展。

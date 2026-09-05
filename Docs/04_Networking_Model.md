@@ -225,3 +225,13 @@ DEV 面板只有一个格式化入口 `BuildStatusText` 和一个幂等刷新入
 - 日常验证继续关闭 Editor 后双击项目启动器。提交方应显示“服务器已接受”，双方看到相同已公开 D12/分支与新 revision，非行动方不显示可点击入口；身份刷新仍使用既有 OnRep/BeginPlay 幂等入口。
 
 USER 两窗口验收通过并由用户手动 commit 后，下一步必须是 **Stage 7.3.A — GPT-6 Astra Network Architecture Second-Opinion Audit（REPORT-ONLY）**，不是 Stage 7.4。该独立审计关注连接/HostPort/Session/Coordinator 边界、幂等与异步顺序、披露与后续迁移风险；本实现阶段不提前执行该审计。
+
+## Network 随机性保密与测试开局
+
+- Production Network 每次随机取值使用服务器私有 PlatformCrypto 安全字节。MatchInstanceId 始终公开，只承担比赛 epoch、请求校验与 ACK/view 关联，绝不充当 RNG seed。RequestId、AttackSequence、身份、比分、revision、时间与已公开骰子也不是秘密熵。
+- 不能用隐藏的 32 位 FRandomStream seed、公开 GUID hash 或时间 seed 保护未来随机性。客户端知道源码和全部已公开事实，仍不得据此预测下一次生产随机结果。
+- 安全字节、内部生成器状态不进入 State、GameState、PlayerState、Controller snapshot、ACK 或日志。只在规则/disclosure 允许时公开骰子结果；公开后的动画延迟仅属于表现悬念。
+- LocalPlay 与 automation 的 deterministic provider 保持独立且可注入。生产安全源失败时返回 provider failure，不降级到可预测来源。
+- Listen host 仍可篡改其持有的 authority process；服务器私有随机性不构成对恶意 host 的保证，也不要求当前改用 Dedicated Server。
+- `-FMCodexNetworkTestBFirst` 仅在 automation、non-Shipping 的服务器 GameMode 生效：仅测试牌组的稀有度统一为 Common、tie-break 输入设 A=6/B=2，由 canonical opening resolver 选择 B 先攻；不接受客户端选择先攻，不改生产随机来源。普通启动器无该参数，默认开局保持不变。
+- Full D12 的“当前进攻方”检查属于 intent-specific ownership，不是未来防守/选择请求的公共规则。巨大 RequestId 导致自身 high-water 锁定的策略，以及请求预算/日志限频，留给 transport generalization；当前协议不变。

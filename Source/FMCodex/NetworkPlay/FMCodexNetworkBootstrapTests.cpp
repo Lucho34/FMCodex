@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "FMCodexNetworkRNGTestEntropy.h"
 
 #include "FMCodexNetworkMatchGameMode.h"
 #include "FMCodexNetworkMatchGameState.h"
@@ -172,7 +173,7 @@ bool FFMCodexNetworkPrototypeBootstrapTest::RunTest(
 		Configuration.PlayerBTeam.TeamId);
 
 	const FGuid MatchId(0x10203040, 0x50607080, 0x90A0B0C0, 0xD0E0F001);
-	FFMCodexNetworkMatchRuntime Runtime(MatchId, 7161202);
+	FFMCodexNetworkMatchRuntime Runtime(MatchId, MakeUnique<FFMCodexNetworkScriptedEntropy>());
 	const FFMCodexNetworkRuntimeInitializeResult First =
 		Runtime.InitializeOnce(Configuration);
 	const FFMCodexNetworkRuntimeInitializeResult Duplicate =

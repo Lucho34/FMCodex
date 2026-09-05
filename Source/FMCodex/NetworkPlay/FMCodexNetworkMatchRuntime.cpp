@@ -1,6 +1,6 @@
 #include "FMCodexNetworkMatchRuntime.h"
 
-#include "../LocalPlay/FMCodexLocalMatchD6Provider.h"
+#include "FMCodexNetworkRandomProvider.h"
 #include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
 #include "../LocalPlay/FMCodexPrototypeTeamContent.h"
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
@@ -78,11 +78,32 @@ FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch()
 	return Result;
 }
 
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+FFMCodexNetworkBootstrapConfiguration
+FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
+{
+	auto Result = CreatePrototypeMatch();
+	auto& Opening = Result.MatchConfiguration.OpeningInput.OpeningInput;
+	// Equal rarity totals let the canonical tie-break rule decide the opening side.
+	// Only this explicit server automation fixture changes these card inputs.
+	for (auto& Card : Opening.PlayerADeck) { Card.Rarity = ECardRarity::Common; }
+	for (auto& Card : Opening.PlayerBDeck) { Card.Rarity = ECardRarity::Common; }
+	Opening.PlayerATieBreakerRoll = 6;
+	Opening.PlayerBTieBreakerRoll = 2;
+	return Result;
+}
+#endif
+
+FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(const FGuid& InMatchInstanceId)
+	: FFMCodexNetworkMatchRuntime(InMatchInstanceId, MakeUnique<FFMCodexNetworkRandomProvider>())
+{
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Network production RNG: PlatformCrypto secure bytes per draw; no public seed."));
+}
+
 FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(
-	const FGuid& InMatchInstanceId,
-	const int32 Seed)
+	const FGuid& InMatchInstanceId, TUniquePtr<FFMCodexNetworkRandomProvider> InRollProvider)
 	: MatchInstanceId(InMatchInstanceId)
-	, RollProvider(MakeUnique<FFMCodexLocalMatchD6Provider>(Seed))
+	, RollProvider(MoveTemp(InRollProvider))
 	, EntryProvider(MakeUnique<FFMCodexNetworkEntryRollProvider>(*RollProvider))
 {
 }
@@ -202,12 +223,15 @@ const FGuid& FFMCodexNetworkMatchRuntime::GetMatchInstanceId() const
 
 #if WITH_DEV_AUTOMATION_TESTS
 FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(
-	const FGuid& InMatchInstanceId, int32 Seed,
+	const FGuid& InMatchInstanceId, TUniquePtr<IFMCodexNetworkEntropySource> TestEntropy,
 	TUniquePtr<IMatchPlayAttackEntryRollProvider> TestEntryProvider)
-	: FFMCodexNetworkMatchRuntime(InMatchInstanceId, Seed)
+	: FFMCodexNetworkMatchRuntime(InMatchInstanceId,
+		MakeUnique<FFMCodexNetworkRandomProvider>(MoveTemp(TestEntropy)))
 {
-	check(TestEntryProvider.IsValid());
-	EntryProvider->Inject(MoveTemp(TestEntryProvider));
+	if (TestEntryProvider)
+	{
+		EntryProvider->Inject(MoveTemp(TestEntryProvider));
+	}
 }
 #endif
 

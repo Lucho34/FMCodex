@@ -287,3 +287,12 @@
 - 成功后 GameMode 一次 PublishOwnerViews 向 A/B 发布同一 revision 的 viewer-safe DTO，再给提交者发送 reliable Client ACK。ACK 和属性复制的到达顺序不保证；客户端必须同时收到对应 ACK 和至少该 revision 的 view 才解除 accepted pending。
 - 正常拒绝不发布、不改变 gameplay State。若 entry 已提交但 Coordinator 失败，服务器发布 BootstrapFailed 的只读 view 并返回 InternalFailure，阻止继续请求；不能把失败伪装成成功或留下可操作旧视图。
 - DEV 按钮与 Exec 入口 non-Shipping；production transport 与权威 runtime 不依赖 DEV UI、脚本或测试 provider。测试 provider 只在 WITH_DEV_AUTOMATION_TESTS 构造入口注入，客户端 wire 上无 RNG 输入。
+
+## Network production RNG ownership
+
+- Network runtime owns `FFMCodexNetworkRandomProvider`, implementing the existing entry, initial-route, post-route and Recovery provider interfaces. All four Session inputs use this provider (entry retains its counting decorator); CoreRules never calls platform RNG.
+- Each bounded draw requests private bytes through UE PlatformCrypto `CreateRandomBytes` (installed UE 5.3 OpenSSL backend: `RAND_bytes`). Rejection sampling preserves uniform integer ranges; Recovery preserves stamina weights and sampling without replacement.
+- Public MatchInstanceId is only a match epoch/correlation value. It and other public facts never seed the provider. There is no match seed, FRandomStream fallback, secret State field, or secret logging in Network production.
+- Source/module failure or bounded sampler exhaustion returns provider failure through existing Session adoption/error handling. No predictable fallback or automatic command retry is permitted.
+- LocalPlay retains its seeded provider and DEV deterministic override. Automation injects scripted entropy/provider objects through test-only constructors; exhaustion fails instead of reaching OS RNG.
+- A malicious Listen host still owns authoritative process memory. This repair protects future randomness from Remote prediction using public metadata and disclosed results; it does not change that host trust model.

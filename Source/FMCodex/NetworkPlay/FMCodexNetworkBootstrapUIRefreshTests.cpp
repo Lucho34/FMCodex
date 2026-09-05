@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 
 #include "Misc/AutomationTest.h"
+#include "FMCodexNetworkRNGTestEntropy.h"
 #include "FMCodexNetworkMatchGameMode.h"
 #include "FMCodexNetworkMatchGameState.h"
 #include "FMCodexNetworkMatchPlayerController.h"
@@ -94,7 +95,7 @@ namespace FMCodexNetworkBootstrapUIRefreshTests
 			// Register the controller as the engine does in PostInitializeComponents.
 			World->AddController(Controller);
 			PlayerState = World->SpawnActor<AFMCodexNetworkMatchPlayerState>();
-			FFMCodexNetworkMatchRuntime Runtime(MatchId, 7161202);
+			FFMCodexNetworkMatchRuntime Runtime(MatchId, MakeUnique<FFMCodexNetworkScriptedEntropy>());
 			Runtime.InitializeOnce(Config);
 			View = Runtime.BuildClientView(ViewerSide, 3,
 				EFMCodexNetworkBootstrapState::MatchReady);

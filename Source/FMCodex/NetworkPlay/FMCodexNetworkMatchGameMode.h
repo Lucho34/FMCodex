@@ -54,7 +54,6 @@ private:
 	static FString SelectPlayerDisplayName(
 		const FString& Candidate,
 		EInitialTurnOrderPlayer Side);
-	static int32 GenerateServerSeed(const FGuid& MatchId);
 
 	FFMCodexNetworkParticipantRegistry ParticipantRegistry;
 	FFMCodexNetworkBootstrapConfiguration BootstrapConfiguration;

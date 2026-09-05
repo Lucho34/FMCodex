@@ -6,6 +6,8 @@
 
 #include "GameFramework/PlayerState.h"
 #include "HAL/PlatformProcess.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 namespace FMCodexNetworkMatchGameMode
 {
@@ -176,6 +178,14 @@ void AFMCodexNetworkMatchGameMode::EnsureBootstrapConfiguration()
 	{
 		BootstrapConfiguration =
 			FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+		// Server command line only. Changes opening fixture, never the entropy source.
+		if (HasAuthority() && FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkTestBFirst")))
+		{
+			BootstrapConfiguration = FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch();
+			UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation opening fixture: Side B first; production secure RNG unchanged."));
+		}
+#endif
 	}
 }
 
@@ -189,8 +199,7 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	EnsureMatchInstanceId();
 	EnsureBootstrapConfiguration();
 	MatchRuntime = MakeUnique<FFMCodexNetworkMatchRuntime>(
-		MatchInstanceId,
-		GenerateServerSeed(MatchInstanceId));
+		MatchInstanceId);
 	const FFMCodexNetworkRuntimeInitializeResult Result =
 		MatchRuntime->InitializeOnce(BootstrapConfiguration);
 	if (!Result.bSuccess)
@@ -279,13 +288,6 @@ FString AFMCodexNetworkMatchGameMode::SelectPlayerDisplayName(
 	return Side == EInitialTurnOrderPlayer::PlayerA
 		? TEXT("玩家 A")
 		: TEXT("玩家 B");
-}
-
-int32 AFMCodexNetworkMatchGameMode::GenerateServerSeed(
-	const FGuid& MatchId)
-{
-	return static_cast<int32>(
-		MatchId.A ^ MatchId.B ^ MatchId.C ^ MatchId.D);
 }
 
 FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPlayerIntent(

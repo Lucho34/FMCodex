@@ -900,3 +900,11 @@
 - 实际集成必须运行原有双进程 launcher，经 owning Controller 的 DEV 按钮/同一 Exec 命令提交；记录两端 Match、Request、连接导出的 Side、AttackSequence、ACK、D12、branch、revision 与 provider 调用数，保存真实 Host/Client 前后窗口截图。不得直接调用 server test helper 冒充客户端写入。
 - 本阶段是 networking readiness gate：运行 focused transport、bootstrap、完整 MatchPlayRuntime（含 HostPort/Coordinator/NetworkBoundary/Session）、完整 LocalPlay/CoreRules、UHT/Editor build 与 diff check。自动化和实际进程证据仍不能替代 USER 对按钮、等待状态与窗口操作的最终验收。
 - 真实远端负向探测可在全新连接使用无界面入口 DevProbeWrongSideInitialD12（仅 automation、non-Shipping 构建生效）；它刻意绕过本地按钮 eligibility，服务器仍必须回 WrongSide。探测使用独立测试请求，不属于正常 pending UI 流程。UE 5.3 Python 回调会通过 GAllowActorScriptExecutionInEditor 强制 Actor callspace 为 Local；脚本必须使用引擎 defer 命令退出该作用域后触发同一 owning Controller 命令，不能把 Python 内的本地函数调用算作远端 RPC 证据。
+
+## Network RNG privacy regression
+
+- `FMCodex.NetworkPlay.RNGPrivacy` 使用 scripted entropy 覆盖 D12/D6/index 的上下界、rejection threshold、单候选、大候选范围、有界拒绝耗尽、所有现有 post-route purposes，以及 Recovery 的权重和无放回条件分布；禁止依靠“随机两次必须不同”的统计断言。
+- 以相同 MatchId + 不同私有输入、不同 MatchId + 相同私有输入验证结果独立于公开 epoch；通过真实 Runtime/HostPort 验证 Full D12 全部 1–12 分支，检查 source boundary 无 public-seed 路径及 wire 无秘密 RNG 状态。
+- 失败熵源必须产生 provider failure、完整 State 不 adopt、无自动 retry/弱 fallback；经 GameMode 的同 ID 重复请求仍不能第二次调用 provider。Recovery 部分抽样失败不得返回部分 indices。
+- 测试不依赖 OS RNG，旧 Network fixtures 显式注入 deterministic source。LocalPlay seeded provider、DEV deterministic override 和已有 Authority tests 保持可重复。
+- 真实 Remote 成功验证使用现有 launcher plan/readiness/runtime 路径；服务器测试参数令 B 合法先攻，Remote owning Controller 经 generated Server RPC 提交。必须记录 server-derived B、匹配的 Accepted ACK、owner view revision 与 pending 自然清除，并捕获两端真实 viewport。直接调用 GameMode 的 fixture 不能替代跨进程证据；不要手动重放刷新回调。

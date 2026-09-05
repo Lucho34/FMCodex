@@ -616,3 +616,9 @@ ACK Code 为 None、Accepted、MatchMismatch、NotParticipant、WrongSide、Stal
 初始攻击前 AttackSequence 指服务器派生的下一次攻击序列；攻击存在时指当前攻击。RequestId 只关联传输，不能替代 AttackSequence。客户端最多保留一个 pending 与一个 last ACK；服务器每个连接仅保留最高请求 ID，严格递增可靠请求的低 ID 都视为已处理/过期。
 
 Owner snapshot 仍无 MatchPlayState、full InteractionView、手牌/牌堆数组、CardId、Corner nominations、FormulaFacts、GoalHistory 或其他 raw RNG。GameState/PlayerState 的公共身份与 owner-only snapshot 复制方式保持原合同。
+
+## Network RNG private boundary
+
+- Production Network RNG 不保存 public match seed；MatchInstanceId 不参与随机性生成。安全 entropy/context 仅为 server provider 私有对象，不是 canonical State 或任何 replicated DTO 字段。
+- Provider inputs 保持 canonical purpose、候选数量或已校验 Recovery candidates；随机输出仍为既有 D12/D6/index/Recovery result，不改变 wire schema、ACK、RequestId、AttackSequence 或 ViewRevision。
+- 单次 entropy failure 不返回部分成功输出；Recovery 第二次抽样失败时丢弃本次 provider 已选 indices，Session 保留该 command 的 BeforeState。此前已成功提交的其他 command 不因此回滚。

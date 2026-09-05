@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "FMCodexNetworkMatchGameMode.h"
+#include "FMCodexNetworkRNGTestEntropy.h"
 #include "FMCodexNetworkMatchPlayerController.h"
 #include "FMCodexNetworkMatchPlayerState.h"
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
@@ -25,7 +26,14 @@ struct FFMCodexNetworkIntentTestAccess
 		Mode.ParticipantRegistry.Admit(A, PS_A);
 		Mode.ParticipantRegistry.Admit(B, PS_B);
 		Mode.MatchRuntime = MakeUnique<FFMCodexNetworkMatchRuntime>(
-			Mode.MatchInstanceId, 713, MoveTemp(Provider));
+			Mode.MatchInstanceId, MakeUnique<FFMCodexNetworkScriptedEntropy>(), MoveTemp(Provider));
+		const bool bReady = Mode.MatchRuntime->InitializeOnce(Mode.BootstrapConfiguration).bSuccess;
+		Mode.PublishOwnerViews(EFMCodexNetworkBootstrapState::MatchReady);
+		return bReady;
+	}
+	static bool UseEntropy(AFMCodexNetworkMatchGameMode& Mode, TUniquePtr<IFMCodexNetworkEntropySource> Entropy)
+	{
+		Mode.MatchRuntime = MakeUnique<FFMCodexNetworkMatchRuntime>(Mode.MatchInstanceId, MoveTemp(Entropy));
 		const bool bReady = Mode.MatchRuntime->InitializeOnce(Mode.BootstrapConfiguration).bSuccess;
 		Mode.PublishOwnerViews(EFMCodexNetworkBootstrapState::MatchReady);
 		return bReady;
@@ -426,6 +434,32 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 	TestEqual(TEXT("Mismatched variant denied by shared port"), Runtime.SubmitPlayerIntent(Internal).ErrorCode,
 		EMatchPlayPlayerIntentPortErrorCode::PayloadTypeMismatch);
 	TestEqual(TEXT("Port rejects before RNG"), Runtime.GetEntryProviderInvocationCount(), 0);
+	return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexNetworkSecureEntropyAckFailureTest,
+	"FMCodex.NetworkPlay.RNGPrivacy.07.EntropyFailureAckAndDuplicate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexNetworkSecureEntropyAckFailureTest::RunTest(const FString&)
+{
+	using namespace FMCodexNetworkPlayerIntentTests;
+	FFixture F;
+	auto Source = MakeUnique<FFMCodexNetworkScriptedEntropy>();
+	auto* Calls = Source.Get();
+	TestTrue(TEXT("Secure provider with failing injected entropy initializes"),
+		Access::UseEntropy(*F.Mode, MoveTemp(Source)));
+	const auto Before = Access::Session(*F.Mode).GetStateSnapshot();
+	const int32 Revision = Access::Revision(*F.Mode);
+	const auto Request = F.Request();
+	const auto Ack = F.Mode->SubmitConnectionPlayerIntent(F.A, Request);
+	TestEqual(TEXT("Typed rejection from real secure-provider failure"), Ack.Code, Code::AuthorityRejected);
+	TestEqual(TEXT("ACK retains request"), Ack.RequestId, Request.RequestId);
+	TestEqual(TEXT("ACK retains match"), Ack.MatchInstanceId, Request.MatchInstanceId);
+	TestEqual(TEXT("No extra publication"), Access::Revision(*F.Mode), Revision);
+	TestTrue(TEXT("Whole state preserved"), SameState(Before, Access::Session(*F.Mode).GetStateSnapshot()));
+	TestEqual(TEXT("Duplicate rejected"), F.Mode->SubmitConnectionPlayerIntent(F.A, Request).Code, Code::DuplicateOrAlreadyResolved);
+	TestEqual(TEXT("No second entropy call"), Calls->Calls, 1);
+	TestEqual(TEXT("New-ID retry is a new attempt"), F.Mode->SubmitConnectionPlayerIntent(F.A, F.Request(2)).Code, Code::AuthorityRejected);
+	TestEqual(TEXT("No automatic retries"), Calls->Calls, 2);
 	return true;
 }
 #endif
