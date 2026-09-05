@@ -280,6 +280,20 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 	if (ParticipantChoices.IsValid())
 	{
 		ParticipantChoices->ClearChildren();
+		if (OwnerView.InitialRouteAction != EFMCodexNetworkInitialRouteAction::None)
+		{
+			const FText Label = OwnerView.InitialRouteAction == EFMCodexNetworkInitialRouteAction::Cross
+				? LOCTEXT("RollCrossRoute", "掷传中路线骰")
+				: OwnerView.InitialRouteAction == EFMCodexNetworkInitialRouteAction::PassControl
+					? LOCTEXT("RollPassControlRoute", "掷控球推进路线骰")
+					: LOCTEXT("RollThroughBallRoute", "掷直塞路线骰");
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton).Text(Label)
+				.IsEnabled_Lambda([this]() { return CanRequestInitialRoute(); })
+				.OnClicked_Lambda([this]() { DevRequestInitialRoute(); return FReply::Handled(); })
+			];
+		}
 		for (const auto& Option : OwnerView.CarrierOptions)
 		{
 			const FName Id = Option.Choice.CarrierCardId;
@@ -396,13 +410,18 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 				? TEXT("等待选择协防球员") : TEXT("等待对手选择协防球员")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
 			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待选择战术") : TEXT("等待对手选择战术")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::BranchIntentSelection
 			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待选择战术分支") : TEXT("等待对手选择战术分支")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlRouteRoll
-			? TEXT("等待判定控球推进路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallRouteRoll
-			? TEXT("等待判定直塞路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossRouteRoll
-			? TEXT("等待判定传中路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDirectAttackRoll
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待掷控球推进路线骰") : TEXT("等待对手掷控球推进路线骰")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallRouteRoll
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待掷直塞路线骰") : TEXT("等待对手掷直塞路线骰")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossRouteRoll
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待掷传中路线骰") : TEXT("等待对手掷传中路线骰")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDirectAttackRoll
 			? TEXT("等待进攻方掷远射点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDeadCornerRoll
 			? TEXT("等待进攻方掷远射双骰（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDirectAttackRoll
 			? TEXT("等待进攻方掷内切射门点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll
-			? TEXT("等待进攻方掷内切死角双骰（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
+			? TEXT("等待进攻方掷内切死角双骰（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossAttackRoll
+			? TEXT("等待进攻方掷传中点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlAttackRoll
+			? TEXT("等待进攻方掷控球推进点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallFeetAttackRoll
+			? TEXT("等待进攻方掷直塞脚下球点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallBehindDefenseAttackRoll
+			? TEXT("等待进攻方掷直塞身后球点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallAntiOffsideAttackRoll
+			? TEXT("等待进攻方掷反越位点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
 		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s"),
 			OwnerView.DisclosedInitialD12, Branch, Wait);
@@ -435,7 +454,12 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDirectAttackRoll
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDeadCornerRoll
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDirectAttackRoll
-			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll)
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossAttackRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlAttackRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallFeetAttackRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallBehindDefenseAttackRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallAntiOffsideAttackRoll)
 		{
 			EntryText += FString::Printf(TEXT("\n下一操作方：玩家 %s"), *SideLabel(OwnerView.ExpectedActingSide));
 		}
@@ -479,6 +503,11 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 	if (OwnerView.bSkillOptionsUnavailable)
 	{
 		EntryText += LOCTEXT("SkillProjectionUnavailable", "\n战术候选视图不可用，请检查服务器配置").ToString();
+	}
+	if (OwnerView.InitialRoute.D6 != 0)
+	{
+		EntryText += FText::Format(LOCTEXT("InitialRouteFact", "\n路线骰：{0} · 实际路线：{1}"),
+			FText::AsNumber(OwnerView.InitialRoute.D6), OwnerView.InitialRoute.RouteLabel).ToString();
 	}
 	if (!OwnerView.SelectedBranch.Choice.IsEmpty())
 	{
@@ -955,4 +984,58 @@ void AFMCodexNetworkMatchPlayerController::ClientReceivePlayerIntentAck_Implemen
 		Ack.ViewRevision, bCorrelated ? 1 : 0, IntentClientState.GetPendingRequestId());
 	RefreshNetworkBootstrapUI();
 }
+
+bool AFMCodexNetworkMatchPlayerController::CanRequestInitialRoute() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.InitialRouteAction != EFMCodexNetworkInitialRouteAction::None
+		&& OwnerView.ViewerSide != EInitialTurnOrderPlayer::None
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide;
+}
+void AFMCodexNetworkMatchPlayerController::DevRequestInitialRoute()
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanRequestInitialRoute()) { return; }
+	switch (OwnerView.InitialRouteAction)
+	{
+	case EFMCodexNetworkInitialRouteAction::Cross: SubmitInitialRoute(EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll); break;
+	case EFMCodexNetworkInitialRouteAction::PassControl: SubmitInitialRoute(EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll); break;
+	case EFMCodexNetworkInitialRouteAction::ThroughBall: SubmitInitialRoute(EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll); break;
+	default: break;
+	}
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitInitialRoute(EFMCodexNetworkPlayerIntentKind Kind)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginInitialRoute(OwnerView, Kind, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("InitialRoute owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Kind=%d"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, static_cast<int32>(Kind));
+	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeWrongRouteFamily()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanRequestInitialRoute()) { return; }
+	const auto Offered = OwnerView.InitialRouteAction;
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	const auto Kind = Offered == EFMCodexNetworkInitialRouteAction::Cross
+		? EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll
+		: Offered == EFMCodexNetworkInitialRouteAction::PassControl
+			? EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll
+			: EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll;
+	if (!IntentClientState.BeginInitialRoute(OwnerView, Kind, Envelope)) { return; }
+	Envelope.IntentKind = Kind == EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll
+		? EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll : EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll;
+	RefreshNetworkBootstrapUI();
+	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+
 #undef LOCTEXT_NAMESPACE

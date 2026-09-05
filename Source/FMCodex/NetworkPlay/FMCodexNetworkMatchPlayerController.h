@@ -75,6 +75,12 @@ public:
 	UFUNCTION(Exec)
 	void DevProbeInvalidBranch();
 	bool CanSubmitBranch() const;
+	bool CanRequestInitialRoute() const;
+	UFUNCTION(Exec)
+	void DevRequestInitialRoute();
+	UFUNCTION(Exec)
+	void DevProbeWrongRouteFamily();
+	void SubmitInitialRoute(EFMCodexNetworkPlayerIntentKind Kind);
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;

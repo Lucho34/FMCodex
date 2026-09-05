@@ -751,3 +751,25 @@ Runtime SkillId identifies the exact canonical family + MinTP + MaxTP tuple (for
 All ten tags share the original four common fields and eight closed choice members. Full D12/Finish require every choice member empty. The ledger, <=1024 forward window, ACK and generic pending schema are unchanged.
 
 Canonical FMatchPlayAuthoritativeSubmitBranchIntentRequest uses AttackSequence, RequestingSide and Intent. The network common field remains ExpectedAttackSequence and is mapped explicitly. No SkillId, ActionType, Side, rule objects, Formula, RNG, actual route, result, ViewRevision or next state enters the Branch member. DirectShot/DeadCorner share identity across two Skills; server-frozen Skill supplies semantics. Host and Remote require the same schema build.
+
+## Empty initial-route request and narrow disclosed fact
+
+| Field/type | Contract |
+|---|---|
+| CrossInitialRouteRoll / PassControlInitialRouteRoll / ThroughBallInitialRouteRoll | Distinct appended network intent tags; no new choice member |
+| Common correlation | MatchInstanceId, RequestId, ExpectedAttackSequence, IntentKind unchanged |
+| Strict shape | Deployment, Goalkeeper, Carrier, Marker, Runner, Helper, Skill and Branch all empty |
+| Canonical request types | FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest; FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest; FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest |
+| Canonical fields | AttackSequence (int64, mapped from common freshness) and RequestingSide (EInitialTurnOrderPlayer, registry-derived) |
+| EFMCodexNetworkInitialRouteAction | None / Cross / PassControl / ThroughBall; copied from safe typed interaction for the acting viewer only |
+| FFMCodexNetworkInitialRouteFact | D6, ActionType, Cross, PassControl, ThroughBall and RouteLabel only |
+| Result identities | Existing ESkillRuleType and canonical EMatchPlayCrossActualBranch / EMatchPlayPassControlActualBranch / EMatchPlayThroughBallActualBranch values; inactive family fields remain None |
+| Result source | Exactly one safe AcceptedRolls InitialRoute record and safe ResolutionFacts.ActualBranch |
+| Result bound | One fact, D6 in 1..6; default D6=0 with empty identities/text means not disclosed |
+| Invalid projection | Missing/duplicate/invalid initial roll or unsupported route identity produces no partial fact |
+| New post-route EntryWait | CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll; status only |
+| ACK | Existing MatchInstanceId / RequestId / Code / ViewRevision; no D6 or route fact |
+
+The thirteen tags retain eight closed choice members; a route request has zero additional gameplay payload bytes beyond the existing envelope representation. The Branch member's inactive None continues to use its established one-byte codec. Host and Remote must use the same schema build.
+
+D6, family and actual route in InitialRoute are server-to-client disclosed facts, never fields in the route request. They do not expose any seed, entropy, provider, future roll, full resolution session, Formula, winner or terminal result. Labels reuse canonical Chinese presentation mappings; the Network layer does not derive routes from D6 or localized text.

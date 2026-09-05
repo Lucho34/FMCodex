@@ -44,6 +44,43 @@ public:
 	int32 InvocationCount = 0;
 	int32 D12Count = 0;
 };
+/** Counts the canonical provider boundary; production draws delegate to the existing secure provider. */
+class FFMCodexNetworkInitialRouteRollProvider final : public IMatchPlayInitialRouteRollProvider
+{
+public:
+	explicit FFMCodexNetworkInitialRouteRollProvider(IMatchPlayInitialRouteRollProvider& InInner) : Inner(InInner) {}
+	virtual FMatchPlayInitialRouteRollProviderResult RollD6(EMatchPlayCurrentAttackResolutionRollPurpose Purpose) override
+	{
+		++InvocationCount;
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+		if (AutomationD6 != 0 && Purpose == EMatchPlayCurrentAttackResolutionRollPurpose::InitialRoute)
+		{
+			FMatchPlayInitialRouteRollProviderResult Result;
+			Result.bSuccess = true; Result.RawD6 = AutomationD6;
+			return Result;
+		}
+#endif
+		return Inner.RollD6(Purpose);
+	}
+	int32 InvocationCount = 0;
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	int32 AutomationD6 = 0;
+#endif
+private:
+	IMatchPlayInitialRouteRollProvider& Inner;
+};
+int32 FFMCodexNetworkMatchRuntime::GetInitialRouteProviderInvocationCount() const
+{
+	return InitialRouteProvider.IsValid() ? InitialRouteProvider->InvocationCount : 0;
+}
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+void FFMCodexNetworkMatchRuntime::EnableInitialRouteAutomation(int32 D6)
+{
+	check(!bInitialized && D6 >= 1 && D6 <= 6);
+	InitialRouteProvider->AutomationD6 = D6;
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation initial-route provider enabled; default secure provider unchanged."));
+}
+#endif
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 /** Fixture changes only the initial entry draw; all other entry draws still use secure RNG. */
 class FFMCodexDeploymentAutomationEntry final : public IMatchPlayAttackEntryRollProvider
@@ -151,6 +188,7 @@ FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(
 	: MatchInstanceId(InMatchInstanceId)
 	, RollProvider(MoveTemp(InRollProvider))
 	, EntryProvider(MakeUnique<FFMCodexNetworkEntryRollProvider>(*RollProvider))
+	, InitialRouteProvider(MakeUnique<FFMCodexNetworkInitialRouteRollProvider>(*RollProvider))
 {
 }
 
@@ -177,7 +215,7 @@ FFMCodexNetworkMatchRuntime::InitializeOnce(
 	SkillRuleSet = Configuration.MatchConfiguration.SkillRuleSet;
 	AuthoritativeSession = MakeUnique<FMatchPlayAuthoritativeSession>(
 		*EntryProvider,
-		*RollProvider,
+		*InitialRouteProvider,
 		*RollProvider,
 		*RollProvider,
 		SkillRuleSet);
@@ -233,6 +271,8 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 	FFMCodexLocalMatchViewerDisclosure Disclosure;
 	Disclosure.bRevealInitialActionPointRoll = Snapshot.bHasCurrentAttack
 		&& DisclosedInitialAttackSequence == Snapshot.CurrentAttack.AttackSequence;
+	Disclosure.bRevealRouteRoll = Disclosure.bRevealInitialActionPointRoll
+		&& DisclosedRouteAttackSequence == Snapshot.CurrentAttack.AttackSequence;
 	const FFMCodexLocalMatchInteractionView SafeViewerView =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot,
@@ -420,6 +460,35 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			static_cast<int32>(Result.CoordinatorResult.StopReason));
 	}
 
+#endif
+	const bool bInitialRoute = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossInitialRouteRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll;
+	if (bInitialRoute && Result.bSuccess)
+	{
+		DisclosedRouteAttackSequence = AuthoritativeSession->GetStateSnapshot().CurrentAttack.AttackSequence;
+	}
+#if WITH_DEV_AUTOMATION_TESTS
+	if (bInitialRoute)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		const auto& Attack = State.CurrentAttack;
+		const auto Safe = BuildClientView(State.RuntimeState.CurrentAttackingPlayer, 0, EFMCodexNetworkBootstrapState::MatchReady);
+		UE_LOG(LogFMCodexNetworkPlay, Log,
+			TEXT("DEV InitialRoute authority: Success=%d Skill=%s Branch=%d D6=%d Family=%d Cross=%d PassControl=%d ThroughBall=%d ProviderCalls=%d Phase=%s SelectionStage=%s ResolutionSession=%d RouteStage=%s RollProgress=%d Terminal=%d ExpectedSide=%d Wait=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d"),
+			Result.bSuccess, *Attack.SelectedAction.SkillId.ToString(), static_cast<int32>(Attack.SelectedAction.ElectiveBranchIntent),
+			Safe.InitialRoute.D6, static_cast<int32>(Safe.InitialRoute.ActionType),
+			static_cast<int32>(Safe.InitialRoute.Cross), static_cast<int32>(Safe.InitialRoute.PassControl), static_cast<int32>(Safe.InitialRoute.ThroughBall),
+			GetInitialRouteProviderInvocationCount(),
+			*StaticEnum<EMatchPlayCurrentAttackPhase>()->GetNameStringByValue(static_cast<int64>(Attack.Phase)),
+			*StaticEnum<EMatchPlayCurrentAttackSelectionStage>()->GetNameStringByValue(static_cast<int64>(Attack.SelectionStage)),
+			Attack.bHasResolutionSession,
+			*StaticEnum<EMatchPlayCurrentAttackResolutionStage>()->GetNameStringByValue(static_cast<int64>(Attack.ResolutionSession.Stage)),
+			static_cast<int32>(Attack.ResolutionSession.PostRouteRollProgress.Phase),
+			Attack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance,
+			static_cast<int32>(Safe.ExpectedActingSide), static_cast<int32>(Safe.EntryWait), GetCoordinatorInvocationCountForTests(),
+			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
+	}
 #endif
 	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)

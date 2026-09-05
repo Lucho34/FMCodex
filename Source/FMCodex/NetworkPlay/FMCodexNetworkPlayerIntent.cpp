@@ -7,6 +7,9 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	{
 	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
 	case EFMCodexNetworkPlayerIntentKind::FinishDeployment:
+	case EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll:
+	case EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll:
 		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
 		return Deployment.IsValidShape() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
@@ -131,6 +134,14 @@ bool FFMCodexNetworkIntentClientState::BeginBranch(const FFMCodexNetworkClientVi
 {
 	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::SubmitBranchIntent, {}, {}, {}, {}, {}, {}, {}, Choice, OutEnvelope);
 }
+bool FFMCodexNetworkIntentClientState::BeginInitialRoute(const FFMCodexNetworkClientViewSnapshot& View,
+	EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	if (Kind != EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll) { return false; }
+	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
+}
 bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
 	EFMCodexNetworkPlayerIntentKind Kind, const FFMCodexNetworkDeployOrdinaryPayload& Choice,
 	const FFMCodexNetworkDeployGoalkeeperPayload& GoalkeeperChoice,
@@ -182,6 +193,15 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	case EFMCodexNetworkPlayerIntentKind::SubmitBranchIntent:
 		bActionable = View.EntryWait == EFMCodexNetworkEntryWait::BranchIntentSelection
 			&& !View.bBranchOptionsUnavailable && !View.BranchOptions.IsEmpty();
+		break;
+	case EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll:
+		bActionable = View.InitialRouteAction == EFMCodexNetworkInitialRouteAction::Cross;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll:
+		bActionable = View.InitialRouteAction == EFMCodexNetworkInitialRouteAction::PassControl;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll:
+		bActionable = View.InitialRouteAction == EFMCodexNetworkInitialRouteAction::ThroughBall;
 		break;
 	default: break;
 	}

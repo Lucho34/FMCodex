@@ -41,7 +41,34 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll
+};
+
+
+/** A safe offered player action, not a client-supplied route result. */
+UENUM(BlueprintType)
+enum class EFMCodexNetworkInitialRouteAction : uint8
+{
+	None, Cross, PassControl, ThroughBall
+};
+
+/** Only the disclosed initial route fact. No contest, Formula or terminal data. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkInitialRouteFact
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	int32 D6 = 0;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	ESkillRuleType ActionType = ESkillRuleType::None;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EMatchPlayCrossActualBranch Cross = EMatchPlayCrossActualBranch::None;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EMatchPlayPassControlActualBranch PassControl = EMatchPlayPassControlActualBranch::None;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EMatchPlayThroughBallActualBranch ThroughBall = EMatchPlayThroughBallActualBranch::None;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText RouteLabel;
 };
 
 /** Team/content identity is deliberately separate from the connected player. */
@@ -313,6 +340,10 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	bool bBranchOptionsUnavailable = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkBranchOption SelectedBranch;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EFMCodexNetworkInitialRouteAction InitialRouteAction = EFMCodexNetworkInitialRouteAction::None;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkInitialRouteFact InitialRoute;
 };
 
 struct FFMCodexLocalMatchInteractionView;

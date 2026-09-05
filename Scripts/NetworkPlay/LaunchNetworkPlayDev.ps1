@@ -7,7 +7,8 @@ param(
     [ValidateRange(480, 2160)][int]$ResY = 700,
     [ValidateRange(5, 120)][int]$ReadyTimeoutSeconds = 60,
     [switch]$ValidateOnly,
-    [switch]$DeploymentSlice
+    [switch]$DeploymentSlice,
+    [ValidateSet('Cross', 'PassControl', 'ThroughBall')][string]$InitialRouteMilestone
 )
 
 Set-StrictMode -Version Latest
@@ -49,6 +50,13 @@ function Get-NetworkPlayLaunchPlan {
     )
     # Explicit host-only automation fixture. Default launch keeps production secure RNG.
     $fixtureArguments = @()
+    if ($DeploymentSlice -and $InitialRouteMilestone) {
+        throw 'InitialRouteMilestone 与 DeploymentSlice 请单独使用。'
+    }
+    if ($InitialRouteMilestone) {
+        $fixtureArguments = @('-FMCodexNetworkRouteMilestone=' + $InitialRouteMilestone)
+        if ($InitialRouteMilestone -ne 'Cross') { $fixtureArguments += '-FMCodexNetworkTestBFirst' }
+    }
     if ($DeploymentSlice) {
         $fixtureArguments = @('-FMCodexNetworkTestBFirst', '-FMCodexNetworkDeploymentSlice')
     }

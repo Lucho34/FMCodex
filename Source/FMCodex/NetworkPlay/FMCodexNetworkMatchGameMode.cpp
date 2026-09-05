@@ -202,7 +202,15 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	MatchRuntime = MakeUnique<FFMCodexNetworkMatchRuntime>(
 		MatchInstanceId);
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
-	const bool bSkillSlice = FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkSkillSlice"));
+	FString Milestone;
+	const bool bMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkRouteMilestone="), Milestone);
+	const bool bSkillSlice = bMilestone || FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkSkillSlice"));
+	int32 AutomationRouteD6 = 0;
+	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkInitialRouteD6="), AutomationRouteD6)
+		&& AutomationRouteD6 >= 1 && AutomationRouteD6 <= 6)
+	{
+		MatchRuntime->EnableInitialRouteAutomation(AutomationRouteD6);
+	}
 	if (HasAuthority() && (bSkillSlice || FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkDeploymentSlice"))))
 	{
 		MatchRuntime->EnableDeploymentAutomationEntry(bSkillSlice ? 6 : 4);
@@ -221,6 +229,22 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 			EFMCodexNetworkBootstrapState::BootstrapFailed);
 		return;
 	}
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (bMilestone)
+	{
+		const auto Family = Milestone == TEXT("Cross") ? ESkillRuleType::Cross
+			: Milestone == TEXT("PassControl") ? ESkillRuleType::PassControl
+			: Milestone == TEXT("ThroughBall") ? ESkillRuleType::ThroughBall : ESkillRuleType::None;
+		if (!MatchRuntime->PrepareInitialRouteMilestone(Family))
+		{
+			UE_LOG(LogFMCodexNetworkPlay, Error, TEXT("InitialRoute milestone setup failed; no partial fixture is playable."));
+			bTransportFault = true;
+			PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
+			PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed);
+			return;
+		}
+	}
+#endif
 	UE_LOG(LogFMCodexNetworkPlay, Log,
 		TEXT("Initialized prototype network match exactly once (3+3)."));
 	PublishParticipantState(EFMCodexNetworkBootstrapState::MatchReady);
@@ -471,6 +495,30 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.AttackSequence = Envelope.ExpectedAttackSequence;
 		Request.Intent = Envelope.Branch.Intent;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll:
+	{
+		FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCrossInitialRouteRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll:
+	{
+		FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll:
+	{
+		FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll, Request);
 		break;
 	}
 	default: return Finish(AckCode::NotPlayerIntent);

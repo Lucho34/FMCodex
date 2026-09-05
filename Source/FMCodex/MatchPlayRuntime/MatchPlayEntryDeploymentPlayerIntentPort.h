@@ -3,7 +3,7 @@
 class FMatchPlayAuthoritativeSession;
 class FMatchPlayServerCoordinator;
 
-/** Bounded shared entry/deployment/Carrier/Marker/Runner/Helper/Skill/branch slice for LocalPlay and NetworkPlay; no post-entry roll or decline dispatch. */
+/** Bounded shared entry/deployment/Carrier/Marker/Runner/Helper/Skill/branch/initial-route slice for LocalPlay and NetworkPlay; no contest roll or decline dispatch. */
 class FMCODEX_API FMatchPlayEntryDeploymentPlayerIntentPort final : public IMatchPlayPlayerIntentPort
 {
 public:

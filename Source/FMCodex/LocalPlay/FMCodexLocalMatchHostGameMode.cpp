@@ -413,21 +413,39 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 			FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest,
 			SubmitThroughBallOneOnOneShotChoice(Intent.Payload.Get<
 				FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest>()));
-	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll:
-		FMCODEX_DISPATCH_PLAYER_INTENT(
-			FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest,
-			ResolveThroughBallInitialRouteRoll(Intent.Payload.Get<
-				FMatchPlayAuthoritativeResolveThroughBallInitialRouteRollRequest>()));
-	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll:
-		FMCODEX_DISPATCH_PLAYER_INTENT(
-			FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest,
-			ResolvePassControlInitialRouteRoll(Intent.Payload.Get<
-				FMatchPlayAuthoritativeResolvePassControlInitialRouteRollRequest>()));
 	case EMatchPlayAuthoritativeCommandKind::ResolveCrossInitialRouteRoll:
-		FMCODEX_DISPATCH_PLAYER_INTENT(
-			FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest,
-			ResolveCrossInitialRouteRoll(Intent.Payload.Get<
-				FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest>()));
+		return ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+			EFMCodexLocalDevRollInvocation::CrossInitialRoute,
+#endif
+			[this, &Intent]()
+			{
+				return FMatchPlayEntryDeploymentPlayerIntentPort(
+					ActiveMatchRuntime->AuthoritativeSession,
+					ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
+			});
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlInitialRouteRoll:
+		return ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+			EFMCodexLocalDevRollInvocation::PassControlInitialRoute,
+#endif
+			[this, &Intent]()
+			{
+				return FMatchPlayEntryDeploymentPlayerIntentPort(
+					ActiveMatchRuntime->AuthoritativeSession,
+					ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
+			});
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallInitialRouteRoll:
+		return ActiveMatchRuntime->ExecuteProviderCall(
+#if !UE_BUILD_SHIPPING
+			EFMCodexLocalDevRollInvocation::ThroughBallInitialRoute,
+#endif
+			[this, &Intent]()
+			{
+				return FMatchPlayEntryDeploymentPlayerIntentPort(
+					ActiveMatchRuntime->AuthoritativeSession,
+					ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
+			});
 	case EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll:
 		FMCODEX_DISPATCH_PLAYER_INTENT(
 			FMatchPlayAuthoritativeResolveCrossHighAttackRollRequest,

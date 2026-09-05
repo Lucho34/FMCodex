@@ -49,6 +49,7 @@ private:
 	friend struct FFMCodexNetworkHelperTestAccess;
 	friend struct FFMCodexNetworkSkillTestAccess;
 	friend struct FFMCodexNetworkBranchTestAccess;
+	friend struct FFMCodexNetworkInitialRouteTestAccess;
 #endif
 
 	void EnsureMatchInstanceId();

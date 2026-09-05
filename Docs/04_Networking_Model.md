@@ -369,3 +369,36 @@ A server-only automation flag FMCodexNetworkBranchSlice, combined with existing 
 Stage granularity groups 2–5 commands/variants only when their transport, authority, payload, disclosure and lifecycle contracts align. Branch variants are one family. The three existing Cross/PassControl/ThroughBall initial-route requests are suitable for the next resolution-entry audit because each carries only sequence/Side and invokes the canonical initial-route orchestrator; direct-shot comparison and dead-corner paired rolls remain distinct consumers.
 
 Incremental DEV transport changes may close without manual USER PIE when complete automation, real Host/Remote generated-RPC runs, natural replication and clear viewport evidence establish correctness. Require user interaction acceptance when visible behavior or timing remains uncertain. Prefer the next manual milestone after a meaningful Skill -> Branch -> initial route/roll block, rather than requiring a full deployment replay for every added DEV button. This does not label automated screenshots as user-performed PIE.
+
+## Initial-route roll requests and milestone play
+
+Three additional closed network kinds, CrossInitialRouteRoll, PassControlInitialRouteRoll and ThroughBallInitialRouteRoll, share the existing thirteen-kind RequestId namespace, <=1024 forward window, generated owning RPC, registry Side, ACK and pending mechanism. Each requires all eight choice members empty. Wrong-family requests are rejected by the current authoritative Session before the provider; changing RequestId cannot reroll a committed route.
+
+The acting viewer alone receives the typed InitialRouteAction and a Chinese route-roll button. The opponent sees the current route wait. Accepted ACK carries no gameplay result; the matching/newer stable OwnerView supplies the disclosed D6, typed actual route and its existing Chinese label. ACK-first and View-first both wait for their correlated counterpart. Rejected requests release pending without a new gameplay revision. Security publication occurs after committed route resolution; synchronized cinematic reveal remains future presentation work.
+
+| Family / selected intent | D6 | Canonical actual route | Next attacker PlayerIntent |
+|---|---|---|---|
+| Cross / CrossHigh | 1, 2, 3, 4 | High | ResolveCrossHighAttackRoll |
+| Cross / CrossHigh | 5, 6 | Low | ResolveCrossLowAttackRoll |
+| Cross / CrossLow | 1, 2, 3, 4 | Low | ResolveCrossLowAttackRoll |
+| Cross / CrossLow | 5, 6 | High | ResolveCrossHighAttackRoll |
+| PassControl / None | 1, 2 | PassAdvance | ResolvePassControlAttackRoll |
+| PassControl / None | 3, 4 | DribbleAdvance | ResolvePassControlAttackRoll |
+| PassControl / None | 5, 6 | RunAdvance | ResolvePassControlAttackRoll |
+| ThroughBall / None | 1, 2 | Feet | ResolveThroughBallFeetAttackRoll |
+| ThroughBall / None | 3, 4 | BehindDefense | ResolveThroughBallBehindDefenseP1AttackRoll |
+| ThroughBall / None | 5, 6 | AntiOffside | ResolveThroughBallAntiOffsideAttackRoll |
+
+All rows disclose only the initial D6/actual route from safe View, perform zero Coordinator internal steps and zero additional RNG, and stop before the next player input. The next-wait display does not make attack/defense commands executable.
+
+For the continuous manual milestone, run from the project root:
+
+~~~powershell
+.\Scripts\NetworkPlay\LaunchNetworkPlayDev.cmd -InitialRouteMilestone Cross
+~~~
+
+The non-Shipping server fixture uses canonical Full D12=6, deployment and participant commands to stop at a genuine Skill wait. Host A then selects 传中, 高球传中 or 低球传中, and 掷传中路线骰. Remote B waits at each step. Both current ViewRevisions converge, pending clears, selected intent remains visible, and the actual route plus D6 appears only after the roll. Stop at the next attacker wait; no contest-roll button is implemented.
+
+InitialRouteMilestone PassControl or ThroughBall selects a B-first no-branch fixture for Remote validation. The launcher sends these fixture flags only to the server and rejects combining them with DeploymentSlice. Default launch remains unchanged. The short manual fixture still uses secure route RNG; the separate server-only FMCodexNetworkInitialRouteD6 flag exists only in non-Shipping automation to cover deterministic rendered evidence.
+
+This continuous Skill -> Branch -> initial route/RNG milestone requires one manual USER PIE after code-side automation and real Host/Remote validation. Automated screenshots are technical evidence, not user acceptance. Subsequent stage sizing should remain medium-granularity; a natural next block is the four Cross High/Low Attack/Defense commands, whose sequential independent D6, side ownership and one final contest contract align.

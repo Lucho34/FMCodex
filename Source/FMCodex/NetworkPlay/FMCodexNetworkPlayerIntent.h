@@ -16,7 +16,10 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	SubmitRunner,
 	SubmitHelper,
 	SubmitSkill,
-	SubmitBranchIntent
+	SubmitBranchIntent,
+	CrossInitialRouteRoll,
+	PassControlInitialRouteRoll,
+	ThroughBallInitialRouteRoll
 };
 
 UENUM()
@@ -122,6 +125,8 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 	bool BeginBranch(const FFMCodexNetworkClientViewSnapshot& View,
 		const FFMCodexNetworkSubmitBranchIntentPayload& Choice,
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginInitialRoute(const FFMCodexNetworkClientViewSnapshot& View,
+		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }
 	int64 GetPendingRequestId() const { return PendingRequestId; }

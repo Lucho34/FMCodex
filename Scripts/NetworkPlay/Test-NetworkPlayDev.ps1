@@ -55,6 +55,21 @@ Assert-True (($deploymentPlan.HostArguments -contains '-FMCodexNetworkDeployment
 Assert-True (-not (($deploymentPlan.ClientArguments -join ' ').Contains('FMCodexNetwork'))) 'Remote has no fixture or deterministic authority argument'
 Assert-True ($deploymentPlan.HostUrl -eq $plan.HostUrl) 'Fixture preserves normal Network GameMode launch path'
 
+
+Assert-True (-not (($plan.HostArguments -join ' ').Contains('FMCodexNetworkRouteMilestone'))) 'Default launch has no route milestone'
+foreach ($family in @('Cross','PassControl','ThroughBall')) {
+    $InitialRouteMilestone = $family
+    $milestonePlan = Get-NetworkPlayLaunchPlan
+    Assert-True ($milestonePlan.HostArguments -contains ('-FMCodexNetworkRouteMilestone=' + $family)) 'Milestone family reaches Host only'
+    Assert-True (-not (($milestonePlan.ClientArguments -join ' ').Contains('FMCodexNetwork'))) 'Milestone cannot become a Remote authority flag'
+    Assert-True (($milestonePlan.HostArguments -contains '-FMCodexNetworkTestBFirst') -eq ($family -ne 'Cross')) 'Cross milestone uses Host; no-branch families use Remote'
+    Assert-True (-not (($milestonePlan.HostArguments -join ' ').Contains('InitialRouteD6'))) 'Manual milestone keeps secure route RNG'
+}
+$DeploymentSlice = $true
+Assert-Throws { Get-NetworkPlayLaunchPlan } 'DeploymentSlice' 'Milestone and deployment fixture cannot be accidentally combined'
+$DeploymentSlice = $false
+. $launcherPath -UnrealEditorPath $testEnginePath
+
 $readyLog = "Game class is 'FMCodexNetworkMatchGameMode'`nIpNetDriver listening on port 7777`nAdmitted participant as Side A (same path for host/remote)."
 Assert-True (Test-NetworkPlayHostLog $readyLog 7777) 'Correct Network listen/admission markers are accepted'
 Assert-True (-not (Test-NetworkPlayHostLog 'IpNetDriver listening on port 7777' 7777)) 'Socket line alone cannot start Client before Host admission'

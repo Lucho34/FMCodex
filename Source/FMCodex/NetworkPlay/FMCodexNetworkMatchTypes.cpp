@@ -194,6 +194,69 @@ namespace FMCodexNetworkMatchTypes
 			Result.BranchOptions.Add(MoveTemp(Option));
 		}
 	}
+
+	void ProjectInitialRoute(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		if (Result.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary) { return; }
+		if (View.bHumanInteraction && Result.ViewerSide != EInitialTurnOrderPlayer::None
+			&& View.ExpectedActingPlayer == Result.ViewerSide)
+		{
+			switch (View.InteractionCategory)
+			{
+			case EFMCodexLocalMatchInteractionCategory::RollCrossRoute:
+				Result.InitialRouteAction = EFMCodexNetworkInitialRouteAction::Cross; break;
+			case EFMCodexLocalMatchInteractionCategory::RollPassControlRoute:
+				Result.InitialRouteAction = EFMCodexNetworkInitialRouteAction::PassControl; break;
+			case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
+				Result.InitialRouteAction = EFMCodexNetworkInitialRouteAction::ThroughBall; break;
+			default: break;
+			}
+		}
+		// Both inputs have already passed BuildForViewer's route-reveal redaction.
+		if (!View.ResolutionFacts.bHasActualBranch) { return; }
+		const FFMCodexLocalMatchRollView* Roll = nullptr;
+		for (const auto& Candidate : View.AcceptedRolls)
+		{
+			if (Candidate.Group != EFMCodexLocalMatchRollGroup::InitialRoute) { continue; }
+			if (Roll != nullptr || Candidate.RawD6 < 1 || Candidate.RawD6 > 6) { return; }
+			Roll = &Candidate;
+		}
+		if (!Roll) { return; }
+		const auto& Actual = View.ResolutionFacts.ActualBranch;
+		FFMCodexNetworkInitialRouteFact Fact;
+		Fact.D6 = Roll->RawD6;
+		Fact.ActionType = Actual.ActionType;
+		switch (Actual.ActionType)
+		{
+		case ESkillRuleType::Cross:
+			if (Actual.Cross != EMatchPlayCrossActualBranch::High && Actual.Cross != EMatchPlayCrossActualBranch::Low) { return; }
+			Fact.Cross = Actual.Cross;
+			Fact.RouteLabel = BranchLabel(Actual.Cross == EMatchPlayCrossActualBranch::High
+				? EMatchPlayElectiveBranchIntent::CrossHigh : EMatchPlayElectiveBranchIntent::CrossLow);
+			break;
+		case ESkillRuleType::PassControl:
+			Fact.PassControl = Actual.PassControl;
+			switch (Actual.PassControl)
+			{
+			case EMatchPlayPassControlActualBranch::PassAdvance: Fact.RouteLabel = FFMCodexPlayerUIPresentationText::ResolutionContest(TEXT("PassControl.PassAdvance")); break;
+			case EMatchPlayPassControlActualBranch::DribbleAdvance: Fact.RouteLabel = FFMCodexPlayerUIPresentationText::ResolutionContest(TEXT("PassControl.DribbleAdvance")); break;
+			case EMatchPlayPassControlActualBranch::RunAdvance: Fact.RouteLabel = FFMCodexPlayerUIPresentationText::ResolutionContest(TEXT("PassControl.RunAdvance")); break;
+			default: return;
+			}
+			break;
+		case ESkillRuleType::ThroughBall:
+			if (Actual.ThroughBall != EMatchPlayThroughBallActualBranch::Feet
+				&& Actual.ThroughBall != EMatchPlayThroughBallActualBranch::BehindDefense
+				&& Actual.ThroughBall != EMatchPlayThroughBallActualBranch::AntiOffside) { return; }
+			Fact.ThroughBall = Actual.ThroughBall;
+			Fact.RouteLabel = FFMCodexPlayerUIPresentationText::ThroughBallRoute(Actual.ThroughBall);
+			break;
+		default: return;
+		}
+		Result.InitialRoute = MoveTemp(Fact);
+	}
+
 	FText SkillLabel(ESkillRuleType Type)
 	{
 		switch (Type)
@@ -438,6 +501,16 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 		Result.EntryWait = EFMCodexNetworkEntryWait::PassControlRouteRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
 		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallRouteRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::CrossAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::PassControlAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallFeetAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallBehindDefenseAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallBehindDefenseAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallAntiOffsideAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallAntiOffsideAttackRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollCrossRoute:
 		Result.EntryWait = EFMCodexNetworkEntryWait::CrossRouteRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack:
@@ -457,6 +530,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	FMCodexNetworkMatchTypes::ProjectHelper(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectSkill(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectBranch(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectInitialRoute(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,
