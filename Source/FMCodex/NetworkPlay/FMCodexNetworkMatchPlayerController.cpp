@@ -335,6 +335,18 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 				.OnClicked_Lambda([this, Id]() { DevSubmitSkill(Id); return FReply::Handled(); })
 			];
 		}
+		for (const auto& Option : OwnerView.BranchOptions)
+		{
+			const auto Choice = Option.Choice;
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton)
+				.Text(FText::Format(LOCTEXT("BranchChoice", "分支：{0}"), Option.BranchLabel))
+				.IsEnabled_Lambda([this]() { return CanSubmitBranch(); })
+				.OnClicked_Lambda([this, Choice]() { SubmitBranchChoice(Choice); return FReply::Handled(); })
+			];
+		}
+
 	}
 #endif
 }
@@ -383,9 +395,14 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide
 				? TEXT("等待选择协防球员") : TEXT("等待对手选择协防球员")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
 			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待选择战术") : TEXT("等待对手选择战术")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::BranchIntentSelection
-			? TEXT("等待选择战术分支（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlRouteRoll
+			? (OwnerView.ExpectedActingSide == OwnerView.ViewerSide ? TEXT("等待选择战术分支") : TEXT("等待对手选择战术分支")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlRouteRoll
 			? TEXT("等待判定控球推进路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallRouteRoll
-			? TEXT("等待判定直塞路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
+			? TEXT("等待判定直塞路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossRouteRoll
+			? TEXT("等待判定传中路线（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDirectAttackRoll
+			? TEXT("等待进攻方掷远射点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDeadCornerRoll
+			? TEXT("等待进攻方掷远射双骰（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDirectAttackRoll
+			? TEXT("等待进攻方掷内切射门点数（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll
+			? TEXT("等待进攻方掷内切死角双骰（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
 		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s"),
 			OwnerView.DisclosedInitialD12, Branch, Wait);
@@ -413,7 +430,12 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::BranchIntentSelection
 			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::PassControlRouteRoll
-			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallRouteRoll)
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::ThroughBallRouteRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CrossRouteRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDirectAttackRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::LongShotDeadCornerRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDirectAttackRoll
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll)
 		{
 			EntryText += FString::Printf(TEXT("\n下一操作方：玩家 %s"), *SideLabel(OwnerView.ExpectedActingSide));
 		}
@@ -457,6 +479,14 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 	if (OwnerView.bSkillOptionsUnavailable)
 	{
 		EntryText += LOCTEXT("SkillProjectionUnavailable", "\n战术候选视图不可用，请检查服务器配置").ToString();
+	}
+	if (!OwnerView.SelectedBranch.Choice.IsEmpty())
+	{
+		EntryText += FText::Format(LOCTEXT("SelectedBranch", "\n已选分支：{0}"), OwnerView.SelectedBranch.BranchLabel).ToString();
+	}
+	if (OwnerView.bBranchOptionsUnavailable)
+	{
+		EntryText += LOCTEXT("BranchProjectionUnavailable", "\n分支候选视图不可用，请检查服务器配置").ToString();
 	}
 	const auto& Ack = IntentClientState.GetLastAck();
 	FString AckText = TEXT("暂无请求回执");
@@ -761,6 +791,45 @@ void AFMCodexNetworkMatchPlayerController::DevProbeInvalidSkill()
 	FFMCodexNetworkSubmitSkillPayload Choice;
 	Choice.SkillId = TEXT("DEV.NonexistentSkill");
 	SubmitSkillChoice(Choice);
+#endif
+}
+bool AFMCodexNetworkMatchPlayerController::CanSubmitBranch() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.EntryWait == EFMCodexNetworkEntryWait::BranchIntentSelection
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+		&& !OwnerView.bBranchOptionsUnavailable && !OwnerView.BranchOptions.IsEmpty();
+}
+void AFMCodexNetworkMatchPlayerController::DevSubmitBranchIntent(int32 Intent)
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanSubmitBranch()) { return; }
+	const auto* Option = OwnerView.BranchOptions.FindByPredicate(
+		[&](const auto& O) { return static_cast<int32>(O.Choice.Intent) == Intent; });
+	if (Option) { SubmitBranchChoice(Option->Choice); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitBranchChoice(const FFMCodexNetworkSubmitBranchIntentPayload& Choice)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginBranch(OwnerView, Choice, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Branch owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Branch=%d"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, static_cast<int32>(Choice.Intent));
+	ServerSubmitPlayerIntent(Envelope); // Same generated owning RPC for Host and Remote.
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeInvalidBranch()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanSubmitBranch()) { return; }
+	FFMCodexNetworkSubmitBranchIntentPayload Choice; Choice.Intent = EMatchPlayElectiveBranchIntent::CrossHigh;
+	SubmitBranchChoice(Choice);
 #endif
 }
 bool AFMCodexNetworkMatchPlayerController::CanDeployGoalkeeper() const

@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "../CoreRules/MatchPlayState.h"
 #include "FMCodexNetworkDeploymentPayload.generated.h"
 
 class UPackageMap;
@@ -117,6 +118,23 @@ template<> struct TStructOpsTypeTraits<FFMCodexNetworkDeployGoalkeeperPayload>
 };
 template<> struct TStructOpsTypeTraits<FFMCodexNetworkDeployOrdinaryPayload>
 	: TStructOpsTypeTraitsBase2<FFMCodexNetworkDeployOrdinaryPayload>
+{
+	enum { WithNetSerializer = true };
+};
+
+/** Canonical branch choice only. The active Skill remains server-authoritative. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkSubmitBranchIntentPayload
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	EMatchPlayElectiveBranchIntent Intent = EMatchPlayElectiveBranchIntent::None;
+	bool IsEmpty() const { return Intent == EMatchPlayElectiveBranchIntent::None; }
+	bool IsValidShape() const;
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+};
+template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitBranchIntentPayload>
+	: TStructOpsTypeTraitsBase2<FFMCodexNetworkSubmitBranchIntentPayload>
 {
 	enum { WithNetSerializer = true };
 };

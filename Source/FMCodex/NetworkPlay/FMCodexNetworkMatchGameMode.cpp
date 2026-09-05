@@ -182,7 +182,8 @@ void AFMCodexNetworkMatchGameMode::EnsureBootstrapConfiguration()
 		// Server command line only. Changes opening fixture, never the entropy source.
 		if (HasAuthority() && FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkTestBFirst")))
 		{
-			BootstrapConfiguration = FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch();
+			BootstrapConfiguration = FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch(
+				FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkBranchSlice")));
 			UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation opening fixture: Side B first; production secure RNG unchanged."));
 		}
 #endif
@@ -313,7 +314,7 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Ack.Code = Code;
 		Ack.ViewRevision = ViewRevision;
 		UE_LOG(LogFMCodexNetworkPlay, Log,
-			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s GKSlot=%s Carrier=%s Marker=%s Runner=%s Helper=%s Skill=%s ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
+			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s GKSlot=%s Carrier=%s Marker=%s Runner=%s Helper=%s Skill=%s Branch=%d ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
 			*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower),
 			Envelope.RequestId, *GetNameSafe(Controller), static_cast<int32>(Side),
 			Envelope.ExpectedAttackSequence, static_cast<int32>(Envelope.IntentKind),
@@ -322,7 +323,7 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 			*Envelope.Marker.MarkerCardId.ToString(),
 			*Envelope.Runner.RunnerCardId.ToString(),
 			*Envelope.Helper.HelperCardId.ToString(),
-			*Envelope.Skill.SkillId.ToString(),
+			*Envelope.Skill.SkillId.ToString(), static_cast<int32>(Envelope.Branch.Intent),
 			*StaticEnum<EFMCodexNetworkIntentAckCode>()->GetNameStringByValue(static_cast<int64>(Code)),
 			PreviousRevision, ViewRevision,
 			MatchRuntime ? MatchRuntime->GetEntryProviderInvocationCount() : 0,
@@ -461,6 +462,15 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
 		Request.SkillId = Envelope.Skill.SkillId;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitSkill, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::SubmitBranchIntent:
+	{
+		FMatchPlayAuthoritativeSubmitBranchIntentRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.Intent = Envelope.Branch.Intent;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent, Request);
 		break;
 	}
 	default: return Finish(AckCode::NotPlayerIntent);

@@ -725,9 +725,29 @@ All nine tags share four common envelope fields and seven closed choice members.
 | MaxSkillOptions | 3 from FPlayerCardRuleSnapshotValidator::MaxSkillIdCount; current catalog simultaneous TP-compatible maximum is 2 |
 | bSkillOptionsUnavailable | Whole-list failure for overflow, duplicates, invalid identity or wrong source Side; no truncation |
 | SelectedSkill | Safe SelectedSkillId plus PresentedActionType label; empty when unselected, withheld or canonically cleared |
-| EntryWait.BranchIntentSelection | Safe SelectLongShotBranch / SelectBranchIntent wait; no branch choices transported |
+| EntryWait.BranchIntentSelection | Safe SelectLongShotBranch / SelectBranchIntent wait; branch choices use the typed projection below |
 | EntryWait.PassControlRouteRoll / ThroughBallRouteRoll | Safe initial route-roll wait; no roll value, outcome or command transported |
 
 All nine tags share four common correlation/kind fields and seven mutually exclusive choice members. Full D12/Finish require all seven empty; each other tag accepts only its own. Common ledger, <=1024 forward window, ACK and pending schema remain unchanged. No Side, rule object, type, TP, range, modifier, threshold, participant list, Formula, route or RNG is a Skill submission field.
 
 Runtime SkillId identifies the exact canonical family + MinTP + MaxTP tuple (for example Canonical.Skill.PassControl.6.8), not the workbook family-only SkillId. Server Session resolves it in its pinned rule copy. Network labels reuse the typed safe source's existing central mapping; IDs remain protocol/debug identities, never player-visible labels. Host and Client must use the same schema build.
+
+## Typed elective branch payload and projection
+
+| Field/type | Contract |
+|---|---|
+| Branch: FFMCodexNetworkSubmitBranchIntentPayload | Only EMatchPlayElectiveBranchIntent Intent |
+| Canonical enum | None=0, DirectShot=1, DeadCorner=2, CrossHigh=3, CrossLow=4 |
+| Wire codec | Exactly one byte for this member; inactive None may serialize, active Branch requires known non-None |
+| Invalid wire | Unknown byte or truncation fails serialization, marks archive error and does not adopt the value |
+| SubmitBranchIntent shape | Branch valid; Deployment, Goalkeeper, Carrier, Marker, Runner, Helper and Skill empty |
+| FFMCodexNetworkBranchOption | Choice (Intent-only payload) and BranchLabel (FText from existing presentation mapping) |
+| BranchOptions | Complete safe BranchIntentOptions, canonical order, acting viewer only |
+| MaxBranchOptions | 2 for LongShot, CutInsideShot and Cross; global bound 2 |
+| bBranchOptionsUnavailable | Entire-list failure on overflow, duplicate or invalid enum; never truncate |
+| SelectedBranch | Safe ElectiveBranchIntent plus label; empty when unselected/withheld |
+| New EntryWait values | CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll; status only |
+
+All ten tags share the original four common fields and eight closed choice members. Full D12/Finish require every choice member empty. The ledger, <=1024 forward window, ACK and generic pending schema are unchanged.
+
+Canonical FMatchPlayAuthoritativeSubmitBranchIntentRequest uses AttackSequence, RequestingSide and Intent. The network common field remains ExpectedAttackSequence and is mapped explicitly. No SkillId, ActionType, Side, rule objects, Formula, RNG, actual route, result, ViewRevision or next state enters the Branch member. DirectShot/DeadCorner share identity across two Skills; server-frozen Skill supplies semantics. Host and Remote require the same schema build.

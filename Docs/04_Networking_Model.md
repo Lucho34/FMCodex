@@ -328,7 +328,7 @@ This fixture does not modify maps, Config, content or gameplay rules. Default la
 - SubmitSkill is the ninth closed intent. Its only choice is the exact canonical runtime SkillId; the server resolves Side from the connection and looks up its private Session rule copy. Every earlier intent retains the same generic RequestId, <=1024 window, ACK/View pending and generated owning RPC.
 - Only the acting attacker receives the full safe Skill list, with 战术：<canonical Chinese name> buttons. The other viewer sees 等待对手选择战术. Options preserve canonical identity/order and fail atomically on representation errors. The theoretical bound is three; current content permits at most two simultaneous TP-compatible choices. Public selected Skill appears only from stable disclosed View.
 - Accepted SubmitSkill coordinates once and publishes once. Rejections/replays/frozen rewrites have zero Coordinator, RNG and publication delta. Pending clears only after correlated ACK and sufficient View; rejection needs no new View.
-- The A-first command and exact successful click sequence above now end after Skill, at the first unnetworked branch wait. No production UI, branch controls or player-roll commands are added.
+- The A-first command and exact successful click sequence above now end after Skill, at the first unnetworked branch wait. Branch controls use the family transport below; production UI and player-roll commands remain unchanged.
 
 | Selected tactic | Actual canonical stop | Next attacker PlayerIntent |
 |---|---|---|
@@ -341,3 +341,31 @@ All five have deferred Skill=false and no resolution session or route outcome ye
 For automated Remote parity, FMCodexNetworkSkillSlice is a non-Shipping automation-only server launch flag using the existing initial-entry injection seam at D12=6. Combined with the existing B-first deployment fixture, canonical deployed Rodri and forward-half midfield Ait-Nouri admit PassControl/ThroughBall. No legal Helper remains in that fixture, so the server records canonical absence before Skill. The existing DeploymentSlice retains D12=4 and default launches retain private secure RNG. No client or production input can supply rules or fixture values.
 
 ResolveNoLegalSkill remains server-internal; DeclineSkill, DeclineRunner and DeclineHelper remain unnetworked player alternatives. Branches, player-triggered rolls, Formula/result disclosure, set pieces, terminal advance, reconnect/request epochs, rate budgets, timeout/forfeit and Dedicated target remain separate networking work.
+
+## Ordinary branch choice over the shared transport
+
+The ten-kind envelope now admits SubmitBranchIntent for all three elective tactics. Its only choice is the canonical typed Intent; current Skill, Side, legality and branch meaning remain server-owned. Both Host and Remote use generated owning RPC and natural ACK/owner-view convergence.
+
+| Frozen Skill | Complete ordered branch choices | Chinese labels |
+|---|---|---|
+| LongShot | DirectShot, DeadCorner | 直接射门、射向死角 |
+| CutInsideShot | DirectShot, DeadCorner | 直接射门、射向死角 |
+| Cross | CrossHigh, CrossLow | 高球传中、低球传中 |
+
+Only the acting viewer sees 分支：<label> buttons; the other viewer sees 等待对手选择战术分支. Pending suppresses repeated clicks. Accepted selected branch comes from stable safe View. Cross High/Low is intended delivery, not the later randomized actual route.
+
+| Choice | Stable state after Coordinator | Next attacker PlayerIntent | Internal steps / RNG |
+|---|---|---|---|
+| LongShot DirectShot | Resolution / ReadyForResolution; session RouteResolved | ResolveLongShotDirectAttackRoll | BeginResolutionSession + ResolveIntentDeterminedRoute / 0 |
+| LongShot DeadCorner | Same lifecycle; deterministic DeadCorner route | ResolveLongShotDeadCornerRoll | Same two steps / 0 |
+| CutInsideShot DirectShot | Resolution / ReadyForResolution; session RouteResolved | ResolveCutInsideShotDirectAttackRoll | Same two steps / 0 |
+| CutInsideShot DeadCorner | Same lifecycle; deterministic DeadCorner route | ResolveCutInsideShotDeadCornerRoll | Same two steps / 0 |
+| Cross CrossHigh / CrossLow | Resolution / ReadyForResolution; no session or actual route | ResolveCrossInitialRouteRoll | 0 / 0 |
+
+All these waits require a new player input. The DEV panel shows only the next high-level wait; it has no functional route/shot-roll control. Canonical deterministic shot route exists server-side, but no route-result transport is introduced.
+
+A server-only automation flag FMCodexNetworkBranchSlice, combined with existing B-first DeploymentSlice, swaps the intact Rodri/Doku card order before bootstrap. It makes canonical Doku reachable through the existing ordinary DEV deployment list at D12=4, enabling Remote CutInside branch evidence. Identity set, card attributes and Skill assignments remain intact. Default launch and existing fixtures are unchanged; no client fixture field or launcher parameter is added.
+
+Stage granularity groups 2–5 commands/variants only when their transport, authority, payload, disclosure and lifecycle contracts align. Branch variants are one family. The three existing Cross/PassControl/ThroughBall initial-route requests are suitable for the next resolution-entry audit because each carries only sequence/Side and invokes the canonical initial-route orchestrator; direct-shot comparison and dead-corner paired rolls remain distinct consumers.
+
+Incremental DEV transport changes may close without manual USER PIE when complete automation, real Host/Remote generated-RPC runs, natural replication and clear viewport evidence establish correctness. Require user interaction acceptance when visible behavior or timing remains uncertain. Prefer the next manual milestone after a meaningful Skill -> Branch -> initial route/roll block, rather than requiring a full deployment replay for every added DEV button. This does not label automated screenshots as user-performed PIE.

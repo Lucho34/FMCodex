@@ -70,6 +70,11 @@ public:
 	bool CanSubmitRunner() const;
 	bool CanSubmitHelper() const;
 	bool CanSubmitSkill() const;
+	UFUNCTION(Exec)
+	void DevSubmitBranchIntent(int32 Intent);
+	UFUNCTION(Exec)
+	void DevProbeInvalidBranch();
+	bool CanSubmitBranch() const;
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -99,6 +104,7 @@ private:
 	void SubmitMarkerChoice(const FFMCodexNetworkSubmitMarkerPayload& Choice);
 	void SubmitRunnerChoice(const FFMCodexNetworkSubmitRunnerPayload& Choice);
 	void SubmitHelperChoice(const FFMCodexNetworkSubmitHelperPayload& Choice);
+	void SubmitBranchChoice(const FFMCodexNetworkSubmitBranchIntentPayload& Choice);
 	void SubmitSkillChoice(const FFMCodexNetworkSubmitSkillPayload& Choice);
 	void SubmitCarrierChoice(const FFMCodexNetworkSubmitCarrierPayload& Choice);
 	void SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice);

@@ -1,4 +1,5 @@
 #include "FMCodexNetworkDeploymentPayload.h"
+#include "../CoreRules/MatchPlayElectiveBranchIntentRules.h"
 #include "Containers/StringConv.h"
 #include "Serialization/Archive.h"
 
@@ -107,5 +108,20 @@ bool FFMCodexNetworkDeployOrdinaryPayload::NetSerialize(FArchive& Ar, UPackageMa
 {
 	bOutSuccess = FMCodexNetworkDeploymentPayload::SerializeName(Ar, CardId)
 		&& FMCodexNetworkDeploymentPayload::SerializeName(Ar, SlotId);
+	return true;
+}
+
+bool FFMCodexNetworkSubmitBranchIntentPayload::IsValidShape() const
+{
+	return !IsEmpty() && MatchPlayElectiveBranchIntentRules::IsKnownIntent(Intent);
+}
+bool FFMCodexNetworkSubmitBranchIntentPayload::NetSerialize(FArchive& Ar, UPackageMap*, bool& bOutSuccess)
+{
+	uint8 Raw = static_cast<uint8>(Intent);
+	Ar.Serialize(&Raw, 1); // Fixed byte; None is required for inactive tagged members.
+	const auto Decoded = static_cast<EMatchPlayElectiveBranchIntent>(Raw);
+	bOutSuccess = !Ar.IsError() && MatchPlayElectiveBranchIntentRules::IsKnownIntent(Decoded);
+	if (Ar.IsLoading()) { Intent = bOutSuccess ? Decoded : EMatchPlayElectiveBranchIntent::None; }
+	if (!bOutSuccess) { Ar.SetError(); }
 	return true;
 }

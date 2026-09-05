@@ -116,7 +116,7 @@ FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch()
 
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 FFMCodexNetworkBootstrapConfiguration
-FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
+FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch(bool bBranchFixture)
 {
 	auto Result = CreatePrototypeMatch();
 	auto& Opening = Result.MatchConfiguration.OpeningInput.OpeningInput;
@@ -126,6 +126,16 @@ FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
 	for (auto& Card : Opening.PlayerBDeck) { Card.Rarity = ECardRarity::Common; }
 	Opening.PlayerATieBreakerRoll = 6;
 	Opening.PlayerBTieBreakerRoll = 2;
+	if (bBranchFixture)
+	{
+		// Reorder two intact canonical cards before initialization so normal DEV deployment
+		// reaches a Remote CutInside Carrier. No Skill, attributes or availability are changed.
+		const int32 Rodri = Opening.PlayerBDeck.IndexOfByPredicate([](const auto& C) { return C.CardId == FName(TEXT("Prototype.ManchesterCity.Rodri")); });
+		const int32 Doku = Opening.PlayerBDeck.IndexOfByPredicate([](const auto& C) { return C.CardId == FName(TEXT("Prototype.ManchesterCity.JeremyDoku")); });
+		check(Rodri != INDEX_NONE && Doku != INDEX_NONE);
+		Opening.PlayerBDeck.Swap(Rodri, Doku);
+		UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation branch fixture: canonical Rodri/Doku deck order swapped; card rules unchanged."));
+	}
 	return Result;
 }
 #endif
@@ -373,6 +383,41 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			Attack.bHasSelectedAction, Attack.bHasResolutionSession, Safe.bTerminalPendingAdvance,
 			static_cast<int32>(Safe.InteractionCategory), GetCoordinatorInvocationCountForTests(),
 			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
+	}
+
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		const auto& Attack = State.CurrentAttack; const auto& Session = Attack.ResolutionSession;
+		const auto& A = Attack.SelectedAction;
+		FFMCodexLocalMatchViewerDisclosure Disclosure;
+		Disclosure.bRevealInitialActionPointRoll = State.bHasCurrentAttack
+			&& DisclosedInitialAttackSequence == Attack.AttackSequence;
+		const auto Safe = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			State, SkillRuleSet, State.RuntimeState.CurrentAttackingPlayer, Disclosure);
+		FString Steps;
+		for (const auto& Step : Result.CoordinatorResult.Steps)
+		{
+			if (!Steps.IsEmpty()) { Steps += TEXT(","); }
+			Steps += Step.CommandKind == EMatchPlayAuthoritativeCommandKind::BeginResolutionSession
+				? TEXT("BeginResolutionSession")
+				: Step.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveIntentDeterminedRoute
+					? TEXT("ResolveIntentDeterminedRoute") : FString::FromInt(static_cast<int32>(Step.CommandKind));
+		}
+		UE_LOG(LogFMCodexNetworkPlay, Log,
+			TEXT("DEV Branch authority: Success=%d Phase=%s SelectionStage=%s ExpectedSide=%d Skill=%s ActionType=%s Branch=%d SelectedAction=%d ResolutionSession=%d RouteStage=%s RouteResolved=%d ActualLongShot=%d ActualCutInside=%d ActualCross=%d RollProgress=%d Terminal=%d Interaction=%d CoordinatorCalls=%d InternalSteps=%d Steps=%s Stop=%d"),
+			Result.bSuccess, *StaticEnum<EMatchPlayCurrentAttackPhase>()->GetNameStringByValue(static_cast<int64>(Attack.Phase)),
+			*StaticEnum<EMatchPlayCurrentAttackSelectionStage>()->GetNameStringByValue(static_cast<int64>(Attack.SelectionStage)),
+			static_cast<int32>(Safe.ExpectedActingPlayer), *(Attack.bHasSelectedAction ? A.SkillId : Attack.ActionPreparation.SkillId).ToString(),
+			*StaticEnum<ESkillRuleType>()->GetNameStringByValue(static_cast<int64>(Attack.bHasSelectedAction ? A.ActionType : Attack.ActionPreparation.ActionType)),
+			static_cast<int32>(Safe.ElectiveBranchIntent), Attack.bHasSelectedAction, Attack.bHasResolutionSession,
+			*StaticEnum<EMatchPlayCurrentAttackResolutionStage>()->GetNameStringByValue(static_cast<int64>(Session.Stage)),
+			Session.bHasActualBranch, static_cast<int32>(Session.ActualBranch.LongShot),
+			static_cast<int32>(Session.ActualBranch.CutInsideShot), static_cast<int32>(Session.ActualBranch.Cross),
+			static_cast<int32>(Session.PostRouteRollProgress.Phase), Safe.bTerminalPendingAdvance,
+			static_cast<int32>(Safe.InteractionCategory), GetCoordinatorInvocationCountForTests(),
+			Result.CoordinatorResult.Steps.Num(), Steps.IsEmpty() ? TEXT("None") : *Steps,
+			static_cast<int32>(Result.CoordinatorResult.StopReason));
 	}
 
 #endif

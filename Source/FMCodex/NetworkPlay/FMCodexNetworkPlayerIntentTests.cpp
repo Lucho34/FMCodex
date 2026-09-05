@@ -401,7 +401,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner"), TEXT("Helper"), TEXT("Skill")});
+		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner"), TEXT("Helper"), TEXT("Skill"), TEXT("Branch")});
 	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkDeployGoalkeeperPayload::StaticStruct(), {TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkSubmitCarrierPayload::StaticStruct(), {TEXT("CarrierCardId")});
@@ -410,6 +410,8 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 	ExactFields(FFMCodexNetworkRunnerOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
 	ExactFields(FFMCodexNetworkSubmitHelperPayload::StaticStruct(), {TEXT("HelperCardId")});
 	ExactFields(FFMCodexNetworkHelperOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
+	ExactFields(FFMCodexNetworkSubmitBranchIntentPayload::StaticStruct(), {TEXT("Intent")});
+	ExactFields(FFMCodexNetworkBranchOption::StaticStruct(), {TEXT("Choice"), TEXT("BranchLabel")});
 	ExactFields(FFMCodexNetworkSubmitSkillPayload::StaticStruct(), {TEXT("SkillId")});
 	ExactFields(FFMCodexNetworkSkillOption::StaticStruct(), {TEXT("Choice"), TEXT("SkillLabel")});
 	ExactFields(FFMCodexNetworkMarkerOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
@@ -429,7 +431,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("GoalkeeperDeployment"), TEXT("bCanFinishDeployment"), TEXT("bPlayerADeploymentFinished"),
 		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete"), TEXT("CarrierOptions"),
 		TEXT("bCarrierOptionsUnavailable"), TEXT("SelectedCarrier"), TEXT("MarkerOptions"),
-		TEXT("bMarkerOptionsUnavailable"), TEXT("SelectedMarker"), TEXT("RunnerOptions"), TEXT("bRunnerOptionsUnavailable"), TEXT("SelectedRunner"), TEXT("HelperOptions"), TEXT("bHelperOptionsUnavailable"), TEXT("SelectedHelper"), TEXT("SkillOptions"), TEXT("bSkillOptionsUnavailable"), TEXT("SelectedSkill")});
+		TEXT("bMarkerOptionsUnavailable"), TEXT("SelectedMarker"), TEXT("RunnerOptions"), TEXT("bRunnerOptionsUnavailable"), TEXT("SelectedRunner"), TEXT("HelperOptions"), TEXT("bHelperOptionsUnavailable"), TEXT("SelectedHelper"), TEXT("SkillOptions"), TEXT("bSkillOptionsUnavailable"), TEXT("SelectedSkill"), TEXT("BranchOptions"), TEXT("bBranchOptionsUnavailable"), TEXT("SelectedBranch")});
 	const auto* Class = AFMCodexNetworkMatchPlayerController::StaticClass();
 	const auto* Server = Class->FindFunctionByName(TEXT("ServerSubmitPlayerIntent"));
 	const auto* Client = Class->FindFunctionByName(TEXT("ClientReceivePlayerIntentAck"));

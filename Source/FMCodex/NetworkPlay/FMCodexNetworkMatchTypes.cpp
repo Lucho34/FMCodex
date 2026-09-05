@@ -155,6 +155,45 @@ namespace FMCodexNetworkMatchTypes
 			});
 	}
 
+	FText BranchLabel(EMatchPlayElectiveBranchIntent Intent)
+	{
+		// Presentation mapping only; canonical legality and order come from the safe view.
+		switch (Intent)
+		{
+		case EMatchPlayElectiveBranchIntent::DirectShot: return FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Direct Shot"));
+		case EMatchPlayElectiveBranchIntent::DeadCorner: return FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Dead Corner"));
+		case EMatchPlayElectiveBranchIntent::CrossHigh: return FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Cross High"));
+		case EMatchPlayElectiveBranchIntent::CrossLow: return FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Cross Low"));
+		default: return FText::GetEmpty();
+		}
+	}
+	void ProjectBranch(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		if (Result.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary) { return; }
+		FFMCodexNetworkSubmitBranchIntentPayload Selected; Selected.Intent = View.ElectiveBranchIntent;
+		if (Selected.IsValidShape())
+		{
+			Result.SelectedBranch.Choice = Selected;
+			Result.SelectedBranch.BranchLabel = BranchLabel(Selected.Intent);
+		}
+		if (Result.EntryWait != EFMCodexNetworkEntryWait::BranchIntentSelection
+			|| !View.bHumanInteraction || Result.ViewerSide == EInitialTurnOrderPlayer::None
+			|| View.ExpectedActingPlayer != Result.ViewerSide) { return; }
+		if (View.BranchIntentOptions.Num() > FFMCodexNetworkClientViewSnapshot::MaxBranchOptions)
+		{ Result.bBranchOptionsUnavailable = true; return; }
+		TSet<EMatchPlayElectiveBranchIntent> Seen;
+		for (const auto Intent : View.BranchIntentOptions)
+		{
+			FFMCodexNetworkBranchOption Option; Option.Choice.Intent = Intent;
+			if (!Option.Choice.IsValidShape() || Seen.Contains(Intent))
+			{
+				Result.BranchOptions.Reset(); Result.bBranchOptionsUnavailable = true; return;
+			}
+			Seen.Add(Intent); Option.BranchLabel = BranchLabel(Intent);
+			Result.BranchOptions.Add(MoveTemp(Option));
+		}
+	}
 	FText SkillLabel(ESkillRuleType Type)
 	{
 		switch (Type)
@@ -399,6 +438,16 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 		Result.EntryWait = EFMCodexNetworkEntryWait::PassControlRouteRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute:
 		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallRouteRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollCrossRoute:
+		Result.EntryWait = EFMCodexNetworkEntryWait::CrossRouteRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::LongShotDirectAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner:
+		Result.EntryWait = EFMCodexNetworkEntryWait::LongShotDeadCornerRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::CutInsideDirectAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner:
+		Result.EntryWait = EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll; break;
 	default: break;
 	}
 	FMCodexNetworkMatchTypes::ProjectDeployment(SafeViewerView, Result);
@@ -407,6 +456,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	FMCodexNetworkMatchTypes::ProjectRunner(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectHelper(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectSkill(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectBranch(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,

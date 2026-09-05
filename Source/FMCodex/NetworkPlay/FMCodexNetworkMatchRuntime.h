@@ -25,7 +25,7 @@ class FMCODEX_API FFMCodexNetworkBootstrapConfigurationFactory final
 public:
 	static FFMCodexNetworkBootstrapConfiguration CreatePrototypeMatch();
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
-	static FFMCodexNetworkBootstrapConfiguration CreateBFirstAutomationMatch();
+	static FFMCodexNetworkBootstrapConfiguration CreateBFirstAutomationMatch(bool bBranchFixture = false);
 #endif
 };
 
@@ -58,6 +58,7 @@ public:
 	friend struct FFMCodexNetworkRunnerTestAccess;
 	friend struct FFMCodexNetworkHelperTestAccess;
 	friend struct FFMCodexNetworkSkillTestAccess;
+	friend struct FFMCodexNetworkBranchTestAccess;
 	int32 GetCoordinatorInvocationCountForTests() const;
 #if !UE_BUILD_SHIPPING
 	void EnableDeploymentAutomationEntry(int32 InitialD12 = 4);

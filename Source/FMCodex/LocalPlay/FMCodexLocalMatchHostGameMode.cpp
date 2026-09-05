@@ -405,9 +405,9 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 			DeclineHelper(Intent.Payload.Get<
 				FMatchPlayAuthoritativeDeclineHelperRequest>()));
 	case EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent:
-		FMCODEX_DISPATCH_PLAYER_INTENT(FMatchPlayAuthoritativeSubmitBranchIntentRequest,
-			SubmitBranchIntent(Intent.Payload.Get<
-				FMatchPlayAuthoritativeSubmitBranchIntentRequest>()));
+		return FMatchPlayEntryDeploymentPlayerIntentPort(
+			ActiveMatchRuntime->AuthoritativeSession,
+			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 	case EMatchPlayAuthoritativeCommandKind::SubmitThroughBallOneOnOneShotChoice:
 		FMCODEX_DISPATCH_PLAYER_INTENT(
 			FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest,

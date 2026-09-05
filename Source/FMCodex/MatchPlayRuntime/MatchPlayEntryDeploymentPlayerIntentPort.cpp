@@ -99,11 +99,18 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.SkillResult.bSuccess, Authority.SkillResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeSubmitBranchIntentRequest>()) { return Mismatch(); }
+		const auto Authority = Session.SubmitBranchIntent(Intent.Payload.Get<FMatchPlayAuthoritativeSubmitBranchIntentRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.IntentResult.bSuccess, Authority.IntentResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	default:
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
 		return Result;
 	}
-	// Exactly one pass after any successful deployment, participant or Skill command; never on rejection.
+	// Exactly one pass after any successful deployment, participant, Skill or branch command; never on rejection.
 	Result.CoordinatorResult = Coordinator.AdvanceToStableState();
 	Result.bSuccess = Result.CoordinatorResult.bSuccess;
 	if (!Result.bSuccess)
