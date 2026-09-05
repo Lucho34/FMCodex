@@ -50,6 +50,11 @@ public:
 	UFUNCTION(Exec)
 	void DevProbeInvalidCarrier();
 	bool CanSubmitCarrier() const;
+	UFUNCTION(Exec)
+	void DevSubmitMarker(FName MarkerCardId);
+	UFUNCTION(Exec)
+	void DevProbeInvalidMarker();
+	bool CanSubmitMarker() const;
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -76,6 +81,7 @@ private:
 
 	FFMCodexNetworkIntentClientState IntentClientState;
 
+	void SubmitMarkerChoice(const FFMCodexNetworkSubmitMarkerPayload& Choice);
 	void SubmitCarrierChoice(const FFMCodexNetworkSubmitCarrierPayload& Choice);
 	void SubmitDeploymentChoice(const FFMCodexNetworkDeployOrdinaryPayload& Choice);
 	void SubmitDeploymentCompletion(EFMCodexNetworkPlayerIntentKind Kind);
@@ -88,6 +94,6 @@ private:
 #if !UE_BUILD_SHIPPING
 	TSharedPtr<SWidget> StatusViewportWidget;
 	TSharedPtr<STextBlock> StatusText;
-	TSharedPtr<SVerticalBox> CarrierChoices;
+	TSharedPtr<SVerticalBox> ParticipantChoices;
 #endif
 };

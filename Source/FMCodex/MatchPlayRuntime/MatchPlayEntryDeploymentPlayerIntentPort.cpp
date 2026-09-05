@@ -62,11 +62,18 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.CarrierResult.bSuccess, Authority.CarrierResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitMarker:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeSubmitMarkerRequest>()) { return Mismatch(); }
+		const auto Authority = Session.SubmitMarker(Intent.Payload.Get<FMatchPlayAuthoritativeSubmitMarkerRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.MarkerResult.bSuccess, Authority.MarkerResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	default:
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
 		return Result;
 	}
-	// Exactly one pass after any successful deployment or Carrier command; never on rejection.
+	// Exactly one pass after any successful deployment, Carrier or Marker command; never on rejection.
 	Result.CoordinatorResult = Coordinator.AdvanceToStableState();
 	Result.bSuccess = Result.CoordinatorResult.bSuccess;
 	if (!Result.bSuccess)

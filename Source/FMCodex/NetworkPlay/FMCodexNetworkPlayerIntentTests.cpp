@@ -401,10 +401,12 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier")});
+		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker")});
 	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkDeployGoalkeeperPayload::StaticStruct(), {TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkSubmitCarrierPayload::StaticStruct(), {TEXT("CarrierCardId")});
+	ExactFields(FFMCodexNetworkSubmitMarkerPayload::StaticStruct(), {TEXT("MarkerCardId")});
+	ExactFields(FFMCodexNetworkMarkerOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
 	ExactFields(FFMCodexNetworkCarrierOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel")});
 	ExactFields(FFMCodexNetworkGoalkeeperOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel"), TEXT("SlotLabel")});
 	ExactFields(FFMCodexNetworkDeploymentOption::StaticStruct(), {TEXT("Choice"), TEXT("CardLabel"), TEXT("SlotLabel")});
@@ -420,7 +422,8 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("DeploymentCount"), TEXT("LastDeployment"), TEXT("bCanDeployGoalkeeper"), TEXT("GoalkeeperOption"),
 		TEXT("GoalkeeperDeployment"), TEXT("bCanFinishDeployment"), TEXT("bPlayerADeploymentFinished"),
 		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete"), TEXT("CarrierOptions"),
-		TEXT("bCarrierOptionsUnavailable"), TEXT("SelectedCarrier")});
+		TEXT("bCarrierOptionsUnavailable"), TEXT("SelectedCarrier"), TEXT("MarkerOptions"),
+		TEXT("bMarkerOptionsUnavailable"), TEXT("SelectedMarker")});
 	const auto* Class = AFMCodexNetworkMatchPlayerController::StaticClass();
 	const auto* Server = Class->FindFunctionByName(TEXT("ServerSubmitPlayerIntent"));
 	const auto* Client = Class->FindFunctionByName(TEXT("ClientReceivePlayerIntentAck"));

@@ -41,7 +41,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection
 };
 
 /** Team/content identity is deliberately separate from the connected player. */
@@ -111,6 +111,17 @@ struct FMCODEX_API FFMCodexNetworkCarrierOption
 	GENERATED_BODY()
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkSubmitCarrierPayload Choice;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FText CardLabel;
+};
+
+/** One canonical Marker identity and its existing player-facing name. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkMarkerOption
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkSubmitMarkerPayload Choice;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FText CardLabel;
 };
@@ -215,6 +226,16 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	bool bCarrierOptionsUnavailable = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkCarrierOption SelectedCarrier;
+
+	// Markers are unique deployed non-GK defenders: <=19 per valid 20-card/one-GK deck.
+	// Same physical area further restricts this set (at most 4 on the prototype five-slot half).
+	static constexpr int32 MaxMarkerOptions = 19;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	TArray<FFMCodexNetworkMarkerOption> MarkerOptions;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	bool bMarkerOptionsUnavailable = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FFMCodexNetworkMarkerOption SelectedMarker;
 };
 
 struct FFMCodexLocalMatchInteractionView;

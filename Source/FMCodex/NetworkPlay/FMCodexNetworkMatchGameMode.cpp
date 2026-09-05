@@ -312,12 +312,13 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Ack.Code = Code;
 		Ack.ViewRevision = ViewRevision;
 		UE_LOG(LogFMCodexNetworkPlay, Log,
-			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s GKSlot=%s Carrier=%s ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
+			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s GKSlot=%s Carrier=%s Marker=%s ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),
 			*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower),
 			Envelope.RequestId, *GetNameSafe(Controller), static_cast<int32>(Side),
 			Envelope.ExpectedAttackSequence, static_cast<int32>(Envelope.IntentKind),
 			*Envelope.Deployment.CardId.ToString(), *Envelope.Deployment.SlotId.ToString(),
 			*Envelope.Goalkeeper.SlotId.ToString(), *Envelope.Carrier.CarrierCardId.ToString(),
+			*Envelope.Marker.MarkerCardId.ToString(),
 			*StaticEnum<EFMCodexNetworkIntentAckCode>()->GetNameStringByValue(static_cast<int64>(Code)),
 			PreviousRevision, ViewRevision,
 			MatchRuntime ? MatchRuntime->GetEntryProviderInvocationCount() : 0,
@@ -416,6 +417,16 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
 		Request.CarrierCardId = Envelope.Carrier.CarrierCardId;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitCarrier, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::SubmitMarker:
+	{
+		// Marker ownership, physical area and phase are canonical Session checks.
+		FMatchPlayAuthoritativeSubmitMarkerRequest Request;
+		Request.RequestingSide = Side;
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Request.MarkerCardId = Envelope.Marker.MarkerCardId;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitMarker, Request);
 		break;
 	}
 	default: return Finish(AckCode::NotPlayerIntent);

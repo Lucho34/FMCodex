@@ -295,6 +295,22 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			static_cast<int32>(State.RuntimeState.CurrentAttackingPlayer), GetCoordinatorInvocationCountForTests(),
 			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
 	}
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitMarker)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		UE_LOG(LogFMCodexNetworkPlay, Log,
+			TEXT("DEV Marker authority: Success=%d Phase=%s SelectionStage=%s Carrier=%s Marker=%s Attacker=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d Runner=%s Helper=%s Skill=%s ActionType=%s SkillDeferred=%d SelectedAction=%d ResolutionSession=%d"),
+			Result.bSuccess, *StaticEnum<EMatchPlayCurrentAttackPhase>()->GetNameStringByValue(static_cast<int64>(State.CurrentAttack.Phase)),
+			*StaticEnum<EMatchPlayCurrentAttackSelectionStage>()->GetNameStringByValue(static_cast<int64>(State.CurrentAttack.SelectionStage)),
+			*State.CurrentAttack.ActionPreparation.CarrierCardId.ToString(), *State.CurrentAttack.ActionPreparation.MarkerCardId.ToString(),
+			static_cast<int32>(State.RuntimeState.CurrentAttackingPlayer), GetCoordinatorInvocationCountForTests(),
+			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason),
+			*State.CurrentAttack.ActionPreparation.RunnerCardId.ToString(), *State.CurrentAttack.ActionPreparation.HelperCardId.ToString(),
+			*State.CurrentAttack.ActionPreparation.SkillId.ToString(),
+			*StaticEnum<ESkillRuleType>()->GetNameStringByValue(static_cast<int64>(State.CurrentAttack.ActionPreparation.ActionType)),
+			State.CurrentAttack.ActionPreparation.bSkillSelectionDeferred,
+			State.CurrentAttack.bHasSelectedAction, State.CurrentAttack.bHasResolutionSession);
+	}
 #endif
 	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)

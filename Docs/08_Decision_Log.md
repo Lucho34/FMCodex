@@ -1177,3 +1177,10 @@
 - Local and Network Carrier dispatch use the same existing bounded HostPort, Session writer and one Coordinator pass. Carrier eligibility remains current-attacker, unique deployed non-GK; no tactical compatibility, position or extra lifecycle gate is added.
 - Project the full legal acting-viewer candidate set in canonical order, with an explicit 19-candidate deck bound and all-or-none representation failure. Public selected Carrier comes only from the existing viewer-safe selected identity and preferred-name source. No later participant choices or hidden facts are replicated.
 - With a legal Marker the result is Resolution/AwaitingMarker with the defender expected; SubmitMarker remains the next unnetworked command. A legal Carrier with no legal Marker instead triggers the existing server-internal no-Marker continuation. The adapter must preserve both outcomes and must not auto-submit the next player's input.
+
+## 2026-09-05 — SubmitMarker only over shared player-intent transport
+
+- Extend the five-intent network allowlist only with SubmitMarker. The sole choice is bounded MarkerCardId; the server reconstructs the existing canonical request with registry Side and validated sequence. All six kinds retain one request namespace, pending state, ACK and publication contract.
+- Marker ownership and candidate legality stay in Session/CoreRules: defending side, unique deployed non-GK, frozen Carrier context and same physical area. The shared HostPort dispatches both Local and Network Marker and coordinates once after success.
+- Carrier/Marker share only bounded safe-option copying and existing transport infrastructure. Every legitimate acting-viewer option is preserved; the independently justified Marker deck bound is 19, with all-or-none diagnostic failure. Selected Marker follows existing safe disclosure.
+- The canonical participant-first writer enters AwaitingRunner with Carrier/Marker frozen and Skill/ActionType empty. With legal Runner availability, this is the next stable wait and SubmitRunner remains unnetworked. Existing no-legal continuations stay server-owned; no DeclineMarker, Runner, Helper, Skill or roll transport is added.

@@ -41,6 +41,22 @@ struct FMCODEX_API FFMCodexNetworkSubmitCarrierPayload
 	bool IsValidShape() const;
 	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
 };
+/** Marker choice uses the same bounded identity codec; legality stays in Session. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkSubmitMarkerPayload
+{
+	GENERATED_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
+	FName MarkerCardId = NAME_None;
+	bool IsEmpty() const { return MarkerCardId.IsNone(); }
+	bool IsValidShape() const;
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+};
+template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitMarkerPayload>
+	: TStructOpsTypeTraitsBase2<FFMCodexNetworkSubmitMarkerPayload>
+{
+	enum { WithNetSerializer = true };
+};
 template<> struct TStructOpsTypeTraits<FFMCodexNetworkSubmitCarrierPayload>
 	: TStructOpsTypeTraitsBase2<FFMCodexNetworkSubmitCarrierPayload>
 {

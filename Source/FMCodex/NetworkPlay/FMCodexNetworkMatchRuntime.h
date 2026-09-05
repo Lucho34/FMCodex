@@ -54,6 +54,7 @@ public:
 	friend struct FFMCodexNetworkDeploymentTestAccess;
 	friend struct FFMCodexNetworkDeploymentCompletionTestAccess;
 	friend struct FFMCodexNetworkCarrierTestAccess;
+	friend struct FFMCodexNetworkMarkerTestAccess;
 	int32 GetCoordinatorInvocationCountForTests() const;
 #if !UE_BUILD_SHIPPING
 	void EnableDeploymentAutomationEntry();

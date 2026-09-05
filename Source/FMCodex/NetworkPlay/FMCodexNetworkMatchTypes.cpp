@@ -108,6 +108,48 @@ namespace FMCodexNetworkMatchTypes
 			if (Card.CardId == Last.CardId) { Placement.CardLabel = CardLabel(Card); break; }
 		}
 	}
+	// Transport representation only: both participant consumers already receive canonical legality.
+	template<typename TOption, typename TAssignIdentity>
+	void CopyCompleteSelectionOptions(const FFMCodexLocalMatchInteractionView& View,
+		EInitialTurnOrderPlayer Viewer, int32 Bound, TArray<TOption>& Options,
+		bool& Unavailable, TAssignIdentity AssignIdentity)
+	{
+		if (View.SelectionOptions.Num() > Bound) { Unavailable = true; return; }
+		TSet<FName> Seen;
+		for (const auto& Source : View.SelectionOptions)
+		{
+			TOption Option;
+			AssignIdentity(Option.Choice, Source.RelatedCardId);
+			if (Source.Side != Viewer || !Option.Choice.IsValidShape() || Seen.Contains(Source.RelatedCardId))
+			{
+				Options.Reset(); Unavailable = true; return;
+			}
+			Seen.Add(Source.RelatedCardId);
+			Option.CardLabel = Source.bHasCard ? CardLabel(Source.Card) : LOCTEXT("PlayerFallback", "球员");
+			Options.Add(MoveTemp(Option)); // Entire safe set, preserving canonical order.
+		}
+	}
+	void ProjectMarker(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		if (Result.EntryBranch != EFMCodexNetworkEntryBranch::Ordinary) { return; }
+		FFMCodexNetworkSubmitMarkerPayload Choice;
+		Choice.MarkerCardId = View.SelectedMarkerCardId;
+		if (Choice.IsValidShape())
+		{
+			Result.SelectedMarker.Choice = Choice;
+			const auto& Roster = View.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA
+				? View.PlayerBCardRoster : View.PlayerACardRoster;
+			const auto* Card = Roster.FindByPredicate([&](const auto& C) { return C.CardId == Choice.MarkerCardId; });
+			Result.SelectedMarker.CardLabel = Card ? CardLabel(*Card) : LOCTEXT("PlayerFallback", "球员");
+		}
+		if (View.InteractionCategory != EFMCodexLocalMatchInteractionCategory::SelectMarker
+			|| !View.bHumanInteraction || Result.ViewerSide == EInitialTurnOrderPlayer::None
+			|| View.ExpectedActingPlayer != Result.ViewerSide) { return; }
+		CopyCompleteSelectionOptions(View, Result.ViewerSide,
+			FFMCodexNetworkClientViewSnapshot::MaxMarkerOptions, Result.MarkerOptions,
+			Result.bMarkerOptionsUnavailable, [](auto& Payload, FName Id) { Payload.MarkerCardId = Id; });
+	}
 	void ProjectCarrier(const FFMCodexLocalMatchInteractionView& View,
 		FFMCodexNetworkClientViewSnapshot& Result)
 	{
@@ -128,28 +170,9 @@ namespace FMCodexNetworkMatchTypes
 		if (View.InteractionCategory != EFMCodexLocalMatchInteractionCategory::SelectCarrier
 			|| !View.bHumanInteraction || Result.ViewerSide == EInitialTurnOrderPlayer::None
 			|| View.ExpectedActingPlayer != Result.ViewerSide) { return; }
-		// This is a complete legal set, never the first N candidates. Fail the projection atomically.
-		if (View.SelectionOptions.Num() > FFMCodexNetworkClientViewSnapshot::MaxCarrierOptions)
-		{
-			Result.bCarrierOptionsUnavailable = true;
-			return;
-		}
-		TSet<FName> Seen;
-		for (const auto& Source : View.SelectionOptions)
-		{
-			FFMCodexNetworkCarrierOption Option;
-			Option.Choice.CarrierCardId = Source.RelatedCardId;
-			if (Source.Side != Result.ViewerSide || !Option.Choice.IsValidShape()
-				|| Seen.Contains(Option.Choice.CarrierCardId))
-			{
-				Result.CarrierOptions.Reset();
-				Result.bCarrierOptionsUnavailable = true;
-				return;
-			}
-			Seen.Add(Option.Choice.CarrierCardId);
-			Option.CardLabel = Source.bHasCard ? CardLabel(Source.Card) : LOCTEXT("PlayerFallback", "球员");
-			Result.CarrierOptions.Add(MoveTemp(Option)); // Preserve canonical safe-view order.
-		}
+		CopyCompleteSelectionOptions(View, Result.ViewerSide,
+			FFMCodexNetworkClientViewSnapshot::MaxCarrierOptions, Result.CarrierOptions,
+			Result.bCarrierOptionsUnavailable, [](auto& Choice, FName Id) { Choice.CarrierCardId = Id; });
 	}
 	EFMCodexNetworkClientInteractionState SelectInteractionState(
 		const FFMCodexLocalMatchInteractionView& View,
@@ -261,8 +284,17 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	{
 		Result.EntryWait = EFMCodexNetworkEntryWait::MarkerSelection;
 	}
+	if (SafeViewerView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectRunner)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::RunnerSelection;
+	}
+	if (SafeViewerView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectSkill)
+	{
+		Result.EntryWait = EFMCodexNetworkEntryWait::SkillSelection;
+	}
 	FMCodexNetworkMatchTypes::ProjectDeployment(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectCarrier(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectMarker(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,

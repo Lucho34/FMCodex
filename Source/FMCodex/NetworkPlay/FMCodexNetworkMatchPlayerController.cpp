@@ -100,7 +100,7 @@ void AFMCodexNetworkMatchPlayerController::EndPlay(
 		GEngine->GameViewport->RemoveViewportWidgetContent(
 			StatusViewportWidget.ToSharedRef());
 	}
-	CarrierChoices.Reset();
+	ParticipantChoices.Reset();
 	StatusText.Reset();
 	StatusViewportWidget.Reset();
 #endif
@@ -180,7 +180,7 @@ void AFMCodexNetworkMatchPlayerController::InitializeDeveloperStatusUI()
 		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 15))
 		.ColorAndOpacity(FLinearColor(0.91f, 0.95f, 1.0f))
 		.AutoWrapText(true);
-	SAssignNew(CarrierChoices, SVerticalBox);
+	SAssignNew(ParticipantChoices, SVerticalBox);
 	StatusViewportWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
@@ -259,7 +259,7 @@ void AFMCodexNetworkMatchPlayerController::InitializeDeveloperStatusUI()
 						SNew(SBox).MaxDesiredHeight(220.0f)
 						[
 							SNew(SScrollBox)
-							+ SScrollBox::Slot()[CarrierChoices.ToSharedRef()]
+							+ SScrollBox::Slot()[ParticipantChoices.ToSharedRef()]
 						]
 					]
 				]
@@ -277,18 +277,29 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 	{
 		StatusText->SetText(BuildStatusText());
 	}
-	if (CarrierChoices.IsValid())
+	if (ParticipantChoices.IsValid())
 	{
-		CarrierChoices->ClearChildren();
+		ParticipantChoices->ClearChildren();
 		for (const auto& Option : OwnerView.CarrierOptions)
 		{
 			const FName Id = Option.Choice.CarrierCardId;
-			CarrierChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
 			[
 				SNew(SButton)
 				.Text(FText::Format(LOCTEXT("CarrierChoice", "持球：{0}"), Option.CardLabel))
 				.IsEnabled_Lambda([this]() { return CanSubmitCarrier(); })
 				.OnClicked_Lambda([this, Id]() { DevSubmitCarrier(Id); return FReply::Handled(); })
+			];
+		}
+		for (const auto& Option : OwnerView.MarkerOptions)
+		{
+			const FName Id = Option.Choice.MarkerCardId;
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton)
+				.Text(FText::Format(LOCTEXT("MarkerChoice", "盯人：{0}"), Option.CardLabel))
+				.IsEnabled_Lambda([this]() { return CanSubmitMarker(); })
+				.OnClicked_Lambda([this, Id]() { DevSubmitMarker(Id); return FReply::Handled(); })
 			];
 		}
 	}
@@ -333,7 +344,9 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("已结算，等待下一回合") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
 			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
 			? TEXT("部署已完成，等待选择持球球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
-			? TEXT("等待选择盯人球员（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
+			? TEXT("等待选择盯人球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
+			? TEXT("等待选择跑位球员（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection
+			? TEXT("等待选择战术（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::SetPieceTypeRoll
 			? TEXT("等待定位球类型掷点") : TEXT("等待服务器");
 		EntryText = FString::Printf(TEXT("已公开 Full D12：%d · %s\n%s"),
 			OwnerView.DisclosedInitialD12, Branch, Wait);
@@ -355,7 +368,9 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			: FString::Printf(TEXT("\n门将已部署：玩家 %s · %s → %s"),
 				*SideLabel(GK.Side), *GK.Placement.CardLabel.ToString(), *GK.Placement.SlotLabel.ToString());
 		if (OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
-			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection)
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
+			|| OwnerView.EntryWait == EFMCodexNetworkEntryWait::SkillSelection)
 		{
 			EntryText += FString::Printf(TEXT("\n下一操作方：玩家 %s"), *SideLabel(OwnerView.ExpectedActingSide));
 		}
@@ -367,6 +382,14 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 	if (OwnerView.bCarrierOptionsUnavailable)
 	{
 		EntryText += LOCTEXT("CarrierProjectionUnavailable", "\n持球候选视图不可用，请检查服务器配置").ToString();
+	}
+	if (!OwnerView.SelectedMarker.Choice.IsEmpty())
+	{
+		EntryText += FText::Format(LOCTEXT("SelectedMarker", "\n已选盯人球员：{0}"), OwnerView.SelectedMarker.CardLabel).ToString();
+	}
+	if (OwnerView.bMarkerOptionsUnavailable)
+	{
+		EntryText += LOCTEXT("MarkerProjectionUnavailable", "\n盯人候选视图不可用，请检查服务器配置").ToString();
 	}
 	const auto& Ack = IntentClientState.GetLastAck();
 	FString AckText = TEXT("暂无请求回执");
@@ -511,6 +534,46 @@ void AFMCodexNetworkMatchPlayerController::DevProbeInvalidCarrier()
 	FFMCodexNetworkSubmitCarrierPayload Choice;
 	Choice.CarrierCardId = TEXT("DEV.NonexistentCarrier");
 	SubmitCarrierChoice(Choice);
+#endif
+}
+bool AFMCodexNetworkMatchPlayerController::CanSubmitMarker() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
+		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide
+		&& !OwnerView.bMarkerOptionsUnavailable && !OwnerView.MarkerOptions.IsEmpty();
+}
+void AFMCodexNetworkMatchPlayerController::DevSubmitMarker(FName MarkerCardId)
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanSubmitMarker()) { return; }
+	const auto* Option = OwnerView.MarkerOptions.FindByPredicate(
+		[&](const auto& C) { return C.Choice.MarkerCardId == MarkerCardId; });
+	if (Option) { SubmitMarkerChoice(Option->Choice); }
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::SubmitMarkerChoice(const FFMCodexNetworkSubmitMarkerPayload& Choice)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsLocalController()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginMarker(OwnerView, Choice, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log,
+		TEXT("Marker owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Marker=%s"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, *Choice.MarkerCardId.ToString());
+	ServerSubmitPlayerIntent(Envelope); // Generated owning RPC for both Host and Remote.
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevProbeInvalidMarker()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!CanSubmitMarker()) { return; }
+	FFMCodexNetworkSubmitMarkerPayload Choice;
+	Choice.MarkerCardId = TEXT("DEV.NonexistentMarker");
+	SubmitMarkerChoice(Choice);
 #endif
 }
 bool AFMCodexNetworkMatchPlayerController::CanDeployGoalkeeper() const

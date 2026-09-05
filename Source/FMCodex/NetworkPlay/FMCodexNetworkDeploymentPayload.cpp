@@ -44,6 +44,15 @@ namespace FMCodexNetworkDeploymentPayload
 		return true;
 	}
 }
+bool FFMCodexNetworkSubmitMarkerPayload::IsValidShape() const
+{
+	return FMCodexNetworkDeploymentPayload::BoundedName(MarkerCardId);
+}
+bool FFMCodexNetworkSubmitMarkerPayload::NetSerialize(FArchive& Ar, UPackageMap*, bool& bOutSuccess)
+{
+	bOutSuccess = FMCodexNetworkDeploymentPayload::SerializeName(Ar, MarkerCardId);
+	return true;
+}
 bool FFMCodexNetworkSubmitCarrierPayload::IsValidShape() const
 {
 	return FMCodexNetworkDeploymentPayload::BoundedName(CarrierCardId);
