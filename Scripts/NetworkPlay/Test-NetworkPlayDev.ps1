@@ -194,3 +194,26 @@ foreach ($path in @('BehindOneOnOne','BehindOutOfPlay','AntiOffside','AntiOneOnO
     }
 }
 Write-Host 'ThroughBall conditional launch-plan checks PASS.'
+
+foreach ($family in @('LongShot', 'CutInside')) {
+    foreach ($mode in @('DirectGoal', 'DirectMiss', 'ImmediateMiss', 'DeadCornerGoal', 'DeadCornerMiss')) {
+        foreach ($side in @('A', 'B')) {
+            $shotParameters = @{ UnrealEditorPath=$testEnginePath; ShotActor=$side; ShotFinal=$true }
+            $shotParameters['PlayerFacing' + $family + 'Milestone'] = $mode
+            . $launcherPath @shotParameters
+            $shot = Get-NetworkPlayLaunchPlan
+            Assert-True ($shot.HostArguments -contains ('-FMCodexNetworkPlayerFacing' + $family + 'Milestone=' + $mode)) 'Exact shot fixture reaches Host'
+            Assert-True ($shot.HostArguments -contains ('-FMCodexNetworkShotActor=' + $side)) 'Both shot directions supported'
+            Assert-True ($shot.HostArguments -contains '-FMCodexNetworkShotFinal') 'Final shot uses existing lifecycle'
+            Assert-True (@($shot.ClientArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*ShotActor*' -or $_ -like '*ShotFinal*' }).Count -eq 0) 'Remote has no shot provider controls'
+            Assert-True (($shot.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($shot.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Shared screen on both shot viewers'
+            Assert-True (($shot.HostArguments -contains '-ResX=1600') -and ($shot.ClientArguments -contains '-ResY=900')) 'Shot player screen fits fixed pitch'
+            Assert-True (-not ($shot.HostArguments -contains '-FMCodexNetworkDiagnostics')) 'No obscuring diagnostic panel'
+        }
+    }
+}
+$PlayerFacingLongShotMilestone = 'DeadCornerGoal'
+Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Two shot fixtures cannot mix'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*ShotActor*' }).Count -eq 0) 'Normal launch keeps production RNG'
+Write-Host ("FMCODEX_NETWORK_LAUNCHER_FINAL_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)

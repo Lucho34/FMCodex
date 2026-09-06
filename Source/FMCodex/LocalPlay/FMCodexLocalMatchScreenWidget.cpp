@@ -4634,6 +4634,25 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	{
 		DisplayedLongShot.bVisible = false;
 	}
+	// Messaging ownership follows the visible shared takeover on BOTH viewers,
+	// including the read-only viewer with no branch choices or primary action.
+	const bool bCentralOwnsActionPrompt = Presentation.bMirrorActionWaitPrompt
+		&& bLongShotProductionOwnsResolution && DisplayedLongShot.bVisible
+		&& !Presentation.FullTime.bVisible;
+	FText CentralPrompt = bCentralOwnsActionPrompt
+		? Presentation.CentralActionPromptText : FText::GetEmpty();
+	if (bCentralOwnsActionPrompt && IsInlineFormulaRevealInputBlocked())
+	{
+		// The existing disclosed event owns the reel. Do not announce the next
+		// action/terminal wait until the unchanged presentation handoff completes.
+		const auto Side = ActiveCrossRollReveal.OwnerSide;
+		CentralPrompt = Side == EInitialTurnOrderPlayer::PlayerA || Side == EInitialTurnOrderPlayer::PlayerB
+			? FText::Format(NSLOCTEXT("FMCodexActionWaitPrompt", "CentralActor", "当前操作：{0}"),
+				FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+					Side == EInitialTurnOrderPlayer::PlayerA ? TEXT("Player A") : TEXT("Player B")))
+			: FText::GetEmpty();
+	}
+	LongShotResolutionSurface->SetActionPromptText(CentralPrompt);
 	LongShotResolutionSurface->RefreshFromPresentation(DisplayedLongShot);
 	RefreshSetPieceResolutionSurface();
 	// Use the actual owning surface's disclosed narrative, not raw terminal truth
@@ -4734,11 +4753,13 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		|| bCentralOneOnOneChoiceOwner || bCentralLongShotChoiceOwner;
 	const bool bMirrorPrompt = Presentation.bMirrorActionWaitPrompt;
 	InteractionPanel->SetActionWaitPromptMode(bMirrorPrompt,
-		bCentralOwnsDockControls || Presentation.bActionWaitPromptReadOnly,
-		Presentation.ActionWaitActorText, Presentation.ActionWaitActionText);
+		bCentralOwnsDockControls || bCentralOwnsActionPrompt || Presentation.bActionWaitPromptReadOnly,
+		Presentation.ActionWaitActorText,
+		bCentralOwnsActionPrompt ? FText::GetEmpty() : Presentation.ActionWaitActionText);
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
 	InteractionPanel->SetVisibility(
 		Presentation.FullTime.bVisible || bOneOnOneDisclosureGate
+			|| (bCentralOwnsActionPrompt && !Presentation.bActionWaitPromptReadOnly)
 			|| (bMirrorPrompt ? IsInlineFormulaRevealInputBlocked() : bCentralOwnsDockControls)
 			? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	InteractionPanel->SetInteractionBlocked(

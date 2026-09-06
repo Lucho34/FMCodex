@@ -36,6 +36,8 @@ public:
 	void RefreshFromPresentation(
 		const FFMCodexUMGLongShotResolutionViewModel& InPresentation);
 
+	/** Optional client presentation copy. Does not change the projected action or its authority. */
+	void SetActionPromptText(const FText& InText);
 	const FFMCodexUMGLongShotResolutionViewModel& GetPresentation() const;
 	UFMCodexRollReelWidget* GetRollReelWidget() const;
 	UFMCodexInlineResolutionFormulaSurfaceWidget* GetFormulaSurface() const;
@@ -73,6 +75,8 @@ private:
 		Category = "Local Match|Long Shot", meta = (AllowPrivateAccess = "true"))
 	FFMCodexUMGLongShotResolutionViewModel Presentation;
 
+	FText ActionPromptText;
+	UPROPERTY(Transient) TObjectPtr<UTextBlock> ActionPrompt;
 	UPROPERTY(Transient) TObjectPtr<UTextBlock> TitleText;
 	UPROPERTY(Transient) TObjectPtr<UTextBlock> BranchText;
 	UPROPERTY(Transient) TObjectPtr<UTextBlock> StageText;

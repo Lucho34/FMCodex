@@ -72,7 +72,9 @@ public:
 	{
 		++InvocationCount;
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
-		const int32 D6 = Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack ? AutomationAttackD6
+		const int32 D6 = Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackA ? AutomationPairedAD6
+			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackB ? AutomationPairedBD6
+			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack ? AutomationAttackD6
 			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryDefense ? AutomationDefenseD6
             : Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotAttack || Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneChipShotAttack ? AutomationOneOnOneAttackD6
             : Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotDefense ? AutomationOneOnOneDefenseD6 : 0;
@@ -86,6 +88,7 @@ public:
 	int32 InvocationCount = 0;
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 	int32 AutomationAttackD6 = 0, AutomationDefenseD6 = 0;
+	int32 AutomationPairedAD6 = 0, AutomationPairedBD6 = 0;
 	int32 AutomationOneOnOneAttackD6 = 0, AutomationOneOnOneDefenseD6 = 0;
 #endif
 private:
@@ -179,6 +182,14 @@ void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry(int32 InitialD
 }
 #endif
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+void FFMCodexNetworkMatchRuntime::EnableSpecializedShotAutomation(bool Goal, bool ImmediateMiss, bool Final)
+{
+	check(!bInitialized);
+	EnablePostRouteAutomation(ImmediateMiss ? 1 : Goal ? 6 : 3, Goal ? 1 : 6);
+	PostRouteProvider->AutomationPairedAD6 = Goal ? 6 : 1;
+	PostRouteProvider->AutomationPairedBD6 = Goal ? 5 : 1;
+	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider, 4, Final));
+}
 void FFMCodexNetworkMatchRuntime::EnableThroughBallConditionalAutomation(const FString& Path, bool Goal, bool Final)
 {
     check(!bInitialized);
@@ -563,6 +574,15 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 	}
 
 #endif
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitBranchIntent && Result.bSuccess)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		const auto& Attack = State.CurrentAttack;
+		if (State.bHasCurrentAttack && Attack.bHasResolutionSession && Attack.ResolutionSession.bHasActualBranch
+			&& (Attack.ResolutionSession.ActualBranch.ActionType == ESkillRuleType::LongShot
+				|| Attack.ResolutionSession.ActualBranch.ActionType == ESkillRuleType::CutInsideShot))
+			DisclosedRouteAttackSequence = Attack.AttackSequence; // Public intent-determined route, without a route die.
+	}
 	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal && Result.bSuccess)
 	{
 		DisclosedInitialAttackSequence = 0;
@@ -595,13 +615,19 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallBehindDefenseP1AttackRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallAntiOffsideAttackRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotAttackRoll
-		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneChipShotAttackRoll;
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneChipShotAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveLongShotDeadCornerRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDirectAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDeadCornerRoll;
 	const bool bContestDefense = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallBehindDefenseP1DefenseRoll
-		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotDefenseRoll;
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotDefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectDefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDirectDefenseRoll;
 	if ((bContestAttack || bContestDefense) && Result.bSuccess)
 	{
 		DisclosedContestAttackSequence = AuthoritativeSession->GetStateSnapshot().CurrentAttack.AttackSequence;
@@ -626,7 +652,7 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			// Diagnostics may read only the prefix and terminal facts already permitted in this public snapshot.
 			FFMCodexLocalMatchViewerDisclosure Published;
 			Published.bRevealInitialActionPointRoll = Safe.DisclosedInitialD12 > 0;
-			Published.bRevealRouteRoll = Safe.InitialRoute.D6 > 0;
+			Published.bRevealRouteRoll = DisclosedRouteAttackSequence == Attack.AttackSequence;
 			Published.RevealedContestD6Count = Safe.AcceptedContestRolls.Num();
 			Published.bRevealTerminalOutcome = Safe.Terminal.Outcome != EFMCodexNetworkTerminalOutcome::None;
 			const auto Facts = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(State, SkillRuleSet,

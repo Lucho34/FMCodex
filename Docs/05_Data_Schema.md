@@ -862,3 +862,13 @@ Append wire kinds 23–28 for BehindDefense P1 Attack/Defense, AntiOffside Attac
 Terminal.Outcome adds OutOfPlay, DefenderStoppedAttack and Offside. The existing independent exact-attack terminal permission, score/history/scorer projection, bCanAdvance and Recovery/MatchResult contracts remain. A nonterminal OneOnOneRequired decision is not a terminal. A completed BehindDefense skipped Formula is a valid terminal gate, even though it never used its Defense descriptor.
 
 The existing Presentation.ThroughBallSurface and Interaction now retain safe OneOnOne choices. Presentation.ResolvedRolls admits at most five events (route, up to two primary dice, up to two new Direct dice), with existing attack/contest/index/purpose ownership identity and no future values. Direct and Chip use their own contest IDs. No raw State, Session, Resolution object, RNG provider or client-computed result is added to replication.
+
+## Specialized shot Network extension (Stage 7.18)
+
+Existing wire values 1–29 remain stable. Append LongShotDirectAttackRoll=30, LongShotDirectDefenseRoll=31, LongShotDeadCornerRoll=32, CutInsideShotDirectAttackRoll=33, CutInsideShotDirectDefenseRoll=34, CutInsideShotDeadCornerRoll=35. All nine existing payload members must be empty for these tags. No new Side, seed, D6, branch override, Formula, winner, scorer or score field exists.
+
+Append the corresponding six typed ContestAction values, two previously missing Direct Defense EntryWait values, and terminal ImmediateMiss. Reuse the bounded AcceptedContestRolls prefix, safe Formula display, BranchSurface and public lifecycle records. Shot rolls preserve canonical zero-based SequenceIndex because these branches have no initial-route roll; random-route families keep their existing indices. DeadCorner carries two attacker-owned paired purposes, not an invented attack/defense contest.
+
+Safe actual branch selects LongShot.DirectShot / CutInsideShot.DirectShot Formula identities, or DeadCorner.Outcome. A canonical NotApplicable Formula descriptor is not a resolved Formula and must not create a visible Formula panel. Hidden accepted dice also conceal their dependent conditional actor, next CTA, final Formula, outcome, score and history. A selected undisclosed shot branch conceals its dependent facts; the pre-choice branch selection itself remains actionable.
+
+Choice and accepted dice grant existing exact-attack disclosure permissions. Public terminal data may arrive before animation finishes; the original displayed-score gate delays visible score/scorer/result until the existing terminal reveal. Event identity retains match/session, attack, typed kind, contest and canonical sequence so equal dice do not collapse and duplicate snapshots do not replay.

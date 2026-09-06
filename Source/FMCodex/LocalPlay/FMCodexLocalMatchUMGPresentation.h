@@ -1901,6 +1901,8 @@ struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 	bool bActionWaitPromptReadOnly = false;
 	FText ActionWaitActorText;
 	FText ActionWaitActionText;
+	/** Client-only safe actor copy for the shared shot/method takeover; never serialized. */
+	FText CentralActionPromptText;
 };
 
 class FMCODEX_API FFMCodexLocalMatchUMGPresentationBuilder final

@@ -221,13 +221,27 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		TerminalMilestone = FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkThroughBallNoGoal")) ? TEXT("NoGoal") : TEXT("Goal");
 		if (FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkThroughBallFinal"))) TerminalMilestone = TEXT("Final") + TerminalMilestone;
 	}
+	FString ShotMilestone, ShotActor = TEXT("A");
+	bool bShot = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingLongShotMilestone="), ShotMilestone);
+	if (bShot) PlayerFacingFamily = ESkillRuleType::LongShot;
+	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingCutInsideMilestone="), ShotMilestone))
+	{ bShot = true; PlayerFacingFamily = ESkillRuleType::CutInsideShot; }
+	const bool bValidShot = ShotMilestone == TEXT("DirectGoal") || ShotMilestone == TEXT("DirectMiss")
+		|| ShotMilestone == TEXT("ImmediateMiss") || ShotMilestone == TEXT("DeadCornerGoal") || ShotMilestone == TEXT("DeadCornerMiss");
+	if (bShot)
+	{
+		bPlayerFacingMilestone = true;
+		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkShotActor="), ShotActor);
+		TerminalMilestone = ShotMilestone.EndsWith(TEXT("Goal")) ? TEXT("Goal") : TEXT("NoGoal");
+		if (FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkShotFinal"))) TerminalMilestone = TEXT("Final") + TerminalMilestone;
+	}
 	const bool bTerminalMilestone = bPlayerFacingMilestone || (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkCrossTerminalMilestone="), TerminalMilestone));
 	const bool bTerminalFinal = TerminalMilestone.StartsWith(TEXT("Final"));
 	const bool bTerminalGoal = TerminalMilestone == TEXT("Goal") || TerminalMilestone == TEXT("FinalGoal");
 	const bool bValidTerminalMilestone = bTerminalGoal || TerminalMilestone == TEXT("NoGoal") || TerminalMilestone == TEXT("FinalNoGoal");
 	if (bTerminalMilestone)
 	{
-		if (!bValidTerminalMilestone || (bConditional && (ConditionalPath != TEXT("BehindOneOnOne") && ConditionalPath != TEXT("BehindOutOfPlay")
+		if (!bValidTerminalMilestone || (bShot && (!bValidShot || (ShotActor != TEXT("A") && ShotActor != TEXT("B")))) || (bConditional && (ConditionalPath != TEXT("BehindOneOnOne") && ConditionalPath != TEXT("BehindOutOfPlay")
             && ConditionalPath != TEXT("AntiOffside") && ConditionalPath != TEXT("AntiOneOnOne")))
             || (bConditional && ConditionalActor != TEXT("A") && ConditionalActor != TEXT("B")))
 		{
@@ -236,7 +250,7 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 			PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed);
 			return;
 		}
-		const bool BFirst = (bConditional ? ConditionalActor == TEXT("B") : !bTerminalGoal) != bTerminalFinal;
+		const bool BFirst = (bShot ? ShotActor == TEXT("B") : bConditional ? ConditionalActor == TEXT("B") : !bTerminalGoal) != bTerminalFinal;
 		BootstrapConfiguration = BFirst ? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
 		BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = bTerminalFinal;
@@ -244,7 +258,8 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		int32 RouteD6 = PlayerFacingFamily == ESkillRuleType::Cross ? 5 : bTerminalGoal ? 1 : 3;
 		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPassControlRouteD6="), RouteD6);
 		if (RouteD6 < 1 || RouteD6 > 6) RouteD6 = 1;
-		if (bConditional) MatchRuntime->EnableThroughBallConditionalAutomation(ConditionalPath, bTerminalGoal, bTerminalFinal);
+		if (bShot) MatchRuntime->EnableSpecializedShotAutomation(bTerminalGoal, ShotMilestone == TEXT("ImmediateMiss"), bTerminalFinal);
+		else if (bConditional) MatchRuntime->EnableThroughBallConditionalAutomation(ConditionalPath, bTerminalGoal, bTerminalFinal);
 		else MatchRuntime->EnableOrdinaryTerminalAutomation(bTerminalGoal, bTerminalFinal, PlayerFacingFamily, RouteD6);
 	}
 	FString Milestone;
@@ -718,6 +733,54 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
 		Request.Choice = Envelope.OneOnOneChoice;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitThroughBallOneOnOneShotChoice, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::LongShotDirectAttackRoll:
+	{
+		FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest Request;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.RequestingSide = Side;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectAttackRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::LongShotDirectDefenseRoll:
+	{
+		FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest Request;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.RequestingSide = Side;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectDefenseRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::LongShotDeadCornerRoll:
+	{
+		FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest Request;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.RequestingSide = Side;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveLongShotDeadCornerRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDirectAttackRoll:
+	{
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest Request;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.RequestingSide = Side;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDirectAttackRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDirectDefenseRoll:
+	{
+		FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest Request;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.RequestingSide = Side;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDirectDefenseRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDeadCornerRoll:
+	{
+		FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest Request;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.RequestingSide = Side;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDeadCornerRoll, Request);
 		break;
 	}
 	case EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal:

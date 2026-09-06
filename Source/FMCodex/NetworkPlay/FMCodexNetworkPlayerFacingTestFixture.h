@@ -9,6 +9,7 @@
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 #include "../LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.h"
+#include "../LocalPlay/FMCodexLongShotResolutionSurfaceWidget.h"
 #include "../LocalPlay/FMCodexSelectionFeedbackToastWidget.h"
 #include "../LocalPlay/FMCodexLocalMatchPlayerController.h"
 #include "../LocalPlay/FMCodexLocalMatchResolutionFeedback.h"
@@ -85,7 +86,7 @@ namespace FMCodexPlayerFacingOrdinaryUITests
 					EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal, R)).bSuccess) return false;
 				Access::Publish(*Mode);
 			}
-			Entropy->Word = 5;
+			Entropy->Word = Family == ESkillRuleType::LongShot || Family == ESkillRuleType::CutInsideShot ? 3 : 5;
 			if (!Access::Runtime(*Mode).PrepareOrdinaryTerminalMilestone(true, false, true, Family)) return false;
 			Access::Publish(*Mode); Settle(); return true;
 		}
@@ -102,16 +103,27 @@ namespace FMCodexPlayerFacingOrdinaryUITests
 		const FString ExpectedAction = Acting ? Action : Action == TEXT("下一回合")
 			? FString(TEXT("等待下一回合推进")) : FString(TEXT("等待")) + Action;
 		T.TestTrue(TEXT("Mirror prompt uses existing shared dock"), S->GetPresentation().bMirrorActionWaitPrompt);
-		T.TestEqual(TEXT("Dock visible after the presentation handoff"),Panel->GetVisibility(),ESlateVisibility::Visible);
+		const bool Takeover = V.Presentation.BranchSurface.bVisible && !S->GetPresentation().Resolution.bRejected;
+		T.TestEqual(TEXT("Central actor collapses dock; waiting and non-modal docks remain"),Panel->GetVisibility(),
+			Takeover && Acting ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		const auto* CentralPrompt = Cast<UTextBlock>(S->GetLongShotResolutionSurface()->GetWidgetFromName(TEXT("CentralActionPrompt")));
+		FString CentralCopy = FString(TEXT("当前操作：")) + Owner;
+		if (bPending) CentralCopy += TEXT("\n正在提交，请稍候");
+		else if (!Acting && Action == TEXT("下一回合")) CentralCopy += TEXT("\n等待下一回合推进");
+		T.TestEqual(TEXT("Central actor copy uses safe A/B identity, including pending and terminal wait"),
+			CentralPrompt->GetText().ToString(), Takeover ? CentralCopy : FString());
+		T.TestEqual(TEXT("Only the owning modal displays central prompt"), CentralPrompt->GetVisibility(),
+			Takeover ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		const auto* ActorText = Cast<UTextBlock>(Panel->GetWidgetFromName(TEXT("InteractionExpectedActor")));
 		const auto* ActionText = Cast<UTextBlock>(Panel->GetWidgetFromName(TEXT("InteractionActionTitle")));
 		T.TestEqual(TEXT("Rendered actor is viewer-relative to safe actor"),ActorText->GetText().ToString(),ExpectedActor);
-		T.TestEqual(TEXT("Rendered action matches current safe step"),ActionText->GetText().ToString(),ExpectedAction);
-		T.TestTrue(TEXT("Action explanation visible even for active D12"),ActionText->GetVisibility()!=ESlateVisibility::Collapsed);
+		T.TestEqual(TEXT("Rendered action matches current safe step"),ActionText->GetText().ToString(),Takeover ? FString() : ExpectedAction);
+		T.TestEqual(TEXT("Detailed dock action is hidden only during takeover; active D12 retains it"),
+			ActionText->GetVisibility() != ESlateVisibility::Collapsed, !Takeover);
 		T.TestEqual(TEXT("No generic no-player-action fallback"),Panel->GetWidgetFromName(TEXT("InteractionBoundedFallback"))->GetVisibility(),ESlateVisibility::Collapsed);
 		const bool Central = Action == TEXT("进攻方掷点") || Action == TEXT("防守方掷点")
 			|| Action == TEXT("掷传中路线骰") || Action == TEXT("下一回合") || Action == TEXT("选择传中方式");
-		if (!Acting || Central)
+		if (!Acting || Central || Takeover)
 		{
 			for (const TCHAR* Name : {TEXT("InteractionContinueButton"),TEXT("InteractionTacticalPointRollButton"),TEXT("InteractionFinishDeploymentButton")})
 				if (const auto* Button=Panel->GetWidgetFromName(Name))

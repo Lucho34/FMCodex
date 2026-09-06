@@ -194,6 +194,9 @@ bool FFMCodexLongShotProductionBranchOwnershipTest::RunTest(
 			GetTransientPackage());
 	Surface->TakeWidget();
 	Surface->RefreshFromPresentation(Screen.LongShotResolution);
+	TestFalse(TEXT("Local hot-seat does not opt into viewer-relative network prompt"), Screen.bMirrorActionWaitPrompt);
+	TestEqual(TEXT("Optional network actor line leaves Local layout unchanged"),
+		Surface->GetWidgetFromName(TEXT("CentralActionPrompt"))->GetVisibility(), ESlateVisibility::Collapsed);
 	const auto& Widgets = Surface->GetBranchChoiceWidgets();
 	TestEqual(TEXT("LongShot renders two horizontal option widgets"),
 		Widgets.Num(), 2);

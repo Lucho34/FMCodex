@@ -30,11 +30,14 @@ public:
 	int32 Calls = 0;
 	bool bFail = false;
 	int32 FailOnCall = 0;
+	TArray<uint32> PendingWords; // Optional explicit entropy sequence for atomic paired-roll tests.
 	virtual bool Fill(TArrayView<uint8> Bytes) override
 	{
 		++Calls;
 		if (bFail || Calls == FailOnCall || Bytes.Num() != sizeof(Word)) { return false; }
-		FMemory::Memcpy(Bytes.GetData(), &Word, sizeof(Word)); return true;
+		const uint32 Value = PendingWords.IsEmpty() ? Word : PendingWords[0];
+		if (!PendingWords.IsEmpty()) PendingWords.RemoveAt(0);
+		FMemory::Memcpy(Bytes.GetData(), &Value, sizeof(Value)); return true;
 	}
 };
 
@@ -131,7 +134,7 @@ namespace FMCodexNetworkInitialRouteTests
 		{
 			auto& C = Client(PC); Envelope E; const auto& V = PC->GetOwnerView();
 			FFMCodexNetworkDeployGoalkeeperPayload GK; GK.SlotId = Ordinary.SlotId;
-			bool Began = K == Kind::RequestInitialActionPointRoll ? C.Begin(V, E)
+			auto Begin = [&]() { return K == Kind::RequestInitialActionPointRoll ? C.Begin(V, E)
 				: K == Kind::AdvanceAfterTerminal ? C.BeginAdvance(V, E)
 				: K == Kind::DeployOrdinary ? C.BeginDeployment(V, Ordinary, E)
 				: K == Kind::DeployGoalkeeper ? C.BeginGoalkeeper(V, GK, E)
@@ -143,7 +146,16 @@ namespace FMCodexNetworkInitialRouteTests
 				: K == Kind::SubmitSkill ? C.BeginSkill(V, Skill, E)
 				: K == Kind::SubmitBranchIntent ? C.BeginBranch(V, BranchChoice, E)
 				: K == Kind::CrossInitialRouteRoll || K == Kind::PassControlInitialRouteRoll || K == Kind::ThroughBallInitialRouteRoll
-					? C.BeginInitialRoute(V, K, E) : C.BeginOrdinaryContest(V, K, E);
+					? C.BeginInitialRoute(V, K, E) : C.BeginOrdinaryContest(V, K, E); };
+			bool Began = Begin();
+			// Forged transport envelopes use this fixture's shared Next counter too.
+			// Reserve unsent local IDs until the client catches up; never rewind server history.
+			while (Began && E.RequestId < Next(PC))
+			{
+				FFMCodexNetworkPlayerIntentAck Unsent; Unsent.MatchInstanceId=E.MatchInstanceId;
+				Unsent.RequestId=E.RequestId; Unsent.Code=Code::InvalidPayload; C.ObserveAck(Unsent);
+				Began = Begin();
+			}
 			if (!Began) { return false; }
 			Next(PC) = E.RequestId + 1;
 			const auto Ack = Mode->SubmitConnectionPlayerIntent(PC, E);

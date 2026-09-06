@@ -36,6 +36,12 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	ThroughBallOneOnOneDirectShotDefenseRoll,
 	ThroughBallOneOnOneChipShotAttackRoll,
 	SubmitThroughBallOneOnOneShotChoice,
+	LongShotDirectAttackRoll,
+	LongShotDirectDefenseRoll,
+	LongShotDeadCornerRoll,
+	CutInsideShotDirectAttackRoll,
+	CutInsideShotDirectDefenseRoll,
+	CutInsideShotDeadCornerRoll,
 };
 
 UENUM()

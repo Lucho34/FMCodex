@@ -42,7 +42,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll, PassControlDefenseRoll, ThroughBallFeetDefenseRoll, ThroughBallBehindDefenseDefenseRoll, ThroughBallOneOnOneChoice, ThroughBallOneOnOneDirectAttackRoll, ThroughBallOneOnOneDirectDefenseRoll, ThroughBallOneOnOneChipRoll
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll, PassControlDefenseRoll, ThroughBallFeetDefenseRoll, ThroughBallBehindDefenseDefenseRoll, ThroughBallOneOnOneChoice, ThroughBallOneOnOneDirectAttackRoll, ThroughBallOneOnOneDirectDefenseRoll, ThroughBallOneOnOneChipRoll, LongShotDirectDefenseRoll, CutInsideDirectDefenseRoll
 };
 
 
@@ -78,7 +78,8 @@ enum class EFMCodexNetworkContestAction : uint8
 {
 	None, CrossHighAttackRoll, CrossHighDefenseRoll, CrossLowAttackRoll, CrossLowDefenseRoll,
 	PassControlAttackRoll, PassControlDefenseRoll, ThroughBallFeetAttackRoll, ThroughBallFeetDefenseRoll,
-	ThroughBallBehindDefenseP1AttackRoll, ThroughBallBehindDefenseP1DefenseRoll, ThroughBallAntiOffsideAttackRoll, ThroughBallOneOnOneDirectShotAttackRoll, ThroughBallOneOnOneDirectShotDefenseRoll, ThroughBallOneOnOneChipShotAttackRoll
+	ThroughBallBehindDefenseP1AttackRoll, ThroughBallBehindDefenseP1DefenseRoll, ThroughBallAntiOffsideAttackRoll, ThroughBallOneOnOneDirectShotAttackRoll, ThroughBallOneOnOneDirectShotDefenseRoll, ThroughBallOneOnOneChipShotAttackRoll,
+	LongShotDirectAttackRoll, LongShotDirectDefenseRoll, LongShotDeadCornerRoll, CutInsideShotDirectAttackRoll, CutInsideShotDirectDefenseRoll, CutInsideShotDeadCornerRoll
 };
 
 /** One accepted post-route value; at most four in a complete ThroughBall attack. */
@@ -243,7 +244,7 @@ struct FMCODEX_API FFMCodexNetworkDeploymentSummary
 
 /** Owner-safe bounded choices plus public facts; no raw State, hand or deck. */
 UENUM(BlueprintType)
-enum class EFMCodexNetworkTerminalOutcome : uint8 { None, Goal, NoGoal, OutOfPlay, DefenderStoppedAttack, Offside };
+enum class EFMCodexNetworkTerminalOutcome : uint8 { None, Goal, NoGoal, OutOfPlay, DefenderStoppedAttack, Offside, ImmediateMiss };
 UENUM(BlueprintType)
 enum class EFMCodexNetworkMatchResult : uint8 { None, PlayerAWins, PlayerBWins, Draw };
 

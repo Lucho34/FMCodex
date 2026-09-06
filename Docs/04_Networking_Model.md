@@ -527,3 +527,22 @@ Direct always uses the canonical unique defending GK; deployment affects only th
 Server-internal ResolveThroughBallBehindDefenseP1Formula, ResolveThroughBallAntiOffsideDecision and ApplyThroughBallTerminalResolution remain behind Coordinator. The completed single-roll BehindDefense gate skips the unavailable two-sided Formula and lets canonical terminal regeneration validate OutOfPlay. None becomes an RPC tag.
 
 `LaunchNetworkPlayDev.ps1 -PlayerFacingThroughBallMilestone BehindOneOnOne` provides the short Skill → route → primary Attack/Defense → OneOnOne choice → terminal → Advance milestone. Other DEV paths are BehindOutOfPlay, AntiOffside and AntiOneOnOne; ThroughBallActor selects A/B, ThroughBallNoGoal pins the later shot provider sample and ThroughBallFinal uses the canonical short opening. Fixtures are server-only, non-Shipping and do not select the player's Direct/Chip choice. USER PIE remains required for visible milestone closure.
+
+## LongShot / CutInsideShot specialized resolution transport (Stage 7.18)
+
+Every request below is an existing `FMatchPlayAuthoritative<Session entry>Request`, classified PlayerIntent, containing only AttackSequence and RequestingSide. The envelope carries ExpectedAttackSequence; RequestingSide is supplied by the admitted connection. The intent-specific wire payload is empty. Skill and branch are already frozen by SubmitSkill / SubmitBranchIntent.
+
+| Session entry | Actor and prerequisite | Provider / next state |
+|---|---|---|
+| ResolveLongShotDirectAttackRoll | attacker; LongShot Direct pending | one PrimaryAttack D6; 1–2 ImmediateMiss, otherwise Defense pending |
+| ResolveLongShotDirectDefenseRoll | defender; accepted Direct attack 3–6 | one PrimaryDefense D6; Finishing Formula and terminal |
+| ResolveLongShotDeadCornerRoll | attacker; LongShot DeadCorner pending | two paired D6; outcome-only Goal/Miss and terminal |
+| ResolveCutInsideShotDirectAttackRoll | attacker; CutInside Direct pending | one PrimaryAttack D6; 1–2 ImmediateMiss, otherwise Defense pending |
+| ResolveCutInsideShotDirectDefenseRoll | defender; accepted Direct attack 3–6 | one PrimaryDefense D6; Finishing Formula and atomic terminal |
+| ResolveCutInsideShotDeadCornerRoll | attacker; CutInside DeadCorner pending | two paired D6; outcome-only Goal/Miss and atomic terminal |
+
+The branch choice triggers existing internal BeginResolutionSession / ResolveIntentDeterminedRoute without an initial-route die. LongShot's existing ApplyShotTerminalResolution remains Coordinator-owned; CutInside already calls its terminal orchestrator inside the roll transaction. Neither path exposes an internal action tag. TerminalPendingAdvance requires the same AdvanceAfterTerminal PlayerIntent: consume the opportunity, recover non-final participants, alternate to Full D12, or end the final match.
+
+All six kinds share the existing RequestId namespace, forward window ≤1024, common validation, dedupe and ACK/View pending. Wrong skill/branch/actor/checkpoint, stale attack, wrong match, mixed payload, duplicates and internal tags reject before gameplay mutation/RNG. Provider failure has no fallback and no partial state adoption, including failure of the second paired draw. Fresh IDs cannot reroll a committed step.
+
+Production uses the same server-private secure post-route provider. Explicit non-Shipping `PlayerFacingLongShotMilestone` / `PlayerFacingCutInsideMilestone` modes accept DirectGoal, DirectMiss, ImmediateMiss, DeadCornerGoal or DeadCornerMiss. ShotActor selects A/B; ShotFinal reuses the canonical short opening. These host-only fixtures stop at Skill, leave branch choice and all rolls to the player, and set provider samples rather than forcing route/result/state. Default launch remains unchanged.

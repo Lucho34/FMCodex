@@ -43,7 +43,7 @@ namespace
 			|| M.PitchRegions.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxPitchRegions
 			|| M.Interaction.DeploymentChoices.Num() > 20 || M.Interaction.SelectionChoices.Num() > 20
 			|| M.Interaction.BranchChoices.Num() > 2 || M.Interaction.OneOnOneChoices.Num() > 2
-			|| M.ThroughBallResolution.OneOnOneChoices.Num() > 2) return false;
+			|| M.ThroughBallResolution.OneOnOneChoices.Num() > 2 || M.LongShotResolution.BranchChoices.Num() > 2) return false;
 		for (const auto& Region : M.PitchRegions)
 			if (Region.Slots.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxSlotsPerRegion) return false;
 		for (const auto& Choice : M.Interaction.DeploymentChoices)
@@ -97,7 +97,8 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	for (auto& Choice : M.Interaction.SelectionChoices)
 		if (M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill
 			&& Choice.SkillType != ESkillRuleType::Cross && Choice.SkillType != ESkillRuleType::PassControl
-			&& Choice.SkillType != ESkillRuleType::ThroughBall)
+			&& Choice.SkillType != ESkillRuleType::ThroughBall
+			&& Choice.SkillType != ESkillRuleType::LongShot && Choice.SkillType != ESkillRuleType::CutInsideShot)
 		{
 			Choice.bEnabled = false;
 			Choice.SecondaryLabel = TEXT("此联网演示暂未支持");
@@ -144,7 +145,18 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 				Event.Kind = Purpose == P::PrimaryAttack || Purpose == P::OneOnOneDirectShotAttack || Purpose == P::OneOnOneChipShotAttack
 					? EFMCodexUMGCrossRollRevealKind::Attack : Purpose == P::PrimaryDefense || Purpose == P::OneOnOneDirectShotDefense
 						? EFMCodexUMGCrossRollRevealKind::Defense : EFMCodexUMGCrossRollRevealKind::None;
-				if (Purpose == P::OneOnOneChipShotAttack) Event.ContestId = TEXT("ThroughBall.OneOnOne.ChipShot");
+				const bool LongShot = Facts.ActualBranch.ActionType == ESkillRuleType::LongShot;
+				const bool CutInside = Facts.ActualBranch.ActionType == ESkillRuleType::CutInsideShot;
+				if ((LongShot || CutInside) && (Purpose == P::PairedAttackA || Purpose == P::PairedAttackB))
+				{
+					const bool First = Purpose == P::PairedAttackA;
+					Event.Kind = LongShot ? (First ? EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA : EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB)
+						: (First ? EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerA : EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerB);
+					Event.ContestId = LongShot ? TEXT("LongShot.DeadCorner") : TEXT("CutInsideShot.DeadCorner");
+				}
+				else if (LongShot || CutInside)
+					Event.ContestId = LongShot ? TEXT("LongShot.DirectShot") : TEXT("CutInsideShot.DirectShot");
+				else if (Purpose == P::OneOnOneChipShotAttack) Event.ContestId = TEXT("ThroughBall.OneOnOne.ChipShot");
 				else if (Purpose == P::OneOnOneDirectShotAttack || Purpose == P::OneOnOneDirectShotDefense)
 					Event.ContestId = TEXT("ThroughBall.OneOnOne.DirectShot");
 				else if (Facts.ActualBranch.ActionType == ESkillRuleType::ThroughBall
@@ -222,24 +234,31 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	case C::SelectHelper: Action = FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Select Helper")); break;
 	case C::SelectSkill: Action = LOCTEXT("Skill", "选择战术"); break;
 	case C::SelectBranchIntent:
-		if (M.LongShotResolution.SkillType != ESkillRuleType::Cross) return M;
-		Action = LOCTEXT("CrossBranch", "选择传中方式"); break;
+	case C::SelectLongShotBranch:
+		Action = M.LongShotResolution.SkillType == ESkillRuleType::Cross
+			? LOCTEXT("CrossBranch", "选择传中方式") : LOCTEXT("ShotBranch", "选择射门方式"); break;
 	case C::RollPassControlRoute: Action = LOCTEXT("PassControlRoute", "掷传控路线骰"); break;
 	case C::RollThroughBallInitialRoute: Action = LOCTEXT("ThroughBallRoute", "掷直塞路线骰"); break;
 	case C::RollCrossRoute: Action = LOCTEXT("CrossRoute", "掷传中路线骰"); break;
 	case C::SelectOneOnOneShot: Action = LOCTEXT("OneOnOneChoice", "选择单刀射门方式"); break;
 	case C::RollThroughBallAntiOffsideAttack: Action = LOCTEXT("AntiOffsideRoll", "掷反越位点数"); break;
 	case C::RollThroughBallOneOnOneChipShotAttack: Action = LOCTEXT("ChipRoll", "掷挑射点数"); break;
+	case C::RollLongShotDirectAttack:
+	case C::RollCutInsideShotDirectAttack:
 	case C::RollThroughBallBehindDefenseAttack:
 	case C::RollThroughBallOneOnOneDirectShotAttack:
 	case C::RollPassControlAttack:
 	case C::RollThroughBallFeetAttack:
 	case C::RollCrossAttack: Action = LOCTEXT("CrossAttack", "进攻方掷点"); break;
+	case C::RollLongShotDirectDefense:
+	case C::RollCutInsideShotDirectDefense:
 	case C::RollThroughBallBehindDefenseDefense:
 	case C::RollThroughBallOneOnOneDirectShotDefense:
 	case C::RollPassControlDefense:
 	case C::RollThroughBallFeetDefense:
 	case C::RollCrossDefense: Action = LOCTEXT("CrossDefense", "防守方掷点"); break;
+	case C::RollLongShotDeadCorner:
+	case C::RollCutInsideShotDeadCorner: Action = LOCTEXT("DeadCornerPair", "进攻方掷两枚骰"); break;
 	case C::AdvanceAfterTerminal: Action = LOCTEXT("Advance", "下一回合"); break;
 	default: return M; // Unsupported families and non-player progression keep their existing presentation.
 	}
@@ -255,6 +274,12 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 		: M.Interaction.Category == C::AdvanceAfterTerminal
 			? LOCTEXT("WaitingAdvance", "等待下一回合推进")
 			: FText::Format(LOCTEXT("WaitingAction", "等待{0}"), Action);
+	M.CentralActionPromptText = FText::Format(LOCTEXT("CentralActor", "当前操作：{0}"), Actor);
+	if (bPending || (M.bActionWaitPromptReadOnly && M.Interaction.Category == C::AdvanceAfterTerminal))
+	{
+		M.CentralActionPromptText = FText::Format(LOCTEXT("CentralActorStatus", "{0}\n{1}"),
+			M.CentralActionPromptText, bPending ? LOCTEXT("Submitting", "正在提交，请稍候") : M.ActionWaitActionText);
+	}
 	return M;
 }
 #undef LOCTEXT_NAMESPACE

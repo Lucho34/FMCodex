@@ -74,6 +74,7 @@ public:
 	void EnableInitialRouteAutomation(int32 D6);
 	void EnablePostRouteAutomation(int32 AttackD6, int32 DefenseD6);
 	bool PrepareInitialRouteMilestone(ESkillRuleType Family);
+	void EnableSpecializedShotAutomation(bool Goal, bool ImmediateMiss, bool Final);
 	void EnableThroughBallConditionalAutomation(const FString& Path, bool Goal, bool Final);
 	void EnableOrdinaryTerminalAutomation(bool Goal, bool Final, ESkillRuleType Family = ESkillRuleType::Cross, int32 RouteD6 = 5);
 	bool PrepareOrdinaryTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill = false, ESkillRuleType Family = ESkillRuleType::Cross);

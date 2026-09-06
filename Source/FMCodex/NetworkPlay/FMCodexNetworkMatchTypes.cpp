@@ -257,8 +257,22 @@ namespace FMCodexNetworkMatchTypes
 		Result.InitialRoute = MoveTemp(Fact);
 	}
 
-	FName OrdinaryContestId(const FFMCodexNetworkClientViewSnapshot& View)
+	FName OrdinaryContestId(const FFMCodexNetworkClientViewSnapshot& View, const FFMCodexLocalMatchInteractionView& Safe)
 	{
+		if (Safe.ResolutionFacts.bHasActualBranch)
+		{
+			const auto& Actual = Safe.ResolutionFacts.ActualBranch;
+			if (Actual.ActionType == ESkillRuleType::LongShot)
+			{
+				if (Actual.LongShot == EMatchPlayLongShotActualBranch::DirectShot) return TEXT("LongShot.DirectShot");
+				if (Actual.LongShot == EMatchPlayLongShotActualBranch::DeadCorner) return TEXT("LongShot.DeadCorner");
+			}
+			if (Actual.ActionType == ESkillRuleType::CutInsideShot)
+			{
+				if (Actual.CutInsideShot == EMatchPlayCutInsideShotActualBranch::DirectShot) return TEXT("CutInsideShot.DirectShot");
+				if (Actual.CutInsideShot == EMatchPlayCutInsideShotActualBranch::DeadCorner) return TEXT("CutInsideShot.DeadCorner");
+			}
+		}
 		const auto& R = View.InitialRoute;
 		if (R.ActionType == ESkillRuleType::Cross)
 		{
@@ -286,17 +300,20 @@ namespace FMCodexNetworkMatchTypes
 		using Purpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
 		using Side = EInitialTurnOrderPlayer;
 		const bool ThroughBall = Result.InitialRoute.ActionType == ESkillRuleType::ThroughBall;
-		if (OrdinaryContestId(Result).IsNone() && !ThroughBall) return;
+		const bool Shot = View.ResolutionFacts.ActualBranch.ActionType == ESkillRuleType::LongShot
+			|| View.ResolutionFacts.ActualBranch.ActionType == ESkillRuleType::CutInsideShot;
+		if (OrdinaryContestId(Result, View).IsNone() && !ThroughBall) return;
 		TArray<FFMCodexNetworkAcceptedContestRoll> Rolls;
 		FFMCodexNetworkContestFact Fact;
 		for (const auto& Roll : View.ResolutionFacts.Rolls)
 		{
 			if (Roll.bInitialRoute) continue;
-			const bool Attack = Roll.PostRoutePurpose == Purpose::PrimaryAttack
+			const bool Attack = Roll.PostRoutePurpose == Purpose::PairedAttackA || Roll.PostRoutePurpose == Purpose::PairedAttackB
+				|| Roll.PostRoutePurpose == Purpose::PrimaryAttack
 				|| Roll.PostRoutePurpose == Purpose::OneOnOneDirectShotAttack || Roll.PostRoutePurpose == Purpose::OneOnOneChipShotAttack;
 			const bool Defense = Roll.PostRoutePurpose == Purpose::PrimaryDefense || Roll.PostRoutePurpose == Purpose::OneOnOneDirectShotDefense;
 			if ((!Attack && !Defense) || !Roll.bResolved || Roll.RawD6 < 1 || Roll.RawD6 > 6
-				|| Roll.SequenceIndex != Rolls.Num() + 1 || Rolls.Num() >= (ThroughBall ? 4 : 2)
+				|| Roll.SequenceIndex != Rolls.Num() + (Shot ? 0 : 1) || Rolls.Num() >= (ThroughBall ? 4 : 2)
 				|| Roll.OwningSide != (Attack ? Result.CurrentAttackingSide
 					: Result.CurrentAttackingSide == Side::PlayerA ? Side::PlayerB : Side::PlayerA)) return;
 			auto& Accepted = Rolls.AddDefaulted_GetRef();
@@ -305,7 +322,7 @@ namespace FMCodexNetworkMatchTypes
 			if (Roll.PostRoutePurpose == Purpose::PrimaryAttack) Fact.AttackD6 = Roll.RawD6;
 			if (Roll.PostRoutePurpose == Purpose::PrimaryDefense) Fact.DefenseD6 = Roll.RawD6;
 		}
-		const FName Primary = OrdinaryContestId(Result);
+		const FName Primary = OrdinaryContestId(Result, View);
 		Fact.bFormulaResolved = !Primary.IsNone() && View.ResolutionFacts.FormulaContests.ContainsByPredicate(
 			[&](const auto& F) { return F.ContestId == Primary && F.bHasResolvedFormula; });
 		Result.Contest = Fact; Result.AcceptedContestRolls = MoveTemp(Rolls);
@@ -327,6 +344,12 @@ namespace FMCodexNetworkMatchTypes
 		case C::RollThroughBallOneOnOneDirectShotAttack: Result.ContestAction = A::ThroughBallOneOnOneDirectShotAttackRoll; break;
 		case C::RollThroughBallOneOnOneDirectShotDefense: Result.ContestAction = A::ThroughBallOneOnOneDirectShotDefenseRoll; break;
 		case C::RollThroughBallOneOnOneChipShotAttack: Result.ContestAction = A::ThroughBallOneOnOneChipShotAttackRoll; break;
+		case C::RollLongShotDirectAttack: Result.ContestAction = A::LongShotDirectAttackRoll; break;
+		case C::RollLongShotDirectDefense: Result.ContestAction = A::LongShotDirectDefenseRoll; break;
+		case C::RollLongShotDeadCorner: Result.ContestAction = A::LongShotDeadCornerRoll; break;
+		case C::RollCutInsideShotDirectAttack: Result.ContestAction = A::CutInsideShotDirectAttackRoll; break;
+		case C::RollCutInsideShotDirectDefense: Result.ContestAction = A::CutInsideShotDirectDefenseRoll; break;
+		case C::RollCutInsideShotDeadCorner: Result.ContestAction = A::CutInsideShotDeadCornerRoll; break;
 		case C::SelectOneOnOneShot:
 			if (View.OneOnOneOptions.Num() != 2 || View.OneOnOneOptions[0] == View.OneOnOneOptions[1]) break;
 			for (auto Option : View.OneOnOneOptions)
@@ -402,8 +425,10 @@ namespace FMCodexNetworkMatchTypes
 			Result.Recovery = MoveTemp(Recovery);
 		}
 		if (!View.bTerminalPendingAdvance || Result.bGoalHistoryUnavailable) return;
-		const FName Primary = OrdinaryContestId(Result);
-		const FName PrimaryDecision = Primary.IsNone() ? NAME_None : FName(*FString::Printf(TEXT("%s.Outcome"), *Primary.ToString()));
+		const FName Primary = OrdinaryContestId(Result, View);
+		const bool DeadCorner = Primary == TEXT("LongShot.DeadCorner") || Primary == TEXT("CutInsideShot.DeadCorner");
+		const FName PrimaryDecision = DeadCorner ? FName(TEXT("DeadCorner.Outcome"))
+			: Primary.IsNone() ? NAME_None : FName(*FString::Printf(TEXT("%s.Outcome"), *Primary.ToString()));
 		const bool ThroughBall = Result.InitialRoute.ActionType == ESkillRuleType::ThroughBall;
 		const FMatchPlayResolutionDecisionFact* Terminal = nullptr;
 		for (const auto& Decision : View.ResolutionFacts.Decisions)
@@ -435,6 +460,10 @@ namespace FMCodexNetworkMatchTypes
 		{
 			if (Goal) { return; }
 			Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::NoGoal;
+		}
+		else if (Terminal->Outcome == EMatchPlayResolutionDecisionOutcome::ImmediateMiss && !Goal)
+		{
+			Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::ImmediateMiss;
 		}
 		else if (ThroughBall && !Goal)
 		{
@@ -725,10 +754,14 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 		Result.EntryWait = EFMCodexNetworkEntryWait::CrossRouteRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack:
 		Result.EntryWait = EFMCodexNetworkEntryWait::LongShotDirectAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense:
+		Result.EntryWait = EFMCodexNetworkEntryWait::LongShotDirectDefenseRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner:
 		Result.EntryWait = EFMCodexNetworkEntryWait::LongShotDeadCornerRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectAttack:
 		Result.EntryWait = EFMCodexNetworkEntryWait::CutInsideDirectAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDirectDefense:
+		Result.EntryWait = EFMCodexNetworkEntryWait::CutInsideDirectDefenseRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollCutInsideShotDeadCorner:
 		Result.EntryWait = EFMCodexNetworkEntryWait::CutInsideDeadCornerRoll; break;
 	default: break;

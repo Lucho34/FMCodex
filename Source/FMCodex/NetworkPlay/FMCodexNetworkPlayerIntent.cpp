@@ -24,6 +24,12 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotAttackRoll:
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotDefenseRoll:
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneChipShotAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::LongShotDirectAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::LongShotDirectDefenseRoll:
+	case EFMCodexNetworkPlayerIntentKind::LongShotDeadCornerRoll:
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDirectAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDirectDefenseRoll:
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDeadCornerRoll:
 	case EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll:
 		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
@@ -184,6 +190,12 @@ bool FFMCodexNetworkIntentClientState::BeginOrdinaryContest(const FFMCodexNetwor
 		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotAttackRoll
 		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotDefenseRoll
 		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneChipShotAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::LongShotDirectAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::LongShotDirectDefenseRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::LongShotDeadCornerRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::CutInsideShotDirectAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::CutInsideShotDirectDefenseRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::CutInsideShotDeadCornerRoll
 ) { return false; }
 	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
 }
@@ -297,6 +309,24 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 		break;
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneChipShotAttackRoll:
 		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallOneOnOneChipShotAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::LongShotDirectAttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::LongShotDirectAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::LongShotDirectDefenseRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::LongShotDirectDefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::LongShotDeadCornerRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::LongShotDeadCornerRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDirectAttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::CutInsideShotDirectAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDirectDefenseRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::CutInsideShotDirectDefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::CutInsideShotDeadCornerRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::CutInsideShotDeadCornerRoll;
 		break;
 	case EFMCodexNetworkPlayerIntentKind::SubmitThroughBallOneOnOneShotChoice:
 		bActionable = View.OneOnOneOptions.Contains(OneOnOneChoice);

@@ -114,7 +114,7 @@ bool FFMCodexOrdinaryPlayerCapabilities::RunTest(const FString&)
     const auto V=F.Attacker()->GetOwnerView();
     for(const auto& O:V.Presentation.Interaction.SelectionChoices)
     {
-        TestEqual(TEXT("General capability admits complete Cross/PassControl/ThroughBall"),O.bEnabled,O.SkillType==ESkillRuleType::Cross||O.SkillType==ESkillRuleType::PassControl||O.SkillType==ESkillRuleType::ThroughBall);
+        TestEqual(TEXT("General capability admits complete ordinary tactics"),O.bEnabled,O.SkillType==ESkillRuleType::Cross||O.SkillType==ESkillRuleType::PassControl||O.SkillType==ESkillRuleType::ThroughBall||O.SkillType==ESkillRuleType::LongShot||O.SkillType==ESkillRuleType::CutInsideShot);
         if(O.SkillType==ESkillRuleType::ThroughBall)
         {
             FFMCodexMatchScreenRequest R;R.Kind=ScreenIntent::Skill;R.OptionId=O.OptionId;Envelope E;FFMCodexNetworkIntentClientState Client;

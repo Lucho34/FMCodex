@@ -7,7 +7,8 @@
 bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Family)
 {
 	if (!bInitialized || AuthoritativeSession->GetStateSnapshot().bHasCurrentAttack
-		|| (Family != ESkillRuleType::Cross && Family != ESkillRuleType::PassControl && Family != ESkillRuleType::ThroughBall)) { return false; }
+		|| (Family != ESkillRuleType::Cross && Family != ESkillRuleType::PassControl && Family != ESkillRuleType::ThroughBall
+			&& Family != ESkillRuleType::LongShot && Family != ESkillRuleType::CutInsideShot)) { return false; }
 	using Side = EInitialTurnOrderPlayer;
 	using Command = EMatchPlayAuthoritativeCommandKind;
 	auto View = [&](Side Player) { return BuildClientView(Player, 0, EFMCodexNetworkBootstrapState::MatchReady); };
@@ -24,9 +25,10 @@ bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Fa
 	FMatchPlayFullD12EntryRequest Entry; Entry.ExpectedAttackSequence = Initial.AttackSequence; Entry.RequestingSide = Attack;
 	if (!Submit(Command::RequestInitialActionPointRoll, Entry)) { return false; }
 	const int64 Sequence = View(Attack).AttackSequence;
+	const bool WideCarrier = Family == ESkillRuleType::Cross || Family == ESkillRuleType::CutInsideShot;
 	const FName Carrier = FName(IsA
-		? (Family == ESkillRuleType::Cross ? TEXT("Prototype.Arsenal.BukayoSaka") : TEXT("Prototype.Arsenal.MartinOdegaard"))
-		: (Family == ESkillRuleType::Cross ? TEXT("Prototype.ManchesterCity.JeremyDoku") : TEXT("Prototype.ManchesterCity.Rodri")));
+		? (WideCarrier ? TEXT("Prototype.Arsenal.BukayoSaka") : TEXT("Prototype.Arsenal.MartinOdegaard"))
+		: (WideCarrier ? TEXT("Prototype.ManchesterCity.JeremyDoku") : Family == ESkillRuleType::LongShot ? TEXT("Prototype.ManchesterCity.PhilFoden") : TEXT("Prototype.ManchesterCity.Rodri")));
 	const FName Runner = FName(IsA
 		? (Family == ESkillRuleType::Cross ? TEXT("Prototype.Arsenal.KaiHavertz") : TEXT("Prototype.Arsenal.MylesLewisSkelly"))
 		: (Family == ESkillRuleType::Cross ? TEXT("Prototype.ManchesterCity.ErlingHaaland") : TEXT("Prototype.ManchesterCity.RayanAitNouri")));

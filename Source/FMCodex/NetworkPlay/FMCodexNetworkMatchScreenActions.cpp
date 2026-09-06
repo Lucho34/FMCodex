@@ -55,6 +55,8 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		FFMCodexNetworkSubmitBranchIntentPayload P;
 		switch (Request.Branch)
 		{
+		case EFMCodexUMGBranchIntent::DirectShot: P.Intent = EMatchPlayElectiveBranchIntent::DirectShot; break;
+		case EFMCodexUMGBranchIntent::DeadCorner: P.Intent = EMatchPlayElectiveBranchIntent::DeadCorner; break;
 		case EFMCodexUMGBranchIntent::CrossHigh: P.Intent = EMatchPlayElectiveBranchIntent::CrossHigh; break;
 		case EFMCodexUMGBranchIntent::CrossLow: P.Intent = EMatchPlayElectiveBranchIntent::CrossLow; break;
 		default: return false;
@@ -72,6 +74,12 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		if (Request.Category != View.Presentation.Interaction.Category) return false;
 		switch (Request.Category)
 		{
+		case C::RollLongShotDirectAttack: return Client.BeginOrdinaryContest(View, N::LongShotDirectAttackRoll, Out);
+		case C::RollLongShotDirectDefense: return Client.BeginOrdinaryContest(View, N::LongShotDirectDefenseRoll, Out);
+		case C::RollLongShotDeadCorner: return Client.BeginOrdinaryContest(View, N::LongShotDeadCornerRoll, Out);
+		case C::RollCutInsideShotDirectAttack: return Client.BeginOrdinaryContest(View, N::CutInsideShotDirectAttackRoll, Out);
+		case C::RollCutInsideShotDirectDefense: return Client.BeginOrdinaryContest(View, N::CutInsideShotDirectDefenseRoll, Out);
+		case C::RollCutInsideShotDeadCorner: return Client.BeginOrdinaryContest(View, N::CutInsideShotDeadCornerRoll, Out);
 		case C::RollPassControlRoute: return Client.BeginInitialRoute(View, N::PassControlInitialRouteRoll, Out);
 		case C::RollThroughBallInitialRoute: return Client.BeginInitialRoute(View, N::ThroughBallInitialRouteRoll, Out);
 		case C::RollCrossRoute: return Client.BeginInitialRoute(View, N::CrossInitialRouteRoll, Out);

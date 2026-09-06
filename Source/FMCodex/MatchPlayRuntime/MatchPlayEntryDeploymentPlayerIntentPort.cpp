@@ -233,6 +233,48 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.ChoiceResult.bSuccess, Authority.ChoiceResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveLongShotDirectAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDirectDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveLongShotDirectDefenseRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongShotDeadCornerRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveLongShotDeadCornerRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDirectAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveCutInsideShotDirectAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDirectDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveCutInsideShotDirectDefenseRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveCutInsideShotDeadCornerRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveCutInsideShotDeadCornerRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeAdvanceAfterTerminalRequest>()) { return Mismatch(); }

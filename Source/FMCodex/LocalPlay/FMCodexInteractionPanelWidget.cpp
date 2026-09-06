@@ -578,6 +578,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		// Override only rendered copy; the original actor label still drives the existing style.
 		ActorText->SetText(ActionWaitActorText);
 		TitleText->SetText(ActionWaitActionText);
+		TitleText->SetVisibility(ActionWaitActionText.IsEmpty()
+			? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		// Two status lines replace generic fallback/context, while existing controls keep their locations.
 		ContextText->SetVisibility(!bReadOnlyPrompt && Presentation.bUseOnPitchPlayerSelection
 			&& !Presentation.OnPitchSelectionHintLabel.IsEmpty()

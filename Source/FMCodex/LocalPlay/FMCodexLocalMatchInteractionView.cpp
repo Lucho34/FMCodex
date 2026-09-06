@@ -1612,14 +1612,17 @@ namespace FMCodexLocalMatchInteractionView
 	{
 		TArray<FFMCodexLocalMatchRollView> DisclosedRolls;
 		int32 SeenContestRolls = 0;
-		bool bHiddenAcceptedRoll = false;
+		const bool bHiddenShotBranch = !Disclosure.bRevealRouteRoll
+			&& View.ElectiveBranchIntent != EMatchPlayElectiveBranchIntent::None
+			&& (View.PresentedActionType == ESkillRuleType::LongShot || View.PresentedActionType == ESkillRuleType::CutInsideShot);
+		bool bHiddenAcceptedRoll = bHiddenShotBranch;
 		for (const FFMCodexLocalMatchRollView& Roll : View.AcceptedRolls)
 		{
-			const bool bDisclosed = Roll.Group
+			const bool bDisclosed = !bHiddenShotBranch && (Roll.Group
 				== EFMCodexLocalMatchRollGroup::InitialRoute
 					? Disclosure.bRevealRouteRoll
 					: SeenContestRolls++
-						< FMath::Max(0, Disclosure.RevealedContestD6Count);
+						< FMath::Max(0, Disclosure.RevealedContestD6Count));
 			if (bDisclosed)
 			{
 				DisclosedRolls.Add(Roll);
@@ -1635,13 +1638,15 @@ namespace FMCodexLocalMatchInteractionView
 			&& Disclosure.bRevealRouteRoll
 			&& (View.PresentedActionType == ESkillRuleType::Cross
 				|| View.PresentedActionType == ESkillRuleType::PassControl
-				|| View.PresentedActionType == ESkillRuleType::ThroughBall);
+				|| View.PresentedActionType == ESkillRuleType::ThroughBall
+				|| View.PresentedActionType == ESkillRuleType::LongShot
+				|| View.PresentedActionType == ESkillRuleType::CutInsideShot);
 		for (const FMatchPlayResolutionRollFact& Roll : View.ResolutionFacts.Rolls)
 		{
-			const bool bDisclosed = Roll.bInitialRoute
+			const bool bDisclosed = !bHiddenShotBranch && (Roll.bInitialRoute
 				? Disclosure.bRevealRouteRoll
 				: SeenContestFacts++
-					< FMath::Max(0, Disclosure.RevealedContestD6Count);
+					< FMath::Max(0, Disclosure.RevealedContestD6Count));
 			if (bDisclosed || (bKeepPendingOrdinary && !Roll.bResolved && Roll.RawD6 == 0))
 			{
 				DisclosedFacts.Add(Roll);
@@ -1652,11 +1657,13 @@ namespace FMCodexLocalMatchInteractionView
 			}
 		}
 		View.ResolutionFacts.Rolls = MoveTemp(DisclosedFacts);
-		// A skipped BehindDefense Formula never consumed its unused Defense descriptor.
+		// A skipped conditional Formula never consumed its unused Defense descriptor.
 		// Keep its public gate decision when every accepted die is disclosed.
 		const bool bDisclosedSkippedGate = Disclosure.bRevealRouteRoll && !bHiddenAcceptedRoll
 			&& View.ResolutionFacts.FormulaContests.Num() == 1
-			&& View.ResolutionFacts.FormulaContests[0].ContestId == TEXT("ThroughBall.BehindDefense.P1")
+			&& (View.ResolutionFacts.FormulaContests[0].ContestId == TEXT("ThroughBall.BehindDefense.P1")
+				|| View.ResolutionFacts.FormulaContests[0].ContestId == TEXT("LongShot.DirectShot")
+				|| View.ResolutionFacts.FormulaContests[0].ContestId == TEXT("CutInsideShot.DirectShot"))
 			&& View.ResolutionFacts.FormulaContests[0].Application == EMatchPlayResolutionFormulaApplication::SkippedByAuthoritativeGate;
 		if (bRemovedAnyFact && !bDisclosedSkippedGate)
 		{
@@ -1807,14 +1814,17 @@ namespace FMCodexLocalMatchInteractionView
 
 		const bool bHiddenAcceptedRoll = RedactResolutionRolls(Disclosure, View);
 		if (bHiddenAcceptedRoll && Snapshot.bHasCurrentAttack
-			&& View.PresentedActionType == ESkillRuleType::ThroughBall
-			&& Snapshot.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall != EMatchPlayThroughBallActualBranch::Feet)
+			&& ((View.PresentedActionType == ESkillRuleType::ThroughBall
+				&& Snapshot.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall != EMatchPlayThroughBallActualBranch::Feet)
+				|| View.PresentedActionType == ESkillRuleType::LongShot || View.PresentedActionType == ESkillRuleType::CutInsideShot))
 		{
 			// Conditional ownership, choices and later descriptors also reveal the hidden outcome.
 			View.OneOnOneOptions.Reset(); View.OneOnOneChoiceLabel.Reset();
 			View.InteractionCategory = EFMCodexLocalMatchInteractionCategory::None;
 			View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
 			View.bHumanInteraction = View.bTerminalPendingAdvance = false;
+			View.bLongShotDirectAttackRollPending = View.bLongShotDirectDefenseRollPending = View.bLongShotDeadCornerRollPending = false;
+			View.bCutInsideShotDirectAttackRollPending = View.bCutInsideShotDirectDefenseRollPending = View.bCutInsideShotDeadCornerRollPending = false;
 			View.bThroughBallAntiOffsideAttackRollPending = false;
 			View.bThroughBallBehindDefenseAttackRollPending = View.bThroughBallBehindDefenseDefenseRollPending = false;
 			View.bThroughBallOneOnOneDirectShotAttackRollPending = View.bThroughBallOneOnOneDirectShotDefenseRollPending = false;

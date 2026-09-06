@@ -91,6 +91,17 @@ void UFMCodexLongShotResolutionSurfaceWidget::RefreshFromPresentation(
 	RefreshVisuals(bPreserve);
 }
 
+void UFMCodexLongShotResolutionSurfaceWidget::SetActionPromptText(const FText& InText)
+{
+	ActionPromptText = InText;
+	if (ActionPrompt)
+	{
+		ActionPrompt->SetText(ActionPromptText);
+		ActionPrompt->SetVisibility(ActionPromptText.IsEmpty()
+			? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
 const FFMCodexUMGLongShotResolutionViewModel&
 UFMCodexLongShotResolutionSurfaceWidget::GetPresentation() const
 {
@@ -192,6 +203,11 @@ void UFMCodexLongShotResolutionSurfaceWidget::BuildWidgetTree()
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("LongShotProductionHierarchy"));
 	Frame->AddChild(Body);
+
+	ActionPrompt = MakeText(*WidgetTree, TEXT("CentralActionPrompt"));
+	Style.ApplyText(*ActionPrompt, EFMCodexPlayerUITextRole::Secondary);
+	Body->AddChildToVerticalBox(ActionPrompt);
+	SetActionPromptText(ActionPromptText);
 
 	TitleText = MakeText(*WidgetTree, TEXT("LongShotProductionTitle"));
 	Style.ApplyText(*TitleText, EFMCodexPlayerUITextRole::Secondary);
