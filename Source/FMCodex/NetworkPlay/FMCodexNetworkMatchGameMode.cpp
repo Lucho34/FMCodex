@@ -242,7 +242,8 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	{
 		DeclineStop = DeclineMilestone == TEXT("Runner") ? EFMCodexNetworkDeclineAction::Runner
 			: DeclineMilestone == TEXT("Helper") ? EFMCodexNetworkDeclineAction::Helper
-			: DeclineMilestone == TEXT("Skill") ? EFMCodexNetworkDeclineAction::Skill : EFMCodexNetworkDeclineAction::None;
+			: DeclineMilestone == TEXT("Skill") ? EFMCodexNetworkDeclineAction::Skill
+			: DeclineMilestone == TEXT("Marker") ? EFMCodexNetworkDeclineAction::Marker : EFMCodexNetworkDeclineAction::None;
 		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkDeclineActor="), DeclineActor);
 		bPlayerFacingMilestone = true; PlayerFacingFamily = ESkillRuleType::LongShot;
 		TerminalMilestone = FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkDeclineFinal")) ? TEXT("FinalGoal") : TEXT("Goal");
@@ -262,7 +263,7 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 			PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed);
 			return;
 		}
-		const bool BFirst = (bDecline ? ((DeclineActor == TEXT("B")) != (DeclineStop == EFMCodexNetworkDeclineAction::Helper)) : bShot ? ShotActor == TEXT("B") : bConditional ? ConditionalActor == TEXT("B") : !bTerminalGoal) != bTerminalFinal;
+		const bool BFirst = (bDecline ? ((DeclineActor == TEXT("B")) != (DeclineStop == EFMCodexNetworkDeclineAction::Helper || DeclineStop == EFMCodexNetworkDeclineAction::Marker)) : bShot ? ShotActor == TEXT("B") : bConditional ? ConditionalActor == TEXT("B") : !bTerminalGoal) != bTerminalFinal;
 		BootstrapConfiguration = BFirst ? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
 		BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = bTerminalFinal;
@@ -562,6 +563,16 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
 		Request.MarkerCardId = Envelope.Marker.MarkerCardId;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitMarker, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::DeclineMarker:
+	{
+		if (Before.EntryWait != EFMCodexNetworkEntryWait::MarkerSelection) { return Finish(AckCode::InvalidPhase); }
+		if (Side != Before.ExpectedActingSide) { return Finish(AckCode::WrongSide); }
+		FMatchPlayAuthoritativeDeclineMarkerRequest Request;
+		Request.RequestingSide = Side; // Registry identity only; Session validates optionality.
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::DeclineMarker, Request);
 		break;
 	}
 	case EFMCodexNetworkPlayerIntentKind::DeclineRunner:

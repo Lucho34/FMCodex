@@ -665,6 +665,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 		case EFMCodexLocalMatchInteractionCategory::SelectRunner: Result.DeclineAction = EFMCodexNetworkDeclineAction::Runner; break;
 		case EFMCodexLocalMatchInteractionCategory::SelectHelper: Result.DeclineAction = EFMCodexNetworkDeclineAction::Helper; break;
 		case EFMCodexLocalMatchInteractionCategory::SelectSkill: Result.DeclineAction = EFMCodexNetworkDeclineAction::Skill; break;
+		case EFMCodexLocalMatchInteractionCategory::SelectMarker: Result.DeclineAction = EFMCodexNetworkDeclineAction::Marker; break;
 		default: break;
 		}
 	}

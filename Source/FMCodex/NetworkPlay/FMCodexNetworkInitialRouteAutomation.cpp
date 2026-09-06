@@ -62,6 +62,7 @@ bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Fa
 	if (!Submit(Command::SubmitCarrier, C)) { return false; }
 	const auto MarkerView = View(Defense);
 	if (MarkerView.MarkerOptions.IsEmpty()) { return false; }
+	if (StopBefore == EFMCodexNetworkDeclineAction::Marker) return MarkerView.DeclineAction == StopBefore;
 	FMatchPlayAuthoritativeSubmitMarkerRequest M;
 	M.ExpectedAttackSequence = Sequence; M.RequestingSide = Defense; M.MarkerCardId = MarkerView.MarkerOptions[0].Choice.MarkerCardId;
 	if (!Submit(Command::SubmitMarker, M)) { return false; }

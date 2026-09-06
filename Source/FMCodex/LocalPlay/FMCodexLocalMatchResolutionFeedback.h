@@ -62,6 +62,9 @@ public:
 	static FFMCodexLocalMatchResolutionFeedback BuildFromTerminalSnapshot(
 		const FFMCodexLocalMatchInteractionView& TerminalView);
 
+	/** Already-public system goal from the immediately completed attack; no inferred scorer or cause. */
+	static FFMCodexLocalMatchResolutionFeedback BuildCompletedSystemGoal(
+		const FFMCodexLocalMatchInteractionView& View);
 	static FFMCodexLocalMatchResolutionFeedback BuildRecovery(
 		const FFMCodexLocalMatchInteractionView& AdvancedView);
 

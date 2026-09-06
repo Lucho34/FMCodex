@@ -947,3 +947,24 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 		Terminal.CompletionResult);
 	return Feedback;
 }
+
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedSystemGoal(
+	const FFMCodexLocalMatchInteractionView& View)
+{
+	FFMCodexLocalMatchResolutionFeedback Feedback;
+	if (View.bCurrentAttackActive || View.bMatchEnded || View.AttackSequence <= 1) return Feedback;
+	const auto* Goal = View.GoalHistory.FindByPredicate([&](const auto& G)
+	{
+		return G.AttackSequence == View.AttackSequence - 1 && G.bSystemAward && G.ScorerCardId.IsNone()
+			&& (G.ScoringSide == EInitialTurnOrderPlayer::PlayerA || G.ScoringSide == EInitialTurnOrderPlayer::PlayerB);
+	});
+	if (!Goal) return Feedback;
+	Feedback.bVisible = Feedback.bNonBlockingNotification = true;
+	Feedback.CommandName = TEXT("CompletedSystemGoal");
+	Feedback.StepTitle = NSLOCTEXT("FMCodexCompletionNotification", "Goal", "进球").ToString();
+	Feedback.StepSummary = FText::Format(
+		NSLOCTEXT("FMCodexCompletionNotification", "SystemGoal", "{0} · 规则判定进球"),
+		FFMCodexPlayerUIPresentationText::RecoveryOwner(Goal->ScoringSide)).ToString();
+	return Feedback;
+}

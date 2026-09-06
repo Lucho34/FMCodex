@@ -22,7 +22,7 @@ param(
     [ValidateSet('DirectGoal', 'DirectMiss', 'ImmediateMiss', 'DeadCornerGoal', 'DeadCornerMiss')][string]$PlayerFacingCutInsideMilestone,
     [ValidateSet('A', 'B')][string]$ShotActor = 'A',
     [switch]$ShotFinal,
-    [ValidateSet('Runner', 'Helper', 'Skill')][string]$PlayerFacingDeclineMilestone,
+    [ValidateSet('Runner', 'Helper', 'Skill', 'Marker')][string]$PlayerFacingDeclineMilestone,
     [ValidateSet('A', 'B')][string]$DeclineActor = 'A',
     [switch]$DeclineFinal,
     [switch]$NetworkDiagnostics,

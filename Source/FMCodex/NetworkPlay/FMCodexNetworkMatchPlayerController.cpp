@@ -126,6 +126,7 @@ void AFMCodexNetworkMatchPlayerController::BeginPlay()
 void AFMCodexNetworkMatchPlayerController::EndPlay(
 	const EEndPlayReason::Type EndPlayReason)
 {
+	GetWorldTimerManager().ClearTimer(NotificationDismissTimer);
 	if (PlayerMatchScreen)
 	{
 		PlayerMatchScreen->SetMatchBackend(nullptr);
@@ -1277,11 +1278,31 @@ void AFMCodexNetworkMatchPlayerController::RefreshPlayerFacingUI()
 			*PlayerMatchScreen->GetClass()->GetName(), IsLocalController());
 	}
 	if (PresentedMatch != OwnerView.MatchInstanceId)
+	{
 		PlayerMatchScreen->ResetPresentationSession();
+		GetWorldTimerManager().ClearTimer(NotificationDismissTimer);
+		PresentedNotificationSequence = 0; bNotificationExpired = false;
+	}
 	PresentedMatch = OwnerView.MatchInstanceId; PresentedRevision = OwnerView.ViewRevision;
 	auto Model = FFMCodexNetworkMatchPresentationAdapter::Read(OwnerView, IntentClientState.IsPending());
 	if (OwnerView.BootstrapState != EFMCodexNetworkBootstrapState::MatchReady)
 		FFMCodexNetworkMatchPresentationAdapter::DisableActions(Model);
+	if (Model.Resolution.bVisible && Model.Resolution.bNonBlockingNotification)
+	{
+		const int64 Sequence = OwnerView.AttackSequence - 1;
+		if (Sequence > PresentedNotificationSequence)
+		{
+			PresentedNotificationSequence = Sequence; bNotificationExpired = false;
+			GetWorldTimerManager().SetTimer(NotificationDismissTimer, this,
+				&AFMCodexNetworkMatchPlayerController::DismissPostAttackNotification, 2.0f, false);
+		}
+		if (bNotificationExpired) Model.Resolution = {};
+	}
+	else
+	{
+		GetWorldTimerManager().ClearTimer(NotificationDismissTimer);
+		bNotificationExpired = true;
+	}
 	PlayerMatchScreen->RefreshFromPresentation(Model);
 }
 
@@ -1341,6 +1362,10 @@ void AFMCodexNetworkMatchPlayerController::DevPlayerFacingEvidence()
 		static_cast<int32>(PlayerMatchScreen->GetInlineFormulaRevealPhase()), IntentClientState.GetPendingRequestId(),
 		*Displayed.PlayerAScoreLabel, *Displayed.PlayerBScoreLabel, *M.Header.PlayerAScoreLabel, *M.Header.PlayerBScoreLabel,
 		Formula.bNarrativeAvailable, Formula.bVisible, M.FullTime.bVisible);
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("PlayerFacing notification: Side=%d Revision=%d Source=%lld Visible=%d NonBlocking=%d Title=[%s] Summary=[%s]"),
+		static_cast<int32>(OwnerView.ViewerSide), OwnerView.ViewRevision, PresentedNotificationSequence,
+		M.Resolution.bVisible, M.Resolution.bNonBlockingNotification, *M.Resolution.StepLabel,
+		*M.Resolution.StepSummaryLabel.Replace(TEXT("\n"), TEXT(" | ")));
 	auto* Dock = PlayerMatchScreen->GetInteractionPanel();
 	const auto* ActorText = Cast<UTextBlock>(Dock->GetWidgetFromName(TEXT("InteractionExpectedActor")));
 	const auto* ActionText = Cast<UTextBlock>(Dock->GetWidgetFromName(TEXT("InteractionActionTitle")));
@@ -1406,3 +1431,9 @@ void AFMCodexNetworkMatchPlayerController::TraceHandoffPresentation(bool bAfterR
  HandoffObserver.Observe(static_cast<int32>(Phase),Reason,bBlocked,bAfterRender,bPromptVisible,Fields);
 }
 #endif
+
+void AFMCodexNetworkMatchPlayerController::DismissPostAttackNotification()
+{
+	bNotificationExpired = true;
+	RefreshPlayerFacingUI();
+}

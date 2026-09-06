@@ -48,7 +48,7 @@ enum class EFMCodexNetworkEntryWait : uint8
 
 /** A safe offered player action, not a client-supplied route result. */
 UENUM(BlueprintType)
-enum class EFMCodexNetworkDeclineAction : uint8 { None, Runner, Helper, Skill };
+enum class EFMCodexNetworkDeclineAction : uint8 { None, Runner, Helper, Skill, Marker };
 
 UENUM(BlueprintType)
 enum class EFMCodexNetworkInitialRouteAction : uint8

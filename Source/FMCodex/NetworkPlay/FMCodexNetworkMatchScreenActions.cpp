@@ -70,6 +70,7 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		case EFMCodexNetworkDeclineAction::Runner: return Client.BeginDecline(View, N::DeclineRunner, Out);
 		case EFMCodexNetworkDeclineAction::Helper: return Client.BeginDecline(View, N::DeclineHelper, Out);
 		case EFMCodexNetworkDeclineAction::Skill: return Client.BeginDecline(View, N::DeclineSkill, Out);
+		case EFMCodexNetworkDeclineAction::Marker: return Client.BeginDecline(View, N::DeclineMarker, Out);
 		default: return false;
 		}
 	case K::OneOnOne:

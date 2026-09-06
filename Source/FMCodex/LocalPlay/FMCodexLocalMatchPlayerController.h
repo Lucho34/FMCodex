@@ -220,6 +220,11 @@ private:
 					FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 						CommandName, Result, PreviousView, InteractionView);
 			}
+			if (PreviousView.bCurrentAttackActive && !InteractionView.bCurrentAttackActive)
+			{
+				const auto Goal = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedSystemGoal(InteractionView);
+				if (Goal.bVisible) ResolutionFeedback = Goal;
+			}
 			if (ResolutionFeedback.bTerminal)
 			{
 				LastDiagnostic.PresentationSummary =

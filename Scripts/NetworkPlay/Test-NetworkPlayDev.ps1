@@ -218,7 +218,7 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Two shot fixtures
 Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*ShotActor*' }).Count -eq 0) 'Normal launch keeps production RNG'
 Write-Host ("FMCODEX_NETWORK_LAUNCHER_FINAL_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)
 
-foreach ($kind in @('Runner', 'Helper', 'Skill')) {
+foreach ($kind in @('Runner', 'Helper', 'Skill', 'Marker')) {
     foreach ($side in @('A', 'B')) {
         . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingDeclineMilestone $kind -DeclineActor $side -DeclineFinal
         $decline = Get-NetworkPlayLaunchPlan

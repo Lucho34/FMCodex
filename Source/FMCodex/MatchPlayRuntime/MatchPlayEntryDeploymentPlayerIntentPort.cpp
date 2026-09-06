@@ -70,6 +70,13 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.MarkerResult.bSuccess, Authority.MarkerResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::DeclineMarker:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeclineMarkerRequest>()) { return Mismatch(); }
+		const auto Authority = Session.DeclineMarker(Intent.Payload.Get<FMatchPlayAuthoritativeDeclineMarkerRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.DeclineResult.bSuccess, Authority.DeclineResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::DeclineRunner:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeclineRunnerRequest>()) { return Mismatch(); }

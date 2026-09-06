@@ -130,6 +130,11 @@ private:
 	UPROPERTY() TObjectPtr<UFMCodexLocalMatchScreenWidget> PlayerMatchScreen;
 	FGuid PresentedMatch;
 	int32 PresentedRevision = -1;
+	// Presentation-only identity: a completed attack has at most one transition notification.
+	int64 PresentedNotificationSequence = 0;
+	bool bNotificationExpired = false;
+	FTimerHandle NotificationDismissTimer;
+	void DismissPostAttackNotification();
 	FFMCodexNetworkIntentClientState IntentClientState;
 
 	void SubmitMarkerChoice(const FFMCodexNetworkSubmitMarkerPayload& Choice);

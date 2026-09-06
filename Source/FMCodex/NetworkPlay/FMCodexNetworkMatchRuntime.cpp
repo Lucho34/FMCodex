@@ -456,14 +456,16 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 #if WITH_DEV_AUTOMATION_TESTS
 	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineRunner
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineHelper
-		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineSkill)
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineSkill
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineMarker)
 	{
 		const auto State = AuthoritativeSession->GetStateSnapshot();
 		const auto Safe = BuildClientView(State.RuntimeState.CurrentAttackingPlayer, 0, EFMCodexNetworkBootstrapState::MatchReady);
 		UE_LOG(LogFMCodexNetworkPlay, Log,
 			TEXT("DEV Decline authority: Kind=%s Success=%d HasAttack=%d Sequence=%lld Attacker=%d ExpectedSide=%d Wait=%d SelectionStage=%d Runner=%s Helper=%s Skill=%s Ended=%d UsedA=%d UsedB=%d ScoreA=%d ScoreB=%d History=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d RngDelta=%d"),
 			Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineRunner ? TEXT("DeclineRunner")
-				: Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineHelper ? TEXT("DeclineHelper") : TEXT("DeclineSkill"),
+				: Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineHelper ? TEXT("DeclineHelper")
+				: Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::DeclineMarker ? TEXT("DeclineMarker") : TEXT("DeclineSkill"),
 			Result.bSuccess, State.bHasCurrentAttack, Safe.AttackSequence, static_cast<int32>(State.RuntimeState.CurrentAttackingPlayer),
 			static_cast<int32>(Safe.ExpectedActingSide), static_cast<int32>(Safe.EntryWait), static_cast<int32>(State.CurrentAttack.SelectionStage),
 			*State.CurrentAttack.ActionPreparation.RunnerCardId.ToString(), *State.CurrentAttack.ActionPreparation.HelperCardId.ToString(),

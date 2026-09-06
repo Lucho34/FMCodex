@@ -92,7 +92,8 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	M.Interaction.bCanDecline = M.Interaction.bCanDecline
 		&& (M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectRunner
 			|| M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectHelper
-			|| M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill);
+			|| M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill
+			|| M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectMarker);
 	M.Interaction.CandidateCards.Reset();
 	M.Interaction.LegalActionLabels.Reset();
 	M.Interaction.ClassificationLabel.Reset();
@@ -232,6 +233,39 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	const FFMCodexNetworkClientViewSnapshot& View, const bool bPending)
 {
 	auto M = Read(View.Presentation, bPending);
+	if (View.Presentation.bAvailable && !View.bMatchEnded
+		&& View.EntryWait == EFMCodexNetworkEntryWait::InitialD12 && View.AttackSequence > 1)
+	{
+		FFMCodexLocalMatchInteractionView PublicFacts;
+		PublicFacts.AttackSequence = View.AttackSequence;
+		if (!View.bGoalHistoryUnavailable)
+			for (const auto& G : View.PublicGoalHistory)
+			{
+				auto& Goal = PublicFacts.GoalHistory.AddDefaulted_GetRef();
+				Goal.AttackSequence = G.AttackSequence; Goal.ScoringSide = G.ScoringSide;
+				Goal.ScorerCardId = G.ScorerCardId; Goal.bSystemAward = G.bSystemAward;
+			}
+		auto Feedback = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedSystemGoal(PublicFacts);
+		if (!Feedback.bVisible && View.Recovery.SourceAttackSequence == View.AttackSequence - 1
+			&& View.Recovery.Cards.Num() <= 2)
+		{
+			PublicFacts.bHasRecoveryFact = true;
+			PublicFacts.RecoverySourceAttackSequence = View.Recovery.SourceAttackSequence;
+			for (const auto& Card : View.Recovery.Cards)
+			{
+				auto& Entry = PublicFacts.RecoveryPresentationEntries.AddDefaulted_GetRef();
+				Entry.OwnerSide = Card.OwnerSide; Entry.CardId = Card.CardId;
+				Entry.PlayerDisplayName = Card.CardLabel.ToString();
+				Entry.PresentationLine = FFMCodexPlayerUIPresentationText::RecoveryEntry(
+					Card.OwnerSide, Card.CardLabel.ToString()).ToString();
+			}
+			Feedback = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRecovery(PublicFacts);
+		}
+		M.Resolution.bVisible = Feedback.bVisible;
+		M.Resolution.bNonBlockingNotification = Feedback.bNonBlockingNotification;
+		M.Resolution.StepLabel = Feedback.StepTitle;
+		M.Resolution.StepSummaryLabel = Feedback.StepSummary;
+	}
 	using C = EFMCodexUMGInteractionCategory;
 	using S = EInitialTurnOrderPlayer;
 	if (!View.Presentation.bAvailable || View.bMatchEnded || M.FullTime.bVisible

@@ -5,9 +5,9 @@ namespace FMCodexOptionalDeclineTests
 {
 using namespace FMCodexNetworkInitialRouteTests;
 using Decline = EFMCodexNetworkDeclineAction;
-inline Decline Action(Kind K) { return K == Kind::DeclineRunner ? Decline::Runner : K == Kind::DeclineHelper ? Decline::Helper : Decline::Skill; }
-inline Kind Command(const FString& S) { return S == TEXT("Runner") ? Kind::DeclineRunner : S == TEXT("Helper") ? Kind::DeclineHelper : Kind::DeclineSkill; }
-inline AFMCodexNetworkMatchPlayerController* Actor(FFixture& F,Kind K) { return K == Kind::DeclineHelper ? F.Defender() : F.Attacker(); }
+inline Decline Action(Kind K) { return K == Kind::DeclineMarker ? Decline::Marker : K == Kind::DeclineRunner ? Decline::Runner : K == Kind::DeclineHelper ? Decline::Helper : Decline::Skill; }
+inline Kind Command(const FString& S) { return S == TEXT("Marker") ? Kind::DeclineMarker : S == TEXT("Runner") ? Kind::DeclineRunner : S == TEXT("Helper") ? Kind::DeclineHelper : Kind::DeclineSkill; }
+inline AFMCodexNetworkMatchPlayerController* Actor(FFixture& F,Kind K) { return (K == Kind::DeclineHelper || K == Kind::DeclineMarker) ? F.Defender() : F.Attacker(); }
 inline bool Prepare(FFixture& F,Kind K,bool Final=false)
 {
  if(Final)
@@ -31,6 +31,28 @@ inline void Adopted(FAutomationTestBase& T,FFixture& F,Kind K,const FUnchanged& 
  T.TestEqual(TEXT("Accepted decline coordinates exactly once"),F.Calls(),Before.CoordinatorCalls+1);
  T.TestEqual(TEXT("Accepted decline publishes exactly once"),Access::Revision(*F.Mode),Before.Revision+1);
  T.TestEqual(TEXT("Decline draws zero entropy across all providers"),F.Entropy->Calls,Before.EntropyCalls);
+ if(K==Kind::DeclineMarker)
+ {
+  const auto Attack=Before.State.RuntimeState.CurrentAttackingPlayer;
+  T.TestFalse(TEXT("Marker decline directly completes"),State.bHasCurrentAttack);
+  T.TestEqual(TEXT("A score follows canonical attacker"),State.RuntimeState.PlayerAState.Score,Before.State.RuntimeState.PlayerAState.Score+(Attack==Side::PlayerA?1:0));
+  T.TestEqual(TEXT("B score follows canonical attacker"),State.RuntimeState.PlayerBState.Score,Before.State.RuntimeState.PlayerBState.Score+(Attack==Side::PlayerB?1:0));
+  T.TestEqual(TEXT("Exactly one persisted Goal"),State.GoalHistory.Num(),Before.State.GoalHistory.Num()+1);
+  const auto& G=State.GoalHistory.Last();
+  T.TestEqual(TEXT("Authoritative scoring side"),G.ScoringSide,Attack);
+  T.TestTrue(TEXT("System award has no invented Carrier scorer"),G.bSystemAward&&G.ScorerCardId.IsNone());
+  T.TestEqual(TEXT("Goal source sequence"),G.AttackSequence,Before.State.CurrentAttack.AttackSequence);
+  for(auto* PC:{F.A,F.B})
+  {
+   const auto& V=PC->GetOwnerView();
+   T.TestTrue(TEXT("Canonical candidates cleared"),V.MarkerOptions.IsEmpty()&&V.SelectedMarker.Choice.IsEmpty());
+   T.TestEqual(TEXT("Safe history coherent"),V.PublicGoalHistory.Num(),State.GoalHistory.Num());
+   T.TestEqual(TEXT("Safe score A coherent"),V.PlayerAScore,State.RuntimeState.PlayerAState.Score);
+   T.TestEqual(TEXT("Safe score B coherent"),V.PlayerBScore,State.RuntimeState.PlayerBState.Score);
+   T.TestTrue(TEXT("No fabricated terminal or Advance"),!V.bCanAdvance&&V.Terminal.Outcome==EFMCodexNetworkTerminalOutcome::None);
+  }
+  return;
+ }
  T.TestEqual(TEXT("Score A unchanged"),State.RuntimeState.PlayerAState.Score,Before.State.RuntimeState.PlayerAState.Score);
  T.TestEqual(TEXT("Score B unchanged"),State.RuntimeState.PlayerBState.Score,Before.State.RuntimeState.PlayerBState.Score);
  T.TestEqual(TEXT("No phantom scorer/history"),State.GoalHistory.Num(),Before.State.GoalHistory.Num());

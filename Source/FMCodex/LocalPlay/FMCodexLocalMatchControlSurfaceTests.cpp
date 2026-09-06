@@ -15366,4 +15366,34 @@ bool FFMCodexMatchHeaderScoreIdentityMappingTest::RunTest(
 	return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexLocalMarkerGoalFeedback,
+ "FMCodex.LocalPlay.ControlSurface.MarkerGoalNotification",
+ EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FFMCodexLocalMarkerGoalFeedback::RunTest(const FString&)
+{
+ using namespace FMCodexLocalMatchControlSurfaceTests;
+ FScopedPlayableWorld W;auto* C=W.GetController();if(!TestNotNull(TEXT("Local controller"),C))return false;
+ C->StartNewDemoMatch();C->SetNextDemoMatchSeedForTesting(FindSeedForTacticalPointAndRolls(5,{}));C->RollDemoTacticalPoints();
+ const auto Attack=C->GetInteractionView().CurrentAttackingPlayer;
+ const FString Half=Attack==EInitialTurnOrderPlayer::PlayerA?TEXT("NearB"):TEXT("NearA");
+ for(int32 I=0;I<4;++I)if(!TestTrue(TEXT("Canonical hot-seat deployment"),DeployNextOrdinary(*C,Half)))return false;
+ C->FinishDeployment();C->RefreshPresentation();C->FinishDeployment();C->RefreshPresentation();
+ if(!TestTrue(TEXT("Local Carrier selection"),SubmitFirstSelection(*C,EFMCodexLocalMatchInteractionCategory::SelectCarrier)))return false;
+ TestTrue(TEXT("Local offers positive Marker and decline"),C->GetInteractionView().bCanDecline&&!C->GetInteractionView().SelectionOptions.IsEmpty());
+ C->DeclineCurrentSelection();
+ TestTrue(TEXT("Local authoritative decline succeeds"),C->GetLastDiagnostic().bHostSuccess);
+ const auto& View=C->GetInteractionView();const auto& Feedback=C->GetResolutionFeedback();
+ TestFalse(TEXT("Same canonical direct completion"),View.bCurrentAttackActive);
+ TestEqual(TEXT("Persistent public system Goal"),View.GoalHistory.Num(),1);
+ TestTrue(TEXT("Local reuses exact nonblocking Goal feedback"),Feedback.bVisible&&Feedback.bNonBlockingNotification&&Feedback.StepTitle==TEXT("进球")&&Feedback.StepSummary.Contains(TEXT("规则判定进球")));
+ TestTrue(TEXT("Existing Local expiry scheduled"),C->IsRecoveryNotificationDismissScheduledForTesting());
+ const auto M=FFMCodexLocalMatchUMGPresentationBuilder::Build(View,Feedback,FString());
+ TestTrue(TEXT("Next D12 remains actionable with notification"),M.Interaction.bCanRollTacticalPoints&&M.Resolution.bNonBlockingNotification);
+ TestTrue(TEXT("No fake roll"),M.ResolvedRolls.IsEmpty());
+ C->ExpireRecoveryNotificationForTesting();C->RefreshPresentation();
+ TestFalse(TEXT("Local expiry never replays Goal"),C->GetResolutionFeedback().bVisible);
+ return true;
+}
+
 #endif

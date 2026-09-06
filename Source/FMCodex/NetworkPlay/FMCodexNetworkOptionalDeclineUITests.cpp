@@ -4,7 +4,7 @@
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexOptionalDeclineUI,"FMCodex.NetworkPlay.OptionalDeclineUI.SharedControls",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 void FFMCodexOptionalDeclineUI::GetTests(TArray<FString>& N,TArray<FString>& C) const
 {
- for(const TCHAR* S:{TEXT("A"),TEXT("B")})for(const TCHAR* K:{TEXT("Runner"),TEXT("Helper"),TEXT("Skill")})for(const TCHAR* End:{TEXT("Next"),TEXT("Final")})
+ for(const TCHAR* S:{TEXT("A"),TEXT("B")})for(const TCHAR* K:{TEXT("Runner"),TEXT("Helper"),TEXT("Skill"),TEXT("Marker")})for(const TCHAR* End:{TEXT("Next"),TEXT("Final")})
  {const auto P=FString::Printf(TEXT("%s.%s.%s"),S,K,End);N.Add(P);C.Add(P);}
 }
 bool FFMCodexOptionalDeclineUI::RunTest(const FString& P)
@@ -12,7 +12,7 @@ bool FFMCodexOptionalDeclineUI::RunTest(const FString& P)
  using namespace FMCodexPlayerFacingOrdinaryUITests;
  using namespace FMCodexOptionalDeclineTests;
  TArray<FString> Parts;P.ParseIntoArray(Parts,TEXT("."));const Kind K=Command(Parts[1]);const bool Final=Parts[2]==TEXT("Final");
- FUIFixture F(((Parts[0]==TEXT("B"))!=(K==Kind::DeclineHelper))!=Final,Final);
+ FUIFixture F(((Parts[0]==TEXT("B"))!=(K==Kind::DeclineHelper||K==Kind::DeclineMarker))!=Final,Final);
  if(!TestTrue(TEXT("Canonical milestone"),Prepare(F,K,Final)))return false;if(!F.A->GetOwnerView().bMatchEnded)F.Settle();
  auto* PC=Actor(F,K);auto* Other=PC==F.A?F.B:F.A;auto* S=PC->GetPlayerMatchScreen();
  const auto BeforeView=PC->GetOwnerView();const auto BeforeModel=S->GetPresentation();
@@ -21,9 +21,9 @@ bool FFMCodexOptionalDeclineUI::RunTest(const FString& P)
  TestFalse(TEXT("Waiting viewer has no decline"),Other->GetPlayerMatchScreen()->GetPresentation().Interaction.bCanDecline);
  auto* Button=Cast<UButton>(S->GetInteractionPanel()->GetWidgetFromName(TEXT("InteractionDeclineButton")));
  TestEqual(TEXT("Existing shared decline button visible"),Button->GetVisibility(),ESlateVisibility::Visible);
- const FString Label=K==Kind::DeclineRunner?TEXT("不选择跑位球员"):K==Kind::DeclineHelper?TEXT("放弃协防"):TEXT("不使用战术");
+ const FString Label=K==Kind::DeclineMarker?TEXT("放弃盯人"):K==Kind::DeclineRunner?TEXT("不选择跑位球员"):K==Kind::DeclineHelper?TEXT("放弃协防"):TEXT("不使用战术");
  TestEqual(TEXT("Existing Chinese label"),Cast<UTextBlock>(Button->GetChildAt(0))->GetText().ToString(),Label);
- const FString Prompt=K==Kind::DeclineRunner?TEXT("选择跑位球员"):K==Kind::DeclineHelper?TEXT("选择协防球员"):TEXT("选择战术");
+ const FString Prompt=K==Kind::DeclineMarker?TEXT("选择盯人球员"):K==Kind::DeclineRunner?TEXT("选择跑位球员"):K==Kind::DeclineHelper?TEXT("选择协防球员"):TEXT("选择战术");
  CheckBothPrompts(*this,F,Prompt);
  // Hold a request before transport to inspect the same generic pending read adapter.
  Envelope Pending;TestTrue(TEXT("Generic pending begins"),F.Client(PC).BeginDecline(BeforeView,K,Pending));
@@ -41,7 +41,7 @@ bool FFMCodexOptionalDeclineUI::RunTest(const FString& P)
  const FUnchanged Before(F);S->RequestDeclineSelection();
  TestEqual(TEXT("Shared callback sends once"),F.Backend(PC).Sends,Sends+1);TestEqual(TEXT("Exact typed decline"),F.Backend(PC).Last.IntentKind,K);TestEqual(TEXT("Accepted"),F.Backend(PC).LastCode,Code::Accepted);
  Adopted(*this,F,K,Before);if(!F.A->GetOwnerView().bMatchEnded)F.Settle();
- if(K!=Kind::DeclineSkill)
+ if(K!=Kind::DeclineSkill&&K!=Kind::DeclineMarker)
  {
   CheckBothPrompts(*this,F,TEXT("选择战术"));auto* Attacker=F.Attacker();
   Attacker->GetPlayerMatchScreen()->RequestDeclineSelection();TestEqual(TEXT("Next genuine Skill decline"),F.Backend(Attacker).Last.IntentKind,Kind::DeclineSkill);TestEqual(TEXT("Finish canonically"),F.Backend(Attacker).LastCode,Code::Accepted);if(!F.A->GetOwnerView().bMatchEnded)F.Settle();
@@ -53,7 +53,20 @@ bool FFMCodexOptionalDeclineUI::RunTest(const FString& P)
   TestFalse(TEXT("No invented decline terminal Advance"),Viewer->GetOwnerView().bCanAdvance);
   TestTrue(TEXT("No stale optional candidates"),M.Interaction.SelectionChoices.IsEmpty());
   TestFalse(TEXT("No stale decline CTA"),M.Interaction.bCanDecline);
+  if(K==Kind::DeclineMarker)
+  {
+   TestTrue(TEXT("No fake accepted roll"),M.ResolvedRolls.IsEmpty());
+   TestEqual(TEXT("No-roll Goal notice shares first stable score refresh"),M.Resolution.bVisible,!Final);
+   if(!Final){TestTrue(TEXT("Existing nonblocking surface"),M.Resolution.bNonBlockingNotification);TestEqual(TEXT("Goal title"),M.Resolution.StepLabel,FString(TEXT("进球")));TestTrue(TEXT("Authoritative system award label"),M.Resolution.StepSummaryLabel.Contains(TEXT("规则判定进球")));}
+   const auto Summary=M.Resolution.StepSummaryLabel;Viewer->RefreshPlayerFacingUI();TestEqual(TEXT("Duplicate refresh remains same notification"),Viewer->GetPlayerMatchScreen()->GetPresentation().Resolution.StepSummaryLabel,Summary);
+   TestEqual(TEXT("Early closure has no Recovery"),Viewer->GetOwnerView().Recovery.SourceAttackSequence,int64(0));
+  }
   if(Final)TestFalse(TEXT("No final D12"),M.Interaction.bCanRollTacticalPoints);
+ }
+ if(Final&&K==Kind::DeclineMarker)
+ {
+  const FUnchanged Ended(F);auto Fresh=Request(F,PC,K);Fresh.RequestId=100;
+  TestEqual(TEXT("Fresh Marker decline after MatchEnded rejected"),F.Mode->SubmitConnectionPlayerIntent(PC,Fresh).Code,Code::InvalidPhase);Ended.Verify(*this,F);
  }
  if(!Final)
  {

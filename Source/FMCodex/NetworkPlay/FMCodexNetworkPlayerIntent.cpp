@@ -5,6 +5,7 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	using Code = EFMCodexNetworkIntentAckCode;
 	switch (IntentKind)
 	{
+	case EFMCodexNetworkPlayerIntentKind::DeclineMarker:
 	case EFMCodexNetworkPlayerIntentKind::DeclineRunner:
 	case EFMCodexNetworkPlayerIntentKind::DeclineHelper:
 	case EFMCodexNetworkPlayerIntentKind::DeclineSkill:
@@ -207,7 +208,8 @@ bool FFMCodexNetworkIntentClientState::BeginDecline(const FFMCodexNetworkClientV
 {
 	if (Kind != EFMCodexNetworkPlayerIntentKind::DeclineRunner
 		&& Kind != EFMCodexNetworkPlayerIntentKind::DeclineHelper
-		&& Kind != EFMCodexNetworkPlayerIntentKind::DeclineSkill) return false;
+		&& Kind != EFMCodexNetworkPlayerIntentKind::DeclineSkill
+		&& Kind != EFMCodexNetworkPlayerIntentKind::DeclineMarker) return false;
 	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
 }
 bool FFMCodexNetworkIntentClientState::BeginOneOnOne(const FFMCodexNetworkClientViewSnapshot& View,
@@ -241,6 +243,9 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 		break;
 	case EFMCodexNetworkPlayerIntentKind::DeclineSkill:
 		bActionable = View.DeclineAction == EFMCodexNetworkDeclineAction::Skill;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::DeclineMarker:
+		bActionable = View.DeclineAction == EFMCodexNetworkDeclineAction::Marker;
 		break;
 	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
 		bActionable = View.InteractionState == EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint;

@@ -45,6 +45,7 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	DeclineRunner,
 	DeclineHelper,
 	DeclineSkill,
+	DeclineMarker,
 };
 
 UENUM()

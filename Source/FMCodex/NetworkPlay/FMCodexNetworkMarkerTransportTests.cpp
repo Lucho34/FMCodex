@@ -652,5 +652,34 @@ bool FFMCodexMarkerNamespace::RunTest(const FString&)
 	return true;
 }
 
+
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexMarkerAbsentDisclosure,
+ "FMCodex.NetworkPlay.MarkerDeclineTransport.AutomaticAbsenceDisclosure",
+ EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+void FFMCodexMarkerAbsentDisclosure::GetTests(TArray<FString>& N,TArray<FString>& C) const
+{N={TEXT("A"),TEXT("B")};C=N;}
+bool FFMCodexMarkerAbsentDisclosure::RunTest(const FString& P)
+{
+ using namespace FMCodexNetworkMarkerTests;
+ FFixture F(P==TEXT("B"));Access::Runtime(*F.Mode).EnablePlayerFacingPresentation();
+ if(!TestTrue(TEXT("Carrier with zero legal Marker"),F.ReachCarrier(2,false)))return false;
+ auto* PC=F.Attacker();const auto Side=PC->GetOwnerView().ViewerSide;const int32 Entropy=F.Entropy->Calls;
+ if(!TestTrue(TEXT("Only genuine Carrier input needed"),F.Send(PC,Kind::SubmitCarrier,{},PC->GetOwnerView().CarrierOptions[0].Choice)))return false;
+ const auto State=Access::Session(*F.Mode).GetStateSnapshot();
+ TestFalse(TEXT("No legal Marker closes automatically"),State.bHasCurrentAttack);
+ TestEqual(TEXT("No RNG"),F.Entropy->Calls,Entropy);
+ TestEqual(TEXT("One persisted goal"),State.GoalHistory.Num(),1);
+ if(!State.GoalHistory.IsEmpty())TestTrue(TEXT("No-legal also system team goal"),State.GoalHistory[0].bSystemAward&&State.GoalHistory[0].ScorerCardId.IsNone()&&State.GoalHistory[0].ScoringSide==Side);
+ for(auto* Viewer:{F.A,F.B})
+ {
+  const auto& V=Viewer->GetOwnerView();const auto M=FFMCodexNetworkMatchPresentationAdapter::Read(V,false);
+  TestTrue(TEXT("No client Marker action or fake Advance"),V.DeclineAction==EFMCodexNetworkDeclineAction::None&&V.MarkerOptions.IsEmpty()&&!V.bCanAdvance);
+  TestEqual(TEXT("Public goal history immediately coherent"),V.PublicGoalHistory.Num(),1);
+  TestTrue(TEXT("No-roll system Goal notification"),M.Resolution.bVisible&&M.Resolution.StepLabel==TEXT("进球")&&M.ResolvedRolls.IsEmpty());
+  TestEqual(TEXT("Next canonical D12 wait"),V.EntryWait,EFMCodexNetworkEntryWait::InitialD12);
+ }
+ return true;
+}
+
 #endif
 
