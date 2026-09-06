@@ -290,6 +290,8 @@ struct FMCODEX_API FFMCodexLocalMatchViewerDisclosure
 	bool bRevealParticipantSelectionRoll = false;
 	bool bRevealRouteRoll = false;
 	int32 RevealedContestD6Count = 0;
+	/** Opt-in Cross display: keep unresolved placeholders, never withheld accepted rolls. */
+	bool bPreservePendingCrossFormula = false;
 	bool bRevealTerminalOutcome = false;
 
 	static FFMCodexLocalMatchViewerDisclosure FullyDisclosed();

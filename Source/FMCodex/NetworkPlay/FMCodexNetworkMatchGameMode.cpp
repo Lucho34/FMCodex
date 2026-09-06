@@ -1,3 +1,4 @@
+#include "../Diagnostics/FMCodexHandoffLatencyAudit.h"
 #include "FMCodexNetworkMatchGameMode.h"
 
 #include "FMCodexNetworkMatchGameState.h"
@@ -201,9 +202,12 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	EnsureBootstrapConfiguration();
 	MatchRuntime = MakeUnique<FFMCodexNetworkMatchRuntime>(
 		MatchInstanceId);
+	if (FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingUI")))
+		MatchRuntime->EnablePlayerFacingPresentation();
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 	FString TerminalMilestone;
-	const bool bTerminalMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkCrossTerminalMilestone="), TerminalMilestone);
+	const bool bPlayerFacingMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingCrossMilestone="), TerminalMilestone);
+	const bool bTerminalMilestone = bPlayerFacingMilestone || (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkCrossTerminalMilestone="), TerminalMilestone));
 	const bool bTerminalFinal = TerminalMilestone.StartsWith(TEXT("Final"));
 	const bool bTerminalGoal = TerminalMilestone == TEXT("Goal") || TerminalMilestone == TEXT("FinalGoal");
 	const bool bValidTerminalMilestone = bTerminalGoal || TerminalMilestone == TEXT("NoGoal") || TerminalMilestone == TEXT("FinalNoGoal");
@@ -259,7 +263,7 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		return;
 	}
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
-	if (bTerminalMilestone && !MatchRuntime->PrepareCrossTerminalMilestone(bTerminalGoal, bTerminalFinal))
+	if (bTerminalMilestone && !MatchRuntime->PrepareCrossTerminalMilestone(bTerminalGoal, bTerminalFinal, bPlayerFacingMilestone))
 	{
 		UE_LOG(LogFMCodexNetworkPlay, Error, TEXT("CrossTerminal milestone setup failed; no partial fixture is playable."));
 		bTransportFault = true;
@@ -364,6 +368,19 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 	AFMCodexNetworkMatchPlayerController* Controller,
 	const FFMCodexNetworkPlayerIntentEnvelope& Envelope)
 {
+#if !UE_BUILD_SHIPPING
+ FMCodexHandoffAudit::FContext TraceContext;
+ if(FMCodexHandoffAudit::Enabled())
+ {
+  TraceContext.Match=Envelope.MatchInstanceId; TraceContext.Sequence=Envelope.ExpectedAttackSequence;
+  TraceContext.Request=Envelope.RequestId; TraceContext.Revision=ViewRevision;
+  TraceContext.Source=static_cast<int32>(ResolveSideForController(Controller)); TraceContext.Viewer=TraceContext.Source;
+  TraceContext.Role=TEXT("Authority");
+  TraceContext.Intent=StaticEnum<EFMCodexNetworkPlayerIntentKind>()->GetNameStringByValue(static_cast<int64>(Envelope.IntentKind));
+  FMCodexHandoffAudit::Emit(TEXT("T1.ServerReceive"),TraceContext);
+ }
+ FMCodexHandoffAudit::FServerScope TraceScope(TraceContext);
+#endif
 	using AckCode = EFMCodexNetworkIntentAckCode;
 	FFMCodexNetworkPlayerIntentAck Ack;
 	// Echo the submitted correlation even for MatchMismatch so that owner can clear pending.
@@ -374,6 +391,9 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 	auto Finish = [&](AckCode Code)
 	{
 		Ack.Code = Code;
+#if !UE_BUILD_SHIPPING
+  if(Code!=AckCode::Accepted) FMCodexHandoffAudit::Emit(TEXT("ServerRejected"),TraceContext,FString::Printf(TEXT(",\"AckCode\":%d"),static_cast<int32>(Code)));
+#endif
 		Ack.ViewRevision = ViewRevision;
 		UE_LOG(LogFMCodexNetworkPlay, Log,
 			TEXT("Intent server: Match=%s Request=%lld Controller=%s ResolvedSide=%d ExpectedSequence=%lld Kind=%d Card=%s Slot=%s GKSlot=%s Carrier=%s Marker=%s Runner=%s Helper=%s Skill=%s Branch=%d ACK=%s Revision=%d->%d EntryProviderCalls=%d D12ProviderCalls=%d"),

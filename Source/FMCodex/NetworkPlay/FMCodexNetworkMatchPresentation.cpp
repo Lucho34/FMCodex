@@ -1,0 +1,225 @@
+#include "FMCodexNetworkMatchPresentation.h"
+#include "FMCodexNetworkMatchTypes.h"
+#include "../LocalPlay/FMCodexPlayerUIPresentationText.h"
+#include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
+#include "../LocalPlay/FMCodexLocalMatchResolutionFeedback.h"
+
+namespace
+{
+	void CopyStaticCard(FFMCodexUMGCardViewModel& Target, const FFMCodexUMGCardViewModel& Source)
+	{
+		Target.IdentityLabel = Source.IdentityLabel;
+		Target.EnglishIdentityLabel = Source.EnglishIdentityLabel;
+		Target.NationalityLabel = Source.NationalityLabel;
+		Target.ClubLabel = Source.ClubLabel;
+		Target.RoleLabel = Source.RoleLabel;
+		Target.OverallRating = Source.OverallRating;
+		Target.bHasOverallRating = Source.bHasOverallRating;
+		Target.BirthDate = Source.BirthDate;
+		Target.HeightCm = Source.HeightCm;
+		Target.WeightKg = Source.WeightKg;
+		Target.AttributeValues = Source.AttributeValues;
+		Target.Skills = Source.Skills;
+		Target.PlayerFacingSerialLabel = Source.PlayerFacingSerialLabel;
+		Target.SkillLabels = Source.SkillLabels;
+		Target.SkillSummaryLabel = Source.SkillSummaryLabel;
+		Target.CompactAttributeSummary = Source.CompactAttributeSummary;
+		Target.FullAttributeSummary = Source.FullAttributeSummary;
+		Target.RarityLabel = Source.RarityLabel;
+		Target.bGoalkeeper = Source.bGoalkeeper;
+	}
+	template<typename F> void VisitCards(FFMCodexUMGMatchScreenViewModel& M, F&& Visitor)
+	{
+		for (auto& Cell : M.LocalRack.Cells) Visitor(Cell.Card);
+		for (auto& Cell : M.OpponentRack.Cells) Visitor(Cell.Card);
+		for (auto& Region : M.PitchRegions) for (auto& Slot : Region.Slots) Visitor(Slot.Card);
+		for (auto& Choice : M.Interaction.DeploymentChoices) Visitor(Choice.Card);
+		for (auto& Choice : M.Interaction.SelectionChoices) if (Choice.bHasCard) Visitor(Choice.Card);
+	}
+	bool WithinBounds(const FFMCodexUMGMatchScreenViewModel& M)
+	{
+		if (M.LocalRack.Cells.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxCardsPerSide
+			|| M.OpponentRack.Cells.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxCardsPerSide
+			|| M.PitchRegions.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxPitchRegions
+			|| M.Interaction.DeploymentChoices.Num() > 20 || M.Interaction.SelectionChoices.Num() > 20
+			|| M.Interaction.BranchChoices.Num() > 2) return false;
+		for (const auto& Region : M.PitchRegions)
+			if (Region.Slots.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxSlotsPerRegion) return false;
+		for (const auto& Choice : M.Interaction.DeploymentChoices)
+			if (Choice.Destinations.Num() > 80) return false;
+		return true;
+	}
+}
+
+void FFMCodexNetworkMatchPresentationAdapter::DisableActions(FFMCodexUMGMatchScreenViewModel& M)
+{
+	auto& I = M.Interaction;
+	I.bCanStartNewMatch = I.bCanRollTacticalPoints = I.bCanFinishDeployment = false;
+	I.bCanDecline = I.bCanResolveNoLegal = I.bCanContinue = false;
+	I.PrimaryAction.bAvailable = false;
+	I.bUseOnPitchPlayerSelection = false;
+	I.DeploymentChoices.Reset(); I.SelectionChoices.Reset(); I.BranchChoices.Reset(); I.OneOnOneChoices.Reset();
+	for (auto& Cell : M.LocalRack.Cells) Cell.bDeploymentDraggable = Cell.bSetPieceSelectable = false;
+	for (auto& Cell : M.OpponentRack.Cells) Cell.bDeploymentDraggable = Cell.bSetPieceSelectable = false;
+	for (auto& Region : M.PitchRegions) for (auto& Slot : Region.Slots)
+	{
+		Slot.bSelectableForCurrentPrompt = false;
+		Slot.OnPitchSelectionIntent = EFMCodexUMGOnPitchSelectionIntent::None;
+	}
+	M.InlineFormula.PrimaryAction.bVisible = M.InlineFormula.PrimaryAction.Action.bAvailable = false;
+	M.InlineFormula.bCanContinue = false;
+	M.LongShotResolution.PrimaryAction.bVisible = M.LongShotResolution.PrimaryAction.Action.bAvailable = false;
+	M.LongShotResolution.bCanContinue = false;
+	M.LongShotResolution.BranchChoices.Reset();
+}
+
+FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Project(
+	const FFMCodexLocalMatchInteractionView& SafeView, EInitialTurnOrderPlayer Viewer)
+{
+	FFMCodexNetworkMatchPresentation Result;
+	// This builder only formats already-projected public facts and canonical static descriptions.
+	auto M = FFMCodexLocalMatchUMGPresentationBuilder::Build(SafeView,
+		FFMCodexLocalMatchResolutionFeedbackBuilder::BuildFromTerminalSnapshot(SafeView), FString(), Viewer);
+	if (!WithinBounds(M)) return Result; // Never silently truncate legal options.
+	M.Interaction.bCanStartNewMatch = M.Interaction.bCanDecline = M.Interaction.bCanResolveNoLegal = false;
+	M.Interaction.OneOnOneChoices.Reset();
+	M.Interaction.CandidateCards.Reset();
+	M.Interaction.LegalActionLabels.Reset();
+	M.Interaction.ClassificationLabel.Reset();
+	M.Interaction.CategoryLabel.Reset();
+	// Capability is separate from server legality: retain unsupported options with an explicit disabled state.
+	for (auto& Choice : M.Interaction.SelectionChoices)
+		if (M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill
+			&& Choice.SkillType != ESkillRuleType::Cross)
+		{
+			Choice.bEnabled = false;
+			Choice.SecondaryLabel = TEXT("此联网演示暂未支持");
+		}
+	if (!SafeView.bHumanInteraction || SafeView.ExpectedActingPlayer != Viewer)
+		DisableActions(M);
+	VisitCards(M, [&Result](FFMCodexUMGCardViewModel& Card)
+	{
+		Card.DeveloperReferenceLabel.Reset();
+		if (Card.CardId.IsNone()) return;
+		if (!Result.CardCatalog.ContainsByPredicate([&Card](const auto& Existing) { return Existing.CardId == Card.CardId; }))
+		{
+			auto& Static = Result.CardCatalog.AddDefaulted_GetRef();
+			Static.CardId = Card.CardId;
+			CopyStaticCard(Static, Card);
+		}
+		CopyStaticCard(Card, FFMCodexUMGCardViewModel());
+	});
+	if (Result.CardCatalog.Num() > MaxCardsPerSide * 2) return {};
+	const auto& Facts = M.Resolution.FormulaFacts;
+	if (Facts.bSuccess && Facts.bHasFacts)
+	{
+		for (const auto& Roll : Facts.Rolls)
+		{
+			if (!Roll.bResolved) continue;
+			FFMCodexUMGResolvedRollViewModel Event;
+			Event.AttackSequence = Facts.AttackSequence;
+			Event.OwnerSide = Roll.OwningSide; Event.SequenceIndex = Roll.SequenceIndex; Event.RawD6 = Roll.RawD6;
+			if (Roll.bInitialRoute && Roll.Semantics == EMatchPlayResolutionRollSemantics::BranchSelection)
+			{
+				Event.Kind = EFMCodexUMGCrossRollRevealKind::InitialRoute;
+				Event.ContestId = TEXT("Cross.Route");
+			}
+			else if (Roll.Semantics == EMatchPlayResolutionRollSemantics::ArithmeticContest
+				&& Facts.FormulaContests.Num() == 1)
+			{
+				Event.Kind = Roll.PostRoutePurpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack
+					? EFMCodexUMGCrossRollRevealKind::Attack
+					: Roll.PostRoutePurpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryDefense
+						? EFMCodexUMGCrossRollRevealKind::Defense : EFMCodexUMGCrossRollRevealKind::None;
+				Event.ContestId = Facts.FormulaContests[0].ContestId;
+			}
+			if (Event.Kind != EFMCodexUMGCrossRollRevealKind::None) Result.ResolvedRolls.Add(Event);
+		}
+	}
+	if (Result.ResolvedRolls.Num() > 3 || M.FullTime.PlayerA.Goals.Num() > 6 || M.FullTime.PlayerB.Goals.Num() > 6) return {};
+	Result.bAvailable = true;
+	Result.Header = MoveTemp(M.Header);
+	Result.LocalRack = MoveTemp(M.LocalRack); Result.OpponentRack = MoveTemp(M.OpponentRack);
+	Result.PitchRegions = MoveTemp(M.PitchRegions);
+	Result.Interaction = MoveTemp(M.Interaction);
+	Result.InlineFormula = MoveTemp(M.InlineFormula);
+	Result.BranchSurface = MoveTemp(M.LongShotResolution);
+	Result.FullTime = MoveTemp(M.FullTime);
+	return Result;
+}
+
+FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
+	const FFMCodexNetworkMatchPresentation& View, bool bPending)
+{
+	FFMCodexUMGMatchScreenViewModel M;
+	if (!View.bAvailable)
+	{
+		M.Interaction.TitleLabel = TEXT("等待网络比赛就绪");
+		M.Header.PlayerALabel = M.Header.LeftPlayerLabel = TEXT("玩家 A");
+		M.Header.PlayerBLabel = M.Header.RightPlayerLabel = TEXT("玩家 B");
+		DisableActions(M);
+		return M;
+	}
+	M.Header = View.Header; M.LocalRack = View.LocalRack; M.OpponentRack = View.OpponentRack;
+	M.LocalPlayerLabel = View.LocalRack.SideLabel;
+	M.PitchRegions = View.PitchRegions; M.Interaction = View.Interaction;
+	M.InlineFormula = View.InlineFormula; M.LongShotResolution = View.BranchSurface;
+	M.FullTime = View.FullTime;
+	M.ResolvedRolls = View.ResolvedRolls;
+	VisitCards(M, [&View](FFMCodexUMGCardViewModel& Card)
+	{
+		if (const auto* Static = View.CardCatalog.FindByPredicate([&Card](const auto& C) { return C.CardId == Card.CardId; }))
+			CopyStaticCard(Card, *Static);
+	});
+	if (bPending)
+	{
+		DisableActions(M);
+		M.Interaction.EmptyStateLabel = TEXT("正在提交，请稍候");
+	}
+	return M;
+}
+
+#define LOCTEXT_NAMESPACE "FMCodexActionWaitPrompt"
+FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
+	const FFMCodexNetworkClientViewSnapshot& View, const bool bPending)
+{
+	auto M = Read(View.Presentation, bPending);
+	using C = EFMCodexUMGInteractionCategory;
+	using S = EInitialTurnOrderPlayer;
+	if (!View.Presentation.bAvailable || View.bMatchEnded || M.FullTime.bVisible
+		|| (View.ExpectedActingSide != S::PlayerA && View.ExpectedActingSide != S::PlayerB)
+		|| (View.ViewerSide != S::PlayerA && View.ViewerSide != S::PlayerB)) return M;
+	FText Action;
+	switch (M.Interaction.Category)
+	{
+	case C::TacticalPointRoll: Action = LOCTEXT("TacticalPoints", "掷战术点"); break;
+	case C::Deploy: Action = LOCTEXT("Deploy", "部署球员并完成部署"); break;
+	case C::SelectCarrier: Action = FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Select Carrier")); break;
+	case C::SelectMarker: Action = FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Select Marker")); break;
+	case C::SelectRunner: Action = FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Select Runner")); break;
+	case C::SelectHelper: Action = FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("Select Helper")); break;
+	case C::SelectSkill: Action = LOCTEXT("Skill", "选择战术"); break;
+	case C::SelectBranchIntent:
+		if (M.LongShotResolution.SkillType != ESkillRuleType::Cross) return M;
+		Action = LOCTEXT("CrossBranch", "选择传中方式"); break;
+	case C::RollCrossRoute: Action = LOCTEXT("CrossRoute", "掷传中路线骰"); break;
+	case C::RollCrossAttack: Action = LOCTEXT("CrossAttack", "进攻方掷点"); break;
+	case C::RollCrossDefense: Action = LOCTEXT("CrossDefense", "防守方掷点"); break;
+	case C::AdvanceAfterTerminal: Action = LOCTEXT("Advance", "下一回合"); break;
+	default: return M; // Unsupported families and non-player progression keep their existing presentation.
+	}
+	M.bMirrorActionWaitPrompt = true;
+	M.bActionWaitPromptReadOnly = View.ExpectedActingSide != View.ViewerSide;
+	const auto Actor = FFMCodexPlayerUIPresentationText::MatchScreenLabel(
+		View.ExpectedActingSide == S::PlayerA ? TEXT("Player A") : TEXT("Player B"));
+	M.ActionWaitActorText = M.bActionWaitPromptReadOnly
+		? FText::Format(LOCTEXT("WaitingActor", "等待{0} 操作"), Actor)
+		: bPending ? LOCTEXT("Submitting", "正在提交，请稍候")
+		: LOCTEXT("YourTurn", "轮到你操作");
+	M.ActionWaitActionText = !M.bActionWaitPromptReadOnly ? Action
+		: M.Interaction.Category == C::AdvanceAfterTerminal
+			? LOCTEXT("WaitingAdvance", "等待下一回合推进")
+			: FText::Format(LOCTEXT("WaitingAction", "等待{0}"), Action);
+	return M;
+}
+#undef LOCTEXT_NAMESPACE

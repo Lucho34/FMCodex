@@ -511,20 +511,27 @@ bool FFMCodexPassControlProductionTypedRoutingContractTest::RunTest(
 {
 	(void)Parameters;
 	FString ScreenSource;
+	FString AdapterSource;
+	TestTrue(TEXT("Local action adapter source is readable"),
+		FFileHelper::LoadFileToString(AdapterSource, *FPaths::Combine(FPaths::ProjectDir(),
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"))));
 	const FString ScreenPath = FPaths::Combine(
 		FPaths::ProjectDir(),
 		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"));
 	TestTrue(TEXT("Screen routing source is readable"),
 		FFileHelper::LoadFileToString(ScreenSource, *ScreenPath));
 	TestTrue(TEXT("Route dispatches typed PassControl Controller request"),
-		ScreenSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollPassControlRoute:"))
-			&& ScreenSource.Contains(TEXT("MatchController->RollPassControlRoute();")));
+		AdapterSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollPassControlRoute:"))
+			&& AdapterSource.Contains(TEXT("RollPassControlRoute();")));
 	TestTrue(TEXT("Attack dispatches typed PassControl Controller request"),
-		ScreenSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollPassControlAttack:"))
-			&& ScreenSource.Contains(TEXT("MatchController->RollPassControlAttack();")));
+		AdapterSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollPassControlAttack:"))
+			&& AdapterSource.Contains(TEXT("RollPassControlAttack();")));
 	TestTrue(TEXT("Defense dispatches typed PassControl Controller request"),
-		ScreenSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollPassControlDefense:"))
-			&& ScreenSource.Contains(TEXT("MatchController->RollPassControlDefense();")));
+		AdapterSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollPassControlDefense:"))
+			&& AdapterSource.Contains(TEXT("RollPassControlDefense();")));
+	TestTrue(TEXT("Shared continuation reaches the Local backend"),
+		ScreenSource.Contains(TEXT("SubmitScreenRequest(EFMCodexMatchScreenIntent::Continue)"))
+		&& ScreenSource.Contains(TEXT("MatchBackend->SubmitScreenIntent(Request)")));
 	return true;
 }
 

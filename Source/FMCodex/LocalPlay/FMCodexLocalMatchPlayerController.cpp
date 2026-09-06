@@ -2899,3 +2899,160 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 			]
 		];
 }
+
+
+EFMCodexMatchScreenSubmission AFMCodexLocalMatchPlayerController::SubmitScreenIntent(
+	const FFMCodexMatchScreenRequest& Request)
+{
+	using Kind = EFMCodexMatchScreenIntent;
+	switch (Request.Kind)
+	{
+	case Kind::StartMatch: StartNewDemoMatch(); break;
+	case Kind::TacticalPoints: RollDemoTacticalPoints(); break;
+	case Kind::DeployOrdinary: DeployOrdinary(Request.OptionId, Request.SlotId); break;
+	case Kind::DeployGoalkeeper: DeployGoalkeeper(Request.SlotId); break;
+	case Kind::FinishDeployment: FinishDeployment(); break;
+	case Kind::Carrier: SubmitCarrier(Request.OptionId); break;
+	case Kind::Marker: SubmitMarker(Request.OptionId); break;
+	case Kind::Runner: SubmitRunner(Request.OptionId); break;
+	case Kind::Helper: SubmitHelper(Request.OptionId); break;
+	case Kind::Skill: SubmitSkill(Request.OptionId); break;
+	case Kind::Decline:
+		if (Request.Category == EFMCodexUMGInteractionCategory::SelectSkill) AbandonCurrentTacticalSelection();
+		else DeclineCurrentSelection();
+		break;
+	case Kind::NoLegal:
+		if (Request.Category == EFMCodexUMGInteractionCategory::SelectSkill) AbandonCurrentTacticalSelection();
+		else ResolveNoLegalCurrentSelection();
+		break;
+	case Kind::Branch:
+		switch (Request.Branch)
+		{
+		case EFMCodexUMGBranchIntent::DirectShot: SubmitBranchIntent(EMatchPlayElectiveBranchIntent::DirectShot); break;
+		case EFMCodexUMGBranchIntent::DeadCorner: SubmitBranchIntent(EMatchPlayElectiveBranchIntent::DeadCorner); break;
+		case EFMCodexUMGBranchIntent::CrossHigh: SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossHigh); break;
+		case EFMCodexUMGBranchIntent::CrossLow: SubmitBranchIntent(EMatchPlayElectiveBranchIntent::CrossLow); break;
+		default: return EFMCodexMatchScreenSubmission::Rejected;
+		}
+		break;
+	case Kind::OneOnOne:
+		if (Request.OneOnOne == EFMCodexUMGOneOnOneChoice::ChipShot)
+			SubmitOneOnOneShotChoice(EMatchPlayThroughBallOneOnOneShotChoice::ChipShot);
+		else if (Request.OneOnOne == EFMCodexUMGOneOnOneChoice::DirectShot)
+			SubmitOneOnOneShotChoice(EMatchPlayThroughBallOneOnOneShotChoice::DirectShot);
+		else return EFMCodexMatchScreenSubmission::Rejected;
+		break;
+	case Kind::Continue:
+	switch (Request.Category)
+	{
+	case EFMCodexUMGInteractionCategory::RollCrossRoute:
+		RollCrossRoute();
+		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallInitialRoute:
+		RollThroughBallInitialRoute();
+		break;
+	case EFMCodexUMGInteractionCategory::RollCrossAttack:
+		RollCrossAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollCrossDefense:
+		RollCrossDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::RollLongShotDirectAttack:
+		RollLongShotDirectAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollLongShotDirectDefense:
+		RollLongShotDirectDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::RollLongShotDeadCorner:
+		RollLongShotDeadCorner();
+		break;
+	case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectAttack:
+		RollCutInsideShotDirectAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense:
+		RollCutInsideShotDirectDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner:
+		RollCutInsideShotDeadCorner();
+		break;
+	case EFMCodexUMGInteractionCategory::RollPassControlRoute:
+		RollPassControlRoute();
+		break;
+	case EFMCodexUMGInteractionCategory::RollPassControlAttack:
+		RollPassControlAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollPassControlDefense:
+		RollPassControlDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance:
+		CompleteCrossAndAdvance();
+		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallFeetAttack:
+		RollThroughBallFeetAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense:
+		RollThroughBallFeetDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallAntiOffsideAttack:
+		RollThroughBallAntiOffsideAttack();
+		break;
+	case EFMCodexUMGInteractionCategory
+		::RollThroughBallOneOnOneChipShotAttack:
+		RollThroughBallOneOnOneChipShotAttack();
+		break;
+	case EFMCodexUMGInteractionCategory
+		::RollThroughBallOneOnOneDirectShotAttack:
+		RollThroughBallOneOnOneDirectShotAttack();
+		break;
+	case EFMCodexUMGInteractionCategory
+		::RollThroughBallOneOnOneDirectShotDefense:
+		RollThroughBallOneOnOneDirectShotDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallBehindDefenseAttack:
+		RollThroughBallBehindDefenseAttack();
+		break;
+	case EFMCodexUMGInteractionCategory::RollThroughBallBehindDefenseDefense:
+		RollThroughBallBehindDefenseDefense();
+		break;
+	case EFMCodexUMGInteractionCategory::CompleteThroughBallFeetAndAdvance:
+		CompleteThroughBallFeetAndAdvance();
+		break;
+	case EFMCodexUMGInteractionCategory::ApplyCrossTerminalResolution:
+		ApplyCrossTerminalResolution();
+		break;
+	case EFMCodexUMGInteractionCategory
+		::ApplyThroughBallFeetTerminalResolution:
+		ApplyThroughBallFeetTerminalResolution();
+		break;
+	case EFMCodexUMGInteractionCategory::AdvanceAfterTerminal:
+		AdvanceAfterTerminal();
+		break;
+	case EFMCodexUMGInteractionCategory::RollSetPieceType:
+	case EFMCodexUMGInteractionCategory::ConfirmSetPieceCarrier:
+	case EFMCodexUMGInteractionCategory::RollShortFreeKickDirectAttack:
+	case EFMCodexUMGInteractionCategory::RollShortFreeKickDirectDefense:
+	case EFMCodexUMGInteractionCategory::RollShortFreeKickAngled:
+	case EFMCodexUMGInteractionCategory::RollLongFreeKickDirectAttack:
+	case EFMCodexUMGInteractionCategory::RollLongFreeKickDirectDefense:
+	case EFMCodexUMGInteractionCategory::RollLongFreeKickPower:
+	case EFMCodexUMGInteractionCategory::RollPenaltyDirectAttack:
+	case EFMCodexUMGInteractionCategory::RollPenaltyDirectDefense:
+	case EFMCodexUMGInteractionCategory::RollPenaltyPanenka:
+	case EFMCodexUMGInteractionCategory::DraftCornerAttacker:
+	case EFMCodexUMGInteractionCategory::DraftCornerDefender:
+	case EFMCodexUMGInteractionCategory::RollCornerParticipantSelection:
+	case EFMCodexUMGInteractionCategory::RollCornerRoute:
+	case EFMCodexUMGInteractionCategory::RollCornerAttack:
+	case EFMCodexUMGInteractionCategory::RollCornerDefense:
+		SubmitProjectedPrimaryPlayerIntent();
+		break;
+	default:
+		ContinueResolution();
+		break;
+	}
+		break;
+	default: return EFMCodexMatchScreenSubmission::Rejected;
+	}
+	return GetLastDiagnostic().bHostSuccess ? EFMCodexMatchScreenSubmission::Completed
+		: EFMCodexMatchScreenSubmission::Rejected;
+}

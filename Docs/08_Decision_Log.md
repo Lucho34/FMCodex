@@ -1254,3 +1254,17 @@
 - Eighteen intents retain one per-connection RequestId namespace, the <=1024 forward window and generic ACK/View pending. Normal 下一回合 requires disclosed terminal facts; rendering completion is not a new gameplay authority or network acknowledgement protocol.
 - Provide an explicit server-only CrossTerminalMilestone launcher that stops at Attack wait. Goal/NoGoal and final variants use existing canonical setup and DEV RNG seams; the final variant uses the existing one-attack-per-side opening plus a canonical preceding attack, without editing opportunity counters or terminal state. Normal launch defaults remain unchanged.
 - Require a short manual Cross lifecycle USER PIE after technical regression and real-process evidence. Once accepted, prefer Network Player-Facing Ordinary Golden Path UI Integration as the next stage. Complete Cross command transport is distinct from connecting formal player-facing Formula/Reel/pitch/full-time surfaces. Other tactical families and Decline choices remain separate bounded work.
+
+## 2026-09-06 — Reuse the existing match UI for Network Cross
+
+- Keep one player-facing visual hierarchy. Introduce only a bounded screen action interface and Network read/action adapters. Local retains synchronous Host operations, Start and DEV conveniences without adopting the Network protocol.
+- Project audited ordinary Cross presentation values from BuildForViewer into the owner snapshot itself. Keep stable identities and existing artwork lookup; intern repeated public card data rather than replicate images or internal InteractionView.
+- Transport disclosed roll events separately from formatted Formula display so the existing shared Reel can settle without a raw internal Resolution object. Do not let animation select or alter outcomes.
+- Treat queueing separately from Local completion. Reuse ACK/View correlation and restore actionable presentation after rejection. Disable relevant input while pending without freezing animation.
+- Reuse settled-event identity guards and the displayed-header disclosure gate. Early safe arrival is allowed; score must follow the visible result/Narrative timeline. Advance clears presentation through its resulting snapshot, and final MatchEnded opens the existing Full-Time panel.
+- Provide a project-local player-facing Cross fixture starting at Skill, with optional diagnostics and server-only deterministic setup. Preserve normal diagnostic launch. Unsupported declines and incomplete tactical families remain an explicit capability boundary without changing Local or canonical legality.
+- Code-side evidence must include shared callbacks, broad regression and real two-process player-facing screenshots. USER PIE remains mandatory for final visible milestone closure. Next transport work should audit a real medium-sized tactic family contract and continue using this same UI.
+
+## 2026-09-06 — Mirror action and wait guidance in the shared dock
+
+Both network viewers must understand who owns the current player action and what action is expected. The actor receives viewer-relative guidance and the existing legal CTA; the other viewer receives read-only waiting text. Reuse the existing lower interaction header, without a second banner or duplicated button. Derive copy from typed safe actor/action facts and align visibility with the existing Reel/Narrative handoff gate. Repeated network updates must not reset this guidance; MatchEnded removes it. Local hot-seat retains its established display convention.

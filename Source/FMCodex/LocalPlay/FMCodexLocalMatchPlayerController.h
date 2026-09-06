@@ -4,6 +4,7 @@
 #include "GameFramework/PlayerController.h"
 
 #include "FMCodexLocalMatchInteractionView.h"
+#include "FMCodexMatchScreenBackend.h"
 #include "FMCodexMatchClientViewPort.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
 #include "../MatchPlayRuntime/MatchPlayHostPort.h"
@@ -30,12 +31,14 @@ struct FMCODEX_API FFMCodexLocalMatchCommandDiagnostic
 
 UCLASS()
 class FMCODEX_API AFMCodexLocalMatchPlayerController final
-	: public APlayerController
+	: public APlayerController, public IFMCodexMatchScreenBackend
 {
 	GENERATED_BODY()
 
 public:
 	AFMCodexLocalMatchPlayerController();
+	virtual EFMCodexMatchScreenSubmission SubmitScreenIntent(const FFMCodexMatchScreenRequest& Request) override;
+	virtual bool IsScreenIntentPending() const override { return false; }
 
 	const FFMCodexLocalMatchInteractionView& GetInteractionView() const;
 	const FFMCodexLocalMatchCommandDiagnostic& GetLastDiagnostic() const;

@@ -244,7 +244,8 @@ enum class EFMCodexUMGCardInteractionState : uint8
 	DropSuccess,
 	DropCancelled,
 	Deployed,
-	Ghost
+	Ghost,
+	DropPending
 };
 
 /** Explicit presentation intent carried by an authoritative on-pitch candidate. */
@@ -281,7 +282,8 @@ enum class EFMCodexUMGSelectionFeedbackReason : uint8
 	RunnerNotInAttackingForwardArea,
 	HelperIsGoalkeeper,
 	HelperMatchesMarker,
-	HelperWrongPhysicalArea
+	HelperWrongPhysicalArea,
+	SubmissionRejected
 };
 
 /** Presentation-only football landmark treatment for a physical Half. */
@@ -902,6 +904,10 @@ struct FMCODEX_API FFMCodexUMGSelectionChoiceViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
 	FString SecondaryLabel;
+
+	/** Transport capability; does not change the authoritative legal option. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Interaction")
+	bool bEnabled = true;
 };
 
 USTRUCT(BlueprintType)
@@ -1835,10 +1841,25 @@ struct FMCODEX_API FFMCodexUMGLongShotResolutionViewModel
 	FString ContinueActionLabel;
 };
 
+USTRUCT()
+struct FMCODEX_API FFMCodexUMGResolvedRollViewModel
+{
+	GENERATED_BODY()
+	UPROPERTY() EFMCodexUMGCrossRollRevealKind Kind = EFMCodexUMGCrossRollRevealKind::None;
+	UPROPERTY() int64 AttackSequence = 0;
+	UPROPERTY() FName ContestId = NAME_None;
+	UPROPERTY() int32 SequenceIndex = INDEX_NONE;
+	UPROPERTY() EInitialTurnOrderPlayer OwnerSide = EInitialTurnOrderPlayer::None;
+	UPROPERTY() int32 RawD6 = 0;
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 {
 	GENERATED_BODY()
+
+	/** Accepted presentation events; the Local adapter retains its existing FormulaFacts path. */
+	UPROPERTY() TArray<FFMCodexUMGResolvedRollViewModel> ResolvedRolls;
 
 	UPROPERTY() FFMCodexFullTimePresentation FullTime;
 
@@ -1874,6 +1895,12 @@ struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FString DiagnosticLabel;
+
+	/** Client presentation only: preserve the shared dock status when a central surface owns the CTA. */
+	bool bMirrorActionWaitPrompt = false;
+	bool bActionWaitPromptReadOnly = false;
+	FText ActionWaitActorText;
+	FText ActionWaitActionText;
 };
 
 class FMCODEX_API FFMCodexLocalMatchUMGPresentationBuilder final

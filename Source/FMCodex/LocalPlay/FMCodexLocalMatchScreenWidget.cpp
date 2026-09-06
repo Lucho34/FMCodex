@@ -392,11 +392,13 @@ void UFMCodexLocalMatchScreenWidget::SetMatchController(
 	AFMCodexLocalMatchPlayerController* InController)
 {
 	MatchController = InController;
+	MatchBackend = InController;
 }
 
 void UFMCodexLocalMatchScreenWidget::ClearMatchController()
 {
 	MatchController = nullptr;
+	MatchBackend = nullptr;
 }
 
 void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
@@ -747,332 +749,140 @@ FVector2D UFMCodexLocalMatchScreenWidget::CalculateDetailOverlayPosition(
 		FMath::Clamp(DesiredY, ViewportMargin, MaximumY));
 }
 
+void UFMCodexLocalMatchScreenWidget::SetMatchBackend(IFMCodexMatchScreenBackend* InBackend)
+{
+	MatchController = nullptr;
+	MatchBackend = InBackend;
+}
+
+bool UFMCodexLocalMatchScreenWidget::IsScreenRequestPending() const
+{
+	return MatchBackend && MatchBackend->IsScreenIntentPending();
+}
+
+void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
+{
+	ResetInlineFormulaRevealState();
+	Presentation = {};
+}
+
+void UFMCodexLocalMatchScreenWidget::NotifyScreenRequestRejected()
+{
+	CancelInlineFormulaReveal();
+	ObservePendingCrossRoll(Presentation);
+	RefreshVisuals();
+	if (SelectionFeedbackToast)
+		SelectionFeedbackToast->ShowFeedback(EFMCodexUMGSelectionFeedbackReason::SubmissionRejected,
+			TEXT("操作未被接受，请根据当前提示重试"));
+}
+
+EFMCodexMatchScreenSubmission UFMCodexLocalMatchScreenWidget::SubmitScreenRequest(
+	EFMCodexMatchScreenIntent Kind, FName OptionId, FName SlotId,
+	EFMCodexUMGBranchIntent Branch, EFMCodexUMGOneOnOneChoice OneOnOne)
+{
+	LastScreenSubmission = EFMCodexMatchScreenSubmission::Rejected;
+	if (!MatchBackend || IsScreenRequestPending()
+		|| (Kind != EFMCodexMatchScreenIntent::StartMatch && IsInlineFormulaRevealInputBlocked()))
+		return LastScreenSubmission;
+	FFMCodexMatchScreenRequest Request;
+	Request.Kind = Kind; Request.OptionId = OptionId; Request.SlotId = SlotId;
+	Request.Branch = Branch; Request.OneOnOne = OneOnOne; Request.Category = Presentation.Interaction.Category;
+	// Begin the existing visual timeline before either a synchronous Local call or asynchronous enqueue.
+	const auto Identity = PendingCrossRollIdentity(Presentation);
+	if ((Kind == EFMCodexMatchScreenIntent::TacticalPoints || Kind == EFMCodexMatchScreenIntent::Continue)
+		&& Identity.IsValid() && !SettledCrossRollRevealKeys.Contains(Identity.StableKey()))
+		BeginInlineFormulaReveal(Identity, true);
+	LastScreenSubmission = MatchBackend->SubmitScreenIntent(Request);
+	if (LastScreenSubmission == EFMCodexMatchScreenSubmission::Rejected && Identity.IsValid())
+		NotifyScreenRequestRejected();
+	return LastScreenSubmission;
+}
+
 void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
 {
-	if (MatchController != nullptr)
-	{
-		MatchController->StartNewDemoMatch();
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::StartMatch);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestRollTacticalPoints()
 {
-	if (MatchController == nullptr || IsInlineFormulaRevealInputBlocked())
-	{
-		return;
-	}
-	const FFMCodexCrossRollRevealIdentity RequestedIdentity =
-		PendingCrossRollIdentity(Presentation);
-	if (RequestedIdentity.Kind
-		== EFMCodexUMGCrossRollRevealKind::TacticalPoint)
-	{
-		BeginInlineFormulaReveal(RequestedIdentity, true);
-	}
-	MatchController->RollDemoTacticalPoints();
-	if (!MatchController->GetLastDiagnostic().bHostSuccess)
-	{
-		CancelInlineFormulaReveal();
-		ObservePendingCrossRoll(Presentation);
-		RefreshVisuals();
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::TacticalPoints);
 }
 
-void UFMCodexLocalMatchScreenWidget::RequestDeployOrdinary(
-	const FName CardId,
-	const FName SlotId)
+void UFMCodexLocalMatchScreenWidget::RequestDeployOrdinary(const FName CardId, const FName SlotId)
 {
-	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
-	{
-		MatchController->DeployOrdinary(CardId, SlotId);
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::DeployOrdinary, CardId, SlotId);
 }
 
-void UFMCodexLocalMatchScreenWidget::RequestDeployGoalkeeper(
-	const FName SlotId)
+void UFMCodexLocalMatchScreenWidget::RequestDeployGoalkeeper(const FName SlotId)
 {
-	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
-	{
-		MatchController->DeployGoalkeeper(SlotId);
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::DeployGoalkeeper, NAME_None, SlotId);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestFinishDeployment()
 {
-	if (bDeploymentTacticalReferenceOpen)
-	{
-		CloseDeploymentTacticalReference();
-	}
-	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
-	{
-		MatchController->FinishDeployment();
-	}
+	if (bDeploymentTacticalReferenceOpen) CloseDeploymentTacticalReference();
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::FinishDeployment);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestSubmitCarrier(const FName CardId)
 {
-	if (MatchController != nullptr)
-	{
-		MatchController->SubmitCarrier(CardId);
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::Carrier, CardId);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestSubmitMarker(const FName CardId)
 {
-	if (MatchController != nullptr)
-	{
-		MatchController->SubmitMarker(CardId);
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::Marker, CardId);
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitRunner(const FName CardId)
+{
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::Runner, CardId);
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestSubmitHelper(const FName CardId)
+{
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::Helper, CardId);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestSubmitSkill(const FName SkillId)
 {
 	HideTacticalDetail();
-	if (MatchController != nullptr)
-	{
-		MatchController->SubmitSkill(SkillId);
-	}
-}
-
-void UFMCodexLocalMatchScreenWidget::RequestSubmitRunner(const FName CardId)
-{
-	if (MatchController != nullptr)
-	{
-		MatchController->SubmitRunner(CardId);
-	}
-}
-
-void UFMCodexLocalMatchScreenWidget::RequestSubmitHelper(const FName CardId)
-{
-	if (MatchController != nullptr)
-	{
-		MatchController->SubmitHelper(CardId);
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::Skill, SkillId);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestDeclineSelection()
 {
-	if (Presentation.Interaction.Category
-		== EFMCodexUMGInteractionCategory::SelectSkill)
-	{
-		HideTacticalDetail();
-	}
-	if (MatchController != nullptr)
-	{
-		if (Presentation.Interaction.Category
-			== EFMCodexUMGInteractionCategory::SelectSkill)
-		{
-			MatchController->AbandonCurrentTacticalSelection();
-		}
-		else
-		{
-			MatchController->DeclineCurrentSelection();
-		}
-	}
+	if (Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill) HideTacticalDetail();
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::Decline);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestResolveNoLegalSelection()
 {
-	if (Presentation.Interaction.Category
-		== EFMCodexUMGInteractionCategory::SelectSkill)
-	{
-		HideTacticalDetail();
-	}
-	if (MatchController != nullptr)
-	{
-		if (Presentation.Interaction.Category
-			== EFMCodexUMGInteractionCategory::SelectSkill)
-		{
-			MatchController->AbandonCurrentTacticalSelection();
-		}
-		else
-		{
-			MatchController->ResolveNoLegalCurrentSelection();
-		}
-	}
+	if (Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill) HideTacticalDetail();
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::NoLegal);
 }
 
-void UFMCodexLocalMatchScreenWidget::RequestSubmitBranchIntent(
-	const EFMCodexUMGBranchIntent Intent)
+void UFMCodexLocalMatchScreenWidget::RequestSubmitBranchIntent(const EFMCodexUMGBranchIntent Intent)
 {
-	if (MatchController == nullptr)
-	{
-		return;
-	}
-	switch (Intent)
-	{
-	case EFMCodexUMGBranchIntent::DirectShot:
-		MatchController->SubmitBranchIntent(
-			EMatchPlayElectiveBranchIntent::DirectShot);
-		break;
-	case EFMCodexUMGBranchIntent::DeadCorner:
-		MatchController->SubmitBranchIntent(
-			EMatchPlayElectiveBranchIntent::DeadCorner);
-		break;
-	case EFMCodexUMGBranchIntent::CrossHigh:
-		MatchController->SubmitBranchIntent(
-			EMatchPlayElectiveBranchIntent::CrossHigh);
-		break;
-	case EFMCodexUMGBranchIntent::CrossLow:
-		MatchController->SubmitBranchIntent(
-			EMatchPlayElectiveBranchIntent::CrossLow);
-		break;
-	default:
-		break;
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::Branch, NAME_None, NAME_None, Intent);
 }
 
-void UFMCodexLocalMatchScreenWidget::RequestSubmitOneOnOneChoice(
-	const EFMCodexUMGOneOnOneChoice Choice)
+void UFMCodexLocalMatchScreenWidget::RequestSubmitOneOnOneChoice(const EFMCodexUMGOneOnOneChoice Choice)
 {
 	HideTacticalDetail();
-	if (MatchController == nullptr)
-	{
-		return;
-	}
-	if (Choice == EFMCodexUMGOneOnOneChoice::ChipShot)
-	{
-		MatchController->SubmitOneOnOneShotChoice(
-			EMatchPlayThroughBallOneOnOneShotChoice::ChipShot);
-	}
-	else if (Choice == EFMCodexUMGOneOnOneChoice::DirectShot)
-	{
-		MatchController->SubmitOneOnOneShotChoice(
-			EMatchPlayThroughBallOneOnOneShotChoice::DirectShot);
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::OneOnOne, NAME_None, NAME_None, EFMCodexUMGBranchIntent::None, Choice);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 {
-	if (IsInlineFormulaRevealInputBlocked() || MatchController == nullptr)
-	{
-		return;
-	}
 #if WITH_DEV_AUTOMATION_TESTS
-	++PrimaryActionDispatchCountForTesting;
-	LastPrimaryActionDispatchForTesting = Presentation.Interaction.Category;
+	if (MatchBackend && !IsScreenRequestPending() && !IsInlineFormulaRevealInputBlocked())
+	{
+		++PrimaryActionDispatchCountForTesting;
+		LastPrimaryActionDispatchForTesting = Presentation.Interaction.Category;
+	}
 #endif
-	const FFMCodexCrossRollRevealIdentity RequestedIdentity =
-		PendingCrossRollIdentity(Presentation);
-	if (RequestedIdentity.IsValid()
-		&& !SettledCrossRollRevealKeys.Contains(
-			RequestedIdentity.StableKey()))
-	{
-		BeginInlineFormulaReveal(RequestedIdentity, true);
-	}
-	switch (Presentation.Interaction.Category)
-	{
-	case EFMCodexUMGInteractionCategory::RollCrossRoute:
-		MatchController->RollCrossRoute();
-		break;
-	case EFMCodexUMGInteractionCategory::RollThroughBallInitialRoute:
-		MatchController->RollThroughBallInitialRoute();
-		break;
-	case EFMCodexUMGInteractionCategory::RollCrossAttack:
-		MatchController->RollCrossAttack();
-		break;
-	case EFMCodexUMGInteractionCategory::RollCrossDefense:
-		MatchController->RollCrossDefense();
-		break;
-	case EFMCodexUMGInteractionCategory::RollLongShotDirectAttack:
-		MatchController->RollLongShotDirectAttack();
-		break;
-	case EFMCodexUMGInteractionCategory::RollLongShotDirectDefense:
-		MatchController->RollLongShotDirectDefense();
-		break;
-	case EFMCodexUMGInteractionCategory::RollLongShotDeadCorner:
-		MatchController->RollLongShotDeadCorner();
-		break;
-	case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectAttack:
-		MatchController->RollCutInsideShotDirectAttack();
-		break;
-	case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense:
-		MatchController->RollCutInsideShotDirectDefense();
-		break;
-	case EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner:
-		MatchController->RollCutInsideShotDeadCorner();
-		break;
-	case EFMCodexUMGInteractionCategory::RollPassControlRoute:
-		MatchController->RollPassControlRoute();
-		break;
-	case EFMCodexUMGInteractionCategory::RollPassControlAttack:
-		MatchController->RollPassControlAttack();
-		break;
-	case EFMCodexUMGInteractionCategory::RollPassControlDefense:
-		MatchController->RollPassControlDefense();
-		break;
-	case EFMCodexUMGInteractionCategory::CompleteCrossAndAdvance:
-		MatchController->CompleteCrossAndAdvance();
-		break;
-	case EFMCodexUMGInteractionCategory::RollThroughBallFeetAttack:
-		MatchController->RollThroughBallFeetAttack();
-		break;
-	case EFMCodexUMGInteractionCategory::RollThroughBallFeetDefense:
-		MatchController->RollThroughBallFeetDefense();
-		break;
-	case EFMCodexUMGInteractionCategory::RollThroughBallAntiOffsideAttack:
-		MatchController->RollThroughBallAntiOffsideAttack();
-		break;
-	case EFMCodexUMGInteractionCategory
-		::RollThroughBallOneOnOneChipShotAttack:
-		MatchController->RollThroughBallOneOnOneChipShotAttack();
-		break;
-	case EFMCodexUMGInteractionCategory
-		::RollThroughBallOneOnOneDirectShotAttack:
-		MatchController->RollThroughBallOneOnOneDirectShotAttack();
-		break;
-	case EFMCodexUMGInteractionCategory
-		::RollThroughBallOneOnOneDirectShotDefense:
-		MatchController->RollThroughBallOneOnOneDirectShotDefense();
-		break;
-	case EFMCodexUMGInteractionCategory::RollThroughBallBehindDefenseAttack:
-		MatchController->RollThroughBallBehindDefenseAttack();
-		break;
-	case EFMCodexUMGInteractionCategory::RollThroughBallBehindDefenseDefense:
-		MatchController->RollThroughBallBehindDefenseDefense();
-		break;
-	case EFMCodexUMGInteractionCategory::CompleteThroughBallFeetAndAdvance:
-		MatchController->CompleteThroughBallFeetAndAdvance();
-		break;
-	case EFMCodexUMGInteractionCategory::ApplyCrossTerminalResolution:
-		MatchController->ApplyCrossTerminalResolution();
-		break;
-	case EFMCodexUMGInteractionCategory
-		::ApplyThroughBallFeetTerminalResolution:
-		MatchController->ApplyThroughBallFeetTerminalResolution();
-		break;
-	case EFMCodexUMGInteractionCategory::AdvanceAfterTerminal:
-		MatchController->AdvanceAfterTerminal();
-		break;
-	case EFMCodexUMGInteractionCategory::RollSetPieceType:
-	case EFMCodexUMGInteractionCategory::ConfirmSetPieceCarrier:
-	case EFMCodexUMGInteractionCategory::RollShortFreeKickDirectAttack:
-	case EFMCodexUMGInteractionCategory::RollShortFreeKickDirectDefense:
-	case EFMCodexUMGInteractionCategory::RollShortFreeKickAngled:
-	case EFMCodexUMGInteractionCategory::RollLongFreeKickDirectAttack:
-	case EFMCodexUMGInteractionCategory::RollLongFreeKickDirectDefense:
-	case EFMCodexUMGInteractionCategory::RollLongFreeKickPower:
-	case EFMCodexUMGInteractionCategory::RollPenaltyDirectAttack:
-	case EFMCodexUMGInteractionCategory::RollPenaltyDirectDefense:
-	case EFMCodexUMGInteractionCategory::RollPenaltyPanenka:
-	case EFMCodexUMGInteractionCategory::DraftCornerAttacker:
-	case EFMCodexUMGInteractionCategory::DraftCornerDefender:
-	case EFMCodexUMGInteractionCategory::RollCornerParticipantSelection:
-	case EFMCodexUMGInteractionCategory::RollCornerRoute:
-	case EFMCodexUMGInteractionCategory::RollCornerAttack:
-	case EFMCodexUMGInteractionCategory::RollCornerDefense:
-		MatchController->SubmitProjectedPrimaryPlayerIntent();
-		break;
-	default:
-		MatchController->ContinueResolution();
-		break;
-	}
-	if (RequestedIdentity.IsValid()
-		&& !MatchController->GetLastDiagnostic().bHostSuccess)
-	{
-		CancelInlineFormulaReveal();
-		ObservePendingCrossRoll(Presentation);
-		RefreshVisuals();
-	}
+	SubmitScreenRequest(EFMCodexMatchScreenIntent::Continue);
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleStartNewMatchClicked()
@@ -1957,6 +1767,7 @@ void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragStarted(
 		}
 		HideDetailOverlay();
 		bDeploymentDragActive = true;
+		LastScreenSubmission = EFMCodexMatchScreenSubmission::Rejected;
 		bDeploymentDropSubmitted = false;
 		InteractionState = EFMCodexUMGCardInteractionState::Dragging;
 		PitchWidget->BeginDeploymentDrag(
@@ -1971,9 +1782,10 @@ void UFMCodexLocalMatchScreenWidget::HandleDeploymentDragFinished()
 		PitchWidget->EndDeploymentDrag();
 	}
 	HideDetailOverlay();
-	LastCompletedDragState = bDeploymentDropSubmitted
-		? EFMCodexUMGCardInteractionState::DropSuccess
-		: EFMCodexUMGCardInteractionState::DropCancelled;
+	LastCompletedDragState = LastScreenSubmission == EFMCodexMatchScreenSubmission::Queued && IsScreenRequestPending()
+		? EFMCodexUMGCardInteractionState::DropPending
+		: bDeploymentDropSubmitted ? EFMCodexUMGCardInteractionState::DropSuccess
+			: EFMCodexUMGCardInteractionState::DropCancelled;
 	InteractionState = LastCompletedDragState;
 	bDeploymentDragActive = false;
 	bDeploymentDropSubmitted = false;
@@ -1997,14 +1809,11 @@ void UFMCodexLocalMatchScreenWidget::HandlePitchDeploymentDropped(
 	{
 		RequestDeployOrdinary(CardId, SlotId);
 	}
-	const FString ExpectedCommand = bGoalkeeper
-		? TEXT("DeployGoalkeeper") : TEXT("DeployOrdinary");
-	bDeploymentDropSubmitted = MatchController != nullptr
-		&& MatchController->GetLastDiagnostic().CommandName == ExpectedCommand
-		&& MatchController->GetLastDiagnostic().bHostSuccess;
-	InteractionState = bDeploymentDropSubmitted
-		? EFMCodexUMGCardInteractionState::DropSuccess
-		: EFMCodexUMGCardInteractionState::DropCancelled;
+	bDeploymentDropSubmitted = LastScreenSubmission == EFMCodexMatchScreenSubmission::Completed;
+	InteractionState = LastScreenSubmission == EFMCodexMatchScreenSubmission::Queued
+		? EFMCodexUMGCardInteractionState::DropPending
+		: bDeploymentDropSubmitted ? EFMCodexUMGCardInteractionState::DropSuccess
+			: EFMCodexUMGCardInteractionState::DropCancelled;
 }
 
 void UFMCodexLocalMatchScreenWidget::BindDetailHoverSources()
@@ -4190,6 +3999,25 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 					continue;
 				}
 			}
+			// An owner snapshot may coalesce multiple accepted Cross events. Drain the
+			// disclosed prefix in order through this same timeline, without replaying
+			// history on a newly constructed screen or inventing intermediate state.
+			bool bStartedDisclosedSuccessor = false;
+			for (const auto& Event : Presentation.ResolvedRolls)
+			{
+				if (Event.AttackSequence != CompletedIdentity.AttackSequence
+					|| Event.SequenceIndex <= CompletedIdentity.RollSequenceIndex) continue;
+				FFMCodexCrossRollRevealIdentity Next;
+				Next.Kind = Event.Kind; Next.AttackSequence = Event.AttackSequence;
+				Next.ContestId = Event.ContestId; Next.RollSequenceIndex = Event.SequenceIndex;
+				Next.OwnerSide = Event.OwnerSide;
+				if (!Next.IsValid() || SettledCrossRollRevealKeys.Contains(Next.StableKey())) continue;
+				BeginInlineFormulaReveal(Next, false);
+				UpdateInlineFormulaRevealState(Presentation);
+				bStartedDisclosedSuccessor = true; RefreshVisuals();
+				break;
+			}
+			if (bStartedDisclosedSuccessor) continue;
 			ObservePendingCrossRoll(Presentation);
 			if (MatchController != nullptr
 				&& (CompletedIdentity.Kind
@@ -4354,7 +4182,9 @@ void UFMCodexLocalMatchScreenWidget::HandleInlineFormulaRevealTimer()
 	const float DeltaSeconds =
 		IsPerFrameMotionPhase(InlineFormulaRevealPhase)
 			? World != nullptr ? World->GetDeltaSeconds() : 0.0f
-			: RevealHoldTickInterval;
+			: World != nullptr
+				? static_cast<float>(FMath::Max(0.0, World->GetTimeSeconds() - InlineFormulaRevealTimerScheduledAt))
+				: 0.0f;
 	AdvanceInlineFormulaReveal(DeltaSeconds, false);
 	StartInlineFormulaRevealTimer();
 }
@@ -4370,6 +4200,7 @@ void UFMCodexLocalMatchScreenWidget::StartInlineFormulaRevealTimer()
 		if (!World->GetTimerManager().IsTimerActive(
 			InlineFormulaRevealTimerHandle))
 		{
+			InlineFormulaRevealTimerScheduledAt = World->GetTimeSeconds();
 			if (FMCodexLocalMatchScreenWidget::IsPerFrameMotionPhase(
 				InlineFormulaRevealPhase))
 			{
@@ -4597,6 +4428,16 @@ bool UFMCodexLocalMatchScreenWidget::TryReadAuthoritativeRawRoll(
 		OutDomainMaximum = 6;
 		return bResolved && OutRawValue >= 1 && OutRawValue <= 6;
 	}
+	if (const auto* Event = InPresentation.ResolvedRolls.FindByPredicate([&Identity](const auto& E)
+		{
+			return E.Kind == Identity.Kind && E.AttackSequence == Identity.AttackSequence
+				&& E.ContestId == Identity.ContestId && E.SequenceIndex == Identity.RollSequenceIndex
+				&& E.OwnerSide == Identity.OwnerSide;
+		}))
+	{
+		OutRawValue = Event->RawD6; OutDomainMinimum = 1; OutDomainMaximum = 6;
+		return OutRawValue >= 1 && OutRawValue <= 6;
+	}
 	const FMatchPlayCurrentAttackResolutionFactProjection& Facts =
 		InPresentation.Resolution.FormulaFacts;
 	if (!Facts.bSuccess || !Facts.bHasFacts
@@ -4714,6 +4555,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	{
 		return;
 	}
+#if !UE_BUILD_SHIPPING
+	HandoffAuditRefresh.Broadcast(false);
+#endif
 	LocalRackBounds->SetWidthOverride(FMCodexHandMicroDiagnostics::RackWidth);
 	PitchBounds->SetWidthOverride(FMCodexHandMicroDiagnostics::PitchWidth);
 	OpponentRackBounds->SetWidthOverride(FMCodexHandMicroDiagnostics::RackWidth);
@@ -4833,24 +4677,15 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 				>= FMCodexLocalMatchScreenWidget::FormulaDisclosureDelay;
 		FString DisclosedResult = FString::Printf(TEXT("掷点 %d"),
 			RollRevealAuthoritativeRawValue);
-		if (bResourceDisclosed && MatchController != nullptr)
+		if (bResourceDisclosed && bFullD12)
 		{
-			const FFMCodexLocalMatchInteractionView& View =
-				MatchController->GetInteractionView();
-			if (bFullD12)
-			{
-				DisclosedResult += View.RouteKind
-					== EMatchPlayCurrentAttackRouteKind::Ordinary
-						? FString::Printf(TEXT("  →  战术点 %d"), View.ActionPoint)
-					: View.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff
-						? FString(TEXT("  →  罚下一人"))
-						: FString(TEXT("  →  定位球"));
-			}
-			else if (bTypeD6)
-			{
-				DisclosedResult += TEXT("  →  ") + View.ActionLabel;
-			}
+			DisclosedResult += Presentation.Header.RouteKind == EMatchPlayCurrentAttackRouteKind::Ordinary
+				? FString::Printf(TEXT("  →  战术点 %d"), Presentation.Header.CurrentAttackerTacticalPoints)
+				: Presentation.Header.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff
+					? FString(TEXT("  →  罚下一人")) : FString(TEXT("  →  定位球"));
 		}
+		else if (bResourceDisclosed && bTypeD6 && MatchController)
+			DisclosedResult += TEXT("  →  ") + MatchController->GetInteractionView().ActionLabel;
 		TacticalPointRevealResult->SetText(FText::FromString(
 			bResourceDisclosed
 				? DisclosedResult
@@ -4862,7 +4697,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 						: FString(TEXT("等待掷点结果"))));
 	}
 	BindDetailHoverSources();
-	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
+
 	const bool bDeploymentContext = Presentation.Interaction.Category
 		== EFMCodexUMGInteractionCategory::Deploy;
 	if (bDeploymentTacticalReferenceOpen && !bDeploymentContext)
@@ -4895,11 +4730,17 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		bLongShotProductionOwnsResolution
 		&& DisplayedLongShot.Stage == EFMCodexUMGLongShotStage::BranchChoice
 		&& !DisplayedLongShot.BranchChoices.IsEmpty();
+	const bool bCentralOwnsDockControls = bCentralSurfaceClaimsPrimaryAction
+		|| bCentralOneOnOneChoiceOwner || bCentralLongShotChoiceOwner;
+	const bool bMirrorPrompt = Presentation.bMirrorActionWaitPrompt;
+	InteractionPanel->SetActionWaitPromptMode(bMirrorPrompt,
+		bCentralOwnsDockControls || Presentation.bActionWaitPromptReadOnly,
+		Presentation.ActionWaitActorText, Presentation.ActionWaitActionText);
+	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
 	InteractionPanel->SetVisibility(
-		Presentation.FullTime.bVisible || bCentralSurfaceClaimsPrimaryAction || bOneOnOneDisclosureGate
-			|| bCentralOneOnOneChoiceOwner || bCentralLongShotChoiceOwner
-			? ESlateVisibility::Collapsed
-			: ESlateVisibility::Visible);
+		Presentation.FullTime.bVisible || bOneOnOneDisclosureGate
+			|| (bMirrorPrompt ? IsInlineFormulaRevealInputBlocked() : bCentralOwnsDockControls)
+			? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	InteractionPanel->SetInteractionBlocked(
 		IsInlineFormulaRevealInputBlocked());
 	ResolutionPanel->RefreshFromPresentation(Presentation.Resolution);
@@ -4936,5 +4777,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 			: ESlateVisibility::SelfHitTestInvisible);
 	MainScreen->SetIsEnabled(!Presentation.FullTime.bVisible);
 	FullTimePanel->RefreshFromPresentation(Presentation.FullTime);
+#if !UE_BUILD_SHIPPING
+	HandoffAuditRefresh.Broadcast(true);
+#endif
 
 }

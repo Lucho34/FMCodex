@@ -817,3 +817,28 @@ This extends the preceding seventeen-kind contest schema; that schema's no-termi
 - Player labels use existing safe roster/preferred display names and centralized generic fallbacks; system-awarded history uses its explicit flag and label. Widget text never parses or displays raw IDs. ScorerCardId is a canonical identity, not a name-generation recipe.
 - Fixed PlayerAScore/PlayerBScore copy the same safe view as history. Before terminal permission the current score increment/history/scorer/outcome are withheld. On reveal all appear in the same revision. After Advance score/history persist while current terminal/selection/route/dice facts clear. Full-time score/result/history remain public without an extra attack.
 - None of these server-to-client facts adds gameplay results to the player request or ACK. No complete State/session, Formula array, future RNG or universal outcome/lifecycle protocol is introduced.
+
+## Network player-facing presentation values
+
+FFMCodexNetworkClientViewSnapshot.Presentation is an optional owner-only value projection in the same MatchInstanceId/ViewRevision envelope.
+
+| Field | Safe source / purpose |
+|---|---|
+| Header | Fixed viewer orientation, player/team labels, disclosed scores, attack/opportunity context and accepted entry D12 |
+| LocalRack / OpponentRack | Public hands, canonical CardId, used/deployed states and authority-derived tactical highlights |
+| PitchRegions | Public slots, placements, GK and selected role/status labels; owner-safe selection affordances |
+| CardCatalog | At most 40 unique CardIds with static public card display data, reused by card leaves; images/assets are not replicated |
+| Interaction | Existing display-ready category and owner-safe deployment/participant/Skill/branch options, with separate transport capability |
+| InlineFormula / BranchSurface | Existing central Formula/Narrative and Cross branch presentation built from safe facts |
+| ResolvedRolls | At most three accepted/disclosed Cross events: kind, attack sequence, contest, sequence index, owner, RawD6; no provider or future roll |
+| FullTime | Existing final player/team identities, final score and public goal list |
+
+Each hand has at most 20 cells; the projection accepts at most eight pitch regions, twenty slots per region, twenty deployment/selection choices and two branch choices. Each deployment choice has at most eighty destinations. Public final goals retain the current six-goal profile bound. Overbound projection fails as a whole rather than silently truncating a legal list.
+
+Static card presentation is interned by CardId on the server and restored by that exact identity on the client; dynamic eligibility/status/role data stays with each leaf. Existing widgets resolve portraits locally from stable identity. Developer-reference text is removed. No widget derives gameplay identity from a display name.
+
+FFMCodexMatchScreenRequest carries only a gesture, selected option/slot or typed branch/choice, and the displayed interaction category. It contains no Side, RNG, Formula, score or outcome. Completed, Queued and Rejected describe adapter submission, not replicated gameplay state. Selection option bEnabled denotes transport capability and defaults true for Local consumers.
+
+The client reads formatted Formula terms/results and accepted roll events. It does not rebuild internal FormulaFacts, infer route from D6, or rescore a contest. Raw FMatchPlayState, internal InteractionView, Session, hidden RNG state and provider details are absent from this projection.
+
+The optional bPreservePendingCrossFormula disclosure permission applies only to Cross after route disclosure. It preserves unresolved descriptors only when bResolved is false and RawD6 is zero; it does not extend permission for any accepted value. If an accepted roll is withheld, FormulaContests and Decisions remain removed. This presentation variant does not change the narrow transport snapshot's shape checks or action availability.

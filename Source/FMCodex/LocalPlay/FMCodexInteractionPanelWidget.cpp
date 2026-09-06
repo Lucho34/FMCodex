@@ -437,6 +437,15 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	Body->AddChildToHorizontalBox(EmptyStateText);
 }
 
+void UFMCodexInteractionPanelWidget::SetActionWaitPromptMode(bool bEnabled, bool bReadOnly,
+	const FText& InActorText, const FText& InActionText)
+{
+	bActionWaitPrompt = bEnabled;
+	bReadOnlyPrompt = bEnabled && bReadOnly;
+	ActionWaitActorText = InActorText;
+	ActionWaitActionText = InActionText;
+}
+
 void UFMCodexInteractionPanelWidget::RefreshVisuals()
 {
 	if (KickerText == nullptr)
@@ -474,7 +483,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	Style.ApplyText(*ActorText, bCompactTacticalPointAction
 		? EFMCodexPlayerUITextRole::Kicker
 		: EFMCodexPlayerUITextRole::Status);
-	TitleText->SetVisibility(bCompactTacticalPointAction
+	TitleText->SetVisibility(bCompactTacticalPointAction && !bActionWaitPrompt
 		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	ContextText->SetVisibility(bCompactTacticalPointAction
 		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
@@ -564,6 +573,26 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		FFMCodexPlayerUIPresentationText::MatchScreenLabel(Fallback));
 	EmptyStateText->SetVisibility(Fallback.IsEmpty()
 		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	if (bActionWaitPrompt)
+	{
+		// Override only rendered copy; the original actor label still drives the existing style.
+		ActorText->SetText(ActionWaitActorText);
+		TitleText->SetText(ActionWaitActionText);
+		// Two status lines replace generic fallback/context, while existing controls keep their locations.
+		ContextText->SetVisibility(!bReadOnlyPrompt && Presentation.bUseOnPitchPlayerSelection
+			&& !Presentation.OnPitchSelectionHintLabel.IsEmpty()
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		EmptyStateText->SetVisibility(ESlateVisibility::Collapsed);
+		if (bReadOnlyPrompt)
+		{
+			CandidateRegion->SetVisibility(ESlateVisibility::Collapsed);
+			ChoiceRegion->SetVisibility(ESlateVisibility::Collapsed);
+			for (UButton* Button : {StartButton.Get(), TacticalPointRollButton.Get(), FinishButton.Get(),
+				ContinueButton.Get(), DeclineButton.Get(), NoLegalButton.Get(), DeploymentTacticalReferenceButton.Get()})
+				Button->SetVisibility(ESlateVisibility::Collapsed);
+			TacticalPointRollButton->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
 	SetIsEnabled(!bInteractionBlocked);
 }
 
@@ -640,6 +669,7 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 		default:
 			break;
 		}
+		Option->SetIsEnabled(Choice.bEnabled);
 		Group->AddChildToVerticalBox(Option);
 		CandidateCardsBody->AddChildToHorizontalBox(Group);
 	}

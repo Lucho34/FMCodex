@@ -428,7 +428,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 	ExactFields(FFMCodexNetworkPlayerIntentAck::StaticStruct(),
 		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("Code"), TEXT("ViewRevision")});
 	ExactFields(FFMCodexNetworkClientViewSnapshot::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("ViewRevision"), TEXT("ViewerSide"), TEXT("BootstrapState"),
+		{TEXT("Presentation"), TEXT("MatchInstanceId"), TEXT("ViewRevision"), TEXT("ViewerSide"), TEXT("BootstrapState"),
 		TEXT("InteractionState"), TEXT("bMatchInitialized"), TEXT("bMatchEnded"), TEXT("AttackSequence"),
 		TEXT("CurrentAttackingSide"), TEXT("ExpectedActingSide"), TEXT("PlayerAScore"), TEXT("PlayerBScore"),
 		TEXT("PlayerAMaxAttackOpportunities"), TEXT("PlayerBMaxAttackOpportunities"),

@@ -9,8 +9,18 @@ param(
     [switch]$ValidateOnly,
     [switch]$DeploymentSlice,
     [ValidateSet('Cross', 'PassControl', 'ThroughBall')][string]$InitialRouteMilestone,
-    [ValidateSet('Goal', 'NoGoal', 'FinalGoal', 'FinalNoGoal')][string]$CrossTerminalMilestone
+    [ValidateSet('Goal', 'NoGoal', 'FinalGoal', 'FinalNoGoal')][string]$CrossTerminalMilestone,
+    [ValidateSet('Goal', 'NoGoal', 'FinalGoal', 'FinalNoGoal')][string]$PlayerFacingCrossMilestone,
+    [switch]$NetworkDiagnostics,
+    [switch]$HandoffLatencyAudit
 )
+
+# The existing player screen has fixed production card/pitch widths.
+# Preserve diagnostic defaults; explicit caller sizes always win.
+if ($PlayerFacingCrossMilestone) {
+    if (-not $PSBoundParameters.ContainsKey('ResX')) { $ResX = 1600 }
+    if (-not $PSBoundParameters.ContainsKey('ResY')) { $ResY = 900 }
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -49,8 +59,17 @@ function Get-NetworkPlayLaunchPlan {
         # Prevent UE 5.3 Live Coding auto-start; these remain visible game windows.
         '-unattended', ('-ResX={0}' -f $Width), ('-ResY={0}' -f $Height)
     )
+    if ($HandoffLatencyAudit) { $commonArguments += '-HandoffLatencyAudit' }
     # Explicit host-only automation fixture. Default launch keeps production secure RNG.
     $fixtureArguments = @()
+    if ($PlayerFacingCrossMilestone) {
+        if ($DeploymentSlice -or $InitialRouteMilestone -or $CrossTerminalMilestone) {
+            throw 'PlayerFacingCrossMilestone 请单独使用。'
+        }
+        $commonArguments += '-FMCodexNetworkPlayerFacingUI'
+        if ($NetworkDiagnostics) { $commonArguments += '-FMCodexNetworkDiagnostics' }
+        $fixtureArguments = @('-FMCodexNetworkPlayerFacingCrossMilestone=' + $PlayerFacingCrossMilestone)
+    }
     if ($CrossTerminalMilestone -and ($DeploymentSlice -or $InitialRouteMilestone)) {
         throw 'CrossTerminalMilestone 请单独使用，不可组合 DeploymentSlice / InitialRouteMilestone。'
     }

@@ -5,21 +5,33 @@
 
 #include "FMCodexNetworkMatchTypes.h"
 #include "FMCodexNetworkPlayerIntent.h"
+#include "../LocalPlay/FMCodexMatchScreenBackend.h"
+
+#include "../Diagnostics/FMCodexHandoffLatencyAudit.h"
 
 #include "FMCodexNetworkMatchPlayerController.generated.h"
 
+class UFMCodexLocalMatchScreenWidget;
 class STextBlock;
 class SWidget;
 class SVerticalBox;
 
 UCLASS()
 class FMCODEX_API AFMCodexNetworkMatchPlayerController final
-	: public APlayerController
+	: public APlayerController, public IFMCodexMatchScreenBackend
 {
 	GENERATED_BODY()
 
 public:
 	AFMCodexNetworkMatchPlayerController();
+	virtual EFMCodexMatchScreenSubmission SubmitScreenIntent(const FFMCodexMatchScreenRequest& Request) override;
+	virtual bool IsScreenIntentPending() const override { return IntentClientState.IsPending(); }
+	UFMCodexLocalMatchScreenWidget* GetPlayerMatchScreen() const { return PlayerMatchScreen; }
+	void RefreshPlayerFacingUI();
+	/** Automation observer drives the same screen callbacks; no direct transport or state mutation. */
+	UFUNCTION(Exec) void DevPlayerFacingAction(FName Action, FName Option = NAME_None);
+	UFUNCTION(Exec) void DevPlayerFacingEvidence();
+
 
 	void SetOwnerViewOnServer(
 		const FFMCodexNetworkClientViewSnapshot& InOwnerView);
@@ -114,6 +126,10 @@ private:
 	UFUNCTION()
 	void OnRep_OwnerView();
 
+	bool IsPlayerFacingMode() const;
+	UPROPERTY() TObjectPtr<UFMCodexLocalMatchScreenWidget> PlayerMatchScreen;
+	FGuid PresentedMatch;
+	int32 PresentedRevision = -1;
 	FFMCodexNetworkIntentClientState IntentClientState;
 
 	void SubmitMarkerChoice(const FFMCodexNetworkSubmitMarkerPayload& Choice);
@@ -131,6 +147,9 @@ private:
 	FFMCodexNetworkClientViewSnapshot OwnerView;
 
 #if !UE_BUILD_SHIPPING
+	FMCodexHandoffAudit::FPresentationObserver HandoffObserver;
+	void TraceHandoffViewApplied();
+	void TraceHandoffPresentation(bool bAfterRender);
 	TSharedPtr<SWidget> StatusViewportWidget;
 	TSharedPtr<STextBlock> StatusText;
 	TSharedPtr<SVerticalBox> ParticipantChoices;

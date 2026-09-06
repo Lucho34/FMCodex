@@ -1,4 +1,13 @@
 #include "FMCodexNetworkMatchPlayerController.h"
+#include "FMCodexNetworkMatchScreenActions.h"
+#include "../LocalPlay/FMCodexLocalMatchScreenWidget.h"
+#include "../LocalPlay/FMCodexMatchHeaderWidget.h"
+#include "../LocalPlay/FMCodexInteractionPanelWidget.h"
+#include "Components/TextBlock.h"
+#include "Components/Button.h"
+#include "../LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 #include "FMCodexNetworkMatchGameState.h"
 #include "FMCodexNetworkMatchGameMode.h"
@@ -7,6 +16,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
+#include "Engine/LocalPlayer.h"
 #include "Net/UnrealNetwork.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Layout/SBorder.h"
@@ -16,6 +26,29 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
+
+
+#if !UE_BUILD_SHIPPING
+namespace
+{
+ FMCodexHandoffAudit::FContext HandoffContext(const FFMCodexNetworkClientViewSnapshot& V, const APlayerController& Controller,
+  const FFMCodexNetworkPlayerIntentEnvelope* E = nullptr)
+ {
+  FMCodexHandoffAudit::FContext C;
+  C.Match=V.MatchInstanceId; C.Sequence=V.AttackSequence; C.Revision=V.ViewRevision;
+  C.Viewer=static_cast<int32>(V.ViewerSide); C.Target=static_cast<int32>(V.ExpectedActingSide);
+  C.Role=Controller.HasAuthority()?TEXT("ListenHost"):TEXT("RemoteClient");
+  if(E) { C.Match=E->MatchInstanceId; C.Sequence=E->ExpectedAttackSequence; C.Request=E->RequestId;
+   C.Source=C.Viewer; C.Intent=StaticEnum<EFMCodexNetworkPlayerIntentKind>()->GetNameStringByValue(static_cast<int64>(E->IntentKind)); }
+  return C;
+ }
+ FString HandoffSafeFields(const FFMCodexNetworkClientViewSnapshot& V)
+ {
+  return FString::Printf(TEXT(",\"SafeCategory\":%d,\"SafeExpectedSide\":%d,\"SafeSequence\":%lld"),
+   static_cast<int32>(V.Presentation.Interaction.Category),static_cast<int32>(V.ExpectedActingSide),V.AttackSequence);
+ }
+}
+#endif
 
 #define LOCTEXT_NAMESPACE "FMCodexNetworkMatchPlayerController"
 
@@ -81,10 +114,8 @@ void AFMCodexNetworkMatchPlayerController::BeginPlay()
 	Super::BeginPlay();
 	if (IsLocalController())
 	{
-#if !UE_BUILD_SHIPPING
 		bShowMouseCursor = true;
 		SetInputMode(FInputModeGameAndUI());
-#endif
 		InitializeDeveloperStatusUI();
 		RefreshNetworkBootstrapUI();
 	}
@@ -93,6 +124,12 @@ void AFMCodexNetworkMatchPlayerController::BeginPlay()
 void AFMCodexNetworkMatchPlayerController::EndPlay(
 	const EEndPlayReason::Type EndPlayReason)
 {
+	if (PlayerMatchScreen)
+	{
+		PlayerMatchScreen->SetMatchBackend(nullptr);
+		PlayerMatchScreen->RemoveFromParent();
+		PlayerMatchScreen = nullptr;
+	}
 #if !UE_BUILD_SHIPPING
 	if (StatusViewportWidget.IsValid() && GEngine != nullptr
 		&& GEngine->GameViewport != nullptr)
@@ -112,6 +149,15 @@ void AFMCodexNetworkMatchPlayerController::SetOwnerViewOnServer(
 {
 	check(HasAuthority());
 	OwnerView = InOwnerView;
+#if !UE_BUILD_SHIPPING
+ if(const auto* Source=FMCodexHandoffAudit::ServerContext())
+ {
+  auto C=*Source; C.Revision=OwnerView.ViewRevision; C.Viewer=static_cast<int32>(OwnerView.ViewerSide);
+  C.Target=static_cast<int32>(OwnerView.ExpectedActingSide);
+  FMCodexHandoffAudit::Emit(TEXT("T2.ServerViewPublished"),C,HandoffSafeFields(OwnerView));
+ }
+ if(IsLocalController()) TraceHandoffViewApplied();
+#endif
 	IntentClientState.ObserveView(OwnerView);
 	UE_LOG(LogFMCodexNetworkPlay, Log,
 		TEXT("Stable deployment view: Side=%d Revision=%d GkSide=%d FinishedA=%d FinishedB=%d Complete=%d Wait=%d ExpectedSide=%d"),
@@ -151,6 +197,9 @@ void AFMCodexNetworkMatchPlayerController::OnRep_PlayerState()
 
 void AFMCodexNetworkMatchPlayerController::OnRep_OwnerView()
 {
+#if !UE_BUILD_SHIPPING
+ TraceHandoffViewApplied();
+#endif
 	UE_LOG(LogFMCodexNetworkPlay, Log,
 		TEXT("Client owner-safe View: MatchInstanceId=%s Side=%d Revision=%d Ready=%d."),
 		*OwnerView.MatchInstanceId.ToString(
@@ -170,6 +219,7 @@ void AFMCodexNetworkMatchPlayerController::OnRep_OwnerView()
 
 void AFMCodexNetworkMatchPlayerController::InitializeDeveloperStatusUI()
 {
+	if (IsPlayerFacingMode() && !FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkDiagnostics"))) return;
 #if !UE_BUILD_SHIPPING
 	if (StatusViewportWidget.IsValid() || GEngine == nullptr
 		|| GEngine->GameViewport == nullptr)
@@ -272,6 +322,7 @@ void AFMCodexNetworkMatchPlayerController::InitializeDeveloperStatusUI()
 
 void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 {
+	RefreshPlayerFacingUI();
 #if !UE_BUILD_SHIPPING
 	if (StatusText.IsValid())
 	{
@@ -1041,6 +1092,15 @@ void AFMCodexNetworkMatchPlayerController::ClientReceivePlayerIntentAck_Implemen
 	const FFMCodexNetworkPlayerIntentAck& Ack)
 {
 	const bool bCorrelated = IntentClientState.ObserveAck(Ack);
+#if !UE_BUILD_SHIPPING
+ if(FMCodexHandoffAudit::Enabled())
+ {
+  auto C=HandoffContext(OwnerView,*this); C.Match=Ack.MatchInstanceId; C.Request=Ack.RequestId; C.Revision=Ack.ViewRevision; C.Source=C.Viewer;
+  FMCodexHandoffAudit::Emit(TEXT("TA.MatchingAckReceived"),C,FString::Printf(TEXT(",\"Correlated\":%s,\"PendingAfter\":%lld,\"AckCode\":%d"),bCorrelated?TEXT("true"):TEXT("false"),IntentClientState.GetPendingRequestId(),static_cast<int32>(Ack.Code)));
+ }
+#endif
+	if (bCorrelated && Ack.Code != EFMCodexNetworkIntentAckCode::Accepted && PlayerMatchScreen)
+		PlayerMatchScreen->NotifyScreenRequestRejected();
 	UE_LOG(LogFMCodexNetworkPlay, Log,
 		TEXT("Intent ACK: Match=%s Request=%lld ACK=%s Revision=%d Correlated=%d Pending=%lld"),
 		*Ack.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Ack.RequestId,
@@ -1183,3 +1243,153 @@ void AFMCodexNetworkMatchPlayerController::DevAdvanceAfterTerminal()
 }
 
 #undef LOCTEXT_NAMESPACE
+
+
+bool AFMCodexNetworkMatchPlayerController::IsPlayerFacingMode() const
+{
+	return OwnerView.Presentation.bAvailable
+		|| FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingUI"));
+}
+
+void AFMCodexNetworkMatchPlayerController::RefreshPlayerFacingUI()
+{
+	// During Logout a remote controller can report local callspace while Player
+	// is still its connection. UMG requires an actual LocalPlayer owner.
+	if (GetNetMode() == NM_DedicatedServer || !IsLocalController() || !IsPlayerFacingMode()
+		|| (Player && !Cast<ULocalPlayer>(Player))) return;
+	if (PresentedMatch == OwnerView.MatchInstanceId && OwnerView.ViewRevision < PresentedRevision) return;
+	if (!PlayerMatchScreen)
+	{
+		PlayerMatchScreen = Player
+			? CreateWidget<UFMCodexLocalMatchScreenWidget>(this, UFMCodexLocalMatchScreenWidget::StaticClass())
+			: CreateWidget<UFMCodexLocalMatchScreenWidget>(GetWorld(), UFMCodexLocalMatchScreenWidget::StaticClass());
+		if (!PlayerMatchScreen) return;
+#if !UE_BUILD_SHIPPING
+  if(FMCodexHandoffAudit::Enabled()) PlayerMatchScreen->HandoffAuditRefresh.AddUObject(this,&AFMCodexNetworkMatchPlayerController::TraceHandoffPresentation);
+#endif
+		PlayerMatchScreen->SetMatchBackend(this);
+		if (GEngine && GEngine->GameViewport) PlayerMatchScreen->AddToViewport(50);
+		UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("PlayerFacing UI: Screen=%s Read=NetworkMatchPresentationAdapter Write=NetworkMatchScreenActions LocalController=%d"),
+			*PlayerMatchScreen->GetClass()->GetName(), IsLocalController());
+	}
+	if (PresentedMatch != OwnerView.MatchInstanceId)
+		PlayerMatchScreen->ResetPresentationSession();
+	PresentedMatch = OwnerView.MatchInstanceId; PresentedRevision = OwnerView.ViewRevision;
+	auto Model = FFMCodexNetworkMatchPresentationAdapter::Read(OwnerView, IntentClientState.IsPending());
+	if (OwnerView.BootstrapState != EFMCodexNetworkBootstrapState::MatchReady)
+		FFMCodexNetworkMatchPresentationAdapter::DisableActions(Model);
+	PlayerMatchScreen->RefreshFromPresentation(Model);
+}
+
+EFMCodexMatchScreenSubmission AFMCodexNetworkMatchPlayerController::SubmitScreenIntent(
+	const FFMCodexMatchScreenRequest& Request)
+{
+	if (!IsLocalController()) return EFMCodexMatchScreenSubmission::Rejected;
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!FFMCodexNetworkMatchScreenActions::Begin(Request, OwnerView, IntentClientState, Envelope))
+		return EFMCodexMatchScreenSubmission::Rejected;
+#if !UE_BUILD_SHIPPING
+ if(FMCodexHandoffAudit::Enabled()) FMCodexHandoffAudit::Emit(TEXT("T0.LocalSubmit"),HandoffContext(OwnerView,*this,&Envelope));
+#endif
+	RefreshPlayerFacingUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("PlayerFacing submit: Match=%s Request=%lld ViewerSide=%d Sequence=%lld Kind=%d Revision=%d Pending=%lld"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence,
+		static_cast<int32>(Envelope.IntentKind), OwnerView.ViewRevision, IntentClientState.GetPendingRequestId());
+#if !UE_BUILD_SHIPPING
+ if(FMCodexHandoffAudit::Enabled()) FMCodexHandoffAudit::Emit(TEXT("TS.RPCSend"),HandoffContext(OwnerView,*this,&Envelope));
+#endif
+	// Generated RPC for both the listen host and remote owner. No authority shortcut.
+	ServerSubmitPlayerIntent(Envelope);
+	return EFMCodexMatchScreenSubmission::Queued;
+}
+
+void AFMCodexNetworkMatchPlayerController::DevPlayerFacingAction(FName Action, FName Option)
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!PlayerMatchScreen) return;
+	if (Action == TEXT("Skill")) PlayerMatchScreen->RequestSubmitSkill(Option);
+	else if (Action == TEXT("High")) PlayerMatchScreen->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossHigh);
+	else if (Action == TEXT("Low")) PlayerMatchScreen->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossLow);
+	else if (Action == TEXT("Continue")) PlayerMatchScreen->RequestContinueResolution();
+	else if (Action == TEXT("D12")) PlayerMatchScreen->RequestRollTacticalPoints();
+#endif
+}
+void AFMCodexNetworkMatchPlayerController::DevPlayerFacingEvidence()
+{
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (!PlayerMatchScreen) return;
+	const auto& M = PlayerMatchScreen->GetPresentation();
+	const auto& Displayed = PlayerMatchScreen->GetMatchHeader()->GetPresentation();
+	const auto& Formula = PlayerMatchScreen->GetInlineFormulaSurface()->GetPresentation();
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("PlayerFacing evidence: Match=%s Side=%d Revision=%d Sequence=%lld Category=%d Phase=%d Pending=%lld DisplayA=%s DisplayB=%s SafeA=%s SafeB=%s Narrative=%d Formula=%d FullTime=%d"),
+		*OwnerView.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), static_cast<int32>(OwnerView.ViewerSide),
+		OwnerView.ViewRevision, M.Header.AttackSequence, static_cast<int32>(M.Interaction.Category),
+		static_cast<int32>(PlayerMatchScreen->GetInlineFormulaRevealPhase()), IntentClientState.GetPendingRequestId(),
+		*Displayed.PlayerAScoreLabel, *Displayed.PlayerBScoreLabel, *M.Header.PlayerAScoreLabel, *M.Header.PlayerBScoreLabel,
+		Formula.bNarrativeAvailable, Formula.bVisible, M.FullTime.bVisible);
+	auto* Dock = PlayerMatchScreen->GetInteractionPanel();
+	const auto* ActorText = Cast<UTextBlock>(Dock->GetWidgetFromName(TEXT("InteractionExpectedActor")));
+	const auto* ActionText = Cast<UTextBlock>(Dock->GetWidgetFromName(TEXT("InteractionActionTitle")));
+	const auto* LowerContinue = Cast<UButton>(Dock->GetWidgetFromName(TEXT("InteractionContinueButton")));
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("PlayerFacing prompt: Side=%d Revision=%d Actor=%d Visible=%d ActorText=[%s] ActionText=[%s] LowerContinue=%d FormulaCTA=%d D12=%d"),
+		static_cast<int32>(OwnerView.ViewerSide), OwnerView.ViewRevision, static_cast<int32>(OwnerView.ExpectedActingSide),
+		Dock->GetVisibility()!=ESlateVisibility::Collapsed, *ActorText->GetText().ToString(), *ActionText->GetText().ToString(),
+		LowerContinue->GetVisibility()!=ESlateVisibility::Collapsed, Formula.PrimaryAction.bVisible, M.Interaction.bCanRollTacticalPoints);
+
+#endif
+}
+
+#if !UE_BUILD_SHIPPING
+void AFMCodexNetworkMatchPlayerController::TraceHandoffViewApplied()
+{
+ if(!FMCodexHandoffAudit::Enabled()) return;
+ const int32 Phase=PlayerMatchScreen?static_cast<int32>(PlayerMatchScreen->GetInlineFormulaRevealPhase()):-1;
+ HandoffObserver.ViewApplied(HandoffContext(OwnerView,*this),HandoffSafeFields(OwnerView)
+  +FString::Printf(TEXT(",\"PreApplyPhase\":%d,\"PreApplyBlocked\":%s,\"PendingBefore\":%lld"),Phase,
+   PlayerMatchScreen&&PlayerMatchScreen->IsInlineFormulaRevealInputBlocked()?TEXT("true"):TEXT("false"),IntentClientState.GetPendingRequestId()));
+}
+void AFMCodexNetworkMatchPlayerController::TraceHandoffPresentation(bool bAfterRender)
+{
+ if(!FMCodexHandoffAudit::Enabled() || !PlayerMatchScreen || PresentedMatch!=OwnerView.MatchInstanceId
+  || PresentedRevision!=OwnerView.ViewRevision || !OwnerView.Presentation.bAvailable) return;
+ const auto& M=PlayerMatchScreen->GetPresentation();
+ if(M.Interaction.Category!=OwnerView.Presentation.Interaction.Category) return;
+ const auto Phase=PlayerMatchScreen->GetInlineFormulaRevealPhase();
+ const bool bBlocked=PlayerMatchScreen->IsInlineFormulaRevealInputBlocked();
+ const FString Reason=M.FullTime.bVisible?TEXT("FullTime"):
+  StaticEnum<EFMCodexUMGInlineFormulaRevealPhase>()->GetNameStringByValue(static_cast<int64>(Phase));
+ FString Fields;
+ bool bPromptVisible=false;
+ if(bAfterRender)
+ {
+  auto Visible=[](const UWidget* W)
+  {
+   if(!W) return false;
+   for(const UWidget* P=W;P;P=P->GetParent())
+    if(P->GetVisibility()==ESlateVisibility::Collapsed || P->GetVisibility()==ESlateVisibility::Hidden) return false;
+   return true;
+  };
+  auto* Dock=PlayerMatchScreen->GetInteractionPanel();
+  auto* Surface=PlayerMatchScreen->GetInlineFormulaSurface();
+  const auto* Actor=Cast<UTextBlock>(Dock->GetWidgetFromName(TEXT("InteractionExpectedActor")));
+  const auto* Action=Cast<UTextBlock>(Dock->GetWidgetFromName(TEXT("InteractionActionTitle")));
+  const auto* Inline=Cast<UButton>(Surface->GetWidgetFromName(TEXT("InlineFormulaContinueButton")));
+  const auto* D12=Cast<UButton>(Dock->GetWidgetFromName(TEXT("InteractionTacticalPointRollButton")));
+  const auto* Lower=Cast<UButton>(Dock->GetWidgetFromName(TEXT("InteractionContinueButton")));
+  const bool bInline=Visible(Surface)&&Visible(Inline), bD12=Visible(Dock)&&Visible(D12);
+  const bool bLower=Visible(Dock)&&Visible(Lower);
+  const bool bCTA=bInline||bD12;
+  const bool bEnabled=(bInline&&Inline->GetIsEnabled()&&Surface->GetIsEnabled())||(bD12&&D12->GetIsEnabled()&&Dock->GetIsEnabled());
+  const bool bLocal=OwnerView.ViewerSide==OwnerView.ExpectedActingSide;
+  bPromptVisible=M.bMirrorActionWaitPrompt&&Visible(Dock)&&Visible(Actor)&&Visible(Action)
+   &&(bLocal?(bCTA&&bEnabled):(!bCTA&&!bLower));
+  Fields=FString::Printf(TEXT(",\"ActorPrompt\":%s,\"ActionPrompt\":%s,\"CTA\":%s,\"CTAVisible\":%s,\"CTAEnabled\":%s,\"LocalCanAct\":%s,\"ExpectedActor\":%d,\"LowerContinueVisible\":%s,\"Pending\":%lld"),
+   *FMCodexHandoffAudit::Quote(Actor?Actor->GetText().ToString():FString()),*FMCodexHandoffAudit::Quote(Action?Action->GetText().ToString():FString()),
+   *FMCodexHandoffAudit::Quote(bD12?TEXT("FullD12"):bInline?TEXT("InlineFormulaContinue"):TEXT("None")),
+   bCTA?TEXT("true"):TEXT("false"),bEnabled?TEXT("true"):TEXT("false"),bLocal&&bEnabled?TEXT("true"):TEXT("false"),
+   static_cast<int32>(OwnerView.ExpectedActingSide),bLower?TEXT("true"):TEXT("false"),IntentClientState.GetPendingRequestId());
+ }
+ HandoffObserver.Observe(static_cast<int32>(Phase),Reason,bBlocked,bAfterRender,bPromptVisible,Fields);
+}
+#endif

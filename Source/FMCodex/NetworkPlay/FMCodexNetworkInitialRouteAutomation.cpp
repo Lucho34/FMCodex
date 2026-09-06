@@ -81,7 +81,7 @@ bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Fa
 	return Ready;
 }
 // Short manual milestone: canonical setup ends before either contest roll.
-bool FFMCodexNetworkMatchRuntime::PrepareCrossTerminalMilestone(bool Goal, bool Final)
+bool FFMCodexNetworkMatchRuntime::PrepareCrossTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill)
 {
 	using Side = EInitialTurnOrderPlayer;
 	using Command = EMatchPlayAuthoritativeCommandKind;
@@ -108,6 +108,7 @@ bool FFMCodexNetworkMatchRuntime::PrepareCrossTerminalMilestone(bool Goal, bool 
 		return O.Choice.SkillId == FName(TEXT("Canonical.Skill.Cross.4.6"));
 	});
 	if (!OfferedSkill) { return false; }
+	if (bAwaitSkill) return true;
 	FMatchPlayAuthoritativeSubmitSkillRequest Skill;
 	Skill.ExpectedAttackSequence = SkillView.AttackSequence; Skill.RequestingSide = SkillView.ViewerSide;
 	Skill.SkillId = OfferedSkill->Choice.SkillId;

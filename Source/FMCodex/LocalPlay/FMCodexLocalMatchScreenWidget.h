@@ -4,6 +4,7 @@
 #include "Blueprint/UserWidget.h"
 
 #include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexMatchScreenBackend.h"
 
 #include "FMCodexLocalMatchScreenWidget.generated.h"
 
@@ -79,12 +80,21 @@ class FMCODEX_API UFMCodexLocalMatchScreenWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+#if !UE_BUILD_SHIPPING
+	/** Read-only DEV observation around the existing widget application. */
+	TMulticastDelegate<void(bool)> HandoffAuditRefresh;
+#endif
 	UFMCodexLocalMatchScreenWidget(
 		const FObjectInitializer& ObjectInitializer);
 
 	void SetMatchController(
 		AFMCodexLocalMatchPlayerController* InController);
 	void ClearMatchController();
+	void SetMatchBackend(IFMCodexMatchScreenBackend* InBackend);
+	void NotifyScreenRequestRejected();
+	void ResetPresentationSession();
+	bool IsScreenRequestPending() const;
+
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Presentation")
 	void RefreshFromPresentation(
@@ -152,6 +162,7 @@ public:
 	bool IsInlineFormulaRevealInputBlocked() const;
 	UFMCodexRollReelWidget* GetTacticalPointRollReel() const;
 #if WITH_DEV_AUTOMATION_TESTS
+	friend struct FFMCodexHandoffTimerTestAccess;
 	void AdvanceInlineFormulaRevealForTesting(float DeltaSeconds);
 	void PauseInlineFormulaRevealTimerForTesting();
 	void BeginPendingCrossRollRevealForTesting();
@@ -195,6 +206,12 @@ protected:
 	virtual void NativeDestruct() override;
 
 private:
+	IFMCodexMatchScreenBackend* MatchBackend = nullptr; // Owning controller lifetime; cleared on EndPlay.
+	EFMCodexMatchScreenSubmission LastScreenSubmission = EFMCodexMatchScreenSubmission::Rejected;
+	EFMCodexMatchScreenSubmission SubmitScreenRequest(EFMCodexMatchScreenIntent Kind,
+		FName OptionId = NAME_None, FName SlotId = NAME_None,
+		EFMCodexUMGBranchIntent Branch = EFMCodexUMGBranchIntent::None,
+		EFMCodexUMGOneOnOneChoice OneOnOne = EFMCodexUMGOneOnOneChoice::None);
 	void BuildWidgetTree();
 	void RefreshVisuals();
 	void UpdateInlineFormulaRevealState(
@@ -389,6 +406,8 @@ private:
 	float RollRevealCaptureDistanceCells = 0.0f;
 	int32 RollRevealSequenceOffsetCells = 0;
 	FTimerHandle InlineFormulaRevealTimerHandle;
+	// Game-clock time at scheduling; a 40 ms wakeup is not a 40 ms elapsed-time guarantee.
+	double InlineFormulaRevealTimerScheduledAt = 0.0;
 	FTimerHandle TacticalDetailDismissTimerHandle;
 	FFMCodexCrossRollRevealIdentity ObservedPendingCrossRoll;
 	FFMCodexCrossRollRevealIdentity ActiveCrossRollReveal;

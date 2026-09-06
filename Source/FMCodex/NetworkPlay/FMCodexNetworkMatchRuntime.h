@@ -75,7 +75,7 @@ public:
 	void EnablePostRouteAutomation(int32 AttackD6, int32 DefenseD6);
 	bool PrepareInitialRouteMilestone(ESkillRuleType Family);
 	void EnableCrossTerminalAutomation(bool Goal, bool Final);
-	bool PrepareCrossTerminalMilestone(bool Goal, bool Final);
+	bool PrepareCrossTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill = false);
 #endif
 #endif
 
@@ -87,6 +87,7 @@ public:
 		int32 ViewRevision,
 		EFMCodexNetworkBootstrapState BootstrapState) const;
 
+	void EnablePlayerFacingPresentation() { bPlayerFacingPresentation = true; }
 	bool IsInitialized() const;
 	int32 GetInitializationAttemptCount() const;
 	int32 GetInitializationCount() const;
@@ -99,6 +100,7 @@ private:
 	int32 InitializationAttemptCount = 0;
 	int32 InitializationCount = 0;
 	bool bInitialized = false;
+	bool bPlayerFacingPresentation = false;
 	TUniquePtr<FFMCodexNetworkRandomProvider> RollProvider;
 	TUniquePtr<FFMCodexNetworkEntryRollProvider> EntryProvider;
 	TUniquePtr<FFMCodexNetworkInitialRouteRollProvider> InitialRouteProvider;

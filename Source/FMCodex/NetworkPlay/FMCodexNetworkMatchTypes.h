@@ -5,6 +5,7 @@
 
 #include "../CoreRules/InitialTurnOrderResolver.h"
 
+#include "FMCodexNetworkMatchPresentation.h"
 #include "FMCodexNetworkMatchTypes.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogFMCodexNetworkPlay, Log, All);
@@ -285,6 +286,9 @@ USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 {
 	GENERATED_BODY()
+
+	/** Same owner-only revision; optional player-facing ordinary Cross presentation. */
+	UPROPERTY() FFMCodexNetworkMatchPresentation Presentation;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FGuid MatchInstanceId;

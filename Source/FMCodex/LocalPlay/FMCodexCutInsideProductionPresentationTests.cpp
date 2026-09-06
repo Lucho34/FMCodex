@@ -542,20 +542,27 @@ bool FFMCodexCutInsideProductionTypedRoutingContractTest::RunTest(
 {
 	(void)Parameters;
 	FString ScreenSource;
+	FString AdapterSource;
+	TestTrue(TEXT("Local action adapter source is readable"),
+		FFileHelper::LoadFileToString(AdapterSource, *FPaths::Combine(FPaths::ProjectDir(),
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"))));
 	const FString ScreenPath = FPaths::Combine(
 		FPaths::ProjectDir(),
 		TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"));
 	TestTrue(TEXT("Screen routing source is readable"),
 		FFileHelper::LoadFileToString(ScreenSource, *ScreenPath));
 	TestTrue(TEXT("Direct Attack dispatches typed Controller request"),
-		ScreenSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectAttack:"))
-			&& ScreenSource.Contains(TEXT("MatchController->RollCutInsideShotDirectAttack();")));
+		AdapterSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectAttack:"))
+			&& AdapterSource.Contains(TEXT("RollCutInsideShotDirectAttack();")));
 	TestTrue(TEXT("Direct Defense dispatches typed Controller request"),
-		ScreenSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense:"))
-			&& ScreenSource.Contains(TEXT("MatchController->RollCutInsideShotDirectDefense();")));
+		AdapterSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense:"))
+			&& AdapterSource.Contains(TEXT("RollCutInsideShotDirectDefense();")));
 	TestTrue(TEXT("DeadCorner dispatches one typed paired request"),
-		ScreenSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner:"))
-			&& ScreenSource.Contains(TEXT("MatchController->RollCutInsideShotDeadCorner();")));
+		AdapterSource.Contains(TEXT("case EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner:"))
+			&& AdapterSource.Contains(TEXT("RollCutInsideShotDeadCorner();")));
+	TestTrue(TEXT("Shared continuation reaches the Local backend"),
+		ScreenSource.Contains(TEXT("SubmitScreenRequest(EFMCodexMatchScreenIntent::Continue)"))
+		&& ScreenSource.Contains(TEXT("MatchBackend->SubmitScreenIntent(Request)")));
 	return true;
 }
 

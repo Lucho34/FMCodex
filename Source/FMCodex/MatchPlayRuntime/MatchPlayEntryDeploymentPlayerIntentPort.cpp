@@ -1,3 +1,4 @@
+#include "../Diagnostics/FMCodexHandoffLatencyAudit.h"
 #include "MatchPlayEntryDeploymentPlayerIntentPort.h"
 #include "MatchPlayFullD12PlayerIntentPort.h"
 #include "MatchPlayAuthoritativeSession.h"
@@ -167,6 +168,9 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		return Result;
 	}
 	// Exactly one pass after any successful deployment, participant, Skill, branch, initial-route, Cross contest or terminal advance command; never on rejection.
+#if !UE_BUILD_SHIPPING
+	FMCodexHandoffAudit::AuthorityAccepted();
+#endif
 	Result.CoordinatorResult = Coordinator.AdvanceToStableState();
 	Result.bSuccess = Result.CoordinatorResult.bSuccess;
 	if (!Result.bSuccess)

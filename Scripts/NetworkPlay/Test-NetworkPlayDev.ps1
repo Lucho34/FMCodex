@@ -84,6 +84,21 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } 'CrossTerminalMilestone' 'Terminal a
 . $launcherPath -UnrealEditorPath $testEnginePath
 Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*CrossTerminalMilestone*' }).Count -eq 0) 'Normal launch retains its original production defaults'
 
+foreach ($mode in @('Goal','NoGoal','FinalGoal','FinalNoGoal')) {
+    . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingCrossMilestone $mode
+    $uiPlan = Get-NetworkPlayLaunchPlan
+    Assert-True ($uiPlan.HostArguments -contains ('-FMCodexNetworkPlayerFacingCrossMilestone=' + $mode)) 'Player-facing fixture is Host-only'
+    Assert-True (($uiPlan.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($uiPlan.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Both owners use shared player-facing UI'
+    Assert-True (-not (($uiPlan.ClientArguments -join ' ').Contains('Milestone='))) 'Remote UI flag grants no fixture authority'
+    Assert-True (-not ($uiPlan.HostArguments -contains '-FMCodexNetworkDiagnostics')) 'Player-facing diagnostics hidden by default'
+}
+$NetworkDiagnostics = $true
+Assert-True ((Get-NetworkPlayLaunchPlan).ClientArguments -contains '-FMCodexNetworkDiagnostics') 'Diagnostics remain explicitly available'
+$CrossTerminalMilestone = 'Goal'
+Assert-Throws { Get-NetworkPlayLaunchPlan } 'PlayerFacingCrossMilestone' 'Player-facing and diagnostic fixtures cannot mix'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (-not ((Get-NetworkPlayLaunchPlan).HostArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Default launch remains diagnostic'
+
 $readyLog = "Game class is 'FMCodexNetworkMatchGameMode'`nIpNetDriver listening on port 7777`nAdmitted participant as Side A (same path for host/remote)."
 Assert-True (Test-NetworkPlayHostLog $readyLog 7777) 'Correct Network listen/admission markers are accepted'
 Assert-True (-not (Test-NetworkPlayHostLog 'IpNetDriver listening on port 7777' 7777)) 'Socket line alone cannot start Client before Host admission'
@@ -136,4 +151,13 @@ Assert-True (-not ($source.Contains('DefaultEngine.ini'))) 'Launcher never write
 $wrapper = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'LaunchNetworkPlayDev.cmd'))
 Assert-True ($wrapper.Contains('-ExecutionPolicy Bypass -File "%~dp0LaunchNetworkPlayDev.ps1"')) 'Double-click wrapper uses only a process-local policy override and its own script path'
 Assert-True ((Get-FileHash -LiteralPath $configPath).Hash -eq $configBefore) 'DefaultEngine.ini stays byte-identical'
+$HandoffLatencyAudit = $false
+$auditOff = Get-NetworkPlayLaunchPlan -EditorPath $testEnginePath
+Assert-True (-not ($auditOff.HostArguments -contains '-HandoffLatencyAudit')) 'Audit disabled by default on Host'
+Assert-True (-not ($auditOff.ClientArguments -contains '-HandoffLatencyAudit')) 'Audit disabled by default on Client'
+$HandoffLatencyAudit = $true
+$auditOn = Get-NetworkPlayLaunchPlan -EditorPath $testEnginePath
+Assert-True ($auditOn.HostArguments -contains '-HandoffLatencyAudit') 'Audit opt in reaches Host'
+Assert-True ($auditOn.ClientArguments -contains '-HandoffLatencyAudit') 'Audit opt in reaches Client'
+$HandoffLatencyAudit = $false
 Write-Host ("FMCODEX_NETWORK_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)

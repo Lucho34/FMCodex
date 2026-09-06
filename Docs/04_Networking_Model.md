@@ -445,3 +445,33 @@ This contract extends the earlier contest-only slice above: terminal disclosure 
 - Accepted Advance runs exactly one existing Coordinator pass and publishes the next stable View. It does not automatically roll the next D12. Non-final completion preserves score/history, exposes bounded safe Recovery and hands the existing Full D12 action to the next side. Final completion exposes safe MatchResult/final score/history, skips Recovery and has no new attack/action. Duplicate, stale and illegal advances cannot consume an opportunity, rerun Recovery or republish a revision.
 - `LaunchNetworkPlayDev.ps1 -CrossTerminalMilestone Goal` prepares a short non-Shipping, authority-only canonical fixture at the Cross attack wait. NoGoal reverses the attacker; FinalGoal/FinalNoGoal use the existing one-attack-per-side DEV opening and canonical prior-attack closure. Setup uses real canonical commands and existing server RNG injection seams; measured Attack/Defense/Advance still use generated RPC. Default launch is unchanged, flags reach only Host and incompatible setup modes reject.
 - The complete Cross terminal/advance milestone requires USER PIE after code-side regression and real Host/Remote evidence. Cross command transport/lifecycle completion enables a separate Network player-facing ordinary UI integration stage; it does not mean the formal pitch, Formula, Reel or full-time surfaces are already connected. PassControl/ThroughBall and LongShot/CutInside later rolls remain separate transport work.
+
+## Player-facing ordinary Cross integration
+
+The owner snapshot can opt into FFMCodexNetworkMatchPresentation, built from the same viewer-safe source and revision as the existing narrow action fields. Existing transport/validation and server-private RNG are unchanged. The network Controller consumes this value projection and creates the existing Local match screen; it never reads State or Session for display.
+
+Player-facing actions cover Full D12, ordinary/GK deployment, finish deployment, Carrier/Marker/Runner/Helper, Skill, Cross High/Low intent, initial route, actual High/Low attack and defense, and Advance. Every action uses the existing generated owner RPC and one RequestId namespace. Pending is queue correlation, not predicted success; drag completion cannot claim authoritative placement merely because an RPC was queued.
+
+The explicit launcher option is -PlayerFacingCrossMilestone Goal, with NoGoal, FinalGoal and FinalNoGoal variants. Both windows receive the presentation flag; only the listen authority receives the fixture selector. Canonical setup stops at Skill selection. Existing DEV providers supply D12/route/contest values, and final variants use the existing short-match opening and a canonical prelude. No state counter, Formula, winner or transition is forced.
+
+Normal diagnostic launch keeps its defaults. The large diagnostics panel is hidden in player-facing mode unless -NetworkDiagnostics is requested. The fixture and evidence commands are non-Shipping automation utilities; production screen/action/read adapters do not depend on those commands.
+
+Cross is the current fully supported player-facing ordinary milestone. DeclineRunner/DeclineHelper/DeclineSkill are capability-gated, and offered non-Cross Skill cards remain explicitly disabled in this mode. This changes no authoritative or Local legality. It does not make PassControl, ThroughBall, LongShot, CutInside or set-piece resolution network-playable.
+
+Player-facing disclosure reuses the Local Reel/Formula/Narrative timeline and displayed-score gate. Server-safe results can arrive before animation; this is not a secrecy mechanism. Repeated snapshots cannot restart settled events. Final closure of this visible milestone requires USER PIE of control handoff and presentation timing.
+
+Player-facing launcher defaults are 1600×900 to accommodate the existing fixed card/pitch widths; explicit ResX/ResY still win, and diagnostic launch retains its smaller defaults. This is launch configuration, not a visual redesign.
+
+## DEV handoff timing observation
+
+`LaunchNetworkPlayDev.ps1 -PlayerFacingCrossMilestone Goal -HandoffLatencyAudit` enables non-Shipping, read-only `FMCODEX_HANDOFF` JSON logs in both processes. No flag means no timing trace. The normal launcher defaults and owner snapshot schema do not change.
+
+T0 is player-facing submission, T1 is connection ingress, T1A is successful Session acceptance before Coordinator continuation, and T2 is each safe owner View assignment. T3 observes natural OnRep (or the listen host local equivalent) before presentation application. The existing shared screen refresh reports the actual local phase, T4 when that gate permits the next action, and T5 after the existing prompt and legal CTA widgets have been applied. TA records the acting owner's ACK separately. These observers never release a gate, schedule a refresh, alter pending, or participate in gameplay.
+
+Each event carries UTC ticks, process-local monotonic seconds, PID, role, Side, Match and revision. Use monotonic differences only within the same PID. UTC differences across PIDs are suitable only for a local same-machine audit, subject to system-clock resolution/adjustments; this is not WAN RTT. T3 records the pre-application phase, and the immediate `PresentationPhase` event describes the phase the incoming disclosed result actually starts.
+
+Server events correlate the existing envelope RequestId/sequence with each published owner revision. Client View/presentation events carry the safe Match/revision/viewer instead of inventing replicated request metadata. An offline collector joins these to T2; after Advance, retain the submitted sequence and incoming safe sequence separately. ACK comparison uses the acting owner's View, not the next actor's View. Neither player's presentation depends on the other client's ACK or animation completion.
+
+Screenshots supplement these event timings; PNG timestamps are not latency measurements. Real generated-RPC, natural-replication repeated runs supply latency evidence; automation tests cover observer ordering, opt-in, correlation and dedupe. WAN RTT, jitter, packet loss, bandwidth, Steam, Dedicated and reconnect/timeout validation remain separate work.
+
+The shared result hold measures elapsed game-clock time between scheduled callbacks. The 40 ms timer interval controls wakeup frequency, not how much time each callback claims has elapsed. This preserves pause/time-dilation behavior and configured Reel, Settling, Formula and Narrative durations when timer delivery is delayed. It introduces no gameplay clock or replicated timing state.

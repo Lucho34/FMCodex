@@ -1581,6 +1581,10 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 	FString ScreenSource;
 	FString ReelSource;
 	FString TacticalProviderSource;
+	FString AdapterSource;
+	TestTrue(TEXT("Local continuation adapter source is readable"),
+		FFileHelper::LoadFileToString(AdapterSource, *FPaths::Combine(FPaths::ProjectDir(),
+			TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchPlayerController.cpp"))));
 	FString HostSource;
 	TestTrue(TEXT("Reveal implementation sources are readable"),
 		FFileHelper::LoadFileToString(ScreenSource, *FPaths::Combine(
@@ -1612,7 +1616,9 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			TEXT("InlineFormulaSurface->OnContinueRequested.AddDynamic"))
 			&& ScreenSource.Contains(TEXT("RequestContinueResolution();"))
 			&& ScreenSource.Contains(
-				TEXT("MatchController->ContinueResolution();")));
+				TEXT("SubmitScreenRequest(EFMCodexMatchScreenIntent::Continue)"))
+			&& ScreenSource.Contains(TEXT("MatchBackend->SubmitScreenIntent(Request)"))
+			&& AdapterSource.Contains(TEXT("ContinueResolution();")));
 	TestTrue(TEXT("Production attack entry remains one authoritative Full D12 roll"),
 		TacticalProviderSource.Contains(TEXT("RandomStream.RandRange(1, 12)"))
 			&& HostSource.Contains(TEXT("RequestInitialActionPointRoll(")));

@@ -77,6 +77,9 @@ public:
 
 	const FFMCodexUMGInteractionViewModel& GetPresentation() const;
 	bool IsInteractionBlocked() const;
+	/** Keep the existing header as supplemental status; no second prompt widget. */
+	void SetActionWaitPromptMode(bool bEnabled, bool bReadOnly,
+		const FText& ActorText, const FText& ActionText);
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
 		GetRenderedCandidateCardWidgets() const;
 	const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>&
@@ -327,4 +330,8 @@ private:
 		RenderedOptionWidgets;
 
 	bool bInteractionBlocked = false;
+	bool bActionWaitPrompt = false;
+	bool bReadOnlyPrompt = false;
+	FText ActionWaitActorText;
+	FText ActionWaitActionText;
 };

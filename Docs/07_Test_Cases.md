@@ -1044,3 +1044,17 @@ This supersedes the previous Cross contest slice's still-unnetworked Advance exp
 - Run full NetworkPlay, MatchPlayRuntime, LocalPlay and CoreRules for this lifecycle milestone, together with UHT/Development Editor build, launcher tests and tracked/new-file whitespace checks. A clean build is not required.
 - Real two-process evidence must cover non-final Goal and NoGoal with role reversal, generated owning RPC, natural ACK/OnRep, before-defense/terminal/after-advance views on both sides, exact score/scorer/history, Recovery/provider counts and next actor/D12 availability. Prove final MatchEnded in real processes where practical and always in focused automation; label automation-only evidence honestly.
 - The deterministic Goal launcher supplies a short USER PIE: Attack, Defense, disclosed result, 下一回合, next Full D12 wait, STOP. Code-side technical PASS does not close this milestone until the user accepts disclosure, ownership and transition behavior.
+
+## Shared player-facing Network Cross regression
+
+FMCodex.NetworkPlay.PlayerFacingCrossUI exercises actual shared Screen callbacks with the production Network action mapping and canonical connection-side adapter. The unit transport harness is separate from the real generated-RPC smoke.
+
+Coverage includes both viewer orientations; public hands/pitch/identities; entry, ordinary/GK deployment and role mappings; Cross Skill/branch/route/contest actions; input ownership; unsupported capability gates; ACK-first/View-first/reject/new-match correlation; value serialization; repeated-view/late-screen presentation; both routes and Goal/NoGoal; displayed-score gating; next Full D12 and reused final-match presentation.
+
+A real two-process player-facing milestone additionally proves generated RPC callspace, natural owning-client replication, shared widget construction, control handoff and rendered checkpoints. Evidence observers invoke normal Screen callbacks, do not call RPC implementation methods or authoritative Session, and never manually refresh the UI.
+
+Changes to this shared screen/public presentation contract require full LocalPlay regression. Player-facing networking milestone closeout also runs full NetworkPlay, MatchPlayRuntime and CoreRules, launcher validation and incremental UHT/Editor build. Technical results never replace USER PIE for Reel/Formula/Narrative/score/next-turn continuity.
+
+Additional privacy/timing checks cover withheld accepted Attack values despite retained future placeholders, coalesced route/attack/defense playback, and the same roll purpose in a later attack sequence. Full-Time intentionally blocks gameplay input after clearing all active reveal phases. Real-process closeout includes client-first exit so disconnected controllers cannot create a local viewport widget.
+
+Shared action/wait prompts must be checked on both rendered viewers, including reversed attacking sides, Goal/NoGoal, defense, explicit Advance and next Full D12. Assert the exact viewer-relative actor/action text, one actionable owner, no duplicate lower CTA or generic no-action fallback, reveal timing, repeated View/ACK, late construction, rejection after a handoff and no stale MatchEnded prompt. Preserve Local hot-seat behavior.

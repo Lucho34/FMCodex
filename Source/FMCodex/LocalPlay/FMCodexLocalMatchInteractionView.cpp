@@ -1629,13 +1629,15 @@ namespace FMCodexLocalMatchInteractionView
 		TArray<FMatchPlayResolutionRollFact> DisclosedFacts;
 		int32 SeenContestFacts = 0;
 		bool bRemovedAnyFact = false;
+		const bool bKeepPendingCross = Disclosure.bPreservePendingCrossFormula
+			&& Disclosure.bRevealRouteRoll && View.PresentedActionType == ESkillRuleType::Cross;
 		for (const FMatchPlayResolutionRollFact& Roll : View.ResolutionFacts.Rolls)
 		{
 			const bool bDisclosed = Roll.bInitialRoute
 				? Disclosure.bRevealRouteRoll
 				: SeenContestFacts++
 					< FMath::Max(0, Disclosure.RevealedContestD6Count);
-			if (bDisclosed)
+			if (bDisclosed || (bKeepPendingCross && !Roll.bResolved && Roll.RawD6 == 0))
 			{
 				DisclosedFacts.Add(Roll);
 			}

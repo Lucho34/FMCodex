@@ -357,12 +357,23 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 			SkillRuleSet,
 			ViewerSide,
 			Disclosure);
-	return FFMCodexNetworkClientViewSnapshotFactory::Build(
+	auto Result = FFMCodexNetworkClientViewSnapshotFactory::Build(
 		SafeViewerView,
 		MatchInstanceId,
 		ViewRevision,
 		ViewerSide,
 		BootstrapState);
+	if (bPlayerFacingPresentation)
+	{
+		// The narrow transport snapshot intentionally contains only the accepted prefix.
+		// The display variant additionally retains safe unresolved Cross operands.
+		// Both are built from this exact immutable State snapshot and disclosure permission.
+		Disclosure.bPreservePendingCrossFormula = true;
+		const auto DisplayView = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+			Snapshot, SkillRuleSet, ViewerSide, Disclosure);
+		Result.Presentation = FFMCodexNetworkMatchPresentationAdapter::Project(DisplayView, ViewerSide);
+	}
+	return Result;
 }
 
 bool FFMCodexNetworkMatchRuntime::IsInitialized() const
