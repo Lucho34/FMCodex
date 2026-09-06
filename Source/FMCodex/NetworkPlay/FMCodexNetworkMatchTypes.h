@@ -228,6 +228,59 @@ struct FMCODEX_API FFMCodexNetworkDeploymentSummary
 };
 
 /** Owner-safe bounded choices plus public facts; no raw State, hand or deck. */
+UENUM(BlueprintType)
+enum class EFMCodexNetworkTerminalOutcome : uint8 { None, Goal, NoGoal };
+UENUM(BlueprintType)
+enum class EFMCodexNetworkMatchResult : uint8 { None, PlayerAWins, PlayerBWins, Draw };
+
+/** One already-public persisted goal, with roster-projected player text. */
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkPublicGoal
+{
+	GENERATED_BODY()
+	UPROPERTY()
+	int64 AttackSequence = 0;
+	UPROPERTY()
+	EInitialTurnOrderPlayer ScoringSide = EInitialTurnOrderPlayer::None;
+	UPROPERTY()
+	FName ScorerCardId = NAME_None;
+	UPROPERTY()
+	FText ScorerLabel;
+	UPROPERTY()
+	bool bSystemAward = false;
+};
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkCrossTerminalFact
+{
+	GENERATED_BODY()
+	UPROPERTY()
+	EFMCodexNetworkTerminalOutcome Outcome = EFMCodexNetworkTerminalOutcome::None;
+	/** Empty for NoGoal; sourced from the matching safe GoalHistory entry. */
+	UPROPERTY()
+	FFMCodexNetworkPublicGoal Goal;
+};
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkRecoveredCard
+{
+	GENERATED_BODY()
+	UPROPERTY()
+	EInitialTurnOrderPlayer OwnerSide = EInitialTurnOrderPlayer::None;
+	UPROPERTY()
+	FName CardId = NAME_None;
+	UPROPERTY()
+	FText CardLabel;
+};
+USTRUCT(BlueprintType)
+struct FMCODEX_API FFMCodexNetworkRecoveryFact
+{
+	GENERATED_BODY()
+	UPROPERTY()
+	int64 SourceAttackSequence = 0;
+	/** Canonical Recovery returns at most two cards. No candidates, weights or tickets. */
+	UPROPERTY()
+	TArray<FFMCodexNetworkRecoveredCard> Cards;
+};
+
 USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 {
@@ -368,6 +421,20 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	EFMCodexNetworkCrossContestAction CrossContestAction = EFMCodexNetworkCrossContestAction::None;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkCrossContestFact CrossContest;
+	UPROPERTY()
+	FFMCodexNetworkCrossTerminalFact CrossTerminal;
+	UPROPERTY()
+	bool bCanAdvance = false;
+	/** Current Network match contract is 3+3 attacks, at most one goal per attack. */
+	static constexpr int32 MaxPublicGoals = 6;
+	UPROPERTY()
+	TArray<FFMCodexNetworkPublicGoal> PublicGoalHistory;
+	UPROPERTY()
+	bool bGoalHistoryUnavailable = false;
+	UPROPERTY()
+	FFMCodexNetworkRecoveryFact Recovery;
+	UPROPERTY()
+	EFMCodexNetworkMatchResult MatchResult = EFMCodexNetworkMatchResult::None;
 };
 
 struct FFMCodexLocalMatchInteractionView;

@@ -11,6 +11,7 @@ class IFMCodexNetworkEntropySource;
 class FFMCodexNetworkEntryRollProvider;
 class FFMCodexNetworkInitialRouteRollProvider;
 class FFMCodexNetworkPostRouteRollProvider;
+class FFMCodexNetworkRecoveryProvider;
 class FMatchPlayAuthoritativeSession;
 class FMatchPlayServerCoordinator;
 
@@ -50,6 +51,7 @@ public:
 	int32 GetD12ProviderInvocationCount() const;
 	int32 GetInitialRouteProviderInvocationCount() const;
 	int32 GetPostRouteProviderInvocationCount() const;
+	int32 GetRecoveryProviderInvocationCount() const;
 #if WITH_DEV_AUTOMATION_TESTS
 	FFMCodexNetworkMatchRuntime(const FGuid& InMatchInstanceId,
 		TUniquePtr<IFMCodexNetworkEntropySource> TestEntropy,
@@ -65,12 +67,15 @@ public:
 	friend struct FFMCodexNetworkBranchTestAccess;
 	friend struct FFMCodexNetworkInitialRouteTestAccess;
 	friend struct FFMCodexNetworkCrossContestTestAccess;
+	friend struct FFMCodexNetworkCrossTerminalTestAccess;
 	int32 GetCoordinatorInvocationCountForTests() const;
 #if !UE_BUILD_SHIPPING
 	void EnableDeploymentAutomationEntry(int32 InitialD12 = 4);
 	void EnableInitialRouteAutomation(int32 D6);
 	void EnablePostRouteAutomation(int32 AttackD6, int32 DefenseD6);
 	bool PrepareInitialRouteMilestone(ESkillRuleType Family);
+	void EnableCrossTerminalAutomation(bool Goal, bool Final);
+	bool PrepareCrossTerminalMilestone(bool Goal, bool Final);
 #endif
 #endif
 
@@ -98,6 +103,8 @@ private:
 	TUniquePtr<FFMCodexNetworkEntryRollProvider> EntryProvider;
 	TUniquePtr<FFMCodexNetworkInitialRouteRollProvider> InitialRouteProvider;
 	TUniquePtr<FFMCodexNetworkPostRouteRollProvider> PostRouteProvider;
+	TUniquePtr<FFMCodexNetworkRecoveryProvider> RecoveryProvider;
+	int64 DisclosedTerminalAttackSequence = 0;
 	int64 DisclosedInitialAttackSequence = 0;
 	int64 DisclosedRouteAttackSequence = 0;
 	int64 DisclosedCrossContestAttackSequence = 0;

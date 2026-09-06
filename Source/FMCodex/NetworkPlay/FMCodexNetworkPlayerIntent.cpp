@@ -13,6 +13,7 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	case EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll:
 	case EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll:
 	case EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal:
 	case EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll:
 		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
@@ -146,6 +147,11 @@ bool FFMCodexNetworkIntentClientState::BeginInitialRoute(const FFMCodexNetworkCl
 		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll) { return false; }
 	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
 }
+bool FFMCodexNetworkIntentClientState::BeginAdvance(const FFMCodexNetworkClientViewSnapshot& View,
+	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
+}
 bool FFMCodexNetworkIntentClientState::BeginCrossContest(const FFMCodexNetworkClientViewSnapshot& View,
 	EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
@@ -227,6 +233,9 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 		break;
 	case EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll:
 		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal:
+		bActionable = View.bCanAdvance;
 		break;
 	default: break;
 	}

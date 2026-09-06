@@ -571,10 +571,9 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 			ResolveThroughBallOneOnOneDirectShotDefenseRoll(Intent.Payload.Get<
 				FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest>()));
 	case EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal:
-		FMCODEX_DISPATCH_PLAYER_INTENT(
-			FMatchPlayAuthoritativeAdvanceAfterTerminalRequest,
-			AdvanceAfterTerminal(Intent.Payload.Get<
-				FMatchPlayAuthoritativeAdvanceAfterTerminalRequest>()));
+		return FMatchPlayEntryDeploymentPlayerIntentPort(
+			ActiveMatchRuntime->AuthoritativeSession,
+			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(Intent);
 	default:
 		break;
 	}

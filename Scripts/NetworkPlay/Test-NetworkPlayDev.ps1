@@ -70,6 +70,20 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } 'DeploymentSlice' 'Milestone and dep
 $DeploymentSlice = $false
 . $launcherPath -UnrealEditorPath $testEnginePath
 
+foreach ($mode in @('Goal','NoGoal','FinalGoal','FinalNoGoal')) {
+    . $launcherPath -UnrealEditorPath $testEnginePath -CrossTerminalMilestone $mode
+    $terminalPlan = Get-NetworkPlayLaunchPlan
+    Assert-True ($terminalPlan.HostArguments -contains ('-FMCodexNetworkCrossTerminalMilestone=' + $mode)) ('Host-only canonical terminal fixture: ' + $mode)
+    Assert-True (@($terminalPlan.ClientArguments | Where-Object { $_ -like '*FMCodexNetwork*' }).Count -eq 0) ('Client has no terminal fixture capability: ' + $mode)
+}
+$InitialRouteMilestone = 'Cross'
+Assert-Throws { Get-NetworkPlayLaunchPlan } 'CrossTerminalMilestone' 'Terminal and route milestones cannot mix'
+$InitialRouteMilestone = $null
+$DeploymentSlice = $true
+Assert-Throws { Get-NetworkPlayLaunchPlan } 'CrossTerminalMilestone' 'Terminal and deployment fixtures cannot mix'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*CrossTerminalMilestone*' }).Count -eq 0) 'Normal launch retains its original production defaults'
+
 $readyLog = "Game class is 'FMCodexNetworkMatchGameMode'`nIpNetDriver listening on port 7777`nAdmitted participant as Side A (same path for host/remote)."
 Assert-True (Test-NetworkPlayHostLog $readyLog 7777) 'Correct Network listen/admission markers are accepted'
 Assert-True (-not (Test-NetworkPlayHostLog 'IpNetDriver listening on port 7777' 7777)) 'Socket line alone cannot start Client before Host admission'

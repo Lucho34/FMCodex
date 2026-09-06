@@ -162,11 +162,13 @@ bool FFMCodexCrossPairs::RunTest(const FString& P)
 			TestEqual(TEXT("Precise handoff/terminal wait"),V.EntryWait,IsAttack?EFMCodexNetworkEntryWait::CrossDefenseRoll:EFMCodexNetworkEntryWait::TerminalPendingAdvance);
 			TestEqual(TEXT("Next actor from canonical safe view"),V.ExpectedActingSide,IsAttack?Defender:Attacker);
 			TestEqual(TEXT("No attack reroll or premature next control"),V.CrossContestAction,IsAttack && V.ViewerSide==Defender?RollAction(High,false):Action::None);
-			TestEqual(TEXT("Current goal score remains withheld A"),V.PlayerAScore,BeforeState.RuntimeState.PlayerAState.Score);
-			TestEqual(TEXT("Current goal score remains withheld B"),V.PlayerBScore,BeforeState.RuntimeState.PlayerBState.Score);
+			TestEqual(TEXT("Stable terminal publishes authority score A"),V.PlayerAScore,S.RuntimeState.PlayerAState.Score);
+			TestEqual(TEXT("Stable terminal publishes authority score B"),V.PlayerBScore,S.RuntimeState.PlayerBState.Score);
 			const auto Safe=F.Safe(V.ViewerSide,ExpectedCount);
-			TestEqual(TEXT("Network exactly follows safe score"),V.PlayerAScore,Safe.PlayerAScore);
-			TestEqual(TEXT("Network exactly follows safe score"),V.PlayerBScore,Safe.PlayerBScore);
+			TestEqual(TEXT("Network exactly follows permitted safe score"),V.PlayerAScore,F.Safe(V.ViewerSide,ExpectedCount,!IsAttack).PlayerAScore);
+			TestEqual(TEXT("Independent concealment still protects score A"),Safe.PlayerAScore,BeforeState.RuntimeState.PlayerAState.Score);
+			TestEqual(TEXT("Network exactly follows permitted safe score"),V.PlayerBScore,F.Safe(V.ViewerSide,ExpectedCount,!IsAttack).PlayerBScore);
+			TestEqual(TEXT("Independent concealment still protects score B"),Safe.PlayerBScore,BeforeState.RuntimeState.PlayerBState.Score);
 			TestTrue(TEXT("Current scorer/GoalHistory withheld"),Safe.GoalHistory.IsEmpty());
 			for(const auto& Decision:Safe.ResolutionFacts.Decisions)
 				TestFalse(TEXT("No hidden Goal decision"),Decision.bResolved && Decision.Outcome==EMatchPlayResolutionDecisionOutcome::Goal);

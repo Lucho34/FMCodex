@@ -294,6 +294,15 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 				.OnClicked_Lambda([this]() { DevRequestInitialRoute(); return FReply::Handled(); })
 			];
 		}
+		if (OwnerView.bCanAdvance)
+		{
+			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
+			[
+				SNew(SButton).Text(LOCTEXT("AdvanceTerminal", "下一回合"))
+				.IsEnabled_Lambda([this]() { return CanAdvanceAfterTerminal(); })
+				.OnClicked_Lambda([this]() { DevAdvanceAfterTerminal(); return FReply::Handled(); })
+			];
+		}
 		if (OwnerView.CrossContestAction != EFMCodexNetworkCrossContestAction::None)
 		{
 			const bool Attack = OwnerView.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossHighAttackRoll
@@ -403,7 +412,7 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 				EGuidFormats::DigitsWithHyphensLower)
 			: TEXT("同步中");
 
-	FString EntryText = TEXT("尚未公开本回合骰子");
+	FString EntryText = OwnerView.bMatchEnded ? FString() : TEXT("尚未公开本回合骰子");
 	if (OwnerView.DisclosedInitialD12 != 0)
 	{
 		const TCHAR* Branch = OwnerView.EntryBranch == EFMCodexNetworkEntryBranch::SendingOff
@@ -411,7 +420,7 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("运动战") : OwnerView.EntryBranch == EFMCodexNetworkEntryBranch::SetPiece
 			? TEXT("定位球") : TEXT("等待服务器");
 		const TCHAR* Wait = OwnerView.EntryWait == EFMCodexNetworkEntryWait::TerminalPendingAdvance
-			? TEXT("已结算，等待下一回合（尚未联网）") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
+			? (OwnerView.CrossTerminal.Outcome != EFMCodexNetworkTerminalOutcome::None ? TEXT("已结算，等待下一回合") : TEXT("终局结果等待公开")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
 			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
 			? TEXT("部署已完成，等待选择持球球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
 			? TEXT("等待选择盯人球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
@@ -533,9 +542,36 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 		EntryText += FText::Format(LOCTEXT("CrossDefenseFact", "\n传中防守点数：{0}"),
 			FText::AsNumber(OwnerView.CrossContest.DefenseD6)).ToString();
 	}
-	if (OwnerView.CrossContest.bFormulaResolved)
+	if (OwnerView.CrossContest.bFormulaResolved && OwnerView.CrossTerminal.Outcome == EFMCodexNetworkTerminalOutcome::None)
 	{
 		EntryText += LOCTEXT("CrossContestComplete", "\n传中比较已完成；终局结果与比分尚未公开").ToString();
+	}
+	if (OwnerView.CrossTerminal.Outcome != EFMCodexNetworkTerminalOutcome::None)
+	{
+		EntryText += OwnerView.CrossTerminal.Outcome == EFMCodexNetworkTerminalOutcome::Goal
+			? LOCTEXT("TerminalGoal", "\n结果：进球").ToString() : LOCTEXT("TerminalNoGoal", "\n结果：未进球").ToString();
+		if (OwnerView.CrossTerminal.Outcome == EFMCodexNetworkTerminalOutcome::Goal)
+		{
+			EntryText += FText::Format(LOCTEXT("TerminalScorer", "\n进球球员：{0}"), OwnerView.CrossTerminal.Goal.ScorerLabel).ToString();
+		}
+	}
+	for (const auto& Goal : OwnerView.PublicGoalHistory)
+	{
+		EntryText += FText::Format(LOCTEXT("PublicGoal", "\n进球记录：{0} · {1}"),
+			Goal.ScoringSide == EInitialTurnOrderPlayer::PlayerA ? LOCTEXT("GoalSideA", "玩家 A") : LOCTEXT("GoalSideB", "玩家 B"),
+			Goal.ScorerLabel).ToString();
+	}
+	if (OwnerView.bGoalHistoryUnavailable) { EntryText += LOCTEXT("HistoryUnavailable", "\n进球记录不可用").ToString(); }
+	for (const auto& Card : OwnerView.Recovery.Cards)
+	{
+		EntryText += FText::Format(LOCTEXT("PublicRecovery", "\n已回收：{0}"), Card.CardLabel).ToString();
+	}
+	if (OwnerView.bMatchEnded)
+	{
+		EntryText = LOCTEXT("MatchEnded", "比赛结束").ToString() + EntryText;
+		EntryText += OwnerView.MatchResult == EFMCodexNetworkMatchResult::PlayerAWins ? LOCTEXT("ResultA", "\n玩家 A 获胜").ToString()
+			: OwnerView.MatchResult == EFMCodexNetworkMatchResult::PlayerBWins ? LOCTEXT("ResultB", "\n玩家 B 获胜").ToString()
+			: OwnerView.MatchResult == EFMCodexNetworkMatchResult::Draw ? LOCTEXT("ResultDraw", "\n平局").ToString() : FString();
 	}
 	if (!OwnerView.SelectedBranch.Choice.IsEmpty())
 	{
@@ -1122,6 +1158,26 @@ void AFMCodexNetworkMatchPlayerController::DevProbeWrongCrossContestRoute()
 	if (!IntentClientState.BeginCrossContest(OwnerView, Offered, Envelope)) { return; }
 	Envelope.IntentKind = Wrong;
 	RefreshNetworkBootstrapUI();
+	ServerSubmitPlayerIntent(Envelope);
+#endif
+}
+
+bool AFMCodexNetworkMatchPlayerController::CanAdvanceAfterTerminal() const
+{
+	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
+		&& !OwnerView.bMatchEnded && OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
+		&& OwnerView.bCanAdvance && OwnerView.ExpectedActingSide == OwnerView.ViewerSide;
+}
+void AFMCodexNetworkMatchPlayerController::DevAdvanceAfterTerminal()
+{
+#if !UE_BUILD_SHIPPING
+	if (!CanAdvanceAfterTerminal()) { return; }
+	FFMCodexNetworkPlayerIntentEnvelope Envelope;
+	if (!IntentClientState.BeginAdvance(OwnerView, Envelope)) { return; }
+	RefreshNetworkBootstrapUI();
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Advance owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld"),
+		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
+		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence);
 	ServerSubmitPlayerIntent(Envelope);
 #endif
 }

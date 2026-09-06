@@ -80,4 +80,48 @@ bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Fa
 		Ready, static_cast<int32>(Attack), static_cast<int32>(Family), Sequence);
 	return Ready;
 }
+// Short manual milestone: canonical setup ends before either contest roll.
+bool FFMCodexNetworkMatchRuntime::PrepareCrossTerminalMilestone(bool Goal, bool Final)
+{
+	using Side = EInitialTurnOrderPlayer;
+	using Command = EMatchPlayAuthoritativeCommandKind;
+	auto View = [&]() { return BuildClientView(AuthoritativeSession->GetStateSnapshot().RuntimeState.CurrentAttackingPlayer,
+		0, EFMCodexNetworkBootstrapState::MatchReady); };
+	auto Submit = [&](Command Kind, const auto& Request)
+	{
+		return SubmitPlayerIntent(FMatchPlayPlayerIntent::Create(Kind, Request)).bSuccess;
+	};
+	if (Final)
+	{
+		// The existing one-attack-per-side DEV opening plus a genuine AP1/Advance reaches the final attack.
+		const auto V = View();
+		FMatchPlayFullD12EntryRequest Entry; Entry.ExpectedAttackSequence = V.AttackSequence; Entry.RequestingSide = V.ViewerSide;
+		if (!Submit(Command::RequestInitialActionPointRoll, Entry)) { return false; }
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+		Advance.AttackSequence = V.AttackSequence; Advance.RequestingSide = V.ViewerSide;
+		if (!Submit(Command::AdvanceAfterTerminal, Advance)) { return false; }
+	}
+	if (!PrepareInitialRouteMilestone(ESkillRuleType::Cross)) { return false; }
+	const auto SkillView = View();
+	const auto* OfferedSkill = SkillView.SkillOptions.FindByPredicate([](const auto& O)
+	{
+		return O.Choice.SkillId == FName(TEXT("Canonical.Skill.Cross.4.6"));
+	});
+	if (!OfferedSkill) { return false; }
+	FMatchPlayAuthoritativeSubmitSkillRequest Skill;
+	Skill.ExpectedAttackSequence = SkillView.AttackSequence; Skill.RequestingSide = SkillView.ViewerSide;
+	Skill.SkillId = OfferedSkill->Choice.SkillId;
+	if (!Submit(Command::SubmitSkill, Skill)) { return false; }
+	FMatchPlayAuthoritativeSubmitBranchIntentRequest Branch;
+	Branch.AttackSequence = SkillView.AttackSequence; Branch.RequestingSide = SkillView.ViewerSide;
+	Branch.Intent = Goal ? EMatchPlayElectiveBranchIntent::CrossLow : EMatchPlayElectiveBranchIntent::CrossHigh;
+	if (!Submit(Command::SubmitBranchIntent, Branch)) { return false; }
+	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest Route;
+	Route.AttackSequence = SkillView.AttackSequence; Route.RequestingSide = SkillView.ViewerSide;
+	if (!Submit(Command::ResolveCrossInitialRouteRoll, Route)) { return false; }
+	const bool Ready = View().CrossContestAction == (Goal ? EFMCodexNetworkCrossContestAction::CrossHighAttackRoll : EFMCodexNetworkCrossContestAction::CrossLowAttackRoll);
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("CrossTerminal milestone: Ready=%d GoalFixture=%d Final=%d Side=%d Sequence=%lld; Attack/Defense/Advance remain player RPCs."),
+		Ready, Goal, Final, static_cast<int32>(View().ViewerSide), View().AttackSequence);
+	return Ready;
+}
 #endif

@@ -794,3 +794,26 @@ D6, family and actual route in InitialRoute are server-to-client disclosed facts
 The snapshot remains bounded: no full Formula/session, term arrays, raw winner, Goal/scorer, terminal result object, seed or entropy. Existing PlayerAScore/PlayerBScore continue to copy the safe view; the current attack's committed goal remains subtracted while terminal reveal is withheld. ACK never supplies gameplay results.
 
 Seventeen request kinds share each connection's continuous ledger. Host and Remote have independent connection counters, not independent counters per roll or phase. Cross completion does not reset either counter or create an automatic resend/reconnect policy.
+
+## Cross terminal, public history and advance schema
+
+This extends the preceding seventeen-kind contest schema; that schema's no-terminal restriction described the earlier contest-only slice.
+
+| Type / member | Safe contract |
+|---|---|
+| AdvanceAfterTerminal wire kind | Eighteenth kind; all eight choice payloads empty; common request/ACK unchanged |
+| Canonical Advance request | int64 AttackSequence; EInitialTurnOrderPlayer RequestingSide, supplied from the validated envelope and connection |
+| EFMCodexNetworkTerminalOutcome | None (undisclosed/absent), Goal, NoGoal |
+| FFMCodexNetworkPublicGoal | AttackSequence, ScoringSide, ScorerCardId, ScorerLabel, bSystemAward; copied from safe GoalHistory |
+| FFMCodexNetworkCrossTerminalFact | Outcome and Goal; NoGoal/None keep Goal empty |
+| FFMCodexNetworkRecoveredCard | OwnerSide, CardId, CardLabel; copied from safe Recovery presentation entries |
+| FFMCodexNetworkRecoveryFact | SourceAttackSequence and at most two recovered cards |
+| EFMCodexNetworkMatchResult | None, PlayerAWins, PlayerBWins, Draw; mapped from safe MatchResult |
+| Six added owner-view fields | CrossTerminal, bCanAdvance, PublicGoalHistory, bGoalHistoryUnavailable, Recovery, MatchResult |
+
+- Goal/NoGoal comes only from the unique resolved safe Cross.High.Outcome or Cross.Low.Outcome decision. Goal requires a matching current-sequence public history record with the canonical scoring side and scorer; NoGoal requires no such record. Missing or conflicting facts fail the terminal projection closed.
+- PublicGoalHistory has a justified bound of six for the current three-opportunities-per-side Network profile (one goal at most per attack). This is not a claim that arbitrary future match lengths fit. A future profile increase must revise the bound together with its tests. Overbound, non-increasing/duplicate sequence or invalid scoring side clears the entire list and marks it unavailable, rather than silently truncating complete history.
+- Recovery copies at most two safe entries and the source attack sequence. Invalid side, missing identity, duplicate entry or overbound result clears the entire fact. Final MatchEnded carries no Recovery. No candidates, weights, entropy, sampling tickets or provider internals cross the wire.
+- Player labels use existing safe roster/preferred display names and centralized generic fallbacks; system-awarded history uses its explicit flag and label. Widget text never parses or displays raw IDs. ScorerCardId is a canonical identity, not a name-generation recipe.
+- Fixed PlayerAScore/PlayerBScore copy the same safe view as history. Before terminal permission the current score increment/history/scorer/outcome are withheld. On reveal all appear in the same revision. After Advance score/history persist while current terminal/selection/route/dice facts clear. Full-time score/result/history remain public without an extra attack.
+- None of these server-to-client facts adds gameplay results to the player request or ACK. No complete State/session, Formula array, future RNG or universal outcome/lifecycle protocol is introduced.

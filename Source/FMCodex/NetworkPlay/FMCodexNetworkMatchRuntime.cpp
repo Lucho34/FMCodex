@@ -44,6 +44,25 @@ public:
 	int32 InvocationCount = 0;
 	int32 D12Count = 0;
 };
+/** Private accounting only; weighted sampling remains in the existing secure provider. */
+class FFMCodexNetworkRecoveryProvider final : public IMatchPlayRecoveryProvider
+{
+public:
+	explicit FFMCodexNetworkRecoveryProvider(IMatchPlayRecoveryProvider& InInner) : Inner(InInner) {}
+	virtual FMatchPlayRecoveryProviderResult DrawWeightedWithoutReplacement(
+		EMatchPlayRecoveryPurpose Purpose, const TArray<FMatchPlayRecoveryCandidate>& Candidates, int32 ReturnCount) override
+	{
+		++InvocationCount;
+		return Inner.DrawWeightedWithoutReplacement(Purpose, Candidates, ReturnCount);
+	}
+	int32 InvocationCount = 0;
+private:
+	IMatchPlayRecoveryProvider& Inner;
+};
+int32 FFMCodexNetworkMatchRuntime::GetRecoveryProviderInvocationCount() const
+{
+	return RecoveryProvider.IsValid() ? RecoveryProvider->InvocationCount : 0;
+}
 /** Counts the canonical post-route boundary; production uses the existing secure provider. */
 class FFMCodexNetworkPostRouteRollProvider final : public IMatchPlayPostRouteRollProvider
 {
@@ -123,14 +142,14 @@ void FFMCodexNetworkMatchRuntime::EnableInitialRouteAutomation(int32 D6)
 class FFMCodexDeploymentAutomationEntry final : public IMatchPlayAttackEntryRollProvider
 {
 public:
-	explicit FFMCodexDeploymentAutomationEntry(IMatchPlayAttackEntryRollProvider& InSecure, int32 InInitialD12)
-		: Secure(InSecure), InitialD12(InInitialD12) {}
+	explicit FFMCodexDeploymentAutomationEntry(IMatchPlayAttackEntryRollProvider& InSecure, int32 InInitialD12, bool InPrelude = false)
+		: Secure(InSecure), InitialD12(InInitialD12), bSendingOffPrelude(InPrelude) {}
 	virtual FMatchPlayAttackEntryRollProviderResult RollD12(EMatchPlayAttackEntryRollPurpose Purpose) override
 	{
 		if (Purpose != EMatchPlayAttackEntryRollPurpose::InitialActionPoint) { return Secure.RollD12(Purpose); }
 		FMatchPlayAttackEntryRollProviderResult Result;
 		Result.bSuccess = true;
-		Result.RawRoll = InitialD12;
+		Result.RawRoll = bSendingOffPrelude && InitialCalls++ == 0 ? 1 : InitialD12;
 		return Result;
 	}
 	virtual FMatchPlayAttackEntryRollProviderResult RollD6(EMatchPlayAttackEntryRollPurpose Purpose) override
@@ -145,6 +164,8 @@ public:
 private:
 	IMatchPlayAttackEntryRollProvider& Secure;
 	int32 InitialD12;
+	bool bSendingOffPrelude = false;
+	int32 InitialCalls = 0;
 };
 void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry(int32 InitialD12)
 {
@@ -152,6 +173,15 @@ void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry(int32 InitialD
 	check(InitialD12 == 4 || InitialD12 == 6);
 	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider, InitialD12));
 	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server automation deployment fixture: initial D12=%d; other providers remain secure."), InitialD12);
+}
+#endif
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+void FFMCodexNetworkMatchRuntime::EnableCrossTerminalAutomation(bool Goal, bool Final)
+{
+	check(!bInitialized);
+	EnableInitialRouteAutomation(5);
+	EnablePostRouteAutomation(Goal ? 6 : 1, Goal ? 1 : 6);
+	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider, 6, Final));
 }
 #endif
 namespace FMCodexNetworkMatchRuntime
@@ -227,6 +257,7 @@ FFMCodexNetworkMatchRuntime::FFMCodexNetworkMatchRuntime(
 	, EntryProvider(MakeUnique<FFMCodexNetworkEntryRollProvider>(*RollProvider))
 	, InitialRouteProvider(MakeUnique<FFMCodexNetworkInitialRouteRollProvider>(*RollProvider))
 	, PostRouteProvider(MakeUnique<FFMCodexNetworkPostRouteRollProvider>(*RollProvider))
+	, RecoveryProvider(MakeUnique<FFMCodexNetworkRecoveryProvider>(*RollProvider))
 {
 }
 
@@ -255,7 +286,7 @@ FFMCodexNetworkMatchRuntime::InitializeOnce(
 		*EntryProvider,
 		*InitialRouteProvider,
 		*PostRouteProvider,
-		*RollProvider,
+		*RecoveryProvider,
 		SkillRuleSet);
 	ServerCoordinator = MakeUnique<FMatchPlayServerCoordinator>(
 		*AuthoritativeSession,
@@ -314,7 +345,12 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 	Disclosure.RevealedContestD6Count = Disclosure.bRevealRouteRoll
 		&& DisclosedCrossContestAttackSequence == Snapshot.CurrentAttack.AttackSequence
 		? DisclosedCrossContestRollCount : 0;
-	// Terminal/score reveal retains its separate existing gate; contest completion does not grant it.
+	// Network DEV reveals a completed Cross at the stable terminal publication, without Local Reel timing.
+	// The independent exact-attack permission still distinguishes persistence from disclosure.
+	Disclosure.bRevealTerminalOutcome = Snapshot.bHasCurrentAttack
+		&& Snapshot.CurrentAttack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+		&& DisclosedTerminalAttackSequence == Snapshot.CurrentAttack.AttackSequence
+		&& Disclosure.RevealedContestD6Count == 2;
 	const FFMCodexLocalMatchInteractionView SafeViewerView =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot,
@@ -503,6 +539,31 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 	}
 
 #endif
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal && Result.bSuccess)
+	{
+		DisclosedInitialAttackSequence = 0;
+		DisclosedRouteAttackSequence = 0;
+		DisclosedCrossContestAttackSequence = 0;
+		DisclosedCrossContestRollCount = 0;
+		DisclosedTerminalAttackSequence = 0;
+	}
+#if WITH_DEV_AUTOMATION_TESTS
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		const auto View = BuildClientView(EInitialTurnOrderPlayer::PlayerA, 0, EFMCodexNetworkBootstrapState::MatchReady);
+		UE_LOG(LogFMCodexNetworkPlay, Log,
+			TEXT("DEV Advance authority: Success=%d HasCurrentAttack=%d NextSequence=%lld NextAttacker=%d ExpectedSide=%d Ended=%d MatchResult=%d UsedA=%d UsedB=%d ScoreA=%d ScoreB=%d PublicScoreA=%d PublicScoreB=%d GoalHistory=%d PublicHistory=%d RecoverySource=%lld RecoveryCards=%d EntryCalls=%d D12Calls=%d RouteCalls=%d PostCalls=%d RecoveryCalls=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d"),
+			Result.bSuccess, State.bHasCurrentAttack, View.AttackSequence, static_cast<int32>(View.CurrentAttackingSide),
+			static_cast<int32>(View.ExpectedActingSide), View.bMatchEnded, static_cast<int32>(View.MatchResult),
+			State.RuntimeState.PlayerAState.UsedAttackCount, State.RuntimeState.PlayerBState.UsedAttackCount,
+			State.RuntimeState.PlayerAState.Score, State.RuntimeState.PlayerBState.Score, View.PlayerAScore, View.PlayerBScore,
+			State.GoalHistory.Num(), View.PublicGoalHistory.Num(), View.Recovery.SourceAttackSequence, View.Recovery.Cards.Num(),
+			GetEntryProviderInvocationCount(), GetD12ProviderInvocationCount(), GetInitialRouteProviderInvocationCount(),
+			GetPostRouteProviderInvocationCount(), GetRecoveryProviderInvocationCount(), GetCoordinatorInvocationCountForTests(),
+			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
+	}
+#endif
 	const bool bCrossAttack = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll;
 	const bool bCrossDefense = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll
@@ -511,6 +572,11 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 	{
 		DisclosedCrossContestAttackSequence = AuthoritativeSession->GetStateSnapshot().CurrentAttack.AttackSequence;
 		DisclosedCrossContestRollCount = bCrossDefense ? 2 : 1;
+		if (bCrossDefense && AuthoritativeSession->GetStateSnapshot().CurrentAttack.LifecycleState
+			== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
+		{
+			DisclosedTerminalAttackSequence = DisclosedCrossContestAttackSequence;
+		}
 	}
 #if WITH_DEV_AUTOMATION_TESTS
 	if (bCrossAttack || bCrossDefense)

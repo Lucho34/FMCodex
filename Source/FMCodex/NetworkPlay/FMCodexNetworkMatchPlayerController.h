@@ -77,6 +77,9 @@ public:
 	bool CanSubmitBranch() const;
 	bool CanRequestInitialRoute() const;
 	bool CanRequestCrossContest() const;
+	bool CanAdvanceAfterTerminal() const;
+	UFUNCTION(Exec)
+	void DevAdvanceAfterTerminal();
 	UFUNCTION(Exec)
 	void DevRequestCrossContest();
 	UFUNCTION(Exec)

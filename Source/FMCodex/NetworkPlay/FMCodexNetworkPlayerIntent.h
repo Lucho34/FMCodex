@@ -23,7 +23,8 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	CrossHighAttackRoll,
 	CrossHighDefenseRoll,
 	CrossLowAttackRoll,
-	CrossLowDefenseRoll
+	CrossLowDefenseRoll,
+	AdvanceAfterTerminal
 };
 
 UENUM()
@@ -131,6 +132,7 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginInitialRoute(const FFMCodexNetworkClientViewSnapshot& View,
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginAdvance(const FFMCodexNetworkClientViewSnapshot& View, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginCrossContest(const FFMCodexNetworkClientViewSnapshot& View,
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);

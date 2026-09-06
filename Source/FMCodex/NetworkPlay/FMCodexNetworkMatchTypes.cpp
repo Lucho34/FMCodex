@@ -296,6 +296,99 @@ namespace FMCodexNetworkMatchTypes
 		}
 	}
 
+	void ProjectPublicLifecycle(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		using Side = EInitialTurnOrderPlayer;
+		auto ValidSide = [](Side Player) { return Player == Side::PlayerA || Player == Side::PlayerB; };
+		if (!ValidSide(Result.ViewerSide)) { return; }
+		Result.bGoalHistoryUnavailable = View.GoalHistory.Num() > FFMCodexNetworkClientViewSnapshot::MaxPublicGoals;
+		int64 PreviousSequence = 0;
+		for (const auto& Goal : View.GoalHistory)
+		{
+			if (Result.bGoalHistoryUnavailable || Goal.AttackSequence <= PreviousSequence || !ValidSide(Goal.ScoringSide))
+			{
+				Result.bGoalHistoryUnavailable = true;
+				Result.PublicGoalHistory.Reset();
+				break;
+			}
+			PreviousSequence = Goal.AttackSequence;
+			FFMCodexNetworkPublicGoal Public;
+			Public.AttackSequence = Goal.AttackSequence;
+			Public.ScoringSide = Goal.ScoringSide;
+			Public.ScorerCardId = Goal.ScorerCardId;
+			Public.bSystemAward = Goal.bSystemAward;
+			if (Goal.bSystemAward)
+			{
+				Public.ScorerLabel = LOCTEXT("AwardedGoal", "规则判定进球");
+			}
+			else
+			{
+				const auto& Roster = Goal.ScoringSide == Side::PlayerA ? View.PlayerACardRoster : View.PlayerBCardRoster;
+				const auto* Card = Roster.FindByPredicate([&](const auto& C) { return C.CardId == Goal.ScorerCardId; });
+				Public.ScorerLabel = Card ? CardLabel(*Card) : LOCTEXT("ScorerFallback", "进球球员");
+			}
+			Result.PublicGoalHistory.Add(MoveTemp(Public));
+		}
+		if (View.bMatchEnded)
+		{
+			switch (View.MatchResult)
+			{
+			case EMatchResultType::HomeWin: Result.MatchResult = EFMCodexNetworkMatchResult::PlayerAWins; break;
+			case EMatchResultType::AwayWin: Result.MatchResult = EFMCodexNetworkMatchResult::PlayerBWins; break;
+			case EMatchResultType::Draw: Result.MatchResult = EFMCodexNetworkMatchResult::Draw; break;
+			default: break;
+			}
+			return;
+		}
+		if (View.bHasRecoveryFact && View.RecoverySourceAttackSequence > 0 && View.RecoveryPresentationEntries.Num() <= 2)
+		{
+			FFMCodexNetworkRecoveryFact Recovery;
+			Recovery.SourceAttackSequence = View.RecoverySourceAttackSequence;
+			for (const auto& Card : View.RecoveryPresentationEntries)
+			{
+				if (!ValidSide(Card.OwnerSide) || Card.CardId.IsNone()
+					|| Recovery.Cards.ContainsByPredicate([&](const auto& C) { return C.OwnerSide == Card.OwnerSide && C.CardId == Card.CardId; }))
+				{
+					Recovery = {};
+					break;
+				}
+				FFMCodexNetworkRecoveredCard Entry;
+				Entry.OwnerSide = Card.OwnerSide; Entry.CardId = Card.CardId;
+				Entry.CardLabel = Card.PlayerDisplayName.IsEmpty() ? LOCTEXT("PlayerFallback", "球员") : FText::FromString(Card.PlayerDisplayName);
+				Recovery.Cards.Add(MoveTemp(Entry));
+			}
+			Result.Recovery = MoveTemp(Recovery);
+		}
+		if (!View.bTerminalPendingAdvance || !Result.CrossContest.bFormulaResolved
+			|| Result.bGoalHistoryUnavailable || Result.InitialRoute.ActionType != ESkillRuleType::Cross) { return; }
+		const FName DecisionId = Result.InitialRoute.Cross == EMatchPlayCrossActualBranch::High
+			? TEXT("Cross.High.Outcome") : TEXT("Cross.Low.Outcome");
+		const FMatchPlayResolutionDecisionFact* Terminal = nullptr;
+		for (const auto& Decision : View.ResolutionFacts.Decisions)
+		{
+			if (Decision.DecisionId != DecisionId) { continue; }
+			if (Terminal != nullptr) { return; }
+			Terminal = &Decision;
+		}
+		if (!Terminal || !Terminal->bResolved) { return; }
+		const auto* Goal = Result.PublicGoalHistory.FindByPredicate([&](const auto& G) { return G.AttackSequence == Result.AttackSequence; });
+		if (Terminal->Outcome == EMatchPlayResolutionDecisionOutcome::Goal)
+		{
+			if (!Goal || Goal->ScoringSide != Result.CurrentAttackingSide || Goal->ScorerCardId.IsNone() || Goal->bSystemAward) { return; }
+			Result.CrossTerminal.Outcome = EFMCodexNetworkTerminalOutcome::Goal;
+			Result.CrossTerminal.Goal = *Goal;
+		}
+		else if (Terminal->Outcome == EMatchPlayResolutionDecisionOutcome::Miss)
+		{
+			if (Goal) { return; }
+			Result.CrossTerminal.Outcome = EFMCodexNetworkTerminalOutcome::NoGoal;
+		}
+		else { return; }
+		Result.bCanAdvance = View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+			&& View.bHumanInteraction && View.ExpectedActingPlayer == Result.ViewerSide;
+	}
+
 	FText SkillLabel(ESkillRuleType Type)
 	{
 		switch (Type)
@@ -573,6 +666,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	FMCodexNetworkMatchTypes::ProjectBranch(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectInitialRoute(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectCrossContest(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectPublicLifecycle(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(
 			SafeViewerView,

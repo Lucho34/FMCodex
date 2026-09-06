@@ -202,6 +202,27 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	MatchRuntime = MakeUnique<FFMCodexNetworkMatchRuntime>(
 		MatchInstanceId);
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	FString TerminalMilestone;
+	const bool bTerminalMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkCrossTerminalMilestone="), TerminalMilestone);
+	const bool bTerminalFinal = TerminalMilestone.StartsWith(TEXT("Final"));
+	const bool bTerminalGoal = TerminalMilestone == TEXT("Goal") || TerminalMilestone == TEXT("FinalGoal");
+	const bool bValidTerminalMilestone = bTerminalGoal || TerminalMilestone == TEXT("NoGoal") || TerminalMilestone == TEXT("FinalNoGoal");
+	if (bTerminalMilestone)
+	{
+		if (!bValidTerminalMilestone)
+		{
+			bTransportFault = true;
+			PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
+			PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed);
+			return;
+		}
+		const bool BFirst = !bTerminalGoal != bTerminalFinal;
+		BootstrapConfiguration = BFirst ? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
+			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
+		BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = bTerminalFinal;
+		BootstrapConfiguration.AttackOpportunitiesPerSide = bTerminalFinal ? 1 : 3;
+		MatchRuntime->EnableCrossTerminalAutomation(bTerminalGoal, bTerminalFinal);
+	}
 	FString Milestone;
 	const bool bMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkRouteMilestone="), Milestone);
 	const bool bSkillSlice = bMilestone || FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkSkillSlice"));
@@ -238,6 +259,14 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		return;
 	}
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+	if (bTerminalMilestone && !MatchRuntime->PrepareCrossTerminalMilestone(bTerminalGoal, bTerminalFinal))
+	{
+		UE_LOG(LogFMCodexNetworkPlay, Error, TEXT("CrossTerminal milestone setup failed; no partial fixture is playable."));
+		bTransportFault = true;
+		PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
+		PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed);
+		return;
+	}
 	if (bMilestone)
 	{
 		const auto Family = Milestone == TEXT("Cross") ? ESkillRuleType::Cross
@@ -254,7 +283,8 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	}
 #endif
 	UE_LOG(LogFMCodexNetworkPlay, Log,
-		TEXT("Initialized prototype network match exactly once (3+3)."));
+		TEXT("Initialized prototype network match exactly once (%d+%d)."),
+		BootstrapConfiguration.AttackOpportunitiesPerSide, BootstrapConfiguration.AttackOpportunitiesPerSide);
 	PublishParticipantState(EFMCodexNetworkBootstrapState::MatchReady);
 	PublishOwnerViews(EFMCodexNetworkBootstrapState::MatchReady);
 }
@@ -559,6 +589,14 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.RequestingSide = Side;
 		Request.AttackSequence = Envelope.ExpectedAttackSequence;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal:
+	{
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Request;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.RequestingSide = Side;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal, Request);
 		break;
 	}
 	default: return Finish(AckCode::NotPlayerIntent);

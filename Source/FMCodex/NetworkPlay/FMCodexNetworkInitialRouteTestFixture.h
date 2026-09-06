@@ -29,10 +29,11 @@ public:
 	uint32 Word = 5;
 	int32 Calls = 0;
 	bool bFail = false;
+	int32 FailOnCall = 0;
 	virtual bool Fill(TArrayView<uint8> Bytes) override
 	{
 		++Calls;
-		if (bFail || Bytes.Num() != sizeof(Word)) { return false; }
+		if (bFail || Calls == FailOnCall || Bytes.Num() != sizeof(Word)) { return false; }
 		FMemory::Memcpy(Bytes.GetData(), &Word, sizeof(Word)); return true;
 	}
 };
@@ -40,12 +41,13 @@ public:
 struct FFMCodexNetworkInitialRouteTestAccess
 {
 	static FInitialRouteEntropy* Configure(AFMCodexNetworkMatchGameMode& Mode,
-		AFMCodexNetworkMatchPlayerController* A, AFMCodexNetworkMatchPlayerController* B, bool BFirst, int32 RawD12)
+		AFMCodexNetworkMatchPlayerController* A, AFMCodexNetworkMatchPlayerController* B, bool BFirst, int32 RawD12, bool ShortMatch = false)
 	{
 		Mode.MatchInstanceId = FGuid::NewGuid();
 		Mode.BootstrapConfiguration = BFirst
 			? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
+		Mode.BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = ShortMatch;
 		Mode.ParticipantRegistry.Admit(A, Mode.GetWorld()->SpawnActor<AFMCodexNetworkMatchPlayerState>());
 		Mode.ParticipantRegistry.Admit(B, Mode.GetWorld()->SpawnActor<AFMCodexNetworkMatchPlayerState>());
 		auto Entropy = MakeUnique<FInitialRouteEntropy>();
@@ -55,6 +57,7 @@ struct FFMCodexNetworkInitialRouteTestAccess
 		Publish(Mode);
 		return Source;
 	}
+	static FMatchPlayServerCoordinator& Coordinator(AFMCodexNetworkMatchGameMode& Mode) { return *Mode.MatchRuntime->ServerCoordinator; }
 	static FMatchPlayAuthoritativeSession& Session(AFMCodexNetworkMatchGameMode& Mode) { return *Mode.MatchRuntime->AuthoritativeSession; }
 	static FFMCodexNetworkMatchRuntime& Runtime(AFMCodexNetworkMatchGameMode& Mode) { return *Mode.MatchRuntime; }
 	static void Publish(AFMCodexNetworkMatchGameMode& Mode) { Mode.PublishOwnerViews(EFMCodexNetworkBootstrapState::MatchReady); }
@@ -98,7 +101,7 @@ namespace FMCodexNetworkInitialRouteTests
 		FFMCodexNetworkIntentClientState ClientA, ClientB;
 		int64 NextA = 1, NextB = 1;
 		Kind RequestedKind = Kind::CrossInitialRouteRoll;
-		explicit FFixture(bool BFirst = false, int32 RawD12 = 6)
+		explicit FFixture(bool BFirst = false, int32 RawD12 = 6, bool ShortMatch = false)
 		{
 			// These controller/Session tests do not simulate physics. Avoid one Chaos TLS slot per temporary world.
 			const auto Initialization = UWorld::InitializationValues().CreatePhysicsScene(false);
@@ -108,7 +111,7 @@ namespace FMCodexNetworkInitialRouteTests
 			A = World->SpawnActor<AFMCodexNetworkMatchPlayerController>();
 			B = World->SpawnActor<AFMCodexNetworkMatchPlayerController>();
 			World->AddController(A); World->AddController(B);
-			Entropy = Access::Configure(*Mode, A, B, BFirst, RawD12);
+			Entropy = Access::Configure(*Mode, A, B, BFirst, RawD12, ShortMatch);
 		}
 		~FFixture() { GEngine->DestroyWorldContext(World); World->DestroyWorld(false); }
 		AFMCodexNetworkMatchPlayerController* Attacker() const { return A->GetOwnerView().CurrentAttackingSide == Side::PlayerA ? A : B; }
@@ -129,6 +132,7 @@ namespace FMCodexNetworkInitialRouteTests
 			auto& C = Client(PC); Envelope E; const auto& V = PC->GetOwnerView();
 			FFMCodexNetworkDeployGoalkeeperPayload GK; GK.SlotId = Ordinary.SlotId;
 			bool Began = K == Kind::RequestInitialActionPointRoll ? C.Begin(V, E)
+				: K == Kind::AdvanceAfterTerminal ? C.BeginAdvance(V, E)
 				: K == Kind::DeployOrdinary ? C.BeginDeployment(V, Ordinary, E)
 				: K == Kind::DeployGoalkeeper ? C.BeginGoalkeeper(V, GK, E)
 				: K == Kind::FinishDeployment ? C.BeginFinishDeployment(V, E)
@@ -205,15 +209,15 @@ namespace FMCodexNetworkInitialRouteTests
 				&& Defense->GetOwnerView().HelperOptions.Num() == Count);
 		}
 
-		bool ReachSkill(FName Carrier = NAME_None, FName Runner = NAME_None)
+		bool ReachSkill(FName Carrier = NAME_None, FName Runner = NAME_None, bool WithGoalkeeper = false)
 		{
-			if (!ReachHelper(2, true, false, true, Carrier, Runner)) { return false; }
+			if (!ReachHelper(2, true, WithGoalkeeper, true, Carrier, Runner)) { return false; }
 			const auto H = Defender()->GetOwnerView().HelperOptions[0].Choice;
 			return Send(Defender(), Kind::SubmitHelper, {}, {}, {}, {}, H)
 				&& Attacker()->GetOwnerView().EntryWait == EFMCodexNetworkEntryWait::SkillSelection;
 		}
 
-		bool ReachBranch(ESkillRuleType Type = ESkillRuleType::LongShot)
+		bool ReachBranch(ESkillRuleType Type = ESkillRuleType::LongShot, bool WithGoalkeeper = false)
 		{
 			const bool IsA = Attacker() == A;
 			const bool Shot = Type == ESkillRuleType::LongShot;
@@ -223,7 +227,7 @@ namespace FMCodexNetworkInitialRouteTests
 				: (Shot ? TEXT("Prototype.ManchesterCity.PhilFoden") : Route ? TEXT("Prototype.ManchesterCity.Rodri") : TEXT("Prototype.ManchesterCity.JeremyDoku")));
 			const FName Runner = Type == ESkillRuleType::Cross ? FName(IsA
 				? TEXT("Prototype.Arsenal.KaiHavertz") : TEXT("Prototype.ManchesterCity.ErlingHaaland")) : NAME_None;
-			if (!ReachSkill(Carrier, Runner)) { return false; }
+			if (!ReachSkill(Carrier, Runner, WithGoalkeeper)) { return false; }
 			const auto Safe = Access::Safe(*Mode, Attacker()->GetOwnerView().ViewerSide);
 			const auto* Option = Safe.SelectionOptions.FindByPredicate([&](const auto& O) { return O.SkillType == Type; });
 			if (!Option) { return false; }
@@ -231,11 +235,11 @@ namespace FMCodexNetworkInitialRouteTests
 			return Send(Attacker(), Kind::SubmitSkill, {}, {}, {}, {}, {}, P);
 		}
 
-		bool ReachRoute(ESkillRuleType Type, int32 D6 = 1, bool High = true, bool BeforeBranch = false)
+		bool ReachRoute(ESkillRuleType Type, int32 D6 = 1, bool High = true, bool BeforeBranch = false, bool WithGoalkeeper = false)
 		{
 			RequestedKind = Type == ESkillRuleType::Cross ? Kind::CrossInitialRouteRoll
 				: Type == ESkillRuleType::PassControl ? Kind::PassControlInitialRouteRoll : Kind::ThroughBallInitialRouteRoll;
-			if (!ReachBranch(Type)) { return false; }
+			if (!ReachBranch(Type, WithGoalkeeper)) { return false; }
 			if (Type == ESkillRuleType::Cross && !BeforeBranch)
 			{
 				Payload BranchChoice; BranchChoice.Intent = High ? Branch::CrossHigh : Branch::CrossLow;
