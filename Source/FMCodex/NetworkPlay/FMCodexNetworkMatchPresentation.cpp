@@ -71,10 +71,16 @@ void FFMCodexNetworkMatchPresentationAdapter::DisableActions(FFMCodexUMGMatchScr
 	M.LongShotResolution.PrimaryAction.bVisible = M.LongShotResolution.PrimaryAction.Action.bAvailable = false;
 	M.LongShotResolution.bCanContinue = false;
 	M.LongShotResolution.BranchChoices.Reset();
+	M.LongShotResolution.Formula.PrimaryAction.bVisible = M.LongShotResolution.Formula.PrimaryAction.Action.bAvailable = false;
+	M.LongShotResolution.Formula.bCanContinue = false;
+	M.ThroughBallResolution.PrimaryAction.bVisible = M.ThroughBallResolution.PrimaryAction.Action.bAvailable = false;
+	M.ThroughBallResolution.Formula.PrimaryAction.bVisible = M.ThroughBallResolution.Formula.PrimaryAction.Action.bAvailable = false;
+	M.ThroughBallResolution.bCanContinue = M.ThroughBallResolution.Formula.bCanContinue = false;
+	M.ThroughBallResolution.OneOnOneChoices.Reset();
 }
 
 FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Project(
-	const FFMCodexLocalMatchInteractionView& SafeView, EInitialTurnOrderPlayer Viewer)
+	const FFMCodexLocalMatchInteractionView& SafeView, EInitialTurnOrderPlayer Viewer, bool bFeetMilestoneCapability)
 {
 	FFMCodexNetworkMatchPresentation Result;
 	// This builder only formats already-projected public facts and canonical static descriptions.
@@ -90,7 +96,8 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	// Capability is separate from server legality: retain unsupported options with an explicit disabled state.
 	for (auto& Choice : M.Interaction.SelectionChoices)
 		if (M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill
-			&& Choice.SkillType != ESkillRuleType::Cross)
+			&& Choice.SkillType != ESkillRuleType::Cross && Choice.SkillType != ESkillRuleType::PassControl
+			&& !(bFeetMilestoneCapability && Choice.SkillType == ESkillRuleType::ThroughBall))
 		{
 			Choice.bEnabled = false;
 			Choice.SecondaryLabel = TEXT("此联网演示暂未支持");
@@ -122,7 +129,13 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 			if (Roll.bInitialRoute && Roll.Semantics == EMatchPlayResolutionRollSemantics::BranchSelection)
 			{
 				Event.Kind = EFMCodexUMGCrossRollRevealKind::InitialRoute;
-				Event.ContestId = TEXT("Cross.Route");
+				switch (Facts.ActualBranch.ActionType)
+				{
+				case ESkillRuleType::Cross: Event.ContestId = TEXT("Cross.Route"); break;
+				case ESkillRuleType::PassControl: Event.Kind = EFMCodexUMGCrossRollRevealKind::PassControlInitialRoute; Event.ContestId = TEXT("PassControl.Route"); break;
+				case ESkillRuleType::ThroughBall: Event.Kind = EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute; Event.ContestId = TEXT("ThroughBall.Route"); break;
+				default: continue;
+				}
 			}
 			else if (Roll.Semantics == EMatchPlayResolutionRollSemantics::ArithmeticContest
 				&& Facts.FormulaContests.Num() == 1)
@@ -144,6 +157,8 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	Result.Interaction = MoveTemp(M.Interaction);
 	Result.InlineFormula = MoveTemp(M.InlineFormula);
 	Result.BranchSurface = MoveTemp(M.LongShotResolution);
+	M.ThroughBallResolution.OneOnOneChoices.Reset();
+	Result.ThroughBallSurface = MoveTemp(M.ThroughBallResolution);
 	Result.FullTime = MoveTemp(M.FullTime);
 	return Result;
 }
@@ -164,6 +179,7 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	M.LocalPlayerLabel = View.LocalRack.SideLabel;
 	M.PitchRegions = View.PitchRegions; M.Interaction = View.Interaction;
 	M.InlineFormula = View.InlineFormula; M.LongShotResolution = View.BranchSurface;
+	M.ThroughBallResolution = View.ThroughBallSurface;
 	M.FullTime = View.FullTime;
 	M.ResolvedRolls = View.ResolvedRolls;
 	VisitCards(M, [&View](FFMCodexUMGCardViewModel& Card)
@@ -202,8 +218,14 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	case C::SelectBranchIntent:
 		if (M.LongShotResolution.SkillType != ESkillRuleType::Cross) return M;
 		Action = LOCTEXT("CrossBranch", "选择传中方式"); break;
+	case C::RollPassControlRoute: Action = LOCTEXT("PassControlRoute", "掷传控路线骰"); break;
+	case C::RollThroughBallInitialRoute: Action = LOCTEXT("ThroughBallRoute", "掷直塞路线骰"); break;
 	case C::RollCrossRoute: Action = LOCTEXT("CrossRoute", "掷传中路线骰"); break;
+	case C::RollPassControlAttack:
+	case C::RollThroughBallFeetAttack:
 	case C::RollCrossAttack: Action = LOCTEXT("CrossAttack", "进攻方掷点"); break;
+	case C::RollPassControlDefense:
+	case C::RollThroughBallFeetDefense:
 	case C::RollCrossDefense: Action = LOCTEXT("CrossDefense", "防守方掷点"); break;
 	case C::AdvanceAfterTerminal: Action = LOCTEXT("Advance", "下一回合"); break;
 	default: return M; // Unsupported families and non-player progression keep their existing presentation.

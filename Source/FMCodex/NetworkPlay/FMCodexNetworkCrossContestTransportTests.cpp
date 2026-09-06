@@ -1,17 +1,17 @@
 #if WITH_DEV_AUTOMATION_TESTS
-#include "FMCodexNetworkInitialRouteTestFixture.h"
+#include "FMCodexNetworkContestTestFixture.h"
 
 struct FFMCodexNetworkCrossContestTestAccess
 {
 	static void WithholdContest(FFMCodexNetworkMatchRuntime& Runtime)
 	{
-		Runtime.DisclosedCrossContestAttackSequence = 0;
+		Runtime.DisclosedContestAttackSequence = 0;
 	}
 };
 namespace FMCodexNetworkCrossContestTests
 {
 	using namespace FMCodexNetworkInitialRouteTests;
-	using Action = EFMCodexNetworkCrossContestAction;
+	using Action = EFMCodexNetworkContestAction;
 	using Route = EMatchPlayCrossActualBranch;
 	using Purpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
 	using Command = EMatchPlayAuthoritativeCommandKind;
@@ -63,27 +63,6 @@ namespace FMCodexNetworkCrossContestTests
 				Access::Session(*Mode).GetStateSnapshot(), Access::CallerRules(*Mode), Player, D);
 		}
 	};
-	struct FFrozen
-	{
-		FMatchPlayState State;
-		int32 Revision, Entropy, Post, Initial, Entry, D12, Coordinator;
-		explicit FFrozen(FCrossFixture& F)
-			: State(Access::Session(*F.Mode).GetStateSnapshot()), Revision(Access::Revision(*F.Mode)),
-			Entropy(F.Entropy->Calls), Post(Access::Runtime(*F.Mode).GetPostRouteProviderInvocationCount()),
-			Initial(Access::Runtime(*F.Mode).GetInitialRouteProviderInvocationCount()),
-			Entry(Access::Runtime(*F.Mode).GetEntryProviderInvocationCount()), D12(Access::Runtime(*F.Mode).GetD12ProviderInvocationCount()), Coordinator(F.Calls()) {}
-		void Verify(FAutomationTestBase& T, FCrossFixture& F, bool Failure = false) const
-		{
-			T.TestTrue(TEXT("Entire authoritative State unchanged"), SameState(State, Access::Session(*F.Mode).GetStateSnapshot()));
-			T.TestEqual(TEXT("No gameplay publication"), Access::Revision(*F.Mode), Revision);
-			T.TestEqual(TEXT("No other entropy or fallback"), F.Entropy->Calls, Entropy + int32(Failure));
-			T.TestEqual(TEXT("Post-route provider boundary"), Access::Runtime(*F.Mode).GetPostRouteProviderInvocationCount(), Post + int32(Failure));
-			T.TestEqual(TEXT("Initial route provider unchanged"), Access::Runtime(*F.Mode).GetInitialRouteProviderInvocationCount(), Initial);
-			T.TestEqual(TEXT("Entry provider unchanged"), Access::Runtime(*F.Mode).GetEntryProviderInvocationCount(), Entry);
-			T.TestEqual(TEXT("D12 provider unchanged"), Access::Runtime(*F.Mode).GetD12ProviderInvocationCount(), D12);
-			T.TestEqual(TEXT("Rejected request never coordinates"), F.Calls(), Coordinator);
-		}
-	};
 	FFMCodexNetworkClientViewSnapshot Project(const FFMCodexLocalMatchInteractionView& Safe, Side Viewer)
 	{
 		return FFMCodexNetworkClientViewSnapshotFactory::Build(Safe, FGuid::NewGuid(), 1, Viewer, EFMCodexNetworkBootstrapState::MatchReady);
@@ -117,8 +96,8 @@ bool FFMCodexCrossPairs::RunTest(const FString& P)
 		const int32 D6=IsAttack?AD6:DD6,ExpectedCount=IsAttack?1:2;
 		const auto K=RollKind(High,IsAttack);auto* PC=IsAttack?F.Attacker():F.Defender();
 		const auto Before=PC->GetOwnerView();const FFrozen Frozen(F);
-		TestEqual(TEXT("Owner receives exact actual-route action"),Before.CrossContestAction,RollAction(High,IsAttack));
-		TestEqual(TEXT("Other viewer receives no roll control"),(IsAttack?F.Defender():F.Attacker())->GetOwnerView().CrossContestAction,Action::None);
+		TestEqual(TEXT("Owner receives exact actual-route action"),Before.ContestAction,RollAction(High,IsAttack));
+		TestEqual(TEXT("Other viewer receives no roll control"),(IsAttack?F.Defender():F.Attacker())->GetOwnerView().ContestAction,Action::None);
 		const auto Intent=Canonical(K,Before.AttackSequence,Before.ViewerSide);
 		TestEqual(TEXT("Structural PlayerIntent classification"),FMatchPlayAuthoritativeCommandClassification::OriginOf(Intent.CommandKind),EMatchPlayAuthoritativeCommandOrigin::PlayerIntent);
 		Local.Entropy->Word=D6-1;
@@ -156,12 +135,12 @@ bool FFMCodexCrossPairs::RunTest(const FString& P)
 		for(auto* Viewer:{F.A,F.B})
 		{
 			const auto V=Viewer->GetOwnerView();
-			TestEqual(TEXT("Public Attack D6"),V.CrossContest.AttackD6,AD6);
-			TestEqual(TEXT("Defense absent until actual roll"),V.CrossContest.DefenseD6,IsAttack?0:DD6);
-			TestEqual(TEXT("Only completed pair reports Formula completion"),V.CrossContest.bFormulaResolved,!IsAttack);
+			TestEqual(TEXT("Public Attack D6"),V.Contest.AttackD6,AD6);
+			TestEqual(TEXT("Defense absent until actual roll"),V.Contest.DefenseD6,IsAttack?0:DD6);
+			TestEqual(TEXT("Only completed pair reports Formula completion"),V.Contest.bFormulaResolved,!IsAttack);
 			TestEqual(TEXT("Precise handoff/terminal wait"),V.EntryWait,IsAttack?EFMCodexNetworkEntryWait::CrossDefenseRoll:EFMCodexNetworkEntryWait::TerminalPendingAdvance);
 			TestEqual(TEXT("Next actor from canonical safe view"),V.ExpectedActingSide,IsAttack?Defender:Attacker);
-			TestEqual(TEXT("No attack reroll or premature next control"),V.CrossContestAction,IsAttack && V.ViewerSide==Defender?RollAction(High,false):Action::None);
+			TestEqual(TEXT("No attack reroll or premature next control"),V.ContestAction,IsAttack && V.ViewerSide==Defender?RollAction(High,false):Action::None);
 			TestEqual(TEXT("Stable terminal publishes authority score A"),V.PlayerAScore,S.RuntimeState.PlayerAState.Score);
 			TestEqual(TEXT("Stable terminal publishes authority score B"),V.PlayerBScore,S.RuntimeState.PlayerBState.Score);
 			const auto Safe=F.Safe(V.ViewerSide,ExpectedCount);
@@ -286,7 +265,7 @@ bool FFMCodexCrossProviderFailure::RunTest(const FString& P)
 	if(!Attack && !TestEqual(TEXT("Prior attack"),F.Roll(High,true,3).Code,Code::Accepted)) {return false;}
 	auto* PC=Attack?F.Attacker():F.Defender();Envelope E;
 	auto& Existing=F.Client(PC);Existing.ObserveView(PC->GetOwnerView());
-	TestTrue(TEXT("Existing generic state begins"),Existing.BeginCrossContest(PC->GetOwnerView(),RollKind(High,Attack),E));
+	TestTrue(TEXT("Existing generic state begins"),Existing.BeginOrdinaryContest(PC->GetOwnerView(),RollKind(High,Attack),E));
 	F.Next(PC)=E.RequestId+1;
 	const FFrozen Before(F);F.Entropy->bFail=true;
 	const auto Ack=F.Mode->SubmitConnectionPlayerIntent(PC,E);
@@ -344,8 +323,8 @@ bool FFMCodexCrossAckOrder::RunTest(const FString& P)
 	if(!TestTrue(TEXT("Canonical route"),F.Prepare(High))) {return false;}
 	if(!Attack && !TestEqual(TEXT("Attack prefix"),F.Roll(High,true,4).Code,Code::Accepted)) {return false;}
 	auto* PC=Attack?F.Attacker():F.Defender();auto& Client=F.Client(PC);const auto Before=PC->GetOwnerView();Envelope E;
-	TestTrue(TEXT("Generic begin"),Client.BeginCrossContest(Before,RollKind(High,Attack),E));const auto Original=E;
-	TestFalse(TEXT("Duplicate click cannot issue request"),Client.BeginCrossContest(Before,RollKind(High,Attack),E));
+	TestTrue(TEXT("Generic begin"),Client.BeginOrdinaryContest(Before,RollKind(High,Attack),E));const auto Original=E;
+	TestFalse(TEXT("Duplicate click cannot issue request"),Client.BeginOrdinaryContest(Before,RollKind(High,Attack),E));
 	TestEqual(TEXT("Duplicate click preserves envelope"),E.RequestId,Original.RequestId);
 	FFMCodexNetworkPlayerIntentAck Wrong;Wrong.MatchInstanceId=E.MatchInstanceId;Wrong.RequestId=E.RequestId+1;Wrong.Code=Code::Accepted;Wrong.ViewRevision=Before.ViewRevision+1;
 	TestFalse(TEXT("Unrelated ACK ignored"),Client.ObserveAck(Wrong));TestTrue(TEXT("Still pending"),Client.IsPending());
@@ -390,7 +369,7 @@ bool FFMCodexCrossRealStale::RunTest(const FString& P)
 	if(!TestTrue(TEXT("Explicit fixture-only next-turn command"),Session.AdvanceAfterTerminal(Advance).CompletionResult.bSuccess)) {return false;}
 	TestTrue(TEXT("Next entry stable"),Access::Advance(*F.Mode).bSuccess);Access::Publish(*F.Mode);
 	TestEqual(TEXT("True next sequence"),F.A->GetOwnerView().AttackSequence,Held.ExpectedAttackSequence+1);
-	TestEqual(TEXT("Old contest disclosure cannot cross sequence"),F.A->GetOwnerView().CrossContest.AttackD6,0);
+	TestEqual(TEXT("Old contest disclosure cannot cross sequence"),F.A->GetOwnerView().Contest.AttackD6,0);
 	if(!TestTrue(TEXT("Equivalent N+1 actual Cross route"),F.Prepare(High,true))) {return false;}
 	if(!Attack && !TestTrue(TEXT("N+1 actual Attack prefix"),F.Send(F.Attacker(),RollKind(High,true)))) {return false;}
 	auto* PC=Attack?F.Attacker():F.Defender();Held.RequestId=F.Next(PC)++;const FFrozen Before(F);
@@ -414,9 +393,9 @@ bool FFMCodexCrossSafeProjection::RunTest(const FString& P)
 	for(bool RouteReveal:{true,false}) for(bool EntryReveal:{true,false})
 	{
 		const auto V=Project(F.Safe(Player,0,false,RouteReveal,EntryReveal),Player);
-		TestEqual(TEXT("Action needs disclosed actual route and entry"),V.CrossContestAction,RouteReveal && EntryReveal?RollAction(High,true):Action::None);
+		TestEqual(TEXT("Action needs disclosed actual route and entry"),V.ContestAction,RouteReveal && EntryReveal?RollAction(High,true):Action::None);
 	}
-	TestEqual(TEXT("Null viewer has no action"),Project(F.Safe(Side::None,0),Side::None).CrossContestAction,Action::None);
+	TestEqual(TEXT("Null viewer has no action"),Project(F.Safe(Side::None,0),Side::None).ContestAction,Action::None);
 	TestEqual(TEXT("Attack"),F.Roll(High,true,6).Code,Code::Accepted);
 	TestEqual(TEXT("Defense"),F.Roll(High,false,1).Code,Code::Accepted);
 	const auto State=Access::Session(*F.Mode).GetStateSnapshot();
@@ -425,11 +404,11 @@ bool FFMCodexCrossSafeProjection::RunTest(const FString& P)
 		for(int32 Count=0;Count<=2;++Count)
 		{
 			const auto Safe=F.Safe(Viewer,Count);const auto V=Project(Safe,Viewer);
-			TestEqual(TEXT("Only explicitly disclosed Attack"),V.CrossContest.AttackD6,Count>=1?6:0);
-			TestEqual(TEXT("Only explicitly disclosed Defense"),V.CrossContest.DefenseD6,Count>=2?1:0);
-			TestEqual(TEXT("No Formula completion via hidden die"),V.CrossContest.bFormulaResolved,Count==2);
+			TestEqual(TEXT("Only explicitly disclosed Attack"),V.Contest.AttackD6,Count>=1?6:0);
+			TestEqual(TEXT("Only explicitly disclosed Defense"),V.Contest.DefenseD6,Count>=2?1:0);
+			TestEqual(TEXT("No Formula completion via hidden die"),V.Contest.bFormulaResolved,Count==2);
 			TestEqual(TEXT("Terminal wait is high-level lifecycle only"),V.EntryWait,EFMCodexNetworkEntryWait::TerminalPendingAdvance);
-			TestEqual(TEXT("No next-turn action added"),V.CrossContestAction,Action::None);
+			TestEqual(TEXT("No next-turn action added"),V.ContestAction,Action::None);
 			TestEqual(TEXT("Withheld score A"),V.PlayerAScore,0);TestEqual(TEXT("Withheld score B"),V.PlayerBScore,0);
 			TestTrue(TEXT("Goal history hidden before terminal reveal"),Safe.GoalHistory.IsEmpty());
 		}
@@ -438,19 +417,19 @@ bool FFMCodexCrossSafeProjection::RunTest(const FString& P)
 		TestEqual(TEXT("Existing separate terminal reveal permits committed score B"),Revealed.PlayerBScore,State.RuntimeState.PlayerBState.Score);
 		auto Safe=F.Safe(Viewer,2);
 		const auto Copy=Safe.ResolutionFacts.Rolls.Last();Safe.ResolutionFacts.Rolls.Add(Copy);
-		TestEqual(TEXT("Duplicate contest record fails whole projection"),Project(Safe,Viewer).CrossContest.AttackD6,0);
+		TestEqual(TEXT("Duplicate contest record fails whole projection"),Project(Safe,Viewer).Contest.AttackD6,0);
 		Safe=F.Safe(Viewer,2);Safe.ResolutionFacts.Rolls[1].RawD6=7;
-		TestEqual(TEXT("Invalid D6 fails whole projection"),Project(Safe,Viewer).CrossContest.AttackD6,0);
+		TestEqual(TEXT("Invalid D6 fails whole projection"),Project(Safe,Viewer).Contest.AttackD6,0);
 		Safe=F.Safe(Viewer,2);Safe.ResolutionFacts.Rolls.RemoveAt(1);
-		TestEqual(TEXT("Defense without Attack cannot be disclosed"),Project(Safe,Viewer).CrossContest.DefenseD6,0);
+		TestEqual(TEXT("Defense without Attack cannot be disclosed"),Project(Safe,Viewer).Contest.DefenseD6,0);
 		Safe=F.Safe(Viewer,2);Safe.ResolutionFacts.FormulaContests.Reset();
-		TestFalse(TEXT("No fabricated Formula completion"),Project(Safe,Viewer).CrossContest.bFormulaResolved);
+		TestFalse(TEXT("No fabricated Formula completion"),Project(Safe,Viewer).Contest.bFormulaResolved);
 	}
 	const FFrozen Before(F);
 	FFMCodexNetworkCrossContestTestAccess::WithholdContest(Access::Runtime(*F.Mode));
 	const auto V=Access::Runtime(*F.Mode).BuildClientView(Player,1,EFMCodexNetworkBootstrapState::MatchReady);
-	TestEqual(TEXT("Runtime reveal belongs to exact sequence"),V.CrossContest.AttackD6,0);
-	TestEqual(TEXT("Runtime also withholds Defense"),V.CrossContest.DefenseD6,0);
+	TestEqual(TEXT("Runtime reveal belongs to exact sequence"),V.Contest.AttackD6,0);
+	TestEqual(TEXT("Runtime also withholds Defense"),V.Contest.DefenseD6,0);
 	Before.Verify(*this,F);return true;
 }
 

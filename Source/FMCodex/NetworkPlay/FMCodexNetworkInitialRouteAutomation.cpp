@@ -81,7 +81,7 @@ bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Fa
 	return Ready;
 }
 // Short manual milestone: canonical setup ends before either contest roll.
-bool FFMCodexNetworkMatchRuntime::PrepareCrossTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill)
+bool FFMCodexNetworkMatchRuntime::PrepareOrdinaryTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill, ESkillRuleType Family)
 {
 	using Side = EInitialTurnOrderPlayer;
 	using Command = EMatchPlayAuthoritativeCommandKind;
@@ -101,14 +101,19 @@ bool FFMCodexNetworkMatchRuntime::PrepareCrossTerminalMilestone(bool Goal, bool 
 		Advance.AttackSequence = V.AttackSequence; Advance.RequestingSide = V.ViewerSide;
 		if (!Submit(Command::AdvanceAfterTerminal, Advance)) { return false; }
 	}
-	if (!PrepareInitialRouteMilestone(ESkillRuleType::Cross)) { return false; }
+	if (!PrepareInitialRouteMilestone(Family)) { return false; }
+	if (bAwaitSkill)
+	{
+		FeetMilestoneAttackSequence = Family == ESkillRuleType::ThroughBall ? View().AttackSequence : 0;
+		return true;
+	}
+	if (Family != ESkillRuleType::Cross) return false;
 	const auto SkillView = View();
 	const auto* OfferedSkill = SkillView.SkillOptions.FindByPredicate([](const auto& O)
 	{
 		return O.Choice.SkillId == FName(TEXT("Canonical.Skill.Cross.4.6"));
 	});
 	if (!OfferedSkill) { return false; }
-	if (bAwaitSkill) return true;
 	FMatchPlayAuthoritativeSubmitSkillRequest Skill;
 	Skill.ExpectedAttackSequence = SkillView.AttackSequence; Skill.RequestingSide = SkillView.ViewerSide;
 	Skill.SkillId = OfferedSkill->Choice.SkillId;
@@ -120,8 +125,8 @@ bool FFMCodexNetworkMatchRuntime::PrepareCrossTerminalMilestone(bool Goal, bool 
 	FMatchPlayAuthoritativeResolveCrossInitialRouteRollRequest Route;
 	Route.AttackSequence = SkillView.AttackSequence; Route.RequestingSide = SkillView.ViewerSide;
 	if (!Submit(Command::ResolveCrossInitialRouteRoll, Route)) { return false; }
-	const bool Ready = View().CrossContestAction == (Goal ? EFMCodexNetworkCrossContestAction::CrossHighAttackRoll : EFMCodexNetworkCrossContestAction::CrossLowAttackRoll);
-	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("CrossTerminal milestone: Ready=%d GoalFixture=%d Final=%d Side=%d Sequence=%lld; Attack/Defense/Advance remain player RPCs."),
+	const bool Ready = View().ContestAction == (Goal ? EFMCodexNetworkContestAction::CrossHighAttackRoll : EFMCodexNetworkContestAction::CrossLowAttackRoll);
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Terminal milestone: Ready=%d GoalFixture=%d Final=%d Side=%d Sequence=%lld; Attack/Defense/Advance remain player RPCs."),
 		Ready, Goal, Final, static_cast<int32>(View().ViewerSide), View().AttackSequence);
 	return Ready;
 }

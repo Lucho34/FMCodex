@@ -176,10 +176,10 @@ void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry(int32 InitialD
 }
 #endif
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
-void FFMCodexNetworkMatchRuntime::EnableCrossTerminalAutomation(bool Goal, bool Final)
+void FFMCodexNetworkMatchRuntime::EnableOrdinaryTerminalAutomation(bool Goal, bool Final, ESkillRuleType Family, int32 RouteD6)
 {
 	check(!bInitialized);
-	EnableInitialRouteAutomation(5);
+	EnableInitialRouteAutomation(Family == ESkillRuleType::ThroughBall ? 1 : RouteD6);
 	EnablePostRouteAutomation(Goal ? 6 : 1, Goal ? 1 : 6);
 	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider, 6, Final));
 }
@@ -343,9 +343,9 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 	Disclosure.bRevealRouteRoll = Disclosure.bRevealInitialActionPointRoll
 		&& DisclosedRouteAttackSequence == Snapshot.CurrentAttack.AttackSequence;
 	Disclosure.RevealedContestD6Count = Disclosure.bRevealRouteRoll
-		&& DisclosedCrossContestAttackSequence == Snapshot.CurrentAttack.AttackSequence
-		? DisclosedCrossContestRollCount : 0;
-	// Network DEV reveals a completed Cross at the stable terminal publication, without Local Reel timing.
+		&& DisclosedContestAttackSequence == Snapshot.CurrentAttack.AttackSequence
+		? DisclosedContestRollCount : 0;
+	// Network DEV reveals a completed ordinary contest at the stable terminal publication, without Local Reel timing.
 	// The independent exact-attack permission still distinguishes persistence from disclosure.
 	Disclosure.bRevealTerminalOutcome = Snapshot.bHasCurrentAttack
 		&& Snapshot.CurrentAttack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
@@ -366,12 +366,13 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 	if (bPlayerFacingPresentation)
 	{
 		// The narrow transport snapshot intentionally contains only the accepted prefix.
-		// The display variant additionally retains safe unresolved Cross operands.
+		// The display variant additionally retains safe unresolved ordinary operands.
 		// Both are built from this exact immutable State snapshot and disclosure permission.
-		Disclosure.bPreservePendingCrossFormula = true;
+		Disclosure.bPreservePendingOrdinaryFormula = true;
 		const auto DisplayView = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot, SkillRuleSet, ViewerSide, Disclosure);
-		Result.Presentation = FFMCodexNetworkMatchPresentationAdapter::Project(DisplayView, ViewerSide);
+		Result.Presentation = FFMCodexNetworkMatchPresentationAdapter::Project(DisplayView, ViewerSide,
+			FeetMilestoneAttackSequence > 0 && FeetMilestoneAttackSequence == Snapshot.CurrentAttack.AttackSequence);
 	}
 	return Result;
 }
@@ -554,8 +555,8 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 	{
 		DisclosedInitialAttackSequence = 0;
 		DisclosedRouteAttackSequence = 0;
-		DisclosedCrossContestAttackSequence = 0;
-		DisclosedCrossContestRollCount = 0;
+		DisclosedContestAttackSequence = 0;
+		DisclosedContestRollCount = 0;
 		DisclosedTerminalAttackSequence = 0;
 	}
 #if WITH_DEV_AUTOMATION_TESTS
@@ -575,31 +576,51 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
 	}
 #endif
-	const bool bCrossAttack = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll
-		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll;
-	const bool bCrossDefense = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll
-		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll;
-	if ((bCrossAttack || bCrossDefense) && Result.bSuccess)
+	const bool bContestAttack = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll;
+	const bool bContestDefense = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll;
+	if ((bContestAttack || bContestDefense) && Result.bSuccess)
 	{
-		DisclosedCrossContestAttackSequence = AuthoritativeSession->GetStateSnapshot().CurrentAttack.AttackSequence;
-		DisclosedCrossContestRollCount = bCrossDefense ? 2 : 1;
-		if (bCrossDefense && AuthoritativeSession->GetStateSnapshot().CurrentAttack.LifecycleState
+		DisclosedContestAttackSequence = AuthoritativeSession->GetStateSnapshot().CurrentAttack.AttackSequence;
+		DisclosedContestRollCount = bContestDefense ? 2 : 1;
+		if (bContestDefense && AuthoritativeSession->GetStateSnapshot().CurrentAttack.LifecycleState
 			== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
 		{
-			DisclosedTerminalAttackSequence = DisclosedCrossContestAttackSequence;
+			DisclosedTerminalAttackSequence = DisclosedContestAttackSequence;
 		}
 	}
 #if WITH_DEV_AUTOMATION_TESTS
-	if (bCrossAttack || bCrossDefense)
+	if (bContestAttack || bContestDefense)
 	{
 		const auto State = AuthoritativeSession->GetStateSnapshot();
 		const auto& Attack = State.CurrentAttack;
 		const auto Safe = BuildClientView(State.RuntimeState.CurrentAttackingPlayer, 0, EFMCodexNetworkBootstrapState::MatchReady);
+		if (bContestDefense && Result.bSuccess && bPlayerFacingPresentation)
+		{
+			// Diagnostics may read only the prefix and terminal facts already permitted in this public snapshot.
+			FFMCodexLocalMatchViewerDisclosure Published;
+			Published.bRevealInitialActionPointRoll = Safe.DisclosedInitialD12 > 0;
+			Published.bRevealRouteRoll = Safe.InitialRoute.D6 > 0;
+			Published.RevealedContestD6Count = Safe.Contest.DefenseD6 > 0 ? 2 : Safe.Contest.AttackD6 > 0 ? 1 : 0;
+			Published.bRevealTerminalOutcome = Safe.Terminal.Outcome != EFMCodexNetworkTerminalOutcome::None;
+			const auto Facts = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(State, SkillRuleSet,
+				State.RuntimeState.CurrentAttackingPlayer, Published).ResolutionFacts;
+			for (const auto& Contest : Facts.FormulaContests) if (Contest.bHasResolvedFormula)
+				UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("DEV Ordinary formula authority: Sequence=%lld Contest=%s ActualPassControl=%d ActualThroughBall=%d AttackTotal=%.2f DefenseTotal=%.2f Winner=%d Goal=%d Runner=%s"),
+					Attack.AttackSequence, *Contest.ContestId.ToString(), static_cast<int32>(Safe.InitialRoute.PassControl), static_cast<int32>(Safe.InitialRoute.ThroughBall),
+					Contest.ResolvedResult.AttackerFinalValue, Contest.ResolvedResult.DefenderFinalValue, static_cast<int32>(Contest.ResolvedResult.Winner),
+					Contest.ResolvedResult.bIsGoal, *Attack.SelectedAction.RunnerCardId.ToString());
+		}
 		UE_LOG(LogFMCodexNetworkPlay, Log,
-			TEXT("DEV CrossContest authority: Success=%d Command=%d Skill=%s Branch=%d ActualCross=%d AttackD6=%d DefenseD6=%d FormulaComplete=%d ProviderCalls=%d Phase=%s SelectionStage=%s RouteStage=%s RollProgress=%d RollRecords=%d Terminal=%d AuthorityScoreA=%d AuthorityScoreB=%d PublicScoreA=%d PublicScoreB=%d GoalHistory=%d ExpectedSide=%d Wait=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d"),
+			TEXT("DEV Contest authority: Success=%d Command=%d Skill=%s Branch=%d ActualCross=%d AttackD6=%d DefenseD6=%d FormulaComplete=%d ProviderCalls=%d Phase=%s SelectionStage=%s RouteStage=%s RollProgress=%d RollRecords=%d Terminal=%d AuthorityScoreA=%d AuthorityScoreB=%d PublicScoreA=%d PublicScoreB=%d GoalHistory=%d ExpectedSide=%d Wait=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d"),
 			Result.bSuccess, static_cast<int32>(Intent.CommandKind), *Attack.SelectedAction.SkillId.ToString(),
 			static_cast<int32>(Attack.SelectedAction.ElectiveBranchIntent), static_cast<int32>(Safe.InitialRoute.Cross),
-			Safe.CrossContest.AttackD6, Safe.CrossContest.DefenseD6, Safe.CrossContest.bFormulaResolved, GetPostRouteProviderInvocationCount(),
+			Safe.Contest.AttackD6, Safe.Contest.DefenseD6, Safe.Contest.bFormulaResolved, GetPostRouteProviderInvocationCount(),
 			*StaticEnum<EMatchPlayCurrentAttackPhase>()->GetNameStringByValue(static_cast<int64>(Attack.Phase)),
 			*StaticEnum<EMatchPlayCurrentAttackSelectionStage>()->GetNameStringByValue(static_cast<int64>(Attack.SelectionStage)),
 			*StaticEnum<EMatchPlayCurrentAttackResolutionStage>()->GetNameStringByValue(static_cast<int64>(Attack.ResolutionSession.Stage)),

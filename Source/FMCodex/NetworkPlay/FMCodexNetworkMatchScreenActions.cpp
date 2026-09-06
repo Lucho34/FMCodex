@@ -45,7 +45,7 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 	case K::Skill:
 	{
 		const auto* Choice = View.Presentation.Interaction.SelectionChoices.FindByPredicate(
-			[&](const auto& O) { return O.OptionId == Request.OptionId && O.bEnabled && O.SkillType == ESkillRuleType::Cross; });
+			[&](const auto& O) { return O.OptionId == Request.OptionId && O.bEnabled; });
 		if (!Choice) return false;
 		FFMCodexNetworkSubmitSkillPayload P; P.SkillId = Request.OptionId;
 		return Client.BeginSkill(View, P, Out);
@@ -65,16 +65,22 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		if (Request.Category != View.Presentation.Interaction.Category) return false;
 		switch (Request.Category)
 		{
+		case C::RollPassControlRoute: return Client.BeginInitialRoute(View, N::PassControlInitialRouteRoll, Out);
+		case C::RollThroughBallInitialRoute: return Client.BeginInitialRoute(View, N::ThroughBallInitialRouteRoll, Out);
 		case C::RollCrossRoute: return Client.BeginInitialRoute(View, N::CrossInitialRouteRoll, Out);
 		case C::AdvanceAfterTerminal: return Client.BeginAdvance(View, Out);
+		case C::RollPassControlAttack: return Client.BeginOrdinaryContest(View, N::PassControlAttackRoll, Out);
+		case C::RollPassControlDefense: return Client.BeginOrdinaryContest(View, N::PassControlDefenseRoll, Out);
+		case C::RollThroughBallFeetAttack: return Client.BeginOrdinaryContest(View, N::ThroughBallFeetAttackRoll, Out);
+		case C::RollThroughBallFeetDefense: return Client.BeginOrdinaryContest(View, N::ThroughBallFeetDefenseRoll, Out);
 		case C::RollCrossAttack:
 		case C::RollCrossDefense:
-			switch (View.CrossContestAction)
+			switch (View.ContestAction)
 			{
-			case EFMCodexNetworkCrossContestAction::CrossHighAttackRoll: return Client.BeginCrossContest(View, N::CrossHighAttackRoll, Out);
-			case EFMCodexNetworkCrossContestAction::CrossHighDefenseRoll: return Client.BeginCrossContest(View, N::CrossHighDefenseRoll, Out);
-			case EFMCodexNetworkCrossContestAction::CrossLowAttackRoll: return Client.BeginCrossContest(View, N::CrossLowAttackRoll, Out);
-			case EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll: return Client.BeginCrossContest(View, N::CrossLowDefenseRoll, Out);
+			case EFMCodexNetworkContestAction::CrossHighAttackRoll: return Client.BeginOrdinaryContest(View, N::CrossHighAttackRoll, Out);
+			case EFMCodexNetworkContestAction::CrossHighDefenseRoll: return Client.BeginOrdinaryContest(View, N::CrossHighDefenseRoll, Out);
+			case EFMCodexNetworkContestAction::CrossLowAttackRoll: return Client.BeginOrdinaryContest(View, N::CrossLowAttackRoll, Out);
+			case EFMCodexNetworkContestAction::CrossLowDefenseRoll: return Client.BeginOrdinaryContest(View, N::CrossLowDefenseRoll, Out);
 			default: return false;
 			}
 		default: return false;

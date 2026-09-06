@@ -1,4 +1,6 @@
 #include "FMCodexNetworkMatchPlayerController.h"
+#include "../LocalPlay/FMCodexLongShotResolutionSurfaceWidget.h"
+#include "../LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.h"
 #include "FMCodexNetworkMatchScreenActions.h"
 #include "../LocalPlay/FMCodexLocalMatchScreenWidget.h"
 #include "../LocalPlay/FMCodexMatchHeaderWidget.h"
@@ -354,10 +356,11 @@ void AFMCodexNetworkMatchPlayerController::RefreshNetworkBootstrapUI()
 				.OnClicked_Lambda([this]() { DevAdvanceAfterTerminal(); return FReply::Handled(); })
 			];
 		}
-		if (OwnerView.CrossContestAction != EFMCodexNetworkCrossContestAction::None)
+		if (OwnerView.InitialRoute.ActionType == ESkillRuleType::Cross
+			&& OwnerView.ContestAction != EFMCodexNetworkContestAction::None)
 		{
-			const bool Attack = OwnerView.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossHighAttackRoll
-				|| OwnerView.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossLowAttackRoll;
+			const bool Attack = OwnerView.ContestAction == EFMCodexNetworkContestAction::CrossHighAttackRoll
+				|| OwnerView.ContestAction == EFMCodexNetworkContestAction::CrossLowAttackRoll;
 			ParticipantChoices->AddSlot().AutoHeight().Padding(0, 8, 0, 0)
 			[
 				SNew(SButton).Text(Attack ? LOCTEXT("CrossAttackRoll", "掷传中进攻点数") : LOCTEXT("CrossDefenseRoll", "掷传中防守点数"))
@@ -471,7 +474,7 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 			? TEXT("运动战") : OwnerView.EntryBranch == EFMCodexNetworkEntryBranch::SetPiece
 			? TEXT("定位球") : TEXT("等待服务器");
 		const TCHAR* Wait = OwnerView.EntryWait == EFMCodexNetworkEntryWait::TerminalPendingAdvance
-			? (OwnerView.CrossTerminal.Outcome != EFMCodexNetworkTerminalOutcome::None ? TEXT("已结算，等待下一回合") : TEXT("终局结果等待公开")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
+			? (OwnerView.Terminal.Outcome != EFMCodexNetworkTerminalOutcome::None ? TEXT("已结算，等待下一回合") : TEXT("终局结果等待公开")) : OwnerView.EntryWait == EFMCodexNetworkEntryWait::Deployment
 			? TEXT("等待部署") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::CarrierSelection
 			? TEXT("部署已完成，等待选择持球球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::MarkerSelection
 			? TEXT("等待选择盯人球员") : OwnerView.EntryWait == EFMCodexNetworkEntryWait::RunnerSelection
@@ -583,27 +586,27 @@ FText AFMCodexNetworkMatchPlayerController::BuildStatusText() const
 		EntryText += FText::Format(LOCTEXT("InitialRouteFact", "\n路线骰：{0} · 实际路线：{1}"),
 			FText::AsNumber(OwnerView.InitialRoute.D6), OwnerView.InitialRoute.RouteLabel).ToString();
 	}
-	if (OwnerView.CrossContest.AttackD6 != 0)
+	if (OwnerView.Contest.AttackD6 != 0)
 	{
 		EntryText += FText::Format(LOCTEXT("CrossAttackFact", "\n传中进攻点数：{0}"),
-			FText::AsNumber(OwnerView.CrossContest.AttackD6)).ToString();
+			FText::AsNumber(OwnerView.Contest.AttackD6)).ToString();
 	}
-	if (OwnerView.CrossContest.DefenseD6 != 0)
+	if (OwnerView.Contest.DefenseD6 != 0)
 	{
 		EntryText += FText::Format(LOCTEXT("CrossDefenseFact", "\n传中防守点数：{0}"),
-			FText::AsNumber(OwnerView.CrossContest.DefenseD6)).ToString();
+			FText::AsNumber(OwnerView.Contest.DefenseD6)).ToString();
 	}
-	if (OwnerView.CrossContest.bFormulaResolved && OwnerView.CrossTerminal.Outcome == EFMCodexNetworkTerminalOutcome::None)
+	if (OwnerView.Contest.bFormulaResolved && OwnerView.Terminal.Outcome == EFMCodexNetworkTerminalOutcome::None)
 	{
 		EntryText += LOCTEXT("CrossContestComplete", "\n传中比较已完成；终局结果与比分尚未公开").ToString();
 	}
-	if (OwnerView.CrossTerminal.Outcome != EFMCodexNetworkTerminalOutcome::None)
+	if (OwnerView.Terminal.Outcome != EFMCodexNetworkTerminalOutcome::None)
 	{
-		EntryText += OwnerView.CrossTerminal.Outcome == EFMCodexNetworkTerminalOutcome::Goal
+		EntryText += OwnerView.Terminal.Outcome == EFMCodexNetworkTerminalOutcome::Goal
 			? LOCTEXT("TerminalGoal", "\n结果：进球").ToString() : LOCTEXT("TerminalNoGoal", "\n结果：未进球").ToString();
-		if (OwnerView.CrossTerminal.Outcome == EFMCodexNetworkTerminalOutcome::Goal)
+		if (OwnerView.Terminal.Outcome == EFMCodexNetworkTerminalOutcome::Goal)
 		{
-			EntryText += FText::Format(LOCTEXT("TerminalScorer", "\n进球球员：{0}"), OwnerView.CrossTerminal.Goal.ScorerLabel).ToString();
+			EntryText += FText::Format(LOCTEXT("TerminalScorer", "\n进球球员：{0}"), OwnerView.Terminal.Goal.ScorerLabel).ToString();
 		}
 	}
 	for (const auto& Goal : OwnerView.PublicGoalHistory)
@@ -1166,7 +1169,8 @@ bool AFMCodexNetworkMatchPlayerController::CanRequestCrossContest() const
 {
 	return IsLocalController() && !IntentClientState.IsPending() && OwnerView.bMatchInitialized
 		&& OwnerView.BootstrapState == EFMCodexNetworkBootstrapState::MatchReady
-		&& OwnerView.CrossContestAction != EFMCodexNetworkCrossContestAction::None
+		&& OwnerView.InitialRoute.ActionType == ESkillRuleType::Cross
+		&& OwnerView.ContestAction != EFMCodexNetworkContestAction::None
 		&& OwnerView.ViewerSide != EInitialTurnOrderPlayer::None
 		&& OwnerView.ExpectedActingSide == OwnerView.ViewerSide;
 }
@@ -1174,12 +1178,12 @@ void AFMCodexNetworkMatchPlayerController::DevRequestCrossContest()
 {
 #if !UE_BUILD_SHIPPING
 	if (!CanRequestCrossContest()) { return; }
-	switch (OwnerView.CrossContestAction)
+	switch (OwnerView.ContestAction)
 	{
-	case EFMCodexNetworkCrossContestAction::CrossHighAttackRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll); break;
-	case EFMCodexNetworkCrossContestAction::CrossHighDefenseRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll); break;
-	case EFMCodexNetworkCrossContestAction::CrossLowAttackRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll); break;
-	case EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll); break;
+	case EFMCodexNetworkContestAction::CrossHighAttackRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll); break;
+	case EFMCodexNetworkContestAction::CrossHighDefenseRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll); break;
+	case EFMCodexNetworkContestAction::CrossLowAttackRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll); break;
+	case EFMCodexNetworkContestAction::CrossLowDefenseRoll: SubmitCrossContest(EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll); break;
 	default: break;
 	}
 #endif
@@ -1189,9 +1193,9 @@ void AFMCodexNetworkMatchPlayerController::SubmitCrossContest(EFMCodexNetworkPla
 #if !UE_BUILD_SHIPPING
 	if (!IsLocalController()) { return; }
 	FFMCodexNetworkPlayerIntentEnvelope Envelope;
-	if (!IntentClientState.BeginCrossContest(OwnerView, Kind, Envelope)) { return; }
+	if (!IntentClientState.BeginOrdinaryContest(OwnerView, Kind, Envelope)) { return; }
 	RefreshNetworkBootstrapUI();
-	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("CrossContest owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Kind=%d"),
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Contest owner submit: Match=%s Request=%lld ViewerSide=%d ExpectedSequence=%lld Kind=%d"),
 		*Envelope.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), Envelope.RequestId,
 		static_cast<int32>(OwnerView.ViewerSide), Envelope.ExpectedAttackSequence, static_cast<int32>(Kind));
 	ServerSubmitPlayerIntent(Envelope);
@@ -1202,20 +1206,20 @@ void AFMCodexNetworkMatchPlayerController::DevProbeWrongCrossContestRoute()
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 	if (!CanRequestCrossContest()) { return; }
 	EFMCodexNetworkPlayerIntentKind Offered, Wrong;
-	switch (OwnerView.CrossContestAction)
+	switch (OwnerView.ContestAction)
 	{
-	case EFMCodexNetworkCrossContestAction::CrossHighAttackRoll:
+	case EFMCodexNetworkContestAction::CrossHighAttackRoll:
 		Offered = EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll; Wrong = EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll; break;
-	case EFMCodexNetworkCrossContestAction::CrossHighDefenseRoll:
+	case EFMCodexNetworkContestAction::CrossHighDefenseRoll:
 		Offered = EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll; Wrong = EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll; break;
-	case EFMCodexNetworkCrossContestAction::CrossLowAttackRoll:
+	case EFMCodexNetworkContestAction::CrossLowAttackRoll:
 		Offered = EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll; Wrong = EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll; break;
-	case EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll:
+	case EFMCodexNetworkContestAction::CrossLowDefenseRoll:
 		Offered = EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll; Wrong = EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll; break;
 	default: return;
 	}
 	FFMCodexNetworkPlayerIntentEnvelope Envelope;
-	if (!IntentClientState.BeginCrossContest(OwnerView, Offered, Envelope)) { return; }
+	if (!IntentClientState.BeginOrdinaryContest(OwnerView, Offered, Envelope)) { return; }
 	Envelope.IntentKind = Wrong;
 	RefreshNetworkBootstrapUI();
 	ServerSubmitPlayerIntent(Envelope);
@@ -1321,7 +1325,11 @@ void AFMCodexNetworkMatchPlayerController::DevPlayerFacingEvidence()
 	if (!PlayerMatchScreen) return;
 	const auto& M = PlayerMatchScreen->GetPresentation();
 	const auto& Displayed = PlayerMatchScreen->GetMatchHeader()->GetPresentation();
-	const auto& Formula = PlayerMatchScreen->GetInlineFormulaSurface()->GetPresentation();
+	const auto& Formula = M.ThroughBallResolution.Formula.bVisible
+		? PlayerMatchScreen->GetThroughBallResolutionSurface()->GetFormulaSurface()->GetPresentation()
+		: M.LongShotResolution.Formula.bVisible
+			? PlayerMatchScreen->GetLongShotResolutionSurface()->GetFormulaSurface()->GetPresentation()
+			: PlayerMatchScreen->GetInlineFormulaSurface()->GetPresentation();
 	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("PlayerFacing evidence: Match=%s Side=%d Revision=%d Sequence=%lld Category=%d Phase=%d Pending=%lld DisplayA=%s DisplayB=%s SafeA=%s SafeB=%s Narrative=%d Formula=%d FullTime=%d"),
 		*OwnerView.MatchInstanceId.ToString(EGuidFormats::DigitsWithHyphensLower), static_cast<int32>(OwnerView.ViewerSide),
 		OwnerView.ViewRevision, M.Header.AttackSequence, static_cast<int32>(M.Interaction.Category),

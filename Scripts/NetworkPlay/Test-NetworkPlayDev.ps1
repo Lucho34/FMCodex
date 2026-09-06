@@ -160,4 +160,24 @@ $auditOn = Get-NetworkPlayLaunchPlan -EditorPath $testEnginePath
 Assert-True ($auditOn.HostArguments -contains '-HandoffLatencyAudit') 'Audit opt in reaches Host'
 Assert-True ($auditOn.ClientArguments -contains '-HandoffLatencyAudit') 'Audit opt in reaches Client'
 $HandoffLatencyAudit = $false
+foreach ($family in @('PassControl', 'ThroughBallFeet')) {
+    foreach ($mode in @('Goal', 'NoGoal', 'FinalGoal', 'FinalNoGoal')) {
+        if ($family -eq 'PassControl') { . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingPassControlMilestone $mode }
+        else { . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingThroughBallFeetMilestone $mode }
+        $ordinary = Get-NetworkPlayLaunchPlan
+        Assert-True ($ordinary.HostArguments -contains ('-FMCodexNetworkPlayerFacing' + $family + 'Milestone=' + $mode)) 'Ordinary fixture reaches only authoritative Host'
+        Assert-True (@($ordinary.ClientArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*RouteD6*' }).Count -eq 0) 'Remote cannot configure route or fixture'
+        Assert-True (($ordinary.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($ordinary.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Both ordinary viewers reuse shared screen'
+        Assert-True (($ordinary.HostArguments -contains '-ResX=1600') -and ($ordinary.ClientArguments -contains '-ResY=900')) 'Ordinary player-facing default dimensions'
+    }
+}
+. $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingPassControlMilestone Goal -PassControlRouteD6 5
+Assert-True ((Get-NetworkPlayLaunchPlan).HostArguments -contains '-FMCodexNetworkPassControlRouteD6=5') 'Explicit third PassControl route uses server RNG seam'
+$PlayerFacingThroughBallFeetMilestone = 'Goal'
+Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Ordinary fixtures cannot mix'
+. $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingThroughBallFeetMilestone Goal
+$InitialRouteMilestone = 'ThroughBall'
+Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Feet milestone cannot mix with uncontrolled route fixture'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Ordinary extensions retain secure normal launch defaults'
 Write-Host ("FMCODEX_NETWORK_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)

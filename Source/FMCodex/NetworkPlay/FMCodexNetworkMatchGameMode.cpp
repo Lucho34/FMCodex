@@ -1,5 +1,5 @@
-#include "../Diagnostics/FMCodexHandoffLatencyAudit.h"
 #include "FMCodexNetworkMatchGameMode.h"
+#include "../Diagnostics/FMCodexHandoffLatencyAudit.h"
 
 #include "FMCodexNetworkMatchGameState.h"
 #include "FMCodexNetworkMatchPlayerController.h"
@@ -206,7 +206,12 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		MatchRuntime->EnablePlayerFacingPresentation();
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 	FString TerminalMilestone;
-	const bool bPlayerFacingMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingCrossMilestone="), TerminalMilestone);
+	ESkillRuleType PlayerFacingFamily = ESkillRuleType::Cross;
+	bool bPlayerFacingMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingCrossMilestone="), TerminalMilestone);
+	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingPassControlMilestone="), TerminalMilestone))
+	{ bPlayerFacingMilestone = true; PlayerFacingFamily = ESkillRuleType::PassControl; }
+	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingThroughBallFeetMilestone="), TerminalMilestone))
+	{ bPlayerFacingMilestone = true; PlayerFacingFamily = ESkillRuleType::ThroughBall; }
 	const bool bTerminalMilestone = bPlayerFacingMilestone || (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkCrossTerminalMilestone="), TerminalMilestone));
 	const bool bTerminalFinal = TerminalMilestone.StartsWith(TEXT("Final"));
 	const bool bTerminalGoal = TerminalMilestone == TEXT("Goal") || TerminalMilestone == TEXT("FinalGoal");
@@ -225,7 +230,10 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
 		BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = bTerminalFinal;
 		BootstrapConfiguration.AttackOpportunitiesPerSide = bTerminalFinal ? 1 : 3;
-		MatchRuntime->EnableCrossTerminalAutomation(bTerminalGoal, bTerminalFinal);
+		int32 RouteD6 = PlayerFacingFamily == ESkillRuleType::Cross ? 5 : bTerminalGoal ? 1 : 3;
+		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPassControlRouteD6="), RouteD6);
+		if (RouteD6 < 1 || RouteD6 > 6) RouteD6 = 1;
+		MatchRuntime->EnableOrdinaryTerminalAutomation(bTerminalGoal, bTerminalFinal, PlayerFacingFamily, RouteD6);
 	}
 	FString Milestone;
 	const bool bMilestone = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkRouteMilestone="), Milestone);
@@ -263,9 +271,9 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		return;
 	}
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
-	if (bTerminalMilestone && !MatchRuntime->PrepareCrossTerminalMilestone(bTerminalGoal, bTerminalFinal, bPlayerFacingMilestone))
+	if (bTerminalMilestone && !MatchRuntime->PrepareOrdinaryTerminalMilestone(bTerminalGoal, bTerminalFinal, bPlayerFacingMilestone, PlayerFacingFamily))
 	{
-		UE_LOG(LogFMCodexNetworkPlay, Error, TEXT("CrossTerminal milestone setup failed; no partial fixture is playable."));
+		UE_LOG(LogFMCodexNetworkPlay, Error, TEXT("Terminal milestone setup failed; no partial fixture is playable."));
 		bTransportFault = true;
 		PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
 		PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed);
@@ -609,6 +617,38 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.RequestingSide = Side;
 		Request.AttackSequence = Envelope.ExpectedAttackSequence;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::PassControlAttackRoll:
+	{
+		FMatchPlayAuthoritativeResolvePassControlAttackRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::PassControlDefenseRoll:
+	{
+		FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallFeetAttackRoll:
+	{
+		FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallFeetDefenseRoll:
+	{
+		FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll, Request);
 		break;
 	}
 	case EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal:

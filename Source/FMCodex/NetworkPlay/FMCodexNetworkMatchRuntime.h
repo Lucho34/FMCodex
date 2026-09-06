@@ -74,8 +74,8 @@ public:
 	void EnableInitialRouteAutomation(int32 D6);
 	void EnablePostRouteAutomation(int32 AttackD6, int32 DefenseD6);
 	bool PrepareInitialRouteMilestone(ESkillRuleType Family);
-	void EnableCrossTerminalAutomation(bool Goal, bool Final);
-	bool PrepareCrossTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill = false);
+	void EnableOrdinaryTerminalAutomation(bool Goal, bool Final, ESkillRuleType Family = ESkillRuleType::Cross, int32 RouteD6 = 5);
+	bool PrepareOrdinaryTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill = false, ESkillRuleType Family = ESkillRuleType::Cross);
 #endif
 #endif
 
@@ -106,11 +106,12 @@ private:
 	TUniquePtr<FFMCodexNetworkInitialRouteRollProvider> InitialRouteProvider;
 	TUniquePtr<FFMCodexNetworkPostRouteRollProvider> PostRouteProvider;
 	TUniquePtr<FFMCodexNetworkRecoveryProvider> RecoveryProvider;
+	int64 FeetMilestoneAttackSequence = 0;
 	int64 DisclosedTerminalAttackSequence = 0;
 	int64 DisclosedInitialAttackSequence = 0;
 	int64 DisclosedRouteAttackSequence = 0;
-	int64 DisclosedCrossContestAttackSequence = 0;
-	int32 DisclosedCrossContestRollCount = 0;
+	int64 DisclosedContestAttackSequence = 0;
+	int32 DisclosedContestRollCount = 0;
 	FSkillRuleSnapshotSet SkillRuleSet;
 	TUniquePtr<FMatchPlayAuthoritativeSession> AuthoritativeSession;
 	TUniquePtr<FMatchPlayServerCoordinator> ServerCoordinator;

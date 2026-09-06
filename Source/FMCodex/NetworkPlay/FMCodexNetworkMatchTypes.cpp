@@ -257,42 +257,65 @@ namespace FMCodexNetworkMatchTypes
 		Result.InitialRoute = MoveTemp(Fact);
 	}
 
-	void ProjectCrossContest(const FFMCodexLocalMatchInteractionView& View,
+	FName OrdinaryContestId(const FFMCodexNetworkClientViewSnapshot& View)
+	{
+		const auto& R = View.InitialRoute;
+		if (R.ActionType == ESkillRuleType::Cross)
+		{
+			if (R.Cross == EMatchPlayCrossActualBranch::High) return TEXT("Cross.High");
+			if (R.Cross == EMatchPlayCrossActualBranch::Low) return TEXT("Cross.Low");
+		}
+		if (R.ActionType == ESkillRuleType::PassControl)
+		{
+			switch (R.PassControl)
+			{
+			case EMatchPlayPassControlActualBranch::PassAdvance: return TEXT("PassControl.PassAdvance");
+			case EMatchPlayPassControlActualBranch::DribbleAdvance: return TEXT("PassControl.DribbleAdvance");
+			case EMatchPlayPassControlActualBranch::RunAdvance: return TEXT("PassControl.RunAdvance");
+			default: break;
+			}
+		}
+		if (R.ActionType == ESkillRuleType::ThroughBall && R.ThroughBall == EMatchPlayThroughBallActualBranch::Feet)
+			return TEXT("ThroughBall.Feet");
+		return NAME_None;
+	}
+
+	void ProjectOrdinaryContest(const FFMCodexLocalMatchInteractionView& View,
 		FFMCodexNetworkClientViewSnapshot& Result)
 	{
-		const auto Route = Result.InitialRoute.Cross;
-		if (Result.InitialRoute.ActionType != ESkillRuleType::Cross
-			|| (Route != EMatchPlayCrossActualBranch::High && Route != EMatchPlayCrossActualBranch::Low)) { return; }
-		FFMCodexNetworkCrossContestFact Fact;
+		const FName ContestId = OrdinaryContestId(Result);
+		if (ContestId.IsNone()) return;
+		FFMCodexNetworkContestFact Fact;
 		int32 Count = 0;
 		for (const auto& Roll : View.ResolutionFacts.Rolls)
 		{
-			if (Roll.bInitialRoute) { continue; }
+			if (Roll.bInitialRoute) continue;
 			using Purpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
 			const bool Attack = Count == 0;
 			if (++Count > 2 || !Roll.bResolved || Roll.RawD6 < 1 || Roll.RawD6 > 6
-				|| Roll.PostRoutePurpose != (Attack ? Purpose::PrimaryAttack : Purpose::PrimaryDefense)) { return; }
-			if (Attack) { Fact.AttackD6 = Roll.RawD6; } else { Fact.DefenseD6 = Roll.RawD6; }
+				|| Roll.PostRoutePurpose != (Attack ? Purpose::PrimaryAttack : Purpose::PrimaryDefense)) return;
+			if (Attack) Fact.AttackD6 = Roll.RawD6; else Fact.DefenseD6 = Roll.RawD6;
 		}
-		const FName ContestId = Route == EMatchPlayCrossActualBranch::High ? TEXT("Cross.High") : TEXT("Cross.Low");
 		if (Count == 2 && View.ResolutionFacts.FormulaContests.Num() == 1)
 		{
 			const auto& Contest = View.ResolutionFacts.FormulaContests[0];
 			Fact.bFormulaResolved = Contest.ContestId == ContestId && Contest.bHasResolvedFormula;
 		}
-		Result.CrossContest = Fact;
+		Result.Contest = Fact;
 		if (!View.bHumanInteraction || Result.ViewerSide == EInitialTurnOrderPlayer::None
-			|| View.ExpectedActingPlayer != Result.ViewerSide) { return; }
-		const bool High = Route == EMatchPlayCrossActualBranch::High;
-		if (View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollCrossAttack)
+			|| View.ExpectedActingPlayer != Result.ViewerSide) return;
+		using C = EFMCodexLocalMatchInteractionCategory;
+		using A = EFMCodexNetworkContestAction;
+		const bool High = Result.InitialRoute.Cross == EMatchPlayCrossActualBranch::High;
+		switch (View.InteractionCategory)
 		{
-			Result.CrossContestAction = High ? EFMCodexNetworkCrossContestAction::CrossHighAttackRoll
-				: EFMCodexNetworkCrossContestAction::CrossLowAttackRoll;
-		}
-		else if (View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollCrossDefense)
-		{
-			Result.CrossContestAction = High ? EFMCodexNetworkCrossContestAction::CrossHighDefenseRoll
-				: EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll;
+		case C::RollCrossAttack: Result.ContestAction = High ? A::CrossHighAttackRoll : A::CrossLowAttackRoll; break;
+		case C::RollCrossDefense: Result.ContestAction = High ? A::CrossHighDefenseRoll : A::CrossLowDefenseRoll; break;
+		case C::RollPassControlAttack: Result.ContestAction = A::PassControlAttackRoll; break;
+		case C::RollPassControlDefense: Result.ContestAction = A::PassControlDefenseRoll; break;
+		case C::RollThroughBallFeetAttack: Result.ContestAction = A::ThroughBallFeetAttackRoll; break;
+		case C::RollThroughBallFeetDefense: Result.ContestAction = A::ThroughBallFeetDefenseRoll; break;
+		default: break;
 		}
 	}
 
@@ -360,10 +383,9 @@ namespace FMCodexNetworkMatchTypes
 			}
 			Result.Recovery = MoveTemp(Recovery);
 		}
-		if (!View.bTerminalPendingAdvance || !Result.CrossContest.bFormulaResolved
-			|| Result.bGoalHistoryUnavailable || Result.InitialRoute.ActionType != ESkillRuleType::Cross) { return; }
-		const FName DecisionId = Result.InitialRoute.Cross == EMatchPlayCrossActualBranch::High
-			? TEXT("Cross.High.Outcome") : TEXT("Cross.Low.Outcome");
+		if (!View.bTerminalPendingAdvance || !Result.Contest.bFormulaResolved
+			|| Result.bGoalHistoryUnavailable || OrdinaryContestId(Result).IsNone()) { return; }
+		const FName DecisionId(*FString::Printf(TEXT("%s.Outcome"), *OrdinaryContestId(Result).ToString()));
 		const FMatchPlayResolutionDecisionFact* Terminal = nullptr;
 		for (const auto& Decision : View.ResolutionFacts.Decisions)
 		{
@@ -376,13 +398,13 @@ namespace FMCodexNetworkMatchTypes
 		if (Terminal->Outcome == EMatchPlayResolutionDecisionOutcome::Goal)
 		{
 			if (!Goal || Goal->ScoringSide != Result.CurrentAttackingSide || Goal->ScorerCardId.IsNone() || Goal->bSystemAward) { return; }
-			Result.CrossTerminal.Outcome = EFMCodexNetworkTerminalOutcome::Goal;
-			Result.CrossTerminal.Goal = *Goal;
+			Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::Goal;
+			Result.Terminal.Goal = *Goal;
 		}
 		else if (Terminal->Outcome == EMatchPlayResolutionDecisionOutcome::Miss)
 		{
 			if (Goal) { return; }
-			Result.CrossTerminal.Outcome = EFMCodexNetworkTerminalOutcome::NoGoal;
+			Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::NoGoal;
 		}
 		else { return; }
 		Result.bCanAdvance = View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
@@ -637,6 +659,10 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 		Result.EntryWait = EFMCodexNetworkEntryWait::CrossDefenseRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollCrossAttack:
 		Result.EntryWait = EFMCodexNetworkEntryWait::CrossAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollPassControlDefense:
+		Result.EntryWait = EFMCodexNetworkEntryWait::PassControlDefenseRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallFeetDefenseRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollPassControlAttack:
 		Result.EntryWait = EFMCodexNetworkEntryWait::PassControlAttackRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetAttack:
@@ -665,7 +691,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	FMCodexNetworkMatchTypes::ProjectSkill(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectBranch(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectInitialRoute(SafeViewerView, Result);
-	FMCodexNetworkMatchTypes::ProjectCrossContest(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectOrdinaryContest(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectPublicLifecycle(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(

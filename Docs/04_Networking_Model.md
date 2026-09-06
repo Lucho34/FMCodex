@@ -475,3 +475,20 @@ Server events correlate the existing envelope RequestId/sequence with each publi
 Screenshots supplement these event timings; PNG timestamps are not latency measurements. Real generated-RPC, natural-replication repeated runs supply latency evidence; automation tests cover observer ordering, opt-in, correlation and dedupe. WAN RTT, jitter, packet loss, bandwidth, Steam, Dedicated and reconnect/timeout validation remain separate work.
 
 The shared result hold measures elapsed game-clock time between scheduled callbacks. The 40 ms timer interval controls wakeup frequency, not how much time each callback claims has elapsed. This preserves pause/time-dilation behavior and configured Reel, Settling, Formula and Narrative durations when timer delivery is delayed. It introduces no gameplay clock or replicated timing state.
+
+## PassControl and ThroughBall Feet sequential contests
+
+The four empty-payload wire intents PassControlAttackRoll, PassControlDefenseRoll, ThroughBallFeetAttackRoll and ThroughBallFeetDefenseRoll map to their existing Resolve-prefixed authoritative DTOs. RequestingSide is derived from the admitted connection and AttackSequence from ExpectedAttackSequence. They share the existing RequestId namespace and bounded forward window, closed eight-member payload union, asynchronous ACK/View correlation and generated owning RPC for both listen Host and Remote.
+
+| Family / actual route | Initial D6 | Explicit player continuation | Automatic terminal continuation |
+|---|---|---|---|
+| PassControl PassAdvance | 1–2 | attacker D6, defender D6 | Session Defense atomically persists finishing terminal |
+| PassControl DribbleAdvance | 3–4 | attacker D6, defender D6 | same authoritative PassControl Defense |
+| PassControl RunAdvance | 5–6 | attacker D6, defender D6 | same authoritative PassControl Defense |
+| ThroughBall Feet | 1–2 | attacker D6, defender D6 | Coordinator applies existing ThroughBall terminal |
+
+Every accepted contest input takes exactly one server-private D6. The successful input gets one Coordinator pass and one stable publication; terminal calculation takes no further roll. Wrong owner/family/phase/sequence, Defense-before-Attack, duplicate or fresh reroll rejects without gameplay mutation or draw. A failed provider attempt has no successful draw, adoption, fallback, Coordinator or publication. Feet requests at actual BehindDefense (3–4) or AntiOffside (5–6) reject before the provider. Client payloads never supply Side, roll, route, Formula, winner, scorer or terminal state.
+
+Both Goal and NoGoal stop at TerminalPendingAdvance and share public score/history/scorer disclosure and explicit AdvanceAfterTerminal. Public receipt may precede visible score; the existing shared Formula/Reel/Narrative timeline gates the painted header. PassControl uses the normal shared skill selection. General ThroughBall remains disabled. The explicit server-only PlayerFacingThroughBallFeetMilestone confines its capability to the prepared attack and pins only the provider result; it changes no route mapping or probability in normal play. PlayerFacingPassControlMilestone Goal / NoGoal provides a short Skill → route → attack → defense → terminal → 下一回合 → next Full D12 USER PIE; PassControlRouteD6 selects a DEV route sample, and final variants verify existing Full-Time. Technical captures do not replace user visual acceptance.
+
+The current complete player-facing ordinary paths are Cross and PassControl, plus the explicitly scoped ThroughBall Feet branch. Full ThroughBall is incomplete. The remaining conditional ThroughBall continuations should be audited together at a medium-sized boundary, followed separately by the direct/paired-shot family and set pieces.

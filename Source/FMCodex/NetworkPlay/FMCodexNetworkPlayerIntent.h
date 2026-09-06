@@ -24,7 +24,11 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	CrossHighDefenseRoll,
 	CrossLowAttackRoll,
 	CrossLowDefenseRoll,
-	AdvanceAfterTerminal
+	AdvanceAfterTerminal,
+	PassControlAttackRoll,
+	PassControlDefenseRoll,
+	ThroughBallFeetAttackRoll,
+	ThroughBallFeetDefenseRoll,
 };
 
 UENUM()
@@ -133,7 +137,7 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 	bool BeginInitialRoute(const FFMCodexNetworkClientViewSnapshot& View,
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginAdvance(const FFMCodexNetworkClientViewSnapshot& View, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
-	bool BeginCrossContest(const FFMCodexNetworkClientViewSnapshot& View,
+	bool BeginOrdinaryContest(const FFMCodexNetworkClientViewSnapshot& View,
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }

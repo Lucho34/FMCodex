@@ -1,5 +1,5 @@
-#include "../Diagnostics/FMCodexHandoffLatencyAudit.h"
 #include "MatchPlayEntryDeploymentPlayerIntentPort.h"
+#include "../Diagnostics/FMCodexHandoffLatencyAudit.h"
 #include "MatchPlayFullD12PlayerIntentPort.h"
 #include "MatchPlayAuthoritativeSession.h"
 #include "MatchPlayServerCoordinator.h"
@@ -156,6 +156,34 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolvePassControlAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolvePassControlAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolvePassControlAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolvePassControlDefenseRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolvePassControlDefenseRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveThroughBallFeetAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveThroughBallFeetAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveThroughBallFeetDefenseRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveThroughBallFeetDefenseRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeAdvanceAfterTerminalRequest>()) { return Mismatch(); }
@@ -167,7 +195,7 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NotPlayerIntent;
 		return Result;
 	}
-	// Exactly one pass after any successful deployment, participant, Skill, branch, initial-route, Cross contest or terminal advance command; never on rejection.
+	// Exactly one pass after any successful deployment, participant, Skill, branch, initial-route, ordinary contest or terminal advance command; never on rejection.
 #if !UE_BUILD_SHIPPING
 	FMCodexHandoffAudit::AuthorityAccepted();
 #endif

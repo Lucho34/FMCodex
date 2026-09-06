@@ -42,7 +42,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll, PassControlDefenseRoll, ThroughBallFeetDefenseRoll
 };
 
 
@@ -72,16 +72,17 @@ struct FMCODEX_API FFMCodexNetworkInitialRouteFact
 	FText RouteLabel;
 };
 
-/** Current safe Cross action. Its route comes from canonical ActualBranch, not selected intent. */
+/** Current safe ordinary sequential contest action. Its route comes from canonical ActualBranch, not selected intent. */
 UENUM(BlueprintType)
-enum class EFMCodexNetworkCrossContestAction : uint8
+enum class EFMCodexNetworkContestAction : uint8
 {
-	None, CrossHighAttackRoll, CrossHighDefenseRoll, CrossLowAttackRoll, CrossLowDefenseRoll
+	None, CrossHighAttackRoll, CrossHighDefenseRoll, CrossLowAttackRoll, CrossLowDefenseRoll,
+	PassControlAttackRoll, PassControlDefenseRoll, ThroughBallFeetAttackRoll, ThroughBallFeetDefenseRoll
 };
 
 /** Disclosed contest prefix only; no Formula totals, winner, Goal or private provider state. */
 USTRUCT(BlueprintType)
-struct FMCODEX_API FFMCodexNetworkCrossContestFact
+struct FMCODEX_API FFMCodexNetworkContestFact
 {
 	GENERATED_BODY()
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
@@ -251,7 +252,7 @@ struct FMCODEX_API FFMCodexNetworkPublicGoal
 	bool bSystemAward = false;
 };
 USTRUCT(BlueprintType)
-struct FMCODEX_API FFMCodexNetworkCrossTerminalFact
+struct FMCODEX_API FFMCodexNetworkTerminalFact
 {
 	GENERATED_BODY()
 	UPROPERTY()
@@ -422,11 +423,11 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FFMCodexNetworkInitialRouteFact InitialRoute;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
-	EFMCodexNetworkCrossContestAction CrossContestAction = EFMCodexNetworkCrossContestAction::None;
+	EFMCodexNetworkContestAction ContestAction = EFMCodexNetworkContestAction::None;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
-	FFMCodexNetworkCrossContestFact CrossContest;
+	FFMCodexNetworkContestFact Contest;
 	UPROPERTY()
-	FFMCodexNetworkCrossTerminalFact CrossTerminal;
+	FFMCodexNetworkTerminalFact Terminal;
 	UPROPERTY()
 	bool bCanAdvance = false;
 	/** Current Network match contract is 3+3 attacks, at most one goal per attack. */

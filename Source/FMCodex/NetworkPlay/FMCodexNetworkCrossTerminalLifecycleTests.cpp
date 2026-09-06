@@ -12,8 +12,8 @@ struct FFMCodexNetworkCrossTerminalTestAccess
 		Mode.BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = Final;
 		auto Entropy=MakeUnique<FInitialRouteEntropy>();auto* Source=Entropy.Get();
 		Mode.MatchRuntime=MakeUnique<FFMCodexNetworkMatchRuntime>(Mode.MatchInstanceId,MoveTemp(Entropy));
-		Mode.MatchRuntime->EnableCrossTerminalAutomation(Goal,Final);
-		if(!Mode.MatchRuntime->InitializeOnce(Mode.BootstrapConfiguration).bSuccess || !Mode.MatchRuntime->PrepareCrossTerminalMilestone(Goal,Final)) {return nullptr;}
+		Mode.MatchRuntime->EnableOrdinaryTerminalAutomation(Goal,Final);
+		if(!Mode.MatchRuntime->InitializeOnce(Mode.BootstrapConfiguration).bSuccess || !Mode.MatchRuntime->PrepareOrdinaryTerminalMilestone(Goal,Final)) {return nullptr;}
 		Mode.PublishOwnerViews(EFMCodexNetworkBootstrapState::MatchReady);
 		return Source;
 	}
@@ -125,8 +125,8 @@ bool FFMCodexCrossTerminalLifecycle::RunTest(const FString& P)
 		const auto V=Runtime.BuildClientView(PC->GetOwnerView().ViewerSide,Before.Revision,EFMCodexNetworkBootstrapState::MatchReady);
 		TestEqual(TEXT("Persisted authority Goal concealed A"),V.PlayerAScore,0);
 		TestEqual(TEXT("Persisted authority Goal concealed B"),V.PlayerBScore,0);
-		TestEqual(TEXT("Concealed terminal outcome"),V.CrossTerminal.Outcome,Outcome::None);
-		TestTrue(TEXT("Concealed scorer/history"),V.CrossTerminal.Goal.ScorerCardId.IsNone() && V.PublicGoalHistory.IsEmpty());
+		TestEqual(TEXT("Concealed terminal outcome"),V.Terminal.Outcome,Outcome::None);
+		TestTrue(TEXT("Concealed scorer/history"),V.Terminal.Goal.ScorerCardId.IsNone() && V.PublicGoalHistory.IsEmpty());
 		TestFalse(TEXT("Normal client cannot advance concealed terminal"),V.bCanAdvance);
 	}
 	Before.Verify(*this,F);
@@ -134,18 +134,18 @@ bool FFMCodexCrossTerminalLifecycle::RunTest(const FString& P)
 	for (auto* PC : {F.A,F.B})
 	{
 		const auto V=Runtime.BuildClientView(PC->GetOwnerView().ViewerSide,Before.Revision,EFMCodexNetworkBootstrapState::MatchReady);
-		TestEqual(TEXT("One coherent terminal outcome"),V.CrossTerminal.Outcome,Goal?Outcome::Goal:Outcome::NoGoal);
+		TestEqual(TEXT("One coherent terminal outcome"),V.Terminal.Outcome,Goal?Outcome::Goal:Outcome::NoGoal);
 		TestEqual(TEXT("A score orientation"),V.PlayerAScore,Goal&&!B?1:0);
 		TestEqual(TEXT("B score orientation"),V.PlayerBScore,Goal&&B?1:0);
 		TestEqual(TEXT("Exactly public persisted history"),V.PublicGoalHistory.Num(),int32(Goal));
 		TestEqual(TEXT("Only current attacker advances"),V.bCanAdvance,PC==Actor);
 		if (Goal)
 		{
-			TestEqual(TEXT("Canonical scorer identity, not inferred Runner"),V.CrossTerminal.Goal.ScorerCardId,Before.State.GoalHistory[0].ScorerCardId);
-			TestFalse(TEXT("Chinese roster scorer label"),V.CrossTerminal.Goal.ScorerLabel.IsEmpty());
-			TestTrue(TEXT("Current Goal is exact public history entry"),Same(V.CrossTerminal.Goal,V.PublicGoalHistory[0]));
+			TestEqual(TEXT("Canonical scorer identity, not inferred Runner"),V.Terminal.Goal.ScorerCardId,Before.State.GoalHistory[0].ScorerCardId);
+			TestFalse(TEXT("Chinese roster scorer label"),V.Terminal.Goal.ScorerLabel.IsEmpty());
+			TestTrue(TEXT("Current Goal is exact public history entry"),Same(V.Terminal.Goal,V.PublicGoalHistory[0]));
 		}
-		else { TestTrue(TEXT("No placeholder scorer on NoGoal"),V.CrossTerminal.Goal.ScorerCardId.IsNone() && V.CrossTerminal.Goal.ScorerLabel.IsEmpty()); }
+		else { TestTrue(TEXT("No placeholder scorer on NoGoal"),V.Terminal.Goal.ScorerCardId.IsNone() && V.Terminal.Goal.ScorerLabel.IsEmpty()); }
 	}
 	Before.Verify(*this,F);
 	F.Entropy->Word=0; Local.Entropy->Word=0;
@@ -178,9 +178,9 @@ bool FFMCodexCrossTerminalLifecycle::RunTest(const FString& P)
 	{
 		const auto V=PC->GetOwnerView();
 		TestFalse(TEXT("Old Advance action disappears"),V.bCanAdvance);
-		TestEqual(TEXT("Old current Goal disappears"),V.CrossTerminal.Outcome,Outcome::None);
-		TestTrue(TEXT("No stale terminal scorer"),V.CrossTerminal.Goal.ScorerCardId.IsNone());
-		TestTrue(TEXT("No stale Cross Skill/branch/rolls"),V.SelectedSkill.Choice.IsEmpty() && V.SelectedBranch.Choice.IsEmpty() && V.CrossContest.AttackD6==0 && V.CrossContest.DefenseD6==0 && V.InitialRoute.D6==0);
+		TestEqual(TEXT("Old current Goal disappears"),V.Terminal.Outcome,Outcome::None);
+		TestTrue(TEXT("No stale terminal scorer"),V.Terminal.Goal.ScorerCardId.IsNone());
+		TestTrue(TEXT("No stale Cross Skill/branch/rolls"),V.SelectedSkill.Choice.IsEmpty() && V.SelectedBranch.Choice.IsEmpty() && V.Contest.AttackD6==0 && V.Contest.DefenseD6==0 && V.InitialRoute.D6==0);
 		TestEqual(TEXT("Public history persists"),V.PublicGoalHistory.Num(),int32(Goal));
 		TestEqual(TEXT("Public A score persists"),V.PlayerAScore,Goal&&!B?1:0);
 		TestEqual(TEXT("Public B score persists"),V.PlayerBScore,Goal&&B?1:0);
@@ -303,7 +303,7 @@ bool FFMCodexCrossTerminalRecoveryFailure::RunTest(const FString& P)
 	TestFalse(TEXT("Recovery failure rejects Advance"),F.Send(PC,Kind::AdvanceAfterTerminal));
 	TestFalse(TEXT("Rejected ACK releases the generic pending"),F.Client(PC).IsPending());
 	Before.Verify(*this,F,FailedDraws);
-	TestEqual(TEXT("Terminal result remains visible after failed Advance"),PC->GetOwnerView().CrossTerminal.Outcome,Outcome::Goal);
+	TestEqual(TEXT("Terminal result remains visible after failed Advance"),PC->GetOwnerView().Terminal.Outcome,Outcome::Goal);
 	F.Entropy->FailOnCall=0;
 	TestTrue(TEXT("Only explicit retry advances after repair"),F.Send(PC,Kind::AdvanceAfterTerminal));
 	TestEqual(TEXT("No lost or doubled opportunity on retry"),Access::Session(*F.Mode).GetStateSnapshot().RuntimeState.PlayerAState.UsedAttackCount+
@@ -396,13 +396,13 @@ bool FFMCodexCrossTerminalProjectionBounds::RunTest(const FString&)
 	const auto Original=FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(Snapshot,Access::CallerRules(*F.Mode),Side::PlayerA,D);
 	auto Project=[&](const auto& V,Side Viewer=Side::PlayerA){return FFMCodexNetworkClientViewSnapshotFactory::Build(V,F.Mode->GetMatchInstanceId(),9,Viewer,EFMCodexNetworkBootstrapState::MatchReady);};
 	auto Safe=Original;const FFrozen Before(F);
-	TestEqual(TEXT("Legitimate public goal"),Project(Safe).CrossTerminal.Outcome,Outcome::Goal);
+	TestEqual(TEXT("Legitimate public goal"),Project(Safe).Terminal.Outcome,Outcome::Goal);
 	Safe.GoalHistory.Reset();
-	TestEqual(TEXT("Goal without matching public history fails closed"),Project(Safe).CrossTerminal.Outcome,Outcome::None);
+	TestEqual(TEXT("Goal without matching public history fails closed"),Project(Safe).Terminal.Outcome,Outcome::None);
 	Safe=Original;Safe.GoalHistory[0].ScoringSide=Side::PlayerB;
-	TestEqual(TEXT("Mismatched scoring Side fails closed"),Project(Safe).CrossTerminal.Outcome,Outcome::None);
+	TestEqual(TEXT("Mismatched scoring Side fails closed"),Project(Safe).Terminal.Outcome,Outcome::None);
 	Safe=Original;Safe.GoalHistory[0].ScorerCardId=NAME_None;
-	TestEqual(TEXT("Cross Goal without canonical scorer fails closed"),Project(Safe).CrossTerminal.Outcome,Outcome::None);
+	TestEqual(TEXT("Cross Goal without canonical scorer fails closed"),Project(Safe).Terminal.Outcome,Outcome::None);
 	Safe=Original;const auto DuplicateGoal=Safe.GoalHistory[0];Safe.GoalHistory.Add(DuplicateGoal);
 	TestTrue(TEXT("Duplicate history cannot be silently presented"),Project(Safe).bGoalHistoryUnavailable);
 	TestTrue(TEXT("Duplicate history not partially copied"),Project(Safe).PublicGoalHistory.IsEmpty());
@@ -412,12 +412,12 @@ bool FFMCodexCrossTerminalProjectionBounds::RunTest(const FString&)
 	TestTrue(TEXT("History bound rejects overlong list"),Project(Safe).bGoalHistoryUnavailable);
 	TestTrue(TEXT("No unbounded replication"),Project(Safe).PublicGoalHistory.IsEmpty());
 	Safe=Original;Safe.ResolutionFacts.Decisions.RemoveAll([](const auto& V){return V.DecisionId==FName(TEXT("Cross.High.Outcome"));});
-	TestEqual(TEXT("No fabricated result without safe decision"),Project(Safe).CrossTerminal.Outcome,Outcome::None);
+	TestEqual(TEXT("No fabricated result without safe decision"),Project(Safe).Terminal.Outcome,Outcome::None);
 	Safe=Original;
 	const auto* Decision=Safe.ResolutionFacts.Decisions.FindByPredicate([](const auto& V){return V.DecisionId==FName(TEXT("Cross.High.Outcome"));});
 	if(!TestNotNull(TEXT("Canonical decision identity"),Decision)) {return false;}
 	const auto DuplicateDecision=*Decision;Safe.ResolutionFacts.Decisions.Add(DuplicateDecision);
-	TestEqual(TEXT("Ambiguous terminal facts fail closed"),Project(Safe).CrossTerminal.Outcome,Outcome::None);
+	TestEqual(TEXT("Ambiguous terminal facts fail closed"),Project(Safe).Terminal.Outcome,Outcome::None);
 	TestFalse(TEXT("No nonowner Advance"),Project(Original,Side::PlayerB).bCanAdvance);
 	TestFalse(TEXT("No invalid-viewer Advance"),Project(Original,Side::None).bCanAdvance);
 	Safe=Original;Safe.bHasRecoveryFact=true;Safe.RecoverySourceAttackSequence=1;
@@ -480,12 +480,12 @@ bool FFMCodexCrossTerminalMilestone::RunTest(const FString& P)
 	if(!TestNotNull(TEXT("Canonical server milestone ready"),F.Entropy)) {return false;}
 	auto* Actor=F.Attacker();const auto V=Actor->GetOwnerView();
 	TestEqual(TEXT("Goal fixture Host A; NoGoal fixture Remote B"),V.ViewerSide,Goal?Side::PlayerA:Side::PlayerB);
-	TestEqual(TEXT("Fixture stops before actual Attack RPC"),V.CrossContest.AttackD6,0);
+	TestEqual(TEXT("Fixture stops before actual Attack RPC"),V.Contest.AttackD6,0);
 	TestEqual(TEXT("Short final fixture has one opportunity per side"),V.PlayerAMaxAttackOpportunities,Final?1:3);
 	TestEqual(TEXT("Canonical final prelude sequence"),V.AttackSequence,int64(Final?2:1));
 	TestTrue(TEXT("Actual Attack transport"),F.Send(Actor,Roll(Goal,true)));
 	TestTrue(TEXT("Actual Defense transport"),F.Send(F.Defender(),Roll(Goal,false)));
-	TestEqual(TEXT("Desired result is produced by canonical Formula"),Actor->GetOwnerView().CrossTerminal.Outcome,Goal?Outcome::Goal:Outcome::NoGoal);
+	TestEqual(TEXT("Desired result is produced by canonical Formula"),Actor->GetOwnerView().Terminal.Outcome,Goal?Outcome::Goal:Outcome::NoGoal);
 	TestTrue(TEXT("Actual Advance transport"),F.Send(Actor,Kind::AdvanceAfterTerminal));
 	TestEqual(TEXT("Expected final lifecycle"),Actor->GetOwnerView().bMatchEnded,Final);
 	return true;

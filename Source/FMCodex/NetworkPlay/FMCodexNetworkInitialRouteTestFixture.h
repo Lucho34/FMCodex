@@ -143,7 +143,7 @@ namespace FMCodexNetworkInitialRouteTests
 				: K == Kind::SubmitSkill ? C.BeginSkill(V, Skill, E)
 				: K == Kind::SubmitBranchIntent ? C.BeginBranch(V, BranchChoice, E)
 				: K == Kind::CrossInitialRouteRoll || K == Kind::PassControlInitialRouteRoll || K == Kind::ThroughBallInitialRouteRoll
-					? C.BeginInitialRoute(V, K, E) : C.BeginCrossContest(V, K, E);
+					? C.BeginInitialRoute(V, K, E) : C.BeginOrdinaryContest(V, K, E);
 			if (!Began) { return false; }
 			Next(PC) = E.RequestId + 1;
 			const auto Ack = Mode->SubmitConnectionPlayerIntent(PC, E);

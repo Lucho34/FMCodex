@@ -1,139 +1,5 @@
 #if WITH_DEV_AUTOMATION_TESTS
-#include "FMCodexNetworkInitialRouteTestFixture.h"
-#include "FMCodexNetworkMatchScreenActions.h"
-#include "../LocalPlay/FMCodexLocalMatchScreenWidget.h"
-#include "../LocalPlay/FMCodexMatchHeaderWidget.h"
-#include "../LocalPlay/FMCodexInteractionPanelWidget.h"
-#include "Components/TextBlock.h"
-#include "Components/Button.h"
-#include "../LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.h"
-#include "../LocalPlay/FMCodexSelectionFeedbackToastWidget.h"
-#include "../LocalPlay/FMCodexLocalMatchPlayerController.h"
-#include "../LocalPlay/FMCodexLocalMatchResolutionFeedback.h"
-
-namespace FMCodexPlayerFacingCrossUITests
-{
-	using namespace FMCodexNetworkInitialRouteTests;
-	using ScreenIntent = EFMCodexMatchScreenIntent;
-	using Category = EFMCodexUMGInteractionCategory;
-	using Submission = EFMCodexMatchScreenSubmission;
-
-	// Test transport harness. It exercises the exact production screen/action adapter;
-	// generated RPC callspace and natural OnRep are independently tested in two real processes.
-	struct FBackend : IFMCodexMatchScreenBackend
-	{
-		FFixture* F = nullptr;
-		AFMCodexNetworkMatchPlayerController* PC = nullptr;
-		int32 Sends = 0;
-		Envelope Last;
-		Code LastCode = Code::None;
-		virtual bool IsScreenIntentPending() const override { return F->Client(PC).IsPending(); }
-		virtual Submission SubmitScreenIntent(const FFMCodexMatchScreenRequest& Request) override
-		{
-			if (!FFMCodexNetworkMatchScreenActions::Begin(Request, PC->GetOwnerView(), F->Client(PC), Last)) return Submission::Rejected;
-			++Sends;
-			const auto Ack = F->Mode->SubmitConnectionPlayerIntent(PC, Last);
-			LastCode = Ack.Code;
-			F->Client(PC).ObserveView(PC->GetOwnerView()); F->Client(PC).ObserveAck(Ack);
-			PC->RefreshPlayerFacingUI();
-			return Submission::Queued;
-		}
-	};
-	struct FUIFixture : FFixture
-	{
-		FBackend BA, BB;
-		TSharedPtr<SWidget> SlateA, SlateB;
-		FUIFixture(bool BFirst = false, bool Final = false) : FFixture(BFirst, 6, Final)
-		{
-			Access::Runtime(*Mode).EnablePlayerFacingPresentation();
-			Access::Publish(*Mode);
-			BA.F = BB.F = this; BA.PC = A; BB.PC = B;
-			if (A->GetPlayerMatchScreen()) SlateA = A->GetPlayerMatchScreen()->TakeWidget();
-			if (B->GetPlayerMatchScreen()) SlateB = B->GetPlayerMatchScreen()->TakeWidget();
-			A->RefreshPlayerFacingUI(); B->RefreshPlayerFacingUI();
-			if (A->GetPlayerMatchScreen()) A->GetPlayerMatchScreen()->SetMatchBackend(&BA);
-			if (B->GetPlayerMatchScreen()) B->GetPlayerMatchScreen()->SetMatchBackend(&BB);
-		}
-		~FUIFixture()
-		{
-			if (A->GetPlayerMatchScreen()) A->GetPlayerMatchScreen()->SetMatchBackend(nullptr);
-			if (B->GetPlayerMatchScreen()) B->GetPlayerMatchScreen()->SetMatchBackend(nullptr);
-		}
-		FBackend& Backend(AFMCodexNetworkMatchPlayerController* PC) { return PC == A ? BA : BB; }
-		void Settle()
-		{
-			for (auto* PC : {A, B}) if (auto* S = PC->GetPlayerMatchScreen())
-			{
-				S->PauseInlineFormulaRevealTimerForTesting();
-				S->AdvanceInlineFormulaRevealForTesting(20.f);
-			}
-		}
-		bool SkillFixture(bool Final = false)
-		{
-			if (Final)
-			{
-				Entropy->Word = 0;
-				if (!Send(Attacker(), Kind::RequestInitialActionPointRoll)) return false;
-				FMatchPlayAuthoritativeAdvanceAfterTerminalRequest R;
-				R.AttackSequence = Attacker()->GetOwnerView().AttackSequence; R.RequestingSide = Attacker()->GetOwnerView().ViewerSide;
-				if (!Access::Runtime(*Mode).SubmitPlayerIntent(FMatchPlayPlayerIntent::Create(
-					EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal, R)).bSuccess) return false;
-				Access::Publish(*Mode);
-			}
-			Entropy->Word = 5;
-			if (!Access::Runtime(*Mode).PrepareInitialRouteMilestone(ESkillRuleType::Cross)) return false;
-			Access::Publish(*Mode); Settle(); return true;
-		}
-	};
-	void CheckPrompt(FAutomationTestBase& T, UFMCodexLocalMatchScreenWidget* S,
-		const FFMCodexNetworkClientViewSnapshot& V, const FString& Action, bool bPending = false)
-	{
-		auto* Panel = S->GetInteractionPanel();
-		const bool Acting = V.ExpectedActingSide == V.ViewerSide;
-		T.TestEqual(TEXT("Original actor identity retained for existing player accent style"),S->GetPresentation().Interaction.ExpectedActorLabel,V.Presentation.Interaction.ExpectedActorLabel);
-		const FString Owner = V.ExpectedActingSide == Side::PlayerA ? TEXT("玩家 A") : TEXT("玩家 B");
-		const FString ExpectedActor = Acting ? bPending ? TEXT("正在提交，请稍候") : TEXT("轮到你操作")
-			: FString(TEXT("等待")) + Owner + TEXT(" 操作");
-		const FString ExpectedAction = Acting ? Action : Action == TEXT("下一回合")
-			? FString(TEXT("等待下一回合推进")) : FString(TEXT("等待")) + Action;
-		T.TestTrue(TEXT("Mirror prompt uses existing shared dock"), S->GetPresentation().bMirrorActionWaitPrompt);
-		T.TestEqual(TEXT("Dock visible after the presentation handoff"),Panel->GetVisibility(),ESlateVisibility::Visible);
-		const auto* ActorText = Cast<UTextBlock>(Panel->GetWidgetFromName(TEXT("InteractionExpectedActor")));
-		const auto* ActionText = Cast<UTextBlock>(Panel->GetWidgetFromName(TEXT("InteractionActionTitle")));
-		T.TestEqual(TEXT("Rendered actor is viewer-relative to safe actor"),ActorText->GetText().ToString(),ExpectedActor);
-		T.TestEqual(TEXT("Rendered action matches current safe step"),ActionText->GetText().ToString(),ExpectedAction);
-		T.TestTrue(TEXT("Action explanation visible even for active D12"),ActionText->GetVisibility()!=ESlateVisibility::Collapsed);
-		T.TestEqual(TEXT("No generic no-player-action fallback"),Panel->GetWidgetFromName(TEXT("InteractionBoundedFallback"))->GetVisibility(),ESlateVisibility::Collapsed);
-		const bool Central = Action == TEXT("进攻方掷点") || Action == TEXT("防守方掷点")
-			|| Action == TEXT("掷传中路线骰") || Action == TEXT("下一回合") || Action == TEXT("选择传中方式");
-		if (!Acting || Central)
-		{
-			for (const TCHAR* Name : {TEXT("InteractionContinueButton"),TEXT("InteractionTacticalPointRollButton"),TEXT("InteractionFinishDeploymentButton")})
-				if (const auto* Button=Panel->GetWidgetFromName(Name))
-					T.TestEqual(TEXT("Read-only status has no duplicate lower CTA"),Button->GetVisibility(),ESlateVisibility::Collapsed);
-		}
-		if (!Acting)
-		{
-			const auto& M=S->GetPresentation();
-			T.TestFalse(TEXT("Waiting viewer has no primary action capability"),M.Interaction.PrimaryAction.bAvailable);
-			T.TestFalse(TEXT("Waiting viewer has no central Formula CTA"),M.InlineFormula.PrimaryAction.bVisible);
-			T.TestTrue(TEXT("Waiting viewer has no actionable selection"),M.Interaction.SelectionChoices.IsEmpty() && M.Interaction.BranchChoices.IsEmpty());
-		}
-	}
-	void CheckBothPrompts(FAutomationTestBase& T,FUIFixture& F,const FString& Action)
-	{
-		for (auto* PC:{F.A,F.B}) CheckPrompt(T,PC->GetPlayerMatchScreen(),PC->GetOwnerView(),Action);
-	}
-	bool Continue(FAutomationTestBase& T, FUIFixture& F, AFMCodexNetworkMatchPlayerController* PC, Kind Expected)
-	{
-		const int32 Before = F.Backend(PC).Sends;
-		PC->GetPlayerMatchScreen()->RequestContinueResolution();
-		return T.TestEqual(TEXT("Shared central callback sends once"), F.Backend(PC).Sends, Before + 1)
-			&& T.TestEqual(TEXT("Exact existing typed intent"), F.Backend(PC).Last.IntentKind, Expected)
-			&& T.TestEqual(TEXT("Connection-side validation accepts"), F.Backend(PC).LastCode, Code::Accepted);
-	}
-}
-
+#include "FMCodexNetworkPlayerFacingTestFixture.h"
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexPlayerFacingCrossGolden,
 	"FMCodex.NetworkPlay.PlayerFacingCrossUI.01.GoldenPath",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -145,7 +11,7 @@ void FFMCodexPlayerFacingCrossGolden::GetTests(TArray<FString>& N, TArray<FStrin
 }
 bool FFMCodexPlayerFacingCrossGolden::RunTest(const FString& P)
 {
-	using namespace FMCodexPlayerFacingCrossUITests;
+	using namespace FMCodexPlayerFacingOrdinaryUITests;
 	TArray<FString> Parts; P.ParseIntoArray(Parts,TEXT("."));
 	const bool BFirst=Parts[0]==TEXT("B"), High=Parts[1]==TEXT("High"), Goal=Parts[2]==TEXT("Goal"), Final=Parts[3]==TEXT("Final");
 	FUIFixture F(BFirst != Final, Final);
@@ -208,7 +74,7 @@ bool FFMCodexPlayerFacingCrossGolden::RunTest(const FString& P)
 	if (!Continue(*this,F,Defender,High?Kind::CrossHighDefenseRoll:Kind::CrossLowDefenseRoll)) return false;
 	TestTrue(TEXT("Defense Reel active on both viewers"),S->IsInlineFormulaRevealInputBlocked() && D->IsInlineFormulaRevealInputBlocked());
 	for(auto* Screen:{S,D}) TestEqual(TEXT("Future prompt waits for Reel and Narrative timeline"),Screen->GetInteractionPanel()->GetVisibility(),ESlateVisibility::Collapsed);
-	TestEqual(TEXT("Persisted safe terminal uses canonical result"),Actor->GetOwnerView().CrossTerminal.Outcome,
+	TestEqual(TEXT("Persisted safe terminal uses canonical result"),Actor->GetOwnerView().Terminal.Outcome,
 		Goal?EFMCodexNetworkTerminalOutcome::Goal:EFMCodexNetworkTerminalOutcome::NoGoal);
 	TestEqual(TEXT("Header A holds already-painted score during defense Reel"),
 		S->GetMatchHeader()->GetPresentation().PlayerAScoreLabel,BeforeScore.PlayerAScoreLabel);
@@ -227,8 +93,8 @@ bool FFMCodexPlayerFacingCrossGolden::RunTest(const FString& P)
 	TestEqual(TEXT("Repeated terminal does not replay"),S->GetInlineFormulaRevealPhase(),Settled);
 	CheckBothPrompts(*this,F,TEXT("下一回合"));
 	TestEqual(TEXT("Exactly persisted public history"),Actor->GetOwnerView().PublicGoalHistory.Num(),int32(Goal));
-	if (Goal) TestFalse(TEXT("Chinese canonical scorer label"),Actor->GetOwnerView().CrossTerminal.Goal.ScorerLabel.IsEmpty());
-	else TestTrue(TEXT("NoGoal invents no scorer"),Actor->GetOwnerView().CrossTerminal.Goal.ScorerCardId.IsNone());
+	if (Goal) TestFalse(TEXT("Chinese canonical scorer label"),Actor->GetOwnerView().Terminal.Goal.ScorerLabel.IsEmpty());
+	else TestTrue(TEXT("NoGoal invents no scorer"),Actor->GetOwnerView().Terminal.Goal.ScorerCardId.IsNone());
 	// Late UI construction reads latest safe terminal without replaying an unobserved historic roll.
 	auto* Late=CreateWidget<UFMCodexLocalMatchScreenWidget>(F.World,UFMCodexLocalMatchScreenWidget::StaticClass());
 	const auto LateSlate = Late->TakeWidget();
@@ -293,7 +159,7 @@ void FFMCodexPlayerFacingCrossPrelude::GetTests(TArray<FString>& N,TArray<FStrin
 { N={TEXT("A"),TEXT("B")}; C=N; }
 bool FFMCodexPlayerFacingCrossPrelude::RunTest(const FString& P)
 {
-	using namespace FMCodexPlayerFacingCrossUITests;
+	using namespace FMCodexPlayerFacingOrdinaryUITests;
 	FUIFixture F(P==TEXT("B")); auto* A=F.Attacker(); auto* D=F.Defender();
 	if (!TestNotNull(TEXT("Shared entry screen"),A->GetPlayerMatchScreen())) return false;
 	CheckBothPrompts(*this,F,TEXT("掷战术点"));
@@ -345,7 +211,7 @@ void FFMCodexPlayerFacingCrossAsync::GetTests(TArray<FString>& N,TArray<FString>
 { N={TEXT("AckFirst"),TEXT("ViewFirst"),TEXT("Reject"),TEXT("NewMatch")}; C=N; }
 bool FFMCodexPlayerFacingCrossAsync::RunTest(const FString& P)
 {
-	using namespace FMCodexPlayerFacingCrossUITests;
+	using namespace FMCodexPlayerFacingOrdinaryUITests;
 	FUIFixture F;
 	if (!TestTrue(TEXT("Canonical Skill fixture"),F.SkillFixture())) return false;
 	auto* PC=F.Attacker(); auto V=PC->GetOwnerView();
@@ -400,7 +266,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexPlayerFacingCrossBoundary,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FFMCodexPlayerFacingCrossBoundary::RunTest(const FString&)
 {
-	using namespace FMCodexPlayerFacingCrossUITests;
+	using namespace FMCodexPlayerFacingOrdinaryUITests;
 	FUIFixture F;
 	if (!TestTrue(TEXT("Skill fixture"),F.SkillFixture())) return false;
 	auto* PC=F.Attacker(); const auto& V=PC->GetOwnerView();
@@ -426,7 +292,7 @@ bool FFMCodexPlayerFacingCrossBoundary::RunTest(const FString&)
 	}
 	for (const auto& O:V.Presentation.Interaction.SelectionChoices)
 	{
-		TestEqual(TEXT("Only Cross capability enabled; legality retained"),O.bEnabled,O.SkillType==ESkillRuleType::Cross);
+		TestEqual(TEXT("Complete ordinary capabilities enabled; legality retained"),O.bEnabled,O.SkillType==ESkillRuleType::Cross || O.SkillType==ESkillRuleType::PassControl);
 		if (!O.bEnabled) TestFalse(TEXT("Disabled option explains scope"),O.SecondaryLabel.IsEmpty());
 	}
 	// Withhold an already accepted Attack: no event or derived Formula may encode it.
@@ -437,7 +303,7 @@ bool FFMCodexPlayerFacingCrossBoundary::RunTest(const FString&)
 	F.Entropy->Word=5; F.A->GetPlayerMatchScreen()->RequestContinueResolution(); F.Settle();
 	FFMCodexLocalMatchViewerDisclosure Hidden;
 	Hidden.bRevealInitialActionPointRoll=true;Hidden.bRevealRouteRoll=true;
-	Hidden.bPreservePendingCrossFormula=true;Hidden.RevealedContestD6Count=0;
+	Hidden.bPreservePendingOrdinaryFormula=true;Hidden.RevealedContestD6Count=0;
 	const auto HiddenSafe=FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 		Access::Session(*F.Mode).GetStateSnapshot(),Access::CallerRules(*F.Mode),Side::PlayerB,Hidden);
 	const auto HiddenProjection=FFMCodexNetworkMatchPresentationAdapter::Project(HiddenSafe,Side::PlayerB);
@@ -473,7 +339,7 @@ void FFMCodexPlayerFacingPromptMirror::GetTests(TArray<FString>& N,TArray<FStrin
 { N={TEXT("A.LateDefense"),TEXT("B.LateDefense"),TEXT("A.RejectAfterHandoff"),TEXT("B.RejectAfterHandoff")}; C=N; }
 bool FFMCodexPlayerFacingPromptMirror::RunTest(const FString& P)
 {
-	using namespace FMCodexPlayerFacingCrossUITests;
+	using namespace FMCodexPlayerFacingOrdinaryUITests;
 	FUIFixture F(P.StartsWith(TEXT("B")));
 	if (!TestTrue(TEXT("Canonical prelude"),F.SkillFixture())) return false;
 	auto* Actor=F.Attacker(); auto* S=Actor->GetPlayerMatchScreen();

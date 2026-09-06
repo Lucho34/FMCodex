@@ -10,6 +10,10 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	case EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll:
 	case EFMCodexNetworkPlayerIntentKind::PassControlInitialRouteRoll:
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll:
+	case EFMCodexNetworkPlayerIntentKind::PassControlAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::PassControlDefenseRoll:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallFeetAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallFeetDefenseRoll:
 	case EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll:
 	case EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll:
 	case EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll:
@@ -152,13 +156,17 @@ bool FFMCodexNetworkIntentClientState::BeginAdvance(const FFMCodexNetworkClientV
 {
 	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
 }
-bool FFMCodexNetworkIntentClientState::BeginCrossContest(const FFMCodexNetworkClientViewSnapshot& View,
+bool FFMCodexNetworkIntentClientState::BeginOrdinaryContest(const FFMCodexNetworkClientViewSnapshot& View,
 	EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
 	if (Kind != EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll
 		&& Kind != EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll
 		&& Kind != EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll
-		&& Kind != EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll) { return false; }
+		&& Kind != EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::PassControlAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::PassControlDefenseRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallFeetAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallFeetDefenseRoll) { return false; }
 	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
 }
 bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
@@ -223,16 +231,28 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 		bActionable = View.InitialRouteAction == EFMCodexNetworkInitialRouteAction::ThroughBall;
 		break;
 	case EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll:
-		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossHighAttackRoll;
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::CrossHighAttackRoll;
 		break;
 	case EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll:
-		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossHighDefenseRoll;
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::CrossHighDefenseRoll;
 		break;
 	case EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll:
-		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossLowAttackRoll;
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::CrossLowAttackRoll;
 		break;
 	case EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll:
-		bActionable = View.CrossContestAction == EFMCodexNetworkCrossContestAction::CrossLowDefenseRoll;
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::CrossLowDefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::PassControlAttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::PassControlAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::PassControlDefenseRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::PassControlDefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallFeetAttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallFeetAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallFeetDefenseRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallFeetDefenseRoll;
 		break;
 	case EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal:
 		bActionable = View.bCanAdvance;
