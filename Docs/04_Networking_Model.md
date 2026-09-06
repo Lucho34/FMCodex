@@ -492,3 +492,38 @@ Every accepted contest input takes exactly one server-private D6. The successful
 Both Goal and NoGoal stop at TerminalPendingAdvance and share public score/history/scorer disclosure and explicit AdvanceAfterTerminal. Public receipt may precede visible score; the existing shared Formula/Reel/Narrative timeline gates the painted header. PassControl uses the normal shared skill selection. General ThroughBall remains disabled. The explicit server-only PlayerFacingThroughBallFeetMilestone confines its capability to the prepared attack and pins only the provider result; it changes no route mapping or probability in normal play. PlayerFacingPassControlMilestone Goal / NoGoal provides a short Skill → route → attack → defense → terminal → 下一回合 → next Full D12 USER PIE; PassControlRouteD6 selects a DEV route sample, and final variants verify existing Full-Time. Technical captures do not replace user visual acceptance.
 
 The current complete player-facing ordinary paths are Cross and PassControl, plus the explicitly scoped ThroughBall Feet branch. Full ThroughBall is incomplete. The remaining conditional ThroughBall continuations should be audited together at a medium-sized boundary, followed separately by the direct/paired-shot family and set pieces.
+
+## Complete ThroughBall conditional transport (Stage 7.17)
+
+This section supersedes the earlier partial ThroughBall/Feet-only Network capability. General player-facing Skill selection permits ThroughBall alongside Cross and PassControl. LongShot, CutInside, set pieces and optional Decline choices remain separate work.
+
+All following entries are existing canonical PlayerIntent commands. Session entry is the exact command name. The six roll DTOs are `FMatchPlayAuthoritative<Command>Request` and contain only `AttackSequence` and `RequestingSide`. Their wire payload is empty. The choice DTO is `FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest`, with `ExpectedAttackSequence`, `RequestingSide`, `Choice`. Network derives Side from the admitted connection and sequence from the common envelope.
+
+| Command / Session entry | Actor | Required checkpoint | Accepted provider use |
+|---|---|---|---|
+| ResolveThroughBallBehindDefenseP1AttackRoll | attacker | BehindDefense primary attack pending | one post-route D6 |
+| ResolveThroughBallBehindDefenseP1DefenseRoll | defender | accepted primary attack requires Defense | one post-route D6 |
+| ResolveThroughBallAntiOffsideAttackRoll | attacker | AntiOffside primary pending | one post-route D6 |
+| SubmitThroughBallOneOnOneShotChoice | attacker | canonical OneOnOneRequired and no choice | zero; DirectShot or ChipShot |
+| ResolveThroughBallOneOnOneDirectShotAttackRoll | attacker | Direct selected, new attack pending | one new post-route D6 |
+| ResolveThroughBallOneOnOneDirectShotDefenseRoll | defender | Direct attack accepted | one new post-route D6 |
+| ResolveThroughBallOneOnOneChipShotAttackRoll | attacker | Chip selected | one new post-route D6 |
+
+The provider is the existing server-private secure post-route provider. The player's request has no Side, die, seed, route, winner, Formula or terminal value. These seven kinds share the existing RequestId namespace, <=1024 forward window, stale-attack validation and generic ACK/View pending. Choice has exactly one closed enum member; all other payload members must be empty. Unknown tags remain NotPlayerIntent, and fresh IDs cannot reroll or change a committed choice.
+
+| Canonical path | Result and continuation |
+|---|---|
+| BehindDefense attack 1–2 | OutOfPlay; no Defense or real Formula; existing terminal application |
+| BehindDefense attack 3–6 | defender D6; existing P1 Transition Formula |
+| P1 defender wins (including canonical tie policy) | DefenderStoppedAttack; existing terminal application |
+| P1 attacker wins | OneOnOneRequired; attacker chooses; no P2 or automatic new roll |
+| AntiOffside 1–5 | Offside; zero-RNG decision and terminal application |
+| AntiOffside 6 | OneOnOneRequired; attacker chooses |
+| OneOnOne Direct | new attacker/defender D6; existing Runner Shooting versus GK OneOnOne Formula; Goal/Miss |
+| OneOnOne Chip | one attacker D6: 1–3 Miss, 4–6 Goal; no Defense, GK Formula or extra dice |
+
+Direct always uses the canonical unique defending GK; deployment affects only the existing GK deployment modifier. Its tie favors the defender. The earlier BehindDefense/AntiOffside rolls remain immutable and are not reused as Direct/Chip rolls. Goal scorer remains the frozen Runner. Every terminal stops at TerminalPendingAdvance; explicit existing AdvanceAfterTerminal owns opportunity consumption, non-final Recovery/next actor, or final MatchEnded.
+
+Server-internal ResolveThroughBallBehindDefenseP1Formula, ResolveThroughBallAntiOffsideDecision and ApplyThroughBallTerminalResolution remain behind Coordinator. The completed single-roll BehindDefense gate skips the unavailable two-sided Formula and lets canonical terminal regeneration validate OutOfPlay. None becomes an RPC tag.
+
+`LaunchNetworkPlayDev.ps1 -PlayerFacingThroughBallMilestone BehindOneOnOne` provides the short Skill → route → primary Attack/Defense → OneOnOne choice → terminal → Advance milestone. Other DEV paths are BehindOutOfPlay, AntiOffside and AntiOneOnOne; ThroughBallActor selects A/B, ThroughBallNoGoal pins the later shot provider sample and ThroughBallFinal uses the canonical short opening. Fixtures are server-only, non-Shipping and do not select the player's Direct/Chip choice. USER PIE remains required for visible milestone closure.

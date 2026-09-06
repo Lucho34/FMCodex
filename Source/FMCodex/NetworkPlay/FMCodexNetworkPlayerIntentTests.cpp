@@ -401,7 +401,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner"), TEXT("Helper"), TEXT("Skill"), TEXT("Branch")});
+		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner"), TEXT("Helper"), TEXT("Skill"), TEXT("Branch"), TEXT("OneOnOneChoice")});
 	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkDeployGoalkeeperPayload::StaticStruct(), {TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkSubmitCarrierPayload::StaticStruct(), {TEXT("CarrierCardId")});
@@ -415,6 +415,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 	ExactFields(FFMCodexNetworkTerminalFact::StaticStruct(), {TEXT("Outcome"), TEXT("Goal")});
 	ExactFields(FFMCodexNetworkRecoveryFact::StaticStruct(), {TEXT("SourceAttackSequence"), TEXT("Cards")});
 	ExactFields(FFMCodexNetworkRecoveredCard::StaticStruct(), {TEXT("OwnerSide"), TEXT("CardId"), TEXT("CardLabel")});
+	ExactFields(FFMCodexNetworkAcceptedContestRoll::StaticStruct(), {TEXT("Purpose"), TEXT("SequenceIndex"), TEXT("D6"), TEXT("OwnerSide")});
 	ExactFields(FFMCodexNetworkContestFact::StaticStruct(), {TEXT("AttackD6"), TEXT("DefenseD6"), TEXT("bFormulaResolved")});
 	ExactFields(FFMCodexNetworkInitialRouteFact::StaticStruct(), {TEXT("D6"), TEXT("ActionType"), TEXT("Cross"), TEXT("PassControl"), TEXT("ThroughBall"), TEXT("RouteLabel")});
 	ExactFields(FFMCodexNetworkBranchOption::StaticStruct(), {TEXT("Choice"), TEXT("BranchLabel")});
@@ -437,7 +438,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("GoalkeeperDeployment"), TEXT("bCanFinishDeployment"), TEXT("bPlayerADeploymentFinished"),
 		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete"), TEXT("CarrierOptions"),
 		TEXT("bCarrierOptionsUnavailable"), TEXT("SelectedCarrier"), TEXT("MarkerOptions"),
-		TEXT("bMarkerOptionsUnavailable"), TEXT("SelectedMarker"), TEXT("RunnerOptions"), TEXT("bRunnerOptionsUnavailable"), TEXT("SelectedRunner"), TEXT("HelperOptions"), TEXT("bHelperOptionsUnavailable"), TEXT("SelectedHelper"), TEXT("SkillOptions"), TEXT("bSkillOptionsUnavailable"), TEXT("SelectedSkill"), TEXT("BranchOptions"), TEXT("bBranchOptionsUnavailable"), TEXT("SelectedBranch"), TEXT("InitialRouteAction"), TEXT("InitialRoute"), TEXT("ContestAction"), TEXT("Contest"), TEXT("Terminal"), TEXT("bCanAdvance"), TEXT("PublicGoalHistory"), TEXT("bGoalHistoryUnavailable"), TEXT("Recovery"), TEXT("MatchResult")});
+		TEXT("bMarkerOptionsUnavailable"), TEXT("SelectedMarker"), TEXT("RunnerOptions"), TEXT("bRunnerOptionsUnavailable"), TEXT("SelectedRunner"), TEXT("HelperOptions"), TEXT("bHelperOptionsUnavailable"), TEXT("SelectedHelper"), TEXT("SkillOptions"), TEXT("bSkillOptionsUnavailable"), TEXT("SelectedSkill"), TEXT("BranchOptions"), TEXT("bBranchOptionsUnavailable"), TEXT("SelectedBranch"), TEXT("InitialRouteAction"), TEXT("InitialRoute"), TEXT("ContestAction"), TEXT("Contest"), TEXT("AcceptedContestRolls"), TEXT("OneOnOneOptions"), TEXT("Terminal"), TEXT("bCanAdvance"), TEXT("PublicGoalHistory"), TEXT("bGoalHistoryUnavailable"), TEXT("Recovery"), TEXT("MatchResult")});
 	const auto* Class = AFMCodexNetworkMatchPlayerController::StaticClass();
 	const auto* Server = Class->FindFunctionByName(TEXT("ServerSubmitPlayerIntent"));
 	const auto* Client = Class->FindFunctionByName(TEXT("ClientReceivePlayerIntentAck"));

@@ -181,3 +181,16 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Feet milestone ca
 . $launcherPath -UnrealEditorPath $testEnginePath
 Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Ordinary extensions retain secure normal launch defaults'
 Write-Host ("FMCODEX_NETWORK_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)
+
+foreach ($path in @('BehindOneOnOne','BehindOutOfPlay','AntiOffside','AntiOneOnOne')) {
+    foreach ($side in @('A','B')) {
+        . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingThroughBallMilestone $path -ThroughBallActor $side -ThroughBallNoGoal -ThroughBallFinal
+        $conditional = Get-NetworkPlayLaunchPlan
+        Assert-True ($conditional.HostArguments -contains ('-FMCodexNetworkPlayerFacingThroughBallMilestone=' + $path)) 'Conditional fixture is explicit on Host'
+        Assert-True ($conditional.HostArguments -contains ('-FMCodexNetworkThroughBallActor=' + $side)) 'Requested attack direction uses canonical setup'
+        Assert-True ($conditional.HostArguments -contains '-FMCodexNetworkThroughBallNoGoal') 'OneOnOne outcome pins only provider seam'
+        Assert-True ($conditional.HostArguments -contains '-FMCodexNetworkThroughBallFinal') 'Final fixture reuses canonical short opening'
+        Assert-True (@($conditional.ClientArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*ThroughBallActor*' -or $_ -like '*ThroughBallNoGoal*' -or $_ -like '*ThroughBallFinal*' }).Count -eq 0) 'Client receives no fixture authority'
+    }
+}
+Write-Host 'ThroughBall conditional launch-plan checks PASS.'

@@ -71,11 +71,11 @@ namespace FMCodexNetworkCrossTerminalTests
 			auto E = Request(PC); E.IntentKind = Kind::AdvanceAfterTerminal; return E;
 		}
 	};
-	struct FFrozen
+	struct FCrossTerminalFrozen
 	{
 		FMatchPlayState State;
 		int32 Revision, Entropy, Entry, D12, Route, Post, Recovery, Coordinator;
-		FFrozen(FFixture& F) : State(Access::Session(*F.Mode).GetStateSnapshot()), Revision(Access::Revision(*F.Mode)),
+		FCrossTerminalFrozen(FFixture& F) : State(Access::Session(*F.Mode).GetStateSnapshot()), Revision(Access::Revision(*F.Mode)),
 			Entropy(F.Entropy->Calls), Entry(Access::Runtime(*F.Mode).GetEntryProviderInvocationCount()),
 			D12(Access::Runtime(*F.Mode).GetD12ProviderInvocationCount()), Route(Access::Runtime(*F.Mode).GetInitialRouteProviderInvocationCount()),
 			Post(Access::Runtime(*F.Mode).GetPostRouteProviderInvocationCount()), Recovery(Access::Runtime(*F.Mode).GetRecoveryProviderInvocationCount()), Coordinator(F.Calls()) {}
@@ -115,7 +115,7 @@ bool FFMCodexCrossTerminalLifecycle::RunTest(const FString& P)
 	FTerminalFixture F(B,Final), Local(B,Final);
 	if (!TestTrue(TEXT("Complete typed ordinary Cross setup"),F.Prepare(High,Goal,GK) && Local.Prepare(High,Goal,GK))) { return false; }
 	auto* Actor = F.Attacker(); const Side ActorSide=Actor->GetOwnerView().ViewerSide;
-	const FFrozen Before(F); const auto Selected=Before.State.CurrentAttack.SelectedAction;
+	const FCrossTerminalFrozen Before(F); const auto Selected=Before.State.CurrentAttack.SelectedAction;
 	TestEqual(TEXT("Canonical Goal result/history"),Before.State.GoalHistory.Num(),int32(Goal));
 	if (Goal) { TestEqual(TEXT("Scorer comes from persisted history"),Before.State.GoalHistory[0].ScorerCardId,Selected.RunnerCardId); }
 	auto& Runtime=Access::Runtime(*F.Mode);
@@ -249,7 +249,7 @@ bool FFMCodexCrossTerminalSecurity::RunTest(const FString& P)
 	if(K==TEXT("Helper")) {E.Helper.HelperCardId=TEXT("Card");Expected=Code::InvalidPayload;}
 	if(K==TEXT("Skill")) {E.Skill.SkillId=TEXT("Skill");Expected=Code::InvalidPayload;}
 	if(K==TEXT("Branch")) {E.Branch.Intent=Branch::CrossLow;Expected=Code::InvalidPayload;}
-	const FFrozen Before(F);
+	const FCrossTerminalFrozen Before(F);
 	const auto Ack=F.Mode->SubmitConnectionPlayerIntent(PC,E);
 	TestEqual(TEXT("Exact rejection ACK"),Ack.Code,Expected);
 	TestEqual(TEXT("Rejected match correlation preserved"),Ack.MatchInstanceId,E.MatchInstanceId);
@@ -276,7 +276,7 @@ bool FFMCodexCrossTerminalReplay::RunTest(const FString& P)
 	if(!TestTrue(TEXT("Terminal ready"),F.Prepare(false))) {return false;}
 	auto* PC=F.Attacker();auto E=F.AdvanceRequest(PC);
 	TestEqual(TEXT("First Advance accepted"),F.Mode->SubmitConnectionPlayerIntent(PC,E).Code,Code::Accepted);
-	const FFrozen After(F);
+	const FCrossTerminalFrozen After(F);
 	TestEqual(TEXT("Same accepted ID cannot finalize twice"),F.Mode->SubmitConnectionPlayerIntent(PC,E).Code,Code::DuplicateOrAlreadyResolved);
 	After.Verify(*this,F);
 	E.RequestId=F.Next(PC)++;
@@ -297,7 +297,7 @@ bool FFMCodexCrossTerminalRecoveryFailure::RunTest(const FString& P)
 {
 	using namespace FMCodexNetworkCrossTerminalTests;FTerminalFixture F(P.StartsWith(TEXT("B")));
 	if(!TestTrue(TEXT("Terminal ready"),F.Prepare(true))) {return false;}
-	auto* PC=F.Attacker();const FFrozen Before(F);
+	auto* PC=F.Attacker();const FCrossTerminalFrozen Before(F);
 	const int32 FailedDraws=P.EndsWith(TEXT("SecondDraw"))?2:1;
 	F.Entropy->Word=0;F.Entropy->FailOnCall=F.Entropy->Calls+FailedDraws;
 	TestFalse(TEXT("Recovery failure rejects Advance"),F.Send(PC,Kind::AdvanceAfterTerminal));
@@ -361,7 +361,7 @@ bool FFMCodexCrossTerminalStale::RunTest(const FString& P)
 	if(!TestTrue(TEXT("Genuine N Advance through shared transport"),F.Send(F.Attacker(),Kind::AdvanceAfterTerminal))) {return false;}
 	if(!TestTrue(TEXT("Actual N+1 Cross terminal through existing full prefix"),F.Prepare(false,false))) {return false;}
 	auto* Actor=F.Attacker();TestEqual(TEXT("Actual later sequence"),Actor->GetOwnerView().AttackSequence,OldSequence+1);
-	auto E=F.AdvanceRequest(Actor);E.ExpectedAttackSequence=OldSequence;const FFrozen Before(F);
+	auto E=F.AdvanceRequest(Actor);E.ExpectedAttackSequence=OldSequence;const FCrossTerminalFrozen Before(F);
 	TestEqual(TEXT("Fresh ID stale N cannot advance N+1 terminal"),F.Mode->SubmitConnectionPlayerIntent(Actor,E).Code,Code::StaleAttackSequence);Before.Verify(*this,F);
 	auto Normal=F.AdvanceRequest(Actor);
 	TestEqual(TEXT("New terminal still advances normally"),F.Mode->SubmitConnectionPlayerIntent(Actor,Normal).Code,Code::Accepted);
@@ -395,7 +395,7 @@ bool FFMCodexCrossTerminalProjectionBounds::RunTest(const FString&)
 	const auto Snapshot=Access::Session(*F.Mode).GetStateSnapshot();
 	const auto Original=FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(Snapshot,Access::CallerRules(*F.Mode),Side::PlayerA,D);
 	auto Project=[&](const auto& V,Side Viewer=Side::PlayerA){return FFMCodexNetworkClientViewSnapshotFactory::Build(V,F.Mode->GetMatchInstanceId(),9,Viewer,EFMCodexNetworkBootstrapState::MatchReady);};
-	auto Safe=Original;const FFrozen Before(F);
+	auto Safe=Original;const FCrossTerminalFrozen Before(F);
 	TestEqual(TEXT("Legitimate public goal"),Project(Safe).Terminal.Outcome,Outcome::Goal);
 	Safe.GoalHistory.Reset();
 	TestEqual(TEXT("Goal without matching public history fails closed"),Project(Safe).Terminal.Outcome,Outcome::None);
@@ -460,7 +460,7 @@ bool FFMCodexCrossTerminalWire::RunTest(const FString&)
 	{FMemoryReader R(Bytes);FObjectAndNameAsStringProxyArchive A(R,false);FFMCodexNetworkPlayerIntentEnvelope::StaticStruct()->SerializeItem(A,&Restored,nullptr);}
 	TestTrue(TEXT("Actual Advance wire serialization roundtrip"),Same(E,Restored));
 	FTerminalFixture F;if(!TestTrue(TEXT("Terminal fixture"),F.Prepare(true))) {return false;}
-	const FFrozen Before(F);
+	const FCrossTerminalFrozen Before(F);
 	FMatchPlayAuthoritativeSubmitSkillRequest WrongPayload;
 	const auto Wrong=FMatchPlayEntryDeploymentPlayerIntentPort(Access::Session(*F.Mode),Access::Coordinator(*F.Mode)).SubmitPlayerIntent(FMatchPlayPlayerIntent::Create(Command::AdvanceAfterTerminal,WrongPayload));
 	TestFalse(TEXT("Canonical port rejects wrong variant"),Wrong.bSuccess);Before.Verify(*this,F);

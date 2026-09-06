@@ -1606,12 +1606,13 @@ namespace FMCodexLocalMatchInteractionView
 		View.bTerminalPendingAdvance = false;
 	}
 
-	void RedactResolutionRolls(
+	bool RedactResolutionRolls(
 		const FFMCodexLocalMatchViewerDisclosure& Disclosure,
 		FFMCodexLocalMatchInteractionView& View)
 	{
 		TArray<FFMCodexLocalMatchRollView> DisclosedRolls;
 		int32 SeenContestRolls = 0;
+		bool bHiddenAcceptedRoll = false;
 		for (const FFMCodexLocalMatchRollView& Roll : View.AcceptedRolls)
 		{
 			const bool bDisclosed = Roll.Group
@@ -1623,6 +1624,7 @@ namespace FMCodexLocalMatchInteractionView
 			{
 				DisclosedRolls.Add(Roll);
 			}
+			else bHiddenAcceptedRoll = true;
 		}
 		View.AcceptedRolls = MoveTemp(DisclosedRolls);
 
@@ -1633,8 +1635,7 @@ namespace FMCodexLocalMatchInteractionView
 			&& Disclosure.bRevealRouteRoll
 			&& (View.PresentedActionType == ESkillRuleType::Cross
 				|| View.PresentedActionType == ESkillRuleType::PassControl
-				|| (View.PresentedActionType == ESkillRuleType::ThroughBall
-					&& View.ResolutionFacts.ActualBranch.ThroughBall == EMatchPlayThroughBallActualBranch::Feet));
+				|| View.PresentedActionType == ESkillRuleType::ThroughBall);
 		for (const FMatchPlayResolutionRollFact& Roll : View.ResolutionFacts.Rolls)
 		{
 			const bool bDisclosed = Roll.bInitialRoute
@@ -1651,12 +1652,18 @@ namespace FMCodexLocalMatchInteractionView
 			}
 		}
 		View.ResolutionFacts.Rolls = MoveTemp(DisclosedFacts);
-		if (bRemovedAnyFact)
+		// A skipped BehindDefense Formula never consumed its unused Defense descriptor.
+		// Keep its public gate decision when every accepted die is disclosed.
+		const bool bDisclosedSkippedGate = Disclosure.bRevealRouteRoll && !bHiddenAcceptedRoll
+			&& View.ResolutionFacts.FormulaContests.Num() == 1
+			&& View.ResolutionFacts.FormulaContests[0].ContestId == TEXT("ThroughBall.BehindDefense.P1")
+			&& View.ResolutionFacts.FormulaContests[0].Application == EMatchPlayResolutionFormulaApplication::SkippedByAuthoritativeGate;
+		if (bRemovedAnyFact && !bDisclosedSkippedGate)
 		{
-			// Derived formula/decision payloads can encode a hidden raw roll.
 			View.ResolutionFacts.FormulaContests.Reset();
 			View.ResolutionFacts.Decisions.Reset();
 		}
+		return bHiddenAcceptedRoll;
 	}
 
 	void RedactTerminalOutcome(
@@ -1798,7 +1805,25 @@ namespace FMCodexLocalMatchInteractionView
 			View.SetPieceFormula = {};
 		}
 
-		RedactResolutionRolls(Disclosure, View);
+		const bool bHiddenAcceptedRoll = RedactResolutionRolls(Disclosure, View);
+		if (bHiddenAcceptedRoll && Snapshot.bHasCurrentAttack
+			&& View.PresentedActionType == ESkillRuleType::ThroughBall
+			&& Snapshot.CurrentAttack.ResolutionSession.ActualBranch.ThroughBall != EMatchPlayThroughBallActualBranch::Feet)
+		{
+			// Conditional ownership, choices and later descriptors also reveal the hidden outcome.
+			View.OneOnOneOptions.Reset(); View.OneOnOneChoiceLabel.Reset();
+			View.InteractionCategory = EFMCodexLocalMatchInteractionCategory::None;
+			View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+			View.bHumanInteraction = View.bTerminalPendingAdvance = false;
+			View.bThroughBallAntiOffsideAttackRollPending = false;
+			View.bThroughBallBehindDefenseAttackRollPending = View.bThroughBallBehindDefenseDefenseRollPending = false;
+			View.bThroughBallOneOnOneDirectShotAttackRollPending = View.bThroughBallOneOnOneDirectShotDefenseRollPending = false;
+			View.bThroughBallOneOnOneChipShotAttackRollPending = false;
+			View.ResolutionFacts.Rolls.RemoveAll([](const auto& R) { return !R.bResolved; });
+			View.ResolutionFacts.bHasPendingRoll = false;
+			View.ResolutionFacts.NextPendingRollSequenceIndex = INDEX_NONE;
+			RedactTerminalOutcome(Snapshot, View);
+		}
 
 		const bool bBothCornerSidesLocked =
 			View.bCornerAttackerNominationsLocked

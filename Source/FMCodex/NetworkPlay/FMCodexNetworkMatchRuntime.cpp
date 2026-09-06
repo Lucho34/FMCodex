@@ -73,7 +73,9 @@ public:
 		++InvocationCount;
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 		const int32 D6 = Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack ? AutomationAttackD6
-			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryDefense ? AutomationDefenseD6 : 0;
+			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryDefense ? AutomationDefenseD6
+            : Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotAttack || Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneChipShotAttack ? AutomationOneOnOneAttackD6
+            : Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotDefense ? AutomationOneOnOneDefenseD6 : 0;
 		if (D6 != 0)
 		{
 			FMatchPlayPostRouteRollProviderResult Result; Result.bSuccess = true; Result.RawD6 = D6; return Result;
@@ -84,6 +86,7 @@ public:
 	int32 InvocationCount = 0;
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 	int32 AutomationAttackD6 = 0, AutomationDefenseD6 = 0;
+	int32 AutomationOneOnOneAttackD6 = 0, AutomationOneOnOneDefenseD6 = 0;
 #endif
 private:
 	IMatchPlayPostRouteRollProvider& Inner;
@@ -176,6 +179,15 @@ void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry(int32 InitialD
 }
 #endif
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+void FFMCodexNetworkMatchRuntime::EnableThroughBallConditionalAutomation(const FString& Path, bool Goal, bool Final)
+{
+    check(!bInitialized);
+    EnableInitialRouteAutomation(Path.StartsWith(TEXT("Behind")) ? 3 : 5);
+    EnablePostRouteAutomation(Path == TEXT("BehindOutOfPlay") || Path == TEXT("AntiOffside") ? 1 : 6, 1);
+    PostRouteProvider->AutomationOneOnOneAttackD6 = Goal ? 6 : 1;
+    PostRouteProvider->AutomationOneOnOneDefenseD6 = Goal ? 1 : 6;
+    EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider, 6, Final));
+}
 void FFMCodexNetworkMatchRuntime::EnableOrdinaryTerminalAutomation(bool Goal, bool Final, ESkillRuleType Family, int32 RouteD6)
 {
 	check(!bInitialized);
@@ -350,7 +362,8 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 	Disclosure.bRevealTerminalOutcome = Snapshot.bHasCurrentAttack
 		&& Snapshot.CurrentAttack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
 		&& DisclosedTerminalAttackSequence == Snapshot.CurrentAttack.AttackSequence
-		&& Disclosure.RevealedContestD6Count == 2;
+		&& Disclosure.RevealedContestD6Count > 0
+		&& Disclosure.RevealedContestD6Count == Snapshot.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords.Num();
 	const FFMCodexLocalMatchInteractionView SafeViewerView =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot,
@@ -371,8 +384,7 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 		Disclosure.bPreservePendingOrdinaryFormula = true;
 		const auto DisplayView = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot, SkillRuleSet, ViewerSide, Disclosure);
-		Result.Presentation = FFMCodexNetworkMatchPresentationAdapter::Project(DisplayView, ViewerSide,
-			FeetMilestoneAttackSequence > 0 && FeetMilestoneAttackSequence == Snapshot.CurrentAttack.AttackSequence);
+		Result.Presentation = FFMCodexNetworkMatchPresentationAdapter::Project(DisplayView, ViewerSide);
 	}
 	return Result;
 }
@@ -579,16 +591,22 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 	const bool bContestAttack = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll
-		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll;
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallBehindDefenseP1AttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallAntiOffsideAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneChipShotAttackRoll;
 	const bool bContestDefense = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighDefenseRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowDefenseRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolvePassControlDefenseRoll
-		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll;
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallFeetDefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallBehindDefenseP1DefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotDefenseRoll;
 	if ((bContestAttack || bContestDefense) && Result.bSuccess)
 	{
 		DisclosedContestAttackSequence = AuthoritativeSession->GetStateSnapshot().CurrentAttack.AttackSequence;
-		DisclosedContestRollCount = bContestDefense ? 2 : 1;
-		if (bContestDefense && AuthoritativeSession->GetStateSnapshot().CurrentAttack.LifecycleState
+		DisclosedContestRollCount = AuthoritativeSession->GetStateSnapshot().CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords.Num();
+		if (AuthoritativeSession->GetStateSnapshot().CurrentAttack.LifecycleState
 			== EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
 		{
 			DisclosedTerminalAttackSequence = DisclosedContestAttackSequence;
@@ -600,13 +618,16 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 		const auto State = AuthoritativeSession->GetStateSnapshot();
 		const auto& Attack = State.CurrentAttack;
 		const auto Safe = BuildClientView(State.RuntimeState.CurrentAttackingPlayer, 0, EFMCodexNetworkBootstrapState::MatchReady);
+		for (const auto& Roll : Safe.AcceptedContestRolls)
+			UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("DEV Accepted contest: Sequence=%lld ThroughBall=%d Index=%d Purpose=%d D6=%d Side=%d Terminal=%d"),
+				Attack.AttackSequence, int32(Safe.InitialRoute.ThroughBall), Roll.SequenceIndex, int32(Roll.Purpose), Roll.D6, int32(Roll.OwnerSide), int32(Safe.Terminal.Outcome));
 		if (bContestDefense && Result.bSuccess && bPlayerFacingPresentation)
 		{
 			// Diagnostics may read only the prefix and terminal facts already permitted in this public snapshot.
 			FFMCodexLocalMatchViewerDisclosure Published;
 			Published.bRevealInitialActionPointRoll = Safe.DisclosedInitialD12 > 0;
 			Published.bRevealRouteRoll = Safe.InitialRoute.D6 > 0;
-			Published.RevealedContestD6Count = Safe.Contest.DefenseD6 > 0 ? 2 : Safe.Contest.AttackD6 > 0 ? 1 : 0;
+			Published.RevealedContestD6Count = Safe.AcceptedContestRolls.Num();
 			Published.bRevealTerminalOutcome = Safe.Terminal.Outcome != EFMCodexNetworkTerminalOutcome::None;
 			const auto Facts = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(State, SkillRuleSet,
 				State.RuntimeState.CurrentAttackingPlayer, Published).ResolutionFacts;

@@ -184,6 +184,55 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallBehindDefenseP1AttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveThroughBallBehindDefenseP1AttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1AttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallBehindDefenseP1DefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveThroughBallBehindDefenseP1DefenseRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveThroughBallBehindDefenseP1DefenseRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallAntiOffsideAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveThroughBallAntiOffsideAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveThroughBallAntiOffsideAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveThroughBallOneOnOneDirectShotAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneDirectShotDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveThroughBallOneOnOneDirectShotDefenseRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveThroughBallOneOnOneDirectShotDefenseRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveThroughBallOneOnOneChipShotAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest>()) { return Mismatch(); }
+		const auto Authority = Session.ResolveThroughBallOneOnOneChipShotAttackRoll(Intent.Payload.Get<FMatchPlayAuthoritativeResolveThroughBallOneOnOneChipShotAttackRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.OrchestrationResult.bSuccess, Authority.OrchestrationResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitThroughBallOneOnOneShotChoice:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest>()) { return Mismatch(); }
+		const auto Authority = Session.SubmitThroughBallOneOnOneShotChoice(Intent.Payload.Get<FMatchPlayAuthoritativeSubmitThroughBallOneOnOneShotChoiceRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ChoiceResult.bSuccess, Authority.ChoiceResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeAdvanceAfterTerminalRequest>()) { return Mismatch(); }

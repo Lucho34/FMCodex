@@ -2,6 +2,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "FMCodexNetworkInitialRouteTestFixture.h"
 #include "FMCodexNetworkMatchScreenActions.h"
+#include "UObject/GarbageCollection.h"
 #include "../LocalPlay/FMCodexLocalMatchScreenWidget.h"
 #include "../LocalPlay/FMCodexMatchHeaderWidget.h"
 #include "../LocalPlay/FMCodexInteractionPanelWidget.h"
@@ -46,6 +47,9 @@ namespace FMCodexPlayerFacingOrdinaryUITests
 		TSharedPtr<SWidget> SlateA, SlateB;
 		FUIFixture(bool BFirst = false, bool Final = false) : FFixture(BFirst, 6, Final)
 		{
+			// Long synchronous automation runs otherwise retain retired widget trees
+			// until the engine next gets a regular GC tick. The new fixture world is rooted.
+			CollectGarbage(RF_NoFlags);
 			Access::Runtime(*Mode).EnablePlayerFacingPresentation();
 			Access::Publish(*Mode);
 			BA.F = BB.F = this; BA.PC = A; BB.PC = B;

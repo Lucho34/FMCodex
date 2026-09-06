@@ -14,13 +14,17 @@ param(
     [ValidateSet('Goal', 'NoGoal', 'FinalGoal', 'FinalNoGoal')][string]$PlayerFacingPassControlMilestone,
     [ValidateSet('Goal', 'NoGoal', 'FinalGoal', 'FinalNoGoal')][string]$PlayerFacingThroughBallFeetMilestone,
     [ValidateRange(1, 6)][int]$PassControlRouteD6 = 1,
+    [ValidateSet('BehindOneOnOne', 'BehindOutOfPlay', 'AntiOffside', 'AntiOneOnOne')][string]$PlayerFacingThroughBallMilestone,
+    [ValidateSet('A', 'B')][string]$ThroughBallActor = 'A',
+    [switch]$ThroughBallNoGoal,
+    [switch]$ThroughBallFinal,
     [switch]$NetworkDiagnostics,
     [switch]$HandoffLatencyAudit
 )
 
 # The existing player screen has fixed production card/pitch widths.
 # Preserve diagnostic defaults; explicit caller sizes always win.
-if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone) {
+if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone) {
     if (-not $PSBoundParameters.ContainsKey('ResX')) { $ResX = 1600 }
     if (-not $PSBoundParameters.ContainsKey('ResY')) { $ResY = 900 }
 }
@@ -67,14 +71,18 @@ function Get-NetworkPlayLaunchPlan {
     if ($HandoffLatencyAudit) { $commonArguments += '-HandoffLatencyAudit' }
     # Explicit host-only automation fixture. Default launch keeps production secure RNG.
     $fixtureArguments = @()
-    if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone) {
-        $playerMilestones = @($PlayerFacingCrossMilestone, $PlayerFacingPassControlMilestone, $PlayerFacingThroughBallFeetMilestone | Where-Object { $_ })
+    if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone) {
+        $playerMilestones = @($PlayerFacingCrossMilestone, $PlayerFacingPassControlMilestone, $PlayerFacingThroughBallFeetMilestone, $PlayerFacingThroughBallMilestone | Where-Object { $_ })
         if ($playerMilestones.Count -ne 1 -or $DeploymentSlice -or $InitialRouteMilestone -or $CrossTerminalMilestone) {
             throw 'PlayerFacingCrossMilestone 请单独使用。'
         }
         $commonArguments += '-FMCodexNetworkPlayerFacingUI'
         if ($NetworkDiagnostics) { $commonArguments += '-FMCodexNetworkDiagnostics' }
-        if ($PlayerFacingPassControlMilestone) {
+        if ($PlayerFacingThroughBallMilestone) {
+            $fixtureArguments = @(('-FMCodexNetworkPlayerFacingThroughBallMilestone=' + $PlayerFacingThroughBallMilestone), ('-FMCodexNetworkThroughBallActor=' + $ThroughBallActor))
+            if ($ThroughBallNoGoal) { $fixtureArguments += '-FMCodexNetworkThroughBallNoGoal' }
+            if ($ThroughBallFinal) { $fixtureArguments += '-FMCodexNetworkThroughBallFinal' }
+        } elseif ($PlayerFacingPassControlMilestone) {
             $routeD6 = if ($explicitPassControlRoute) { $PassControlRouteD6 } elseif ($PlayerFacingPassControlMilestone -like '*NoGoal') { 3 } else { $PassControlRouteD6 }
             $fixtureArguments = @(('-FMCodexNetworkPlayerFacingPassControlMilestone=' + $PlayerFacingPassControlMilestone), ('-FMCodexNetworkPassControlRouteD6=' + $routeD6))
         } elseif ($PlayerFacingThroughBallFeetMilestone) {

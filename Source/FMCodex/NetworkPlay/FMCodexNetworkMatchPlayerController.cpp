@@ -1317,6 +1317,8 @@ void AFMCodexNetworkMatchPlayerController::DevPlayerFacingAction(FName Action, F
 	else if (Action == TEXT("Low")) PlayerMatchScreen->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossLow);
 	else if (Action == TEXT("Continue")) PlayerMatchScreen->RequestContinueResolution();
 	else if (Action == TEXT("D12")) PlayerMatchScreen->RequestRollTacticalPoints();
+	else if (Action == TEXT("Direct")) PlayerMatchScreen->RequestSubmitOneOnOneChoice(EFMCodexUMGOneOnOneChoice::DirectShot);
+	else if (Action == TEXT("Chip")) PlayerMatchScreen->RequestSubmitOneOnOneChoice(EFMCodexUMGOneOnOneChoice::ChipShot);
 #endif
 }
 void AFMCodexNetworkMatchPlayerController::DevPlayerFacingEvidence()

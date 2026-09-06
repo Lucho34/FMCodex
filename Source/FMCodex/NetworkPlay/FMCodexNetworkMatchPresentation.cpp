@@ -42,7 +42,8 @@ namespace
 			|| M.OpponentRack.Cells.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxCardsPerSide
 			|| M.PitchRegions.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxPitchRegions
 			|| M.Interaction.DeploymentChoices.Num() > 20 || M.Interaction.SelectionChoices.Num() > 20
-			|| M.Interaction.BranchChoices.Num() > 2) return false;
+			|| M.Interaction.BranchChoices.Num() > 2 || M.Interaction.OneOnOneChoices.Num() > 2
+			|| M.ThroughBallResolution.OneOnOneChoices.Num() > 2) return false;
 		for (const auto& Region : M.PitchRegions)
 			if (Region.Slots.Num() > FFMCodexNetworkMatchPresentationAdapter::MaxSlotsPerRegion) return false;
 		for (const auto& Choice : M.Interaction.DeploymentChoices)
@@ -80,7 +81,7 @@ void FFMCodexNetworkMatchPresentationAdapter::DisableActions(FFMCodexUMGMatchScr
 }
 
 FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Project(
-	const FFMCodexLocalMatchInteractionView& SafeView, EInitialTurnOrderPlayer Viewer, bool bFeetMilestoneCapability)
+	const FFMCodexLocalMatchInteractionView& SafeView, EInitialTurnOrderPlayer Viewer)
 {
 	FFMCodexNetworkMatchPresentation Result;
 	// This builder only formats already-projected public facts and canonical static descriptions.
@@ -88,7 +89,6 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 		FFMCodexLocalMatchResolutionFeedbackBuilder::BuildFromTerminalSnapshot(SafeView), FString(), Viewer);
 	if (!WithinBounds(M)) return Result; // Never silently truncate legal options.
 	M.Interaction.bCanStartNewMatch = M.Interaction.bCanDecline = M.Interaction.bCanResolveNoLegal = false;
-	M.Interaction.OneOnOneChoices.Reset();
 	M.Interaction.CandidateCards.Reset();
 	M.Interaction.LegalActionLabels.Reset();
 	M.Interaction.ClassificationLabel.Reset();
@@ -97,7 +97,7 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	for (auto& Choice : M.Interaction.SelectionChoices)
 		if (M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill
 			&& Choice.SkillType != ESkillRuleType::Cross && Choice.SkillType != ESkillRuleType::PassControl
-			&& !(bFeetMilestoneCapability && Choice.SkillType == ESkillRuleType::ThroughBall))
+			&& Choice.SkillType != ESkillRuleType::ThroughBall)
 		{
 			Choice.bEnabled = false;
 			Choice.SecondaryLabel = TEXT("此联网演示暂未支持");
@@ -137,19 +137,26 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 				default: continue;
 				}
 			}
-			else if (Roll.Semantics == EMatchPlayResolutionRollSemantics::ArithmeticContest
-				&& Facts.FormulaContests.Num() == 1)
+			else
 			{
-				Event.Kind = Roll.PostRoutePurpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack
-					? EFMCodexUMGCrossRollRevealKind::Attack
-					: Roll.PostRoutePurpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryDefense
+				using P = EMatchPlayCurrentAttackPostRouteRollPurpose;
+				const auto Purpose = Roll.PostRoutePurpose;
+				Event.Kind = Purpose == P::PrimaryAttack || Purpose == P::OneOnOneDirectShotAttack || Purpose == P::OneOnOneChipShotAttack
+					? EFMCodexUMGCrossRollRevealKind::Attack : Purpose == P::PrimaryDefense || Purpose == P::OneOnOneDirectShotDefense
 						? EFMCodexUMGCrossRollRevealKind::Defense : EFMCodexUMGCrossRollRevealKind::None;
-				Event.ContestId = Facts.FormulaContests[0].ContestId;
+				if (Purpose == P::OneOnOneChipShotAttack) Event.ContestId = TEXT("ThroughBall.OneOnOne.ChipShot");
+				else if (Purpose == P::OneOnOneDirectShotAttack || Purpose == P::OneOnOneDirectShotDefense)
+					Event.ContestId = TEXT("ThroughBall.OneOnOne.DirectShot");
+				else if (Facts.ActualBranch.ActionType == ESkillRuleType::ThroughBall
+					&& Facts.ActualBranch.ThroughBall == EMatchPlayThroughBallActualBranch::AntiOffside)
+					Event.ContestId = TEXT("ThroughBall.AntiOffside");
+				else if (Facts.FormulaContests.Num() > 0) Event.ContestId = Facts.FormulaContests[0].ContestId;
+				if (Event.ContestId.IsNone()) continue;
 			}
 			if (Event.Kind != EFMCodexUMGCrossRollRevealKind::None) Result.ResolvedRolls.Add(Event);
 		}
 	}
-	if (Result.ResolvedRolls.Num() > 3 || M.FullTime.PlayerA.Goals.Num() > 6 || M.FullTime.PlayerB.Goals.Num() > 6) return {};
+	if (Result.ResolvedRolls.Num() > 5 || M.FullTime.PlayerA.Goals.Num() > 6 || M.FullTime.PlayerB.Goals.Num() > 6) return {};
 	Result.bAvailable = true;
 	Result.Header = MoveTemp(M.Header);
 	Result.LocalRack = MoveTemp(M.LocalRack); Result.OpponentRack = MoveTemp(M.OpponentRack);
@@ -157,7 +164,6 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	Result.Interaction = MoveTemp(M.Interaction);
 	Result.InlineFormula = MoveTemp(M.InlineFormula);
 	Result.BranchSurface = MoveTemp(M.LongShotResolution);
-	M.ThroughBallResolution.OneOnOneChoices.Reset();
 	Result.ThroughBallSurface = MoveTemp(M.ThroughBallResolution);
 	Result.FullTime = MoveTemp(M.FullTime);
 	return Result;
@@ -221,9 +227,16 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	case C::RollPassControlRoute: Action = LOCTEXT("PassControlRoute", "掷传控路线骰"); break;
 	case C::RollThroughBallInitialRoute: Action = LOCTEXT("ThroughBallRoute", "掷直塞路线骰"); break;
 	case C::RollCrossRoute: Action = LOCTEXT("CrossRoute", "掷传中路线骰"); break;
+	case C::SelectOneOnOneShot: Action = LOCTEXT("OneOnOneChoice", "选择单刀射门方式"); break;
+	case C::RollThroughBallAntiOffsideAttack: Action = LOCTEXT("AntiOffsideRoll", "掷反越位点数"); break;
+	case C::RollThroughBallOneOnOneChipShotAttack: Action = LOCTEXT("ChipRoll", "掷挑射点数"); break;
+	case C::RollThroughBallBehindDefenseAttack:
+	case C::RollThroughBallOneOnOneDirectShotAttack:
 	case C::RollPassControlAttack:
 	case C::RollThroughBallFeetAttack:
 	case C::RollCrossAttack: Action = LOCTEXT("CrossAttack", "进攻方掷点"); break;
+	case C::RollThroughBallBehindDefenseDefense:
+	case C::RollThroughBallOneOnOneDirectShotDefense:
 	case C::RollPassControlDefense:
 	case C::RollThroughBallFeetDefense:
 	case C::RollCrossDefense: Action = LOCTEXT("CrossDefense", "防守方掷点"); break;

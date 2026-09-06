@@ -218,7 +218,9 @@ bool FFMCodexOrdinaryReplay::RunTest(const FString& P)
             auto* PC=Attack?F.Attacker():F.Defender();F.RequestedKind=RollKind(IsFeet,Attack);const FFrozen Before(F);
             TestEqual(TEXT("Excluded actual route/family rejects before draw"),F.Mode->SubmitConnectionPlayerIntent(PC,F.Request(PC)).Code,Code::AuthorityRejected);Before.Verify(*this,F);
         }
-        if(Family!=ESkillRuleType::Cross) TestEqual(TEXT("No false ordinary contest capability"),F.Attacker()->GetOwnerView().ContestAction,EFMCodexNetworkContestAction::None);return true;
+        if(Family==ESkillRuleType::ThroughBall) TestEqual(TEXT("Conditional route offers its own new action, never Feet"),F.Attacker()->GetOwnerView().ContestAction,
+            P.Contains(TEXT("Behind"))?EFMCodexNetworkContestAction::ThroughBallBehindDefenseP1AttackRoll:EFMCodexNetworkContestAction::ThroughBallAntiOffsideAttackRoll);
+        else if(Family!=ESkillRuleType::Cross) TestEqual(TEXT("No false ordinary contest capability"),F.Attacker()->GetOwnerView().ContestAction,EFMCodexNetworkContestAction::None);return true;
     }
     if(!TestTrue(TEXT("Canonical route"),F.Prepare(Feet,P.Contains(TEXT("Dribble"))?3:P.Contains(TEXT("Run"))?5:1)))return false;
     const FFrozen Early(F);TestEqual(TEXT("Defense before attack"),F.Roll(Feet,false,2).Code,Code::AuthorityRejected);Early.Verify(*this,F);

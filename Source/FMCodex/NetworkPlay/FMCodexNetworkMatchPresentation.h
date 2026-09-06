@@ -24,11 +24,11 @@ struct FMCODEX_API FFMCodexNetworkMatchPresentation
 	UPROPERTY() TArray<FFMCodexUMGCardViewModel> CardCatalog;
 	UPROPERTY() FFMCodexUMGInteractionViewModel Interaction;
 	UPROPERTY() FFMCodexUMGInlineFormulaSurfaceViewModel InlineFormula;
-	/** At most route + attacker + defender; only accepted, disclosed values. */
+	/** At most route + primary attack/defense + OneOnOne attack/defense; accepted, disclosed values only. */
 	UPROPERTY() TArray<FFMCodexUMGResolvedRollViewModel> ResolvedRolls;
 	/** Existing shared branch surface, named for its first Local consumer. */
 	UPROPERTY() FFMCodexUMGLongShotResolutionViewModel BranchSurface;
-	/** Existing shared ThroughBall surface, restricted to initial route / Feet. */
+	/** Existing shared ThroughBall surface, including conditional routes and OneOnOne. */
 	UPROPERTY() FFMCodexUMGThroughBallResolutionViewModel ThroughBallSurface;
 	UPROPERTY() FFMCodexFullTimePresentation FullTime;
 };
@@ -40,7 +40,7 @@ public:
 	static constexpr int32 MaxPitchRegions = 8;
 	static constexpr int32 MaxSlotsPerRegion = 20;
 	static FFMCodexNetworkMatchPresentation Project(
-		const FFMCodexLocalMatchInteractionView& SafeView, EInitialTurnOrderPlayer Viewer, bool bFeetMilestoneCapability = false);
+		const FFMCodexLocalMatchInteractionView& SafeView, EInitialTurnOrderPlayer Viewer);
 	static FFMCodexUMGMatchScreenViewModel Read(
 		const FFMCodexNetworkMatchPresentation& View, bool bPending);
 	/** Uses existing typed owner/actor facts; adds no replicated prompt state. */

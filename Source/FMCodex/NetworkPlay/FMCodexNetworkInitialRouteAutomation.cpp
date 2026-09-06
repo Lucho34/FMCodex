@@ -104,7 +104,6 @@ bool FFMCodexNetworkMatchRuntime::PrepareOrdinaryTerminalMilestone(bool Goal, bo
 	if (!PrepareInitialRouteMilestone(Family)) { return false; }
 	if (bAwaitSkill)
 	{
-		FeetMilestoneAttackSequence = Family == ESkillRuleType::ThroughBall ? View().AttackSequence : 0;
 		return true;
 	}
 	if (Family != ESkillRuleType::Cross) return false;

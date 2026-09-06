@@ -29,6 +29,13 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	PassControlDefenseRoll,
 	ThroughBallFeetAttackRoll,
 	ThroughBallFeetDefenseRoll,
+	ThroughBallBehindDefenseP1AttackRoll,
+	ThroughBallBehindDefenseP1DefenseRoll,
+	ThroughBallAntiOffsideAttackRoll,
+	ThroughBallOneOnOneDirectShotAttackRoll,
+	ThroughBallOneOnOneDirectShotDefenseRoll,
+	ThroughBallOneOnOneChipShotAttackRoll,
+	SubmitThroughBallOneOnOneShotChoice,
 };
 
 UENUM()
@@ -68,6 +75,8 @@ struct FMCODEX_API FFMCodexNetworkPlayerIntentEnvelope
 	FFMCodexNetworkSubmitSkillPayload Skill;
 	UPROPERTY()
 	FFMCodexNetworkSubmitBranchIntentPayload Branch;
+	UPROPERTY()
+	EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice = EMatchPlayThroughBallOneOnOneShotChoice::None;
 	EFMCodexNetworkIntentAckCode ValidatePayloadShape() const;
 };
 
@@ -139,6 +148,8 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 	bool BeginAdvance(const FFMCodexNetworkClientViewSnapshot& View, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginOrdinaryContest(const FFMCodexNetworkClientViewSnapshot& View,
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginOneOnOne(const FFMCodexNetworkClientViewSnapshot& View,
+		EMatchPlayThroughBallOneOnOneShotChoice Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }
 	int64 GetPendingRequestId() const { return PendingRequestId; }
@@ -153,7 +164,8 @@ private:
 		const FFMCodexNetworkSubmitHelperPayload& HelperChoice,
 		const FFMCodexNetworkSubmitSkillPayload& SkillChoice,
 		const FFMCodexNetworkSubmitBranchIntentPayload& BranchChoice,
-		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope,
+		EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice = EMatchPlayThroughBallOneOnOneShotChoice::None);
 	void CompleteIfReady();
 	FGuid Match;
 	int64 NextRequestId = 1;

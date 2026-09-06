@@ -283,27 +283,33 @@ namespace FMCodexNetworkMatchTypes
 	void ProjectOrdinaryContest(const FFMCodexLocalMatchInteractionView& View,
 		FFMCodexNetworkClientViewSnapshot& Result)
 	{
-		const FName ContestId = OrdinaryContestId(Result);
-		if (ContestId.IsNone()) return;
+		using Purpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+		using Side = EInitialTurnOrderPlayer;
+		const bool ThroughBall = Result.InitialRoute.ActionType == ESkillRuleType::ThroughBall;
+		if (OrdinaryContestId(Result).IsNone() && !ThroughBall) return;
+		TArray<FFMCodexNetworkAcceptedContestRoll> Rolls;
 		FFMCodexNetworkContestFact Fact;
-		int32 Count = 0;
 		for (const auto& Roll : View.ResolutionFacts.Rolls)
 		{
 			if (Roll.bInitialRoute) continue;
-			using Purpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
-			const bool Attack = Count == 0;
-			if (++Count > 2 || !Roll.bResolved || Roll.RawD6 < 1 || Roll.RawD6 > 6
-				|| Roll.PostRoutePurpose != (Attack ? Purpose::PrimaryAttack : Purpose::PrimaryDefense)) return;
-			if (Attack) Fact.AttackD6 = Roll.RawD6; else Fact.DefenseD6 = Roll.RawD6;
+			const bool Attack = Roll.PostRoutePurpose == Purpose::PrimaryAttack
+				|| Roll.PostRoutePurpose == Purpose::OneOnOneDirectShotAttack || Roll.PostRoutePurpose == Purpose::OneOnOneChipShotAttack;
+			const bool Defense = Roll.PostRoutePurpose == Purpose::PrimaryDefense || Roll.PostRoutePurpose == Purpose::OneOnOneDirectShotDefense;
+			if ((!Attack && !Defense) || !Roll.bResolved || Roll.RawD6 < 1 || Roll.RawD6 > 6
+				|| Roll.SequenceIndex != Rolls.Num() + 1 || Rolls.Num() >= (ThroughBall ? 4 : 2)
+				|| Roll.OwningSide != (Attack ? Result.CurrentAttackingSide
+					: Result.CurrentAttackingSide == Side::PlayerA ? Side::PlayerB : Side::PlayerA)) return;
+			auto& Accepted = Rolls.AddDefaulted_GetRef();
+			Accepted.Purpose = Roll.PostRoutePurpose; Accepted.SequenceIndex = Roll.SequenceIndex;
+			Accepted.D6 = Roll.RawD6; Accepted.OwnerSide = Roll.OwningSide;
+			if (Roll.PostRoutePurpose == Purpose::PrimaryAttack) Fact.AttackD6 = Roll.RawD6;
+			if (Roll.PostRoutePurpose == Purpose::PrimaryDefense) Fact.DefenseD6 = Roll.RawD6;
 		}
-		if (Count == 2 && View.ResolutionFacts.FormulaContests.Num() == 1)
-		{
-			const auto& Contest = View.ResolutionFacts.FormulaContests[0];
-			Fact.bFormulaResolved = Contest.ContestId == ContestId && Contest.bHasResolvedFormula;
-		}
-		Result.Contest = Fact;
-		if (!View.bHumanInteraction || Result.ViewerSide == EInitialTurnOrderPlayer::None
-			|| View.ExpectedActingPlayer != Result.ViewerSide) return;
+		const FName Primary = OrdinaryContestId(Result);
+		Fact.bFormulaResolved = !Primary.IsNone() && View.ResolutionFacts.FormulaContests.ContainsByPredicate(
+			[&](const auto& F) { return F.ContestId == Primary && F.bHasResolvedFormula; });
+		Result.Contest = Fact; Result.AcceptedContestRolls = MoveTemp(Rolls);
+		if (!View.bHumanInteraction || Result.ViewerSide == Side::None || View.ExpectedActingPlayer != Result.ViewerSide) return;
 		using C = EFMCodexLocalMatchInteractionCategory;
 		using A = EFMCodexNetworkContestAction;
 		const bool High = Result.InitialRoute.Cross == EMatchPlayCrossActualBranch::High;
@@ -315,6 +321,18 @@ namespace FMCodexNetworkMatchTypes
 		case C::RollPassControlDefense: Result.ContestAction = A::PassControlDefenseRoll; break;
 		case C::RollThroughBallFeetAttack: Result.ContestAction = A::ThroughBallFeetAttackRoll; break;
 		case C::RollThroughBallFeetDefense: Result.ContestAction = A::ThroughBallFeetDefenseRoll; break;
+		case C::RollThroughBallBehindDefenseAttack: Result.ContestAction = A::ThroughBallBehindDefenseP1AttackRoll; break;
+		case C::RollThroughBallBehindDefenseDefense: Result.ContestAction = A::ThroughBallBehindDefenseP1DefenseRoll; break;
+		case C::RollThroughBallAntiOffsideAttack: Result.ContestAction = A::ThroughBallAntiOffsideAttackRoll; break;
+		case C::RollThroughBallOneOnOneDirectShotAttack: Result.ContestAction = A::ThroughBallOneOnOneDirectShotAttackRoll; break;
+		case C::RollThroughBallOneOnOneDirectShotDefense: Result.ContestAction = A::ThroughBallOneOnOneDirectShotDefenseRoll; break;
+		case C::RollThroughBallOneOnOneChipShotAttack: Result.ContestAction = A::ThroughBallOneOnOneChipShotAttackRoll; break;
+		case C::SelectOneOnOneShot:
+			if (View.OneOnOneOptions.Num() != 2 || View.OneOnOneOptions[0] == View.OneOnOneOptions[1]) break;
+			for (auto Option : View.OneOnOneOptions)
+				if (Option != EMatchPlayThroughBallOneOnOneShotChoice::DirectShot && Option != EMatchPlayThroughBallOneOnOneShotChoice::ChipShot) return;
+			Result.OneOnOneOptions = View.OneOnOneOptions;
+			break;
 		default: break;
 		}
 	}
@@ -383,17 +401,29 @@ namespace FMCodexNetworkMatchTypes
 			}
 			Result.Recovery = MoveTemp(Recovery);
 		}
-		if (!View.bTerminalPendingAdvance || !Result.Contest.bFormulaResolved
-			|| Result.bGoalHistoryUnavailable || OrdinaryContestId(Result).IsNone()) { return; }
-		const FName DecisionId(*FString::Printf(TEXT("%s.Outcome"), *OrdinaryContestId(Result).ToString()));
+		if (!View.bTerminalPendingAdvance || Result.bGoalHistoryUnavailable) return;
+		const FName Primary = OrdinaryContestId(Result);
+		const FName PrimaryDecision = Primary.IsNone() ? NAME_None : FName(*FString::Printf(TEXT("%s.Outcome"), *Primary.ToString()));
+		const bool ThroughBall = Result.InitialRoute.ActionType == ESkillRuleType::ThroughBall;
 		const FMatchPlayResolutionDecisionFact* Terminal = nullptr;
 		for (const auto& Decision : View.ResolutionFacts.Decisions)
 		{
-			if (Decision.DecisionId != DecisionId) { continue; }
-			if (Terminal != nullptr) { return; }
+			const bool Supported = (!PrimaryDecision.IsNone() && Decision.DecisionId == PrimaryDecision) || (ThroughBall
+				&& (Decision.DecisionId == TEXT("ThroughBall.BehindDefense.P1.Outcome")
+					|| Decision.DecisionId == TEXT("ThroughBall.AntiOffside.Outcome")
+					|| Decision.DecisionId == TEXT("ThroughBall.OneOnOne.DirectShot.Outcome")
+					|| Decision.DecisionId == TEXT("ThroughBall.OneOnOne.ChipShot.Outcome")));
+			if (!Supported || !Decision.bResolved || Decision.Outcome == EMatchPlayResolutionDecisionOutcome::OneOnOneRequired) continue;
+			if (Terminal) return;
 			Terminal = &Decision;
 		}
-		if (!Terminal || !Terminal->bResolved) { return; }
+		if (!Terminal) return;
+		if (Terminal->Semantics == EMatchPlayResolutionRollSemantics::ArithmeticContest
+			&& !View.ResolutionFacts.FormulaContests.ContainsByPredicate([&](const auto& F)
+			{
+				return FName(*FString::Printf(TEXT("%s.Outcome"), *F.ContestId.ToString())) == Terminal->DecisionId
+					&& (F.bHasResolvedFormula || F.Application == EMatchPlayResolutionFormulaApplication::SkippedByAuthoritativeGate);
+			})) return;
 		const auto* Goal = Result.PublicGoalHistory.FindByPredicate([&](const auto& G) { return G.AttackSequence == Result.AttackSequence; });
 		if (Terminal->Outcome == EMatchPlayResolutionDecisionOutcome::Goal)
 		{
@@ -405,6 +435,16 @@ namespace FMCodexNetworkMatchTypes
 		{
 			if (Goal) { return; }
 			Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::NoGoal;
+		}
+		else if (ThroughBall && !Goal)
+		{
+			switch (Terminal->Outcome)
+			{
+			case EMatchPlayResolutionDecisionOutcome::OutOfPlay: Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::OutOfPlay; break;
+			case EMatchPlayResolutionDecisionOutcome::DefenderStoppedAttack: Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::DefenderStoppedAttack; break;
+			case EMatchPlayResolutionDecisionOutcome::Offside: Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::Offside; break;
+			default: return;
+			}
 		}
 		else { return; }
 		Result.bCanAdvance = View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
@@ -661,6 +701,16 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 		Result.EntryWait = EFMCodexNetworkEntryWait::CrossAttackRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollPassControlDefense:
 		Result.EntryWait = EFMCodexNetworkEntryWait::PassControlDefenseRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallBehindDefenseDefense:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallBehindDefenseDefenseRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallOneOnOneDirectShotAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallOneOnOneDirectAttackRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallOneOnOneDirectShotDefense:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallOneOnOneDirectDefenseRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::RollThroughBallOneOnOneChipShotAttack:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallOneOnOneChipRoll; break;
+	case EFMCodexLocalMatchInteractionCategory::SelectOneOnOneShot:
+		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallOneOnOneChoice; break;
 	case EFMCodexLocalMatchInteractionCategory::RollThroughBallFeetDefense:
 		Result.EntryWait = EFMCodexNetworkEntryWait::ThroughBallFeetDefenseRoll; break;
 	case EFMCodexLocalMatchInteractionCategory::RollPassControlAttack:

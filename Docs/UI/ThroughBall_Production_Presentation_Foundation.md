@@ -133,3 +133,11 @@ Screen 的中央 Inline Formula、ThroughBall Production 与 lower/generic Surfa
 OneOnOne option 不再绑定 Hover/Unhover detail callback，也不创建 Tactical Detail child 或固定 `780×148` reserve，因此 choice 下方没有空白 placeholder。相同 OneOnOne context 与 typed choice list 的重复 presentation application仍复用现有 button widgets；这是普通按钮稳定性合同，不再包含 hover-detail local state。
 
 `OneOnOne Contextual Tactical Detail` 状态为 Deferred，目标是 Post-Rule-Freeze Player Comprehension Pass。待实际 gameplay testing、MVP rule simplification 与 rule freeze 后，再在 Hover Detail、fixed inline detail、click-to-expand、first-use tooltip 或不增加解释之间重新评估；canonical Direct/Chip metadata 与 shared Tactical Information infrastructure继续保留。
+
+## Network conditional continuation integration (Stage 7.17)
+
+Network now supplies the complete canonical ThroughBall presentation to the same LocalMatchScreenWidget: Feet, BehindDefense's single-roll terminal or conditional Defense, AntiOffside's Offside/OneOnOne result, and the original Direct/Chip choice and resolution. This changes transport/read capability; the gameplay mappings, Formula, Chinese Narrative and local production lifecycle above remain authoritative and unchanged.
+
+OneOnOne choice uses the existing two central options and is owned by the attacker only. Waiting viewers see the mirrored action prompt without options. New Direct/Chip rolls keep distinct event identities while the earlier primary records remain immutable. BehindDefense OutOfPlay and AntiOffside Offside have no irrelevant Defense CTA; Chip has no Formula comparison or defender die. Direct retains its existing goalkeeper save-presentation exception.
+
+Only viewer-safe values cross replication. Hidden accepted conditional dice also conceal next-action/choice information. Public terminal facts may arrive before the local Reel finishes; the original elapsed-time ResultHold and displayed-score/result gate determine visible reveal. Repeated/coalesced views and late UI creation reuse existing dedupe. Explicit 下一回合 clears the old attack surfaces and opens canonical Recovery/next Full D12 or Full-Time. Technical evidence must be followed by the short BehindOneOnOne USER PIE milestone.

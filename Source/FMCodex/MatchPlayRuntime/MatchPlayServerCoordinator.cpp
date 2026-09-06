@@ -585,6 +585,15 @@ FMatchPlayServerCoordinator::AdvanceToStableState()
 			}
 			case EMatchPlayThroughBallActualBranch::BehindDefense:
 			{
+				// A canonical complete primary contract containing one accepted roll has
+				// already ended at its conditional gate. Terminal regeneration validates
+				// that result; the two-sided Formula is unavailable on this path.
+				if (Session.PostRouteRollProgress.RollRecords.Num() == 1)
+				{
+					if (!RecordInternalResult(Result,
+						AuthoritativeSession.ApplyThroughBallTerminalResolution())) return Result;
+					continue;
+				}
 				const auto Formula =
 					AuthoritativeSession.ResolveThroughBallBehindDefenseP1Formula();
 				if (!RecordInternalResult(Result, Formula))

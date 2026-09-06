@@ -18,24 +18,35 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	case EFMCodexNetworkPlayerIntentKind::CrossHighDefenseRoll:
 	case EFMCodexNetworkPlayerIntentKind::CrossLowAttackRoll:
 	case EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallBehindDefenseP1AttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallBehindDefenseP1DefenseRoll:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallAntiOffsideAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotAttackRoll:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotDefenseRoll:
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneChipShotAttackRoll:
 	case EFMCodexNetworkPlayerIntentKind::CrossLowDefenseRoll:
-		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:
-		return Deployment.IsValidShape() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsValidShape() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::DeployGoalkeeper:
-		return Deployment.IsEmpty() && Goalkeeper.IsValidShape() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsValidShape() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::SubmitCarrier:
-		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsValidShape() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsValidShape() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::SubmitMarker:
-		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsValidShape() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsValidShape() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::SubmitRunner:
-		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsValidShape() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsValidShape() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::SubmitHelper:
-		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsValidShape() && Skill.IsEmpty() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsValidShape() && Skill.IsEmpty() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::SubmitSkill:
-		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsValidShape() && Branch.IsEmpty() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsValidShape() && Branch.IsEmpty() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
 	case EFMCodexNetworkPlayerIntentKind::SubmitBranchIntent:
-		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsValidShape() ? Code::None : Code::InvalidPayload;
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty() && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsValidShape() && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None ? Code::None : Code::InvalidPayload;
+	case EFMCodexNetworkPlayerIntentKind::SubmitThroughBallOneOnOneShotChoice:
+		return Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty()
+			&& Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty()
+			&& (OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::DirectShot
+				|| OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::ChipShot) ? Code::None : Code::InvalidPayload;
 	default:
 		return Code::NotPlayerIntent;
 	}
@@ -166,8 +177,22 @@ bool FFMCodexNetworkIntentClientState::BeginOrdinaryContest(const FFMCodexNetwor
 		&& Kind != EFMCodexNetworkPlayerIntentKind::PassControlAttackRoll
 		&& Kind != EFMCodexNetworkPlayerIntentKind::PassControlDefenseRoll
 		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallFeetAttackRoll
-		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallFeetDefenseRoll) { return false; }
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallFeetDefenseRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallBehindDefenseP1AttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallBehindDefenseP1DefenseRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallAntiOffsideAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotAttackRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotDefenseRoll
+		&& Kind != EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneChipShotAttackRoll
+) { return false; }
 	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
+}
+bool FFMCodexNetworkIntentClientState::BeginOneOnOne(const FFMCodexNetworkClientViewSnapshot& View,
+	EMatchPlayThroughBallOneOnOneShotChoice Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	if (!View.OneOnOneOptions.Contains(Choice)) return false;
+	return BeginIntent(View, EFMCodexNetworkPlayerIntentKind::SubmitThroughBallOneOnOneShotChoice,
+		{}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope, Choice);
 }
 bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientViewSnapshot& View,
 	EFMCodexNetworkPlayerIntentKind Kind, const FFMCodexNetworkDeployOrdinaryPayload& Choice,
@@ -178,7 +203,8 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	const FFMCodexNetworkSubmitHelperPayload& HelperChoice,
 	const FFMCodexNetworkSubmitSkillPayload& SkillChoice,
 	const FFMCodexNetworkSubmitBranchIntentPayload& BranchChoice,
-	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope,
+	EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice)
 {
 	ObserveView(View);
 	bool bActionable = false;
@@ -254,6 +280,27 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallFeetDefenseRoll:
 		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallFeetDefenseRoll;
 		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallBehindDefenseP1AttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallBehindDefenseP1AttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallBehindDefenseP1DefenseRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallBehindDefenseP1DefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallAntiOffsideAttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallAntiOffsideAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotAttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallOneOnOneDirectShotAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneDirectShotDefenseRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallOneOnOneDirectShotDefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ThroughBallOneOnOneChipShotAttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ThroughBallOneOnOneChipShotAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::SubmitThroughBallOneOnOneShotChoice:
+		bActionable = View.OneOnOneOptions.Contains(OneOnOneChoice);
+		break;
 	case EFMCodexNetworkPlayerIntentKind::AdvanceAfterTerminal:
 		bActionable = View.bCanAdvance;
 		break;
@@ -269,6 +316,7 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	Candidate.Helper = HelperChoice;
 	Candidate.Skill = SkillChoice;
 	Candidate.Branch = BranchChoice;
+	Candidate.OneOnOneChoice = OneOnOneChoice;
 	if (IsPending() || !Match.IsValid() || NextRequestId == MAX_int64
 		|| View.ViewRevision < SeenViewRevision || !View.bMatchInitialized
 		|| View.BootstrapState != EFMCodexNetworkBootstrapState::MatchReady

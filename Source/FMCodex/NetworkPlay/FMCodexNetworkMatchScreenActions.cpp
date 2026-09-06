@@ -61,6 +61,13 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		}
 		return Client.BeginBranch(View, P, Out);
 	}
+	case K::OneOnOne:
+		switch (Request.OneOnOne)
+		{
+		case EFMCodexUMGOneOnOneChoice::DirectShot: return Client.BeginOneOnOne(View, EMatchPlayThroughBallOneOnOneShotChoice::DirectShot, Out);
+		case EFMCodexUMGOneOnOneChoice::ChipShot: return Client.BeginOneOnOne(View, EMatchPlayThroughBallOneOnOneShotChoice::ChipShot, Out);
+		default: return false;
+		}
 	case K::Continue:
 		if (Request.Category != View.Presentation.Interaction.Category) return false;
 		switch (Request.Category)
@@ -73,6 +80,12 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		case C::RollPassControlDefense: return Client.BeginOrdinaryContest(View, N::PassControlDefenseRoll, Out);
 		case C::RollThroughBallFeetAttack: return Client.BeginOrdinaryContest(View, N::ThroughBallFeetAttackRoll, Out);
 		case C::RollThroughBallFeetDefense: return Client.BeginOrdinaryContest(View, N::ThroughBallFeetDefenseRoll, Out);
+		case C::RollThroughBallBehindDefenseAttack: return Client.BeginOrdinaryContest(View, N::ThroughBallBehindDefenseP1AttackRoll, Out);
+		case C::RollThroughBallBehindDefenseDefense: return Client.BeginOrdinaryContest(View, N::ThroughBallBehindDefenseP1DefenseRoll, Out);
+		case C::RollThroughBallAntiOffsideAttack: return Client.BeginOrdinaryContest(View, N::ThroughBallAntiOffsideAttackRoll, Out);
+		case C::RollThroughBallOneOnOneDirectShotAttack: return Client.BeginOrdinaryContest(View, N::ThroughBallOneOnOneDirectShotAttackRoll, Out);
+		case C::RollThroughBallOneOnOneDirectShotDefense: return Client.BeginOrdinaryContest(View, N::ThroughBallOneOnOneDirectShotDefenseRoll, Out);
+		case C::RollThroughBallOneOnOneChipShotAttack: return Client.BeginOrdinaryContest(View, N::ThroughBallOneOnOneChipShotAttackRoll, Out);
 		case C::RollCrossAttack:
 		case C::RollCrossDefense:
 			switch (View.ContestAction)

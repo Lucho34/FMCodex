@@ -114,11 +114,11 @@ bool FFMCodexOrdinaryPlayerCapabilities::RunTest(const FString&)
     const auto V=F.Attacker()->GetOwnerView();
     for(const auto& O:V.Presentation.Interaction.SelectionChoices)
     {
-        TestEqual(TEXT("General capability admits only complete Cross/PassControl"),O.bEnabled,O.SkillType==ESkillRuleType::Cross||O.SkillType==ESkillRuleType::PassControl);
+        TestEqual(TEXT("General capability admits complete Cross/PassControl/ThroughBall"),O.bEnabled,O.SkillType==ESkillRuleType::Cross||O.SkillType==ESkillRuleType::PassControl||O.SkillType==ESkillRuleType::ThroughBall);
         if(O.SkillType==ESkillRuleType::ThroughBall)
         {
             FFMCodexMatchScreenRequest R;R.Kind=ScreenIntent::Skill;R.OptionId=O.OptionId;Envelope E;FFMCodexNetworkIntentClientState Client;
-            TestFalse(TEXT("Normal shared screen cannot submit incomplete ThroughBall"),FFMCodexNetworkMatchScreenActions::Begin(R,V,Client,E));
+            TestTrue(TEXT("Normal shared screen submits complete ThroughBall"),FFMCodexNetworkMatchScreenActions::Begin(R,V,Client,E));
         }
     }
     return true;
