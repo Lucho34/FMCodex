@@ -48,6 +48,9 @@ enum class EFMCodexNetworkEntryWait : uint8
 
 /** A safe offered player action, not a client-supplied route result. */
 UENUM(BlueprintType)
+enum class EFMCodexNetworkDeclineAction : uint8 { None, Runner, Helper, Skill };
+
+UENUM(BlueprintType)
 enum class EFMCodexNetworkInitialRouteAction : uint8
 {
 	None, Cross, PassControl, ThroughBall
@@ -356,6 +359,9 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 	EFMCodexNetworkEntryBranch EntryBranch = EFMCodexNetworkEntryBranch::None;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	EFMCodexNetworkEntryWait EntryWait = EFMCodexNetworkEntryWait::None;
+	/** Optional action copied from canonical viewer-safe availability. */
+	UPROPERTY()
+	EFMCodexNetworkDeclineAction DeclineAction = EFMCodexNetworkDeclineAction::None;
 
 	static constexpr int32 MaxDeploymentOptions = 3;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")

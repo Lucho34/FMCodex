@@ -433,7 +433,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("InteractionState"), TEXT("bMatchInitialized"), TEXT("bMatchEnded"), TEXT("AttackSequence"),
 		TEXT("CurrentAttackingSide"), TEXT("ExpectedActingSide"), TEXT("PlayerAScore"), TEXT("PlayerBScore"),
 		TEXT("PlayerAMaxAttackOpportunities"), TEXT("PlayerBMaxAttackOpportunities"),
-		TEXT("DisclosedInitialD12"), TEXT("EntryBranch"), TEXT("EntryWait"), TEXT("DeploymentOptions"),
+		TEXT("DisclosedInitialD12"), TEXT("EntryBranch"), TEXT("EntryWait"), TEXT("DeclineAction"), TEXT("DeploymentOptions"),
 		TEXT("DeploymentCount"), TEXT("LastDeployment"), TEXT("bCanDeployGoalkeeper"), TEXT("GoalkeeperOption"),
 		TEXT("GoalkeeperDeployment"), TEXT("bCanFinishDeployment"), TEXT("bPlayerADeploymentFinished"),
 		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete"), TEXT("CarrierOptions"),

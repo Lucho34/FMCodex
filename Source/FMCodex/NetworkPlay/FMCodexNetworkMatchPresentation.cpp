@@ -88,7 +88,11 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	auto M = FFMCodexLocalMatchUMGPresentationBuilder::Build(SafeView,
 		FFMCodexLocalMatchResolutionFeedbackBuilder::BuildFromTerminalSnapshot(SafeView), FString(), Viewer);
 	if (!WithinBounds(M)) return Result; // Never silently truncate legal options.
-	M.Interaction.bCanStartNewMatch = M.Interaction.bCanDecline = M.Interaction.bCanResolveNoLegal = false;
+	M.Interaction.bCanStartNewMatch = M.Interaction.bCanResolveNoLegal = false;
+	M.Interaction.bCanDecline = M.Interaction.bCanDecline
+		&& (M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectRunner
+			|| M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectHelper
+			|| M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill);
 	M.Interaction.CandidateCards.Reset();
 	M.Interaction.LegalActionLabels.Reset();
 	M.Interaction.ClassificationLabel.Reset();
@@ -207,7 +211,17 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	});
 	if (bPending)
 	{
+		const bool bOptionalChoice = M.Interaction.bCanDecline;
+		auto OptionalChoices = M.Interaction.SelectionChoices;
+		const bool bOnPitch = M.Interaction.bUseOnPitchPlayerSelection;
 		DisableActions(M);
+		if (bOptionalChoice)
+		{
+			// Retain authoritative choices until the new View, without input capability.
+			for (auto& Choice : OptionalChoices) Choice.bEnabled = false;
+			M.Interaction.SelectionChoices = MoveTemp(OptionalChoices);
+			M.Interaction.bUseOnPitchPlayerSelection = bOnPitch;
+		}
 		M.Interaction.EmptyStateLabel = TEXT("正在提交，请稍候");
 	}
 	return M;

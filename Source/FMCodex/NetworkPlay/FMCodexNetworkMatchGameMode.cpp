@@ -235,13 +235,25 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		TerminalMilestone = ShotMilestone.EndsWith(TEXT("Goal")) ? TEXT("Goal") : TEXT("NoGoal");
 		if (FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkShotFinal"))) TerminalMilestone = TEXT("Final") + TerminalMilestone;
 	}
+	FString DeclineMilestone, DeclineActor = TEXT("A");
+	const bool bDecline = HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingDeclineMilestone="), DeclineMilestone);
+	EFMCodexNetworkDeclineAction DeclineStop = EFMCodexNetworkDeclineAction::None;
+	if (bDecline)
+	{
+		DeclineStop = DeclineMilestone == TEXT("Runner") ? EFMCodexNetworkDeclineAction::Runner
+			: DeclineMilestone == TEXT("Helper") ? EFMCodexNetworkDeclineAction::Helper
+			: DeclineMilestone == TEXT("Skill") ? EFMCodexNetworkDeclineAction::Skill : EFMCodexNetworkDeclineAction::None;
+		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkDeclineActor="), DeclineActor);
+		bPlayerFacingMilestone = true; PlayerFacingFamily = ESkillRuleType::LongShot;
+		TerminalMilestone = FParse::Param(FCommandLine::Get(), TEXT("FMCodexNetworkDeclineFinal")) ? TEXT("FinalGoal") : TEXT("Goal");
+	}
 	const bool bTerminalMilestone = bPlayerFacingMilestone || (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkCrossTerminalMilestone="), TerminalMilestone));
 	const bool bTerminalFinal = TerminalMilestone.StartsWith(TEXT("Final"));
 	const bool bTerminalGoal = TerminalMilestone == TEXT("Goal") || TerminalMilestone == TEXT("FinalGoal");
 	const bool bValidTerminalMilestone = bTerminalGoal || TerminalMilestone == TEXT("NoGoal") || TerminalMilestone == TEXT("FinalNoGoal");
 	if (bTerminalMilestone)
 	{
-		if (!bValidTerminalMilestone || (bShot && (!bValidShot || (ShotActor != TEXT("A") && ShotActor != TEXT("B")))) || (bConditional && (ConditionalPath != TEXT("BehindOneOnOne") && ConditionalPath != TEXT("BehindOutOfPlay")
+		if (!bValidTerminalMilestone || (bDecline && (DeclineStop == EFMCodexNetworkDeclineAction::None || (DeclineActor != TEXT("A") && DeclineActor != TEXT("B")))) || (bShot && (!bValidShot || (ShotActor != TEXT("A") && ShotActor != TEXT("B")))) || (bConditional && (ConditionalPath != TEXT("BehindOneOnOne") && ConditionalPath != TEXT("BehindOutOfPlay")
             && ConditionalPath != TEXT("AntiOffside") && ConditionalPath != TEXT("AntiOneOnOne")))
             || (bConditional && ConditionalActor != TEXT("A") && ConditionalActor != TEXT("B")))
 		{
@@ -250,7 +262,7 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 			PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed);
 			return;
 		}
-		const bool BFirst = (bShot ? ShotActor == TEXT("B") : bConditional ? ConditionalActor == TEXT("B") : !bTerminalGoal) != bTerminalFinal;
+		const bool BFirst = (bDecline ? ((DeclineActor == TEXT("B")) != (DeclineStop == EFMCodexNetworkDeclineAction::Helper)) : bShot ? ShotActor == TEXT("B") : bConditional ? ConditionalActor == TEXT("B") : !bTerminalGoal) != bTerminalFinal;
 		BootstrapConfiguration = BFirst ? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
 		BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = bTerminalFinal;
@@ -258,7 +270,8 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		int32 RouteD6 = PlayerFacingFamily == ESkillRuleType::Cross ? 5 : bTerminalGoal ? 1 : 3;
 		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPassControlRouteD6="), RouteD6);
 		if (RouteD6 < 1 || RouteD6 > 6) RouteD6 = 1;
-		if (bShot) MatchRuntime->EnableSpecializedShotAutomation(bTerminalGoal, ShotMilestone == TEXT("ImmediateMiss"), bTerminalFinal);
+		if (bDecline) MatchRuntime->EnableSpecializedShotAutomation(false, false, bTerminalFinal);
+		else if (bShot) MatchRuntime->EnableSpecializedShotAutomation(bTerminalGoal, ShotMilestone == TEXT("ImmediateMiss"), bTerminalFinal);
 		else if (bConditional) MatchRuntime->EnableThroughBallConditionalAutomation(ConditionalPath, bTerminalGoal, bTerminalFinal);
 		else MatchRuntime->EnableOrdinaryTerminalAutomation(bTerminalGoal, bTerminalFinal, PlayerFacingFamily, RouteD6);
 	}
@@ -298,7 +311,7 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 		return;
 	}
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
-	if (bTerminalMilestone && !MatchRuntime->PrepareOrdinaryTerminalMilestone(bTerminalGoal, bTerminalFinal, bPlayerFacingMilestone, PlayerFacingFamily))
+	if (bTerminalMilestone && !MatchRuntime->PrepareOrdinaryTerminalMilestone(bTerminalGoal, bTerminalFinal, bPlayerFacingMilestone, PlayerFacingFamily, DeclineStop))
 	{
 		UE_LOG(LogFMCodexNetworkPlay, Error, TEXT("Terminal milestone setup failed; no partial fixture is playable."));
 		bTransportFault = true;
@@ -549,6 +562,36 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
 		Request.MarkerCardId = Envelope.Marker.MarkerCardId;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitMarker, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::DeclineRunner:
+	{
+		if (Before.EntryWait != EFMCodexNetworkEntryWait::RunnerSelection) { return Finish(AckCode::InvalidPhase); }
+		if (Side != Before.ExpectedActingSide) { return Finish(AckCode::WrongSide); }
+		FMatchPlayAuthoritativeDeclineRunnerRequest Request;
+		Request.RequestingSide = Side; // Registry identity only; Session validates optionality.
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::DeclineRunner, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::DeclineHelper:
+	{
+		if (Before.EntryWait != EFMCodexNetworkEntryWait::HelperSelection) { return Finish(AckCode::InvalidPhase); }
+		if (Side != Before.ExpectedActingSide) { return Finish(AckCode::WrongSide); }
+		FMatchPlayAuthoritativeDeclineHelperRequest Request;
+		Request.RequestingSide = Side; // Registry identity only; Session validates optionality.
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::DeclineHelper, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::DeclineSkill:
+	{
+		if (Before.EntryWait != EFMCodexNetworkEntryWait::SkillSelection) { return Finish(AckCode::InvalidPhase); }
+		if (Side != Before.ExpectedActingSide) { return Finish(AckCode::WrongSide); }
+		FMatchPlayAuthoritativeDeclineSkillRequest Request;
+		Request.RequestingSide = Side; // Registry identity only; Session validates optionality.
+		Request.ExpectedAttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::DeclineSkill, Request);
 		break;
 	}
 	case EFMCodexNetworkPlayerIntentKind::SubmitRunner:

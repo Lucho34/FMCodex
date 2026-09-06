@@ -657,6 +657,17 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	Result.CurrentAttackingSide =
 		SafeViewerView.CurrentAttackingPlayer;
 	Result.ExpectedActingSide = SafeViewerView.ExpectedActingPlayer;
+	if (SafeViewerView.bCanDecline && SafeViewerView.bHumanInteraction
+		&& ViewerSide != EInitialTurnOrderPlayer::None && ViewerSide == SafeViewerView.ExpectedActingPlayer)
+	{
+		switch (SafeViewerView.InteractionCategory)
+		{
+		case EFMCodexLocalMatchInteractionCategory::SelectRunner: Result.DeclineAction = EFMCodexNetworkDeclineAction::Runner; break;
+		case EFMCodexLocalMatchInteractionCategory::SelectHelper: Result.DeclineAction = EFMCodexNetworkDeclineAction::Helper; break;
+		case EFMCodexLocalMatchInteractionCategory::SelectSkill: Result.DeclineAction = EFMCodexNetworkDeclineAction::Skill; break;
+		default: break;
+		}
+	}
 	Result.PlayerAScore = SafeViewerView.PlayerAScore;
 	Result.PlayerBScore = SafeViewerView.PlayerBScore;
 	Result.PlayerAMaxAttackOpportunities =

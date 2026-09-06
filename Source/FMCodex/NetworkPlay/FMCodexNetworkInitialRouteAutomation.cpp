@@ -4,7 +4,7 @@
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
 
 // Server-only canonical setup. Skill, Branch and Route remain genuine subsequent player inputs.
-bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Family)
+bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Family, EFMCodexNetworkDeclineAction StopBefore)
 {
 	if (!bInitialized || AuthoritativeSession->GetStateSnapshot().bHasCurrentAttack
 		|| (Family != ESkillRuleType::Cross && Family != ESkillRuleType::PassControl && Family != ESkillRuleType::ThroughBall
@@ -65,9 +65,11 @@ bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Fa
 	FMatchPlayAuthoritativeSubmitMarkerRequest M;
 	M.ExpectedAttackSequence = Sequence; M.RequestingSide = Defense; M.MarkerCardId = MarkerView.MarkerOptions[0].Choice.MarkerCardId;
 	if (!Submit(Command::SubmitMarker, M)) { return false; }
+	if (StopBefore == EFMCodexNetworkDeclineAction::Runner) return View(Attack).DeclineAction == StopBefore;
 	FMatchPlayAuthoritativeSubmitRunnerRequest R;
 	R.ExpectedAttackSequence = Sequence; R.RequestingSide = Attack; R.RunnerCardId = Runner;
 	if (!Submit(Command::SubmitRunner, R)) { return false; }
+	if (StopBefore == EFMCodexNetworkDeclineAction::Helper) return View(Defense).DeclineAction == StopBefore;
 	const auto HelperView = View(Defense);
 	if (HelperView.HelperOptions.IsEmpty()) { return false; }
 	FMatchPlayAuthoritativeSubmitHelperRequest H;
@@ -83,7 +85,7 @@ bool FFMCodexNetworkMatchRuntime::PrepareInitialRouteMilestone(ESkillRuleType Fa
 	return Ready;
 }
 // Short manual milestone: canonical setup ends before either contest roll.
-bool FFMCodexNetworkMatchRuntime::PrepareOrdinaryTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill, ESkillRuleType Family)
+bool FFMCodexNetworkMatchRuntime::PrepareOrdinaryTerminalMilestone(bool Goal, bool Final, bool bAwaitSkill, ESkillRuleType Family, EFMCodexNetworkDeclineAction StopBefore)
 {
 	using Side = EInitialTurnOrderPlayer;
 	using Command = EMatchPlayAuthoritativeCommandKind;
@@ -103,7 +105,7 @@ bool FFMCodexNetworkMatchRuntime::PrepareOrdinaryTerminalMilestone(bool Goal, bo
 		Advance.AttackSequence = V.AttackSequence; Advance.RequestingSide = V.ViewerSide;
 		if (!Submit(Command::AdvanceAfterTerminal, Advance)) { return false; }
 	}
-	if (!PrepareInitialRouteMilestone(Family)) { return false; }
+	if (!PrepareInitialRouteMilestone(Family, StopBefore)) { return false; }
 	if (bAwaitSkill)
 	{
 		return true;

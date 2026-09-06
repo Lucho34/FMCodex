@@ -1312,7 +1312,8 @@ void AFMCodexNetworkMatchPlayerController::DevPlayerFacingAction(FName Action, F
 {
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 	if (!PlayerMatchScreen) return;
-	if (Action == TEXT("Skill")) PlayerMatchScreen->RequestSubmitSkill(Option);
+	if (Action == TEXT("Decline")) PlayerMatchScreen->RequestDeclineSelection();
+	else if (Action == TEXT("Skill")) PlayerMatchScreen->RequestSubmitSkill(Option);
 	else if (Action == TEXT("ShotDirect")) PlayerMatchScreen->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DirectShot);
 	else if (Action == TEXT("DeadCorner")) PlayerMatchScreen->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DeadCorner);
 	else if (Action == TEXT("High")) PlayerMatchScreen->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossHigh);

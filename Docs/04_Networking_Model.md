@@ -546,3 +546,21 @@ The branch choice triggers existing internal BeginResolutionSession / ResolveInt
 All six kinds share the existing RequestId namespace, forward window ≤1024, common validation, dedupe and ACK/View pending. Wrong skill/branch/actor/checkpoint, stale attack, wrong match, mixed payload, duplicates and internal tags reject before gameplay mutation/RNG. Provider failure has no fallback and no partial state adoption, including failure of the second paired draw. Fresh IDs cannot reroll a committed step.
 
 Production uses the same server-private secure post-route provider. Explicit non-Shipping `PlayerFacingLongShotMilestone` / `PlayerFacingCutInsideMilestone` modes accept DirectGoal, DirectMiss, ImmediateMiss, DeadCornerGoal or DeadCornerMiss. ShotActor selects A/B; ShotFinal reuses the canonical short opening. These host-only fixtures stop at Skill, leave branch choice and all rolls to the player, and set provider samples rather than forcing route/result/state. Default launch remains unchanged.
+
+## Optional decline transport and player-facing parity (Stage 7.19)
+
+This section supersedes older statements that Runner/Helper/Skill declines are unnetworked. Cross, PassControl, ThroughBall, LongShot and CutInside remain supported positive-choice tactics. The existing shared LocalMatchScreenWidget / InteractionPanel exposes voluntary declines through its original controls and labels: 不选择跑位球员, 放弃协防, 不使用战术. No Network-only commercial widget is added.
+
+| Typed intent / Session entry | Actor and canonical prerequisite | Adopted state / next action |
+|---|---|---|
+| DeclineRunner | attacker, Resolution/AwaitingRunner, at least one legal Runner | Runner and Helper absent, deferred Skill cleared; AwaitingSkill, attacker SubmitSkill or DeclineSkill |
+| DeclineHelper | defender, Resolution/AwaitingHelper, at least one legal Helper | Runner retained, Helper absent; participant-first AwaitingSkill, attacker SubmitSkill or DeclineSkill |
+| DeclineSkill | attacker, Resolution/AwaitingSkill, at least one legal Skill | directly complete attack, consume opportunity, clear old participants; next attacker Full D12 or final MatchEnded |
+
+The current participant-first path recalculates compatible skills after Runner absence. Runner-dependent tactics become unavailable; Network does not reconstruct that set. Legacy preselected contexts remain subject to existing canonical global-context and participant-contract checks; no universal rule that all declines terminate is introduced. Every accepted command uses one Coordinator invocation; ordinary offered-Skill fixtures have zero internal steps. A subsequent no-legal Skill state uses ResolveNoLegalSkill automatically. Zero-option Runner/Helper states likewise use their existing internal actions without any client decline.
+
+Owner View exposes exact DeclineAction only from valid BuildForViewer bCanDecline and the acting viewer. Waiting viewers receive no decline capability. Generic pending retains the last authoritative selection options with input disabled, and blocks duplicate submission. ACK-first waits for target/newer View; View-first waits for matching ACK; rejection re-reads current safe availability. New View replaces old candidates. Central modal/dock ownership and elapsed-time reveal are unchanged; these selection controls use the existing non-modal dock.
+
+DEV-only short launches: `LaunchNetworkPlayDev.ps1 -PlayerFacingDeclineMilestone Runner|Helper|Skill -DeclineActor A|B [-DeclineFinal]`. The actor identifies the declining player, including the defending Helper actor. Canonical prelude commands and server RNG seams reach each wait; no forced post-state or client provider control. Skill decline reaches next D12 directly, or existing Full-Time on the final attack; do not instruct an extra 下一回合 click.
+
+Remaining parity gap: Local DeclineMarker (放弃盯人) is still deliberately absent from the Network allowlist. It is not one of the three optional declines integrated here. Its marker-absence Goal/score disclosure and direct completion require a separate bounded lifecycle audit; the existing server-internal ResolveNoLegalMarker must remain internal.

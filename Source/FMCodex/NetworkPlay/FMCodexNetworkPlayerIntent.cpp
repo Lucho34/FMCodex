@@ -5,6 +5,9 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
 	using Code = EFMCodexNetworkIntentAckCode;
 	switch (IntentKind)
 	{
+	case EFMCodexNetworkPlayerIntentKind::DeclineRunner:
+	case EFMCodexNetworkPlayerIntentKind::DeclineHelper:
+	case EFMCodexNetworkPlayerIntentKind::DeclineSkill:
 	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
 	case EFMCodexNetworkPlayerIntentKind::FinishDeployment:
 	case EFMCodexNetworkPlayerIntentKind::CrossInitialRouteRoll:
@@ -199,6 +202,14 @@ bool FFMCodexNetworkIntentClientState::BeginOrdinaryContest(const FFMCodexNetwor
 ) { return false; }
 	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
 }
+bool FFMCodexNetworkIntentClientState::BeginDecline(const FFMCodexNetworkClientViewSnapshot& View,
+	EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
+{
+	if (Kind != EFMCodexNetworkPlayerIntentKind::DeclineRunner
+		&& Kind != EFMCodexNetworkPlayerIntentKind::DeclineHelper
+		&& Kind != EFMCodexNetworkPlayerIntentKind::DeclineSkill) return false;
+	return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, OutEnvelope);
+}
 bool FFMCodexNetworkIntentClientState::BeginOneOnOne(const FFMCodexNetworkClientViewSnapshot& View,
 	EMatchPlayThroughBallOneOnOneShotChoice Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope)
 {
@@ -222,6 +233,15 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	bool bActionable = false;
 	switch (Kind)
 	{
+	case EFMCodexNetworkPlayerIntentKind::DeclineRunner:
+		bActionable = View.DeclineAction == EFMCodexNetworkDeclineAction::Runner;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::DeclineHelper:
+		bActionable = View.DeclineAction == EFMCodexNetworkDeclineAction::Helper;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::DeclineSkill:
+		bActionable = View.DeclineAction == EFMCodexNetworkDeclineAction::Skill;
+		break;
 	case EFMCodexNetworkPlayerIntentKind::RequestInitialActionPointRoll:
 		bActionable = View.InteractionState == EFMCodexNetworkClientInteractionState::WaitingForOwnInitialActionPoint;
 		break;

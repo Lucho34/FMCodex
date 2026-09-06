@@ -29,7 +29,7 @@ bool FFMCodexPlayerFacingCrossGolden::RunTest(const FString& P)
 		TestEqual(TEXT("Public full local hand"),M.LocalRack.Cells.Num(),20);
 		TestEqual(TEXT("Public full opponent hand"),M.OpponentRack.Cells.Num(),20);
 		TestTrue(TEXT("Pitch projection present"),!M.PitchRegions.IsEmpty());
-		TestFalse(TEXT("Declines have no false network capability"),M.Interaction.bCanDecline);
+		TestEqual(TEXT("Only canonical Skill actor owns voluntary decline"),M.Interaction.bCanDecline,V.DeclineAction==EFMCodexNetworkDeclineAction::Skill);
 		for (const auto& Cell:M.LocalRack.Cells) if (!Cell.Card.CardId.IsNone())
 		{
 			TestFalse(TEXT("Chinese player name hydrated"),Cell.Card.IdentityLabel.IsEmpty());
@@ -223,7 +223,9 @@ bool FFMCodexPlayerFacingCrossAsync::RunTest(const FString& P)
 	const auto Pending=FFMCodexNetworkMatchPresentationAdapter::Read(V,true);
 	TestEqual(TEXT("Pending actor prompt explains submission"),Pending.ActionWaitActorText.ToString(),FString(TEXT("正在提交，请稍候")));
 	TestTrue(TEXT("Pending retains cards and pitch"),!Pending.LocalRack.Cells.IsEmpty()&&!Pending.PitchRegions.IsEmpty());
-	TestTrue(TEXT("Pending removes actionable selection"),Pending.Interaction.SelectionChoices.IsEmpty());
+	TestEqual(TEXT("Pending retains canonical optional choices"),Pending.Interaction.SelectionChoices.Num(),V.Presentation.Interaction.SelectionChoices.Num());
+	TestFalse(TEXT("Pending disables every selection"),Pending.Interaction.SelectionChoices.ContainsByPredicate([](const auto& C){return C.bEnabled;}));
+	TestFalse(TEXT("Pending disables voluntary decline"),Pending.Interaction.bCanDecline);
 	const auto State=Access::Session(*F.Mode).GetStateSnapshot();
 	if (P==TEXT("Reject"))
 	{
@@ -285,7 +287,7 @@ bool FFMCodexPlayerFacingCrossBoundary::RunTest(const FString&)
 	TestNull(TEXT("No raw State"),FFMCodexNetworkMatchPresentation::StaticStruct()->FindPropertyByName(TEXT("MatchPlayState")));
 	TestNull(TEXT("No raw InteractionView"),FFMCodexNetworkMatchPresentation::StaticStruct()->FindPropertyByName(TEXT("InteractionView")));
 	TestNull(TEXT("No RNG"),FFMCodexNetworkMatchPresentation::StaticStruct()->FindPropertyByName(TEXT("RandomStream")));
-	for (ScreenIntent Unsupported:{ScreenIntent::StartMatch,ScreenIntent::Decline,ScreenIntent::NoLegal,ScreenIntent::OneOnOne})
+	for (ScreenIntent Unsupported:{ScreenIntent::StartMatch,ScreenIntent::NoLegal,ScreenIntent::OneOnOne})
 	{
 		FFMCodexMatchScreenRequest R;R.Kind=Unsupported;Envelope E;FFMCodexNetworkIntentClientState C;
 		TestFalse(TEXT("Unsupported shared gesture has no network capability"),FFMCodexNetworkMatchScreenActions::Begin(R,V,C,E));

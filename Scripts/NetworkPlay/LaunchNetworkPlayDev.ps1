@@ -22,13 +22,16 @@ param(
     [ValidateSet('DirectGoal', 'DirectMiss', 'ImmediateMiss', 'DeadCornerGoal', 'DeadCornerMiss')][string]$PlayerFacingCutInsideMilestone,
     [ValidateSet('A', 'B')][string]$ShotActor = 'A',
     [switch]$ShotFinal,
+    [ValidateSet('Runner', 'Helper', 'Skill')][string]$PlayerFacingDeclineMilestone,
+    [ValidateSet('A', 'B')][string]$DeclineActor = 'A',
+    [switch]$DeclineFinal,
     [switch]$NetworkDiagnostics,
     [switch]$HandoffLatencyAudit
 )
 
 # The existing player screen has fixed production card/pitch widths.
 # Preserve diagnostic defaults; explicit caller sizes always win.
-if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone) {
+if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone -or $PlayerFacingDeclineMilestone) {
     if (-not $PSBoundParameters.ContainsKey('ResX')) { $ResX = 1600 }
     if (-not $PSBoundParameters.ContainsKey('ResY')) { $ResY = 900 }
 }
@@ -75,14 +78,17 @@ function Get-NetworkPlayLaunchPlan {
     if ($HandoffLatencyAudit) { $commonArguments += '-HandoffLatencyAudit' }
     # Explicit host-only automation fixture. Default launch keeps production secure RNG.
     $fixtureArguments = @()
-    if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone) {
-        $playerMilestones = @($PlayerFacingCrossMilestone, $PlayerFacingPassControlMilestone, $PlayerFacingThroughBallFeetMilestone, $PlayerFacingThroughBallMilestone, $PlayerFacingLongShotMilestone, $PlayerFacingCutInsideMilestone | Where-Object { $_ })
+    if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone -or $PlayerFacingDeclineMilestone) {
+        $playerMilestones = @($PlayerFacingCrossMilestone, $PlayerFacingPassControlMilestone, $PlayerFacingThroughBallFeetMilestone, $PlayerFacingThroughBallMilestone, $PlayerFacingLongShotMilestone, $PlayerFacingCutInsideMilestone, $PlayerFacingDeclineMilestone | Where-Object { $_ })
         if ($playerMilestones.Count -ne 1 -or $DeploymentSlice -or $InitialRouteMilestone -or $CrossTerminalMilestone) {
             throw 'PlayerFacingCrossMilestone 请单独使用。'
         }
         $commonArguments += '-FMCodexNetworkPlayerFacingUI'
         if ($NetworkDiagnostics) { $commonArguments += '-FMCodexNetworkDiagnostics' }
-        if ($PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone) {
+        if ($PlayerFacingDeclineMilestone) {
+            $fixtureArguments = @(('-FMCodexNetworkPlayerFacingDeclineMilestone=' + $PlayerFacingDeclineMilestone), ('-FMCodexNetworkDeclineActor=' + $DeclineActor))
+            if ($DeclineFinal) { $fixtureArguments += '-FMCodexNetworkDeclineFinal' }
+        } elseif ($PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone) {
             $shotFamily = if ($PlayerFacingLongShotMilestone) { 'LongShot' } else { 'CutInside' }
             $shotMode = if ($PlayerFacingLongShotMilestone) { $PlayerFacingLongShotMilestone } else { $PlayerFacingCutInsideMilestone }
             $fixtureArguments = @(('-FMCodexNetworkPlayerFacing' + $shotFamily + 'Milestone=' + $shotMode), ('-FMCodexNetworkShotActor=' + $ShotActor))

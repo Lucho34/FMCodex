@@ -42,6 +42,9 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	CutInsideShotDirectAttackRoll,
 	CutInsideShotDirectDefenseRoll,
 	CutInsideShotDeadCornerRoll,
+	DeclineRunner,
+	DeclineHelper,
+	DeclineSkill,
 };
 
 UENUM()
@@ -153,6 +156,8 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginAdvance(const FFMCodexNetworkClientViewSnapshot& View, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginOrdinaryContest(const FFMCodexNetworkClientViewSnapshot& View,
+		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginDecline(const FFMCodexNetworkClientViewSnapshot& View,
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginOneOnOne(const FFMCodexNetworkClientViewSnapshot& View,
 		EMatchPlayThroughBallOneOnOneShotChoice Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);

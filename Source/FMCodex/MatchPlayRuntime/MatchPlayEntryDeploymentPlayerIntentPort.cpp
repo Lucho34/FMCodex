@@ -70,6 +70,27 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.MarkerResult.bSuccess, Authority.MarkerResult.ErrorMessage)) { return Result; }
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::DeclineRunner:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeclineRunnerRequest>()) { return Mismatch(); }
+		const auto Authority = Session.DeclineRunner(Intent.Payload.Get<FMatchPlayAuthoritativeDeclineRunnerRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.DeclineResult.bSuccess, Authority.DeclineResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::DeclineHelper:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeclineHelperRequest>()) { return Mismatch(); }
+		const auto Authority = Session.DeclineHelper(Intent.Payload.Get<FMatchPlayAuthoritativeDeclineHelperRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.DeclineResult.bSuccess, Authority.DeclineResult.ErrorMessage)) { return Result; }
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::DeclineSkill:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeclineSkillRequest>()) { return Mismatch(); }
+		const auto Authority = Session.DeclineSkill(Intent.Payload.Get<FMatchPlayAuthoritativeDeclineSkillRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.DeclineResult.bSuccess, Authority.DeclineResult.ErrorMessage)) { return Result; }
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::SubmitRunner:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeSubmitRunnerRequest>()) { return Mismatch(); }

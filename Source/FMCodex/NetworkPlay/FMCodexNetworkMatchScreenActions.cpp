@@ -63,6 +63,15 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		}
 		return Client.BeginBranch(View, P, Out);
 	}
+	case K::Decline:
+		if (Request.Category != View.Presentation.Interaction.Category || !View.Presentation.Interaction.bCanDecline) return false;
+		switch (View.DeclineAction)
+		{
+		case EFMCodexNetworkDeclineAction::Runner: return Client.BeginDecline(View, N::DeclineRunner, Out);
+		case EFMCodexNetworkDeclineAction::Helper: return Client.BeginDecline(View, N::DeclineHelper, Out);
+		case EFMCodexNetworkDeclineAction::Skill: return Client.BeginDecline(View, N::DeclineSkill, Out);
+		default: return false;
+		}
 	case K::OneOnOne:
 		switch (Request.OneOnOne)
 		{
@@ -106,6 +115,6 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 			}
 		default: return false;
 		}
-	default: return false; // Local Start, declines and unnetworked families have no transport capability.
+	default: return false; // Local Start, internal no-legal and unnetworked families have no transport capability.
 	}
 }

@@ -217,3 +217,21 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Two shot fixtures
 . $launcherPath -UnrealEditorPath $testEnginePath
 Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*ShotActor*' }).Count -eq 0) 'Normal launch keeps production RNG'
 Write-Host ("FMCODEX_NETWORK_LAUNCHER_FINAL_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)
+
+foreach ($kind in @('Runner', 'Helper', 'Skill')) {
+    foreach ($side in @('A', 'B')) {
+        . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingDeclineMilestone $kind -DeclineActor $side -DeclineFinal
+        $decline = Get-NetworkPlayLaunchPlan
+        Assert-True ($decline.HostArguments -contains ('-FMCodexNetworkPlayerFacingDeclineMilestone=' + $kind)) 'Exact optional wait on Host'
+        Assert-True ($decline.HostArguments -contains ('-FMCodexNetworkDeclineActor=' + $side)) 'Both declining actors supported'
+        Assert-True ($decline.HostArguments -contains '-FMCodexNetworkDeclineFinal') 'Final decline uses canonical prelude'
+        Assert-True (@($decline.ClientArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*DeclineActor*' -or $_ -like '*DeclineFinal*' }).Count -eq 0) 'Remote receives no decline fixture authority'
+        Assert-True (($decline.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($decline.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Declines reuse shared screen'
+        Assert-True (-not ($decline.HostArguments -contains '-FMCodexNetworkDiagnostics')) 'Decline CTA unobscured by diagnostics'
+    }
+}
+$PlayerFacingLongShotMilestone = 'DirectGoal'
+Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Decline and tactic fixtures cannot mix'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Decline*' -or $_ -like '*Milestone*' }).Count -eq 0) 'Decline fixture remains opt in'
+Write-Host ("FMCODEX_OPTIONAL_DECLINE_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)
