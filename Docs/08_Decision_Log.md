@@ -1277,3 +1277,9 @@ Both network viewers must understand who owns the current player action and what
 - Require a short continuous PassControl USER PIE after code-side tests and real two-process evidence. Next work should audit the remaining conditional ThroughBall transport/terminal paths as a medium-sized family, without treating BehindDefense, AntiOffside and OneOnOne as already executable or inventing a cleanup stage.
 
 - Regression is layered: focused tests are the development loop, affected suites follow actual touched surfaces, and a justified full suite is a milestone closeout pass. Shared protocol/schema/disclosure changes justify one final full NetworkPlay run; unchanged CoreRules, runtime semantics or shared Screen lifecycle do not mechanically require their full suites. Reports must list actual suites/results, omitted full suites and the diff-based rationale.
+
+## 2026-09-06 — Durable repository operating contract
+
+- Root `AGENTS.md` is the concise project-wide Codex operating contract; detailed architecture, rules and historical rationale remain in canonical Docs. Keep volatile progress, hashes and test counts out of it.
+- LocalPlay remains first-class and independent of Network protocol setup. Local and Network reuse one authoritative gameplay stack and shared player-facing surfaces; Network differences stay in transport, identity, safe disclosure and asynchronous adapters. Host and Remote use the same generated RPC entry.
+- Carry forward medium-granularity contract-based Stages, milestone-gated USER PIE and focused → affected → justified broad/full regression. Older stage-specific full-suite or acceptance checklists do not impose automatic gates on unrelated later work. Small repairs require relevant verification, and reports justify both executed and intentionally omitted full suites.
