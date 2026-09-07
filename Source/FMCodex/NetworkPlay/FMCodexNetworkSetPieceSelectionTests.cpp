@@ -61,8 +61,10 @@ bool FFMCodexSetPieceMethods::RunTest(const FString& P)
  for(auto* PC:{F.A,F.B})
  {
   const auto& V=PC->GetOwnerView();auto M=FFMCodexNetworkMatchPresentationAdapter::Read(V,false);
-  TestEqual(TEXT("Explicit resolution boundary"),V.EntryWait,Wait::SetPieceResolutionBoundary);
-  TestTrue(TEXT("No decisive-roll or Formula capability"),!M.Interaction.PrimaryAction.bAvailable&&!M.Interaction.bCanContinue&&!M.InlineFormula.bVisible&&M.SetPiece.TakerOptions.IsEmpty()&&M.SetPiece.NearMethods.IsEmpty()&&M.SetPiece.LongMethods.IsEmpty()&&M.SetPiece.PenaltyMethods.IsEmpty());
+  TestEqual(TEXT("Exact offered resolution step"),V.EntryWait,D6==5?(Alt?Wait::NearAngledRoll:Wait::NearDirectAttackRoll):Wait::SetPieceResolutionBoundary);
+  if(D6==5) { TestTrue(TEXT("Near reuses shared Formula surface"),M.InlineFormula.bVisible); TestEqual(TEXT("Near decisive action owner only"),M.Interaction.bCanContinue,PC==F.Attacker()); }
+  else TestTrue(TEXT("Other decisive families stay gated"),!M.Interaction.PrimaryAction.bAvailable&&!M.Interaction.bCanContinue&&!M.InlineFormula.bVisible);
+  TestTrue(TEXT("Selection options consumed"),M.SetPiece.TakerOptions.IsEmpty()&&M.SetPiece.NearMethods.IsEmpty()&&M.SetPiece.LongMethods.IsEmpty()&&M.SetPiece.PenaltyMethods.IsEmpty());
   TestTrue(TEXT("No fake result or score"),V.Terminal.Outcome==EFMCodexNetworkTerminalOutcome::None&&V.AcceptedContestRolls.IsEmpty());
  }
  const FUnchanged After(F);TestEqual(TEXT("Duplicate method"),Send(F,F.Attacker(),E),Code::DuplicateOrAlreadyResolved);After.Verify(*this,F);

@@ -12,7 +12,14 @@ bool FFMCodexSetPieceSelectionUI::RunTest(const FString& P)
  using namespace FMCodexPlayerFacingOrdinaryUITests;
  TArray<FString> Parts;P.ParseIntoArray(Parts,TEXT("."));const int32 D6=FCString::Atoi(*Parts[1]);const bool Alt=Parts[2]==TEXT("2");FUIFixture F(Parts[0]==TEXT("B"));Access::SetPiecePresentation(*F.Mode);
  auto* PC=F.Attacker();auto* Other=F.Defender();auto* S=PC->GetPlayerMatchScreen();auto* W=Other->GetPlayerMatchScreen();
- const auto Visible=[&](UFMCodexLocalMatchScreenWidget* Screen,const TCHAR* Name){const auto* Widget=Screen->GetWidgetFromName(Name);TestNotNull(Name,Widget);return Widget&&Widget->GetVisibility()!=ESlateVisibility::Collapsed;};
+ const auto Visible=[&](UFMCodexLocalMatchScreenWidget* Screen,const TCHAR* Name)
+ {
+  const auto* Widget=Screen->GetWidgetFromName(Name);TestNotNull(Name,Widget);
+  // A collapsed owner surface hides its retained children after the Near handoff.
+  for(const UWidget* Current=Widget;Current;Current=Current->GetParent())
+   if(Current->GetVisibility()==ESlateVisibility::Collapsed||Current->GetVisibility()==ESlateVisibility::Hidden)return false;
+  return Widget!=nullptr;
+ };
  F.Entropy->Word=8;S->RequestRollTacticalPoints();if(!TestEqual(TEXT("Full D12 shared action"),F.Backend(PC).LastCode,Code::Accepted))return false;F.Settle();
  TestTrue(TEXT("Type CTA from authority"),S->GetPresentation().SetPiece.bCanRollType);TestFalse(TEXT("Waiting type CTA absent"),W->GetPresentation().SetPiece.bCanRollType);
  const FUnchanged Before(F);F.Entropy->Word=D6-1;S->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);
@@ -47,10 +54,15 @@ bool FFMCodexSetPieceSelectionUI::RunTest(const FString& P)
  {
   TestFalse(TEXT("No decisive-roll CTA"),Visible(Screen,TEXT("SetPieceProductionPrimaryAction")));
   for(const TCHAR* Name:{TEXT("ShortDirectMethod"),TEXT("ShortAngledMethod"),TEXT("LongDirectMethod"),TEXT("LongPowerMethod"),TEXT("PenaltyDirectMethod"),TEXT("PenaltyPanenkaMethod")})TestFalse(TEXT("No stale method CTA"),Visible(Screen,Name));
-  const auto* Detail=Cast<UTextBlock>(Screen->GetWidgetFromName(TEXT("SetPieceProductionDetail")));TestTrue(TEXT("Clear unsupported continuation"),Detail->GetText().ToString().Contains(TEXT("暂未开放")));
+  const auto* Detail=Cast<UTextBlock>(Screen->GetWidgetFromName(TEXT("SetPieceProductionDetail")));if(D6!=5) TestTrue(TEXT("Clear unsupported continuation"),Detail->GetText().ToString().Contains(TEXT("暂未开放")));
+  else
+  {
+   TestFalse(TEXT("Near handoff collapses the entire method surface"),Visible(Screen,TEXT("SetPieceProductionResolutionSurface")));
+   TestTrue(TEXT("Near shared resolution enabled"),Screen->GetPresentation().InlineFormula.bVisible);
+  }
  }
  TestEqual(TEXT("Only type consumed entropy"),F.Entropy->Calls,Before.EntropyCalls+1);
- Access::SetPiecePresentation(*F.Mode,false);const auto General=FFMCodexNetworkMatchPresentationAdapter::Read(PC->GetOwnerView(),false);TestFalse(TEXT("General player-facing set piece not falsely enabled"),General.SetPiece.bSelectionSupported);
+ Access::SetPiecePresentation(*F.Mode,false);const auto General=FFMCodexNetworkMatchPresentationAdapter::Read(PC->GetOwnerView(),false);TestEqual(TEXT("Only complete Near is enabled generally"),General.SetPiece.bSelectionSupported,D6==5);
  return true;
 }
 #endif

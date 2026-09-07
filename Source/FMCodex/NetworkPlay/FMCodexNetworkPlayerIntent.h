@@ -51,6 +51,9 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	SubmitShortFreeKickMethod,
 	SubmitLongFreeKickMethod,
 	SubmitPenaltyMethod,
+	ResolveShortFreeKickDirectAttackRoll,
+	ResolveShortFreeKickDirectDefenseRoll,
+	ResolveShortFreeKickAngledRoll,
 };
 
 UENUM()

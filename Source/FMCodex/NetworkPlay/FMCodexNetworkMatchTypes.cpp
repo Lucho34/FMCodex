@@ -360,6 +360,50 @@ namespace FMCodexNetworkMatchTypes
 		}
 	}
 
+	void ProjectNearFreeKick(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexNetworkClientViewSnapshot& Result)
+	{
+		if (View.RouteKind != EMatchPlayCurrentAttackRouteKind::SetPiece || View.SetPieceType != ESetPieceSelectedType::ShortFreeKick) return;
+		using P = EMatchPlayCurrentAttackPostRouteRollPurpose;
+		using S = EInitialTurnOrderPlayer;
+		const S Defender = Result.CurrentAttackingSide == S::PlayerA ? S::PlayerB : S::PlayerA;
+		auto Add = [&](P Purpose, int32 Index, int32 D6, S Owner)
+		{
+			if (D6 < 1 || D6 > 6) return;
+			auto& R = Result.AcceptedContestRolls.AddDefaulted_GetRef();
+			R.Purpose = Purpose; R.SequenceIndex = Index; R.D6 = D6; R.OwnerSide = Owner;
+		};
+		if (View.bHasSetPieceAttackD6)
+		{
+			Add(P::ShortFreeKickDirectAttack, 0, View.SetPieceAttackD6, Result.CurrentAttackingSide);
+			Result.Contest.AttackD6 = View.SetPieceAttackD6;
+		}
+		if (View.bHasSetPieceDefenseD6)
+		{
+			Add(P::ShortFreeKickDirectDefense, 1, View.SetPieceDefenseD6, Defender);
+			Result.Contest.DefenseD6 = View.SetPieceDefenseD6;
+		}
+		if (View.bHasSetPiecePairedD6)
+		{
+			Add(P::ShortFreeKickAngledA, 0, View.SetPiecePairedD6A, Result.CurrentAttackingSide);
+			Add(P::ShortFreeKickAngledB, 1, View.SetPiecePairedD6B, Result.CurrentAttackingSide);
+		}
+		Result.Contest.bFormulaResolved = View.bHasSetPieceFormula;
+		using C = EFMCodexLocalMatchInteractionCategory;
+		using A = EFMCodexNetworkContestAction;
+		using W = EFMCodexNetworkEntryWait;
+		A Action = A::None;
+		switch (View.InteractionCategory)
+		{
+		case C::RollShortFreeKickDirectAttack: Result.EntryWait = W::NearDirectAttackRoll; Action = A::ResolveShortFreeKickDirectAttackRoll; break;
+		case C::RollShortFreeKickDirectDefense: Result.EntryWait = W::NearDirectDefenseRoll; Action = A::ResolveShortFreeKickDirectDefenseRoll; break;
+		case C::RollShortFreeKickAngled: Result.EntryWait = W::NearAngledRoll; Action = A::ResolveShortFreeKickAngledRoll; break;
+		default: break;
+		}
+		if (View.bHumanInteraction && Result.ViewerSide != S::None && View.ExpectedActingPlayer == Result.ViewerSide)
+			Result.ContestAction = Action;
+	}
+
 	void ProjectPublicLifecycle(const FFMCodexLocalMatchInteractionView& View,
 		FFMCodexNetworkClientViewSnapshot& Result)
 	{
@@ -429,6 +473,26 @@ namespace FMCodexNetworkMatchTypes
 			&& View.bHasSetPieceOutcome && !View.bSetPieceGoal && View.SetPieceGoalScorerCardId.IsNone())
 		{
 			Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::NoGoal;
+			Result.bCanAdvance = View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+				&& View.bHumanInteraction && View.ExpectedActingPlayer == Result.ViewerSide;
+			return;
+		}
+		if (View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece && View.SetPieceType == ESetPieceSelectedType::ShortFreeKick
+			&& View.bHasSetPieceOutcome && Result.AcceptedContestRolls.Num() == 2)
+		{
+			const auto* Goal = Result.PublicGoalHistory.FindByPredicate([&](const auto& G) { return G.AttackSequence == Result.AttackSequence; });
+			if (View.bSetPieceGoal)
+			{
+				if (!Goal || Goal->bSystemAward || Goal->ScoringSide != Result.CurrentAttackingSide
+					|| View.SetPieceGoalScorerCardId.IsNone() || Goal->ScorerCardId != View.SetPieceGoalScorerCardId) return;
+				Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::Goal;
+				Result.Terminal.Goal = *Goal;
+			}
+			else
+			{
+				if (Goal || !View.SetPieceGoalScorerCardId.IsNone()) return;
+				Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::NoGoal;
+			}
 			Result.bCanAdvance = View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
 				&& View.bHumanInteraction && View.ExpectedActingPlayer == Result.ViewerSide;
 			return;
@@ -803,6 +867,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	FMCodexNetworkMatchTypes::ProjectBranch(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectInitialRoute(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectOrdinaryContest(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectNearFreeKick(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectPublicLifecycle(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(

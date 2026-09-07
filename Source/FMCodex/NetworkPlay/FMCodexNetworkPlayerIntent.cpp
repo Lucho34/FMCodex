@@ -13,6 +13,9 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
  const bool PenaltyEmpty = PenaltyMethod == EMatchPlayPenaltyMethod::None;
  switch (IntentKind)
  {
+ case K::ResolveShortFreeKickDirectAttackRoll:
+ case K::ResolveShortFreeKickDirectDefenseRoll:
+ case K::ResolveShortFreeKickAngledRoll:
  case K::RequestSetPieceTypeRoll: return LegacyEmpty && CardEmpty && NearEmpty && LongEmpty && PenaltyEmpty ? Code::None : Code::InvalidPayload;
  case K::SubmitSetPieceCarrier: return LegacyEmpty && !CardEmpty && SetPieceCardId.ToString().Len() <= 128 && NearEmpty && LongEmpty && PenaltyEmpty ? Code::None : Code::InvalidPayload;
  case K::SubmitShortFreeKickMethod: return LegacyEmpty && CardEmpty && LongEmpty && PenaltyEmpty
@@ -322,6 +325,15 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	case EFMCodexNetworkPlayerIntentKind::ThroughBallInitialRouteRoll:
 		bActionable = View.InitialRouteAction == EFMCodexNetworkInitialRouteAction::ThroughBall;
 		break;
+	case EFMCodexNetworkPlayerIntentKind::ResolveShortFreeKickDirectAttackRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ResolveShortFreeKickDirectAttackRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ResolveShortFreeKickDirectDefenseRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ResolveShortFreeKickDirectDefenseRoll;
+		break;
+	case EFMCodexNetworkPlayerIntentKind::ResolveShortFreeKickAngledRoll:
+		bActionable = View.ContestAction == EFMCodexNetworkContestAction::ResolveShortFreeKickAngledRoll;
+		break;
 	case EFMCodexNetworkPlayerIntentKind::CrossHighAttackRoll:
 		bActionable = View.ContestAction == EFMCodexNetworkContestAction::CrossHighAttackRoll;
 		break;
@@ -447,7 +459,7 @@ bool FFMCodexNetworkIntentClientState::BeginSetPiece(const FFMCodexNetworkClient
  EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& Out, FName Card,
  EMatchPlayShortFreeKickMethod Near, EMatchPlayLongFreeKickMethod Long, EMatchPlayPenaltyMethod Penalty)
 {
- if (Kind < EFMCodexNetworkPlayerIntentKind::RequestSetPieceTypeRoll || Kind > EFMCodexNetworkPlayerIntentKind::SubmitPenaltyMethod) return false;
+ if (Kind < EFMCodexNetworkPlayerIntentKind::RequestSetPieceTypeRoll || Kind > EFMCodexNetworkPlayerIntentKind::ResolveShortFreeKickAngledRoll) return false;
  return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, Out,
   EMatchPlayThroughBallOneOnOneShotChoice::None, Card, Near, Long, Penalty);
 }

@@ -77,7 +77,11 @@ public:
 			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack ? AutomationAttackD6
 			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryDefense ? AutomationDefenseD6
             : Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotAttack || Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneChipShotAttack ? AutomationOneOnOneAttackD6
-            : Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotDefense ? AutomationOneOnOneDefenseD6 : 0;
+            : Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::OneOnOneDirectShotDefense ? AutomationOneOnOneDefenseD6
+			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickDirectAttack ? AutomationNearAttackD6
+			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickDirectDefense ? AutomationNearDefenseD6
+			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickAngledA ? AutomationNearPairedAD6
+			: Purpose == EMatchPlayCurrentAttackPostRouteRollPurpose::ShortFreeKickAngledB ? AutomationNearPairedBD6 : 0;
 		if (D6 != 0)
 		{
 			FMatchPlayPostRouteRollProviderResult Result; Result.bSuccess = true; Result.RawD6 = D6; return Result;
@@ -90,6 +94,7 @@ public:
 	int32 AutomationAttackD6 = 0, AutomationDefenseD6 = 0;
 	int32 AutomationPairedAD6 = 0, AutomationPairedBD6 = 0;
 	int32 AutomationOneOnOneAttackD6 = 0, AutomationOneOnOneDefenseD6 = 0;
+	int32 AutomationNearAttackD6 = 0, AutomationNearDefenseD6 = 0, AutomationNearPairedAD6 = 0, AutomationNearPairedBD6 = 0;
 #endif
 private:
 	IMatchPlayPostRouteRollProvider& Inner;
@@ -183,6 +188,20 @@ void FFMCodexNetworkMatchRuntime::EnableSetPieceSelectionMilestone(int32 TypeD6)
 	EnablePlayerFacingPresentation();
 	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider, 9, false, TypeD6));
 	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server DEV set-piece selection fixture: D12=9 TypeD6=%d; canonical entry and selection only."), TypeD6);
+}
+void FFMCodexNetworkMatchRuntime::EnableNearFreeKickMilestone(bool Goal)
+{
+	check(!bInitialized);
+	EnableSetPieceSelectionMilestone(5);
+	// Purpose-specific provider overrides only. Method, taker, Formula and terminal
+	// still come from genuine shared player intents and the canonical lifecycle.
+	PostRouteProvider->AutomationNearAttackD6 = Goal ? 6 : 1;
+	PostRouteProvider->AutomationNearDefenseD6 = Goal ? 1 : 6;
+	PostRouteProvider->AutomationNearPairedAD6 = Goal ? 6 : 2;
+	PostRouteProvider->AutomationNearPairedBD6 = Goal ? 3 : 3;
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server DEV Near provider enabled: Direct=%d/%d Pair=%d/%d. All methods remain player-selected."),
+		PostRouteProvider->AutomationNearAttackD6, PostRouteProvider->AutomationNearDefenseD6,
+		PostRouteProvider->AutomationNearPairedAD6, PostRouteProvider->AutomationNearPairedBD6);
 }
 void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry(int32 InitialD12)
 {
@@ -381,6 +400,9 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 	Disclosure.RevealedContestD6Count = Disclosure.bRevealRouteRoll
 		&& DisclosedContestAttackSequence == Snapshot.CurrentAttack.AttackSequence
 		? DisclosedContestRollCount : 0;
+	if (Disclosure.bRevealSetPieceTypeRoll && Snapshot.CurrentAttack.SetPieceRoute.SelectedType == ESetPieceSelectedType::ShortFreeKick
+		&& DisclosedNearAttackSequence == Snapshot.CurrentAttack.AttackSequence)
+		Disclosure.RevealedContestD6Count = DisclosedNearRollCount;
 	// Network DEV reveals a completed ordinary contest at the stable terminal publication, without Local Reel timing.
 	// The independent exact-attack permission still distinguishes persistence from disclosure.
 	Disclosure.bRevealTerminalOutcome = Snapshot.bHasCurrentAttack
@@ -388,6 +410,8 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 		&& DisclosedTerminalAttackSequence == Snapshot.CurrentAttack.AttackSequence
 		&& ((Disclosure.RevealedContestD6Count > 0
 			&& Disclosure.RevealedContestD6Count == Snapshot.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords.Num())
+			|| (Disclosure.bRevealSetPieceTypeRoll && DisclosedNearAttackSequence == Snapshot.CurrentAttack.AttackSequence
+				&& DisclosedNearRollCount == 2 && Snapshot.CurrentAttack.SetPieceRoute.SelectedType == ESetPieceSelectedType::ShortFreeKick)
 			|| (Disclosure.bRevealSetPieceTypeRoll && Snapshot.CurrentAttack.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
 				&& (Snapshot.CurrentAttack.SetPieceRoute.ShortFreeKick.bNoLegalCarrier
 					|| Snapshot.CurrentAttack.SetPieceRoute.LongFreeKick.bNoLegalCarrier || Snapshot.CurrentAttack.SetPieceRoute.Penalty.bNoLegalCarrier)));
@@ -412,7 +436,8 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 		const auto DisplayView = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot, SkillRuleSet, ViewerSide, Disclosure);
 		Result.Presentation = FFMCodexNetworkMatchPresentationAdapter::Project(DisplayView, ViewerSide);
-		Result.Presentation.SetPiece.bSelectionSupported = bSetPieceSelectionMilestone;
+		Result.Presentation.SetPiece.bSelectionSupported = bSetPieceSelectionMilestone
+			|| Result.Presentation.SetPiece.bTypeWait || Result.Presentation.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick;
 	}
 	return Result;
 }
@@ -630,6 +655,8 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 	{
 		DisclosedInitialAttackSequence = 0;
 		DisclosedSetPieceTypeSequence = 0;
+		DisclosedNearAttackSequence = 0;
+		DisclosedNearRollCount = 0;
 		DisclosedRouteAttackSequence = 0;
 		DisclosedContestAttackSequence = 0;
 		DisclosedContestRollCount = 0;
@@ -652,6 +679,18 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
 	}
 #endif
+	const bool bNearRoll = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickDirectAttackRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickDirectDefenseRoll
+		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickAngledRoll;
+	if (bNearRoll && Result.bSuccess)
+	{
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		const auto& Near = State.CurrentAttack.SetPieceRoute.ShortFreeKick;
+		DisclosedNearAttackSequence = State.CurrentAttack.AttackSequence;
+		DisclosedNearRollCount = Near.bHasAngledD6Pair ? 2 : int32(Near.bHasAttackD6) + int32(Near.bHasDefenseD6);
+		if (State.CurrentAttack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance)
+			DisclosedTerminalAttackSequence = DisclosedNearAttackSequence;
+	}
 	const bool bContestAttack = Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossHighAttackRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolveCrossLowAttackRoll
 		|| Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::ResolvePassControlAttackRoll
@@ -761,7 +800,7 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 				|| State.CurrentAttack.SetPieceRoute.Penalty.bNoLegalCarrier)) DisclosedTerminalAttackSequence = DisclosedSetPieceTypeSequence;
 	}
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
- if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll
+ if (bNearRoll || Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll
   || Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier
   || Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitShortFreeKickMethod
   || Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitLongFreeKickMethod
@@ -769,6 +808,13 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
  {
   const auto State = AuthoritativeSession->GetStateSnapshot();
   const auto V = BuildClientView(State.RuntimeState.CurrentAttackingPlayer,0,EFMCodexNetworkBootstrapState::MatchReady);
+  if (bNearRoll)
+  {
+   for (const auto& R : V.AcceptedContestRolls)
+    UE_LOG(LogFMCodexNetworkPlay,Log,TEXT("DEV Near accepted: Sequence=%lld Purpose=%d Index=%d D6=%d Owner=%d"),V.AttackSequence,int32(R.Purpose),R.SequenceIndex,R.D6,int32(R.OwnerSide));
+   UE_LOG(LogFMCodexNetworkPlay,Log,TEXT("DEV Near disclosure: Command=%d Success=%d Rolls=%d Formula=%d Terminal=%d Scorer=%s ScoreA=%d ScoreB=%d Goals=%d"),
+    int32(Intent.CommandKind),Result.bSuccess,V.AcceptedContestRolls.Num(),V.Contest.bFormulaResolved,int32(V.Terminal.Outcome),*V.Terminal.Goal.ScorerCardId.ToString(),V.PlayerAScore,V.PlayerBScore,V.PublicGoalHistory.Num());
+  }
   UE_LOG(LogFMCodexNetworkPlay,Log,TEXT("DEV SetPiece authority: Success=%d Sequence=%lld TypeD6=%d Type=%d CarrierStage=%d CornerStage=%d Actor=%d Wait=%d EntryCalls=%d D12Calls=%d RouteCalls=%d PostCalls=%d RecoveryCalls=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d ScoreA=%d ScoreB=%d Goals=%d"),
    Result.bSuccess,V.AttackSequence,V.SetPiece.TypeD6,int32(V.SetPiece.Type),int32(V.SetPiece.CarrierStage),int32(V.SetPiece.CornerStage),int32(V.ExpectedActingSide),int32(V.EntryWait),
    GetEntryProviderInvocationCount(),GetD12ProviderInvocationCount(),GetInitialRouteProviderInvocationCount(),GetPostRouteProviderInvocationCount(),GetRecoveryProviderInvocationCount(),

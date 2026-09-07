@@ -1828,6 +1828,22 @@ namespace FMCodexLocalMatchInteractionView
 			View.SetPieceFormula = {};
 		}
 
+		// Near resolution persists atomically with its final accepted roll. The Formula
+		// winner and terminal affordance require the same permission as that outcome.
+		if (View.SetPieceType == ESetPieceSelectedType::ShortFreeKick && !View.bSetPieceNoLegalCarrier
+			&& (ContestCount < 2 || !Disclosure.bRevealTerminalOutcome))
+		{
+			View.bHasSetPieceFormula = false;
+			View.SetPieceFormula = {};
+			if (View.bHasSetPieceOutcome)
+			{
+				RedactTerminalOutcome(Snapshot, View);
+				View.bTerminalPendingAdvance = View.bHumanInteraction = false;
+				View.InteractionCategory = EFMCodexLocalMatchInteractionCategory::None;
+				View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+				View.SetPieceCarrierStage = EMatchPlaySetPieceCarrierRouteStage::None;
+			}
+		}
 		const bool bHiddenAcceptedRoll = RedactResolutionRolls(Disclosure, View);
 		if (bHiddenAcceptedRoll && Snapshot.bHasCurrentAttack
 			&& ((View.PresentedActionType == ESkillRuleType::ThroughBall

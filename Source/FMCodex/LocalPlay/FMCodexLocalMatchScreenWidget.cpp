@@ -3498,7 +3498,9 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
 		|| ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
-	const bool bSetPieceTerminalNarrative = bSetPieceMethodReveal
+	const bool bNearAttackReveal = ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack
+		&& (MatchController ? MatchController->GetInteractionView().SetPieceType : Presentation.SetPiece.Type) == ESetPieceSelectedType::ShortFreeKick;
+	const bool bSetPieceTerminalNarrative = bSetPieceMethodReveal && !bNearAttackReveal
 		&& ActiveCrossRollReveal.Kind
 			!= EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
 		&& Result.bNarrativeAvailable;
@@ -3556,7 +3558,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		return Result;
 	}
 	if (bSetPieceMethodReveal
-		&& (!bFormulaDisclosed
+		&& (!bFormulaDisclosed || bNearAttackReveal
 			|| ActiveCrossRollReveal.Kind
 				== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA))
 	{
@@ -3568,19 +3570,19 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA;
 	const bool bSetPiecePairSecond = ActiveCrossRollReveal.Kind
 		== EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
-	if ((bSetPiecePairFirst || bSetPiecePairSecond) && MatchController != nullptr)
+	if (bSetPiecePairFirst || bSetPiecePairSecond)
 	{
-		const FFMCodexLocalMatchInteractionView& View = MatchController->GetInteractionView();
+		const auto Type = MatchController ? MatchController->GetInteractionView().SetPieceType : Presentation.SetPiece.Type;
+		auto First = ActiveCrossRollReveal;
+		First.Kind = EFMCodexUMGCrossRollRevealKind::SetPiecePairedA; First.RollSequenceIndex = 0;
+		int32 RawA = 0, Minimum = 0, Maximum = 0;
+		const bool HasA = TryReadAuthoritativeRawRoll(Presentation, First, RawA, Minimum, Maximum);
 		const bool bPairDisclosed = bSetPiecePairSecond && bFormulaDisclosed;
 		Result.DiceOwnerLabel = bSetPiecePairFirst ? TEXT("第一枚掷点") : TEXT("第二枚掷点");
 		Result.RollHelperLabel = bPairDisclosed ? FString()
-			: FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(View.SetPieceType).ToString();
-		if (!bPairDisclosed && View.bHasSetPiecePairedD6
-			&& (bSetPiecePairSecond || bFormulaDisclosed))
-		{
-			Result.RouteResultLabel = FFMCodexPlayerUIPresentationText
-				::FirstPairedRollResult(View.SetPiecePairedD6A).ToString();
-		}
+			: FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(Type).ToString();
+		if (!bPairDisclosed && HasA && (bSetPiecePairSecond || bFormulaDisclosed))
+			Result.RouteResultLabel = FFMCodexPlayerUIPresentationText::FirstPairedRollResult(RawA).ToString();
 	}
 
 	if (ActiveCrossRollReveal.Kind
@@ -3612,6 +3614,8 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::SetPieceAttack;
 	Result.bAttackRowActive = bAttack;
 	Result.bDefenseRowActive = !bAttack;
+	if (bNearAttackReveal)
+		StageRowForReveal(Result.DefenseRow, false, false, 0); // A coalesced terminal cannot reveal the defense roll during attack A.
 	if (!bFormulaDisclosed)
 	{
 		StageRowForReveal(
@@ -4034,26 +4038,20 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 				EFMCodexUMGInlineFormulaRevealPhase::Settled;
 			InlineFormulaRevealPhaseElapsed = 0.0f;
 			StopInlineFormulaRevealTimer();
-			if (CompletedIdentity.Kind
-				== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
-				&& MatchController != nullptr)
+			if (CompletedIdentity.Kind == EFMCodexUMGCrossRollRevealKind::SetPiecePairedA)
 			{
-				const FFMCodexLocalMatchInteractionView& View =
-					MatchController->GetInteractionView();
-				if (View.AttackSequence == CompletedIdentity.AttackSequence
-					&& View.bHasSetPiecePairedD6)
+				FFMCodexCrossRollRevealIdentity Second = CompletedIdentity;
+				Second.Kind = EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
+				Second.RollSequenceIndex = 1;
+				int32 RawB = 0, Minimum = 0, Maximum = 0;
+				if (TryReadAuthoritativeRawRoll(Presentation, Second, RawB, Minimum, Maximum))
 				{
-					FFMCodexCrossRollRevealIdentity Second = CompletedIdentity;
-					Second.Kind = EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
-					Second.RollSequenceIndex = 1;
 					BeginInlineFormulaReveal(Second, false);
 					CachedResolvedInlineFormula = ActiveFormula(Presentation);
 					bInlineFormulaAuthorityResultAvailable = true;
-					RollRevealAuthoritativeRawValue = View.SetPiecePairedD6B;
-					RollRevealDomainMinimum = 1;
-					RollRevealDomainMaximum = 6;
-					RollRevealSequenceOffsetCells = PlannedSequenceOffset(
-						View.SetPiecePairedD6B, 1, 6);
+					RollRevealAuthoritativeRawValue = RawB;
+					RollRevealDomainMinimum = Minimum; RollRevealDomainMaximum = Maximum;
+					RollRevealSequenceOffsetCells = PlannedSequenceOffset(RawB, Minimum, Maximum);
 					continue;
 				}
 			}
@@ -4100,10 +4098,19 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 			// disclosed prefix in order through this same timeline, without replaying
 			// history on a newly constructed screen or inventing intermediate state.
 			bool bStartedDisclosedSuccessor = false;
-			for (const auto& Event : Presentation.ResolvedRolls)
+			// SequenceIndex is local to a contest: Near Attack and Defense both use 0.
+			// The safe event array is the accepted chronological prefix across contests.
+			const int32 CompletedIndex = Presentation.ResolvedRolls.IndexOfByPredicate([&](const auto& E)
 			{
+				return E.Kind == CompletedIdentity.Kind && E.AttackSequence == CompletedIdentity.AttackSequence
+					&& E.ContestId == CompletedIdentity.ContestId && E.SequenceIndex == CompletedIdentity.RollSequenceIndex
+					&& E.OwnerSide == CompletedIdentity.OwnerSide;
+			});
+			for (int32 Index = 0; Index < Presentation.ResolvedRolls.Num(); ++Index)
+			{
+				const auto& Event = Presentation.ResolvedRolls[Index];
 				if (Event.AttackSequence != CompletedIdentity.AttackSequence
-					|| Event.SequenceIndex <= CompletedIdentity.RollSequenceIndex) continue;
+					|| (CompletedIndex != INDEX_NONE ? Index <= CompletedIndex : Event.SequenceIndex <= CompletedIdentity.RollSequenceIndex)) continue;
 				FFMCodexCrossRollRevealIdentity Next;
 				Next.Kind = Event.Kind; Next.AttackSequence = Event.AttackSequence;
 				Next.ContestId = Event.ContestId; Next.RollSequenceIndex = Event.SequenceIndex;
@@ -4712,14 +4719,13 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	const bool bLongShotDiagnosticOwnsResolution =
 		Presentation.LongShotResolution.bVisible
 		&& Presentation.Resolution.bRejected;
-	const FFMCodexUMGInlineFormulaSurfaceViewModel StandaloneInlineFormula =
+	FFMCodexUMGInlineFormulaSurfaceViewModel StandaloneInlineFormula =
 		bThroughBallProductionOwnsResolution
 			|| bThroughBallDiagnosticOwnsResolution
 			|| bLongShotProductionOwnsResolution
 			|| bLongShotDiagnosticOwnsResolution
 			? FFMCodexUMGInlineFormulaSurfaceViewModel()
 			: DisplayedInlineFormula;
-	InlineFormulaSurface->RefreshFromPresentation(StandaloneInlineFormula);
 	if (bThroughBallDiagnosticOwnsResolution)
 	{
 		// Rejection transfers ownership to the generic diagnostic overlay. Collapse
@@ -4733,8 +4739,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	// Messaging ownership follows the visible shared takeover on BOTH viewers,
 	// including the read-only viewer with no branch choices or primary action.
+	const bool bNearResolutionSurface = StandaloneInlineFormula.bVisible && Presentation.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick;
 	const bool bCentralOwnsActionPrompt = Presentation.bMirrorActionWaitPrompt
-		&& ((bLongShotProductionOwnsResolution && DisplayedLongShot.bVisible)
+		&& (bNearResolutionSurface || (bLongShotProductionOwnsResolution && DisplayedLongShot.bVisible)
 			|| (Presentation.SetPiece.bVisible && !IsInlineFormulaRevealInputBlocked()))
 		&& !Presentation.FullTime.bVisible;
 	FText CentralPrompt = bCentralOwnsActionPrompt
@@ -4750,6 +4757,10 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 					Side == EInitialTurnOrderPlayer::PlayerA ? TEXT("Player A") : TEXT("Player B")))
 			: FText::GetEmpty();
 	}
+	if (bNearResolutionSurface && !CentralPrompt.IsEmpty())
+		StandaloneInlineFormula.StatusLabel = CentralPrompt.ToString()
+			+ (StandaloneInlineFormula.StatusLabel.IsEmpty() ? FString() : TEXT("\n") + StandaloneInlineFormula.StatusLabel);
+	InlineFormulaSurface->RefreshFromPresentation(StandaloneInlineFormula);
 	LongShotResolutionSurface->SetActionPromptText(CentralPrompt);
 	LongShotResolutionSurface->RefreshFromPresentation(DisplayedLongShot);
 	RefreshSetPieceResolutionSurface();

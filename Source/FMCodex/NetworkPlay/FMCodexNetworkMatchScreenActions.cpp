@@ -89,6 +89,9 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		if (Request.Category != View.Presentation.Interaction.Category) return false;
 		switch (Request.Category)
 		{
+		case C::RollShortFreeKickDirectAttack: return Client.BeginSetPiece(View, N::ResolveShortFreeKickDirectAttackRoll, Out);
+		case C::RollShortFreeKickDirectDefense: return Client.BeginSetPiece(View, N::ResolveShortFreeKickDirectDefenseRoll, Out);
+		case C::RollShortFreeKickAngled: return Client.BeginSetPiece(View, N::ResolveShortFreeKickAngledRoll, Out);
 		case C::RollLongShotDirectAttack: return Client.BeginOrdinaryContest(View, N::LongShotDirectAttackRoll, Out);
 		case C::RollLongShotDirectDefense: return Client.BeginOrdinaryContest(View, N::LongShotDirectDefenseRoll, Out);
 		case C::RollLongShotDeadCorner: return Client.BeginOrdinaryContest(View, N::LongShotDeadCornerRoll, Out);

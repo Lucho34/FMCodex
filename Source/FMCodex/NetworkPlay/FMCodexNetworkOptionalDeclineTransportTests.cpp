@@ -88,7 +88,7 @@ bool FFMCodexOptionalDeclineWire::RunTest(const FString&)
   if(Mask&128)E.Branch.Intent=EMatchPlayElectiveBranchIntent::DirectShot;if(Mask&256)E.OneOnOneChoice=EMatchPlayThroughBallOneOnOneShotChoice::DirectShot;
   TestEqual(TEXT("Closed empty union rejects every nonempty member combination"),E.ValidatePayloadShape(),Mask?Code::InvalidPayload:Code::None);
  }
- for(int32 Value=45;Value<256;++Value){Envelope E;E.IntentKind=static_cast<Kind>(Value);TestEqual(TEXT("Unallowlisted/internal wire tags fail closed"),E.ValidatePayloadShape(),Code::NotPlayerIntent);}
+ for(int32 Value=48;Value<256;++Value){Envelope E;E.IntentKind=static_cast<Kind>(Value);TestEqual(TEXT("Unallowlisted/internal wire tags fail closed"),E.ValidatePayloadShape(),Code::NotPlayerIntent);}
  for(auto K:{EMatchPlayAuthoritativeCommandKind::ResolveNoLegalRunner,EMatchPlayAuthoritativeCommandKind::ResolveNoLegalHelper,EMatchPlayAuthoritativeCommandKind::ResolveNoLegalSkill,EMatchPlayAuthoritativeCommandKind::ResolveNoLegalMarker})
   TestEqual(TEXT("No legal remains server internal"),FMatchPlayAuthoritativeCommandClassification::OriginOf(K),EMatchPlayAuthoritativeCommandOrigin::ServerInternalAction);
  TestEqual(TEXT("Append-only tag Marker"),int32(Kind::DeclineMarker),39);

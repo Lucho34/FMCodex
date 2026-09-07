@@ -235,3 +235,20 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Decline and tacti
 . $launcherPath -UnrealEditorPath $testEnginePath
 Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Decline*' -or $_ -like '*Milestone*' }).Count -eq 0) 'Decline fixture remains opt in'
 Write-Host ("FMCODEX_OPTIONAL_DECLINE_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)
+
+foreach ($mode in @('DirectGoal','DirectMiss','AngledGoal','AngledMiss')) {
+    foreach ($side in @('A','B')) {
+        . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingNearFreeKickMilestone $mode -SetPieceActor $side
+        $near = Get-NetworkPlayLaunchPlan
+        Assert-True ($near.HostArguments -contains ('-FMCodexNetworkPlayerFacingNearFreeKickMilestone=' + $mode)) 'Near fixture reaches Host only'
+        Assert-True ($near.HostArguments -contains ('-FMCodexNetworkSetPieceActor=' + $side)) 'Near supports both actors'
+        Assert-True (@($near.ClientArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*SetPieceActor*' }).Count -eq 0) 'Near Remote receives no deterministic controls'
+        Assert-True (($near.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($near.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Near uses both shared screens'
+        Assert-True (($near.HostArguments -contains '-ResX=1600') -and ($near.ClientArguments -contains '-ResY=900')) 'Near uses production viewport size'
+    }
+}
+$PlayerFacingSetPieceMilestone = 'Near'
+Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Near fixture cannot mix with selection fixture'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Near fixture keeps secure defaults'
+Write-Host ("FMCODEX_NEAR_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)

@@ -297,13 +297,29 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 	{
 		MatchRuntime->EnableDeploymentAutomationEntry(bSkillSlice ? 6 : 4);
 	}
+	FString NearMilestone, NearActor = TEXT("A");
+	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingNearFreeKickMilestone="), NearMilestone))
+	{
+		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkSetPieceActor="), NearActor);
+		if ((NearMilestone != TEXT("DirectGoal") && NearMilestone != TEXT("DirectMiss")
+			&& NearMilestone != TEXT("AngledGoal") && NearMilestone != TEXT("AngledMiss"))
+			|| (NearActor != TEXT("A") && NearActor != TEXT("B")) || bTerminalMilestone || bMilestone || bSkillSlice)
+		{
+			bTransportFault = true;
+			PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
+			PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed); return;
+		}
+		BootstrapConfiguration = NearActor == TEXT("B") ? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
+			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
+		MatchRuntime->EnableNearFreeKickMilestone(NearMilestone.EndsWith(TEXT("Goal")));
+	}
 	FString SetPieceMilestone, SetPieceActor = TEXT("A");
 	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingSetPieceMilestone="), SetPieceMilestone))
 	{
 		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkSetPieceActor="), SetPieceActor);
 		const int32 TypeD6 = SetPieceMilestone == TEXT("Near") ? 5 : SetPieceMilestone == TEXT("Long") ? 3
 			: SetPieceMilestone == TEXT("Penalty") ? 6 : SetPieceMilestone == TEXT("Corner") ? 1 : 0;
-		if (TypeD6 == 0 || (SetPieceActor != TEXT("A") && SetPieceActor != TEXT("B")) || bTerminalMilestone || bMilestone || bSkillSlice)
+		if (!NearMilestone.IsEmpty() || TypeD6 == 0 || (SetPieceActor != TEXT("A") && SetPieceActor != TEXT("B")) || bTerminalMilestone || bMilestone || bSkillSlice)
 		{
 			bTransportFault = true;
 			PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
@@ -583,6 +599,42 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.AttackSequence = Envelope.ExpectedAttackSequence;
 		Request.Method = Envelope.PenaltyMethod;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitPenaltyMethod, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::ResolveShortFreeKickDirectAttackRoll:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::NearDirectAttackRoll) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayShortFreeKickRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickDirectAttackRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::ResolveShortFreeKickDirectDefenseRoll:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::NearDirectDefenseRoll) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayShortFreeKickRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickDirectDefenseRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::ResolveShortFreeKickAngledRoll:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::NearAngledRoll) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayShortFreeKickRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickAngledRoll, Request);
 		break;
 	}
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:

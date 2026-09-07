@@ -181,7 +181,11 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	Result.LocalRack = MoveTemp(M.LocalRack); Result.OpponentRack = MoveTemp(M.OpponentRack);
 	Result.PitchRegions = MoveTemp(M.PitchRegions);
 	Result.Interaction = MoveTemp(M.Interaction);
-	if (M.SetPiece.bVisible) { M.InlineFormula = {}; M.LongShotResolution = {}; M.ThroughBallResolution = {}; }
+	if (M.SetPiece.bVisible)
+	{
+		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick) M.InlineFormula = {};
+		M.LongShotResolution = {}; M.ThroughBallResolution = {};
+	}
 	Result.InlineFormula = MoveTemp(M.InlineFormula);
 	Result.BranchSurface = MoveTemp(M.LongShotResolution);
 	Result.ThroughBallSurface = MoveTemp(M.ThroughBallResolution);
@@ -193,6 +197,25 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 		Event.Kind = EFMCodexUMGCrossRollRevealKind::SetPieceType; Event.ContestId = TEXT("SetPiece.Type");
 		Event.OwnerSide = SafeView.CurrentAttackingPlayer; Event.SequenceIndex = 0; Event.RawD6 = Result.SetPiece.TypeD6;
 		Result.ResolvedRolls.Add(Event);
+	}
+	if (Result.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick)
+	{
+		using K = EFMCodexUMGCrossRollRevealKind;
+		auto Add = [&](K Kind, FName Id, int32 Index, int32 D6, EInitialTurnOrderPlayer Owner)
+		{
+			if (D6 < 1 || D6 > 6) return;
+			auto& E = Result.ResolvedRolls.AddDefaulted_GetRef();
+			E.AttackSequence = SafeView.AttackSequence; E.Kind = Kind; E.ContestId = Id;
+			E.SequenceIndex = Index; E.RawD6 = D6; E.OwnerSide = Owner;
+		};
+		if (SafeView.bHasSetPieceAttackD6) Add(K::SetPieceAttack, TEXT("SetPiece.Attack"), 0, SafeView.SetPieceAttackD6, SafeView.CurrentAttackingPlayer);
+		if (SafeView.bHasSetPieceDefenseD6) Add(K::SetPieceDefense, TEXT("SetPiece.Defense"), 0, SafeView.SetPieceDefenseD6,
+			SafeView.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA ? EInitialTurnOrderPlayer::PlayerB : EInitialTurnOrderPlayer::PlayerA);
+		if (SafeView.bHasSetPiecePairedD6)
+		{
+			Add(K::SetPiecePairedA, TEXT("SetPiece.Short.Angled"), 0, SafeView.SetPiecePairedD6A, SafeView.CurrentAttackingPlayer);
+			Add(K::SetPiecePairedB, TEXT("SetPiece.Short.Angled"), 1, SafeView.SetPiecePairedD6B, SafeView.CurrentAttackingPlayer);
+		}
 	}
 	return Result;
 }
@@ -218,10 +241,11 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	M.SetPiece = View.SetPiece;
 	if (M.SetPiece.bVisible)
 	{
-		// Selection milestone only. No Corner/decisive-roll capability is manufactured.
+		// Near is complete; the other set-piece families retain their selection milestone boundary.
 		const bool Supported = M.SetPiece.bSelectionSupported
-			&& (M.SetPiece.bTypeWait || M.SetPiece.bTakerWait || M.SetPiece.bMethodWait || M.SetPiece.bNoTakerNoGoal);
-		M.InlineFormula = {}; M.LongShotResolution = {}; M.ThroughBallResolution = {};
+			&& (M.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || M.SetPiece.bTypeWait || M.SetPiece.bTakerWait || M.SetPiece.bMethodWait || M.SetPiece.bNoTakerNoGoal);
+		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick) M.InlineFormula = {};
+		M.LongShotResolution = {}; M.ThroughBallResolution = {};
 		M.Interaction.SelectionChoices.Reset(); // Taker uses the existing hand + confirmation surface.
 		if (!Supported) DisableActions(M);
 	}
@@ -298,6 +322,10 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 		Action = M.SetPiece.bNoTakerNoGoal ? LOCTEXT("Advance", "下一回合") : M.SetPiece.bTypeWait ? LOCTEXT("SetPieceType", "掷定位球类型骰")
 			: M.SetPiece.bTakerWait ? LOCTEXT("SetPieceTaker", "选择并确认主罚球员")
 			: M.SetPiece.bMethodWait ? LOCTEXT("SetPieceMethod", "选择定位球方式")
+			: M.Interaction.Category == C::RollShortFreeKickDirectAttack ? LOCTEXT("NearAttack", "进攻方掷点")
+			: M.Interaction.Category == C::RollShortFreeKickDirectDefense ? LOCTEXT("NearDefense", "防守方掷点")
+			: M.Interaction.Category == C::RollShortFreeKickAngled ? LOCTEXT("NearPair", "进攻方掷两枚骰")
+			: M.Interaction.Category == C::AdvanceAfterTerminal ? LOCTEXT("Advance", "下一回合")
 			: LOCTEXT("SetPieceBoundary", "后续定位球流程暂未开放");
 	}
 	else switch (M.Interaction.Category)
