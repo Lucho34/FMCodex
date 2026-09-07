@@ -46,6 +46,11 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	DeclineHelper,
 	DeclineSkill,
 	DeclineMarker,
+	RequestSetPieceTypeRoll,
+	SubmitSetPieceCarrier,
+	SubmitShortFreeKickMethod,
+	SubmitLongFreeKickMethod,
+	SubmitPenaltyMethod,
 };
 
 UENUM()
@@ -87,6 +92,10 @@ struct FMCODEX_API FFMCodexNetworkPlayerIntentEnvelope
 	FFMCodexNetworkSubmitBranchIntentPayload Branch;
 	UPROPERTY()
 	EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice = EMatchPlayThroughBallOneOnOneShotChoice::None;
+	UPROPERTY() FName SetPieceCardId = NAME_None;
+	UPROPERTY() EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None;
+	UPROPERTY() EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None;
+	UPROPERTY() EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None;
 	EFMCodexNetworkIntentAckCode ValidatePayloadShape() const;
 };
 
@@ -162,6 +171,9 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 		EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
 	bool BeginOneOnOne(const FFMCodexNetworkClientViewSnapshot& View,
 		EMatchPlayThroughBallOneOnOneShotChoice Choice, FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope);
+	bool BeginSetPiece(const FFMCodexNetworkClientViewSnapshot& View, EFMCodexNetworkPlayerIntentKind Kind,
+		FFMCodexNetworkPlayerIntentEnvelope& Out, FName SetPieceCardId = NAME_None, EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None,
+		EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None, EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }
 	int64 GetPendingRequestId() const { return PendingRequestId; }
@@ -177,7 +189,9 @@ private:
 		const FFMCodexNetworkSubmitSkillPayload& SkillChoice,
 		const FFMCodexNetworkSubmitBranchIntentPayload& BranchChoice,
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope,
-		EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice = EMatchPlayThroughBallOneOnOneShotChoice::None);
+		EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice = EMatchPlayThroughBallOneOnOneShotChoice::None,
+		FName SetPieceCardId = NAME_None, EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None,
+		EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None, EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None);
 	void CompleteIfReady();
 	FGuid Match;
 	int64 NextRequestId = 1;

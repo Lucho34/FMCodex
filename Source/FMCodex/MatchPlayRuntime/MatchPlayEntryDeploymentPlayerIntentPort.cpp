@@ -34,6 +34,41 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 	};
 	switch (Intent.CommandKind)
 	{
+	case EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlaySetPieceTypeRollRequest>()) return Mismatch();
+		const auto Authority = Session.RequestSetPieceTypeRoll(Intent.Payload.Get<FMatchPlaySetPieceTypeRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.TypeRollResult.bSuccess, Authority.TypeRollResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier:
+	{
+		if (!Intent.Payload.IsType<FMatchPlaySetPieceCarrierSelectionRequest>()) return Mismatch();
+		const auto Authority = Session.SubmitSetPieceCarrier(Intent.Payload.Get<FMatchPlaySetPieceCarrierSelectionRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.CarrierResult.bSuccess, Authority.CarrierResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitShortFreeKickMethod:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayShortFreeKickMethodRequest>()) return Mismatch();
+		const auto Authority = Session.SubmitShortFreeKickMethod(Intent.Payload.Get<FMatchPlayShortFreeKickMethodRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitLongFreeKickMethod:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayLongFreeKickMethodRequest>()) return Mismatch();
+		const auto Authority = Session.SubmitLongFreeKickMethod(Intent.Payload.Get<FMatchPlayLongFreeKickMethodRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitPenaltyMethod:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayPenaltyMethodRequest>()) return Mismatch();
+		const auto Authority = Session.SubmitPenaltyMethod(Intent.Payload.Get<FMatchPlayPenaltyMethodRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeployOrdinaryRequest>()) { return Mismatch(); }

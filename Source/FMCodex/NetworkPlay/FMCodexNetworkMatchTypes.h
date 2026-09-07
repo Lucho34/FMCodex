@@ -42,7 +42,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll, PassControlDefenseRoll, ThroughBallFeetDefenseRoll, ThroughBallBehindDefenseDefenseRoll, ThroughBallOneOnOneChoice, ThroughBallOneOnOneDirectAttackRoll, ThroughBallOneOnOneDirectDefenseRoll, ThroughBallOneOnOneChipRoll, LongShotDirectDefenseRoll, CutInsideDirectDefenseRoll
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll, PassControlDefenseRoll, ThroughBallFeetDefenseRoll, ThroughBallBehindDefenseDefenseRoll, ThroughBallOneOnOneChoice, ThroughBallOneOnOneDirectAttackRoll, ThroughBallOneOnOneDirectDefenseRoll, ThroughBallOneOnOneChipRoll, LongShotDirectDefenseRoll, CutInsideDirectDefenseRoll, SetPieceTakerSelection, SetPieceMethodSelection, SetPieceResolutionBoundary, CornerSelectionBoundary
 };
 
 
@@ -306,6 +306,7 @@ struct FMCODEX_API FFMCodexNetworkClientViewSnapshot
 
 	/** Same owner-only revision; optional player-facing ordinary Cross presentation. */
 	UPROPERTY() FFMCodexNetworkMatchPresentation Presentation;
+	UPROPERTY() FFMCodexSetPieceSelectionPresentation SetPiece;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Network Play")
 	FGuid MatchInstanceId;

@@ -6,6 +6,7 @@
 #include "FMCodexNetworkMatchPlayerController.h"
 #include "FMCodexNetworkMatchPlayerState.h"
 #include "FMCodexNetworkRNGTestEntropy.h"
+#include "FMCodexNetworkRandomProvider.h"
 #include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
 #include "../MatchPlayRuntime/MatchPlayServerCoordinator.h"
@@ -59,6 +60,15 @@ struct FFMCodexNetworkInitialRouteTestAccess
 		if (!Mode.MatchRuntime->InitializeOnce(Mode.BootstrapConfiguration).bSuccess) { return nullptr; }
 		Publish(Mode);
 		return Source;
+	}
+	static void SetPiecePresentation(AFMCodexNetworkMatchGameMode& Mode, bool Enabled = true)
+	{ Mode.MatchRuntime->bSetPieceSelectionMilestone = Enabled; Mode.MatchRuntime->EnablePlayerFacingPresentation(); Publish(Mode); }
+	static void ReconstructEntry(AFMCodexNetworkMatchGameMode& Mode, FMatchPlayState State, IMatchPlayAttackEntryRollProvider& Provider)
+	{
+		Mode.MatchRuntime->ServerCoordinator.Reset();
+		Mode.MatchRuntime->AuthoritativeSession = MakeUnique<FMatchPlayAuthoritativeSession>(MoveTemp(State), Provider, static_cast<IMatchPlayRecoveryProvider&>(*Mode.MatchRuntime->RollProvider));
+		Mode.MatchRuntime->ServerCoordinator = MakeUnique<FMatchPlayServerCoordinator>(*Mode.MatchRuntime->AuthoritativeSession, Mode.MatchRuntime->SkillRuleSet);
+		Publish(Mode);
 	}
 	static FMatchPlayServerCoordinator& Coordinator(AFMCodexNetworkMatchGameMode& Mode) { return *Mode.MatchRuntime->ServerCoordinator; }
 	static FMatchPlayAuthoritativeSession& Session(AFMCodexNetworkMatchGameMode& Mode) { return *Mode.MatchRuntime->AuthoritativeSession; }

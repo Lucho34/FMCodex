@@ -148,8 +148,8 @@ void FFMCodexNetworkMatchRuntime::EnableInitialRouteAutomation(int32 D6)
 class FFMCodexDeploymentAutomationEntry final : public IMatchPlayAttackEntryRollProvider
 {
 public:
-	explicit FFMCodexDeploymentAutomationEntry(IMatchPlayAttackEntryRollProvider& InSecure, int32 InInitialD12, bool InPrelude = false)
-		: Secure(InSecure), InitialD12(InInitialD12), bSendingOffPrelude(InPrelude) {}
+	explicit FFMCodexDeploymentAutomationEntry(IMatchPlayAttackEntryRollProvider& InSecure, int32 InInitialD12, bool InPrelude = false, int32 InTypeD6 = 0)
+		: Secure(InSecure), InitialD12(InInitialD12), bSendingOffPrelude(InPrelude), TypeD6(InTypeD6) {}
 	virtual FMatchPlayAttackEntryRollProviderResult RollD12(EMatchPlayAttackEntryRollPurpose Purpose) override
 	{
 		if (Purpose != EMatchPlayAttackEntryRollPurpose::InitialActionPoint) { return Secure.RollD12(Purpose); }
@@ -160,6 +160,8 @@ public:
 	}
 	virtual FMatchPlayAttackEntryRollProviderResult RollD6(EMatchPlayAttackEntryRollPurpose Purpose) override
 	{
+		if (Purpose == EMatchPlayAttackEntryRollPurpose::SetPieceType && TypeD6 > 0)
+		{ FMatchPlayAttackEntryRollProviderResult R; R.bSuccess = true; R.RawRoll = TypeD6; return R; }
 		return Secure.RollD6(Purpose);
 	}
 	virtual FMatchPlayAttackEntrySelectionProviderResult SelectUniformIndex(
@@ -172,7 +174,16 @@ private:
 	int32 InitialD12;
 	bool bSendingOffPrelude = false;
 	int32 InitialCalls = 0;
+	int32 TypeD6 = 0;
 };
+void FFMCodexNetworkMatchRuntime::EnableSetPieceSelectionMilestone(int32 TypeD6)
+{
+	check(!bInitialized); check(TypeD6 >= 1 && TypeD6 <= 6);
+	bSetPieceSelectionMilestone = true;
+	EnablePlayerFacingPresentation();
+	EntryProvider->Inject(MakeUnique<FFMCodexDeploymentAutomationEntry>(*RollProvider, 9, false, TypeD6));
+	UE_LOG(LogFMCodexNetworkPlay, Log, TEXT("Server DEV set-piece selection fixture: D12=9 TypeD6=%d; canonical entry and selection only."), TypeD6);
+}
 void FFMCodexNetworkMatchRuntime::EnableDeploymentAutomationEntry(int32 InitialD12)
 {
 	check(!bInitialized);
@@ -363,6 +374,8 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 	FFMCodexLocalMatchViewerDisclosure Disclosure;
 	Disclosure.bRevealInitialActionPointRoll = Snapshot.bHasCurrentAttack
 		&& DisclosedInitialAttackSequence == Snapshot.CurrentAttack.AttackSequence;
+	Disclosure.bRevealSetPieceTypeRoll = Disclosure.bRevealInitialActionPointRoll
+		&& DisclosedSetPieceTypeSequence == Snapshot.CurrentAttack.AttackSequence;
 	Disclosure.bRevealRouteRoll = Disclosure.bRevealInitialActionPointRoll
 		&& DisclosedRouteAttackSequence == Snapshot.CurrentAttack.AttackSequence;
 	Disclosure.RevealedContestD6Count = Disclosure.bRevealRouteRoll
@@ -373,8 +386,11 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 	Disclosure.bRevealTerminalOutcome = Snapshot.bHasCurrentAttack
 		&& Snapshot.CurrentAttack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
 		&& DisclosedTerminalAttackSequence == Snapshot.CurrentAttack.AttackSequence
-		&& Disclosure.RevealedContestD6Count > 0
-		&& Disclosure.RevealedContestD6Count == Snapshot.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords.Num();
+		&& ((Disclosure.RevealedContestD6Count > 0
+			&& Disclosure.RevealedContestD6Count == Snapshot.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords.Num())
+			|| (Disclosure.bRevealSetPieceTypeRoll && Snapshot.CurrentAttack.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
+				&& (Snapshot.CurrentAttack.SetPieceRoute.ShortFreeKick.bNoLegalCarrier
+					|| Snapshot.CurrentAttack.SetPieceRoute.LongFreeKick.bNoLegalCarrier || Snapshot.CurrentAttack.SetPieceRoute.Penalty.bNoLegalCarrier)));
 	const FFMCodexLocalMatchInteractionView SafeViewerView =
 		FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot,
@@ -396,6 +412,7 @@ FFMCodexNetworkMatchRuntime::BuildClientView(
 		const auto DisplayView = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
 			Snapshot, SkillRuleSet, ViewerSide, Disclosure);
 		Result.Presentation = FFMCodexNetworkMatchPresentationAdapter::Project(DisplayView, ViewerSide);
+		Result.Presentation.SetPiece.bSelectionSupported = bSetPieceSelectionMilestone;
 	}
 	return Result;
 }
@@ -612,6 +629,7 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::AdvanceAfterTerminal && Result.bSuccess)
 	{
 		DisclosedInitialAttackSequence = 0;
+		DisclosedSetPieceTypeSequence = 0;
 		DisclosedRouteAttackSequence = 0;
 		DisclosedContestAttackSequence = 0;
 		DisclosedContestRollCount = 0;
@@ -732,6 +750,30 @@ FMatchPlayPlayerIntentSubmissionResult FFMCodexNetworkMatchRuntime::SubmitPlayer
 			static_cast<int32>(Safe.ExpectedActingSide), static_cast<int32>(Safe.EntryWait), GetCoordinatorInvocationCountForTests(),
 			Result.CoordinatorResult.Steps.Num(), static_cast<int32>(Result.CoordinatorResult.StopReason));
 	}
+#endif
+	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll
+		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)
+	{
+		DisclosedSetPieceTypeSequence = Result.AuthoritativeResult.RuntimeEnvelope.AttackSequence;
+		const auto State = AuthoritativeSession->GetStateSnapshot();
+		if (Result.bSuccess && State.bHasCurrentAttack && State.CurrentAttack.LifecycleState == EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance
+			&& (State.CurrentAttack.SetPieceRoute.ShortFreeKick.bNoLegalCarrier || State.CurrentAttack.SetPieceRoute.LongFreeKick.bNoLegalCarrier
+				|| State.CurrentAttack.SetPieceRoute.Penalty.bNoLegalCarrier)) DisclosedTerminalAttackSequence = DisclosedSetPieceTypeSequence;
+	}
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
+ if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestSetPieceTypeRoll
+  || Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitSetPieceCarrier
+  || Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitShortFreeKickMethod
+  || Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitLongFreeKickMethod
+  || Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::SubmitPenaltyMethod)
+ {
+  const auto State = AuthoritativeSession->GetStateSnapshot();
+  const auto V = BuildClientView(State.RuntimeState.CurrentAttackingPlayer,0,EFMCodexNetworkBootstrapState::MatchReady);
+  UE_LOG(LogFMCodexNetworkPlay,Log,TEXT("DEV SetPiece authority: Success=%d Sequence=%lld TypeD6=%d Type=%d CarrierStage=%d CornerStage=%d Actor=%d Wait=%d EntryCalls=%d D12Calls=%d RouteCalls=%d PostCalls=%d RecoveryCalls=%d CoordinatorCalls=%d InternalSteps=%d Stop=%d ScoreA=%d ScoreB=%d Goals=%d"),
+   Result.bSuccess,V.AttackSequence,V.SetPiece.TypeD6,int32(V.SetPiece.Type),int32(V.SetPiece.CarrierStage),int32(V.SetPiece.CornerStage),int32(V.ExpectedActingSide),int32(V.EntryWait),
+   GetEntryProviderInvocationCount(),GetD12ProviderInvocationCount(),GetInitialRouteProviderInvocationCount(),GetPostRouteProviderInvocationCount(),GetRecoveryProviderInvocationCount(),
+   GetCoordinatorInvocationCountForTests(),Result.CoordinatorResult.Steps.Num(),int32(Result.CoordinatorResult.StopReason),V.PlayerAScore,V.PlayerBScore,V.PublicGoalHistory.Num());
+ }
 #endif
 	if (Intent.CommandKind == EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll
 		&& Result.AuthoritativeResult.RuntimeEnvelope.bDomainSuccess)

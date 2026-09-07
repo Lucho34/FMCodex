@@ -1226,6 +1226,15 @@ namespace FMCodexLocalMatchInteractionView
 			case EMatchPlaySetPieceCarrierRouteStage::AwaitingMethod:
 				Result.InteractionCategory =
 					EFMCodexLocalMatchInteractionCategory::SelectSetPieceMethod;
+                if (Route.SelectedType == ESetPieceSelectedType::ShortFreeKick)
+                {
+                    Result.LegalNearMethods.Add(EMatchPlayShortFreeKickMethod::Direct);
+                    if (Result.bShortAngledEligible) Result.LegalNearMethods.Add(EMatchPlayShortFreeKickMethod::Angled);
+                }
+                else if (Route.SelectedType == ESetPieceSelectedType::LongFreeKick)
+                    Result.LegalLongMethods = {EMatchPlayLongFreeKickMethod::Direct, EMatchPlayLongFreeKickMethod::Power};
+                else if (Route.SelectedType == ESetPieceSelectedType::Penalty)
+                    Result.LegalPenaltyMethods = {EMatchPlayPenaltyMethod::Direct, EMatchPlayPenaltyMethod::Panenka};
 				Result.ExpectedActingPlayer = Attacker;
 				Result.bHumanInteraction = true;
 				break;
@@ -1255,6 +1264,7 @@ namespace FMCodexLocalMatchInteractionView
 		case ESetPieceSelectedType::ShortFreeKick:
 		{
 			const auto& Short = Route.ShortFreeKick;
+			Result.SelectedNearMethod = Route.ShortFreeKick.Method;
 			Result.ActionLabel = TEXT("近距离任意球");
 			CopyCarrierRoute(Short.Carrier, Short.Stage,
 				Short.bHasAttackD6, Short.AttackD6,
@@ -1296,6 +1306,7 @@ namespace FMCodexLocalMatchInteractionView
 		case ESetPieceSelectedType::LongFreeKick:
 		{
 			const auto& Long = Route.LongFreeKick;
+			Result.SelectedLongMethod = Route.LongFreeKick.Method;
 			Result.ActionLabel = FFMCodexPlayerUIPresentationText
 				::SetPieceName(ESetPieceSelectedType::LongFreeKick).ToString();
 			CopyCarrierRoute(Long.Carrier, Long.Stage,
@@ -1335,6 +1346,7 @@ namespace FMCodexLocalMatchInteractionView
 		case ESetPieceSelectedType::Penalty:
 		{
 			const auto& Penalty = Route.Penalty;
+			Result.SelectedPenaltyMethod = Route.Penalty.Method;
 			Result.ActionLabel = TEXT("点球");
 			CopyCarrierRoute(Penalty.Carrier, Penalty.Stage,
 				Penalty.bHasAttackD6, Penalty.AttackD6,
@@ -1498,6 +1510,10 @@ namespace FMCodexLocalMatchInteractionView
 		View.SetPieceType = ESetPieceSelectedType::None;
 		View.ActionLabel = TEXT("定位球");
 		View.bShortAngledEligible = false;
+        View.LegalNearMethods.Reset(); View.LegalLongMethods.Reset(); View.LegalPenaltyMethods.Reset();
+        View.SelectedNearMethod = EMatchPlayShortFreeKickMethod::None;
+        View.SelectedLongMethod = EMatchPlayLongFreeKickMethod::None;
+        View.SelectedPenaltyMethod = EMatchPlayPenaltyMethod::None;
 		View.SetPieceCarrierStage = EMatchPlaySetPieceCarrierRouteStage::None;
 		View.CornerStage = EMatchPlaySetPieceCornerRouteStage::None;
 		View.LegalSetPieceCardIds.Reset();
@@ -1866,6 +1882,7 @@ namespace FMCodexLocalMatchInteractionView
 			View.DeploymentGroups.Reset();
 			View.SelectionOptions.Reset();
 			View.LegalSetPieceCardIds.Reset();
+			View.LegalNearMethods.Reset(); View.LegalLongMethods.Reset(); View.LegalPenaltyMethods.Reset();
 			View.BranchIntentOptions.Reset();
 			View.OneOnOneOptions.Reset();
 			View.bHumanInteraction = false;

@@ -54,6 +54,7 @@ namespace
 
 void FFMCodexNetworkMatchPresentationAdapter::DisableActions(FFMCodexUMGMatchScreenViewModel& M)
 {
+	M.SetPiece.DisableActions();
 	auto& I = M.Interaction;
 	I.bCanStartNewMatch = I.bCanRollTacticalPoints = I.bCanFinishDeployment = false;
 	I.bCanDecline = I.bCanResolveNoLegal = I.bCanContinue = false;
@@ -87,7 +88,8 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	// This builder only formats already-projected public facts and canonical static descriptions.
 	auto M = FFMCodexLocalMatchUMGPresentationBuilder::Build(SafeView,
 		FFMCodexLocalMatchResolutionFeedbackBuilder::BuildFromTerminalSnapshot(SafeView), FString(), Viewer);
-	if (!WithinBounds(M)) return Result; // Never silently truncate legal options.
+	M.SetPiece = FFMCodexSetPieceSelectionPresentation::Build(SafeView, Viewer);
+	if (!WithinBounds(M) || M.SetPiece.bOptionsUnavailable) return Result; // Never silently truncate legal options.
 	M.Interaction.bCanStartNewMatch = M.Interaction.bCanResolveNoLegal = false;
 	M.Interaction.bCanDecline = M.Interaction.bCanDecline
 		&& (M.Interaction.Category == EFMCodexUMGInteractionCategory::SelectRunner
@@ -179,10 +181,19 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	Result.LocalRack = MoveTemp(M.LocalRack); Result.OpponentRack = MoveTemp(M.OpponentRack);
 	Result.PitchRegions = MoveTemp(M.PitchRegions);
 	Result.Interaction = MoveTemp(M.Interaction);
+	if (M.SetPiece.bVisible) { M.InlineFormula = {}; M.LongShotResolution = {}; M.ThroughBallResolution = {}; }
 	Result.InlineFormula = MoveTemp(M.InlineFormula);
 	Result.BranchSurface = MoveTemp(M.LongShotResolution);
 	Result.ThroughBallSurface = MoveTemp(M.ThroughBallResolution);
 	Result.FullTime = MoveTemp(M.FullTime);
+	Result.SetPiece = MoveTemp(M.SetPiece);
+	if (Result.SetPiece.TypeD6 >= 1 && Result.SetPiece.TypeD6 <= 6)
+	{
+		FFMCodexUMGResolvedRollViewModel Event; Event.AttackSequence = SafeView.AttackSequence;
+		Event.Kind = EFMCodexUMGCrossRollRevealKind::SetPieceType; Event.ContestId = TEXT("SetPiece.Type");
+		Event.OwnerSide = SafeView.CurrentAttackingPlayer; Event.SequenceIndex = 0; Event.RawD6 = Result.SetPiece.TypeD6;
+		Result.ResolvedRolls.Add(Event);
+	}
 	return Result;
 }
 
@@ -204,6 +215,16 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	M.InlineFormula = View.InlineFormula; M.LongShotResolution = View.BranchSurface;
 	M.ThroughBallResolution = View.ThroughBallSurface;
 	M.FullTime = View.FullTime;
+	M.SetPiece = View.SetPiece;
+	if (M.SetPiece.bVisible)
+	{
+		// Selection milestone only. No Corner/decisive-roll capability is manufactured.
+		const bool Supported = M.SetPiece.bSelectionSupported
+			&& (M.SetPiece.bTypeWait || M.SetPiece.bTakerWait || M.SetPiece.bMethodWait || M.SetPiece.bNoTakerNoGoal);
+		M.InlineFormula = {}; M.LongShotResolution = {}; M.ThroughBallResolution = {};
+		M.Interaction.SelectionChoices.Reset(); // Taker uses the existing hand + confirmation surface.
+		if (!Supported) DisableActions(M);
+	}
 	M.ResolvedRolls = View.ResolvedRolls;
 	VisitCards(M, [&View](FFMCodexUMGCardViewModel& Card)
 	{
@@ -272,7 +293,14 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 		|| (View.ExpectedActingSide != S::PlayerA && View.ExpectedActingSide != S::PlayerB)
 		|| (View.ViewerSide != S::PlayerA && View.ViewerSide != S::PlayerB)) return M;
 	FText Action;
-	switch (M.Interaction.Category)
+	if (M.SetPiece.bVisible)
+	{
+		Action = M.SetPiece.bNoTakerNoGoal ? LOCTEXT("Advance", "下一回合") : M.SetPiece.bTypeWait ? LOCTEXT("SetPieceType", "掷定位球类型骰")
+			: M.SetPiece.bTakerWait ? LOCTEXT("SetPieceTaker", "选择并确认主罚球员")
+			: M.SetPiece.bMethodWait ? LOCTEXT("SetPieceMethod", "选择定位球方式")
+			: LOCTEXT("SetPieceBoundary", "后续定位球流程暂未开放");
+	}
+	else switch (M.Interaction.Category)
 	{
 	case C::TacticalPointRoll: Action = LOCTEXT("TacticalPoints", "掷战术点"); break;
 	case C::Deploy: Action = LOCTEXT("Deploy", "部署球员并完成部署"); break;

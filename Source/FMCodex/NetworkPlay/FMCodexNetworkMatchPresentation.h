@@ -31,6 +31,7 @@ struct FMCODEX_API FFMCodexNetworkMatchPresentation
 	/** Existing shared ThroughBall surface, including conditional routes and OneOnOne. */
 	UPROPERTY() FFMCodexUMGThroughBallResolutionViewModel ThroughBallSurface;
 	UPROPERTY() FFMCodexFullTimePresentation FullTime;
+	UPROPERTY() FFMCodexSetPieceSelectionPresentation SetPiece;
 };
 
 class FMCODEX_API FFMCodexNetworkMatchPresentationAdapter final

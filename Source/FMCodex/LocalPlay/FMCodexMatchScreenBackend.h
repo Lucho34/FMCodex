@@ -7,7 +7,7 @@
 enum class EFMCodexMatchScreenIntent : uint8
 {
 	StartMatch, TacticalPoints, DeployOrdinary, DeployGoalkeeper, FinishDeployment,
-	Carrier, Marker, Runner, Helper, Skill, Branch, Decline, NoLegal, OneOnOne, Continue
+	Carrier, Marker, Runner, Helper, Skill, Branch, Decline, NoLegal, OneOnOne, Continue, SetPieceType, SetPieceTaker, NearMethod, LongMethod, PenaltyMethod
 };
 
 struct FMCODEX_API FFMCodexMatchScreenRequest
@@ -15,6 +15,9 @@ struct FMCODEX_API FFMCodexMatchScreenRequest
 	EFMCodexMatchScreenIntent Kind = EFMCodexMatchScreenIntent::Continue;
 	FName OptionId = NAME_None;
 	FName SlotId = NAME_None;
+	EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None;
+	EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None;
+	EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None;
 	EFMCodexUMGBranchIntent Branch = EFMCodexUMGBranchIntent::None;
 	EFMCodexUMGOneOnOneChoice OneOnOne = EFMCodexUMGOneOnOneChoice::None;
 	EFMCodexUMGInteractionCategory Category = EFMCodexUMGInteractionCategory::None;

@@ -4,6 +4,7 @@
 #include "../CoreRules/InitialTurnOrderResolver.h"
 #include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
 #include "FMCodexFullTimePresentation.h"
+#include "FMCodexSetPieceSelectionPresentation.h"
 
 #include "FMCodexLocalMatchUMGPresentation.generated.h"
 
@@ -1862,6 +1863,7 @@ struct FMCODEX_API FFMCodexUMGMatchScreenViewModel
 	UPROPERTY() TArray<FFMCodexUMGResolvedRollViewModel> ResolvedRolls;
 
 	UPROPERTY() FFMCodexFullTimePresentation FullTime;
+	UPROPERTY() FFMCodexSetPieceSelectionPresentation SetPiece;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Screen")
 	FFMCodexUMGMatchHeaderViewModel Header;

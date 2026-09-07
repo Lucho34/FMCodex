@@ -10,6 +10,11 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 	if (!View.Presentation.bAvailable || Client.IsPending()) return false;
 	switch (Request.Kind)
 	{
+	case K::SetPieceType: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginSetPiece(View, N::RequestSetPieceTypeRoll, Out);
+	case K::SetPieceTaker: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginSetPiece(View, N::SubmitSetPieceCarrier, Out, Request.OptionId);
+	case K::NearMethod: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginSetPiece(View, N::SubmitShortFreeKickMethod, Out, NAME_None, Request.NearMethod);
+	case K::LongMethod: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginSetPiece(View, N::SubmitLongFreeKickMethod, Out, NAME_None, EMatchPlayShortFreeKickMethod::None, Request.LongMethod);
+	case K::PenaltyMethod: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginSetPiece(View, N::SubmitPenaltyMethod, Out, NAME_None, EMatchPlayShortFreeKickMethod::None, EMatchPlayLongFreeKickMethod::None, Request.PenaltyMethod);
 	case K::TacticalPoints: return Client.Begin(View, Out);
 	case K::DeployOrdinary:
 	{

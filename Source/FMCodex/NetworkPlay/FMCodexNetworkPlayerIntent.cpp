@@ -3,6 +3,29 @@
 EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloadShape() const
 {
 	using Code = EFMCodexNetworkIntentAckCode;
+ using K = EFMCodexNetworkPlayerIntentKind;
+ const bool LegacyEmpty = Deployment.IsEmpty() && Goalkeeper.IsEmpty() && Carrier.IsEmpty() && Marker.IsEmpty()
+  && Runner.IsEmpty() && Helper.IsEmpty() && Skill.IsEmpty() && Branch.IsEmpty()
+  && OneOnOneChoice == EMatchPlayThroughBallOneOnOneShotChoice::None;
+ const bool CardEmpty = SetPieceCardId.IsNone();
+ const bool NearEmpty = NearMethod == EMatchPlayShortFreeKickMethod::None;
+ const bool LongEmpty = LongMethod == EMatchPlayLongFreeKickMethod::None;
+ const bool PenaltyEmpty = PenaltyMethod == EMatchPlayPenaltyMethod::None;
+ switch (IntentKind)
+ {
+ case K::RequestSetPieceTypeRoll: return LegacyEmpty && CardEmpty && NearEmpty && LongEmpty && PenaltyEmpty ? Code::None : Code::InvalidPayload;
+ case K::SubmitSetPieceCarrier: return LegacyEmpty && !CardEmpty && SetPieceCardId.ToString().Len() <= 128 && NearEmpty && LongEmpty && PenaltyEmpty ? Code::None : Code::InvalidPayload;
+ case K::SubmitShortFreeKickMethod: return LegacyEmpty && CardEmpty && LongEmpty && PenaltyEmpty
+  && (NearMethod == EMatchPlayShortFreeKickMethod::Direct || NearMethod == EMatchPlayShortFreeKickMethod::Angled) ? Code::None : Code::InvalidPayload;
+ case K::SubmitLongFreeKickMethod: return LegacyEmpty && CardEmpty && NearEmpty && PenaltyEmpty
+  && (LongMethod == EMatchPlayLongFreeKickMethod::Direct || LongMethod == EMatchPlayLongFreeKickMethod::Power) ? Code::None : Code::InvalidPayload;
+ case K::SubmitPenaltyMethod: return LegacyEmpty && CardEmpty && NearEmpty && LongEmpty
+  && (PenaltyMethod == EMatchPlayPenaltyMethod::Direct || PenaltyMethod == EMatchPlayPenaltyMethod::Panenka) ? Code::None : Code::InvalidPayload;
+ default: break;
+ }
+ if (IntentKind != K::None && int32(IntentKind) <= int32(K::DeclineMarker)
+  && !(CardEmpty && NearEmpty && LongEmpty && PenaltyEmpty)) return Code::InvalidPayload;
+
 	switch (IntentKind)
 	{
 	case EFMCodexNetworkPlayerIntentKind::DeclineMarker:
@@ -229,12 +252,18 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	const FFMCodexNetworkSubmitSkillPayload& SkillChoice,
 	const FFMCodexNetworkSubmitBranchIntentPayload& BranchChoice,
 	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope,
-	EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice)
+	EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice, FName SetPieceCardId,
+ EMatchPlayShortFreeKickMethod NearMethod, EMatchPlayLongFreeKickMethod LongMethod, EMatchPlayPenaltyMethod PenaltyMethod)
 {
 	ObserveView(View);
 	bool bActionable = false;
 	switch (Kind)
 	{
+ case EFMCodexNetworkPlayerIntentKind::RequestSetPieceTypeRoll: bActionable = View.SetPiece.bCanRollType; break;
+ case EFMCodexNetworkPlayerIntentKind::SubmitSetPieceCarrier: bActionable = !View.SetPiece.bOptionsUnavailable && View.SetPiece.TakerOptions.Contains(SetPieceCardId); break;
+ case EFMCodexNetworkPlayerIntentKind::SubmitShortFreeKickMethod: bActionable = View.SetPiece.NearMethods.Contains(NearMethod); break;
+ case EFMCodexNetworkPlayerIntentKind::SubmitLongFreeKickMethod: bActionable = View.SetPiece.LongMethods.Contains(LongMethod); break;
+ case EFMCodexNetworkPlayerIntentKind::SubmitPenaltyMethod: bActionable = View.SetPiece.PenaltyMethods.Contains(PenaltyMethod); break;
 	case EFMCodexNetworkPlayerIntentKind::DeclineRunner:
 		bActionable = View.DeclineAction == EFMCodexNetworkDeclineAction::Runner;
 		break;
@@ -372,6 +401,8 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	Candidate.Skill = SkillChoice;
 	Candidate.Branch = BranchChoice;
 	Candidate.OneOnOneChoice = OneOnOneChoice;
+	Candidate.SetPieceCardId = SetPieceCardId; Candidate.NearMethod = NearMethod;
+	Candidate.LongMethod = LongMethod; Candidate.PenaltyMethod = PenaltyMethod;
 	if (IsPending() || !Match.IsValid() || NextRequestId == MAX_int64
 		|| View.ViewRevision < SeenViewRevision || !View.bMatchInitialized
 		|| View.BootstrapState != EFMCodexNetworkBootstrapState::MatchReady
@@ -410,4 +441,13 @@ void FFMCodexNetworkIntentClientState::CompleteIfReady()
 	{
 		PendingRequestId = 0;
 	}
+}
+
+bool FFMCodexNetworkIntentClientState::BeginSetPiece(const FFMCodexNetworkClientViewSnapshot& View,
+ EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& Out, FName Card,
+ EMatchPlayShortFreeKickMethod Near, EMatchPlayLongFreeKickMethod Long, EMatchPlayPenaltyMethod Penalty)
+{
+ if (Kind < EFMCodexNetworkPlayerIntentKind::RequestSetPieceTypeRoll || Kind > EFMCodexNetworkPlayerIntentKind::SubmitPenaltyMethod) return false;
+ return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, Out,
+  EMatchPlayThroughBallOneOnOneShotChoice::None, Card, Near, Long, Penalty);
 }

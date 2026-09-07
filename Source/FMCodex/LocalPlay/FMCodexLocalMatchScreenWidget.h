@@ -162,6 +162,7 @@ public:
 	bool IsInlineFormulaRevealInputBlocked() const;
 	UFMCodexRollReelWidget* GetTacticalPointRollReel() const;
 #if WITH_DEV_AUTOMATION_TESTS
+	void DevSetPieceAction(FName Action, FName Option);
 	friend struct FFMCodexHandoffTimerTestAccess;
 	void AdvanceInlineFormulaRevealForTesting(float DeltaSeconds);
 	void PauseInlineFormulaRevealTimerForTesting();
@@ -206,12 +207,17 @@ protected:
 	virtual void NativeDestruct() override;
 
 private:
+	FName NetworkDraftTaker = NAME_None;
+	int64 NetworkDraftTakerSequence = 0;
 	IFMCodexMatchScreenBackend* MatchBackend = nullptr; // Owning controller lifetime; cleared on EndPlay.
 	EFMCodexMatchScreenSubmission LastScreenSubmission = EFMCodexMatchScreenSubmission::Rejected;
 	EFMCodexMatchScreenSubmission SubmitScreenRequest(EFMCodexMatchScreenIntent Kind,
 		FName OptionId = NAME_None, FName SlotId = NAME_None,
 		EFMCodexUMGBranchIntent Branch = EFMCodexUMGBranchIntent::None,
-		EFMCodexUMGOneOnOneChoice OneOnOne = EFMCodexUMGOneOnOneChoice::None);
+		EFMCodexUMGOneOnOneChoice OneOnOne = EFMCodexUMGOneOnOneChoice::None,
+        EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None,
+        EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None,
+        EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None);
 	void BuildWidgetTree();
 	void RefreshVisuals();
 	void UpdateInlineFormulaRevealState(

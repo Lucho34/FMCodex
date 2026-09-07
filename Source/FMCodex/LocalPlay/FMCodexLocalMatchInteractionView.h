@@ -344,6 +344,12 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	TArray<FString> CornerAttackerNomineeRollLabels;
 	TArray<FString> CornerDefenderNomineeRollLabels;
 	bool bShortAngledEligible = false;
+	TArray<EMatchPlayShortFreeKickMethod> LegalNearMethods;
+	TArray<EMatchPlayLongFreeKickMethod> LegalLongMethods;
+	TArray<EMatchPlayPenaltyMethod> LegalPenaltyMethods;
+	EMatchPlayShortFreeKickMethod SelectedNearMethod = EMatchPlayShortFreeKickMethod::None;
+	EMatchPlayLongFreeKickMethod SelectedLongMethod = EMatchPlayLongFreeKickMethod::None;
+	EMatchPlayPenaltyMethod SelectedPenaltyMethod = EMatchPlayPenaltyMethod::None;
 	FMatchPlaySetPieceParticipantBinding SetPieceCarrier;
 	TArray<FMatchPlaySetPieceParticipantBinding> CornerAttackerNominees;
 	TArray<FMatchPlaySetPieceParticipantBinding> CornerDefenderNominees;

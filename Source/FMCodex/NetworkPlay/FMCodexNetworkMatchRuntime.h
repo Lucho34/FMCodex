@@ -70,6 +70,7 @@ public:
 	friend struct FFMCodexNetworkCrossTerminalTestAccess;
 	int32 GetCoordinatorInvocationCountForTests() const;
 #if !UE_BUILD_SHIPPING
+	void EnableSetPieceSelectionMilestone(int32 TypeD6);
 	void EnableDeploymentAutomationEntry(int32 InitialD12 = 4);
 	void EnableInitialRouteAutomation(int32 D6);
 	void EnablePostRouteAutomation(int32 AttackD6, int32 DefenseD6);
@@ -103,6 +104,7 @@ private:
 	int32 InitializationCount = 0;
 	bool bInitialized = false;
 	bool bPlayerFacingPresentation = false;
+	bool bSetPieceSelectionMilestone = false;
 	TUniquePtr<FFMCodexNetworkRandomProvider> RollProvider;
 	TUniquePtr<FFMCodexNetworkEntryRollProvider> EntryProvider;
 	TUniquePtr<FFMCodexNetworkInitialRouteRollProvider> InitialRouteProvider;
@@ -110,6 +112,7 @@ private:
 	TUniquePtr<FFMCodexNetworkRecoveryProvider> RecoveryProvider;
 	int64 DisclosedTerminalAttackSequence = 0;
 	int64 DisclosedInitialAttackSequence = 0;
+	int64 DisclosedSetPieceTypeSequence = 0;
 	int64 DisclosedRouteAttackSequence = 0;
 	int64 DisclosedContestAttackSequence = 0;
 	int32 DisclosedContestRollCount = 0;

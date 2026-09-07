@@ -425,6 +425,14 @@ namespace FMCodexNetworkMatchTypes
 			Result.Recovery = MoveTemp(Recovery);
 		}
 		if (!View.bTerminalPendingAdvance || Result.bGoalHistoryUnavailable) return;
+		if (View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece && View.bSetPieceNoLegalCarrier
+			&& View.bHasSetPieceOutcome && !View.bSetPieceGoal && View.SetPieceGoalScorerCardId.IsNone())
+		{
+			Result.Terminal.Outcome = EFMCodexNetworkTerminalOutcome::NoGoal;
+			Result.bCanAdvance = View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::AdvanceAfterTerminal
+				&& View.bHumanInteraction && View.ExpectedActingPlayer == Result.ViewerSide;
+			return;
+		}
 		const FName Primary = OrdinaryContestId(Result, View);
 		const bool DeadCorner = Primary == TEXT("LongShot.DeadCorner") || Primary == TEXT("CutInsideShot.DeadCorner");
 		const FName PrimaryDecision = DeadCorner ? FName(TEXT("DeadCorner.Outcome"))
@@ -676,6 +684,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	Result.PlayerBMaxAttackOpportunities =
 		SafeViewerView.PlayerBMaxAttackTurns;
 	Result.DisclosedInitialD12 = SafeViewerView.RawInitialD12;
+	Result.SetPiece = FFMCodexSetPieceSelectionPresentation::Build(SafeViewerView, ViewerSide);
 	switch (SafeViewerView.RouteKind)
 	{
 	case EMatchPlayCurrentAttackRouteKind::SendingOff:
@@ -702,6 +711,13 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	{
 		Result.EntryWait = EFMCodexNetworkEntryWait::SetPieceTypeRoll;
 	}
+	else if (Result.SetPiece.bVisible)
+    {
+        Result.EntryWait = Result.SetPiece.bTakerWait ? EFMCodexNetworkEntryWait::SetPieceTakerSelection
+          : Result.SetPiece.bMethodWait ? EFMCodexNetworkEntryWait::SetPieceMethodSelection
+          : Result.SetPiece.Type == ESetPieceSelectedType::Corner ? EFMCodexNetworkEntryWait::CornerSelectionBoundary
+          : EFMCodexNetworkEntryWait::SetPieceResolutionBoundary;
+    }
 	else if (SafeViewerView.MajorPhase == EFMCodexLocalMatchMajorPhase::Deployment)
 	{
 		Result.EntryWait = EFMCodexNetworkEntryWait::Deployment;

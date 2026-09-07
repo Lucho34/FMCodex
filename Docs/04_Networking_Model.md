@@ -578,3 +578,39 @@ Ordinary optional-choice inventory is complete: DeclineMarker, DeclineRunner, De
 Recovery classification: **RECOVERY PRESENTATION WIRING REPAIRED**. Canonical Advance still merges Used candidates, applies stamina weighting without replacement, returns at most two, preserves draw order and skips final Recovery. Existing safe Recovery facts now feed the Local nonblocking 球员返回手牌 notification in both Network viewers, with real card names/owners. Hand states continue to come from the same safe roster projection. Duplicate Advance cannot execute Recovery again; repeated View/ACK cannot replay the notification.
 
 Short manual Marker launch: `LaunchNetworkPlayDev.ps1 -PlayerFacingDeclineMilestone Marker -DeclineActor B` (A and DeclineFinal are also supported). It begins at legal Marker wait. The actual path is decline → system Goal → next Full D12, with no intervening Advance/Recovery. Use the existing LongShot DirectGoal milestone separately to inspect normal Advance → Recovery; do not force a combined lifecycle fixture that contradicts authority. USER PIE closes visible-flow acceptance.
+
+## Set-piece entry / taker / method family (Stage 7.21)
+
+This supersedes earlier blanket statements that every set-piece request is unnetworked. Entry and selection are supported; complete Near Free Kick, Long Free Kick, Penalty and Corner gameplay are **not complete**. General player-facing capability remains gated. An explicit non-Shipping selection milestone enables only the audited entry/selection controls in the shared LocalMatchScreenWidget.
+
+| Wire kind / Session entry | Typed request | Actor / exact prerequisite | RNG and next wait |
+|---|---|---|---|
+| 40 RequestSetPieceTypeRoll | FMatchPlaySetPieceTypeRollRequest | attacker; SetPiece/AwaitingTypeRoll, exact AttackSequence | one private entry D6; Corner nomination or non-Corner taker |
+| 41 SubmitSetPieceCarrier | FMatchPlaySetPieceCarrierSelectionRequest | attacker; corresponding AwaitingCarrier; own available non-GK CardId | zero; AwaitingMethod |
+| 42 SubmitShortFreeKickMethod | FMatchPlayShortFreeKickMethodRequest | attacker; Near AwaitingMethod, frozen taker; Direct or eligible Angled | zero; DirectAwaitingAttackRoll or AngledAwaitingRoll |
+| 43 SubmitLongFreeKickMethod | FMatchPlayLongFreeKickMethodRequest | attacker; Long AwaitingMethod, frozen taker; Direct or Power | zero; DirectAwaitingAttackRoll or PowerAwaitingRoll |
+| 44 SubmitPenaltyMethod | FMatchPlayPenaltyMethodRequest | attacker; Penalty AwaitingMethod, frozen taker; Direct or Panenka | zero; DirectAwaitingAttackRoll or PanenkaAwaitingRoll |
+
+Each request uses AttackSequence and server-derived RequestingSide. Only the common envelope carries client ExpectedAttackSequence. Type has empty payload; taker has only SetPieceCardId; each method has its own enum member. All unrelated members must be empty. Existing tags 1–39 reject the new members. All five share the same RequestId namespace, ≤1024 forward window, match/freshness/dedupe checks and ACK+View pending. Fresh IDs cannot reroll, replace a taker or rewrite a method. Invalid requests do not mutate State, invoke Coordinator, publish a new View or consume RNG; provider failure may attempt one private draw but adopts nothing.
+
+| Type D6 | Canonical type / next specialized state |
+|---|---|
+| 1–2 | Corner / AwaitingAttackerNominations; stop, no candidates or nomination secrets |
+| 3–4 | LongFreeKick / AwaitingCarrier |
+| 5 | ShortFreeKick (近距离任意球) / AwaitingCarrier |
+| 6 | Penalty / AwaitingCarrier |
+
+All six post-method states retain RoutePending / SelectionStage=None, attacker ownership and Coordinator WaitingForPlayerIntent, with zero internal continuation steps, new dice, score or scorer changes:
+
+| Chosen method | First unnetworked PlayerIntent |
+|---|---|
+| Near Direct / 直接射门 | ResolveShortFreeKickDirectAttackRoll |
+| Near Angled / 战术配合 | ResolveShortFreeKickAngledRoll (paired roll) |
+| Long Direct / 直接射门 | ResolveLongFreeKickDirectAttackRoll |
+| Long Power / 重炮轰门 | ResolveLongFreeKickPowerRoll (paired roll) |
+| Penalty Direct / 常规点球 | ResolvePenaltyDirectAttackRoll |
+| Penalty Panenka / 勺子点球 | ResolvePenaltyPanenkaRoll (single roll) |
+
+If no legal taker exists after the type draw, the existing internal no-taker resolution persists NoGoal and stops at TerminalPendingAdvance. Exact type/terminal permission projects that existing public fact and Advance capability; it does not claim support for decisive set-piece resolution. Corner has a different sealed nomination/disclosure contract and remains separate.
+
+DEV entry: `Scripts/NetworkPlay/LaunchNetworkPlayDev.ps1 -PlayerFacingSetPieceMilestone Near -SetPieceActor A`. Near/Long/Penalty/Corner and A/B are supported fixture choices. Host-only provider injection supplies D12=9 and the corresponding type D6; all gameplay transitions still execute canonically. The user performs D12, type, hand draft/confirmation and method through real generated RPC. General launch retains secure RNG. Method/Corner boundary copy explicitly says the continuation is unavailable; no decisive CTA appears. Automated screenshots are evidence, not USER PIE acceptance.

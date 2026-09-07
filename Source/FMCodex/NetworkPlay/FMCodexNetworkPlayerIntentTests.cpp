@@ -401,7 +401,15 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
-		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner"), TEXT("Helper"), TEXT("Skill"), TEXT("Branch"), TEXT("OneOnOneChoice")});
+		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner"), TEXT("Helper"), TEXT("Skill"), TEXT("Branch"), TEXT("OneOnOneChoice"),
+		TEXT("SetPieceCardId"), TEXT("NearMethod"), TEXT("LongMethod"), TEXT("PenaltyMethod")});
+	// Selection-only facts: this exact inventory also prevents future dice, Formula, participant snapshots or Corner nominations from entering the DTO.
+	ExactFields(FFMCodexSetPieceSelectionPresentation::StaticStruct(),
+		{TEXT("bVisible"), TEXT("bSelectionSupported"), TEXT("bOptionsUnavailable"), TEXT("bTypeWait"),
+		TEXT("bTakerWait"), TEXT("bMethodWait"), TEXT("bCanRollType"), TEXT("bNoTakerNoGoal"),
+		TEXT("AttackingSide"), TEXT("ActingSide"), TEXT("TypeD6"), TEXT("Type"), TEXT("CarrierStage"), TEXT("CornerStage"),
+		TEXT("TypeLabel"), TEXT("TakerCardId"), TEXT("TakerLabel"), TEXT("TakerOptions"),
+		TEXT("NearMethods"), TEXT("LongMethods"), TEXT("PenaltyMethods"), TEXT("NearMethod"), TEXT("LongMethod"), TEXT("PenaltyMethod")});
 	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkDeployGoalkeeperPayload::StaticStruct(), {TEXT("SlotId")});
 	ExactFields(FFMCodexNetworkSubmitCarrierPayload::StaticStruct(), {TEXT("CarrierCardId")});
@@ -433,7 +441,7 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		TEXT("InteractionState"), TEXT("bMatchInitialized"), TEXT("bMatchEnded"), TEXT("AttackSequence"),
 		TEXT("CurrentAttackingSide"), TEXT("ExpectedActingSide"), TEXT("PlayerAScore"), TEXT("PlayerBScore"),
 		TEXT("PlayerAMaxAttackOpportunities"), TEXT("PlayerBMaxAttackOpportunities"),
-		TEXT("DisclosedInitialD12"), TEXT("EntryBranch"), TEXT("EntryWait"), TEXT("DeclineAction"), TEXT("DeploymentOptions"),
+		TEXT("DisclosedInitialD12"), TEXT("SetPiece"), TEXT("EntryBranch"), TEXT("EntryWait"), TEXT("DeclineAction"), TEXT("DeploymentOptions"),
 		TEXT("DeploymentCount"), TEXT("LastDeployment"), TEXT("bCanDeployGoalkeeper"), TEXT("GoalkeeperOption"),
 		TEXT("GoalkeeperDeployment"), TEXT("bCanFinishDeployment"), TEXT("bPlayerADeploymentFinished"),
 		TEXT("bPlayerBDeploymentFinished"), TEXT("bDeploymentComplete"), TEXT("CarrierOptions"),
