@@ -1,6 +1,8 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "FMCodexNetworkSetPieceSelectionTestFixture.h"
 #include "../CoreRules/MatchPlaySetPieceTypeRoll.h"
+namespace FMCodexNetworkSetPieceSelectionTestsScope
+{
 using namespace FMCodexSetPieceSelectionTests;
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexSetPieceTypes,"FMCodex.NetworkPlay.SetPieceSelection.TypeMatrix",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 void FFMCodexSetPieceTypes::GetTests(TArray<FString>& N,TArray<FString>& C) const
@@ -26,7 +28,7 @@ bool FFMCodexSetPieceTypes::RunTest(const FString& P)
   TestTrue(TEXT("No future contest/formula/terminal"),V.AcceptedContestRolls.IsEmpty()&&V.Terminal.Outcome==EFMCodexNetworkTerminalOutcome::None&&!V.Presentation.InlineFormula.bVisible);
   TestEqual(TEXT("One accepted type event"),V.Presentation.ResolvedRolls.Num(),1);
   if(D6<=2)
-  {TestEqual(TEXT("Corner stops at nomination boundary"),V.EntryWait,Wait::CornerSelectionBoundary);TestTrue(TEXT("Corner exposes no taker or methods"),V.SetPiece.TakerOptions.IsEmpty()&&V.SetPiece.NearMethods.IsEmpty()&&V.SetPiece.LongMethods.IsEmpty()&&V.SetPiece.PenaltyMethods.IsEmpty());}
+  {TestEqual(TEXT("Corner reaches typed nomination wait"),V.EntryWait,Wait::CornerAttackerNominations);TestTrue(TEXT("Corner exposes no taker or methods"),V.SetPiece.TakerOptions.IsEmpty()&&V.SetPiece.NearMethods.IsEmpty()&&V.SetPiece.LongMethods.IsEmpty()&&V.SetPiece.PenaltyMethods.IsEmpty());}
   else {TestEqual(TEXT("Canonical taker wait"),V.EntryWait,Wait::SetPieceTakerSelection);TestEqual(TEXT("Complete canonical 19 takers only for actor"),V.SetPiece.TakerOptions.Num(),PC==F.Attacker()?19:0);}
  }
  if(D6<=2)TestEqual(TEXT("Actual Corner state remains sealed nomination wait"),SP.Corner.Stage,EMatchPlaySetPieceCornerRouteStage::AwaitingAttackerNominations);
@@ -96,5 +98,6 @@ bool FFMCodexSetPieceSecurity::RunTest(const FString& P)
  if(Case==TEXT("AckFirst")){C.ObserveAck(Ack);TestTrue(TEXT("ACK alone stays pending"),C.IsPending());C.ObserveView(PC->GetOwnerView());}
  else{C.ObserveView(PC->GetOwnerView());TestTrue(TEXT("View alone stays pending"),C.IsPending());C.ObserveAck(Ack);}
  TestFalse(TEXT("ACK and View clears"),C.IsPending());C.ObserveAck(Ack);C.ObserveView(PC->GetOwnerView());TestFalse(TEXT("Repeated observations remain clear"),C.IsPending());return true;
+}
 }
 #endif

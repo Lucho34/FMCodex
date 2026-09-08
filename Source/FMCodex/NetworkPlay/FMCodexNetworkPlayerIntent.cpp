@@ -11,8 +11,23 @@ EFMCodexNetworkIntentAckCode FFMCodexNetworkPlayerIntentEnvelope::ValidatePayloa
  const bool NearEmpty = NearMethod == EMatchPlayShortFreeKickMethod::None;
  const bool LongEmpty = LongMethod == EMatchPlayLongFreeKickMethod::None;
  const bool PenaltyEmpty = PenaltyMethod == EMatchPlayPenaltyMethod::None;
+ const bool CornerEmpty = CornerCandidateIds.IsEmpty() && CornerIntent == EMatchPlayCornerRouteIntent::None;
+ if (IntentKind != K::None && IntentKind <= K::ResolvePenaltyPanenkaRoll && !CornerEmpty) return Code::InvalidPayload;
+ const bool OtherEmpty = LegacyEmpty && CardEmpty && NearEmpty && LongEmpty && PenaltyEmpty;
  switch (IntentKind)
  {
+ case K::SubmitCornerAttackerNominations:
+ case K::SubmitCornerDefenderNominations:
+  if (!OtherEmpty || CornerIntent != EMatchPlayCornerRouteIntent::None || CornerCandidateIds.Num() > 3) return Code::InvalidPayload;
+  for (FName Id : CornerCandidateIds) if (Id.IsNone() || Id.ToString().Len() > 128) return Code::InvalidPayload;
+  return Code::None; // Order and eligibility belong to canonical nomination validation.
+ case K::SubmitCornerIntent: return OtherEmpty && CornerCandidateIds.IsEmpty()
+  && (CornerIntent == EMatchPlayCornerRouteIntent::High || CornerIntent == EMatchPlayCornerRouteIntent::Low) ? Code::None : Code::InvalidPayload;
+ case K::RequestCornerParticipantSelectionRoll:
+ case K::RequestCornerRouteRoll:
+ case K::RequestCornerAttackRoll:
+ case K::RequestCornerDefenseRoll: return OtherEmpty && CornerEmpty ? Code::None : Code::InvalidPayload;
+
  case K::ResolveShortFreeKickDirectAttackRoll:
  case K::ResolveShortFreeKickDirectDefenseRoll:
  case K::ResolveShortFreeKickAngledRoll:
@@ -262,12 +277,21 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	const FFMCodexNetworkSubmitBranchIntentPayload& BranchChoice,
 	FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope,
 	EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice, FName SetPieceCardId,
- EMatchPlayShortFreeKickMethod NearMethod, EMatchPlayLongFreeKickMethod LongMethod, EMatchPlayPenaltyMethod PenaltyMethod)
+ EMatchPlayShortFreeKickMethod NearMethod, EMatchPlayLongFreeKickMethod LongMethod, EMatchPlayPenaltyMethod PenaltyMethod,
+ const TArray<FName>& CornerCandidateIds, EMatchPlayCornerRouteIntent CornerIntent)
 {
 	ObserveView(View);
 	bool bActionable = false;
 	switch (Kind)
 	{
+ case EFMCodexNetworkPlayerIntentKind::SubmitCornerAttackerNominations: bActionable = View.EntryWait == EFMCodexNetworkEntryWait::CornerAttackerNominations && !View.SetPiece.bOptionsUnavailable; break;
+ case EFMCodexNetworkPlayerIntentKind::SubmitCornerDefenderNominations: bActionable = View.EntryWait == EFMCodexNetworkEntryWait::CornerDefenderNominations && !View.SetPiece.bOptionsUnavailable; break;
+ case EFMCodexNetworkPlayerIntentKind::RequestCornerParticipantSelectionRoll: bActionable = View.EntryWait == EFMCodexNetworkEntryWait::CornerParticipantSelectionRoll; break;
+ case EFMCodexNetworkPlayerIntentKind::SubmitCornerIntent: bActionable = View.EntryWait == EFMCodexNetworkEntryWait::CornerIntent; break;
+ case EFMCodexNetworkPlayerIntentKind::RequestCornerRouteRoll: bActionable = View.EntryWait == EFMCodexNetworkEntryWait::CornerRouteRoll; break;
+ case EFMCodexNetworkPlayerIntentKind::RequestCornerAttackRoll: bActionable = View.EntryWait == EFMCodexNetworkEntryWait::CornerAttackRoll; break;
+ case EFMCodexNetworkPlayerIntentKind::RequestCornerDefenseRoll: bActionable = View.EntryWait == EFMCodexNetworkEntryWait::CornerDefenseRoll; break;
+
  case EFMCodexNetworkPlayerIntentKind::RequestSetPieceTypeRoll: bActionable = View.SetPiece.bCanRollType; break;
  case EFMCodexNetworkPlayerIntentKind::SubmitSetPieceCarrier: bActionable = !View.SetPiece.bOptionsUnavailable && View.SetPiece.TakerOptions.Contains(SetPieceCardId); break;
  case EFMCodexNetworkPlayerIntentKind::SubmitShortFreeKickMethod: bActionable = View.SetPiece.NearMethods.Contains(NearMethod); break;
@@ -439,6 +463,7 @@ bool FFMCodexNetworkIntentClientState::BeginIntent(const FFMCodexNetworkClientVi
 	Candidate.OneOnOneChoice = OneOnOneChoice;
 	Candidate.SetPieceCardId = SetPieceCardId; Candidate.NearMethod = NearMethod;
 	Candidate.LongMethod = LongMethod; Candidate.PenaltyMethod = PenaltyMethod;
+	Candidate.CornerCandidateIds = CornerCandidateIds; Candidate.CornerIntent = CornerIntent;
 	if (IsPending() || !Match.IsValid() || NextRequestId == MAX_int64
 		|| View.ViewRevision < SeenViewRevision || !View.bMatchInitialized
 		|| View.BootstrapState != EFMCodexNetworkBootstrapState::MatchReady
@@ -486,4 +511,13 @@ bool FFMCodexNetworkIntentClientState::BeginSetPiece(const FFMCodexNetworkClient
  if (Kind < EFMCodexNetworkPlayerIntentKind::RequestSetPieceTypeRoll || Kind > EFMCodexNetworkPlayerIntentKind::ResolvePenaltyPanenkaRoll) return false;
  return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, Out,
   EMatchPlayThroughBallOneOnOneShotChoice::None, Card, Near, Long, Penalty);
+}
+
+bool FFMCodexNetworkIntentClientState::BeginCorner(const FFMCodexNetworkClientViewSnapshot& View,
+ EFMCodexNetworkPlayerIntentKind Kind, FFMCodexNetworkPlayerIntentEnvelope& Out,
+ const TArray<FName>& Candidates, EMatchPlayCornerRouteIntent Route)
+{
+ if (Kind < EFMCodexNetworkPlayerIntentKind::SubmitCornerAttackerNominations || Kind > EFMCodexNetworkPlayerIntentKind::RequestCornerDefenseRoll) return false;
+ return BeginIntent(View, Kind, {}, {}, {}, {}, {}, {}, {}, {}, Out,
+  EMatchPlayThroughBallOneOnOneShotChoice::None, NAME_None, {}, {}, {}, Candidates, Route);
 }

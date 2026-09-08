@@ -764,6 +764,7 @@ void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 {
 	ResetInlineFormulaRevealState();
 	NetworkDraftTaker = NAME_None; NetworkDraftTakerSequence = 0;
+	NetworkCornerDraft.Reset(); NetworkCornerDraftSequence = 0; NetworkCornerDraftStage = EMatchPlaySetPieceCornerRouteStage::None; bNetworkCornerConfirmation = false;
 	Presentation = {};
 }
 
@@ -780,7 +781,8 @@ void UFMCodexLocalMatchScreenWidget::NotifyScreenRequestRejected()
 EFMCodexMatchScreenSubmission UFMCodexLocalMatchScreenWidget::SubmitScreenRequest(
 	EFMCodexMatchScreenIntent Kind, FName OptionId, FName SlotId,
 	EFMCodexUMGBranchIntent Branch, EFMCodexUMGOneOnOneChoice OneOnOne,
- EMatchPlayShortFreeKickMethod NearMethod, EMatchPlayLongFreeKickMethod LongMethod, EMatchPlayPenaltyMethod PenaltyMethod)
+ EMatchPlayShortFreeKickMethod NearMethod, EMatchPlayLongFreeKickMethod LongMethod, EMatchPlayPenaltyMethod PenaltyMethod,
+ const TArray<FName>& CornerCandidates, EMatchPlayCornerRouteIntent CornerIntent)
 {
 	LastScreenSubmission = EFMCodexMatchScreenSubmission::Rejected;
 	if (!MatchBackend || IsScreenRequestPending()
@@ -790,6 +792,7 @@ EFMCodexMatchScreenSubmission UFMCodexLocalMatchScreenWidget::SubmitScreenReques
 	Request.Kind = Kind; Request.OptionId = OptionId; Request.SlotId = SlotId;
 	Request.Branch = Branch; Request.OneOnOne = OneOnOne; Request.Category = Presentation.Interaction.Category;
 	Request.NearMethod = NearMethod; Request.LongMethod = LongMethod; Request.PenaltyMethod = PenaltyMethod;
+	Request.CornerCandidateIds = CornerCandidates; Request.CornerIntent = CornerIntent;
 	// Begin the existing visual timeline before either a synchronous Local call or asynchronous enqueue.
 	const auto Identity = PendingCrossRollIdentity(Presentation);
 	if ((Kind == EFMCodexMatchScreenIntent::TacticalPoints || Kind == EFMCodexMatchScreenIntent::Continue || Kind == EFMCodexMatchScreenIntent::SetPieceType)
@@ -1282,6 +1285,10 @@ void UFMCodexLocalMatchScreenWidget::DevSetPieceAction(FName Action, FName Optio
 	else if (Action == TEXT("LongPower")) HandleLongPowerRequested();
 	else if (Action == TEXT("PenaltyDirect")) HandlePenaltyDirectRequested();
 	else if (Action == TEXT("PenaltyPanenka")) HandlePenaltyPanenkaRequested();
+	else if (Action == TEXT("CornerCandidate")) HandleSetPieceHandCardRequested(Option);
+	else if (Action == TEXT("CornerReturn")) HandleCornerReturnRequested();
+	else if (Action == TEXT("CornerHigh")) HandleCornerHighRequested();
+	else if (Action == TEXT("CornerLow")) HandleCornerLowRequested();
 }
 #endif
 void UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested(
@@ -1291,6 +1298,15 @@ void UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested(
 	{
 		MatchController->ToggleSetPieceDraftCard(CardId);
 	}
+    else if (MatchBackend && Presentation.SetPiece.bSelectionSupported && Presentation.SetPiece.bCornerDraft
+        && !IsScreenRequestPending() && !IsInlineFormulaRevealInputBlocked() && !bNetworkCornerConfirmation
+        && Presentation.SetPiece.CornerOptions.Contains(CardId))
+    {
+        const int32 Index = NetworkCornerDraft.IndexOfByKey(CardId);
+        if (Index != INDEX_NONE) NetworkCornerDraft.RemoveAt(Index);
+        else if (NetworkCornerDraft.Num() < 3) NetworkCornerDraft.Add(CardId);
+        RefreshVisuals();
+    }
     else if (MatchBackend && !IsScreenRequestPending() && !IsInlineFormulaRevealInputBlocked()
         && Presentation.SetPiece.bSelectionSupported && Presentation.SetPiece.TakerOptions.Contains(CardId))
     {
@@ -1308,7 +1324,15 @@ void UFMCodexLocalMatchScreenWidget::HandleSetPiecePrimaryRequested()
 	}
     else if (Presentation.SetPiece.bSelectionSupported)
     {
-        if (Presentation.SetPiece.bNoTakerNoGoal) { RequestContinueResolution(); return; }
+        if (Presentation.SetPiece.bCornerDraft && !Presentation.bActionWaitPromptReadOnly
+            && !IsScreenRequestPending() && !IsInlineFormulaRevealInputBlocked())
+        {
+            if (NetworkCornerDraft.Num() < 3 && !bNetworkCornerConfirmation)
+            { bNetworkCornerConfirmation = true; RefreshVisuals(); return; }
+            SubmitScreenRequest(EFMCodexMatchScreenIntent::CornerNominations, {}, {}, {}, {}, {}, {}, {}, NetworkCornerDraft);
+            return;
+        }
+        if (Presentation.SetPiece.Type == ESetPieceSelectedType::Corner || Presentation.SetPiece.bNoTakerNoGoal) { RequestContinueResolution(); return; }
         if (Presentation.SetPiece.bCanRollType) SubmitScreenRequest(EFMCodexMatchScreenIntent::SetPieceType);
         else if (Presentation.SetPiece.bTakerWait && Presentation.SetPiece.TakerOptions.Contains(NetworkDraftTaker))
             SubmitScreenRequest(EFMCodexMatchScreenIntent::SetPieceTaker, NetworkDraftTaker);
@@ -1319,6 +1343,8 @@ void UFMCodexLocalMatchScreenWidget::HandleCornerReturnRequested()
 {
 	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
 		MatchController->CancelCornerLockConfirmation();
+	else if (MatchBackend && !IsInlineFormulaRevealInputBlocked() && !IsScreenRequestPending())
+	{ bNetworkCornerConfirmation = false; RefreshVisuals(); }
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleShortDirectRequested()
@@ -1367,12 +1393,16 @@ void UFMCodexLocalMatchScreenWidget::HandleCornerHighRequested()
 {
 	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
 		MatchController->SubmitCornerIntent(EMatchPlayCornerRouteIntent::High);
+	else if (Presentation.SetPiece.bCornerIntentWait && !Presentation.bActionWaitPromptReadOnly)
+		SubmitScreenRequest(EFMCodexMatchScreenIntent::CornerIntent, {}, {}, {}, {}, {}, {}, {}, {}, EMatchPlayCornerRouteIntent::High);
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleCornerLowRequested()
 {
 	if (MatchController != nullptr && !IsInlineFormulaRevealInputBlocked())
 		MatchController->SubmitCornerIntent(EMatchPlayCornerRouteIntent::Low);
+	else if (Presentation.SetPiece.bCornerIntentWait && !Presentation.bActionWaitPromptReadOnly)
+		SubmitScreenRequest(EFMCodexMatchScreenIntent::CornerIntent, {}, {}, {}, {}, {}, {}, {}, {}, EMatchPlayCornerRouteIntent::Low);
 }
 
 bool UFMCodexLocalMatchScreenWidget::DoesSetPieceOwnCurrentPrimaryAction() const
@@ -1398,6 +1428,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
     if (!MatchController)
     {
         const auto& P = Presentation.SetPiece;
+        if (!P.bCornerDraft || NetworkCornerDraftSequence != Presentation.Header.AttackSequence || NetworkCornerDraftStage != P.CornerStage)
+        {
+            NetworkCornerDraft.Reset(); bNetworkCornerConfirmation = false;
+            NetworkCornerDraftSequence = Presentation.Header.AttackSequence; NetworkCornerDraftStage = P.CornerStage;
+        }
         if (!P.bTakerWait || NetworkDraftTakerSequence != Presentation.Header.AttackSequence)
             NetworkDraftTaker = NAME_None;
         NetworkSurface.RouteKind = P.bVisible ? EMatchPlayCurrentAttackRouteKind::SetPiece : EMatchPlayCurrentAttackRouteKind::None;
@@ -1414,6 +1449,31 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
         NetworkSurface.SetPieceCarrier.bIsBound = !P.TakerCardId.IsNone();
         NetworkSurface.SetPieceCarrier.CardId = P.TakerCardId;
         NetworkSurface.SetPieceCarrier.OwnerSide = NetworkSurface.CurrentAttackingPlayer;
+        NetworkSurface.CornerStage = P.CornerStage;
+        NetworkSurface.bCornerAttackerNominationsLocked = P.bCornerAttackerLocked;
+        NetworkSurface.bCornerDefenderNominationsLocked = P.bCornerDefenderLocked;
+        NetworkSurface.bHideCornerAttackerNomineeDetails = P.bHideCornerAttackerDetails;
+        // Identity-only adaptation for the existing formatter. Snapshot fields remain empty.
+        auto Identity = [](FName Id, EInitialTurnOrderPlayer Side)
+        { FMatchPlaySetPieceParticipantBinding B; B.bIsBound = !Id.IsNone(); B.CardId = Id; B.OwnerSide = Side; return B; };
+        const auto Defender = P.AttackingSide == EInitialTurnOrderPlayer::PlayerA ? EInitialTurnOrderPlayer::PlayerB : EInitialTurnOrderPlayer::PlayerA;
+        for (FName Id : P.CornerAttackers) NetworkSurface.CornerAttackerNominees.Add(Identity(Id, P.AttackingSide));
+        for (FName Id : P.CornerDefenders) NetworkSurface.CornerDefenderNominees.Add(Identity(Id, Defender));
+        NetworkSurface.CornerRunner = Identity(P.CornerRunner, P.AttackingSide);
+        NetworkSurface.CornerHelper = Identity(P.CornerHelper, Defender);
+        NetworkSurface.CornerAttackerNomineeRollLabels = P.CornerAttackerRollLabels;
+        NetworkSurface.CornerDefenderNomineeRollLabels = P.CornerDefenderRollLabels;
+        NetworkSurface.bHasCornerSharedParticipantD6 = P.CornerSharedD6 > 0;
+        NetworkSurface.CornerSharedParticipantD6 = P.CornerSharedD6;
+        NetworkSurface.CornerCandidateBonusSide = P.CornerBonusSide; NetworkSurface.CornerCandidateBonus = P.CornerBonus;
+        NetworkSurface.DraftCornerNomineeCardIds = NetworkCornerDraft;
+        NetworkSurface.bCornerLockConfirmationPending = bNetworkCornerConfirmation;
+        if (P.bCornerDraft) NetworkSurface.InteractionCategory = P.CornerStage == EMatchPlaySetPieceCornerRouteStage::AwaitingAttackerNominations
+            ? EFMCodexLocalMatchInteractionCategory::DraftCornerAttacker : EFMCodexLocalMatchInteractionCategory::DraftCornerDefender;
+        else if (P.bCornerIntentWait) NetworkSurface.InteractionCategory = EFMCodexLocalMatchInteractionCategory::SelectCornerIntent;
+        else if (P.CornerStage == EMatchPlaySetPieceCornerRouteStage::AwaitingParticipantSelectionRoll)
+            NetworkSurface.InteractionCategory = EFMCodexLocalMatchInteractionCategory::RollCornerParticipantSelection;
+
 
     }
 	const FFMCodexLocalMatchInteractionView& View = MatchController ? MatchController->GetInteractionView() : NetworkSurface;
@@ -1426,7 +1486,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
 		&& (View.RouteKind
 				== EMatchPlayCurrentAttackRouteKind::SendingOff
 			|| (View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
-				&& !bOrdinaryFormulaSurfaceOwnsSetPiece));
+				&& (bParticipantReveal || !bOrdinaryFormulaSurfaceOwnsSetPiece)));
 	SetPieceResolutionSurface->SetVisibility(bVisible
 		? ESlateVisibility::SelfHitTestInvisible
 		: ESlateVisibility::Collapsed);
@@ -1624,7 +1684,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
         if (!Method.IsEmpty()) Status += FText::Format(NSLOCTEXT("FMCodexSetPiece", "ChosenMethod", "\n已选择：{0}"), Method).ToString();
         if (Presentation.SetPiece.bNoTakerNoGoal)
             Detail = NSLOCTEXT("FMCodexSetPiece", "NoTaker", "没有可用的主罚球员，本次进攻未进球。").ToString();
-        else if (!Presentation.SetPiece.bSelectionSupported || (!Presentation.SetPiece.bTypeWait && !Presentation.SetPiece.bTakerWait && !Presentation.SetPiece.bMethodWait))
+        else if (!Presentation.SetPiece.bSelectionSupported || (Presentation.SetPiece.Type != ESetPieceSelectedType::Corner && !Presentation.SetPiece.bTypeWait && !Presentation.SetPiece.bTakerWait && !Presentation.SetPiece.bMethodWait))
             Detail = NSLOCTEXT("FMCodexSetPiece", "NetworkBoundary", "本次联网演示到此结束，后续定位球流程暂未开放。").ToString();
         else if (Presentation.bActionWaitPromptReadOnly)
             Detail = Presentation.ActionWaitActionText.ToString();
@@ -1754,7 +1814,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
 	PenaltyDirectButton->SetIsEnabled(bChoiceInputEnabled);
 	PenaltyPanenkaButton->SetIsEnabled(bChoiceInputEnabled);
 	const bool bCornerIntent = View.InteractionCategory
-		== EFMCodexLocalMatchInteractionCategory::SelectCornerIntent && !bParticipantReveal;
+		== EFMCodexLocalMatchInteractionCategory::SelectCornerIntent && !bParticipantReveal
+		&& (MatchController || !Presentation.bActionWaitPromptReadOnly);
 	SetPieceMethodChoiceRow->SetVisibility(bMethod || bCornerIntent
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	CornerHighButton->SetVisibility(bCornerIntent ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -1763,7 +1824,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
 	CornerLowButton->SetIsEnabled(bChoiceInputEnabled);
     const bool bNetworkConfirm = !MatchController && Presentation.SetPiece.bSelectionSupported
         && Presentation.SetPiece.bTakerWait && !Presentation.bActionWaitPromptReadOnly && !NetworkDraftTaker.IsNone();
-	const bool bHasPrimary = (Presentation.Interaction.PrimaryAction.bAvailable || bNetworkConfirm)
+	const bool bHasPrimary = (Presentation.Interaction.PrimaryAction.bAvailable || bNetworkConfirm
+			|| (!MatchController && Presentation.SetPiece.bCornerDraft && !Presentation.bActionWaitPromptReadOnly))
 		&& !bMethod && !bCornerIntent && !bParticipantReveal
 		&& View.InteractionCategory
 			!= EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier
@@ -3501,7 +3563,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	const auto SetPieceType = MatchController ? MatchController->GetInteractionView().SetPieceType : Presentation.SetPiece.Type;
 	const bool bSetPieceAttackPrefix = ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack
 		&& (SetPieceType == ESetPieceSelectedType::ShortFreeKick
-			|| ((SetPieceType == ESetPieceSelectedType::LongFreeKick || SetPieceType == ESetPieceSelectedType::Penalty) && Result.bShowDefenseRow));
+			|| ((SetPieceType == ESetPieceSelectedType::LongFreeKick || SetPieceType == ESetPieceSelectedType::Penalty || SetPieceType == ESetPieceSelectedType::Corner) && Result.bShowDefenseRow));
 	const bool bSetPieceTerminalNarrative = bSetPieceMethodReveal && !bSetPieceAttackPrefix
 		&& ActiveCrossRollReveal.Kind
 			!= EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
@@ -3790,9 +3852,15 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedHandRack(
 		{
 			Cell.bSetPieceSelectable = Presentation.SetPiece.bSelectionSupported
 				&& !IsScreenRequestPending() && !IsInlineFormulaRevealInputBlocked()
-				&& Presentation.SetPiece.TakerOptions.Contains(Cell.Card.CardId);
+				&& (Presentation.SetPiece.TakerOptions.Contains(Cell.Card.CardId)
+					|| (!bNetworkCornerConfirmation && Presentation.SetPiece.CornerOptions.Contains(Cell.Card.CardId)));
 			Cell.bSetPieceSelected = Presentation.SetPiece.bTakerWait && NetworkDraftTakerSequence == Presentation.Header.AttackSequence
 				&& Cell.Card.CardId == NetworkDraftTaker;
+			if (Presentation.SetPiece.bCornerDraft && NetworkCornerDraftSequence == Presentation.Header.AttackSequence)
+			{
+				Cell.SetPieceSelectionOrder = NetworkCornerDraft.IndexOfByKey(Cell.Card.CardId) + 1;
+				Cell.bSetPieceSelected = Cell.SetPieceSelectionOrder > 0;
+			}
 		}
 	if (CanRevealTacticalPointDependentPresentation())
 	{
@@ -4749,7 +4817,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	// Messaging ownership follows the visible shared takeover on BOTH viewers,
 	// including the read-only viewer with no branch choices or primary action.
 	const bool bSetPieceResolutionSurface = StandaloneInlineFormula.bVisible
-		&& (Presentation.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type == ESetPieceSelectedType::LongFreeKick || Presentation.SetPiece.Type == ESetPieceSelectedType::Penalty);
+		&& (Presentation.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type == ESetPieceSelectedType::LongFreeKick || Presentation.SetPiece.Type == ESetPieceSelectedType::Penalty || Presentation.SetPiece.Type == ESetPieceSelectedType::Corner);
 	const bool bCentralOwnsActionPrompt = Presentation.bMirrorActionWaitPrompt
 		&& (bSetPieceResolutionSurface || (bLongShotProductionOwnsResolution && DisplayedLongShot.bVisible)
 			|| (Presentation.SetPiece.bVisible && !IsInlineFormulaRevealInputBlocked()))

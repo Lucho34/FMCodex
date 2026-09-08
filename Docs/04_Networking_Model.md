@@ -665,3 +665,28 @@ All kind-specific payload members are empty. Side derives from connection/Partic
 Direct accepted roll purposes use indices 0/1; Panenka has only index 0. Local presentation identities remain SetPiece.Attack/SetPieceAttack/0 and SetPiece.Defense/SetPieceDefense/0; Panenka uses only the former, never a fake second die. Terminal/GoalHistory/scorer facts require the complete permitted prefix and independent terminal disclosure. Legally disclosed facts replicate immediately; shared Reel, actual elapsed ResultHold, Formula/Narrative and displayed-score gates control visible timing. Host and Remote both submit generated RPC through the same Screen/action adapter.
 
 Optional non-Shipping Host-only launcher: `Scripts/NetworkPlay/LaunchNetworkPlayDev.ps1 -PlayerFacingPenaltyMilestone DirectGoal -SetPieceActor A`. Modes: DirectGoal, DirectMiss, PanenkaGoal, PanenkaMiss; actor A or B. Provider seam supplies D12=9/type D6=6, Direct 6/1 or 1/6, Panenka 2 or 1. Taker/method remain player choices and all outcomes/progression remain canonical. Remote receives no fixture controls; default launch retains secure randomness. Normal stage engineering evidence is at most one representative two-process path, with branch/side differences covered by focused automation; USER PIE remains required for visible milestone acceptance.
+
+
+## Corner Network resolution family (Stage 7.25)
+
+This supersedes the earlier Corner selection boundary. General player-facing Network capability covers all four set-piece families. LocalPlay retains its own transport-independent path and both modes use the same Corner authority, Formula and completion lifecycle.
+
+| Appended wire tag / typed intent | Existing request | Actor / canonical wait |
+|---|---|---|
+| 54 SubmitCornerAttackerNominations | FMatchPlayCornerNominationRequest | attacker / AwaitingAttackerNominations |
+| 55 SubmitCornerDefenderNominations | same | defender / AwaitingDefenderNominations |
+| 56 RequestCornerParticipantSelectionRoll | FMatchPlayCornerRollRequest | attacker / AwaitingParticipantSelectionRoll |
+| 57 SubmitCornerIntent | FMatchPlayCornerIntentRequest | attacker / AwaitingIntent |
+| 58 RequestCornerRouteRoll | FMatchPlayCornerRollRequest | attacker / AwaitingRouteRoll |
+| 59 RequestCornerAttackRoll | same | attacker / AwaitingAttackRoll |
+| 60 RequestCornerDefenseRoll | same | defender / AwaitingDefenseRoll |
+
+Nomination payload contains only an ordered array of 0–3 stable CardIds; route choice contains only the existing Corner High/Low enum; four roll payloads are empty. All legacy payload members must be empty. Connection-derived Side, attack freshness, closed union, common request window/ledger, generated RPC and ACK/View pending remain shared. Host has no authority shortcut. Add/remove/reorder and underfull confirmation/back are transient screen drafts; only the confirmed list reaches authority. No human-only rule is added, so an authority-side future PVE adapter can submit the same typed requests against legal decision views.
+
+BuildForViewer still withholds attacker nominations and bucket labels from the defender until both lists lock. The bounded presentation DTO copies only safe IDs, labels, lock/choice flags, accepted dice and public adjustments; participant snapshots and private provider objects never travel. Shared participant and route dice each use independent exact-attack publication permissions; later dice, Formula, stage/CTA and terminal derivatives cannot bypass a hidden prerequisite. Opposed terminal disclosure requires the accepted two-die prefix and independent terminal permission. Zero-candidate terminals use independent terminal permission without a shared/route/contest die. CornerAutomaticScorer never has a network field or reveal event.
+
+Canonical rules remain in MatchPlayCornerResolution: the explicit attacker shared D6 maps both ordered lists, the route D6 preserves/switches the selected route, and canonical FormulaFacts/known subtotals supply the shared display. The defender-lock transaction resolves attack-zero NoGoal first, or defense-zero Goal with a real server-selected scorer. The latter consumes no RNG for one attacker and an internal private draw for multiple attackers. Neither zero branch creates a fake defender, Reel or Formula. Selected participants are consumed only on successful Advance; unselected nominees stay available and canonical Recovery/MatchEnd remain unchanged.
+
+The existing shared Screen owns candidates, confirmation, the Corner board, route controls, Formula/Narrative and score suspense. Accepted events retain Local identities: SetPiece.Corner.Participant, SetPiece.Corner.Route, SetPiece.Attack and SetPiece.Defense. Repeated/coalesced Views use the existing reveal queue; legal replication is not delayed for animation. Known subtotal remains visible while the die is unknown.
+
+Optional Host-only non-Shipping provider fixture: `Scripts/NetworkPlay/LaunchNetworkPlayDev.ps1 -PlayerFacingCornerMilestone OpposedGoal -SetPieceActor A`. AttackZero and DefenseZero are additional manual checklist labels using the same provider seam; the player must select the corresponding candidate counts. Fixture values are D12=9/type=1/shared D6=4/route D6=1/attack=6/defense=1, with a private automatic-scorer D6=4 if canonically needed. No candidate, route or outcome is forced, and Remote receives no provider controls. General launch uses secure RNG. At most one normal opposed real Host/Remote evidence path is sufficient alongside focused tests; visual closure requires USER PIE.

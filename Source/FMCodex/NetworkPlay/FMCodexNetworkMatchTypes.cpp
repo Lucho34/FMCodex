@@ -360,13 +360,14 @@ namespace FMCodexNetworkMatchTypes
 		}
 	}
 
-	void ProjectCarrierSetPiece(const FFMCodexLocalMatchInteractionView& View,
+	void ProjectSetPieceResolution(const FFMCodexLocalMatchInteractionView& View,
 		FFMCodexNetworkClientViewSnapshot& Result)
 	{
 		if (View.RouteKind != EMatchPlayCurrentAttackRouteKind::SetPiece
-			|| (View.SetPieceType != ESetPieceSelectedType::ShortFreeKick && View.SetPieceType != ESetPieceSelectedType::LongFreeKick && View.SetPieceType != ESetPieceSelectedType::Penalty)) return;
+			|| (View.SetPieceType != ESetPieceSelectedType::ShortFreeKick && View.SetPieceType != ESetPieceSelectedType::LongFreeKick && View.SetPieceType != ESetPieceSelectedType::Penalty && View.SetPieceType != ESetPieceSelectedType::Corner)) return;
 		const bool bLong = View.SetPieceType == ESetPieceSelectedType::LongFreeKick;
 		const bool bPenalty = View.SetPieceType == ESetPieceSelectedType::Penalty;
+		const bool bCorner = View.SetPieceType == ESetPieceSelectedType::Corner;
 		using P = EMatchPlayCurrentAttackPostRouteRollPurpose;
 		using S = EInitialTurnOrderPlayer;
 		const S Defender = Result.CurrentAttackingSide == S::PlayerA ? S::PlayerB : S::PlayerA;
@@ -378,12 +379,12 @@ namespace FMCodexNetworkMatchTypes
 		};
 		if (View.bHasSetPieceAttackD6)
 		{
-			Add(bPenalty ? P::PenaltyDirectAttack : bLong ? P::LongFreeKickDirectAttack : P::ShortFreeKickDirectAttack, 0, View.SetPieceAttackD6, Result.CurrentAttackingSide);
+			Add(bCorner ? P::CornerAttack : bPenalty ? P::PenaltyDirectAttack : bLong ? P::LongFreeKickDirectAttack : P::ShortFreeKickDirectAttack, 0, View.SetPieceAttackD6, Result.CurrentAttackingSide);
 			Result.Contest.AttackD6 = View.SetPieceAttackD6;
 		}
 		if (View.bHasSetPieceDefenseD6)
 		{
-			Add(bPenalty ? P::PenaltyDirectDefense : bLong ? P::LongFreeKickDirectDefense : P::ShortFreeKickDirectDefense, 1, View.SetPieceDefenseD6, Defender);
+			Add(bCorner ? P::CornerDefense : bPenalty ? P::PenaltyDirectDefense : bLong ? P::LongFreeKickDirectDefense : P::ShortFreeKickDirectDefense, 1, View.SetPieceDefenseD6, Defender);
 			Result.Contest.DefenseD6 = View.SetPieceDefenseD6;
 		}
 		if (View.bHasSetPiecePairedD6 && bPenalty)
@@ -410,6 +411,13 @@ namespace FMCodexNetworkMatchTypes
 		case C::RollLongFreeKickPower: Result.EntryWait = W::LongFreeKickPowerRoll; Action = A::ResolveLongFreeKickPowerRoll; break;
 		case C::RollPenaltyDirectAttack: Result.EntryWait = W::PenaltyDirectAttackRoll; Action = A::ResolvePenaltyDirectAttackRoll; break;
 		case C::RollPenaltyDirectDefense: Result.EntryWait = W::PenaltyDirectDefenseRoll; Action = A::ResolvePenaltyDirectDefenseRoll; break;
+		case C::DraftCornerAttacker: Result.EntryWait = W::CornerAttackerNominations; break;
+		case C::DraftCornerDefender: Result.EntryWait = W::CornerDefenderNominations; break;
+		case C::RollCornerParticipantSelection: Result.EntryWait = W::CornerParticipantSelectionRoll; Action = A::RequestCornerParticipantSelectionRoll; break;
+		case C::SelectCornerIntent: Result.EntryWait = W::CornerIntent; break;
+		case C::RollCornerRoute: Result.EntryWait = W::CornerRouteRoll; Action = A::RequestCornerRouteRoll; break;
+		case C::RollCornerAttack: Result.EntryWait = W::CornerAttackRoll; Action = A::RequestCornerAttackRoll; break;
+		case C::RollCornerDefense: Result.EntryWait = W::CornerDefenseRoll; Action = A::RequestCornerDefenseRoll; break;
 		case C::RollPenaltyPanenka: Result.EntryWait = W::PenaltyPanenkaRoll; Action = A::ResolvePenaltyPanenkaRoll; break;
 		default: break;
 		}
@@ -494,9 +502,12 @@ namespace FMCodexNetworkMatchTypes
 		const bool bEarlyLongNoGoal = View.SetPieceType == ESetPieceSelectedType::LongFreeKick
 			&& View.SelectedLongMethod == EMatchPlayLongFreeKickMethod::Direct && View.bHasSetPieceOutcome && !View.bSetPieceGoal
 			&& View.bHasSetPieceAttackD6 && !View.bHasSetPieceDefenseD6 && !View.bHasSetPieceFormula;
+		const bool bZeroCorner = View.SetPieceType == ESetPieceSelectedType::Corner
+			&& View.bCornerAttackerNominationsLocked && View.bCornerDefenderNominationsLocked
+			&& (View.CornerAttackerNominees.IsEmpty() || View.CornerDefenderNominees.IsEmpty());
 		if (View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
-			&& (View.SetPieceType == ESetPieceSelectedType::ShortFreeKick || View.SetPieceType == ESetPieceSelectedType::LongFreeKick || View.SetPieceType == ESetPieceSelectedType::Penalty)
-			&& View.bHasSetPieceOutcome && Result.AcceptedContestRolls.Num() == ((bEarlyLongNoGoal || (View.SetPieceType == ESetPieceSelectedType::Penalty && View.SelectedPenaltyMethod == EMatchPlayPenaltyMethod::Panenka)) ? 1 : 2))
+			&& (View.SetPieceType == ESetPieceSelectedType::ShortFreeKick || View.SetPieceType == ESetPieceSelectedType::LongFreeKick || View.SetPieceType == ESetPieceSelectedType::Penalty || View.SetPieceType == ESetPieceSelectedType::Corner)
+			&& View.bHasSetPieceOutcome && Result.AcceptedContestRolls.Num() == (bZeroCorner ? 0 : (bEarlyLongNoGoal || (View.SetPieceType == ESetPieceSelectedType::Penalty && View.SelectedPenaltyMethod == EMatchPlayPenaltyMethod::Panenka)) ? 1 : 2))
 		{
 			const auto* Goal = Result.PublicGoalHistory.FindByPredicate([&](const auto& G) { return G.AttackSequence == Result.AttackSequence; });
 			if (View.bSetPieceGoal)
@@ -885,7 +896,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	FMCodexNetworkMatchTypes::ProjectBranch(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectInitialRoute(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectOrdinaryContest(SafeViewerView, Result);
-	FMCodexNetworkMatchTypes::ProjectCarrierSetPiece(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectSetPieceResolution(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectPublicLifecycle(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(

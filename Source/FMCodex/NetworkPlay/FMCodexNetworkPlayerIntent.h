@@ -60,6 +60,13 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	ResolvePenaltyDirectAttackRoll,
 	ResolvePenaltyDirectDefenseRoll,
 	ResolvePenaltyPanenkaRoll,
+	SubmitCornerAttackerNominations,
+	SubmitCornerDefenderNominations,
+	RequestCornerParticipantSelectionRoll,
+	SubmitCornerIntent,
+	RequestCornerRouteRoll,
+	RequestCornerAttackRoll,
+	RequestCornerDefenseRoll,
 };
 
 UENUM()
@@ -105,6 +112,8 @@ struct FMCODEX_API FFMCodexNetworkPlayerIntentEnvelope
 	UPROPERTY() EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None;
 	UPROPERTY() EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None;
 	UPROPERTY() EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None;
+	UPROPERTY() TArray<FName> CornerCandidateIds;
+	UPROPERTY() EMatchPlayCornerRouteIntent CornerIntent = EMatchPlayCornerRouteIntent::None;
 	EFMCodexNetworkIntentAckCode ValidatePayloadShape() const;
 };
 
@@ -183,6 +192,9 @@ struct FMCODEX_API FFMCodexNetworkIntentClientState
 	bool BeginSetPiece(const FFMCodexNetworkClientViewSnapshot& View, EFMCodexNetworkPlayerIntentKind Kind,
 		FFMCodexNetworkPlayerIntentEnvelope& Out, FName SetPieceCardId = NAME_None, EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None,
 		EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None, EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None);
+	bool BeginCorner(const FFMCodexNetworkClientViewSnapshot& View, EFMCodexNetworkPlayerIntentKind Kind,
+		FFMCodexNetworkPlayerIntentEnvelope& Out, const TArray<FName>& Candidates = {},
+		EMatchPlayCornerRouteIntent Route = EMatchPlayCornerRouteIntent::None);
 	bool ObserveAck(const FFMCodexNetworkPlayerIntentAck& Ack);
 	bool IsPending() const { return PendingRequestId != 0; }
 	int64 GetPendingRequestId() const { return PendingRequestId; }
@@ -200,7 +212,8 @@ private:
 		FFMCodexNetworkPlayerIntentEnvelope& OutEnvelope,
 		EMatchPlayThroughBallOneOnOneShotChoice OneOnOneChoice = EMatchPlayThroughBallOneOnOneShotChoice::None,
 		FName SetPieceCardId = NAME_None, EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None,
-		EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None, EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None);
+		EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None, EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None,
+		const TArray<FName>& CornerCandidateIds = {}, EMatchPlayCornerRouteIntent CornerIntent = EMatchPlayCornerRouteIntent::None);
 	void CompleteIfReady();
 	FGuid Match;
 	int64 NextRequestId = 1;

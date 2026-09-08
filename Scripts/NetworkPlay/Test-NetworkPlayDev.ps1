@@ -286,3 +286,17 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Penalty cannot mi
 . $launcherPath -UnrealEditorPath $testEnginePath
 Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Penalty retains secure defaults'
 Write-Host ("FMCODEX_PENALTY_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)
+
+foreach ($mode in @('OpposedGoal','AttackZero','DefenseZero')) {
+    . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingCornerMilestone $mode -SetPieceActor B
+    $corner = Get-NetworkPlayLaunchPlan
+    Assert-True ($corner.HostArguments -contains ('-FMCodexNetworkPlayerFacingCornerMilestone=' + $mode)) 'Corner provider fixture reaches Host'
+    Assert-True ($corner.HostArguments -contains '-FMCodexNetworkSetPieceActor=B') 'Corner identity is independent of Host'
+    Assert-True (@($corner.ClientArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*SetPieceActor*' }).Count -eq 0) 'Corner Remote receives no private provider controls'
+    Assert-True (($corner.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($corner.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Corner shares both production screens'
+}
+$PlayerFacingPenaltyMilestone = 'DirectGoal'
+Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Corner cannot mix with Penalty'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Corner provider remains opt in'
+Write-Host ("FMCODEX_CORNER_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)

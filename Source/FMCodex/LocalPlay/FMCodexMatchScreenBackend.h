@@ -7,12 +7,14 @@
 enum class EFMCodexMatchScreenIntent : uint8
 {
 	StartMatch, TacticalPoints, DeployOrdinary, DeployGoalkeeper, FinishDeployment,
-	Carrier, Marker, Runner, Helper, Skill, Branch, Decline, NoLegal, OneOnOne, Continue, SetPieceType, SetPieceTaker, NearMethod, LongMethod, PenaltyMethod
+	Carrier, Marker, Runner, Helper, Skill, Branch, Decline, NoLegal, OneOnOne, Continue, SetPieceType, SetPieceTaker, NearMethod, LongMethod, PenaltyMethod, CornerNominations, CornerIntent
 };
 
 struct FMCODEX_API FFMCodexMatchScreenRequest
 {
 	EFMCodexMatchScreenIntent Kind = EFMCodexMatchScreenIntent::Continue;
+	TArray<FName> CornerCandidateIds;
+	EMatchPlayCornerRouteIntent CornerIntent = EMatchPlayCornerRouteIntent::None;
 	FName OptionId = NAME_None;
 	FName SlotId = NAME_None;
 	EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None;

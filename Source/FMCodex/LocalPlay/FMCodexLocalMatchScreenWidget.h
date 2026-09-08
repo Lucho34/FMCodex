@@ -207,6 +207,10 @@ protected:
 	virtual void NativeDestruct() override;
 
 private:
+	TArray<FName> NetworkCornerDraft;
+	int64 NetworkCornerDraftSequence = 0;
+	EMatchPlaySetPieceCornerRouteStage NetworkCornerDraftStage = EMatchPlaySetPieceCornerRouteStage::None;
+	bool bNetworkCornerConfirmation = false;
 	FName NetworkDraftTaker = NAME_None;
 	int64 NetworkDraftTakerSequence = 0;
 	IFMCodexMatchScreenBackend* MatchBackend = nullptr; // Owning controller lifetime; cleared on EndPlay.
@@ -217,7 +221,8 @@ private:
 		EFMCodexUMGOneOnOneChoice OneOnOne = EFMCodexUMGOneOnOneChoice::None,
         EMatchPlayShortFreeKickMethod NearMethod = EMatchPlayShortFreeKickMethod::None,
         EMatchPlayLongFreeKickMethod LongMethod = EMatchPlayLongFreeKickMethod::None,
-        EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None);
+        EMatchPlayPenaltyMethod PenaltyMethod = EMatchPlayPenaltyMethod::None,
+		const TArray<FName>& CornerCandidates = {}, EMatchPlayCornerRouteIntent CornerIntent = EMatchPlayCornerRouteIntent::None);
 	void BuildWidgetTree();
 	void RefreshVisuals();
 	void UpdateInlineFormulaRevealState(

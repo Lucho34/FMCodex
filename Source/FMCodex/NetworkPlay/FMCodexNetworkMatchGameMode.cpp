@@ -345,13 +345,29 @@ void AFMCodexNetworkMatchGameMode::TryInitializeNetworkMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
 		MatchRuntime->EnablePenaltyMilestone(PenaltyMilestone.EndsWith(TEXT("Goal")));
 	}
+	FString CornerMilestone, CornerActor = TEXT("A");
+	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingCornerMilestone="), CornerMilestone))
+	{
+		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkSetPieceActor="), CornerActor);
+		if ((CornerMilestone != TEXT("OpposedGoal") && CornerMilestone != TEXT("AttackZero") && CornerMilestone != TEXT("DefenseZero"))
+			|| (CornerActor != TEXT("A") && CornerActor != TEXT("B")) || bTerminalMilestone || bMilestone || bSkillSlice
+			|| !NearMilestone.IsEmpty() || !LongMilestone.IsEmpty() || !PenaltyMilestone.IsEmpty())
+		{
+			bTransportFault = true;
+			PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
+			PublishOwnerViews(EFMCodexNetworkBootstrapState::BootstrapFailed); return;
+		}
+		BootstrapConfiguration = CornerActor == TEXT("B") ? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
+			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
+		MatchRuntime->EnableCornerMilestone();
+	}
 	FString SetPieceMilestone, SetPieceActor = TEXT("A");
 	if (HasAuthority() && FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkPlayerFacingSetPieceMilestone="), SetPieceMilestone))
 	{
 		FParse::Value(FCommandLine::Get(), TEXT("FMCodexNetworkSetPieceActor="), SetPieceActor);
 		const int32 TypeD6 = SetPieceMilestone == TEXT("Near") ? 5 : SetPieceMilestone == TEXT("Long") ? 3
 			: SetPieceMilestone == TEXT("Penalty") ? 6 : SetPieceMilestone == TEXT("Corner") ? 1 : 0;
-		if (!NearMilestone.IsEmpty() || !LongMilestone.IsEmpty() || !PenaltyMilestone.IsEmpty() || TypeD6 == 0 || (SetPieceActor != TEXT("A") && SetPieceActor != TEXT("B")) || bTerminalMilestone || bMilestone || bSkillSlice)
+		if (!NearMilestone.IsEmpty() || !LongMilestone.IsEmpty() || !PenaltyMilestone.IsEmpty() || !CornerMilestone.IsEmpty() || TypeD6 == 0 || (SetPieceActor != TEXT("A") && SetPieceActor != TEXT("B")) || bTerminalMilestone || bMilestone || bSkillSlice)
 		{
 			bTransportFault = true;
 			PublishParticipantState(EFMCodexNetworkBootstrapState::BootstrapFailed);
@@ -739,6 +755,93 @@ FFMCodexNetworkPlayerIntentAck AFMCodexNetworkMatchGameMode::SubmitConnectionPla
 		Request.RequestingSide = Side;
 		Request.AttackSequence = Envelope.ExpectedAttackSequence;
 		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::ResolvePenaltyPanenkaRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::SubmitCornerAttackerNominations:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::Corner
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::CornerAttackerNominations) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayCornerNominationRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.OrderedCardIds = Envelope.CornerCandidateIds;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitCornerAttackerNominations, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::SubmitCornerDefenderNominations:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::Corner
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::CornerDefenderNominations) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayCornerNominationRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.OrderedCardIds = Envelope.CornerCandidateIds;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitCornerDefenderNominations, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::RequestCornerParticipantSelectionRoll:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::Corner
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::CornerParticipantSelectionRoll) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayCornerRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::RequestCornerParticipantSelectionRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::SubmitCornerIntent:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::Corner
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::CornerIntent) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayCornerIntentRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Request.IntendedRoute = Envelope.CornerIntent;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::SubmitCornerIntent, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::RequestCornerRouteRoll:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::Corner
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::CornerRouteRoll) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayCornerRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::RequestCornerRouteRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::RequestCornerAttackRoll:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::Corner
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::CornerAttackRoll) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayCornerRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::RequestCornerAttackRoll, Request);
+		break;
+	}
+	case EFMCodexNetworkPlayerIntentKind::RequestCornerDefenseRoll:
+	{
+		if (Before.EntryBranch != EFMCodexNetworkEntryBranch::SetPiece
+			|| Before.SetPiece.Type != ESetPieceSelectedType::Corner
+			|| Before.EntryWait != EFMCodexNetworkEntryWait::CornerDefenseRoll) return Finish(AckCode::InvalidPhase);
+		if (Side != Before.ExpectedActingSide) return Finish(AckCode::WrongSide);
+		FMatchPlayCornerRollRequest Request;
+		Request.RequestingSide = Side;
+		Request.AttackSequence = Envelope.ExpectedAttackSequence;
+		Intent = FMatchPlayPlayerIntent::Create(EMatchPlayAuthoritativeCommandKind::RequestCornerDefenseRoll, Request);
 		break;
 	}
 	case EFMCodexNetworkPlayerIntentKind::DeployOrdinary:

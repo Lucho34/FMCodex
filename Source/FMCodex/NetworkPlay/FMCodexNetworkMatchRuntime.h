@@ -74,6 +74,7 @@ public:
 	void EnableNearFreeKickMilestone(bool Goal);
 	void EnableLongFreeKickMilestone(bool Goal, bool EarlyNoGoal);
 	void EnablePenaltyMilestone(bool Goal);
+	void EnableCornerMilestone();
 	void EnableDeploymentAutomationEntry(int32 InitialD12 = 4);
 	void EnableInitialRouteAutomation(int32 D6);
 	void EnablePostRouteAutomation(int32 AttackD6, int32 DefenseD6);
@@ -115,6 +116,8 @@ private:
 	TUniquePtr<FFMCodexNetworkRecoveryProvider> RecoveryProvider;
 	int64 DisclosedTerminalAttackSequence = 0;
 	int64 DisclosedInitialAttackSequence = 0;
+	int64 DisclosedCornerParticipantSequence = 0;
+	int64 DisclosedCornerRouteSequence = 0;
 	int64 DisclosedSetPieceTypeSequence = 0;
 	int64 DisclosedSetPieceResolutionSequence = 0;
 	int32 DisclosedSetPieceResolutionRollCount = 0;

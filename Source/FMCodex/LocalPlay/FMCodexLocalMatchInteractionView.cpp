@@ -1778,7 +1778,10 @@ namespace FMCodexLocalMatchInteractionView
 		{
 			View.bHasCornerSharedParticipantD6 = false;
 			View.CornerSharedParticipantD6 = 0;
-			View.CornerRunner = {};
+			const auto& Corner = Snapshot.CurrentAttack.SetPieceRoute.Corner;
+			const bool bPublicAutomaticScorer = Disclosure.bRevealTerminalOutcome && View.bHasSetPieceOutcome
+				&& Corner.bDefenderNominationsLocked && Corner.DefenderNominees.IsEmpty() && !Corner.AttackerNominees.IsEmpty();
+			if (!bPublicAutomaticScorer) View.CornerRunner = {};
 			View.CornerHelper = {};
 			View.CornerCandidateBonusSide = EInitialTurnOrderPlayer::None;
 			View.CornerCandidateBonus = 0;
@@ -1847,6 +1850,42 @@ namespace FMCodexLocalMatchInteractionView
 				View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
 				View.SetPieceCarrierStage = EMatchPlaySetPieceCarrierRouteStage::None;
 			}
+		}
+		if (View.SetPieceType == ESetPieceSelectedType::Corner)
+		{
+			const auto& Corner = Snapshot.CurrentAttack.SetPieceRoute.Corner;
+			const bool bHiddenParticipant = Corner.bHasSharedParticipantD6 && !Disclosure.bRevealParticipantSelectionRoll;
+			const bool bHiddenRoute = Corner.bHasRouteD6 && !Disclosure.bRevealRouteRoll;
+			const bool bHiddenTerminal = View.bHasSetPieceOutcome && (!Disclosure.bRevealTerminalOutcome
+				|| (Corner.bHasSharedParticipantD6 && (bHiddenParticipant || bHiddenRoute || ContestCount < 2)));
+			if (!Disclosure.bRevealParticipantSelectionRoll || !Disclosure.bRevealRouteRoll)
+			{
+				View.bHasSetPieceAttackKnownSubtotal = View.bHasSetPieceDefenseKnownSubtotal = false;
+				View.SetPieceAttackKnownSubtotal = View.SetPieceDefenseKnownSubtotal = 0.0f;
+				View.bHasSetPieceAttackCurrentTotal = View.bHasSetPieceDefenseCurrentTotal = false;
+				View.SetPieceAttackCurrentTotal = View.SetPieceDefenseCurrentTotal = 0.0f;
+			}
+			if (bHiddenParticipant)
+			{
+				View.CornerIntendedRoute = View.CornerActualRoute = EMatchPlayCornerRouteIntent::None;
+				View.bHasCornerRouteD6 = false; View.CornerRouteD6 = 0;
+			}
+			if (bHiddenParticipant || bHiddenRoute)
+			{
+				View.bHasSetPieceAttackD6 = View.bHasSetPieceDefenseD6 = false;
+				View.SetPieceAttackD6 = View.SetPieceDefenseD6 = 0;
+			}
+			if (bHiddenParticipant || bHiddenRoute || ContestCount < 2 || !Disclosure.bRevealTerminalOutcome)
+			{ View.bHasSetPieceFormula = false; View.SetPieceFormula = {}; }
+			if (bHiddenParticipant || bHiddenRoute || bHiddenTerminal)
+			{
+				RedactTerminalOutcome(Snapshot, View);
+				View.bTerminalPendingAdvance = View.bHumanInteraction = false;
+				View.InteractionCategory = EFMCodexLocalMatchInteractionCategory::None;
+				View.ExpectedActingPlayer = EInitialTurnOrderPlayer::None;
+				View.CornerStage = EMatchPlaySetPieceCornerRouteStage::None;
+			}
+			if (!Disclosure.bRevealTerminalOutcome && !Corner.bHasSharedParticipantD6) View.CornerRunner = {};
 		}
 		const bool bHiddenAcceptedRoll = RedactResolutionRolls(Disclosure, View);
 		if (bHiddenAcceptedRoll && Snapshot.bHasCurrentAttack

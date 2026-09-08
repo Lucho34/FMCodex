@@ -132,6 +132,55 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerAttackerNominations:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayCornerNominationRequest>()) return Mismatch();
+		const auto Authority = Session.SubmitCornerAttackerNominations(Intent.Payload.Get<FMatchPlayCornerNominationRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerDefenderNominations:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayCornerNominationRequest>()) return Mismatch();
+		const auto Authority = Session.SubmitCornerDefenderNominations(Intent.Payload.Get<FMatchPlayCornerNominationRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerParticipantSelectionRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayCornerRollRequest>()) return Mismatch();
+		const auto Authority = Session.RequestCornerParticipantSelectionRoll(Intent.Payload.Get<FMatchPlayCornerRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::SubmitCornerIntent:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayCornerIntentRequest>()) return Mismatch();
+		const auto Authority = Session.SubmitCornerIntent(Intent.Payload.Get<FMatchPlayCornerIntentRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerRouteRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayCornerRollRequest>()) return Mismatch();
+		const auto Authority = Session.RequestCornerRouteRoll(Intent.Payload.Get<FMatchPlayCornerRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayCornerRollRequest>()) return Mismatch();
+		const auto Authority = Session.RequestCornerAttackRoll(Intent.Payload.Get<FMatchPlayCornerRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::RequestCornerDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayCornerRollRequest>()) return Mismatch();
+		const auto Authority = Session.RequestCornerDefenseRoll(Intent.Payload.Get<FMatchPlayCornerRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeployOrdinaryRequest>()) { return Mismatch(); }

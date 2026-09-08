@@ -42,7 +42,7 @@ enum class EFMCodexNetworkEntryBranch : uint8
 UENUM(BlueprintType)
 enum class EFMCodexNetworkEntryWait : uint8
 {
-	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll, PassControlDefenseRoll, ThroughBallFeetDefenseRoll, ThroughBallBehindDefenseDefenseRoll, ThroughBallOneOnOneChoice, ThroughBallOneOnOneDirectAttackRoll, ThroughBallOneOnOneDirectDefenseRoll, ThroughBallOneOnOneChipRoll, LongShotDirectDefenseRoll, CutInsideDirectDefenseRoll, SetPieceTakerSelection, SetPieceMethodSelection, SetPieceResolutionBoundary, CornerSelectionBoundary, NearDirectAttackRoll, NearDirectDefenseRoll, NearAngledRoll, LongFreeKickDirectAttackRoll, LongFreeKickDirectDefenseRoll, LongFreeKickPowerRoll, PenaltyDirectAttackRoll, PenaltyDirectDefenseRoll, PenaltyPanenkaRoll
+	None, InitialD12, Deployment, SetPieceTypeRoll, TerminalPendingAdvance, CarrierSelection, MarkerSelection, RunnerSelection, SkillSelection, HelperSelection, BranchIntentSelection, PassControlRouteRoll, ThroughBallRouteRoll, CrossRouteRoll, LongShotDirectAttackRoll, LongShotDeadCornerRoll, CutInsideDirectAttackRoll, CutInsideDeadCornerRoll, CrossAttackRoll, PassControlAttackRoll, ThroughBallFeetAttackRoll, ThroughBallBehindDefenseAttackRoll, ThroughBallAntiOffsideAttackRoll, CrossDefenseRoll, PassControlDefenseRoll, ThroughBallFeetDefenseRoll, ThroughBallBehindDefenseDefenseRoll, ThroughBallOneOnOneChoice, ThroughBallOneOnOneDirectAttackRoll, ThroughBallOneOnOneDirectDefenseRoll, ThroughBallOneOnOneChipRoll, LongShotDirectDefenseRoll, CutInsideDirectDefenseRoll, SetPieceTakerSelection, SetPieceMethodSelection, SetPieceResolutionBoundary, CornerSelectionBoundary, NearDirectAttackRoll, NearDirectDefenseRoll, NearAngledRoll, LongFreeKickDirectAttackRoll, LongFreeKickDirectDefenseRoll, LongFreeKickPowerRoll, PenaltyDirectAttackRoll, PenaltyDirectDefenseRoll, PenaltyPanenkaRoll, CornerAttackerNominations, CornerDefenderNominations, CornerParticipantSelectionRoll, CornerIntent, CornerRouteRoll, CornerAttackRoll, CornerDefenseRoll
 };
 
 
@@ -85,7 +85,7 @@ enum class EFMCodexNetworkContestAction : uint8
 	LongShotDirectAttackRoll, LongShotDirectDefenseRoll, LongShotDeadCornerRoll, CutInsideShotDirectAttackRoll, CutInsideShotDirectDefenseRoll, CutInsideShotDeadCornerRoll,
 	ResolveShortFreeKickDirectAttackRoll, ResolveShortFreeKickDirectDefenseRoll, ResolveShortFreeKickAngledRoll,
 	ResolveLongFreeKickDirectAttackRoll, ResolveLongFreeKickDirectDefenseRoll, ResolveLongFreeKickPowerRoll,
-	ResolvePenaltyDirectAttackRoll, ResolvePenaltyDirectDefenseRoll, ResolvePenaltyPanenkaRoll
+	ResolvePenaltyDirectAttackRoll, ResolvePenaltyDirectDefenseRoll, ResolvePenaltyPanenkaRoll, RequestCornerParticipantSelectionRoll, RequestCornerRouteRoll, RequestCornerAttackRoll, RequestCornerDefenseRoll
 };
 
 /** One accepted post-route value; at most four in a complete ThroughBall attack. */

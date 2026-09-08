@@ -15,6 +15,10 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 	case K::NearMethod: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginSetPiece(View, N::SubmitShortFreeKickMethod, Out, NAME_None, Request.NearMethod);
 	case K::LongMethod: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginSetPiece(View, N::SubmitLongFreeKickMethod, Out, NAME_None, EMatchPlayShortFreeKickMethod::None, Request.LongMethod);
 	case K::PenaltyMethod: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginSetPiece(View, N::SubmitPenaltyMethod, Out, NAME_None, EMatchPlayShortFreeKickMethod::None, EMatchPlayLongFreeKickMethod::None, Request.PenaltyMethod);
+	case K::CornerNominations: return View.Presentation.SetPiece.bSelectionSupported
+		&& Client.BeginCorner(View, View.EntryWait == EFMCodexNetworkEntryWait::CornerAttackerNominations
+			? N::SubmitCornerAttackerNominations : N::SubmitCornerDefenderNominations, Out, Request.CornerCandidateIds);
+	case K::CornerIntent: return View.Presentation.SetPiece.bSelectionSupported && Client.BeginCorner(View, N::SubmitCornerIntent, Out, {}, Request.CornerIntent);
 	case K::TacticalPoints: return Client.Begin(View, Out);
 	case K::DeployOrdinary:
 	{
@@ -97,6 +101,10 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		case C::RollLongFreeKickPower: return Client.BeginSetPiece(View, N::ResolveLongFreeKickPowerRoll, Out);
 		case C::RollPenaltyDirectAttack: return Client.BeginSetPiece(View, N::ResolvePenaltyDirectAttackRoll, Out);
 		case C::RollPenaltyDirectDefense: return Client.BeginSetPiece(View, N::ResolvePenaltyDirectDefenseRoll, Out);
+		case C::RollCornerParticipantSelection: return Client.BeginCorner(View, N::RequestCornerParticipantSelectionRoll, Out);
+		case C::RollCornerRoute: return Client.BeginCorner(View, N::RequestCornerRouteRoll, Out);
+		case C::RollCornerAttack: return Client.BeginCorner(View, N::RequestCornerAttackRoll, Out);
+		case C::RollCornerDefense: return Client.BeginCorner(View, N::RequestCornerDefenseRoll, Out);
 		case C::RollPenaltyPanenka: return Client.BeginSetPiece(View, N::ResolvePenaltyPanenkaRoll, Out);
 		case C::RollLongShotDirectAttack: return Client.BeginOrdinaryContest(View, N::LongShotDirectAttackRoll, Out);
 		case C::RollLongShotDirectDefense: return Client.BeginOrdinaryContest(View, N::LongShotDirectDefenseRoll, Out);
