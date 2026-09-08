@@ -396,18 +396,22 @@ bool FFMCodexNetworkIntentSurfaceTest::RunTest(const FString&)
 		for (TFieldIterator<FProperty> It(Struct); It; ++It)
 		{
 			++Count;
-			TestTrue(TEXT("Only allowlisted wire field"), Allowed.Contains(It->GetFName()));
+			TestTrue(*FString::Printf(TEXT("Only allowlisted wire field: %s.%s"), *Struct->GetName(), *It->GetName()), Allowed.Contains(It->GetFName()));
 		}
 		TestEqual(TEXT("Exact field count"), Count, Allowed.Num());
 	};
 	ExactFields(FFMCodexNetworkPlayerIntentEnvelope::StaticStruct(),
 		{TEXT("MatchInstanceId"), TEXT("RequestId"), TEXT("ExpectedAttackSequence"), TEXT("IntentKind"), TEXT("Deployment"), TEXT("Goalkeeper"), TEXT("Carrier"), TEXT("Marker"), TEXT("Runner"), TEXT("Helper"), TEXT("Skill"), TEXT("Branch"), TEXT("OneOnOneChoice"),
-		TEXT("SetPieceCardId"), TEXT("NearMethod"), TEXT("LongMethod"), TEXT("PenaltyMethod")});
-	// Selection-only facts: this exact inventory also prevents future dice, Formula, participant snapshots or Corner nominations from entering the DTO.
+		TEXT("SetPieceCardId"), TEXT("NearMethod"), TEXT("LongMethod"), TEXT("PenaltyMethod"), TEXT("CornerCandidateIds"), TEXT("CornerIntent")});
+	// Exact safe selection/accepted Corner facts; snapshots and private automatic-scorer dice remain absent.
+	// Per-viewer nomination secrecy and roll/terminal permissions are tested by Corner viewer projection.
 	ExactFields(FFMCodexSetPieceSelectionPresentation::StaticStruct(),
 		{TEXT("bVisible"), TEXT("bSelectionSupported"), TEXT("bOptionsUnavailable"), TEXT("bTypeWait"),
 		TEXT("bTakerWait"), TEXT("bMethodWait"), TEXT("bCanRollType"), TEXT("bNoTakerNoGoal"),
 		TEXT("AttackingSide"), TEXT("ActingSide"), TEXT("TypeD6"), TEXT("Type"), TEXT("CarrierStage"), TEXT("CornerStage"),
+		TEXT("bCornerDraft"), TEXT("bCornerIntentWait"), TEXT("bCornerAttackerLocked"), TEXT("bCornerDefenderLocked"), TEXT("bHideCornerAttackerDetails"),
+		TEXT("CornerOptions"), TEXT("CornerAttackers"), TEXT("CornerDefenders"), TEXT("CornerAttackerRollLabels"), TEXT("CornerDefenderRollLabels"),
+		TEXT("CornerRunner"), TEXT("CornerHelper"), TEXT("CornerSharedD6"), TEXT("CornerRouteD6"), TEXT("CornerIntendedRoute"), TEXT("CornerActualRoute"), TEXT("CornerBonusSide"), TEXT("CornerBonus"),
 		TEXT("TypeLabel"), TEXT("TakerCardId"), TEXT("TakerLabel"), TEXT("TakerOptions"),
 		TEXT("NearMethods"), TEXT("LongMethods"), TEXT("PenaltyMethods"), TEXT("NearMethod"), TEXT("LongMethod"), TEXT("PenaltyMethod")});
 	ExactFields(FFMCodexNetworkDeployOrdinaryPayload::StaticStruct(), {TEXT("CardId"), TEXT("SlotId")});

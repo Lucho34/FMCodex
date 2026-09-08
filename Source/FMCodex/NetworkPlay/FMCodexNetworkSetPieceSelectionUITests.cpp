@@ -38,7 +38,21 @@ bool FFMCodexSetPieceSelectionUI::RunTest(const FString& P)
  const auto Phase=S->GetInlineFormulaRevealPhase();Access::Publish(*F.Mode);TestEqual(TEXT("Repeated accepted type View does not replay completed Reel"),S->GetInlineFormulaRevealPhase(),Phase);
  TestFalse(TEXT("Waiting viewer has method CTA"),Visible(W,TEXT("ShortDirectMethod")));TestFalse(TEXT("Waiting viewer has primary CTA"),Visible(W,TEXT("SetPieceProductionPrimaryAction")));
  if(D6<=2)
- {TestTrue(TEXT("Corner is a clear read-only boundary"),S->GetPresentation().ActionWaitActionText.ToString().Contains(TEXT("暂未开放")));TestFalse(TEXT("No Corner nominations"),Visible(S,TEXT("SetPieceProductionPrimaryAction")));return true;}
+ {
+  const auto& Corner=S->GetPresentation().SetPiece;
+  TestTrue(TEXT("Corner opens the authoritative nomination draft"),Corner.bSelectionSupported&&Corner.bCornerDraft);
+  TestEqual(TEXT("Attacker owns the first nomination wait"),PC->GetOwnerView().EntryWait,EFMCodexNetworkEntryWait::CornerAttackerNominations);
+  TestTrue(TEXT("Acting viewer receives legal candidate IDs"),!Corner.CornerOptions.IsEmpty());
+  TestTrue(TEXT("Corner lock CTA belongs to the acting viewer"),Visible(S,TEXT("SetPieceProductionPrimaryAction")));
+  TestTrue(TEXT("Waiting viewer receives no actionable candidate IDs"),W->GetPresentation().SetPiece.CornerOptions.IsEmpty());
+  TestEqual(TEXT("No participant die before nominations"),Corner.CornerSharedD6,0);
+  TestEqual(TEXT("No future route die"),Corner.CornerRouteD6,0);
+  TestTrue(TEXT("No selected participants before the shared roll"),Corner.CornerRunner.IsNone()&&Corner.CornerHelper.IsNone());
+  TestEqual(TEXT("Only type consumed entropy"),F.Entropy->Calls,Before.EntropyCalls+1);
+  Access::SetPiecePresentation(*F.Mode,false);
+  TestTrue(TEXT("Corner is enabled without a selection fixture"),FFMCodexNetworkMatchPresentationAdapter::Read(PC->GetOwnerView(),false).SetPiece.bSelectionSupported);
+  return true;
+ }
  const FName Card=Eligible(F);const int32 Sends=F.Backend(PC).Sends;
  S->DevSetPieceAction(TEXT("SetPieceTaker"),Card);TestEqual(TEXT("Hand click is draft only"),F.Backend(PC).Sends,Sends);TestTrue(TEXT("No early taker adoption"),PC->GetOwnerView().SetPiece.TakerCardId.IsNone());
  TestTrue(TEXT("Explicit confirmation uses existing button"),Visible(S,TEXT("SetPieceProductionPrimaryAction")));

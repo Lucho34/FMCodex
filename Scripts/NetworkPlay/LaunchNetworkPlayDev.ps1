@@ -35,9 +35,9 @@ param(
     [switch]$HandoffLatencyAudit
 )
 
-# The existing player screen has fixed production card/pitch widths.
-# Preserve diagnostic defaults; explicit caller sizes always win.
-if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone -or $PlayerFacingDeclineMilestone -or $PlayerFacingSetPieceMilestone -or $PlayerFacingNearFreeKickMilestone -or $PlayerFacingLongFreeKickMilestone -or $PlayerFacingPenaltyMilestone -or $PlayerFacingCornerMilestone) {
+# Normal launch uses the existing production screen; legacy diagnostic fixtures keep their defaults.
+# Explicit caller sizes always win.
+if (-not ($DeploymentSlice -or $InitialRouteMilestone -or $CrossTerminalMilestone)) {
     if (-not $PSBoundParameters.ContainsKey('ResX')) { $ResX = 1600 }
     if (-not $PSBoundParameters.ContainsKey('ResY')) { $ResY = 900 }
 }
@@ -137,6 +137,11 @@ function Get-NetworkPlayLaunchPlan {
     }
     if ($DeploymentSlice) {
         $fixtureArguments = @('-FMCodexNetworkTestBFirst', '-FMCodexNetworkDeploymentSlice')
+    }
+    if ($fixtureArguments.Count -eq 0) {
+        # Production presentation without a deterministic milestone/provider override.
+        $commonArguments += '-FMCodexNetworkPlayerFacingUI'
+        if ($NetworkDiagnostics) { $commonArguments += '-FMCodexNetworkDiagnostics' }
     }
     [pscustomobject]@{
         ProjectRoot = $projectRoot

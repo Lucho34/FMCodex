@@ -1,6 +1,16 @@
 # 04 Networking Model
 
-本文档记录联网模型草案。当前不接入任何线上服务。
+本文档记录已实现的联网模型。当前不接入任何线上服务。
+
+## 当前能力与阅读范围（Stage 7.26）
+
+- Listen Host / Remote 使用连接派生的 A/B 身份、同一 generated Server RPC、公共 RequestId/MatchInstanceId/AttackSequence 校验与 ACK/View pending，再进入 typed HostPort、AuthoritativeSession 和 ServerCoordinator。
+- 当前全部五类战术（Cross、PassControl、ThroughBall 含 BehindDefense/AntiOffside/OneOnOne、LongShot、CutInsideShot）、部署/门将/角色/技能/可选放弃，以及 Near、Long、Penalty、Corner 均已接入共享玩家 Screen。它们复用 terminal → AdvanceAfterTerminal → Recovery / MatchEnded；非最终回合回到下一 Full D12。
+- wire enum 为独立 uint8：0 为无效 None，1–60 为现有合法意图，61–255 fail closed。1–10 开局/部署/角色/技能/分支，11–17 初始路线/传中对抗，18 Advance，19–35 其余普通对抗/单刀/特殊射门，36–39 放弃，40–44 定位球选择，45–53 任意球/点球掷点，54–60 角球。新增意图只能追加并保持 exact payload shape，不能重排。
+- Network RNG 使用服务器私有 PlatformCrypto provider。安全披露由 BuildForViewer 与按 attack/roll prefix 的权限负责；已披露事实再由共享 Reel/Formula/Narrative/displayed-score gate 控制可见时机，不能靠 UI 隐藏保密。
+- LocalPlay 保留本地 GameMode、确定性 DEV provider 和单进程流程。未来 authority-side PVE 可由合法 Side view 选择请求，经现有 transport-neutral typed HostPort 接入同一规则；本阶段不实现 AI。
+- 后文带 Stage 编号的章节记录当时增量边界；其中“尚未联网”“Corner deferred”等只适用于该历史阶段，当前能力以上表述及后续家族章节为准。旧阶段验证次数不覆盖当前 AGENTS 的最小充分验证预算。
+- 尚未承诺 Steam/EOS、匹配/房间、Dedicated Server 发布、WAN/丢包条件、重连、timeout 或自动重发。断线保留 Side reservation 并禁用动作。已知 PitchSlotWidget world teardown ensure 单独延期；它不属于玩法结算失败。
 
 ## 目标
 
@@ -153,7 +163,7 @@ LocalPlay 继续默认使用 `/Script/FMCodex.FMCodexLocalMatchHostGameMode`。N
 1. 停止 PIE 并关闭 Unreal Editor，以及之前打开的 NetworkPlay 游戏窗口。
 2. 在资源管理器双击项目内的 `Scripts\NetworkPlay\LaunchNetworkPlayDev.cmd`。本机完整路径为 `D:\Unreal Projects\FMCodex\Scripts\NetworkPlay\LaunchNetworkPlayDev.cmd`。
 3. 等待控制台显示 `Host ready`，随后第二个游戏窗口自动出现。无需修改 World Settings、Play Advanced Settings，也无需输入命令或保存地图。
-4. 左侧 Host 应显示 `监听主机玩家 / Side A / 玩家 A（或有效名称）/ 阿森纳`；右侧 Client 应自然显示 `远端客户端玩家 / Side B / 玩家 B（或有效名称）/ 曼彻斯特城`。双方均为 `比赛已由服务器初始化`（MatchReady）、相同比赛实例 ID、Revision、0–0、Attack #1 和各自的 Full D12 等待文案。无需刷新或执行 gameplay 操作。
+4. 两端默认显示现有共享比赛 Screen，Header 为玩家 A 与玩家 B、比分 0–0。行动方显示 Full D12 操作，另一方显示等待；身份由连接分配，无需刷新。MatchInstanceId、Revision、进程角色等诊断信息留在日志；需要叠加 DEV 面板时显式传 `-NetworkDiagnostics`。
 5. 测试结束先关闭 Client，再关闭 Host。启动器控制台可按任意键关闭；关闭控制台不会自动关闭游戏窗口。
 
 **NetworkPlay 不要按“开始本地对战”。** 若出现该按钮或旧 LocalPlay 的“等待开始”界面，说明进入了 Local GameMode，不能用该按钮 bootstrap NetworkPlay。
@@ -162,7 +172,7 @@ LocalPlay 继续默认使用 `/Script/FMCodex.FMCodexLocalMatchHostGameMode`。N
 
 启动器沿用仓库 `Scripts` 约定，PowerShell 从自身位置向上两级定位 `FMCodex.uproject`。引擎默认路径只在启动器参数中声明为 `E:\UE_5.3\Engine\Binaries\Win64\UnrealEditor.exe`，不存在时明确失败；不扫描其他磁盘，也不自动编译项目。首次使用或 C++ 更新后应先完成 Editor Development build。
 
-默认端口为 **7777**，窗口为 **900×700**。Host 使用显式 Network 地图 URL，Client 只连接服务器地址。启动前检测 UDP/TCP 端口占用，冲突时失败且不终止占用者。UE IpNetDriver 使用 UDP；启动器最多等待 **60 秒**，同时确认本次独立日志中的 Network GameMode、指定端口监听、Host Side A admission 及实际 UDP endpoint，才启动 Client。超时或 Host 提前退出时不启动 Client，并显示 Host PID 与日志路径。
+默认端口为 **7777**，共享比赛窗口为 **1600×900**，显式 `-ResX/-ResY` 优先。旧 DeploymentSlice / InitialRouteMilestone / CrossTerminalMilestone 诊断 fixture 保留原入口与 900×700 默认值。Host 使用显式 Network 地图 URL，Client 只连接服务器地址。启动前检测 UDP/TCP 端口占用，冲突时失败且不终止占用者。UE IpNetDriver 使用 UDP；启动器最多等待 **60 秒**，同时确认本次独立日志中的 Network GameMode、指定端口监听、Host Side A admission 及实际 UDP endpoint，才启动 Client。超时或 Host 提前退出时不启动 Client，并显示 Host PID 与日志路径。
 
 每次启动的日志位于 `Saved\Logs\NetworkPlayDev\<本次运行目录>\Host.log` 和 `Client.log`，控制台会打印完整路径和两个 PID。`Launch.json` / `Processes.json` 只记录本次启动参数及进程号；全部位于忽略的 Saved 目录，独立目录避免旧日志误触发 ready。工具没有杀进程或停止其他 UE 项目的功能。
 
@@ -174,7 +184,7 @@ LocalPlay 继续默认使用 `/Script/FMCodex.FMCodexLocalMatchHostGameMode`。N
 & '.\Scripts\NetworkPlay\LaunchNetworkPlayDev.ps1' -Port 7788 -UnrealEditorPath 'E:\UE_5.3\Engine\Binaries\Win64\UnrealEditor.exe' -ResX 1000 -ResY 720
 ```
 
-还支持 `-ReadyTimeoutSeconds` 与 `-ValidateOnly`（只验证路径并返回命令计划，不启动 UE）。默认双击无需参数；端口冲突时优先关闭旧测试窗口，再重新双击。
+还支持 `-ReadyTimeoutSeconds` 与 `-ValidateOnly`（只验证路径并返回命令计划，不启动 UE）。默认双击无需参数：启用共享 UI，不启用 deterministic fixture、DEV RNG override、诊断叠层或审计。端口冲突时优先关闭旧测试窗口，再重新双击。
 
 ### 旧 Editor World Settings 方法：不再推荐日常多进程测试
 

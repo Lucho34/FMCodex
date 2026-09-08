@@ -97,7 +97,14 @@ Assert-True ((Get-NetworkPlayLaunchPlan).ClientArguments -contains '-FMCodexNetw
 $CrossTerminalMilestone = 'Goal'
 Assert-Throws { Get-NetworkPlayLaunchPlan } 'PlayerFacingCrossMilestone' 'Player-facing and diagnostic fixtures cannot mix'
 . $launcherPath -UnrealEditorPath $testEnginePath
-Assert-True (-not ((Get-NetworkPlayLaunchPlan).HostArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Default launch remains diagnostic'
+$normal = Get-NetworkPlayLaunchPlan
+Assert-True (($normal.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($normal.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Default launch uses both shared player screens'
+Assert-True (($normal.HostArguments -contains '-ResX=1600') -and ($normal.ClientArguments -contains '-ResY=900')) 'Default production viewport fits the shared screen'
+Assert-True (@($normal.HostArguments + $normal.ClientArguments | Where-Object { $_ -match 'Milestone|DeploymentSlice|TestBFirst|NetworkDiagnostics|HandoffLatencyAudit' }).Count -eq 0) 'Default launch has no fixture, diagnostics or audit override'
+$NetworkDiagnostics = $true
+$normalDiagnostics = Get-NetworkPlayLaunchPlan
+Assert-True (($normalDiagnostics.HostArguments -contains '-FMCodexNetworkDiagnostics') -and ($normalDiagnostics.ClientArguments -contains '-FMCodexNetworkDiagnostics')) 'Normal launch supports explicit diagnostics on both owners'
+$NetworkDiagnostics = $false
 
 $readyLog = "Game class is 'FMCodexNetworkMatchGameMode'`nIpNetDriver listening on port 7777`nAdmitted participant as Side A (same path for host/remote)."
 Assert-True (Test-NetworkPlayHostLog $readyLog 7777) 'Correct Network listen/admission markers are accepted'

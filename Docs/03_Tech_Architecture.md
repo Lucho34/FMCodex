@@ -15,9 +15,9 @@
 - 蓝图以后可用于 UI、表现和快速配置，但当前阶段不创建蓝图。
 - 不提前绑定 Steam、EOS 或其他平台服务。
 
-## 建议模块划分
+## 早期模块规划（历史）
 
-未来可以考虑以下逻辑层，但当前不创建代码：
+以下是最初的逻辑分层意图，已不代表当前实现为空：
 
 - Match Flow：管理一局比赛的阶段、回合和胜负。
 - Card Data：定义卡牌静态数据。
@@ -43,17 +43,15 @@
 - 服务器执行结算。
 - 服务器同步结果给双方客户端。
 
-## 暂不实现
+## 当前实现与延期范围
 
-- 卡牌效果系统
-- 对局状态机
-- 房间和匹配
-- Steam 或 EOS
-- UI
-- 存档
-- 账号系统
+CoreRules、AuthoritativeSession、shared HostPort/ServerCoordinator、viewer-safe projection、共享 Local/Network 玩家 Screen 及 Stage 7 的全部五类普通战术、四类定位球和 terminal/Recovery/MatchEnd 已实现。Network 客户端只经 typed RPC 提交请求；本地流程与未来 authority-side PVE 可经 transport-neutral HostPort 使用同一权威玩法。当前范围与 wire 合同见 [Networking Model](04_Networking_Model.md)。
 
-## 后续技术里程碑
+房间/匹配、Steam/EOS、账号、持久化存档、重连/timeout 与 PVE 决策源仍属后续规划。已知 PitchSlotWidget 退出时 ensure 作为独立表现清理保留。
+
+后文带 Stage 编号的能力限制是历史增量记录，不代表后续已完成家族仍未接入。
+
+## 早期技术里程碑（历史）
 
 1. 完成规则草案。
 2. 完成卡牌数据字段草案。

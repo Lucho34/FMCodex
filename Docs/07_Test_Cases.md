@@ -2,6 +2,8 @@
 
 本文档只保留测试用例。未解决规则问题统一记录在 `Docs/08_Decision_Log.md`。
 
+带 Stage 编号的章节保留当时测试边界；后续已完成的 family 不受旧“尚未支持/Corner deferred”描述限制。实际回归规模遵守当前 AGENTS 的 Minimal Sufficient Verification Budget，不机械重跑旧阶段要求的全量 suites。
+
 ## 球员卡数据
 
 应验证：
@@ -1168,3 +1170,11 @@ Affected verification selects changed Penalty selection expectations, closed-wir
 `Corner.SharedUI` uses three small paths: A.OpposedGoal.Next, B.AttackZero.Next and B.DefenseZero.Final. Exercise actual shared Screen callbacks, ordered draft changes, underfull confirmation/back without authority writes, actor/wait CTA handoffs, selected-player and route reveal, known subtotals, duplicate/coalesced events, gated score, outcome-only zero terminals, empty Recovery without fabricated notices, normal progression and final no-Recovery/no-D12. Focused failures are corrected and only relevant tests rerun.
 
 Affected checks select existing Corner viewer secrecy/terminal, Local Corner draft/Formula/narrative, one prior Penalty Direct UI path, Corner type-entry expectation and common closed-wire tests. No default full NetworkPlay, CoreRules, Runtime, LocalPlay or set-piece sweep: gameplay math and shared lifecycle are unchanged, and the additive protocol/disclosure changes have direct bounded evidence. At most one real Host/Remote opposed Goal path verifies generated RPC, natural owner-view replication, correlated ACK/pending, score/scorer/history, Advance/Recovery and next D12; at most one screenshot when it materially validates the shared surface. USER PIE manually checks a normal opposed path, attack-zero and defense-zero without repeating every count or actor direction.
+
+## Stage 7 Networking milestone closeout verification
+
+Audit the final 60-kind wire, production actions, shared authority/RNG/disclosure, LocalPlay and transport-neutral PVE seam before testing. This integrated milestone justifies one full FMCodex.NetworkPlay run. Record selected/pass/fail/not-run counts and duration; classify failures and use focused reruns after narrow repairs. Select the existing Runtime NetworkBoundary.ViewerProjection group and LocalMatchHost lifecycle / FullTime normal-six-attack anchors instead of unrelated full Runtime/LocalPlay/CoreRules suites when their implementations are unchanged.
+
+Normal launch must enable both shared screens at 1600×900 without deterministic fixtures, diagnostics or audit flags; explicit dimensions and optional diagnostics remain available. Preserve all Host-only fixture checks in Test-NetworkPlayDev.ps1. After a launcher repair, at most one real normal Host/Remote pair verifies connection-derived identity, secure D12, generated RPC, natural owner replication and ACK/View pending. Reuse accumulated family golden paths; user acceptance targets the repaired default entrance, not every set piece. Keep teardown-only ensures separate from active gameplay failures.
+
+Keep the common reflected field inventory exact when a reviewed safe DTO grows; name unexpected fields in failures. Historical set-piece entry checks must assert current Corner candidate ownership and hidden future roll/participant facts, while dedicated Corner tests own nomination and terminal lifecycle coverage.
