@@ -648,3 +648,20 @@ All kind-specific payload members must be empty. Server derives Side from the ad
 Accepted purposes use narrow indices 0/1; early Direct has only index 0. Shared Local presentation identities remain SetPiece.Attack/SetPieceAttack/0, SetPiece.Defense/SetPieceDefense/0, and SetPiece.Long.Power/SetPiecePairedA/0 then SetPiecePairedB/1. Attack sequence, contest and owner remain part of identity. Security-hidden Formula/outcome/history stay out of safe View; legally disclosed results replicate immediately while the existing Reel/ResultHold/Narrative/displayed-score gate delays visible reveal.
 
 Optional host-only non-Shipping launcher: `Scripts/NetworkPlay/LaunchNetworkPlayDev.ps1 -PlayerFacingLongFreeKickMilestone PowerGoal -SetPieceActor A`. Modes DirectGoal, DirectMiss, DirectEarlyNoGoal, PowerGoal, PowerMiss support both actors. Provider fixture uses D12=9/type D6=3; Direct 6/1, 3/6 or early 1; Power Goal 6/5 and miss 2/3. Player still chooses taker/method and submits genuine actions. Remote receives no provider controls and normal launch retains private secure RNG. Real Direct Goal, early NoGoal and opposite-actor Power threshold Goal are useful runtime paths; automated evidence does not replace USER PIE.
+
+
+## Penalty Network resolution family (Stage 7.24)
+
+This supersedes earlier Penalty decisive-resolution restrictions. General player-facing capability now supports Near, Long and Penalty; Corner remains at its existing boundary.
+
+| Wire tag / exact PlayerIntent | Exact request | Actor and canonical wait | Server-private draw |
+|---|---|---|---|
+| 51 ResolvePenaltyDirectAttackRoll | FMatchPlayPenaltyRollRequest | attacker; Penalty/Direct/DirectAwaitingAttackRoll | PenaltyDirectAttack once; all D6 values continue to defender |
+| 52 ResolvePenaltyDirectDefenseRoll | same | defender; Penalty/Direct/DirectAwaitingDefenseRoll with stored attack | PenaltyDirectDefense once; canonical Finishing and terminal |
+| 53 ResolvePenaltyPanenkaRoll | same | attacker; Penalty/Panenka/PanenkaAwaitingRoll | PenaltyPanenka once; outcome-only terminal |
+
+All kind-specific payload members are empty. Side derives from connection/ParticipantRegistry; sequence comes from the common envelope. Match, RequestId window, closed shape, dedupe, stale attack rejection and ACK/View pending are unchanged. Semantic rejections and provider failures retain the existing consumed-ID policy: retry uses a fresh ID. Failed provider attempts adopt no partial gameplay state, disclosure or revision and invoke no Coordinator. Production randomness remains server-private; no RNG/result/taker/method override is accepted in a roll request.
+
+Direct accepted roll purposes use indices 0/1; Panenka has only index 0. Local presentation identities remain SetPiece.Attack/SetPieceAttack/0 and SetPiece.Defense/SetPieceDefense/0; Panenka uses only the former, never a fake second die. Terminal/GoalHistory/scorer facts require the complete permitted prefix and independent terminal disclosure. Legally disclosed facts replicate immediately; shared Reel, actual elapsed ResultHold, Formula/Narrative and displayed-score gates control visible timing. Host and Remote both submit generated RPC through the same Screen/action adapter.
+
+Optional non-Shipping Host-only launcher: `Scripts/NetworkPlay/LaunchNetworkPlayDev.ps1 -PlayerFacingPenaltyMilestone DirectGoal -SetPieceActor A`. Modes: DirectGoal, DirectMiss, PanenkaGoal, PanenkaMiss; actor A or B. Provider seam supplies D12=9/type D6=6, Direct 6/1 or 1/6, Panenka 2 or 1. Taker/method remain player choices and all outcomes/progression remain canonical. Remote receives no fixture controls; default launch retains secure randomness. Normal stage engineering evidence is at most one representative two-process path, with branch/side differences covered by focused automation; USER PIE remains required for visible milestone acceptance.

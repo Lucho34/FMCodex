@@ -3499,10 +3499,10 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		|| ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
 	const auto SetPieceType = MatchController ? MatchController->GetInteractionView().SetPieceType : Presentation.SetPiece.Type;
-	const bool bFreeKickAttackPrefix = ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack
+	const bool bSetPieceAttackPrefix = ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack
 		&& (SetPieceType == ESetPieceSelectedType::ShortFreeKick
-			|| (SetPieceType == ESetPieceSelectedType::LongFreeKick && Result.bShowDefenseRow));
-	const bool bSetPieceTerminalNarrative = bSetPieceMethodReveal && !bFreeKickAttackPrefix
+			|| ((SetPieceType == ESetPieceSelectedType::LongFreeKick || SetPieceType == ESetPieceSelectedType::Penalty) && Result.bShowDefenseRow));
+	const bool bSetPieceTerminalNarrative = bSetPieceMethodReveal && !bSetPieceAttackPrefix
 		&& ActiveCrossRollReveal.Kind
 			!= EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
 		&& Result.bNarrativeAvailable;
@@ -3560,13 +3560,20 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		return Result;
 	}
 	if (bSetPieceMethodReveal
-		&& (!bFormulaDisclosed || bFreeKickAttackPrefix
+		&& (!bFormulaDisclosed || bSetPieceAttackPrefix
 			|| ActiveCrossRollReveal.Kind
 				== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA))
 	{
 		// Never disclose the accepted Formula/outcome before ResultHold, and
 		// never reveal the second value while the first paired reel is holding.
 		Result.RouteResultLabel.Empty();
+	}
+	if (SetPieceType == ESetPieceSelectedType::Penalty && !Result.bShowFormulaRows
+		&& ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack)
+	{
+		// A legally published single-die terminal must retain its static hint during the reel.
+		Result.RollHelperLabel = bFormulaDisclosed ? FString()
+			: FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(SetPieceType).ToString();
 	}
 	const bool bSetPiecePairFirst = ActiveCrossRollReveal.Kind
 		== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA;
@@ -3616,7 +3623,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::SetPieceAttack;
 	Result.bAttackRowActive = bAttack;
 	Result.bDefenseRowActive = !bAttack;
-	if (bFreeKickAttackPrefix)
+	if (bSetPieceAttackPrefix)
 		StageRowForReveal(Result.DefenseRow, false, false, 0); // A coalesced terminal cannot reveal the defense roll during attack A.
 	if (!bFormulaDisclosed)
 	{
@@ -4741,10 +4748,10 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	// Messaging ownership follows the visible shared takeover on BOTH viewers,
 	// including the read-only viewer with no branch choices or primary action.
-	const bool bFreeKickResolutionSurface = StandaloneInlineFormula.bVisible
-		&& (Presentation.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type == ESetPieceSelectedType::LongFreeKick);
+	const bool bSetPieceResolutionSurface = StandaloneInlineFormula.bVisible
+		&& (Presentation.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type == ESetPieceSelectedType::LongFreeKick || Presentation.SetPiece.Type == ESetPieceSelectedType::Penalty);
 	const bool bCentralOwnsActionPrompt = Presentation.bMirrorActionWaitPrompt
-		&& (bFreeKickResolutionSurface || (bLongShotProductionOwnsResolution && DisplayedLongShot.bVisible)
+		&& (bSetPieceResolutionSurface || (bLongShotProductionOwnsResolution && DisplayedLongShot.bVisible)
 			|| (Presentation.SetPiece.bVisible && !IsInlineFormulaRevealInputBlocked()))
 		&& !Presentation.FullTime.bVisible;
 	FText CentralPrompt = bCentralOwnsActionPrompt
@@ -4760,7 +4767,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 					Side == EInitialTurnOrderPlayer::PlayerA ? TEXT("Player A") : TEXT("Player B")))
 			: FText::GetEmpty();
 	}
-	if (bFreeKickResolutionSurface && !CentralPrompt.IsEmpty())
+	if (bSetPieceResolutionSurface && !CentralPrompt.IsEmpty())
 		StandaloneInlineFormula.StatusLabel = CentralPrompt.ToString()
 			+ (StandaloneInlineFormula.StatusLabel.IsEmpty() ? FString() : TEXT("\n") + StandaloneInlineFormula.StatusLabel);
 	InlineFormulaSurface->RefreshFromPresentation(StandaloneInlineFormula);

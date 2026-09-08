@@ -111,6 +111,27 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyDirectAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayPenaltyRollRequest>()) return Mismatch();
+		const auto Authority = Session.ResolvePenaltyDirectAttackRoll(Intent.Payload.Get<FMatchPlayPenaltyRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyDirectDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayPenaltyRollRequest>()) return Mismatch();
+		const auto Authority = Session.ResolvePenaltyDirectDefenseRoll(Intent.Payload.Get<FMatchPlayPenaltyRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolvePenaltyPanenkaRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayPenaltyRollRequest>()) return Mismatch();
+		const auto Authority = Session.ResolvePenaltyPanenkaRoll(Intent.Payload.Get<FMatchPlayPenaltyRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeployOrdinaryRequest>()) { return Mismatch(); }

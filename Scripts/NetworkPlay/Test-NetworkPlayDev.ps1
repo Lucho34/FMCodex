@@ -269,3 +269,20 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Long fixture cann
 . $launcherPath -UnrealEditorPath $testEnginePath
 Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Long fixture keeps secure defaults'
 Write-Host ("FMCODEX_LONG_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)
+
+# Stage 7.24: host-only Penalty provider controls, both owning sides.
+foreach ($mode in @('DirectGoal','DirectMiss','PanenkaGoal','PanenkaMiss')) {
+    foreach ($side in @('A','B')) {
+        . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingPenaltyMilestone $mode -SetPieceActor $side
+        $penalty = Get-NetworkPlayLaunchPlan
+        Assert-True ($penalty.HostArguments -contains ('-FMCodexNetworkPlayerFacingPenaltyMilestone=' + $mode)) 'Penalty provider fixture reaches Host only'
+        Assert-True ($penalty.HostArguments -contains ('-FMCodexNetworkSetPieceActor=' + $side)) 'Penalty supports both actors'
+        Assert-True (@($penalty.ClientArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*SetPieceActor*' }).Count -eq 0) 'Penalty Remote receives no provider controls'
+        Assert-True (($penalty.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($penalty.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Penalty uses both shared screens'
+    }
+}
+$PlayerFacingLongFreeKickMilestone = 'DirectGoal'
+Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Penalty cannot mix with Long fixture'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Penalty retains secure defaults'
+Write-Host ("FMCODEX_PENALTY_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)

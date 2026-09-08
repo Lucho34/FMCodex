@@ -1505,19 +1505,24 @@ namespace FMCodexLocalMatchUMGPresentation
 				Result.DefenseRow.KnownNonRollSubtotal =
 					InteractionView.SetPieceDefenseKnownSubtotal;
 			}
-			if (InteractionView.bHasSetPieceAttackCurrentTotal)
+			// A redacted roll-dependent total does not hide the separately projected public subtotal.
+			if (InteractionView.bHasSetPieceAttackCurrentTotal
+				|| InteractionView.bHasSetPieceAttackKnownSubtotal)
 			{
 				Result.AttackRow.bDisplayedResultResolved = true;
-				Result.AttackRow.DisplayedResult =
-					InteractionView.SetPieceAttackCurrentTotal;
+				Result.AttackRow.DisplayedResult = InteractionView.bHasSetPieceAttackCurrentTotal
+					? InteractionView.SetPieceAttackCurrentTotal
+					: InteractionView.SetPieceAttackKnownSubtotal;
 				Result.AttackRow.DisplayedResultLabel = CompactNumber(
 					Result.AttackRow.DisplayedResult);
 			}
-			if (InteractionView.bHasSetPieceDefenseCurrentTotal)
+			if (InteractionView.bHasSetPieceDefenseCurrentTotal
+				|| InteractionView.bHasSetPieceDefenseKnownSubtotal)
 			{
 				Result.DefenseRow.bDisplayedResultResolved = true;
-				Result.DefenseRow.DisplayedResult =
-					InteractionView.SetPieceDefenseCurrentTotal;
+				Result.DefenseRow.DisplayedResult = InteractionView.bHasSetPieceDefenseCurrentTotal
+					? InteractionView.SetPieceDefenseCurrentTotal
+					: InteractionView.SetPieceDefenseKnownSubtotal;
 				Result.DefenseRow.DisplayedResultLabel = CompactNumber(
 					Result.DefenseRow.DisplayedResult);
 			}

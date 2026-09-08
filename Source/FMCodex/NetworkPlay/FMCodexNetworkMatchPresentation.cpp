@@ -183,7 +183,7 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	Result.Interaction = MoveTemp(M.Interaction);
 	if (M.SetPiece.bVisible)
 	{
-		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick && M.SetPiece.Type != ESetPieceSelectedType::LongFreeKick) M.InlineFormula = {};
+		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick && M.SetPiece.Type != ESetPieceSelectedType::LongFreeKick && M.SetPiece.Type != ESetPieceSelectedType::Penalty) M.InlineFormula = {};
 		M.LongShotResolution = {}; M.ThroughBallResolution = {};
 	}
 	Result.InlineFormula = MoveTemp(M.InlineFormula);
@@ -198,7 +198,7 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 		Event.OwnerSide = SafeView.CurrentAttackingPlayer; Event.SequenceIndex = 0; Event.RawD6 = Result.SetPiece.TypeD6;
 		Result.ResolvedRolls.Add(Event);
 	}
-	if (Result.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || Result.SetPiece.Type == ESetPieceSelectedType::LongFreeKick)
+	if (Result.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || Result.SetPiece.Type == ESetPieceSelectedType::LongFreeKick || Result.SetPiece.Type == ESetPieceSelectedType::Penalty)
 	{
 		using K = EFMCodexUMGCrossRollRevealKind;
 		auto Add = [&](K Kind, FName Id, int32 Index, int32 D6, EInitialTurnOrderPlayer Owner)
@@ -211,7 +211,11 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 		if (SafeView.bHasSetPieceAttackD6) Add(K::SetPieceAttack, TEXT("SetPiece.Attack"), 0, SafeView.SetPieceAttackD6, SafeView.CurrentAttackingPlayer);
 		if (SafeView.bHasSetPieceDefenseD6) Add(K::SetPieceDefense, TEXT("SetPiece.Defense"), 0, SafeView.SetPieceDefenseD6,
 			SafeView.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA ? EInitialTurnOrderPlayer::PlayerB : EInitialTurnOrderPlayer::PlayerA);
-		if (SafeView.bHasSetPiecePairedD6)
+		if (SafeView.bHasSetPiecePairedD6 && Result.SetPiece.Type == ESetPieceSelectedType::Penalty)
+		{
+			Add(K::SetPieceAttack, TEXT("SetPiece.Attack"), 0, SafeView.SetPiecePairedD6A, SafeView.CurrentAttackingPlayer);
+		}
+		else if (SafeView.bHasSetPiecePairedD6)
 		{
 			const FName PairId = Result.SetPiece.Type == ESetPieceSelectedType::LongFreeKick ? TEXT("SetPiece.Long.Power") : TEXT("SetPiece.Short.Angled");
 			Add(K::SetPiecePairedA, PairId, 0, SafeView.SetPiecePairedD6A, SafeView.CurrentAttackingPlayer);
@@ -242,10 +246,10 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	M.SetPiece = View.SetPiece;
 	if (M.SetPiece.bVisible)
 	{
-		// Both free-kick families are complete; Penalty/Corner retain their boundaries.
+		// Carrier set-piece resolution uses shared surfaces; Corner retains its boundary.
 		const bool Supported = M.SetPiece.bSelectionSupported
-			&& (M.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || M.SetPiece.Type == ESetPieceSelectedType::LongFreeKick || M.SetPiece.bTypeWait || M.SetPiece.bTakerWait || M.SetPiece.bMethodWait || M.SetPiece.bNoTakerNoGoal);
-		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick && M.SetPiece.Type != ESetPieceSelectedType::LongFreeKick) M.InlineFormula = {};
+			&& (M.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || M.SetPiece.Type == ESetPieceSelectedType::LongFreeKick || M.SetPiece.Type == ESetPieceSelectedType::Penalty || M.SetPiece.bTypeWait || M.SetPiece.bTakerWait || M.SetPiece.bMethodWait || M.SetPiece.bNoTakerNoGoal);
+		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick && M.SetPiece.Type != ESetPieceSelectedType::LongFreeKick && M.SetPiece.Type != ESetPieceSelectedType::Penalty) M.InlineFormula = {};
 		M.LongShotResolution = {}; M.ThroughBallResolution = {};
 		M.Interaction.SelectionChoices.Reset(); // Taker uses the existing hand + confirmation surface.
 		if (!Supported) DisableActions(M);
@@ -329,6 +333,9 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 			: M.Interaction.Category == C::RollLongFreeKickDirectAttack ? LOCTEXT("LongFreeKickAttack", "进攻方掷点")
 			: M.Interaction.Category == C::RollLongFreeKickDirectDefense ? LOCTEXT("LongFreeKickDefense", "防守方掷点")
 			: M.Interaction.Category == C::RollLongFreeKickPower ? LOCTEXT("LongFreeKickPair", "进攻方掷两枚骰")
+			: M.Interaction.Category == C::RollPenaltyDirectAttack ? LOCTEXT("PenaltyAttack", "进攻方掷点")
+			: M.Interaction.Category == C::RollPenaltyDirectDefense ? LOCTEXT("PenaltyDefense", "防守方掷点")
+			: M.Interaction.Category == C::RollPenaltyPanenka ? LOCTEXT("PenaltyPanenka", "掷勺子点球")
 			: M.Interaction.Category == C::AdvanceAfterTerminal ? LOCTEXT("Advance", "下一回合")
 			: LOCTEXT("SetPieceBoundary", "后续定位球流程暂未开放");
 	}

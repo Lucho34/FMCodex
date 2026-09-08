@@ -95,6 +95,9 @@ bool FFMCodexNetworkMatchScreenActions::Begin(const FFMCodexMatchScreenRequest& 
 		case C::RollLongFreeKickDirectAttack: return Client.BeginSetPiece(View, N::ResolveLongFreeKickDirectAttackRoll, Out);
 		case C::RollLongFreeKickDirectDefense: return Client.BeginSetPiece(View, N::ResolveLongFreeKickDirectDefenseRoll, Out);
 		case C::RollLongFreeKickPower: return Client.BeginSetPiece(View, N::ResolveLongFreeKickPowerRoll, Out);
+		case C::RollPenaltyDirectAttack: return Client.BeginSetPiece(View, N::ResolvePenaltyDirectAttackRoll, Out);
+		case C::RollPenaltyDirectDefense: return Client.BeginSetPiece(View, N::ResolvePenaltyDirectDefenseRoll, Out);
+		case C::RollPenaltyPanenka: return Client.BeginSetPiece(View, N::ResolvePenaltyPanenkaRoll, Out);
 		case C::RollLongShotDirectAttack: return Client.BeginOrdinaryContest(View, N::LongShotDirectAttackRoll, Out);
 		case C::RollLongShotDirectDefense: return Client.BeginOrdinaryContest(View, N::LongShotDirectDefenseRoll, Out);
 		case C::RollLongShotDeadCorner: return Client.BeginOrdinaryContest(View, N::LongShotDeadCornerRoll, Out);

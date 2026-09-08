@@ -54,15 +54,11 @@ bool FFMCodexSetPieceSelectionUI::RunTest(const FString& P)
  {
   TestFalse(TEXT("No decisive-roll CTA"),Visible(Screen,TEXT("SetPieceProductionPrimaryAction")));
   for(const TCHAR* Name:{TEXT("ShortDirectMethod"),TEXT("ShortAngledMethod"),TEXT("LongDirectMethod"),TEXT("LongPowerMethod"),TEXT("PenaltyDirectMethod"),TEXT("PenaltyPanenkaMethod")})TestFalse(TEXT("No stale method CTA"),Visible(Screen,Name));
-  const auto* Detail=Cast<UTextBlock>(Screen->GetWidgetFromName(TEXT("SetPieceProductionDetail")));if(D6==6) TestTrue(TEXT("Clear unsupported continuation"),Detail->GetText().ToString().Contains(TEXT("暂未开放")));
-  else
-  {
-   TestFalse(TEXT("Free kick handoff collapses the entire method surface"),Visible(Screen,TEXT("SetPieceProductionResolutionSurface")));
-   TestTrue(TEXT("Free kick shared resolution enabled"),Screen->GetPresentation().InlineFormula.bVisible);
-  }
+  TestFalse(TEXT("Resolution handoff collapses the entire method surface"),Visible(Screen,TEXT("SetPieceProductionResolutionSurface")));
+  TestTrue(TEXT("Shared resolution enabled"),Screen->GetPresentation().InlineFormula.bVisible);
  }
  TestEqual(TEXT("Only type consumed entropy"),F.Entropy->Calls,Before.EntropyCalls+1);
- Access::SetPiecePresentation(*F.Mode,false);const auto General=FFMCodexNetworkMatchPresentationAdapter::Read(PC->GetOwnerView(),false);TestEqual(TEXT("Only complete free kicks are enabled generally"),General.SetPiece.bSelectionSupported,D6==3||D6==5);
+ Access::SetPiecePresentation(*F.Mode,false);const auto General=FFMCodexNetworkMatchPresentationAdapter::Read(PC->GetOwnerView(),false);TestEqual(TEXT("Complete carrier set pieces are enabled generally"),General.SetPiece.bSelectionSupported,D6==3||D6==5||D6==6);
  return true;
 }
 #endif

@@ -1829,13 +1829,13 @@ namespace FMCodexLocalMatchInteractionView
 		}
 
 		// Read persisted early-terminal shape before consulting a redacted roll prefix.
-		// Long Direct early NoGoal needs one roll; completed comparisons and pairs need two.
+		// Long Direct early NoGoal and Penalty Panenka need one roll; comparisons and pairs need two.
 		const auto& Long = Snapshot.CurrentAttack.SetPieceRoute.LongFreeKick;
 		const bool bEarlyLongNoGoal = View.SetPieceType == ESetPieceSelectedType::LongFreeKick
 			&& Long.Method == EMatchPlayLongFreeKickMethod::Direct && Long.bHasAttackD6 && !Long.bHasDefenseD6
 			&& Long.GameplayOutcome == EMatchPlayLongFreeKickGameplayOutcome::NoGoal;
-		if ((View.SetPieceType == ESetPieceSelectedType::ShortFreeKick || View.SetPieceType == ESetPieceSelectedType::LongFreeKick)
-			&& !View.bSetPieceNoLegalCarrier && (ContestCount < (bEarlyLongNoGoal ? 1 : 2) || !Disclosure.bRevealTerminalOutcome))
+		if ((View.SetPieceType == ESetPieceSelectedType::ShortFreeKick || View.SetPieceType == ESetPieceSelectedType::LongFreeKick || View.SetPieceType == ESetPieceSelectedType::Penalty)
+			&& !View.bSetPieceNoLegalCarrier && (ContestCount < ((bEarlyLongNoGoal || (View.SetPieceType == ESetPieceSelectedType::Penalty && Snapshot.CurrentAttack.SetPieceRoute.Penalty.Method == EMatchPlayPenaltyMethod::Panenka)) ? 1 : 2) || !Disclosure.bRevealTerminalOutcome))
 		{
 			View.bHasSetPieceFormula = false;
 			View.SetPieceFormula = {};

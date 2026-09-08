@@ -73,6 +73,7 @@ public:
 	void EnableSetPieceSelectionMilestone(int32 TypeD6);
 	void EnableNearFreeKickMilestone(bool Goal);
 	void EnableLongFreeKickMilestone(bool Goal, bool EarlyNoGoal);
+	void EnablePenaltyMilestone(bool Goal);
 	void EnableDeploymentAutomationEntry(int32 InitialD12 = 4);
 	void EnableInitialRouteAutomation(int32 D6);
 	void EnablePostRouteAutomation(int32 AttackD6, int32 DefenseD6);
@@ -115,8 +116,8 @@ private:
 	int64 DisclosedTerminalAttackSequence = 0;
 	int64 DisclosedInitialAttackSequence = 0;
 	int64 DisclosedSetPieceTypeSequence = 0;
-	int64 DisclosedFreeKickAttackSequence = 0;
-	int32 DisclosedFreeKickRollCount = 0;
+	int64 DisclosedSetPieceResolutionSequence = 0;
+	int32 DisclosedSetPieceResolutionRollCount = 0;
 	int64 DisclosedRouteAttackSequence = 0;
 	int64 DisclosedContestAttackSequence = 0;
 	int32 DisclosedContestRollCount = 0;

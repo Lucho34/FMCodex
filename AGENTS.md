@@ -89,12 +89,25 @@ FULL REGRESSION IS MILESTONE-GATED, NOT STAGE-MECHANICAL.
 2. **Affected**：按最终实际生产改动面选择 Network transport/schema、shared runtime、shared UI、LocalPlay、CoreRules 等相关回归，不按习惯选 suite。
 3. **Broad / Full**：仅在广泛影响或 milestone closeout 有依据时升级，选择受影响的大 suite，不自动运行所有 full suites。
 
-- 升级触发包括 CoreRules/Formula/gameplay、Session/Coordinator/shared HostPort 全局语义、RNG/serialization/persistence、公共 Network protocol/schema/replication/disclosure、共享 Screen 核心生命周期、重大玩法/联网收尾或 focused 证据显示更广风险。
+- Broad / Full 升级限于真实 milestone closeout，或实际改变共享/全局基础设施：CoreRules/Formula 全局规则、Session/Coordinator/shared HostPort 全局生命周期、RNG 架构、serialization/persistence 全局合同、公共 envelope/RequestId/ACK/security/replication/disclosure 语义、共享 Screen 核心状态机等。Focused 暴露上述广泛风险时按影响升级；少量 typed intent、局部 schema/安全投影或家族接入本身不自动触发 full NetworkPlay。
 - 小修复先 focused，再视影响跑 affected；compile/fixture/naming/label/窄 DTO/DEV logging 修复不自动触发数千测试，除非改变共享合同。
 - LocalPlay、Runtime、CoreRules 全量分别依共享表现生命周期、运行时语义、规则实现的实际影响选择；仅消费未变更的 canonical 行为不自动要求其 full suite。
 - localized cpp 修改通常 incremental build 足够；UCLASS/USTRUCT/public header/schema 变化运行必要 UHT/build；高风险收尾执行 final target verification，不机械 clean build。
 - 按需要用真实独立 Host/Remote、generated RPC、自然 replication、ACK/View、截图/日志补足 automation 的边界；模拟调用不能冒充真实双进程证据。
 - PASS 报告必须列出 focused/affected 的实际结果与理由、full suite 触发原因、主要未跑 full suites 及安全省略理由，并写 `REGRESSION SCOPE JUSTIFIED: YES / NO`；不得声称未跑测试 PASS，测试总数本身不是质量指标。
+
+### Minimal Sufficient Verification Budget
+
+普通中等粒度 Stage 默认采用最小充分证据集；验证预算不得因“额外放心”“通常会跑”或“以防万一”持续膨胀。
+
+- Focused 只覆盖新增/修改合同及重要边界：按实际适用性验证接受路径、authority/security、错误 Side/phase、重复请求、stale sequence、错误 Match、非法 payload、provider failure，以及关键玩法/表现边界。复用已有参数化与 validator 证据，不重复穷举本阶段未改的公共校验。
+- Affected 只覆盖最终 diff 实际触及的表面；复用未修改的 canonical 玩法，不等于重新验证整个玩法家族。Network 测试不得重复 CoreRules 已完整证明的骰子、概率或数学矩阵。
+- 普通 Stage 的真实独立 Host/Remote Golden Path 默认预算最多一条，选择最能代表实际改动的分支。A/B 对称性主要由自动化/参数化证明，不自动另跑交换进攻方的第二次双进程流程。
+- 截图只在能证明自动化难以充分证明的玩家表现合同时采集；默认使用必要的文本/日志/runtime 证据，不默认生成大批截图。工程运行与截图仍不能代替 USER PIE。
+- 不默认运行 full FMCodex.NetworkPlay 或其他 broad suites；仅按上面的真实收尾或共享/全局改动触发条件升级，并记录原因。局部修复完成后只补相关验证，不机械重跑已充分证明的范围。
+- 正常构建预算为必要 UHT/增量 Development Editor build 与 git diff --check；保留上面的高风险 final target verification 规则，不默认 clean/rebuild。
+- 每次 Stage 报告必须包含 Verification Budget：逐项列出实际 focused/affected suite 的准确名称及必要性、是否执行真实 Host/Remote Golden Path、主动省略的 broad suites 及安全省略理由；仍须报告真实结果和 REGRESSION SCOPE JUSTIFIED: YES / NO。
+- 若 Stage prompt 本身机械要求了与实际风险不匹配的过量验证，明确指出过量部分，并缩减到最小充分证据集；不得因照搬阶段 checklist 扩大测试矩阵。
 
 ## Canonical References and Truth Priority
 
