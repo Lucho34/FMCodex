@@ -54,6 +54,9 @@ enum class EFMCodexNetworkPlayerIntentKind : uint8
 	ResolveShortFreeKickDirectAttackRoll,
 	ResolveShortFreeKickDirectDefenseRoll,
 	ResolveShortFreeKickAngledRoll,
+	ResolveLongFreeKickDirectAttackRoll,
+	ResolveLongFreeKickDirectDefenseRoll,
+	ResolveLongFreeKickPowerRoll,
 };
 
 UENUM()

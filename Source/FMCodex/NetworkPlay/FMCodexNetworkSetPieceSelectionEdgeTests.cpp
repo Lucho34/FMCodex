@@ -23,7 +23,7 @@ bool FFMCodexSetPieceWire::RunTest(const FString&)
   Envelope Copy;FMemoryReader Reader(Bytes);FObjectAndNameAsStringProxyArchive In(Reader,false);Envelope::StaticStruct()->SerializeItem(In,&Copy,nullptr);
   TestTrue(TEXT("Exact reflected typed envelope round trip"),Envelope::StaticStruct()->CompareScriptStruct(&E,&Copy,0));
  }
- for(int32 Value=48;Value<256;++Value){Envelope E;E.IntentKind=static_cast<Kind>(Value);TestEqual(TEXT("Unknown/internal tags remain closed"),E.ValidatePayloadShape(),Code::NotPlayerIntent);}
+ for(int32 Value=51;Value<256;++Value){Envelope E;E.IntentKind=static_cast<Kind>(Value);TestEqual(TEXT("Unknown/internal tags remain closed"),E.ValidatePayloadShape(),Code::NotPlayerIntent);}
  for(int32 Value=0;Value<256;++Value)if(Value!=1&&Value!=2)
  {Envelope E;E.IntentKind=Kind::SubmitShortFreeKickMethod;E.NearMethod=static_cast<EMatchPlayShortFreeKickMethod>(Value);TestEqual(TEXT("Unknown Near enum"),E.ValidatePayloadShape(),Code::InvalidPayload);E={};E.IntentKind=Kind::SubmitLongFreeKickMethod;E.LongMethod=static_cast<EMatchPlayLongFreeKickMethod>(Value);TestEqual(TEXT("Unknown Long enum"),E.ValidatePayloadShape(),Code::InvalidPayload);E={};E.IntentKind=Kind::SubmitPenaltyMethod;E.PenaltyMethod=static_cast<EMatchPlayPenaltyMethod>(Value);TestEqual(TEXT("Unknown Penalty enum"),E.ValidatePayloadShape(),Code::InvalidPayload);}
  Envelope LongId;LongId.IntentKind=Kind::SubmitSetPieceCarrier;LongId.SetPieceCardId=FName(*FString::ChrN(129,TCHAR('X')));TestEqual(TEXT("Oversized ID"),LongId.ValidatePayloadShape(),Code::InvalidPayload);

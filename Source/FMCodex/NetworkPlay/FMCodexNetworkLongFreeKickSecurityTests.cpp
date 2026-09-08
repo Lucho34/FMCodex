@@ -1,25 +1,25 @@
 #if WITH_DEV_AUTOMATION_TESTS
-#include "FMCodexNetworkNearFreeKickTestFixture.h"
-namespace FMCodexNearFreeKickAutomation
+#include "FMCodexNetworkLongFreeKickTestFixture.h"
+namespace FMCodexLongFreeKickAutomation
 {
-using namespace FMCodexNearFreeKickTests;
-IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexNearSecurity,"FMCodex.NetworkPlay.NearFreeKick.Security",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
-void FFMCodexNearSecurity::GetTests(TArray<FString>& N,TArray<FString>& C) const
+using namespace FMCodexLongFreeKickTests;
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexLongSecurity,"FMCodex.NetworkPlay.LongFreeKick.Security",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+void FFMCodexLongSecurity::GetTests(TArray<FString>& N,TArray<FString>& C) const
 {
- for(const TCHAR* S:{TEXT("A"),TEXT("B")})for(int32 K=45;K<=47;++K)
+ for(const TCHAR* S:{TEXT("A"),TEXT("B")})for(int32 K=48;K<=50;++K)
  for(const TCHAR* Case:{TEXT("WrongSide"),TEXT("Nonparticipant"),TEXT("Match"),TEXT("Sequence"),TEXT("Window"),TEXT("Payload"),TEXT("OtherMethod"),TEXT("OtherFamily"),TEXT("OtherPhase"),TEXT("Duplicate"),TEXT("ProviderFirst"),TEXT("AckFirst"),TEXT("ViewFirst"),TEXT("RejectedPending")})
  {const auto P=FString::Printf(TEXT("%s.%d.%s"),S,K,Case);N.Add(P);C.Add(P);}
- for(const TCHAR* S:{TEXT("A"),TEXT("B")}){const auto P=FString::Printf(TEXT("%s.47.ProviderSecond"),S);N.Add(P);C.Add(P);}
+ for(const TCHAR* S:{TEXT("A"),TEXT("B")}){const auto P=FString::Printf(TEXT("%s.50.ProviderSecond"),S);N.Add(P);C.Add(P);}
 }
-bool FFMCodexNearSecurity::RunTest(const FString& P)
+bool FFMCodexLongSecurity::RunTest(const FString& P)
 {
  TArray<FString> Parts;P.ParseIntoArray(Parts,TEXT("."));const Kind K=static_cast<Kind>(FCString::Atoi(*Parts[1]));const auto Case=Parts[2];
  FFixture F(Parts[0]==TEXT("B"));
  if(Case==TEXT("OtherPhase")) {if(!TestTrue(TEXT("Ordinary deployment"),F.Send(F.Attacker(),Kind::RequestInitialActionPointRoll)))return false;}
- else if(Case==TEXT("OtherFamily")) {if(!TestTrue(TEXT("Actual Long method wait"),Prepare(F,Kind::SubmitLongFreeKickMethod,3)))return false;Send(F,F.Attacker(),Request(F,F.Attacker(),Kind::SubmitLongFreeKickMethod));}
+ else if(Case==TEXT("OtherFamily")) {if(!TestTrue(TEXT("Actual Near method wait"),Prepare(F,Kind::SubmitShortFreeKickMethod,5)))return false;Send(F,F.Attacker(),Request(F,F.Attacker(),Kind::SubmitShortFreeKickMethod));}
  else
  {
-  if(!TestTrue(TEXT("Canonical Near method"),PrepareNear(F,Case==TEXT("OtherMethod")?K!=Pair:K==Pair)))return false;
+  if(!TestTrue(TEXT("Canonical Long method"),PrepareLong(F,Case==TEXT("OtherMethod")?K!=Pair:K==Pair)))return false;
   if(K==Defense&&Case!=TEXT("OtherMethod"))if(!TestEqual(TEXT("Canonical attack before defense"),Roll(F,Attack,3),Code::Accepted))return false;
  }
  auto* PC=K==Defense?F.Defender():F.Attacker();auto E=Request(F,PC,K);
@@ -78,10 +78,10 @@ bool FFMCodexNearSecurity::RunTest(const FString& P)
  TestFalse(TEXT("Pending clears on both"),Client.IsPending());Client.ObserveAck(Ack);Client.ObserveView(PC->GetOwnerView());TestFalse(TEXT("Duplicates cannot recreate pending"),Client.IsPending());
  return true;
 }
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexNearWire,"FMCodex.NetworkPlay.NearFreeKick.ClosedWire",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
-bool FFMCodexNearWire::RunTest(const FString&)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexLongWire,"FMCodex.NetworkPlay.LongFreeKick.ClosedWire",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FFMCodexLongWire::RunTest(const FString&)
 {
- TestEqual(TEXT("Existing last tag stable"),int32(Kind::SubmitPenaltyMethod),44);
+ TestEqual(TEXT("Existing last tag stable"),int32(Kind::ResolveShortFreeKickAngledRoll),47);
  for(auto K:{Attack,Defense,Pair})
  {
   Envelope E;E.MatchInstanceId=FGuid::NewGuid();E.RequestId=31;E.ExpectedAttackSequence=2;E.IntentKind=K;
@@ -90,7 +90,7 @@ bool FFMCodexNearWire::RunTest(const FString&)
   Envelope Copy;FMemoryReader Reader(Bytes);FObjectAndNameAsStringProxyArchive In(Reader,false);Envelope::StaticStruct()->SerializeItem(In,&Copy,nullptr);
   TestTrue(TEXT("Reflected wire roundtrip"),Envelope::StaticStruct()->CompareScriptStruct(&E,&Copy,0));
  }
- for(auto K:{EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickDirectAttackRoll,EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickDirectDefenseRoll,EMatchPlayAuthoritativeCommandKind::ResolveShortFreeKickAngledRoll})
+ for(auto K:{EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickDirectAttackRoll,EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickDirectDefenseRoll,EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickPowerRoll})
  {
   TestEqual(TEXT("Existing authority classifies PlayerIntent"),FMatchPlayAuthoritativeCommandClassification::OriginOf(K),EMatchPlayAuthoritativeCommandOrigin::PlayerIntent);
   FFixture F;const FBoundary B(F);auto R=Access::Runtime(*F.Mode).SubmitPlayerIntent(FMatchPlayPlayerIntent::Create(K,FMatchPlaySetPieceTypeRollRequest{}));

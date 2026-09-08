@@ -183,7 +183,7 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 	Result.Interaction = MoveTemp(M.Interaction);
 	if (M.SetPiece.bVisible)
 	{
-		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick) M.InlineFormula = {};
+		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick && M.SetPiece.Type != ESetPieceSelectedType::LongFreeKick) M.InlineFormula = {};
 		M.LongShotResolution = {}; M.ThroughBallResolution = {};
 	}
 	Result.InlineFormula = MoveTemp(M.InlineFormula);
@@ -198,7 +198,7 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 		Event.OwnerSide = SafeView.CurrentAttackingPlayer; Event.SequenceIndex = 0; Event.RawD6 = Result.SetPiece.TypeD6;
 		Result.ResolvedRolls.Add(Event);
 	}
-	if (Result.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick)
+	if (Result.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || Result.SetPiece.Type == ESetPieceSelectedType::LongFreeKick)
 	{
 		using K = EFMCodexUMGCrossRollRevealKind;
 		auto Add = [&](K Kind, FName Id, int32 Index, int32 D6, EInitialTurnOrderPlayer Owner)
@@ -213,8 +213,9 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 			SafeView.CurrentAttackingPlayer == EInitialTurnOrderPlayer::PlayerA ? EInitialTurnOrderPlayer::PlayerB : EInitialTurnOrderPlayer::PlayerA);
 		if (SafeView.bHasSetPiecePairedD6)
 		{
-			Add(K::SetPiecePairedA, TEXT("SetPiece.Short.Angled"), 0, SafeView.SetPiecePairedD6A, SafeView.CurrentAttackingPlayer);
-			Add(K::SetPiecePairedB, TEXT("SetPiece.Short.Angled"), 1, SafeView.SetPiecePairedD6B, SafeView.CurrentAttackingPlayer);
+			const FName PairId = Result.SetPiece.Type == ESetPieceSelectedType::LongFreeKick ? TEXT("SetPiece.Long.Power") : TEXT("SetPiece.Short.Angled");
+			Add(K::SetPiecePairedA, PairId, 0, SafeView.SetPiecePairedD6A, SafeView.CurrentAttackingPlayer);
+			Add(K::SetPiecePairedB, PairId, 1, SafeView.SetPiecePairedD6B, SafeView.CurrentAttackingPlayer);
 		}
 	}
 	return Result;
@@ -241,10 +242,10 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 	M.SetPiece = View.SetPiece;
 	if (M.SetPiece.bVisible)
 	{
-		// Near is complete; the other set-piece families retain their selection milestone boundary.
+		// Both free-kick families are complete; Penalty/Corner retain their boundaries.
 		const bool Supported = M.SetPiece.bSelectionSupported
-			&& (M.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || M.SetPiece.bTypeWait || M.SetPiece.bTakerWait || M.SetPiece.bMethodWait || M.SetPiece.bNoTakerNoGoal);
-		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick) M.InlineFormula = {};
+			&& (M.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || M.SetPiece.Type == ESetPieceSelectedType::LongFreeKick || M.SetPiece.bTypeWait || M.SetPiece.bTakerWait || M.SetPiece.bMethodWait || M.SetPiece.bNoTakerNoGoal);
+		if (M.SetPiece.Type != ESetPieceSelectedType::ShortFreeKick && M.SetPiece.Type != ESetPieceSelectedType::LongFreeKick) M.InlineFormula = {};
 		M.LongShotResolution = {}; M.ThroughBallResolution = {};
 		M.Interaction.SelectionChoices.Reset(); // Taker uses the existing hand + confirmation surface.
 		if (!Supported) DisableActions(M);
@@ -325,6 +326,9 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 			: M.Interaction.Category == C::RollShortFreeKickDirectAttack ? LOCTEXT("NearAttack", "进攻方掷点")
 			: M.Interaction.Category == C::RollShortFreeKickDirectDefense ? LOCTEXT("NearDefense", "防守方掷点")
 			: M.Interaction.Category == C::RollShortFreeKickAngled ? LOCTEXT("NearPair", "进攻方掷两枚骰")
+			: M.Interaction.Category == C::RollLongFreeKickDirectAttack ? LOCTEXT("LongFreeKickAttack", "进攻方掷点")
+			: M.Interaction.Category == C::RollLongFreeKickDirectDefense ? LOCTEXT("LongFreeKickDefense", "防守方掷点")
+			: M.Interaction.Category == C::RollLongFreeKickPower ? LOCTEXT("LongFreeKickPair", "进攻方掷两枚骰")
 			: M.Interaction.Category == C::AdvanceAfterTerminal ? LOCTEXT("Advance", "下一回合")
 			: LOCTEXT("SetPieceBoundary", "后续定位球流程暂未开放");
 	}

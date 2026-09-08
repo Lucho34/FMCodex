@@ -15,7 +15,7 @@ bool FFMCodexSetPieceSelectionUI::RunTest(const FString& P)
  const auto Visible=[&](UFMCodexLocalMatchScreenWidget* Screen,const TCHAR* Name)
  {
   const auto* Widget=Screen->GetWidgetFromName(Name);TestNotNull(Name,Widget);
-  // A collapsed owner surface hides its retained children after the Near handoff.
+  // A collapsed owner surface hides its retained children after the Free kick handoff.
   for(const UWidget* Current=Widget;Current;Current=Current->GetParent())
    if(Current->GetVisibility()==ESlateVisibility::Collapsed||Current->GetVisibility()==ESlateVisibility::Hidden)return false;
   return Widget!=nullptr;
@@ -54,15 +54,15 @@ bool FFMCodexSetPieceSelectionUI::RunTest(const FString& P)
  {
   TestFalse(TEXT("No decisive-roll CTA"),Visible(Screen,TEXT("SetPieceProductionPrimaryAction")));
   for(const TCHAR* Name:{TEXT("ShortDirectMethod"),TEXT("ShortAngledMethod"),TEXT("LongDirectMethod"),TEXT("LongPowerMethod"),TEXT("PenaltyDirectMethod"),TEXT("PenaltyPanenkaMethod")})TestFalse(TEXT("No stale method CTA"),Visible(Screen,Name));
-  const auto* Detail=Cast<UTextBlock>(Screen->GetWidgetFromName(TEXT("SetPieceProductionDetail")));if(D6!=5) TestTrue(TEXT("Clear unsupported continuation"),Detail->GetText().ToString().Contains(TEXT("暂未开放")));
+  const auto* Detail=Cast<UTextBlock>(Screen->GetWidgetFromName(TEXT("SetPieceProductionDetail")));if(D6==6) TestTrue(TEXT("Clear unsupported continuation"),Detail->GetText().ToString().Contains(TEXT("暂未开放")));
   else
   {
-   TestFalse(TEXT("Near handoff collapses the entire method surface"),Visible(Screen,TEXT("SetPieceProductionResolutionSurface")));
-   TestTrue(TEXT("Near shared resolution enabled"),Screen->GetPresentation().InlineFormula.bVisible);
+   TestFalse(TEXT("Free kick handoff collapses the entire method surface"),Visible(Screen,TEXT("SetPieceProductionResolutionSurface")));
+   TestTrue(TEXT("Free kick shared resolution enabled"),Screen->GetPresentation().InlineFormula.bVisible);
   }
  }
  TestEqual(TEXT("Only type consumed entropy"),F.Entropy->Calls,Before.EntropyCalls+1);
- Access::SetPiecePresentation(*F.Mode,false);const auto General=FFMCodexNetworkMatchPresentationAdapter::Read(PC->GetOwnerView(),false);TestEqual(TEXT("Only complete Near is enabled generally"),General.SetPiece.bSelectionSupported,D6==5);
+ Access::SetPiecePresentation(*F.Mode,false);const auto General=FFMCodexNetworkMatchPresentationAdapter::Read(PC->GetOwnerView(),false);TestEqual(TEXT("Only complete free kicks are enabled generally"),General.SetPiece.bSelectionSupported,D6==3||D6==5);
  return true;
 }
 #endif

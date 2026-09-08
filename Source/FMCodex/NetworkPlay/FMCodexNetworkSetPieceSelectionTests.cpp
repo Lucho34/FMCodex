@@ -61,8 +61,8 @@ bool FFMCodexSetPieceMethods::RunTest(const FString& P)
  for(auto* PC:{F.A,F.B})
  {
   const auto& V=PC->GetOwnerView();auto M=FFMCodexNetworkMatchPresentationAdapter::Read(V,false);
-  TestEqual(TEXT("Exact offered resolution step"),V.EntryWait,D6==5?(Alt?Wait::NearAngledRoll:Wait::NearDirectAttackRoll):Wait::SetPieceResolutionBoundary);
-  if(D6==5) { TestTrue(TEXT("Near reuses shared Formula surface"),M.InlineFormula.bVisible); TestEqual(TEXT("Near decisive action owner only"),M.Interaction.bCanContinue,PC==F.Attacker()); }
+  TestEqual(TEXT("Exact offered resolution step"),V.EntryWait,D6==5?(Alt?Wait::NearAngledRoll:Wait::NearDirectAttackRoll):D6<=4?(Alt?Wait::LongFreeKickPowerRoll:Wait::LongFreeKickDirectAttackRoll):Wait::SetPieceResolutionBoundary);
+  if(D6!=6) { TestTrue(TEXT("Free kick reuses shared Formula surface"),M.InlineFormula.bVisible); TestEqual(TEXT("Free kick decisive action owner only"),M.Interaction.bCanContinue,PC==F.Attacker()); }
   else TestTrue(TEXT("Other decisive families stay gated"),!M.Interaction.PrimaryAction.bAvailable&&!M.Interaction.bCanContinue&&!M.InlineFormula.bVisible);
   TestTrue(TEXT("Selection options consumed"),M.SetPiece.TakerOptions.IsEmpty()&&M.SetPiece.NearMethods.IsEmpty()&&M.SetPiece.LongMethods.IsEmpty()&&M.SetPiece.PenaltyMethods.IsEmpty());
   TestTrue(TEXT("No fake result or score"),V.Terminal.Outcome==EFMCodexNetworkTerminalOutcome::None&&V.AcceptedContestRolls.IsEmpty());

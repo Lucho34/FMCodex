@@ -632,3 +632,19 @@ The narrow View reuses AcceptedContestRolls, Contest, SetPiece, Terminal and Pub
 Production uses existing server-private secure providers. Optional host-only DEV syntax: `Scripts/NetworkPlay/LaunchNetworkPlayDev.ps1 -PlayerFacingNearFreeKickMilestone AngledGoal -SetPieceActor A`. Modes: DirectGoal, DirectMiss, AngledGoal, AngledMiss; actor A or B. The fixture supplies D12=9, type D6=5, Direct 6/1 or 1/6 and Angled 6/3 or 2/3. All player choices still use shared UI and generated RPC. Remote receives no provider controls; default launch retains secure randomness.
 
 The shared Inline Formula surface displays Near actor/wait status, Direct operands or outcome-only Angled helper. Both viewers reveal A before B; no terminal score/result appears during A. Direct defender CTA waits for attack reveal. Central ownership suppresses duplicate dock CTAs while retaining waiting status. Existing Advance, short nonblocking Recovery, next D12 and Full-Time are reused. Automated real-process evidence does not replace USER PIE.
+
+## Complete Long Free Kick Network family (Stage 7.23)
+
+This supersedes the Long restriction in Stage 7.21/7.22. Both Near and Long selection, legal resolution, terminal and Advance are generally supported. Penalty/Corner remain incomplete; their existing optional selection milestone is unchanged.
+
+| Wire tag / exact PlayerIntent | Exact request | Actor / authoritative wait | Private provider draws / result |
+|---|---|---|---|
+| 48 ResolveLongFreeKickDirectAttackRoll | FMatchPlayLongFreeKickRollRequest | attacker, Long/Direct/DirectAwaitingAttackRoll | LongFreeKickDirectAttack once; 1–2 early NoGoal, 3–6 defense wait |
+| 49 ResolveLongFreeKickDirectDefenseRoll | same | defender, Long/Direct/DirectAwaitingDefenseRoll and stored attack 3–6 | LongFreeKickDirectDefense once; Finishing comparison and terminal |
+| 50 ResolveLongFreeKickPowerRoll | same | attacker, Long/Power/PowerAwaitingRoll | LongFreeKickPowerA then LongFreeKickPowerB; atomic sum >=11 Goal |
+
+All kind-specific payload members must be empty. Server derives Side from the admitted connection and uses the common AttackSequence. No family/method/taker, dice/seed, Formula/result/scorer/score fields are resubmitted. Shared RequestId forward window <=1024, dedupe, freshness, wrong-Match safety and ACK-first/View-first pending remain unchanged. Invalid requests invoke no gameplay RNG/Coordinator or publication. Provider failure can consume one/two attempts but adopts no partial state/disclosure and publishes no revision; retry requires a fresh ID.
+
+Accepted purposes use narrow indices 0/1; early Direct has only index 0. Shared Local presentation identities remain SetPiece.Attack/SetPieceAttack/0, SetPiece.Defense/SetPieceDefense/0, and SetPiece.Long.Power/SetPiecePairedA/0 then SetPiecePairedB/1. Attack sequence, contest and owner remain part of identity. Security-hidden Formula/outcome/history stay out of safe View; legally disclosed results replicate immediately while the existing Reel/ResultHold/Narrative/displayed-score gate delays visible reveal.
+
+Optional host-only non-Shipping launcher: `Scripts/NetworkPlay/LaunchNetworkPlayDev.ps1 -PlayerFacingLongFreeKickMilestone PowerGoal -SetPieceActor A`. Modes DirectGoal, DirectMiss, DirectEarlyNoGoal, PowerGoal, PowerMiss support both actors. Provider fixture uses D12=9/type D6=3; Direct 6/1, 3/6 or early 1; Power Goal 6/5 and miss 2/3. Player still chooses taker/method and submits genuine actions. Remote receives no provider controls and normal launch retains private secure RNG. Real Direct Goal, early NoGoal and opposite-actor Power threshold Goal are useful runtime paths; automated evidence does not replace USER PIE.

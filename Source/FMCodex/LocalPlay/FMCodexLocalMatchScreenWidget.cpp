@@ -3498,9 +3498,11 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
 		|| ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
-	const bool bNearAttackReveal = ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack
-		&& (MatchController ? MatchController->GetInteractionView().SetPieceType : Presentation.SetPiece.Type) == ESetPieceSelectedType::ShortFreeKick;
-	const bool bSetPieceTerminalNarrative = bSetPieceMethodReveal && !bNearAttackReveal
+	const auto SetPieceType = MatchController ? MatchController->GetInteractionView().SetPieceType : Presentation.SetPiece.Type;
+	const bool bFreeKickAttackPrefix = ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack
+		&& (SetPieceType == ESetPieceSelectedType::ShortFreeKick
+			|| (SetPieceType == ESetPieceSelectedType::LongFreeKick && Result.bShowDefenseRow));
+	const bool bSetPieceTerminalNarrative = bSetPieceMethodReveal && !bFreeKickAttackPrefix
 		&& ActiveCrossRollReveal.Kind
 			!= EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
 		&& Result.bNarrativeAvailable;
@@ -3558,7 +3560,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		return Result;
 	}
 	if (bSetPieceMethodReveal
-		&& (!bFormulaDisclosed || bNearAttackReveal
+		&& (!bFormulaDisclosed || bFreeKickAttackPrefix
 			|| ActiveCrossRollReveal.Kind
 				== EFMCodexUMGCrossRollRevealKind::SetPiecePairedA))
 	{
@@ -3614,7 +3616,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::SetPieceAttack;
 	Result.bAttackRowActive = bAttack;
 	Result.bDefenseRowActive = !bAttack;
-	if (bNearAttackReveal)
+	if (bFreeKickAttackPrefix)
 		StageRowForReveal(Result.DefenseRow, false, false, 0); // A coalesced terminal cannot reveal the defense roll during attack A.
 	if (!bFormulaDisclosed)
 	{
@@ -4739,9 +4741,10 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	// Messaging ownership follows the visible shared takeover on BOTH viewers,
 	// including the read-only viewer with no branch choices or primary action.
-	const bool bNearResolutionSurface = StandaloneInlineFormula.bVisible && Presentation.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick;
+	const bool bFreeKickResolutionSurface = StandaloneInlineFormula.bVisible
+		&& (Presentation.SetPiece.Type == ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type == ESetPieceSelectedType::LongFreeKick);
 	const bool bCentralOwnsActionPrompt = Presentation.bMirrorActionWaitPrompt
-		&& (bNearResolutionSurface || (bLongShotProductionOwnsResolution && DisplayedLongShot.bVisible)
+		&& (bFreeKickResolutionSurface || (bLongShotProductionOwnsResolution && DisplayedLongShot.bVisible)
 			|| (Presentation.SetPiece.bVisible && !IsInlineFormulaRevealInputBlocked()))
 		&& !Presentation.FullTime.bVisible;
 	FText CentralPrompt = bCentralOwnsActionPrompt
@@ -4757,7 +4760,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 					Side == EInitialTurnOrderPlayer::PlayerA ? TEXT("Player A") : TEXT("Player B")))
 			: FText::GetEmpty();
 	}
-	if (bNearResolutionSurface && !CentralPrompt.IsEmpty())
+	if (bFreeKickResolutionSurface && !CentralPrompt.IsEmpty())
 		StandaloneInlineFormula.StatusLabel = CentralPrompt.ToString()
 			+ (StandaloneInlineFormula.StatusLabel.IsEmpty() ? FString() : TEXT("\n") + StandaloneInlineFormula.StatusLabel);
 	InlineFormulaSurface->RefreshFromPresentation(StandaloneInlineFormula);

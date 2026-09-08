@@ -1828,10 +1828,14 @@ namespace FMCodexLocalMatchInteractionView
 			View.SetPieceFormula = {};
 		}
 
-		// Near resolution persists atomically with its final accepted roll. The Formula
-		// winner and terminal affordance require the same permission as that outcome.
-		if (View.SetPieceType == ESetPieceSelectedType::ShortFreeKick && !View.bSetPieceNoLegalCarrier
-			&& (ContestCount < 2 || !Disclosure.bRevealTerminalOutcome))
+		// Read persisted early-terminal shape before consulting a redacted roll prefix.
+		// Long Direct early NoGoal needs one roll; completed comparisons and pairs need two.
+		const auto& Long = Snapshot.CurrentAttack.SetPieceRoute.LongFreeKick;
+		const bool bEarlyLongNoGoal = View.SetPieceType == ESetPieceSelectedType::LongFreeKick
+			&& Long.Method == EMatchPlayLongFreeKickMethod::Direct && Long.bHasAttackD6 && !Long.bHasDefenseD6
+			&& Long.GameplayOutcome == EMatchPlayLongFreeKickGameplayOutcome::NoGoal;
+		if ((View.SetPieceType == ESetPieceSelectedType::ShortFreeKick || View.SetPieceType == ESetPieceSelectedType::LongFreeKick)
+			&& !View.bSetPieceNoLegalCarrier && (ContestCount < (bEarlyLongNoGoal ? 1 : 2) || !Disclosure.bRevealTerminalOutcome))
 		{
 			View.bHasSetPieceFormula = false;
 			View.SetPieceFormula = {};

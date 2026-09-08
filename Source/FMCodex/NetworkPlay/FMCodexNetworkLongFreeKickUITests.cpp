@@ -1,36 +1,36 @@
 #if WITH_DEV_AUTOMATION_TESTS
-#include "FMCodexNetworkNearFreeKickTestFixture.h"
-namespace FMCodexNearFreeKickAutomation
+#include "FMCodexNetworkLongFreeKickTestFixture.h"
+namespace FMCodexLongFreeKickAutomation
 {
-using namespace FMCodexNearFreeKickTests;
+using namespace FMCodexLongFreeKickTests;
 using namespace FMCodexPlayerFacingOrdinaryUITests;
-IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexNearUI,"FMCodex.NetworkPlay.NearFreeKick.SharedUI",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
-void FFMCodexNearUI::GetTests(TArray<FString>& N,TArray<FString>& C) const
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexLongUI,"FMCodex.NetworkPlay.LongFreeKick.SharedUI",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+void FFMCodexLongUI::GetTests(TArray<FString>& N,TArray<FString>& C) const
 {
- for(const TCHAR* S:{TEXT("A"),TEXT("B")})for(const TCHAR* M:{TEXT("Direct"),TEXT("Angled")})
- for(const TCHAR* G:{TEXT("Goal"),TEXT("NoGoal")})for(const TCHAR* End:{TEXT("Next"),TEXT("Final")})
- {const auto P=FString::Printf(TEXT("%s.%s.%s.%s"),S,M,G,End);N.Add(P);C.Add(P);}
+ for(const TCHAR* S:{TEXT("A"),TEXT("B")})for(const TCHAR* M:{TEXT("Direct"),TEXT("Power")})
+ for(const TCHAR* G:{TEXT("Goal"),TEXT("NoGoal"),TEXT("Early1"),TEXT("Early2")})for(const TCHAR* End:{TEXT("Next"),TEXT("Final")})
+ {if(M==FString(TEXT("Power"))&&FString(G).StartsWith(TEXT("Early")))continue;const auto P=FString::Printf(TEXT("%s.%s.%s.%s"),S,M,G,End);N.Add(P);C.Add(P);}
 }
-bool FFMCodexNearUI::RunTest(const FString& P)
+bool FFMCodexLongUI::RunTest(const FString& P)
 {
- const bool Angled=P.Contains(TEXT("Angled")),Goal=!P.Contains(TEXT("NoGoal")),Final=P.EndsWith(TEXT("Final"));
+ const bool Power=P.Contains(TEXT("Power")),Early=P.Contains(TEXT("Early")),Goal=!Early&&!P.Contains(TEXT("NoGoal")),Final=P.EndsWith(TEXT("Final"));
  FUIFixture F(P.StartsWith(TEXT("B")),Final);Access::SetPiecePresentation(*F.Mode,false);
  for(int32 Turn=0;Turn<(Final?2:1);++Turn)
  {
   auto* Actor=F.Attacker();auto* Other=F.Defender();auto* S=Actor->GetPlayerMatchScreen();auto* W=Other->GetPlayerMatchScreen();
   F.Entropy->Word=8;S->RequestRollTacticalPoints();if(!TestEqual(TEXT("Real Full D12 screen intent"),F.Backend(Actor).LastCode,Code::Accepted))return false;F.Settle();
   TestTrue(TEXT("General UI supports common type entry"),S->GetPresentation().SetPiece.bSelectionSupported);
-  F.Entropy->Word=4;S->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);F.Settle();
+  F.Entropy->Word=2;S->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);F.Settle();
   const FName Card=Eligible(F);S->DevSetPieceAction(TEXT("SetPieceTaker"),Card);S->DevSetPieceAction(TEXT("SetPieceConfirm"),NAME_None);
-  S->DevSetPieceAction(Angled?TEXT("NearAngled"):TEXT("NearDirect"),NAME_None);
+  S->DevSetPieceAction(Power?TEXT("LongPower"):TEXT("LongDirect"),NAME_None);
   if(!TestEqual(TEXT("Method callback accepted"),F.Backend(Actor).LastCode,Code::Accepted))return false;
   const auto Before=Actor->GetOwnerView();
-  TestTrue(TEXT("Near enabled outside DEV selection milestone"),S->GetPresentation().SetPiece.bSelectionSupported);
+  TestTrue(TEXT("Long enabled outside DEV selection milestone"),S->GetPresentation().SetPiece.bSelectionSupported);
   for(auto* Screen:{S,W})
   {
    TestTrue(TEXT("Original shared Inline Formula shell"),Screen->GetInlineFormulaSurface()->GetPresentation().bVisible);
-   TestTrue(TEXT("Both Near surfaces name canonical current actor"),Screen->GetInlineFormulaSurface()->GetPresentation().StatusLabel.Contains(Actor->GetOwnerView().ViewerSide==Side::PlayerA?TEXT("当前操作：玩家 A"):TEXT("当前操作：玩家 B")));
-   TestEqual(TEXT("Direct has Formula rows, Angled outcome only"),Screen->GetInlineFormulaSurface()->GetPresentation().bShowFormulaRows,!Angled);
+   TestTrue(TEXT("Both Long surfaces name canonical current actor"),Screen->GetInlineFormulaSurface()->GetPresentation().StatusLabel.Contains(Actor->GetOwnerView().ViewerSide==Side::PlayerA?TEXT("当前操作：玩家 A"):TEXT("当前操作：玩家 B")));
+   TestEqual(TEXT("Direct has Formula rows, Power outcome only"),Screen->GetInlineFormulaSurface()->GetPresentation().bShowFormulaRows,!Power);
    TestEqual(TEXT("No duplicate lower Continue"),Screen->GetInteractionPanel()->GetWidgetFromName(TEXT("InteractionContinueButton"))->GetVisibility(),ESlateVisibility::Collapsed);
   }
   TestFalse(TEXT("Waiting viewer cannot submit"),W->GetPresentation().Interaction.PrimaryAction.bAvailable);
@@ -59,7 +59,7 @@ bool FFMCodexNearUI::RunTest(const FString& P)
      {
       SawA|=D.DiceOwnerLabel==TEXT("第一枚掷点");SawB|=D.DiceOwnerLabel==TEXT("第二枚掷点");
       if(Screen->GetInlineFormulaRevealPhase()!=EFMCodexUMGInlineFormulaRevealPhase::ResultHold)
-       TestEqual(TEXT("Pair helper through cycling and settling"),D.RollHelperLabel,FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(Type::ShortFreeKick).ToString());
+       TestEqual(TEXT("Pair helper through cycling and settling"),D.RollHelperLabel,FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(Type::LongFreeKick).ToString());
       if(D.DiceOwnerLabel==TEXT("第二枚掷点"))TestTrue(TEXT("A has appeared before B"),SawA);
      }
      if(!D.bNarrativeAvailable)
@@ -76,12 +76,21 @@ bool FFMCodexNearUI::RunTest(const FString& P)
    }
    return true;
   };
-  if(!SubmitRoll(Actor,Angled?Pair:Attack,Goal?6:1,Goal?3:1))return false;
-  if(!Angled)
+  if(!SubmitRoll(Actor,Power?Pair:Attack,Early?(P.Contains(TEXT("Early2"))?2:1):Goal?6:3,Goal?5:1))return false;
+  if(!Power&&!Early)
   {
    TestTrue(TEXT("Defense gets CTA after attack reveal"),W->GetInlineFormulaSurface()->GetPresentation().PrimaryAction.bVisible);
    TestFalse(TEXT("Attack viewer waits for defender"),S->GetInlineFormulaSurface()->GetPresentation().PrimaryAction.bVisible);
    if(!SubmitRoll(Other,Defense,Goal?1:6,1))return false;
+  }
+  if(Early)
+  {
+   for(auto* Screen:{S,W})
+   {
+    TestFalse(TEXT("Early NoGoal never shows a defense comparison"),Screen->GetInlineFormulaSurface()->GetPresentation().bShowDefenseRow);
+    TestTrue(TEXT("Early NoGoal reaches terminal narrative without defender"),Screen->GetInlineFormulaSurface()->GetPresentation().bNarrativeAvailable);
+   }
+   TestEqual(TEXT("Early terminal has type plus attack only"),Actor->GetOwnerView().Presentation.ResolvedRolls.Num(),2);
   }
   TestEqual(TEXT("Canonical final outcome"),Actor->GetOwnerView().Terminal.Outcome,Goal?Outcome::Goal:Outcome::NoGoal);
   for(auto* Screen:{S,W})
@@ -91,7 +100,7 @@ bool FFMCodexNearUI::RunTest(const FString& P)
    TestTrue(TEXT("Terminal narrative from safe projection"),Screen->GetInlineFormulaSurface()->GetPresentation().bNarrativeAvailable);
   }
   // A skipped publication must still consume both identities exactly once.
-  if(Turn==0)
+  if(Turn==0&&!Early)
   {
    auto* Late=CreateWidget<UFMCodexLocalMatchScreenWidget>(F.World,UFMCodexLocalMatchScreenWidget::StaticClass());auto Slate=Late->TakeWidget();
    Late->RefreshFromPresentation(FFMCodexNetworkMatchPresentationAdapter::Read(Before,false));
@@ -100,10 +109,10 @@ bool FFMCodexNearUI::RunTest(const FString& P)
    for(int32 I=0;I<24&&Late->IsInlineFormulaRevealInputBlocked();++I)
    {
     const auto& D=Late->GetInlineFormulaSurface()->GetPresentation();
-    const bool First=D.DiceOwnerLabel==(Angled?TEXT("第一枚掷点"):TEXT("进攻方掷点"));
-    const bool Second=D.DiceOwnerLabel==(Angled?TEXT("第二枚掷点"):TEXT("防守方掷点"));
+    const bool First=D.DiceOwnerLabel==(Power?TEXT("第一枚掷点"):TEXT("进攻方掷点"));
+    const bool Second=D.DiceOwnerLabel==(Power?TEXT("第二枚掷点"):TEXT("防守方掷点"));
     SawFirst|=First;SawSecond|=Second;
-    if(First){TestFalse(TEXT("Coalesced first event cannot show terminal narrative"),D.bNarrativeAvailable);if(!Angled)TestFalse(TEXT("Coalesced defense total stays hidden during attack"),D.DefenseRow.bFinalValueResolved);}
+    if(First){TestFalse(TEXT("Coalesced first event cannot show terminal narrative"),D.bNarrativeAvailable);if(!Power)TestFalse(TEXT("Coalesced defense total stays hidden during attack"),D.DefenseRow.bFinalValueResolved);}
     if(Second)TestTrue(TEXT("Coalesced events remain chronologically ordered"),SawFirst);
     Late->AdvanceInlineFormulaRevealForTesting(0.5f);
    }
@@ -116,7 +125,7 @@ bool FFMCodexNearUI::RunTest(const FString& P)
   for(auto* Screen:{S,W})
   {
    TestEqual(TEXT("Canonical shared Full-Time"),Screen->GetPresentation().FullTime.bVisible,Ended);
-   TestFalse(TEXT("Old Near shell clears on Advance"),Screen->GetPresentation().SetPiece.bVisible);
+   TestFalse(TEXT("Old Long shell clears on Advance"),Screen->GetPresentation().SetPiece.bVisible);
   }
   if(Ended)
   {TestEqual(TEXT("No Recovery RNG after final opportunity"),Access::Runtime(*F.Mode).GetRecoveryProviderInvocationCount(),RecoveryBefore);TestFalse(TEXT("No final D12 CTA"),S->GetPresentation().Interaction.bCanRollTacticalPoints||W->GetPresentation().Interaction.bCanRollTacticalPoints);}

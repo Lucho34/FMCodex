@@ -252,3 +252,20 @@ Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Near fixture cann
 . $launcherPath -UnrealEditorPath $testEnginePath
 Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Near fixture keeps secure defaults'
 Write-Host ("FMCODEX_NEAR_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)
+
+foreach ($mode in @('DirectGoal','DirectMiss','DirectEarlyNoGoal','PowerGoal','PowerMiss')) {
+    foreach ($side in @('A','B')) {
+        . $launcherPath -UnrealEditorPath $testEnginePath -PlayerFacingLongFreeKickMilestone $mode -SetPieceActor $side
+        $long = Get-NetworkPlayLaunchPlan
+        Assert-True ($long.HostArguments -contains ('-FMCodexNetworkPlayerFacingLongFreeKickMilestone=' + $mode)) 'Long fixture reaches Host only'
+        Assert-True ($long.HostArguments -contains ('-FMCodexNetworkSetPieceActor=' + $side)) 'Long supports both actors'
+        Assert-True (@($long.ClientArguments | Where-Object { $_ -like '*Milestone*' -or $_ -like '*SetPieceActor*' }).Count -eq 0) 'Long Remote receives no deterministic controls'
+        Assert-True (($long.HostArguments -contains '-FMCodexNetworkPlayerFacingUI') -and ($long.ClientArguments -contains '-FMCodexNetworkPlayerFacingUI')) 'Long uses both shared screens'
+        Assert-True (($long.HostArguments -contains '-ResX=1600') -and ($long.ClientArguments -contains '-ResY=900')) 'Long uses production viewport size'
+    }
+}
+$PlayerFacingSetPieceMilestone = 'Long'
+Assert-Throws { Get-NetworkPlayLaunchPlan } '请单独使用' 'Long fixture cannot mix with selection fixture'
+. $launcherPath -UnrealEditorPath $testEnginePath
+Assert-True (@((Get-NetworkPlayLaunchPlan).HostArguments | Where-Object { $_ -like '*Milestone*' }).Count -eq 0) 'Long fixture keeps secure defaults'
+Write-Host ("FMCODEX_LONG_LAUNCHER_TESTS=PASS ({0} assertions)" -f $script:NetworkPlayAssertions)

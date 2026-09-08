@@ -27,6 +27,7 @@ param(
     [switch]$DeclineFinal,
     [ValidateSet('Near', 'Long', 'Penalty', 'Corner')][string]$PlayerFacingSetPieceMilestone,
     [ValidateSet('DirectGoal', 'DirectMiss', 'AngledGoal', 'AngledMiss')][string]$PlayerFacingNearFreeKickMilestone,
+    [ValidateSet('DirectGoal', 'DirectMiss', 'DirectEarlyNoGoal', 'PowerGoal', 'PowerMiss')][string]$PlayerFacingLongFreeKickMilestone,
     [ValidateSet('A', 'B')][string]$SetPieceActor = 'A',
     [switch]$NetworkDiagnostics,
     [switch]$HandoffLatencyAudit
@@ -34,7 +35,7 @@ param(
 
 # The existing player screen has fixed production card/pitch widths.
 # Preserve diagnostic defaults; explicit caller sizes always win.
-if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone -or $PlayerFacingDeclineMilestone -or $PlayerFacingSetPieceMilestone -or $PlayerFacingNearFreeKickMilestone) {
+if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone -or $PlayerFacingDeclineMilestone -or $PlayerFacingSetPieceMilestone -or $PlayerFacingNearFreeKickMilestone -or $PlayerFacingLongFreeKickMilestone) {
     if (-not $PSBoundParameters.ContainsKey('ResX')) { $ResX = 1600 }
     if (-not $PSBoundParameters.ContainsKey('ResY')) { $ResY = 900 }
 }
@@ -81,14 +82,16 @@ function Get-NetworkPlayLaunchPlan {
     if ($HandoffLatencyAudit) { $commonArguments += '-HandoffLatencyAudit' }
     # Explicit host-only automation fixture. Default launch keeps production secure RNG.
     $fixtureArguments = @()
-    if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone -or $PlayerFacingDeclineMilestone -or $PlayerFacingSetPieceMilestone -or $PlayerFacingNearFreeKickMilestone) {
-        $playerMilestones = @($PlayerFacingCrossMilestone, $PlayerFacingPassControlMilestone, $PlayerFacingThroughBallFeetMilestone, $PlayerFacingThroughBallMilestone, $PlayerFacingLongShotMilestone, $PlayerFacingCutInsideMilestone, $PlayerFacingDeclineMilestone, $PlayerFacingSetPieceMilestone, $PlayerFacingNearFreeKickMilestone | Where-Object { $_ })
+    if ($PlayerFacingCrossMilestone -or $PlayerFacingPassControlMilestone -or $PlayerFacingThroughBallFeetMilestone -or $PlayerFacingThroughBallMilestone -or $PlayerFacingLongShotMilestone -or $PlayerFacingCutInsideMilestone -or $PlayerFacingDeclineMilestone -or $PlayerFacingSetPieceMilestone -or $PlayerFacingNearFreeKickMilestone -or $PlayerFacingLongFreeKickMilestone) {
+        $playerMilestones = @($PlayerFacingCrossMilestone, $PlayerFacingPassControlMilestone, $PlayerFacingThroughBallFeetMilestone, $PlayerFacingThroughBallMilestone, $PlayerFacingLongShotMilestone, $PlayerFacingCutInsideMilestone, $PlayerFacingDeclineMilestone, $PlayerFacingSetPieceMilestone, $PlayerFacingNearFreeKickMilestone, $PlayerFacingLongFreeKickMilestone | Where-Object { $_ })
         if ($playerMilestones.Count -ne 1 -or $DeploymentSlice -or $InitialRouteMilestone -or $CrossTerminalMilestone) {
             throw 'PlayerFacingCrossMilestone 请单独使用。'
         }
         $commonArguments += '-FMCodexNetworkPlayerFacingUI'
         if ($NetworkDiagnostics) { $commonArguments += '-FMCodexNetworkDiagnostics' }
-        if ($PlayerFacingNearFreeKickMilestone) {
+        if ($PlayerFacingLongFreeKickMilestone) {
+            $fixtureArguments = @(('-FMCodexNetworkPlayerFacingLongFreeKickMilestone=' + $PlayerFacingLongFreeKickMilestone), ('-FMCodexNetworkSetPieceActor=' + $SetPieceActor))
+        } elseif ($PlayerFacingNearFreeKickMilestone) {
             $fixtureArguments = @(('-FMCodexNetworkPlayerFacingNearFreeKickMilestone=' + $PlayerFacingNearFreeKickMilestone), ('-FMCodexNetworkSetPieceActor=' + $SetPieceActor))
         } elseif ($PlayerFacingSetPieceMilestone) {
             $fixtureArguments = @(('-FMCodexNetworkPlayerFacingSetPieceMilestone=' + $PlayerFacingSetPieceMilestone), ('-FMCodexNetworkSetPieceActor=' + $SetPieceActor))

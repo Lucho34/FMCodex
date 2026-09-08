@@ -360,10 +360,12 @@ namespace FMCodexNetworkMatchTypes
 		}
 	}
 
-	void ProjectNearFreeKick(const FFMCodexLocalMatchInteractionView& View,
+	void ProjectFreeKick(const FFMCodexLocalMatchInteractionView& View,
 		FFMCodexNetworkClientViewSnapshot& Result)
 	{
-		if (View.RouteKind != EMatchPlayCurrentAttackRouteKind::SetPiece || View.SetPieceType != ESetPieceSelectedType::ShortFreeKick) return;
+		if (View.RouteKind != EMatchPlayCurrentAttackRouteKind::SetPiece
+			|| (View.SetPieceType != ESetPieceSelectedType::ShortFreeKick && View.SetPieceType != ESetPieceSelectedType::LongFreeKick)) return;
+		const bool bLong = View.SetPieceType == ESetPieceSelectedType::LongFreeKick;
 		using P = EMatchPlayCurrentAttackPostRouteRollPurpose;
 		using S = EInitialTurnOrderPlayer;
 		const S Defender = Result.CurrentAttackingSide == S::PlayerA ? S::PlayerB : S::PlayerA;
@@ -375,18 +377,18 @@ namespace FMCodexNetworkMatchTypes
 		};
 		if (View.bHasSetPieceAttackD6)
 		{
-			Add(P::ShortFreeKickDirectAttack, 0, View.SetPieceAttackD6, Result.CurrentAttackingSide);
+			Add(bLong ? P::LongFreeKickDirectAttack : P::ShortFreeKickDirectAttack, 0, View.SetPieceAttackD6, Result.CurrentAttackingSide);
 			Result.Contest.AttackD6 = View.SetPieceAttackD6;
 		}
 		if (View.bHasSetPieceDefenseD6)
 		{
-			Add(P::ShortFreeKickDirectDefense, 1, View.SetPieceDefenseD6, Defender);
+			Add(bLong ? P::LongFreeKickDirectDefense : P::ShortFreeKickDirectDefense, 1, View.SetPieceDefenseD6, Defender);
 			Result.Contest.DefenseD6 = View.SetPieceDefenseD6;
 		}
 		if (View.bHasSetPiecePairedD6)
 		{
-			Add(P::ShortFreeKickAngledA, 0, View.SetPiecePairedD6A, Result.CurrentAttackingSide);
-			Add(P::ShortFreeKickAngledB, 1, View.SetPiecePairedD6B, Result.CurrentAttackingSide);
+			Add(bLong ? P::LongFreeKickPowerA : P::ShortFreeKickAngledA, 0, View.SetPiecePairedD6A, Result.CurrentAttackingSide);
+			Add(bLong ? P::LongFreeKickPowerB : P::ShortFreeKickAngledB, 1, View.SetPiecePairedD6B, Result.CurrentAttackingSide);
 		}
 		Result.Contest.bFormulaResolved = View.bHasSetPieceFormula;
 		using C = EFMCodexLocalMatchInteractionCategory;
@@ -398,6 +400,9 @@ namespace FMCodexNetworkMatchTypes
 		case C::RollShortFreeKickDirectAttack: Result.EntryWait = W::NearDirectAttackRoll; Action = A::ResolveShortFreeKickDirectAttackRoll; break;
 		case C::RollShortFreeKickDirectDefense: Result.EntryWait = W::NearDirectDefenseRoll; Action = A::ResolveShortFreeKickDirectDefenseRoll; break;
 		case C::RollShortFreeKickAngled: Result.EntryWait = W::NearAngledRoll; Action = A::ResolveShortFreeKickAngledRoll; break;
+		case C::RollLongFreeKickDirectAttack: Result.EntryWait = W::LongFreeKickDirectAttackRoll; Action = A::ResolveLongFreeKickDirectAttackRoll; break;
+		case C::RollLongFreeKickDirectDefense: Result.EntryWait = W::LongFreeKickDirectDefenseRoll; Action = A::ResolveLongFreeKickDirectDefenseRoll; break;
+		case C::RollLongFreeKickPower: Result.EntryWait = W::LongFreeKickPowerRoll; Action = A::ResolveLongFreeKickPowerRoll; break;
 		default: break;
 		}
 		if (View.bHumanInteraction && Result.ViewerSide != S::None && View.ExpectedActingPlayer == Result.ViewerSide)
@@ -477,8 +482,13 @@ namespace FMCodexNetworkMatchTypes
 				&& View.bHumanInteraction && View.ExpectedActingPlayer == Result.ViewerSide;
 			return;
 		}
-		if (View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece && View.SetPieceType == ESetPieceSelectedType::ShortFreeKick
-			&& View.bHasSetPieceOutcome && Result.AcceptedContestRolls.Num() == 2)
+		// A persisted Long Direct early NoGoal has one accepted roll and no Formula.
+		const bool bEarlyLongNoGoal = View.SetPieceType == ESetPieceSelectedType::LongFreeKick
+			&& View.SelectedLongMethod == EMatchPlayLongFreeKickMethod::Direct && View.bHasSetPieceOutcome && !View.bSetPieceGoal
+			&& View.bHasSetPieceAttackD6 && !View.bHasSetPieceDefenseD6 && !View.bHasSetPieceFormula;
+		if (View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
+			&& (View.SetPieceType == ESetPieceSelectedType::ShortFreeKick || View.SetPieceType == ESetPieceSelectedType::LongFreeKick)
+			&& View.bHasSetPieceOutcome && Result.AcceptedContestRolls.Num() == (bEarlyLongNoGoal ? 1 : 2))
 		{
 			const auto* Goal = Result.PublicGoalHistory.FindByPredicate([&](const auto& G) { return G.AttackSequence == Result.AttackSequence; });
 			if (View.bSetPieceGoal)
@@ -867,7 +877,7 @@ FFMCodexNetworkClientViewSnapshotFactory::Build(
 	FMCodexNetworkMatchTypes::ProjectBranch(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectInitialRoute(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectOrdinaryContest(SafeViewerView, Result);
-	FMCodexNetworkMatchTypes::ProjectNearFreeKick(SafeViewerView, Result);
+	FMCodexNetworkMatchTypes::ProjectFreeKick(SafeViewerView, Result);
 	FMCodexNetworkMatchTypes::ProjectPublicLifecycle(SafeViewerView, Result);
 	Result.InteractionState =
 		FMCodexNetworkMatchTypes::SelectInteractionState(

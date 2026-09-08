@@ -90,6 +90,27 @@ FMatchPlayPlayerIntentSubmissionResult FMatchPlayEntryDeploymentPlayerIntentPort
 		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
 		break;
 	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickDirectAttackRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayLongFreeKickRollRequest>()) return Mismatch();
+		const auto Authority = Session.ResolveLongFreeKickDirectAttackRoll(Intent.Payload.Get<FMatchPlayLongFreeKickRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickDirectDefenseRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayLongFreeKickRollRequest>()) return Mismatch();
+		const auto Authority = Session.ResolveLongFreeKickDirectDefenseRoll(Intent.Payload.Get<FMatchPlayLongFreeKickRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
+	case EMatchPlayAuthoritativeCommandKind::ResolveLongFreeKickPowerRoll:
+	{
+		if (!Intent.Payload.IsType<FMatchPlayLongFreeKickRollRequest>()) return Mismatch();
+		const auto Authority = Session.ResolveLongFreeKickPowerRoll(Intent.Payload.Get<FMatchPlayLongFreeKickRollRequest>());
+		if (!Record(Authority.RuntimeEnvelope, Authority.ResolutionResult.bSuccess, Authority.ResolutionResult.ErrorMessage)) return Result;
+		break;
+	}
 	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
 	{
 		if (!Intent.Payload.IsType<FMatchPlayAuthoritativeDeployOrdinaryRequest>()) { return Mismatch(); }
