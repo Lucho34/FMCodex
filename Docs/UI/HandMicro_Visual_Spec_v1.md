@@ -6,6 +6,8 @@
 **Reference Canvas：1920 × 1080 @ UI Scale 1.0**
 **Reference：Hand Micro Design Reference A / 设计方案 1**
 
+> **Stage 8.1B precedence (2026-09-10):** The [Player Art Architecture v1](Shared_Portrait_Art_Contract_v1.md) owns future authored-source, derivative, import and migration policy. This document continues to own Hand geometry, text fitting, drag presentation and visual hierarchy. The 16-player source/crop/hash workflow in §27 is legacy reproduction evidence, not permission to author new independent Hand images. No current compact-card layout or production route changes in Stage 8.1B.
+
 本文定义 Match Screen 左右 Card Rack 中 `Hand Micro Card Variant` 的固定视觉规格。
 
 核心目标：

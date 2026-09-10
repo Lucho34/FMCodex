@@ -4,7 +4,9 @@
 
 **Status：Hand Micro Core Production Contract — FROZEN / Commercial Polish Open**
 
-本文定义所有 Player Portrait 资产的视觉生产规范。
+> **Stage 8.1B precedence (2026-09-10):** [Player Art Architecture v1](Shared_Portrait_Art_Contract_v1.md) is the canonical source/derivation/import/migration contract for future work. This file retains the current Hand art direction, frozen geometry and legacy 16-player reproduction evidence. Its independent landscape authoring, per-variant artistic-source permission, source dimensions, priority rule in §25, and old production workflow in §§26–28 do **not** govern new master-derived artwork. Existing production PNGs, hashes, imports and routes remain unchanged until an accepted migration. Different generated crops remain permitted; separate authored art merely for a different surface does not.
+
+本文保留当前 Hand Micro 美术方向及 legacy 生产记录；未来母版与派生架构以以上 canonical 合同为准。
 
 当前第一优先级：
 

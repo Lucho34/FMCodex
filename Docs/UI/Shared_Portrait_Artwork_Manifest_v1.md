@@ -6,6 +6,8 @@ Status: **SECOND PRODUCTION BATCH IMPORTED — PENDING MANUAL SECOND-BATCH PIE A
 
 Canonical source: `Content/Data/CanonicalPlayerContent.json` (`Prototype40_v1`). Audit source: native soft mappings in `FFMCodexPlayerUIAssetReferences`, source PNG inventory, and imported `.uasset` inventory. Audit date: `2026-08-22`.
 
+> **Stage 8.1B audit refresh (2026-09-10):** Current HEAD `2d33963bdb36f3ea41ba0c6ce2738cd849e82aa1` still has 28 Shared / 16 Hand / 16 Full routes: 16 players with all three, 12 Shared-only, 12 without these routes. The [Player Art Architecture v1](Shared_Portrait_Art_Contract_v1.md) supersedes the older Shared-only production workflow. Counts below describe existing technical coverage and historical visual gates; they do not certify any player as `ProductionVerified` under the new single-master contract. Existing routes and artwork remain in production. Stage 8.2 must establish the pilot before Stage 8.3 completes the 24 technically incomplete players and migrates remaining legacy sources.
+
 ## 1. Coverage summary
 
 | Surface | File/mapping coverage | Visual/conformance result |
