@@ -7390,8 +7390,8 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 				> UsedTrackerNode->Background.OutlineSettings.Width
 			&& UsedTrackerLabel->GetRenderOpacity()
 				> RemainingTrackerLabel->GetRenderOpacity()
-			&& FMath::IsNearlyEqual(UsedTrackerBounds->GetWidthOverride(), 24.0f)
-			&& FMath::IsNearlyEqual(UsedTrackerBounds->GetHeightOverride(), 24.0f));
+			&& FMath::IsNearlyEqual(UsedTrackerBounds->GetWidthOverride(), 32.0f)
+			&& FMath::IsNearlyEqual(UsedTrackerBounds->GetHeightOverride(), 32.0f));
 	Controller->RefreshPresentation();
 	TestTrue(TEXT("Header actor follows the projected authoritative actor"),
 		Header->GetDisplayedActorLabel().Contains(
@@ -7433,11 +7433,13 @@ bool FFMCodexUMGMatchHeaderVisualRefinementTest::RunTest(
 			&& TacticalPointValue->GetText().ToString()
 				== FString::FromInt(
 					Header->GetPresentation().CurrentAttackerTacticalPoints)
-			&& TacticalPointValue->GetFont().Size == 14
 			&& TacticalPointHeading != nullptr
+			&& TacticalPointValue->GetFont().Size > TacticalPointHeading->GetFont().Size
 			&& TacticalPointHeading->GetText().EqualTo(
 				FFMCodexPlayerUIPresentationText::TacticalPointsHeading())
-			&& TacticalPointHeading->GetFont().Size == 9
+			&& TacticalPointValue->GetFont().Size
+				< Cast<UTextBlock>(Header->GetWidgetFromName(
+					TEXT("LeftPlayerIdentityLabel")))->GetFont().Size
 			&& TacticalPointStatus != nullptr
 			&& TacticalPointStatus->GetText().EqualTo(
 				FFMCodexPlayerUIPresentationText::MatchScreenLabel(

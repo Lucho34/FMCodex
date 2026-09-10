@@ -43,9 +43,10 @@ namespace FMCodexMatchHeaderWidget
 		const FString& SidePrefix,
 		TObjectPtr<UTextBlock>& OutValueText)
 	{
-		UBorder* Chip = Tree.ConstructWidget<UBorder>(
-			UBorder::StaticClass(), FName(*(SidePrefix + TEXT("TacticalPointChip"))));
-		Chip->SetPadding(FMargin(6.0f, 2.0f));
+		UFMCodexBroadcastPanel* Chip = Tree.ConstructWidget<UFMCodexBroadcastPanel>(
+			UFMCodexBroadcastPanel::StaticClass(), FName(*(SidePrefix + TEXT("TacticalPointChip"))));
+		Chip->Surface = EFMCodexBroadcastSurface::TacticalResource;
+		Chip->SetPadding(FMargin(0));
 		Chip->SetVisibility(ESlateVisibility::Collapsed);
 		UHorizontalBox* Body = Tree.ConstructWidget<UHorizontalBox>(
 			UHorizontalBox::StaticClass(),
@@ -59,24 +60,29 @@ namespace FMCodexMatchHeaderWidget
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*Heading, EFMCodexPlayerUITextRole::Kicker);
 		FSlateFontInfo HeadingFont = Heading->GetFont();
-		HeadingFont.Size = 9;
+		HeadingFont.Size = 11;
 		Heading->SetFont(HeadingFont);
-		Heading->SetRenderOpacity(0.72f);
-		Body->AddChildToHorizontalBox(Heading);
+		Heading->SetRenderOpacity(0.88f);
+		UHorizontalBoxSlot* HeadingSlot = Body->AddChildToHorizontalBox(Heading);
+		HeadingSlot->SetPadding(FMargin(11.0f, 3.0f, 9.0f, 3.0f));
+		HeadingSlot->SetVerticalAlignment(VAlign_Center);
 
 		OutValueText = MakeText(Tree,
 			FName(*(SidePrefix + TEXT("TacticalPointChipValue"))));
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*OutValueText, EFMCodexPlayerUITextRole::Status);
 		FSlateFontInfo ValueFont = OutValueText->GetFont();
-		ValueFont.Size = 14;
+		ValueFont.Size = 18;
 		OutValueText->SetFont(ValueFont);
-		if (UHorizontalBoxSlot* ValueSlot =
-			Body->AddChildToHorizontalBox(OutValueText))
-		{
-			ValueSlot->SetPadding(FMargin(5.0f, 0.0f, 0.0f, 0.0f));
-			ValueSlot->SetVerticalAlignment(VAlign_Center);
-		}
+		OutValueText->SetShadowOffset(FVector2D(0,1));
+		OutValueText->SetShadowColorAndOpacity(FLinearColor(0,0,0,0.55f));
+		UFMCodexBroadcastPanel* ValueBay = Tree.ConstructWidget<UFMCodexBroadcastPanel>(
+			UFMCodexBroadcastPanel::StaticClass(), FName(*(SidePrefix + TEXT("TacticalPointValueBay"))));
+		ValueBay->Surface = EFMCodexBroadcastSurface::TacticalResourceValue;
+		ValueBay->SetPadding(FMargin(10.0f, 2.0f));
+		ValueBay->SetVerticalAlignment(VAlign_Center);
+		ValueBay->AddChild(OutValueText);
+		Body->AddChildToHorizontalBox(ValueBay)->SetVerticalAlignment(VAlign_Fill);
 		return Chip;
 	}
 
@@ -87,13 +93,11 @@ namespace FMCodexMatchHeaderWidget
 		const int32 Value,
 		const FLinearColor& PrimarySideColor)
 	{
-		FLinearColor OutlineColor = PrimarySideColor * 0.55f
-			+ FLinearColor(0.95f, 0.97f, 1.0f, 1.0f) * 0.45f;
-		OutlineColor.A = 0.82f;
-		Chip.SetBrush(FSlateRoundedBoxBrush(
-			FLinearColor(0.035f, 0.052f, 0.066f, 0.86f), 8.0f,
-			OutlineColor, 1.0f, FVector2f(68.0f, 22.0f)));
-		Chip.SetBrushColor(FLinearColor::White);
+		// The label and number retain natural desired widths in every locale.
+		// Only material tint changes; visibility and value stay presentation-owned.
+		Chip.SetBrushColor(PrimarySideColor);
+		if (UFMCodexBroadcastPanel* ValueBay = Cast<UFMCodexBroadcastPanel>(ValueText.GetParent()))
+			ValueBay->SetBrushColor(PrimarySideColor);
 		ValueText.SetText(bVisible ? FText::AsNumber(Value) : FText::GetEmpty());
 		ValueText.SetColorAndOpacity(FSlateColor(
 			FLinearColor(0.97f, 0.98f, 1.0f, 1.0f)));

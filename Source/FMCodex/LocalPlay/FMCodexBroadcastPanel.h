@@ -9,7 +9,8 @@
 enum class EFMCodexBroadcastSurface : uint8
 {
 	Panel, HeaderLeft, HeaderRight, Score, Progress, Dock, Prompt, Instruction,
-	RosterHeading, PitchSurround, PitchHUD, TurfLighting, Brand, MidfieldLeft, MidfieldRight
+	RosterHeading, PitchSurround, PitchHUD, TurfLighting, Brand, MidfieldLeft, MidfieldRight,
+	TacticalResource, TacticalResourceValue
 };
 
 UCLASS()

@@ -301,7 +301,7 @@ void UFMCodexPitchWidget::BuildWidgetTree()
 	Style.ApplyBorder(*Background, EFMCodexPlayerUIColorRole::PitchBackground,
 		Style.GetCompactPadding());
 	Background->SetBrushFromTexture(TurfTexture);
-	Background->SetBrushColor(FLinearColor(0.30f, 0.48f, 0.42f, 1.0f));
+	Background->SetBrushColor(FLinearColor(0.325f, 0.52f, 0.455f, 1.0f));
 	Background->SetPadding(FMargin(0));
 	FieldBorder->AddChild(Background);
 	FieldCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(

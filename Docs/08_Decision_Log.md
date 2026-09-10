@@ -1387,3 +1387,15 @@ The repository also retains the Local DeclineMarker / 放弃盯人 PlayerIntent 
 - Primary design canvas is 1920×1080, with 1600×900, 2560×1440 and future landscape/localization structure retained. Reverse-engineered target coordinates are design tokens, never a reason to distort card glyphs or change gameplay geometry.
 - Allow limited creative refinement where TARGET is underspecified: subtle HUD, scalable materials, small generic functional/football icons, enclosure and button details. Intentional deviations need an explicit ID, reason, reversible implementation and resulting actual UE screenshot; planned deviations remain unverified until implemented. Preserve TARGET fidelity where its design is clear.
 - Header/Panel/Button bodies favor shared UMG/style/material/scalable brushes. If independent art is needed, prioritize language-neutral enclosure overlays and a small reusable HUD/icon kit. Stage 8.1A remains OPEN; visual/feel acceptance and manual staging/commit stay with the user.
+
+## 2026-09-10 — Stage 8.1A.2: Checkpoint enclosure and resource-badge refinement
+
+- Preserve the approved shell composition and playable geometry. Refine only the native stadium enclosure and Header tactical-point badge; target fidelity does not authorize redesigning the checkpoint.
+- The user now permits a small fictional/generic sponsor family on decorative venue boards, superseding the earlier Stage 8.1A restriction on sponsor identity only for this surface. GOALGRID, FOOTLAB and ARENA+ are fictional art-direction labels, rendered with the existing font infrastructure and no imported logos; this is not trademark clearance. No real sponsor assets, fake club branding, dynamic gameplay text in textures or invented match facts.
+- Keep board appearance and badge materials native and reversible. Tactical-point value, visibility, ownership and localization remain supplied through the unchanged presentation contract. Broader Stage 8.1A stays OPEN pending user acceptance.
+
+## 2026-09-10 — Stage 8.1A.3: Authored LED enclosure rhythm
+
+- Replace the three-name loop with seven decorative identities: GOALGRID, FOOTLAB, ARENA+, MATCHPRO, NOVA XI, STRIKE ONE and PITCHLAB. All names and geometric marks are fictional art direction, not imported sponsor logos or trademark clearance.
+- Keep sponsor widths/order deterministic and independent of mechanical LED seams. Horizontal ribbons mix wordmarks, inverse signage, mark-only sections and dark transitions; side housings use sparse upright marks, never repeated rotated words. No animated advertising or gameplay RNG.
+- Preserve the 8.1A.2 Header, chip, Dock and playable geometry. Permit only a small turf texture-tint lift alongside enclosure material work; no slot, line or input mapping changes. Stage 8.1A remains OPEN for user visual acceptance and manual commit.
