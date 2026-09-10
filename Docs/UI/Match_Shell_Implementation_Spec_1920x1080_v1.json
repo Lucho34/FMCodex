@@ -1,0 +1,830 @@
+{
+  "version": 1,
+  "status": "SPEC + AUDIT; NOT IMPLEMENTED; STAGE OPEN",
+  "date": "2026-09-10",
+  "canvas": [
+    1920,
+    1080
+  ],
+  "source_images": {
+    "target": {
+      "path": "C:\\Users\\Lucho\\Downloads\\TARGET visual mockup.png",
+      "size": [
+        1706,
+        922
+      ],
+      "sha256": "d8876cea11d8619609ccb7ef80c5ff6cdb2be6fcb50fa33c87ff5772784532c6"
+    },
+    "actual": {
+      "path": "D:\\Unreal Projects\\FMCodex\\Saved\\Stage8_1A\\Round2_FinalVerified_1920x1080.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "sha256": "ca9573b7422243a0b3f66549e880f5548a91c21d75a9416625fa4778b8275906"
+    }
+  },
+  "normalization": {
+    "uniform_width_scale": 1.1254396248534584,
+    "extra_vertical_space": 42.34466588511145,
+    "anchor_band_native_y": [
+      120,
+      816
+    ],
+    "formula": "x=s*x; y=s*y+extra*clamp((y-120)/696,0,1). Map layout landmarks only; no image/glyph/card distortion."
+  },
+  "measurement_limits": "Manual target edges +/-2-4 native px; current raster +/-2-3 design px. Opacity and gradients cannot be recovered uniquely. ROI luminance is local, not a global similarity score.",
+  "geometry": {
+    "header_left": {
+      "spec": [
+        0,
+        14,
+        576,
+        104
+      ],
+      "actual": [
+        16,
+        16,
+        590,
+        104
+      ],
+      "basis": "native Slate / target silhouette",
+      "actual_minus_spec": [
+        16,
+        2,
+        14,
+        0
+      ],
+      "target_native": [
+        0,
+        12,
+        512,
+        94
+      ],
+      "target_anchor_mapped": [
+        0.0,
+        13.51,
+        576.23,
+        105.79
+      ]
+    },
+    "header_right": {
+      "spec": [
+        1344,
+        14,
+        576,
+        104
+      ],
+      "actual": [
+        1314,
+        16,
+        590,
+        104
+      ],
+      "basis": "native Slate / symmetric target adaptation",
+      "actual_minus_spec": [
+        -30,
+        2,
+        14,
+        0
+      ],
+      "target_native": [
+        1194,
+        12,
+        512,
+        94
+      ],
+      "target_anchor_mapped": [
+        1343.77,
+        13.51,
+        576.23,
+        105.79
+      ]
+    },
+    "score_bridge": {
+      "spec": [
+        576,
+        24,
+        768,
+        94
+      ],
+      "actual": [
+        606,
+        16,
+        708,
+        104
+      ],
+      "basis": "native layout",
+      "actual_minus_spec": [
+        30,
+        -8,
+        -60,
+        10
+      ]
+    },
+    "attack_progress": {
+      "spec": [
+        762,
+        101,
+        396,
+        38
+      ],
+      "actual": [
+        834,
+        90,
+        252,
+        30
+      ],
+      "basis": "raster edge estimate +/-3 px",
+      "actual_minus_spec": [
+        72,
+        -11,
+        -144,
+        -8
+      ],
+      "target_native": [
+        677,
+        90,
+        351,
+        33
+      ],
+      "target_anchor_mapped": [
+        761.92,
+        101.29,
+        395.03,
+        37.32
+      ]
+    },
+    "roster_left": {
+      "spec": [
+        18,
+        136,
+        476,
+        824
+      ],
+      "actual": [
+        16,
+        128,
+        476,
+        828
+      ],
+      "basis": "effective runtime width overrides / frozen card budget",
+      "actual_minus_spec": [
+        -2,
+        -8,
+        0,
+        4
+      ],
+      "target_native": [
+        16,
+        120,
+        422,
+        696
+      ],
+      "target_anchor_mapped": [
+        18.01,
+        135.05,
+        474.94,
+        825.65
+      ]
+    },
+    "roster_right": {
+      "spec": [
+        1426,
+        136,
+        476,
+        824
+      ],
+      "actual": [
+        1428,
+        128,
+        476,
+        828
+      ],
+      "basis": "effective runtime width overrides / frozen card budget",
+      "actual_minus_spec": [
+        2,
+        -8,
+        0,
+        4
+      ],
+      "target_native": [
+        1268,
+        120,
+        422,
+        696
+      ],
+      "target_anchor_mapped": [
+        1427.06,
+        135.05,
+        474.94,
+        825.65
+      ]
+    },
+    "enclosure_envelope": {
+      "spec": [
+        494,
+        136,
+        932,
+        824
+      ],
+      "actual": [
+        502,
+        128,
+        916,
+        828
+      ],
+      "basis": "decorative environment only",
+      "actual_minus_spec": [
+        8,
+        -8,
+        -16,
+        4
+      ],
+      "target_native": [
+        438,
+        120,
+        831,
+        696
+      ],
+      "target_anchor_mapped": [
+        492.94,
+        135.05,
+        935.24,
+        825.65
+      ]
+    },
+    "playable_canvas": {
+      "spec": [
+        540,
+        186,
+        840,
+        734
+      ],
+      "actual": [
+        540,
+        186,
+        840,
+        734
+      ],
+      "basis": "LOCKED: existing FieldCanvas, not inferred from AI pitch",
+      "actual_minus_spec": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "pitch_hud": {
+      "spec": [
+        526,
+        154,
+        868,
+        34
+      ],
+      "actual": [
+        502,
+        128,
+        916,
+        36
+      ],
+      "basis": "decorative HUD / does not move FieldCanvas",
+      "actual_minus_spec": [
+        -24,
+        -26,
+        48,
+        2
+      ],
+      "target_native": [
+        486,
+        132,
+        734,
+        32
+      ],
+      "target_anchor_mapped": [
+        546.96,
+        149.29,
+        826.07,
+        37.96
+      ]
+    },
+    "dock_envelope": {
+      "spec": [
+        18,
+        970,
+        1884,
+        96
+      ],
+      "actual": [
+        16,
+        966,
+        1888,
+        98
+      ],
+      "basis": "native layout / target bottom anchoring",
+      "actual_minus_spec": [
+        -2,
+        -4,
+        4,
+        2
+      ]
+    },
+    "dock_status": {
+      "spec": [
+        28,
+        982,
+        278,
+        80
+      ],
+      "actual": [
+        28,
+        980,
+        260,
+        70
+      ],
+      "basis": "actual vertical ink/frame estimate +/-3 px; noninteractive",
+      "actual_minus_spec": [
+        0,
+        -2,
+        -18,
+        -10
+      ],
+      "target_native": [
+        25,
+        834,
+        246,
+        72
+      ],
+      "target_anchor_mapped": [
+        28.14,
+        980.96,
+        276.86,
+        81.03
+      ]
+    },
+    "dock_instruction": {
+      "spec": [
+        318,
+        982,
+        260,
+        80
+      ],
+      "actual": [
+        298,
+        975,
+        244,
+        80
+      ],
+      "basis": "raster edge estimate +/-2 px",
+      "actual_minus_spec": [
+        -20,
+        -7,
+        -16,
+        0
+      ],
+      "target_native": [
+        282,
+        834,
+        232,
+        72
+      ],
+      "target_anchor_mapped": [
+        317.37,
+        980.96,
+        261.1,
+        81.03
+      ]
+    },
+    "dock_secondary": {
+      "spec": [
+        590,
+        982,
+        170,
+        80
+      ],
+      "actual": [
+        552,
+        980,
+        156,
+        70
+      ],
+      "basis": "raster edge estimate +/-2 px",
+      "actual_minus_spec": [
+        -38,
+        -2,
+        -14,
+        -10
+      ],
+      "target_native": [
+        527,
+        834,
+        151,
+        72
+      ],
+      "target_anchor_mapped": [
+        593.11,
+        980.96,
+        169.94,
+        81.03
+      ]
+    },
+    "dock_primary": {
+      "spec": [
+        772,
+        982,
+        180,
+        80
+      ],
+      "actual": [
+        718,
+        980,
+        180,
+        70
+      ],
+      "basis": "180 px source min width + raster height",
+      "actual_minus_spec": [
+        -54,
+        -2,
+        0,
+        -10
+      ],
+      "target_native": [
+        691,
+        834,
+        152,
+        72
+      ],
+      "target_anchor_mapped": [
+        777.68,
+        980.96,
+        171.07,
+        81.03
+      ]
+    }
+  },
+  "material_samples": {
+    "roster_heading": {
+      "target": {
+        "roi_xyxy_native": [
+          [
+            240,
+            130,
+            400,
+            150
+          ]
+        ],
+        "median_srgb": "#0C1B2A",
+        "linear_Y_median": 0.01029,
+        "linear_Y_p10_p90": [
+          0.00957,
+          0.01147
+        ]
+      },
+      "actual": {
+        "roi_xyxy_native": [
+          [
+            280,
+            140,
+            450,
+            165
+          ]
+        ],
+        "median_srgb": "#183242",
+        "linear_Y_median": 0.02869,
+        "linear_Y_p10_p90": [
+          0.0202,
+          0.03695
+        ]
+      },
+      "actual_over_target_Y": 2.788
+    },
+    "roster_bottom": {
+      "target": {
+        "roi_xyxy_native": [
+          [
+            35,
+            807,
+            410,
+            812
+          ]
+        ],
+        "median_srgb": "#081729",
+        "linear_Y_median": 0.00824,
+        "linear_Y_p10_p90": [
+          0.00741,
+          0.00892
+        ]
+      },
+      "actual": {
+        "roi_xyxy_native": [
+          [
+            35,
+            945,
+            475,
+            950
+          ]
+        ],
+        "median_srgb": "#03101D",
+        "linear_Y_median": 0.00484,
+        "linear_Y_p10_p90": [
+          0.00445,
+          0.00519
+        ]
+      },
+      "actual_over_target_Y": 0.587
+    },
+    "header_blue": {
+      "target": {
+        "roi_xyxy_native": [
+          [
+            270,
+            18,
+            405,
+            27
+          ]
+        ],
+        "median_srgb": "#0D2E5D",
+        "linear_Y_median": 0.02822,
+        "linear_Y_p10_p90": [
+          0.02463,
+          0.04354
+        ]
+      },
+      "actual": {
+        "roi_xyxy_native": [
+          [
+            300,
+            25,
+            460,
+            34
+          ]
+        ],
+        "median_srgb": "#143860",
+        "linear_Y_median": 0.03822,
+        "linear_Y_p10_p90": [
+          0.03679,
+          0.03957
+        ]
+      },
+      "actual_over_target_Y": 1.354
+    },
+    "score_backplane": {
+      "target": {
+        "roi_xyxy_native": [
+          [
+            710,
+            32,
+            765,
+            72
+          ]
+        ],
+        "median_srgb": "#0D1B2A",
+        "linear_Y_median": 0.01037,
+        "linear_Y_p10_p90": [
+          0.00977,
+          0.01147
+        ]
+      },
+      "actual": {
+        "roi_xyxy_native": [
+          [
+            720,
+            40,
+            760,
+            75
+          ]
+        ],
+        "median_srgb": "#071727",
+        "linear_Y_median": 0.00804,
+        "linear_Y_p10_p90": [
+          0.00702,
+          0.0143
+        ]
+      },
+      "actual_over_target_Y": 0.775
+    },
+    "dock_secondary_top": {
+      "target": {
+        "roi_xyxy_native": [
+          [
+            575,
+            839,
+            663,
+            852
+          ]
+        ],
+        "median_srgb": "#1B2D40",
+        "linear_Y_median": 0.0248,
+        "linear_Y_p10_p90": [
+          0.0227,
+          0.02888
+        ]
+      },
+      "actual": {
+        "roi_xyxy_native": [
+          [
+            592,
+            985,
+            690,
+            995
+          ]
+        ],
+        "median_srgb": "#384A58",
+        "linear_Y_median": 0.064,
+        "linear_Y_p10_p90": [
+          0.05946,
+          0.07015
+        ]
+      },
+      "actual_over_target_Y": 2.581
+    },
+    "dock_empty": {
+      "target": {
+        "roi_xyxy_native": [
+          [
+            900,
+            846,
+            1150,
+            864
+          ]
+        ],
+        "median_srgb": "#0E1723",
+        "linear_Y_median": 0.0086,
+        "linear_Y_p10_p90": [
+          0.00624,
+          0.01286
+        ]
+      },
+      "actual": {
+        "roi_xyxy_native": [
+          [
+            1050,
+            985,
+            1350,
+            1005
+          ]
+        ],
+        "median_srgb": "#132330",
+        "linear_Y_median": 0.01546,
+        "linear_Y_p10_p90": [
+          0.01396,
+          0.01783
+        ]
+      },
+      "actual_over_target_Y": 1.798
+    },
+    "grass_open": {
+      "target": {
+        "roi_xyxy_native": [
+          [
+            815,
+            310,
+            895,
+            390
+          ],
+          [
+            815,
+            550,
+            895,
+            620
+          ]
+        ],
+        "median_srgb": "#387E20",
+        "linear_Y_median": 0.15913,
+        "linear_Y_p10_p90": [
+          0.13322,
+          0.18398
+        ]
+      },
+      "actual": {
+        "roi_xyxy_native": [
+          [
+            930,
+            350,
+            952,
+            440
+          ],
+          [
+            968,
+            350,
+            990,
+            440
+          ],
+          [
+            930,
+            610,
+            952,
+            680
+          ],
+          [
+            968,
+            610,
+            990,
+            680
+          ]
+        ],
+        "median_srgb": "#32651A",
+        "linear_Y_median": 0.10046,
+        "linear_Y_p10_p90": [
+          0.06904,
+          0.13814
+        ]
+      },
+      "actual_over_target_Y": 0.631
+    }
+  },
+  "score_ink": {
+    "target": {
+      "bbox_xywh": [
+        790,
+        39,
+        126,
+        37
+      ],
+      "threshold": "min RGB>180, max RGB-min RGB<45",
+      "roi_xyxy": [
+        770,
+        28,
+        940,
+        83
+      ]
+    },
+    "actual": {
+      "bbox_xywh": [
+        900,
+        30,
+        121,
+        44
+      ],
+      "threshold": "min RGB>180, max RGB-min RGB<45",
+      "roi_xyxy": [
+        865,
+        22,
+        1060,
+        90
+      ]
+    }
+  },
+  "frozen_pitch": {
+    "canvas_xywh": [
+      540,
+      186,
+      840,
+      734
+    ],
+    "touchline_normalized": [
+      0.04,
+      0.04,
+      0.96,
+      0.96
+    ],
+    "lane_x_fraction": [
+      0.33,
+      0.67
+    ],
+    "lane_anchor_y": [
+      0.04,
+      0.96
+    ],
+    "slot_design_size": [
+      148,
+      148
+    ],
+    "grid_padding": [
+      2,
+      6
+    ],
+    "empty_five_slot_lane_scale": 0.8441,
+    "derived_slot_center_x": [
+      817.2,
+      1102.8
+    ],
+    "derived_slot_center_y": [
+      282.888,
+      417.944,
+      553.0,
+      688.056,
+      823.112
+    ],
+    "note": "Derived empty-lane baseline; actual Slate layout is the acceptance source. Never resize/remap slot geometry to match AI perspective."
+  },
+  "frozen_card": {
+    "size": [
+      220,
+      68
+    ],
+    "columns": 2,
+    "rows": 10,
+    "column_gap": 12,
+    "row_gap": 8
+  },
+  "deviation_ids": [
+    "D01_ANCHOR_ADAPTATION",
+    "D02_FLAT_PITCH",
+    "D03_CTA_HIERARCHY",
+    "D04_GENERIC_MARK_ONLY",
+    "D05_FROZEN_CARD_INTERNALS",
+    "D06_EXISTING_FONT",
+    "D07_SCALABLE_MATERIAL"
+  ]
+}

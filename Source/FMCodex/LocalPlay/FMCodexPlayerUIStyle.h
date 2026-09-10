@@ -97,5 +97,9 @@ struct FMCODEX_API FFMCodexPlayerUIStyle
 		const FMargin& Padding) const;
 	void ApplyButton(UButton& Button, EFMCodexPlayerUIActionRole Role) const;
 
+	/** Match dock only; leaves specialized resolution and card styling unchanged. */
+	FButtonStyle MakeDockButtonStyle(EFMCodexPlayerUIActionRole Role,
+		const FLinearColor* SideAccent = nullptr) const;
+
 	bool HasValidDefaults() const;
 };

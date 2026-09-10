@@ -1,4 +1,5 @@
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexBroadcastPanel.h"
 
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexPlayerCardWidget.h"
@@ -12,6 +13,8 @@
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
+#include "Components/ScaleBox.h"
+#include "Components/ScaleBoxSlot.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 
@@ -36,17 +39,20 @@ namespace FMCodexInteractionPanelWidget
 		UTextBlock*& LabelText,
 		const EFMCodexPlayerUIActionRole Role)
 	{
-		UButton* Result = Tree.ConstructWidget<UButton>(
-			UButton::StaticClass(), Name);
+		UButton* Result = Tree.ConstructWidget<UFMCodexBroadcastButton>(
+			UFMCodexBroadcastButton::StaticClass(), Name);
 		LabelText = MakeText(
 			Tree, FName(*(Name.ToString() + TEXT("Label"))));
 		LabelText->SetAutoWrapText(false);
 		LabelText->SetTextOverflowPolicy(ETextOverflowPolicy::Clip);
 		LabelText->SetJustification(ETextJustify::Center);
 		FFMCodexPlayerUIStyle::Get().ApplyText(
-			*LabelText, EFMCodexPlayerUITextRole::Body);
+			*LabelText, EFMCodexPlayerUITextRole::SectionHeading);
+		FSlateFontInfo ActionFont = LabelText->GetFont();
+		ActionFont.Size = 16;
+		LabelText->SetFont(ActionFont);
 		Result->AddChild(LabelText);
-		FFMCodexPlayerUIStyle::Get().ApplyButton(*Result, Role);
+		Result->SetStyle(FFMCodexPlayerUIStyle::Get().MakeDockButtonStyle(Role));
 		return Result;
 	}
 
@@ -56,8 +62,8 @@ namespace FMCodexInteractionPanelWidget
 		const EFMCodexPlayerUIColorRole ColorRole,
 		const FMargin& Padding)
 	{
-		UBorder* Result = Tree.ConstructWidget<UBorder>(
-			UBorder::StaticClass(), Name);
+		UBorder* Result = Tree.ConstructWidget<UFMCodexBroadcastPanel>(
+			UFMCodexBroadcastPanel::StaticClass(), Name);
 		FFMCodexPlayerUIStyle::Get().ApplyBorder(
 			*Result, ColorRole, Padding);
 		return Result;
@@ -272,23 +278,25 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 		USizeBox::StaticClass(), TEXT("InteractionPanelBounds"));
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	Bounds->SetMinDesiredWidth(Style.GetPanelMinWidth());
-	Bounds->SetMaxDesiredWidth(Style.GetPanelMaxWidth());
+	// Natural text width can use the full dock; longer translations are not capped at 1120.
+	Bounds->SetMaxDesiredWidth(1888.0f);
 	WidgetTree->RootWidget = Bounds;
 
-	UBorder* Frame = MakeRegion(
-		*WidgetTree, TEXT("InteractionPanelFrame"),
-		EFMCodexPlayerUIColorRole::PanelBackground,
-		Style.GetPanelPadding());
+	UFMCodexBroadcastPanel* Frame = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
+		UFMCodexBroadcastPanel::StaticClass(), TEXT("InteractionPanelFrame"));
+	Frame->Surface = EFMCodexBroadcastSurface::Dock;
+	Frame->SetPadding(FMargin(12.0f, 10.0f));
 	Bounds->AddChild(Frame);
 	UHorizontalBox* Body = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("InteractionPanelHierarchy"));
 	Frame->AddChild(Body);
 
-	ActionHeaderRegion = MakeRegion(
-		*WidgetTree, TEXT("InteractionActionHeader"),
-		EFMCodexPlayerUIColorRole::NeutralAccent,
-		FMargin(10.0f, 6.0f));
+	ActionHeaderRegion = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
+		UFMCodexBroadcastPanel::StaticClass(), TEXT("InteractionActionHeader"));
+	CastChecked<UFMCodexBroadcastPanel>(ActionHeaderRegion)->Surface = EFMCodexBroadcastSurface::Prompt;
+	ActionHeaderRegion->SetPadding(FMargin(30.0f, 8.0f, 20.0f, 8.0f));
 	ActionHeaderRegion->SetVerticalAlignment(VAlign_Center);
+	ActionHeaderRegion->SetVisibility(ESlateVisibility::HitTestInvisible);
 	UVerticalBox* HeaderBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("InteractionActionHeaderBody"));
 	KickerText = MakeText(*WidgetTree, TEXT("InteractionActionKicker"));
@@ -313,7 +321,11 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	HeaderBody->AddChildToVerticalBox(TitleText);
 	HeaderBody->AddChildToVerticalBox(ContextText);
 	ActionHeaderRegion->AddChild(HeaderBody);
-	Body->AddChildToHorizontalBox(ActionHeaderRegion);
+	USizeBox* PromptBounds = WidgetTree->ConstructWidget<USizeBox>();
+	PromptBounds->SetMinDesiredWidth(260.0f);
+	PromptBounds->SetMaxDesiredWidth(430.0f);
+	PromptBounds->AddChild(ActionHeaderRegion);
+	Body->AddChildToHorizontalBox(PromptBounds)->SetPadding(FMargin(0,0,12,0));
 
 	CandidateRegion = MakeRegion(
 		*WidgetTree, TEXT("InteractionCandidateRegion"),
@@ -337,7 +349,7 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	CandidateScroll->AddChild(CandidateCardsBody);
 	CandidateBody->AddChildToVerticalBox(CandidateScroll);
 	CandidateRegion->AddChild(CandidateBody);
-	Body->AddChildToHorizontalBox(CandidateRegion);
+	Body->AddChildToHorizontalBox(CandidateRegion)->SetPadding(FMargin(0,0,8,0));
 
 	ChoiceRegion = MakeRegion(
 		*WidgetTree, TEXT("InteractionChoiceRegion"),
@@ -400,15 +412,15 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	TacticalPointRollButton = MakeButton(
 		*WidgetTree, TEXT("InteractionTacticalPointRollButton"), RollLabel,
 		EFMCodexPlayerUIActionRole::Primary);
-	Style.ApplyText(*RollLabel, EFMCodexPlayerUITextRole::Kicker);
+	Style.ApplyText(*RollLabel, EFMCodexPlayerUITextRole::SectionHeading);
 	TacticalPointRollButton->OnClicked.AddDynamic(
 		this,
 		&UFMCodexInteractionPanelWidget::HandleTacticalPointRollClicked);
 	USizeBox* TacticalPointRollBounds =
 		WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(), TEXT("TacticalPointPrimaryActionBounds"));
-	TacticalPointRollBounds->SetWidthOverride(156.0f);
-	TacticalPointRollBounds->SetHeightOverride(48.0f);
+	TacticalPointRollBounds->SetMinDesiredWidth(196.0f);
+	TacticalPointRollBounds->SetMinDesiredHeight(66.0f);
 	TacticalPointRollBounds->AddChild(TacticalPointRollButton);
 	if (UHorizontalBoxSlot* RollSlot =
 		PrimaryActions->AddChildToHorizontalBox(TacticalPointRollBounds))
@@ -422,7 +434,11 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 		EFMCodexPlayerUIActionRole::Primary);
 	FinishButton->OnClicked.AddDynamic(
 		this, &UFMCodexInteractionPanelWidget::HandleFinishClicked);
-	PrimaryActions->AddChildToHorizontalBox(FinishButton);
+	USizeBox* FinishBounds = WidgetTree->ConstructWidget<USizeBox>();
+	FinishBounds->SetMinDesiredWidth(180.0f);
+	FinishBounds->SetMinDesiredHeight(66.0f);
+	FinishBounds->AddChild(FinishButton);
+	PrimaryActions->AddChildToHorizontalBox(FinishBounds);
 	UTextBlock* ContinueLabel = nullptr;
 	ContinueButton = MakeButton(
 		*WidgetTree, TEXT("InteractionContinueButton"), ContinueLabel,
@@ -435,6 +451,50 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	EmptyStateText = MakeText(*WidgetTree, TEXT("InteractionBoundedFallback"));
 	Style.ApplyText(*EmptyStateText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToHorizontalBox(EmptyStateText);
+	UFMCodexBroadcastPanel* Brand = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
+		UFMCodexBroadcastPanel::StaticClass(), TEXT("MatchDockBrandSignature"));
+	Brand->Surface = EFMCodexBroadcastSurface::Brand;
+	Brand->SetPadding(FMargin(20,0,46,0));
+	Brand->SetClipping(EWidgetClipping::ClipToBoundsAlways);
+	Brand->SetVisibility(ESlateVisibility::HitTestInvisible);
+	Brand->SetVerticalAlignment(VAlign_Center);
+	UScaleBox* BrandFit = WidgetTree->ConstructWidget<UScaleBox>();
+	BrandFit->SetStretch(EStretch::ScaleToFit);
+	BrandFit->SetStretchDirection(EStretchDirection::DownOnly);
+	UTextBlock* BrandText = MakeText(*WidgetTree, TEXT("MatchDockBrandText"));
+	BrandText->SetAutoWrapText(false);
+	BrandText->SetText(NSLOCTEXT("FMCodexMatchShell", "BrandSignature", "FOOTBALL TACTICAL CARD GAME"));
+	Style.ApplyText(*BrandText, EFMCodexPlayerUITextRole::Kicker);
+	FSlateFontInfo BrandFont = BrandText->GetFont();
+	BrandFont.Size = 12;
+	BrandFont.LetterSpacing = 100;
+	BrandText->SetFont(BrandFont);
+	BrandText->SetColorAndOpacity(FSlateColor(FLinearColor(0.18f,0.30f,0.40f,0.85f)));
+	CastChecked<UScaleBoxSlot>(BrandFit->AddChild(BrandText))->SetHorizontalAlignment(HAlign_Right);
+	Brand->AddChild(BrandFit);
+	UHorizontalBoxSlot* BrandSlot = Body->AddChildToHorizontalBox(Brand);
+	BrandSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	BrandSlot->SetHorizontalAlignment(HAlign_Fill);
+	BrandSlot->SetPadding(FMargin(18,0,0,0));
+	for (UWidget* Child : Body->GetAllChildren())
+	{
+		if (auto* ChildSlot = Cast<UHorizontalBoxSlot>(Child->Slot))
+		{
+			ChildSlot->SetVerticalAlignment(VAlign_Center);
+		}
+	}
+	BrandSlot->SetVerticalAlignment(VAlign_Fill);
+	for (UHorizontalBox* Actions : {PrimaryActions, SecondaryActions})
+	{
+		for (UWidget* Child : Actions->GetAllChildren())
+		{
+			if (auto* ChildSlot = Cast<UHorizontalBoxSlot>(Child->Slot))
+			{
+				ChildSlot->SetPadding(FMargin(5.0f, 0));
+				ChildSlot->SetVerticalAlignment(VAlign_Center);
+			}
+		}
+	}
 }
 
 void UFMCodexInteractionPanelWidget::SetActionWaitPromptMode(bool bEnabled, bool bReadOnly,
@@ -480,12 +540,12 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	const bool bCompactTacticalPointAction =
 		Presentation.bCanRollTacticalPoints;
-	Style.ApplyText(*ActorText, bCompactTacticalPointAction
-		? EFMCodexPlayerUITextRole::Kicker
-		: EFMCodexPlayerUITextRole::Status);
-	TitleText->SetVisibility(bCompactTacticalPointAction && !bActionWaitPrompt
-		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-	ContextText->SetVisibility(bCompactTacticalPointAction
+	Style.ApplyText(*ActorText, EFMCodexPlayerUITextRole::Body);
+	FSlateFontInfo DockTitleFont = TitleText->GetFont();
+	DockTitleFont.Size = 18;
+	TitleText->SetFont(DockTitleFont);
+	TitleText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	ContextText->SetVisibility(bCompactTacticalPointAction || Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
 		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	ActionHeaderRegion->SetBrushColor(
 		Presentation.KickerLabel.Contains(TEXT("SYSTEM"))
@@ -502,6 +562,10 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 			: ESlateVisibility::Collapsed);
 
 	RefreshCandidateChoices();
+	const bool bDeploymentInstruction = Presentation.Category == EFMCodexUMGInteractionCategory::Deploy;
+	CastChecked<UFMCodexBroadcastPanel>(CandidateRegion)->Surface = bDeploymentInstruction
+		? EFMCodexBroadcastSurface::Instruction : EFMCodexBroadcastSurface::Panel;
+	CandidateRegion->SetPadding(bDeploymentInstruction ? FMargin(44,20,24,20) : Style.GetSectionPadding());
 	CandidateRegion->SetVisibility(
 		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
 			|| (!Presentation.bUseOnPitchPlayerSelection
@@ -536,8 +600,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		&& Presentation.bHasActingSidePrimaryColor)
 	{
 		TacticalPointRollButton->SetStyle(
-			Style.MakeAccentButtonStyle(
-				Presentation.ActingSidePrimaryColor));
+			Style.MakeDockButtonStyle(EFMCodexPlayerUIActionRole::Primary,
+				&Presentation.ActingSidePrimaryColor));
 		const FLinearColor PanelBase =
 			Style.GetColor(EFMCodexPlayerUIColorRole::PanelRaised);
 		ActionHeaderRegion->SetBrushColor(FMath::Lerp(
@@ -545,6 +609,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	}
 	SetButton(FinishButton, Presentation.bCanFinishDeployment,
 		Presentation.PrimaryAction.Label);
+	FinishButton->GetParent()->SetVisibility(FinishButton->GetVisibility());
 	const bool bUseContinueButton = Presentation.PrimaryAction.bAvailable
 		&& !Presentation.bCanStartNewMatch
 		&& !Presentation.bCanRollTacticalPoints
@@ -593,6 +658,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 				ContinueButton.Get(), DeclineButton.Get(), NoLegalButton.Get(), DeploymentTacticalReferenceButton.Get()})
 				Button->SetVisibility(ESlateVisibility::Collapsed);
 			TacticalPointRollButton->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
+			FinishButton->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
 		}
 	}
 	SetIsEnabled(!bInteractionBlocked);

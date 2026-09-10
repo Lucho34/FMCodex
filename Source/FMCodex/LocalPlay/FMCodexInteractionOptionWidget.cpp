@@ -191,7 +191,8 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	{
 		OptionBounds->ClearMinDesiredWidth();
 		OptionBounds->ClearMinDesiredHeight();
-		OptionBounds->SetWidthOverride(156.0f);
+		OptionBounds->ClearWidthOverride();
+		OptionBounds->SetMinDesiredWidth(156.0f);
 		OptionBounds->SetHeightOverride(58.0f);
 	}
 	else if (bStaticTwoLineChoice)
@@ -214,6 +215,14 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	FFMCodexPlayerUIStyle::Get().ApplyButton(*OptionButton,
 		bConfigured ? EFMCodexPlayerUIActionRole::Secondary
 			: EFMCodexPlayerUIActionRole::Disabled);
+	if (bTacticalCard)
+	{
+		FButtonStyle DockStyle = FFMCodexPlayerUIStyle::Get().MakeDockButtonStyle(
+			bConfigured ? EFMCodexPlayerUIActionRole::Secondary : EFMCodexPlayerUIActionRole::Disabled);
+		DockStyle.SetNormalPadding(FMargin(14.0f, 6.0f));
+		DockStyle.SetPressedPadding(FMargin(14.0f, 8.0f, 14.0f, 4.0f));
+		OptionButton->SetStyle(DockStyle);
+	}
 	BindConfiguredHandler();
 }
 

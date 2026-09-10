@@ -28,6 +28,7 @@ public:
 	FString GetDisplayedScoreLabel() const;
 	FString GetDisplayedAttackerLabel() const;
 	FString GetDisplayedActorLabel() const;
+	FText GetDisplayedPhaseText() const;
 
 protected:
 	virtual void NativeOnInitialized() override;

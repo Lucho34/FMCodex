@@ -1,4 +1,5 @@
 #include "FMCodexPitchSlotWidget.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 
 #include "FMCodexDeploymentDragDropOperation.h"
 #include "FMCodexPlayerCardWidget.h"
@@ -286,7 +287,14 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 	}
 	TargetStateText->SetText(FText::GetEmpty());
 	TargetStateText->SetVisibility(ESlateVisibility::Collapsed);
-	SlotBorder->SetBrushColor(Style.GetColor(TargetColorRole));
+	FLinearColor SlotFill = Style.GetColor(TargetColorRole);
+	if (TargetColorRole == EFMCodexPlayerUIColorRole::EmptyPitchSlot)
+	{
+		SlotFill = FLinearColor(0.008f, 0.026f, 0.018f, 0.35f);
+	}
+	SlotBorder->SetBrush(FSlateRoundedBoxBrush(SlotFill, 7.0f,
+		FLinearColor(0.48f, 0.65f, 0.54f, 0.19f), 0.75f));
+	SlotBorder->SetBrushColor(FLinearColor::White);
 
 	if (Presentation.bOccupied)
 	{

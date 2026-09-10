@@ -1,4 +1,5 @@
 #include "FMCodexPlayerUIStyle.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 
 #include "Components/Border.h"
 #include "Components/Button.h"
@@ -308,6 +309,37 @@ void FFMCodexPlayerUIStyle::ApplyButton(
 	const EFMCodexPlayerUIActionRole Role) const
 {
 	Button.SetStyle(MakeButtonStyle(Role));
+}
+
+FButtonStyle FFMCodexPlayerUIStyle::MakeDockButtonStyle(
+	const EFMCodexPlayerUIActionRole Role, const FLinearColor* SideAccent) const
+{
+	const bool bPrimary = Role == EFMCodexPlayerUIActionRole::Primary;
+	const bool bDecline = Role == EFMCodexPlayerUIActionRole::Decline;
+	FLinearColor Accent = SideAccent ? *SideAccent : FLinearColor(0.010f, 0.20f, 0.76f, 1);
+	FLinearColor AccentHSV = Accent.LinearRGBToHSV();
+	AccentHSV.G = FMath::Max(AccentHSV.G, 0.92f);
+	AccentHSV.B = FMath::Max(AccentHSV.B, 0.80f);
+	Accent = AccentHSV.HSVToLinearRGB();
+	const FLinearColor Base = bPrimary
+		? FMath::Lerp(FLinearColor(0.003f, 0.020f, 0.060f, 1), Accent, 0.82f)
+		: bDecline ? FLinearColor(0.014f,0.021f,0.030f,1)
+			: FLinearColor(0.022f,0.041f,0.063f,1);
+	const FLinearColor Edge = bPrimary
+		? FMath::Lerp(Accent, FLinearColor(0.48f,0.72f,1,1),0.45f)
+		: FLinearColor(0.16f,0.25f,0.34f,0.9f);
+	FButtonStyle Result;
+	Result.SetNormal(FSlateRoundedBoxBrush(Base, 6.0f, Edge, bPrimary ? 1.5f : 1.0f));
+	Result.SetHovered(FSlateRoundedBoxBrush(
+		FMath::Lerp(Base, Accent, 0.20f), 5.0f,
+		FLinearColor(0.48f,0.70f,0.92f,1), 1.5f));
+	Result.SetPressed(FSlateRoundedBoxBrush(Base * FLinearColor(0.55f,0.55f,0.55f,1),
+		5.0f, Edge, 1.0f));
+	Result.SetDisabled(FSlateRoundedBoxBrush(FLinearColor(0.015f,0.020f,0.027f,0.8f),
+		5.0f, FLinearColor(0.08f,0.12f,0.16f,0.6f), 1.0f));
+	Result.SetNormalPadding(FMargin(36.0f, 20.0f, 26.0f, 20.0f));
+	Result.SetPressedPadding(FMargin(36.0f, 22.0f, 26.0f, 18.0f));
+	return Result;
 }
 
 bool FFMCodexPlayerUIStyle::HasValidDefaults() const

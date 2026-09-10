@@ -1,0 +1,13 @@
+# Match shell source assets
+
+- `T_MatchShell_Stadium.png`: user-supplied `stadium background asset.png`, copied unchanged (1672 × 941). Atmosphere only; never supplies tactical geometry or UI text.
+- `T_MatchShell_Turf.png`: selected second-pass grass generated with the built-in imagegen tool (1254 × 1254). Independent surface beneath live half-pitch lines, semantic labels and interactive slots.
+- Runtime packages: `/Game/UI/MatchShell/T_MatchShell_Stadium` and `/Game/UI/MatchShell/T_MatchShell_Turf`. Reimport with `Scripts/ImportMatchShellAssets.py` through Unreal Editor Python. Both are referenced by the native widgets for cooking.
+- The current screenshot provides content context; the target mockup provides visual direction. Neither screenshot is imported or used as a flattened UI.
+- Header silhouettes, phase/progress carriers, segmented sideline boards, panel gradients, borders, button lighting, generic football decoration and half-circle geometry are native Slate drawing. The original stadium also supplies cropped stand scenery around the independent tactical turf. No text, badges, player images or invented gameplay facts are baked into these assets.
+
+Final grass prompt (built-in imagegen):
+
+> Use case: photorealistic-natural. Asset type: final football game tactical pitch grass texture, square. A premium football pitch surface seen orthographically straight down from very high above, at the scale of an entire half pitch, filling the whole image. EIGHT broad perfectly straight VERTICAL mowing stripes alternating restrained medium emerald green and subtly lighter emerald green. Broad stripes MUST be clearly visible but elegant. Extremely fine grass grain at this distant viewing scale, smooth and lush, not gritty, not moss, not close-up macro grass. Even soft stadium night floodlighting with a slight bright center. Flat orthographic surface with no perspective. Edge-to-edge grass ONLY. No white markings or painted lines, no center circle, no penalty box, no goals, no stadium, no people, no text, no UI, no logos. It will sit underneath live vector football field markings in a dark navy commercial tactical game HUD.
+
+Visual inspection remains user-owned. The removable `FMCodex.Dev.PreviewMatchShell` command starts a real standalone LocalPlay demo through the existing Screen intent. Optional `-MatchShellScreenshot=<name> -MatchShellExitAfterCapture` writes a real viewport PNG under `Saved/Stage8_1A` and exits the capture process. Add `-MatchShellDeployment` to request the existing DEV FullD12=6 provider seam, submit the normal roll action, and let the normal reveal finish before capturing deployment. It does not force phase/route/outcome, and does not operate in Network mode or Shipping builds.

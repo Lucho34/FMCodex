@@ -1,4 +1,5 @@
 #include "FMCodexCardRackWidget.h"
+#include "FMCodexBroadcastPanel.h"
 
 #include "FMCodexHandMicroDiagnostics.h"
 #include "FMCodexPlayerCardWidget.h"
@@ -122,8 +123,8 @@ void UFMCodexCardRackWidget::BuildWidgetTree()
 		return;
 	}
 
-	UBorder* Frame = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(), TEXT("PersistentCardRackFrame"));
+	UBorder* Frame = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
+		UFMCodexBroadcastPanel::StaticClass(), TEXT("PersistentCardRackFrame"));
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	Style.ApplyBorder(*Frame, EFMCodexPlayerUIColorRole::PanelBackground,
 		FMargin(6.0f, 4.0f));
@@ -139,11 +140,14 @@ void UFMCodexCardRackWidget::BuildWidgetTree()
 		UTextBlock::StaticClass(), TEXT("CardRackHeading"));
 	RackHeading->SetJustification(ETextJustify::Center);
 	Style.ApplyText(*RackHeading, EFMCodexPlayerUITextRole::SectionHeading);
+	FSlateFontInfo HeadingFont = RackHeading->GetFont();
+	HeadingFont.Size = 20;
+	RackHeading->SetFont(HeadingFont);
 	if (UHorizontalBoxSlot* HeadingSlot =
 		HeadingRow->AddChildToHorizontalBox(RackHeading))
 	{
-		HeadingSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-		HeadingSlot->SetHorizontalAlignment(HAlign_Right);
+		HeadingSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+		HeadingSlot->SetHorizontalAlignment(HAlign_Left);
 		HeadingSlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
 	}
 	TacticalPlayerCountText = WidgetTree->ConstructWidget<UTextBlock>(
@@ -151,6 +155,9 @@ void UFMCodexCardRackWidget::BuildWidgetTree()
 	TacticalPlayerCountText->SetJustification(ETextJustify::Left);
 	Style.ApplyText(
 		*TacticalPlayerCountText, EFMCodexPlayerUITextRole::Secondary);
+	FSlateFontInfo CountFont = TacticalPlayerCountText->GetFont();
+	CountFont.Size = 13;
+	TacticalPlayerCountText->SetFont(CountFont);
 	if (UHorizontalBoxSlot* CountSlot =
 		HeadingRow->AddChildToHorizontalBox(TacticalPlayerCountText))
 	{
@@ -158,7 +165,12 @@ void UFMCodexCardRackWidget::BuildWidgetTree()
 		CountSlot->SetHorizontalAlignment(HAlign_Left);
 		CountSlot->SetVerticalAlignment(VAlign_Center);
 	}
-	Body->AddChildToVerticalBox(HeadingRow);
+	UFMCodexBroadcastPanel* HeadingShell = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
+		UFMCodexBroadcastPanel::StaticClass(), TEXT("RosterIdentityShell"));
+	HeadingShell->Surface = EFMCodexBroadcastSurface::RosterHeading;
+	HeadingShell->SetPadding(FMargin(14.0f, 8.0f));
+	HeadingShell->AddChild(HeadingRow);
+	Body->AddChildToVerticalBox(HeadingShell);
 	RackGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(
 		UUniformGridPanel::StaticClass(), TEXT("StableTwoByTenCardRackGrid"));
 	RackGrid->SetSlotPadding(FMargin(6.0f, 4.0f));
@@ -174,6 +186,10 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 	if (RackGrid == nullptr)
 	{
 		return;
+	}
+	if (UBorder* IdentityShell = Cast<UBorder>(WidgetTree->FindWidget(TEXT("RosterIdentityShell"))))
+	{
+		IdentityShell->SetBrushColor(FFMCodexPlayerUIStyle::Get().GetPlayerAccentColor(Presentation.SideLabel));
 	}
 	RackHeading->SetText(FFMCodexPlayerUIPresentationText::RackHeading(
 		Presentation.SideLabel, Presentation.bLocalRack));

@@ -26,6 +26,11 @@ UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexPitchWidget : public UUserWidget
 {
 	GENERATED_BODY()
+	UPROPERTY()
+	TObjectPtr<class UTexture2D> TurfTexture;
+
+	UPROPERTY()
+	TObjectPtr<class UTexture2D> StadiumTexture;
 
 public:
 	UFMCodexPitchWidget(const FObjectInitializer& ObjectInitializer);
@@ -41,6 +46,7 @@ public:
 		FName CardId,
 		const TArray<FFMCodexUMGDeploymentChoiceViewModel>& Choices);
 	void EndDeploymentDrag();
+	void SetPhaseLabel(const FText& InPhaseLabel);
 	FName GetActiveDeploymentCardId() const;
 
 	FFMCodexPitchWidgetDeploymentDropped OnDeploymentDropped;
@@ -77,6 +83,12 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UFMCodexPitchSlotWidget>> RenderedSlotWidgets;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> HudCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> PhaseText;
 
 	FName ActiveDeploymentCardId = NAME_None;
 };

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2020 1220" role="img" aria-labelledby="title desc">
+<title id="title">Match shell geometry: implementation spec versus actual UE capture</title>
+<desc id="desc">Orange solid lines are proposed design geometry; blue dashed lines are current geometry. Green is the locked playable canvas. This is a measurement diagram, not a UE screenshot.</desc>
+<rect width="2020" height="1220" fill="#F6F8FA"/>
+<g font-family="Arial,sans-serif" fill="#172634"><text x="50" y="35" font-size="22">1920 x 1080 — geometry comparison (design pixels)</text>
+<text x="50" y="63" font-size="17">Orange: proposed spec   /   Blue dashed: actual UE   /   Green: locked playable canvas   /   Diagram, not a UE capture</text></g>
+<g transform="translate(50 90)"><rect width="1920" height="1080" fill="#FFFFFF" stroke="#B4C0CB"/>
+<rect x="0" y="14" width="576" height="104" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="16" y="16" width="590" height="104" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="1344" y="14" width="576" height="104" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="1314" y="16" width="590" height="104" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="576" y="24" width="768" height="94" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="606" y="16" width="708" height="104" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="762" y="101" width="396" height="38" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="834" y="90" width="252" height="30" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="18" y="136" width="476" height="824" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="16" y="128" width="476" height="828" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="1426" y="136" width="476" height="824" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="1428" y="128" width="476" height="828" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="526" y="154" width="868" height="34" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="502" y="128" width="916" height="36" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="18" y="970" width="1884" height="96" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="16" y="966" width="1888" height="98" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="28" y="982" width="278" height="80" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="28" y="980" width="260" height="70" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="318" y="982" width="260" height="80" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="298" y="975" width="244" height="80" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="590" y="982" width="170" height="80" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="552" y="980" width="156" height="70" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="772" y="982" width="180" height="80" fill="none" stroke="#D77B14" stroke-width="2"/>
+<rect x="718" y="980" width="180" height="70" fill="none" stroke="#297CD5" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="540" y="186" width="840" height="734" fill="#2B9167" fill-opacity=".05" stroke="#2B9167" stroke-width="3"/>
+<text x="100" y="250" font-family="Arial,sans-serif" font-size="19" fill="#172634">ROSTER: 476 x 824 / actual 476 x 828</text>
+<text x="1448" y="250" font-family="Arial,sans-serif" font-size="19" fill="#172634">ROSTER: top 136 / actual 128</text>
+<text x="715" y="465" font-family="Arial,sans-serif" font-size="19" fill="#172634">PLAYABLE CANVAS LOCKED</text>
+<text x="700" y="497" font-family="Arial,sans-serif" font-size="19" fill="#172634">x540 y186 / 840 x 734</text>
+<text x="700" y="529" font-family="Arial,sans-serif" font-size="19" fill="#172634">Slot centers and hit tests unchanged</text>
+<text x="770" y="74" font-family="Arial,sans-serif" font-size="19" fill="#172634">SCORE</text>
+<text x="25" y="952" font-family="Arial,sans-serif" font-size="19" fill="#172634">Dock: controls target H80 / current buttons H70</text>
+<text x="700" y="942" font-family="Arial,sans-serif" font-size="19" fill="#172634">Turf / stadium material delta is not represented in this diagram</text>
+</g></svg>

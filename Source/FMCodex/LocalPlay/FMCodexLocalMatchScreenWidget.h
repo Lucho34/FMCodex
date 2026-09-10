@@ -78,6 +78,8 @@ UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexLocalMatchScreenWidget : public UUserWidget
 {
 	GENERATED_BODY()
+	UPROPERTY()
+	TObjectPtr<UTexture2D> StadiumAtmosphere;
 
 public:
 #if !UE_BUILD_SHIPPING

@@ -163,7 +163,7 @@ void SFMCodexLocalDevRollOverrideWidget::Construct(
 	[
 		SNew(SBorder)
 		.Padding(6.0f)
-		.BorderBackgroundColor(FLinearColor(0.04f, 0.025f, 0.02f, 0.94f))
+		.BorderBackgroundColor(FLinearColor(0.007f, 0.013f, 0.020f, 0.78f))
 		[
 			SAssignNew(Controls, SExpandableArea)
 			.InitiallyCollapsed(true)
@@ -172,8 +172,8 @@ void SFMCodexLocalDevRollOverrideWidget::Construct(
 			[
 				SNew(STextBlock)
 				.Text(FText::FromString(TEXT("DEV 掷点")))
-				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
-				.ColorAndOpacity(FLinearColor(1.0f, 0.64f, 0.22f))
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+				.ColorAndOpacity(FLinearColor(0.30f, 0.39f, 0.46f, 0.72f))
 			]
 			.BodyContent()
 			[

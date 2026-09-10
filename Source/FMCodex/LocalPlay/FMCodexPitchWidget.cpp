@@ -1,4 +1,10 @@
 #include "FMCodexPitchWidget.h"
+#include "FMCodexBroadcastPanel.h"
+#include "Components/ScaleBox.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Engine/Texture2D.h"
+#include "UObject/ConstructorHelpers.h"
 
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexPlayerUIPresentationText.h"
@@ -48,9 +54,9 @@ namespace FMCodexPitchWidget
 		Result->SetVisibility(ESlateVisibility::HitTestInvisible);
 		if (UCanvasPanelSlot* Slot = Canvas.AddChildToCanvas(Result))
 		{
-			Slot->SetAnchors(FAnchors(CenterFraction, 0.01f));
+			Slot->SetAnchors(FAnchors(CenterFraction, 0.0f));
 			Slot->SetAlignment(FVector2D(0.5f, 0.0f));
-			Slot->SetOffsets(FMargin(-42.0f, 0.0f, 84.0f, 24.0f));
+			Slot->SetOffsets(FMargin(0.0f, 5.0f, 160.0f, 28.0f));
 		}
 	}
 
@@ -102,24 +108,17 @@ namespace FMCodexPitchWidget
 		const FString& Prefix,
 		const bool bLocalFacing)
 	{
-		const float LandmarkX = bLocalFacing ? 0.08f : 0.92f;
-		AddPitchLine(Tree, Canvas, FName(*(Prefix + TEXT("Line"))),
-			FAnchors(LandmarkX, 0.08f, LandmarkX, 0.92f),
-			FMargin(-1.0f, 0.0f, 2.0f, 0.0f), 0.34f);
-		UTextBlock* Arc = MakeText(
-			Tree, FName(*(Prefix + TEXT("Arc"))), TEXT("\u25CB"));
-		Arc->SetJustification(ETextJustify::Center);
-		FSlateFontInfo Font = Arc->GetFont();
-		Font.Size = 150;
-		Arc->SetFont(Font);
-		Arc->SetColorAndOpacity(FSlateColor(FLinearColor(
-			0.72f, 0.80f, 0.70f, 0.34f)));
+		UFMCodexBroadcastPanel* Arc = Tree.ConstructWidget<UFMCodexBroadcastPanel>(
+			UFMCodexBroadcastPanel::StaticClass(), FName(*(Prefix + TEXT("Arc"))));
+		Arc->Surface = bLocalFacing ? EFMCodexBroadcastSurface::MidfieldLeft
+			: EFMCodexBroadcastSurface::MidfieldRight;
+		Arc->SetBrushColor(FLinearColor(0.72f, 0.80f, 0.70f, 0.64f));
 		Arc->SetVisibility(ESlateVisibility::HitTestInvisible);
 		if (UCanvasPanelSlot* Slot = Canvas.AddChildToCanvas(Arc))
 		{
-			Slot->SetAnchors(FAnchors(LandmarkX, 0.5f));
-			Slot->SetAlignment(FVector2D(0.5f, 0.5f));
-			Slot->SetOffsets(FMargin(-80.0f, -80.0f, 160.0f, 160.0f));
+			Slot->SetAnchors(bLocalFacing ? FAnchors(0.04f, 0.37f, 0.16f, 0.63f)
+				: FAnchors(0.84f, 0.37f, 0.96f, 0.63f));
+			Slot->SetOffsets(FMargin(0));
 		}
 	}
 
@@ -155,6 +154,12 @@ UFMCodexPitchWidget::UFMCodexPitchWidget(
 	: Super(ObjectInitializer)
 {
 	PitchSlotWidgetClass = UFMCodexPitchSlotWidget::StaticClass();
+	static ConstructorHelpers::FObjectFinder<UTexture2D> Turf(
+		TEXT("/Game/UI/MatchShell/T_MatchShell_Turf.T_MatchShell_Turf"));
+	TurfTexture = Turf.Object;
+	static ConstructorHelpers::FObjectFinder<UTexture2D> Stadium(
+		TEXT("/Game/UI/MatchShell/T_MatchShell_Stadium.T_MatchShell_Stadium"));
+	StadiumTexture = Stadium.Object;
 }
 
 void UFMCodexPitchWidget::NativeOnInitialized()
@@ -227,6 +232,11 @@ void UFMCodexPitchWidget::EndDeploymentDrag()
 	RefreshVisuals();
 }
 
+void UFMCodexPitchWidget::SetPhaseLabel(const FText& InPhaseLabel)
+{
+	if (PhaseText) PhaseText->SetText(InPhaseLabel);
+}
+
 FName UFMCodexPitchWidget::GetActiveDeploymentCardId() const
 {
 	return ActiveDeploymentCardId;
@@ -276,20 +286,58 @@ void UFMCodexPitchWidget::BuildWidgetTree()
 		USizeBox::StaticClass(), TEXT("FootballFieldAspectShell"));
 	WidgetTree->RootWidget = FieldSize;
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
-	UBorder* FieldBorder = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(), TEXT("FootballFieldBackground"));
-	Style.ApplyBorder(*FieldBorder, EFMCodexPlayerUIColorRole::PanelBackground,
-		FMargin(0.0f));
-	FieldSize->AddChild(FieldBorder);
+	UOverlay* StadiumLayers = WidgetTree->ConstructWidget<UOverlay>();
+	FieldSize->AddChild(StadiumLayers);
+	UFMCodexBroadcastPanel* FieldBorder = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
+		UFMCodexBroadcastPanel::StaticClass(), TEXT("FootballFieldBackground"));
+	FieldBorder->Surface = EFMCodexBroadcastSurface::PitchSurround;
+	FieldBorder->SetPadding(FMargin(38.0f, 58.0f, 38.0f, 36.0f));
+	FieldBorder->SetBrushFromTexture(StadiumTexture);
+	UOverlaySlot* SurroundSlot = StadiumLayers->AddChildToOverlay(FieldBorder);
+	SurroundSlot->SetHorizontalAlignment(HAlign_Fill);
+	SurroundSlot->SetVerticalAlignment(VAlign_Fill);
 	UBorder* Background = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("PitchBackgroundAssetHook"));
 	Style.ApplyBorder(*Background, EFMCodexPlayerUIColorRole::PitchBackground,
 		Style.GetCompactPadding());
+	Background->SetBrushFromTexture(TurfTexture);
+	Background->SetBrushColor(FLinearColor(0.30f, 0.48f, 0.42f, 1.0f));
+	Background->SetPadding(FMargin(0));
 	FieldBorder->AddChild(Background);
 	FieldCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
 		UCanvasPanel::StaticClass(), TEXT("TwoLanePitchCanvas"));
 	FieldCanvas->SetClipping(EWidgetClipping::ClipToBounds);
-	Background->AddChild(FieldCanvas);
+	UFMCodexBroadcastPanel* TurfLight = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
+		UFMCodexBroadcastPanel::StaticClass(), TEXT("TurfEdgeLighting"));
+	TurfLight->Surface = EFMCodexBroadcastSurface::TurfLighting;
+	TurfLight->SetPadding(FMargin(0));
+	TurfLight->AddChild(FieldCanvas);
+	Background->AddChild(TurfLight);
+	USizeBox* HudBounds = WidgetTree->ConstructWidget<USizeBox>();
+	HudBounds->SetHeightOverride(36.0f);
+	UFMCodexBroadcastPanel* Hud = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
+		UFMCodexBroadcastPanel::StaticClass(), TEXT("PitchSemanticHUD"));
+	Hud->Surface = EFMCodexBroadcastSurface::PitchHUD;
+	Hud->SetPadding(FMargin(0));
+	Hud->SetVisibility(ESlateVisibility::HitTestInvisible);
+	HudCanvas = WidgetTree->ConstructWidget<UCanvasPanel>();
+	Hud->AddChild(HudCanvas);
+	HudBounds->AddChild(Hud);
+	UOverlaySlot* HudSlot = StadiumLayers->AddChildToOverlay(HudBounds);
+	HudSlot->SetHorizontalAlignment(HAlign_Fill);
+	HudSlot->SetVerticalAlignment(VAlign_Top);
+	PhaseText = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(), TEXT("PitchPhaseStatusLabel"));
+	PhaseText->SetJustification(ETextJustify::Center);
+	PhaseText->SetAutoWrapText(false);
+	PhaseText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+	Style.ApplyText(*PhaseText, EFMCodexPlayerUITextRole::Secondary);
+	if (UCanvasPanelSlot* PhaseSlot = HudCanvas->AddChildToCanvas(PhaseText))
+	{
+		PhaseSlot->SetAnchors(FAnchors(0.5f,0));
+		PhaseSlot->SetAlignment(FVector2D(0.5f,0));
+		PhaseSlot->SetOffsets(FMargin(0,8,210,24));
+	}
 }
 
 void UFMCodexPitchWidget::RefreshVisuals()
@@ -301,6 +349,9 @@ void UFMCodexPitchWidget::RefreshVisuals()
 	}
 	FieldCanvas->ClearChildren();
 	RenderedSlotWidgets.Reset();
+	// Rebuild only semantic side labels; the phase carrier keeps its safe displayed text.
+	for (UWidget* Child : HudCanvas->GetAllChildren())
+		if (Child != PhaseText) HudCanvas->RemoveChild(Child);
 	AddPitchOutline(*WidgetTree, *FieldCanvas, TEXT("PitchTouchline"),
 		0.04f, 0.04f, 0.96f, 0.96f, 0.62f);
 	AddPitchLine(*WidgetTree, *FieldCanvas, TEXT("PhysicalHalfVisualSeparator"),
@@ -311,8 +362,8 @@ void UFMCodexPitchWidget::RefreshVisuals()
 	{
 		const FFMCodexUMGPitchRegionViewModel& Region = Presentation[RegionIndex];
 		const float CenterFraction = Region.bLocalFacingLane ? 0.33f : 0.67f;
-		AddSemanticLabel(*WidgetTree, *FieldCanvas, RegionIndex,
-			CenterFraction, Region.VisualRoleLabel);
+		AddSemanticLabel(*WidgetTree, *HudCanvas, RegionIndex,
+			Region.bLocalFacingLane ? 0.25f : 0.75f, Region.VisualRoleLabel);
 		switch (Region.VisualRole)
 		{
 		case EFMCodexUMGPitchVisualRole::Forward:
@@ -367,11 +418,15 @@ void UFMCodexPitchWidget::RefreshVisuals()
 			RenderedSlotWidgets.Add(SlotWidget);
 		}
 		Lane->AddChildToVerticalBox(SlotGrid);
-		if (UCanvasPanelSlot* LaneSlot = FieldCanvas->AddChildToCanvas(Lane))
+		UScaleBox* LaneFit = WidgetTree->ConstructWidget<UScaleBox>();
+		LaneFit->SetStretch(EStretch::ScaleToFit);
+		LaneFit->SetStretchDirection(EStretchDirection::DownOnly);
+		LaneFit->AddChild(Lane);
+		if (UCanvasPanelSlot* LaneSlot = FieldCanvas->AddChildToCanvas(LaneFit))
 		{
-			LaneSlot->SetAnchors(FAnchors(CenterFraction, 0.5f));
-			LaneSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-			LaneSlot->SetAutoSize(true);
+			LaneSlot->SetAnchors(FAnchors(CenterFraction, 0.04f, CenterFraction, 0.96f));
+			LaneSlot->SetAlignment(FVector2D(0.5f, 0.0f));
+			LaneSlot->SetOffsets(FMargin(0.0f, 0.0f, 160.0f, 0.0f));
 		}
 	}
 }

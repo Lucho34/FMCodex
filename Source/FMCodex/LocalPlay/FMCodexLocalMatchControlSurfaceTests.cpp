@@ -58,9 +58,45 @@
 #include "HAL/IConsoleManager.h"
 #include "Rendering/SlateRenderer.h"
 #include "TimerManager.h"
+#if WITH_EDITOR
+#include "Slate/WidgetRenderer.h"
+#include "AssetCompilingManager.h"
+#include "RenderingThread.h"
+#include "Kismet/KismetRenderingLibrary.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "Misc/CommandLine.h"
+#endif
 
 namespace FMCodexLocalMatchControlSurfaceTests
 {
+#if WITH_EDITOR
+	void CaptureMatchShell(UFMCodexLocalMatchScreenWidget& Screen, const TCHAR* State)
+	{
+		if (!FParse::Param(FCommandLine::Get(), TEXT("MatchShellRenderAudit"))) return;
+		auto* Renderer = new FWidgetRenderer(true);
+		const TSharedRef<SWidget> SlateScreen = Screen.TakeWidget();
+		// A synchronous automation turn has no normal editor frame to finish texture compilation.
+		FAssetCompilingManager::Get().FinishAllCompilation();
+		FlushRenderingCommands();
+		for (const FVector2D Size : {FVector2D(1920,1080), FVector2D(1600,900), FVector2D(2560,1440)})
+		{
+			auto* Target = UKismetRenderingLibrary::CreateRenderTarget2D(Screen.GetWorld(),
+				int32(Size.X), int32(Size.Y), RTF_RGBA8);
+			SlateScreen->Invalidate(EInvalidateWidgetReason::LayoutAndVolatility);
+			FSlateApplication::Get().Tick();
+			Renderer->DrawWidget(Target, SlateScreen, Size, 0.0f);
+			FlushRenderingCommands();
+			Renderer->DrawWidget(Target, SlateScreen, Size, 0.0f);
+			FlushRenderingCommands();
+			const FString Directory = FPaths::ProjectSavedDir() / TEXT("Stage8_1A");
+			const FString File = FString::Printf(TEXT("%s_%dx%d.png"), State, int32(Size.X), int32(Size.Y));
+			UKismetRenderingLibrary::ExportRenderTarget(Screen.GetWorld(), Target, Directory, File);
+			UE_LOG(LogTemp, Display, TEXT("MATCH_SHELL_CAPTURE %s"), *(Directory / File));
+		}
+		BeginCleanup(Renderer);
+	}
+#endif
+
 	void AcknowledgeIfPending(
 		AFMCodexLocalMatchPlayerController& Controller)
 	{
@@ -4049,6 +4085,9 @@ bool FFMCodexLocalMatchUMGPlayerFacingFoundationTest::RunTest(
 	TestTrue(TEXT("Authoritative human transition exposes roll immediately"),
 		StartedView.bTacticalPointRollReady
 			&& StartedUMG.Interaction.bCanRollTacticalPoints);
+#if WITH_EDITOR
+	CaptureMatchShell(*Screen, TEXT("TacticalReady"));
+#endif
 
 	Screen->RequestRollTacticalPoints();
 	Screen->PauseInlineFormulaRevealTimerForTesting();
@@ -4072,6 +4111,9 @@ bool FFMCodexLocalMatchUMGPlayerFacingFoundationTest::RunTest(
 	}
 	TestTrue(TEXT("UMG pitch preserves two physical halves and 10 slots"),
 		DeploymentUMG.PitchRegions.Num() == 2 && PitchSlotCount == 10);
+#if WITH_EDITOR
+	CaptureMatchShell(*Screen, TEXT("DeploymentDock"));
+#endif
 	TestTrue(TEXT("UMG interaction preserves bounded candidate cards"),
 		!DeploymentUMG.Interaction.CandidateCards.IsEmpty()
 			&& DeploymentUMG.Interaction.CandidateCards.Num()

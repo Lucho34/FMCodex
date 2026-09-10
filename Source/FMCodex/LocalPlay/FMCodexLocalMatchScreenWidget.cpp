@@ -1,4 +1,5 @@
 #include "FMCodexLocalMatchScreenWidget.h"
+#include "UObject/ConstructorHelpers.h"
 
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexFullTimePanelWidget.h"
@@ -340,6 +341,9 @@ UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
 	const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	static ConstructorHelpers::FObjectFinder<UTexture2D> Stadium(
+		TEXT("/Game/UI/MatchShell/T_MatchShell_Stadium.T_MatchShell_Stadium"));
+	StadiumAtmosphere = Stadium.Object;
 	MatchHeaderWidgetClass = UFMCodexMatchHeaderWidget::StaticClass();
 	PitchWidgetClass = UFMCodexPitchWidget::StaticClass();
 	InteractionPanelWidgetClass = UFMCodexInteractionPanelWidget::StaticClass();
@@ -2096,6 +2100,9 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	FFMCodexPlayerUIStyle::Get().ApplyBorder(
 		*ScreenBackground, EFMCodexPlayerUIColorRole::ScreenBackground,
 		FMargin(0.0f));
+	ScreenBackground->SetBrushFromTexture(StadiumAtmosphere);
+	ScreenBackground->SetBrushColor(FLinearColor(0.60f, 0.66f, 0.76f, 1.0f));
+	ScreenBackground->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (UOverlaySlot* BackgroundSlot = Root->AddChildToOverlay(ScreenBackground))
 	{
 		BackgroundSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -2107,17 +2114,28 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	USizeBox* ResponsiveBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("ResponsiveGoldenLayoutBounds"));
 	ResponsiveBounds->SetWidthOverride(1920.0f);
-	ResponsiveBounds->AddChild(MainScreen);
-	if (UOverlaySlot* MainSlot = Root->AddChildToOverlay(ResponsiveBounds))
+	ResponsiveBounds->SetHeightOverride(1080.0f);
+	UBorder* SafeMargin = WidgetTree->ConstructWidget<UBorder>();
+	SafeMargin->SetBrushColor(FLinearColor::Transparent);
+	SafeMargin->SetPadding(FMargin(16.0f));
+	SafeMargin->AddChild(MainScreen);
+	ResponsiveBounds->AddChild(SafeMargin);
+	UScaleBox* ViewportFit = WidgetTree->ConstructWidget<UScaleBox>(
+		UScaleBox::StaticClass(), TEXT("MatchShellViewportFit"));
+	ViewportFit->SetStretch(EStretch::ScaleToFit);
+	ViewportFit->AddChild(ResponsiveBounds);
+	if (UOverlaySlot* MainSlot = Root->AddChildToOverlay(ViewportFit))
 	{
-		MainSlot->SetHorizontalAlignment(HAlign_Center);
-		MainSlot->SetVerticalAlignment(VAlign_Center);
+		MainSlot->SetHorizontalAlignment(HAlign_Fill);
+		MainSlot->SetVerticalAlignment(VAlign_Fill);
 	}
 
 	USizeBox* HeaderBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("BroadcastMatchHeaderRegion"));
-	HeaderBounds->SetHeightOverride(80.0f);
+	HeaderBounds->SetHeightOverride(112.0f);
 	UBorder* HeaderRegion = MakeRegion(*WidgetTree, TEXT("MatchHeaderRegion"));
+	HeaderRegion->SetBrushColor(FLinearColor::Transparent);
+	HeaderRegion->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
 	UClass* ResolvedHeaderClass = MatchHeaderWidgetClass != nullptr
 		? MatchHeaderWidgetClass.Get() : UFMCodexMatchHeaderWidget::StaticClass();
 	MatchHeader = WidgetTree->ConstructWidget<UFMCodexMatchHeaderWidget>(
@@ -2128,7 +2146,7 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 
 	USizeBox* MainAreaBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("GoldenLayoutMainMatchArea"));
-	MainAreaBounds->SetHeightOverride(880.0f);
+	MainAreaBounds->SetHeightOverride(828.0f);
 	UHorizontalBox* MainArea = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("RackPitchRackHierarchy"));
 	MainAreaBounds->AddChild(MainArea);
@@ -2150,6 +2168,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		USizeBox::StaticClass(), TEXT("CentralPitchRegion"));
 	PitchBounds->SetWidthOverride(1076.0f);
 	UBorder* PitchRegion = MakeRegion(*WidgetTree, TEXT("FootballCardFieldRegion"));
+	PitchRegion->SetBrushColor(FLinearColor::Transparent);
+	PitchRegion->SetPadding(FMargin(10.0f, 0.0f));
 	UClass* ResolvedPitchClass = PitchWidgetClass != nullptr
 		? PitchWidgetClass.Get() : UFMCodexPitchWidget::StaticClass();
 	PitchWidget = WidgetTree->ConstructWidget<UFMCodexPitchWidget>(
@@ -2562,10 +2582,12 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 
 	USizeBox* DockBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("ContextActionDockRegion"));
-	DockBounds->SetHeightOverride(120.0f);
+	DockBounds->SetHeightOverride(108.0f);
 	DockBounds->SetClipping(EWidgetClipping::ClipToBounds);
 	UBorder* InteractionRegion = MakeRegion(
 		*WidgetTree, TEXT("CurrentInteractionRegion"));
+	InteractionRegion->SetBrushColor(FLinearColor::Transparent);
+	InteractionRegion->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
 	UClass* ResolvedInteractionClass = InteractionPanelWidgetClass != nullptr
 		? InteractionPanelWidgetClass.Get()
 		: UFMCodexInteractionPanelWidget::StaticClass();
@@ -4740,7 +4762,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	HandoffAuditRefresh.Broadcast(false);
 #endif
 	LocalRackBounds->SetWidthOverride(FMCodexHandMicroDiagnostics::RackWidth);
-	PitchBounds->SetWidthOverride(FMCodexHandMicroDiagnostics::PitchWidth);
+	PitchBounds->SetWidthOverride(FMCodexHandMicroDiagnostics::PitchWidth - 32.0f);
 	OpponentRackBounds->SetWidthOverride(FMCodexHandMicroDiagnostics::RackWidth);
 #if !UE_BUILD_SHIPPING
 	if (HandMicroProductionReviewBounds != nullptr)
@@ -4852,6 +4874,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 				: DisplayedThroughBall.bNarrativeAvailable)
 			: StandaloneInlineFormula.bVisible && StandaloneInlineFormula.bNarrativeAvailable;
 	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader(bOutcomeDisclosed));
+	PitchWidget->SetPhaseLabel(MatchHeader->GetDisplayedPhaseText());
 	const bool bEntryOrUniqueSetPieceReveal =
 		ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::TacticalPoint;
