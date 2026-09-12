@@ -1,7 +1,9 @@
 param(
     [string]$UnrealEditorCmd = "E:\UE_5.3\Engine\Binaries\Win64\UnrealEditor-Cmd.exe",
     [string]$PythonExe = "python",
-    [string[]]$PlayerKeys = @()
+    [string[]]$PlayerKeys = @(),
+    [ValidateSet("Hand", "Shared", "Full")]
+    [string[]]$RuntimeRoles = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,8 +64,11 @@ function Invoke-UnrealPython {
 
 $batchEnvironmentName = "FMCODEX_SHARED_PORTRAIT_PLAYER_KEYS"
 $previousBatchSelection = [Environment]::GetEnvironmentVariable($batchEnvironmentName)
+$roleEnvironmentName = "FMCODEX_PLAYER_ART_RUNTIME_ROLES"
+$previousRoleSelection = [Environment]::GetEnvironmentVariable($roleEnvironmentName)
 $selectedCount = $PlayerKeys.Count
 try {
+    [Environment]::SetEnvironmentVariable($roleEnvironmentName, ($RuntimeRoles -join ";"))
     if ($selectedCount -gt 0) {
         [Environment]::SetEnvironmentVariable(
             $batchEnvironmentName, ($PlayerKeys -join ";"))
@@ -88,6 +93,7 @@ try {
         -RequiredSentinel "FMCODEX_PROTOTYPE_TEAM_VALIDATION=PASS$expectedSuffix" `
         -Operation "Fresh-process prototype-team portrait validation"
 } finally {
+    [Environment]::SetEnvironmentVariable($roleEnvironmentName, $previousRoleSelection)
     [Environment]::SetEnvironmentVariable(
         $batchEnvironmentName, $previousBatchSelection)
 }

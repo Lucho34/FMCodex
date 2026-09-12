@@ -452,6 +452,10 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	FString PlayerFacingSerialLabel;
 
+	/** Optional mutable cosmetic number. Empty means unassigned; never derived from catalog serial. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString AssignedPlayerNumber;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FString> SkillLabels;
 

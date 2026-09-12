@@ -12,7 +12,8 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from SharedPortraitImportCatalog import (  # noqa: E402
-    RUNTIME_SIZE,
+    RUNTIME_SIZE, expand_runtime_entries, runtime_size, runtime_asset_name,
+    validate_generated_source, is_canonical,
     asset_path,
     load_catalog,
     select_entries,
@@ -20,9 +21,12 @@ from SharedPortraitImportCatalog import (  # noqa: E402
 
 
 project_root = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()))
-entries = select_entries(load_catalog(project_root))
+selected = select_entries(load_catalog(project_root))
+entries = expand_runtime_entries(selected)
 
 for entry in entries:
+    RUNTIME_SIZE = runtime_size(entry)
+    validate_generated_source(project_root, entry)
     expected_asset_path = asset_path(entry)
     if not unreal.EditorAssetLibrary.does_asset_exist(expected_asset_path):
         raise RuntimeError(f"Asset package does not resolve: {expected_asset_path}")
@@ -32,7 +36,7 @@ for entry in entries:
         actual = "None" if asset is None else asset.get_class().get_name()
         raise RuntimeError(f"Expected Texture2D, got {actual}: {expected_asset_path}")
     expected_object_path = (
-        f"{expected_asset_path}.{entry['assetName']}"
+        f"{expected_asset_path}.{runtime_asset_name(entry)}"
     )
     if asset.get_path_name() != expected_object_path:
         raise RuntimeError(
@@ -62,6 +66,14 @@ for entry in entries:
     if asset.get_editor_property("lod_bias") != 0:
         raise RuntimeError(f"Texture LODBias is not zero: {expected_asset_path}")
 
+    if is_canonical(entry):
+        if not asset.get_editor_property("compression_no_alpha") or asset.get_editor_property("virtual_texture_streaming") or asset.get_editor_property("max_texture_size"):
+            raise RuntimeError(f"Incorrect opaque/nonvirtual/unclamped recipe: {expected_asset_path}")
+        source = asset.get_editor_property("asset_import_data").get_first_filename()
+        from SharedPortraitImportCatalog import runtime_derivative_path
+        if Path(source).resolve() != runtime_derivative_path(project_root,entry).resolve():
+            raise RuntimeError(f"Incorrect imported source: {source}")
+
     unreal.log(
         "FMCODEX_PROTOTYPE_TEAM_VALIDATE "
         f"player_key={entry['playerKey']} asset={expected_asset_path} "
@@ -73,4 +85,4 @@ for entry in entries:
         "loaded=true redirector=false"
     )
 
-unreal.log(f"FMCODEX_PROTOTYPE_TEAM_VALIDATION=PASS selected={len(entries)}")
+unreal.log(f"FMCODEX_PROTOTYPE_TEAM_VALIDATION=PASS selected={len(selected)} textures={len(entries)}")

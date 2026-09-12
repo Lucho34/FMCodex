@@ -12,7 +12,8 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from SharedPortraitImportCatalog import (  # noqa: E402
-    RUNTIME_SIZE,
+    RUNTIME_SIZE, expand_runtime_entries, runtime_size, runtime_asset_name,
+    validate_generated_source, is_canonical,
     asset_path,
     destination_path,
     load_catalog,
@@ -27,12 +28,15 @@ def texture_size(texture: unreal.Texture2D) -> tuple[int, int]:
 
 
 project_root = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()))
-entries = select_entries(load_catalog(project_root))
+selected = select_entries(load_catalog(project_root))
+entries = expand_runtime_entries(selected)
 tasks = []
 expected_by_task = {}
 
 for entry in entries:
-    asset_name = entry["assetName"]
+    RUNTIME_SIZE = runtime_size(entry)
+    validate_generated_source(project_root, entry)
+    asset_name = runtime_asset_name(entry)
     source = runtime_derivative_path(project_root, entry)
     destination = destination_path(entry)
     expected_asset_path = asset_path(entry)
@@ -48,17 +52,20 @@ for entry in entries:
     task = unreal.AssetImportTask()
     task.set_editor_property("filename", str(source))
     task.set_editor_property("destination_path", destination)
+    task.set_editor_property("destination_name", asset_name)
     task.set_editor_property("automated", True)
     task.set_editor_property("replace_existing", True)
     task.set_editor_property("replace_existing_settings", False)
     task.set_editor_property("save", True)
     tasks.append(task)
-    expected_by_task[id(task)] = expected_asset_path
+    expected_by_task[id(task)] = (expected_asset_path, RUNTIME_SIZE, is_canonical(entry))
 
+# Keep destination_name authoritative; UE 5.3 Interchange otherwise uses the source stem.
+unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.PNG 0")
 unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(tasks)
 
 for task in tasks:
-    expected_asset_path = expected_by_task[id(task)]
+    expected_asset_path, RUNTIME_SIZE, canonical = expected_by_task[id(task)]
     asset_name = expected_asset_path.rsplit("/", 1)[-1]
     expected_object_path = f"{expected_asset_path}.{asset_name}"
     imported_paths = list(task.get_editor_property("imported_object_paths"))
@@ -90,6 +97,10 @@ for task in tasks:
     asset.set_editor_property("never_stream", True)
     asset.set_editor_property("srgb", True)
     asset.set_editor_property("lod_bias", 0)
+    if canonical:
+        asset.set_editor_property("compression_no_alpha", True)
+        asset.set_editor_property("virtual_texture_streaming", False)
+        asset.set_editor_property("max_texture_size", 0)
     asset.modify()
     if not unreal.EditorAssetLibrary.save_loaded_asset(asset, only_if_is_dirty=False):
         raise RuntimeError(f"Failed to save package: {expected_asset_path}")
@@ -104,4 +115,4 @@ for task in tasks:
         "streaming_equivalent=UE53_NPOT_UI saved=true"
     )
 
-unreal.log(f"FMCODEX_PROTOTYPE_TEAM_IMPORT=PASS selected={len(entries)}")
+unreal.log(f"FMCODEX_PROTOTYPE_TEAM_IMPORT=PASS selected={len(selected)} textures={len(entries)}")

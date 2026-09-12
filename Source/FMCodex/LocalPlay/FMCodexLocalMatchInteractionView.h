@@ -158,6 +158,9 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	 */
 	bool bHasPitchMiniTacticalMatch = false;
 	FString PlayerFacingSerialLabel;
+
+	/** Optional mutable cosmetic number. Empty means unassigned; never derived from catalog serial. */
+	FString AssignedPlayerNumber;
 	FString AttributeSummary;
 	FString GoalkeeperAttributeSummary;
 	FString CompactAttributeSummary;

@@ -5218,7 +5218,8 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 				&& NameText->GetFont().Size >= 12
 				&& NameText->GetFont().Size <= 16
 				&& DisplayedWidth <= 112.0f
-				&& NameText->GetTextOverflowPolicy() == ETextOverflowPolicy::Clip
+				&& NameText->GetTextOverflowPolicy() == (NameFixture->IsCanonicalCardFamily()
+					? ETextOverflowPolicy::Ellipsis : ETextOverflowPolicy::Clip)
 				&& NameText->GetClipping() == EWidgetClipping::Inherit
 				&& PositionText != nullptr
 				&& PositionText->GetText().ToString() == TEXT("A/M/D")
@@ -5285,8 +5286,10 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 				PortraitArt.HandMicroPortraitTop, HandMicroPortraitTop)
 			&& FMath::IsNearlyEqual(
 				PortraitArt.HandMicroPortraitUVHeight, HandMicroPortraitUVHeight)
-			&& PortraitAssetPath.Contains(TEXT("HandMicroApprovedRollout"))
-			&& PortraitAssetPath.Contains(TEXT("ApprovedRuntime192"));
+			&& (PortraitArt.bCanonicalPlayerArt
+				? PortraitAssetPath.Contains(TEXT("/Canonical/")) && PortraitAssetPath.EndsWith(TEXT("_Hand"))
+				: PortraitAssetPath.Contains(TEXT("HandMicroApprovedRollout"))
+					&& PortraitAssetPath.Contains(TEXT("ApprovedRuntime192")));
 		const UImage* MicroPortrait = Cast<UImage>(
 			PortraitMicroFixture->GetWidgetFromName(
 				TEXT("HandMicroFaceSafePortrait")));
@@ -5406,7 +5409,9 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 				&& ActualSRGB.R == RarityCase.Value.R
 				&& ActualSRGB.G == RarityCase.Value.G
 				&& ActualSRGB.B == RarityCase.Value.B
-				&& FMath::IsNearlyEqual(ActualLinear.A, 0.45f));
+				&& FMath::IsNearlyEqual(ActualLinear.A, RarityFixture->IsCanonicalCardFamily() ? 0.90f : 0.45f)
+				&& RarityStrip->GetVisibility() == (RarityFixture->IsCanonicalCardFamily()
+					? ESlateVisibility::Hidden : ESlateVisibility::HitTestInvisible));
 	}
 	FFMCodexUMGCardViewModel GoalkeeperMicro = LongMicro;
 	GoalkeeperMicro.CardId = TEXT("Prototype.Arsenal.DavidRaya");
@@ -5418,8 +5423,9 @@ bool FFMCodexUMGPlayerCardVisualFoundationTest::RunTest(
 		MicroFixture->GetWidgetFromName(TEXT("PlayerCardFrame")));
 	TestTrue(TEXT("Hand Micro uses a restrained collectible frame instead of a rarity field"),
 		HandMicroFrame != nullptr
-			&& HandMicroFrame->GetBrushColor().Equals(
-				FFMCodexPlayerUIStyle::Get().GetColor(
+			&& HandMicroFrame->GetBrushColor().Equals(MicroFixture->IsCanonicalCardFamily()
+				? FLinearColor(.003f,.009f,.014f,1)
+				: FFMCodexPlayerUIStyle::Get().GetColor(
 					EFMCodexPlayerUIColorRole::CardFrame))
 			&& MicroFixture->GetWidgetFromName(TEXT("CardFrameAssetImage"))
 				->GetVisibility() == ESlateVisibility::Collapsed
@@ -9909,9 +9915,10 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& HandTexture->Filter == TF_Trilinear
 			&& HandTexture->NeverStream && HandTexture->SRGB
 			&& HandTexture->LODBias == 0
-			&& HandPath.Contains(TEXT("/Game/UI/Portraits/PrototypeTeams/"
-				"HandMicroApprovedRollout/"))
-			&& HandPath.Contains(TEXT("ApprovedRuntime192"))
+			&& (Art.bCanonicalPlayerArt
+				? HandPath.Contains(TEXT("/Canonical/")) && HandPath.EndsWith(TEXT("_Hand"))
+				: HandPath.Contains(TEXT("/Game/UI/Portraits/PrototypeTeams/HandMicroApprovedRollout/"))
+					&& HandPath.Contains(TEXT("ApprovedRuntime192")))
 			&& !HandPath.Contains(TEXT("/Developers/"))
 			&& FMath::IsNearlyEqual(Art.HandMicroPortraitTop, 0.0f)
 			&& FMath::IsNearlyEqual(Art.HandMicroPortraitUVHeight, 1.0f)
@@ -10008,7 +10015,8 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 			&& Rarity->GetHeightOverride() == 68.0f
 			&& Name != nullptr && Name->GetText().ToString() == Entry.DisplayName
 			&& Name->GetFont().Size <= 16 && Name->GetFont().Size >= 12
-			&& Name->GetTextOverflowPolicy() == ETextOverflowPolicy::Clip
+			&& Name->GetTextOverflowPolicy() == (Card->IsCanonicalCardFamily()
+				? ETextOverflowPolicy::Ellipsis : ETextOverflowPolicy::Clip)
 			&& UV.bIsValid && UV.Min == FVector2f(0.0f, 0.0f)
 			&& UV.Max == FVector2f(1.0f, 1.0f)
 			&& HandImage->GetRenderTransform().Scale == FVector2D(1.0f, 1.0f)
@@ -10083,7 +10091,7 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 				return false;
 			}
 		}
-		return Rack->GetDesiredSize().Y <= 880.0f;
+		return Rack->GetDesiredSize().Y <= 828.0f;
 	};
 	const USizeBox* HeaderBounds = Cast<USizeBox>(
 		Screen->GetWidgetFromName(TEXT("BroadcastMatchHeaderRegion")));
@@ -10093,16 +10101,17 @@ bool FFMCodexHandMicroProductionContractTest::RunTest(
 		Screen->GetWidgetFromName(TEXT("ContextActionDockRegion")));
 	const USizeBox* PitchBounds = Cast<USizeBox>(
 		Screen->GetWidgetFromName(TEXT("CentralPitchRegion")));
+	// The accepted Stage 8.1A shell already replaced the old 80/880/120 frame.
 	TestTrue(TEXT("220x68 preserves 10-row 1080p no-scroll fit and macro layout"),
 		AuditRack(Screen->GetLocalRackWidget())
 			&& AuditRack(Screen->GetOpponentRackWidget())
 			&& 10.0f * 68.0f + 9.0f * 8.0f == 752.0f
-			&& HeaderBounds != nullptr && HeaderBounds->GetHeightOverride() == 80.0f
-			&& MainBounds != nullptr && MainBounds->GetHeightOverride() == 880.0f
-			&& DockBounds != nullptr && DockBounds->GetHeightOverride() == 120.0f
+			&& HeaderBounds != nullptr && HeaderBounds->GetHeightOverride() == 112.0f
+			&& MainBounds != nullptr && MainBounds->GetHeightOverride() == 828.0f
+			&& DockBounds != nullptr && DockBounds->GetHeightOverride() == 108.0f
 			&& PitchBounds != nullptr
 			&& PitchBounds->GetWidthOverride()
-				== FMCodexHandMicroDiagnostics::PitchWidth);
+				== FMCodexHandMicroDiagnostics::PitchWidth - 32.0f);
 
 	FString GeneratorSource;
 	FString AssetSource;

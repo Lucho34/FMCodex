@@ -835,3 +835,87 @@ Core freeze 覆盖几何、2×10 Rack、Ghost、Name 策略、Position 展示、
 `HAND MICRO COMMERCIAL POLISH / READY FOR NEXT STAGE`
 
 商业美术仍可在未来阶段更换符合相同合同的高质量源素材、完善授权 likeness、细修背景与色彩；不得借商业抛光重新打开本合同的结构与 Gameplay 边界。Pitch、Header、Dock、Pitch Mini、Full Card、Tactical Badge、Resolution、Gameplay、Authority、CoreRules、MatchPlayRuntime 均不属于本次 freeze 变更。
+
+
+# 30. Stage 8.2A narrow canonical-family pilot / historical checkpoint
+
+For Saka, Rodri, Raya and Haaland only, the authorized commercial polish now uses the canonical role derivatives and shared native card surface described in [Shared Portrait Art Contract, section 16](Shared_Portrait_Art_Contract_v1.md#16-stage-82a-accepted-hand-implementation-and-separated-activation). These four routes supersede their old HandMicroApprovedRollout bindings; the other entries and the 220×68 / 96×64 / 2×10 / drag / tactical-pip contracts remain unchanged. Current player names are shown once, without TARGET's English subtitles, crests or invented shirt numbers. The pilot remains pending USER PIE; this is not authorization for a roster-wide migration.
+
+
+# 31. Stage 8.2A Hand-only refinement / rejected portrait checkpoint
+
+The Hand-only scope below remains valid, but USER PIE rejected this section's portrait framing and top-edge-only hover. Section 32 supersedes those visual parameters.
+
+The user contract narrows current production work to Hand Compact Card only. Section 30 and Shared Portrait Contract section 16 describe the incoming uncommitted pilot; their Pitch/Full presentation is frozen for this pass. Stage 8.2B/8.2C remain separate. Existing shell, rack, gameplay, networking, localization and disclosure contracts are unchanged.
+
+For Saka, Rodri, Raya and Haaland, preserve 220×68 logical card bounds, 96×68 portrait cell / 96×64 image, 120×68 information region, 4×68 rarity rail, 2×10 rack and existing drag scale. Hand and drag load the 192×128 Hand derivative only. Names remain the single active localized preferred name; position remains the presentation projection. No logo, English subtitle, attributes or biography is added.
+
+| Element | Hand refinement |
+|---|---|
+| Portrait | More neck, shoulders and upper chest from the unchanged Master; proportional framing, navy margins and a shared soft vignette; complete 0–1 UV at runtime |
+| Navy | Portrait/background sRGB `(6,18,30)`; native identity gradient linear RGB `.004/.014/.028` → `.0018/.006/.012`, opaque; one low-opacity diagonal |
+| Frame | Continuous 1.2-unit rarity rim, 3-unit chamfer, one neutral inset bevel and restrained top highlight; no corner shards or fixed red |
+| Rarity | Existing Hand palette from section 15: Common/fallback `#FFFFFF`, Regional/Club `#1EFF00`, National `#0070DD`, Continental `#A335EE`, World Class/Pilot `#FF8000`; rim alpha .78, pilot rail alpha .90. General UI's softer rarity palette is not substituted for the Hand base colors |
+| Typography | Existing measured 12–16 name sizing, 14 position; 4-unit separation before position; optional shirt number 20, subdued blue, bounded 32-unit region; reserve 36 units in position row when assigned |
+| Number | Existing `AssignedPlayerNumber` display field; empty hides it. `PlayerFacingSerialLabel` remains an unrelated catalog serial. No widget fallback, shirt-number editor, network schema change or production number guess |
+| Interaction | Existing hover, selection eligibility, drag/cancel, source opacity, disabled rendering and tactical-pip timing remain intact |
+
+The four current production records have no assigned shirt number. A separate DEV screenshot may populate 7 / 16 / 1 / 9 in temporary Hand presentation DTOs to validate layout; those values are visual placeholders, not asserted roster facts or persisted defaults. Number changes must not regenerate or load another portrait asset. Essential identification does not depend on hover.
+
+Intentional reversible deviations from TARGET_HAND: retain the compact rack's geometry rather than its much wider concept ratio; retain existing identity, pose and kit; use rarity rather than red; omit the unapproved cannon/crest; simplify metal trim; use proportional navy framing rather than a new independently generated Hand portrait. Reproduction and purpose-limited import are specified in [Player Art Architecture §17](Shared_Portrait_Art_Contract_v1.md#16-stage-82a-accepted-hand-implementation-and-separated-activation).
+
+
+# 32. Stage 8.2A.1 Hand repair / historical checkpoint
+
+Only the four canonical pilots are repaired: Saka, Rodri, Raya and Haaland. Legacy production Hand examples are the framing reference; TARGET_HAND supplies the restrained navy/material direction. Neither reference authorizes a new portrait identity, changed card geometry or a roster-wide migration. Pitch/Full presentation and their current files stay frozen.
+
+The rejected `UpperTorsoNavy_v1` window reduced the face to roughly 50–53% of image height. Its broad soft vignette also faded the shoulders, particularly the City shirts. `BalancedBust_v2` instead keeps original Master pixels inside an offline extracted silhouette, then places that silhouette on a quiet navy background. The final RGB portrait is sampled directly from the Master once, without runtime cropping or a generated replacement face. The source and import recipe are specified in [art contract §18](Shared_Portrait_Art_Contract_v1.md#16-stage-82a-accepted-hand-implementation-and-separated-activation).
+
+Normalized rectangles are `[x,y,width,height]`. Default Hand crop is `[0,.055,1,.5]` for Rodri and Raya. Saka and Haaland use `[0,.115,1,.475]`: their heads sit lower in their Masters, so this moves the window down and slightly tightens it to recover comparable head margin and prominence. These are manifest-only exceptions; no player-key condition or offset is added to the widget.
+
+| Pilot | Rejected → repaired head height / image height | Repaired head center Y | Shoulder span / image width | Visible upper-shirt height |
+|---|---:|---:|---:|---:|
+| Saka | 51.4% → 63.3% | 35.5% | 72.9% | 26.6% |
+| Rodri | 52.5% → 65.6% | 38.3% | 63.5% | 22.7% |
+| Raya | 51.9% → 64.8% | 38.7% | 58.1% | 23.4% |
+| Haaland | 49.9% → 65.6% | 35.9% | 76.8% | 26.6% |
+
+Head/upper-shirt landmarks are consistent manual estimates on the 192×128 outputs, approximately ±2 pixels. Rejected head metrics project those same Master landmarks through the previous crop. Shoulder span is the median extracted-silhouette width across the bottom eight rows; upper-shirt height is measured from its highest neckline/shoulder point, not the center of the V-neck. Legacy generation metadata places head height near 65–68% and center Y near 38–39%, so the repaired range restores that balance without forcing identical poses. The lower crop deliberately intersects the upper chest, with complete head and neck; the silhouette reaches the bottom rather than fading out. Raya retains the current Master's green keeper kit; the old yellow Hand kit is not restored.
+
+At the shoulder edge, median sRGB Rec.709-weighted luma separation (four pixels inside versus outside the extracted edge) is approximately 119 / 169 / 45 / 167 on a 0–255 scale for Saka/Rodri/Raya/Haaland. These are image-analysis readings, not perceptual or biometric certification. Real 96×64 image review remains necessary for hair, shoulders and kit recognition.
+
+Hand hover draws one closed 2-unit silver-gray outer contour, linear RGB `(.72,.79,.85)`, with the rarity inset reduced to alpha `.48`. Normal state retains the 1.2-unit rarity rim at alpha `.78`, the current inset bevel and 4-unit rarity rail. Hover requires the real `IsHovered()` state, an enabled widget and no active drag-source presentation. It does not select a player, change legality, expand hit bounds or replace disabled/unavailable/drag semantics.
+
+Information panel: opaque three-stop native navy gradient, linear RGB `(.0055,.018,.034)` → `(.003,.011,.023)` at 42% height → `(.0018,.006,.012)`; two faint diagonal lines at alpha `.12/.055` and one inner top highlight at `.14`. Portrait background adds a low-amplitude navy ambient gradient and sub-byte deterministic grain. No floodlights, bokeh, club marks, baked text or runtime compositing stack is introduced.
+
+Unchanged: 220×68 card, 96×64 image, 2×10 rack, canonical white/green/blue/purple/orange Hand rarity, single localized name, projected position, optional `AssignedPlayerNumber` (empty hidden), full 0–1 portrait UV, Hand-only texture acquisition and drag proxy. The four production numbers remain empty. No fake serial/number, English subtitle or new branding.
+
+Reversible deviations from TARGET: preserve the production compact ratio, real Master poses/kit, rarity palette and measured typography; simplify the frame and omit unapproved branding. Prefer the legacy bust balance over the target's larger shirt area. Technical capture verifies the repair but does not accept it for the user; Stage 8.2A remains OPEN.
+
+
+# 33. Stage 8.2A.2 accepted Hand number and frame contract
+
+This section supersedes section 32 only for the four pilot Hand cards' frame and number presentation. The user explicitly removes the separate thick right rarity strip for this pilot; that narrow exception overrides the older 4-unit visible-strip rule. Portraits, crops, background artwork, shared card purposes, Rack and input semantics remain unchanged.
+
+Normal frame: one native rounded outline, 1.5 units wide on all four sides, corner radius 2.5, inset 1, using the canonical Hand rarity RGB at alpha `.85`. A restrained neutral inset at 3 units uses radius 1.5 and width `.7`, alpha `.22`. Remove the old segmented chamfer path and independent top-edge highlight. Hide the old Hand rarity rail and extra identity tech line for pilot Hand presentation; preserve their layout space so the 220×68 card, 96×68 portrait cell, 96×64 image, 120×68 information region and name safe width stay fixed. Legacy Hand cards retain their existing strip. The hidden 4-unit allocation is layout compatibility, not another visible rarity mark or a new card geometry.
+
+Real hover: silver-gray outer outline on all four edges, width 2, with a weaker inner rarity outline at alpha `.50`. There is no isolated right-side accent in either state. Hover still requires an enabled, non-dragging card; mouse exit recovers the same normal rarity outline. No new selection, hover, hit-test or drag state is introduced.
+
+`AssignedPlayerNumber` remains a single bounded UI field. For Hand only, use font size 16 and fully opaque cool gray-blue sRGB `#92ACBF`, retain the 32-unit right-aligned bounds and right/bottom insets of 8. The number stays below the brighter player name and position, with no new label, logo, plate or baked glyph. Position continues to reserve 36 units when a number is assigned. Reducing the oversized 20-point treatment while removing its low opacity makes one- and two-digit values legible without competing with identity.
+
+The normal roster has no assigned values for these pilots; empty values continue to hide. DEV review uses transient `AssignedPlayerNumber` values Saka 7 / Rodri 16 / Raya 1 / Haaland 9 in already-created Hand presentation DTOs. These are declared visual samples, not roster facts or production defaults. A normal refresh/new match restores normal data. Number edits reuse the same Hand texture and do not alter game state or Full/Pitch presentation.
+
+`BalancedBust_v2`, crop overrides, foreground extraction, all Master/Hand/Shared/Full PNGs and UE packages, provenance and loading paths are frozen from 8.2A.1. No regeneration/import, new texture, font replacement or new runtime art dependency is needed. The quiet navy background remains unchanged; only the duplicate identity tech line is hidden to reduce frame noise.
+
+Verification scope: four read-only Hand provenance/hash checks and whole-art byte comparison, the existing `FMCodex.LocalPlay.UI.HandCompactPilot.DataRarityAndRoleIsolation` with narrow number/strip/rebinding assertions, incremental Editor build, diff checks, and real 1920×1080 normal/DEV-number/hover/exit captures. No broad suites or Host/Remote path are warranted by these two Hand-only visual changes. These implementation checks preceded USER PIE. The user has since accepted the Hand result; section 34 records the current closeout state. Manual staging/commit stays user-owned.
+
+
+# 34. Stage 8.2A Hand USER PIE accepted / closeout separation
+
+The user accepted the final Hand visual result. Sections 32 (BalancedBust_v2 composition) and 33 (four-side frame, silver hover, optional number) define the current four-player Hand contract. Earlier OPEN/pending notes describe historical checkpoints, not the current Hand acceptance state. No Hand redesign is part of closeout.
+
+Only Hand activates the canonical new portrait route, native surface and frame. Old production Pitch/Full assets and appearance are restored; their combined-pilot candidates are preserved in ignored verified backup for separate Stage 8.2B/8.2C decisions. This supersedes the earlier temporary instruction to keep those uncommitted implementations active while refining Hand.
+
+All four Master, Hand PNG and Hand UE package bytes remain unchanged during separation. Generator/provenance metadata is updated for true Hand-only first generation. Missing future-role records are permitted; existing non-selected roles cannot silently become stale. See Shared Portrait Art Contract sections 16–18. The optional number remains empty by default and is not rendered by Pitch/Full. No localization, gameplay/network, rack geometry, hover/drag/cancel/availability or future mobile contract changes.
+
+User staging/commit remains manual. No repeated visual USER PIE is required if the accepted Hand output remains identical; a render change reopens that gate.

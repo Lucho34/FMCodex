@@ -1,4 +1,6 @@
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexPlayerCardSurface.h"
+#include "Rendering/DrawElements.h"
 
 #include "FMCodexDeploymentDragDropOperation.h"
 #include "FMCodexHandMicroDiagnostics.h"
@@ -83,8 +85,9 @@ namespace FMCodexPlayerCardWidget
 		const FLinearColor& Color,
 		const FMargin Padding = FMargin(5.0f))
 	{
-		UBorder* Result = Tree.ConstructWidget<UBorder>(
-			UBorder::StaticClass(), Name);
+		UBorder* Result = Name == TEXT("HandMicroIdentitySurface")
+			? Tree.ConstructWidget<UFMCodexPlayerCardSurface>(UFMCodexPlayerCardSurface::StaticClass(), Name)
+			: Tree.ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
 		Result->SetPadding(Padding);
 		Result->SetBrushColor(Color);
 		return Result;
@@ -1062,6 +1065,11 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 		ChromeSlot->SetVerticalAlignment(VAlign_Fill);
 	}
 	FrameAssetHook->AddChildToOverlay(HandMicroVisualSystem);
+	AssignedNumberText = MakeText(*WidgetTree, TEXT("AssignedPlayerNumber"));
+	ConfigureBoundedSingleLine(*AssignedNumberText);
+	AssignedNumberText->SetJustification(ETextJustify::Right);
+	AssignedNumberText->SetVisibility(ESlateVisibility::Collapsed);
+	FFMCodexPlayerUIStyle::Get().ApplyText(*AssignedNumberText, EFMCodexPlayerUITextRole::Kicker);
 
 	PitchMiniContent = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("PitchMiniContent"));
@@ -1728,6 +1736,11 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	StatusRegion->AddChild(StatusBadgeBox);
 	StatusRegion->SetVisibility(ESlateVisibility::Collapsed);
 	Body->AddChildToVerticalBox(StatusRegion);
+	USizeBox* AssignedBounds=WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),TEXT("AssignedNumberBounds"));
+	AssignedBounds->SetWidthOverride(32.f);
+	AssignedBounds->SetClipping(EWidgetClipping::ClipToBounds);
+	AssignedBounds->AddChild(AssignedNumberText);
+	FrameAssetHook->AddChildToOverlay(AssignedBounds);
 }
 
 void UFMCodexPlayerCardWidget::RefreshVisuals()
@@ -1737,6 +1750,8 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		return;
 	}
 
+	bCanonicalCardFamily = PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro
+		&& FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Presentation.CardId).bCanonicalPlayerArt;
 	const bool bHandMicro = PresentationMode
 		== EFMCodexPlayerCardPresentationMode::HandMicro;
 	const bool bPitchMini = PresentationMode
@@ -2118,6 +2133,7 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	RefreshSkills();
 	RefreshAttributes();
 	RefreshStatusBadges();
+	RefreshPilotSurfaces();
 }
 
 void UFMCodexPlayerCardWidget::RefreshPresentationArt()
@@ -2126,11 +2142,14 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 		FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(
 			Presentation.CardId);
 	ResolvedArtIdentity = Art.ArtIdentity;
-	ResolvedCardFrameTexture = Art.CardFrame.IsNull()
+	const bool bCanonicalHand = Art.bCanonicalPlayerArt
+		&& PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro;
+	ResolvedCardFrameTexture = bCanonicalHand || Art.CardFrame.IsNull()
 		? nullptr : Art.CardFrame.LoadSynchronous();
 	const bool bPrototypePlayer = Presentation.CardId.ToString().StartsWith(
 		TEXT("Prototype."));
 	TSoftObjectPtr<UTexture2D> ActivePortrait = Art.Portrait;
+	if (bCanonicalHand) ActivePortrait.Reset();
 	if (PresentationMode
 		== EFMCodexPlayerCardPresentationMode::InteractionChoice)
 	{
@@ -2143,12 +2162,12 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 	ResolvedHandMicroPortraitTexture = Art.HandMicroPortrait.IsNull()
 		? (bPrototypePlayer ? nullptr : ResolvedPortraitTexture.Get())
 		: Art.HandMicroPortrait.LoadSynchronous();
-	ResolvedRoleIconTexture = Art.RoleIcon.IsNull()
+	ResolvedRoleIconTexture = bCanonicalHand || Art.RoleIcon.IsNull()
 		? nullptr : Art.RoleIcon.LoadSynchronous();
-	ResolvedLongShotSkillIconTexture = Art.LongShotSkillIcon.IsNull()
+	ResolvedLongShotSkillIconTexture = bCanonicalHand || Art.LongShotSkillIcon.IsNull()
 		? nullptr : Art.LongShotSkillIcon.LoadSynchronous();
 
-	if (!Art.CardFrame.IsNull() && ResolvedCardFrameTexture == nullptr)
+	if (!bCanonicalHand && !Art.CardFrame.IsNull() && ResolvedCardFrameTexture == nullptr)
 	{
 		UE_LOG(LogFMCodexPlayerCardArt, Warning,
 			TEXT("Optional card-frame asset failed to load for %s: %s"),
@@ -2171,14 +2190,14 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 			*Art.HandMicroPortrait.ToSoftObjectPath().ToString());
 		ResolvedHandMicroPortraitTexture = ResolvedPortraitTexture;
 	}
-	if (!Art.RoleIcon.IsNull() && ResolvedRoleIconTexture == nullptr)
+	if (!bCanonicalHand && !Art.RoleIcon.IsNull() && ResolvedRoleIconTexture == nullptr)
 	{
 		UE_LOG(LogFMCodexPlayerCardArt, Warning,
 			TEXT("Optional role-icon asset failed to load for %s: %s"),
 			*Presentation.CardId.ToString(),
 			*Art.RoleIcon.ToSoftObjectPath().ToString());
 	}
-	if (!Art.LongShotSkillIcon.IsNull()
+	if (!bCanonicalHand && !Art.LongShotSkillIcon.IsNull()
 		&& ResolvedLongShotSkillIconTexture == nullptr)
 	{
 		UE_LOG(LogFMCodexPlayerCardArt, Warning,
@@ -2187,6 +2206,14 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 			*Art.LongShotSkillIcon.ToSoftObjectPath().ToString());
 	}
 
+	if (bCanonicalHand)
+	{
+		CardFrameImage->SetBrushFromTexture(nullptr);
+		PortraitImage->SetBrushFromTexture(nullptr);
+		PitchMiniPortraitImage->SetBrushFromTexture(nullptr);
+		HandMicroPortraitImage->SetBrushFromTexture(nullptr);
+		RoleIconImage->SetBrushFromTexture(nullptr);
+	}
 	const bool bHasFrame = ResolvedCardFrameTexture != nullptr;
 	const bool bUseFrameTexture = bHasFrame
 		&& PresentationMode != EFMCodexPlayerCardPresentationMode::HandMicro
@@ -2260,6 +2287,14 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	PortraitPlaceholderText->SetVisibility(ESlateVisibility::Collapsed);
 
+	if (bCanonicalHand)
+	{
+		if (PresentationMode != EFMCodexPlayerCardPresentationMode::InteractionChoice)
+			PortraitImage->SetBrushFromTexture(nullptr);
+		if (PresentationMode != EFMCodexPlayerCardPresentationMode::PitchMini
+			&& PresentationMode != EFMCodexPlayerCardPresentationMode::PitchCompact)
+			PitchMiniPortraitImage->SetBrushFromTexture(nullptr);
+	}
 	const bool bHasRoleIcon = ResolvedRoleIconTexture != nullptr
 		&& PresentationMode
 			!= EFMCodexPlayerCardPresentationMode::InteractionChoice;
@@ -2809,4 +2844,98 @@ void UFMCodexPlayerCardWidget::RefreshStatusBadges()
 		StatusBadgeBox->AddChildToWrapBox(Badge);
 		RenderedStatusTexts.Add(BadgeText);
 	}
+}
+
+FText UFMCodexPlayerCardWidget::GetRenderedAssignedNumber() const
+{
+	return AssignedNumberText ? AssignedNumberText->GetText() : FText::GetEmpty();
+}
+
+void UFMCodexPlayerCardWidget::RefreshPilotSurfaces()
+{
+	if (UFMCodexPlayerCardSurface* Surface = Cast<UFMCodexPlayerCardSurface>(
+		GetWidgetFromName(TEXT("HandMicroIdentitySurface"))))
+	{
+		Surface->bPremium = bCanonicalCardFamily;
+		Surface->InvalidateLayoutAndVolatility();
+	}
+	if (UWidget* OldChrome=GetWidgetFromName(TEXT("HandMicroSkinChrome")))
+		OldChrome->SetVisibility(bCanonicalCardFamily ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	if (bCanonicalCardFamily)
+	{
+		CardFrame->SetBrushColor(FLinearColor(.003f,.009f,.014f,1));
+		// Hand owns the exact sRGB rarity palette in HandMicro Visual Spec section 15.
+        // Pitch/Full continue using their existing general UI accents.
+        FLinearColor HandAccent=FMCodexPlayerCardWidget::GetHandMicroRarityBaseColor(Presentation.RarityLabel);
+        HandAccent.A=.90f;
+        HandMicroRarityAccent->SetBrushColor(HandAccent);
+		HandMicroIdentityText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+	}
+	AssignedNumberText->SetText(FText::FromString(Presentation.AssignedPlayerNumber));
+	AssignedNumberText->SetVisibility(bCanonicalCardFamily && !Presentation.AssignedPlayerNumber.IsEmpty()
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	const bool Hand=PresentationMode==EFMCodexPlayerCardPresentationMode::HandMicro;
+	if (Hand)
+	{
+		// Keep the frozen content widths, but let the four-sided frame own rarity.
+		HandMicroRarityAccent->SetVisibility(bCanonicalCardFamily
+			? ESlateVisibility::Hidden : ESlateVisibility::HitTestInvisible);
+		if (UWidget* TechLine=GetWidgetFromName(TEXT("HandMicroIdentityTechLine")))
+			TechLine->SetVisibility(bCanonicalCardFamily
+				? ESlateVisibility::Hidden : ESlateVisibility::HitTestInvisible);
+	}
+	FSlateFontInfo Font=AssignedNumberText->GetFont(); Font.Size=16;
+	AssignedNumberText->SetFont(Font);
+    AssignedNumberText->SetTextOverflowPolicy(Hand ? ETextOverflowPolicy::Ellipsis : ETextOverflowPolicy::Clip);
+    if (UHorizontalBoxSlot* RoleSlot=Cast<UHorizontalBoxSlot>(HandMicroRoleText->Slot))
+    {
+        RoleSlot->SetSize(FSlateChildSize(bCanonicalCardFamily ? ESlateSizeRule::Fill : ESlateSizeRule::Automatic));
+        RoleSlot->SetPadding(FMargin(0,0,bCanonicalCardFamily && !Presentation.AssignedPlayerNumber.IsEmpty() ? 36.f : 0.f,0));
+    }
+    if (UWidget* Meta=GetWidgetFromName(TEXT("HandMicroPositionLine")))
+        if (UVerticalBoxSlot* MetaSlot=Cast<UVerticalBoxSlot>(Meta->Slot))
+            MetaSlot->SetPadding(FMargin(0,bCanonicalCardFamily ? 4.f : 0.f,0,0));
+    if (UBorder* Skin=Cast<UBorder>(GetWidgetFromName(TEXT("HandMicroSkinBackground"))))
+        Skin->SetBrushColor(FLinearColor::FromSRGBColor(bCanonicalCardFamily ? FColor(6,18,30) : FColor(0x0C,0x23,0x30)));
+
+	AssignedNumberText->SetColorAndOpacity(FSlateColor(FLinearColor::FromSRGBColor(FColor(0x92,0xAC,0xBF))));
+	if (UOverlaySlot* NumberSlot=Cast<UOverlaySlot>(GetWidgetFromName(TEXT("AssignedNumberBounds"))->Slot))
+	{
+		NumberSlot->SetHorizontalAlignment(HAlign_Right);
+		NumberSlot->SetVerticalAlignment(VAlign_Bottom);
+		NumberSlot->SetPadding(FMargin(0,0,8.f,8.f));
+	}
+}
+
+int32 UFMCodexPlayerCardWidget::NativePaint(const FPaintArgs& Args, const FGeometry& G,
+	const FSlateRect& Cull, FSlateWindowElementList& Out, int32 Layer,
+	const FWidgetStyle& Style, bool bEnabled) const
+{
+	const int32 Top=Super::NativePaint(Args,G,Cull,Out,Layer,Style,bEnabled);
+	if (!bCanonicalCardFamily) return Top;
+	const FVector2f Size(G.GetLocalSize()); const float W=Size.X,H=Size.Y;
+	const bool Hand=PresentationMode==EFMCodexPlayerCardPresentationMode::HandMicro;
+	const FLinearColor Tint=Style.GetColorAndOpacityTint();
+	const ESlateDrawEffect Effect=bEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+	FLinearColor Accent;
+    if (Hand)
+    {
+        // One rounded outline, equal on every edge; no extra side rail or top shard.
+        Accent=FMCodexPlayerCardWidget::GetHandMicroRarityBaseColor(Presentation.RarityLabel);
+        Accent.A=.85f;
+        const bool bHandHover=IsHovered() && bEnabled && !bDragSourcePresentationActive;
+        const FLinearColor Outer=bHandHover ? FLinearColor(.72f,.79f,.85f,1.f) : Accent;
+        FLinearColor Inset=bHandHover ? Accent : FLinearColor(.18f,.29f,.38f,.22f);
+        if (bHandHover) Inset.A=.50f;
+        const FSlateRoundedBoxBrush InnerFrame(FLinearColor::Transparent,1.5f,Inset*Tint,.7f);
+        const FSlateRoundedBoxBrush OuterFrame(FLinearColor::Transparent,2.5f,Outer*Tint,bHandHover ? 2.f : 1.5f);
+        FSlateDrawElement::MakeBox(Out,Top+1,
+            G.ToPaintGeometry(FVector2f(W-6,H-6),FSlateLayoutTransform(FVector2f(3,3))),
+            &InnerFrame,Effect,FLinearColor::Transparent);
+        FSlateDrawElement::MakeBox(Out,Top+1,
+            G.ToPaintGeometry(FVector2f(W-2,H-2),FSlateLayoutTransform(FVector2f(1,1))),
+            &OuterFrame,Effect,FLinearColor::Transparent);
+        return Top+1;
+    }
+	return Top;
 }

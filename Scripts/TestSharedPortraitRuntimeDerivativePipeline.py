@@ -74,7 +74,9 @@ class SharedPortraitRuntimeDerivativePipelineTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.project_root = SCRIPT_DIR.parent
         cls.catalog = load_catalog(cls.project_root)
-        cls.by_key = {entry["playerKey"]: entry for entry in cls.catalog}
+        # These historical fixtures validate retained legacy derivatives, not migrated routes.
+        cls.by_key = {entry["playerKey"]: {k: v for k, v in entry.items() if k != "masterSourcePath"}
+                      for entry in cls.catalog}
         provenance_document = json.loads(
             provenance_path(cls.project_root).read_text(encoding="utf-8")
         )

@@ -300,6 +300,21 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 	const auto ApplyDedicatedHandMicroPortrait =
 		[this, CardId](FFMCodexPlayerUICardArtReferences& Target)
 		{
+			// Only Hand is migrated. Keep the existing Portrait/Full/frame/icon routes.
+			static const TSet<FName> CanonicalHandPilot = {
+				TEXT("Prototype.Arsenal.BukayoSaka"), TEXT("Prototype.ManchesterCity.Rodri"),
+				TEXT("Prototype.Arsenal.DavidRaya"), TEXT("Prototype.ManchesterCity.ErlingHaaland")};
+			if (CanonicalHandPilot.Contains(CardId))
+			{
+				const FString Token = CardId.ToString().Replace(TEXT("."), TEXT("_"));
+				const FString Name = FString::Printf(TEXT("T_%s_Hand"), *Token);
+				Target.HandMicroPortrait = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(FString::Printf(
+					TEXT("/Game/UI/Portraits/PrototypeTeams/Canonical/%s/%s.%s"), *Token, *Name, *Name)));
+				Target.bCanonicalPlayerArt = true;
+				Target.HandMicroPortraitTop = 0.0f;
+				Target.HandMicroPortraitUVHeight = 1.0f;
+				return;
+			}
 			const TSoftObjectPtr<UTexture2D>* HandMicroPortrait =
 				PrototypeHandMicroPortraits.Find(CardId);
 			if (HandMicroPortrait == nullptr)

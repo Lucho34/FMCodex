@@ -89,6 +89,8 @@ public:
 	FVector2D GetConfiguredDimensions() const;
 	static FBox2f CalculatePitchMiniHeroCrop(FIntPoint SourceSize);
 	bool CanExposeFullCardDetail() const;
+	bool IsCanonicalCardFamily() const { return bCanonicalCardFamily; }
+	FText GetRenderedAssignedNumber() const;
 	bool IsDragSourcePresentationActive() const;
 	EFMCodexUMGCardInteractionState GetInteractionState() const;
 
@@ -117,6 +119,9 @@ public:
 	FFMCodexPlayerCardSelectionFeedbackRequested OnSelectionFeedbackRequested;
 
 protected:
+	virtual int32 NativePaint(const FPaintArgs& Args, const FGeometry& Geometry,
+		const FSlateRect& Cull, FSlateWindowElementList& Out, int32 Layer,
+		const FWidgetStyle& Style, bool bParentEnabled) const override;
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual FReply NativeOnMouseButtonDown(
@@ -136,6 +141,7 @@ private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
 	void RefreshPresentationArt();
+	void RefreshPilotSurfaces();
 	void RefreshBiography();
 	void RefreshSkills();
 	void RefreshAttributes();
@@ -380,6 +386,9 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> RenderedStatusTexts;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> AssignedNumberText;
+	bool bCanonicalCardFamily = false;
 	FString RenderedAttributeSummary;
 	TArray<FLinearColor> RenderedAttributeTierColors;
 	int32 RenderedBiographyRowCount = 0;

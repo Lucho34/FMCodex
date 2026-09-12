@@ -86,6 +86,7 @@ namespace FMCodexLocalMatchUMGPresentation
 		Result.bHasPitchMiniTacticalMatch =
 			Card.bHasPitchMiniTacticalMatch;
 		Result.PlayerFacingSerialLabel = Card.PlayerFacingSerialLabel;
+		Result.AssignedPlayerNumber = Card.AssignedPlayerNumber;
 		Result.SkillLabels = Card.SkillLabels;
 		Result.SkillSummaryLabel = Card.SkillSummaryLabel.IsEmpty()
 			? TEXT("NO SKILL") : Card.SkillSummaryLabel;

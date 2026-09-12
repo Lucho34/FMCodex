@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 2,
+  "entries": [
+    {
+      "playerKey": "Prototype.Arsenal.BukayoSaka",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.BukayoSaka/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "26E33271423856456A7DB9B59625A62CA750890C725158EED602B6CEB2E4BD35",
+      "masterRevision": 1,
+      "cropMetadataSha256": "02BE1A0D9DC01892A3217E3BDE2F06909D0A60F2FC33892BAF1B22DA6F276096",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 5,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_BukayoSaka_FullCardPilot_02.png",
+        "sourceSha256": "26E33271423856456A7DB9B59625A62CA750890C725158EED602B6CEB2E4BD35",
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Full migration deferred; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.115,
+            1,
+            0.475
+          ],
+          "sourcePixelBox": [
+            0,
+            176.64000000000001,
+            1024,
+            906.24
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.BukayoSaka/Hand.png",
+          "runtimeDerivativeSha256": "E1223085732E1708D6BC537D68D562E2F844C5B089687BF8B89606D972BA94E3",
+          "bytes": 25822,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_BukayoSaka/T_Prototype_Arsenal_BukayoSaka_Hand.T_Prototype_Arsenal_BukayoSaka_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "26BEB4F0DE987BFDC0CB7AC2A150105316C5FBDACF0E89054C9A51E29DB9810B",
+          "generatorVersion": 5,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "DEFERRED",
+        "Full": "DEFERRED"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.DavidRaya",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.DavidRaya/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "C2469574D4503FC96F4C3F5B701394EDFDA85A3F63AECDF7060FBD75FA124558",
+      "masterRevision": 1,
+      "cropMetadataSha256": "2F1CF773FE687470F51695BB9B0B00E6C0CC079BE98FE0C83D3FD1B86D72242D",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 5,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_DavidRaya_FullCardPilot_02.png",
+        "sourceSha256": "C2469574D4503FC96F4C3F5B701394EDFDA85A3F63AECDF7060FBD75FA124558",
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Full migration deferred; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.DavidRaya/Hand.png",
+          "runtimeDerivativeSha256": "D5B781FF16866ED2DC1C81E75ADA224CE6D7DA82449795AA2BCC87B32D5DB2A5",
+          "bytes": 26151,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_DavidRaya/T_Prototype_Arsenal_DavidRaya_Hand.T_Prototype_Arsenal_DavidRaya_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "26BEB4F0DE987BFDC0CB7AC2A150105316C5FBDACF0E89054C9A51E29DB9810B",
+          "generatorVersion": 5,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "DEFERRED",
+        "Full": "DEFERRED"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.ErlingHaaland/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "16E00870B6FCDA4DFA790124CA8DEA7167965EBAB8BCA3EAEAE5675110CEED63",
+      "masterRevision": 1,
+      "cropMetadataSha256": "02BE1A0D9DC01892A3217E3BDE2F06909D0A60F2FC33892BAF1B22DA6F276096",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 5,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01.png",
+        "sourceSha256": "16E00870B6FCDA4DFA790124CA8DEA7167965EBAB8BCA3EAEAE5675110CEED63",
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Full migration deferred; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.115,
+            1,
+            0.475
+          ],
+          "sourcePixelBox": [
+            0,
+            176.64000000000001,
+            1024,
+            906.24
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.ErlingHaaland/Hand.png",
+          "runtimeDerivativeSha256": "288EC085B0A02FD85C01B0EA655F9667A247DA123DB93E22C264338693CF065A",
+          "bytes": 28647,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Hand.T_Prototype_ManchesterCity_ErlingHaaland_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "26BEB4F0DE987BFDC0CB7AC2A150105316C5FBDACF0E89054C9A51E29DB9810B",
+          "generatorVersion": 5,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "DEFERRED",
+        "Full": "DEFERRED"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.Rodri",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.Rodri/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "7B49DBCF667225ACA2CDCA80F2961C7E9E26A6E742D18950DE46511126955654",
+      "masterRevision": 1,
+      "cropMetadataSha256": "2F1CF773FE687470F51695BB9B0B00E6C0CC079BE98FE0C83D3FD1B86D72242D",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 5,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_Rodri_FullCardPilot_02.png",
+        "sourceSha256": "7B49DBCF667225ACA2CDCA80F2961C7E9E26A6E742D18950DE46511126955654",
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Full migration deferred; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.Rodri/Hand.png",
+          "runtimeDerivativeSha256": "DAB429D6D97BE0DF339EC16A8B54E6B315A470B9D98D711FC5E8F33EA0471575",
+          "bytes": 25397,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_Rodri/T_Prototype_ManchesterCity_Rodri_Hand.T_Prototype_ManchesterCity_Rodri_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "26BEB4F0DE987BFDC0CB7AC2A150105316C5FBDACF0E89054C9A51E29DB9810B",
+          "generatorVersion": 5,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "DEFERRED",
+        "Full": "DEFERRED"
+      }
+    }
+  ]
+}

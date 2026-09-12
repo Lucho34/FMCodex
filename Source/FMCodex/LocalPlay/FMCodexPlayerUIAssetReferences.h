@@ -8,6 +8,8 @@ class UTexture2D;
 struct FFMCodexPlayerUICardArtReferences
 {
 	FName ArtIdentity = NAME_None;
+	/** Canonical Hand derivative is available; does not migrate Shared/Full routes. */
+	bool bCanonicalPlayerArt = false;
 	TSoftObjectPtr<UTexture2D> CardFrame;
 	TSoftObjectPtr<UTexture2D> Portrait;
 	/** Optional vertical portrait override used only by the in-match Full Card. */

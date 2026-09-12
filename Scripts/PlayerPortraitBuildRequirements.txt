@@ -1,0 +1,4 @@
+# Offline portrait generation only. Never loaded or packaged by the game.
+Pillow==9.4.0
+numpy==1.24.1
+opencv-python-headless==4.10.0.84

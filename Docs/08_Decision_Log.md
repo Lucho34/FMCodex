@@ -1411,3 +1411,48 @@ The repository also retains the Local DeclineMarker / 放弃盯人 PlayerIntent 
 - Extend the existing Shared catalog/generator/import/validator pipeline for all roles; keep untouched legacy Hand hashes reproducible. Source/metadata/recipe revisions invalidate downstream readiness. Art-complete requires one approved master, reproducible derivatives/hashes, exact imports/routes and Hand/Pitch/Full acceptance, not merely three existing paths.
 - Preserve all legacy production and historical candidates. Empty Asset Registry referencers do not clear native soft paths or source-generator dependencies. Cleanup needs accepted replacement, switched routes and complete reference/provenance review in a separate controlled step.
 - Stage 8.2 pilot: Saka, Rodri, Raya and optional Haaland. Only after the pilot proves visual consistency, crop defaults, import reproducibility and actual runtime cost improvement may Stage 8.3 complete the 24 technically incomplete players and migrate remaining legacy art. Stage 8.1B is READY FOR USER ACCEPTANCE, not automatically CLOSED; implementation and manual staging/commit remain later user decisions.
+
+
+## 2026-09-10 — Historical unaccepted three-surface candidate / deferred
+
+Historical candidate, superseded by the Hand-only scope and closeout below. The combined Pitch/Full implementation was not accepted and is no longer active; complete candidate files are preserved in ignored backup. The original experiment was to implement the accepted 8.1B architecture for Saka, Rodri, Raya and Haaland only: one retained-source master, direct Shared 512×768 / Hand 192×128 / Full 768×1152 derivatives, existing import inventory extended with crop/hash provenance, and purpose-specific runtime acquisition. A shared native card surface refines Hand/Pitch/Full while preserving their geometry, legal interaction and dynamic content. Saka alone has Hand/Full normalized crop exceptions justified by real-screen review. The current catalog serial is not a jersey number; add only optional `AssignedPlayerNumber` display data, empty by default. No number editor or gameplay/network contract changes.
+
+Stage 8.1A/8.1B stay CLOSED per accepted baseline. Stage 8.2A remains OPEN / pending USER PIE; no staging/commit or bulk migration. The current activation and historical boundary are recorded in Shared Portrait Art Contract sections 16–18. Four-player technical completion is not art approval for all forty players.
+
+
+## 2026-09-11 — Stage 8.2A narrowed to Hand-only refinement
+
+The latest user instruction supersedes the previous three-surface 8.2A scope. Preserve the current uncommitted Pitch/Full implementation and existing one-Master architecture; refine only the four pilot Hand cards. Keep card/rack/hit geometry, legal interactions, Chinese-first localized content and purpose-specific loading unchanged. Pitch and Full visual work belongs to separate 8.2B/8.2C stages.
+
+Use the existing Hand canonical rarity palette rather than the TARGET's red or generic side colors. Prefer a continuous restrained metal rim and a quieter navy information panel. Produce a wider upper-body Hand composition from unchanged Master pixels through deterministic proportional framing and a shared soft vignette; do not create an independent Hand art identity. Three players use the profile default and Saka has one normalized crop exception. Add purpose-limited generation/import to the existing tooling so Hand work cannot silently refresh Shared/Full.
+
+Keep the existing optional `AssignedPlayerNumber` presentation field; empty production data stays empty. DEV sample shirt numbers are permitted only as clearly reported visual fixtures, never copied from catalog serial or baked into art. No number editor, player data migration or network contract change. See [Hand spec §31](UI/HandMicro_Visual_Spec_v1.md#31-stage-82a-hand-only-refinement--rejected-portrait-checkpoint) and [art contract §17](UI/Shared_Portrait_Art_Contract_v1.md#16-stage-82a-accepted-hand-implementation-and-separated-activation). Stage 8.2A remains OPEN; user visual acceptance and manual staging/commit remain required.
+
+
+## 2026-09-11 — Stage 8.2A.1: Repair rejected Hand bust framing and hover
+
+USER PIE did not accept the preceding Hand portrait pass. Preserve the existing shell, 220×68 geometry, rack density, Chinese name/position/optional-number data and purpose-specific loading. Repair only four pilot Hand portraits, full-frame hover and restrained background finish. Pitch/Full, all Masters, gameplay and networking remain untouched from the incoming checkpoint.
+
+Use legacy Hand bust proportions as the framing reference and TARGET_HAND as material direction. Replace the shoulder-fading vignette with deterministic offline foreground extraction from unchanged Master pixels. Hand default `[0,.055,1,.5]` fits Rodri/Raya; Saka/Haaland need `[0,.115,1,.475]` to compensate for lower Master head placement. The offline pinned toolchain is recorded in build requirements/provenance; it adds no game dependency, runtime matte or independent art master. See [art contract §18](UI/Shared_Portrait_Art_Contract_v1.md#16-stage-82a-accepted-hand-implementation-and-separated-activation).
+
+Real hover owns a continuous silver-gray outer frame; a weaker inner rarity line and existing side rail retain the canonical Hand rarity meaning. Add only quiet native navy gradient/engraving and subtle portrait-background grain. Keep current Master kit identity, including Raya's green keeper kit, and omit TARGET's unapproved logo, English subtitle and fixed red frame. See [Hand spec §32](UI/HandMicro_Visual_Spec_v1.md#32-stage-82a1-hand-repair--historical-checkpoint). Stage 8.2A stays OPEN pending USER PIE; technical verification is not acceptance and staging/commit remains manual.
+
+
+## 2026-09-12 — Stage 8.2A.2: Unified Hand rarity outline and legible optional number
+
+The latest USER PIE refinement accepts the recovered portrait direction and targets number visibility plus frame coherence. Preserve all portrait pixels/crops, the existing clean navy surface, 220×68 geometry, Rack, Hand-only loading and all Pitch/Full/gameplay/network contracts. No derivative generation or import is needed.
+
+The user explicitly removes the separately emphasized thick right rarity strip for the four Hand pilots. Use a balanced four-side canonical rarity outline with simple rounded corners, a quiet inner line and no independent top highlight. Silver-gray hover uses the same full outline and keeps only a weaker inner rarity cue. Preserve legacy layout allocations and restore legacy strip visibility when the shared widget is rebound; no Rack/hit-test change.
+
+Make nonempty `AssignedPlayerNumber` legible with opaque cool gray-blue and restrained Hand typography; it stays below name/position and never uses a catalog serial or baked art. Current production assignments are empty, so meaningful review must explicitly use transient DEV samples, not silently populate roster data. See [Hand spec §33](UI/HandMicro_Visual_Spec_v1.md#33-stage-82a2-accepted-hand-number-and-frame-contract). Stage 8.2A remains OPEN pending USER PIE; no staging/commit.
+
+
+## 2026-09-12 — Stage 8.2A Hand accepted; safe Hand-only worktree separation
+
+The user has explicitly accepted the final Hand USER PIE result. Preserve the four accepted BalancedBust_v2 portraits, 220×68/rack geometry, exact rarity outline and silver hover, readable optional number, existing localized identity and Hand-only resource acquisition. Empty number remains hidden; no number editor, network persistence or Pitch/Full number presentation is introduced.
+
+Closeout separates the earlier unaccepted combined candidate. Before production edits, complete copies of all 54 incoming changed/untracked files were backed up and hash-verified. New Shared/Full PNGs/packages, combined tests and historical code/provenance remain recoverable under ignored Saved/Stage8_2A_CloseoutBackup. Legacy tracked Pitch/Full resources remain intact, and their production routes/styling are retained. Stage 8.2B and 8.2C have not started.
+
+The accepted one-Master architecture remains shared. Only Hand derivatives are active in this stage. Explicit role selection, missing-future-role first generation, and validation of already-existing unselected roles make Hand independently reproducible. Generator/crop metadata hashes change as needed; accepted Master/Hand PNG/uasset bytes stay fixed. Family-level art completion is not claimed.
+
+The final commit is user-owned after focused/affected checks, incremental Editor/UHT build and a fresh Hand loading/render check. No broad gameplay/network suite, Host/Remote run, platform cook, legacy cleanup or automatic staging/commit. Reopen visual USER PIE only if separation changes accepted Hand output.
