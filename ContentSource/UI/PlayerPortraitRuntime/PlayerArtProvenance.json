@@ -10,9 +10,9 @@
       ],
       "masterSha256": "26E33271423856456A7DB9B59625A62CA750890C725158EED602B6CEB2E4BD35",
       "masterRevision": 1,
-      "cropMetadataSha256": "865EBB032DFA3B932B52DA0823EE4E164A7D8F778AF421BCD23C070DEB1EFA1C",
+      "cropMetadataSha256": "A2B9AF49469F7C9B71A75B7AA943479725B357BA57AB7AC1DD27241DAB1D9259",
       "compositionProfile": "HeroBust_v1",
-      "generatorVersion": 8,
+      "generatorVersion": 9,
       "pillowVersion": "9.4.0",
       "resampling": "Pillow.Resampling.LANCZOS",
       "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
@@ -20,7 +20,7 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_BukayoSaka_FullCardPilot_02.png",
         "sourceSha256": "26E33271423856456A7DB9B59625A62CA750890C725158EED602B6CEB2E4BD35",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand/Shared-Pitch/Full USER PIE accepted; Player Card Family v1 frozen at b9774ec; rights provenance unchanged"
       },
       "roles": {
         "Hand": {
@@ -46,42 +46,12 @@
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_BukayoSaka/T_Prototype_Arsenal_BukayoSaka_Hand.T_Prototype_Arsenal_BukayoSaka_Hand",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
           "handCompositionProfile": "BalancedBust_v2",
-          "generatorSha256": "1A1C2A4529CDBF4F641238168972F51203CDAEA4A76E8D088FA425904F08E914",
-          "generatorVersion": 8,
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
           "pillowVersion": "9.4.0",
           "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
           "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
           "visualStatus": "USER PIE ACCEPTED"
-        },
-        "Shared": {
-          "cropRect": [
-            0,
-            0.115,
-            1,
-            0.55
-          ],
-          "sourcePixelBox": [
-            0,
-            176.64000000000001,
-            1024,
-            1021.44
-          ],
-          "dimensions": [
-            512,
-            768
-          ],
-          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.BukayoSaka/Shared.png",
-          "runtimeDerivativeSha256": "C5DF2BFFAD147648A15B93D4A0BAB02ED55018DA9D945351EAC859782F1F4F97",
-          "bytes": 243267,
-          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_BukayoSaka/T_Prototype_Arsenal_BukayoSaka_Shared.T_Prototype_Arsenal_BukayoSaka_Shared",
-          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
-          "pitchCompositionProfile": "QuietPitchBust_v1",
-          "generatorSha256": "1A1C2A4529CDBF4F641238168972F51203CDAEA4A76E8D088FA425904F08E914",
-          "generatorVersion": 8,
-          "pillowVersion": "9.4.0",
-          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition",
-          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
-          "visualStatus": "PENDING USER PIE"
         },
         "Full": {
           "cropRect": [
@@ -105,13 +75,43 @@
           "bytes": 1241084,
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_BukayoSaka/T_Prototype_Arsenal_BukayoSaka_Full.T_Prototype_Arsenal_BukayoSaka_Full",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
-          "visualStatus": "PENDING USER PIE"
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.115,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            176.64000000000001,
+            1024,
+            1021.44
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.BukayoSaka/Shared.png",
+          "runtimeDerivativeSha256": "73A9008E027C51C7808EEA6870263DE362F7F4CE514BFF69997F11F0865B0CC1",
+          "bytes": 239694,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_BukayoSaka/T_Prototype_Arsenal_BukayoSaka_Shared.T_Prototype_Arsenal_BukayoSaka_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
         }
       },
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
-        "Shared": "PENDING USER PIE",
-        "Full": "PENDING USER PIE"
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
       }
     },
     {
@@ -123,9 +123,9 @@
       ],
       "masterSha256": "C2469574D4503FC96F4C3F5B701394EDFDA85A3F63AECDF7060FBD75FA124558",
       "masterRevision": 1,
-      "cropMetadataSha256": "8E4A5694EF71B3D6787E6186987A9FA93EA8D83F8EDF741364F2881F09ECDB2E",
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
       "compositionProfile": "HeroBust_v1",
-      "generatorVersion": 8,
+      "generatorVersion": 9,
       "pillowVersion": "9.4.0",
       "resampling": "Pillow.Resampling.LANCZOS",
       "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
@@ -133,7 +133,7 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_DavidRaya_FullCardPilot_02.png",
         "sourceSha256": "C2469574D4503FC96F4C3F5B701394EDFDA85A3F63AECDF7060FBD75FA124558",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand/Shared-Pitch/Full USER PIE accepted; Player Card Family v1 frozen at b9774ec; rights provenance unchanged"
       },
       "roles": {
         "Hand": {
@@ -159,42 +159,12 @@
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_DavidRaya/T_Prototype_Arsenal_DavidRaya_Hand.T_Prototype_Arsenal_DavidRaya_Hand",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
           "handCompositionProfile": "BalancedBust_v2",
-          "generatorSha256": "1A1C2A4529CDBF4F641238168972F51203CDAEA4A76E8D088FA425904F08E914",
-          "generatorVersion": 8,
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
           "pillowVersion": "9.4.0",
           "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
           "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
           "visualStatus": "USER PIE ACCEPTED"
-        },
-        "Shared": {
-          "cropRect": [
-            0,
-            0.055,
-            1,
-            0.55
-          ],
-          "sourcePixelBox": [
-            0,
-            84.48,
-            1024,
-            929.2800000000002
-          ],
-          "dimensions": [
-            512,
-            768
-          ],
-          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.DavidRaya/Shared.png",
-          "runtimeDerivativeSha256": "F09F1DE30526AB2C3942CCB7E38836DA5C995E715FB3BE85EE7D2D500DB851F3",
-          "bytes": 238559,
-          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_DavidRaya/T_Prototype_Arsenal_DavidRaya_Shared.T_Prototype_Arsenal_DavidRaya_Shared",
-          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
-          "pitchCompositionProfile": "QuietPitchBust_v1",
-          "generatorSha256": "1A1C2A4529CDBF4F641238168972F51203CDAEA4A76E8D088FA425904F08E914",
-          "generatorVersion": 8,
-          "pillowVersion": "9.4.0",
-          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition",
-          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
-          "visualStatus": "PENDING USER PIE"
         },
         "Full": {
           "cropRect": [
@@ -218,13 +188,503 @@
           "bytes": 1358036,
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_DavidRaya/T_Prototype_Arsenal_DavidRaya_Full.T_Prototype_Arsenal_DavidRaya_Full",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
-          "visualStatus": "PENDING USER PIE"
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.DavidRaya/Shared.png",
+          "runtimeDerivativeSha256": "00FDFDE83BB7C185DCE505C92B4BB3E2F350B0F6CEE0F35AEE93455EE1536F00",
+          "bytes": 233780,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_DavidRaya/T_Prototype_Arsenal_DavidRaya_Shared.T_Prototype_Arsenal_DavidRaya_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
         }
       },
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
-        "Shared": "PENDING USER PIE",
-        "Full": "PENDING USER PIE"
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.GabrielMagalhaes/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "644CDB840BBD83869A93716FE0178EF9E526E06F9B902C5A80EA57D2E93D056C",
+      "masterRevision": 1,
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_GabrielMagalhaes_01.png",
+        "sourceSha256": "644CDB840BBD83869A93716FE0178EF9E526E06F9B902C5A80EA57D2E93D056C",
+        "originIdentity": "Prototype.Arsenal.GabrielMagalhaes",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.GabrielMagalhaes/Hand.png",
+          "runtimeDerivativeSha256": "11310ED4BBD5CC028255255DF592BC9C39980132B2A8AD7E14045A9E061115F3",
+          "bytes": 26362,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_GabrielMagalhaes/T_Prototype_Arsenal_GabrielMagalhaes_Hand.T_Prototype_Arsenal_GabrielMagalhaes_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.GabrielMagalhaes/Full.png",
+          "runtimeDerivativeSha256": "80BD6A3C93A7C431160D338DECD592D7C728213481FF9DA4C360607D294312E5",
+          "bytes": 1255754,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_GabrielMagalhaes/T_Prototype_Arsenal_GabrielMagalhaes_Full.T_Prototype_Arsenal_GabrielMagalhaes_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.GabrielMagalhaes/Shared.png",
+          "runtimeDerivativeSha256": "1220FE00F78976954472786695FCFF9CF32AEAA30238DC424C60FA364D36453A",
+          "bytes": 222551,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_GabrielMagalhaes/T_Prototype_Arsenal_GabrielMagalhaes_Shared.T_Prototype_Arsenal_GabrielMagalhaes_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMartinelli",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.GabrielMartinelli/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "D8D4EB7B16C09D40A43E4B41CC6B37DE22EE16172E9C5728AFAD79E48866F922",
+      "masterRevision": 1,
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_GabrielMartinelli_01.png",
+        "sourceSha256": "D8D4EB7B16C09D40A43E4B41CC6B37DE22EE16172E9C5728AFAD79E48866F922",
+        "originIdentity": "Prototype.Arsenal.GabrielMartinelli",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.GabrielMartinelli/Hand.png",
+          "runtimeDerivativeSha256": "8DCD94603E4095C0E9E66E56B5AD9C25913E85D315FDDF31453D4E79651ED2D4",
+          "bytes": 24560,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_GabrielMartinelli/T_Prototype_Arsenal_GabrielMartinelli_Hand.T_Prototype_Arsenal_GabrielMartinelli_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.GabrielMartinelli/Full.png",
+          "runtimeDerivativeSha256": "E96D692E3CCEBD4D5DD39FD671E4564B00D8B7FDEBAD634A9D83C27AF0C2115F",
+          "bytes": 1252747,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_GabrielMartinelli/T_Prototype_Arsenal_GabrielMartinelli_Full.T_Prototype_Arsenal_GabrielMartinelli_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.GabrielMartinelli/Shared.png",
+          "runtimeDerivativeSha256": "35CE0DD3F748FDDA11352495E9AC3F177293C2334496DC21A1A35648158166FF",
+          "bytes": 207095,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_GabrielMartinelli/T_Prototype_Arsenal_GabrielMartinelli_Shared.T_Prototype_Arsenal_GabrielMartinelli_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.MylesLewisSkelly/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "0BF1AA131D7BFBE4505539ABDB2F68B033D67AAD34E6652A1AD08B8F20D8DADC",
+      "masterRevision": 1,
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_MylesLewisSkelly_01.png",
+        "sourceSha256": "0BF1AA131D7BFBE4505539ABDB2F68B033D67AAD34E6652A1AD08B8F20D8DADC",
+        "originIdentity": "Prototype.Arsenal.MylesLewisSkelly",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.MylesLewisSkelly/Hand.png",
+          "runtimeDerivativeSha256": "F830406BC110D64A9557395FAFAB83C6326A9E477A9623E5D96E96F248F8D3B4",
+          "bytes": 26050,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_MylesLewisSkelly/T_Prototype_Arsenal_MylesLewisSkelly_Hand.T_Prototype_Arsenal_MylesLewisSkelly_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.MylesLewisSkelly/Full.png",
+          "runtimeDerivativeSha256": "30C8FC7EFDD7763FAEF943528DAEF315BA0073BDAC24CAF052062DE8426379ED",
+          "bytes": 1275783,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_MylesLewisSkelly/T_Prototype_Arsenal_MylesLewisSkelly_Full.T_Prototype_Arsenal_MylesLewisSkelly_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.MylesLewisSkelly/Shared.png",
+          "runtimeDerivativeSha256": "F468BDD34277A7F5D09810D18E8EB139A703EEF0E86B6EC7D50466ABAA1BC97E",
+          "bytes": 221909,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_MylesLewisSkelly/T_Prototype_Arsenal_MylesLewisSkelly_Shared.T_Prototype_Arsenal_MylesLewisSkelly_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.RiccardoCalafiori/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "B2623D24768E5B0DE9E6E99DFF09754F22BFCFB0B2B24B8524FE6C80E5A76F33",
+      "masterRevision": 1,
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_RiccardoCalafiori_01.png",
+        "sourceSha256": "B2623D24768E5B0DE9E6E99DFF09754F22BFCFB0B2B24B8524FE6C80E5A76F33",
+        "originIdentity": "Prototype.Arsenal.RiccardoCalafiori",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.RiccardoCalafiori/Hand.png",
+          "runtimeDerivativeSha256": "CB6E6EF66710CC4BF88321754E315329AC73948B50C748D09FE3D5B39F1CE425",
+          "bytes": 28054,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_RiccardoCalafiori/T_Prototype_Arsenal_RiccardoCalafiori_Hand.T_Prototype_Arsenal_RiccardoCalafiori_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.RiccardoCalafiori/Full.png",
+          "runtimeDerivativeSha256": "9D9BC579931D22634B8F9B38BE522AF877D7A42EA7D69FF150BE93D0047D3D38",
+          "bytes": 1282784,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_RiccardoCalafiori/T_Prototype_Arsenal_RiccardoCalafiori_Full.T_Prototype_Arsenal_RiccardoCalafiori_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.RiccardoCalafiori/Shared.png",
+          "runtimeDerivativeSha256": "3CCA232833BBBA25C55B690F84FDDC6138B647055C2F2C59CE0A005B2B1787A2",
+          "bytes": 238677,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_RiccardoCalafiori/T_Prototype_Arsenal_RiccardoCalafiori_Shared.T_Prototype_Arsenal_RiccardoCalafiori_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
       }
     },
     {
@@ -236,9 +696,9 @@
       ],
       "masterSha256": "16E00870B6FCDA4DFA790124CA8DEA7167965EBAB8BCA3EAEAE5675110CEED63",
       "masterRevision": 1,
-      "cropMetadataSha256": "865EBB032DFA3B932B52DA0823EE4E164A7D8F778AF421BCD23C070DEB1EFA1C",
+      "cropMetadataSha256": "A2B9AF49469F7C9B71A75B7AA943479725B357BA57AB7AC1DD27241DAB1D9259",
       "compositionProfile": "HeroBust_v1",
-      "generatorVersion": 8,
+      "generatorVersion": 9,
       "pillowVersion": "9.4.0",
       "resampling": "Pillow.Resampling.LANCZOS",
       "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
@@ -246,7 +706,7 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01.png",
         "sourceSha256": "16E00870B6FCDA4DFA790124CA8DEA7167965EBAB8BCA3EAEAE5675110CEED63",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand/Shared-Pitch/Full USER PIE accepted; Player Card Family v1 frozen at b9774ec; rights provenance unchanged"
       },
       "roles": {
         "Hand": {
@@ -272,42 +732,12 @@
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Hand.T_Prototype_ManchesterCity_ErlingHaaland_Hand",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
           "handCompositionProfile": "BalancedBust_v2",
-          "generatorSha256": "1A1C2A4529CDBF4F641238168972F51203CDAEA4A76E8D088FA425904F08E914",
-          "generatorVersion": 8,
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
           "pillowVersion": "9.4.0",
           "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
           "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
           "visualStatus": "USER PIE ACCEPTED"
-        },
-        "Shared": {
-          "cropRect": [
-            0,
-            0.115,
-            1,
-            0.55
-          ],
-          "sourcePixelBox": [
-            0,
-            176.64000000000001,
-            1024,
-            1021.44
-          ],
-          "dimensions": [
-            512,
-            768
-          ],
-          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.ErlingHaaland/Shared.png",
-          "runtimeDerivativeSha256": "1B99C33757E319D18E4DD13395D628088D42819066C09194ACBBBDA48DA41522",
-          "bytes": 250778,
-          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Shared.T_Prototype_ManchesterCity_ErlingHaaland_Shared",
-          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
-          "pitchCompositionProfile": "QuietPitchBust_v1",
-          "generatorSha256": "1A1C2A4529CDBF4F641238168972F51203CDAEA4A76E8D088FA425904F08E914",
-          "generatorVersion": 8,
-          "pillowVersion": "9.4.0",
-          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition",
-          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
-          "visualStatus": "PENDING USER PIE"
         },
         "Full": {
           "cropRect": [
@@ -331,13 +761,388 @@
           "bytes": 1293267,
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Full.T_Prototype_ManchesterCity_ErlingHaaland_Full",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
-          "visualStatus": "PENDING USER PIE"
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.115,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            176.64000000000001,
+            1024,
+            1021.44
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.ErlingHaaland/Shared.png",
+          "runtimeDerivativeSha256": "FCE42B899529E5EC04A4DF8DD8038A2CD99A1AEEA1A1663D6053503F1C574C03",
+          "bytes": 250697,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Shared.T_Prototype_ManchesterCity_ErlingHaaland_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
         }
       },
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
-        "Shared": "PENDING USER PIE",
-        "Full": "PENDING USER PIE"
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.GianluigiDonnarumma/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "DD0755D5BCC519705219692ACA7E1979FB51538850D9F83BEAD6A5219BF14B3E",
+      "masterRevision": 1,
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_GianluigiDonnarumma_FullCardPilot_02.png",
+        "sourceSha256": "DD0755D5BCC519705219692ACA7E1979FB51538850D9F83BEAD6A5219BF14B3E",
+        "originIdentity": "Prototype.ManchesterCity.GianluigiDonnarumma",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.GianluigiDonnarumma/Hand.png",
+          "runtimeDerivativeSha256": "1AC9286D42D4FFD07446957265E7392251A48C8A5B082C11E91A0C9331CE4F0B",
+          "bytes": 25141,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_GianluigiDonnarumma/T_Prototype_ManchesterCity_GianluigiDonnarumma_Hand.T_Prototype_ManchesterCity_GianluigiDonnarumma_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.GianluigiDonnarumma/Full.png",
+          "runtimeDerivativeSha256": "898F2ED7E5E17C88049DE4ED21A947D36FCC2C6A639FB74D1A530526EA091574",
+          "bytes": 1225443,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_GianluigiDonnarumma/T_Prototype_ManchesterCity_GianluigiDonnarumma_Full.T_Prototype_ManchesterCity_GianluigiDonnarumma_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.GianluigiDonnarumma/Shared.png",
+          "runtimeDerivativeSha256": "BE436D8DA9174208B68AFD414B3E8ECB71ACBB9190DC399664C06D4726C7B5BB",
+          "bytes": 223313,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_GianluigiDonnarumma/T_Prototype_ManchesterCity_GianluigiDonnarumma_Shared.T_Prototype_ManchesterCity_GianluigiDonnarumma_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JeremyDoku",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.JeremyDoku/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "0D0EEBC1F1369D9287E7851F4F0225C6F0608F4F2B91FA04671FD31E2E40BEA3",
+      "masterRevision": 1,
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_JeremyDoku_01.png",
+        "sourceSha256": "0D0EEBC1F1369D9287E7851F4F0225C6F0608F4F2B91FA04671FD31E2E40BEA3",
+        "originIdentity": "Prototype.ManchesterCity.JeremyDoku",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.JeremyDoku/Hand.png",
+          "runtimeDerivativeSha256": "D9E0689322CAD77938FC5DE042A2E0D77074D206CAE83B59313611A2C9EA0F8D",
+          "bytes": 25129,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_JeremyDoku/T_Prototype_ManchesterCity_JeremyDoku_Hand.T_Prototype_ManchesterCity_JeremyDoku_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.JeremyDoku/Full.png",
+          "runtimeDerivativeSha256": "A6AC5A00843865A429434DF57F74F54C9A1B9BACA1EFBE0449A9DACCA2136EC0",
+          "bytes": 1377078,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_JeremyDoku/T_Prototype_ManchesterCity_JeremyDoku_Full.T_Prototype_ManchesterCity_JeremyDoku_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.JeremyDoku/Shared.png",
+          "runtimeDerivativeSha256": "395B71C21EC6F5C65F4CE11DBF3D9EE884F065D073B32A4366CCB29F6DFF6B98",
+          "bytes": 229193,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_JeremyDoku/T_Prototype_ManchesterCity_JeremyDoku_Shared.T_Prototype_ManchesterCity_JeremyDoku_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.JoskoGvardiol/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "DC3368377FA57E391CCE80B76D788B9C1ABEA4C5236C0068EDF6B19096F958DC",
+      "masterRevision": 1,
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_JoskoGvardiol_01.png",
+        "sourceSha256": "DC3368377FA57E391CCE80B76D788B9C1ABEA4C5236C0068EDF6B19096F958DC",
+        "originIdentity": "Prototype.ManchesterCity.JoskoGvardiol",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.JoskoGvardiol/Hand.png",
+          "runtimeDerivativeSha256": "372F16ECDD747A8A209395BF2048BA9B0922764E61ACE39F895F5E67C9533F0B",
+          "bytes": 26894,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_JoskoGvardiol/T_Prototype_ManchesterCity_JoskoGvardiol_Hand.T_Prototype_ManchesterCity_JoskoGvardiol_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.JoskoGvardiol/Full.png",
+          "runtimeDerivativeSha256": "796FB36A016E692C999A439D005D8C2CB2A197315DDDECBB174FAC13892CC323",
+          "bytes": 1446738,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_JoskoGvardiol/T_Prototype_ManchesterCity_JoskoGvardiol_Full.T_Prototype_ManchesterCity_JoskoGvardiol_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.JoskoGvardiol/Shared.png",
+          "runtimeDerivativeSha256": "14E189FAAC14B4A337282ADD910CAEB25D8FB8DFBE01E2B0C017C74D7C19BC0F",
+          "bytes": 242868,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_JoskoGvardiol/T_Prototype_ManchesterCity_JoskoGvardiol_Shared.T_Prototype_ManchesterCity_JoskoGvardiol_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
       }
     },
     {
@@ -349,9 +1154,9 @@
       ],
       "masterSha256": "7B49DBCF667225ACA2CDCA80F2961C7E9E26A6E742D18950DE46511126955654",
       "masterRevision": 1,
-      "cropMetadataSha256": "8E4A5694EF71B3D6787E6186987A9FA93EA8D83F8EDF741364F2881F09ECDB2E",
+      "cropMetadataSha256": "FDD7BAE49ED4E20C38B518BF66A7BC40F927E58A2E5E30872AC1ECFC596F9179",
       "compositionProfile": "HeroBust_v1",
-      "generatorVersion": 8,
+      "generatorVersion": 9,
       "pillowVersion": "9.4.0",
       "resampling": "Pillow.Resampling.LANCZOS",
       "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
@@ -359,7 +1164,7 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_Rodri_FullCardPilot_02.png",
         "sourceSha256": "7B49DBCF667225ACA2CDCA80F2961C7E9E26A6E742D18950DE46511126955654",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand/Shared-Pitch/Full USER PIE accepted; Player Card Family v1 frozen at b9774ec; rights provenance unchanged"
       },
       "roles": {
         "Hand": {
@@ -385,42 +1190,12 @@
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_Rodri/T_Prototype_ManchesterCity_Rodri_Hand.T_Prototype_ManchesterCity_Rodri_Hand",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
           "handCompositionProfile": "BalancedBust_v2",
-          "generatorSha256": "1A1C2A4529CDBF4F641238168972F51203CDAEA4A76E8D088FA425904F08E914",
-          "generatorVersion": 8,
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
           "pillowVersion": "9.4.0",
           "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
           "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
           "visualStatus": "USER PIE ACCEPTED"
-        },
-        "Shared": {
-          "cropRect": [
-            0,
-            0.055,
-            1,
-            0.55
-          ],
-          "sourcePixelBox": [
-            0,
-            84.48,
-            1024,
-            929.2800000000002
-          ],
-          "dimensions": [
-            512,
-            768
-          ],
-          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.Rodri/Shared.png",
-          "runtimeDerivativeSha256": "BA4F7717EB775F97BBD2E9D7259F0467CDD76DE81F73EC309911B43C6CA4A7CD",
-          "bytes": 223191,
-          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_Rodri/T_Prototype_ManchesterCity_Rodri_Shared.T_Prototype_ManchesterCity_Rodri_Shared",
-          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
-          "pitchCompositionProfile": "QuietPitchBust_v1",
-          "generatorSha256": "1A1C2A4529CDBF4F641238168972F51203CDAEA4A76E8D088FA425904F08E914",
-          "generatorVersion": 8,
-          "pillowVersion": "9.4.0",
-          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition",
-          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
-          "visualStatus": "PENDING USER PIE"
         },
         "Full": {
           "cropRect": [
@@ -444,13 +1219,43 @@
           "bytes": 1187887,
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_Rodri/T_Prototype_ManchesterCity_Rodri_Full.T_Prototype_ManchesterCity_Rodri_Full",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
-          "visualStatus": "PENDING USER PIE"
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.Rodri/Shared.png",
+          "runtimeDerivativeSha256": "DB39B7E601D6BF6C63A334435E12553F6033BAA4C6B56368D0FBCE185F26BBEE",
+          "bytes": 223439,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_Rodri/T_Prototype_ManchesterCity_Rodri_Shared.T_Prototype_ManchesterCity_Rodri_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
         }
       },
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
-        "Shared": "PENDING USER PIE",
-        "Full": "PENDING USER PIE"
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
       }
     }
   ]

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "balanceContentVersion": "Prototype40_v1",
   "sourceWorkbook": "FMCodex_40_Player_Attribute_Skill_PointRules.xlsx",
   "sourceWorkbookSha256": "fd15a6af82df81efd991da9f966ff56c173f77c4e205a96c4fc8957eb3a9e63c",
@@ -30,7 +30,8 @@
         "birthDate": "1995-09-15",
         "heightCm": 183,
         "weightKg": 80,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 1
       }
     },
     {
@@ -62,7 +63,8 @@
         "birthDate": "1997-12-19",
         "heightCm": 190,
         "weightKg": 78,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 2
       }
     },
     {
@@ -94,7 +96,8 @@
         "birthDate": "2001-03-24",
         "heightCm": 192,
         "weightKg": 92,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 3
       }
     },
     {
@@ -132,7 +135,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 4
       }
     },
     {
@@ -164,7 +168,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 5
       }
     },
     {
@@ -202,7 +207,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 6
       }
     },
     {
@@ -240,7 +246,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 8
       }
     },
     {
@@ -272,7 +279,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 9
       }
     },
     {
@@ -320,7 +328,8 @@
         "birthDate": "1998-12-17",
         "heightCm": 178,
         "weightKg": 68,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 10
       }
     },
     {
@@ -363,7 +372,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 11
       }
     },
     {
@@ -395,7 +405,8 @@
         "birthDate": "1996-06-22",
         "heightCm": 189,
         "weightKg": 83,
-        "rarity": "National"
+        "rarity": "National",
+        "defaultShirtNumber": 12
       }
     },
     {
@@ -433,7 +444,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 13
       }
     },
     {
@@ -481,7 +493,8 @@
         "birthDate": "1999-01-14",
         "heightCm": 188,
         "weightKg": 83,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 14
       }
     },
     {
@@ -513,7 +526,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 15
       }
     },
     {
@@ -556,7 +570,8 @@
         "birthDate": "2001-09-05",
         "heightCm": 178,
         "weightKg": 72,
-        "rarity": "WorldClass"
+        "rarity": "WorldClass",
+        "defaultShirtNumber": 7
       }
     },
     {
@@ -594,7 +609,8 @@
         "birthDate": "2001-06-18",
         "heightCm": 178,
         "weightKg": 74,
-        "rarity": "National"
+        "rarity": "National",
+        "defaultShirtNumber": 16
       }
     },
     {
@@ -632,7 +648,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 17
       }
     },
     {
@@ -664,7 +681,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 18
       }
     },
     {
@@ -707,7 +725,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 19
       }
     },
     {
@@ -739,7 +758,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 20
       }
     },
     {
@@ -767,7 +787,8 @@
         "birthDate": "1999-02-25",
         "heightCm": 196,
         "weightKg": 89,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 1
       }
     },
     {
@@ -799,7 +820,8 @@
         "birthDate": "1997-05-14",
         "heightCm": 187,
         "weightKg": 83,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 2
       }
     },
     {
@@ -831,7 +853,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 3
       }
     },
     {
@@ -869,7 +892,8 @@
         "birthDate": "2002-01-23",
         "heightCm": 185,
         "weightKg": 79,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 4
       }
     },
     {
@@ -901,7 +925,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 5
       }
     },
     {
@@ -933,7 +958,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 6
       }
     },
     {
@@ -971,7 +997,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 7
       }
     },
     {
@@ -1014,7 +1041,8 @@
         "birthDate": "1996-06-22",
         "heightCm": 190,
         "weightKg": 82,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 16
       }
     },
     {
@@ -1057,7 +1085,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 8
       }
     },
     {
@@ -1100,7 +1129,8 @@
         "birthDate": "1994-08-10",
         "heightCm": 173,
         "weightKg": 64,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 10
       }
     },
     {
@@ -1143,7 +1173,8 @@
         "birthDate": "2000-05-28",
         "heightCm": 171,
         "weightKg": 63,
-        "rarity": "Continental"
+        "rarity": "Continental",
+        "defaultShirtNumber": 11
       }
     },
     {
@@ -1181,7 +1212,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 12
       }
     },
     {
@@ -1213,7 +1245,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 13
       }
     },
     {
@@ -1251,7 +1284,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 14
       }
     },
     {
@@ -1283,7 +1317,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 15
       }
     },
     {
@@ -1315,7 +1350,8 @@
         "birthDate": "2000-07-21",
         "heightCm": 195,
         "weightKg": 87,
-        "rarity": "WorldClass"
+        "rarity": "WorldClass",
+        "defaultShirtNumber": 9
       }
     },
     {
@@ -1358,7 +1394,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 17
       }
     },
     {
@@ -1401,7 +1438,8 @@
         "birthDate": "2002-05-27",
         "heightCm": 171,
         "weightKg": 66,
-        "rarity": "National"
+        "rarity": "National",
+        "defaultShirtNumber": 18
       }
     },
     {
@@ -1433,7 +1471,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 19
       }
     },
     {
@@ -1476,7 +1515,8 @@
         "birthDate": "",
         "heightCm": 0,
         "weightKg": 0,
-        "rarity": "Common"
+        "rarity": "Common",
+        "defaultShirtNumber": 20
       }
     }
   ]

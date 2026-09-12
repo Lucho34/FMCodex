@@ -7,7 +7,7 @@
 // Full-only drawing vocabulary. None preserves the ordinary Border fallback.
 enum class EFMCodexFullCardSurface : uint8
 {
-    None, Frame, Body, Biography, Identity, Number, Section, Attributes, AttributeRow, Value, SkillRow, Range, RuleLeft, RuleRight, Footer
+    None, Frame, Body, Biography, Identity, Number, Section, Attributes, AttributeRow, Value, SkillRow, Range, RuleLeft, RuleRight, Footer, MissingPortrait
 };
 
 // Scaled from the target's nested 45-degree frame and cut panel family.

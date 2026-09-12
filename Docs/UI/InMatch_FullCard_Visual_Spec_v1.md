@@ -1,6 +1,6 @@
 # In-Match Full Card Visual Specification v1
 
-Status: **DRAFT FOR USER PIE VALIDATION**  
+Status: **FROZEN — Stage 8.2C / C.1–C.5 USER PIE ACCEPTED**, committed at `b9774ec5e7b0af401618c716ace59d3f65d863e3`. Earlier pending/open wording below is checkpoint history. The accepted C.5 follow-up is the current Full contract; roster migration must preserve it.
 Scope: transient In-Match Full Card used for Match Screen Hover inspection  
 Stage: `6.13.1.3.11.8`
 
@@ -471,3 +471,8 @@ The 96–100 range cannot retain the old date size and six-unit side padding tog
 Everything outside biography is frozen: C.4 rating/caption outline, 360×540 dimensions, portrait, frames, name/number band, attributes, neutral chapter lines, skills and footer. The existing three-skill test retains 516/524 content use, eight-unit bottom safety and bio/identity clearance. No new component, texture, material, font file, Blueprint or portrait/pipeline/loading change. All text remains data-driven; four-pilot routing, Local/Network authority and actual hover semantics remain unchanged.
 
 Verification uses the existing Full production-foundation test plus the existing number/purpose test because it owns current-date fit and rebind checks. One 1920×1080 UE review covers Raya/Haaland and Saka/Rodri. Compare C.4/C.5 outside the biography bounds; reuse focused three-skill capacity evidence instead of an extra screenshot. Hand/Pitch behavior and resource pipelines are not changed, so their suites and broad gameplay/network suites are omitted. Reversal of the follow-up is limited to the hero right inset 10→12. Reversal to C.4 also restores pilot width 96→104 and primary date size 12→13, plus matching tests; no asset or authority rollback is needed. Stage 8.2C remains OPEN until FINAL USER PIE acceptance; staging/commit remain manual.
+
+
+## Stage 8.3B global contract amendment
+
+Stage 8.3B adds global four-row missing-bio placeholders and configured shirt-number resolution, with the existing number plate and independent collection footer for every Full card. Missing art uses the shared neutral vector fallback. Portrait bytes, canonical Full geometry and generic name fitting remain unchanged. Family v1.1 is USER PIE ACCEPTED / FROZEN following the explicit Stage 8.3A + 8.3B closeout; earlier v1 acceptance stays historical. The seven migrated families are accepted, Ake remains SOURCE_MISSING, and Batch 2 has not started. See Shared_Portrait_Art_Contract_v1.md §24.

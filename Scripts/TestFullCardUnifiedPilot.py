@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 class FullCardUnifiedPilotTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.players = [e for e in load_catalog(ROOT) if is_canonical(e)]
+        cls.players = [e for e in load_catalog(ROOT) if is_canonical(e) and e.get('pilotStage') == '8.2A']
         cls.records = json.loads((ROOT/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json').read_text(encoding='utf-8'))['entries']
 
     def test_full_reproduces_directly_from_four_masters(self):
@@ -31,7 +31,7 @@ class FullCardUnifiedPilotTest(unittest.TestCase):
                 self.assertEqual(data,runtime_derivative_path(ROOT,e).read_bytes())
                 with Image.open(io.BytesIO(data)) as image:
                     self.assertEqual(image.size,(768,1152));self.assertEqual(image.mode,'RGB')
-                self.assertEqual(record['visualStatus'],'PENDING USER PIE')
+                self.assertEqual(record['visualStatus'],'USER PIE ACCEPTED')
                 self.assertEqual(record['cropRect'],[0,0,1,1])
                 self.assertIn('/Canonical/',record['runtimeAssetPath'])
 

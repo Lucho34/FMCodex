@@ -802,6 +802,15 @@ bool FFMCodexPrototypePresentationMetadataTest::RunTest(
 			continue;
 		}
 		const FFMCodexUMGCardViewModel& Card = Cell->Card;
+        const auto* Definition = FFMCodexPrototypeTeamContent::Find(Card.CardId);
+        if (TestNotNull(TEXT("Metadata has canonical definition"),Definition))
+        {
+            TestEqual(TEXT("Real screen projects configured shirt default"),Card.AssignedPlayerNumber,FString::FromInt(Definition->DefaultShirtNumber));
+            TestEqual(TEXT("Real screen projects birth date without synthesis"),Card.BirthDate,Definition->Card.BirthDate);
+            TestEqual(TEXT("Real screen projects height without synthesis"),Card.HeightCm,Definition->Card.HeightCm);
+            TestEqual(TEXT("Real screen projects weight without synthesis"),Card.WeightKg,Definition->Card.WeightKg);
+            TestEqual(TEXT("Real screen projects nationality without synthesis"),Card.NationalityLabel,Definition->NationalityDisplayName.ToString());
+        }
 		Serials.Add(Card.PlayerFacingSerialLabel);
 		bCoreFieldsComplete = bCoreFieldsComplete
 			&& !Card.IdentityLabel.IsEmpty()

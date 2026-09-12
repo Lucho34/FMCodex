@@ -14,7 +14,7 @@ namespace FMCodexPrototypeTeamContent
 	const FName ManchesterCityId(TEXT("Prototype.Team.ManchesterCity"));
 	constexpr int32 CanonicalPlayersPerTeam = 20;
 	constexpr int32 CanonicalPlayerCount = CanonicalPlayersPerTeam * 2;
-	constexpr int32 RuntimeSchemaVersion = 2;
+	constexpr int32 RuntimeSchemaVersion = 3;
 
 	struct FCatalog
 	{
@@ -333,6 +333,7 @@ namespace FMCodexPrototypeTeamContent
 		TMap<FName, int32> TeamCounts;
 		TMap<FName, int32> GoalkeeperCounts;
 		TMap<FName, TSet<int32>> RosterSlots;
+		TMap<FName, TSet<int32>> ShirtNumbers;
 		for (const FFMCodexPrototypePlayerDefinition& Definition : Definitions)
 		{
 			const FString Context = Definition.PlayerKey.IsNone()
@@ -346,6 +347,10 @@ namespace FMCodexPrototypeTeamContent
 			{
 				OutErrors.Add(Context + TEXT(": duplicate PlayerKey"));
 			}
+            const int32 Number = Definition.DefaultShirtNumber;
+            if (Number < 0 || Number > 99 || (Number > 0 && ShirtNumbers.FindOrAdd(Definition.TeamId).Contains(Number)))
+                OutErrors.Add(Context + TEXT(": invalid or duplicate default shirt number"));
+            if (Number > 0) ShirtNumbers.FindOrAdd(Definition.TeamId).Add(Number);
 			PlayerKeys.Add(Definition.PlayerKey);
 			if (Definition.TeamId != ArsenalId
 				&& Definition.TeamId != ManchesterCityId)
@@ -626,6 +631,8 @@ namespace FMCodexPrototypeTeamContent
 					Result.Errors, Context);
 				Definition.NationalityDisplayName = FText::FromString(Nationality);
 				Definition.Card.BirthDate = BirthDate;
+                TryReadInt(*Presentation, TEXT("defaultShirtNumber"), Definition.DefaultShirtNumber,
+                    Result.Errors, Context);
 				if (!TryParseRarity(Rarity, Definition.Card.Rarity))
 				{
 					Result.Errors.Add(Context + TEXT(": unsupported rarity '")
@@ -854,4 +861,12 @@ void FFMCodexPrototypeTeamContent::IntegrateIntoDemoDeck(
 	{
 		Deck[Index] = TeamDefinitions[Index]->Card;
 	}
+}
+
+FString FFMCodexPrototypeTeamContent::ResolvePlayerNumber(const FName CardId, const FString& ExplicitAssignment)
+{
+    if (!ExplicitAssignment.IsEmpty()) return ExplicitAssignment;
+    const auto* Definition = Find(CardId);
+    return Definition && Definition->DefaultShirtNumber > 0
+        ? FString::FromInt(Definition->DefaultShirtNumber) : FString();
 }

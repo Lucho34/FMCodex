@@ -36,8 +36,8 @@ SOURCE_HEADERS = (
     "Skill2", "S2_MinTP", "S2_MaxTP",
     "Skill3", "S3_MinTP", "S3_MaxTP", "Notes",
 )
-CONFIG_SCHEMA_VERSION = 2
-RUNTIME_SCHEMA_VERSION = 2
+CONFIG_SCHEMA_VERSION = 3
+RUNTIME_SCHEMA_VERSION = 3
 PLAYER_KEY_PATTERN = re.compile(r"^[A-Za-z0-9.]+$")
 
 
@@ -180,6 +180,7 @@ def validate_config(config: dict[str, Any], errors: list[str]) -> dict[tuple[str
 
     mapping: dict[tuple[str, str], dict[str, Any]] = {}
     player_keys: set[str] = set()
+    shirt_numbers: dict[str, set[int]] = defaultdict(set)
     for index, entry in enumerate(entries, start=1):
         if not isinstance(entry, dict):
             errors.append(f"Import config player {index}: object is required")
@@ -201,6 +202,14 @@ def validate_config(config: dict[str, Any], errors: list[str]) -> dict[tuple[str
             errors.append(f"Import config player {index}: displayName is required")
         if player_key in player_keys:
             errors.append(f"Import config duplicate PlayerKey: {player_key}")
+        presentation = entry.get("presentation", {})
+        number = presentation.get("defaultShirtNumber", 0) if isinstance(presentation, dict) else 0
+        if isinstance(number, bool) or not isinstance(number, int) or not 0 <= number <= 99:
+            errors.append(f"{player_key}: defaultShirtNumber must be 0 (absent) or 1-99")
+        elif number:
+            if number in shirt_numbers[team]:
+                errors.append(f"{team}: duplicate defaultShirtNumber {number}")
+            shirt_numbers[team].add(number)
         player_keys.add(player_key)
         mapping[join_key] = entry
     return mapping
@@ -349,6 +358,7 @@ def parse_players(rows: list[list[Any]], config: dict[str, Any], workbook_hash: 
                 "heightCm": int(presentation.get("heightCm", 0)),
                 "weightKg": int(presentation.get("weightKg", 0)),
                 "rarity": rarity,
+                "defaultShirtNumber": presentation.get("defaultShirtNumber", 0),
             },
         })
 

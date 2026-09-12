@@ -91,7 +91,7 @@ bool FFMCodexSharedPortraitFirstBatchRoutingTest::RunTest(
 		TestTrue(TEXT("First-batch Shared Portrait uses the runtime texture contract"),
 			HasRuntimeTextureContract(Art.Portrait.LoadSynchronous()));
 
-		if (FirstBatchExistingDedicatedVariants.Contains(PlayerKey))
+		if (FirstBatchExistingDedicatedVariants.Contains(PlayerKey) || Art.bCanonicalPlayerArt)
 		{
 			TestTrue(TEXT("Existing Full Card and Hand Micro routes remain isolated"),
 				!Art.FullCardPortrait.IsNull()
@@ -139,9 +139,9 @@ bool FFMCodexSharedPortraitSecondBatchRoutingTest::RunTest(
 		TestTrue(TEXT("Second-batch Shared Portrait uses the runtime texture contract"),
 			HasRuntimeTextureContract(Art.Portrait.LoadSynchronous()));
 
-		if (SecondBatchExistingDedicatedVariants.Contains(PlayerKey))
+		if (SecondBatchExistingDedicatedVariants.Contains(PlayerKey) || Art.bCanonicalPlayerArt)
 		{
-			TestTrue(TEXT("Mikel Merino dedicated variants remain isolated"),
+			TestTrue(TEXT("Existing or explicitly migrated dedicated variants remain isolated"),
 				!Art.FullCardPortrait.IsNull()
 					&& !Art.HandMicroPortrait.IsNull()
 					&& Art.FullCardPortrait.ToSoftObjectPath()
@@ -209,7 +209,7 @@ bool FFMCodexSharedPortraitGoldenSampleRoutingTest::RunTest(
 
 	TestTrue(TEXT("Gabriel dedicated Full Card route remains isolated"),
 		Gabriel.FullCardPortrait.ToSoftObjectPath().ToString().Contains(
-			TEXT("T_Prototype_Arsenal_GabrielMagalhaes_FullCardHeroBust_01"))
+			TEXT("/Canonical/Prototype_Arsenal_GabrielMagalhaes/T_Prototype_Arsenal_GabrielMagalhaes_Full."))
 			&& Gabriel.FullCardPortrait.ToSoftObjectPath()
 				!= Gabriel.Portrait.ToSoftObjectPath());
 	TestTrue(TEXT("Haaland dedicated Full Card route remains isolated"),
@@ -219,7 +219,7 @@ bool FFMCodexSharedPortraitGoldenSampleRoutingTest::RunTest(
 				!= Haaland.Portrait.ToSoftObjectPath());
 	TestTrue(TEXT("Both Hand Micro and Drag Proxy sources remain isolated"),
 		Gabriel.HandMicroPortrait.ToSoftObjectPath().ToString().Contains(
-			TEXT("GabrielMagalhaes_HandMicro_ApprovedRuntime192"))
+			TEXT("/Canonical/Prototype_Arsenal_GabrielMagalhaes/T_Prototype_Arsenal_GabrielMagalhaes_Hand."))
 			&& Haaland.HandMicroPortrait.ToSoftObjectPath().ToString().Contains(
 				TEXT("/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Hand."))
 			&& Gabriel.HandMicroPortrait.ToSoftObjectPath()
@@ -255,10 +255,10 @@ bool FFMCodexSharedPortraitGoldenSampleCoverageAndCookTest::RunTest(
 		Definitions.Num(), 40);
 	TestEqual(TEXT("Second production batch increases technical Shared coverage to 28"),
 		SharedPortraitCount, 28);
-	TestEqual(TEXT("Dedicated Full Card coverage remains unchanged"),
-		FullCardPortraitCount, 16);
-	TestEqual(TEXT("Dedicated Hand Micro coverage remains unchanged"),
-		HandMicroPortraitCount, 16);
+	TestEqual(TEXT("Two newly complete Batch-1 sources increase dedicated Full coverage"),
+		FullCardPortraitCount, 18);
+	TestEqual(TEXT("Two newly complete Batch-1 sources increase dedicated Hand coverage"),
+		HandMicroPortraitCount, 18);
 
 	FString DefaultGameConfig;
 	const FString ConfigPath = FPaths::Combine(

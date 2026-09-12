@@ -1042,26 +1042,10 @@ FText FFMCodexPlayerUIPresentationText::FullCardIdentitySupplement(
 	const FString& NationalityLabel,
 	const FString& ClubLabel)
 {
-	if (!NationalityLabel.IsEmpty() && !ClubLabel.IsEmpty())
-	{
-		return FText::Format(
-			LOCTEXT("FullCardIdentitySupplementBoth",
-				"国籍：{0}  |  俱乐部：{1}"),
-			FText::FromString(NationalityLabel), FText::FromString(ClubLabel));
-	}
-	if (!NationalityLabel.IsEmpty())
-	{
-		return FText::Format(
-			LOCTEXT("FullCardIdentitySupplementNationality", "国籍：{0}"),
-			FText::FromString(NationalityLabel));
-	}
-	if (!ClubLabel.IsEmpty())
-	{
-		return FText::Format(
-			LOCTEXT("FullCardIdentitySupplementClub", "俱乐部：{0}"),
-			FText::FromString(ClubLabel));
-	}
-	return FText::GetEmpty();
+    const FText Missing = LOCTEXT("MissingBioValue", "—");
+    return FText::Format(LOCTEXT("FullCardIdentitySupplementBoth", "国籍：{0}  |  俱乐部：{1}"),
+        NationalityLabel.IsEmpty() ? Missing : FText::FromString(NationalityLabel),
+        ClubLabel.IsEmpty() ? Missing : FText::FromString(ClubLabel));
 }
 
 FText FFMCodexPlayerUIPresentationText::BirthDateHeading() { return LOCTEXT("BirthDateHeading", "出生日期"); }

@@ -889,7 +889,7 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	HandPortraitBounds->SetClipping(EWidgetClipping::ClipToBounds);
 	UOverlay* HandPortraitLayer = WidgetTree->ConstructWidget<UOverlay>(
 		UOverlay::StaticClass(), TEXT("HandMicroPortraitLayer"));
-	HandMicroPortraitFallback = MakeRegion(*WidgetTree,
+	HandMicroPortraitFallback = MakeFullRegion(*WidgetTree,
 		TEXT("HandMicroPortraitFallback"),
 		FLinearColor::FromSRGBColor(FColor(0x0C, 0x23, 0x30)),
 		FMargin(0.0f));
@@ -1104,7 +1104,7 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	UOverlay* PitchPortraitLayer = WidgetTree->ConstructWidget<UOverlay>(
 		UOverlay::StaticClass(), TEXT("PitchMiniPortraitLayer"));
 	PitchPortraitLayer->SetClipping(EWidgetClipping::ClipToBounds);
-	PitchMiniPortraitFallback = MakeRegion(*WidgetTree,
+	PitchMiniPortraitFallback = MakeFullRegion(*WidgetTree,
 		TEXT("PitchMiniPortraitFallback"),
 		FFMCodexPlayerUIStyle::Get().GetColor(
 			EFMCodexPlayerUIColorRole::NeutralAccent), FMargin(0.0f));
@@ -1451,6 +1451,14 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	UOverlay* PortraitLayer = WidgetTree->ConstructWidget<UOverlay>(
 		UOverlay::StaticClass(), TEXT("InMatchFullCardHeroLayer"));
 	PortraitLayer->SetClipping(EWidgetClipping::ClipToBounds);
+    auto* MissingFull = CastChecked<UFMCodexFullCardSurface>(MakeFullRegion(*WidgetTree,
+        TEXT("FullPortraitFallback"), FLinearColor::White, FMargin(0)));
+    MissingFull->SetSurface(EFMCodexFullCardSurface::MissingPortrait,FLinearColor::White);
+    if (auto* MissingSlot = PortraitLayer->AddChildToOverlay(MissingFull))
+    {
+        MissingSlot->SetHorizontalAlignment(HAlign_Fill);
+        MissingSlot->SetVerticalAlignment(VAlign_Fill);
+    }
 	PortraitImage = WidgetTree->ConstructWidget<UImage>(
 		UImage::StaticClass(), TEXT("PortraitAssetImage"));
 	PortraitImage->SetVisibility(ESlateVisibility::Collapsed);
@@ -2350,6 +2358,13 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	PitchMiniPortraitFallback->SetVisibility(bHasPortrait
 		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+    CastChecked<UFMCodexFullCardSurface>(HandMicroPortraitFallback)->SetSurface(
+        EFMCodexFullCardSurface::MissingPortrait,FLinearColor::White);
+    CastChecked<UFMCodexFullCardSurface>(PitchMiniPortraitFallback)->SetSurface(
+        EFMCodexFullCardSurface::MissingPortrait,FLinearColor::White);
+    GetWidgetFromName(TEXT("FullPortraitFallback"))->SetVisibility(!bHasPortrait
+        && PresentationMode == EFMCodexPlayerCardPresentationMode::InteractionChoice
+        ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	PortraitPlaceholderText->SetVisibility(ESlateVisibility::Collapsed);
 
 	if (bPurposeIsolated)
@@ -2460,52 +2475,26 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
                 : FMargin(3,3,3,2));
 		}
 	};
-	if (bDetailed && !Presentation.BirthDate.IsEmpty())
-	{
-		FString DisplayDate = Presentation.BirthDate;
-		DisplayDate.ReplaceInline(TEXT("-"), TEXT("."));
-		AddBiographyRow(TEXT("BiographyBirthDate"),
-			FFMCodexPlayerUIPresentationText::BirthDateHeading(),
-			FText::FromString(DisplayDate), true);
-	}
-	if (bDetailed && Presentation.HeightCm > 0)
-	{
-		if (RenderedBiographyRowCount > 0)
-		{
-			AddBiographyDivider(TEXT("BiographyHeightDivider"));
-		}
-		AddBiographyRow(TEXT("BiographyHeight"),
-			FFMCodexPlayerUIPresentationText::HeightHeading(),
-			FText::Format(FText::FromString(TEXT("{0} cm")),
-				FText::AsNumber(Presentation.HeightCm)), false);
-	}
-	if (bDetailed && Presentation.WeightKg > 0)
-	{
-		if (RenderedBiographyRowCount > 0)
-		{
-			AddBiographyDivider(TEXT("BiographyWeightDivider"));
-		}
-		AddBiographyRow(TEXT("BiographyWeight"),
-			FFMCodexPlayerUIPresentationText::WeightHeading(),
-			FText::Format(FText::FromString(TEXT("{0} kg")),
-				FText::AsNumber(Presentation.WeightKg)), false);
-	}
-	if (bDetailed)
-	{
-		const FText Position =
-			FFMCodexPlayerUIPresentationText::InMatchCompactRole(
-				Presentation.RoleLabel);
-		if (!Position.IsEmpty())
-		{
-			if (RenderedBiographyRowCount > 0)
-			{
-				AddBiographyDivider(TEXT("BiographyPositionDivider"));
-			}
-			AddBiographyRow(TEXT("BiographyPosition"),
-				FFMCodexPlayerUIPresentationText::FullCardPositionTypeHeading(),
-				Position, false);
-		}
-	}
+    if (bDetailed)
+    {
+        const FText Missing = NSLOCTEXT("FMCodexPlayerUI", "MissingBioValue", "—");
+        FString DisplayDate = Presentation.BirthDate;
+        DisplayDate.ReplaceInline(TEXT("-"), TEXT("."));
+        AddBiographyRow(TEXT("BiographyBirthDate"), FFMCodexPlayerUIPresentationText::BirthDateHeading(),
+            DisplayDate.IsEmpty() ? Missing : FText::FromString(DisplayDate), true);
+        AddBiographyDivider(TEXT("BiographyHeightDivider"));
+        AddBiographyRow(TEXT("BiographyHeight"), FFMCodexPlayerUIPresentationText::HeightHeading(),
+            Presentation.HeightCm > 0 ? FText::Format(NSLOCTEXT("FMCodexPlayerUI", "BioCentimetres", "{0} cm"),
+                FText::AsNumber(Presentation.HeightCm)) : Missing, false);
+        AddBiographyDivider(TEXT("BiographyWeightDivider"));
+        AddBiographyRow(TEXT("BiographyWeight"), FFMCodexPlayerUIPresentationText::WeightHeading(),
+            Presentation.WeightKg > 0 ? FText::Format(NSLOCTEXT("FMCodexPlayerUI", "BioKilograms", "{0} kg"),
+                FText::AsNumber(Presentation.WeightKg)) : Missing, false);
+        AddBiographyDivider(TEXT("BiographyPositionDivider"));
+        const FText Position = FFMCodexPlayerUIPresentationText::InMatchCompactRole(Presentation.RoleLabel);
+        AddBiographyRow(TEXT("BiographyPosition"), FFMCodexPlayerUIPresentationText::FullCardPositionTypeHeading(),
+            Position.IsEmpty() ? Missing : Position, false);
+    }
 	const ESlateVisibility BiographyVisibility =
 		RenderedBiographyRowCount > 0
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
@@ -2982,7 +2971,7 @@ void UFMCodexPlayerCardWidget::RefreshPilotSurfaces()
 		HandMicroIdentityText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
 	}
 	AssignedNumberText->SetText(FText::FromString(Presentation.AssignedPlayerNumber));
-	AssignedNumberText->SetVisibility(bCanonicalCardFamily && !Presentation.AssignedPlayerNumber.IsEmpty()
+	AssignedNumberText->SetVisibility(PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro && !Presentation.AssignedPlayerNumber.IsEmpty()
 		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	const bool Hand=PresentationMode==EFMCodexPlayerCardPresentationMode::HandMicro;
 	if (Hand)
@@ -3000,7 +2989,7 @@ void UFMCodexPlayerCardWidget::RefreshPilotSurfaces()
     if (UHorizontalBoxSlot* RoleSlot=Cast<UHorizontalBoxSlot>(HandMicroRoleText->Slot))
     {
         RoleSlot->SetSize(FSlateChildSize(bCanonicalCardFamily ? ESlateSizeRule::Fill : ESlateSizeRule::Automatic));
-        RoleSlot->SetPadding(FMargin(0,0,bCanonicalCardFamily && !Presentation.AssignedPlayerNumber.IsEmpty() ? 36.f : 0.f,0));
+        RoleSlot->SetPadding(FMargin(0,0,Hand && !Presentation.AssignedPlayerNumber.IsEmpty() ? 36.f : 0.f,0));
     }
     if (UWidget* Meta=GetWidgetFromName(TEXT("HandMicroPositionLine")))
         if (UVerticalBoxSlot* MetaSlot=Cast<UVerticalBoxSlot>(Meta->Slot))
@@ -3022,13 +3011,13 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     using namespace FMCodexPlayerCardWidget;
     const FLinearColor Accent = GetHandMicroRarityBaseColor(Presentation.RarityLabel);
     FullCardAssignedNumberText->SetText(FText::FromString(Presentation.AssignedPlayerNumber));
-    const bool bHasNumber = bFullCardPilot && !Presentation.AssignedPlayerNumber.IsEmpty();
+    const bool bHasNumber = PresentationMode == EFMCodexPlayerCardPresentationMode::InteractionChoice && !Presentation.AssignedPlayerNumber.IsEmpty();
     FullCardAssignedNumberText->SetVisibility(bHasNumber
         ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
     GetWidgetFromName(TEXT("FullCardNumberPlateBounds"))->SetVisibility(bHasNumber
         ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
     SetFullSurface(CastChecked<UBorder>(GetWidgetFromName(TEXT("FullCardNumberPlate"))),
-        bFullCardPilot, EFMCodexFullCardSurface::Number, Accent);
+        bHasNumber, EFMCodexFullCardSurface::Number, Accent);
     SetFullSurface(BiographyRegion, bFullCardPilot, EFMCodexFullCardSurface::Biography, Accent);
     SetFullSurface(IdentityRegion, bFullCardPilot, EFMCodexFullCardSurface::Identity, Accent);
     SetFullSurface(CardFrame, bFullCardPilot, EFMCodexFullCardSurface::Frame, Accent);
@@ -3036,7 +3025,8 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     SetFullSurface(AttributeRegion, bFullCardPilot, EFMCodexFullCardSurface::Attributes, Accent);
     auto* Footer = CastChecked<UBorder>(GetWidgetFromName(TEXT("FullCardCollectionSurface")));
     SetFullSurface(Footer, bFullCardPilot, EFMCodexFullCardSurface::Footer, Accent);
-    Footer->SetVisibility(bFullCardPilot ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+    const bool bDetailed = PresentationMode == EFMCodexPlayerCardPresentationMode::InteractionChoice;
+    Footer->SetVisibility(bDetailed ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
     for (const TCHAR* Node : {TEXT("AttributeHeadingBounds"),TEXT("SkillHeadingBounds")})
     {
         auto* HeadingBounds = CastChecked<USizeBox>(GetWidgetFromName(Node));
@@ -3109,7 +3099,7 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     IdentityFont.OutlineSettings.OutlineColor = FLinearColor(.4f,.45f,.47f,1);
     IdentityFont.TypefaceFontName = bFullCardPilot ? TEXT("Bold") : TEXT("Medium");
     IdentityText->SetFont(IdentityFont);
-    FullCardCollectionText->SetVisibility(bFullCardPilot
+    FullCardCollectionText->SetVisibility(bDetailed
         ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
     // Serial is a catalog presentation identifier, never an assigned shirt number.
     // There is no authoritative collection denominator; do not fabricate "/290".
@@ -3126,10 +3116,18 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     if (UBorder* Scrim = Cast<UBorder>(GetWidgetFromName(TEXT("FullCardIdentityReadabilityBase"))))
         Scrim->SetBrushColor(FLinearColor(.004f,.012f,.021f,bFullCardPilot ? .90f : .62f));
     if (UVerticalBoxSlot* NameSlot = Cast<UVerticalBoxSlot>(IdentityText->Slot))
-        NameSlot->SetPadding(bFullCardPilot ? FMargin(16,6,bHasNumber ? 90 : 16,2) : FMargin(10,4,34,1));
+        NameSlot->SetPadding(bFullCardPilot ? FMargin(16,6,bHasNumber ? 90 : 16,2) : FMargin(10,4,bHasNumber ? 90 : 34,1));
     if (UVerticalBoxSlot* SupplementSlot = Cast<UVerticalBoxSlot>(FullCardIdentitySupplementText->Slot))
-        SupplementSlot->SetPadding(bFullCardPilot ? FMargin(16,1,bHasNumber ? 90 : 16,6) : FMargin(10,0,38,5));
-    if (!bFullCardPilot) return;
+        SupplementSlot->SetPadding(bFullCardPilot ? FMargin(16,1,bHasNumber ? 90 : 16,6) : FMargin(10,0,bHasNumber ? 90 : 38,5));
+    if (bDetailed) PlayerFacingSerialText->SetVisibility(ESlateVisibility::Collapsed);
+    if (!bFullCardPilot)
+    {
+        FSlateFontInfo NumberFont = FullCardAssignedNumberText->GetFont();
+        NumberFont.TypefaceFontName = TEXT("Bold"); NumberFont.Size = 26;
+        FullCardAssignedNumberText->SetFont(NumberFont);
+        FullCardAssignedNumberText->SetColorAndOpacity(FSlateColor(Accent));
+        return;
+    }
 
     CardFrame->SetBrushColor(FullCardSurfaceColor());
     FullCardInnerFrame->SetBrushColor(FLinearColor::Transparent);

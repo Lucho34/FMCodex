@@ -2,7 +2,9 @@
 
 Stage: `8.1B` · Baseline: `main / 2d33963bdb36f3ea41ba0c6ce2738cd849e82aa1` · Date: `2026-09-10`
 
-Status: **Architecture lock for user acceptance; production migration NOT implemented. Stage 8.1B is not automatically CLOSED.** The user confirms Stage 8.1A accepted and committed at this baseline; shell/Header/Dock work stays closed and out of scope.
+Current revision: **Player Card Family v1.1 USER PIE ACCEPTED / FROZEN FOR ROSTER MIGRATION** (Stage 8.3A + 8.3B closeout, §24). The seven Batch-1 migrations and all 11 QuietPitchBust_v2 outputs are accepted; Nathan Ake remains SOURCE_MISSING and Batch 2 has not started.
+
+Accepted baseline: **PLAYER CARD FAMILY v1 FROZEN FOR ROSTER MIGRATION.** Stage 8.2A Hand, 8.2B Pitch Mini and 8.2C Full are USER PIE accepted and committed; Stage 8.2D family audit is closed. Current acceptance baseline: `b9774ec5e7b0af401618c716ace59d3f65d863e3`. The Stage 8.1B baseline and dated sections below remain historical; their pending/deferred wording describes those checkpoints, not current acceptance.
 
 This is the **single canonical player-art architecture**. The historical filename is retained to consolidate the existing Shared contract and preserve incoming links. It supersedes that contract's Shared-only source ownership, and the independent Hand/Full authoring and source-workflow rules in [Portrait Asset Spec](Portrait_Asset_Spec_v1.md). [Hand Micro Visual Spec](HandMicro_Visual_Spec_v1.md) still owns frozen card geometry/typography; [Shared Artwork Manifest](Shared_Portrait_Artwork_Manifest_v1.md) remains the historical coverage inventory. Existing assets, v1 manifests, hashes and routing remain valid legacy production until explicitly migrated. This specification is not authorization to generate a roster, import assets, change widgets or delete legacy art.
 
@@ -320,3 +322,74 @@ The four FullCardPortrait soft references now resolve canonical _Full packages. 
 Four Full PNGs and four new uassets are introduced. Import retains opaque BC7, sRGB, UI group, Sharpen1, trilinear, LOD0 and current UE5.3 NPOT NeverStream. Source PNG bytes and editor package sizes are not Shipping package sizes. ListTextures reports per-texture editor allocation, not whole-process or portable mobile VRAM. Legacy assets remain intentionally retained; any cook cleanup or streaming/mobile policy belongs to an independently justified stage.
 
 Minimal verification covers exact Full reproduction/import gates, unchanged Hand/Shared role records and Master/PNG/package hashes, Full data/layout/0–3 skill/number tests, directly affected Hand/Pitch mode isolation, necessary UHT/incremental Editor build and two true 1080p UE review images. The same runtime also checks actual Hand pointer hover and dismissal plus normal-start versus intentional Full loading. No NetworkPlay/CoreRules/full LocalPlay/full Runtime sweep, Host/Remote run, Shipping/mobile cook or automatic commit is implied.
+
+
+## 23. Stage 8.3A Batch 1 — seven canonical candidates, one missing source
+
+Historical implementation checkpoint (superseded by the accepted closeout in §24): the user clarifies identity correctness as canonical PlayerKey ownership and consistency of the original fictional person across purposes. Real-player likeness is not a gate. The original four pilots remain accepted/frozen; the new batch is **PENDING USER PIE**, not automatically visually accepted. No card-family design, gameplay data, localization mapping, optional number, networking or loading lifecycle changes.
+
+| Canonical PlayerKey | Display | Team / position | Selected source suffix | Source gate |
+|---|---|---|---|---|
+| `Prototype.ManchesterCity.GianluigiDonnarumma` | 多纳鲁马 | Manchester City / GK | `T_Prototype_ManchesterCity_GianluigiDonnarumma_FullCardPilot_02.png` | SOURCE_READY |
+| `Prototype.Arsenal.GabrielMagalhaes` | 加布里埃尔 | Arsenal / D | `T_Prototype_Arsenal_GabrielMagalhaes_01.png` | SOURCE_READY |
+| `Prototype.Arsenal.MylesLewisSkelly` | 刘易斯-斯凯利 | Arsenal / M/D | `T_Prototype_Arsenal_MylesLewisSkelly_01.png` | SOURCE_READY |
+| `Prototype.Arsenal.RiccardoCalafiori` | 卡拉菲奥里 | Arsenal / M/D | `T_Prototype_Arsenal_RiccardoCalafiori_01.png` | SOURCE_READY |
+| `Prototype.ManchesterCity.NathanAke` | 阿克 | Manchester City / D | None | SOURCE_MISSING |
+| `Prototype.ManchesterCity.JoskoGvardiol` | 格瓦迪奥尔 | Manchester City / M/D | `T_Prototype_ManchesterCity_JoskoGvardiol_01.png` | SOURCE_READY |
+| `Prototype.ManchesterCity.JeremyDoku` | 多库 | Manchester City / A | `T_Prototype_ManchesterCity_JeremyDoku_01.png` | SOURCE_READY |
+| `Prototype.Arsenal.GabrielMartinelli` | 马丁内利 | Arsenal / A | `T_Prototype_Arsenal_GabrielMartinelli_01.png` | SOURCE_READY |
+
+All seven selected source images are 1024×1536 opaque RGB with complete crowns, necks, shoulders and upper chest; the seven Master hashes are distinct and match their retained source bytes. Donnarumma selects the same-key goalkeeper garment revision instead of the generic training shirt. The manifest keeps prior Shared-candidate status/history separate from canonicalVisualStatus and per-role provenance.
+
+Use one common frozen recipe: Hand 192×128 / BalancedBust_v2 `[0,.055,1,.5]`; Shared/Pitch 512×768 / QuietPitchBust_v1 `[0,.055,1,.55]`; Full 768×1152 / CropOnly_v1 `[0,0,1,1]`. No individual crop exception or Widget offset was needed. The common .55 Pitch guide is explicit metadata because the historical catalog fallback remains .64; no generator/default/hash changes are required. Source-only Master remains `ArtSource/UI/PlayerMaster/<PlayerKey>/Master.png`, revision 1. Generated inputs remain `ContentSource/UI/PlayerPortraitRuntime/<PlayerKey>/{Hand,Shared,Full}.png`. Runtime uses `/Game/UI/Portraits/PrototypeTeams/Canonical/<KeyToken>/T_<KeyToken>_{Hand,Shared,Full}`; KeyToken replaces dots with underscores.
+
+The explicit canonical route allowlist now contains the four accepted pilots plus these seven source-gated keys. All other keys retain prior routes; Ake has no canonical Master/derivative/package/activation. Migrated Hand, PitchMini and Full use independent purpose-sized derivatives; generic Portrait/PitchCompact routes and legacy files remain for later reference-audited cleanup. Do not describe retained legacy assets as globally unreferenced.
+
+Batch additions are seven Masters, 21 generated PNGs and 21 Texture2D packages. Import settings remain DesktopBC7OpaqueSharpen1_v1: opaque sRGB, BC7, UI, Sharpen1, trilinear, LOD0, NeverStream under UE5.3, no virtual texture or size clamp. Full loads through intentional hover/review; hiding does not guarantee immediate UObject/RHI release. Source/editor bytes and mathematical mip payload estimates are not cooked package or measured mobile/VRAM sizes.
+
+Verification is bounded to the new Batch-1 pipeline/native route/rebind/GK tests, directly affected legacy-route expectations, explicit seven-player import/fresh-load checks, incremental Development Editor build and one 1920×1080 LocalPlay review package in ignored Saved/Stage8_3A. The existing opt-in GoalkeeperReviewStart fixture also accepts CanonicalArtBatch1Review to initialize through canonical opening dice with A attacking and FullD12=8 through the existing DEV provider; without that flag its previous behavior is unchanged. This is not a production startup default. Four screenshots cover Hand, legal Pitch deployment and two Full pairs using copied real DTOs. USER PIE owns final portrait/crop acceptance. No broad gameplay suites, Host/Remote, Shipping/mobile cook or Batch 2.
+
+
+## 24. Player Card Family v1.1 — global art/data rules (Stage 8.3B)
+
+Status: **USER PIE ACCEPTED / FROZEN FOR ROSTER MIGRATION**. The user explicitly passed Stage 8.3A and Stage 8.3B: all seven Batch-1 canonical families and all 11 current Shared/Pitch outputs under QuietPitchBust_v2 are accepted. This is the current Player Card Family v1.1 standard. Family v1 and the original four-pilot acceptance remain historical accepted baselines. Stage 8.3A's seven Masters and explicit enablement remain intact; Nathan Ake remains SOURCE_MISSING. No Batch 2 migration is authorized by this revision.
+
+### Rule categories and application
+
+| Category | Rule | Current application | Future inheritance |
+|---|---|---|---|
+| FAMILY-WIDE | One fictional identity per approved Master; no real-player likeness gate | All 11 canonical identities unchanged | Each new key must pass its own Source Gate |
+| SURFACE-SPECIFIC | Hand 192×128 / BalancedBust_v2 in 220×68 | All 11 Hand PNG/package bytes preserved | Same profile and generic typography |
+| SURFACE-SPECIFIC | Shared 512×768 / QuietPitchBust_v2 in 136×140 | All 11 Shared PNGs/packages regenerated together | Canonical catalog defaults to v2 and rejects older explicit Pitch profiles |
+| SURFACE-SPECIFIC | Full 768×1152 / CropOnly_v1 in 360×540 | All 11 Full PNG/package bytes preserved | Direct Master derivative, existing Full geometry |
+| FAMILY-WIDE | Explicit configurable default shirt number, runtime assignment takes precedence | All 40 roster defaults configured | New roster data supplies an optional 0/absent or 1–99 default; no runtime assignment by order |
+| FAMILY-WIDE | Missing optional biography is data absence, not permission to invent it | All Full cards use four fixed bio rows | The same display behavior applies automatically |
+| FAMILY-WIDE | Missing requested portrait uses neutral procedural silhouette | Any missing or failed requested texture in Hand/Pitch/Full | No PlayerKey-specific fallback and no substitute Master |
+| PLAYER METADATA EXCEPTION | Only bounded normalized crop metadata, with a reason | No new exception; preserve original pilot Hand crop guides | Never Widget position/scale/font/background exceptions |
+| SOURCE-ART PROBLEM | Wrong identity/unusable/missing source remains gated | Ake stays missing; other non-canonical entries retain their existing routes | Do not hide source problems behind borrowed identities |
+
+### Global Shared/Pitch background
+
+QuietPitchBust_v1's repeated symmetric lamp banks and centered halo are replaced by **QuietPitchBust_v2**. V2 excludes the extracted subject from the approved Master's background samples, uses normalized Gaussian diffusion (local sigma 6, broad sigma 80 at 512×768 analysis), and applies one restrained deep-navy night-match grade. The environment is fitted to the frozen visible hero UV rather than the unused lower Shared canvas. Natural lamp direction and atmosphere may vary only because the source Master differs; there are no per-player background parameters, random decorations, external background images, new runtime materials, or head-centered halo.
+
+The foreground extraction, proportional placement and crop guide are unchanged. The generic default and the other nine current canonical Pitch guides are `[0,.055,1,.55]`. Saka and Haaland retain their pre-existing accepted metadata override `[0,.115,1,.55]`. These are unchanged source-space crop values, not new exceptions or Widget overrides. Face and jersey lead, owner frame follows, atmosphere stays subordinate. Lower unused canvas remains quiet. Non-canonical legacy art is explicitly outside this derivative pipeline until approved migration.
+
+Generator provenance advances to version 9. A partial Shared rebuild may refresh the Hand generator hash only after reproducing the existing Hand bytes exactly; a mismatch rejects the partial operation. It does not write Hand images or reimport Hand/Full packages. Changed Shared outputs return to PENDING USER PIE; old source/Hand/Full acceptance is not silently revoked or newly granted.
+
+### Number data and surface policy
+
+`CanonicalPlayerImportConfig.json` owns `presentation.defaultShirtNumber`, copied by the importer into generated runtime JSON schema 3 and loaded as `FFMCodexPrototypePlayerDefinition::DefaultShirtNumber`. Zero means absent; populated defaults must be 1–99 and unique within a team. The current 40 provisional values are fictional game configuration, not real-world claims. Initial assignment preserved Raya 1, Saka 7, Haaland 9, Rodri 16, then used lowest unused numbers in stable canonical roster order. The resulting values are explicit data; future reorder does not recalculate them.
+
+Shared presentation resolves **non-empty explicit AssignedPlayerNumber → configured DefaultShirtNumber → empty**. The resolver reads only public static catalog metadata and never changes canonical data, gameplay state, saves, networking, collection serial or PlayerKey. A future assignment editor/persistence path is not implemented here. The DEV sample CVar remains off by default and reuses the configured resolver instead of a separate player-number map.
+
+Hand uses its existing optional-number area, retaining current art/style behavior. Full uses its existing number plate and hides it when truly absent. All Full collection serials use the existing independent footer, avoiding overlap with the number plate on legacy cards. Pitch keeps numbers invisible. Text remains dynamic; changing a number never rebuilds art.
+
+### Biography and missing-art contracts
+
+Biography truth is the presentation sidecar plus canonical workbook team/position, through generated JSON, catalog, CardView and UMG. Audit: birth date/height/weight/nationality each 16 present and 24 missing; club and position 40 present. No active repository value was found missing from projection; no value was recovered from web or invented. `BIO_DATA_COMPLETION_REQUIRED` lists all 24 incomplete records in ignored `Saved/Stage8_3B/RosterDataCompleteness.json`.
+
+Full always renders 出生日期、身高、体重、位置类型 with the existing row geometry. Missing values show localized neutral `—`; no `0 cm`, invented date or collapsed per-player rows. Nationality/club supplement keeps both labels with the same placeholder policy. Source DTO values stay empty/zero. Existing skill-count density rules remain generic and unchanged.
+
+No suitable shared neutral portrait asset exists in the current family. Reuse the lightweight Slate surface renderer for one low-contrast dark-navy silhouette, made from simple vector shapes, with no face, kit, identity or baked text. The same mechanism backs the requested purpose whenever its texture is absent. Name, role and real data remain visible; SOURCE_MISSING provenance stays missing. No new runtime texture/material or placeholder Master is added.
+
+Full prioritizes the complete Chinese name using generic fit; Hand retains its accepted generic behavior; Pitch may ellipsize within frozen geometry. No name-specific rule is introduced. Future batches must inherit these rules and may only propose documented Master/crop exceptions, never Widget hacks.

@@ -52,6 +52,31 @@ public:
                 FCoreStyle::Get().GetBrush("WhiteBrush"),Effect,FLinearColor(.002f,.008f,.017f,1)*Tint);
             Line({{0,H-.65f},{W,H-.65f}},Alpha(Structure,.64f),DetailStroke);
         };
+        if (Kind == ESurface::MissingPortrait)
+        {
+            // Family-wide neutral silhouette: no texture, identity, team or text.
+            FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(),
+                FCoreStyle::Get().GetBrush("WhiteBrush"), Effect,
+                FLinearColor(.003f,.009f,.018f,1.f) * Tint);
+            auto Ellipse = [&](FVector2f Center, FVector2f Radius, FLinearColor Color)
+            {
+                TArray<FSlateVertex> V; TArray<SlateIndex> Idx;
+                for (int32 N=0; N<40; ++N)
+                {
+                    const float A = N * 2.f * PI / 40.f;
+                    const FVector2f P = Center + FVector2f(FMath::Cos(A)*Radius.X,FMath::Sin(A)*Radius.Y);
+                    V.Add(FSlateVertex::Make<ESlateVertexRounding::Disabled>(
+                        G.GetAccumulatedRenderTransform(), P, FVector2f::ZeroVector, (Color*FillTint).ToFColor(true)));
+                    if (N>=2) { Idx.Add(0); Idx.Add(N-1); Idx.Add(N); }
+                }
+                const auto Resource = FSlateApplication::Get().GetRenderer()->GetResourceHandle(*FCoreStyle::Get().GetBrush("WhiteBrush"));
+                FSlateDrawElement::MakeCustomVerts(Out,Layer+1,Resource,V,Idx,nullptr,0,0);
+            };
+            const float Unit = FMath::Min(W,H);
+            Ellipse(FVector2f(W*.5f,H*.38f),FVector2f(Unit*.12f,Unit*.15f),FLinearColor(.046f,.073f,.102f,1));
+            Ellipse(FVector2f(W*.5f,H*.76f),FVector2f(Unit*.29f,Unit*.19f),FLinearColor(.031f,.054f,.080f,1));
+            return SCompoundWidget::OnPaint(Args,G,Cull,Out,Layer+2,Style,bEnabledHere);
+        }
         if (Kind == ESurface::RuleLeft || Kind == ESurface::RuleRight || Kind == ESurface::Footer)
         {
             if (Kind == ESurface::Footer)

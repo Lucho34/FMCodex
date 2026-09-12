@@ -199,3 +199,10 @@ sources; Hand Micro and its Drag Proxy remain on the frozen Runtime192 assets.
 `USER PIE VISUAL REVIEW REQUIRED` for identity continuity, shirt-family read,
 global-crop safety, live identity-overlay fit, and side-by-side comparison of
 the six new compositions before visual closure.
+
+
+## Stage 8.3A — canonical fictional identity policy (user clarified)
+
+Player portraits remain original fictional prototype people, not likenesses of real footballers. Source identity correctness means the selected source belongs to the canonical PlayerKey, has no cross-player routing/substitution, and supplies the same person, hair, skin, kit and age impression to Master, Hand, Shared/Pitch and Full. Repository team/position/roster mapping and crop quality still apply. Resemblance to the real namesake is not a Source Gate criterion.
+
+Batch 1 reuses seven existing sources without new image generation: Donnarumma uses his documented City-family goalkeeper `_FullCardPilot_02` revision; Gabriel Magalhaes, Lewis-Skelly, Calafiori, Gvardiol, Doku and Martinelli use their same-key Shared `_01` sources. Each retained original is copied byte-for-byte to `ArtSource/UI/PlayerMaster/<PlayerKey>/Master.png`. All three derivatives originate from that Master; older dedicated Hand/Full identities cease to supply those migrated surfaces. Nathan Ake remains SOURCE_MISSING and is not activated. Manifest/provenance owns exact paths and hashes. The user has now passed Stage 8.3A and Stage 8.3B USER PIE: the seven migrated canonical families and all 11 current QuietPitchBust_v2 outputs are accepted under Player Card Family v1.1, frozen for roster migration. Batch 2 has not started; newly generated or changed art still requires its own acceptance.

@@ -849,11 +849,11 @@ bool FFMCodexPitchMiniCanonicalPilotTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("Missing color fallback"),Fallback,FLinearColor::FromSRGBColor(FColor(109,137,157)));
     Card.bHasPitchMiniOwnershipAccent=true;Card.PitchMiniOwnershipAccentColor=FLinearColor::Transparent;
     TestEqual(TEXT("Transparent color fallback"),UFMCodexPlayerCardWidget::ResolvePitchMiniOwnerColor(Card),Fallback);
-    Card.CardId=TEXT("Prototype.Arsenal.GabrielMartinelli");
+    Card.CardId=TEXT("Prototype.Arsenal.MikelMerino");
     Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::PitchMini);
     TestFalse(TEXT("Unmigrated player stays legacy"),Widget->IsPitchMiniPilot());
-    Card.CardId=TEXT("Prototype.ManchesterCity.JoskoGvardiol");
-    Card.IdentityLabel=TEXT("格瓦迪奥尔");
+    Card.CardId=TEXT("Prototype.ManchesterCity.RayanAitNouri");
+    Card.IdentityLabel=TEXT("艾特-努里");
     Card.RoleLabel=TEXT("M/D");
     Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::PitchMini);
     const auto* Name=CastChecked<UTextBlock>(Widget->GetWidgetFromName(TEXT("PitchMiniPlayerName")));
@@ -863,7 +863,7 @@ bool FFMCodexPitchMiniCanonicalPilotTest::RunTest(const FString& Parameters)
     const float Used=Measure->Measure(Name->GetText(),Name->GetFont()).X
         + Measure->Measure(Role->GetText(),Role->GetFont()).X
         + Measure->Measure(Separator->GetText(),Separator->GetFont()).X + 6.f + 4.f;
-    TestEqual(TEXT("Preferred legacy name stays complete"),Name->GetText().ToString(),FString(TEXT("格瓦迪奥尔")));
+    TestEqual(TEXT("Preferred legacy name stays complete"),Name->GetText().ToString(),FString(TEXT("艾特-努里")));
     TestTrue(TEXT("Legacy name and position fit the fixed information row"),Used <= 130.f && Name->GetFont().Size >= 12);
     TestNull(TEXT("Legacy Pitch also skips obsolete frame texture"),Widget->GetResolvedCardFrameTexture());
     TestNull(TEXT("Legacy Pitch does not acquire Hand"),Widget->GetResolvedHandMicroPortraitTexture());
@@ -892,15 +892,16 @@ bool FFMCodexPitchMiniGoalkeeperReviewStart::RunTest(const FString& Parameters)
         auto Demo=FFMCodexLocalMatchDemoConfigurationFactory::Create();
         auto& Opening=Demo.OpeningInput.OpeningInput;
         Opening.bUseFixedPrototypeAttackTurnContract=false;
-        Opening.PlayerAAttackCountD6Roll=1;Opening.PlayerBAttackCountD6Roll=6;
+        const bool bBatch1 = FParse::Param(FCommandLine::Get(), TEXT("CanonicalArtBatch1Review"));
+        Opening.PlayerAAttackCountD6Roll=bBatch1 ? 6 : 1;Opening.PlayerBAttackCountD6Roll=bBatch1 ? 1 : 6;
         Opening.PlayerATieBreakerRoll=1;Opening.PlayerBTieBreakerRoll=6;
         const auto Result=Host->StartNewLocalMatch(Demo.OpeningInput,Demo.SkillRuleSet);
         TestTrue(TEXT("Review initialized through Local authority"),Result.bSuccess);
         Controller->RefreshPresentation();
-        TestTrue(TEXT("B attacks so A goalkeeper can be deployed legally"),
-            Controller->GetInteractionView().CurrentAttackingPlayer==EInitialTurnOrderPlayer::PlayerB);
+        TestTrue(TEXT("Review opening permits the requested opposing goalkeeper through legal deployment"),
+            Controller->GetInteractionView().CurrentAttackingPlayer==(bBatch1 ? EInitialTurnOrderPlayer::PlayerA : EInitialTurnOrderPlayer::PlayerB));
         FFMCodexLocalDevRollOverrideRequest Roll;
-        Roll.Target=EFMCodexLocalDevRollTarget::FullD12;Roll.Value=4;
+        Roll.Target=EFMCodexLocalDevRollTarget::FullD12;Roll.Value=bBatch1 ? 8 : 4;
         TestTrue(TEXT("Ordinary deployment roll uses existing DEV provider seam"),Controller->SetLocalDevRollOverride(Roll).bSuccess);
         AddInfo(TEXT("PITCH_GOALKEEPER_REVIEW: canonical opening evaluation; explicit DEV dice; production defaults unchanged"));
         return true;

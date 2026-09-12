@@ -1,6 +1,7 @@
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexFullCardSurface.h"
 #include "FMCodexPlayerUIAssetReferences.h"
+#include "FMCodexPrototypeTeamContent.h"
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
 
@@ -335,6 +336,114 @@ bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
     TestEqual(TEXT("Legacy Full hero is restored"),CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("PortraitAssetBounds")))->GetHeightOverride(),320.f);
     TestTrue(TEXT("Legacy Full footer remains unchanged"),Card->GetWidgetFromName(TEXT("FullCardCollectionLine"))->GetVisibility()==ESlateVisibility::Collapsed);
     Card->RemoveFromParent();GEngine->DestroyWorldContext(World);World->DestroyWorld(false);
+    return true;
+}
+
+
+// Batch migration changes asset enablement, not any card-surface implementation.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexCanonicalArtBatch1Test,
+    "FMCodex.LocalPlay.UI.CanonicalArtBatch1.RoutesPurposeIsolationAndGoalkeeper",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexCanonicalArtBatch1Test::RunTest(const FString&)
+{
+    UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
+    if (!TestNotNull(TEXT("Batch route world"), World)) return false;
+    GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+    auto* Widget = CreateWidget<UFMCodexPlayerCardWidget>(World);
+    if (!Widget) { GEngine->DestroyWorldContext(World); World->DestroyWorld(false); return false; }
+    Widget->TakeWidget();
+    for (const TCHAR* Key : {
+        TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
+        TEXT("Prototype.Arsenal.GabrielMagalhaes"),
+        TEXT("Prototype.Arsenal.MylesLewisSkelly"),
+        TEXT("Prototype.Arsenal.RiccardoCalafiori"),
+        TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+        TEXT("Prototype.ManchesterCity.JeremyDoku"),
+        TEXT("Prototype.Arsenal.GabrielMartinelli")})
+    {
+        const auto* Definition = FFMCodexPrototypeTeamContent::Find(FName(Key));
+        if (!TestNotNull(FString::Printf(TEXT("Canonical data exists: %s"),Key),Definition)) continue;
+        FFMCodexLocalMatchCardView View;
+        View.CardId = Definition->PlayerKey;
+        View.DisplayLabel = Definition->PreferredDisplayName.ToString();
+        View.PlayerFacingSerialLabel = Definition->PlayerFacingSerial;
+        View.bGoalkeeper = Definition->Card.bIsGoalkeeper;
+        if (View.bGoalkeeper)
+        {
+            View.CompactRoleLabel = TEXT("GK");
+            const auto& G = Definition->Card.GoalkeeperAttributes;
+            View.AttributeValues = {{TEXT("HAN"),G.Handling},{TEXT("POS"),G.Positioning},
+                {TEXT("REF"),G.Reflex},{TEXT("AER"),G.Aerial},{TEXT("ANT"),G.Anticipation},{TEXT("1V1"),G.OneOnOne}};
+        }
+        const auto Model = FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(View);
+        const auto Art = FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Model.CardId);
+        TestTrue(TEXT("Source-gated key is explicitly enabled"),Art.bCanonicalPlayerArt);
+        const FString Token = FString(Key).Replace(TEXT("."),TEXT("_"));
+        const auto ExpectedPath = [&Token](const TCHAR* Role) {
+            const FString Name = FString::Printf(TEXT("T_%s_%s"),*Token,Role);
+            return FString::Printf(TEXT("/Game/UI/Portraits/PrototypeTeams/Canonical/%s/%s.%s"),*Token,*Name,*Name);
+        };
+        TestEqual(TEXT("Exact Hand identity route"),Art.HandMicroPortrait.ToSoftObjectPath().ToString(),ExpectedPath(TEXT("Hand")));
+        TestEqual(TEXT("Exact Pitch identity route"),Art.PitchMiniPortrait.ToSoftObjectPath().ToString(),ExpectedPath(TEXT("Shared")));
+        TestEqual(TEXT("Exact Full identity route"),Art.FullCardPortrait.ToSoftObjectPath().ToString(),ExpectedPath(TEXT("Full")));
+        // Reuse one real widget so stale textures/brushes across purpose and player changes are observable.
+        for (const auto Mode : {EFMCodexPlayerCardPresentationMode::HandMicro,
+            EFMCodexPlayerCardPresentationMode::PitchMini, EFMCodexPlayerCardPresentationMode::InteractionChoice,
+            EFMCodexPlayerCardPresentationMode::HandMicro})
+        {
+            Widget->RefreshFromPresentation(Model,Mode);
+            const bool Hand = Mode == EFMCodexPlayerCardPresentationMode::HandMicro;
+            const bool Pitch = Mode == EFMCodexPlayerCardPresentationMode::PitchMini;
+            const TCHAR* Role = Hand ? TEXT("Hand") : Pitch ? TEXT("Shared") : TEXT("Full");
+            UTexture2D* Active = Hand ? Widget->GetResolvedHandMicroPortraitTexture() : Widget->GetResolvedPortraitTexture();
+            if (TestNotNull(TEXT("Selected purpose texture loads"),Active))
+            {
+                TestEqual(TEXT("Active texture has exact key and purpose"),Active->GetPathName(),ExpectedPath(Role));
+                TestEqual(TEXT("Purpose dimensions"),Active->GetImportedSize(),Hand ? FIntPoint(192,128) : Pitch ? FIntPoint(512,768) : FIntPoint(768,1152));
+            }
+            TestEqual(TEXT("Frozen card size"),Widget->GetConfiguredDimensions(),Hand ? FVector2D(220,68) : Pitch ? FVector2D(136,140) : FVector2D(360,540));
+            if (Hand) TestNull(TEXT("Hand retains no large texture member"),Widget->GetResolvedPortraitTexture());
+            else TestNull(TEXT("Pitch/Full retains no Hand texture member"),Widget->GetResolvedHandMicroPortraitTexture());
+            for (const TCHAR* Node : {TEXT("HandMicroFaceSafePortrait"),TEXT("PitchMiniPortraitImage"),TEXT("PortraitAssetImage")})
+            {
+                const bool IsActive = FString(Node) == (Hand ? TEXT("HandMicroFaceSafePortrait") : Pitch ? TEXT("PitchMiniPortraitImage") : TEXT("PortraitAssetImage"));
+                if (!IsActive)
+                    TestNull(TEXT("Inactive purpose brush cleared"),CastChecked<UImage>(Widget->GetWidgetFromName(Node))->GetBrush().GetResourceObject());
+            }
+            TestNull(TEXT("No unused frame texture acquired"),Widget->GetResolvedCardFrameTexture());
+            TestNull(TEXT("No unused role texture acquired"),Widget->GetResolvedRoleIconTexture());
+            TestNull(TEXT("No unused skill texture acquired"),Widget->GetResolvedLongShotSkillIconTexture());
+            TestEqual(TEXT("Presentation preserves canonical Chinese identity"),Widget->GetPresentation().IdentityLabel,Definition->PreferredDisplayName.ToString());
+            TestEqual(TEXT("Collection serial preserved"),Widget->GetPresentation().PlayerFacingSerialLabel,Definition->PlayerFacingSerial);
+            TestEqual(TEXT("Configured default shirt number is resolved"),Widget->GetPresentation().AssignedPlayerNumber,FString::FromInt(Definition->DefaultShirtNumber));
+            if (!Hand && !Pitch && View.bGoalkeeper)
+            {
+                TestEqual(TEXT("Donnarumma retains six real GK attributes"),Widget->GetRenderedAttributeCount(),6);
+                TestEqual(TEXT("GK has no invented skill"),Widget->GetRenderedSkillCount(),0);
+                TestEqual(TEXT("GK Handling comes from canonical data"),Widget->GetPresentation().AttributeValues[0].Value,Definition->Card.GoalkeeperAttributes.Handling);
+            }
+        }
+    }
+    for (const TCHAR* Key : {TEXT("Prototype.Arsenal.MikelMerino"),TEXT("Prototype.ManchesterCity.NathanAke")})
+    {
+        const auto Art = FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(FName(Key));
+        TestFalse(TEXT("Non-migrated and source-missing keys stay inactive"),Art.bCanonicalPlayerArt);
+        for (const auto& Path : {Art.HandMicroPortrait.ToSoftObjectPath(),Art.PitchMiniPortrait.ToSoftObjectPath(),Art.FullCardPortrait.ToSoftObjectPath()})
+            TestFalse(TEXT("No nonexistent canonical fallback"),Path.ToString().Contains(TEXT("/Canonical/")));
+    }
+    FFMCodexUMGCardViewModel Legacy; Legacy.CardId=TEXT("Prototype.Arsenal.MikelMerino");
+    const auto LegacyArt=FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Legacy.CardId);
+    Widget->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::HandMicro);
+    if (TestNotNull(TEXT("Legacy Hand still loads"),Widget->GetResolvedHandMicroPortraitTexture()))
+        TestEqual(TEXT("Legacy rebind keeps original Hand route"),Widget->GetResolvedHandMicroPortraitTexture()->GetPathName(),LegacyArt.HandMicroPortrait.ToSoftObjectPath().ToString());
+    Widget->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::PitchMini);
+    if (TestNotNull(TEXT("Legacy Pitch still loads"),Widget->GetResolvedPortraitTexture()))
+        TestEqual(TEXT("Legacy rebind keeps original Pitch route"),Widget->GetResolvedPortraitTexture()->GetPathName(),LegacyArt.Portrait.ToSoftObjectPath().ToString());
+    Widget->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+    if (TestNotNull(TEXT("Legacy Full still loads"),Widget->GetResolvedPortraitTexture()))
+        TestEqual(TEXT("Legacy rebind keeps original Full route"),Widget->GetResolvedPortraitTexture()->GetPathName(),LegacyArt.FullCardPortrait.ToSoftObjectPath().ToString());
+    Widget->RemoveFromParent(); GEngine->DestroyWorldContext(World); World->DestroyWorld(false);
     return true;
 }
 

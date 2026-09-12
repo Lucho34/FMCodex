@@ -300,11 +300,18 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 	const auto ApplyDedicatedHandMicroPortrait =
 		[this, CardId](FFMCodexPlayerUICardArtReferences& Target)
 		{
-			// Four canonical pilots have independent Hand, PitchMini and Full purposes.
-			static const TSet<FName> CanonicalHandPilot = {
+			// Explicitly migrated players only: accepted pilots plus source-gated Batch 1.
+			static const TSet<FName> CanonicalPlayers = {
 				TEXT("Prototype.Arsenal.BukayoSaka"), TEXT("Prototype.ManchesterCity.Rodri"),
-				TEXT("Prototype.Arsenal.DavidRaya"), TEXT("Prototype.ManchesterCity.ErlingHaaland")};
-			if (CanonicalHandPilot.Contains(CardId))
+				TEXT("Prototype.Arsenal.DavidRaya"), TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+				TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"),
+				TEXT("Prototype.Arsenal.GabrielMagalhaes"),
+				TEXT("Prototype.Arsenal.MylesLewisSkelly"),
+				TEXT("Prototype.Arsenal.RiccardoCalafiori"),
+				TEXT("Prototype.ManchesterCity.JoskoGvardiol"),
+				TEXT("Prototype.ManchesterCity.JeremyDoku"),
+				TEXT("Prototype.Arsenal.GabrielMartinelli")};
+			if (CanonicalPlayers.Contains(CardId))
 			{
 				const FString Token = CardId.ToString().Replace(TEXT("."), TEXT("_"));
 				const FString Name = FString::Printf(TEXT("T_%s_Hand"), *Token);

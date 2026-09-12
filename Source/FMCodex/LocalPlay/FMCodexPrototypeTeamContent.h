@@ -29,6 +29,8 @@ struct FFMCodexPrototypePlayerDefinition
 	FText PreferredDisplayName;
 	FText EnglishDisplayName;
 	FText NationalityDisplayName;
+	/** Static configurable default; 0 means absent. Never a collection serial. */
+	int32 DefaultShirtNumber = 0;
 	int32 RosterSlot = 0;
 	/** Workbook PlayerId, intentionally presentation-only. */
 	int32 DisplaySerial = 0;
@@ -53,6 +55,7 @@ public:
 	static bool IsPrototypeCard(FName CardId);
 	static FName TeamIdForCard(FName CardId);
 	static FText PlayerDisplayName(FName CardId);
+	static FString ResolvePlayerNumber(FName CardId, const FString& ExplicitAssignment);
 	static FText CanonicalChinesePlayerName(FName CardId);
 	static FText TeamDisplayName(FName CardId);
 

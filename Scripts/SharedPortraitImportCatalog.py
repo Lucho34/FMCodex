@@ -220,9 +220,14 @@ def hand_composition(entry):
     return profile
 
 
+ACTIVE_PITCH_PROFILE = "QuietPitchBust_v2"
+
+
 def pitch_composition(entry):
-    profile = entry.get("pitchCompositionProfile", "CropOnly_v1")
-    if profile not in ("CropOnly_v1", "QuietPitchBust_v1"):
+    profile = entry.get("pitchCompositionProfile", ACTIVE_PITCH_PROFILE if is_canonical(entry) else "CropOnly_v1")
+    if is_canonical(entry) and profile != ACTIVE_PITCH_PROFILE:
+        raise RuntimeError(f"Canonical Pitch must use global {ACTIVE_PITCH_PROFILE}: {profile}")
+    if profile not in ("CropOnly_v1", ACTIVE_PITCH_PROFILE):
         raise RuntimeError(f"Unknown Pitch composition: {profile}")
     return profile
 
@@ -231,12 +236,12 @@ def resolved_crop(entry):
     role = runtime_role(entry)
     profile = hand_composition(entry)
     reframe = role == "Hand" and profile == "BalancedBust_v2"
-    pitch_reframe = role == "Shared" and pitch_composition(entry) == "QuietPitchBust_v1"
+    pitch_reframe = role == "Shared" and pitch_composition(entry) == "QuietPitchBust_v2"
     default = ([0,.055,1,.5] if reframe else [0, 0.045, 1, 4/9]) if role == "Hand" else [0, 0, 1, 1]
     field = "handCropRect" if role == "Hand" else "fullCropRect"
     rect = entry.get("cropOverrides", {}).get(field, default) if role != "Shared" else default
     if pitch_reframe:
-        rect = entry.get("cropOverrides", {}).get("pitchCropRect", [0,.055,1,.64])
+        rect = entry.get("cropOverrides", {}).get("pitchCropRect", [0,.055,1,.55])
     if not isinstance(rect, list) or len(rect) != 4 or any(
             isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in rect):
         raise RuntimeError(f"Invalid normalized crop: {rect}")
@@ -261,7 +266,7 @@ def crop_metadata_hash(entry):
     value = {"compositionProfile": entry["compositionProfile"], "cropOverrides": entry.get("cropOverrides", {})}
     if entry.get("handCompositionProfile"):
         value["handCompositionProfile"] = hand_composition(entry)
-    if entry.get("pitchCompositionProfile"):
+    if is_canonical(entry) or entry.get("pitchCompositionProfile"):
         value["pitchCompositionProfile"] = pitch_composition(entry)
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest().upper()
 
@@ -289,7 +294,7 @@ def validate_generated_source(project_root, entry):
     if runtime_role(entry) == "Shared" and role.get("pitchCompositionProfile", "CropOnly_v1") != pitch_composition(entry):
         raise RuntimeError("Stale Pitch composition provenance")
     if (runtime_role(entry) == "Hand" and hand_composition(entry) == "BalancedBust_v2") or (
-        runtime_role(entry) == "Shared" and pitch_composition(entry) == "QuietPitchBust_v1"):
+        runtime_role(entry) == "Shared" and pitch_composition(entry) == "QuietPitchBust_v2"):
         generator = project_root / "Scripts/GenerateSharedPortraitRuntimeDerivatives.py"
         if role.get("generatorSha256") != hashlib.sha256(generator.read_bytes()).hexdigest().upper():
             raise RuntimeError("Stale purpose generator provenance")

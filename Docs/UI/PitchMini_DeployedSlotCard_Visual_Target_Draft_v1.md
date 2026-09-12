@@ -1,6 +1,6 @@
 # Pitch Mini / Deployed Slot Card Visual Target Draft v1
 
-Status: **FINAL-REFINEMENT CANDIDATE — PENDING MANUAL VISUAL GATE**
+Status: **FROZEN — Stage 8.2B / B.1–B.2 USER PIE ACCEPTED**, committed before `b9774ec5e7b0af401618c716ace59d3f65d863e3`. Earlier candidate/pending wording below is checkpoint history; the accepted B.2 contract governs roster migration.
 
 Current implementation stage: `6.13.1.3.13.3.1 — Pitch Mini Tactical Match Count Cue & Highlight Refinement`
 
@@ -823,3 +823,8 @@ Continue section 20's existing worktree and geometry. Image A is the current pro
 - Enabled hover still substitutes the same #CDD7E0 silver-gray main outline on all sides; the subtler inner edge and contact contour apply consistently. Disabled drawing retains Slate's disabled effect. Selected-role tags and 0/1/2 tactical pips retain their independent meaning and appearance.
 
 Reduced verification: new PitchMiniPresentation.07.OwnerReadability; TestPitchMiniPilot (Shared determinism/provenance/Hand retention); only HandCompactPilotTest.test_four_hand_outputs_reproduce_with_rgb_dimensions_and_provenance; incremental Editor/UHT build; Shared-only import and independent validation; protected hashes/diff check; one new-process 1920x1080 render with non-default dark green/purple and hover/exit samples. The existing .06 goalkeeper DEV opening fixture supplies legal four-pilot deployment in that process. Reuse 8.2B.1's untouched layout/pip/purpose-switch evidence; no broad gameplay/network suites, Host/Remote or Shipping/mobile cook. Stage 8.2B remains OPEN until USER PIE and user-owned closeout.
+
+
+## Stage 8.3B global contract amendment
+
+Stage 8.3B replaces Shared background generation for all 11 canonical players with QuietPitchBust_v2 and makes it the future canonical default. Frame, dimensions, pips, name/position, crop placement and hover behavior remain frozen. Shirt numbers stay hidden; missing portraits use the shared neutral vector fallback. Family v1.1 and all 11 QuietPitchBust_v2 outputs are USER PIE ACCEPTED / FROZEN following the Stage 8.3A + 8.3B closeout; v1 acceptance remains historical. Ake remains SOURCE_MISSING and Batch 2 has not started. See Shared_Portrait_Art_Contract_v1.md §24.

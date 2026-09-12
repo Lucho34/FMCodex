@@ -1,6 +1,7 @@
 #include "FMCodexLocalMatchUMGPresentation.h"
 
 #include "FMCodexPlayerUIPresentationText.h"
+#include "FMCodexPrototypeTeamContent.h"
 #include "FMCodexTacticalDetailPresentation.h"
 #include "FMCodexTacticalResolutionNarrativePresentation.h"
 
@@ -86,7 +87,7 @@ namespace FMCodexLocalMatchUMGPresentation
 		Result.bHasPitchMiniTacticalMatch =
 			Card.bHasPitchMiniTacticalMatch;
 		Result.PlayerFacingSerialLabel = Card.PlayerFacingSerialLabel;
-		Result.AssignedPlayerNumber = Card.AssignedPlayerNumber;
+		Result.AssignedPlayerNumber = FFMCodexPrototypeTeamContent::ResolvePlayerNumber(Card.CardId, Card.AssignedPlayerNumber);
 		Result.SkillLabels = Card.SkillLabels;
 		Result.SkillSummaryLabel = Card.SkillSummaryLabel.IsEmpty()
 			? TEXT("NO SKILL") : Card.SkillSummaryLabel;

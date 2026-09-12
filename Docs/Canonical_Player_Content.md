@@ -98,3 +98,12 @@ Canonical Skill assignments and current eligibility are intentionally separate p
 The authoritative value is `FMatchPlayState::CurrentAttack.ActionPoint`. It belongs to the active current attack, so all card projections in that attack evaluate against the same value. `FFMCodexLocalMatchInteractionViewBuilder` performs the projection after resolving the player's authored-order SkillIds through the canonical Skill Rule Snapshot. UMG only copies the resolved collection and must not compare Tactical Point values with ranges.
 
 The projection preserves authored order, does not clamp Tactical Point, and does not truncate output. The 40-player content validator guarantees no more than two eligible Skills per player for each authored ordinary-attack TP from 2 through 8; observing more than two at runtime is an invariant violation. With no active current attack, no Skill is projected as currently eligible. Full Card continues to receive all static Skills, while Hand Micro and Drag Proxy remain unaffected. Pitch Mini visual consumption is deferred to its production-presentation stage.
+
+
+## Stage 8.3B — configurable defaults and biography truth
+
+Current config/runtime schema is **3**; balanceContentVersion remains Prototype40_v1 because no balance field changed. `presentation.defaultShirtNumber` is explicit configurable data: 0 means absent, otherwise 1–99 and unique per team. All current 40 records are populated with provisional fictional numbers. The importer validates and copies values; runtime never assigns them from roster position, serial or PlayerKey. Reordering rows does not renumber players. Optional source-side omission generates 0.
+
+The runtime catalog holds DefaultShirtNumber outside CoreRules player snapshots. Shared UI projection resolves an explicit AssignedPlayerNumber first, then this default, otherwise empty. No assignment editor/save/RPC is introduced. Hand/Full display policy and Pitch suppression belong to Player Card Family v1.1 in Shared_Portrait_Art_Contract_v1.md.
+
+The same presentation sidecar remains the sole source for optional nationality, birthDate, heightCm and weightKg. Each is present for 16/40 and absent for 24/40; club/team and position cover 40/40. All existing values project correctly. No additional biography source was recovered. Missing Full fields now display — in a fixed four-row bio panel, without writing placeholders into data. The ignored RosterDataCompleteness JSON/Markdown is planning evidence for later product completion, not another configuration source.

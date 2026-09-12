@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parent.parent
 class PitchMiniPilotTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.players=[e for e in load_catalog(ROOT) if is_canonical(e)]
+        cls.players=[e for e in load_catalog(ROOT) if is_canonical(e) and e.get('pilotStage') == '8.2A']
     def test_four_shared_outputs_reproduce_independently_of_full(self):
         self.assertEqual(len(self.players),4)
         for e in expand_runtime_entries(self.players,('Shared',)):
@@ -18,8 +18,8 @@ class PitchMiniPilotTest(unittest.TestCase):
                 data=encode_runtime_derivative(master_path(ROOT,e),runtime_size(e),resolved_crop(e),pitch_composition(e))
                 self.assertEqual(data,runtime_derivative_path(ROOT,e).read_bytes())
                 self.assertEqual(record['dimensions'],[512,768])
-                self.assertEqual(record['pitchCompositionProfile'],'QuietPitchBust_v1')
-                self.assertEqual(record['visualStatus'],'PENDING USER PIE')
+                self.assertEqual(record['pitchCompositionProfile'],'QuietPitchBust_v2')
+                self.assertEqual(record['visualStatus'],'USER PIE ACCEPTED')
                 self.assertNotEqual(runtime_derivative_path(ROOT,e), runtime_derivative_path(ROOT,dict(e,runtimeRole='Full')))
     def test_shared_first_activation_preserves_accepted_hand(self):
         records=json.loads((ROOT/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json').read_text(encoding='utf-8'))['entries']

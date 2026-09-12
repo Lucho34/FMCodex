@@ -27,12 +27,14 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_BukayoSaka_FullCardPilot_02.png",
         "sourceSha256": "26E33271423856456A7DB9B59625A62CA750890C725158EED602B6CEB2E4BD35",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand/Shared-Pitch/Full USER PIE accepted; Player Card Family v1 frozen at b9774ec; rights provenance unchanged"
       },
       "cropOverrideReason": "Accepted Hand bust framing: normalized source-space crop restores readable facial prominence without widget offsets.",
       "handCompositionProfile": "BalancedBust_v2",
-      "pitchCompositionProfile": "QuietPitchBust_v1",
-      "pitchCropReason": "Stage 8.2B.1: 0.55-height source guide enlarges head/face by 16.4% versus 0.64; retain crown, shoulders and recognizable upper shirt. Existing two crown offsets retained; no per-widget transform. Restrained shared stadium background; pending USER PIE."
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.MartinOdegaard",
@@ -78,23 +80,85 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_DavidRaya_FullCardPilot_02.png",
         "sourceSha256": "C2469574D4503FC96F4C3F5B701394EDFDA85A3F63AECDF7060FBD75FA124558",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand/Shared-Pitch/Full USER PIE accepted; Player Card Family v1 frozen at b9774ec; rights provenance unchanged"
       },
       "handCompositionProfile": "BalancedBust_v2",
-      "pitchCompositionProfile": "QuietPitchBust_v1",
-      "pitchCropReason": "Stage 8.2B.1: 0.55-height source guide enlarges head/face by 16.4% versus 0.64; retain crown, shoulders and recognizable upper shirt. Existing two crown offsets retained; no per-widget transform. Restrained shared stadium background; pending USER PIE."
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_MylesLewisSkelly_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.MylesLewisSkelly/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "0BF1AA131D7BFBE4505539ABDB2F68B033D67AAD34E6652A1AD08B8F20D8DADC",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
+      "migrationStage": "8.3A",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct repository key/team association; complete crown/hair, neck, bilateral shoulders and useful chest, 1024x1536 opaque RGB. Original fictional identity retained without real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_MylesLewisSkelly_01.png",
+        "sourceSha256": "0BF1AA131D7BFBE4505539ABDB2F68B033D67AAD34E6652A1AD08B8F20D8DADC",
+        "originIdentity": "Prototype.Arsenal.MylesLewisSkelly",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.GabrielMartinelli",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_GabrielMartinelli_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.GabrielMartinelli/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "D8D4EB7B16C09D40A43E4B41CC6B37DE22EE16172E9C5728AFAD79E48866F922",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
+      "migrationStage": "8.3A",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct repository key/team association; complete crown/hair, neck, bilateral shoulders and useful chest, 1024x1536 opaque RGB. Original fictional identity retained without real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_GabrielMartinelli_01.png",
+        "sourceSha256": "D8D4EB7B16C09D40A43E4B41CC6B37DE22EE16172E9C5728AFAD79E48866F922",
+        "originIdentity": "Prototype.Arsenal.GabrielMartinelli",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.ViktorGyokeres",
@@ -122,7 +186,37 @@
           "visualStatus": "TECHNICALLY CONFORMING — SUPERSEDED BY V3 COMPOSITION REFINEMENT",
           "reason": "Kit visibility and frozen-crop compatibility passed, but comparison with Haaland v2 found Gabriel slightly low/distant, with excess upper-chest dominance and weaker face prominence."
         }
-      ]
+      ],
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.GabrielMagalhaes/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "644CDB840BBD83869A93716FE0178EF9E526E06F9B902C5A80EA57D2E93D056C",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
+      "migrationStage": "8.3A",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct repository key/team association; complete crown/hair, neck, bilateral shoulders and useful chest, 1024x1536 opaque RGB. Original fictional identity retained without real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_GabrielMagalhaes_01.png",
+        "sourceSha256": "644CDB840BBD83869A93716FE0178EF9E526E06F9B902C5A80EA57D2E93D056C",
+        "originIdentity": "Prototype.Arsenal.GabrielMagalhaes",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.MikelMerino",
@@ -152,7 +246,37 @@
       "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_RiccardoCalafiori_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.RiccardoCalafiori/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "B2623D24768E5B0DE9E6E99DFF09754F22BFCFB0B2B24B8524FE6C80E5A76F33",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
+      "migrationStage": "8.3A",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct repository key/team association; complete crown/hair, neck, bilateral shoulders and useful chest, 1024x1536 opaque RGB. Original fictional identity retained without real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_RiccardoCalafiori_01.png",
+        "sourceSha256": "B2623D24768E5B0DE9E6E99DFF09754F22BFCFB0B2B24B8524FE6C80E5A76F33",
+        "originIdentity": "Prototype.Arsenal.RiccardoCalafiori",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.EberechiEze",
@@ -220,17 +344,49 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01.png",
         "sourceSha256": "16E00870B6FCDA4DFA790124CA8DEA7167965EBAB8BCA3EAEAE5675110CEED63",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand/Shared-Pitch/Full USER PIE accepted; Player Card Family v1 frozen at b9774ec; rights provenance unchanged"
       },
       "handCompositionProfile": "BalancedBust_v2",
-      "pitchCompositionProfile": "QuietPitchBust_v1",
-      "pitchCropReason": "Stage 8.2B.1: 0.55-height source guide enlarges head/face by 16.4% versus 0.64; retain crown, shoulders and recognizable upper shirt. Existing two crown offsets retained; no per-widget transform. Restrained shared stadium background; pending USER PIE."
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
       "team": "ManchesterCity",
       "assetName": "T_Prototype_ManchesterCity_JoskoGvardiol_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.JoskoGvardiol/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "DC3368377FA57E391CCE80B76D788B9C1ABEA4C5236C0068EDF6B19096F958DC",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
+      "migrationStage": "8.3A",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct repository key/team association; complete crown/hair, neck, bilateral shoulders and useful chest, 1024x1536 opaque RGB. Original fictional identity retained without real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_JoskoGvardiol_01.png",
+        "sourceSha256": "DC3368377FA57E391CCE80B76D788B9C1ABEA4C5236C0068EDF6B19096F958DC",
+        "originIdentity": "Prototype.ManchesterCity.JoskoGvardiol",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.ManchesterCity.BernardoSilva",
@@ -242,7 +398,37 @@
       "playerKey": "Prototype.ManchesterCity.JeremyDoku",
       "team": "ManchesterCity",
       "assetName": "T_Prototype_ManchesterCity_JeremyDoku_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.JeremyDoku/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "0D0EEBC1F1369D9287E7851F4F0225C6F0608F4F2B91FA04671FD31E2E40BEA3",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
+      "migrationStage": "8.3A",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct repository key/team association; complete crown/hair, neck, bilateral shoulders and useful chest, 1024x1536 opaque RGB. Original fictional identity retained without real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_JeremyDoku_01.png",
+        "sourceSha256": "0D0EEBC1F1369D9287E7851F4F0225C6F0608F4F2B91FA04671FD31E2E40BEA3",
+        "originIdentity": "Prototype.ManchesterCity.JeremyDoku",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
@@ -275,11 +461,13 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_Rodri_FullCardPilot_02.png",
         "sourceSha256": "7B49DBCF667225ACA2CDCA80F2961C7E9E26A6E742D18950DE46511126955654",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand/Shared-Pitch/Full USER PIE accepted; Player Card Family v1 frozen at b9774ec; rights provenance unchanged"
       },
       "handCompositionProfile": "BalancedBust_v2",
-      "pitchCompositionProfile": "QuietPitchBust_v1",
-      "pitchCropReason": "Stage 8.2B.1: 0.55-height source guide enlarges head/face by 16.4% versus 0.64; retain crown, shoulders and recognizable upper shirt. Existing two crown offsets retained; no per-widget transform. Restrained shared stadium background; pending USER PIE."
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.ManchesterCity.RubenDias",
@@ -289,7 +477,37 @@
     {
       "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",
       "team": "ManchesterCity",
-      "assetName": "T_Prototype_ManchesterCity_GianluigiDonnarumma_01"
+      "assetName": "T_Prototype_ManchesterCity_GianluigiDonnarumma_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.GianluigiDonnarumma/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "DD0755D5BCC519705219692ACA7E1979FB51538850D9F83BEAD6A5219BF14B3E",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
+      "migrationStage": "8.3A",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct repository key/team association; complete crown/hair, neck, bilateral shoulders and useful chest, 1024x1536 opaque RGB. Original fictional identity retained without real-player likeness assessment. Use the documented same-key City-family goalkeeper shirt revision instead of the generic dark training top."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_GianluigiDonnarumma_FullCardPilot_02.png",
+        "sourceSha256": "DD0755D5BCC519705219692ACA7E1979FB51538850D9F83BEAD6A5219BF14B3E",
+        "originIdentity": "Prototype.ManchesterCity.GianluigiDonnarumma",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing fictional production candidate reused; source gate passed under user-confirmed prototype identity policy; Hand/Shared-Pitch/Full USER PIE ACCEPTED; Player Card Family v1.1 frozen for roster migration; rights provenance unchanged"
+      },
+      "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     }
   ]
 }

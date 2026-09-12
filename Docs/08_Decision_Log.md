@@ -1521,3 +1521,34 @@ All accepted C.3 geometry, alignment, name/skill/footer spacing, neutral structu
 Preserve accepted C.4 everywhere outside the four-pilot biography. Narrow its width from 104 to 96, retaining six-unit horizontal padding. Following C.5 review, the user explicitly approved an additional two-unit right shift: the right margin becomes 18 from the card edge (10 inside the hero), while top anchor, width, text and internal spacing remain fixed. A one-point primary-date adjustment (13→12) keeps all current dates readable inside the 84-unit lane; labels, other values, vertical layout and backing remain unchanged. This generic rule gives Raya and Haaland additional portrait space without player exceptions or portrait changes. See the Full Card spec C.5 section for text-fit tradeoffs and bounded reversal.
 
 No new resources, loading changes, Hand/Pitch changes or gameplay/network/CoreRules changes. Retain three-skill 516/524 capacity and C.4 numeric centering, caption treatment, frames and footer. Focused Full tests and one real four-player review provide engineering evidence only. Stage 8.2C stays OPEN, READY FOR FINAL USER PIE; user acceptance and manual staging/commit remain separate.
+
+
+## 2026-09-12 — Stage 8.2 family acceptance status synchronized for 8.3A
+
+The user confirms Stage 8.2A Hand, 8.2B Pitch Mini and 8.2C Full (including C.5 and its two-unit biography follow-up) accepted and committed at b9774ec5e7b0af401618c716ace59d3f65d863e3, with Stage 8.2D family audit closed. Player Card Family v1 is frozen for roster migration. Synchronize current four-pilot manifest/provenance acceptance and current specification banners; preserve earlier pending/deferred entries as historical records. This changes no portrait bytes, crop/profile, import recipe, runtime geometry, player data or diagnostic defaults.
+
+Stage 8.3A authorizes only the eight named Batch-1 candidates. Each new source must pass its identity/composition gate before Master creation or runtime activation; prior prototype coverage or a matching filename alone is not source approval. New batch art still requires its own USER PIE.
+
+
+## 2026-09-12 — Stage 8.3A fictional identity clarification and Batch-1 activation
+
+The user explicitly defines source identity as canonical PlayerKey ownership and one consistent fictional person across Master/Hand/Shared-Pitch/Full, not resemblance to a real footballer. Retain the valid P2 acceptance synchronization. Re-evaluate existing art under that policy; seven candidates pass source association and composition checks, while Nathan Ake remains SOURCE_MISSING with no substitute or activation.
+
+Copy the seven retained sources to revision-1 Masters and derive all three frozen purposes. Select Donnarumma’s existing City-family goalkeeper shirt revision; use the current same-key Shared sources for Gabriel Magalhaes, Lewis-Skelly, Calafiori, Gvardiol, Doku and Martinelli. Apply the common accepted Hand/Pitch guides and uncropped Full recipe without generator or per-player Widget changes. Extend only the explicit seven-key runtime allowlist; retain old files and all non-migrated routes. See Shared Portrait Art Contract §23 for exact inventory and recipe.
+
+Batch-1 derivatives remain PENDING USER PIE despite engineering verification. Original four-pilot acceptance stays frozen. No invented shirt numbers, player data changes, family redesign, gameplay/network changes, legacy deletion, Batch 2 or automatic staging/commit.
+
+
+## 2026-09-12 — Stage 8.3B global Player Card Family v1.1
+
+The user authorizes global rules, not individual visual patches. Keep all valid uncommitted 8.3A work and the 11-key allowlist. Replace the canonical Pitch background for all 11 players with QuietPitchBust_v2 (source-derived restrained stadium environment; no repeated symmetric lamps or head halo), and make it mandatory/default for future canonical generation. Preserve all Masters and actual Hand/Full images/packages; update generator provenance only with byte-reproduction proof. No new crop exceptions or Batch 2 migration.
+
+Shirt numbers become explicit public presentation configuration: schema-3 defaultShirtNumber, 0 absent or team-unique 1–99. Populate all 40 provisional fictional values once, preserving Raya 1, Saka 7, Haaland 9, Rodri 16. Explicit AssignedPlayerNumber overrides the default. No number from serial/order/key, no gameplay/save/network mutation. Hand uses its optional area, Full its number plate plus independent collection footer; Pitch stays quiet.
+
+The biography audit confirms genuine source absence for 24/40 players, not DTO omission. Keep source data unchanged; Full uses four stable rows and localized — for absent values, including nationality/club supplement placeholders. Any missing requested portrait uses one reusable neutral Slate silhouette; no fabricated face, borrowed art, placeholder Master, or player conditionals. Existing long-name rules remain generic. The spec records family/surface/metadata/source categories. v1 remains accepted history; changed v1.1 visuals require USER PIE.
+
+## 2026-09-12 — Stage 8.3A + 8.3B USER PIE acceptance and metadata closeout
+
+The user explicitly confirms USER PIE PASS for Stage 8.3A and Stage 8.3B. Player Card Family v1.1 is the current accepted/frozen roster-migration standard: seven Batch-1 canonical families and all 11 current Shared/Pitch outputs under QuietPitchBust_v2 are accepted. This entry supersedes the pending acceptance recorded in the earlier 8.3A/8.3B checkpoints; those entries remain historical. The original four pilots and Family v1 remain accepted history. Nathan Ake remains SOURCE_MISSING with no canonical activation; Batch 2 has not started.
+
+Synchronize only current manifest/provenance acceptance, related test expectations and current documentation. Correct the crop description: generic default and nine current players [0,.055,1,.55], while Saka/Haaland retain their pre-existing accepted [0,.115,1,.55] metadata. No art bytes, crop metadata, generator, routing, player numbers, biography values, runtime behavior or gameplay/network contract changes. Future new/changed art still returns to pending until a new USER PIE acceptance; unchanged accepted outputs retain acceptance. Staging/commit remain manual.

@@ -1,4 +1,5 @@
 #include "FMCodexFullCardDiagnostics.h"
+#include "FMCodexPrototypeTeamContent.h"
 
 #include "HAL/IConsoleManager.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
@@ -8,7 +9,7 @@ namespace
 #if !UE_BUILD_SHIPPING
     TAutoConsoleVariable<int32> CVarFullCardSampleNumbers(
         TEXT("FMCodex.UI.FullCardSampleNumbers"), 0,
-        TEXT("DEV Full hover only: 1=sample empty pilot shirt numbers (Saka 7, Rodri 16, Raya 1, Haaland 9); "
+        TEXT("DEV Full hover only: 1=resolve an empty review field from configured defaults; "
              "0=actual production assignments. Re-enter hover after changing. Never updates Hand/Pitch or roster."),
         ECVF_Cheat);
 #endif
@@ -55,10 +56,7 @@ void FMCodexFullCardDiagnostics::ApplySampleNumber(FFMCodexUMGCardViewModel& Rev
 {
 #if !UE_BUILD_SHIPPING
     if (!ReviewModel.AssignedPlayerNumber.IsEmpty()) return;
-    // Stable catalog identities, not review page order or collection serials.
-    if (ReviewModel.CardId == TEXT("Prototype.Arsenal.BukayoSaka")) ReviewModel.AssignedPlayerNumber = TEXT("7");
-    else if (ReviewModel.CardId == TEXT("Prototype.ManchesterCity.Rodri")) ReviewModel.AssignedPlayerNumber = TEXT("16");
-    else if (ReviewModel.CardId == TEXT("Prototype.Arsenal.DavidRaya")) ReviewModel.AssignedPlayerNumber = TEXT("1");
-    else if (ReviewModel.CardId == TEXT("Prototype.ManchesterCity.ErlingHaaland")) ReviewModel.AssignedPlayerNumber = TEXT("9");
+    ReviewModel.AssignedPlayerNumber = FFMCodexPrototypeTeamContent::ResolvePlayerNumber(
+        ReviewModel.CardId, ReviewModel.AssignedPlayerNumber);
 #endif
 }

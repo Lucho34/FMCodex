@@ -20,7 +20,7 @@ class HandCompactPilotTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.catalog = load_catalog(ROOT)
-        cls.players = [e for e in cls.catalog if is_canonical(e)]
+        cls.players = [e for e in cls.catalog if is_canonical(e) and e.get('pilotStage') == '8.2A']
 
     def fixture(self, root, players):
         for e in players:

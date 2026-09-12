@@ -11502,9 +11502,9 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
         SakaSource->OnDetailHoverDismissed.Broadcast(SakaSource);
         SampleNumbers->Set(0,ECVF_SetByCode);
         SakaSource->OnDetailHoverRequested.Broadcast(SakaSource);
-        TestTrue(TEXT("Returning to production hides the full empty number plate"),
-            SourceNumber.IsEmpty() && Plate->GetVisibility() == ESlateVisibility::Collapsed
-            && Detail->GetPresentation().AssignedPlayerNumber.IsEmpty());
+        TestTrue(TEXT("Production retains configured number independently of DEV CVar"),
+            SourceNumber == TEXT("7") && Plate->GetVisibility() != ESlateVisibility::Collapsed
+            && Detail->GetPresentation().AssignedPlayerNumber == SourceNumber);
         SakaSource->OnDetailHoverDismissed.Broadcast(SakaSource);
         SampleNumbers->Set(PreviousSampleValue,ECVF_SetByCode);
     }
@@ -11634,7 +11634,10 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 	};
     const TSet<FName> ExpectedCanonicalFullArt = {
         TEXT("Prototype.Arsenal.BukayoSaka"), TEXT("Prototype.Arsenal.DavidRaya"),
-        TEXT("Prototype.ManchesterCity.Rodri"), TEXT("Prototype.ManchesterCity.ErlingHaaland")};
+        TEXT("Prototype.ManchesterCity.Rodri"), TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+        TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"), TEXT("Prototype.Arsenal.GabrielMagalhaes"),
+        TEXT("Prototype.ManchesterCity.JoskoGvardiol"), TEXT("Prototype.ManchesterCity.JeremyDoku"),
+        TEXT("Prototype.Arsenal.GabrielMartinelli")};
     int32 CanonicalFullCount = 0;
 	int32 DedicatedFullCardArtCount = 0;
 	int32 MissingFullCardArtCount = 0;
@@ -11727,8 +11730,8 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 	TestTrue(TEXT("Full Card art audit is exactly 16 dedicated and 0 missing"),
 		bArtBoundaryIsHonest && DedicatedFullCardArtCount == 16
 			&& MissingFullCardArtCount == 0
-			&& FullCardPilotArtCount == 1
-			&& FullCardHeroBustArtCount == 11 && CanonicalFullCount == 4);
+			&& FullCardPilotArtCount == 0
+			&& FullCardHeroBustArtCount == 7 && CanonicalFullCount == 9);
 	TestTrue(TEXT("In-Match position uses compact slash notation"),
 		FFMCodexPlayerUIPresentationText::InMatchCompactRole(TEXT("GK"))
 			.ToString() == TEXT("GK")
