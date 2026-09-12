@@ -1478,3 +1478,46 @@ Apply one equal-width owner outline, a weak neutral inner edge, silver-gray whol
 Preserve the 8.2B.1 portrait scale, Chinese information row and tactical cues. Generator revision 8 strengthens only localized, defocused head/shoulder stadium banks in the same four Shared derivatives; keep base navy exposure, crop metadata and all Hand/Full art unchanged. Image B's white/high-exposure lighting is expressly not the target.
 
 Retain one owner-colored 3-unit frame, weaken the inner neutral line and add a narrow unfilled dark contact contour within the existing slot inset. Use a bounded Rec.709 readability transform on the rendered accent only, preserving arbitrary user color identity and the existing validated fallback. No stored-color, gameplay, networking or interaction mutation. Verify only the changed color/render/background contracts and directly affected Hand generator bytes; keep Stage 8.2B OPEN pending USER PIE. See Pitch Mini visual target and Shared Portrait contract section 21.
+
+## 2026-09-12 — Stage 8.2C Full Card unified pilot
+
+Implement only Saka, Rodri, Raya and Haaland on the user-specified 25879cd baseline. Their independent canonical Full 768×1152 paths activate through the unchanged Master/derivative generator; Hand/Pitch Masters, outputs, packages and per-role recipes remain fixed. Older deferred-Full entries are historical scope boundaries. No full-roster migration or legacy asset removal.
+
+Retain 360×540 hover geometry and all shared authority/interaction contracts. Full uses restrained rarity contours, native navy panels, two-column attribute capsules and real skill rows. Raya retains six goalkeeper attributes. Optional AssignedPlayerNumber is separate from the actual collection serial; production numbers stay empty, while existing non-Shipping review pages 4/6 use explicitly labeled transient samples. Omit an invented collection denominator and the reference's heavy glow/ornament. See the Full Card spec Stage 8.2C section and Shared Portrait Art Contract §22.
+
+Full textures load for intentional Full hover/review, with inactive-purpose brush/member clearing and the existing hidden hover/review cache behavior. No promise of immediate memory release, Shipping package reduction or mobile validation. Stage result remains READY FOR USER PIE / NOT CLOSED until user visual acceptance; final staging and commit are manual.
+
+
+## 2026-09-12 — Stage 8.2C.1: Refine Full pilot linework and panels
+
+Refine the existing four-player Full pilot inside the unchanged 360×540 hover contract. A Full-only native Border subclass draws restrained chamfered biography/identity/section surfaces, an optional angled jersey-number plate, hexagonal attribute chips and coherent skill rows. Strengthen numeric/name/section hierarchy and use lighter rarity perimeter strokes instead of the concept's heavy luminous metal. Ordinary Border fallback is explicit on legacy/purpose rebind; Hand and Pitch rendering are unchanged.
+
+All text remains runtime-driven; Saka's DEV sample is 7, absent production numbers hide the entire plate, and the collection footer uses the actual serial without a fabricated total. Keep all Master/Hand/Shared/Full bytes and routes, portrait UVs, authority, networking and hover/drag lifecycle. No new art, Blueprint, material or icon system. See the Full Card visual specification's 8.2C.1 section for controlled deviations and bounded reversal. Engineering tests/screenshots do not close the visual stage: READY FOR USER PIE / NOT CLOSED; manual staging and commit remain with the user.
+
+
+## 2026-09-12 — Stage 8.2C.2: Target geometry and actual hover number convergence
+
+Treat TARGET_FULL_CARD_STYLE as the primary geometric/layout specification, not a general mood board. Continue the current dirty C/C.1 implementation on main at 25879cd, freezing the accepted Hand/Pitch baselines. Derive nested chamfers, shared section seams, title interruptions, attribute gutter/divider, biography inset and angled identity/number plate from that target. Reduce outer luminous metal weight and use existing native Full surfaces; keep all four pilots' art bytes and resource routes fixed.
+
+The supplied no-number ordinary hover exposed a DEV coverage gap: sample 7 existed only on independent review page 4. Add an explicitly enabled, non-Shipping FullCardSampleNumbers switch that applies the same identity-based samples to a copied actual-hover DTO; preserve real nonempty assignments and never mutate source Hand/Pitch or authority. Empty production numbers still hide the whole plate. Verify actual rendered single/double-digit numbers and ancestor visibility, not only the field. Keep the 360×540 size with >=8 units measured three-skill capacity margin and honest 10/6 attributes and 0–3 skills. See the Full Card spec C.2 section for exact constants, deviations and reversible scope. Stage 8.2C remains OPEN, READY FOR USER PIE only; no staging or commit.
+
+
+## 2026-09-12 — Stage 8.2C.3: Full Card precision layout
+
+Preserve the current dirty C/C.1/C.2 pilot on the specified main baseline. Refine only the existing Full typography, padding and line hierarchy: a stable left rating module, fixed centered numeric chip/plate lanes, more readable biography/identity padding, visible symmetric chapter rules, centered skill rows and a quieter safely inset footer. No per-player or per-number offsets; a bounded three-skill biography spacing rule preserves fact visibility above the name band without changing portrait sampling or total card size.
+
+Use rarity for the actual outer frame and number accent, and one desaturated cool neutral for internal structure. Prevent underlying kit colors from leaking into the attributes seam with an opaque narrow navy bed. This deliberately departs from the concept's gold interior lines under the user's explicit C.3 hierarchy requirement. Keep 516/524 measured three-skill capacity, four pilots, real Chinese UI fields, the optional independent kit number and honest serial. No art/resource/pipeline, loading lifecycle, Hand/Pitch, gameplay, networking or CoreRules changes. See the Full Card spec C.3 section for precise rules and bounded reversal. Stage 8.2C stays OPEN; engineering evidence is READY FOR USER PIE, never user acceptance or permission to stage/commit.
+
+
+## 2026-09-12 — Stage 8.2C.4: Final Full Card micro polish candidate
+
+Preserve C.3 and narrow the pilot bio panel from its left edge only: 112→104 units, unchanged top/right anchors, six-unit horizontal padding preserving the existing 92-unit data lane, and shorter decorative separators. This generic rule improves Raya-like face clearance without player-specific offsets, portrait edits or moving the panel into the frame. Protect 总能力值 over bright lamps with lighter glyphs and a one-unit dark navy outline, restoring the legacy text treatment on rebind.
+
+All accepted C.3 geometry, alignment, name/skill/footer spacing, neutral structure, rarity/stat semantics and 516/524 capacity remain fixed. No new resource, loading, Hand/Pitch, gameplay/network/disclosure/CoreRules change. See the Full Card spec C.4 section. Intended final visual refinement; Stage 8.2C remains OPEN and is only READY FOR FINAL USER PIE until the user accepts the freeze. Staging/commit remain manual.
+
+
+## 2026-09-12 — Stage 8.2C.5: Final biography face clearance
+
+Preserve accepted C.4 everywhere outside the four-pilot biography. Narrow its width from 104 to 96, retaining six-unit horizontal padding. Following C.5 review, the user explicitly approved an additional two-unit right shift: the right margin becomes 18 from the card edge (10 inside the hero), while top anchor, width, text and internal spacing remain fixed. A one-point primary-date adjustment (13→12) keeps all current dates readable inside the 84-unit lane; labels, other values, vertical layout and backing remain unchanged. This generic rule gives Raya and Haaland additional portrait space without player exceptions or portrait changes. See the Full Card spec C.5 section for text-fit tradeoffs and bounded reversal.
+
+No new resources, loading changes, Hand/Pitch changes or gameplay/network/CoreRules changes. Retain three-skill 516/524 capacity and C.4 numeric centering, caption treatment, frames and footer. Focused Full tests and one real four-player review provide engineering evidence only. Stage 8.2C stays OPEN, READY FOR FINAL USER PIE; user acceptance and manual staging/commit remain separate.

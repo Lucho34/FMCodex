@@ -300,7 +300,7 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 	const auto ApplyDedicatedHandMicroPortrait =
 		[this, CardId](FFMCodexPlayerUICardArtReferences& Target)
 		{
-			// Only Hand is migrated. Keep the existing Portrait/Full/frame/icon routes.
+			// Four canonical pilots have independent Hand, PitchMini and Full purposes.
 			static const TSet<FName> CanonicalHandPilot = {
 				TEXT("Prototype.Arsenal.BukayoSaka"), TEXT("Prototype.ManchesterCity.Rodri"),
 				TEXT("Prototype.Arsenal.DavidRaya"), TEXT("Prototype.ManchesterCity.ErlingHaaland")};
@@ -313,6 +313,9 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 				const FString PitchName = FString::Printf(TEXT("T_%s_Shared"), *Token);
                 Target.PitchMiniPortrait = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(FString::Printf(
                     TEXT("/Game/UI/Portraits/PrototypeTeams/Canonical/%s/%s.%s"), *Token, *PitchName, *PitchName)));
+                const FString FullName = FString::Printf(TEXT("T_%s_Full"), *Token);
+                Target.FullCardPortrait = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(FString::Printf(
+                    TEXT("/Game/UI/Portraits/PrototypeTeams/Canonical/%s/%s.%s"), *Token, *FullName, *FullName)));
 				Target.bCanonicalPlayerArt = true;
 				Target.HandMicroPortraitTop = 0.0f;
 				Target.HandMicroPortraitUVHeight = 1.0f;

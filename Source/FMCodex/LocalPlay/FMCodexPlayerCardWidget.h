@@ -145,6 +145,8 @@ private:
 	void RefreshVisuals();
 	void RefreshPresentationArt();
 	void RefreshPilotSurfaces();
+	void RefreshFullCardPilot();
+	bool bFullCardPilot = false;
 	void RefreshBiography();
 	void RefreshSkills();
 	void RefreshAttributes();
@@ -331,6 +333,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PlayerFacingSerialText;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UTextBlock> FullCardAssignedNumberText;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UTextBlock> FullCardCollectionText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> BiographyRegion;

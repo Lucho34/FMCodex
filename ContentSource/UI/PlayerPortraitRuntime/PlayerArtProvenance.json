@@ -20,7 +20,7 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_BukayoSaka_FullCardPilot_02.png",
         "sourceSha256": "26E33271423856456A7DB9B59625A62CA750890C725158EED602B6CEB2E4BD35",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full migration deferred; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
       },
       "roles": {
         "Hand": {
@@ -82,12 +82,36 @@
           "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition",
           "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
           "visualStatus": "PENDING USER PIE"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.BukayoSaka/Full.png",
+          "runtimeDerivativeSha256": "6620037B7095DAA25F328ACD65EE4E76E0897D7D36B860109E9F88BC652EF77E",
+          "bytes": 1241084,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_BukayoSaka/T_Prototype_Arsenal_BukayoSaka_Full.T_Prototype_Arsenal_BukayoSaka_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "PENDING USER PIE"
         }
       },
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "PENDING USER PIE",
-        "Full": "DEFERRED"
+        "Full": "PENDING USER PIE"
       }
     },
     {
@@ -109,7 +133,7 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_DavidRaya_FullCardPilot_02.png",
         "sourceSha256": "C2469574D4503FC96F4C3F5B701394EDFDA85A3F63AECDF7060FBD75FA124558",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full migration deferred; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
       },
       "roles": {
         "Hand": {
@@ -171,12 +195,36 @@
           "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition",
           "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
           "visualStatus": "PENDING USER PIE"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.Arsenal.DavidRaya/Full.png",
+          "runtimeDerivativeSha256": "8FAB3141CEA8F222F3F2E89DF2FE82A50DA8479642190DD563C9970C44372791",
+          "bytes": 1358036,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_Arsenal_DavidRaya/T_Prototype_Arsenal_DavidRaya_Full.T_Prototype_Arsenal_DavidRaya_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "PENDING USER PIE"
         }
       },
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "PENDING USER PIE",
-        "Full": "DEFERRED"
+        "Full": "PENDING USER PIE"
       }
     },
     {
@@ -198,7 +246,7 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01.png",
         "sourceSha256": "16E00870B6FCDA4DFA790124CA8DEA7167965EBAB8BCA3EAEAE5675110CEED63",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full migration deferred; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
       },
       "roles": {
         "Hand": {
@@ -260,12 +308,36 @@
           "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition",
           "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
           "visualStatus": "PENDING USER PIE"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.ErlingHaaland/Full.png",
+          "runtimeDerivativeSha256": "5FA54712144FF0F199A2E7AF05A0DA3A5D341B35C90B71F8F3CDD11A8BF5FE42",
+          "bytes": 1293267,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Full.T_Prototype_ManchesterCity_ErlingHaaland_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "PENDING USER PIE"
         }
       },
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "PENDING USER PIE",
-        "Full": "DEFERRED"
+        "Full": "PENDING USER PIE"
       }
     },
     {
@@ -287,7 +359,7 @@
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_Rodri_FullCardPilot_02.png",
         "sourceSha256": "7B49DBCF667225ACA2CDCA80F2961C7E9E26A6E742D18950DE46511126955654",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full migration deferred; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full pilot pending USER PIE; rights provenance unchanged"
       },
       "roles": {
         "Hand": {
@@ -349,12 +421,36 @@
           "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition",
           "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
           "visualStatus": "PENDING USER PIE"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.Rodri/Full.png",
+          "runtimeDerivativeSha256": "1DE6CC71CEBA8B87F5E9983669E9DAD15B7BD5BCA064A4A15B80CD63BF16CDDD",
+          "bytes": 1187887,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_Rodri/T_Prototype_ManchesterCity_Rodri_Full.T_Prototype_ManchesterCity_Rodri_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "PENDING USER PIE"
         }
       },
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "PENDING USER PIE",
-        "Full": "DEFERRED"
+        "Full": "PENDING USER PIE"
       }
     }
   ]

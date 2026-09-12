@@ -214,14 +214,14 @@ bool FFMCodexSharedPortraitGoldenSampleRoutingTest::RunTest(
 				!= Gabriel.Portrait.ToSoftObjectPath());
 	TestTrue(TEXT("Haaland dedicated Full Card route remains isolated"),
 		Haaland.FullCardPortrait.ToSoftObjectPath().ToString().Contains(
-			TEXT("T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01"))
+			TEXT("/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Full."))
 			&& Haaland.FullCardPortrait.ToSoftObjectPath()
 				!= Haaland.Portrait.ToSoftObjectPath());
 	TestTrue(TEXT("Both Hand Micro and Drag Proxy sources remain isolated"),
 		Gabriel.HandMicroPortrait.ToSoftObjectPath().ToString().Contains(
 			TEXT("GabrielMagalhaes_HandMicro_ApprovedRuntime192"))
 			&& Haaland.HandMicroPortrait.ToSoftObjectPath().ToString().Contains(
-				TEXT("ErlingHaaland_HandMicro_ApprovedRuntime192"))
+				TEXT("/Canonical/Prototype_ManchesterCity_ErlingHaaland/T_Prototype_ManchesterCity_ErlingHaaland_Hand."))
 			&& Gabriel.HandMicroPortrait.ToSoftObjectPath()
 				!= Gabriel.Portrait.ToSoftObjectPath()
 			&& Haaland.HandMicroPortrait.ToSoftObjectPath()

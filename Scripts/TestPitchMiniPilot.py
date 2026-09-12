@@ -10,7 +10,7 @@ class PitchMiniPilotTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.players=[e for e in load_catalog(ROOT) if is_canonical(e)]
-    def test_four_shared_outputs_reproduce_and_full_stays_absent(self):
+    def test_four_shared_outputs_reproduce_independently_of_full(self):
         self.assertEqual(len(self.players),4)
         for e in expand_runtime_entries(self.players,('Shared',)):
             with self.subTest(player=e['playerKey']):
@@ -20,7 +20,7 @@ class PitchMiniPilotTest(unittest.TestCase):
                 self.assertEqual(record['dimensions'],[512,768])
                 self.assertEqual(record['pitchCompositionProfile'],'QuietPitchBust_v1')
                 self.assertEqual(record['visualStatus'],'PENDING USER PIE')
-                self.assertFalse(runtime_derivative_path(ROOT,dict(e,runtimeRole='Full')).exists())
+                self.assertNotEqual(runtime_derivative_path(ROOT,e), runtime_derivative_path(ROOT,dict(e,runtimeRole='Full')))
     def test_shared_first_activation_preserves_accepted_hand(self):
         records=json.loads((ROOT/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json').read_text(encoding='utf-8'))['entries']
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ,{'FMCODEX_PLAYER_ART_RUNTIME_ROLES':'Shared'}):
@@ -30,7 +30,7 @@ class PitchMiniPilotTest(unittest.TestCase):
                 for path in (master_path(ROOT,e),runtime_derivative_path(ROOT,dict(e,runtimeRole='Hand'))):
                     target=root/path.relative_to(ROOT);target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(path,target)
                 record=copy.deepcopy(next(r for r in records if r['playerKey']==e['playerKey']))
-                record['roles'].pop('Shared');prior.append(record)
+                record['roles'].pop('Shared');record['roles'].pop('Full',None);prior.append(record)
             generator=root/'Scripts/GenerateSharedPortraitRuntimeDerivatives.py';generator.parent.mkdir(parents=True)
             shutil.copyfile(ROOT/'Scripts/GenerateSharedPortraitRuntimeDerivatives.py',generator)
             provenance=root/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json'

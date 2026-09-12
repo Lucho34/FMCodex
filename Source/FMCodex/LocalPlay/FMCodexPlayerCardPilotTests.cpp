@@ -1,4 +1,5 @@
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexFullCardSurface.h"
 #include "FMCodexPlayerUIAssetReferences.h"
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
@@ -13,6 +14,7 @@
 #include "FMCodexPlayerCardSurface.h"
 #include "FMCodexDeploymentDragDropOperation.h"
 #include "Components/SizeBox.h"
+#include "Components/OverlaySlot.h"
 #include "UObject/UObjectIterator.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -86,7 +88,7 @@ bool FFMCodexHandCompactPilotTest::RunTest(const FString&)
         TestNull(TEXT("Hand does not acquire unused skill icon"),Card->GetResolvedLongShotSkillIconTexture());
         const auto Art = FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Model.CardId);
         TestFalse(TEXT("Shared route remains legacy"), Art.Portrait.ToSoftObjectPath().ToString().Contains(TEXT("/Canonical/")));
-        TestFalse(TEXT("Full route remains legacy"), Art.FullCardPortrait.ToSoftObjectPath().ToString().Contains(TEXT("/Canonical/")));
+        TestTrue(TEXT("Full pilot has its own canonical route"), Art.FullCardPortrait.ToSoftObjectPath().ToString().Contains(TEXT("/Canonical/")));
         for (const auto Mode : {EFMCodexPlayerCardPresentationMode::PitchMini, EFMCodexPlayerCardPresentationMode::InteractionChoice})
         {
             Card->RefreshFromPresentation(Model,Mode);
@@ -94,7 +96,7 @@ bool FFMCodexHandCompactPilotTest::RunTest(const FString&)
             if (TestNotNull(TEXT("Existing non-Hand portrait resolves"),Card->GetResolvedPortraitTexture()))
                 TestEqual(TEXT("Non-Hand uses retained production route"),Card->GetResolvedPortraitTexture()->GetPathName(),Expected.ToSoftObjectPath().ToString());
             TestFalse(TEXT("Hand surface does not activate for other modes"),Card->IsCanonicalCardFamily());
-            TestTrue(TEXT("No new number display outside Hand"),Card->GetWidgetFromName(TEXT("AssignedPlayerNumber"))->GetVisibility()==ESlateVisibility::Collapsed);
+            TestTrue(TEXT("Hand number node stays hidden outside Hand"),Card->GetWidgetFromName(TEXT("AssignedPlayerNumber"))->GetVisibility()==ESlateVisibility::Collapsed);
             Card->RefreshFromPresentation(Model,EFMCodexPlayerCardPresentationMode::HandMicro);
             TestEqual(TEXT("Returning to Hand restores original small texture"),Card->GetResolvedHandMicroPortraitTexture(),Texture);
             TestNull(TEXT("Returning to Hand clears larger member"),Card->GetResolvedPortraitTexture());
@@ -172,4 +174,168 @@ bool FFMCodexHandCompactPilotTest::RunTest(const FString&)
     Card->RemoveFromParent(); GEngine->DestroyWorldContext(World); World->DestroyWorld(false);
     return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexFullCardUnifiedPilotTest,
+    "FMCodex.LocalPlay.UI.FullCardUnifiedPilot.NumberAndPurposeIsolation",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
+{
+    UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
+    if (!TestNotNull(TEXT("Full pilot world"), World)) return false;
+    GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+    UFMCodexPlayerCardWidget* Card = CreateWidget<UFMCodexPlayerCardWidget>(World);
+    if (!Card) { GEngine->DestroyWorldContext(World); World->DestroyWorld(false); return false; }
+    Card->TakeWidget();
+    for (const TCHAR* Key : {TEXT("Prototype.Arsenal.BukayoSaka"),TEXT("Prototype.Arsenal.DavidRaya"),
+        TEXT("Prototype.ManchesterCity.Rodri"),TEXT("Prototype.ManchesterCity.ErlingHaaland")})
+    {
+        FFMCodexUMGCardViewModel Model;
+        Model.CardId = Key; Model.IdentityLabel = TEXT("测试姓名");
+        Model.PlayerFacingSerialLabel = TEXT("015");
+        Model.RarityLabel = TEXT("Legendary");
+        FFMCodexUMGAttributeViewModel Stat; Stat.CanonicalLabel = TEXT("SHO"); Stat.Value = 5;
+        Model.AttributeValues.Add(Stat);
+        FFMCodexUMGSkillViewModel Skill; Skill.CanonicalLabel = TEXT("Crossing");
+        Skill.MinTriggerActionPoint = 4; Skill.MaxTriggerActionPoint = 6;
+        Model.Skills.Add(Skill);
+        Card->RefreshFromPresentation(Model, EFMCodexPlayerCardPresentationMode::InteractionChoice);
+        auto CheckSurface = [this,Card](const TCHAR* Name, EFMCodexFullCardSurface Kind)
+        {
+            auto* Surface = Cast<UFMCodexFullCardSurface>(Card->GetWidgetFromName(Name));
+            TestTrue(FString::Printf(TEXT("Full geometry contract: %s"), Name),
+                Surface != nullptr && Surface->GetSurface() == Kind);
+        };
+        CheckSurface(TEXT("InMatchFullCardBiographyRegion"), EFMCodexFullCardSurface::Biography);
+        CheckSurface(TEXT("CardIdentityRegion"), EFMCodexFullCardSurface::Identity);
+        CheckSurface(TEXT("AttributePresentationRegion"), EFMCodexFullCardSurface::Attributes);
+        CheckSurface(TEXT("AttributeCell0"), EFMCodexFullCardSurface::AttributeRow);
+        CheckSurface(TEXT("AttributeTierBadge0"), EFMCodexFullCardSurface::Value);
+        CheckSurface(TEXT("FullCardSkillRow0"), EFMCodexFullCardSurface::SkillRow);
+        CheckSurface(TEXT("FullCardSkillRange0"), EFMCodexFullCardSurface::Range);
+        TestTrue(TEXT("Empty shirt number hides its entire plate"),
+            Card->GetWidgetFromName(TEXT("FullCardNumberPlateBounds"))->GetVisibility() == ESlateVisibility::Collapsed);
+        auto* Full = Card->GetResolvedPortraitTexture();
+        if (TestNotNull(TEXT("Full has a dedicated derivative"), Full))
+            TestEqual(TEXT("Full runtime resolution"), Full->GetImportedSize(), FIntPoint(768,1152));
+        TestNull(TEXT("Full does not acquire Hand"), Card->GetResolvedHandMicroPortraitTexture());
+        TestNull(TEXT("Full does not acquire unused frame"), Card->GetResolvedCardFrameTexture());
+        TestNull(TEXT("Full does not acquire unused role icon"), Card->GetResolvedRoleIconTexture());
+        TestNull(TEXT("Full does not acquire unused skill icon"), Card->GetResolvedLongShotSkillIconTexture());
+        for (const TCHAR* Node : {TEXT("HandMicroFaceSafePortrait"),TEXT("PitchMiniPortraitImage")})
+            TestNull(TEXT("Full clears inactive purpose brushes"),CastChecked<UImage>(Card->GetWidgetFromName(Node))->GetBrush().GetResourceObject());
+        auto* Number = CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("FullCardAssignedNumber")));
+        auto* Collection = CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("FullCardCollectionLine")));
+        TestTrue(TEXT("Unassigned number stays hidden despite serial"),Number->GetVisibility()==ESlateVisibility::Collapsed);
+        TestTrue(TEXT("Collection uses real serial without invented denominator"),Collection->GetText().ToString().EndsWith(TEXT("015"))
+            && !Collection->GetText().ToString().Contains(TEXT("/290")));
+        Model.AssignedPlayerNumber = TEXT("99");
+        Card->RefreshFromPresentation(Model,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+        TestEqual(TEXT("Independent number update"),Number->GetText().ToString(),FString(TEXT("99")));
+        TestTrue(TEXT("Assigned number becomes visible"),Number->GetVisibility()==ESlateVisibility::HitTestInvisible);
+        TestEqual(TEXT("Number updates reuse Full art"),Card->GetResolvedPortraitTexture(),Full);
+        const TSharedRef<SWidget> NumberSlate = Card->TakeWidget();
+        NumberSlate->SlatePrepass();
+        TestTrue(TEXT("Two-digit kit number fits its actual text lane"),
+            Number->GetDesiredSize().X > 0 && Number->GetDesiredSize().X <= 43.f);
+        TestTrue(TEXT("Assigned number reveals its independent plate"),
+            Card->GetWidgetFromName(TEXT("FullCardNumberPlateBounds"))->GetVisibility() == ESlateVisibility::HitTestInvisible);
+        CheckSurface(TEXT("FullCardNumberPlate"), EFMCodexFullCardSurface::Number);
+        for (const auto Mode : {EFMCodexPlayerCardPresentationMode::HandMicro,EFMCodexPlayerCardPresentationMode::PitchMini})
+        {
+            Card->RefreshFromPresentation(Model,Mode);
+            TestTrue(TEXT("Full footer hides on mode switch"),Collection->GetVisibility()==ESlateVisibility::Collapsed);
+            TestTrue(TEXT("Full number hides on mode switch"),Number->GetVisibility()==ESlateVisibility::Collapsed);
+            for (const TCHAR* Node : {TEXT("InMatchFullCardBiographyRegion"), TEXT("CardIdentityRegion"),
+                TEXT("AttributePresentationRegion"), TEXT("SkillPresentationRegion"), TEXT("FullCardNumberPlate")})
+                CheckSurface(Node, EFMCodexFullCardSurface::None);
+            TestTrue(TEXT("Other purpose hides the complete number plate"),
+                Card->GetWidgetFromName(TEXT("FullCardNumberPlateBounds"))->GetVisibility() == ESlateVisibility::Collapsed);
+            TestNull(TEXT("Full portrait brush released by other purposes"),CastChecked<UImage>(Card->GetWidgetFromName(TEXT("PortraitAssetImage")))->GetBrush().GetResourceObject());
+            TestTrue(TEXT("Other purpose never holds Full member"),Card->GetResolvedPortraitTexture()!=Full);
+        }
+    }
+    // Rebind the same live widget: geometry must not depend on the digit/player.
+    auto Precision = Card->GetPresentation();
+    Precision.bHasOverallRating = true;
+    float RatingModuleWidth = 0.f;
+    FMargin NumberPadding;
+    FVector2D NumberTranslation;
+    const TCHAR* KitNumbers[] = {TEXT("1"),TEXT("7"),TEXT("9"),TEXT("16")};
+    const int32 Ratings[] = {93,97,99,100};
+    const TCHAR* Dates[] = {TEXT("1995.09.15"),TEXT("2000.07.21"),TEXT("1996.06.22"),TEXT("2001.09.05")};
+    for (int32 Case = 0; Case < 4; ++Case)
+    {
+        Precision.AssignedPlayerNumber = KitNumbers[Case];
+        Precision.OverallRating = Ratings[Case];
+        Precision.BirthDate = Dates[Case];
+        Precision.HeightCm = 195; Precision.WeightKg = 87; Precision.RoleLabel = TEXT("M/D");
+        Card->RefreshFromPresentation(Precision,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+        const TSharedRef<SWidget> Slate = Card->TakeWidget(); Slate->SlatePrepass();
+        const auto* Number = CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("FullCardAssignedNumber")));
+        const auto* Plate = CastChecked<UBorder>(Card->GetWidgetFromName(TEXT("FullCardNumberPlate")));
+        const float Lane = CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("FullCardNumberPlateBounds")))->GetWidthOverride()
+            - Plate->GetPadding().Left - Plate->GetPadding().Right;
+        const auto* Rating = CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("OverallNumber")));
+        const float GroupWidth = Card->GetWidgetFromName(TEXT("InMatchFullCardOverallGroup"))->GetDesiredSize().X;
+        if (Case == 0) { RatingModuleWidth=GroupWidth; NumberPadding=Plate->GetPadding(); NumberTranslation=Number->GetRenderTransform().Translation; }
+        TestEqual(TEXT("Rating module stays fixed through 93/97/99/100"),GroupWidth,RatingModuleWidth);
+        const auto* BioBounds = CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("InMatchFullCardBiographyBounds")));
+        const auto* BioSlot = CastChecked<UOverlaySlot>(BioBounds->Slot);
+        const auto* Bio = CastChecked<UBorder>(Card->GetWidgetFromName(TEXT("InMatchFullCardBiographyRegion")));
+        const float BioTextWidth = BioBounds->GetWidthOverride() - Bio->GetPadding().Left - Bio->GetPadding().Right;
+        TestTrue(TEXT("Bio keeps its top anchor and approved right safety margin"),
+            BioBounds->GetWidthOverride() == 96.f && BioSlot->GetHorizontalAlignment() == HAlign_Right
+            && BioSlot->GetPadding().Top == 18.f && BioSlot->GetPadding().Right == 10.f
+            && Bio->GetPadding().Left == 6.f && Bio->GetPadding().Right == 6.f);
+        for (const TCHAR* Fact : {TEXT("BiographyBirthDate"),TEXT("BiographyHeight"),TEXT("BiographyWeight"),TEXT("BiographyPosition")})
+        for (const TCHAR* Part : {TEXT("Label"),TEXT("Value")})
+        {
+            const auto* Text = CastChecked<UTextBlock>(Card->GetWidgetFromName(FName(*(FString(Fact)+Part))));
+            TestTrue(FString::Printf(TEXT("Bio %s%s fits %.2f within %.2f"),Fact,Part,Text->GetDesiredSize().X,BioTextWidth),
+                !Text->GetAutoWrapText() && Text->GetDesiredSize().X > 0.f && Text->GetDesiredSize().X <= BioTextWidth);
+        }
+        const auto* Date = CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("BiographyBirthDateValue")));
+        AddInfo(FString::Printf(TEXT("Bio date %s: measured %.2f / %.2f units, font %.1f"),
+            Dates[Case], Date->GetDesiredSize().X, BioTextWidth, Date->GetFont().Size));
+        TestTrue(TEXT("Legal rating is readable inside the common module"),Rating->GetDesiredSize().X <= GroupWidth
+            && Rating->GetText().ToString() == FString::FromInt(Ratings[Case]));
+        TestTrue(TEXT("All kit numbers fit a centered lane with rendering slack"),
+            Number->GetDesiredSize().X > 0 && Number->GetDesiredSize().X + 4.f <= Lane
+            && Plate->GetVerticalAlignment() == VAlign_Center);
+        TestTrue(TEXT("Kit alignment has no digit-specific padding/translation"),
+            Plate->GetPadding()==NumberPadding && Number->GetRenderTransform().Translation.Equals(NumberTranslation));
+    }
+    for (int32 Digit = 1; Digit <= 6; ++Digit)
+    {
+        Precision.AttributeValues[0].Value = Digit;
+        Card->RefreshFromPresentation(Precision,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+        const TSharedRef<SWidget> Slate = Card->TakeWidget(); Slate->SlatePrepass();
+        const auto* Value = CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("AttributeValue0")));
+        const auto* Badge = CastChecked<UBorder>(Card->GetWidgetFromName(TEXT("AttributeTierBadge0")));
+        const auto* Bounds = CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("AttributeValueBounds0")));
+        TestTrue(TEXT("Every tier digit fits the same centered value body"),
+            Value->GetDesiredSize().X + 4.f <= Bounds->GetWidthOverride()
+            && Value->GetDesiredSize().Y <= Bounds->GetHeightOverride()
+            && Badge->GetVerticalAlignment()==VAlign_Center);
+    }
+    auto Legacy = Card->GetPresentation(); Legacy.CardId=TEXT("Prototype.Arsenal.MikelMerino");
+    Card->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+    for (const TCHAR* Node : {TEXT("InMatchFullCardBiographyRegion"), TEXT("CardIdentityRegion"),
+        TEXT("AttributePresentationRegion"), TEXT("SkillPresentationRegion"), TEXT("FullCardNumberPlate"),
+        TEXT("AttributeTierBadge0"), TEXT("FullCardSkillRange0")})
+    {
+        const auto* Surface = Cast<UFMCodexFullCardSurface>(Card->GetWidgetFromName(Node));
+        TestTrue(TEXT("Legacy rebind restores ordinary Border fallback"),
+            Surface != nullptr && Surface->GetSurface() == EFMCodexFullCardSurface::None);
+    }
+    TestEqual(TEXT("Full-only caption protection clears on legacy rebind"),
+        CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("OverallLabel")))->GetFont().OutlineSettings.OutlineSize,0);
+    TestEqual(TEXT("Legacy rating typography restored"),
+        CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("OverallNumber")))->GetFont().Size,44.f);
+    TestEqual(TEXT("Legacy Full hero is restored"),CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("PortraitAssetBounds")))->GetHeightOverride(),320.f);
+    TestTrue(TEXT("Legacy Full footer remains unchanged"),Card->GetWidgetFromName(TEXT("FullCardCollectionLine"))->GetVisibility()==ESlateVisibility::Collapsed);
+    Card->RemoveFromParent();GEngine->DestroyWorldContext(World);World->DestroyWorld(false);
+    return true;
+}
+
 #endif

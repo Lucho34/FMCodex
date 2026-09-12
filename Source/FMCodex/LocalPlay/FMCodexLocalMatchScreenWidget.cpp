@@ -2028,8 +2028,13 @@ void UFMCodexLocalMatchScreenWidget::ShowDetailOverlay(
 		return;
 	}
 	DetailHoverSource = SourceCard;
+    FFMCodexUMGCardViewModel DetailModel = SourceCard->GetPresentation();
+#if !UE_BUILD_SHIPPING
+    if (FMCodexFullCardDiagnostics::IsHoverSampleNumbersEnabled())
+        FMCodexFullCardDiagnostics::ApplySampleNumber(DetailModel);
+#endif
 	DetailOverlayCard->RefreshFromPresentation(
-		SourceCard->GetPresentation(),
+		DetailModel,
 		EFMCodexPlayerCardPresentationMode::InteractionChoice);
 	DetailOverlayCard->SetVisibility(ESlateVisibility::HitTestInvisible);
 	PositionDetailOverlay(SourceCard);
@@ -3214,6 +3219,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshFullCardProductionReviewSurface()
 		AddUnique(FindCandidate(
 			TEXT("Prototype.ManchesterCity.Rodri")));
 	}
+    else if (ReviewPage == 5)
+    {
+        AddUnique(FindCandidate(TEXT("Prototype.Arsenal.DavidRaya")));
+        AddUnique(FindCandidate(TEXT("Prototype.ManchesterCity.ErlingHaaland")));
+    }
 	else
 	{
 		const FFMCodexUMGCardViewModel* StressBase = FindCandidate(
@@ -3263,8 +3273,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshFullCardProductionReviewSurface()
 		GetWidgetFromName(TEXT("FullCardProductionReviewTitle"))))
 	{
 		ReviewTitle->SetText(FText::FromString(FString::Printf(
-			TEXT("IN-MATCH FULL CARD — 360x540 VISUAL REVIEW — PAGE %d/5"),
-			ReviewPage + 1)));
+			TEXT("Full Card 视觉检查 %d/6 · 360×540%s"),
+			ReviewPage + 1, (ReviewPage == 3 || ReviewPage == 5) ? TEXT(" · DEV 样例球衣号码") : TEXT(""))));
 	}
 	const FFMCodexUMGCardViewModel* ShortName = nullptr;
 	const FFMCodexUMGCardViewModel* LongName = nullptr;
@@ -3326,7 +3336,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshFullCardProductionReviewSurface()
 				UFMCodexPlayerCardWidget::StaticClass(),
 				FName(*FString::Printf(TEXT("FullCardProductionReviewCard%d"),
 					Index)));
-		Card->RefreshFromPresentation(*Selected[Index],
+        FFMCodexUMGCardViewModel ReviewModel = *Selected[Index];
+        // Transient display samples only; never update roster, number assignments or authority.
+        if (ReviewPage == 3 || ReviewPage == 5)
+            FMCodexFullCardDiagnostics::ApplySampleNumber(ReviewModel);
+		Card->RefreshFromPresentation(ReviewModel,
 			EFMCodexPlayerCardPresentationMode::InteractionChoice);
 		Card->TakeWidget();
 		if (UUniformGridSlot* GridSlot =
