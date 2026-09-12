@@ -762,3 +762,64 @@ Jersey and kit-color correction is **DEFERRED TO PORTRAIT ARTWORK COVERAGE
 STAGE**. No club tint, skin tint, image shader or other kit-color manipulation
 is introduced in Widget code. The remaining gates are manual PIE review,
 40-player portrait coverage, and portrait kit/background art consistency.
+
+
+## 19. Stage 8.2B Pitch Mini pilot — pending USER PIE
+
+Status: IMPLEMENTED CANDIDATE, not visually accepted or CLOSED. Scope is Saka, Rodri, Raya and Haaland only. Image A is the current-engine baseline; Image B supplies direction. The existing portrait-above/identity-below composition follows the actual target image, despite the accompanying left-person/right-information wording. No horizontal Hand layout is introduced.
+
+### Implementation specification at 1920x1080
+
+- Preserve 136x140 card, 130x134 interior, 130x112 portrait and 130x22 bottom row; 148x148 Slot, hit testing, deployment and tactical zones are unchanged. DPI scaling remains native.
+- Pilot outer border: one continuous rounded outline, radius 5, uniform 3 units, sourced from the projected player/side color. No thick individual side rail or top fragment. The existing Slot feedback layer remains independent.
+- Color source: FFMCodexUMGSidePrimaryColors -> existing ownership projection -> PitchMiniOwnershipAccentColor. A/B defaults are examples, not renderer rules. Missing, transparent or nonfinite color falls back to neutral sRGB #6D899D; valid channels are clamped to 0..1 and the border remains opaque. No rarity or club lookup.
+- A quiet .8-unit continuous inner outline at inset 4 replaces fragmented tactical trim for this cohort. Default neutral alpha .28; real hover silver alpha .70. Existing resolved tactical match (valid count 1/2) takes precedence with #8FE6C2 at .72. Pips retain their existing 0/1/2 count, position, color and meaning. No gameplay eligibility is recomputed.
+- Portrait has offline navy RGB gradient approximately #061320 to #040C16; no stadium light blobs, additional texture, glow, metal trim or logo. Pilot tonal wash is transparent, so shirt/skin are not ownership-tinted.
+- Identity row uses opaque #071522, existing 5-unit horizontal padding, one localized preferred name (12..15 bounded font), and right-aligned position (11). No bilingual subtitle, fabricated number or new badge. AssignedPlayerNumber remains Hand's optional entry; Pitch does not add a number display in this pilot.
+- Selection/role badges, disabled behavior, hover detail, deployed-card actions and legal targets retain their existing contracts. Nonpilot cards recover legacy material and rail behavior.
+
+### Shared/Pitch art and resource boundary
+
+QuietPitchBust_v1 derives a 512x768 Shared texture from each existing 1024x1536 Master. It reuses the accepted offline silhouette extraction, samples original Master RGB proportionally once, and fits the crop guide into the unchanged global Pitch UV (1.08 zoom, focal .5/.278, frame focal .42). The entire source is positioned on the Shared canvas; there is no hard baked portrait-window edge or per-widget player transform.
+
+Explicit source crop guides: Saka/Haaland [0,.115,1,.64], Raya/Rodri [0,.055,1,.64]. These preserve crown, shoulders and upper chest. The bounded pitchCropRect/pitchCompositionProfile metadata is an intentional Stage 8.2B extension of the earlier uncropped Shared recipe. It does not change the Master, Hand composition or Full recipe.
+
+FFMCodexPlayerUICardArtReferences::PitchMiniPortrait points to the new _Shared derivative only for these four players. Existing generic Portrait and FullCardPortrait stay legacy, preventing accidental Full/PitchCompact migration. Pilot Pitch acquires no Hand/Full portrait or unused frame/skill/role textures; inactive image brushes are cleared when switching purpose. A screen may legitimately display Hand and Pitch simultaneously; this does not mean a Pitch widget loads both.
+
+Hand PNG/uasset and all Master bytes remain frozen. Generator metadata advances to version 6, Hand provenance is refreshed after identical re-encoding, and Hand USER PIE acceptance remains. Shared is PENDING USER PIE; Full remains DEFERRED. Existing separate import/validation tools use explicit PlayerKeys and RuntimeRoles Shared.
+
+### Review and intentional deviations
+
+Preserve production card density instead of enlarging to the AI reference. Use actual red/white, sky-blue and goalkeeper kits from the approved Masters rather than the reference's dark shirts. Remove its bright background lamps and top rule. Keep a small continuous tactical outline because its gameplay display meaning already exists. These changes are reversible through the four-player route/profile and local draw branch.
+
+Real 1920x1080 captures show ordinary legal deployment with default and temporary green/purple palette examples. Raya requires a defending-side goalkeeper state: a test-only opt-in review initializes a real Local authority match from explicit opening dice and the existing FullD12=4 DEV provider; production demo defaults are unchanged. Subsequent placements consume real projected DeploymentChoices through the existing screen intent methods. The alternate opening counts in that capture are actual DEV fixture results, not proposed production rules.
+
+USER PIE must confirm normal-scale face/jersey clarity, calmness on the grass, all four border sides, tactical 0/1/2 pips, hover/selection/disabled distinction and Hand/old Full continuity. No automated evidence closes this Stage. No broad gameplay/network suites, new gameplay rules, full roster, Full redesign, color settings editor, persistence or mobile cook belong to this pilot.
+
+## 20. Stage 8.2B.1 Pitch Mini refinement — pending USER PIE
+
+This section supersedes section 19's chrome, identity row and composition tokens. It refines the existing uncommitted four-player pilot; it does not activate new Hand/Full artwork or migrate the roster. A diagnoses the current render, B guides hierarchy/frame language, and C guides the head/shoulder/shirt balance.
+
+- Preserve the 136x140 card, 130x112 portrait, 130x22 identity row, 148x148 slot and existing padding/hit/deployment contracts. The current Stage 8.1 screen main area is 828 high; the older 880 literal in the geometry source test was stale. No screen layout was changed here.
+- All Pitch Mini cards, including legacy portraits, use one rounded 3-unit four-sided ownership outline and one .6-unit low-opacity neutral inner line at inset 3. The occupied slot seat is transparent; empty and legal-drop feedback are unchanged. Obsolete frame images, side rails and fragmented tactical perimeter segments are hidden. Tactical 0/1/2 pips and selected-role tags retain their projected meaning and geometry.
+- Owner color still comes from the existing safe projection. Rendering applies equal RGB gain only when the maximum linear channel is between zero and .65, bringing that peak to .65 while preserving channel ratios/hue. Bright colors and intentional black remain unchanged. This is common exposure calibration, not a side/club/rarity palette. Missing/invalid colors retain the existing neutral fallback.
+- Real enabled hover replaces the entire main outline with silver-gray sRGB #CDD7E0. Exit restores the calibrated owner outline automatically. Disabled paint uses the existing Slate disabled effect; pips and selected-role tags cannot override the hover frame.
+- Both pilot and legacy use an opaque #071522 identity surface, 3-unit horizontal padding, 2-unit separator margins, name 12..15 Medium and position 10 Medium. Name fit measures the final typeface and reserves a one-unit rounding guard. Preferred display names remain canonical; no surname parsing or per-player font choices. The five-character 格瓦迪奥尔 and M/D pair fits the fixed row.
+- Four Shared crop guides now use height .55 (previous .64), enlarging the subject by approximately 16.4%. Saka/Haaland retain top .115; Raya/Rodri retain top .055. These are the existing two crown offsets, not new player exceptions. Full crown, shoulders and a restrained amount of upper shirt remain the intent.
+- The same Shared canvas now carries a quiet navy halo and defocused low-contrast side light banks behind the original subject. No grain, strong light blobs, independent portrait source, extra runtime texture or material. This controlled interpretation keeps the reference's hierarchy within the existing production density.
+- All Pitch Mini purposes skip unused frame/Hand/role/skill textures and clear inactive large image brushes. Pilot resolves its existing canonical Shared path; legacy keeps its existing Portrait route. Intentional Full hover remains a separate load. Hand/Full and Master bytes are protected.
+
+Verification covers the five PitchMiniPresentation editor tests, the affected HandCompactPilot purpose-switch anchor, selected deterministic pipeline tests, protected hashes, incremental build/import validation and real 1920x1080 UE rendering. Color and legacy-name fixtures are explicitly transient presentation samples. Engineering screenshots and hover evidence do not substitute for USER PIE.
+
+The Shared canvas fades only unused lower-torso detail below the frozen Pitch UV, after a .025-canvas-height mip margin and across a .095-height smooth transition. This reduces source/editor-package entropy without changing visible head/shoulder/shirt framing, adding an asset, or introducing player-specific runtime behavior.
+
+## 21. Stage 8.2B.2 final visual polish — pending USER PIE
+
+Continue section 20's existing worktree and geometry. Image A is the current production/portrait-scale/text/brightness baseline. Image B is a brighter-than-desired atmosphere reference only. No portrait crop, name/role layout, pip placement, selected-role semantics, hover trigger or deployment behavior changes in this pass.
+
+- Strengthen only the offline side light banks: their axis moves from the lower shoulder region to the head/shoulder background, with slightly wider/softer lamp samples and restrained cool ambient reflection. Navy base and broad ambient exposure remain unchanged. No white halo, flare, noise, animated lighting or lower-bar exposure increase. Pilot remains the same four Master-derived 512x768 Shared textures.
+- Keep the single 3-unit owner outline. Reduce the .6-unit inner neutral line's alpha from .24 to .14 so it stays subordinate. Add one unfilled dark contact contour, radius 7, width 2, alpha .42. Its bounds extend 2 units left/right, 1 above and 3 below the card, entirely within the existing 4-unit slot inset. It paints no interior fill, changes no hit area and uses no blur/material/texture.
+- ResolvePitchMiniOwnerColor remains the unchanged validated player-color projection. ResolvePitchMiniRenderedOwnerColor is presentation-only: already-readable linear Rec.709 luminance >= .22 passes through; dim chromatic inputs receive equal RGB gain bounded by peak .72 and luminance .42, then only the minimum neutral mix needed to reach luminance .22. This preserves hue, bounds desaturation and avoids an A/B palette. Valid black becomes achromatic charcoal; missing/nonfinite/transparent input uses the existing neutral fallback. Stored player colors are never written. Repeated normalization is stable.
+- Enabled hover still substitutes the same #CDD7E0 silver-gray main outline on all sides; the subtler inner edge and contact contour apply consistently. Disabled drawing retains Slate's disabled effect. Selected-role tags and 0/1/2 tactical pips retain their independent meaning and appearance.
+
+Reduced verification: new PitchMiniPresentation.07.OwnerReadability; TestPitchMiniPilot (Shared determinism/provenance/Hand retention); only HandCompactPilotTest.test_four_hand_outputs_reproduce_with_rgb_dimensions_and_provenance; incremental Editor/UHT build; Shared-only import and independent validation; protected hashes/diff check; one new-process 1920x1080 render with non-default dark green/purple and hover/exit samples. The existing .06 goalkeeper DEV opening fixture supplies legal four-pilot deployment in that process. Reuse 8.2B.1's untouched layout/pip/purpose-switch evidence; no broad gameplay/network suites, Host/Remote or Shipping/mobile cook. Stage 8.2B remains OPEN until USER PIE and user-owned closeout.

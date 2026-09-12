@@ -6,8 +6,16 @@
 #include "FMCodexPrototypeTeamContent.h"
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
+#include "FMCodexLocalMatchDemoConfiguration.h"
+#include "FMCodexLocalMatchHostGameMode.h"
+#include "FMCodexLocalMatchPlayerController.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/Image.h"
@@ -20,6 +28,7 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include <limits>
 
 namespace FMCodexPitchMiniPresentationTests
 {
@@ -165,7 +174,7 @@ bool FFMCodexPitchMiniGeometryIdentityPortraitTest::RunTest(
 			&& Position->GetParent() == IdentityRow
 			&& Separator->GetText().ToString() == TEXT("|")
 			&& Position->GetText().ToString() == TEXT("A/M")
-			&& Position->GetFont().Size == 11
+			&& Position->GetFont().Size == 10
 			&& Name->GetFont().Size >= 12 && Name->GetFont().Size <= 15
 			&& !Name->GetAutoWrapText());
 
@@ -271,6 +280,8 @@ bool FFMCodexPitchMiniSkillStateIsolationTest::RunTest(
 		return false;
 	}
 	FFMCodexUMGCardViewModel Card = MakeCard();
+	// Legacy art shares refined chrome and unchanged tactical pip semantics.
+	Card.CardId = TEXT("Prototype.Arsenal.GabrielMartinelli");
 	UFMCodexPlayerCardWidget* PitchMini = MakeWidget(
 		*World.Get(), Card, EFMCodexPlayerCardPresentationMode::PitchMini);
 	if (!TestNotNull(TEXT("Pitch Mini widget exists"), PitchMini))
@@ -324,19 +335,19 @@ bool FFMCodexPitchMiniSkillStateIsolationTest::RunTest(
 	FLinearColor ExpectedAccent =
 		FLinearColor::FromSRGBColor(FColor(0x8F, 0xE6, 0xC2));
 	ExpectedAccent.A = 0.88f;
-	TestTrue(TEXT("One eligible Skill resolves to a static perimeter and one upper-left pip"),
+	TestTrue(TEXT("One eligible Skill keeps its upper-left pip without stacked tactical borders"),
 		PitchMini->GetRenderedSkillCount() == 0
 			&& StrokeTop != nullptr && StrokeBottom != nullptr
 			&& StrokeLeft != nullptr && StrokeRight != nullptr
-			&& StrokeTop->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& StrokeBottom->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& StrokeLeft->GetVisibility() == ESlateVisibility::HitTestInvisible
-			&& StrokeRight->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& StrokeTop->GetVisibility() == ESlateVisibility::Collapsed
+			&& StrokeBottom->GetVisibility() == ESlateVisibility::Collapsed
+			&& StrokeLeft->GetVisibility() == ESlateVisibility::Collapsed
+			&& StrokeRight->GetVisibility() == ESlateVisibility::Collapsed
 			&& StrokeTop->GetBrushColor().Equals(ExpectedAccent)
 			&& StrokeTopBounds != nullptr
 			&& StrokeTopBounds->GetHeightOverride() == 1.5f
 			&& GlowTop != nullptr
-			&& GlowTop->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& GlowTop->GetVisibility() == ESlateVisibility::Collapsed
 			&& GlowTopBounds != nullptr
 			&& GlowTopBounds->GetHeightOverride() == 3.0f
 			&& PipTopBounds != nullptr
@@ -354,7 +365,7 @@ bool FFMCodexPitchMiniSkillStateIsolationTest::RunTest(
 		Card, EFMCodexPlayerCardPresentationMode::PitchMini);
 	TestTrue(TEXT("Two eligible Skills render exactly two vertical pips without text"),
 		PitchMini->GetRenderedSkillCount() == 0
-			&& StrokeTop->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& StrokeTop->GetVisibility() == ESlateVisibility::Collapsed
 			&& PipTop->GetVisibility() == ESlateVisibility::HitTestInvisible
 			&& PipBottom->GetVisibility() == ESlateVisibility::HitTestInvisible
 			&& PitchMini->GetWidgetFromName(TEXT("PitchMiniSkillName0")) == nullptr
@@ -514,7 +525,7 @@ bool FFMCodexPitchMiniLayerAndContentContractTest::RunTest(
 			&& CardSource.Contains(TEXT("PitchMiniHeroFocalY = 0.278f"))
 			&& CardSource.Contains(TEXT("PitchMiniHeroFocalFrameY = 0.42f"))
 			&& !CardSource.Contains(TEXT("PitchMiniPortraitCrops")));
-	TestTrue(TEXT("Tactical match uses a dedicated static cyan-mint perimeter and pips"),
+	TestTrue(TEXT("Tactical match retains its static cyan-mint pip geometry"),
 		CardSource.Contains(TEXT("0x8F, 0xE6, 0xC2"))
 			&& CardSource.Contains(
 				TEXT("PitchMiniTacticalMatchStrokeThickness = 1.5f"))
@@ -537,7 +548,7 @@ bool FFMCodexPitchMiniLayerAndContentContractTest::RunTest(
 	TestTrue(TEXT("Slot and pitch external geometry remain unchanged"),
 		SlotSource.Contains(TEXT("SetWidthOverride(148.0f)"))
 			&& SlotSource.Contains(TEXT("SetHeightOverride(148.0f)"))
-			&& ScreenSource.Contains(TEXT("SetHeightOverride(880.0f)")));
+			&& ScreenSource.Contains(TEXT("SetHeightOverride(828.0f)")));
 
 	TArray<FString> ValidationErrors;
 	TestTrue(TEXT("Canonical content validates without rebalance"),
@@ -725,14 +736,14 @@ bool FFMCodexPitchMiniOwnershipAccentAndFallbackTest::RunTest(
 	const USizeBox* SelfLeftRailBounds = Cast<USizeBox>(
 		SelfWidget->GetWidgetFromName(
 			TEXT("PitchMiniOwnershipRailLeftBounds")));
-	TestTrue(TEXT("Resolved self accent renders as a three-pixel left rail"),
+	TestTrue(TEXT("Resolved self accent uses shared chrome without an extra side rail"),
 		SelfLeftRail != nullptr && SelfRightRail != nullptr
 			&& SelfLeftRailBounds != nullptr
 			&& SelfLeftRailBounds->GetWidthOverride() == 3.0f
 			&& SelfLeftRail->GetVisibility()
-				== ESlateVisibility::HitTestInvisible
+				== ESlateVisibility::Collapsed
 			&& SelfRightRail->GetVisibility() == ESlateVisibility::Collapsed
-			&& SelfLeftRail->GetBrushColor().Equals(
+			&& UFMCodexPlayerCardWidget::ResolvePitchMiniOwnerColor(SelfCard).Equals(
 				Palette.PlayerAPrimaryColor));
 
 	const UBorder* FallbackRightRail = Cast<UBorder>(
@@ -750,17 +761,17 @@ bool FFMCodexPitchMiniOwnershipAccentAndFallbackTest::RunTest(
 			&& FallbackWidget->GetRenderedSkillCount() == 0
 			&& FallbackRightRail != nullptr
 			&& FallbackRightRail->GetVisibility()
-				== ESlateVisibility::HitTestInvisible
+				== ESlateVisibility::Collapsed
 			&& FallbackSurface != nullptr
 			&& FallbackSurface->GetVisibility()
 				== ESlateVisibility::HitTestInvisible
 			&& FallbackSurface->GetBrushColor().GetLuminance() < 0.20f
 			&& TonalWash != nullptr
 			&& FMath::IsNearlyEqual(
-				TonalWash->GetBrushColor().A, 0.12f)
+				TonalWash->GetBrushColor().A, 0.0f)
 			&& FallbackTacticalStroke != nullptr
 			&& FallbackTacticalStroke->GetVisibility()
-				== ESlateVisibility::HitTestInvisible);
+				== ESlateVisibility::Collapsed);
 
 	UFMCodexPlayerCardWidget* FullCard = MakeWidget(*World.Get(), SelfCard,
 		EFMCodexPlayerCardPresentationMode::InteractionChoice);
@@ -772,6 +783,190 @@ bool FFMCodexPitchMiniOwnershipAccentAndFallbackTest::RunTest(
 			&& FullCardLeftRail->GetVisibility() == ESlateVisibility::Collapsed
 			&& FullCard->GetPresentation().Skills.Num() == 1);
 	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FFMCodexPitchMiniCanonicalPilotTest,
+    "FMCodex.LocalPlay.PitchMiniPresentation.05.CanonicalPilotColorAndPurposeIsolation",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexPitchMiniCanonicalPilotTest::RunTest(const FString& Parameters)
+{
+    using namespace FMCodexPitchMiniPresentationTests;
+    FScopedWidgetWorld World;
+    if (!TestNotNull(TEXT("Pilot world"), World.Get())) return false;
+    auto Card = MakeCard();
+    Card.bHasPitchMiniOwnershipAccent = true;
+    Card.PitchMiniOwnershipAccentColor = FLinearColor(.12f,.65f,.28f,1.f);
+    Card.PitchMiniOwnershipAccentEdge = EFMCodexUMGPitchMiniOwnershipEdge::None;
+    auto* Widget = MakeWidget(*World.Get(),Card,EFMCodexPlayerCardPresentationMode::PitchMini);
+    if (!TestNotNull(TEXT("Pilot widget"),Widget)) return false;
+    for (const TCHAR* Key : {TEXT("Prototype.Arsenal.BukayoSaka"),TEXT("Prototype.Arsenal.DavidRaya"),
+        TEXT("Prototype.ManchesterCity.Rodri"),TEXT("Prototype.ManchesterCity.ErlingHaaland")})
+    {
+        Card.CardId = Key;
+        Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::PitchMini);
+        const auto Art=FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Card.CardId);
+        auto* Pitch=Widget->GetResolvedPortraitTexture();
+        if (!TestNotNull(TEXT("Shared derivative"),Pitch)) continue;
+        TestTrue(TEXT("Only four-player Pitch pilot activates"),Widget->IsPitchMiniPilot());
+        TestEqual(TEXT("Pitch uses Shared route"),Pitch->GetPathName(),Art.PitchMiniPortrait.ToSoftObjectPath().ToString());
+        TestEqual(TEXT("Shared role resolution"),Pitch->GetImportedSize(),FIntPoint(512,768));
+        TestEqual(TEXT("Unchanged hit geometry"),Widget->GetConfiguredDimensions(),FVector2D(136,140));
+        TestNull(TEXT("Pitch does not acquire Hand"),Widget->GetResolvedHandMicroPortraitTexture());
+        TestNull(TEXT("Pitch does not acquire frame"),Widget->GetResolvedCardFrameTexture());
+        TestNull(TEXT("Pitch does not acquire role icon"),Widget->GetResolvedRoleIconTexture());
+        TestNull(TEXT("Pitch does not acquire skill icon"),Widget->GetResolvedLongShotSkillIconTexture());
+        for (const TCHAR* Name : {TEXT("PortraitAssetImage"),TEXT("HandMicroFaceSafePortrait")})
+            TestNull(TEXT("Inactive image releases resource"),CastChecked<UImage>(Widget->GetWidgetFromName(Name))->GetBrush().GetResourceObject());
+        for (int32 Count=0;Count<=2;++Count)
+        {
+            Card.PitchMiniTacticalMatchCount=Count;Card.bHasPitchMiniTacticalMatch=Count>0;
+            Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::PitchMini);
+            TestEqual(TEXT("Data-driven top pip"),Widget->GetWidgetFromName(TEXT("PitchMiniTacticalMatchPipTop"))->GetVisibility(),
+                Count>0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+            TestEqual(TEXT("Data-driven second pip"),Widget->GetWidgetFromName(TEXT("PitchMiniTacticalMatchPipBottom"))->GetVisibility(),
+                Count==2 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+            TestEqual(TEXT("No fragmented top line"),Widget->GetWidgetFromName(TEXT("PitchMiniTacticalMatchStrokeTop"))->GetVisibility(),ESlateVisibility::Collapsed);
+        }
+        TestEqual(TEXT("Owner color does not require an edge or infer rarity"),
+            UFMCodexPlayerCardWidget::ResolvePitchMiniOwnerColor(Card),Card.PitchMiniOwnershipAccentColor);
+        Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::HandMicro);
+        TestFalse(TEXT("Hand has no Pitch pilot paint"),Widget->IsPitchMiniPilot());
+        TestNull(TEXT("Hand return releases Shared"),Widget->GetResolvedPortraitTexture());
+        TestEqual(TEXT("Hand route remains accepted"),Widget->GetResolvedHandMicroPortraitTexture()->GetPathName(),Art.HandMicroPortrait.ToSoftObjectPath().ToString());
+        Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+        TestFalse(TEXT("Full has no Pitch pilot paint"),Widget->IsPitchMiniPilot());
+        TestEqual(TEXT("Full remains old production"),Widget->GetResolvedPortraitTexture()->GetPathName(),Art.FullCardPortrait.ToSoftObjectPath().ToString());
+    }
+    for (const FLinearColor Color : {FLinearColor(.1f,.7f,.3f,1.f),FLinearColor(.7f,.12f,.8f,1.f)})
+    {
+        Card.PitchMiniOwnershipAccentColor=Color;
+        TestEqual(TEXT("Player palette is honored without A/B hard coding"),UFMCodexPlayerCardWidget::ResolvePitchMiniOwnerColor(Card),Color);
+    }
+    Card.bHasPitchMiniOwnershipAccent=false;
+    const auto Fallback=UFMCodexPlayerCardWidget::ResolvePitchMiniOwnerColor(Card);
+    TestEqual(TEXT("Missing color fallback"),Fallback,FLinearColor::FromSRGBColor(FColor(109,137,157)));
+    Card.bHasPitchMiniOwnershipAccent=true;Card.PitchMiniOwnershipAccentColor=FLinearColor::Transparent;
+    TestEqual(TEXT("Transparent color fallback"),UFMCodexPlayerCardWidget::ResolvePitchMiniOwnerColor(Card),Fallback);
+    Card.CardId=TEXT("Prototype.Arsenal.GabrielMartinelli");
+    Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::PitchMini);
+    TestFalse(TEXT("Unmigrated player stays legacy"),Widget->IsPitchMiniPilot());
+    Card.CardId=TEXT("Prototype.ManchesterCity.JoskoGvardiol");
+    Card.IdentityLabel=TEXT("格瓦迪奥尔");
+    Card.RoleLabel=TEXT("M/D");
+    Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::PitchMini);
+    const auto* Name=CastChecked<UTextBlock>(Widget->GetWidgetFromName(TEXT("PitchMiniPlayerName")));
+    const auto* Role=CastChecked<UTextBlock>(Widget->GetWidgetFromName(TEXT("PitchMiniPosition")));
+    const auto* Separator=CastChecked<UTextBlock>(Widget->GetWidgetFromName(TEXT("PitchMiniIdentitySeparator")));
+    const auto Measure=FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+    const float Used=Measure->Measure(Name->GetText(),Name->GetFont()).X
+        + Measure->Measure(Role->GetText(),Role->GetFont()).X
+        + Measure->Measure(Separator->GetText(),Separator->GetFont()).X + 6.f + 4.f;
+    TestEqual(TEXT("Preferred legacy name stays complete"),Name->GetText().ToString(),FString(TEXT("格瓦迪奥尔")));
+    TestTrue(TEXT("Legacy name and position fit the fixed information row"),Used <= 130.f && Name->GetFont().Size >= 12);
+    TestNull(TEXT("Legacy Pitch also skips obsolete frame texture"),Widget->GetResolvedCardFrameTexture());
+    TestNull(TEXT("Legacy Pitch does not acquire Hand"),Widget->GetResolvedHandMicroPortraitTexture());
+
+    TestEqual(TEXT("Legacy shares refined information-row surface"),CastChecked<UBorder>(Widget->GetWidgetFromName(TEXT("PitchMiniIdentitySurface")))->GetBrushColor(),
+        FLinearColor::FromSRGBColor(FColor(7,21,34)));
+    return true;
+}
+// Opt-in review fixture: real Local authority initializes from explicit opening dice.
+// It does not alter the production demo's fixed turn contract or fabricate a View.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FFMCodexPitchMiniGoalkeeperReviewStart,
+    "FMCodex.LocalPlay.PitchMiniPresentation.06.GoalkeeperReviewStart",
+    EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexPitchMiniGoalkeeperReviewStart::RunTest(const FString& Parameters)
+{
+    if (!FParse::Param(FCommandLine::Get(), TEXT("PitchMiniGoalkeeperReview")))
+    { AddInfo(TEXT("Explicit live review opt-in required; no match changed.")); return true; }
+    for (const auto& Context : GEngine->GetWorldContexts())
+    {
+        UWorld* World=Context.World();
+        if (!World || World->WorldType!=EWorldType::Game) continue;
+        auto* Host=World->GetAuthGameMode<AFMCodexLocalMatchHostGameMode>();
+        auto* Controller=Cast<AFMCodexLocalMatchPlayerController>(World->GetFirstPlayerController());
+        if (!Host || !Controller) continue;
+        auto Demo=FFMCodexLocalMatchDemoConfigurationFactory::Create();
+        auto& Opening=Demo.OpeningInput.OpeningInput;
+        Opening.bUseFixedPrototypeAttackTurnContract=false;
+        Opening.PlayerAAttackCountD6Roll=1;Opening.PlayerBAttackCountD6Roll=6;
+        Opening.PlayerATieBreakerRoll=1;Opening.PlayerBTieBreakerRoll=6;
+        const auto Result=Host->StartNewLocalMatch(Demo.OpeningInput,Demo.SkillRuleSet);
+        TestTrue(TEXT("Review initialized through Local authority"),Result.bSuccess);
+        Controller->RefreshPresentation();
+        TestTrue(TEXT("B attacks so A goalkeeper can be deployed legally"),
+            Controller->GetInteractionView().CurrentAttackingPlayer==EInitialTurnOrderPlayer::PlayerB);
+        FFMCodexLocalDevRollOverrideRequest Roll;
+        Roll.Target=EFMCodexLocalDevRollTarget::FullD12;Roll.Value=4;
+        TestTrue(TEXT("Ordinary deployment roll uses existing DEV provider seam"),Controller->SetLocalDevRollOverride(Roll).bSuccess);
+        AddInfo(TEXT("PITCH_GOALKEEPER_REVIEW: canonical opening evaluation; explicit DEV dice; production defaults unchanged"));
+        return true;
+    }
+    AddError(TEXT("No live LocalPlay match for goalkeeper review"));return false;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FFMCodexPitchMiniOwnerReadabilityTest,
+    "FMCodex.LocalPlay.PitchMiniPresentation.07.OwnerReadability",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexPitchMiniOwnerReadabilityTest::RunTest(const FString& Parameters)
+{
+    FFMCodexUMGCardViewModel Card;
+    Card.bHasPitchMiniOwnershipAccent = true;
+    const TArray<FLinearColor> Samples = {
+        FLinearColor::FromSRGBColor(FColor(0x4F,0x78,0x92)),
+        FLinearColor(.001f,.005f,.055f), FLinearColor(.01f,.08f,.015f),
+        FLinearColor(.035f,.003f,.07f), FLinearColor(.055f,.002f,.008f),
+        FLinearColor(0,0,1), FLinearColor(.7f,.6f,0),
+        FLinearColor(.7f,.8f,.9f), FLinearColor::Black, FLinearColor(.01f,.01f,.01f)
+    };
+    for (const FLinearColor Source : Samples)
+    {
+        Card.PitchMiniOwnershipAccentColor = Source;
+        const FLinearColor Accent = UFMCodexPlayerCardWidget::ResolvePitchMiniRenderedOwnerColor(Card);
+        const float Luminance = .2126f*Accent.R + .7152f*Accent.G + .0722f*Accent.B;
+        TestTrue(TEXT("Arbitrary dark owner accents meet perceptual readability floor"), Luminance >= .22f-UE_KINDA_SMALL_NUMBER);
+        TestTrue(TEXT("Rendered accent remains finite, in gamut and opaque"),
+            FMath::IsFinite(Luminance) && Accent.R >= 0 && Accent.G >= 0 && Accent.B >= 0
+            && Accent.R <= 1 && Accent.G <= 1 && Accent.B <= 1 && Accent.A == 1);
+        TestEqual(TEXT("Stored/projected color is never mutated"), Card.PitchMiniOwnershipAccentColor, Source);
+        const FLinearColor Before = Source.LinearRGBToHSV();
+        const FLinearColor After = Accent.LinearRGBToHSV();
+        if (Before.G > UE_KINDA_SMALL_NUMBER)
+        {
+            TestTrue(TEXT("Hue identity survives exposure and bounded neutral mix"),
+                FMath::Abs(FMath::UnwindDegrees(After.R-Before.R)) < .02f);
+            TestTrue(TEXT("Saturation remains recognizable without amplification"),
+                After.G >= Before.G*.7f && After.G <= Before.G+UE_KINDA_SMALL_NUMBER);
+        }
+        else
+        {
+            TestTrue(TEXT("Valid achromatic choices stay achromatic"),
+                FMath::IsNearlyEqual(Accent.R,Accent.G) && FMath::IsNearlyEqual(Accent.G,Accent.B));
+        }
+        Card.PitchMiniOwnershipAccentColor = Accent;
+        TestTrue(TEXT("Repeated presentation normalization does not keep brightening"),
+            UFMCodexPlayerCardWidget::ResolvePitchMiniRenderedOwnerColor(Card).Equals(Accent,UE_KINDA_SMALL_NUMBER));
+    }
+    Card.bHasPitchMiniOwnershipAccent = false;
+    const FLinearColor Fallback = UFMCodexPlayerCardWidget::ResolvePitchMiniRenderedOwnerColor(Card);
+    Card.bHasPitchMiniOwnershipAccent = true;
+    for (const FLinearColor Invalid : {FLinearColor::Transparent,
+        FLinearColor(std::numeric_limits<float>::quiet_NaN(),0,0),
+        FLinearColor(0,std::numeric_limits<float>::infinity(),0)})
+    {
+        Card.PitchMiniOwnershipAccentColor = Invalid;
+        TestEqual(TEXT("Invalid colors use the same normalized neutral fallback"),
+            UFMCodexPlayerCardWidget::ResolvePitchMiniRenderedOwnerColor(Card),Fallback);
+    }
+    Card.PitchMiniOwnershipAccentColor = FLinearColor::Black;
+    TestFalse(TEXT("Valid black is readable charcoal, not missing-color fallback"),
+        UFMCodexPlayerCardWidget::ResolvePitchMiniRenderedOwnerColor(Card).Equals(Fallback));
+    return true;
 }
 
 #endif

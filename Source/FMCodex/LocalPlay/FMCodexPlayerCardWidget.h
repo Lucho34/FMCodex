@@ -90,6 +90,9 @@ public:
 	static FBox2f CalculatePitchMiniHeroCrop(FIntPoint SourceSize);
 	bool CanExposeFullCardDetail() const;
 	bool IsCanonicalCardFamily() const { return bCanonicalCardFamily; }
+	bool IsPitchMiniPilot() const { return bPitchMiniPilot; }
+	static FLinearColor ResolvePitchMiniOwnerColor(const FFMCodexUMGCardViewModel& Card);
+	static FLinearColor ResolvePitchMiniRenderedOwnerColor(const FFMCodexUMGCardViewModel& Card);
 	FText GetRenderedAssignedNumber() const;
 	bool IsDragSourcePresentationActive() const;
 	EFMCodexUMGCardInteractionState GetInteractionState() const;
@@ -389,6 +392,7 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> AssignedNumberText;
 	bool bCanonicalCardFamily = false;
+	bool bPitchMiniPilot = false;
 	FString RenderedAttributeSummary;
 	TArray<FLinearColor> RenderedAttributeTierColors;
 	int32 RenderedBiographyRowCount = 0;

@@ -294,6 +294,11 @@ void UFMCodexPitchSlotWidget::RefreshVisuals()
 	}
 	SlotBorder->SetBrush(FSlateRoundedBoxBrush(SlotFill, 7.0f,
 		FLinearColor(0.48f, 0.65f, 0.54f, 0.19f), 0.75f));
+	// Preserve the occupied slot's padding/hit area without a second visible frame.
+	if (Presentation.bOccupied)
+	{
+		SlotBorder->SetBrush(FSlateRoundedBoxBrush(FLinearColor::Transparent, 7.0f));
+	}
 	SlotBorder->SetBrushColor(FLinearColor::White);
 
 	if (Presentation.bOccupied)

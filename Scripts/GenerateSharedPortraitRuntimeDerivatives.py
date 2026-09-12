@@ -6,12 +6,13 @@ import hashlib
 import io
 import json
 import os
+import math
 from pathlib import Path
 import sys
 
 sys.dont_write_bytecode = True
 
-from PIL import Image, ImageDraw, ImageFilter, __version__ as PILLOW_VERSION
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, __version__ as PILLOW_VERSION
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -19,7 +20,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from SharedPortraitImportCatalog import (  # noqa: E402
     is_canonical, expand_runtime_entries, runtime_size, runtime_role, runtime_asset_name,
-    hand_composition, selected_runtime_roles,
+    hand_composition, pitch_composition, selected_runtime_roles,
     resolved_crop, family_provenance_path, crop_metadata_hash,
     MASTER_SIZE,
     RUNTIME_SIZE,
@@ -87,6 +88,58 @@ def compose_balanced_bust(source, size, box):
  return result
 
 
+def compose_quiet_pitch_bust(source, size, box):
+    """Source-only composition for the frozen Pitch UV; no runtime offset/mask.
+
+    The same accepted extraction supplies original skin/kit pixels. The whole
+    Master is proportionally sampled once; the crop guide lands in the existing
+    130:112 hero window of a 512:768 Shared canvas, including shoulders/chest.
+    """
+    if size != (512, 768):
+        raise RuntimeError("QuietPitchBust_v1 is a Shared/Pitch recipe")
+    crop = [box[0]/1024, box[1]/1536, (box[2]-box[0])/1024, (box[3]-box[1])/1536]
+    mask = extract_hand_subject(source, crop)
+    # Mirrors CalculatePitchMiniHeroCrop: geometry/UV remains a global contract.
+    uv_height = ((512/768)/(130/112))/1.08
+    uv_top = .278 - uv_height*.42
+    scale = (size[1]*uv_height)/(box[3]-box[1])
+    subject_size = (round(1024*scale), round(1536*scale))
+    subject = source.resize(subject_size, Image.Resampling.LANCZOS)
+    alpha = mask.resize(subject_size, Image.Resampling.LANCZOS)
+    # One deterministic low-contrast stadium environment, baked behind the
+    # original subject into Shared. No additional runtime texture or material.
+    result = Image.new("RGB", size)
+    pixels = result.load()
+    for y in range(size[1]):
+        py = (y / size[1] - uv_top) / uv_height
+        for x in range(size[0]):
+            px = x / size[0]
+            halo = math.exp(-((px-.5)/.62)**2 - ((py-.40)/.55)**2)
+            # Modest head/shoulder stadium presence; the base exposure and navy halo
+            # stay frozen. Soft local banks remain well below white or poster lighting.
+            banks = 0.0
+            for cx in (.015, .08, .145, .855, .92, .985):
+                cy = .57 - abs(cx-.5)*.36
+                banks += math.exp(-((px-cx)/.030)**2 - ((py-cy)/.028)**2)
+            ambient = math.exp(-((py-(.57-abs(px-.5)*.36))/.085)**2)
+            pixels[x,y] = tuple(round(base + gain*halo + light*banks + wash*ambient)
+                for base,gain,light,wash in ((5,3,30,4),(14,7,40,6),(24,11,50,9)))
+    subject_top = round(size[1]*uv_top - box[1]*scale)
+    # Do not store detailed lower torso that the frozen Pitch window never sees.
+    # Keep a mip-safe margin, then smoothly fade only the unused canvas region.
+    fade_start = size[1] * (uv_top + uv_height + .025)
+    fade_end = size[1] * (uv_top + uv_height + .12)
+    coverage = Image.new("L", subject_size, 255)
+    coverage_draw = ImageDraw.Draw(coverage)
+    for y in range(subject_size[1]):
+        amount = max(0.0, min(1.0, (y + subject_top - fade_start)/(fade_end-fade_start)))
+        if amount:
+            coverage_draw.line((0,y,subject_size[0],y), fill=round(255*(1-amount)))
+    alpha = ImageChops.multiply(alpha, coverage)
+    result.paste(subject, ((size[0]-subject_size[0])//2, subject_top), alpha)
+    return result
+
+
 def encode_runtime_derivative(master: Path, size=RUNTIME_SIZE, crop=None, composition="CropOnly_v1") -> bytes:
     validate_source_png(master, MASTER_SIZE)
     with Image.open(master) as source:
@@ -102,6 +155,8 @@ def encode_runtime_derivative(master: Path, size=RUNTIME_SIZE, crop=None, compos
             box = (x*MASTER_SIZE[0], y*MASTER_SIZE[1], (x+w)*MASTER_SIZE[0], (y+h)*MASTER_SIZE[1])
         if composition == "BalancedBust_v2":
             derivative = compose_balanced_bust(source, size, box)
+        elif composition == "QuietPitchBust_v1":
+            derivative = compose_quiet_pitch_bust(source, size, box)
         else:
             derivative = source.resize(size, Image.Resampling.LANCZOS, box=box)
         if derivative.mode != "RGB" or derivative.size != size:
@@ -233,7 +288,7 @@ def generate_canonical_selected(project_root, selected):
         record = {"playerKey":entry["playerKey"], "masterSourcePath":entry["masterSourcePath"],
                   "masterDimensions":list(MASTER_SIZE), "masterSha256":sha256_file(master),
                   "masterRevision":entry["masterRevision"], "cropMetadataSha256":crop_metadata_hash(entry),
-                  "compositionProfile":entry["compositionProfile"], "generatorVersion":5,
+                  "compositionProfile":entry["compositionProfile"], "generatorVersion":8,
                   "pillowVersion":PILLOW_VERSION, "resampling":RESAMPLING_CONTRACT,
                   "encoder":ENCODER_CONTRACT, "visualStatus":"PER-ROLE ACCEPTANCE ONLY",
                   "sourceProvenance":entry.get("sourceProvenance",{}), "roles":{}}
@@ -261,10 +316,14 @@ def generate_canonical_selected(project_root, selected):
                 frozen.get("handCompositionProfile", "CropOnly_v1") != hand_composition(entry)
                 or frozen.get("generatorSha256") != sha256_file(Path(__file__))):
                 raise RuntimeError("Partial generation would stale frozen Hand recipe")
+            if frozen_role == "Shared" and (
+                frozen.get("pitchCompositionProfile", "CropOnly_v1") != pitch_composition(entry)
+                or (pitch_composition(entry) == "QuietPitchBust_v1" and frozen.get("generatorSha256") != sha256_file(Path(__file__)))):
+                raise RuntimeError("Partial generation would stale frozen Pitch recipe")
             record["roles"][frozen_role] = frozen
         for role_entry in expand_runtime_entries([entry], roles):
             role=runtime_role(role_entry);size=runtime_size(role_entry);crop=resolved_crop(role_entry)
-            composition = hand_composition(entry) if role == "Hand" else "CropOnly_v1"
+            composition = hand_composition(entry) if role == "Hand" else pitch_composition(entry) if role == "Shared" else "CropOnly_v1"
             data=encode_runtime_derivative(master,size,crop,composition)
             if data != encode_runtime_derivative(master,size,crop,composition):
                 raise RuntimeError(f"Nondeterministic {role} derivative")
@@ -278,9 +337,15 @@ def generate_canonical_selected(project_root, selected):
                 "importRecipe":"DesktopBC7OpaqueSharpen1_v1"}
             if role == "Hand":
                 record["roles"][role].update({"handCompositionProfile":composition,
-                    "generatorSha256":sha256_file(Path(__file__)),"generatorVersion":5,
+                    "generatorSha256":sha256_file(Path(__file__)),"generatorVersion":8,
                     "pillowVersion":PILLOW_VERSION,"reframing":"proportional bust framing; original Master pixels; offline seeded subject extraction" if composition == "BalancedBust_v2" else "direct aspect-preserving Master crop",
                     "foregroundExtraction":"OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations" if composition == "BalancedBust_v2" else "none"})
+            if role == "Shared":
+                record["roles"][role].update({"pitchCompositionProfile":composition,
+                    "generatorSha256":sha256_file(Path(__file__)), "generatorVersion":8,
+                    "pillowVersion":PILLOW_VERSION,
+                    "reframing":"original Master uniformly fitted to frozen 130:112 Pitch UV; full-canvas restrained stadium atmosphere and silhouette composition" if composition == "QuietPitchBust_v1" else "uncropped Master",
+                    "foregroundExtraction":"accepted seeded GrabCut mask recipe; offline only" if composition == "QuietPitchBust_v1" else "none"})
             old_role = previous_roles.get(role, {})
             unchanged = (previous is not None and previous["masterSha256"] == record["masterSha256"]
                 and previous["masterRevision"] == record["masterRevision"]

@@ -62,7 +62,7 @@ namespace FMCodexPlayerCardWidget
 	constexpr float PitchMiniTacticalMatchPipTopInset = 8.0f;
 	constexpr int32 PitchMiniNameMaximumFontSize = 15;
 	constexpr int32 PitchMiniNameMinimumFontSize = 12;
-	constexpr int32 PitchMiniRoleFontSize = 11;
+	constexpr int32 PitchMiniRoleFontSize = 10;
 	static_assert(PitchMiniPortraitHeight + PitchMiniIdentityHeight
 		== PitchMiniInteriorHeight,
 		"Pitch Mini fixed interior regions must total 134 px.");
@@ -1149,7 +1149,7 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	UBorder* PitchIdentitySurface = MakeRegion(*WidgetTree,
 		TEXT("PitchMiniIdentitySurface"),
 		FLinearColor::FromSRGBColor(FColor(0x0B, 0x20, 0x2E, 0xF2)),
-		FMargin(5.0f, 0.0f));
+		FMargin(3.0f, 0.0f));
 	UHorizontalBox* PitchIdentityRow =
 		WidgetTree->ConstructWidget<UHorizontalBox>(
 			UHorizontalBox::StaticClass(), TEXT("PitchMiniIdentityRow"));
@@ -1177,7 +1177,7 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 		PitchIdentityRow->AddChildToHorizontalBox(
 			PitchMiniIdentitySeparatorText))
 	{
-		SeparatorSlot->SetPadding(FMargin(3.0f, 0.0f));
+		SeparatorSlot->SetPadding(FMargin(2.0f, 0.0f));
 		SeparatorSlot->SetVerticalAlignment(VAlign_Center);
 	}
 	if (UHorizontalBoxSlot* RoleSlot =
@@ -1750,6 +1750,8 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		return;
 	}
 
+	bPitchMiniPilot = PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini
+		&& !FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Presentation.CardId).PitchMiniPortrait.IsNull();
 	bCanonicalCardFamily = PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro
 		&& FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Presentation.CardId).bCanonicalPlayerArt;
 	const bool bHandMicro = PresentationMode
@@ -1803,6 +1805,7 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 			FMCodexHandMicroDiagnostics::NamePaddingRight,
 			7.0f));
 	}
+	CardFrame->SetBrush(FSlateBrush());
 	CardFrame->SetPadding(bHandMicro ? FMargin(0.0f)
 		: bPitchMini ? FMargin(3.0f) : bDetailed ? FMargin(2.0f)
 			: Style.GetSectionPadding());
@@ -1842,24 +1845,9 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		&& Presentation.bHasPitchMiniOwnershipAccent
 		&& Presentation.PitchMiniOwnershipAccentEdge
 			!= EFMCodexUMGPitchMiniOwnershipEdge::None;
-	const bool bShowLeftPitchMiniOwnershipRail =
-		bHasPitchMiniOwnershipAccent
-		&& Presentation.PitchMiniOwnershipAccentEdge
-			== EFMCodexUMGPitchMiniOwnershipEdge::Left;
-	const bool bShowRightPitchMiniOwnershipRail =
-		bHasPitchMiniOwnershipAccent
-		&& Presentation.PitchMiniOwnershipAccentEdge
-			== EFMCodexUMGPitchMiniOwnershipEdge::Right;
-	PitchMiniOwnershipRailLeft->SetBrushColor(
-		Presentation.PitchMiniOwnershipAccentColor);
-	PitchMiniOwnershipRailRight->SetBrushColor(
-		Presentation.PitchMiniOwnershipAccentColor);
-	PitchMiniOwnershipRailLeft->SetVisibility(
-		bShowLeftPitchMiniOwnershipRail
-			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	PitchMiniOwnershipRailRight->SetVisibility(
-		bShowRightPitchMiniOwnershipRail
-			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	// All Pitch cards share one native ownership outline, including legacy art.
+	PitchMiniOwnershipRailLeft->SetVisibility(ESlateVisibility::Collapsed);
+	PitchMiniOwnershipRailRight->SetVisibility(ESlateVisibility::Collapsed);
 	const bool bShowSelectedRole = bPitchMini
 		&& Presentation.SelectedRole != EFMCodexUMGSelectedRole::None
 		&& !Presentation.SelectedRoleLabel.IsEmpty();
@@ -1882,8 +1870,6 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		&& bPitchMiniTacticalMatchCountValid
 		&& bPitchMiniTacticalMatchStateConsistent
 		? Presentation.PitchMiniTacticalMatchCount : 0;
-	const bool bShowPitchMiniTacticalMatch =
-		PitchMiniTacticalMatchCount > 0;
 	const bool bHandMicroTacticalMatchCountValid = ensureAlwaysMsgf(
 		Presentation.HandMicroTacticalMatchCount >= 0
 			&& Presentation.HandMicroTacticalMatchCount <= 2,
@@ -1910,9 +1896,7 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		if (Segment != nullptr)
 		{
 			Segment->SetBrushColor(TacticalMatchGlow);
-			Segment->SetVisibility(bShowPitchMiniTacticalMatch
-				? ESlateVisibility::HitTestInvisible
-				: ESlateVisibility::Collapsed);
+			Segment->SetVisibility(ESlateVisibility::Collapsed);
 		}
 	}
 	for (UBorder* Segment : PitchMiniTacticalMatchStrokeSegments)
@@ -1920,9 +1904,7 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		if (Segment != nullptr)
 		{
 			Segment->SetBrushColor(TacticalMatchAccent);
-			Segment->SetVisibility(bShowPitchMiniTacticalMatch
-				? ESlateVisibility::HitTestInvisible
-				: ESlateVisibility::Collapsed);
+			Segment->SetVisibility(ESlateVisibility::Collapsed);
 		}
 	}
 	FLinearColor TacticalMatchPipAccent = TacticalMatchAccent;
@@ -2080,9 +2062,11 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		PitchMiniIdentitySeparatorText->GetText(),
 		PitchMiniSeparatorFont, SeparatorWidth);
 	const float PitchMiniNameSafeWidth = FMath::Max(1.0f,
-		FMCodexPlayerCardWidget::PitchMiniInteriorWidth - 10.0f
-			- RoleWidth - SeparatorWidth - 6.0f);
+		FMCodexPlayerCardWidget::PitchMiniInteriorWidth - 6.0f
+			- RoleWidth - SeparatorWidth - 4.0f - 1.0f);
 	FSlateFontInfo PitchMiniNameFont = PitchMiniIdentityText->GetFont();
+	// Measure the final typeface, including its localized fallback glyph metrics.
+	PitchMiniNameFont.TypefaceFontName = TEXT("Medium");
 	PitchMiniNameFont.Size =
 		FMCodexPlayerCardWidget::GetMeasuredSingleLineFontSize(
 		PlayerName, PitchMiniNameFont, PitchMiniNameSafeWidth,
@@ -2134,6 +2118,15 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	RefreshAttributes();
 	RefreshStatusBadges();
 	RefreshPilotSurfaces();
+    // Shared information-row/chrome refinement also supports unmigrated portraits.
+    if (UBorder* Identity = Cast<UBorder>(GetWidgetFromName(TEXT("PitchMiniIdentitySurface"))))
+        Identity->SetBrushColor(FLinearColor::FromSRGBColor(FColor(7, 21, 34)));
+    if (bPitchMini)
+    {
+        CardFrame->SetBrush(FSlateRoundedBoxBrush(FLinearColor::White, 5.f));
+        CardFrame->SetBrushColor(FLinearColor::FromSRGBColor(FColor(5, 14, 23)));
+        PitchMiniPortraitTonalWash->SetBrushColor(FLinearColor::Transparent);
+    }
 }
 
 void UFMCodexPlayerCardWidget::RefreshPresentationArt()
@@ -2144,12 +2137,17 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 	ResolvedArtIdentity = Art.ArtIdentity;
 	const bool bCanonicalHand = Art.bCanonicalPlayerArt
 		&& PresentationMode == EFMCodexPlayerCardPresentationMode::HandMicro;
-	ResolvedCardFrameTexture = bCanonicalHand || Art.CardFrame.IsNull()
+	const bool bCanonicalPitch = PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini
+		&& !Art.PitchMiniPortrait.IsNull();
+	const bool bPitchMiniPurpose = PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini;
+	const bool bPurposeIsolated = bCanonicalHand || bPitchMiniPurpose;
+	ResolvedCardFrameTexture = bPurposeIsolated || Art.CardFrame.IsNull()
 		? nullptr : Art.CardFrame.LoadSynchronous();
 	const bool bPrototypePlayer = Presentation.CardId.ToString().StartsWith(
 		TEXT("Prototype."));
 	TSoftObjectPtr<UTexture2D> ActivePortrait = Art.Portrait;
-	if (bCanonicalHand) ActivePortrait.Reset();
+	if (bCanonicalHand || bCanonicalPitch) ActivePortrait.Reset();
+	if (bCanonicalPitch) ActivePortrait = Art.PitchMiniPortrait;
 	if (PresentationMode
 		== EFMCodexPlayerCardPresentationMode::InteractionChoice)
 	{
@@ -2159,15 +2157,15 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 	}
 	ResolvedPortraitTexture = ActivePortrait.IsNull()
 		? nullptr : ActivePortrait.LoadSynchronous();
-	ResolvedHandMicroPortraitTexture = Art.HandMicroPortrait.IsNull()
+	ResolvedHandMicroPortraitTexture = bPitchMiniPurpose ? nullptr : Art.HandMicroPortrait.IsNull()
 		? (bPrototypePlayer ? nullptr : ResolvedPortraitTexture.Get())
 		: Art.HandMicroPortrait.LoadSynchronous();
-	ResolvedRoleIconTexture = bCanonicalHand || Art.RoleIcon.IsNull()
+	ResolvedRoleIconTexture = bPurposeIsolated || Art.RoleIcon.IsNull()
 		? nullptr : Art.RoleIcon.LoadSynchronous();
-	ResolvedLongShotSkillIconTexture = bCanonicalHand || Art.LongShotSkillIcon.IsNull()
+	ResolvedLongShotSkillIconTexture = bPurposeIsolated || Art.LongShotSkillIcon.IsNull()
 		? nullptr : Art.LongShotSkillIcon.LoadSynchronous();
 
-	if (!bCanonicalHand && !Art.CardFrame.IsNull() && ResolvedCardFrameTexture == nullptr)
+	if (!bPurposeIsolated && !Art.CardFrame.IsNull() && ResolvedCardFrameTexture == nullptr)
 	{
 		UE_LOG(LogFMCodexPlayerCardArt, Warning,
 			TEXT("Optional card-frame asset failed to load for %s: %s"),
@@ -2181,7 +2179,7 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 			*Presentation.CardId.ToString(),
 			*ActivePortrait.ToSoftObjectPath().ToString());
 	}
-	if (!Art.HandMicroPortrait.IsNull()
+	if (!bPitchMiniPurpose && !Art.HandMicroPortrait.IsNull()
 		&& ResolvedHandMicroPortraitTexture == nullptr)
 	{
 		UE_LOG(LogFMCodexPlayerCardArt, Warning,
@@ -2190,14 +2188,14 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 			*Art.HandMicroPortrait.ToSoftObjectPath().ToString());
 		ResolvedHandMicroPortraitTexture = ResolvedPortraitTexture;
 	}
-	if (!bCanonicalHand && !Art.RoleIcon.IsNull() && ResolvedRoleIconTexture == nullptr)
+	if (!bPurposeIsolated && !Art.RoleIcon.IsNull() && ResolvedRoleIconTexture == nullptr)
 	{
 		UE_LOG(LogFMCodexPlayerCardArt, Warning,
 			TEXT("Optional role-icon asset failed to load for %s: %s"),
 			*Presentation.CardId.ToString(),
 			*Art.RoleIcon.ToSoftObjectPath().ToString());
 	}
-	if (!bCanonicalHand && !Art.LongShotSkillIcon.IsNull()
+	if (!bPurposeIsolated && !Art.LongShotSkillIcon.IsNull()
 		&& ResolvedLongShotSkillIconTexture == nullptr)
 	{
 		UE_LOG(LogFMCodexPlayerCardArt, Warning,
@@ -2206,7 +2204,7 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 			*Art.LongShotSkillIcon.ToSoftObjectPath().ToString());
 	}
 
-	if (bCanonicalHand)
+	if (bPurposeIsolated)
 	{
 		CardFrameImage->SetBrushFromTexture(nullptr);
 		PortraitImage->SetBrushFromTexture(nullptr);
@@ -2216,6 +2214,7 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 	}
 	const bool bHasFrame = ResolvedCardFrameTexture != nullptr;
 	const bool bUseFrameTexture = bHasFrame
+		&& PresentationMode != EFMCodexPlayerCardPresentationMode::PitchMini
 		&& PresentationMode != EFMCodexPlayerCardPresentationMode::HandMicro
 		&& PresentationMode
 			!= EFMCodexPlayerCardPresentationMode::InteractionChoice;
@@ -2287,7 +2286,7 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	PortraitPlaceholderText->SetVisibility(ESlateVisibility::Collapsed);
 
-	if (bCanonicalHand)
+	if (bPurposeIsolated)
 	{
 		if (PresentationMode != EFMCodexPlayerCardPresentationMode::InteractionChoice)
 			PortraitImage->SetBrushFromTexture(nullptr);
@@ -2295,6 +2294,12 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 			&& PresentationMode != EFMCodexPlayerCardPresentationMode::PitchCompact)
 			PitchMiniPortraitImage->SetBrushFromTexture(nullptr);
 	}
+	if (bCanonicalPitch)
+    {
+        // No hidden Hand/Full brush keeps another purpose's portrait alive.
+        PortraitImage->SetBrushFromTexture(nullptr);
+        HandMicroPortraitImage->SetBrushFromTexture(nullptr);
+    }
 	const bool bHasRoleIcon = ResolvedRoleIconTexture != nullptr
 		&& PresentationMode
 			!= EFMCodexPlayerCardPresentationMode::InteractionChoice;
@@ -2912,6 +2917,34 @@ int32 UFMCodexPlayerCardWidget::NativePaint(const FPaintArgs& Args, const FGeome
 	const FWidgetStyle& Style, bool bEnabled) const
 {
 	const int32 Top=Super::NativePaint(Args,G,Cull,Out,Layer,Style,bEnabled);
+	if (PresentationMode == EFMCodexPlayerCardPresentationMode::PitchMini)
+	{
+		const FVector2f Size(G.GetLocalSize());
+		const FLinearColor Tint = Style.GetColorAndOpacityTint();
+		const bool Enabled = bEnabled && GetIsEnabled();
+		const ESlateDrawEffect Effect = Enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+		// Hover replaces the entire ownership stroke; pip and selected-role signals
+		// retain their own surfaces and cannot override its four-sided highlight.
+		const FLinearColor Owner = ResolvePitchMiniRenderedOwnerColor(Presentation);
+		const FLinearColor Outer = IsHovered() && Enabled
+			? FLinearColor::FromSRGBColor(FColor(205, 215, 224)) : Owner;
+		const FSlateRoundedBoxBrush OwnerFrame(FLinearColor::Transparent, 5.f, Outer * Tint, 3.f);
+		const FSlateRoundedBoxBrush InnerFrame(FLinearColor::Transparent, 2.f,
+			FLinearColor(.15f, .21f, .26f, .14f) * Tint, .6f);
+		// NativePaint runs after child content. An unfilled contour adds contact
+		// separation without darkening the portrait/bar or needing a blur/material.
+		// The 2-unit sides and 3-unit bottom stay inside the existing 4-unit slot inset.
+		const FSlateRoundedBoxBrush ContactEdge(FLinearColor::Transparent, 7.f,
+			FLinearColor(.001f, .003f, .004f, .42f) * Tint, 2.f);
+		FSlateDrawElement::MakeBox(Out, Top+1,
+			G.ToPaintGeometry(Size+FVector2f(4,4), FSlateLayoutTransform(FVector2f(-2,-1))),
+			&ContactEdge, Effect, FLinearColor::Transparent);
+		FSlateDrawElement::MakeBox(Out, Top+2, G.ToPaintGeometry(), &OwnerFrame, Effect, FLinearColor::Transparent);
+		FSlateDrawElement::MakeBox(Out, Top+2,
+			G.ToPaintGeometry(Size-FVector2f(6,6), FSlateLayoutTransform(FVector2f(3,3))),
+			&InnerFrame, Effect, FLinearColor::Transparent);
+		return Top+2;
+	}
 	if (!bCanonicalCardFamily) return Top;
 	const FVector2f Size(G.GetLocalSize()); const float W=Size.X,H=Size.Y;
 	const bool Hand=PresentationMode==EFMCodexPlayerCardPresentationMode::HandMicro;
@@ -2938,4 +2971,46 @@ int32 UFMCodexPlayerCardWidget::NativePaint(const FPaintArgs& Args, const FGeome
         return Top+1;
     }
 	return Top;
+}
+
+FLinearColor UFMCodexPlayerCardWidget::ResolvePitchMiniOwnerColor(const FFMCodexUMGCardViewModel& Card)
+{
+    const FLinearColor C = Card.PitchMiniOwnershipAccentColor;
+    if (!Card.bHasPitchMiniOwnershipAccent || !FMath::IsFinite(C.R) || !FMath::IsFinite(C.G)
+        || !FMath::IsFinite(C.B) || !FMath::IsFinite(C.A) || C.A <= 0.f)
+        return FLinearColor::FromSRGBColor(FColor(109, 137, 157));
+    // The parameter is already the selected side color, never rarity or inferred A/B color.
+    return FLinearColor(FMath::Clamp(C.R,0.f,1.f), FMath::Clamp(C.G,0.f,1.f), FMath::Clamp(C.B,0.f,1.f),1.f);
+}
+
+FLinearColor UFMCodexPlayerCardWidget::ResolvePitchMiniRenderedOwnerColor(const FFMCodexUMGCardViewModel& Card)
+{
+	FLinearColor Accent = ResolvePitchMiniOwnerColor(Card);
+	constexpr float MinimumLuminance = .22f;
+	const float SourceLuminance = .2126f*Accent.R + .7152f*Accent.G + .0722f*Accent.B;
+	// Already-readable choices need no correction; this also makes the mapping
+	// stable if an accent is accidentally fed through presentation twice.
+	if (SourceLuminance >= MinimumLuminance - UE_SMALL_NUMBER)
+	{
+		return Accent;
+	}
+	const float Peak = FMath::Max3(Accent.R, Accent.G, Accent.B);
+	if (Peak > UE_SMALL_NUMBER && Peak < .72f)
+	{
+		// Cap exposure by both peak channel and luminance so dark greens /
+		// neutral colors do not become unnecessarily bright.
+		const float Gain = FMath::Min(.72f / Peak, .42f / FMath::Max(SourceLuminance, UE_SMALL_NUMBER));
+		Accent.R *= Gain; Accent.G *= Gain; Accent.B *= Gain;
+	}
+	// Rec.709 luminance in linear light catches saturated blue/purple, which
+	// peak-channel gain alone misses. Minimal neutral mixing preserves RGB hue
+	// ordering, limits desaturation, and maps valid black to readable charcoal.
+	const float Luminance = .2126f*Accent.R + .7152f*Accent.G + .0722f*Accent.B;
+	if (Luminance < MinimumLuminance)
+	{
+		const float Mix = (MinimumLuminance - Luminance) / (1.f - Luminance);
+		Accent = FMath::Lerp(Accent, FLinearColor::White, Mix);
+	}
+	// Presentation only: no write to the selected/stored player color.
+	return Accent;
 }

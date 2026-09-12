@@ -12,6 +12,8 @@ struct FFMCodexPlayerUICardArtReferences
 	bool bCanonicalPlayerArt = false;
 	TSoftObjectPtr<UTexture2D> CardFrame;
 	TSoftObjectPtr<UTexture2D> Portrait;
+	/** Optional canonical Shared derivative consumed only by the Pitch Mini pilot. */
+	TSoftObjectPtr<UTexture2D> PitchMiniPortrait;
 	/** Optional vertical portrait override used only by the in-match Full Card. */
 	TSoftObjectPtr<UTexture2D> FullCardPortrait;
 	/** Dedicated horizontal portrait variant used only by Hand Micro. */

@@ -90,7 +90,7 @@ bool FFMCodexHandCompactPilotTest::RunTest(const FString&)
         for (const auto Mode : {EFMCodexPlayerCardPresentationMode::PitchMini, EFMCodexPlayerCardPresentationMode::InteractionChoice})
         {
             Card->RefreshFromPresentation(Model,Mode);
-            const auto Expected = Mode == EFMCodexPlayerCardPresentationMode::PitchMini ? Art.Portrait : Art.FullCardPortrait;
+            const auto Expected = Mode == EFMCodexPlayerCardPresentationMode::PitchMini ? Art.PitchMiniPortrait : Art.FullCardPortrait;
             if (TestNotNull(TEXT("Existing non-Hand portrait resolves"),Card->GetResolvedPortraitTexture()))
                 TestEqual(TEXT("Non-Hand uses retained production route"),Card->GetResolvedPortraitTexture()->GetPathName(),Expected.ToSoftObjectPath().ToString());
             TestFalse(TEXT("Hand surface does not activate for other modes"),Card->IsCanonicalCardFamily());

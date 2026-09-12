@@ -15,16 +15,24 @@
           0.115,
           1,
           0.475
+        ],
+        "pitchCropRect": [
+          0,
+          0.115,
+          1,
+          0.55
         ]
       },
       "pilotStage": "8.2A",
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_BukayoSaka_FullCardPilot_02.png",
         "sourceSha256": "26E33271423856456A7DB9B59625A62CA750890C725158EED602B6CEB2E4BD35",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Full migration deferred; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full migration deferred; rights provenance unchanged"
       },
       "cropOverrideReason": "Accepted Hand bust framing: normalized source-space crop restores readable facial prominence without widget offsets.",
-      "handCompositionProfile": "BalancedBust_v2"
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v1",
+      "pitchCropReason": "Stage 8.2B.1: 0.55-height source guide enlarges head/face by 16.4% versus 0.64; retain crown, shoulders and recognizable upper shirt. Existing two crown offsets retained; no per-widget transform. Restrained shared stadium background; pending USER PIE."
     },
     {
       "playerKey": "Prototype.Arsenal.MartinOdegaard",
@@ -58,14 +66,23 @@
       "masterRevision": 1,
       "masterSha256": "C2469574D4503FC96F4C3F5B701394EDFDA85A3F63AECDF7060FBD75FA124558",
       "compositionProfile": "HeroBust_v1",
-      "cropOverrides": {},
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
       "pilotStage": "8.2A",
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_DavidRaya_FullCardPilot_02.png",
         "sourceSha256": "C2469574D4503FC96F4C3F5B701394EDFDA85A3F63AECDF7060FBD75FA124558",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Full migration deferred; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full migration deferred; rights provenance unchanged"
       },
-      "handCompositionProfile": "BalancedBust_v2"
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v1",
+      "pitchCropReason": "Stage 8.2B.1: 0.55-height source guide enlarges head/face by 16.4% versus 0.64; retain crown, shoulders and recognizable upper shirt. Existing two crown offsets retained; no per-widget transform. Restrained shared stadium background; pending USER PIE."
     },
     {
       "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
@@ -191,15 +208,23 @@
           0.115,
           1,
           0.475
+        ],
+        "pitchCropRect": [
+          0,
+          0.115,
+          1,
+          0.55
         ]
       },
       "pilotStage": "8.2A",
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_ErlingHaaland_FullCardHeroBust_01.png",
         "sourceSha256": "16E00870B6FCDA4DFA790124CA8DEA7167965EBAB8BCA3EAEAE5675110CEED63",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Full migration deferred; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full migration deferred; rights provenance unchanged"
       },
-      "handCompositionProfile": "BalancedBust_v2"
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v1",
+      "pitchCropReason": "Stage 8.2B.1: 0.55-height source guide enlarges head/face by 16.4% versus 0.64; retain crown, shoulders and recognizable upper shirt. Existing two crown offsets retained; no per-widget transform. Restrained shared stadium background; pending USER PIE."
     },
     {
       "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
@@ -238,14 +263,23 @@
       "masterRevision": 1,
       "masterSha256": "7B49DBCF667225ACA2CDCA80F2961C7E9E26A6E742D18950DE46511126955654",
       "compositionProfile": "HeroBust_v1",
-      "cropOverrides": {},
+      "cropOverrides": {
+        "pitchCropRect": [
+          0,
+          0.055,
+          1,
+          0.55
+        ]
+      },
       "pilotStage": "8.2A",
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_Rodri_FullCardPilot_02.png",
         "sourceSha256": "7B49DBCF667225ACA2CDCA80F2961C7E9E26A6E742D18950DE46511126955654",
-        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Full migration deferred; rights provenance unchanged"
+        "status": "Existing production artwork reused; Hand USER PIE accepted; Shared/Pitch pilot pending USER PIE; Full migration deferred; rights provenance unchanged"
       },
-      "handCompositionProfile": "BalancedBust_v2"
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v1",
+      "pitchCropReason": "Stage 8.2B.1: 0.55-height source guide enlarges head/face by 16.4% versus 0.64; retain crown, shoulders and recognizable upper shirt. Existing two crown offsets retained; no per-widget transform. Restrained shared stadium background; pending USER PIE."
     },
     {
       "playerKey": "Prototype.ManchesterCity.RubenDias",

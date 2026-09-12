@@ -1456,3 +1456,25 @@ Closeout separates the earlier unaccepted combined candidate. Before production 
 The accepted one-Master architecture remains shared. Only Hand derivatives are active in this stage. Explicit role selection, missing-future-role first generation, and validation of already-existing unselected roles make Hand independently reproducible. Generator/crop metadata hashes change as needed; accepted Master/Hand PNG/uasset bytes stay fixed. Family-level art completion is not claimed.
 
 The final commit is user-owned after focused/affected checks, incremental Editor/UHT build and a fresh Hand loading/render check. No broad gameplay/network suite, Host/Remote run, platform cook, legacy cleanup or automatic staging/commit. Reopen visual USER PIE only if separation changes accepted Hand output.
+
+
+## 2026-09-12 — Stage 8.2B Pitch Mini four-player pilot (pending USER PIE)
+
+- Saka, Rodri, Raya and Haaland alone activate a dedicated PitchMiniPortrait reference to canonical Shared 512x768. Hand remains accepted; old Full and nonpilot routes remain unchanged.
+- Ownership uses the existing parameterized side-color projection and a uniform 3-unit four-side border with neutral missing-color fallback; rarity never supplies Pitch ownership. Keep the resolved tactical 0/1/2 pips and a quieter continuous inner outline.
+- QuietPitchBust_v1 uses original Master pixels and accepted offline silhouette extraction to show shoulders/chest against navy, using bounded pitch crop metadata and the unchanged tactical UV/geometry. No separate artistic master or runtime image effects.
+- Generator version 6 refreshes provenance after byte-identical Hand reproduction. Shared remains PENDING USER PIE and Full DEFERRED. No Hand PNG/package or Master change, roster migration, gameplay/network change, color editor/persistence, or Stage 8.2C activation.
+- Real UE review includes ordinary deployment and an explicitly marked test-only goalkeeper fixture, both using authority-derived legal destinations. The fixture's opening dice and FullD12 override use existing Local initialization/provider seams; production match defaults are unchanged.
+- This entry records implementation direction, not visual acceptance. Stage 8.2B remains OPEN until USER PIE.
+
+## 2026-09-12 — Stage 8.2B.1: Refine Pitch framing and shared chrome
+
+Continue the existing 8.2B pilot. Four Shared derivatives use .55-height source guides with the existing two crown offsets and restrained offline stadium light behind original-Master subject pixels. Generator revision 7 refreshes Hand/Shared provenance, with accepted Hand bytes/packages preserved and Shared-only reimport. No new art family or Full activation.
+
+Apply one equal-width owner outline, a weak neutral inner edge, silver-gray whole-frame hover and a tighter measured Chinese identity row to both pilot and legacy Pitch cards. Suppress the occupied slot's redundant visible seat, legacy frame texture/rails and tactical border fragments; preserve slot geometry, selection/deployment behavior and tactical pips. A common RGB exposure gain improves dim player colors without selecting team colors. Pitch loads only its own portrait purpose; old Full hover remains independent. See Pitch Mini visual target section 20 and Shared Portrait art contract section 20. This records implementation direction, not USER PIE acceptance or stage closure.
+
+## 2026-09-12 — Stage 8.2B.2: Bounded final Pitch polish
+
+Preserve the 8.2B.1 portrait scale, Chinese information row and tactical cues. Generator revision 8 strengthens only localized, defocused head/shoulder stadium banks in the same four Shared derivatives; keep base navy exposure, crop metadata and all Hand/Full art unchanged. Image B's white/high-exposure lighting is expressly not the target.
+
+Retain one owner-colored 3-unit frame, weaken the inner neutral line and add a narrow unfilled dark contact contour within the existing slot inset. Use a bounded Rec.709 readability transform on the rendered accent only, preserving arbitrary user color identity and the existing validated fallback. No stored-color, gameplay, networking or interaction mutation. Verify only the changed color/render/background contracts and directly affected Hand generator bytes; keep Stage 8.2B OPEN pending USER PIE. See Pitch Mini visual target and Shared Portrait contract section 21.

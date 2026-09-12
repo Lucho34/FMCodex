@@ -62,7 +62,7 @@ def load_catalog(project_root: Path) -> list[dict[str, str]]:
             digest = entry.get("masterSha256", "")
             if len(digest) != 64 or any(c not in "0123456789abcdefABCDEF" for c in digest):
                 raise RuntimeError(f"Missing master hash: {player_key}")
-            if set(entry.get("cropOverrides", {})) - {"handCropRect", "fullCropRect"}:
+            if set(entry.get("cropOverrides", {})) - {"handCropRect", "fullCropRect", "pitchCropRect"}:
                 raise RuntimeError(f"Unknown crop override: {player_key}")
             for role in ROLE_SIZES:
                 resolved_crop(dict(entry, runtimeRole=role))
@@ -220,13 +220,23 @@ def hand_composition(entry):
     return profile
 
 
+def pitch_composition(entry):
+    profile = entry.get("pitchCompositionProfile", "CropOnly_v1")
+    if profile not in ("CropOnly_v1", "QuietPitchBust_v1"):
+        raise RuntimeError(f"Unknown Pitch composition: {profile}")
+    return profile
+
+
 def resolved_crop(entry):
     role = runtime_role(entry)
     profile = hand_composition(entry)
     reframe = role == "Hand" and profile == "BalancedBust_v2"
+    pitch_reframe = role == "Shared" and pitch_composition(entry) == "QuietPitchBust_v1"
     default = ([0,.055,1,.5] if reframe else [0, 0.045, 1, 4/9]) if role == "Hand" else [0, 0, 1, 1]
     field = "handCropRect" if role == "Hand" else "fullCropRect"
     rect = entry.get("cropOverrides", {}).get(field, default) if role != "Shared" else default
+    if pitch_reframe:
+        rect = entry.get("cropOverrides", {}).get("pitchCropRect", [0,.055,1,.64])
     if not isinstance(rect, list) or len(rect) != 4 or any(
             isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in rect):
         raise RuntimeError(f"Invalid normalized crop: {rect}")
@@ -236,7 +246,9 @@ def resolved_crop(entry):
     ratio = 4/9 if role == "Hand" else 1
     if reframe and (w < .8 or h < .44 or h > .6):
         raise RuntimeError(f"Hand bust crop exceeds bounded profile: {rect}")
-    if not reframe and not math.isclose(h, w*ratio, abs_tol=1e-8):
+    if pitch_reframe and (w != 1 or h < .54 or h > .70):
+        raise RuntimeError(f"Pitch bust crop exceeds bounded profile: {rect}")
+    if not reframe and not pitch_reframe and not math.isclose(h, w*ratio, abs_tol=1e-8):
         raise RuntimeError(f"Crop would distort {role}: {rect}")
     return rect
 
@@ -249,6 +261,8 @@ def crop_metadata_hash(entry):
     value = {"compositionProfile": entry["compositionProfile"], "cropOverrides": entry.get("cropOverrides", {})}
     if entry.get("handCompositionProfile"):
         value["handCompositionProfile"] = hand_composition(entry)
+    if entry.get("pitchCompositionProfile"):
+        value["pitchCompositionProfile"] = pitch_composition(entry)
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest().upper()
 
 
@@ -272,10 +286,13 @@ def validate_generated_source(project_root, entry):
         raise RuntimeError("Stale role crop provenance")
     if runtime_role(entry) == "Hand" and role.get("handCompositionProfile", "CropOnly_v1") != hand_composition(entry):
         raise RuntimeError("Stale Hand composition provenance")
-    if runtime_role(entry) == "Hand" and hand_composition(entry) == "BalancedBust_v2":
+    if runtime_role(entry) == "Shared" and role.get("pitchCompositionProfile", "CropOnly_v1") != pitch_composition(entry):
+        raise RuntimeError("Stale Pitch composition provenance")
+    if (runtime_role(entry) == "Hand" and hand_composition(entry) == "BalancedBust_v2") or (
+        runtime_role(entry) == "Shared" and pitch_composition(entry) == "QuietPitchBust_v1"):
         generator = project_root / "Scripts/GenerateSharedPortraitRuntimeDerivatives.py"
         if role.get("generatorSha256") != hashlib.sha256(generator.read_bytes()).hexdigest().upper():
-            raise RuntimeError("Stale Hand generator provenance")
+            raise RuntimeError("Stale purpose generator provenance")
     path = runtime_derivative_path(project_root, entry)
     if role["runtimeDerivativePath"] != path.relative_to(project_root).as_posix():
         raise RuntimeError("Incorrect derivative path")

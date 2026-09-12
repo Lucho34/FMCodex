@@ -310,6 +310,9 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 				const FString Name = FString::Printf(TEXT("T_%s_Hand"), *Token);
 				Target.HandMicroPortrait = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(FString::Printf(
 					TEXT("/Game/UI/Portraits/PrototypeTeams/Canonical/%s/%s.%s"), *Token, *Name, *Name)));
+				const FString PitchName = FString::Printf(TEXT("T_%s_Shared"), *Token);
+                Target.PitchMiniPortrait = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(FString::Printf(
+                    TEXT("/Game/UI/Portraits/PrototypeTeams/Canonical/%s/%s.%s"), *Token, *PitchName, *PitchName)));
 				Target.bCanonicalPlayerArt = true;
 				Target.HandMicroPortraitTop = 0.0f;
 				Target.HandMicroPortraitUVHeight = 1.0f;
