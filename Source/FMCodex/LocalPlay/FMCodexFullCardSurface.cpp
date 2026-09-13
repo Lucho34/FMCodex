@@ -58,23 +58,52 @@ public:
             FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(),
                 FCoreStyle::Get().GetBrush("WhiteBrush"), Effect,
                 FLinearColor(.003f,.009f,.018f,1.f) * Tint);
-            auto Ellipse = [&](FVector2f Center, FVector2f Radius, FLinearColor Color)
-            {
-                TArray<FSlateVertex> V; TArray<SlateIndex> Idx;
-                for (int32 N=0; N<40; ++N)
-                {
-                    const float A = N * 2.f * PI / 40.f;
-                    const FVector2f P = Center + FVector2f(FMath::Cos(A)*Radius.X,FMath::Sin(A)*Radius.Y);
-                    V.Add(FSlateVertex::Make<ESlateVertexRounding::Disabled>(
-                        G.GetAccumulatedRenderTransform(), P, FVector2f::ZeroVector, (Color*FillTint).ToFColor(true)));
-                    if (N>=2) { Idx.Add(0); Idx.Add(N-1); Idx.Add(N); }
-                }
-                const auto Resource = FSlateApplication::Get().GetRenderer()->GetResourceHandle(*FCoreStyle::Get().GetBrush("WhiteBrush"));
-                FSlateDrawElement::MakeCustomVerts(Out,Layer+1,Resource,V,Idx,nullptr,0,0);
-            };
             const float Unit = FMath::Min(W,H);
-            Ellipse(FVector2f(W*.5f,H*.38f),FVector2f(Unit*.12f,Unit*.15f),FLinearColor(.046f,.073f,.102f,1));
-            Ellipse(FVector2f(W*.5f,H*.76f),FVector2f(Unit*.29f,Unit*.19f),FLinearColor(.031f,.054f,.080f,1));
+            const float CenterX = W * .5f, HeadY = H * .38f;
+            const float TorsoTop = H * .76f - Unit * .19f;
+            const float NeckHalfWidth = Unit * .055f;
+            const FLinearColor HeadColor(.046f,.073f,.102f,1);
+            const FLinearColor TorsoColor(.031f,.054f,.080f,1);
+            TArray<FSlateVertex> V; TArray<SlateIndex> Idx;
+            V.Reserve(60); Idx.Reserve(174);
+            // One connected strip avoids gaps and overlapping alpha at the neck,
+            // including when the same family surface is tinted or disabled.
+            auto AddSpan = [&](float Y, float HalfWidth, FLinearColor Color)
+            {
+                const int32 First = V.Num();
+                for (const float X : {CenterX - HalfWidth, CenterX + HalfWidth})
+                {
+                    V.Add(FSlateVertex::Make<ESlateVertexRounding::Disabled>(
+                        G.GetAccumulatedRenderTransform(), FVector2f(X,Y),
+                        FVector2f::ZeroVector, (Color*FillTint).ToFColor(true)));
+                }
+                if (First >= 2)
+                {
+                    Idx.Add(First-2); Idx.Add(First-1); Idx.Add(First);
+                    Idx.Add(First); Idx.Add(First-1); Idx.Add(First+1);
+                }
+            };
+            // Keep the elliptical head, joining its lower contour to a .11U neck.
+            const float NeckAngle = FMath::Acos(.055f / .12f);
+            constexpr int32 HeadSegments = 20;
+            for (int32 N=0; N<=HeadSegments; ++N)
+            {
+                const float A = FMath::Lerp(-PI*.5f, NeckAngle, float(N)/HeadSegments);
+                AddSpan(HeadY + FMath::Sin(A)*Unit*.15f,
+                    FMath::Max(0.f,FMath::Cos(A))*Unit*.12f, HeadColor);
+            }
+            AddSpan(TorsoTop, NeckHalfWidth, TorsoColor);
+            // Symmetric shoulders widen within the old torso envelope, then taper
+            // to a quiet flat base. All purposes use these same normalized spans.
+            const FVector2f ShoulderSpans[] = {
+                {.015f,.10f}, {.045f,.17f}, {.09f,.235f}, {.14f,.275f},
+                {.19f,.29f}, {.24f,.285f}, {.32f,.27f}, {.38f,.245f}};
+            for (const FVector2f& Span : ShoulderSpans)
+            {
+                AddSpan(TorsoTop + Span.X*Unit, Span.Y*Unit, TorsoColor);
+            }
+            const auto Resource = FSlateApplication::Get().GetRenderer()->GetResourceHandle(*FCoreStyle::Get().GetBrush("WhiteBrush"));
+            FSlateDrawElement::MakeCustomVerts(Out,Layer+1,Resource,V,Idx,nullptr,0,0);
             return SCompoundWidget::OnPaint(Args,G,Cull,Out,Layer+2,Style,bEnabledHere);
         }
         if (Kind == ESurface::RuleLeft || Kind == ESurface::RuleRight || Kind == ESurface::Footer)
