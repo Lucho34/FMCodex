@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parent.parent
 class PlayerCardFamilyContractTest(unittest.TestCase):
     def test_all_canonical_shared_outputs_use_one_reproducible_recipe(self):
         players=[p for p in load_catalog(ROOT) if is_canonical(p)]
-        self.assertEqual(len(players),18)
+        self.assertEqual(len(players),20)
         for p in players:
             e=dict(p,runtimeRole='Shared')
             with self.subTest(key=p['playerKey']):
@@ -77,7 +77,7 @@ class PlayerCardFamilyContractTest(unittest.TestCase):
         runtime=json.loads((ROOT/'Content/Data/CanonicalPlayerContent.json').read_text(encoding='utf-8'))
         by_key={p['playerKey']:p for p in config['players']}
         for f in ('birthDate','heightCm','weightKg','nationality'):
-            self.assertEqual(sum(bool(p['presentation'][f]) for p in runtime['players']),16)
+            self.assertEqual(sum(bool(p['presentation'][f]) for p in runtime['players']),40)
             for p in runtime['players']:self.assertEqual(p['presentation'][f] or None,by_key[p['playerKey']].get('presentation',{}).get(f) or None)
 
 if __name__=='__main__':unittest.main(verbosity=2)

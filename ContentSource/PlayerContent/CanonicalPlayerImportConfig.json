@@ -52,7 +52,11 @@
       "playerKey": "Prototype.Arsenal.BenWhite",
       "displayName": "怀特",
       "presentation": {
-        "defaultShirtNumber": 4
+        "defaultShirtNumber": 4,
+        "birthDate": "1997-10-08",
+        "heightCm": 186,
+        "weightKg": 81,
+        "nationality": "英格兰"
       }
     },
     {
@@ -61,7 +65,11 @@
       "playerKey": "Prototype.Arsenal.PieroHincapie",
       "displayName": "因卡皮耶",
       "presentation": {
-        "defaultShirtNumber": 5
+        "defaultShirtNumber": 5,
+        "birthDate": "2002-01-09",
+        "heightCm": 184,
+        "weightKg": 78,
+        "nationality": "厄瓜多尔"
       }
     },
     {
@@ -70,7 +78,11 @@
       "playerKey": "Prototype.Arsenal.JurrienTimber",
       "displayName": "廷贝尔",
       "presentation": {
-        "defaultShirtNumber": 6
+        "defaultShirtNumber": 6,
+        "birthDate": "2001-06-17",
+        "heightCm": 179,
+        "weightKg": 68,
+        "nationality": "荷兰"
       }
     },
     {
@@ -79,7 +91,11 @@
       "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
       "displayName": "卡拉菲奥里",
       "presentation": {
-        "defaultShirtNumber": 8
+        "defaultShirtNumber": 8,
+        "birthDate": "2002-05-19",
+        "heightCm": 188,
+        "weightKg": 86,
+        "nationality": "意大利"
       }
     },
     {
@@ -88,7 +104,11 @@
       "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
       "displayName": "刘易斯-斯凯利",
       "presentation": {
-        "defaultShirtNumber": 9
+        "defaultShirtNumber": 9,
+        "birthDate": "2006-09-26",
+        "heightCm": 178,
+        "weightKg": 72,
+        "nationality": "英格兰"
       }
     },
     {
@@ -111,7 +131,11 @@
       "playerKey": "Prototype.Arsenal.EberechiEze",
       "displayName": "埃泽",
       "presentation": {
-        "defaultShirtNumber": 11
+        "defaultShirtNumber": 11,
+        "birthDate": "1998-06-29",
+        "heightCm": 178,
+        "weightKg": 73,
+        "nationality": "英格兰"
       }
     },
     {
@@ -134,7 +158,11 @@
       "playerKey": "Prototype.Arsenal.MartinZubimendi",
       "displayName": "苏比门迪",
       "presentation": {
-        "defaultShirtNumber": 13
+        "defaultShirtNumber": 13,
+        "birthDate": "1999-02-02",
+        "heightCm": 181,
+        "weightKg": 74,
+        "nationality": "西班牙"
       }
     },
     {
@@ -157,7 +185,11 @@
       "playerKey": "Prototype.Arsenal.ChristianNorgaard",
       "displayName": "诺尔高",
       "presentation": {
-        "defaultShirtNumber": 15
+        "defaultShirtNumber": 15,
+        "birthDate": "1994-03-10",
+        "heightCm": 187,
+        "weightKg": 73,
+        "nationality": "丹麦"
       }
     },
     {
@@ -194,7 +226,11 @@
       "playerKey": "Prototype.Arsenal.ViktorGyokeres",
       "displayName": "哲凯赖什",
       "presentation": {
-        "defaultShirtNumber": 17
+        "defaultShirtNumber": 17,
+        "birthDate": "1998-06-04",
+        "heightCm": 187,
+        "weightKg": 86,
+        "nationality": "瑞典"
       }
     },
     {
@@ -203,7 +239,11 @@
       "playerKey": "Prototype.Arsenal.LeandroTrossard",
       "displayName": "特罗萨德",
       "presentation": {
-        "defaultShirtNumber": 18
+        "defaultShirtNumber": 18,
+        "birthDate": "1994-12-04",
+        "heightCm": 172,
+        "weightKg": 70,
+        "nationality": "比利时"
       }
     },
     {
@@ -212,7 +252,11 @@
       "playerKey": "Prototype.Arsenal.NoniMadueke",
       "displayName": "马杜埃凯",
       "presentation": {
-        "defaultShirtNumber": 19
+        "defaultShirtNumber": 19,
+        "birthDate": "2002-03-10",
+        "heightCm": 183,
+        "weightKg": 83,
+        "nationality": "英格兰"
       }
     },
     {
@@ -221,7 +265,11 @@
       "playerKey": "Prototype.Arsenal.KaiHavertz",
       "displayName": "哈弗茨",
       "presentation": {
-        "defaultShirtNumber": 20
+        "defaultShirtNumber": 20,
+        "birthDate": "1999-06-11",
+        "heightCm": 189,
+        "weightKg": 82,
+        "nationality": "德国"
       }
     },
     {
@@ -258,7 +306,11 @@
       "playerKey": "Prototype.ManchesterCity.MarcGuehi",
       "displayName": "格伊",
       "presentation": {
-        "defaultShirtNumber": 3
+        "defaultShirtNumber": 3,
+        "birthDate": "2000-07-13",
+        "heightCm": 182,
+        "weightKg": 75,
+        "nationality": "英格兰"
       }
     },
     {
@@ -281,7 +333,11 @@
       "playerKey": "Prototype.ManchesterCity.NathanAke",
       "displayName": "阿克",
       "presentation": {
-        "defaultShirtNumber": 5
+        "defaultShirtNumber": 5,
+        "birthDate": "1995-02-18",
+        "heightCm": 180,
+        "weightKg": 75,
+        "nationality": "荷兰"
       }
     },
     {
@@ -290,7 +346,11 @@
       "playerKey": "Prototype.ManchesterCity.JohnStones",
       "displayName": "斯通斯",
       "presentation": {
-        "defaultShirtNumber": 6
+        "defaultShirtNumber": 6,
+        "birthDate": "1994-05-28",
+        "heightCm": 188,
+        "weightKg": 70,
+        "nationality": "英格兰"
       }
     },
     {
@@ -299,7 +359,11 @@
       "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
       "displayName": "艾特-努里",
       "presentation": {
-        "defaultShirtNumber": 7
+        "defaultShirtNumber": 7,
+        "birthDate": "2001-06-06",
+        "heightCm": 180,
+        "nationality": "阿尔及利亚",
+        "weightKg": 70
       }
     },
     {
@@ -322,7 +386,11 @@
       "playerKey": "Prototype.ManchesterCity.TijjaniReijnders",
       "displayName": "赖因德斯",
       "presentation": {
-        "defaultShirtNumber": 8
+        "defaultShirtNumber": 8,
+        "birthDate": "1998-07-29",
+        "heightCm": 185,
+        "weightKg": 73,
+        "nationality": "荷兰"
       }
     },
     {
@@ -359,7 +427,11 @@
       "playerKey": "Prototype.ManchesterCity.RayanCherki",
       "displayName": "谢尔基",
       "presentation": {
-        "defaultShirtNumber": 12
+        "defaultShirtNumber": 12,
+        "birthDate": "2003-08-17",
+        "heightCm": 180,
+        "weightKg": 71,
+        "nationality": "法国"
       }
     },
     {
@@ -368,7 +440,11 @@
       "playerKey": "Prototype.ManchesterCity.NicoGonzalez",
       "displayName": "冈萨雷斯",
       "presentation": {
-        "defaultShirtNumber": 13
+        "defaultShirtNumber": 13,
+        "birthDate": "2002-01-03",
+        "heightCm": 189,
+        "weightKg": 88,
+        "nationality": "西班牙"
       }
     },
     {
@@ -377,7 +453,11 @@
       "playerKey": "Prototype.ManchesterCity.MatheusNunes",
       "displayName": "努内斯",
       "presentation": {
-        "defaultShirtNumber": 14
+        "defaultShirtNumber": 14,
+        "birthDate": "1998-08-27",
+        "heightCm": 183,
+        "weightKg": 78,
+        "nationality": "葡萄牙"
       }
     },
     {
@@ -386,7 +466,11 @@
       "playerKey": "Prototype.ManchesterCity.MateoKovacic",
       "displayName": "科瓦契奇",
       "presentation": {
-        "defaultShirtNumber": 15
+        "defaultShirtNumber": 15,
+        "birthDate": "1994-05-06",
+        "heightCm": 177,
+        "weightKg": 78,
+        "nationality": "克罗地亚"
       }
     },
     {
@@ -409,7 +493,11 @@
       "playerKey": "Prototype.ManchesterCity.OmarMarmoush",
       "displayName": "马尔穆什",
       "presentation": {
-        "defaultShirtNumber": 17
+        "defaultShirtNumber": 17,
+        "birthDate": "1999-02-07",
+        "heightCm": 183,
+        "weightKg": 81,
+        "nationality": "埃及"
       }
     },
     {
@@ -432,7 +520,11 @@
       "playerKey": "Prototype.ManchesterCity.AntoineSemenyo",
       "displayName": "塞梅尼奥",
       "presentation": {
-        "defaultShirtNumber": 19
+        "defaultShirtNumber": 19,
+        "birthDate": "2000-01-07",
+        "heightCm": 185,
+        "weightKg": 78,
+        "nationality": "加纳"
       }
     },
     {
@@ -441,7 +533,11 @@
       "playerKey": "Prototype.ManchesterCity.Savinho",
       "displayName": "萨维尼奥",
       "presentation": {
-        "defaultShirtNumber": 20
+        "defaultShirtNumber": 20,
+        "birthDate": "2004-04-10",
+        "heightCm": 179,
+        "weightKg": 66,
+        "nationality": "巴西"
       }
     }
   ]

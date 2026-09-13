@@ -35,7 +35,7 @@ bool FFMCodexPlayerCardFamilyContractTest::RunTest(const FString&)
     if (!TestNotNull(TEXT("Family widget"),Widget)) { GEngine->DestroyWorldContext(World);World->DestroyWorld(false);return false; }
     Widget->TakeWidget();
     auto Text=[&](const TCHAR* Name) { return CastChecked<UTextBlock>(Widget->GetWidgetFromName(Name))->GetText().ToString(); };
-    for (const TCHAR* Key : {TEXT("Prototype.Arsenal.BukayoSaka"),TEXT("Prototype.Arsenal.MylesLewisSkelly"),TEXT("Prototype.ManchesterCity.NathanAke")})
+    for (const TCHAR* Key : {TEXT("Prototype.Arsenal.BukayoSaka"),TEXT("Prototype.Arsenal.MylesLewisSkelly"),TEXT("Prototype.ManchesterCity.NathanAke"),TEXT("Prototype.ManchesterCity.RayanCherki"),TEXT("Prototype.ManchesterCity.RayanAitNouri")})
     {
         const auto* D=FFMCodexPrototypeTeamContent::Find(FName(Key));
         if (!TestNotNull(TEXT("Source data exists"),D)) continue;
@@ -58,10 +58,12 @@ bool FFMCodexPlayerCardFamilyContractTest::RunTest(const FString&)
             FString Expected=View.BirthDate;Expected.ReplaceInline(TEXT("-"),TEXT("."));
             TestEqual(TEXT("Known date retains its actual value"),Text(TEXT("BiographyBirthDateValue")),Expected);
         }
+        TestEqual(TEXT("Known or unresolved height is projected independently"),Text(TEXT("BiographyHeightValue")),View.HeightCm > 0 ? FString::Printf(TEXT("%d cm"),View.HeightCm) : FString(TEXT("—")));
+        TestEqual(TEXT("Known or unresolved weight is projected independently"),Text(TEXT("BiographyWeightValue")),View.WeightKg > 0 ? FString::Printf(TEXT("%d kg"),View.WeightKg) : FString(TEXT("—")));
         TestEqual(TEXT("Full plate consumes resolved field for canonical and legacy cards"),Text(TEXT("FullCardAssignedNumber")),Card.AssignedPlayerNumber);
         TestTrue(TEXT("Configured Full plate visible"),Widget->GetWidgetFromName(TEXT("FullCardNumberPlateBounds"))->GetVisibility()!=ESlateVisibility::Collapsed);
     }
-    FFMCodexLocalMatchCardView Missing;Missing.CardId=TEXT("Prototype.ManchesterCity.NathanAke");
+    FFMCodexLocalMatchCardView Missing;Missing.CardId=TEXT("Prototype.ManchesterCity.MarcGuehi");
     Missing.DisplayLabel=FFMCodexPrototypeTeamContent::PlayerDisplayName(Missing.CardId).ToString();Missing.CompactRoleLabel=TEXT("D");
     const auto MissingModel=FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(Missing);
     TestFalse(TEXT("Fallback does not activate a fake canonical Master"),FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Missing.CardId).bCanonicalPlayerArt);

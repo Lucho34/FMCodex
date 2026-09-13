@@ -26,8 +26,9 @@ SOURCES = {
     'Prototype.ManchesterCity.BernardoSilva': ('01', '2FB44F7DD391357B17C62654AA2DA0870DC1099E7902A148306F70B1E14909E2', 10),
     'Prototype.ManchesterCity.PhilFoden': ('FullCardHeroBust_01', '8A313131711792634B1AA19AE6DB5EA4DA7F9D11E259387D6C449D27EA089D61', 11),
 }
-MISSING = 'Prototype.ManchesterCity.RayanCherki'
-AKE = 'Prototype.ManchesterCity.NathanAke'
+MISSING = 'Prototype.ManchesterCity.MarcGuehi'
+OTHER_MISSING = 'Prototype.ManchesterCity.JohnStones'
+COMPLETION = {'Prototype.ManchesterCity.NathanAke', 'Prototype.ManchesterCity.RayanCherki'}
 TIMBER = 'Prototype.Arsenal.JurrienTimber'
 
 
@@ -41,7 +42,7 @@ class CanonicalArtBatch2Test(unittest.TestCase):
 
     def test_exact_keys_sources_masters_and_explicit_enablement(self):
         self.assertEqual({e['playerKey'] for e in self.players}, set(SOURCES))
-        expected = PILOTS | set(BATCH1) | set(SOURCES)
+        expected = PILOTS | set(BATCH1) | set(SOURCES) | COMPLETION
         self.assertEqual({e['playerKey'] for e in self.catalog if is_canonical(e)}, expected)
         code = (ROOT/'Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp').read_text(encoding='utf-8')
         block = code.split('static const TSet<FName> CanonicalPlayers = {', 1)[1].split('};', 1)[0]
@@ -93,7 +94,7 @@ class CanonicalArtBatch2Test(unittest.TestCase):
             self.assertEqual({r['visualStatus'] for r in p['roles'].values()}, {expected})
 
     def test_missing_sources_stay_excluded_and_nonmigrated_legacy_survives(self):
-        for key in (MISSING, AKE):
+        for key in (MISSING, OTHER_MISSING):
             self.assertIn(key, self.roster)
             self.assertFalse((ROOT/'ArtSource/UI/PlayerMaster'/key).exists())
             self.assertFalse((ROOT/'ContentSource/UI/PlayerPortraitRuntime'/key).exists())
@@ -102,10 +103,11 @@ class CanonicalArtBatch2Test(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, 'Unknown Shared Portrait PlayerKey'): select_entries(self.catalog)
         legacy = next(e for e in self.catalog if e['playerKey'] == 'Prototype.Arsenal.MikelMerino')
         self.assertFalse(is_canonical(legacy))
-        self.assertEqual(self.roster[MISSING]['presentation']['defaultShirtNumber'], 12)
+        self.assertEqual(self.roster['Prototype.ManchesterCity.RayanCherki']['presentation']['defaultShirtNumber'], 12)
+        # Stage 8.3E filled real biographies independently of art migration.
         for key in (TIMBER, MISSING):
             for field in ('birthDate', 'heightCm', 'weightKg', 'nationality'):
-                self.assertFalse(self.roster[key]['presentation'][field], 'Missing biography stays absent')
+                self.assertTrue(self.roster[key]['presentation'][field], 'Researched biography reaches generated data')
 
     def test_missing_tampered_master_output_crop_and_role_reject(self):
         entry = dict(self.players[0], runtimeRole='Shared')

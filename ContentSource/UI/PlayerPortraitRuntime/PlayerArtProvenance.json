@@ -1721,6 +1721,122 @@
       }
     },
     {
+      "playerKey": "Prototype.ManchesterCity.NathanAke",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.NathanAke/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "0D240DA5D65A538D8B00B7F8B16C6AFEA6A0CC0206592D489DC3BFFB236557AB",
+      "masterRevision": 1,
+      "cropMetadataSha256": "DD429A0A7BE9A4E1F5457854516CBE4A504938B62507781EB3C36C92C6C7C933",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.NathanAke/Master.png",
+        "sourceSha256": "0D240DA5D65A538D8B00B7F8B16C6AFEA6A0CC0206592D489DC3BFFB236557AB",
+        "originIdentity": "Prototype.ManchesterCity.NathanAke",
+        "identityPolicy": "PlayerKey ownership and one original fictional character across all purposes; real-player likeness is not a gate.",
+        "generationRecord": "ArtSource/UI/PlayerMaster/Stage8_3E_Generation.json",
+        "status": "New original artwork created with Codex built-in image_gen; technical source gate passed; Hand/Shared/Full USER PIE ACCEPTED."
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.025,
+            1,
+            0.53
+          ],
+          "sourcePixelBox": [
+            0,
+            38.400000000000006,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.NathanAke/Hand.png",
+          "runtimeDerivativeSha256": "97F712B5FE4665B2E841F268478B4368788E17C76B942F6B50B37EC0F400BF96",
+          "bytes": 28605,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_NathanAke/T_Prototype_ManchesterCity_NathanAke_Hand.T_Prototype_ManchesterCity_NathanAke_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.025,
+            1,
+            0.58
+          ],
+          "sourcePixelBox": [
+            0,
+            38.400000000000006,
+            1024,
+            929.28
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.NathanAke/Shared.png",
+          "runtimeDerivativeSha256": "C2EBFB156DC760519330139871529B4A0571E42BB81E5778CA7E679068AD3D5D",
+          "bytes": 262171,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_NathanAke/T_Prototype_ManchesterCity_NathanAke_Shared.T_Prototype_ManchesterCity_NathanAke_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.NathanAke/Full.png",
+          "runtimeDerivativeSha256": "DBFC3F35BDF17D640D70056E42D6EB08196821FCD73CD9DBE65AA2B01B7FEAF2",
+          "bytes": 1298474,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_NathanAke/T_Prototype_ManchesterCity_NathanAke_Full.T_Prototype_ManchesterCity_NathanAke_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
       "playerKey": "Prototype.ManchesterCity.PhilFoden",
       "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.PhilFoden/Master.png",
       "masterDimensions": [
@@ -1825,6 +1941,122 @@
           "runtimeDerivativeSha256": "9E7E8396A2868E53109EF41CA16A6B4E6EBCD385C03DB3CD91D67B4E86297014",
           "bytes": 1285681,
           "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_PhilFoden/T_Prototype_ManchesterCity_PhilFoden_Full.T_Prototype_ManchesterCity_PhilFoden_Full",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "visualStatus": "USER PIE ACCEPTED"
+        }
+      },
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanCherki",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.RayanCherki/Master.png",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "masterSha256": "D1AC99F5DC8280884F8C23A84C34B1E8DCB29950F94C455EBFAEE3CCF201BF71",
+      "masterRevision": 1,
+      "cropMetadataSha256": "89336F88E259C23A9B7B29BE985E6F549E1FF85B323535AE15F74EDDDC3E9030",
+      "compositionProfile": "HeroBust_v1",
+      "generatorVersion": 9,
+      "pillowVersion": "9.4.0",
+      "resampling": "Pillow.Resampling.LANCZOS",
+      "encoder": "PNG RGB compress_level=9 optimize=false metadata=none",
+      "visualStatus": "PER-ROLE ACCEPTANCE ONLY",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.RayanCherki/Master.png",
+        "sourceSha256": "D1AC99F5DC8280884F8C23A84C34B1E8DCB29950F94C455EBFAEE3CCF201BF71",
+        "originIdentity": "Prototype.ManchesterCity.RayanCherki",
+        "identityPolicy": "PlayerKey ownership and one original fictional character across all purposes; real-player likeness is not a gate.",
+        "generationRecord": "ArtSource/UI/PlayerMaster/Stage8_3E_Generation.json",
+        "status": "New original artwork created with Codex built-in image_gen; technical source gate passed; Hand/Shared/Full USER PIE ACCEPTED."
+      },
+      "roles": {
+        "Hand": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.5
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            852.48
+          ],
+          "dimensions": [
+            192,
+            128
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.RayanCherki/Hand.png",
+          "runtimeDerivativeSha256": "FFE16907B752DCC83E0AB21BD703A6B39E63515FA86844B8406C9A06C0688AA1",
+          "bytes": 27236,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_RayanCherki/T_Prototype_ManchesterCity_RayanCherki_Hand.T_Prototype_ManchesterCity_RayanCherki_Hand",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "handCompositionProfile": "BalancedBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "proportional bust framing; original Master pixels; offline seeded subject extraction",
+          "foregroundExtraction": "OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Shared": {
+          "cropRect": [
+            0,
+            0.055,
+            1,
+            0.55
+          ],
+          "sourcePixelBox": [
+            0,
+            84.48,
+            1024,
+            929.2800000000002
+          ],
+          "dimensions": [
+            512,
+            768
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.RayanCherki/Shared.png",
+          "runtimeDerivativeSha256": "DE90E736BB0EB16E613D440DE36ECBBF4DF9883390DD42BEF965A854D23F604B",
+          "bytes": 246087,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_RayanCherki/T_Prototype_ManchesterCity_RayanCherki_Shared.T_Prototype_ManchesterCity_RayanCherki_Shared",
+          "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
+          "pitchCompositionProfile": "QuietPitchBust_v2",
+          "generatorSha256": "2BF95404389E4AC173B81776E8FAFE8D58BBAA8DE7CF6154165E6F45075A293E",
+          "generatorVersion": 9,
+          "pillowVersion": "9.4.0",
+          "reframing": "original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade",
+          "foregroundExtraction": "accepted seeded GrabCut mask recipe; offline only",
+          "visualStatus": "USER PIE ACCEPTED"
+        },
+        "Full": {
+          "cropRect": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "sourcePixelBox": [
+            0,
+            0,
+            1024,
+            1536
+          ],
+          "dimensions": [
+            768,
+            1152
+          ],
+          "runtimeDerivativePath": "ContentSource/UI/PlayerPortraitRuntime/Prototype.ManchesterCity.RayanCherki/Full.png",
+          "runtimeDerivativeSha256": "C4293240D307F3A78E1B45F62CDCFBD47A9C6FA8FD6A8BAC78750B5493852BB0",
+          "bytes": 1293612,
+          "runtimeAssetPath": "/Game/UI/Portraits/PrototypeTeams/Canonical/Prototype_ManchesterCity_RayanCherki/T_Prototype_ManchesterCity_RayanCherki_Full.T_Prototype_ManchesterCity_RayanCherki_Full",
           "importRecipe": "DesktopBC7OpaqueSharpen1_v1",
           "visualStatus": "USER PIE ACCEPTED"
         }

@@ -34,7 +34,8 @@ bool FFMCodexCanonicalArtBatch2Test::RunTest(const FString&)
         {TEXT("Prototype.Arsenal.WilliamSaliba"),3}, {TEXT("Prototype.Arsenal.JurrienTimber"),6},
         {TEXT("Prototype.Arsenal.MartinOdegaard"),10}, {TEXT("Prototype.Arsenal.DeclanRice"),14},
         {TEXT("Prototype.ManchesterCity.RubenDias"),2}, {TEXT("Prototype.ManchesterCity.BernardoSilva"),10},
-        {TEXT("Prototype.ManchesterCity.PhilFoden"),11}};
+        {TEXT("Prototype.ManchesterCity.PhilFoden"),11},
+        {TEXT("Prototype.ManchesterCity.NathanAke"),5}, {TEXT("Prototype.ManchesterCity.RayanCherki"),12}};
     for (const auto& Pair : Players)
     {
         const auto* D = FFMCodexPrototypeTeamContent::Find(Pair.Key);
@@ -94,7 +95,7 @@ bool FFMCodexCanonicalArtBatch2Test::RunTest(const FString&)
             }
         }
     }
-    for (const TCHAR* Key : {TEXT("Prototype.ManchesterCity.RayanCherki"), TEXT("Prototype.ManchesterCity.NathanAke")})
+    for (const TCHAR* Key : {TEXT("Prototype.ManchesterCity.MarcGuehi"), TEXT("Prototype.ManchesterCity.JohnStones")})
     {
         FFMCodexLocalMatchCardView View; View.CardId = FName(Key);
         View.DisplayLabel = FFMCodexPrototypeTeamContent::PlayerDisplayName(View.CardId).ToString();

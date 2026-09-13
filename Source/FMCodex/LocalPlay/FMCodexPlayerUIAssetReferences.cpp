@@ -300,7 +300,7 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 	const auto ApplyDedicatedHandMicroPortrait =
 		[this, CardId](FFMCodexPlayerUICardArtReferences& Target)
 		{
-			// Explicitly migrated players only: accepted pilots/Batch 1 plus source-gated Batch 2.
+			// Explicitly source-gated players only; new outputs remain pending USER PIE.
 			static const TSet<FName> CanonicalPlayers = {
 				TEXT("Prototype.Arsenal.BukayoSaka"), TEXT("Prototype.ManchesterCity.Rodri"),
 				TEXT("Prototype.Arsenal.DavidRaya"), TEXT("Prototype.ManchesterCity.ErlingHaaland"),
@@ -317,7 +317,9 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 				TEXT("Prototype.Arsenal.DeclanRice"),
 				TEXT("Prototype.ManchesterCity.RubenDias"),
 				TEXT("Prototype.ManchesterCity.BernardoSilva"),
-				TEXT("Prototype.ManchesterCity.PhilFoden")};
+				TEXT("Prototype.ManchesterCity.PhilFoden"),
+				TEXT("Prototype.ManchesterCity.NathanAke"),
+				TEXT("Prototype.ManchesterCity.RayanCherki")};
 			if (CanonicalPlayers.Contains(CardId))
 			{
 				const FString Token = CardId.ToString().Replace(TEXT("."), TEXT("_"));
@@ -396,6 +398,17 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 		Result.RoleIcon = GoldenRoleIcon;
 		Result.LongShotSkillIcon = GoldenLongShotSkillIcon;
 		ApplyDedicatedHandMicroPortrait(Result);
+		return Result;
+	}
+	// Newly authored canonical families need no fabricated legacy portrait entry.
+	// Existing legacy-backed branches above retain their references and metadata.
+	ApplyDedicatedHandMicroPortrait(Result);
+	if (Result.bCanonicalPlayerArt)
+	{
+		Result.ArtIdentity = FName(*FString::Printf(
+			TEXT("PrototypeTeam.PlayerCard.%s"), *CardId.ToString()));
+		Result.CardFrame = GoldenCardFrame;
+		Result.LongShotSkillIcon = GoldenLongShotSkillIcon;
 		return Result;
 	}
 	if (PrototypeHandMicroPortraits.Contains(CardId)

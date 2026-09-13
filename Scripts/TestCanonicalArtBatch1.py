@@ -22,7 +22,7 @@ SOURCES = {
     'Prototype.ManchesterCity.JeremyDoku': '01',
     'Prototype.Arsenal.GabrielMartinelli': '01',
 }
-MISSING = 'Prototype.ManchesterCity.NathanAke'
+MISSING = 'Prototype.ManchesterCity.MarcGuehi'  # Ake migrated in Stage 8.3E.
 PILOTS = {'Prototype.Arsenal.BukayoSaka', 'Prototype.Arsenal.DavidRaya',
     'Prototype.ManchesterCity.Rodri', 'Prototype.ManchesterCity.ErlingHaaland'}
 

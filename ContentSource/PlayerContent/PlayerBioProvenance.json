@@ -1,0 +1,1614 @@
+{
+  "schemaVersion": 1,
+  "stage": "8.3E",
+  "researchedAt": "2026-09-13",
+  "baseline": "e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05",
+  "policy": "Public real-world bio only; preserve already authored values; fictionalized portrait identity is independent. Runtime reads only generated CanonicalPlayerContent.json.",
+  "sourcePriority": [
+    "official_club_profile",
+    "official_competition_profile",
+    "official_federation_profile",
+    "ESPN_fallback"
+  ],
+  "normalization": "ISO birth dates, exact integer centimetres/kilograms, centralized Chinese country labels. No birthplace-to-nationality inference. For multi-national profiles, retain the independently documented senior national-team identity. No transfer, shirt number, position or gameplay import.",
+  "players": [
+    {
+      "playerKey": "Prototype.Arsenal.DavidRaya",
+      "englishName": "David Raya",
+      "fields": {
+        "birthDate": {
+          "value": "1995-09-15",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 183,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 80,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "西班牙",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
+      "englishName": "Gabriel Magalhães",
+      "fields": {
+        "birthDate": {
+          "value": "1997-12-19",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 190,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 78,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "巴西",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.WilliamSaliba",
+      "englishName": "William Saliba",
+      "fields": {
+        "birthDate": {
+          "value": "2001-03-24",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 192,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 92,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "法国",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.BenWhite",
+      "englishName": "Ben White",
+      "fields": {
+        "birthDate": {
+          "value": "1997-10-08",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/ben-white"
+        },
+        "heightCm": {
+          "value": 186,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/ben-white"
+        },
+        "weightKg": {
+          "value": 81,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/ben-white"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/ben-white"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/ben-white",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Bundesliga official competition profile 186 cm / 81 kg takes priority over ESPN 185 cm / 76 kg.",
+      "reviewedAlternativeUrls": [
+        "https://africa.espn.com/football/player/bio/_/id/241077/ben-white"
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.PieroHincapie",
+      "englishName": "Piero Hincapié",
+      "fields": {
+        "birthDate": {
+          "value": "2002-01-09",
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.bayer04.de/en-us/player/werkself/alumni/piero-hincapie"
+        },
+        "heightCm": {
+          "value": 184,
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.bayer04.de/en-us/player/werkself/alumni/piero-hincapie"
+        },
+        "weightKg": {
+          "value": 78,
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.bayer04.de/en-us/player/werkself/alumni/piero-hincapie"
+        },
+        "nationality": {
+          "value": "厄瓜多尔",
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.bayer04.de/en-us/player/werkself/alumni/piero-hincapie"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/piero-hincapie",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Bayer official club archive 184 cm / 78 kg takes priority over ESPN 183 cm / 77 kg; archive status explicit.",
+      "reviewedAlternativeUrls": [
+        "https://www.espn.co.uk/football/team/squad/_/id/359/wt"
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.JurrienTimber",
+      "englishName": "Jurriën Timber",
+      "fields": {
+        "birthDate": {
+          "value": "2001-06-17",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/jurrien-timber"
+        },
+        "heightCm": {
+          "value": 179,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/jurrien-timber"
+        },
+        "weightKg": {
+          "value": 68,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/jurrien-timber"
+        },
+        "nationality": {
+          "value": "荷兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/jurrien-timber"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/jurrien-timber",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Bundesliga official competition 179 cm / 68 kg takes priority over ESPN 178 cm / 78 kg.",
+      "reviewedAlternativeUrls": [
+        "https://africa.espn.com/football/player/bio/_/id/282716/jurrien-timber"
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
+      "englishName": "Riccardo Calafiori",
+      "fields": {
+        "birthDate": {
+          "value": "2002-05-19",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/riccardo-calafiori"
+        },
+        "heightCm": {
+          "value": 188,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/riccardo-calafiori"
+        },
+        "weightKg": {
+          "value": 86,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/riccardo-calafiori"
+        },
+        "nationality": {
+          "value": "意大利",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/riccardo-calafiori"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/riccardo-calafiori",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
+      "englishName": "Myles Lewis-Skelly",
+      "fields": {
+        "birthDate": {
+          "value": "2006-09-26",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/myles-lewis-skelly"
+        },
+        "heightCm": {
+          "value": 178,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/myles-lewis-skelly"
+        },
+        "weightKg": {
+          "value": 72,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/myles-lewis-skelly"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/myles-lewis-skelly"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/myles-lewis-skelly",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MartinOdegaard",
+      "englishName": "Martin Ødegaard",
+      "fields": {
+        "birthDate": {
+          "value": "1998-12-17",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 178,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 68,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "挪威",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.EberechiEze",
+      "englishName": "Eberechi Eze",
+      "fields": {
+        "birthDate": {
+          "value": "1998-06-29",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/eberechi-eze"
+        },
+        "heightCm": {
+          "value": 178,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/eberechi-eze"
+        },
+        "weightKg": {
+          "value": 73,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/eberechi-eze"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_federation_profile",
+          "sourceUrl": "https://www.englandfootball.com/england/mens-senior-team/squad/eberechi-eze"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/eberechi-eze",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "reviewedAlternativeUrls": [
+        "https://www.premierleague.com/players/21584/Eberechi%20Eze/overview"
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MikelMerino",
+      "englishName": "Mikel Merino",
+      "fields": {
+        "birthDate": {
+          "value": "1996-06-22",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 189,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 83,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "西班牙",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.MartinZubimendi",
+      "englishName": "Martín Zubimendi",
+      "fields": {
+        "birthDate": {
+          "value": "1999-02-02",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/zubimendi"
+        },
+        "heightCm": {
+          "value": 181,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/zubimendi"
+        },
+        "weightKg": {
+          "value": 74,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/zubimendi"
+        },
+        "nationality": {
+          "value": "西班牙",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/zubimendi"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/martin-zubimendi",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.DeclanRice",
+      "englishName": "Declan Rice",
+      "fields": {
+        "birthDate": {
+          "value": "1999-01-14",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 188,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 83,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.ChristianNorgaard",
+      "englishName": "Christian Nørgaard",
+      "fields": {
+        "birthDate": {
+          "value": "1994-03-10",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/christian-norgaard"
+        },
+        "heightCm": {
+          "value": 187,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/christian-norgaard"
+        },
+        "weightKg": {
+          "value": 73,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/christian-norgaard"
+        },
+        "nationality": {
+          "value": "丹麦",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/christian-norgaard"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/christian-norgaard",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Current LaLiga profile 187 cm / 73 kg retained; FIFA 2022 squad list height 186 cm is an older measurement, ESPN 188 cm is lower priority. Club roster seen on website is not imported.",
+      "reviewedAlternativeUrls": [
+        "https://fdp.fifa.org/assetspublic/ce44/pdf/SquadLists-English.pdf",
+        "https://www.espn.com.sg/football/player/bio/_/id/178077/christian-n%C3%B8rgaard"
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.BukayoSaka",
+      "englishName": "Bukayo Saka",
+      "fields": {
+        "birthDate": {
+          "value": "2001-09-05",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 178,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 72,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.GabrielMartinelli",
+      "englishName": "Gabriel Martinelli",
+      "fields": {
+        "birthDate": {
+          "value": "2001-06-18",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 178,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 74,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "巴西",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.ViktorGyokeres",
+      "englishName": "Viktor Gyökeres",
+      "fields": {
+        "birthDate": {
+          "value": "1998-06-04",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/viktor-gyokeres"
+        },
+        "heightCm": {
+          "value": 187,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/viktor-gyokeres"
+        },
+        "weightKg": {
+          "value": 86,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/viktor-gyokeres"
+        },
+        "nationality": {
+          "value": "瑞典",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/viktor-gyokeres"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/viktor-gyokeres",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    },
+    {
+      "playerKey": "Prototype.Arsenal.LeandroTrossard",
+      "englishName": "Leandro Trossard",
+      "fields": {
+        "birthDate": {
+          "value": "1994-12-04",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/leandro-trossard"
+        },
+        "heightCm": {
+          "value": 172,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/leandro-trossard"
+        },
+        "weightKg": {
+          "value": 70,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/leandro-trossard"
+        },
+        "nationality": {
+          "value": "比利时",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/leandro-trossard"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/leandro-trossard",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Bundesliga official competition 172 cm / 70 kg takes priority over ESPN 173 cm / 59 kg.",
+      "reviewedAlternativeUrls": [
+        "https://global.espn.com/football/team/squad/_/id/359/eng.arsenal"
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.NoniMadueke",
+      "englishName": "Noni Madueke",
+      "fields": {
+        "birthDate": {
+          "value": "2002-03-10",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/noni-madueke"
+        },
+        "heightCm": {
+          "value": 183,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/noni-madueke"
+        },
+        "weightKg": {
+          "value": 83,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/noni-madueke"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/noni-madueke"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/noni-madueke",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "LaLiga official competition weight 83 kg takes priority over ESPN 73 kg.",
+      "reviewedAlternativeUrls": [
+        "https://global.espn.com/football/team/squad/_/id/359/eng.arsenal"
+      ]
+    },
+    {
+      "playerKey": "Prototype.Arsenal.KaiHavertz",
+      "englishName": "Kai Havertz",
+      "fields": {
+        "birthDate": {
+          "value": "1999-06-11",
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.bayer04.de/en-us/player/werkself/legends/kai-havertz"
+        },
+        "heightCm": {
+          "value": 189,
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.bayer04.de/en-us/player/werkself/legends/kai-havertz"
+        },
+        "weightKg": {
+          "value": 82,
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.bayer04.de/en-us/player/werkself/legends/kai-havertz"
+        },
+        "nationality": {
+          "value": "德国",
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.bayer04.de/en-us/player/werkself/legends/kai-havertz"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.arsenal.com/men/players/kai-havertz",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Bayer club archive 189 cm / 82 kg selected under club-first priority over ESPN 193 cm / 83 kg. These are the explicitly dated former-club measurements, not a claim of a newly measured 2026 physique.",
+      "reviewedAlternativeUrls": [
+        "https://global.espn.com/football/team/squad/_/id/359/eng.arsenal"
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",
+      "englishName": "Gianluigi Donnarumma",
+      "fields": {
+        "birthDate": {
+          "value": "1999-02-25",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 196,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 89,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "意大利",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RubenDias",
+      "englishName": "Rúben Dias",
+      "fields": {
+        "birthDate": {
+          "value": "1997-05-14",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 187,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 83,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "葡萄牙",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.MarcGuehi",
+      "englishName": "Marc Guéhi",
+      "fields": {
+        "birthDate": {
+          "value": "2000-07-13",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/marc-guehi"
+        },
+        "heightCm": {
+          "value": 182,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/marc-guehi"
+        },
+        "weightKg": {
+          "value": 75,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/marc-guehi"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/marc-guehi"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/marc-guehi",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Bundesliga official competition 182 cm / 75 kg takes priority over ESPN 183 cm / 78 kg.",
+      "reviewedAlternativeUrls": [
+        "https://www.espn.co.uk/football/team/squad/_/id/382/sort/weight/saves"
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
+      "englishName": "Joško Gvardiol",
+      "fields": {
+        "birthDate": {
+          "value": "2002-01-23",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 185,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 79,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "克罗地亚",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.NathanAke",
+      "englishName": "Nathan Aké",
+      "fields": {
+        "birthDate": {
+          "value": "1995-02-18",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/nathan-ake"
+        },
+        "heightCm": {
+          "value": 180,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/nathan-ake"
+        },
+        "weightKg": {
+          "value": 75,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/nathan-ake"
+        },
+        "nationality": {
+          "value": "荷兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/nathan-ake"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/nathan-ake",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JohnStones",
+      "englishName": "John Stones",
+      "fields": {
+        "birthDate": {
+          "value": "1994-05-28",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/john-stones"
+        },
+        "heightCm": {
+          "value": 188,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/john-stones"
+        },
+        "weightKg": {
+          "value": 70,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/john-stones"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_federation_profile",
+          "sourceUrl": "https://www.englandfootball.com/england/mens-senior-team/squad/john-stones"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/john-stones",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Bundesliga official competition weight 70 kg takes priority over ESPN 78 kg. England official profile corroborates birth date and 188 cm.",
+      "reviewedAlternativeUrls": [
+        "https://www.espn.co.uk/football/team/squad/_/id/382/sort/weight/saves",
+        "https://www.englandfootball.com/england/mens-senior-team/squad/john-stones"
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
+      "englishName": "Rayan Aït-Nouri",
+      "fields": {
+        "birthDate": {
+          "value": "2001-06-06",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/rayan-ait-nouri"
+        },
+        "heightCm": {
+          "value": 180,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/rayan-ait-nouri"
+        },
+        "weightKg": {
+          "value": 70,
+          "status": "RECOVERED",
+          "sourceClass": "official_federation_profile",
+          "sourceUrl": "https://www.fff.fr/equipe-nationale/joueur/8926-ait-nouri-rayan/fiche.html",
+          "sourceTier": 1,
+          "sourceFamily": "FFF",
+          "retrievedAt": "2026-09-13",
+          "resolutionStage": "8.3E.1"
+        },
+        "nationality": {
+          "value": "阿尔及利亚",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/rayan-ait-nouri"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/rayan-ait-nouri",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "RESOLVED CASE A: select the published 70 kg from the official FFF retained national-team profile, now identifying Manchester City. BeSoccer and BDFutbol corroborate 70. Weight measurement date is unknown. Official evidence outranks secondary 68/~68.95, 69.84 and 80 kg. ESPN locales count as one family; do not equate their representation discrepancy with independent disagreement. No averaging, inferred weight or other bio changes.",
+      "conflictingSources": [
+        "https://espndeportes.espn.com/futbol/jugador/_/id/272512/rayan-ait-nouri",
+        "https://en.as.com/resultados/ficha/deportista/rayan_ait_nouri/42446/",
+        "https://www.sports.fr/football/joueurs/r-ait-nouri-32418.html"
+      ],
+      "weightResolutionHistory": [
+        {
+          "stage": "8.3E",
+          "decision": "UNRESOLVED weight: official club page unavailable, Bundesliga omits weight, federation/former-club search recovered no metric value. ESPN regional metric page says 68 kg while US page says 152 lbs; no consistent exact authored integer selected. Leave weight absent.",
+          "status": "MISSING_UNRESOLVED_CONFLICT"
+        }
+      ],
+      "weightResearch": [
+        {
+          "source": "FFF official retained national-team profile",
+          "sourceFamily": "FFF",
+          "tier": 1,
+          "url": "https://www.fff.fr/equipe-nationale/joueur/8926-ait-nouri-rayan/fiche.html",
+          "publishedValue": "70 kg",
+          "normalizedKg": 70,
+          "freshness": "Live profile identifies Manchester City and includes a 2026 honour; individual weight measurement/update date is not published.",
+          "verdict": "SELECTED",
+          "rationale": "Official federation profile, correct name and date of birth. Current page with explicit metric weight; CASE A. Former France youth representation does not change current authored Algerian nationality."
+        },
+        {
+          "source": "BeSoccer",
+          "sourceFamily": "BeSoccer",
+          "tier": 2,
+          "url": "https://www.besoccer.com/player/r-ait-nouri-652436",
+          "publishedValue": "70 kg",
+          "normalizedKg": 70,
+          "freshness": "Current Manchester City profile with 2026/27 section; weight-specific date absent.",
+          "verdict": "CORROBORATING",
+          "rationale": "Matches official value. Localized BeSoccer pages count once; underlying feed independence is not asserted."
+        },
+        {
+          "source": "BDFutbol",
+          "sourceFamily": "BDFutbol",
+          "tier": 2,
+          "url": "https://www.bdfutbol.com/es/j/j28362.html",
+          "publishedValue": "70 kg",
+          "normalizedKg": 70,
+          "freshness": "Profile age 25; site-wide update 2026-09-03, not a weight measurement date.",
+          "verdict": "CORROBORATING",
+          "rationale": "Separate publisher agrees with official value; no need to rely on secondary consensus."
+        },
+        {
+          "source": "ESPN regional metric and US imperial",
+          "sourceFamily": "ESPN",
+          "tier": 2,
+          "url": "https://espndeportes.espn.com/futbol/jugador/_/id/272512/rayan-ait-nouri",
+          "additionalUrls": [
+            "https://africa.espn.com/football/player/bio/_/id/272512/rayan-ait-nouri",
+            "https://africa.espn.com/football/team/squad/_/id/624/fifa.friendly",
+            "https://www.espn.com/soccer/player/bio/_/id/272512/rayan-ait-nouri"
+          ],
+          "publishedValue": "68 kg; 152 lb",
+          "normalizedKg": [
+            68,
+            68.94604024
+          ],
+          "freshness": "Live search/page representations show 2025/26 data/age 24. Direct Africa bio body unavailable; metric value rechecked in ESPN Deportes and Africa squad results. US value rechecked in indexed result; body unavailable.",
+          "verdict": "NOT_SELECTED",
+          "rationale": "One source family, not independent confirmations. 152 * 0.45359237 = 68.94604024 kg for comparison only. Small intra-provider representation discrepancy does not justify missing data; lower tier than FFF."
+        },
+        {
+          "source": "Soccerbase",
+          "sourceFamily": "Soccerbase",
+          "tier": 2,
+          "url": "https://www.soccerbase.com/players/player.sd?player_id=111631",
+          "publishedValue": "11 st (69.84 kg)",
+          "normalizedKg": 69.84,
+          "freshness": "Current Manchester City profile, 2026/27 fixtures; measurement date absent.",
+          "verdict": "SUPPORTING_NOT_EXACT_CONSENSUS",
+          "rationale": "Published 69.84 is near official 70; 11 stone converts to 69.85322498 kg. Comparison only; canonical value is not a rounding or average of this entry."
+        },
+        {
+          "source": "AS",
+          "sourceFamily": "AS / PRISA",
+          "tier": 2,
+          "url": "https://en.as.com/resultados/ficha/deportista/rayan_ait_nouri/42446/",
+          "publishedValue": "80 kg",
+          "normalizedKg": 80,
+          "freshness": "Current City label and age 25 but France country retained; no weight date.",
+          "verdict": "NOT_SELECTED",
+          "rationale": "Credible publication but secondary, with no dated weight evidence strong enough to override FFF."
+        },
+        {
+          "source": "Sports.fr",
+          "sourceFamily": "Sports.fr",
+          "tier": 2,
+          "url": "https://www.sports.fr/football/joueurs/r-ait-nouri-32418.html",
+          "publishedValue": "80 kg",
+          "normalizedKg": 80,
+          "freshness": "Search-index profile result; direct open failed; measurement date unavailable.",
+          "verdict": "NOT_SELECTED",
+          "rationale": "Recorded as a credible indexed alternative, not independent proof of an 80 kg consensus; syndication not established. Official 70 wins."
+        },
+        {
+          "source": "Manchester City",
+          "sourceFamily": "Manchester City",
+          "tier": 1,
+          "url": "https://www.mancity.com/players/rayan-ait-nouri",
+          "publishedValue": null,
+          "freshness": "Live open returned no readable content.",
+          "verdict": "UNAVAILABLE",
+          "rationale": "No retrievable weight; not evidence that club has no weight."
+        },
+        {
+          "source": "Premier League",
+          "sourceFamily": "Premier League",
+          "tier": 1,
+          "url": "https://www.premierleague.com/en/players/448514/rayan-ait-nouri/overview",
+          "publishedValue": null,
+          "freshness": "Live overview returned limited profile; bio endpoint unavailable.",
+          "verdict": "NO_WEIGHT_RECOVERED",
+          "rationale": "No weight in retrieved representation; do not infer from height."
+        },
+        {
+          "source": "Wolverhampton former club profile",
+          "sourceFamily": "Wolves",
+          "tier": 1,
+          "url": "https://www.wolves.co.uk/teams/mens-first-team/rayan-ait-nouri/",
+          "publishedValue": null,
+          "freshness": "Former player URL unavailable; domain/archive-oriented search recovered no weight.",
+          "verdict": "UNAVAILABLE",
+          "rationale": "No retrieved archival metric claim."
+        },
+        {
+          "source": "Transfermarkt",
+          "sourceFamily": "Transfermarkt",
+          "tier": 2,
+          "url": "https://www.transfermarkt.com/rayan-ait-nouri/profil/spieler/578391/sort/tore.desc",
+          "publishedValue": null,
+          "freshness": "26/27 profile; June 2026 market-value update is not a bio update.",
+          "verdict": "NO_WEIGHT_RECOVERED",
+          "rationale": "Profile publishes height but not weight."
+        }
+      ],
+      "additionalOfficialSearches": [
+        {
+          "family": "FAF",
+          "query": "site:faf.dz Rayan Ait Nouri poids weight",
+          "result": "Domain searches recovered no published weight; do not claim all federation records omit it."
+        },
+        {
+          "family": "FIFA",
+          "url": "https://www.fifa.com/id/tournaments/mens/club-world-cup/usa-2025/articles/pemain-baru-manchester-city-untuk-cwc",
+          "result": "2025 official transfer article/search results contain no recovered weight."
+        },
+        {
+          "family": "CAF",
+          "url": "https://www.cafonline.com/media/05ebfeih/ultimate-media-guide-afcon25.pdf",
+          "result": "Domain search recovered guide/match statistics, no weight evidence selected; guide was not exhaustively audited."
+        },
+        {
+          "family": "UEFA",
+          "url": "https://www.uefa.com/MultimediaFiles/Download/competitions/General/02/61/63/75/2616375_DOWNLOAD.pdf",
+          "result": "Archived 2019 U19 programme search result identifies player/DOB/Angers but no weight recovered; current 2026 information-kit search also yielded no weight."
+        },
+        {
+          "family": "Angers SCO",
+          "query": "site:angers-sco.fr Rayan Ait Nouri poids",
+          "result": "Current/former-club domain search recovered no official weight profile."
+        }
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.Rodri",
+      "englishName": "Rodri",
+      "fields": {
+        "birthDate": {
+          "value": "1996-06-22",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 190,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 82,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "西班牙",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.TijjaniReijnders",
+      "englishName": "Tijjani Reijnders",
+      "fields": {
+        "birthDate": {
+          "value": "1998-07-29",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/tijjani-reijnders"
+        },
+        "heightCm": {
+          "value": 185,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/tijjani-reijnders"
+        },
+        "weightKg": {
+          "value": 73,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/tijjani-reijnders"
+        },
+        "nationality": {
+          "value": "荷兰",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/tijjani-reijnders"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/tijjani-reijnders",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.BernardoSilva",
+      "englishName": "Bernardo Silva",
+      "fields": {
+        "birthDate": {
+          "value": "1994-08-10",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 173,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 64,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "葡萄牙",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.PhilFoden",
+      "englishName": "Phil Foden",
+      "fields": {
+        "birthDate": {
+          "value": "2000-05-28",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 171,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 63,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "英格兰",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanCherki",
+      "englishName": "Rayan Cherki",
+      "fields": {
+        "birthDate": {
+          "value": "2003-08-17",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/rayan-cherki"
+        },
+        "heightCm": {
+          "value": 180,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/rayan-cherki"
+        },
+        "weightKg": {
+          "value": 71,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/rayan-cherki"
+        },
+        "nationality": {
+          "value": "法国",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/rayan-cherki"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/rayan-cherki",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "LaLiga official competition height 180 cm takes priority over FootballSquads 177 cm.",
+      "reviewedAlternativeUrls": [
+        "https://www.footballsquads.co.uk/eng/2025-2026/engprem/mancity.htm"
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.NicoGonzalez",
+      "englishName": "Nico González",
+      "fields": {
+        "birthDate": {
+          "value": "2002-01-03",
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.fcbarcelona.com/en/football/first-team/players/67849/nicolas-gonzalez-iglesias"
+        },
+        "heightCm": {
+          "value": 189,
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.fcbarcelona.com/en/football/first-team/players/67849/nicolas-gonzalez-iglesias"
+        },
+        "weightKg": {
+          "value": 88,
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://www.fcbarcelona.com/en/football/first-team/players/67849/nicolas-gonzalez-iglesias"
+        },
+        "nationality": {
+          "value": "西班牙",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.premierleague.com/en/players/465694/nico-gonzalez/overview"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/nico-gonzalez",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "Rejected same-name Bundesliga/LaLiga profile for the Argentine forward born 1998-04-06. Matched Spanish midfielder Nicolas Gonzalez Iglesias born 2002-01-03; Barcelona archive and Premier League ID 465694 agree.",
+      "reviewedAlternativeUrls": [
+        "https://www.bundesliga.com/en/player/nico-gonzalez",
+        "https://www.laliga.com/en-GB/player/nicolas-gonzalez"
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.MatheusNunes",
+      "englishName": "Matheus Nunes",
+      "fields": {
+        "birthDate": {
+          "value": "1998-08-27",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/matheus-nunes"
+        },
+        "heightCm": {
+          "value": 183,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/matheus-nunes"
+        },
+        "weightKg": {
+          "value": 78,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/matheus-nunes"
+        },
+        "nationality": {
+          "value": "葡萄牙",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/matheus-nunes"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/matheus-nunes",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.MateoKovacic",
+      "englishName": "Mateo Kovačić",
+      "fields": {
+        "birthDate": {
+          "value": "1994-05-06",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/kovacic"
+        },
+        "heightCm": {
+          "value": 177,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/kovacic"
+        },
+        "weightKg": {
+          "value": 78,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/kovacic"
+        },
+        "nationality": {
+          "value": "克罗地亚",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/kovacic"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/mateo-kovacic",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "decision": "LaLiga official competition height 177 cm takes priority over ESPN 178 cm.",
+      "reviewedAlternativeUrls": [
+        "https://www.espn.co.uk/football/team/squad/_/id/382/sort/weight/saves"
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
+      "englishName": "Erling Haaland",
+      "fields": {
+        "birthDate": {
+          "value": "2000-07-21",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 195,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 87,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "挪威",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.OmarMarmoush",
+      "englishName": "Omar Marmoush",
+      "fields": {
+        "birthDate": {
+          "value": "1999-02-07",
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://profis.eintracht.de/2023-2024/kader/omar-khaled-mohamed-marmoush/"
+        },
+        "heightCm": {
+          "value": 183,
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://profis.eintracht.de/2023-2024/kader/omar-khaled-mohamed-marmoush/"
+        },
+        "weightKg": {
+          "value": 81,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/omar-marmoush"
+        },
+        "nationality": {
+          "value": "埃及",
+          "status": "RECOVERED",
+          "sourceClass": "official_club_archive",
+          "sourceUrl": "https://profis.eintracht.de/2023-2024/kader/omar-khaled-mohamed-marmoush/"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/omar-marmoush",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JeremyDoku",
+      "englishName": "Jérémy Doku",
+      "fields": {
+        "birthDate": {
+          "value": "2002-05-27",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "heightCm": {
+          "value": 171,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "weightKg": {
+          "value": 66,
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        },
+        "nationality": {
+          "value": "比利时",
+          "status": "PRESERVED_AUTHORED_BASELINE",
+          "sourceClass": "existing_authored_config",
+          "sourceUrl": null,
+          "repositorySource": "ContentSource/PlayerContent/CanonicalPlayerImportConfig.json@e4ea174d0a70ed6ad4d4e3cfb3509e9895baea05"
+        }
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.AntoineSemenyo",
+      "englishName": "Antoine Semenyo",
+      "fields": {
+        "birthDate": {
+          "value": "2000-01-07",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/antoine-semenyo"
+        },
+        "heightCm": {
+          "value": 185,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/antoine-semenyo"
+        },
+        "weightKg": {
+          "value": 78,
+          "status": "RECOVERED",
+          "sourceClass": "ESPN_fallback",
+          "sourceUrl": "https://www.espn.co.uk/football/team/squad/_/id/4469/gana"
+        },
+        "nationality": {
+          "value": "加纳",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.bundesliga.com/en/player/antoine-semenyo"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/antoine-semenyo",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      },
+      "fallbackReason": "Club page has no readable data; official Bundesliga profile omits weight; official competition/club/federation search did not recover a metric weight. One database provider (ESPN), explicit metric 78 kg.",
+      "reviewedAlternativeUrls": [
+        "https://www.bundesliga.com/en/player/antoine-semenyo"
+      ]
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.Savinho",
+      "englishName": "Savinho",
+      "fields": {
+        "birthDate": {
+          "value": "2004-04-10",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/savio"
+        },
+        "heightCm": {
+          "value": 179,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/savio"
+        },
+        "weightKg": {
+          "value": 66,
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/savio"
+        },
+        "nationality": {
+          "value": "巴西",
+          "status": "RECOVERED",
+          "sourceClass": "official_competition_profile",
+          "sourceUrl": "https://www.laliga.com/en-GB/player/savio"
+        }
+      },
+      "clubPageCheck": {
+        "url": "https://www.mancity.com/players/savinho",
+        "result": "Live club page unavailable or no readable biography fields; official competition/federation or club archive used."
+      }
+    }
+  ],
+  "closeout": {
+    "stage": "8.3E.1",
+    "retrievedAt": "2026-09-13",
+    "completeFieldsBefore": 159,
+    "recoveredFields": 1,
+    "completeFieldsAfter": 160,
+    "missingFields": [],
+    "policy": "Official current/recent published value first; otherwise independent secondary consensus or quality/freshness winner. Normalize units for comparison; mirrors/syndicated copies do not add votes. Missing only for materially incompatible unresolved evidence. No invented/averaged values."
+  }
+}

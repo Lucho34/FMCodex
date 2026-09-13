@@ -670,6 +670,75 @@
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "familyRevision": "1.1",
       "pitchVisualStatus": "USER PIE ACCEPTED"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.NathanAke",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_NathanAke_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.NathanAke/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "0D240DA5D65A538D8B00B7F8B16C6AFEA6A0CC0206592D489DC3BFFB236557AB",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3E",
+      "familyRevision": "1.1",
+      "sourceGate": {
+        "classification": "SOURCE_USABLE_WITH_METADATA_CROP",
+        "reason": "Correct key/team, distinct newly generated fictional identity, opaque RGB 1024x1536; full head/neck/shoulders/chest; reviewed Hand, visible Pitch crop and Full; original pixels preserved, no Widget offsets. USER PIE ACCEPTED."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.NathanAke/Master.png",
+        "sourceSha256": "0D240DA5D65A538D8B00B7F8B16C6AFEA6A0CC0206592D489DC3BFFB236557AB",
+        "originIdentity": "Prototype.ManchesterCity.NathanAke",
+        "identityPolicy": "PlayerKey ownership and one original fictional character across all purposes; real-player likeness is not a gate.",
+        "generationRecord": "ArtSource/UI/PlayerMaster/Stage8_3E_Generation.json",
+        "status": "New original artwork created with Codex built-in image_gen; technical source gate passed; Hand/Shared/Full USER PIE ACCEPTED."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "cropOverrides": {
+        "handCropRect": [
+          0,
+          0.025,
+          1,
+          0.53
+        ],
+        "pitchCropRect": [
+          0,
+          0.025,
+          1,
+          0.58
+        ]
+      },
+      "cropExceptionReason": "Master hair crown starts near the default .055 top. Move only the metadata crop top to .025 and retain the previous bottom, preserving complete twists plus top breathing room. Same rule for Hand and Pitch; Full remains uncropped."
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanCherki",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_RayanCherki_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.RayanCherki/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "D1AC99F5DC8280884F8C23A84C34B1E8DCB29950F94C455EBFAEE3CCF201BF71",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3E",
+      "familyRevision": "1.1",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct key/team, distinct newly generated fictional identity, opaque RGB 1024x1536; full head/neck/shoulders/chest; reviewed Hand, visible Pitch crop and Full; original pixels preserved, no Widget offsets. USER PIE ACCEPTED."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.RayanCherki/Master.png",
+        "sourceSha256": "D1AC99F5DC8280884F8C23A84C34B1E8DCB29950F94C455EBFAEE3CCF201BF71",
+        "originIdentity": "Prototype.ManchesterCity.RayanCherki",
+        "identityPolicy": "PlayerKey ownership and one original fictional character across all purposes; real-player likeness is not a gate.",
+        "generationRecord": "ArtSource/UI/PlayerMaster/Stage8_3E_Generation.json",
+        "status": "New original artwork created with Codex built-in image_gen; technical source gate passed; Hand/Shared/Full USER PIE ACCEPTED."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     }
   ]
 }

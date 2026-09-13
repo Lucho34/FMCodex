@@ -1,0 +1,42 @@
+{
+  "stage": "8.3E",
+  "tool": "Codex built-in image_gen",
+  "generatedAt": "2026-09-13",
+  "candidateBudget": "One candidate per player, two calls total; no retries.",
+  "reproducibility": "Generation is stochastic. The persisted Master SHA256 fixes the source; the existing pinned derivative pipeline is deterministic.",
+  "entries": [
+    {
+      "playerKey": "Prototype.ManchesterCity.NathanAke",
+      "generatedOutput": "C:/Users/Lucho/.codex/generated_images/01a09394-218a-7060-857b-52c4708a3c56/exec-37adbe9a-1b36-458c-a758-fd5c605cc540.png",
+      "prompt": "Use case: stylized-concept. Asset type: one canonical UE football portrait Master, exact 1024 x 1536 pixels, vertical 2:3, opaque RGB PNG. Create ONE original fictional adult male professional football defender for canonical PlayerKey Prototype.ManchesterCity.NathanAke. This is a roster character, not a celebrity poster or a likeness reconstruction. Subject: medium-brown skin, athletic lean strong build, shoulder-length dark loose textured twists swept back from the face, no blond braids, light neat facial stubble, calm focused eyes, mature composed expression. Distinct original face. Front-facing chest-up to lower torso, eye-level camera, head centered at x=48%, full hair top at about 8% image height, eyes at 24%, chin at 39%, neck and both shoulders entirely readable, wide visible upper chest and jersey extending to bottom. Hair silhouette stays within x=27%..69%; reserve quiet background at upper right x=73%..96%, y=5%..38% for downstream UI. Match a restrained art-directed editorial football card family: realistic anatomy and readable natural skin, gently simplified and polished surfaces, subtle illustration finish, premium modern sports portrait, neither cartoon nor extreme pore-detail photorealism. Sky-blue short-sleeved football jersey, fine tonal knit, narrow navy-and-white round collar and cuff trim, simple white side insert, NO official crest, NO logos, sponsors, brand marks, lettering or numbers. Dark midnight-navy / deep-teal blurred night stadium background, subtle cool soft key and soft fill, very restrained teal edge light, a few small dim distant warm lights off to the sides, no bright lamp band crossing the head, no halo, no tactical diagram or geometric decoration. Enough crop-safe head, neck, shoulders and chest for horizontal 192x128 and near-square Pitch derivatives from this same source. No ball, hands, other people, framing, UI, text, watermark, fake transparency or panels. Output only the single finished portrait.",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.NathanAke/Master.png",
+      "masterSha256": "0D240DA5D65A538D8B00B7F8B16C6AFEA6A0CC0206592D489DC3BFFB236557AB",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "colorMode": "RGB",
+      "normalization": "None; byte-identical copy of generated output.",
+      "masterTechnicalGate": "SOURCE_READY",
+      "runtimeVisualStatus": "USER PIE ACCEPTED",
+      "sourceGateAfterDerivativeReview": "SOURCE_USABLE_WITH_METADATA_CROP",
+      "cropReviewNote": "Raise Hand/Shared source crop top from 0.055 to 0.025; retain the bottom edge to protect full hair silhouette. Full remains [0,0,1,1]. Metadata only; no widget offset."
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.RayanCherki",
+      "generatedOutput": "C:/Users/Lucho/.codex/generated_images/01a09394-218a-7060-857b-52c4708a3c56/exec-0342427a-abd6-4d5c-a8ed-c990f077644b.png",
+      "prompt": "Use case: stylized-concept. Asset type: single canonical UE football portrait Master, exact 1024 x 1536 pixels, vertical 2:3 opaque RGB PNG. Create ONE original fictional adult male professional attacking football player associated only with PlayerKey Prototype.ManchesterCity.RayanCherki. Not a celebrity poster or likeness reconstruction. Subject: young adult with light olive skin, athletic compact lean build, short thick dark-brown naturally wavy hair with a tidy taper, slight short mustache and neat fine jaw stubble, expressive brown eyes, a composed alert confident expression, distinct original facial identity. Face almost frontal with a very slight turn toward camera left, shoulders front-facing. Whole head and hair, full neck, both shoulders, upper chest and jersey clearly visible down to lower torso. Eye-level camera; head centered x=48%, top of hair around y=8%, eyes around y=24%, chin around y=39%; face and hair stay within x=28%..68% so upper right x=73%..96%, y=5%..38% remains quiet background for downstream UI. Style: restrained art-directed editorial football card portrait, realistic anatomy and natural skin, gently simplified polished surfaces with a subtle illustration finish; premium modern sports game art, neither cartoon nor extreme pore-detail realism. Jersey: dominant sky blue, fine subtle performance knit, narrow navy-and-white round collar/cuff trim, simple white side inserts, short sleeves; no commercial marks or actual kit crest. Scene: dark midnight-navy and deep-teal defocused night stadium; cool soft face key and fill with a subtle teal rim, very small sparse dim amber distant side lights. Calm low-noise background, no bright lamp band across face, no halo. Crop-safe production master with generous head/shoulder/chest room for both horizontal 192x128 Hand and near-square Pitch derivatives from this single identity. No text, digits, names, badges, crests, logos, sponsors, manufacturer marks, card border, UI, watermark, ball, hands, trophy or extra people. Output one finished portrait only.",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.RayanCherki/Master.png",
+      "masterSha256": "D1AC99F5DC8280884F8C23A84C34B1E8DCB29950F94C455EBFAEE3CCF201BF71",
+      "masterDimensions": [
+        1024,
+        1536
+      ],
+      "colorMode": "RGB",
+      "normalization": "None; byte-identical copy of generated output.",
+      "masterTechnicalGate": "SOURCE_READY",
+      "runtimeVisualStatus": "USER PIE ACCEPTED",
+      "sourceGateAfterDerivativeReview": "SOURCE_READY"
+    }
+  ]
+}
