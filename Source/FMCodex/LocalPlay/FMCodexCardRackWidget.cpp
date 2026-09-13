@@ -363,13 +363,17 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 				Card->ConfigureDeploymentDrag(Cell.Card.CardId, Cell.bGoalkeeper);
 				Card->OnDeploymentDragStarted.AddUObject(
 					this, &UFMCodexCardRackWidget::HandleCardDragStarted);
-				Card->OnDeploymentDragFinished.AddUObject(
-					this, &UFMCodexCardRackWidget::HandleCardDragFinished);
+
 			}
 			else
 			{
 				Card->ClearDeploymentDrag();
 			}
+			// A drop can synchronously rebuild this named rack node before the UMG
+			// operation delivers OnDrop. Completion must still reach the screen even
+			// when the replacement card has no legal destination (including a full pitch).
+			Card->OnDeploymentDragFinished.AddUObject(
+				this, &UFMCodexCardRackWidget::HandleCardDragFinished);
 			RenderedCardWidgets.Add(Card);
 			if (Cell.bSetPieceSelectable || Cell.bSetPieceSelected)
 			{

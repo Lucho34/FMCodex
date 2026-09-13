@@ -285,9 +285,9 @@ bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
         const auto* Bio = CastChecked<UBorder>(Card->GetWidgetFromName(TEXT("InMatchFullCardBiographyRegion")));
         const float BioTextWidth = BioBounds->GetWidthOverride() - Bio->GetPadding().Left - Bio->GetPadding().Right;
         TestTrue(TEXT("Bio keeps its top anchor and approved right safety margin"),
-            BioBounds->GetWidthOverride() == 96.f && BioSlot->GetHorizontalAlignment() == HAlign_Right
+            BioBounds->GetWidthOverride() == 90.f && BioSlot->GetHorizontalAlignment() == HAlign_Right
             && BioSlot->GetPadding().Top == 18.f && BioSlot->GetPadding().Right == 10.f
-            && Bio->GetPadding().Left == 6.f && Bio->GetPadding().Right == 6.f);
+            && Bio->GetPadding().Left == 4.f && Bio->GetPadding().Right == 4.f);
         for (const TCHAR* Fact : {TEXT("BiographyBirthDate"),TEXT("BiographyHeight"),TEXT("BiographyWeight"),TEXT("BiographyPosition")})
         for (const TCHAR* Part : {TEXT("Label"),TEXT("Value")})
         {
@@ -322,7 +322,7 @@ bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
     auto Legacy = Card->GetPresentation(); Legacy.CardId=TEXT("Prototype.Arsenal.MikelMerino");
     Card->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::InteractionChoice);
     for (const TCHAR* Node : {TEXT("InMatchFullCardBiographyRegion"), TEXT("CardIdentityRegion"),
-        TEXT("AttributePresentationRegion"), TEXT("SkillPresentationRegion"), TEXT("FullCardNumberPlate"),
+        TEXT("AttributePresentationRegion"), TEXT("SkillPresentationRegion"),
         TEXT("AttributeTierBadge0"), TEXT("FullCardSkillRange0")})
     {
         const auto* Surface = Cast<UFMCodexFullCardSurface>(Card->GetWidgetFromName(Node));
@@ -334,7 +334,40 @@ bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
     TestEqual(TEXT("Legacy rating typography restored"),
         CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("OverallNumber")))->GetFont().Size,44.f);
     TestEqual(TEXT("Legacy Full hero is restored"),CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("PortraitAssetBounds")))->GetHeightOverride(),320.f);
-    TestTrue(TEXT("Legacy Full footer remains unchanged"),Card->GetWidgetFromName(TEXT("FullCardCollectionLine"))->GetVisibility()==ESlateVisibility::Collapsed);
+    TestTrue(TEXT("Family v1.1 legacy footer retains collection serial"),Card->GetWidgetFromName(TEXT("FullCardCollectionLine"))->GetVisibility()==ESlateVisibility::HitTestInvisible);
+    TestEqual(TEXT("Family v1.1 legacy retains the configured number plate"),
+        CastChecked<UFMCodexFullCardSurface>(Card->GetWidgetFromName(TEXT("FullCardNumberPlate")))->GetSurface(),EFMCodexFullCardSurface::Number);
+    // Canonical, legacy, missing data and a future/unrouted player all inherit
+    // the same bio text lane without relying on explicit art enablement.
+    for (const TCHAR* Key : {TEXT("Prototype.ManchesterCity.BernardoSilva"),
+        TEXT("Prototype.Arsenal.DavidRaya"), TEXT("Prototype.ManchesterCity.ErlingHaaland"),
+        TEXT("Prototype.Arsenal.WilliamSaliba"), TEXT("Prototype.Arsenal.JurrienTimber"),
+        TEXT("Prototype.Arsenal.MikelMerino"), TEXT("Test.FuturePlayer")})
+    {
+        auto Model=Precision; Model.CardId=Key;
+        const bool bMissing=Model.CardId==TEXT("Prototype.Arsenal.JurrienTimber") || Model.CardId==TEXT("Test.FuturePlayer");
+        Model.BirthDate=bMissing ? FString() : FString(TEXT("1994-08-10"));
+        Model.HeightCm=bMissing ? 0 : 195; Model.WeightKg=bMissing ? 0 : 87;
+        Card->RefreshFromPresentation(Model,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+        const auto Slate=Card->TakeWidget(); Slate->SlatePrepass();
+        const auto* Bounds=CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("InMatchFullCardBiographyBounds")));
+        const auto* Region=CastChecked<UBorder>(Card->GetWidgetFromName(TEXT("InMatchFullCardBiographyRegion")));
+        TestTrue(TEXT("Global Full bio width/padding, independent of identity or art route"),
+            Bounds->GetWidthOverride()==90.f && Region->GetPadding().Left==4.f && Region->GetPadding().Right==4.f);
+        TestEqual(TEXT("All routes preserve four biography facts"),Card->GetRenderedBiographyRowCount(),4);
+        TestEqual(TEXT("Full size remains frozen"),Card->GetConfiguredDimensions(),FVector2D(360,540));
+        for (const TCHAR* Fact : {TEXT("BiographyBirthDateValue"),TEXT("BiographyHeightValue"),
+            TEXT("BiographyWeightValue"),TEXT("BiographyPositionValue")})
+        {
+            const auto* Text=CastChecked<UTextBlock>(Card->GetWidgetFromName(Fact));
+            TestTrue(TEXT("Every route retains readable unwrapped facts"),Text->GetFont().Size==12.f
+                && !Text->GetAutoWrapText() && Text->GetDesiredSize().X<=82.f);
+        }
+        if (bMissing)
+            TestEqual(TEXT("Missing date remains an em dash"),
+                CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("BiographyBirthDateValue")))->GetText().ToString(),FString(TEXT("—")));
+    }
+
     Card->RemoveFromParent();GEngine->DestroyWorldContext(World);World->DestroyWorld(false);
     return true;
 }

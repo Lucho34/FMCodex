@@ -37,7 +37,7 @@ class CanonicalArtBatch1Test(unittest.TestCase):
 
     def test_exact_batch_source_identity_and_master_integrity(self):
         self.assertEqual({e['playerKey'] for e in self.players}, set(SOURCES))
-        self.assertEqual({e['playerKey'] for e in self.catalog if is_canonical(e)}, PILOTS | set(SOURCES))
+        self.assertEqual({e['playerKey'] for e in self.catalog if is_canonical(e) and (e.get('migrationStage') == '8.3A' or e['playerKey'] in PILOTS)}, PILOTS | set(SOURCES))
         hashes = set()
         for e in self.players:
             with self.subTest(player=e['playerKey']):
@@ -75,7 +75,7 @@ class CanonicalArtBatch1Test(unittest.TestCase):
     def test_explicit_enablement_and_source_missing_exclusion(self):
         source=(ROOT/'Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp').read_text(encoding='utf-8')
         block=source.split('static const TSet<FName> CanonicalPlayers = {',1)[1].split('};',1)[0]
-        self.assertEqual(set(re.findall(r'TEXT\("([^\"]+)"\)',block)),PILOTS|set(SOURCES))
+        self.assertEqual(set(re.findall(r'TEXT\("([^\"]+)"\)',block)),{e["playerKey"] for e in self.catalog if is_canonical(e)})
         with patch.dict('os.environ', {'FMCODEX_SHARED_PORTRAIT_PLAYER_KEYS':MISSING}):
             with self.assertRaisesRegex(RuntimeError,'Unknown Shared Portrait PlayerKey'):select_entries(self.catalog)
         with patch.dict('os.environ', {'FMCODEX_SHARED_PORTRAIT_PLAYER_KEYS':next(iter(SOURCES))}):

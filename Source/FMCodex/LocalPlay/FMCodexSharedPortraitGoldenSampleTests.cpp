@@ -255,10 +255,10 @@ bool FFMCodexSharedPortraitGoldenSampleCoverageAndCookTest::RunTest(
 		Definitions.Num(), 40);
 	TestEqual(TEXT("Second production batch increases technical Shared coverage to 28"),
 		SharedPortraitCount, 28);
-	TestEqual(TEXT("Two newly complete Batch-1 sources increase dedicated Full coverage"),
-		FullCardPortraitCount, 18);
-	TestEqual(TEXT("Two newly complete Batch-1 sources increase dedicated Hand coverage"),
-		HandMicroPortraitCount, 18);
+	TestEqual(TEXT("Canonical Batch 2 adds Timber to dedicated Full coverage"),
+		FullCardPortraitCount, 19);
+	TestEqual(TEXT("Canonical Batch 2 adds Timber to dedicated Hand coverage"),
+		HandMicroPortraitCount, 19);
 
 	FString DefaultGameConfig;
 	const FString ConfigPath = FPaths::Combine(

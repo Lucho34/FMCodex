@@ -41,7 +41,7 @@ namespace FMCodexPlayerCardWidget
 	constexpr float FullCardWidth = 360.0f;
 	constexpr float FullCardHeight = 540.0f;
 	constexpr float FullCardHeroHeight = 320.0f;
-	constexpr float FullCardBiographyWidth = 100.0f;
+	constexpr float FullCardBiographyWidth = 90.0f;
 	constexpr float FullCardPortraitLeft = 0.0f;
 	constexpr float FullCardPortraitTop = 0.045f;
 	constexpr float FullCardPortraitRight = 1.0f;
@@ -2410,7 +2410,7 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
 	const bool bDetailed = PresentationMode
 		== EFMCodexPlayerCardPresentationMode::InteractionChoice;
 	auto AddBiographyRow = [this](const FName RowName,
-		const FText& Label, const FText& Value, const bool bPrimary)
+		const FText& Label, const FText& Value)
 	{
 		USizeBox* RowBounds = WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(),
@@ -2418,7 +2418,7 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
 		RowBounds->SetHeightOverride(bFullCardPilot && Presentation.Skills.Num() >= 3 ? 32.f : 34.f);
 		UBorder* RowSurface = FMCodexPlayerCardWidget::MakeRegion(
 			*WidgetTree, RowName, FLinearColor::Transparent,
-			bFullCardPilot ? FMargin(0,0) : FMargin(2,2));
+			bFullCardPilot ? FMargin(0,0) : FMargin(0,2));
 		UVerticalBox* Copy = WidgetTree->ConstructWidget<UVerticalBox>(
 			UVerticalBox::StaticClass(),
 			FName(*(RowName.ToString() + TEXT("Copy"))));
@@ -2441,8 +2441,8 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*ValueText, EFMCodexPlayerUITextRole::Body);
 		FSlateFontInfo ValueFont = ValueText->GetFont();
-		// A one-point date adjustment preserves six-unit padding in the narrow Full bio.
-		ValueFont.Size = bPrimary && !bFullCardPilot ? 13 : 12;
+		// Every Full route shares the readable 12-point fact size and 82-unit text lane.
+		ValueFont.Size = 12;
 		ValueFont.TypefaceFontName = TEXT("Medium");
 		ValueText->SetFont(ValueFont);
 		ValueText->SetColorAndOpacity(FSlateColor(
@@ -2481,19 +2481,19 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
         FString DisplayDate = Presentation.BirthDate;
         DisplayDate.ReplaceInline(TEXT("-"), TEXT("."));
         AddBiographyRow(TEXT("BiographyBirthDate"), FFMCodexPlayerUIPresentationText::BirthDateHeading(),
-            DisplayDate.IsEmpty() ? Missing : FText::FromString(DisplayDate), true);
+            DisplayDate.IsEmpty() ? Missing : FText::FromString(DisplayDate));
         AddBiographyDivider(TEXT("BiographyHeightDivider"));
         AddBiographyRow(TEXT("BiographyHeight"), FFMCodexPlayerUIPresentationText::HeightHeading(),
             Presentation.HeightCm > 0 ? FText::Format(NSLOCTEXT("FMCodexPlayerUI", "BioCentimetres", "{0} cm"),
-                FText::AsNumber(Presentation.HeightCm)) : Missing, false);
+                FText::AsNumber(Presentation.HeightCm)) : Missing);
         AddBiographyDivider(TEXT("BiographyWeightDivider"));
         AddBiographyRow(TEXT("BiographyWeight"), FFMCodexPlayerUIPresentationText::WeightHeading(),
             Presentation.WeightKg > 0 ? FText::Format(NSLOCTEXT("FMCodexPlayerUI", "BioKilograms", "{0} kg"),
-                FText::AsNumber(Presentation.WeightKg)) : Missing, false);
+                FText::AsNumber(Presentation.WeightKg)) : Missing);
         AddBiographyDivider(TEXT("BiographyPositionDivider"));
         const FText Position = FFMCodexPlayerUIPresentationText::InMatchCompactRole(Presentation.RoleLabel);
         AddBiographyRow(TEXT("BiographyPosition"), FFMCodexPlayerUIPresentationText::FullCardPositionTypeHeading(),
-            Position.IsEmpty() ? Missing : Position, false);
+            Position.IsEmpty() ? Missing : Position);
     }
 	const ESlateVisibility BiographyVisibility =
 		RenderedBiographyRowCount > 0
@@ -3035,12 +3035,13 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     }
     const bool bDenseBiography = bFullCardPilot && Presentation.Skills.Num() >= 3;
     auto* BioBounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("InMatchFullCardBiographyBounds")));
-    // Narrow bio plus the user-approved two-unit right shift; retain the top anchor.
-    BioBounds->SetWidthOverride(bFullCardPilot ? 96.f : FullCardBiographyWidth);
+    // Global Full bio clearance: narrow only from the left, retaining each frame
+    // skin's accepted top/right anchors and all vertical capacity rules.
+    BioBounds->SetWidthOverride(FullCardBiographyWidth);
     if (auto* BioSlot = Cast<UOverlaySlot>(BioBounds->Slot))
         BioSlot->SetPadding(bFullCardPilot ? FMargin(0,bDenseBiography ? 12 : 18,10,0) : FMargin(0,10,5,0));
     BiographyRegion->SetPadding(bFullCardPilot
-        ? (bDenseBiography ? FMargin(6,7) : FMargin(6,9,6,10)) : FMargin(7,6));
+        ? (bDenseBiography ? FMargin(4,7) : FMargin(4,9,4,10)) : FMargin(4,6));
     SetFullSurface(SkillRegion, bFullCardPilot, EFMCodexFullCardSurface::Section, Accent);
     GetWidgetFromName(TEXT("FullCardIdentityReadabilityScrim"))->SetVisibility(bFullCardPilot
         ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);

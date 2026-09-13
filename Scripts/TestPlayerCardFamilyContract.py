@@ -8,9 +8,9 @@ from ImportCanonicalPlayerContent import validate_config
 ROOT=Path(__file__).resolve().parent.parent
 
 class PlayerCardFamilyContractTest(unittest.TestCase):
-    def test_all_eleven_shared_outputs_use_one_reproducible_recipe(self):
+    def test_all_canonical_shared_outputs_use_one_reproducible_recipe(self):
         players=[p for p in load_catalog(ROOT) if is_canonical(p)]
-        self.assertEqual(len(players),11)
+        self.assertEqual(len(players),18)
         for p in players:
             e=dict(p,runtimeRole='Shared')
             with self.subTest(key=p['playerKey']):

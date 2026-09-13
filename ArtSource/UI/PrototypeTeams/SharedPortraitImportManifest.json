@@ -39,17 +39,80 @@
     {
       "playerKey": "Prototype.Arsenal.MartinOdegaard",
       "team": "Arsenal",
-      "assetName": "T_Prototype_Arsenal_MartinOdegaard_01"
+      "assetName": "T_Prototype_Arsenal_MartinOdegaard_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.MartinOdegaard/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "49652417914A8276C39E39E01B05578F1D10CBD498B844BC423784156DDA74F3",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3C",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct canonical key/team association; same-key kit-bearing fictional portrait, full crown/hair, neck, bilateral shoulders and upper torso. Opaque RGB 1024x1536; frozen defaults first; no real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_MartinOdegaard_FullCardHeroBust_01.png",
+        "sourceSha256": "49652417914A8276C39E39E01B05578F1D10CBD498B844BC423784156DDA74F3",
+        "originIdentity": "Prototype.Arsenal.MartinOdegaard",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.DeclanRice",
       "team": "Arsenal",
-      "assetName": "T_Prototype_Arsenal_DeclanRice_01"
+      "assetName": "T_Prototype_Arsenal_DeclanRice_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.DeclanRice/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "F2934D9874465B114FA02C0DC78948285B485B61484A5EB7EFF0DE5739E9871D",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3C",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct canonical key/team association; same-key kit-bearing fictional portrait, full crown/hair, neck, bilateral shoulders and upper torso. Opaque RGB 1024x1536; frozen defaults first; no real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_DeclanRice_FullCardHeroBust_01.png",
+        "sourceSha256": "F2934D9874465B114FA02C0DC78948285B485B61484A5EB7EFF0DE5739E9871D",
+        "originIdentity": "Prototype.Arsenal.DeclanRice",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.WilliamSaliba",
       "team": "Arsenal",
-      "assetName": "T_Prototype_Arsenal_WilliamSaliba_01"
+      "assetName": "T_Prototype_Arsenal_WilliamSaliba_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.WilliamSaliba/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "0E8FA62FB66CD5D28888134F1F74312A72E2BBCA81C72A2F0C93C84005797524",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3C",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct canonical key/team association; same-key kit-bearing fictional portrait, full crown/hair, neck, bilateral shoulders and upper torso. Opaque RGB 1024x1536; frozen defaults first; no real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_WilliamSaliba_FullCardHeroBust_01.png",
+        "sourceSha256": "0E8FA62FB66CD5D28888134F1F74312A72E2BBCA81C72A2F0C93C84005797524",
+        "originIdentity": "Prototype.Arsenal.WilliamSaliba",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.Arsenal.DavidRaya",
@@ -240,7 +303,43 @@
       "playerKey": "Prototype.Arsenal.JurrienTimber",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_JurrienTimber_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.JurrienTimber/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "8DE585EB55109BBC11AE4BF983242E9314399850EEEA1CFB345423DB71223812",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3C",
+      "sourceGate": {
+        "classification": "SOURCE_USABLE_WITH_METADATA_CROP",
+        "reason": "Correct same-key fictional identity and Arsenal kit. Default Hand/Pitch crop places the frozen crown seed above this source crown and leaves a detached extraction remnant. A bounded source-space top .115 preserves complete hair, face and shoulders; no Widget or generator change. Full remains default."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_JurrienTimber_01.png",
+        "sourceSha256": "8DE585EB55109BBC11AE4BF983242E9314399850EEEA1CFB345423DB71223812",
+        "originIdentity": "Prototype.Arsenal.JurrienTimber",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "cropOverrides": {
+        "handCropRect": [
+          0,
+          0.115,
+          1,
+          0.5
+        ],
+        "pitchCropRect": [
+          0,
+          0.115,
+          1,
+          0.55
+        ]
+      },
+      "cropExceptionReason": "Correct same-key fictional identity and Arsenal kit. Default Hand/Pitch crop places the frozen crown seed above this source crown and leaves a detached extraction remnant. A bounded source-space top .115 preserves complete hair, face and shoulders; no Widget or generator change. Full remains default."
     },
     {
       "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
@@ -392,7 +491,28 @@
       "playerKey": "Prototype.ManchesterCity.BernardoSilva",
       "team": "ManchesterCity",
       "assetName": "T_Prototype_ManchesterCity_BernardoSilva_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.BernardoSilva/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "2FB44F7DD391357B17C62654AA2DA0870DC1099E7902A148306F70B1E14909E2",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3C",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Same canonical PlayerKey, original fictional portrait in Manchester City light-blue kit. Full hair, neck, shoulders and chest; all default v1.1 derivatives preserve jersey. Selected over same-key HeroBust candidate after its extraction failed; every role derives from this one source."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_BernardoSilva_01.png",
+        "sourceSha256": "2FB44F7DD391357B17C62654AA2DA0870DC1099E7902A148306F70B1E14909E2",
+        "originIdentity": "Prototype.ManchesterCity.BernardoSilva",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.ManchesterCity.JeremyDoku",
@@ -439,7 +559,28 @@
     {
       "playerKey": "Prototype.ManchesterCity.PhilFoden",
       "team": "ManchesterCity",
-      "assetName": "T_Prototype_ManchesterCity_PhilFoden_01"
+      "assetName": "T_Prototype_ManchesterCity_PhilFoden_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.PhilFoden/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "8A313131711792634B1AA19AE6DB5EA4DA7F9D11E259387D6C449D27EA089D61",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3C",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct canonical key/team association; same-key kit-bearing fictional portrait, full crown/hair, neck, bilateral shoulders and upper torso. Opaque RGB 1024x1536; frozen defaults first; no real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_PhilFoden_FullCardHeroBust_01.png",
+        "sourceSha256": "8A313131711792634B1AA19AE6DB5EA4DA7F9D11E259387D6C449D27EA089D61",
+        "originIdentity": "Prototype.ManchesterCity.PhilFoden",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.ManchesterCity.Rodri",
@@ -472,7 +613,28 @@
     {
       "playerKey": "Prototype.ManchesterCity.RubenDias",
       "team": "ManchesterCity",
-      "assetName": "T_Prototype_ManchesterCity_RubenDias_01"
+      "assetName": "T_Prototype_ManchesterCity_RubenDias_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.RubenDias/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "A0B5135A6B6572B53E938C26A23163475B61F07F52E0A31D77CB17E9874F255F",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v2",
+      "pitchCompositionProfile": "QuietPitchBust_v2",
+      "migrationStage": "8.3C",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "reason": "Correct canonical key/team association; same-key kit-bearing fictional portrait, full crown/hair, neck, bilateral shoulders and upper torso. Opaque RGB 1024x1536; frozen defaults first; no real-player likeness assessment."
+      },
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_RubenDias_FullCardHeroBust_01.png",
+        "sourceSha256": "A0B5135A6B6572B53E938C26A23163475B61F07F52E0A31D77CB17E9874F255F",
+        "originIdentity": "Prototype.ManchesterCity.RubenDias",
+        "identityPolicy": "Canonical PlayerKey association and one fictional identity across all purposes; no real-player likeness requirement.",
+        "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "familyRevision": "1.1",
+      "pitchVisualStatus": "USER PIE ACCEPTED"
     },
     {
       "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",

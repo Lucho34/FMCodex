@@ -35,6 +35,8 @@
 #include "Engine/UserInterfaceSettings.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Serialization/MemoryWriter.h"
@@ -65,7 +67,6 @@
 #include "RenderingThread.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Engine/TextureRenderTarget2D.h"
-#include "Misc/CommandLine.h"
 #endif
 
 namespace FMCodexLocalMatchControlSurfaceTests
@@ -10876,20 +10877,18 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 	{
 		return false;
 	}
-	TestTrue(TEXT("Integrated Full Card-only Hero Bust preserves data and Hand Micro isolation"),
+	TestTrue(TEXT("Canonical Full derivative preserves data and purpose isolation"),
 		IntegratedContentFullCard->GetRenderedIdentityText().ToString()
 				== TEXT("马丁内利")
 			&& IntegratedContentFullCard->GetWidgetFromName(
 				TEXT("CardIdentityRegion"))->GetVisibility()
 				== ESlateVisibility::HitTestInvisible
 			&& IntegratedContentFullCard->GetResolvedPortraitTexture() != nullptr
-			&& IntegratedContentFullCard->GetResolvedPortraitTexture()
-				->GetPathName().Contains(TEXT(
-					"T_Prototype_Arsenal_GabrielMartinelli_FullCardHeroBust_01"))
-			&& IntegratedContentFullCard->GetResolvedHandMicroPortraitTexture()
-				!= nullptr
-			&& IntegratedContentFullCard->GetResolvedHandMicroPortraitTexture()
-				!= IntegratedContentFullCard->GetResolvedPortraitTexture()
+			&& IntegratedContentFullCard->GetResolvedPortraitTexture()->GetPathName()
+				== FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(IntegratedContentCard->CardId)
+					.FullCardPortrait.ToSoftObjectPath().ToString()
+			&& IntegratedContentFullCard->GetResolvedPortraitTexture()->GetImportedSize()==FIntPoint(768,1152)
+			&& IntegratedContentFullCard->GetResolvedHandMicroPortraitTexture()==nullptr
 			&& FFMCodexPlayerUIPresentationText::HandMicroPlayerName(
 				IntegratedContentCard->CardId,
 				IntegratedContentCard->IdentityLabel).ToString()
@@ -11085,7 +11084,7 @@ bool FFMCodexInMatchFullCardProductionFoundationContractTest::RunTest(
 				== TEXT("BiographyPositionBounds"));
 	TestTrue(TEXT("Portrait-first metadata treatment is open and tile-free"),
 		BiographyBounds != nullptr
-			&& FMath::IsNearlyEqual(BiographyBounds->GetWidthOverride(), 96.0f)
+			&& FMath::IsNearlyEqual(BiographyBounds->GetWidthOverride(), 90.0f)
 			&& BiographyRegion != nullptr
 			&& Cast<UFMCodexFullCardSurface>(BiographyRegion) != nullptr
 			&& CastChecked<UFMCodexFullCardSurface>(BiographyRegion)->GetSurface() == EFMCodexFullCardSurface::Biography
@@ -11637,7 +11636,13 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
         TEXT("Prototype.ManchesterCity.Rodri"), TEXT("Prototype.ManchesterCity.ErlingHaaland"),
         TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"), TEXT("Prototype.Arsenal.GabrielMagalhaes"),
         TEXT("Prototype.ManchesterCity.JoskoGvardiol"), TEXT("Prototype.ManchesterCity.JeremyDoku"),
-        TEXT("Prototype.Arsenal.GabrielMartinelli")};
+        TEXT("Prototype.Arsenal.GabrielMartinelli"),
+        TEXT("Prototype.Arsenal.WilliamSaliba"),
+        TEXT("Prototype.Arsenal.MartinOdegaard"),
+        TEXT("Prototype.Arsenal.DeclanRice"),
+        TEXT("Prototype.ManchesterCity.RubenDias"),
+        TEXT("Prototype.ManchesterCity.BernardoSilva"),
+        TEXT("Prototype.ManchesterCity.PhilFoden")};
     int32 CanonicalFullCount = 0;
 	int32 DedicatedFullCardArtCount = 0;
 	int32 MissingFullCardArtCount = 0;
@@ -11731,7 +11736,7 @@ bool FFMCodexInMatchFullCardInformationArchitectureContractTest::RunTest(
 		bArtBoundaryIsHonest && DedicatedFullCardArtCount == 16
 			&& MissingFullCardArtCount == 0
 			&& FullCardPilotArtCount == 0
-			&& FullCardHeroBustArtCount == 7 && CanonicalFullCount == 9);
+			&& FullCardHeroBustArtCount == 1 && CanonicalFullCount == 15);
 	TestTrue(TEXT("In-Match position uses compact slash notation"),
 		FFMCodexPlayerUIPresentationText::InMatchCompactRole(TEXT("GK"))
 			.ToString() == TEXT("GK")
@@ -15514,5 +15519,127 @@ bool FFMCodexLocalMarkerGoalFeedback::RunTest(const FString&)
  TestFalse(TEXT("Local expiry never replays Goal"),C->GetResolutionFeedback().bVisible);
  return true;
 }
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexFullHoverAfterDeploymentTest,
+    "FMCodex.LocalPlay.ControlSurface.64.FullHoverAfterNativeDeployment",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexFullHoverAfterDeploymentTest::RunTest(const FString& Parameters)
+{
+    using namespace FMCodexLocalMatchControlSurfaceTests;
+    FScopedPlayableWorld PlayableWorld;
+    auto* Host=PlayableWorld.GetHost(); auto* Controller=PlayableWorld.GetController();
+    if (!Host || !Controller) return false;
+    Controller->InitializePlayerFacingUI();
+    auto* Screen=Controller->GetPlayerMatchScreen();
+    if (!TestNotNull(TEXT("Shared match screen"),Screen)) return false;
+    const auto ScreenSlate=Screen->TakeWidget();
+    auto Demo=FFMCodexLocalMatchDemoConfigurationFactory::Create();
+    auto& Opening=Demo.OpeningInput.OpeningInput;
+    Opening.bUseFixedPrototypeAttackTurnContract=false;
+    Opening.PlayerAAttackCountD6Roll=6; Opening.PlayerBAttackCountD6Roll=1;
+    Opening.PlayerATieBreakerRoll=1; Opening.PlayerBTieBreakerRoll=6;
+    if (!TestTrue(TEXT("Canonical opening"),Host->StartNewLocalMatch(Demo.OpeningInput,Demo.SkillRuleSet).bSuccess)) return false;
+    Controller->RefreshPresentation();
+    FFMCodexLocalDevRollOverrideRequest Roll;
+    Roll.Target=EFMCodexLocalDevRollTarget::FullD12; Roll.Value=8;
+    if (!TestTrue(TEXT("DEV provider supplies legal deployment budget"),Controller->SetLocalDevRollOverride(Roll).bSuccess)) return false;
+    Screen->RequestRollTacticalPoints(); Screen->PauseInlineFormulaRevealTimerForTesting();
+    Screen->AdvanceInlineFormulaRevealForTesting(5.f); AcknowledgeIfPending(*Controller);
+    const FGeometry Geometry=FGeometry::MakeRoot(FVector2D(136,140),FSlateLayoutTransform());
+    const FPointerEvent Pointer(0,FVector2D(40,40),FVector2D(30,30),
+        TSet<FKey>{EKeys::LeftMouseButton},EKeys::LeftMouseButton,0,FModifierKeysState());
+    auto CheckHover=[&](UFMCodexPlayerCardWidget* Card,const FString& Context)
+    {
+        if (!TestNotNull(Context+TEXT(" source"),Card)) return;
+        const auto Slate=Card->TakeWidget();
+        Slate->OnMouseEnter(Geometry,Pointer);
+        TestTrue(Context+TEXT(" native enter reaches shared Full"),Screen->IsDetailOverlayVisible()
+            && Screen->GetDetailOverlayCard()->GetPresentation().CardId==Card->GetPresentation().CardId);
+        Slate->OnMouseLeave(Pointer);
+        TestFalse(Context+TEXT(" native leave hides Full"),Screen->IsDetailOverlayVisible());
+    };
+    const TCHAR* Order[]={TEXT("JurrienTimber"),TEXT("RubenDias"),TEXT("MartinOdegaard"),
+        TEXT("PhilFoden"),TEXT("DeclanRice"),TEXT("Rodri"),TEXT("WilliamSaliba"),
+        TEXT("BernardoSilva"),TEXT("GabrielMagalhaes"),TEXT("JoskoGvardiol")};
+    for (int32 Count=0;Count<10;++Count)
+    {
+        const auto* Choice=Screen->GetPresentation().Interaction.DeploymentChoices.FindByPredicate(
+            [&](const auto& C){return !C.bGoalkeeper&&!C.Destinations.IsEmpty()
+                && C.CardId.ToString().EndsWith(FString(TEXT("."))+Order[Count]);});
+        if (!TestNotNull(TEXT("Next legal deployment choice"),Choice)) return false;
+        const auto Selected=*Choice;
+        UFMCodexPlayerCardWidget* Source=nullptr;
+        for (UFMCodexPlayerCardWidget* Card:Screen->GetLocalRackWidget()->GetRenderedCardWidgets())
+            if (Card&&Card->GetDeploymentDragCardId()==Selected.CardId){Source=Card;break;}
+        if (!TestNotNull(TEXT("Current legal Hand source"),Source)) return false;
+        const auto SourceSlate=Source->TakeWidget();
+        const auto DragReply=SourceSlate->OnDragDetected(Geometry,Pointer);
+        const auto NativeOperation=DragReply.GetDragDropContent();
+        if (!TestTrue(TEXT("Native DragDetected creates UMG operation"),NativeOperation.IsValid())) return false;
+        TestFalse(TEXT("Dragging suppresses Full"),Screen->IsDetailOverlayVisible());
+        UFMCodexPitchSlotWidget* Target=nullptr;
+        for (UFMCodexPitchSlotWidget* Slot:Screen->GetPitchWidget()->GetRenderedSlotWidgets())
+            if (Slot&&Slot->GetPresentation().SlotId==Selected.Destinations[0].SlotId){Target=Slot;break;}
+        if (!TestNotNull(TEXT("Current legal slot"),Target)) return false;
+        const auto TargetSlate=Target->TakeWidget();
+        const FDragDropEvent DragEvent(Pointer,NativeOperation);
+        TargetSlate->OnDragEnter(Geometry,DragEvent);
+        const auto DropReply=TargetSlate->OnDrop(Geometry,DragEvent);
+        TestTrue(TEXT("Native drop reaches typed authority"),DropReply.IsEventHandled()&&Controller->GetLastDiagnostic().bHostSuccess);
+        AddInfo(FString::Printf(TEXT("SOURCE_AFTER_REFRESH original=%s current=%s finish_bound=%d"),
+            *Selected.CardId.ToString(),*Source->GetPresentation().CardId.ToString(),Source->OnDeploymentDragFinished.IsBound()));
+        TestTrue(TEXT("Rebuilt source retains completion forwarding even without legal destinations"),
+            Source->OnDeploymentDragFinished.IsBound());
+        NativeOperation->OnDrop(DropReply.IsEventHandled(),Pointer);
+        int32 Occupied=0;
+        for (const auto& Region:Screen->GetPresentation().PitchRegions)
+            for (const auto& Slot:Region.Slots) Occupied+=Slot.bOccupied?1:0;
+        TestEqual(TEXT("Native drop increments actual occupancy"),Occupied,Count+1);
+        AddInfo(FString::Printf(TEXT("NATIVE_DEPLOY count=%d state=%d completion=%d source=%s"),
+            Occupied,int32(Screen->GetInteractionState()),int32(Screen->GetLastCompletedDragState()),*Selected.CardId.ToString()));
+        if (Occupied==10)
+            TestFalse(TEXT("Completion forwarding does not enable another illegal drag"),Source->IsDeploymentDragEnabled());
+        if (Occupied>=8)
+        {
+            for (UFMCodexPitchSlotWidget* Slot:Screen->GetPitchWidget()->GetRenderedSlotWidgets())
+                if (Slot&&Slot->GetCardWidget())
+                    CheckHover(Slot->GetCardWidget(),FString::Printf(TEXT("%d Pitch %s"),Occupied,*Slot->GetPresentation().SlotId.ToString()));
+            for (auto* Rack:{Screen->GetLocalRackWidget(),Screen->GetOpponentRackWidget()})
+                if (!Rack->GetRenderedCardWidgets().IsEmpty())
+                    CheckHover(Rack->GetRenderedCardWidgets()[0],FString::Printf(TEXT("%d Hand"),Occupied));
+        }
+    }
+    return true;
+}
+
+
+
+// Explicit DEV-only input bridge for the live saturation regression. Uses the
+// real Slate hit-test/event path, with no direct Full/hover or gameplay writes.
+static FAutoConsoleCommand FullHoverRuntimePointer(
+    TEXT("FMCodex.Test.FullHover.Pointer"), TEXT("Opt-in FullHoverRuntime: down / move / up [absolute X Y]."),
+    FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+    {
+        if (!FParse::Param(FCommandLine::Get(),TEXT("FullHoverRuntime"))
+            || (Args.Num()!=1 && Args.Num()!=3)) return;
+        if (Args[0]!=TEXT("down") && Args[0]!=TEXT("move") && Args[0]!=TEXT("up")) return;
+        auto& App=FSlateApplication::Get();
+        static bool bHeld=false;
+        const bool bDown=Args[0]==TEXT("down"), bUp=Args[0]==TEXT("up");
+        if (bDown) bHeld=true;
+        const FVector2D Pos=Args.Num()==3
+            ? FVector2D(FCString::Atod(*Args[1]),FCString::Atod(*Args[2])) : App.GetCursorPos();
+        TSet<FKey> Pressed; if (bHeld && !bUp) Pressed.Add(EKeys::LeftMouseButton);
+        const FPointerEvent Event(0,Pos,Pos-FVector2D(20,0),Pressed,
+            bDown||bUp ? EKeys::LeftMouseButton : EKeys::Invalid,0,FModifierKeysState());
+        if (bDown) App.ProcessMouseButtonDownEvent(nullptr,Event);
+        else if (bUp) { App.ProcessMouseButtonUpEvent(Event); bHeld=false; }
+        else App.ProcessMouseMoveEvent(Event,false);
+        if (Args.Num()==1 || bDown || bUp)
+            UE_LOG(LogTemp,Display,TEXT("FULL_HOVER_POINTER %s x=%.1f y=%.1f slate_drag=%d"),
+            *Args[0],Pos.X,Pos.Y,App.IsDragDropping());
+    }));
+
 
 #endif
