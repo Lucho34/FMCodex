@@ -63,7 +63,7 @@ bool FFMCodexPlayerCardFamilyContractTest::RunTest(const FString&)
         TestEqual(TEXT("Full plate consumes resolved field for canonical and legacy cards"),Text(TEXT("FullCardAssignedNumber")),Card.AssignedPlayerNumber);
         TestTrue(TEXT("Configured Full plate visible"),Widget->GetWidgetFromName(TEXT("FullCardNumberPlateBounds"))->GetVisibility()!=ESlateVisibility::Collapsed);
     }
-    FFMCodexLocalMatchCardView Missing;Missing.CardId=TEXT("Prototype.ManchesterCity.MarcGuehi");
+    FFMCodexLocalMatchCardView Missing;Missing.CardId=TEXT("Prototype.ManchesterCity.JohnStones");
     Missing.DisplayLabel=FFMCodexPrototypeTeamContent::PlayerDisplayName(Missing.CardId).ToString();Missing.CompactRoleLabel=TEXT("D");
     const auto MissingModel=FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(Missing);
     TestFalse(TEXT("Fallback does not activate a fake canonical Master"),FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Missing.CardId).bCanonicalPlayerArt);

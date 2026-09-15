@@ -163,7 +163,15 @@ def compose_quiet_pitch_bust(source, size, box):
     return result
 
 
-def encode_runtime_derivative(master: Path, size=RUNTIME_SIZE, crop=None, composition="CropOnly_v1") -> bytes:
+def prepare_family_source(source):
+    from PlayerPortraitForegroundV2 import extract_source_bases
+    from PlayerPortraitComposition import measure_face_anchors
+    prior, foreground = extract_source_bases(source)
+    return prior, foreground, measure_face_anchors(source, prior)
+
+
+def encode_runtime_derivative(master: Path, size=RUNTIME_SIZE, crop=None, composition="CropOnly_v1",
+                              *, family_source=None, evidence=None) -> bytes:
     validate_source_png(master, MASTER_SIZE)
     with Image.open(master) as source:
         source.load()
@@ -176,12 +184,32 @@ def encode_runtime_derivative(master: Path, size=RUNTIME_SIZE, crop=None, compos
         if crop is not None:
             x, y, w, h = crop
             box = (x*MASTER_SIZE[0], y*MASTER_SIZE[1], (x+w)*MASTER_SIZE[0], (y+h)*MASTER_SIZE[1])
-        if composition == "BalancedBust_v2":
+        if composition in ("BalancedBust_v3", "QuietPitchBust_v3"):
+            from PlayerPortraitComposition import compose_portrait
+            from PlayerPortraitPreflight import validate_composition_metrics
+            role = 'Hand' if composition == 'BalancedBust_v3' else 'Shared'
+            if size != ((192, 128) if role == 'Hand' else (512, 768)):
+                raise ValueError('Composition profile does not match runtime dimensions')
+            prior, foreground, anchors = family_source or prepare_family_source(source)
+            derivative, fit = compose_portrait(source, prior, anchors, crop, composition,
+                                               foreground=foreground)
+            validate_composition_metrics(role, fit)
+            if evidence is not None:
+                evidence.update({'foregroundExtractionProfile': foreground.profile,
+                    'foregroundAlphaSha256': foreground.alpha_sha256,
+                    'sourcePixelSha256': foreground.source_pixel_sha256,
+                    'extractionEvidence': foreground.evidence, 'anchorEvidence': anchors.evidence,
+                    'framingAndBackgroundProfile': prior.profile,
+                    'framingAndBackgroundAlphaSha256': prior.alpha_sha256,
+                    'compositionEvidence': fit})
+        elif composition == "BalancedBust_v2":
             derivative = compose_balanced_bust(source, size, box)
         elif composition == "QuietPitchBust_v2":
             derivative = compose_quiet_pitch_bust(source, size, box)
-        else:
+        elif composition == "CropOnly_v1":
             derivative = source.resize(size, Image.Resampling.LANCZOS, box=box)
+        else:
+            raise ValueError('Unknown production composition: '+str(composition))
         if derivative.mode != "RGB" or derivative.size != size:
             raise RuntimeError(f"Invalid runtime derivative in memory: {master}")
         stream = io.BytesIO()
@@ -288,13 +316,15 @@ def generate_selected(project_root: Path) -> list[dict[str, object]]:
     ).encode("utf-8")
     if any(not is_canonical(entry) for entry in selected):
         write_if_changed(provenance_path(project_root), provenance_bytes)
-    canonical_records = generate_canonical_selected(project_root, [e for e in selected if is_canonical(e)])
+    preview = os.environ.get('FMCODEX_PLAYER_ART_PREFLIGHT_OUTPUT')
+    canonical_records = generate_canonical_selected(project_root, [e for e in selected if is_canonical(e)],
+        preview_directory=Path(preview) if preview else None)
     if canonical_records:
         return canonical_records
     return ordered_records
 
 
-def generate_canonical_selected(project_root, selected):
+def generate_canonical_selected(project_root, selected, *, preview_directory=None, preflight_receipt=None):
     if not selected:
         return []
     if PILLOW_VERSION != "9.4.0":
@@ -304,17 +334,34 @@ def generate_canonical_selected(project_root, selected):
     records = {r["playerKey"]:r for r in existing}
     pending = []
     roles = selected_runtime_roles()
+    from PlayerPortraitPreflight import (implementation_hashes, implementation_file_hash,
+        IMPLEMENTATION_HASH_PROFILE, role_visual_status, validate_preflight)
+    code_hashes = implementation_hashes(project_root)
+    selected_records = []
     for entry in selected:
         master = master_path(project_root, entry)
         if sha256_file(master) != entry["masterSha256"].upper():
             raise RuntimeError(f"Master changed without approved manifest revision: {master}")
+        family_source = None
+        if entry.get('familyRevision') == '1.2' and set(roles) & {'Hand', 'Shared'}:
+            if entry.get('foregroundExtractionProfile') != 'SourceSpaceForeground_v2':
+                raise RuntimeError('Family v1.2 requires explicit SourceSpaceForeground_v2')
+            with Image.open(master) as source:
+                family_source = prepare_family_source(source)
+            if preview_directory is not None:
+                directory = preview_directory/'Foreground'/entry['playerKey']
+                directory.mkdir(parents=True, exist_ok=True)
+                family_source[0].alpha.save(directory/'Prior.png')
+                family_source[1].alpha.save(directory/'Foreground.png')
         record = {"playerKey":entry["playerKey"], "masterSourcePath":entry["masterSourcePath"],
                   "masterDimensions":list(MASTER_SIZE), "masterSha256":sha256_file(master),
                   "masterRevision":entry["masterRevision"], "cropMetadataSha256":crop_metadata_hash(entry),
-                  "compositionProfile":entry["compositionProfile"], "generatorVersion":9,
+                  "compositionProfile":entry["compositionProfile"], "generatorVersion":10,
                   "pillowVersion":PILLOW_VERSION, "resampling":RESAMPLING_CONTRACT,
                   "encoder":ENCODER_CONTRACT, "visualStatus":"PER-ROLE ACCEPTANCE ONLY",
                   "sourceProvenance":entry.get("sourceProvenance",{}), "roles":{}}
+        if entry.get('familyRevision') == '1.2':
+            record.update(familyRevision='1.2', foregroundExtractionProfile='SourceSpaceForeground_v2')
         previous = records.get(entry["playerKey"])
         previous_roles = previous.get("roles", {}) if previous else {}
         for frozen_role, frozen in previous_roles.items():
@@ -338,24 +385,30 @@ def generate_canonical_selected(project_root, selected):
             if frozen_role == "Hand":
                 if frozen.get("handCompositionProfile", "CropOnly_v1") != hand_composition(entry):
                     raise RuntimeError("Partial generation would stale frozen Hand recipe")
-                if frozen.get("generatorSha256") != sha256_file(Path(__file__)):
+                if frozen.get("generatorSha256") != implementation_file_hash(Path(__file__)):
                     # A Shared-only code change may update provenance only after proving
                     # the protected Hand PNG still exactly reproduces from its Master.
                     reproduced = encode_runtime_derivative(master,runtime_size(frozen_entry),
                         resolved_crop(frozen_entry),hand_composition(entry))
                     if sha256_bytes(reproduced) != frozen["runtimeDerivativeSha256"]:
                         raise RuntimeError("Generator changed protected Hand bytes; explicit Hand selection required")
-                    frozen = dict(frozen,generatorSha256=sha256_file(Path(__file__)),generatorVersion=9)
+                    frozen = dict(frozen,generatorSha256=implementation_file_hash(Path(__file__)),generatorVersion=9)
             if frozen_role == "Shared" and (
                 frozen.get("pitchCompositionProfile", "CropOnly_v1") != pitch_composition(entry)
-                or (pitch_composition(entry) == "QuietPitchBust_v2" and frozen.get("generatorSha256") != sha256_file(Path(__file__)))):
+                or (pitch_composition(entry) == "QuietPitchBust_v2" and frozen.get("generatorSha256") != implementation_file_hash(Path(__file__)))):
                 raise RuntimeError("Partial generation would stale frozen Pitch recipe")
+            if frozen_role in ('Hand', 'Shared') and entry.get('familyRevision') == '1.2':
+                if (frozen.get('foregroundExtractionProfile') != entry.get('foregroundExtractionProfile')
+                        or frozen.get('implementationHashProfile') != IMPLEMENTATION_HASH_PROFILE
+                        or frozen.get('implementationSha256') != code_hashes):
+                    raise RuntimeError('Partial generation would stale frozen v1.2 implementation')
             record["roles"][frozen_role] = frozen
         for role_entry in expand_runtime_entries([entry], roles):
             role=runtime_role(role_entry);size=runtime_size(role_entry);crop=resolved_crop(role_entry)
             composition = hand_composition(entry) if role == "Hand" else pitch_composition(entry) if role == "Shared" else "CropOnly_v1"
-            data=encode_runtime_derivative(master,size,crop,composition)
-            if data != encode_runtime_derivative(master,size,crop,composition):
+            evidence = {}
+            data=encode_runtime_derivative(master,size,crop,composition,family_source=family_source,evidence=evidence)
+            if data != encode_runtime_derivative(master,size,crop,composition,family_source=family_source):
                 raise RuntimeError(f"Nondeterministic {role} derivative")
             dest=runtime_derivative_path(project_root,role_entry)
             pending.append((dest,data))
@@ -367,24 +420,42 @@ def generate_canonical_selected(project_root, selected):
                 "importRecipe":"DesktopBC7OpaqueSharpen1_v1"}
             if role == "Hand":
                 record["roles"][role].update({"handCompositionProfile":composition,
-                    "generatorSha256":sha256_file(Path(__file__)),"generatorVersion":9,
+                    "generatorSha256":implementation_file_hash(Path(__file__)),"generatorVersion":9,
                     "pillowVersion":PILLOW_VERSION,"reframing":"proportional bust framing; original Master pixels; offline seeded subject extraction" if composition == "BalancedBust_v2" else "direct aspect-preserving Master crop",
                     "foregroundExtraction":"OpenCV 4.10.0.84 GrabCut; NumPy 1.24.1; seed=0; threads=1; 512x768 analysis; 6 iterations" if composition == "BalancedBust_v2" else "none"})
             if role == "Shared":
                 record["roles"][role].update({"pitchCompositionProfile":composition,
-                    "generatorSha256":sha256_file(Path(__file__)), "generatorVersion":9,
+                    "generatorSha256":implementation_file_hash(Path(__file__)), "generatorVersion":9,
                     "pillowVersion":PILLOW_VERSION,
                     "reframing":"original Master uniformly fitted to frozen 130:112 Pitch UV; source-environment normalized blur, subject excluded, restrained night-match grade" if composition == "QuietPitchBust_v2" else "uncropped Master",
                     "foregroundExtraction":"accepted seeded GrabCut mask recipe; offline only" if composition == "QuietPitchBust_v2" else "none"})
             old_role = previous_roles.get(role, {})
-            unchanged = (previous is not None and previous["masterSha256"] == record["masterSha256"]
-                and previous["masterRevision"] == record["masterRevision"]
-                and old_role.get("runtimeDerivativeSha256") == record["roles"][role]["runtimeDerivativeSha256"]
-                and old_role.get("cropRect") == crop)
-            record["roles"][role]["visualStatus"] = old_role.get("visualStatus", "PENDING USER PIE") if unchanged else "PENDING USER PIE"
+            if evidence:
+                record['roles'][role].update(evidence)
+                record['roles'][role].update({'implementationSha256': code_hashes,
+                    'implementationHashProfile': IMPLEMENTATION_HASH_PROFILE, 'generatorVersion':10,
+                    'reframing':'bounded v3 fit using frozen v1 anchors/background; original source pixels rendered with v2 alpha',
+                    'foregroundExtraction':'SourceSpaceForeground_v2; pinned source-only extraction and bounded local recovery'})
+            record["roles"][role]["visualStatus"] = role_visual_status(old_role, sha256_bytes(data))
         record["roleStatus"] = {role: record["roles"][role].get("visualStatus", "PENDING USER PIE")
             if role in record["roles"] else "DEFERRED" for role in ("Hand", "Shared", "Full")}
         records[entry["playerKey"]]=record
+        selected_records.append(record)
+        print('FMCODEX_CANONICAL_PREPARED '+entry['playerKey'], flush=True)
+    if preview_directory is not None:
+        # Review outputs only. No production PNG, provenance or acceptance writes.
+        for dest, data in pending:
+            write_if_changed(preview_directory/dest.relative_to(project_root), data)
+        write_if_changed(preview_directory/'ProposedProvenance.json',
+            (json.dumps({'schemaVersion':2,'entries':selected_records},indent=2,ensure_ascii=False)+'\n').encode('utf-8'))
+        print(f'FMCODEX_CANONICAL_PREFLIGHT_CANDIDATES=PASS players={len(selected)} textures={len(pending)}', flush=True)
+        return selected_records
+    if any(entry.get('familyRevision') == '1.2' for entry in selected):
+        receipt = preflight_receipt or os.environ.get('FMCODEX_PLAYER_ART_PREFLIGHT_RECEIPT')
+        validate_preflight(Path(receipt) if receipt else None, project_root, selected_records, roles)
+        for record in selected_records:
+            for role in roles:
+                record['roles'][role]['preflightReceiptSha256'] = sha256_file(Path(receipt))
     # Validate the complete selection before publishing any generated input.
     for dest,data in pending:
         write_if_changed(dest,data)

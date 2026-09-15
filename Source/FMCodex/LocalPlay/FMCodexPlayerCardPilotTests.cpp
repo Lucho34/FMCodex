@@ -458,7 +458,7 @@ bool FFMCodexCanonicalArtBatch1Test::RunTest(const FString&)
             }
         }
     }
-    for (const TCHAR* Key : {TEXT("Prototype.Arsenal.MikelMerino"),TEXT("Prototype.ManchesterCity.MarcGuehi")})
+    for (const TCHAR* Key : {TEXT("Prototype.Arsenal.MikelMerino"),TEXT("Prototype.ManchesterCity.JohnStones")})
     {
         const auto Art = FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(FName(Key));
         TestFalse(TEXT("Non-migrated and source-missing keys stay inactive"),Art.bCanonicalPlayerArt);

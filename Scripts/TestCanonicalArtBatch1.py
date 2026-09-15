@@ -22,7 +22,7 @@ SOURCES = {
     'Prototype.ManchesterCity.JeremyDoku': '01',
     'Prototype.Arsenal.GabrielMartinelli': '01',
 }
-MISSING = 'Prototype.ManchesterCity.MarcGuehi'  # Ake migrated in Stage 8.3E.
+MISSING = 'Prototype.ManchesterCity.JohnStones'  # Guehi migrated in Stage 8.4.
 PILOTS = {'Prototype.Arsenal.BukayoSaka', 'Prototype.Arsenal.DavidRaya',
     'Prototype.ManchesterCity.Rodri', 'Prototype.ManchesterCity.ErlingHaaland'}
 
@@ -66,7 +66,7 @@ class CanonicalArtBatch1Test(unittest.TestCase):
                 composition = hand_composition(e) if role=='Hand' else pitch_composition(e) if role=='Shared' else 'CropOnly_v1'
                 data = encode_runtime_derivative(master_path(ROOT,e),runtime_size(e),resolved_crop(e),composition)
                 self.assertEqual(data, runtime_derivative_path(ROOT,e).read_bytes())
-                self.assertEqual(record['visualStatus'],'USER PIE ACCEPTED')
+                self.assertEqual(record['visualStatus'], 'USER PIE ACCEPTED')
                 self.assertEqual(record['importRecipe'],'DesktopBC7OpaqueSharpen1_v1')
                 with Image.open(runtime_derivative_path(ROOT,e)) as im:
                     self.assertEqual(im.size,runtime_size(e));self.assertEqual(im.mode,'RGB')

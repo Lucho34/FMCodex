@@ -14,6 +14,7 @@ from GenerateSharedPortraitRuntimeDerivatives import encode_runtime_derivative, 
 from SharedPortraitImportCatalog import (load_catalog, is_canonical, expand_runtime_entries,
     master_path, runtime_derivative_path, runtime_size, resolved_crop, validate_generated_source)
 
+from TestPlayerPortraitProduction import publish_in_test_workspace
 ROOT = Path(__file__).resolve().parent.parent
 
 class FullCardUnifiedPilotTest(unittest.TestCase):
@@ -49,8 +50,9 @@ class FullCardUnifiedPilotTest(unittest.TestCase):
             shutil.copyfile(ROOT/'Scripts/GenerateSharedPortraitRuntimeDerivatives.py',generator)
             provenance=root/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json'
             provenance.write_text(json.dumps({'schemaVersion':2,'entries':prior}),encoding='utf-8')
-            after=generate_canonical_selected(root,self.players)
-            for old,new in zip(prior,after):
+            after=publish_in_test_workspace(root,self.players)
+            for old in prior:
+                new=next(r for r in after if r['playerKey']==old['playerKey'])
                 for role in ('Hand','Shared'):self.assertEqual(old['roles'][role],new['roles'][role])
                 self.assertEqual(set(new['roles']),{'Hand','Shared','Full'})
             for path,data in protected.items():self.assertEqual(path.read_bytes(),data)

@@ -215,19 +215,23 @@ def expand_runtime_entries(entries, roles=None):
 
 def hand_composition(entry):
     profile = entry.get("handCompositionProfile", "CropOnly_v1")
-    if profile not in ("CropOnly_v1", "BalancedBust_v2"):
+    if profile not in ("CropOnly_v1", "BalancedBust_v2", "BalancedBust_v3"):
         raise RuntimeError(f"Unknown Hand composition: {profile}")
+    if entry.get("familyRevision") == "1.2" and profile != "BalancedBust_v3":
+        raise RuntimeError("Family v1.2 requires explicit BalancedBust_v3")
     return profile
 
 
-ACTIVE_PITCH_PROFILE = "QuietPitchBust_v2"
+ACTIVE_PITCH_PROFILE = "QuietPitchBust_v3"
 
 
 def pitch_composition(entry):
-    profile = entry.get("pitchCompositionProfile", ACTIVE_PITCH_PROFILE if is_canonical(entry) else "CropOnly_v1")
-    if is_canonical(entry) and profile != ACTIVE_PITCH_PROFILE:
-        raise RuntimeError(f"Canonical Pitch must use global {ACTIVE_PITCH_PROFILE}: {profile}")
-    if profile not in ("CropOnly_v1", ACTIVE_PITCH_PROFILE):
+    # Historical v1.1 manifests remain reproducible; v1.2 is explicit and strict.
+    expected = ACTIVE_PITCH_PROFILE if entry.get("familyRevision") == "1.2" else "QuietPitchBust_v2"
+    profile = entry.get("pitchCompositionProfile", expected if is_canonical(entry) else "CropOnly_v1")
+    if is_canonical(entry) and profile != expected:
+        raise RuntimeError(f"Canonical Pitch must use {expected}: {profile}")
+    if profile not in ("CropOnly_v1", "QuietPitchBust_v2", ACTIVE_PITCH_PROFILE):
         raise RuntimeError(f"Unknown Pitch composition: {profile}")
     return profile
 
@@ -235,8 +239,8 @@ def pitch_composition(entry):
 def resolved_crop(entry):
     role = runtime_role(entry)
     profile = hand_composition(entry)
-    reframe = role == "Hand" and profile == "BalancedBust_v2"
-    pitch_reframe = role == "Shared" and pitch_composition(entry) == "QuietPitchBust_v2"
+    reframe = role == "Hand" and profile in ("BalancedBust_v2", "BalancedBust_v3")
+    pitch_reframe = role == "Shared" and pitch_composition(entry) in ("QuietPitchBust_v2", "QuietPitchBust_v3")
     default = ([0,.055,1,.5] if reframe else [0, 0.045, 1, 4/9]) if role == "Hand" else [0, 0, 1, 1]
     field = "handCropRect" if role == "Hand" else "fullCropRect"
     rect = entry.get("cropOverrides", {}).get(field, default) if role != "Shared" else default
@@ -268,6 +272,8 @@ def crop_metadata_hash(entry):
         value["handCompositionProfile"] = hand_composition(entry)
     if is_canonical(entry) or entry.get("pitchCompositionProfile"):
         value["pitchCompositionProfile"] = pitch_composition(entry)
+    if entry.get("foregroundExtractionProfile"):
+        value["foregroundExtractionProfile"] = entry["foregroundExtractionProfile"]
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest().upper()
 
 
@@ -296,7 +302,8 @@ def validate_generated_source(project_root, entry):
     if (runtime_role(entry) == "Hand" and hand_composition(entry) == "BalancedBust_v2") or (
         runtime_role(entry) == "Shared" and pitch_composition(entry) == "QuietPitchBust_v2"):
         generator = project_root / "Scripts/GenerateSharedPortraitRuntimeDerivatives.py"
-        if role.get("generatorSha256") != hashlib.sha256(generator.read_bytes()).hexdigest().upper():
+        from PlayerPortraitPreflight import implementation_file_hash
+        if role.get("generatorSha256") != implementation_file_hash(generator):
             raise RuntimeError("Stale purpose generator provenance")
     path = runtime_derivative_path(project_root, entry)
     if role["runtimeDerivativePath"] != path.relative_to(project_root).as_posix():
@@ -306,4 +313,12 @@ def validate_generated_source(project_root, entry):
     expected = asset_path(entry) + "." + runtime_asset_name(entry)
     if role["runtimeAssetPath"] != expected or role["dimensions"] != list(runtime_size(entry)):
         raise RuntimeError("Incorrect derived role binding/dimensions")
+    if runtime_role(entry) in ("Hand", "Shared") and entry.get("familyRevision") == "1.2":
+        from PlayerPortraitPreflight import implementation_hashes, IMPLEMENTATION_HASH_PROFILE
+        if (entry.get("foregroundExtractionProfile") != "SourceSpaceForeground_v2"
+                or role.get("foregroundExtractionProfile") != entry["foregroundExtractionProfile"]
+                or role.get("implementationHashProfile") != IMPLEMENTATION_HASH_PROFILE
+                or role.get("implementationSha256") != implementation_hashes(project_root)
+                or role.get("generatorSha256") != role["implementationSha256"]["Scripts/GenerateSharedPortraitRuntimeDerivatives.py"]):
+            raise RuntimeError("Stale v1.2 foreground/implementation provenance")
     return role

@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parent.parent
 class PlayerCardFamilyContractTest(unittest.TestCase):
     def test_all_canonical_shared_outputs_use_one_reproducible_recipe(self):
         players=[p for p in load_catalog(ROOT) if is_canonical(p)]
-        self.assertEqual(len(players),20)
+        self.assertEqual(len(players),28)
         for p in players:
             e=dict(p,runtimeRole='Shared')
             with self.subTest(key=p['playerKey']):
@@ -22,10 +22,10 @@ class PlayerCardFamilyContractTest(unittest.TestCase):
     def test_future_canonical_defaults_and_old_profile_rejection(self):
         e=copy.deepcopy(next(p for p in load_catalog(ROOT) if is_canonical(p)))
         e.pop('pitchCompositionProfile');e.pop('cropOverrides',None);e['runtimeRole']='Shared'
-        self.assertEqual(pitch_composition(e),'QuietPitchBust_v2')
+        self.assertEqual(pitch_composition(e),'QuietPitchBust_v3')
         self.assertEqual(resolved_crop(e),[0,.055,1,.55])
         e['pitchCompositionProfile']='QuietPitchBust_v1'
-        with self.assertRaisesRegex(RuntimeError,'must use global'):pitch_composition(e)
+        with self.assertRaisesRegex(RuntimeError,'must use'):pitch_composition(e)
     def test_explicit_defaults_unique_configurable_and_validated(self):
         config=json.loads((ROOT/'ContentSource/PlayerContent/CanonicalPlayerImportConfig.json').read_text(encoding='utf-8'))
         runtime=json.loads((ROOT/'Content/Data/CanonicalPlayerContent.json').read_text(encoding='utf-8'))
@@ -44,7 +44,7 @@ class PlayerCardFamilyContractTest(unittest.TestCase):
         bad=copy.deepcopy(config);bad['players'][1]['presentation']['defaultShirtNumber']=bad['players'][0]['presentation']['defaultShirtNumber'];errors=[];validate_config(bad,errors);self.assertTrue(any('duplicate defaultShirtNumber' in x for x in errors))
     def test_acceptance_survives_unchanged_output_but_new_or_changed_output_is_pending(self):
         # Exercise the real status decision in memory; never generate or write art.
-        from unittest.mock import patch
+        from unittest.mock import patch, Mock
         import contextlib, io
         import GenerateSharedPortraitRuntimeDerivatives as generator
         entry=next(p for p in load_catalog(ROOT) if is_canonical(p))
@@ -52,6 +52,7 @@ class PlayerCardFamilyContractTest(unittest.TestCase):
         record=next(r for r in json.loads(path.read_text(encoding='utf-8'))['entries'] if r['playerKey']==entry['playerKey'])
         self.assertEqual(record['roles']['Shared']['visualStatus'],'USER PIE ACCEPTED')
         previous=copy.deepcopy(record);previous['roles']={'Shared':previous['roles']['Shared']}
+        previous['roles']['Shared']['visualStatus']='USER PIE ACCEPTED'  # Synthetic prior acceptance fixture.
         data=runtime_derivative_path(ROOT,dict(entry,runtimeRole='Shared')).read_bytes()
         read_text=Path.read_text
         for case,prior,encoded,expected in (
@@ -64,9 +65,10 @@ class PlayerCardFamilyContractTest(unittest.TestCase):
                 with patch.object(Path,'read_text',read_fixture), \
                      patch.object(generator,'selected_runtime_roles',return_value=('Shared',)), \
                      patch.object(generator,'encode_runtime_derivative',return_value=encoded), \
+                     patch.object(generator,'prepare_family_source',return_value=(Mock(),Mock(),None)), \
                      patch.object(generator,'write_if_changed') as writes, \
                      contextlib.redirect_stdout(io.StringIO()):
-                    result=generator.generate_canonical_selected(ROOT,[entry])
+                    result=generator.generate_canonical_selected(ROOT,[entry],preview_directory=ROOT/'Saved/UnitTestMockedPreview')
                 self.assertEqual(len(result),1)
                 self.assertEqual(result[0]['roles']['Shared']['visualStatus'],expected)
                 self.assertEqual(result[0]['roleStatus']['Shared'],expected)

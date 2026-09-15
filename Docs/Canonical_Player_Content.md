@@ -82,11 +82,11 @@ review the generated JSON, run `--check`, presentation automation, and the
 build. It requires no C++ change. The complete 40-player mapping and UI
 consumer contract are recorded in `Docs/UI/Player_Display_Name_Contract_v1.md`.
 
-## Presentation and artwork compatibility
+## Presentation and artwork compatibility (historical initial import)
 
 The 16 previously integrated players retain their established `PlayerKey`, presentation metadata, Hand Micro artwork, and Full Card artwork mappings. The existing shared portrait set remains available to the current Pitch Mini path. The other 24 canonical players deliberately use existing safe name/rarity/art fallbacks; this stage does not synthesize biographies or artwork.
 
-The current verified inventory is 16 Hand Micro mappings, 16 Full Card mappings, 10 shared/Pitch-compatible portrait mappings, and 24 players relying on safe artwork fallback surfaces. Those are asset-production gaps, not canonical-data failures.
+At that initial import, the verified inventory was 16 Hand Micro mappings, 16 Full Card mappings, 10 shared/Pitch-compatible portrait mappings, and 24 players relying on safe artwork fallback surfaces. Those are asset-production gaps, not canonical-data failures.
 
 ## Current Tactical Point eligible Skill projection
 
@@ -117,4 +117,12 @@ All 40 records were audited across birthDate, heightCm, weightKg and nationality
 
 [PlayerBioProvenance.json](../ContentSource/PlayerContent/PlayerBioProvenance.json) records all 40 keys, field values/status, exact selected URLs, live research date and conflict decisions. Existing values explicitly retain baseline provenance rather than claiming fresh web verification. New values use official club archives, competition profiles, national-team profiles and one ESPN fallback weight. Former-club archives are labeled; club/position/number changes on websites are outside this import. Unit/date formatting and Chinese country labels normalize stated facts only.
 
-The 20 current canonical art families include newly authored Ake/Cherki. The user explicitly accepted Ake and Cherki in Stage 8.3E.1; all 20 families and their Hand/Shared/Full roles are USER PIE ACCEPTED. The 14 new-family art files remain byte-identical, and the original 18 accepted families and every frozen UI contract remain unchanged. New or changed art returns to PENDING USER PIE; unchanged accepted art retains acceptance. Per-purpose coverage and the art contract govern retained legacy/missing artwork, independently of bio completeness.
+At the Stage 8.3E.1 checkpoint, the 20 canonical art families included newly authored Ake/Cherki. The user explicitly accepted Ake and Cherki in Stage 8.3E.1; all 20 families and their Hand/Shared/Full roles are USER PIE ACCEPTED. The 14 new-family art files remain byte-identical, and the original 18 accepted families and every frozen UI contract remain unchanged. New or changed art returns to PENDING USER PIE; unchanged accepted art retains acceptance. Per-purpose coverage and the art contract govern retained legacy/missing artwork, independently of bio completeness.
+
+## Stage 8.4 - canonical art Batch 3 (USER PIE ACCEPTED)
+
+Current art coverage is 28/40, 14 Arsenal and 14 ManchesterCity. The eight additions are ViktorGyokeres, RayanAitNouri, KaiHavertz, MarcGuehi, EberechiEze, OmarMarmoush, MartinZubimendi and TijjaniReijnders. FINAL USER PIE PASS accepts all 28 families and every current Hand/Shared/Full role (84/84). Source selection, rejected Masters and Stage 8.4R repairs remain recorded in Stage8_4_Generation.json and the historical art-contract sections.
+
+Formal Player Card Family v1.2 uses one Master, SourceSpaceForeground_v2 and explicit BalancedBust_v3 / QuietPitchBust_v3 for Hand / Shared-Pitch. Full retains CropOnly_v1 directly from Master. The migration changed 56 small-card PNGs and their imported textures; final acceptance closes their temporary pending state and Batch 3's eight Full roles. No art is regenerated or reimported during closeout. New or changed art still returns to PENDING USER PIE; byte-identical accepted art stays accepted.
+
+No bio, number, serial, roster, skill or balance data changes; biography stays 160/160. Remaining non-canonical legacy/fallback routes remain valid. JohnStones is a real still-non-canonical missing-art/rebinding fixture; MarcGuehi is now canonical. Card dimensions, runtime UV, drag proxy and Full layout are unchanged; Full safe-zone remains DEFERRED. Future canonical additions must obey [the permanent v1.2 preflight gate](UI/Shared_Portrait_Art_Contract_v1.md#30-permanent-canonical-player-art-preflight-gate-v12); sections 36-37 document the formal production workflow and final acceptance.

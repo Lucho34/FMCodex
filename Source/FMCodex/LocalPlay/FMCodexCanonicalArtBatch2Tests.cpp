@@ -95,7 +95,7 @@ bool FFMCodexCanonicalArtBatch2Test::RunTest(const FString&)
             }
         }
     }
-    for (const TCHAR* Key : {TEXT("Prototype.ManchesterCity.MarcGuehi"), TEXT("Prototype.ManchesterCity.JohnStones")})
+    for (const TCHAR* Key : {TEXT("Prototype.ManchesterCity.JohnStones")})
     {
         FFMCodexLocalMatchCardView View; View.CardId = FName(Key);
         View.DisplayLabel = FFMCodexPrototypeTeamContent::PlayerDisplayName(View.CardId).ToString();

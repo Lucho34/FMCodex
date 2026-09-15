@@ -319,7 +319,15 @@ FFMCodexPlayerUIAssetReferences::ResolveCardArt(const FName CardId) const
 				TEXT("Prototype.ManchesterCity.BernardoSilva"),
 				TEXT("Prototype.ManchesterCity.PhilFoden"),
 				TEXT("Prototype.ManchesterCity.NathanAke"),
-				TEXT("Prototype.ManchesterCity.RayanCherki")};
+				TEXT("Prototype.ManchesterCity.RayanCherki"),
+				TEXT("Prototype.Arsenal.ViktorGyokeres"),
+				TEXT("Prototype.ManchesterCity.RayanAitNouri"),
+				TEXT("Prototype.Arsenal.KaiHavertz"),
+				TEXT("Prototype.ManchesterCity.MarcGuehi"),
+				TEXT("Prototype.Arsenal.EberechiEze"),
+				TEXT("Prototype.ManchesterCity.OmarMarmoush"),
+				TEXT("Prototype.Arsenal.MartinZubimendi"),
+				TEXT("Prototype.ManchesterCity.TijjaniReijnders")};
 			if (CanonicalPlayers.Contains(CardId))
 			{
 				const FString Token = CardId.ToString().Replace(TEXT("."), TEXT("_"));

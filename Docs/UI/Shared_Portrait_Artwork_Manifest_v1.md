@@ -1,5 +1,7 @@
 # Shared Portrait Artwork Manifest v1
 
+> Historical legacy inventory only. Counts, missing-art rows (including MarcGuehi) and pending states below describe dated pre-canonical checkpoints. Current production is 28/40 canonical families, all 84 roles USER PIE ACCEPTED under [Player Card Family v1.2](Shared_Portrait_Art_Contract_v1.md#37-stage-84-final-closeout---current-user-pie-accepted). Current membership/status truth is SharedPortraitImportManifest.json and PlayerArtProvenance.json; JohnStones is the current missing-art fixture.
+
 Stage: `6.13.1.3.13.5C`
 
 Status: **SECOND PRODUCTION BATCH IMPORTED — PENDING MANUAL SECOND-BATCH PIE ARTWORK GATE**

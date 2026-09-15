@@ -5,6 +5,7 @@ from unittest.mock import patch
 from GenerateSharedPortraitRuntimeDerivatives import encode_runtime_derivative, generate_canonical_selected
 from SharedPortraitImportCatalog import (load_catalog, is_canonical, expand_runtime_entries, master_path,
     runtime_derivative_path, runtime_size, resolved_crop, pitch_composition, validate_generated_source)
+from TestPlayerPortraitProduction import publish_in_test_workspace
 ROOT=Path(__file__).resolve().parent.parent
 class PitchMiniPilotTest(unittest.TestCase):
     @classmethod
@@ -18,7 +19,7 @@ class PitchMiniPilotTest(unittest.TestCase):
                 data=encode_runtime_derivative(master_path(ROOT,e),runtime_size(e),resolved_crop(e),pitch_composition(e))
                 self.assertEqual(data,runtime_derivative_path(ROOT,e).read_bytes())
                 self.assertEqual(record['dimensions'],[512,768])
-                self.assertEqual(record['pitchCompositionProfile'],'QuietPitchBust_v2')
+                self.assertEqual(record['pitchCompositionProfile'],'QuietPitchBust_v3')
                 self.assertEqual(record['visualStatus'],'USER PIE ACCEPTED')
                 self.assertNotEqual(runtime_derivative_path(ROOT,e), runtime_derivative_path(ROOT,dict(e,runtimeRole='Full')))
     def test_shared_first_activation_preserves_accepted_hand(self):
@@ -35,8 +36,9 @@ class PitchMiniPilotTest(unittest.TestCase):
             shutil.copyfile(ROOT/'Scripts/GenerateSharedPortraitRuntimeDerivatives.py',generator)
             provenance=root/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json'
             provenance.write_text(json.dumps({'schemaVersion':2,'entries':prior}),encoding='utf-8')
-            after=generate_canonical_selected(root,self.players)
-            for old,new in zip(prior,after):
+            after=publish_in_test_workspace(root,self.players)
+            for old in prior:
+                new=next(r for r in after if r['playerKey']==old['playerKey'])
                 self.assertEqual(new['roles']['Hand'],old['roles']['Hand'])
                 self.assertEqual(set(new['roles']),{'Hand','Shared'})
             self.assertFalse(list(root.rglob('Full.png')))

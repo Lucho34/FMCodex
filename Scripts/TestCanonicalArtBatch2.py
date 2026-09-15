@@ -26,8 +26,8 @@ SOURCES = {
     'Prototype.ManchesterCity.BernardoSilva': ('01', '2FB44F7DD391357B17C62654AA2DA0870DC1099E7902A148306F70B1E14909E2', 10),
     'Prototype.ManchesterCity.PhilFoden': ('FullCardHeroBust_01', '8A313131711792634B1AA19AE6DB5EA4DA7F9D11E259387D6C449D27EA089D61', 11),
 }
-MISSING = 'Prototype.ManchesterCity.MarcGuehi'
-OTHER_MISSING = 'Prototype.ManchesterCity.JohnStones'
+MISSING = 'Prototype.ManchesterCity.JohnStones'
+OTHER_MISSING = 'Prototype.ManchesterCity.NicoGonzalez'
 COMPLETION = {'Prototype.ManchesterCity.NathanAke', 'Prototype.ManchesterCity.RayanCherki'}
 TIMBER = 'Prototype.Arsenal.JurrienTimber'
 
@@ -42,7 +42,7 @@ class CanonicalArtBatch2Test(unittest.TestCase):
 
     def test_exact_keys_sources_masters_and_explicit_enablement(self):
         self.assertEqual({e['playerKey'] for e in self.players}, set(SOURCES))
-        expected = PILOTS | set(BATCH1) | set(SOURCES) | COMPLETION
+        expected = PILOTS | set(BATCH1) | set(SOURCES) | COMPLETION | {e['playerKey'] for e in self.catalog if e.get('migrationStage') == '8.4'}
         self.assertEqual({e['playerKey'] for e in self.catalog if is_canonical(e)}, expected)
         code = (ROOT/'Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp').read_text(encoding='utf-8')
         block = code.split('static const TSet<FName> CanonicalPlayers = {', 1)[1].split('};', 1)[0]
@@ -61,7 +61,7 @@ class CanonicalArtBatch2Test(unittest.TestCase):
                 self.assertEqual(e['masterSha256'], digest)
                 self.assertEqual(e['sourceProvenance']['sourceSha256'], digest)
                 self.assertEqual(e['masterRevision'], 1)
-                self.assertEqual(e['familyRevision'], '1.1')
+                self.assertEqual(e['familyRevision'], '1.2')
                 self.assertEqual(e['sourceGate']['classification'], 'SOURCE_USABLE_WITH_METADATA_CROP' if key == TIMBER else 'SOURCE_READY')
                 self.assertEqual(self.roster[key]['presentation']['defaultShirtNumber'], number)
                 with Image.open(master_path(ROOT, e)) as im:
@@ -75,7 +75,7 @@ class CanonicalArtBatch2Test(unittest.TestCase):
             with self.subTest(key=key, role=role):
                 record = validate_generated_source(ROOT, e)
                 profile = hand_composition(e) if role == 'Hand' else pitch_composition(e) if role == 'Shared' else 'CropOnly_v1'
-                self.assertEqual(profile, {'Hand':'BalancedBust_v2', 'Shared':'QuietPitchBust_v2', 'Full':'CropOnly_v1'}[role])
+                self.assertEqual(profile, {'Hand':'BalancedBust_v3', 'Shared':'QuietPitchBust_v3', 'Full':'CropOnly_v1'}[role])
                 top = .115 if key == TIMBER else .055
                 expected_crop = [0, top, 1, .5 if role == 'Hand' else .55] if role != 'Full' else [0, 0, 1, 1]
                 self.assertEqual(resolved_crop(e), expected_crop)
@@ -89,9 +89,10 @@ class CanonicalArtBatch2Test(unittest.TestCase):
                     self.assertEqual(im.size, runtime_size(e)); self.assertEqual(im.mode, 'RGB')
         provenance = json.loads((ROOT/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json').read_text(encoding='utf-8'))
         for p in provenance['entries']:
-            expected = 'USER PIE ACCEPTED'
-            self.assertEqual(set(p['roleStatus'].values()), {expected})
-            self.assertEqual({r['visualStatus'] for r in p['roles'].values()}, {expected})
+            for role in ('Hand', 'Shared', 'Full'):
+                expected = 'USER PIE ACCEPTED'
+                self.assertEqual(p['roleStatus'][role], expected)
+                self.assertEqual(p['roles'][role]['visualStatus'], expected)
 
     def test_missing_sources_stay_excluded_and_nonmigrated_legacy_survives(self):
         for key in (MISSING, OTHER_MISSING):

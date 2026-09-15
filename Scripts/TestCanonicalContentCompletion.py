@@ -63,8 +63,8 @@ class CanonicalContentCompletionTest(unittest.TestCase):
         new = [e for e in catalog if e.get('migrationStage') == '8.3E']
         self.assertEqual({e['playerKey'] for e in new}, NEW)
         canonical = [e for e in catalog if e.get('masterSourcePath')]
-        self.assertEqual(len(canonical), 20)
-        self.assertEqual(len({e['masterSha256'] for e in canonical}), 20)
+        self.assertEqual(len(canonical), 28)
+        self.assertEqual(len({e['masterSha256'] for e in canonical}), 28)
         records = {e['playerKey']:e for e in read('ArtSource/UI/PlayerMaster/Stage8_3E_Generation.json')['entries']}
         code = (ROOT/'Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp').read_text(encoding='utf-8')
         block = code.split('static const TSet<FName> CanonicalPlayers = {',1)[1].split('};',1)[0]
@@ -93,7 +93,7 @@ class CanonicalContentCompletionTest(unittest.TestCase):
         self.assertEqual(sum(e['sourceFamily'] == 'ESPN' for e in item['weightResearch']), 1)
         self.assertEqual(bio['closeout']['completeFieldsAfter'], 160)
         provenance = read('ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json')['entries']
-        self.assertEqual(len(provenance), 20)
+        self.assertEqual(len(provenance), 28)
         for p in provenance:
             self.assertEqual(set(p['roleStatus'].values()), {'USER PIE ACCEPTED'})
             self.assertEqual({v['visualStatus'] for v in p['roles'].values()}, {'USER PIE ACCEPTED'})
