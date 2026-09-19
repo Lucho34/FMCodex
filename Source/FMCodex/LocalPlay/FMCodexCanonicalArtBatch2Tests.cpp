@@ -95,10 +95,10 @@ bool FFMCodexCanonicalArtBatch2Test::RunTest(const FString&)
             }
         }
     }
-    for (const TCHAR* Key : {TEXT("Prototype.ManchesterCity.JohnStones")})
+    for (const TCHAR* Key : {TEXT("Test.FuturePlayer")})
     {
         FFMCodexLocalMatchCardView View; View.CardId = FName(Key);
-        View.DisplayLabel = FFMCodexPrototypeTeamContent::PlayerDisplayName(View.CardId).ToString();
+        View.DisplayLabel = TEXT("未来球员");
         TestFalse(TEXT("Missing source remains non-canonical"), FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(View.CardId).bCanonicalPlayerArt);
         for (const auto Mode : {EMode::HandMicro, EMode::PitchMini, EMode::InteractionChoice})
         {
@@ -112,9 +112,9 @@ bool FFMCodexCanonicalArtBatch2Test::RunTest(const FString&)
         }
     }
     const auto Legacy = FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(TEXT("Prototype.Arsenal.MikelMerino"));
-    TestFalse(TEXT("Non-migrated legacy stays non-canonical"), Legacy.bCanonicalPlayerArt);
-    TestTrue(TEXT("Retained legacy resources remain routed"), !Legacy.HandMicroPortrait.IsNull() && !Legacy.FullCardPortrait.IsNull()
-        && !Legacy.FullCardPortrait.ToSoftObjectPath().ToString().Contains(TEXT("/Canonical/")));
+    TestTrue(TEXT("Final roster migration enables Merino canonical art"), Legacy.bCanonicalPlayerArt);
+    TestTrue(TEXT("Merino uses all three canonical purposes"), !Legacy.HandMicroPortrait.IsNull() && !Legacy.FullCardPortrait.IsNull()
+        && !Legacy.PitchMiniPortrait.IsNull() && Legacy.FullCardPortrait.ToSoftObjectPath().ToString().Contains(TEXT("/Canonical/")));
     Widget->RemoveFromParent(); GEngine->DestroyWorldContext(World); World->DestroyWorld(false);
     return true;
 }

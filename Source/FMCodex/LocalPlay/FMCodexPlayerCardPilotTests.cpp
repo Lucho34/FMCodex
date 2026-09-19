@@ -149,14 +149,14 @@ bool FFMCodexHandCompactPilotTest::RunTest(const FString&)
         Card->ClearOnPitchSelection();
         TestFalse(TEXT("Unavailable selection is rejected"),Card->RequestOnPitchSelection());
     }
-    // The shared widget must restore the untouched legacy Hand when rebound.
+    // The shared widget must restore the non-canonical fallback Hand when rebound.
     {
-        auto Legacy=Card->GetPresentation(); Legacy.CardId=TEXT("Prototype.Arsenal.MikelMerino");
-        Card->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::HandMicro);
-        TestTrue(TEXT("Legacy Hand keeps its existing strip"),
+        auto Fallback=Card->GetPresentation(); Fallback.CardId=TEXT("Test.FuturePlayer");
+        Card->RefreshFromPresentation(Fallback,EFMCodexPlayerCardPresentationMode::HandMicro);
+        TestTrue(TEXT("Fallback Hand keeps its existing strip"),
             Card->GetWidgetFromName(TEXT("HandMicroRarityAccent"))->GetVisibility()==ESlateVisibility::HitTestInvisible);
-        Legacy.CardId=TEXT("Prototype.Arsenal.BukayoSaka");
-        Card->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::HandMicro);
+        Fallback.CardId=TEXT("Prototype.Arsenal.BukayoSaka");
+        Card->RefreshFromPresentation(Fallback,EFMCodexPlayerCardPresentationMode::HandMicro);
         TestTrue(TEXT("Rebinding to pilot removes legacy strip again"),
             Card->GetWidgetFromName(TEXT("HandMicroRarityAccent"))->GetVisibility()==ESlateVisibility::Hidden);
     }
@@ -319,21 +319,21 @@ bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
             && Value->GetDesiredSize().Y <= Bounds->GetHeightOverride()
             && Badge->GetVerticalAlignment()==VAlign_Center);
     }
-    auto Legacy = Card->GetPresentation(); Legacy.CardId=TEXT("Prototype.Arsenal.MikelMerino");
-    Card->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+    auto Fallback = Card->GetPresentation(); Fallback.CardId=TEXT("Test.FuturePlayer");
+    Card->RefreshFromPresentation(Fallback,EFMCodexPlayerCardPresentationMode::InteractionChoice);
     for (const TCHAR* Node : {TEXT("InMatchFullCardBiographyRegion"), TEXT("CardIdentityRegion"),
         TEXT("AttributePresentationRegion"), TEXT("SkillPresentationRegion"),
         TEXT("AttributeTierBadge0"), TEXT("FullCardSkillRange0")})
     {
         const auto* Surface = Cast<UFMCodexFullCardSurface>(Card->GetWidgetFromName(Node));
-        TestTrue(TEXT("Legacy rebind restores ordinary Border fallback"),
+        TestTrue(TEXT("Fallback rebind restores ordinary Border fallback"),
             Surface != nullptr && Surface->GetSurface() == EFMCodexFullCardSurface::None);
     }
-    TestEqual(TEXT("Full-only caption protection clears on legacy rebind"),
+    TestEqual(TEXT("Full-only caption protection clears on fallback rebind"),
         CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("OverallLabel")))->GetFont().OutlineSettings.OutlineSize,0);
-    TestEqual(TEXT("Legacy rating typography restored"),
+    TestEqual(TEXT("Fallback rating typography restored"),
         CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("OverallNumber")))->GetFont().Size,44.f);
-    TestEqual(TEXT("Legacy Full hero is restored"),CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("PortraitAssetBounds")))->GetHeightOverride(),320.f);
+    TestEqual(TEXT("Fallback Full hero is restored"),CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("PortraitAssetBounds")))->GetHeightOverride(),320.f);
     TestTrue(TEXT("Family v1.1 legacy footer retains collection serial"),Card->GetWidgetFromName(TEXT("FullCardCollectionLine"))->GetVisibility()==ESlateVisibility::HitTestInvisible);
     TestEqual(TEXT("Family v1.1 legacy retains the configured number plate"),
         CastChecked<UFMCodexFullCardSurface>(Card->GetWidgetFromName(TEXT("FullCardNumberPlate")))->GetSurface(),EFMCodexFullCardSurface::Number);
@@ -458,24 +458,21 @@ bool FFMCodexCanonicalArtBatch1Test::RunTest(const FString&)
             }
         }
     }
-    for (const TCHAR* Key : {TEXT("Prototype.Arsenal.MikelMerino"),TEXT("Prototype.ManchesterCity.JohnStones")})
+    for (const TCHAR* Key : {TEXT("Test.FuturePlayer")})
     {
         const auto Art = FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(FName(Key));
-        TestFalse(TEXT("Non-migrated and source-missing keys stay inactive"),Art.bCanonicalPlayerArt);
+        TestFalse(TEXT("Synthetic future-player art stays inactive"),Art.bCanonicalPlayerArt);
         for (const auto& Path : {Art.HandMicroPortrait.ToSoftObjectPath(),Art.PitchMiniPortrait.ToSoftObjectPath(),Art.FullCardPortrait.ToSoftObjectPath()})
             TestFalse(TEXT("No nonexistent canonical fallback"),Path.ToString().Contains(TEXT("/Canonical/")));
     }
-    FFMCodexUMGCardViewModel Legacy; Legacy.CardId=TEXT("Prototype.Arsenal.MikelMerino");
-    const auto LegacyArt=FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Legacy.CardId);
-    Widget->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::HandMicro);
-    if (TestNotNull(TEXT("Legacy Hand still loads"),Widget->GetResolvedHandMicroPortraitTexture()))
-        TestEqual(TEXT("Legacy rebind keeps original Hand route"),Widget->GetResolvedHandMicroPortraitTexture()->GetPathName(),LegacyArt.HandMicroPortrait.ToSoftObjectPath().ToString());
-    Widget->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::PitchMini);
-    if (TestNotNull(TEXT("Legacy Pitch still loads"),Widget->GetResolvedPortraitTexture()))
-        TestEqual(TEXT("Legacy rebind keeps original Pitch route"),Widget->GetResolvedPortraitTexture()->GetPathName(),LegacyArt.Portrait.ToSoftObjectPath().ToString());
-    Widget->RefreshFromPresentation(Legacy,EFMCodexPlayerCardPresentationMode::InteractionChoice);
-    if (TestNotNull(TEXT("Legacy Full still loads"),Widget->GetResolvedPortraitTexture()))
-        TestEqual(TEXT("Legacy rebind keeps original Full route"),Widget->GetResolvedPortraitTexture()->GetPathName(),LegacyArt.FullCardPortrait.ToSoftObjectPath().ToString());
+    FFMCodexUMGCardViewModel Future; Future.CardId=TEXT("Test.FuturePlayer");
+    for (const auto Mode : {EFMCodexPlayerCardPresentationMode::HandMicro,
+        EFMCodexPlayerCardPresentationMode::PitchMini, EFMCodexPlayerCardPresentationMode::InteractionChoice})
+    {
+        Widget->RefreshFromPresentation(Future,Mode);
+        TestNull(TEXT("Future rebind clears Hand texture"),Widget->GetResolvedHandMicroPortraitTexture());
+        TestNull(TEXT("Future rebind clears large texture"),Widget->GetResolvedPortraitTexture());
+    }
     Widget->RemoveFromParent(); GEngine->DestroyWorldContext(World); World->DestroyWorld(false);
     return true;
 }

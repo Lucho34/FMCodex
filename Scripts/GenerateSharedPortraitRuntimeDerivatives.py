@@ -163,8 +163,13 @@ def compose_quiet_pitch_bust(source, size, box):
     return result
 
 
-def prepare_family_source(source):
-    from PlayerPortraitForegroundV2 import extract_source_bases
+def prepare_family_source(source, profile='SourceSpaceForeground_v3'):
+    if profile == 'SourceSpaceForeground_v3':
+        from PlayerPortraitForegroundV3 import extract_source_bases
+    elif profile == 'SourceSpaceForeground_v2':
+        from PlayerPortraitForegroundV2 import extract_source_bases
+    else:
+        raise ValueError('Unsupported production foreground profile')
     from PlayerPortraitComposition import measure_face_anchors
     prior, foreground = extract_source_bases(source)
     return prior, foreground, measure_face_anchors(source, prior)
@@ -343,11 +348,13 @@ def generate_canonical_selected(project_root, selected, *, preview_directory=Non
         if sha256_file(master) != entry["masterSha256"].upper():
             raise RuntimeError(f"Master changed without approved manifest revision: {master}")
         family_source = None
-        if entry.get('familyRevision') == '1.2' and set(roles) & {'Hand', 'Shared'}:
-            if entry.get('foregroundExtractionProfile') != 'SourceSpaceForeground_v2':
-                raise RuntimeError('Family v1.2 requires explicit SourceSpaceForeground_v2')
+        family_revision = entry.get('familyRevision')
+        family_foreground = 'SourceSpaceForeground_v3' if family_revision == '1.3' else 'SourceSpaceForeground_v2'
+        if family_revision in ('1.2', '1.3') and set(roles) & {'Hand', 'Shared'}:
+            if entry.get('foregroundExtractionProfile') != family_foreground:
+                raise RuntimeError('Family v' + family_revision + ' requires explicit ' + family_foreground)
             with Image.open(master) as source:
-                family_source = prepare_family_source(source)
+                family_source = prepare_family_source(source, family_foreground)
             if preview_directory is not None:
                 directory = preview_directory/'Foreground'/entry['playerKey']
                 directory.mkdir(parents=True, exist_ok=True)
@@ -356,12 +363,12 @@ def generate_canonical_selected(project_root, selected, *, preview_directory=Non
         record = {"playerKey":entry["playerKey"], "masterSourcePath":entry["masterSourcePath"],
                   "masterDimensions":list(MASTER_SIZE), "masterSha256":sha256_file(master),
                   "masterRevision":entry["masterRevision"], "cropMetadataSha256":crop_metadata_hash(entry),
-                  "compositionProfile":entry["compositionProfile"], "generatorVersion":10,
+                  "compositionProfile":entry["compositionProfile"], "generatorVersion":11,
                   "pillowVersion":PILLOW_VERSION, "resampling":RESAMPLING_CONTRACT,
                   "encoder":ENCODER_CONTRACT, "visualStatus":"PER-ROLE ACCEPTANCE ONLY",
                   "sourceProvenance":entry.get("sourceProvenance",{}), "roles":{}}
-        if entry.get('familyRevision') == '1.2':
-            record.update(familyRevision='1.2', foregroundExtractionProfile='SourceSpaceForeground_v2')
+        if family_revision in ('1.2', '1.3'):
+            record.update(familyRevision=family_revision, foregroundExtractionProfile=family_foreground)
         previous = records.get(entry["playerKey"])
         previous_roles = previous.get("roles", {}) if previous else {}
         for frozen_role, frozen in previous_roles.items():
@@ -397,11 +404,11 @@ def generate_canonical_selected(project_root, selected, *, preview_directory=Non
                 frozen.get("pitchCompositionProfile", "CropOnly_v1") != pitch_composition(entry)
                 or (pitch_composition(entry) == "QuietPitchBust_v2" and frozen.get("generatorSha256") != implementation_file_hash(Path(__file__)))):
                 raise RuntimeError("Partial generation would stale frozen Pitch recipe")
-            if frozen_role in ('Hand', 'Shared') and entry.get('familyRevision') == '1.2':
+            if frozen_role in ('Hand', 'Shared') and family_revision in ('1.2', '1.3'):
                 if (frozen.get('foregroundExtractionProfile') != entry.get('foregroundExtractionProfile')
                         or frozen.get('implementationHashProfile') != IMPLEMENTATION_HASH_PROFILE
                         or frozen.get('implementationSha256') != code_hashes):
-                    raise RuntimeError('Partial generation would stale frozen v1.2 implementation')
+                    raise RuntimeError('Partial generation would stale frozen family implementation')
             record["roles"][frozen_role] = frozen
         for role_entry in expand_runtime_entries([entry], roles):
             role=runtime_role(role_entry);size=runtime_size(role_entry);crop=resolved_crop(role_entry)
@@ -433,9 +440,9 @@ def generate_canonical_selected(project_root, selected, *, preview_directory=Non
             if evidence:
                 record['roles'][role].update(evidence)
                 record['roles'][role].update({'implementationSha256': code_hashes,
-                    'implementationHashProfile': IMPLEMENTATION_HASH_PROFILE, 'generatorVersion':10,
-                    'reframing':'bounded v3 fit using frozen v1 anchors/background; original source pixels rendered with v2 alpha',
-                    'foregroundExtraction':'SourceSpaceForeground_v2; pinned source-only extraction and bounded local recovery'})
+                    'implementationHashProfile': IMPLEMENTATION_HASH_PROFILE, 'generatorVersion':11,
+                    'reframing':'bounded v3 fit using frozen v1 anchors/background; original source pixels rendered with explicit foreground alpha',
+                    'foregroundExtraction':family_foreground + '; pinned source-only extraction and bounded local recovery'})
             record["roles"][role]["visualStatus"] = role_visual_status(old_role, sha256_bytes(data))
         record["roleStatus"] = {role: record["roles"][role].get("visualStatus", "PENDING USER PIE")
             if role in record["roles"] else "DEFERRED" for role in ("Hand", "Shared", "Full")}
@@ -450,7 +457,7 @@ def generate_canonical_selected(project_root, selected, *, preview_directory=Non
             (json.dumps({'schemaVersion':2,'entries':selected_records},indent=2,ensure_ascii=False)+'\n').encode('utf-8'))
         print(f'FMCODEX_CANONICAL_PREFLIGHT_CANDIDATES=PASS players={len(selected)} textures={len(pending)}', flush=True)
         return selected_records
-    if any(entry.get('familyRevision') == '1.2' for entry in selected):
+    if any(entry.get('familyRevision') in ('1.2', '1.3') for entry in selected):
         receipt = preflight_receipt or os.environ.get('FMCODEX_PLAYER_ART_PREFLIGHT_RECEIPT')
         validate_preflight(Path(receipt) if receipt else None, project_root, selected_records, roles)
         for record in selected_records:

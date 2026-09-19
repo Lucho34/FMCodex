@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 import unittest
 from unittest.mock import patch
+from TestPlayerPortraitProduction import publish_in_test_workspace
 from GenerateSharedPortraitRuntimeDerivatives import encode_runtime_derivative, generate_canonical_selected
 from SharedPortraitImportCatalog import (load_catalog, is_canonical, expand_runtime_entries,
     master_path, runtime_derivative_path, runtime_size, runtime_asset_name, asset_path,
@@ -48,7 +49,7 @@ class HandCompactPilotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, ROLE_ENV):
             root = Path(folder)
             self.fixture(root, self.players)
-            records = generate_canonical_selected(root, self.players)
+            records = publish_in_test_workspace(root, self.players)
             self.assertEqual(len(records), 4)
             for e, record in zip(sorted(self.players,key=lambda e:e['playerKey']), records):
                 self.assertEqual(set(record['roles']), {'Hand'})
@@ -66,7 +67,7 @@ class HandCompactPilotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, ROLE_ENV):
             root = Path(folder); e = self.players[0]
             self.fixture(root, [e])
-            record = generate_canonical_selected(root, [e])[0]
+            record = publish_in_test_workspace(root, [e])[0]
             other = dict(e,runtimeRole='Full'); dest = runtime_derivative_path(root,other)
             data = encode_runtime_derivative(master_path(root,e),runtime_size(other),resolved_crop(other))
             dest.write_bytes(data)
@@ -78,7 +79,7 @@ class HandCompactPilotTest(unittest.TestCase):
             record['roles']['Full'] = frozen
             provenance = root/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json'
             provenance.write_text(json.dumps({'schemaVersion':2,'entries':[record]}),encoding='utf-8')
-            result = generate_canonical_selected(root,[e])[0]
+            result = publish_in_test_workspace(root,[e])[0]
             self.assertEqual(result['roles']['Full'],frozen)
             self.assertEqual(dest.read_bytes(),data)
             changed = copy.deepcopy(e); changed.setdefault('cropOverrides',{})['fullCropRect']=[0,0,.8,.8]
@@ -124,7 +125,8 @@ class HandCompactPilotTest(unittest.TestCase):
         with patch.dict(os.environ,{},clear=True):
             with self.assertRaises(RuntimeError):select_entries(self.catalog)
             with self.assertRaises(RuntimeError):expand_runtime_entries(self.players)
-            legacy=next(e for e in self.catalog if not is_canonical(e))
+            # Non-roster fixture tests the retained legacy catalog branch after 40/40.
+            legacy={'playerKey':'Test.FuturePlayer','team':'Arsenal','assetName':'T_Test_FuturePlayer'}
             self.assertEqual(len(expand_runtime_entries([legacy])),1)
             self.assertNotIn('PlayerMaster',str(master_path(ROOT,legacy)))
         key=self.players[0]['playerKey']

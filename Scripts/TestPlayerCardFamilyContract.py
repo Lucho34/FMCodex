@@ -1,5 +1,6 @@
 """Stage 8.3B global rules; no aesthetic pseudo-tests or gameplay matrix."""
 import copy,json,unittest
+from TestPlayerArtFinal40 import FINAL12, CHANGED5, expected_status
 from pathlib import Path
 from PIL import Image
 from SharedPortraitImportCatalog import load_catalog,is_canonical,pitch_composition,resolved_crop,master_path,validate_generated_source,runtime_derivative_path,ACTIVE_PITCH_PROFILE
@@ -10,18 +11,20 @@ ROOT=Path(__file__).resolve().parent.parent
 class PlayerCardFamilyContractTest(unittest.TestCase):
     def test_all_canonical_shared_outputs_use_one_reproducible_recipe(self):
         players=[p for p in load_catalog(ROOT) if is_canonical(p)]
-        self.assertEqual(len(players),28)
+        self.assertEqual(len(players),40)
         for p in players:
             e=dict(p,runtimeRole='Shared')
             with self.subTest(key=p['playerKey']):
                 self.assertEqual(pitch_composition(e),ACTIVE_PITCH_PROFILE)
                 record=validate_generated_source(ROOT,e)
-                self.assertEqual(record['visualStatus'],'USER PIE ACCEPTED')
+                self.assertEqual(record['visualStatus'],expected_status(e['playerKey'],'Shared'))
                 self.assertEqual(record['dimensions'],[512,768])
                 self.assertEqual(encode_runtime_derivative(master_path(ROOT,e),(512,768),resolved_crop(e),ACTIVE_PITCH_PROFILE),runtime_derivative_path(ROOT,e).read_bytes())
     def test_future_canonical_defaults_and_old_profile_rejection(self):
         e=copy.deepcopy(next(p for p in load_catalog(ROOT) if is_canonical(p)))
         e.pop('pitchCompositionProfile');e.pop('cropOverrides',None);e['runtimeRole']='Shared'
+        with self.assertRaisesRegex(RuntimeError,'explicit'):pitch_composition(e)
+        e['pitchCompositionProfile']='QuietPitchBust_v3'
         self.assertEqual(pitch_composition(e),'QuietPitchBust_v3')
         self.assertEqual(resolved_crop(e),[0,.055,1,.55])
         e['pitchCompositionProfile']='QuietPitchBust_v1'

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 import unittest
+from TestPlayerArtFinal40 import FINAL12, CHANGED5, expected_status
 from urllib.parse import urlparse
 
 from PIL import Image
@@ -63,8 +64,8 @@ class CanonicalContentCompletionTest(unittest.TestCase):
         new = [e for e in catalog if e.get('migrationStage') == '8.3E']
         self.assertEqual({e['playerKey'] for e in new}, NEW)
         canonical = [e for e in catalog if e.get('masterSourcePath')]
-        self.assertEqual(len(canonical), 28)
-        self.assertEqual(len({e['masterSha256'] for e in canonical}), 28)
+        self.assertEqual(len(canonical), 40)
+        self.assertEqual(len({e['masterSha256'] for e in canonical}), 40)
         records = {e['playerKey']:e for e in read('ArtSource/UI/PlayerMaster/Stage8_3E_Generation.json')['entries']}
         code = (ROOT/'Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp').read_text(encoding='utf-8')
         block = code.split('static const TSet<FName> CanonicalPlayers = {',1)[1].split('};',1)[0]
@@ -81,7 +82,7 @@ class CanonicalContentCompletionTest(unittest.TestCase):
                 self.assertEqual((im.size,im.mode), ((1024,1536),'RGB'))
             expected = {'handCropRect':[0,.025,1,.53], 'pitchCropRect':[0,.025,1,.58]} if key.endswith('.NathanAke') else {}
             self.assertEqual(e.get('cropOverrides',{}), expected)
-            self.assertEqual(e['canonicalVisualStatus'], 'USER PIE ACCEPTED')
+            self.assertEqual(e['canonicalVisualStatus'], expected_status(e['playerKey'], 'Hand'))
 
     def test_closeout_weight_and_accepted_role_metadata(self):
         bio = read('ContentSource/PlayerContent/PlayerBioProvenance.json')
@@ -93,19 +94,20 @@ class CanonicalContentCompletionTest(unittest.TestCase):
         self.assertEqual(sum(e['sourceFamily'] == 'ESPN' for e in item['weightResearch']), 1)
         self.assertEqual(bio['closeout']['completeFieldsAfter'], 160)
         provenance = read('ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json')['entries']
-        self.assertEqual(len(provenance), 28)
+        self.assertEqual(len(provenance), 40)
         for p in provenance:
-            self.assertEqual(set(p['roleStatus'].values()), {'USER PIE ACCEPTED'})
-            self.assertEqual({v['visualStatus'] for v in p['roles'].values()}, {'USER PIE ACCEPTED'})
+            expected = {role:expected_status(p['playerKey'],role) for role in ('Hand','Shared','Full')}
+            self.assertEqual(p['roleStatus'], expected)
+            self.assertEqual({role:v['visualStatus'] for role,v in p['roles'].items()}, expected)
         generated = read('ArtSource/UI/PlayerMaster/Stage8_3E_Generation.json')['entries']
         self.assertEqual({p['runtimeVisualStatus'] for p in generated}, {'USER PIE ACCEPTED'})
         for e in load_catalog(ROOT):
             if e['playerKey'] in NEW:
-                self.assertEqual(e['canonicalVisualStatus'], 'USER PIE ACCEPTED')
+                self.assertEqual(e['canonicalVisualStatus'], expected_status(e['playerKey'], 'Hand'))
                 self.assertEqual(e['pitchVisualStatus'], 'USER PIE ACCEPTED')
                 for role in ('Hand', 'Shared', 'Full'):
                     record = validate_generated_source(ROOT, dict(e, runtimeRole=role))
-                    self.assertEqual(record['visualStatus'], 'USER PIE ACCEPTED')
+                    self.assertEqual(record['visualStatus'], expected_status(e['playerKey'], role))
 
     def test_new_derivatives_reproduce_and_keep_role_isolation(self):
         players = [e for e in load_catalog(ROOT) if e['playerKey'] in NEW]
@@ -115,7 +117,7 @@ class CanonicalContentCompletionTest(unittest.TestCase):
                 role = e['runtimeRole']
                 profile = hand_composition(e) if role == 'Hand' else pitch_composition(e) if role == 'Shared' else 'CropOnly_v1'
                 self.assertEqual(encode_runtime_derivative(master_path(ROOT,e),runtime_size(e),resolved_crop(e),profile),runtime_derivative_path(ROOT,e).read_bytes())
-                self.assertEqual(record['visualStatus'], 'USER PIE ACCEPTED')
+                self.assertEqual(record['visualStatus'], expected_status(e['playerKey'], role))
                 self.assertTrue(record['runtimeAssetPath'].endswith('_'+role))
                 self.assertEqual(record['importRecipe'], 'DesktopBC7OpaqueSharpen1_v1')
 

@@ -186,7 +186,7 @@ def compose_portrait(source, basis, anchors, crop, profile, *, foreground=None):
     """Compose without extraction; basis owns anchors/background, foreground pixels.
 
     Omitting foreground reproduces the historical v1 comparison. Production passes
-    the source/hash-bound v2 basis explicitly; no scoped monkeypatch is involved.
+    the source/hash-bound v3 basis explicitly; no scoped monkeypatch is involved.
     """
     _validate_basis(source, basis)
     if (anchors.evidence['foregroundAlphaSha256'] != basis.alpha_sha256
@@ -195,7 +195,8 @@ def compose_portrait(source, basis, anchors, crop, profile, *, foreground=None):
     rendered = basis if foreground is None else foreground
     if foreground is not None:
         from PlayerPortraitForegroundV2 import FOREGROUND_PROFILE as V2_PROFILE
-        if (foreground.profile != V2_PROFILE
+        from PlayerPortraitForegroundV3 import FOREGROUND_PROFILE as V3_PROFILE
+        if (foreground.profile not in (V2_PROFILE, V3_PROFILE)
                 or foreground.source_pixel_sha256 != basis.source_pixel_sha256
                 or foreground.evidence.get('priorAlphaSha256') != basis.alpha_sha256
                 or foreground.alpha.mode != 'L' or foreground.alpha.size != (512, 768)):

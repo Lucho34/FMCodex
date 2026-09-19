@@ -849,9 +849,9 @@ bool FFMCodexPitchMiniCanonicalPilotTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("Missing color fallback"),Fallback,FLinearColor::FromSRGBColor(FColor(109,137,157)));
     Card.bHasPitchMiniOwnershipAccent=true;Card.PitchMiniOwnershipAccentColor=FLinearColor::Transparent;
     TestEqual(TEXT("Transparent color fallback"),UFMCodexPlayerCardWidget::ResolvePitchMiniOwnerColor(Card),Fallback);
-    Card.CardId=TEXT("Prototype.Arsenal.MikelMerino");
+    Card.CardId=TEXT("Test.FuturePlayer");
     Widget->RefreshFromPresentation(Card,EFMCodexPlayerCardPresentationMode::PitchMini);
-    TestFalse(TEXT("Unmigrated player stays legacy"),Widget->IsPitchMiniPilot());
+    TestFalse(TEXT("Future player uses non-canonical fallback"),Widget->IsPitchMiniPilot());
     Card.CardId=TEXT("Prototype.ManchesterCity.RayanAitNouri");
     Card.IdentityLabel=TEXT("艾特-努里");
     Card.RoleLabel=TEXT("M/D");

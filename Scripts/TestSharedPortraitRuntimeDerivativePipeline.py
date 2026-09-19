@@ -84,6 +84,11 @@ class SharedPortraitRuntimeDerivativePipelineTest(unittest.TestCase):
             entry["playerKey"]: entry
             for entry in provenance_document["entries"]
         }
+        # Historical source status belongs to retained Shared provenance. Current
+        # canonical manifest status describes a different family and lifecycle.
+        for key, entry in cls.by_key.items():
+            if key in cls.provenance_by_key:
+                entry['visualStatus'] = cls.provenance_by_key[key]['visualStatus']
 
     def test_fixture_identity_candidate_status_and_history_are_explicit(self) -> None:
         gabriel = self.by_key[FIXTURE_KEYS[0]]

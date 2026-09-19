@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import unittest
+from TestPlayerArtFinal40 import FINAL12, CHANGED5, expected_status
 from unittest.mock import patch
 
 from PIL import Image
@@ -26,8 +27,7 @@ SOURCES = {
     'Prototype.ManchesterCity.BernardoSilva': ('01', '2FB44F7DD391357B17C62654AA2DA0870DC1099E7902A148306F70B1E14909E2', 10),
     'Prototype.ManchesterCity.PhilFoden': ('FullCardHeroBust_01', '8A313131711792634B1AA19AE6DB5EA4DA7F9D11E259387D6C449D27EA089D61', 11),
 }
-MISSING = 'Prototype.ManchesterCity.JohnStones'
-OTHER_MISSING = 'Prototype.ManchesterCity.NicoGonzalez'
+MISSING = 'Test.FuturePlayer'
 COMPLETION = {'Prototype.ManchesterCity.NathanAke', 'Prototype.ManchesterCity.RayanCherki'}
 TIMBER = 'Prototype.Arsenal.JurrienTimber'
 
@@ -42,7 +42,7 @@ class CanonicalArtBatch2Test(unittest.TestCase):
 
     def test_exact_keys_sources_masters_and_explicit_enablement(self):
         self.assertEqual({e['playerKey'] for e in self.players}, set(SOURCES))
-        expected = PILOTS | set(BATCH1) | set(SOURCES) | COMPLETION | {e['playerKey'] for e in self.catalog if e.get('migrationStage') == '8.4'}
+        expected = PILOTS | set(BATCH1) | set(SOURCES) | COMPLETION | {e['playerKey'] for e in self.catalog if e.get('migrationStage') in ('8.4','8.5')}
         self.assertEqual({e['playerKey'] for e in self.catalog if is_canonical(e)}, expected)
         code = (ROOT/'Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp').read_text(encoding='utf-8')
         block = code.split('static const TSet<FName> CanonicalPlayers = {', 1)[1].split('};', 1)[0]
@@ -61,7 +61,7 @@ class CanonicalArtBatch2Test(unittest.TestCase):
                 self.assertEqual(e['masterSha256'], digest)
                 self.assertEqual(e['sourceProvenance']['sourceSha256'], digest)
                 self.assertEqual(e['masterRevision'], 1)
-                self.assertEqual(e['familyRevision'], '1.2')
+                self.assertEqual(e['familyRevision'], '1.3')
                 self.assertEqual(e['sourceGate']['classification'], 'SOURCE_USABLE_WITH_METADATA_CROP' if key == TIMBER else 'SOURCE_READY')
                 self.assertEqual(self.roster[key]['presentation']['defaultShirtNumber'], number)
                 with Image.open(master_path(ROOT, e)) as im:
@@ -83,30 +83,30 @@ class CanonicalArtBatch2Test(unittest.TestCase):
                 if key == TIMBER: self.assertTrue(e['cropExceptionReason'])
                 data = encode_runtime_derivative(master_path(ROOT, e), runtime_size(e), resolved_crop(e), profile)
                 self.assertEqual(data, runtime_derivative_path(ROOT, e).read_bytes())
-                self.assertEqual(record['visualStatus'], 'USER PIE ACCEPTED')
+                self.assertEqual(record['visualStatus'], expected_status(e['playerKey'], e['runtimeRole']))
                 self.assertEqual(record['importRecipe'], 'DesktopBC7OpaqueSharpen1_v1')
                 with Image.open(runtime_derivative_path(ROOT, e)) as im:
                     self.assertEqual(im.size, runtime_size(e)); self.assertEqual(im.mode, 'RGB')
         provenance = json.loads((ROOT/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json').read_text(encoding='utf-8'))
         for p in provenance['entries']:
             for role in ('Hand', 'Shared', 'Full'):
-                expected = 'USER PIE ACCEPTED'
+                expected = expected_status(p['playerKey'], role)
                 self.assertEqual(p['roleStatus'][role], expected)
                 self.assertEqual(p['roles'][role]['visualStatus'], expected)
 
-    def test_missing_sources_stay_excluded_and_nonmigrated_legacy_survives(self):
-        for key in (MISSING, OTHER_MISSING):
-            self.assertIn(key, self.roster)
+    def test_future_fixture_stays_excluded_and_final_roster_is_canonical(self):
+        for key in (MISSING,):
+            self.assertNotIn(key, self.roster)
             self.assertFalse((ROOT/'ArtSource/UI/PlayerMaster'/key).exists())
             self.assertFalse((ROOT/'ContentSource/UI/PlayerPortraitRuntime'/key).exists())
             self.assertFalse((ROOT/'Content/UI/Portraits/PrototypeTeams/Canonical'/key.replace('.', '_')).exists())
             with patch.dict('os.environ', {'FMCODEX_SHARED_PORTRAIT_PLAYER_KEYS':key}):
                 with self.assertRaisesRegex(RuntimeError, 'Unknown Shared Portrait PlayerKey'): select_entries(self.catalog)
         legacy = next(e for e in self.catalog if e['playerKey'] == 'Prototype.Arsenal.MikelMerino')
-        self.assertFalse(is_canonical(legacy))
+        self.assertTrue(is_canonical(legacy))
         self.assertEqual(self.roster['Prototype.ManchesterCity.RayanCherki']['presentation']['defaultShirtNumber'], 12)
         # Stage 8.3E filled real biographies independently of art migration.
-        for key in (TIMBER, MISSING):
+        for key in (TIMBER, 'Prototype.ManchesterCity.JohnStones'):
             for field in ('birthDate', 'heightCm', 'weightKg', 'nationality'):
                 self.assertTrue(self.roster[key]['presentation'][field], 'Researched biography reaches generated data')
 

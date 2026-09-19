@@ -217,8 +217,8 @@ def hand_composition(entry):
     profile = entry.get("handCompositionProfile", "CropOnly_v1")
     if profile not in ("CropOnly_v1", "BalancedBust_v2", "BalancedBust_v3"):
         raise RuntimeError(f"Unknown Hand composition: {profile}")
-    if entry.get("familyRevision") == "1.2" and profile != "BalancedBust_v3":
-        raise RuntimeError("Family v1.2 requires explicit BalancedBust_v3")
+    if entry.get("familyRevision") in ("1.2", "1.3") and profile != "BalancedBust_v3":
+        raise RuntimeError("Family v1.2/v1.3 requires explicit BalancedBust_v3")
     return profile
 
 
@@ -226,9 +226,11 @@ ACTIVE_PITCH_PROFILE = "QuietPitchBust_v3"
 
 
 def pitch_composition(entry):
-    # Historical v1.1 manifests remain reproducible; v1.2 is explicit and strict.
-    expected = ACTIVE_PITCH_PROFILE if entry.get("familyRevision") == "1.2" else "QuietPitchBust_v2"
+    # Historical v1.1 manifests remain reproducible; v1.2/v1.3 are explicit and strict.
+    expected = ACTIVE_PITCH_PROFILE if entry.get("familyRevision") in ("1.2", "1.3") else "QuietPitchBust_v2"
     profile = entry.get("pitchCompositionProfile", expected if is_canonical(entry) else "CropOnly_v1")
+    if entry.get("familyRevision") == "1.3" and "pitchCompositionProfile" not in entry:
+        raise RuntimeError("Family v1.3 must use explicit QuietPitchBust_v3")
     if is_canonical(entry) and profile != expected:
         raise RuntimeError(f"Canonical Pitch must use {expected}: {profile}")
     if profile not in ("CropOnly_v1", "QuietPitchBust_v2", ACTIVE_PITCH_PROFILE):
@@ -313,12 +315,12 @@ def validate_generated_source(project_root, entry):
     expected = asset_path(entry) + "." + runtime_asset_name(entry)
     if role["runtimeAssetPath"] != expected or role["dimensions"] != list(runtime_size(entry)):
         raise RuntimeError("Incorrect derived role binding/dimensions")
-    if runtime_role(entry) in ("Hand", "Shared") and entry.get("familyRevision") == "1.2":
+    if runtime_role(entry) in ("Hand", "Shared") and entry.get("familyRevision") in ("1.2", "1.3"):
         from PlayerPortraitPreflight import implementation_hashes, IMPLEMENTATION_HASH_PROFILE
-        if (entry.get("foregroundExtractionProfile") != "SourceSpaceForeground_v2"
+        if (entry.get("foregroundExtractionProfile") != ("SourceSpaceForeground_v3" if entry["familyRevision"] == "1.3" else "SourceSpaceForeground_v2")
                 or role.get("foregroundExtractionProfile") != entry["foregroundExtractionProfile"]
                 or role.get("implementationHashProfile") != IMPLEMENTATION_HASH_PROFILE
                 or role.get("implementationSha256") != implementation_hashes(project_root)
                 or role.get("generatorSha256") != role["implementationSha256"]["Scripts/GenerateSharedPortraitRuntimeDerivatives.py"]):
-            raise RuntimeError("Stale v1.2 foreground/implementation provenance")
+            raise RuntimeError("Stale v" + entry["familyRevision"] + " foreground/implementation provenance")
     return role

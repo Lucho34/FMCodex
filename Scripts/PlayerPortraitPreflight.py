@@ -13,6 +13,7 @@ IMPLEMENTATION_FILES = (
     'Scripts/SharedPortraitImportCatalog.py',
     'Scripts/PlayerPortraitForeground.py',
     'Scripts/PlayerPortraitForegroundV2.py',
+    'Scripts/PlayerPortraitForegroundV3.py',
     'Scripts/PlayerPortraitComposition.py',
     'Scripts/PlayerPortraitPreflight.py',
 )
@@ -74,6 +75,6 @@ def validate_preflight(path, root, records, roles):
             if set(inspection.get(side, {})) != set(REGIONS) or set(inspection[side].values()) != {'PASS'}:
                 raise RuntimeError('Both source sides require explicit foreground integrity review')
         for role in roles:
-            if role in ('Hand', 'Shared') and inspection.get(role) != 'PASS':
+            if inspection.get(role) != 'PASS':
                 raise RuntimeError('Actual-size family composition review is incomplete')
     return document

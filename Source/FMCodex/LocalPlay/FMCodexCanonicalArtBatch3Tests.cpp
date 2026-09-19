@@ -57,9 +57,9 @@ bool FFMCodexCanonicalArtBatch3Test::RunTest(const FString&)
             else TestNull(TEXT("Large purpose clears Hand art"), Widget->GetResolvedHandMicroPortraitTexture());
 
             FFMCodexLocalMatchCardView Missing;
-            Missing.CardId = TEXT("Prototype.ManchesterCity.JohnStones");
-            Missing.DisplayLabel = FFMCodexPrototypeTeamContent::PlayerDisplayName(Missing.CardId).ToString();
-            TestFalse(TEXT("Stones remains non-canonical"), FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Missing.CardId).bCanonicalPlayerArt);
+            Missing.CardId = TEXT("Test.FuturePlayer");
+            Missing.DisplayLabel = FString(TEXT("未来球员"));
+            TestFalse(TEXT("Future fixture remains non-canonical"), FFMCodexPlayerUIAssetReferences::Get().ResolveCardArt(Missing.CardId).bCanonicalPlayerArt);
             Widget->RefreshFromPresentation(FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(Missing), Mode);
             TestNull(TEXT("Fallback clears previous large art"), Widget->GetResolvedPortraitTexture());
             TestNull(TEXT("Fallback clears previous Hand art"), Widget->GetResolvedHandMicroPortraitTexture());

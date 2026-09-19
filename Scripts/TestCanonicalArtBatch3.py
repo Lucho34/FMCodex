@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 import unittest
+from TestPlayerArtFinal40 import FINAL12, CHANGED5, expected_status
 from PIL import Image
 from SharedPortraitImportCatalog import (
     load_catalog, is_canonical, expand_runtime_entries, validate_generated_source,
@@ -30,8 +31,8 @@ class CanonicalArtBatch3Test(unittest.TestCase):
 
     def test_exact_membership_and_lifecycle(self):
         self.assertEqual({e['playerKey'] for e in self.selected}, set(KEYS))
-        expected = FROZEN | set(KEYS)
-        self.assertEqual(len(expected), 28)
+        expected = FROZEN | set(KEYS) | FINAL12
+        self.assertEqual(len(expected), 40)
         self.assertEqual({e['playerKey'] for e in self.catalog if is_canonical(e)}, expected)
         code = (ROOT/'Source/FMCodex/LocalPlay/FMCodexPlayerUIAssetReferences.cpp').read_text(encoding='utf-8')
         block = code.split('static const TSet<FName> CanonicalPlayers = {', 1)[1].split('};', 1)[0]
@@ -39,10 +40,11 @@ class CanonicalArtBatch3Test(unittest.TestCase):
         self.assertEqual({e['playerKey'] for e in self.provenance}, expected)
         for e in self.provenance:
             for role in ('Hand', 'Shared', 'Full'):
-                status = 'USER PIE ACCEPTED'
+                status = expected_status(e['playerKey'], role)
                 self.assertEqual(e['roleStatus'][role], status)
                 self.assertEqual(e['roles'][role]['visualStatus'], status)
-        self.assertNotIn('Prototype.ManchesterCity.JohnStones', expected)
+        self.assertIn('Prototype.ManchesterCity.JohnStones', expected)
+        self.assertNotIn('Test.FuturePlayer', expected)
 
     def test_master_provenance_and_three_purposes(self):
         generation = json.loads((ROOT/'ArtSource/UI/PlayerMaster/Stage8_4_Generation.json').read_text(encoding='utf-8'))['entries']
@@ -57,9 +59,9 @@ class CanonicalArtBatch3Test(unittest.TestCase):
                 self.assertEqual(e['masterSha256'], digest)
                 self.assertEqual(records[key]['masterSha256'], digest)
                 self.assertEqual(e['sourceProvenance']['originIdentity'], key)
-                self.assertEqual(e['canonicalVisualStatus'], 'USER PIE ACCEPTED')
+                self.assertEqual(e['canonicalVisualStatus'], expected_status(e['playerKey'], 'Hand'))
                 self.assertEqual(records[key]['runtimeVisualStatus'], 'USER PIE ACCEPTED')
-                self.assertEqual(e['familyRevision'], '1.2')
+                self.assertEqual(e['familyRevision'], '1.3')
                 self.assertEqual(e['handCompositionProfile'], 'BalancedBust_v3')
                 self.assertEqual(pitch_composition(e), 'QuietPitchBust_v3')
                 if records[key]['route'] != 'accepted legacy source':
@@ -72,7 +74,7 @@ class CanonicalArtBatch3Test(unittest.TestCase):
         for e in expand_runtime_entries(self.selected, ('Hand','Shared','Full')):
             with self.subTest(player=e['playerKey'],role=e['runtimeRole']):
                 r = validate_generated_source(ROOT,e)
-                self.assertEqual(r['visualStatus'],'USER PIE ACCEPTED')
+                self.assertEqual(r['visualStatus'],expected_status(e['playerKey'],e['runtimeRole']))
                 self.assertEqual(r['importRecipe'],'DesktopBC7OpaqueSharpen1_v1')
                 with Image.open(runtime_derivative_path(ROOT,e)) as im:
                     self.assertEqual(im.size,runtime_size(e)); self.assertEqual(im.mode,'RGB')

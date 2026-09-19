@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import unittest
+from TestPlayerArtFinal40 import FINAL12, CHANGED5, expected_status
 from unittest.mock import patch
 from PIL import Image
 from GenerateSharedPortraitRuntimeDerivatives import encode_runtime_derivative
@@ -22,7 +23,7 @@ SOURCES = {
     'Prototype.ManchesterCity.JeremyDoku': '01',
     'Prototype.Arsenal.GabrielMartinelli': '01',
 }
-MISSING = 'Prototype.ManchesterCity.JohnStones'  # Guehi migrated in Stage 8.4.
+MISSING = 'Test.FuturePlayer'
 PILOTS = {'Prototype.Arsenal.BukayoSaka', 'Prototype.Arsenal.DavidRaya',
     'Prototype.ManchesterCity.Rodri', 'Prototype.ManchesterCity.ErlingHaaland'}
 
@@ -66,7 +67,7 @@ class CanonicalArtBatch1Test(unittest.TestCase):
                 composition = hand_composition(e) if role=='Hand' else pitch_composition(e) if role=='Shared' else 'CropOnly_v1'
                 data = encode_runtime_derivative(master_path(ROOT,e),runtime_size(e),resolved_crop(e),composition)
                 self.assertEqual(data, runtime_derivative_path(ROOT,e).read_bytes())
-                self.assertEqual(record['visualStatus'], 'USER PIE ACCEPTED')
+                self.assertEqual(record['visualStatus'], expected_status(e['playerKey'], e['runtimeRole']))
                 self.assertEqual(record['importRecipe'],'DesktopBC7OpaqueSharpen1_v1')
                 with Image.open(runtime_derivative_path(ROOT,e)) as im:
                     self.assertEqual(im.size,runtime_size(e));self.assertEqual(im.mode,'RGB')
@@ -80,7 +81,7 @@ class CanonicalArtBatch1Test(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'Unknown Shared Portrait PlayerKey'):select_entries(self.catalog)
         with patch.dict('os.environ', {'FMCODEX_SHARED_PORTRAIT_PLAYER_KEYS':next(iter(SOURCES))}):
             self.assertEqual(len(select_entries(self.catalog)),1)
-        self.assertFalse(next(e for e in self.catalog if e['playerKey']=='Prototype.Arsenal.MikelMerino').get('masterSourcePath'))
+        self.assertTrue(next(e for e in self.catalog if e['playerKey']=='Prototype.Arsenal.MikelMerino').get('masterSourcePath'))
 
     def test_missing_tampered_master_output_and_role_binding_reject(self):
         entry = dict(self.players[0],runtimeRole='Shared'); original=Path.read_bytes

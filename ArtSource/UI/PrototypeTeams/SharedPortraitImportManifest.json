@@ -33,9 +33,9 @@
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -44,7 +44,7 @@
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.MartinOdegaard",
@@ -69,9 +69,9 @@
         "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -79,7 +79,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.DeclanRice",
@@ -104,9 +104,9 @@
         "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -114,7 +114,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.WilliamSaliba",
@@ -139,9 +139,9 @@
         "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -149,7 +149,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.DavidRaya",
@@ -185,9 +185,9 @@
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -196,7 +196,7 @@
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.MylesLewisSkelly",
@@ -231,9 +231,9 @@
       },
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -241,7 +241,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.GabrielMartinelli",
@@ -276,9 +276,9 @@
       },
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -286,7 +286,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.ViktorGyokeres",
@@ -298,7 +298,7 @@
       "compositionProfile": "HeroBust_v1",
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "migrationStage": "8.4",
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_ViktorGyokeres_01.png",
@@ -313,7 +313,7 @@
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -321,7 +321,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.GabrielMagalhaes",
@@ -372,9 +372,9 @@
       },
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -382,25 +382,118 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.MikelMerino",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_MikelMerino_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.MikelMerino/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "62D6642CE151E1194EE7D93AEAFCA2F9C7712D184AB634AB17F6511A99C286B6",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_MikelMerino_01.png",
+        "sourceSha256": "62D6642CE151E1194EE7D93AEAFCA2F9C7712D184AB634AB17F6511A99C286B6",
+        "originIdentity": "Prototype.Arsenal.MikelMerino",
+        "route": "same-key legacy source reuse",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
     },
     {
       "playerKey": "Prototype.Arsenal.BenWhite",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_BenWhite_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.BenWhite/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "585724FD948502B004E56A6A5FB13F17986A369D06083A24F2832D003DFB9813",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_BenWhite_01.png",
+        "sourceSha256": "585724FD948502B004E56A6A5FB13F17986A369D06083A24F2832D003DFB9813",
+        "originIdentity": "Prototype.Arsenal.BenWhite",
+        "route": "same-key legacy source reuse",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
     },
     {
       "playerKey": "Prototype.Arsenal.PieroHincapie",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_PieroHincapie_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.PieroHincapie/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "EA96350C3DDC3080E61F0B015975A3588ABC906A8637754502E896BE45EA2264",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_PieroHincapie_01.png",
+        "sourceSha256": "EA96350C3DDC3080E61F0B015975A3588ABC906A8637754502E896BE45EA2264",
+        "originIdentity": "Prototype.Arsenal.PieroHincapie",
+        "route": "same-key legacy source reuse",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
     },
     {
       "playerKey": "Prototype.Arsenal.JurrienTimber",
@@ -426,7 +519,7 @@
         "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
       "cropOverrides": {
         "handCropRect": [
@@ -443,7 +536,7 @@
         ]
       },
       "cropExceptionReason": "Correct same-key fictional identity and Arsenal kit. Default Hand/Pitch crop places the frozen crown seed above this source crown and leaves a detached extraction remnant. A bounded source-space top .115 preserves complete hair, face and shoulders; no Widget or generator change. Full remains default.",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -451,7 +544,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.RiccardoCalafiori",
@@ -486,9 +579,9 @@
       },
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -496,7 +589,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.EberechiEze",
@@ -508,7 +601,7 @@
       "compositionProfile": "HeroBust_v1",
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "migrationStage": "8.4",
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_EberechiEze_01.png",
@@ -538,7 +631,7 @@
         ]
       },
       "cropExceptionReason": "Move the existing crown seed into source hair; removes detached dark extraction remnant above the head while retaining braids, neck and shoulders. Full unchanged.",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -546,7 +639,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.MartinZubimendi",
@@ -558,7 +651,7 @@
       "compositionProfile": "HeroBust_v1",
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "migrationStage": "8.4",
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_MartinZubimendi_01.png",
@@ -573,7 +666,7 @@
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -581,25 +674,118 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.ChristianNorgaard",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_ChristianNorgaard_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.ChristianNorgaard/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "D60918B11B365FCD5169F9C5D9C2614EE2A5B8973ECF784F1FE50FB0DADD39AA",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_ChristianNorgaard_01.png",
+        "sourceSha256": "D60918B11B365FCD5169F9C5D9C2614EE2A5B8973ECF784F1FE50FB0DADD39AA",
+        "originIdentity": "Prototype.Arsenal.ChristianNorgaard",
+        "route": "same-key legacy source reuse",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
     },
     {
       "playerKey": "Prototype.Arsenal.LeandroTrossard",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_LeandroTrossard_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.LeandroTrossard/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "0EAD3E56A79910737D0CE2202D7542FC51CFF9F1C2A5C8403BBBDC3FE4218724",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_LeandroTrossard_01.png",
+        "sourceSha256": "0EAD3E56A79910737D0CE2202D7542FC51CFF9F1C2A5C8403BBBDC3FE4218724",
+        "originIdentity": "Prototype.Arsenal.LeandroTrossard",
+        "route": "same-key legacy source reuse",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
     },
     {
       "playerKey": "Prototype.Arsenal.NoniMadueke",
       "team": "Arsenal",
       "assetName": "T_Prototype_Arsenal_NoniMadueke_01",
-      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE"
+      "visualStatus": "BATCH CANDIDATE — PENDING MANUAL PIE GATE",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.Arsenal.NoniMadueke/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "E64D315B52417257FE1E3079D162DFF6327AE9024F14C388F87C379CF9FE363F",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "ArtSource/UI/PrototypeTeams/Arsenal/Portraits/T_Prototype_Arsenal_NoniMadueke_01.png",
+        "sourceSha256": "E64D315B52417257FE1E3079D162DFF6327AE9024F14C388F87C379CF9FE363F",
+        "originIdentity": "Prototype.Arsenal.NoniMadueke",
+        "route": "same-key legacy source reuse",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
     },
     {
       "playerKey": "Prototype.ManchesterCity.ErlingHaaland",
@@ -642,9 +828,9 @@
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -653,7 +839,7 @@
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.JoskoGvardiol",
@@ -688,9 +874,9 @@
       },
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -698,7 +884,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.BernardoSilva",
@@ -724,9 +910,9 @@
         "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -734,7 +920,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.JeremyDoku",
@@ -769,9 +955,9 @@
       },
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -779,7 +965,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.RayanAitNouri",
@@ -791,7 +977,7 @@
       "compositionProfile": "HeroBust_v1",
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "migrationStage": "8.4",
       "sourceProvenance": {
         "sourcePath": "ArtSource/UI/PrototypeTeams/ManchesterCity/Portraits/T_Prototype_ManchesterCity_RayanAitNouri_01.png",
@@ -816,7 +1002,7 @@
       },
       "cropExceptionReason": "Hand includes more frontal shirt mass than healthy references; tighter vertical crop strengthens head prominence. V-neck and shoulders are sound; Pitch/Full do not independently require correction.",
       "repairStage": "8.4R",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -824,7 +1010,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.PhilFoden",
@@ -849,9 +1035,9 @@
         "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -859,7 +1045,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.Rodri",
@@ -886,9 +1072,9 @@
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -897,7 +1083,7 @@
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.RubenDias",
@@ -922,9 +1108,9 @@
         "status": "Existing same-key fictional production source reused; Stage 8.3C Source Gate passed. Hand/Shared-Pitch/Full outputs USER PIE ACCEPTED following Stage 8.3C USER PIE PASS; Player Card Family v1.1 remains accepted/frozen; rights provenance unchanged."
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -932,7 +1118,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.GianluigiDonnarumma",
@@ -966,9 +1152,9 @@
       },
       "pitchCropReason": "Global v1.1: retain the frozen 0.55 bust guide; background uses only the approved Master environment under QuietPitchBust_v2. No individual background or Widget settings.",
       "canonicalVisualStatus": "USER PIE ACCEPTED",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -976,7 +1162,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.NathanAke",
@@ -989,7 +1175,7 @@
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
       "migrationStage": "8.3E",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "sourceGate": {
         "classification": "SOURCE_USABLE_WITH_METADATA_CROP",
         "reason": "Correct key/team, distinct newly generated fictional identity, opaque RGB 1024x1536; full head/neck/shoulders/chest; reviewed Hand, visible Pitch crop and Full; original pixels preserved, no Widget offsets. USER PIE ACCEPTED."
@@ -1019,7 +1205,7 @@
         ]
       },
       "cropExceptionReason": "Master hair crown starts near the default .055 top. Move only the metadata crop top to .025 and retain the previous bottom, preserving complete twists plus top breathing room. Same rule for Hand and Pitch; Full remains uncropped.",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -1027,7 +1213,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.RayanCherki",
@@ -1040,7 +1226,7 @@
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
       "migrationStage": "8.3E",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "sourceGate": {
         "classification": "SOURCE_READY",
         "reason": "Correct key/team, distinct newly generated fictional identity, opaque RGB 1024x1536; full head/neck/shoulders/chest; reviewed Hand, visible Pitch crop and Full; original pixels preserved, no Widget offsets. USER PIE ACCEPTED."
@@ -1055,7 +1241,7 @@
       },
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "pitchVisualStatus": "USER PIE ACCEPTED",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -1063,7 +1249,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.Arsenal.KaiHavertz",
@@ -1075,7 +1261,7 @@
       "compositionProfile": "HeroBust_v1",
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "migrationStage": "8.4",
       "sourceProvenance": {
         "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a09394-218a-7060-857b-52c4708a3c56\\exec-cdcca6bd-36b5-4efd-93c8-aa668838884b.png",
@@ -1100,7 +1286,7 @@
       },
       "cropExceptionReason": "Hand head reads left of visual center and smaller than neighboring Arsenal cards; modest source window recenters and increases facial prominence. Pitch/Full already within family range.",
       "repairStage": "8.4R",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -1108,7 +1294,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.MarcGuehi",
@@ -1120,7 +1306,7 @@
       "compositionProfile": "HeroBust_v1",
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "migrationStage": "8.4",
       "sourceProvenance": {
         "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a09394-218a-7060-857b-52c4708a3c56\\exec-dae1069f-19cf-4981-a48b-2354508f3d57.png",
@@ -1136,7 +1322,7 @@
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "pitchVisualStatus": "USER PIE ACCEPTED",
       "repairStage": "8.4R",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -1144,7 +1330,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.OmarMarmoush",
@@ -1156,7 +1342,7 @@
       "compositionProfile": "HeroBust_v1",
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "migrationStage": "8.4",
       "sourceProvenance": {
         "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a09394-218a-7060-857b-52c4708a3c56\\exec-9e4ac784-de52-4148-abea-77e0f924a107.png",
@@ -1172,7 +1358,7 @@
       "canonicalVisualStatus": "USER PIE ACCEPTED",
       "pitchVisualStatus": "USER PIE ACCEPTED",
       "repairStage": "8.4R",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -1180,7 +1366,7 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
     },
     {
       "playerKey": "Prototype.ManchesterCity.TijjaniReijnders",
@@ -1192,7 +1378,7 @@
       "compositionProfile": "HeroBust_v1",
       "handCompositionProfile": "BalancedBust_v3",
       "pitchCompositionProfile": "QuietPitchBust_v3",
-      "familyRevision": "1.2",
+      "familyRevision": "1.3",
       "migrationStage": "8.4",
       "sourceProvenance": {
         "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a09394-218a-7060-857b-52c4708a3c56\\exec-f3bfae38-ed2c-40b9-8602-307672180c89.png",
@@ -1217,7 +1403,7 @@
       },
       "cropExceptionReason": "Hand head is small against the broad shirt; modest crop reduces torso weight. Pitch falls within Ake/Cherki reference range; Master/Pitch/Full preserved.",
       "repairStage": "8.4R",
-      "foregroundExtractionProfile": "SourceSpaceForeground_v2",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
       "roleStatus": {
         "Hand": "USER PIE ACCEPTED",
         "Shared": "USER PIE ACCEPTED",
@@ -1225,7 +1411,223 @@
       },
       "handVisualStatus": "USER PIE ACCEPTED",
       "fullVisualStatus": "USER PIE ACCEPTED",
-      "familyMigrationStage": "8.4U-Retry"
+      "familyMigrationStage": "8.5B"
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.JohnStones",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_JohnStones_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.JohnStones/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "1F4AB9B1C7D4E1AABB42FBA720AB6B48BA5143D523FAD3F134C9177C100663FE",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a0a267-43ba-7b33-be1b-5aac431abf3d\\exec-179ca0aa-58e8-4f8a-8417-cfd4f058977d.png",
+        "sourceSha256": "1F4AB9B1C7D4E1AABB42FBA720AB6B48BA5143D523FAD3F134C9177C100663FE",
+        "originIdentity": "Prototype.ManchesterCity.JohnStones",
+        "route": "newly generated original fictional adult; built-in image_gen",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "PREFLIGHT_BLOCKED_SHARED_EXTRACTION",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.NicoGonzalez",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_NicoGonzalez_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.NicoGonzalez/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "00F828DACFEFA0FA100A9D034E77772DFFC86598FF5D07E8CABA62E445F6710F",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a0a267-43ba-7b33-be1b-5aac431abf3d\\exec-ce4f2ffa-3f45-4f55-83ad-de7864b8059b.png",
+        "sourceSha256": "00F828DACFEFA0FA100A9D034E77772DFFC86598FF5D07E8CABA62E445F6710F",
+        "originIdentity": "Prototype.ManchesterCity.NicoGonzalez",
+        "route": "newly generated original fictional adult; built-in image_gen",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.MatheusNunes",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_MatheusNunes_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.MatheusNunes/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "BD0C8EA71D080DA1330FB9D3A01B85CED437DEAB0EE28C364D5368613292F935",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a0a267-43ba-7b33-be1b-5aac431abf3d\\exec-64c1a09f-0b33-47d0-8729-87ce3c290597.png",
+        "sourceSha256": "BD0C8EA71D080DA1330FB9D3A01B85CED437DEAB0EE28C364D5368613292F935",
+        "originIdentity": "Prototype.ManchesterCity.MatheusNunes",
+        "route": "newly generated original fictional adult; built-in image_gen",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "PREFLIGHT_BLOCKED_SHARED_EXTRACTION",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.MateoKovacic",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_MateoKovacic_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.MateoKovacic/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "04E0B5035CD587BB52656FC1D4F1A3FCF2CEFB27F068BFE449667DE9AAF44FDB",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a0a267-43ba-7b33-be1b-5aac431abf3d\\exec-a9b74530-a96c-483a-bd2b-279786b9b1ed.png",
+        "sourceSha256": "04E0B5035CD587BB52656FC1D4F1A3FCF2CEFB27F068BFE449667DE9AAF44FDB",
+        "originIdentity": "Prototype.ManchesterCity.MateoKovacic",
+        "route": "newly generated original fictional adult; built-in image_gen",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.AntoineSemenyo",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_AntoineSemenyo_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.AntoineSemenyo/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "189135B9FE8A3F06AE300DBE175E8E67A09DCE09D2F8E2125B289CE5A9B30C67",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a0a267-43ba-7b33-be1b-5aac431abf3d\\exec-78cd6da0-66fc-4ee8-9116-4d4209902660.png",
+        "sourceSha256": "189135B9FE8A3F06AE300DBE175E8E67A09DCE09D2F8E2125B289CE5A9B30C67",
+        "originIdentity": "Prototype.ManchesterCity.AntoineSemenyo",
+        "route": "newly generated original fictional adult; built-in image_gen",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "PREFLIGHT_BLOCKED_SHARED_EXTRACTION",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
+    },
+    {
+      "playerKey": "Prototype.ManchesterCity.Savinho",
+      "team": "ManchesterCity",
+      "assetName": "T_Prototype_ManchesterCity_Savinho_01",
+      "masterSourcePath": "ArtSource/UI/PlayerMaster/Prototype.ManchesterCity.Savinho/Master.png",
+      "masterRevision": 1,
+      "masterSha256": "5FB6FC73996AB4647E847F00BF95B1DA0311518DDF74FC7C4659B0BB7D0EF57D",
+      "compositionProfile": "HeroBust_v1",
+      "handCompositionProfile": "BalancedBust_v3",
+      "pitchCompositionProfile": "QuietPitchBust_v3",
+      "familyRevision": "1.3",
+      "foregroundExtractionProfile": "SourceSpaceForeground_v3",
+      "migrationStage": "8.5",
+      "sourceProvenance": {
+        "sourcePath": "C:\\Users\\Lucho\\.codex\\generated_images\\01a0a267-43ba-7b33-be1b-5aac431abf3d\\exec-253e8c53-854a-484b-94a6-e095a8099aa7.png",
+        "sourceSha256": "5FB6FC73996AB4647E847F00BF95B1DA0311518DDF74FC7C4659B0BB7D0EF57D",
+        "originIdentity": "Prototype.ManchesterCity.Savinho",
+        "route": "newly generated original fictional adult; built-in image_gen",
+        "status": "Selected source QC passed; Stage 8.5B formal v3 migration; all three production roles USER PIE ACCEPTED"
+      },
+      "canonicalVisualStatus": "USER PIE ACCEPTED",
+      "roleStatus": {
+        "Hand": "USER PIE ACCEPTED",
+        "Shared": "USER PIE ACCEPTED",
+        "Full": "USER PIE ACCEPTED"
+      },
+      "familyMigrationStage": "8.5B",
+      "handVisualStatus": "USER PIE ACCEPTED",
+      "pitchVisualStatus": "USER PIE ACCEPTED",
+      "fullVisualStatus": "USER PIE ACCEPTED",
+      "sourceGate": {
+        "classification": "SOURCE_READY",
+        "masterQuality": "PASS",
+        "batchPromotion": "PROMOTED canonical Master unchanged from selected source; v3 whole-migration preflight PASS"
+      }
     }
   ]
 }

@@ -1672,3 +1672,30 @@ Retain the versioned foreground/composition modules and PlayerPortraitPreflight 
 Final staged verification exposed raw-code-hash sensitivity to Git CRLF/LF normalization across five implementation files and 56 Hand/Shared role bindings. Centralize source-code SHA256 in PlayerPortraitPreflight.py under SourceTextLF_SHA256_v1: byte-level CRLF -> LF, then lone CR -> LF, with every other byte significant. Use it for implementation maps, generator hashes, partial-generation checks and import/preflight validation. Normal production needs no Git access; no Git configuration change is used.
 
 Rebind current v1.2 provenance and a new current preflight receipt to the canonical hashes. Preserve original receipts, raw-code hashes and all failed/candidate/source history. PNG, Texture2D, pixel/alpha, detector-file and receipt hashes stay byte-exact. All art bytes, crops, profiles, identities and 84 accepted roles remain unchanged; no art generation, import, USER PIE or C++ build is needed. The user must manually restage the repair; Codex does not alter the existing index.
+
+## 2026-09-16 - Stage 8.5A garment foreground candidate, production v1.2 frozen
+
+The final-twelve Stage 8.5 preflight correctly stopped on source-supported collar losses in Stones, Nunes and Semenyo. Initial classification removes these pixels; the v2 envelope/seeds do not fully recover them. Keep those Masters and all composition/crop rules unchanged. Add a separate SourceSpaceForeground_v3_candidate using bounded, directed neck-to-torso support, source-background rejection and one local classification pass. Preserve all v2 alpha; do not modify the formal extraction module or production implementation hash bindings. Section 38 of Shared_Portrait_Art_Contract_v1.md records the candidate contract and limits.
+
+The exact thirteen primary samples pass engineering source/alpha review and sixteen focused tests. Required forty-source impact review exposed additional Calafiori/Haaland background ingestion in an earlier trial; the selected candidate rejects it and keeps those alpha hashes identical. Five existing families (BernardoSilva, JeremyDoku, JoskoGvardiol, RayanAitNouri, RubenDias) change Hand/Shared; twenty-three remain byte-identical. Only the three blocking final-twelve families change; the other nine remain byte-identical. All eighty baseline PNGs reproduce and all before/after framing evidence is identical.
+
+Status: READY FOR FOREGROUND v3 USER PIE, candidate only. Formal family stays v1.2, production v2, 28/40 canonical and 84 accepted roles. Preserve 196 production art files, all twelve candidate Masters, metadata, routing, Full and prior implementation files. No production import, migration, build or broad gameplay regression. The ignored preview helper is statically checked, not runtime-validated. Stage8_5_Generation.json appends candidate history without clearing its initial failure or accepting final-twelve roles. A likely future v1.3 migration and ten changed existing-role acceptances require a separate formal decision after USER PIE. Staging/commit remain manual.
+
+
+## 2026-09-19 — Stage 8.5B: SourceSpaceForeground_v3 / Player Card Family v1.3
+
+- User decision: FOREGROUND v3 USER PIE PASS. Promote the selected Stage 8.5A extraction algorithm unchanged; no v4 or micro-polish. Formal family becomes v1.3 with explicit SourceSpaceForeground_v3, frozen BalancedBust_v3 / QuietPitchBust_v3 and direct-Master CropOnly_v1 Full.
+- Complete the final 12 selected Masters to canonical 40/40, 20 per team. Preserve original source choices, including Merino vertical `_01`, and the original Stage 8.5 failed v2 preflight / 8.5A candidate history in Stage8_5_Generation.json.
+- Only 36 new purpose assets and existing BernardoSilva/Doku/Gvardiol/AitNouri/Dias Hand/Shared (10 roles) require import and renewed visual acceptance. The other 23 families and every old Master/Full stay byte-identical; explicit v1.3 metadata rebinding does not revoke unchanged acceptance.
+- Lifecycle before final production USER PIE: 120 roles, 74 accepted / 46 pending. Prototype acceptance is not final production-role acceptance. Review only final-12 Hand/Pitch/Full and changed-5 Hand/Pitch.
+- With every real roster key canonical, missing-art/fallback/rebind coverage moves to the explicit non-roster Test.FuturePlayer fixture. No 41st production player or fake art route.
+- Permanent source preflight now includes both-side collar/neck/torso continuity and actual 96x64 Hand / 130x112 Pitch comparisons. Whole migration preflight precedes publication/import. Retain SourceTextLF_SHA256_v1 code hashes and byte-exact art hashes. Contract details: Shared_Portrait_Art_Contract_v1.md sections 30 and 39.
+- Scope remains art pipeline, catalog/routing, focused verification and documentation. No gameplay, Networking, CoreRules, Widget/layout, drag or Full safe-zone implementation change.
+
+
+## 2026-09-19 — Stage 8.5 final 40/40 USER PIE acceptance closeout
+
+- Explicit user decision: FINAL 40/40 USER PIE PASS. Accept the final twelve players' three roles (36) and the five existing v3-migrated players' Hand/Shared (10). Preserve the previous 74 role acceptances. Current canonical coverage is 40/40, 20 per team, and all 120 roles are USER PIE ACCEPTED.
+- Family v1.3 remains SourceSpaceForeground_v3 with BalancedBust_v3 / QuietPitchBust_v3; Full is direct-Master CropOnly_v1. No v1.4, v4, art regeneration, reimport or micro-polish.
+- Synchronize current manifest/provenance/generation acceptance and the final-roster test expectation. Preserve the original blocked v2 attempt, candidate history, promotion and immutable pre-publication receipts as history; the later finalAcceptance record owns current user acceptance.
+- Keep Test.FuturePlayer fallback/rebind coverage and the permanent future-player standard in Shared_Portrait_Art_Contract_v1.md section 30. Section 40 records this final closeout. All current art bytes and production code remain unchanged; only focused metadata/contract checks are needed. No build or renewed USER PIE is required. Staging and commit remain manual.

@@ -1,9 +1,10 @@
-"""v1.2 production boundary, byte-driven lifecycle and fail-closed preflight."""
+"""v1.3 production boundary, byte-driven lifecycle and fail-closed preflight."""
 import copy
 import json
 from pathlib import Path
 import tempfile
 import unittest
+from TestPlayerArtFinal40 import FINAL12, CHANGED5, expected_status
 from unittest.mock import patch
 
 from PIL import Image
@@ -36,7 +37,7 @@ def publish_in_test_workspace(root, entries):
                'implementationSha256':implementation_hashes(root),
                'bindings':[preflight_binding(r, roles) for r in records],
                'inspections':{r['playerKey']:{'left':dict.fromkeys(REGIONS, 'PASS'),
-                   'right':dict.fromkeys(REGIONS, 'PASS'), 'Hand':'PASS', 'Shared':'PASS'} for r in records}}
+                   'right':dict.fromkeys(REGIONS, 'PASS'), 'Hand':'PASS', 'Shared':'PASS', 'Full':'PASS'} for r in records}}
     path = root/'SyntheticTestReceipt.json'
     path.write_text(json.dumps(receipt), encoding='utf-8')
     return generator.generate_canonical_selected(root, entries, preflight_receipt=path)
@@ -46,7 +47,7 @@ class PlayerPortraitProductionTest(unittest.TestCase):
     def test_missing_receipt_never_writes_production(self):
         import GenerateSharedPortraitRuntimeDerivatives as generator
         entry = next(e for e in load_catalog(ROOT) if is_canonical(e))
-        entry = dict(entry, familyRevision='1.2', foregroundExtractionProfile='SourceSpaceForeground_v2',
+        entry = dict(entry, familyRevision='1.3', foregroundExtractionProfile='SourceSpaceForeground_v3',
                      handCompositionProfile='BalancedBust_v3', pitchCompositionProfile='QuietPitchBust_v3')
         with patch.dict('os.environ', {'FMCODEX_PLAYER_ART_RUNTIME_ROLES':'Hand;Shared',
                                      'FMCODEX_PLAYER_ART_PREFLIGHT_RECEIPT':''}), \
@@ -57,26 +58,26 @@ class PlayerPortraitProductionTest(unittest.TestCase):
                 generator.generate_canonical_selected(ROOT, [entry])
             writes.assert_not_called()
 
-    def test_all_28_explicit_profiles_and_84_current_bindings(self):
+    def test_all_40_explicit_profiles_and_120_current_bindings(self):
         entries = [e for e in load_catalog(ROOT) if is_canonical(e)]
-        self.assertEqual(len(entries), 28)
+        self.assertEqual(len(entries), 40)
         for entry in entries:
-            self.assertEqual(entry['familyRevision'], '1.2')
-            self.assertEqual(entry['canonicalVisualStatus'], 'USER PIE ACCEPTED')
-            self.assertEqual(entry['roleStatus'], dict.fromkeys(('Hand', 'Shared', 'Full'), 'USER PIE ACCEPTED'))
-            self.assertEqual(entry['foregroundExtractionProfile'], 'SourceSpaceForeground_v2')
+            self.assertEqual(entry['familyRevision'], '1.3')
+            self.assertEqual(entry['canonicalVisualStatus'], expected_status(entry['playerKey'],'Hand'))
+            self.assertEqual(entry['roleStatus'], {role:expected_status(entry['playerKey'],role) for role in ('Hand','Shared','Full')})
+            self.assertEqual(entry['foregroundExtractionProfile'], 'SourceSpaceForeground_v3')
             self.assertEqual(entry['handCompositionProfile'], 'BalancedBust_v3')
             self.assertEqual(entry['pitchCompositionProfile'], 'QuietPitchBust_v3')
         for entry in expand_runtime_entries(entries, ('Hand', 'Shared', 'Full')):
             with self.subTest(key=entry['playerKey'], role=entry['runtimeRole']):
                 record = validate_generated_source(ROOT, entry)
-                self.assertEqual(record['visualStatus'], 'USER PIE ACCEPTED')
+                self.assertEqual(record['visualStatus'], expected_status(entry['playerKey'], entry['runtimeRole']))
                 with Image.open(runtime_derivative_path(ROOT, entry)) as image:
                     self.assertEqual((image.mode, image.size), ('RGB', runtime_size(entry)))
                 if entry['runtimeRole'] == 'Full':
                     self.assertNotIn('foregroundExtractionProfile', record)
                 else:
-                    self.assertEqual(record['foregroundExtractionProfile'], 'SourceSpaceForeground_v2')
+                    self.assertEqual(record['foregroundExtractionProfile'], 'SourceSpaceForeground_v3')
                     self.assertEqual(record['framingAndBackgroundProfile'], 'SourceSpaceForeground_v1')
 
     def test_status_is_per_role_and_byte_driven(self):
@@ -125,6 +126,27 @@ class PlayerPortraitProductionTest(unittest.TestCase):
                      source.replace(b'\xc3\xa9', b'e\xcc\x81'), source.rstrip(b'\n')):
             self.assertNotEqual(canonical_code_sha256(data), expected)
 
+    def test_current_full_receipt_requires_full_inspection_and_exact_output(self):
+        generation = json.loads((ROOT/'ArtSource/UI/PlayerMaster/Stage8_5_Generation.json').read_text(encoding='utf-8'))
+        receipt = generation['productionPromotion']['currentPreflightReceipts']['Full']
+        provenance = json.loads((ROOT/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json').read_text(encoding='utf-8'))['entries']
+        by_key = {r['playerKey']:r for r in provenance}
+        records = [by_key[b['playerKey']] for b in receipt['bindings']]
+        self.assertEqual(len(records), 12)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'receipt.json'
+            path.write_text(json.dumps(receipt), encoding='utf-8')
+            validate_preflight(path, ROOT, records, ('Full',))
+            for case in ('missing_full_inspection', 'wrong_full_output'):
+                bad = copy.deepcopy(receipt)
+                if case == 'missing_full_inspection':
+                    del bad['inspections'][records[0]['playerKey']]['Full']
+                else:
+                    bad['bindings'][0]['roles']['Full'] = 'wrong'
+                path.write_text(json.dumps(bad), encoding='utf-8')
+                with self.subTest(case=case), self.assertRaises(RuntimeError):
+                    validate_preflight(path, ROOT, records, ('Full',))
+
     def test_binary_hashes_remain_byte_exact(self):
         import hashlib
         from GenerateSharedPortraitRuntimeDerivatives import sha256_bytes, sha256_file
@@ -142,8 +164,8 @@ class PlayerPortraitProductionTest(unittest.TestCase):
     def test_current_receipt_and_bindings_survive_checkout_newlines(self):
         from PlayerPortraitPreflight import IMPLEMENTATION_FILES
         provenance = json.loads((ROOT/'ContentSource/UI/PlayerPortraitRuntime/PlayerArtProvenance.json').read_text(encoding='utf-8'))
-        generation = json.loads((ROOT/'ArtSource/UI/PlayerMaster/Stage8_4_Generation.json').read_text(encoding='utf-8'))
-        receipt = generation['implementationHashRepair']['currentPreflightReceipt']
+        generation = json.loads((ROOT/'ArtSource/UI/PlayerMaster/Stage8_5_Generation.json').read_text(encoding='utf-8'))
+        receipt = generation['productionPromotion']['currentPreflightReceipts']['HandShared']
         by_key = {e['playerKey']:e for e in provenance['entries']}
         ordered = [by_key[b['playerKey']] for b in receipt['bindings']]
         entry = next(e for e in load_catalog(ROOT) if is_canonical(e))
@@ -165,7 +187,7 @@ class PlayerPortraitProductionTest(unittest.TestCase):
             def real_change(p):
                 return code[p]+b'# changed implementation comment\n' if p == changed else original(p)
             with patch.object(Path, 'read_bytes', real_change):
-                with self.assertRaisesRegex(RuntimeError, 'Stale v1.2'):
+                with self.assertRaisesRegex(RuntimeError, 'Stale v1.3'):
                     validate_generated_source(ROOT, dict(entry, runtimeRole='Hand'))
                 with self.assertRaisesRegex(RuntimeError, 'mismatch'):
                     validate_preflight(path, ROOT, ordered, ('Hand', 'Shared'))
@@ -179,7 +201,7 @@ class PlayerPortraitProductionTest(unittest.TestCase):
         data = runtime_derivative_path(ROOT, dict(entry, runtimeRole='Shared')).read_bytes()
         def encode(*args, evidence=None, **kwargs):
             if evidence is not None:
-                evidence['foregroundExtractionProfile'] = 'SourceSpaceForeground_v2'
+                evidence['foregroundExtractionProfile'] = 'SourceSpaceForeground_v3'
             return data
         with tempfile.TemporaryDirectory() as folder, \
                 patch.object(generator, 'selected_runtime_roles', return_value=('Shared',)), \
@@ -196,7 +218,7 @@ class PlayerPortraitProductionTest(unittest.TestCase):
         self.assertEqual(result[0]['roles']['Hand'], previous['roles']['Hand'])
         self.assertEqual(result[0]['roles']['Full'], previous['roles']['Full'])
 
-    def test_production_uses_explicit_v2_rendering_and_one_source_basis(self):
+    def test_production_uses_explicit_v3_rendering_and_one_source_basis(self):
         entry = next(e for e in load_catalog(ROOT) if e['playerKey'].endswith('.GianluigiDonnarumma'))
         path = master_path(ROOT, entry)
         with Image.open(path) as source:
