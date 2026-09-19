@@ -26,6 +26,8 @@ public:
 
 	void RefreshFromPresentation(
 		const FFMCodexUMGRollReelViewModel& InPresentation);
+	/** Room for neighboring numbers in the main modal; compact consumers keep 68x72. */
+	void SetExpandedChamber(bool bExpanded);
 
 	const FFMCodexUMGRollReelViewModel& GetPresentation() const;
 	int32 GetStripDigitCount() const;
@@ -75,4 +77,5 @@ private:
 	int32 LastNextValue = MIN_int32;
 	bool bHasRenderedVisualState = false;
 	bool bLastShowNeighborDigits = false;
+	bool bExpandedChamber = false;
 };

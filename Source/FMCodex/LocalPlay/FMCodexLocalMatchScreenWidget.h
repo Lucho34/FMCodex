@@ -166,6 +166,7 @@ public:
 #if WITH_DEV_AUTOMATION_TESTS
 	void DevSetPieceAction(FName Action, FName Option);
 	friend struct FFMCodexHandoffTimerTestAccess;
+	friend struct FFMCodexRollCosmeticTestAccess;
 	void AdvanceInlineFormulaRevealForTesting(float DeltaSeconds);
 	void PauseInlineFormulaRevealTimerForTesting();
 	void BeginPendingCrossRollRevealForTesting();
@@ -243,6 +244,7 @@ private:
 	void AdvanceInlineFormulaReveal(float DeltaSeconds, bool bForceFullRefresh);
 	void BeginInlineFormulaFinalCapture();
 	void RefreshActiveRollReelVisuals();
+	void RefreshTacticalRollActivation(float CyclingElapsed);
 	void HandleInlineFormulaRevealTimer();
 	void StartInlineFormulaRevealTimer();
 	void StopInlineFormulaRevealTimer();
@@ -417,7 +419,7 @@ private:
 	float InlineFormulaRevealPhaseElapsed = 0.0f;
 	float RollRevealCaptureStartPositionCells = 0.0f;
 	float RollRevealCaptureDistanceCells = 0.0f;
-	int32 RollRevealSequenceOffsetCells = 0;
+	uint32 RollRevealCosmeticSeed = 0;
 	FTimerHandle InlineFormulaRevealTimerHandle;
 	// Game-clock time at scheduling; a 40 ms wakeup is not a 40 ms elapsed-time guarantee.
 	double InlineFormulaRevealTimerScheduledAt = 0.0;
@@ -582,6 +584,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> TacticalPointRevealTitle;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TacticalPointRevealState;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> TacticalPointRevealResult;

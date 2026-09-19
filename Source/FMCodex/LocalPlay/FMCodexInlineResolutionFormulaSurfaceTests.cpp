@@ -1055,11 +1055,12 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 	const float LateEnd = FormulaReel->GetPresentation()
 		.ContinuousPositionCells;
 	const float LateVelocity = (LateEnd - LateStart) / 0.10f;
-	TestTrue(TEXT("C.3 lowers fast speed and makes both slowdown stages visible"),
-		EarlyVelocity < 14.0f && EarlyVelocity > 11.0f
+	TestTrue(TEXT("8.6B uses a readable fast segment and two progressively slower tails"),
+		EarlyVelocity < 8.5f && EarlyVelocity > 7.5f
 			&& EarlyVelocity > MainVelocity
 			&& MainVelocity > LateVelocity
 			&& LateVelocity > 0.0f);
+	AddInfo(FString::Printf(TEXT("ROLL_SPEED early=%.3f main=%.3f late=%.3f cells/s"), EarlyVelocity, MainVelocity, LateVelocity));
 	Screen->AdvanceInlineFormulaRevealForTesting(0.10f);
 	TestTrue(TEXT("1.30-second cycling enters continuous target capture"),
 		Screen->GetInlineFormulaRevealPhase()
@@ -1076,7 +1077,7 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 	const UTextBlock* StableCenterDigit = FormulaReel->GetCenterDigitWidget();
 	const FLinearColor StableReelFrameColor =
 		FormulaReel->GetFrameBrushColor();
-	Screen->AdvanceInlineFormulaRevealForTesting(0.08f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.12f);
 	const float EarlyTransitionNeighborOpacity =
 		FormulaReel->GetMaximumNeighborRenderOpacity();
 	TestTrue(TEXT("Final capture glides spatially instead of replacing center text"),
@@ -1086,12 +1087,12 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			&& FormulaReel->GetFrameBrushColor().Equals(
 				StableReelFrameColor)
 			&& FormulaReel->GetCenterRenderOpacity() > 0.95f);
-	Screen->AdvanceInlineFormulaRevealForTesting(0.036f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.02f);
 	const float PeakLandingOffset = FormulaReel->GetCenterVerticalOffset();
 	const float PeakLandingScale = FormulaReel->GetCenterRenderScale();
-	TestTrue(TEXT("Landing applies one restrained three-pixel and 1.08 scale lock"),
-		PeakLandingOffset <= -2.5f && PeakLandingOffset >= -3.1f
-			&& PeakLandingScale >= 1.07f && PeakLandingScale <= 1.081f
+	TestTrue(TEXT("8.6B ends the longer capture with one small one-pixel / 1.025 lock"),
+		PeakLandingOffset <= -0.95f && PeakLandingOffset >= -1.05f
+			&& PeakLandingScale >= 1.024f && PeakLandingScale <= 1.026f
 			&& FormulaReel->GetMaximumNeighborRenderOpacity()
 				< EarlyTransitionNeighborOpacity
 			&& FormulaReel->GetFrameBrushColor().Equals(
@@ -1099,7 +1100,7 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			&& FormulaReel->GetCenterRenderOpacity() > 0.99f);
 	const float PeakNeighborOpacity =
 		FormulaReel->GetMaximumNeighborRenderOpacity();
-	Screen->AdvanceInlineFormulaRevealForTesting(0.02f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.012f);
 	TestTrue(TEXT("Landing returns toward center without a second bounce"),
 		FormulaReel->GetCenterVerticalOffset() < 0.0f
 			&& FormulaReel->GetCenterVerticalOffset() > PeakLandingOffset
@@ -1116,7 +1117,7 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 			&& FormulaReel->GetFrameBrushColor().Equals(
 				StableReelFrameColor)
 			&& FormulaReel->GetCenterDigitWidget() == StableCenterDigit);
-	Screen->AdvanceInlineFormulaRevealForTesting(0.02f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.004f);
 	TestTrue(TEXT("Settling visually completes before ResultHold state swap"),
 		Screen->GetInlineFormulaRevealPhase()
 			== EFMCodexUMGInlineFormulaRevealPhase::Settling

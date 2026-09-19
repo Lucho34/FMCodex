@@ -1699,3 +1699,37 @@ Status: READY FOR FOREGROUND v3 USER PIE, candidate only. Formal family stays v1
 - Family v1.3 remains SourceSpaceForeground_v3 with BalancedBust_v3 / QuietPitchBust_v3; Full is direct-Master CropOnly_v1. No v1.4, v4, art regeneration, reimport or micro-polish.
 - Synchronize current manifest/provenance/generation acceptance and the final-roster test expectation. Preserve the original blocked v2 attempt, candidate history, promotion and immutable pre-publication receipts as history; the later finalAcceptance record owns current user acceptance.
 - Keep Test.FuturePlayer fallback/rebind coverage and the permanent future-player standard in Shared_Portrait_Art_Contract_v1.md section 30. Section 40 records this final closeout. All current art bytes and production code remain unchanged; only focused metadata/contract checks are needed. No build or renewed USER PIE is required. Staging and commit remain manual.
+
+
+## 2026-09-19 — Stage 8.6A roll presentation first production candidate
+
+- Replace the prototype roll modal/chamber skin with a compact tactical navy/cyan frame and restrained gold number emphasis. Reuse the current match-shell language and shared clipped number reel; no new art assets or unrelated UI redesign.
+- Entrance consumes the existing Cycling clock. Keep the established deceleration, single landing gesture, same-center result hold and immediate lifecycle exit. Clear hidden visuals for reuse; do not add a second animation state machine or delay.
+- Preserve authority results, domains, helper visibility through Cycling/Settling, resource/Narrative/score/CTA disclosure and all gameplay/network rules. Shared D6/paired/Corner consumers retain their existing host layouts.
+- Core contract is documented in Cross_High_Manual_Roll_Contract.md. Stage 8.6A is a candidate pending USER PIE, not visual acceptance or commit authorization. Verification remains focused plus one real PIE path; staging/commit stay manual.
+
+
+## 2026-09-19 — Stage 8.6B roll visual / motion second candidate
+
+- User visual review did not accept 8.6A. Use the supplied layered navy/cyan tactical device reference for structure, and the supplied runtime video for pacing feedback. Preserve actual context titles and authoritative result mappings.
+- Strengthen header/chamber/footer hierarchy with a layered procedural chassis, more internal reel space, smaller/dimmer neighboring digits and a restrained gold lock line. Main modal width remains 360; compact shared consumers retain their dimensions. No image assets or unrelated match UI changes.
+- Redistribute cosmetic motion inside the existing 1.30s + .16s gates: 8 cells/s for .24s, decay to 3 at .84s and 1.5 at 1.30s; capture gets .12s, followed by one .04s 1px/1.025 lock. ResultHold, exit, authority timing, helpers, score/resource/Narrative disclosure and next-action gates remain unchanged.
+- Supersede only earlier roll skin/velocity/landing details, as recorded in Cross_High_Manual_Roll_Contract.md. Keep shared Screen lifecycle, ordered domains, authority/RNG, transport and event identity. USER PIE remains required; technical verification is not visual acceptance. Staging/commit remain manual.
+
+
+## 2026-09-19 — Stage 8.6C result-independent roll cycling and visual polish
+
+- Remove the authoritative-result-derived starting offset from roll presentation. Use a repeatable shuffled label order based only on existing event identity; Cycling must be identical for the same identity/time/domain regardless of the final result. No gameplay RNG, authority, transport or disclosure change.
+- During existing Settling, attach the accepted result to a new incoming slot while preserving the labels already visible. Keep continuous reel movement, exact final lock, all 8.6B phase durations and helper / result / next-action gates. Earlier ordered-label requirements are superseded only for presentation.
+- Move the procedural frame closer to the supplied reference with a stronger rim/groove, recessed lit chamber and modular header/footer. Increase the main chamber height to 220 and footer text from 11 to 17/bold; keep width 360, compact consumer dimensions and business wording.
+- Scope remains roll presentation and its focused verification. No art assets, unrelated UI, gameplay or networking work. User visual/motion acceptance remains pending; staging/commit stay manual.
+
+## 2026-09-19 — Stage 8.6D final Roll Presentation USER PIE ACCEPTED
+
+The user's final decision “8.6可以过” records Stage 8.6 USER PIE PASS for the final 8.6D implementation. Earlier 8.6A–C candidate/pending entries remain historical. Current status is **USER PIE ACCEPTED — awaiting manual staging/commit**, not committed or CLOSED; formal CLOSED requires the user's manual commit and clean HEAD confirmation.
+
+- Continue the existing 8.6C worktree and preserve result-independent Cycling. Strengthen the procedural metal shell, inset chamber/rails, short light guides and modular header/footer using the user's current runtime and commercial concept references. Main width stays 360; chamber becomes 204x240. Keep compact D6/Corner/pair hosts unchanged.
+- Add a short shell/title/chamber/footer assembly and guide-light activation within the first .18s of the existing Cycling clock. This replaces the .12s whole-panel entry; it adds zero duration to the roll lifecycle. Do not delay the typed command or alter authority, RNG, result/resource/Narrative/score or next-action gates.
+- Separate the footer's phase state from the existing disclosed business mapping. Use local roll-only typography and bounded Slate gradients; add no art assets, heavy effects or shared style changes.
+- Acceptance covers the final HUD-compatible shell/chamber/Header/Footer, zero-added-delay activation, shared continuous reel/deceleration/capture/lock, result-independent Cycling, footer state/business mapping and hidden cleanup/reuse. Freeze the accepted implementation and passed test sources; this closeout updates only this log and the roll UI contract.
+- Reuse 8.6D's 7/7 focused PASS, incremental Development Editor build/UHT PASS and one real LocalPlay D12=9 -> legitimate Set Piece type D6=5 PIE PASS. User visual/motion acceptance is recorded separately from those technical results; prior capture limitations and the handled D3D12 ensure remain as recorded. Audit the full uncommitted 8.6A–D delta and retain a newline-normalized approved inventory under ignored Saved for subsequent staged verification. No build, tests, PIE, art changes or additional polish are required for this documentation closeout; staging/commit stay manual.

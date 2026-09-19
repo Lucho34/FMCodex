@@ -1,6 +1,7 @@
 #include "FMCodexRollReelWidget.h"
 
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexRollPresentationSurface.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -11,7 +12,7 @@
 
 namespace FMCodexRollReelWidget
 {
-	constexpr float DigitTravel = 46.0f;
+	constexpr float DigitTravel = 38.0f;
 
 	UTextBlock* MakeDigit(UWidgetTree& Tree, const FName Name)
 	{
@@ -21,6 +22,7 @@ namespace FMCodexRollReelWidget
 		Result->SetAutoWrapText(false);
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*Result, EFMCodexPlayerUITextRole::DiceValue);
+		Result->SetColorAndOpacity(FSlateColor(FLinearColor(.92f, .67f, .29f, 1.0f)));
 		return Result;
 	}
 }
@@ -54,6 +56,16 @@ void UFMCodexRollReelWidget::RefreshFromPresentation(
 {
 	Presentation = InPresentation;
 	RefreshVisuals();
+}
+
+void UFMCodexRollReelWidget::SetExpandedChamber(const bool bExpanded)
+{
+	bExpandedChamber = bExpanded;
+	if (auto* Bounds = WidgetTree ? Cast<USizeBox>(WidgetTree->RootWidget) : nullptr)
+	{
+		Bounds->SetWidthOverride(bExpanded ? 96.0f : 68.0f);
+		Bounds->SetHeightOverride(bExpanded ? 112.0f : 72.0f);
+	}
 }
 
 const FFMCodexUMGRollReelViewModel&
@@ -145,13 +157,15 @@ void UFMCodexRollReelWidget::BuildWidgetTree()
 
 	USizeBox* Bounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("RollReelBounds"));
-	Bounds->SetWidthOverride(68.0f);
-	Bounds->SetHeightOverride(72.0f);
+	Bounds->SetWidthOverride(bExpandedChamber ? 96.0f : 68.0f);
+	Bounds->SetHeightOverride(bExpandedChamber ? 112.0f : 72.0f);
 	Bounds->SetClipping(EWidgetClipping::ClipToBounds);
 	WidgetTree->RootWidget = Bounds;
 
-	ReelFrame = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(), TEXT("RollReelClippedWindow"));
+	auto* Chamber = WidgetTree->ConstructWidget<UFMCodexRollPresentationSurface>(
+		UFMCodexRollPresentationSurface::StaticClass(), TEXT("RollReelClippedWindow"));
+	Chamber->bNumberChamber = true;
+	ReelFrame = Chamber;
 	FFMCodexPlayerUIStyle::Get().ApplyBorder(
 		*ReelFrame, EFMCodexPlayerUIColorRole::Warning,
 		FMargin(3.0f));
@@ -168,6 +182,7 @@ void UFMCodexRollReelWidget::BuildWidgetTree()
 	NextText = MakeDigit(*WidgetTree, TEXT("RollReelNextDigit"));
 	for (UTextBlock* Digit : { PreviousText, CenterText, NextText })
 	{
+		Digit->SetRenderTransformPivot(FVector2D(.5f, .5f));
 		if (UOverlaySlot* DigitSlot = NumberStrip->AddChildToOverlay(Digit))
 		{
 			DigitSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -185,9 +200,28 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 		return;
 	}
 
+	auto* Chamber = CastChecked<UFMCodexRollPresentationSurface>(ReelFrame);
+	Chamber->SetLockEmphasis(!Presentation.bVisible ? 0.0f
+		: Presentation.bStaticResult ? 1.0f : Presentation.NeighborFadeAlpha);
 	SetVisibility(Presentation.bVisible
 		? ESlateVisibility::SelfHitTestInvisible
 		: ESlateVisibility::Collapsed);
+	if (!Presentation.bVisible)
+	{
+		// A reused reel starts with no hidden prior number or landing transform.
+		for (UTextBlock* Digit : {PreviousText.Get(), CenterText.Get(), NextText.Get()})
+		{
+			Digit->SetText(FText::GetEmpty());
+			Digit->SetRenderTranslation(FVector2D::ZeroVector);
+			Digit->SetRenderScale(FVector2D(1.0f));
+			Digit->SetRenderOpacity(0.0f);
+		}
+		LastPreviousValue = LastCenterValue = LastNextValue = MIN_int32;
+		LastCenterOffset = 0.0f;
+		LastCenterScale = 1.0f;
+		bHasRenderedVisualState = false;
+		return;
+	}
 	if (LastPreviousValue != Presentation.PreviousValue)
 	{
 		PreviousText->SetText(FText::AsNumber(Presentation.PreviousValue));
@@ -224,7 +258,9 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 		PreviousText->SetRenderOpacity(0.0f);
 		CenterText->SetRenderOpacity(1.0f);
 		NextText->SetRenderOpacity(0.0f);
+		PreviousText->SetRenderScale(FVector2D(1.0f));
 		CenterText->SetRenderScale(FVector2D(1.0f));
+		CenterText->SetColorAndOpacity(FSlateColor(FLinearColor(.92f, .67f, .29f, 1)));
 		NextText->SetRenderScale(FVector2D(1.0f));
 		LastCenterOffset = 0.0f;
 		LastCenterScale = 1.0f;
@@ -241,19 +277,24 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 		NextText->SetRenderTranslation(FVector2D(
 			0.0f, DigitTravel - Travel + Presentation.LandingOffsetY));
 
-		PreviousText->SetRenderOpacity(0.20f * (1.0f - Alpha));
-		CenterText->SetRenderOpacity(1.0f - 0.55f * Alpha);
-		NextText->SetRenderOpacity(0.45f + 0.55f * Alpha);
+		// Focus follows distance from the selector, so the incoming number grows
+		// into the same gold center and boundary fragments stay secondary.
 		const float NeighborOpacityScale = 1.0f - FMath::Clamp(
 			Presentation.NeighborFadeAlpha, 0.0f, 1.0f);
-		PreviousText->SetRenderOpacity(
-			PreviousText->GetRenderOpacity() * NeighborOpacityScale);
-		NextText->SetRenderOpacity(
-			NextText->GetRenderOpacity() * NeighborOpacityScale);
-		const FVector2D LandingScale(Presentation.LandingScale);
-		CenterText->SetRenderScale(LandingScale);
-		NextText->SetRenderScale(LandingScale);
-		LastCenterScale = Presentation.LandingScale;
+		auto FocusDigit = [&](UTextBlock* Digit, float Distance, bool bNeighbor)
+		{
+			const float D = FMath::Clamp(Distance, 0.0f, 1.0f);
+			const float Focus = 1.0f - D * D * (3.0f - 2.0f * D);
+			const float EdgeFade = 1.0f - FMath::Clamp((Distance - 1.0f) / .55f, 0.0f, 1.0f);
+			Digit->SetRenderScale(FVector2D((.62f + .38f * Focus) * Presentation.LandingScale));
+			Digit->SetRenderOpacity((.20f + .80f * Focus) * EdgeFade * (bNeighbor ? NeighborOpacityScale : 1.0f));
+			Digit->SetColorAndOpacity(FSlateColor(FMath::Lerp(
+				FLinearColor(.30f, .43f, .55f, 1), FLinearColor(.92f, .67f, .29f, 1), Focus)));
+		};
+		FocusDigit(PreviousText, 1.0f + Alpha, true);
+		FocusDigit(CenterText, Alpha, false);
+		FocusDigit(NextText, 1.0f - Alpha, true);
+		LastCenterScale = CenterText->GetRenderTransform().Scale.X;
 	}
 
 	bHasRenderedVisualState = true;
