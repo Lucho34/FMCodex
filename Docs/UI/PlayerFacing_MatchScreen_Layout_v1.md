@@ -3,6 +3,8 @@
 Status: Approved product direction with Golden working metrics  
 Scope: 1920×1080 player-facing LocalPlay Golden visual prototype
 
+Match Flow visual styling follows [Match Flow Visual Language v1](MatchFlow_Visual_Language_v1.md). This document owns layout, geometry and screen composition; stage-specific styling notes below are implementation history, not a second visual-rule authority.
+
 ## Decision classes
 
 - **Approved product direction** describes the intended player-facing structure and information hierarchy.
@@ -143,3 +145,74 @@ Pitch width is deliberately not reduced again in this pass. Dynamic internal foo
 - Final Pitch material and licensed portrait/card artwork
 - Final responsive polish
 - Full 20+20 real-player squads and Stage 6.13.2 balance/content work
+
+## Stage 8.7B — type information and tactical choices (USER PIE ACCEPTED)
+
+This local presentation amendment covers the Set Piece type information page and
+the existing Short Free Kick, Long Free Kick, Penalty and Corner intent choices.
+It does not reopen the accepted HUD, Roll Presentation or Player Card Family v1.3.
+
+- A is four static range/name entries, arranged as a bounded two-column grid,
+  followed by the existing single legal type-roll action. The central presentation
+  descriptor also supplies the original text hint. Entries have no button, focus,
+  hover, pressed or predicted-result state.
+- The type-information skin is enabled only for `SetPiece.Type` before the existing
+  dice reveal, while its static explanation is present. The shared formula widget
+  restores its original frame, fonts, action bounds and row layout for every other
+  mode. No FormulaFacts, subtotal/final labels or disclosure changes are included.
+- C uses equal-width, equal-height method cards with aligned titles and readable
+  rule groups. Existing short-method eligibility and its explanation remain the
+  source of disabled feedback. Corner intent copy uses the same read-only tactical
+  descriptor with a separate average-rule line. No gameplay recommendation is added.
+- A/C share an opt-in native `FMCodexMatchFlowPanel` decoration and local
+  `FFMCodexPlayerUIStyle` flow text/button methods: opaque navy gradient, restrained
+  cut corners, blue-gray inner structure, cool-white text and cyan interactions.
+  Choice cards are quieter than Roll and use no gold result emphasis. Existing
+  button focus behavior remains; no navigation system or animation clock is added.
+- C's frame applies only to method/intent stages, including the read-only viewer.
+  Its footer uses the existing instruction text. Taker selection, Corner nominee
+  number/order and participant reveal, and sending-off modes keep their prior skin
+  and behavior. Typed handlers, pending/ACK and reveal input gates are unchanged.
+- Retain existing fonts, DPI, anchors and ScaleToFit. Local title size 24, choice
+  title 20 in the accepted 8.7B.1 revision, helper 14 and bounded content replace unconstrained button wrapping.
+  No new images, materials, Blueprint, font, card dimensions or roster data.
+
+Status: **USER PIE ACCEPTED — ready for manual staging**, awaiting manual commit
+and clean HEAD confirmation; not CLOSED. B selected/corner-order badges,
+D Formula (future Stage 8.7C), E Recovery, F optional Full-Time polish and Full
+portrait/bio safe-zone remain deferred.
+
+### Stage 8.7B.1 — focused visual repair (USER PIE ACCEPTED)
+
+Acceptance recorded on 2026-09-20 from the user's explicit foreground USER PIE
+decision: “这轮美术优化没问题”. This accepts the final A/C implementation below:
+A's Header/Body/Footer, four read-only D6 rule cards, single type-roll CTA and
+uniform tactical diagrams; C's equal-size choices, title/rule/disabled-reason
+hierarchy, taker context, status footer and existing normal/hover/pressed/disabled/
+waiting/pending presentation. A/C share the accepted navy/ice-blue Tier 2 family
+and preserve the visible distinction between reading and choosing. Engineering
+captures/tests remain separate evidence. Freeze this implementation for closeout;
+no additional visual repair is requested.
+
+- A/C use the same recessed double-chamfer chassis, quiet blue structural edges,
+  short side lights and faint diagonal detail. Edges are deliberately dimmer than
+  the supplied concept; gold remains reserved for result reveals. There is no new
+  animation clock or delay.
+- A's four neutral read-only cards share one procedural line-art pitch viewport:
+  72x52 Slate units, 6-unit safe area, pitch bounds (6,8)-(66,46), one-unit lines,
+  base opacity .62 and marker opacity .85. Only the static marker/route changes.
+  No image assets, input, focus, selection, predicted result or highlight binding.
+- C uses the same line-art vocabulary, equal card dimensions, title/icon row,
+  full-width semantic rule groups and a fixed reason region. Unavailable Angled
+  uses only existing projected eligibility; its reason is inside the card, while
+  the footer owns instruction, waiting or pending status. It adds no recommendation.
+- Native UButton input/delegates remain in charge. The opt-in paint layer uses a
+  dark normal border, ice-blue hover/keyboard-focus outline, one-unit pressed
+  content descent and dimmed disabled content with readable explanation.
+- A/C minimum width is 760 only in these modes. A's shared formula host restores
+  its legacy 660 minimum width, button paint, fonts and action bounds on exit.
+  C also restores its legacy minimum width outside method/intent stages. Taker
+  draft, Corner nominee/order and D formula facts/layout remain unchanged.
+- Verification captures may render actual current PIE widgets at native Slate
+  size for legibility. These are engineering evidence, not foreground USER PIE
+  acceptance; full-window context must be identified separately.

@@ -1733,3 +1733,91 @@ The user's final decision “8.6可以过” records Stage 8.6 USER PIE PASS for
 - Separate the footer's phase state from the existing disclosed business mapping. Use local roll-only typography and bounded Slate gradients; add no art assets, heavy effects or shared style changes.
 - Acceptance covers the final HUD-compatible shell/chamber/Header/Footer, zero-added-delay activation, shared continuous reel/deceleration/capture/lock, result-independent Cycling, footer state/business mapping and hidden cleanup/reuse. Freeze the accepted implementation and passed test sources; this closeout updates only this log and the roll UI contract.
 - Reuse 8.6D's 7/7 focused PASS, incremental Development Editor build/UHT PASS and one real LocalPlay D12=9 -> legitimate Set Piece type D6=5 PIE PASS. User visual/motion acceptance is recorded separately from those technical results; prior capture limitations and the handled D3D12 ensure remain as recorded. Audit the full uncommitted 8.6A–D delta and retain a newline-normalized approved inventory under ignored Saved for subsequent staged verification. No build, tests, PIE, art changes or additional polish are required for this documentation closeout; staging/commit stay manual.
+
+## 2026-09-19 — Stage 8.7B type information / tactical choice candidate
+
+Stage 8.7A's audit direction is approved for implementation; the new visual is
+**PENDING USER PIE**. Stage 8.6 was manually committed at
+`d41095b831abc07d69f32e48f92b70854824b655` and is CLOSED; its earlier awaiting-commit
+wording above describes the pre-commit checkpoint.
+
+- Limit the first flow-UI implementation to A (Set Piece type explanation with
+  four non-interactive range/name entries and the original single action) and C
+  (existing near/long free kick, penalty and Corner intent method choices).
+- Share a small opt-in procedural navy frame and local button/text vocabulary.
+  Select styling through the stable surface key or existing stage, never by
+  interpreting Chinese titles. Existing global styles and Roll remain frozen.
+- Preserve authoritative eligibility, typed handlers, waiting/pending behavior,
+  central action ownership and all reveal clocks. Restore the legacy host style
+  outside the approved modes. No extra animation delay or confirmation action.
+- Leave B badges, D formula layout and subtotal/final labels, E Recovery, F
+  Full-Time, player art/roster/number data and Full safe-zone unchanged.
+- Verification is focused presentation/isolation checks, incremental Editor
+  build and one legal LocalPlay type-to-choice path. New visuals require USER PIE;
+  technical captures are not acceptance. No broad gameplay/network regression.
+
+## 2026-09-20 — Stage 8.7B.1 A/C visual feedback repair
+
+The user's 8.7B foreground review requested a more finished shared tactical HUD
+chassis and clearer decision cards. Acceptance remains **PENDING USER PIE**.
+
+- Refine A and C together with a double-chamfer navy frame, restrained side lights
+  and matching native line-art diagrams. A's four diagrams share identical bounds,
+  safe area, line weight and opacity; all four rules remain neutral and read-only.
+- Keep borders darker than the reference at rest. Ice-blue hover/focus, slight
+  pressed descent and dimmed unavailable cards communicate input states; gold is
+  still reserved for results. Show existing eligibility reasons in the choice
+  card and avoid repeating them in the footer.
+- Reuse the current MatchFlowPanel files for decoration, UButton skin and static
+  diagram widget. Preserve original typed actions, safe view eligibility, waiting,
+  pending and reveal gates. Restore the legacy host outside A/C; no changes to D,
+  other deferred surfaces, gameplay, networking or art assets.
+- Verify the changed visual/isolation contract, incremental Editor build and the
+  existing single LocalPlay type-to-choice path. Broader suites remain unnecessary
+  for this localized presentation repair. User visual acceptance and manual
+  staging/commit remain separate milestones.
+
+## 2026-09-20 — Stage 8.7S Match Flow Visual Language v1 established
+
+[Match Flow Visual Language v1](UI/MatchFlow_Visual_Language_v1.md) is the single
+authoritative home for flow visual styling: **Modern Football Broadcast + Navy
+Metallic Tactical HUD**. The layout document retains geometry/composition ownership.
+
+- Name the accepted Stage 8.6 Roll baseline **Sports Broadcast Numeric Window**;
+  preserve its existing output and lifecycle. The visual specification records
+  historical status and Cycling gold-focus context without changing implementation.
+- Static rule versus interactive choice distinction and tactical mini-diagram
+  size/stroke/alignment unification are mandatory. Colors have defined roles;
+  gold is result emphasis, not success, recommendation or player-card rarity.
+- Hex colors and numeric styling values are starting/tunable tokens, not immutable
+  constants. Family-wide adjustments require appropriate USER PIE; document exceptions.
+- Existing Stage 8.7B / 8.7B.1 A/C visuals remain **PENDING USER PIE**. Establishing
+  the specification is not visual acceptance or authorization for 8.7C implementation.
+- Documentation only: preserve all existing production/test code bytes and assets;
+  no build, gameplay tests or PIE required. Staging/commit remain manual.
+
+## 2026-09-20 — Stage 8.7B / 8.7B.1 USER PIE ACCEPTED; 8.7S CURRENT / LOCKED
+
+The user's explicit foreground USER PIE decision “这轮美术优化没问题” accepts the
+final A/C Match Flow implementation. Current status is **USER PIE ACCEPTED — ready
+for manual staging**, awaiting the user's manual commit and clean HEAD confirmation;
+Stage 8.7B + 8.7S is **not CLOSED**. Earlier candidate/PENDING USER PIE entries above
+describe historical checkpoints and are superseded for current A/C acceptance.
+
+- A acceptance includes Header/Body/Footer, four static D6 rule cards, the sole
+  type-roll CTA, uniform diagram viewport/safe area/stroke/opacity/alignment and
+  the shared navy/ice-blue visual language with clear reading/action distinction.
+- C acceptance includes equal-size tactical cards, title/rule/disabled-reason
+  hierarchy, safe taker context, flow/status footer and existing normal, hover,
+  pressed, disabled, waiting and pending presentation in the same Tier 2 family.
+- [Match Flow Visual Language v1](UI/MatchFlow_Visual_Language_v1.md) remains the
+  single **CURRENT / LOCKED** visual authority. Tunable tokens are not immutable
+  pixel values. Layout owns geometry; AGENTS keeps only its concise pointer.
+  Sports Broadcast Numeric Window and Player Card Family v1.3 remain unchanged.
+- Freeze all accepted production/test bytes. Reuse the passed A/C focused checks,
+  incremental Editor build and original LocalPlay D12=9 → type D6=5 → taker confirm
+  → C → Direct → Formula D path. Their technical evidence does not substitute for
+  the separate user acceptance above; this documentation closeout requires no rerun.
+- D Formula (next implementation Stage 8.7C), B selected/corner-order badge,
+  E Recovery, F optional Full-Time polish and Full portrait/bio safe-zone remain
+  deferred. Do not start 8.7S.1 until the manual commit/clean-HEAD closeout is complete.

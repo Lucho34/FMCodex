@@ -9,9 +9,17 @@
  * Bounded, presentation-only zh-CN terminology for player-card UMG.
  * Canonical gameplay values remain English and never depend on these labels.
  */
+struct FFMCodexSetPieceTypeRuleLabel
+{
+	FText Range;
+	FText TypeName;
+	ESetPieceSelectedType Type;
+};
+
 class FMCODEX_API FFMCodexPlayerUIPresentationText final
 {
 public:
+	static TArray<FFMCodexSetPieceTypeRuleLabel> SetPieceTypeRuleLabels();
 	static FText PlayerName(FName CardId, const FString& FallbackLabel);
 	static FText InMatchShortPlayerName(
 		FName CardId, const FString& FallbackLabel);

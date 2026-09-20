@@ -8,7 +8,7 @@
 class FMCODEX_API FFMCodexTacticalDetailPresentationBuilder final
 {
 public:
-	static FText BuildCornerChoiceHint(EMatchPlayCornerRouteIntent Route);
+	static FText BuildCornerChoiceHint(EMatchPlayCornerRouteIntent Route, bool bStackedChoice = false);
 	static FText BuildCornerRouteHint(EMatchPlayCornerRouteIntent Intent);
 	static FText BuildCrossRouteHint(EMatchPlayElectiveBranchIntent Intent);
 	static FFMCodexUMGTacticalDetailViewModel Build(

@@ -1221,9 +1221,9 @@ bool FFMCodexSetPieceCarrierCopyAndLocalizationRepairTest::RunTest(
 			Status != nullptr
 				&& Status->GetText().ToString().Contains(TEXT("主罚球员："))
 				&& !Status->GetText().ToString().Contains(TEXT("D12")));
-		TestTrue(TEXT("Method choices reuse the centered ordinary branch rhythm"),
+		TestTrue(TEXT("Method choices fill their bounded shared panel for equal-width cards"),
 			MethodSlot != nullptr
-				&& MethodSlot->GetHorizontalAlignment() == HAlign_Center);
+				&& MethodSlot->GetHorizontalAlignment() == HAlign_Fill);
 		const UTextBlock* FirstHelper = Cast<UTextBlock>(
 			Screen->GetWidgetFromName(FName(Case.FirstHelperName)));
 		const UTextBlock* SecondHelper = Cast<UTextBlock>(

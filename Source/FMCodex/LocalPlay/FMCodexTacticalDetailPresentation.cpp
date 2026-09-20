@@ -4,12 +4,16 @@
 #include "../CoreRules/TacticalRuleDescription.h"
 
 FText FFMCodexTacticalDetailPresentationBuilder::BuildCornerChoiceHint(
-	const EMatchPlayCornerRouteIntent Route)
+	const EMatchPlayCornerRouteIntent Route, const bool bStackedChoice)
 {
 	const auto* Rule = FTacticalRuleDescriptionCatalog::FindCornerRoute(Route);
 	if (Rule == nullptr) return FText::GetEmpty();
-	return FText::Format(NSLOCTEXT("FMCodexTacticalDetail", "CornerChoiceHint",
-		"进攻球员：{0}\n防守球员：{1} / 门将：{2}（取平均）"),
+	const FText Format = bStackedChoice
+		? NSLOCTEXT("FMCodexTacticalDetail", "CornerStackedChoiceHint",
+			"进攻球员：{0}\n防守球员：{1} / 门将：{2}\n防守属性取平均")
+		: NSLOCTEXT("FMCodexTacticalDetail", "CornerChoiceHint",
+			"进攻球员：{0}\n防守球员：{1} / 门将：{2}（取平均）");
+	return FText::Format(Format,
 		FFMCodexPlayerUIPresentationText::ResolutionAttribute(Rule->AttackTerms[0].Attribute),
 		FFMCodexPlayerUIPresentationText::ResolutionAttribute(Rule->DefenseTerms[0].Attribute),
 		FFMCodexPlayerUIPresentationText::ResolutionAttribute(Rule->DefenseTerms[1].Attribute));

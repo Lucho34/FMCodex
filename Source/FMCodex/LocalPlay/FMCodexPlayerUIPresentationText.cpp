@@ -258,14 +258,22 @@ FText FFMCodexPlayerUIPresentationText::SetPieceName(
 	}
 }
 
+TArray<FFMCodexSetPieceTypeRuleLabel> FFMCodexPlayerUIPresentationText::SetPieceTypeRuleLabels()
+{
+	return {
+		{LOCTEXT("CornerRange", "1–2"), SetPieceName(ESetPieceSelectedType::Corner), ESetPieceSelectedType::Corner},
+		{LOCTEXT("LongFreeKickRange", "3–4"), SetPieceName(ESetPieceSelectedType::LongFreeKick), ESetPieceSelectedType::LongFreeKick},
+		{LOCTEXT("ShortFreeKickRange", "5"), SetPieceName(ESetPieceSelectedType::ShortFreeKick), ESetPieceSelectedType::ShortFreeKick},
+		{LOCTEXT("PenaltyRange", "6"), SetPieceName(ESetPieceSelectedType::Penalty), ESetPieceSelectedType::Penalty}
+	};
+}
+
 FText FFMCodexPlayerUIPresentationText::SetPieceTypeRollHint()
 {
-	return FText::Format(LOCTEXT("SetPieceTypeRollHint",
-		"1–2：{0}  3–4：{1}  5：{2}  6：{3}"),
-		SetPieceName(ESetPieceSelectedType::Corner),
-		SetPieceName(ESetPieceSelectedType::LongFreeKick),
-		SetPieceName(ESetPieceSelectedType::ShortFreeKick),
-		SetPieceName(ESetPieceSelectedType::Penalty));
+	TArray<FText> Entries;
+	for (const auto& Rule : SetPieceTypeRuleLabels())
+		Entries.Add(FText::Format(LOCTEXT("SetPieceRuleEntry", "{0}：{1}"), Rule.Range, Rule.TypeName));
+	return FText::Join(FText::FromString(TEXT("  ")), Entries);
 }
 
 FText FFMCodexPlayerUIPresentationText::LongFreeKickDirectOutcomeHint()

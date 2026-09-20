@@ -15,6 +15,7 @@
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexMatchFlowPanel.h"
 #include "FMCodexResolutionPanelWidget.h"
 #include "FMCodexRollReelWidget.h"
 #include "FMCodexRollPresentationSurface.h"
@@ -28,6 +29,7 @@
 #include "Components/ScaleBox.h"
 #include "Components/BorderSlot.h"
 #include "Components/Button.h"
+#include "Components/ButtonSlot.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Overlay.h"
@@ -1508,6 +1510,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
 		: ESlateVisibility::Collapsed);
 	if (!bVisible)
 	{
+		CastChecked<UFMCodexMatchFlowPanel>(SetPieceResolutionSurface)->SetFlowStyleEnabled(false);
+		CastChecked<UTextBlock>(GetWidgetFromName(TEXT("SetPieceChoiceFooter")))->SetText(FText::GetEmpty());
 		return;
 	}
 	auto PlayerName = [this](const FFMCodexLocalMatchInteractionView& Source,
@@ -1832,6 +1836,47 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
 	const bool bCornerIntent = View.InteractionCategory
 		== EFMCodexLocalMatchInteractionCategory::SelectCornerIntent && !bParticipantReveal
 		&& (MatchController || !Presentation.bActionWaitPromptReadOnly);
+	// Opt in by stage, including its read-only viewer. Original action gates stay above.
+	const bool bFlowChoice = View.RouteKind == EMatchPlayCurrentAttackRouteKind::SetPiece
+		&& !bParticipantReveal
+		&& (View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectSetPieceMethod
+			|| View.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectCornerIntent);
+	CastChecked<UFMCodexMatchFlowPanel>(SetPieceResolutionSurface)->SetFlowStyleEnabled(bFlowChoice);
+	CastChecked<USizeBox>(GetWidgetFromName(TEXT("SetPieceProductionResolutionBounds")))->SetMinDesiredWidth(bFlowChoice ? 760.f : 660.f);
+	const auto& FlowStyle = FFMCodexPlayerUIStyle::Get();
+	SetPieceResolutionSurface->SetPadding(bFlowChoice ? FMargin(22.f,22.f) : FMargin(18.f,14.f));
+	FlowStyle.ApplyText(*SetPieceTitleText, EFMCodexPlayerUITextRole::ActionTitle);
+	FlowStyle.ApplyText(*SetPieceStatusText, EFMCodexPlayerUITextRole::SectionHeading);
+	auto* ChoiceFooter = CastChecked<UTextBlock>(GetWidgetFromName(TEXT("SetPieceChoiceFooter")));
+	ChoiceFooter->SetText(bFlowChoice ? SetPieceDetailText->GetText() : FText::GetEmpty());
+	// Eligibility comes from the existing safe view. Reserve the same reason region
+	// in every card; never calculate an attribute total or infer a legal method here.
+	auto* AngledReason = CastChecked<UTextBlock>(GetWidgetFromName(TEXT("ShortAngledMethodReason")));
+	const bool bShowAngledReason = bFlowChoice && bMethod
+		&& View.SetPieceType == ESetPieceSelectedType::ShortFreeKick && !View.bShortAngledEligible;
+	AngledReason->SetText(bShowAngledReason
+		? NSLOCTEXT("FMCodexSetPiece", "AngledUnavailable", "不可用：主罚球员不满足条件") : FText::GetEmpty());
+	if (bFlowChoice && (bMethod || bCornerIntent))
+	{
+		ChoiceFooter->SetText(IsScreenRequestPending()
+			? NSLOCTEXT("FMCodexSetPiece", "ChoicePending", "正在提交选择，请稍候")
+			: IsInlineFormulaRevealInputBlocked()
+				? NSLOCTEXT("FMCodexSetPiece", "ChoiceRevealWait", "等待揭示完成")
+				: bMethod ? NSLOCTEXT("FMCodexSetPiece", "ChooseMethod", "请选择结算方式")
+					: SetPieceDetailText->GetText());
+	}
+	ChoiceFooter->SetVisibility(bFlowChoice && !ChoiceFooter->GetText().IsEmpty()
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	GetWidgetFromName(TEXT("SetPieceChoiceHeaderRule"))->SetVisibility(bFlowChoice
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	GetWidgetFromName(TEXT("SetPieceChoiceFooterRule"))->SetVisibility(bFlowChoice && (bMethod || bCornerIntent)
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (bFlowChoice)
+	{
+		FlowStyle.ApplyFlowText(*SetPieceTitleText, 24);
+		FlowStyle.ApplyFlowText(*SetPieceStatusText, 15, true);
+		SetPieceDetailText->SetVisibility(ESlateVisibility::Collapsed);
+	}
 	SetPieceMethodChoiceRow->SetVisibility(bMethod || bCornerIntent
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	CornerHighButton->SetVisibility(bCornerIntent ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -2267,8 +2312,10 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		LongShotLayerSlot->SetPadding(FMargin(28.0f));
 	}
 
-	SetPieceResolutionSurface = MakeRegion(
-		*WidgetTree, TEXT("SetPieceProductionResolutionSurface"));
+	SetPieceResolutionSurface = WidgetTree->ConstructWidget<UFMCodexMatchFlowPanel>(
+		UFMCodexMatchFlowPanel::StaticClass(), TEXT("SetPieceProductionResolutionSurface"));
+	FFMCodexPlayerUIStyle::Get().ApplyBorder(*SetPieceResolutionSurface,
+		EFMCodexPlayerUIColorRole::PanelBackground, FFMCodexPlayerUIStyle::Get().GetOuterPadding());
 	SetPieceResolutionSurface->SetPadding(FMargin(18.0f, 14.0f));
 	SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 	UVerticalBox* SetPieceBody = WidgetTree->ConstructWidget<UVerticalBox>(
@@ -2428,65 +2475,93 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		BoardSlot->SetPadding(FMargin(0.0f, 8.0f));
 		BoardSlot->SetHorizontalAlignment(HAlign_Center);
 	}
+	auto* ChoiceHeaderRule = FFMCodexPlayerUIStyle::Get().MakeFlowSeparator(*WidgetTree, TEXT("SetPieceChoiceHeaderRule"));
+	ChoiceHeaderRule->SetVisibility(ESlateVisibility::Collapsed);
+	SetPieceBody->AddChildToVerticalBox(ChoiceHeaderRule)->SetPadding(FMargin(0.f, 14.f, 0.f, 0.f));
 	SetPieceMethodChoiceRow =
 		WidgetTree->ConstructWidget<UHorizontalBox>(
 			UHorizontalBox::StaticClass(), TEXT("SetPieceMethodChoiceRow"));
 	auto AddSetPieceChoice = [this](
 		TObjectPtr<UButton>& Button, const FName Name, const FString& Label,
-		const FString& Helper)
+		const FString& Helper, EFMCodexFlowDiagram DiagramKind)
 	{
-		Button = MakeButton(*WidgetTree, Name, Label);
-		FFMCodexPlayerUIStyle::Get().ApplyButton(
-			*Button, EFMCodexPlayerUIActionRole::Secondary);
+		auto* FlowButton = WidgetTree->ConstructWidget<UFMCodexMatchFlowButton>(UFMCodexMatchFlowButton::StaticClass(), Name);
+		FlowButton->SetFlowStyleEnabled(true);
+		Button = FlowButton;
+		const auto& Style = FFMCodexPlayerUIStyle::Get();
+		Button->SetStyle(Style.MakeFlowButtonStyle(true));
 		if (!Helper.IsEmpty())
 		{
-			UTextBlock* LabelText = Cast<UTextBlock>(Button->GetChildAt(0));
-			Button->RemoveChildAt(0);
+			UTextBlock* LabelText = MakeText(*WidgetTree,FName(*(Name.ToString()+TEXT("Label"))),Label);
 			UVerticalBox* ButtonBody = WidgetTree->ConstructWidget<UVerticalBox>(
 				UVerticalBox::StaticClass(),
 				FName(*(Name.ToString() + TEXT("Body"))));
-			if (LabelText != nullptr)
-			{
-				ButtonBody->AddChildToVerticalBox(LabelText);
-			}
+			Style.ApplyFlowText(*LabelText, 20);
+			LabelText->SetJustification(ETextJustify::Left);
+			LabelText->SetAutoWrapText(false);
+			auto* Heading = WidgetTree->ConstructWidget<UHorizontalBox>();
+			auto* HeadingSlot = Heading->AddChildToHorizontalBox(LabelText);
+			HeadingSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			HeadingSlot->SetVerticalAlignment(VAlign_Center);
+			auto* Diagram = WidgetTree->ConstructWidget<UFMCodexMatchFlowDiagram>(
+				UFMCodexMatchFlowDiagram::StaticClass(),FName(*(Name.ToString()+TEXT("Diagram"))));
+			Diagram->SetDiagram(DiagramKind);
+			Heading->AddChildToHorizontalBox(Diagram)->SetPadding(FMargin(8.f,0.f,0.f,0.f));
+			ButtonBody->AddChildToVerticalBox(Heading);
 			UTextBlock* HelperText = MakeText(
 				*WidgetTree,
 				FName(*(Name.ToString() + TEXT("Helper"))),
 				Helper);
-			HelperText->SetJustification(ETextJustify::Center);
-			FFMCodexPlayerUIStyle::Get().ApplyText(
-				*HelperText, EFMCodexPlayerUITextRole::Secondary);
-			if (UVerticalBoxSlot* HelperSlot =
-				ButtonBody->AddChildToVerticalBox(HelperText))
-			{
-				HelperSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 0.0f));
-			}
-			Button->AddChild(ButtonBody);
+			HelperText->SetJustification(ETextJustify::Left);
+			Style.ApplyFlowText(*HelperText, 14, true);
+			HelperText->SetAutoWrapText(false);
+			auto* HelperBounds = WidgetTree->ConstructWidget<USizeBox>();
+			HelperBounds->SetHeightOverride(60.f);
+			HelperBounds->AddChild(HelperText);
+			ButtonBody->AddChildToVerticalBox(HelperBounds)->SetPadding(FMargin(0.f,8.f,0.f,0.f));
+			auto* Reason = MakeText(*WidgetTree,FName(*(Name.ToString()+TEXT("Reason"))));
+			Style.ApplyFlowText(*Reason,12,true);
+			Reason->SetAutoWrapText(false);
+			auto* ReasonBounds = WidgetTree->ConstructWidget<USizeBox>();
+			ReasonBounds->SetHeightOverride(22.f);
+			ReasonBounds->AddChild(Reason);
+			ButtonBody->AddChildToVerticalBox(ReasonBounds)->SetPadding(FMargin(0.f,6.f,16.f,0.f));
+			auto* ContentBounds = WidgetTree->ConstructWidget<USizeBox>(
+				USizeBox::StaticClass(), FName(*(Name.ToString()+TEXT("ContentBounds"))));
+			ContentBounds->SetMinDesiredHeight(148.f);
+			ContentBounds->AddChild(ButtonBody);
+			Button->AddChild(ContentBounds);
+			auto* ContentSlot = CastChecked<UButtonSlot>(ContentBounds->Slot);
+			ContentSlot->SetHorizontalAlignment(HAlign_Fill);
+			ContentSlot->SetVerticalAlignment(VAlign_Top);
 		}
 		if (UHorizontalBoxSlot* Slot =
 			SetPieceMethodChoiceRow->AddChildToHorizontalBox(Button))
 		{
-			Slot->SetPadding(FMargin(4.0f));
+			Slot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			Slot->SetHorizontalAlignment(HAlign_Fill);
+			Slot->SetVerticalAlignment(VAlign_Fill);
+			Slot->SetPadding(FMargin(6.0f));
 		}
 	};
 	AddSetPieceChoice(ShortDirectButton, TEXT("ShortDirectMethod"),
-		TEXT("直接射门"), TEXT("看较高射门/传球"));
+		TEXT("直接射门"), TEXT("看较高射门/传球"), EFMCodexFlowDiagram::Direct);
 	AddSetPieceChoice(ShortAngledButton, TEXT("ShortAngledMethod"),
-		TEXT("战术配合"), TEXT("需射门+传球≥8"));
+		TEXT("战术配合"), TEXT("需射门+传球≥8"), EFMCodexFlowDiagram::Combination);
 	AddSetPieceChoice(LongDirectButton, TEXT("LongDirectMethod"),
-		TEXT("直接射门"), TEXT("看远射 / 门将站位"));
+		TEXT("直接射门"), TEXT("看远射 / 门将站位"), EFMCodexFlowDiagram::Direct);
 	AddSetPieceChoice(LongPowerButton, TEXT("LongPowerMethod"),
-		FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage().ToString(), TEXT("只看两枚掷点"));
+		FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage().ToString(), TEXT("只看两枚掷点"), EFMCodexFlowDiagram::Power);
 	AddSetPieceChoice(PenaltyDirectButton, TEXT("PenaltyDirectMethod"),
-		TEXT("常规点球"), TEXT("看较高射门/传球"));
+		TEXT("常规点球"), TEXT("看较高射门/传球"), EFMCodexFlowDiagram::Direct);
 	AddSetPieceChoice(PenaltyPanenkaButton, TEXT("PenaltyPanenkaMethod"),
-		TEXT("勺子点球"), TEXT("只看一枚掷点"));
+		TEXT("勺子点球"), TEXT("只看一枚掷点"), EFMCodexFlowDiagram::Panenka);
 	AddSetPieceChoice(CornerHighButton, TEXT("CornerHighIntent"),
 		TEXT("高球"), FFMCodexTacticalDetailPresentationBuilder
-			::BuildCornerChoiceHint(EMatchPlayCornerRouteIntent::High).ToString());
+			::BuildCornerChoiceHint(EMatchPlayCornerRouteIntent::High, true).ToString(), EFMCodexFlowDiagram::HighCross);
 	AddSetPieceChoice(CornerLowButton, TEXT("CornerLowIntent"),
 		TEXT("低平球"), FFMCodexTacticalDetailPresentationBuilder
-			::BuildCornerChoiceHint(EMatchPlayCornerRouteIntent::Low).ToString());
+			::BuildCornerChoiceHint(EMatchPlayCornerRouteIntent::Low, true).ToString(), EFMCodexFlowDiagram::LowCross);
 	ShortDirectButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleShortDirectRequested);
 	ShortAngledButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleShortAngledRequested);
 	LongDirectButton->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleLongDirectRequested);
@@ -2498,10 +2573,18 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	if (UVerticalBoxSlot* MethodChoiceSlot =
 		SetPieceBody->AddChildToVerticalBox(SetPieceMethodChoiceRow))
 	{
-		// Reuse the centered branch-choice rhythm from mature ordinary tactics.
-		MethodChoiceSlot->SetHorizontalAlignment(HAlign_Center);
-		MethodChoiceSlot->SetPadding(FMargin(0.0f, 10.0f));
+		// Both visible choices share the same bounded width and content height.
+		MethodChoiceSlot->SetHorizontalAlignment(HAlign_Fill);
+		MethodChoiceSlot->SetPadding(FMargin(0.0f, 18.0f, 0.0f, 10.0f));
 	}
+	auto* ChoiceFooterRule = FFMCodexPlayerUIStyle::Get().MakeFlowSeparator(*WidgetTree, TEXT("SetPieceChoiceFooterRule"));
+	ChoiceFooterRule->SetVisibility(ESlateVisibility::Collapsed);
+	SetPieceBody->AddChildToVerticalBox(ChoiceFooterRule);
+	auto* ChoiceFooter = MakeText(*WidgetTree, TEXT("SetPieceChoiceFooter"));
+	FFMCodexPlayerUIStyle::Get().ApplyFlowText(*ChoiceFooter, 14, true);
+	ChoiceFooter->SetJustification(ETextJustify::Center);
+	ChoiceFooter->SetVisibility(ESlateVisibility::Collapsed);
+	SetPieceBody->AddChildToVerticalBox(ChoiceFooter)->SetPadding(FMargin(8.f, 6.f));
 	SetPiecePrimaryButton = MakeButton(
 		*WidgetTree, TEXT("SetPieceProductionPrimaryAction"), TEXT("继续"));
 	FFMCodexPlayerUIStyle::Get().ApplyButton(

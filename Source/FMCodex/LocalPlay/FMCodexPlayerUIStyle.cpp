@@ -4,6 +4,8 @@
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "Components/SizeBox.h"
+#include "Blueprint/WidgetTree.h"
 
 namespace FMCodexPlayerUIStyle
 {
@@ -340,6 +342,41 @@ FButtonStyle FFMCodexPlayerUIStyle::MakeDockButtonStyle(
 	Result.SetNormalPadding(FMargin(36.0f, 20.0f, 26.0f, 20.0f));
 	Result.SetPressedPadding(FMargin(36.0f, 22.0f, 26.0f, 18.0f));
 	return Result;
+}
+
+FButtonStyle FFMCodexPlayerUIStyle::MakeFlowButtonStyle(bool bChoice) const
+{
+	FButtonStyle Result;
+	const FLinearColor Edge = bChoice ? FLinearColor(.035f,.16f,.25f,1) : FLinearColor(.04f,.33f,.47f,1);
+	Result.SetNormal(FSlateRoundedBoxBrush(FLinearColor(.006f,.033f,.067f,1), 3.f, Edge, 1.f));
+	Result.SetHovered(FSlateRoundedBoxBrush(FLinearColor(.01f,.05f,.085f,1), 3.f, FLinearColor(.22f,.66f,.85f,1), 1.5f));
+	Result.SetPressed(FSlateRoundedBoxBrush(FLinearColor(.003f,.019f,.037f,1), 3.f, FLinearColor(.12f,.43f,.60f,1), 1.5f));
+	Result.SetDisabled(FSlateRoundedBoxBrush(FLinearColor(.004f,.017f,.029f,1), 3.f, FLinearColor(.05f,.10f,.14f,1), 1.f));
+	const FMargin Padding = bChoice ? FMargin(18.f,16.f) : FMargin(20.f,10.f);
+	Result.SetNormalPadding(Padding);
+	Result.SetPressedPadding(FMargin(Padding.Left, Padding.Top+1, Padding.Right, Padding.Bottom-1));
+	return Result;
+}
+
+void FFMCodexPlayerUIStyle::ApplyFlowText(UTextBlock& Text, int32 Size, bool bSecondary) const
+{
+	ApplyText(Text, bSecondary ? EFMCodexPlayerUITextRole::Secondary : EFMCodexPlayerUITextRole::Body);
+	auto Font = Text.GetFont();
+	Font.Size = Size;
+	Font.TypefaceFontName = Size >= 18 ? TEXT("Bold") : TEXT("Regular");
+	Text.SetFont(Font);
+}
+
+USizeBox* FFMCodexPlayerUIStyle::MakeFlowSeparator(UWidgetTree& Tree, FName Name) const
+{
+	auto* Bounds = Tree.ConstructWidget<USizeBox>(USizeBox::StaticClass(), Name);
+	Bounds->SetHeightOverride(1.f);
+	auto* Line = Tree.ConstructWidget<UBorder>();
+	Line->SetPadding(FMargin(0.f));
+	Line->SetBrushColor(FLinearColor(.08f,.18f,.25f,.75f));
+	Bounds->AddChild(Line);
+	Bounds->SetVisibility(ESlateVisibility::HitTestInvisible);
+	return Bounds;
 }
 
 bool FFMCodexPlayerUIStyle::HasValidDefaults() const

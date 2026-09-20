@@ -6,6 +6,8 @@
 class UBorder;
 class UButton;
 class UTextBlock;
+class USizeBox;
+class UWidgetTree;
 
 enum class EFMCodexPlayerUIColorRole : uint8
 {
@@ -102,4 +104,9 @@ struct FMCODEX_API FFMCodexPlayerUIStyle
 		const FLinearColor* SideAccent = nullptr) const;
 
 	bool HasValidDefaults() const;
+
+	/** Opt-in type-information / tactical-choice vocabulary. Existing consumers stay unchanged. */
+	FButtonStyle MakeFlowButtonStyle(bool bChoice = false) const;
+	void ApplyFlowText(UTextBlock& Text, int32 Size, bool bSecondary = false) const;
+	USizeBox* MakeFlowSeparator(UWidgetTree& Tree, FName Name) const;
 };

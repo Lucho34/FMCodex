@@ -1,6 +1,8 @@
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexPlayerUIPresentationText.h"
+#include "FMCodexMatchFlowPanel.h"
 #include "FMCodexRollReelWidget.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -14,6 +16,8 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Components/WrapBox.h"
 #include "Components/WrapBoxSlot.h"
+#include "Components/UniformGridPanel.h"
+#include "Components/UniformGridSlot.h"
 
 namespace FMCodexInlineResolutionFormulaSurfaceWidget
 {
@@ -215,10 +219,9 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 	Bounds->SetMaxDesiredWidth(820.0f);
 	WidgetTree->RootWidget = Bounds;
 
-	UBorder* Frame = MakeBorder(
-		*WidgetTree, TEXT("InlineFormulaSurfaceFrame"),
-		EFMCodexPlayerUIColorRole::PanelBackground,
-		FMargin(18.0f, 14.0f));
+	auto* Frame = WidgetTree->ConstructWidget<UFMCodexMatchFlowPanel>(
+		UFMCodexMatchFlowPanel::StaticClass(), TEXT("InlineFormulaSurfaceFrame"));
+	Style.ApplyBorder(*Frame, EFMCodexPlayerUIColorRole::PanelBackground, FMargin(18.0f, 14.0f));
 	FLinearColor FrameColor = Style.GetColor(
 		EFMCodexPlayerUIColorRole::PanelBackground);
 	FrameColor.A = 0.94f;
@@ -269,6 +272,58 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 	{
 		TacticalSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
 	}
+
+	// A static display descriptor, never a set of selectable result buttons.
+	TypeInformationBody = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("SetPieceTypeInformationBody"));
+	TypeInformationBody->SetVisibility(ESlateVisibility::Collapsed);
+	TypeInformationBody->AddChildToVerticalBox(Style.MakeFlowSeparator(*WidgetTree, TEXT("SetPieceTypeHeaderRule")));
+	auto* Rules = WidgetTree->ConstructWidget<UUniformGridPanel>(
+		UUniformGridPanel::StaticClass(), TEXT("SetPieceTypeRules"));
+	Rules->SetSlotPadding(FMargin(8.f, 6.f));
+	const auto RuleLabels = FFMCodexPlayerUIPresentationText::SetPieceTypeRuleLabels();
+	for (int32 I = 0; I < RuleLabels.Num(); ++I)
+	{
+		const FString Name = FString::Printf(TEXT("SetPieceTypeRule%d"), I);
+		auto* Entry = WidgetTree->ConstructWidget<UFMCodexMatchFlowPanel>(UFMCodexMatchFlowPanel::StaticClass(), FName(*Name));
+		Entry->SetRuleCardStyle();
+		Entry->SetPadding(FMargin(14.f,12.f));
+		Entry->SetVisibility(ESlateVisibility::HitTestInvisible);
+		auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
+		auto* RangeBounds = WidgetTree->ConstructWidget<USizeBox>();
+		RangeBounds->SetWidthOverride(76.f);
+		auto* Range = MakeText(*WidgetTree, FName(*(Name+TEXT("Range"))));
+		Range->SetText(RuleLabels[I].Range);
+		Style.ApplyFlowText(*Range, 24);
+		Range->SetColorAndOpacity(FLinearColor(.40f,.73f,.88f,1));
+		RangeBounds->AddChild(Range);
+		Row->AddChildToHorizontalBox(RangeBounds)->SetVerticalAlignment(VAlign_Center);
+		auto* Type = MakeText(*WidgetTree, FName(*(Name+TEXT("Type"))));
+		Type->SetText(RuleLabels[I].TypeName);
+		Style.ApplyFlowText(*Type, 16);
+		Type->SetAutoWrapText(false);
+		auto* TypeSlot = Row->AddChildToHorizontalBox(Type);
+		TypeSlot->SetVerticalAlignment(VAlign_Center);
+		TypeSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		TypeSlot->SetPadding(FMargin(4.f,0.f,8.f,0.f));
+		auto* Diagram = WidgetTree->ConstructWidget<UFMCodexMatchFlowDiagram>(
+			UFMCodexMatchFlowDiagram::StaticClass(), FName(*(Name+TEXT("Diagram"))));
+		switch (RuleLabels[I].Type)
+		{
+		case ESetPieceSelectedType::LongFreeKick: Diagram->SetDiagram(EFMCodexFlowDiagram::LongFreeKick); break;
+		case ESetPieceSelectedType::ShortFreeKick: Diagram->SetDiagram(EFMCodexFlowDiagram::ShortFreeKick); break;
+		case ESetPieceSelectedType::Penalty: Diagram->SetDiagram(EFMCodexFlowDiagram::Penalty); break;
+		default: Diagram->SetDiagram(EFMCodexFlowDiagram::Corner); break;
+		}
+		Row->AddChildToHorizontalBox(Diagram)->SetVerticalAlignment(VAlign_Center);
+		Entry->AddChild(Row);
+		auto* RuleSlot = Rules->AddChildToUniformGrid(Entry, I/2, I%2);
+		RuleSlot->SetHorizontalAlignment(HAlign_Fill);
+		RuleSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+	TypeInformationBody->AddChildToVerticalBox(Rules)->SetPadding(FMargin(0.f, 8.f, 0.f, 10.f));
+	TypeInformationBody->AddChildToVerticalBox(Style.MakeFlowSeparator(*WidgetTree, TEXT("SetPieceTypeFooterRule")));
+	RootBody->AddChildToVerticalBox(TypeInformationBody);
 
 	DiceRevealRegion = MakeBorder(
 		*WidgetTree, TEXT("InlineFormulaDiceRevealRegion"),
@@ -344,8 +399,8 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 		DefenseSlot->SetPadding(FMargin(0.0f, 7.0f, 0.0f, 0.0f));
 	}
 
-	ContinueButton = WidgetTree->ConstructWidget<UButton>(
-		UButton::StaticClass(), TEXT("InlineFormulaContinueButton"));
+	ContinueButton = WidgetTree->ConstructWidget<UFMCodexMatchFlowButton>(
+		UFMCodexMatchFlowButton::StaticClass(), TEXT("InlineFormulaContinueButton"));
 	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
 	UTextBlock* ContinueText = MakeText(
 		*WidgetTree, TEXT("InlineFormulaContinueButtonLabel"));
@@ -405,6 +460,35 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 	DiceOwnerText->SetText(FText::FromString(Presentation.DiceOwnerLabel));
 	RollReel->RefreshFromPresentation(Presentation.RollReel);
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	// Only the pre-roll information mode opts in. All formula and reel layouts
+	// retain their original styling, including after this pooled widget is reused.
+	const bool bTypeInformation = Presentation.bVisible
+		&& Presentation.ContestId == FName(TEXT("SetPiece.Type"))
+		&& !Presentation.bDiceRevealVisible
+		&& !Presentation.TacticalPlayerSummaryLabel.IsEmpty();
+	TypeInformationBody->SetVisibility(bTypeInformation
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (bTypeInformation) TacticalPlayerText->SetVisibility(ESlateVisibility::Collapsed);
+	auto* Frame = CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("InlineFormulaSurfaceFrame")));
+	Frame->SetFlowStyleEnabled(bTypeInformation);
+	CastChecked<UFMCodexMatchFlowButton>(ContinueButton)->SetFlowStyleEnabled(bTypeInformation);
+	CastChecked<USizeBox>(GetWidgetFromName(TEXT("InlineFormulaSurfaceBounds")))->SetMinDesiredWidth(bTypeInformation ? 760.f : 660.f);
+	Frame->SetPadding(bTypeInformation ? FMargin(22.f, 22.f) : FMargin(18.f,14.f));
+	Style.ApplyText(*ContestText, EFMCodexPlayerUITextRole::ActionTitle);
+	Style.ApplyText(*StatusText, EFMCodexPlayerUITextRole::Secondary);
+	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
+	auto* ContinueBounds = CastChecked<USizeBox>(ContinueButton->GetParent());
+	ContinueBounds->SetWidthOverride(bTypeInformation ? 224.f : 156.f);
+	ContinueBounds->SetHeightOverride(bTypeInformation ? 48.f : 42.f);
+	auto* ContinueLabel = CastChecked<UTextBlock>(ContinueButton->GetChildAt(0));
+	Style.ApplyText(*ContinueLabel, EFMCodexPlayerUITextRole::Body);
+	if (bTypeInformation)
+	{
+		Style.ApplyFlowText(*ContestText, 24);
+		Style.ApplyFlowText(*StatusText, 14, true);
+		Style.ApplyFlowText(*ContinueLabel, 18);
+		ContinueButton->SetStyle(Style.MakeFlowButtonStyle());
+	}
 	Style.ApplyBorder(*AttackRegion,
 		Presentation.bAttackRowActive
 			? EFMCodexPlayerUIColorRole::Warning

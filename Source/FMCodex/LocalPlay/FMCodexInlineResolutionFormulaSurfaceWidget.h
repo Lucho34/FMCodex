@@ -90,6 +90,9 @@ private:
 	TObjectPtr<UTextBlock> TacticalPlayerText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> TypeInformationBody;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DiceRevealRegion;
 
 	UPROPERTY(Transient)
