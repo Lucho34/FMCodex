@@ -5,7 +5,10 @@
 #include "Components/Button.h"
 #include "FMCodexMatchFlowPanel.generated.h"
 
-/** Opt-in decoration for type information and method choices. No input or flow state. */
+// Paint roles for read-only formula furniture, separate from A/C decoration.
+enum class EFMCodexFormulaPanelRole : uint8 { None, Section, Value, RollHost };
+
+/** Opt-in decoration for information, choice and formula surfaces. No gameplay state. */
 UCLASS()
 class FMCODEX_API UFMCodexMatchFlowPanel final : public UBorder
 {
@@ -14,12 +17,22 @@ public:
 	void SetFlowStyleEnabled(bool bEnabled);
 	bool IsFlowStyleEnabled() const { return bFlowStyleEnabled; }
 	void SetRuleCardStyle() { bFlowStyleEnabled = true; bRuleCard = true; }
+	void SetContestRowStyle(bool bActive);
+	bool IsContestRow() const { return bContestRow; }
+	bool IsActiveContestRow() const { return bActiveContestRow; }
 	bool IsRuleCard() const { return bRuleCard; }
+	void SetFormulaRole(EFMCodexFormulaPanelRole Role, bool bFinal = false);
+	EFMCodexFormulaPanelRole GetFormulaRole() const { return FormulaRole; }
+	bool IsFinalFormulaValue() const { return bFinalFormulaValue; }
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 private:
 	bool bFlowStyleEnabled = false;
 	bool bRuleCard = false;
+	bool bContestRow = false;
+	bool bActiveContestRow = false;
+	EFMCodexFormulaPanelRole FormulaRole = EFMCodexFormulaPanelRole::None;
+	bool bFinalFormulaValue = false;
 };
 
 /** The original UButton input contract with opt-in procedural decoration. */
@@ -40,7 +53,8 @@ private:
 enum class EFMCodexFlowDiagram : uint8
 {
 	Corner, LongFreeKick, ShortFreeKick, Penalty,
-	Direct, Combination, Power, Panenka, HighCross, LowCross
+	Direct, Combination, Power, Panenka, HighCross, LowCross,
+	FormulaAttack, FormulaDefense
 };
 
 UCLASS()

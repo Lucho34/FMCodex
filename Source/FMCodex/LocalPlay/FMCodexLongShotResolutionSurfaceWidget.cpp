@@ -1,4 +1,5 @@
 #include "FMCodexLongShotResolutionSurfaceWidget.h"
+#include "FMCodexMatchFlowPanel.h"
 
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexInteractionOptionWidget.h"
@@ -191,8 +192,8 @@ void UFMCodexLongShotResolutionSurfaceWidget::BuildWidgetTree()
 	Bounds->SetMinDesiredWidth(520.0f);
 	Bounds->SetMaxDesiredWidth(840.0f);
 	WidgetTree->RootWidget = Bounds;
-	UBorder* Frame = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(), TEXT("LongShotProductionSurfaceFrame"));
+	UBorder* Frame = WidgetTree->ConstructWidget<UFMCodexMatchFlowPanel>(
+		UFMCodexMatchFlowPanel::StaticClass(), TEXT("LongShotProductionSurfaceFrame"));
 	Style.ApplyBorder(*Frame, EFMCodexPlayerUIColorRole::PanelBackground,
 		FMargin(22.0f, 16.0f));
 	FLinearColor FrameColor = Style.GetColor(
@@ -249,6 +250,7 @@ void UFMCodexLongShotResolutionSurfaceWidget::BuildWidgetTree()
 		UFMCodexInlineResolutionFormulaSurfaceWidget>(
 		UFMCodexInlineResolutionFormulaSurfaceWidget::StaticClass(),
 		TEXT("LongShotDirectSharedFormulaSurface"));
+	FormulaSurface->SetEmbeddedFormulaLayout(true);
 	FormulaSurface->OnContinueRequested.AddDynamic(
 		this, &UFMCodexLongShotResolutionSurfaceWidget::HandleContinueClicked);
 	Body->AddChildToVerticalBox(FormulaSurface);
@@ -319,6 +321,15 @@ void UFMCodexLongShotResolutionSurfaceWidget::RefreshVisuals(
 	}
 	SetVisibility(Presentation.bVisible
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	// Only the embedded arithmetic consumer adopts the shared Tier 2 shell.
+	// Outcome-only/choice modes recover their existing appearance on reuse.
+	const bool bFormulaHost = Presentation.Formula.bVisible && Presentation.Formula.bShowFormulaRows;
+	CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("LongShotProductionSurfaceFrame")))
+		->SetFlowStyleEnabled(bFormulaHost);
+	const auto& Style = FFMCodexPlayerUIStyle::Get();
+	Style.ApplyText(*StageText, EFMCodexPlayerUITextRole::ActionTitle);
+	StageText->SetAutoWrapText(bFormulaHost);
+	if (bFormulaHost) Style.ApplyFlowText(*StageText, 24);
 	TitleText->SetText(FText::FromString(Presentation.TitleLabel));
 	// Branch and stage are currently the same semantic heading for resolved shot
 	// branches. Keep the stronger stage heading and suppress the duplicate line.

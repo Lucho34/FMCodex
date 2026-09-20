@@ -1821,3 +1821,101 @@ describe historical checkpoints and are superseded for current A/C acceptance.
 - D Formula (next implementation Stage 8.7C), B selected/corner-order badge,
   E Recovery, F optional Full-Time polish and Full portrait/bio safe-zone remain
   deferred. Do not start 8.7S.1 until the manual commit/clean-HEAD closeout is complete.
+
+## 2026-09-20 — Stage 8.7C Formula / Contest visual family; PENDING USER PIE
+
+Historical implementation checkpoint; the 8.7C / 8.7C.1 acceptance entry below
+supersedes its terminology, tuning and pending status.
+
+The user separately authorizes Formula / Contest polish after the 8.7S.1 audit,
+using the accepted A/C family as the anchor. The starting checkout is clean on
+`main` at `5a2ac2d410957e60b0371fa7f6c9261af28b1175`. This stage does not reopen
+accepted A/C, Roll, HUD, Player Card v1.3 or Full-Time output.
+
+- Use the existing MatchFlow panel/button vocabulary for shared arithmetic and
+  its LongShot/ThroughBall containers. Ice blue marks structure, interaction and
+  the currently active row; pending roll terms no longer use yellow-brown emphasis.
+  No new art assets, global theme rewrite or screen-title-specific styling.
+- Display projected nonfinal amounts under **公开小计** with lighter, smaller
+  blue-gray type. Use **待揭示** when the projected displayed value is unavailable.
+  **最终值** and stronger gold emphasis require the existing resolved/final flags.
+  Both sides can be gold after disclosure; this is never a winner/goal inference.
+  A stable separate summary area replaces the misleading pending-expression equals sign.
+- Preserve FormulaFacts, `BuildDisplayedInlineFormula`, `StageRowForReveal`,
+  `DisplayedResultLabel`, authoritative reads, RNG and all reveal/score/narrative/
+  next-action gates. Presentation does not sum values or add gameplay waiting.
+- Explicit embedded geometry prevents double shells in real formula hosts,
+  including consumers that do not delegate contest-heading ownership. Nonformula
+  outcome/choice modes restore their prior decoration. Original typed actions,
+  visibility, pending and availability remain in charge.
+- Verification budget is focused readable-state/reuse and affected existing
+  formula/A-C checks, necessary UHT/incremental Editor build, and at most one
+  actual LocalPlay Long Free Kick Direct representative path through both rolls.
+  Broad LocalPlay/NetworkPlay/CoreRules, Host/Remote, cook and packaging are not
+  triggered by this presentation-only change.
+- Status is **PENDING USER PIE**. Engineering screenshots and automated checks
+  cannot grant visual/pacing acceptance. Width, spacing and highlight strength
+  remain reasonable family-level tuning points after the user's review.
+
+## 2026-09-20 — Stage 8.7C.1 USER PIE visual repair; not yet accepted
+
+Historical repair checkpoint; the acceptance and specification-sync decision below
+supersedes this entry's pending status and no-amendment assessment.
+
+The user reports that 8.7C is directionally correct but insufficiently modular and
+finished. Continue the existing 8.7C changes; do not restart or mark them accepted.
+
+- Replace player-facing 公开小计 with **当前值**; retain **最终值** only when the
+  existing displayed-value flags authorize it. No extra intermediate terminology.
+- Strengthen the shared module header, uniform role/name capsules, complete operand
+  chips and separate value module. Add static football/glove line motifs through
+  the existing MatchFlow diagram painter, with no assets or gameplay bindings.
+- Choose compact Roll Option B for safer reuse: a bounded navy host with the
+  existing expanded numeric chamber and one owner/phase line. Preserve 1.30-second
+  Cycling, 0.16-second Settling, result-independent motion, all disclosure/hold
+  behavior and the original next-action boundary.
+- Formula-linked results use canonical full-prose hero text, secondary context and
+  disclosed roll-chip emphasis. No string parsing infers outcomes; no broad
+  Narrative migration. Accepted A/C and standalone Roll output remain protected.
+- Update only the layout contract and this decision entry. The locked Match Flow
+  Visual Language has no specification gap and needs no amendment in 8.7C.1.
+- Verification remains targeted presentation/mode-isolation checks, incremental
+  Editor build and one Long Free Kick Direct representative path, including next
+  action. Reuse existing gameplay evidence; no broad gameplay or player-art suites.
+  Current implementation status remains **PENDING USER PIE**, with manual Git closeout.
+
+## 2026-09-20 — Stage 8.7C / 8.7C.1 USER PIE ACCEPTED
+
+The user explicitly accepts the final Formula Family Visual Polish after foreground
+USER PIE. Status: **USER PIE ACCEPTED — ready for manual staging**, not CLOSED;
+manual commit and clean HEAD confirmation are still required. No further visual
+repair or next-family migration is authorized by this closeout.
+
+- Accepted: 当前值 / 最终值 terminology; separate attack/defense modules; uniform
+  role/name capsules; complete formula chips; static football/glove line art;
+  independent current/final value modules and the blue primary CTA.
+- Accepted: compact embedded Sports Broadcast Numeric Window, active-side/state
+  readability, and Formula → Roll → final value → linked result continuity.
+- Accepted: the canonical result sentence as the main conclusion, subordinate
+  context, restrained revealed-value emphasis and the original 下一回合 action.
+- **VISUAL SPEC UPDATE REQUIRED: YES.** The existing spec already covers Tier 2,
+  gold-result semantics, CTA, line-art consistency and tunable styling. Do not
+  duplicate those rules or freeze screenshot pixels. Section 14 now minimally
+  records the newly accepted lasting Formula terminology, shared identity/module
+  relationship, compact embedded Roll relationship and linked-result hierarchy;
+  these conventions were not explicit enough in the prior version. This acceptance
+  closeout supersedes the repair checkpoint's no-amendment assessment.
+- [Visual Language §14](UI/MatchFlow_Visual_Language_v1.md#14-formula--result) remains
+  the rulebook; [accepted layout](UI/PlayerFacing_MatchScreen_Layout_v1.md#formula-family-accepted)
+  records implementation structure. Existing color tokens, A/C, standalone Roll,
+  Notification and Full-Time rules are unchanged.
+- Freeze production/test bytes. Preserve FormulaFacts, authority/RNG, score,
+  result computation, typed actions and all reveal/next-action gates. Current/final
+  follows only the projected final-value semantic flag, with availability guarding.
+  LongShot/ThroughBall changes remain within shared Formula hosting.
+- Reuse five passed focused/affected tests, incremental Editor build, representative
+  Long Free Kick Direct PIE and the 8.7S.1 scope audit; foreground USER PIE is the
+  user's separate acceptance. Docs-only closeout requires hash, inventory, links,
+  consistency and diff-quality checks, with no build, UHT, automation or PIE rerun.
+- Staging/commit stay manual. Selected/Corner order, Recovery/Notification,
+  unrelated Narrative and Full-Time remain deferred.

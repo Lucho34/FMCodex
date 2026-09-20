@@ -216,3 +216,51 @@ no additional visual repair is requested.
 - Verification captures may render actual current PIE widgets at native Slate
   size for legibility. These are engineering evidence, not foreground USER PIE
   acceptance; full-window context must be identified separately.
+
+<a id="formula-family-accepted"></a>
+
+## Stage 8.7C / 8.7C.1 — Formula family (USER PIE ACCEPTED)
+
+The user has accepted the final Formula Family Visual Polish in foreground USER
+PIE. Status: **USER PIE ACCEPTED — ready for manual staging**; not CLOSED until
+manual commit and clean HEAD confirmation. This accepted layout supersedes the
+initial 8.7C terminology and tuning, and the earlier A/C stage's legacy Formula
+styling statement, only for the shared Formula and directly linked result surfaces.
+The authoritative visual rules remain in
+[Match Flow Visual Language v1 §14](MatchFlow_Visual_Language_v1.md#14-formula--result).
+
+- Attack and defense use separate Tier 2 modules with a section header, uniform
+  role/name identity capsules, context, complete operand chips and an independent
+  value module. Football/glove motifs are static auxiliary line art; they do not
+  infer a performer or outcome. Both sides use the same identity typography family.
+- Player labels are **当前值 / 最终值**. Unavailable displayed amounts retain their
+  projected text under 当前值. `bDisplayedResultIsFinalValue` is the sole current/final
+  semantic discriminator; `bDisplayedResultResolved` guards value availability.
+  Numeric text comes from `DisplayedResultLabel`, with no Widget arithmetic,
+  number comparison, string parsing or phase inference. Current values are subdued;
+  disclosed finals use larger champagne-gold type and an underline on either side.
+- Finalization remains consumer-specific: Long Free Kick Direct keeps its first
+  revealed roll's updated amount nonfinal until the opposed contest completes.
+  Other consumers follow their existing projected final flag. A separately labelled
+  value module replaces the misleading equals sign after an unknown roll expression.
+- LongShot/ThroughBall use one outer Formula shell and an undecorated embedded
+  child. Embedded geometry is independent of contest-heading ownership; hosts
+  restore existing decoration outside formula mode.
+- Embedded Roll uses the compact Sports Broadcast Numeric Window family: a bounded
+  navy host, existing numeric chamber, one owner/state line and visible Formula
+  modules. Its intensity stays below standalone Tier 1 Roll. Existing 1.30-second
+  Cycling, 0.16-second Settling, result-independent motion, authoritative lock,
+  result hold and score/narrative/next-action gates remain unchanged.
+- Formula-linked results present the complete canonical sentence as the main
+  conclusion, with secondary context/detail and restrained emphasis on already
+  revealed roll values. The existing blue primary CTA includes 下一回合 and keeps
+  original delegates, availability and visibility gates.
+- Accepted A/C, standalone Roll, HUD, Player Card and nonformula Narrative,
+  Recovery and Full-Time output remain outside this change. No further spacing,
+  border, motif, typography, CTA or result-hierarchy repair is requested.
+
+Engineering evidence is the previously passed focused checks, incremental build
+and representative Long Free Kick Direct PIE sequence. Native Widget captures and
+whole-window context are technical evidence; acceptance comes separately from the
+user's explicit foreground USER PIE confirmation. Closeout freezes production and
+test bytes and only synchronizes documentation and the ignored staging inventory.

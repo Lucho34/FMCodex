@@ -12,7 +12,7 @@
 
 namespace
 {
-// Shared paint vocabulary for the two real consumers, A and C. No texture assets.
+// Shared paint vocabulary for information, choice and formula consumers. No textures.
 struct FFlowPaint
 {
 	const FGeometry& G;
@@ -80,7 +80,36 @@ public:
 		const float W = Size.X, H = Size.Y;
 		if (W < 32 || H < 32) return Layer;
 		const FFlowPaint P{G,Out,Layer,Style.GetColorAndOpacityTint()};
-		if (Owner->IsRuleCard())
+		if (Owner->GetFormulaRole() != EFMCodexFormulaPanelRole::None)
+		{
+			const auto Role = Owner->GetFormulaRole();
+			const bool bValue = Role == EFMCodexFormulaPanelRole::Value;
+			const bool bSection = Role == EFMCodexFormulaPanelRole::Section;
+			const bool bFinal = bValue && Owner->IsFinalFormulaValue();
+			const FLinearColor Edge = bFinal ? FLinearColor(.60f,.42f,.19f,.9f)
+				: FLinearColor(.08f,.32f,.47f,.85f);
+			P.Fill(8,bSection ? FLinearColor(.012f,.065f,.12f,1) : FLinearColor(.004f,.025f,.051f,1),
+				FLinearColor(.002f,.010f,.024f,1));
+			P.Outline(1,8,Edge,bFinal ? 1.5f : 1.f);
+			P.Outline(4,10,Edge*FLinearColor(1,1,1,.22f));
+			P.Line({{12,3},{W-12,3}},Edge*FLinearColor(1,1,1,.5f));
+			if (bValue)
+			{
+				P.Line({{10,31},{W-10,31}},Edge*FLinearColor(1,1,1,.55f));
+				if (bFinal) P.Line({{W*.28f,H-10},{W*.72f,H-10}},Edge,2.f);
+			}
+			else P.Line({{4,12},{4,H-12}},FLinearColor(.13f,.57f,.74f,.85f),2.f);
+		}
+		else if (Owner->IsContestRow())
+		{
+			const bool bActive = Owner->IsActiveContestRow();
+			P.Fill(9, FLinearColor(.006f,.030f,.060f,1), FLinearColor(.002f,.010f,.025f,1));
+			P.Outline(1,9,bActive ? FLinearColor(.08f,.37f,.51f,.9f) : FLinearColor(.045f,.16f,.25f,.8f));
+			P.Outline(4,11,FLinearColor(.06f,.19f,.28f,.25f));
+			P.Line({{12,4},{W-12,4}},FLinearColor(.12f,.29f,.39f,.3f));
+			if (bActive) P.Line({{5,18},{5,H-18}},FLinearColor(.12f,.55f,.72f,.85f),2.f);
+		}
+		else if (Owner->IsRuleCard())
 		{
 			P.Fill(6,FLinearColor(.009f,.035f,.065f,1),FLinearColor(.003f,.017f,.032f,1));
 			P.Outline(1,6,FLinearColor(.035f,.14f,.23f,.9f));
@@ -160,6 +189,39 @@ public:
 		FSlateWindowElementList& Out,int32 Layer,const FWidgetStyle& Style,bool) const override
 	{
 		const FFlowPaint P{G,Out,Layer,Style.GetColorAndOpacityTint()};
+		if (Diagram == EFMCodexFlowDiagram::FormulaAttack || Diagram == EFMCodexFlowDiagram::FormulaDefense)
+		{
+			// Same footprint, safe area, stroke and opacity. Static role motifs only;
+			// the defensive glove does not describe who performed a save or an outcome.
+			const FLinearColor Ink(.18f,.45f,.62f,.38f);
+			auto Ring=[&](FVector2f C,float R)
+			{
+				TArray<FVector2f> V;
+				for (int32 I=0;I<=32;++I) {const float A=I*2*PI/32;V.Add(C+FVector2f(FMath::Cos(A),FMath::Sin(A))*R);}
+				P.Line(V,Ink,1.2f);
+			};
+			if (Diagram == EFMCodexFlowDiagram::FormulaAttack)
+			{
+				Ring({36,26},19);
+				TArray<FVector2f> V;
+				for (int32 I=0;I<=5;++I) {const float A=-PI*.5f+I*2*PI/5;V.Add({36+8*FMath::Cos(A),26+8*FMath::Sin(A)});}
+				P.Line(V,Ink,1.2f);
+				for (int32 I=0;I<5;++I)
+				{
+					const auto D=(V[I]-FVector2f(36,26)).GetSafeNormal();
+					P.Line({V[I],FVector2f(36,26)+D*18},Ink,1.2f);
+				}
+			}
+			else
+			{
+				P.Line({{25,43},{23,35},{17,27},{17,23},{20,22},{26,28},{24,13},{26,10},
+					{29,12},{31,23},{32,8},{35,7},{37,10},{37,23},{40,10},{43,9},
+					{45,12},{43,26},{48,17},{51,17},{53,20},{48,35},{43,43},{25,43}},Ink,1.2f);
+				P.Line({{25,38},{44,38}},Ink,1.2f);
+				P.Line({{29,44},{30,46},{41,46},{42,44}},Ink,1.2f);
+			}
+			return Layer+1;
+		}
 		const FLinearColor Base(.14f,.36f,.49f,.62f), Mark(.25f,.57f,.72f,.85f);
 		// Every pictogram uses a 72x52 viewport, 6px safe area and this exact pitch.
 		P.Line({{6,8},{66,8},{66,46},{6,46},{6,8}},Base);
@@ -214,6 +276,24 @@ void UFMCodexMatchFlowPanel::SetFlowStyleEnabled(bool bEnabled)
 	if (bFlowStyleEnabled == bEnabled) return;
 	bFlowStyleEnabled = bEnabled;
 	if (MyBorder.IsValid()) MyBorder->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UFMCodexMatchFlowPanel::SetContestRowStyle(bool bActive)
+{
+	const bool bChanged = !bContestRow || bActiveContestRow != bActive;
+	bContestRow = true;
+	bActiveContestRow = bActive;
+	bFlowStyleEnabled = true;
+	if (bChanged && MyBorder.IsValid()) MyBorder->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UFMCodexMatchFlowPanel::SetFormulaRole(EFMCodexFormulaPanelRole Role, bool bFinal)
+{
+	const bool bChanged = FormulaRole != Role || bFinalFormulaValue != bFinal;
+	FormulaRole = Role;
+	bFinalFormulaValue = bFinal;
+	SetFlowStyleEnabled(Role != EFMCodexFormulaPanelRole::None);
+	if (bChanged && MyBorder.IsValid()) MyBorder->Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 TSharedRef<SWidget> UFMCodexMatchFlowButton::RebuildWidget()

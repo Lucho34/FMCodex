@@ -77,12 +77,12 @@ bool FFMCodexSetPieceFlowIsolationTest::RunTest(const FString&)
 	D.AttackRow.bKnownNonRollSubtotalResolved=true; D.AttackRow.KnownNonRollSubtotal=5;
 	D.AttackRow.bDisplayedResultResolved=true; D.AttackRow.DisplayedResultLabel=TEXT("5");
 	Formula->RefreshFromPresentation(D);
-	TestTrue(TEXT("Reused formula retains original row data, font and action bounds"),
-		!Frame->IsFlowStyleEnabled() && Formula->GetPresentation().AttackRow.KnownNonRollSubtotal == 5
-		&& !CastChecked<UFMCodexMatchFlowButton>(Action)->IsFlowStyleEnabled()
+	TestTrue(TEXT("Reused formula adopts Tier 2 while retaining original row data"),
+		Frame->IsFlowStyleEnabled() && Formula->GetPresentation().AttackRow.KnownNonRollSubtotal == 5
+		&& CastChecked<UFMCodexMatchFlowButton>(Action)->IsFlowStyleEnabled()
 		&& !Formula->GetPresentation().AttackRow.bFinalValueResolved
 		&& CastChecked<UTextBlock>(Formula->GetWidgetFromName(TEXT("InlineFormulaAttackFinalValue")))->GetText().ToString()==TEXT("5")
-		&& CastChecked<USizeBox>(Action->GetParent())->GetWidthOverride()==156.f);
+		&& CastChecked<USizeBox>(Action->GetParent())->GetWidthOverride()==288.f);
 	Formula->RefreshFromPresentation({});
 	TestTrue(TEXT("Hidden type state clears decoration"), !Frame->IsFlowStyleEnabled());
 
@@ -283,7 +283,7 @@ public:
 		}
 		Test->TestTrue(TEXT("Original method handler enters unchanged opposed formula"),
 			C->GetLastDiagnostic().bHostSuccess && S->GetInlineFormulaSurface()->GetPresentation().bShowFormulaRows
-			&& !CastChecked<UFMCodexMatchFlowPanel>(S->GetInlineFormulaSurface()->GetWidgetFromName(TEXT("InlineFormulaSurfaceFrame")))->IsFlowStyleEnabled());
+			&& CastChecked<UFMCodexMatchFlowPanel>(S->GetInlineFormulaSurface()->GetWidgetFromName(TEXT("InlineFormulaSurfaceFrame")))->IsFlowStyleEnabled());
 		return true;
 	}
 private:

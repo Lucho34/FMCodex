@@ -157,10 +157,13 @@ Tier 1/2 多数流程在信息结构需要时采用以下分区，不为凑齐�
 
 后续 Formula presentation 的推荐信息顺序是：**ROLE / PLAYER → BASE ATTRIBUTE / RULE → MODIFIER → ROLL → SUBTOTAL / FINAL**。顺序是布局起点，事实和揭示语义是硬边界。
 
-- 必须清楚区分基础值、当前小计与最终值。已审计场景中，未知骰点旁的 **5 / 7 是当前公开小计，不是最终结果泄露**；它们也不是所有场景的固定常量。后续通过标签／层级解决误读，不改变公式计算。
+- 必须清楚区分基础值、当前小计与最终值。玩家标签统一为非最终 **当前值**、最终 **最终值**，不显示“公开小计”；内部 public subtotal 术语可保留。未知值保留安全投影文字，不由 Widget 补值。历史审计示例中的 **5 / 7 是当时的公开小计，不是最终结果泄露**，也不是所有场景的固定常量。
 - 仅消费 authoritative FormulaFacts / ResolutionFacts 与安全投影；不由 UI 重算权威数值，不用静态 catalog 推导比赛结论。
 - 不提前显示未知 roll、不用 gold 暗示胜方、不提前显示 goal/no-goal。结果标签、score 和后续动作继续服从现有 visible reveal gate。
-- 本规范仅指导未来 Stage 8.7C；当前 Formula D 的事实、小计、布局和行为不在此文档阶段修改。
+- 攻守模块共用结构、角色／姓名 typography、identity capsule、完整 formula chip 与独立 value module；角色和球员身份仍须明确。当前值保持次级、冷色阅读层级；最终值按第 4 节已揭示结果语义强调，双方一致，不比较大小来选择金色。current/final 只由安全投影的最终值语义决定，不按数字、文案或阶段猜测。
+- Formula 内的 Roll 是第 10 节 Sports Broadcast Numeric Window 的 **compact embedded member**，视觉强度低于独立 Tier 1 surface，与 Formula 保持连续且只保留必要的行动方／滚动状态。沿用第 17 节时钟、披露和动作边界，不建立另一套 Roll 逻辑。
+- Formula-linked result 以完整 canonical result sentence 为主结论，上下文／规则说明为次级，已揭示关键值适度强调；主要继续动作沿用第 9 节。此规则只覆盖关联 Formula 的结果，不授权迁移其他 Narrative family。
+- Stage 8.7C / 8.7C.1 已获 **USER PIE ACCEPTED**；当前实现结构见 [Formula family accepted layout](PlayerFacing_MatchScreen_Layout_v1.md#formula-family-accepted)。事实、小计语义和揭示行为保持原合同；ready for manual staging，提交与 clean HEAD 确认前尚未 CLOSED。
 
 ## 15. Notification
 
@@ -209,6 +212,7 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 | Main Match HUD | 已接受的主比赛壳视觉基线 |
 | Stage 8.6 Roll / Sports Broadcast Numeric Window | 已验收 Roll family 基线；保持 accepted |
 | Player Card Family v1.3 | 已接受的球员美术基线；保持其 owner/rarity 与资产职责 |
+| Stage 8.7C / 8.7C.1 Formula / Contest | **USER PIE ACCEPTED**；当前值／最终值、共享模块、compact Roll 与关联结果层级已接受；ready for manual staging，尚未 CLOSED |
 | Stage 8.7B / 8.7B.1 A/C 实现 | **USER PIE ACCEPTED**；用户于 2026-09-20 明确表示“这轮美术优化没问题”。待用户手动 staging/commit 与 clean HEAD 确认，尚未 CLOSED |
 
 新可见实现默认 **PENDING USER PIE**，仅用户明确验收后才为 **USER PIE ACCEPTED**。概念图、Codex 截图、自动化测试或离屏 screenshot 都不能代替验收。已验收输出未实际改变时保持 accepted；规范建立本身不触发重做验收或自动迁移。
@@ -218,7 +222,7 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 1. Roll 专项文档仍留有 8.6D 提交前的 awaiting-commit 字样；较新 Decision Log 已记录 8.6 提交／CLOSED。旧状态是历史检查点，不撤销当前 accepted 基线。
 2. 已验收 Reel 的 Cycling 数字也使用暖金色焦点。它们是与最终结果独立的运动占位数字，不能视为已确定的结果，也不表示成功或推荐。保留已验收输出；未来若要求将金色严格限定到锁定后，须作为明确的 Roll family 设计变更单独评审，不在文档阶段偷偷改代码。新结果界面必须遵守第 4、17 节的语义和披露边界。
 3. 8.7B / 8.7B.1 的最终 A/C 已获用户前台验收；局部颜色、字号、宽度和图标参数与规范起始值不同不构成冲突。验收来自用户决定，不来自参数匹配或自动截图。本次冻结输出，未来调整须遵循 family review 与相应 USER PIE。
-4. D Formula 留待 Stage 8.7C；B selected/corner-order badge、E Recovery、F optional Full-Time polish 和 Full portrait/bio safe-zone 继续 deferred。本次验收不授权这些实现，也不启动 Stage 8.7S.1。
+4. D Formula 由用户单独授权 Stage 8.7C / 8.7C.1 实施并完成前台 USER PIE 验收；B selected/corner-order badge、E Recovery、F optional Full-Time polish 和 Full portrait/bio safe-zone 继续 deferred。A/C 的既有验收不代替 Formula 验收。
 
 ## 20. Future Extension Rules
 
@@ -226,5 +230,5 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 - 同类问题同时出现在多个独立界面时触发 **MATCH FLOW FAMILY REVIEW**：**CHANGE THE RULE ONCE, APPLY IT TO THE FAMILY**。停止逐界面打补丁，先修正规则／tokens，再按批准范围应用。
 - 禁止 screen-name-specific hack、title-string-specific style branch、PlayerKey 特判、一次性颜色系统或按钮系统。按稳定语义角色／模式选择家族样式，不按中文标题猜分支。
 - screen-specific exception 记录原因、适用边界及影响；不能用例外规避颜色职责、合法动作、安全披露或验收要求。
-- 覆盖未来类型说明、战术选择、Roll、Formula、结果、Recovery、阶段提示和 Full-Time；这是未来指导，不授权当前实现 B/D/E/F、修改已验收 HUD/Card/Roll 或跳到 8.7C。
+- 覆盖类型说明、战术选择、Roll、Formula、结果、Recovery、阶段提示和 Full-Time。规范本身不授权实现；各 family 的迁移须有独立 Stage 授权，不能据此扩大当前范围或修改已验收 HUD/Card/Roll。
 - 技术验证按实际 diff 选择 focused / affected；文档更新不机械触发 UE build、PIE 或 broad gameplay suites。staging/commit 始终由用户手动完成。

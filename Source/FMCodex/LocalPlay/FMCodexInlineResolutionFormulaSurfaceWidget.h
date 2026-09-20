@@ -42,6 +42,9 @@ public:
 	int32 GetRenderedPendingTermCount() const;
 	UFMCodexRollReelWidget* GetRollReelWidget() const;
 
+	// Geometry only: the containing contest widget already paints the outer shell.
+	void SetEmbeddedFormulaLayout(bool bEmbedded);
+
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Inline Formula")
 	void RequestContinue();
 
@@ -155,4 +158,5 @@ private:
 	int32 RenderedAttackTermCount = 0;
 	int32 RenderedDefenseTermCount = 0;
 	int32 RenderedPendingTermCount = 0;
+	bool bEmbeddedFormulaLayout = false;
 };

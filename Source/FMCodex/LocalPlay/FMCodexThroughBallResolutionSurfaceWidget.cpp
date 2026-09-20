@@ -1,4 +1,5 @@
 #include "FMCodexThroughBallResolutionSurfaceWidget.h"
+#include "FMCodexMatchFlowPanel.h"
 
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
@@ -201,8 +202,8 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 	Bounds->SetMaxDesiredWidth(840.0f);
 	WidgetTree->RootWidget = Bounds;
 
-	UBorder* Frame = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(), TEXT("ThroughBallProductionSurfaceFrame"));
+	UBorder* Frame = WidgetTree->ConstructWidget<UFMCodexMatchFlowPanel>(
+		UFMCodexMatchFlowPanel::StaticClass(), TEXT("ThroughBallProductionSurfaceFrame"));
 	Style.ApplyBorder(
 		*Frame, EFMCodexPlayerUIColorRole::PanelBackground,
 		FMargin(22.0f, 16.0f));
@@ -289,6 +290,7 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 		UFMCodexInlineResolutionFormulaSurfaceWidget>(
 		UFMCodexInlineResolutionFormulaSurfaceWidget::StaticClass(),
 		TEXT("ThroughBallFeetSharedFormulaSurface"));
+	FormulaSurface->SetEmbeddedFormulaLayout(true);
 	FormulaSurface->OnContinueRequested.AddDynamic(
 		this,
 		&UFMCodexThroughBallResolutionSurfaceWidget::HandleContinueClicked);
@@ -359,6 +361,15 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 	SetVisibility(Presentation.bVisible
 		? ESlateVisibility::SelfHitTestInvisible
 		: ESlateVisibility::Collapsed);
+	// Only the embedded arithmetic consumer adopts the shared Tier 2 shell.
+	// Outcome-only/choice modes recover their existing appearance on reuse.
+	const bool bFormulaHost = Presentation.Formula.bVisible && Presentation.Formula.bShowFormulaRows;
+	CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("ThroughBallProductionSurfaceFrame")))
+		->SetFlowStyleEnabled(bFormulaHost);
+	const auto& Style = FFMCodexPlayerUIStyle::Get();
+	Style.ApplyText(*StageText, EFMCodexPlayerUITextRole::ActionTitle);
+	StageText->SetAutoWrapText(bFormulaHost);
+	if (bFormulaHost) Style.ApplyFlowText(*StageText, 24);
 	TitleText->SetText(FText::FromString(Presentation.TitleLabel));
 	SetOptionalText(RouteText, Presentation.RouteLabel);
 	SetOptionalText(StageText, Presentation.StageLabel);
