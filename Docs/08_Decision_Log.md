@@ -1919,3 +1919,59 @@ repair or next-family migration is authorized by this closeout.
   consistency and diff-quality checks, with no build, UHT, automation or PIE rerun.
 - Staging/commit stay manual. Selected/Corner order, Recovery/Notification,
   unrelated Narrative and Full-Time remain deferred.
+
+## 2026-09-21 — Stage 8.7D compact card draft state; PENDING USER PIE
+
+Historical implementation checkpoint; the acceptance entry below supersedes its
+pending status and deferral of visual-spec synchronization.
+
+The user confirms 8.7B/B.1 and 8.7C/C.1 CLOSED and separately authorizes the P1
+selected/Corner-order overlay work identified by 8.7S.1. Start clean on main at
+`e91d2ae6b89d05136cc566296edd4989e11126cc`.
+
+- Keep Player Card Family v1.3, all art and frozen Hand geometry. The current
+  four-sided rarity and silver-gray hover contract supersedes historical right-strip
+  wording; do not restore the strip or alter the shirt-number area.
+- Replace the Rack's full-card draft tint and bare gold check/order with one small
+  cold-color state tab. 已选 denotes editable draft selection. Corner uses a prefixed
+  order label plus the same selected rail, without implying confirmation or success.
+- Consume the existing bSetPieceSelected / SetPieceSelectionOrder projection.
+  No new authority, legality, confirmation state, input handler or drag priority.
+  Keep one card-local placement family without player/name/number exceptions.
+- Verification targets draft/reorder/clear semantics, hover and geometry, the existing
+  focused Corner consumer check, incremental Editor build and at most one distinct
+  real Corner draft PIE path. At most four captures; ordinary selected normal/hover
+  are short static fixtures, not a second gameplay path. Broader used/unavailable
+  runtime combinations remain NOT FULLY VERIFIED.
+- Status is **PENDING USER PIE**. Do not pre-lock this design into either visual
+  rulebook. After acceptance, evaluate HandMicro_Visual_Spec_v1.md as the primary
+  compact-state specification target and MatchFlow_Visual_Language_v1.md for a
+  minimal family cross-reference. Manual staging/commit remain with the user.
+
+## 2026-09-21 — Stage 8.7D USER PIE ACCEPTED / acceptance closeout
+
+The user completed foreground USER PIE and confirms “看下来没问题。” The current
+cold-color 已选 capsule, cyan draft marker, #1 / #2 / #3 nomination order and shared
+compact state zone are **USER PIE ACCEPTED — ready for manual staging**. No further
+visual polish is requested. Stage 8.7D is not CLOSED until manual commit and clean
+HEAD confirmation; staging and commit remain user-owned.
+
+- Draft selection remains distinct from submission/confirmation. Corner order is
+  separate from shirt identity. Preserve card art/crop, name/position, four-sided
+  rarity, silver hover, shirt number, 220×68 geometry and HitTestInvisible overlay.
+- **VISUAL SPEC UPDATE REQUIRED: YES.** These accepted draft/order semantics and
+  shared compact-state composition add lasting rules that were not explicit in the
+  authoritative Hand spec. [Hand Micro §35](UI/HandMicro_Visual_Spec_v1.md#compact-card-draft-state)
+  now owns them. Match Flow carries only a short ownership/acceptance reference;
+  no duplicate rulebook, new pixel constants, rarity/owner-color redesign or change
+  to gold-result semantics. Earlier implementation-stage deferral is now satisfied.
+- Freeze production/test bytes. Reuse passed DraftOrderAndReuse, HoverAndSafeArea,
+  CornerFocusedProductionRepair, incremental Editor build and one real CornerDraft
+  PIE path. The initial fixture initialization failure was corrected and its focused
+  rerun passed; existing successful checks need no replay for this docs-only closeout.
+- Selection rules, projected order, typed intents, input/drag/focus, confirmation,
+  submission, Networking/RPC and CoreRules are unchanged. Formula, Roll, Recovery,
+  Notification, Narrative, Full-Time, assets and unrelated HUD remain outside scope.
+- Phase A produces the ignored approved inventory. Phase B starts only after the
+  user manually stages and explicitly replies “已暂存，继续 Phase B”; it compares the
+  actual staged blobs with that approved snapshot without rewriting the baseline.

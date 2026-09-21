@@ -222,7 +222,7 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 1. Roll 专项文档仍留有 8.6D 提交前的 awaiting-commit 字样；较新 Decision Log 已记录 8.6 提交／CLOSED。旧状态是历史检查点，不撤销当前 accepted 基线。
 2. 已验收 Reel 的 Cycling 数字也使用暖金色焦点。它们是与最终结果独立的运动占位数字，不能视为已确定的结果，也不表示成功或推荐。保留已验收输出；未来若要求将金色严格限定到锁定后，须作为明确的 Roll family 设计变更单独评审，不在文档阶段偷偷改代码。新结果界面必须遵守第 4、17 节的语义和披露边界。
 3. 8.7B / 8.7B.1 的最终 A/C 已获用户前台验收；局部颜色、字号、宽度和图标参数与规范起始值不同不构成冲突。验收来自用户决定，不来自参数匹配或自动截图。本次冻结输出，未来调整须遵循 family review 与相应 USER PIE。
-4. D Formula 由用户单独授权 Stage 8.7C / 8.7C.1 实施并完成前台 USER PIE 验收；B selected/corner-order badge、E Recovery、F optional Full-Time polish 和 Full portrait/bio safe-zone 继续 deferred。A/C 的既有验收不代替 Formula 验收。
+4. D Formula 由用户单独授权 Stage 8.7C / 8.7C.1 实施并完成前台 USER PIE 验收；B selected/corner-order overlay 已在 Stage 8.7D 获 USER PIE ACCEPTED，其 compact card-state 规则由 [Hand Micro §35](HandMicro_Visual_Spec_v1.md#compact-card-draft-state) 负责；E Recovery、F optional Full-Time polish 和 Full portrait/bio safe-zone 继续 deferred。A/C 的既有验收不代替 Formula 验收。
 
 ## 20. Future Extension Rules
 

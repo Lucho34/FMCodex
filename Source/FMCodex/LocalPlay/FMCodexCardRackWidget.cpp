@@ -7,6 +7,7 @@
 #include "FMCodexPlayerUIStyle.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
@@ -206,6 +207,52 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 	RenderedCardWidgets.Reset();
 	RenderedCellCount = 0;
 
+	// One compact card-state family. Corner order replaces the label, while the
+	// cyan selection rail remains. Neither mode means submitted/confirmed.
+	auto BuildDraftStateBadge = [this](const FFMCodexUMGCardRackCellViewModel& Cell)
+	{
+		auto Name = [&Cell](const TCHAR* Role)
+		{
+			return FName(*FString::Printf(TEXT("CardDraft%s%d"), Role, Cell.StableIndex));
+		};
+		auto* Bounds = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), Name(TEXT("StateBounds")));
+		Bounds->SetWidthOverride(40.0f);
+		Bounds->SetHeightOverride(18.0f);
+		Bounds->SetVisibility(ESlateVisibility::HitTestInvisible);
+		auto* Plate = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name(TEXT("Plate")));
+		Plate->SetBrush(FSlateRoundedBoxBrush(FLinearColor(.006f,.030f,.052f,.96f),
+			3.0f, FLinearColor(.10f,.40f,.53f,.90f), 1.0f));
+		Plate->SetBrushColor(FLinearColor::White);
+		Plate->SetPadding(FMargin(4,1,4,1));
+		Plate->SetVisibility(ESlateVisibility::HitTestInvisible);
+		auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
+		auto* RailBounds = WidgetTree->ConstructWidget<USizeBox>();
+		RailBounds->SetWidthOverride(2.0f);
+		RailBounds->SetHeightOverride(10.0f);
+		auto* Rail = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name(TEXT("SelectedRail")));
+		Rail->SetBrushColor(FLinearColor(.18f,.67f,.83f,1));
+		Rail->SetVisibility(ESlateVisibility::HitTestInvisible);
+		RailBounds->AddChild(Rail);
+		auto* RailSlot = Row->AddChildToHorizontalBox(RailBounds);
+		RailSlot->SetVerticalAlignment(VAlign_Center);
+		RailSlot->SetPadding(FMargin(0,0,3,0));
+		auto* Label = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name(TEXT("Label")));
+		Label->SetText(Cell.SetPieceSelectionOrder > 0
+			? FText::Format(NSLOCTEXT("FMCodexCardState", "DraftOrder", "#{0}"), FText::AsNumber(Cell.SetPieceSelectionOrder))
+			: NSLOCTEXT("FMCodexCardState", "DraftSelected", "已选"));
+		FFMCodexPlayerUIStyle::Get().ApplyFlowText(*Label, 11);
+		Label->SetColorAndOpacity(FLinearColor(.78f,.90f,.96f,1));
+		Label->SetJustification(ETextJustify::Center);
+		Label->SetAutoWrapText(false);
+		Label->SetVisibility(ESlateVisibility::HitTestInvisible);
+		auto* LabelSlot = Row->AddChildToHorizontalBox(Label);
+		LabelSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		LabelSlot->SetVerticalAlignment(VAlign_Center);
+		Plate->AddChild(Row);
+		Bounds->AddChild(Plate);
+		return Bounds;
+	};
+
 	const int32 ColumnCount = FMath::Max(1, Presentation.ColumnCount);
 	const float CardWidth = FMCodexHandMicroDiagnostics::CardWidth;
 	const float CardHeight = FMCodexHandMicroDiagnostics::CardHeight;
@@ -381,30 +428,16 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 					UOverlay::StaticClass(), FName(*FString::Printf(
 						TEXT("SetPieceHandSelectionLayers%d"), Cell.StableIndex)));
 				SelectionLayers->AddChildToOverlay(Card);
-				UBorder* SelectionFrame = WidgetTree->ConstructWidget<UBorder>(
-					UBorder::StaticClass(), FName(*FString::Printf(
-						TEXT("SetPieceHandSelectionFrame%d"), Cell.StableIndex)));
-				SelectionFrame->SetBrushColor(Cell.bSetPieceSelected
-					? FLinearColor(0.95f, 0.72f, 0.18f, 0.42f)
-					: FLinearColor(0.20f, 0.72f, 0.90f, 0.18f));
-				SelectionFrame->SetPadding(FMargin(2.0f));
-				SelectionFrame->SetVisibility(ESlateVisibility::HitTestInvisible);
-				SelectionLayers->AddChildToOverlay(SelectionFrame);
 				if (Cell.bSetPieceSelected)
 				{
-					UTextBlock* Badge = WidgetTree->ConstructWidget<UTextBlock>(
-						UTextBlock::StaticClass(), FName(*FString::Printf(
-							TEXT("SetPieceHandSelectionBadge%d"), Cell.StableIndex)));
-					Badge->SetText(FText::FromString(Cell.SetPieceSelectionOrder > 0
-						? FString::Printf(TEXT("%d"), Cell.SetPieceSelectionOrder)
-						: FString(TEXT("✓"))));
-					Badge->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.82f, 0.25f)));
-					Badge->SetVisibility(ESlateVisibility::HitTestInvisible);
-					if (UOverlaySlot* BadgeSlot = SelectionLayers->AddChildToOverlay(Badge))
+					// Draft state only. The shared lower-left tab stays inside the card,
+					// below the face and clear of identity, shirt number and rarity edges.
+					USizeBox* StateBounds = BuildDraftStateBadge(Cell);
+					if (UOverlaySlot* StateSlot = SelectionLayers->AddChildToOverlay(StateBounds))
 					{
-						BadgeSlot->SetHorizontalAlignment(HAlign_Right);
-						BadgeSlot->SetVerticalAlignment(VAlign_Top);
-						BadgeSlot->SetPadding(FMargin(4.0f));
+						StateSlot->SetHorizontalAlignment(HAlign_Left);
+						StateSlot->SetVerticalAlignment(VAlign_Bottom);
+						StateSlot->SetPadding(FMargin(6.0f, 0.0f, 0.0f, 6.0f));
 					}
 				}
 				CellWidget = SelectionLayers;

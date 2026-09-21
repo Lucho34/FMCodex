@@ -919,3 +919,41 @@ Only Hand activates the canonical new portrait route, native surface and frame. 
 All four Master, Hand PNG and Hand UE package bytes remain unchanged during separation. Generator/provenance metadata is updated for true Hand-only first generation. Missing future-role records are permitted; existing non-selected roles cannot silently become stale. See Shared Portrait Art Contract sections 16–18. The optional number remains empty by default and is not rendered by Pitch/Full. No localization, gameplay/network, rack geometry, hover/drag/cancel/availability or future mobile contract changes.
 
 User staging/commit remains manual. No repeated visual USER PIE is required if the accepted Hand output remains identical; a render change reopens that gate.
+
+
+<a id="compact-card-draft-state"></a>
+
+# 35. Compact Card Draft State — Stage 8.7D USER PIE ACCEPTED
+
+This section owns the accepted compact state overlay on current Hand / Rack cards.
+Player Card Family v1.3 remains the primary visual object; art, geometry, rarity,
+hover and shirt-number contracts retain their existing ownership.
+
+- **Draft Selected is not Submitted / Confirmed / Final Result.** Display only the
+  existing projected draft state. Use a restrained navy capsule, cool-white 已选
+  label and cyan structural marker; do not use a bare gold check or full-card tint
+  as draft emphasis. Do not invent a confirmed state from selection or appearance.
+- **Corner Order** uses the projected nomination order, rendered as #1 / #2 / #3.
+  All orders share typography, container, padding and placement logic. The prefix
+  and container distinguish order from the player's shirt number; order does not
+  encode rarity, ownership, success or a revealed result.
+- **One compact state zone:** when selected and ordered, replace 已选 with the
+  prefixed order while retaining the cyan selected marker. Avoid stacking a check,
+  order and shirt number in one area. Keep the overlay lighter than the card itself.
+- Position relative to card-local geometry in the lower-left portrait margin,
+  clear of the face, name, position, shirt number and rarity frame. Preserve the
+  frozen Hand dimensions and crop. Verify legibility at actual gameplay size;
+  do not solve individual names, portraits or numbers with special offsets.
+- Keep existing silver-gray hover and rarity retention visible alongside the
+  state. The overlay is non-interactive / HitTestInvisible, cannot take focus and
+  does not change click, drag, touch, selection, confirmation or submission rules.
+  Clearing selection or rebuilding a card must clear obsolete order/state marks;
+  existing ghost and unavailable behavior remains owned by its original contract.
+- Container size, font size, corner radius, color intensity and insets are tunable
+  family parameters, not permanent screenshot pixel requirements. Gold-result,
+  rarity and owner-color semantics remain separate and unchanged.
+
+The user accepted this family after foreground USER PIE (看下来没问题). Stage 8.7D
+is **USER PIE ACCEPTED — ready for manual staging**, not CLOSED until manual commit
+and clean HEAD confirmation. This acceptance does not claim complete runtime
+coverage of every used/unavailable combination or authorize other card/UI redesign.

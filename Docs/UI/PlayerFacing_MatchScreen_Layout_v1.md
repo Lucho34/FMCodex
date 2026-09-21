@@ -264,3 +264,34 @@ and representative Long Free Kick Direct PIE sequence. Native Widget captures an
 whole-window context are technical evidence; acceptance comes separately from the
 user's explicit foreground USER PIE confirmation. Closeout freezes production and
 test bytes and only synchronizes documentation and the ignored staging inventory.
+
+## Stage 8.7D — Compact Card Draft State (USER PIE ACCEPTED)
+
+The clean committed starting point is `e91d2ae6b89d05136cc566296edd4989e11126cc`.
+The user confirms 8.7B/B.1 and 8.7C/C.1 CLOSED. This stage changes only the Rack's
+set-piece draft selection and Corner nomination-order overlays.
+
+- A compact navy/cyan tab sits at the card-local lower-left portrait margin,
+  below the face and clear of the identity region, shirt number and rarity edges.
+  It is an overlay, not a change to the frozen 220×68 card or portrait crop.
+- Ordinary selected draft uses 已选. Corner uses #1 / #2 / #3 with the same cyan
+  selected rail: one state zone, no additional check piled beside the order.
+  Order comes directly from SetPieceSelectionOrder; bSetPieceSelected owns visibility.
+  No submitted/confirmed state is inferred or added.
+- The accepted implementation uses a 40×18 tab with shared font/padding and
+  card-relative lower/left insets. These remain tunable family parameters, not permanent
+  pixel requirements. No full-card tint, new rarity frame, glow or gold state.
+- The existing card remains responsible for art, name, position, shirt number,
+  silver-gray hover, inset rarity and click/drag handling. The tab and descendants
+  are hit-test safe. Ghost cells retain the existing ghost path; this does not
+  redesign used/unavailable feedback or claim complete runtime coverage of it.
+- The user accepted selected / Corner order at gameplay size and hover continuity.
+  Static ordinary-selected fixtures remain distinguished from the representative
+  real Corner draft PIE capture; neither replaces the explicit foreground USER PIE.
+
+Status: **USER PIE ACCEPTED — ready for manual staging**. The user confirms
+“看下来没问题。” Current long-term state rules are owned by
+[Hand Micro §35](HandMicro_Visual_Spec_v1.md#compact-card-draft-state);
+[Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) provides only the
+family reference. Production/test implementation is frozen during docs-only
+closeout. Stage 8.7D is not CLOSED until manual commit and clean HEAD confirmation.
