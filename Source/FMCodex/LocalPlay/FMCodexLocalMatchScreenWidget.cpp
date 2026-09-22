@@ -3739,6 +3739,8 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		Result.bNarrativeAvailable = false;
 		Result.ResultTitle.Empty();
 		Result.NarrativeHeadline.Empty();
+		Result.OutcomeText = {};
+		Result.OutcomeRollDetail.Empty();
 		Result.ResultSubtitle.Empty();
 		// Authority aliases a terminal Narrative into these two visible labels.
 		// Restore the neutral contest hierarchy until Presentation has disclosed
@@ -3917,6 +3919,8 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 			Result.bNarrativeAvailable = false;
 			Result.ResultTitle.Empty();
 			Result.NarrativeHeadline.Empty();
+			Result.OutcomeText = {};
+			Result.OutcomeRollDetail.Empty();
 			Result.StatusLabel = bHolding
 				? TEXT("掷点结果已落定")
 				: bSettling ? TEXT("掷点落定中") : TEXT("号码滚动中");
@@ -4135,6 +4139,8 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 		Result.bNarrativeAvailable = false;
 		Result.ResultTitle.Empty();
 		Result.NarrativeHeadline.Empty();
+		Result.OutcomeText = {};
+		Result.OutcomeRollDetail.Empty();
 	}
 	Result.StatusLabel = bHolding
 		? (bSecond ? TEXT("双骰结果已落定") : TEXT("第一枚骰子已落定"))

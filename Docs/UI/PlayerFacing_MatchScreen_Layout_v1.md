@@ -295,3 +295,41 @@ Status: **USER PIE ACCEPTED — ready for manual staging**. The user confirms
 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) provides only the
 family reference. Production/test implementation is frozen during docs-only
 closeout. Stage 8.7D is not CLOSED until manual commit and clean HEAD confirmation.
+
+<a id="outcome-family-accepted"></a>
+
+## Stage 8.7E / 8.7E.1 / 8.7E.2 — Accepted Outcome Layout
+
+Status: **USER PIE ACCEPTED — ready for manual staging** (2026-09-22).
+The user confirms “我看了下都没问题了”. This combined entry supersedes the
+implementation-time E/E.1/E.2 layout notes, including E.1's final headline during
+ResultHold. Stage closure still requires manual commit and clean HEAD confirmation.
+Visual hierarchy, semantic colors and detail wording are owned by
+[Match Flow §14.1](MatchFlow_Visual_Language_v1.md#outcome-result-family);
+Option A and disclosure continuity are owned by its §17.
+
+- Inline Resolution, LongShot/CutInside and ThroughBall reuse the shared outcome
+  reading region. An Inline child embedded in a parent keeps one outer frame;
+  standalone and embedded hosts must not stack two visible shells or result layers.
+- The same family frame owns the covered intermediate and final compositions.
+  The existing reel/narrative gates choose the content owner; switching clears
+  the previous regions. Layout does not add a timing or gameplay dependency.
+- Primary and secondary text occupy the same filled reading column with symmetric
+  margins. Detail and footer CTA align to that actual frame center. Centered text
+  justification alone is insufficient when the parent allocation is offset.
+- Content determines height. Optional regions collapse with their spacing; long
+  Chinese text wraps within the reading region without player-specific exceptions.
+  The shared detail region stays subordinate and read-only. No fixed empty body
+  is reserved for short results, and no permanent width/height/margin is imposed.
+- Hosts retain their original CTA instances, delegates, availability, ownership
+  and pending gates. ThroughBall progression keeps its existing OneOnOne choices.
+- Formula-linked final headings share the outcome reading treatment. Accepted
+  Formula body modules, rows, value regions, term chips and compact reel geometry
+  remain independent; they are not copied into non-formula outcomes.
+- No-row `SetPiece.Opposed`, exceptional early-end and legacy compatibility
+  feedback remain NEEDS EVIDENCE. Notification/Recovery, AP1/ejection and Full-Time
+  remain deferred. The ignored `Saved/Stage8_7E/OutcomeFamilyCoverage.md` records
+  the full consumer inventory; acceptance does not imply every branch ran in PIE.
+
+Production/test implementation is frozen for this docs-only closeout. No gameplay,
+authority, input or reveal-clock changes accompany this layout record.

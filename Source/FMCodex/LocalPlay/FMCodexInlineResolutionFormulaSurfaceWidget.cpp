@@ -3,6 +3,7 @@
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexMatchFlowPanel.h"
+#include "FMCodexOutcomePresentation.h"
 #include "FMCodexRollReelWidget.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -13,6 +14,7 @@
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Components/RichTextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Components/WrapBox.h"
@@ -224,6 +226,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 	UVerticalBox* RootBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("InlineFormulaSurfaceHierarchy"));
 	Frame->AddChild(RootBody);
+	FMCodexOutcomePresentation::Build(*WidgetTree, *RootBody);
 
 	auto* ResultBadge = MakeText(*WidgetTree,TEXT("InlineFormulaResultBadge"));
 	ResultBadge->SetText(NSLOCTEXT("FMCodexFormula","ResultBadge","结算结果"));
@@ -237,6 +240,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 	ContestText->SetJustification(ETextJustify::Center);
 	Style.ApplyText(*ContestText, EFMCodexPlayerUITextRole::ActionTitle);
 	RootBody->AddChildToVerticalBox(ContestText);
+	RootBody->AddChildToVerticalBox(FMCodexOutcomePresentation::BuildPrimary(*WidgetTree, TEXT("InlineFormulaOutcomeHeading")));
 
 	StatusText = MakeText(*WidgetTree, TEXT("InlineFormulaStatus"));
 	StatusText->SetJustification(ETextJustify::Center);
@@ -468,8 +472,9 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 	RollReel->RefreshFromPresentation(Presentation.RollReel);
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	// Arithmetic mode is semantic, not inferred from a title or a tactic name.
-	// Type information retains its accepted parameters; outcome-only modes stay legacy.
+	// Type information and arithmetic retain their accepted parameters.
 	const bool bFormula = Presentation.bVisible && Presentation.bShowFormulaRows;
+	const bool bOutcomeFamily = FMCodexOutcomePresentation::OwnsInlineSurface(Presentation);
 	const bool bEmbeddedFormula = bFormula && bEmbeddedFormulaLayout;
 	const bool bTypeInformation = Presentation.bVisible
 		&& Presentation.ContestId == FName(TEXT("SetPiece.Type"))
@@ -479,7 +484,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	if (bTypeInformation) TacticalPlayerText->SetVisibility(ESlateVisibility::Collapsed);
 	auto* Frame = CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("InlineFormulaSurfaceFrame")));
-	Frame->SetFlowStyleEnabled(bTypeInformation || (bFormula && !bEmbeddedFormula));
+	Frame->SetFlowStyleEnabled(bTypeInformation || ((bFormula || bOutcomeFamily) && !bEmbeddedFormulaLayout));
 	FLinearColor LegacyFrameColor = Style.GetColor(EFMCodexPlayerUIColorRole::PanelBackground);
 	LegacyFrameColor.A = .94f;
 	Frame->SetBrushColor(bEmbeddedFormula ? FLinearColor::Transparent : LegacyFrameColor);
@@ -495,9 +500,11 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 	Style.ApplyText(*StatusText, EFMCodexPlayerUITextRole::Secondary);
 	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
 	auto* ContinueBounds = CastChecked<USizeBox>(ContinueButton->GetParent());
+	ContinueBounds->ClearMinDesiredHeight();
 	ContinueBounds->SetWidthOverride(bFormula ? 288.f : bTypeInformation ? 224.f : 156.f);
 	ContinueBounds->SetHeightOverride(bFormula ? 52.f : bTypeInformation ? 48.f : 42.f);
 	auto* ContinueLabel = CastChecked<UTextBlock>(ContinueButton->GetChildAt(0));
+	ContinueLabel->SetAutoWrapText(false);
 	Style.ApplyText(*ContinueLabel, EFMCodexPlayerUITextRole::Body);
 	if (bTypeInformation)
 	{
@@ -545,7 +552,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 	RollHostSlot->SetHorizontalAlignment(bFormula ? HAlign_Center : HAlign_Fill);
 	if (bFormula) RollHostBounds->SetWidthOverride(360.f); else RollHostBounds->ClearWidthOverride();
 	auto* RollPanel = CastChecked<UFMCodexMatchFlowPanel>(DiceRevealRegion);
-	RollPanel->SetFormulaRole(bFormula ? EFMCodexFormulaPanelRole::RollHost : EFMCodexFormulaPanelRole::None);
+	RollPanel->SetFormulaRole(bFormula || bOutcomeFamily ? EFMCodexFormulaPanelRole::RollHost : EFMCodexFormulaPanelRole::None);
 	Style.ApplyBorder(*DiceRevealRegion,EFMCodexPlayerUIColorRole::PanelInset,bFormula ? FMargin(20,10) : FMargin(10,7));
 	auto* DiceBounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("InlineFormulaDiceBounds")));
 	DiceBounds->SetWidthOverride(bFormula ? 96.f : 68.f);
@@ -588,6 +595,46 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 	{
 		Label->SetText(FText::FromString(
 			Presentation.PrimaryAction.Action.Label));
+	}
+	// Keep the family frame during ResultHold; full final content belongs to
+	// the composition only after the existing reel lifetime ends.
+	const bool bOutcome = bOutcomeFamily && FMCodexOutcomePresentation::IsFinalReady(Presentation.bNarrativeAvailable, Presentation.bDiceRevealVisible);
+	FMCodexOutcomePresentation::RefreshIntermediate(*WidgetTree, bOutcomeFamily && Presentation.bDiceRevealVisible,
+		Presentation.ResolutionContextLabel, Presentation.OutcomeRollDetail.IsEmpty() ? Presentation.RouteResultLabel : Presentation.OutcomeRollDetail);
+	FMCodexOutcomePresentation::Refresh(*WidgetTree, bOutcome,
+		Presentation.ContestLabel, Presentation.StatusLabel,
+		Presentation.bParentOwnsRouteContext ? FString() : !Presentation.OutcomeRollDetail.IsEmpty()
+			? Presentation.OutcomeRollDetail : Presentation.RouteResultLabel,
+		Presentation.RollHelperLabel, ContinueButton->GetParent()->GetVisibility() != ESlateVisibility::Collapsed,
+		Presentation.OutcomeText);
+	if (bOutcomeFamily)
+	{
+		FMCodexOutcomePresentation::ApplyFrameStyle(*Frame,
+			*CastChecked<USizeBox>(GetWidgetFromName(TEXT("InlineFormulaSurfaceBounds"))), bEmbeddedFormulaLayout);
+	}
+	if (bOutcomeFamily)
+	{
+		UWidget* Hidden[] = {ContestText, StatusText, RouteResultText, TacticalPlayerText};
+		for (auto* Item : Hidden) Item->SetVisibility(ESlateVisibility::Collapsed);
+		RuleHint->SetVisibility(ESlateVisibility::Collapsed);
+		if (Presentation.bNarrativeAvailable) RollHelperText->SetVisibility(ESlateVisibility::Collapsed);
+		if (bOutcome) FMCodexOutcomePresentation::ApplyActionStyle(*ContinueButton);
+		else ContinueButton->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	// Formula-linked results share only the semantic sentence renderer. All rows,
+	// values, chips, margins and embedded roll geometry retain their accepted layout.
+	const bool bFormulaFinal = bFormula && FMCodexOutcomePresentation::IsFinalReady(Presentation.bNarrativeAvailable, Presentation.bDiceRevealVisible);
+	auto* FormulaHeadline = CastChecked<URichTextBlock>(GetWidgetFromName(TEXT("InlineFormulaOutcomeHeading")));
+	FormulaHeadline->SetText(bFormulaFinal ? FText::FromString(FMCodexOutcomePresentation::PrimaryMarkup(Presentation.ContestLabel, Presentation.OutcomeText)) : FText::GetEmpty());
+	FormulaHeadline->SetVisibility(bFormulaFinal ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (bFormulaFinal) ContestText->SetVisibility(ESlateVisibility::Collapsed);
+	if (bFormula && Presentation.bDiceRevealVisible && Presentation.bNarrativeAvailable)
+	{
+		ContestText->SetText(Presentation.ResolutionContextLabel.IsEmpty()
+			? FFMCodexPlayerUIPresentationText::ResolutionContest(Presentation.ContestId) : FText::FromString(Presentation.ResolutionContextLabel));
+		Style.ApplyFlowText(*ContestText, 24);
+		StatusText->SetText(NSLOCTEXT("FMCodexOutcome", "FormulaResolving", "正在结算"));
+		GetWidgetFromName(TEXT("InlineFormulaResultBadge"))->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 

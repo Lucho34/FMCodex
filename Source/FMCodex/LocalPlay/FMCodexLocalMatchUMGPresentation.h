@@ -5,6 +5,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
 #include "FMCodexFullTimePresentation.h"
 #include "FMCodexSetPieceSelectionPresentation.h"
+#include "FMCodexOutcomeText.h"
 
 #include "FMCodexLocalMatchUMGPresentation.generated.h"
 
@@ -1434,6 +1435,10 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 		Category = "Local Match|Inline Formula")
 	FString ContestLabel;
 
+	/** Neutral contest name, independent of a disclosed terminal headline. */
+	UPROPERTY()
+	FString ResolutionContextLabel;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString StatusLabel;
@@ -1475,6 +1480,13 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString NarrativeHeadline;
+
+	UPROPERTY()
+	FFMCodexOutcomeText OutcomeText;
+
+	/** Already-disclosed, player-facing detail for non-formula outcomes only. */
+	UPROPERTY()
+	FString OutcomeRollDetail;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
@@ -1710,6 +1722,13 @@ struct FMCODEX_API FFMCodexUMGThroughBallResolutionViewModel
 		Category = "Local Match|Through Ball")
 	FString NarrativeHeadline;
 
+	UPROPERTY()
+	FFMCodexOutcomeText OutcomeText;
+
+	/** Already-disclosed, player-facing detail for non-formula outcomes only. */
+	UPROPERTY()
+	FString OutcomeRollDetail;
+
 	/** Shared authoritative contest presentation used by the Feet route only. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Through Ball")
@@ -1831,6 +1850,13 @@ struct FMCODEX_API FFMCodexUMGLongShotResolutionViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
 	FString NarrativeHeadline;
+
+	UPROPERTY()
+	FFMCodexOutcomeText OutcomeText;
+
+	/** Already-disclosed, player-facing detail for non-formula outcomes only. */
+	UPROPERTY()
+	FString OutcomeRollDetail;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
 	EFMCodexUMGInteractionCategory InteractionCategory =

@@ -60,6 +60,14 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		Result.NarrativeText = Narrative;
 	}
 
+	void CompleteOutcome(FResult& Result, ECategory Category, const FText& Title,
+		const FText& Prefix, const FText& Keyword, const FText& Suffix)
+	{
+		Result.OutcomeText = FFMCodexOutcomeText(Prefix, Keyword, Suffix,
+			Category == ECategory::Goal ? EFMCodexOutcomeAccent::Goal : EFMCodexOutcomeAccent::NoGoal);
+		Complete(Result, Category, Title, Result.OutcomeText.ToText());
+	}
+
 	void SetPerformer(
 		FResult& Result,
 		const ERole Role,
@@ -141,31 +149,29 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			if (Input.AuthorityOutcome == EOutcome::ImmediateMiss)
 			{
-				Complete(Result, ECategory::ImmediateMiss,
-					LOCTEXT("ImmediateMissTitle", "射门偏出"),
-					bCarrier
-						? FormatOne(LOCTEXT("LongShotImmediate", "{0}远射偏出。"), Input.Carrier.DisplayName)
-						: LOCTEXT("LongShotImmediateFallback", "远射偏出。"));
+				CompleteOutcome(Result, ECategory::ImmediateMiss, LOCTEXT("ImmediateMissTitle", "射门偏出"),
+					FormatOne(LOCTEXT("LongImmediatePrefix", "{0}远射"), Input.Carrier.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "WideKeyword", "偏出"),
+					NSLOCTEXT("FMCodexOutcome", "Period", "。"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Goal)
 			{
-				Complete(Result, ECategory::Goal, LOCTEXT("GoalTitle", "进球"),
-					bCarrier
-						? FormatOne(LOCTEXT("LongShotGoal", "{0}远射破门！"), Input.Carrier.DisplayName)
-						: LOCTEXT("LongShotGoalFallback", "远射破门！"));
+				CompleteOutcome(Result, ECategory::Goal, LOCTEXT("GoalTitle", "进球"),
+					FormatOne(LOCTEXT("LongImmediatePrefix", "{0}远射"), Input.Carrier.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"), LOCTEXT("Bang", "！"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Miss)
 			{
-				FText Narrative = LOCTEXT("LongShotDefenseFallback", "远射未能破门。");
+				FText Narrative = LOCTEXT("LongShotDefenseFallbackPrefix", "远射");
 				if (Input.Marker.HasPlayerFacingName())
 				{
 					Narrative = bCarrier
-						? FormatTwo(LOCTEXT("LongShotMarkerDefense", "{0}完成抢断，{1}的远射未能破门。"), Input.Marker.DisplayName, Input.Carrier.DisplayName)
-						: FormatOne(LOCTEXT("LongShotMarkerDefenseNoCarrier", "{0}完成抢断，远射未能破门。"), Input.Marker.DisplayName);
+						? FormatTwo(LOCTEXT("LongShotMarkerDefensePrefix", "{0}完成抢断，{1}的远射"), Input.Marker.DisplayName, Input.Carrier.DisplayName)
+						: FormatOne(LOCTEXT("LongShotMarkerDefenseNoCarrierPrefix", "{0}完成抢断，远射"), Input.Marker.DisplayName);
 					SetPerformer(Result, ERole::Marker, Input);
 				}
-				Complete(Result, ECategory::DefensiveSuccess,
-					LOCTEXT("DefenseSuccessTitle", "防守成功"), Narrative);
+				CompleteOutcome(Result, ECategory::DefensiveSuccess,
+					LOCTEXT("DefenseSuccessTitle", "防守成功"), Narrative, LOCTEXT("NotThrough", "未能破门"), LOCTEXT("Period", "。"));
 			}
 			return;
 		}
@@ -174,17 +180,17 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			if (Input.AuthorityOutcome == EOutcome::Goal)
 			{
-				Complete(Result, ECategory::Goal, LOCTEXT("GoalTitle2", "进球"),
-					bCarrier
-						? FormatOne(LOCTEXT("LongDeadGoal", "{0}射向死角破门！"), Input.Carrier.DisplayName)
-						: LOCTEXT("LongDeadGoalFallback", "射向死角破门！"));
+				CompleteOutcome(Result, ECategory::Goal, LOCTEXT("GoalTitle2", "进球"),
+					FormatOne(LOCTEXT("LongDeadPrefix", "{0}射向死角"), Input.Carrier.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"),
+					NSLOCTEXT("FMCodexOutcome", "Exclamation", "！"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Miss)
 			{
-				Complete(Result, ECategory::Miss, LOCTEXT("ShotMissTitle", "射门未进"),
-					bCarrier
-						? FormatOne(LOCTEXT("LongDeadMiss", "{0}射向死角未能得分。"), Input.Carrier.DisplayName)
-						: LOCTEXT("LongDeadMissFallback", "射向死角未能得分。"));
+				CompleteOutcome(Result, ECategory::Miss, LOCTEXT("ShotMissTitle", "射门未进"),
+					FormatOne(LOCTEXT("LongDeadPrefix", "{0}射向死角"), Input.Carrier.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "NoGoalKeyword", "未能得分"),
+					NSLOCTEXT("FMCodexOutcome", "Period", "。"));
 			}
 		}
 	}
@@ -196,31 +202,29 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			if (Input.AuthorityOutcome == EOutcome::ImmediateMiss)
 			{
-				Complete(Result, ECategory::ImmediateMiss,
-					LOCTEXT("CutImmediateTitle", "射门偏出"),
-					bCarrier
-						? FormatOne(LOCTEXT("CutImmediate", "{0}内切后射门偏出。"), Input.Carrier.DisplayName)
-						: LOCTEXT("CutImmediateFallback", "内切后射门偏出。"));
+				CompleteOutcome(Result, ECategory::ImmediateMiss, LOCTEXT("CutImmediateTitle", "射门偏出"),
+					FormatOne(LOCTEXT("CutImmediatePrefix", "{0}内切后射门"), Input.Carrier.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "WideKeyword", "偏出"),
+					NSLOCTEXT("FMCodexOutcome", "Period", "。"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Goal)
 			{
-				Complete(Result, ECategory::Goal, LOCTEXT("CutGoalTitle", "进球"),
-					bCarrier
-						? FormatOne(LOCTEXT("CutGoal", "{0}内切破门！"), Input.Carrier.DisplayName)
-						: LOCTEXT("CutGoalFallback", "内切破门！"));
+				CompleteOutcome(Result, ECategory::Goal, LOCTEXT("CutGoalTitle", "进球"),
+					FormatOne(LOCTEXT("CutGoalPrefix", "{0}内切"), Input.Carrier.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"), LOCTEXT("Bang", "！"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Miss)
 			{
-				FText Narrative = LOCTEXT("CutDefenseFallback", "内切未能破门。");
+				FText Narrative = LOCTEXT("CutDefenseFallbackPrefix", "内切");
 				if (Input.Marker.HasPlayerFacingName())
 				{
 					Narrative = bCarrier
-						? FormatTwo(LOCTEXT("CutMarkerDefense", "{0}完成抢断，{1}的内切未能破门。"), Input.Marker.DisplayName, Input.Carrier.DisplayName)
-						: FormatOne(LOCTEXT("CutMarkerDefenseNoCarrier", "{0}完成抢断，内切未能破门。"), Input.Marker.DisplayName);
+						? FormatTwo(LOCTEXT("CutMarkerDefensePrefix", "{0}完成抢断，{1}的内切"), Input.Marker.DisplayName, Input.Carrier.DisplayName)
+						: FormatOne(LOCTEXT("CutMarkerDefenseNoCarrierPrefix", "{0}完成抢断，内切"), Input.Marker.DisplayName);
 					SetPerformer(Result, ERole::Marker, Input);
 				}
-				Complete(Result, ECategory::DefensiveSuccess,
-					LOCTEXT("CutDefenseTitle", "防守成功"), Narrative);
+				CompleteOutcome(Result, ECategory::DefensiveSuccess,
+					LOCTEXT("CutDefenseTitle", "防守成功"), Narrative, LOCTEXT("NotThrough", "未能破门"), LOCTEXT("Period", "。"));
 			}
 			return;
 		}
@@ -229,17 +233,17 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			if (Input.AuthorityOutcome == EOutcome::Goal)
 			{
-				Complete(Result, ECategory::Goal, LOCTEXT("CutDeadGoalTitle", "进球"),
-					bCarrier
-						? FormatOne(LOCTEXT("CutDeadGoal", "{0}内切射向死角破门！"), Input.Carrier.DisplayName)
-						: LOCTEXT("CutDeadGoalFallback", "内切射向死角破门！"));
+				CompleteOutcome(Result, ECategory::Goal, LOCTEXT("CutDeadGoalTitle", "进球"),
+					FormatOne(LOCTEXT("CutDeadPrefix", "{0}内切射向死角"), Input.Carrier.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"),
+					NSLOCTEXT("FMCodexOutcome", "Exclamation", "！"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Miss)
 			{
-				Complete(Result, ECategory::Miss, LOCTEXT("CutDeadMissTitle", "射门未进"),
-					bCarrier
-						? FormatOne(LOCTEXT("CutDeadMiss", "{0}内切射向死角未能得分。"), Input.Carrier.DisplayName)
-						: LOCTEXT("CutDeadMissFallback", "内切射向死角未能得分。"));
+				CompleteOutcome(Result, ECategory::Miss, LOCTEXT("CutDeadMissTitle", "射门未进"),
+					FormatOne(LOCTEXT("CutDeadPrefix", "{0}内切射向死角"), Input.Carrier.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "NoGoalKeyword", "未能得分"),
+					NSLOCTEXT("FMCodexOutcome", "Period", "。"));
 			}
 		}
 	}
@@ -254,25 +258,27 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		if (Input.AuthorityOutcome == EOutcome::Goal)
 		{
 			FText Narrative;
+			FText Keyword = LOCTEXT("GoalWord", "破门");
 			if (Input.Carrier.HasPlayerFacingName()
 				&& Input.Runner.HasPlayerFacingName())
 			{
 				Narrative = FText::Format(
-					LOCTEXT("PassControlGoal", "{0}与{1}完成{2}，{1}破门！"),
+					LOCTEXT("PassControlGoal", "{0}与{1}完成{2}，{1}"),
 					Input.Carrier.DisplayName, Input.Runner.DisplayName, Route);
 			}
 			else if (Input.Runner.HasPlayerFacingName())
 			{
 				Narrative = FormatTwo(
-					LOCTEXT("PassControlGoalRunner", "{0}完成{1}并破门！"),
+					LOCTEXT("PassControlGoalRunner", "{0}完成{1}并"),
 					Input.Runner.DisplayName, Route);
 			}
 			else
 			{
 				Narrative = FormatOne(
-					LOCTEXT("PassControlGoalFallback", "{0}形成进球！"), Route);
+					LOCTEXT("PassControlGoalFallbackPrefix", "{0}形成"), Route);
+				Keyword = LOCTEXT("ScoredWord", "进球");
 			}
-			Complete(Result, ECategory::Goal, LOCTEXT("PassControlGoalTitle", "进球"), Narrative);
+			CompleteOutcome(Result, ECategory::Goal, LOCTEXT("PassControlGoalTitle", "进球"), Narrative, Keyword, LOCTEXT("Bang", "！"));
 			return;
 		}
 
@@ -280,24 +286,27 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			const ERole Performer = SharedDefender(Input);
 			const FText AttackContext = PassControlAttackContext(Input, Route);
+			FText Keyword = LOCTEXT("StoppedWord", "化解");
 			FText Narrative = FormatOne(
-				LOCTEXT("PassControlDefenseFallback", "{0}被防守方化解。"),
+				LOCTEXT("PassControlDefenseFallback", "{0}被防守方"),
 				AttackContext);
 			if (Performer == ERole::Marker)
 			{
+				Keyword = LOCTEXT("TackledWord", "抢断");
 				Narrative = FormatTwo(
-					LOCTEXT("PassControlMarker", "{0}被{1}抢断。"),
+					LOCTEXT("PassControlMarker", "{0}被{1}"),
 					AttackContext, Input.Marker.DisplayName);
 			}
 			else if (Performer == ERole::Helper)
 			{
+				Keyword = LOCTEXT("InterceptedWord", "拦截");
 				Narrative = FormatTwo(
-					LOCTEXT("PassControlHelper", "{0}被{1}拦截。"),
+					LOCTEXT("PassControlHelper", "{0}被{1}"),
 					AttackContext, Input.Helper.DisplayName);
 			}
 			SetPerformer(Result, Performer, Input);
-			Complete(Result, ECategory::DefensiveSuccess,
-				LOCTEXT("PassControlDefenseTitle", "防守成功"), Narrative);
+			CompleteOutcome(Result, ECategory::DefensiveSuccess,
+				LOCTEXT("PassControlDefenseTitle", "防守成功"), Narrative, Keyword, LOCTEXT("Period", "。"));
 		}
 	}
 
@@ -307,9 +316,11 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			const FText Narrative = Input.Carrier.HasPlayerFacingName()
 				&& Input.Runner.HasPlayerFacingName()
-					? FormatTwo(LOCTEXT("CrossGoal", "{0}传中，{1}破门！"), Input.Carrier.DisplayName, Input.Runner.DisplayName)
-					: LOCTEXT("CrossGoalFallback", "传中形成进球！");
-			Complete(Result, ECategory::Goal, LOCTEXT("CrossGoalTitle", "进球"), Narrative);
+					? FormatTwo(LOCTEXT("CrossGoal", "{0}传中，{1}"), Input.Carrier.DisplayName, Input.Runner.DisplayName)
+					: LOCTEXT("CrossGoalFallback", "传中形成");
+			CompleteOutcome(Result, ECategory::Goal, LOCTEXT("CrossGoalTitle", "进球"), Narrative,
+				Input.Carrier.HasPlayerFacingName() && Input.Runner.HasPlayerFacingName()
+					? LOCTEXT("GoalWord", "破门") : LOCTEXT("ScoredWord", "进球"), LOCTEXT("Bang", "！"));
 			return;
 		}
 		if (Input.AuthorityOutcome != EOutcome::Miss)
@@ -318,21 +329,24 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		}
 
 		const ERole Performer = SharedDefender(Input);
-		FText Narrative = LOCTEXT("CrossDefenseFallback", "传中被防守方化解。");
+		FText Keyword = LOCTEXT("StoppedWord", "化解");
+		FText Narrative = LOCTEXT("CrossDefenseFallback", "传中被防守方");
 		if (Performer == ERole::Marker && Input.Carrier.HasPlayerFacingName())
 		{
-			Narrative = FormatTwo(LOCTEXT("CrossMarker", "{0}传中被{1}抢断。"),
+			Keyword = LOCTEXT("TackledWord", "抢断");
+			Narrative = FormatTwo(LOCTEXT("CrossMarker", "{0}传中被{1}"),
 				Input.Carrier.DisplayName, Input.Marker.DisplayName);
 		}
 		else if (Performer == ERole::Helper
 			&& Input.Runner.HasPlayerFacingName())
 		{
-			Narrative = FormatTwo(LOCTEXT("CrossHelper", "{0}抢点被{1}拦截。"),
+			Keyword = LOCTEXT("InterceptedWord", "拦截");
+			Narrative = FormatTwo(LOCTEXT("CrossHelper", "{0}抢点被{1}"),
 				Input.Runner.DisplayName, Input.Helper.DisplayName);
 		}
 		SetPerformer(Result, Performer, Input);
-		Complete(Result, ECategory::DefensiveSuccess,
-			LOCTEXT("CrossDefenseTitle", "防守成功"), Narrative);
+		CompleteOutcome(Result, ECategory::DefensiveSuccess,
+			LOCTEXT("CrossDefenseTitle", "防守成功"), Narrative, Keyword, LOCTEXT("Period", "。"));
 	}
 
 	void BuildFeet(const FInput& Input, FResult& Result)
@@ -341,9 +355,11 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			const FText Narrative = Input.Carrier.HasPlayerFacingName()
 				&& Input.Runner.HasPlayerFacingName()
-					? FormatTwo(LOCTEXT("FeetGoal", "{0}直塞，{1}破门！"), Input.Carrier.DisplayName, Input.Runner.DisplayName)
-					: LOCTEXT("FeetGoalFallback", "直塞形成进球！");
-			Complete(Result, ECategory::Goal, LOCTEXT("FeetGoalTitle", "进球"), Narrative);
+					? FormatTwo(LOCTEXT("FeetGoal", "{0}直塞，{1}"), Input.Carrier.DisplayName, Input.Runner.DisplayName)
+					: LOCTEXT("FeetGoalFallback", "直塞形成");
+			CompleteOutcome(Result, ECategory::Goal, LOCTEXT("FeetGoalTitle", "进球"), Narrative,
+				Input.Carrier.HasPlayerFacingName() && Input.Runner.HasPlayerFacingName()
+					? LOCTEXT("GoalWord", "破门") : LOCTEXT("ScoredWord", "进球"), LOCTEXT("Bang", "！"));
 			return;
 		}
 		if (Input.AuthorityOutcome != EOutcome::Miss)
@@ -352,32 +368,35 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		}
 
 		const ERole Performer = SharedDefender(Input);
-		FText Narrative = LOCTEXT("FeetDefenseFallback", "直塞被防守方化解。");
+		FText Keyword = LOCTEXT("StoppedWord", "化解");
+		FText Narrative = LOCTEXT("FeetDefenseFallback", "直塞被防守方");
 		if (Performer == ERole::Marker && Input.Carrier.HasPlayerFacingName())
 		{
-			Narrative = FormatTwo(LOCTEXT("FeetMarker", "{0}直塞被{1}抢断。"),
+			Keyword = LOCTEXT("TackledWord", "抢断");
+			Narrative = FormatTwo(LOCTEXT("FeetMarker", "{0}直塞被{1}"),
 				Input.Carrier.DisplayName, Input.Marker.DisplayName);
 		}
 		else if (Performer == ERole::Helper
 			&& Input.Runner.HasPlayerFacingName())
 		{
-			Narrative = FormatTwo(LOCTEXT("FeetHelper", "{0}前插被{1}拦截。"),
+			Keyword = LOCTEXT("InterceptedWord", "拦截");
+			Narrative = FormatTwo(LOCTEXT("FeetHelper", "{0}前插被{1}"),
 				Input.Runner.DisplayName, Input.Helper.DisplayName);
 		}
 		SetPerformer(Result, Performer, Input);
-		Complete(Result, ECategory::DefensiveSuccess,
-			LOCTEXT("FeetDefenseTitle", "防守成功"), Narrative);
+		CompleteOutcome(Result, ECategory::DefensiveSuccess,
+			LOCTEXT("FeetDefenseTitle", "防守成功"), Narrative, Keyword, LOCTEXT("Period", "。"));
 	}
 
 	void BuildBehindDefense(const FInput& Input, FResult& Result)
 	{
 		if (Input.AuthorityOutcome == EOutcome::OutOfPlay)
 		{
-			Complete(Result, ECategory::OutOfPlay,
-				LOCTEXT("OutOfPlayTitle", "传球出界"),
+			CompleteOutcome(Result, ECategory::OutOfPlay, LOCTEXT("OutOfPlayTitle", "传球出界"),
 				Input.Carrier.HasPlayerFacingName()
-					? FormatOne(LOCTEXT("BehindOut", "{0}直塞传出界外。"), Input.Carrier.DisplayName)
-					: LOCTEXT("BehindOutFallback", "身后球传出界外。"));
+					? FormatOne(LOCTEXT("BehindOutPrefix", "{0}直塞传"), Input.Carrier.DisplayName)
+					: LOCTEXT("BehindOutFallbackPrefix", "身后球传"),
+				LOCTEXT("OutWord", "出界外"), LOCTEXT("Period", "。"));
 			return;
 		}
 		if (Input.AuthorityOutcome == EOutcome::OneOnOneRequired)
@@ -396,38 +415,41 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		}
 
 		const ERole Performer = SharedDefender(Input);
-		FText Narrative = LOCTEXT("BehindDefenseFallback", "身后球被防守方化解。");
+		FText Keyword = LOCTEXT("StoppedWord", "化解");
+		FText Narrative = LOCTEXT("BehindDefenseFallback", "身后球被防守方");
 		if (Performer == ERole::Marker && Input.Carrier.HasPlayerFacingName())
 		{
-			Narrative = FormatTwo(LOCTEXT("BehindMarker", "{0}的身后球被{1}抢断。"),
+			Keyword = LOCTEXT("TackledWord", "抢断");
+			Narrative = FormatTwo(LOCTEXT("BehindMarker", "{0}的身后球被{1}"),
 				Input.Carrier.DisplayName, Input.Marker.DisplayName);
 		}
 		else if (Performer == ERole::Helper
 			&& Input.Runner.HasPlayerFacingName())
 		{
-			Narrative = FormatTwo(LOCTEXT("BehindHelper", "{0}前插被{1}拦截。"),
+			Keyword = LOCTEXT("InterceptedWord", "拦截");
+			Narrative = FormatTwo(LOCTEXT("BehindHelper", "{0}前插被{1}"),
 				Input.Runner.DisplayName, Input.Helper.DisplayName);
 		}
 		SetPerformer(Result, Performer, Input);
-		Complete(Result, ECategory::DefensiveStop,
-			LOCTEXT("BehindDefenseTitle", "进攻被阻断"), Narrative);
+		CompleteOutcome(Result, ECategory::DefensiveStop,
+			LOCTEXT("BehindDefenseTitle", "进攻被阻断"), Narrative, Keyword, LOCTEXT("Period", "。"));
 	}
 
 	void BuildAntiOffside(const FInput& Input, FResult& Result)
 	{
 		if (Input.AuthorityOutcome == EOutcome::Offside)
 		{
-			FText Narrative = LOCTEXT("AntiOffsideFallback", "反越位失败，被判越位。");
+			FText Narrative = LOCTEXT("AntiOffsideFallback", "反越位失败，被判");
 			if (Input.Carrier.HasPlayerFacingName()
 				&& Input.Runner.HasPlayerFacingName())
 			{
-				Narrative = FormatTwo(LOCTEXT("AntiOffside", "{0}送出直塞，{1}越位。"), Input.Carrier.DisplayName, Input.Runner.DisplayName);
+				Narrative = FormatTwo(LOCTEXT("AntiOffside", "{0}送出直塞，{1}"), Input.Carrier.DisplayName, Input.Runner.DisplayName);
 			}
 			else if (Input.Runner.HasPlayerFacingName())
 			{
-				Narrative = FormatOne(LOCTEXT("AntiOffsideNoCarrier", "{0}越位。"), Input.Runner.DisplayName);
+				Narrative = FormatOne(LOCTEXT("AntiOffsideNoCarrier", "{0}"), Input.Runner.DisplayName);
 			}
-			Complete(Result, ECategory::Offside, LOCTEXT("OffsideTitle", "越位"), Narrative);
+			CompleteOutcome(Result, ECategory::Offside, LOCTEXT("OffsideTitle", "越位"), Narrative, LOCTEXT("OffsideWord", "越位"), LOCTEXT("Period", "。"));
 			return;
 		}
 		if (Input.AuthorityOutcome != EOutcome::OneOnOneRequired)
@@ -456,25 +478,24 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			if (Input.AuthorityOutcome == EOutcome::Goal)
 			{
-				Complete(Result, ECategory::Goal, LOCTEXT("DirectGoalTitle", "进球"),
-					bRunner
-						? FormatOne(LOCTEXT("DirectGoal", "{0}单刀破门！"), Input.Runner.DisplayName)
-						: LOCTEXT("DirectGoalFallback", "单刀破门！"));
+				CompleteOutcome(Result, ECategory::Goal, LOCTEXT("DirectGoalTitle", "进球"),
+					FormatOne(LOCTEXT("DirectGoalPrefix", "{0}单刀"), Input.Runner.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"), LOCTEXT("Bang", "！"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Miss)
 			{
-				FText Narrative = LOCTEXT("DirectSaveFallback", "单刀射门被门将扑出！");
+				FText Narrative = LOCTEXT("DirectSaveFallback", "单刀射门被门将");
 				if (bRunner && Input.Goalkeeper.HasPlayerFacingName())
 				{
-					Narrative = FormatTwo(LOCTEXT("DirectSave", "{0}单刀射门被{1}扑出！"), Input.Runner.DisplayName, Input.Goalkeeper.DisplayName);
+					Narrative = FormatTwo(LOCTEXT("DirectSave", "{0}单刀射门被{1}"), Input.Runner.DisplayName, Input.Goalkeeper.DisplayName);
 				}
 				else if (Input.Goalkeeper.HasPlayerFacingName())
 				{
-					Narrative = FormatOne(LOCTEXT("DirectSaveNoRunner", "单刀射门被{0}扑出！"), Input.Goalkeeper.DisplayName);
+					Narrative = FormatOne(LOCTEXT("DirectSaveNoRunner", "单刀射门被{0}"), Input.Goalkeeper.DisplayName);
 				}
 				SetPerformer(Result, ERole::Goalkeeper, Input);
-				Complete(Result, ECategory::GoalkeeperSave,
-					LOCTEXT("DirectSaveTitle", "扑救成功"), Narrative);
+				CompleteOutcome(Result, ECategory::GoalkeeperSave,
+					LOCTEXT("DirectSaveTitle", "扑救成功"), Narrative, LOCTEXT("SavedWord", "扑出"), LOCTEXT("Bang", "！"));
 			}
 			return;
 		}
@@ -483,18 +504,17 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 		{
 			if (Input.AuthorityOutcome == EOutcome::Goal)
 			{
-				Complete(Result, ECategory::Goal, LOCTEXT("ChipGoalTitle", "进球"),
-					bRunner
-						? FormatOne(LOCTEXT("ChipGoal", "{0}挑射破门！"), Input.Runner.DisplayName)
-						: LOCTEXT("ChipGoalFallback", "挑射破门！"));
+				CompleteOutcome(Result, ECategory::Goal, LOCTEXT("ChipGoalTitle", "进球"),
+					FormatOne(LOCTEXT("ChipPrefix", "{0}挑射"), Input.Runner.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"),
+					NSLOCTEXT("FMCodexOutcome", "Exclamation", "！"));
 			}
 			else if (Input.AuthorityOutcome == EOutcome::Miss)
 			{
-				Complete(Result, ECategory::ChipMiss,
-					LOCTEXT("ChipMissTitle", "挑射未进"),
-					bRunner
-						? FormatOne(LOCTEXT("ChipMiss", "{0}挑射未能得分。"), Input.Runner.DisplayName)
-						: LOCTEXT("ChipMissFallback", "挑射未能得分。"));
+				CompleteOutcome(Result, ECategory::ChipMiss, LOCTEXT("ChipMissTitle", "挑射未进"),
+					FormatOne(LOCTEXT("ChipPrefix", "{0}挑射"), Input.Runner.DisplayName),
+					NSLOCTEXT("FMCodexOutcome", "NoGoalKeyword", "未能得分"),
+					NSLOCTEXT("FMCodexOutcome", "Period", "。"));
 			}
 		}
 	}
@@ -573,6 +593,8 @@ FFMCodexTacticalResolutionNarrativePresentationBuilder::Build(
 	default:
 		break;
 	}
+	if (Result.OutcomeText.Accent == EFMCodexOutcomeAccent::NoGoal && !Input.bAttackEnded)
+		Result.OutcomeText.Accent = EFMCodexOutcomeAccent::Neutral;
 	return Result;
 }
 

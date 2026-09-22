@@ -1,5 +1,6 @@
 #include "FMCodexThroughBallResolutionSurfaceWidget.h"
 #include "FMCodexMatchFlowPanel.h"
+#include "FMCodexOutcomePresentation.h"
 
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
@@ -216,6 +217,7 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("ThroughBallProductionHierarchy"));
 	Frame->AddChild(Body);
+	FMCodexOutcomePresentation::Build(*WidgetTree, *Body);
 
 	TitleText = MakeText(*WidgetTree, TEXT("ThroughBallProductionTitle"));
 	Style.ApplyText(*TitleText, EFMCodexPlayerUITextRole::Secondary);
@@ -235,8 +237,8 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 		StageBoxSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 8.0f));
 	}
 
-	DiceRevealRegion = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(), TEXT("ThroughBallInitialRouteRevealRegion"));
+	DiceRevealRegion = WidgetTree->ConstructWidget<UFMCodexMatchFlowPanel>(
+		UFMCodexMatchFlowPanel::StaticClass(), TEXT("ThroughBallInitialRouteRevealRegion"));
 	Style.ApplyBorder(
 		*DiceRevealRegion, EFMCodexPlayerUIColorRole::PanelInset,
 		FMargin(14.0f, 10.0f));
@@ -326,8 +328,8 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 		PromptBoxSlot->SetPadding(FMargin(0.0f, 4.0f, 0.0f, 0.0f));
 	}
 
-	ContinueButton = WidgetTree->ConstructWidget<UButton>(
-		UButton::StaticClass(), TEXT("ThroughBallPrimaryActionButton"));
+	ContinueButton = WidgetTree->ConstructWidget<UFMCodexMatchFlowButton>(
+		UFMCodexMatchFlowButton::StaticClass(), TEXT("ThroughBallPrimaryActionButton"));
 	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
 	UTextBlock* ContinueText = MakeText(
 		*WidgetTree, TEXT("ThroughBallPrimaryActionButtonLabel"));
@@ -361,12 +363,31 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 	SetVisibility(Presentation.bVisible
 		? ESlateVisibility::SelfHitTestInvisible
 		: ESlateVisibility::Collapsed);
-	// Only the embedded arithmetic consumer adopts the shared Tier 2 shell.
-	// Outcome-only/choice modes recover their existing appearance on reuse.
+	// Restore the original non-outcome composition on every reuse.
 	const bool bFormulaHost = Presentation.Formula.bVisible && Presentation.Formula.bShowFormulaRows;
+	const bool bOutcomeFamily = Presentation.bVisible && !Presentation.Formula.bVisible
+		&& (Presentation.bNarrativeAvailable || (Presentation.bDiceRevealVisible && Presentation.Stage != EFMCodexUMGThroughBallStage::InitialRoute));
+	const bool bOutcome = bOutcomeFamily && FMCodexOutcomePresentation::IsFinalReady(Presentation.bNarrativeAvailable, Presentation.bDiceRevealVisible);
+	const bool bEmbeddedOutcome = FMCodexOutcomePresentation::OwnsInlineSurface(Presentation.Formula);
 	CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("ThroughBallProductionSurfaceFrame")))
-		->SetFlowStyleEnabled(bFormulaHost);
+		->SetFlowStyleEnabled(bFormulaHost || bOutcomeFamily || bEmbeddedOutcome);
+	CastChecked<UFMCodexMatchFlowPanel>(DiceRevealRegion)->SetFormulaRole(
+		bOutcomeFamily || bEmbeddedOutcome ? EFMCodexFormulaPanelRole::RollHost : EFMCodexFormulaPanelRole::None);
 	const auto& Style = FFMCodexPlayerUIStyle::Get();
+	auto* Frame = CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("ThroughBallProductionSurfaceFrame")));
+	auto* Bounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("ThroughBallProductionSurfaceBounds")));
+	Frame->SetPadding(FMargin(22, 16));
+	Bounds->SetMinDesiredWidth(520.f);
+	TitleText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	CastChecked<UFMCodexMatchFlowButton>(ContinueButton)->SetFlowStyleEnabled(false);
+	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
+	auto* ContinueBounds = CastChecked<USizeBox>(ContinueButton->GetParent());
+	ContinueBounds->ClearMinDesiredHeight();
+	ContinueBounds->SetWidthOverride(180.f);
+	ContinueBounds->SetHeightOverride(42.f);
+	auto* ContinueLabel = CastChecked<UTextBlock>(ContinueButton->GetChildAt(0));
+	Style.ApplyText(*ContinueLabel, EFMCodexPlayerUITextRole::Body);
+	ContinueLabel->SetAutoWrapText(false);
 	Style.ApplyText(*StageText, EFMCodexPlayerUITextRole::ActionTitle);
 	StageText->SetAutoWrapText(bFormulaHost);
 	if (bFormulaHost) Style.ApplyFlowText(*StageText, 24);
@@ -408,6 +429,29 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 		Label->SetText(FText::FromString(
 			Presentation.PrimaryAction.Action.Label));
 	}
+	FMCodexOutcomePresentation::RefreshIntermediate(*WidgetTree, bOutcomeFamily && Presentation.bDiceRevealVisible,
+		FMCodexOutcomePresentation::JoinContext({Presentation.TitleLabel, Presentation.RouteLabel, Presentation.StageLabel}), Presentation.OutcomeRollDetail);
+	FMCodexOutcomePresentation::Refresh(*WidgetTree, bOutcome,
+		Presentation.NarrativeHeadline.IsEmpty() ? Presentation.ResultTitle : Presentation.NarrativeHeadline,
+		FMCodexOutcomePresentation::JoinContext({Presentation.TitleLabel, Presentation.RouteLabel, Presentation.StageLabel, Presentation.ResultTitle}),
+		Presentation.RouteResultLabel,
+		Presentation.OutcomeRollHint.bVisible ? Presentation.OutcomeRollHint.DisplayLabel : FString(),
+		ContinueButton->GetParent()->GetVisibility() != ESlateVisibility::Collapsed || !OneOnOneChoiceWidgets.IsEmpty(),
+		Presentation.OutcomeText);
+	if (bOutcomeFamily || bEmbeddedOutcome) FMCodexOutcomePresentation::ApplyFrameStyle(*Frame, *Bounds);
+	if (bOutcomeFamily || bEmbeddedOutcome)
+	{
+		UWidget* Hidden[] = {TitleText, RouteText, StageText, ResultTitleText, NarrativeText, OutcomeHintText};
+		for (auto* Item : Hidden) Item->SetVisibility(ESlateVisibility::Collapsed);
+		// The embedded result has its own detail; outer route context is retained.
+		if (bOutcomeFamily)
+		{
+			RouteResultText->SetVisibility(ESlateVisibility::Collapsed);
+			if (!Presentation.bDiceRevealVisible) DiceRevealRegion->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+	if (bOutcome) FMCodexOutcomePresentation::ApplyActionStyle(*ContinueButton);
+	if (bOutcomeFamily && !bOutcome) ContinueButton->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void UFMCodexThroughBallResolutionSurfaceWidget::RebuildOneOnOneChoices()

@@ -1975,3 +1975,147 @@ HEAD confirmation; staging and commit remain user-owned.
 - Phase A produces the ignored approved inventory. Phase B starts only after the
   user manually stages and explicitly replies “已暂存，继续 Phase B”; it compares the
   actual staged blobs with that approved snapshot without rewriting the baseline.
+
+## 2026-09-21 — Stage 8.7E non-formula outcome family implementation (HISTORICAL — implementation checkpoint)
+
+Historical status below was PENDING USER PIE at implementation. The combined
+2026-09-22 acceptance entry supersedes that status and any earlier candidate rule.
+
+The user authorizes a family-wide presentation migration from clean `main` at
+`1845a4971a7c07ad7ca4b07bae8ad2dd5defbb8c`, confirming Stage 8.7D CLOSED.
+Discovery precedes implementation; the ignored Stage8_7E coverage inventory tracks
+all identified consumers and explicit deferred/evidence-needed dispositions.
+
+One shared outcome composition serves Inline Resolution, LongShot/CutInside and
+ThroughBall when their existing safe presentation exposes a non-formula narrative.
+Full canonical prose remains the primary conclusion, context stays secondary,
+revealed detail is an optional compact strip, and the original CTA receives the
+shared blue style. No string-based classification, keeper-save inference, success
+palette, RNG, score, phase, next-action ownership or reveal lifecycle changes.
+
+Formula-linked results remain accepted under 8.7C/C.1. Recovery/short notifications,
+AP1/ejection and Full-Time are deferred; exceptional early-end and legacy fallback
+runtime coverage remains explicitly incomplete. Card State and player art are frozen.
+The existing Narrative v1 OneOnOne Direct keeper wording is a pre-existing accepted
+Formula presentation policy, not a new inferred cause introduced by this stage.
+
+Verification is limited to shared outcome content/reuse, directly affected host
+contracts, accepted Formula isolation, incremental Editor build and one real Long
+Free Kick Power PIE path; other content shapes use fixtures. Technical evidence
+does not replace foreground USER PIE. No staging, commit or automatic closeout.
+
+**VISUAL SPEC SYNC CANDIDATE: YES**, after explicit acceptance: extend the existing
+Formula-only prose/context/detail result rule to this accepted non-formula family
+and record optional-region reuse. Current long-term spec remains unchanged and
+this implementation remains **PENDING USER PIE**.
+
+Final scope audit found that no-row `SetPiece.Opposed` also carries exceptional
+no-taker/system terminals. That entire mode, including no-row Corner outcomes,
+keeps its prior appearance and is tracked as NEEDS EVIDENCE. The widget excludes
+the stable mode ID without parsing text or inventing a new authority fact.
+
+
+## 2026-09-21 — Stage 8.7E.1 outcome feedback repair (HISTORICAL — implementation checkpoint)
+
+Historical status below was PENDING USER PIE at implementation. The combined
+2026-09-22 acceptance entry supersedes that status and any earlier candidate rule.
+
+User feedback requests keyword emphasis, natural paired-roll detail and removal
+of transient old result hosts. This continues the existing 8.7E worktree; feedback
+is not acceptance, and Recovery/Notification, AP1 and Full-Time remain deferred.
+
+The flash is a presentation ownership gap: narrative becomes visible inside the
+existing ResultHold interval, but the initial outcome style required the reel to
+be absent. All covered Inline/LongShot/ThroughBall consumers now retain the family
+shell during this interval and replace old prose at the existing narrative gate.
+The reel, elapsed-time clocks, input/score reveal, typed action and terminal handoff
+contracts do not change. No timer, hidden-opacity period or gameplay wait is added.
+
+Typed prefix/keyword/suffix are authored where covered canonical outcome text is
+generated, from existing outcome decisions/Goal facts. Joined sentences preserve
+canonical content. Goal mint and NoGoal amber are local keyword accents only;
+neutral progression stays neutral, gold stays numeric, and CTA stays blue. Pair
+detail uses structured disclosed dice and one natural Chinese formatter. No text
+parsing, gameplay result reconstruction or new keeper-save inference is permitted.
+
+These are **candidate** visual rules, pending foreground USER PIE. The locked
+Match Flow rulebook is unchanged now. On accepted closeout, synchronize genuinely
+new long-term rules there; token tuning alone should not churn the rulebook.
+Verification remains focused on these contracts and directly touched consumers,
+with an incremental Editor/UHT build and at most one real Long FK Power PIE path.
+No staging, commit, automatic closeout or broad gameplay/network regression.
+
+
+## 2026-09-21 — Stage 8.7E.2 Option A and terminal outcome semantics (HISTORICAL — implementation checkpoint)
+
+Historical status below was PENDING USER PIE at implementation. The combined
+2026-09-22 acceptance entry supersedes that status and any earlier candidate rule.
+
+The user chose neutral intermediate content during Roll/ResultHold. This replaces
+E.1's immediate full headline inside ResultHold without changing the existing
+reel clock or safe disclosure/score gate. The family shell remains continuous;
+only the local content owner switches from neutral context/status/detail/reel to
+final sentence/context/detail/CTA after that reel ends. No new wait or timer.
+
+A typed terminal fact qualifies the orange attack-end-without-goal family, including
+Offside/OutOfPlay/defense success. Progress and opportunity creation stay neutral.
+Canonical authored sentence fragments supply keyword spans; Formula-linked final
+headlines use the same renderer. Formula body geometry, gameplay, numeric gold,
+keeper policy, identity/dedupe and original action handlers are unchanged.
+
+The text reading column now gives primary/context the same actual horizontal
+allocation. Focused geometry checks cover short and wrapped text at two widths.
+These remain candidate rules pending foreground USER PIE; the locked visual spec
+is not edited. Technical verification is bounded to focused/affected tests,
+incremental Editor/UHT build, four fixture captures and one Long FK Power real PIE
+path with two captures. No staging, commit, full regression or acceptance closeout.
+
+
+## 2026-09-22 — Stage 8.7E / 8.7E.1 / 8.7E.2 USER PIE acceptance and Phase A closeout
+
+The user explicitly confirms “我看了下都没问题了”. The combined Outcome family
+scope is **USER PIE ACCEPTED — ready for manual staging**, with no further visual
+polish authorized by this closeout. It is not CLOSED until the user's manual
+commit and clean HEAD confirmation. Baseline remains main at
+`1845a4971a7c07ad7ca4b07bae8ad2dd5defbb8c`.
+
+Accepted behavior includes the complete canonical result hierarchy, restrained
+Goal / attack-ended-without-goal keyword semantics, natural disclosed pair detail,
+shared visual center, and continuous single-owner Roll-to-Outcome composition.
+E.2 Option A supersedes E.1's final headline during ResultHold: intermediate content
+stays neutral until the existing reel finishes. Formula-linked final headlines
+share this family while their accepted Formula body remains unchanged.
+
+**VISUAL SPEC UPDATE REQUIRED: YES — synchronized.** The prior rulebook limited
+result hierarchy to Formula and lacked these accepted Outcome semantics. Long-term
+rules now live in [Match Flow §14.1](UI/MatchFlow_Visual_Language_v1.md#outcome-result-family),
+with numeric/semantic color separation in §4 and Option A/owner continuity in §17.
+[Outcome layout](UI/PlayerFacing_MatchScreen_Layout_v1.md#outcome-family-accepted)
+records geometry and host relationships without duplicating the art specification.
+Current implementation sizes and colors are not immutable design constants.
+
+Cumulative E/E.1/E.2 audit preserves canonical Goal/NoGoal, Offside/OutOfPlay and
+keeper wording policies. In particular, Narrative v1's existing OneOnOne Direct
+keeper exception remains a presentation policy, not a new inferred Save outcome.
+No changes to rules, RNG, score, phase, next action, Authority, typed intents,
+Networking/RPC/replication, identity/dedupe or existing reveal/ResultHold clocks.
+Original CTA handlers remain in their hosts; no added gameplay wait.
+
+The ignored consumer inventory retains NEEDS EVIDENCE for no-row SetPiece.Opposed,
+exceptional early-end and compatibility feedback; Notification/Recovery,
+AP1/ejection and Full-Time stay deferred. This accepts the approved Outcome scope,
+not every game UI surface or every rare runtime branch.
+
+Phase A freezes all 13 production/test files byte-for-byte against the verified
+E.2 snapshot. Prior latest results are reused: 16 focused/affected checks, one real
+Long Free Kick Power PIE path, and incremental Editor build verification. Fixture
+captures are not real path executions; technical evidence and the user's foreground
+acceptance remain separate. No build, automation or PIE is rerun for docs-only
+closeout; broad suites, Host/Remote, cook and packaging have no newly affected
+contract. **REGRESSION SCOPE JUSTIFIED: YES.**
+
+Approval artifacts under ignored `Saved/Stage8_7E_2/FinalCloseout/` record the exact
+paths and accepted content hashes. Staging/commit remain manual. Phase B begins
+only after the user stages this snapshot and replies “已暂存，继续 Phase B”; it
+must compare staged blobs to this approval without regenerating it. No automatic
+commit or CLOSED status is granted by either pre-commit verification phase.

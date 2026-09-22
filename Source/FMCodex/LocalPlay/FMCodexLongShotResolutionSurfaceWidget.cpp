@@ -1,5 +1,6 @@
 #include "FMCodexLongShotResolutionSurfaceWidget.h"
 #include "FMCodexMatchFlowPanel.h"
+#include "FMCodexOutcomePresentation.h"
 
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexInteractionOptionWidget.h"
@@ -204,6 +205,7 @@ void UFMCodexLongShotResolutionSurfaceWidget::BuildWidgetTree()
 	UVerticalBox* Body = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("LongShotProductionHierarchy"));
 	Frame->AddChild(Body);
+	FMCodexOutcomePresentation::Build(*WidgetTree, *Body);
 
 	ActionPrompt = MakeText(*WidgetTree, TEXT("CentralActionPrompt"));
 	Style.ApplyText(*ActionPrompt, EFMCodexPlayerUITextRole::Secondary);
@@ -231,8 +233,8 @@ void UFMCodexLongShotResolutionSurfaceWidget::BuildWidgetTree()
 	Style.ApplyText(*HintText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToVerticalBox(HintText);
 
-	DiceRevealRegion = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(), TEXT("LongShotDiceRevealRegion"));
+	DiceRevealRegion = WidgetTree->ConstructWidget<UFMCodexMatchFlowPanel>(
+		UFMCodexMatchFlowPanel::StaticClass(), TEXT("LongShotDiceRevealRegion"));
 	Style.ApplyBorder(*DiceRevealRegion, EFMCodexPlayerUIColorRole::PanelInset,
 		FMargin(14.0f, 10.0f));
 	UVerticalBox* DiceBody = WidgetTree->ConstructWidget<UVerticalBox>(
@@ -265,8 +267,8 @@ void UFMCodexLongShotResolutionSurfaceWidget::BuildWidgetTree()
 	Style.ApplyText(*StatusText, EFMCodexPlayerUITextRole::Secondary);
 	Body->AddChildToVerticalBox(StatusText);
 
-	ContinueButton = WidgetTree->ConstructWidget<UButton>(
-		UButton::StaticClass(), TEXT("LongShotPrimaryActionButton"));
+	ContinueButton = WidgetTree->ConstructWidget<UFMCodexMatchFlowButton>(
+		UFMCodexMatchFlowButton::StaticClass(), TEXT("LongShotPrimaryActionButton"));
 	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
 	UTextBlock* ContinueText = MakeText(
 		*WidgetTree, TEXT("LongShotPrimaryActionButtonLabel"));
@@ -321,12 +323,31 @@ void UFMCodexLongShotResolutionSurfaceWidget::RefreshVisuals(
 	}
 	SetVisibility(Presentation.bVisible
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
-	// Only the embedded arithmetic consumer adopts the shared Tier 2 shell.
-	// Outcome-only/choice modes recover their existing appearance on reuse.
+	// Restore the original non-outcome composition on every reuse.
 	const bool bFormulaHost = Presentation.Formula.bVisible && Presentation.Formula.bShowFormulaRows;
+	const bool bOutcomeFamily = Presentation.bVisible && !Presentation.Formula.bVisible
+		&& (Presentation.bNarrativeAvailable || (Presentation.bDiceRevealVisible));
+	const bool bOutcome = bOutcomeFamily && FMCodexOutcomePresentation::IsFinalReady(Presentation.bNarrativeAvailable, Presentation.bDiceRevealVisible);
+	const bool bEmbeddedOutcome = FMCodexOutcomePresentation::OwnsInlineSurface(Presentation.Formula);
 	CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("LongShotProductionSurfaceFrame")))
-		->SetFlowStyleEnabled(bFormulaHost);
+		->SetFlowStyleEnabled(bFormulaHost || bOutcomeFamily || bEmbeddedOutcome);
+	CastChecked<UFMCodexMatchFlowPanel>(DiceRevealRegion)->SetFormulaRole(
+		bOutcomeFamily ? EFMCodexFormulaPanelRole::RollHost : EFMCodexFormulaPanelRole::None);
 	const auto& Style = FFMCodexPlayerUIStyle::Get();
+	auto* Frame = CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("LongShotProductionSurfaceFrame")));
+	auto* Bounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("LongShotProductionSurfaceBounds")));
+	Frame->SetPadding(FMargin(22, 16));
+	Bounds->SetMinDesiredWidth(520.f);
+	TitleText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	CastChecked<UFMCodexMatchFlowButton>(ContinueButton)->SetFlowStyleEnabled(false);
+	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
+	auto* ContinueBounds = CastChecked<USizeBox>(ContinueButton->GetParent());
+	ContinueBounds->ClearMinDesiredHeight();
+	ContinueBounds->SetWidthOverride(190.f);
+	ContinueBounds->SetHeightOverride(42.f);
+	auto* ContinueLabel = CastChecked<UTextBlock>(ContinueButton->GetChildAt(0));
+	Style.ApplyText(*ContinueLabel, EFMCodexPlayerUITextRole::Body);
+	ContinueLabel->SetAutoWrapText(false);
 	Style.ApplyText(*StageText, EFMCodexPlayerUITextRole::ActionTitle);
 	StageText->SetAutoWrapText(bFormulaHost);
 	if (bFormulaHost) Style.ApplyFlowText(*StageText, 24);
@@ -362,4 +383,25 @@ void UFMCodexLongShotResolutionSurfaceWidget::RefreshVisuals(
 	ContinueButton->GetParent()->SetVisibility(
 		Presentation.PrimaryAction.bVisible
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	FMCodexOutcomePresentation::RefreshIntermediate(*WidgetTree, bOutcomeFamily && Presentation.bDiceRevealVisible,
+		FMCodexOutcomePresentation::JoinContext({Presentation.TitleLabel, Presentation.BranchLabel}), Presentation.OutcomeRollDetail);
+	FMCodexOutcomePresentation::Refresh(*WidgetTree, bOutcome,
+		Presentation.NarrativeHeadline.IsEmpty() ? Presentation.ResultTitle : Presentation.NarrativeHeadline,
+		FMCodexOutcomePresentation::JoinContext({Presentation.TitleLabel, Presentation.BranchLabel, Presentation.ResultTitle}),
+		Presentation.OutcomeRollDetail, Presentation.OutcomeHintLabel,
+		Presentation.PrimaryAction.bVisible, Presentation.OutcomeText);
+	if (bOutcomeFamily || bEmbeddedOutcome) FMCodexOutcomePresentation::ApplyFrameStyle(*Frame, *Bounds);
+	if (bOutcomeFamily || bEmbeddedOutcome)
+	{
+		UWidget* Hidden[] = {TitleText, BranchText, StageText, HintText, ResultTitleText, NarrativeText};
+		for (auto* Item : Hidden) Item->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (bEmbeddedOutcome || (bOutcome && !Presentation.bDiceRevealVisible))
+		DiceRevealRegion->SetVisibility(ESlateVisibility::Collapsed);
+	if (bOutcomeFamily)
+	{
+		PairedRollText->SetVisibility(ESlateVisibility::Collapsed);
+		if (bOutcome) FMCodexOutcomePresentation::ApplyActionStyle(*ContinueButton);
+		else ContinueButton->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }

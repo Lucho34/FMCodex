@@ -1058,8 +1058,18 @@ namespace FMCodexLocalMatchUMGPresentation
 		const FFMCodexLocalMatchInteractionView& InteractionView,
 		const bool bCompactMethod,
 		const FString& MethodLabel,
-		const FString& ResultTitle)
+		const FString& ResultTitle,
+		FFMCodexOutcomeText& OutcomeText)
 	{
+		auto Sentence = [&](const FText& Prefix, const FText& Keyword, const FText& Suffix)
+		{
+			OutcomeText = FFMCodexOutcomeText(Prefix, Keyword, Suffix,
+				InteractionView.bSetPieceGoal ? EFMCodexOutcomeAccent::Goal
+					: InteractionView.bTerminalPendingAdvance ? EFMCodexOutcomeAccent::NoGoal : EFMCodexOutcomeAccent::Neutral);
+			return OutcomeText.ToText().ToString();
+		};
+		const FText Period = NSLOCTEXT("FMCodexOutcome", "Period", "。");
+		const FText Bang = NSLOCTEXT("FMCodexOutcome", "Exclamation", "！");
 		if (InteractionView.SetPieceType == ESetPieceSelectedType::Corner)
 		{
 			if (InteractionView.CornerAttackerNominees.IsEmpty() && !InteractionView.bSetPieceGoal)
@@ -1068,7 +1078,8 @@ namespace FMCodexLocalMatchUMGPresentation
 				? FText::FromString(PlayerFacingName(InteractionView, InteractionView.CornerRunner.OwnerSide,
 					InteractionView.CornerRunner.CardId)) : FText::GetEmpty();
 			if (InteractionView.bSetPieceGoal)
-				return FText::Format(NSLOCTEXT("FMCodexCorner", "GoalEvent", "{0}角球破门！"), AttackerName).ToString();
+				return Sentence(FText::Format(NSLOCTEXT("FMCodexCorner", "GoalPrefix", "{0}角球"), AttackerName),
+					NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"), Bang);
 			// Aggregate NoGoal proves neither a save nor a shot wide. Name the
 			// actual attacker and known route without inventing a finishing event.
 			const FText Route = InteractionView.CornerActualRoute == EMatchPlayCornerRouteIntent::High
@@ -1076,9 +1087,9 @@ namespace FMCodexLocalMatchUMGPresentation
 				: InteractionView.CornerActualRoute == EMatchPlayCornerRouteIntent::Low
 					? NSLOCTEXT("FMCodexCorner", "LowAttack", "低平球攻门")
 					: NSLOCTEXT("FMCodexCorner", "CornerAttack", "角球攻门");
-			return AttackerName.IsEmpty()
-				? FText::Format(NSLOCTEXT("FMCodexCorner", "UnnamedNoGoalEvent", "{0}未能得分。"), Route).ToString()
-				: FText::Format(NSLOCTEXT("FMCodexCorner", "NoGoalEvent", "{0}的{1}未能得分。"), AttackerName, Route).ToString();
+			return Sentence(AttackerName.IsEmpty() ? Route
+				: FText::Format(NSLOCTEXT("FMCodexCorner", "NoGoalPrefix", "{0}的{1}"), AttackerName, Route),
+				NSLOCTEXT("FMCodexOutcome", "NoGoalKeyword", "未能得分"), Period);
 		}
 		if (!InteractionView.SetPieceCarrier.bIsBound)
 		{
@@ -1098,75 +1109,67 @@ namespace FMCodexLocalMatchUMGPresentation
 			? FString()
 			: PlayerFacingName(InteractionView, Defender, Goalkeeper->CardId);
 
+		if (bCompactMethod)
+		{
+			FText Prefix, Keyword;
+			const bool bGoal = InteractionView.bSetPieceGoal;
+			switch (InteractionView.SetPieceType)
+			{
+			case ESetPieceSelectedType::ShortFreeKick:
+				Prefix = FText::Format(NSLOCTEXT("FMCodexOutcome", "ShortCombinationPrefix", "{0}近距离任意球战术配合"), FText::FromString(Taker));
+				Keyword = bGoal ? NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门")
+					: NSLOCTEXT("FMCodexOutcome", "CombinationNoGoal", "未能形成进球");
+				break;
+			case ESetPieceSelectedType::LongFreeKick:
+				Prefix = FText::Format(NSLOCTEXT("FMCodexOutcome", "LongPowerPrefix", "{0}{1}{2}"),
+					FText::FromString(Taker), FFMCodexPlayerUIPresentationText::SetPieceName(InteractionView.SetPieceType),
+					FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage());
+				Keyword = bGoal ? NSLOCTEXT("FMCodexOutcome", "PowerGoal", "得手")
+					: NSLOCTEXT("FMCodexOutcome", "NoGoalKeyword", "未能得分");
+				break;
+			case ESetPieceSelectedType::Penalty:
+				Prefix = FText::Format(NSLOCTEXT("FMCodexOutcome", "PanenkaPrefix", "{0}勺子点球"), FText::FromString(Taker));
+				Keyword = bGoal ? NSLOCTEXT("FMCodexOutcome", "PenaltyGoal", "命中")
+					: NSLOCTEXT("FMCodexOutcome", "PenaltyNoGoal", "未能命中");
+				break;
+			default: break;
+			}
+			if (!Keyword.IsEmpty())
+			{
+				OutcomeText = FFMCodexOutcomeText(Prefix, Keyword,
+					bGoal ? NSLOCTEXT("FMCodexOutcome", "Exclamation", "！") : NSLOCTEXT("FMCodexOutcome", "Period", "。"),
+					bGoal ? EFMCodexOutcomeAccent::Goal : EFMCodexOutcomeAccent::NoGoal);
+				return OutcomeText.ToText().ToString();
+			}
+		}
+
 		switch (InteractionView.SetPieceType)
 		{
 		case ESetPieceSelectedType::ShortFreeKick:
 			if (InteractionView.bSetPieceGoal)
-			{
-				return bCompactMethod
-					? FString::Printf(
-						TEXT("%s近距离任意球战术配合破门！"), *Taker)
-					: FString::Printf(
-						TEXT("%s近距离任意球直接破门！"), *Taker);
-			}
-			if (bCompactMethod)
-			{
-				return FString::Printf(
-					TEXT("%s近距离任意球战术配合未能形成进球。"), *Taker);
-			}
+				return Sentence(FText::FromString(Taker + TEXT("近距离任意球直接")), NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"), Bang);
 			return !GoalkeeperName.IsEmpty()
-				? FString::Printf(TEXT("%s近距离任意球被%s扑出！"),
-					*Taker, *GoalkeeperName)
-				: FString::Printf(TEXT("%s近距离任意球未能破门。"), *Taker);
-
+				? Sentence(FText::FromString(Taker + TEXT("近距离任意球被") + GoalkeeperName), NSLOCTEXT("FMCodexOutcome", "KeeperStopped", "扑出"), Bang)
+				: Sentence(FText::FromString(Taker + TEXT("近距离任意球")), NSLOCTEXT("FMCodexOutcome", "NotThrough", "未能破门"), Period);
 		case ESetPieceSelectedType::LongFreeKick:
 		{
-			const FText Name = FFMCodexPlayerUIPresentationText::SetPieceName(
-				InteractionView.SetPieceType);
-			const FText Player = FText::FromString(Taker);
-			if (bCompactMethod)
-			{
-				return FText::Format(InteractionView.bSetPieceGoal
-					? NSLOCTEXT("FMCodexSetPiece", "LongPowerGoal", "{0}{1}{2}得手！")
-					: NSLOCTEXT("FMCodexSetPiece", "LongPowerMiss", "{0}{1}{2}未能得分。"),
-					Player, Name, FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage()).ToString();
-			}
+			const FString Prefix = Taker + FFMCodexPlayerUIPresentationText::SetPieceName(InteractionView.SetPieceType).ToString();
 			if (InteractionView.bSetPieceGoal)
-			{
-				return FText::Format(NSLOCTEXT("FMCodexSetPiece", "LongDirectGoal", "{0}{1}直接破门！"),
-					Player, Name).ToString();
-			}
+				return Sentence(FText::FromString(Prefix + TEXT("直接")), NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"), Bang);
 			if (!InteractionView.bHasSetPieceFormula)
-			{
-				return FText::Format(NSLOCTEXT("FMCodexSetPiece", "LongDirectWide",
-					"{0}{1}直接射偏。"), Player, Name).ToString();
-			}
+				return Sentence(FText::FromString(Prefix + TEXT("直接")), NSLOCTEXT("FMCodexOutcome", "ShotWide", "射偏"), Period);
 			return !GoalkeeperName.IsEmpty()
-				? FText::Format(NSLOCTEXT("FMCodexSetPiece", "LongDirectStopped",
-					"{0}{1}被{2}化解。"), Player, Name, FText::FromString(GoalkeeperName)).ToString()
-				: FText::Format(NSLOCTEXT("FMCodexSetPiece", "LongDirectMiss",
-					"{0}{1}未能破门。"), Player, Name).ToString();
+				? Sentence(FText::FromString(Prefix + TEXT("被") + GoalkeeperName), NSLOCTEXT("FMCodexOutcome", "Stopped", "化解"), Period)
+				: Sentence(FText::FromString(Prefix), NSLOCTEXT("FMCodexOutcome", "NotThrough", "未能破门"), Period);
 		}
-
 		case ESetPieceSelectedType::Penalty:
 			if (InteractionView.bSetPieceGoal)
-			{
-				return bCompactMethod
-					? FString::Printf(TEXT("%s勺子点球命中！"), *Taker)
-					: FString::Printf(TEXT("%s主罚点球命中！"), *Taker);
-			}
-			if (bCompactMethod)
-			{
-				return FString::Printf(TEXT("%s勺子点球未能命中。"), *Taker);
-			}
+				return Sentence(FText::FromString(Taker + TEXT("主罚点球")), NSLOCTEXT("FMCodexOutcome", "PenaltyGoal", "命中"), Bang);
 			return !GoalkeeperName.IsEmpty()
-				? FString::Printf(TEXT("%s点球被%s扑出！"),
-					*Taker, *GoalkeeperName)
-				: FString::Printf(TEXT("%s点球未能命中。"), *Taker);
-
+				? Sentence(FText::FromString(Taker + TEXT("点球被") + GoalkeeperName), NSLOCTEXT("FMCodexOutcome", "KeeperStopped", "扑出"), Bang)
+				: Sentence(FText::FromString(Taker + TEXT("点球")), NSLOCTEXT("FMCodexOutcome", "PenaltyNoGoal", "未能命中"), Period);
 		default:
-			return FString::Printf(TEXT("%s · %s"),
-				*MethodLabel, *ResultTitle);
+			return FString::Printf(TEXT("%s · %s"), *MethodLabel, *ResultTitle);
 		}
 	}
 
@@ -1291,6 +1294,7 @@ namespace FMCodexLocalMatchUMGPresentation
 		const FString MethodLabel = SetPieceContestLabel(
 			InteractionView, bCompactMethod);
 		Result.ContestLabel = MethodLabel;
+		Result.ResolutionContextLabel = MethodLabel;
 		Result.bShowFormulaRows = bOpposed;
 		Result.bShowAttackRow = bOpposed;
 		Result.bShowDefenseRow = bOpposed
@@ -1338,7 +1342,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.ResultTitle = InteractionView.bSetPieceGoal ? TEXT("进球") : TEXT("未进球");
 			Result.NarrativeHeadline = SetPieceTerminalSupportLine(
 				InteractionView, bCompactMethod, MethodLabel,
-				Result.ResultTitle);
+				Result.ResultTitle, Result.OutcomeText);
 			Result.ResultSubtitle = MethodLabel;
 			Result.ContestLabel = Result.NarrativeHeadline;
 			Result.StatusLabel = FString::Printf(TEXT("%s · %s"), *MethodLabel, *Result.ResultTitle);
@@ -1362,6 +1366,9 @@ namespace FMCodexLocalMatchUMGPresentation
 		}
 		else if (InteractionView.bHasSetPiecePairedD6)
 		{
+			Result.OutcomeRollDetail = InteractionView.SetPieceType == ESetPieceSelectedType::Penalty
+				? FString() : FMCodexOutcomeText::PairedRollDetail(
+					InteractionView.SetPiecePairedD6A, InteractionView.SetPiecePairedD6B).ToString();
 			Result.RouteResultLabel = InteractionView.SetPieceType
 				== ESetPieceSelectedType::Penalty
 					? FString::Printf(TEXT("掷点结果：%d"),
@@ -1722,6 +1729,7 @@ namespace FMCodexLocalMatchUMGPresentation
 		Result.ContestId = Contest->ContestId;
 		Result.ContestLabel = FFMCodexPlayerUIPresentationText
 			::ResolutionContest(Contest->ContestId).ToString();
+		Result.ResolutionContextLabel = Result.ContestLabel;
 		Result.AttackRow = BuildFormulaRow(
 			Contest->AttackRow,
 			FFMCodexPlayerUIPresentationText::ResolutionAttackRow().ToString(),
@@ -1886,6 +1894,8 @@ namespace FMCodexLocalMatchUMGPresentation
 				: Result.bNarrativeAttackSuccess
 					? EMatchPlayResolutionDecisionOutcome::Goal
 					: EMatchPlayResolutionDecisionOutcome::Miss;
+			NarrativeInput.bAttackEnded = InteractionView.bTerminalPendingAdvance
+				|| (Contest->bHasResolvedFormula && Contest->ResolvedResult.bAttackEnded && !Contest->ResolvedResult.bContinueResolution);
 			NarrativeInput.AttackSequence = Facts.AttackSequence;
 			NarrativeInput.StableEventId = Contest->ContestId;
 			NarrativeInput.Carrier = NarrativeActor(Facts, InteractionView,
@@ -1907,6 +1917,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				Result.bNarrativeAvailable = Narrative.bNarrativeAvailable;
 				Result.ResultTitle = Narrative.ResultTitle.ToString();
 				Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
+				Result.OutcomeText = Narrative.OutcomeText;
 				const FString RouteLabel = bResolvedElectiveDirect
 					? TEXT("直接射门")
 					: bResolvedThroughBallDirect
@@ -2074,6 +2085,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			FFMCodexTacticalNarrativePresentationInput Input;
 			Input.Branch = Branch;
 			Input.AuthorityOutcome = Decision->Outcome;
+			Input.bAttackEnded = InteractionView.bTerminalPendingAdvance;
 			Input.AttackSequence = Facts.AttackSequence;
 			Input.StableEventId = Decision->DecisionId;
 			Input.Carrier = NarrativeActor(Facts, InteractionView,
@@ -2089,6 +2101,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				Result.bNarrativeAvailable = true;
 				Result.ResultTitle = Narrative.ResultTitle.ToString();
 				Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
+				Result.OutcomeText = Narrative.OutcomeText;
 			}
 		};
 		const FMatchPlayResolutionDecisionFact* AntiDecision = FindDecision(
@@ -2428,6 +2441,8 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.DeadCornerA = Result.bDeadCornerAVisible ? A->RawD6 : 0;
 			Result.bDeadCornerBVisible = B != nullptr && B->bResolved;
 			Result.DeadCornerB = Result.bDeadCornerBVisible ? B->RawD6 : 0;
+			if (Result.bDeadCornerAVisible && Result.bDeadCornerBVisible)
+				Result.OutcomeRollDetail = FMCodexOutcomeText::PairedRollDetail(Result.DeadCornerA, Result.DeadCornerB).ToString();
 			if (Result.bDeadCornerAVisible)
 			{
 				Result.PairedRollResultLabel = Result.bDeadCornerBVisible
@@ -2449,6 +2464,7 @@ namespace FMCodexLocalMatchUMGPresentation
 					? EFMCodexTacticalNarrativeBranch::CutInsideDeadCorner
 					: EFMCodexTacticalNarrativeBranch::LongShotDeadCorner;
 				Input.AuthorityOutcome = Decision->Outcome;
+				Input.bAttackEnded = InteractionView.bTerminalPendingAdvance;
 				Input.AttackSequence = Facts.AttackSequence;
 				Input.StableEventId = Decision->DecisionId;
 				Input.Carrier = NarrativeActor(Facts, InteractionView,
@@ -2460,6 +2476,7 @@ namespace FMCodexLocalMatchUMGPresentation
 					Result.bNarrativeAvailable = Narrative.bNarrativeAvailable;
 					Result.ResultTitle = Narrative.ResultTitle.ToString();
 					Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
+					Result.OutcomeText = Narrative.OutcomeText;
 				}
 			}
 		}

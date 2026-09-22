@@ -52,7 +52,7 @@ Direction: **Modern Football Broadcast + Navy Metallic Tactical HUD**
 | Primary Action Blue | `#1475D1` | 明确可操作的主要 CTA |
 | Primary Text | `#F0F5FA` | 主标题、行动名称、主要正文 |
 | Secondary Text | `#A9BECD` | 上下文、解释和状态 |
-| Result Highlight Gold | `#E8C887` | 当前已揭示／锁定结果的重点 |
+| Result Highlight Gold | `#E8C887` | 当前已揭示／锁定数字结果的重点 |
 
 hex 是视觉起始参考，不能直接当作 UE linear channel 数值照抄；以真实游戏输出判断颜色，避免截图 gamma 差异驱动生产配色漂移。
 
@@ -60,7 +60,7 @@ hex 是视觉起始参考，不能直接当作 UE linear channel 数值照抄；
 
 - **Ice Cyan**：结构强调、hover、focus、当前流程指示，以及语义适当的系统选择结构。它不是所有边缘都需要点亮的理由。
 - **Primary Action Blue**：主要 CTA、明确可操作按钮的主体色族；可有深浅变化。
-- **Champagne Gold**：`CURRENT / REVEALED / LOCKED RESULT`。这里的 current 是当前已获准显示的结果焦点，不是尚未揭示的未来结果。
+- **Champagne Gold**：`CURRENT / REVEALED / LOCKED NUMERIC RESULT`。这里的 current 是当前已获准显示的数字结果焦点，不是尚未揭示的未来结果；已验收 Roll Cycling 占位数字的例外见第 19 节。Goal／进攻结束的文本语义色另见第 14.1 节，不与数字金色合并。
 - 金色不自动表示成功、胜利、推荐、更好选项、rarity、数值更高或概率更高。低点数、失败结果也可使用同一结果强调色；必须由标签和状态说明结果含义。
 - Player A/B、team、owner 和 rarity 保留各自原有语义，Match Flow 不覆盖这些职责，也不把流程状态色写进球员美术本体。
 - 所有禁用、等待、pending 反馈必须可读；不能仅依赖颜色表达关键状态，也不能叠加变暗到原因文字不可辨认。
@@ -162,8 +162,26 @@ Tier 1/2 多数流程在信息结构需要时采用以下分区，不为凑齐�
 - 不提前显示未知 roll、不用 gold 暗示胜方、不提前显示 goal/no-goal。结果标签、score 和后续动作继续服从现有 visible reveal gate。
 - 攻守模块共用结构、角色／姓名 typography、identity capsule、完整 formula chip 与独立 value module；角色和球员身份仍须明确。当前值保持次级、冷色阅读层级；最终值按第 4 节已揭示结果语义强调，双方一致，不比较大小来选择金色。current/final 只由安全投影的最终值语义决定，不按数字、文案或阶段猜测。
 - Formula 内的 Roll 是第 10 节 Sports Broadcast Numeric Window 的 **compact embedded member**，视觉强度低于独立 Tier 1 surface，与 Formula 保持连续且只保留必要的行动方／滚动状态。沿用第 17 节时钟、披露和动作边界，不建立另一套 Roll 逻辑。
-- Formula-linked result 以完整 canonical result sentence 为主结论，上下文／规则说明为次级，已揭示关键值适度强调；主要继续动作沿用第 9 节。此规则只覆盖关联 Formula 的结果，不授权迁移其他 Narrative family。
+- Formula-linked result 的结论层复用第 14.1 节 Shared Result Family；Formula 主体的角色、模块、数值、term chips 与揭示合同仍由本节负责，不因结论层复用而重排。
 - Stage 8.7C / 8.7C.1 已获 **USER PIE ACCEPTED**；当前实现结构见 [Formula family accepted layout](PlayerFacing_MatchScreen_Layout_v1.md#formula-family-accepted)。事实、小计语义和揭示行为保持原合同；ready for manual staging，提交与 clean HEAD 确认前尚未 CLOSED。
+
+<a id="outcome-result-family"></a>
+
+### 14.1 Outcome / Shared Result Family
+
+已验收的标准非 Formula Outcome 与 Formula-linked 结论层共用阅读顺序：**完整 canonical 主结论 → 次级上下文 → 可选已披露细节 → 主要继续动作**。主结论保留完整句意，不以短标签替换；动作样式沿用第 9 节。中间态与最终态的可见所有权见第 17 节。
+
+| 安全投影语义 | 文本强调职责 |
+|---|---|
+| Goal | 克制的 mint / teal 关键词强调 |
+| AttackEndedNoGoal | 柔和暖橙；由已有 typed 终局事实确认进攻结束且未进球，包含适用的越位、出界、防守成功 |
+| Neutral / progression | 冷白；包括机会形成、单刀衔接等非终局进展 |
+
+- 语义色只落在明确提供的关键词或小范围标记；不能染满主句、面板、边框或主要 CTA。数字金色继续独立遵守第 4 节，不表示 Goal 或成功。色值可随 family review 调整，不把当前实现参数锁为永久 token。
+- 语义来自现有安全事实与 canonical 文案生成分支，不能匹配中文字符串猜 Goal、终局或胜方。缺失／不匹配的语义片段应退回完整中性 canonical 句子，不猜测强调范围；门将参与不证明扑救，沿用 [Narrative 的既有门将政策](Tactical_Resolution_Narrative_v1.md#goalkeeper-policy)，不新增因果。
+- 双骰细节采用自然语言形式，例如 `首次掷点 X + 第二次掷点 Y = Z`，仅格式化已经披露的结构化值；不解析显示字符串，不重建玩法结论。它是较安静的只读细节，不伪装成可点击选项。
+- 主结论、上下文、可选细节与 CTA 共享面板的实际视觉中轴；正文保持清楚的主次字号／亮度与分隔。按内容适配高度，缺失区域连同留白收起，长中文有界换行，不建立玩家名特判或永久宽高／间距常量。实际布局与嵌套关系见 [Outcome accepted layout](PlayerFacing_MatchScreen_Layout_v1.md#outcome-family-accepted)。
+- 此处只统一已批准消费者的结论层；Formula 主体、A/C、Roll、Card State 的既有合同不变。无行 `SetPiece.Opposed`、特殊 early-end／兼容反馈仍需证据；Notification、AP1/ejection 与 Full-Time 不因本规则自动迁移。
 
 ## 15. Notification
 
@@ -197,6 +215,8 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 - 动画不得改变 action availability、authority timing、result reveal timing 或 gameplay progression，除非另有明确 Stage 决策。
 - **SECURITY DISCLOSURE 与 PRESENTATION SUSPENSE 分离**：安全上隐藏的事实不得进入 client-safe View，不能靠 Widget 隐藏保密；已合法公开的数据可及时复制，视觉揭示继续沿用现有显示门控，不为装饰悬念延迟权威复制。
 - 保留事件 identity/dedupe、重复 View/ACK 安全和隐藏后清理。保持真实 elapsed time，不用固定回调次数冒充经过时间。
+- **Outcome Option A**：覆盖范围内的 Roll／ResultHold 中间态只显示中性战术上下文、处理中状态、已获准披露的可选骰子细节和原有 reel。完整最终句、结果上下文／语义强调与最终 CTA 在该中间态不出现；只有 narrative 已可见且既有 reel 已退出时，才切到最终结果组合。不推迟服务器披露，不改变原有 score gate、reel 时钟或动作合法性。
+- Roll → Outcome 的同一内容区域保持单一可见 owner 与连续家族外框；不闪回旧 host，不同时叠放两套标题／结果层。切换时清除旧内容，沿用既有合法状态与门控，不以新增 timer、透明遮盖或 gameplay wait 修补衔接。
 
 ## 18. Scaling
 
@@ -214,6 +234,7 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 | Player Card Family v1.3 | 已接受的球员美术基线；保持其 owner/rarity 与资产职责 |
 | Stage 8.7C / 8.7C.1 Formula / Contest | **USER PIE ACCEPTED**；当前值／最终值、共享模块、compact Roll 与关联结果层级已接受；ready for manual staging，尚未 CLOSED |
 | Stage 8.7B / 8.7B.1 A/C 实现 | **USER PIE ACCEPTED**；用户于 2026-09-20 明确表示“这轮美术优化没问题”。待用户手动 staging/commit 与 clean HEAD 确认，尚未 CLOSED |
+| Stage 8.7E / 8.7E.1 / 8.7E.2 Outcome | **USER PIE ACCEPTED**；用户于 2026-09-22 确认“我看了下都没问题了”。已批准范围的结果层级、语义强调、自然细节、Option A 与单一 owner 已接受；ready for manual staging，提交与 clean HEAD 确认前尚未 CLOSED |
 
 新可见实现默认 **PENDING USER PIE**，仅用户明确验收后才为 **USER PIE ACCEPTED**。概念图、Codex 截图、自动化测试或离屏 screenshot 都不能代替验收。已验收输出未实际改变时保持 accepted；规范建立本身不触发重做验收或自动迁移。
 

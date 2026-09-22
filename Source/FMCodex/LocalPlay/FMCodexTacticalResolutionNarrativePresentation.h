@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "FMCodexOutcomeText.h"
 
 #include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
 
@@ -58,6 +59,9 @@ struct FMCODEX_API FFMCodexTacticalNarrativePresentationInput
 	EMatchPlayResolutionDecisionOutcome AuthorityOutcome =
 		EMatchPlayResolutionDecisionOutcome::None;
 
+	/** Safe terminal/lifecycle fact; a progression result must not get a no-goal accent. */
+	bool bAttackEnded = false;
+
 	/** Immutable authoritative identity. No random or frame-local value is valid. */
 	int64 AttackSequence = 0;
 	FName StableEventId = NAME_None;
@@ -77,6 +81,7 @@ struct FMCODEX_API FFMCodexTacticalNarrativePresentation
 		EFMCodexTacticalNarrativeResultCategory::None;
 	FText ResultTitle;
 	FText NarrativeText;
+	FFMCodexOutcomeText OutcomeText;
 
 	/** Presentation dramatization only; never an authoritative causal fact. */
 	EMatchPlayResolutionParticipantRole DefensivePerformerRole =
