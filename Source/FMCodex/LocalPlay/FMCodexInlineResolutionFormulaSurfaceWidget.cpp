@@ -5,6 +5,7 @@
 #include "FMCodexMatchFlowPanel.h"
 #include "FMCodexOutcomePresentation.h"
 #include "FMCodexRollReelWidget.h"
+#include "FMCodexFormulaBroadcastPrototype.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
@@ -21,6 +22,7 @@
 #include "Components/WrapBoxSlot.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
+#include "Components/Overlay.h"
 
 namespace FMCodexInlineResolutionFormulaSurfaceWidget
 {
@@ -63,7 +65,16 @@ namespace FMCodexInlineResolutionFormulaSurfaceWidget
 		Section->SetFormulaRole(EFMCodexFormulaPanelRole::Section);
 		Section->SetPadding(FMargin(14,6));
 		OutSideText = MakeText(Tree,Named(TEXT("Side")));
-		Section->AddChild(OutSideText);
+		auto* SectionLine = Tree.ConstructWidget<UHorizontalBox>();
+		SectionLine->AddChildToHorizontalBox(OutSideText)->SetVerticalAlignment(VAlign_Center);
+		auto* ActiveMarker = MakeText(Tree,Named(TEXT("ActiveMarker")));
+		ActiveMarker->SetText(NSLOCTEXT("FMCodexFormula", "ActiveMarker", "当前"));
+		Style.ApplyFlowText(*ActiveMarker,11);
+		auto* MarkerSlot = SectionLine->AddChildToHorizontalBox(ActiveMarker);
+		MarkerSlot->SetPadding(FMargin(8,0,0,0));
+		MarkerSlot->SetVerticalAlignment(VAlign_Center);
+		ActiveMarker->SetVisibility(ESlateVisibility::Collapsed);
+		Section->AddChild(SectionLine);
 		auto* SectionSlot = Header->AddChildToHorizontalBox(Section);
 		SectionSlot->SetVerticalAlignment(VAlign_Center);
 		SectionSlot->SetPadding(FMargin(0,0,12,0));
@@ -159,6 +170,26 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::SetEmbeddedFormulaLayout(bool
 	RefreshVisuals();
 }
 
+bool UFMCodexInlineResolutionFormulaSurfaceWidget::IsBroadcastPrototypeVisible() const
+{
+#if !UE_BUILD_SHIPPING
+	const auto* Prototype = GetWidgetFromName(TEXT("BroadcastPrototype"));
+	return Prototype && Prototype->GetVisibility() != ESlateVisibility::Collapsed;
+#else
+	return false;
+#endif
+}
+
+#if !UE_BUILD_SHIPPING
+void UFMCodexInlineResolutionFormulaSurfaceWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	// A local compare switch only; does not advance the reveal clock or request an action.
+	if (FMCodexFormulaBroadcastPrototype::IsEnabledFor(Presentation,bEmbeddedFormulaLayout) != IsBroadcastPrototypeVisible())
+		RefreshVisuals();
+}
+#endif
+
 const FFMCodexUMGInlineFormulaSurfaceViewModel&
 UFMCodexInlineResolutionFormulaSurfaceWidget::GetPresentation() const
 {
@@ -213,6 +244,12 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::BuildWidgetTree()
 	Bounds->SetMinDesiredWidth(660.0f);
 	Bounds->SetMaxDesiredWidth(820.0f);
 	WidgetTree->RootWidget = Bounds;
+#if !UE_BUILD_SHIPPING
+	// Preserve the complete accepted subtree, including its handlers and geometry.
+	auto* Variants = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(),TEXT("InlineFormulaVariants"));
+	WidgetTree->RootWidget = Variants;
+	Variants->AddChildToOverlay(Bounds);
+#endif
 
 	auto* Frame = WidgetTree->ConstructWidget<UFMCodexMatchFlowPanel>(
 		UFMCodexMatchFlowPanel::StaticClass(), TEXT("InlineFormulaSurfaceFrame"));
@@ -498,6 +535,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		? FMargin(22.f,22.f) : FMargin(18.f,14.f));
 	Style.ApplyText(*ContestText, EFMCodexPlayerUITextRole::ActionTitle);
 	Style.ApplyText(*StatusText, EFMCodexPlayerUITextRole::Secondary);
+	Style.ApplyText(*TacticalPlayerText, EFMCodexPlayerUITextRole::Secondary);
 	Style.ApplyButton(*ContinueButton, EFMCodexPlayerUIActionRole::Primary);
 	auto* ContinueBounds = CastChecked<USizeBox>(ContinueButton->GetParent());
 	ContinueBounds->ClearMinDesiredHeight();
@@ -521,6 +559,13 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		StatusText->SetAutoWrapText(true);
 		Style.ApplyFlowText(*RollHelperText, 12, true);
 		Style.ApplyFlowText(*RouteResultText, 14, true);
+		if (!Presentation.bNarrativeAvailable)
+		{
+			Style.ApplyFlowText(*ContestText, 26);
+			Style.ApplyFlowText(*StatusText, 16);
+			Style.ApplyFlowText(*RouteResultText, 12, true);
+			Style.ApplyFlowText(*TacticalPlayerText, 12, true);
+		}
 		Style.ApplyFlowText(*ContinueLabel, 20);
 		auto ActionStyle = Style.MakeFlowButtonStyle();
 		ActionStyle.Normal.TintColor = FLinearColor(.009f,.052f,.105f,1);
@@ -566,20 +611,20 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 			? FText::Format(NSLOCTEXT("FMCodexFormula","RollingOwner","{0}中"),FText::FromString(Presentation.DiceOwnerLabel))
 			: FText::FromString(Presentation.DiceOwnerLabel));
 	}
-	CastChecked<UFMCodexMatchFlowPanel>(AttackRegion)->SetContestRowStyle(Presentation.bAttackRowActive);
-	CastChecked<UFMCodexMatchFlowPanel>(DefenseRegion)->SetContestRowStyle(Presentation.bDefenseRowActive);
+	CastChecked<UFMCodexMatchFlowPanel>(AttackRegion)->SetContestRowStyle(GetRowEmphasis(true) == EFMCodexFormulaEmphasis::Active);
+	CastChecked<UFMCodexMatchFlowPanel>(DefenseRegion)->SetContestRowStyle(GetRowEmphasis(false) == EFMCodexFormulaEmphasis::Active);
 	AttackRegion->SetVisibility(Presentation.bShowFormulaRows && Presentation.bShowAttackRow
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	DefenseRegion->SetVisibility(Presentation.bShowFormulaRows && Presentation.bShowDefenseRow
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 
 	RenderedPendingTermCount = 0;
-	RefreshRow(Presentation.AttackRow, TEXT("InlineFormulaAttack"),
+	RefreshRow(Presentation.AttackRow, GetRowEmphasis(true), TEXT("InlineFormulaAttack"),
 		AttackSideText, AttackParticipantBody, AttackKnownSubtotalText,
 		AttackFormulaBody,
 		AttackFinalValueText, AttackParticipantItems, AttackTermItems);
 	RenderedAttackTermCount = Presentation.AttackRow.Terms.Num();
-	RefreshRow(Presentation.DefenseRow, TEXT("InlineFormulaDefense"),
+	RefreshRow(Presentation.DefenseRow, GetRowEmphasis(false), TEXT("InlineFormulaDefense"),
 		DefenseSideText, DefenseParticipantBody, DefenseKnownSubtotalText,
 		DefenseFormulaBody,
 		DefenseFinalValueText, DefenseParticipantItems, DefenseTermItems);
@@ -636,10 +681,55 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		StatusText->SetText(NSLOCTEXT("FMCodexOutcome", "FormulaResolving", "正在结算"));
 		GetWidgetFromName(TEXT("InlineFormulaResultBadge"))->SetVisibility(ESlateVisibility::Collapsed);
 	}
+#if !UE_BUILD_SHIPPING
+	const bool bPrototype = FMCodexFormulaBroadcastPrototype::IsEnabledFor(Presentation,bEmbeddedFormulaLayout);
+	auto* Prototype = GetWidgetFromName(TEXT("BroadcastPrototype"));
+	if (bPrototype && !Prototype)
+	{
+		UButton* PrototypeContinue = nullptr;
+		Prototype = FMCodexFormulaBroadcastPrototype::Build(*WidgetTree,PrototypeContinue);
+		CastChecked<UOverlay>(WidgetTree->RootWidget)->AddChildToOverlay(Prototype);
+		PrototypeContinue->OnClicked.AddDynamic(this,&UFMCodexInlineResolutionFormulaSurfaceWidget::HandleContinueClicked);
+	}
+	if (Prototype)
+	{
+		Prototype->SetVisibility(bPrototype ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		if (bPrototype) FMCodexFormulaBroadcastPrototype::Refresh(*WidgetTree,Presentation,GetRowEmphasis(true),GetRowEmphasis(false));
+	}
+	GetWidgetFromName(TEXT("InlineFormulaSurfaceBounds"))->SetVisibility(bPrototype ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+#endif
+}
+
+EFMCodexFormulaEmphasis UFMCodexInlineResolutionFormulaSurfaceWidget::GetRowEmphasis(bool bAttack) const
+{
+	using E = EFMCodexFormulaEmphasis;
+	if (!Presentation.bVisible || !Presentation.bShowFormulaRows
+		|| !(bAttack ? Presentation.bShowAttackRow : Presentation.bShowDefenseRow)) return E::None;
+	// Only displayed safe flags qualify resolution; raw FinalValue is never inspected.
+	const bool bBothFinal = Presentation.AttackRow.bDisplayedResultResolved
+		&& Presentation.AttackRow.bDisplayedResultIsFinalValue
+		&& Presentation.DefenseRow.bDisplayedResultResolved
+		&& Presentation.DefenseRow.bDisplayedResultIsFinalValue;
+	if (!Presentation.bDiceRevealVisible && (Presentation.bNarrativeAvailable || bBothFinal)) return E::Resolved;
+	const bool bActive = bAttack ? Presentation.bAttackRowActive : Presentation.bDefenseRowActive;
+	const bool bOtherActive = bAttack ? Presentation.bDefenseRowActive : Presentation.bAttackRowActive;
+	return bActive && !bOtherActive ? E::Active : E::Context;
+}
+
+EFMCodexFormulaComponentRole UFMCodexInlineResolutionFormulaSurfaceWidget::GetComponentRole(
+	const FFMCodexUMGInlineFormulaTermViewModel& Term, EFMCodexFormulaEmphasis Emphasis)
+{
+	using K = EFMCodexUMGInlineFormulaTermKind;
+	using R = EFMCodexFormulaComponentRole;
+	if (Term.Kind == K::FixedModifier) return R::Modifier;
+	if (Term.Kind != K::RawRoll) return R::Operand;
+	return !Term.bResolved && Term.bNextPendingRoll && Emphasis == EFMCodexFormulaEmphasis::Active
+		? R::PendingRoll : R::Roll;
 }
 
 void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 	const FFMCodexUMGInlineFormulaRowViewModel& Row,
+	EFMCodexFormulaEmphasis Emphasis,
 	const FString& WidgetNamePrefix,
 	UTextBlock* SideText,
 	UWrapBox* ParticipantBody,
@@ -658,10 +748,20 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 		return;
 	}
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
+	const bool bActive = Emphasis == EFMCodexFormulaEmphasis::Active;
+	const bool bHierarchy = bActive || Emphasis == EFMCodexFormulaEmphasis::Context;
+	auto Find = [&](const TCHAR* Suffix) { return GetWidgetFromName(FName(*(WidgetNamePrefix + Suffix))); };
+	auto* RowPanel = CastChecked<UFMCodexMatchFlowPanel>(SideText == AttackSideText ? AttackRegion : DefenseRegion);
+	RowPanel->SetFormulaEmphasis(Emphasis);
+	CastChecked<UFMCodexMatchFlowPanel>(Find(TEXT("SectionHeader")))->SetFormulaEmphasis(Emphasis);
+	auto* ActiveMarker = CastChecked<UTextBlock>(Find(TEXT("ActiveMarker")));
+	ActiveMarker->SetVisibility(bHierarchy ? bActive ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden : ESlateVisibility::Collapsed);
+	Find(TEXT("ModuleRule"))->SetRenderOpacity(bHierarchy ? bActive ? .8f : .4f : 1.f);
+	Find(TEXT("Motif"))->SetRenderOpacity(bHierarchy ? .55f : 1.f);
 	SideText->SetText(FText::FromString(Row.SideLabel));
 	Style.ApplyFlowText(*SideText, 20);
-	SideText->SetColorAndOpacity(FLinearColor(.57f,.79f,.90f,1));
-	Style.ApplyFlowText(*KnownSubtotalText, 17);
+	SideText->SetColorAndOpacity(bHierarchy && bActive ? FLinearColor(.78f,.92f,1.f,1) : FLinearColor(.57f,.79f,.90f,1));
+	Style.ApplyFlowText(*KnownSubtotalText, bHierarchy ? 14 : 17, bHierarchy);
 	KnownSubtotalText->SetAutoWrapText(true);
 	KnownSubtotalText->SetText(
 		FText::FromString(Row.KnownNonRollSubtotalLabel));
@@ -714,7 +814,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 			continue;
 		}
 		Chip->SetBrush(FSlateRoundedBoxBrush(FLinearColor(.007f,.023f,.039f,1),
-			5.f,FLinearColor(.08f,.25f,.36f,.8f),1.f));
+			5.f,bHierarchy ? FLinearColor(.045f,.13f,.19f,.65f) : FLinearColor(.08f,.25f,.36f,.8f),1.f));
 		Chip->SetBrushColor(FLinearColor::White);
 		const auto& Participant = Row.Participants[Index];
 		if (UHorizontalBox* Identity = Cast<UHorizontalBox>(Chip->GetChildAt(0)))
@@ -722,7 +822,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 			if (UTextBlock* Role = Cast<UTextBlock>(Identity->GetChildAt(0)))
 			{
 				Role->SetText(FText::FromString(Participant.RoleLabel));
-				Style.ApplyFlowText(*Role, 14, true);
+				Style.ApplyFlowText(*Role, bHierarchy ? 12 : 14, true);
 			}
 			if (UTextBlock* Name = Cast<UTextBlock>(Identity->GetChildAt(1)))
 			{
@@ -791,22 +891,25 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 		{
 			continue;
 		}
-		const bool bPending = Term.bNextPendingRoll;
+		const auto ComponentRole = GetComponentRole(Term, Emphasis);
+		const bool bModifier = bHierarchy && ComponentRole == EFMCodexFormulaComponentRole::Modifier;
+		const bool bPending = bHierarchy ? ComponentRole == EFMCodexFormulaComponentRole::PendingRoll : Term.bNextPendingRoll;
 		Operand->SetBrush(FSlateRoundedBoxBrush(
 			bPending ? FLinearColor(.012f,.062f,.091f,1) : FLinearColor(.006f,.023f,.038f,1),
-			3.f, bPending ? FLinearColor(.13f,.46f,.60f,.9f) : FLinearColor(.045f,.15f,.23f,.8f),1.f));
+			3.f, bPending ? bHierarchy ? FLinearColor(.19f,.57f,.73f,1) : FLinearColor(.13f,.46f,.60f,.9f) : bModifier ? FLinearColor(.04f,.10f,.15f,.45f)
+			: bHierarchy ? FLinearColor(.035f,.10f,.15f,.6f) : FLinearColor(.045f,.15f,.23f,.8f), bPending && bHierarchy ? 1.5f : 1.f));
 		Operand->SetBrushColor(FLinearColor::White);
-		Operand->SetPadding(FMargin(10.f,8.f));
+		Operand->SetPadding(bModifier ? FMargin(7.f,5.f) : FMargin(10.f,8.f));
 		if (bPending) ++RenderedPendingTermCount;
 		const FString OperandLabel = Term.ContributorDisplayName.IsEmpty()
 			? Term.DisplayLabel
 			: FString::Printf(TEXT("%s %s"),
 				*Term.ContributorDisplayName, *Term.DisplayLabel);
 		OperandText->SetText(FText::FromString(OperandLabel));
-		Style.ApplyFlowText(*OperandText, 17);
+		Style.ApplyFlowText(*OperandText, bModifier ? 14 : 17, bModifier);
 		if (Presentation.bNarrativeAvailable && Term.Kind == EFMCodexUMGInlineFormulaTermKind::RawRoll && Term.bResolved)
 			OperandText->SetColorAndOpacity(FLinearColor(.82f,.64f,.34f,1));
-		if (Plus) Style.ApplyFlowText(*Plus, 16);
+		if (Plus) Style.ApplyFlowText(*Plus, bHierarchy ? 14 : 16, bHierarchy);
 	}
 	FinalValueText->SetText(FText::FromString(Row.DisplayedResultLabel));
 	// Consume only the already-gated displayed-value distinction. Never inspect a
@@ -817,11 +920,12 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshRow(
 		? NSLOCTEXT("FMCodexFormula", "FinalValue", "最终值")
 		: NSLOCTEXT("FMCodexFormula", "CurrentValue", "当前值"));
 	const FLinearColor Gold(.82f,.64f,.34f,1);
-	Style.ApplyFlowText(*FinalValueText, bFinal ? 42 : 30);
-	FinalValueText->SetColorAndOpacity(bFinal ? Gold : FLinearColor(.57f,.73f,.81f,1));
+	Style.ApplyFlowText(*FinalValueText, bFinal ? 42 : bHierarchy ? 32 : 30);
+	FinalValueText->SetColorAndOpacity(bFinal ? Gold : bActive ? FLinearColor(.80f,.94f,1.f,1) : FLinearColor(.57f,.73f,.81f,1));
 	ValueState->SetColorAndOpacity(bFinal ? Gold : FLinearColor(.40f,.56f,.66f,1));
 	auto* ValueRegion = CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(FName(*(WidgetNamePrefix + TEXT("FinalValueRegion")))));
 	ValueRegion->SetFormulaRole(EFMCodexFormulaPanelRole::Value,bFinal);
+	ValueRegion->SetFormulaEmphasis(Emphasis);
 }
 
 void UFMCodexInlineResolutionFormulaSurfaceWidget::HandleContinueClicked()

@@ -358,6 +358,9 @@ UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
 	static ConstructorHelpers::FObjectFinder<UTexture2D> Stadium(
 		TEXT("/Game/UI/MatchShell/T_MatchShell_Stadium.T_MatchShell_Stadium"));
 	StadiumAtmosphere = Stadium.Object;
+	static ConstructorHelpers::FObjectFinder<UTexture2D> Athletes(
+		TEXT("/Game/UI/ResolutionTheater/T_Theater_Athletes.T_Theater_Athletes"));
+	ResolutionTheaterAthletes = Athletes.Object;
 	MatchHeaderWidgetClass = UFMCodexMatchHeaderWidget::StaticClass();
 	PitchWidgetClass = UFMCodexPitchWidget::StaticClass();
 	InteractionPanelWidgetClass = UFMCodexInteractionPanelWidget::StaticClass();
@@ -411,6 +414,63 @@ void UFMCodexLocalMatchScreenWidget::SetMatchController(
 {
 	MatchController = InController;
 	MatchBackend = InController;
+}
+
+void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (!WidgetTree || !MatchHeader) return;
+	const bool bEnabled = FMCodexResolutionTheaterPrototype::IsEnabled();
+	if (TheaterMotion.bLastEnabled != bEnabled)
+	{
+		TheaterMotion.bLastEnabled = bEnabled;
+		RefreshVisuals(); // Same-state comparison; no command or reveal-clock reset.
+	}
+	if (TheaterMotion.Elapsed < 1.f || (TheaterMotion.bActive && !TheaterMotion.bHasFieldGeometry))
+		FMCodexResolutionTheaterPrototype::Tick(*WidgetTree, TheaterMotion, InDeltaTime);
+	if (TheaterMotion.bActive)
+		FMCodexResolutionTheaterPrototype::RefreshHover(*WidgetTree);
+}
+
+void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
+	const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed,
+	const FFMCodexUMGMatchHeaderViewModel& DisplayedHeader)
+{
+	using namespace FMCodexResolutionTheaterPrototype;
+	const bool bActive = WantsTheater(Presentation, Displayed);
+	if (bActive && !WidgetTree->FindWidget(TEXT("ResolutionTheater")))
+	{
+		UButton* Primary = nullptr; UButton* High = nullptr; UButton* Low = nullptr;
+		auto* Theater = Build(*WidgetTree, Primary, High, Low, ResolutionTheaterAthletes);
+		Primary->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested);
+		High->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleTheaterHighRequested);
+		Low->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleTheaterLowRequested);
+		auto* TheaterSlot = CastChecked<UOverlay>(WidgetTree->RootWidget)->AddChildToOverlay(Theater);
+		TheaterSlot->SetHorizontalAlignment(HAlign_Fill); TheaterSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+	if (bActive)
+	{
+		Refresh(*WidgetTree, Presentation, Displayed, DisplayedHeader, IsScreenRequestPending());
+		HideDetailOverlay(); HideTacticalDetail(); SelectionFeedbackToast->DismissFeedback();
+		ResolutionOverlay->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	// This affects visibility only. FormulaV2 keeps its own setting and original tree.
+	if (bActive || TheaterMotion.bActive)
+		SetActive(*WidgetTree, TheaterMotion, bActive);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleTheaterHighRequested()
+{
+	if (TheaterMotion.bActive && Presentation.Interaction.BranchChoices.ContainsByPredicate(
+		[](const auto& Choice) { return Choice.Intent == EFMCodexUMGBranchIntent::CrossHigh; }))
+		RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossHigh);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleTheaterLowRequested()
+{
+	if (TheaterMotion.bActive && Presentation.Interaction.BranchChoices.ContainsByPredicate(
+		[](const auto& Choice) { return Choice.Intent == EFMCodexUMGBranchIntent::CrossLow; }))
+		RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossLow);
 }
 
 void UFMCodexLocalMatchScreenWidget::ClearMatchController()
@@ -781,6 +841,12 @@ bool UFMCodexLocalMatchScreenWidget::IsScreenRequestPending() const
 void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 {
 	ResetInlineFormulaRevealState();
+	if (WidgetTree && (TheaterMotion.bActive || TheaterMotion.FieldProgress > 0.f))
+	{
+		FMCodexResolutionTheaterPrototype::SetActive(*WidgetTree, TheaterMotion, false);
+		FMCodexResolutionTheaterPrototype::Tick(*WidgetTree, TheaterMotion, 1.f);
+	}
+
 	NetworkDraftTaker = NAME_None; NetworkDraftTakerSequence = 0;
 	NetworkCornerDraft.Reset(); NetworkCornerDraftSequence = 0; NetworkCornerDraftStage = EMatchPlaySetPieceCornerRouteStage::None; bNetworkCornerConfirmation = false;
 	Presentation = {};
@@ -2255,6 +2321,13 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		PitchLayerSlot->SetHorizontalAlignment(HAlign_Fill);
 		PitchLayerSlot->SetVerticalAlignment(VAlign_Fill);
 	}
+	// Separate the field from its overlays so the DEV theater can retain the
+	// real turf without changing any overlay's own visibility/reveal state.
+	UOverlay* BoardResolutionOverlays = WidgetTree->ConstructWidget<UOverlay>(
+		UOverlay::StaticClass(), TEXT("BoardResolutionOverlays"));
+	auto* BoardOverlaySlot = PitchPresentationLayers->AddChildToOverlay(BoardResolutionOverlays);
+	BoardOverlaySlot->SetHorizontalAlignment(HAlign_Fill);
+	BoardOverlaySlot->SetVerticalAlignment(VAlign_Fill);
 	UClass* ResolvedInlineFormulaClass =
 		InlineFormulaSurfaceWidgetClass != nullptr
 			? InlineFormulaSurfaceWidgetClass.Get()
@@ -2266,7 +2339,7 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this,
 		&UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested);
 	if (UOverlaySlot* FormulaLayerSlot =
-		PitchPresentationLayers->AddChildToOverlay(InlineFormulaSurface))
+		BoardResolutionOverlays->AddChildToOverlay(InlineFormulaSurface))
 	{
 		FormulaLayerSlot->SetHorizontalAlignment(HAlign_Center);
 		FormulaLayerSlot->SetVerticalAlignment(VAlign_Center);
@@ -2286,7 +2359,7 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	ThroughBallResolutionSurface->OnOneOnOneRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleOneOnOneRequested);
 	if (UOverlaySlot* ThroughBallLayerSlot =
-		PitchPresentationLayers->AddChildToOverlay(
+		BoardResolutionOverlays->AddChildToOverlay(
 			ThroughBallResolutionSurface))
 	{
 		ThroughBallLayerSlot->SetHorizontalAlignment(HAlign_Center);
@@ -2305,7 +2378,7 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	LongShotResolutionSurface->OnBranchRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleLongShotBranchRequested);
 	if (UOverlaySlot* LongShotLayerSlot =
-		PitchPresentationLayers->AddChildToOverlay(LongShotResolutionSurface))
+		BoardResolutionOverlays->AddChildToOverlay(LongShotResolutionSurface))
 	{
 		LongShotLayerSlot->SetHorizontalAlignment(HAlign_Center);
 		LongShotLayerSlot->SetVerticalAlignment(VAlign_Center);
@@ -2619,7 +2692,7 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	SetPieceBounds->SetMaxDesiredWidth(820.0f);
 	SetPieceBounds->AddChild(SetPieceResolutionSurface);
 	if (UOverlaySlot* SetPieceLayerSlot =
-		PitchPresentationLayers->AddChildToOverlay(SetPieceBounds))
+		BoardResolutionOverlays->AddChildToOverlay(SetPieceBounds))
 	{
 		SetPieceLayerSlot->SetHorizontalAlignment(HAlign_Center);
 		SetPieceLayerSlot->SetVerticalAlignment(VAlign_Center);
@@ -2689,7 +2762,7 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	RollModalBounds->SetWidthOverride(360.0f);
 	RollModalBounds->AddChild(TacticalPointRevealSurface);
 	if (UOverlaySlot* TacticalPointLayerSlot =
-		PitchPresentationLayers->AddChildToOverlay(RollModalBounds))
+		BoardResolutionOverlays->AddChildToOverlay(RollModalBounds))
 	{
 		TacticalPointLayerSlot->SetHorizontalAlignment(HAlign_Center);
 		TacticalPointLayerSlot->SetVerticalAlignment(VAlign_Center);
@@ -3739,6 +3812,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		Result.bNarrativeAvailable = false;
 		Result.ResultTitle.Empty();
 		Result.NarrativeHeadline.Empty();
+		Result.ResolutionReasonLabel.Empty();
 		Result.OutcomeText = {};
 		Result.OutcomeRollDetail.Empty();
 		Result.ResultSubtitle.Empty();
@@ -4450,6 +4524,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshActiveRollReelVisuals()
 	}
 	const FFMCodexUMGRollReelViewModel Reel =
 		BuildActiveRollReelPresentation();
+	if (TheaterMotion.bActive)
+		FMCodexResolutionTheaterPrototype::RefreshReel(*WidgetTree, Reel);
+
 	if (ActiveCrossRollReveal.Kind
 		== EFMCodexUMGCrossRollRevealKind::TacticalPoint)
 	{
@@ -5173,6 +5250,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 			: ESlateVisibility::SelfHitTestInvisible);
 	MainScreen->SetIsEnabled(!Presentation.FullTime.bVisible);
 	FullTimePanel->RefreshFromPresentation(Presentation.FullTime);
+	RefreshResolutionTheater(StandaloneInlineFormula, BuildDisplayedHeader(bOutcomeDisclosed));
 #if !UE_BUILD_SHIPPING
 	HandoffAuditRefresh.Broadcast(true);
 #endif

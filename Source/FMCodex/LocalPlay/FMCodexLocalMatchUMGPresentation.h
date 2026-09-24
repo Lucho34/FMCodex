@@ -1311,6 +1311,10 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaTermViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString AttributeLabel;
+	/** Read-only semantic source for a modifier explanation; never an inferred rule. */
+	UPROPERTY()
+	FString ModifierSourceLabel;
+
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
@@ -1480,6 +1484,10 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString NarrativeHeadline;
+
+	/** High Cross reason mapped from the already viewer-safe resolved Formula WinReason. */
+	UPROPERTY()
+	FString ResolutionReasonLabel;
 
 	UPROPERTY()
 	FFMCodexOutcomeText OutcomeText;

@@ -4,6 +4,7 @@
 #include "Blueprint/UserWidget.h"
 
 #include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexMatchFlowPanel.h"
 
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.generated.h"
 
@@ -14,6 +15,8 @@ class UVerticalBox;
 class UWrapBox;
 class UFMCodexRollReelWidget;
 class SWidget;
+
+enum class EFMCodexFormulaComponentRole : uint8 { Operand, Modifier, Roll, PendingRoll };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
 	FFMCodexInlineFormulaContinueRequested);
@@ -41,6 +44,10 @@ public:
 	int32 GetRenderedDefenseTermCount() const;
 	int32 GetRenderedPendingTermCount() const;
 	UFMCodexRollReelWidget* GetRollReelWidget() const;
+	EFMCodexFormulaEmphasis GetRowEmphasis(bool bAttack) const;
+	static EFMCodexFormulaComponentRole GetComponentRole(
+		const FFMCodexUMGInlineFormulaTermViewModel& Term, EFMCodexFormulaEmphasis Emphasis);
+	bool IsBroadcastPrototypeVisible() const;
 
 	// Geometry only: the containing contest widget already paints the outer shell.
 	void SetEmbeddedFormulaLayout(bool bEmbedded);
@@ -54,12 +61,16 @@ public:
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
+#if !UE_BUILD_SHIPPING
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+#endif
 
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
 	void RefreshRow(
 		const FFMCodexUMGInlineFormulaRowViewModel& Row,
+		EFMCodexFormulaEmphasis Emphasis,
 		const FString& WidgetNamePrefix,
 		UTextBlock* SideText,
 		UWrapBox* ParticipantBody,

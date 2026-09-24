@@ -5,6 +5,17 @@ Scope: 1920×1080 player-facing LocalPlay Golden visual prototype
 
 Match Flow visual styling follows [Match Flow Visual Language v1](MatchFlow_Visual_Language_v1.md). This document owns layout, geometry and screen composition; stage-specific styling notes below are implementation history, not a second visual-rule authority.
 
+## Current High Cross production layout (8.8F closeout)
+
+Stage 8.8F.3 USER PIE: **ACCEPTED**. High Cross Resolution Theater: **PRODUCTION LOCKED**.
+The [Resolution Theater Visual Spec](Resolution_Theater_Visual_Spec_v1.md) owns this accepted
+family's composition. The temporary full-screen field treatment uses Attack left / Defense
+right / central VS, protected inner content and outer athlete art, a separate reason bar
+and CTA, and restoration of Match Board after continuation. Local and Network share it.
+The neutral Cross entrance does not predict the route; Low exits on visible route disclosure.
+Older 8.8A/B/C and adoption-pending sections below remain historical review checkpoints,
+not competing current production status or permission to redesign the accepted family.
+
 ## Decision classes
 
 - **Approved product direction** describes the intended player-facing structure and information hierarchy.
@@ -333,3 +344,142 @@ Option A and disclosure continuity are owned by its §17.
 
 Production/test implementation is frozen for this docs-only closeout. No gameplay,
 authority, input or reveal-clock changes accompany this layout record.
+
+
+## Stage 8.7F — Formula information hierarchy (PENDING USER PIE)
+
+Baseline: clean main at `08415e72bbe7d2b387400842a1428dbe78a15225`.
+This stage refines attention within the accepted shared Formula layout. It does
+not reopen the closed Outcome family or change Formula facts and computations.
+
+- Existing safe attack/defense active flags drive Active / Context paint roles;
+  visible final readiness clears active ownership and returns both to Resolved.
+  Roles do not depend on CTA text, viewer permissions or player identity.
+- The active section has a small 当前 marker and stronger structural rail/value
+  edge. The other section reserves the same marker space during resolution, so
+  changing operator does not move identity capsules. Context retains full content,
+  normal opacity and readable values; it is not a disabled interaction.
+- Tactical title, current state and route hint use distinct reading weights.
+  Participant names remain stronger than role labels; secondary capsule edges,
+  base descriptions, modifiers, operators and motifs are quieter. Current value
+  remains the cool numeric anchor; safe final flags retain the accepted gold.
+- Operand/roll/modifier grouping uses existing typed term kinds. Multipliers stay
+  inside their complete operand. No collapsible/hover-only data is introduced.
+- Existing row/column allocations, value chamber dimensions, CTA delegates and
+  reveal clocks remain. Final Formula-linked result composition restores its
+  accepted parameters; non-formula Outcome and A/C type information are isolated.
+
+These are implementation candidates, **PENDING USER PIE**. After explicit user
+acceptance, review owner-driven hierarchy and component roles for minimal sync
+into Match Flow Visual Language v1; the locked specification is unchanged here.
+
+## Stage 8.8A — Broadcast V2 prototype (PENDING USER DECISION)
+
+The Stage 8.8A prompt confirms Formula hierarchy polish as an accepted baseline;
+the preceding 8.7F pending note records the earlier implementation handoff. At
+8.8A entry, HEAD remains `08415e72bbe7d2b387400842a1428dbe78a15225`, with the eight
+8.7F paths still unstaged. They are preserved, not discarded to manufacture a
+clean tree. This is a reversible experiment, not a locked replacement for v1.
+
+**PIE comparison:** in a Development Editor session, enter `fm.UI.FormulaV2 1`
+in the console to enable the standalone `Cross.High` Formula prototype. Enter
+`fm.UI.FormulaV2 0` to return immediately to the accepted presentation, at the same
+gameplay/reveal state. The switch defaults to 0, is not saved to configuration,
+and its registration, renderer and compare tick are absent in Shipping. The
+normal high-cross selection and DEV roll override workflow remain unchanged.
+Other contests and parent-owned embedded Formula layouts ignore this switch.
+
+- Prototype exception to v1: quiet rounded navy surfaces, a mint current-owner
+  rail/badge and mint CTA, larger type, fewer internal boxes. These candidate
+  treatments are authorized only for this comparison; no shared palette changes.
+- Two mirrored blocks retain roles and participant order. Attribute names are
+  omitted only when contributor names map uniquely, one-to-one and in order to
+  the identity block. Otherwise complete contributor labels remain. Equations
+  keep projection-formatted attributes, multipliers and modifiers verbatim.
+- A single unresolved roll may move from the equation to the right-side
+  `current value + ?` anchor. Resolved rolls remain in the equation. The value
+  comes directly from the already-gated displayed value, never a widget sum.
+- Current ownership uses existing row emphasis, independent of CTA permission.
+  Context stays readable. Final values retain numeric gold and final headlines
+  reuse the accepted semantic text renderer only after the existing reveal gate.
+- The alternate button consumes the same action availability and calls the same
+  guarded continuation handler. The passive reel consumes the same presentation;
+  no new timing, gameplay state, RNG, authority or network contracts are added.
+
+The accepted subtree stays intact and is refreshed while the prototype is shown.
+Only one subtree is visible. Switching off restores its current content without
+resetting the match. Outcome, A/C, Notification, Full-Time, Card and HUD families
+are not migrated. USER PIE must judge hierarchy, football/HUD compatibility,
+mint-versus-existing-color semantics, readable names/formulas and fallback comfort.
+No V2 acceptance, migration decision or visual-spec lock is implied by automation.
+
+## Stage 8.8B — High Cross broadcast fidelity candidate (PENDING USER DECISION)
+
+This revision continues the existing 8.7F/8.8A mixed worktree. User PIE found that
+8.8A had the intended information structure but insufficient reference fidelity:
+an opaque outer sheet, narrow internally wrapped names/operands, a generic header
+and a plain CTA. The 8.8A mint experiment above is superseded **inside this DEV
+prototype only** by action cyan, distinct from the accepted Goal mint semantic.
+
+- The outer sheet is removed. Real pitch content shows through the gaps and
+  translucent navy cards; local header/footer scrims keep text readable. No
+  background image, blur, material, font or new content asset is introduced.
+- A procedural football between thin rules anchors the header. High Cross uses
+  a stronger title and `进球判定` subtitle; route/helper/tactical context remains
+  visible at the foot. Current ownership stays in the row and action context.
+- Participant clusters keep roles above complete Chinese names. Formula terms
+  keep the safe projection's full operand/multiplier together. Wrapping happens
+  between clusters/terms, with a bounded downscale for an exceptional long term.
+  Unique ordered identity matching remains the only contributor-name omission
+  condition. Neither participant identity nor Formula arithmetic is inferred.
+- Each row has an inset numeric region: large gated `当前值` / `最终值`, explicit
+  `+ ?` for one unresolved roll, and the existing pending/resolved semantics.
+  A thin-rule `VS` separator distinguishes the two complete blocks.
+- Available typed `RollCrossAttack` / `RollCrossDefense` actions show the correct
+  turn context and a procedural dice icon with `掷点`. Other actions retain their
+  projected label. Waiting viewers retain their projected status without a CTA.
+  The original guarded callback, passive reel and reveal clock remain in use.
+
+`fm.UI.FormulaV2` is still default 0, non-Shipping, standalone `Cross.High` only.
+Live `0 → 1 → 0 → 1` comparison must preserve safe facts, action, match sequence,
+ownership, route and score. The original V1 subtree and all other families stay
+available unchanged. Visual Language v1 is still locked; this candidate grants
+no adoption, migration, user acceptance, staging or commit.
+
+## Stage 8.8C — Open High Cross broadcast shell (PENDING USER PIE)
+
+The supplied 8.8B PIE images are the current implementation, not acceptance.
+The new target calls for a complete broadcast composition over the existing
+pitch: a light header, two coherent reading cards, a supported VS node and a
+focused action without a full-width footer plate. This remains an isolated,
+default-off High Cross candidate, not a global HUD or visual-spec migration.
+
+- Remove the outer scrim and the full-width Header/Footer backgrounds. The
+  football/rule title and subtitle sit directly over the real pitch with modest
+  text shadows. Route/helper facts remain visible at a lower reading weight.
+- Use translucent navy cards with one local horizontal reading gradient each.
+  The left identity/formula column has stronger protection; the value inset
+  has its own backing. No full-screen dimmer, blur, material or asset is added.
+- Strengthen title, side, participant and CTA type. The existing CJK fallback
+  has no matching bold face; a small same-color glyph outline approximates
+  weight only inside this prototype. Complete names and operands remain atomic.
+- Put VS in a compact translucent carrier between thin rules. Put typed action
+  context in a content-sized chip above the dice CTA. Footer edges stay open.
+  Waiting viewers still receive their safe projected status and no usable CTA.
+- Keep action cyan distinct from Goal mint. Non-current values remain strongly
+  readable; the current rail/badge and action context identify the acting side.
+  Already-gated final values and narrative retain their existing gold/semantic
+  treatment. The original passive reel, reveal timing and handler remain in use.
+- Fit the complete prototype down to the existing pitch overlay allocation when
+  its available height is smaller than the content, so the CTA stays inside its
+  layout boundary. This container is local to V2; it does not resize the HUD.
+
+`fm.UI.FormulaV2 0/1` still swaps only the standalone `Cross.High` subtree at the
+same match state. Shipping exposure, authority, facts, identity, RNG, score,
+next-action and network contracts do not change. The v1 renderer, shared style,
+surrounding cards/HUD and locked visual specification are preserved.
+
+USER PIE must judge whether the open header/footer, card readability over live
+portraits, stronger type, VS carrier and CTA now provide a sufficient direction
+prototype. Remaining font-face and surrounding-HUD differences are not resolved
+by this experiment and do not authorize automatic adoption.

@@ -18942,7 +18942,8 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 				DirectAssemblyInput);
 		DirectAssembly.ResolverInput.bGoalkeeperParticipated =
 			bDirectGoalkeeperParticipated;
-		if (Case.ActionType == ESkillRuleType::PassControl)
+		if (Case.ActionType == ESkillRuleType::PassControl
+			|| (Case.ActionType == ESkillRuleType::Cross && Case.InitialRouteD6 == 4))
 		{
 			DirectAssembly.ResolverInput.Attacker.ParticipatingStamina =
 				Domain.ResolverInputAssemblyResult.ResolverInput.Attacker
@@ -19029,27 +19030,68 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 			GoalkeeperTie.FormulaResolutionResult.WinReason,
 			EFormulaWinReason::DefenderWinsGoalkeeperTie);
 
-		FMatchPlayState StaminaTieState = MakeCrossTieState();
-		StaminaTieState.CurrentAttack.ResolutionSession.Bundle.Carrier
-			.Values.Stamina = 5;
-		StaminaTieState.CurrentAttack.ResolutionSession.Bundle.Marker
-			.Values.Stamina = 1;
-		const auto StaminaTie =
-			FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
-				::Resolve(StaminaTieState, &CrossSemanticRules);
-		TestTrue(TEXT("Stamina tie bridge succeeds"), StaminaTie.bSuccess);
-		TestFalse(TEXT("Stamina tie has no goalkeeper"),
-			StaminaTie.ResolverInputAssemblyResult.ResolverInput
-				.bGoalkeeperParticipated);
-		TestEqual(TEXT("Stamina tie final values equal"),
-			StaminaTie.FormulaResolutionResult.AttackerFinalValue,
-			StaminaTie.FormulaResolutionResult.DefenderFinalValue);
-		TestEqual(TEXT("Higher attacking stamina wins"),
-			StaminaTie.FormulaResolutionResult.Winner,
-			EFormulaWinner::Attacker);
-		TestEqual(TEXT("Stamina tie reason canonical"),
-			StaminaTie.FormulaResolutionResult.WinReason,
-			EFormulaWinReason::StaminaTieBreaker);
+		// These fixtures reverse the old Carrier/Marker-only winner in BOTH
+		// directions, exercising canonical plan regeneration and the real resolver.
+		struct FStaminaCase { int32 Carrier, Runner, Marker, Helper; EFormulaWinner Winner; EFormulaWinReason Reason; };
+		const FStaminaCase StaminaCases[] = {
+			{1, 6, 4, 1, EFormulaWinner::Attacker, EFormulaWinReason::StaminaTieBreaker},
+			{4, 1, 1, 6, EFormulaWinner::Defender, EFormulaWinReason::StaminaTieBreaker},
+			{4, 1, 1, 4, EFormulaWinner::Defender, EFormulaWinReason::DefenderWinsEqualStamina}
+		};
+		for (const auto& Case : StaminaCases)
+		{
+			FMatchPlayState State = MakeCrossTieState();
+			auto& Bundle = State.CurrentAttack.ResolutionSession.Bundle;
+			TestTrue(TEXT("Canonical Cross fixture includes helper"), Bundle.bHasHelper);
+			Bundle.Carrier.Values.Stamina = Case.Carrier;
+			Bundle.Runner.Values.Stamina = Case.Runner;
+			Bundle.Marker.Values.Stamina = Case.Marker;
+			Bundle.Helper.Values.Stamina = Case.Helper;
+			const auto Tie = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(State, &CrossSemanticRules);
+			TestTrue(TEXT("High aggregate tie bridge succeeds"), Tie.bSuccess);
+			const auto& Input = Tie.ResolverInputAssemblyResult.ResolverInput;
+			const auto& Result = Tie.FormulaResolutionResult;
+			TestEqual(TEXT("Tie reaches equal finals"), Result.AttackerFinalValue, Result.DefenderFinalValue);
+			TestTrue(TEXT("Every attacking participant is passed to resolver"), Input.Attacker.ParticipatingStamina == TArray<int32>{Case.Carrier, Case.Runner});
+			TestTrue(TEXT("Every defending participant is passed to resolver"), Input.Defender.ParticipatingStamina == TArray<int32>{Case.Marker, Case.Helper});
+			TestEqual(TEXT("Aggregate winner"), Result.Winner, Case.Winner);
+			TestEqual(TEXT("Aggregate reason"), Result.WinReason, Case.Reason);
+			TestEqual(TEXT("Authority attack total"), Result.AttackerParticipatingStaminaTotal, Case.Carrier + Case.Runner);
+			TestEqual(TEXT("Authority defense total"), Result.DefenderParticipatingStaminaTotal, Case.Marker + Case.Helper);
+		}
+		FMatchPlayState NoHelper = MakeCrossTieState();
+		auto& Bundle = NoHelper.CurrentAttack.ResolutionSession.Bundle;
+		Bundle.bHasHelper = Bundle.Binding.bHasHelper = false;
+		Bundle.Binding.HelperCardId = NAME_None;
+		NoHelper.CurrentAttack.SelectedAction.bHasHelper = false;
+		NoHelper.CurrentAttack.SelectedAction.HelperCardId = NAME_None;
+		Bundle.Helper = {};
+		Bundle.Helper.Side = Bundle.CurrentDefendingPlayer;
+		Bundle.Carrier.Values.Passing = Bundle.Runner.Values.Strength = Bundle.Marker.Values.Tackling = 4;
+		Bundle.Carrier.Values.Stamina = 1; Bundle.Runner.Values.Stamina = 6; Bundle.Marker.Values.Stamina = 4;
+		NoHelper.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords[0].RawD6 = 3;
+		const auto Absent = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(NoHelper, &CrossSemanticRules);
+		TestTrue(TEXT("Absent helper is a valid High participant set"), Absent.bSuccess);
+		TestEqual(TEXT("Absent helper tie finals"), Absent.FormulaResolutionResult.AttackerFinalValue, Absent.FormulaResolutionResult.DefenderFinalValue);
+		TestTrue(TEXT("No absent helper counted"), Absent.ResolverInputAssemblyResult.ResolverInput.Defender.ParticipatingStamina == TArray<int32>{4});
+		TestEqual(TEXT("Runner reverses single-player result without helper"), Absent.FormulaResolutionResult.Winner, EFormulaWinner::Attacker);
+		TestEqual(TEXT("No helper defense total"), Absent.FormulaResolutionResult.DefenderParticipatingStaminaTotal, 4);
+
+		// Suppression still outranks BOTH a higher final and higher stamina.
+		FMatchPlayState Suppressed = MakeCrossTieState();
+		auto& SB = Suppressed.CurrentAttack.ResolutionSession.Bundle;
+		SB.Carrier.Values.Passing = SB.Runner.Values.Strength = 1;
+		SB.Marker.Values.Tackling = SB.Helper.Values.Strength = 6;
+		SB.Carrier.Values.Stamina = SB.Runner.Values.Stamina = 1;
+		SB.Marker.Values.Stamina = SB.Helper.Values.Stamina = 6;
+		auto& SR = Suppressed.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords;
+		SR[0].RawD6 = 6; SR[1].RawD6 = 2;
+		const auto Quick = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(Suppressed, &CrossSemanticRules);
+		TestTrue(TEXT("Suppression fixture valid and attack final lower"), Quick.bSuccess && Quick.FormulaResolutionResult.AttackerFinalValue < Quick.FormulaResolutionResult.DefenderFinalValue);
+		TestEqual(TEXT("Suppression still wins"), Quick.FormulaResolutionResult.Winner, EFormulaWinner::Attacker);
+		TestEqual(TEXT("Suppression keeps precedence"), Quick.FormulaResolutionResult.WinReason, EFormulaWinReason::FastSuppression);
+		TestEqual(TEXT("Active GK included once in authority participant set"), GoalkeeperTie.ResolverInputAssemblyResult.ResolverInput.Defender.ParticipatingStamina.Num(), 3);
+
 	}
 
 	TestTrue(TEXT("PassControl semantic fixture captured"),

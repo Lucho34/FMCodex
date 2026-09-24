@@ -13,6 +13,7 @@ Direction: **Modern Football Broadcast + Navy Metallic Tactical HUD**
 | 职责 | 权威归属 |
 |---|---|
 | 流程视觉语言、颜色语义、交互外观、视觉强度 | 本文 |
+| 已验收 High Cross Resolution Theater 生产家族 | [Resolution Theater Visual Spec v1](Resolution_Theater_Visual_Spec_v1.md)；其局部规则优先于本文通用 Formula 外观 |
 | Layout、geometry、screen composition | [Player-Facing Match Screen Layout](PlayerFacing_MatchScreen_Layout_v1.md) 与其链接的几何合同 |
 | Roll lifecycle、消费方、揭示门控与既有实现细节 | [Roll Presentation contract](Cross_High_Manual_Roll_Contract.md) 的当前有效条目 |
 | 球员美术与派生资产 | [Player Card Family canonical contract](Shared_Portrait_Art_Contract_v1.md) |
@@ -253,3 +254,10 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 - screen-specific exception 记录原因、适用边界及影响；不能用例外规避颜色职责、合法动作、安全披露或验收要求。
 - 覆盖类型说明、战术选择、Roll、Formula、结果、Recovery、阶段提示和 Full-Time。规范本身不授权实现；各 family 的迁移须有独立 Stage 授权，不能据此扩大当前范围或修改已验收 HUD/Card/Roll。
 - 技术验证按实际 diff 选择 focused / affected；文档更新不机械触发 UE build、PIE 或 broad gameplay suites。staging/commit 始终由用户手动完成。
+
+
+## 21. High Cross Resolution Theater — Production Locked
+
+Stage 8.8F.3 USER PIE 已由用户接受。中性传中入口、实际高球的 Formula/Roll/Result 与返回 Match Board 使用 [Resolution Theater 专项规范](Resolution_Theater_Visual_Spec_v1.md)。它锁定球场连续背景、左右对抗与外侧人物、安全内容区、RHS 数值焦点、实线 hover、独立理由栏与 CTA、顺序入场。
+
+这是第 4 节主按钮蓝色和通用 Formula 展开方式的已验收局部例外：High Theater 使用薄荷青绿主 CTA、深色字及 Base tooltip。其他 surface 不因此换肤。默认生产与 Shipping 启用；Development fallback 仅供对照。Low Cross 当前仍在路线披露后返回既有表现，后续迁移另行授权。

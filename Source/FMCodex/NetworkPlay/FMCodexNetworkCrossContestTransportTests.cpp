@@ -407,6 +407,23 @@ bool FFMCodexCrossSafeProjection::RunTest(const FString& P)
 			TestEqual(TEXT("Only explicitly disclosed Attack"),V.Contest.AttackD6,Count>=1?6:0);
 			TestEqual(TEXT("Only explicitly disclosed Defense"),V.Contest.DefenseD6,Count>=2?1:0);
 			TestEqual(TEXT("No Formula completion via hidden die"),V.Contest.bFormulaResolved,Count==2);
+			for (const auto& Contest : Safe.ResolutionFacts.FormulaContests)
+			{
+				const auto& Result = Contest.ResolvedResult;
+				if (Count < 2)
+				{
+					TestFalse(TEXT("Withheld result has no resolved totals"), Contest.bHasResolvedFormula);
+					TestEqual(TEXT("Withheld attack total stays default"), Result.AttackerParticipatingStaminaTotal, 0);
+					TestEqual(TEXT("Withheld defense total stays default"), Result.DefenderParticipatingStaminaTotal, 0);
+				}
+				else if (High)
+				{
+					const auto& B = State.CurrentAttack.ResolutionSession.Bundle;
+					TestEqual(TEXT("Safe High attack aggregate matches authority"), Result.AttackerParticipatingStaminaTotal, B.Carrier.Values.Stamina + B.Runner.Values.Stamina);
+					TestEqual(TEXT("Safe High defense aggregate matches authority"), Result.DefenderParticipatingStaminaTotal, B.Marker.Values.Stamina + (B.bHasHelper ? B.Helper.Values.Stamina : 0));
+					TestTrue(TEXT("Projected High membership matches resolver"), Contest.AttackRow.ParticipatingStamina == Contest.ResolvedInput.Attacker.ParticipatingStamina && Contest.DefenseRow.ParticipatingStamina == Contest.ResolvedInput.Defender.ParticipatingStamina);
+				}
+			}
 			TestEqual(TEXT("Terminal wait is high-level lifecycle only"),V.EntryWait,EFMCodexNetworkEntryWait::TerminalPendingAdvance);
 			TestEqual(TEXT("No next-turn action added"),V.ContestAction,Action::None);
 			TestEqual(TEXT("Withheld score A"),V.PlayerAScore,0);TestEqual(TEXT("Withheld score B"),V.PlayerBScore,0);

@@ -108,6 +108,13 @@ struct FMCODEX_API FFormulaResolutionResult
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Formula")
 	float DefenderTacticalPlayerModifier = 0.0f;
 
+	// Authority-computed explanation operands; disclosed with the resolved result.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Formula")
+	int32 AttackerParticipatingStaminaTotal = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Formula")
+	int32 DefenderParticipatingStaminaTotal = 0;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Formula")
 	EFormulaWinner Winner = EFormulaWinner::None;
 

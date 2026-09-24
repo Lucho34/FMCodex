@@ -238,6 +238,8 @@ FFormulaResolutionResult UFormulaResolver::ResolveFormula(const FFormulaResolver
 
 	const int32 AttackerStamina = FormulaResolver::SumStamina(Input.Attacker.ParticipatingStamina);
 	const int32 DefenderStamina = FormulaResolver::SumStamina(Input.Defender.ParticipatingStamina);
+	Result.AttackerParticipatingStaminaTotal = AttackerStamina;
+	Result.DefenderParticipatingStaminaTotal = DefenderStamina;
 	FormulaResolver::BuildMatchLog(Input, AttackerStamina, DefenderStamina, Result);
 	return Result;
 }

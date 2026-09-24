@@ -86,11 +86,14 @@ public:
 			const bool bValue = Role == EFMCodexFormulaPanelRole::Value;
 			const bool bSection = Role == EFMCodexFormulaPanelRole::Section;
 			const bool bFinal = bValue && Owner->IsFinalFormulaValue();
+			const bool bActive = Owner->GetFormulaEmphasis() == EFMCodexFormulaEmphasis::Active;
+			const bool bContext = Owner->GetFormulaEmphasis() == EFMCodexFormulaEmphasis::Context;
 			const FLinearColor Edge = bFinal ? FLinearColor(.60f,.42f,.19f,.9f)
-				: FLinearColor(.08f,.32f,.47f,.85f);
+				: bActive ? FLinearColor(.20f,.56f,.72f,1)
+				: bContext ? FLinearColor(.055f,.19f,.28f,.75f) : FLinearColor(.08f,.32f,.47f,.85f);
 			P.Fill(8,bSection ? FLinearColor(.012f,.065f,.12f,1) : FLinearColor(.004f,.025f,.051f,1),
 				FLinearColor(.002f,.010f,.024f,1));
-			P.Outline(1,8,Edge,bFinal ? 1.5f : 1.f);
+			P.Outline(1,8,Edge,bFinal || bActive ? 1.5f : 1.f);
 			P.Outline(4,10,Edge*FLinearColor(1,1,1,.22f));
 			P.Line({{12,3},{W-12,3}},Edge*FLinearColor(1,1,1,.5f));
 			if (bValue)
@@ -98,16 +101,19 @@ public:
 				P.Line({{10,31},{W-10,31}},Edge*FLinearColor(1,1,1,.55f));
 				if (bFinal) P.Line({{W*.28f,H-10},{W*.72f,H-10}},Edge,2.f);
 			}
-			else P.Line({{4,12},{4,H-12}},FLinearColor(.13f,.57f,.74f,.85f),2.f);
+			else P.Line({{4,12},{4,H-12}},bContext ? Edge : FLinearColor(.13f,.57f,.74f,.85f),bActive ? 3.f : 2.f);
 		}
 		else if (Owner->IsContestRow())
 		{
 			const bool bActive = Owner->IsActiveContestRow();
-			P.Fill(9, FLinearColor(.006f,.030f,.060f,1), FLinearColor(.002f,.010f,.025f,1));
+			const bool bHierarchy = Owner->GetFormulaEmphasis() == EFMCodexFormulaEmphasis::Active
+				|| Owner->GetFormulaEmphasis() == EFMCodexFormulaEmphasis::Context;
+			P.Fill(9, bHierarchy && bActive ? FLinearColor(.010f,.045f,.082f,1)
+				: FLinearColor(.006f,.030f,.060f,1), FLinearColor(.002f,.010f,.025f,1));
 			P.Outline(1,9,bActive ? FLinearColor(.08f,.37f,.51f,.9f) : FLinearColor(.045f,.16f,.25f,.8f));
 			P.Outline(4,11,FLinearColor(.06f,.19f,.28f,.25f));
 			P.Line({{12,4},{W-12,4}},FLinearColor(.12f,.29f,.39f,.3f));
-			if (bActive) P.Line({{5,18},{5,H-18}},FLinearColor(.12f,.55f,.72f,.85f),2.f);
+			if (bActive) P.Line({{5,18},{5,H-18}},FLinearColor(.12f,.55f,.72f,.85f),bHierarchy ? 3.f : 2.f);
 		}
 		else if (Owner->IsRuleCard())
 		{
@@ -294,6 +300,13 @@ void UFMCodexMatchFlowPanel::SetFormulaRole(EFMCodexFormulaPanelRole Role, bool 
 	bFinalFormulaValue = bFinal;
 	SetFlowStyleEnabled(Role != EFMCodexFormulaPanelRole::None);
 	if (bChanged && MyBorder.IsValid()) MyBorder->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UFMCodexMatchFlowPanel::SetFormulaEmphasis(EFMCodexFormulaEmphasis InEmphasis)
+{
+	if (FormulaEmphasis == InEmphasis) return;
+	FormulaEmphasis = InEmphasis;
+	if (MyBorder.IsValid()) MyBorder->Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 TSharedRef<SWidget> UFMCodexMatchFlowButton::RebuildWidget()

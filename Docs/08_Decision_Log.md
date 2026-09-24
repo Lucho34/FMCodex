@@ -2119,3 +2119,216 @@ paths and accepted content hashes. Staging/commit remain manual. Phase B begins
 only after the user stages this snapshot and replies “已暂存，继续 Phase B”; it
 must compare staged blobs to this approval without regenerating it. No automatic
 commit or CLOSED status is granted by either pre-commit verification phase.
+
+
+## 2026-09-22 — Stage 8.7F Formula attention hierarchy candidate (PENDING USER PIE)
+
+The user reports that dense Formula screens have many similarly weighted boxes
+and no clear first focus. From clean main `08415e72bbe7d2b387400842a1428dbe78a15225`,
+this stage tunes the shared resolving Formula renderer rather than one Low Cross
+screen. Earlier E-family acceptance/commit notes are historical; the current user
+prompt confirms B/B.1, C/C.1, D and E/E.1/E.2 CLOSED.
+
+Reuse existing safe active-row flags and displayed-final semantics for transient
+Active / Context / Resolved visual roles. A small 当前 marker, structural rail and
+value emphasis identify the current gameplay owner independently of local CTA
+permission. Context remains readable and complete, without disabled opacity.
+Core operands, modifiers, pending rolls, base descriptions and current values use
+different weights; no new semantic palette or gameplay-derived result is added.
+
+Existing final result treatment, Outcome semantic accents/transitions, Formula
+facts/arithmetic, numeric formatting, role identity, RNG, score, action gating,
+reel timing and network contracts are unchanged. Shared panel emphasis is opt-in
+and defaults to the accepted paint for other consumers. No Notification, Recovery,
+AP1/ejection, Full-Time, card or asset work is included.
+
+VISUAL SPEC SYNC CANDIDATE: YES, pending foreground acceptance: current-owner
+attention, readable context, numeric anchoring, typed component weight and emphasis
+through structure/luminance. The current locked rulebook is not changed now.
+Verification targets role transitions, waiting-viewer permissions, reuse, dense/
+simple fixtures, accepted mode isolation, necessary UHT/incremental Editor build
+and one natural Low Cross PIE path. No broad gameplay/network rerun is warranted.
+The stage remains **PENDING USER PIE**; no staging, commit or automatic closeout.
+
+## 2026-09-22 — Stage 8.8A isolated broadcast Formula prototype (PENDING DECISION)
+
+The new stage prompt treats Formula hierarchy polish as accepted, superseding
+the earlier pending handoff status above. The committed HEAD matches the prompt,
+but its clean-tree description does not: eight unstaged 8.7F paths are preserved.
+No Git rollback, staging or commit is part of this work.
+
+Explore Image A's broadcast hierarchy in one representative High Cross surface.
+`fm.UI.FormulaV2` is a default-off, non-Shipping local compare switch; only visible
+standalone `Cross.High` Formula can opt in. The accepted subtree remains available
+at the same match state. A/C, ordinary Outcome, Notification, Full-Time, Cards and
+the main HUD remain unchanged. The locked Visual Language v1 file is not edited.
+
+The prototype explicitly experiments with a mint current-owner/CTA accent and
+quiet rounded navy blocks instead of v1's blue action/cut-frame treatment. This
+is a bounded design exception authorized by 8.8A, not a new global color contract.
+Keep participant roles and order, remove redundant operand names only with a
+unique ordered identity match, and make the gated current/final value the right
+anchor. No parsing names, gameplay arithmetic or inferred outcomes are allowed.
+Accepted result semantic markup, numeric gold, reveal gates and typed continuation
+remain; the original action handler guards the alternate button as well.
+
+Verification is limited to focused isolation/content/gate checks, affected shared
+Formula and Outcome widget checks, necessary incremental Editor/UHT build and
+one natural High Cross PIE path with baseline/V2 captures. No broad gameplay or
+network contract changed. Foreground USER PIE decides whether this direction is
+worth continuing; rejecting it only requires turning the local switch off.
+**PENDING USER DECISION — no V2 lock, automatic migration or stage closeout.**
+
+## 2026-09-22 — Stage 8.8B High Cross broadcast fidelity (PENDING USER DECISION)
+
+The user's 8.8A PIE evidence accepts the experiment's structure as a starting
+point, not its visual fidelity. Continue the authorized mixed 8.7F/8.8A worktree
+and refine only the existing default-off High Cross V2 prototype. Preserve the
+starting file hashes and distinguish this stage's delta from the accumulated
+Git diff; a clean tree is neither assumed nor manufactured.
+
+Remove the opaque outer sheet in favor of real-pitch transparency, restrained
+navy cards and local readability scrims. Strengthen the football/rule header,
+complete participant names, quiet atomic operands, numeric inset, VS separation
+and dice CTA. Replace the earlier prototype mint with distinct action cyan;
+accepted Goal mint and final numeric gold semantics remain independent. Route
+and other projected support facts remain visible without dominating the title.
+
+The identity/operand layout must survive live text replacement and DPI scaling;
+automatic wrapping inside Chinese names and multipliers is not acceptable.
+Typed actions determine concise roll CTA/context, never parsed button text.
+No shared V1 skin, accepted Outcome renderer, HUD, cards, gameplay, disclosure,
+RNG or lifecycle changes are authorized by this visual refinement.
+
+Verification is bounded to prototype content/gates and rendered layout checks,
+incremental Editor compilation, and one real High Cross attack-to-result path
+with same-state V1/V2 switching and full-context screenshots. No new Network
+Golden Path or broad rules/runtime suites are warranted by this isolated delta.
+The user must still judge reference fidelity, actual pitch/HUD integration,
+reveal continuity and whether to pursue V2. No locked-spec update or family
+migration follows automatically from technical verification.
+
+## 2026-09-22 — Stage 8.8C open High Cross broadcast shell (PENDING USER PIE)
+
+User feedback identifies the 8.8B header/footer backing as too heavy, VS as too
+weak, and typography/cards as insufficiently close to the primary reference.
+Continue the existing mixed worktree and make a stronger, reversible full-shell
+prototype in `FMCodexFormulaBroadcastPrototype`; do not migrate the surrounding
+match HUD or change the locked v1 specification.
+
+Replace the outer/header/footer plates with an open composition over the real
+pitch. Concentrate readability protection inside the two broadcast cards using
+lightweight gradients and value insets. Give VS and action context compact
+translucent carriers. Increase typographic hierarchy, approximating missing CJK
+bold weight locally with a restrained same-color outline, without font assets.
+Retain atomic names/operands, ordered contributor matching, action cyan distinct
+from Goal mint, and existing final-result semantics.
+
+Keep the default-off non-Shipping `fm.UI.FormulaV2` switch and same-state fallback.
+All authoritative Formula, action ownership, reveal, score, terminal and network
+contracts remain outside this presentation change. Focused content/geometry and
+transparent-region checks plus one natural High Cross PIE path are the intended
+verification budget. User judgment of fidelity and full-context compatibility
+is still required; technical success does not adopt V2.
+
+## 2026-09-23 — Stage 8.8D Resolution Theater prototype (PENDING DIRECTION DECISION)
+
+The current user handoff confirms 8.7F remains uncommitted and without final
+USER PIE closeout; earlier 8.8A wording treating it as accepted is superseded.
+Preserve all mixed 8.7F/8.8A/B/C work as the comparison fallback.
+
+Try a dedicated presentation mode after Cross tactical selection, with a quiet
+procedural arena, wide Attack/Defense layout and the existing visible Formula,
+reel, score and Outcome gates. The user explicitly approved a neutral Cross
+setup/route entrance: the actual High route continues in the theater, while a
+visibly disclosed Low route returns to the original board. Intent is not result.
+
+`fm.UI.ResolutionStageV2` defaults OFF, is non-Shipping and has no persistent
+config default. While active it supersedes the board visually; turning it off
+returns to the unchanged `fm.UI.FormulaV2` comparison setting. No second gameplay
+state machine, RNG, command family or network schema is introduced. One invisible
+setup identity in the existing safe presentation DTO supports both viewers.
+
+See [prototype usage and boundary](Dev/Resolution_Theater_Prototype_v1.md).
+This is not adoption or a visual-spec revision. **VISUAL SPEC UPDATE REQUIRED:
+NO** before USER PIE direction decision. Stop before staging or committing.
+
+## 2026-09-23 — Stage 8.8D.1 field continuity and inline roll refinement (PENDING USER PIE)
+
+The user completed 8.8D PIE: the independent presentation-mode architecture is
+worth continuing, but its first visual prototype is not accepted. Refine only the
+High Cross experiment. Preserve neutral Cross entry and disclosed-Low fallback,
+the default-OFF non-Shipping toggle, shared safe facts/actions and existing reveal
+and score gates. This is not adoption of a new visual specification.
+
+Retain the actual Match Board turf/markings as the transition anchor. Fade board
+clutter, expand the existing field and apply lightweight broadcast lighting; do
+not introduce a blur/render-target pipeline. Use content-sized participant and
+Formula modules, quieter metadata, and Attack → Defense → VS → action-lane entry.
+Host the existing Stage 8.6 reel directly in the pending Formula operand. Preserve
+its frame source, RNG independence, capture and hold; displayed subtotal, roll and
+final value stay projection-owned. See the updated
+[prototype usage and boundary](Dev/Resolution_Theater_Prototype_v1.md).
+
+Engineering checks and one representative High Cross PIE do not replace USER PIE
+judgment of continuity, composition and motion. **VISUAL SPEC UPDATE REQUIRED:
+NO** before adoption. Do not stage, commit, migrate Low Cross or start a later Stage.
+
+## 2026-09-23 — Stage 8.8E High Cross Theater direction accepted; polish pending USER PIE
+
+The user has selected Resolution Theater as the primary High Cross product
+direction. The previous board overlay is no longer a competing design target.
+This supersedes the pending direction-decision status above; it does not accept
+the current visual finish or authorize broad fallback/toggle removal.
+
+Polish the existing family toward the supplied commercial broadcast and CTA
+references: field-derived lighting, compact glass panels, unified vector marks,
+stronger title/outcome hierarchy, a disclosed winner badge and integrated action
+lane. Keep roles, names, direct Formula, inline reel and stable confrontation
+composition. Winner emphasis consumes the existing narrative success fact behind
+the original visible-result gate; it must never compare totals to infer a winner.
+The reference-inspired mint/ink CTA is a scoped Theater family treatment pending
+visual acceptance, not a change to the global canonical blue action specification.
+
+Keep the current development toggle and fallback code for engineering safety;
+no Shipping enablement, additional tactic migration, new authority/RNG/action
+path or broad cleanup is included. See [Theater usage](Dev/Resolution_Theater_Prototype_v1.md).
+**VISUAL SPEC UPDATE REQUIRED: NO** pending USER PIE — ADOPTION POLISH REVIEW.
+Do not stage or commit before the user's acceptance/closeout workflow.
+
+
+## 2026-09-23 — Stage 8.8F High Cross production adoption; visual lock pending USER PIE
+
+DIRECTION ADOPTED. Normal Cross entry and disclosed High Cross now use Resolution
+Theater by default. Development `fm.UI.ResolutionStageV2` defaults to 1; 0 restores
+the unchanged FormulaV2/legacy comparison. Shipping always uses the theater within
+this scope and has no theater cvar. No persistent config is added. Low remains a
+migration boundary and exits when its route is visibly disclosed.
+
+Refine the existing family with crisp existing-font typography, original procedural
+football silhouettes, restrained current/winner/VS treatment, an always-present
+`base + ? = current` / `base + roll = final` equation, and a native base-value tooltip.
+Replace the permanent breakdown with that safe-fact explanation. Canonical fixed
+`Defense.FixedBonus` is labeled “防守加成”, not the reference's “战术点数”; actual
+TacticalPlayerAdvantage remains a separately named modifier. A compact information
+or result-reason bar is separate from the CTA. Result reason maps safe Formula
+WinReason behind the existing visible narrative gate, never a local total comparison.
+
+VISUAL FAMILY FINAL LOCK PENDING USER PIE. Authoritative visual-spec synchronization
+is required for eventual adoption closeout after acceptance; this stage updates
+only the decision and [usage/boundary document](Dev/Resolution_Theater_Prototype_v1.md).
+The Stage 8.6 reel is functionally unchanged. FOLLOW-UP: Resolution Theater-compatible
+Roll Presentation visual reskin. Do not stage, commit or migrate other tactic families.
+
+
+## 2026-09-24 — Stage 8.8F Closeout: High Cross production lock and stamina reconciliation
+
+**ADOPTED / PRODUCTION LOCKED. Stage 8.8F.3 USER PIE: ACCEPTED.** 用户接受商业 High Cross Resolution Theater 家族。本次不重开背景、人物、字体、Formula、CTA、hover、理由栏、Result 和动效设计。生产外观见 [专项规范](UI/Resolution_Theater_Visual_Spec_v1.md)，已从 MatchFlow 与 MatchScreen layout 链接；旧阶段的 pending 状态是历史。
+
+UI 收尾发现实现与多人公式体力规则不一致：High Cross 仅把 Carrier/Marker 体力送入已有求和 resolver。修正为经过 canonical plan 校验的实际参与集合（Carrier、Runner；Marker、optional Helper，active GK 一次）。无协防不虚构参与者，重复角色身份由现有校验拒绝。快速压制、总值比较、门将特殊平局、同体力防守优先和 scorer 语义不变。权威生成双方参与体力总和，沿既有安全结果投影显示，UI 不求和、不判胜。
+
+Development 默认启用 Theater，ResolutionStageV2/FormulaV2 仅保留 non-Shipping 对照用途；Shipping 直接启用，不依赖 console/config。资源采用已验收原始 athlete atlas，不重新生成。
+
+**CURRENT MIGRATION BOUNDARY:** actual Low Cross 在路线可见披露后返回原表现。本次只修正 High stamina；Low 的一般多人规则与组装一致性留待独立审计，不以范围限制把单人比较确认为目标规则。
+
+后续独立工作：Resolution Theater-compatible Roll Presentation visual reskin（保持 Stage 8.6 行为）；Low Cross 迁移；可选 CJK typography resource upgrade。当前 DroidSansFallback Regular 是已接受资源限制，不是本阶段功能阻塞。技术验证不能代替视觉 USER PIE；此次视觉接受来自用户明确确认。staging/commit 均由用户手动完成。

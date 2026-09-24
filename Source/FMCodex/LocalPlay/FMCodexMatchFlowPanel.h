@@ -7,6 +7,8 @@
 
 // Paint roles for read-only formula furniture, separate from A/C decoration.
 enum class EFMCodexFormulaPanelRole : uint8 { None, Section, Value, RollHost };
+// Read-only attention roles. None preserves accepted non-formula paint.
+enum class EFMCodexFormulaEmphasis : uint8 { None, Active, Context, Resolved };
 
 /** Opt-in decoration for information, choice and formula surfaces. No gameplay state. */
 UCLASS()
@@ -24,6 +26,8 @@ public:
 	void SetFormulaRole(EFMCodexFormulaPanelRole Role, bool bFinal = false);
 	EFMCodexFormulaPanelRole GetFormulaRole() const { return FormulaRole; }
 	bool IsFinalFormulaValue() const { return bFinalFormulaValue; }
+	void SetFormulaEmphasis(EFMCodexFormulaEmphasis InEmphasis);
+	EFMCodexFormulaEmphasis GetFormulaEmphasis() const { return FormulaEmphasis; }
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 private:
@@ -33,6 +37,7 @@ private:
 	bool bActiveContestRow = false;
 	EFMCodexFormulaPanelRole FormulaRole = EFMCodexFormulaPanelRole::None;
 	bool bFinalFormulaValue = false;
+	EFMCodexFormulaEmphasis FormulaEmphasis = EFMCodexFormulaEmphasis::None;
 };
 
 /** The original UButton input contract with opt-in procedural decoration. */

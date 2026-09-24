@@ -608,6 +608,7 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 			MarkerDefenseValue = Bundle.Marker.Values.Tackling;
 			if (Branch.Cross == EMatchPlayCrossActualBranch::High)
 			{
+				bCompositeStamina = true;
 				RunnerAttackAttribute = EAttribute::Strength;
 				RunnerAttackValue = Bundle.Runner.Values.Strength;
 				HelperDefenseAttribute = EAttribute::Strength;
@@ -774,9 +775,9 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 			Contest.TieRule =
 				EMatchPlayResolutionTieRule::GoalkeeperDefenderWins;
 			if (bCompositeStamina
-				&& Branch.ActionType == ESkillRuleType::ThroughBall
-				&& Branch.ThroughBall
-					== EMatchPlayThroughBallActualBranch::Feet)
+				&& (Branch.ActionType == ESkillRuleType::Cross
+					|| (Branch.ActionType == ESkillRuleType::ThroughBall
+						&& Branch.ThroughBall == EMatchPlayThroughBallActualBranch::Feet)))
 			{
 				Contest.DefenseRow.ParticipatingStamina.Add(
 					Goalkeeper.Snapshot.Attributes.Stamina);

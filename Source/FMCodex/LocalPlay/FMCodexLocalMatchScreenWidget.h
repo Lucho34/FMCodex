@@ -5,6 +5,7 @@
 
 #include "FMCodexLocalMatchUMGPresentation.h"
 #include "FMCodexMatchScreenBackend.h"
+#include "FMCodexResolutionTheaterPrototype.h"
 
 #include "FMCodexLocalMatchScreenWidget.generated.h"
 
@@ -80,6 +81,8 @@ class FMCODEX_API UFMCodexLocalMatchScreenWidget : public UUserWidget
 	GENERATED_BODY()
 	UPROPERTY()
 	TObjectPtr<UTexture2D> StadiumAtmosphere;
+	UPROPERTY()
+	TObjectPtr<UTexture2D> ResolutionTheaterAthletes;
 
 public:
 #if !UE_BUILD_SHIPPING
@@ -208,8 +211,18 @@ protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeDestruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 private:
+	FMCodexResolutionTheaterPrototype::FMotion TheaterMotion;
+	void RefreshResolutionTheater(const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed,
+		const FFMCodexUMGMatchHeaderViewModel& DisplayedHeader);
+
+	UFUNCTION()
+	void HandleTheaterHighRequested();
+	UFUNCTION()
+	void HandleTheaterLowRequested();
+
 	TArray<FName> NetworkCornerDraft;
 	int64 NetworkCornerDraftSequence = 0;
 	EMatchPlaySetPieceCornerRouteStage NetworkCornerDraftStage = EMatchPlaySetPieceCornerRouteStage::None;

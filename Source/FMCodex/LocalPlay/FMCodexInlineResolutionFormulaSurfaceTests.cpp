@@ -833,6 +833,61 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 					== EFMCodexUMGCrossDefensiveNarrativePerformer::Helper);
 	}
 
+	// Stage 8.8F.1: wording consumes the safe reason and supplied numbers;
+	// it neither compares totals to choose a winner nor selects another actor.
+	TestTrue(TEXT("Pending result has no reason disclosure"), Pending.InlineFormula.ResolutionReasonLabel.IsEmpty());
+	auto HigherFacts = MakeCrossHighFacts(true, false, true, true, EFormulaWinner::Defender,
+		EMatchPlayCrossActualBranch::High, HelperSequence);
+	auto& Higher = HigherFacts.FormulaContests[0].ResolvedResult;
+	Higher.WinReason = EFormulaWinReason::HigherFinalValue;
+	Higher.AttackerFinalValue = 8.5f; Higher.DefenderFinalValue = 9.5f;
+	const auto HigherPresentation = BuildPresentation(HigherFacts).InlineFormula;
+	TestEqual(TEXT("Canonical comparison includes actual safe totals and the ordinary rule explanation"),
+		HigherPresentation.ResolutionReasonLabel, FString(TEXT("防守方最终值 9.5，高于进攻方 8.5\n本次公式按照总值大小比较")));
+	Higher.Winner = EFormulaWinner::Attacker; Higher.bIsGoal = true;
+	Higher.AttackerFinalValue = 10.5f;
+	TestEqual(TEXT("Attack value reason uses safe totals and the same ordinary rule explanation"),
+		BuildPresentation(HigherFacts).InlineFormula.ResolutionReasonLabel,
+		FString(TEXT("进攻方最终值 10.5，高于防守方 9.5\n本次公式按照总值大小比较")));
+	Higher.WinReason = EFormulaWinReason::FastSuppression;
+	Higher.AttackerFinalValue = 8.5f; Higher.DefenderFinalValue = 12.f;
+	HigherFacts.Rolls[1].RawD6 = 6; HigherFacts.Rolls[2].RawD6 = 2;
+	for (auto* Row : {&HigherFacts.FormulaContests[0].AttackRow, &HigherFacts.FormulaContests[0].DefenseRow})
+		for (auto& Term : Row->Terms) if (Term.Kind == ETermKind::RawRoll)
+			Term.SourceValue = Term.Contribution = Row == &HigherFacts.FormulaContests[0].AttackRow ? 6.f : 2.f;
+	const auto Special = BuildPresentation(HigherFacts).InlineFormula;
+	TestEqual(TEXT("Special reason displays safe winning and losing dice, not totals"), Special.ResolutionReasonLabel,
+		FString(TEXT("触发快速压制：6 点压制 2 点\n本次由快速压制决定胜负，不比较最终总值")));
+	TestTrue(TEXT("Smaller total cannot override the supplied special winner"), Special.bNarrativeAttackSuccess);
+	Higher.WinReason = EFormulaWinReason::StaminaTieBreaker;
+	Higher.AttackerFinalValue = Higher.DefenderFinalValue = 9.5f;
+	HigherFacts.FormulaContests[0].AttackRow.ParticipatingStamina = {1, 1};
+	HigherFacts.FormulaContests[0].DefenseRow.ParticipatingStamina = {9, 9};
+	Higher.AttackerParticipatingStaminaTotal = 9;
+	Higher.DefenderParticipatingStaminaTotal = 7;
+	TestEqual(TEXT("Attack tie displays authority totals, never re-sums row operands"),
+		BuildPresentation(HigherFacts).InlineFormula.ResolutionReasonLabel,
+		FString(TEXT("最终值相同，按体力总和判定：进攻方获胜\n进攻方参与球员体力总和 9，高于防守方 7")));
+	Higher.Winner = EFormulaWinner::Defender; Higher.bIsGoal = false;
+	Higher.AttackerParticipatingStaminaTotal = 6;
+	Higher.DefenderParticipatingStaminaTotal = 10;
+	TestEqual(TEXT("Defense tie displays projected totals"),
+		BuildPresentation(HigherFacts).InlineFormula.ResolutionReasonLabel,
+		FString(TEXT("最终值相同，按体力总和判定：防守方获胜\n防守方参与球员体力总和 10，高于进攻方 6")));
+	// Inconsistent test-only totals must never override the authoritative winner.
+	Higher.AttackerParticipatingStaminaTotal = 99;
+	TestFalse(TEXT("UI never compares totals to select winner"),
+		BuildPresentation(HigherFacts).InlineFormula.bNarrativeAttackSuccess);
+	Higher.WinReason = EFormulaWinReason::DefenderWinsEqualStamina;
+	Higher.AttackerParticipatingStaminaTotal = Higher.DefenderParticipatingStaminaTotal = 8;
+	TestEqual(TEXT("Equal participating totals retain defensive priority"),
+		BuildPresentation(HigherFacts).InlineFormula.ResolutionReasonLabel,
+		FString(TEXT("最终值与体力总和均相同：防守方获胜\n双方参与球员体力总和均为 8，按同体力防守优先规则判定")));
+	Higher.WinReason = EFormulaWinReason::DefenderWinsGoalkeeperTie;
+	TestEqual(TEXT("Goalkeeper tie remains distinct from stamina"),
+		BuildPresentation(HigherFacts).InlineFormula.ResolutionReasonLabel,
+		FString(TEXT("最终值相同，门将参与时防守方获胜")));
+
 	const auto LowAttackWin = BuildPresentation(MakeCrossHighFacts(
 		true, true, true, true, EFormulaWinner::Attacker,
 		EMatchPlayCrossActualBranch::Low)).InlineFormula;

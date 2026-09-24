@@ -42,3 +42,9 @@ Initial Route D6 只存在于 Cross、Pass Control、Through Ball，用于选择
 | Apply terminal | full-screen terminal result | CurrentAttack 清除；command Feedback 保留清除前 resolved facts |
 
 现有 Continue 按钮调用 Controller 的 typed routing；只有 Host/Session command 会触发 provider。构建/刷新 View、Feedback、UMG DTO 不持有 provider，也不会触发 continuation。
+
+
+## 8.8F closeout: High Cross aggregate stamina facts
+
+High 的 AttackRow.ParticipatingStamina 对应 Carrier + Runner；DefenseRow 对应 Marker + optional Helper + actual active GK，和经过规范 Cross plan 校验的 ResolverInput 一致。Low 保持现有实现，本次不迁移。
+`FFormulaResolutionResult.AttackerParticipatingStaminaTotal` / `DefenderParticipatingStaminaTotal` 由 FormulaResolver 使用已存在的 SumStamina 生成，与 Winner / WinReason 一起进入既有 ResolvedResult 投影，不新增客户端计算或独立披露通道。未完成/被 withheld 的 resolved result 保持默认；只有合法披露的已结算 contest 才可作为 UI 理由来源。显示理由仍受既有 narrative / ResultHold 门控。
