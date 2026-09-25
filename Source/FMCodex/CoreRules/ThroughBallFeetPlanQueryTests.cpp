@@ -211,7 +211,6 @@ namespace ThroughBallFeetPlanQueryTests
 			&& Left.bHasActiveGoalkeeper == Right.bHasActiveGoalkeeper
 			&& Left.ActiveGoalkeeperId == Right.ActiveGoalkeeperId
 			&& Left.GoalkeeperOneOnOne == Right.GoalkeeperOneOnOne
-			&& Left.GoalkeeperStamina == Right.GoalkeeperStamina
 			&& Left.DefenseD6 == Right.DefenseD6
 			&& Left.DefenseBaseValue == Right.DefenseBaseValue
 			&& Left.DefenseExternalModifier == Right.DefenseExternalModifier
@@ -510,7 +509,7 @@ namespace ThroughBallFeetPlanQueryTests
 			Test.TestEqual(TEXT("Defense D6 mapped"), EvaluateSuccess(Test, MakeInput()).FormulaPlan.DefenseD6, 4);
 			break;
 		case 52:
-			Test.TestEqual(TEXT("All defense stamina ordered"), EvaluateSuccess(Test, MakeInput(true, true)).FormulaPlan.DefenseParticipatingStamina, TArray<int32>({3, 2, 6}));
+			Test.TestEqual(TEXT("Outfield defense stamina ordered; GK has no stamina"), EvaluateSuccess(Test, MakeInput(true, true)).FormulaPlan.DefenseParticipatingStamina, TArray<int32>({3, 2}));
 			Test.TestEqual(TEXT("Absent optional stamina omitted"), EvaluateSuccess(Test, MakeInput()).FormulaPlan.DefenseParticipatingStamina, TArray<int32>({3}));
 			break;
 		case 53:

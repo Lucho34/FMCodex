@@ -2345,3 +2345,26 @@ Legacy 与 TheaterInline 共用 Screen 的 Roll 状态来源、时钟与合法�
 **CURRENT MIGRATION BOUNDARY:** 仅 High Cross Resolution Theater 的攻防 Formula 使用 TheaterInline。路线骰、D12、旧 Formula、未迁移战术及 Low Cross 当前表现保留 Legacy，随其所属表现家族另行迁移。**CompactBox** 与 **Emphasis** 为 planned concepts only，未实现、未锁定。
 
 本次 closeout 同步规范并审计整个非 ignored 工作区，不修改已接受的运行时代码。focused Roll/Theater/Legacy 检查用于收尾，复用 8.9A.2 的构建与真实 High Cross PIE 证据；技术证据与用户验收分别记录。用户在 GitHub Desktop 执行最终提交，Codex 不操作 staging 或 commit；生产视觉锁定不表示 Git 已提交。
+
+## 2026-09-25 — Stage 8.9B: 全局平局合同确认与 Low Cross 开发验收迁移
+
+用户明确确认跨战术共享的最终值平局优先级：实际防守门将参与时直接防守获胜；否则比较全部实际参与球员体力总和；总和仍相同则防守获胜。快速压制等更高优先级特殊规则保持在前。参与集合由权威 resolution 校验，UI 不拼人、不求和、不判胜，只显示合法投影的总和与结果。此决定适用于所有战术，不限于传中，见 [Canonical §7](01_Rules_Canonical.md#7-平局判定)。
+
+现有 FormulaResolver 已集中实现该优先级，Transition / Finishing 及各战术通过既有 executor 复用它，不新建第二套 tie-break helper。Low Cross 原先仅传 Carrier/Marker 体力，与多人求和规则冲突；本次将其改为经过 Cross plan 校验的 Carrier+Runner / Marker+可选 Helper，并同步权威事实投影。实际 GK 通过身份和独立平局优先标志参与，不具有体力属性。新增跨 Formula 类型优先级与双 Cross 路线 focused 测试。
+
+Low Cross 复用既有 Resolution Theater、inline Roll v2、safe view、typed action、ResultHold 与比分门控；实际 Low 路线披露后继续留在 Theater。Development 默认开启，可用 `fm.UI.ResolutionStageV2.LowCross=0` 回退 Low；Shipping 仍保留既有 Low 表现。此为 **PENDING USER PIE**，不是 Low 的 production lock，不更新已锁定 High 视觉规范，不迁移其他战术 UI。详见 [开发迁移说明](Dev/Low_Cross_Resolution_Theater_Migration.md)。
+
+
+## 2026-09-25 — Stage 8.9B Closeout: Low Cross Theater production lock 与全局平局核查
+
+**ADOPTED / PRODUCTION LOCKED. LOW CROSS THEATER USER PIE: ACCEPTED.** 用户接受 Low Cross 视觉；High / Low 均为生产 Theater。实际 Low 路线披露后保持同一 Theater，经 Formula、TheaterInline Roll v2、Result、显式下一回合返回棋盘。布局与动效不重设计。此条取代前面的 Low pending / High-only 产品边界。
+
+Development 默认主开关与 Low 开关均开启，Low=0 仅作 Development 旧界面对照。Shipping 的两处选择均编译为 true，排除 cvar，无玩家配置或控制台依赖。生产视觉合同已同步 [Theater visual spec](UI/Resolution_Theater_Visual_Spec_v1.md)。
+
+全局最终值平局：实际防守 GK 参与→防守胜；否则实际参与的场上球员体力总和较高方胜；仍相同→防守胜。快速压制等更高优先特殊规则保持在前。**门将没有体力属性**；参与标志与属性贡献单独传递，不从通用球员结构读取/虚构 GK 体力。Closeout 移除 Cross / Feet / 定位球旧 GK stamina 条目，同步 Feet plan/校验器及定位球状态重建。远射、内切、控球推进原有场上球员数组正确；单刀天然 GK 参与，体力比较不适用。逐家族核查见 [Low audit](Dev/Low_Cross_Resolution_Theater_Migration.md#global-formula-participant-audit--stage-89b-closeout)。UI 只显示安全投影的身份、公式、WinReason、总和与叙事，不拼人、求和或判胜。
+
+明确后续：① Route Roll / Tactical Roll Theater visual variant，优先 CompactBox，复用同一 Roll 状态源，当前路线骰保留 Legacy；② participant name/compact portrait hover→现有只读 Full Player Card，鼠标优先，不复制属性面板；③其余 Formula 家族分别迁移。本阶段不实现这些后续。
+
+共享 SingleCard executor 允许权威 GK 参与时防守侧不提供体力数组，仍拒绝无进攻体力或无 GK 的空防守体力输入；不再要求定位球伪造 GK 体力。胜负仍由原 FormulaResolver 判定。
+
+收尾证据采用 focused/affected automation、代表性 Low PIE、一次真实 Host/Remote Low 路径、一次 Win64 Shipping smoke；不机械运行全部套件。用户验收与工程证据分开记录。Git staging/commit 由用户在 GitHub Desktop 完成。

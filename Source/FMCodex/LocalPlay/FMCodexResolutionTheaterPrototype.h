@@ -18,6 +18,7 @@ struct FMotion
 {
 	bool bActive = false;
 	bool bLastEnabled = false;
+	bool bLastLowEnabled = false;
 	float Elapsed = 1.f;
 	float FieldProgress = 0.f;
 	float FieldTransitionFrom = 0.f;
@@ -27,6 +28,9 @@ struct FMotion
 	FVector2D FieldTranslation = FVector2D::ZeroVector;
 };
 bool IsEnabled();
+// Production default in all targets; only Development exposes the fallback.
+bool IsLowCrossEnabled();
+bool IsFormulaContest(FName ContestId);
 bool WantsTheater(const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed);
 UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& Low, UTexture2D* Athletes);

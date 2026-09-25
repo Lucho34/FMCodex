@@ -42,7 +42,9 @@ namespace
 {
 #if !UE_BUILD_SHIPPING
 TAutoConsoleVariable<int32> Mode(TEXT("fm.UI.ResolutionStageV2"), 1,
-	TEXT("Development fallback override; default ON. 0 restores FormulaV2/legacy. Shipping always uses the High Cross theater."), ECVF_Default);
+	TEXT("Development fallback override; default ON. 0 restores FormulaV2/legacy. Shipping always uses the Cross theater."), ECVF_Default);
+TAutoConsoleVariable<int32> LowCrossMode(TEXT("fm.UI.ResolutionStageV2.LowCross"), 1,
+	TEXT("Development Low Cross fallback; default ON. 0 restores its legacy presentation. Shipping always uses Low Cross Theater."), ECVF_Default);
 #endif
 using K = EFMCodexUMGInlineFormulaTermKind;
 using C = EFMCodexUMGInteractionCategory;
@@ -534,15 +536,27 @@ bool IsEnabled() {
 	return Mode.GetValueOnGameThread()!=0;
 #endif
 }
+bool IsLowCrossEnabled()
+{
+#if UE_BUILD_SHIPPING
+	return true;
+#else
+	return LowCrossMode.GetValueOnGameThread()!=0;
+#endif
+}
+bool IsFormulaContest(FName ContestId)
+{
+	return ContestId==TEXT("Cross.High") || (ContestId==TEXT("Cross.Low") && IsLowCrossEnabled());
+}
 bool WantsTheater(const FFMCodexUMGMatchScreenViewModel& Screen, const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed)
 {
 	if (!IsEnabled() || Screen.FullTime.bVisible || Screen.Resolution.bRejected) return false;
-	// A disclosed Low result returns to its existing surface, including its route hold.
+	// Only the explicit Low fallback exits at visible route disclosure.
 	// Test the established visible disclosure, never the hidden future route alone.
 	if (Displayed.ContestId==TEXT("Cross.Route") && !Displayed.RouteResultLabel.IsEmpty()
-		&& Screen.InlineFormula.ContestId==TEXT("Cross.Low")) return false;
+		&& Screen.InlineFormula.ContestId==TEXT("Cross.Low") && !IsLowCrossEnabled()) return false;
 	return (Screen.Interaction.Category==C::SelectBranchIntent && Screen.InlineFormula.ContestId==TEXT("Cross.Setup"))
-		|| (Displayed.bVisible && (Displayed.ContestId==TEXT("Cross.Route") || Displayed.ContestId==TEXT("Cross.High")));
+		|| (Displayed.bVisible && (Displayed.ContestId==TEXT("Cross.Route") || IsFormulaContest(Displayed.ContestId)));
 }
 UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& Low, UTexture2D* Athletes)
 {
@@ -650,8 +664,10 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& P, const FFMCodexUMGMatchHeaderViewModel& H, bool bRequestPending)
 {
-	const bool bFormula=P.bVisible && P.ContestId==TEXT("Cross.High") && P.bShowFormulaRows;
-	const bool bHighDisclosed=bFormula || (P.ContestId==TEXT("Cross.Route") && !P.RouteResultLabel.IsEmpty() && Screen.InlineFormula.ContestId==TEXT("Cross.High"));
+	const bool bFormula=P.bVisible && IsFormulaContest(P.ContestId) && P.bShowFormulaRows;
+	// Future safe facts may already exist while the visible route is still gated.
+	const FName DisclosedContest=bFormula ? P.ContestId
+		: (P.ContestId==TEXT("Cross.Route") && !P.RouteResultLabel.IsEmpty() ? Screen.InlineFormula.ContestId : NAME_None);
 	const bool bFinal=bFormula && FMCodexOutcomePresentation::IsFinalReady(P.bNarrativeAvailable,P.bDiceRevealVisible);
 	const auto Attack=bFormula ? P.AttackRow : Participants(Screen,true);
 	const auto Defense=bFormula ? P.DefenseRow : Participants(Screen,false);
@@ -659,7 +675,8 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	// compare totals: rapid suppression can legitimately defeat the larger total.
 	RefreshSide(Tree,TEXT("TheaterAttack"),Attack,bFormula,P.bAttackRowActive,P.bDiceRevealVisible && P.RollReel.bVisible,P.ActiveRollSequenceIndex,bFinal && P.bNarrativeAttackSuccess);
 	RefreshSide(Tree,TEXT("TheaterDefense"),Defense,bFormula,P.bDefenseRowActive,P.bDiceRevealVisible && P.RollReel.bVisible,P.ActiveRollSequenceIndex,bFinal && !P.bNarrativeAttackSuccess);
-	Find<UTextBlock>(Tree,TEXT("TheaterTitle"))->SetText(bHighDisclosed ? LOCTEXT("HighCross","高球传中") : LOCTEXT("Cross","传中"));
+	Find<UTextBlock>(Tree,TEXT("TheaterTitle"))->SetText(DisclosedContest==TEXT("Cross.High") ? LOCTEXT("HighCross","高球传中")
+		: DisclosedContest==TEXT("Cross.Low") ? LOCTEXT("LowCross","低球传中") : LOCTEXT("Cross","传中"));
 	auto* Title=Find<UTextBlock>(Tree,TEXT("TheaterTitle"));
 	auto TitleFont=Title->GetFont(); TitleFont.Size=bFinal?26:52; Title->SetFont(TitleFont);
 	Show(*Title,true);

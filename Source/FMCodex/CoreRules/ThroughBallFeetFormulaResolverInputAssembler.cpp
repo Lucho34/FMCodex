@@ -11,7 +11,6 @@ namespace ThroughBallFeetFormulaResolverInputAssembler
 	const FName HelperStaminaField(TEXT("HelperStamina"));
 	const FName ActiveGoalkeeperIdField(TEXT("ActiveGoalkeeperId"));
 	const FName GoalkeeperOneOnOneField(TEXT("GoalkeeperOneOnOne"));
-	const FName GoalkeeperStaminaField(TEXT("GoalkeeperStamina"));
 	const FName AttackBaseValueField(TEXT("AttackBaseValue"));
 	const FName AttackExternalModifierField(TEXT("AttackExternalModifier"));
 	const FName AttackD6Field(TEXT("AttackD6"));
@@ -57,10 +56,6 @@ namespace ThroughBallFeetFormulaResolverInputAssembler
 		if (Plan.bHasHelper)
 		{
 			Expected.Add(Plan.HelperStamina);
-		}
-		if (Plan.bHasActiveGoalkeeper)
-		{
-			Expected.Add(Plan.GoalkeeperStamina);
 		}
 		return Expected;
 	}
@@ -225,16 +220,6 @@ FThroughBallFeetFormulaResolverInputAssembler::Assemble(
 					::InvalidOptionalParticipantState,
 				TEXT("Absent Active Goalkeeper must keep OneOnOne at zero."),
 				GoalkeeperOneOnOneField);
-			return Result;
-		}
-		if (Plan.GoalkeeperStamina != 0)
-		{
-			SetFailure(
-				Result,
-				EThroughBallFeetFormulaResolverInputAssemblyErrorCode
-					::InvalidOptionalParticipantState,
-				TEXT("Absent Active Goalkeeper must keep stamina at zero."),
-				GoalkeeperStaminaField);
 			return Result;
 		}
 	}

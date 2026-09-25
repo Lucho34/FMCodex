@@ -361,8 +361,6 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 						Input.Defender.Modifier = 1.0f;
 						Input.Defender.ComparePoint = Short.DefenseD6;
 						Input.Defender.bComparePointWasRolledOnD6 = true;
-						Input.Defender.ParticipatingStamina.Add(
-							Gk.Snapshot.Attributes.Stamina);
 						Input.bGoalkeeperParticipated = true;
 						Input.TurnIndex = static_cast<int32>(
 							State.CurrentAttack.AttackSequence);
@@ -621,8 +619,6 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 						Input.Defender.Modifier = 2.0f;
 						Input.Defender.ComparePoint = Long.DefenseD6;
 						Input.Defender.bComparePointWasRolledOnD6 = true;
-						Input.Defender.ParticipatingStamina.Add(
-							Gk.Snapshot.Attributes.Stamina);
 						Input.bGoalkeeperParticipated = true;
 						Input.TurnIndex = static_cast<int32>(
 							State.CurrentAttack.AttackSequence);
@@ -864,8 +860,6 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 					Input.Defender.Modifier = -3.0f;
 					Input.Defender.ComparePoint = Penalty.DefenseD6;
 					Input.Defender.bComparePointWasRolledOnD6 = true;
-					Input.Defender.ParticipatingStamina.Add(
-						Gk.Snapshot.Attributes.Stamina);
 					Input.bGoalkeeperParticipated = true;
 					Input.TurnIndex = static_cast<int32>(
 						State.CurrentAttack.AttackSequence);

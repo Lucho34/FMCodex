@@ -329,8 +329,7 @@ FMatchPlayPenaltyResolution::ResolveDirectDefenseRoll(
 	FormulaInput.Defender.Modifier = -3.0f;
 	FormulaInput.Defender.ComparePoint = Penalty.DefenseD6;
 	FormulaInput.Defender.bComparePointWasRolledOnD6 = true;
-	FormulaInput.Defender.ParticipatingStamina.Add(
-		Result.GoalkeeperQueryResult.Snapshot.Attributes.Stamina);
+	// The defending goalkeeper has no stamina; final-value ties use GK priority.
 	FormulaInput.bGoalkeeperParticipated = true;
 	FormulaInput.TurnIndex = static_cast<int32>(Request.AttackSequence);
 	FormulaInput.AttackerPlayerId = GetSideId(Attacker);

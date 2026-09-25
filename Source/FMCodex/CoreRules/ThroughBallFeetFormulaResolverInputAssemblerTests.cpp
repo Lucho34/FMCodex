@@ -52,7 +52,6 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 		{
 			Plan.ActiveGoalkeeperId = GoalkeeperId;
 			Plan.GoalkeeperOneOnOne = 5;
-			Plan.GoalkeeperStamina = 6;
 		}
 
 		Plan.DefenseD6 = 4;
@@ -62,10 +61,6 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 		if (bHasHelper)
 		{
 			Plan.DefenseParticipatingStamina.Add(Plan.HelperStamina);
-		}
-		if (bHasGoalkeeper)
-		{
-			Plan.DefenseParticipatingStamina.Add(Plan.GoalkeeperStamina);
 		}
 
 		Plan.LogId = LogId;
@@ -125,7 +120,6 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 			&& Left.bHasActiveGoalkeeper == Right.bHasActiveGoalkeeper
 			&& Left.ActiveGoalkeeperId == Right.ActiveGoalkeeperId
 			&& Left.GoalkeeperOneOnOne == Right.GoalkeeperOneOnOne
-			&& Left.GoalkeeperStamina == Right.GoalkeeperStamina
 			&& Left.DefenseD6 == Right.DefenseD6
 			&& Left.DefenseBaseValue == Right.DefenseBaseValue
 			&& Left.DefenseExternalModifier == Right.DefenseExternalModifier
@@ -282,7 +276,7 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 		case 7:
 			Result = AssembleSuccess(Test, MakeInput(true, true));
 			Test.TestEqual(TEXT("Attack stamina preserved"), Result.ResolverInput.Attacker.ParticipatingStamina, TArray<int32>({5, 4}));
-			Test.TestEqual(TEXT("Defense stamina preserved"), Result.ResolverInput.Defender.ParticipatingStamina, TArray<int32>({3, 2, 6}));
+			Test.TestEqual(TEXT("Only outfield defense stamina preserved"), Result.ResolverInput.Defender.ParticipatingStamina, TArray<int32>({3, 2}));
 			break;
 		case 8:
 			Test.TestFalse(TEXT("Absent GK maps false"), AssembleSuccess(Test, MakeInput()).ResolverInput.bGoalkeeperParticipated);
@@ -338,8 +332,8 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 		case 19:
 			Input = MakeInput(); Input.FormulaPlan.GoalkeeperOneOnOne = 1;
 			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidOptionalParticipantState, TEXT("GoalkeeperOneOnOne"));
-			Input = MakeInput(); Input.FormulaPlan.GoalkeeperStamina = 1;
-			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidOptionalParticipantState, TEXT("GoalkeeperStamina"));
+			Input = MakeInput(false, true); Input.FormulaPlan.DefenseParticipatingStamina.Add(0);
+			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidDefenseParticipatingStamina, TEXT("DefenseParticipatingStamina"));
 			break;
 		case 20:
 			Input = MakeInput(false, true); Input.FormulaPlan.ActiveGoalkeeperId = NAME_None;
@@ -386,7 +380,7 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidAttackParticipatingStamina, TEXT("AttackParticipatingStamina"));
 			break;
 		case 29:
-			Input = MakeInput(true, true); Input.FormulaPlan.DefenseParticipatingStamina = {3, 2};
+			Input = MakeInput(true, true); Input.FormulaPlan.DefenseParticipatingStamina = {3};
 			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidDefenseParticipatingStamina, TEXT("DefenseParticipatingStamina"));
 			Input = MakeInput(); Input.FormulaPlan.DefenseParticipatingStamina = {3, 0};
 			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidDefenseParticipatingStamina, TEXT("DefenseParticipatingStamina"));

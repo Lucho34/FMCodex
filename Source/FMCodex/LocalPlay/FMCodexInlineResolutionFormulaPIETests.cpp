@@ -47,7 +47,7 @@ namespace FMCodexInlineResolutionFormulaPIETests
 		return INDEX_NONE;
 	}
 
-	bool DeployNextOrdinary(
+	bool DeployInlineFormulaOrdinary(
 		AFMCodexLocalMatchPlayerController& Controller,
 		const FString& SlotFragment)
 	{
@@ -107,7 +107,7 @@ namespace FMCodexInlineResolutionFormulaPIETests
 		return Controller.GetLastDiagnostic().bHostSuccess;
 	}
 
-	bool SubmitFirst(
+	bool SubmitInlineFormulaFirst(
 		AFMCodexLocalMatchPlayerController& Controller,
 		const EFMCodexLocalMatchInteractionCategory Expected)
 	{
@@ -381,7 +381,7 @@ bool FPrepareCrossHighPIECommand::Update()
 			? TEXT("NearB") : TEXT("NearA");
 	for (int32 Index = 0; Index < 4; ++Index)
 	{
-		if (!DeployNextOrdinary(*Controller, PhysicalForward))
+		if (!DeployInlineFormulaOrdinary(*Controller, PhysicalForward))
 		{
 			Test->AddError(TEXT("PIE Cross High deployment failed."));
 			return true;
@@ -398,7 +398,7 @@ bool FPrepareCrossHighPIECommand::Update()
 		? FName(TEXT("Prototype.Arsenal.BukayoSaka"))
 		: FName(TEXT("Prototype.ManchesterCity.RayanAitNouri")));
 	if (!Controller->GetLastDiagnostic().bHostSuccess
-		|| !SubmitFirst(*Controller,
+		|| !SubmitInlineFormulaFirst(*Controller,
 			EFMCodexLocalMatchInteractionCategory::SelectMarker))
 	{
 		Test->AddError(TEXT("PIE Cross High Carrier/Marker selection failed."));
@@ -470,7 +470,7 @@ bool FAdvanceCrossToRouteEntryPIECommand::Update()
 		Test->AddError(TEXT("PIE Controller disappeared before route entry."));
 		return true;
 	}
-	if (!SubmitFirst(*Controller,
+	if (!SubmitInlineFormulaFirst(*Controller,
 		EFMCodexLocalMatchInteractionCategory::SelectRunner))
 	{
 		Test->AddError(TEXT("PIE Cross High Runner selection failed."));
@@ -480,7 +480,7 @@ bool FAdvanceCrossToRouteEntryPIECommand::Update()
 	const auto& HelperView = Controller->GetInteractionView();
 	if (!HelperView.SelectionOptions.IsEmpty())
 	{
-		if (!SubmitFirst(*Controller,
+		if (!SubmitInlineFormulaFirst(*Controller,
 			EFMCodexLocalMatchInteractionCategory::SelectHelper))
 		{
 			Test->AddError(TEXT("PIE Cross High Helper selection failed."));

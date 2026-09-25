@@ -307,8 +307,7 @@ FFormulaResolverInput FMatchPlayCornerResolution::BuildFormulaInput(
 	Input.Defender.ComparePoint = Corner.DefenseD6;
 	Input.Defender.bComparePointWasRolledOnD6 = Corner.bHasDefenseD6;
 	Input.Defender.ParticipatingStamina = {
-		Corner.Helper.Snapshot.Attributes.Stamina,
-		Goalkeeper.Snapshot.Attributes.Stamina };
+		Corner.Helper.Snapshot.Attributes.Stamina };
 	Input.bGoalkeeperParticipated = true;
 	Input.TurnIndex = static_cast<int32>(AttackSequence);
 	Input.AttackerPlayerId = GetSideId(Attacker);

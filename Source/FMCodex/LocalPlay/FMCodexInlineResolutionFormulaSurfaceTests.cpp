@@ -838,8 +838,10 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 	// Stage 8.8F.1: wording consumes the safe reason and supplied numbers;
 	// it neither compares totals to choose a winner nor selects another actor.
 	TestTrue(TEXT("Pending result has no reason disclosure"), Pending.InlineFormula.ResolutionReasonLabel.IsEmpty());
+	for (const auto Branch : { EMatchPlayCrossActualBranch::High, EMatchPlayCrossActualBranch::Low })
+	{
 	auto HigherFacts = MakeCrossHighFacts(true, false, true, true, EFormulaWinner::Defender,
-		EMatchPlayCrossActualBranch::High, HelperSequence);
+		Branch, HelperSequence);
 	auto& Higher = HigherFacts.FormulaContests[0].ResolvedResult;
 	Higher.WinReason = EFormulaWinReason::HigherFinalValue;
 	Higher.AttackerFinalValue = 8.5f; Higher.DefenderFinalValue = 9.5f;
@@ -889,6 +891,7 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 	TestEqual(TEXT("Goalkeeper tie remains distinct from stamina"),
 		BuildPresentation(HigherFacts).InlineFormula.ResolutionReasonLabel,
 		FString(TEXT("最终值相同，门将参与时防守方获胜")));
+	}
 
 	const auto LowAttackWin = BuildPresentation(MakeCrossHighFacts(
 		true, true, true, true, EFormulaWinner::Attacker,

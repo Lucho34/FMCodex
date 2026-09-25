@@ -737,6 +737,8 @@ bool FMatchPlayCornerIntentFormulaTest::RunTest(const FString& Parameters)
 	FindSnapshot(TieState, TieDefender, true)->GoalkeeperAttributes.Aerial = 3;
 	const auto Tie = MakeTerminal(TieState, 1, 1, 1,
 		EMatchPlayCornerRouteIntent::High, 1, 2, 1);
+	TestEqual(TEXT("Only actual Helper supplies defense stamina, never GK"),
+		Tie.FormulaInput.Defender.ParticipatingStamina.Num(), 1);
 	TestTrue(TEXT("Exact Corner Formula tie belongs to goalkeeper defender"),
 		Tie.bSuccess && Tie.FormulaResolution.Winner == EFormulaWinner::Defender
 			&& Tie.FormulaResolution.WinReason

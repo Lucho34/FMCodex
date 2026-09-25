@@ -148,7 +148,7 @@ public:
   auto* Settings=DuplicateObject<ULevelEditorPlaySettings>(GetDefault<ULevelEditorPlaySettings>(),GetTransientPackage());
   Settings->NewWindowWidth=1920; Settings->NewWindowHeight=1080;
   Settings->SetPlayNetMode(EPlayNetMode::PIE_Standalone); Settings->SetPlayNumberOfClients(1);
-  TheaterPIEWindow=SNew(SWindow).Title(FText::FromString(TEXT("Stage 8.9A.2 Roll v2 PIE")))
+  TheaterPIEWindow=SNew(SWindow).Title(FText::FromString(TEXT("Resolution Theater PIE")))
    .ClientSize(FVector2D(1920,1080)).ScreenPosition(FVector2D(0,0)).AutoCenter(EAutoCenter::None)
    .SaneWindowPlacement(false).AdjustInitialSizeAndPositionForDPIScale(false).SizingRule(ESizingRule::UserSized);
   FSlateApplication::Get().AddWindow(TheaterPIEWindow.ToSharedRef());
@@ -159,7 +159,7 @@ public:
 class FTheaterPIE final : public IAutomationLatentCommand
 {
 public:
- explicit FTheaterPIE(FAutomationTestBase* InTest):Test(InTest)
+ explicit FTheaterPIE(FAutomationTestBase* InTest, bool InLow=false, bool InRouteOnly=false):Test(InTest),bLow(InLow),bRouteOnly(InRouteOnly)
  {
   Mode=IConsoleManager::Get().FindConsoleVariable(TEXT("fm.UI.ResolutionStageV2")); Previous=Mode->GetInt(); Test->TestEqual(TEXT("Fresh PIE requires no theater enable command"),Previous,1);
  }
@@ -177,10 +177,18 @@ public:
    return W && W->GetVisibility()!=ESlateVisibility::Collapsed && W->GetVisibility()!=ESlateVisibility::Hidden;
   };
   auto Text=[&](const TCHAR* Name) { return CastChecked<UTextBlock>(S->GetWidgetFromName(Name))->GetText().ToString(); };
+  if (bLow && Step==5)
+  {
+   Test->TestTrue(TEXT("No board bounce throughout real Low route hold"),Visible(TEXT("TheaterContent")));
+   Test->TestEqual(TEXT("Board input stays suppressed across Low disclosure"),S->GetWidgetFromName(TEXT("MatchShellViewportFit"))->GetVisibility(),ESlateVisibility::HitTestInvisible);
+   const auto& Display=S->GetInlineFormulaSurface()->GetPresentation();
+   if (Display.ContestId==TEXT("Cross.Route") && Display.RouteResultLabel.IsEmpty())
+    Test->TestEqual(TEXT("Hidden actual Low cannot leak into title"),Text(TEXT("TheaterTitle")),FString(TEXT("传中")));
+  }
   if (Step==8 || Step==9)
   {
    CheckStableEquation(S,false);
-   if (Step==8 && GEditor->PlayWorld->GetTimeSeconds()-LastMovieTime>=.025f && MovieFrames.Num()<100) CaptureMovieFrame(S);
+   if (!bLow && Step==8 && GEditor->PlayWorld->GetTimeSeconds()-LastMovieTime>=.025f && MovieFrames.Num()<100) CaptureMovieFrame(S);
    const int32 Phase=int32(S->GetInlineFormulaRevealPhase());
    const auto& P=S->GetInlineFormulaSurface()->GetPresentation();
    const auto& Reel=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(Step==8?TEXT("TheaterAttackReel"):TEXT("TheaterDefenseReel")))->GetPresentation();
@@ -247,7 +255,7 @@ public:
   {
    auto* Reel=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterAttackReel")));
    Test->TestTrue(TEXT("Same inline chamber holds one authoritative result"),Reel->IsStaticResultTileVisible());
-   Test->TestEqual(TEXT("Inline reel lands on DEV provider result, not cosmetic number"),Reel->GetPresentation().CenterValue,4);
+   Test->TestEqual(TEXT("Inline reel lands on DEV provider result, not cosmetic number"),Reel->GetPresentation().CenterValue,bLow?6:4);
    Test->TestTrue(TEXT("Question slot stays in place through landing"),QuestionPosition.Equals(S->GetWidgetFromName(TEXT("TheaterAttackUnknownSlot"))->GetCachedGeometry().GetAbsolutePosition(),1.f));
    const auto& Display=S->GetInlineFormulaSurface()->GetPresentation();
    // Screenshot readback may skip a short display window. Exact .18s gating
@@ -311,10 +319,11 @@ public:
    Test->TestEqual(TEXT("Helper role readable"),Text(TEXT("TheaterDefenseRole1")),FString(TEXT("协防")));
    ParticipantHeight=S->GetWidgetFromName(TEXT("TheaterAttackPanel"))->GetCachedGeometry().GetAbsoluteSize().Y;
    Test->TestTrue(TEXT("Participants use compact natural content height"),ParticipantHeight<260.f);
+   if (bLow) CaptureRollFrame(S,TEXT("00_CrossNeutral.png"));
    CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterHigh")))->OnClicked.Broadcast();
-   if (!Override(*C,EFMCodexLocalDevRollTarget::CrossRoute,2)
-    || !Override(*C,EFMCodexLocalDevRollTarget::CrossHighAttack,4)
-    || !Override(*C,EFMCodexLocalDevRollTarget::CrossHighDefense,3)) return true;
+   if (!Override(*C,EFMCodexLocalDevRollTarget::CrossRoute,bLow?5:2)
+    || !Override(*C,bLow?EFMCodexLocalDevRollTarget::CrossLowAttack:EFMCodexLocalDevRollTarget::CrossHighAttack,bLow?6:4)
+    || !Override(*C,bLow?EFMCodexLocalDevRollTarget::CrossLowDefense:EFMCodexLocalDevRollTarget::CrossHighDefense,bLow?2:3)) return true;
    Next(); return false;
   }
   if (Step==4)
@@ -324,8 +333,10 @@ public:
   }
   if (Step==5)
   {
-   Test->TestTrue(TEXT("High formula retains same theater"),Visible(TEXT("ResolutionTheater")) && Visible(TEXT("TheaterAttackPending")));
-   Test->TestEqual(TEXT("Real High Cross formula"),S->GetInlineFormulaSurface()->GetPresentation().ContestId,FName(TEXT("Cross.High")));
+   Test->TestTrue(TEXT("Cross formula retains same theater"),Visible(TEXT("ResolutionTheater")) && Visible(TEXT("TheaterAttackPending")));
+   Test->TestEqual(TEXT("Real actual Cross formula"),S->GetInlineFormulaSurface()->GetPresentation().ContestId,FName(bLow?TEXT("Cross.Low"):TEXT("Cross.High")));
+   Test->TestEqual(TEXT("Disclosed tactical title"),Text(TEXT("TheaterTitle")),FString(bLow?TEXT("低球传中"):TEXT("高球传中")));
+   if (bRouteOnly) return true;
    Test->TestEqual(TEXT("Current subtotal is authority projection"),Text(TEXT("TheaterAttackNumber")),S->GetInlineFormulaSurface()->GetPresentation().AttackRow.DisplayedResultLabel);
    const float FormulaHeight=S->GetWidgetFromName(TEXT("TheaterAttackPanel"))->GetCachedGeometry().GetAbsoluteSize().Y;
    Test->TestTrue(TEXT("Formula expands with content without the old giant slab"),FormulaHeight>ParticipantHeight && FormulaHeight<460.f);
@@ -383,7 +394,7 @@ public:
    Test->TestEqual(TEXT("Partial reveal retains current defense label"),Text(TEXT("TheaterDefenseValueLabel")),FString(TEXT("当前值")));
    Paint(S); CheckEquation(S);
    CaptureRollFrame(S,TEXT("05_MixedState.png"));
-   SaveMovieFrames();
+   if (!bLow) SaveMovieFrames();
    BeforeScore=S->GetMatchHeader()->GetDisplayedScoreLabel(); Click(S); Next(); return false;
   }
   if (Step==9)
@@ -398,9 +409,13 @@ public:
    if (!Test->TestEqual(TEXT("One real High Cross contest"),Facts.FormulaContests.Num(),1)) return true;
    const auto& Contest=Facts.FormulaContests[0];
    const auto& Result=Contest.ResolvedResult;
+   if (!bLow)
+   {
    Test->TestTrue(TEXT("Legitimate DEV dice produce an authority-owned stamina tie"),
     Result.WinReason==EFormulaWinReason::StaminaTieBreaker || Result.WinReason==EFormulaWinReason::DefenderWinsEqualStamina);
    Test->TestEqual(TEXT("Real tie totals match"),Result.AttackerFinalValue,Result.DefenderFinalValue);
+   }
+   else Test->TestEqual(TEXT("Low preserves authoritative special-rule reason"),Result.WinReason,EFormulaWinReason::FastSuppression);
    Test->TestTrue(TEXT("Safe row stamina matches the existing authoritative Formula operands"),
     Contest.AttackRow.ParticipatingStamina.Num()==2 && Contest.DefenseRow.ParticipatingStamina.Num()==2
     && Contest.AttackRow.ParticipatingStamina==Contest.ResolvedInput.Attacker.ParticipatingStamina
@@ -422,12 +437,13 @@ public:
     && FMath::Abs(Main.GetAbsolutePosition().X-Secondary.GetAbsolutePosition().X)<1.f
     && Main.GetAbsolutePosition().Y+Main.GetAbsoluteSize().Y<=Secondary.GetAbsolutePosition().Y);
    const FString SecondaryCopy=Text(TEXT("TheaterReasonSecondary"));
-   Test->TestTrue(TEXT("Real tie explanation contains the safe stamina value"),SecondaryCopy.Contains(TEXT("体力"))
+   if (!bLow) Test->TestTrue(TEXT("Real tie explanation contains the safe stamina value"),SecondaryCopy.Contains(TEXT("体力"))
     && SecondaryCopy.Contains(FString::FromInt(Result.DefenderParticipatingStaminaTotal)));
+   else Test->TestTrue(TEXT("Low reason explains special-rule priority"),SecondaryCopy.Contains(TEXT("不比较最终总值")));
    auto* Primary=CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")));
    Primary->SetKeyboardFocus(); Test->TestTrue(TEXT("Continue remains keyboard focusable"),Primary->HasKeyboardFocus());
    // The closeout reason-bar capture is not repeated by this roll pass.
-   CheckLongNames(S);
+   if (!bLow) CheckLongNames(S);
    Click(S); Next(); return false;
   }
   Test->TestFalse(TEXT("Natural continue removes theater"),Visible(TEXT("ResolutionTheater")));
@@ -437,6 +453,7 @@ public:
   Test->TestEqual(TEXT("Racks fully restored"),S->GetWidgetFromName(TEXT("LocalPlayerCardRackRegion"))->GetRenderOpacity(),1.f);
   Test->AddInfo(FString::Printf(TEXT("ROLL_V2_GEOMETRY maximum horizontal delta=%.4f Slate units"),MaximumEquationDelta));
   Test->TestTrue(TEXT("Terminal advanced once"),C->GetLastDiagnostic().bHostSuccess && !C->GetInteractionView().bTerminalPendingAdvance);
+  if (bLow) CaptureRollFrame(S,TEXT("07_Return.png"));
   return true;
  }
 private:
@@ -495,7 +512,7 @@ private:
   if (!Window.IsValid()) { Test->AddError(TEXT("No PIE window for Roll v2 evidence")); return; }
   TArray<FColor> Pixels; FIntVector Size;
   if (!Test->TestTrue(TEXT("Real Roll v2 PIE frame captured"),FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Pixels,Size))) return;
-  const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_9A_2"); IFileManager::Get().MakeDirectory(*Dir,true);
+  const FString Dir=FPaths::ProjectSavedDir()/(bLow?TEXT("Stage8_9B/PIE"):TEXT("Stage8_9A_2")); IFileManager::Get().MakeDirectory(*Dir,true);
   TArray64<uint8> PNG; FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
   Test->TestTrue(TEXT("Roll v2 frame saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/File)));
   Test->AddInfo(FString::Printf(TEXT("ROLL_V2_CAPTURE %s game=%.3f"),File,GEditor->PlayWorld->GetTimeSeconds()));
@@ -729,6 +746,7 @@ private:
  float ParticipantHeight=0;
  FVector2D QuestionPosition;
  FString BeforeScore;
+ bool bLow=false,bRouteOnly=false;
 };
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterPIETest,"FMCodex.PIE.ResolutionTheater.HighCross",
@@ -738,6 +756,26 @@ bool FResolutionTheaterPIETest::RunTest(const FString&)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
  ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FTheaterPIE(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+ return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterLowPIETest,"FMCodex.PIE.ResolutionTheater.LowCross",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FResolutionTheaterLowPIETest::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FTheaterPIE(this,true)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+ return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterHighRoutePIETest,"FMCodex.PIE.ResolutionTheater.HighRouteContinuity",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FResolutionTheaterHighRoutePIETest::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FTheaterPIE(this,false,true)));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
 }

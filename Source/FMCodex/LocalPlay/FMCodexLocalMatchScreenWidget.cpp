@@ -351,7 +351,7 @@ namespace FMCodexLocalMatchScreenWidget
 		Row.bDisplayedResultIsFinalValue = false;
 		Row.DisplayedResult = Row.KnownNonRollSubtotal;
 		Row.DisplayedResultLabel = Row.bKnownNonRollSubtotalResolved
-			? FString::SanitizeFloat(Row.KnownNonRollSubtotal)
+			? FText::AsNumber(Row.KnownNonRollSubtotal).ToString()
 			: FString(TEXT("?"));
 	}
 
@@ -466,9 +466,11 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	if (!WidgetTree || !MatchHeader) return;
 	const bool bEnabled = FMCodexResolutionTheaterPrototype::IsEnabled();
-	if (TheaterMotion.bLastEnabled != bEnabled)
+	const bool bLowEnabled = FMCodexResolutionTheaterPrototype::IsLowCrossEnabled();
+	if (TheaterMotion.bLastEnabled != bEnabled || TheaterMotion.bLastLowEnabled != bLowEnabled)
 	{
 		TheaterMotion.bLastEnabled = bEnabled;
+		TheaterMotion.bLastLowEnabled = bLowEnabled;
 		RefreshVisuals(); // Same-state comparison; no command or reveal-clock reset.
 	}
 	if (TheaterMotion.Elapsed < 1.f || (TheaterMotion.bActive && !TheaterMotion.bHasFieldGeometry))
@@ -4269,7 +4271,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 
 bool UFMCodexLocalMatchScreenWidget::UsesTheaterInlineRollMotion() const
 {
-	return TheaterMotion.bActive && ActiveCrossRollReveal.ContestId==TEXT("Cross.High")
+	return TheaterMotion.bActive && FMCodexResolutionTheaterPrototype::IsFormulaContest(ActiveCrossRollReveal.ContestId)
 		&& (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Attack
 			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Defense);
 }

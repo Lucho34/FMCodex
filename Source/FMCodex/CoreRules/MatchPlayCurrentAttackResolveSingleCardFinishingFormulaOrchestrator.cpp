@@ -476,21 +476,16 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 		Result.PlayerCardSnapshots =
 			Result.CrossRegenerationResult.ScopedPlayerCardSnapshots;
 		// The validated plan owns participant membership and rejects duplicate
-		// player/card identities. Only actual High Cross adopts aggregate stamina.
-		const bool bHighCross = Plan.ActualCrossType == ECrossPlanActualType::High;
-		TArray<int32> AttackStamina;
+		// player/card identities. Both Cross routes use the shared Formula tie-break.
+		const TArray<int32> AttackStamina = {
+			PlanResult.CarrierSnapshotQueryResult.Snapshot.Attributes.Stamina,
+			PlanResult.RunnerSnapshotQueryResult.Snapshot.Attributes.Stamina };
 		TArray<int32> DefenseStamina;
-		if (bHighCross)
-		{
-			AttackStamina = {
-				PlanResult.CarrierSnapshotQueryResult.Snapshot.Attributes.Stamina,
-				PlanResult.RunnerSnapshotQueryResult.Snapshot.Attributes.Stamina };
-			DefenseStamina.Add(PlanResult.MarkerSnapshotQueryResult.Snapshot.Attributes.Stamina);
-			if (Plan.bHasHelper)
-				DefenseStamina.Add(PlanResult.HelperSnapshotQueryResult.Snapshot.Attributes.Stamina);
-			if (Plan.bUseGoalkeeper)
-				DefenseStamina.Add(PlanResult.GoalkeeperSnapshotQueryResult.Snapshot.Attributes.Stamina);
-		}
+		DefenseStamina.Add(PlanResult.MarkerSnapshotQueryResult.Snapshot.Attributes.Stamina);
+		if (Plan.bHasHelper)
+			DefenseStamina.Add(PlanResult.HelperSnapshotQueryResult.Snapshot.Attributes.Stamina);
+		// Goalkeepers have no stamina attribute; their participation is the
+		// separate, higher-priority final-value tie condition below.
 		if (!ExecutePlan(
 				Result,
 				Plan.AttackerQueryInput,
@@ -499,8 +494,8 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 				Plan.MarkerPlayerId,
 				0.0f,
 				Plan.bUseGoalkeeper,
-				bHighCross ? &AttackStamina : nullptr,
-				bHighCross ? &DefenseStamina : nullptr))
+				&AttackStamina,
+				&DefenseStamina))
 		{
 			return Result;
 		}

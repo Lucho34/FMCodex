@@ -85,6 +85,8 @@ namespace FormulaResolver
 
 	void ResolveTie(const FFormulaResolverInput& Input, FFormulaResolutionResult& Result)
 	{
+		// Shared by every arithmetic tactic, after higher-priority special rules.
+		// Callers supply the authority-validated participants, never a UI roster.
 		if (Input.bGoalkeeperParticipated)
 		{
 			Result.Winner = EFormulaWinner::Defender;

@@ -50,7 +50,6 @@ namespace ThroughBallFeetFormulaResolutionExecutorTests
 		{
 			Plan.ActiveGoalkeeperId = GoalkeeperId;
 			Plan.GoalkeeperOneOnOne = 5;
-			Plan.GoalkeeperStamina = 6;
 		}
 
 		Plan.DefenseD6 = 4;
@@ -60,10 +59,6 @@ namespace ThroughBallFeetFormulaResolutionExecutorTests
 		if (bHasHelper)
 		{
 			Plan.DefenseParticipatingStamina.Add(Plan.HelperStamina);
-		}
-		if (bHasGoalkeeper)
-		{
-			Plan.DefenseParticipatingStamina.Add(Plan.GoalkeeperStamina);
 		}
 
 		Plan.LogId = LogId;
@@ -127,7 +122,6 @@ namespace ThroughBallFeetFormulaResolutionExecutorTests
 			&& Left.bHasActiveGoalkeeper == Right.bHasActiveGoalkeeper
 			&& Left.ActiveGoalkeeperId == Right.ActiveGoalkeeperId
 			&& Left.GoalkeeperOneOnOne == Right.GoalkeeperOneOnOne
-			&& Left.GoalkeeperStamina == Right.GoalkeeperStamina
 			&& Left.DefenseD6 == Right.DefenseD6
 			&& Left.DefenseBaseValue == Right.DefenseBaseValue
 			&& Left.DefenseExternalModifier == Right.DefenseExternalModifier

@@ -117,7 +117,6 @@ namespace ThroughBallFeetPlanQuery
 			Plan.ActiveGoalkeeperId = Goalkeeper.CardId;
 			Plan.GoalkeeperOneOnOne =
 				Goalkeeper.GoalkeeperAttributes.OneOnOne;
-			Plan.GoalkeeperStamina = Goalkeeper.Attributes.Stamina;
 			GoalkeeperContribution =
 				HalfOneDecimal(Plan.GoalkeeperOneOnOne);
 		}
@@ -132,10 +131,7 @@ namespace ThroughBallFeetPlanQuery
 		{
 			Plan.DefenseParticipatingStamina.Add(Plan.HelperStamina);
 		}
-		if (Plan.bHasActiveGoalkeeper)
-		{
-			Plan.DefenseParticipatingStamina.Add(Plan.GoalkeeperStamina);
-		}
+		// GK identity/OneOnOne participates, but goalkeepers have no stamina.
 
 		Plan.LogId = Input.LogId;
 		Plan.TurnIndex = Input.TurnIndex;

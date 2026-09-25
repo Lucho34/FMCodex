@@ -26,6 +26,7 @@ namespace SingleCardFormulaResolutionExecutor
 
 	bool ValidateSideInput(
 		const FFormulaSideInput& SideInput,
+		const bool bAllowGoalkeeperOnly,
 		FName& OutInvalidField,
 		FString& OutErrorMessage)
 	{
@@ -58,11 +59,11 @@ namespace SingleCardFormulaResolutionExecutor
 			return false;
 		}
 
-		if (SideInput.ParticipatingStamina.IsEmpty())
+		if (SideInput.ParticipatingStamina.IsEmpty() && !bAllowGoalkeeperOnly)
 		{
 			OutInvalidField = TEXT("ParticipatingStamina");
 			OutErrorMessage =
-				TEXT("Formula execution requires at least one participating Stamina value per side.");
+				TEXT("Outfield Formula participants require stamina; only goalkeeper defense may omit it.");
 			return false;
 		}
 
@@ -106,6 +107,7 @@ FSingleCardFormulaResolutionExecutor::Execute(
 	FString ErrorMessage;
 	if (!SingleCardFormulaResolutionExecutor::ValidateSideInput(
 			Input.Attacker,
+			false,
 			InvalidField,
 			ErrorMessage))
 	{
@@ -120,6 +122,7 @@ FSingleCardFormulaResolutionExecutor::Execute(
 
 	if (!SingleCardFormulaResolutionExecutor::ValidateSideInput(
 			Input.Defender,
+			Input.bGoalkeeperParticipated,
 			InvalidField,
 			ErrorMessage))
 	{

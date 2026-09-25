@@ -70,7 +70,6 @@ struct FMCODEX_API FThroughBallFeetFormulaPlan
 	bool bHasActiveGoalkeeper = false;
 	FName ActiveGoalkeeperId = NAME_None;
 	int32 GoalkeeperOneOnOne = 0;
-	int32 GoalkeeperStamina = 0;
 
 	int32 DefenseD6 = 0;
 	float DefenseBaseValue = 0.0f;

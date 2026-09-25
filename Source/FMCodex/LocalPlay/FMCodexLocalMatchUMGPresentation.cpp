@@ -1855,7 +1855,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				&& PrimaryAction.bAvailable;
 		if (bNarrativeReady)
 		{
-			if (bResolvedCross && bCrossHigh)
+			if (bResolvedCross)
 			{
 				const auto& Resolved = Contest->ResolvedResult;
 				const FText Winner = Resolved.Winner == EFormulaWinner::Attacker

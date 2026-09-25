@@ -530,7 +530,6 @@ namespace MatchPlayAuthoritativeSessionTests
 				== Right.bHasActiveGoalkeeper
 			&& Left.ActiveGoalkeeperId == Right.ActiveGoalkeeperId
 			&& Left.GoalkeeperOneOnOne == Right.GoalkeeperOneOnOne
-			&& Left.GoalkeeperStamina == Right.GoalkeeperStamina
 			&& Left.DefenseD6 == Right.DefenseD6
 			&& Left.DefenseBaseValue == Right.DefenseBaseValue
 			&& Left.DefenseExternalModifier
@@ -18759,6 +18758,9 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 	FMatchPlayState CrossSemanticState;
 	FSkillRuleSnapshotSet CrossSemanticRules;
 	bool bHasCrossSemanticState = false;
+	FMatchPlayState LowCrossSemanticState;
+	FSkillRuleSnapshotSet LowCrossSemanticRules;
+	bool bHasLowCrossSemanticState = false;
 	FMatchPlayState PassControlSemanticState;
 	FSkillRuleSnapshotSet PassControlSemanticRules;
 	bool bHasPassControlSemanticState = false;
@@ -18943,7 +18945,7 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 		DirectAssembly.ResolverInput.bGoalkeeperParticipated =
 			bDirectGoalkeeperParticipated;
 		if (Case.ActionType == ESkillRuleType::PassControl
-			|| (Case.ActionType == ESkillRuleType::Cross && Case.InitialRouteD6 == 4))
+			|| Case.ActionType == ESkillRuleType::Cross)
 		{
 			DirectAssembly.ResolverInput.Attacker.ParticipatingStamina =
 				Domain.ResolverInputAssemblyResult.ResolverInput.Attacker
@@ -18977,6 +18979,13 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 			PostProvider.GetCallCount() - ReplayPostCalls, 0);
 
 		if (Case.ExpectedFamily == EFamily::Cross
+			&& Case.InitialRouteD6 == 5)
+		{
+			LowCrossSemanticState = Before;
+			LowCrossSemanticRules = Rules;
+			bHasLowCrossSemanticState = true;
+		}
+		if (Case.ExpectedFamily == EFamily::Cross
 			&& !bHasCrossSemanticState)
 		{
 			CrossSemanticState = Before;
@@ -18993,12 +19002,23 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 	}
 
 	TestTrue(TEXT("Cross semantic fixture captured"), bHasCrossSemanticState);
-	if (bHasCrossSemanticState)
+	TestTrue(TEXT("Low Cross semantic fixture captured"), bHasLowCrossSemanticState);
+	for (const bool bLow : { false, true })
 	{
+		if (!(bLow ? bHasLowCrossSemanticState : bHasCrossSemanticState)) continue;
+		const auto& SemanticState = bLow ? LowCrossSemanticState : CrossSemanticState;
+		const auto& SemanticRules = bLow ? LowCrossSemanticRules : CrossSemanticRules;
 		using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
-		auto MakeCrossTieState = [&CrossSemanticState]()
+		auto MakeCrossTieState = [&SemanticState, bLow]()
 		{
-			FMatchPlayState State = CrossSemanticState;
+			FMatchPlayState State = SemanticState;
+			// Match the legal fixture's non-roll totals for each route's attributes.
+			if (bLow)
+			{
+				auto& B = State.CurrentAttack.ResolutionSession.Bundle;
+				B.Runner.Values.Shooting = B.Runner.Values.Strength;
+				B.Helper.Values.Marking = B.Helper.Values.Strength;
+			}
 			auto& Records = State.CurrentAttack.ResolutionSession
 				.PostRouteRollProgress.RollRecords;
 			Records[0].Purpose = EPurpose::PrimaryAttack;
@@ -19013,9 +19033,11 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 			.bCurrentDefenseGoalkeeperActivated = true;
 		++GoalkeeperTieState.CurrentAttack.ResolutionSession.Bundle.Runner
 			.Values.Strength;
+		++GoalkeeperTieState.CurrentAttack.ResolutionSession.Bundle.Runner
+			.Values.Shooting;
 		const auto GoalkeeperTie =
 			FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
-				::Resolve(GoalkeeperTieState, &CrossSemanticRules);
+				::Resolve(GoalkeeperTieState, &SemanticRules);
 		TestTrue(TEXT("Goalkeeper tie bridge succeeds"), GoalkeeperTie.bSuccess);
 		TestTrue(TEXT("Goalkeeper participation preserved"),
 			GoalkeeperTie.ResolverInputAssemblyResult.ResolverInput
@@ -19047,8 +19069,8 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 			Bundle.Runner.Values.Stamina = Case.Runner;
 			Bundle.Marker.Values.Stamina = Case.Marker;
 			Bundle.Helper.Values.Stamina = Case.Helper;
-			const auto Tie = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(State, &CrossSemanticRules);
-			TestTrue(TEXT("High aggregate tie bridge succeeds"), Tie.bSuccess);
+			const auto Tie = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(State, &SemanticRules);
+			TestTrue(bLow ? TEXT("Low aggregate tie bridge succeeds") : TEXT("High aggregate tie bridge succeeds"), Tie.bSuccess);
 			const auto& Input = Tie.ResolverInputAssemblyResult.ResolverInput;
 			const auto& Result = Tie.FormulaResolutionResult;
 			TestEqual(TEXT("Tie reaches equal finals"), Result.AttackerFinalValue, Result.DefenderFinalValue);
@@ -19068,10 +19090,11 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 		Bundle.Helper = {};
 		Bundle.Helper.Side = Bundle.CurrentDefendingPlayer;
 		Bundle.Carrier.Values.Passing = Bundle.Runner.Values.Strength = Bundle.Marker.Values.Tackling = 4;
+		Bundle.Runner.Values.Shooting = 4;
 		Bundle.Carrier.Values.Stamina = 1; Bundle.Runner.Values.Stamina = 6; Bundle.Marker.Values.Stamina = 4;
 		NoHelper.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords[0].RawD6 = 3;
-		const auto Absent = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(NoHelper, &CrossSemanticRules);
-		TestTrue(TEXT("Absent helper is a valid High participant set"), Absent.bSuccess);
+		const auto Absent = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(NoHelper, &SemanticRules);
+		TestTrue(TEXT("Absent helper is a valid Cross participant set"), Absent.bSuccess);
 		TestEqual(TEXT("Absent helper tie finals"), Absent.FormulaResolutionResult.AttackerFinalValue, Absent.FormulaResolutionResult.DefenderFinalValue);
 		TestTrue(TEXT("No absent helper counted"), Absent.ResolverInputAssemblyResult.ResolverInput.Defender.ParticipatingStamina == TArray<int32>{4});
 		TestEqual(TEXT("Runner reverses single-player result without helper"), Absent.FormulaResolutionResult.Winner, EFormulaWinner::Attacker);
@@ -19082,15 +19105,16 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 		auto& SB = Suppressed.CurrentAttack.ResolutionSession.Bundle;
 		SB.Carrier.Values.Passing = SB.Runner.Values.Strength = 1;
 		SB.Marker.Values.Tackling = SB.Helper.Values.Strength = 6;
+		SB.Runner.Values.Shooting = 1; SB.Helper.Values.Marking = 6;
 		SB.Carrier.Values.Stamina = SB.Runner.Values.Stamina = 1;
 		SB.Marker.Values.Stamina = SB.Helper.Values.Stamina = 6;
 		auto& SR = Suppressed.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords;
 		SR[0].RawD6 = 6; SR[1].RawD6 = 2;
-		const auto Quick = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(Suppressed, &CrossSemanticRules);
+		const auto Quick = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(Suppressed, &SemanticRules);
 		TestTrue(TEXT("Suppression fixture valid and attack final lower"), Quick.bSuccess && Quick.FormulaResolutionResult.AttackerFinalValue < Quick.FormulaResolutionResult.DefenderFinalValue);
 		TestEqual(TEXT("Suppression still wins"), Quick.FormulaResolutionResult.Winner, EFormulaWinner::Attacker);
 		TestEqual(TEXT("Suppression keeps precedence"), Quick.FormulaResolutionResult.WinReason, EFormulaWinReason::FastSuppression);
-		TestEqual(TEXT("Active GK included once in authority participant set"), GoalkeeperTie.ResolverInputAssemblyResult.ResolverInput.Defender.ParticipatingStamina.Num(), 3);
+		TestEqual(TEXT("GK participates via priority, not a nonexistent stamina entry"), GoalkeeperTie.ResolverInputAssemblyResult.ResolverInput.Defender.ParticipatingStamina.Num(), 2);
 
 	}
 
@@ -19925,11 +19949,10 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallFeetFormulaTest
 		TestTrue(TEXT("Goalkeeper participation reaches resolver input"),
 			GoalkeeperResult.ResolverInputAssemblyResult.ResolverInput
 				.bGoalkeeperParticipated);
-		TestTrue(TEXT("Goalkeeper stamina reaches defense participants"),
+		const auto& FeetPlan = GoalkeeperResult.PlanRegenerationResult.PlanResult.FormulaPlan;
+		TestEqual(TEXT("Goalkeeper has no stamina entry; only actual outfield defenders"),
 			GoalkeeperResult.ResolverInputAssemblyResult.ResolverInput.Defender
-				.ParticipatingStamina.Contains(
-					GoalkeeperResult.PlanRegenerationResult.PlanResult.FormulaPlan
-						.GoalkeeperStamina));
+				.ParticipatingStamina.Num(), FeetPlan.bHasHelper ? 2 : 1);
 		TestTrue(TEXT("Goalkeeper execution remains pure"),
 			AreStatesEqual(GoalkeeperState, GoalkeeperResult.AfterState));
 

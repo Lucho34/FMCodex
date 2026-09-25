@@ -458,6 +458,8 @@ bool FMatchPlayShortFreeKickDirectFormulaTest::RunTest(
 	const auto Tie = MakeDirectTerminal(
 		MakeShortAwaitingCarrier(TEXT("SFK_DirectTie")), 3, 5, 4, 2, 2);
 	TestTrue(TEXT("Tie terminal succeeds"), Tie.bSuccess);
+	TestTrue(TEXT("Defending GK has no stamina input"),
+		Tie.FormulaExecutionResult.ResolverInput.Defender.ParticipatingStamina.IsEmpty());
 	const auto& TieFormula =
 		Tie.AfterState.CurrentAttack.SetPieceRoute.ShortFreeKick.FormulaResolution;
 	TestEqual(TEXT("Passing is selected when higher"),

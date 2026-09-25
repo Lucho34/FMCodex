@@ -17,8 +17,10 @@ struct FTheaterModes
 {
 	IConsoleVariable* Theater=IConsoleManager::Get().FindConsoleVariable(TEXT("fm.UI.ResolutionStageV2"));
 	IConsoleVariable* Formula=IConsoleManager::Get().FindConsoleVariable(TEXT("fm.UI.FormulaV2"));
+	IConsoleVariable* Low=IConsoleManager::Get().FindConsoleVariable(TEXT("fm.UI.ResolutionStageV2.LowCross"));
 	int32 OldTheater=Theater->GetInt(), OldFormula=Formula->GetInt();
-	~FTheaterModes() { Theater->Set(OldTheater,ECVF_SetByCode); Formula->Set(OldFormula,ECVF_SetByCode); }
+	int32 OldLow=Low->GetInt();
+	~FTheaterModes() { Theater->Set(OldTheater,ECVF_SetByCode); Formula->Set(OldFormula,ECVF_SetByCode); Low->Set(OldLow,ECVF_SetByCode); }
 };
 bool Visible(UFMCodexLocalMatchScreenWidget* S, const TCHAR* Name)
 {
@@ -39,13 +41,21 @@ bool FResolutionTheaterScopeTest::RunTest(const FString&)
 {
 	FTheaterModes Modes;
 	TestEqual(TEXT("Fresh process defaults to ON"),Modes.Theater->GetInt(),1);
+	TestEqual(TEXT("Low review defaults to ON without console command"),Modes.Low->GetInt(),1);
 	Modes.Theater->Set(0,ECVF_SetByCode);
 	FFMCodexUMGMatchScreenViewModel P;
 	P.InlineFormula.bVisible=true; P.InlineFormula.ContestId=TEXT("Cross.High");
 	TestFalse(TEXT("OFF does not claim High Cross"),FMCodexResolutionTheaterPrototype::WantsTheater(P,P.InlineFormula));
 	Modes.Theater->Set(1,ECVF_SetByCode);
 	TestTrue(TEXT("ON claims High Cross"),FMCodexResolutionTheaterPrototype::WantsTheater(P,P.InlineFormula));
-	for (const auto Id:{TEXT("Cross.Low"),TEXT("Corner.High"),TEXT("SetPiece.Short.Direct"),TEXT("ThroughBall.Feet"),TEXT("LongShot.DirectShot")})
+	P.InlineFormula.ContestId=TEXT("Cross.Low");
+	TestTrue(TEXT("Development includes Low Formula"),FMCodexResolutionTheaterPrototype::WantsTheater(P,P.InlineFormula));
+	Modes.Low->Set(0,ECVF_SetByCode);
+	TestFalse(TEXT("Low fallback only excludes Low"),FMCodexResolutionTheaterPrototype::WantsTheater(P,P.InlineFormula));
+	P.InlineFormula.ContestId=TEXT("Cross.High");
+	TestTrue(TEXT("Low fallback preserves High"),FMCodexResolutionTheaterPrototype::WantsTheater(P,P.InlineFormula));
+	Modes.Low->Set(1,ECVF_SetByCode);
+	for (const auto Id:{TEXT("Corner.High"),TEXT("SetPiece.Short.Direct"),TEXT("ThroughBall.Feet"),TEXT("LongShot.DirectShot")})
 	{
 		P.InlineFormula.ContestId=Id;
 		TestFalse(FString::Printf(TEXT("Excludes %s"),Id),FMCodexResolutionTheaterPrototype::WantsTheater(P,P.InlineFormula));
@@ -61,6 +71,8 @@ bool FResolutionTheaterScopeTest::RunTest(const FString&)
 	auto Displayed=P.InlineFormula; Displayed.bVisible=true; Displayed.ContestId=TEXT("Cross.Route");
 	TestTrue(TEXT("Hidden Low route must not affect stage"),FMCodexResolutionTheaterPrototype::WantsTheater(P,Displayed));
 	Displayed.RouteResultLabel=TEXT("already disclosed route");
+	TestTrue(TEXT("Disclosed Low stays inside Theater"),FMCodexResolutionTheaterPrototype::WantsTheater(P,Displayed));
+	Modes.Low->Set(0,ECVF_SetByCode);
 	TestFalse(TEXT("Disclosed Low returns to fallback"),FMCodexResolutionTheaterPrototype::WantsTheater(P,Displayed));
 	return true;
 }
@@ -70,14 +82,18 @@ IMPLEMENT_COMPLEX_AUTOMATION_TEST(FResolutionTheaterViewTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 void FResolutionTheaterViewTest::GetTests(TArray<FString>& N,TArray<FString>& C) const
 {
-	N.Add(TEXT("A.High")); C.Add(TEXT("High")); N.Add(TEXT("B.LowFallback")); C.Add(TEXT("Low"));
+	N.Add(TEXT("A.High")); C.Add(TEXT("High"));
+	N.Add(TEXT("A.Low")); C.Add(TEXT("LowA")); N.Add(TEXT("B.Low")); C.Add(TEXT("LowB"));
+	N.Add(TEXT("B.LowFallback")); C.Add(TEXT("LowFallback"));
 }
 bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 {
 	using namespace FMCodexPlayerFacingOrdinaryUITests;
 	const bool High=Parameters==TEXT("High"); FTheaterModes Modes;
+	const bool Fallback=Parameters==TEXT("LowFallback");
+	Modes.Low->Set(Fallback?0:1,ECVF_SetByCode);
 	Modes.Theater->Set(0,ECVF_SetByCode); Modes.Formula->Set(0,ECVF_SetByCode);
-	FUIFixture F(!High,false);
+	FUIFixture F(Parameters==TEXT("LowB") || Fallback,false);
 	if (!TestTrue(TEXT("Canonical safe-view fixture reaches Skill"),F.SkillFixture(false))) return false;
 	auto* Actor=F.Attacker(); auto* Defender=F.Defender();
 	auto* S=Actor->GetPlayerMatchScreen(); auto* D=Defender->GetPlayerMatchScreen();
@@ -141,7 +157,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
 	TestEqual(TEXT("Repeated click during reveal cannot resolve twice"),F.Entropy->Calls,CallsAfterRoute);
 	F.Settle();
-	if (!High)
+	if (Fallback)
 	{
 		for (auto* W:{S,D})
 		{
@@ -153,7 +169,9 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	}
 	for (auto* W:{S,D})
 	{
-		TestTrue(TEXT("High retains theater"),Visible(W,TEXT("ResolutionTheater")));
+		TestTrue(TEXT("Actual Cross route retains theater"),Visible(W,TEXT("ResolutionTheater")));
+		TestEqual(TEXT("Only disclosed route supplies title"),Label(W,TEXT("TheaterTitle")),FString(High?TEXT("高球传中"):TEXT("低球传中")));
+		TestEqual(TEXT("Board does not reappear after route"),W->GetWidgetFromName(TEXT("MatchShellViewportFit"))->GetVisibility(),ESlateVisibility::HitTestInvisible);
 		TestTrue(TEXT("Pending roll is explicit"),Visible(W,TEXT("TheaterAttackPending")));
 		TestEqual(TEXT("Displayed value is verbatim safe projection"),Label(W,TEXT("TheaterAttackNumber")),W->GetInlineFormulaSurface()->GetPresentation().AttackRow.DisplayedResultLabel);
 	}
@@ -168,6 +186,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		const FString Explanation=CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent())->GetText().ToString();
 		TestTrue(TEXT("Tooltip describes weighted authoritative attributes"),Explanation.Contains(TEXT("×")) && Explanation.Contains(TEXT("当前基础值")));
 		TestFalse(TEXT("Tooltip contains no unresolved die"),Explanation.Contains(TEXT("掷点")));
+		if (!High) TestTrue(TEXT("Low tooltip uses the actual route attributes"),Explanation.Contains(Prefix.EndsWith(TEXT("Attack"))?TEXT("射门"):TEXT("盯防")));
 		if (Prefix.EndsWith(TEXT("Defense"))) TestTrue(TEXT("Fixed +2 is defense bonus, not tactical points"),Explanation.Contains(TEXT("防守加成 +2")) && !Explanation.Contains(TEXT("战术点数")));
 	}
 	for (const auto Name:{TEXT("TheaterTitle"),TEXT("TheaterAttackName0"),TEXT("TheaterContinueLabel"),TEXT("TheaterAttackFinalNumber")})
@@ -188,17 +207,17 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Compare preserves safe subtotal"),S->GetInlineFormulaSurface()->GetPresentation().AttackRow.DisplayedResultLabel,BeforeFormula.AttackRow.DisplayedResultLabel);
 		TestEqual(TEXT("Compare never consumes RNG"),F.Entropy->Calls,CallsAfterRoute);
 		TestEqual(TEXT("Theater mode wins only when enabled"),Visible(S,TEXT("TheaterContent")),Compare==2);
-		if (Compare<2) TestEqual(TEXT("Fallback obeys FormulaV2"),S->GetInlineFormulaSurface()->IsBroadcastPrototypeVisible(),Compare==1);
+		if (Compare<2) TestEqual(TEXT("Fallback obeys existing FormulaV2 scope"),S->GetInlineFormulaSurface()->IsBroadcastPrototypeVisible(),High && Compare==1);
 	}
 	F.Entropy->Word=5;
 	CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
-	TestEqual(TEXT("Attack uses original typed command"),F.Backend(Actor).Last.IntentKind,Kind::CrossHighAttackRoll);
+	TestEqual(TEXT("Attack uses original typed command"),F.Backend(Actor).Last.IntentKind,High?Kind::CrossHighAttackRoll:Kind::CrossLowAttackRoll);
 	S->PauseInlineFormulaRevealTimerForTesting(); S->AdvanceInlineFormulaRevealForTesting(.4f);
 	TestTrue(TEXT("Attack roll occupies the question slot"),Visible(S,TEXT("TheaterAttackReelHost")) && !Visible(S,TEXT("TheaterAttackPending")));
 	TestTrue(TEXT("Defense remains unresolved during Attack"),Visible(S,TEXT("TheaterDefensePending")) && !Visible(S,TEXT("TheaterDefenseReelHost")));
 	TestFalse(TEXT("Formula roll has no disconnected bottom reel"),Visible(S,TEXT("TheaterRoll")));
 	auto* InlineReel=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterAttackReel")));
-	TestTrue(TEXT("Only High formula slot opts into v2"),InlineReel->UsesTheaterInlineSkin());
+	TestTrue(TEXT("Migrated Cross formula slot opts into v2"),InlineReel->UsesTheaterInlineSkin());
 	TestFalse(TEXT("Shared legacy Formula source keeps its old skin"),S->GetInlineFormulaSurface()->GetRollReelWidget()->UsesTheaterInlineSkin());
 	TestFalse(TEXT("Neutral route reel retains its existing skin"),CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterReel")))->UsesTheaterInlineSkin());
 	TestFalse(TEXT("Rolling action is not actionable"),Visible(S,TEXT("TheaterPrimaryBounds")));
@@ -239,7 +258,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	const FString AttackFinalBeforeDefense=Label(S,TEXT("TheaterAttackFinalNumber"));
 	const FString ScoreBefore=Label(S,TEXT("TheaterContext")); F.Entropy->Word=0;
 	CastChecked<UButton>(D->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
-	TestEqual(TEXT("Defense uses original typed command"),F.Backend(Defender).Last.IntentKind,Kind::CrossHighDefenseRoll);
+	TestEqual(TEXT("Defense uses original typed command"),F.Backend(Defender).Last.IntentKind,High?Kind::CrossHighDefenseRoll:Kind::CrossLowDefenseRoll);
 	D->PauseInlineFormulaRevealTimerForTesting(); D->AdvanceInlineFormulaRevealForTesting(.4f);
 	TestTrue(TEXT("Defense alone owns active v2 slot"),Visible(D,TEXT("TheaterDefenseReelHost")) && !Visible(D,TEXT("TheaterAttackReelHost")));
 	TestEqual(TEXT("Attack remains resolved while Defense rolls"),Label(D,TEXT("TheaterAttackFinalNumber")),AttackFinalBeforeDefense);

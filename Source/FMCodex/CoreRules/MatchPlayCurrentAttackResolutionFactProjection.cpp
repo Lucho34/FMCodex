@@ -602,13 +602,13 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 
 		if (Branch.ActionType == ESkillRuleType::Cross)
 		{
+			bCompositeStamina = true;
 			CarrierAttackAttribute = EAttribute::Passing;
 			CarrierAttackValue = Bundle.Carrier.Values.Passing;
 			MarkerDefenseAttribute = EAttribute::Tackling;
 			MarkerDefenseValue = Bundle.Marker.Values.Tackling;
 			if (Branch.Cross == EMatchPlayCrossActualBranch::High)
 			{
-				bCompositeStamina = true;
 				RunnerAttackAttribute = EAttribute::Strength;
 				RunnerAttackValue = Bundle.Runner.Values.Strength;
 				HelperDefenseAttribute = EAttribute::Strength;
@@ -774,14 +774,8 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 			Contest.bGoalkeeperParticipated = true;
 			Contest.TieRule =
 				EMatchPlayResolutionTieRule::GoalkeeperDefenderWins;
-			if (bCompositeStamina
-				&& (Branch.ActionType == ESkillRuleType::Cross
-					|| (Branch.ActionType == ESkillRuleType::ThroughBall
-						&& Branch.ThroughBall == EMatchPlayThroughBallActualBranch::Feet)))
-			{
-				Contest.DefenseRow.ParticipatingStamina.Add(
-					Goalkeeper.Snapshot.Attributes.Stamina);
-			}
+			// Goalkeeper participation resolves final-value ties first.
+			// A goalkeeper has no stamina and contributes no stamina entry.
 		}
 	}
 

@@ -416,12 +416,12 @@ bool FFMCodexCrossSafeProjection::RunTest(const FString& P)
 					TestEqual(TEXT("Withheld attack total stays default"), Result.AttackerParticipatingStaminaTotal, 0);
 					TestEqual(TEXT("Withheld defense total stays default"), Result.DefenderParticipatingStaminaTotal, 0);
 				}
-				else if (High)
+				else
 				{
 					const auto& B = State.CurrentAttack.ResolutionSession.Bundle;
-					TestEqual(TEXT("Safe High attack aggregate matches authority"), Result.AttackerParticipatingStaminaTotal, B.Carrier.Values.Stamina + B.Runner.Values.Stamina);
-					TestEqual(TEXT("Safe High defense aggregate matches authority"), Result.DefenderParticipatingStaminaTotal, B.Marker.Values.Stamina + (B.bHasHelper ? B.Helper.Values.Stamina : 0));
-					TestTrue(TEXT("Projected High membership matches resolver"), Contest.AttackRow.ParticipatingStamina == Contest.ResolvedInput.Attacker.ParticipatingStamina && Contest.DefenseRow.ParticipatingStamina == Contest.ResolvedInput.Defender.ParticipatingStamina);
+					TestEqual(TEXT("Safe Cross attack aggregate matches authority"), Result.AttackerParticipatingStaminaTotal, B.Carrier.Values.Stamina + B.Runner.Values.Stamina);
+					TestEqual(TEXT("Safe Cross defense aggregate matches authority"), Result.DefenderParticipatingStaminaTotal, B.Marker.Values.Stamina + (B.bHasHelper ? B.Helper.Values.Stamina : 0));
+					TestTrue(TEXT("Projected Cross membership matches resolver"), Contest.AttackRow.ParticipatingStamina == Contest.ResolvedInput.Attacker.ParticipatingStamina && Contest.DefenseRow.ParticipatingStamina == Contest.ResolvedInput.Defender.ParticipatingStamina);
 				}
 			}
 			TestEqual(TEXT("Terminal wait is high-level lifecycle only"),V.EntryWait,EFMCodexNetworkEntryWait::TerminalPendingAdvance);

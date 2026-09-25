@@ -436,6 +436,8 @@ bool FMatchPlayLongFreeKickDirectConditionalTest::RunTest(
 		TieState, RollRequest(TieState, false), &TieProvider).AfterState;
 	const auto Tie = FMatchPlayLongFreeKickResolution::ResolveDirectDefenseRoll(
 		TieState, RollRequest(TieState, true), &TieProvider);
+	TestTrue(TEXT("Defending GK has no stamina input"),
+		Tie.FormulaExecutionResult.ResolverInput.Defender.ParticipatingStamina.IsEmpty());
 	TestTrue(TEXT("GK owns exact Formula tie"),
 		Tie.bSuccess
 		&& Tie.AfterState.CurrentAttack.SetPieceRoute.LongFreeKick

@@ -180,6 +180,55 @@ bool FFormulaResolverTieBreakTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFormulaResolverSharedTiePriorityTest,
+	"FMCodex.CoreRules.FormulaResolver.SharedTiePriority",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFormulaResolverSharedTiePriorityTest::RunTest(const FString&)
+{
+	// The resolver has no tactic-specific tie path: both arithmetic Formula types
+	// consume the same already-validated single/multiple-participant contract.
+	for (const auto Type : { EFormulaType::Transition, EFormulaType::Finishing })
+	{
+		for (const bool bMultiple : { false, true })
+		{
+			auto Input = FormulaResolverTests::MakeInput(Type);
+			Input.Attacker.BaseValue = Input.Defender.BaseValue = 5;
+			Input.Attacker.ParticipatingStamina = bMultiple ? TArray<int32>{2, 6} : TArray<int32>{6};
+			Input.Defender.ParticipatingStamina = bMultiple ? TArray<int32>{4, 3} : TArray<int32>{4};
+			auto Result = UFormulaResolver::ResolveFormula(Input);
+			TestEqual(TEXT("Shared higher stamina wins"), Result.Winner, EFormulaWinner::Attacker);
+			TestEqual(TEXT("Shared stamina reason"), Result.WinReason, EFormulaWinReason::StaminaTieBreaker);
+			TestEqual(TEXT("Authority projects all attacking stamina"), Result.AttackerParticipatingStaminaTotal, bMultiple ? 8 : 6);
+			TestEqual(TEXT("Authority projects all defending stamina"), Result.DefenderParticipatingStaminaTotal, bMultiple ? 7 : 4);
+			Swap(Input.Attacker.ParticipatingStamina, Input.Defender.ParticipatingStamina);
+			TestEqual(TEXT("Shared higher defender stamina wins"), UFormulaResolver::ResolveFormula(Input).Winner, EFormulaWinner::Defender);
+			Input.Defender.ParticipatingStamina = Input.Attacker.ParticipatingStamina;
+			TestEqual(TEXT("Equal totals fall back to defense"), UFormulaResolver::ResolveFormula(Input).WinReason, EFormulaWinReason::DefenderWinsEqualStamina);
+			Input.Attacker.ParticipatingStamina = {6, 6}; Input.Defender.ParticipatingStamina = {1};
+			Input.bGoalkeeperParticipated = true;
+			Result = UFormulaResolver::ResolveFormula(Input);
+			TestEqual(TEXT("Actual GK outranks larger attack stamina"), Result.WinReason, EFormulaWinReason::DefenderWinsGoalkeeperTie);
+			TestEqual(TEXT("GK tie is defense win"), Result.Winner, EFormulaWinner::Defender);
+			Input.Defender.ParticipatingStamina.Empty();
+			TestEqual(TEXT("GK-only defense needs no stamina attribute"),
+				UFormulaResolver::ResolveFormula(Input).WinReason, EFormulaWinReason::DefenderWinsGoalkeeperTie);
+			Input.Attacker.BaseValue = 6;
+			TestEqual(TEXT("GK priority applies only at equal finals"), UFormulaResolver::ResolveFormula(Input).WinReason, EFormulaWinReason::HigherFinalValue);
+			// Equal final values with an actual GK and much greater defensive stamina:
+			// special suppression still wins before either ordinary tie-break.
+			Input.Attacker.BaseValue = 1; Input.Defender.BaseValue = 5;
+			Input.Attacker.ComparePoint = 6; Input.Defender.ComparePoint = 2;
+			Input.Attacker.bComparePointWasRolledOnD6 = Input.Defender.bComparePointWasRolledOnD6 = true;
+			Input.Attacker.ParticipatingStamina = {1}; Input.Defender.ParticipatingStamina = {6, 6};
+			Result = UFormulaResolver::ResolveFormula(Input);
+			TestEqual(TEXT("Suppression fixture has equal finals"), Result.AttackerFinalValue, Result.DefenderFinalValue);
+			TestEqual(TEXT("Special rule outranks GK and stamina"), Result.WinReason, EFormulaWinReason::FastSuppression);
+			TestEqual(TEXT("Suppression attacker wins"), Result.Winner, EFormulaWinner::Attacker);
+		}
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FFormulaResolverFastSuppressionTest,
 	"FMCodex.CoreRules.FormulaResolver.FastSuppression",

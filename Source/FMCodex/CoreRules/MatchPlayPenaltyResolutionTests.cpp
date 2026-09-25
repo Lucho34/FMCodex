@@ -530,6 +530,8 @@ bool FMatchPlayPenaltyDirectFormulaTest::RunTest(const FString& Parameters)
 		7.0f);
 	const auto GkTie = MakeDirectTerminal(
 		MakeAwaitingCarrier(TEXT("PenaltyGkTie")), 3, 2, 6, 2, 2);
+	TestTrue(TEXT("Defending GK has no stamina input"),
+		GkTie.FormulaExecutionResult.ResolverInput.Defender.ParticipatingStamina.IsEmpty());
 	const FMatchPlayPenaltyRouteState& NoGoal =
 		GkTie.AfterState.CurrentAttack.SetPieceRoute.Penalty;
 	TestTrue(TEXT("GK-involved exact tie belongs to defender"),

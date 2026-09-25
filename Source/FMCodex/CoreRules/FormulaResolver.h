@@ -50,6 +50,9 @@ struct FMCODEX_API FFormulaSideInput
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Formula")
 	bool bComparePointWasRolledOnD6 = false;
 
+	// One entry per actual authority-validated outfield participant, without duplicates.
+	// Goalkeepers have no stamina. Their participation is a separate tie priority.
+	// Optional absent roles contribute no entry; the UI must not construct this set.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Formula")
 	TArray<int32> ParticipatingStamina;
 };
@@ -68,7 +71,8 @@ struct FMCODEX_API FFormulaResolverInput
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Formula")
 	FFormulaSideInput Defender;
 
-	// This only affects a tied formula result.
+	// Actual defending goalkeeper participation. A final-value tie is then a
+	// defender win before stamina comparison; higher-priority special rules remain first.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Core Rules|Formula")
 	bool bGoalkeeperParticipated = false;
 

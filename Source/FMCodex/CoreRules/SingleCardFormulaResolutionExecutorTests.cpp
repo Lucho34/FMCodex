@@ -71,6 +71,32 @@ namespace SingleCardFormulaResolutionExecutorTests
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSingleCardFormulaGoalkeeperWithoutStaminaTest,
+	"FMCodex.CoreRules.SingleCardFormulaResolutionExecutor.GoalkeeperWithoutStamina",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSingleCardFormulaGoalkeeperWithoutStaminaTest::RunTest(const FString& Parameters)
+{
+	using namespace SingleCardFormulaResolutionExecutorTests;
+	for (const auto Type : { EFormulaType::Transition, EFormulaType::Finishing })
+	{
+		auto Input = MakeValidInput(Type);
+		Input.Attacker.BaseValue = Input.Defender.BaseValue = 5.0f;
+		Input.Attacker.Modifier = Input.Defender.Modifier = 0.0f;
+		Input.Attacker.ComparePoint = Input.Defender.ComparePoint = 3;
+		Input.Defender.ParticipatingStamina.Empty();
+		TestRejected(*this, TEXT("Absent outfield defense stamina"), Input, TEXT("Defender"), TEXT("ParticipatingStamina"));
+		Input.bGoalkeeperParticipated = true;
+		const auto Result = FSingleCardFormulaResolutionExecutor::Execute(Input);
+		TestTrue(TEXT("GK-only defense requires no fabricated stamina"), Result.bSuccess && Result.bExecuted);
+		TestEqual(TEXT("GK tie retains shared priority"), Result.FormulaResolutionResult.WinReason, EFormulaWinReason::DefenderWinsGoalkeeperTie);
+		Input.Attacker.ParticipatingStamina.Empty();
+		TestRejected(*this, TEXT("GK flag cannot excuse missing attacker stamina"), Input, TEXT("Attacker"), TEXT("ParticipatingStamina"));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSingleCardFormulaResolutionExecutorFinishingTest,
 	"FMCodex.CoreRules.SingleCardFormulaResolutionExecutor.ExecutesFinishing",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

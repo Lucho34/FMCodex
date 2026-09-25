@@ -46,5 +46,5 @@ Initial Route D6 只存在于 Cross、Pass Control、Through Ball，用于选择
 
 ## 8.8F closeout: High Cross aggregate stamina facts
 
-High 的 AttackRow.ParticipatingStamina 对应 Carrier + Runner；DefenseRow 对应 Marker + optional Helper + actual active GK，和经过规范 Cross plan 校验的 ResolverInput 一致。Low 保持现有实现，本次不迁移。
+High / Low 的 AttackRow.ParticipatingStamina 对应 Carrier + Runner；DefenseRow 对应 Marker + actual optional Helper，和经过规范 Cross plan 校验的 ResolverInput 一致。门将没有体力属性；实际 GK 单独投影身份、属性贡献及 bGoalkeeperParticipated，最终值平局直接防守获胜，不进行体力比较。8.9B 修正 Low 的单人体力组装，并移除 Cross / Feet / 定位球旧的通用 GK stamina 读取。
 `FFormulaResolutionResult.AttackerParticipatingStaminaTotal` / `DefenderParticipatingStaminaTotal` 由 FormulaResolver 使用已存在的 SumStamina 生成，与 Winner / WinReason 一起进入既有 ResolvedResult 投影，不新增客户端计算或独立披露通道。未完成/被 withheld 的 resolved result 保持默认；只有合法披露的已结算 contest 才可作为 UI 理由来源。显示理由仍受既有 narrative / ResultHold 门控。

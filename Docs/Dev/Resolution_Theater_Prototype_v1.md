@@ -1,6 +1,6 @@
 # Resolution Theater — High Cross production adoption
 
-Status: **ADOPTED / PRODUCTION LOCKED — High Cross**. Stage 8.8F.3 USER PIE: **ACCEPTED**.
+Status: **ADOPTED / PRODUCTION LOCKED — High Cross + Low Cross**. Stage 8.9B Low Cross USER PIE: **ACCEPTED**. Stage 8.8F.3 USER PIE: **ACCEPTED**.
 The current authoritative contract is [Resolution Theater Visual Spec v1](../UI/Resolution_Theater_Visual_Spec_v1.md).
 This file retains implementation notes and historical stage checkpoints. Earlier pending-PIE,
 procedural-art and no-new-asset descriptions below describe their stage, not the final state.
@@ -9,13 +9,13 @@ The final path uses the original athlete atlas and existing stadium/pitch assets
 ### Closeout rule reconciliation
 
 High Cross plan regeneration supplies Carrier + Runner and Marker + optional Helper
-(and the active GK once) to the existing resolver. It already sums participating stamina;
+to the existing resolver. The active GK is a separate identity/priority fact and has no stamina. It already sums participating stamina;
 the former High assembly supplied only Carrier / Marker. Duplicate same-side role identities
 are rejected by the canonical plan. No-helper adds no fictional participant. GK tie priority
 still precedes stamina; quick suppression still precedes final-value comparison.
 The disclosed resolved result now includes typed authority-computed stamina totals;
 the reason bar displays those totals without calculating or comparing them.
-Low Cross gameplay/presentation is outside this correction and remains a current migration boundary.
+Stage 8.9B applies the same contract to Low Cross and adopts it into production; later historical sections do not override the current visual spec.
 
 ### Remaining visual resource work
 
@@ -31,11 +31,11 @@ visual reskin, retaining Stage 8.6 authority and reveal timing.
 | --- | --- |
 | `fm.UI.ResolutionStageV2 0`, `fm.UI.FormulaV2 0` | Existing 8.7F fallback |
 | `fm.UI.ResolutionStageV2 0`, `fm.UI.FormulaV2 1` | Existing 8.8C High Cross overlay |
-| `fm.UI.ResolutionStageV2 1`, either FormulaV2 value | Neutral Cross setup/route, then High Cross theater |
+| `fm.UI.ResolutionStageV2 1`, either FormulaV2 value | Neutral Cross setup/route, then High / Low Cross theater |
 
 ResolutionStageV2 defaults to **1** in Development. FormulaV2 remains **0**.
 Neither switch adds persistent config. Shipping compiles the theater and always
-selects it for the scoped Cross entry/High path, with no theater cvar. FormulaV2
+selects it for the scoped Cross entry/High/Low paths, with no theater cvar. FormulaV2
 remains a non-Shipping comparison override. Turning the theater off in Development
 restores the comparison selected by FormulaV2 at the same authoritative state.
 The normal Editor console accepts each command separately.
@@ -49,8 +49,9 @@ that roll would predict a fact that does not yet exist.
 The user explicitly approved the minimal common entrance: accepted Cross tactic
 → neutral “传中” theater with the existing participant roles and branch choices
 → existing route roll. High continues through Formula, Roll, Result and Outcome.
-Low returns to the original board as soon as the route is visibly disclosed;
-its Formula and outcome are not migrated. No additional continue step is added.
+Low now continues in the same Theater after visible route disclosure, through
+Formula and outcome. No additional continue step is added. Low-only fallback
+`fm.UI.ResolutionStageV2.LowCross=0` exists in Development, not Shipping.
 
 ## Ownership and safety
 

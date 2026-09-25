@@ -1,12 +1,14 @@
 # Resolution Theater Roll v2 — production implementation notes
 
-Status: **ADOPTED / PRODUCTION LOCKED — High Cross**. Stage 8.9A.2 USER PIE: **ACCEPTED**, as explicitly recorded by the Stage 8.9A Closeout request. Visual acceptance and production adoption do not imply that the worktree has already been committed.
+Status: **ADOPTED / PRODUCTION LOCKED — High Cross + Low Cross**. Stage 8.9B Low Cross USER PIE: **ACCEPTED**. Stage 8.9A.2 USER PIE: **ACCEPTED**, as explicitly recorded by the Stage 8.9A Closeout request. Visual acceptance and production adoption do not imply that the worktree has already been committed.
 
 ## Production visual contract
 
 The authoritative player-facing rules live in [Resolution Theater Visual Spec v1](../UI/Resolution_Theater_Visual_Spec_v1.md), under [Match Flow Visual Language](../UI/MatchFlow_Visual_Language_v1.md). That specification owns the inline Formula slot, underline semantics, non-sequential cycling, continuous landing, stable geometry, causal RHS reveal and mixed-side presentation. This document owns implementation details and verification notes, not a competing visual specification.
 
-Production variants are **Legacy** and **TheaterInline**. Only High Cross Theater attack/defense Formula slots select TheaterInline. Neutral Cross route rolls, tactical D12, fallback Formula, non-migrated tactics and Low Cross retain Legacy. LocalPlay and NetworkPlay consume the same shared Screen and viewer-safe presentation source.
+Production variants are **Legacy** and **TheaterInline**. High / Low Cross Theater attack/defense Formula slots select TheaterInline. Neutral Cross route rolls, tactical D12, fallback Formula and non-migrated tactics retain Legacy. LocalPlay and NetworkPlay consume the same shared Screen and viewer-safe presentation source.
+
+Stage 8.9B adopts Low Cross in Development and Shipping. `fm.UI.ResolutionStageV2.LowCross=0` is a non-Shipping comparison fallback only. The same `IsFormulaContest` predicate is used by Theater selection and Screen motion; no second roll lifecycle is added. See [Low migration notes](Low_Cross_Resolution_Theater_Migration.md).
 
 ## Implementation detail — ownership and geometry
 
@@ -14,7 +16,7 @@ Production variants are **Legacy** and **TheaterInline**. Only High Cross Theate
 
 The current Theater allocation is 68 × 76, with 40-point Medium digits and baseline 58 inside the bottom-aligned slot (68 in the equation). Operators retain fixed widths and the RHS retains its 154-wide column. The base-value underline/native tooltip is separate. These are current implementation parameters, not permanent pixel tokens or a promise that hypothetical D12 variants use the same dimensions.
 
-`UsesTheaterInlineRollMotion` requires active Theater, `Cross.High` and Attack/Defense identity. It selects local motion parameters inside the same Screen phase machine. ResultHold still consumes actual elapsed game time. The same accepted event identity/dedupe and safe disclosed results govern both skins.
+`UsesTheaterInlineRollMotion` requires active Theater, an enabled Cross Formula contest and Attack/Defense identity. It selects local motion parameters inside the same Screen phase machine. ResultHold still consumes actual elapsed game time. The same accepted event identity/dedupe and safe disclosed results govern both skins.
 
 ## Implementation detail — presentation patterns
 
@@ -41,7 +43,7 @@ Late authority continues cosmetic cycling until the existing availability condit
 
 Neighbor fading depends on distance from center so the target remains visible while still rendered by `NextText`. At the cell boundary it hands off to `CenterText` at the same position, font and opacity. There is no bounce, scale pump or displacement. The held aqua digit and later existing gold disclosed-operand styling retain their accepted handoff.
 
-`FormulaFinalRevealProgress` defaults to -1 before disclosure and projects cosmetic progress from the existing ResultHold clock. It neither authorizes nor supplies a Formula value. Only the active High Theater host uses it; the existing hold callback updates opacity without another timer. The completed side remains fully readable while the other side rolls, using its own event identity.
+`FormulaFinalRevealProgress` defaults to -1 before disclosure and projects cosmetic progress from the existing ResultHold clock. It neither authorizes nor supplies a Formula value. Only the active migrated Theater host uses it; the existing hold callback updates opacity without another timer. The completed side remains fully readable while the other side rolls, using its own event identity.
 
 ## Verification and evidence
 
@@ -57,4 +59,4 @@ Build repair included in this Stage: the baseline Formula Hierarchy PIE helpers 
 
 ## Future concepts — not implemented or locked
 
-**CompactBox** and **Emphasis** remain possible future visual variants. No placeholder enum, second timing source or implementation is introduced for them. Low Cross Theater migration and migration of other Roll consumers belong to their own future presentation stages.
+**CompactBox** and **Emphasis** remain possible future visual variants. No placeholder enum, second timing source or implementation is introduced for them. Low Cross Theater is adopted. Route Roll / Tactical Roll Theater CompactBox is an explicit follow-up using the same state source; other Roll consumers remain separate future presentation stages. Participant name/portrait hover should reuse the read-only Full Player Card in a later stage.
