@@ -1,6 +1,6 @@
 # Resolution Theater Visual Spec v1
 
-Status: **ADOPTED / PRODUCTION LOCKED — High Cross**. Stage 8.8F.3 USER PIE: **ACCEPTED**。
+Status: **ADOPTED / PRODUCTION LOCKED — High Cross**. Stage 8.8F.3 Theater 与 Stage 8.9A.2 Roll v2 USER PIE 均为 **ACCEPTED**。
 
 本文是 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) 下属的高球传中生产规范。验收冻结现有视觉家族；不冻结永久像素常量，不授权迁移其他战术。LocalPlay 与 NetworkPlay 使用同一 Match Screen 和 Theater。
 
@@ -38,6 +38,24 @@ RHS 是首要数字焦点，Base 次之，运算符从属。问号、骰点与�
 
 派生 Base 使用克制的实线下划线作为可检查提示，完整 Base 目标可 hover。原生 tooltip 展示已投影的真实属性、系数和修正；主界面不永久展开底层计算明细。不得从球员目录重新构造 Formula，也不能把部署人数当作公式加成。
 
+**下划线 = 有 hover 解释。** Base 保留实线下划线与 tooltip；Roll 槽位的 `?`、滚动数字和已落定骰点均无下划线，也不提供 hover 解释。
+
+## Roll v2 生产家族
+
+Roll 复用同一套行为、状态来源和揭示门控，以视觉变体适配消费方。当前生产变体为 **Legacy** 与 **TheaterInline**。High Cross Resolution Theater 的攻防 Formula 使用 TheaterInline；路线骰、D12、旧 Formula、未迁移战术与 Low Cross 当前表现继续使用 Legacy。此边界不授权其他消费方自动迁移。
+
+TheaterInline 始终嵌入 `Base + Roll = Total`，不出现脱离公式的掷骰窗口或持续厚重边框。未知、滚动与落定状态共用固定空间槽位；Base、运算符和 RHS 不因状态或骰点变化而横向移动。固定槽位与数值层级属于生产规则，具体像素和字体参数留在实现说明中。
+
+中间数字采用可复现、确定性选择的非顺序表现序列，D6 数字仅为 1–6。避免明显连续升序、降序（含循环顺序）、相邻重复和简单 ABA 交替，不让每次事件重放同一短前缀。表现序列不消费或修改 gameplay RNG，不生成权威结果，不改变掷骰顺序或联网语义。权威结果只决定最后落定值，不决定中间序列或形成朝答案倒数的路径；不得为制造悬念而操纵前缀或假近失。
+
+可见顺序为：**未知 → 循环 → 减速 → 权威数字沿同一路径进入中心 → 落定 → 锁定 → RHS 更新**。最终数字必须像转轮自身停下，不能突然插入、瞬移，或由独立文本在中心替换。邻位逐渐退场，锁定亮度与颜色自然收束。动效应克制、具有体育转播感、适合重复观看；不采用弹跳、弹簧、老虎机大奖或赌场／抽卡式期待。此规范锁定视觉关系与动作特征，不冻结毫秒常量。
+
+RHS 及“当前值／最终值”服从既有 authoritative presentation / reveal gates；视觉因果是“骰点落定，然后总值更新”。转轮自身不得授权提前显示最终总值、Outcome、narrative 或比分，也不得新增玩家确认、权威等待或复制延迟。
+
+攻防允许混合状态：已完成侧显示 `Base + Roll = Final / 最终值`，未完成侧显示 `Base + ? = Current / 当前值`。完成侧持续可读且不重新播放；当前侧拥有交互焦点，双方分别消费自己的有效揭示状态。
+
+**CompactBox** 与 **Emphasis** 仅为未来概念，尚未实现或锁定。当前生产状态和实现细节见 [Roll v2 实现说明](../Dev/Resolution_Theater_Roll_v2.md)。
+
 ## 理由栏与 CTA
 
 理由栏使用图标、竖向分隔线、左对齐主解释与更小的次解释。允许语义适当的数值强调。普通总值比较、快速压制、体力总和平局和门将特殊平局必须保持区分。
@@ -54,7 +72,7 @@ High Cross 体力理由读取 `ResolvedResult` 的权威参与球员总和：
 
 结果层次：canonical outcome headline → 胜者状态和双方 Final → authoritative WinReason → 下一回合。比分、结果和 narrative 必须通过现有可见揭示门控；服务器已持久化不等于允许提前显示。
 
-短、适合重复观看的入场顺序为 Attack → Defense → VS → action availability。沿用已验收 timing；动画只控制 presentation，不能推动权威状态或消耗 RNG。Roll 的 Stage 8.6 lifecycle、真实 elapsed-time ResultHold、event identity/dedupe 保持原合同。
+短、适合重复观看的入场顺序为 Attack → Defense → VS → action availability。沿用已验收 timing；动画只控制 presentation，不能推动权威状态或消耗 RNG。Roll 保留 Stage 8.6 共享 lifecycle、真实 elapsed-time ResultHold 与 event identity/dedupe；High Cross 的局部转轮轨迹遵循上文已接受的 Roll v2，Legacy 消费方保留原轨迹。
 
 ## 生产入口与工程边界
 
@@ -62,4 +80,4 @@ Development 默认 `fm.UI.ResolutionStageV2=1`。关闭它才使用旧界面；�
 
 Shipping 默认使用中性 Cross 入口和实际 High Theater，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。
 
-资源来源、字体限制及历史参数见 [实现说明](../Dev/Resolution_Theater_Prototype_v1.md)。未来独立任务：Theater-compatible Roll Presentation visual reskin；Low Cross 迁移；可选 CJK 字体资源升级。这些不属于本次锁定。
+资源来源、字体限制及历史参数见 [实现说明](../Dev/Resolution_Theater_Prototype_v1.md)。TheaterInline Roll v2 已纳入本次生产锁定；Low Cross 迁移、其他 Roll 变体与可选 CJK 字体资源升级仍为独立后续任务。

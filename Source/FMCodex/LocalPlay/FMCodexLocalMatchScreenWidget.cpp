@@ -56,11 +56,17 @@ namespace FMCodexLocalMatchScreenWidget
 	constexpr float MainDecelerationEndTime = 0.84f;
 	constexpr float FinalSlowEndTime = 1.30f;
 	constexpr float CaptureSettleDuration = 0.16f;
+	// High Theater redistributes the same 1.46 seconds across existing phases.
+	constexpr float TheaterCyclingDuration = .92f;
+	constexpr float TheaterLandingDuration = FinalSlowEndTime + CaptureSettleDuration - TheaterCyclingDuration;
+	constexpr float TheaterCapturePosition = 6.5f;
+	constexpr float TheaterCaptureVelocity = 2.f * (TheaterCapturePosition - .24f * 8.f) / (.92f - .24f) - 8.f;
 	constexpr float CaptureOvershootPixels = 1.0f;
 	constexpr float CaptureScale = 1.025f;
 	constexpr float CaptureTargetEntryAlpha = 0.75f;
 	constexpr float NeighborFadeStartAlpha = CaptureTargetEntryAlpha;
 	constexpr float FormulaDisclosureDelay = 0.18f;
+	constexpr float TheaterFormulaFadeDuration = 0.12f;
 	constexpr float NarrativeDisclosureDelay = 0.38f;
 	constexpr float FormulaReadableResultHoldDuration = 2.40f;
 	constexpr float TacticalPointReadableResultHoldDuration = 2.40f;
@@ -197,6 +203,31 @@ namespace FMCodexLocalMatchScreenWidget
 		return Order;
 	}
 
+	float TheaterReelPosition(float Elapsed)
+	{
+		Elapsed=FMath::Max(0.f,Elapsed);
+		if (Elapsed<=FastPhaseDuration) return Elapsed*FastVelocityCellsPerSecond;
+		const float T=FMath::Min(Elapsed-FastPhaseDuration,TheaterCyclingDuration-FastPhaseDuration);
+		const float Acceleration=(TheaterCaptureVelocity-FastVelocityCellsPerSecond)/(TheaterCyclingDuration-FastPhaseDuration);
+		return FastPhaseDuration*FastVelocityCellsPerSecond + FastVelocityCellsPerSecond*T + .5f*Acceleration*T*T
+			+ FMath::Max(0.f,Elapsed-TheaterCyclingDuration)*TheaterCaptureVelocity;
+	}
+
+	int32 TheaterCycleDigit(uint32 Seed,int32 Cell)
+	{
+		// Four validated circular 24-cell patterns: no duplicate/ABA or three
+		// consecutive ascending/descending values, including wrapped D6 runs.
+		// Cosmetic event identity only; no provider or authoritative result input.
+		static constexpr int32 Patterns[4][24]={
+			{4,1,5,2,4,5,1,2,6,1,3,4,6,3,4,1,6,2,5,6,2,1,3,6},
+			{4,6,3,5,1,6,2,5,6,2,1,4,5,1,6,2,4,3,6,5,1,3,6,1},
+			{5,6,3,2,5,3,4,1,3,4,6,3,1,6,4,1,6,3,2,4,3,1,6,2},
+			{2,4,6,1,3,4,2,1,3,4,2,1,5,4,2,1,4,6,1,5,6,2,4,6}
+		};
+		const uint32 Mixed=MixCosmeticSeed(Seed);
+		return Patterns[Mixed%4][WrapDomainValue(Cell+int32((Mixed/4)%24),0,23)];
+	}
+
 	FFMCodexUMGRollReelViewModel BuildReelPresentation(
 		const EFMCodexUMGInlineFormulaRevealPhase Phase,
 		const float PhaseElapsed,
@@ -205,7 +236,7 @@ namespace FMCodexLocalMatchScreenWidget
 		const int32 AuthoritativeValue,
 		const float CaptureStartPositionCells,
 		const float CaptureDistanceCells,
-		const uint32 CosmeticSeed)
+		const uint32 CosmeticSeed, const bool bTheaterInline)
 	{
 		FFMCodexUMGRollReelViewModel Result;
 		Result.bVisible = true;
@@ -221,6 +252,11 @@ namespace FMCodexLocalMatchScreenWidget
 		if (Phase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
 			|| Phase == EFMCodexUMGInlineFormulaRevealPhase::Settled)
 		{
+			if (Result.bResultHold && PhaseElapsed >= FormulaDisclosureDelay)
+			{
+				Result.FormulaFinalRevealProgress = FMath::Clamp(
+					(PhaseElapsed - FormulaDisclosureDelay) / TheaterFormulaFadeDuration, 0.f, 1.f);
+			}
 			Result.CenterValue = AuthoritativeValue;
 			Result.PreviousValue = WrapDomainValue(
 				AuthoritativeValue - 1, DomainMinimum, DomainMaximum);
@@ -233,8 +269,17 @@ namespace FMCodexLocalMatchScreenWidget
 			return Result;
 		}
 
-		float Position = CosmeticReelPosition(PhaseElapsed);
-		if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling)
+		float Position = bTheaterInline ? TheaterReelPosition(PhaseElapsed) : CosmeticReelPosition(PhaseElapsed);
+		if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling && bTheaterInline)
+		{
+			const float Alpha=FMath::Clamp(PhaseElapsed/TheaterLandingDuration,0.f,1.f);
+			// Match entry velocity, then continuously decelerate to zero. No late
+			// acceleration or center replacement; target enters a new forward cell.
+			const float Exponent=TheaterCaptureVelocity*TheaterLandingDuration/CaptureDistanceCells;
+			Position=CaptureStartPositionCells+CaptureDistanceCells*(1.f-FMath::Pow(1.f-Alpha,Exponent));
+			Result.NeighborFadeAlpha=FMath::SmoothStep(0.f,1.f,FMath::Clamp((PhaseElapsed-(TheaterLandingDuration-.10f))/.10f,0.f,1.f));
+		}
+		else if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling)
 		{
 			const float Alpha = FMath::Clamp(
 				PhaseElapsed / CaptureSettleDuration, 0.0f, 1.0f);
@@ -275,7 +320,7 @@ namespace FMCodexLocalMatchScreenWidget
 			// The target occupies a NEW incoming slot, never relabels a visible digit.
 			if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling && Cell == TargetCell)
 				return AuthoritativeValue;
-			return Order[WrapDomainValue(Cell, 0, Order.Num()-1)];
+			return bTheaterInline ? TheaterCycleDigit(CosmeticSeed,Cell) : Order[WrapDomainValue(Cell, 0, Order.Num()-1)];
 		};
 		Result.CenterValue = VisibleValue(Step);
 		Result.PreviousValue = VisibleValue(Step-1);
@@ -3601,7 +3646,7 @@ void UFMCodexLocalMatchScreenWidget::UpdateInlineFormulaRevealState(
 			}
 			if (InlineFormulaRevealPhase
 					== EFMCodexUMGInlineFormulaRevealPhase::Cycling
-				&& InlineFormulaRevealPhaseElapsed >= FinalSlowEndTime)
+				&& InlineFormulaRevealPhaseElapsed >= (UsesTheaterInlineRollMotion() ? TheaterCyclingDuration : FinalSlowEndTime))
 			{
 				BeginInlineFormulaFinalCapture();
 			}
@@ -4222,6 +4267,13 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 	return Result;
 }
 
+bool UFMCodexLocalMatchScreenWidget::UsesTheaterInlineRollMotion() const
+{
+	return TheaterMotion.bActive && ActiveCrossRollReveal.ContestId==TEXT("Cross.High")
+		&& (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Attack
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Defense);
+}
+
 FFMCodexUMGRollReelViewModel
 UFMCodexLocalMatchScreenWidget::BuildActiveRollReelPresentation() const
 {
@@ -4239,7 +4291,7 @@ UFMCodexLocalMatchScreenWidget::BuildActiveRollReelPresentation() const
 		RollRevealAuthoritativeRawValue,
 		RollRevealCaptureStartPositionCells,
 		RollRevealCaptureDistanceCells,
-		RollRevealCosmeticSeed);
+		RollRevealCosmeticSeed, UsesTheaterInlineRollMotion());
 }
 
 void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
@@ -4250,6 +4302,8 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 	const EFMCodexUMGInlineFormulaRevealPhase PreviousPhase =
 		InlineFormulaRevealPhase;
 	const float PreviousPhaseElapsed = InlineFormulaRevealPhaseElapsed;
+	const float CyclingDuration=UsesTheaterInlineRollMotion() ? TheaterCyclingDuration : FinalSlowEndTime;
+	const float LandingDuration=UsesTheaterInlineRollMotion() ? TheaterLandingDuration : CaptureSettleDuration;
 	DeltaSeconds = FMath::Max(0.0f, DeltaSeconds);
 	while (DeltaSeconds > 0.0f && IsInlineFormulaRevealInputBlocked())
 	{
@@ -4265,11 +4319,14 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 		{
 			const float Remaining = FMath::Max(
 				0.0f,
-				FinalSlowEndTime - InlineFormulaRevealPhaseElapsed);
+				CyclingDuration - InlineFormulaRevealPhaseElapsed);
 			const float Consumed = FMath::Min(DeltaSeconds, Remaining);
 			InlineFormulaRevealPhaseElapsed += Consumed;
+			// Exact endpoint after consuming the full remainder: avoid losing a
+			// cross-phase delta to float rounding at the Theater's .92s boundary.
+			if (UsesTheaterInlineRollMotion() && Remaining>0.f && Consumed>=Remaining) InlineFormulaRevealPhaseElapsed=CyclingDuration;
 			DeltaSeconds -= Consumed;
-			if (InlineFormulaRevealPhaseElapsed < FinalSlowEndTime)
+			if (InlineFormulaRevealPhaseElapsed < CyclingDuration)
 			{
 				break;
 			}
@@ -4288,11 +4345,12 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 			== EFMCodexUMGInlineFormulaRevealPhase::Settling)
 		{
 			const float Remaining = FMath::Max(
-				0.0f, CaptureSettleDuration - InlineFormulaRevealPhaseElapsed);
+				0.0f, LandingDuration - InlineFormulaRevealPhaseElapsed);
 			const float Consumed = FMath::Min(DeltaSeconds, Remaining);
 			InlineFormulaRevealPhaseElapsed += Consumed;
+			if (UsesTheaterInlineRollMotion() && Remaining>0.f && Consumed>=Remaining) InlineFormulaRevealPhaseElapsed=LandingDuration;
 			DeltaSeconds -= Consumed;
-			if (InlineFormulaRevealPhaseElapsed < CaptureSettleDuration)
+			if (InlineFormulaRevealPhaseElapsed < LandingDuration)
 			{
 				break;
 			}
@@ -4466,6 +4524,14 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 	{
 		RefreshActiveRollReelVisuals();
 	}
+	else if (TheaterMotion.bActive
+		&& InlineFormulaRevealPhase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+		&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay
+		&& PreviousPhaseElapsed < FormulaDisclosureDelay + TheaterFormulaFadeDuration)
+	{
+		// Reuse the existing elapsed-time hold callback; no new timer or gate.
+		FMCodexResolutionTheaterPrototype::RefreshReel(*WidgetTree, BuildActiveRollReelPresentation());
+	}
 }
 
 void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaFinalCapture()
@@ -4477,8 +4543,8 @@ void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaFinalCapture()
 	{
 		return;
 	}
-	RollRevealCaptureStartPositionCells = CosmeticReelPosition(
-		InlineFormulaRevealPhaseElapsed);
+	RollRevealCaptureStartPositionCells = UsesTheaterInlineRollMotion()
+		? TheaterReelPosition(InlineFormulaRevealPhaseElapsed) : CosmeticReelPosition(InlineFormulaRevealPhaseElapsed);
 	// Preserve the current three labels at the capture boundary. The next cell
 	// after the already-visible incoming neighbor receives the accepted result.
 	// A bounded forward capture replaces the old result-dependent whole-domain chase.

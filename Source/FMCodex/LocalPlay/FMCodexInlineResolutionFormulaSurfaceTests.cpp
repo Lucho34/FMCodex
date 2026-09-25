@@ -16,6 +16,8 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Misc/ScopeExit.h"
+#include "HAL/IConsoleManager.h"
 
 namespace FMCodexInlineResolutionFormulaSurfaceTests
 {
@@ -999,6 +1001,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 {
+	// This suite locks the original Legacy consumer timing. High Theater's
+	// redistributed motion is covered by its scoped lifecycle/landing tests.
+	auto* TheaterMode=IConsoleManager::Get().FindConsoleVariable(TEXT("fm.UI.ResolutionStageV2"));
+	const int32 PreviousTheaterMode=TheaterMode->GetInt();
+	TheaterMode->Set(0,ECVF_SetByCode);
+	ON_SCOPE_EXIT { TheaterMode->Set(PreviousTheaterMode,ECVF_SetByCode); };
 	using namespace FMCodexInlineResolutionFormulaSurfaceTests;
 	(void)Parameters;
 

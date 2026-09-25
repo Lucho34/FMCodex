@@ -2332,3 +2332,16 @@ Development 默认启用 Theater，ResolutionStageV2/FormulaV2 仅保留 non-Shi
 **CURRENT MIGRATION BOUNDARY:** actual Low Cross 在路线可见披露后返回原表现。本次只修正 High stamina；Low 的一般多人规则与组装一致性留待独立审计，不以范围限制把单人比较确认为目标规则。
 
 后续独立工作：Resolution Theater-compatible Roll Presentation visual reskin（保持 Stage 8.6 行为）；Low Cross 迁移；可选 CJK typography resource upgrade。当前 DroidSansFallback Regular 是已接受资源限制，不是本阶段功能阻塞。技术验证不能代替视觉 USER PIE；此次视觉接受来自用户明确确认。staging/commit 均由用户手动完成。
+
+
+## 2026-09-25 — Stage 8.9A Closeout: Resolution Theater Roll v2 production lock
+
+**ADOPTED / PRODUCTION LOCKED. Stage 8.9A.2 USER PIE: ACCEPTED.** 用户接受 High Cross TheaterInline Roll v2 的视觉与运动。本条完成此前 8.8F 的 Theater-compatible Roll reskin 后续项；旧 pending 与 future-reskin 记录为历史，不再表示本家族待采用。生产规则见 [Resolution Theater Visual Spec v1](UI/Resolution_Theater_Visual_Spec_v1.md)，参数与验证边界见 [Roll v2 实现说明](Dev/Resolution_Theater_Roll_v2.md)。
+
+采用 Formula 内固定 Roll 槽位、非顺序且可复现的装饰数字、连续减速和同路径权威数字入槽、自然落定锁定；不采用结果突然插入、弹跳或赌场式假近失。Base 的实线下划线表示有 hover 解释，Roll 的未知、滚动、落定状态均无下划线。公式保持稳定，RHS／当前与最终标签遵守原揭示门控，已完成侧在另一侧操作时不重播。
+
+Legacy 与 TheaterInline 共用 Screen 的 Roll 状态来源、时钟与合法结果投影。局部运动参数和表现序列不改变 gameplay RNG、掷骰顺序、Formula、结果、比分、网络语义或权威状态；不创建第二套 Roll 状态机。
+
+**CURRENT MIGRATION BOUNDARY:** 仅 High Cross Resolution Theater 的攻防 Formula 使用 TheaterInline。路线骰、D12、旧 Formula、未迁移战术及 Low Cross 当前表现保留 Legacy，随其所属表现家族另行迁移。**CompactBox** 与 **Emphasis** 为 planned concepts only，未实现、未锁定。
+
+本次 closeout 同步规范并审计整个非 ignored 工作区，不修改已接受的运行时代码。focused Roll/Theater/Legacy 检查用于收尾，复用 8.9A.2 的构建与真实 High Cross PIE 证据；技术证据与用户验收分别记录。用户在 GitHub Desktop 执行最终提交，Codex 不操作 staging 或 commit；生产视觉锁定不表示 Git 已提交。

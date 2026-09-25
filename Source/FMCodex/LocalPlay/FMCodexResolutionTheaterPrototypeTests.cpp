@@ -198,12 +198,37 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Defense remains unresolved during Attack"),Visible(S,TEXT("TheaterDefensePending")) && !Visible(S,TEXT("TheaterDefenseReelHost")));
 	TestFalse(TEXT("Formula roll has no disconnected bottom reel"),Visible(S,TEXT("TheaterRoll")));
 	auto* InlineReel=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterAttackReel")));
+	TestTrue(TEXT("Only High formula slot opts into v2"),InlineReel->UsesTheaterInlineSkin());
+	TestFalse(TEXT("Shared legacy Formula source keeps its old skin"),S->GetInlineFormulaSurface()->GetRollReelWidget()->UsesTheaterInlineSkin());
+	TestFalse(TEXT("Neutral route reel retains its existing skin"),CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterReel")))->UsesTheaterInlineSkin());
+	TestFalse(TEXT("Rolling action is not actionable"),Visible(S,TEXT("TheaterPrimaryBounds")));
 	const auto& SourceReel=S->GetInlineFormulaSurface()->GetRollReelWidget()->GetPresentation();
 	TestEqual(TEXT("Inline host reuses the existing projected center"),InlineReel->GetPresentation().CenterValue,SourceReel.CenterValue);
 	TestEqual(TEXT("Inline host reuses the existing continuous clock"),InlineReel->GetPresentation().ContinuousPositionCells,SourceReel.ContinuousPositionCells);
 	TestTrue(TEXT("Cycling retains the current RHS"),Visible(S,TEXT("TheaterAttackFinalNumber")));
 	TestEqual(TEXT("Cycling RHS remains prior subtotal"),Label(S,TEXT("TheaterAttackFinalNumber")),BeforeFormula.AttackRow.DisplayedResultLabel);
 	TestEqual(TEXT("Cycling label remains current"),Label(S,TEXT("TheaterAttackValueLabel")),FString(TEXT("当前值")));
+	// Both sides preserve the 1.46s motion budget + .18s disclosure gap. The new
+	// cosmetic fade cannot grant disclosure, unblock input or dim the other side.
+	auto CheckFinalFade=[&](UFMCodexLocalMatchScreenWidget* W,const FString& Prefix)
+	{
+		auto* R=CastChecked<UFMCodexRollReelWidget>(W->GetWidgetFromName(FName(*(Prefix+TEXT("Reel")))));
+		auto* RHS=W->GetWidgetFromName(FName(*(Prefix+TEXT("ResultColumn"))));
+		W->AdvanceInlineFormulaRevealForTesting(1.07f); // .01 into original hold
+		TestTrue(TEXT("Authoritative die settles before total disclosure"),R->GetPresentation().bStaticResult);
+		TestEqual(TEXT("High Cross domain is D6"),R->GetPresentation().DomainMaximum,6);
+		TestEqual(TEXT("Pre-disclosure progress is absent"),R->GetPresentation().FormulaFinalRevealProgress,-1.f);
+		TestEqual(TEXT("Current label stays until original gate"),Label(W,*FString(Prefix+TEXT("ValueLabel"))),FString(TEXT("当前值")));
+		W->AdvanceInlineFormulaRevealForTesting(.16f);
+		TestEqual(TEXT("No premature total fade at .17s"),RHS->GetRenderOpacity(),1.f);
+		W->AdvanceInlineFormulaRevealForTesting(.02f);
+		TestEqual(TEXT("Label changes at existing disclosure gate"),Label(W,*FString(Prefix+TEXT("ValueLabel"))),FString(TEXT("最终值")));
+		TestTrue(TEXT("Disclosed RHS and label begin restrained fade together"),RHS->GetRenderOpacity()>=.84f && RHS->GetRenderOpacity()<.9f);
+		TestFalse(TEXT("Visual fade cannot unblock next action"),Visible(W,TEXT("TheaterPrimaryBounds")));
+		W->AdvanceInlineFormulaRevealForTesting(.13f);
+		TestEqual(TEXT("Final RHS returns to full opacity without new hold"),RHS->GetRenderOpacity(),1.f);
+	};
+	CheckFinalFade(S,TEXT("TheaterAttack"));
 	F.Settle();
 	TestEqual(TEXT("Revealed operand is the authoritative attack D6"),Label(S,TEXT("TheaterAttackRollValue")),FString(TEXT("6")));
 	TestEqual(TEXT("Resolved total is projected without arithmetic"),Label(S,TEXT("TheaterAttackFinalNumber")),S->GetInlineFormulaSurface()->GetPresentation().AttackRow.DisplayedResultLabel);
@@ -211,9 +236,15 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Unresolved Defense label is still current"),Label(S,TEXT("TheaterDefenseValueLabel")),FString(TEXT("当前值")));
 	TestFalse(TEXT("Actor waits for defense without CTA"),Visible(S,TEXT("TheaterPrimaryBounds")));
 	TestTrue(TEXT("Defender owns defense CTA"),Visible(D,TEXT("TheaterPrimaryBounds")));
+	const FString AttackFinalBeforeDefense=Label(S,TEXT("TheaterAttackFinalNumber"));
 	const FString ScoreBefore=Label(S,TEXT("TheaterContext")); F.Entropy->Word=0;
 	CastChecked<UButton>(D->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
 	TestEqual(TEXT("Defense uses original typed command"),F.Backend(Defender).Last.IntentKind,Kind::CrossHighDefenseRoll);
+	D->PauseInlineFormulaRevealTimerForTesting(); D->AdvanceInlineFormulaRevealForTesting(.4f);
+	TestTrue(TEXT("Defense alone owns active v2 slot"),Visible(D,TEXT("TheaterDefenseReelHost")) && !Visible(D,TEXT("TheaterAttackReelHost")));
+	TestEqual(TEXT("Attack remains resolved while Defense rolls"),Label(D,TEXT("TheaterAttackFinalNumber")),AttackFinalBeforeDefense);
+	TestFalse(TEXT("Defense roll has no duplicate CTA"),Visible(D,TEXT("TheaterPrimaryBounds")));
+
 	TestEqual(TEXT("Theater score obeys original reveal gate"),Label(S,TEXT("TheaterContext")),ScoreBefore);
 	TestFalse(TEXT("Outcome hidden during reel"),Visible(S,TEXT("TheaterOutcome")));
 	TestFalse(TEXT("Reason cannot disclose suppression during reel"),Label(S,TEXT("TheaterDetail")).Contains(TEXT("快速压制")));
@@ -221,6 +252,8 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		CastChecked<URichTextBlock>(S->GetWidgetFromName(TEXT("TheaterReasonPrimary")))->GetText().IsEmpty());
 	TestFalse(TEXT("Winner is not announced while defense is revealing"),
 		Label(S,TEXT("TheaterAttackActive"))==TEXT("获胜") || Label(S,TEXT("TheaterDefenseActive"))==TEXT("获胜"));
+	CheckFinalFade(D,TEXT("TheaterDefense"));
+	TestEqual(TEXT("Resolved Attack stays fully readable during Defense fade"),D->GetWidgetFromName(TEXT("TheaterAttackResultColumn"))->GetRenderOpacity(),1.f);
 	F.Settle();
 	for (auto* W:{S,D})
 	{

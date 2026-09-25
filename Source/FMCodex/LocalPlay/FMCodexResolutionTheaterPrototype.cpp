@@ -401,7 +401,7 @@ void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix,
 	Expression->AddChildToHorizontalBox(BaseHover)->SetVerticalAlignment(VAlign_Bottom);
 	auto* Plus=Text(Tree,Named(Prefix,TEXT("Plus")),24,Alpha(Quiet,.8f)); Plus->SetText(FText::FromString(TEXT("+"))); Plus->SetJustification(ETextJustify::Center);
 	Expression->AddChildToHorizontalBox(EquationCell(Tree,*Plus,24))->SetVerticalAlignment(VAlign_Bottom);
-	// A stable 68x76 allocation hosts ?, the existing Stage 8.6 reel, then the disclosed digit.
+	// A stable 68x76 allocation hosts ?, Theater Roll v2, then the disclosed digit.
 	auto* Unknown=Tree.ConstructWidget<UOverlay>(UOverlay::StaticClass(),Named(Prefix,TEXT("UnknownSlot")));
 	for (const auto Suffix:{TEXT("Pending"),TEXT("RollValue")})
 	{
@@ -410,10 +410,11 @@ void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix,
 		Unknown->AddChildToOverlay(Digit); AlignEquationText(*Digit,EquationBaseline-10);
 	}
 	auto* Reel=Tree.ConstructWidget<UFMCodexRollReelWidget>(UFMCodexRollReelWidget::StaticClass(),Named(Prefix,TEXT("Reel")));
+	Reel->SetVisualVariant(EFMCodexRollVisualVariant::TheaterInline);
 	auto* ReelHost=Tree.ConstructWidget<UScaleBox>(UScaleBox::StaticClass(),Named(Prefix,TEXT("ReelHost")));
 	ReelHost->SetStretch(EStretch::ScaleToFit); ReelHost->AddChild(Reel);
 	auto* ReelSlot=Unknown->AddChildToOverlay(ReelHost); ReelSlot->SetHorizontalAlignment(HAlign_Fill); ReelSlot->SetVerticalAlignment(VAlign_Fill);
-	ReelSlot->SetPadding(FMargin(2));
+	ReelSlot->SetPadding(FMargin(0));
 	Expression->AddChildToHorizontalBox(Bounds(Tree,Unknown,68,76))->SetVerticalAlignment(VAlign_Bottom);
 	auto* Equal=Text(Tree,Named(Prefix,TEXT("Equal")),24,Alpha(Quiet,.8f)); Equal->SetText(FText::FromString(TEXT("="))); Equal->SetJustification(ETextJustify::Center);
 	Expression->AddChildToHorizontalBox(EquationCell(Tree,*Equal,24))->SetVerticalAlignment(VAlign_Bottom);
@@ -745,7 +746,16 @@ void RefreshReel(UWidgetTree& Tree, const FFMCodexUMGRollReelViewModel& Reel)
 	{
 		auto* W=Cast<UFMCodexRollReelWidget>(Tree.FindWidget(Named(Prefix,TEXT("Reel"))));
 		auto* Host=Tree.FindWidget(Named(Prefix,FString(Prefix)==TEXT("Theater") ? TEXT("Roll") : TEXT("ReelHost")));
-		if (W && Host) W->RefreshFromPresentation(Host->GetVisibility()!=ESlateVisibility::Collapsed ? Reel : FFMCodexUMGRollReelViewModel());
+		const bool bActiveHost=Host && Host->GetVisibility()!=ESlateVisibility::Collapsed;
+		if (W && Host) W->RefreshFromPresentation(bActiveHost ? Reel : FFMCodexUMGRollReelViewModel());
+		if (FString(Prefix)!=TEXT("Theater"))
+		{
+			// Fade only already-disclosed content, using the existing shared clock.
+			// No value calculation, text substitution, layout transform or added hold.
+			const float Progress=bActiveHost && Reel.bStaticResult ? Reel.FormulaFinalRevealProgress : -1.f;
+			const float Opacity=Progress>=0.f ? FMath::Lerp(.84f,1.f,FMath::SmoothStep(0.f,1.f,Progress)) : 1.f;
+			Tree.FindWidget(Named(Prefix,TEXT("ResultColumn")))->SetRenderOpacity(Opacity);
+		}
 	}
 }
 void SetActive(UWidgetTree& Tree, FMotion& Motion, bool bActive)

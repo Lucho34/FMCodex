@@ -148,7 +148,7 @@ public:
   auto* Settings=DuplicateObject<ULevelEditorPlaySettings>(GetDefault<ULevelEditorPlaySettings>(),GetTransientPackage());
   Settings->NewWindowWidth=1920; Settings->NewWindowHeight=1080;
   Settings->SetPlayNetMode(EPlayNetMode::PIE_Standalone); Settings->SetPlayNumberOfClients(1);
-  TheaterPIEWindow=SNew(SWindow).Title(FText::FromString(TEXT("Stage 8.8F.3 PIE")))
+  TheaterPIEWindow=SNew(SWindow).Title(FText::FromString(TEXT("Stage 8.9A.2 Roll v2 PIE")))
    .ClientSize(FVector2D(1920,1080)).ScreenPosition(FVector2D(0,0)).AutoCenter(EAutoCenter::None)
    .SaneWindowPlacement(false).AdjustInitialSizeAndPositionForDPIScale(false).SizingRule(ESizingRule::UserSized);
   FSlateApplication::Get().AddWindow(TheaterPIEWindow.ToSharedRef());
@@ -177,6 +177,40 @@ public:
    return W && W->GetVisibility()!=ESlateVisibility::Collapsed && W->GetVisibility()!=ESlateVisibility::Hidden;
   };
   auto Text=[&](const TCHAR* Name) { return CastChecked<UTextBlock>(S->GetWidgetFromName(Name))->GetText().ToString(); };
+  if (Step==8 || Step==9)
+  {
+   CheckStableEquation(S,false);
+   if (Step==8 && GEditor->PlayWorld->GetTimeSeconds()-LastMovieTime>=.025f && MovieFrames.Num()<100) CaptureMovieFrame(S);
+   const int32 Phase=int32(S->GetInlineFormulaRevealPhase());
+   const auto& P=S->GetInlineFormulaSurface()->GetPresentation();
+   const auto& Reel=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(Step==8?TEXT("TheaterAttackReel"):TEXT("TheaterDefenseReel")))->GetPresentation();
+   const int32 Disclosed=P.AttackRow.bDisplayedResultIsFinalValue + 2*P.DefenseRow.bDisplayedResultIsFinalValue;
+   if (Phase!=LastRollPhase || Step!=LastRollStep || Disclosed!=LastDisclosed ||
+    (Reel.bMoving && FPlatformTime::Seconds()-LastRollLog>.12))
+   {
+    LastRollPhase=Phase; LastRollStep=Step; LastDisclosed=Disclosed; LastRollLog=FPlatformTime::Seconds();
+    Test->AddInfo(FString::Printf(TEXT("ROLL_V2_FRAME game=%.3f side=%s phase=%d position=%.3f digit=%d static=%d rhsFade=%.3f attack=%s defense=%s finalFlags=%d CTA=%d outcome=%d"),
+     GEditor->PlayWorld->GetTimeSeconds(),Step==8?TEXT("Attack"):TEXT("Defense"),Phase,Reel.ContinuousPositionCells,Reel.CenterValue,Reel.bStaticResult,Reel.FormulaFinalRevealProgress,
+     *Text(TEXT("TheaterAttackFinalNumber")),*Text(TEXT("TheaterDefenseFinalNumber")),Disclosed,Visible(TEXT("TheaterPrimaryBounds")),Visible(TEXT("TheaterOutcome"))));
+   }
+   if (Step==8 && Reel.bStaticResult && Reel.FormulaFinalRevealProgress<0.f && !(RollFrames&8))
+   {
+    RollFrames|=8;
+   }
+   if (Step==8 && Reel.FormulaFinalRevealProgress>=1.f && !(RollFrames&16))
+   {
+    RollFrames|=16;
+   }
+   if (Reel.bMoving && Reel.ContinuousPositionCells>1.f && !(RollFrames & (Step==8?1:2)))
+   {
+    RollFrames |= Step==8?1:2;
+    if (Step==9) CaptureRollFrame(S,TEXT("04_DefenseRolling.png"));
+   }
+   if (Step==9 && P.DefenseRow.bDisplayedResultIsFinalValue && !Visible(TEXT("TheaterOutcome")) && !(RollFrames&4))
+   {
+    RollFrames|=4; CaptureRollFrame(S,TEXT("05_BothResolved.png"));
+   }
+  }
   if (Step==3)
   {
    const double EntryTime=FPlatformTime::Seconds()-Changed;
@@ -215,6 +249,11 @@ public:
    Test->TestTrue(TEXT("Same inline chamber holds one authoritative result"),Reel->IsStaticResultTileVisible());
    Test->TestEqual(TEXT("Inline reel lands on DEV provider result, not cosmetic number"),Reel->GetPresentation().CenterValue,4);
    Test->TestTrue(TEXT("Question slot stays in place through landing"),QuestionPosition.Equals(S->GetWidgetFromName(TEXT("TheaterAttackUnknownSlot"))->GetCachedGeometry().GetAbsolutePosition(),1.f));
+   const auto& Display=S->GetInlineFormulaSurface()->GetPresentation();
+   // Screenshot readback may skip a short display window. Exact .18s gating
+   // is verified by UnifiedCoveredRolls; this path logs natural elapsed frames.
+   Test->AddInfo(FString::Printf(TEXT("ROLL_V2_FIRST_STATIC finalAllowed=%d"),Display.AttackRow.bDisplayedResultIsFinalValue));
+   Test->TestTrue(TEXT("Real High formula uses v2 skin"),Reel->UsesTheaterInlineSkin());
    bInlineHoldChecked=true;
   }
   if (Step==9 && S->GetInlineFormulaRevealPhase()==EFMCodexUMGInlineFormulaRevealPhase::Cycling)
@@ -291,7 +330,7 @@ public:
    const float FormulaHeight=S->GetWidgetFromName(TEXT("TheaterAttackPanel"))->GetCachedGeometry().GetAbsoluteSize().Y;
    Test->TestTrue(TEXT("Formula expands with content without the old giant slab"),FormulaHeight>ParticipantHeight && FormulaHeight<460.f);
    Test->TestFalse(TEXT("No final divider during unresolved formula"),Visible(TEXT("TheaterOutcomeDivider")));
-   Capture(S,TEXT("01_Formula_Aligned_Unresolved.png"));
+   CaptureRollFrame(S,TEXT("01_PreRoll.png"));
    CheckEquation(S);
    CheckNumericWidths(S);
    for (const auto Prefix:{TEXT("TheaterAttack"),TEXT("TheaterDefense")})
@@ -329,10 +368,11 @@ public:
   }
   if (Step==7)
   {
+   CheckStableEquation(S,true);
    Test->TestTrue(TEXT("Inspect cue returns to quiet after pointer leaves"),
     CastChecked<UBorder>(S->GetWidgetFromName(TEXT("TheaterDefenseBaseUnderline")))->GetBrushColor().A<.8f);
    Test->TestTrue(TEXT("Native tooltip leaves underlying action enabled"),CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->GetIsEnabled());
-   Click(S); Next(); return false;
+   CaptureMovieFrame(S); Click(S); Next(); return false;
   }
   if (Step==8)
   {
@@ -342,6 +382,8 @@ public:
    Test->TestEqual(TEXT("Partial reveal has final attack label"),Text(TEXT("TheaterAttackValueLabel")),FString(TEXT("最终值")));
    Test->TestEqual(TEXT("Partial reveal retains current defense label"),Text(TEXT("TheaterDefenseValueLabel")),FString(TEXT("当前值")));
    Paint(S); CheckEquation(S);
+   CaptureRollFrame(S,TEXT("05_MixedState.png"));
+   SaveMovieFrames();
    BeforeScore=S->GetMatchHeader()->GetDisplayedScoreLabel(); Click(S); Next(); return false;
   }
   if (Step==9)
@@ -370,7 +412,7 @@ public:
    const auto ChevronGeometry=S->GetWidgetFromName(TEXT("TheaterNextIcon"))->GetCachedGeometry();
    Test->TestTrue(TEXT("Continue chevron lies after text with a clean gap"),
     ChevronGeometry.GetAbsolutePosition().X>LabelGeometry.GetAbsolutePosition().X+LabelGeometry.GetAbsoluteSize().X+8);
-   Capture(S,TEXT("02_Formula_Aligned_Resolved.png"));
+   CaptureRollFrame(S,TEXT("06_Result.png"));
    CheckEquation(S);
    const auto Main=S->GetWidgetFromName(TEXT("TheaterReasonPrimary"))->GetCachedGeometry();
    const auto Secondary=S->GetWidgetFromName(TEXT("TheaterReasonSecondary"))->GetCachedGeometry();
@@ -384,7 +426,7 @@ public:
     && SecondaryCopy.Contains(FString::FromInt(Result.DefenderParticipatingStaminaTotal)));
    auto* Primary=CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")));
    Primary->SetKeyboardFocus(); Test->TestTrue(TEXT("Continue remains keyboard focusable"),Primary->HasKeyboardFocus());
-   CaptureDetail(S,TEXT("TheaterInfoBar"),TEXT("03_Stamina_Tie_Reason.png"));
+   // The closeout reason-bar capture is not repeated by this roll pass.
    CheckLongNames(S);
    Click(S); Next(); return false;
   }
@@ -393,10 +435,71 @@ public:
   Test->TestEqual(TEXT("Original pitch geometry restores with board"),S->GetPitchWidget()->WidgetTree->FindWidget(TEXT("TwoLanePitchCanvas"))->GetRenderOpacity(),1.f);
   Test->TestEqual(TEXT("Pitch transform fully restored"),S->GetPitchWidget()->GetRenderTransform().Scale,FVector2D(1.f));
   Test->TestEqual(TEXT("Racks fully restored"),S->GetWidgetFromName(TEXT("LocalPlayerCardRackRegion"))->GetRenderOpacity(),1.f);
+  Test->AddInfo(FString::Printf(TEXT("ROLL_V2_GEOMETRY maximum horizontal delta=%.4f Slate units"),MaximumEquationDelta));
   Test->TestTrue(TEXT("Terminal advanced once"),C->GetLastDiagnostic().bHostSuccess && !C->GetInteractionView().bTerminalPendingAdvance);
   return true;
  }
 private:
+ struct FMovieFrame { TArray<FColor> Pixels; FIntVector Size; float Time=0.f; };
+ TArray<FMovieFrame> MovieFrames;
+ float LastMovieTime=-1.f;
+ void CaptureMovieFrame(UFMCodexLocalMatchScreenWidget* S)
+ {
+  const auto Window=FSlateApplication::Get().FindWidgetWindow(S->TakeWidget());
+  if (!Window.IsValid()) return;
+  const auto WG=Window->GetContent()->GetTickSpaceGeometry();
+  const auto G=S->GetWidgetFromName(TEXT("TheaterAttackPanel"))->GetCachedGeometry();
+  const auto Origin=G.GetAbsolutePosition()-WG.GetAbsolutePosition();
+  const auto End=Origin+G.GetAbsoluteSize();
+  const FIntRect Area(FMath::FloorToInt(Origin.X),FMath::FloorToInt(Origin.Y),FMath::CeilToInt(End.X),FMath::CeilToInt(End.Y));
+  FMovieFrame Frame; Frame.Time=GEditor->PlayWorld->GetTimeSeconds();
+  if (FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Area,Frame.Pixels,Frame.Size))
+  { LastMovieTime=Frame.Time; MovieFrames.Add(MoveTemp(Frame)); }
+ }
+ void SaveMovieFrames()
+ {
+  const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_9A_2/Motion"); IFileManager::Get().MakeDirectory(*Dir,true);
+  FString Times=TEXT("frame,game_seconds\n");
+  for (int32 I=0;I<MovieFrames.Num();++I)
+  {
+   const auto& F=MovieFrames[I]; TArray64<uint8> PNG; FImageUtils::PNGCompressImageArray(F.Size.X,F.Size.Y,F.Pixels,PNG);
+   Test->TestTrue(TEXT("Natural roll motion frame saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/FString::Printf(TEXT("%03d.png"),I))));
+   Times+=FString::Printf(TEXT("%03d,%.6f\n"),I,F.Time);
+  }
+  FFileHelper::SaveStringToFile(Times,*(Dir/TEXT("times.csv")));
+  Test->AddInfo(FString::Printf(TEXT("ROLL_V2_MOVIE natural-clock cropped frames=%d"),MovieFrames.Num()));
+ }
+ void CheckStableEquation(UFMCodexLocalMatchScreenWidget* S,bool bRecord)
+ {
+  for (const auto Prefix:{TEXT("TheaterAttack"),TEXT("TheaterDefense")})
+  {
+   const auto Panel=S->GetWidgetFromName(FName(*(FString(Prefix)+TEXT("Panel"))))->GetCachedGeometry();
+   for (const auto Suffix:{TEXT("BaseHover"),TEXT("Plus"),TEXT("UnknownSlot"),TEXT("Equal"),TEXT("ResultColumn")})
+   {
+    const FString Name=FString(Prefix)+Suffix;
+    const auto G=S->GetWidgetFromName(FName(*Name))->GetCachedGeometry();
+    const FVector2D Metric(Panel.AbsoluteToLocal(G.GetAbsolutePosition()).X, G.GetAbsoluteSize().X/Panel.Scale);
+    if (bRecord) EquationMetrics.Add(Name,Metric);
+    else if (const auto* Before=EquationMetrics.Find(Name))
+    {
+     const float Delta=FMath::Max(FMath::Abs(Metric.X-Before->X),FMath::Abs(Metric.Y-Before->Y));
+     MaximumEquationDelta=FMath::Max(MaximumEquationDelta,Delta);
+     Test->TestTrue(FString::Printf(TEXT("%s fixed x/width through natural roll phases"),*Name),Delta<.5f);
+    }
+   }
+  }
+ }
+ void CaptureRollFrame(UFMCodexLocalMatchScreenWidget* S,const TCHAR* File)
+ {
+  const auto Window=FSlateApplication::Get().FindWidgetWindow(S->TakeWidget());
+  if (!Window.IsValid()) { Test->AddError(TEXT("No PIE window for Roll v2 evidence")); return; }
+  TArray<FColor> Pixels; FIntVector Size;
+  if (!Test->TestTrue(TEXT("Real Roll v2 PIE frame captured"),FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Pixels,Size))) return;
+  const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_9A_2"); IFileManager::Get().MakeDirectory(*Dir,true);
+  TArray64<uint8> PNG; FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+  Test->TestTrue(TEXT("Roll v2 frame saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/File)));
+  Test->AddInfo(FString::Printf(TEXT("ROLL_V2_CAPTURE %s game=%.3f"),File,GEditor->PlayWorld->GetTimeSeconds()));
+ }
  void Next() { ++Step; Changed=FPlatformTime::Seconds(); Test->AddInfo(FString::Printf(TEXT("THEATER_PIE step=%d game=%.3f"),Step,GEditor->PlayWorld->GetTimeSeconds())); }
  bool Override(AFMCodexLocalMatchPlayerController& C,EFMCodexLocalDevRollTarget Target,int32 Value)
  {
@@ -614,6 +717,11 @@ private:
  FAutomationTestBase* Test;
  IConsoleVariable* Mode=nullptr;
  int32 Previous=0,Step=0;
+ int32 LastRollPhase=-1,LastRollStep=-1,LastDisclosed=-1;
+ TMap<FString,FVector2D> EquationMetrics;
+ float MaximumEquationDelta=0.f;
+ uint8 RollFrames=0;
+ double LastRollLog=0;
  double Start=FPlatformTime::Seconds(),Changed=0;
  bool bRollCaptured=false,bScoreChecked=false,bHoldChecked=false,bInlineHoldChecked=false;
  double NextMotionSample=0;

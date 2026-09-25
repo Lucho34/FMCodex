@@ -1257,6 +1257,11 @@ struct FMCODEX_API FFMCodexUMGRollReelViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
 	bool bResultHold = false;
 
+	/** Cosmetic 120ms RHS/label fade from the existing Formula disclosure clock.
+	 * -1 before disclosure; does not authorize or supply any Formula value. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
+	float FormulaFinalRevealProgress = -1.0f;
+
 	/** Moving neighbors are explicit and are never left to clipping at rest. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Roll Reel")
 	bool bShowNeighborDigits = false;

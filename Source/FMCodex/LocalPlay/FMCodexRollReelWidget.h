@@ -4,6 +4,7 @@
 #include "Blueprint/UserWidget.h"
 
 #include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexRollPresentationSurface.h"
 
 #include "FMCodexRollReelWidget.generated.h"
 
@@ -28,6 +29,10 @@ public:
 		const FFMCodexUMGRollReelViewModel& InPresentation);
 	/** Room for neighboring numbers in the main modal; compact consumers keep 68x72. */
 	void SetExpandedChamber(bool bExpanded);
+	/** Visual-only opt-in for the High Cross equation slot; same projected clock. */
+	void SetVisualVariant(EFMCodexRollVisualVariant InVariant);
+	EFMCodexRollVisualVariant GetVisualVariant() const { return VisualVariant; }
+	bool UsesTheaterInlineSkin() const { return VisualVariant == EFMCodexRollVisualVariant::TheaterInline; }
 
 	const FFMCodexUMGRollReelViewModel& GetPresentation() const;
 	int32 GetStripDigitCount() const;
@@ -78,4 +83,5 @@ private:
 	bool bHasRenderedVisualState = false;
 	bool bLastShowNeighborDigits = false;
 	bool bExpandedChamber = false;
+	EFMCodexRollVisualVariant VisualVariant = EFMCodexRollVisualVariant::Legacy;
 };

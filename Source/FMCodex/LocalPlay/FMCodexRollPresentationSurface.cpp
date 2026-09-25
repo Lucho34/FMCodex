@@ -87,6 +87,12 @@ public:
 			Points.Add(ClosingPoint);
 			Line(Points, Color, Width);
 		};
+		if (Owner->VisualVariant == EFMCodexRollVisualVariant::TheaterInline)
+		{
+			// Underlines denote hover explanations, never an animated operand.
+			// Open numeric slot in every phase; no persistent light or chrome.
+			return SCompoundWidget::OnPaint(Args, G, Cull, Out, Layer, Style, bEnabled);
+		}
 		// A broad machined bevel, dark gasket and blue inset form separate shells.
 		Polygon(Outline(1), FLinearColor(.20f, .30f, .40f, 1), FLinearColor(.025f, .053f, .085f, 1));
 		Polygon(Outline(Chamber ? 2 : 4), FLinearColor(.008f, .015f, .03f, 1), FLinearColor(.001f, .003f, .008f, 1));

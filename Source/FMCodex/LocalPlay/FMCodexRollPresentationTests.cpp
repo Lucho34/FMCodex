@@ -3,6 +3,9 @@
 #include "FMCodexRollPresentationSurface.h"
 #include "Components/TextBlock.h"
 #include "Components/SizeBox.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -26,12 +29,25 @@ struct FFMCodexRollCosmeticTestAccess
 		Screen.RollRevealAuthoritativeRawValue = Final;
 		Screen.bInlineFormulaAuthorityResultAvailable = true;
 	}
+	static void BeginTheater(UFMCodexLocalMatchScreenWidget& Screen,int32 Final,int64 Event,bool bDefense=false)
+	{
+		Begin(Screen,6,Final,Event);
+		Screen.ActiveCrossRollReveal.ContestId=TEXT("Cross.High");
+		Screen.ActiveCrossRollReveal.Kind=bDefense ? EFMCodexUMGCrossRollRevealKind::Defense : EFMCodexUMGCrossRollRevealKind::Attack;
+		Screen.ActiveCrossRollReveal.RollSequenceIndex=bDefense ? 1 : 0;
+		Screen.RollRevealCosmeticSeed=GetTypeHash(Screen.ActiveCrossRollReveal.StableKey());
+		Screen.TheaterMotion.bActive=true;
+	}
 	static FFMCodexUMGRollReelViewModel At(UFMCodexLocalMatchScreenWidget& Screen, float Time)
 	{
 		Screen.InlineFormulaRevealPhaseElapsed = Time;
 		return Screen.BuildActiveRollReelPresentation();
 	}
 	static void Capture(UFMCodexLocalMatchScreenWidget& Screen) { Screen.BeginInlineFormulaFinalCapture(); }
+	static FFMCodexUMGRollReelViewModel Current(UFMCodexLocalMatchScreenWidget& Screen)
+	{ return Screen.BuildActiveRollReelPresentation(); }
+	static void TickMotion(UFMCodexLocalMatchScreenWidget& Screen,float Delta)
+	{ Screen.AdvanceInlineFormulaReveal(Delta,false); }
 	static void SetAvailable(UFMCodexLocalMatchScreenWidget& Screen, bool bAvailable)
 	{ Screen.bInlineFormulaAuthorityResultAvailable = bAvailable; }
 	static void Refresh(UFMCodexLocalMatchScreenWidget& Screen, float Time)
@@ -154,6 +170,99 @@ bool FFMCodexRollResultIndependentCyclingTest::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTheaterContinuousLandingTest,
+	"FMCodex.LocalPlay.RollPresentation.TheaterContinuousLanding",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FTheaterContinuousLandingTest::RunTest(const FString&)
+{
+	using Access=FFMCodexRollCosmeticTestAccess;
+	auto* Screen=NewObject<UFMCodexLocalMatchScreenWidget>(); Screen->TakeWidget();
+	auto* Widget=NewObject<UFMCodexRollReelWidget>(); Widget->TakeWidget(); Widget->SetVisualVariant(EFMCodexRollVisualVariant::TheaterInline);
+	TSet<FString> EventPrefixes;
+	for (int64 Event=1;Event<=32;++Event)
+	{
+		Access::BeginTheater(*Screen,1,Event,Event%2==0);
+		TArray<int32> Digits;
+		// Observe over two full pattern periods, including a delayed authority wait.
+		for (int32 Cell=7;Cell<57;++Cell)
+		{
+			const auto R=Access::At(*Screen,.92f+(Cell-6.5f)/5.470588f+.0001f);
+			Digits.Add(R.CenterValue);
+			TestTrue(TEXT("Theater decorative domain remains D6"),R.CenterValue>=1 && R.CenterValue<=6);
+			const int32 N=Digits.Num();
+			if (N>1) TestTrue(TEXT("No immediate repeated cycling digit"),Digits[N-1]!=Digits[N-2]);
+			if (N>2)
+			{
+				TestTrue(TEXT("No simple ABA alternation"),Digits[N-1]!=Digits[N-3]);
+				const int32 A=(Digits[N-2]-Digits[N-3]+6)%6,B=(Digits[N-1]-Digits[N-2]+6)%6;
+				TestFalse(TEXT("No ascending/descending D6 run including wrap"),A==B && (A==1 || A==5));
+			}
+		}
+		FString Key; for(int32 I=0;I<8;++I) Key+=FString::FromInt(Digits[I]); EventPrefixes.Add(Key);
+	}
+	TestTrue(TEXT("Different roll identities do not replay one fixed prefix"),EventPrefixes.Num()>8);
+	for (int32 Final=1;Final<=6;++Final)
+	{
+		Access::BeginTheater(*Screen,Final,71);
+		TArray<FFMCodexUMGRollReelViewModel> Prefix;
+		float PreviousPosition=0.f,PreviousVelocity=9.f;
+		for (int32 Frame=0;Frame<=184;++Frame)
+		{
+			const auto R=Access::At(*Screen,Frame*.005f); Prefix.Add(R);
+			if(Frame>1)
+			{
+				const float V=(R.ContinuousPositionCells-PreviousPosition)/.005f;
+				TestTrue(TEXT("Cycling progressively slows without reverse travel"),V>0 && V<=PreviousVelocity+.002f);
+				PreviousVelocity=V;
+			}
+			PreviousPosition=R.ContinuousPositionCells;
+		}
+		const auto Before=Access::At(*Screen,.92f); Access::Capture(*Screen);
+		const auto Entry=Access::At(*Screen,0.f);
+		TestTrue(TEXT("Capture preserves visible cells without relabeling"),Before.CenterValue==Entry.CenterValue && Before.NextValue==Entry.NextValue && FMath::IsNearlyEqual(Before.ContinuousPositionCells,Entry.ContinuousPositionCells));
+		PreviousPosition=Entry.ContinuousPositionCells;
+		for (int32 Frame=1;Frame<=108;++Frame)
+		{
+			const auto R=Access::At(*Screen,Frame*.005f);
+			const float V=(R.ContinuousPositionCells-PreviousPosition)/.005f;
+			TestTrue(TEXT("Landing decelerates continuously without late acceleration"),V>=0.f && V<=PreviousVelocity+.003f);
+			PreviousVelocity=V; PreviousPosition=R.ContinuousPositionCells;
+			Widget->RefreshFromPresentation(R);
+			TestEqual(TEXT("No landing scale pump"),Widget->GetCenterRenderScale(),1.f);
+			if (Frame==100)
+			{
+				TestEqual(TEXT("Authority target visibly approaches as incoming cell"),R.NextValue,Final);
+				const auto* Incoming=CastChecked<UTextBlock>(Widget->GetWidgetFromName(TEXT("RollReelNextDigit")));
+				TestTrue(TEXT("Incoming target stays bright during ghost fade"),Incoming->GetRenderOpacity()>.97f);
+				TestTrue(TEXT("Incoming target is already within one pixel of its final baseline"),Incoming->GetRenderTransform().Translation.Y<1.f);
+			}
+		}
+		TestEqual(TEXT("Every authoritative D6 ends in exact center"),Widget->GetPresentation().CenterValue,Final);
+		TestEqual(TEXT("Landing ends at zero offset"),Widget->GetCenterVerticalOffset(),0.f);
+		Access::BeginTheater(*Screen,Final%6+1,71);
+		for(int32 Frame=0;Frame<Prefix.Num();++Frame)
+		{
+			const auto R=Access::At(*Screen,Frame*.005f);
+			TestTrue(TEXT("Pre-capture pattern/position independent of final value"),R.CenterValue==Prefix[Frame].CenterValue && R.NextValue==Prefix[Frame].NextValue && R.ContinuousPositionCells==Prefix[Frame].ContinuousPositionCells);
+		}
+	}
+	Access::BeginTheater(*Screen,6,73); Access::SetAvailable(*Screen,false);
+	auto Waiting=Access::At(*Screen,4.83f); Access::Capture(*Screen);
+	TestEqual(TEXT("Late authority cannot start Theater landing early"),Screen->GetInlineFormulaRevealPhase(),EFMCodexUMGInlineFormulaRevealPhase::Cycling);
+	for(int32 Frame=0;Frame<20;++Frame)
+	{
+		// Use the production narrow tick: this cosmetic fixture has no full match View.
+		Access::TickMotion(*Screen,.016f);
+		const auto Next=Access::Current(*Screen);
+		TestTrue(TEXT("Repeated authority-wait ticks preserve forward motion"),Next.ContinuousPositionCells>Waiting.ContinuousPositionCells);
+		Waiting=Next;
+	}
+	Access::SetAvailable(*Screen,true); Access::Capture(*Screen);
+	TestEqual(TEXT("Late authority keeps exact moving position"),Access::At(*Screen,0.f).ContinuousPositionCells,Waiting.ContinuousPositionCells);
+	TestEqual(TEXT("Late authority lands through same bounded capture"),Access::At(*Screen,.54f).CenterValue,6);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexRollPresentationReuseTest,
 	"FMCodex.LocalPlay.RollPresentation.ChamberReuse",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -199,6 +308,52 @@ bool FFMCodexRollPresentationReuseTest::RunTest(const FString&)
 	}
 	return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTheaterRollSkinTest,
+	"FMCodex.LocalPlay.RollPresentation.TheaterInlineSkin",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FTheaterRollSkinTest::RunTest(const FString&)
+{
+	auto* Legacy = NewObject<UFMCodexRollReelWidget>(); Legacy->TakeWidget();
+	auto* Theater = NewObject<UFMCodexRollReelWidget>(); Theater->TakeWidget();
+	Theater->SetVisualVariant(EFMCodexRollVisualVariant::TheaterInline);
+	TestFalse(TEXT("Legacy consumers stay opt-out"),Legacy->UsesTheaterInlineSkin());
+	TestTrue(TEXT("Theater skin opts in without a second state machine"),Theater->UsesTheaterInlineSkin());
+	auto* Bounds=CastChecked<USizeBox>(Theater->GetWidgetFromName(TEXT("RollReelBounds")));
+	const auto* Center=Theater->GetCenterDigitWidget();
+	const auto Measure=FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+	for (const TCHAR* Value:{TEXT("?"),TEXT("1"),TEXT("2"),TEXT("3"),TEXT("4"),TEXT("5"),TEXT("6")})
+		TestTrue(TEXT("Every High Cross D6/pending glyph fits fixed slot"),Measure->Measure(Value,Center->GetFont()).X<68.f);
+	TestNull(TEXT("Roll operand has no hover explanation"),Theater->GetToolTip());
+	for (int32 Value=1; Value<=6; ++Value)
+	{
+		FFMCodexUMGRollReelViewModel P;
+		P.bVisible=true; P.bMoving=true; P.bShowNeighborDigits=true;
+		P.CenterValue=Value; P.PreviousValue=Value==1?6:Value-1; P.NextValue=Value==6?1:Value+1;
+		P.ScrollAlpha=.4f; P.ContinuousPositionCells=20.4f;
+		P.LandingOffsetY=-1.5f; P.LandingScale=1.025f;
+		Legacy->RefreshFromPresentation(P); Theater->RefreshFromPresentation(P);
+		TestEqual(TEXT("Same source position reaches both views"),Theater->GetPresentation().ContinuousPositionCells,Legacy->GetPresentation().ContinuousPositionCells);
+		TestEqual(TEXT("No result generation or conversion in skin"),Center->GetText().ToString(),FString::FromInt(Value));
+		TestEqual(TEXT("Theater removes spring/scale while preserving time"),Theater->GetCenterRenderScale(),1.f);
+		TestTrue(TEXT("Theater clips ghosted neighboring digits"),Theater->HasClippedWindow() && Theater->GetVisibleNeighborDigitCount()==2);
+		TestEqual(TEXT("Stable equation slot width"),Bounds->GetWidthOverride(),68.f);
+		TestEqual(TEXT("Stable equation slot height"),Bounds->GetHeightOverride(),76.f);
+		P.bMoving=false; P.bShowNeighborDigits=false; P.bStaticResult=true; P.bAuthoritativeValue=true; P.bResultHold=true;
+		Theater->RefreshFromPresentation(P);
+		TestTrue(TEXT("Same digit holds the authoritative value without replacement"),Theater->IsStaticResultTileVisible() && Theater->GetCenterDigitWidget()==Center);
+		TestEqual(TEXT("Exact zero landing offset"),Theater->GetCenterVerticalOffset(),0.f);
+		TestEqual(TEXT("Revealed digit retains Theater type size"),Center->GetFont().Size,40.f);
+		TestEqual(TEXT("Roll is neutral aqua, not gold winner treatment"),Center->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(68,226,216)));
+		Theater->RefreshFromPresentation({});
+		TestTrue(TEXT("Reuse clears any prior number"),Center->GetText().IsEmpty());
+	}
+	Theater->SetVisualVariant(EFMCodexRollVisualVariant::Legacy);
+	TestEqual(TEXT("Same widget can return to Legacy without rebuilding roll state"),Theater->GetVisualVariant(),EFMCodexRollVisualVariant::Legacy);
+	TestEqual(TEXT("Legacy compact geometry restored"),Bounds->GetHeightOverride(),72.f);
+	TestFalse(TEXT("Old frame remains isolated"),CastChecked<UFMCodexRollPresentationSurface>(Legacy->GetWidgetFromName(TEXT("RollReelClippedWindow")))->VisualVariant == EFMCodexRollVisualVariant::TheaterInline);
+	return true;
+}
+
 #endif
 
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING

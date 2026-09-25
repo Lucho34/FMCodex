@@ -18,7 +18,7 @@
 #include "Widgets/SWindow.h"
 namespace
 {
-	bool DeployNextOrdinary(
+	bool DeployHierarchyOrdinary(
 		AFMCodexLocalMatchPlayerController& Controller,
 		const FString& SlotFragment)
 	{
@@ -78,7 +78,7 @@ namespace
 		return Controller.GetLastDiagnostic().bHostSuccess;
 	}
 
-	bool SubmitFirst(
+	bool SubmitHierarchyFirst(
 		AFMCodexLocalMatchPlayerController& Controller,
 		const EFMCodexLocalMatchInteractionCategory Expected)
 	{
@@ -138,14 +138,14 @@ public:
   {
    const auto Attacker=C->GetInteractionView().CurrentAttackingPlayer;
    const FString Forward=Attacker==EInitialTurnOrderPlayer::PlayerA ? TEXT("NearB") : TEXT("NearA");
-   for (int32 I=0;I<4;++I) if (!DeployNextOrdinary(*C,Forward)) { Test->AddError(TEXT("Legal deployment failed")); return true; }
+   for (int32 I=0;I<4;++I) if (!DeployHierarchyOrdinary(*C,Forward)) { Test->AddError(TEXT("Legal deployment failed")); return true; }
    C->FinishDeployment(); C->FinishDeployment();
    S->RequestSubmitCarrier(Attacker==EInitialTurnOrderPlayer::PlayerA ? FName(TEXT("Prototype.Arsenal.BukayoSaka")) : FName(TEXT("Prototype.ManchesterCity.RayanAitNouri")));
-   if (!SubmitFirst(*C,EFMCodexLocalMatchInteractionCategory::SelectMarker)
-    || !SubmitFirst(*C,EFMCodexLocalMatchInteractionCategory::SelectRunner)) { Test->AddError(TEXT("Legal role selection failed")); return true; }
+   if (!SubmitHierarchyFirst(*C,EFMCodexLocalMatchInteractionCategory::SelectMarker)
+    || !SubmitHierarchyFirst(*C,EFMCodexLocalMatchInteractionCategory::SelectRunner)) { Test->AddError(TEXT("Legal role selection failed")); return true; }
    if (!C->GetInteractionView().SelectionOptions.IsEmpty())
    {
-    if (!SubmitFirst(*C,EFMCodexLocalMatchInteractionCategory::SelectHelper)) { Test->AddError(TEXT("Legal helper selection failed")); return true; }
+    if (!SubmitHierarchyFirst(*C,EFMCodexLocalMatchInteractionCategory::SelectHelper)) { Test->AddError(TEXT("Legal helper selection failed")); return true; }
    }
    else if (C->GetInteractionView().bCanResolveNoLegalChoice) C->ResolveNoLegalCurrentSelection();
    else C->DeclineCurrentSelection();
