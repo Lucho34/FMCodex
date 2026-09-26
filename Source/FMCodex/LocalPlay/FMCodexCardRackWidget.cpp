@@ -430,6 +430,19 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 				SelectionLayers->AddChildToOverlay(Card);
 				if (Cell.bSetPieceSelected)
 				{
+					if (bProminentDraftSelection)
+					{
+						auto* Outline=WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(),
+							FName(*FString::Printf(TEXT("CardDraftOutline%d"),Cell.StableIndex)));
+						Outline->SetBrush(FSlateRoundedBoxBrush(FLinearColor(.04f,.24f,.22f,.10f),
+							3.f,FLinearColor(.12f,.84f,.70f,1.f),2.f));
+						Outline->SetBrushColor(FLinearColor::White);
+						Outline->SetVisibility(ESlateVisibility::HitTestInvisible);
+						auto* OutlineSlot=SelectionLayers->AddChildToOverlay(Outline);
+						OutlineSlot->SetHorizontalAlignment(HAlign_Fill);
+						OutlineSlot->SetVerticalAlignment(VAlign_Fill);
+						OutlineSlot->SetPadding(FMargin(2.f));
+					}
 					// Draft state only. The shared lower-left tab stays inside the card,
 					// below the face and clear of identity, shirt number and rarity edges.
 					USizeBox* StateBounds = BuildDraftStateBadge(Cell);

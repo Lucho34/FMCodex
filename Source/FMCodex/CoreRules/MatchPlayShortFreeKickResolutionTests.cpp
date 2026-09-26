@@ -468,6 +468,18 @@ bool FMatchPlayShortFreeKickDirectFormulaTest::RunTest(
 	TestEqual(TEXT("GK participation owns tie"), TieFormula.WinReason,
 		EFormulaWinReason::DefenderWinsGoalkeeperTie);
 	TestFalse(TEXT("Tie is NoGoal"), TieFormula.bIsGoal);
+	const auto SuppressedTie = MakeDirectTerminal(
+		MakeShortAwaitingCarrier(TEXT("SFK_SuppressedTie")), 1, 1, 4, 6, 2);
+	TestEqual(TEXT("Near fast suppression precedes a goalkeeper total tie"),
+		SuppressedTie.FormulaExecutionResult.FormulaResolutionResult.WinReason, EFormulaWinReason::FastSuppression);
+	TestTrue(TEXT("Suppression wins despite goalkeeper tie priority"),
+		SuppressedTie.FormulaExecutionResult.FormulaResolutionResult.bIsGoal);
+	const auto LowerTotalWin = MakeDirectTerminal(
+		MakeShortAwaitingCarrier(TEXT("SFK_SuppressedHigherTotal")), 1, 1, 6, 6, 2);
+	TestTrue(TEXT("Near special rule can defeat a higher defending total"),
+		LowerTotalWin.bSuccess && LowerTotalWin.FormulaExecutionResult.FormulaResolutionResult.bIsGoal
+		&& LowerTotalWin.FormulaExecutionResult.FormulaResolutionResult.AttackerFinalValue
+			< LowerTotalWin.FormulaExecutionResult.FormulaResolutionResult.DefenderFinalValue);
 	const auto EqualAttributes = MakeDirectTerminal(
 		MakeShortAwaitingCarrier(TEXT("SFK_DirectEqual")), 5, 5, 2, 1, 1);
 	TestEqual(TEXT("Equal Shooting and Passing are deterministic"),

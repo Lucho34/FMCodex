@@ -3,6 +3,8 @@
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexRollReelWidget.h"
 #include "FMCodexPitchWidget.h"
+#include "FMCodexCardRackWidget.h"
+#include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPitchSlotWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/TextBlock.h"
@@ -813,6 +815,245 @@ private:
  bool bRouteMoving=false,bRouteLanded=false;
  int32 LastRoutePhase=-1;
 };
+class FNearTheaterPIE final : public IAutomationLatentCommand
+{
+public:
+ FNearTheaterPIE(FAutomationTestBase* InTest,bool InPair,bool InPolish=false,bool InInspection=false,bool InLong=false,bool InEarly=false):Test(InTest),bPair(InPair),bPolish(InPolish || InInspection || InLong),bInspection(InInspection),bLong(InLong),bEarly(InEarly){}
+ bool Update() override
+ {
+  if (FPlatformTime::Seconds()-Start>120) { Test->AddError(TEXT("Near Theater PIE timed out")); return true; }
+  if (!GEditor || !GEditor->PlayWorld) return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr; if (!S) return false;
+  auto Visible=[&](const TCHAR* Name){auto* W=S->GetWidgetFromName(Name);return W && W->GetVisibility()!=ESlateVisibility::Collapsed;};
+  auto Click=[&](const TCHAR* Name){auto* B=Cast<UButton>(S->GetWidgetFromName(Name));if (!B || !B->GetIsEnabled()) { Test->AddError(FString(TEXT("Missing legal PIE CTA: "))+Name);return false;} B->OnClicked.Broadcast();return true;};
+  auto CheckSelectionCopy=[&](const FString& SelectedName,const FString& SubjectName,bool bEligible)
+  {
+   auto Text=[&](const TCHAR* Name){return CastChecked<UTextBlock>(S->GetWidgetFromName(Name))->GetText().ToString();};
+   const FString Direct=TEXT("直接射门：取射门 / 传球较高值，与对方门将手控球进行判定");
+   FString Combination=TEXT("战术配合：需射门 + 传球 ≥ 8；两枚骰子总和 ≥ 9 进球");
+   if (!SubjectName.IsEmpty()) Combination+=TEXT("，")+SubjectName+(bEligible?TEXT("可用"):TEXT("不可用"));
+   Test->TestEqual(TEXT("PIE subtitle follows selection only"),Text(TEXT("TheaterSubtitle")),SelectedName.IsEmpty()?FString(TEXT("选择主罚球员")):FString(TEXT("已选主罚球员："))+SelectedName);
+   Test->TestEqual(TEXT("PIE info line one remains exact direct rule"),Text(TEXT("TheaterDetail")),Direct);
+   Test->TestEqual(TEXT("PIE info line two appends candidate eligibility"),Text(TEXT("TheaterReasonSecondary")),Combination);
+   Test->AddInfo(FString::Printf(TEXT("NEAR_SELECTION_COPY selected=%s subject=%s eligible=%d"),*SelectedName,*SubjectName,bEligible));
+  };
+  const float Game=GEditor->PlayWorld->GetTimeSeconds();
+  if (S->IsInlineFormulaRevealInputBlocked())
+  {
+   if (Step==3) Test->TestFalse(TEXT("Natural Type reveal retains legacy board"),Visible(TEXT("ResolutionTheater")));
+   if ((Step==7 || Step==8) && !bRollSeen && S->GetInlineFormulaRevealPhase()==EFMCodexUMGInlineFormulaRevealPhase::Cycling)
+   {
+    auto* Reel=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(bPair?TEXT("TheaterPairAReel"):TEXT("TheaterAttackReel")));
+    Test->TestEqual(TEXT("Real PIE uses production TheaterInline"),Reel->GetVisualVariant(),EFMCodexRollVisualVariant::TheaterInline);
+    if (!bPair)
+    {
+     Test->TestEqual(TEXT("Attack role helper is hidden"),S->GetWidgetFromName(TEXT("TheaterStatus"))->GetVisibility(),ESlateVisibility::Hidden);
+     Test->TestEqual(TEXT("Primary attack roll status stays visible"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString(),FString(TEXT("进攻方掷点中")));
+     if (bLong) Test->TestEqual(TEXT("Early miss explanation remains during attack roll"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterReasonSecondary")))->GetText().ToString(),FString(TEXT("进攻掷点 1–2：直接射偏")));
+     CheckStableGeometry(S);
+    }
+    Capture(bPair?TEXT("CombinationRolling"):TEXT("DirectRolling")); bRollSeen=true;
+   }
+   if (bPolish && !bPair && Step==8)
+   {
+    Test->TestFalse(TEXT("Real defense reveal never replays attack reel"),Visible(TEXT("TheaterAttackReelHost")));
+    Test->TestTrue(TEXT("Real defense reveal preserves settled attack operand"),Visible(TEXT("TheaterAttackRollValue")));
+    Test->TestEqual(TEXT("Real attack die remains six"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterAttackRollValue")))->GetText().ToString(),FString(TEXT("6")));
+    Test->TestTrue(TEXT("Real defense remains current reveal owner"),Visible(TEXT("TheaterDefenseReelHost")));
+    Test->TestEqual(TEXT("Defense helper is hidden without collapsing its allocation"),S->GetWidgetFromName(TEXT("TheaterStatus"))->GetVisibility(),ESlateVisibility::Hidden);
+    Test->TestEqual(TEXT("Defense primary bar retains the sole roll status"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString(),FString(TEXT("防守方掷点中")));
+    if (bLong) Test->TestTrue(TEXT("Defense reveal does not repeat the attack-only miss hint"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterReasonSecondary")))->GetText().IsEmpty());
+    if (!bDefenseSeen && S->GetInlineFormulaRevealPhase()==EFMCodexUMGInlineFormulaRevealPhase::Cycling)
+    {CheckStableGeometry(S);Capture(TEXT("DefenseRolling"));bDefenseSeen=true;}
+   }
+   return false;
+  }
+  if (Game-Changed<.55f) return false;
+  auto Next=[&](){++Step;Changed=Game;Test->AddInfo(FString::Printf(TEXT("%s_PIE method=%s step=%d game=%.3f"),bLong?TEXT("LONG"):TEXT("NEAR"),bPair?(bLong?TEXT("Power"):TEXT("Combination")):bEarly?TEXT("Early"):TEXT("Direct"),Step,Game));};
+  if (Step==0) {S->RequestStartNewMatch();Next();return false;}
+  if (Step==1) {if (!Override(*C,EFMCodexLocalDevRollTarget::FullD12,9)) return true;S->RequestRollTacticalPoints();Next();return false;}
+  if (Step==2) {if (!Override(*C,EFMCodexLocalDevRollTarget::SetPieceType,bLong?3:5)) return true;S->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);Next();return false;}
+  if (Step>=3 && Step<=8)
+  {
+   auto* Bottom=S->GetWidgetFromName(TEXT("TheaterBottom"));
+   if (!Bottom) {Test->AddError(FString::Printf(TEXT("Free kick Theater absent: step=%d type=%d visible=%d category=%d"),Step,int32(S->GetPresentation().SetPiece.Type),S->GetPresentation().SetPiece.bVisible,int32(S->GetPresentation().Interaction.Category)));return true;}
+   if (Bottom->GetRenderOpacity()<.99f) return false;
+   const auto Bar=S->GetWidgetFromName(TEXT("TheaterInfoBar"))->GetCachedGeometry();
+   const auto Helper=S->GetWidgetFromName(TEXT("TheaterStatus"))->GetCachedGeometry();
+   const float BarCenter=Bar.GetAbsolutePosition().X+Bar.GetAbsoluteSize().X*.5f;
+   Test->TestTrue(TEXT("Free kick helper is centered beneath information bar"),FMath::IsNearlyEqual(BarCenter,Helper.GetAbsolutePosition().X+Helper.GetAbsoluteSize().X*.5f,1.f));
+   if (Step<=4 || Step==5 || (Step==6 && !bPair))
+   {
+    const auto Left=S->GetWidgetFromName(Step<=4?TEXT("TheaterTakerBounds"):Step==5?TEXT("TheaterNearDirect"):TEXT("TheaterDuel"))->GetCachedGeometry();
+    const auto Right=Step==5?S->GetWidgetFromName(TEXT("TheaterNearCombination"))->GetCachedGeometry():Left;
+    Test->TestTrue(TEXT("Info bar left edge aligns with visible content"),FMath::IsNearlyEqual(Bar.GetAbsolutePosition().X,Left.GetAbsolutePosition().X,1.f));
+    Test->TestTrue(TEXT("Info bar right edge aligns with visible content"),FMath::IsNearlyEqual(Bar.GetAbsolutePosition().X+Bar.GetAbsoluteSize().X,Right.GetAbsolutePosition().X+Right.GetAbsoluteSize().X,1.f));
+   }
+   Test->TestEqual(TEXT("Non-rolling stages retain useful operator helper"),S->GetWidgetFromName(TEXT("TheaterStatus"))->GetVisibility(),ESlateVisibility::SelfHitTestInvisible);
+   Test->TestFalse(TEXT("Operator helper has content"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterStatus")))->GetText().IsEmpty());
+   if (Step<=4)
+   {
+    const auto* A=CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterDetail")));
+    const auto* B=CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterReasonSecondary")));
+    Test->TestTrue(TEXT("Real taker rule fonts match"),A->GetFont()==B->GetFont());
+    Test->TestTrue(TEXT("Real taker rule brightness matches"),A->GetColorAndOpacity()==B->GetColorAndOpacity());
+    Test->TestTrue(TEXT("Real taker rule line heights match"),FMath::IsNearlyEqual(A->GetCachedGeometry().GetAbsoluteSize().Y,B->GetCachedGeometry().GetAbsoluteSize().Y,1.f));
+    Test->TestTrue(TEXT("Real taker rules share left indentation"),FMath::IsNearlyEqual(A->GetCachedGeometry().GetAbsolutePosition().X,B->GetCachedGeometry().GetAbsolutePosition().X,1.f));
+   }
+   if (Step==5)
+   {
+    const auto* Direct=CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterNearDirectLabel")));
+    const auto* Alternative=CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterNearCombinationLabel")));
+    Test->TestTrue(TEXT("Peer methods have identical typography"),Direct->GetFont()==Alternative->GetFont());
+    Test->TestTrue(TEXT("Both legal methods have identical emphasis"),Direct->GetColorAndOpacity()==Alternative->GetColorAndOpacity());
+    Test->TestTrue(TEXT("Peer title rendered heights match"),FMath::IsNearlyEqual(Direct->GetCachedGeometry().GetAbsoluteSize().Y,Alternative->GetCachedGeometry().GetAbsoluteSize().Y,1.f));
+   }
+  }
+  if (Step==3)
+  {
+   if (!Test->TestTrue(TEXT("Near naturally enters Theater after Type"),Visible(TEXT("ResolutionTheater")))) return true;
+   auto* Rack=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
+   const auto& Cards=Rack->GetRenderedCardWidgets();
+   // Stable public catalog identity only chooses a legal candidate; no state edit or forced route.
+   const bool A=C->GetInteractionView().CurrentAttackingPlayer==EInitialTurnOrderPlayer::PlayerA;
+   const FName Preferred=A?FName(TEXT("Prototype.Arsenal.EberechiEze")):FName(TEXT("Prototype.ManchesterCity.PhilFoden"));
+   const auto* Card=Cards.FindByPredicate([Preferred](const auto& V){return V && V->GetPresentation().CardId==Preferred;});
+   if (!Card) {Test->AddError(TEXT("Expected eligible Near candidate absent"));return true;}
+   if (bInspection)
+   {
+    auto* Full=CastChecked<UFMCodexPlayerCardWidget>(S->GetWidgetFromName(TEXT("TheaterTakerFullCard")));
+    const auto* WeakFact=S->GetPresentation().SetPiece.NearTakerEligibility.FindByPredicate([](const auto& V){return !V.bCanUseTacticalCombination;});
+    if (!Test->TestNotNull(TEXT("Real legal pool includes ineligible combination taker"),WeakFact)) return true;
+    const auto* Weak=Cards.FindByPredicate([&](const auto& V){return V->GetPresentation().CardId==WeakFact->CardId;});
+    if (InspectStep==0)
+    {CheckSelectionCopy(FString(),FString(),false);Capture(TEXT("Empty"));Test->TestTrue(TEXT("Initial inspector is empty"),Full->GetPresentation().CardId.IsNone());(*Card)->RequestFullCardDetailHover();++InspectStep;Changed=Game;return false;}
+    if (InspectStep==1)
+    {
+     CheckSelectionCopy(FString(),(*Card)->GetPresentation().IdentityLabel,true);Capture(TEXT("Hover"));Test->TestEqual(TEXT("PIE hover shows chosen candidate"),Full->GetPresentation().CardId,Preferred);
+     const auto RackGeometry=Rack->GetCachedGeometry(), FullGeometry=Full->GetCachedGeometry();
+     const auto RackEnd=RackGeometry.LocalToAbsolute(RackGeometry.GetLocalSize());
+     Test->TestTrue(TEXT("Inspector reserves space beside candidate hit targets"),FullGeometry.GetAbsolutePosition().X>RackEnd.X);
+     Test->TestTrue(TEXT("Full Card remains readable at 1080p"),FullGeometry.GetAbsoluteSize().Y>=500.f);
+     (*Weak)->RequestFullCardDetailHover();++InspectStep;Changed=Game;return false;
+    }
+    if (InspectStep==2)
+    {CheckSelectionCopy(FString(),(*Weak)->GetPresentation().IdentityLabel,false);Capture(TEXT("Ineligible"));Test->TestEqual(TEXT("PIE can inspect second candidate"),Full->GetPresentation().CardId,WeakFact->CardId);(*Weak)->OnDetailHoverDismissed.Broadcast(Weak->Get());++InspectStep;Changed=Game;return false;}
+    CheckSelectionCopy(FString(),FString(),false);
+    Test->TestTrue(TEXT("Leaving hover without a selection empties inspector"),Full->GetPresentation().CardId.IsNone());
+    (*Card)->RequestOnPitchSelection();Next();return false;
+   }
+   if (bPolish && !bHoverSeen)
+   {
+    // Exercise the same card enter callback as the pointer; allow a real Slate frame before capture.
+    Capture(TEXT("Empty")); (*Card)->RequestFullCardDetailHover(); bHoverSeen=true; Changed=Game; return false;
+   }
+   if (bPolish) Capture(TEXT("Hover"));
+   else if (!bPair) Capture(TEXT("Candidates"));
+   if (!Test->TestTrue(TEXT("Real candidate widget submits selection"),(*Card)->RequestOnPitchSelection())) return true;
+   Next();return false;
+  }
+  if (Step==4)
+  {
+   if (bPolish)
+   {
+    auto* Rack=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
+    const auto* Cell=Rack->GetPresentation().Cells.FindByPredicate([](const auto& V){return V.bSetPieceSelected;});
+    if (!Test->TestNotNull(TEXT("Draft remains selected in real PIE"),Cell)) return true;
+    auto* Outline=Rack->GetWidgetFromName(FName(*FString::Printf(TEXT("CardDraftOutline%d"),Cell->StableIndex)));
+    if (!Test->TestNotNull(TEXT("Draft outline exists"),Outline)) return true;
+    const auto* Card=Rack->GetRenderedCardWidgets().FindByPredicate([Cell](const auto& V){return V->GetPresentation().CardId==Cell->Card.CardId;});
+    const FVector2D CardSize=(*Card)->GetCachedGeometry().GetLocalSize(), OutlineSize=Outline->GetCachedGeometry().GetLocalSize();
+    Test->TestTrue(TEXT("Selected outline spans the full inset card, not its desired-size corner"),OutlineSize.X>CardSize.X*.9f && OutlineSize.Y>CardSize.Y*.9f);
+    Test->TestTrue(TEXT("Selected outline stays inside rarity border"),OutlineSize.X<CardSize.X && OutlineSize.Y<CardSize.Y);
+   }
+   if (bInspection)
+   {
+    auto* Full=CastChecked<UFMCodexPlayerCardWidget>(S->GetWidgetFromName(TEXT("TheaterTakerFullCard")));
+    auto* Rack=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
+    const auto* Selected=Rack->GetPresentation().Cells.FindByPredicate([](const auto& V){return V.bSetPieceSelected;});
+    const auto* Other=Rack->GetRenderedCardWidgets().FindByPredicate([&](const auto& V){return V->GetPresentation().CardId!=Selected->Card.CardId;});
+    const auto* SubjectFact=S->GetPresentation().SetPiece.NearTakerEligibility.FindByPredicate([&](const auto& V){return V.CardId==Full->GetPresentation().CardId;});
+    if (!Test->TestNotNull(TEXT("Inspected candidate has safe eligibility fact"),SubjectFact)) return true;
+    CheckSelectionCopy(Selected->Card.IdentityLabel,Full->GetPresentation().IdentityLabel,SubjectFact->bCanUseTacticalCombination);
+    if (InspectStep==3) {Test->TestEqual(TEXT("PIE selection persists without hover"),Full->GetPresentation().CardId,Selected->Card.CardId);(*Other)->RequestFullCardDetailHover();++InspectStep;Changed=Game;return false;}
+    if (InspectStep==4) {Test->TestEqual(TEXT("PIE comparison temporarily overrides selection"),Full->GetPresentation().CardId,(*Other)->GetPresentation().CardId);(*Other)->OnDetailHoverDismissed.Broadcast(Other->Get());++InspectStep;Changed=Game;return false;}
+    Test->TestEqual(TEXT("PIE leaving comparison restores selection"),Full->GetPresentation().CardId,Selected->Card.CardId);
+   }
+   if (!bPair) Capture(TEXT("Selected"));if (!Click(TEXT("TheaterContinue"))) return true;Next();return false;
+  }
+  if (Step==5) {if (bInspection) {Test->TestEqual(TEXT("PIE confirm restores method subtitle"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterSubtitle")))->GetText().ToString(),FString(TEXT("选择结算方式")));Test->TestFalse(TEXT("PIE methods hide inspector"),Visible(TEXT("TheaterTakerInspector")));Test->TestTrue(TEXT("PIE methods clear Full Card identity"),CastChecked<UFMCodexPlayerCardWidget>(S->GetWidgetFromName(TEXT("TheaterTakerFullCard")))->GetPresentation().CardId.IsNone());} if (!bPair) Capture(TEXT("Methods"));if (!Click(bPair?TEXT("TheaterNearCombination"):TEXT("TheaterNearDirect"))) return true;Next();return false;}
+  if (Step==6)
+  {
+   const auto ButtonGeometry=S->GetWidgetFromName(TEXT("TheaterContinue"))->GetCachedGeometry();
+   const auto LabelGeometry=S->GetWidgetFromName(TEXT("TheaterContinueLabel"))->GetCachedGeometry();
+   const FVector2D LabelOrigin=ButtonGeometry.AbsoluteToLocal(LabelGeometry.GetAbsolutePosition());
+   const FVector2D LabelEnd=ButtonGeometry.AbsoluteToLocal(LabelGeometry.LocalToAbsolute(LabelGeometry.GetLocalSize()));
+   Test->TestTrue(TEXT("Roll CTA label remains inside its button"),LabelOrigin.X>=0 && LabelEnd.X<=ButtonGeometry.GetLocalSize().X);
+   if (bInspection) Test->TestFalse(TEXT("PIE Formula excludes full card inspection"),Visible(TEXT("TheaterTakerInspector")));
+   for (const auto Name:{TEXT("TheaterAttackPanelBounds"),TEXT("TheaterDefensePanelBounds"),TEXT("TheaterBottom"),TEXT("TheaterStatus")})
+   {
+    const auto G=S->GetWidgetFromName(Name)->GetCachedGeometry();
+    StablePositions.Add(Name,G.GetAbsolutePosition()); StableSizes.Add(Name,G.GetAbsoluteSize());
+   }
+   Capture(bPair?TEXT("CombinationPending"):TEXT("DirectPending"));
+   if (!Override(*C,bLong?(bPair?EFMCodexLocalDevRollTarget::LongFreeKickPowerA:EFMCodexLocalDevRollTarget::LongFreeKickDirectAttack):(bPair?EFMCodexLocalDevRollTarget::ShortFreeKickAngledA:EFMCodexLocalDevRollTarget::ShortFreeKickDirectAttack),bEarly?1:6)
+    || !Override(*C,bLong?(bPair?EFMCodexLocalDevRollTarget::LongFreeKickPowerB:EFMCodexLocalDevRollTarget::LongFreeKickDirectDefense):(bPair?EFMCodexLocalDevRollTarget::ShortFreeKickAngledB:EFMCodexLocalDevRollTarget::ShortFreeKickDirectDefense),bPair?(bLong?5:3):1)) return true;
+   if (!Click(TEXT("TheaterContinue"))) return true;Next();return false;
+  }
+  if (Step==7 && !bPair && !bEarly) {if (!Click(TEXT("TheaterContinue"))) return true;Next();return false;}
+  if (Step==7 || Step==8)
+  {
+   Test->TestTrue(TEXT("Outcome remains in Theater until Next"),Visible(TEXT("TheaterOutcome")));
+   Test->TestEqual(TEXT("Authority supplied expected outcome"),C->GetInteractionView().bSetPieceGoal,!bEarly);
+   if (bEarly) Test->TestFalse(TEXT("Early miss result has no invented defense"),Visible(TEXT("TheaterDefensePanelBounds")));
+   if (bEarly) Test->TestEqual(TEXT("Real early miss uses attack-defense comparison wording"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterReasonSecondary")))->GetText().ToString(),FString(TEXT("进攻掷点 1–2 时结束，不进行攻防比较")));
+   Test->TestTrue(TEXT("Natural roll phase was seen"),bRollSeen);
+   if (bPolish && !bPair && !bEarly) Test->TestTrue(TEXT("Natural defense cycle was observed"),bDefenseSeen);
+   Capture(bPair?TEXT("CombinationResult"):TEXT("DirectResult"));
+   if (!Click(TEXT("TheaterContinue"))) return true;
+   Step=9;Changed=Game;return false;
+  }
+  // Allow the real Slate exit transition to finish; latent commands run before widget tick.
+  if (Visible(TEXT("ResolutionTheater")) && Game-Changed<3.f) return false;
+  Test->TestFalse(TEXT("Next returns to board"),Visible(TEXT("ResolutionTheater")));
+  Test->TestTrue(TEXT("Next actor can roll D12"),S->GetPresentation().Interaction.bCanRollTacticalPoints);
+  if (!bPair) Capture(TEXT("ReturnedBoard"));
+  return true;
+ }
+private:
+ bool Override(AFMCodexLocalMatchPlayerController& C,EFMCodexLocalDevRollTarget Target,int32 Value)
+ {
+  FFMCodexLocalDevRollOverrideRequest R;R.Target=Target;R.Value=Value;
+  return Test->TestTrue(TEXT("Natural command uses existing DEV provider seam"),C.SetLocalDevRollOverride(R).bSuccess);
+ }
+ void CheckStableGeometry(UFMCodexLocalMatchScreenWidget* S)
+ {
+  for (const auto& Pair:StablePositions)
+  {
+   const auto G=S->GetWidgetFromName(Pair.Key)->GetCachedGeometry();
+   Test->TestTrue(TEXT("Hidden helper preserves panel/footer positions"),G.GetAbsolutePosition().Equals(Pair.Value,1.f));
+   Test->TestTrue(TEXT("Hidden helper preserves panel/footer allocations"),G.GetAbsoluteSize().Equals(StableSizes[Pair.Key],1.f));
+  }
+ }
+ TMap<FName,FVector2D> StablePositions,StableSizes;
+ void Capture(const TCHAR* Name)
+ {
+  if (bPolish && !bInspection && !bLong && FString(Name)!=TEXT("Hover") && FString(Name)!=TEXT("Selected")
+   && FString(Name)!=TEXT("Methods") && FString(Name)!=TEXT("DefenseRolling") && FString(Name)!=TEXT("DirectRolling") && FString(Name)!=TEXT("Empty")) return;
+  if (bInspection && (FString(Name)==TEXT("DirectRolling") || FString(Name)==TEXT("DirectResult") || FString(Name)==TEXT("ReturnedBoard"))) return;
+  if (bLong && (bPair || bEarly) && (FString(Name)==TEXT("Hover") || FString(Name)==TEXT("Selected") || FString(Name)==TEXT("Methods"))) return;
+  if (bLong && FString(Name)==TEXT("ReturnedBoard")) return;
+  TArray<FColor> Pixels;FIntVector Size=FIntVector::ZeroValue;
+  if (!Test->TestTrue(TEXT("Real PIE frame captured"),TheaterPIEWindow.IsValid() && FSlateApplication::Get().TakeScreenshot(TheaterPIEWindow->GetContent(),Pixels,Size))) return;
+  const FString Dir=FPaths::ProjectSavedDir()/(bLong?(bPair?TEXT("Stage8_11B_2/PIE/Power"):bEarly?TEXT("Stage8_11B_2/PIE/Early"):TEXT("Stage8_11B_2/PIE/Direct")):bInspection?TEXT("Stage8_11A_3/PIE"):bPolish?TEXT("Stage8_11B_2/PIE/Near"):TEXT("Stage8_11A/PIE"));IFileManager::Get().MakeDirectory(*Dir,true);
+  TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+  Test->TestTrue(TEXT("PIE frame saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/((bLong?FString(Name).Replace(TEXT("Combination"),TEXT("Power")):FString(Name))+TEXT(".png")))));
+ }
+ FAutomationTestBase* Test;bool bPair=false,bRollSeen=false,bPolish=false,bHoverSeen=false,bDefenseSeen=false,bInspection=false,bLong=false,bEarly=false;int32 Step=0,InspectStep=0;
+ double Start=FPlatformTime::Seconds();float Changed=0;
+};
+
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterPIETest,"FMCodex.PIE.ResolutionTheater.HighCross",
  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -851,6 +1092,30 @@ bool FResolutionTheaterCompactRoutePIETest::RunTest(const FString&)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
  ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FTheaterPIE(this,true,false,true)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+ return true;
+}
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FNearTheaterPIETest,"FMCodex.PIE.ResolutionTheater.NearFreeKick",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+void FNearTheaterPIETest::GetTests(TArray<FString>& N,TArray<FString>& C) const
+{ for (const TCHAR* M:{TEXT("Direct"),TEXT("Combination"),TEXT("DirectPolish"),TEXT("Inspection")}) {N.Add(M);C.Add(M);} }
+bool FNearTheaterPIETest::RunTest(const FString& P)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FNearTheaterPIE(this,P==TEXT("Combination"),P==TEXT("DirectPolish"),P==TEXT("Inspection"))));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+ return true;
+}
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FLongTheaterPIETest,"FMCodex.PIE.ResolutionTheater.LongFreeKick",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+void FLongTheaterPIETest::GetTests(TArray<FString>& N,TArray<FString>& C) const
+{for(const TCHAR* M:{TEXT("Direct"),TEXT("Early"),TEXT("Power")}) {N.Add(M);C.Add(M);}}
+bool FLongTheaterPIETest::RunTest(const FString& P)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FNearTheaterPIE(this,P==TEXT("Power"),false,false,true,P==TEXT("Early"))));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
 }

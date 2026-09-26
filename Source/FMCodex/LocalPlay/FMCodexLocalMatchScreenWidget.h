@@ -215,11 +215,14 @@ protected:
 
 private:
 	FMCodexResolutionTheaterPrototype::FMotion TheaterMotion;
+	FMCodexResolutionTheaterPrototype::FTakerInspection TheaterTakerInspection;
 	void RefreshResolutionTheater(const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed,
 		const FFMCodexUMGMatchHeaderViewModel& DisplayedHeader);
 
 	UFUNCTION()
 	void HandleTheaterHighRequested();
+	UFUNCTION() void HandleTheaterFreeKickDirectRequested();
+	UFUNCTION() void HandleTheaterFreeKickAlternativeRequested();
 	UFUNCTION()
 	void HandleTheaterLowRequested();
 

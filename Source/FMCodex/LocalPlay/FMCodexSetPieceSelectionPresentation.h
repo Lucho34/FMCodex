@@ -4,6 +4,15 @@
 #include "FMCodexSetPieceSelectionPresentation.generated.h"
 struct FFMCodexLocalMatchInteractionView;
 
+/** Actor-only semantic fact, scoped to the complete legal Near taker pool. */
+USTRUCT()
+struct FMCODEX_API FFMCodexNearTakerEligibility
+{
+ GENERATED_BODY()
+ UPROPERTY() FName CardId = NAME_None;
+ UPROPERTY() bool bCanUseTacticalCombination = false;
+};
+
 /** Bounded public entry/selection values only. Never participant snapshots or future resolution facts. */
 USTRUCT()
 struct FMCODEX_API FFMCodexSetPieceSelectionPresentation
@@ -45,6 +54,7 @@ struct FMCODEX_API FFMCodexSetPieceSelectionPresentation
  UPROPERTY() FName TakerCardId = NAME_None;
  UPROPERTY() FText TakerLabel;
  UPROPERTY() TArray<FName> TakerOptions;
+ UPROPERTY() TArray<FFMCodexNearTakerEligibility> NearTakerEligibility;
  UPROPERTY() TArray<EMatchPlayShortFreeKickMethod> NearMethods;
  UPROPERTY() TArray<EMatchPlayLongFreeKickMethod> LongMethods;
  UPROPERTY() TArray<EMatchPlayPenaltyMethod> PenaltyMethods;

@@ -35,6 +35,9 @@ public:
 	EFMCodexUMGCardInteractionState GetCellInteractionState(
 		int32 StableIndex) const;
 
+	// Presentation-only emphasis for the Theater candidate grid; default hand styling is unchanged.
+	void SetProminentDraftSelection(bool bProminent) { bProminentDraftSelection = bProminent; }
+
 	FFMCodexRackCardDragStarted OnCardDragStarted;
 	FFMCodexRackCardDragFinished OnCardDragFinished;
 	FFMCodexRackCardSelectionRequested OnCardSelectionRequested;
@@ -70,5 +73,6 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UFMCodexPlayerCardWidget>> RenderedCardWidgets;
 
+	bool bProminentDraftSelection = false;
 	int32 RenderedCellCount = 0;
 };

@@ -6,6 +6,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackResolutionFactProjection.h"
 #include "../CoreRules/MatchResultResolver.h"
 #include "FMCodexFullTimePresentation.h"
+#include "FMCodexSetPieceSelectionPresentation.h"
 
 enum class EFMCodexLocalMatchMajorPhase : uint8
 {
@@ -341,6 +342,7 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	EMatchPlaySetPieceCornerRouteStage CornerStage =
 		EMatchPlaySetPieceCornerRouteStage::None;
 	TArray<FName> LegalSetPieceCardIds;
+	TArray<FFMCodexNearTakerEligibility> NearTakerEligibility;
 	FName DraftSetPieceCarrierCardId = NAME_None;
 	TArray<FName> DraftCornerNomineeCardIds;
 	bool bCornerLockConfirmationPending = false;
@@ -354,6 +356,10 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	EMatchPlayLongFreeKickMethod SelectedLongMethod = EMatchPlayLongFreeKickMethod::None;
 	EMatchPlayPenaltyMethod SelectedPenaltyMethod = EMatchPlayPenaltyMethod::None;
 	FMatchPlaySetPieceParticipantBinding SetPieceCarrier;
+	/** Direct Near Formula participant, projected by the same authority query as its subtotal. */
+	FName NearFormulaGoalkeeperCardId = NAME_None;
+	/** Direct Long Formula participant from the authoritative Long base query. */
+	FName LongFormulaGoalkeeperCardId = NAME_None;
 	TArray<FMatchPlaySetPieceParticipantBinding> CornerAttackerNominees;
 	TArray<FMatchPlaySetPieceParticipantBinding> CornerDefenderNominees;
 	bool bCornerAttackerNominationsLocked = false;

@@ -7,6 +7,7 @@
 #include "FMCodexRollReelWidget.h"
 #include "FMCodexTacticalDetailPresentation.h"
 #include "FMCodexMatchHeaderWidget.h"
+#include "FMCodexResolutionTheaterPrototype.h"
 #include "../CoreRules/CrossSelectionQuery.h"
 #include "../CoreRules/TacticalRuleDescription.h"
 
@@ -1076,8 +1077,10 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 		TEXT("SetPieceProductionResolutionSurface"));
 	TestTrue(TEXT("Type reveal settles into the unique carrier-selection surface"),
 		!Screen->IsInlineFormulaRevealInputBlocked()
-			&& SetPieceSurface->GetVisibility()
-				== ESlateVisibility::SelfHitTestInvisible
+			&& (FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled()
+				? SetPieceSurface->GetVisibility()==ESlateVisibility::Collapsed
+					&& Screen->GetWidgetFromName(TEXT("TheaterTakerBounds"))->GetVisibility()==ESlateVisibility::SelfHitTestInvisible
+				: SetPieceSurface->GetVisibility()==ESlateVisibility::SelfHitTestInvisible)
 			&& World.Controller->GetInteractionView().InteractionCategory
 				== ECategory::SelectSetPieceCarrier);
 	return true;
@@ -1802,10 +1805,14 @@ bool FFMCodexSetPieceP0HelpersAndPairDisclosureTest::RunTest(
 			!Formula->GetPresentation().bNarrativeAvailable
 				&& Screen->GetMatchHeader()->GetDisplayedScoreLabel() == Pending.Header.ScoreLabel);
 		Screen->AdvanceInlineFormulaRevealForTesting(0.05f);
-		TestTrue(TEXT("Second Goal narrative and score arrive together"),
+		const bool bFreeKickTheater=FMCodexResolutionTheaterPrototype::IsEnabled()
+			&& (bShort ? FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled()
+				: FMCodexResolutionTheaterPrototype::IsLongFreeKickEnabled());
+		TestTrue(TEXT("Score follows its visible Outcome owner, including Theater hold"),
 			Formula->GetPresentation().bNarrativeAvailable
-				&& Screen->GetMatchHeader()->GetDisplayedScoreLabel() == Project().Header.ScoreLabel);
+				&& Screen->GetMatchHeader()->GetDisplayedScoreLabel() == (bFreeKickTheater?Pending.Header.ScoreLabel:Project().Header.ScoreLabel));
 		Screen->AdvanceInlineFormulaRevealForTesting(3.0f);
+		TestEqual(TEXT("Visible final Outcome and score agree"),Screen->GetMatchHeader()->GetDisplayedScoreLabel(),Project().Header.ScoreLabel);
 		TestTrue(TEXT("Settled pair retains arithmetic and central Next Round"),
 			Formula->GetPresentation().RouteResultLabel == TEXT("D6 6 + D6 5 = 11")
 				&& Formula->GetPresentation().RollHelperLabel.IsEmpty()

@@ -1,4 +1,5 @@
 #include "FMCodexLocalMatchScreenWidget.h"
+#include "FMCodexOutcomePresentation.h"
 #include "UObject/ConstructorHelpers.h"
 
 #include "FMCodexInteractionPanelWidget.h"
@@ -468,10 +469,14 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 	if (!WidgetTree || !MatchHeader) return;
 	const bool bEnabled = FMCodexResolutionTheaterPrototype::IsEnabled();
 	const bool bLowEnabled = FMCodexResolutionTheaterPrototype::IsLowCrossEnabled();
-	if (TheaterMotion.bLastEnabled != bEnabled || TheaterMotion.bLastLowEnabled != bLowEnabled)
+	const bool bNearEnabled = FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled();
+	const bool bLongEnabled = FMCodexResolutionTheaterPrototype::IsLongFreeKickEnabled();
+	if (TheaterMotion.bLastEnabled != bEnabled || TheaterMotion.bLastLowEnabled != bLowEnabled || TheaterMotion.bLastNearEnabled != bNearEnabled || TheaterMotion.bLastLongEnabled != bLongEnabled)
 	{
 		TheaterMotion.bLastEnabled = bEnabled;
 		TheaterMotion.bLastLowEnabled = bLowEnabled;
+		TheaterMotion.bLastNearEnabled = bNearEnabled;
+		TheaterMotion.bLastLongEnabled = bLongEnabled;
 		RefreshVisuals(); // Same-state comparison; no command or reveal-clock reset.
 	}
 	if (TheaterMotion.Elapsed < 1.f || (TheaterMotion.bActive && !TheaterMotion.bHasFieldGeometry))
@@ -493,18 +498,39 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		Primary->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested);
 		High->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleTheaterHighRequested);
 		Low->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleTheaterLowRequested);
+
 		auto* TheaterSlot = CastChecked<UOverlay>(WidgetTree->RootWidget)->AddChildToOverlay(Theater);
 		TheaterSlot->SetHorizontalAlignment(HAlign_Fill); TheaterSlot->SetVerticalAlignment(VAlign_Fill);
+		CastChecked<UButton>(WidgetTree->FindWidget(TEXT("TheaterNearDirect")))->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested);
+		CastChecked<UButton>(WidgetTree->FindWidget(TEXT("TheaterNearCombination")))->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickAlternativeRequested);
+		CastChecked<UFMCodexCardRackWidget>(WidgetTree->FindWidget(TEXT("TheaterTakers")))->OnCardSelectionRequested.AddUObject(this, &UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested);
 	}
 	if (bActive)
 	{
-		Refresh(*WidgetTree, Presentation, Displayed, DisplayedHeader, IsScreenRequestPending());
+		auto TheaterPresentation=Presentation;
+		TheaterPresentation.LocalRack=BuildDisplayedHandRack(Presentation.LocalRack);
+		TheaterPresentation.OpponentRack=BuildDisplayedHandRack(Presentation.OpponentRack);
+		Refresh(*WidgetTree, TheaterPresentation, Displayed, DisplayedHeader, IsScreenRequestPending(), TheaterTakerInspection);
+		SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 		HideDetailOverlay(); HideTacticalDetail(); SelectionFeedbackToast->DismissFeedback();
 		ResolutionOverlay->SetVisibility(ESlateVisibility::Collapsed);
 	}
+	if (!bActive && WidgetTree->FindWidget(TEXT("ResolutionTheater")))
+		ClearTakerInspection(*WidgetTree, TheaterTakerInspection);
 	// This affects visibility only. FormulaV2 keeps its own setting and original tree.
 	if (bActive || TheaterMotion.bActive)
 		SetActive(*WidgetTree, TheaterMotion, bActive);
+}
+
+void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested()
+{
+ if (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) HandleLongDirectRequested();
+ else if (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick) HandleShortDirectRequested();
+}
+void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickAlternativeRequested()
+{
+ if (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) HandleLongPowerRequested();
+ else if (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick) HandleShortAngledRequested();
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleTheaterHighRequested()
@@ -889,6 +915,8 @@ bool UFMCodexLocalMatchScreenWidget::IsScreenRequestPending() const
 void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 {
 	ResetInlineFormulaRevealState();
+	if (WidgetTree && WidgetTree->FindWidget(TEXT("ResolutionTheater")))
+		FMCodexResolutionTheaterPrototype::ClearTakerInspection(*WidgetTree, TheaterTakerInspection);
 	if (WidgetTree && (TheaterMotion.bActive || TheaterMotion.FieldProgress > 0.f))
 	{
 		FMCodexResolutionTheaterPrototype::SetActive(*WidgetTree, TheaterMotion, false);
@@ -1368,6 +1396,11 @@ void UFMCodexLocalMatchScreenWidget::HandleContinueRequested()
 
 void UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested()
 {
+	if (TheaterMotion.bActive && (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) && Presentation.SetPiece.bTakerWait)
+	{
+		HandleSetPiecePrimaryRequested();
+		return;
+	}
 	if (!DoesInlineFormulaOwnCurrentPrimaryAction())
 	{
 		return;
@@ -3925,6 +3958,15 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		int32 RawA = 0, Minimum = 0, Maximum = 0;
 		const bool HasA = TryReadAuthoritativeRawRoll(Presentation, First, RawA, Minimum, Maximum);
 		const bool bPairDisclosed = bSetPiecePairSecond && bFormulaDisclosed;
+		if (Type==ESetPieceSelectedType::ShortFreeKick || Type==ESetPieceSelectedType::LongFreeKick)
+		{
+			for (auto& Term:Result.AttackRow.Terms)
+			{
+				const bool bVisible=Term.RollSequenceIndex==0 ? HasA && (bSetPiecePairSecond || bFormulaDisclosed) : bPairDisclosed;
+				if (!bVisible) { Term.bResolved=false; Term.RawD6=0; Term.DisplayLabel=TEXT("?"); }
+			}
+			if (!bPairDisclosed) { Result.AttackRow.bFinalValueResolved=false; Result.AttackRow.FinalValueLabel=TEXT("?"); }
+		}
 		Result.DiceOwnerLabel = bSetPiecePairFirst ? TEXT("第一枚掷点") : TEXT("第二枚掷点");
 		Result.RollHelperLabel = bPairDisclosed ? FString()
 			: FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(Type).ToString();
@@ -4272,6 +4314,12 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 	if (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::TacticalPoint
 		&& ActiveCrossRollReveal.ContestId==TEXT("Match.TacticalPoint")) return true;
 	if (!TheaterMotion.bActive) return false;
+	if ((Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick && FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled())
+		|| (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick && FMCodexResolutionTheaterPrototype::IsLongFreeKickEnabled()))
+		return ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceAttack
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceDefense
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPiecePairedB;
 	// Context opts into the existing v2 profile. Route and Formula retain their
 	// own unchanged disclosure/hold gates in the shared phase machine.
 	if (ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::InitialRoute
@@ -5185,13 +5233,17 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	RefreshSetPieceResolutionSurface();
 	// Use the actual owning surface's disclosed narrative, not raw terminal truth
 	// or a tactic-specific delay. This also covers outer Chip and paired outcomes.
-	const bool bOutcomeDisclosed = bLongShotProductionOwnsResolution
+	bool bOutcomeDisclosed = bLongShotProductionOwnsResolution
 		? (DisplayedLongShot.Formula.bVisible ? DisplayedLongShot.Formula.bNarrativeAvailable
 			: DisplayedLongShot.bNarrativeAvailable)
 		: bThroughBallProductionOwnsResolution
 			? (DisplayedThroughBall.Formula.bVisible ? DisplayedThroughBall.Formula.bNarrativeAvailable
 				: DisplayedThroughBall.bNarrativeAvailable)
 			: StandaloneInlineFormula.bVisible && StandaloneInlineFormula.bNarrativeAvailable;
+	if ((Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick
+		|| Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick)
+		&& FMCodexResolutionTheaterPrototype::WantsTheater(Presentation,StandaloneInlineFormula))
+		bOutcomeDisclosed = FMCodexOutcomePresentation::IsFinalReady(StandaloneInlineFormula.bNarrativeAvailable,StandaloneInlineFormula.bDiceRevealVisible);
 	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader(bOutcomeDisclosed));
 	PitchWidget->SetPhaseLabel(MatchHeader->GetDisplayedPhaseText());
 	const bool bEntryOrUniqueSetPieceReveal =

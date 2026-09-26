@@ -1,6 +1,7 @@
-# Resolution Theater — High Cross production adoption
+# Resolution Theater — Cross / Free Kick production adoption
 
-Status: **ADOPTED / PRODUCTION LOCKED — High Cross + Low Cross**. Stage 8.9B Low Cross USER PIE: **ACCEPTED**. Stage 8.8F.3 USER PIE: **ACCEPTED**.
+Status: **ADOPTED / PRODUCTION LOCKED — High / Low Cross + Near / Long Free Kick**. Stage 8.9B Low Cross USER PIE: **ACCEPTED**. Stage 8.8F.3 USER PIE: **ACCEPTED**.
+Stage 8.11A / B, including their accepted polish passes, USER PIE: **ACCEPTED**.
 The current authoritative contract is [Resolution Theater Visual Spec v1](../UI/Resolution_Theater_Visual_Spec_v1.md).
 This file retains implementation notes and historical stage checkpoints. Earlier pending-PIE,
 procedural-art and no-new-asset descriptions below describe their stage, not the final state.
@@ -22,8 +23,8 @@ Stage 8.9B applies the same contract to Low Cross and adopts it into production;
 Runtime Chinese fallback remains **DroidSansFallback Regular**. Existing resources cannot
 reproduce the reference's true Chinese bold weights. This accepted resource limitation is
 not a functional blocker. A future CJK typography resource upgrade may address it; no
-external fonts are added here. **FOLLOW-UP:** Resolution Theater-compatible Roll Presentation
-visual reskin, retaining Stage 8.6 authority and reveal timing.
+external fonts are added here. Stage 8.10 has already production-locked the shared Roll family; later historical
+follow-up notes are superseded by its visual spec.
 
 ## Compare in Development Editor
 
@@ -35,7 +36,7 @@ visual reskin, retaining Stage 8.6 authority and reveal timing.
 
 ResolutionStageV2 defaults to **1** in Development. FormulaV2 remains **0**.
 Neither switch adds persistent config. Shipping compiles the theater and always
-selects it for the scoped Cross entry/High/Low paths, with no theater cvar. FormulaV2
+selects it for the scoped Cross entry/High/Low and disclosed Near/Long paths, with no theater cvar. FormulaV2
 remains a non-Shipping comparison override. Turning the theater off in Development
 restores the comparison selected by FormulaV2 at the same authoritative state.
 The normal Editor console accepts each command separately.
@@ -62,7 +63,8 @@ Formula and outcome. No additional continue step is added. Low-only fallback
   Sibling Formula surfaces keep their state but do not paint. Recovery/rejection
   and Full-Time release the treatment; no field snapshot or new asset is used.
 - `FMCodexResolutionTheaterPrototype` builds one reusable widget subtree. Its only
-  retained state is cosmetic entry/exit time, field transform and toggle/visibility state.
+  retained state is cosmetic entry/exit time, field transform, toggle/visibility state
+  and the Stage 8.11 transient planning inspector described below.
   It holds no authority, gameplay phase, score, roll or result cache.
 - A neutral invisible `Cross.Setup` identity in the existing safe Formula DTO
   identifies accepted Cross setup on both viewers, including the waiting viewer
@@ -266,3 +268,49 @@ Low boundary and development fallback are unchanged.
 DIRECTION ADOPTED / COMMERCIAL VISUAL FAMILY FINAL LOCK PENDING USER PIE.
 
 FOLLOW-UP: Resolution Theater-compatible Roll Presentation visual reskin.
+
+## Stage 8.11 implementation reconciliation — production locked
+
+The authoritative Free Kick product rules live in the existing Theater visual spec, not a
+second Free Kick spec. Historical prototype/pending-PIE text above applies only to those
+old checkpoints. Near / Long are accepted and Shipping-enabled; Prototype symbol names
+are retained to avoid an unrelated rename. No new art, fonts or defense silhouette.
+
+- `fm.UI.ResolutionStageV2.NearFreeKick` and `.LongFreeKick` default to 1 in Development;
+  0 restores only that family's legacy surface. The master Development override remains.
+  All these cvars are compiled out of Shipping; Near/Long enable functions return true.
+  Set Piece Type D6 and its ResultHold remain Legacy before Theater can claim ownership.
+- One shared Build/Refresh subtree handles both families. Selection uses the existing rack
+  (4 columns, 1000 design units), inspector (300 × 450, gap 24) and 1324-unit information
+  bar. Method footer is 860; duel footer is 1284, retained for single-side outcomes to avoid
+  a reveal jump. Peer method titles use 26 Regular; selection rule lines use 18 Regular
+  with the same color. Other reason bars retain 20/14 roles. These are current parameters,
+  not permanent visual rules. No second Long widget tree or new Roll variant exists.
+- `FTakerInspection` contains only transient hover identity, safe eligibility lookup and
+  callback generation. `ClearTakerInspection` invalidates stale callbacks on leaving
+  selection/reset; it clears the production Full Card. Static catalog attributes are
+  inspection content, never inputs to a method legality calculation.
+- Authority-side `FMCodexLocalMatchInteractionView` uses canonical
+  `IsAngledMethodEligible` for candidate and selected-player eligibility. Near's reflected
+  `FFMCodexNearTakerEligibility` array (CardId + bool) extends the existing owner-safe
+  `FFMCodexSetPieceSelectionPresentation` replicated presentation schema. It is bounded to
+  the legal actor pool, checked for missing/duplicate/out-of-pool entries, withheld from
+  waiting viewers, cleared on leaving selection / disabling actions, and carried through
+  the existing View serialization and client reconstruction. Missing facts fail closed.
+- RPC / payload / command kinds are unchanged. Long adds no replicated schema: its
+  `LongFormulaGoalkeeperCardId` is a plain authority-side local interaction field from the
+  canonical base query, used to build existing safe Formula participant rows. Near uses
+  the equivalent local identity field. Clients consume those safe rows, not raw State or
+  an inferred first goalkeeper. No goalkeeper stamina entry is created.
+- Opposed reason text reuses the existing authority WinReason mapping. Threshold totals,
+  outcomes and scorers come from the canonical projection. The shared Screen gates pair
+  operands and scores with the existing reveal lifecycle; defender rolling cannot replay
+  the settled attacking operand. Helper visibility is semantic and layout-preserving.
+- Focused closeout evidence is under ignored `Saved/Stage8_11_Closeout/`. Coverage includes
+  Near/Long lifecycle, selection/inspection/projection, shared-viewer Cross, helper roles
+  and focused canonical free-kick rules. A.2's earlier real Host/Remote inspection run is
+  superseded by one final Near run because shared projection source changed afterward.
+  The opt-in `fm.Dev.NearInspectionEvidence` driver uses player-facing intents and natural
+  replication; it and its fixture are non-Shipping. Existing accepted A/B PIE paths are
+  reusable where Development behavior is unchanged by the Shipping gate promotion.
+  Final build/test/package results belong in the closeout report and ignored logs.

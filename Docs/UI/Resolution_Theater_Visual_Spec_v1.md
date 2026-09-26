@@ -1,8 +1,10 @@
 # Resolution Theater Visual Spec v1
 
-Status: **ADOPTED / PRODUCTION LOCKED — High Cross + Low Cross**. Stage 8.8F.3 Theater、Stage 8.9A.2 Roll v2、Stage 8.9B Low Cross 与 Stage 8.10A.1 CompactBox / participant continuity USER PIE 均为 **ACCEPTED**。
+Status: **ADOPTED / PRODUCTION LOCKED — High / Low Cross + Near / Long Free Kick**. Stage 8.8F.3 Theater、Stage 8.9A.2 Roll v2、Stage 8.9B Low Cross 与 Stage 8.10A.1 CompactBox / participant continuity USER PIE 均为 **ACCEPTED**。
 
-本文是 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) 下属的传中家族生产规范。跨 Theater / 主棋盘的 Roll 变体与运动视觉关系由 [Roll Presentation Visual Spec](Roll_Presentation_Visual_Spec_v1.md) 统一负责。验收冻结现有视觉家族；不冻结永久像素常量，不授权迁移其他战术。LocalPlay 与 NetworkPlay 使用同一 Match Screen 和 Theater。
+Stage 8.11A / 8.11B（含 A.1–A.3、B.1–B.2）USER PIE：**ACCEPTED**。
+
+本文是 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) 下属的传中与任意球 Theater 生产规范。跨 Theater / 主棋盘的 Roll 变体与运动视觉关系由 [Roll Presentation Visual Spec](Roll_Presentation_Visual_Spec_v1.md) 统一负责。验收冻结现有视觉家族；不冻结永久像素常量，不授权迁移其他战术。LocalPlay 与 NetworkPlay 使用同一 Match Screen 和 Theater。
 
 ## 进入、退出与迁移边界
 
@@ -10,18 +12,18 @@ Match Board → 传中战术确认 → 中性 Resolution Theater → 选择高/�
 
 进入中性“传中”不预告 actual route。选择高/低只是意图；权威路线骰仍决定实际路线。实际高球、低球均在可见披露后继续同一个 Theater，不重播入场，不经过 Match Board 或旧 Low 面板，不增加 Continue。
 
-**CURRENT MIGRATION BOUNDARY**：High / Low Cross 已迁移；其他战术未因此迁移。Recovery、拒绝恢复和 Full-Time 仍由原有流程管理；正常退出恢复棋盘几何、可见性与输入。
+**CURRENT MIGRATION BOUNDARY**：High / Low Cross 与已披露类型后的 Near / Long Free Kick 已迁移。Set Piece Type D6 仍为 Legacy；Penalty、Corner 与其他战术未因此迁移。Recovery、拒绝恢复和 Full-Time 仍由原有流程管理；正常退出恢复棋盘几何、可见性与输入。
 
 ## 场景与构图
 
 - 背景继承比赛环境的球场、草皮和体育场灯光，保持足球连续性；压低冲突的战术场线，隐藏手牌、部署卡槽和 Match Board 操作杂项。
-- 进攻固定在左、防守固定在右，中央 VS。这是对抗角色方位，不取代本方/对方或 Player A/B 的身份合同。
+- 对抗分支进攻固定在左、防守固定在右，中央 VS；单侧分支不虚构防守。这是对抗角色方位，不取代本方/对方或 Player A/B 的身份合同。
 - 面板以内容决定紧凑尺寸。外侧列承载通用足球人物装饰，内侧文字安全区独立；人物不得穿过球员名、数字、CTA 或 tooltip。
 - 深蓝面板、细结构边线、冷白文本与克制的蓝灰解释层保持同一家族。装饰人物不代表实际参与者，也不提供玩法信息。
 
 ## 身份、标题与数值
 
-进攻角色为“持球”“跑位”；防守为“盯人”“协防”。只使用规范显示名；可选协防缺失时不得伪造球员。球员角色和身份在 Formula / Result 中保持可读。
+传中进攻角色为“持球”“跑位”；防守为“盯人”“协防”。只使用规范显示名；可选协防缺失时不得伪造球员。球员角色和身份在 Formula / Result 中保持可读。
 
 实际参与且已经合法公开的防守门将以“门将”身份连续保留于传中选择、路线掷点和 Formula。选择/路线阶段消费权威身份的安全投影，Formula 消费权威 participant facts；不从 roster、部署本身、未来路线或人物装饰推断参与者，不临时移除再补回已知门将。未参与或未获披露的身份不得显示。
 
@@ -64,7 +66,7 @@ High / Low Cross 体力理由读取 `ResolvedResult` 的权威参与球员总和
 - 总和仍相同：主行“最终值与体力总和均相同：防守方获胜”；次行展示共同总和及防守优先规则。
 - 门将参与平局继续使用独立门将理由，不归因于体力。
 
-主 CTA 独立于信息栏。此已验收家族采用薄荷青绿底、深色文字，是 Match Flow 主按钮蓝色的明确 Cross Theater 局部例外。选择高/低、掷点和下一回合共享按钮语法；掷点为骰子图标/分隔/文字，下一回合为文字后方前进 chevron。等待 viewer 显示操作身份及预期动作，不提供可操作 CTA；Local hot-seat 身份约定不变。
+主 CTA 独立于信息栏。此已验收家族采用薄荷青绿底、深色文字，是 Match Flow 主按钮蓝色的明确 Resolution Theater 局部例外。选择高/低、掷点和下一回合共享按钮语法；掷点为骰子图标/分隔/文字，下一回合为文字后方前进 chevron。等待 viewer 显示操作身份及预期动作，不提供可操作 CTA；Local hot-seat 身份约定不变。
 
 ## Result、动效与安全
 
@@ -74,14 +76,57 @@ High / Low Cross 体力理由读取 `ResolvedResult` 的权威参与球员总和
 
 ## 生产入口与工程边界
 
-Development 默认 `fm.UI.ResolutionStageV2=1` 与 `fm.UI.ResolutionStageV2.LowCross=1`。Low 开关关闭只回退 Low；关闭主开关使用旧界面，此时 `fm.UI.FormulaV2=0/1` 选择相应历史比较层。这些开关仅用于 non-Shipping 对照，不是玩家产品设置。
+Development 默认 `fm.UI.ResolutionStageV2=1`、`fm.UI.ResolutionStageV2.LowCross=1`、`fm.UI.ResolutionStageV2.NearFreeKick=1` 与 `fm.UI.ResolutionStageV2.LongFreeKick=1`。Near / Long 各自开关关闭只回退对应家族。Low 开关关闭只回退 Low；关闭主开关使用旧界面，此时 `fm.UI.FormulaV2=0/1` 选择相应历史比较层。这些开关仅用于 non-Shipping 对照，不是玩家产品设置。
 
-Shipping 编译为中性 Cross 入口及实际 High / Low Theater 默认开启，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。
+Shipping 编译为中性 Cross 入口、实际 High / Low 及已披露类型后的 Near / Long Theater 始终开启，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。
 
 资源来源、字体限制及历史参数见 [实现说明](../Dev/Resolution_Theater_Prototype_v1.md)。TheaterInline 与 CompactBox 均已纳入当前传中生产家族；Stage 8.10 未增加运行时美术资源。
 
 ## 明确后续项（本阶段不实现）
 
 - 更多独立 route / tactical Roll 的 CompactBox 接入另行评估；Cross route 已采用，未迁移消费方保持 Legacy。
-- Resolution Theater 当前不采用 Full Player Card inspection。这里是执行/转播语境，Base tooltip 足够；完整卡片检查优先留在部署、选择或规划语境，不在此新增头像/姓名 Full Card hover。
-- Match Shell Visual Refresh Lite 是独立可选后续；其余 Formula 家族迁移和可选 CJK 字体资源升级分别规划。
+- Full Card 当前仅用于 Near / Long 主罚球员选择这一规划状态；Tactical Choice、Formula、Roll、Outcome、Reason 与下一回合不采用完整卡片检查。更广泛的 Theater Full Card 接入另行评估。
+- Penalty / Corner Theater、Set Piece Type D6 现代化、Match Shell Visual Refresh Lite、其余 Legacy 消费方与可选 CJK 字体资源升级分别规划。
+
+## Free Kick Theater — Stage 8.11 production contract
+
+两种任意球均从 **Legacy Set Piece Type D6 的类型可见揭示（含 ResultHold）之后**进入同一 Theater：主罚球员选择 → 明确确认 → 结算方式 → 分支结算 → Outcome / Reason → 显式下一回合 → Match Board。类型骰本身不迁移；不得借已经存在的未来安全事实提前占用舞台，也不经过旧棋盘弹窗。
+
+### 选择与规划
+
+进攻方在权威合法 Available、非 GK 候选池内选择一名主罚球员。复用 Card Selection family、清晰选中描边与独立确认 CTA；点击卡片只是本地 draft，确认才提交既有 typed intent。顶部副标题从“选择主罚球员”切换为“已选主罚球员：{PlayerName}”，hover 不改变选中状态。
+
+右侧复用生产 Full Card family：hover 候选 > 已选候选 > 安静空态；选 A 后 hover B 展示 B，离开后返回 A。确认后立即清空检查状态，方式、Formula、Roll、Outcome、Reason 与下一回合均不显示 Full Card，也不注册执行阶段的姓名/头像 Full Card hover。此规划例外取代过去“整个 Theater 均不采用 Full Card”的过宽描述，不是全局开放。
+
+Near 的 Tactical Combination 资格仅消费权威投影的候选 ID / eligibility，不能根据 Full Card 属性在 UI 重算。hover/已选预览与确认后的方法可用性必须一致；等待 viewer 不接收候选资格。Long 没有额外属性门槛，不复制 Near 的资格规则。
+
+底部为两条**同字号、同字重、同亮度、同缩进和行高角色**的战术摘要，不是已选状态横幅：
+
+| 家族 | 直接射门 | 另一方式 |
+|---|---|---|
+| Near | 直接射门：取射门 / 传球较高值，与对方门将手控球进行判定 | 战术配合：需射门 + 传球 ≥ 8；两枚骰子总和 ≥ 9 进球 |
+| Long | 直接射门：远射对抗门将站位 + 2；进攻掷点 1–2 直接射偏 | 重炮轰门：两枚骰子总和 ≥ 11 进球，无属性门槛 |
+
+Near 第二行按 hover 优先的当前检查对象追加“，{PlayerName}可用 / 不可用”；无 hover 且无选中只保留规则。摘要允许简化措辞；Formula tooltip 仍显示完整权威修正，Near 首行不添加“防守加成”。
+
+### 方法与分支
+
+方式按钮为对等战术选择：直接射门与战术配合 / 重炮轰门保持相同标题层级，复用既有战术图标。不可用状态应可读，合法 CTA 仅属于操作 viewer；等待 viewer 保留等待身份与预期动作。
+
+| 分支 | 实际参与者与安全事实 | Theater 表现 |
+|---|---|---|
+| Near Direct | 主罚球员 max(Shooting, Passing)；实际门将 Handling + 1；双方 D6 | 双侧 Formula / VS + TheaterInline，进攻先、防守后 |
+| Near Tactical Combination | 仅主罚球员；权威一次动作取得两枚 D6，权威总和 ≥ 9 进球 | 单侧 `? + ? = ?` → `D6 + D6 = Total`，按原有 gate 顺序披露 |
+| Long Direct early miss | 进攻 D6 为 1–2：权威立即 NoGoal，不请求门将骰、不做攻防比较 | 单侧射偏 Outcome；理由“进攻掷点 1–2 时结束，不进行攻防比较” |
+| Long Direct normal | 进攻 D6 为 3–6；主罚球员 LongShot；实际门将 Positioning + 2；双方 D6 | 双侧 Formula / VS + TheaterInline |
+| Long Power / 重炮轰门 | 仅主罚球员；权威一次动作取得两枚 D6，权威总和 ≥ 11 进球，无额外属性门槛 | 同一单侧双骰家族，无虚构防守面板或门将 |
+
+这里规定事实的表现职责，不建立另一份计算规则。玩法以 [Canonical 任意球与通用公式](../01_Rules_Canonical.md) 及当前 CoreRules 为准。对抗分支中快速压制优先于普通总值比较；总值相等且门将实际参与则防守获胜，门将没有体力且不加入体力数组。仅无门将的普通对抗平局才比较全体实际 Formula 参与者体力总和，再平仍防守胜；双骰阈值分支不套用这些对抗规则。
+
+### 连续性、信息层级与安全
+
+- 已安全披露的真实主罚球员、门将保持身份连续；不由装饰轮廓、roster 顺序或 UI 属性推测参与、赢家或 scorer。
+- 防守滚动时，进攻已落定骰点和值保持静态。双骰逐枚显示，第二枚和权威总和通过现有 gate；不新增 RNG、clock、确认或提前比分。
+- 信息栏对齐当前主内容区域；小型操作身份居中位于其下。选择页两条规则为同级，结果栏仍保留主理由 / 从属解释层级；显式 CTA 独立。
+- **次级 helper 仅在增加信息时显示。** 主栏已表达进攻/防守掷点中时，纯 roll-owner helper 使用保持占位的 Hidden；玩家 A/B 操作身份、等待/提交状态、第一/第二枚顺序、前提与结果解释保留。判断依据是语义职责，不是中文字符串黑名单。该规则同样适用于等价 High / Low Formula 状态。
+- Outcome、Reason、获胜标识和可见比分共同服从既有结果 gate；权威已计分不等于可见叙事已揭示。Next Round 仍提交 canonical continuation，正常返回 Match Board。

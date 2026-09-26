@@ -6,7 +6,9 @@ Status: **ADOPTED / PRODUCTION LOCKED — shared Roll v2**. Stage 8.9A.2 / 8.9B 
 
 The authoritative Roll family rules live in [Roll Presentation Visual Spec v1](../UI/Roll_Presentation_Visual_Spec_v1.md), under [Match Flow Visual Language](../UI/MatchFlow_Visual_Language_v1.md). Theater composition and integration remain in [Resolution Theater Visual Spec v1](../UI/Resolution_Theater_Visual_Spec_v1.md). These specifications own the variant boundaries, inline Formula slot, underline semantics, cycling/landing, stable geometry and causal reveal. This document owns implementation details and verification notes, not a competing visual specification.
 
-Production variants are **Legacy / TheaterInline / CompactBox / HeroRoll**. High / Low Cross Theater attack/defense Formula slots select TheaterInline, Theater Cross route selects CompactBox, and main-board tactical Full D12 selects HeroRoll. Fallback Formula and unmigrated consumers, including Set Piece D6 and Corner participant D12, retain Legacy. LocalPlay and NetworkPlay consume the same Screen and viewer-safe presentation source. CompactBox / Hero integration details are in the [Stage 8.10 implementation notes](Resolution_Theater_CompactBox_v1.md).
+Production variants are **Legacy / TheaterInline / CompactBox / HeroRoll**. High / Low Cross and Stage 8.11 Near / Long Direct attack/defense Formula slots select TheaterInline; Near Combination / Long Power reuse two TheaterInline operands for their one-sided sequential reveal, Theater Cross route selects CompactBox, and main-board tactical Full D12 selects HeroRoll. Fallback Formula and unmigrated consumers, including Set Piece Type D6 and Corner participant D12, retain Legacy. LocalPlay and NetworkPlay consume the same Screen and viewer-safe presentation source. CompactBox / Hero integration details are in the [Stage 8.10 implementation notes](Resolution_Theater_CompactBox_v1.md).
+
+Stage 8.11 Near / Long integration and production fallbacks are documented in the [shared implementation notes](Resolution_Theater_Prototype_v1.md#stage-811-implementation-reconciliation--production-locked). It does not change this Roll implementation or migrate Set Piece Type D6.
 
 Stage 8.9B adopts Low Cross in Development and Shipping. `fm.UI.ResolutionStageV2.LowCross=0` is a non-Shipping comparison fallback only. The same `IsFormulaContest` predicate is used by Theater selection and Screen motion; no second roll lifecycle is added. See [Low migration notes](Low_Cross_Resolution_Theater_Migration.md).
 
@@ -16,7 +18,7 @@ Stage 8.9B adopts Low Cross in Development and Shipping. `fm.UI.ResolutionStageV
 
 The current TheaterInline allocation is 68 × 76, with 40-point Medium digits and baseline 58 inside the bottom-aligned slot (68 in the equation). Operators retain fixed widths and the RHS retains its 154-wide column. The base-value underline/native tooltip is separate. These are implementation parameters, not permanent pixel tokens; CompactBox and HeroRoll have their own context-appropriate geometry.
 
-`UsesTheaterRollMotion` selects the existing modern profile for TacticalPoint / `Match.TacticalPoint`, or active Theater Cross route and enabled High / Low Attack/Defense Formula events. The main-board branch does not require Theater visibility. Selection stays inside the same Screen phase machine; ResultHold consumes actual elapsed game time. The same accepted event identity/dedupe and safe disclosed results govern every skin.
+`UsesTheaterRollMotion` selects the existing modern profile for TacticalPoint / `Match.TacticalPoint`, or active Theater Cross route, enabled High / Low Attack/Defense Formula events, and enabled Near / Long SetPieceAttack / SetPieceDefense / SetPiecePairedA / SetPiecePairedB events. The main-board branch does not require Theater visibility. Selection stays inside the same Screen phase machine; ResultHold consumes actual elapsed game time. The same accepted event identity/dedupe and safe disclosed results govern every skin.
 
 ## Implementation detail — presentation patterns
 
@@ -65,4 +67,4 @@ Build repair included in this Stage: the baseline Formula Hierarchy PIE helpers 
 
 ## Deferred consumers and concepts
 
-CompactBox and HeroRoll are implemented and adopted; additional standalone Roll consumers and remaining Formula families require separate migration stages. Emphasis is unimplemented and has no placeholder enum or clock. Match Shell Visual Refresh Lite remains optional. Full Player Card inspection is not currently adopted for Resolution Theater; execution/broadcast uses the existing Base tooltips, while richer card inspection belongs primarily to deployment, selection and planning contexts.
+CompactBox and HeroRoll are implemented and adopted; additional standalone Roll consumers and remaining Formula families require separate migration stages. Emphasis is unimplemented and has no placeholder enum or clock. Match Shell Visual Refresh Lite remains optional. Full Card inspection is adopted only for Stage 8.11 Near / Long taker planning; execution/broadcast retains Base tooltips without Full Card hover.

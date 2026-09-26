@@ -4,7 +4,7 @@
 void FFMCodexSetPieceSelectionPresentation::DisableActions()
 {
  bCanRollType = false;
- TakerOptions.Reset(); NearMethods.Reset(); LongMethods.Reset(); PenaltyMethods.Reset(); CornerOptions.Reset();
+ TakerOptions.Reset(); NearTakerEligibility.Reset(); NearMethods.Reset(); LongMethods.Reset(); PenaltyMethods.Reset(); CornerOptions.Reset();
 }
 FFMCodexSetPieceSelectionPresentation FFMCodexSetPieceSelectionPresentation::Build(
  const FFMCodexLocalMatchInteractionView& V, EInitialTurnOrderPlayer Viewer)
@@ -58,6 +58,18 @@ FFMCodexSetPieceSelectionPresentation FFMCodexSetPieceSelectionPresentation::Bui
    if (Id.IsNone() || Id.ToString().Len() > 128 || Seen.Contains(Id) || !Card || !Card->bAvailable || Card->bGoalkeeper || Card->bUsed || Card->bEjected)
     P.bOptionsUnavailable = true;
    Seen.Add(Id);
+  }
+  if (P.bTakerWait && P.Type == ESetPieceSelectedType::ShortFreeKick)
+  {
+   // Complete, bounded one-to-one mapping. No UI-side attribute arithmetic or partial pool.
+   TSet<FName> FactIds;
+   if (V.NearTakerEligibility.Num() != V.LegalSetPieceCardIds.Num()) P.bOptionsUnavailable = true;
+   for (const auto& Fact : V.NearTakerEligibility)
+   {
+    if (!Seen.Contains(Fact.CardId) || FactIds.Contains(Fact.CardId)) P.bOptionsUnavailable = true;
+    FactIds.Add(Fact.CardId);
+   }
+   if (!P.bOptionsUnavailable) P.NearTakerEligibility = V.NearTakerEligibility;
   }
   if (!P.bOptionsUnavailable)
   {

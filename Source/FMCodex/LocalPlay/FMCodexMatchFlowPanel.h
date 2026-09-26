@@ -67,7 +67,7 @@ class FMCODEX_API UFMCodexMatchFlowDiagram final : public UWidget
 {
 	GENERATED_BODY()
 public:
-	void SetDiagram(EFMCodexFlowDiagram InDiagram) { Diagram = InDiagram; }
+	void SetDiagram(EFMCodexFlowDiagram InDiagram);
 	EFMCodexFlowDiagram GetDiagram() const { return Diagram; }
 	static FVector2D ViewportSize() { return FVector2D(72, 52); }
 protected:

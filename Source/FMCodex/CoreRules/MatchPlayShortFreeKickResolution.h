@@ -80,6 +80,9 @@ struct FMCODEX_API FMatchPlayShortFreeKickResolutionResult
 class FMCODEX_API FMatchPlayShortFreeKickResolution final
 {
 public:
+	// Shared by authoritative method validation and viewer-safe candidate projection.
+	static bool IsAngledMethodEligible(const FPlayerCardRuleSnapshot& Carrier);
+
 	static FMatchPlayShortFreeKickResolutionResult SubmitMethod(
 		const FMatchPlayState& BeforeState,
 		const FMatchPlayShortFreeKickMethodRequest& Request);

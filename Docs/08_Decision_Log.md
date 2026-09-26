@@ -2386,3 +2386,33 @@ Development 默认主开关与 Low 开关均开启，Low=0 仅作 Development �
 明确后续：①更多独立 Roll 的 CompactBox 接入；②可选 Match Shell Visual Refresh Lite，当前棋盘壳保持；③**Full Player Card inspection 当前不采用到 Resolution Theater**，它是执行/转播场景，Base tooltip 足够，完整卡片检查优先属于部署/选择/规划语境；④其余 Formula 家族（包括 Near / Long Free Kick）独立迁移。此决定取代此前 Theater participant Full Card hover 的计划方向，本阶段不实现这些后续。
 
 按整个非 ignored 工作区完成一次 grouped closeout；用户通过 GitHub Desktop 做最终提交，不另设 staging phase，也不要求用户提交 staged diff。Codex 不进行 staging 或 commit。生产锁定不表示 Git 已提交。
+
+## 2026-09-26 — Stage 8.11 Free Kick Resolution Theater adoption
+
+**ADOPTED / PRODUCTION LOCKED. Stage 8.11A / B USER PIE: ACCEPTED**, including
+A.1–A.3 and B.1–B.2. This is product adoption; the grouped worktree still requires the
+user's manual Git commit. [Resolution Theater Visual Spec](UI/Resolution_Theater_Visual_Spec_v1.md)
+owns the stable Free Kick contract; Roll family remains Stage 8.10's existing variants.
+
+- Near adopts Card Selection with explicit taker confirmation, planning-only production
+  Full Card inspection, authority-projected Tactical Combination eligibility, Direct
+  Formula / TheaterInline, one-sided Combination 2D6, Outcome / Reason and return.
+- Long adopts the same families with distinct canonical branches: Direct attack 1–2
+  early miss without defense roll/comparison; normal LongShot vs GK Positioning + 2
+  contest; one-sided Power / 重炮轰门 2D6. No extra attribute threshold is invented.
+- Methods and selection rule summaries are peers. Information bars follow content width;
+  actor helpers center below them. Secondary helpers are hidden only when their semantic
+  role duplicates the main status; ownership, wait/ACK and die sequence remain visible.
+  Settled attacking dice remain static during defense roll. Participant identity and
+  displayed score remain governed by safe disclosure and existing outcome gates.
+- Full Card is accepted **only for Near/Long taker planning** (hover > selected > empty),
+  cleared after selection. This supersedes older blanket “no Full Card in Theater” wording;
+  methods, Formula, Roll, Outcome and Reason still do not adopt it.
+- Near eligibility extends the existing replicated presentation struct; no RPC changes.
+  Long uses existing safe presentation rows plus a local authority-side GK identity field,
+  with no additional replicated schema. UI owns no legality, RNG, winner or scorer rule.
+- Near and Long are ON in Development and Shipping. Existing non-Shipping per-family
+  fallback cvars remain default ON; Shipping has no fallback cvar dependency.
+- Set Piece Type D6 remains **Legacy**, including its complete visible reveal/hold before
+  Theater entry. Penalty, Corner, Type D6 modernization, Match Shell Visual Refresh Lite,
+  broader execution-stage Full Card and other Legacy consumers remain separate work.

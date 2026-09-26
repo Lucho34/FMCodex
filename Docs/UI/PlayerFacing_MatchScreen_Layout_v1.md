@@ -5,9 +5,9 @@ Scope: 1920×1080 player-facing LocalPlay Golden visual prototype
 
 Match Flow visual styling follows [Match Flow Visual Language v1](MatchFlow_Visual_Language_v1.md). This document owns layout, geometry and screen composition; stage-specific styling notes below are implementation history, not a second visual-rule authority.
 
-## Current production layout — Cross Theater and Stage 8.10 Roll family
+## Current production layout — Cross / Free Kick Theater and Roll family
 
-High / Low Cross Resolution Theater and the Stage 8.10 Roll family are **PRODUCTION LOCKED**.
+High / Low Cross, Near / Long Free Kick Resolution Theater and the Stage 8.10 Roll family are **PRODUCTION LOCKED**. Stage 8.11A / B USER PIE are **ACCEPTED**.
 Stage 8.10A.1 and Stage 8.10B.2 USER PIE are **ACCEPTED**, preserving the earlier Theater / Inline acceptance.
 The [Resolution Theater Visual Spec](Resolution_Theater_Visual_Spec_v1.md) owns the accepted
 Cross composition: Attack left / Defense right / central VS, protected inner content,
@@ -27,8 +27,19 @@ The tight glass shell, open numeric stage and one support line restore to the or
 board after the existing hold; cancellation also clears focus. No new scene or permanent
 overlay is introduced. Header / racks / Pitch / Action Dock geometry is unchanged.
 
-Match Shell Visual Refresh Lite is optional future work. Full Player Card inspection
-is not currently adopted inside Theater; existing Base tooltips remain sufficient.
+Near / Long enter only after the Legacy Set Piece Type D6 reveal. Their selection layout
+uses a four-column candidate rack and adjacent production Full Card inspector; hover wins
+over selection, selection persists after hover, and an empty inspector stays quiet. The
+inspector is cleared on leaving selection. Methods use peer titles and existing icons.
+Direct contests use the shared two-sided composition; early miss and dual-die branches
+use one real attacking participant, with no invented defense. The information bar aligns
+with the selection row / method choices / duel region; actor helper and CTA are centered
+below it. Peer selection summaries do not use result-reason typography. Pure duplicate
+roll-owner helpers use Hidden to preserve geometry; meaningful ownership stays visible.
+
+Match Shell Visual Refresh Lite is optional future work. Full Card inspection is adopted
+only for Near / Long taker planning; execution keeps existing Base tooltips, without
+Full Card hover in methods, Formula, Roll, Outcome, Reason or Next Round.
 Older adoption-pending and High-only sections below are historical review checkpoints,
 not competing production status, current consumer maps or permission to redesign the family.
 

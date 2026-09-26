@@ -10,6 +10,71 @@
 
 namespace FMCodexLocalMatchUMGPresentation
 {
+	FString FormulaReason(const FFormulaResolutionResult& Resolved,
+		const FFMCodexUMGInlineFormulaRowViewModel& Attack,
+		const FFMCodexUMGInlineFormulaRowViewModel& Defense)
+	{
+		const FText Winner = Resolved.Winner == EFormulaWinner::Attacker
+			? NSLOCTEXT("FMCodexTheater", "AttackSide", "进攻方")
+			: NSLOCTEXT("FMCodexTheater", "DefenseSide", "防守方");
+		FText Reason;
+		switch (Resolved.WinReason)
+		{
+		case EFormulaWinReason::FastSuppression:
+		{
+			const auto* AttackRoll = Attack.Terms.FindByPredicate([](const auto& Term)
+				{ return Term.Kind == EFMCodexUMGInlineFormulaTermKind::RawRoll && Term.bResolved; });
+			const auto* DefenseRoll = Defense.Terms.FindByPredicate([](const auto& Term)
+				{ return Term.Kind == EFMCodexUMGInlineFormulaTermKind::RawRoll && Term.bResolved; });
+			// The safe authoritative reason selects this wording. Dice are operands,
+			// never an input to a presentation-side winner/rule calculation.
+			if (AttackRoll && DefenseRoll)
+			{
+				const bool bAttackWon = Resolved.Winner == EFormulaWinner::Attacker;
+				Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "FastSuppressionValues",
+					"触发快速压制：{0} 点压制 {1} 点\n本次由快速压制决定胜负，不比较最终总值"),
+					FText::AsNumber(bAttackWon ? AttackRoll->RawD6 : DefenseRoll->RawD6),
+					FText::AsNumber(bAttackWon ? DefenseRoll->RawD6 : AttackRoll->RawD6));
+			}
+			else Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "FastSuppressionFallback",
+				"触发快速压制：{0}获胜\n本次由快速压制决定胜负，不比较最终总值"), Winner);
+			break;
+		}
+		case EFormulaWinReason::HigherFinalValue:
+		{
+			const bool bAttackWon = Resolved.Winner == EFormulaWinner::Attacker;
+			const FText Other = bAttackWon ? NSLOCTEXT("FMCodexTheater", "DefenseSide", "防守方")
+				: NSLOCTEXT("FMCodexTheater", "AttackSide", "进攻方");
+			Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "HigherValues", "{0}最终值 {1}，高于{2} {3}\n本次公式按照总值大小比较"),
+				Winner, FText::AsNumber(bAttackWon ? Resolved.AttackerFinalValue : Resolved.DefenderFinalValue),
+				Other, FText::AsNumber(bAttackWon ? Resolved.DefenderFinalValue : Resolved.AttackerFinalValue));
+			break;
+		}
+		case EFormulaWinReason::StaminaTieBreaker:
+		{
+			// Totals and winner arrive together through the disclosed authority result.
+			// Presentation neither aggregates participants nor compares stamina.
+			const bool bAttackWon = Resolved.Winner == EFormulaWinner::Attacker;
+			const FText Other = bAttackWon ? NSLOCTEXT("FMCodexTheater", "DefenseSide", "防守方")
+				: NSLOCTEXT("FMCodexTheater", "AttackSide", "进攻方");
+			Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "StaminaTotalTie",
+				"最终值相同，按体力总和判定：{0}获胜\n{0}参与球员体力总和 {1}，高于{2} {3}"), Winner,
+				FText::AsNumber(bAttackWon ? Resolved.AttackerParticipatingStaminaTotal : Resolved.DefenderParticipatingStaminaTotal), Other,
+				FText::AsNumber(bAttackWon ? Resolved.DefenderParticipatingStaminaTotal : Resolved.AttackerParticipatingStaminaTotal));
+			break;
+		}
+		case EFormulaWinReason::DefenderWinsEqualStamina:
+			Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "EqualStaminaTotals",
+				"最终值与体力总和均相同：防守方获胜\n双方参与球员体力总和均为 {0}，按同体力防守优先规则判定"),
+				FText::AsNumber(Resolved.DefenderParticipatingStaminaTotal));
+			break;
+		case EFormulaWinReason::DefenderWinsGoalkeeperTie:
+			Reason = NSLOCTEXT("FMCodexTheater", "GoalkeeperTie", "最终值相同，门将参与时防守方获胜"); break;
+		default: break;
+		}
+		return Reason.ToString();
+	}
+
 	FFMCodexUMGSkillViewModel MakeSkill(
 		const FFMCodexLocalMatchCardView::FSkill& Skill)
 	{
@@ -1026,6 +1091,14 @@ namespace FMCodexLocalMatchUMGPresentation
 				? &InteractionView.PlayerACardRoster
 				: Defender == EInitialTurnOrderPlayer::PlayerB
 					? &InteractionView.PlayerBCardRoster : nullptr;
+		if (InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick)
+			return Roster == nullptr || InteractionView.NearFormulaGoalkeeperCardId.IsNone() ? nullptr
+				: Roster->FindByPredicate([&InteractionView](const auto& Card)
+				{ return Card.CardId == InteractionView.NearFormulaGoalkeeperCardId; });
+		if (InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick)
+			return Roster == nullptr || InteractionView.LongFormulaGoalkeeperCardId.IsNone() ? nullptr
+				: Roster->FindByPredicate([&InteractionView](const auto& Card)
+				{ return Card.CardId == InteractionView.LongFormulaGoalkeeperCardId; });
 		return Roster == nullptr ? nullptr : Roster->FindByPredicate(
 			[](const FFMCodexLocalMatchCardView& Card)
 			{
@@ -1419,6 +1492,24 @@ namespace FMCodexLocalMatchUMGPresentation
 				TEXT("进攻方掷点：%d"), InteractionView.SetPieceAttackD6);
 		}
 
+		if (bCompactMethod && (InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick))
+		{
+			Result.AttackRow.Side = InteractionView.CurrentAttackingPlayer;
+			Result.AttackRow.SideLabel = TEXT("进攻");
+			AddSetPieceParticipant(Result.AttackRow, InteractionView, InteractionView.SetPieceCarrier, TEXT("主罚球员"));
+			Result.AttackRow.Terms = {
+				SetPieceRollTerm(InteractionView.bHasSetPiecePairedD6, InteractionView.SetPiecePairedD6A, 0, bCompactPending),
+				SetPieceRollTerm(InteractionView.bHasSetPiecePairedD6, InteractionView.SetPiecePairedD6B, 1, false)};
+			Result.AttackRow.bFinalValueResolved = InteractionView.bHasSetPiecePairedD6;
+			Result.AttackRow.FinalValueLabel = InteractionView.bHasSetPiecePairedD6
+				? CompactNumber(InteractionView.SetPiecePairedD6Total) : FString(TEXT("?"));
+			if (Result.bNarrativeAvailable)
+				Result.ResolutionReasonLabel = FText::Format(InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick
+					? NSLOCTEXT("FMCodexLong", "PairReason", "两枚掷点总和 {0}：{1}\n总和达到 11 则进球，否则未进球")
+					: NSLOCTEXT("FMCodexNear", "PairReason", "两枚掷点总和 {0}：{1}\n总和达到 9 则进球，否则未进球"),
+					FText::AsNumber(InteractionView.SetPiecePairedD6Total), FText::FromString(Result.ResultTitle)).ToString();
+		}
+
 		if (bOpposed)
 		{
 			const EInitialTurnOrderPlayer Attacker =
@@ -1559,6 +1650,8 @@ namespace FMCodexLocalMatchUMGPresentation
 					: InteractionView.SetPieceAttackKnownSubtotal;
 				Result.AttackRow.DisplayedResultLabel = CompactNumber(
 					Result.AttackRow.DisplayedResult);
+				if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || (InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick && Result.bShowDefenseRow)) && InteractionView.bHasSetPieceAttackD6)
+					Result.AttackRow.bDisplayedResultIsFinalValue = true;
 			}
 			if (InteractionView.bHasSetPieceDefenseCurrentTotal
 				|| InteractionView.bHasSetPieceDefenseKnownSubtotal)
@@ -1595,6 +1688,15 @@ namespace FMCodexLocalMatchUMGPresentation
 					Result.DefenseRow.FinalValueLabel;
 			}
 		}
+
+		if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick) && InteractionView.bHasSetPieceFormula)
+			Result.ResolutionReasonLabel = FormulaReason(InteractionView.SetPieceFormula, Result.AttackRow, Result.DefenseRow);
+		if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick) && InteractionView.bSetPieceNoLegalCarrier)
+			Result.ResolutionReasonLabel = OutcomeLabel;
+
+		if (InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick && Result.bNarrativeAvailable
+			&& InteractionView.bHasSetPieceAttackD6 && !InteractionView.bHasSetPieceFormula && !bCompactMethod)
+			Result.ResolutionReasonLabel=FText::Format(NSLOCTEXT("FMCodexLong", "EarlyMissReason", "进攻方掷点 {0}：直接射偏\n进攻掷点 1–2 时结束，不进行攻防比较"),FText::AsNumber(InteractionView.SetPieceAttackD6)).ToString();
 
 		ClaimPrimaryAction(Result.PrimaryAction, PrimaryAction);
 		Result.bCanContinue = Result.PrimaryAction.bVisible;
@@ -1888,66 +1990,7 @@ namespace FMCodexLocalMatchUMGPresentation
 		{
 			if (bResolvedCross)
 			{
-				const auto& Resolved = Contest->ResolvedResult;
-				const FText Winner = Resolved.Winner == EFormulaWinner::Attacker
-					? NSLOCTEXT("FMCodexTheater", "AttackSide", "进攻方")
-					: NSLOCTEXT("FMCodexTheater", "DefenseSide", "防守方");
-				FText Reason;
-				switch (Resolved.WinReason)
-				{
-				case EFormulaWinReason::FastSuppression:
-				{
-					const auto* AttackRoll = Result.AttackRow.Terms.FindByPredicate([](const auto& Term)
-						{ return Term.Kind == EFMCodexUMGInlineFormulaTermKind::RawRoll && Term.bResolved; });
-					const auto* DefenseRoll = Result.DefenseRow.Terms.FindByPredicate([](const auto& Term)
-						{ return Term.Kind == EFMCodexUMGInlineFormulaTermKind::RawRoll && Term.bResolved; });
-					// The safe authoritative reason selects this wording. Dice are operands,
-					// never an input to a presentation-side winner/rule calculation.
-					if (AttackRoll && DefenseRoll)
-					{
-						const bool bAttackWon = Resolved.Winner == EFormulaWinner::Attacker;
-						Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "FastSuppressionValues",
-							"触发快速压制：{0} 点压制 {1} 点\n本次由快速压制决定胜负，不比较最终总值"),
-							FText::AsNumber(bAttackWon ? AttackRoll->RawD6 : DefenseRoll->RawD6),
-							FText::AsNumber(bAttackWon ? DefenseRoll->RawD6 : AttackRoll->RawD6));
-					}
-					else Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "FastSuppressionFallback",
-						"触发快速压制：{0}获胜\n本次由快速压制决定胜负，不比较最终总值"), Winner);
-					break;
-				}
-				case EFormulaWinReason::HigherFinalValue:
-				{
-					const bool bAttackWon = Resolved.Winner == EFormulaWinner::Attacker;
-					const FText Other = bAttackWon ? NSLOCTEXT("FMCodexTheater", "DefenseSide", "防守方")
-						: NSLOCTEXT("FMCodexTheater", "AttackSide", "进攻方");
-					Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "HigherValues", "{0}最终值 {1}，高于{2} {3}\n本次公式按照总值大小比较"),
-						Winner, FText::AsNumber(bAttackWon ? Resolved.AttackerFinalValue : Resolved.DefenderFinalValue),
-						Other, FText::AsNumber(bAttackWon ? Resolved.DefenderFinalValue : Resolved.AttackerFinalValue));
-					break;
-				}
-				case EFormulaWinReason::StaminaTieBreaker:
-				{
-					// Totals and winner arrive together through the disclosed authority result.
-					// Presentation neither aggregates participants nor compares stamina.
-					const bool bAttackWon = Resolved.Winner == EFormulaWinner::Attacker;
-					const FText Other = bAttackWon ? NSLOCTEXT("FMCodexTheater", "DefenseSide", "防守方")
-						: NSLOCTEXT("FMCodexTheater", "AttackSide", "进攻方");
-					Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "StaminaTotalTie",
-						"最终值相同，按体力总和判定：{0}获胜\n{0}参与球员体力总和 {1}，高于{2} {3}"), Winner,
-						FText::AsNumber(bAttackWon ? Resolved.AttackerParticipatingStaminaTotal : Resolved.DefenderParticipatingStaminaTotal), Other,
-						FText::AsNumber(bAttackWon ? Resolved.DefenderParticipatingStaminaTotal : Resolved.AttackerParticipatingStaminaTotal));
-					break;
-				}
-				case EFormulaWinReason::DefenderWinsEqualStamina:
-					Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "EqualStaminaTotals",
-						"最终值与体力总和均相同：防守方获胜\n双方参与球员体力总和均为 {0}，按同体力防守优先规则判定"),
-						FText::AsNumber(Resolved.DefenderParticipatingStaminaTotal));
-					break;
-				case EFormulaWinReason::DefenderWinsGoalkeeperTie:
-					Reason = NSLOCTEXT("FMCodexTheater", "GoalkeeperTie", "最终值相同，门将参与时防守方获胜"); break;
-				default: break;
-				}
-				Result.ResolutionReasonLabel = Reason.ToString();
+				Result.ResolutionReasonLabel = FormulaReason(Contest->ResolvedResult, Result.AttackRow, Result.DefenseRow);
 			}
 			Result.bNarrativeAttackSuccess = bResolvedElectiveDirect
 				? ElectiveDirectDecision->Outcome
@@ -2665,6 +2708,9 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 {
 	using namespace FMCodexLocalMatchUMGPresentation;
 	FFMCodexUMGMatchScreenViewModel Result;
+	if (InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick
+		|| InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick)
+		Result.SetPiece = FFMCodexSetPieceSelectionPresentation::Build(InteractionView, LocalViewerSide);
 	const bool bProjectOnPitchPlayerSelection =
 		InteractionView.InteractionCategory
 			== EFMCodexLocalMatchInteractionCategory::SelectCarrier

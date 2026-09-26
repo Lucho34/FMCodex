@@ -2,7 +2,7 @@
 
 Status: **ADOPTED / PRODUCTION LOCKED — Stage 8.10**. Stage 8.10A.1 CompactBox / participant continuity 与 Stage 8.10B.2 HeroRoll USER PIE 均为 **ACCEPTED**。TheaterInline 保留 Stage 8.9A.2 / 8.9B 的既有验收。
 
-本文是 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) 下属、跨 Resolution Theater 与主棋盘的 Roll 家族视觉规范。它统一变体职责、数字层级、动作特征与可见揭示关系；[Theater 专项规范](Resolution_Theater_Visual_Spec_v1.md) 负责传中场景与 Formula / Result 整合，[Match Screen Layout](PlayerFacing_MatchScreen_Layout_v1.md) 负责屏幕布局。生产锁定不表示 Git 已提交，也不授权迁移其他消费方。
+本文是 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) 下属、跨 Resolution Theater 与主棋盘的 Roll 家族视觉规范。它统一变体职责、数字层级、动作特征与可见揭示关系；[Theater 专项规范](Resolution_Theater_Visual_Spec_v1.md) 负责传中 / 任意球场景与 Formula / Result 整合，[Match Screen Layout](PlayerFacing_MatchScreen_Layout_v1.md) 负责屏幕布局。生产锁定不表示 Git 已提交，也不授权迁移其他消费方。
 
 ## 1. 一个共享行为源，明确选择视觉变体
 
@@ -10,8 +10,8 @@ Roll 共用既有 viewer-safe projection、Screen phase machine、event identity
 
 | 变体 | 当前实际消费方 | 视觉职责 |
 |---|---|---|
-| Legacy | 未迁移的 generic Inline Formula、Development Formula Broadcast、ThroughBall / LongShot family surfaces 与 Corner participant reel；包括其承载的 Set Piece D6、后续 Formula 和 Cross fallback | 已有 Sports Broadcast Numeric Window；迁移期间继续有效 |
-| TheaterInline | High / Low Cross Resolution Theater 的进攻、防守 Formula Roll | 嵌入等式的稳定数字槽位 |
+| Legacy | 未迁移的 generic Inline Formula、Development Formula Broadcast、ThroughBall / LongShot family surfaces 与 Corner participant reel；包括 Set Piece Type D6、未迁移后续 Formula，以及 Development Cross / Free Kick fallback | 已有 Sports Broadcast Numeric Window；迁移期间继续有效 |
+| TheaterInline | High / Low Cross、Near / Long Direct 的攻防 Roll，以及 Near Combination / Long Power 的逐枚双骰槽位 | 嵌入等式的稳定数字槽位 |
 | CompactBox | Resolution Theater 的独立 Cross route D6 | 小型、安静、有边界的只读结果格 |
 | HeroRoll | 主 Match Board 的 Full D12 / 战术点掷点 | 临时聚焦的大数字事件面板 |
 
@@ -31,7 +31,7 @@ UI 不生成 gameplay RNG，不改变骰序、route、Formula、winner、Goal、
 
 ## 3. TheaterInline
 
-- 始终嵌入 `Base + Roll = Total`。未知 `?`、滚动与落定数字共用固定空间槽位和视觉基线；Base、运算符和 RHS 不因骰点或阶段横向移动。不出现脱离等式的独立骰子框或厚重常驻边框。
+- Formula 嵌入 `Base + Roll = Total`；Free Kick 单侧阈值分支复用两枚 TheaterInline 槽位，语法为 `D6 + D6 = Total`。未知 `?`、滚动与落定数字共用固定空间槽位和视觉基线；Base、运算符和 RHS 不因骰点或阶段横向移动。不出现脱离等式的独立骰子框或厚重常驻边框。
 - RHS 是主要数值焦点，Base 次之，运算符从属。派生 Base 的实线下划线表示可 hover 的权威公式解释；**Roll 的 `?`、滚动数字、落定值均无下划线，也没有 hover 解释**。
 - 数字先落定，再由原有 disclosure gate 更新 RHS 与“当前值 / 最终值”。UI 不自行求和、计算 modifier、体力或胜负；未揭示时保持 `Base + ? = Current`，揭示后显示 `Base + Roll = Final`。
 - 双方允许混合状态。已完成侧持续可读、不重播；未完成侧保留自己的问号与当前值。当前操作侧的交互强调与最终胜者标识各有独立来源。
@@ -77,7 +77,9 @@ High / Low 来自已经获准显示的实际 route / contest，不能从 UI 中�
 
 1. 更多独立 route / tactical Roll 可分别评估 CompactBox；本次不迁移其他消费方。
 2. **Match Shell Visual Refresh Lite** 为可选后续工作；当前主 Match Board 结构和 HUD 保持生产基线。
-3. **Full Player Card inspection 当前不采用到 Resolution Theater。** Theater 是执行/转播场景，既有 Base tooltip 足够；完整卡片检查优先属于部署、选择或规划语境。这里不增加姓名/头像 Full Card hover。
-4. 其余 Formula 家族（包括 Near / Long Free Kick）迁移另行规划。Emphasis 等未实现概念不是本次生产家族，也不预建占位框架。
+3. Full Card 在 Stage 8.11 Near / Long 主罚选择规划状态采用；Formula / Roll / Outcome 等执行状态继续不采用，不增加姓名/头像 Full Card hover。详见 Theater 专项规范。
+4. Near / Long Free Kick 已在 Stage 8.11 采用现有 Roll family；Penalty、Corner、Set Piece Type D6 及其余 Legacy 消费方迁移另行规划。Emphasis 等未实现概念不是本次生产家族，也不预建占位框架。
 
-本规范不扩大玩法、Network、Shipping 资源或 UI 迁移范围。Stage 8.10A.1 / B.2 的用户视觉验收与工程自动化、PIE 截图分别记录；收尾只同步规范、检查已接受的实现及其回归。
+Stage 8.11 只扩展上述 Free Kick 消费关系，不改变 Stage 8.10 Roll 实现、时钟或变体，不新增 FreeKickRoll。Set Piece Type D6 仍完整保留 Legacy。
+
+本规范不自行扩大玩法、Network、Shipping 资源或 UI 迁移范围。Stage 8.10A.1 / B.2 的用户视觉验收与工程自动化、PIE 截图分别记录；收尾只同步规范、检查已接受的实现及其回归。

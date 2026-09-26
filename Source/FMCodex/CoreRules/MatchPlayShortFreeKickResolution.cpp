@@ -168,6 +168,11 @@ namespace MatchPlayShortFreeKickResolution
 	}
 }
 
+bool FMatchPlayShortFreeKickResolution::IsAngledMethodEligible(const FPlayerCardRuleSnapshot& Carrier)
+{
+	return Carrier.Attributes.Shooting + Carrier.Attributes.Passing >= 8;
+}
+
 FMatchPlayShortFreeKickResolutionResult
 FMatchPlayShortFreeKickResolution::SubmitMethod(
 	const FMatchPlayState& BeforeState,
@@ -198,8 +203,7 @@ FMatchPlayShortFreeKickResolution::SubmitMethod(
 	FMatchPlayShortFreeKickRouteState& Short =
 		Candidate.CurrentAttack.SetPieceRoute.ShortFreeKick;
 	if (Request.Method == EMatchPlayShortFreeKickMethod::Angled
-		&& Short.Carrier.Snapshot.Attributes.Shooting
-			+ Short.Carrier.Snapshot.Attributes.Passing < 8)
+		&& !IsAngledMethodEligible(Short.Carrier.Snapshot))
 	{
 		Fail(Result, EError::AngledMethodNotEligible,
 			TEXT("Angled Short Free Kick requires frozen Shooting plus Passing of at least 8."));
@@ -391,8 +395,7 @@ FMatchPlayShortFreeKickResolution::ResolveAngledRoll(
 	const FMatchPlayShortFreeKickRouteState& BeforeShort =
 		BeforeState.CurrentAttack.SetPieceRoute.ShortFreeKick;
 	if (BeforeShort.Method != EMatchPlayShortFreeKickMethod::Angled
-		|| BeforeShort.Carrier.Snapshot.Attributes.Shooting
-			+ BeforeShort.Carrier.Snapshot.Attributes.Passing < 8)
+		|| !IsAngledMethodEligible(BeforeShort.Carrier.Snapshot))
 	{
 		Fail(Result, EError::AngledMethodNotEligible,
 			TEXT("Angled roll requires an eligible Angled Short Free Kick."));

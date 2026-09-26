@@ -5,6 +5,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "../NetworkPlay/FMCodexNetworkPlayerFacingTestFixture.h"
 #include "Components/Button.h"
+#include "Components/Overlay.h"
 #include "Components/Border.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
@@ -269,7 +270,8 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	{
 		auto Awaiting=BeforeFormula;
 		Awaiting.bDiceRevealVisible=true; Awaiting.RollReel={}; Awaiting.ActiveRollSequenceIndex=0;
-		FMCodexResolutionTheaterPrototype::Refresh(*S->WidgetTree,S->GetPresentation(),Awaiting,S->GetMatchHeader()->GetPresentation(),true);
+		FMCodexResolutionTheaterPrototype::FTakerInspection Inspection;
+		FMCodexResolutionTheaterPrototype::Refresh(*S->WidgetTree,S->GetPresentation(),Awaiting,S->GetMatchHeader()->GetPresentation(),true,Inspection);
 		TestTrue(TEXT("Pending ACK without a reel frame retains the unknown operand"),Visible(S,TEXT("TheaterAttackPending")) && !Visible(S,TEXT("TheaterAttackReelHost")));
 		Refresh(S);
 	}
@@ -370,7 +372,8 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	{
 		auto Display=S->GetInlineFormulaSurface()->GetPresentation();
 		Display.bNarrativeAttackSuccess=false;
-		FMCodexResolutionTheaterPrototype::Refresh(*S->WidgetTree,S->GetPresentation(),Display,S->GetMatchHeader()->GetPresentation(),false);
+		FMCodexResolutionTheaterPrototype::FTakerInspection Inspection;
+		FMCodexResolutionTheaterPrototype::Refresh(*S->WidgetTree,S->GetPresentation(),Display,S->GetMatchHeader()->GetPresentation(),false,Inspection);
 		TestTrue(TEXT("Defense winner comes from the fact, never larger total"),Visible(S,TEXT("TheaterDefenseBadge")) && !Visible(S,TEXT("TheaterAttackBadge")));
 		TestEqual(TEXT("Defense badge says winner"),Label(S,TEXT("TheaterDefenseActive")),FString(TEXT("获胜")));
 		Refresh(S);
@@ -389,4 +392,75 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	}
 	return true;
 }
+// Presentation fixtures deliberately exercise meaning, not translated substring matching.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTheaterHelperMeaningTest,
+ "FMCodex.LocalPlay.ResolutionTheater.HelperMeaning",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FTheaterHelperMeaningTest::RunTest(const FString&)
+{
+ auto* Tree=NewObject<UWidgetTree>(); UButton *Primary=nullptr,*High=nullptr,*Low=nullptr;
+ // Build reads the existing Match Shell background brush.
+ Tree->RootWidget=Tree->ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("MatchScreenStyleBackground"));
+ Tree->RootWidget=FMCodexResolutionTheaterPrototype::Build(*Tree,Primary,High,Low,nullptr);
+ FMCodexResolutionTheaterPrototype::FTakerInspection Inspection;
+ FFMCodexUMGMatchScreenViewModel Screen; FFMCodexUMGMatchHeaderViewModel Header;
+ FFMCodexUMGInlineFormulaSurfaceViewModel P;
+ auto Apply=[&](bool Pending=false){FMCodexResolutionTheaterPrototype::Refresh(*Tree,Screen,P,Header,Pending,Inspection);};
+ auto VisibleHelper=[&](){return Tree->FindWidget(TEXT("TheaterStatus"))->GetVisibility()==ESlateVisibility::SelfHitTestInvisible;};
+ auto Text=[&](const TCHAR* Name){return CastChecked<UTextBlock>(Tree->FindWidget(Name))->GetText().ToString();};
+ for (const auto Type:{ESetPieceSelectedType::ShortFreeKick,ESetPieceSelectedType::LongFreeKick})
+ {
+  Screen={}; P={}; Screen.SetPiece.bVisible=true; Screen.SetPiece.Type=Type;
+  Screen.SetPiece.bTakerWait=true; Screen.SetPiece.TakerOptions.Add(TEXT("PresentationCandidate"));
+  Screen.Interaction.ExpectedActorLabel=TEXT("请玩家 A 操作");
+  Apply();
+  const auto* A=CastChecked<UTextBlock>(Tree->FindWidget(TEXT("TheaterDetail")));
+  const auto* B=CastChecked<UTextBlock>(Tree->FindWidget(TEXT("TheaterReasonSecondary")));
+  TestTrue(TEXT("Near/Long taker rules have equal fonts"),A->GetFont()==B->GetFont());
+  TestTrue(TEXT("Near/Long taker rules have equal primary brightness"),A->GetColorAndOpacity()==B->GetColorAndOpacity());
+  TestTrue(TEXT("Selection retains operator information"),VisibleHelper() && !Text(TEXT("TheaterStatus")).IsEmpty());
+  Screen.SetPiece.bTakerWait=false; Screen.SetPiece.bMethodWait=true; Apply();
+  TestTrue(TEXT("Method selection retains operator information"),VisibleHelper());
+  TestEqual(TEXT("Leaving selection restores supporting explanation size"),B->GetFont().Size,14.f);
+  Screen.SetPiece.bMethodWait=false;
+  Screen.SetPiece.NearMethod=EMatchPlayShortFreeKickMethod::Angled;
+  Screen.SetPiece.LongMethod=EMatchPlayLongFreeKickMethod::Power;
+  P.bVisible=true; P.bDiceRevealVisible=true; P.RollHelperLabel=TEXT("两枚骰子总和达到门槛进球");
+  for (const auto Owner:{TEXT("第一枚掷点"),TEXT("第二枚掷点")})
+  {
+   P.DiceOwnerLabel=Owner; Apply();
+   TestTrue(TEXT("Threshold roll retains additional die-sequence context"),VisibleHelper());
+   TestEqual(TEXT("Die-sequence copy stays intact"),Text(TEXT("TheaterStatus")),FString(Owner));
+   TestEqual(TEXT("Threshold explanation stays intact"),Text(TEXT("TheaterDetail")),P.RollHelperLabel);
+  }
+ }
+ for (const auto Contest:{TEXT("Cross.High"),TEXT("Cross.Low"),TEXT("SetPiece.Short.Direct"),TEXT("SetPiece.Long.Direct")})
+ {
+  Screen={}; P={}; P.ContestId=Contest; P.bVisible=true; P.bShowFormulaRows=true;
+  if (FString(Contest).StartsWith(TEXT("SetPiece.")))
+  {Screen.SetPiece.bVisible=true;Screen.SetPiece.Type=FString(Contest).Contains(TEXT("Short"))?ESetPieceSelectedType::ShortFreeKick:ESetPieceSelectedType::LongFreeKick;}
+  for (bool Attack:{true,false})
+  {
+   P.bAttackRowActive=Attack; P.bDefenseRowActive=!Attack; P.bDiceRevealVisible=true;
+   P.DiceOwnerLabel=TEXT("localized roll-owner label"); Apply();
+   TestEqual(TEXT("Role-only duplicate is Hidden, never Collapsed"),Tree->FindWidget(TEXT("TheaterStatus"))->GetVisibility(),ESlateVisibility::Hidden);
+   TestEqual(TEXT("Primary rolling status remains"),Text(TEXT("TheaterDetail")),FString(Attack?TEXT("进攻方掷点中"):TEXT("防守方掷点中")));
+   Apply(true); TestTrue(TEXT("Pending ACK adds information and stays visible"),VisibleHelper());
+   P.bDiceRevealVisible=false; Screen.bMirrorActionWaitPrompt=true;
+   Screen.ActionWaitActorText=FText::FromString(TEXT("等待玩家 B 操作")); Screen.ActionWaitActionText=FText::FromString(TEXT("掷点")); Apply();
+   TestTrue(TEXT("Waiting viewer retains identity and expected action"),VisibleHelper() && Text(TEXT("TheaterStatus")).Contains(TEXT("等待玩家 B")));
+   Screen.bMirrorActionWaitPrompt=false; P.PrimaryAction.bVisible=true; P.PrimaryAction.Action.bAvailable=true;
+   Screen.Interaction.ExpectedActorLabel=TEXT("请玩家 B 操作"); Apply();
+   TestTrue(TEXT("Legal operator remains visible before roll"),VisibleHelper() && !Text(TEXT("TheaterStatus")).IsEmpty());
+   P.bNarrativeAvailable=true; P.ResolutionReasonLabel=TEXT("已揭示结果\n原因说明"); Apply();
+   TestTrue(TEXT("Outcome retains operator"),VisibleHelper());
+   TestEqual(TEXT("Outcome retains reveal-safe reason"),Text(TEXT("TheaterReasonSecondary")),FString(TEXT("原因说明")));
+   P.bNarrativeAvailable=false; P.PrimaryAction={};
+  }
+ }
+ Screen={};P={};P.bVisible=true;P.ContestId=TEXT("Cross.Route");P.bDiceRevealVisible=true;P.DiceOwnerLabel=TEXT("路线掷点");Apply();
+ TestTrue(TEXT("Independent route context is retained"),VisibleHelper());
+ return true;
+}
+
 #endif

@@ -189,12 +189,13 @@ class SFMCodexMatchFlowDiagram final : public SLeafWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SFMCodexMatchFlowDiagram) {} SLATE_END_ARGS()
-	void Construct(const FArguments&, EFMCodexFlowDiagram InDiagram) { Diagram=InDiagram; }
+	void Construct(const FArguments&, UFMCodexMatchFlowDiagram* InOwner) { Owner=InOwner; }
 	virtual FVector2D ComputeDesiredSize(float) const override {return UFMCodexMatchFlowDiagram::ViewportSize();}
 	virtual int32 OnPaint(const FPaintArgs&,const FGeometry& G,const FSlateRect&,
 		FSlateWindowElementList& Out,int32 Layer,const FWidgetStyle& Style,bool) const override
 	{
 		const FFlowPaint P{G,Out,Layer,Style.GetColorAndOpacityTint()};
+		const auto Diagram = Owner.IsValid() ? Owner->GetDiagram() : EFMCodexFlowDiagram::Corner;
 		if (Diagram == EFMCodexFlowDiagram::FormulaAttack || Diagram == EFMCodexFlowDiagram::FormulaDefense)
 		{
 			// Same footprint, safe area, stroke and opacity. Static role motifs only;
@@ -265,7 +266,7 @@ public:
 		return Layer+1;
 	}
 private:
-	EFMCodexFlowDiagram Diagram;
+	TWeakObjectPtr<UFMCodexMatchFlowDiagram> Owner;
 };
 }
 
@@ -333,5 +334,13 @@ void UFMCodexMatchFlowButton::SetFlowStyleEnabled(bool bEnabled)
 TSharedRef<SWidget> UFMCodexMatchFlowDiagram::RebuildWidget()
 {
 	SetVisibility(ESlateVisibility::HitTestInvisible);
-	return SNew(SFMCodexMatchFlowDiagram,Diagram);
+	return SNew(SFMCodexMatchFlowDiagram,this);
+}
+
+void UFMCodexMatchFlowDiagram::SetDiagram(EFMCodexFlowDiagram InDiagram)
+{
+	if (Diagram == InDiagram) return;
+	Diagram = InDiagram;
+	// Shared tactic choices can change after Slate has already built the pictogram.
+	if (const auto Widget = GetCachedWidget()) Widget->Invalidate(EInvalidateWidgetReason::Paint);
 }

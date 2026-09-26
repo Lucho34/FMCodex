@@ -1,4 +1,5 @@
 #include "FMCodexLocalMatchInteractionView.h"
+#include "../CoreRules/MatchPlayShortFreeKickResolution.h"
 #include "../CoreRules/MatchPlayCornerResolution.h"
 
 #include "../CoreRules/MatchEndResolver.h"
@@ -1115,10 +1116,17 @@ namespace FMCodexLocalMatchInteractionView
 			Request.ExpectedOwnerSide = Side;
 			Request.CardId = CardId;
 			Request.Role = Role;
-			if (FMatchPlaySetPieceParticipantEligibility::Evaluate(State, Request)
-				.bIsEligible)
+			const auto Eligibility = FMatchPlaySetPieceParticipantEligibility::Evaluate(State, Request);
+			if (Eligibility.bIsEligible)
 			{
 				View.LegalSetPieceCardIds.Add(CardId);
+				if (View.SetPieceType == ESetPieceSelectedType::ShortFreeKick
+					&& Role == EMatchPlaySetPieceParticipantRole::Carrier)
+				{
+					FFMCodexNearTakerEligibility Fact; Fact.CardId = CardId;
+					Fact.bCanUseTacticalCombination = FMatchPlayShortFreeKickResolution::IsAngledMethodEligible(Eligibility.Binding.Snapshot);
+					View.NearTakerEligibility.Add(Fact);
+				}
 			}
 		}
 	}
@@ -1184,6 +1192,10 @@ namespace FMCodexLocalMatchInteractionView
 			{
 				return;
 			}
+			if (Result.SetPieceType == ESetPieceSelectedType::ShortFreeKick)
+				Result.NearFormulaGoalkeeperCardId = Goalkeeper.CardId;
+			else if (Result.SetPieceType == ESetPieceSelectedType::LongFreeKick)
+				Result.LongFormulaGoalkeeperCardId = Goalkeeper.CardId;
 			Result.bHasSetPieceAttackKnownSubtotal = true;
 			Result.SetPieceAttackKnownSubtotal = AttackBase;
 			Result.bHasSetPieceAttackCurrentTotal = true;
@@ -1273,8 +1285,7 @@ namespace FMCodexLocalMatchInteractionView
 				Short.bHasFormulaResolution, Short.FormulaResolution,
 				Short.GoalScorerCardId, Result);
 			Result.bShortAngledEligible = Short.Carrier.bIsBound
-				&& Short.Carrier.Snapshot.Attributes.Shooting
-					+ Short.Carrier.Snapshot.Attributes.Passing >= 8;
+				&& FMatchPlayShortFreeKickResolution::IsAngledMethodEligible(Short.Carrier.Snapshot);
 			Result.bHasSetPieceOutcome = Short.GameplayOutcome
 				!= EMatchPlayShortFreeKickGameplayOutcome::None;
 			Result.bSetPieceGoal = Short.GameplayOutcome
@@ -1517,10 +1528,13 @@ namespace FMCodexLocalMatchInteractionView
 		View.SetPieceCarrierStage = EMatchPlaySetPieceCarrierRouteStage::None;
 		View.CornerStage = EMatchPlaySetPieceCornerRouteStage::None;
 		View.LegalSetPieceCardIds.Reset();
+		View.NearTakerEligibility.Reset();
 		View.DraftSetPieceCarrierCardId = NAME_None;
 		View.DraftCornerNomineeCardIds.Reset();
 		View.bCornerLockConfirmationPending = false;
 		View.SetPieceCarrier = {};
+		View.NearFormulaGoalkeeperCardId = NAME_None;
+		View.LongFormulaGoalkeeperCardId = NAME_None;
 		View.CornerAttackerNominees.Reset();
 		View.CornerDefenderNominees.Reset();
 		View.bCornerAttackerNominationsLocked = false;
@@ -1941,6 +1955,7 @@ namespace FMCodexLocalMatchInteractionView
 			View.DeploymentGroups.Reset();
 			View.SelectionOptions.Reset();
 			View.LegalSetPieceCardIds.Reset();
+			View.NearTakerEligibility.Reset();
 			View.LegalNearMethods.Reset(); View.LegalLongMethods.Reset(); View.LegalPenaltyMethods.Reset();
 			View.BranchIntentOptions.Reset();
 			View.OneOnOneOptions.Reset();
