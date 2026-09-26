@@ -6,7 +6,7 @@ Status: **ADOPTED / PRODUCTION LOCKED — shared Roll v2**. Stage 8.9A.2 / 8.9B 
 
 The authoritative Roll family rules live in [Roll Presentation Visual Spec v1](../UI/Roll_Presentation_Visual_Spec_v1.md), under [Match Flow Visual Language](../UI/MatchFlow_Visual_Language_v1.md). Theater composition and integration remain in [Resolution Theater Visual Spec v1](../UI/Resolution_Theater_Visual_Spec_v1.md). These specifications own the variant boundaries, inline Formula slot, underline semantics, cycling/landing, stable geometry and causal reveal. This document owns implementation details and verification notes, not a competing visual specification.
 
-Production variants are **Legacy / TheaterInline / CompactBox / HeroRoll**. High / Low Cross and Stage 8.11 Near / Long Direct attack/defense Formula slots select TheaterInline; Near Combination / Long Power reuse two TheaterInline operands for their one-sided sequential reveal, Theater Cross route selects CompactBox, and main-board tactical Full D12 selects HeroRoll. Fallback Formula and unmigrated consumers, including Set Piece Type D6 and Corner participant D12, retain Legacy. LocalPlay and NetworkPlay consume the same Screen and viewer-safe presentation source. CompactBox / Hero integration details are in the [Stage 8.10 implementation notes](Resolution_Theater_CompactBox_v1.md).
+Production variants are **Legacy / TheaterInline / CompactBox / HeroRoll**. High / Low Cross, Stage 8.11 Near / Long Direct and Stage 8.12 normal Penalty attack/defense Formula slots select TheaterInline; Near Combination / Long Power reuse two TheaterInline operands for their one-sided sequential reveal, Panenka reuses one TheaterInline operand without a second die or opposing Formula, Theater Cross route selects CompactBox, and main-board tactical Full D12 selects HeroRoll. Fallback Formula and unmigrated consumers, including Set Piece Type D6 and Corner participant D12, retain Legacy. LocalPlay and NetworkPlay consume the same Screen and viewer-safe presentation source. CompactBox / Hero integration details are in the [Stage 8.10 implementation notes](Resolution_Theater_CompactBox_v1.md).
 
 Stage 8.11 Near / Long integration and production fallbacks are documented in the [shared implementation notes](Resolution_Theater_Prototype_v1.md#stage-811-implementation-reconciliation--production-locked). It does not change this Roll implementation or migrate Set Piece Type D6.
 
@@ -67,4 +67,9 @@ Build repair included in this Stage: the baseline Formula Hierarchy PIE helpers 
 
 ## Deferred consumers and concepts
 
-CompactBox and HeroRoll are implemented and adopted; additional standalone Roll consumers and remaining Formula families require separate migration stages. Emphasis is unimplemented and has no placeholder enum or clock. Match Shell Visual Refresh Lite remains optional. Full Card inspection is adopted only for Stage 8.11 Near / Long taker planning; execution/broadcast retains Base tooltips without Full Card hover.
+CompactBox and HeroRoll are implemented and adopted; additional standalone Roll consumers and remaining Formula families require separate migration stages. Emphasis is unimplemented and has no placeholder enum or clock. Match Shell Visual Refresh Lite remains optional. Full Card inspection is adopted only for Near / Long / Penalty taker planning; execution/broadcast retains Base tooltips without Full Card hover.
+
+Stage 8.12A / A.1 Penalty USER PIE is accepted and Penalty Theater is production locked
+in Development and Shipping. The `.Penalty` cvar is a Development-only legacy comparison;
+Type D6 remains Legacy. See [Penalty implementation reconciliation](Resolution_Theater_Prototype_v1.md#stage-812-implementation-reconciliation--production-locked).
+This adds consumers of the accepted inline variant, not a new Roll family or clock.

@@ -2416,3 +2416,30 @@ owns the stable Free Kick contract; Roll family remains Stage 8.10's existing va
 - Set Piece Type D6 remains **Legacy**, including its complete visible reveal/hold before
   Theater entry. Penalty, Corner, Type D6 modernization, Match Shell Visual Refresh Lite,
   broader execution-stage Full Card and other Legacy consumers remain separate work.
+
+## 2026-09-26 — Stage 8.12 Penalty Resolution Theater adoption
+
+**ADOPTED / PRODUCTION LOCKED. Stage 8.12A / 8.12A.1 USER PIE: ACCEPTED.** 用户接受
+Penalty migration 与 Copy / Outcome micro polish；本条取代此前 Penalty deferred 的迁移边界。
+生产采用不表示 Git 已提交，最终 grouped commit 由用户在 GitHub Desktop 完成。
+
+- Legacy Type D6 完整可见揭示后进入共享 Theater：合法主罚选择、明确确认、常规点球或
+  勺子点球、Formula / Roll / Outcome / Reason、下一回合返回棋盘。Card Selection、
+  Tactical Choice、Formula、Roll 与结果家族均复用；不复制点球专用树或玩法权威。
+- Full Card 仅在 Near / Long / Penalty 主罚选择规划状态采用，hover > selected > empty，
+  离开即清空；方法、Formula、Roll、Outcome、Reason 不开放完整卡片检查。
+- 常规点球保留 canonical max(射门,传球) vs 实际门将预判 -3、攻先守后 D6、快速压制与
+  门将参与平局防守胜；门将无体力。玩家摘要采用“常规点球：取射门 / 传球较高值，
+  对抗门将预判（门将预判 -3）”，精确修正明细继续放在 Base tooltip。
+- 勺子点球只显示主罚球员与一枚权威骰，没有虚构门将或对抗。保留 canonical 命中 /
+  未能命中标题；原因主行“掷点 N：进球 / 射失”，副行“勺子点球规则：1 射失，2–6 进球”。
+  Goal、scorer、WinReason 与比分来自权威安全投影，UI 不按 Roll 决定结果。
+- 参与者连续、已落定进攻骰静态、helper 语义去重、actor ownership 与比分/结果门控保持。
+  内部 GK identity 进入既有 safe Formula rows；没有 RPC、replicated payload 或 network
+  presentation schema 变化。规则与对称 shared-viewer 证据不冒充独立双进程测试。
+- Shipping 的 Penalty gate 固定 true，Development 默认开启且保留 non-Shipping fallback。
+  [Theater visual spec](UI/Resolution_Theater_Visual_Spec_v1.md) 为稳定产品合同，Roll 仍使用
+  Legacy / TheaterInline / CompactBox / HeroRoll，不新增 PenaltyRoll 或 PanenkaRoll。
+- 明确延期：Corner、Set Piece Type D6 现代化、Match Shell Visual Refresh Lite、规划之外
+  的 Theater Full Card 与其余 Legacy 消费方。收尾只进行必要生产锁定、文档、focused
+  回归和 Shipping 验证，不追加新视觉设计或架构重构。

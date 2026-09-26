@@ -1,10 +1,12 @@
 # Resolution Theater Visual Spec v1
 
-Status: **ADOPTED / PRODUCTION LOCKED — High / Low Cross + Near / Long Free Kick**. Stage 8.8F.3 Theater、Stage 8.9A.2 Roll v2、Stage 8.9B Low Cross 与 Stage 8.10A.1 CompactBox / participant continuity USER PIE 均为 **ACCEPTED**。
+Status: **ADOPTED / PRODUCTION LOCKED — High / Low Cross + Near / Long Free Kick + Penalty**. Stage 8.8F.3 Theater、Stage 8.9A.2 Roll v2、Stage 8.9B Low Cross 与 Stage 8.10A.1 CompactBox / participant continuity USER PIE 均为 **ACCEPTED**。
 
 Stage 8.11A / 8.11B（含 A.1–A.3、B.1–B.2）USER PIE：**ACCEPTED**。
 
-本文是 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) 下属的传中与任意球 Theater 生产规范。跨 Theater / 主棋盘的 Roll 变体与运动视觉关系由 [Roll Presentation Visual Spec](Roll_Presentation_Visual_Spec_v1.md) 统一负责。验收冻结现有视觉家族；不冻结永久像素常量，不授权迁移其他战术。LocalPlay 与 NetworkPlay 使用同一 Match Screen 和 Theater。
+Stage 8.12A / 8.12A.1 Penalty USER PIE：**ACCEPTED**；Development 与 Shipping 均采用。
+
+本文是 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) 下属的传中、任意球与点球 Theater 生产规范。跨 Theater / 主棋盘的 Roll 变体与运动视觉关系由 [Roll Presentation Visual Spec](Roll_Presentation_Visual_Spec_v1.md) 统一负责。验收冻结现有视觉家族；不冻结永久像素常量，不授权迁移其他战术。LocalPlay 与 NetworkPlay 使用同一 Match Screen 和 Theater。
 
 ## 进入、退出与迁移边界
 
@@ -12,7 +14,7 @@ Match Board → 传中战术确认 → 中性 Resolution Theater → 选择高/�
 
 进入中性“传中”不预告 actual route。选择高/低只是意图；权威路线骰仍决定实际路线。实际高球、低球均在可见披露后继续同一个 Theater，不重播入场，不经过 Match Board 或旧 Low 面板，不增加 Continue。
 
-**CURRENT MIGRATION BOUNDARY**：High / Low Cross 与已披露类型后的 Near / Long Free Kick 已迁移。Set Piece Type D6 仍为 Legacy；Penalty、Corner 与其他战术未因此迁移。Recovery、拒绝恢复和 Full-Time 仍由原有流程管理；正常退出恢复棋盘几何、可见性与输入。
+**CURRENT MIGRATION BOUNDARY**：High / Low Cross 与已披露类型后的 Near / Long Free Kick、Penalty 已迁移。Set Piece Type D6 仍为 Legacy；Corner 与其他战术未因此迁移。Recovery、拒绝恢复和 Full-Time 仍由原有流程管理；正常退出恢复棋盘几何、可见性与输入。
 
 ## 场景与构图
 
@@ -76,17 +78,17 @@ High / Low Cross 体力理由读取 `ResolvedResult` 的权威参与球员总和
 
 ## 生产入口与工程边界
 
-Development 默认 `fm.UI.ResolutionStageV2=1`、`fm.UI.ResolutionStageV2.LowCross=1`、`fm.UI.ResolutionStageV2.NearFreeKick=1` 与 `fm.UI.ResolutionStageV2.LongFreeKick=1`。Near / Long 各自开关关闭只回退对应家族。Low 开关关闭只回退 Low；关闭主开关使用旧界面，此时 `fm.UI.FormulaV2=0/1` 选择相应历史比较层。这些开关仅用于 non-Shipping 对照，不是玩家产品设置。
+Development 默认 `fm.UI.ResolutionStageV2=1`、`fm.UI.ResolutionStageV2.LowCross=1`、`fm.UI.ResolutionStageV2.NearFreeKick=1`、`fm.UI.ResolutionStageV2.LongFreeKick=1` 与 `fm.UI.ResolutionStageV2.Penalty=1`。Near / Long / Penalty 各自开关关闭只回退对应家族。Low 开关关闭只回退 Low；关闭主开关使用旧界面，此时 `fm.UI.FormulaV2=0/1` 选择相应历史比较层。这些开关仅用于 non-Shipping 对照，不是玩家产品设置。
 
-Shipping 编译为中性 Cross 入口、实际 High / Low 及已披露类型后的 Near / Long Theater 始终开启，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。
+Shipping 编译为中性 Cross 入口、实际 High / Low 及已披露类型后的 Near / Long / Penalty Theater 始终开启，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。
 
 资源来源、字体限制及历史参数见 [实现说明](../Dev/Resolution_Theater_Prototype_v1.md)。TheaterInline 与 CompactBox 均已纳入当前传中生产家族；Stage 8.10 未增加运行时美术资源。
 
 ## 明确后续项（本阶段不实现）
 
 - 更多独立 route / tactical Roll 的 CompactBox 接入另行评估；Cross route 已采用，未迁移消费方保持 Legacy。
-- Full Card 当前仅用于 Near / Long 主罚球员选择这一规划状态；Tactical Choice、Formula、Roll、Outcome、Reason 与下一回合不采用完整卡片检查。更广泛的 Theater Full Card 接入另行评估。
-- Penalty / Corner Theater、Set Piece Type D6 现代化、Match Shell Visual Refresh Lite、其余 Legacy 消费方与可选 CJK 字体资源升级分别规划。
+- Full Card 当前仅用于 Near / Long / Penalty 主罚球员选择这一规划状态；Tactical Choice、Formula、Roll、Outcome、Reason 与下一回合不采用完整卡片检查。更广泛的 Theater Full Card 接入另行评估。
+- Corner Theater、Set Piece Type D6 现代化、Match Shell Visual Refresh Lite、其余 Legacy 消费方与可选 CJK 字体资源升级分别规划。
 
 ## Free Kick Theater — Stage 8.11 production contract
 
@@ -130,3 +132,32 @@ Near 第二行按 hover 优先的当前检查对象追加“，{PlayerName}可�
 - 信息栏对齐当前主内容区域；小型操作身份居中位于其下。选择页两条规则为同级，结果栏仍保留主理由 / 从属解释层级；显式 CTA 独立。
 - **次级 helper 仅在增加信息时显示。** 主栏已表达进攻/防守掷点中时，纯 roll-owner helper 使用保持占位的 Hidden；玩家 A/B 操作身份、等待/提交状态、第一/第二枚顺序、前提与结果解释保留。判断依据是语义职责，不是中文字符串黑名单。该规则同样适用于等价 High / Low Formula 状态。
 - Outcome、Reason、获胜标识和可见比分共同服从既有结果 gate；权威已计分不等于可见叙事已揭示。Next Round 仍提交 canonical continuation，正常返回 Match Board。
+
+## Penalty Theater — Stage 8.12 production contract
+
+**Legacy Set Piece Type D6 完整可见揭示 / ResultHold → Penalty Theater → 主罚选择与明确确认 → 常规点球 / 勺子点球 → 分支结算 → Outcome / Reason → 下一回合 → Match Board**。类型骰仍为 Legacy，Corner 未迁移；舞台取得所有权后不闪回旧棋盘弹窗。
+
+### 选择、检查与方法
+
+复用上述 Card Selection 与 Tactical Choice 家族。候选来自权威合法 Available 非 GK 池；点击仅建立 draft，确认提交既有动作。顶部副标题承载选中身份，底部保持两条同字号、字重、亮度、缩进和行高角色的规则：
+
+- 常规点球：取射门 / 传球较高值，对抗门将预判（门将预判 -3）
+- 勺子点球：掷一枚骰子；1 射失，2–6 进球
+
+两种方法为对等选择。示意图沿用既有线条家族：常规点球从罚球点直射球门，勺子点球表示挑起后落向中央的轨迹；图示没有玩法判定职责。
+
+Full Card 仅在主罚选择规划时复用：hover > selected > empty。离开选择立即清空；方法、Formula、Roll、Outcome、Reason、下一回合不提供 Full Card 检查。此为既有规划边界的点球接入，不是执行舞台的全局扩展。
+
+### 常规点球与勺子点球
+
+常规点球使用两侧 Formula：真实主罚球员与实际防守门将，Base tooltip、当前/最终 RHS 和 TheaterInline 均复用既有家族。权威公式为 max(射门, 传球) + 进攻 D6，对抗门将预判 - 3 + 防守 D6。门将 Base tooltip 保留“预判 X / 点球防守调整 -3 / 当前基础值 Y”，不在主面板永久展开完整算式。
+
+进攻先掷，防守后掷；防守滚动时进攻已落定骰点与 Final 保持静态。快速压制优先于普通最终值比较；普通总值相等且门将实际参与时防守胜。门将没有体力，不伪造体力项。详细规则由 [Canonical §13.4](../01_Rules_Canonical.md#134-点球) 和 CoreRules 负责。
+
+勺子点球只有主罚球员和一枚权威 D6，1 射失、2–6 进球。复用一个 TheaterInline 数字槽位；没有第二枚骰子、虚构防守、VS、对抗算式或普通平局规则。UI 消费结果与 scorer，不按骰点推算 Goal。
+
+### Outcome 与共享合同
+
+上下文“点球 · 勺子点球”之下，保留 canonical 标题“{PlayerName}勺子点球命中！”或“{PlayerName}勺子点球未能命中。”。单侧卡片负责身份与已揭示骰点；理由主行“掷点 {N}：进球”或“掷点 1：射失”，副行统一“勺子点球规则：1 射失，2–6 进球”。正常点球沿用既有 opposed Outcome / WinReason，不建立新的结果家族或颜色语义。
+
+已合法披露的参与者身份保持连续。actor/wait/submission helper 仅在增加信息时显示，重复 roll-owner helper 保持占位隐藏。结果、Reason、获胜标识与可见比分服从同一既有揭示门控；Next Round 使用 canonical continuation 返回棋盘。Local / Network 共享安全投影、动作与表现家族，不新增时钟、RNG、胜负逻辑或 Roll 变体。

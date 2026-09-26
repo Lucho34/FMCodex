@@ -59,7 +59,7 @@ enum class EFMCodexFlowDiagram : uint8
 {
 	Corner, LongFreeKick, ShortFreeKick, Penalty,
 	Direct, Combination, Power, Panenka, HighCross, LowCross,
-	FormulaAttack, FormulaDefense
+	FormulaAttack, FormulaDefense, PenaltyDirect, PenaltyChip
 };
 
 UCLASS()

@@ -185,7 +185,7 @@ bool FLongTheaterScope::RunTest(const FString&)
  FFMCodexUMGMatchScreenViewModel P; P.SetPiece.bVisible=true; P.SetPiece.Type=Type::LongFreeKick;
  TestTrue(TEXT("Long selection enters"),WantsTheater(P,{}));
  Mode->Set(0,ECVF_SetByCode); TestFalse(TEXT("Long fallback retains old path"),WantsTheater(P,{})); Mode->Set(1,ECVF_SetByCode);
- for (auto T:{Type::Penalty,Type::Corner}) {P.SetPiece.Type=T;TestFalse(TEXT("Unmigrated routes remain excluded"),WantsTheater(P,{}));}
+ for (auto T:{Type::Corner}) {P.SetPiece.Type=T;TestFalse(TEXT("Unmigrated routes remain excluded"),WantsTheater(P,{}));}
  return true;
 }
 #endif

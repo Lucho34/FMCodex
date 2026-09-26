@@ -1099,6 +1099,10 @@ namespace FMCodexLocalMatchUMGPresentation
 			return Roster == nullptr || InteractionView.LongFormulaGoalkeeperCardId.IsNone() ? nullptr
 				: Roster->FindByPredicate([&InteractionView](const auto& Card)
 				{ return Card.CardId == InteractionView.LongFormulaGoalkeeperCardId; });
+		if (InteractionView.SetPieceType == ESetPieceSelectedType::Penalty)
+			return Roster == nullptr || InteractionView.PenaltyFormulaGoalkeeperCardId.IsNone() ? nullptr
+				: Roster->FindByPredicate([&InteractionView](const auto& Card)
+				{ return Card.CardId == InteractionView.PenaltyFormulaGoalkeeperCardId; });
 		return Roster == nullptr ? nullptr : Roster->FindByPredicate(
 			[](const FFMCodexLocalMatchCardView& Card)
 			{
@@ -1510,6 +1514,20 @@ namespace FMCodexLocalMatchUMGPresentation
 					FText::AsNumber(InteractionView.SetPiecePairedD6Total), FText::FromString(Result.ResultTitle)).ToString();
 		}
 
+		if (bCompactMethod && InteractionView.SetPieceType == ESetPieceSelectedType::Penalty)
+		{
+			Result.AttackRow.Side = InteractionView.CurrentAttackingPlayer;
+			Result.AttackRow.SideLabel = TEXT("进攻方");
+			AddSetPieceParticipant(Result.AttackRow, InteractionView, InteractionView.SetPieceCarrier, TEXT("主罚球员"));
+			Result.AttackRow.Terms = {SetPieceRollTerm(InteractionView.bHasSetPiecePairedD6, InteractionView.SetPiecePairedD6A, 0, bCompactPending)};
+			Result.bAttackRowActive = bCompactPending;
+			if (Result.bNarrativeAvailable)
+				Result.ResolutionReasonLabel = FText::Format(NSLOCTEXT("FMCodexPenalty", "PanenkaReason", "掷点 {0}：{1}\n勺子点球规则：1 射失，2–6 进球"),
+					FText::AsNumber(InteractionView.SetPiecePairedD6A), InteractionView.bSetPieceGoal
+						? NSLOCTEXT("FMCodexPenalty", "PanenkaGoalReason", "进球")
+						: NSLOCTEXT("FMCodexPenalty", "PanenkaMissReason", "射失")).ToString();
+		}
+
 		if (bOpposed)
 		{
 			const EInitialTurnOrderPlayer Attacker =
@@ -1650,7 +1668,7 @@ namespace FMCodexLocalMatchUMGPresentation
 					: InteractionView.SetPieceAttackKnownSubtotal;
 				Result.AttackRow.DisplayedResultLabel = CompactNumber(
 					Result.AttackRow.DisplayedResult);
-				if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || (InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick && Result.bShowDefenseRow)) && InteractionView.bHasSetPieceAttackD6)
+				if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::Penalty || (InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick && Result.bShowDefenseRow)) && InteractionView.bHasSetPieceAttackD6)
 					Result.AttackRow.bDisplayedResultIsFinalValue = true;
 			}
 			if (InteractionView.bHasSetPieceDefenseCurrentTotal
@@ -1689,9 +1707,9 @@ namespace FMCodexLocalMatchUMGPresentation
 			}
 		}
 
-		if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick) && InteractionView.bHasSetPieceFormula)
+		if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::Penalty) && InteractionView.bHasSetPieceFormula)
 			Result.ResolutionReasonLabel = FormulaReason(InteractionView.SetPieceFormula, Result.AttackRow, Result.DefenseRow);
-		if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick) && InteractionView.bSetPieceNoLegalCarrier)
+		if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::Penalty) && InteractionView.bSetPieceNoLegalCarrier)
 			Result.ResolutionReasonLabel = OutcomeLabel;
 
 		if (InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick && Result.bNarrativeAvailable
@@ -2709,7 +2727,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	using namespace FMCodexLocalMatchUMGPresentation;
 	FFMCodexUMGMatchScreenViewModel Result;
 	if (InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick
-		|| InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick)
+		|| InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick
+		|| InteractionView.SetPieceType == ESetPieceSelectedType::Penalty)
 		Result.SetPiece = FFMCodexSetPieceSelectionPresentation::Build(InteractionView, LocalViewerSide);
 	const bool bProjectOnPitchPlayerSelection =
 		InteractionView.InteractionCategory

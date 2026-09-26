@@ -1054,6 +1054,150 @@ private:
  double Start=FPlatformTime::Seconds();float Changed=0;
 };
 
+class FPenaltyTheaterPIE final : public IAutomationLatentCommand
+{
+public:
+ FPenaltyTheaterPIE(FAutomationTestBase* InTest,bool InChip,bool InMiss=false):Test(InTest),Chip(InChip),Miss(InMiss){}
+ bool Update() override
+ {
+  if(FPlatformTime::Seconds()-Started>150){Test->AddError(TEXT("Penalty PIE timed out"));return true;}
+  if(!GEditor || !GEditor->PlayWorld)return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr;if(!S)return false;
+  auto Visible=[&](const TCHAR* N){auto* W=S->GetWidgetFromName(N);return W && W->GetVisibility()!=ESlateVisibility::Collapsed && W->GetVisibility()!=ESlateVisibility::Hidden;};
+  auto Text=[&](const TCHAR* N){return CastChecked<UTextBlock>(S->GetWidgetFromName(N))->GetText().ToString();};
+  auto Click=[&](const TCHAR* N){auto* B=Cast<UButton>(S->GetWidgetFromName(N));if(!B || !B->GetIsEnabled()){Test->AddError(FString(TEXT("Missing Penalty CTA: "))+N);return false;}B->OnClicked.Broadcast();return true;};
+  const float Game=GEditor->PlayWorld->GetTimeSeconds();
+  if(S->IsInlineFormulaRevealInputBlocked())
+  {
+   if(Step==3)Test->TestFalse(TEXT("Real Type reveal remains Legacy"),Visible(TEXT("ResolutionTheater")));
+   if(Step==8 || Step==9)
+   {
+    Test->TestFalse(TEXT("No early Outcome"),Visible(TEXT("TheaterOutcome")));
+    Test->TestEqual(TEXT("No early visible score"),S->GetMatchHeader()->GetDisplayedScoreLabel(),BeforeScore);
+    Test->TestEqual(TEXT("Redundant roll helper hidden"),S->GetWidgetFromName(TEXT("TheaterStatus"))->GetVisibility(),ESlateVisibility::Hidden);
+    if(!Chip && Step==9)
+    {
+     Test->TestFalse(TEXT("Real defense never replays attacker"),Visible(TEXT("TheaterAttackReelHost")));
+     Test->TestEqual(TEXT("Real attack remains three"),Text(TEXT("TheaterAttackRollValue")),FString(TEXT("3")));
+     Test->TestEqual(TEXT("Real settled attack total stable"),Text(TEXT("TheaterAttackFinalNumber")),AttackTotal);
+    }
+    if(S->GetInlineFormulaRevealPhase()==EFMCodexUMGInlineFormulaRevealPhase::Cycling)
+    {
+     const TCHAR* ReelName=Chip?TEXT("TheaterPairAReel"):Step==9?TEXT("TheaterDefenseReel"):TEXT("TheaterAttackReel");
+     Test->TestEqual(TEXT("Real operand uses TheaterInline"),CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(ReelName))->GetVisualVariant(),EFMCodexRollVisualVariant::TheaterInline);
+     if(Step==8 && !SawAttack){Capture(TEXT("05_AttackRoll"));SawAttack=true;}
+     if(Step==9 && !SawDefense){Capture(TEXT("06_DefenseRoll"));SawDefense=true;}
+    }
+   }
+   return false;
+  }
+  if(Game-Changed<.65f)return false;
+  auto Next=[&](){++Step;Changed=Game;Test->AddInfo(FString::Printf(TEXT("PENALTY_PIE branch=%s step=%d game=%.3f"),Chip?TEXT("Panenka"):TEXT("Direct"),Step,Game));};
+  if(Step==0){S->RequestStartNewMatch();Next();return false;}
+  if(Step==1){if(!Override(*C,EFMCodexLocalDevRollTarget::FullD12,9))return true;S->RequestRollTacticalPoints();Next();return false;}
+  if(Step==2){if(!Override(*C,EFMCodexLocalDevRollTarget::SetPieceType,6))return true;S->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);Next();return false;}
+  if(Step==3)
+  {
+   if(S->GetWidgetFromName(TEXT("TheaterBottom"))->GetRenderOpacity()<.99f)return false;
+   // Let the post-Type reveal layout paint before capturing the selection rule bar.
+   if(!SelectionReady){SelectionReady=true;Changed=Game;return false;}
+   Test->TestTrue(TEXT("Penalty enters existing Theater"),Visible(TEXT("ResolutionTheater")));
+   Test->TestEqual(TEXT("Penalty heading"),Text(TEXT("TheaterTitle")),FString(TEXT("点球")));
+   Test->TestEqual(TEXT("Selection names modified goalkeeper attribute"),Text(TEXT("TheaterDetail")),FString(TEXT("常规点球：取射门 / 传球较高值，对抗门将预判（门将预判 -3）")));
+   Test->TestEqual(TEXT("Selection subtitle"),Text(TEXT("TheaterSubtitle")),FString(TEXT("选择主罚球员")));
+   MoveTo(S->GetWidgetFromName(TEXT("TheaterTitle")));Capture(TEXT("01_TakerSelection"));
+   auto* Rack=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
+   const auto* Candidate=Rack->GetRenderedCardWidgets().FindByPredicate([](const auto& Card){return Card->GetPresentation().CardId==FName(TEXT("Prototype.Arsenal.EberechiEze"));});
+   if(!Candidate){Test->AddError(TEXT("Expected legal PIE taker unavailable"));return true;}
+   MoveTo(Candidate->Get());Next();return false;
+  }
+  if(Step==4)
+  {
+   Test->TestTrue(TEXT("Real selection inspector visible"),Visible(TEXT("TheaterTakerFullCard")));
+   Test->TestEqual(TEXT("Real pointer inspects the intended candidate"),CastChecked<UFMCodexPlayerCardWidget>(S->GetWidgetFromName(TEXT("TheaterTakerFullCard")))->GetPresentation().CardId,FName(TEXT("Prototype.Arsenal.EberechiEze")));
+   auto* Rack=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
+   Rack->OnCardSelectionRequested.Broadcast(FName(TEXT("Prototype.Arsenal.EberechiEze")));MoveTo(S->GetWidgetFromName(TEXT("TheaterTitle")));Next();return false;
+  }
+  if(Step==5)
+  {
+   Test->TestTrue(TEXT("Selected subtitle retains taker"),Text(TEXT("TheaterSubtitle")).StartsWith(TEXT("已选主罚球员：")));
+   Capture(TEXT("02_Selected"));if(!Click(TEXT("TheaterContinue")))return true;Next();return false;
+  }
+  if(Step==6)
+  {
+   Test->TestFalse(TEXT("Method screen clears inspector"),Visible(TEXT("TheaterTakerInspector")));
+   Test->TestEqual(TEXT("Both methods are peers"),CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterNearDirectLabel")))->GetFont().Size,CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterNearCombinationLabel")))->GetFont().Size);
+   Test->TestEqual(TEXT("Method copy keeps the attribute adjustment"),Text(TEXT("TheaterNearDirectHint")),FString(TEXT("取射门 / 传球较高值\n对抗门将预判（门将预判 -3）")));
+   Capture(TEXT("03_MethodSelection"));if(!Click(Chip?TEXT("TheaterNearCombination"):TEXT("TheaterNearDirect")))return true;Next();return false;
+  }
+  if(Step==7)
+  {
+   Test->TestEqual(TEXT("Panenka has no defense panel"),Visible(TEXT("TheaterDefensePanelBounds")),!Chip);
+   if(!Chip)
+   {
+    auto* H=CastChecked<UBorder>(S->GetWidgetFromName(TEXT("TheaterDefenseBaseHover")));
+    auto* T=CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(H->GetToolTip())->GetContent())->GetContent());
+    Test->TestTrue(TEXT("Real defense tooltip explains -3"),T->GetText().ToString().Contains(TEXT("点球防守调整 -3")));
+    if(!TooltipSeen){MoveTo(H);FSlateApplication::Get().UpdateToolTip(true);TooltipSeen=true;Changed=Game;return false;}
+    Capture(TEXT("04_NormalFormulaTooltip"));MoveTo(S->GetWidgetFromName(TEXT("TheaterTitle")));
+   }
+   BeforeScore=S->GetMatchHeader()->GetDisplayedScoreLabel();Capture(TEXT("04_Unresolved"));
+   if(!Override(*C,Chip?EFMCodexLocalDevRollTarget::PenaltyPanenka:EFMCodexLocalDevRollTarget::PenaltyDirectAttack,Chip?(Miss?1:2):3))return true;
+   if(!Chip && !Override(*C,EFMCodexLocalDevRollTarget::PenaltyDirectDefense,2))return true;
+   if(!Click(TEXT("TheaterContinue")))return true;Next();return false;
+  }
+  if(Step==8 && !Chip)
+  {
+   AttackTotal=Text(TEXT("TheaterAttackFinalNumber"));
+   if(!Click(TEXT("TheaterContinue")))return true;Next();return false;
+  }
+  if(Step==8 || Step==9)
+  {
+   Test->TestTrue(TEXT("Natural attack roll observed"),SawAttack);
+   if(!Chip)Test->TestTrue(TEXT("Natural defense roll observed"),SawDefense);
+   Test->TestTrue(TEXT("Outcome in same Theater"),Visible(TEXT("TheaterOutcome")));
+   Test->TestTrue(TEXT("Canonical result supplied"),C->GetInteractionView().bHasSetPieceOutcome);
+   Test->TestTrue(TEXT("Reason comes from projection"),!S->GetPresentation().InlineFormula.ResolutionReasonLabel.IsEmpty());
+   if(Chip)
+   {
+    Test->TestEqual(TEXT("Panenka result uses authority"),C->GetInteractionView().bSetPieceGoal,!Miss);
+    Test->TestEqual(TEXT("Panenka primary reason is explicit"),Text(TEXT("TheaterDetail")),FString(Miss?TEXT("掷点 1：射失"):TEXT("掷点 2：进球")));
+    Test->TestEqual(TEXT("Panenka secondary reason names the rule"),Text(TEXT("TheaterReasonSecondary")),FString(TEXT("勺子点球规则：1 射失，2–6 进球")));
+   }
+   Test->TestEqual(TEXT("Final scoreboard agrees with visible result"),S->GetMatchHeader()->GetDisplayedScoreLabel(),S->GetPresentation().Header.ScoreLabel);
+   Capture(TEXT("07_Result"));if(!Click(TEXT("TheaterContinue")))return true;Step=10;Changed=Game;return false;
+  }
+  if(Visible(TEXT("ResolutionTheater")) && Game-Changed<3)return false;
+  Test->TestFalse(TEXT("Next returns to board"),Visible(TEXT("ResolutionTheater")));
+  Test->TestTrue(TEXT("Next D12 available"),S->GetPresentation().Interaction.bCanRollTacticalPoints);
+  Capture(TEXT("08_Return"));return true;
+ }
+private:
+ void MoveTo(UWidget* Widget)
+ {
+  // Use actual Slate hover delivery so native mouse-leave cannot cancel a synthetic request.
+  auto& App=FSlateApplication::Get();const auto& G=Widget->GetCachedGeometry();
+  const FVector2D Pos=G.LocalToAbsolute(G.GetLocalSize()*.5f),Old=App.GetCursorPos();App.SetCursorPos(Pos);
+  App.ProcessMouseMoveEvent(FPointerEvent(0,Pos,Old,TSet<FKey>(),EKeys::Invalid,0,FModifierKeysState()),false);
+ }
+ bool Override(AFMCodexLocalMatchPlayerController& C,EFMCodexLocalDevRollTarget Target,int32 Value)
+ {FFMCodexLocalDevRollOverrideRequest R;R.Target=Target;R.Value=Value;return Test->TestTrue(TEXT("Existing deterministic provider seam"),C.SetLocalDevRollOverride(R).bSuccess);}
+ void Capture(const TCHAR* Name)
+ {
+  // A.1 evidence is limited to changed copy and the retained precise tooltip.
+  const FString Shot(Name);
+  if(Chip?Shot!=TEXT("07_Result"):(Shot!=TEXT("01_TakerSelection") && Shot!=TEXT("03_MethodSelection") && Shot!=TEXT("04_NormalFormulaTooltip")))return;
+  TArray<FColor> Pixels;FIntVector Size=FIntVector::ZeroValue;
+  if(!Test->TestTrue(TEXT("Real Penalty PIE frame captured"),TheaterPIEWindow.IsValid() && FSlateApplication::Get().TakeScreenshot(TheaterPIEWindow->GetContent(),Pixels,Size)))return;
+  const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_12A_1/PIE")/(Chip?(Miss?TEXT("PanenkaMiss"):TEXT("PanenkaGoal")):TEXT("Direct"));IFileManager::Get().MakeDirectory(*Dir,true);
+  TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+  Test->TestTrue(TEXT("Penalty screenshot saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/(FString(Name)+TEXT(".png")))));
+ }
+ FAutomationTestBase* Test;bool Chip=false,Miss=false,SelectionReady=false,TooltipSeen=false,SawAttack=false,SawDefense=false;int32 Step=0;
+ double Started=FPlatformTime::Seconds();float Changed=0;FString BeforeScore,AttackTotal;
+};
+
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterPIETest,"FMCodex.PIE.ResolutionTheater.HighCross",
  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1116,6 +1260,19 @@ bool FLongTheaterPIETest::RunTest(const FString& P)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
  ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FNearTheaterPIE(this,P==TEXT("Power"),false,false,true,P==TEXT("Early"))));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+ return true;
+}
+
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FPenaltyTheaterPIETest,"FMCodex.PIE.ResolutionTheater.Penalty",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+void FPenaltyTheaterPIETest::GetTests(TArray<FString>& N,TArray<FString>& C) const
+{for(const TCHAR* M:{TEXT("Direct"),TEXT("Panenka"),TEXT("PanenkaMiss")}) {N.Add(M);C.Add(M);}}
+bool FPenaltyTheaterPIETest::RunTest(const FString& P)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FPenaltyTheaterPIE(this,P.StartsWith(TEXT("Panenka")),P==TEXT("PanenkaMiss"))));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
 }

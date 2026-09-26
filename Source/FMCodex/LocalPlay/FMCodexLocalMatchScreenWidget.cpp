@@ -471,12 +471,14 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 	const bool bLowEnabled = FMCodexResolutionTheaterPrototype::IsLowCrossEnabled();
 	const bool bNearEnabled = FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled();
 	const bool bLongEnabled = FMCodexResolutionTheaterPrototype::IsLongFreeKickEnabled();
-	if (TheaterMotion.bLastEnabled != bEnabled || TheaterMotion.bLastLowEnabled != bLowEnabled || TheaterMotion.bLastNearEnabled != bNearEnabled || TheaterMotion.bLastLongEnabled != bLongEnabled)
+	const bool bPenaltyEnabled = FMCodexResolutionTheaterPrototype::IsPenaltyEnabled();
+	if (TheaterMotion.bLastEnabled != bEnabled || TheaterMotion.bLastLowEnabled != bLowEnabled || TheaterMotion.bLastNearEnabled != bNearEnabled || TheaterMotion.bLastLongEnabled != bLongEnabled || TheaterMotion.bLastPenaltyEnabled != bPenaltyEnabled)
 	{
 		TheaterMotion.bLastEnabled = bEnabled;
 		TheaterMotion.bLastLowEnabled = bLowEnabled;
 		TheaterMotion.bLastNearEnabled = bNearEnabled;
 		TheaterMotion.bLastLongEnabled = bLongEnabled;
+		TheaterMotion.bLastPenaltyEnabled = bPenaltyEnabled;
 		RefreshVisuals(); // Same-state comparison; no command or reveal-clock reset.
 	}
 	if (TheaterMotion.Elapsed < 1.f || (TheaterMotion.bActive && !TheaterMotion.bHasFieldGeometry))
@@ -526,11 +528,13 @@ void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested()
 {
  if (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) HandleLongDirectRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick) HandleShortDirectRequested();
+ else if (Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty) HandlePenaltyDirectRequested();
 }
 void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickAlternativeRequested()
 {
  if (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) HandleLongPowerRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick) HandleShortAngledRequested();
+ else if (Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty) HandlePenaltyPanenkaRequested();
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleTheaterHighRequested()
@@ -1396,7 +1400,7 @@ void UFMCodexLocalMatchScreenWidget::HandleContinueRequested()
 
 void UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested()
 {
-	if (TheaterMotion.bActive && (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) && Presentation.SetPiece.bTakerWait)
+	if (TheaterMotion.bActive && (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick || Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty) && Presentation.SetPiece.bTakerWait)
 	{
 		HandleSetPiecePrimaryRequested();
 		return;
@@ -3943,6 +3947,10 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		&& ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::SetPieceAttack)
 	{
 		// A legally published single-die terminal must retain its static hint during the reel.
+		Result.bAttackRowActive = true;
+		for (auto& Term : Result.AttackRow.Terms)
+			if (Term.Kind == EFMCodexUMGInlineFormulaTermKind::RawRoll && !bFormulaDisclosed)
+			{ Term.bResolved=false; Term.RawD6=0; Term.DisplayLabel=TEXT("?"); }
 		Result.RollHelperLabel = bFormulaDisclosed ? FString()
 			: FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(SetPieceType).ToString();
 	}
@@ -4315,7 +4323,8 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 		&& ActiveCrossRollReveal.ContestId==TEXT("Match.TacticalPoint")) return true;
 	if (!TheaterMotion.bActive) return false;
 	if ((Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick && FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled())
-		|| (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick && FMCodexResolutionTheaterPrototype::IsLongFreeKickEnabled()))
+		|| (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick && FMCodexResolutionTheaterPrototype::IsLongFreeKickEnabled())
+		|| (Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty && FMCodexResolutionTheaterPrototype::IsPenaltyEnabled()))
 		return ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceAttack
 			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceDefense
 			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPiecePairedA
@@ -5241,7 +5250,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 				: DisplayedThroughBall.bNarrativeAvailable)
 			: StandaloneInlineFormula.bVisible && StandaloneInlineFormula.bNarrativeAvailable;
 	if ((Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick
-		|| Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick)
+		|| Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick
+		|| Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty)
 		&& FMCodexResolutionTheaterPrototype::WantsTheater(Presentation,StandaloneInlineFormula))
 		bOutcomeDisclosed = FMCodexOutcomePresentation::IsFinalReady(StandaloneInlineFormula.bNarrativeAvailable,StandaloneInlineFormula.bDiceRevealVisible);
 	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader(bOutcomeDisclosed));

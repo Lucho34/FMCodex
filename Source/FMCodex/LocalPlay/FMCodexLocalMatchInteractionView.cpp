@@ -1196,6 +1196,8 @@ namespace FMCodexLocalMatchInteractionView
 				Result.NearFormulaGoalkeeperCardId = Goalkeeper.CardId;
 			else if (Result.SetPieceType == ESetPieceSelectedType::LongFreeKick)
 				Result.LongFormulaGoalkeeperCardId = Goalkeeper.CardId;
+			else if (Result.SetPieceType == ESetPieceSelectedType::Penalty)
+				Result.PenaltyFormulaGoalkeeperCardId = Goalkeeper.CardId;
 			Result.bHasSetPieceAttackKnownSubtotal = true;
 			Result.SetPieceAttackKnownSubtotal = AttackBase;
 			Result.bHasSetPieceAttackCurrentTotal = true;
@@ -1535,6 +1537,7 @@ namespace FMCodexLocalMatchInteractionView
 		View.SetPieceCarrier = {};
 		View.NearFormulaGoalkeeperCardId = NAME_None;
 		View.LongFormulaGoalkeeperCardId = NAME_None;
+		View.PenaltyFormulaGoalkeeperCardId = NAME_None;
 		View.CornerAttackerNominees.Reset();
 		View.CornerDefenderNominees.Reset();
 		View.bCornerAttackerNominationsLocked = false;

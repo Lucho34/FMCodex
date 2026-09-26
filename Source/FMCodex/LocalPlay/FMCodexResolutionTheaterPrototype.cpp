@@ -52,6 +52,8 @@ TAutoConsoleVariable<int32> NearMode(TEXT("fm.UI.ResolutionStageV2.NearFreeKick"
 	TEXT("Development Near Free Kick fallback; default ON. 0 restores the legacy Near flow. Shipping always uses Near Free Kick Theater."), ECVF_Default);
 TAutoConsoleVariable<int32> LongMode(TEXT("fm.UI.ResolutionStageV2.LongFreeKick"), 1,
 	TEXT("Development Long Free Kick fallback; default ON. 0 restores the legacy Long flow. Shipping always uses Long Free Kick Theater."), ECVF_Default);
+TAutoConsoleVariable<int32> PenaltyMode(TEXT("fm.UI.ResolutionStageV2.Penalty"), 1,
+	TEXT("Development Penalty fallback; default ON. 0 restores the legacy Penalty flow. Shipping always uses Penalty Theater."), ECVF_Default);
 #endif
 using K = EFMCodexUMGInlineFormulaTermKind;
 using C = EFMCodexUMGInteractionCategory;
@@ -482,8 +484,8 @@ void RefreshTakerHelper(UWidgetTree& Tree, FTakerInspection& Inspection)
  Full->RefreshFromPresentation(Subject?Subject->Card:FFMCodexUMGCardViewModel(),EFMCodexPlayerCardPresentationMode::InteractionChoice);
  Full->SetVisibility(Subject?ESlateVisibility::HitTestInvisible:ESlateVisibility::Collapsed);
  Show(*Tree.FindWidget(TEXT("TheaterTakerPlaceholder")),!Subject);
- const FText DirectRule=Inspection.bLongFreeKick?LOCTEXT("LongTakerDirectRule","直接射门：远射对抗门将站位 + 2；进攻掷点 1–2 直接射偏") : LOCTEXT("TakerDirectRule","直接射门：取射门 / 传球较高值，与对方门将手控球进行判定");
- const FText CombinationRule=Inspection.bLongFreeKick?LOCTEXT("LongTakerPowerRule","重炮轰门：两枚骰子总和 ≥ 11 进球，无属性门槛") : LOCTEXT("TakerCombinationRule","战术配合：需射门 + 传球 ≥ 8；两枚骰子总和 ≥ 9 进球");
+ const FText DirectRule=Inspection.bPenalty?LOCTEXT("PenaltyTakerDirectRule","常规点球：取射门 / 传球较高值，对抗门将预判（门将预判 -3）") : Inspection.bLongFreeKick?LOCTEXT("LongTakerDirectRule","直接射门：远射对抗门将站位 + 2；进攻掷点 1–2 直接射偏") : LOCTEXT("TakerDirectRule","直接射门：取射门 / 传球较高值，与对方门将手控球进行判定");
+ const FText CombinationRule=Inspection.bPenalty?LOCTEXT("PenaltyTakerPanenkaRule","勺子点球：掷一枚骰子；1 射失，2–6 进球") : Inspection.bLongFreeKick?LOCTEXT("LongTakerPowerRule","重炮轰门：两枚骰子总和 ≥ 11 进球，无属性门槛") : LOCTEXT("TakerCombinationRule","战术配合：需射门 + 传球 ≥ 8；两枚骰子总和 ≥ 9 进球");
  const auto PlayerName=[](const FFMCodexUMGCardViewModel& Card)
  { return Card.IdentityLabel.IsEmpty()?LOCTEXT("TakerFallback","球员"):FText::FromString(Card.IdentityLabel); };
  // Selection owns the subtitle; hovering only changes the inspected candidate and rule suffix.
@@ -491,7 +493,7 @@ void RefreshTakerHelper(UWidgetTree& Tree, FTakerInspection& Inspection)
   ?FText::Format(LOCTEXT("TakerSelectedSubtitle","已选主罚球员：{0}"),PlayerName(Selected->Card))
   :LOCTEXT("TakerSelectionSubtitle","选择主罚球员"));
  FText Secondary=CombinationRule;
- if (Subject && !Inspection.bLongFreeKick)
+ if (Subject && !Inspection.bLongFreeKick && !Inspection.bPenalty)
  {
   const bool* Eligibility=Inspection.CombinationEligibility.Find(Subject->Card.CardId);
   const FText Status=Eligibility?(*Eligibility?LOCTEXT("TakerEligible","可用"):LOCTEXT("TakerIneligible","不可用")):LOCTEXT("TakerUnknown","资格暂不可用");
@@ -615,6 +617,14 @@ bool IsLongFreeKickEnabled()
 	return LongMode.GetValueOnGameThread()!=0;
 #endif
 }
+bool IsPenaltyEnabled()
+{
+#if UE_BUILD_SHIPPING
+	return true;
+#else
+	return PenaltyMode.GetValueOnGameThread()!=0;
+#endif
+}
 bool IsFormulaContest(FName ContestId)
 {
 	return ContestId==TEXT("Cross.High") || (ContestId==TEXT("Cross.Low") && IsLowCrossEnabled());
@@ -622,11 +632,11 @@ bool IsFormulaContest(FName ContestId)
 bool WantsTheater(const FFMCodexUMGMatchScreenViewModel& Screen, const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed)
 {
 	if (!IsEnabled() || Screen.FullTime.bVisible || Screen.Resolution.bRejected) return false;
-	if (Screen.SetPiece.bVisible && (Screen.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick || Screen.SetPiece.Type==ESetPieceSelectedType::LongFreeKick))
+	if (Screen.SetPiece.bVisible && (Screen.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick || Screen.SetPiece.Type==ESetPieceSelectedType::LongFreeKick || Screen.SetPiece.Type==ESetPieceSelectedType::Penalty))
 	{
 		// The Type reel includes its existing ResultHold. Future safe method/terminal facts
 		// cannot claim the stage while that displayed surface still owns the reveal.
-		return (Screen.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick?IsNearFreeKickEnabled():IsLongFreeKickEnabled()) && !(Displayed.bVisible && Displayed.ContestId==TEXT("SetPiece.Type"))
+		return (Screen.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick?IsNearFreeKickEnabled():Screen.SetPiece.Type==ESetPieceSelectedType::LongFreeKick?IsLongFreeKickEnabled():IsPenaltyEnabled()) && !(Displayed.bVisible && Displayed.ContestId==TEXT("SetPiece.Type"))
 			&& !(Screen.Interaction.CrossRollRevealKind==EFMCodexUMGCrossRollRevealKind::TacticalPoint);
 	}
 
@@ -784,32 +794,38 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 {
 	const bool bNear=Screen.SetPiece.bVisible && Screen.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick && IsNearFreeKickEnabled();
 	const bool bLong=Screen.SetPiece.bVisible && Screen.SetPiece.Type==ESetPieceSelectedType::LongFreeKick && IsLongFreeKickEnabled();
-	const bool bFreeKick=bNear || bLong;
-	const bool bSelection=bFreeKick && Screen.SetPiece.bTakerWait;
+	const bool bPenalty=Screen.SetPiece.bVisible && Screen.SetPiece.Type==ESetPieceSelectedType::Penalty && IsPenaltyEnabled();
+	const bool bSetPieceTheater=bNear || bLong || bPenalty;
+	const bool bSelection=bSetPieceTheater && Screen.SetPiece.bTakerWait;
  const bool bInspect=bSelection && !Screen.SetPiece.TakerOptions.IsEmpty() && !bRequestPending;
  if (!bInspect) ClearTakerInspection(Tree,Inspection);
  else
  {
-  Inspection.bActive=true; Inspection.bLongFreeKick=bLong; Inspection.CombinationEligibility.Reset();
+  Inspection.bActive=true; Inspection.bLongFreeKick=bLong; Inspection.bPenalty=bPenalty; Inspection.CombinationEligibility.Reset();
   Tree.FindWidget(TEXT("TheaterTakerInspector"))->SetVisibility(ESlateVisibility::HitTestInvisible);
   for (const auto& Fact:Screen.SetPiece.NearTakerEligibility)
    Inspection.CombinationEligibility.Add(Fact.CardId,Fact.bCanUseTacticalCombination);
  }
  Find<UBorder>(Tree,TEXT("TheaterBodyPadding"))->SetPadding(bSelection?FMargin(0,20,0,20):FMargin(0,32,0,76));
-	const bool bMethod=bFreeKick && Screen.SetPiece.bMethodWait;
+	const bool bMethod=bSetPieceTheater && Screen.SetPiece.bMethodWait;
 	// Match the candidate + inspector row, method button edges, or full duel width.
 	// Keep the duel allocation for single-side outcomes so the footer never jumps at reveal.
-	Find<USizeBox>(Tree,TEXT("TheaterBottomBounds"))->SetWidthOverride(bFreeKick?(bSelection?1324.f:bMethod?860.f:1284.f):1040.f);
+	Find<USizeBox>(Tree,TEXT("TheaterBottomBounds"))->SetWidthOverride(bSetPieceTheater?(bSelection?1324.f:bMethod?860.f:1284.f):1040.f);
 	const bool bPair=(bNear && Screen.SetPiece.NearMethod==EMatchPlayShortFreeKickMethod::Angled)
 		|| (bLong && Screen.SetPiece.LongMethod==EMatchPlayLongFreeKickMethod::Power);
-	const bool bFormula=P.bVisible && (IsFormulaContest(P.ContestId) || bFreeKick) && P.bShowFormulaRows;
+	const bool bPanenka=bPenalty && Screen.SetPiece.PenaltyMethod==EMatchPlayPenaltyMethod::Panenka;
+	const bool bCompactRoll=bPair || bPanenka;
+	const bool bFormula=P.bVisible && (IsFormulaContest(P.ContestId) || bSetPieceTheater) && P.bShowFormulaRows;
 	Show(*Tree.FindWidget(TEXT("TheaterDuel")),!bSelection && !Screen.SetPiece.bNoTakerNoGoal);
 	Show(*Tree.FindWidget(TEXT("TheaterTakerBounds")),bSelection && !Screen.SetPiece.TakerOptions.IsEmpty());
 	Show(*Tree.FindWidget(TEXT("TheaterNearMethods")),bMethod);
-	Show(*Tree.FindWidget(TEXT("TheaterDefensePanelBounds")),!bFreeKick || (bFormula && (P.bShowDefenseRow || (bLong && P.bDiceRevealVisible && !P.RollReel.bStaticResult))));
-	Show(*Tree.FindWidget(TEXT("TheaterVS"))->GetParent(),!bFreeKick || (bFormula && (P.bShowDefenseRow || (bLong && P.bDiceRevealVisible && !P.RollReel.bStaticResult))));
-	Show(*Tree.FindWidget(TEXT("TheaterPair")),bPair);
-	if (bFreeKick)
+	Show(*Tree.FindWidget(TEXT("TheaterDefensePanelBounds")),!bSetPieceTheater || (bFormula && (P.bShowDefenseRow || (bLong && P.bDiceRevealVisible && !P.RollReel.bStaticResult))));
+	Show(*Tree.FindWidget(TEXT("TheaterVS"))->GetParent(),!bSetPieceTheater || (bFormula && (P.bShowDefenseRow || (bLong && P.bDiceRevealVisible && !P.RollReel.bStaticResult))));
+	Show(*Tree.FindWidget(TEXT("TheaterPair")),bCompactRoll);
+	// Panenka consumes the same inline operand with no invented second die or arithmetic.
+	auto* CompactOperands=Find<UHorizontalBox>(Tree,TEXT("TheaterPair"));
+	for (int32 I=1;I<CompactOperands->GetChildrenCount();++I) Show(*CompactOperands->GetChildAt(I),!bPanenka);
+	if (bSetPieceTheater)
 	{
 		FFMCodexUMGCardRackViewModel Candidates; Candidates.bLocalRack=true; Candidates.ColumnCount=4;
 		Candidates.SideLabel=Screen.Interaction.ExpectedActorLabel;
@@ -833,21 +849,24 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 		for (bool bDirect:{true,false})
 		{
 			const bool bEnabled=bMethod && !bRequestPending
-				&& (bLong?Screen.SetPiece.LongMethods.Contains(bDirect?EMatchPlayLongFreeKickMethod::Direct:EMatchPlayLongFreeKickMethod::Power)
+				&& (bPenalty?Screen.SetPiece.PenaltyMethods.Contains(bDirect?EMatchPlayPenaltyMethod::Direct:EMatchPlayPenaltyMethod::Panenka)
+				:bLong?Screen.SetPiece.LongMethods.Contains(bDirect?EMatchPlayLongFreeKickMethod::Direct:EMatchPlayLongFreeKickMethod::Power)
 				:Screen.SetPiece.NearMethods.Contains(bDirect?EMatchPlayShortFreeKickMethod::Direct:EMatchPlayShortFreeKickMethod::Angled));
 			Find<UButton>(Tree,bDirect?TEXT("TheaterNearDirect"):TEXT("TheaterNearCombination"))->SetIsEnabled(bEnabled);
 			Find<UTextBlock>(Tree,bDirect?TEXT("TheaterNearDirectLabel"):TEXT("TheaterNearCombinationLabel"))->SetColorAndOpacity(bEnabled?Ink:Quiet);
 		}
-		Find<UTextBlock>(Tree,TEXT("TheaterNearCombinationLabel"))->SetText(bLong?FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage():LOCTEXT("NearCombination","战术配合"));
-		Find<UFMCodexMatchFlowDiagram>(Tree,TEXT("TheaterNearCombinationDiagram"))->SetDiagram(bLong?EFMCodexFlowDiagram::Power:EFMCodexFlowDiagram::Combination);
-		Find<UTextBlock>(Tree,TEXT("TheaterNearDirectHint"))->SetText(bLong?LOCTEXT("LongDirectHint","远射对抗门将站位 + 2\n进攻掷点 1–2 直接射偏"):LOCTEXT("NearDirectHint","取射门 / 传球较高值\n对抗门将手控球 + 防守加成"));
-		Find<UTextBlock>(Tree,TEXT("TheaterNearCombinationHint"))->SetText(bLong?LOCTEXT("LongPowerHint","无属性门槛\n两枚骰子总和 ≥ 11 进球"):LOCTEXT("NearCombinationHint","需射门 + 传球 ≥ 8\n两枚骰子总和 ≥ 9 进球"));
+		Find<UTextBlock>(Tree,TEXT("TheaterNearDirectLabel"))->SetText(bPenalty?LOCTEXT("PenaltyDirect","常规点球"):LOCTEXT("NearDirect","直接射门"));
+		Find<UFMCodexMatchFlowDiagram>(Tree,TEXT("TheaterNearDirectDiagram"))->SetDiagram(bPenalty?EFMCodexFlowDiagram::PenaltyDirect:EFMCodexFlowDiagram::Direct);
+		Find<UTextBlock>(Tree,TEXT("TheaterNearCombinationLabel"))->SetText(bPenalty?LOCTEXT("PenaltyPanenka","勺子点球"):bLong?FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage():LOCTEXT("NearCombination","战术配合"));
+		Find<UFMCodexMatchFlowDiagram>(Tree,TEXT("TheaterNearCombinationDiagram"))->SetDiagram(bPenalty?EFMCodexFlowDiagram::PenaltyChip:bLong?EFMCodexFlowDiagram::Power:EFMCodexFlowDiagram::Combination);
+		Find<UTextBlock>(Tree,TEXT("TheaterNearDirectHint"))->SetText(bPenalty?LOCTEXT("PenaltyDirectHint","取射门 / 传球较高值\n对抗门将预判（门将预判 -3）"):bLong?LOCTEXT("LongDirectHint","远射对抗门将站位 + 2\n进攻掷点 1–2 直接射偏"):LOCTEXT("NearDirectHint","取射门 / 传球较高值\n对抗门将手控球 + 防守加成"));
+		Find<UTextBlock>(Tree,TEXT("TheaterNearCombinationHint"))->SetText(bPenalty?LOCTEXT("PenaltyPanenkaHint","掷一枚骰子\n1 射失，2–6 进球"):bLong?LOCTEXT("LongPowerHint","无属性门槛\n两枚骰子总和 ≥ 11 进球"):LOCTEXT("NearCombinationHint","需射门 + 传球 ≥ 8\n两枚骰子总和 ≥ 9 进球"));
 		for (int32 I=0;I<2;++I)
 		{
 			const FString Prefix=I==0?TEXT("TheaterPairA"):TEXT("TheaterPairB");
 			const auto* Operand=P.AttackRow.Terms.FindByPredicate([I](const auto& Term){return Term.Kind==K::RawRoll && Term.RollSequenceIndex==I;});
-			const bool bReel=bPair && P.bDiceRevealVisible && P.ActiveRollSequenceIndex==I;
-			const bool bResolved=bPair && Operand && Operand->bResolved;
+			const bool bReel=bCompactRoll && P.bDiceRevealVisible && P.ActiveRollSequenceIndex==I;
+			const bool bResolved=bCompactRoll && Operand && Operand->bResolved;
 			Show(*Tree.FindWidget(Named(Prefix,TEXT("ReelHost"))),bReel);
 			Show(*Tree.FindWidget(Named(Prefix,TEXT("Pending"))),!bReel && !bResolved);
 			Show(*Tree.FindWidget(Named(Prefix,TEXT("RollValue"))),!bReel && bResolved);
@@ -859,13 +878,13 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	// Future safe facts may already exist while the visible route is still gated.
 	const FName DisclosedContest=bFormula ? P.ContestId
 		: (P.ContestId==TEXT("Cross.Route") && !P.RouteResultLabel.IsEmpty() ? Screen.InlineFormula.ContestId : NAME_None);
-	const bool bFinal=(bFormula || bFreeKick) && FMCodexOutcomePresentation::IsFinalReady(P.bNarrativeAvailable,P.bDiceRevealVisible);
+	const bool bFinal=(bFormula || bSetPieceTheater) && FMCodexOutcomePresentation::IsFinalReady(P.bNarrativeAvailable,P.bDiceRevealVisible);
 	// Setup deliberately has no visible Formula; its public participant rows
 	// live on the safe Screen projection, not the empty displayed Formula.
 	const auto& ParticipantSurface=Screen.InlineFormula.ContestId==TEXT("Cross.Setup")
 		? Screen.InlineFormula : P;
 	auto Attack=ParticipantSurface.AttackRow;
-	if (bFreeKick && !bFormula && !bPair)
+	if (bSetPieceTheater && !bFormula && !bCompactRoll)
 	{
 		Attack.SideLabel=TEXT("进攻"); Attack.Participants.Reset();
 		if (!Screen.SetPiece.TakerCardId.IsNone()) Attack.Participants.Add({TEXT("主罚球员"),Screen.SetPiece.TakerLabel.ToString()});
@@ -875,7 +894,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	// compare totals: rapid suppression can legitimately defeat the larger total.
 	RefreshSide(Tree,TEXT("TheaterAttack"),Attack,bFormula,P.bAttackRowActive,P.bDiceRevealVisible && P.RollReel.bVisible,bFinal && P.bNarrativeAttackSuccess);
 	RefreshSide(Tree,TEXT("TheaterDefense"),Defense,bFormula,P.bDefenseRowActive,P.bDiceRevealVisible && P.RollReel.bVisible,bFinal && !P.bNarrativeAttackSuccess);
-	Find<UTextBlock>(Tree,TEXT("TheaterTitle"))->SetText(bFreeKick ? (bFinal && (Screen.SetPiece.NearMethod!=EMatchPlayShortFreeKickMethod::None || Screen.SetPiece.LongMethod!=EMatchPlayLongFreeKickMethod::None)?FText::FromString(P.ResolutionContextLabel):FFMCodexPlayerUIPresentationText::SetPieceName(Screen.SetPiece.Type)) : DisclosedContest==TEXT("Cross.High") ? LOCTEXT("HighCross","高球传中")
+	Find<UTextBlock>(Tree,TEXT("TheaterTitle"))->SetText(bSetPieceTheater ? (bFinal && (Screen.SetPiece.NearMethod!=EMatchPlayShortFreeKickMethod::None || Screen.SetPiece.LongMethod!=EMatchPlayLongFreeKickMethod::None || Screen.SetPiece.PenaltyMethod!=EMatchPlayPenaltyMethod::None)?FText::FromString(P.ResolutionContextLabel):FFMCodexPlayerUIPresentationText::SetPieceName(Screen.SetPiece.Type)) : DisclosedContest==TEXT("Cross.High") ? LOCTEXT("HighCross","高球传中")
 		: DisclosedContest==TEXT("Cross.Low") ? LOCTEXT("LowCross","低球传中") : LOCTEXT("Cross","传中"));
 	auto* Title=Find<UTextBlock>(Tree,TEXT("TheaterTitle"));
 	auto TitleFont=Title->GetFont(); TitleFont.Size=bFinal?26:52; Title->SetFont(TitleFont);
@@ -884,8 +903,8 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	Outcome->SetText(bFinal ? FText::FromString(FMCodexOutcomePresentation::PrimaryMarkup(P.ContestLabel,P.OutcomeText)) : FText::GetEmpty()); Show(*Outcome,bFinal);
 	Show(*Tree.FindWidget(TEXT("TheaterOutcomeDivider")),bFinal);
 	Find<UTextBlock>(Tree,TEXT("TheaterSubtitle"))->SetText(bFinal ? FText::GetEmpty()
-		: bFreeKick ? (bSelection?LOCTEXT("NearSelect","选择主罚球员"):bMethod?LOCTEXT("NearMethod","选择结算方式")
-			:bPair?(bLong?FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage():LOCTEXT("NearPairStage","战术配合")):LOCTEXT("NearDirectStage","直接射门 · 进球判定"))
+		: bSetPieceTheater ? (bSelection?LOCTEXT("NearSelect","选择主罚球员"):bMethod?LOCTEXT("NearMethod","选择结算方式")
+			:bPenalty?(bPanenka?LOCTEXT("PenaltyPanenka","勺子点球"):LOCTEXT("PenaltyDirectStage","常规点球 · 进球判定")):bPair?(bLong?FFMCodexPlayerUIPresentationText::LongFreeKickPowerStage():LOCTEXT("NearPairStage","战术配合")):LOCTEXT("NearDirectStage","直接射门 · 进球判定"))
 		: bFormula ? LOCTEXT("Contest","进球判定") : Screen.Interaction.Category==C::SelectBranchIntent
 		? LOCTEXT("Setup","选择传中方式") : LOCTEXT("Route","路线判定"));
 	// H is BuildDisplayedHeader output, never the un-gated authoritative score.
@@ -901,11 +920,12 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	Find<UButton>(Tree,TEXT("TheaterContinue"))->SetIsEnabled(bAction);
 	const C Category=P.PrimaryAction.Action.Category;
 	const bool bRoll=Category==C::RollCrossRoute || Category==C::RollCrossAttack || Category==C::RollCrossDefense || (Category==C::RollShortFreeKickDirectAttack || Category==C::RollLongFreeKickDirectAttack)
-		|| (Category==C::RollShortFreeKickDirectDefense || Category==C::RollLongFreeKickDirectDefense) || (Category==C::RollShortFreeKickAngled || Category==C::RollLongFreeKickPower);
+		|| (Category==C::RollShortFreeKickDirectDefense || Category==C::RollLongFreeKickDirectDefense) || (Category==C::RollShortFreeKickAngled || Category==C::RollLongFreeKickPower) || Category==C::RollPenaltyDirectAttack || Category==C::RollPenaltyDirectDefense || Category==C::RollPenaltyPanenka;
 	Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(bConfirm?LOCTEXT("NearConfirm","确认主罚球员"):Category==C::RollCrossAttack ? LOCTEXT("AttackRoll","进攻方掷点")
 		: Category==C::RollCrossDefense ? LOCTEXT("DefenseRoll","防守方掷点")
 		: Category==C::RollCrossRoute ? LOCTEXT("RouteRoll","判定路线")
 		: (Category==C::RollShortFreeKickAngled || Category==C::RollLongFreeKickPower) ? LOCTEXT("NearPairRoll","掷两枚骰子")
+		: Category==C::RollPenaltyPanenka ? LOCTEXT("PenaltySingleRoll","掷一枚骰子")
 		: bFinal ? LOCTEXT("NextAttack","下一回合") : FText::FromString(P.PrimaryAction.Action.Label));
 	Find<UButton>(Tree,TEXT("TheaterContinue"))->SetBackgroundColor(FLinearColor::White);
 	Show(*Tree.FindWidget(TEXT("TheaterDiceIcon")),bRoll);
@@ -928,9 +948,14 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	if (bFinal) Detail=FText::FromString(P.ResolutionReasonLabel);
 	else if (bSelection) Detail=bConfirm?LOCTEXT("NearDraft","已选主罚球员，确认后继续")
 		:Screen.SetPiece.TakerOptions.IsEmpty()?LOCTEXT("NearWaitTaker","等待进攻方选择主罚球员"):LOCTEXT("NearChooseTaker","请选择主罚球员");
-	else if (bMethod) Detail=(bLong?Screen.SetPiece.LongMethods.IsEmpty():Screen.SetPiece.NearMethods.IsEmpty())?LOCTEXT("NearWaitMethod","等待进攻方选择结算方式")
-		:!bLong && !Screen.SetPiece.NearMethods.Contains(EMatchPlayShortFreeKickMethod::Angled)?LOCTEXT("NearIneligible","战术配合不可用：需射门 + 传球 ≥ 8")
-		:bLong?LOCTEXT("LongChooseMethod","当前主罚球员可选择直接射门或重炮轰门"):LOCTEXT("NearChooseMethod","当前主罚球员可选择直接射门或战术配合");
+	else if (bMethod) Detail=(bPenalty?Screen.SetPiece.PenaltyMethods.IsEmpty():bLong?Screen.SetPiece.LongMethods.IsEmpty():Screen.SetPiece.NearMethods.IsEmpty())?LOCTEXT("NearWaitMethod","等待进攻方选择结算方式")
+		:bNear && !Screen.SetPiece.NearMethods.Contains(EMatchPlayShortFreeKickMethod::Angled)?LOCTEXT("NearIneligible","战术配合不可用：需射门 + 传球 ≥ 8")
+		:bPenalty?LOCTEXT("PenaltyChooseMethod","当前主罚球员可选择常规点球或勺子点球"):bLong?LOCTEXT("LongChooseMethod","当前主罚球员可选择直接射门或重炮轰门"):LOCTEXT("NearChooseMethod","当前主罚球员可选择直接射门或战术配合");
+	else if (bPanenka)
+	{
+		Detail=P.bDiceRevealVisible?LOCTEXT("AttackRolling","进攻方掷点中"):bAction?LOCTEXT("AttackTurn","轮到进攻方掷点"):LOCTEXT("WaitAttack","等待进攻方掷点");
+		bPrimaryOwnsRollStatus=P.bDiceRevealVisible;
+	}
 	else if (bPair) Detail=FText::FromString(P.RollHelperLabel.IsEmpty()
 		? FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(Screen.SetPiece.Type).ToString():P.RollHelperLabel);
 	else if (Screen.Interaction.Category==C::SelectBranchIntent) Detail=LOCTEXT("ChooseCross","请选择传中方式");
@@ -960,6 +985,11 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	if (bFinal) Detail.ToString().Split(TEXT("\n"),&MainReason,&SecondaryReason);
 	Find<UTextBlock>(Tree,TEXT("TheaterDetail"))->SetText(FText::FromString(MainReason));
 	SetText(Tree,TEXT("TheaterReasonSecondary"),SecondaryReason);
+	if (bPanenka && !bFinal)
+	{
+		SecondaryReason=FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(Screen.SetPiece.Type).ToString();
+		SetText(Tree,TEXT("TheaterReasonSecondary"),SecondaryReason);
+	}
 	if (bLong && bFormula && !bFinal && P.bAttackRowActive)
 	{
 		SecondaryReason=LOCTEXT("LongAttackMissHint","进攻掷点 1–2：直接射偏").ToString();
@@ -1007,7 +1037,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	auto RuleFont=Find<UTextBlock>(Tree,TEXT("TheaterDetail"))->GetFont();
 	if (!bInspect) RuleFont.Size=14;
 	RuleLine->SetFont(RuleFont); RuleLine->SetColorAndOpacity(bInspect?White:Quiet);
-	Show(*Tree.FindWidget(TEXT("TheaterRoll")),P.bDiceRevealVisible && !bFormula && !bPair);
+	Show(*Tree.FindWidget(TEXT("TheaterRoll")),P.bDiceRevealVisible && !bFormula && !bCompactRoll);
 	RefreshReel(Tree,P.RollReel);
 	if (bInspect) RefreshTakerHelper(Tree,Inspection);
 }

@@ -13,7 +13,7 @@ Direction: **Modern Football Broadcast + Navy Metallic Tactical HUD**
 | 职责 | 权威归属 |
 |---|---|
 | 流程视觉语言、颜色语义、交互外观、视觉强度 | 本文 |
-| 已验收 High / Low Cross 与 Near / Long Free Kick Resolution Theater 生产家族 | [Resolution Theater Visual Spec v1](Resolution_Theater_Visual_Spec_v1.md)；其局部规则优先于本文通用 Formula 外观 |
+| 已验收 High / Low Cross、Near / Long Free Kick 与 Penalty Resolution Theater 生产家族 | [Resolution Theater Visual Spec v1](Resolution_Theater_Visual_Spec_v1.md)；其局部规则优先于本文通用 Formula 外观 |
 | 跨 Theater / 主棋盘的 Roll 视觉变体、运动与揭示关系 | [Roll Presentation Visual Spec v1](Roll_Presentation_Visual_Spec_v1.md)；Legacy / TheaterInline / CompactBox / HeroRoll 的当前权威规范 |
 | Layout、geometry、screen composition | [Player-Facing Match Screen Layout](PlayerFacing_MatchScreen_Layout_v1.md) 与其链接的几何合同 |
 | Roll lifecycle、揭示门控与既有实现细节 | [Roll lifecycle contract](Cross_High_Manual_Roll_Contract.md) 的当前有效条目；新变体不另建行为源 |
@@ -163,7 +163,7 @@ Formula 内嵌槽位、紧凑独立结果格、主棋盘焦点事件各有合适
 - 仅消费 authoritative FormulaFacts / ResolutionFacts 与安全投影；不由 UI 重算权威数值，不用静态 catalog 推导比赛结论。
 - 不提前显示未知 roll、不用 gold 暗示胜方、不提前显示 goal/no-goal。结果标签、score 和后续动作继续服从现有 visible reveal gate。
 - 攻守模块共用结构、角色／姓名 typography、identity capsule、完整 formula chip 与独立 value module；角色和球员身份仍须明确。当前值保持次级、冷色阅读层级；最终值按第 4 节已揭示结果语义强调，双方一致，不比较大小来选择金色。current/final 只由安全投影的最终值语义决定，不按数字、文案或阶段猜测。
-- High / Low Cross 与 Near / Long Direct Theater Formula 采用第 10 节的 **TheaterInline** 固定等式槽位；未迁移 Formula 保留 Legacy compact embedded member。共同要求是 Formula 连续性与数字层级，具体迁移须另行授权。沿用第 17 节时钟、披露和动作边界，不建立另一套 Roll 逻辑。
+- High / Low Cross、Near / Long Direct 与常规点球 Theater Formula 采用第 10 节的 **TheaterInline** 固定等式槽位；未迁移 Formula 保留 Legacy compact embedded member。共同要求是 Formula 连续性与数字层级，具体迁移须另行授权。沿用第 17 节时钟、披露和动作边界，不建立另一套 Roll 逻辑。
 - Formula-linked result 的结论层复用第 14.1 节 Shared Result Family；Formula 主体的角色、模块、数值、term chips 与揭示合同仍由本节负责，不因结论层复用而重排。
 - Stage 8.7C / 8.7C.1 已获 **USER PIE ACCEPTED**；当前实现结构见 [Formula family accepted layout](PlayerFacing_MatchScreen_Layout_v1.md#formula-family-accepted)。事实、小计语义和揭示行为保持原合同；ready for manual staging，提交与 clean HEAD 确认前尚未 CLOSED。
 
@@ -258,8 +258,8 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 - 技术验证按实际 diff 选择 focused / affected；文档更新不机械触发 UE build、PIE 或 broad gameplay suites。staging/commit 始终由用户手动完成。
 
 
-## 21. Cross / Free Kick Resolution Theater — Production Locked
+## 21. Cross / Free Kick / Penalty Resolution Theater — Production Locked
 
 Stage 8.8F.3、8.9A.2、8.9B 和 8.10A.1 USER PIE 均已由用户接受。中性传中入口、实际 High / Low 的 Formula/Roll/Result 与返回 Match Board 使用 [Resolution Theater 专项规范](Resolution_Theater_Visual_Spec_v1.md)。它锁定球场连续背景、左右对抗与外侧人物、安全内容区、RHS 数值焦点、Base 实线 hover、独立理由栏与 CTA、顺序入场。路线 CompactBox 与 Formula TheaterInline 的共同规范见第 10 节。
 
-这是第 4 节主按钮蓝色和通用 Formula 展开方式的已验收局部例外：High / Low Theater 使用薄荷青绿主 CTA、深色字及 Base tooltip。实际 Low 路线披露后继续留在同一 Theater。默认生产与 Shipping 启用；Development fallback 仅供对照。已知实际门将的选择→路线→Formula 身份连续性遵循安全投影。其他 surface 不因此换肤。Stage 8.11A / B USER PIE 已接受；Near / Long 在 Legacy Set Piece Type D6 可见揭示后进入同一生产 Theater，Development 默认及 Shipping 均启用。Card Selection、Tactical Choice、Direct Formula、单侧双骰、Outcome / Reason 和 CTA 由同一专项规范管理，保持战术规则差异。Full Card 仅在 Near / Long 主罚球员选择这一规划状态采用，执行阶段不采用；取代旧的全 Theater 禁用描述。规则摘要同级、helper 语义去重、已落定 Roll 静态与比分揭示门控为共享合同。Penalty、Corner、类型 D6 与 Match Shell 不因此迁移。
+这是第 4 节主按钮蓝色和通用 Formula 展开方式的已验收局部例外：High / Low Theater 使用薄荷青绿主 CTA、深色字及 Base tooltip。实际 Low 路线披露后继续留在同一 Theater。默认生产与 Shipping 启用；Development fallback 仅供对照。已知实际门将的选择→路线→Formula 身份连续性遵循安全投影。其他 surface 不因此换肤。Stage 8.11A / B USER PIE 已接受；Near / Long 在 Legacy Set Piece Type D6 可见揭示后进入同一生产 Theater，Development 默认及 Shipping 均启用。Card Selection、Tactical Choice、Direct Formula、单侧双骰、Outcome / Reason 和 CTA 由同一专项规范管理，保持战术规则差异。Full Card 仅在 Near / Long / Penalty 主罚球员选择这一规划状态采用，执行阶段不采用；取代旧的全 Theater 禁用描述。规则摘要同级、helper 语义去重、已落定 Roll 静态与比分揭示门控为共享合同。Stage 8.12A / A.1 USER PIE 已接受，Penalty 在类型揭示后复用同一家族并在 Development / Shipping 生产锁定：常规点球为双侧 Formula，勺子点球为单侧单骰；保持分支专属权威规则及理由栏职责。Corner、类型 D6 与 Match Shell 不因此迁移。

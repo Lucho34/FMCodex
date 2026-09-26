@@ -177,7 +177,7 @@ bool FNearTheaterScope::RunTest(const FString&)
 	FFMCodexUMGMatchScreenViewModel P; P.SetPiece.bVisible=true; P.SetPiece.Type=Type::ShortFreeKick;
 	TestTrue(TEXT("Disclosed selection enters"),WantsTheater(P,{}));
 	Mode->Set(0,ECVF_SetByCode); TestFalse(TEXT("Practical same-state fallback"),WantsTheater(P,{})); Mode->Set(1,ECVF_SetByCode);
-	for (auto T:{Type::Penalty,Type::Corner})
+	for (auto T:{Type::Corner})
 	{ P.SetPiece.Type=T; P.InlineFormula.bVisible=true; P.InlineFormula.ContestId=TEXT("SetPiece.Opposed"); TestFalse(TEXT("Other set pieces retain scope"),WantsTheater(P,P.InlineFormula)); }
 	FUIFixture F; F.Entropy->Word=8; F.Attacker()->GetPlayerMatchScreen()->RequestRollTacticalPoints(); F.Settle();
 	F.Entropy->Word=4; F.Attacker()->GetPlayerMatchScreen()->DevSetPieceAction(TEXT("SetPieceType"),NAME_None); F.Settle();

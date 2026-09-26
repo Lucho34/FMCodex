@@ -360,6 +360,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	FName NearFormulaGoalkeeperCardId = NAME_None;
 	/** Direct Long Formula participant from the authoritative Long base query. */
 	FName LongFormulaGoalkeeperCardId = NAME_None;
+	// Authority-selected identity; projected into existing safe Formula participant rows.
+	FName PenaltyFormulaGoalkeeperCardId = NAME_None;
 	TArray<FMatchPlaySetPieceParticipantBinding> CornerAttackerNominees;
 	TArray<FMatchPlaySetPieceParticipantBinding> CornerDefenderNominees;
 	bool bCornerAttackerNominationsLocked = false;

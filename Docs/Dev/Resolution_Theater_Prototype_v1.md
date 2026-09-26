@@ -1,7 +1,8 @@
-# Resolution Theater — Cross / Free Kick production adoption
+# Resolution Theater — Cross / Free Kick / Penalty production adoption
 
-Status: **ADOPTED / PRODUCTION LOCKED — High / Low Cross + Near / Long Free Kick**. Stage 8.9B Low Cross USER PIE: **ACCEPTED**. Stage 8.8F.3 USER PIE: **ACCEPTED**.
+Status: **ADOPTED / PRODUCTION LOCKED — High / Low Cross + Near / Long Free Kick + Penalty**. Stage 8.9B Low Cross USER PIE: **ACCEPTED**. Stage 8.8F.3 USER PIE: **ACCEPTED**.
 Stage 8.11A / B, including their accepted polish passes, USER PIE: **ACCEPTED**.
+Stage 8.12A / A.1 Penalty USER PIE: **ACCEPTED**; Development and Shipping are production locked.
 The current authoritative contract is [Resolution Theater Visual Spec v1](../UI/Resolution_Theater_Visual_Spec_v1.md).
 This file retains implementation notes and historical stage checkpoints. Earlier pending-PIE,
 procedural-art and no-new-asset descriptions below describe their stage, not the final state.
@@ -36,7 +37,7 @@ follow-up notes are superseded by its visual spec.
 
 ResolutionStageV2 defaults to **1** in Development. FormulaV2 remains **0**.
 Neither switch adds persistent config. Shipping compiles the theater and always
-selects it for the scoped Cross entry/High/Low and disclosed Near/Long paths, with no theater cvar. FormulaV2
+selects it for the scoped Cross entry/High/Low and disclosed Near/Long/Penalty paths, with no theater cvar. FormulaV2
 remains a non-Shipping comparison override. Turning the theater off in Development
 restores the comparison selected by FormulaV2 at the same authoritative state.
 The normal Editor console accepts each command separately.
@@ -314,3 +315,36 @@ are retained to avoid an unrelated rename. No new art, fonts or defense silhouet
   replication; it and its fixture are non-Shipping. Existing accepted A/B PIE paths are
   reusable where Development behavior is unchanged by the Shipping gate promotion.
   Final build/test/package results belong in the closeout report and ignored logs.
+
+## Stage 8.12 implementation reconciliation — production locked
+
+Penalty reuses the same Theater Build/Refresh subtree, card rack, planning inspector,
+method choices, Formula sides, inline operands, Outcome, Reason and CTA. There is no
+Penalty-only widget tree or Roll variant. The procedural direct/chip diagrams add no
+runtime art asset. Stable product copy and hierarchy belong to the Theater visual spec.
+
+- `fm.UI.ResolutionStageV2.Penalty=1` is the Development default; 0 restores only the
+  legacy Penalty presentation. The master comparison switch remains usable. Shipping
+  compiles `IsPenaltyEnabled()` to true and excludes the cvar registration. Type D6 and
+  Corner retain their existing boundaries. Prototype names are historical symbols.
+- `PenaltyFormulaGoalkeeperCardId` is a plain authority-side interaction field supplied
+  by the canonical Direct base query. It is cleared with hidden type facts and projected
+  into existing safe Formula participant rows. No RPC, wire payload or replicated
+  presentation field is added. The client does not choose a goalkeeper from its roster.
+- Normal bases, anticipation/-3 tooltip components, final values and WinReason reuse
+  existing authority projections. Panenka adds one existing RawRoll term and participant
+  row; its reason consumes `bSetPieceGoal` and the authoritative D6. The Screen withholds
+  visible operands, narrative and score until existing reveal gates allow them. The
+  defending roll cannot replay the settled attack; there is no new result calculation.
+- Full Card is planning-only with hover > selected > empty; clearing/generation and
+  shared-viewer ownership remain the existing implementation. Both method/rule lines
+  are peers. The technical “点球防守调整 -3” stays in the Base tooltip; the selection
+  summary identifies “门将预判（门将预判 -3）”. Panenka has one die and no defense panel.
+- Validation uses focused Penalty CoreRules/Runtime, parameterized shared-viewer Theater
+  lifecycle and scope checks, plus representative shared regressions. Accepted real Local
+  PIE from `Saved/Stage8_12A/` and `Saved/Stage8_12A_1/` is reusable because closeout changes
+  only the Shipping branch and Development help text. It is not independent network proof.
+  No network transport/schema change requires another Host/Remote path. Shipping uses the
+  established Win64 BuildCookRun Entry-map package, resource inventory and launch smoke.
+  Exact current results and hashes stay in ignored `Saved/Stage8_12_Closeout/` and the final
+  closeout report; these notes do not turn engineering captures into USER PIE acceptance.

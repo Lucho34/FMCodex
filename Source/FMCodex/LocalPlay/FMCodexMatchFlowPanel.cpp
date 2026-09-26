@@ -260,6 +260,22 @@ public:
 		case EFMCodexFlowDiagram::LowCross: Ball={10,32}; Arrow({14,30},{35,18}); break;
 		case EFMCodexFlowDiagram::Power: Ball={36,39}; Arrow({33,33},{33,17}); Arrow({39,33},{39,17}); break;
 		case EFMCodexFlowDiagram::Panenka: Ball={36,21}; Arrow({36,17},{36,11}); break;
+		case EFMCodexFlowDiagram::PenaltyDirect:
+			Ball={36,32}; Arrow({36,27},{41,10}); break;
+		case EFMCodexFlowDiagram::PenaltyChip:
+		{
+			Ball={36,32};
+			// Static loft trajectory: lift away from the spot, then descend centrally.
+			const FVector2f Start(36,27), Control(17,7), End(36,10);
+			TArray<FVector2f> Arc;
+			for (int32 I=0;I<=20;++I)
+			{
+				const float T=I/20.f;
+				Arc.Add(Start*((1-T)*(1-T))+Control*(2*(1-T)*T)+End*(T*T));
+			}
+			P.Line(Arc,Mark); Arrow(Arc[18],End); Circle({36,12},1.4f,Mark);
+			break;
+		}
 		default: Ball={22,37}; Arrow({26,32},{39,14}); break;
 		}
 		Circle(Ball,2.5f,Mark);

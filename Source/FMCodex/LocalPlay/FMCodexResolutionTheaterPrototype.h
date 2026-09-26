@@ -19,6 +19,7 @@ struct FTakerInspection
 {
 	bool bActive = false;
 	bool bLongFreeKick = false;
+	bool bPenalty = false;
 	FName HoveredId = NAME_None;
 	TMap<FName, bool> CombinationEligibility;
 	uint32 Generation = 0;
@@ -31,6 +32,7 @@ struct FMotion
 	bool bLastLowEnabled = false;
 	bool bLastNearEnabled = false;
 	bool bLastLongEnabled = false;
+	bool bLastPenaltyEnabled = false;
 	float Elapsed = 1.f;
 	float FieldProgress = 0.f;
 	float FieldTransitionFrom = 0.f;
@@ -45,6 +47,8 @@ bool IsLowCrossEnabled();
 // Production defaults in all targets; only Development exposes Near/Long fallbacks.
 bool IsNearFreeKickEnabled();
 bool IsLongFreeKickEnabled();
+// Production default in all targets; only Development exposes the Penalty fallback.
+bool IsPenaltyEnabled();
 bool IsFormulaContest(FName ContestId);
 bool WantsTheater(const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed);
