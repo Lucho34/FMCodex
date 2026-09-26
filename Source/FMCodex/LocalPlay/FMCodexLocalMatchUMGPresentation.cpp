@@ -645,6 +645,37 @@ namespace FMCodexLocalMatchUMGPresentation
 			CardId, Card == nullptr ? FString() : Card->DisplayLabel).ToString();
 	}
 
+
+	void ProjectCrossSetupParticipants(const FFMCodexLocalMatchInteractionView& View,
+		FFMCodexUMGInlineFormulaSurfaceViewModel& Surface)
+	{
+		using R = EMatchPlayResolutionParticipantRole;
+		const auto Attack = View.CurrentAttackingPlayer;
+		if (Attack == EInitialTurnOrderPlayer::None) return;
+		const auto Defense = Attack == EInitialTurnOrderPlayer::PlayerA
+			? EInitialTurnOrderPlayer::PlayerB : EInitialTurnOrderPlayer::PlayerA;
+		auto Add = [&](FFMCodexUMGInlineFormulaRowViewModel& Row, R Role, FName CardId)
+		{
+			if (!CardId.IsNone()) Row.Participants.Add({
+				FFMCodexPlayerUIPresentationText::ResolutionParticipantRole(Role).ToString(),
+				PlayerFacingName(View, Row.Side, CardId) });
+		};
+		auto& A = Surface.AttackRow; auto& D = Surface.DefenseRow;
+		A.Side = Attack; D.Side = Defense;
+		A.SideLabel = FFMCodexPlayerUIPresentationText::ResolutionAttackRow().ToString();
+		D.SideLabel = FFMCodexPlayerUIPresentationText::ResolutionDefenseRow().ToString();
+		A.Participants.Reset(); D.Participants.Reset();
+		Add(A, R::Carrier, View.SelectedCarrierCardId); Add(A, R::Runner, View.SelectedRunnerCardId);
+		Add(D, R::Marker, View.SelectedMarkerCardId); Add(D, R::Helper, View.SelectedHelperCardId);
+		// This public fact already identifies the defending keeper activated for
+		// this attack. Never infer participation from roster membership/deployment
+		// or from a future High/Low result. Formula rows retain their fact source.
+		const auto& Roster = Defense == EInitialTurnOrderPlayer::PlayerA
+			? View.PlayerACardRoster : View.PlayerBCardRoster;
+		for (const auto& Card : Roster)
+			if (Card.bGoalkeeperActivatedThisAttack) Add(D, R::Goalkeeper, Card.CardId);
+	}
+
 	const FMatchPlayResolutionParticipantFact* FindParticipant(
 		const FMatchPlayCurrentAttackResolutionFactProjection& Facts,
 		const EMatchPlayResolutionParticipantRole Role)
@@ -3674,6 +3705,11 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			Result.InlineFormula.ContinueActionLabel =
 				Result.InlineFormula.PrimaryAction.Action.Label;
 		}
+	}
+	if (Result.InlineFormula.ContestId == TEXT("Cross.Setup")
+		|| Result.InlineFormula.ContestId == TEXT("Cross.Route"))
+	{
+		ProjectCrossSetupParticipants(InteractionView, Result.InlineFormula);
 	}
 	Result.ThroughBallResolution = BuildThroughBallSurface(
 		InteractionView,

@@ -5,16 +5,32 @@ Scope: 1920×1080 player-facing LocalPlay Golden visual prototype
 
 Match Flow visual styling follows [Match Flow Visual Language v1](MatchFlow_Visual_Language_v1.md). This document owns layout, geometry and screen composition; stage-specific styling notes below are implementation history, not a second visual-rule authority.
 
-## Current High Cross production layout (8.8F closeout)
+## Current production layout — Cross Theater and Stage 8.10 Roll family
 
-Stage 8.8F.3 USER PIE: **ACCEPTED**. High Cross Resolution Theater: **PRODUCTION LOCKED**.
-The [Resolution Theater Visual Spec](Resolution_Theater_Visual_Spec_v1.md) owns this accepted
-family's composition. The temporary full-screen field treatment uses Attack left / Defense
-right / central VS, protected inner content and outer athlete art, a separate reason bar
-and CTA, and restoration of Match Board after continuation. Local and Network share it.
-The neutral Cross entrance does not predict the route; Low exits on visible route disclosure.
-Older 8.8A/B/C and adoption-pending sections below remain historical review checkpoints,
-not competing current production status or permission to redesign the accepted family.
+High / Low Cross Resolution Theater and the Stage 8.10 Roll family are **PRODUCTION LOCKED**.
+Stage 8.10A.1 and Stage 8.10B.2 USER PIE are **ACCEPTED**, preserving the earlier Theater / Inline acceptance.
+The [Resolution Theater Visual Spec](Resolution_Theater_Visual_Spec_v1.md) owns the accepted
+Cross composition: Attack left / Defense right / central VS, protected inner content,
+outer athlete art, a separate reason bar and CTA. Local and Network share it.
+The neutral entrance does not predict the route; both actual High and Low continue in
+the same Theater until normal continuation restores Match Board.
+
+The [Roll Presentation Visual Spec](Roll_Presentation_Visual_Spec_v1.md) owns the four-variant
+family. Theater uses a compact standalone Cross route cell and stable inline Formula slots.
+Route CTA and result cell remain separate. Already disclosed actual goalkeeper identity
+continues from selection through route to Formula using safe participant projection.
+
+Main-board Full D12 uses HeroRoll above the existing Pitch. Before the Roll action the
+board stays clean and undimmed, with its existing CTA/wait UI. During reveal, temporary
+Focus subdues racks most, Pitch less and Header least; the real board structure remains.
+The tight glass shell, open numeric stage and one support line restore to the ordinary
+board after the existing hold; cancellation also clears focus. No new scene or permanent
+overlay is introduced. Header / racks / Pitch / Action Dock geometry is unchanged.
+
+Match Shell Visual Refresh Lite is optional future work. Full Player Card inspection
+is not currently adopted inside Theater; existing Base tooltips remain sufficient.
+Older adoption-pending and High-only sections below are historical review checkpoints,
+not competing production status, current consumer maps or permission to redesign the family.
 
 ## Decision classes
 

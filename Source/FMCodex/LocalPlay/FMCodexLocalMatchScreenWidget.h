@@ -253,12 +253,13 @@ private:
 	bool CanRevealTacticalPointDependentPresentation() const;
 	FFMCodexUMGCardRackViewModel BuildDisplayedHandRack(
 		const FFMCodexUMGCardRackViewModel& Source) const;
-	bool UsesTheaterInlineRollMotion() const;
+	bool UsesTheaterRollMotion() const;
 	FFMCodexUMGRollReelViewModel BuildActiveRollReelPresentation() const;
 	void AdvanceInlineFormulaReveal(float DeltaSeconds, bool bForceFullRefresh);
 	void BeginInlineFormulaFinalCapture();
 	void RefreshActiveRollReelVisuals();
 	void RefreshTacticalRollActivation(float CyclingElapsed);
+	void RefreshHeroBoardFocus(float Progress);
 	void HandleInlineFormulaRevealTimer();
 	void StartInlineFormulaRevealTimer();
 	void StopInlineFormulaRevealTimer();

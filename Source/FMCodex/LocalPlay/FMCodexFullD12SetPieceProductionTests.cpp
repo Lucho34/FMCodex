@@ -992,7 +992,8 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 		Screen->GetInlineFormulaRevealPhase()
 			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
 			&& ResultText != nullptr
-			&& ResultText->GetText().ToString().Contains(TEXT("9"))
+			&& Reel->GetPresentation().bAuthoritativeValue
+			&& Reel->GetPresentation().CenterValue == 9
 			&& !ResultText->GetText().ToString().Contains(TEXT("定位球"))
 			&& SetPieceSurface->GetVisibility() == ESlateVisibility::Collapsed
 			&& Screen->GetInlineFormulaSurface()->GetVisibility()

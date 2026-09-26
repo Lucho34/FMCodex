@@ -236,7 +236,7 @@ namespace FMCodexLocalMatchScreenWidget
 		const int32 AuthoritativeValue,
 		const float CaptureStartPositionCells,
 		const float CaptureDistanceCells,
-		const uint32 CosmeticSeed, const bool bTheaterInline)
+		const uint32 CosmeticSeed, const bool bTheaterMotion)
 	{
 		FFMCodexUMGRollReelViewModel Result;
 		Result.bVisible = true;
@@ -269,8 +269,8 @@ namespace FMCodexLocalMatchScreenWidget
 			return Result;
 		}
 
-		float Position = bTheaterInline ? TheaterReelPosition(PhaseElapsed) : CosmeticReelPosition(PhaseElapsed);
-		if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling && bTheaterInline)
+		float Position = bTheaterMotion ? TheaterReelPosition(PhaseElapsed) : CosmeticReelPosition(PhaseElapsed);
+		if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling && bTheaterMotion)
 		{
 			const float Alpha=FMath::Clamp(PhaseElapsed/TheaterLandingDuration,0.f,1.f);
 			// Match entry velocity, then continuously decelerate to zero. No late
@@ -320,7 +320,8 @@ namespace FMCodexLocalMatchScreenWidget
 			// The target occupies a NEW incoming slot, never relabels a visible digit.
 			if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling && Cell == TargetCell)
 				return AuthoritativeValue;
-			return bTheaterInline ? TheaterCycleDigit(CosmeticSeed,Cell) : Order[WrapDomainValue(Cell, 0, Order.Num()-1)];
+			return bTheaterMotion && DomainMinimum==1 && DomainMaximum==6
+				? TheaterCycleDigit(CosmeticSeed,Cell) : Order[WrapDomainValue(Cell, 0, Order.Num()-1)];
 		};
 		Result.CenterValue = VisibleValue(Step);
 		Result.PreviousValue = VisibleValue(Step-1);
@@ -2748,7 +2749,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 
 	TacticalPointRevealSurface = WidgetTree->ConstructWidget<UFMCodexRollPresentationSurface>(
 		UFMCodexRollPresentationSurface::StaticClass(), TEXT("TacticalPointRollRevealSurface"));
-	TacticalPointRevealSurface->SetPadding(FMargin(24.0f, 20.0f, 24.0f, 21.0f));
+	CastChecked<UFMCodexRollPresentationSurface>(TacticalPointRevealSurface)->VisualVariant = EFMCodexRollVisualVariant::HeroRoll;
+	TacticalPointRevealSurface->SetPadding(FMargin(24.f, 22.f, 24.f, 24.f));
 	TacticalPointRevealSurface->SetRenderTransformPivot(FVector2D(.5f, .5f));
 	TacticalPointRevealSurface->SetVisibility(ESlateVisibility::Collapsed);
 	UVerticalBox* TacticalPointRevealBody =
@@ -2757,56 +2759,50 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 	TacticalPointRevealTitle = MakeText(
 		*WidgetTree, TEXT("TacticalPointRollRevealTitle"), TEXT("战术点掷点"));
 	TacticalPointRevealTitle->SetJustification(ETextJustify::Center);
-	FFMCodexPlayerUIStyle::Get().ApplyText(
-		*TacticalPointRevealTitle, EFMCodexPlayerUITextRole::ActionTitle);
+	FFMCodexPlayerUIStyle::Get().ApplyFlowText(*TacticalPointRevealTitle,26);
 	TacticalPointRevealTitle->SetColorAndOpacity(FSlateColor(FLinearColor(.82f, .90f, .96f, 1)));
 	FSlateFontInfo TitleFont = TacticalPointRevealTitle->GetFont();
-	TitleFont.Size = 24; TitleFont.TypefaceFontName = TEXT("Bold");
+	TitleFont.Size = 26; TitleFont.TypefaceFontName = TEXT("Medium");
 	TacticalPointRevealTitle->SetFont(TitleFont);
 	TacticalPointRevealBody->AddChildToVerticalBox(TacticalPointRevealTitle);
 	TacticalPointRollReel = WidgetTree->ConstructWidget<UFMCodexRollReelWidget>(
 		UFMCodexRollReelWidget::StaticClass(), TEXT("TacticalPointRollReel"));
-	TacticalPointRollReel->SetExpandedChamber(true);
+	TacticalPointRollReel->SetVisualVariant(EFMCodexRollVisualVariant::HeroRoll);
 	TacticalPointRollReel->SetRenderTransformPivot(FVector2D(.5f, .5f));
-	// More internal space for the same three digits. D6/paired/Corner hosts keep
-	// their compact dimensions; no roll-domain or consumer-layout change.
+	// Native-size Hero digit chamber. Other consumers keep their explicit variants.
 	USizeBox* HeroReelBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("TacticalRollNumberChamberBounds"));
-	HeroReelBounds->SetWidthOverride(204.0f);
-	HeroReelBounds->SetHeightOverride(240.0f);
-	UScaleBox* HeroReelScale = WidgetTree->ConstructWidget<UScaleBox>(
-		UScaleBox::StaticClass(), TEXT("TacticalRollNumberChamberScale"));
-	HeroReelScale->SetStretch(EStretch::ScaleToFit);
-	HeroReelScale->AddChild(TacticalPointRollReel);
-	HeroReelBounds->AddChild(HeroReelScale);
+	HeroReelBounds->SetWidthOverride(190.f);
+	HeroReelBounds->SetHeightOverride(184.f);
+	HeroReelBounds->AddChild(TacticalPointRollReel);
 	if (UVerticalBoxSlot* ReelSlot =
 		TacticalPointRevealBody->AddChildToVerticalBox(HeroReelBounds))
 	{
 		ReelSlot->SetHorizontalAlignment(HAlign_Center);
-		ReelSlot->SetPadding(FMargin(0.0f, 22.0f, 0.0f, 24.0f));
+		ReelSlot->SetPadding(FMargin(0.f, 12.f, 0.f, 18.f));
 	}
 	TacticalPointRevealState = MakeText(*WidgetTree, TEXT("TacticalPointRollRevealState"));
 	TacticalPointRevealState->SetJustification(ETextJustify::Center);
 	FSlateFontInfo StateFont = TacticalPointRevealTitle->GetFont();
-	StateFont.Size = 20;
+	StateFont.Size = 16;
 	TacticalPointRevealState->SetFont(StateFont);
-	TacticalPointRevealState->SetColorAndOpacity(FSlateColor(FLinearColor(.89f, .94f, 1, 1)));
-	TacticalPointRevealBody->AddChildToVerticalBox(TacticalPointRevealState)->SetPadding(FMargin(0, 0, 0, 4));
+	TacticalPointRevealState->SetColorAndOpacity(FSlateColor(FLinearColor(.32f, .55f, .61f, 1)));
+	TacticalPointRevealState->SetVisibility(ESlateVisibility::Collapsed);
+	TacticalPointRevealBody->AddChildToVerticalBox(TacticalPointRevealState);
 	TacticalPointRevealResult = MakeText(
 		*WidgetTree, TEXT("TacticalPointRollRevealResult"));
 	TacticalPointRevealResult->SetJustification(ETextJustify::Center);
-	FFMCodexPlayerUIStyle::Get().ApplyText(
-		*TacticalPointRevealResult, EFMCodexPlayerUITextRole::Status);
+	FFMCodexPlayerUIStyle::Get().ApplyFlowText(*TacticalPointRevealResult,20);
 	TacticalPointRevealResult->SetColorAndOpacity(FSlateColor(FLinearColor(.76f, .85f, .93f, 1)));
 	FSlateFontInfo ResultFont = TacticalPointRevealResult->GetFont();
-	ResultFont.Size = 16;
+	ResultFont.Size = 20;
 	TacticalPointRevealResult->SetFont(ResultFont);
 	TacticalPointRevealResult->SetAutoWrapText(true);
 	TacticalPointRevealBody->AddChildToVerticalBox(TacticalPointRevealResult);
 	TacticalPointRevealSurface->AddChild(TacticalPointRevealBody);
 	USizeBox* RollModalBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("TacticalRollModalBounds"));
-	RollModalBounds->SetWidthOverride(360.0f);
+	RollModalBounds->SetWidthOverride(380.f);
 	RollModalBounds->AddChild(TacticalPointRevealSurface);
 	if (UOverlaySlot* TacticalPointLayerSlot =
 		BoardResolutionOverlays->AddChildToOverlay(RollModalBounds))
@@ -3648,7 +3644,7 @@ void UFMCodexLocalMatchScreenWidget::UpdateInlineFormulaRevealState(
 			}
 			if (InlineFormulaRevealPhase
 					== EFMCodexUMGInlineFormulaRevealPhase::Cycling
-				&& InlineFormulaRevealPhaseElapsed >= (UsesTheaterInlineRollMotion() ? TheaterCyclingDuration : FinalSlowEndTime))
+				&& InlineFormulaRevealPhaseElapsed >= (UsesTheaterRollMotion() ? TheaterCyclingDuration : FinalSlowEndTime))
 			{
 				BeginInlineFormulaFinalCapture();
 			}
@@ -4269,9 +4265,18 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 	return Result;
 }
 
-bool UFMCodexLocalMatchScreenWidget::UsesTheaterInlineRollMotion() const
+bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 {
-	return TheaterMotion.bActive && FMCodexResolutionTheaterPrototype::IsFormulaContest(ActiveCrossRollReveal.ContestId)
+	// The board Hero D12 uses the same continuous v2 capture. Its wider domain
+	// retains the existing event-keyed cosmetic shuffle, independent of result.
+	if (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::TacticalPoint
+		&& ActiveCrossRollReveal.ContestId==TEXT("Match.TacticalPoint")) return true;
+	if (!TheaterMotion.bActive) return false;
+	// Context opts into the existing v2 profile. Route and Formula retain their
+	// own unchanged disclosure/hold gates in the shared phase machine.
+	if (ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::InitialRoute
+		&& ActiveCrossRollReveal.ContestId == TEXT("Cross.Route")) return true;
+	return FMCodexResolutionTheaterPrototype::IsFormulaContest(ActiveCrossRollReveal.ContestId)
 		&& (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Attack
 			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Defense);
 }
@@ -4293,7 +4298,7 @@ UFMCodexLocalMatchScreenWidget::BuildActiveRollReelPresentation() const
 		RollRevealAuthoritativeRawValue,
 		RollRevealCaptureStartPositionCells,
 		RollRevealCaptureDistanceCells,
-		RollRevealCosmeticSeed, UsesTheaterInlineRollMotion());
+		RollRevealCosmeticSeed, UsesTheaterRollMotion());
 }
 
 void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
@@ -4304,8 +4309,8 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 	const EFMCodexUMGInlineFormulaRevealPhase PreviousPhase =
 		InlineFormulaRevealPhase;
 	const float PreviousPhaseElapsed = InlineFormulaRevealPhaseElapsed;
-	const float CyclingDuration=UsesTheaterInlineRollMotion() ? TheaterCyclingDuration : FinalSlowEndTime;
-	const float LandingDuration=UsesTheaterInlineRollMotion() ? TheaterLandingDuration : CaptureSettleDuration;
+	const float CyclingDuration=UsesTheaterRollMotion() ? TheaterCyclingDuration : FinalSlowEndTime;
+	const float LandingDuration=UsesTheaterRollMotion() ? TheaterLandingDuration : CaptureSettleDuration;
 	DeltaSeconds = FMath::Max(0.0f, DeltaSeconds);
 	while (DeltaSeconds > 0.0f && IsInlineFormulaRevealInputBlocked())
 	{
@@ -4326,7 +4331,7 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 			InlineFormulaRevealPhaseElapsed += Consumed;
 			// Exact endpoint after consuming the full remainder: avoid losing a
 			// cross-phase delta to float rounding at the Theater's .92s boundary.
-			if (UsesTheaterInlineRollMotion() && Remaining>0.f && Consumed>=Remaining) InlineFormulaRevealPhaseElapsed=CyclingDuration;
+			if (UsesTheaterRollMotion() && Remaining>0.f && Consumed>=Remaining) InlineFormulaRevealPhaseElapsed=CyclingDuration;
 			DeltaSeconds -= Consumed;
 			if (InlineFormulaRevealPhaseElapsed < CyclingDuration)
 			{
@@ -4350,7 +4355,7 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 				0.0f, LandingDuration - InlineFormulaRevealPhaseElapsed);
 			const float Consumed = FMath::Min(DeltaSeconds, Remaining);
 			InlineFormulaRevealPhaseElapsed += Consumed;
-			if (UsesTheaterInlineRollMotion() && Remaining>0.f && Consumed>=Remaining) InlineFormulaRevealPhaseElapsed=LandingDuration;
+			if (UsesTheaterRollMotion() && Remaining>0.f && Consumed>=Remaining) InlineFormulaRevealPhaseElapsed=LandingDuration;
 			DeltaSeconds -= Consumed;
 			if (InlineFormulaRevealPhaseElapsed < LandingDuration)
 			{
@@ -4545,7 +4550,7 @@ void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaFinalCapture()
 	{
 		return;
 	}
-	RollRevealCaptureStartPositionCells = UsesTheaterInlineRollMotion()
+	RollRevealCaptureStartPositionCells = UsesTheaterRollMotion()
 		? TheaterReelPosition(InlineFormulaRevealPhaseElapsed) : CosmeticReelPosition(InlineFormulaRevealPhaseElapsed);
 	// Preserve the current three labels at the capture boundary. The next cell
 	// after the already-visible incoming neighbor receives the accepted result.
@@ -4555,6 +4560,17 @@ void UFMCodexLocalMatchScreenWidget::BeginInlineFormulaFinalCapture()
 	InlineFormulaRevealPhase =
 		EFMCodexUMGInlineFormulaRevealPhase::Settling;
 	InlineFormulaRevealPhaseElapsed = 0.0f;
+}
+
+void UFMCodexLocalMatchScreenWidget::RefreshHeroBoardFocus(float Progress)
+{
+	// Hero alone owns this tint. Do not touch the Theater's visibility/opacity
+	// or card-specific usage/selection styling. No input or authority changes.
+	const auto Tint = [Progress](FLinearColor Focus) { return FMath::Lerp(FLinearColor::White, Focus, Progress); };
+	LocalRackWidget->SetColorAndOpacity(Tint(FLinearColor(.25f,.30f,.36f,1)));
+	OpponentRackWidget->SetColorAndOpacity(Tint(FLinearColor(.25f,.30f,.36f,1)));
+	PitchWidget->SetColorAndOpacity(Tint(FLinearColor(.60f,.66f,.70f,1)));
+	MatchHeader->SetColorAndOpacity(Tint(FLinearColor(.72f,.78f,.82f,1)));
 }
 
 void UFMCodexLocalMatchScreenWidget::RefreshTacticalRollActivation(const float CyclingElapsed)
@@ -4569,7 +4585,13 @@ void UFMCodexLocalMatchScreenWidget::RefreshTacticalRollActivation(const float C
 	const float Chamber = Ease(.035f, .105f), Footer = Ease(.055f, .125f);
 	CastChecked<UFMCodexRollPresentationSurface>(TacticalPointRevealSurface)
 		->SetActivationProgress(CyclingElapsed / .18f);
-	TacticalPointRevealSurface->SetRenderOpacity(.40f + .60f*Shell);
+	const bool bActive = ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::TacticalPoint
+		&& IsInlineFormulaRevealInputBlocked();
+	// Fast exit fits inside the existing readable hold; never extend the event.
+	const float Exit = bActive && InlineFormulaRevealPhase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+		? FMath::SmoothStep(0.f, .12f, FMCodexLocalMatchScreenWidget::TacticalPointResultHoldDuration-InlineFormulaRevealPhaseElapsed) : 1.f;
+	RefreshHeroBoardFocus(bActive ? Ease(0.f,.12f)*Exit : 0.f);
+	TacticalPointRevealSurface->SetRenderOpacity((.40f + .60f*Shell)*Exit);
 	TacticalPointRevealSurface->SetRenderScale(FVector2D(.98f+.02f*Shell, .90f+.10f*Shell));
 	TacticalPointRevealTitle->SetRenderOpacity(Title);
 	TacticalPointRevealTitle->SetRenderTranslation(FVector2D(0, -6*(1-Title)));
@@ -5178,8 +5200,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	const bool bTacticalPointRevealVisible = bEntryOrUniqueSetPieceReveal
 		&& IsInlineFormulaRevealInputBlocked();
 	TacticalPointRevealSurface->SetVisibility(bTacticalPointRevealVisible
-		? ESlateVisibility::SelfHitTestInvisible
-		: ESlateVisibility::Collapsed);
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	if (!bTacticalPointRevealVisible)
 	{
 		TacticalPointRollReel->RefreshFromPresentation({});
@@ -5196,44 +5217,33 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		RefreshActiveRollReelVisuals();
 		const bool bHolding = InlineFormulaRevealPhase
 			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold;
-		const bool bSettling = InlineFormulaRevealPhase
-			== EFMCodexUMGInlineFormulaRevealPhase::Settling;
-		TacticalPointRevealState->SetText(bHolding
-			? NSLOCTEXT("FMCodex.RollPresentation", "Locked", "点数已确定")
-			: bSettling ? NSLOCTEXT("FMCodex.RollPresentation", "Capturing", "落定中")
-				: NSLOCTEXT("FMCodex.RollPresentation", "Cycling", "滚动中"));
-		const bool bFullD12 = ActiveCrossRollReveal.Kind
-			== EFMCodexUMGCrossRollRevealKind::TacticalPoint;
-		const bool bTypeD6 = ActiveCrossRollReveal.Kind
-			== EFMCodexUMGCrossRollRevealKind::SetPieceType;
-		TacticalPointRevealTitle->SetText(FText::FromString(
-			bHolding
-				? bFullD12 ? TEXT("行动点结果")
-					: bTypeD6 ? TEXT("定位球类型结果") : TEXT("掷点结果")
-				: bSettling ? TEXT("掷点落定") : TEXT("号码滚动中")));
+		TacticalPointRevealTitle->SetText(NSLOCTEXT("FMCodex.HeroRoll","TacticalEvent","战术点判定"));
+		TacticalPointRevealState->SetText(FText::GetEmpty());
 		const bool bResourceDisclosed = bHolding
-			&& InlineFormulaRevealPhaseElapsed
-				>= FMCodexLocalMatchScreenWidget::FormulaDisclosureDelay;
-		FString DisclosedResult = FString::Printf(TEXT("掷点 %d"),
-			RollRevealAuthoritativeRawValue);
-		if (bResourceDisclosed && bFullD12)
+			&& InlineFormulaRevealPhaseElapsed >= FMCodexLocalMatchScreenWidget::FormulaDisclosureDelay;
+		FText Copy = NSLOCTEXT("FMCodex.HeroRoll","Rolling","正在掷点");
+		if (bHolding)
+			Copy = NSLOCTEXT("FMCodex.HeroRoll","LockedAwaitingDisclosure","点数已落定");
+		if (bResourceDisclosed)
 		{
-			DisclosedResult += Presentation.Header.RouteKind == EMatchPlayCurrentAttackRouteKind::Ordinary
-				? FString::Printf(TEXT("  →  战术点 %d"), Presentation.Header.CurrentAttackerTacticalPoints)
-				: Presentation.Header.RouteKind == EMatchPlayCurrentAttackRouteKind::SendingOff
-					? FString(TEXT("  →  罚下一人")) : FString(TEXT("  →  定位球"));
+			// Format the existing safe route/resource projection, never derive a
+			// route or tactical points from the raw D12 in presentation code.
+			switch (Presentation.Header.RouteKind)
+			{
+			case EMatchPlayCurrentAttackRouteKind::Ordinary:
+				Copy = FText::Format(NSLOCTEXT("FMCodex.HeroRoll","TacticalPoints","本回合战术点：{0}"),
+					FText::AsNumber(Presentation.Header.CurrentAttackerTacticalPoints));
+				break;
+			case EMatchPlayCurrentAttackRouteKind::SendingOff:
+				Copy = NSLOCTEXT("FMCodex.HeroRoll","SendingOff","进入罚下判定");
+				break;
+			case EMatchPlayCurrentAttackRouteKind::SetPiece:
+				Copy = NSLOCTEXT("FMCodex.HeroRoll","SetPiece","触发定位球");
+				break;
+			default: break; // Missing/withheld facts never imply a route.
+			}
 		}
-		else if (bResourceDisclosed && bTypeD6)
-			DisclosedResult += TEXT("  →  ") + (MatchController ? MatchController->GetInteractionView().ActionLabel : Presentation.SetPiece.TypeLabel.ToString());
-		TacticalPointRevealResult->SetText(FText::FromString(
-			bResourceDisclosed
-				? DisclosedResult
-				: bHolding
-					? FString::Printf(TEXT("掷点 %d"),
-						RollRevealAuthoritativeRawValue)
-					: bSettling
-						? FString(TEXT("掷点落定中"))
-						: FString(TEXT("等待掷点结果"))));
+		TacticalPointRevealResult->SetText(Copy);
 	}
 	BindDetailHoverSources();
 

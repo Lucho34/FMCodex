@@ -1,6 +1,7 @@
 #include "FMCodexRollPresentationSurface.h"
 
 #include "Components/BorderSlot.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Rendering/DrawElements.h"
 #include "Rendering/SlateRenderer.h"
@@ -92,6 +93,80 @@ public:
 			// Underlines denote hover explanations, never an animated operand.
 			// Open numeric slot in every phase; no persistent light or chrome.
 			return SCompoundWidget::OnPaint(Args, G, Cull, Out, Layer, Style, bEnabled);
+		}
+		if (Owner->VisualVariant == EFMCodexRollVisualVariant::CompactBox)
+		{
+			// One restrained glass cell. No bevel, selector arrows, lock underline
+			// or animated glow; the same digit children carry all motion.
+			static const FSlateRoundedBoxBrush Cell(
+				FLinearColor(.006f,.020f,.029f,.96f), 6.f,
+				FLinearColor(.17f,.30f,.35f,.85f), 1.f);
+			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), &Cell,
+				ESlateDrawEffect::None, Cell.GetTint(Style) * Tint);
+			// Fixed, low-contrast inner lighting; independent of phase and result.
+			SoftLight({W*.5f,H*.20f}, {W*.48f,H*.65f}, FLinearColor(.06f,.10f,.13f,.16f));
+			Line({{12,2},{W-12,2}}, FLinearColor(.12f,.54f,.49f,.50f), 1.f);
+			return SCompoundWidget::OnPaint(Args, G, Cull, Out, Layer+2, Style, bEnabled);
+		}
+		if (Owner->VisualVariant == EFMCodexRollVisualVariant::HeroRoll)
+		{
+			// One glass silhouette. Lighting stays inside it and uses only the
+			// existing landing projection; no new clock or result-dependent style.
+			if (Chamber)
+			{
+				const float Lock = Owner->GetLockEmphasis();
+				SoftLight({W*.5f,H*.50f},{W*.47f,H*.46f},FLinearColor(.06f,.14f,.18f,.16f));
+				SoftLight({W*.5f,H*.63f},{W*.39f,H*.30f},FLinearColor(.24f,.20f,.12f,.08f*Lock));
+				// A quiet reflection grounds the open numeric stage without a box.
+				const auto Ground = FMath::Lerp(FLinearColor(.12f,.32f,.36f,.16f),
+					FLinearColor(.38f,.31f,.18f,.18f),Lock);
+				SoftLight({W*.5f,H*.92f},{W*.42f,4.f},Ground);
+			}
+			else
+			{
+				static const FSlateRoundedBoxBrush Shell(FLinearColor(.005f,.012f,.019f,.985f),14.f,
+					FLinearColor(.13f,.22f,.27f,.58f),1.f);
+				FSlateDrawElement::MakeBox(Out,Layer,G.ToPaintGeometry(),&Shell,
+					ESlateDrawEffect::None,Shell.GetTint(Style)*Tint);
+				// Broad, low-contrast glass reflection leaves the perimeter darker.
+				SoftLight({W*.5f,H*.40f},{W*.47f,H*.38f},FLinearColor(.075f,.13f,.17f,.22f));
+				SoftLight({W*.5f,H*.18f},{W*.44f,H*.15f},FLinearColor(.14f,.20f,.23f,.08f));
+				// A continuous rim follows both top corners and fades down the sides.
+				// The restrained center emphasis replaces the disconnected cyan bars.
+				TArray<FVector2f> Rim{{1,H*.35f}};
+				for (int32 N=0;N<=8;++N)
+				{
+					const float A=PI+N*HALF_PI/8.f;
+					Rim.Add({14.f+13.f*FMath::Cos(A),14.f+13.f*FMath::Sin(A)});
+				}
+				for (int32 N=1;N<8;++N) Rim.Add({14.f+(W-28.f)*N/8.f,1.f});
+				for (int32 N=0;N<=8;++N)
+				{
+					const float A=PI*1.5f+N*HALF_PI/8.f;
+					Rim.Add({W-14.f+13.f*FMath::Cos(A),14.f+13.f*FMath::Sin(A)});
+				}
+				Rim.Add({W-1,H*.35f});
+				TArray<FLinearColor> RimColors;
+				for (const auto& P:Rim)
+				{
+					const float Center=1.f-FMath::Abs(P.X-W*.5f)/(W*.5f);
+					const float Fade=1.f-FMath::SmoothStep(1.f,H*.35f,P.Y);
+					RimColors.Add(FLinearColor(.38f,.51f,.56f,(.18f+.34f*Center)*Fade));
+				}
+				FSlateDrawElement::MakeLines(Out,Layer+1,G.ToPaintGeometry(),Rim,RimColors,
+					ESlateDrawEffect::None,Tint,true,.8f);
+				TArray<FVector2f> Divider;
+				TArray<FLinearColor> DividerColors;
+				for (int32 N=0;N<=8;++N)
+				{
+					const float T=N/8.f;
+					Divider.Add({24.f+(W-48.f)*T,H-66.f});
+					DividerColors.Add(FLinearColor(.25f,.36f,.40f,.34f*FMath::Sin(PI*T)));
+				}
+				FSlateDrawElement::MakeLines(Out,Layer+1,G.ToPaintGeometry(),Divider,DividerColors,
+					ESlateDrawEffect::None,Tint,true,.7f);
+			}
+			return SCompoundWidget::OnPaint(Args,G,Cull,Out,Layer+2,Style,bEnabled);
 		}
 		// A broad machined bevel, dark gasket and blue inset form separate shells.
 		Polygon(Outline(1), FLinearColor(.20f, .30f, .40f, 1), FLinearColor(.025f, .053f, .085f, 1));

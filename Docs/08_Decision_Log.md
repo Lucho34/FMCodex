@@ -2368,3 +2368,21 @@ Development 默认主开关与 Low 开关均开启，Low=0 仅作 Development �
 共享 SingleCard executor 允许权威 GK 参与时防守侧不提供体力数组，仍拒绝无进攻体力或无 GK 的空防守体力输入；不再要求定位球伪造 GK 体力。胜负仍由原 FormulaResolver 判定。
 
 收尾证据采用 focused/affected automation、代表性 Low PIE、一次真实 Host/Remote Low 路径、一次 Win64 Shipping smoke；不机械运行全部套件。用户验收与工程证据分开记录。Git staging/commit 由用户在 GitHub Desktop 完成。
+
+## 2026-09-26 — Stage 8.10 Closeout: Roll presentation family production lock
+
+**ADOPTED / PRODUCTION LOCKED. Stage 8.10A.1 USER PIE: ACCEPTED. Stage 8.10B.2 USER PIE: ACCEPTED.** 本条采用 grouped 8.10A/A.1/B/B.1/B.2 的最终家族，保留 TheaterInline 既有验收，不追加视觉 polish。跨 Theater 与主棋盘的权威视觉规则集中于新 [Roll Presentation Visual Spec v1](UI/Roll_Presentation_Visual_Spec_v1.md)；[Theater spec](UI/Resolution_Theater_Visual_Spec_v1.md)、[MatchFlow](UI/MatchFlow_Visual_Language_v1.md) 与 [MatchScreen layout](UI/PlayerFacing_MatchScreen_Layout_v1.md) 按职责链接并同步。
+
+当前明确变体为 **Legacy / TheaterInline / CompactBox / HeroRoll**：High / Low Formula 使用 TheaterInline；Theater Cross route D6 使用 CompactBox；主棋盘 Full D12 使用 HeroRoll；其他既有消费方（含 Set Piece D6、Corner participant D12 和 fallback Formula）保留 Legacy。Legacy 仍有效，但不是新迁移的长期视觉目标。本条取代此前“CompactBox 只是概念、所有路线骰与 D12 保留 Legacy”的当前边界，不改写历史验收。
+
+8.10A 引入紧凑只读 route cell，A.1 完成细边深蓝玻璃、安静内光、中性落定、信息栏与参与者连续性。实际公开的防守门将从选择、路线到 Formula 保留，不能从 roster、部署本身或未来路线猜人；Formula facts 保持权威。UI 不计算 route、体力或胜负，门将没有体力。路线文案依次为 canonical selected-intent hint、“正在判定传中路线”、已获准显示的“掷点结果为 {N}，判定为高球传中 / 低球传中”，自然交接到同一 Theater 的 Formula。
+
+8.10B 为主棋盘引入 HeroRoll；B.1/B.2 锁定 pre-roll clean board、临时 Focus、紧凑 navy glass、连续顶部反射、薄分隔、大数字与单条解释、champagne/ivory 落定和克制 grounding。卡架降强调最多、Pitch 次之、Header 最轻；真实棋盘和布局保持。文案为“战术点判定 / 正在掷点 / 点数已落定”，语义 gate 后由安全投影提供“本回合战术点：{N} / 触发定位球 / 进入罚下判定”。UI 不重建 D12 阈值，不提前宣告罚下结果。现有 hold 内淡出与取消均恢复棋盘，不新增时钟、操作或玩法等待。
+
+四变体显式选择，共享原有 Screen phase machine、viewer-safe source、event identity/dedupe、真实 elapsed-time ResultHold 和 reveal gates。现代变体复用连续 Roll v2，D6 使用既有 pattern，D12 使用既有事件 shuffle；装饰前缀与结果独立，不调用 gameplay RNG。Base 下划线仍表示 hover，Roll 槽位从未知到落定始终无下划线。RHS、叙事和比分继续遵守现有可见门控；Local 与 Network 仍共用 player-facing Screen，没有第二套 authority 或 Network UI。
+
+实现说明 [Roll v2](Dev/Resolution_Theater_Roll_v2.md) 与 [CompactBox / HeroRoll](Dev/Resolution_Theater_CompactBox_v1.md) 已从 pending / deferred-spec 状态同步为采用状态，保留参数和工程历史。Closeout 仅改文档，focused 17 项通过，复用 A.1 / B.2 的真实 LocalPlay PIE 与已完成增量构建；工程证据不替代用户验收。不机械追加 Host/Remote、Shipping cook 或 broad suites。
+
+明确后续：①更多独立 Roll 的 CompactBox 接入；②可选 Match Shell Visual Refresh Lite，当前棋盘壳保持；③**Full Player Card inspection 当前不采用到 Resolution Theater**，它是执行/转播场景，Base tooltip 足够，完整卡片检查优先属于部署/选择/规划语境；④其余 Formula 家族（包括 Near / Long Free Kick）独立迁移。此决定取代此前 Theater participant Full Card hover 的计划方向，本阶段不实现这些后续。
+
+按整个非 ignored 工作区完成一次 grouped closeout；用户通过 GitHub Desktop 做最终提交，不另设 staging phase，也不要求用户提交 staged diff。Codex 不进行 staging 或 commit。生产锁定不表示 Git 已提交。

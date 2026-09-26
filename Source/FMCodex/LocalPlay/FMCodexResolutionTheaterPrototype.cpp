@@ -514,19 +514,7 @@ void RefreshSide(UWidgetTree& Tree, const FString& Prefix, const FFMCodexUMGInli
 	CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent())->SetText(FText::FromString(Explanation));
 
 }
-FFMCodexUMGInlineFormulaRowViewModel Participants(const FFMCodexUMGMatchScreenViewModel& Screen, bool bAttack)
-{
-	FFMCodexUMGInlineFormulaRowViewModel Row;
-	Row.SideLabel=bAttack ? LOCTEXT("Attack","进攻").ToString() : LOCTEXT("Defense","防守").ToString();
-	using R=EFMCodexUMGSelectedRole;
-	// Roles and preferred titles already come from the viewer-safe pitch projection.
-	for (const R Role : bAttack ? TArray<R>{R::Carrier,R::Runner} : TArray<R>{R::Marker,R::Helper})
-		for (const auto& Region:Screen.PitchRegions) for (const auto& Slot:Region.Slots)
-			if (Slot.bOccupied && Slot.Card.SelectedRole==Role)
-				Row.Participants.Add({Slot.Card.SelectedRoleLabel,
-					FFMCodexPlayerUIPresentationText::PlayerName(Slot.Card.CardId,Slot.Card.IdentityLabel).ToString()});
-	return Row;
-}
+
 }
 
 bool IsEnabled() {
@@ -654,10 +642,9 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	Choices->AddChildToHorizontalBox(Bounds(Tree,Low,240,60));
 	auto* ChoiceSlot=ActionLane->AddChildToOverlay(Choices); ChoiceSlot->SetHorizontalAlignment(HAlign_Center); ChoiceSlot->SetVerticalAlignment(VAlign_Center);
 	auto* ReelLine=Tree.ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),TEXT("TheaterRoll"));
-	auto* Owner=Text(Tree,TEXT("TheaterRollOwner"),19,Quiet);
-	ReelLine->AddChildToHorizontalBox(Owner)->SetVerticalAlignment(VAlign_Center);
 	auto* Reel=Tree.ConstructWidget<UFMCodexRollReelWidget>(UFMCodexRollReelWidget::StaticClass(),TEXT("TheaterReel"));
-	ReelLine->AddChildToHorizontalBox(Bounds(Tree,Reel,76,80))->SetPadding(FMargin(20,0,0,0));
+	Reel->SetVisualVariant(EFMCodexRollVisualVariant::CompactBox);
+	ReelLine->AddChildToHorizontalBox(Bounds(Tree,Reel,84,72));
 	auto* ReelSlot=ActionLane->AddChildToOverlay(ReelLine); ReelSlot->SetHorizontalAlignment(HAlign_Center); ReelSlot->SetVerticalAlignment(VAlign_Center);
 	return Root;
 }
@@ -669,8 +656,12 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FName DisclosedContest=bFormula ? P.ContestId
 		: (P.ContestId==TEXT("Cross.Route") && !P.RouteResultLabel.IsEmpty() ? Screen.InlineFormula.ContestId : NAME_None);
 	const bool bFinal=bFormula && FMCodexOutcomePresentation::IsFinalReady(P.bNarrativeAvailable,P.bDiceRevealVisible);
-	const auto Attack=bFormula ? P.AttackRow : Participants(Screen,true);
-	const auto Defense=bFormula ? P.DefenseRow : Participants(Screen,false);
+	// Setup deliberately has no visible Formula; its public participant rows
+	// live on the safe Screen projection, not the empty displayed Formula.
+	const auto& ParticipantSurface=Screen.InlineFormula.ContestId==TEXT("Cross.Setup")
+		? Screen.InlineFormula : P;
+	const auto& Attack=ParticipantSurface.AttackRow;
+	const auto& Defense=ParticipantSurface.DefenseRow;
 	// Narrative success is projected from authoritative winner facts. Do not
 	// compare totals: rapid suppression can legitimately defeat the larger total.
 	RefreshSide(Tree,TEXT("TheaterAttack"),Attack,bFormula,P.bAttackRowActive,P.bDiceRevealVisible && P.RollReel.bVisible,P.ActiveRollSequenceIndex,bFinal && P.bNarrativeAttackSuccess);
@@ -727,6 +718,16 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 		else if (bAction) Detail=bAttackTurn ? LOCTEXT("AttackTurn","轮到进攻方掷点") : LOCTEXT("DefenseTurn","轮到防守方掷点");
 		else Detail=bAttackTurn ? LOCTEXT("WaitAttack","等待进攻方掷点") : LOCTEXT("WaitDefense","等待防守方掷点");
 	}
+	else if (P.ContestId==TEXT("Cross.Route") && P.bDiceRevealVisible)
+	{
+		const bool bLanded=P.RollReel.bStaticResult && P.RollReel.bAuthoritativeValue
+			&& !P.RouteResultLabel.IsEmpty();
+		if (bLanded && (DisclosedContest==TEXT("Cross.High") || DisclosedContest==TEXT("Cross.Low")))
+			Detail=FText::Format(DisclosedContest==TEXT("Cross.High")
+				? LOCTEXT("RouteHighLanded","掷点结果为 {0}，判定为高球传中")
+				: LOCTEXT("RouteLowLanded","掷点结果为 {0}，判定为低球传中"), FText::AsNumber(P.RollReel.CenterValue));
+		else Detail=LOCTEXT("RouteRolling","正在判定传中路线");
+	}
 	else Detail=FText::FromString(P.RollHelperLabel);
 	FString MainReason=Detail.ToString(), SecondaryReason;
 	if (bFinal) Detail.ToString().Split(TEXT("\n"),&MainReason,&SecondaryReason);
@@ -754,7 +755,6 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	if (bRequestPending) Status=LOCTEXT("PendingRequest","操作已提交，等待确认").ToString();
 	SetText(Tree,TEXT("TheaterStatus"),Status);
 	Show(*Tree.FindWidget(TEXT("TheaterRoll")),P.bDiceRevealVisible && !bFormula);
-	SetText(Tree,TEXT("TheaterRollOwner"),P.DiceOwnerLabel);
 	RefreshReel(Tree,P.RollReel);
 }
 void RefreshReel(UWidgetTree& Tree, const FFMCodexUMGRollReelViewModel& Reel)

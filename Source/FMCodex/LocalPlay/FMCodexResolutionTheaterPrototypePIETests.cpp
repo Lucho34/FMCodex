@@ -159,7 +159,7 @@ public:
 class FTheaterPIE final : public IAutomationLatentCommand
 {
 public:
- explicit FTheaterPIE(FAutomationTestBase* InTest, bool InLow=false, bool InRouteOnly=false):Test(InTest),bLow(InLow),bRouteOnly(InRouteOnly)
+ explicit FTheaterPIE(FAutomationTestBase* InTest, bool InLow=false, bool InRouteOnly=false, bool InCompact=false):Test(InTest),bLow(InLow),bRouteOnly(InRouteOnly),bCompact(InCompact)
  {
   Mode=IConsoleManager::Get().FindConsoleVariable(TEXT("fm.UI.ResolutionStageV2")); Previous=Mode->GetInt(); Test->TestEqual(TEXT("Fresh PIE requires no theater enable command"),Previous,1);
  }
@@ -177,6 +177,38 @@ public:
    return W && W->GetVisibility()!=ESlateVisibility::Collapsed && W->GetVisibility()!=ESlateVisibility::Hidden;
   };
   auto Text=[&](const TCHAR* Name) { return CastChecked<UTextBlock>(S->GetWidgetFromName(Name))->GetText().ToString(); };
+  if (bCompact && Step==5)
+  {
+   auto* R=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterReel")));
+   const auto& P=S->GetInlineFormulaSurface()->GetPresentation();
+   const auto& Reel=R->GetPresentation();
+   const int32 Phase=int32(S->GetInlineFormulaRevealPhase());
+   Test->TestEqual(TEXT("Route keeps the same public goalkeeper"),Text(TEXT("TheaterDefenseName2")),KeeperName);
+   if (GEditor->PlayWorld->GetTimeSeconds()-LastMovieTime>=.035f && MovieFrames.Num()<100) CaptureMovieFrame(S);
+   if (Phase!=LastRoutePhase)
+   {
+    LastRoutePhase=Phase;
+    Test->AddInfo(FString::Printf(TEXT("COMPACT_ROUTE game=%.3f phase=%d digit=%d static=%d title=%s route=%s"),
+     GEditor->PlayWorld->GetTimeSeconds(),Phase,Reel.CenterValue,Reel.bStaticResult,*Text(TEXT("TheaterTitle")),*P.RouteResultLabel));
+   }
+   if (Reel.bMoving)
+   {
+    Test->TestEqual(TEXT("Route uses CompactBox in real PIE"),R->GetVisualVariant(),EFMCodexRollVisualVariant::CompactBox);
+    Test->TestTrue(TEXT("Natural route remains private until landing"),P.RouteResultLabel.IsEmpty() && Text(TEXT("TheaterTitle"))==TEXT("传中"));
+    Test->TestFalse(TEXT("Rolling route has no actionable CTA"),Visible(TEXT("TheaterPrimaryBounds")));
+    Test->TestEqual(TEXT("Real rolling message"),Text(TEXT("TheaterDetail")),FString(TEXT("正在判定传中路线")));
+    if (!bRouteMoving && Reel.ContinuousPositionCells>2.f)
+    { bRouteMoving=true; CaptureRollFrame(S,TEXT("03_Route_CompactBox_Rolling_Message.png")); }
+   }
+   if (Reel.bStaticResult && !bRouteLanded)
+   {
+    bRouteLanded=true;
+    Test->TestEqual(TEXT("Real landed copy is gated authoritative result"),Text(TEXT("TheaterDetail")),FString(TEXT("掷点结果为 5，判定为低球传中")));
+    Test->TestEqual(TEXT("Route lands on provider result"),Reel.CenterValue,bLow?5:2);
+    Test->TestTrue(TEXT("Landed route retains one crisp digit"),R->IsStaticResultTileVisible());
+    CaptureRollFrame(S,TEXT("04_Route_Landed_ResultMessage.png"));
+   }
+  }
   if (bLow && Step==5)
   {
    Test->TestTrue(TEXT("No board bounce throughout real Low route hold"),Visible(TEXT("TheaterContent")));
@@ -250,6 +282,7 @@ public:
    Test->TestTrue(TEXT("Compact roll info bar remains visible without enclosing CTA"),Visible(TEXT("TheaterLaneGlass")));
    QuestionPosition=S->GetWidgetFromName(TEXT("TheaterAttackUnknownSlot"))->GetCachedGeometry().GetAbsolutePosition();
    bRollCaptured=true;
+   if (bCompact) CaptureRollFrame(S,TEXT("06_TheaterInline_Regression.png"));
   }
   if (Step==8 && S->GetInlineFormulaRevealPhase()==EFMCodexUMGInlineFormulaRevealPhase::ResultHold && !bInlineHoldChecked)
   {
@@ -290,7 +323,15 @@ public:
    const auto Attacker=C->GetInteractionView().CurrentAttackingPlayer;
    const FString Forward=Attacker==EInitialTurnOrderPlayer::PlayerA ? TEXT("NearB") : TEXT("NearA");
    for (int32 I=0;I<4;++I) if (!DeployNextOrdinary(*C,Forward)) { Test->AddError(TEXT("Legal deployment failed")); return true; }
-   C->FinishDeployment(); C->FinishDeployment();
+   C->FinishDeployment();
+   if (bCompact)
+   {
+    const auto* Keeper=C->GetInteractionView().DeploymentOptions.FindByPredicate([](const auto& O){ return O.bGoalkeeper; });
+    if (!Test->TestNotNull(TEXT("Canonical defender offers goalkeeper deployment"),Keeper)) return true;
+    const FName KeeperSlot=Keeper->SlotId; C->DeployGoalkeeper(KeeperSlot);
+    if (!Test->TestTrue(TEXT("Real goalkeeper deployment accepted"),C->GetLastDiagnostic().bHostSuccess)) return true;
+   }
+   C->FinishDeployment();
    S->RequestSubmitCarrier(Attacker==EInitialTurnOrderPlayer::PlayerA ? FName(TEXT("Prototype.Arsenal.BukayoSaka")) : FName(TEXT("Prototype.ManchesterCity.RayanAitNouri")));
    if (!SubmitFirst(*C,EFMCodexLocalMatchInteractionCategory::SelectMarker,Attacker==EInitialTurnOrderPlayer::PlayerA ? FName(TEXT("Prototype.ManchesterCity.JohnStones")) : FName(TEXT("Prototype.Arsenal.WilliamSaliba")))
     || !SubmitFirst(*C,EFMCodexLocalMatchInteractionCategory::SelectRunner)) { Test->AddError(TEXT("Legal role selection failed")); return true; }
@@ -319,7 +360,14 @@ public:
    Test->TestEqual(TEXT("Helper role readable"),Text(TEXT("TheaterDefenseRole1")),FString(TEXT("协防")));
    ParticipantHeight=S->GetWidgetFromName(TEXT("TheaterAttackPanel"))->GetCachedGeometry().GetAbsoluteSize().Y;
    Test->TestTrue(TEXT("Participants use compact natural content height"),ParticipantHeight<260.f);
-   if (bLow) CaptureRollFrame(S,TEXT("00_CrossNeutral.png"));
+   if (bCompact)
+   {
+    Test->TestEqual(TEXT("Known activated keeper is present before branch choice"),Text(TEXT("TheaterDefenseRole2")),FString(TEXT("门将")));
+    KeeperName=Text(TEXT("TheaterDefenseName2"));
+    Test->TestFalse(TEXT("Actual keeper has player-facing name"),KeeperName.IsEmpty());
+    CaptureRollFrame(S,TEXT("01_RouteParticipants_WithGoalkeeper.png"));
+   }
+   else if (bLow) CaptureRollFrame(S,TEXT("00_CrossNeutral.png"));
    CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterHigh")))->OnClicked.Broadcast();
    if (!Override(*C,EFMCodexLocalDevRollTarget::CrossRoute,bLow?5:2)
     || !Override(*C,bLow?EFMCodexLocalDevRollTarget::CrossLowAttack:EFMCodexLocalDevRollTarget::CrossHighAttack,bLow?6:4)
@@ -329,6 +377,12 @@ public:
   if (Step==4)
   {
    if (!Test->TestTrue(TEXT("Natural route action available"),C->GetInteractionView().InteractionCategory==EFMCodexLocalMatchInteractionCategory::RollCrossRoute)) return true;
+   if (bCompact)
+   {
+    Test->TestFalse(TEXT("Pre-action route cell stays hidden, no fake result"),Visible(TEXT("TheaterRoll")));
+    Test->TestEqual(TEXT("Pre-roll message retains canonical hint"),Text(TEXT("TheaterDetail")),S->GetInlineFormulaSurface()->GetPresentation().RollHelperLabel);
+    CaptureRollFrame(S,TEXT("02_Route_PreRoll_Message.png")); CaptureMovieFrame(S);
+   }
    Click(S); Next(); return false;
   }
   if (Step==5)
@@ -336,6 +390,12 @@ public:
    Test->TestTrue(TEXT("Cross formula retains same theater"),Visible(TEXT("ResolutionTheater")) && Visible(TEXT("TheaterAttackPending")));
    Test->TestEqual(TEXT("Real actual Cross formula"),S->GetInlineFormulaSurface()->GetPresentation().ContestId,FName(bLow?TEXT("Cross.Low"):TEXT("Cross.High")));
    Test->TestEqual(TEXT("Disclosed tactical title"),Text(TEXT("TheaterTitle")),FString(bLow?TEXT("低球传中"):TEXT("高球传中")));
+   if (bCompact)
+   {
+    Test->TestTrue(TEXT("Real route visited rolling and landing"),bRouteMoving && bRouteLanded);
+    Test->TestEqual(TEXT("Formula keeps the same goalkeeper"),Text(TEXT("TheaterDefenseName2")),KeeperName);
+    CaptureRollFrame(S,TEXT("05_Route_ToFormula_ParticipantContinuity.png")); SaveMovieFrames();
+   }
    if (bRouteOnly) return true;
    Test->TestEqual(TEXT("Current subtotal is authority projection"),Text(TEXT("TheaterAttackNumber")),S->GetInlineFormulaSurface()->GetPresentation().AttackRow.DisplayedResultLabel);
    const float FormulaHeight=S->GetWidgetFromName(TEXT("TheaterAttackPanel"))->GetCachedGeometry().GetAbsoluteSize().Y;
@@ -357,6 +417,7 @@ public:
      && LineGeometry.GetAbsoluteSize().X<Base.GetAbsoluteSize().X
      && FMath::Abs(LineGeometry.GetAbsolutePosition().X+LineGeometry.GetAbsoluteSize().X*.5-Base.GetAbsolutePosition().X-Base.GetAbsoluteSize().X*.5)<1.f);
    }
+   if (bCompact) { Step=7; Changed=FPlatformTime::Seconds(); return false; }
    MoveTo(S,TEXT("TheaterDefenseBaseHover")); Next(); return false;
   }
   if (Step==6)
@@ -383,7 +444,7 @@ public:
    Test->TestTrue(TEXT("Inspect cue returns to quiet after pointer leaves"),
     CastChecked<UBorder>(S->GetWidgetFromName(TEXT("TheaterDefenseBaseUnderline")))->GetBrushColor().A<.8f);
    Test->TestTrue(TEXT("Native tooltip leaves underlying action enabled"),CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->GetIsEnabled());
-   CaptureMovieFrame(S); Click(S); Next(); return false;
+   if (!bCompact) CaptureMovieFrame(S); Click(S); Next(); return false;
   }
   if (Step==8)
   {
@@ -395,6 +456,7 @@ public:
    Paint(S); CheckEquation(S);
    CaptureRollFrame(S,TEXT("05_MixedState.png"));
    if (!bLow) SaveMovieFrames();
+   if (bCompact) return true;
    BeforeScore=S->GetMatchHeader()->GetDisplayedScoreLabel(); Click(S); Next(); return false;
   }
   if (Step==9)
@@ -465,7 +527,7 @@ private:
   const auto Window=FSlateApplication::Get().FindWidgetWindow(S->TakeWidget());
   if (!Window.IsValid()) return;
   const auto WG=Window->GetContent()->GetTickSpaceGeometry();
-  const auto G=S->GetWidgetFromName(TEXT("TheaterAttackPanel"))->GetCachedGeometry();
+  const auto G=S->GetWidgetFromName(bCompact?TEXT("TheaterBottom"):TEXT("TheaterAttackPanel"))->GetCachedGeometry();
   const auto Origin=G.GetAbsolutePosition()-WG.GetAbsolutePosition();
   const auto End=Origin+G.GetAbsoluteSize();
   const FIntRect Area(FMath::FloorToInt(Origin.X),FMath::FloorToInt(Origin.Y),FMath::CeilToInt(End.X),FMath::CeilToInt(End.Y));
@@ -475,7 +537,7 @@ private:
  }
  void SaveMovieFrames()
  {
-  const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_9A_2/Motion"); IFileManager::Get().MakeDirectory(*Dir,true);
+  const FString Dir=FPaths::ProjectSavedDir()/(bCompact?TEXT("Stage8_10A_1/Motion"):TEXT("Stage8_9A_2/Motion")); IFileManager::Get().MakeDirectory(*Dir,true);
   FString Times=TEXT("frame,game_seconds\n");
   for (int32 I=0;I<MovieFrames.Num();++I)
   {
@@ -512,7 +574,7 @@ private:
   if (!Window.IsValid()) { Test->AddError(TEXT("No PIE window for Roll v2 evidence")); return; }
   TArray<FColor> Pixels; FIntVector Size;
   if (!Test->TestTrue(TEXT("Real Roll v2 PIE frame captured"),FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Pixels,Size))) return;
-  const FString Dir=FPaths::ProjectSavedDir()/(bLow?TEXT("Stage8_9B/PIE"):TEXT("Stage8_9A_2")); IFileManager::Get().MakeDirectory(*Dir,true);
+  const FString Dir=FPaths::ProjectSavedDir()/(bCompact?TEXT("Stage8_10A_1/PIE"):bLow?TEXT("Stage8_9B/PIE"):TEXT("Stage8_9A_2")); IFileManager::Get().MakeDirectory(*Dir,true);
   TArray64<uint8> PNG; FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
   Test->TestTrue(TEXT("Roll v2 frame saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/File)));
   Test->AddInfo(FString::Printf(TEXT("ROLL_V2_CAPTURE %s game=%.3f"),File,GEditor->PlayWorld->GetTimeSeconds()));
@@ -746,7 +808,10 @@ private:
  float ParticipantHeight=0;
  FVector2D QuestionPosition;
  FString BeforeScore;
- bool bLow=false,bRouteOnly=false;
+ FString KeeperName;
+ bool bLow=false,bRouteOnly=false,bCompact=false;
+ bool bRouteMoving=false,bRouteLanded=false;
+ int32 LastRoutePhase=-1;
 };
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterPIETest,"FMCodex.PIE.ResolutionTheater.HighCross",
@@ -776,6 +841,16 @@ bool FResolutionTheaterHighRoutePIETest::RunTest(const FString&)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
  ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FTheaterPIE(this,false,true)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+ return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterCompactRoutePIETest,"FMCodex.PIE.ResolutionTheater.CompactBoxRoute",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FResolutionTheaterCompactRoutePIETest::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FTheaterPIE(this,true,false,true)));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
 }

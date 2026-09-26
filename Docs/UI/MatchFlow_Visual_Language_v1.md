@@ -13,9 +13,10 @@ Direction: **Modern Football Broadcast + Navy Metallic Tactical HUD**
 | 职责 | 权威归属 |
 |---|---|
 | 流程视觉语言、颜色语义、交互外观、视觉强度 | 本文 |
-| 已验收 High Cross Resolution Theater 生产家族 | [Resolution Theater Visual Spec v1](Resolution_Theater_Visual_Spec_v1.md)；其局部规则优先于本文通用 Formula 外观 |
+| 已验收 High / Low Cross Resolution Theater 生产家族 | [Resolution Theater Visual Spec v1](Resolution_Theater_Visual_Spec_v1.md)；其局部规则优先于本文通用 Formula 外观 |
+| 跨 Theater / 主棋盘的 Roll 视觉变体、运动与揭示关系 | [Roll Presentation Visual Spec v1](Roll_Presentation_Visual_Spec_v1.md)；Legacy / TheaterInline / CompactBox / HeroRoll 的当前权威规范 |
 | Layout、geometry、screen composition | [Player-Facing Match Screen Layout](PlayerFacing_MatchScreen_Layout_v1.md) 与其链接的几何合同 |
-| Roll lifecycle、消费方、揭示门控与既有实现细节 | [Roll Presentation contract](Cross_High_Manual_Roll_Contract.md) 的当前有效条目 |
+| Roll lifecycle、揭示门控与既有实现细节 | [Roll lifecycle contract](Cross_High_Manual_Roll_Contract.md) 的当前有效条目；新变体不另建行为源 |
 | 球员美术与派生资产 | [Player Card Family canonical contract](Shared_Portrait_Art_Contract_v1.md) |
 | 静态战术说明／权威公式事实 | [Tactical Information](Tactical_Information_Visualization_v1.md) / [Formula Fact Audit](Resolution_Formula_Fact_Audit.md)，结合当前权威实现 |
 | 当前决策、验收与历史差异 | [Decision Log](../08_Decision_Log.md) 的相关较新条目 |
@@ -72,7 +73,7 @@ hex 是视觉起始参考，不能直接当作 UE linear channel 数值照抄；
 
 | Tier | 类型与例子 | 视觉强度 / 重点 |
 |---|---|---|
-| 1 — Reveal / Core Resolution | Roll、关键锁定、核心数字揭示 | 最强凹入 chamber、较强结构框、有限 glow、金色结果焦点；默认参考 Sports Broadcast Numeric Window |
+| 1 — Reveal / Core Resolution | Roll、关键锁定、核心数字揭示 | 数字焦点优先；按 Roll 专项规范选 HeroRoll、CompactBox 或 TheaterInline，不统一套用大 chamber；Legacy 保留既有外观 |
 | 2 — Decision / Formula | 类型说明、战术选择、Formula / contest | 深蓝战术面板、小切角、清楚分区、青蓝交互、克制结构细节；整体比 Roll 安静 |
 | 3 — Notification / Flow Feedback | Recovery 返回、短系统提示、阶段通知 | 紧凑、低遮挡、减轻边框复杂度、快速可读；不使用 Tier 1 大机壳 |
 | 4 — Terminal / Full-Time | 全场结束总结 | 较大稳定阅读区、对称性、比分和身份层级、较长阅读时间；仍属于同色系和边框家族 |
@@ -119,13 +120,13 @@ Tier 1/2 多数流程在信息结构需要时采用以下分区，不为凑齐�
 
 不默认采用大面积绿色、gold 或 red CTA；语义确实需要的例外须有明确依据。默认边框应克制，悬停／聚焦才增强冰蓝描边，按下可轻微下沉。外观必须服从既有合法动作、viewer、pending 和 reveal gate，不能绕过门控或制造新的操作步骤。
 
-## 10. Sports Broadcast Numeric Window
+## 10. Roll Presentation Family
 
-**Sports Broadcast Numeric Window** 是当前已验收 Stage 8.6 Roll Presentation 的正式名称，也是 **ROLL / NUMBER REVEAL FAMILY BASELINE**。后续 Roll、数字揭示和锁定数字结果默认复用这套语言，不逐页重新探索另一种 Roll 视觉。
+当前生产家族为 **Legacy / TheaterInline / CompactBox / HeroRoll**，统一遵循 [Roll Presentation Visual Spec](Roll_Presentation_Visual_Spec_v1.md)。该文档负责消费边界、数字层级、连续落定、变体颜色与 reveal 关系；本文不重复其细则。
 
-特征：深蓝切角外壳、中央凹入数字舱、纵向运动数字序列、裁切／淡出的相邻数字、中心数字最高强调、侧面定位标记、cyan 结构强调、champagne gold 锁定结果，以及 **Header / Chamber / Footer**。
+Stage 8.6 **Sports Broadcast Numeric Window** 继续作为 Legacy 的已验收外观：深蓝切角外壳、凹入数字舱、裁切邻位、侧面定位标记及 Header / Chamber / Footer。它在未迁移消费方中有效，已不再是新 Roll 迁移必须复制的长期目标。
 
-规范依据为 [Roll contract](Cross_High_Manual_Roll_Contract.md) 的有效 8.6C/8.6D 条目和 [较新 Decision Log](../08_Decision_Log.md)。具体消费方尺寸、时钟、结果保持时长和合法动作仍由既有合同负责；本文不复制或重设这些参数。
+Formula 内嵌槽位、紧凑独立结果格、主棋盘焦点事件各有合适强度。变体由消费方显式选择，共享既有 [Roll lifecycle contract](Cross_High_Manual_Roll_Contract.md)，不新增 gameplay RNG、时钟或权威结果源；规范同步不自动迁移其他界面。
 
 ## 11. Type Information Panel
 
@@ -162,7 +163,7 @@ Tier 1/2 多数流程在信息结构需要时采用以下分区，不为凑齐�
 - 仅消费 authoritative FormulaFacts / ResolutionFacts 与安全投影；不由 UI 重算权威数值，不用静态 catalog 推导比赛结论。
 - 不提前显示未知 roll、不用 gold 暗示胜方、不提前显示 goal/no-goal。结果标签、score 和后续动作继续服从现有 visible reveal gate。
 - 攻守模块共用结构、角色／姓名 typography、identity capsule、完整 formula chip 与独立 value module；角色和球员身份仍须明确。当前值保持次级、冷色阅读层级；最终值按第 4 节已揭示结果语义强调，双方一致，不比较大小来选择金色。current/final 只由安全投影的最终值语义决定，不按数字、文案或阶段猜测。
-- Formula 内的 Roll 是第 10 节 Sports Broadcast Numeric Window 的 **compact embedded member**，视觉强度低于独立 Tier 1 surface，与 Formula 保持连续且只保留必要的行动方／滚动状态。沿用第 17 节时钟、披露和动作边界，不建立另一套 Roll 逻辑。
+- High / Low Theater Formula 采用第 10 节的 **TheaterInline** 固定等式槽位；未迁移 Formula 保留 Legacy compact embedded member。共同要求是 Formula 连续性与数字层级，具体迁移须另行授权。沿用第 17 节时钟、披露和动作边界，不建立另一套 Roll 逻辑。
 - Formula-linked result 的结论层复用第 14.1 节 Shared Result Family；Formula 主体的角色、模块、数值、term chips 与揭示合同仍由本节负责，不因结论层复用而重排。
 - Stage 8.7C / 8.7C.1 已获 **USER PIE ACCEPTED**；当前实现结构见 [Formula family accepted layout](PlayerFacing_MatchScreen_Layout_v1.md#formula-family-accepted)。事实、小计语义和揭示行为保持原合同；ready for manual staging，提交与 clean HEAD 确认前尚未 CLOSED。
 
@@ -231,7 +232,8 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 |---|---|
 | Match Flow Visual Language v1 | **CURRENT / LOCKED**；规范状态与具体 UI 验收分别记录 |
 | Main Match HUD | 已接受的主比赛壳视觉基线 |
-| Stage 8.6 Roll / Sports Broadcast Numeric Window | 已验收 Roll family 基线；保持 accepted |
+| Stage 8.6 Roll / Sports Broadcast Numeric Window | Legacy 的已验收基线；未迁移消费方保持 accepted |
+| Stage 8.10 Roll family | **ADOPTED / PRODUCTION LOCKED**；8.10A.1 与 8.10B.2 USER PIE 均 ACCEPTED，TheaterInline 保持既有验收 |
 | Player Card Family v1.3 | 已接受的球员美术基线；保持其 owner/rarity 与资产职责 |
 | Stage 8.7C / 8.7C.1 Formula / Contest | **USER PIE ACCEPTED**；当前值／最终值、共享模块、compact Roll 与关联结果层级已接受；ready for manual staging，尚未 CLOSED |
 | Stage 8.7B / 8.7B.1 A/C 实现 | **USER PIE ACCEPTED**；用户于 2026-09-20 明确表示“这轮美术优化没问题”。待用户手动 staging/commit 与 clean HEAD 确认，尚未 CLOSED |
@@ -242,7 +244,7 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 当前衔接说明（记录差异，不修改实现）：
 
 1. Roll 专项文档仍留有 8.6D 提交前的 awaiting-commit 字样；较新 Decision Log 已记录 8.6 提交／CLOSED。旧状态是历史检查点，不撤销当前 accepted 基线。
-2. 已验收 Reel 的 Cycling 数字也使用暖金色焦点。它们是与最终结果独立的运动占位数字，不能视为已确定的结果，也不表示成功或推荐。保留已验收输出；未来若要求将金色严格限定到锁定后，须作为明确的 Roll family 设计变更单独评审，不在文档阶段偷偷改代码。新结果界面必须遵守第 4、17 节的语义和披露边界。
+2. 已验收 Legacy Reel 的 Cycling 数字也使用暖金色焦点。它们是与最终结果独立的运动占位数字，不能视为已确定的结果，也不表示成功或推荐。该例外只保留于 Legacy；TheaterInline、CompactBox、HeroRoll 使用较新 Roll 专项规范的已验收处理。规范收尾不偷偷改代码，所有变体仍遵守第 4、17 节的语义和披露边界。
 3. 8.7B / 8.7B.1 的最终 A/C 已获用户前台验收；局部颜色、字号、宽度和图标参数与规范起始值不同不构成冲突。验收来自用户决定，不来自参数匹配或自动截图。本次冻结输出，未来调整须遵循 family review 与相应 USER PIE。
 4. D Formula 由用户单独授权 Stage 8.7C / 8.7C.1 实施并完成前台 USER PIE 验收；B selected/corner-order overlay 已在 Stage 8.7D 获 USER PIE ACCEPTED，其 compact card-state 规则由 [Hand Micro §35](HandMicro_Visual_Spec_v1.md#compact-card-draft-state) 负责；E Recovery、F optional Full-Time polish 和 Full portrait/bio safe-zone 继续 deferred。A/C 的既有验收不代替 Formula 验收。
 
@@ -256,8 +258,8 @@ Roll 的视觉序列为 **FAST CYCLING → DECELERATION → SETTLING → LOCK �
 - 技术验证按实际 diff 选择 focused / affected；文档更新不机械触发 UE build、PIE 或 broad gameplay suites。staging/commit 始终由用户手动完成。
 
 
-## 21. High Cross Resolution Theater — Production Locked
+## 21. High / Low Cross Resolution Theater — Production Locked
 
-Stage 8.8F.3 USER PIE 已由用户接受。中性传中入口、实际高球的 Formula/Roll/Result 与返回 Match Board 使用 [Resolution Theater 专项规范](Resolution_Theater_Visual_Spec_v1.md)。它锁定球场连续背景、左右对抗与外侧人物、安全内容区、RHS 数值焦点、实线 hover、独立理由栏与 CTA、顺序入场。
+Stage 8.8F.3、8.9A.2、8.9B 和 8.10A.1 USER PIE 均已由用户接受。中性传中入口、实际 High / Low 的 Formula/Roll/Result 与返回 Match Board 使用 [Resolution Theater 专项规范](Resolution_Theater_Visual_Spec_v1.md)。它锁定球场连续背景、左右对抗与外侧人物、安全内容区、RHS 数值焦点、Base 实线 hover、独立理由栏与 CTA、顺序入场。路线 CompactBox 与 Formula TheaterInline 的共同规范见第 10 节。
 
-这是第 4 节主按钮蓝色和通用 Formula 展开方式的已验收局部例外：High Theater 使用薄荷青绿主 CTA、深色字及 Base tooltip。其他 surface 不因此换肤。默认生产与 Shipping 启用；Development fallback 仅供对照。Low Cross 当前仍在路线披露后返回既有表现，后续迁移另行授权。
+这是第 4 节主按钮蓝色和通用 Formula 展开方式的已验收局部例外：High / Low Theater 使用薄荷青绿主 CTA、深色字及 Base tooltip。实际 Low 路线披露后继续留在同一 Theater。默认生产与 Shipping 启用；Development fallback 仅供对照。已知实际门将的选择→路线→Formula 身份连续性遵循安全投影。其他 surface 不因此换肤；Theater 当前不采用 Full Player Card inspection。

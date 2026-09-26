@@ -4,11 +4,13 @@
 #include "Components/Border.h"
 #include "FMCodexRollPresentationSurface.generated.h"
 
-/** Visual variants share the same reel projection/clock. Future styles are not implemented. */
+/** Context selects a skin; all skins consume the shared reel projection/clock. */
 enum class EFMCodexRollVisualVariant : uint8
 {
 	Legacy,
-	TheaterInline
+	TheaterInline,
+	CompactBox,
+	HeroRoll
 };
 
 /** Lightweight roll-only frame. Paints decoration; owns no roll or timing state. */

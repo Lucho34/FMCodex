@@ -68,8 +68,8 @@ void UFMCodexRollReelWidget::SetExpandedChamber(const bool bExpanded)
 	bExpandedChamber = bExpanded;
 	if (auto* Bounds = WidgetTree ? Cast<USizeBox>(WidgetTree->RootWidget) : nullptr)
 	{
-		Bounds->SetWidthOverride(UsesTheaterInlineSkin() ? 68.f : bExpanded ? 96.0f : 68.0f);
-		Bounds->SetHeightOverride(UsesTheaterInlineSkin() ? 76.f : bExpanded ? 112.0f : 72.0f);
+		Bounds->SetWidthOverride(VisualVariant == EFMCodexRollVisualVariant::HeroRoll ? 190.f : VisualVariant == EFMCodexRollVisualVariant::CompactBox ? 84.f : UsesTheaterInlineSkin() ? 68.f : bExpanded ? 96.0f : 68.0f);
+		Bounds->SetHeightOverride(VisualVariant == EFMCodexRollVisualVariant::HeroRoll ? 184.f : VisualVariant == EFMCodexRollVisualVariant::CompactBox ? 72.f : UsesTheaterInlineSkin() ? 76.f : bExpanded ? 112.0f : 72.0f);
 	}
 }
 
@@ -79,7 +79,7 @@ void UFMCodexRollReelWidget::SetVisualVariant(const EFMCodexRollVisualVariant In
 	BuildWidgetTree();
 	if (!ReelFrame) return;
 	CastChecked<UFMCodexRollPresentationSurface>(ReelFrame)->VisualVariant = VisualVariant;
-	if (!UsesTheaterInlineSkin())
+	if (!UsesTheaterDigitStyle())
 	{
 		FFMCodexPlayerUIStyle::Get().ApplyBorder(*ReelFrame, EFMCodexPlayerUIColorRole::Warning, FMargin(3.f));
 		SetExpandedChamber(bExpandedChamber);
@@ -95,11 +95,10 @@ void UFMCodexRollReelWidget::SetVisualVariant(const EFMCodexRollVisualVariant In
 	}
 	ReelFrame->SetPadding(FMargin(0));
 	ReelFrame->SetBrushColor(FLinearColor::Transparent);
-	auto* Bounds = CastChecked<USizeBox>(WidgetTree->RootWidget);
-	Bounds->SetWidthOverride(68.f); Bounds->SetHeightOverride(76.f);
+	SetExpandedChamber(bExpandedChamber);
 	for (UTextBlock* Digit : {PreviousText.Get(), CenterText.Get(), NextText.Get()})
 	{
-		FFMCodexPlayerUIStyle::Get().ApplyFlowText(*Digit,40);
+		FFMCodexPlayerUIStyle::Get().ApplyFlowText(*Digit,VisualVariant == EFMCodexRollVisualVariant::HeroRoll ? 96 : 40);
 		auto Font = Digit->GetFont(); Font.TypefaceFontName = TEXT("Medium");
 		Font.OutlineSettings.OutlineSize = 0; Digit->SetFont(Font);
 		Digit->SetShadowOffset(FVector2D::ZeroVector);
@@ -108,7 +107,7 @@ void UFMCodexRollReelWidget::SetVisualVariant(const EFMCodexRollVisualVariant In
 		auto* DigitSlot = CastChecked<UOverlaySlot>(Digit->Slot);
 		DigitSlot->SetVerticalAlignment(VAlign_Top);
 		// Matches the existing 76px slot's question/result baseline exactly.
-		DigitSlot->SetPadding(FMargin(0,58.f-Ascent,0,0));
+		DigitSlot->SetPadding(FMargin(0,(VisualVariant == EFMCodexRollVisualVariant::HeroRoll ? 142.f : UsesTheaterInlineSkin() ? 58.f : 54.f)-Ascent,0,0));
 	}
 	RefreshVisuals();
 }
@@ -296,8 +295,14 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 		CenterText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 		bLastShowNeighborDigits = Presentation.bShowNeighborDigits;
 	}
-	const FLinearColor ActiveTint = UsesTheaterInlineSkin()
+	FLinearColor ActiveTint = UsesTheaterDigitStyle()
 		? FLinearColor::FromSRGBColor(FColor(68,226,216)) : FLinearColor(.92f,.67f,.29f,1);
+	if (VisualVariant == EFMCodexRollVisualVariant::HeroRoll)
+		ActiveTint = FMath::Lerp(FLinearColor::FromSRGBColor(FColor(224,243,249)),
+			FLinearColor::FromSRGBColor(FColor(242,222,180)), FMath::Clamp(Presentation.NeighborFadeAlpha,0.f,1.f));
+	if (VisualVariant == EFMCodexRollVisualVariant::CompactBox)
+		ActiveTint = FMath::Lerp(ActiveTint, FLinearColor::FromSRGBColor(FColor(233,245,248)),
+			FMath::Clamp(Presentation.NeighborFadeAlpha,0.f,1.f));
 	if (Presentation.bStaticResult)
 	{
 		PreviousText->SetRenderTranslation(FVector2D::ZeroVector);
@@ -308,7 +313,8 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 		NextText->SetRenderOpacity(0.0f);
 		PreviousText->SetRenderScale(FVector2D(1.0f));
 		CenterText->SetRenderScale(FVector2D(1.0f));
-		CenterText->SetColorAndOpacity(FSlateColor(ActiveTint));
+		CenterText->SetColorAndOpacity(FSlateColor(VisualVariant == EFMCodexRollVisualVariant::CompactBox
+			? FLinearColor::FromSRGBColor(FColor(233,245,248)) : ActiveTint));
 		NextText->SetRenderScale(FVector2D(1.0f));
 		LastCenterOffset = 0.0f;
 		LastCenterScale = 1.0f;
@@ -317,8 +323,8 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 	{
 		const float Alpha = FMath::Clamp(
 			Presentation.ScrollAlpha, 0.0f, 1.0f);
-		const float CellTravel = UsesTheaterInlineSkin() ? 56.f : DigitTravel;
-		const float Landing = UsesTheaterInlineSkin() ? 0.f : Presentation.LandingOffsetY;
+		const float CellTravel = VisualVariant == EFMCodexRollVisualVariant::HeroRoll ? 108.f : UsesTheaterDigitStyle() ? 56.f : DigitTravel;
+		const float Landing = UsesTheaterDigitStyle() ? 0.f : Presentation.LandingOffsetY;
 		const float Travel = Alpha * CellTravel;
 		PreviousText->SetRenderTranslation(FVector2D(
 			0.0f, -CellTravel - Travel + Landing));
@@ -336,11 +342,11 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 			const float D = FMath::Clamp(Distance, 0.0f, 1.0f);
 			const float Focus = 1.0f - D * D * (3.0f - 2.0f * D);
 			const float EdgeFade = 1.0f - FMath::Clamp((Distance - 1.0f) / .55f, 0.0f, 1.0f);
-			Digit->SetRenderScale(FVector2D(UsesTheaterInlineSkin() ? 1.f : (.62f + .38f * Focus) * Presentation.LandingScale));
+			Digit->SetRenderScale(FVector2D(UsesTheaterDigitStyle() ? 1.f : (.62f + .38f * Focus) * Presentation.LandingScale));
 			// The incoming target must not fade merely because it still occupies
 			// NextText. Fade only off-center ghosts, then hand off at the same baseline.
-			const float NeighborFade=UsesTheaterInlineSkin() ? 1.f-Presentation.NeighborFadeAlpha*(1.f-Focus) : NeighborOpacityScale;
-			const float LockBrightness=UsesTheaterInlineSkin() ? .92f+.08f*Presentation.NeighborFadeAlpha : 1.f;
+			const float NeighborFade=UsesTheaterDigitStyle() ? 1.f-Presentation.NeighborFadeAlpha*(1.f-Focus) : NeighborOpacityScale;
+			const float LockBrightness=UsesTheaterDigitStyle() ? .92f+.08f*Presentation.NeighborFadeAlpha : 1.f;
 			Digit->SetRenderOpacity((.20f + .80f * Focus) * EdgeFade * (bNeighbor ? NeighborFade : 1.0f) * LockBrightness);
 			Digit->SetColorAndOpacity(FSlateColor(FMath::Lerp(
 				FLinearColor(.30f, .43f, .55f, 1), ActiveTint, Focus)));

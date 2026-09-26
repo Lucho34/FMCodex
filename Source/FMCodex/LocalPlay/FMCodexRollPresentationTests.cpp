@@ -3,6 +3,10 @@
 #include "FMCodexRollPresentationSurface.h"
 #include "Components/TextBlock.h"
 #include "Components/SizeBox.h"
+#include "FMCodexCardRackWidget.h"
+#include "FMCodexMatchHeaderWidget.h"
+#include "FMCodexPitchWidget.h"
+#include "FMCodexInteractionPanelWidget.h"
 #include "Fonts/FontMeasure.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Rendering/SlateRenderer.h"
@@ -29,11 +33,11 @@ struct FFMCodexRollCosmeticTestAccess
 		Screen.RollRevealAuthoritativeRawValue = Final;
 		Screen.bInlineFormulaAuthorityResultAvailable = true;
 	}
-	static void BeginTheater(UFMCodexLocalMatchScreenWidget& Screen,int32 Final,int64 Event,bool bDefense=false)
+	static void BeginTheater(UFMCodexLocalMatchScreenWidget& Screen,int32 Final,int64 Event,bool bDefense=false,bool bRoute=false)
 	{
 		Begin(Screen,6,Final,Event);
-		Screen.ActiveCrossRollReveal.ContestId=TEXT("Cross.High");
-		Screen.ActiveCrossRollReveal.Kind=bDefense ? EFMCodexUMGCrossRollRevealKind::Defense : EFMCodexUMGCrossRollRevealKind::Attack;
+		Screen.ActiveCrossRollReveal.ContestId=bRoute ? TEXT("Cross.Route") : TEXT("Cross.High");
+		Screen.ActiveCrossRollReveal.Kind=bRoute ? EFMCodexUMGCrossRollRevealKind::InitialRoute : bDefense ? EFMCodexUMGCrossRollRevealKind::Defense : EFMCodexUMGCrossRollRevealKind::Attack;
 		Screen.ActiveCrossRollReveal.RollSequenceIndex=bDefense ? 1 : 0;
 		Screen.RollRevealCosmeticSeed=GetTypeHash(Screen.ActiveCrossRollReveal.StableKey());
 		Screen.TheaterMotion.bActive=true;
@@ -43,6 +47,8 @@ struct FFMCodexRollCosmeticTestAccess
 		Screen.InlineFormulaRevealPhaseElapsed = Time;
 		return Screen.BuildActiveRollReelPresentation();
 	}
+	static void Hero(UFMCodexLocalMatchScreenWidget& Screen)
+	{ Screen.ActiveCrossRollReveal.ContestId=TEXT("Match.TacticalPoint"); Screen.TheaterMotion.bActive=false; }
 	static void Capture(UFMCodexLocalMatchScreenWidget& Screen) { Screen.BeginInlineFormulaFinalCapture(); }
 	static FFMCodexUMGRollReelViewModel Current(UFMCodexLocalMatchScreenWidget& Screen)
 	{ return Screen.BuildActiveRollReelPresentation(); }
@@ -177,33 +183,43 @@ bool FTheaterContinuousLandingTest::RunTest(const FString&)
 {
 	using Access=FFMCodexRollCosmeticTestAccess;
 	auto* Screen=NewObject<UFMCodexLocalMatchScreenWidget>(); Screen->TakeWidget();
-	auto* Widget=NewObject<UFMCodexRollReelWidget>(); Widget->TakeWidget(); Widget->SetVisualVariant(EFMCodexRollVisualVariant::TheaterInline);
+	for (const auto Variant : {EFMCodexRollVisualVariant::TheaterInline, EFMCodexRollVisualVariant::CompactBox, EFMCodexRollVisualVariant::HeroRoll})
+	{
+	const bool bHero=Variant==EFMCodexRollVisualVariant::HeroRoll;
+	const bool bRoute=Variant==EFMCodexRollVisualVariant::CompactBox;
+	const int32 Maximum=bHero ? 12 : 6;
+	auto BeginTheater=[&](int32 Final,int64 Event,bool bDefense=false)
+	{
+		if (bHero) { Access::Begin(*Screen,12,Final,Event); Access::Hero(*Screen); }
+		else Access::BeginTheater(*Screen,Final,Event,bDefense,bRoute);
+	};
+	auto* Widget=NewObject<UFMCodexRollReelWidget>(); Widget->TakeWidget(); Widget->SetVisualVariant(Variant);
 	TSet<FString> EventPrefixes;
 	for (int64 Event=1;Event<=32;++Event)
 	{
-		Access::BeginTheater(*Screen,1,Event,Event%2==0);
+		BeginTheater(1,Event,Event%2==0);
 		TArray<int32> Digits;
 		// Observe over two full pattern periods, including a delayed authority wait.
 		for (int32 Cell=7;Cell<57;++Cell)
 		{
 			const auto R=Access::At(*Screen,.92f+(Cell-6.5f)/5.470588f+.0001f);
 			Digits.Add(R.CenterValue);
-			TestTrue(TEXT("Theater decorative domain remains D6"),R.CenterValue>=1 && R.CenterValue<=6);
+			TestTrue(TEXT("Theater decorative domain remains D6"),R.CenterValue>=1 && R.CenterValue<=Maximum);
 			const int32 N=Digits.Num();
 			if (N>1) TestTrue(TEXT("No immediate repeated cycling digit"),Digits[N-1]!=Digits[N-2]);
 			if (N>2)
 			{
 				TestTrue(TEXT("No simple ABA alternation"),Digits[N-1]!=Digits[N-3]);
 				const int32 A=(Digits[N-2]-Digits[N-3]+6)%6,B=(Digits[N-1]-Digits[N-2]+6)%6;
-				TestFalse(TEXT("No ascending/descending D6 run including wrap"),A==B && (A==1 || A==5));
+				if (!bHero) TestFalse(TEXT("No ascending/descending D6 run including wrap"),A==B && (A==1 || A==5));
 			}
 		}
 		FString Key; for(int32 I=0;I<8;++I) Key+=FString::FromInt(Digits[I]); EventPrefixes.Add(Key);
 	}
 	TestTrue(TEXT("Different roll identities do not replay one fixed prefix"),EventPrefixes.Num()>8);
-	for (int32 Final=1;Final<=6;++Final)
+	for (int32 Final=1;Final<=Maximum;++Final)
 	{
-		Access::BeginTheater(*Screen,Final,71);
+		BeginTheater(Final,71);
 		TArray<FFMCodexUMGRollReelViewModel> Prefix;
 		float PreviousPosition=0.f,PreviousVelocity=9.f;
 		for (int32 Frame=0;Frame<=184;++Frame)
@@ -239,14 +255,14 @@ bool FTheaterContinuousLandingTest::RunTest(const FString&)
 		}
 		TestEqual(TEXT("Every authoritative D6 ends in exact center"),Widget->GetPresentation().CenterValue,Final);
 		TestEqual(TEXT("Landing ends at zero offset"),Widget->GetCenterVerticalOffset(),0.f);
-		Access::BeginTheater(*Screen,Final%6+1,71);
+		BeginTheater(Final%Maximum+1,71);
 		for(int32 Frame=0;Frame<Prefix.Num();++Frame)
 		{
 			const auto R=Access::At(*Screen,Frame*.005f);
 			TestTrue(TEXT("Pre-capture pattern/position independent of final value"),R.CenterValue==Prefix[Frame].CenterValue && R.NextValue==Prefix[Frame].NextValue && R.ContinuousPositionCells==Prefix[Frame].ContinuousPositionCells);
 		}
 	}
-	Access::BeginTheater(*Screen,6,73); Access::SetAvailable(*Screen,false);
+	BeginTheater(Maximum,73); Access::SetAvailable(*Screen,false);
 	auto Waiting=Access::At(*Screen,4.83f); Access::Capture(*Screen);
 	TestEqual(TEXT("Late authority cannot start Theater landing early"),Screen->GetInlineFormulaRevealPhase(),EFMCodexUMGInlineFormulaRevealPhase::Cycling);
 	for(int32 Frame=0;Frame<20;++Frame)
@@ -259,7 +275,8 @@ bool FTheaterContinuousLandingTest::RunTest(const FString&)
 	}
 	Access::SetAvailable(*Screen,true); Access::Capture(*Screen);
 	TestEqual(TEXT("Late authority keeps exact moving position"),Access::At(*Screen,0.f).ContinuousPositionCells,Waiting.ContinuousPositionCells);
-	TestEqual(TEXT("Late authority lands through same bounded capture"),Access::At(*Screen,.54f).CenterValue,6);
+	TestEqual(TEXT("Late authority lands through same bounded capture"),Access::At(*Screen,.54f).CenterValue,Maximum);
+	}
 	return true;
 }
 
@@ -308,6 +325,82 @@ bool FFMCodexRollPresentationReuseTest::RunTest(const FString&)
 	}
 	return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompactBoxSkinTest,
+	"FMCodex.LocalPlay.RollPresentation.CompactBoxSkin",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FCompactBoxSkinTest::RunTest(const FString&)
+{
+	auto* Reel=NewObject<UFMCodexRollReelWidget>(); Reel->TakeWidget();
+	Reel->SetVisualVariant(EFMCodexRollVisualVariant::CompactBox);
+	auto* Bounds=CastChecked<USizeBox>(Reel->GetWidgetFromName(TEXT("RollReelBounds")));
+	const auto* Center=Reel->GetCenterDigitWidget();
+	Reel->SetExpandedChamber(true);
+	TestTrue(TEXT("CompactBox geometry is independent of Legacy expanded chamber"),Bounds->GetWidthOverride()==84.f && Bounds->GetHeightOverride()==72.f);
+	TestEqual(TEXT("CompactBox shares production Medium type size"),Center->GetFont().Size,40.f);
+	TestNull(TEXT("Route result has no hover explanation"),Reel->GetToolTip());
+	FFMCodexUMGRollReelViewModel P;
+	P.bVisible=true; P.bMoving=true; P.bShowNeighborDigits=true;
+	P.PreviousValue=2; P.CenterValue=4; P.NextValue=6; P.ScrollAlpha=.4f;
+	P.LandingOffsetY=-2; P.LandingScale=1.1f;
+	Reel->RefreshFromPresentation(P);
+	TestEqual(TEXT("CompactBox never inherits Legacy scale pulse"),Reel->GetCenterRenderScale(),1.f);
+	TestTrue(TEXT("Fixed clipped cell contains the shared three digits"),Reel->HasClippedWindow() && Reel->GetRenderedChildCount()==3 && Reel->GetVisibleNeighborDigitCount()==2);
+	TestTrue(TEXT("Route rolling accent is aqua"),Center->GetColorAndOpacity().GetSpecifiedColor().G>Center->GetColorAndOpacity().GetSpecifiedColor().R);
+	P.bMoving=false; P.bShowNeighborDigits=false; P.bStaticResult=true; P.bAuthoritativeValue=true; P.NeighborFadeAlpha=1;
+	Reel->RefreshFromPresentation(P);
+	TestTrue(TEXT("Locked value uses the same child without neighbors"),Reel->IsStaticResultTileVisible() && Reel->GetCenterDigitWidget()==Center && Reel->GetCenterVerticalOffset()==0);
+	TestEqual(TEXT("Settled route is neutral white"),Center->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(233,245,248)));
+	Reel->RefreshFromPresentation({});
+	TestTrue(TEXT("Unresolved hidden state cannot retain old result"),Center->GetText().IsEmpty() && Reel->GetVisibility()==ESlateVisibility::Collapsed);
+	Reel->SetVisualVariant(EFMCodexRollVisualVariant::Legacy); Reel->SetExpandedChamber(false);
+	TestTrue(TEXT("Legacy remains the original independent footprint"),Bounds->GetWidthOverride()==68.f && Bounds->GetHeightOverride()==72.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeroRollSkinTest,
+	"FMCodex.LocalPlay.RollPresentation.HeroRollSkinAndScope",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHeroRollSkinTest::RunTest(const FString&)
+{
+	auto* Screen=NewObject<UFMCodexLocalMatchScreenWidget>(); Screen->TakeWidget();
+	auto* Reel=Screen->GetTacticalPointRollReel();
+	TestEqual(TEXT("Only main-board D12 host explicitly selects Hero"),Reel->GetVisualVariant(),EFMCodexRollVisualVariant::HeroRoll);
+	TestEqual(TEXT("Generic Formula host stays Legacy"),Screen->GetInlineFormulaSurface()->GetRollReelWidget()->GetVisualVariant(),EFMCodexRollVisualVariant::Legacy);
+	auto* Shell=CastChecked<USizeBox>(Screen->GetWidgetFromName(TEXT("TacticalRollModalBounds")));
+	auto* Chamber=CastChecked<USizeBox>(Reel->GetWidgetFromName(TEXT("RollReelBounds")));
+	TestTrue(TEXT("Large shell retains safe board-centered dimensions"),Shell->GetWidthOverride()==380.f && Chamber->GetWidthOverride()==190.f && Chamber->GetHeightOverride()==184.f);
+	const auto Measure=FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+	for (int32 Value=1;Value<=12;++Value)
+		TestTrue(TEXT("All D12 numbers fit without shrinking or clipping"),Measure->Measure(FString::FromInt(Value),Reel->GetCenterDigitWidget()->GetFont()).X<160.f);
+	FFMCodexUMGMatchScreenViewModel P;
+	P.Interaction.Category=EFMCodexUMGInteractionCategory::TacticalPointRoll;
+	P.Interaction.ExpectedActorLabel=TEXT("玩家 A");
+	for (bool bActor:{true,false})
+	{
+		P.Interaction.bCanRollTacticalPoints=bActor; Screen->RefreshFromPresentation(P);
+		TestEqual(TEXT("Both viewers keep a clean pre-roll board"),Screen->GetWidgetFromName(TEXT("TacticalPointRollRevealSurface"))->GetVisibility(),ESlateVisibility::Collapsed);
+		TestTrue(TEXT("Waiting never invents a result"),Reel->GetCenterDigitWidget()->GetText().IsEmpty() && Reel->GetVisibility()==ESlateVisibility::Collapsed);
+		const auto Copy=CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TacticalPointRollRevealResult")))->GetText().ToString();
+		TestTrue(TEXT("No redundant pre-roll copy panel"),Copy.IsEmpty());
+		TestEqual(TEXT("Pre-roll roster has normal emphasis"),Screen->GetLocalRackWidget()->GetColorAndOpacity(),FLinearColor::White);
+	}
+	using Access=FFMCodexRollCosmeticTestAccess;
+	Access::Begin(*Screen,12,9); Access::Hero(*Screen); Access::Refresh(*Screen,.18f);
+	TestTrue(TEXT("Hero focus subdues both rosters more than pitch and score"),
+		Screen->GetLocalRackWidget()->GetColorAndOpacity().R < Screen->GetPitchWidget()->GetColorAndOpacity().R
+		&& Screen->GetPitchWidget()->GetColorAndOpacity().R < Screen->GetMatchHeader()->GetColorAndOpacity().R
+		&& Screen->GetOpponentRackWidget()->GetColorAndOpacity()==Screen->GetLocalRackWidget()->GetColorAndOpacity());
+	Access::Hide(*Screen);
+	TestTrue(TEXT("Cancellation restores all focus tints"),
+		Screen->GetLocalRackWidget()->GetColorAndOpacity()==FLinearColor::White
+		&& Screen->GetOpponentRackWidget()->GetColorAndOpacity()==FLinearColor::White
+		&& Screen->GetPitchWidget()->GetColorAndOpacity()==FLinearColor::White
+		&& Screen->GetMatchHeader()->GetColorAndOpacity()==FLinearColor::White);
+	P.Interaction.Category=EFMCodexUMGInteractionCategory::Deploy; Screen->RefreshFromPresentation(P);
+	TestEqual(TEXT("Hero does not take over ordinary deployment"),Screen->GetWidgetFromName(TEXT("TacticalPointRollRevealSurface"))->GetVisibility(),ESlateVisibility::Collapsed);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTheaterRollSkinTest,
 	"FMCodex.LocalPlay.RollPresentation.TheaterInlineSkin",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -375,6 +468,7 @@ bool FTheaterRollSkinTest::RunTest(const FString&)
 
 namespace
 {
+TSharedPtr<SWindow> HeroPIEWindow;
 class FStartRollPresentationPIE final : public IAutomationLatentCommand
 {
 public:
@@ -383,11 +477,16 @@ public:
 		// Per-session copy: never persist or replace the user's editor settings.
 		auto* Settings = DuplicateObject<ULevelEditorPlaySettings>(
 			GetDefault<ULevelEditorPlaySettings>(), GetTransientPackage());
-		Settings->NewWindowWidth = 1600; Settings->NewWindowHeight = 900;
+		Settings->NewWindowWidth = 1920; Settings->NewWindowHeight = 1080;
 		Settings->SetPlayNetMode(EPlayNetMode::PIE_Standalone);
 		Settings->SetPlayNumberOfClients(1);
+		HeroPIEWindow = SNew(SWindow).Title(FText::FromString(TEXT("Hero Roll PIE")))
+			.ClientSize(FVector2D(1920,1080)).ScreenPosition(FVector2D(0,0)).AutoCenter(EAutoCenter::None)
+			.SaneWindowPlacement(false).AdjustInitialSizeAndPositionForDPIScale(false).SizingRule(ESizingRule::UserSized);
+		FSlateApplication::Get().AddWindow(HeroPIEWindow.ToSharedRef());
 		FRequestPlaySessionParams Params;
 		Params.EditorPlaySettings = Settings;
+		Params.CustomPIEWindow = HeroPIEWindow;
 		GEditor->RequestPlaySession(Params);
 		return true;
 	}
@@ -396,10 +495,10 @@ public:
 class FRollPresentationPIEPath final : public IAutomationLatentCommand
 {
 public:
-	explicit FRollPresentationPIEPath(FAutomationTestBase* InTest) : Test(InTest) {}
+	FRollPresentationPIEPath(FAutomationTestBase* InTest,int32 InD12Value) : Test(InTest),D12Value(InD12Value) {}
 	virtual bool Update() override
 	{
-		if (FPlatformTime::Seconds()-Started > 35)
+		if (FPlatformTime::Seconds()-Started > 60)
 		{
 			Test->AddError(TEXT("Roll presentation PIE path timed out")); return true;
 		}
@@ -413,16 +512,22 @@ public:
 			bStartedMatch = true; MatchStarted = FPlatformTime::Seconds();
 			return false;
 		}
+		if (!bTypeRoll) CaptureMotion();
 		// Let the actual newly constructed match layout render before the click.
 		if (FPlatformTime::Seconds()-MatchStarted < 1.0) return false;
 		if (!bStartedRoll)
 		{
 			FFMCodexLocalDevRollOverrideRequest Override;
 			Override.Target = EFMCodexLocalDevRollTarget::FullD12;
-			Override.Value = 9;
+			Override.Value = D12Value;
 			if (!Controller->SetLocalDevRollOverride(Override).bSuccess)
 			{ Test->AddError(TEXT("Existing DEV D12 provider seam rejected override")); return true; }
 			Test->TestFalse(TEXT("Restart clears prior reveal"), Screen->IsInlineFormulaRevealInputBlocked());
+			Capture(TEXT("01_PreRoll_CleanBoard"));
+			Test->TestTrue(TEXT("Pre-roll board is clean, undimmed and actionable"),
+				Screen->GetWidgetFromName(TEXT("TacticalPointRollRevealSurface"))->GetVisibility()==ESlateVisibility::Collapsed
+				&& Screen->GetLocalRackWidget()->GetColorAndOpacity()==FLinearColor::White
+				&& Screen->GetInteractionPanel()->GetPresentation().bCanRollTacticalPoints);
 			Screen->RequestRollTacticalPoints();
 			if (!Controller->GetLastDiagnostic().bHostSuccess)
 			{ Test->AddError(TEXT("PIE typed Full D12 request failed")); return true; }
@@ -458,42 +563,52 @@ public:
 		if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Cycling)
 		{
 			bCycling = true;
-			if (!bTypeRoll && !bEntryShot && GEditor->PlayWorld->GetTimeSeconds()-RollGameStarted < .18f)
+			if (!bCycleShot && GEditor->PlayWorld->GetTimeSeconds()-RollGameStarted > .20f)
 			{
-				Capture(TEXT("Activation")); bEntryShot = true;
-			}
-			if (!bCycleShot && FPlatformTime::Seconds()-RollStarted > .55)
-			{
-				Capture(bTypeRoll ? TEXT("D6_Cycling") : TEXT("Cycling"));
+				Capture(bTypeRoll ? TEXT("D6_Cycling") : TEXT("02_HeroRoll_Rolling"));
 				bCycleShot = true;
+				if (!bTypeRoll) Test->TestTrue(TEXT("Rolling focuses the board without a duplicate action"),
+					Screen->GetLocalRackWidget()->GetColorAndOpacity().R < .5f
+					&& Screen->IsInlineFormulaRevealInputBlocked());
 			}
 		}
 		else if (Phase == EFMCodexUMGInlineFormulaRevealPhase::Settling)
 		{
-			if (!bTypeRoll && !bSettling) Capture(TEXT("Settling"));
 			bSettling = true;
 			Test->TestTrue(TEXT("Modal remains visible through real settling"), bTypeRoll || Frame->GetVisibility() != ESlateVisibility::Collapsed);
 		}
 		else if (Phase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold)
 		{
+			if (!bTypeRoll && bResultShot && !bContextShot && GEditor->PlayWorld->GetTimeSeconds()-HoldStarted>.8f)
+			{
+				Capture(TEXT("06_BoardContext_HeroFocus")); bContextShot=true;
+				const auto& G=Frame->GetCachedGeometry();
+				const auto& Pitch=Screen->GetWidgetFromName(TEXT("BoardResolutionOverlays"))->GetCachedGeometry();
+				const auto P=Pitch.AbsoluteToLocal(G.GetAbsolutePosition());
+				const auto End=Pitch.AbsoluteToLocal(G.LocalToAbsolute(G.GetLocalSize()));
+				Test->TestTrue(TEXT("Hero remains wholly inside pitch, clear of header and player racks"),
+					P.X>=0 && P.Y>=0 && End.X<=Pitch.GetLocalSize().X && End.Y<=Pitch.GetLocalSize().Y);
+			}
 			if (!bHeld)
 			{
 				Test->TestTrue(TEXT("PIE result is the provider-accepted value, with no moving neighbors"),
 					Reel->IsStaticResultTileVisible() && Reel->GetPresentation().bAuthoritativeValue
-					&& Reel->GetPresentation().CenterValue == (bTypeRoll ? 5 : 9));
+					&& Reel->GetPresentation().CenterValue == (bTypeRoll ? 5 : D12Value));
+				if (!bTypeRoll) Capture(TEXT("03_HeroRoll_Landed"));
 				HoldStarted = GEditor->PlayWorld->GetTimeSeconds();
 				bHeld = true;
 			}
 			if (!bResultShot && GEditor->PlayWorld->GetTimeSeconds()-HoldStarted > .25f)
 			{
-				Capture(bTypeRoll ? TEXT("D6_Result") : TEXT("Result")); bResultShot = true;
+				Capture(bTypeRoll ? TEXT("D6_Result") : TEXT("04_HeroRoll_Result")); bResultShot = true;
 				if (!bTypeRoll)
 				{
 					auto* Footer = Cast<UTextBlock>(Screen->GetWidgetFromName(TEXT("TacticalPointRollRevealResult")));
 					auto* State = Cast<UTextBlock>(Screen->GetWidgetFromName(TEXT("TacticalPointRollRevealState")));
-					Test->TestTrue(TEXT("Runtime result module separates status from the disclosed business mapping"),
-						Footer && Footer->GetFont().Size == 16 && Footer->GetText().ToString().Contains(TEXT("定位球"))
-						&& State && State->GetFont().Size == 20 && State->GetFont().TypefaceFontName == TEXT("Bold"));
+					Test->TestTrue(TEXT("Runtime result has one concise authoritative semantic line"),
+						Footer && Footer->GetFont().Size == 20
+						&& Footer->GetText().ToString() == (D12Value==4 ? TEXT("本回合战术点：4") : TEXT("触发定位球"))
+						&& State && State->GetVisibility()==ESlateVisibility::Collapsed && State->GetText().IsEmpty());
 				}
 			}
 		}
@@ -505,11 +620,28 @@ public:
 				Test->TestTrue(TEXT("Legitimate successor D6 exits with no prior digit or lock state"),
 					Reel->GetCenterDigitWidget()->GetText().IsEmpty()
 					&& Reel->GetCenterRenderOpacity() == 0 && Reel->GetCenterRenderScale() == 1);
+				SaveEvidence();
 				return true;
 			}
 			Test->TestTrue(TEXT("Exit clears the modal and prior number"),
 				Frame->GetVisibility() == ESlateVisibility::Collapsed && Reel->GetCenterDigitWidget()->GetText().IsEmpty()
 				&& Frame->GetRenderOpacity() == 1 && Frame->GetRenderTransform().Scale.Equals(FVector2D(1)));
+			Test->TestTrue(TEXT("Hero evidence includes rolling, landed and board context"),
+				bCycleShot && bResultShot && bContextShot);
+			Test->TestTrue(TEXT("Hero exit restores board tint before the next typed event"),
+				Screen->GetLocalRackWidget()->GetColorAndOpacity()==FLinearColor::White
+				&& Screen->GetPitchWidget()->GetColorAndOpacity()==FLinearColor::White
+				&& Screen->GetMatchHeader()->GetColorAndOpacity()==FLinearColor::White);
+			if (RestoredAt<0) { RestoredAt=GEditor->PlayWorld->GetTimeSeconds(); return false; }
+			if (GEditor->PlayWorld->GetTimeSeconds()-RestoredAt<.30) return false;
+			Capture(TEXT("05_Board_Restored"));
+			if (D12Value==4)
+			{
+				Test->TestEqual(TEXT("Ordinary tactical points return to deployment after the hold"),
+					Screen->GetInteractionPanel()->GetPresentation().Category,EFMCodexUMGInteractionCategory::Deploy);
+				SaveEvidence();
+				return true;
+			}
 			// A new typed event in the same match, not the known same-sequence restart.
 			FFMCodexLocalDevRollOverrideRequest Override;
 			Override.Target = EFMCodexLocalDevRollTarget::SetPieceType; Override.Value = 5;
@@ -524,42 +656,75 @@ public:
 		return false;
 	}
 private:
-	void Capture(const TCHAR* State)
+	struct FProofFrame { FString Name; double Time; FIntVector Size; TArray<FColor> Pixels; };
+	TArray<FProofFrame> ProofFrames;
+	double LastMotion=-1, RestoredAt=-1;
+	int32 MotionIndex=0;
+	void CaptureMotion()
 	{
-		const FString Directory = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir()/TEXT("Stage8_6D"));
-		IFileManager::Get().MakeDirectory(*Directory, true);
-		// Read the current Slate state synchronously: a queued screenshot can miss
-		// the 0.16s settling window. No clock pause or synthetic presentation state.
-		auto Window = GEditor->PlayWorld->GetGameViewport()->GetWindow();
-		TArray<FColor> Pixels;
-		FIntVector Size = FIntVector::ZeroValue;
-		if (!Window.IsValid() || !FSlateApplication::Get().TakeScreenshot(Window.ToSharedRef(), Pixels, Size))
+		const double Now=GEditor->PlayWorld->GetTimeSeconds();
+		if (Now-LastMotion < .066) return;
+		LastMotion=Now;
+		Capture(*FString::Printf(TEXT("Motion_%04d"),MotionIndex++),true);
+	}
+	void Capture(const TCHAR* State, bool bMotion=false)
+	{
+		// Read real current Slate output. No clock pause, result forcing or
+		// synthetic frames. Defer compression until after the gameplay path.
+		auto Window=GEditor->PlayWorld->GetGameViewport()->GetWindow();
+		FProofFrame Frame; Frame.Name=State; Frame.Time=GEditor->PlayWorld->GetTimeSeconds();
+		if (!Window.IsValid() || !FSlateApplication::Get().TakeScreenshot(Window.ToSharedRef(),Frame.Pixels,Frame.Size))
 		{ Test->AddError(TEXT("Current-phase Slate capture failed")); return; }
-		TArray64<uint8> PNG;
-		FImageUtils::PNGCompressImageArray(Size.X, Size.Y, Pixels, PNG);
-		const FString Path = Directory/FString::Printf(TEXT("RollPresentation_%s.png"), State);
-		Test->TestTrue(TEXT("Current-phase runtime screenshot saved"), FFileHelper::SaveArrayToFile(PNG, *Path));
-		Test->AddInfo(FString::Printf(TEXT("ROLL_CAPTURE %s %dx%d game=%.3f"), State, Size.X, Size.Y,
-			GEditor->PlayWorld->GetTimeSeconds()-RollGameStarted));
+		if (bMotion)
+		{
+			TArray<FColor> Small;
+			const int32 Height=FMath::RoundToInt(960.f*Frame.Size.Y/Frame.Size.X);
+			FImageUtils::ImageResize(Frame.Size.X,Frame.Size.Y,Frame.Pixels,960,Height,Small,false);
+			Frame.Pixels=MoveTemp(Small); Frame.Size=FIntVector(960,Height,0);
+		}
+		else Test->AddInfo(FString::Printf(TEXT("ROLL_CAPTURE %s %dx%d game=%.3f"),State,Frame.Size.X,Frame.Size.Y,Frame.Time-RollGameStarted));
+		ProofFrames.Add(MoveTemp(Frame));
+	}
+	void SaveEvidence()
+	{
+		const FString Directory=FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir()
+			/TEXT("Stage8_10B_2/PIE")/(D12Value==4 ? TEXT("Ordinary") : TEXT("SetPiece")));
+		IFileManager::Get().MakeDirectory(*Directory,true);
+		FString Times=TEXT("file,game_seconds\n");
+		for (const auto& Frame:ProofFrames)
+		{
+			TArray64<uint8> PNG;
+			FImageUtils::PNGCompressImageArray(Frame.Size.X,Frame.Size.Y,Frame.Pixels,PNG);
+			Test->TestTrue(TEXT("Real PIE frame saved"),FFileHelper::SaveArrayToFile(PNG,*(Directory/(Frame.Name+TEXT(".png")))));
+			Times+=FString::Printf(TEXT("%s.png,%.6f\n"),*Frame.Name,Frame.Time);
+		}
+		FFileHelper::SaveStringToFile(Times,*(Directory/TEXT("frame-times.csv")));
+		Test->AddInfo(FString::Printf(TEXT("Real motion samples: %d; elapsed game-time timestamps saved"),MotionIndex));
 	}
 	FAutomationTestBase* Test;
+	const int32 D12Value;
 	double Started = FPlatformTime::Seconds(), RollStarted = 0, MatchStarted = 0;
 	double RollGameStarted = 0, HoldStarted = 0;
 	int32 LastPhase = -1, LastCell = -1;
-	bool bTypeRoll = false, bResultShot = false;
-	bool bStartedMatch = false, bEntryShot = false;
+	bool bTypeRoll = false, bResultShot = false, bContextShot = false;
+	bool bStartedMatch = false;
 	bool bStartedRoll = false, bCycling = false, bSettling = false, bHeld = false, bCycleShot = false;
 };
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexRollPresentationPIETest,
-	"FMCodex.PIE.RollPresentation.ProductionCandidate",
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexRollPresentationPIETest,
+	"FMCodex.PIE.RollPresentation.HeroRoll",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-bool FFMCodexRollPresentationPIETest::RunTest(const FString&)
+void FFMCodexRollPresentationPIETest::GetTests(TArray<FString>& Names,TArray<FString>& Commands) const
+{
+	Names.Add(TEXT("Ordinary")); Commands.Add(TEXT("Ordinary"));
+	Names.Add(TEXT("SetPiece")); Commands.Add(TEXT("SetPiece"));
+}
+bool FFMCodexRollPresentationPIETest::RunTest(const FString& Parameters)
 {
 	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartRollPresentationPIE()));
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.0f));
-	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FRollPresentationPIEPath(this)));
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FRollPresentationPIEPath(this,Parameters==TEXT("Ordinary") ? 4 : 9)));
 	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
 	return true;
 }

@@ -29,10 +29,11 @@ public:
 		const FFMCodexUMGRollReelViewModel& InPresentation);
 	/** Room for neighboring numbers in the main modal; compact consumers keep 68x72. */
 	void SetExpandedChamber(bool bExpanded);
-	/** Visual-only opt-in for the High Cross equation slot; same projected clock. */
+	/** Visual-only selection; no context-specific gameplay or private clock. */
 	void SetVisualVariant(EFMCodexRollVisualVariant InVariant);
 	EFMCodexRollVisualVariant GetVisualVariant() const { return VisualVariant; }
 	bool UsesTheaterInlineSkin() const { return VisualVariant == EFMCodexRollVisualVariant::TheaterInline; }
+	bool UsesTheaterDigitStyle() const { return VisualVariant != EFMCodexRollVisualVariant::Legacy; }
 
 	const FFMCodexUMGRollReelViewModel& GetPresentation() const;
 	int32 GetStripDigitCount() const;

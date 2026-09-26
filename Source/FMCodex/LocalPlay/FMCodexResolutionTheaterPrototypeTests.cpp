@@ -77,24 +77,54 @@ bool FResolutionTheaterScopeTest::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterParticipantSafetyTest,
+	"FMCodex.LocalPlay.ResolutionTheater.ParticipantDisclosure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FResolutionTheaterParticipantSafetyTest::RunTest(const FString&)
+{
+	using namespace FMCodexPlayerFacingOrdinaryUITests;
+	FUIFixture F;
+	if (!TestTrue(TEXT("Real deployment activates goalkeeper"),F.ReachSkill(TEXT("Prototype.Arsenal.BukayoSaka"),TEXT("Prototype.Arsenal.KaiHavertz"),true))) return false;
+	SkillPayload Skill; Skill.SkillId=TEXT("Canonical.Skill.Cross.4.6");
+	if (!TestTrue(TEXT("Canonical Cross selected"),F.Send(F.Attacker(),Kind::SubmitSkill,{},{},{},{},{},Skill))) return false;
+	for (auto Side:{Side::PlayerA,Side::PlayerB})
+	{
+		const auto VisibleView=Access::Safe(*F.Mode,Side,true);
+		const auto HiddenView=Access::Safe(*F.Mode,Side,false);
+		const auto Visible=FFMCodexLocalMatchUMGPresentationBuilder::Build(VisibleView,{},FString(),Side);
+		const auto Hidden=FFMCodexLocalMatchUMGPresentationBuilder::Build(HiddenView,{},FString(),Side);
+		TestEqual(TEXT("Both permitted viewers receive real keeper"),Visible.InlineFormula.DefenseRow.Participants.Num(),3);
+		TestTrue(TEXT("Withheld initial disclosure cannot publish Cross participants"),Hidden.InlineFormula.DefenseRow.Participants.IsEmpty());
+		TestFalse(TEXT("Withheld context cannot activate Theater"),FMCodexResolutionTheaterPrototype::WantsTheater(Hidden,Hidden.InlineFormula));
+	}
+	return true;
+}
+
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FResolutionTheaterViewTest,
 	"FMCodex.LocalPlay.ResolutionTheater.SharedViewerLifecycle",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 void FResolutionTheaterViewTest::GetTests(TArray<FString>& N,TArray<FString>& C) const
 {
 	N.Add(TEXT("A.High")); C.Add(TEXT("High"));
+	N.Add(TEXT("A.HighGoalkeeper")); C.Add(TEXT("HighGK"));
+	N.Add(TEXT("B.LowGoalkeeper")); C.Add(TEXT("LowBGK"));
 	N.Add(TEXT("A.Low")); C.Add(TEXT("LowA")); N.Add(TEXT("B.Low")); C.Add(TEXT("LowB"));
 	N.Add(TEXT("B.LowFallback")); C.Add(TEXT("LowFallback"));
 }
 bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 {
 	using namespace FMCodexPlayerFacingOrdinaryUITests;
-	const bool High=Parameters==TEXT("High"); FTheaterModes Modes;
+	const bool High=Parameters.StartsWith(TEXT("High")); const bool WithGK=Parameters.EndsWith(TEXT("GK")); FTheaterModes Modes;
 	const bool Fallback=Parameters==TEXT("LowFallback");
 	Modes.Low->Set(Fallback?0:1,ECVF_SetByCode);
 	Modes.Theater->Set(0,ECVF_SetByCode); Modes.Formula->Set(0,ECVF_SetByCode);
-	FUIFixture F(Parameters==TEXT("LowB") || Fallback,false);
-	if (!TestTrue(TEXT("Canonical safe-view fixture reaches Skill"),F.SkillFixture(false))) return false;
+	FUIFixture F(Parameters.StartsWith(TEXT("LowB")) || Fallback,false);
+	const bool BFirst=Parameters.StartsWith(TEXT("LowB"));
+	const bool Ready=WithGK ? F.ReachSkill(
+		FName(BFirst?TEXT("Prototype.ManchesterCity.JeremyDoku"):TEXT("Prototype.Arsenal.BukayoSaka")),
+		FName(BFirst?TEXT("Prototype.ManchesterCity.ErlingHaaland"):TEXT("Prototype.Arsenal.KaiHavertz")),true) : F.SkillFixture(false);
+	if (!TestTrue(TEXT("Canonical safe-view fixture reaches Skill"),Ready)) return false;
+	if (WithGK) F.Settle(); // ReachSkill advances authority; finish the entry reveal before UI intent.
 	auto* Actor=F.Attacker(); auto* Defender=F.Defender();
 	auto* S=Actor->GetPlayerMatchScreen(); auto* D=Defender->GetPlayerMatchScreen();
 	TestNull(TEXT("Explicit Development OFF allocates no theater"),S->GetWidgetFromName(TEXT("ResolutionTheater")));
@@ -107,12 +137,26 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Field stays painted but board input is suppressed"),W->GetWidgetFromName(TEXT("MatchShellViewportFit"))->GetVisibility(),ESlateVisibility::HitTestInvisible);
 		TestEqual(TEXT("Entry does not predict route"),Label(W,TEXT("TheaterTitle")),FString(TEXT("传中")));
 		TestFalse(TEXT("No invented pre-route formula"),Visible(W,TEXT("TheaterAttackValue")));
+		if (!TestNotNull(FString::Printf(TEXT("Setup carrier; safe contest=%s participants=%d"), *W->GetPresentation().InlineFormula.ContestId.ToString(), W->GetPresentation().InlineFormula.AttackRow.Participants.Num()), W->GetWidgetFromName(TEXT("TheaterAttackRole0")))) return false;
 		TestEqual(TEXT("Safe carrier role"),Label(W,TEXT("TheaterAttackRole0")),FString(TEXT("持球")));
 		TestEqual(TEXT("Safe runner role"),Label(W,TEXT("TheaterAttackRole1")),FString(TEXT("跑位")));
 		const auto& Header=W->GetMatchHeader()->GetPresentation();
 		TestTrue(TEXT("Score context preserves each viewer's header orientation"),Label(W,TEXT("TheaterContext")).StartsWith(
 			FFMCodexPlayerUIPresentationText::MatchScreenLabel(Header.LeftPlayerLabel).ToString()));
 	}
+	auto CheckKeeper=[&](UFMCodexLocalMatchScreenWidget* W)
+	{
+		const auto* Role=Cast<UTextBlock>(W->GetWidgetFromName(TEXT("TheaterDefenseRole2")));
+		TestEqual(TEXT("Keeper identity follows real activation, not roster membership"),
+			Role && Role->GetText().ToString()==TEXT("门将"),WithGK);
+		if (WithGK)
+		{
+			const auto& Facts=W->GetPresentation().InlineFormula.DefenseRow.Participants;
+			TestEqual(TEXT("Shared row retains three actual defense participants"),Facts.Num(),3);
+			if (Facts.Num()==3) TestEqual(TEXT("Rendered keeper matches safe participant"),Label(W,TEXT("TheaterDefenseName2")),Facts[2].PlayerName);
+		}
+	};
+	for (auto* W:{S,D}) CheckKeeper(W);
 	TestTrue(TEXT("Actor owns branch choice"),Visible(S,TEXT("TheaterChoices")));
 	TestFalse(TEXT("Waiting viewer has no branch CTA"),Visible(D,TEXT("TheaterChoices")));
 	TestTrue(TEXT("Waiting viewer receives explicit prompt"),Label(D,TEXT("TheaterStatus")).Contains(TEXT("等待玩家")));
@@ -150,13 +194,42 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	}
 	CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterHigh")))->OnClicked.Broadcast();
 	TestEqual(TEXT("Theater choice submits existing typed branch intent"),F.Backend(Actor).Last.IntentKind,Kind::SubmitBranchIntent);
+	for (auto* W:{S,D})
+	{
+		CheckKeeper(W);
+		TestEqual(TEXT("Pre-roll keeps canonical route hint"),Label(W,TEXT("TheaterDetail")),W->GetInlineFormulaSurface()->GetPresentation().RollHelperLabel);
+		TestFalse(TEXT("Pre-roll info is not blank"),Label(W,TEXT("TheaterDetail")).IsEmpty());
+	}
 	F.Entropy->Word=High?1:4;
 	CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
 	TestEqual(TEXT("Theater route uses original command"),F.Backend(Actor).Last.IntentKind,Kind::CrossInitialRouteRoll);
 	const int32 CallsAfterRoute=F.Entropy->Calls;
 	CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
 	TestEqual(TEXT("Repeated click during reveal cannot resolve twice"),F.Entropy->Calls,CallsAfterRoute);
+	for (auto* W:{S,D})
+	{
+		W->PauseInlineFormulaRevealTimerForTesting();
+		W->AdvanceInlineFormulaRevealForTesting(.4f);
+		CheckKeeper(W);
+		TestEqual(TEXT("Rolling route has concise non-result copy"),Label(W,TEXT("TheaterDetail")),FString(TEXT("正在判定传中路线")));
+		auto* RouteReel=CastChecked<UFMCodexRollReelWidget>(W->GetWidgetFromName(TEXT("TheaterReel")));
+		TestEqual(TEXT("Cross route explicitly selects CompactBox"),RouteReel->GetVisualVariant(),EFMCodexRollVisualVariant::CompactBox);
+		TestTrue(TEXT("Both viewers use moving safe route projection"),RouteReel->GetPresentation().bMoving && !RouteReel->GetPresentation().bAuthoritativeValue);
+		TestEqual(TEXT("Future High/Low is not in title"),Label(W,TEXT("TheaterTitle")),FString(TEXT("传中")));
+		TestTrue(TEXT("Route result remains gated"),W->GetInlineFormulaSurface()->GetPresentation().RouteResultLabel.IsEmpty());
+		TestFalse(TEXT("Neither viewer may act during route roll"),Visible(W,TEXT("TheaterPrimaryBounds")));
+		W->AdvanceInlineFormulaRevealForTesting(1.062f);
+		if (!Fallback)
+		{
+			CheckKeeper(W);
+			TestEqual(TEXT("Landed copy uses disclosed actual D6 and branch"),Label(W,TEXT("TheaterDetail")),FString(High?TEXT("掷点结果为 2，判定为高球传中"):TEXT("掷点结果为 5，判定为低球传中")));
+			TestTrue(TEXT("Route lands after the unchanged 1.46 second budget"),RouteReel->IsStaticResultTileVisible());
+			TestEqual(TEXT("Landed route is the authoritative D6"),RouteReel->GetPresentation().CenterValue,High?2:5);
+			TestEqual(TEXT("Only landed route permits tactical title"),Label(W,TEXT("TheaterTitle")),FString(High?TEXT("高球传中"):TEXT("低球传中")));
+		}
+	}
 	F.Settle();
+	if (!Fallback) for (auto* W:{S,D}) CheckKeeper(W);
 	if (Fallback)
 	{
 		for (auto* W:{S,D})
@@ -219,7 +292,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	auto* InlineReel=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterAttackReel")));
 	TestTrue(TEXT("Migrated Cross formula slot opts into v2"),InlineReel->UsesTheaterInlineSkin());
 	TestFalse(TEXT("Shared legacy Formula source keeps its old skin"),S->GetInlineFormulaSurface()->GetRollReelWidget()->UsesTheaterInlineSkin());
-	TestFalse(TEXT("Neutral route reel retains its existing skin"),CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterReel")))->UsesTheaterInlineSkin());
+	TestEqual(TEXT("Route has a distinct bounded variant"),CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterReel")))->GetVisualVariant(),EFMCodexRollVisualVariant::CompactBox);
 	TestFalse(TEXT("Rolling action is not actionable"),Visible(S,TEXT("TheaterPrimaryBounds")));
 	const auto& SourceReel=S->GetInlineFormulaSurface()->GetRollReelWidget()->GetPresentation();
 	TestEqual(TEXT("Inline host reuses the existing projected center"),InlineReel->GetPresentation().CenterValue,SourceReel.CenterValue);
