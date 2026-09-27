@@ -4,12 +4,14 @@ Stage 6.13.2.4 replaces the hand-authored prototype roster with one validated, v
 
 ## Source and runtime boundary
 
-The approved authoring source is `FMCodex_40_Player_Attribute_Skill_PointRules.xlsx`, sheet `球员配置`. Unreal does not read this workbook at runtime.
+The authoritative player/balance source is the version-controlled `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`, sheet `球员配置`. Unreal does not read this workbook at runtime. The adjacent `CanonicalPlayerImportConfig.json` remains the source for stable identity mappings and presentation metadata.
+
+Stage 8.15S recovered this **new source**, not the missing historical workbook, from `Content/Data/CanonicalPlayerContent.json` at baseline `bb88e50c7c6eb26457c6a526d45e9638aff60496`. The original `FMCodex_40_Player_Attribute_Skill_PointRules.xlsx` remains unavailable. [The recovery record](../ContentSource/PlayerContent/CanonicalPlayerSourceRecovery.md) records the historical SHA, the new workbook's actual SHA, snapshot hash and exact semantic comparison. All current five-tactic content is preserved.
 
 The production flow is:
 
 ```text
-approved XLSX
+ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx
   + ContentSource/PlayerContent/CanonicalPlayerImportConfig.json
   -> Scripts/ImportCanonicalPlayerContent.py
   -> Content/Data/CanonicalPlayerContent.json
@@ -36,7 +38,7 @@ Outfield positions use the workbook values `A`, `M`, `D`, `A/M`, and `M/D`. Goal
 
 A skill assignment consists of the canonical skill identity plus `MinTP` and `MaxTP`. Runtime rule identity is derived deterministically as `Canonical.Skill.<SkillId>.<MinTP>.<MaxTP>`, allowing the existing rule lookup and TP filter to represent different approved ranges for the same skill family without duplicating player-facing skill names.
 
-`balanceContentVersion` is currently `Prototype40_v1`. The current config and runtime `schemaVersion` is `2`, introduced when explicit required `displayName` became part of the generated/runtime shape. Advance the balance version when an approved balance payload changes, and advance the schema version only when that shape changes.
+`balanceContentVersion` is currently `Prototype40_v1`. The current config and runtime `schemaVersion` is `3`, including the explicit required `displayName` introduced in schema 2 and `presentation.defaultShirtNumber` introduced in schema 3. Advance the balance version when an approved balance payload changes, and advance the schema version only when that shape changes. Stage 8.15S changes source provenance only, so both versions remain unchanged.
 
 ## Validation contract
 
@@ -44,7 +46,6 @@ The importer validates before writing:
 
 - exactly 40 rows: 20 Arsenal and 20 Manchester City;
 - roster slots 1–20 per team and unique display serials;
-- exactly one goalkeeper per team and 38 outfield players overall;
 - exact headers and supported position/skill identities;
 - correct outfield-versus-goalkeeper attribute schema and 1–6 attribute values;
 - zero-to-three complete skill assignments per player;
@@ -56,31 +57,37 @@ The importer validates before writing:
 
 Current approved totals are 40 players, 36 skill assignments, skill-count distribution `0:18 / 1:10 / 2:10 / 3:2`, 280 per-player TP overlap checks, and zero overlap violations.
 
+The runtime catalog also validates exactly one goalkeeper per team and 38 outfield players overall. Workbook dropdowns and numeric validation aid editing; the importer remains the final validator for mapping, uniqueness, skill ranges and overlap. Do not rely on Excel input validation alone.
+
 ## Import and verification commands
 
 From the repository root, using Python 3:
 
 ```powershell
-python Scripts/ImportCanonicalPlayerContent.py `
-  --input "C:\path\to\FMCodex_40_Player_Attribute_Skill_PointRules.xlsx" `
-  --write
+python Scripts/ImportCanonicalPlayerContent.py --write
 ```
 
 To prove the committed runtime file exactly matches the workbook and config without writing:
 
 ```powershell
-python Scripts/ImportCanonicalPlayerContent.py `
-  --input "C:\path\to\FMCodex_40_Player_Attribute_Skill_PointRules.xlsx" `
-  --check
+python Scripts/ImportCanonicalPlayerContent.py --check
 ```
 
-Normal value-only workbook changes require no C++ edit when the schema, supported enums, and player mapping are unchanged: update the workbook, advance `balanceContentVersion`, run `--write`, review the JSON diff, then run `--check`, automation, and the build. Adding/renaming a player requires an explicit mapping update in `CanonicalPlayerImportConfig.json`. A schema or rule-semantics change requires a deliberate importer/runtime change and schema-version review.
+The importer uses repo-relative defaults resolved from the script location; no external source search or Excel installation is required. It uses the Python standard library. `--input`, `--config` and `--output` remain available for explicit paths. Generated `sourceWorkbook` records the actual input basename and `sourceWorkbookSha256` hashes the actual input bytes. `--check` requires exact generated text equality, including provenance.
+
+Normal value-only workbook changes require no C++ edit when the schema, supported enums, and player mapping are unchanged: update the workbook, advance `balanceContentVersion` in the sidecar for an approved balance change, run `--write`, review the JSON diff, then run `--check` and affected content tests. A source-format/provenance-only change with identical content does not advance the balance version. Do not hand-edit JSON to satisfy tests. Adding/renaming a player requires an explicit mapping update in `CanonicalPlayerImportConfig.json`. A schema or rule-semantics change requires a deliberate importer/runtime change and schema-version review. Build only when the actual change requires it; data-only edits do not require a Development Editor build.
+
+For restoration, obtain the workbook and sidecar from the same reviewed repository revision, then use the forward importer and inspect any generated diff. If either source is missing, stop normal balance authoring and recover the version-controlled source first. Stage 8.15S's JSON-to-workbook construction was a specifically authorized one-time recovery, not a normal maintenance path or a permanent reverse importer. Review source, sidecar and generated JSON together before the user's manual commit.
 
 A preferred-name-only change is separate from balance authoring: edit the
 player's `displayName` in `CanonicalPlayerImportConfig.json`, run `--write`,
-review the generated JSON, run `--check`, presentation automation, and the
-build. It requires no C++ change. The complete 40-player mapping and UI
+review the generated JSON, run `--check` and affected presentation automation.
+It requires no C++ change or build. The complete 40-player mapping and UI
 consumer contract are recorded in `Docs/UI/Player_Display_Name_Contract_v1.md`.
+
+## PassControl experiment boundary
+
+Temporary PassControl withdrawal is approved as a future experiment, and the Stage 8.15A audit defines the six-player migration. Stage 8.15B remains **BLOCKED until Stage 8.15S is committed**. Recovery preserves all six current PassControl assignments, including Martin Zubimendi's sole PassControl 7–7 assignment. The later experiment must edit the new authoritative workbook and regenerate normally; no withdrawal, replacement or rebalance is part of source recovery.
 
 ## Presentation and artwork compatibility (historical initial import)
 

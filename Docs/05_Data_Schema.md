@@ -42,6 +42,8 @@
 
 生产内容的完整导入、版本、校验与维护流程见 `Docs/Canonical_Player_Content.md`。运行时记录由 `Content/Data/CanonicalPlayerContent.json` 提供，不读取 XLSX。
 
+当前权威平衡源表为仓库内 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，身份与表现 sidecar 仍为同目录 `CanonicalPlayerImportConfig.json`。Stage 8.15S 从已验证基线恢复新的源表，历史原表仍遗失；provenance 见同目录 `CanonicalPlayerSourceRecovery.md`。JSON 只由前向导入器生成，禁止作为源手工编辑。本次仅更新 sourceWorkbook / sourceWorkbookSha256，schema 3 与 Prototype40_v1 不变。
+
 - `PlayerKey`：稳定技术身份，进入运行时 `CardId`；不从姓名或展示编号临时推导。
 - `Team + RosterSlot`：每队 1–20 的确定性阵容顺序；`RosterSlot` 不是身份。
 - `DisplaySerial`：工作簿 `PlayerId` 的展示投影，只生成三位球员可见编号，不得参与 authority 或 lookup。

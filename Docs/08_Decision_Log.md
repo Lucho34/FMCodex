@@ -2457,3 +2457,11 @@ Penalty migration 与 Copy / Outcome micro polish；本条取代此前 Penalty d
 - 整组 Stage 8.13 的既有 bounded presentation **payload 内容有扩展**；RPC、序列化结构、replicated owner-view schema **没有变化**。B.1 文案变更仅作用于 gated displayed copy；Closeout 将相同 production projection 启用于 Shipping，不改变 Development 的网络语义。Local / Network 继续共享安全读写与权威玩法。
 - [Theater](UI/Resolution_Theater_Visual_Spec_v1.md)、[Match Flow](UI/MatchFlow_Visual_Language_v1.md)、[Layout](UI/PlayerFacing_MatchScreen_Layout_v1.md) 与 [Roll](UI/Roll_Presentation_Visual_Spec_v1.md) 已同步稳定产品合同。工程测试与自然 PIE / 双进程证据不冒充用户验收。
 - 明确延期：Set Piece Type D6 现代化、Match Shell Visual Refresh Lite、规划外 Full Card、其余 Legacy 消费方及可选门将专属轮廓。没有 Corner 专用 Roll 变体、新 Blueprint 或额外视觉设计。
+
+## 2026-09-27 — Stage 8.15S canonical player source recovery
+
+历史源表 `FMCodex_40_Player_Attribute_Skill_PointRules.xlsx` 仍不可用。Stage 8.15S 明确授权从 `bb88e50c7c6eb26457c6a526d45e9638aff60496` 的已验证 canonical JSON 做一次受控恢复，建立新的仓库内权威平衡源 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，不宣称恢复原文件。历史 SHA、新表实际 SHA、基线与等价边界见 [恢复记录](../ContentSource/PlayerContent/CanonicalPlayerSourceRecovery.md)。
+
+长期方向固定为仓库源表与既有身份/表现 sidecar → 原有前向导入器 → generated JSON → 既有 Local / Network 消费方。导入器默认源不再依赖外部目录，来源名称与 SHA 取实际输入；JSON 禁止手工当源维护，不建立永久反向管线。全部 40 人与 36 项技能逐字段、按序等价，仅 sourceWorkbook / sourceWorkbookSha256 改变；schema 3、Prototype40_v1 和五战术配置保持。不修改 CoreRules、Authority、RNG、RPC、replication 或 UI。
+
+临时退出 PassControl 已批准为后续实验，Stage 8.15A 定义六人迁移；**Stage 8.15B 在 8.15S 提交前仍为 BLOCKED**。本阶段保留六人原配置及 Zubimendi 的 PassControl 7–7。后续只通过新权威源表与正常前向导入实现实验，用户仍负责最终 staging / commit。

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 3,
   "balanceContentVersion": "Prototype40_v1",
-  "sourceWorkbook": "FMCodex_40_Player_Attribute_Skill_PointRules.xlsx",
-  "sourceWorkbookSha256": "fd15a6af82df81efd991da9f966ff56c173f77c4e205a96c4fc8957eb3a9e63c",
+  "sourceWorkbook": "FMCodex_Canonical_Player_Content.xlsx",
+  "sourceWorkbookSha256": "3592c213b07ce30875c1bf347cc0e832c2450d7947568f97a18e6801cee6efe7",
   "sourceSheet": "球员配置",
   "players": [
     {

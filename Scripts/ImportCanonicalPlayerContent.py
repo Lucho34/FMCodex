@@ -215,7 +215,9 @@ def validate_config(config: dict[str, Any], errors: list[str]) -> dict[tuple[str
     return mapping
 
 
-def parse_players(rows: list[list[Any]], config: dict[str, Any], workbook_hash: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def parse_players(
+    rows: list[list[Any]], config: dict[str, Any], workbook_hash: str, workbook_name: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
     errors: list[str] = []
     if not rows:
         raise ValidationFailure("Source sheet is empty")
@@ -388,7 +390,7 @@ def parse_players(rows: list[list[Any]], config: dict[str, Any], workbook_hash: 
     runtime = {
         "schemaVersion": RUNTIME_SCHEMA_VERSION,
         "balanceContentVersion": config["balanceContentVersion"],
-        "sourceWorkbook": "FMCodex_40_Player_Attribute_Skill_PointRules.xlsx",
+        "sourceWorkbook": workbook_name,
         "sourceWorkbookSha256": workbook_hash,
         "sourceSheet": config["sourceSheet"],
         "players": players,
@@ -410,7 +412,12 @@ def parse_players(rows: list[list[Any]], config: dict[str, Any], workbook_hash: 
 def main() -> int:
     repository_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, type=Path, help="Approved XLSX authoring workbook")
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=repository_root / "ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx",
+        help="Authoritative XLSX workbook (default: repo-local canonical source)",
+    )
     parser.add_argument(
         "--config",
         type=Path,
@@ -437,6 +444,7 @@ def main() -> int:
             rows,
             config,
             hashlib.sha256(workbook_bytes).hexdigest(),
+            args.input.name,
         )
         canonical_text = json.dumps(runtime, ensure_ascii=False, indent=2) + "\n"
         if args.check:
