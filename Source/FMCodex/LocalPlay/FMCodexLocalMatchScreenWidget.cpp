@@ -2221,12 +2221,21 @@ void UFMCodexLocalMatchScreenWidget::BindDetailHoverSources()
 	}
 }
 
-bool UFMCodexLocalMatchScreenWidget::CanInspectDeploymentFullCard() const
+bool UFMCodexLocalMatchScreenWidget::CanInspectOrdinaryFullCard() const
 {
 	// Permission belongs to the canonical presentation context, not to a
 	// card's location, selectability or remaining deployment destinations.
 	// The approved Theater planning inspectors keep their separate scope gate.
-	return Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::Deploy
+	// Explicit ordinary decision allowlist. Set Piece method/route choices and
+	// future selection categories do not inherit generic inspection permission.
+	const bool bApprovedContext =
+		Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::Deploy
+		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectCarrier
+		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectRunner
+		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectMarker
+		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectHelper
+		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectSkill;
+	return bApprovedContext
 		&& !IsInlineFormulaRevealInputBlocked()
 		&& !Presentation.FullTime.bVisible
 		&& !bDeploymentDragActive;
@@ -2235,7 +2244,7 @@ bool UFMCodexLocalMatchScreenWidget::CanInspectDeploymentFullCard() const
 void UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested(
 	UFMCodexPlayerCardWidget* SourceCard)
 {
-	if (!CanInspectDeploymentFullCard())
+	if (!CanInspectOrdinaryFullCard())
 	{
 		HideDetailOverlay();
 		return;

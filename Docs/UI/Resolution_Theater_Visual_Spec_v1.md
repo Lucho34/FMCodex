@@ -89,7 +89,7 @@ Shipping 编译为中性 Cross 入口、实际 High / Low 及已披露类型后�
 ## 明确后续项（本阶段不实现）
 
 - 更多独立 route / tactical Roll 的 CompactBox 接入另行评估；Cross route 已采用，未迁移消费方保持 Legacy。
-- Full Card 当前仅用于 Near / Long / Penalty 主罚球员选择和 Corner 候选规划状态；Tactical Choice、Formula、Roll、Outcome、Reason 与下一回合不采用完整卡片检查。更广泛的 Theater Full Card 接入另行评估。
+- Theater 内 Full Card 仅用于 Near / Long / Penalty 主罚球员选择和 Corner 候选规划状态；舞台内方法/路线 Tactical Choice、Formula、Roll、Outcome、Reason 与下一回合不采用完整卡片检查。普通棋盘角色选择与 `SelectSkill` 的 Hand / Pitch 检查属于 [Full Card scope](InMatch_FullCard_Visual_Spec_v1.md)，不扩展 Theater 许可。更广泛的 Theater Full Card 接入另行评估。
 - Set Piece Type D6 的 Stage 8.16 迁移与 Stage 8.16.1 共享落定色已完成 USER PIE 验收；Match Shell Visual Refresh Lite、其余 Legacy 消费方与可选 CJK 字体资源升级分别规划。
 
 ## Free Kick Theater — Stage 8.11 production contract

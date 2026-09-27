@@ -1,7 +1,8 @@
 # In-Match Full Card Visual Specification v1
 
 Status: **FROZEN — Stage 8.2C / C.1–C.5 USER PIE ACCEPTED**, committed at `b9774ec5e7b0af401618c716ace59d3f65d863e3`. Earlier pending/open wording below is checkpoint history. The accepted C.5 follow-up is the current Full contract; roster migration must preserve it.
-Scope: read-only In-Match Full Card inspection during Deployment and explicitly approved planning/card selection
+Scope: read-only In-Match Full Card inspection during explicitly approved decision/planning contexts
+Decision/planning inspection scope: **Stage 8.17B + 8.17B.1 — USER PIE PASS**.
 Stage: `6.13.1.3.11.8`
 
 Data contract integrated by: `6.13.2.2`
@@ -15,15 +16,28 @@ presentation context, independent of location or draggability. Drag start clears
 inspection; after placement the Pitch representation remains inspectable. Leaving
 Deployment clears it immediately without requiring mouse leave.
 
+Full Card is a player-information inspector for approved decision/planning
+contexts. The ordinary allowlist is explicit: Deployment (`Deploy`), Carrier
+(`SelectCarrier`), Runner (`SelectRunner`), Marker (`SelectMarker`), Helper
+(`SelectHelper`) and Tactical Choice (`SelectSkill` / 选择战术). Where present,
+Hand and deployed Pitch cards share the same read-only inspector, independent
+of candidate legality. Inspection does not select a role/tactic, change focus,
+alter availability or submit gameplay. Canonical candidate styling and clicks remain.
+
+Selection completion and presentation refresh clear the inspector without mouse
+leave. Moving to another approved decision context permits fresh inspection;
+stale card identity does not persist. Set Piece method/route choices and future
+selection categories do not automatically inherit this explicit allowlist.
+
 Other approved exposure is limited to the existing Near/Long Free Kick and Penalty
 taker-planning inspectors and Corner candidate-planning inspector. Their
 Theater contract owns placement, hover/selection fallback and immediate cleanup
 on leaving planning. Inspection is read-only and never selects or submits.
 
 The historical global local/opponent Hand Micro and Pitch hover permission is
-superseded. Outside Deployment, ordinary board hover or role selectability alone does
-not authorize Full Card; Tactical Choice, Formula, Roll, Outcome and Reason do
-not expose it. Earlier hover implementation/acceptance notes below describe
+superseded. Outside the explicit allowlist, board hover or selectability alone
+does not authorize Full Card. Formula, Roll, Outcome, Reason, ordinary resolution
+and terminal/result-focused contexts do not expose generic Full Card. Earlier hover implementation/acceptance notes below describe
 visual-family history, not permission to expand the current consumer scope.
 
 Dragging is a separate operation presentation. It uses a uniformly scaled

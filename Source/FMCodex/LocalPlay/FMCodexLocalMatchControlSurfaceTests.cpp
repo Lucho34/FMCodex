@@ -11957,9 +11957,9 @@ bool FFMCodexOnPitchCarrierSelectionFoundationTest::RunTest(
 				.PitchMiniTacticalMatchCount > 0
 			&& OwnTacticalMatchCard->IsSelectableForCurrentPrompt());
 
-	TestTrue(TEXT("SelectCarrier hover does not grant Full Card permission"),
+	TestTrue(TEXT("SelectCarrier permits read-only Full Card inspection"),
 			OwnNoTacticalMatchCard->RequestFullCardDetailHover()
-				&& !Screen->IsDetailOverlayVisible());
+				&& Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible());
 
 	const TArray<uint8> BeforeIllegalClick =
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
@@ -12205,9 +12205,9 @@ bool FFMCodexOnPitchMarkerSelectionRolloutTest::RunTest(
 				.Equals(FVector2D(1.0f, 1.0f))
 			&& !StructurallyForbiddenDefenderCard
 				->IsSelectableForCurrentPrompt());
-	TestTrue(TEXT("SelectMarker hover does not grant Full Card permission"),
+	TestTrue(TEXT("SelectMarker permits read-only Full Card inspection"),
 			SelectableNoTacticalMatchCard->RequestFullCardDetailHover()
-				&& !Screen->IsDetailOverlayVisible());
+				&& Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible());
 
 	const TArray<uint8> BeforeForbiddenClicks =
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
@@ -12901,9 +12901,9 @@ bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
 					.Equals(FVector2D(1.0f, 1.0f))
 				&& !CarrierCard->IsSelectableForCurrentPrompt()
 				&& !OpponentCard->IsSelectableForCurrentPrompt());
-		TestTrue(TEXT("Runner hover does not grant Full Card permission"),
+		TestTrue(TEXT("Runner permits read-only Full Card inspection"),
 			LegalNoTacticalMatchCard->RequestFullCardDetailHover()
-				&& !Screen->IsDetailOverlayVisible());
+				&& Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible());
 
 		UFMCodexSelectionFeedbackToastWidget* Toast =
 			Screen->GetSelectionFeedbackToast();
@@ -13280,9 +13280,9 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 					.Equals(FVector2D(1.0f, 1.0f))
 				&& !MarkerCard->IsSelectableForCurrentPrompt()
 				&& !AttackingCard->IsSelectableForCurrentPrompt());
-		TestTrue(TEXT("Helper hover does not grant Full Card permission"),
+		TestTrue(TEXT("Helper permits read-only Full Card inspection"),
 			LegalNoTacticalMatchCard->RequestFullCardDetailHover()
-				&& !Screen->IsDetailOverlayVisible());
+				&& Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible());
 
 		UFMCodexSelectionFeedbackToastWidget* Toast =
 			Screen->GetSelectionFeedbackToast();
@@ -15534,6 +15534,143 @@ bool FFMCodexLocalMarkerGoalFeedback::RunTest(const FString&)
 }
 
 
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexTacticalChoiceFullCardTest,
+    "FMCodex.LocalPlay.ControlSurface.FullCard.TacticalChoice",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+void FFMCodexTacticalChoiceFullCardTest::GetTests(TArray<FString>& Names, TArray<FString>& Commands) const
+{
+    for (const TCHAR* Case : {TEXT("Hand"), TEXT("Pitch"), TEXT("Transition"), TEXT("Roles")})
+    { Names.Add(Case); Commands.Add(Case); }
+}
+bool FFMCodexTacticalChoiceFullCardTest::RunTest(const FString& Parameters)
+{
+    using namespace FMCodexLocalMatchControlSurfaceTests;
+    FScopedPlayableWorld World;
+    auto* Controller = World.GetController();
+    if (!Controller || !World.GetHost()) return false;
+    Controller->InitializePlayerFacingUI();
+    auto* Screen = Controller->GetPlayerMatchScreen();
+    if (!TestNotNull(TEXT("Shared screen"), Screen)) return false;
+    // Keep the Slate tree alive so newly rebuilt Pitch slots materialize their
+    // child cards in this synchronous fixture, just as a mounted PIE screen does.
+    const auto ScreenSlate = Screen->TakeWidget();
+    Screen->RequestStartNewMatch();
+    FFMCodexLocalDevRollOverrideRequest Roll;
+    Roll.Target = EFMCodexLocalDevRollTarget::FullD12; Roll.Value = 4;
+    if (!TestTrue(TEXT("Existing DEV provider"), Controller->SetLocalDevRollOverride(Roll).bSuccess)) return false;
+    Screen->RequestRollTacticalPoints();
+    Screen->PauseInlineFormulaRevealTimerForTesting();
+    // This synchronous fixture has no world ticks. Finish all reveal phases,
+    // including ResultHold, before submitting the canonical setup placement.
+    for (int32 Tick = 0; Tick < 4 && Screen->IsInlineFormulaRevealInputBlocked(); ++Tick)
+        Screen->AdvanceInlineFormulaRevealForTesting(5.f);
+    AcknowledgeIfPending(*Controller);
+    if (!TestFalse(TEXT("Fixture reveal completed before placement"), Screen->IsInlineFormulaRevealInputBlocked())) return false;
+    const auto* Option = Screen->GetPresentation().Interaction.DeploymentChoices.FindByPredicate(
+        [](const auto& O) { return !O.bGoalkeeper && !O.Destinations.IsEmpty(); });
+    if (!TestNotNull(TEXT("Canonical legal placement"), Option)) return false;
+    const FName DeployedId = Option->CardId, SlotId = Option->Destinations[0].SlotId;
+    Screen->RequestDeployOrdinary(DeployedId, SlotId);
+    if (!TestTrue(TEXT("Authority accepted placement"), Controller->GetLastDiagnostic().bHostSuccess)) return false;
+    if (!TestTrue(TEXT("Fixture contains the actual deployed Pitch card"),
+        Screen->GetPresentation().PitchRegions.ContainsByPredicate([&](const auto& Region)
+        { return Region.Slots.ContainsByPredicate([&](const auto& Slot) { return Slot.bOccupied && Slot.Card.CardId == DeployedId; }); }))) return false;
+
+    // Presentation-only scope fixture. Keep real projected Hand/Pitch identities;
+    // the separate PIE test proves naturally reaching SelectSkill and submitting it.
+    FFMCodexUMGMatchScreenViewModel Choice;
+    Choice.LocalRack = Screen->GetPresentation().LocalRack;
+    Choice.OpponentRack = Screen->GetPresentation().OpponentRack;
+    Choice.PitchRegions = Screen->GetPresentation().PitchRegions;
+    Choice.Interaction.Category = Parameters == TEXT("Transition")
+        ? EFMCodexUMGInteractionCategory::SelectRunner : EFMCodexUMGInteractionCategory::SelectSkill;
+    Screen->RefreshFromPresentation(Choice);
+    bool bInspectHand = Parameters == TEXT("Hand");
+    auto FindSource = [&]() -> UFMCodexPlayerCardWidget*
+    {
+        if (bInspectHand)
+        {
+            const auto& Cards = Screen->GetLocalRackWidget()->GetRenderedCardWidgets();
+            return Cards.IsEmpty() ? nullptr : Cards[0].Get();
+        }
+        for (UFMCodexPitchSlotWidget* Slot : Screen->GetPitchWidget()->GetRenderedSlotWidgets())
+            if (Slot && Slot->GetCardWidget() && Slot->GetCardWidget()->GetPresentation().CardId == DeployedId)
+                return Slot->GetCardWidget();
+        return nullptr;
+    };
+    auto Hover = [&]()
+    {
+        auto* Card = FindSource();
+        if (!TestNotNull(TEXT("Rendered inspection source"), Card)) return false;
+        Card->TakeWidget()->OnMouseEnter(Card->GetCachedGeometry(), FPointerEvent());
+        return true;
+    };
+    const auto Before = SerializeState(World.GetHost()->GetMatchSnapshot().Snapshot);
+    if (!Hover()) return false;
+    TestTrue(TEXT("Approved decision permits the shared read-only Full Card"),
+        Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible());
+    TestEqual(TEXT("Inspector copies hovered identity"), Screen->GetDetailOverlayCard()->GetPresentation().CardId,
+        FindSource()->GetPresentation().CardId);
+    TestFalse(TEXT("Inspection permission does not require a CTA"), Screen->GetPresentation().Interaction.PrimaryAction.bAvailable);
+    if (Parameters == TEXT("Roles"))
+    {
+        auto* Inspector = Screen->GetDetailOverlayCard();
+        const auto FocusBefore = FSlateApplication::Get().GetKeyboardFocusedWidget();
+        for (const auto Category : {EFMCodexUMGInteractionCategory::SelectCarrier,
+            EFMCodexUMGInteractionCategory::SelectRunner, EFMCodexUMGInteractionCategory::SelectMarker,
+            EFMCodexUMGInteractionCategory::SelectHelper})
+        {
+            Choice.Interaction.Category = Category;
+            Screen->RefreshFromPresentation(Choice);
+            TestFalse(TEXT("Decision-to-decision refresh clears stale identity"), Screen->IsDetailOverlayVisible());
+            if (!Hover()) return false;
+            TestTrue(FString::Printf(TEXT("Explicit role category %d permits Pitch inspection"), int32(Category)),
+                Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible());
+            if (Category == EFMCodexUMGInteractionCategory::SelectCarrier)
+            {
+                bInspectHand = true;
+                if (!Hover()) return false;
+                TestTrue(TEXT("Same role also permits Hand inspection independent of candidate legality"),
+                    Screen->IsDetailOverlayVisible() && Inspector == Screen->GetDetailOverlayCard()
+                    && Inspector->GetPresentation().CardId == FindSource()->GetPresentation().CardId);
+                bInspectHand = false;
+            }
+            TestTrue(TEXT("Inspection does not change keyboard selection focus"),
+                FocusBefore == FSlateApplication::Get().GetKeyboardFocusedWidget());
+        }
+    }
+    if (Parameters == TEXT("Transition"))
+    {
+        auto Formula = Choice;
+        Formula.Interaction.Category = EFMCodexUMGInteractionCategory::RollCrossAttack;
+        Formula.InlineFormula.bVisible = true;
+        Formula.InlineFormula.bShowFormulaRows = true;
+        Formula.InlineFormula.bShowAttackRow = true;
+        Formula.InlineFormula.ContestId = TEXT("Cross.High");
+        Screen->RefreshFromPresentation(Formula);
+        TestFalse(TEXT("Formula transition clears without mouse leave"), Screen->IsDetailOverlayVisible());
+        if (!Hover()) return false;
+        TestFalse(TEXT("Formula/Roll cannot reopen generic Full Card"), Screen->IsDetailOverlayVisible());
+        auto UnapprovedSelection = Choice;
+        UnapprovedSelection.Interaction.Category = EFMCodexUMGInteractionCategory::SelectSetPieceMethod;
+        Screen->RefreshFromPresentation(UnapprovedSelection);
+        if (!Hover()) return false;
+        TestFalse(TEXT("Unapproved selection does not inherit ordinary decision permission"), Screen->IsDetailOverlayVisible());
+        Choice.Interaction.Category = EFMCodexUMGInteractionCategory::SelectSkill;
+        Screen->RefreshFromPresentation(Choice);
+        if (!Hover()) return false;
+        TestTrue(TEXT("Returning to Tactical Choice restores inspection"), Screen->IsDetailOverlayVisible());
+        bInspectHand = true;
+        if (!Hover()) return false;
+        TestTrue(TEXT("Tactical Choice Hand permission also remains available"), Screen->IsDetailOverlayVisible());
+        Screen->RefreshFromPresentation(Choice);
+        TestFalse(TEXT("Same-context rebuild clears stale source"), Screen->IsDetailOverlayVisible());
+    }
+    TestTrue(TEXT("Hover and cleanup leave all gameplay state unchanged"),
+        Before == SerializeState(World.GetHost()->GetMatchSnapshot().Snapshot));
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexFullCardFormulaScopeTest,
     "FMCodex.LocalPlay.ControlSurface.65.FullCardDeniedDuringFormula",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -15693,7 +15830,8 @@ bool FFMCodexFullHoverAfterDeploymentTest::RunTest(const FString& Parameters)
         if (Slot && Slot->GetCardWidget())
         {
             Slot->GetCardWidget()->RequestFullCardDetailHover();
-            TestFalse(TEXT("Post-Deployment player selection cannot reopen Full Card"),Screen->IsDetailOverlayVisible());
+            TestTrue(TEXT("Post-Deployment ordinary role selection can reopen read-only Full Card"),
+                Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible());
             break;
         }
     return true;

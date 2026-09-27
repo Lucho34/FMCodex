@@ -2495,3 +2495,17 @@ Cross Runner 的前场条件以当前权威部署为准，取代旧的 authored 
 Runner legality、prepared Runner 的 Skill compatibility、branch intent 与 Ready validation 复用既有相对部署区解析器。独立 Cross plan 查询只接收由权威适配器根据当前部署生成的前场证明，缺少证明即拒绝，不再读取静态位置类型判断前场。此证明仅为非复制的内部 query input，不增加 RPC、State persistence 或 viewer-safe schema；Local / Network 共用同一规则。
 
 本次不改变 Cross 路线、Formula、胜负或消耗，保留已锁定 Theater、Stage 8.16 Roll 表现与 Prototype40_v2 内容。普通 Tactical Choice 的 Full Card 扩展留给 Stage 8.17B；本阶段仍需独立 USER PIE 验收。
+
+## 2026-09-27 — Stage 8.17B ordinary Tactical Choice Full Card scope
+
+普通“选择战术”以既有显式 `SelectSkill` presentation category 为准，允许 Hand 与已部署 Pitch 复用 Screen 的同一个只读 Full Card。此决定取代 Stage 8.14B 对普通 Tactical Choice 的排除，不扩大到 Carrier / Marker / Runner / Helper 或定位球方法、路线选择。Deployment 与 Near / Long FK、Penalty、Corner 的专用规划 inspector 保持原合同；Formula / Roll / Outcome / Reason 和普通结算仍拒绝 generic Full Card。
+
+许可由共享 Screen 拥有，不依赖 CTA、卡牌可选性或 Formula 隐藏；低层卡牌只负责身份与 hover。刷新或离开许可状态立即清理，无需 mouse leave，再次进入普通 Tactical Choice 可重新检查。只读取既有安全 presentation，不改玩法、Authority、RPC、schema、safe projection、ownership 或内容；工程证据不代替本阶段 USER PIE。
+
+## 2026-09-27 — Stage 8.17B.1 approved ordinary decision inspection
+
+产品原则调整为：Full Card 是已批准决策/规划状态中的只读球员信息检查器，generic 检查不进入 Formula / Roll / Outcome / Reason、普通结算或 terminal/result 状态。普通 allowlist 明确列出 `Deploy`、`SelectCarrier`、`SelectRunner`、`SelectMarker`、`SelectHelper`、`SelectSkill`；本条取代 8.17B 对四种普通角色选择的排除，不自动批准所有 selection 或未来类别。
+
+当前安全投影已展示的 Hand / Pitch 复用同一 inspector，检查不意味着候选合法，也不选择球员、改变焦点、ownership、TP 或提交 gameplay。选择完成及刷新立即清理；进入下一个获准决策状态可重新检查。专用定位球规划 inspector 维持已锁定合同，方法/路线选择仍不开放 generic Full Card。无玩法、Authority、RPC、schema 或披露变更。
+
+**Stage 8.17B + 8.17B.1 — USER PIE PASS。** 用户已手动确认最终检查范围与交互符合预期。Grouped closeout 复用既有通过的 focused/affected 测试、增量 Development Editor build 与真实 Local PIE；运行时及测试实现未在验证后改变，本次仅审计分组 diff、边界和文档，并同步用户验收状态，未重复执行 gameplay、build、PIE、Network、Host/Remote 或 Shipping。最终 staging / commit 仍由用户通过 GitHub Desktop 手动完成。

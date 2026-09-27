@@ -6,6 +6,8 @@
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPitchSlotWidget.h"
+#include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexInteractionOptionWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/TextBlock.h"
 #include "Components/RichTextBlock.h"
@@ -1390,8 +1392,8 @@ bool FResolutionTheaterCompactRoutePIETest::RunTest(const FString&)
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
 }
-// Real Local PIE regression: one inspector across hand -> Pitch, then deny
-// ordinary role selection. Uses the normal provider, typed actions and Slate drag.
+// Real Local PIE regression: one inspector across hand -> Pitch, followed by
+// inspectable ordinary role selection. Uses typed actions and Slate drag.
 class FDeploymentFullCardScopePIE final : public IAutomationLatentCommand
 {
 public:
@@ -1474,12 +1476,12 @@ public:
     Test->TestFalse(TEXT("PIE finish clears inspector immediately without mouse leave"),S->IsDetailOverlayVisible());
     Changed=Game;return false;
    }
-   Test->TestEqual(TEXT("PIE naturally enters unapproved Carrier selection"),S->GetPresentation().Interaction.Category,EFMCodexUMGInteractionCategory::SelectCarrier);
-   if (!Hover(FindPitch(),false,TEXT("PIE post-Deployment Pitch hover denied"))) return true;
+   Test->TestEqual(TEXT("PIE naturally enters approved Carrier selection"),S->GetPresentation().Interaction.Category,EFMCodexUMGInteractionCategory::SelectCarrier);
+   if (!Hover(FindPitch(),true,TEXT("PIE Carrier Pitch hover allowed"))) return true;
    auto* Rack=S->GetLocalRackWidget();
    if (!Test->TestFalse(TEXT("PIE remaining undeployed cards exist"),Rack->GetRenderedCardWidgets().IsEmpty())) return true;
-   Hover(Rack->GetRenderedCardWidgets()[0].Get(),false,TEXT("PIE post-Deployment hand hover denied"));
-   Test->AddInfo(TEXT("DEPLOYMENT_FULL_CARD_PIE undeployed=allowed pitch=allowed drag=cleared exit=cleared carrier=denied"));
+   Hover(Rack->GetRenderedCardWidgets()[0].Get(),true,TEXT("PIE Carrier hand hover allowed"));
+   Test->AddInfo(TEXT("DEPLOYMENT_FULL_CARD_PIE undeployed=allowed pitch=allowed drag=cleared exit=cleared carrier=allowed"));
    return true;
   }
   return false;
@@ -1495,6 +1497,188 @@ bool FDeploymentFullCardScopePIETest::RunTest(const FString&)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
  ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDeploymentFullCardScopePIE(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+ return true;
+}
+
+// One real production path: ordinary roles and SelectSkill, Slate hover, then
+// the existing tactic button and a denied resolution state. No state injection.
+class FTacticalChoiceFullCardPIE final : public IAutomationLatentCommand
+{
+public:
+ explicit FTacticalChoiceFullCardPIE(FAutomationTestBase* InTest) : Test(InTest) {}
+ bool Update() override
+ {
+  if (FPlatformTime::Seconds()-Started>100.) {Test->AddError(TEXT("Tactical Choice inspection PIE timed out"));return true;}
+  if (!GEditor || !GEditor->PlayWorld) return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr;
+  if (!S || FPlatformTime::Seconds()-Changed<.4 || S->IsInlineFormulaRevealInputBlocked()) return false;
+  auto Next=[&](){++Step;Changed=FPlatformTime::Seconds();};
+  auto FindCard=[&](bool Pitch)->UFMCodexPlayerCardWidget*
+  {
+   if (!Pitch)
+   {
+    const auto& Cards=S->GetLocalRackWidget()->GetRenderedCardWidgets();
+    return Cards.IsEmpty()?nullptr:Cards[0].Get();
+   }
+   const FName PitchId=Step==3 && !InspectRoleCard.IsNone()?InspectRoleCard:Carrier;
+   for (UFMCodexPitchSlotWidget* Slot:S->GetPitchWidget()->GetRenderedSlotWidgets())
+    if (Slot && Slot->GetCardWidget() && Slot->GetCardWidget()->GetPresentation().CardId==PitchId) return Slot->GetCardWidget();
+   return nullptr;
+  };
+  auto MoveTo=[&](UFMCodexPlayerCardWidget* Card)
+  {
+   if (!Test->TestNotNull(TEXT("PIE rendered hover source"),Card)) return false;
+   HoverId=Card->GetPresentation().CardId;
+   auto& App=FSlateApplication::Get();const auto& G=Card->GetCachedGeometry();
+   const FVector2D Pos=G.LocalToAbsolute(G.GetLocalSize()*.5f),Old=App.GetCursorPos();App.SetCursorPos(Pos);
+   App.ProcessMouseMoveEvent(FPointerEvent(0,Pos,Old,TSet<FKey>(),EKeys::Invalid,0,FModifierKeysState()),false);
+   return true;
+  };
+  auto CheckInspection=[&](const TCHAR* Label)
+  {
+   Test->TestTrue(Label,S->IsDetailOverlayVisible() && S->IsDetailOverlayHitTestInvisible()
+    && S->GetDetailOverlayCard()->GetPresentation().CardId==HoverId);
+   Test->TestEqual(TEXT("Hover submits no command"),C->GetLastDiagnostic().CommandName,BeforeCommand);
+   Test->TestEqual(TEXT("Hover preserves TP"),S->GetPresentation().Header.CurrentAttackerTacticalPoints,BeforeTP);
+   Test->TestEqual(TEXT("Hover preserves canonical decision category"),S->GetPresentation().Interaction.Category,BeforeCategory);
+  };
+  if (Step==0) {S->RequestStartNewMatch();Next();return false;}
+  if (Step==1)
+  {
+   FFMCodexLocalDevRollOverrideRequest R;R.Target=EFMCodexLocalDevRollTarget::FullD12;R.Value=4;
+   if (!Test->TestTrue(TEXT("PIE existing DEV dice provider"),C->SetLocalDevRollOverride(R).bSuccess)) return true;
+   S->RequestRollTacticalPoints();Next();return false;
+  }
+  if (Step==2)
+  {
+   const bool IsA=C->GetInteractionView().CurrentAttackingPlayer==EInitialTurnOrderPlayer::PlayerA;
+   Carrier=IsA?TEXT("Prototype.Arsenal.BukayoSaka"):TEXT("Prototype.ManchesterCity.RayanAitNouri");
+   Runner=IsA?TEXT("Prototype.Arsenal.ViktorGyokeres"):TEXT("Prototype.ManchesterCity.ErlingHaaland");
+   const FString Own=IsA?TEXT("NearA"):TEXT("NearB"),Forward=IsA?TEXT("NearB"):TEXT("NearA");
+   for (int32 Side=0;Side<2;++Side)
+   {
+    for (int32 I=0;I<4;++I)
+    {
+     const FName Required=Side==0 && I==0?Carrier:Side==0 && I==2?Runner:NAME_None;
+     const FString Half=I<2?Own:Forward;
+     const auto* O=C->GetInteractionView().DeploymentOptions.FindByPredicate([&](const auto& Candidate)
+     {return !Candidate.bGoalkeeper && Candidate.SlotId.ToString().Contains(Half)
+       && (Required.IsNone()?Candidate.CardId!=Carrier && Candidate.CardId!=Runner:Candidate.CardId==Required);});
+     if (!Test->TestNotNull(TEXT("PIE canonical deployment option"),O)) return true;
+     const FName Id=O->CardId,Slot=O->SlotId;S->RequestDeployOrdinary(Id,Slot);
+     if (!Accepted(*C)) return true;
+    }
+    S->RequestFinishDeployment();if (!Accepted(*C)) return true;
+   }
+   Next();return false;
+  }
+  if (Step==3)
+  {
+   using Category=EFMCodexLocalMatchInteractionCategory;
+   const auto& V=C->GetInteractionView();
+   if (V.InteractionCategory==Category::SelectCarrier || V.InteractionCategory==Category::SelectMarker
+    || V.InteractionCategory==Category::SelectRunner || V.InteractionCategory==Category::SelectHelper)
+   {
+    if (!bRoleHoverPending)
+    {
+     BeforeCategory=S->GetPresentation().Interaction.Category;
+     BeforeCommand=C->GetLastDiagnostic().CommandName;BeforeTP=S->GetPresentation().Header.CurrentAttackerTacticalPoints;
+     InspectRoleCard=V.InteractionCategory==Category::SelectCarrier?Carrier:
+      V.InteractionCategory==Category::SelectRunner?Runner:V.SelectionOptions.IsEmpty()?Carrier:V.SelectionOptions[0].Id;
+     if (!MoveTo(FindCard(true))) return true;
+     bRoleHoverPending=true;Changed=FPlatformTime::Seconds();return false;
+    }
+    CheckInspection(TEXT("Actual Slate role-selection hover opens read-only Full Card"));
+    Test->AddInfo(FString::Printf(TEXT("ROLE_FULL_CARD_PIE category=%d card=%s hover=readonly"),int32(BeforeCategory),*HoverId.ToString()));
+    bRoleHoverPending=false;
+   }
+   auto ClickRole=[&]()
+   {
+    auto* Card=FindCard(true);
+    return Test->TestTrue(TEXT("Normal on-Pitch role selection remains actionable"),Card && Card->RequestOnPitchSelection());
+   };
+   switch (V.InteractionCategory)
+   {
+   case Category::SelectCarrier:if (!ClickRole()) return true;break;
+   case Category::SelectMarker:
+    if (!Test->TestFalse(TEXT("PIE legal Marker available"),V.SelectionOptions.IsEmpty())) return true;
+    if (!ClickRole()) return true;break;
+   case Category::SelectRunner:if (!ClickRole()) return true;break;
+   case Category::SelectHelper:
+    if (V.bCanResolveNoLegalChoice) S->RequestResolveNoLegalSelection();
+    else if (V.SelectionOptions.IsEmpty()) S->RequestDeclineSelection();
+    else if (!ClickRole()) return true;
+    break;
+   case Category::SelectSkill:
+    BeforeCommand=C->GetLastDiagnostic().CommandName;BeforeTP=S->GetPresentation().Header.CurrentAttackerTacticalPoints;
+    BeforeCategory=S->GetPresentation().Interaction.Category;
+    Inspector=S->GetDetailOverlayCard();
+    if (!MoveTo(FindCard(false))) return true;
+    Next();return false;
+   default:Test->AddError(TEXT("PIE did not reach ordinary Tactical Choice"));return true;
+   }
+   if (!Accepted(*C)) return true;
+   Test->TestFalse(TEXT("Role submission clears the inspector without mouse leave"),S->IsDetailOverlayVisible());
+   Changed=FPlatformTime::Seconds();return false;
+  }
+  if (Step==4)
+  {
+   CheckInspection(TEXT("Actual Slate Hand hover opens read-only Full Card"));
+   if (!MoveTo(FindCard(true))) return true;
+   Next();return false;
+  }
+  if (Step==5)
+  {
+   CheckInspection(TEXT("Actual Slate deployed Pitch hover opens read-only Full Card"));
+   Test->TestTrue(TEXT("Hand and Pitch reuse one inspector"),Inspector==S->GetDetailOverlayCard());
+   const auto* Cross=S->GetPresentation().Interaction.SelectionChoices.FindByPredicate([](const auto& O){return O.SkillType==ESkillRuleType::Cross && O.bEnabled;});
+   if (!Test->TestNotNull(TEXT("Canonical Cross choice remains available"),Cross)) return true;
+   UButton* Button=nullptr;
+   for (UFMCodexInteractionOptionWidget* Option:S->GetInteractionPanel()->GetRenderedOptionWidgets())
+    if (Option && Option->IsTacticalCard() && Option->GetLabel()==Cross->Label)
+     Button=Cast<UButton>(Option->GetWidgetFromName(TEXT("InteractionOptionButton")));
+   if (!Test->TestTrue(TEXT("Existing tactic button remains enabled"),Button && Button->GetIsEnabled())) return true;
+   // Dispatch the real button delegate while the pointer remains on Pitch.
+   // This proves cleanup is caused by the transition, not by mouse leave.
+   Button->OnClicked.Broadcast();if (!Accepted(*C)) return true;
+   Test->TestFalse(TEXT("Tactic submission clears inspector immediately without mouse leave"),S->IsDetailOverlayVisible());
+   Next();return false;
+  }
+  if (Step==6)
+  {
+   Test->TestEqual(TEXT("Normal tactic button reached branch choice"),S->GetPresentation().Interaction.Category,EFMCodexUMGInteractionCategory::SelectBranchIntent);
+   S->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossHigh);if (!Accepted(*C)) return true;
+   Next();return false;
+  }
+  Test->TestEqual(TEXT("Natural Cross route Roll is denied scope"),S->GetPresentation().Interaction.Category,EFMCodexUMGInteractionCategory::RollCrossRoute);
+  for (const bool Pitch:{false,true})
+  {
+   auto* Card=FindCard(Pitch);if (!Test->TestNotNull(TEXT("Retained ordinary card"),Card)) return true;
+   // Theater owns the visible screen now; exercise the retained board's native
+   // hover callback too, so denial does not merely rely on Theater occlusion.
+   Card->TakeWidget()->OnMouseEnter(Card->GetCachedGeometry(),FPointerEvent());
+   Test->TestFalse(TEXT("Denied Roll rejects ordinary Hand/Pitch native hover"),S->IsDetailOverlayVisible());
+  }
+  Test->AddInfo(TEXT("TACTICAL_FULL_CARD_PIE roles=Slate_hover hand=Slate_hover pitch=Slate_hover inspector=shared_readonly role_selection=accepted tactic_button=accepted exit=immediate roll_hover=denied"));
+  return true;
+ }
+private:
+ bool Accepted(AFMCodexLocalMatchPlayerController& C)
+ {return Test->TestTrue(TEXT("Existing Screen action accepted by authority"),C.GetLastDiagnostic().bHostSuccess);}
+ FAutomationTestBase* Test;double Started=FPlatformTime::Seconds(),Changed=0;int32 Step=0,BeforeTP=0;
+ FName Carrier,Runner,HoverId,InspectRoleCard;FString BeforeCommand;UFMCodexPlayerCardWidget* Inspector=nullptr;
+ bool bRoleHoverPending=false;
+ EFMCodexUMGInteractionCategory BeforeCategory=EFMCodexUMGInteractionCategory::None;
+};
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTacticalChoiceFullCardPIETest,"FMCodex.PIE.FullCard.TacticalChoice",
+ EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FTacticalChoiceFullCardPIETest::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FTacticalChoiceFullCardPIE(this)));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
 }

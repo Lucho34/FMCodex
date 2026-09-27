@@ -105,11 +105,13 @@ duplicate its normative metrics.
 The production-candidate visual and data rules for the shared detail surface
 are owned by
 [InMatch_FullCard_Visual_Spec_v1.md](InMatch_FullCard_Visual_Spec_v1.md).
-That specification remains `DRAFT FOR USER PIE VALIDATION` and does not define
-a Collection/Showcase Card.
+That specification owns the frozen In-Match visual family and the decision/planning
+inspection scope accepted in Stage 8.17B + 8.17B.1 USER PIE. It does not define a Collection/Showcase Card.
 
-- Full Card is a read-only inspector during Deployment and in explicitly
-  approved planning/card selection consumers: Near/Long Free Kick and Penalty
+- Full Card is a read-only player-information inspector in approved decision/planning
+  contexts. The ordinary allowlist is Deployment, Carrier, Runner, Marker, Helper
+  and Tactical Choice (`Deploy`, `SelectCarrier`, `SelectRunner`, `SelectMarker`,
+  `SelectHelper`, `SelectSkill`). Also approved: Near/Long Free Kick and Penalty
   taker planning, and Corner candidate planning. Those planning flows retain
   their existing Theater inspector for hover,
   selected-candidate fallback and cleanup; see the Theater visual spec.
@@ -117,10 +119,15 @@ a Collection/Showcase Card.
   cards use the same transient Full Card popup. Permission follows the explicit
   Deployment presentation context, not card location or remaining legal placements.
   Drag start clears/suppresses inspection; after drop the new Pitch representation
-  remains inspectable while Deployment continues. Outside Deployment, ordinary
-  board hover and Carrier/Marker/Runner/Helper selectability do not grant Full Card.
-  Tactical Choice, Formula, Roll, Outcome, Reason and unrelated match states do
-  not expose it. Leaving Deployment or approved planning clears the inspector without requiring mouse leave. This current scope
+  remains inspectable while Deployment continues. All approved ordinary contexts
+  grant the same Hand + Pitch permission where those cards are present, independent
+  of candidate legality. Set Piece method/route choices and future selection states
+  do not automatically inherit permission. Formula, Roll, Outcome, Reason, ordinary
+  resolution and terminal/result-focused states deny generic Full Card. Selection
+  completion or refresh clears the inspector without mouse leave; another approved
+  decision permits fresh inspection. Inspection never selects a tactic or player,
+  changes selection focus, submits gameplay, or changes roles, TP, ownership,
+  availability or legality. This current scope
   supersedes the historical global hand/pitch hover contract; Full Card artwork,
   geometry, card selection and lightweight hover behavior remain unchanged.
 - Drag takes precedence over hover detail. Starting an eligible local Hand
