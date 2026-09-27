@@ -286,6 +286,7 @@ private:
 	void HandlePitchDeploymentDropped(
 		FName CardId, FName SlotId, bool bGoalkeeper);
 	void BindDetailHoverSources();
+	bool CanInspectDeploymentFullCard() const;
 	void HandleDetailHoverRequested(UFMCodexPlayerCardWidget* SourceCard);
 	void HandleDetailHoverDismissed(UFMCodexPlayerCardWidget* SourceCard);
 	void ShowDetailOverlay(UFMCodexPlayerCardWidget* SourceCard);

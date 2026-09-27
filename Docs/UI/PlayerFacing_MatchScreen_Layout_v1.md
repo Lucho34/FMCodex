@@ -108,12 +108,21 @@ are owned by
 That specification remains `DRAFT FOR USER PIE VALIDATION` and does not define
 a Collection/Showcase Card.
 
-- A populated local or opponent Hand Micro exposes the existing `Full Card`
-  presentation while hovered. A populated deployed Pitch card uses the same
-  transient detail system. Empty cells and Ghosts expose no detail.
-- Exactly one `360×540` Full Card detail overlay exists. It opens from either
-  Rack toward the center, clamps to a 12 px usable-viewport margin, is
-  hit-test-invisible, and disappears when its source is no longer hovered.
+- Full Card is a read-only inspector during Deployment and in explicitly
+  approved planning/card selection consumers: Near/Long Free Kick and Penalty
+  taker planning, and Corner candidate planning. Those planning flows retain
+  their existing Theater inspector for hover,
+  selected-candidate fallback and cleanup; see the Theater visual spec.
+- During Deployment, both undeployed Hand Micro and already-deployed Pitch
+  cards use the same transient Full Card popup. Permission follows the explicit
+  Deployment presentation context, not card location or remaining legal placements.
+  Drag start clears/suppresses inspection; after drop the new Pitch representation
+  remains inspectable while Deployment continues. Outside Deployment, ordinary
+  board hover and Carrier/Marker/Runner/Helper selectability do not grant Full Card.
+  Tactical Choice, Formula, Roll, Outcome, Reason and unrelated match states do
+  not expose it. Leaving Deployment or approved planning clears the inspector without requiring mouse leave. This current scope
+  supersedes the historical global hand/pitch hover contract; Full Card artwork,
+  geometry, card selection and lightweight hover behavior remain unchanged.
 - Drag takes precedence over hover detail. Starting an eligible local Hand
   drag closes the detail overlay, leaves the original `220×68` Rack cell
   reserved in a temporary low-opacity DragSource state, and uses a presentation-

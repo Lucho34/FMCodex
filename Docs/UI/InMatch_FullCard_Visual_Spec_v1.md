@@ -1,18 +1,30 @@
 # In-Match Full Card Visual Specification v1
 
 Status: **FROZEN — Stage 8.2C / C.1–C.5 USER PIE ACCEPTED**, committed at `b9774ec5e7b0af401618c716ace59d3f65d863e3`. Earlier pending/open wording below is checkpoint history. The accepted C.5 follow-up is the current Full contract; roster migration must preserve it.
-Scope: transient In-Match Full Card used for Match Screen Hover inspection  
+Scope: read-only In-Match Full Card inspection during Deployment and explicitly approved planning/card selection
 Stage: `6.13.1.3.11.8`
 
 Data contract integrated by: `6.13.2.2`
 
 ## Purpose and boundary
 
-This specification owns the `360×540` In-Match Full Card shown from:
+This specification owns the `360×540` In-Match Full Card visual family.
+During Deployment, undeployed hand/roster cards and already-deployed Pitch cards
+share the existing transient inspector. Permission follows the canonical Deployment
+presentation context, independent of location or draggability. Drag start clears
+inspection; after placement the Pitch representation remains inspectable. Leaving
+Deployment clears it immediately without requiring mouse leave.
 
-- local Hand Micro hover;
-- opponent Hand Micro hover;
-- deployed Pitch card hover.
+Other approved exposure is limited to the existing Near/Long Free Kick and Penalty
+taker-planning inspectors and Corner candidate-planning inspector. Their
+Theater contract owns placement, hover/selection fallback and immediate cleanup
+on leaving planning. Inspection is read-only and never selects or submits.
+
+The historical global local/opponent Hand Micro and Pitch hover permission is
+superseded. Outside Deployment, ordinary board hover or role selectability alone does
+not authorize Full Card; Tactical Choice, Formula, Roll, Outcome and Reason do
+not expose it. Earlier hover implementation/acceptance notes below describe
+visual-family history, not permission to expand the current consumer scope.
 
 Dragging is a separate operation presentation. It uses a uniformly scaled
 Hand Micro-based proxy and never shows the complete Full Card.

@@ -2221,13 +2221,26 @@ void UFMCodexLocalMatchScreenWidget::BindDetailHoverSources()
 	}
 }
 
+bool UFMCodexLocalMatchScreenWidget::CanInspectDeploymentFullCard() const
+{
+	// Permission belongs to the canonical presentation context, not to a
+	// card's location, selectability or remaining deployment destinations.
+	// The approved Theater planning inspectors keep their separate scope gate.
+	return Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::Deploy
+		&& !IsInlineFormulaRevealInputBlocked()
+		&& !Presentation.FullTime.bVisible
+		&& !bDeploymentDragActive;
+}
+
 void UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested(
 	UFMCodexPlayerCardWidget* SourceCard)
 {
-	if (!bDeploymentDragActive)
+	if (!CanInspectDeploymentFullCard())
 	{
-		ShowDetailOverlay(SourceCard);
+		HideDetailOverlay();
+		return;
 	}
+	ShowDetailOverlay(SourceCard);
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleDetailHoverDismissed(

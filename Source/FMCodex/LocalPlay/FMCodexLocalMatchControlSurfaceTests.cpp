@@ -10372,7 +10372,7 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 		LocalRack->GetRenderedCardWidgets()[0];
 	UFMCodexPlayerCardWidget* OpponentHoverCard =
 		OpponentRack->GetRenderedCardWidgets()[0];
-	TestTrue(TEXT("Populated local and opponent Hand Micro expose detail"),
+	TestTrue(TEXT("Card-local capability does not grant match-flow inspection permission"),
 		LocalHoverCard != nullptr && OpponentHoverCard != nullptr
 			&& LocalHoverCard->CanExposeFullCardDetail()
 			&& OpponentHoverCard->CanExposeFullCardDetail());
@@ -11949,12 +11949,9 @@ bool FFMCodexOnPitchCarrierSelectionFoundationTest::RunTest(
 				.PitchMiniTacticalMatchCount > 0
 			&& OwnTacticalMatchCard->IsSelectableForCurrentPrompt());
 
-	TestTrue(TEXT("SelectCarrier preserves the normal Pitch Mini Full Card hover route"),
-		OwnNoTacticalMatchCard->RequestFullCardDetailHover()
-			&& Screen->IsDetailOverlayVisible()
-			&& Screen->GetDetailOverlayCard() != nullptr
-			&& Screen->GetDetailOverlayCard()->GetPresentation().CardId
-				== OwnNoTacticalMatchCard->GetPresentation().CardId);
+	TestTrue(TEXT("SelectCarrier hover does not grant Full Card permission"),
+			OwnNoTacticalMatchCard->RequestFullCardDetailHover()
+				&& !Screen->IsDetailOverlayVisible());
 
 	const TArray<uint8> BeforeIllegalClick =
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
@@ -12200,12 +12197,9 @@ bool FFMCodexOnPitchMarkerSelectionRolloutTest::RunTest(
 				.Equals(FVector2D(1.0f, 1.0f))
 			&& !StructurallyForbiddenDefenderCard
 				->IsSelectableForCurrentPrompt());
-	TestTrue(TEXT("SelectMarker preserves the normal Pitch Mini Full Card hover route"),
-		SelectableNoTacticalMatchCard->RequestFullCardDetailHover()
-			&& Screen->IsDetailOverlayVisible()
-			&& Screen->GetDetailOverlayCard() != nullptr
-			&& Screen->GetDetailOverlayCard()->GetPresentation().CardId
-				== SelectableNoTacticalMatchCard->GetPresentation().CardId);
+	TestTrue(TEXT("SelectMarker hover does not grant Full Card permission"),
+			SelectableNoTacticalMatchCard->RequestFullCardDetailHover()
+				&& !Screen->IsDetailOverlayVisible());
 
 	const TArray<uint8> BeforeForbiddenClicks =
 		SerializeState(Host->GetMatchSnapshot().Snapshot);
@@ -12687,9 +12681,9 @@ bool FFMCodexMarkerWrongAreaFeedbackTest::RunTest(
 			&& Toast->GetDisplayedText().ToString()
 				== TEXT("\u76EF\u4EBA\u7403\u5458\u5FC5\u987B\u4E0E\u6301\u7403\u7403\u5458\u4F4D\u4E8E\u540C\u4E00\u534A\u533A")
 			&& FMath::IsNearlyEqual(Toast->GetDisplayDurationSeconds(), 2.0f));
-	TestTrue(TEXT("Toast does not block the existing Full Card hover route"),
+	TestTrue(TEXT("Toast preserves card hover without Full Card exposure"),
 		WrongAreaCard->RequestFullCardDetailHover()
-			&& Screen->IsDetailOverlayVisible()
+			&& !Screen->IsDetailOverlayVisible()
 			&& Toast->IsFeedbackVisible());
 	const int32 FirstTriggerSerial = Toast->GetTriggerSerial();
 	TestTrue(TEXT("Repeated wrong-area feedback restarts the Toast"),
@@ -12899,12 +12893,9 @@ bool FFMCodexOnPitchRunnerSelectionRolloutTest::RunTest(
 					.Equals(FVector2D(1.0f, 1.0f))
 				&& !CarrierCard->IsSelectableForCurrentPrompt()
 				&& !OpponentCard->IsSelectableForCurrentPrompt());
-		TestTrue(TEXT("Runner selection preserves normal Full Card hover"),
+		TestTrue(TEXT("Runner hover does not grant Full Card permission"),
 			LegalNoTacticalMatchCard->RequestFullCardDetailHover()
-				&& Screen->IsDetailOverlayVisible()
-				&& Screen->GetDetailOverlayCard() != nullptr
-				&& Screen->GetDetailOverlayCard()->GetPresentation().CardId
-					== LegalNoTacticalMatchCard->GetPresentation().CardId);
+				&& !Screen->IsDetailOverlayVisible());
 
 		UFMCodexSelectionFeedbackToastWidget* Toast =
 			Screen->GetSelectionFeedbackToast();
@@ -13281,12 +13272,9 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 					.Equals(FVector2D(1.0f, 1.0f))
 				&& !MarkerCard->IsSelectableForCurrentPrompt()
 				&& !AttackingCard->IsSelectableForCurrentPrompt());
-		TestTrue(TEXT("Helper selection preserves normal Full Card hover"),
+		TestTrue(TEXT("Helper hover does not grant Full Card permission"),
 			LegalNoTacticalMatchCard->RequestFullCardDetailHover()
-				&& Screen->IsDetailOverlayVisible()
-				&& Screen->GetDetailOverlayCard() != nullptr
-				&& Screen->GetDetailOverlayCard()->GetPresentation().CardId
-					== LegalNoTacticalMatchCard->GetPresentation().CardId);
+				&& !Screen->IsDetailOverlayVisible());
 
 		UFMCodexSelectionFeedbackToastWidget* Toast =
 			Screen->GetSelectionFeedbackToast();
@@ -13316,9 +13304,9 @@ bool FFMCodexOnPitchHelperSelectionRolloutTest::RunTest(
 					== EFMCodexLocalMatchInteractionCategory::SelectHelper
 				&& Toast->GetDisplayedText().ToString()
 					== TEXT("\u8BE5\u7403\u5458\u5DF2\u88AB\u6307\u5B9A\u4E3A\u76EF\u4EBA\u7403\u5458\uFF0C\u8BF7\u9009\u62E9\u5176\u4ED6\u534F\u9632\u7403\u5458"));
-		TestTrue(TEXT("Helper feedback Toast does not block Full Card hover"),
+		TestTrue(TEXT("Helper feedback preserves card hover without Full Card exposure"),
 			MarkerCard->RequestFullCardDetailHover()
-				&& Screen->IsDetailOverlayVisible()
+				&& !Screen->IsDetailOverlayVisible()
 				&& Toast->IsFeedbackVisible());
 		TestFalse(TEXT("Attacking Pitch card cannot emit Helper intent"),
 			AttackingCard->RequestOnPitchSelection());
@@ -15521,6 +15509,50 @@ bool FFMCodexLocalMarkerGoalFeedback::RunTest(const FString&)
 }
 
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexFullCardFormulaScopeTest,
+    "FMCodex.LocalPlay.ControlSurface.65.FullCardDeniedDuringFormula",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexFullCardFormulaScopeTest::RunTest(const FString& Parameters)
+{
+    using namespace FMCodexLocalMatchControlSurfaceTests;
+    FScopedPlayableWorld World;
+    auto* Controller = World.GetController();
+    if (!Controller) return false;
+    Controller->InitializePlayerFacingUI();
+    auto* Screen = Controller->GetPlayerMatchScreen();
+    if (!TestNotNull(TEXT("Shared screen exists"), Screen)) return false;
+    Screen->TakeWidget();
+    Screen->RequestStartNewMatch();
+    // A presentation-only fixture: retain real projected cards, without running
+    // unrelated gameplay to manufacture a Formula. No authority writes below.
+    FFMCodexUMGMatchScreenViewModel Formula;
+    Formula.LocalRack = Screen->GetPresentation().LocalRack;
+    Formula.OpponentRack = Screen->GetPresentation().OpponentRack;
+    Formula.InlineFormula.bVisible = true;
+    Formula.InlineFormula.bShowFormulaRows = true;
+    Formula.InlineFormula.bShowAttackRow = true;
+    Formula.InlineFormula.ContestId = TEXT("PassControl.PassAdvance");
+    Screen->RefreshFromPresentation(Formula);
+    TestTrue(TEXT("Fixture displays an ordinary Formula"),
+        Screen->GetInlineFormulaSurface()->GetPresentation().bVisible);
+    const auto StateBefore = SerializeState(World.GetHost()->GetMatchSnapshot().Snapshot);
+    const FGeometry Geometry = FGeometry::MakeRoot(FVector2D(220,68), FSlateLayoutTransform());
+    const FPointerEvent Pointer;
+    for (auto* Rack : {Screen->GetLocalRackWidget(), Screen->GetOpponentRackWidget()})
+    {
+        if (!TestFalse(TEXT("Projected rack is populated"), Rack->GetRenderedCardWidgets().IsEmpty())) return false;
+        auto* Card = Rack->GetRenderedCardWidgets()[0].Get();
+        TestTrue(TEXT("Reusable card retains hover capability"), Card->CanExposeFullCardDetail());
+        const auto Slate = Card->TakeWidget();
+        Slate->OnMouseEnter(Geometry, Pointer);
+        TestFalse(TEXT("Native board hover cannot expose Full Card during Formula"), Screen->IsDetailOverlayVisible());
+        Slate->OnMouseLeave(Pointer);
+    }
+    TestTrue(TEXT("Inspection attempts are read-only"),
+        SerializeState(World.GetHost()->GetMatchSnapshot().Snapshot) == StateBefore);
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexFullHoverAfterDeploymentTest,
     "FMCodex.LocalPlay.ControlSurface.64.FullHoverAfterNativeDeployment",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
@@ -15554,7 +15586,9 @@ bool FFMCodexFullHoverAfterDeploymentTest::RunTest(const FString& Parameters)
         if (!TestNotNull(Context+TEXT(" source"),Card)) return;
         const auto Slate=Card->TakeWidget();
         Slate->OnMouseEnter(Geometry,Pointer);
-        TestTrue(Context+TEXT(" native enter reaches shared Full"),Screen->IsDetailOverlayVisible()
+        TestTrue(Context+TEXT(" native enter opens the Deployment inspector"),
+            Screen->GetPresentation().Interaction.Category==EFMCodexUMGInteractionCategory::Deploy
+            && Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible()
             && Screen->GetDetailOverlayCard()->GetPresentation().CardId==Card->GetPresentation().CardId);
         Slate->OnMouseLeave(Pointer);
         TestFalse(Context+TEXT(" native leave hides Full"),Screen->IsDetailOverlayVisible());
@@ -15574,6 +15608,13 @@ bool FFMCodexFullHoverAfterDeploymentTest::RunTest(const FString& Parameters)
             if (Card&&Card->GetDeploymentDragCardId()==Selected.CardId){Source=Card;break;}
         if (!TestNotNull(TEXT("Current legal Hand source"),Source)) return false;
         const auto SourceSlate=Source->TakeWidget();
+        const auto BeforeHover=SerializeState(Host->GetMatchSnapshot().Snapshot);
+        SourceSlate->OnMouseEnter(Geometry,Pointer);
+        TestTrue(TEXT("Undeployed Deployment card is inspectable before drag"),
+            Screen->IsDetailOverlayVisible() && Screen->IsDetailOverlayHitTestInvisible()
+            && Screen->GetDetailOverlayCard()->GetPresentation().CardId==Selected.CardId);
+        TestTrue(TEXT("Deployment inspection cannot submit or mutate gameplay"),
+            BeforeHover==SerializeState(Host->GetMatchSnapshot().Snapshot));
         const auto DragReply=SourceSlate->OnDragDetected(Geometry,Pointer);
         const auto NativeOperation=DragReply.GetDragDropContent();
         if (!TestTrue(TEXT("Native DragDetected creates UMG operation"),NativeOperation.IsValid())) return false;
@@ -15600,7 +15641,7 @@ bool FFMCodexFullHoverAfterDeploymentTest::RunTest(const FString& Parameters)
             Occupied,int32(Screen->GetInteractionState()),int32(Screen->GetLastCompletedDragState()),*Selected.CardId.ToString()));
         if (Occupied==10)
             TestFalse(TEXT("Completion forwarding does not enable another illegal drag"),Source->IsDeploymentDragEnabled());
-        if (Occupied>=8)
+        if (Occupied==1 || Occupied>=8)
         {
             for (UFMCodexPitchSlotWidget* Slot:Screen->GetPitchWidget()->GetRenderedSlotWidgets())
                 if (Slot&&Slot->GetCardWidget())
@@ -15610,6 +15651,26 @@ bool FFMCodexFullHoverAfterDeploymentTest::RunTest(const FString& Parameters)
                     CheckHover(Rack->GetRenderedCardWidgets()[0],FString::Printf(TEXT("%d Hand"),Occupied));
         }
     }
+    // Leave an inspector open: phase exit must clear it without mouse leave.
+    for (int32 Finish=0;Finish<2 && Screen->GetPresentation().Interaction.Category==EFMCodexUMGInteractionCategory::Deploy;++Finish)
+    {
+        UFMCodexPlayerCardWidget* PitchCard=nullptr;
+        for (UFMCodexPitchSlotWidget* Slot:Screen->GetPitchWidget()->GetRenderedSlotWidgets())
+            if (Slot && Slot->GetCardWidget()) {PitchCard=Slot->GetCardWidget();break;}
+        if (!TestNotNull(TEXT("Deployment has a deployed Pitch representation"),PitchCard)) return false;
+        PitchCard->RequestFullCardDetailHover();
+        TestTrue(TEXT("Pitch inspector visible before finishing Deployment"),Screen->IsDetailOverlayVisible());
+        Screen->RequestFinishDeployment();
+        TestFalse(TEXT("Finishing Deployment clears inspection without mouse leave"),Screen->IsDetailOverlayVisible());
+    }
+    TestNotEqual(TEXT("Natural completion leaves Deployment"),Screen->GetPresentation().Interaction.Category,EFMCodexUMGInteractionCategory::Deploy);
+    for (UFMCodexPitchSlotWidget* Slot:Screen->GetPitchWidget()->GetRenderedSlotWidgets())
+        if (Slot && Slot->GetCardWidget())
+        {
+            Slot->GetCardWidget()->RequestFullCardDetailHover();
+            TestFalse(TEXT("Post-Deployment player selection cannot reopen Full Card"),Screen->IsDetailOverlayVisible());
+            break;
+        }
     return true;
 }
 

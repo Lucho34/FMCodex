@@ -818,7 +818,7 @@ private:
 class FNearTheaterPIE final : public IAutomationLatentCommand
 {
 public:
- FNearTheaterPIE(FAutomationTestBase* InTest,bool InPair,bool InPolish=false,bool InInspection=false,bool InLong=false,bool InEarly=false):Test(InTest),bPair(InPair),bPolish(InPolish || InInspection || InLong),bInspection(InInspection),bLong(InLong),bEarly(InEarly){}
+ FNearTheaterPIE(FAutomationTestBase* InTest,bool InPair,bool InPolish=false,bool InInspection=false,bool InLong=false,bool InEarly=false,bool InScopeOnly=false):Test(InTest),bPair(InPair),bPolish(InPolish || InInspection || InLong),bInspection(InInspection),bLong(InLong),bEarly(InEarly),bScopeOnly(InScopeOnly){}
  bool Update() override
  {
   if (FPlatformTime::Seconds()-Start>120) { Test->AddError(TEXT("Near Theater PIE timed out")); return true; }
@@ -991,6 +991,20 @@ public:
    const FVector2D LabelEnd=ButtonGeometry.AbsoluteToLocal(LabelGeometry.LocalToAbsolute(LabelGeometry.GetLocalSize()));
    Test->TestTrue(TEXT("Roll CTA label remains inside its button"),LabelOrigin.X>=0 && LabelEnd.X<=ButtonGeometry.GetLocalSize().X);
    if (bInspection) Test->TestFalse(TEXT("PIE Formula excludes full card inspection"),Visible(TEXT("TheaterTakerInspector")));
+   if (bScopeOnly)
+   {
+    for (auto* Rack:{S->GetLocalRackWidget(),S->GetOpponentRackWidget()})
+    {
+     if (!Test->TestFalse(TEXT("PIE board rack retains cards"),Rack->GetRenderedCardWidgets().IsEmpty())) return true;
+     auto* Card=Rack->GetRenderedCardWidgets()[0].Get();
+     const auto Slate=Card->TakeWidget();
+     Slate->OnMouseEnter(Card->GetCachedGeometry(),FPointerEvent());
+     Test->TestFalse(TEXT("PIE board hover cannot reopen Full Card in Formula"),S->IsDetailOverlayVisible());
+     Slate->OnMouseLeave(FPointerEvent());
+    }
+    Test->AddInfo(TEXT("FULL_CARD_SCOPE_PIE planning inspector preserved; confirmation clears; Formula board hover denied"));
+    return true;
+   }
    for (const auto Name:{TEXT("TheaterAttackPanelBounds"),TEXT("TheaterDefensePanelBounds"),TEXT("TheaterBottom"),TEXT("TheaterStatus")})
    {
     const auto G=S->GetWidgetFromName(Name)->GetCachedGeometry();
@@ -1039,6 +1053,7 @@ private:
  TMap<FName,FVector2D> StablePositions,StableSizes;
  void Capture(const TCHAR* Name)
  {
+  if (bScopeOnly) return; // Scope verification needs behavior evidence, not new screenshots.
   if (bPolish && !bInspection && !bLong && FString(Name)!=TEXT("Hover") && FString(Name)!=TEXT("Selected")
    && FString(Name)!=TEXT("Methods") && FString(Name)!=TEXT("DefenseRolling") && FString(Name)!=TEXT("DirectRolling") && FString(Name)!=TEXT("Empty")) return;
   if (bInspection && (FString(Name)==TEXT("DirectRolling") || FString(Name)==TEXT("DirectResult") || FString(Name)==TEXT("ReturnedBoard"))) return;
@@ -1050,7 +1065,7 @@ private:
   TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
   Test->TestTrue(TEXT("PIE frame saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/((bLong?FString(Name).Replace(TEXT("Combination"),TEXT("Power")):FString(Name))+TEXT(".png")))));
  }
- FAutomationTestBase* Test;bool bPair=false,bRollSeen=false,bPolish=false,bHoverSeen=false,bDefenseSeen=false,bInspection=false,bLong=false,bEarly=false;int32 Step=0,InspectStep=0;
+ FAutomationTestBase* Test;bool bPair=false,bRollSeen=false,bPolish=false,bHoverSeen=false,bDefenseSeen=false,bInspection=false,bLong=false,bEarly=false,bScopeOnly=false;int32 Step=0,InspectStep=0;
  double Start=FPlatformTime::Seconds();float Changed=0;
 };
 
@@ -1375,15 +1390,124 @@ bool FResolutionTheaterCompactRoutePIETest::RunTest(const FString&)
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
 }
+// Real Local PIE regression: one inspector across hand -> Pitch, then deny
+// ordinary role selection. Uses the normal provider, typed actions and Slate drag.
+class FDeploymentFullCardScopePIE final : public IAutomationLatentCommand
+{
+public:
+ explicit FDeploymentFullCardScopePIE(FAutomationTestBase* InTest):Test(InTest){}
+ bool Update() override
+ {
+  if (FPlatformTime::Seconds()-Start>90.) {Test->AddError(TEXT("Deployment inspection PIE timed out"));return true;}
+  if (!GEditor || !GEditor->PlayWorld) return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr; if (!S) return false;
+  const float Game=GEditor->PlayWorld->GetTimeSeconds();
+  if (Game-Changed<.2f || S->IsInlineFormulaRevealInputBlocked()) return false;
+  auto Next=[&](){++Step;Changed=Game;};
+  auto FindPitch=[&]()->UFMCodexPlayerCardWidget*
+  {
+   for (UFMCodexPitchSlotWidget* Slot:S->GetPitchWidget()->GetRenderedSlotWidgets())
+    if (Slot && Slot->GetCardWidget() && Slot->GetCardWidget()->GetPresentation().CardId==DeployedId) return Slot->GetCardWidget();
+   return nullptr;
+  };
+  auto Hover=[&](UFMCodexPlayerCardWidget* Card,bool Allowed,const TCHAR* Label)
+  {
+   if (!Test->TestNotNull(Label,Card)) return false;
+   const FString CommandBefore=C->GetLastDiagnostic().CommandName;
+   Card->TakeWidget()->OnMouseEnter(Card->GetCachedGeometry(),FPointerEvent());
+   Test->TestEqual(Label,S->IsDetailOverlayVisible(),Allowed);
+   Test->TestEqual(TEXT("PIE hover submits no gameplay action"),C->GetLastDiagnostic().CommandName,CommandBefore);
+   if (Allowed) Test->TestTrue(TEXT("PIE inspector is read-only and has the hovered identity"),
+    S->IsDetailOverlayHitTestInvisible() && S->GetDetailOverlayCard()->GetPresentation().CardId==Card->GetPresentation().CardId);
+   return true;
+  };
+  if (Step==0) {S->RequestStartNewMatch();Next();return false;}
+  if (Step==1)
+  {
+   FFMCodexLocalDevRollOverrideRequest R;R.Target=EFMCodexLocalDevRollTarget::FullD12;R.Value=6;
+   if (!Test->TestTrue(TEXT("PIE legal Deployment budget via DEV provider"),C->SetLocalDevRollOverride(R).bSuccess)) return true;
+   S->RequestRollTacticalPoints();Next();return false;
+  }
+  if (Step==2)
+  {
+   if (!Test->TestEqual(TEXT("PIE canonical Deployment context"),S->GetPresentation().Interaction.Category,EFMCodexUMGInteractionCategory::Deploy)) return true;
+   const auto* Option=S->GetPresentation().Interaction.DeploymentChoices.FindByPredicate([](const auto& O){return !O.bGoalkeeper && !O.Destinations.IsEmpty();});
+   if (!Test->TestNotNull(TEXT("PIE safe legal Deployment option"),Option)) return true;
+   const auto Choice=*Option;DeployedId=Choice.CardId;
+   UFMCodexPlayerCardWidget* Source=nullptr;
+   for (auto* Rack:{S->GetLocalRackWidget(),S->GetOpponentRackWidget()})
+    for (UFMCodexPlayerCardWidget* Card:Rack->GetRenderedCardWidgets()) if (Card && Card->GetPresentation().CardId==DeployedId) Source=Card;
+   if (!Hover(Source,true,TEXT("PIE undeployed card opens Full Card"))) return true;
+   Inspector=S->GetDetailOverlayCard();
+   const FPointerEvent Pointer(0,FVector2D(40,40),FVector2D(30,30),TSet<FKey>{EKeys::LeftMouseButton},EKeys::LeftMouseButton,0,FModifierKeysState());
+   const auto Reply=Source->TakeWidget()->OnDragDetected(Source->GetCachedGeometry(),Pointer);
+   const auto Operation=Reply.GetDragDropContent();
+   if (!Test->TestTrue(TEXT("PIE native drag starts"),Operation.IsValid())) return true;
+   Test->TestFalse(TEXT("PIE drag clears visible Full Card"),S->IsDetailOverlayVisible());
+   UFMCodexPitchSlotWidget* Target=nullptr;
+   for (UFMCodexPitchSlotWidget* Slot:S->GetPitchWidget()->GetRenderedSlotWidgets()) if (Slot && Slot->GetPresentation().SlotId==Choice.Destinations[0].SlotId) Target=Slot;
+   if (!Test->TestNotNull(TEXT("PIE legal Pitch target"),Target)) return true;
+   const FDragDropEvent Event(Pointer,Operation);
+   const auto TargetSlate=Target->TakeWidget();TargetSlate->OnDragEnter(Target->GetCachedGeometry(),Event);
+   const auto Dropped=TargetSlate->OnDrop(Target->GetCachedGeometry(),Event);
+   Operation->OnDrop(Dropped.IsEventHandled(),Pointer);
+   Test->TestTrue(TEXT("PIE native placement accepted by authority"),Dropped.IsEventHandled() && C->GetLastDiagnostic().bHostSuccess);
+   Test->TestFalse(TEXT("PIE placement leaves no old-source inspector"),S->IsDetailOverlayVisible());
+   Next();return false;
+  }
+  if (Step==3)
+  {
+   if (!Hover(FindPitch(),true,TEXT("PIE deployed Pitch card opens Full Card"))) return true;
+   Test->TestTrue(TEXT("Hand and Pitch reuse the same inspector"),Inspector==S->GetDetailOverlayCard());
+   const FString Forward=C->GetInteractionView().CurrentAttackingPlayer==EInitialTurnOrderPlayer::PlayerA?TEXT("NearB"):TEXT("NearA");
+   for (int32 I=0;I<3;++I) if (!DeployNextOrdinary(*C,Forward)) {Test->AddError(TEXT("PIE remaining legal placements failed"));return true;}
+   Next();return false;
+  }
+  if (Step==4)
+  {
+   if (S->GetPresentation().Interaction.Category==EFMCodexUMGInteractionCategory::Deploy)
+   {
+    if (++Finishes>2) {Test->AddError(TEXT("PIE Deployment did not complete"));return true;}
+    if (!Hover(FindPitch(),true,TEXT("PIE Pitch inspection stays allowed until Deployment ends"))) return true;
+    S->RequestFinishDeployment();
+    Test->TestFalse(TEXT("PIE finish clears inspector immediately without mouse leave"),S->IsDetailOverlayVisible());
+    Changed=Game;return false;
+   }
+   Test->TestEqual(TEXT("PIE naturally enters unapproved Carrier selection"),S->GetPresentation().Interaction.Category,EFMCodexUMGInteractionCategory::SelectCarrier);
+   if (!Hover(FindPitch(),false,TEXT("PIE post-Deployment Pitch hover denied"))) return true;
+   auto* Rack=S->GetLocalRackWidget();
+   if (!Test->TestFalse(TEXT("PIE remaining undeployed cards exist"),Rack->GetRenderedCardWidgets().IsEmpty())) return true;
+   Hover(Rack->GetRenderedCardWidgets()[0].Get(),false,TEXT("PIE post-Deployment hand hover denied"));
+   Test->AddInfo(TEXT("DEPLOYMENT_FULL_CARD_PIE undeployed=allowed pitch=allowed drag=cleared exit=cleared carrier=denied"));
+   return true;
+  }
+  return false;
+ }
+private:
+ FAutomationTestBase* Test;double Start=FPlatformTime::Seconds();float Changed=0;int32 Step=0,Finishes=0;
+ FName DeployedId;UFMCodexPlayerCardWidget* Inspector=nullptr;
+};
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDeploymentFullCardScopePIETest,"FMCodex.PIE.FullCard.DeploymentScope",
+ EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FDeploymentFullCardScopePIETest::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDeploymentFullCardScopePIE(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+ return true;
+}
+
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FNearTheaterPIETest,"FMCodex.PIE.ResolutionTheater.NearFreeKick",
  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 void FNearTheaterPIETest::GetTests(TArray<FString>& N,TArray<FString>& C) const
-{ for (const TCHAR* M:{TEXT("Direct"),TEXT("Combination"),TEXT("DirectPolish"),TEXT("Inspection")}) {N.Add(M);C.Add(M);} }
+{ for (const TCHAR* M:{TEXT("Direct"),TEXT("Combination"),TEXT("DirectPolish"),TEXT("Inspection"),TEXT("InspectionScope")}) {N.Add(M);C.Add(M);} }
 bool FNearTheaterPIETest::RunTest(const FString& P)
 {
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
  ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
- FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FNearTheaterPIE(this,P==TEXT("Combination"),P==TEXT("DirectPolish"),P==TEXT("Inspection"))));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FNearTheaterPIE(this,P==TEXT("Combination"),P==TEXT("DirectPolish"),P==TEXT("Inspection") || P==TEXT("InspectionScope"),false,false,P==TEXT("InspectionScope"))));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
 }
