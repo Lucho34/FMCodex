@@ -17,6 +17,7 @@
 #include "UObject/UnrealType.h"
 #include "../LocalPlay/FMCodexPlayerUIPresentationText.h"
 #include "../LocalPlay/FMCodexPrototypeTeamContent.h"
+#include "../LocalPlay/FMCodexDormantPassControlTestFixture.h"
 #include "../CoreRules/PlayerCardRuleSnapshotValidator.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionWriter.h"
 
@@ -29,6 +30,7 @@ struct FFMCodexNetworkSkillTestAccess
 		Mode.BootstrapConfiguration = BFirst
 			? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
+		FMCodexDormantPassControlTests::AddCapability(Mode.BootstrapConfiguration.MatchConfiguration);
 		Mode.ParticipantRegistry.Admit(A, Mode.GetWorld()->SpawnActor<AFMCodexNetworkMatchPlayerState>());
 		Mode.ParticipantRegistry.Admit(B, Mode.GetWorld()->SpawnActor<AFMCodexNetworkMatchPlayerState>());
 		auto Entropy = MakeUnique<FFMCodexNetworkScriptedEntropy>(TArray<uint32>{uint32(RawD12 - 1), uint32(RawD12 - 1), uint32(RawD12 - 1), uint32(RawD12 - 1)});

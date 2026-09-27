@@ -21,6 +21,7 @@
 #include "UObject/UnrealType.h"
 #include "../LocalPlay/FMCodexPlayerUIPresentationText.h"
 #include "../LocalPlay/FMCodexPrototypeTeamContent.h"
+#include "../LocalPlay/FMCodexDormantPassControlTestFixture.h"
 #include "../CoreRules/PlayerCardRuleSnapshotValidator.h"
 #include "../CoreRules/MatchPlayCurrentAttackBranchIntentSelectionWriter.h"
 
@@ -51,6 +52,7 @@ struct FFMCodexNetworkInitialRouteTestAccess
 		Mode.BootstrapConfiguration = BFirst
 			? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
+		FMCodexDormantPassControlTests::AddCapability(Mode.BootstrapConfiguration.MatchConfiguration);
 		Mode.BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = ShortMatch;
 		Mode.ParticipantRegistry.Admit(A, Mode.GetWorld()->SpawnActor<AFMCodexNetworkMatchPlayerState>());
 		Mode.ParticipantRegistry.Admit(B, Mode.GetWorld()->SpawnActor<AFMCodexNetworkMatchPlayerState>());

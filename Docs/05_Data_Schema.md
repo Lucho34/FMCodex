@@ -42,7 +42,7 @@
 
 生产内容的完整导入、版本、校验与维护流程见 `Docs/Canonical_Player_Content.md`。运行时记录由 `Content/Data/CanonicalPlayerContent.json` 提供，不读取 XLSX。
 
-当前权威平衡源表为仓库内 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，身份与表现 sidecar 仍为同目录 `CanonicalPlayerImportConfig.json`。Stage 8.15S 从已验证基线恢复新的源表，历史原表仍遗失；provenance 见同目录 `CanonicalPlayerSourceRecovery.md`。JSON 只由前向导入器生成，禁止作为源手工编辑。本次仅更新 sourceWorkbook / sourceWorkbookSha256，schema 3 与 Prototype40_v1 不变。
+当前权威平衡源表为仓库内 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，身份与表现 sidecar 仍为同目录 `CanonicalPlayerImportConfig.json`。Stage 8.15S 从已验证基线恢复新的源表，历史原表仍遗失；恢复 provenance 见同目录 `CanonicalPlayerSourceRecovery.md`。JSON 只由前向导入器生成，禁止作为源手工编辑。Stage 8.15B 的六人临时 PassControl 退出实验使用 `Prototype40_v2`，schema 仍为 3；精确迁移及恢复流程见内容文档。
 
 - `PlayerKey`：稳定技术身份，进入运行时 `CardId`；不从姓名或展示编号临时推导。
 - `Team + RosterSlot`：每队 1–20 的确定性阵容顺序；`RosterSlot` 不是身份。
@@ -54,7 +54,7 @@
 - `Presentation`：现有已批准的国籍、出生日期、身高、体重、稀有度覆盖；未提供时使用明确安全默认，不从工作簿外猜测事实。
 - `schemaVersion`：数据形状版本；`balanceContentVersion`：批准平衡内容版本；`sourceWorkbookSha256`：导入来源审计值。
 
-当前冻结规模：40 人、Arsenal 20、Manchester City 20、门将 2、非门将 38、Skill assignments 36。每名球员每个 TP 2–8 的活跃技能数不得超过 2。
+当前实验规模：40 人、Arsenal 20、Manchester City 20、门将 2、非门将 38、Skill assignments 31。家族配置为 LongShot 5、CutInsideShot 8、Cross 10、ThroughBall 8、PassControl 0；每人技能数分布为 `0:18 / 1:13 / 2:9 / 3:0`。每名球员每个 TP 2–8 的活跃技能数不得超过 2。PassControl 的枚举、规则和传输数据合同保留。
 
 ## CardRarity
 

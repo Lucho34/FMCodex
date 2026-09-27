@@ -27,6 +27,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "FMCodexDormantPassControlTestFixture.h"
+#include "FMCodexOutcomePresentation.h"
 #include "../CoreRules/MatchPlayCurrentAttackHelperSelectionTestFixtures.h"
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
 #include "../CoreRules/MatchPlaySkillNoSelectionNoGoalTestFixtures.h"
@@ -41,6 +43,7 @@
 #include "Misc/Paths.h"
 #include "Serialization/MemoryWriter.h"
 #include "Components/TextBlock.h"
+#include "Components/RichTextBlock.h"
 #include "Components/Button.h"
 #include "Components/Border.h"
 #include "Components/BorderSlot.h"
@@ -3096,9 +3099,11 @@ bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
 	using namespace FMCodexLocalMatchFullFamilyTests;
 	const FFMCodexLocalMatchDemoConfiguration Demo =
 		FFMCodexLocalMatchDemoConfigurationFactory::Create();
-	const TArray<FFamilyExpectation> Expected = FamilyExpectations();
-	TestEqual(TEXT("Canonical catalog exposes thirteen distinct Skill/range rules"),
-		Demo.SkillRuleSet.SkillRules.Num(), 13);
+	TArray<FFamilyExpectation> Expected = FamilyExpectations();
+	Expected.RemoveAll([](const FFamilyExpectation& Family)
+		{ return Family.SkillType == ESkillRuleType::PassControl; });
+	TestEqual(TEXT("Experimental catalog exposes eleven distinct Skill/range rules"),
+		Demo.SkillRuleSet.SkillRules.Num(), 11);
 
 	TSet<FName> RuleIds;
 	TSet<uint8> RuleTypes;
@@ -3113,9 +3118,10 @@ bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
 			Rule.MaxTriggerActionPoint >= Rule.MinTriggerActionPoint
 				&& Rule.MaxTriggerActionPoint <= 8);
 	}
-	TestEqual(TEXT("Thirteen canonical SkillIds are unique"), RuleIds.Num(), 13);
-	TestEqual(TEXT("Five canonical Skill types remain represented"),
-		RuleTypes.Num(), 5);
+	TestEqual(TEXT("Eleven canonical SkillIds are unique"), RuleIds.Num(), 11);
+	TestEqual(TEXT("Four production Skill types remain represented"), RuleTypes.Num(), 4);
+	TestFalse(TEXT("PassControl remains absent from the normal production rule inventory"),
+		RuleTypes.Contains(static_cast<uint8>(ESkillRuleType::PassControl)));
 
 	for (const FFamilyExpectation& Family : Expected)
 	{
@@ -3172,7 +3178,7 @@ bool FFMCodexLocalMatchNormalDemoFamilyInventoryTest::RunTest(
 	TestEqual(TEXT("All forty demo CardIds remain unique"),
 		AllCardIds.Num(), 40);
 	TestEqual(TEXT("Workbook Skill assignment count is exact"),
-		TotalSkillAssignments, 36);
+		TotalSkillAssignments, 31);
 	return true;
 }
 
@@ -3208,6 +3214,8 @@ bool FFMCodexLocalMatchNormalDemoFullFamilyReachabilityTest::RunTest(
 
 	for (const FFamilyExpectation& Family : FamilyExpectations())
 	{
+		// Preserve capability-family indexes for dormant tests; this test owns production only.
+		if (Family.SkillType == ESkillRuleType::PassControl) continue;
 		const int32 Seed = Family.SkillType == ESkillRuleType::ThroughBall
 			? ThroughBallSeed
 			: 1000 + static_cast<int32>(Family.SkillType);
@@ -14847,8 +14855,15 @@ bool FFMCodexPassControlScreenGoldenPathTest::RunTest(
 	{
 		return false;
 	}
-	Controller->SetNextDemoMatchSeedForTesting(Seed);
-	Screen->RequestStartNewMatch();
+	FFMCodexLocalMatchDemoConfiguration Dormant =
+		FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	FMCodexDormantPassControlTests::AddCapability(Dormant);
+	if (!TestTrue(TEXT("Explicit dormant PassControl configuration initializes"),
+		Host->StartNewLocalMatch(Dormant.OpeningInput, Dormant.SkillRuleSet, Seed).bSuccess))
+	{
+		return false;
+	}
+	Controller->RefreshPresentation();
 	Screen->RequestRollTacticalPoints();
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	Screen->AdvanceInlineFormulaRevealForTesting(5.0f);
@@ -14999,6 +15014,16 @@ bool FFMCodexPassControlScreenGoldenPathTest::RunTest(
 	{
 		VisibleFullNarrativeCount += IsVisibleFullNarrative(Text) ? 1 : 0;
 	}
+	// The shared Formula surface now displays its disclosed outcome in the rich
+	// heading; the legacy ContestHeading still carries text but is collapsed.
+	const URichTextBlock* FormulaOutcome = Cast<URichTextBlock>(
+		Surface->GetFormulaSurface()->GetWidgetFromName(TEXT("InlineFormulaOutcomeHeading")));
+	const bool bRichNarrativeVisible = FormulaOutcome != nullptr
+		&& FormulaOutcome->GetVisibility() != ESlateVisibility::Collapsed
+		&& FormulaOutcome->GetVisibility() != ESlateVisibility::Hidden
+		&& FormulaOutcome->GetText().ToString() == FMCodexOutcomePresentation::PrimaryMarkup(
+			TerminalFormula.NarrativeHeadline, TerminalFormula.OutcomeText);
+	VisibleFullNarrativeCount += bRichNarrativeVisible ? 1 : 0;
 	TestEqual(TEXT("Real shared terminal screen renders full Narrative once"),
 		VisibleFullNarrativeCount, 1);
 	TestTrue(TEXT("Screen keeps semantic route and compact result distinct"),

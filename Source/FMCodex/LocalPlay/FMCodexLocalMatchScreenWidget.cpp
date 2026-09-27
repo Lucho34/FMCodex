@@ -3045,13 +3045,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this,
 		&UFMCodexLocalMatchScreenWidget::HandleDeploymentReferenceCutInsideClicked);
 	AddReferenceButton(CutInsideButton, 74.0f);
-	UButton* PassControlButton = MakeReferenceButton(
-		TEXT("DeploymentReferencePassControlButton"),
-		ESkillRuleType::PassControl);
-	PassControlButton->OnClicked.AddDynamic(
-		this,
-		&UFMCodexLocalMatchScreenWidget::HandleDeploymentReferencePassControlClicked);
-	AddReferenceButton(PassControlButton, 108.0f);
+	// Stage 8.15B: temporary production withdrawal. Description and handler stay
+	// available for dormant fixtures and later restoration with canonical content.
 	UButton* CrossButton = MakeReferenceButton(
 		TEXT("DeploymentReferenceCrossButton"), ESkillRuleType::Cross);
 	CrossButton->OnClicked.AddDynamic(

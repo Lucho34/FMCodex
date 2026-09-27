@@ -4,6 +4,8 @@
 
 This contract covers the read-only in-match explanation for the five canonical tactics: `远射`、`内切`、`控球推进`、`传中` and `直塞`. It changes neither tactic legality nor resolution behavior.
 
+Stage 8.15B temporarily withdraws PassControl from production player assignments and the Deployment Reference selector. The five-family description capability below remains intact; the production experiment exposes four families. **USER PIE PASS** accepts the implementation. The experiment remains temporary and reversible; permanent deletion and PassControl UI modernization remain deferred pending the later product decision.
+
 ## Information Sources
 
 - `FTacticalRuleDescriptionCatalog` is a state-independent CoreRules description catalog keyed by `ESkillRuleType`.
@@ -62,11 +64,11 @@ The rich catalog still retains Tactical Player applicability, multipliers, fixed
 
 - The authoritative presentation gate is `EFMCodexUMGInteractionCategory::Deploy`; the entry is not a permanent Match Screen navigation item.
 - The existing bottom interaction dock exposes one secondary `战术说明` action beside deployment controls. Opening it creates no Host command and does not alter deployment choices.
-- A transient selector lists the five canonical families in stable order: `远射 → 内切 → 控球推进 → 传中 → 直塞`.
-- Selector labels are single-line, no-wrap controls. `控球推进` receives enough stable width for its four-character label; the close action is visually separated from the five-family selector without introducing another navigation layer. The shared detail begins after an explicit vertical gap so selector text cannot overlap the tactic title or hint.
+- During Stage 8.15B's temporary experiment, a transient selector lists four production families in stable order: `远射 → 内切 → 传中 → 直塞`. Only the PassControl button is removed; its description builder and handler remain available for a later approved restoration.
+- Selector labels are single-line, no-wrap controls. The close action is visually separated from the four-family selector without introducing another navigation layer. The shared detail begins after an explicit vertical gap so selector text cannot overlap the tactic title or hint.
 - Selector state is presentation-only. Every choice calls `FFMCodexTacticalDetailPresentationBuilder::Build(ESkillRuleType)` and renders through the same `UFMCodexTacticalDetailPanelWidget` instance already used by tactical-selection hover.
 - The selector has an explicit `关闭战术说明` action. Leaving Deployment, finishing Deployment, or starting a valid deployment drag also clears the transient reference without changing deployed cards or legality.
-- The reference never filters by current eligibility, Tactical Points, deployed cards, roles or player attributes. It is a five-family catalog, not a recommendation surface.
+- The reference never filters by current eligibility, Tactical Points, deployed cards, roles or player attributes. It exposes the experiment's four production families and does not recommend a current action. The underlying five-family catalog is unchanged.
 - The Through Ball compact hint is `脚下球 · 身后球 · 反越位`, so the SelectSkill tactical card and Deployment Reference communicate the same three peer routes before and after opening the shared detail.
 
 ## OneOnOne explanatory participant wording

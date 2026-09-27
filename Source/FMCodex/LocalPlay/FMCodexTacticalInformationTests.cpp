@@ -554,8 +554,6 @@ bool FFMCodexDeploymentTacticalReferenceEntryTest::RunTest(
 			ESkillRuleType::LongShot, TEXT("远射") },
 		{ TEXT("DeploymentReferenceCutInsideButton"),
 			ESkillRuleType::CutInsideShot, TEXT("内切") },
-		{ TEXT("DeploymentReferencePassControlButton"),
-			ESkillRuleType::PassControl, TEXT("控球推进") },
 		{ TEXT("DeploymentReferenceCrossButton"),
 			ESkillRuleType::Cross, TEXT("传中") },
 		{ TEXT("DeploymentReferenceThroughBallButton"),
@@ -563,9 +561,9 @@ bool FFMCodexDeploymentTacticalReferenceEntryTest::RunTest(
 	};
 	UHorizontalBox* Selector = Cast<UHorizontalBox>(Screen->GetWidgetFromName(
 		TEXT("DeploymentTacticalReferenceSelector")));
-	TestTrue(TEXT("Reference selector owns five stable canonical choices"),
-		Selector != nullptr && Selector->GetChildrenCount() == 8
-			&& Selector->GetChildAt(6)->GetName()
+	TestTrue(TEXT("Experiment reference selector owns four stable production choices"),
+		Selector != nullptr && Selector->GetChildrenCount() == 7
+			&& Selector->GetChildAt(5)->GetName()
 				== TEXT("DeploymentReferenceCloseSpacer"));
 	for (int32 Index = 0; Index < Expectations.Num(); ++Index)
 	{
@@ -589,12 +587,8 @@ bool FFMCodexDeploymentTacticalReferenceEntryTest::RunTest(
 				&& Detail->GetPresentation().DisplayName
 					== Expectation.ChineseName);
 	}
-	USizeBox* PassControlBounds = Cast<USizeBox>(Screen->GetWidgetFromName(
-		TEXT("DeploymentReferencePassControlButtonBounds")));
-	TestTrue(TEXT("Pass Control selector owns a stable single-line width"),
-		PassControlBounds != nullptr
-			&& PassControlBounds->GetWidthOverride() >= 108.0f
-			&& PassControlBounds->GetHeightOverride() >= 38.0f);
+	TestNull(TEXT("Dormant PassControl has no production reference button"),
+		Screen->GetWidgetFromName(TEXT("DeploymentReferencePassControlButton")));
 	const FString PlayerText = Detail->CollectPlayerFacingText();
 	TestTrue(TEXT("Deployment reference retains compact player contract"),
 		!PlayerText.Contains(TEXT("进攻"))

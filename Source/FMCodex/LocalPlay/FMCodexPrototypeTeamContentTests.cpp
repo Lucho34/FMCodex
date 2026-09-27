@@ -18,6 +18,9 @@
 
 #include "../CoreRules/DeckValidator.h"
 #include "../CoreRules/MatchPlayOpeningInitializer.h"
+#include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
+#include "../CoreRules/MatchPlayCurrentAttackSkillSelectionTestFixtures.h"
+#include "../CoreRules/MatchPlayCurrentAttackSkillSelectionWriter.h"
 
 #include "Components/TextBlock.h"
 #include "Engine/Engine.h"
@@ -246,7 +249,7 @@ bool FFMCodexPrototypeTeamCatalogTest::RunTest(const FString& Parameters)
 		ValidationErrors.Num(), 0);
 	TestEqual(TEXT("Balance content version is explicit"),
 		FFMCodexPrototypeTeamContent::GetBalanceContentVersion(),
-		FString(TEXT("Prototype40_v1")));
+		FString(TEXT("Prototype40_v2")));
 	TestTrue(TEXT("Generated runtime JSON exists outside gameplay C++"),
 		IFileManager::Get().FileExists(
 			*FFMCodexPrototypeTeamContent::GetRuntimeContentPath()));
@@ -306,6 +309,8 @@ bool FFMCodexPrototypeTeamCatalogTest::RunTest(const FString& Parameters)
 		for (const FFMCodexPrototypeSkillAssignment& Skill
 			: Definition.SkillAssignments)
 		{
+			TestFalse(TEXT("Experimental production players do not own PassControl"),
+				Skill.SkillType == ESkillRuleType::PassControl);
 			TestTrue(TEXT("Skill reference and TP range are canonical"),
 				!Skill.SkillId.IsNone() && !Skill.RuleId.IsNone()
 					&& Skill.SkillType != ESkillRuleType::None
@@ -348,9 +353,9 @@ bool FFMCodexPrototypeTeamCatalogTest::RunTest(const FString& Parameters)
 		OverlapChecks, 280);
 	TestTrue(TEXT("Skill count distribution is exact"),
 		SkillCounts.FindRef(0) == 18
-			&& SkillCounts.FindRef(1) == 10
-			&& SkillCounts.FindRef(2) == 10
-			&& SkillCounts.FindRef(3) == 2);
+			&& SkillCounts.FindRef(1) == 13
+			&& SkillCounts.FindRef(2) == 9
+			&& SkillCounts.FindRef(3) == 0);
 
 	const FFMCodexLocalMatchDemoConfiguration Demo =
 		FFMCodexLocalMatchDemoConfigurationFactory::Create();
@@ -431,17 +436,14 @@ bool FFMCodexCanonicalPlayerSkillRulesTest::RunTest(const FString& Parameters)
 			&& Saka->SkillAssignments[1].SkillId == TEXT("CutInsideShot")
 			&& Saka->SkillAssignments[1].MinTacticalPoint == 2
 			&& Saka->SkillAssignments[1].MaxTacticalPoint == 4);
-	TestTrue(TEXT("Three-Skill workbook order and ranges are preserved"),
-		Odegaard != nullptr && Odegaard->SkillAssignments.Num() == 3
-			&& Odegaard->SkillAssignments[0].SkillId == TEXT("PassControl")
-			&& Odegaard->SkillAssignments[0].MinTacticalPoint == 6
-			&& Odegaard->SkillAssignments[0].MaxTacticalPoint == 8
-			&& Odegaard->SkillAssignments[1].SkillId == TEXT("ThroughBall")
-			&& Odegaard->SkillAssignments[1].MinTacticalPoint == 5
-			&& Odegaard->SkillAssignments[1].MaxTacticalPoint == 6
-			&& Odegaard->SkillAssignments[2].SkillId == TEXT("LongShot")
-			&& Odegaard->SkillAssignments[2].MinTacticalPoint == 3
-			&& Odegaard->SkillAssignments[2].MaxTacticalPoint == 5);
+	TestTrue(TEXT("Withdrawal preserves remaining authored Skill order and ranges"),
+		Odegaard != nullptr && Odegaard->SkillAssignments.Num() == 2
+			&& Odegaard->SkillAssignments[0].SkillId == TEXT("ThroughBall")
+			&& Odegaard->SkillAssignments[0].MinTacticalPoint == 5
+			&& Odegaard->SkillAssignments[0].MaxTacticalPoint == 6
+			&& Odegaard->SkillAssignments[1].SkillId == TEXT("LongShot")
+			&& Odegaard->SkillAssignments[1].MinTacticalPoint == 3
+			&& Odegaard->SkillAssignments[1].MaxTacticalPoint == 5);
 	TestTrue(TEXT("Goalkeeper schema and DisplaySerial are exact"),
 		Raya != nullptr && Raya->DisplaySerial == 1
 			&& Raya->Card.bIsGoalkeeper
@@ -497,6 +499,58 @@ bool FFMCodexCanonicalPlayerSkillRulesTest::RunTest(const FString& Parameters)
 					&& Rule->MaxTriggerActionPoint
 						== Assignment.MaxTacticalPoint);
 		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FFMCodexPassControlWithdrawalAvailabilityTest,
+	"FMCodex.LocalPlay.PrototypeTeams.08.PassControlWithdrawalAvailability",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexPassControlWithdrawalAvailabilityTest::RunTest(const FString& Parameters)
+{
+	using namespace FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	const auto* Player = FFMCodexPrototypeTeamContent::Find(
+		TEXT("Prototype.Arsenal.MartinZubimendi"));
+	if (!TestNotNull(TEXT("Canonical Zubimendi exists"), Player)) return false;
+	const FName ThroughBall(TEXT("Canonical.Skill.ThroughBall.7.8"));
+	TestTrue(TEXT("Only approved replacement ThroughBall 7-8 is owned"),
+		Player->Card.AttackSkillIds == TArray<FName>{ThroughBall});
+	const auto Demo = FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	for (const int32 TP : {6, 7, 8})
+	{
+		auto State = MakeParticipantFirstRunnerState(EMatchPlayNeutralSlotSide::NearPlayerB);
+		auto& Carrier = State.CardSnapshotAuthority.PlayerACardSnapshots.Cards[0];
+		Carrier.SkillIds = Player->Card.AttackSkillIds;
+		Carrier.Attributes = Player->Card.Attributes;
+		Carrier.PositionTypes = Player->Card.PositionTypes;
+		State.CurrentAttack.ActionPoint = TP;
+		const auto Availability = FMatchPlayCurrentAttackSkillSelectionAvailability::Query(
+			State, ValidAttackSequence, EInitialTurnOrderPlayer::PlayerA, Demo.SkillRuleSet);
+		TestTrue(TEXT("Production availability query succeeds"), Availability.bQuerySucceeded);
+		TestEqual(FString::Printf(TEXT("Zubimendi TP%d exact availability"), TP),
+			Availability.bCanSelectAnySkill, TP >= 7);
+		const auto View = FFMCodexLocalMatchInteractionViewBuilder::Build(State, Demo.SkillRuleSet);
+		TestEqual(TEXT("Normal selection projects the same TP boundary"),
+			View.SelectionOptions.ContainsByPredicate([ThroughBall](const auto& Option)
+				{ return Option.Id == ThroughBall; }), TP >= 7);
+		TestFalse(TEXT("No production PassControl option is projected"),
+			View.SelectionOptions.ContainsByPredicate([](const auto& Option)
+				{ return Option.SkillType == ESkillRuleType::PassControl; }));
+		if (TP == 6)
+		{
+			TestTrue(TEXT("No-option projection exposes existing resolve action"),
+				View.bCanResolveNoLegalChoice);
+		}
+		const auto Forged = FMatchPlayCurrentAttackSkillSelectionWriter::Select(
+			State, Demo.SkillRuleSet, MakeRequest(TEXT("Canonical.Skill.PassControl.7.7")));
+		TestFalse(TEXT("Old unowned PassControl request is rejected"), Forged.bSuccess);
+		TestEqual(TEXT("Existing ownership legality rejects without a special-case rule"),
+			Forged.LegalityResult.ErrorCode,
+			EMatchPlayCurrentAttackSkillSelectionErrorCode::CarrierDoesNotOwnSkill);
+		TestTrue(TEXT("Rejected request preserves authoritative state"),
+			AreStatesEqual(State, Forged.AfterState));
 	}
 	return true;
 }

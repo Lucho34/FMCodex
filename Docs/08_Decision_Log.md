@@ -2465,3 +2465,15 @@ Penalty migration 与 Copy / Outcome micro polish；本条取代此前 Penalty d
 长期方向固定为仓库源表与既有身份/表现 sidecar → 原有前向导入器 → generated JSON → 既有 Local / Network 消费方。导入器默认源不再依赖外部目录，来源名称与 SHA 取实际输入；JSON 禁止手工当源维护，不建立永久反向管线。全部 40 人与 36 项技能逐字段、按序等价，仅 sourceWorkbook / sourceWorkbookSha256 改变；schema 3、Prototype40_v1 和五战术配置保持。不修改 CoreRules、Authority、RNG、RPC、replication 或 UI。
 
 临时退出 PassControl 已批准为后续实验，Stage 8.15A 定义六人迁移；**Stage 8.15B 在 8.15S 提交前仍为 BLOCKED**。本阶段保留六人原配置及 Zubimendi 的 PassControl 7–7。后续只通过新权威源表与正常前向导入实现实验，用户仍负责最终 staging / commit。
+
+## 2026-09-27 — Stage 8.15B temporary PassControl production withdrawal
+
+8.15S 已提交后实施临时产品实验，**USER PIE PASS — 功能验收通过**。用户确认四战术版本表现正确、无阻断问题；此验收不代表永久删除 PassControl。目的是观察比赛时长与理解负担，减少高 TP 战术匹配是实验的一部分，不自动补偿或全局再平衡。
+
+权威源表先改，sidecar 的 balanceContentVersion 递增为 `Prototype40_v2`，既有前向导入器生成 JSON，schema 保持 3。Odegaard、Rice、Rodri、Reijnders、Bernardo 仅移除 PassControl 并按原顺序压紧剩余槽位；Zubimendi 的唯一 PassControl 7–7 替换为 ThroughBall 7–8。精确前后表见 [Canonical Player Content](Canonical_Player_Content.md)。其他球员、属性、身份和 Notes 不变。共 31 项技能：LongShot 5 / CutInsideShot 8 / Cross 10 / ThroughBall 8 / PassControl 0；每人技能数 `0:18 / 1:13 / 2:9 / 3:0`。
+
+正常新局自然不再生成 PassControl 选择，Full Card / Hand / Pitch 直接消费 canonical 配置；部署“战术说明”只保留 `远射 → 内切 → 传中 → 直塞`。不新增 UI 黑名单、内容 profile、运行时开关或 Session 热替换。PassControl enum/ID、CoreRules、Authority、Local / Network 支持、规则描述及休眠测试保留；依赖旧生产归属的测试在初始化前显式构造测试配置。
+
+CoreRules、Authority、RNG、Full D12、AP domain、RPC、replicated schema、safe projection 与 ThroughBall 规则均不变。恢复必须经单独批准后编辑同一源表、递增内容版本并正常导入，同时恢复部署入口；不手改 generated JSON。后续试玩继续观察高 TP（特别是 TP7）无选项频率、直塞集中度、比赛时长、理解负担、直接性/重复感及球员特色；这些长期问题不阻断提交已正确实现的实验。永久删除或 PassControl 现代化等待该产品决定，最终 staging / commit 仍由用户执行。
+
+Grouped closeout 复用既有内容校验、focused/fixture automation、增量 Development Editor build 与真实 Local PIE 证据，并单独记录用户功能验收。收尾仅同步文档验收状态，不修改已验证的源表、生成内容、runtime 或测试实现，不机械重跑 gameplay、build、PIE、Host/Remote 或 Shipping。

@@ -6,7 +6,7 @@ Stage 6.13.2.4 replaces the hand-authored prototype roster with one validated, v
 
 The authoritative player/balance source is the version-controlled `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`, sheet `球员配置`. Unreal does not read this workbook at runtime. The adjacent `CanonicalPlayerImportConfig.json` remains the source for stable identity mappings and presentation metadata.
 
-Stage 8.15S recovered this **new source**, not the missing historical workbook, from `Content/Data/CanonicalPlayerContent.json` at baseline `bb88e50c7c6eb26457c6a526d45e9638aff60496`. The original `FMCodex_40_Player_Attribute_Skill_PointRules.xlsx` remains unavailable. [The recovery record](../ContentSource/PlayerContent/CanonicalPlayerSourceRecovery.md) records the historical SHA, the new workbook's actual SHA, snapshot hash and exact semantic comparison. All current five-tactic content is preserved.
+Stage 8.15S recovered this **new source**, not the missing historical workbook, from `Content/Data/CanonicalPlayerContent.json` at baseline `bb88e50c7c6eb26457c6a526d45e9638aff60496`. The original `FMCodex_40_Player_Attribute_Skill_PointRules.xlsx` remains unavailable. [The recovery record](../ContentSource/PlayerContent/CanonicalPlayerSourceRecovery.md) records the historical SHA, the recovered workbook's SHA, snapshot hash and exact semantic comparison. Recovery preserved the then-current five-tactic content; Stage 8.15B subsequently applies the temporary withdrawal below.
 
 The production flow is:
 
@@ -38,7 +38,7 @@ Outfield positions use the workbook values `A`, `M`, `D`, `A/M`, and `M/D`. Goal
 
 A skill assignment consists of the canonical skill identity plus `MinTP` and `MaxTP`. Runtime rule identity is derived deterministically as `Canonical.Skill.<SkillId>.<MinTP>.<MaxTP>`, allowing the existing rule lookup and TP filter to represent different approved ranges for the same skill family without duplicating player-facing skill names.
 
-`balanceContentVersion` is currently `Prototype40_v1`. The current config and runtime `schemaVersion` is `3`, including the explicit required `displayName` introduced in schema 2 and `presentation.defaultShirtNumber` introduced in schema 3. Advance the balance version when an approved balance payload changes, and advance the schema version only when that shape changes. Stage 8.15S changes source provenance only, so both versions remain unchanged.
+`balanceContentVersion` is currently `Prototype40_v2` (Stage 8.15B). The current config and runtime `schemaVersion` is `3`, including the explicit required `displayName` introduced in schema 2 and `presentation.defaultShirtNumber` introduced in schema 3. Advance the balance version when an approved balance payload changes, and advance the schema version only when that shape changes. Stage 8.15S changed provenance only; Stage 8.15B advances the balance version for the approved six-player migration without changing schema.
 
 ## Validation contract
 
@@ -55,7 +55,7 @@ The importer validates before writing:
 - exactly 40 non-empty explicit `displayName` values in the import config;
 - generated output equality in `--check` mode.
 
-Current approved totals are 40 players, 36 skill assignments, skill-count distribution `0:18 / 1:10 / 2:10 / 3:2`, 280 per-player TP overlap checks, and zero overlap violations.
+Current experiment totals are 40 players, 31 skill assignments, skill-count distribution `0:18 / 1:13 / 2:9 / 3:0`, 280 per-player TP overlap checks, and zero overlap violations. Family assignments are LongShot 5, CutInsideShot 8, Cross 10, ThroughBall 8, PassControl 0.
 
 The runtime catalog also validates exactly one goalkeeper per team and 38 outfield players overall. Workbook dropdowns and numeric validation aid editing; the importer remains the final validator for mapping, uniqueness, skill ranges and overlap. Do not rely on Excel input validation alone.
 
@@ -87,7 +87,22 @@ consumer contract are recorded in `Docs/UI/Player_Display_Name_Contract_v1.md`.
 
 ## PassControl experiment boundary
 
-Temporary PassControl withdrawal is approved as a future experiment, and the Stage 8.15A audit defines the six-player migration. Stage 8.15B remains **BLOCKED until Stage 8.15S is committed**. Recovery preserves all six current PassControl assignments, including Martin Zubimendi's sole PassControl 7–7 assignment. The later experiment must edit the new authoritative workbook and regenerate normally; no withdrawal, replacement or rebalance is part of source recovery.
+Stage 8.15B implements the approved temporary experiment after source recovery was committed. **USER PIE PASS — functionally accepted.** The user reported no blocking issue with the four-tactic implementation. This accepts the experiment's implementation, not permanent deletion of PassControl. Match duration, comprehension cost, TP7 no-option frequency, ThroughBall concentration, directness/repetition and player identity remain questions for future play; they do not block committing the accepted experiment.
+
+| Player | Previous skills | Experiment skills |
+|---|---|---|
+| Martin Odegaard | PassControl 6–8; ThroughBall 5–6; LongShot 3–5 | ThroughBall 5–6; LongShot 3–5 |
+| Martin Zubimendi | PassControl 7–7 | ThroughBall 7–8 |
+| Declan Rice | PassControl 6–7; ThroughBall 5–6; LongShot 3–3 | ThroughBall 5–6; LongShot 3–3 |
+| Rodri | PassControl 6–8; ThroughBall 5–6 | ThroughBall 5–6 |
+| Tijjani Reijnders | PassControl 6–7; ThroughBall 5–6 | ThroughBall 5–6 |
+| Bernardo Silva | PassControl 6–8; ThroughBall 6–8 | ThroughBall 6–8 |
+
+Only these skill cells/ranges and the balance version change. Skill slots compact in their existing order. Other players, attributes, identity, presentation metadata and authored Notes are preserved. Higher-TP availability is not compensated. Normal Local/Network starts consume the generated canonical content; Full Card, Hand and Pitch follow it without a PassControl filter. Deployment Tactical Information exposes only `远射 → 内切 → 传中 → 直塞`.
+
+PassControl enum/IDs, CoreRules, authority lifecycle, Local/Network execution and rule descriptions remain dormant capabilities. Tests that require it supply an explicit test-only configuration before session initialization. No runtime profile, toggle, hot-swap or second content source is introduced.
+
+Restoration requires a separately approved source edit: restore the six assignments from the table in the workbook, advance the balance version, run the same forward importer and focused validation, and restore the deployment reference entry. Do not manually reverse generated JSON. Permanent deletion or UI modernization waits for the product decision.
 
 ## Presentation and artwork compatibility (historical initial import)
 

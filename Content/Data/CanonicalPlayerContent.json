@@ -1,8 +1,8 @@
 {
   "schemaVersion": 3,
-  "balanceContentVersion": "Prototype40_v1",
+  "balanceContentVersion": "Prototype40_v2",
   "sourceWorkbook": "FMCodex_Canonical_Player_Content.xlsx",
-  "sourceWorkbookSha256": "3592c213b07ce30875c1bf347cc0e832c2450d7947568f97a18e6801cee6efe7",
+  "sourceWorkbookSha256": "d412f033b515986d77d0199a6d2fae72afae3875677d4089507d18ac65897a71",
   "sourceSheet": "球员配置",
   "players": [
     {
@@ -307,11 +307,6 @@
       "goalkeeperAttributes": null,
       "skills": [
         {
-          "skillId": "PassControl",
-          "minTP": 6,
-          "maxTP": 8
-        },
-        {
           "skillId": "ThroughBall",
           "minTP": 5,
           "maxTP": 6
@@ -433,9 +428,9 @@
       "goalkeeperAttributes": null,
       "skills": [
         {
-          "skillId": "PassControl",
+          "skillId": "ThroughBall",
           "minTP": 7,
-          "maxTP": 7
+          "maxTP": 8
         }
       ],
       "notes": "低位组织；以站位、拦截与节奏转换见长。",
@@ -471,11 +466,6 @@
       },
       "goalkeeperAttributes": null,
       "skills": [
-        {
-          "skillId": "PassControl",
-          "minTP": 6,
-          "maxTP": 7
-        },
         {
           "skillId": "ThroughBall",
           "minTP": 5,
@@ -1025,11 +1015,6 @@
       "goalkeeperAttributes": null,
       "skills": [
         {
-          "skillId": "PassControl",
-          "minTP": 6,
-          "maxTP": 8
-        },
-        {
           "skillId": "ThroughBall",
           "minTP": 5,
           "maxTP": 6
@@ -1069,11 +1054,6 @@
       "goalkeeperAttributes": null,
       "skills": [
         {
-          "skillId": "PassControl",
-          "minTP": 6,
-          "maxTP": 7
-        },
-        {
           "skillId": "ThroughBall",
           "minTP": 5,
           "maxTP": 6
@@ -1112,11 +1092,6 @@
       },
       "goalkeeperAttributes": null,
       "skills": [
-        {
-          "skillId": "PassControl",
-          "minTP": 6,
-          "maxTP": 8
-        },
         {
           "skillId": "ThroughBall",
           "minTP": 6,
